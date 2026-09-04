@@ -37,10 +37,12 @@
 #include "chrome/browser/contextual_tasks/contextual_tasks_utils.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_web_contents_user_data.h"
 #include "chrome/browser/contextual_tasks/entry_point_eligibility_manager.h"
+#include "chrome/browser/contextual_tasks/smart_tab_sharing_metrics.h"
 #include "chrome/browser/feature_engagement/non_iph_promo.h"
 #include "chrome/browser/feature_engagement/tracker_factory.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
+#include "chrome/browser/tab_list/constants.h"
 #include "chrome/browser/tab_list/tab_list_interface.h"
 #include "chrome/browser/tab_list/tab_list_interface_observer.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
@@ -851,9 +853,19 @@ void ContextualSearchboxHandler::SetSmartTabSharingActive(bool active) {
           GetIsSmartTabSharingEnabled(profile_)) {
     return;
   }
+
   if (smart_tab_sharing_active_for_thread_.has_value() &&
       *smart_tab_sharing_active_for_thread_ == active) {
     return;
+  }
+  contextual_tasks::LogMenuOptionClicked(
+      active ? contextual_tasks::SmartTabSharingToggleState::kToggledOn
+             : contextual_tasks::SmartTabSharingToggleState::kToggledOff);
+  if (!active && IsSmartTabSharingActive()) {
+    auto* session_handle = GetContextualSessionHandle();
+    if (session_handle && !session_handle->previous_turns().empty()) {
+      contextual_tasks::LogOptOutMidThread(true);
+    }
   }
   smart_tab_sharing_active_for_thread_ = active;
   auto* session_handle = GetContextualSessionHandle();
@@ -1446,7 +1458,12 @@ void ContextualSearchboxHandler::UploadSnapshotTabContextIfPresent() {
 }
 
 void ContextualSearchboxHandler::SetActiveToolMode(omnibox::ToolMode tool,
-                                                   bool is_set_by_server) {
+                                                   bool is_set_by_aim) {
+  if (auto* metrics_recorder = GetMetricsRecorder()) {
+    if (is_set_by_aim) {
+      metrics_recorder->RecordToolChangedByAIM(tool);
+    }
+  }
   if (!input_state_model_) {
     return;
   }
@@ -1469,6 +1486,11 @@ void ContextualSearchboxHandler::RecordModelSelectionAction(
 
 void ContextualSearchboxHandler::SetActiveModelMode(omnibox::ModelMode model,
                                                     bool is_set_by_aim) {
+  if (auto* metrics_recorder = GetMetricsRecorder()) {
+    if (is_set_by_aim) {
+      metrics_recorder->RecordModelChangedByAIM(model);
+    }
+  }
   if (!input_state_model_) {
     return;
   }
@@ -1567,8 +1589,6 @@ bool ContextualSearchboxHandler::IsContextualSearchTabSharingEligible() const {
 void ContextualSearchboxHandler::RecordTabAddedMetric(
     tabs::TabInterface* const tab,
     bool is_tab_suggestion_chip) {
-// TODO(b/502297163): Implement for Android.
-#if !BUILDFLAG(IS_ANDROID)
   auto* metrics_recorder = GetMetricsRecorder();
   if (!metrics_recorder) {
     return;
@@ -1586,7 +1606,7 @@ void ContextualSearchboxHandler::RecordTabAddedMetric(
     return;
   }
   int tab_index = tab_list->GetIndexOfTab(tab->GetHandle());
-  if (tab_index == TabStripModel::kNoTab) {
+  if (tab_index == tab_list::kNoTabIndex) {
     return;
   }
 
@@ -1645,7 +1665,6 @@ void ContextualSearchboxHandler::RecordTabAddedMetric(
           contextual_search::ContextualSearchAttachmentButtonType::kRecentTab);
     }
   }
-#endif  // !BUILDFLAG(IS_ANDROID)
 }
 
 #if !BUILDFLAG(IS_ANDROID)
@@ -1963,7 +1982,7 @@ void ContextualSearchboxHandler::QueryAutocomplete(
     bool is_on_focus,
     const std::string& keyword,
     searchbox::mojom::InputMethod input_method) {
-  if (contextual_tasks_context_service_) {
+  if (contextual_tasks_context_service_ && IsSmartTabSharingActive()) {
     BrowserWindowInterface* browser_window =
         webui::GetBrowserWindowInterface(web_contents_);
     contextual_tasks_context_service_->OnTypedQuery(
@@ -2024,70 +2043,6 @@ void ContextualSearchboxHandler::SubmitQuery(const std::string& query_text,
                                /*additional_params=*/{}, is_voice_search);
 }
 
-void ContextualSearchboxHandler::MaybeTriggerSmartTabSharingPromo(
-    const std::string& query,
-    content::WebContents* web_contents_for_window) {
-  if (!IsContextualSearchTabSharingEligible()) {
-    return;
-  }
-  if (!contextual_tasks_context_service_) {
-    return;
-  }
-
-  std::vector<GURL> explicit_urls;
-  if (auto* contextual_session_handle = GetContextualSessionHandle()) {
-    for (const contextual_search::FileInfo* file_info :
-         contextual_session_handle->GetController()->GetFileInfoList()) {
-      if (file_info->tab_url) {
-        explicit_urls.push_back(*(file_info->tab_url));
-      }
-    }
-  }
-
-  contextual_tasks::ConversationThread conversation_thread;
-  conversation_thread.query = query;
-  if (auto* contextual_session_handle = GetContextualSessionHandle()) {
-    conversation_thread.previous_turns =
-        contextual_session_handle->previous_turns();
-    conversation_thread.shared_tab_titles =
-        contextual_session_handle->GetSubmittedContextTabTitles();
-  }
-
-  const bool is_eligible_for_promo =
-      !IsSmartTabSharingActive() &&
-      contextual_tasks::ContextualTasksContextService::
-          GetIsSmartTabSharingEnabled(profile_);
-  if (is_eligible_for_promo) {
-    contextual_tasks::TabSelectionOptions tab_selection_options;
-    tab_selection_options.tab_selection_timeout =
-        contextual_tasks::GetSmartTabSharingTabSelectionTimeout();
-    if (auto* browser_window_interface =
-            webui::GetBrowserWindowInterface(web_contents_for_window)) {
-      tab_selection_options.browser_window_interface =
-          browser_window_interface->GetWeakPtr();
-    }
-    tab_selection_options.min_model_score = static_cast<float>(
-        contextual_tasks::GetSmartTabSharingPromoScoreThreshold());
-    contextual_tasks_context_service_->GetRelevantTabsForConversationThread(
-        tab_selection_options, conversation_thread, explicit_urls,
-        base::BindOnce(
-            &ContextualSearchboxHandler::OnRelevantTabsReceivedToMaybeShowPromo,
-            weak_ptr_factory_.GetWeakPtr()));
-  } else if (!contextual_tasks::ContextualTasksContextService::
-                 GetIsSmartTabSharingEnabled(profile_)) {
-    // Run dark experiment if smart tab sharing is not enabled and do not
-    // block.
-    contextual_tasks::TabSelectionOptions tab_selection_options;
-    if (auto* browser_window_interface =
-            webui::GetBrowserWindowInterface(web_contents_for_window)) {
-      tab_selection_options.browser_window_interface =
-          browser_window_interface->GetWeakPtr();
-    }
-    contextual_tasks_context_service_->GetRelevantTabsForConversationThread(
-        tab_selection_options, conversation_thread, explicit_urls,
-        base::DoNothing());
-  }
-}
 
 void ContextualSearchboxHandler::ContextualizeQueryAndOpenUrl(
     const std::string& query_text,
@@ -2095,7 +2050,13 @@ void ContextualSearchboxHandler::ContextualizeQueryAndOpenUrl(
     omnibox::ChromeAimEntryPoint aim_entry_point,
     std::map<std::string, std::string> additional_params,
     bool is_voice_search) {
-  MaybeTriggerSmartTabSharingPromo(query_text, web_contents_);
+  contextual_tasks::LogThreadWithTabsSubmitted(IsSmartTabSharingActive());
+  if (IsSmartTabSharingActive()) {
+    auto* session_handle = GetContextualSessionHandle();
+    if (session_handle && !session_handle->previous_turns().empty()) {
+      contextual_tasks::LogOptOutMidThread(false);
+    }
+  }
 
   if (query_contextualizer_) {
     contextual_tasks::QueryContextualizer::ContextualizeParams params;
@@ -2123,23 +2084,6 @@ void ContextualSearchboxHandler::ContextualizeQueryAndOpenUrl(
                          std::move(additional_params), is_voice_search);
 }
 
-void ContextualSearchboxHandler::OnRelevantTabsReceivedToMaybeShowPromo(
-    std::vector<base::WeakPtr<content::WebContents>> relevant_tabs) {
-  if (relevant_tabs.empty()) {
-    return;
-  }
-#if !BUILDFLAG(IS_ANDROID)
-  if (feature_engagement::NonIphPromo::RequestPermissionToShow(
-          profile_, feature_engagement::kIPHSmartTabSharingTryItFeature)) {
-    if (auto* web_ui_interface =
-            contextual_tasks::GetWebUiInterface(web_contents_)) {
-      if (web_ui_interface->GetPageRemote().is_bound()) {
-        web_ui_interface->GetPageRemote()->ShowSmartTabSharingTryItIph();
-      }
-    }
-  }
-#endif
-}
 
 void ContextualSearchboxHandler::ComputeAndOpenQueryUrl(
     const std::string& query_text,
@@ -2414,6 +2358,11 @@ ContextualSearchboxHandler::GetActiveTaskContextProvider() {
              : nullptr;
 }
 
+contextual_tasks::ContextualTasksUIInterface*
+ContextualSearchboxHandler::GetContextualTasksUiInterface() {
+  return contextual_tasks::GetWebUiInterface(web_contents_);
+}
+
 #if !BUILDFLAG(IS_ANDROID)
 void ContextualSearchboxHandler::ShowDrivePicker(
     drive_picker::DriveDisclaimerController::DisclaimerStatus status) {
@@ -2567,7 +2516,8 @@ void ContextualSearchboxHandler::CaptureRegionScreenshot(
   constexpr content::DesktopMediaID::Id kFullDesktopScreenId = -1;
   content::DesktopMediaID source(content::DesktopMediaID::TYPE_SCREEN,
                                  kFullDesktopScreenId);
-  CaptureAndUploadScreenshot(source, std::move(callback));
+  CaptureAndUploadScreenshot(source, std::move(callback),
+                             RegionCaptureSource::AllDisplays());
 #else
   std::move(callback).Run(std::nullopt);
 #endif
@@ -2655,14 +2605,16 @@ void ContextualSearchboxHandler::OnChromeDefaultPickerResults(
 
 void ContextualSearchboxHandler::CaptureAndUploadScreenshot(
     content::DesktopMediaID source,
-    StartScreenshareCallback callback) {
+    StartScreenshareCallback callback,
+    std::optional<RegionCaptureSource> region_capture_source) {
   is_capturing_ = true;
   auto safe_callback = mojo::WrapCallbackWithDefaultInvokeIfNotRun(
       std::move(callback), std::nullopt);
   active_screenshot_request_ = content::desktop_capture::CaptureScreenshot(
       source,
       base::BindOnce(&ContextualSearchboxHandler::OnScreenshotCaptured,
-                     weak_ptr_factory_.GetWeakPtr(), std::move(safe_callback)));
+                     weak_ptr_factory_.GetWeakPtr(), std::move(safe_callback),
+                     std::move(region_capture_source)));
   if (!active_screenshot_request_) {
     NotifyScreensharePickerClosed();
     is_capturing_ = false;
@@ -2671,6 +2623,7 @@ void ContextualSearchboxHandler::CaptureAndUploadScreenshot(
 
 void ContextualSearchboxHandler::OnScreenshotCaptured(
     StartScreenshareCallback callback,
+    std::optional<RegionCaptureSource> region_capture_source,
     const SkBitmap& bitmap) {
   active_screenshot_request_.reset();
   NotifyScreensharePickerClosed();
@@ -2680,9 +2633,38 @@ void ContextualSearchboxHandler::OnScreenshotCaptured(
     return;
   }
 
+  if (region_capture_source) {
+    if (screenshare_delegate_) {
+      screenshare_delegate_->ShowRegionSelectOverlay(
+          bitmap, *region_capture_source,
+          base::BindOnce(&ContextualSearchboxHandler::OnRegionSelected,
+                         weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
+    } else {
+      is_capturing_ = false;
+      std::move(callback).Run(std::nullopt);
+    }
+    return;
+  }
+
   base::ThreadPool::PostTaskAndReplyWithResult(
       FROM_HERE, {base::TaskPriority::USER_VISIBLE},
       base::BindOnce(&ProcessScreenshotInBackground, bitmap),
+      base::BindOnce(&ContextualSearchboxHandler::OnScreenshotProcessed,
+                     weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
+}
+
+void ContextualSearchboxHandler::OnRegionSelected(
+    StartScreenshareCallback callback,
+    const SkBitmap& region_bitmap) {
+  if (region_bitmap.empty()) {
+    is_capturing_ = false;
+    std::move(callback).Run(std::nullopt);
+    return;
+  }
+
+  base::ThreadPool::PostTaskAndReplyWithResult(
+      FROM_HERE, {base::TaskPriority::USER_VISIBLE},
+      base::BindOnce(&ProcessScreenshotInBackground, region_bitmap),
       base::BindOnce(&ContextualSearchboxHandler::OnScreenshotProcessed,
                      weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
 }

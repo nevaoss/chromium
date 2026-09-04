@@ -45,6 +45,8 @@ mod ot_shape_normalize;
 pub mod ot_shape_plan;
 mod ot_shaper;
 mod ot_shaper_arabic;
+mod ot_shaper_arabic_fallback;
+mod ot_shaper_arabic_pua;
 #[rustfmt::skip]
 mod ot_shaper_arabic_table;
 mod ot_shaper_hangul;
@@ -78,5 +80,10 @@ use self::buffer::GlyphInfo;
 use self::face::hb_font_t;
 
 type hb_mask_t = u32;
+
+#[inline(always)]
+fn clamp_i64_to_i32(value: i64) -> i32 {
+    value.clamp(i64::from(i32::MIN), i64::from(i32::MAX)) as i32
+}
 
 use self::common::{script, Direction, Feature, Language, Script};

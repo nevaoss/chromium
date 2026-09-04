@@ -1055,7 +1055,7 @@ For example, some websites may respond to this request by showing you ads that a
         Opt-out request
       </message>
       <message name="IDS_UNIVERSAL_OPT_OUT_INFO_TEXT" desc="Info text for the 'Universal Opt Out' preference." translateable="false">
-        Depending on the laws in your region, this opt-out request may affect the sale or sharing of your data, or it may affect how your data is used for targeted advertising. The sites you visit, including Google, are responsible for determining how they respond to this request.
+        The sites you visit, including Google, are responsible for determining how they respond to this request. Depending on the laws in your region, sites may respond by limiting the sale or sharing of your data or its use for personalized ads.
       </message>
       <message name="IDS_CAN_MAKE_PAYMENT_TITLE" desc="Title for preference to allow websites to know whether you have payment methods available through PaymentRequest.CanMakePayment interface">
         Access payment methods
@@ -2794,6 +2794,9 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
       <message name="IDS_CONTEXTMENU_SAVE_PAGE" desc="This string is shown in the context menu for saving the current page. [CHAR_LIMIT=30]">
         Download
       </message>
+      <message name="IDS_CONTEXTMENU_SAVE_PAGE_AS" desc="Context sensitive menu item for saving the current page [CHAR_LIMIT=30]">
+        Save as…
+      </message>
       <!-- TODO(b/527098378): Remove the "New" label, reduce CHAR_LIMIT back to 35, and deprecate CONTEXT_MENU_SEARCH_TAB_WITH_GOOGLE_LENS_CLICKED preference after feature is established. -->
       <message name="IDS_CONTEXTMENU_SEARCH_TAB_WITH_GOOGLE_LENS" desc="Context sensitive menu item for deep linking into google lens. [CHAR_LIMIT=42]">
         Search tab with Google Lens <ph name="BEGIN_NEW">&lt;new&gt;</ph>New<ph name="END_NEW">&lt;/new&gt;</ph>
@@ -4285,6 +4288,9 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
       <message name="IDS_MENU_DOWNLOAD_PAGE" desc="Menu item for downloading the current web page. [CHAR_LIMIT=27]">
         Download page
       </message>
+      <message name="IDS_MENU_SAVE_PAGE_AS" desc="Menu item for saving the current web page. [CHAR_LIMIT=27]">
+        Save page as…
+      </message>
       <message name="IDS_MENU_PAGE_INFO" desc="Tooltip on Android for the button to view information about the current web page. Info is short for information.  [CHAR_LIMIT=27]">
         Page info
       </message>
@@ -5053,14 +5059,20 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
       <message name="IDS_PDF_UNSAVED_CHANGES_DIALOG_RELOAD_TITLE" desc="Title for the dialog shown when a user tries to reload a PDF page with unsaved changes.">
         Reload site?
       </message>
+      <message name="IDS_PDF_UNSAVED_CHANGES_DIALOG_LEAVE_TITLE" desc="Title for the dialog shown when a user tries to leave a PDF page with unsaved changes.">
+        Leave site?
+      </message>
       <message name="IDS_PDF_UNSAVED_CHANGES_DIALOG_MESSAGE" desc="Message of the dialog shown when leaving or reloading a PDF document with unsaved changes.">
         Changes you made may not be saved.
       </message>
       <message name="IDS_PDF_UNSAVED_CHANGES_DIALOG_CANCEL_BUTTON" desc="Button text to cancel leaving or reloading the PDF document with unsaved changes.">
         Cancel
       </message>
-      <message name="IDS_PDF_UNSAVED_CHANGES_DIALOG_RELOAD_BUTTON" desc="Button text for the dialog to confirm reloading the PDF document.">
+      <message name="IDS_PDF_UNSAVED_CHANGES_DIALOG_RELOAD_BUTTON" desc="Button text for the dialog to confirm reloading the PDF document with unsaved changes.">
         Reload
+      </message>
+      <message name="IDS_PDF_UNSAVED_CHANGES_DIALOG_LEAVE_BUTTON" desc="Button text for the dialog to confirm leaving the PDF document with unsaved changes.">
+        Leave
       </message>
       <message name="IDS_PDF_CANNOT_EDIT_PDF" desc="Toast message shown when a PDF document cannot be edited.">
         Cannot edit PDF
@@ -5841,6 +5853,14 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
         <ph name="BEGIN_LINK">&lt;link&gt;</ph>Get help<ph name="END_LINK">&lt;/link&gt;</ph>
       </message>
 
+      <!-- WebHID system permission dialog strings -->
+      <message name="IDS_HID_SYSTEM_PERMISSION_EXPLANATION_DIALOG_TITLE" desc="Title of the dialog explaining that Chrome needs system permission to access HID devices.">
+        Human interface device access required
+      </message>
+      <message name="IDS_HID_SYSTEM_PERMISSION_EXPLANATION_DIALOG_BODY" desc="Body of the dialog explaining that Chrome needs system permission to access HID devices and how to navigate to Special app access settings.">
+        <ph name="APP_NAME">%1$s<ex>Chrome</ex></ph> needs permission to access human interface devices (HIDs) for this site. You can change this setting later in Settings &gt; Apps &gt; Special app access.
+      </message>
+
       <!-- Special locale UI strings -->
       <message name="IDS_SEARCH_WITH_SOGOU" desc="Text telling the user that the search engine will be switched to Sogou.">
         Search with Sogou
@@ -6183,7 +6203,10 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
       <message name="IDS_IPH_ANDROID_VERTICAL_TABS_PROMO_MOUSE" desc="The in-product-help promotion message to try Vertical Tabs, displayed to users with a mouse.">
         Right click here to show tabs vertically
       </message>
-      <message name="IDS_IPH_GLIC_PROMO_TEXT" desc="The in-product-help promotion message to try Glic.">
+      <message name="IDS_IPH_TAB_STRIP_GLIC_PROMO_TEXT" desc="The in-product-help promotion message to try Glic, shown on the tab strip button.">
+        Try Gemini in Chrome to get answers, key takeaways and more
+      </message>
+      <message name="IDS_IPH_GLIC_PROMO_TEXT" desc="The in-product-help promotion message to try Glic, shown on the toolbar button.">
         Get the best of Gemini from your Chrome toolbar. Long-press to customize.
       </message>
       <message name="IDS_IPH_GLIC_PROMO_ACCESSIBILITY_TEXT" desc="The in-product-help accessibility text to try Glic.">
@@ -6383,11 +6406,17 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
       <message name="IDS_SEND_TAB_TO_SELF_MESSAGE_BANNER_SUBTITLE" desc="The subtitle for the message banner shown on Android indicating the sender device.">
         From <ph name="DEVICE_NAME">%1$s<ex>Tanya's Pixel 10a</ex></ph>
       </message>
+      <message name="IDS_SEND_TAB_TO_SELF_MESSAGE_BANNER_SUBTITLE_WITH_APP" desc="The subtitle for the message banner shown on Android indicating the sender device, and the native app that will be opened.">
+        Open in <ph name="NATIVE_APP_NAME">%1$s<ex>Maps</ex></ph> • From <ph name="DEVICE_NAME">%2$s<ex>Tanya's Pixel 10a</ex></ph>
+      </message>
       <message name="IDS_SEND_TAB_TO_SELF_MESSAGE_OPEN" desc="Label for the button to open a tab received from another device.">
         Open
       </message>
       <message name="IDS_SEND_TAB_TO_SELF_NOTIFICATION_CONTEXT_TEXT" desc="Text displayed as the second line of a notification indicating the domain and the device the tab is shared from.">
         <ph name="DOMAIN">%1$s<ex>www.google.com</ex></ph> - Sent from <ph name="DEVICE_NAME">%2$s<ex>Tanya's Pixel 2XL</ex></ph>
+      </message>
+      <message name="IDS_SEND_TAB_TO_SELF_NOTIFICATION_CONTEXT_TEXT_WITH_APP" desc="Text displayed as the second line of a notification indicating the native app that will be opened and the device the tab is shared from.">
+        Open in <ph name="NATIVE_APP_NAME">%1$s<ex>Maps</ex></ph> - Sent from <ph name="DEVICE_NAME">%2$s<ex>Tanya's Pixel 2XL</ex></ph>
       </message>
       <message name="IDS_SEND_TAB_TO_SELF_CONTENT_DESCRIPTION" desc="Accessibility string read when the bottom sheet is opened. It describes the bottom sheet where a user can pick a device to share the tab with.">
         Choose a device.
@@ -6438,6 +6467,9 @@ To change this setting, <ph name="BEGIN_LINK">BEGIN_LINK</ph>delete the Chrome d
       </message>
       <message name="IDS_TAB_SHARING_TOOLBAR_STOP_SHARING" desc="Text displayed on the button to stop tab sharing.">
         Stop sharing
+      </message>
+      <message name="IDS_TAB_SHARING_TOOLBAR_SHARE_THIS_TAB_INSTEAD" desc="Button text to share the current tab instead of the previously shared one.">
+        Share this tab instead
       </message>
 
       <!-- Sharing Hub -->

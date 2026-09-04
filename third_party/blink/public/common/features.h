@@ -159,6 +159,9 @@ BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE_PARAM(
 BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE_PARAM(
     bool,
     kBackgroundCodeCacheDecoderStart);
+BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE_PARAM(
+    bool,
+    kBackgroundResourceFetchSupportsWebUI);
 
 // A kill switch to background fetch from the service worker environment. If
 // enabled, `backgroundFetch.fetch()` from the service worker will throw an
@@ -208,9 +211,6 @@ BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kCaptureJSExecutionLocation);
 // If enabled, the Clear-Site-Data header will handle "prefetchCache" and
 // "prerenderCache" to clear the Prefetch and Prerender caches respectively.
 BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kClearSiteDataPrefetchPrerenderCache);
-
-// Fix for CSS font comparison logic.
-BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kCSSFontComparisonFix);
 
 // We do intend to deprecate these when possible, do not remove the feature
 // until they can be disabled by default.

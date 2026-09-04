@@ -105,7 +105,7 @@ chromium-metrics-reviews@google.com.
   <variant name="ToggleVertical" summary="the Toggle Vertical tabs command"/>
 </variants>
 
-<!-- LINT.ThenChange(//chrome/browser/ui/tabs/tab_strip_model.h:TabContextMenuCommand) -->
+<!-- LINT.ThenChange(//components/tabs/public/tab_context_menu_command.h:TabContextMenuCommand) -->
 
 <variants name="TabDiscardReason">
   <variant name=".External"
@@ -3920,6 +3920,28 @@ chromium-metrics-reviews@google.com.
     is added. Used to collect size data for scrolling tabs.
   </summary>
   <token key="TabActiveState" variants="TabActiveState"/>
+</histogram>
+
+<histogram name="TabStrip.Horizontal.IsScrollable" enum="Boolean"
+    expires_after="2027-08-21">
+  <owner>dominicaustria@google.com</owner>
+  <owner>top-chrome-desktop-ui@google.com</owner>
+  <summary>
+    Recorded periodically every 5 minutes for the horizontal tab strip,
+    indicating whether the unpinned tabs container is overflowing and
+    scrollable.
+  </summary>
+</histogram>
+
+<histogram name="TabStrip.Horizontal.ScrollSource"
+    enum="HorizontalTabStripScrollSource" expires_after="2027-08-21">
+  <owner>dominicaustria@google.com</owner>
+  <owner>top-chrome-desktop-ui@google.com</owner>
+  <summary>
+    Recorded when the unpinned horizontal tab strip is scrolled, indicating
+    whether the scroll was initiated by the scroll buttons or via touchpad /
+    mouse wheel interaction.
+  </summary>
 </histogram>
 
 <histogram name="TabStrip.SplitView.Created" enum="SplitTabCreatedSource"

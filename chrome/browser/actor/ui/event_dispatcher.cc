@@ -81,6 +81,7 @@ constexpr absl::Overload PreToolEventsFn{
 #endif
     NoUiEvents<AddBookmarkToolRequest>,
     NoUiEvents<DragAndReleaseToolRequest>,
+    NoUiEvents<FindAndHighlightToolRequest>,
     NoUiEvents<HistoryToolRequest>,
 #if !BUILDFLAG(SKIP_ANDROID_UNMIGRATED_ACTOR_FILES)
     NoUiEvents<LoadAndExtractContentToolRequest>,
@@ -92,6 +93,7 @@ constexpr absl::Overload PreToolEventsFn{
           MouseMove(tr.GetTabHandle(), pt, source)};
     },
     NoUiEvents<NavigateToolRequest>,
+    NoUiEvents<PerformSearchToolRequest>,
     NoUiEvents<RemoveBookmarkToolRequest>,
     NoUiEvents<ScrollToolRequest>,
     NoUiEvents<SelectToolRequest>,
@@ -122,6 +124,7 @@ constexpr absl::Overload PostToolEventsFn{
 #endif
     NoUiEvents<AddBookmarkToolRequest>,
     NoUiEvents<DragAndReleaseToolRequest>,
+    NoUiEvents<FindAndHighlightToolRequest>,
     NoUiEvents<HistoryToolRequest>,
 #if !BUILDFLAG(SKIP_ANDROID_UNMIGRATED_ACTOR_FILES)
     NoUiEvents<LoadAndExtractContentToolRequest>,
@@ -129,6 +132,7 @@ constexpr absl::Overload PostToolEventsFn{
     NoUiEvents<MediaControlToolRequest>,
     NoUiEvents<MoveMouseToolRequest>,
     NoUiEvents<NavigateToolRequest>,
+    NoUiEvents<PerformSearchToolRequest>,
     NoUiEvents<RemoveBookmarkToolRequest>,
     NoUiEvents<ScrollToolRequest>,
     NoUiEvents<SelectToolRequest>,

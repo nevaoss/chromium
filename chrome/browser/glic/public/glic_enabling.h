@@ -20,6 +20,7 @@
 #include "chrome/browser/glic/glic_enums.h"
 #include "chrome/browser/glic/glic_user_status_fetcher.h"
 #include "chrome/browser/glic/host/glic.mojom.h"
+#include "chrome/browser/glic/host/glic_webui.mojom.h"
 #include "chrome/browser/glic/public/features.h"
 #include "components/optimization_guide/core/optimization_guide_features.h"
 #include "components/prefs/pref_change_registrar.h"
@@ -27,7 +28,6 @@
 #include "components/signin/public/identity_manager/tribool.h"
 #include "components/subscription_eligibility/subscription_eligibility_service.h"
 #include "components/sync_device_info/device_info.h"
-#include "content/public/browser/web_contents.h"
 
 class AccountCapabilities;
 class Profile;
@@ -552,10 +552,6 @@ class GlicEnabling final : public signin::IdentityManager::Observer,
    private:
     base::AutoReset<bool> auto_reset_;
   };
-
-  // Test-only method to bypass enablement checks. Prefer using
-  // ScopedBypassEnablementChecksForTesting in tests.
-  static void SetBypassEnablementChecksForTesting(bool bypass);
 
   // Test-only method to bypass system requirement checks.
   static void SetSystemRequirementMetForTesting(std::optional<bool> met);

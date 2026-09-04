@@ -104,9 +104,6 @@ declare namespace chrome {
     let lineFocusStaticLine: number;
     let lineFocusCursorLine: number;
 
-    // Whether the Immersive Read Anything feature flag is enabled.
-    let isImmersiveEnabled: boolean;
-
     // Whether the Improved Read Aloud feature flag is enabled.
     let isImprovedReadAloudEnabled: boolean;
 
@@ -370,33 +367,6 @@ declare namespace chrome {
 
     // Called when the number of words heard by a read aloud user changes.
     function updateWordsHeard(wordsHeard: number): void;
-
-    // Set the content. Used by tests only.
-    // SnapshotLite is a data structure which resembles an AXTreeUpdate. E.g.:
-    //   const axTree = {
-    //     rootId: 1,
-    //     nodes: [
-    //       {
-    //         id: 1,
-    //         role: 'rootWebArea',
-    //         childIds: [2],
-    //       },
-    //       {
-    //         id: 2,
-    //         role: 'staticText',
-    //         name: 'Some text.',
-    //       },
-    //     ],
-    //   };
-    function setContentForTesting(
-        snapshotLite: Object, contentNodeIds: number[]): void;
-    // Sets the same structure as setContentForTesting but forces
-    // the processing of the AX Tree Anchors.
-    function setAnchorsForTesting(
-        snapshotLite: Object, contentNodeIds: number[]): void;
-
-    // Sets the page language. Used by tests only.
-    function setLanguageForTesting(code: string): void;
 
     // Called when the side panel has finished loading and it's safe to call
     // SidePanelWebUIView::ShowUI

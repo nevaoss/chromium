@@ -84,8 +84,8 @@ class GlicExperimentalTriggeringMessageHandlerBrowserTest
     : public GlicApiBrowserTest {
  public:
   GlicExperimentalTriggeringMessageHandlerBrowserTest()
-      : GlicApiBrowserTest(
-            "./glic_experimental_triggering_message_handler_browsertest.js") {
+      : GlicApiBrowserTest(GlicTestJsPath(
+            "./glic_experimental_triggering_message_handler_browsertest.js")) {
     feature_list_.InitWithFeaturesAndParameters(
         {{features::kGlicExperimentalTriggering, {}},
          {features::kGlicExperimentalTriggeringScreenshot, {}},
@@ -107,7 +107,7 @@ class GlicExperimentalTriggeringMessageHandlerBrowserTest
  protected:
   void SetUpOnMainThread() override {
     GlicApiBrowserTest::SetUpOnMainThread();
-    GlicEnabling::SetBypassEnablementChecksForTesting(true);
+    scoped_glic_bypass_.emplace();
 
     // Mark enterprise management authority for platform and profile as NONE
     // to avoid ambient management state on some bots affecting tests.
@@ -141,6 +141,7 @@ class GlicExperimentalTriggeringMessageHandlerBrowserTest
     handler_.reset();
     platform_management_override_.reset();
     profile_management_override_.reset();
+    scoped_glic_bypass_.reset();
     GlicApiBrowserTest::TearDownOnMainThread();
   }
 
@@ -179,16 +180,9 @@ class GlicExperimentalTriggeringMessageHandlerBrowserTest
       platform_management_override_;
   std::unique_ptr<policy::ScopedManagementServiceOverrideForTesting>
       profile_management_override_;
+  std::optional<GlicEnabling::ScopedBypassEnablementChecksForTesting>
+      scoped_glic_bypass_;
 };
-
-IN_PROC_BROWSER_TEST_F(GlicExperimentalTriggeringMessageHandlerBrowserTest,
-                       testAllTestsAreRegistered) {
-  AssertAllTestsRegistered(
-      {"GlicExperimentalTriggeringMessageHandlerBrowserTest",
-       "GlicExperimentalTriggeringMetadataEnabledBrowserTest",
-       "GlicExperimentalTriggeringMetadataDisabledBrowserTest",
-       "GlicExperimentalTriggeringOpenWindowTest"});
-}
 
 IN_PROC_BROWSER_TEST_F(GlicExperimentalTriggeringMessageHandlerBrowserTest,
                        testGetExperimentalTriggeringUpdates) {

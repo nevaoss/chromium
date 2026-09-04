@@ -297,6 +297,15 @@ bool HasGuid(const Suggestion::Payload& payload) {
     return;
   }
 
+  // kContentEditable is added for AtMemory. Suggestions are not available.
+  // A user uses AtMemory UI to run a search and then fill data manually to it.
+  if (formQuery.fieldType ==
+          autofill::FormActivityParams::FieldType::kContentEditable &&
+      base::FeatureList::IsEnabled(kAutofillSupportContentEditableIos)) {
+    completion(NO);
+    return;
+  }
+
   web::WebFramesManager* frames_manager =
       AutofillJavaScriptFeature::GetInstance()->GetWebFramesManager(_webState);
   web::WebFrame* frame =
@@ -691,7 +700,6 @@ bool HasGuid(const Suggestion::Payload& payload) {
       case SuggestionType::kManageEnhancedAutofill:
       case SuggestionType::kMaximizeCreditCardBenefitsEntry:
       case SuggestionType::kMerchantPromoCodeEntry:
-      case SuggestionType::kMixedFormMessage:
       case SuggestionType::kOneTimePasswordEntry:
       case SuggestionType::kPasswordEntry:
       case SuggestionType::kPasswordFieldByFieldFilling:

@@ -4,6 +4,8 @@
 
 #import "chrome/browser/ui/views/frame/browser_native_widget_mac.h"
 
+#include <array>
+
 #import "base/apple/foundation_util.h"
 #include "base/functional/bind.h"
 #include "base/i18n/rtl.h"
@@ -108,13 +110,16 @@ double GetGlassFrameTintOpacity(bool is_dark_mode, bool is_vertical_tabs) {
                              ? features::kGlassTintOpacityForDarkMode.Get()
                              : features::kGlassTintOpacityForLightMode.Get();
 
-  constexpr double kLiquidGlassOpacityLightMode = 0.55;
-  constexpr double kLiquidGlassOpacityDarkMode = 0.90;
+  // Default opacities mapped by [is_vertical_tabs][is_dark_mode]:
+  // Values updated after discussion with UX.
+  static constexpr std::array<std::array<double, 2>, 2> kDefaultOpacities = {{
+      {0.55, 0.80},  // Horizontal: light, dark
+      {0.65, 0.80},  // Vertical: light, dark
+  }};
 
   double opacity = opacity_value >= 0.0
                        ? opacity_value
-                       : (is_dark_mode ? kLiquidGlassOpacityDarkMode
-                                       : kLiquidGlassOpacityLightMode);
+                       : kDefaultOpacities[is_vertical_tabs][is_dark_mode];
 
   return std::clamp(opacity, 0.0, 1.0);
 }
@@ -165,12 +170,13 @@ API_AVAILABLE(macos(26.0))
 @end
 
 @implementation BrowserWindowTouchBarViewsDelegate {
-  raw_ptr<Browser> _browser;
+  raw_ptr<BrowserWindowInterface> _browser;
   NSWindow* __weak _window;
   BrowserWindowTouchBarController* __strong _touchBarController;
 }
 
-- (instancetype)initWithBrowser:(Browser*)browser window:(NSWindow*)window {
+- (instancetype)initWithBrowser:(BrowserWindowInterface*)browser
+                         window:(NSWindow*)window {
   if ((self = [super init])) {
     _browser = browser;
     _window = window;

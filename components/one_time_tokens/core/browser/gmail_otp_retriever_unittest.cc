@@ -7,6 +7,7 @@
 #include <memory>
 #include <vector>
 
+#include "base/containers/adapters.h"
 #include "base/functional/callback.h"
 #include "base/test/metrics/histogram_tester.h"
 #include "base/test/task_environment.h"
@@ -39,7 +40,20 @@ class FakeOneTimeTokenService : public OneTimeTokenService {
 
   OneTimeTokenLogSink* log_sink() override { return nullptr; }
 
-  void GetRecentOneTimeTokens(Callback callback) override {}
+  void GetRecentOneTimeTokens(Callback callback) override {
+    for (const auto& token : base::Reversed(cached_tokens_)) {
+      OneTimeTokenSource source;
+      switch (token.type()) {
+        case OneTimeTokenType::kSmsOtp:
+          source = OneTimeTokenSource::kOnDeviceSms;
+          break;
+        case OneTimeTokenType::kGmail:
+          source = OneTimeTokenSource::kGmail;
+          break;
+      }
+      callback.Run(source, base::ok(token));
+    }
+  }
 
   std::vector<OneTimeToken> GetCachedOneTimeTokens() const override {
     return cached_tokens_;
@@ -52,6 +66,14 @@ class FakeOneTimeTokenService : public OneTimeTokenService {
       base::OnceClosure expiration_callback) override {
     return subscription_manager_.Subscribe(expiration, std::move(callback),
                                            std::move(expiration_callback));
+  }
+
+  ExpiringSubscription SubscribeToTickles(OneTimeTokenSource source,
+                                          base::Time expiration,
+                                          TickleCallback callback) override {
+    return tickle_subscription_manager_.Subscribe(
+        expiration, std::move(callback),
+        /*expiration_callback=*/base::DoNothing());
   }
 
   void RequestOneTimeToken(
@@ -75,6 +97,8 @@ class FakeOneTimeTokenService : public OneTimeTokenService {
 
  private:
   ExpiringSubscriptionManager<CallbackSignature> subscription_manager_;
+  ExpiringSubscriptionManager<void(OneTimeTokenSource)>
+      tickle_subscription_manager_;
   std::vector<OneTimeToken> cached_tokens_;
 };
 

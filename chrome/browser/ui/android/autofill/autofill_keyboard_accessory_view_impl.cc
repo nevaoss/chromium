@@ -113,7 +113,6 @@ bool IsSuggestionTypeEligibleForKeyboardAccessory(SuggestionType type) {
     case SuggestionType::kWebauthnSignInWithAnotherDevice:
     case SuggestionType::kWebauthnPasskeyQrCode:
     case SuggestionType::kOneTimePasswordEntry:
-    case SuggestionType::kMixedFormMessage:
     case SuggestionType::kDevtoolsTestAddresses:
     case SuggestionType::kDevtoolsTestAddressEntry:
     case SuggestionType::kDevtoolsTestAddressByCountry:
@@ -261,6 +260,20 @@ void AutofillKeyboardAccessoryViewImpl::SuggestionAccepted(JNIEnv* env,
   if (controller_) {
     controller_->AcceptSuggestion(
         list_index, AutofillMetrics::SuggestionAcceptedMethod::kTap);
+  }
+}
+
+void AutofillKeyboardAccessoryViewImpl::SuggestionSelectionStateChanged(
+    JNIEnv* env,
+    int32_t list_index,
+    bool is_selected) {
+  if (!controller_) {
+    return;
+  }
+  if (is_selected) {
+    controller_->SelectSuggestion(list_index);
+  } else {
+    controller_->UnselectSuggestion();
   }
 }
 

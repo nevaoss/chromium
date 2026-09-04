@@ -16,6 +16,7 @@
 #include <optional>
 #include <string_view>
 
+#include "base/base_paths.h"
 #include "base/check.h"
 #include "base/containers/span.h"
 #include "base/files/file_descriptor_watcher_posix.h"
@@ -26,6 +27,7 @@
 #include "base/location.h"
 #include "base/logging.h"
 #include "base/memory/weak_ptr.h"
+#include "base/path_service.h"
 #include "base/posix/eintr_wrapper.h"
 #include "base/process/kill.h"
 #include "base/process/launch.h"
@@ -130,12 +132,19 @@ base::Process LaunchShellProcess(int32_t id, base::ScopedFD subsidiary_fd) {
   std::vector<std::string> tmux_cmd = {
     tmx2_path.value(),
     "-L", std::string(kTmuxSocketName),
+    "set-option", "-s", "terminal-overrides", "xterm*:smcup@:rmcup@", ";",
     "new-session", "-A", "-s", GetTmuxSessionName(id), ";",
     "set-option", "set-titles", "on", ";",
-    "set-option", "set-titles-string", "#T"
+    "set-option", "set-titles-string", "#T", ";",
+    "set-option", "-g", "status", "off", ";",
+    "set-option", "-g", "mouse", "off"
   };
 
   base::LaunchOptions options;
+  base::FilePath home_dir;
+  if (base::PathService::Get(base::DIR_HOME, &home_dir)) {
+    options.current_directory = std::move(home_dir);
+  }
   options.allow_new_privs = true;
   options.fds_to_remap.emplace_back(subsidiary_fd.get(), STDIN_FILENO);
   options.fds_to_remap.emplace_back(subsidiary_fd.get(), STDOUT_FILENO);

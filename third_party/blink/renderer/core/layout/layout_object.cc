@@ -238,6 +238,20 @@ bool HasNativeBackgroundPainter(Node* node) {
          ElementAnimations::CompositedPaintStatus::kComposited;
 }
 
+bool NeedsForcedUpdateForBackgroundPainter(Node* node) {
+  Element* element = To<Element>(node);
+  ElementAnimations* element_animations = element->GetElementAnimations();
+  CHECK(element_animations);
+  NativePaintWorkletData* npw_data =
+      element_animations->GetBackgroundColorNpwData();
+  CHECK(npw_data);
+  if (npw_data->NeedsKeyframeSnapshotUpdate()) {
+    return true;
+  }
+
+  return false;
+}
+
 bool HasClipPathPaintWorklet(Node* node) {
   if (!RuntimeEnabledFeatures::CompositeClipPathAnimationEnabled())
     return false;
@@ -262,7 +276,9 @@ StyleDifference AdjustForCompositableAnimationPaint(
   DCHECK(new_style);
 
   bool skip_background_color_paint_invalidation =
-      !diff.background_color_changed || HasNativeBackgroundPainter(node);
+      HasNativeBackgroundPainter(node)
+          ? !NeedsForcedUpdateForBackgroundPainter(node)
+          : !diff.background_color_changed;
   if (!skip_background_color_paint_invalidation)
     diff.SetNeedsNormalPaintInvalidation();
 
@@ -1968,6 +1984,12 @@ bool LayoutObject::ComputeIsFixedContainer(const ComputedStyle& style) const {
   if (!is_document_element && style.HasNonInitialBackdropFilter()) {
     return true;
   }
+  // https://github.com/WICG/html-in-canvas
+  if (const auto* element = DynamicTo<Element>(GetNode())) {
+    if (element->CanvasForDrawing()) {
+      return true;
+    }
+  }
   // The LayoutView is always a container of fixed positioned descendants. In
   // addition, SVG foreignObjects become such containers, so that descendants
   // of a foreignObject cannot escape it. Similarly, text controls let authors
@@ -2020,19 +2042,12 @@ bool LayoutObject::ComputeIsAbsoluteContainer(const ComputedStyle& style,
 const LayoutBoxModelObject* LayoutObject::FindFirstStickyContainer(
     const LayoutBox* below) const {
   NOT_DESTROYED();
-  const LayoutObject* maybe_sticky_ancestor = this;
-  while (maybe_sticky_ancestor && maybe_sticky_ancestor != below) {
-    if (maybe_sticky_ancestor->StyleRef().HasStickyConstrainedPosition()) {
-      return To<LayoutBoxModelObject>(maybe_sticky_ancestor);
+  DCHECK(IsContainedBy(below));
+  for (const LayoutObject* ancestor = this; ancestor != below;
+       ancestor = ancestor->Container()) {
+    if (ancestor->StyleRef().HasStickyConstrainedPosition()) {
+      return To<LayoutBoxModelObject>(ancestor);
     }
-
-    // We use LocationContainer here to find the nearest sticky ancestor which
-    // shifts the given element's position so that the sticky positioning code
-    // is aware ancestor sticky position shifts.
-    maybe_sticky_ancestor =
-        maybe_sticky_ancestor->IsLayoutInline()
-            ? maybe_sticky_ancestor->Container()
-            : To<LayoutBox>(maybe_sticky_ancestor)->LocationContainer();
   }
   return nullptr;
 }
@@ -3664,7 +3679,7 @@ gfx::QuadF LayoutObject::AncestorToLocalQuad(
 
 LayoutObject* LayoutObject::CanvasForDrawingLayoutObject() const {
   NOT_DESTROYED();
-  if (!IsBox()) {
+  if (!IsBoxModelObject()) {
     return nullptr;
   }
   if (const auto* element = DynamicTo<Element>(GetNode())) {
@@ -4070,7 +4085,7 @@ RespectImageOrientationEnum LayoutObject::GetImageOrientation(
                        : ComputedStyleInitialValues::InitialImageOrientation();
 }
 
-void LayoutObject::WillBeDestroyed() {
+void LayoutObject::WillBeDestroyed(const ComputedStyle* style) {
   NOT_DESTROYED();
   DCHECK(!IsText());
 
@@ -4097,7 +4112,7 @@ void LayoutObject::WillBeDestroyed() {
   // for text nodes so don't try removing for one too. Need to check if
   // m_style is null in cases of partial construction. Any handler we added
   // previously may have already been removed by the Document independently.
-  if (GetNode() && style_ && style_->GetTouchAction() != TouchAction::kAuto) {
+  if (GetNode() && style && style->GetTouchAction() != TouchAction::kAuto) {
     EventHandlerRegistry& registry =
         GetDocument().GetFrame()->GetEventHandlerRegistry();
     if (registry.EventHandlerTargets(EventHandlerRegistry::kTouchAction)
@@ -4108,8 +4123,8 @@ void LayoutObject::WillBeDestroyed() {
   }
 
   // Remove this object as ImageResourceObserver.
-  if (style_) {
-    UpdateImageObservers(style_.Get(), nullptr);
+  if (style) {
+    UpdateImageObservers(style, nullptr);
   }
 
   // We must have removed all image observers.
@@ -4346,7 +4361,12 @@ void LayoutObject::Destroy() {
   // Mark as being destroyed to avoid trouble with merges in |RemoveChild()| and
   // other house keepings.
   being_destroyed_ = true;
-  WillBeDestroyed();
+
+  // This is one of the few places we may have a nullable style (a LayoutObject
+  // may be created, then immediately destroyed before a style is set). Pass
+  // the style into WillBeDestroyed so that the overrides explicitly check this.
+  WillBeDestroyed(style_.Get());
+
 #if DCHECK_IS_ON()
   DCHECK(!has_ax_object_) << this;
   is_destroyed_ = true;

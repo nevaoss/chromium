@@ -59,6 +59,7 @@
 #include "chrome/browser/download/download_prefs.h"
 #include "chrome/browser/download/download_stats.h"
 #include "chrome/browser/enterprise/data_protection/data_protection_clipboard_utils.h"
+#include "chrome/browser/enterprise/isolated_mode/isolated_mode_settings_service_factory.h"
 #include "chrome/browser/glic/browser_ui/glic_vector_icon_manager.h"
 #include "chrome/browser/glic/host/guest_util.h"
 #include "chrome/browser/glic/public/features.h"
@@ -68,6 +69,8 @@
 #include "chrome/browser/glic/public/glic_keyed_service_factory.h"
 #include "chrome/browser/glic/public/glic_passkeys.h"
 #include "chrome/browser/glic/resources/grit/glic_browser_resources.h"
+#include "chrome/browser/indigo/indigo_image_replacement.h"
+#include "chrome/browser/indigo/indigo_image_replacement_manager.h"
 #include "chrome/browser/language/language_model_manager_factory.h"
 #include "chrome/browser/media/router/media_router_feature.h"
 #include "chrome/browser/navigation_predictor/navigation_predictor_features.h"
@@ -171,7 +174,6 @@
 #include "components/contextual_tasks/public/features.h"
 #include "components/custom_handlers/protocol_handler.h"
 #include "components/download/public/common/download_url_parameters.h"
-#include "components/enterprise/isolated_mode/settings.h"
 #include "components/google/core/common/google_util.h"
 #include "components/guest_view/browser/guest_view_base.h"
 #include "components/language/core/browser/language_model_manager.h"
@@ -1005,6 +1007,26 @@ std::pair<int, const gfx::VectorIcon*> GetOpenLinkInSplitStringAndIcon(
   return {string_id, icon};
 }
 #endif  // !BUILDFLAG(IS_ANDROID)
+
+// Resolves a blink::FrameToken from a renderer process to its corresponding
+// RenderFrameHost. Handles both same-process (LocalFrameToken) and
+// cross-process OOPIF (RemoteFrameToken) subframes.
+content::RenderFrameHost* GetRenderFrameHostForFrameToken(
+    content::ChildProcessId process_id,
+    const blink::FrameToken& frame_token) {
+  if (frame_token.Is<blink::LocalFrameToken>()) {
+    return content::RenderFrameHost::FromFrameToken(
+        content::GlobalRenderFrameHostToken(
+            process_id, frame_token.GetAs<blink::LocalFrameToken>()));
+  }
+  if (frame_token.Is<blink::RemoteFrameToken>()) {
+    return content::RenderFrameHost::FromPlaceholderToken(
+        process_id.GetUnsafeValue(),
+        frame_token.GetAs<blink::RemoteFrameToken>());
+  }
+  return nullptr;
+}
+
 }  // namespace
 
 // static
@@ -2025,8 +2047,7 @@ void RenderViewContextMenu::AppendLinkItems() {
     }
 
     bool isolated_mode_enabled =
-        enterprise_isolated_mode::IsolatedModeReplacesIncognito(
-            *GetProfile()->GetPrefs(), chrome::GetChannel());
+        enterprise_isolated_mode::IsolatedModeReplacesIncognito(GetProfile());
 
     if (show_open_link_off_the_record && isolated_mode_enabled) {
       AddItemWithOptionalIcon(IDC_CONTENT_CONTEXT_OPENLINK_ISOLATED,
@@ -3189,6 +3210,13 @@ void RenderViewContextMenu::AppendDictationItems() {
   }
   observers_.AddObserver(dictation_menu_observer_.get());
   dictation_menu_observer_->InitMenu(params_);
+
+  auto index = menu_model_.GetIndexOfCommandId(IDC_CONTENT_CONTEXT_DICTATION);
+  if (index.has_value()) {
+    menu_model_.SetIsNewFeatureAt(
+        index.value(), UserEducationService::MaybeShowNewBadge(
+                           GetBrowserContext(), dictation::kDictation));
+  }
 }
 
 void RenderViewContextMenu::AppendProtocolHandlerSubMenu() {
@@ -3253,7 +3281,8 @@ void RenderViewContextMenu::AppendRegionSearchItem() {
     }
     menu_model_.AddItemWithStringIdAndIcon(
         IDC_CONTENT_CONTEXT_LENS_REGION_SEARCH,
-        lens::GetLensOverlayEntrypointLabelAltIds(), icon);
+        lens::GetLensOverlayEntrypointLabelAltIds(/*is_context_menu=*/true),
+        icon);
     const int command_index =
         menu_model_.GetIndexOfCommandId(IDC_CONTENT_CONTEXT_LENS_REGION_SEARCH)
             .value();
@@ -3390,8 +3419,7 @@ bool RenderViewContextMenu::IsCommandIdEnabled(int id) const {
   }
 #endif
   bool isolated_mode_enabled =
-      enterprise_isolated_mode::IsolatedModeReplacesIncognito(
-          *GetProfile()->GetPrefs(), chrome::GetChannel());
+      enterprise_isolated_mode::IsolatedModeReplacesIncognito(GetProfile());
 
   switch (id) {
     case IDC_BACK:
@@ -3846,12 +3874,24 @@ void RenderViewContextMenu::ExecuteCommand(int id, int event_flags) {
       ExecCopyLinkText();
       break;
 
-    case IDC_CONTENT_CONTEXT_COPYIMAGELOCATION:
+    case IDC_CONTENT_CONTEXT_COPYIMAGELOCATION: {
+      GURL url = params_.src_url;
+      if (base::FeatureList::IsEnabled(features::kIndigoContextMenuCopy)) {
+        if (GURL replacement_url = GetIndigoReplacementImageURL();
+            !replacement_url.is_empty()) {
+          url = replacement_url;
+        }
+      }
+      WriteURLToClipboard(url, id);
+      break;
+    }
     case IDC_CONTENT_CONTEXT_COPYAVLOCATION:
       WriteURLToClipboard(params_.src_url, id);
       break;
 
     case IDC_CONTENT_CONTEXT_COPYIMAGE:
+      // TODO(b/530284842): Support copying replacement image data to
+      // clipboard.
       ExecCopyImageAt();
       break;
 
@@ -5071,6 +5111,12 @@ void RenderViewContextMenu::ExecSaveAs() {
 
   RecordDownloadSource(DOWNLOAD_INITIATED_BY_CONTEXT_MENU);
   GURL url = params_.src_url;
+  if (base::FeatureList::IsEnabled(features::kIndigoContextMenuCopy)) {
+    if (GURL replacement_url = GetIndigoReplacementImageURL();
+        !replacement_url.is_empty()) {
+      url = replacement_url;
+    }
+  }
   const bool is_plugin =
       params_.media_type == ContextMenuDataMediaType::kPlugin;
   RenderFrameHost* target_frame_host = nullptr;
@@ -5300,7 +5346,7 @@ void RenderViewContextMenu::ExecRegionSearch(
           ? lens::AmbientSearchEntryPoint::
                 CONTEXT_MENU_SEARCH_REGION_WITH_GOOGLE_LENS
           : lens::AmbientSearchEntryPoint::CONTEXT_MENU_SEARCH_REGION_WITH_WEB;
-  browser->GetFeatures().lens_region_search_controller()->Start(
+  lens::LensRegionSearchController::From(browser)->Start(
       embedder_web_contents_, use_fullscreen_capture,
       is_google_default_search_provider, entry_point);
   lens_region_search_controller_started_for_testing_ = true;
@@ -6043,3 +6089,31 @@ bool RenderViewContextMenu::IsLinkToIsolatedWebApp() const {
 }
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) ||
         // BUILDFLAG(IS_CHROMEOS)
+
+GURL RenderViewContextMenu::GetIndigoReplacementImageURL() const {
+  if (!params_.image_replacement_frame_token.has_value()) {
+    return GURL();
+  }
+  RenderFrameHost* frame_host = GetRenderFrameHost();
+  if (!frame_host) {
+    return GURL();
+  }
+
+  content::RenderFrameHost* subframe_host =
+      GetRenderFrameHostForFrameToken(frame_host->GetProcess()->GetID(),
+                                      *params_.image_replacement_frame_token);
+  if (!subframe_host || &subframe_host->GetPage() != &frame_host->GetPage() ||
+      subframe_host->GetParent() != frame_host) {
+    return GURL();
+  }
+  auto* manager =
+      indigo::IndigoImageReplacementManager::GetForPage(frame_host->GetPage());
+  if (!manager) {
+    return GURL();
+  }
+  auto* replacement = manager->GetImageReplacementForFrame(*subframe_host);
+  if (!replacement) {
+    return GURL();
+  }
+  return replacement->GetReplacementImageURL();
+}

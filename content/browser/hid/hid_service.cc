@@ -435,20 +435,37 @@ void HidService::RequestDevice(
     std::vector<blink::mojom::HidDeviceFilterPtr> exclusion_filters,
     RequestDeviceCallback callback) {
   HidDelegate* delegate = GetContentClient()->browser()->GetHidDelegate();
-  if (!render_frame_host_ ||
-      !FrameTreeNode::From(render_frame_host_)
-           ->UpdateUserActivationState(
-               blink::mojom::UserActivationUpdateType::
-                   kConsumeTransientActivation,
-               blink::mojom::UserActivationNotificationType::kNone) ||
+  if (!delegate ||
       !delegate->CanRequestDevicePermission(GetBrowserContext(), origin_)) {
     std::move(callback).Run(std::vector<device::mojom::HidDeviceInfoPtr>());
     return;
   }
-  chooser_ = GetContentClient()->browser()->GetHidDelegate()->RunChooser(
+
+  // Ensure the requesting document is still active and consume transient user
+  // activation to prevent stale/pending-deletion frames from opening choosers
+  // or consuming user gestures from newly committed documents.
+  if (!render_frame_host_ || !render_frame_host_->IsActive() ||
+      !FrameTreeNode::From(render_frame_host_)
+           ->UpdateUserActivationState(
+               blink::mojom::UserActivationUpdateType::
+                   kConsumeTransientActivation,
+               blink::mojom::UserActivationNotificationType::kNone)) {
+    std::move(callback).Run(std::vector<device::mojom::HidDeviceInfoPtr>());
+    return;
+  }
+  // The delegate's chooser implementation may spin a nested message loop (e.g.
+  // to drop fullscreen), during which the frame may be detached and the
+  // service destroyed. Check that the service is still alive before accessing
+  // member variables.
+  base::WeakPtr<HidService> weak_this = weak_factory_.GetWeakPtr();
+  auto chooser = delegate->RunChooser(
       render_frame_host_, std::move(filters), std::move(exclusion_filters),
       base::BindOnce(&HidService::FinishRequestDevice,
                      weak_factory_.GetWeakPtr(), std::move(callback)));
+  if (!weak_this) {
+    return;
+  }
+  chooser_ = std::move(chooser);
 }
 
 void HidService::Connect(

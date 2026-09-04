@@ -21,6 +21,7 @@ export function getHtml(this: AppElement) {
   </div>
   <div id="toolbar-container">
     <read-anything-toolbar
+        .isReadAnythingPinned="${this.isReadAnythingPinned_}"
         .presentationState="${this.presentationState_}"
         .isSpeechActive="${this.isSpeechActive_}"
         .isAudioCurrentlyPlaying="${this.isAudioCurrentlyPlaying_}"
@@ -55,8 +56,6 @@ export function getHtml(this: AppElement) {
         @presentation-change="${this.onPresentationChange_}"
         @line-spacing-change="${this.onLineSpacingChange_}"
         @highlight-change="${this.onHighlightChange_}"
-        @reset-toolbar="${this.onResetToolbar_}"
-        @toolbar-overflow="${this.onToolbarOverflow_}"
         @language-menu-open="${this.onLanguageMenuOpen_}"
         @language-menu-close="${this.onLanguageMenuClose_}"
         @line-focus-style-change="${this.onLineFocusStyleChange_}"

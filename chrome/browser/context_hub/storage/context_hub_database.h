@@ -39,10 +39,17 @@ class ContextHubDatabase {
 
   // Operations on memory bank entries (delegates to MemoryBankTable):
   bool AddOrUpdateMemoryBankEntry(const MemoryBankEntry& entry);
+  bool UpdateMemoryBankEntryAnnotations(
+      int64_t id,
+      const std::vector<std::string>& tags,
+      const std::optional<std::string>& note,
+      const std::optional<std::string>& collection);
   std::optional<MemoryBankEntry> GetMemoryBankEntry(int64_t id);
   std::vector<MemoryBankEntry> GetMemoryBankEntriesByIds(
       base::span<const int64_t> ids);
   std::vector<MemoryBankEntry> GetAllMemoryBankEntries();
+  std::vector<std::string> GetAllMemoryBankTags();
+  std::vector<std::string> GetAllMemoryBankCollections();
   bool DeleteMemoryBankEntries(base::span<const int64_t> ids);
 
  private:

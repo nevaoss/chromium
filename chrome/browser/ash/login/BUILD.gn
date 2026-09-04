@@ -173,8 +173,6 @@ static_library("login") {
     "//chrome/browser/enterprise/browser_management:management_identity",
     "//chrome/browser/metrics",
     "//chrome/browser/net",
-    "//chrome/browser/notifications:system_notification_helper",
-    "//chrome/browser/password_manager/factories",
     "//chrome/browser/profiles",
     "//chrome/browser/sync",
     "//chrome/browser/ui/ash/input_method",
@@ -261,6 +259,7 @@ static_library("login") {
     "//ui/gfx",
     "//ui/gfx/geometry",
     "//ui/gl",
+    "//ui/message_center",
     "//ui/message_center/public/cpp",
     "//ui/ozone",
     "//ui/wm",
@@ -540,6 +539,7 @@ source_set("browser_tests") {
     "//ui/chromeos",
     "//ui/display/manager",
     "//ui/events:test_support",
+    "//ui/message_center",
     "//ui/views:test_support",
 
     # Tests from subdirectories:

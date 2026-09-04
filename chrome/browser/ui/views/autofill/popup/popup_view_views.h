@@ -82,6 +82,8 @@ class PopupViewViews : public PopupBaseView,
   DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(
       kAutofillCreditCardSuggestionEntryElementId);
   DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(kAutofillAiOptInIphElementId);
+  DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(
+      kAutofillWalletDirectOffersIphElementId);
   DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(kAutofillAiValuablesElementId);
   DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(
       kAutofillStandaloneCvcSuggestionElementId);
@@ -106,7 +108,7 @@ class PopupViewViews : public PopupBaseView,
   // The maximum width of an Autofill AI sub-popup.
   static constexpr int kAutofillAiSubPopupMaxWidth = 320;
 
-  // The width of the @memory popup.
+  // The width of the AtMemory popup.
   static constexpr int kAtMemoryPopupWidth = 320;
 
   // The maximum number of entries shown before making the popup scrollable. A
@@ -305,7 +307,7 @@ class PopupViewViews : public PopupBaseView,
       const input::NativeWebKeyboardEvent& event);
 
   // Reacts to key events under the assumption that the currently shown popup
-  // contains @memory content.
+  // contains AtMemory content.
   bool HandleKeyPressEventForAtMemory(
       const input::NativeWebKeyboardEvent& event);
 

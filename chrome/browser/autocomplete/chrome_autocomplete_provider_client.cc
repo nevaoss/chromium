@@ -124,6 +124,7 @@
 #include "chrome/browser/lens/jni_headers/LensSupportStatusHelper_jni.h"
 #else  // BUILDFLAG(IS_ANDROID)
 #include "chrome/browser/contextual_search/contextual_search_web_contents_helper.h"
+#include "chrome/browser/contextual_tasks/contextual_tasks_panel_controller.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_service.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_service_factory.h"
 #include "chrome/browser/lifetime/application_lifetime_desktop.h"
@@ -711,6 +712,14 @@ bool ChromeAutocompleteProviderClient::IsOmniboxNextLensSearchChipEnabled()
 #endif  // !BUILDFLAG(IS_ANDROID)
 }
 
+bool ChromeAutocompleteProviderClient::IsAskGShowChipEnabled() const {
+#if !BUILDFLAG(IS_ANDROID)
+  return IsOmniboxNextAimPopupEnabled() && omnibox::kAskGShowChip.Get();
+#else
+  return false;
+#endif  // !BUILDFLAG(IS_ANDROID)
+}
+
 bool ChromeAutocompleteProviderClient::IsOmniboxNextAimPopupEnabled() const {
 #if !BUILDFLAG(IS_ANDROID)
   return omnibox::IsAimPopupEnabled(profile_);
@@ -790,7 +799,7 @@ bool ChromeAutocompleteProviderClient::OpenJourneys(const std::string& query) {
   }
 
   auto* const history_clusters_side_panel_coordinator =
-      bwi->GetFeatures().history_clusters_side_panel_coordinator();
+      HistoryClustersSidePanelCoordinator::From(bwi);
   if (history_clusters_side_panel_coordinator &&
       history_clusters_side_panel_coordinator->Show(query)) {
     return true;
@@ -841,6 +850,14 @@ void ChromeAutocompleteProviderClient::OpenCoBrowsePanel() {
 
     ui_service->StartTaskUiInSidePanel(bwi, tab, creation_url,
                                        std::move(session_handle), options);
+
+    // Focus the side panel so that focus is not left on the omnibox.
+    if (auto* controller =
+            contextual_tasks::ContextualTasksPanelController::From(bwi)) {
+      if (auto* side_panel_contents = controller->GetActiveWebContents()) {
+        side_panel_contents->Focus();
+      }
+    }
   }
 #endif
 }

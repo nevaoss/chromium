@@ -1,0 +1,275 @@
+# Copyright 2026 The Chromium Authors
+# Use of this source code is governed by a BSD-style license that can be
+# found in the LICENSE file.
+
+import("//build/config/ui.gni")
+
+assert(toolkit_views)
+
+source_set("base") {
+  sources = [
+    "tab_container_controller.h",
+    "tab_layout_state.h",
+    "tab_slot_controller.h",
+    "tab_slot_view.h",
+    "tab_strip_controller.h",
+    "tab_strip_layout.h",
+    "tab_strip_layout_types.h",
+    "tab_width_constraints.h",
+  ]
+
+  deps = [
+    "//base",
+    "//chrome/browser/ui/tabs",
+    "//chrome/browser/ui/views/tabs/shared",
+    "//components/split_tabs",
+    "//components/tab_groups",
+    "//skia",
+    "//ui/base",
+    "//ui/base/metadata",
+    "//ui/base/mojom:ui_base_types",
+    "//ui/gfx/geometry",
+    "//ui/gfx/range",
+    "//ui/views",
+  ]
+}
+
+source_set("base_impl") {
+  sources = [
+    "tab_layout_state.cc",
+    "tab_slot_view.cc",
+    "tab_strip_layout.cc",
+    "tab_width_constraints.cc",
+  ]
+
+  deps = [
+    ":base",
+    "//chrome/browser/ui/tabs",
+    "//components/split_tabs",
+    "//ui/base/metadata",
+    "//ui/gfx/animation",
+    "//ui/gfx/geometry",
+  ]
+}
+
+source_set("new_tab_button_menu_model") {
+  sources = [ "new_tab_button_menu_model.h" ]
+
+  deps = [
+    "//base",
+    "//ui/base/interaction",
+    "//ui/menus",
+  ]
+}
+
+source_set("new_tab_button_menu_model_impl") {
+  sources = [ "new_tab_button_menu_model.cc" ]
+
+  deps = [
+    ":new_tab_button_menu_model",
+    "//base",
+    "//chrome/app:command_ids",
+    "//chrome/app:generated_resources",
+    "//chrome/browser/ui/browser_window",
+    "//chrome/browser/ui/tabs",
+    "//chrome/browser/ui/tabs:tab_group",
+    "//chrome/browser/ui/tabs:tab_strip",
+    "//components/tabs:public",
+    "//ui/base",
+    "//ui/base/interaction",
+  ]
+}
+
+source_set("tab_group") {
+  sources = [
+    "tab_group_header.h",
+    "tab_group_highlight.h",
+    "tab_group_style.h",
+    "tab_group_underline.h",
+    "tab_group_views.h",
+  ]
+
+  deps = [
+    ":base",
+    "//base",
+    "//chrome/browser/ui/tabs:tab_group",
+    "//chrome/browser/ui/views/tabs/groups",
+    "//chrome/browser/ui/views/tabs/hovercard",
+    "//components/tab_groups",
+    "//skia",
+    "//ui/base/interaction",
+    "//ui/base/metadata",
+    "//ui/base/mojom:ui_base_types",
+    "//ui/gfx/geometry",
+    "//ui/views",
+  ]
+}
+
+source_set("tab_group_impl") {
+  sources = [
+    "tab_group_header.cc",
+    "tab_group_highlight.cc",
+    "tab_group_style.cc",
+    "tab_group_underline.cc",
+    "tab_group_views.cc",
+  ]
+
+  deps = [
+    ":base",
+    ":tab_group",
+    "//base",
+    "//base:i18n",
+    "//chrome/app:generated_resources",
+    "//chrome/app/vector_icons",
+    "//chrome/browser/tab_group_sync:factories",
+    "//chrome/browser/ui:browser_element_identifiers",
+    "//chrome/browser/ui:layout_constants",
+    "//chrome/browser/ui:ui_features",
+    "//chrome/browser/ui/browser_window",
+    "//chrome/browser/ui/tabs",
+    "//chrome/browser/ui/tabs:tab_group",
+    "//chrome/browser/ui/tabs:tab_strip",
+    "//chrome/browser/ui/tabs/saved_tab_groups",
+    "//chrome/browser/ui/views/tabs/groups",
+    "//components/data_sharing/public",
+    "//components/saved_tab_groups/public",
+    "//components/strings",
+    "//components/tab_groups",
+    "//components/tabs:public",
+    "//components/vector_icons",
+    "//skia",
+    "//third_party/icu",
+    "//ui/base",
+    "//ui/base:features",
+    "//ui/base/interaction",
+    "//ui/base/metadata",
+    "//ui/base/mojom:ui_base_types",
+    "//ui/gfx",
+    "//ui/gfx/geometry",
+    "//ui/views",
+  ]
+}
+
+source_set("tab_style_views") {
+  sources = [
+    "horizontal_tab_style_views.h",
+    "tab_style_views.h",
+    "vertical_tab_style_views.h",
+  ]
+
+  deps = [
+    "//base",
+    "//chrome/browser/ui/tabs",
+    "//chrome/browser/ui/views/tabs/shared",
+    "//components/split_tabs",
+    "//components/tab_groups",
+    "//skia",
+    "//ui/base/metadata",
+    "//ui/gfx/geometry",
+  ]
+}
+
+source_set("tab_style_views_impl") {
+  sources = [
+    "horizontal_tab_style_views.cc",
+    "tab_style_views.cc",
+    "vertical_tab_style_views.cc",
+  ]
+
+  deps = [
+    ":base",
+    ":tab_group",
+    ":tab_style_views",
+    "//base",
+    "//base:i18n",
+    "//cc/paint",
+    "//chrome/app/theme:theme_resources",
+    "//chrome/browser/themes",
+    "//chrome/browser/ui:layout_constants",
+    "//chrome/browser/ui:ui_features",
+    "//chrome/browser/ui/browser_window",
+    "//chrome/browser/ui/color:color_headers",
+    "//chrome/browser/ui/tabs",
+    "//chrome/browser/ui/views/tabs/common:impl",
+    "//chrome/browser/ui/views/tabs/tab",
+    "//skia",
+    "//ui/base",
+    "//ui/gfx",
+    "//ui/gfx/animation",
+    "//ui/gfx/geometry",
+    "//ui/views",
+  ]
+}
+
+source_set("tab_container") {
+  sources = [
+    "tab_container.h",
+    "tab_container_impl.h",
+    "tab_slot_animation_delegate.h",
+    "tab_strip_layout_helper.h",
+    "z_orderable_tab_container_element.h",
+  ]
+
+  deps = [
+    ":base",
+    ":tab_group",
+    "//base",
+    "//chrome/browser/ui/tabs",
+    "//chrome/browser/ui/views/frame",
+    "//chrome/browser/ui/views/tabs/shared",
+    "//components/tab_groups",
+    "//ui/base/metadata",
+    "//ui/gfx/animation",
+    "//ui/gfx/geometry",
+    "//ui/views",
+  ]
+
+  # TODO(crbug.com/451609048): Remove this circular dependency when the
+  # following header gets componentized:
+  # - c/b/ui/views/tabs/tab.h
+  # (No allow_circular_includes_from entry belongs here -- the waiver that
+  # makes this legal is declared on //chrome/browser/ui:ui, which is the
+  # target that owns tab.h and depends on this target.)
+}
+
+source_set("tab_container_impl") {
+  sources = [
+    "tab_container.cc",
+    "tab_container_impl.cc",
+    "tab_slot_animation_delegate.cc",
+    "tab_strip_layout_helper.cc",
+    "z_orderable_tab_container_element.cc",
+  ]
+
+  deps = [
+    ":base",
+    ":tab_container",
+    ":tab_group",
+    ":tab_style_views",
+    "//base",
+    "//base:i18n",
+    "//chrome/browser/ui:layout_constants",
+    "//chrome/browser/ui/tabs",
+    "//chrome/browser/ui/tabs:tab_strip",
+    "//chrome/browser/ui/views/frame",
+    "//chrome/browser/ui/views/tabs/dragging",
+    "//chrome/browser/ui/views/tabs/hovercard",
+    "//chrome/browser/ui/views/tabs/shared",
+    "//components/split_tabs",
+    "//components/tab_groups",
+    "//ui/base/metadata",
+    "//ui/base/mojom:ui_base_types",
+    "//ui/display",
+    "//ui/gfx",
+    "//ui/gfx/range",
+    "//ui/views",
+  ]
+
+  # TODO(crbug.com/451609048): Remove this circular dependency when the
+  # following headers get componentized:
+  # - c/b/ui/views/tabs/tab.h
+  # - c/b/ui/views/tabs/tab_strip.h
+  # (No allow_circular_includes_from entry belongs here -- the waiver that
+  # makes this legal is declared on //chrome/browser/ui:ui, which is the
+  # target that owns tab.h and tab_strip.h and depends on this target.)
+}

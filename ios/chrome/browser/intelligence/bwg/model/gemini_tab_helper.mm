@@ -8,6 +8,7 @@
 #import "base/functional/callback_helpers.h"
 #import "base/memory/weak_ptr.h"
 #import "base/metrics/histogram_functions.h"
+#import "base/metrics/user_metrics.h"
 #import "base/strings/string_number_conversions.h"
 #import "base/strings/string_util.h"
 #import "base/strings/sys_string_conversions.h"
@@ -411,33 +412,6 @@ IOSGeminiInvocationPageType GeminiTabHelper::GetCurrentPageType() {
 
 #pragma mark - WebStateObserver
 
-void GeminiTabHelper::WasShown(web::WebState* web_state) {
-  // In NextIA or Live mode, the floaty remains persistently visible across tab
-  // switches, but the page context needs to be updated to match the newly
-  // visible tab.
-  if (IsNextIaOrLiveMode()) {
-    NotifyPageContextUpdated(web_state);
-  } else if (IsPageActionMenuEnabled()) {
-    [gemini_handler_
-        updateFloatyVisibilityIfEligibleAnimated:NO
-                                      fromSource:gemini::FloatyUpdateSource::
-                                                     WebNavigation];
-  }
-}
-
-void GeminiTabHelper::WasHidden(web::WebState* web_state) {
-  // In NextIA or Live mode, the floaty remains persistently visible when a tab
-  // is hidden (e.g., during a tab switch), but we must update the page context
-  // immediately to ensure the hidden tab's content is detached and blocked.
-  if (IsNextIaOrLiveMode()) {
-    NotifyPageContextUpdated(web_state);
-  } else if (IsPageActionMenuEnabled()) {
-    [gemini_handler_
-        hideFloatyIfInvokedAnimated:NO
-                         fromSource:gemini::FloatyUpdateSource::WebNavigation];
-  }
-}
-
 void GeminiTabHelper::DidStartNavigation(
     web::WebState* web_state,
     web::NavigationContext* navigation_context) {
@@ -517,6 +491,9 @@ void GeminiTabHelper::DidFinishNavigation(
   }
 
   const GURL& current_url = navigation_context->GetUrl().GetWithoutRef();
+  if (IsAimURL(current_url)) {
+    base::RecordAction(base::UserMetricsAction("MobileGeminiPromptSent"));
+  }
   if (previous_main_frame_url_ == current_url) {
     return;
   }
@@ -528,7 +505,8 @@ void GeminiTabHelper::DidFinishNavigation(
 
   latest_load_contextual_cueing_metadata_.reset();
 
-  if (!optimization_guide_decider_ || !current_url.SchemeIsHTTPOrHTTPS()) {
+  if (!optimization_guide_decider_ || !current_url.SchemeIsHTTPOrHTTPS() ||
+      IsGeminiInsightsChipAblationEnabled()) {
     return;
   }
 

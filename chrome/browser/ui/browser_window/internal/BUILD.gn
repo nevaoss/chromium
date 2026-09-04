@@ -77,6 +77,7 @@ source_set("internal") {
       "//chrome/browser/tab_group_sync:factories",
       "//chrome/browser/ui:browser_actions",
       "//chrome/browser/ui:browser_init_state",
+      "//chrome/browser/ui:ui_controller_factory",
       "//chrome/browser/ui:ui_features",
       "//chrome/browser/ui/animation",
       "//chrome/browser/ui/bookmarks",
@@ -128,6 +129,7 @@ source_set("internal") {
       "//chrome/browser/ui/views/send_tab_to_self",
       "//chrome/browser/ui/views/sharing",
       "//chrome/browser/ui/views/side_panel",
+      "//chrome/browser/ui/views/tabs/groups",
       "//chrome/browser/ui/views/tabs/organizer",
       "//chrome/browser/ui/views/toolbar",
       "//chrome/browser/ui/views/translate",
@@ -266,6 +268,7 @@ if (is_android) {
       "android/java/src/org/chromium/chrome/browser/ui/browser_window/GlobalBrowserCollectionPlatformDelegate.java",
       "android/java/src/org/chromium/chrome/browser/ui/browser_window/IdSequencer.java",
       "android/java/src/org/chromium/chrome/browser/ui/browser_window/PendingActionManager.java",
+      "android/java/src/org/chromium/chrome/browser/ui/browser_window/PendingTaskInfo.java",
       "android/java/src/org/chromium/chrome/browser/ui/browser_window/WindowStateManager.java",
     ]
     deps = [

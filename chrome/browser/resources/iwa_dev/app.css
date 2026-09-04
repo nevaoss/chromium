@@ -23,16 +23,27 @@ h1 {
 #learn-more {
   color: var(--cr-secondary-text-color);
   font-size: 1rem;
-  margin-bottom: 16px;
+  margin-bottom: 24px;
 }
 
-#learn-more a {
+#learn-more a,
+#dev-mode-disabled-message a {
   color: var(--cr-link-color);
   text-decoration: none;
 }
 
-#learn-more a:hover {
+#learn-more a:hover,
+#dev-mode-disabled-message a:hover {
   text-decoration: underline;
+}
+
+#dev-mode-disabled-message {
+  font-size: 14px;
+  margin-top: 32px;
+}
+
+#dev-mode-disabled-message p {
+  margin: 6px 0;
 }
 
 .header-row {
@@ -65,4 +76,5 @@ h2 {
   /* Aligns perfectly with the 20px padding + 1px border of the app list cards */
   margin-inline-end: 21px;
   min-width: 81px;
+  gap: 4px;
 }

@@ -235,6 +235,7 @@ class ReadAloudService
   // utility process is connected.
   void Initialize(content::WebContents* web_contents);
 
+  // TODO(b/553612030): Refactor out GetViewerHandleForTesting().
   dom_distiller::ViewerHandle* GetViewerHandleForTesting() const {
     return viewer_handle_.get();
   }
@@ -270,6 +271,9 @@ class ReadAloudService
   std::unique_ptr<dom_distiller::ViewerHandle> viewer_handle_;
   std::unique_ptr<Delegate> delegate_;
   base::TimeTicks distillation_start_time_;
+  std::string current_title_;
+  std::string current_publisher_;
+  base::TimeDelta current_duration_;
 
   // Connection to the Utility process Factory.
   mojo::Remote<read_aloud::mojom::ReadAloudPlaybackControllerFactory>

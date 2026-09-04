@@ -57,6 +57,7 @@ public class VerticalExternalViewDragDropReorderStrategy {
         public final int destGroupTabId;
         public final boolean isPinned;
         public final boolean isZeroPinnedState;
+        public final boolean isZeroNormalTabsState;
         public final RecyclerView.@Nullable ViewHolder targetViewHolder;
         public final int adapterPosition;
         public final boolean insertBefore;
@@ -69,6 +70,7 @@ public class VerticalExternalViewDragDropReorderStrategy {
                 int destGroupTabId,
                 boolean isPinned,
                 boolean isZeroPinnedState,
+                boolean isZeroNormalTabsState,
                 RecyclerView.@Nullable ViewHolder targetViewHolder,
                 int adapterPosition,
                 boolean insertBefore,
@@ -79,6 +81,7 @@ public class VerticalExternalViewDragDropReorderStrategy {
             this.destGroupTabId = destGroupTabId;
             this.isPinned = isPinned;
             this.isZeroPinnedState = isZeroPinnedState;
+            this.isZeroNormalTabsState = isZeroNormalTabsState;
             this.targetViewHolder = targetViewHolder;
             this.adapterPosition = adapterPosition;
             this.insertBefore = insertBefore;
@@ -95,6 +98,7 @@ public class VerticalExternalViewDragDropReorderStrategy {
                     && destGroupTabId == that.destGroupTabId
                     && isPinned == that.isPinned
                     && isZeroPinnedState == that.isZeroPinnedState
+                    && isZeroNormalTabsState == that.isZeroNormalTabsState
                     && adapterPosition == that.adapterPosition
                     && insertBefore == that.insertBefore
                     && isGroupTopOrBottomBoundary == that.isGroupTopOrBottomBoundary
@@ -110,6 +114,7 @@ public class VerticalExternalViewDragDropReorderStrategy {
                     destGroupTabId,
                     isPinned,
                     isZeroPinnedState,
+                    isZeroNormalTabsState,
                     targetViewHolder,
                     adapterPosition,
                     insertBefore,
@@ -130,6 +135,8 @@ public class VerticalExternalViewDragDropReorderStrategy {
                     + isPinned
                     + ", isZeroPinnedState="
                     + isZeroPinnedState
+                    + ", isZeroNormalTabsState="
+                    + isZeroNormalTabsState
                     + ", targetViewHolder="
                     + targetViewHolder
                     + ", adapterPosition="
@@ -247,8 +254,12 @@ public class VerticalExternalViewDragDropReorderStrategy {
         } else {
             // Regular tab or tab group drag
             if (isOverPinnedGrid) {
-                // Regular tab or tab group dragged over pinned grid -> reject
-                result = null;
+                if (isZeroNormalTabsState(tabModel)) {
+                    result = createEmptyMainListDropTarget(tabModel);
+                } else {
+                    // Regular tab or tab group dragged over pinned grid -> reject
+                    result = null;
+                }
             } else {
                 mapCoordinatesToView(targetView, mRecyclerView, xPx, yPx, mTempRvCoords);
                 if (isGroupDrag) {
@@ -471,11 +482,17 @@ public class VerticalExternalViewDragDropReorderStrategy {
                 /* destGroupTabId= */ TabList.INVALID_TAB_INDEX,
                 /* isPinned= */ false,
                 /* isZeroPinnedState= */ false,
+                /* isZeroNormalTabsState= */ false,
                 vh,
                 adapterPos,
                 /* insertBefore= */ isTopHalf,
                 /* isGroupTopOrBottomBoundary= */ false,
                 anchorBounds);
+    }
+
+    private static boolean isZeroNormalTabsState(TabModel tabModel) {
+        return tabModel.getPinnedTabsCount() > 0
+                && tabModel.getPinnedTabsCount() == tabModel.getCount();
     }
 
     private DropTargetResult createZeroPinnedDropTarget() {
@@ -485,6 +502,7 @@ public class VerticalExternalViewDragDropReorderStrategy {
                 /* destGroupTabId= */ TabList.INVALID_TAB_INDEX,
                 /* isPinned= */ true,
                 /* isZeroPinnedState= */ true,
+                /* isZeroNormalTabsState= */ false,
                 /* targetViewHolder= */ null,
                 /* adapterPosition= */ 0,
                 /* insertBefore= */ true,
@@ -500,6 +518,7 @@ public class VerticalExternalViewDragDropReorderStrategy {
                 /* destGroupTabId= */ TabList.INVALID_TAB_INDEX,
                 /* isPinned= */ false,
                 /* isZeroPinnedState= */ false,
+                /* isZeroNormalTabsState= */ isZeroNormalTabsState(tabModel),
                 /* targetViewHolder= */ null,
                 /* adapterPosition= */ 0,
                 /* insertBefore= */ true,
@@ -553,6 +572,7 @@ public class VerticalExternalViewDragDropReorderStrategy {
                     /* destGroupTabId= */ TabList.INVALID_TAB_INDEX,
                     /* isPinned= */ true,
                     /* isZeroPinnedState= */ false,
+                    /* isZeroNormalTabsState= */ false,
                     /* targetViewHolder= */ null,
                     /* adapterPosition= */ 0,
                     /* insertBefore= */ true,
@@ -613,6 +633,7 @@ public class VerticalExternalViewDragDropReorderStrategy {
                 /* destGroupTabId= */ TabList.INVALID_TAB_INDEX,
                 /* isPinned= */ true,
                 /* isZeroPinnedState= */ false,
+                /* isZeroNormalTabsState= */ false,
                 vh,
                 adapterPos,
                 insertBefore,
@@ -622,7 +643,9 @@ public class VerticalExternalViewDragDropReorderStrategy {
 
     private @Nullable DropTargetResult calculateSingleTabMainListDropTarget(
             float localX, float localY, TabModel tabModel) {
-        if (mRecyclerView.getChildCount() == 0 || mModelList.size() == 0) {
+        if (mRecyclerView.getChildCount() == 0
+                || mModelList.size() == 0
+                || isZeroNormalTabsState(tabModel)) {
             return createEmptyMainListDropTarget(tabModel);
         }
 
@@ -660,6 +683,7 @@ public class VerticalExternalViewDragDropReorderStrategy {
                     /* destGroupTabId= */ TabList.INVALID_TAB_INDEX,
                     /* isPinned= */ false,
                     /* isZeroPinnedState= */ false,
+                    /* isZeroNormalTabsState= */ false,
                     vh,
                     adapterPos,
                     insertBefore,
@@ -668,27 +692,33 @@ public class VerticalExternalViewDragDropReorderStrategy {
         }
 
         // Sub-rule 2: Over Expanded Tab Group
-        // 2a. Over Group Header -> insert as 1st child of group
+        // 2a. Over Group Header -> top half: standalone above group; bottom half: 1st child inside
+        // group
         if (isGroupHeader && !isCollapsed) {
             TabGroupRange range =
                     getTabGroupRange(tabModel, groupId, targetTabId, firstNonPinnedIndex);
             int destTabIndex = MathUtils.clamp(range.firstIndex, firstNonPinnedIndex, tabCount);
+            boolean insertBefore = isTopHalf;
+            int destGroupTabId =
+                    insertBefore ? TabList.INVALID_TAB_INDEX : range.representativeTabId;
+            boolean isGroupTopOrBottomBoundary = insertBefore;
 
             return new DropTargetResult(
                     DropTargetResult.TargetType.MAIN_LIST,
                     destTabIndex,
-                    /* destGroupTabId= */ range.representativeTabId,
+                    destGroupTabId,
                     /* isPinned= */ false,
                     /* isZeroPinnedState= */ false,
+                    /* isZeroNormalTabsState= */ false,
                     vh,
                     adapterPos,
-                    /* insertBefore= */ false,
-                    /* isGroupTopOrBottomBoundary= */ false,
+                    insertBefore,
+                    isGroupTopOrBottomBoundary,
                     anchorBounds);
         }
 
         // 2b. Over Child Tab in Expanded Group -> top half / bottom half sets insertion slot within
-        // group
+        // group, or standalone slot below group if past lower threshold on last child
         if (isChildTab) {
             TabGroupRange range =
                     getTabGroupRange(tabModel, groupId, targetTabId, firstNonPinnedIndex);
@@ -700,19 +730,38 @@ public class VerticalExternalViewDragDropReorderStrategy {
             }
 
             boolean insertBefore = isTopHalf;
-            int destTabIndex = insertBefore ? modelIndex : modelIndex + 1;
-            destTabIndex = MathUtils.clamp(destTabIndex, firstNonPinnedIndex, tabCount);
+            boolean isLastChildInGroup = (modelIndex == range.lastIndex);
+            boolean isBelowGroupThreshold =
+                    isLastChildInGroup
+                            && !insertBefore
+                            && (localY >= child.getTop() + 0.75f * child.getHeight()
+                                    || localY > child.getBottom());
+
+            int destTabIndex;
+            int destGroupTabId;
+            boolean isGroupTopOrBottomBoundary;
+            if (isBelowGroupThreshold) {
+                destTabIndex = MathUtils.clamp(range.lastIndex + 1, firstNonPinnedIndex, tabCount);
+                destGroupTabId = TabList.INVALID_TAB_INDEX;
+                isGroupTopOrBottomBoundary = true;
+            } else {
+                destTabIndex = insertBefore ? modelIndex : modelIndex + 1;
+                destTabIndex = MathUtils.clamp(destTabIndex, firstNonPinnedIndex, tabCount);
+                destGroupTabId = range.representativeTabId;
+                isGroupTopOrBottomBoundary = false;
+            }
 
             return new DropTargetResult(
                     DropTargetResult.TargetType.MAIN_LIST,
                     destTabIndex,
-                    /* destGroupTabId= */ range.representativeTabId,
+                    destGroupTabId,
                     /* isPinned= */ false,
                     /* isZeroPinnedState= */ false,
+                    /* isZeroNormalTabsState= */ false,
                     vh,
                     adapterPos,
                     insertBefore,
-                    /* isGroupTopOrBottomBoundary= */ false,
+                    isGroupTopOrBottomBoundary,
                     anchorBounds);
         }
 
@@ -730,7 +779,9 @@ public class VerticalExternalViewDragDropReorderStrategy {
 
     private @Nullable DropTargetResult calculateGroupDragMainListDropTarget(
             float localX, float localY, TabModel tabModel) {
-        if (mRecyclerView.getChildCount() == 0 || mModelList.size() == 0) {
+        if (mRecyclerView.getChildCount() == 0
+                || mModelList.size() == 0
+                || isZeroNormalTabsState(tabModel)) {
             return createEmptyMainListDropTarget(tabModel);
         }
 
@@ -810,6 +861,7 @@ public class VerticalExternalViewDragDropReorderStrategy {
                     /* destGroupTabId= */ TabList.INVALID_TAB_INDEX,
                     /* isPinned= */ false,
                     /* isZeroPinnedState= */ false,
+                    /* isZeroNormalTabsState= */ false,
                     targetVh,
                     targetPos >= 0 ? targetPos : adapterPos,
                     /* insertBefore= */ isCloserToTop,

@@ -31,6 +31,7 @@
 <translation id="1105960400813249514">จับภาพหน้าจอ</translation>
 <translation id="1108214977745280468">ดูข้อมูลเชิงลึกของหน้า</translation>
 <translation id="1108938384783527433">ซิงค์ประวัติการเข้าชม</translation>
+<translation id="1109663842695712985">ยังไม่ได้บันทึกข้อมูล Chrome บางอย่างของคุณลงในบัญชี Google โปรดรอสักครู่ก่อนออกจากระบบ หากคุณออกจากระบบตอนนี้ ระบบจะลบข้อมูลที่ไม่ได้บันทึก</translation>
 <translation id="1111673857033749125">บุ๊กมาร์กที่บันทึกไว้ในอุปกรณ์เครื่องอื่นๆ ของคุณจะปรากฏที่นี่</translation>
 <translation id="1123537484474186311"><ph name="TAB_TITLE" /> แท็บในโหมดการแสดงภาพซ้อนภาพ</translation>
 <translation id="1126696498560056882">จัดการบัญชีในอุปกรณ์เครื่องนี้</translation>
@@ -78,6 +79,7 @@
 <translation id="1263231323834454256">เรื่องรออ่าน</translation>
 <translation id="1269129608791067105">คุณจะเห็นประวัติการเข้าชมที่นี่</translation>
 <translation id="1280921956537356716">เปิดการแจ้งเตือนเคล็ดลับ</translation>
+<translation id="1287449971634955609">นำส่วนขยายออกและลบข้อมูลที่ส่วนขยายบันทึกไว้ในอุปกรณ์นี้</translation>
 <translation id="1289129165308566697">ดูประวัติการเข้าชมในอุปกรณ์อื่นๆ</translation>
 <translation id="129553762522093515">เพิ่งปิด</translation>
 <translation id="1298077576058087471">อ่านข่าววันนี้ ประหยัดอินเทอร์เน็ตได้ถึง 60%</translation>
@@ -115,6 +117,7 @@
 <translation id="1413446866325418126">บันทึกข้อมูลไว้ในบัญชี Google</translation>
 <translation id="1414919006379339073">ปิดหน้าต่างปัจจุบัน</translation>
 <translation id="1416550906796893042">เวอร์ชันของแอปพลิเคชัน</translation>
+<translation id="1426410128494586442">ใช่</translation>
 <translation id="1430915738399379752">พิมพ์</translation>
 <translation id="1432581352905426595">จัดการเครื่องมือค้นหา</translation>
 <translation id="1435593198351412143">เปิด PDF โดยอัตโนมัติ</translation>
@@ -155,6 +158,7 @@
 <translation id="1598163867407640634">ใช้ <ph name="SITE_ETLD_PLUS_ONE" /> ด้วย <ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /></translation>
 <translation id="1598770407402123677"><ph name="TAB_TITLE" />, แท็บการบันทึกเสียงที่ปักหมุด</translation>
 <translation id="1600756129506222718"><ph name="TAB_TITLE" />, แท็บการแชร์</translation>
+<translation id="1601378265092360672">ข้อมูลการท่องเว็บประกอบด้วยประวัติการท่องเว็บ คุกกี้และข้อมูลเว็บไซต์อื่นๆ รูปภาพและไฟล์ที่แคชไว้ รวมถึงแท็บที่เปิดอยู่</translation>
 <translation id="160275202205869636">เมื่อเปิดไว้ ระบบจะใช้และบันทึกข้อมูลในบัญชี Google ของคุณ เมื่อปิดไว้ ระบบจะบันทึกข้อมูลในอุปกรณ์เครื่องนี้เท่านั้น</translation>
 <translation id="1628019612362412531">{NUM_SELECTED,plural, =1{นำ 1 รายการที่เลือกออก}other{นำ # รายการที่เลือกออก}}</translation>
 <translation id="1639239467298939599">กำลังโหลด</translation>
@@ -186,6 +190,7 @@
 <translation id="1778457539567749232">ทำเครื่องหมายว่ายังไม่อ่าน</translation>
 <translation id="1779766957982586368">ปิดหน้าต่าง</translation>
 <translation id="1780023393214832643">บันทึกรหัสผ่านไปยัง <ph name="USERNAME" /> แล้ว</translation>
+<translation id="1789543093145556097">ซ่อนไว้ตลอด</translation>
 <translation id="1791662854739702043">ติดตั้งแล้ว</translation>
 <translation id="1792959175193046959">เปลี่ยนตำแหน่งเริ่มต้นในการดาวน์โหลดได้ทุกเมื่อ</translation>
 <translation id="1796666869097395659">ย่อแท็บเพื่อกลับไปดูในภายหลัง</translation>
@@ -341,6 +346,7 @@
 <translation id="2385605401818128172">คุณสามารถตรวจสอบเว็บไซต์ที่ส่งการแจ้งเตือนจำนวนมากและหยุดไม่ให้ส่งการแจ้งเตือนอีกในอนาคต</translation>
 <translation id="2386938421315164605">ซ่อนและเลิกซ่อนหัวข้อ</translation>
 <translation id="2390510615457643724">คุณต้องการดาวน์โหลด <ph name="FILE_NAME" /><ph name="FILE_SIZE" /> อีกครั้งใช่ไหม</translation>
+<translation id="2391579633712104609">180°</translation>
 <translation id="2392369802118427583">เปิดใช้งาน</translation>
 <translation id="2393980685134835044"><ph name="TAB_TITLE" /> แท็บในโหมดการแสดงภาพซ้อนภาพแบบไม่ระบุตัวตนที่เลือกไว้</translation>
 <translation id="2397175985681716533"><ph name="TAB_TITLE" />, แท็บการบันทึกเสียงที่ไม่ระบุตัวตน</translation>
@@ -522,6 +528,7 @@
 <translation id="3075397426753215787">เลือกอุปกรณ์</translation>
 <translation id="3080375898390966733">ค้นหาแท็บด้วย Google Lens</translation>
 <translation id="3080525922482950719">คุณบันทึกหน้าเว็บไว้อ่านภายหลังหรืออ่านขณะออฟไลน์ได้</translation>
+<translation id="3082989400996696487">แสดงในหน้าแท็บใหม่เท่านั้น</translation>
 <translation id="3087734570205094154">ด้านล่าง</translation>
 <translation id="3091010850649238832">แสดงเนื้อหาในคลิปบอร์ด</translation>
 <translation id="3098745985164956033">ระบบจะส่งรูปภาพบางส่วนไปยัง Google เพื่อปรับปรุงคำอธิบายสำหรับคุณ</translation>
@@ -557,6 +564,7 @@
 <translation id="3254409185687681395">บุ๊กมาร์กหน้านี้</translation>
 <translation id="3265093782546847662">ทุกหน้าของ <ph name="DOMAIN" /></translation>
 <translation id="3268048651973962414">ลากขึ้นเพื่อดูผลการค้นหา</translation>
+<translation id="3268205181992599708">เปิดใช้ไมโครโฟนเพื่อใช้เสียง</translation>
 <translation id="3269093882174072735">โหลดภาพ</translation>
 <translation id="3280562213547448728">ค้นหาด้วยเสียง</translation>
 <translation id="3282801380074962248">ขยายส่วน</translation>
@@ -624,6 +632,7 @@
 <translation id="3557336313807607643">เพิ่มในรายชื่อติดต่อ</translation>
 <translation id="3560831525486613327">เปิดหน้าแท็บใหม่</translation>
 <translation id="3563767357928833671">เนื้อหาในคลิปบอร์ดแสดงขึ้น</translation>
+<translation id="356407858591811361">เปิดหน้าต่างใหม่ที่ไม่ระบุตัวตน</translation>
 <translation id="3566639033325271639">อัปเดตการตั้งค่า</translation>
 <translation id="3568945271227339929">ไม่มีรหัสผ่านที่ถูกละเมิด</translation>
 <translation id="3575464060651642446">กำลังตรวจสอบรหัสผ่านในอุปกรณ์นี้…</translation>
@@ -767,6 +776,7 @@
 <translation id="4164642020717536140">ท่องเว็บอย่างรวดเร็วและปลอดภัย</translation>
 <translation id="4165077084524712774">เครื่องมืออื่นๆ</translation>
 <translation id="4170577491341606575">กำลังดึงข้อมูลของคุณ\u2026</translation>
+<translation id="4172051516777682613">แสดงทุกครั้ง</translation>
 <translation id="4176838562184310003">Chrome ไม่ได้ปิดอย่างถูกต้อง คุณสามารถลองคืนค่าหน้าต่างและแท็บเดิมที่เปิดไว้ได้ หน้าต่างบางรายการอาจย่อขนาดลงเมื่อคืนค่า</translation>
 <translation id="4177222230309051052">รับบุ๊กมาร์กทั้งหมด</translation>
 <translation id="417865198503699526">ค้นหาการตั้งค่า</translation>
@@ -782,6 +792,7 @@
 <translation id="4209029522667123437"><ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /> • คุณใช้ในเว็บไซต์นี้</translation>
 <translation id="4214315110991671325">Chrome อาจใช้คุกกี้เพื่อโหลดล่วงหน้าหากคุณอนุญาต</translation>
 <translation id="421517251707893998">แตะปักหมุดทางลัดนี้</translation>
+<translation id="421590277191613555"><ph name="GROUP_DESCRIPTION" /> - <ph name="COLLAPSED_STATE" /></translation>
 <translation id="4216511743389425832">ฟังหน้านี้</translation>
 <translation id="4217657297368492684"><ph name="TAB_TITLE" /> แท็บในโหมดการแสดงภาพซ้อนภาพแบบไม่ระบุตัวตนที่ปักหมุดและเลือกไว้</translation>
 <translation id="4225895483398857530">ทางลัดแถบเครื่องมือ</translation>
@@ -801,6 +812,7 @@
 <translation id="4285846616383034558">คุกกี้ แคช และข้อมูลเว็บไซต์อื่นๆ</translation>
 <translation id="4291407919474070700"><ph name="BEGIN_LINK" />เปิดการล็อกหน้าจอในการตั้งค่า Android<ph name="END_LINK" /></translation>
 <translation id="4293154608148215505">โทรศัพท์ของคุณ</translation>
+<translation id="4295640788982898778">ส่วนขยายของคุณบันทึกไว้ในบัญชี Google แต่ข้อมูลที่ส่วนขยายบันทึกไว้เฉพาะบนอุปกรณ์นี้อาจถูกลบ</translation>
 <translation id="4296252229500326964">แท็บใหม่ที่ไม่ระบุตัวตน</translation>
 <translation id="4298161202289999785"><ph name="TAB_TITLE" />, แท็บที่ไม่ระบุตัวตนซึ่งเลือกไว้หลายแท็บ</translation>
 <translation id="4298388696830689168">เว็บไซต์ที่ลิงก์</translation>
@@ -824,6 +836,7 @@
 <translation id="4358630185957185589">เปิด Google Lens</translation>
 <translation id="435863252455918214">จัดการส่วนขยายในเมนูหลักของ Chrome</translation>
 <translation id="4359809482106103048">ข้อมูลโดยย่อด้านความปลอดภัย</translation>
+<translation id="4374192654218566997">\n\nคุณยังนำข้อมูลนี้ออกจากอุปกรณ์นี้ได้ด้วย</translation>
 <translation id="4378154925671717803">โทรศัพท์</translation>
 <translation id="4380055775103003110">หากปัญหานี้ยังเกิดขึ้นอยู่ คุณสามารถลองดำเนินการต่อใน <ph name="SITE_ETLD_PLUS_ONE" /> ด้วยวิธีอื่นๆ ได้</translation>
 <translation id="4384468725000734951">กำลังใช้ Sogou ในการค้นหา</translation>
@@ -885,7 +898,6 @@
 <translation id="4599585406846903742">ดูแบบหน้าเดียว</translation>
 <translation id="4601095002996233687">การสแกนเชิงลึกสำหรับการดาวน์โหลดที่น่าสงสัย</translation>
 <translation id="4606559747793337066">เมื่อเว็บไซต์หรือแอปขอโหลดลิงก์ล่วงหน้าแบบส่วนตัว Chrome จะเข้ารหัสและโหลดหน้าเว็บล่วงหน้าผ่านเซิร์ฟเวอร์ของ Google โดยไม่มีคุกกี้ การดำเนินการนี้จะซ่อนตัวตนของคุณจากเว็บไซต์ที่โหลดล่วงหน้า</translation>
-<translation id="4616150815774728855">เปิด <ph name="WEBAPK_NAME" /></translation>
 <translation id="4619615317237390068">แท็บจากอุปกรณ์อื่นๆ</translation>
 <translation id="4624065194742029982">โหมดไม่ระบุตัวตนของ Chrome</translation>
 <translation id="4634124774493850572">ใช้รหัสผ่าน</translation>
@@ -979,6 +991,7 @@
 <translation id="4961107849584082341">แปลหน้านี้เป็นภาษาใดก็ได้</translation>
 <translation id="4964614743143953889">Chrome จะเตือนคุณเกี่ยวกับเว็บไซต์และการดาวน์โหลดที่ไม่ปลอดภัย</translation>
 <translation id="496607651705915226">หากต้องการบันทึกและใช้รหัสผ่านใหม่ในบัญชี Google โปรดอัปเดตบริการ Google Play</translation>
+<translation id="4971526871834232950"><ph name="GROUP_DESCRIPTION" /> - <ph name="TABS_DESCRIPTION" /></translation>
 <translation id="4971753085054504448">ลองค้นหาอย่างอื่นหรือเปิดประวัติการเข้าชมใน Chrome แบบเต็มเพื่อดูผลการค้นหาเพิ่มเติม</translation>
 <translation id="497421865427891073">ไปข้างหน้า</translation>
 <translation id="497983151715419057">ตรวจสอบแท็บและกลุ่มที่ไม่ได้ใช้งานที่นี่</translation>
@@ -1051,6 +1064,7 @@
 <translation id="5267572070504076962">เปิด Google Safe Browsing เพื่อปกป้องคุณจากเว็บไซต์ที่เป็นอันตราย</translation>
 <translation id="5273031377282080577">ผู้ดูแลระบบจัดการการตั้งค่านี้</translation>
 <translation id="5284295735376057059">คุณสมบัติของเอกสาร</translation>
+<translation id="5286907366254680517">ตรวจพบ</translation>
 <translation id="5290322819358431297">ป้อนรหัสผ่านของคุณโดยอัตโนมัติ</translation>
 <translation id="5292796745632149097">ส่งไปที่</translation>
 <translation id="5301876394151419436">คุณลงชื่อเข้าใช้ด้วย <ph name="EMAIL" /> คุณหยุดการซิงค์ได้ทุกเมื่อในการตั้งค่า Google อาจปรับเปลี่ยน Search และบริการอื่นๆ ให้เหมาะกับคุณโดยอิงจากประวัติการเข้าชม</translation>
@@ -1531,6 +1545,7 @@
 <translation id="7117485132243600300">จัดการเนื้อหาที่คุณติดตาม รวมถึงหัวข้อและการค้นหาที่แนะนำ</translation>
 <translation id="7119984597597798764">ปิด <ph name="INSTANCE_TITLE" /></translation>
 <translation id="7121179479711575744">ลงชื่อเข้าใช้ Chrome</translation>
+<translation id="7130633106249192408">ลบข้อมูลการท่องเว็บออกจากอุปกรณ์นี้</translation>
 <translation id="7136694880210472378">ทำให้เป็นค่าเริ่มต้น</translation>
 <translation id="7136902389402789299">{NUM_SITES,plural, =1{ตรวจสอบสิทธิ์สำหรับ 1 เว็บไซต์แล้ว}other{ตรวจสอบสิทธิ์สำหรับ # เว็บไซต์แล้ว}}</translation>
 <translation id="7138678301420049075">อื่นๆ</translation>
@@ -1690,6 +1705,7 @@
 <translation id="7714077993070342304">เปิดเมนู Chrome</translation>
 <translation id="7733878270780732638">มีพื้นที่ในอุปกรณ์ไม่เพียงพอ</translation>
 <translation id="7740287852186792672">ผลการค้นหา</translation>
+<translation id="7740996059027112821">มาตรฐาน</translation>
 <translation id="774403695779169686"><ph name="TAB_TITLE" />, แท็บการแชร์ที่ไม่ระบุตัวตนที่เลือก</translation>
 <translation id="774876555279732384">บริการป้อนข้อความอัตโนมัติจะได้รับการจัดการใน<ph name="BEGIN_LINK" />การตั้งค่า Android<ph name="END_LINK" /> ด้วยเช่นกัน</translation>
 <translation id="7758884017823246335">เพิ่มการค้นหาเว็บไซต์</translation>
@@ -1822,6 +1838,7 @@
 <translation id="8223642481677794647">เมนูของการ์ดฟีด</translation>
 <translation id="82296173028782770">แก้ไขคำค้นหา: <ph name="SEARCH_QUERY" /></translation>
 <translation id="8236097722223016103">เพิ่มลงในบุ๊กมาร์ก</translation>
+<translation id="8236917170563564587">แชร์แท็บนี้แทน</translation>
 <translation id="8243077599929149377">เพิ่มชื่อผู้ใช้ของคุณ</translation>
 <translation id="8244387390464017490">ปรับแต่งหน้าแท็บใหม่</translation>
 <translation id="8244444485683708655">แนบภาพจากกล้อง</translation>
@@ -1851,6 +1868,7 @@
 <translation id="834313815369870491">ไม่ต้องแปลเว็บไซต์</translation>
 <translation id="8348215005712416247"><ph name="TAB_TITLE" />, แท็บการบันทึกเสียงที่ไม่ระบุตัวตนที่ปักหมุดซึ่งเลือกไว้หลายแท็บ</translation>
 <translation id="8348430946834215779">ใช้ HTTPS ทุกครั้งที่ทำได้และรับการแจ้งเตือนก่อนโหลดเว็บไซต์ที่ไม่รองรับ HTTPS</translation>
+<translation id="8349305172487531364">แถบบุ๊กมาร์ก</translation>
 <translation id="8354977102499939946">ค้นหาด้วยเสียงอย่างรวดเร็ว ไปที่การตั้งค่าเพื่อแก้ไขทางลัดนี้</translation>
 <translation id="8361737703487394103">ข้ามไปยังแท็บที่ต้องการ (1–8)</translation>
 <translation id="8368001212524806591">ติดตามราคา</translation>

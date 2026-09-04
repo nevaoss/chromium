@@ -2528,9 +2528,8 @@ chromium-metrics-reviews@google.com.
   <int value="1475" label="OnNetworkRequestEnterpriseConnector"/>
   <int value="1476" label="EnterprisePublishedSkills"/>
   <int value="1477" label="OnDataCopiedEnterpriseConnector"/>
-  <int value="1478" label="DeviceLocalNetworkAccessAllowedForUrls"/>
-  <int value="1479" label="DeviceLocalNetworkAccessBlockedForUrls"/>
-  <int value="1480" label="DeviceLocalNetworkAccessIpAddressSpaceOverrides"/>
+  <int value="1481" label="DeviceOsMigrationTargetDate"/>
+  <int value="1482" label="RendererAccessibilityEnabled"/>
 </enum>
 
 <enum name="EnterprisePoliciesSources">

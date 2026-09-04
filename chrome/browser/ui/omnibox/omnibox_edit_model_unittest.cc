@@ -60,7 +60,6 @@
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/metrics_proto/omnibox_event.pb.h"
-#include "third_party/omnibox_proto/answer_type.pb.h"
 #include "third_party/skia/include/core/SkBitmap.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/window_open_disposition.h"
@@ -679,6 +678,35 @@ TEST_F(OmniboxEditModelTest, SpaceInMiddleWithoutKeywordSelectionDoesNotCrash) {
   model()->OnAfterPossibleChange(backspace_changes,
                                  /*allow_keyword_ui_change=*/true);
   EXPECT_FALSE(model()->is_keyword_selected());
+}
+
+TEST_F(OmniboxEditModelTest, StartAutocompleteWithoutViewDoesNotCrash) {
+  // Disconnect the view to simulate headless / WebUI searchbox usage.
+  controller_->SetView(nullptr);
+  ASSERT_EQ(model()->view(), nullptr);
+
+  model()->SetUserText(u"search query");
+  EXPECT_NO_FATAL_FAILURE(
+      model()->StartAutocomplete(/*prevent_inline_autocomplete=*/false));
+  EXPECT_EQ(model()->GetInputForTesting().text(), u"search query");
+  EXPECT_EQ(model()->GetInputForTesting().cursor_position(), 12u);
+
+  // Also test in keyword mode without a view.
+  TemplateURLData data;
+  data.SetShortName(u"custom");
+  data.SetKeyword(u"@custom");
+  data.SetURL("https://custom.com?q={searchTerms}");
+  TemplateURL* turl = controller()->client()->GetTemplateURLService()->Add(
+      std::make_unique<TemplateURL>(data));
+  ASSERT_TRUE(turl);
+
+  model()->SetUserText(u"hello");
+  model()->SetKeywordInfo(KeywordState::kKeyword, u"@custom", u"",
+                          OmniboxEventProto::TAB);
+  EXPECT_NO_FATAL_FAILURE(
+      model()->StartAutocomplete(/*prevent_inline_autocomplete=*/true));
+  EXPECT_EQ(model()->GetInputForTesting().text(), u"@custom hello");
+  EXPECT_EQ(model()->GetInputForTesting().cursor_position(), 13u);
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1833,19 +1861,6 @@ TEST_F(OmniboxEditModelTest, OpenAiModeTriggersContextualizeWithoutService) {
   // Reset the mock contextualizer so it is destroyed before the local
   // fake_delegate it points to.
   model()->SetQueryContextualizerForTesting(nullptr);
-}
-
-TEST_F(OmniboxEditModelTest, LogAnswerUsed) {
-  base::HistogramTester histogram_tester;
-  AutocompleteMatch match(
-      controller()->autocomplete_controller()->search_provider(), 0, false,
-      AutocompleteMatchType::SEARCH_WHAT_YOU_TYPED);
-  match.answer_type = omnibox::ANSWER_TYPE_WEATHER;
-  match.destination_url = GURL("https://foo");
-  model()->OpenMatchForTesting(match, WindowOpenDisposition::CURRENT_TAB,
-                               GURL(), std::u16string(), 0);
-  histogram_tester.ExpectUniqueSample("Omnibox.SuggestionUsed.AnswerInSuggest",
-                                      8, 1);
 }
 
 // Tests `GetPopupRichSuggestionBitmap()` method, verifying that no bitmap is

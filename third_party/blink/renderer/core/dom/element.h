@@ -292,6 +292,8 @@ enum class CommandEventType {
   kPageInlineEnd,
   // Overscroll,
   kToggleOverscroll,
+  kShowOverscroll,
+  kHideOverscroll,
 };
 
 // Defaults for the `interestfor` API's `normal` value.
@@ -1199,6 +1201,7 @@ class CORE_EXPORT Element : public ContainerNode {
   const gfx::Transform* GetUsedCanvasTransform() const;
   const gfx::Transform* GetCanvasTransformInternal() const;
   void SetCanvasTransformInternal(const gfx::Transform& transform);
+  void ClearCanvasTransform();
 
   bool IsDefined() const {
     // An element whose custom element state is "uncustomized" or "custom"
@@ -1372,7 +1375,9 @@ class CORE_EXPORT Element : public ContainerNode {
   }
 
   static bool IsOverscrollCommand(CommandEventType command) {
-    return command == CommandEventType::kToggleOverscroll;
+    return command == CommandEventType::kToggleOverscroll ||
+           command == CommandEventType::kShowOverscroll ||
+           command == CommandEventType::kHideOverscroll;
   }
 
   // This allows customization of how Invoker Commands are handled, per element.

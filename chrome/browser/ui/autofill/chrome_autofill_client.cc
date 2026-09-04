@@ -28,6 +28,7 @@
 #include "build/build_config.h"
 #include "chrome/browser/account_settings/account_setting_service_factory.h"
 #include "chrome/browser/actor/actor_keyed_service.h"
+#include "chrome/browser/actor/actor_task.h"
 #include "chrome/browser/autofill/address_normalizer_factory.h"
 #include "chrome/browser/autofill/android/save_update_address_profile_prompt_mode.h"
 #include "chrome/browser/autofill/at_memory/at_memory_query_service_factory.h"
@@ -48,6 +49,7 @@
 #include "chrome/browser/autofill/wallet_pass_access_manager_factory.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/consent_auditor/consent_auditor_factory.h"
+#include "chrome/browser/critical_actions/critical_action_factory.h"
 #include "chrome/browser/device_reauth/chrome_device_authenticator_factory.h"
 #include "chrome/browser/glic/public/glic_enabling.h"
 #include "chrome/browser/glic/public/glic_invoke_options.h"
@@ -122,6 +124,7 @@
 #include "components/autofill/core/browser/foundations/browser_autofill_manager.h"
 #include "components/autofill/core/browser/integrators/identity_credential/identity_credential_delegate.h"
 #include "components/autofill/core/browser/integrators/one_time_tokens/otp_field_detector.h"
+#include "components/autofill/core/browser/integrators/one_time_tokens/otp_metrics_tracker.h"
 #include "components/autofill/core/browser/integrators/optimization_guide/autofill_optimization_guide_decider.h"
 #include "components/autofill/core/browser/logging/log_router.h"
 #include "components/autofill/core/browser/metrics/autofill_settings_metrics.h"
@@ -143,6 +146,7 @@
 #include "components/autofill/core/common/form_field_data.h"
 #include "components/autofill/core/common/unique_ids.h"
 #include "components/compose/buildflags.h"
+#include "components/critical_actions/core/browser/critical_action_service.h"
 #include "components/device_reauth/device_authenticator.h"
 #include "components/feature_engagement/public/feature_constants.h"
 #include "components/optimization_guide/content/browser/page_content_proto_provider.h"
@@ -195,7 +199,9 @@
 #include "chrome/browser/touch_to_fill/autofill/android/touch_to_fill_autofill_controller.h"
 #include "chrome/browser/touch_to_fill/autofill/android/touch_to_fill_autofill_view_impl.h"
 #include "chrome/browser/ui/android/autofill/autofill_ai_save_update_entity_flow_manager.h"
+#include "chrome/browser/ui/android/autofill/email_verification_bottom_sheet_bridge.h"
 #include "chrome/browser/ui/android/autofill/save_update_address_profile_flow_manager.h"
+#include "chrome/browser/ui/android/tab_model/tab_model_list.h"
 #include "chrome/browser/ui/autofill/autofill_message_controller_impl.h"
 #include "chrome/browser/ui/autofill/autofill_snackbar_type.h"
 #include "chrome/browser/ui/autofill/payments/offer_notification_controller_android.h"
@@ -260,10 +266,7 @@ const base::Feature& GetFeature(AutofillClient::IphFeature iph_feature) {
     case AutofillClient::IphFeature::kAutofillAi:
       return feature_engagement::kIPHAutofillAiOptInFeature;
     case AutofillClient::IphFeature::kWalletDirectOffers:
-      // TODO(crbug.com/546252995): Implement IPH bubble for Wallet Direct
-      // Offers.
-      NOTIMPLEMENTED();
-      return feature_engagement::kIPHAutofillAiOptInFeature;
+      return feature_engagement::kIPHAutofillWalletDirectOffersFeature;
   }
   NOTREACHED();
 }
@@ -273,10 +276,7 @@ ui::ElementIdentifier GetElementId(AutofillClient::IphFeature iph_feature) {
     case AutofillClient::IphFeature::kAutofillAi:
       return PopupViewViews::kAutofillAiOptInIphElementId;
     case AutofillClient::IphFeature::kWalletDirectOffers:
-      // TODO(crbug.com/546252995): Implement IPH bubble for Wallet Direct
-      // Offers.
-      NOTIMPLEMENTED();
-      return PopupViewViews::kAutofillAiOptInIphElementId;
+      return PopupViewViews::kAutofillWalletDirectOffersIphElementId;
   }
   NOTREACHED();
 }
@@ -1030,6 +1030,12 @@ ActorAutofillManager* ChromeAutofillClient::GetActorAutofillManager() {
   return actor_autofill_manager_.get();
 }
 
+int64_t ChromeAutofillClient::GetNavigationId() const {
+  return web_contents()
+             ? web_contents()->GetPrimaryMainFrame()->GetNavigationId()
+             : 0;
+}
+
 bool ChromeAutofillClient::IsAutofillEnabled() const {
   if (IsAutofillProfileEnabled() || AutofillClient::GetPaymentsAutofillClient()
                                         ->IsAutofillPaymentMethodsEnabled()) {
@@ -1309,7 +1315,14 @@ ChromeAutofillClient::ChromeAutofillClient(content::WebContents* web_contents)
   }
 
   form_predictions_tracker_ = std::make_unique<FormPredictionsTracker>(this);
-  actor_autofill_manager_ = std::make_unique<ActorAutofillManager>(this);
+  actor_autofill_manager_ = std::make_unique<ActorAutofillManager>(
+      this,
+      critical_actions::CriticalActionFactory::GetForProfile(GetProfile()));
+
+#if !BUILDFLAG(IS_ANDROID)
+  otp_metrics_tracker_ =
+      std::make_unique<OtpMetricsTracker>(GetOneTimeTokenService());
+#endif
 
   // Notify the EntityDataManager about the availability of device re-auth.
   // This information is injected through the client because the device
@@ -1338,7 +1351,12 @@ tabs::TabInterface* ChromeAutofillClient::GetTabInterface() {
 }
 
 void ChromeAutofillClient::ShowEmailVerifiedToast(const GURL& issuer) {
-#if !BUILDFLAG(IS_ANDROID)
+#if BUILDFLAG(IS_ANDROID)
+  GetAutofillMessageController()->Show(
+      AutofillMessageModel::CreateForEmailVerified(
+          issuer,
+          base::BindOnce(&ShowAutofillProfileSettings, web_contents())));
+#else
   // The toast is only supported on desktop for now, since Android uses
   // snackbars instead.
   if (ToastController* toast_controller = GetToastController()) {
@@ -1358,7 +1376,22 @@ void ChromeAutofillClient::ShowEmailVerificationPopup(
     const std::u16string& email,
     base::OnceCallback<void(EmailVerificationPermissionUiStatus)> callback) {
 #if BUILDFLAG(IS_ANDROID)
-  std::move(callback).Run(EmailVerificationPermissionUiStatus::kOther);
+  if (!email_verification_bottom_sheet_bridge_) {
+    auto* window_android = web_contents()->GetTopLevelNativeWindow();
+    TabModel* tab_model =
+        TabModelList::GetTabModelForWebContents(web_contents());
+    if (window_android && tab_model) {
+      email_verification_bottom_sheet_bridge_ =
+          std::make_unique<EmailVerificationBottomSheetBridge>(window_android,
+                                                               tab_model);
+    }
+  }
+  if (!email_verification_bottom_sheet_bridge_) {
+    std::move(callback).Run(EmailVerificationPermissionUiStatus::kOther);
+    return;
+  }
+  email_verification_bottom_sheet_bridge_->RequestShowContent(
+      base::UTF8ToUTF16(issuer_site.Serialize()), email, std::move(callback));
 #else
   if (!email_verification_popup_controller_) {
     email_verification_popup_controller_ =
@@ -1435,6 +1468,10 @@ OtpFieldDetector* ChromeAutofillClient::GetOtpFieldDetector() {
   return otp_field_detector_.get();
 }
 
+OtpMetricsTracker* ChromeAutofillClient::GetOtpMetricsTracker() {
+  return otp_metrics_tracker_.get();
+}
+
 OtpPhishGuardDelegate* ChromeAutofillClient::GetOtpPhishGuardDelegate() {
 #if BUILDFLAG(IS_ANDROID)
   if (base::FeatureList::IsEnabled(
@@ -1451,15 +1488,9 @@ FormPredictionsTracker* ChromeAutofillClient::GetFormPredictionsTracker() {
 
 one_time_tokens::OneTimeTokenService*
 ChromeAutofillClient::GetOneTimeTokenService() const {
-#if BUILDFLAG(IS_ANDROID)
-  if (base::FeatureList::IsEnabled(
-          password_manager::features::kAndroidSmsOtpFilling)) {
-    Profile* profile =
-        Profile::FromBrowserContext(web_contents()->GetBrowserContext());
-    return OneTimeTokenServiceFactory::GetForProfile(profile);
-  }
-#endif  // BUILDFLAG(IS_ANDROID)
-  return nullptr;
+  Profile* profile =
+      Profile::FromBrowserContext(web_contents()->GetBrowserContext());
+  return OneTimeTokenServiceFactory::GetForProfile(profile);
 }
 
 void ChromeAutofillClient::set_test_addresses(
@@ -1606,12 +1637,18 @@ void ChromeAutofillClient::ShowAutofillAiPrivateInferenceNotice() {
             AutofillMetrics::PopupNoticeInteractions::kDismissed);
       });
   base::RepeatingClosure secondary_action_callback = base::BindRepeating(
-      [](content::WebContents* web_contents) {
+      [](base::WeakPtr<AutofillClient> client,
+         content::WebContents* web_contents) {
+        if (client && client->GetPrefs()) {
+          client->GetPrefs()->SetTime(
+              prefs::kAutofillAiPrivateInferenceNoticeAcknowledgedTimestamp,
+              base::Time::Now());
+        }
         AutofillMetrics::LogAutofillAiPrivateInferenceNoticeInteraction(
             AutofillMetrics::PopupNoticeInteractions::kLinkButtonClicked);
         ShowAutofillSettingsPage(web_contents);
       },
-      web_contents());
+      GetWeakPtr(), web_contents());
   GetAutofillMessageController()->Show(
       AutofillMessageModel::CreateForPrivateInferenceNotice(
           std::move(action_callback), std::move(dismiss_callback),
@@ -1644,10 +1681,10 @@ void ChromeAutofillClient::OnActorTaskStateChange(actor::ActorTask& task) {
   const actor::TaskId task_id = task.id();
   const actor::ActorTask::State state = task.GetState();
 
-  std::optional<actor::TaskId> active_task =
+  std::optional<ActorAutofillManager::ActorTaskInfo> active_task =
       actor_autofill_manager_->active_actor_task();
 
-  if (active_task && *active_task != task_id) {
+  if (active_task && active_task->task_id != task_id) {
     // The update is for an actor that isn't working on the current tab.
     return;
   }
@@ -1678,7 +1715,11 @@ void ChromeAutofillClient::OnActorTaskStateChange(actor::ActorTask& task) {
 
   // TODO(crbug.com/469428128): Evaluate whether
   // `actor::ActorTask::State::kCreated` state should enable the actor mode.
-  actor_autofill_manager_->set_active_actor_task(task_id);
+  actor_autofill_manager_->set_active_actor_task(
+      ActorAutofillManager::ActorTaskInfo{
+          .conversation_id = task.source_info().id.value_or(""),
+          .task_id = task_id,
+      });
 }
 
 void ChromeAutofillClient::OpenGeminiInSidebar(const std::u16string& prompt) {

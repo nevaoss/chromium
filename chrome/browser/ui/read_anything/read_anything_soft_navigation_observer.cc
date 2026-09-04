@@ -35,13 +35,9 @@ ReadAnythingSoftNavigationObserver::OnPrerenderStart(
   return CONTINUE_OBSERVING;
 }
 
-void ReadAnythingSoftNavigationObserver::OnSoftNavigationCommit(
+void ReadAnythingSoftNavigationObserver::OnSoftNavigationFirstContentfulPaint(
     const page_load_metrics::mojom::SoftNavigationMetrics&
         soft_navigation_metrics) {
-  if (!features::IsImmersiveReadAnythingEnabled()) {
-    return;
-  }
-
   content::WebContents* web_contents = GetDelegate().GetWebContents();
   if (!web_contents) {
     return;

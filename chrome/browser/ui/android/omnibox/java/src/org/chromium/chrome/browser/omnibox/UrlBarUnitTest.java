@@ -8,6 +8,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.AdditionalMatchers.not;
 import static org.mockito.ArgumentMatchers.any;
@@ -1250,6 +1251,7 @@ public class UrlBarUnitTest {
 
     @Test
     public void setInputIsMultilineEligible() {
+        mUrlBar.setAllowMultilineInput(true);
         // Mark current input as wrapping eligible.
         mUrlBar.setInputIsMultilineEligible(true);
         mUrlBar.onFocusChanged(true, View.LAYOUT_DIRECTION_LTR, new Rect());
@@ -1263,6 +1265,15 @@ public class UrlBarUnitTest {
         mUrlBar.onFocusChanged(false, View.LAYOUT_DIRECTION_LTR, new Rect());
         mUrlBar.setInputIsMultilineEligible(true);
         assertTrue(mUrlBar.isHorizontallyScrollable());
+
+        // Disallow multiline input - never multiline
+        mUrlBar.onFocusChanged(true, View.LAYOUT_DIRECTION_LTR, new Rect());
+        mUrlBar.setAllowMultilineInput(false);
+        assertTrue(mUrlBar.isHorizontallyScrollable());
+
+        // Re-allow multiline input while focused and eligible
+        mUrlBar.setAllowMultilineInput(true);
+        assertFalse(mUrlBar.isHorizontallyScrollable());
     }
 
     @Test
@@ -1271,6 +1282,7 @@ public class UrlBarUnitTest {
         mUrlBar.setUrlTextWrappingChangeListener(callback);
         doReturn(mLayout).when(mUrlBar).getLayout();
 
+        mUrlBar.setAllowMultilineInput(true);
         mUrlBar.onFocusChanged(true, 0, null);
         measureAndLayoutUrlBar();
 
@@ -1320,6 +1332,7 @@ public class UrlBarUnitTest {
 
     @Test
     public void onFocusChanged_MultilineEligibility() {
+        mUrlBar.setAllowMultilineInput(true);
         mUrlBar.onFocusChanged(false, View.FOCUS_DOWN, null);
         assertTrue(mUrlBar.isHorizontallyScrollable());
 
@@ -1779,5 +1792,14 @@ public class UrlBarUnitTest {
         // SUPER_LONG_URL should still be truncated for performance.
         assertTrue(spanStart > NUMBER_OF_VISIBLE_CHARACTERS);
         assertEquals(SUPER_LONG_URL.length() - (MAX_DISPLAYABLE_LENGTH / 2), spanEnd);
+    }
+
+    @Test
+    public void testSetTextWithTruncation_identicalText_noReset() {
+        mUrlBar.setText("hello");
+        Editable textBefore = mUrlBar.getText();
+        mUrlBar.setTextWithTruncation("hello", UrlBar.ScrollType.SCROLL_TO_TLD, 5);
+        Editable textAfter = mUrlBar.getText();
+        assertSame(textBefore, textAfter);
     }
 }

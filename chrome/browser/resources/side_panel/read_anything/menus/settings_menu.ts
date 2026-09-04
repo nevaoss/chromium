@@ -15,6 +15,7 @@ import {WebUiListenerMixinLit} from '//resources/cr_elements/web_ui_listener_mix
 import {loadTimeData} from '//resources/js/load_time_data.js';
 import {CrLitElement, nothing} from '//resources/lit/v3_0/lit.rollup.js';
 import type {PropertyValues} from '//resources/lit/v3_0/lit.rollup.js';
+import {browserProxyFactory as userEducationProxyFactory} from '//resources/mojo/components/user_education/webui/user_education.mojom-webui.js';
 
 import type {VisualBrowserProxy} from '../app/visual_browser_proxy.js';
 import {VisualBrowserProxyImpl} from '../app/visual_browser_proxy.js';
@@ -24,7 +25,6 @@ import {openMenu} from '../shared/common.js';
 import {isActivationKey, isBackwardArrow, isForwardArrow, isVerticalArrow} from '../shared/keyboard_util.js';
 import {ReadAnythingSettingsAction, ReadAnythingSettingsChange} from '../shared/metrics_browser_proxy.js';
 import {ReadAnythingLogger} from '../shared/read_anything_logger.js';
-import {browserProxyFactory as userEducationProxyFactory} from '../user_education.mojom-webui.js';
 
 import {LINE_FOCUS_FEATURE_NAME} from './line_focus_menu.js';
 import {SettingsItemType} from './menu_util.js';
@@ -45,6 +45,12 @@ const MENU_ITEM_DATA: Record<SettingsOption, SettingsItem> = {
     id: SettingsOption.APPEARANCE,
     icon: 'read-anything:appearance',
     title: 'appearanceTitle',
+    itemType: SettingsItemType.MENU,
+  },
+  [SettingsOption.AUDIO]: {
+    id: SettingsOption.AUDIO,
+    icon: 'read-anything:volume-up',
+    title: 'audioTitle',
     itemType: SettingsItemType.MENU,
   },
   [SettingsOption.COLOR]: {
@@ -291,8 +297,8 @@ export class SettingsMenuElement extends SettingsMenuElementBase {
       SettingsOption.APPEARANCE,
       SettingsOption.MEDIA,
       SettingsOption.TEXT,
+      SettingsOption.AUDIO,
       SettingsOption.VOICE_SELECTION,
-      SettingsOption.VOICE_HIGHLIGHT,
     ];
 
     if (this.visualBrowserProxy_.isReadAnythingTranslateEntryPointEnabled()) {
@@ -308,8 +314,7 @@ export class SettingsMenuElement extends SettingsMenuElementBase {
 
   private initializeMenuOptions_() {
     let optionIDs: SettingsOption[];
-    if (this.visualBrowserProxy_.isReadAnythingImprovedUiEnabled() &&
-        this.visualBrowserProxy_.isImmersiveEnabled()) {
+    if (this.visualBrowserProxy_.isReadAnythingImprovedUiEnabled()) {
       optionIDs = this.initializeMenuOptionsForImprovedUi_();
     } else {
       optionIDs = this.initializeMenuOptionsLegacy_();

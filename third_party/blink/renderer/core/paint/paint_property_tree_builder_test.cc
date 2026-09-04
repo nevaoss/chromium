@@ -4,7 +4,8 @@
 
 #include "third_party/blink/renderer/core/paint/paint_property_tree_builder_test.h"
 
-#include "base/compiler_specific.h"
+#include <string_view>
+
 #include "cc/test/fake_layer_tree_host_delegate.h"
 #include "cc/trees/effect_node.h"
 #include "cc/trees/layer_tree_host.h"
@@ -3774,7 +3775,7 @@ TEST_P(PaintPropertyTreeBuilderTest, ContainPaintOrStyleLayoutTreeState) {
     // properties effect.
     EXPECT_EQ(clip_properties->EffectIsolationNode()->Parent(),
               &clip_local_properties.Effect());
-    if (UNSAFE_TODO(strcmp(containment, "paint")) == 0) {
+    if (std::string_view(containment) == "paint") {
       // If we contain paint, then clip isolation node is parented to the
       // overflow clip, which is in turn parented to the local border box
       // properties clip.
@@ -8010,6 +8011,45 @@ TEST_P(SingleAxisPaintPropertyTest, NestedStickyShiftingStickyBox) {
 
   EXPECT_EQ(gfx::Vector2dF(25, 0), child_sticky->Get2dTranslation());
   EXPECT_EQ(gfx::Vector2dF(0, 0), grandchild_sticky->Get2dTranslation());
+}
+
+TEST_P(SingleAxisPaintPropertyTest, StickyBlockUnderStickyInline) {
+  SetBodyInnerHTML(R"HTML(
+    <style>
+      #scroller {
+        width: 200px;
+        height: 200px;
+        overflow-x: clip;
+        overflow-y: scroll;
+      }
+      #contents { height: 500px; }
+      #before { height: 100px; }
+      #container { height: 300px; }
+      #outer { display: inline; position: sticky; top: 50px; }
+      #inner {
+        display: block;
+        position: sticky;
+        top: 60px;
+        width: 100px;
+        height: 50px;
+      }
+    </style>
+    <div id="scroller">
+      <div id="contents">
+        <div id="before"></div>
+        <div id="container">
+          <span id="outer"><span id="inner"></span></span>
+        </div>
+      </div>
+    </div>
+  )HTML");
+
+  const auto* outer_translation = StickyTranslation("outer");
+  ASSERT_TRUE(outer_translation);
+  const auto* inner_constraint = StickyConstraint("inner");
+  ASSERT_TRUE(inner_constraint);
+  EXPECT_EQ(outer_translation->GetCompositorElementId(),
+            inner_constraint->nearest_element_shifting_sticky_box);
 }
 
 TEST_P(SingleAxisPaintPropertyTest, NestedStickyShiftingContainingBlock) {

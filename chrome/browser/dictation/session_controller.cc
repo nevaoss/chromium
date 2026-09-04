@@ -14,6 +14,7 @@
 #include "base/state_transitions.h"
 #include "base/strings/string_util.h"
 #include "base/task/single_thread_task_runner.h"
+#include "chrome/browser/dictation/features.h"
 #include "chrome/browser/dictation/logging.h"
 #include "chrome/browser/dictation/metrics.h"
 #include "chrome/browser/dictation/session_controller_delegate.h"
@@ -58,7 +59,7 @@ SessionController::~SessionController() {
   CHECK(state_ != SessionState::kInactive ||
         (!attached_stream_provider_ && finalizing_stream_providers_.empty()));
   if (attached_stream_provider_) {
-    EndDictationStream();
+    EndDictationStream(DictationStreamEndTrigger::kDestructor);
   }
   VT_LOG(GetBrowserContext()) << "=== Session Ended";
 }
@@ -121,7 +122,7 @@ void SessionController::DidGetUserInteraction(
 
   if (key_event.windows_key_code == ui::VKEY_ESCAPE) {
     if (attached_stream_provider_) {
-      EndDictationStream();
+      EndDictationStream(DictationStreamEndTrigger::kEscapeKey);
     } else {
       FinalizeAndShutdown();
     }
@@ -132,7 +133,7 @@ void SessionController::DidGetUserInteraction(
   const bool event_has_text = !base::IsUnicodeControl(key_event.text[0]);
   if (attached_stream_provider_ && web_contents()->IsFocusedElementEditable() &&
       event_has_text) {
-    EndDictationStream();
+    EndDictationStream(DictationStreamEndTrigger::kUserTyping);
   }
 }
 
@@ -153,7 +154,12 @@ void SessionController::OnFocusChangedInPage(
   }
 
   if (attached_stream_provider_) {
-    EndDictationStream();
+    EndDictationStream(DictationStreamEndTrigger::kFocusChange);
+  }
+
+  if (kSessionEndsOnStreamEnd.Get()) {
+    // Do not start additional streams, if we only do one stream in a session.
+    return;
   }
 
   if (details.editable_level == content::EditableLevel::kNotEditable ||
@@ -198,12 +204,17 @@ void SessionController::PrimaryPageChanged(content::Page& page) {
   EndSessionAsynchronously();
 }
 
-void SessionController::EndDictationStream() {
+void SessionController::EndDictationStream(DictationStreamEndTrigger trigger) {
   VT_LOG(GetBrowserContext()) << __func__;
   CHECK(attached_stream_provider_);
   CHECK(state_ == SessionState::kStreamInitializing ||
         state_ == SessionState::kTranscribing);
-  attached_stream_provider_->Stop();
+  if (kSessionEndsOnStreamEnd.Get()) {
+    // If ending a stream also ends the session, trigger shutdown after this one
+    // finalizes.
+    is_shutting_down_ = true;
+  }
+  attached_stream_provider_->Stop(trigger);
   // TODO(b/525943882): Consider whether an initializing stream should be
   // immediately moved to deletion, rather than finalizing.
   finalizing_stream_providers_.insert(std::move(attached_stream_provider_));
@@ -217,20 +228,23 @@ void SessionController::UpdateAudioLevel(float audio_level) {
 }
 
 void SessionController::UiRequestEndSession() {
+  if (attached_stream_provider_) {
+    EndDictationStream(DictationStreamEndTrigger::kCancelButton);
+  }
   // EndSession will destroy `this` which owns other objects that call into here
   // so PostTask to avoid destroying objects in the callstack.
   EndSessionAsynchronously();
 }
 
 void SessionController::UiRequestEndActiveStream() {
-  EndDictationStream();
+  EndDictationStream(DictationStreamEndTrigger::kDoneButton);
 }
 
 void SessionController::FinalizeAndShutdown() {
   VT_LOG(GetBrowserContext()) << __func__;
   is_shutting_down_ = true;
   if (attached_stream_provider_) {
-    EndDictationStream();
+    EndDictationStream(DictationStreamEndTrigger::kShutdown);
   } else if (state_ == SessionState::kInactive) {
     // EndSession will destroy `this` which owns other objects that call into
     // here so PostTask to avoid destroying objects in the callstack.

@@ -17,7 +17,6 @@
 #include "chrome/browser/ui/omnibox/omnibox_controller.h"
 #include "chrome/browser/ui/omnibox/omnibox_edit_model.h"
 #include "chrome/browser/ui/omnibox/omnibox_next_features.h"
-#include "components/omnibox/common/omnibox_features.h"
 #include "chrome/browser/ui/tabs/public/tab_features.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/views/omnibox/omnibox_view_views.h"
@@ -29,7 +28,9 @@
 #include "components/lens/lens_overlay_invocation_source.h"
 #include "components/omnibox/browser/autocomplete_controller.h"
 #include "components/omnibox/browser/mock_aim_eligibility_service.h"
+#include "components/omnibox/common/omnibox_features.h"
 #include "components/prefs/pref_service.h"
+#include "components/tabs/public/tab_interface.h"
 #include "content/public/test/browser_test.h"
 #include "content/public/test/fake_service_worker_context.h"
 #include "content/public/test/test_storage_partition.h"
@@ -227,6 +228,37 @@ class ChromeAutocompleteProviderClientWithChipTest
   base::test::ScopedFeatureList feature_list_;
 };
 
+IN_PROC_BROWSER_TEST_F(ChromeAutocompleteProviderClientWithChipTest,
+                       IsOmniboxNextLensSearchChipEnabled) {
+  EXPECT_TRUE(
+      GetAutocompleteProviderClient()->IsOmniboxNextLensSearchChipEnabled());
+  EXPECT_FALSE(
+      GetAutocompleteProviderClient()->IsAskGShowChipEnabled());
+}
+
+class ChromeAutocompleteProviderClientAskGShowChipTest
+    : public ChromeAutocompleteProviderClientTest {
+ protected:
+  ChromeAutocompleteProviderClientAskGShowChipTest() {
+    feature_list_.InitWithFeaturesAndParameters(
+        {{omnibox::internal::kWebUIOmniboxAimPopup, {}},
+         {omnibox::kWebUIOmniboxAskGAboutThisPage,
+          {{"Omnibox_AskGShowChip", "true"}}}},
+        {omnibox::internal::kWebUIOmniboxSimplification});
+  }
+
+ private:
+  base::test::ScopedFeatureList feature_list_;
+};
+
+IN_PROC_BROWSER_TEST_F(ChromeAutocompleteProviderClientAskGShowChipTest,
+                       IsAskGShowChipEnabled) {
+  EXPECT_FALSE(
+      GetAutocompleteProviderClient()->IsOmniboxNextLensSearchChipEnabled());
+  EXPECT_TRUE(
+      GetAutocompleteProviderClient()->IsAskGShowChipEnabled());
+}
+
 class ChromeAutocompleteProviderClientAskGCoBrowseTest
     : public ChromeAutocompleteProviderClientTest {
  protected:
@@ -252,7 +284,7 @@ class ChromeAutocompleteProviderClientAskGCoBrowseTest
 IN_PROC_BROWSER_TEST_F(ChromeAutocompleteProviderClientAskGCoBrowseTest,
                        OpensSidePanel) {
   // Ensure the active tab is valid.
-  ASSERT_TRUE(browser()->tab_strip_model()->GetActiveWebContents());
+  ASSERT_TRUE(browser()->GetActiveTabInterface()->GetContents());
 
   // Lens should NOT be opened.
   EXPECT_CALL(*GetLensSearchController(),
@@ -266,6 +298,16 @@ IN_PROC_BROWSER_TEST_F(ChromeAutocompleteProviderClientAskGCoBrowseTest,
   // Verify that the side panel is open.
   ASSERT_TRUE(
       base::test::RunUntil([&]() { return IsContextualTasksSidePanelOpen(); }));
+
+  // Verify that the side panel web contents is focused.
+  auto* controller = contextual_tasks::ContextualTasksPanelController::From(
+      browser()->GetActiveTabInterface()->GetBrowserWindowInterface());
+  ASSERT_TRUE(controller);
+  content::WebContents* side_panel_contents =
+      controller->GetActiveWebContents();
+  ASSERT_TRUE(side_panel_contents);
+  EXPECT_TRUE(base::test::RunUntil(
+      [&]() { return side_panel_contents->ContainsOrIsFocusedWebContents(); }));
 }
 
 class ChromeAutocompleteProviderClientAskGCoBrowseWithLensOverlayTest
@@ -293,7 +335,7 @@ class ChromeAutocompleteProviderClientAskGCoBrowseWithLensOverlayTest
 IN_PROC_BROWSER_TEST_F(
     ChromeAutocompleteProviderClientAskGCoBrowseWithLensOverlayTest,
     OpensSidePanelAndSetsAutoTrigger) {
-  ASSERT_TRUE(browser()->tab_strip_model()->GetActiveWebContents());
+  ASSERT_TRUE(browser()->GetActiveTabInterface()->GetContents());
 
   // Lens overlay should NOT be opened immediately.
   EXPECT_CALL(*GetLensSearchController(),

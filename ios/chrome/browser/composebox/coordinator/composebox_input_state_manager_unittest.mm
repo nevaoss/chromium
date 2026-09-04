@@ -42,6 +42,7 @@
 - (ComposeboxModelOption)defaultModel;
 - (void)onDriveDisclaimerChecked:
     (drive_picker::DriveDisclaimerController::DisclaimerStatus)status;
+- (BOOL)isAttachmentAllowed:(ComposeboxAttachmentOption)attachmentOption;
 @end
 
 @interface FakeComposeboxInputStateManagerDelegate
@@ -1382,4 +1383,54 @@ TEST_F(ComposeboxInputStateManagerTest, OnDriveDisclaimerChecked) {
   EXPECT_EQ(
       pref_service_.GetInteger(contextual_search::kDriveConsentState),
       static_cast<int>(contextual_search::DriveConsentState::kRestricted));
+}
+
+// Test that changing or clearing the primary account immediately resets the
+// Drive consent state preference to kNotReady.
+TEST_F(ComposeboxInputStateManagerTest,
+       TestPrimaryAccountChangeResetsDriveConsentPref) {
+  pref_service_.SetInteger(
+      contextual_search::kDriveConsentState,
+      static_cast<int>(contextual_search::DriveConsentState::kConsent));
+  EXPECT_EQ(pref_service_.GetInteger(contextual_search::kDriveConsentState),
+            static_cast<int>(contextual_search::DriveConsentState::kConsent));
+
+  identity_test_env_.MakePrimaryAccountAvailable("user@example.com",
+                                                 signin::ConsentLevel::kSignin);
+  EXPECT_EQ(pref_service_.GetInteger(contextual_search::kDriveConsentState),
+            static_cast<int>(contextual_search::DriveConsentState::kNotReady));
+
+  pref_service_.SetInteger(
+      contextual_search::kDriveConsentState,
+      static_cast<int>(contextual_search::DriveConsentState::kConsent));
+  EXPECT_EQ(pref_service_.GetInteger(contextual_search::kDriveConsentState),
+            static_cast<int>(contextual_search::DriveConsentState::kConsent));
+
+  identity_test_env_.ClearPrimaryAccount();
+  EXPECT_EQ(pref_service_.GetInteger(contextual_search::kDriveConsentState),
+            static_cast<int>(contextual_search::DriveConsentState::kNotReady));
+}
+
+// Tests that Drive attachment option is not allowed in Incognito mode.
+TEST_F(ComposeboxInputStateManagerTest, TestDriveNotAllowedInIncognito) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitWithFeatures(
+      {omnibox::kComposeboxDriveContextMenuOption}, {});
+
+  ComposeboxInputStateManager* incognitoManager =
+      [[ComposeboxInputStateManager alloc]
+           initWithWebStateList:&web_state_list_
+                     modeHolder:mode_holder_
+                    prefService:&pref_service_
+          aimEligibilityService:mock_aim_service_.get()
+                identityManager:nullptr
+             templateURLService:nullptr
+                  sessionHandle:session_handle_.get()
+                     entrypoint:ComposeboxEntrypoint::kOther
+                    isIncognito:YES
+               urlLoaderFactory:shared_url_loader_factory_];
+
+  EXPECT_FALSE([incognitoManager
+      isAttachmentAllowed:ComposeboxAttachmentOption::kDrive]);
+  [incognitoManager disconnect];
 }

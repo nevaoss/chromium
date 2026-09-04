@@ -2,6 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+import type {ChromeEvent} from '/tools/typescript/definitions/chrome_event.js';
+
+import {EventForwarder} from './read_anything_types.js';
+
 export interface AxSegment {
   axNodeId: number;
   start: number;
@@ -19,6 +23,25 @@ export interface SkiaImageBitmap {
 // Browser proxy for document distillation, AXTree node hierarchy navigation,
 // selection tracking, DOM anchor mapping, and content rendering callbacks.
 export interface ContentBrowserProxy {
+  //////////////////////////////////////////////////////////////////////////////
+  // Incoming events (C++ -> TypeScript):
+
+  onAnchorsReadyForReadability: ChromeEvent<() => void>;
+  onImageDownloaded: ChromeEvent<(nodeId: number) => void>;
+  onNodeWillBeDeleted: ChromeEvent<(nodeId: number) => void>;
+  onMainFrameSameDocumentNavigation: ChromeEvent<(url: string) => void>;
+  onRenderedTextMappingReady: ChromeEvent<() => void>;
+
+  showEmpty: ChromeEvent<() => void>;
+  showLoading: ChromeEvent<() => void>;
+  updateImages: ChromeEvent<() => void>;
+  updateLinks: ChromeEvent<() => void>;
+  updateSelection: ChromeEvent<() => void>;
+  updateContent: ChromeEvent<() => void>;
+
+  //////////////////////////////////////////////////////////////////////////////
+  // Outgoing calls (TypeScript -> C++):
+
   getStartNodeId(): number;
   getStartOffset(): number;
   getEndNodeId(): number;
@@ -60,7 +83,6 @@ export interface ContentBrowserProxy {
   onNoTextContent(): void;
   onCopy(): void;
   onDistilled(wordCount: number): void;
-  updateSelection(): void;
   onLinkClicked(nodeId: number): void;
   onRenderedTextBlocksAvailable(blocks: string[]): void;
   onConnected(): void;
@@ -73,6 +95,65 @@ export interface ContentBrowserProxy {
 }
 
 export class ContentBrowserProxyImpl implements ContentBrowserProxy {
+  onAnchorsReadyForReadability = new EventForwarder<() => void>();
+  onImageDownloaded = new EventForwarder<(nodeId: number) => void>();
+  onNodeWillBeDeleted = new EventForwarder<(nodeId: number) => void>();
+  onMainFrameSameDocumentNavigation =
+      new EventForwarder<(url: string) => void>();
+  onRenderedTextMappingReady = new EventForwarder<() => void>();
+  showEmpty = new EventForwarder<() => void>();
+  showLoading = new EventForwarder<() => void>();
+  updateImages = new EventForwarder<() => void>();
+  updateLinks = new EventForwarder<() => void>();
+  updateSelection = new EventForwarder<() => void>();
+  updateContent = new EventForwarder<() => void>();
+
+  constructor() {
+    chrome.readingMode.onAnchorsReadyForReadability = () => {
+      this.onAnchorsReadyForReadability.forward();
+    };
+
+    chrome.readingMode.onImageDownloaded = (nodeId: number) => {
+      this.onImageDownloaded.forward(nodeId);
+    };
+
+    chrome.readingMode.onNodeWillBeDeleted = (nodeId: number) => {
+      this.onNodeWillBeDeleted.forward(nodeId);
+    };
+
+    chrome.readingMode.onMainFrameSameDocumentNavigation = (url: string) => {
+      this.onMainFrameSameDocumentNavigation.forward(url);
+    };
+
+    chrome.readingMode.onRenderedTextMappingReady = () => {
+      this.onRenderedTextMappingReady.forward();
+    };
+
+    chrome.readingMode.showEmpty = () => {
+      this.showEmpty.forward();
+    };
+
+    chrome.readingMode.showLoading = () => {
+      this.showLoading.forward();
+    };
+
+    chrome.readingMode.updateImages = () => {
+      this.updateImages.forward();
+    };
+
+    chrome.readingMode.updateLinks = () => {
+      this.updateLinks.forward();
+    };
+
+    chrome.readingMode.updateSelection = () => {
+      this.updateSelection.forward();
+    };
+
+    chrome.readingMode.updateContent = () => {
+      this.updateContent.forward();
+    };
+  }
+
   getStartNodeId(): number {
     return chrome.readingMode.startNodeId;
   }
@@ -150,10 +231,6 @@ export class ContentBrowserProxyImpl implements ContentBrowserProxy {
 
   onNoTextContent(): void {
     chrome.readingMode.onNoTextContent();
-  }
-
-  updateSelection(): void {
-    chrome.readingMode.updateSelection();
   }
 
   onLinkClicked(nodeId: number): void {

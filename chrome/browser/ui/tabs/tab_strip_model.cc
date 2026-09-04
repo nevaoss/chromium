@@ -2587,9 +2587,6 @@ tabs::TabCollectionHandle TabStripModel::GetUnpinnedTabsCollectionHandle(
 bool TabStripModel::IsContextMenuCommandEnabled(
     int context_index,
     ContextMenuCommand command_id) const {
-  // Command must be valid.
-  DCHECK(command_id > CommandFirst && command_id < CommandLast);
-
   // Context Index having an index greater than tab strip model doesnt make
   // sense since this context menu must target a tab.
   if (!ContainsIndex(context_index)) {
@@ -2687,18 +2684,13 @@ bool TabStripModel::IsContextMenuCommandEnabled(
 
     case CommandToggleVertical:
       return true;
-
-    default:
-      SCOPED_CRASH_KEY_NUMBER("TabStripModel", "command_id", command_id);
-      NOTREACHED() << "Unsupported command: " << command_id;
   }
+  SCOPED_CRASH_KEY_NUMBER("TabStripModel", "command_id", command_id);
+  NOTREACHED() << "Unsupported command: " << command_id;
 }
 
 void TabStripModel::ExecuteContextMenuCommand(int context_index,
                                               ContextMenuCommand command_id) {
-  // This should have been tested by IsContextMenuCommandEnabled.
-  CHECK(command_id > CommandFirst && command_id < CommandLast);
-
   // The tab strip may have been modified while the context menu was open,
   // including closing the tab originally at `context_index`.
   if (!ContainsIndex(context_index)) {
@@ -3109,10 +3101,6 @@ void TabStripModel::ExecuteContextMenuCommand(int context_index,
       AddToNewGroupFromContextIndex(context_index);
       break;
     }
-    case CommandFirst:
-    case CommandAddNote:
-    case CommandLast:
-      NOTREACHED();
   }
 }
 
@@ -4141,7 +4129,9 @@ TabStripSelectionChange TabStripModel::SetSelection(
               base::TimeTicks::Now(),
               resource_coordinator::ResourceCoordinatorTabHelper::IsLoaded(
                   selection.new_contents),
-              view && view->HasSavedCompositorFrame());
+              view && view->HasSavedCompositorFrame(),
+              resource_coordinator::ResourceCoordinatorTabHelper::IsFrozen(
+                  selection.new_contents));
         }
       }
 
@@ -4827,6 +4817,18 @@ std::unique_ptr<tabs::TabModel> TabStripModel::RemoveTabFromIndexImpl(
 
   if (tab_detach_reason == tabs::TabInterface::DetachReason::kDelete) {
     tab_to_remove->DestroyTabFeatures();
+  }
+
+  // If a tab is removed that does not belong to the focused group (and is not
+  // a pinned tab allowed in focus mode), drop focus mode.
+  std::optional<tab_groups::TabGroupId> focused_group = GetFocusedGroup();
+  if (focused_group.has_value() &&
+      !tabs::TabStripModelSelectionState::IsTabValidInFocusedGroup(
+          tab_to_remove, focused_group)) {
+    base::UmaHistogramEnumeration(
+        "TabGroups.Focus.ExitReason",
+        TabGroupFocusExitReason::kTabOutsideGroupClosed);
+    SetFocusedGroup(std::nullopt);
   }
 
   std::optional<tab_groups::TabGroupId> old_focused_group =
@@ -5963,8 +5965,7 @@ void TabStripModel::MaybeRemoveSplitsForUpdate(
 void TabStripModel::CreateHistoricalSplitIfClosing(
     const std::vector<tabs::TabInterface*>& tabs,
     uint32_t close_types) {
-  if (base::FeatureList::IsEnabled(tabs::kSplitViewTabRestore) &&
-      (close_types & TabCloseTypes::CLOSE_CREATE_HISTORICAL_TAB)) {
+  if (close_types & TabCloseTypes::CLOSE_CREATE_HISTORICAL_TAB) {
     std::map<split_tabs::SplitTabId, int> split_closing_counts;
     for (tabs::TabInterface* t : tabs) {
       std::optional<split_tabs::SplitTabId> split_id = t->GetSplit();

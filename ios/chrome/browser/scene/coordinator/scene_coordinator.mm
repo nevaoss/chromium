@@ -760,6 +760,10 @@ inline LayoutStateScenePassKey PassKey() {
   }
   if (_assistantAIMCoordinator) {
     [self revealAssistantInMinimizedState:minimized];
+    // If the app was backgrounded, the OS might have killed the WebProcess.
+    // Calling loadIfNecessary ensures the WebState restarts the process and
+    // reloads the page if it died, while being a no-op if it is still alive.
+    [_assistantAIMCoordinator loadIfNecessary];
     return;
   }
   _assistantAIMCoordinator = [[AssistantAIMCoordinator alloc]
@@ -2586,14 +2590,22 @@ inline LayoutStateScenePassKey PassKey() {
     return;
   }
 
-  if (_geminiContainerCoordinator) {
-    __weak __typeof(self) weakSelf = self;
-    [_geminiContainerCoordinator dismissWithCompletion:^{
-      [weakSelf geminiContainerCoordinatorDidDismiss];
-      if (completion) {
-        completion();
-      }
-    }];
+  if (IsIOSGeminiBottomSheetMigrationEnabled()) {
+    if (_geminiContainerCoordinator) {
+      __weak __typeof(self) weakSelf = self;
+      [_geminiContainerCoordinator dismissWithCompletion:^{
+        [weakSelf geminiContainerCoordinatorDidDismiss];
+        if (completion) {
+          completion();
+        }
+      }];
+      return;
+    }
+    // If feature flag is enabled but container is not present then just run the
+    // completion block.
+    if (completion) {
+      completion();
+    }
     return;
   }
 
@@ -2736,6 +2748,15 @@ inline LayoutStateScenePassKey PassKey() {
         animated, gemini::FloatyUpdateSource::IneligibleSite);
   } else {
     geminiBrowserAgent->ShowFloatyIfInvoked(animated, source);
+  }
+}
+
+
+- (void)minimizeGeminiIfInvoked {
+  GeminiBrowserAgent* geminiBrowserAgent =
+      GeminiBrowserAgent::FromBrowser(_regularBrowser.get());
+  if (geminiBrowserAgent) {
+    geminiBrowserAgent->CollapseFloatyIfInvoked();
   }
 }
 

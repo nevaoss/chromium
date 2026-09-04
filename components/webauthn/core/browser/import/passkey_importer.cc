@@ -9,6 +9,7 @@
 #include "base/metrics/histogram_functions.h"
 #include "base/rand_util.h"
 #include "base/task/sequenced_task_runner.h"
+#include "base/time/time.h"
 #include "components/webauthn/core/browser/import/import_processing_result.h"
 #include "components/webauthn/core/browser/import/imported_passkey_checker.h"
 #include "components/webauthn/core/browser/import/passkey_import_candidate.h"
@@ -24,7 +25,8 @@ ImportedPasskeyInfo CandidateToImportedPasskeyInfo(
     ImportedPasskeyStatus status) {
   return {.rp_id = candidate.rp_id,
           .user_name = candidate.user_name,
-          .status = status};
+          .status = status,
+          .exporter_creation_time = candidate.exporter_creation_time};
 }
 
 sync_pb::WebauthnCredentialSpecifics CandidateToSpecifics(
@@ -39,8 +41,26 @@ sync_pb::WebauthnCredentialSpecifics CandidateToSpecifics(
   passkey.set_rp_id(candidate.rp_id);
   passkey.set_user_name(candidate.user_name);
   passkey.set_user_display_name(candidate.user_display_name);
-  passkey.set_creation_time(candidate.creation_time);
   return passkey;
+}
+
+sync_pb::WebauthnCredentialSpecifics_Encrypted CandidateToEncryptedSpecifics(
+    const PasskeyImportCandidate& candidate) {
+  sync_pb::WebauthnCredentialSpecifics_Encrypted encrypted;
+  encrypted.set_private_key(candidate.private_key.data(),
+                            candidate.private_key.size());
+  if (!candidate.hmac_secret.empty()) {
+    encrypted.set_hmac_secret(candidate.hmac_secret.data(),
+                              candidate.hmac_secret.size());
+  }
+  if (candidate.large_blob.has_value() &&
+      candidate.large_blob_uncompressed_size.has_value()) {
+    encrypted.set_large_blob(std::string(candidate.large_blob->begin(),
+                                         candidate.large_blob->end()));
+    encrypted.set_large_blob_uncompressed_size(
+        *candidate.large_blob_uncompressed_size);
+  }
+  return encrypted;
 }
 
 void RecordPasskeyImportError(const PasskeyImportCandidate& candidate,
@@ -93,15 +113,9 @@ void PasskeyImporter::ProcessPasskeys(
 
     sync_pb::WebauthnCredentialSpecifics passkey =
         CandidateToSpecifics(candidate);
-    sync_pb::WebauthnCredentialSpecifics_Encrypted encrypted;
-    encrypted.set_private_key(candidate.private_key.data(),
-                              candidate.private_key.size());
-    if (!candidate.hmac_secret.empty()) {
-      encrypted.set_hmac_secret(candidate.hmac_secret.data(),
-                                candidate.hmac_secret.size());
-    }
     if (!webauthn::passkey_model_utils::EncryptWebauthnCredentialSpecificsData(
-            trusted_vault_key, encrypted, &passkey)) {
+            trusted_vault_key, CandidateToEncryptedSpecifics(candidate),
+            &passkey)) {
       RecordPasskeyImportError(
           candidate, ImportedPasskeyStatus::kEncryptionFailed, result);
       continue;
@@ -137,7 +151,9 @@ void PasskeyImporter::ProcessPasskeys(
 void PasskeyImporter::ImportPasskeys(
     std::vector<int> selected_conflicting_passkey_ids,
     base::OnceCallback<void(int)> passkeys_imported_callback) {
+  int64_t time_now = base::Time::Now().InMillisecondsSinceUnixEpoch();
   for (sync_pb::WebauthnCredentialSpecifics& passkey : valid_passkeys_) {
+    passkey.set_creation_time(time_now);
     passkey_model_->CreatePasskey(passkey);
   }
 
@@ -145,7 +161,10 @@ void PasskeyImporter::ImportPasskeys(
   for (int incoming_passkey_id : selected_conflicting_passkey_ids) {
     CHECK_LT(static_cast<size_t>(incoming_passkey_id),
              conflicting_passkey_cache_size);
-    passkey_model_->CreatePasskey(conflicting_passkeys_[incoming_passkey_id]);
+    sync_pb::WebauthnCredentialSpecifics& passkey =
+        conflicting_passkeys_[incoming_passkey_id];
+    passkey.set_creation_time(time_now);
+    passkey_model_->CreatePasskey(passkey);
   }
 
   size_t imported_passkeys_count = valid_passkeys_.size() +

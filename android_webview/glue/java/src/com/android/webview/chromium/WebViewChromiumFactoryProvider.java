@@ -5,6 +5,7 @@
 package com.android.webview.chromium;
 
 import android.app.Application;
+import android.app.compat.CompatChanges;
 import android.content.Context;
 import android.content.Intent;
 import android.content.SharedPreferences;
@@ -30,7 +31,9 @@ import android.webkit.ServiceWorkerController;
 import android.webkit.TokenBindingService;
 import android.webkit.TracingController;
 import android.webkit.ValueCallback;
+import android.webkit.WebChromeClient;
 import android.webkit.WebIconDatabase;
+import android.webkit.WebSettings;
 import android.webkit.WebStorage;
 import android.webkit.WebView;
 import android.webkit.WebViewDatabase;
@@ -55,6 +58,7 @@ import org.chromium.android_webview.AwContents;
 import org.chromium.android_webview.AwContentsStatics;
 import org.chromium.android_webview.AwCookieManager;
 import org.chromium.android_webview.AwSettings;
+import org.chromium.android_webview.CompatQuirks;
 import org.chromium.android_webview.DualTraceEvent;
 import org.chromium.android_webview.ManifestMetadataUtil;
 import org.chromium.android_webview.StartupCallSite;
@@ -256,7 +260,6 @@ public class WebViewChromiumFactoryProvider implements WebViewFactoryProvider {
             return mSharedStatics.getVariationsHeader();
         }
     }
-    ;
 
     private Statics mStaticsAdapter;
 
@@ -313,14 +316,21 @@ public class WebViewChromiumFactoryProvider implements WebViewFactoryProvider {
         return new ContentSettingsAdapter(settings);
     }
 
-    // Overridden in downstream subclass when building using the unreleased Android SDK.
     boolean shouldEnableUserAgentReduction() {
-        return false;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.CINNAMON_BUN) {
+            return CompatChanges.isChangeEnabled(WebSettings.ENABLE_USER_AGENT_REDUCTION);
+        } else {
+            return false;
+        }
     }
 
-    // Overridden in downstream subclass when building using the unreleased Android SDK.
     boolean shouldEnableFileSystemAccess() {
-        return false;
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.CINNAMON_BUN) {
+            return CompatChanges.isChangeEnabled(
+                    WebChromeClient.FileChooserParams.ENABLE_FILE_SYSTEM_ACCESS);
+        } else {
+            return false;
+        }
     }
 
     private void deleteContentsOnPackageDowngrade(PackageInfo packageInfo) {
@@ -469,6 +479,7 @@ public class WebViewChromiumFactoryProvider implements WebViewFactoryProvider {
             // WebView needs to make sure to always use the wrapped application context.
             ctx = ClassLoaderContextWrapperFactory.get(ctx);
             ContextUtils.initApplicationContext(ctx);
+            CompatQuirks.setDelegate(WebViewChromiumFactoryProvider::isQuirkEnabled);
 
             // Ensuring we set this before we might read it in any future calls to ApkInfo.
             // ApkInfo requires ContextUtils' application context, so this has to happen after.
@@ -1131,5 +1142,25 @@ public class WebViewChromiumFactoryProvider implements WebViewFactoryProvider {
             mDestroyedAwContents.destroy();
         }
         return mDestroyedAwContents;
+    }
+
+    private static boolean isQuirkEnabled(@CompatQuirks.Quirk int quirk) {
+        int targetSdkVersion =
+                ContextUtils.getApplicationContext().getApplicationInfo().targetSdkVersion;
+        return switch (quirk) {
+            case CompatQuirks.Quirk.ALLOW_SNIFFING_FILE_URLS,
+                    CompatQuirks.Quirk.DATA_DIRECTORY_LOCK_WARN_ONLY ->
+                    targetSdkVersion < Build.VERSION_CODES.P;
+            case CompatQuirks.Quirk.FIXUP_OCTOTHORPES_IN_LOAD_DATA ->
+                    targetSdkVersion < Build.VERSION_CODES.Q;
+            case CompatQuirks.Quirk.ALLOW_FILE_URL_ACCESS_BY_DEFAULT ->
+                    targetSdkVersion < Build.VERSION_CODES.R;
+            case CompatQuirks.Quirk.LEGACY_DARK_MODE ->
+                    Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU
+                            ? targetSdkVersion < Build.VERSION_CODES.TIRAMISU
+                            : !CompatChanges.isChangeEnabled(
+                                    WebSettings.ENABLE_SIMPLIFIED_DARK_MODE);
+            default -> false;
+        };
     }
 }

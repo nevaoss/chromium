@@ -47,7 +47,6 @@
 #include "components/omnibox/browser/page_classification_functions.h"
 #include "components/omnibox/browser/remote_suggestions_service.h"
 #include "components/omnibox/browser/search_scoring_signals_annotator.h"
-#include "components/omnibox/browser/suggestion_answer.h"
 #include "components/omnibox/browser/url_prefix.h"
 #include "components/omnibox/common/omnibox_feature_configs.h"
 #include "components/omnibox/common/omnibox_features.h"
@@ -1691,14 +1690,6 @@ void SearchProvider::PrefetchImages(SearchSuggestionParser::Results* results) {
     GURL entity_image_url = GURL(suggestion.entity_info().image_url());
     if (entity_image_url.is_valid()) {
       prefetch_image_urls.push_back(std::move(entity_image_url));
-    }
-
-    GURL answer_image_url =
-        suggestion.answer_template()
-            ? GURL(suggestion.answer_template()->answers(0).image().url())
-            : GURL();
-    if (answer_image_url.is_valid()) {
-      prefetch_image_urls.push_back(std::move(answer_image_url));
     }
   }
 

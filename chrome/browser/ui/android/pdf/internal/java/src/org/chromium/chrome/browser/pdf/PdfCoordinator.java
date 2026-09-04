@@ -62,6 +62,8 @@ import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.pdf.PdfUtils.PdfHyperlinkClickResult;
 import org.chromium.chrome.browser.pdf.PdfUtils.PdfLoadResult;
 import org.chromium.chrome.browser.profiles.Profile;
+import org.chromium.chrome.browser.tab.Tab;
+import org.chromium.chrome.browser.ui.native_page.BeforeUnloadCallback;
 import org.chromium.chrome.browser.ui.native_page.NativePageHost;
 import org.chromium.chrome.modules.on_demand.OnDemandModule;
 import org.chromium.components.browser_ui.styles.ChromeColors;
@@ -177,6 +179,20 @@ public class PdfCoordinator
     private boolean mPageNavAndEditVisible = true;
 
     @VisibleForTesting public ChromePdfViewerFragment mChromePdfViewerFragment;
+    private final Tab mTab;
+    private @Nullable PropertyModel mModalDialogModel;
+    private @Nullable Runnable mAlertDialogCancelRunnable;
+    private final BeforeUnloadCallback mBeforeUnloadCallback =
+            new BeforeUnloadCallback() {
+                @Override
+                public boolean handleBeforeUnload(Runnable onProceed, Runnable onCancel) {
+                    if (hasChanges()) {
+                        showLeaveConfirmationDialog(onProceed, onCancel);
+                        return true;
+                    }
+                    return false;
+                }
+            };
 
     /**
      * Creates a PdfCoordinator for the PdfPage.
@@ -186,7 +202,7 @@ public class PdfCoordinator
      * @param activity The current Activity.
      * @param filepath The pdf filepath.
      * @param title The pdf title.
-     * @param tabId The id of the tab.
+     * @param tab The tab.
      * @param url The url of the pdf.
      */
     public PdfCoordinator(
@@ -195,11 +211,12 @@ public class PdfCoordinator
             Activity activity,
             @Nullable String filepath,
             String title,
-            int tabId,
+            Tab tab,
             String url,
             PdfFragmentViewTracker pdfFragmentViewTracker) {
         mActivity = activity;
-        mTabId = String.valueOf(tabId);
+        mTab = tab;
+        mTabId = String.valueOf(tab.getId());
         mNativePageHost = host;
         mIsIncognito = profile.isOffTheRecord();
         mTitle = title;
@@ -274,6 +291,7 @@ public class PdfCoordinator
         if (reuseFragment && fragment != null) {
             mChromePdfViewerFragment.setDelegate(this);
         }
+        mTab.getUserDataHost().setUserData(BeforeUnloadCallback.class, mBeforeUnloadCallback);
     }
 
     private void relocateMisplacedFragmentViews() {
@@ -677,6 +695,7 @@ public class PdfCoordinator
         @Override
         public void onEnterEditMode() {
             super.onEnterEditMode();
+            PdfUtils.recordEditFabAction();
             if (mDelegate != null) {
                 mDelegate.onEditModeChanged(true);
             }
@@ -1125,7 +1144,11 @@ public class PdfCoordinator
         }
 
         private void overrideClickListeners(View view) {
-            view.setOnClickListener(v -> openPdfInExternalEditor());
+            view.setOnClickListener(
+                    v -> {
+                        PdfUtils.recordEditFabAction();
+                        openPdfInExternalEditor();
+                    });
             if (view instanceof ViewGroup) {
                 ViewGroup group = (ViewGroup) view;
                 for (int i = 0; i < group.getChildCount(); i++) {
@@ -1167,10 +1190,30 @@ public class PdfCoordinator
             mPdfSandboxHandle.close();
             mPdfSandboxHandle = null;
         }
+        if (mTab != null && !mTab.isDestroyed()) {
+            try {
+                if (mTab.getUserDataHost().getUserData(BeforeUnloadCallback.class)
+                        == mBeforeUnloadCallback) {
+                    mTab.getUserDataHost().removeUserData(BeforeUnloadCallback.class);
+                }
+            } catch (IllegalStateException ignored) {
+                // UserDataHost was already destroyed or key was already removed.
+            }
+        }
         if (mToolbarCoordinator != null) {
             mToolbarCoordinator.destroy();
         }
+        if (mModalDialogModel != null && mActivity instanceof ModalDialogManagerHolder) {
+            ModalDialogManager modalDialogManager =
+                    ((ModalDialogManagerHolder) mActivity).getModalDialogManager();
+            if (modalDialogManager != null) {
+                modalDialogManager.dismissDialog(
+                        mModalDialogModel, DialogDismissalCause.ACTIVITY_DESTROYED);
+            }
+            mModalDialogModel = null;
+        }
         if (mAlertDialog != null) {
+            mAlertDialogCancelRunnable = null;
             mAlertDialog.dismiss();
             mAlertDialog = null;
         }
@@ -1286,8 +1329,17 @@ public class PdfCoordinator
 
     @Override
     public boolean hasChanges() {
-        return mChromePdfViewerFragment != null
-                && (mChromePdfViewerFragment.hasUnsavedChanges() || mHasMadeAnyChanges);
+        if (mHasMadeAnyChanges) {
+            return true;
+        }
+        if (mChromePdfViewerFragment != null && mChromePdfViewerFragment.isAdded()) {
+            try {
+                return mChromePdfViewerFragment.hasUnsavedChanges();
+            } catch (IllegalStateException e) {
+                return false;
+            }
+        }
+        return false;
     }
 
     @Override
@@ -1295,12 +1347,21 @@ public class PdfCoordinator
         if (mActivity == null || mActivity.isFinishing() || mActivity.isDestroyed()) {
             return;
         }
+        ModalDialogManager modalDialogManager = null;
+        Runnable onConfirmWithMetric =
+                () -> {
+                    PdfUtils.recordDiscardAnnotations();
+                    if (onConfirm != null) {
+                        onConfirm.run();
+                    }
+                };
         if (mActivity instanceof ModalDialogManagerHolder) {
-            ModalDialogManager modalDialogManager =
-                    ((ModalDialogManagerHolder) mActivity).getModalDialogManager();
-            showReloadModalDialog(modalDialogManager, onConfirm);
+            modalDialogManager = ((ModalDialogManagerHolder) mActivity).getModalDialogManager();
+        }
+        if (modalDialogManager != null) {
+            showReloadModalDialog(modalDialogManager, onConfirmWithMetric);
         } else {
-            showReloadAlertDialog(onConfirm);
+            showReloadAlertDialog(onConfirmWithMetric);
         }
     }
 
@@ -1350,7 +1411,11 @@ public class PdfCoordinator
                 new ModalDialogProperties.Controller() {
                     @Override
                     public void onDismiss(
-                            PropertyModel model, @DialogDismissalCause int dismissalCause) {}
+                            PropertyModel model, @DialogDismissalCause int dismissalCause) {
+                        if (mModalDialogModel == model) {
+                            mModalDialogModel = null;
+                        }
+                    }
 
                     @Override
                     public void onClick(PropertyModel model, int buttonType) {
@@ -1389,11 +1454,17 @@ public class PdfCoordinator
                                 ModalDialogProperties.ButtonStyles.PRIMARY_FILLED_NEGATIVE_OUTLINE)
                         .build();
 
+        mModalDialogModel = model;
         manager.showDialog(model, ModalDialogType.APP);
     }
 
     private void showReloadAlertDialog(Runnable onConfirm) {
         if (mAlertDialog != null) {
+            if (mAlertDialogCancelRunnable != null) {
+                Runnable cancelRunnable = mAlertDialogCancelRunnable;
+                mAlertDialogCancelRunnable = null;
+                cancelRunnable.run();
+            }
             mAlertDialog.dismiss();
         }
         mAlertDialog =
@@ -1594,23 +1665,25 @@ public class PdfCoordinator
         mChromePdfViewerFragment.zoomTo(zoomLevel);
     }
 
-    /**
-     * Sets the edit mode of the PDF toolbar.
-     *
-     * @param editMode Whether to enable edit mode.
-     */
+    /** Enters edit mode if Inline PDF V2 is enabled. */
     @Override
-    public void setEditMode(boolean editMode) {
+    public void enterEditMode() {
         if (!PdfUtils.isInlinePdfV2EditEnabled()) {
-            if (!editMode) {
-                mChromePdfViewerFragment.setEditModeEnabled(false);
-            }
             return;
         }
-        if (!editMode && mChromePdfViewerFragment.hasUnsavedChanges()) {
+        mChromePdfViewerFragment.setEditModeEnabled(true);
+    }
+
+    /** Exits edit mode and applies any draft edits. */
+    @Override
+    public void exitEditMode() {
+        if (!PdfUtils.isInlinePdfV2EditEnabled()) {
+            return;
+        }
+        if (mChromePdfViewerFragment.hasUnsavedChanges()) {
             mChromePdfViewerFragment.applyDraftEdits();
         } else {
-            mChromePdfViewerFragment.setEditModeEnabled(editMode);
+            mChromePdfViewerFragment.setEditModeEnabled(false);
         }
     }
 
@@ -1892,7 +1965,11 @@ public class PdfCoordinator
                 new ModalDialogProperties.Controller() {
                     @Override
                     public void onDismiss(
-                            PropertyModel model, @DialogDismissalCause int dismissalCause) {}
+                            PropertyModel model, @DialogDismissalCause int dismissalCause) {
+                        if (mModalDialogModel == model) {
+                            mModalDialogModel = null;
+                        }
+                    }
 
                     @Override
                     public void onClick(PropertyModel model, int buttonType) {
@@ -1921,11 +1998,17 @@ public class PdfCoordinator
                                 ModalDialogProperties.ButtonStyles.PRIMARY_FILLED_NO_NEGATIVE)
                         .build();
 
+        mModalDialogModel = model;
         manager.showDialog(model, ModalDialogType.TAB);
     }
 
     private void showAlertDialog(View dialogView) {
         if (mAlertDialog != null) {
+            if (mAlertDialogCancelRunnable != null) {
+                Runnable cancelRunnable = mAlertDialogCancelRunnable;
+                mAlertDialogCancelRunnable = null;
+                cancelRunnable.run();
+            }
             mAlertDialog.dismiss();
         }
         mAlertDialog =
@@ -1943,7 +2026,6 @@ public class PdfCoordinator
                         .show();
     }
 
-    @VisibleForTesting
     @Nullable AlertDialog getAlertDialogForTesting() {
         return mAlertDialog;
     }
@@ -1957,18 +2039,149 @@ public class PdfCoordinator
         return mIsFitToPageActive;
     }
 
-    @VisibleForTesting
     void setIsFitToPageActiveForTesting(@TriState int isFitToPageActive) {
         mIsFitToPageActive = isFitToPageActive;
     }
 
-    @VisibleForTesting
     float getLastFitZoomForTesting() {
         return mLastFitZoom;
     }
 
-    @VisibleForTesting
     void setLastFitZoomForTesting(float lastFitZoom) {
         mLastFitZoom = lastFitZoom;
+    }
+
+    private void showLeaveConfirmationDialog(Runnable onProceed, Runnable onCancel) {
+        if (mActivity == null || mActivity.isFinishing() || mActivity.isDestroyed()) {
+            onProceed.run();
+            return;
+        }
+        ModalDialogManager modalDialogManager = null;
+        if (mActivity instanceof ModalDialogManagerHolder) {
+            modalDialogManager = ((ModalDialogManagerHolder) mActivity).getModalDialogManager();
+        }
+        if (mModalDialogModel != null && modalDialogManager != null) {
+            modalDialogManager.dismissDialog(
+                    mModalDialogModel, DialogDismissalCause.ACTION_ON_CONTENT);
+            mModalDialogModel = null;
+        }
+        if (mAlertDialog != null) {
+            if (mAlertDialogCancelRunnable != null) {
+                Runnable cancelRunnable = mAlertDialogCancelRunnable;
+                mAlertDialogCancelRunnable = null;
+                cancelRunnable.run();
+            }
+            mAlertDialog.dismiss();
+            mAlertDialog = null;
+        }
+        Runnable onProceedWithMetric =
+                () -> {
+                    PdfUtils.recordDiscardAnnotations();
+                    if (onProceed != null) {
+                        onProceed.run();
+                    }
+                };
+        if (modalDialogManager != null) {
+            showLeaveModalDialog(modalDialogManager, onProceedWithMetric, onCancel);
+        } else {
+            showLeaveAlertDialog(onProceedWithMetric, onCancel);
+        }
+    }
+
+    private void showLeaveModalDialog(
+            ModalDialogManager manager, Runnable onProceed, Runnable onCancel) {
+        ModalDialogProperties.Controller controller =
+                new ModalDialogProperties.Controller() {
+                    @Override
+                    public void onDismiss(
+                            PropertyModel model, @DialogDismissalCause int dismissalCause) {
+                        if (mModalDialogModel == model) {
+                            mModalDialogModel = null;
+                        }
+                        if (dismissalCause != DialogDismissalCause.POSITIVE_BUTTON_CLICKED
+                                && dismissalCause != DialogDismissalCause.ACTIVITY_DESTROYED
+                                && dismissalCause != DialogDismissalCause.TAB_DESTROYED
+                                && dismissalCause != DialogDismissalCause.WEB_CONTENTS_DESTROYED) {
+                            onCancel.run();
+                        }
+                    }
+
+                    @Override
+                    public void onClick(PropertyModel model, int buttonType) {
+                        if (buttonType == ModalDialogProperties.ButtonType.POSITIVE) {
+                            manager.dismissDialog(
+                                    model, DialogDismissalCause.POSITIVE_BUTTON_CLICKED);
+                            onProceed.run();
+                        } else if (buttonType == ModalDialogProperties.ButtonType.NEGATIVE) {
+                            manager.dismissDialog(
+                                    model, DialogDismissalCause.NEGATIVE_BUTTON_CLICKED);
+                        }
+                    }
+                };
+
+        PropertyModel model =
+                new PropertyModel.Builder(ModalDialogProperties.ALL_KEYS)
+                        .with(ModalDialogProperties.CONTROLLER, controller)
+                        .with(ModalDialogProperties.CANCEL_ON_TOUCH_OUTSIDE, true)
+                        .with(
+                                ModalDialogProperties.TITLE,
+                                mActivity.getString(
+                                        R.string.pdf_unsaved_changes_dialog_leave_title))
+                        .with(
+                                ModalDialogProperties.MESSAGE_PARAGRAPH_1,
+                                mActivity.getString(R.string.pdf_unsaved_changes_dialog_message))
+                        .with(
+                                ModalDialogProperties.POSITIVE_BUTTON_TEXT,
+                                mActivity.getResources(),
+                                R.string.pdf_unsaved_changes_dialog_leave_button)
+                        .with(
+                                ModalDialogProperties.NEGATIVE_BUTTON_TEXT,
+                                mActivity.getResources(),
+                                R.string.pdf_unsaved_changes_dialog_cancel_button)
+                        .with(
+                                ModalDialogProperties.BUTTON_STYLES,
+                                ModalDialogProperties.ButtonStyles.PRIMARY_FILLED_NEGATIVE_OUTLINE)
+                        .build();
+
+        mModalDialogModel = model;
+        manager.showDialog(model, ModalDialogType.APP);
+    }
+
+    private void showLeaveAlertDialog(Runnable onProceed, Runnable onCancel) {
+        mAlertDialogCancelRunnable = onCancel;
+        mAlertDialog =
+                new AlertDialog.Builder(mActivity)
+                        .setTitle(R.string.pdf_unsaved_changes_dialog_leave_title)
+                        .setMessage(R.string.pdf_unsaved_changes_dialog_message)
+                        .setPositiveButton(
+                                R.string.pdf_unsaved_changes_dialog_leave_button,
+                                (dialog, which) -> {
+                                    mAlertDialogCancelRunnable = null;
+                                    dialog.dismiss();
+                                    onProceed.run();
+                                })
+                        .setNegativeButton(
+                                R.string.pdf_unsaved_changes_dialog_cancel_button,
+                                (dialog, which) -> {
+                                    mAlertDialogCancelRunnable = null;
+                                    dialog.dismiss();
+                                    onCancel.run();
+                                })
+                        .setOnCancelListener(
+                                dialog -> {
+                                    if (mAlertDialogCancelRunnable != null) {
+                                        Runnable cancelRunnable = mAlertDialogCancelRunnable;
+                                        mAlertDialogCancelRunnable = null;
+                                        cancelRunnable.run();
+                                    }
+                                })
+                        .setOnDismissListener(
+                                dialog -> {
+                                    if (mAlertDialog == dialog) {
+                                        mAlertDialog = null;
+                                        mAlertDialogCancelRunnable = null;
+                                    }
+                                })
+                        .show();
     }
 }

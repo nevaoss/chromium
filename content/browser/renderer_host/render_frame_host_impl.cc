@@ -917,8 +917,9 @@ void WriteRenderFrameImplDeletion(perfetto::EventContext& ctx,
 // Returns the amount of time to keep subframe processes alive in case they can
 // be reused. Returns zero if under memory pressure, as memory should be freed
 // up as soon as possible if it's limited.
-base::TimeDelta GetSubframeProcessShutdownDelay(BrowserContext* browser_context,
-                                                int memory_limit) {
+base::TimeDelta GetSubframeProcessShutdownDelay(
+    BrowserContext* browser_context,
+    base::MemoryLimit memory_limit) {
   static constexpr base::TimeDelta kZeroDelay;
   if (!RenderProcessHostImpl::ShouldDelayProcessShutdown()) {
     return kZeroDelay;
@@ -926,7 +927,7 @@ base::TimeDelta GetSubframeProcessShutdownDelay(BrowserContext* browser_context,
 
   // Don't delay process shutdown under memory pressure. Does not cancel
   // existing shutdown delays for processes already in delayed-shutdown state.
-  if (memory_limit <= base::kModerateMemoryPressureThreshold) {
+  if (memory_limit <= base::MemoryLimit::ModeratePressureThreshold()) {
     return kZeroDelay;
   }
 
@@ -5914,6 +5915,15 @@ void RenderFrameHostImpl::SetOriginDependentStateOfNewFrame(
   }
 
   if (creator_frame) {
+    // The initial empty document inherits insecure request state from its
+    // parent or opener.
+    const blink::mojom::FrameReplicationState& creator_replication_state =
+        creator_frame->browsing_context_state()->current_replication_state();
+    browsing_context_state_->SetInsecureRequestPolicy(
+        creator_replication_state.insecure_request_policy);
+    browsing_context_state_->SetInsecureNavigationsSet(
+        creator_replication_state.insecure_navigations_set);
+
     // If we're given a parent/opener frame, copy the
     // RuntimeFeatureStateReadContext.
     RuntimeFeatureStateDocumentData* rfs_document_data_from_creator =
@@ -8972,16 +8982,18 @@ RenderFrameHostImpl::GetLastResponseHead() {
 void RenderFrameHostImpl::DidBlockNavigation(
     const GURL& blocked_url,
     blink::mojom::NavigationBlockedReason reason) {
+  // Silently drop notifications from inactive or fenced frames. In-flight IPCs
+  // can race with lifecycle transitions, and subframes in fenced frames trigger
+  // this IPC legitimately without expecting tab-level UI.
+  if (!IsActive() || IsNestedWithinFencedFrame()) {
+    return;
+  }
+
   // Do not allow renderers to show off-limits URLs in the blocked dialog.
   GURL validated_blocked_url = blocked_url;
   RenderProcessHost* process = GetProcess();
   process->FilterURL(/*empty_allowed=*/false, &validated_blocked_url);
 
-  // Cross-origin navigations are not allowed in prerendering so we can not
-  // reach here while prerendering.
-  // TODO(522986874): CHECK-exclusion: Convert to a CHECK once we are confident
-  // it won't be triggered.
-  DCHECK_NE(lifecycle_state(), LifecycleStateImpl::kPrerendering);
   delegate_->OnDidBlockNavigation(validated_blocked_url, GetLastCommittedURL(),
                                   GetLastCommittedOrigin(), reason);
 }
@@ -13781,16 +13793,6 @@ bool RenderFrameHostImpl::IsStorageAccessRestricted() {
 void RenderFrameHostImpl::BindBlobUrlStoreAssociatedReceiver(
     mojo::PendingAssociatedReceiver<blink::mojom::BlobURLStore> receiver) {
   CHECK_CURRENTLY_ON(BrowserThread::UI);
-  // Do not allow PDF renderers to access blob URLs, since they should never
-  // need them. Note that is_sandboxed() processes are legitimately allowed to
-  // create blob URLs with null origins, so CanAccessDataForOrigin() can't be
-  // used here. See also BindBlobUrlStoreReceiver.
-  if (GetSiteInstance()->GetSiteInfo().is_pdf()) {
-    bad_message::ReceivedBadMessage(
-        GetProcess(),
-        bad_message::RFH_BLOB_URL_STORE_ASSOCIATED_PDF_PROCESS_BLOCKED);
-    return;
-  }
 
   auto* storage_partition_impl =
       static_cast<StoragePartitionImpl*>(GetStoragePartition());
@@ -13834,14 +13836,6 @@ void RenderFrameHostImpl::BindBlobUrlStoreAssociatedReceiver(
 void RenderFrameHostImpl::BindBlobUrlStoreReceiver(
     mojo::PendingReceiver<blink::mojom::BlobURLStore> receiver) {
   CHECK_CURRENTLY_ON(BrowserThread::UI);
-  // Do not bind blink.mojom.BlobURLStore for PDF renderers (see comment in
-  // BindBlobUrlStoreAssociatedReceiver).
-  if (GetSiteInstance()->GetSiteInfo().is_pdf()) {
-    bad_message::ReceivedBadMessage(
-        GetProcess(),
-        bad_message::RFH_BLOB_URL_STORE_RECEIVER_PDF_PROCESS_BLOCKED);
-    return;
-  }
 
   auto* storage_partition_impl =
       static_cast<StoragePartitionImpl*>(GetStoragePartition());
@@ -17641,6 +17635,13 @@ void RenderFrameHostImpl::SendCommitNavigation(
   }
 #endif  // BUILDFLAG(IS_ANDROID)
 
+  const GURL& url_to_check =
+      IsOutermostMainFrame() ? navigation_request->GetURL()
+                             : GetOutermostMainFrame()->GetLastCommittedURL();
+  commit_params->script_injection_policy =
+      GetContentClient()->browser()->GetScriptInjectionPolicy(
+          GetSiteInstance()->GetBrowserContext(), url_to_check);
+
   commit_params->commit_sent = base::TimeTicks::Now();
   {
     auto scope = MakeUrgentMessageScopeIfNeeded();
@@ -19267,17 +19268,19 @@ void RenderFrameHostImpl::PerformGetAssertionWebAuthSecurityChecks(
   }
 
   if (app_id.has_value()) {
-    blink::mojom::RemoteDesktopClientOverridePtr remote_desktop_client_override;
+    std::optional<WebAuthRequestSecurityChecker::RemoteDesktopParams>
+        remote_desktop_override;
     if (remote_desktop_client_override_origin) {
-      remote_desktop_client_override =
-          blink::mojom::RemoteDesktopClientOverride::New(
-              *remote_desktop_client_override_origin, !is_cross_origin);
+      remote_desktop_override =
+          WebAuthRequestSecurityChecker::RemoteDesktopParams{
+              .origin = *remote_desktop_client_override_origin,
+              .skip_rp_id_validation = false};
     }
     // `out_app_id` is ignored because the original string is passed to the
     // credential provider on Android.
     std::string out_app_id;
     status = GetWebAuthRequestSecurityCheckerImpl()->ValidateAppIdExtension(
-        *app_id, effective_origin, remote_desktop_client_override, &out_app_id);
+        *app_id, effective_origin, remote_desktop_override, &out_app_id);
     if (status != blink::mojom::AuthenticatorStatus::SUCCESS) {
       std::move(callback).Run(status, is_cross_origin);
       return;
@@ -19291,10 +19294,21 @@ void RenderFrameHostImpl::PerformGetAssertionWebAuthSecurityChecks(
     return;
   }
 
+  // TODO(crbug.com/506062130): Add Android support for remoteClientDataJSON. It
+  // is desktop-only today and never reaches this path, so RP ID validation is
+  // not delegated here.
+  std::optional<WebAuthRequestSecurityChecker::RemoteDesktopParams>
+      remote_desktop_client_override;
+  if (remote_desktop_client_override_origin) {
+    remote_desktop_client_override =
+        WebAuthRequestSecurityChecker::RemoteDesktopParams{
+            .origin = *remote_desktop_client_override_origin,
+            .skip_rp_id_validation = false};
+  }
   std::unique_ptr<webauthn::RemoteValidation> remote_validation =
       GetWebAuthRequestSecurityCheckerImpl()->ValidateDomainAndRelyingPartyID(
           effective_origin, relying_party_id, request_type,
-          remote_desktop_client_override_origin,
+          remote_desktop_client_override,
           base::BindOnce(&RenderFrameHostImpl::OnWebAuthSecurityChecksCompleted,
                          weak_ptr_factory_.GetWeakPtr(), std::move(callback),
                          is_cross_origin));
@@ -19329,17 +19343,19 @@ void RenderFrameHostImpl::PerformMakeCredentialWebAuthSecurityChecks(
   }
 
   if (app_id.has_value()) {
-    blink::mojom::RemoteDesktopClientOverridePtr remote_desktop_client_override;
+    std::optional<WebAuthRequestSecurityChecker::RemoteDesktopParams>
+        remote_desktop_override;
     if (remote_desktop_client_override_origin) {
-      remote_desktop_client_override =
-          blink::mojom::RemoteDesktopClientOverride::New(
-              *remote_desktop_client_override_origin, !is_cross_origin);
+      remote_desktop_override =
+          WebAuthRequestSecurityChecker::RemoteDesktopParams{
+              .origin = *remote_desktop_client_override_origin,
+              .skip_rp_id_validation = false};
     }
     // `out_app_id` is ignored because the original string is passed to the
     // credential provider on Android.
     std::string out_app_id;
     status = GetWebAuthRequestSecurityCheckerImpl()->ValidateAppIdExtension(
-        *app_id, effective_origin, remote_desktop_client_override, &out_app_id);
+        *app_id, effective_origin, remote_desktop_override, &out_app_id);
     if (status != blink::mojom::AuthenticatorStatus::SUCCESS) {
       std::move(callback).Run(status, is_cross_origin);
       return;
@@ -19353,10 +19369,21 @@ void RenderFrameHostImpl::PerformMakeCredentialWebAuthSecurityChecks(
     return;
   }
 
+  // TODO(crbug.com/506062130): Add Android support for remoteClientDataJSON. It
+  // is desktop-only today and never reaches this path, so RP ID validation is
+  // not delegated here.
+  std::optional<WebAuthRequestSecurityChecker::RemoteDesktopParams>
+      remote_desktop_client_override;
+  if (remote_desktop_client_override_origin) {
+    remote_desktop_client_override =
+        WebAuthRequestSecurityChecker::RemoteDesktopParams{
+            .origin = *remote_desktop_client_override_origin,
+            .skip_rp_id_validation = false};
+  }
   std::unique_ptr<webauthn::RemoteValidation> remote_validation =
       GetWebAuthRequestSecurityCheckerImpl()->ValidateDomainAndRelyingPartyID(
           effective_origin, relying_party_id, request_type,
-          remote_desktop_client_override_origin,
+          remote_desktop_client_override,
           base::BindOnce(&RenderFrameHostImpl::OnWebAuthSecurityChecksCompleted,
                          weak_ptr_factory_.GetWeakPtr(), std::move(callback),
                          is_cross_origin));
@@ -19395,7 +19422,7 @@ void RenderFrameHostImpl::PerformReportWebAuthSecurityChecks(
       GetWebAuthRequestSecurityCheckerImpl()->ValidateDomainAndRelyingPartyID(
           effective_origin, relying_party_id,
           WebAuthRequestSecurityChecker::RequestType::kReport,
-          /*remote_desktop_client_override_origin=*/std::nullopt,
+          /*remote_desktop_client_override=*/std::nullopt,
           base::BindOnce(&RenderFrameHostImpl::OnWebAuthSecurityChecksCompleted,
                          weak_ptr_factory_.GetWeakPtr(), std::move(callback),
                          is_cross_origin));

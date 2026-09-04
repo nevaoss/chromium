@@ -100,7 +100,12 @@ class ContextualCueingController
 
   void OnTabNavigated(tabs::TabInterface* tab);
 
-  void UrlChanged(const GURL& url);
+  // V2 multi-source orchestration entry point. Performs shared pre-checks
+  // (URL eligibility, quota/backoff), then fans out CheckEligibility calls to
+  // all registered targets via base::BarrierCallback.
+  void EvaluateCues();
+
+  void OnUrlChanged(const GURL& url);
 
   // Hide the cue for this tab if it's showing.
   void HideCue();
@@ -137,12 +142,6 @@ class ContextualCueingController
       const page_content_annotations::HistoryVisit& visit,
       const page_content_annotations::PageContentAnnotationsResult& result);
 
-  // V2 multi-source orchestration entry point. Called from ActiveTabUrlChanged
-  // when kContextualCueingV2MultiSource is enabled. Performs shared pre-checks
-  // (URL eligibility, quota/backoff), then fans out CheckEligibility calls to
-  // all registered targets via base::BarrierCallback.
-  void EvaluateCues();
-
   // Result of a single target's CheckEligibility round-trip, collected by the
   // barrier and forwarded to OnAllEligibilityChecksComplete.
   struct EligibilityResult {
@@ -158,12 +157,14 @@ class ContextualCueingController
   void OnAllEligibilityChecksComplete(
       base::WeakPtr<content::WebContents> web_contents,
       GURL url,
+      CueIntrusiveness intrusiveness,
       std::vector<EligibilityResult> results);
 
   // Called when a target's ContentGenerator completes. Shows the cue or
   // records a failure.
   void OnContentGenerated(
       CueTargetType type,
+      CueIntrusiveness intrusiveness,
       std::optional<optimization_guide::proto::ContextualCue> cue);
 
   // Retrieves favicon for a specific web contents.
@@ -198,10 +199,12 @@ class ContextualCueingController
   std::pair<std::vector<tabs::TabHandle>, CueTabMetrics> GetTabsToShow(
       const optimization_guide::proto::ContextualCue& cue);
 
-  void ShowCue(CueTargetType cue_type,
-               const CueTarget& target,
-               const optimization_guide::proto::ContextualCue& cue,
-               const std::vector<optimization_guide::proto::Tab>& background_tabs);
+  void ShowCue(
+      CueTargetType cue_type,
+      CueIntrusiveness intrusiveness,
+      const CueTarget& target,
+      const optimization_guide::proto::ContextualCue& cue,
+      const std::vector<optimization_guide::proto::Tab>& background_tabs);
 #if !BUILDFLAG(IS_ANDROID)
   void MaybeShowTabList(
       page_actions::PageActionController* page_action_controller,

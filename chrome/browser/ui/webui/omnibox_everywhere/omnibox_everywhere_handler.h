@@ -50,14 +50,11 @@ class OmniboxEverywhereHandler : public ContextualSearchboxHandler {
                    bool meta_key,
                    bool shift_key,
                    bool is_voice_search) override;
+  void DismissFre() override;
+  void OpenHotkeySettings() override;
 
   // SearchboxHandler:
-  std::optional<searchbox::mojom::AutocompleteMatchPtr> CreateAutocompleteMatch(
-      const AutocompleteMatch& match,
-      size_t line,
-      bookmarks::BookmarkModel* bookmark_model,
-      const omnibox::GroupConfigMap& suggestion_groups_map,
-      const TemplateURLService* turl_service) const override;
+  bool SupportsKeywordMode() const override;
 
   // Overridden to intercept the Drive upload request, dynamically associate the
   // standalone WebContents with the latest active BrowserWindowInterface, and
@@ -77,6 +74,7 @@ class OmniboxEverywhereHandler : public ContextualSearchboxHandler {
 
  private:
   void OnAimEligibilityChanged();
+  void UpdatePromoState();
 
   raw_ptr<OmniboxEverywhereService> service_;
   PrefChangeRegistrar pref_change_registrar_;

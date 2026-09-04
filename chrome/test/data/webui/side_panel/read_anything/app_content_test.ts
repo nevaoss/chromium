@@ -3,18 +3,17 @@
 // found in the LICENSE file.
 import 'chrome-untrusted://read-anything-side-panel.top-chrome/read_anything.js';
 
-import type {AppElement, LanguageToastElement, SpEmptyStateElement} from 'chrome-untrusted://read-anything-side-panel.top-chrome/read_anything.js';
-import {AppStyleUpdater, BrowserProxy, ContentBrowserProxyImpl, ContentController, ContentType, LineFocusController, LineFocusMovement, LineFocusStyle, NodeStore, ReadAloudNode, setInstance, SpeechBrowserProxyImpl, SpeechController, ToolbarEvent, VisualBrowserProxyImpl, VoiceClientSideStatusCode, VoiceLanguageController, VoiceNotificationManager} from 'chrome-untrusted://read-anything-side-panel.top-chrome/read_anything.js';
+import type {AppElement, ContentController, LanguageToastElement, NodeStore, SpeechController, SpEmptyStateElement, VoiceNotificationManager} from 'chrome-untrusted://read-anything-side-panel.top-chrome/read_anything.js';
+import {AppStyleUpdater, ContentType, LineFocusController, LineFocusMovement, LineFocusStyle, ReadAloudNode, ToolbarEvent, VoiceClientSideStatusCode} from 'chrome-untrusted://read-anything-side-panel.top-chrome/read_anything.js';
 import {assertEquals, assertFalse, assertLT, assertStringContains, assertTrue} from 'chrome-untrusted://webui-test/chai_assert.js';
 import {keyDownOn} from 'chrome-untrusted://webui-test/keyboard_mock_interactions.js';
 import {microtasksFinished, whenCheck} from 'chrome-untrusted://webui-test/test_util.js';
 
-import {createApp, emitEvent, setContent, setupBasicSpeech} from './common.js';
-import {TestColorUpdaterBrowserProxy} from './test_color_updater_browser_proxy.js';
-import {TestContentBrowserProxy} from './test_content_browser_proxy.js';
-import {TestReadAloudModelBrowserProxy} from './test_read_aloud_browser_proxy.js';
-import {TestSpeechBrowserProxy} from './test_speech_browser_proxy.js';
-import {TestVisualBrowserProxy} from './test_visual_browser_proxy.js';
+import {createApp, emitEvent, setContent, setupAppTestEnvironment, setupBasicSpeech} from './common.js';
+import type {TestContentBrowserProxy} from './test_content_browser_proxy.js';
+import type {TestReadAloudModelBrowserProxy} from './test_read_aloud_browser_proxy.js';
+import type {TestSpeechBrowserProxy} from './test_speech_browser_proxy.js';
+import type {TestVisualBrowserProxy} from './test_visual_browser_proxy.js';
 
 suite('AppContent', () => {
   let app: AppElement;
@@ -22,7 +21,6 @@ suite('AppContent', () => {
   let contentController: ContentController;
   let emptyState: SpEmptyStateElement;
   let speechController: SpeechController;
-  let voiceLanguageController: VoiceLanguageController;
   let nodeStore: NodeStore;
   let notificationManager: VoiceNotificationManager;
   let readAloudModel: TestReadAloudModelBrowserProxy;
@@ -36,32 +34,17 @@ suite('AppContent', () => {
   }
 
   setup(async () => {
-    // Clearing the DOM should always be done first.
-    document.body.innerHTML = window.trustedTypes!.emptyHTML;
-    BrowserProxy.setInstance(new TestColorUpdaterBrowserProxy());
-    visualBrowserProxy = new TestVisualBrowserProxy();
-    VisualBrowserProxyImpl.setInstance(visualBrowserProxy);
-    contentBrowserProxy = new TestContentBrowserProxy();
-    ContentBrowserProxyImpl.setInstance(contentBrowserProxy);
-
-    speech = new TestSpeechBrowserProxy();
-    SpeechBrowserProxyImpl.setInstance(speech);
-    readAloudModel = new TestReadAloudModelBrowserProxy();
-    setInstance(readAloudModel);
-    nodeStore = new NodeStore();
-    NodeStore.setInstance(nodeStore);
-    notificationManager = new VoiceNotificationManager();
-    VoiceNotificationManager.setInstance(notificationManager);
-    voiceLanguageController = new VoiceLanguageController();
-    VoiceLanguageController.setInstance(voiceLanguageController);
-    speechController = new SpeechController();
-    SpeechController.setInstance(speechController);
-    contentController = new ContentController();
-    ContentController.setInstance(contentController);
-    lineFocusController = new LineFocusController();
-    LineFocusController.setInstance(lineFocusController);
-
-    app = await createApp();
+    const result = await setupAppTestEnvironment();
+    app = result.app;
+    contentBrowserProxy = result.contentBrowserProxy;
+    contentController = result.contentController;
+    speechController = result.speechController;
+    nodeStore = result.nodeStore;
+    notificationManager = result.notificationManager;
+    readAloudModel = result.readAloudModel;
+    speech = result.speech;
+    lineFocusController = result.lineFocusController;
+    visualBrowserProxy = result.visualBrowserProxy;
     emptyState =
         app.shadowRoot.querySelector<SpEmptyStateElement>('sp-empty-state')!;
     setupBasicSpeech(speech);
@@ -80,7 +63,6 @@ suite('AppContent', () => {
   test(
       'connected callback adds line focus mouse listener in toolbar',
       async () => {
-        visualBrowserProxy.lineFocusEnabled = true;
         emitEvent(
             app, ToolbarEvent.LINE_FOCUS_MOVEMENT,
             {detail: {data: LineFocusMovement.CURSOR}});
@@ -106,7 +88,6 @@ suite('AppContent', () => {
       });
 
   test('connected callback adds line focus mouse listener', async () => {
-    visualBrowserProxy.lineFocusEnabled = true;
     emitEvent(
         app, ToolbarEvent.LINE_FOCUS_MOVEMENT,
         {detail: {data: LineFocusMovement.CURSOR}});
@@ -133,7 +114,6 @@ suite('AppContent', () => {
   });
 
   test('new content updates padding for line focus', async () => {
-    visualBrowserProxy.lineFocusEnabled = true;
     app.connectedCallback();
     emitEvent(app, ToolbarEvent.LINE_FOCUS_TOGGLE, {detail: {data: true}});
     emitEvent(
@@ -174,7 +154,6 @@ suite('AppContent', () => {
   test(
       'new content does not update padding for line focus with line focus off',
       async () => {
-        visualBrowserProxy.lineFocusEnabled = true;
         app.connectedCallback();
         emitEvent(
             app, ToolbarEvent.LINE_FOCUS_MOVEMENT,
@@ -190,7 +169,6 @@ suite('AppContent', () => {
       });
 
   test('line focus shortcut toggles line focus', async () => {
-    visualBrowserProxy.lineFocusEnabled = true;
     assertFalse(lineFocusController.isEnabled());
 
     // Alt+'l' toggle
@@ -234,7 +212,6 @@ suite('AppContent', () => {
   });
 
   test('line focus shortcut updates padding', async () => {
-    visualBrowserProxy.lineFocusEnabled = true;
     // Ensure app is registered as a line focus listener.
     app.connectedCallback();
     await microtasksFinished();
@@ -265,8 +242,6 @@ suite('AppContent', () => {
   });
 
   test('line focus only shows on content', async () => {
-    visualBrowserProxy.lineFocusEnabled = true;
-
     contentController.setState(ContentType.NO_CONTENT);
     await microtasksFinished();
     assertTrue(app.$.lineFocus.hasAttribute('hidden'));
@@ -284,7 +259,6 @@ suite('AppContent', () => {
       'onContentStateChange updates line focus style when enabled and ' +
           'has content',
       async () => {
-        visualBrowserProxy.lineFocusEnabled = true;
         emitEvent(app, ToolbarEvent.LINE_FOCUS_TOGGLE, {detail: {data: true}});
         emitEvent(
             app, ToolbarEvent.LINE_FOCUS_STYLE,
@@ -301,7 +275,6 @@ suite('AppContent', () => {
   test(
       'onContentStateChange disables line focus style when no content',
       async () => {
-        visualBrowserProxy.lineFocusEnabled = true;
         emitEvent(app, ToolbarEvent.LINE_FOCUS_TOGGLE, {detail: {data: true}});
         emitEvent(
             app, ToolbarEvent.LINE_FOCUS_STYLE,
@@ -316,7 +289,6 @@ suite('AppContent', () => {
       });
 
   test('onContentStateChange line focus showing if has content', async () => {
-    visualBrowserProxy.lineFocusEnabled = true;
     emitEvent(app, ToolbarEvent.LINE_FOCUS_TOGGLE, {detail: {data: true}});
     emitEvent(
         app, ToolbarEvent.LINE_FOCUS_STYLE,
@@ -332,7 +304,6 @@ suite('AppContent', () => {
   test(
       'onContentStateChange line focus not showing if off but has content',
       async () => {
-        visualBrowserProxy.lineFocusEnabled = true;
         emitEvent(app, ToolbarEvent.LINE_FOCUS_TOGGLE, {detail: {data: false}});
         await microtasksFinished();
 
@@ -344,7 +315,6 @@ suite('AppContent', () => {
 
   test(
       'onContentStateChange line focus not showing if no content', async () => {
-        visualBrowserProxy.lineFocusEnabled = true;
         emitEvent(app, ToolbarEvent.LINE_FOCUS_TOGGLE, {detail: {data: true}});
         emitEvent(
             app, ToolbarEvent.LINE_FOCUS_STYLE,
@@ -367,8 +337,17 @@ suite('AppContent', () => {
     assertStringContains(emptyState.imagePath, spinner);
   });
 
+  test('showLoading event triggers showLoading', async () => {
+    const spinner = 'throbber';
+
+    contentBrowserProxy.showLoading.callListeners();
+    await microtasksFinished();
+
+    assertStringContains(emptyState.darkImagePath, spinner);
+    assertStringContains(emptyState.imagePath, spinner);
+  });
+
   test('showLoading marks line focus showing if enabled', async () => {
-    visualBrowserProxy.lineFocusEnabled = true;
     emitEvent(app, ToolbarEvent.LINE_FOCUS_TOGGLE, {detail: {data: true}});
     emitEvent(
         app, ToolbarEvent.LINE_FOCUS_STYLE,
@@ -382,7 +361,6 @@ suite('AppContent', () => {
   });
 
   test('showLoading does not mark line focus showing if disabled', async () => {
-    visualBrowserProxy.lineFocusEnabled = true;
     emitEvent(app, ToolbarEvent.LINE_FOCUS_TOGGLE, {detail: {data: false}});
     await microtasksFinished();
 
@@ -486,6 +464,17 @@ suite('AppContent', () => {
       contentBrowserProxy.textContentMap = {2: text};
 
       app.updateContent();
+      await microtasksFinished();
+
+      assertTrue(contentController.hasContent());
+      assertEquals(text, app.$.container.textContent);
+    });
+
+    test('updateContent event calls updateContent', async () => {
+      const text = 'I guess I\'ve already won that';
+      contentBrowserProxy.textContentMap = {2: text};
+
+      contentBrowserProxy.updateContent.callListeners();
       await microtasksFinished();
 
       assertTrue(contentController.hasContent());
@@ -1106,7 +1095,6 @@ suite('AppContent', () => {
   });
 
   test('onNeedScrollForLineFocus scrolls', () => {
-    visualBrowserProxy.lineFocusEnabled = true;
     const startingScrollTop = app.$.containerScroller.scrollTop;
     let scrollTo = 0;
     app.$.containerScroller.scrollTo = (options) => {
@@ -1123,7 +1111,7 @@ suite('AppContent', () => {
     let appStyleUpdater: AppStyleUpdater;
 
     setup(async () => {
-      app.remove();
+      document.body.innerHTML = window.trustedTypes!.emptyHTML;
       app = await createApp();
       appStyleUpdater = new AppStyleUpdater(app);
     });
@@ -1177,7 +1165,7 @@ suite('AppContent', () => {
       setup(() => {
         scroller = app.$.containerScroller;
         assertTrue(!!scroller);
-        chrome.readingMode.onPresentationStateReceived(
+        visualBrowserProxy.onPresentationStateReceived.callListeners(
             visualBrowserProxy.inImmersiveOverlayPresentationState);
       });
 
@@ -1219,7 +1207,7 @@ suite('AppContent', () => {
       });
 
       test('mousemove does nothing if not in full page immersive mode', () => {
-        chrome.readingMode.onPresentationStateReceived(
+        visualBrowserProxy.onPresentationStateReceived.callListeners(
             visualBrowserProxy.inSidePanelPresentationState);
         scroller.getBoundingClientRect = () => {
           return {
@@ -1318,7 +1306,8 @@ suite('AppContent', () => {
 
           // Triggering the callback from C++ navigation should execute the
           // scroll.
-          chrome.readingMode.onMainFrameSameDocumentNavigation(targetUrl);
+          contentBrowserProxy.onMainFrameSameDocumentNavigation.callListeners(
+              targetUrl);
           assertTrue(scrollIntoViewCalled);
           assertTrue(!!scrollOptions);
           assertEquals('smooth', scrollOptions.behavior);
@@ -1653,7 +1642,8 @@ suite('AppContent', () => {
       };
 
       // Trigger same document navigation
-      chrome.readingMode.onMainFrameSameDocumentNavigation(targetUrl);
+      contentBrowserProxy.onMainFrameSameDocumentNavigation.callListeners(
+          targetUrl);
 
       assertTrue(scrollIntoViewCalled);
       assertTrue(!!scrollOptions);
@@ -1686,7 +1676,8 @@ suite('AppContent', () => {
           };
 
           // Trigger same document navigation back to top
-          chrome.readingMode.onMainFrameSameDocumentNavigation(targetUrl);
+          contentBrowserProxy.onMainFrameSameDocumentNavigation.callListeners(
+              targetUrl);
 
           assertTrue(scrollToCalled);
           assertTrue(!!scrollOptions);
@@ -1725,7 +1716,8 @@ suite('AppContent', () => {
           };
 
           // Trigger same document navigation for different page
-          chrome.readingMode.onMainFrameSameDocumentNavigation(targetUrl);
+          contentBrowserProxy.onMainFrameSameDocumentNavigation.callListeners(
+              targetUrl);
 
           assertFalse(scrollIntoViewCalled);
         });

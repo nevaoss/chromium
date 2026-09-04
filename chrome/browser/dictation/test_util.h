@@ -54,8 +54,10 @@ inline TargetDetails DefaultInPageTargetId(content::WebContents* web_contents) {
 }
 
 // Returns a ScopedFeatureList that enables Dictation with common params for
-// testing.
+// testing. `session_ends_on_stream_end` takes its default value if unspecified.
 base::test::ScopedFeatureList CreateEnablingFeatureList();
+base::test::ScopedFeatureList CreateEnablingFeatureList(
+    bool session_ends_on_stream_end);
 
 // Loads an extension that provides an implementation of the connector
 // extension in a "manual" mode usable from tests which prevents the extension
@@ -112,7 +114,7 @@ class MockStreamProvider : public StreamProvider {
               BindToTargetAndConnect,
               (std::unique_ptr<Target> target),
               (override));
-  MOCK_METHOD(void, Stop, (), (override));
+  MOCK_METHOD(void, Stop, (DictationStreamEndTrigger trigger), (override));
   MOCK_METHOD(void,
               OnTranscriptionUpdated,
               (const std::string& data, bool is_final),

@@ -15,6 +15,9 @@
 #import "ios/chrome/browser/composebox/public/composebox_entrypoint.h"
 #import "ios/chrome/browser/intents/model/intents_donation_helper.h"
 #import "ios/chrome/browser/ntp/shared/metrics/home_metrics.h"
+#import "ios/chrome/browser/ntp/ui_bundled/new_tab_page_color_palette.h"
+#import "ios/chrome/browser/ntp/ui_bundled/new_tab_page_feature.h"
+#import "ios/chrome/browser/ntp/ui_bundled/new_tab_page_trait.h"
 #import "ios/chrome/browser/shared/coordinator/scene/state/scene_layout_state.h"
 #import "ios/chrome/browser/shared/public/commands/activity_service_commands.h"
 #import "ios/chrome/browser/shared/public/commands/browser_coordinator_commands.h"
@@ -498,6 +501,7 @@ constexpr CGFloat kGlassFullscreenScaleFactor = 0.8;
   if (self.isViewLoaded) {
     [self updateButtons:@[ _assistantButton ]
         forFullscreenProgress:_fullscreenProgress];
+    [self updateLayoutGuides];
   }
 }
 
@@ -580,6 +584,30 @@ constexpr CGFloat kGlassFullscreenScaleFactor = 0.8;
   if (loadingStateChanged || ntpVisibilityChanged) {
     if (ntpVisibilityChanged) {
       _NTPVisible = NTPVisible;
+      if (IsChromeNextIaEnabled()) {
+        NewTabPageColorPalette* colorPalette =
+            IsNewTabPagePinnedOmniboxColorUpdateEnabled()
+                ? [self.traitCollection objectForNewTabPageTrait]
+                : nil;
+        UIColor* ntpBackgroundColor =
+            colorPalette
+                ? colorPalette.primaryColor
+                : (IsNewTabPagePinnedOmniboxColorUpdateEnabled()
+                       ? [UIColor colorNamed:kNewTabPageBackgroundColor]
+                       : [UIColor colorNamed:@"ntp_background_color"]);
+
+        _locationBarBackground.backgroundColor =
+            _NTPVisible ? (colorPalette ? colorPalette.omniboxColor
+                                        : [UIColor colorNamed:kSolidWhiteColor])
+                        : ToolbarElementBackgroundColor(_incognito);
+        if (!IsGlassToolbarEnabled()) {
+          if (_NTPVisible) {
+            self.view.backgroundColor = ntpBackgroundColor;
+          } else {
+            self.view.backgroundColor = [UIColor colorNamed:kBackgroundColor];
+          }
+        }
+      }
       [self updateToolbarVisibility];
     }
 
@@ -1159,6 +1187,19 @@ constexpr CGFloat kGlassFullscreenScaleFactor = 0.8;
   _locationBarContainer.transform = translationTransform;
   _locationBarContainer.alpha = progress;
 
+  if (CanShowTabStrip(self) && IsChromeNextIaEnabled() &&
+      !IsGlassToolbarEnabled() &&
+      IsNewTabPagePinnedOmniboxColorUpdateEnabled()) {
+    NewTabPageColorPalette* colorPalette =
+        [self.traitCollection objectForNewTabPageTrait];
+    UIColor* ntpBackgroundColor =
+        colorPalette ? colorPalette.primaryColor
+                     : [UIColor colorNamed:kNewTabPageBackgroundColor];
+    UIColor* standardBackgroundColor = [UIColor colorNamed:kBackgroundColor];
+    self.view.backgroundColor =
+        BlendColors(standardBackgroundColor, ntpBackgroundColor, progress);
+  }
+
   if (!_fakeOmniboxTarget || !CanShowTabStrip(self)) {
     return;
   }
@@ -1198,8 +1239,13 @@ constexpr CGFloat kGlassFullscreenScaleFactor = 0.8;
   locationBarBackground.translatesAutoresizingMaskIntoConstraints = NO;
   locationBarBackground.layer.cornerRadius = kLocationBarHeight / 2.0;
 
-  locationBarBackground.backgroundColor =
-      ToolbarElementBackgroundColor(_incognito);
+  if (IsChromeNextIaEnabled() && _NTPVisible) {
+    locationBarBackground.backgroundColor =
+        [UIColor colorNamed:kSolidWhiteColor];
+  } else {
+    locationBarBackground.backgroundColor =
+        ToolbarElementBackgroundColor(_incognito);
+  }
 
   ConfigureShadowForToolbarElement(locationBarBackground);
 
@@ -2028,6 +2074,15 @@ constexpr CGFloat kGlassFullscreenScaleFactor = 0.8;
            withView:_forwardButton
                hide:hideToolbar];
   [self updateGuide:kShareButtonGuide withView:_shareButton hide:hideToolbar];
+
+  // The assistant button is hidden in non Regular-Regular size classes, but the
+  // toolbar button's visibility handler may run after this, so
+  // `_assistantButton.hidden` is not yet accurate.
+  BOOL hideAssistant = hideToolbar || !IsRegularXRegularSizeClass(self) ||
+                       _assistantButton.forceHidden;
+  [self updateGuide:kAppBarAssistantButtonGuide
+           withView:_assistantButton
+               hide:hideAssistant];
 
   [self updateTabSwitcherGuide];
 }

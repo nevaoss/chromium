@@ -506,7 +506,7 @@ void AddAiStrings(content::WebUIDataSource* html_source) {
       {"aiSuggestionsConsider2Link",
        IDS_CONTEXTUAL_CUEING_SETTINGS_CONSIDER_2_LINK},
 
-      // Dictation (Voice typing) strings.
+      // Dictation (Talk to type) strings.
       {"dictationSettingLabel", IDS_SETTINGS_DICTATION_SETTING_LABEL},
       {"dictationSettingSublabel", IDS_SETTINGS_DICTATION_SETTING_SUBLABEL},
       {"dictationPreferencesHeader", IDS_SETTINGS_DICTATION_PREFERENCES_HEADER},
@@ -672,8 +672,6 @@ void AddAppearanceStrings(content::WebUIDataSource* html_source,
   html_source->AddBoolean(
       "showHoverCardImagesOption",
       base::FeatureList::IsEnabled(features::kTabHoverCardImages));
-  html_source->AddBoolean("showVerticalTabsEnabled",
-                          tabs::IsVerticalTabsFeatureEnabled());
   html_source->AddBoolean("showGlassEffectEnabled",
                           features::IsGlassFrameEnabled());
   html_source->AddBoolean("showVerticalTabsExpandOnHoverEnabled",
@@ -3350,6 +3348,8 @@ void AddSiteSettingsStrings(content::WebUIDataSource* html_source,
        IDS_SETTINGS_TRACKING_PROTECTION_ADVANCED_LABEL},
       {"trackingProtectionDoNotTrackToggleSubLabel",
        IDS_SETTINGS_TRACKING_PROTECTION_DO_NOT_TRACK_TOGGLE_SUB_LABEL},
+      {"universalOptOutLabel", IDS_SETTINGS_UNIVERSAL_OPT_OUT_LABEL},
+      {"universalOptOutSubLabel", IDS_SETTINGS_UNIVERSAL_OPT_OUT_SUB_LABEL},
       {"trackingProtectionSitesAllowedCookiesTitle",
        IDS_SETTINGS_TRACKING_PROTECTION_SITES_ALLOWED_COOKIES_TITLE},
       {"trackingProtectionSitesAllowedCookiesDescription",

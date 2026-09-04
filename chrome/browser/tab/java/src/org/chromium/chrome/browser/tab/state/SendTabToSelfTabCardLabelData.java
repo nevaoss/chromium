@@ -63,6 +63,7 @@ public class SendTabToSelfTabCardLabelData extends PersistedTabData {
                 @Override
                 public void onShown(Tab tab, @TabSelectionType int type) {
                     if (tab != mTab) return;
+                    SendTabToSelfTabCardLabelDataJni.get().onTabShown(tab, mSenderDeviceName);
                     SendTabToSelfTabCardLabelDataJni.get()
                             .markEntryActivated(
                                     tab.getProfile(), mGuid, ShareActivatedEntryPoint.TAB_STRIP);
@@ -192,6 +193,7 @@ public class SendTabToSelfTabCardLabelData extends PersistedTabData {
      * Constructs a new SendTabToSelfTabCardLabelData object and attaches it as a TabObserver.
      *
      * @param tab The Tab to which this label data is attached.
+     * @param guid The GUID of the SendTabToSelf entry.
      * @param senderDeviceName The name of the device that sent the tab.
      * @param additionTimestampMs The timestamp in milliseconds when the tab was added in the
      *     background.
@@ -281,8 +283,11 @@ public class SendTabToSelfTabCardLabelData extends PersistedTabData {
     public interface Natives {
         void markEntryActivated(
                 @JniType("Profile*") Profile profile,
-                String guid,
-                @ShareActivatedEntryPoint int entryPoint);
+                @JniType("std::string") String guid,
+                @JniType("send_tab_to_self::ShareActivatedEntryPoint") @ShareActivatedEntryPoint
+                        int entryPoint);
+
+        void onTabShown(Tab tab, @JniType("std::string") String senderDeviceName);
     }
 
     public String getGuid() {

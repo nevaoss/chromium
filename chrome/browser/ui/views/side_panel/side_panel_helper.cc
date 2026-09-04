@@ -44,17 +44,15 @@ void SidePanelHelper::PopulateGlobalEntries(
   // Add tabs from other devices.
   if (TabsFromOtherDevicesSidePanelCoordinator::IsSupported(
           browser->GetProfile())) {
-    browser->GetFeatures()
-        .tabs_from_other_devices_side_panel_coordinator()
+    TabsFromOtherDevicesSidePanelCoordinator::From(browser)
         ->CreateAndRegisterEntry(window_registry);
   }
 
   // Add history clusters.
   if (HistoryClustersSidePanelCoordinator::IsSupported(browser->GetProfile()) &&
       !HistorySidePanelCoordinator::IsSupported()) {
-    browser->GetFeatures()
-        .history_clusters_side_panel_coordinator()
-        ->CreateAndRegisterEntry(window_registry);
+    HistoryClustersSidePanelCoordinator::From(browser)->CreateAndRegisterEntry(
+        window_registry);
   }
 
   // Add history.

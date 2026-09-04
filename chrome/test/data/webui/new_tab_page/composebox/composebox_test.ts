@@ -980,6 +980,7 @@ suite(`NewTabPageComposeboxTest`, () => {
 
   test('handleFuseboxAction applies and resets action state', async () => {
     const composebox = new NtpComposeboxElement();
+    assertTrue(composebox.shouldHandleSuggestionFuseboxActions());
     const inputStateRequested =
         testProxy.searchboxHandler.whenCalled('getInputState');
     document.body.appendChild(composebox);
@@ -1104,6 +1105,20 @@ suite(`NewTabPageComposeboxTest`, () => {
         await microtasksFinished();
 
         assertTrue(fileInputClicked);
+      });
+
+  test(
+      'getFileInputsElement returns element or null when disabled',
+      async () => {
+        const composebox = new NtpComposeboxElement();
+        composebox.contextMenuEnabled = true;
+        document.body.appendChild(composebox);
+        await microtasksFinished();
+
+        assertEquals(
+            composebox.$.fileInputs, composebox.getFileInputsElement());
+        composebox.contextMenuEnabled = false;
+        assertEquals(null, composebox.getFileInputsElement());
       });
 
   test(

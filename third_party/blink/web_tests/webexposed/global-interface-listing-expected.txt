@@ -342,6 +342,7 @@ interface AudioTrackList : EventTarget
     setter onremovetrack
 interface AudioWorklet : Worklet
     attribute @@toStringTag
+    getter port
     method constructor
 interface AudioWorkletNode : AudioNode
     attribute @@toStringTag
@@ -3119,6 +3120,7 @@ interface FontFace
     getter variant
     getter variationSettings
     getter weight
+    getter width
     method constructor
     method load
     setter ascentOverride
@@ -3134,6 +3136,7 @@ interface FontFace
     setter variant
     setter variationSettings
     setter weight
+    setter width
 interface FontFaceSet : EventTarget
     attribute @@toStringTag
     getter onloading
@@ -3921,6 +3924,7 @@ interface HTMLCanvasElement : HTMLElement
     getter width
     method captureElementImage
     method captureStream
+    method clearElementGeometry
     method configureHighDynamicRange
     method constructor
     method getContext
@@ -3929,6 +3933,7 @@ interface HTMLCanvasElement : HTMLElement
     method toBlob
     method toDataURL
     method transferControlToOffscreen
+    method updateElementGeometry
     setter height
     setter layoutSubtree
     setter onpaint
@@ -4748,7 +4753,6 @@ interface HTMLInputElement : HTMLElement
 interface HTMLInstallElement : HTMLElement
     attribute @@toStringTag
     getter initialPermissionStatus
-    getter installURL
     getter invalidReason
     getter isValid
     getter manifest
@@ -4759,7 +4763,6 @@ interface HTMLInstallElement : HTMLElement
     getter onvalidationstatuschange
     getter permissionStatus
     method constructor
-    setter installURL
     setter manifest
     setter manifestId
     setter oninstallresult
@@ -7337,11 +7340,13 @@ interface OffscreenCanvas : EventTarget
     getter oncontextlost
     getter oncontextrestored
     getter width
+    method clearElementGeometry
     method constructor
     method convertToBlob
     method getContext
     method getElementTransform
     method transferToImageBitmap
+    method updateElementGeometry
     setter height
     setter oncontextlost
     setter oncontextrestored

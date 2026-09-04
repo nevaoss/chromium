@@ -5,7 +5,9 @@
 #ifndef CHROME_BROWSER_UI_OMNIBOX_OMNIBOX_EVERYWHERE_SERVICE_H_
 #define CHROME_BROWSER_UI_OMNIBOX_OMNIBOX_EVERYWHERE_SERVICE_H_
 
+#include <cstdint>
 #include <memory>
+#include <optional>
 
 #include "base/functional/callback.h"
 #include "base/functional/callback_helpers.h"
@@ -18,6 +20,7 @@
 
 class Profile;
 class ScopedProfileKeepAlive;
+class SkBitmap;
 
 namespace user_education {
 class FeaturePromoController;
@@ -35,6 +38,19 @@ class OmniboxEverywhereFeaturePromoController;
 
 class OmniboxEverywhereService : public KeyedService {
  public:
+  struct RegionCaptureSource {
+    enum class Type { kAllDisplays, kSpecificDisplay };
+    Type type = Type::kAllDisplays;
+    std::optional<int64_t> display_id;
+
+    static RegionCaptureSource AllDisplays() {
+      return {.type = Type::kAllDisplays};
+    }
+    static RegionCaptureSource ForDisplay(int64_t id) {
+      return {.type = Type::kSpecificDisplay, .display_id = id};
+    }
+  };
+
   explicit OmniboxEverywhereService(Profile* profile);
   OmniboxEverywhereService(const OmniboxEverywhereService&) = delete;
   OmniboxEverywhereService& operator=(const OmniboxEverywhereService&) = delete;
@@ -47,11 +63,17 @@ class OmniboxEverywhereService : public KeyedService {
   virtual void HidePopup();
   virtual bool IsPopupVisible() const;
   virtual bool IsPopupVisibleForProfile() const;
+  Profile* profile() const { return profile_; }
   virtual void ShowProfilePicker();
   virtual void OnDrivePickerOpened();
   virtual void OnDrivePickerClosed();
-  void OnScreensharePickerOpened();
-  void OnScreensharePickerClosed();
+  virtual void OnScreensharePickerOpened();
+  virtual void OnScreensharePickerClosed();
+  using RegionSelectedCallback =
+      base::OnceCallback<void(const SkBitmap& result_bitmap)>;
+  virtual void ShowRegionSelectOverlay(const SkBitmap& screenshot,
+                                       const RegionCaptureSource& source,
+                                       RegionSelectedCallback callback);
   void OpenUrl(const GURL& url,
                WindowOpenDisposition disposition,
                ui::PageTransition transition);

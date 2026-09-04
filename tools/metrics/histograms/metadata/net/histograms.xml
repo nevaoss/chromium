@@ -249,6 +249,7 @@ chromium-metrics-reviews@google.com.
 
 <variants name="TpmCommand">
   <variant name="Certify" summary="TPM2_Certify"/>
+  <variant name="Create" summary="TPM2_Create"/>
   <variant name="FlushContext" summary="TPM2_FlushContext"/>
   <variant name="Hash" summary="TPM2_Hash"/>
   <variant name="HashSequenceStart" summary="TPM2_HashSequenceStart"/>
@@ -271,6 +272,8 @@ chromium-metrics-reviews@google.com.
   <variant name="NewAttestationKeyCreation"
       summary="new attestation key creation"/>
   <variant name="NewKeyCreation" summary="new key creation"/>
+  <variant name="RestrictedMessageSigning"
+      summary="restricted key message signing"/>
   <variant name="WrappedAttestationKeyCreation"
       summary="wrapped attestation key creation"/>
   <variant name="WrappedKeyCreation" summary="wrapped key creation"/>
@@ -322,6 +325,8 @@ chromium-metrics-reviews@google.com.
   <variant name=".GetAllKeys"
       summary="operations to get all keys known to the platform"/>
   <variant name=".Sign" summary="signing operations"/>
+  <variant name=".SignWithAttestationKey"
+      summary="attestation key signing operations"/>
 </variants>
 
 <!-- LINT.ThenChange(//components/unexportable_keys/background_task_type.h:BackgroundTaskType) -->
@@ -640,6 +645,8 @@ chromium-metrics-reviews@google.com.
   <token key="Operation" variants="TpmOperation">
     <variant name="KeyCertification" summary="key certification"/>
     <variant name="MessageVerify" summary="message verification"/>
+    <variant name="RestrictedMessageVerify"
+        summary="restricted key message verification"/>
   </token>
   <token key="SignatureAlgorithm" variants="TpmSignatureAlgorithm"/>
 </histogram>

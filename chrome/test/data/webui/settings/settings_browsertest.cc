@@ -1441,6 +1441,10 @@ IN_PROC_BROWSER_TEST_F(SettingsCookiesPageTest, ExceptionsList) {
   RunTest("settings/cookies_page_test.js", "runMochaSuite('ExceptionsList')");
 }
 
+IN_PROC_BROWSER_TEST_F(SettingsCookiesPageTest, UniversalOptOut) {
+  RunTest("settings/cookies_page_test.js", "runMochaSuite('UniversalOptOut')");
+}
+
 // Test with --enable-pixel-output-in-tests enabled, required by fingerprint
 // element test using HTML canvas.
 class SettingsWithPixelOutputTest : public SettingsBrowserTest {
@@ -2008,8 +2012,8 @@ IN_PROC_BROWSER_TEST_F(YourSavedInfoTest, ShoppingPageTest) {
   RunTest("settings/shopping_page_test.js", "mocha.run()");
 }
 
-IN_PROC_BROWSER_TEST_F(YourSavedInfoTest, SuggestionsFromGeminiSubpage) {
-  RunTest("settings/suggestions_from_gemini_subpage_test.js", "mocha.run()");
+IN_PROC_BROWSER_TEST_F(YourSavedInfoTest, SuggestionsFromGeminiPage) {
+  RunTest("settings/suggestions_from_gemini_page_test.js", "mocha.run()");
 }
 
 IN_PROC_BROWSER_TEST_F(YourSavedInfoTest, TravelPageTest) {

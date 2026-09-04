@@ -1,5 +1,5 @@
 > [!NOTE]
-> If you are viewing this on GitHub, the source was moved to Chromium. Please contribute there.
+> If you are viewing this on GitHub, the source was moved to [Chromium](https://chromium.googlesource.com/chromium/src/+/main/third_party/chromium-bidi). Please contribute there.
 
 # WebDriver BiDi for Chromium [![chromium-bidi on npm](https://img.shields.io/npm/v/chromium-bidi)](https://www.npmjs.com/package/chromium-bidi)
 
@@ -153,31 +153,28 @@ Event = {
 
 ## Dev Setup
 
+All commands below are intended to be run from the `third_party/chromium-bidi` directory unless specified otherwise.
+
 ### Build Setup
 
-The project uses Chromium build toolchains (`gn` and `ninja`) for compiling TypeScript and bundling.
+The project uses Chromium build toolchains (`gn` and `ninja`/`autoninja`) for compiling TypeScript and bundling.
 
-1. Fetch the toolchains using `gclient` (requires `depot_tools` installed and in your PATH):
+1. Fetch the toolchains and sync dependencies using `gclient` (requires `depot_tools` installed and in your PATH):
    ```sh
    gclient sync
    ```
 2. Generate the Ninja build configuration:
    ```sh
-   npm run gn:gen
+   gn gen --root=../.. ../../out/Default
    ```
 3. Build the project:
    ```sh
-   npm run build
+   autoninja -C ../../out/Default third_party/chromium-bidi:default
    ```
-
-### `cargo`
-
-<!-- TODO(jrandolf): Remove after binaries get published -->
-
-We use [cddlconv](https://github.com/google/cddlconv) to generate our WebDriverBiDi types before building.
-
-1.  Install [Rust](https://rustup.rs/).
-2.  Run `cargo install --git https://github.com/google/cddlconv.git cddlconv`
+   To build the test runner targets as well:
+   ```sh
+   autoninja -C ../../out/Default third_party/chromium-bidi:webdriver_bidi_unittests third_party/chromium-bidi:webdriver_bidi_e2e_tests
+   ```
 
 ### Code Formatting & Linting
 
@@ -188,44 +185,71 @@ We use a suite of tools to format and lint the codebase:
 - [Prettier](https://prettier.io/) to format JavaScript, TypeScript, JSON, and Markdown files.
 - [Ruff](https://docs.astral.sh/ruff/) to lint and format Python files.
 
-To check and auto-format the entire codebase, run:
+#### Running Presubmit Checks
+
+Presubmit checks run automatically before upload/commit and can be executed manually via:
 
 ```sh
-npm run format
+git cl presubmit
 ```
 
-This command sequentially executes the following steps:
+#### Auto-formatting Code
 
-1. `keep-sorted --mode=fix`
-2. `eslint --cache --fix`
-3. `prettier --cache --write`
-4. `ruff check --fix` and `ruff format`
+> [!NOTE]
+> `git cl format` formats Python and C++ files, but does **not** format TypeScript/JavaScript files. Use **Prettier** and **ESLint** for TypeScript and JavaScript code.
+
+To auto-format and lint files:
+
+- **JavaScript / TypeScript / JSON / Markdown (Prettier):**
+  ```sh
+  ./tools/node.py node_modules/prettier/bin/prettier.cjs --cache --write .
+  ```
+- **JavaScript / TypeScript (ESLint auto-fix):**
+  ```sh
+  ./tools/node.py node_modules/eslint/bin/eslint.js --cache --fix .
+  ```
+- **Python (Ruff / git cl format):**
+  ```sh
+  ruff check --fix . && ruff format .
+  ```
+  (or via `git cl format --python`)
+- **keep-sorted:**
+  ```sh
+  find src tests docs examples -type f | xargs keep-sorted --mode=fix
+  ```
+  (or in git: `git ls-files | xargs keep-sorted --mode=fix`)
 
 ### Starting WebDriver BiDi Server
 
-This will run the server on port `8080`:
+First, build the target:
 
 ```sh
-npm run server
+autoninja -C ../../out/Default third_party/chromium-bidi:default
 ```
 
-Use the `PORT=` environment variable or `--port=` argument to run it on another port:
+Run the server:
 
 ```sh
-PORT=8081 npm run server
-npm run server -- --port=8081
+./tools/node.py tools/run-bidi-server.mjs --gen-dir ../../out/Default/gen/third_party/chromium-bidi
+```
+
+By default, the server runs on port `8080`. Use the `PORT=` environment variable or `--port=` argument to run it on another port:
+
+```sh
+PORT=8081 ./tools/node.py tools/run-bidi-server.mjs --gen-dir ../../out/Default/gen/third_party/chromium-bidi
+./tools/node.py tools/run-bidi-server.mjs --gen-dir ../../out/Default/gen/third_party/chromium-bidi --port=8081
 ```
 
 Use the `DEBUG` environment variable to see debug info:
 
 ```sh
-DEBUG=* npm run server
+DEBUG=* ./tools/node.py tools/run-bidi-server.mjs --gen-dir ../../out/Default/gen/third_party/chromium-bidi
 ```
 
 Use the `DEBUG_DEPTH` (default: `10`) environment variable to see debug deeply nested objects:
 
 ```sh
-DEBUG_DEPTH=100 DEBUG=* npm run server
+DEBUG_DEPTH=100 DEBUG=* ./tools/node.py tools/run-bidi-server.mjs --gen-dir ../../out/Default/gen/third_party/chromium-bidi
 ```
 
 Use the `CHANNEL=...` environment variable with one of the following values to run
@@ -235,47 +259,64 @@ downloaded if it is not yet in cache. Otherwise, the requested Chrome version sh
 be installed.
 
 ```sh
-CHANNEL=dev npm run server
+CHANNEL=dev ./tools/node.py tools/run-bidi-server.mjs --gen-dir ../../out/Default/gen/third_party/chromium-bidi
 ```
 
 Use the CLI argument `--verbose` to have CDP events printed to the console. Note: you have to enable debugging output `bidi:mapper:debug:*` as well.
 
 ```sh
-DEBUG=bidi:mapper:debug:* npm run server -- --verbose
+DEBUG=bidi:mapper:debug:* ./tools/node.py tools/run-bidi-server.mjs --gen-dir ../../out/Default/gen/third_party/chromium-bidi --verbose
 ```
 
 or
 
 ```sh
-DEBUG=* npm run server -- --verbose
+DEBUG=* ./tools/node.py tools/run-bidi-server.mjs --gen-dir ../../out/Default/gen/third_party/chromium-bidi --verbose
 ```
 
-### Starting on Linux and Mac
-
-TODO: verify it works on Windows.
-
-You can also run the server by using `npm run server`. It will write
-output to the file `log.txt`:
+To run the browser in headful mode:
 
 ```sh
-npm run server -- --port=8081 --headless=false
+./tools/node.py tools/run-bidi-server.mjs --gen-dir ../../out/Default/gen/third_party/chromium-bidi --port=8081 --headless=false
 ```
-
-### Running with in other project
-
-Sometimes it good to verify that a change will not affect thing downstream for other packages.
-There is a useful `puppeteer` label you can add to any PR to run Puppeteer test with your changes.
-It will bundle `chromium-bidi` and install it in Puppeteer project then run that package test.
 
 ## Running
 
+Testing in Chromium uses GN `script_test` targets:
+
+- `third_party/chromium-bidi:webdriver_bidi_unittests`
+- `third_party/chromium-bidi:webdriver_bidi_e2e_tests`
+
+When built, these targets produce executable runner wrappers in the build directory (`out/Default/bin/`).
+
 ### Unit tests
 
-Running:
+First, build the unit test target:
 
 ```sh
-npm run unit
+autoninja -C ../../out/Default third_party/chromium-bidi:webdriver_bidi_unittests
 ```
+
+Run all unit tests:
+
+```sh
+../../out/Default/bin/run_webdriver_bidi_unittests
+```
+
+Filter unit tests by test name:
+
+```sh
+../../out/Default/bin/run_webdriver_bidi_unittests -- --test-name-pattern="<test_name>"
+```
+
+Filter unit tests by file path:
+
+```sh
+../../out/Default/bin/run_webdriver_bidi_unittests -- --test-path-pattern="<path_pattern>"
+```
+
+> [!NOTE]
+> When running from the Chromium repository root (`src/`), use `out/Default/bin/run_webdriver_bidi_unittests`.
 
 ### E2E tests
 
@@ -285,60 +326,72 @@ The e2e tests serve the following purposes:
 2. Test Chromium-specific behavior nuances
 3. Add a simple setup for engaging the specific command
 
-The E2E tests are written using Python, in order to more-or-less align with the web-platform-tests.
-
-#### Installation
-
-Python 3.10+ and some dependencies are required:
-
-```sh
-python -m pip install --user pipenv
-pipenv install
-```
+The E2E tests are written using Python (`pytest`), in order to more-or-less align with the web-platform-tests.
+Python dependencies are managed automatically via `vpython3` (part of `depot_tools`).
 
 #### Running
 
-The E2E tests require BiDi server running on the same host. By default, tests
-try to connect to the port `8080`. The server can be run from the project root:
+First, build the e2e test target:
 
 ```sh
-npm run e2e  # alias to to e2e:headless
-npm run e2e:headful
-npm run e2e:headless
+autoninja -C ../../out/Default third_party/chromium-bidi:webdriver_bidi_e2e_tests
 ```
 
-This commands will run `./tools/run-e2e.mjs`, which will log the PyTest output to console,
-Additionally the output is also recorded under `./logs/<DATE>.e2e.log`, this will contain
+The E2E tests automatically start and connect to the BiDi server.
+
+Run all E2E tests:
+
+```sh
+../../out/Default/bin/run_webdriver_bidi_e2e_tests
+```
+
+Additionally the output is recorded under `./logs/<DATE>.e2e.log`, which will contain
 both the PyTest logs and in the event of `FAILED` test all the Chromium-BiDi logs.
 
-If you need to see the logs for all test run the command with `VERBOSE=true`.
+If you need to see the logs for all tests run the command with `VERBOSE=true`:
 
-Simply pass `npm run e2e -- tests/<PathOrFile>` and the e2e will run only the selected one.
-You run a specific test by running `npm run e2e -- -k <TestName>`.
+```sh
+VERBOSE=true ../../out/Default/bin/run_webdriver_bidi_e2e_tests
+```
 
-Use `CHROMEDRIVER` environment to run tests in `chromedriver` instead of NodeJS runner:
+Pass a test file path to run only the selected file:
+
+```sh
+../../out/Default/bin/run_webdriver_bidi_e2e_tests -- tests/<PathOrFile>
+```
+
+Run a specific test using the `-k` filter:
+
+```sh
+../../out/Default/bin/run_webdriver_bidi_e2e_tests -- -k <TestName>
+```
+
+Use `CHROMEDRIVER` environment variable to run tests in `chromedriver` instead of NodeJS runner:
 
 ```shell
-CHROMEDRIVER=true npm run e2e
+CHROMEDRIVER=true ../../out/Default/bin/run_webdriver_bidi_e2e_tests
 ```
 
 Use the `PORT` environment variable to connect to another port:
 
 ```sh
-PORT=8081 npm run e2e
+PORT=8081 ../../out/Default/bin/run_webdriver_bidi_e2e_tests
 ```
 
-Use the `HEADLESS` to run the tests in headless (new or old) or headful modes.
-Values: `new`, `old`, `false`, default: `new`.
+Use `HEADLESS` to run the tests in headless (new or old) or headful modes.
+Values: `true`, `old`, `false`, default: `true`.
 
 ```sh
-HEADLESS=new npm run e2e
+HEADLESS=true ../../out/Default/bin/run_webdriver_bidi_e2e_tests
 ```
+
+> [!NOTE]
+> When running from the Chromium repository root (`src/`), use `out/Default/bin/run_webdriver_bidi_e2e_tests`.
 
 #### Updating snapshots
 
 ```sh
-npm run e2e -- --snapshot-update true
+../../out/Default/bin/run_webdriver_bidi_e2e_tests -- --snapshot-update true
 ```
 
 See https://github.com/tophat/syrupy for more information.
@@ -352,13 +405,7 @@ sometimes it is useful to run the http server outside the test
 case, for example for manual debugging. This can be done by running:
 
 ```sh
-pipenv run local_http_server
-```
-
-...or directly:
-
-```sh
-python tests/tools/local_http_server.py
+vpython3 -vpython-spec .vpython3 tools/run_local_http_server.py
 ```
 
 ### Examples
@@ -369,10 +416,22 @@ Refer to [examples/README.md](examples/README.md).
 
 WPT tests for WebDriver BiDi are located in Chromium under `third_party/blink/web_tests/external/wpt/webdriver/tests/bidi/`.
 
-To run WPT tests in Chromium:
+First, build the WPT target:
 
 ```sh
-third_party/blink/tools/run_wpt_tests.py -t <target> webdriver/tests/bidi/
+autoninja -C ../../out/Default headless_shell_wpt
+```
+
+To run all BiDi WPT tests in Chromium:
+
+```sh
+../../third_party/blink/tools/run_wpt_tests.py -t Default --no-manifest-update external/wpt/webdriver/tests/bidi/
+```
+
+To run a specific test:
+
+```sh
+../../third_party/blink/tools/run_wpt_tests.py -t Default --no-manifest-update external/wpt/webdriver/tests/bidi/session/status/status.py
 ```
 
 ## How does it work?
@@ -396,26 +455,86 @@ Contributions should follow the [Chromium Contributing Guide](https://chromium.g
 The BiDi commands are processed in `src/bidiMapper/CommandProcessor.ts`. To add a
 new command, add it to `_processCommand`, write and call the module processor for it.
 
+### Updating Node dependencies
+
+> [!NOTE]
+> This does not work on Cog workspaces.
+
+1. Check and bump dependencies:
+   - Check outdated: `npm outdated`
+   - Bulk upgrade `package.json` to latest: `npx npm-check-updates -u && npm install --ignore-scripts`
+   - Upgrade specific package: `npm install --ignore-scripts <package>@latest`
+   - Or update within semver ranges: `npm update --ignore-scripts`
+2. Build and run tests to ensure dependencies work properly:
+   ```sh
+   autoninja -C ../../out/Default third_party/chromium-bidi:default third_party/chromium-bidi:webdriver_bidi_unittests third_party/chromium-bidi:webdriver_bidi_e2e_tests
+   ../../out/Default/bin/run_webdriver_bidi_unittests
+   ../../out/Default/bin/run_webdriver_bidi_e2e_tests
+   ```
+3. Upload the filtered `node_modules` to Google Cloud Storage and update `DEPS`:
+   ```sh
+   ./tools/update_node_modules.mjs --force
+   ```
+4. Upload a CL with `package.json`, `package-lock.json`, and `DEPS` via `git cl upload` and submit for review.
+
 ### Publish new `npm` release
 
-#### Manual release
+TODO(crbug.com/540164671): describe the process.
 
-1. Dry-run
+### Syncing from Chromium to GitHub
+
+[Chromium (`third_party/chromium-bidi`)](https://chromium.googlesource.com/chromium/src/+/main/third_party/chromium-bidi) is the source of truth, and changes are synced out to the GitHub mirror at [GoogleChromeLabs/chromium-bidi](https://github.com/GoogleChromeLabs/chromium-bidi) using [Copybara](https://goto.google.com/copybara).
+
+The configuration file is located at [`third_party/chromium-bidi/copy.bara.sky`](copy.bara.sky).
+
+TODO(crbug.com/549520316): Automate the sync process.
+
+#### Running Copybara manually
+
+> [!NOTE]
+> The Copybara sync takes ~10 minutes to run as it iteratively processes commits from Chromium history.
+
+1. **Prerequisites:**
+   - Set up the `copybara` CLI alias (see [go/copybara-setup](https://goto.google.com/copybara-setup)).
+   - Ensure your credentials for pushing to GitHub are configured via SSH.
+
+2. **Launch directory:**
+   Run Copybara from the **root of the Chromium repository** (`src/`):
 
    ```sh
-   npm publish --dry-run
+   cd /path/to/chromium/src
    ```
 
-2. Bump the `chromium-bidi` version number in `package.json` and upload a Chromium CL for review:
-
+3. **Sync:**
    ```sh
-   npm version patch -m 'chore: Release v%s' --no-git-tag-version
+   copybara third_party/chromium-bidi/copy.bara.sky default
    ```
 
-   Instead of `patch`, use `minor` or `major` [as needed](https://semver.org/).
+## Update CDDL types
 
-3. After the CL lands, tag the commit in git matching the bumped version (`v<version>`).
-   CI will then automatically publish the new release to npm based on the tag.
+### Prerequisites
+
+- **cddlconv**: We use [cddlconv](https://github.com/google/cddlconv) to generate our WebDriverBiDi types.
+  1. Install [Rust](https://rustup.rs/).
+  2. Run `cargo install cddlconv@0.1.10`
+- **parse5**: [parse5](https://github.com/inikulin/parse5) is required by the `webdriver-bidi` specification repository to extract CDDL definitions from specifications.
+  1. Run `npm install -g parse5`
+
+Run the following steps from the `third_party/chromium-bidi` directory:
+
+1. (Optional) If you want to add a new specification, add it to the `tools/update-bidi-types.sh` script.
+2. Run the `tools/update-bidi-types.sh` script.
+3. Build the project (`autoninja -C ../../out/Default third_party/chromium-bidi:default`). If a new WebDriver BiDi command was added, compilation will fail with `Switch is not exhaustive. Cases not matched ...`.
+4. Add the new BiDi command to `CommandProcessor.#processCommand` in `src/bidiMapper/CommandProcessor.ts`. For now, just have it throw an UnknownErrorException.
+
+```typescript
+case '{NEW_COMMAND_NAME}':
+  throw new UnknownErrorException(
+    `Method ${command.method} is not implemented.`,
+  );
+```
+
+5. Upload a CL and have it reviewed and landed via Gerrit.
 
 ## Adding new command
 
@@ -437,20 +556,7 @@ Make sure Chromium already has the CDP methods your command will rely on.
 
 ### Update CDDL types
 
-1. Checkout a new branch in Chromium `src/`.
-2. If your command lives in a separate spec, add a link to that spec in the `tools/update-bidi-types.sh` script.
-3. Run the `tools/update-bidi-types.sh` script.
-4. Run `npm run format`. If a new WebDriver BiDi command was added, this should fail with `error  Switch is not exhaustive. Cases not matched ...`.
-5. Add the new BiDi command to `CommandProcessor.#processCommand` in `src/bidiMapper/CommandProcessor.ts`. For now, just have it throw an UnknownErrorException.
-
-```typescript
-case '{NEW_COMMAND_NAME}':
-  throw new UnknownErrorException(
-    `Method ${command.method} is not implemented.`,
-  );
-```
-
-6. Upload a CL and have it reviewed and landed via Gerrit.
+Follow the steps in [Update CDDL types](#update-cddl-types) to update the protocol types before implementing the command.
 
 ### Implement the new command
 
@@ -471,6 +577,13 @@ Call your new module processor method from `CommandProcessor.#processCommand`, p
 #### Add e2e tests
 
 Write end-to-end tests for your command, including the happy path and any edge cases that might trip things up. Focus on testing the code in the mapper.
+
+Build the E2E test target and run your test:
+
+```sh
+autoninja -C ../../out/Default third_party/chromium-bidi:webdriver_bidi_e2e_tests
+../../out/Default/bin/run_webdriver_bidi_e2e_tests -- -k <TestName>
+```
 
 #### Update WPT expectations
 

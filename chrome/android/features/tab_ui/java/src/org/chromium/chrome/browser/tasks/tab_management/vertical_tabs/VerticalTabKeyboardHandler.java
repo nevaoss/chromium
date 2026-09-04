@@ -13,6 +13,7 @@ import androidx.recyclerview.widget.RecyclerView;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.chrome.browser.tabmodel.TabModel;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
+import org.chromium.chrome.browser.tasks.tab_management.NestedTabReorderUtils;
 import org.chromium.chrome.browser.tasks.tab_management.TabKeyEventHandler;
 import org.chromium.chrome.browser.tasks.tab_management.TabListModel;
 
@@ -24,6 +25,7 @@ class VerticalTabKeyboardHandler implements VerticalTabRailLayout.KeyEventListen
     private final TabListModel mPinnedTabsModelList;
     private final RecyclerView mRecyclerView;
     private final RecyclerView mPinnedTabsRecyclerView;
+    private final VerticalTabHoverCardController mHoverCardController;
 
     /**
      * Constructs a {@link VerticalTabKeyboardHandler}.
@@ -33,22 +35,33 @@ class VerticalTabKeyboardHandler implements VerticalTabRailLayout.KeyEventListen
      * @param pinnedTabsModelList The {@link TabListModel} for pinned tabs.
      * @param recyclerView The {@link RecyclerView} displaying unpinned tabs.
      * @param pinnedTabsRecyclerView The {@link RecyclerView} displaying pinned tabs.
+     * @param hoverCardController The {@link VerticalTabHoverCardController} for hover card state.
      */
     VerticalTabKeyboardHandler(
             TabModelSelector tabModelSelector,
             TabListModel modelList,
             TabListModel pinnedTabsModelList,
             RecyclerView recyclerView,
-            RecyclerView pinnedTabsRecyclerView) {
+            RecyclerView pinnedTabsRecyclerView,
+            VerticalTabHoverCardController hoverCardController) {
         mTabModelSelector = tabModelSelector;
         mModelList = modelList;
         mPinnedTabsModelList = pinnedTabsModelList;
         mRecyclerView = recyclerView;
         mPinnedTabsRecyclerView = pinnedTabsRecyclerView;
+        mHoverCardController = hoverCardController;
     }
 
     @Override
     public boolean onKeyEvent(KeyEvent event) {
+        if (event.getKeyCode() == KeyEvent.KEYCODE_ESCAPE && event.hasNoModifiers()) {
+            if (mHoverCardController.isHoverCardShowing()) {
+                if (event.getAction() == KeyEvent.ACTION_DOWN) {
+                    mHoverCardController.hideHoverCard();
+                }
+                return true;
+            }
+        }
         if (TabKeyEventHandler.isCtrlDpadReorderEvent(event)) {
             if (!mRecyclerView.hasFocus() && !mPinnedTabsRecyclerView.hasFocus()) {
                 return false;
@@ -96,6 +109,6 @@ class VerticalTabKeyboardHandler implements VerticalTabRailLayout.KeyEventListen
         if (pos == RecyclerView.NO_POSITION || pos >= modelList.size()) return false;
         if (toPrevious && pos == 0) return false;
 
-        return VerticalTabReorderUtils.reorderItemInDirection(tabModel, modelList, pos, toPrevious);
+        return NestedTabReorderUtils.reorderItemInDirection(tabModel, modelList, pos, toPrevious);
     }
 }

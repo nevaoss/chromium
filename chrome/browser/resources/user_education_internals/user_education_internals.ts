@@ -32,9 +32,9 @@ import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {TrackedElementManager} from 'chrome://resources/js/tracked_element/tracked_element_manager.js';
 import {CrLitElement} from 'chrome://resources/lit/v3_0/lit.rollup.js';
 import type {PropertyValues} from 'chrome://resources/lit/v3_0/lit.rollup.js';
+import {browserProxyFactory as userEducationProxyFactory, FeaturePromoFeatureUsedAction} from 'chrome://resources/mojo/components/user_education/webui/user_education.mojom-webui.js';
+import type {UserEducationMixedTrustHandlerInterface} from 'chrome://resources/mojo/components/user_education/webui/user_education.mojom-webui.js';
 
-import {browserProxyFactory as userEducationProxyFactory, FeaturePromoFeatureUsedAction} from './user_education.mojom-webui.js';
-import type {UserEducationMixedTrustHandlerInterface} from './user_education.mojom-webui.js';
 import {getCss} from './user_education_internals.css.js';
 import {getHtml} from './user_education_internals.html.js';
 import type {FeaturePromoDemoPageData, FeaturePromoDemoPageInfo, UserEducationInternalsPageHandlerInterface, WhatsNewEditionDemoPageInfo, WhatsNewModuleDemoPageInfo} from './user_education_internals.mojom-webui.js';
@@ -128,6 +128,7 @@ export interface UserEducationInternalsElement {
     errorMessageToast: CrToastElement,
     menu: CrMenuSelectorElement,
     selector: CrPageSelectorElement,
+    toolbar: HTMLElement,
     // <if expr="not is_chromeos">
     whatsNewVersionOverride: CrInputElement,
     // </if>
@@ -240,6 +241,8 @@ export class UserEducationInternalsElement extends
 
     // These are used in tests of the TrackedElementManager and its handler.
     const manager = TrackedElementManager.getInstance();
+    manager.startTracking(
+        this.$.toolbar, 'UserEducationInternalsUI::kToolbarElementId');
     manager.startTracking(
         this.$.menu, 'UserEducationInternalsUI::kMenuElementId');
     for (const child of this.$.menu.children) {

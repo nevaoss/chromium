@@ -785,7 +785,7 @@ void OmniboxContextMenuController::UpdateSearchboxContext(
     return;
   }
   SearchboxContextData* searchbox_context_data =
-      browser_window_interface->GetFeatures().searchbox_context_data();
+      SearchboxContextData::From(browser_window_interface);
   if (!searchbox_context_data) {
     return;
   }
@@ -1217,6 +1217,71 @@ std::u16string OmniboxContextMenuController::GetMenuLabelForModel(
 
 ui::ImageModel OmniboxContextMenuController::GetIconForModel(
     omnibox::ModelMode model) const {
+  if (base::FeatureList::IsEnabled(omnibox::kAimUseSearchboxConfigIconIds)) {
+    const auto* model_config = GetModelConfig(model);
+    // LINT.IfChange(SearchboxConfigIcons)
+    if (model_config && model_config->has_icon() &&
+        model_config->icon().has_icon_id()) {
+      switch (model_config->icon().icon_id()) {
+        case omnibox::IconResourceIds::BOLT:
+          return ui::ImageModel::FromVectorIcon(
+              features::IsRoundedIconsEnabled() ? kBoltIcon : kBoltOldIcon,
+              ui::kColorMenuIcon, ui::SimpleMenuModel::kDefaultIconSize);
+        case omnibox::IconResourceIds::AUTORENEW:
+          return ui::ImageModel::FromVectorIcon(
+              features::IsRoundedIconsEnabled() ? kAutorenewIcon
+                                                : kAutorenewOldIcon,
+              ui::kColorMenuIcon, ui::SimpleMenuModel::kDefaultIconSize);
+        case omnibox::IconResourceIds::ACUTE:
+          return ui::ImageModel::FromVectorIcon(
+              kAcuteIcon, ui::kColorMenuIcon,
+              ui::SimpleMenuModel::kDefaultIconSize);
+        case omnibox::IconResourceIds::TIMER:
+          return ui::ImageModel::FromVectorIcon(
+              features::IsRoundedIconsEnabled() ? kTimerIcon : kTimerOldIcon,
+              ui::kColorMenuIcon, ui::SimpleMenuModel::kDefaultIconSize);
+        case omnibox::IconResourceIds::BANANA:
+          return ui::ImageModel::FromResourceId(
+              IDR_OMNIBOX_POPUP_IMAGES_CREATE_IMAGES_PNG);
+        case omnibox::IconResourceIds::DRAFT_SPARK:
+          return ui::ImageModel::FromVectorIcon(
+              features::IsRoundedIconsEnabled() ? kDraftSparkIcon
+                                                : kDraftSparkOldIcon,
+              ui::kColorMenuIcon, ui::SimpleMenuModel::kDefaultIconSize);
+        case omnibox::IconResourceIds::TRAVEL_EXPLORE:
+          return ui::ImageModel::FromVectorIcon(
+              features::IsRoundedIconsEnabled() ? kTravelExploreIcon
+                                                : kTravelExploreOldIcon,
+              ui::kColorMenuIcon, ui::SimpleMenuModel::kDefaultIconSize);
+        case omnibox::IconResourceIds::ATTACH_FILE:
+          return ui::ImageModel::FromVectorIcon(
+              features::IsRoundedIconsEnabled() ? kAttachFileIcon
+                                                : kAttachFileOldIcon,
+              ui::kColorMenuIcon, ui::SimpleMenuModel::kDefaultIconSize);
+        case omnibox::IconResourceIds::ADD_PHOTO_ALTERNATE:
+          return ui::ImageModel::FromVectorIcon(
+              features::IsRoundedIconsEnabled() ? kAddPhotoAlternateIcon
+                                                : kAddPhotoAlternateOldIcon,
+              ui::kColorMenuIcon, ui::SimpleMenuModel::kDefaultIconSize);
+        case omnibox::IconResourceIds::DRIVE:
+#if BUILDFLAG(GOOGLE_CHROME_BRANDING)
+          return ui::ImageModel::FromVectorIcon(
+              vector_icons::kGoogleDriveMonochromeIcon, ui::kColorMenuIcon,
+              ui::SimpleMenuModel::kDefaultIconSize);
+#else
+          return ui::ImageModel();
+#endif
+        case omnibox::IconResourceIds::PHOTO_PRINTS:
+          return ui::ImageModel();
+        default:
+          break;
+      }
+    }
+  }
+  // LINT.ThenChange(//ui/webui/resources/cr_components/composebox/searchbox_config_icons.html.ts:SearchboxConfigIcons)
+
+  // Fallback to legacy hardcoded model mapping if flag is disabled or no icon
+  // is specified in config.
   switch (model) {
     case omnibox::ModelMode::MODEL_MODE_GEMINI_PRO_AUTOROUTE:
       return ui::ImageModel::FromVectorIcon(
@@ -1477,7 +1542,7 @@ void OmniboxContextMenuController::ExecuteCommand(int id, int event_flags) {
           it != tool_for_command_id_.end()) {
         if (composebox_handler) {
           composebox_handler->SetActiveToolMode(it->second,
-                                                /*is_set_by_server=*/false);
+                                                /*is_set_by_aim=*/false);
           composebox_handler->RecordToolSelectionAction(it->second);
         }
 
@@ -1526,7 +1591,7 @@ void OmniboxContextMenuController::ExecuteCommand(int id, int event_flags) {
         if (composebox_handler) {
           composebox_handler->SetActiveToolMode(
               omnibox::ToolMode::TOOL_MODE_IMAGE_GEN,
-              /*is_set_by_server=*/false);
+              /*is_set_by_aim=*/false);
           composebox_handler->RecordToolSelectionAction(
               omnibox::ToolMode::TOOL_MODE_IMAGE_GEN);
         }
@@ -1537,7 +1602,7 @@ void OmniboxContextMenuController::ExecuteCommand(int id, int event_flags) {
         if (composebox_handler) {
           composebox_handler->SetActiveToolMode(
               omnibox::ToolMode::TOOL_MODE_DEEP_SEARCH,
-              /*is_set_by_server=*/false);
+              /*is_set_by_aim=*/false);
           composebox_handler->RecordToolSelectionAction(
               omnibox::ToolMode::TOOL_MODE_DEEP_SEARCH);
         }
@@ -1547,7 +1612,7 @@ void OmniboxContextMenuController::ExecuteCommand(int id, int event_flags) {
       case IDC_OMNIBOX_CONTEXT_CANVAS:
         if (composebox_handler) {
           composebox_handler->SetActiveToolMode(
-              omnibox::ToolMode::TOOL_MODE_CANVAS, /*is_set_by_server=*/false);
+              omnibox::ToolMode::TOOL_MODE_CANVAS, /*is_set_by_aim=*/false);
           composebox_handler->RecordToolSelectionAction(
               omnibox::ToolMode::TOOL_MODE_CANVAS);
         }

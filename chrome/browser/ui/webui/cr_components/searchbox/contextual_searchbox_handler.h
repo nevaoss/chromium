@@ -23,6 +23,7 @@
 #include "chrome/browser/tab_list/tab_list_interface.h"
 #include "chrome/browser/tab_list/tab_list_interface_observer.h"
 #include "chrome/browser/ui/omnibox/omnibox_controller.h"
+#include "chrome/browser/ui/omnibox/omnibox_everywhere_service.h"
 #include "chrome/browser/ui/webui/cr_components/searchbox/searchbox_handler.h"
 #include "chrome/browser/ui/webui/cr_components/searchbox/searchbox_omnibox_client.h"
 #include "components/contextual_search/contextual_search_context_controller.h"
@@ -78,6 +79,7 @@ namespace contextual_tasks {
 class ActiveTaskContextProvider;
 class ContextualTasksContextService;
 class DesktopQueryContextualizerDelegate;
+class ContextualTasksUIInterface;
 }  // namespace contextual_tasks
 
 namespace lens {
@@ -164,7 +166,16 @@ class ContextualSearchboxHandler
     // Invoked when the screenshare picker is opened or closed.
     virtual void OnScreensharePickerOpened() {}
     virtual void OnScreensharePickerClosed() {}
+
+    using RegionCaptureSource = OmniboxEverywhereService::RegionCaptureSource;
+    using RegionSelectedCallback =
+        base::OnceCallback<void(const SkBitmap& result_bitmap)>;
+    virtual void ShowRegionSelectOverlay(const SkBitmap& screenshot,
+                                         const RegionCaptureSource& source,
+                                         RegionSelectedCallback callback) {}
   };
+
+  using RegionCaptureSource = ScreenshareDelegate::RegionCaptureSource;
 
   struct ProcessedScreenshot {
     std::vector<uint8_t> png_bytes;
@@ -335,8 +346,7 @@ class ContextualSearchboxHandler
 
   // Resets `input_state_model_`.
   void ResetInputStateModel();
-  void SetActiveToolMode(omnibox::ToolMode tool,
-                         bool is_set_by_server) override;
+  void SetActiveToolMode(omnibox::ToolMode tool, bool is_set_by_aim) override;
   void RecordToolSelectionAction(omnibox::ToolMode tool) override;
   void SetActiveModelMode(omnibox::ModelMode model,
                           bool is_set_by_aim) override;
@@ -379,6 +389,9 @@ class ContextualSearchboxHandler
                        const WindowOpenDisposition disposition,
                        base::OnceCallback<void(content::NavigationHandle&)>
                            navigation_handle_callback);
+
+  virtual contextual_tasks::ContextualTasksUIInterface*
+  GetContextualTasksUiInterface();
 
   void ContextualizeQueryAndOpenUrl(
       const std::string& query_text,
@@ -545,15 +558,6 @@ class ContextualSearchboxHandler
   // Gets the `ActiveTaskContextProvider` to update tab underlines.
   contextual_tasks::ActiveTaskContextProvider* GetActiveTaskContextProvider();
 
-  // Checks eligibility and triggers the smart tab sharing IPH promo logic.
-  void MaybeTriggerSmartTabSharingPromo(
-      const std::string& query,
-      content::WebContents* web_contents_for_window);
-
-  // Callback invoked when relevant tabs are determined for the query to inform
-  // if the smart tab sharing promo should be shown to the user.
-  virtual void OnRelevantTabsReceivedToMaybeShowPromo(
-      std::vector<base::WeakPtr<content::WebContents>> relevant_tabs);
 
   // Cleans up the drive picker controller and result handler receiver.
   // Declared virtual to allow subclasses (such as OmniboxEverywhereHandler) to
@@ -589,10 +593,16 @@ class ContextualSearchboxHandler
                                     StartScreenshareCallback callback,
                                     webrtc::DesktopCapturer::Source source);
   void OnNativePickerCancelled(StartScreenshareCallback callback);
-  void CaptureAndUploadScreenshot(content::DesktopMediaID source,
-                                  StartScreenshareCallback callback);
-  void OnScreenshotCaptured(StartScreenshareCallback callback,
-                            const SkBitmap& bitmap);
+  void CaptureAndUploadScreenshot(
+      content::DesktopMediaID source,
+      StartScreenshareCallback callback,
+      std::optional<RegionCaptureSource> region_capture_source = std::nullopt);
+  void OnScreenshotCaptured(
+      StartScreenshareCallback callback,
+      std::optional<RegionCaptureSource> region_capture_source,
+      const SkBitmap& bitmap);
+  void OnRegionSelected(StartScreenshareCallback callback,
+                        const SkBitmap& region_bitmap);
   void OnScreenshotProcessed(StartScreenshareCallback callback,
                              ProcessedScreenshot result);
   void NotifyScreensharePickerOpened();

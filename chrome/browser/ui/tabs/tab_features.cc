@@ -7,11 +7,14 @@
 #include <memory>
 
 #include "base/feature_list.h"
+#include "base/location.h"
 #include "base/memory/ptr_util.h"
 #include "base/no_destructor.h"
+#include "base/task/sequenced_task_runner.h"
 #include "chrome/browser/actor/actor_keyed_service.h"
 #include "chrome/browser/actor/actor_tab_data.h"
 #include "chrome/browser/actor/ui/actor_ui_tab_controller.h"
+#include "chrome/browser/banners/app_banner_manager_desktop.h"
 #include "chrome/browser/bookmarks/bookmark_model_factory.h"
 #include "chrome/browser/commerce/in_stock_notification/in_stock_notification_manager.h"
 #include "chrome/browser/commerce/shopping_service_factory.h"
@@ -27,6 +30,7 @@
 #include "chrome/browser/glic/suggestions/glic_cue_tab_state.h"
 #include "chrome/browser/glic/suggestions/glic_cue_target.h"
 #include "chrome/browser/image_fetcher/image_fetcher_service_factory.h"
+#include "chrome/browser/indigo/indigo_cue_target.h"
 #include "chrome/browser/indigo/indigo_page_action_controller.h"
 #include "chrome/browser/loader/from_gws_navigation_and_keep_alive_request_observer.h"
 #include "chrome/browser/multistep_filter/chrome_filter_navigation_observer.h"
@@ -64,6 +68,7 @@
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/commerce/commerce_ui_tab_helper.h"
 #include "chrome/browser/ui/context_highlight/context_highlight_tab_feature.h"
+#include "chrome/browser/ui/extensions/extension_side_panel_manager.h"
 #include "chrome/browser/ui/focus_tab_after_navigation_helper.h"
 #include "chrome/browser/ui/intent_picker_tab_helper.h"
 #include "chrome/browser/ui/lens/lens_overlay_controller.h"
@@ -76,7 +81,6 @@
 #include "chrome/browser/ui/performance_controls/memory_saver_chip_tab_helper.h"
 #include "chrome/browser/ui/performance_controls/tab_resource_usage_tab_helper.h"
 #include "chrome/browser/ui/read_anything/read_anything_controller.h"
-#include "chrome/browser/ui/read_anything/read_anything_side_panel_controller.h"
 #include "chrome/browser/ui/sad_tab_helper.h"
 #include "chrome/browser/ui/search_engine_choice/search_engine_choice_tab_helper.h"
 #include "chrome/browser/ui/side_panel/side_panel_registry.h"
@@ -110,7 +114,6 @@
 #include "chrome/browser/ui/views/location_bar/lens_overlay_homework_page_action_controller.h"
 #include "chrome/browser/ui/views/passwords/manage_passwords_page_action_controller.h"
 #include "chrome/browser/ui/views/side_panel/customize_chrome/side_panel_controller_views.h"
-#include "chrome/browser/ui/views/side_panel/extensions/extension_side_panel_manager.h"
 #include "chrome/browser/ui/views/translate/translate_page_action_controller.h"
 #include "chrome/browser/ui/views/zoom/zoom_view_controller.h"
 #include "chrome/browser/ui/web_applications/pwa_install_page_action.h"
@@ -207,6 +210,19 @@ void TabFeatures::Init(TabInterface& tab, Profile* profile) {
   side_panel_registry_ =
       GetUserDataFactory().CreateInstance<SidePanelRegistry>(tab, &tab);
 
+  // Created before the page-action controllers below:
+  // PwaInstallPageAction's constructor looks the manager up, and treats its
+  // absence as a surface that cannot install web apps.
+  if (web_app::AreWebAppsUserInstallable(profile)) {
+    app_banner_manager_ =
+        GetUserDataFactory()
+            .CreateInstanceWithFactoryMethod<webapps::AppBannerManagerDesktop,
+                                             tabs::TabInterface&,
+                                             content::WebContents*>(
+                tab, &webapps::AppBannerManagerDesktop::Create, tab,
+                tab.GetContents());
+  }
+
   // This block instantiate the page action controllers. They do not require any
   // pre-condition. Because some feature need them during their instantiation,
   // therefore this block should come before the feature controllers
@@ -302,6 +318,10 @@ void TabFeatures::Init(TabInterface& tab, Profile* profile) {
         std::make_unique<JsOptimizationsPageActionController>(
             tab, *page_action_controller_);
   }
+
+  page_context_eligibility_helper_ =
+      GetUserDataFactory().CreateInstance<tabs::PageContextEligibilityHelper>(
+          tab, tab);
 
   // Features that are only enabled for normal browser windows. By default most
   // features should be instantiated in this block.
@@ -478,17 +498,9 @@ void TabFeatures::Init(TabInterface& tab, Profile* profile) {
 
   // Create the ReadAnythingController first to ensure it exists before
   // any potential consumers, like the side panel controller.
-  if (features::IsImmersiveReadAnythingEnabled()) {
-    read_anything_controller_ =
-        GetUserDataFactory().CreateInstance<ReadAnythingController>(
-            tab, &tab, side_panel_registry_.get());
-  } else {
-    // TODO(crbug.com/447418049): This will be removed in the future when
-    // ownership of this controller is migrated to ReadAnythingController.
-    read_anything_side_panel_controller_ =
-        std::make_unique<ReadAnythingSidePanelController>(
-            &tab, side_panel_registry_.get());
-  }
+  read_anything_controller_ =
+      GetUserDataFactory().CreateInstance<ReadAnythingController>(
+          tab, &tab, side_panel_registry_.get());
 
   // Create the HttpAuthCacheStatus to start observing resource load
   // completions.
@@ -664,10 +676,6 @@ void TabFeatures::Init(TabInterface& tab, Profile* profile) {
         std::make_unique<back_to_opener::BackToOpenerController>(tab);
   }
 
-  page_context_eligibility_helper_ =
-      GetUserDataFactory().CreateInstance<tabs::PageContextEligibilityHelper>(
-          tab, tab);
-
 #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN) || \
     BUILDFLAG(IS_CHROMEOS)
   if (base::FeatureList::IsEnabled(enterprise_reporting::kSaasUsageReporting)) {
@@ -698,6 +706,10 @@ void TabFeatures::Init(TabInterface& tab, Profile* profile) {
     indigo_page_action_controller_ =
         std::make_unique<indigo::IndigoPageActionController>(
             tab, *page_action_controller_);
+    if (base::FeatureList::IsEnabled(contextual_cueing::kContextualCueingV2) &&
+        base::FeatureList::IsEnabled(features::kIndigoContextualCueingV2)) {
+      indigo::IndigoCueTarget::Register(tab);
+    }
   }
 }
 
@@ -767,6 +779,31 @@ void TabFeatures::WillDiscardContents(tabs::TabInterface* tab,
   form_interaction_tab_helper_.reset();
   form_interaction_tab_helper_ =
       GetUserDataFactory().CreateInstance<FormInteractionTabHelper>(*tab, *tab);
+
+  if (app_banner_manager_) {
+    // Observers of the old manager (e.g. PwaInstallPageAction, the
+    // autotestPrivate waiter) detach in their own WillDiscardContents
+    // callbacks. Those run after this one: callbacks fire in registration
+    // order, and TabFeatures — the owner performing the swap — necessarily
+    // registers before anything it creates in Init(), while some observers
+    // register at arbitrary later times. Deregister the old manager from the
+    // tab now so the replacement can register (and later callbacks in this
+    // pass resolve the new instance), but destroy it asynchronously so it
+    // outlives every detach callback regardless of registration order.
+    // TODO(crbug.com/347770670): once tab discarding in its current
+    // contents-swapping form goes away, the deferred destruction (and
+    // DeregisterFromTabForDiscard) can be removed.
+    app_banner_manager_->DeregisterFromTabForDiscard();
+    base::SequencedTaskRunner::GetCurrentDefault()->DeleteSoon(
+        FROM_HERE, std::move(app_banner_manager_));
+    app_banner_manager_ =
+        GetUserDataFactory()
+            .CreateInstanceWithFactoryMethod<webapps::AppBannerManagerDesktop,
+                                             tabs::TabInterface&,
+                                             content::WebContents*>(
+                *tab, &webapps::AppBannerManagerDesktop::Create, *tab,
+                new_contents);
+  }
 
   zero_suggest_prefetch_tab_helper_ =
       std::make_unique<ZeroSuggestPrefetchTabHelper>(new_contents);

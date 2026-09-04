@@ -19,6 +19,7 @@
 #include "chrome/browser/metrics/chrome_browser_sampling_trials.h"
 #include "chrome/browser/metrics/chrome_metrics_service_accessor.h"
 #include "chrome/browser/metrics/chrome_metrics_service_client.h"
+#include "chrome/common/channel_info.h"
 #include "chrome/common/chrome_paths.h"
 #include "chrome/common/chrome_switches.h"
 #include "components/feed/feed_feature_list.h"
@@ -56,9 +57,14 @@
 #endif
 
 #if BUILDFLAG(IS_CHROMEOS)
-#include "chrome/common/channel_info.h"
 #include "chromeos/ash/services/multidevice_setup/public/cpp/first_run_field_trial.h"
 #endif
+
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
+#include "base/check_deref.h"
+#include "chrome/browser/first_run/first_run.h"
+#include "chrome/browser/signin/first_run_desktop_refresh_field_trial.h"
+#endif  // BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 
 ChromeBrowserFieldTrials::ChromeBrowserFieldTrials(PrefService* local_state)
     : local_state_(local_state) {
@@ -89,6 +95,16 @@ void ChromeBrowserFieldTrials::SetUpClientSideFieldTrials(
     ash::multidevice_setup::CreateFirstRunFieldTrial(feature_list);
   }
 #endif
+
+#if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
+  // This trial is client controlled on Mac and Linux because the first run
+  // experience is shown on the very first run of Chrome. These platforms do not
+  // support variations seed on the first run.
+  if (first_run::IsChromeFirstRun()) {
+    signin::CreateFirstRunDesktopRefreshFieldTrial(
+        CHECK_DEREF(feature_list), entropy_providers.default_entropy());
+  }
+#endif  // BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 }
 
 void ChromeBrowserFieldTrials::RegisterSyntheticTrials() {
@@ -110,6 +126,12 @@ void ChromeBrowserFieldTrials::RegisterSyntheticTrials() {
 void ChromeBrowserFieldTrials::RegisterFeatureOverrides(
     base::FeatureList* feature_list) {
   variations::FeatureOverrides feature_overrides(*feature_list);
+
+  // TODO(crbug.com/552456654): Remove when rollout is complete to stable.
+  if (chrome::GetChannel() != version_info::Channel::STABLE) {
+    feature_overrides.EnableFeature(
+        blink::features::kSingleAxisScrollContainers);
+  }
 
 #if BUILDFLAG(IS_ANDROID)
 #if BUILDFLAG(IS_DESKTOP_ANDROID)
@@ -138,6 +160,11 @@ void ChromeBrowserFieldTrials::RegisterFeatureOverrides(
   // Enable`save as`context menu.
   feature_overrides.EnableFeature(
       download::features::kEnableDownloadSaveAsContextMenu);
+
+  // Enable open download in preferred app.
+  // TODO(crbug.com/539965859): Remove when rollout is complete to all form
+  // factors.
+  feature_overrides.EnableFeature(chrome::android::kOpenDownloadInPreferredApp);
 
   // Enable background media capturing on desktop devices.
   // TODO(crbug.com/426461170): Remove once we enable this feature for all form
@@ -313,6 +340,12 @@ void ChromeBrowserFieldTrials::RegisterFeatureOverrides(
   // whether the data consumer will actually use the data.
   feature_overrides.EnableFeature(
       chrome::android::kAuxiliarySearchHistoryDonation);
+
+  // Allows IMEs to insert media content such as images, gifs and stickers on
+  // Android Desktop devices.
+  // TODO(crbug.com/404663565): Remove when rollout to all form factors is
+  // complete.
+  feature_overrides.EnableFeature(features::kAndroidMediaInsertion);
 
 #endif  // BUILDFLAG(IS_DESKTOP_ANDROID)
   // Desktop-first features which are past incubation should either end up here,

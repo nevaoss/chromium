@@ -24,15 +24,15 @@
 #include "chrome/browser/signin/e2e_tests/sign_in_test_observer.h"
 #include "chrome/browser/signin/e2e_tests/signin_util.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
+#include "chrome/browser/signin/signin_util.h"
+#include "chrome/browser/sync/sync_service_factory.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
 #include "chrome/browser/ui/profiles/profile_picker.h"
 #include "chrome/browser/ui/profiles/profile_ui_test_utils.h"
-#include "chrome/browser/ui/views/profiles/dice_web_signin_interception_bubble_view.h"
 #include "chrome/browser/ui/webui/signin/login_ui_service.h"
 #include "chrome/browser/ui/webui/signin/login_ui_service_factory.h"
 #include "chrome/browser/ui/webui/signin/login_ui_test_utils.h"
-#include "chrome/browser/ui/webui/signin/signin_email_confirmation_dialog.h"
 #include "chrome/browser/ui/webui/signin/signin_url_utils.h"
 #include "chrome/common/webui_url_constants.h"
 #include "chrome/test/base/ui_test_utils.h"
@@ -48,7 +48,9 @@
 #include "components/signin/public/identity_manager/test_accounts.h"
 #include "components/signin/public/identity_manager/tribool.h"
 #include "components/sync/base/features.h"
+#include "components/sync/base/user_selectable_type.h"
 #include "components/sync/service/sync_service.h"
+#include "components/sync/service/sync_user_settings.h"
 #include "components/unexportable_keys/features.h"
 #include "content/public/browser/browsing_data_filter_builder.h"
 #include "content/public/browser/browsing_data_remover.h"
@@ -81,6 +83,12 @@
 #if !BUILDFLAG(IS_CHROMEOS)
 #include "chrome/browser/sync/sync_ui_util.h"
 #endif  // !BUILDFLAG(IS_CHROMEOS)
+
+#if BUILDFLAG(ENABLE_DICE_SUPPORT)
+#include "chrome/browser/ui/views/profiles/dice_web_signin_interception_bubble_view.h"
+#include "chrome/browser/ui/views/profiles/profile_picker_view_test_utils.h"
+#include "chrome/browser/ui/webui/signin/history_sync_optin/history_sync_optin_ui.h"
+#endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
 
 namespace signin::test {
 namespace {
@@ -201,21 +209,24 @@ IN_PROC_BROWSER_TEST_P(LiveSignInTest, MANUAL_ChromeSigninAndSignout) {
 
 // This test can pass. Marked as manual because it TIMED_OUT on Win7.
 // See crbug.com/40107825.
-// Signs in an account through the settings page and enables Sync. Checks that
-// Sync is enabled.
+// Signs in an account through the settings page and enables Sync/History Sync.
 // Then, signs out on the web and checks that the account is removed from
-// cookies and Sync paused error is displayed.
-IN_PROC_BROWSER_TEST_F(LiveSignInTestFullSync, MANUAL_WebSignOut) {
+// cookies and Sync paused / Signin pending error is displayed.
+IN_PROC_BROWSER_TEST_P(LiveSignInTest, MANUAL_WebSignOut) {
   std::optional<TestAccountSigninCredentials> test_account =
       GetTestAccounts()->GetAccount("TEST_ACCOUNT_1");
   CHECK(test_account.has_value());
-  sign_in_functions.TurnOnSync(*test_account, 0);
+  sign_in_functions.SignInFromSettingsWithSyncChoice(
+      *test_account, 0,
+      SignInFunctions::SyncChoice::kAcceptAllOptionalDataTypesSync);
 
+  signin::ConsentLevel consent_level =
+      GetParam() ? signin::ConsentLevel::kSignin : signin::ConsentLevel::kSync;
   const CoreAccountInfo& primary_account =
-      identity_manager()->GetPrimaryAccountInfo(signin::ConsentLevel::kSync);
+      identity_manager()->GetPrimaryAccountInfo(consent_level);
   EXPECT_FALSE(primary_account.IsEmpty());
   EXPECT_TRUE(gaia::AreEmailsSame(test_account->user, primary_account.email));
-  EXPECT_TRUE(sync_service()->IsSyncFeatureEnabled());
+  EXPECT_EQ(sync_service()->IsSyncFeatureEnabled(), !GetParam());
 
   sign_in_functions.SignOutFromWeb();
 
@@ -231,6 +242,9 @@ IN_PROC_BROWSER_TEST_F(LiveSignInTestFullSync, MANUAL_WebSignOut) {
   EXPECT_TRUE(
       identity_manager()->HasAccountWithRefreshTokenInPersistentErrorState(
           primary_account.account_id));
+  EXPECT_EQ(signin_util::GetSignedInState(identity_manager()),
+            GetParam() ? signin_util::SignedInState::kSignInPending
+                       : signin_util::SignedInState::kSyncPaused);
 #if !BUILDFLAG(IS_CHROMEOS)
   EXPECT_EQ(sync_service()->GetUserActionableError(),
             syncer::SyncService::UserActionableError::kSignInNeedsUpdate);
@@ -296,65 +310,51 @@ IN_PROC_BROWSER_TEST_P(LiveSignInTest, MANUAL_WebSignInAndSignOut) {
   EXPECT_TRUE(identity_manager()->GetAccountsWithRefreshTokens().empty());
 }
 
-// This test can pass. Marked as manual because it TIMED_OUT on Win7.
-// See crbug.com/40107825.
-// Signs in an account through the settings page and enables Sync. Checks that
-// Sync is enabled. Signs in a second account on the web.
-// Then, turns Sync off from the settings page and checks that both accounts are
-// removed from Chrome and from cookies.
-IN_PROC_BROWSER_TEST_F(LiveSignInTestFullSync, MANUAL_TurnOffSync) {
-  std::optional<TestAccountSigninCredentials> test_account_1 =
-      GetTestAccounts()->GetAccount("TEST_ACCOUNT_1");
-  CHECK(test_account_1.has_value());
-  sign_in_functions.TurnOnSync(*test_account_1, 0);
-
-  std::optional<TestAccountSigninCredentials> test_account_2 =
-      GetTestAccounts()->GetAccount("TEST_ACCOUNT_2");
-  CHECK(test_account_2.has_value());
-  sign_in_functions.SignInFromWeb(*test_account_2, 1);
-
-  const CoreAccountInfo& primary_account =
-      identity_manager()->GetPrimaryAccountInfo(signin::ConsentLevel::kSync);
-  EXPECT_FALSE(primary_account.IsEmpty());
-  EXPECT_TRUE(gaia::AreEmailsSame(test_account_1->user, primary_account.email));
-  EXPECT_TRUE(sync_service()->IsSyncFeatureEnabled());
-
-  sign_in_functions.TurnOffSync();
-
-  const AccountsInCookieJarInfo& accounts_in_cookie_jar_2 =
-      identity_manager()->GetAccountsInCookieJar();
-  EXPECT_TRUE(accounts_in_cookie_jar_2.AreAccountsFresh());
-  ASSERT_TRUE(
-      accounts_in_cookie_jar_2.GetPotentiallyInvalidSignedInAccounts().empty());
-  EXPECT_TRUE(identity_manager()->GetAccountsWithRefreshTokens().empty());
-  EXPECT_FALSE(
-      identity_manager()->HasPrimaryAccount(signin::ConsentLevel::kSync));
-}
-
-// In "Sync paused" state, when the primary account is invalid, turns off sync
-// from settings. Checks that the account is removed from Chrome.
-// Regression test for https://crbug.com/40710922
-IN_PROC_BROWSER_TEST_F(LiveSignInTestFullSync, MANUAL_TurnOffSyncWhenPaused) {
+// In "Sync paused" or "Signin pending" state, when the primary account is
+// invalid, signs out of Chrome from settings. Checks that the account is
+// removed from Chrome. Regression test for https://crbug.com/40710922
+IN_PROC_BROWSER_TEST_P(LiveSignInTest, MANUAL_ChromeSignOutWhenPending) {
   std::optional<TestAccountSigninCredentials> test_account =
       GetTestAccounts()->GetAccount("TEST_ACCOUNT_1");
   CHECK(test_account.has_value());
-  sign_in_functions.TurnOnSync(*test_account, 0);
+  sign_in_functions.SignInFromSettingsWithSyncChoice(
+      *test_account, 0,
+      SignInFunctions::SyncChoice::kAcceptAllOptionalDataTypesSync);
 
-  // Get in sync paused state.
+  // Get in sync paused or signin pending state.
   sign_in_functions.SignOutFromWeb();
 
+  signin::ConsentLevel consent_level =
+      GetParam() ? signin::ConsentLevel::kSignin : signin::ConsentLevel::kSync;
   const CoreAccountInfo& primary_account =
-      identity_manager()->GetPrimaryAccountInfo(signin::ConsentLevel::kSync);
+      identity_manager()->GetPrimaryAccountInfo(consent_level);
   EXPECT_FALSE(primary_account.IsEmpty());
   EXPECT_TRUE(gaia::AreEmailsSame(test_account->user, primary_account.email));
-  EXPECT_TRUE(sync_service()->IsSyncFeatureEnabled());
+  EXPECT_EQ(sync_service()->IsSyncFeatureEnabled(), !GetParam());
   EXPECT_TRUE(
       identity_manager()->HasAccountWithRefreshTokenInPersistentErrorState(
           primary_account.account_id));
+  EXPECT_EQ(signin_util::GetSignedInState(identity_manager()),
+            GetParam() ? signin_util::SignedInState::kSignInPending
+                       : signin_util::SignedInState::kSyncPaused);
 
-  sign_in_functions.TurnOffSync();
+  if (GetParam()) {
+    sign_in_functions.SignOut();
+  } else {
+    GURL settings_url("chrome://settings");
+    ASSERT_TRUE(AddTabAtIndex(0, settings_url,
+                              ui::PageTransition::PAGE_TRANSITION_TYPED));
+    SignInTestObserver observer(identity_manager(), account_reconcilor());
+    auto* settings_tab = browser()->GetTabStripModel()->GetActiveWebContents();
+    EXPECT_TRUE(content::ExecJs(
+        settings_tab,
+        base::StringPrintf(
+            kSettingsScriptWrapperFormat,
+            "settings.SyncBrowserProxyImpl.getInstance().signOut(false)")));
+    observer.WaitForAccountChanges(0, PrimaryAccountWait::kWaitForCleared);
+  }
   EXPECT_FALSE(
-      identity_manager()->HasPrimaryAccount(signin::ConsentLevel::kSync));
+      identity_manager()->HasPrimaryAccount(signin::ConsentLevel::kSignin));
 
   // Wait until the signin manager clears the invalid token.
   AccountsRemovedWaiter accounts_removed_waiter(identity_manager());
@@ -442,204 +442,6 @@ IN_PROC_BROWSER_TEST_P(LiveSignInTest, MANUAL_CancelSync) {
   EXPECT_FALSE(sync_service()->IsSyncFeatureEnabled());
 }
 
-// This test can pass. Marked as manual because it TIMED_OUT on Win7.
-// See crbug.com/40107825.
-// Enables and disables sync to account 1. Enables sync to account 2 and clicks
-// on "This wasn't me" in the email confirmation dialog. Checks that the new
-// profile is created. Checks that Sync to account 2 is enabled in the new
-// profile. Checks that account 2 was removed from the original profile.
-IN_PROC_BROWSER_TEST_F(LiveSignInTestFullSync,
-                       MANUAL_SyncSecondAccount_CreateNewProfile) {
-  // Enable and disable sync for the first account.
-  std::optional<TestAccountSigninCredentials> test_account_1 =
-      GetTestAccounts()->GetAccount("TEST_ACCOUNT_1");
-  CHECK(test_account_1.has_value());
-  sign_in_functions.TurnOnSync(*test_account_1, 0);
-  sign_in_functions.TurnOffSync();
-
-  // Start enable sync for the second account.
-  std::optional<TestAccountSigninCredentials> test_account_2 =
-      GetTestAccounts()->GetAccount("TEST_ACCOUNT_2");
-  CHECK(test_account_2.has_value());
-  sign_in_functions.SignInFromSettings(*test_account_2, 0);
-
-  // Set up an observer for removing the second account from the original
-  // profile.
-  SignInTestObserver original_browser_observer(identity_manager(),
-                                               account_reconcilor());
-
-  // Check there is only one profile.
-  ProfileManager* profile_manager = g_browser_process->profile_manager();
-  EXPECT_EQ(profile_manager->GetNumberOfProfiles(), 1U);
-  EXPECT_EQ(GlobalBrowserCollection::GetInstance()->GetSize(), 1U);
-
-  // Click "This wasn't me" on the email confirmation dialog and wait for a new
-  // browser and profile created.
-  EXPECT_TRUE(login_ui_test_utils::CompleteSigninEmailConfirmationDialog(
-      browser(), kDialogTimeout,
-      SigninEmailConfirmationDialog::CREATE_NEW_USER));
-  BrowserWindowInterface* new_browser = ui_test_utils::WaitForBrowserToOpen();
-  EXPECT_EQ(profile_manager->GetNumberOfProfiles(), 2U);
-  EXPECT_EQ(GlobalBrowserCollection::GetInstance()->GetSize(), 2U);
-  EXPECT_NE(browser()->GetProfile(), new_browser->GetProfile());
-
-  // Confirm sync in the new browser window.
-  SignInTestObserver new_browser_observer(
-      signin::test::identity_manager(new_browser),
-      signin::test::account_reconcilor(new_browser));
-  EXPECT_TRUE(login_ui_test_utils::ConfirmSyncConfirmationDialog(
-      new_browser, kDialogTimeout));
-  new_browser_observer.WaitForAccountChanges(1,
-                                             PrimaryAccountWait::kWaitForAdded);
-
-  // Check accounts in cookies in the new profile.
-  const AccountsInCookieJarInfo& accounts_in_cookie_jar =
-      signin::test::identity_manager(new_browser)->GetAccountsInCookieJar();
-  EXPECT_TRUE(accounts_in_cookie_jar.AreAccountsFresh());
-  ASSERT_EQ(
-      1u,
-      accounts_in_cookie_jar.GetPotentiallyInvalidSignedInAccounts().size());
-  const gaia::ListedAccount& account =
-      accounts_in_cookie_jar.GetPotentiallyInvalidSignedInAccounts()[0];
-  EXPECT_TRUE(gaia::AreEmailsSame(test_account_2->user, account.email));
-
-  // Check the primary account in the new profile is set and syncing.
-  const CoreAccountInfo& primary_account =
-      signin::test::identity_manager(new_browser)
-          ->GetPrimaryAccountInfo(signin::ConsentLevel::kSync);
-  EXPECT_FALSE(primary_account.IsEmpty());
-  EXPECT_TRUE(gaia::AreEmailsSame(test_account_2->user, primary_account.email));
-  EXPECT_TRUE(signin::test::identity_manager(new_browser)
-                  ->HasAccountWithRefreshToken(primary_account.account_id));
-  EXPECT_TRUE(signin::test::sync_service(new_browser)->IsSyncFeatureEnabled());
-
-  // Check that the second account was removed from the original profile.
-  original_browser_observer.WaitForAccountChanges(
-      0, PrimaryAccountWait::kWaitForCleared);
-  const AccountsInCookieJarInfo& accounts_in_cookie_jar_2 =
-      identity_manager()->GetAccountsInCookieJar();
-  EXPECT_TRUE(accounts_in_cookie_jar_2.AreAccountsFresh());
-  ASSERT_TRUE(
-      accounts_in_cookie_jar_2.GetPotentiallyInvalidSignedInAccounts().empty());
-  EXPECT_TRUE(identity_manager()->GetAccountsWithRefreshTokens().empty());
-  EXPECT_FALSE(
-      identity_manager()->HasPrimaryAccount(signin::ConsentLevel::kSync));
-}
-
-// This test can pass. Marked as manual because it TIMED_OUT on Win7.
-// See crbug.com/40107825.
-// Enables and disables sync to account 1. Enables sync to account 2 and clicks
-// on "This was me" in the email confirmation dialog. Checks that Sync to
-// account 2 is enabled in the current profile.
-IN_PROC_BROWSER_TEST_F(LiveSignInTestFullSync,
-                       MANUAL_SyncSecondAccount_InExistingProfile) {
-  // Enable and disable sync for the first account.
-  std::optional<TestAccountSigninCredentials> test_account_1 =
-      GetTestAccounts()->GetAccount("TEST_ACCOUNT_1");
-  CHECK(test_account_1.has_value());
-  sign_in_functions.TurnOnSync(*test_account_1, 0);
-  sign_in_functions.TurnOffSync();
-
-  // Start enable sync for the second account.
-  std::optional<TestAccountSigninCredentials> test_account_2 =
-      GetTestAccounts()->GetAccount("TEST_ACCOUNT_2");
-  CHECK(test_account_2.has_value());
-  sign_in_functions.SignInFromSettings(*test_account_2, 0);
-
-  // Check there is only one profile.
-  ProfileManager* profile_manager = g_browser_process->profile_manager();
-  EXPECT_EQ(profile_manager->GetNumberOfProfiles(), 1U);
-  EXPECT_EQ(GlobalBrowserCollection::GetInstance()->GetSize(), 1U);
-
-  // Click "This was me" on the email confirmation dialog, confirm sync and wait
-  // for a primary account to be set.
-  SignInTestObserver observer(identity_manager(), account_reconcilor());
-  EXPECT_TRUE(login_ui_test_utils::CompleteSigninEmailConfirmationDialog(
-      browser(), kDialogTimeout, SigninEmailConfirmationDialog::START_SYNC));
-  EXPECT_TRUE(login_ui_test_utils::ConfirmSyncConfirmationDialog(
-      browser(), kDialogTimeout));
-  observer.WaitForAccountChanges(1, PrimaryAccountWait::kWaitForAdded);
-
-  // Check no profile was created.
-  EXPECT_EQ(profile_manager->GetNumberOfProfiles(), 1U);
-  EXPECT_EQ(GlobalBrowserCollection::GetInstance()->GetSize(), 1U);
-
-  // Check accounts in cookies.
-  const AccountsInCookieJarInfo& accounts_in_cookie_jar =
-      identity_manager()->GetAccountsInCookieJar();
-  EXPECT_TRUE(accounts_in_cookie_jar.AreAccountsFresh());
-  ASSERT_EQ(
-      1u,
-      accounts_in_cookie_jar.GetPotentiallyInvalidSignedInAccounts().size());
-  const gaia::ListedAccount& account =
-      accounts_in_cookie_jar.GetPotentiallyInvalidSignedInAccounts()[0];
-  EXPECT_TRUE(gaia::AreEmailsSame(test_account_2->user, account.email));
-
-  // Check the primary account is set and syncing.
-  const CoreAccountInfo& primary_account =
-      identity_manager()->GetPrimaryAccountInfo(signin::ConsentLevel::kSync);
-  EXPECT_FALSE(primary_account.IsEmpty());
-  EXPECT_TRUE(gaia::AreEmailsSame(test_account_2->user, primary_account.email));
-  EXPECT_TRUE(identity_manager()->HasAccountWithRefreshToken(
-      primary_account.account_id));
-  EXPECT_TRUE(sync_service()->IsSyncFeatureEnabled());
-}
-
-// This test can pass. Marked as manual because it TIMED_OUT on Win7.
-// See crbug.com/40107825.
-// Enables and disables sync to account 1. Enables sync to account 2 and clicks
-// on "Cancel" in the email confirmation dialog. Checks that the account is left
-// signed in without syncing.
-IN_PROC_BROWSER_TEST_F(LiveSignInTestFullSync,
-                       MANUAL_SyncSecondAccount_CancelOnEmailConfirmation) {
-  // Enable and disable sync for the first account.
-  std::optional<TestAccountSigninCredentials> test_account_1 =
-      GetTestAccounts()->GetAccount("TEST_ACCOUNT_1");
-  CHECK(test_account_1.has_value());
-  sign_in_functions.TurnOnSync(*test_account_1, 0);
-  sign_in_functions.TurnOffSync();
-
-  // Start enable sync for the second account.
-  std::optional<TestAccountSigninCredentials> test_account_2 =
-      GetTestAccounts()->GetAccount("TEST_ACCOUNT_2");
-  CHECK(test_account_2.has_value());
-  sign_in_functions.SignInFromSettings(*test_account_2, 0);
-
-  // Check there is only one profile.
-  ProfileManager* profile_manager = g_browser_process->profile_manager();
-  EXPECT_EQ(profile_manager->GetNumberOfProfiles(), 1U);
-  EXPECT_EQ(GlobalBrowserCollection::GetInstance()->GetSize(), 1U);
-
-  // Click "Cancel" on the email confirmation dialog.
-  EXPECT_TRUE(login_ui_test_utils::CompleteSigninEmailConfirmationDialog(
-      browser(), kDialogTimeout, SigninEmailConfirmationDialog::CLOSE));
-
-  // Check no profile was created.
-  EXPECT_EQ(profile_manager->GetNumberOfProfiles(), 1U);
-  EXPECT_EQ(GlobalBrowserCollection::GetInstance()->GetSize(), 1U);
-
-  // The account is still signed in, but not syncing.
-  EXPECT_FALSE(
-      identity_manager()->HasPrimaryAccount(signin::ConsentLevel::kSync));
-  EXPECT_TRUE(
-      identity_manager()->HasPrimaryAccount(signin::ConsentLevel::kSignin));
-
-  const AccountsInCookieJarInfo& accounts_in_cookie_jar =
-      identity_manager()->GetAccountsInCookieJar();
-  EXPECT_TRUE(accounts_in_cookie_jar.AreAccountsFresh());
-  ASSERT_EQ(
-      1u,
-      accounts_in_cookie_jar.GetPotentiallyInvalidSignedInAccounts().size());
-  ASSERT_EQ(1u, accounts_in_cookie_jar.GetSignedOutAccounts().size());
-  EXPECT_TRUE(gaia::AreEmailsSame(
-      test_account_1->user,
-      accounts_in_cookie_jar.GetSignedOutAccounts()[0].email));
-  const gaia::ListedAccount& account =
-      accounts_in_cookie_jar.GetPotentiallyInvalidSignedInAccounts()[0];
-  EXPECT_TRUE(gaia::AreEmailsSame(test_account_2->user, account.email));
-  EXPECT_TRUE(identity_manager()->HasAccountWithRefreshToken(account.id));
-  EXPECT_FALSE(sync_service()->IsSyncFeatureEnabled());
-}
 
 IN_PROC_BROWSER_TEST_P(LiveSignInTest,
                        MANUAL_AccountCapabilities_FetchedOnSignIn) {
@@ -695,7 +497,7 @@ IN_PROC_BROWSER_TEST_P(LiveSignInTest,
 }
 
 #if BUILDFLAG(ENABLE_DICE_SUPPORT)
-IN_PROC_BROWSER_TEST_F(LiveSignInTestFullSync, MANUAL_CreateSignedInProfile) {
+IN_PROC_BROWSER_TEST_P(LiveSignInTest, MANUAL_CreateSignedInProfile) {
   base::HistogramTester histogram_tester;
   std::optional<TestAccountSigninCredentials> test_account =
       GetTestAccounts()->GetAccount("TEST_ACCOUNT_1");
@@ -735,21 +537,45 @@ IN_PROC_BROWSER_TEST_F(LiveSignInTestFullSync, MANUAL_CreateSignedInProfile) {
            signin::ConsentLevel::kSignin;
   });
 
-  // Confirm Sync.
+  // Confirm Sync or History Sync Opt-in.
   ui_test_utils::BrowserCreatedObserver browser_created_observer;
-  GURL sync_confirmation_url =
-      AppendSyncConfirmationQueryParams(GURL("chrome://sync-confirmation/"),
-                                        SyncConfirmationStyle::kWindow, true);
-  profiles::testing::WaitForPickerLoadStop(sync_confirmation_url);
-  LoginUIServiceFactory::GetForProfile(new_profile)
-      ->SyncConfirmationUIClosed(LoginUIService::SYNC_WITH_DEFAULT_SETTINGS);
+  if (GetParam()) {
+    GURL history_sync_optin_url =
+        HistorySyncOptinUI::AppendHistorySyncOptinQueryParams(
+            GURL(chrome::kChromeUIHistorySyncOptinURL),
+            HistorySyncOptinLaunchContext::kWindow);
+    profiles::testing::WaitForPickerLoadStop(history_sync_optin_url);
+
+    EXPECT_TRUE(base::test::RunUntil([picker_contents]() {
+      return content::EvalJs(picker_contents,
+                             profiles::testing::GetAcceptHistoryOptinScript())
+          .ExtractBool();
+    }));
+  } else {
+    GURL sync_confirmation_url =
+        AppendSyncConfirmationQueryParams(GURL("chrome://sync-confirmation/"),
+                                          SyncConfirmationStyle::kWindow, true);
+    profiles::testing::WaitForPickerLoadStop(sync_confirmation_url);
+    LoginUIServiceFactory::GetForProfile(new_profile)
+        ->SyncConfirmationUIClosed(LoginUIService::SYNC_WITH_DEFAULT_SETTINGS);
+  }
 
   // Wait for browser to open.
   profiles::testing::WaitForPickerClosed();
   BrowserWindowInterface* new_browser = browser_created_observer.Wait();
   EXPECT_EQ(new_browser->GetProfile(), new_profile);
-  EXPECT_EQ(GetPrimaryAccountConsentLevel(identity_manager),
-            signin::ConsentLevel::kSync);
+  if (GetParam()) {
+    EXPECT_EQ(GetPrimaryAccountConsentLevel(identity_manager),
+              signin::ConsentLevel::kSignin);
+    syncer::SyncService* sync_service =
+        SyncServiceFactory::GetForProfile(new_profile);
+    EXPECT_TRUE(sync_service->GetUserSettings()->GetSelectedTypes().HasAll(
+        {syncer::UserSelectableType::kHistory,
+         syncer::UserSelectableType::kTabs}));
+  } else {
+    EXPECT_EQ(GetPrimaryAccountConsentLevel(identity_manager),
+              signin::ConsentLevel::kSync);
+  }
 
   // Both LST and Sync Header are received so their time difference must be
   // recorded.

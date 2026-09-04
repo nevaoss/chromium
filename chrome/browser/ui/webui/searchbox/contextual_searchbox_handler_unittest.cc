@@ -29,9 +29,12 @@
 #include "chrome/browser/contextual_search/contextual_search_service_factory.h"
 #include "chrome/browser/contextual_search/contextual_search_web_contents_helper.h"
 #include "chrome/browser/contextual_tasks/active_task_context_provider_impl.h"
+#include "chrome/browser/contextual_tasks/contextual_tasks.mojom.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_context_service.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_context_service_factory.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_service_factory.h"
+#include "chrome/browser/contextual_tasks/contextual_tasks_ui_interface.h"
+#include "chrome/browser/contextual_tasks/smart_tab_sharing_metrics.h"
 #include "chrome/browser/feature_engagement/tracker_factory.h"
 #include "chrome/browser/media/webrtc/fake_desktop_media_picker_factory.h"
 #include "chrome/browser/search_engines/template_url_service_factory.h"
@@ -139,6 +142,101 @@ GURL StripTimestampsFromAimUrl(const GURL& url) {
   return result_url;
 }
 
+class FakeContextualTasksUIInterface
+    : public contextual_tasks::ContextualTasksUIInterface {
+ public:
+  FakeContextualTasksUIInterface() {
+    page_receiver_ = page_remote_.BindNewPipeAndPassReceiver();
+  }
+  ~FakeContextualTasksUIInterface() override = default;
+
+  // TaskInfoDelegate:
+  const std::optional<base::Uuid>& GetTaskId() override {
+    static const std::optional<base::Uuid> id;
+    return id;
+  }
+  void SetTaskId(std::optional<base::Uuid> id) override {}
+  const std::optional<std::string>& GetThreadId() override {
+    static const std::optional<std::string> id;
+    return id;
+  }
+  void SetThreadId(std::optional<std::string> id) override {}
+  const std::optional<std::string>& GetThreadTitle() override {
+    static const std::optional<std::string> title;
+    return title;
+  }
+  void SetThreadTitle(std::optional<std::string> title) override {}
+  void SetIsAiPage(bool is_ai_page) override {}
+  void UpdateStateFromUrl(const GURL& url) override {}
+  bool IsShownInTab() override { return false; }
+  BrowserWindowInterface* GetBrowser() override { return nullptr; }
+  content::WebContents* GetWebUIWebContents() override { return nullptr; }
+  void OnZeroStateChange(bool is_zero_state) override {}
+  void SetInNlm(bool in_nlm) override {}
+  void PushTaskDetailsToPage(std::optional<base::Uuid> id,
+                             const GURL& url,
+                             bool replace_navigation_entry) override {}
+  void PrepareForTaskChange() override {}
+  void OnTaskChanged() override {}
+
+  // ContextualTasksUIInterface:
+  mojo::Remote<contextual_tasks::mojom::Page>& GetPageRemote() override {
+    return page_remote_;
+  }
+  contextual_tasks::ContextualTasksAutoSuggestionManager*
+  GetAutoSuggestionManager() override {
+    return nullptr;
+  }
+  Profile* GetProfile() override { return nullptr; }
+  void TransferNavigationToEmbeddedPage(
+      content::OpenURLParams params) override {}
+  void CloseSidePanel() override {}
+  void OnSidePanelStateChanged() override {}
+  void OnActiveTabContextStatusChanged() override {}
+  void OnLensOverlayStateChanged(
+      bool is_showing,
+      std::optional<lens::LensOverlayInvocationSource> invocation_source)
+      override {}
+  bool IsLensOverlayShowing() const override { return false; }
+  void StartPlatformVoiceRecognition() override {}
+  void OnVoiceTranscribed(const std::string& query) override {}
+  void OnPageContextEligibilityChecked(bool is_page_context_eligible) override {
+  }
+  bool IsActiveTabContextSuggestionShowing() const override { return false; }
+  bool CanExpandToFullTab() const override { return false; }
+  void MoveTaskUiToNewTab() override {}
+  void UpdateExpandButtonEnabled(bool enabled) override {}
+  GURL GetWebUiUrl() override { return GURL(); }
+  void PostAimMessage(const lens::ClientToAimMessage& message) override {}
+  contextual_search::ContextualSearchSessionHandle*
+  GetOrCreateContextualSessionHandle() override {
+    return nullptr;
+  }
+  std::unique_ptr<contextual_search::InputStateModel> TakeInputStateModel()
+      override {
+    return nullptr;
+  }
+  std::vector<int32_t> GetRestoredTabIds() override { return {}; }
+  void OnRestoredTabsFetched(
+      std::vector<searchbox::mojom::TabInfoPtr> tabs) override {}
+  void SetComposeboxHandler(
+      contextual_tasks::ContextualTasksComposeboxHandlerInterface* handler)
+      override {}
+  const GURL& GetInnerFrameUrl() const override { return GURL::EmptyGURL(); }
+  content::WebContents* GetInnerWebContents() const override { return nullptr; }
+  bool IsContextualTasksEligibleOnInit() const override { return false; }
+  bool IsInitComplete() override { return false; }
+  void OnInitComplete() override {}
+  void AddObserver(Observer* observer) override {}
+  void RemoveObserver(Observer* observer) override {}
+  bool is_history_thread_loading() const override { return false; }
+  void set_is_history_thread_loading(bool loading) override {}
+
+ private:
+  mojo::Remote<contextual_tasks::mojom::Page> page_remote_;
+  mojo::PendingReceiver<contextual_tasks::mojom::Page> page_receiver_;
+};
+
 class FakeContextualSearchboxHandler : public ContextualSearchboxHandler {
  public:
   FakeContextualSearchboxHandler(
@@ -233,6 +331,11 @@ class FakeContextualSearchboxHandler : public ContextualSearchboxHandler {
     return GetValidInputState();
   }
 
+  contextual_tasks::ContextualTasksUIInterface* GetContextualTasksUiInterface()
+      override {
+    return &fake_ui_interface_;
+  }
+
   bool IsContextualSearchTabSharingEligible() const override {
     return tab_sharing_eligible_;
   }
@@ -244,6 +347,7 @@ class FakeContextualSearchboxHandler : public ContextualSearchboxHandler {
  private:
   std::optional<bool> smart_tab_sharing_active_override_;
   bool tab_sharing_eligible_ = true;
+  FakeContextualTasksUIInterface fake_ui_interface_;
 };
 
 class MockDrivePickerHostController : public DrivePickerHostController {
@@ -303,6 +407,10 @@ class MockContextualTasksContextService
                const std::vector<GURL>&,
                base::OnceCallback<
                    void(std::vector<base::WeakPtr<content::WebContents>>)>),
+              (override));
+  MOCK_METHOD(void,
+              OnTypedQuery,
+              (base::WeakPtr<BrowserWindowInterface>),
               (override));
 };
 
@@ -650,6 +758,70 @@ TEST_F(ContextualSearchboxHandlerTest, AddFile_Image) {
   EXPECT_EQ(image_options->max_width, image_upload.downscale_max_image_width());
   EXPECT_EQ(image_options->compression_quality,
             image_upload.image_compression_quality());
+}
+
+TEST_F(ContextualSearchboxHandlerTest, SetActiveToolModeHistogram) {
+  base::HistogramTester histogram_tester;
+  handler().SetActiveToolMode(omnibox::TOOL_MODE_CANVAS,
+                              /*is_set_by_aim=*/false);
+  handler().SetActiveToolMode(omnibox::TOOL_MODE_DEEP_SEARCH,
+                              /*is_set_by_aim=*/false);
+  handler().SetActiveToolMode(omnibox::TOOL_MODE_CANVAS,
+                              /*is_set_by_aim=*/false);
+
+  histogram_tester.ExpectTotalCount(
+      "ContextualSearch.Tools.ChangedByAIM.NewTabPage", 0);
+}
+
+TEST_F(ContextualSearchboxHandlerTest, SetActiveModelModeHistogram) {
+  base::HistogramTester histogram_tester;
+  handler().SetActiveModelMode(omnibox::MODEL_MODE_GEMINI_PRO,
+                               /*is_set_by_aim=*/false);
+  handler().SetActiveModelMode(omnibox::MODEL_MODE_GEMINI_REGULAR,
+                               /*is_set_by_aim=*/false);
+  handler().SetActiveModelMode(omnibox::MODEL_MODE_GEMINI_PRO,
+                               /*is_set_by_aim=*/false);
+
+  histogram_tester.ExpectTotalCount(
+      "ContextualSearch.Models.ChangedByAIM.NewTabPage", 0);
+}
+
+TEST_F(ContextualSearchboxHandlerTest, SetActiveToolModeSetByServerHistogram) {
+  base::HistogramTester histogram_tester;
+  handler().SetActiveToolMode(omnibox::TOOL_MODE_CANVAS,
+                              /*is_set_by_aim=*/true);
+  handler().SetActiveToolMode(omnibox::TOOL_MODE_DEEP_SEARCH,
+                              /*is_set_by_aim=*/true);
+  handler().SetActiveToolMode(omnibox::TOOL_MODE_CANVAS,
+                              /*is_set_by_aim=*/true);
+
+  histogram_tester.ExpectBucketCount(
+      "ContextualSearch.Tools.ChangedByAIM.NewTabPage",
+      omnibox::TOOL_MODE_CANVAS, 2);
+  histogram_tester.ExpectBucketCount(
+      "ContextualSearch.Tools.ChangedByAIM.NewTabPage",
+      omnibox::TOOL_MODE_DEEP_SEARCH, 1);
+  histogram_tester.ExpectTotalCount(
+      "ContextualSearch.Tools.ChangedByAIM.NewTabPage", 3);
+}
+
+TEST_F(ContextualSearchboxHandlerTest, SetActiveModelModeSetByServerHistogram) {
+  base::HistogramTester histogram_tester;
+  handler().SetActiveModelMode(omnibox::MODEL_MODE_GEMINI_PRO,
+                               /*is_set_by_aim=*/true);
+  handler().SetActiveModelMode(omnibox::MODEL_MODE_GEMINI_REGULAR,
+                               /*is_set_by_aim=*/true);
+  handler().SetActiveModelMode(omnibox::MODEL_MODE_GEMINI_PRO,
+                               /*is_set_by_aim=*/true);
+
+  histogram_tester.ExpectBucketCount(
+      "ContextualSearch.Models.ChangedByAIM.NewTabPage",
+      omnibox::MODEL_MODE_GEMINI_PRO, 2);
+  histogram_tester.ExpectBucketCount(
+      "ContextualSearch.Models.ChangedByAIM.NewTabPage",
+      omnibox::MODEL_MODE_GEMINI_REGULAR, 1);
+  histogram_tester.ExpectTotalCount(
+      "ContextualSearch.Models.ChangedByAIM.NewTabPage", 3);
 }
 
 TEST_F(ContextualSearchboxHandlerTest, ClearFiles) {
@@ -1508,6 +1680,35 @@ TEST_F(SmartTabSharingTest, IsSmartTabSharingActive_AvailabilityDisabled) {
   EXPECT_FALSE(handler().IsSmartTabSharingActive());
 }
 
+TEST_F(SmartTabSharingTest, QueryAutocomplete_CallsOnTypedQueryWhenActive) {
+  handler().set_smart_tab_sharing_active_override(true);
+
+  ASSERT_TRUE(mock_service_);
+  EXPECT_CALL(*mock_service_, OnTypedQuery(testing::_)).Times(1);
+
+  handler().QueryAutocomplete(
+      0, /*tab_id=*/std::nullopt, u"test",
+      /*prevent_inline_autocomplete=*/false, 0,
+      omnibox::SuggestInventory::SUGGEST_INVENTORY_DEFAULT,
+      /*is_on_focus=*/false, /*keyword=*/"",
+      searchbox::mojom::InputMethod::kKeyboard);
+}
+
+TEST_F(SmartTabSharingTest,
+       QueryAutocomplete_DoesNotCallOnTypedQueryWhenInactive) {
+  handler().set_smart_tab_sharing_active_override(false);
+
+  ASSERT_TRUE(mock_service_);
+  EXPECT_CALL(*mock_service_, OnTypedQuery(testing::_)).Times(0);
+
+  handler().QueryAutocomplete(
+      0, /*tab_id=*/std::nullopt, u"test",
+      /*prevent_inline_autocomplete=*/false, 0,
+      omnibox::SuggestInventory::SUGGEST_INVENTORY_DEFAULT,
+      /*is_on_focus=*/false, /*keyword=*/"",
+      searchbox::mojom::InputMethod::kKeyboard);
+}
+
 TEST_F(SmartTabSharingTest, SubmitQuery_SmartTabSharingOverrideDisabled) {
   handler().set_smart_tab_sharing_active_override(false);
 
@@ -1516,18 +1717,11 @@ TEST_F(SmartTabSharingTest, SubmitQuery_SmartTabSharingOverrideDisabled) {
   EXPECT_CALL(*mock_service_,
               GetRelevantTabsForConversationThread(testing::_, testing::_,
                                                    testing::_, testing::_))
-      .Times(1)
-      .WillOnce([](const auto& options, const auto& conversation_thread,
-                   const auto& explicit_urls, auto callback) {
-        // The min model score should be set to the promo value.
-        ASSERT_EQ(
-            options.min_model_score.value_or(-1.0f),
-            static_cast<float>(
-                contextual_tasks::GetSmartTabSharingPromoScoreThreshold()));
-        std::move(callback).Run({});
-      });
+      .Times(0);
 
   SubmitQueryAndWaitForNavigation();
+  histogram_tester().ExpectUniqueSample(
+      "ContextualSearch.SmartTabSharing.ThreadWithTabsSubmitted", false, 1);
 }
 
 TEST_F(SmartTabSharingTest,
@@ -1547,6 +1741,8 @@ TEST_F(SmartTabSharingTest,
       });
 
   SubmitQueryAndWaitForNavigation();
+  histogram_tester().ExpectUniqueSample(
+      "ContextualSearch.SmartTabSharing.ThreadWithTabsSubmitted", true, 1);
 }
 
 TEST_F(SmartTabSharingTest, SetSmartTabSharingActive_FeatureDisabled) {
@@ -1684,10 +1880,7 @@ TEST_F(SmartTabSharingTest, SubmitQuery_PersistsSmartTabSharingInactive) {
   EXPECT_CALL(*mock_service_,
               GetRelevantTabsForConversationThread(testing::_, testing::_,
                                                    testing::_, testing::_))
-      .Times(1)
-      .WillOnce([](const auto& options, const auto& conversation_thread,
-                   const auto& explicit_urls,
-                   auto callback) { std::move(callback).Run({}); });
+      .Times(0);
 
   SubmitQueryAndWaitForNavigation();
 
@@ -1699,6 +1892,50 @@ TEST_F(SmartTabSharingTest, SubmitQuery_PersistsSmartTabSharingInactive) {
   EXPECT_TRUE(new_session_handle->smart_tab_sharing_active().has_value());
   EXPECT_FALSE(*new_session_handle->smart_tab_sharing_active());
 }
+
+TEST_F(SmartTabSharingTest, LogMenuOptionClickedMetrics) {
+  ASSERT_TRUE(contextual_tasks::ContextualTasksContextService::
+                  GetIsSmartTabSharingEnabled(profile()));
+
+  handler().SetSmartTabSharingActive(true);
+  histogram_tester().ExpectUniqueSample(
+      "ContextualSearch.SmartTabSharing.MenuOptionClicked",
+      contextual_tasks::SmartTabSharingToggleState::kToggledOn, 1);
+
+  handler().SetSmartTabSharingActive(false);
+  histogram_tester().ExpectBucketCount(
+      "ContextualSearch.SmartTabSharing.MenuOptionClicked",
+      contextual_tasks::SmartTabSharingToggleState::kToggledOff, 1);
+}
+
+TEST_F(SmartTabSharingTest, LogOptOutMidThread) {
+  ASSERT_TRUE(contextual_tasks::ContextualTasksContextService::
+                  GetIsSmartTabSharingEnabled(profile()));
+
+  // Enable STS.
+  handler().SetSmartTabSharingActive(true);
+  histogram_tester().ExpectUniqueSample(
+      "ContextualSearch.SmartTabSharing.MenuOptionClicked",
+      contextual_tasks::SmartTabSharingToggleState::kToggledOn, 1);
+
+  // Add a turn to session handle.
+  contextual_tasks::ThreadTurn turn;
+  turn.query = "test";
+  contextual_session_handle_->AddThreadTurn(turn);
+
+  // Disable STS.
+  handler().SetSmartTabSharingActive(false);
+
+  // Verify kToggledOff is logged.
+  histogram_tester().ExpectBucketCount(
+      "ContextualSearch.SmartTabSharing.MenuOptionClicked",
+      contextual_tasks::SmartTabSharingToggleState::kToggledOff, 1);
+
+  // Verify OptOutMidThread is logged.
+  histogram_tester().ExpectUniqueSample(
+      "ContextualSearch.SmartTabSharing.OptOutMidThread", true, 1);
+}
+
 
 TEST_F(ContextualSearchboxHandlerTest, OnInputStateChanged) {
   omnibox::InputState received_state_1;
@@ -1717,7 +1954,7 @@ TEST_F(ContextualSearchboxHandlerTest, OnInputStateChanged) {
           &MockContextualSearchMetricsRecorder::RecordToolModeBase));
 
   handler_->SetActiveToolMode(omnibox::ToolMode::TOOL_MODE_CANVAS,
-                              /*is_set_by_server=*/false);
+                              /*is_set_by_aim=*/false);
   handler_->RecordToolSelectionAction(omnibox::ToolMode::TOOL_MODE_CANVAS);
   mock_searchbox_page_.FlushForTesting();
   EXPECT_EQ(received_state_1.active_tool, omnibox::ToolMode::TOOL_MODE_CANVAS);
@@ -3859,7 +4096,7 @@ TEST_F(ContextualSearchboxHandlerTest,
   EXPECT_CALL(mock_searchbox_page_, UpdateSmartTabSharingActive(false))
       .Times(1);
   handler().SetActiveToolMode(omnibox::TOOL_MODE_CANVAS,
-                              /*is_set_by_server=*/false);
+                              /*is_set_by_aim=*/false);
   mock_searchbox_page_.FlushForTesting();
 
   // STS should now be effectively inactive.
@@ -3868,7 +4105,7 @@ TEST_F(ContextualSearchboxHandlerTest,
   // Select Unspecified again.
   EXPECT_CALL(mock_searchbox_page_, UpdateSmartTabSharingActive(true)).Times(1);
   handler().SetActiveToolMode(omnibox::TOOL_MODE_UNSPECIFIED,
-                              /*is_set_by_server=*/false);
+                              /*is_set_by_aim=*/false);
   mock_searchbox_page_.FlushForTesting();
 
   // STS should be active again.
@@ -4015,6 +4252,12 @@ class MockScreenshareDelegate
               (override));
   MOCK_METHOD(void, OnScreensharePickerOpened, (), (override));
   MOCK_METHOD(void, OnScreensharePickerClosed, (), (override));
+  MOCK_METHOD(void,
+              ShowRegionSelectOverlay,
+              (const SkBitmap&,
+               const RegionCaptureSource&,
+               RegionSelectedCallback),
+              (override));
 };
 
 TEST_F(ContextualSearchboxHandlerTest, ShowScreenshotMenu_ForwardsToDelegate) {
@@ -4225,6 +4468,16 @@ TEST_F(ContextualSearchboxHandlerTest, CaptureRegionScreenshot_Success) {
   MockScreenshareDelegate delegate;
   EXPECT_CALL(delegate, OnScreensharePickerOpened());
   EXPECT_CALL(delegate, OnScreensharePickerClosed());
+  EXPECT_CALL(delegate, ShowRegionSelectOverlay)
+      .WillOnce(
+          [](const SkBitmap& screenshot,
+             const ContextualSearchboxHandler::RegionCaptureSource& source,
+             ContextualSearchboxHandler::ScreenshareDelegate::
+                 RegionSelectedCallback callback) {
+            EXPECT_EQ(source.type, ContextualSearchboxHandler::
+                                       RegionCaptureSource::Type::kAllDisplays);
+            std::move(callback).Run(screenshot);
+          });
   handler().set_screenshare_delegate(&delegate);
 
   profile()->GetPrefs()->SetInteger(
@@ -4243,7 +4496,7 @@ TEST_F(ContextualSearchboxHandlerTest, CaptureRegionScreenshot_Success) {
       ->set_mime_types_allowed("image/png");
 
   content::desktop_capture::ScopedDesktopCapturerForTesting scoped_capturer(
-      std::make_unique<FakeDesktopCapturer>(webrtc::DesktopSize(3840, 2160)));
+      std::make_unique<FakeDesktopCapturer>(webrtc::DesktopSize(1000, 800)));
 
   std::unique_ptr<lens::ContextualInputData> captured_input_data;
   EXPECT_CALL(query_controller(), StartFileUploadFlow)
@@ -4281,6 +4534,34 @@ TEST_F(ContextualSearchboxHandlerTest, CaptureRegionScreenshot_Success) {
   handler().set_screenshare_delegate(nullptr);
 }
 
+// Tests that if the user cancels/escapes the region select overlay,
+// CaptureRegionScreenshot returns an empty token and resets capture state.
+TEST_F(ContextualSearchboxHandlerTest,
+       CaptureRegionScreenshot_UserCancelledOverlay) {
+  MockScreenshareDelegate delegate;
+  EXPECT_CALL(delegate, OnScreensharePickerOpened());
+  EXPECT_CALL(delegate, OnScreensharePickerClosed());
+  EXPECT_CALL(delegate, ShowRegionSelectOverlay)
+      .WillOnce(
+          [](const SkBitmap& screenshot,
+             const ContextualSearchboxHandler::RegionCaptureSource& source,
+             ContextualSearchboxHandler::ScreenshareDelegate::
+                 RegionSelectedCallback callback) {
+            // Simulates user hitting Escape or closing overlay (empty bitmap).
+            std::move(callback).Run(SkBitmap());
+          });
+  handler().set_screenshare_delegate(&delegate);
+
+  content::desktop_capture::ScopedDesktopCapturerForTesting scoped_capturer(
+      std::make_unique<FakeDesktopCapturer>(webrtc::DesktopSize(1000, 800)));
+
+  base::test::TestFuture<const std::optional<base::UnguessableToken>&> future;
+  handler().CaptureRegionScreenshot(future.GetCallback());
+
+  EXPECT_FALSE(future.Get().has_value());
+  handler().set_screenshare_delegate(nullptr);
+}
+
 // Tests that concurrent calls to CaptureRegionScreenshot while a capture is
 // already in progress are rejected, returning an empty token for subsequent
 // calls.
@@ -4289,6 +4570,14 @@ TEST_F(ContextualSearchboxHandlerTest,
   MockScreenshareDelegate delegate;
   EXPECT_CALL(delegate, OnScreensharePickerOpened());
   EXPECT_CALL(delegate, OnScreensharePickerClosed());
+  EXPECT_CALL(delegate, ShowRegionSelectOverlay)
+      .WillOnce(
+          [](const SkBitmap& screenshot,
+             const ContextualSearchboxHandler::RegionCaptureSource& source,
+             ContextualSearchboxHandler::ScreenshareDelegate::
+                 RegionSelectedCallback callback) {
+            std::move(callback).Run(screenshot);
+          });
   handler().set_screenshare_delegate(&delegate);
 
   profile()->GetPrefs()->SetInteger(
@@ -4342,6 +4631,21 @@ TEST_F(ContextualSearchboxHandlerTest, CaptureRegionScreenshot_EmptyBitmap) {
 
   EXPECT_FALSE(future.Get().has_value());
   handler().set_screenshare_delegate(nullptr);
+}
+
+// Tests that if screenshare_delegate_ is null during a region screenshot,
+// it safely fails without uploading full desktop screenshot.
+TEST_F(ContextualSearchboxHandlerTest,
+       CaptureRegionScreenshot_NullDelegateFailsSafely) {
+  handler().set_screenshare_delegate(nullptr);
+
+  content::desktop_capture::ScopedDesktopCapturerForTesting scoped_capturer(
+      std::make_unique<FakeDesktopCapturer>(webrtc::DesktopSize(1000, 800)));
+
+  base::test::TestFuture<const std::optional<base::UnguessableToken>&> future;
+  handler().CaptureRegionScreenshot(future.GetCallback());
+
+  EXPECT_FALSE(future.Get().has_value());
 }
 
 #if BUILDFLAG(IS_MAC)

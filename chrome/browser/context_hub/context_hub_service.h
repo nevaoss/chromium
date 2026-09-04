@@ -223,6 +223,13 @@ class ContextHubService : public KeyedService,
   // Saves an entry in the memory bank.
   void SaveMemoryBankEntry(MemoryBankEntry entry,
                            MemoryBank::OperationCompleteCallback callback);
+  // Updates an entry in the memory bank with new tags, note, and collection.
+  void UpdateMemoryBankEntryAnnotations(
+      int64_t id,
+      std::vector<std::string> tags,
+      std::optional<std::string> note,
+      std::optional<std::string> collection,
+      MemoryBank::OperationCompleteCallback callback);
   // Deletes an entry from the memory bank.
   void DeleteEntries(base::span<const int64_t> ids,
                      MemoryBank::OperationCompleteCallback callback);
@@ -231,6 +238,11 @@ class ContextHubService : public KeyedService,
   // Returns entries for the given IDs from the memory bank.
   void GetEntriesByIds(base::span<const int64_t> ids,
                        MemoryBank::GetEntriesCallback callback) const;
+  // Returns all unique tags from the memory bank.
+  void GetAllMemoryBankTags(MemoryBank::GetStringsCallback callback) const;
+  // Returns all unique collections from the memory bank.
+  void GetAllMemoryBankCollections(
+      MemoryBank::GetStringsCallback callback) const;
 
   using GetTabGroupsCallback =
       base::OnceCallback<void(std::vector<TabGroupEntry>)>;

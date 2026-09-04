@@ -6,6 +6,8 @@
 
 #include <algorithm>
 
+#include "base/metrics/user_metrics.h"
+#include "base/metrics/user_metrics_action.h"
 #include "base/scoped_observation.h"
 #include "base/timer/timer.h"
 #include "chrome/app/chrome_command_ids.h"
@@ -13,13 +15,13 @@
 #include "chrome/browser/ui/actions/chrome_action_id.h"
 #include "chrome/browser/ui/browser_actions.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+#include "chrome/browser/ui/tabs/horizontal_tab_strip_metrics.h"
 #include "chrome/browser/ui/user_education/browser_user_education_interface.h"
 #include "chrome/grit/generated_resources.h"
 #include "components/feature_engagement/public/feature_constants.h"
 #include "ui/actions/actions.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
-#include "ui/base/ui_base_features.h"
 #include "ui/views/accessibility/view_accessibility.h"
 #include "ui/views/controls/menu/menu_runner.h"
 #include "ui/views/controls/scroll_view.h"
@@ -210,11 +212,27 @@ void TabScrollButtonContainer::ShowContextMenuForViewImpl(
       views::MenuAnchorPosition::kTopLeft, source_type);
 }
 
+void TabScrollButtonContainer::VisibilityChanged(views::View* starting_from,
+                                                 bool is_visible) {
+  if (starting_from != this) {
+    return;
+  }
+
+  if (is_visible) {
+    base::RecordAction(
+        base::UserMetricsAction("HorizontalTabStrip.ScrollButtons.Visible"));
+  } else {
+    base::RecordAction(
+        base::UserMetricsAction("HorizontalTabStrip.ScrollButtons.Hidden"));
+  }
+}
+
 void TabScrollButtonContainer::ExecuteCommand(int command_id, int event_flags) {
   if (command_id == IDC_TAB_SCROLL_BUTTONS_TOGGLE_PIN) {
     if (actions::ActionItem* toggle_scroll_pin_action =
             GetToggleScrollPinAction()) {
-      CHECK(toggle_scroll_pin_action);
+      base::RecordAction(
+          base::UserMetricsAction("TabScrollButton.ContextMenu.Unpinned"));
       toggle_scroll_pin_action->InvokeAction();
     }
   }
@@ -278,6 +296,9 @@ void TabScrollButtonContainer::BeginScrollAnimation(bool scroll_to_start) {
     animation_params_ = std::nullopt;
     return;
   }
+
+  tabs::RecordHorizontalTabStripScrollSource(
+      tabs::HorizontalTabStripScrollSource::kButtons);
 
   animation_params_ = AnimationParams{
       .scroll_to_start = scroll_to_start,

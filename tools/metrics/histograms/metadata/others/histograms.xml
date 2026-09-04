@@ -2959,6 +2959,17 @@ chromium-metrics-reviews@google.com.
   </token>
 </histogram>
 
+<histogram name="Mojo.Ipcz.BufferPoolAllocateBlockFailureSize"
+    enum="IpczBlockAllocationSize" expires_after="2027-02-01">
+  <owner>pasko@chromium.org</owner>
+  <owner>nafisabedin@google.com</owner>
+  <summary>
+    Logs the block size category of a failed shared memory block allocation
+    attempt in an ipcz BufferPool. Logged on every failed block allocation
+    attempt in BufferPool::AllocateBlock. Subsampled to 1/1000.
+  </summary>
+</histogram>
+
 <histogram name="Mojo.Ipcz.BufferPoolAllocateBlockResult" enum="BooleanSuccess"
     expires_after="2027-02-01">
   <owner>pasko@chromium.org</owner>
@@ -2967,6 +2978,17 @@ chromium-metrics-reviews@google.com.
     Logs whether an ipcz BufferPool successfully allocated a fixed-size shared
     memory block from its block allocator pools. Logged on every block
     allocation attempt in BufferPool::AllocateBlock. Subsampled to 1/1000.
+  </summary>
+</histogram>
+
+<histogram name="Mojo.Ipcz.BufferPoolAllocateBlockSuccessSize"
+    enum="IpczBlockAllocationSize" expires_after="2027-02-01">
+  <owner>pasko@chromium.org</owner>
+  <owner>nafisabedin@google.com</owner>
+  <summary>
+    Logs the block size category of a successful shared memory block allocation
+    attempt in an ipcz BufferPool. Logged on every successful block allocation
+    attempt in BufferPool::AllocateBlock. Subsampled to 1/1000.
   </summary>
 </histogram>
 
@@ -4994,13 +5016,14 @@ useful for Chirp alerts (go/crca-alerts). -->
 </histogram>
 
 <histogram name="SpellCheck.CheckedWords" units="words"
-    expires_after="2024-12-01">
+    expires_after="2027-08-01">
   <owner>shend@chromium.org</owner>
   <owner>essential-inputs-team@google.com</owner>
   <summary>
     The number of words checked within a session.
 
-    Warning: this histogram was expired from M83 to M107; data may be missing.
+    Warning: this histogram was expired from M83 to M107 and also from 2024-12
+    to 2026-08; data may be missing.
   </summary>
 </histogram>
 
@@ -5039,13 +5062,14 @@ useful for Chirp alerts (go/crca-alerts). -->
 </histogram>
 
 <histogram name="SpellCheck.MisspelledWords" units="words"
-    expires_after="2024-12-01">
+    expires_after="2027-08-01">
   <owner>shend@chromium.org</owner>
   <owner>essential-inputs-team@google.com</owner>
   <summary>
     The number of misspelled words within a session.
 
-    Warning: this histogram was expired from M83 to M107; data may be missing.
+    Warning: this histogram was expired from M83 to M107 and also from 2024-12
+    to 2026-08; data may be missing.
   </summary>
 </histogram>
 
@@ -5061,18 +5085,19 @@ useful for Chirp alerts (go/crca-alerts). -->
 </histogram>
 
 <histogram name="SpellCheck.ReplacedWords" units="words"
-    expires_after="2024-12-01">
+    expires_after="2027-08-01">
   <owner>shend@chromium.org</owner>
   <owner>essential-inputs-team@google.com</owner>
   <summary>
     The number of misspelled-but-replaced words within a session.
 
-    Warning: this histogram was expired from M83 to M107; data may be missing.
+    Warning: this histogram was expired from M83 to M107 and also from 2024-12
+    to 2026-08; data may be missing.
   </summary>
 </histogram>
 
 <histogram name="SpellCheck.ShownSuggestions" units="suggestions"
-    expires_after="2024-12-01">
+    expires_after="2027-08-01">
   <owner>shend@chromium.org</owner>
   <owner>essential-inputs-team@google.com</owner>
   <summary>
@@ -5080,7 +5105,8 @@ useful for Chirp alerts (go/crca-alerts). -->
     This is incremented and logged when a context menu with spelling suggestions
     is shown for a misspelled word.
 
-    Warning: this histogram was expired from M83 to M107; data may be missing.
+    Warning: this histogram was expired from M83 to M107 and also from 2024-12
+    to 2026-08; data may be missing.
   </summary>
 </histogram>
 
@@ -5115,11 +5141,14 @@ useful for Chirp alerts (go/crca-alerts). -->
 </histogram>
 
 <histogram name="SpellCheck.SuggestionHitRatio" units="%"
-    expires_after="2024-12-01">
+    expires_after="2027-08-01">
   <owner>shend@chromium.org</owner>
   <owner>essential-inputs-team@google.com</owner>
   <summary>
     The percentage of replacement executions within suggestion occurrences.
+
+    Warning: this histogram was expired from 2024-12 to 2026-08; data may be
+    missing.
   </summary>
 </histogram>
 

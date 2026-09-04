@@ -34,9 +34,11 @@ pub fn apply(
 
     foreach_grapheme!(buffer, start, end, {
         if buffer.direction.is_horizontal() {
-            buffer.pos[start].x_advance += advance_to_add;
+            buffer.pos[start].x_advance =
+                buffer.pos[start].x_advance.saturating_add(advance_to_add);
         } else {
-            buffer.pos[start].y_advance += advance_to_add;
+            buffer.pos[start].y_advance =
+                buffer.pos[start].y_advance.saturating_add(advance_to_add);
         }
     });
 
@@ -154,7 +156,7 @@ impl TrackEntryExt for TrackTableEntry {
                 let v1 = values.get(i).map(|v| v.get() as f32).unwrap_or_default();
 
                 if (s1 - s0).abs() < f32::EPSILON {
-                    return (v0 + v1) * 0.5;
+                    return f32::midpoint(v0, v1);
                 }
 
                 let t = (ptem - s0) / (s1 - s0);

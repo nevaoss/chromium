@@ -291,7 +291,6 @@ source_set("gateway_manager") {
     "//ios/chrome/browser/shared/model/profile",
     "//ios/chrome/browser/shared/model/web_state_list",
     "//ios/chrome/browser/shared/public/commands",
-    "//ios/chrome/browser/url_loading/model",
     "//ios/public/provider/chrome/browser/bwg:gemini_api",
   ]
 }
@@ -414,6 +413,7 @@ source_set("unit_tests") {
     "//ios/chrome/browser/intelligence/bwg/metrics:unit_tests",
     "//ios/chrome/browser/intelligence/bwg/utils:constants",
     "//ios/chrome/browser/intelligence/bwg/utils:prefs",
+    "//ios/chrome/browser/intelligence/bwg/utils:test_support",
     "//ios/chrome/browser/intelligence/bwg/utils:unit_tests",
     "//ios/chrome/browser/intelligence/features",
     "//ios/chrome/browser/intelligence/persist_tab_context/model",

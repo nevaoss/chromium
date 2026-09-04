@@ -3,10 +3,23 @@
 // found in the LICENSE file.
 
 import type {AxSegment, ContentBrowserProxy, SkiaImageBitmap} from 'chrome-untrusted://read-anything-side-panel.top-chrome/read_anything.js';
+import {FakeChromeEvent} from 'chrome-untrusted://webui-test/fake_chrome_event.js';
 import {TestBrowserProxy} from 'chrome-untrusted://webui-test/test_browser_proxy.js';
 
 export class TestContentBrowserProxy extends TestBrowserProxy implements
     ContentBrowserProxy {
+  onAnchorsReadyForReadability = new FakeChromeEvent();
+  onNodeWillBeDeleted = new FakeChromeEvent();
+  onImageDownloaded = new FakeChromeEvent();
+  onMainFrameSameDocumentNavigation = new FakeChromeEvent();
+  onRenderedTextMappingReady = new FakeChromeEvent();
+  showEmpty = new FakeChromeEvent();
+  showLoading = new FakeChromeEvent();
+  updateImages = new FakeChromeEvent();
+  updateLinks = new FakeChromeEvent();
+  updateSelection = new FakeChromeEvent();
+  updateContent = new FakeChromeEvent();
+
   startNodeId: number = -1;
   startOffset: number = -1;
   endNodeId: number = -1;
@@ -28,12 +41,12 @@ export class TestContentBrowserProxy extends TestBrowserProxy implements
   leafNodeSet: Set<number> = new Set();
   urlMap: {[key: number]: string} = {};
   htmlIdMap: {[key: number]: string} = {};
-  textDirection: string = '';
+  textDirectionMap: {[key: number]: string} = {};
   altText: string = '';
-  language: string = '';
+  languageMap: {[key: number]: string} = {};
   childrenMap: {[key: number]: number[]} = {1: [2]};
-  isOverlineVal: boolean = false;
-  shouldBoldVal: boolean = false;
+  isOverlineMap: {[key: number]: boolean} = {};
+  shouldBoldMap: {[key: number]: boolean} = {};
   imageBitmap: SkiaImageBitmap|null = null;
   axTreeAnchorsVal: Record<string, AxTreeAnchorMetadata[]> = {};
   activeDistillationMethod: number = 0;
@@ -85,7 +98,6 @@ export class TestContentBrowserProxy extends TestBrowserProxy implements
       'onCopy',
       'requiresDistillation',
       'onDistilled',
-      'updateSelection',
       'onLinkClicked',
       'onRenderedTextBlocksAvailable',
     ]);
@@ -217,7 +229,7 @@ export class TestContentBrowserProxy extends TestBrowserProxy implements
 
   getTextDirection(nodeId: number): string {
     this.methodCalled('getTextDirection', nodeId);
-    return this.textDirection;
+    return this.textDirectionMap[nodeId] || '';
   }
 
   getAltText(nodeId: number): string {
@@ -227,7 +239,7 @@ export class TestContentBrowserProxy extends TestBrowserProxy implements
 
   getLanguage(nodeId: number): string {
     this.methodCalled('getLanguage', nodeId);
-    return this.language;
+    return this.languageMap[nodeId] || '';
   }
 
   getChildren(nodeId: number): number[] {
@@ -237,12 +249,12 @@ export class TestContentBrowserProxy extends TestBrowserProxy implements
 
   isOverline(nodeId: number): boolean {
     this.methodCalled('isOverline', nodeId);
-    return this.isOverlineVal;
+    return this.isOverlineMap[nodeId] || false;
   }
 
   shouldBold(nodeId: number): boolean {
     this.methodCalled('shouldBold', nodeId);
-    return this.shouldBoldVal;
+    return this.shouldBoldMap[nodeId] || false;
   }
 
   getImageBitmap(nodeId: number): SkiaImageBitmap|null {
@@ -257,10 +269,6 @@ export class TestContentBrowserProxy extends TestBrowserProxy implements
 
   onNoTextContent(): void {
     this.methodCalled('onNoTextContent');
-  }
-
-  updateSelection(): void {
-    this.methodCalled('updateSelection');
   }
 
   onLinkClicked(nodeId: number): void {

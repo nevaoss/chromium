@@ -227,6 +227,9 @@ public final class ProductionSupportedFlagList {
                 "Accelerate all canvases in webview."),
         Flag.baseFeature("RustyJpegFeature", "Enables Rust-based JPEG image decoding."),
         Flag.baseFeature(
+                AwFeatures.WEBVIEW_BOOST_RENDERER_PRIORITY_ON_NAVIGATION,
+                "Enables boosting the renderer main thread priority during navigation."),
+        Flag.baseFeature(
                 AwFeatures.WEBVIEW_MIXED_CONTENT_AUTOUPGRADES,
                 "Enables autoupgrades for audio/video/image mixed content when mixed content "
                         + "mode is set to MIXED_CONTENT_COMPATIBILITY_MODE"),
@@ -250,6 +253,10 @@ public final class ProductionSupportedFlagList {
         Flag.baseFeature(
                 AutofillFeatures.AUTOFILL_ACCEPT_DOM_MUTATION_AFTER_AUTOFILL_SUBMISSION,
                 "Accepts DOM_MUTATION_AFTER_AUTOFILL submissions detected on password forms."),
+        Flag.baseFeature(
+                AutofillFeatures.AUTOFILL_ANDROID_USE_GLOBAL_ID_FOR_FORM_COMPARISON,
+                "When enabled, forms are compared using FormGlobalIds instead of attribute-based"
+                        + " similarity."),
         Flag.baseFeature(
                 AutofillFeatures.AUTOFILL_BETTER_LOCAL_HEURISTIC_PLACEHOLDER_SUPPORT,
                 "Treats placeholders as a separate signal for Autofill local heuristics"),
@@ -659,6 +666,7 @@ public final class ProductionSupportedFlagList {
         Flag.baseFeature("V8BaselineBatchCompilation"),
         Flag.baseFeature("V8ConcurrentSparkplug"),
         Flag.baseFeature("V8Flag_homomorphic_ic"),
+        Flag.baseFeature("V8Flag_intl_date_time_pattern_generator_cache_eviction"),
         Flag.baseFeature("V8Flag_incremental_marking_always_user_visible"),
         Flag.baseFeature("V8Flag_large_page_pool"),
         Flag.baseFeature("V8Flag_late_heap_limit_check"),
@@ -1464,6 +1472,10 @@ public final class ProductionSupportedFlagList {
                 AwFeatures.WEBVIEW_SUB_FRAME_CREATED_DO_NOT_UPDATE_CLIENT_MAP,
                 "When enabled, the browser ignores SubFrameCreated IPC and does not update"
                         + " RfhToIoThreadClientMap."),
+        Flag.baseFeature(
+                "DomStorageSqliteNewDatabases",
+                "Controls the on-disk rollout of the SQLite backend for DomStorage on new"
+                        + " databases."),
         // Add new commandline switches and features above. The final entry should have a
         // trailing comma for cleaner diffs.
     };

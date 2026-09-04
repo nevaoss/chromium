@@ -203,5 +203,82 @@ TEST_F(TabContextSyncMemoryBankTest, DeletesEntriesFromCache) {
   ASSERT_TRUE(get_future.Get().empty());
 }
 
+TEST_F(TabContextSyncMemoryBankTest, GetAllTagsAndCollections) {
+  const sync_tab_context::ContainerId kContainerId(
+      base::Uuid::GenerateRandomV4());
+  EXPECT_CALL(mock_sync_service_, CreateContainer())
+      .WillOnce(Return(kContainerId));
+  EXPECT_CALL(mock_sync_service_, UploadPageContext(kContainerId, _, _))
+      .WillRepeatedly(Return(true));
+
+  MemoryBankEntry entry1;
+  entry1.id = 1;
+  entry1.tags = {"tag1", "tag2"};
+  entry1.collection = "Research";
+
+  MemoryBankEntry entry2;
+  entry2.id = 2;
+  entry2.tags = {"tag2", "tag3"};
+  entry2.collection = "Work";
+
+  base::test::TestFuture<bool> save_future1;
+  memory_bank_->SaveMemoryBankEntry(std::move(entry1),
+                                    save_future1.GetCallback());
+  ASSERT_TRUE(save_future1.Get());
+
+  base::test::TestFuture<bool> save_future2;
+  memory_bank_->SaveMemoryBankEntry(std::move(entry2),
+                                    save_future2.GetCallback());
+  ASSERT_TRUE(save_future2.Get());
+
+  base::test::TestFuture<const std::vector<std::string>&> tags_future;
+  memory_bank_->GetAllTags(tags_future.GetCallback());
+  std::vector<std::string> tags = tags_future.Get();
+  EXPECT_EQ(tags, (std::vector<std::string>{"tag1", "tag2", "tag3"}));
+
+  base::test::TestFuture<const std::vector<std::string>&> collections_future;
+  memory_bank_->GetAllCollections(collections_future.GetCallback());
+  std::vector<std::string> collections = collections_future.Get();
+  EXPECT_EQ(collections, (std::vector<std::string>{"Research", "Work"}));
+}
+
+TEST_F(TabContextSyncMemoryBankTest, UpdateEntryAnnotations_Success) {
+  const sync_tab_context::ContainerId kContainerId(
+      base::Uuid::GenerateRandomV4());
+  EXPECT_CALL(mock_sync_service_, CreateContainer())
+      .WillOnce(Return(kContainerId));
+  EXPECT_CALL(mock_sync_service_, UploadPageContext(kContainerId, _, _))
+      .WillOnce(Return(true));
+  const int64_t entry_id = 12345;
+
+  MemoryBankEntry entry(MemoryBankType::kTab, GURL("https://example.com"),
+                        "Title", "Data");
+  entry.id = entry_id;
+  entry.tags = {"tag1"};
+  entry.note = "Original Note";
+  entry.collection = "Original Collection";
+
+  base::test::TestFuture<bool> save_future;
+  memory_bank_->SaveMemoryBankEntry(std::move(entry),
+                                    save_future.GetCallback());
+  ASSERT_TRUE(save_future.Get());
+
+  base::test::TestFuture<bool> update_future;
+  memory_bank_->UpdateEntryAnnotations(
+      entry_id, {"new_tag1", "new_tag2"}, "Updated Note", "Updated Collection",
+      update_future.GetCallback());
+  EXPECT_TRUE(update_future.Get());
+
+  base::test::TestFuture<std::vector<MemoryBankEntry>> get_future;
+  memory_bank_->GetAllEntries(get_future.GetCallback());
+  auto entries = get_future.Get();
+  ASSERT_EQ(entries.size(), 1u);
+  EXPECT_EQ(entries[0].collection, "Updated Collection");
+  EXPECT_EQ(entries[0].note, "Updated Note");
+  EXPECT_THAT(entries[0].tags,
+              testing::ElementsAre("new_tag1", "new_tag2"));
+  EXPECT_EQ(entries[0].tab_title, "Title");
+}
+
 }  // namespace
 }  // namespace context_hub

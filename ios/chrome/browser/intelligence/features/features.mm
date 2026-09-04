@@ -369,7 +369,7 @@ bool IsPageContextExtractorRefactoredEnabled() {
   return base::FeatureList::IsEnabled(kPageContextExtractorRefactored);
 }
 
-BASE_FEATURE(kGeminiUpdatedEligibility, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kGeminiUpdatedEligibility, base::FEATURE_ENABLED_BY_DEFAULT);
 
 bool IsGeminiUpdatedEligibilityEnabled() {
   if (!IsPageActionMenuEnabled()) {
@@ -378,7 +378,7 @@ bool IsGeminiUpdatedEligibilityEnabled() {
   return base::FeatureList::IsEnabled(kGeminiUpdatedEligibility);
 }
 
-BASE_FEATURE(kGeminiUpdatedConsent, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kGeminiUpdatedConsent, base::FEATURE_ENABLED_BY_DEFAULT);
 
 bool IsGeminiUpdatedConsentEnabled() {
   return base::FeatureList::IsEnabled(kGeminiUpdatedConsent);
@@ -625,6 +625,15 @@ bool IsGeminiBackendMigrationEnabled() {
     return false;
   }
   return base::FeatureList::IsEnabled(kGeminiBackendMigration);
+}
+
+BASE_FEATURE(kGeminiAureus, base::FEATURE_DISABLED_BY_DEFAULT);
+
+bool IsGeminiAureusEnabled() {
+  if (!IsPageActionMenuEnabled()) {
+    return false;
+  }
+  return base::FeatureList::IsEnabled(kGeminiAureus);
 }
 
 BASE_FEATURE(kGeminiActor, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -985,4 +994,10 @@ BASE_FEATURE(kPageContextScreenshotPasswordRedaction,
 
 bool IsPageContextScreenshotPasswordRedactionEnabled() {
   return base::FeatureList::IsEnabled(kPageContextScreenshotPasswordRedaction);
+}
+
+BASE_FEATURE(kGeminiInsightsChipAblation, base::FEATURE_DISABLED_BY_DEFAULT);
+
+bool IsGeminiInsightsChipAblationEnabled() {
+  return base::FeatureList::IsEnabled(kGeminiInsightsChipAblation);
 }

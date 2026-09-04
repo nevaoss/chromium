@@ -5,6 +5,8 @@
 package org.chromium.chrome.browser.ui.vertical_tabs;
 
 import android.content.Context;
+import android.content.res.Configuration;
+import android.content.res.Resources;
 import android.text.style.ForegroundColorSpan;
 import android.text.style.RelativeSizeSpan;
 import android.text.style.SuperscriptSpan;
@@ -12,7 +14,6 @@ import android.util.TypedValue;
 
 import androidx.annotation.IntDef;
 import androidx.annotation.StringRes;
-import androidx.annotation.VisibleForTesting;
 
 import org.chromium.base.DeviceInfo;
 import org.chromium.base.metrics.RecordHistogram;
@@ -40,12 +41,6 @@ public class VerticalTabUtils {
 
     /** The width of the collapsed vertical tabs SideUiContainer in dp. */
     public static final int SIDE_UI_CONTAINER_COLLAPSED_WIDTH_DP = 76;
-
-    /**
-     * Minimum window width threshold in dp required to allow expanding vertical tabs rail and
-     * enable collapse button when auto-resize is disabled.
-     */
-    public static final int MIN_EXPAND_WINDOW_WIDTH_DP = 652;
 
     /**
      * Minimum width in dp required for the expanded vertical tabs rail before snapping to collapsed
@@ -94,6 +89,7 @@ public class VerticalTabUtils {
 
     // LINT.ThenChange(//tools/metrics/histograms/metadata/android/enums.xml:AndroidVerticalTabsLayoutToggleSourceAndDirection)
 
+    // LINT.IfChange(AndroidVerticalTabsWindowWidthBoundary)
     @IntDef({
         WindowWidthBoundary.NOT_SHOWABLE,
         WindowWidthBoundary.FORCED_COLLAPSED,
@@ -123,19 +119,18 @@ public class VerticalTabUtils {
          * #SIDE_UI_CONTAINER_WIDTH_DP}.
          */
         int FULLY_EXPANDABLE = 3;
+
+        /** Total number of window width boundary categories for histograms. */
+        int COUNT = 4;
     }
 
-    /** Feature parameter name for enabling auto-resize. */
-    public static final String AUTO_RESIZE_PARAM = "auto_resize";
+    // LINT.ThenChange(//tools/metrics/histograms/metadata/android/enums.xml:AndroidVerticalTabsWindowWidthBoundary)
 
     /** Feature parameter name for enabling Vertical Tabs by default. */
     public static final String ENABLE_BY_DEFAULT_PARAM = "enable_by_default";
 
     /** Feature parameter name for enabling external drag. */
     public static final String EXTERNAL_DRAG_PARAM = "external_drag";
-
-    /** Feature parameter name for enabling tab group hover cards. */
-    public static final String GROUP_HOVER_CARD_PARAM = "group_hover_card";
 
     /** Feature parameter name for enabling the incognito button in the footer. */
     public static final String INCOGNITO_BUTTON_PARAM = "incognito_button";
@@ -209,17 +204,37 @@ public class VerticalTabUtils {
     }
 
     /**
-     * Records the layout switch entry point and direction when toggling Vertical Tabs.
+     * Records the layout switch entry point, direction, and window width boundary when toggling
+     * Vertical Tabs.
      *
+     * @param context The Context used to retrieve the screen width in dp.
      * @param entryPoint The entry point from which the layout toggle was triggered.
      * @param isEnabling Whether the user is enabling Vertical Tabs (true) or horizontal (false).
      */
     public static void recordLayoutToggle(
-            @LayoutSwitchEntryPoint int entryPoint, boolean isEnabling) {
+            Context context, @LayoutSwitchEntryPoint int entryPoint, boolean isEnabling) {
         RecordHistogram.recordEnumeratedHistogram(
                 "Android.VerticalTabs.LayoutToggleSourceAndDirection",
                 getLayoutToggleSourceAndDirection(entryPoint, isEnabling),
                 LayoutToggleSourceAndDirection.COUNT);
+
+        Resources resources = context.getResources();
+        Configuration config = resources != null ? resources.getConfiguration() : null;
+        if (config != null) {
+            int widthDp = config.screenWidthDp;
+            @WindowWidthBoundary int boundary = getWindowWidthBoundary(widthDp);
+            if (isEnabling) {
+                RecordHistogram.recordEnumeratedHistogram(
+                        "Android.VerticalTabs.WindowWidthBoundaryOnToggle.Enable",
+                        boundary,
+                        WindowWidthBoundary.COUNT);
+            } else {
+                RecordHistogram.recordEnumeratedHistogram(
+                        "Android.VerticalTabs.WindowWidthBoundaryOnToggle.Disable",
+                        boundary,
+                        WindowWidthBoundary.COUNT);
+            }
+        }
     }
 
     /** Loads a float resource value (e.g. for alpha) from the given dimen resource id. */
@@ -242,22 +257,6 @@ public class VerticalTabUtils {
         return ChromeFeatureList.getFieldTrialParamByFeatureAsBoolean(
                 ChromeFeatureList.ANDROID_VERTICAL_TABS,
                 EXTERNAL_DRAG_PARAM,
-                /* defaultValue= */ false);
-    }
-
-    /** Returns whether auto-resize behavior is enabled for Vertical Tabs. */
-    public static boolean isAutoResizeEnabled() {
-        return ChromeFeatureList.getFieldTrialParamByFeatureAsBoolean(
-                ChromeFeatureList.ANDROID_VERTICAL_TABS,
-                AUTO_RESIZE_PARAM,
-                /* defaultValue= */ false);
-    }
-
-    /** Returns whether tab group hover cards are enabled for Vertical Tabs. */
-    public static boolean isGroupHoverCardEnabled() {
-        return ChromeFeatureList.getFieldTrialParamByFeatureAsBoolean(
-                ChromeFeatureList.ANDROID_VERTICAL_TABS,
-                GROUP_HOVER_CARD_PARAM,
                 /* defaultValue= */ false);
     }
 
@@ -381,20 +380,21 @@ public class VerticalTabUtils {
             return WindowWidthBoundary.NOT_SHOWABLE;
         }
 
-        // 2. Force Collapsed: Window is below threshold for expanding.
-        if (isWindowNarrow(windowWidthDp)) {
+        // 2. Forced Collapsed: Window width or available width cannot fit the minimum expanded
+        // width (92dp).
+        int minWidthByWebContents =
+                SideUiCoordinator.MIN_WEB_CONTENTS_WIDTH_DP + MIN_EXPANDED_WIDTH_DP;
+        int minWidthByRatio = Math.round(MIN_EXPANDED_WIDTH_DP / EXPANDED_WINDOW_WIDTH_RATIO);
+        int minExpandedWindowWidth = Math.max(minWidthByWebContents, minWidthByRatio);
+        if (availableWidthDp < MIN_EXPANDED_WIDTH_DP || windowWidthDp < minExpandedWindowWidth) {
             return WindowWidthBoundary.FORCED_COLLAPSED;
         }
 
-        // When auto-resize is disabled, wide windows are fully expandable.
-        if (!isAutoResizeEnabled()) {
-            return WindowWidthBoundary.FULLY_EXPANDABLE;
-        }
-
-        // 3. Dynamic Expandable: Auto-resized width is strictly less than full container width.
         int ratioWidthDp = Math.round(windowWidthDp * EXPANDED_WINDOW_WIDTH_RATIO);
         int targetWidthDp =
                 Math.min(SIDE_UI_CONTAINER_WIDTH_DP, Math.min(ratioWidthDp, availableWidthDp));
+
+        // 3. Dynamic Expandable: Auto-resized width is strictly less than full container width.
         if (targetWidthDp < SIDE_UI_CONTAINER_WIDTH_DP) {
             return WindowWidthBoundary.DYNAMIC_EXPANDABLE;
         }
@@ -408,22 +408,5 @@ public class VerticalTabUtils {
         ChromeSharedPreferences.getInstance().removeKey(ChromePreferenceKeys.VERTICAL_TABS_ENABLED);
         ChromeSharedPreferences.getInstance()
                 .removeKey(ChromePreferenceKeys.VERTICAL_TABS_COLLAPSED);
-    }
-
-    /**
-     * Returns whether the window width is too narrow to support expanding the vertical tabs rail.
-     *
-     * @param windowWidthDp Total window width in dp.
-     * @return True if the window width is below the threshold required to expand the rail.
-     */
-    @VisibleForTesting
-    public static boolean isWindowNarrow(int windowWidthDp) {
-        if (isAutoResizeEnabled()) {
-            int minWidthByWebContents =
-                    SideUiCoordinator.MIN_WEB_CONTENTS_WIDTH_DP + MIN_EXPANDED_WIDTH_DP;
-            int minWidthByRatio = Math.round(MIN_EXPANDED_WIDTH_DP / EXPANDED_WINDOW_WIDTH_RATIO);
-            return windowWidthDp < Math.max(minWidthByWebContents, minWidthByRatio);
-        }
-        return windowWidthDp < MIN_EXPAND_WINDOW_WIDTH_DP;
     }
 }

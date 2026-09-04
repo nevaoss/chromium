@@ -6,10 +6,13 @@ import 'chrome://contextual-tasks/strings.m.js';
 import 'chrome://resources/cr_components/composebox/contextual_action_menu.js';
 import 'chrome://resources/cr_components/composebox/composebox_favicon_group.js';
 
+import {SmartTabSharingSurface} from 'chrome://resources/cr_components/composebox/common.js';
 import type {ComposeboxFaviconGroupElement} from 'chrome://resources/cr_components/composebox/composebox_favicon_group.js';
 import type {ContextualActionMenuElement} from 'chrome://resources/cr_components/composebox/contextual_action_menu.js';
 import {DEFAULT_FLYOUT_WIDTH_PX, DEFAULT_MAX_MENU_HEIGHT_PX, MIN_MENU_HEIGHT_PX, SHARE_TABS_FLYOUT_GAP_PX, SHARE_TABS_FLYOUT_MAX_HEIGHT_PX, VIEWPORT_BUFFER_PX} from 'chrome://resources/cr_components/composebox/contextual_action_menu.js';
 import {AnchorAlignment} from 'chrome://resources/cr_elements/cr_action_menu/cr_action_menu.js';
+import type {CrIconsetElement} from 'chrome://resources/cr_elements/cr_icon/cr_iconset.js';
+import {IconsetMap} from 'chrome://resources/cr_elements/cr_icon/iconset_map.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {PluralStringProxyImpl} from 'chrome://resources/js/plural_string_proxy.js';
 import type {TabInfo} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
@@ -78,6 +81,7 @@ suite('ContextualActionMenu', () => {
       contextManagementInComposeboxEnabled: false,
       keepMenuOpenOnTabSelectForRealbox: false,
       composeboxContextMenuEnableTabDeselection: false,
+      useSearchboxConfigIconIds: true,
     });
 
     const pluralStringProxy = new TestPluralStringProxy();
@@ -272,6 +276,7 @@ suite('ContextualActionMenu', () => {
           hintText: '',
           aimUrlParams: [],
           menuTooltip: '',
+          icon: 0,
         },
         {
           model: ModelMode.kGeminiPro,
@@ -279,6 +284,7 @@ suite('ContextualActionMenu', () => {
           hintText: '',
           aimUrlParams: [],
           menuTooltip: '',
+          icon: 0,
         },
       ],
       modelSectionConfig: {header: ''},
@@ -337,6 +343,7 @@ suite('ContextualActionMenu', () => {
           hintText: '',
           aimUrlParams: [],
           menuTooltip: '',
+          icon: 0,
         },
         {
           model: ModelMode.kGeminiPro,
@@ -344,6 +351,7 @@ suite('ContextualActionMenu', () => {
           hintText: '',
           aimUrlParams: [],
           menuTooltip: '',
+          icon: 0,
         },
       ],
       modelSectionConfig: {header: ''},
@@ -391,6 +399,7 @@ suite('ContextualActionMenu', () => {
           hintText: '',
           aimUrlParams: [],
           menuTooltip: '',
+          icon: 0,
         },
         {
           model: ModelMode.kGeminiPro,
@@ -398,6 +407,7 @@ suite('ContextualActionMenu', () => {
           hintText: '',
           aimUrlParams: [],
           menuTooltip: '',
+          icon: 0,
         },
       ],
       modelSectionConfig: {header: ''},
@@ -435,6 +445,7 @@ suite('ContextualActionMenu', () => {
           hintText: '',
           aimUrlParams: [],
           menuTooltip: '',
+          icon: 0,
         },
         {
           model: ModelMode.kGeminiPro,
@@ -442,6 +453,7 @@ suite('ContextualActionMenu', () => {
           hintText: '',
           aimUrlParams: [],
           menuTooltip: '',
+          icon: 0,
         },
       ],
       modelSectionConfig: {header: ''},
@@ -461,6 +473,180 @@ suite('ContextualActionMenu', () => {
     assertEquals('false', regularModel.getAttribute('aria-checked'));
     assertEquals('true', thinkingModel.getAttribute('aria-checked'));
   });
+
+  test('Renders icon defined in modelConfig', async () => {
+    actionMenu.inputState = new MockInputState({
+      allowedModels: [ModelMode.kGeminiRegular, ModelMode.kGeminiPro],
+      modelConfigs: [
+        {
+          model: ModelMode.kGeminiRegular,
+          menuLabel: 'Gemini Regular',
+          icon: 107,
+          hintText: '',
+          aimUrlParams: [],
+          menuTooltip: '',
+        },
+        {
+          model: ModelMode.kGeminiPro,
+          menuLabel: 'Gemini Pro',
+          icon: 97,
+          hintText: '',
+          aimUrlParams: [],
+          menuTooltip: '',
+        },
+      ],
+      modelSectionConfig: {header: ''},
+    });
+    actionMenu.showAt(actionMenu);
+    await microtasksFinished();
+
+    const regularModelButton =
+        $$(actionMenu, `[data-model="${ModelMode.kGeminiRegular}"]`);
+    assertTrue(isVisible(regularModelButton));
+    const regularIcon = regularModelButton!.querySelector('cr-icon');
+    assertTrue(isVisible(regularIcon));
+    assertEquals('searchbox_config:107', regularIcon!.getAttribute('icon'));
+
+    const proModelButton =
+        $$(actionMenu, `[data-model="${ModelMode.kGeminiPro}"]`);
+    assertTrue(isVisible(proModelButton));
+    const proIcon = proModelButton!.querySelector('cr-icon');
+    assertTrue(isVisible(proIcon));
+    assertEquals('searchbox_config:97', proIcon!.getAttribute('icon'));
+  });
+
+  test(
+      'Falls back to legacy model icon if icon is 0 or unspecified',
+      async () => {
+        actionMenu.inputState = new MockInputState({
+          allowedModels: [ModelMode.kGeminiRegular, ModelMode.kGeminiPro],
+          modelConfigs: [
+            {
+              model: ModelMode.kGeminiRegular,
+              menuLabel: 'Gemini Regular',
+              icon: 0,
+              hintText: '',
+              aimUrlParams: [],
+              menuTooltip: '',
+            },
+            {
+              model: ModelMode.kGeminiPro,
+              menuLabel: 'Gemini Pro',
+              icon: 0,
+              hintText: '',
+              aimUrlParams: [],
+              menuTooltip: '',
+            },
+          ],
+          modelSectionConfig: {header: ''},
+        });
+        actionMenu.showAt(actionMenu);
+        await microtasksFinished();
+
+        const regularModelButton =
+            $$(actionMenu, `[data-model="${ModelMode.kGeminiRegular}"]`);
+        assertTrue(isVisible(regularModelButton));
+        const regularIcon = regularModelButton!.querySelector('cr-icon');
+        assertTrue(isVisible(regularIcon));
+        assertEquals('composebox:acute', regularIcon!.getAttribute('icon'));
+
+        const proModelButton =
+            $$(actionMenu, `[data-model="${ModelMode.kGeminiPro}"]`);
+        assertTrue(isVisible(proModelButton));
+        const proIcon = proModelButton!.querySelector('cr-icon');
+        assertTrue(isVisible(proIcon));
+        assertEquals('composebox:timer', proIcon!.getAttribute('icon'));
+      });
+
+  test(
+      'Uses legacy model icons when useSearchboxConfigIconIds is false',
+      async () => {
+        loadTimeData.overrideValues({
+          useSearchboxConfigIconIds: false,
+        });
+        actionMenu.inputState = new MockInputState({
+          allowedModels: [ModelMode.kGeminiRegular, ModelMode.kGeminiPro],
+          modelConfigs: [
+            {
+              model: ModelMode.kGeminiRegular,
+              menuLabel: 'Gemini Regular',
+              icon: 107,
+              hintText: '',
+              aimUrlParams: [],
+              menuTooltip: '',
+            },
+            {
+              model: ModelMode.kGeminiPro,
+              menuLabel: 'Gemini Pro',
+              icon: 97,
+              hintText: '',
+              aimUrlParams: [],
+              menuTooltip: '',
+            },
+          ],
+          modelSectionConfig: {header: ''},
+        });
+        actionMenu.showAt(actionMenu);
+        await microtasksFinished();
+
+        const regularModelButton =
+            $$(actionMenu, `[data-model="${ModelMode.kGeminiRegular}"]`);
+        assertTrue(isVisible(regularModelButton));
+        const regularIcon = regularModelButton!.querySelector('cr-icon');
+        assertTrue(isVisible(regularIcon));
+        assertEquals('composebox:acute', regularIcon!.getAttribute('icon'));
+
+        const proModelButton =
+            $$(actionMenu, `[data-model="${ModelMode.kGeminiPro}"]`);
+        assertTrue(isVisible(proModelButton));
+        const proIcon = proModelButton!.querySelector('cr-icon');
+        assertTrue(isVisible(proIcon));
+        assertEquals('composebox:timer', proIcon!.getAttribute('icon'));
+      });
+
+  // LINT.IfChange(SearchboxConfigIcons)
+  test(
+      'searchbox_config icon definitions match composebox icon definitions',
+      () => {
+        const searchboxConfigIconset =
+            IconsetMap.getInstance().get('searchbox_config') as
+            CrIconsetElement;
+        const composeboxIconset =
+            IconsetMap.getInstance().get('composebox') as CrIconsetElement;
+        assertTrue(!!searchboxConfigIconset, 'searchbox_config iconset found');
+        assertTrue(!!composeboxIconset, 'composebox iconset found');
+
+        const iconMappings: Array<[number, string]> = [
+          [93, 'add-photo-alternate'],
+          [103, 'drive'],
+          [92, 'attach-file'],
+          [96, 'draft-spark'],
+          [94, 'travel-explore'],
+          [102, 'photo-prints'],
+          [90, 'autorenew'],
+          [91, 'bolt'],
+          [97, 'timer'],
+          [107, 'acute'],
+          [100, 'nanoBanana-custom'],
+        ];
+
+        for (const [intId, stringName] of iconMappings) {
+          const intIcon = searchboxConfigIconset.createIcon(`${intId}`);
+          const strIcon = composeboxIconset.createIcon(stringName);
+          assertTrue(
+              !!intIcon,
+              `Icon for integer ID ${
+                  intId} exists in searchbox_config iconset`);
+          assertTrue(
+              !!strIcon,
+              `Icon for string '${stringName}' exists in composebox iconset`);
+          assertEquals(
+              strIcon.innerHTML, intIcon.innerHTML,
+              `SVG content mismatch between searchbox_config:${
+                  intId} and composebox:${stringName}`);
+        }
+      });
+  // LINT.ThenChange(//ui/webui/resources/cr_components/composebox/searchbox_config_icons.html.ts:SearchboxConfigIcons)
 
   test('Shows active tool checkmark and does not disable it', async () => {
     actionMenu.inputState = new MockInputState({
@@ -587,6 +773,7 @@ suite('ContextualActionMenu', () => {
         hintText: '',
         aimUrlParams: [],
         menuTooltip: '',
+        icon: 0,
       }],
       modelSectionConfig: {header: 'Models'},
     });
@@ -686,6 +873,7 @@ suite('ContextualActionMenu', () => {
         hintText: '',
         aimUrlParams: [],
         menuTooltip: '',
+        icon: 0,
       }],
       modelSectionConfig: {header: ''},
       toolsSectionConfig: {header: ''},
@@ -864,6 +1052,7 @@ suite('ContextualActionMenu', () => {
         hintText: '',
         aimUrlParams: [],
         menuTooltip: '',
+        icon: 0,
       }],
       modelSectionConfig: {header: ''},
       allowedInputTypes: [InputType.kLensImage],
@@ -1838,6 +2027,7 @@ suite('ContextualActionMenu', () => {
         hintText: '',
         aimUrlParams: [],
         menuTooltip: '',
+        icon: 0,
       }],
       modelSectionConfig: {header: ''},
     });
@@ -3595,5 +3785,151 @@ suite('ContextualActionMenu', () => {
 
           assertFalse(actionMenu.$.menu.open);
         });
+  });
+
+  suite('SmartTabSharingMetrics', () => {
+    let originalRecordEnumerationValue: any;
+    let recordedMetrics:
+        Array<{metricName: string, value: number, enumSize: number}> = [];
+
+    suiteSetup(() => {
+      (window as any).chrome = (window as any).chrome || {};
+      (window as any).chrome.histograms =
+          (window as any).chrome.histograms || {};
+      originalRecordEnumerationValue =
+          (window as any).chrome.histograms.recordEnumerationValue;
+      (window as any).chrome.histograms.recordEnumerationValue =
+          (metricName: string, value: number, enumSize: number) => {
+            recordedMetrics.push({metricName, value, enumSize});
+            if (originalRecordEnumerationValue) {
+              originalRecordEnumerationValue(metricName, value, enumSize);
+            }
+          };
+    });
+
+    suiteTeardown(() => {
+      if ((window as any).chrome && (window as any).chrome.histograms) {
+        (window as any).chrome.histograms.recordEnumerationValue =
+            originalRecordEnumerationValue;
+      }
+    });
+
+    setup(() => {
+      recordedMetrics = [];
+    });
+
+    test(
+        'Logs OMNIBOX_COMPOSEBOX when shown directly from NewTabPage',
+        async () => {
+          asInternal(actionMenu).metricsSource_ = 'NewTabPage';
+          actionMenu.smartTabSharingVisible = true;
+          actionMenu.smartTabSharingActive = true;
+
+          actionMenu.showAt(actionMenu);
+          await microtasksFinished();
+
+          assertEquals(1, recordedMetrics.length);
+          assertEquals(
+              'ContextualSearch.SmartTabSharing.MenuOptionShown',
+              recordedMetrics[0]!.metricName);
+          assertEquals(
+              SmartTabSharingSurface.OMNIBOX_COMPOSEBOX,
+              recordedMetrics[0]!.value);
+        });
+
+    test(
+        'Logs OMNIBOX_COMPOSEBOX when shown directly from Omnibox',
+        async () => {
+          asInternal(actionMenu).metricsSource_ = 'Omnibox';
+          actionMenu.smartTabSharingVisible = true;
+          actionMenu.smartTabSharingActive = true;
+
+          actionMenu.showAt(actionMenu);
+          await microtasksFinished();
+
+          assertEquals(1, recordedMetrics.length);
+          assertEquals(
+              SmartTabSharingSurface.OMNIBOX_COMPOSEBOX,
+              recordedMetrics[0]!.value);
+        });
+
+    test(
+        'Logs CONTEXTUAL_SEARCHBOX when shown directly from ContextualTasks',
+        async () => {
+          asInternal(actionMenu).metricsSource_ = 'ContextualTasks';
+          actionMenu.smartTabSharingVisible = true;
+          actionMenu.smartTabSharingActive = true;
+
+          actionMenu.showAt(actionMenu);
+          await microtasksFinished();
+
+          assertEquals(1, recordedMetrics.length);
+          assertEquals(
+              SmartTabSharingSurface.CONTEXTUAL_SEARCHBOX,
+              recordedMetrics[0]!.value);
+        });
+
+    test(
+        'Does not log when smartTabSharingActive is false and flyout is closed',
+        async () => {
+          asInternal(actionMenu).metricsSource_ = 'NewTabPage';
+          actionMenu.smartTabSharingVisible = true;
+          actionMenu.smartTabSharingActive = false;
+
+          actionMenu.showAt(actionMenu);
+          await microtasksFinished();
+
+          assertEquals(0, recordedMetrics.length);
+        });
+
+    test(
+        'Logs when smartTabSharingActive is false but flyout is open',
+        async () => {
+          asInternal(actionMenu).metricsSource_ = 'NewTabPage';
+          actionMenu.smartTabSharingVisible = true;
+          actionMenu.smartTabSharingActive = false;
+          actionMenu.contextManagementInComposeboxEnabled = true;
+          actionMenu.tabSuggestions = [createTabSuggestion()];
+          actionMenu.inputState = new MockInputState({
+            allowedInputTypes: [InputType.kBrowserTab],
+          });
+
+          actionMenu.showAt(actionMenu);
+          await microtasksFinished();
+
+          // Open flyout
+          actionMenu.shareTabsFlyoutOpen = true;
+          await microtasksFinished();
+
+          assertEquals(1, recordedMetrics.length);
+          assertEquals(
+              SmartTabSharingSurface.OMNIBOX_COMPOSEBOX,
+              recordedMetrics[0]!.value);
+        });
+
+    test('Logs only once per show', async () => {
+      asInternal(actionMenu).metricsSource_ = 'NewTabPage';
+      actionMenu.smartTabSharingVisible = true;
+      actionMenu.smartTabSharingActive = true;
+
+      actionMenu.showAt(actionMenu);
+      await microtasksFinished();
+
+      assertEquals(1, recordedMetrics.length);
+
+      // Trigger update again without closing, should not log again
+      actionMenu.requestUpdate();
+      await microtasksFinished();
+      assertEquals(1, recordedMetrics.length);
+
+      // Close and re-show, should log again
+      const closePromise = eventToPromise('close', actionMenu);
+      actionMenu.close();
+      await closePromise;
+
+      actionMenu.showAt(actionMenu);
+      await microtasksFinished();
+      assertEquals(2, recordedMetrics.length);
+    });
   });
 });

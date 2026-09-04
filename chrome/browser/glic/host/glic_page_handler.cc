@@ -22,7 +22,6 @@
 #include "chrome/browser/glic/glic_profile_manager.h"
 #include "chrome/browser/glic/host/auth_controller.h"
 #include "chrome/browser/glic/host/glic.mojom.h"
-#include "chrome/browser/glic/host/glic_ui.h"
 #include "chrome/browser/glic/host/glic_web_client_access.h"
 #include "chrome/browser/glic/host/glic_web_client_handler.h"
 #include "chrome/browser/glic/host/guest_util.h"
@@ -67,8 +66,8 @@ GlicPageHandler::GlicPageHandler(
   MarkProcessAsGlic(webui_contents->GetPrimaryMainFrame()->GetProcess());
   host_->WebUIPageHandlerAdded(this);
   host_->AddObserver(this);
-  page_->WebClientStateChanged(host_->web_client_state());
   host_->instance().AddStateObserver(this);
+
   UpdatePageState(host_->instance().GetPanelState().kind);
   subscriptions_.push_back(
       GetGlicService()->enabling().RegisterProfileReadyStateChanged(
@@ -80,7 +79,6 @@ GlicPageHandler::GlicPageHandler(
 GlicPageHandler::~GlicPageHandler() {
   VLOG(1) << "Glic [PageHandler] Destructor";
   host_->instance().RemoveStateObserver(this);
-  WebUiStateChanged(glic::mojom::WebUiState::kUninitialized);
   // Clear `host_` before unregistering so the Host can be deleted
   // synchronously without leaving a dangling raw_ptr during teardown.
   Host* host = host_;
@@ -163,7 +161,7 @@ void GlicPageHandler::NotifyWindowIntentToShow() {
   page_->IntentToShow();
 }
 
-void GlicPageHandler::Zoom(mojom::ZoomAction zoom_action) {
+void GlicPageHandler::Zoom(mojom::ZoomAction zoom_action, ZoomSource source) {
   auto* pref_service =
       Profile::FromBrowserContext(browser_context_)->GetPrefs();
   int current_zoom = pref_service->GetInteger(prefs::kGlicZoomLevel);
@@ -194,7 +192,26 @@ void GlicPageHandler::Zoom(mojom::ZoomAction zoom_action) {
       break;
   }
 
+  // Log the aggregate base metric for reporting continuity.
   base::UmaHistogramEnumeration("Glic.ZoomAction", action_metric);
+
+  // Log the sliced metric.
+  const char* zoom_action_by_source_metric_name;
+  switch (source) {
+    case ZoomSource::kHotkey:
+      zoom_action_by_source_metric_name = "Glic.ZoomAction.Hotkey";
+      break;
+    case ZoomSource::kHotkeyWithShift:
+      zoom_action_by_source_metric_name = "Glic.ZoomAction.HotkeyWithShift";
+      break;
+    case ZoomSource::kScroll:
+      zoom_action_by_source_metric_name = "Glic.ZoomAction.Scroll";
+      break;
+  }
+
+  base::UmaHistogramEnumeration(zoom_action_by_source_metric_name,
+                                action_metric);
+
   page_->Zoom(zoom_action);
 }
 
@@ -266,6 +283,10 @@ void GlicPageHandler::OnWebUiStateChanged(glic::mojom::WebUiState new_state) {
   host().WebUiStateChanged(this, new_state);
 }
 
+void GlicPageHandler::ClientReadyToShow(const mojom::OpenPanelInfo& open_info) {
+  page_->ClientReadyStateChanged(true);
+}
+
 void GlicPageHandler::PanelStateChanged(
     const glic::mojom::PanelState& panel_state) {
   UpdatePageState(panel_state.kind);
@@ -278,10 +299,6 @@ void GlicPageHandler::UpdatePageState(mojom::PanelStateKind panelStateKind) {
 void GlicPageHandler::UpdateProfileReadyState() {
   page_->SetProfileReadyState(GlicEnabling::GetProfileReadyState(
       Profile::FromBrowserContext(browser_context_)));
-}
-
-void GlicPageHandler::WebClientStateChanged(mojom::WebClientState state) {
-  page_->WebClientStateChanged(state);
 }
 
 }  // namespace glic

@@ -34,6 +34,7 @@ import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.base.test.RobolectricUtil;
 import org.chromium.chrome.browser.profiles.Profile;
 
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -48,6 +49,8 @@ public class NativeMessageAndroidPortTest {
 
     @Mock private Profile mProfile;
     @Mock private IExtensionNativeMessageService mMockExtensionService;
+    // Mocks the C++ bridge for NativeMessagingManager to prevent an UnsatisfiedLinkError.
+    @Mock private NativeMessagingManager.Natives mNativeMessagingManagerJni;
 
     private TestContext mTestContext;
     private IBrowserNativeMessageService mFakeBrowserService;
@@ -83,17 +86,26 @@ public class NativeMessageAndroidPortTest {
         }
 
         @Override
-        public void postMessage(String message) throws RemoteException {
+        public void postMessage(MessagePayload payload, Bundle extras) throws RemoteException {
             if (shouldThrowOnPostMessage || receivedMessages.size() == failAfterMessageCount) {
                 throw new DeadObjectException("Target process is dead.");
             }
-            receivedMessages.add(message);
+            byte[] bytes = payload.getInlineBytes();
+            if (bytes != null) {
+                receivedMessages.add(new String(bytes, StandardCharsets.UTF_8));
+            }
         }
 
         @Override
         public void disconnect() {
             isDisconnected = true;
         }
+    }
+
+    private static MessagePayload createPayload(String message) {
+        MessagePayload payload = new MessagePayload();
+        payload.setInlineBytes(message.getBytes(StandardCharsets.UTF_8));
+        return payload;
     }
 
     private static class TestPortObserver
@@ -120,6 +132,7 @@ public class NativeMessageAndroidPortTest {
 
     @Before
     public void setUp() {
+        NativeMessagingManagerJni.setInstanceForTesting(mNativeMessagingManagerJni);
         Mockito.when(mProfile.getOriginalProfile()).thenReturn(mProfile);
         mTestContext = new TestContext(RuntimeEnvironment.application);
         ContextUtils.initApplicationContextForTests(mTestContext);
@@ -127,12 +140,14 @@ public class NativeMessageAndroidPortTest {
         mFakeBrowserService =
                 new IBrowserNativeMessageService.Stub() {
                     @Override
-                    public IExtensionNativeMessageService connectExtension(
-                            String extensionId, Bundle info) throws RemoteException {
+                    public void connectExtension(
+                            String extensionId, Bundle info, IConnectExtensionCallback callback)
+                            throws RemoteException {
                         if (EXTENSION_ID.equals(extensionId)) {
-                            return mMockExtensionService;
+                            callback.onSuccess(mMockExtensionService);
+                        } else {
+                            callback.onError("Unknown extension");
                         }
-                        return null;
                     }
                 };
     }
@@ -153,14 +168,19 @@ public class NativeMessageAndroidPortTest {
     @Test
     public void testConnectToAppAndAddPort() throws Exception {
         List<FakeNativeMessagePort> createdPorts = new ArrayList<>();
-        Mockito.when(mMockExtensionService.connectPort(Mockito.any()))
-                .thenAnswer(
+        Mockito.doAnswer(
                         invocation -> {
+                            IExtensionNativeMessageCallback messageReceiver =
+                                    invocation.getArgument(0);
+                            IConnectPortCallback callback = invocation.getArgument(1);
                             FakeNativeMessagePort fakePort =
-                                    new FakeNativeMessagePort(invocation.getArgument(0));
+                                    new FakeNativeMessagePort(messageReceiver);
                             createdPorts.add(fakePort);
-                            return fakePort;
-                        });
+                            callback.onSuccess(fakePort);
+                            return null;
+                        })
+                .when(mMockExtensionService)
+                .connectPort(Mockito.any(), Mockito.any());
 
         NativeMessageAndroidPort port = new NativeMessageAndroidPort();
         TestPortObserver portObserver = new TestPortObserver();
@@ -181,7 +201,7 @@ public class NativeMessageAndroidPortTest {
         Assert.assertEquals(List.of("msg_1", "msg_2"), createdPorts.get(0).receivedMessages);
 
         // 4. Test bidirectional reply from the app.
-        createdPorts.get(0).callback.onMessage("reply_from_app");
+        createdPorts.get(0).callback.onMessage(createPayload("reply_from_app"), new Bundle());
         RobolectricUtil.runAllBackgroundAndUi();
         Assert.assertEquals(List.of("reply_from_app"), portObserver.receivedMessages);
     }
@@ -191,14 +211,19 @@ public class NativeMessageAndroidPortTest {
     @Test
     public void testAddPortToConnectedApp() throws Exception {
         List<FakeNativeMessagePort> createdPorts = new ArrayList<>();
-        Mockito.when(mMockExtensionService.connectPort(Mockito.any()))
-                .thenAnswer(
+        Mockito.doAnswer(
                         invocation -> {
+                            IExtensionNativeMessageCallback messageReceiver =
+                                    invocation.getArgument(0);
+                            IConnectPortCallback callback = invocation.getArgument(1);
                             FakeNativeMessagePort fakePort =
-                                    new FakeNativeMessagePort(invocation.getArgument(0));
+                                    new FakeNativeMessagePort(messageReceiver);
                             createdPorts.add(fakePort);
-                            return fakePort;
-                        });
+                            callback.onSuccess(fakePort);
+                            return null;
+                        })
+                .when(mMockExtensionService)
+                .connectPort(Mockito.any(), Mockito.any());
 
         // 1. Establish session first with port 1.
         NativeMessageAndroidPort port1 = new NativeMessageAndroidPort();
@@ -224,7 +249,7 @@ public class NativeMessageAndroidPortTest {
         Assert.assertTrue(createdPorts.get(0).receivedMessages.isEmpty());
 
         // 4. App replies specifically to port 2.
-        createdPorts.get(1).callback.onMessage("reply_to_port2");
+        createdPorts.get(1).callback.onMessage(createPayload("reply_to_port2"), new Bundle());
         RobolectricUtil.runAllBackgroundAndUi();
         Assert.assertEquals(List.of("reply_to_port2"), port2Observer.receivedMessages);
     }
@@ -233,7 +258,14 @@ public class NativeMessageAndroidPortTest {
     // from active ports and closed with an error.
     @Test
     public void testAppRejectsPortCreation() throws Exception {
-        Mockito.when(mMockExtensionService.connectPort(Mockito.any())).thenReturn(null);
+        Mockito.doAnswer(
+                        invocation -> {
+                            IConnectPortCallback callback = invocation.getArgument(1);
+                            callback.onError("App rejected port creation");
+                            return null;
+                        })
+                .when(mMockExtensionService)
+                .connectPort(Mockito.any(), Mockito.any());
 
         NativeMessageAndroidPort port = new NativeMessageAndroidPort();
         TestPortObserver portObserver = new TestPortObserver();
@@ -247,12 +279,19 @@ public class NativeMessageAndroidPortTest {
                 "Could not connect port to " + TARGET_PACKAGE + ".", portObserver.closedError);
     }
 
-    // Test that if a port is destroyed while connectPortInBackground is in flight,
-    // onConnectPortResult detects the cancellation and immediately disconnects the remote stub.
+    // Test that if a port is destroyed while connectPort is in flight,
+    // onConnectPortSuccess detects the cancellation and immediately disconnects the remote stub.
     @Test
     public void testPortDestroyedWhileConnectingCancelsRemotePort() throws Exception {
         FakeNativeMessagePort fakeAppPort = new FakeNativeMessagePort(null);
-        Mockito.when(mMockExtensionService.connectPort(Mockito.any())).thenReturn(fakeAppPort);
+        Mockito.doAnswer(
+                        invocation -> {
+                            IConnectPortCallback callback = invocation.getArgument(1);
+                            callback.onSuccess(fakeAppPort);
+                            return null;
+                        })
+                .when(mMockExtensionService)
+                .connectPort(Mockito.any(), Mockito.any());
 
         // 1. Establish and authenticate session first.
         NativeMessageAndroidPort setupPort = new NativeMessageAndroidPort();
@@ -260,11 +299,11 @@ public class NativeMessageAndroidPortTest {
         mTestContext.triggerServiceConnected(mFakeBrowserService.asBinder());
         RobolectricUtil.runAllBackgroundAndUi();
 
-        // 2. Add new port to the connected session (initiates connectPortInBackground).
+        // 2. Add new port to the connected session (initiates connectPort).
         NativeMessageAndroidPort port = new NativeMessageAndroidPort();
         Assert.assertNull(connectToApp(port));
 
-        // 3. Destroy port while connectPortInBackground is in-flight before tasks run.
+        // 3. Destroy port while connectPort callback is in-flight before tasks run.
         port.destroy();
 
         RobolectricUtil.runAllBackgroundAndUi();
@@ -279,14 +318,19 @@ public class NativeMessageAndroidPortTest {
     @Test
     public void testAppDisconnectsPort() throws Exception {
         List<FakeNativeMessagePort> createdPorts = new ArrayList<>();
-        Mockito.when(mMockExtensionService.connectPort(Mockito.any()))
-                .thenAnswer(
+        Mockito.doAnswer(
                         invocation -> {
+                            IExtensionNativeMessageCallback messageReceiver =
+                                    invocation.getArgument(0);
+                            IConnectPortCallback callback = invocation.getArgument(1);
                             FakeNativeMessagePort fakePort =
-                                    new FakeNativeMessagePort(invocation.getArgument(0));
+                                    new FakeNativeMessagePort(messageReceiver);
                             createdPorts.add(fakePort);
-                            return fakePort;
-                        });
+                            callback.onSuccess(fakePort);
+                            return null;
+                        })
+                .when(mMockExtensionService)
+                .connectPort(Mockito.any(), Mockito.any());
 
         NativeMessageAndroidPort port = new NativeMessageAndroidPort();
         TestPortObserver portObserver = new TestPortObserver();
@@ -314,14 +358,19 @@ public class NativeMessageAndroidPortTest {
     @Test
     public void testBrowserDisconnectsPort() throws Exception {
         List<FakeNativeMessagePort> createdPorts = new ArrayList<>();
-        Mockito.when(mMockExtensionService.connectPort(Mockito.any()))
-                .thenAnswer(
+        Mockito.doAnswer(
                         invocation -> {
+                            IExtensionNativeMessageCallback messageReceiver =
+                                    invocation.getArgument(0);
+                            IConnectPortCallback callback = invocation.getArgument(1);
                             FakeNativeMessagePort fakePort =
-                                    new FakeNativeMessagePort(invocation.getArgument(0));
+                                    new FakeNativeMessagePort(messageReceiver);
                             createdPorts.add(fakePort);
-                            return fakePort;
-                        });
+                            callback.onSuccess(fakePort);
+                            return null;
+                        })
+                .when(mMockExtensionService)
+                .connectPort(Mockito.any(), Mockito.any());
 
         NativeMessageAndroidPort port = new NativeMessageAndroidPort();
         Assert.assertNull(connectToApp(port));
@@ -343,7 +392,14 @@ public class NativeMessageAndroidPortTest {
     @Test
     public void testPostMessageRemoteExceptionClosesChannel() throws Exception {
         FakeNativeMessagePort fakeAppPort = new FakeNativeMessagePort(null);
-        Mockito.when(mMockExtensionService.connectPort(Mockito.any())).thenReturn(fakeAppPort);
+        Mockito.doAnswer(
+                        invocation -> {
+                            IConnectPortCallback callback = invocation.getArgument(1);
+                            callback.onSuccess(fakeAppPort);
+                            return null;
+                        })
+                .when(mMockExtensionService)
+                .connectPort(Mockito.any(), Mockito.any());
 
         NativeMessageAndroidPort port = new NativeMessageAndroidPort();
         TestPortObserver portObserver = new TestPortObserver();
@@ -372,7 +428,14 @@ public class NativeMessageAndroidPortTest {
     public void testFlushPendingMessagesFails() throws Exception {
         FakeNativeMessagePort fakeAppPort = new FakeNativeMessagePort(null);
         fakeAppPort.failAfterMessageCount = 1;
-        Mockito.when(mMockExtensionService.connectPort(Mockito.any())).thenReturn(fakeAppPort);
+        Mockito.doAnswer(
+                        invocation -> {
+                            IConnectPortCallback callback = invocation.getArgument(1);
+                            callback.onSuccess(fakeAppPort);
+                            return null;
+                        })
+                .when(mMockExtensionService)
+                .connectPort(Mockito.any(), Mockito.any());
 
         NativeMessageAndroidPort port = new NativeMessageAndroidPort();
         TestPortObserver portObserver = new TestPortObserver();
@@ -399,13 +462,18 @@ public class NativeMessageAndroidPortTest {
     // dropped.
     @Test
     public void testAppSendsMessageSynchronouslyDuringConnectPort() throws Exception {
-        Mockito.when(mMockExtensionService.connectPort(Mockito.any()))
-                .thenAnswer(
+        Mockito.doAnswer(
                         invocation -> {
-                            IExtensionNativeMessageCallback callback = invocation.getArgument(0);
-                            callback.onMessage("synchronous_msg");
-                            return new FakeNativeMessagePort(callback);
-                        });
+                            IExtensionNativeMessageCallback messageReceiver =
+                                    invocation.getArgument(0);
+                            IConnectPortCallback callback = invocation.getArgument(1);
+                            messageReceiver.onMessage(
+                                    createPayload("synchronous_msg"), new Bundle());
+                            callback.onSuccess(new FakeNativeMessagePort(messageReceiver));
+                            return null;
+                        })
+                .when(mMockExtensionService)
+                .connectPort(Mockito.any(), Mockito.any());
 
         NativeMessageAndroidPort port = new NativeMessageAndroidPort();
         TestPortObserver portObserver = new TestPortObserver();
@@ -416,5 +484,40 @@ public class NativeMessageAndroidPortTest {
         RobolectricUtil.runAllBackgroundAndUi();
 
         Assert.assertEquals(List.of("synchronous_msg"), portObserver.receivedMessages);
+    }
+
+    // Test that if an external app misbehaves and calls onSuccess multiple times or calls both
+    // onSuccess and onError, only the first call is processed and subsequent remote ports
+    // are immediately disconnected.
+    @Test
+    public void testConnectPortCallbackCalledMultipleTimes() throws Exception {
+        FakeNativeMessagePort fakePort1 = new FakeNativeMessagePort(null);
+        FakeNativeMessagePort fakePort2 = new FakeNativeMessagePort(null);
+
+        Mockito.doAnswer(
+                        invocation -> {
+                            IConnectPortCallback callback = invocation.getArgument(1);
+                            callback.onSuccess(fakePort1);
+                            callback.onSuccess(fakePort2);
+                            callback.onError("Conflicting error");
+                            return null;
+                        })
+                .when(mMockExtensionService)
+                .connectPort(Mockito.any(), Mockito.any());
+
+        NativeMessageAndroidPort port = new NativeMessageAndroidPort();
+        TestPortObserver portObserver = new TestPortObserver();
+        port.setTestObserver(portObserver);
+
+        Assert.assertNull(connectToApp(port));
+        mTestContext.triggerServiceConnected(mFakeBrowserService.asBinder());
+        RobolectricUtil.runAllBackgroundAndUi();
+
+        // port1 should be connected and not disconnected.
+        Assert.assertFalse(fakePort1.isDisconnected);
+        // port2 should have been immediately disconnected.
+        Assert.assertTrue(fakePort2.isDisconnected);
+        // Port observer should not have received any closed channel error.
+        Assert.assertNull(portObserver.closedError);
     }
 }

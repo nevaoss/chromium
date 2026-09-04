@@ -40,7 +40,6 @@ import static org.chromium.ui.test.util.MockitoHelper.doCallback;
 import static org.chromium.ui.test.util.ViewUtils.onViewWaiting;
 import static org.chromium.ui.test.util.ViewUtils.waitForView;
 
-import android.os.Build;
 import android.text.TextUtils;
 import android.view.View;
 import android.view.ViewGroup;
@@ -73,9 +72,10 @@ import org.chromium.base.ThreadUtils;
 import org.chromium.base.test.util.Batch;
 import org.chromium.base.test.util.CommandLineFlags;
 import org.chromium.base.test.util.CriteriaHelper;
-import org.chromium.base.test.util.DisableIf;
+import org.chromium.base.test.util.Features.DisableFeatures;
 import org.chromium.base.test.util.Features.EnableFeatures;
 import org.chromium.base.test.util.HistogramWatcher;
+import org.chromium.base.test.util.Restriction;
 import org.chromium.chrome.browser.flags.ChromeSwitches;
 import org.chromium.chrome.browser.preferences.ChromePreferenceKeys;
 import org.chromium.chrome.browser.preferences.ChromeSharedPreferences;
@@ -104,7 +104,9 @@ import org.chromium.components.signin.test.util.FakeIdentityManager;
 import org.chromium.components.signin.test.util.SigninMatchers;
 import org.chromium.components.signin.test.util.TestAccounts;
 import org.chromium.google_apis.gaia.CoreAccountId;
+import org.chromium.ui.base.DeviceFormFactor;
 
+import java.util.List;
 import java.util.concurrent.atomic.AtomicReference;
 
 /** Tests account picker bottom sheet of the web signin flow. */
@@ -112,10 +114,6 @@ import java.util.concurrent.atomic.AtomicReference;
 @EnableFeatures(SigninFeatures.MAKE_IDENTITY_MANAGER_SOURCE_OF_ACCOUNTS)
 @CommandLineFlags.Add({ChromeSwitches.DISABLE_FIRST_RUN_EXPERIENCE})
 @Batch(Batch.PER_CLASS)
-// TODO(crbug.com/428056054): The top content is blocked by system UI on B+.
-@DisableIf.Build(
-        sdk_is_greater_than = Build.VERSION_CODES.VANILLA_ICE_CREAM,
-        message = "crbug.com/428056054")
 public class AccountPickerBottomSheetTest {
 
     private static final String DOMAIN1 = "Domain1";
@@ -158,12 +156,14 @@ public class AccountPickerBottomSheetTest {
     private SigninTestUtil.CustomDeviceLockActivityLauncher mDeviceLockActivityLauncher;
     private boolean mIsAccountManaged;
     private @SigninAccessPoint int mSigninAccessPoint;
+    private @Nullable AccountInfo mPreferredAccount;
 
     @Before
     public void setUp() {
         mPage = mActivityTestRule.startOnBlankPage();
         mAutoTestRule.setIsAutomotive(false);
         mSigninAccessPoint = SigninAccessPoint.WEB_SIGNIN;
+        mPreferredAccount = null;
         mAccountManagerTestRule.addAccount(TestAccounts.ACCOUNT1);
         mAccountManagerTestRule.addAccount(TestAccounts.TEST_ACCOUNT_NO_NAME);
         SigninPreferencesManager.getInstance().clearWebSigninAccountPickerActiveDismissalCount();
@@ -199,6 +199,18 @@ public class AccountPickerBottomSheetTest {
                                 callback.onResult(PostSigninOperationResult.SUCCESS))
                 .when(mAccountPickerDelegateMock)
                 .runPostSigninAction(eq(TestAccounts.ACCOUNT1), any());
+        doAnswer(
+                        invocation -> {
+                            if (mPreferredAccount != null) {
+                                return mPreferredAccount;
+                            }
+                            List<AccountInfo> accounts = invocation.getArgument(0);
+                            return (accounts != null && !accounts.isEmpty())
+                                    ? accounts.get(0)
+                                    : null;
+                        })
+                .when(mAccountPreviewDataServiceMock)
+                .getPreferredAccountOrDefault(any());
     }
 
     @After
@@ -218,6 +230,64 @@ public class AccountPickerBottomSheetTest {
 
         checkCollapsedAccountListForWebSignin(TestAccounts.ACCOUNT1);
         accountConsistencyHistogram.assertExpected();
+    }
+
+    @Test
+    @MediumTest
+    @EnableFeatures(SigninFeatures.ENABLE_ACCOUNT_PREVIEW_PREFERRED_ACCOUNT)
+    public void testCollapsedSheetWithPreferredAccount_preferredAccountEnabled() {
+        mAccountManagerTestRule.addAccount(TestAccounts.ACCOUNT2);
+        mPreferredAccount = TestAccounts.ACCOUNT2;
+
+        var accountConsistencyHistogram =
+                HistogramWatcher.newSingleRecordWatcher(
+                        "Signin.AccountConsistencyPromoAction",
+                        AccountConsistencyPromoAction.SHOWN);
+
+        buildAndShowBottomSheet(AccountPickerLaunchMode.DEFAULT);
+
+        // Since the flag is enabled and Account2 is preferred, it should default to Account2.
+        checkCollapsedAccountListForWebSignin(TestAccounts.ACCOUNT2);
+        accountConsistencyHistogram.assertExpected();
+    }
+
+    @Test
+    @MediumTest
+    @EnableFeatures(SigninFeatures.ENABLE_ACCOUNT_PREVIEW_PREFERRED_ACCOUNT)
+    public void testCollapsedSheetWithSpecifiedAccountAndDifferentPreferredAccount() {
+        mAccountManagerTestRule.addAccount(TestAccounts.ACCOUNT2);
+        mPreferredAccount = TestAccounts.ACCOUNT2;
+
+        var accountConsistencyHistogram =
+                HistogramWatcher.newSingleRecordWatcher(
+                        "Signin.AccountConsistencyPromoAction",
+                        AccountConsistencyPromoAction.SHOWN);
+
+        buildAndShowBottomSheetForAccount(
+                AccountPickerLaunchMode.DEFAULT, TestAccounts.ACCOUNT1.getId());
+
+        // Account1 is preselected, so it should be displayed even though Account2 is preferred.
+        checkCollapsedAccountListForWebSignin(TestAccounts.ACCOUNT1);
+        accountConsistencyHistogram.assertExpected();
+    }
+
+    @Test
+    @MediumTest
+    @DisableFeatures(SigninFeatures.ENABLE_ACCOUNT_PREVIEW_PREFERRED_ACCOUNT)
+    public void testCollapsedSheetWithPreferredAccount_preferredAccountDisabled() {
+        mAccountManagerTestRule.addAccount(TestAccounts.ACCOUNT2);
+
+        var accountConsistencyHistogram =
+                HistogramWatcher.newSingleRecordWatcher(
+                        "Signin.AccountConsistencyPromoAction",
+                        AccountConsistencyPromoAction.SHOWN);
+
+        buildAndShowBottomSheet(AccountPickerLaunchMode.DEFAULT);
+
+        // Since the flag is disabled, it should default to the first account (Account1).
+        checkCollapsedAccountListForWebSignin(TestAccounts.ACCOUNT1);
+        accountConsistencyHistogram.assertExpected();
+        verify(mAccountPreviewDataServiceMock, never()).getPreferredAccountOrDefault(any());
     }
 
     @Test
@@ -304,6 +374,7 @@ public class AccountPickerBottomSheetTest {
                                     mFakeIdentityManager,
                                     mSigninManagerMock,
                                     mAccountPreviewDataServiceMock,
+                                    mActivityTestRule.getActivity().getModalDialogManager(),
                                     getBottomSheetController(),
                                     mAccountPickerDelegateMock,
                                     AccountPickerBottomSheetTestUtil.getBottomSheetStrings(
@@ -332,6 +403,7 @@ public class AccountPickerBottomSheetTest {
                                     mFakeIdentityManager,
                                     mSigninManagerMock,
                                     mAccountPreviewDataServiceMock,
+                                    mActivityTestRule.getActivity().getModalDialogManager(),
                                     getBottomSheetController(),
                                     mAccountPickerDelegateMock,
                                     AccountPickerBottomSheetTestUtil.getBottomSheetStrings(
@@ -567,6 +639,7 @@ public class AccountPickerBottomSheetTest {
                                     mFakeIdentityManager,
                                     mSigninManagerMock,
                                     mAccountPreviewDataServiceMock,
+                                    mActivityTestRule.getActivity().getModalDialogManager(),
                                     getBottomSheetController(),
                                     mAccountPickerDelegateMock,
                                     AccountPickerBottomSheetTestUtil.getBottomSheetStrings(
@@ -714,6 +787,7 @@ public class AccountPickerBottomSheetTest {
 
     @Test
     @MediumTest
+    @Restriction(DeviceFormFactor.ONLY_TABLET)
     public void testAutomotiveDevice_deviceLockRefused_dismissedSignIn()
             throws InterruptedException {
         mAutoTestRule.setIsAutomotive(true);
@@ -1141,6 +1215,7 @@ public class AccountPickerBottomSheetTest {
                                     mFakeIdentityManager,
                                     mSigninManagerMock,
                                     mAccountPreviewDataServiceMock,
+                                    mActivityTestRule.getActivity().getModalDialogManager(),
                                     getBottomSheetController(),
                                     mAccountPickerDelegateMock,
                                     AccountPickerBottomSheetTestUtil.getBottomSheetStrings(
@@ -1576,6 +1651,7 @@ public class AccountPickerBottomSheetTest {
                                     mFakeIdentityManager,
                                     mSigninManagerMock,
                                     mAccountPreviewDataServiceMock,
+                                    mActivityTestRule.getActivity().getModalDialogManager(),
                                     getBottomSheetController(),
                                     mAccountPickerDelegateMock,
                                     AccountPickerBottomSheetTestUtil.getBottomSheetStrings(

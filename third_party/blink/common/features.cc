@@ -199,6 +199,10 @@ BASE_FEATURE_PARAM(bool,
                    &kBackgroundResourceFetch,
                    "background-code-cache-decoder-start",
                    true);
+BASE_FEATURE_PARAM(bool,
+                   kBackgroundResourceFetchSupportsWebUI,
+                   &kBackgroundResourceFetch,
+                   false);
 
 BASE_FEATURE(kRestrictBackgroundFetchFromServiceWorker,
              base::FEATURE_ENABLED_BY_DEFAULT);
@@ -273,9 +277,6 @@ BASE_FEATURE(kCaptureJSExecutionLocation, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kClearSiteDataPrefetchPrerenderCache,
              base::FEATURE_ENABLED_BY_DEFAULT);
-
-// Fix for CSS font comparison logic.
-BASE_FEATURE(kCSSFontComparisonFix, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enable legacy `dpr` client hint.
 BASE_FEATURE(kClientHintsDPR_DEPRECATED, base::FEATURE_ENABLED_BY_DEFAULT);

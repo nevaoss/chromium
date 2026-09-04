@@ -72,7 +72,7 @@ class PageLoadMetricsForwardObserver final
   ObservePolicy ShouldObserveScheme(const GURL& url) const override;
   void OnTimingUpdate(content::RenderFrameHost* subframe_rfh,
                       const mojom::PageLoadTiming& timing) override;
-  void OnSoftNavigationCommit(
+  void OnSoftNavigationFirstContentfulPaint(
       const mojom::SoftNavigationMetrics& soft_navigation_metrics) override;
   void OnSoftNavigationCompleted(
       const SoftNavigationData& soft_navigation_data) override;
@@ -151,6 +151,8 @@ class PageLoadMetricsForwardObserver final
       const FailedProvisionalLoadInfo& failed_provisional_load_info) override;
   void OnLoadedResource(
       const ExtraRequestCompleteInfo& extra_request_complete_info) override;
+  void DidLoadResourceFromMemoryCache(
+      const MemoryResourceLoadInfo& memory_resource_load_info) override;
   void FrameReceivedUserActivation(
       content::RenderFrameHost* render_frame_host) override;
   void FrameDisplayStateChanged(content::RenderFrameHost* render_frame_host,

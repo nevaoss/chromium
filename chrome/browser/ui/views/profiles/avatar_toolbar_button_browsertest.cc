@@ -115,6 +115,7 @@
 #include "ui/gfx/image/image_skia.h"
 #include "ui/gfx/image/image_unittest_util.h"
 #include "ui/gfx/scoped_animation_duration_scale_mode.h"
+#include "ui/views/controls/button/md_text_button.h"
 
 #if BUILDFLAG(IS_CHROMEOS)
 #include "ash/constants/ash_switches.h"
@@ -1055,7 +1056,7 @@ IN_PROC_BROWSER_TEST_P(AvatarToolbarButtonBrowserTest, SigninBrowser) {
   // On ChromeOS, captive portal signin windows show a
   // disabled avatar button to indicate that the window is incognito.
   EXPECT_TRUE(avatar_accessor1.GetVisible());
-  EXPECT_FALSE(avatar_accessor1.GetEnabled());
+  EXPECT_TRUE(avatar_accessor1.WaitForEnabled(false));
 }
 #endif
 

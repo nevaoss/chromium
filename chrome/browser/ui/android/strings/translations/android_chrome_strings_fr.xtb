@@ -31,6 +31,7 @@
 <translation id="1105960400813249514">Capture d'écran</translation>
 <translation id="1108214977745280468">Voir les informations sur la page</translation>
 <translation id="1108938384783527433">Synchronisation de l'historique</translation>
+<translation id="1109663842695712985">Certaines de vos données Chrome n'ont pas encore été enregistrées dans votre compte Google. Patientez quelques minutes avant de vous déconnecter. Si vous vous déconnectez maintenant, les données non enregistrées seront supprimées.</translation>
 <translation id="1111673857033749125">Les favoris enregistrés sur vos autres appareils s'affichent ici.</translation>
 <translation id="1123537484474186311"><ph name="TAB_TITLE" />, onglet en Picture-in-picture</translation>
 <translation id="1126696498560056882">Gérer les comptes sur cet appareil</translation>
@@ -78,6 +79,7 @@
 <translation id="1263231323834454256">Liste de lecture</translation>
 <translation id="1269129608791067105">Votre historique s'affichera ici</translation>
 <translation id="1280921956537356716">Activer les notifications d'astuces</translation>
+<translation id="1287449971634955609">Supprimer les extensions et les données qu'elles ont enregistrées sur cet appareil</translation>
 <translation id="1289129165308566697">Consultez votre historique sur d'autres appareils</translation>
 <translation id="129553762522093515">Récemment fermés</translation>
 <translation id="1298077576058087471">Économisez jusqu'à 60 % de données mobiles, découvrez les actualités du jour</translation>
@@ -115,6 +117,7 @@ Pour voir d'autres paramètres qui utilisent les données pour améliorer votre 
 <translation id="1413446866325418126">Enregistrer les données dans votre compte Google</translation>
 <translation id="1414919006379339073">Fermer la fenêtre actuelle</translation>
 <translation id="1416550906796893042">Version de l'application</translation>
+<translation id="1426410128494586442">Oui</translation>
 <translation id="1430915738399379752">Imprimer</translation>
 <translation id="1432581352905426595">Gérer les moteurs de recherche</translation>
 <translation id="1435593198351412143">Ouvrir automatiquement les PDF</translation>
@@ -155,6 +158,7 @@ Seule une personne connaissant votre phrase secrète peut lire vos données chif
 <translation id="1598163867407640634">Utilisez <ph name="SITE_ETLD_PLUS_ONE" /> avec <ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /></translation>
 <translation id="1598770407402123677"><ph name="TAB_TITLE" />, onglet épinglé avec enregistrement en cours</translation>
 <translation id="1600756129506222718"><ph name="TAB_TITLE" />, onglet avec partage en cours</translation>
+<translation id="1601378265092360672">Les données de navigation incluent votre historique de navigation, les cookies et autres données des sites, les images et fichiers mis en cache, ainsi que les onglets ouverts</translation>
 <translation id="160275202205869636">Activez l'option pour utiliser et sauvegarder les données dans votre compte Google. Désactivez-la pour n'enregistrer les données que sur l'appareil.</translation>
 <translation id="1628019612362412531">{NUM_SELECTED,plural, =1{Supprimer 1 élément sélectionné}one{Supprimer # élément sélectionné}other{Supprimer # éléments sélectionnés}}</translation>
 <translation id="1639239467298939599">Chargement en cours…</translation>
@@ -186,6 +190,7 @@ Seule une personne connaissant votre phrase secrète peut lire vos données chif
 <translation id="1778457539567749232">Marquer comme non lu</translation>
 <translation id="1779766957982586368">Fermer la fenêtre</translation>
 <translation id="1780023393214832643">Mots de passe enregistrés dans <ph name="USERNAME" /></translation>
+<translation id="1789543093145556097">Toujours masquer</translation>
 <translation id="1791662854739702043">Installé dans</translation>
 <translation id="1792959175193046959">Modifier à tout moment l'emplacement de téléchargement par défaut</translation>
 <translation id="1796666869097395659">Réduire l'onglet pour y revenir plus tard</translation>
@@ -341,6 +346,7 @@ Seule une personne connaissant votre phrase secrète peut lire vos données chif
 <translation id="2385605401818128172">Vous pouvez examiner les sites qui envoient beaucoup de notifications et les empêcher d'en envoyer d'autres à l'avenir</translation>
 <translation id="2386938421315164605">Masquer et afficher les thèmes</translation>
 <translation id="2390510615457643724">Voulez-vous retélécharger <ph name="FILE_NAME" /> (<ph name="FILE_SIZE" />) ?</translation>
+<translation id="2391579633712104609">180°</translation>
 <translation id="2392369802118427583">Activer</translation>
 <translation id="2393980685134835044"><ph name="TAB_TITLE" />, onglet de navigation privée sélectionné en Picture-in-picture</translation>
 <translation id="2397175985681716533"><ph name="TAB_TITLE" />, onglet de navigation privée avec enregistrement en cours</translation>
@@ -522,6 +528,7 @@ Seule une personne connaissant votre phrase secrète peut lire vos données chif
 <translation id="3075397426753215787">Choisir un appareil.</translation>
 <translation id="3080375898390966733">Explorer l'onglet avec Google Lens</translation>
 <translation id="3080525922482950719">Vous pouvez enregistrer des pages pour les consulter plus tard ou hors connexion</translation>
+<translation id="3082989400996696487">Afficher uniquement sur la page "Nouvel onglet"</translation>
 <translation id="3087734570205094154">En bas</translation>
 <translation id="3091010850649238832">Afficher le contenu du presse-papiers</translation>
 <translation id="3098745985164956033">Les images sont envoyées à Google afin de vous proposer de meilleures descriptions</translation>
@@ -557,6 +564,7 @@ Seule une personne connaissant votre phrase secrète peut lire vos données chif
 <translation id="3254409185687681395">Ajouter cette page aux favoris</translation>
 <translation id="3265093782546847662">Toutes les pages de <ph name="DOMAIN" /></translation>
 <translation id="3268048651973962414">Faites glisser vers le haut pour voir les résultats de recherche</translation>
+<translation id="3268205181992599708">Activer le micro pour utiliser la voix</translation>
 <translation id="3269093882174072735">Charger l'image</translation>
 <translation id="3280562213547448728">Recherche vocale</translation>
 <translation id="3282801380074962248">Développer la section</translation>
@@ -624,6 +632,7 @@ Seule une personne connaissant votre phrase secrète peut lire vos données chif
 <translation id="3557336313807607643">Ajouter aux contacts</translation>
 <translation id="3560831525486613327">Ouvrez une page "Nouvel onglet"</translation>
 <translation id="3563767357928833671">Contenu du presse-papiers affiché</translation>
+<translation id="356407858591811361">Ouvrir fenêtre navigation privée</translation>
 <translation id="3566639033325271639">Mettre à jour les paramètres</translation>
 <translation id="3568945271227339929">Aucun mot de passe compromis</translation>
 <translation id="3575464060651642446">Vérification des mots de passe sur cet appareil…</translation>
@@ -767,6 +776,7 @@ Seule une personne connaissant votre phrase secrète peut lire vos données chif
 <translation id="4164642020717536140">Navigation Web rapide et sécurisée</translation>
 <translation id="4165077084524712774">Autres outils</translation>
 <translation id="4170577491341606575">Chargement de vos données\u2026</translation>
+<translation id="4172051516777682613">Toujours afficher</translation>
 <translation id="4176838562184310003">Chrome ne s'est pas arrêté correctement et peut essayer de restaurer vos fenêtres et onglets perdus. Il est possible que certaines fenêtres soient réduites une fois restaurées.</translation>
 <translation id="4177222230309051052">Récupérer tous vos favoris</translation>
 <translation id="417865198503699526">Recherchez un paramètre</translation>
@@ -782,6 +792,7 @@ Seule une personne connaissant votre phrase secrète peut lire vos données chif
 <translation id="4209029522667123437"><ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /> • Déjà utilisé sur ce site</translation>
 <translation id="4214315110991671325">Si vous autorisez les cookies, Chrome peut les utiliser pour le préchargement.</translation>
 <translation id="421517251707893998">Appuyez sur "Épingler ce raccourci"</translation>
+<translation id="421590277191613555"><ph name="GROUP_DESCRIPTION" /> - <ph name="COLLAPSED_STATE" /></translation>
 <translation id="4216511743389425832">Écouter cette page</translation>
 <translation id="4217657297368492684"><ph name="TAB_TITLE" />, onglet de navigation privée sélectionné épinglé en Picture-in-picture</translation>
 <translation id="4225895483398857530">Raccourci de la barre d'outils</translation>
@@ -801,6 +812,7 @@ Seule une personne connaissant votre phrase secrète peut lire vos données chif
 <translation id="4285846616383034558">Cookies, cache et autres données des sites</translation>
 <translation id="4291407919474070700"><ph name="BEGIN_LINK" />Activez le verrouillage de l'écran dans les paramètres Android<ph name="END_LINK" /></translation>
 <translation id="4293154608148215505">votre téléphone</translation>
+<translation id="4295640788982898778">Vos extensions sont enregistrées dans votre compte Google, mais les données qu'elles ont enregistrées uniquement sur cet appareil pourront être supprimées.</translation>
 <translation id="4296252229500326964">Nouv. onglet nav. privée</translation>
 <translation id="4298161202289999785"><ph name="TAB_TITLE" />, onglet de navigation privée multisélectionné</translation>
 <translation id="4298388696830689168">Sites associés</translation>
@@ -824,6 +836,7 @@ Seule une personne connaissant votre phrase secrète peut lire vos données chif
 <translation id="4358630185957185589">Ouvrir Google Lens</translation>
 <translation id="435863252455918214">Gérez vos extensions dans le menu principal de Chrome</translation>
 <translation id="4359809482106103048">Votre sécurité en un coup d'œil</translation>
+<translation id="4374192654218566997">\n\nVous pouvez aussi supprimer ces données de cet appareil :</translation>
 <translation id="4378154925671717803">Téléphone</translation>
 <translation id="4380055775103003110">Si le problème persiste, vous pouvez essayer d'autres méthodes afin de poursuivre sur <ph name="SITE_ETLD_PLUS_ONE" />.</translation>
 <translation id="4384468725000734951">Utilisation de Sogou pour les recherches</translation>
@@ -885,7 +898,6 @@ Votre compte Google conserve peut-être d'autres contenus d'historique de naviga
 <translation id="4599585406846903742">Vue sur une page</translation>
 <translation id="4601095002996233687">Analyses approfondies pour les téléchargements suspects.</translation>
 <translation id="4606559747793337066">Quand un site ou une appli demandent de précharger en mode privé des liens sur leur page, Chrome chiffre et précharge les pages via les serveurs de Google sans cookies. Le site préchargé ne sait alors rien de votre identité.</translation>
-<translation id="4616150815774728855">Ouvrir <ph name="WEBAPK_NAME" /></translation>
 <translation id="4619615317237390068">Onglets d'autres appareils</translation>
 <translation id="4624065194742029982">Navigation privée dans Chrome</translation>
 <translation id="4634124774493850572">Utiliser le mot de passe</translation>
@@ -979,6 +991,7 @@ Votre compte Google conserve peut-être d'autres contenus d'historique de naviga
 <translation id="4961107849584082341">Traduire cette page dans n'importe quelle langue</translation>
 <translation id="4964614743143953889">Chrome vous avertit en cas de sites et de téléchargements dangereux</translation>
 <translation id="496607651705915226">Pour enregistrer et utiliser de nouveaux mots de passe dans votre compte Google, mettez à jour les services Google Play</translation>
+<translation id="4971526871834232950"><ph name="GROUP_DESCRIPTION" /> - <ph name="TABS_DESCRIPTION" /></translation>
 <translation id="4971753085054504448">Essayez d'effectuer une autre recherche ou ouvrez tout l'historique Chrome pour voir plus de résultats.</translation>
 <translation id="497421865427891073">Avancer</translation>
 <translation id="497983151715419057">Consultez ici vos onglets et groupes inactifs</translation>
@@ -1051,6 +1064,7 @@ Votre compte Google conserve peut-être d'autres contenus d'historique de naviga
 <translation id="5267572070504076962">Activez la navigation sécurisée pour vous protéger contre les sites dangereux</translation>
 <translation id="5273031377282080577">Votre administrateur gère ce paramètre.</translation>
 <translation id="5284295735376057059">Propriétés du document</translation>
+<translation id="5286907366254680517">Détecté</translation>
 <translation id="5290322819358431297">Saisie auto des mots de passe</translation>
 <translation id="5292796745632149097">Envoyer sur</translation>
 <translation id="5301876394151419436">Vous êtes connecté en tant que <ph name="EMAIL" />. Vous pouvez arrêter la synchronisation à tout moment dans les paramètres. Google peut personnaliser la recherche et d'autres services en fonction de votre historique.</translation>
@@ -1531,6 +1545,7 @@ Par exemple, certains sites Web peuvent répondre à cette demande en diffusant 
 <translation id="7117485132243600300">Gérez les contenus que vous suivez, ainsi que les thèmes et recherches suggérés</translation>
 <translation id="7119984597597798764">Fermer <ph name="INSTANCE_TITLE" /></translation>
 <translation id="7121179479711575744">Se connecter à Chrome</translation>
+<translation id="7130633106249192408">Supprimer les données de navigation de cet appareil</translation>
 <translation id="7136694880210472378">Utiliser par défaut</translation>
 <translation id="7136902389402789299">{NUM_SITES,plural, =1{Autorisations examinées pour 1 site}one{Autorisations examinées pour # site}other{Autorisations examinées pour # sites}}</translation>
 <translation id="7138678301420049075">Autre</translation>
@@ -1690,6 +1705,7 @@ Pour modifier ce paramètre, <ph name="BEGIN_LINK" />supprimez les données Chro
 <translation id="7714077993070342304">Ouvrir le menu Chrome</translation>
 <translation id="7733878270780732638">Espace insuffisant sur l'appareil.</translation>
 <translation id="7740287852186792672">Résultats de la recherche</translation>
+<translation id="7740996059027112821">Standard</translation>
 <translation id="774403695779169686"><ph name="TAB_TITLE" />, onglet de navigation privée sélectionné avec partage en cours</translation>
 <translation id="774876555279732384">Les services de saisie automatique sont également gérés dans les <ph name="BEGIN_LINK" />paramètres Android<ph name="END_LINK" />.</translation>
 <translation id="7758884017823246335">Ajouter une recherche sur un site</translation>
@@ -1822,6 +1838,7 @@ Pour modifier ce paramètre, <ph name="BEGIN_LINK" />supprimez les données Chro
 <translation id="8223642481677794647">Menu de la carte de flux</translation>
 <translation id="82296173028782770">Modifier la requête de recherche : <ph name="SEARCH_QUERY" /></translation>
 <translation id="8236097722223016103">Ajouter aux favoris</translation>
+<translation id="8236917170563564587">Partager cet onglet à la place</translation>
 <translation id="8243077599929149377">Ajouter votre nom d'utilisateur</translation>
 <translation id="8244387390464017490">Personnaliser Nouv. onglet</translation>
 <translation id="8244444485683708655">Joindre une image de la caméra</translation>
@@ -1851,6 +1868,7 @@ Pour modifier ce paramètre, <ph name="BEGIN_LINK" />supprimez les données Chro
 <translation id="834313815369870491">Ne jamais traduire les sites</translation>
 <translation id="8348215005712416247"><ph name="TAB_TITLE" />, onglet de navigation privée épinglé multisélectionné avec enregistrement en cours</translation>
 <translation id="8348430946834215779">Utiliser HTTPS autant que possible et recevoir un avertissement avant de charger des sites qui ne le prennent pas en charge</translation>
+<translation id="8349305172487531364">Barre de favoris</translation>
 <translation id="8354977102499939946">Rechercher rapidement par commande vocale. Pour modifier ce raccourci, accédez aux paramètres.</translation>
 <translation id="8361737703487394103">Accéder à un onglet spécifique (1 à 8)</translation>
 <translation id="8368001212524806591">Suivre les prix</translation>

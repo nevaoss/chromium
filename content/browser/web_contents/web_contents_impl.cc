@@ -228,6 +228,7 @@
 #include "ui/base/ime/mojom/virtual_keyboard_types.mojom.h"
 #include "ui/base/mojom/window_show_state.mojom.h"
 #include "ui/base/pointer/pointer_device.h"
+#include "ui/base/ui_base_features.h"
 #include "ui/base/ui_base_types.h"
 #include "ui/base/window_open_disposition.h"
 #include "ui/color/color_provider_key.h"
@@ -12653,6 +12654,7 @@ void WebContentsImpl::SetVisibilityForChildViews(bool visible) {
   GetPrimaryMainFrame()->SetVisibilityForChildViews(visible);
 }
 
+<<<<<<< HEAD
 #if BUILDFLAG(IS_NEVA_APPRUNTIME)
 bool WebContentsImpl::IsInspectablePage() const {
   return inspectable_page_;
@@ -12719,8 +12721,22 @@ void WebContentsImpl::OnDidDropAllPeerConnections(
   }
 }
 #endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
+=======
+void WebContentsImpl::ScheduleColorRelatedStateChanges() {
+  if (color_related_state_change_scheduled_) {
+    return;
+  }
+  color_related_state_change_scheduled_ = true;
+  GetUIThreadTaskRunner({})->PostTask(
+      FROM_HERE,
+      base::BindOnce(&WebContentsImpl::HandleColorRelatedStateChanges,
+                     weak_factory_.GetWeakPtr()));
+}
+>>>>>>> 154.0.8030.0~1
 
 void WebContentsImpl::HandleColorRelatedStateChanges() {
+  color_related_state_change_scheduled_ = false;
+
   // This can be reached re-entrantly during ~WebContentsImpl, after the
   // primary main frame has begun being destroyed. Bail out before
   // dereferencing it via GetPrimaryMainFrame() below.
@@ -12761,7 +12777,11 @@ void WebContentsImpl::OnNativeThemeUpdated(ui::NativeTheme* observed_theme) {
   OPTIONAL_TRACE_EVENT0("content", "WebContentsImpl::OnNativeThemeUpdated");
   DCHECK_EQ(observed_theme, ui::NativeTheme::GetInstanceForWeb());
 
-  HandleColorRelatedStateChanges();
+  if (base::FeatureList::IsEnabled(features::kThemeChangeOptimization)) {
+    ScheduleColorRelatedStateChanges();
+  } else {
+    HandleColorRelatedStateChanges();
+  }
 
   const auto caret_blink_interval = observed_theme->caret_blink_interval();
 #if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || \
@@ -12808,7 +12828,11 @@ void WebContentsImpl::OnColorProviderChanged() {
 
   observers_.NotifyObservers(&WebContentsObserver::OnColorProviderChanged);
 
-  HandleColorRelatedStateChanges();
+  if (base::FeatureList::IsEnabled(features::kThemeChangeOptimization)) {
+    ScheduleColorRelatedStateChanges();
+  } else {
+    HandleColorRelatedStateChanges();
+  }
 }
 
 const ui::ColorProvider& WebContentsImpl::GetColorProvider() const {
@@ -13033,12 +13057,14 @@ void WebContentsImpl::SetV8CompileHints(base::ReadOnlySharedMemoryRegion data) {
 
 void WebContentsImpl::SetTabSwitchStartTime(base::TimeTicks start_time,
                                             bool destination_is_loaded,
-                                            bool had_saved_frame_at_start) {
+                                            bool had_saved_frame_at_start,
+                                            bool destination_is_frozen) {
   GetVisibleTimeRequestTrigger().UpdateRequest(blink::VisibleTimeEvent{
       .event_start_time = start_time,
       .reason = blink::VisibleTimeEvent::TabSwitchReason{
           .destination_is_loaded = destination_is_loaded,
-          .had_saved_frame_at_start = had_saved_frame_at_start}});
+          .had_saved_frame_at_start = had_saved_frame_at_start,
+          .destination_is_frozen = destination_is_frozen}});
 }
 
 VisibleTimeRequestTrigger& WebContentsImpl::GetVisibleTimeRequestTrigger() {

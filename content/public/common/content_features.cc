@@ -1024,6 +1024,10 @@ BASE_FEATURE(kServiceWorkerAutoPreload, base::FEATURE_ENABLED_BY_DEFAULT);
 // enabled.
 BASE_FEATURE(kOptimizeWebRequestProxyForServiceWorkerAutoPreload,
              base::FEATURE_DISABLED_BY_DEFAULT);
+const base::FeatureParam<bool>
+    kOptimizeWebRequestProxyForServiceWorkerAutoPreloadAllowDeclarativeNetRequest{
+        &kOptimizeWebRequestProxyForServiceWorkerAutoPreload,
+        "allow_declarative_net_request", false};
 
 // crbug.com/40410035: When enabled, download requests ("Save link as",
 // "Save image as", <a download>) are intercepted by service workers, allowing
@@ -1395,6 +1399,11 @@ BASE_FEATURE(kAccessibilityImeGetFormattedText,
 BASE_FEATURE(kAccessibilityImproveLiveRegionAnnounce,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
+// When enabled, allows Android to fire WINDOW_CONTENT_CHANGED events for value
+// changes made to slider controls.
+BASE_FEATURE(kAccessibilitySliderStateDescription,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+
 // When this feature is enabled, the accessibility tree will be requested to
 // layout based on the actions that are performed on the renderer side. In
 // particular this will be used to determine whether or not a node is clickable
@@ -1491,10 +1500,6 @@ const base::FeatureParam<int> kTextClassifierTimeoutMs{&kTextClassifierTimeout,
 #endif  // BUILDFLAG(IS_ANDROID)
 
 #if BUILDFLAG(IS_MAC)
-// Enables backgrounding hidden renderers on Mac.
-BASE_FEATURE(kMacAllowBackgroundingRenderProcesses,
-             base::FEATURE_ENABLED_BY_DEFAULT);
-
 // Changes how Chrome responds to accessibility activation signals on macOS
 // Sonoma, to avoid unnecessary changes to the screen reader state.
 BASE_FEATURE(kSonomaAccessibilityActivationRefinements,
@@ -1503,11 +1508,13 @@ BASE_FEATURE(kSonomaAccessibilityActivationRefinements,
 #endif  // BUILDFLAG(IS_MAC)
 
 #if BUILDFLAG(IS_ANDROID)
-// Disables WebAuthn on Android Auto. Default enabled in M137, remove in or
-// after M140.
+// Kill switch for WebAuthn on Android Auto. WebAuthn was disabled in M137 due
+// to missing platform support causing crashes (crbug.com/408118757), and
+// re-enabled in M154 now that platform support is in place
+// (crbug.com/540089011). Remove in or after M157.
 BASE_FEATURE(kWebauthnDisabledOnAuto,
              "WebAuthenticationDisabledOnAuto",
-             base::FEATURE_ENABLED_BY_DEFAULT);
+             base::FEATURE_DISABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_ANDROID)
 
 // Enables Exclusive Access Manager on Android platform

@@ -1393,18 +1393,6 @@ TEST_F(DataProtectionNavigationObserverTest,
 
 TEST_F(DataProtectionNavigationObserverTest,
        TestScreenshotUpdated_DistillerUrl_InvalidHash) {
-  logging::ScopedVmoduleSwitches scoped_vmodule_switches;
-  scoped_vmodule_switches.InitWithSwitches(
-      "data_protection_navigation_observer=1");
-
-  base::test::MockLog mock_log;
-  EXPECT_CALL(mock_log, Log).Times(testing::AnyNumber());
-  EXPECT_CALL(mock_log,
-              Log(logging::LOGGING_VERBOSE, testing::_, testing::_, testing::_,
-                  testing::HasSubstr("GetOriginalUrl got a invalid url: ")))
-      .Times(1);
-  mock_log.StartCapturingLogs();
-
   GURL invalid_distilled_url(
       "chrome-distiller://invalid_hash/?url=https%3A%2F%2Fexample.com");
 

@@ -65,7 +65,6 @@ PasskeyImportCandidate CreateCandidate(const std::string& rp_id,
   candidate.user_id = std::vector<uint8_t>(user_id.begin(), user_id.end());
   candidate.private_key =
       crypto::keypair::PrivateKey::GenerateEcP256().ToPrivateKeyInfo();
-  candidate.creation_time = 1234567890;
   return candidate;
 }
 
@@ -92,7 +91,8 @@ class PasskeyImporterTest : public testing::Test {
   }
 
  protected:
-  base::test::TaskEnvironment task_environment_;
+  base::test::TaskEnvironment task_environment_{
+      base::test::TaskEnvironment::TimeSource::MOCK_TIME};
   std::unique_ptr<TestPasskeyModel> passkey_model_;
   std::unique_ptr<PasskeyImporter> passkey_importer_;
   base::HistogramTester histogram_tester_;
@@ -171,6 +171,22 @@ TEST_F(PasskeyImporterTest, ImportsValidPasskeys) {
       "WebAuthentication.CredentialExchange.PasskeysImportedCount", 2, 1);
 }
 
+TEST_F(PasskeyImporterTest, SetsCreationTimeToCurrentTimeOnImport) {
+  base::Time time_now = base::Time::Now();
+  PasskeyImportCandidate candidate = CreateCandidate(kRpId, kUserId);
+  candidate.exporter_creation_time = time_now - base::Days(10);
+
+  std::ignore = StartImport({candidate});
+  std::ignore = FinishImport(/*selected_passkey_ids=*/{});
+
+  std::vector<sync_pb::WebauthnCredentialSpecifics> passkeys =
+      passkey_model_->GetPasskeys(PasskeyModel::AnyRp(),
+                                  PasskeyModel::ShadowedCredentials::kInclude);
+  ASSERT_THAT(passkeys, SizeIs(1));
+  EXPECT_EQ(passkeys[0].creation_time(),
+            time_now.InMillisecondsSinceUnixEpoch());
+}
+
 TEST_F(PasskeyImporterTest, ImportsIncomingConflictingPasskey) {
   sync_pb::WebauthnCredentialSpecifics stored_passkey =
       CreateSpecifics(kRpId, kUserId);
@@ -238,6 +254,44 @@ TEST_F(PasskeyImporterTest, ImportsPasskeyWithHmacSecret) {
       TestTrustedVaultKey(), passkeys[0], &decrypted));
   EXPECT_EQ(decrypted.hmac_secret(),
             std::string(passkey_model_utils::kHmacSecretSize, 'a'));
+}
+
+TEST_F(PasskeyImporterTest, ImportsPasskeyWithLargeBlob) {
+  PasskeyImportCandidate candidate = CreateCandidate(kRpId, kUserId);
+  candidate.large_blob = {'l', 'a', 'r', 'g', 'e', '_', 'b', 'l', 'o', 'b'};
+  candidate.large_blob_uncompressed_size = 100;
+  std::ignore = StartImport({candidate});
+
+  int passkeys_imported = FinishImport(/*selected_passkey_ids=*/{});
+  EXPECT_EQ(passkeys_imported, 1);
+  auto passkeys = passkey_model_->GetPasskeys(
+      PasskeyModel::AnyRp(), PasskeyModel::ShadowedCredentials::kInclude);
+  ASSERT_THAT(passkeys, SizeIs(1));
+  sync_pb::WebauthnCredentialSpecifics_Encrypted decrypted;
+  EXPECT_TRUE(passkey_model_utils::DecryptWebauthnCredentialSpecificsData(
+      TestTrustedVaultKey(), passkeys[0], &decrypted));
+  EXPECT_EQ(decrypted.large_blob(), "large_blob");
+  EXPECT_EQ(decrypted.large_blob_uncompressed_size(), 100u);
+}
+
+TEST_F(PasskeyImporterTest, ImportsPasskeyWithEmptyLargeBlob) {
+  PasskeyImportCandidate candidate = CreateCandidate(kRpId, kUserId);
+  candidate.large_blob = std::vector<uint8_t>();
+  candidate.large_blob_uncompressed_size = 0;
+  std::ignore = StartImport({candidate});
+
+  int passkeys_imported = FinishImport(/*selected_passkey_ids=*/{});
+  EXPECT_EQ(passkeys_imported, 1);
+  auto passkeys = passkey_model_->GetPasskeys(
+      PasskeyModel::AnyRp(), PasskeyModel::ShadowedCredentials::kInclude);
+  ASSERT_THAT(passkeys, SizeIs(1));
+  sync_pb::WebauthnCredentialSpecifics_Encrypted decrypted;
+  EXPECT_TRUE(passkey_model_utils::DecryptWebauthnCredentialSpecificsData(
+      TestTrustedVaultKey(), passkeys[0], &decrypted));
+  EXPECT_TRUE(decrypted.has_large_blob());
+  EXPECT_EQ(decrypted.large_blob(), "");
+  EXPECT_TRUE(decrypted.has_large_blob_uncompressed_size());
+  EXPECT_EQ(decrypted.large_blob_uncompressed_size(), 0u);
 }
 
 }  // namespace

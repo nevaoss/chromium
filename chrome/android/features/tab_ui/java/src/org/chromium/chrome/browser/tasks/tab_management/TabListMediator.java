@@ -1677,6 +1677,7 @@ public class TabListMediator implements TabListNotificationHandler {
      */
     @Initializer
     public void setupAccessibilityDelegate(TabGridAccessibilityHelper helper) {
+        mTabListLayoutDelegate.setAccessibilityHelper(helper);
         mAccessibilityDelegate =
                 new View.AccessibilityDelegate() {
                     @Override
@@ -1686,16 +1687,10 @@ public class TabListMediator implements TabListNotificationHandler {
                         Context context = host.getContext();
                         PropertyModel model = getModelForView(host);
 
-                        // 1. Layout-specific accessibility info (e.g. Expand/Collapse for Nested
-                        // layouts).
+                        // 1. Layout-specific accessibility info and reorder actions.
                         mTabListLayoutDelegate.populateAccessibilityNodeInfo(host, info, model);
 
-                        // 2. Reorder actions from helper.
-                        for (AccessibilityAction action : helper.getPotentialActionsForView(host)) {
-                            info.addAction(action);
-                        }
-
-                        // 3. Context menu actions.
+                        // 2. Context menu actions.
                         info.addAction(AccessibilityAction.ACTION_LONG_CLICK);
                         if (context != null
                                 && model != null
@@ -1728,20 +1723,6 @@ public class TabListMediator implements TabListNotificationHandler {
                         PropertyModel model = getModelForView(host);
                         if (mTabListLayoutDelegate.performAccessibilityAction(
                                 host, action, args, model)) {
-                            return true;
-                        }
-
-                        if (helper.isReorderAction(action)) {
-                            Pair<Integer, Integer> positions =
-                                    helper.getPositionsOfReorderAction(host, action);
-                            int currentPosition = positions.first;
-                            int targetPosition = positions.second;
-                            if (!mModelList.isValidIndex(currentPosition)
-                                    || !mModelList.isValidIndex(targetPosition)) {
-                                return false;
-                            }
-                            mModelList.move(currentPosition, targetPosition);
-                            RecordUserAction.record("TabGrid.AccessibilityDelegate.Reordered");
                             return true;
                         }
 

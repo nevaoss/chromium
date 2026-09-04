@@ -217,6 +217,8 @@ const base::Feature* const kAllFeatures[] = {
     &kIPHiOSPromoNonModalSigninBookmarkFeature,
     &kIPHiOSPromoNonModalSigninPasswordFeature,
     &kIPHiOSPromoNonModalUrlPasteDefaultBrowserFeature,
+    &kIPHiOSPromoOverflowMenuDestinationDefaultBrowserFeature,
+    &kIPHiOSPromoOverflowMenuShortcutsDefaultBrowserFeature,
     &kIPHiOSPromoPasswordManagerWidgetFeature,
     &kIPHiOSPromoPostRestoreDefaultBrowserFeature,
     &kIPHiOSPromoPostRestoreFeature,
@@ -255,11 +257,11 @@ const base::Feature* const kAllFeatures[] = {
 #if BUILDFLAG(GOOGLE_CHROME_BRANDING)
     &kEsbDownloadRowPromoFeature,
 #endif
-#if BUILDFLAG(ENABLE_EXTENSIONS)
+#if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
     &kIPHExtensionsMenuFeature,
     &kIPHExtensionsRequestAccessButtonFeature,
     &kIPHExtensionsZeroStatePromoFeature,
-#endif
+#endif  // BUILDFLAG(ENABLE_EXTENSIONS_CORE)
     // keep-sorted start case=no
     &kIPHBackNavigationMenuFeature,
     &kIPHBatterySaverModeFeature,
@@ -363,6 +365,7 @@ const base::Feature* const kAllFeatures[] = {
     &kIPHAutofillOmniboxPaymentChipFeature,
     &kIPHAutofillVirtualCardCVCSuggestionFeature,
     &kIPHAutofillVirtualCardSuggestionFeature,
+    &kIPHAutofillWalletDirectOffersFeature,
 // keep-sorted end
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_APPLE) || BUILDFLAG(IS_LINUX) ||
         // BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_ANDROID) ||

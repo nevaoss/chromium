@@ -11,11 +11,14 @@
 #include "base/memory/weak_ptr.h"
 #include "base/test/run_until.h"
 #include "base/test/scoped_feature_list.h"
+#include "base/test/test_future.h"
+#include "base/values.h"
 #include "build/build_config.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/new_tab_page/prefs/ntp_pref_names.h"
 #include "chrome/browser/ui/browser_window/test/mock_browser_window_interface.h"
 #include "chrome/browser/ui/omnibox/omnibox_everywhere/omnibox_everywhere_prefs.h"
+#include "chrome/browser/ui/omnibox/omnibox_everywhere/omnibox_everywhere_region_select_overlay.h"
 #include "chrome/browser/ui/omnibox/omnibox_everywhere/omnibox_everywhere_widget_delegate.h"
 #include "chrome/browser/ui/omnibox/omnibox_next_features.h"
 #include "chrome/browser/ui/webui/top_chrome/webui_contents_wrapper.h"
@@ -27,9 +30,11 @@
 #include "components/ntp_tiles/pref_names.h"
 #include "components/omnibox/browser/omnibox_pref_names.h"
 #include "components/prefs/pref_service.h"
+#include "components/prefs/scoped_user_pref_update.h"
 #include "content/public/browser/context_menu_params.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/blink/public/common/context_menu_data/edit_flags.h"
+#include "third_party/skia/include/core/SkBitmap.h"
 #include "ui/base/clipboard/clipboard.h"
 #include "ui/base/clipboard/clipboard_buffer.h"
 #include "ui/base/clipboard/scoped_clipboard_writer.h"
@@ -58,6 +63,8 @@
 #include "ui/aura/window_tree_host.h"
 #include "ui/views/win/hwnd_util.h"
 #endif
+
+namespace omnibox_everywhere {
 
 namespace {
 
@@ -120,14 +127,12 @@ class OmniboxEverywhereUIManagerTest : public ChromeViewsTestBase {
     ChromeViewsTestBase::SetUp();
   }
 
-  std::unique_ptr<omnibox_everywhere::OmniboxEverywhereUIManager>
-  CreateUIManager() {
+  std::unique_ptr<OmniboxEverywhereUIManager> CreateUIManager() {
     auto ui_manager =
-        std::make_unique<omnibox_everywhere::OmniboxEverywhereUIManager>(
-            base::BindRepeating(
-                [](Profile* profile) -> std::unique_ptr<WebUIContentsWrapper> {
-                  return std::make_unique<TestWebUIContentsWrapper>(profile);
-                }));
+        std::make_unique<OmniboxEverywhereUIManager>(base::BindRepeating(
+            [](Profile* profile) -> std::unique_ptr<WebUIContentsWrapper> {
+              return std::make_unique<TestWebUIContentsWrapper>(profile);
+            }));
     ui_manager->SetMenuRunnerFactoryForTesting(base::BindRepeating(
         [](ui::MenuModel* model, base::RepeatingClosure on_closed) {
           auto runner = std::make_unique<views::MenuRunner>(
@@ -459,12 +464,63 @@ TEST_F(OmniboxEverywhereUIManagerTest, MAYBE_DemoteWidget) {
   EXPECT_FALSE(ui_manager->IsActive());
   EXPECT_EQ(widget->GetZOrderLevel(), ui::ZOrderLevel::kNormal);
 
+  // Calling Demote() again while already demoted is a safe no-op.
+  ui_manager->Demote();
+  EXPECT_TRUE(widget->IsVisible());
+  EXPECT_FALSE(ui_manager->IsActive());
+  EXPECT_EQ(widget->GetZOrderLevel(), ui::ZOrderLevel::kNormal);
+
   // Calling ShowForProfile again activates.
   ui_manager->ShowForProfile(&profile_, GetContext());
   EXPECT_TRUE(widget->IsVisible());
   views::test::WaitForWidgetActive(widget, true);
   EXPECT_TRUE(ui_manager->IsActive());
   EXPECT_EQ(widget->GetZOrderLevel(), ui::ZOrderLevel::kNormal);
+
+  ui_manager->Close();
+}
+
+// Tests that Demote() when OE is inactive does not deactivate other active
+// windows.
+#if BUILDFLAG(IS_WIN)
+#define MAYBE_DemoteWhenInactiveDoesNotDeactivateOtherWidget \
+  DemoteWhenInactiveDoesNotDeactivateOtherWidget
+#else
+#define MAYBE_DemoteWhenInactiveDoesNotDeactivateOtherWidget \
+  DISABLED_DemoteWhenInactiveDoesNotDeactivateOtherWidget
+#endif
+TEST_F(OmniboxEverywhereUIManagerTest,
+       MAYBE_DemoteWhenInactiveDoesNotDeactivateOtherWidget) {
+  if (g_browser_process && g_browser_process->local_state()) {
+    g_browser_process->local_state()->SetBoolean(
+        omnibox_everywhere::prefs::kOmniboxEverywhereEphemeralModel, false);
+  }
+  auto ui_manager = CreateUIManager();
+
+  ui_manager->ShowForProfile(&profile_, GetContext());
+  views::Widget* oe_widget = ui_manager->widget();
+  ASSERT_TRUE(oe_widget);
+  EXPECT_TRUE(oe_widget->IsVisible());
+  views::test::WaitForWidgetActive(oe_widget, true);
+  EXPECT_TRUE(ui_manager->IsActive());
+
+  // Create and activate a separate widget.
+  auto other_widget =
+      CreateTestWidget(views::Widget::InitParams::CLIENT_OWNS_WIDGET);
+  other_widget->Show();
+  views::test::WaitForWidgetActive(other_widget.get(), true);
+
+  // OE widget is visible but inactive.
+  EXPECT_TRUE(oe_widget->IsVisible());
+  EXPECT_FALSE(oe_widget->IsActive());
+  EXPECT_FALSE(ui_manager->IsActive());
+  EXPECT_TRUE(other_widget->IsActive());
+
+  // Demote() should demote OE without deactivating `other_widget`.
+  ui_manager->Demote();
+  EXPECT_TRUE(oe_widget->IsVisible());
+  EXPECT_FALSE(ui_manager->IsActive());
+  EXPECT_TRUE(other_widget->IsActive());
 
   ui_manager->Close();
 }
@@ -576,6 +632,57 @@ TEST_F(OmniboxEverywhereUIManagerTest,
   EXPECT_TRUE(widget->IsVisible());
 
   ui_manager->Close();
+}
+
+// Tests that CloseUI() demotes the widget in persistent mode.
+#if BUILDFLAG(IS_WIN)
+#define MAYBE_CloseUIInPersistentModeDemotesWidget \
+  CloseUIInPersistentModeDemotesWidget
+#else
+#define MAYBE_CloseUIInPersistentModeDemotesWidget \
+  DISABLED_CloseUIInPersistentModeDemotesWidget
+#endif
+TEST_F(OmniboxEverywhereUIManagerTest,
+       MAYBE_CloseUIInPersistentModeDemotesWidget) {
+  if (g_browser_process && g_browser_process->local_state()) {
+    g_browser_process->local_state()->SetBoolean(
+        omnibox_everywhere::prefs::kOmniboxEverywhereEphemeralModel, false);
+  }
+  auto ui_manager = CreateUIManager();
+
+  ui_manager->ShowForProfile(&profile_, GetContext());
+  views::Widget* widget = ui_manager->widget();
+  ASSERT_TRUE(widget);
+  EXPECT_TRUE(widget->IsVisible());
+  views::test::WaitForWidgetActive(widget, true);
+  EXPECT_TRUE(ui_manager->IsActive());
+  EXPECT_EQ(widget->GetZOrderLevel(), ui::ZOrderLevel::kNormal);
+
+  // CloseUI() in persistent mode should demote (deactivate and keep visible).
+  ui_manager->CloseUI();
+  EXPECT_TRUE(widget->IsVisible());
+  EXPECT_FALSE(ui_manager->IsActive());
+  EXPECT_EQ(widget->GetZOrderLevel(), ui::ZOrderLevel::kNormal);
+
+  ui_manager->Close();
+}
+
+// Tests that CloseUI() closes and hides the widget in ephemeral mode.
+TEST_F(OmniboxEverywhereUIManagerTest, CloseUIInEphemeralModeClosesWidget) {
+  if (g_browser_process && g_browser_process->local_state()) {
+    g_browser_process->local_state()->SetBoolean(
+        omnibox_everywhere::prefs::kOmniboxEverywhereEphemeralModel, true);
+  }
+  auto ui_manager = CreateUIManager();
+
+  ui_manager->ShowForProfile(&profile_, GetContext());
+  views::Widget* widget = ui_manager->widget();
+  ASSERT_TRUE(widget);
+  EXPECT_TRUE(widget->IsVisible());
+
+  // CloseUI() in ephemeral mode should close/hide the widget.
+  ui_manager->CloseUI();
+  EXPECT_FALSE(ui_manager->IsVisible());
 }
 
 TEST_F(OmniboxEverywhereUIManagerTest, DismissBypassedDuringFileChooser) {
@@ -1475,6 +1582,32 @@ TEST_F(OmniboxEverywhereUIManagerTest,
   ui_manager->Shutdown();
 }
 
+TEST_F(OmniboxEverywhereUIManagerTest,
+       CleanUpWidgetOnCustomLinksListPrefChangeWhenHidden) {
+  auto ui_manager = CreateUIManager();
+
+  ui_manager->ShowForProfile(&profile_, GetContext());
+  ASSERT_TRUE(ui_manager->widget());
+  EXPECT_TRUE(ui_manager->widget()->IsVisible());
+
+  // Hide the widget.
+  ui_manager->Close();
+  EXPECT_FALSE(ui_manager->widget()->IsVisible());
+  EXPECT_TRUE(ui_manager->widget());
+
+  // Updating custom links (e.g. shortcut added, deleted, or reordered) while
+  // hidden should clean up the old widget to prevent stale frame buffer and
+  // tile flicker upon reopen.
+  {
+    ScopedListPrefUpdate update(profile_.GetPrefs(),
+                                ntp_tiles::prefs::kCustomLinksList);
+    update->Append("https://example.com");
+  }
+  EXPECT_FALSE(ui_manager->widget());
+
+  ui_manager->Shutdown();
+}
+
 TEST_F(OmniboxEverywhereUIManagerTest, ScreensharePickerStateTracking) {
   auto ui_manager = CreateUIManager();
   EXPECT_FALSE(ui_manager->is_screenshare_picker_open_for_testing());
@@ -1498,24 +1631,32 @@ TEST_F(OmniboxEverywhereUIManagerTest, DismissBypassedDuringScreensharePicker) {
   ASSERT_TRUE(widget);
   EXPECT_TRUE(widget->IsVisible());
 
-  // Mark screenshare picker as open.
+  // Mark screenshare picker as open. Opening the screenshare picker hides the
+  // widget to prevent it from obstructing screen capture.
   ui_manager->OnScreensharePickerOpened();
   EXPECT_TRUE(ui_manager->is_screenshare_picker_open_for_testing());
+  EXPECT_FALSE(widget->IsVisible());
 
-  // Simulating deactivation while screenshare picker is open should NOT close
+  // Simulating deactivation while screenshare picker is open should NOT destroy
   // the widget.
   ui_manager->OnWidgetActivationChanged(widget, /*active=*/false);
   EXPECT_TRUE(ui_manager->widget());
+  EXPECT_FALSE(widget->IsVisible());
+
+  // Closing screenshare picker restores and activates the widget.
+  ui_manager->OnScreensharePickerClosed();
+  EXPECT_TRUE(ui_manager->widget());
   EXPECT_TRUE(widget->IsVisible());
 
-  // Clean up: closing screenshare picker and triggering deactivation after
-  // grace period should hide the widget in ephemeral mode.
+  // Clean up: triggering deactivation after grace period should hide the widget
+  // in ephemeral mode.
   task_environment()->FastForwardBy(
       omnibox_everywhere::OmniboxEverywhereUIManager::kActivationGracePeriod +
       base::Milliseconds(1));
-  ui_manager->OnScreensharePickerClosed();
   ui_manager->OnWidgetActivationChanged(widget, /*active=*/false);
   EXPECT_TRUE(base::test::RunUntil([&]() { return !widget->IsVisible(); }));
+
+  ui_manager->Shutdown();
 }
 
 TEST_F(OmniboxEverywhereUIManagerTest,
@@ -1617,3 +1758,151 @@ TEST_F(OmniboxEverywhereUIManagerTest, WindowPropertiesPersistentMode) {
   ui_manager->Shutdown();
 }
 #endif  // BUILDFLAG(IS_WIN)
+
+TEST_F(OmniboxEverywhereUIManagerTest,
+       ShowRegionSelectOverlay_CreateAndDismiss) {
+  using RegionCaptureSource = OmniboxEverywhereUIManager::RegionCaptureSource;
+  auto ui_manager = CreateUIManager();
+
+  SkBitmap bitmap;
+  bitmap.allocN32Pixels(100, 100);
+  bitmap.eraseColor(SK_ColorRED);
+
+  base::test::TestFuture<const SkBitmap&> future;
+  ui_manager->ShowRegionSelectOverlay(
+      bitmap, RegionCaptureSource::AllDisplays(), future.GetCallback());
+
+  OmniboxEverywhereRegionSelectOverlay* overlay =
+      ui_manager->region_select_overlay_for_testing();
+  ASSERT_TRUE(overlay);
+  views::Widget* overlay_widget = overlay->widget();
+  ASSERT_TRUE(overlay_widget);
+  EXPECT_TRUE(overlay_widget->IsVisible());
+
+  // Close the overlay widget (simulating Escape / dismiss).
+  overlay_widget->CloseWithReason(views::Widget::ClosedReason::kEscKeyPressed);
+
+  EXPECT_TRUE(future.IsReady());
+  EXPECT_TRUE(future.Get().empty());
+  EXPECT_FALSE(ui_manager->region_select_overlay_for_testing());
+
+  ui_manager->Shutdown();
+}
+
+TEST_F(OmniboxEverywhereUIManagerTest,
+       ShowRegionSelectOverlay_ReentrancyCancelsPreviousOverlay) {
+  using RegionCaptureSource = OmniboxEverywhereUIManager::RegionCaptureSource;
+  auto ui_manager = CreateUIManager();
+
+  SkBitmap bitmap;
+  bitmap.allocN32Pixels(100, 100);
+  bitmap.eraseColor(SK_ColorRED);
+
+  base::test::TestFuture<const SkBitmap&> future1;
+  ui_manager->ShowRegionSelectOverlay(
+      bitmap, RegionCaptureSource::AllDisplays(), future1.GetCallback());
+  EXPECT_TRUE(ui_manager->region_select_overlay_for_testing());
+
+  base::test::TestFuture<const SkBitmap&> future2;
+  ui_manager->ShowRegionSelectOverlay(
+      bitmap, RegionCaptureSource::AllDisplays(), future2.GetCallback());
+
+  // The first overlay should be cancelled cleanly with empty bitmap.
+  EXPECT_TRUE(future1.IsReady());
+  EXPECT_TRUE(future1.Get().empty());
+  EXPECT_FALSE(future2.IsReady());
+  EXPECT_TRUE(ui_manager->region_select_overlay_for_testing());
+
+  ui_manager->Shutdown();
+  EXPECT_TRUE(future2.IsReady());
+  EXPECT_TRUE(future2.Get().empty());
+}
+
+TEST_F(OmniboxEverywhereUIManagerTest,
+       ShowRegionSelectOverlay_ShutdownOrCleanUpDismisses) {
+  using RegionCaptureSource = OmniboxEverywhereUIManager::RegionCaptureSource;
+  auto ui_manager = CreateUIManager();
+
+  SkBitmap bitmap;
+  bitmap.allocN32Pixels(100, 100);
+  bitmap.eraseColor(SK_ColorRED);
+
+  base::test::TestFuture<const SkBitmap&> future;
+  ui_manager->ShowRegionSelectOverlay(
+      bitmap, RegionCaptureSource::AllDisplays(), future.GetCallback());
+  EXPECT_TRUE(ui_manager->region_select_overlay_for_testing());
+
+  // CleanUpWidget / Shutdown cleanly destroys overlay and resolves callback.
+  ui_manager->Shutdown();
+  EXPECT_TRUE(future.IsReady());
+  EXPECT_TRUE(future.Get().empty());
+  EXPECT_FALSE(ui_manager->region_select_overlay_for_testing());
+}
+
+TEST_F(OmniboxEverywhereUIManagerTest, HasOpenModalDialog_RegionSelectOverlay) {
+  using RegionCaptureSource = OmniboxEverywhereUIManager::RegionCaptureSource;
+  auto ui_manager = CreateUIManager();
+  EXPECT_FALSE(ui_manager->HasOpenModalDialog());
+
+  SkBitmap bitmap;
+  bitmap.allocN32Pixels(100, 100);
+  bitmap.eraseColor(SK_ColorRED);
+
+  base::test::TestFuture<const SkBitmap&> future;
+  ui_manager->ShowRegionSelectOverlay(
+      bitmap, RegionCaptureSource::AllDisplays(), future.GetCallback());
+  EXPECT_TRUE(ui_manager->HasOpenModalDialog());
+
+  ui_manager->region_select_overlay_for_testing()->widget()->CloseWithReason(
+      views::Widget::ClosedReason::kEscKeyPressed);
+  EXPECT_TRUE(future.IsReady());
+  EXPECT_FALSE(ui_manager->HasOpenModalDialog());
+
+  ui_manager->Shutdown();
+}
+
+TEST_F(OmniboxEverywhereUIManagerTest,
+       DismissBypassedDuringRegionSelectOverlay) {
+  using RegionCaptureSource = OmniboxEverywhereUIManager::RegionCaptureSource;
+  if (g_browser_process && g_browser_process->local_state()) {
+    g_browser_process->local_state()->SetBoolean(
+        omnibox_everywhere::prefs::kOmniboxEverywhereEphemeralModel, true);
+  }
+  auto ui_manager = CreateUIManager();
+
+  ui_manager->ShowForProfile(&profile_, GetContext());
+  views::Widget* widget = ui_manager->widget();
+  ASSERT_TRUE(widget);
+  EXPECT_TRUE(widget->IsVisible());
+
+  SkBitmap bitmap;
+  bitmap.allocN32Pixels(100, 100);
+  bitmap.eraseColor(SK_ColorRED);
+
+  base::test::TestFuture<const SkBitmap&> future;
+  ui_manager->ShowRegionSelectOverlay(
+      bitmap, RegionCaptureSource::AllDisplays(), future.GetCallback());
+  EXPECT_TRUE(ui_manager->HasOpenModalDialog());
+
+  // Simulating deactivation while region select overlay is open should NOT
+  // close the widget.
+  ui_manager->OnWidgetActivationChanged(widget, /*active=*/false);
+  EXPECT_TRUE(ui_manager->widget());
+  EXPECT_TRUE(widget->IsVisible());
+
+  // Dismiss overlay and simulate deactivation after grace period.
+  ui_manager->region_select_overlay_for_testing()->widget()->CloseWithReason(
+      views::Widget::ClosedReason::kEscKeyPressed);
+  EXPECT_TRUE(future.IsReady());
+  EXPECT_FALSE(ui_manager->HasOpenModalDialog());
+
+  task_environment()->FastForwardBy(
+      omnibox_everywhere::OmniboxEverywhereUIManager::kActivationGracePeriod +
+      base::Milliseconds(1));
+  ui_manager->OnWidgetActivationChanged(widget, /*active=*/false);
+  EXPECT_TRUE(base::test::RunUntil([&]() { return !widget->IsVisible(); }));
+
+  ui_manager->Shutdown();
+}
+
+}  // namespace omnibox_everywhere

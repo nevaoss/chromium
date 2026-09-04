@@ -186,6 +186,9 @@ BASE_FEATURE(kRemoteActorCredentialSharing, base::FEATURE_DISABLED_BY_DEFAULT);
 const base::FeatureParam<std::string>
     kRemoteActorCredentialSharingAllowedHostForTesting{
         &kRemoteActorCredentialSharing, "allowed_host_for_testing", ""};
+const base::FeatureParam<std::string> kRemoteActorOAuthClientId{
+    &kRemoteActorCredentialSharing, "oauth_client_id",
+    "320695880279-gnq6the97ga85scn208u5jctnk82qelk.apps.googleusercontent.com"};
 #endif
 
 bool RemoteActorCredentialSharingEnabled() {
@@ -1332,6 +1335,7 @@ BASE_FEATURE(kIncomingCallNotifications,
 
 // Experimental image replacement feature. b/482792874
 BASE_FEATURE(kIndigo, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kIndigoContextualCueingV2, base::FEATURE_DISABLED_BY_DEFAULT);
 
 const base::FeatureParam<bool> kIndigoRequireGlicEnabling{
     &kIndigo, "indigo_require_glic_enabling", false};
@@ -1379,6 +1383,10 @@ const base::FeatureParam<base::TimeDelta> kIndigoGeneratedImageCacheLifetime{
     &kIndigoGeneratedImageCache, "indigo_generated_image_cache_lifetime",
     base::Minutes(30)};
 
+// Enables context menu copy and save actions to operate on Indigo replacement
+// images.
+BASE_FEATURE(kIndigoContextMenuCopy, base::FEATURE_DISABLED_BY_DEFAULT);
+
 #if !BUILDFLAG(IS_ANDROID)
 // A feature that controls whether Instant uses a spare renderer.
 BASE_FEATURE(kInstantUsesSpareRenderer, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -1389,7 +1397,7 @@ BASE_FEATURE(kInstantUsesSpareRenderer, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kIsolatedWebAppDevMode, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables the chrome://iwa-dev WebUI page.
-BASE_FEATURE(kIsolatedWebAppDevUi, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kIsolatedWebAppDevUi, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enables fast update checks for Isolated Web Apps, reducing the update check
 // interval to 1 minute.
@@ -1707,11 +1715,6 @@ BASE_FEATURE(kProcessPerSiteForDSE,
              base::FEATURE_ENABLED_BY_DEFAULT
 #endif
 );
-
-// Consider the default search engine (DSE) warmup page as a search results page
-// (SRP), for the purpose of applying the "process per site for DSE SRP" policy
-// (`kProcessPerSiteForDSE`).
-BASE_FEATURE(kConsiderDSEWarmUpPageAsSRP, base::FEATURE_ENABLED_BY_DEFAULT);
 
 #if BUILDFLAG(IS_CHROMEOS)
 // Enables Camera Cloud Storage for saving photos and videos on Google Drive

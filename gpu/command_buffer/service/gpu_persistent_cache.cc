@@ -602,10 +602,15 @@ int64_t GpuPersistentCache::GLBlobCacheGet(const void* key,
   return discovered_size;
 }
 
-void GpuPersistentCache::PurgeMemory(
-    base::MemoryPressureLevel memory_pressure_level) {
+void GpuPersistentCache::OnUpdateMemoryLimit(int memory_limit) {
   if (memory_cache_) {
-    memory_cache_->PurgeMemory(memory_pressure_level);
+    memory_cache_->OnUpdateMemoryLimit(memory_limit);
+  }
+}
+
+void GpuPersistentCache::OnReleaseMemory(int memory_limit) {
+  if (memory_cache_) {
+    memory_cache_->OnReleaseMemory(memory_limit);
   }
 }
 
@@ -1021,14 +1026,22 @@ scoped_refptr<GpuPersistentCache> GpuPersistentCacheCollection::GetCache(
                   GetCacheHistogramPrefix(handle), std::move(memory_cache),
                   metadata_options_, async_write_options_));
   DCHECK(inserted);
+  iter->second->OnUpdateMemoryLimit(current_memory_limit_);
   return iter->second;
 }
 
-void GpuPersistentCacheCollection::PurgeMemory(
-    base::MemoryPressureLevel memory_pressure_level) {
+void GpuPersistentCacheCollection::OnUpdateMemoryLimit(int memory_limit) {
+  base::AutoLock lock(mutex_);
+  current_memory_limit_ = memory_limit;
+  for (auto& [_, cache] : caches_) {
+    cache->OnUpdateMemoryLimit(memory_limit);
+  }
+}
+
+void GpuPersistentCacheCollection::OnReleaseMemory(int memory_limit) {
   base::AutoLock lock(mutex_);
   for (auto& [_, cache] : caches_) {
-    cache->PurgeMemory(memory_pressure_level);
+    cache->OnReleaseMemory(memory_limit);
   }
 }
 

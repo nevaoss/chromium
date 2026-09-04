@@ -58,38 +58,24 @@ std::vector<uint8_t> ExportEVPPublicKey(EVP_PKEY* pkey) {
   return CBBToVector(cbb.get());
 }
 
-bssl::UniquePtr<EVP_PKEY> EVP_PKEYFromEcPoint(const EC_GROUP* group,
+bssl::UniquePtr<EVP_PKEY> EVP_PKEYFromEcPoint(const EVP_PKEY_ALG* alg,
                                               base::span<const uint8_t> p) {
-  bssl::UniquePtr<EC_KEY> ec(EC_KEY_new());
-  CHECK(ec);
-  CHECK(EC_KEY_set_group(ec.get(), group));
-
-  if (!EC_KEY_oct2key(ec.get(), p.data(), p.size(), nullptr)) {
+  if (p.empty()) {
     return nullptr;
   }
-
-  // The only failure mode for EVP_PKEY_new() is memory allocation failures,
-  // and the only failure mode for EVP_PKEY_set1_EC_KEY() is being passed a null
-  // key or EC_KEY object.
-  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
-  CHECK(pkey);
-  CHECK(EVP_PKEY_set1_EC_KEY(pkey.get(), ec.get()));
-  return pkey;
+  // This function supports both uncompressed and compressed.
+  return bssl::UniquePtr<EVP_PKEY>(
+      p[0] == 0x04
+          ? EVP_PKEY_from_ec_uncompressed_point(alg, p.data(), p.size())
+          : EVP_PKEY_from_ec_compressed_point(alg, p.data(), p.size()));
 }
 
-std::vector<uint8_t> EvpToUncompressedX962Point(EVP_PKEY* key) {
+std::vector<uint8_t> EvpToUncompressedX962Point(const EVP_PKEY* key) {
   OpenSSLErrStackTracer err_tracer(FROM_HERE);
-
-  std::vector<uint8_t> ec_buffer(255);
-  EC_KEY* ec_key = EVP_PKEY_get0_EC_KEY(key);
-  size_t len = EC_POINT_point2oct(
-      EC_KEY_get0_group(ec_key), EC_KEY_get0_public_key(ec_key),
-      POINT_CONVERSION_UNCOMPRESSED, ec_buffer.data(), ec_buffer.size(),
-      /*ctx=*/nullptr);
-  CHECK(len);
-  ec_buffer.resize(len);
-
-  return ec_buffer;
+  bssl::ScopedCBB cbb;
+  CHECK(CBB_init(cbb.get(), 255));
+  CHECK(EVP_PKEY_marshal_ec_uncompressed_point(cbb.get(), key));
+  return CBBToVector(cbb.get());
 }
 
 std::vector<uint8_t> EvpToRawPublicKey(EVP_PKEY* key) {
@@ -128,11 +114,6 @@ PrivateKey PrivateKey::GenerateEcP256() {
 // static
 PrivateKey PrivateKey::GenerateEcP384() {
   return PrivateKey(GeneratePkey(EVP_pkey_ec_p384()));
-}
-
-// static
-PrivateKey PrivateKey::GenerateEcP521() {
-  return PrivateKey(GeneratePkey(EVP_pkey_ec_p521()));
 }
 
 // static
@@ -185,16 +166,11 @@ std::optional<PrivateKey> PrivateKey::FromPrivateKeyInfo(
 std::optional<PrivateKey> PrivateKey::FromRSAPrivateKey(
     base::span<const uint8_t> key) {
   OpenSSLErrStackTracer err_tracer(FROM_HERE);
-
-  CBS cbs(key);
-  bssl::UniquePtr<RSA> rsa(RSA_parse_private_key(&cbs));
-  if (!rsa || CBS_len(&cbs) != 0) {
+  bssl::UniquePtr<EVP_PKEY> pkey(
+      EVP_PKEY_from_rsa_private_key(EVP_pkey_rsa(), key.data(), key.size()));
+  if (!pkey) {
     return std::nullopt;
   }
-
-  bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_new());
-  CHECK(pkey);
-  CHECK(EVP_PKEY_set1_RSA(pkey.get(), rsa.get()));
 
   return PrivateKey(std::move(pkey));
 }
@@ -220,6 +196,7 @@ std::optional<PrivateKey> PrivateKey::FromEcP256PrivateKey(
 // static
 std::optional<PrivateKey> PrivateKey::FromEcP256PrivateScalar(
     base::span<const uint8_t> key) {
+  OpenSSLErrStackTracer err_tracer(FROM_HERE);
   bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_from_ec_private_scalar(
       EVP_pkey_ec_p256(), key.data(), key.size()));
   if (!pkey) {
@@ -232,6 +209,7 @@ std::optional<PrivateKey> PrivateKey::FromEcP256PrivateScalar(
 // static
 PrivateKey PrivateKey::FromEd25519PrivateKey(
     base::span<const uint8_t, 32> key) {
+  OpenSSLErrStackTracer err_tracer(FROM_HERE);
   bssl::UniquePtr<EVP_PKEY> pkey(EVP_PKEY_from_raw_private_key(
       EVP_pkey_ed25519(), key.data(), key.size()));
   CHECK(pkey);
@@ -240,6 +218,7 @@ PrivateKey PrivateKey::FromEd25519PrivateKey(
 
 // static
 PrivateKey PrivateKey::FromX25519PrivateKey(base::span<const uint8_t, 32> key) {
+  OpenSSLErrStackTracer err_tracer(FROM_HERE);
   bssl::UniquePtr<EVP_PKEY> pkey(
       EVP_PKEY_from_raw_private_key(EVP_pkey_x25519(), key.data(), key.size()));
   CHECK(pkey);
@@ -299,9 +278,7 @@ std::vector<uint8_t> PrivateKey::ToRSAPrivateKey() const {
   bssl::ScopedCBB cbb;
 
   CHECK(CBB_init(cbb.get(), 0));
-  RSA* rsa = EVP_PKEY_get0_RSA(key_.get());
-  CHECK(rsa);
-  CHECK(RSA_marshal_private_key(cbb.get(), rsa));
+  CHECK(EVP_PKEY_marshal_rsa_private_key(cbb.get(), key_.get()));
   return CBBToVector(cbb.get());
 }
 
@@ -321,10 +298,10 @@ std::vector<uint8_t> PrivateKey::ToEcP256PrivateKey() const {
 std::array<uint8_t, 32> PrivateKey::ToEcP256PrivateScalar() const {
   CHECK(IsEcP256());
   std::array<uint8_t, 32> result;
-  EC_KEY* ec = EVP_PKEY_get0_EC_KEY(key_.get());
-  int out = BN_bn2bin_padded(result.data(), std::size(result),
-                             EC_KEY_get0_private_key(ec));
-  CHECK(out);
+  CBB cbb;
+  CBB_init_fixed(&cbb, result.data(), result.size());
+  CHECK(EVP_PKEY_marshal_ec_private_scalar(&cbb, key_.get()));
+  CHECK(CBB_len(&cbb) == result.size());
   return result;
 }
 
@@ -474,10 +451,6 @@ bool PrivateKey::IsEcP384() const {
   return EVP_PKEY_get_ec_curve_nid(key_.get()) == NID_secp384r1;
 }
 
-bool PrivateKey::IsEcP521() const {
-  return EVP_PKEY_get_ec_curve_nid(key_.get()) == NID_secp521r1;
-}
-
 PrivateKey::PrivateKey(bssl::UniquePtr<EVP_PKEY> key) : key_(std::move(key)) {}
 
 PublicKey::PublicKey(bssl::UniquePtr<EVP_PKEY> key, crypto::SubtlePassKey)
@@ -541,7 +514,7 @@ std::optional<PublicKey> PublicKey::FromRsaPublicKeyComponents(
 // static
 std::optional<PublicKey> PublicKey::FromEcP256Point(
     base::span<const uint8_t> p) {
-  auto key = EVP_PKEYFromEcPoint(EC_group_p256(), p);
+  auto key = EVP_PKEYFromEcPoint(EVP_pkey_ec_p256(), p);
   if (!key) {
     return std::nullopt;
   }
@@ -551,17 +524,7 @@ std::optional<PublicKey> PublicKey::FromEcP256Point(
 // static
 std::optional<PublicKey> PublicKey::FromEcP384Point(
     base::span<const uint8_t> p) {
-  auto key = EVP_PKEYFromEcPoint(EC_group_p384(), p);
-  if (!key) {
-    return std::nullopt;
-  }
-  return PublicKey(std::move(key));
-}
-
-// static
-std::optional<PublicKey> PublicKey::FromEcP521Point(
-    base::span<const uint8_t> p) {
-  auto key = EVP_PKEYFromEcPoint(EC_group_p521(), p);
+  auto key = EVP_PKEYFromEcPoint(EVP_pkey_ec_p384(), p);
   if (!key) {
     return std::nullopt;
   }
@@ -741,10 +704,6 @@ bool PublicKey::IsEcP256() const {
 
 bool PublicKey::IsEcP384() const {
   return EVP_PKEY_get_ec_curve_nid(key_.get()) == NID_secp384r1;
-}
-
-bool PublicKey::IsEcP521() const {
-  return EVP_PKEY_get_ec_curve_nid(key_.get()) == NID_secp521r1;
 }
 
 PublicKey::PublicKey(bssl::UniquePtr<EVP_PKEY> key) : key_(std::move(key)) {}

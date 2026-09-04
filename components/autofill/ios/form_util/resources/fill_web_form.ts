@@ -201,7 +201,6 @@ export function webFormControlElementToFormField(
       inferenceUtil.isTextAreaElement(element) ||
       inferenceUtil.isSelectElement(element)) {
     field.is_autofilled = (element as any).isAutofilled;
-    field.is_user_edited_deprecated = fieldWasEditedByUser(element);
     field.should_autocomplete = fillUtil.shouldAutocomplete(element);
     field.is_focusable = !element.disabled && !(element as any).readOnly &&
         element.tabIndex >= 0 && fillUtil.isVisibleNode(element);
@@ -725,9 +724,7 @@ export function autofillSubmissionData(form: HTMLFormElement):
  * makes an edited field unedited.
  */
 export function fieldWasEditedByUser(element: Element) {
-  return !autofillFormFeaturesApi.getFunction(
-             'isAutofillCorrectUserEditedBitInParsedField')() ||
-      (wasEditedByUser.get(element) ?? false);
+  return (wasEditedByUser.get(element) ?? false);
 }
 
 /**

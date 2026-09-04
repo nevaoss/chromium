@@ -5,6 +5,7 @@
 #include "chrome/browser/context_hub/memory_bank/tab_context_sync_memory_bank.h"
 
 #include <limits>
+#include <set>
 #include <utility>
 
 #include "base/check.h"
@@ -92,11 +93,40 @@ void TabContextSyncMemoryBank::SaveMemoryBankEntry(
 
   entries_.Put(entry_id, std::move(entry));
 
+  // Note: Only `selected_text` is currently uploaded to TabContextSyncService.
+  // All other fields and annotations (URL, tab title, timestamp, tags, note,
+  // collection) are only stored in the local in-memory LRU cache and will not
+  // be synced or persisted across restarts.
   bool upload_success = tab_context_sync_service_->UploadPageContext(
       *container_id, base::NumberToString(entry_id), std::move(payload));
 
   if (callback) {
     std::move(callback).Run(upload_success);
+  }
+}
+
+void TabContextSyncMemoryBank::UpdateEntryAnnotations(
+    int64_t id,
+    std::vector<std::string> tags,
+    std::optional<std::string> note,
+    std::optional<std::string> collection,
+    OperationCompleteCallback callback) {
+  // `TabContextSyncService` does not currently support syncing or persisting
+  // entry annotations (tags, note, collection). Updates are only
+  // stored in the local in-memory LRU cache, so they will not be synced or
+  // persisted across restarts.
+  auto it = entries_.Peek(id);
+  if (it == entries_.end()) {
+    if (callback) {
+      std::move(callback).Run(/*success=*/false);
+    }
+    return;
+  }
+  it->second.tags = std::move(tags);
+  it->second.note = std::move(note);
+  it->second.collection = std::move(collection);
+  if (callback) {
+    std::move(callback).Run(/*success=*/true);
   }
 }
 
@@ -137,6 +167,33 @@ void TabContextSyncMemoryBank::DeleteEntries(
   }
   if (callback) {
     std::move(callback).Run(/*success=*/true);
+  }
+}
+
+void TabContextSyncMemoryBank::GetAllTags(GetStringsCallback callback) const {
+  std::set<std::string> unique_tags;
+  for (const auto& [_, entry] : entries_) {
+    for (const auto& tag : entry.tags) {
+      unique_tags.insert(tag);
+    }
+  }
+  if (callback) {
+    std::move(callback).Run(
+        std::vector<std::string>(unique_tags.begin(), unique_tags.end()));
+  }
+}
+
+void TabContextSyncMemoryBank::GetAllCollections(
+    GetStringsCallback callback) const {
+  std::set<std::string> unique_collections;
+  for (const auto& [_, entry] : entries_) {
+    if (entry.collection.has_value() && !entry.collection->empty()) {
+      unique_collections.insert(*entry.collection);
+    }
+  }
+  if (callback) {
+    std::move(callback).Run(std::vector<std::string>(unique_collections.begin(),
+                                                     unique_collections.end()));
   }
 }
 

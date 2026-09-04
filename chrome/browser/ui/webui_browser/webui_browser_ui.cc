@@ -160,7 +160,7 @@ WebUIBrowserUI::WebUIBrowserUI(content::WebUI* web_ui)
     ui::TrackedElementHandlerDocumentSingleton::Register(
         this, GetKnownElementIdentifiers(),
         base::BindRepeating(
-            [](Browser* browser) {
+            [](BrowserWindowInterface* browser) {
               return BrowserElements::From(browser)->GetContext();
             },
             base::Unretained(browser_)));
@@ -230,8 +230,7 @@ void WebUIBrowserUI::BindInterface(
 
 void WebUIBrowserUI::BindInterface(
     mojo::PendingReceiver<tabs_api::mojom::TabStripService> receiver) {
-  auto* tab_strip_service_feature =
-      browser_->GetFeatures().tab_strip_service_feature();
+  auto* tab_strip_service_feature = TabStripServiceFeature::From(browser_);
   CHECK(tab_strip_service_feature) << "Browser missing TabStripService";
   tab_strip_service_feature->Accept(std::move(receiver));
 }
@@ -239,8 +238,7 @@ void WebUIBrowserUI::BindInterface(
 void WebUIBrowserUI::BindInterface(
     mojo::PendingReceiver<tabs_api::mojom::TabStripExperimentService>
         receiver) {
-  auto* tab_strip_service_feature =
-      browser_->GetFeatures().tab_strip_service_feature();
+  auto* tab_strip_service_feature = TabStripServiceFeature::From(browser_);
   CHECK(tab_strip_service_feature) << "Browser missing TabStripService";
   tab_strip_service_feature->AcceptExperimental(std::move(receiver));
 }

@@ -2474,13 +2474,7 @@ class WebUIToolbarWebViewBrowserTest : public WebUIToolbarWebViewTestBase {
     });
   }
 
-  WebUIToolbarWebView* GetWebUIToolbar() {
-    return GetToolbarView()->GetWebUIToolbarViewForTesting();
-  }
 
-  content::WebContents* GetWebUIWebContents() {
-    return GetWebUIToolbar()->GetWebContents();
-  }
 };
 
 class WebUIAppMenuBrowserTest : public WebUIToolbarWebViewBrowserTest {
@@ -5598,17 +5592,21 @@ IN_PROC_BROWSER_TEST_P(WebUIToolbarWebViewPermissionBrowserTest,
         .ExtractBool();
   }));
 
-  // Once the chip finishes its expand animation, it will automatically trigger
-  // the bubble to open. We do not need to manually click the chip.
-  views::NamedWidgetShownWaiter widget_waiter(
-      views::test::AnyWidgetTestPasskey{}, "PermissionPromptBubbleBaseView");
-
-  views::Widget* bubble_widget = widget_waiter.WaitIfNeededAndGet();
-  EXPECT_TRUE(bubble_widget);
-  EXPECT_TRUE(bubble_widget->IsVisible());
-
   auto* location_bar = webui_toolbar_view->GetLocationBar();
   ASSERT_TRUE(location_bar);
+
+  // Once the chip finishes its expand animation, it will automatically trigger
+  // the bubble to open. We do not need to manually click the chip.
+  views::Widget* bubble_widget = nullptr;
+  ASSERT_TRUE(base::test::RunUntil([&]() {
+    auto* chip_controller = location_bar->GetChipController();
+    if (!chip_controller) {
+      return false;
+    }
+    bubble_widget = chip_controller->GetBubbleWidget();
+    return bubble_widget && bubble_widget->IsVisible();
+  }));
+
   ASSERT_TRUE(location_bar->GetPermissionDashboardController());
   location_bar->GetPermissionDashboardController()
       ->SetSuppressionThresholdForTesting(base::Seconds(1));
@@ -5653,7 +5651,7 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewPermissionBrowserTest,
       "document.querySelector('toolbar-app')?.shadowRoot?"
       ".querySelector('location-bar')?.shadowRoot?"
       ".querySelector('location-icon')?.shadowRoot?"
-      ".querySelector('#container')";
+      ".querySelector('#button')";
 
   ASSERT_TRUE(base::test::RunUntil([&]() {
     return content::EvalJs(web_contents,
@@ -5948,35 +5946,6 @@ class WebUIToolbarFullyEnabledBrowserTest
                               "JSON.stringify(window.__caughtJsErrors)")
                   .ExtractString(),
               "[]");
-  }
-
-  // Sets the size of a test-only element on the toolbar-app with the provided
-  // size, which should cause responsive controls to be asynchronously laid out
-  // to accommodate it. Does not wait for that layout to occur. Adds the element
-  // on the first call, and resizes it on subsequent calls.
-  //
-  // This is more flexible than resizing the window due to the window having a
-  // min size. It also provides test coverage that adding/sizing
-  // non-ResponsiveControls to the toolbar-app correctly causes
-  // layoutResponsiveControls() to be invoked.
-  //
-  // Note that first adding the spacer will likely add some extra
-  // margins/padding in addition to `width`.
-  [[nodiscard]] content::EvalJsResult SetSpacerWidth(int width) {
-    return content::EvalJs(GetWebUIWebContents(), content::JsReplace(
-                                                      R"((() => {
-          const app = document.querySelector('toolbar-app');
-          let spacer = app.shadowRoot.querySelector('#test-spacer');
-          if (!spacer) {
-            spacer = document.createElement('div');
-            spacer.id = 'test-spacer';
-            spacer.style.flexShrink = '0';
-            app.shadowRoot.appendChild(spacer);
-          }
-          spacer.style.width = $1 + 'px';
-          return true;
-        })();)",
-                                                      width));
   }
 
   // Sizing information about an individual ResponsiveControl, along with its
@@ -6591,6 +6560,96 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarFullyEnabledBrowserTest,
   ASSERT_TRUE(SetWindowWidth(1200));
 
   AssertNoJsErrors();
+}
+
+// Check that the toolbar is laid out again before it's visibly redrawn. To
+// check this, the test installs a ResizeObserver on the toolbar-app and makes
+// sure it's never called with a size other than the window size. Since
+// ResizeObservers are invoked just before redraw, this should detect if there's
+// a redraw before the controls have been resized appropriately.
+IN_PROC_BROWSER_TEST_F(WebUIToolbarFullyEnabledBrowserTest,
+                       ToolbarAlwaysLaidoutBeforeDraw) {
+  int expected_width = GetWebUIToolbar()->bounds().width();
+
+  // Wait until the toolbar-app's width matches that of the WebUIToolbarWebView,
+  // signalling that toolbar has been initialized.
+  ASSERT_TRUE(base::test::RunUntil([&]() {
+    return content::EvalJs(GetWebUIWebContents(),
+                           content::JsReplace(R"(
+          (() => {
+            const app = document.querySelector('toolbar-app');
+            return app && app.getBoundingClientRect().width === $1;
+          })()
+        )",
+                                              expected_width))
+        .ExtractBool();
+  }));
+
+  // Add a ResizeObserver for toolbar-app that appends to a global string if
+  // it's ever notified of an unexpected width.
+  ASSERT_TRUE(content::ExecJs(GetWebUIWebContents(),
+                              content::JsReplace(R"(
+        window.__toolbarResizeObservations = '';
+        (() => {
+          const app = document.querySelector('toolbar-app');
+          const observer = new ResizeObserver((entries) => {
+            for (const entry of entries) {
+              let toolbarWidth = app.getBoundingClientRect().width;
+              if (toolbarWidth === $1 &&
+                  window.__toolbarResizeObservations === '') {
+                continue;
+              }
+              window.__toolbarResizeObservations +=
+                  `${toolbarWidth},${window.innerWidth},$1\n`;
+            }
+          });
+          observer.observe(app);
+        })();
+      )",
+                                                 expected_width)));
+
+  // Enable the home button and wait for it to be displayed.
+  browser()->GetProfile()->GetPrefs()->SetBoolean(prefs::kShowHomeButton, true);
+  ASSERT_TRUE(WaitUntilResponsiveControlsAreVisible({kHomeSelector}));
+
+  // Enable the bookmarks side panel button and wait for it to be displayed.
+  auto* model = PinnedToolbarActionsModel::Get(browser()->GetProfile());
+  model->UpdatePinnedState(kActionSidePanelShowBookmarks, true);
+  ASSERT_TRUE(base::test::RunUntil([&]() {
+    return content::EvalJs(GetWebUIWebContents(), R"(
+          (() => {
+            const app = document.querySelector('toolbar-app');
+            const pinnedContainer =
+                app?.shadowRoot?.querySelector('#pinnedToolbarActions');
+            if (!pinnedContainer || !pinnedContainer.checkVisibility()) {
+              return false;
+            }
+            const actionButton =
+                pinnedContainer.shadowRoot?.querySelector(
+                    'pinned-toolbar-action');
+            return actionButton && actionButton.checkVisibility();
+          })()
+        )")
+        .ExtractBool();
+  }));
+
+  // Call into JS and wait two animation frames for any ResizeObserver callbacks
+  // to run, and return the observations string to C++. Have to wait two
+  // animation frames because ResizeObservers are only notified after the
+  // animation frame callback, so there may be a pending ResizeObserver call if
+  // we wait for only one animation frame.
+  std::string observations = content::EvalJs(GetWebUIWebContents(), R"(
+        new Promise((resolve) => {
+          requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+              resolve(window.__toolbarResizeObservations);
+            });
+          });
+        })
+      )")
+                                 .ExtractString();
+
+  EXPECT_EQ(observations, "");
 }
 
 // Test fixture that enables all WebUI toolbar controls, but disables

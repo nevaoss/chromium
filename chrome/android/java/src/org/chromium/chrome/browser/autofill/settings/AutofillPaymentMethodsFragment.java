@@ -99,10 +99,6 @@ public class AutofillPaymentMethodsFragment extends ChromeBaseSettingsFragment
     static final String PREF_LOYALTY_CARDS = "loyalty_cards";
     static final String PREF_WALLET_REMINDER_NOTICE = "wallet_reminder_notice";
 
-    // TODO(crbug.com/548004948): Update wallet reminder URLs with query params.
-    private static final String WALLET_PAYMENT_METHODS_URL =
-            "https://wallet.google.com/wallet/paymentmethods";
-
     @VisibleForTesting
     static final String PREF_FINANCIAL_ACCOUNTS_MANAGEMENT = "financial_accounts_management";
 
@@ -168,7 +164,8 @@ public class AutofillPaymentMethodsFragment extends ChromeBaseSettingsFragment
         return manager.getMaskedBankAccounts().length != 0;
     }
 
-    private void rebuildPage() {
+    @VisibleForTesting
+    void rebuildPage() {
         getPreferenceScreen().removeAll();
         getPreferenceScreen().setOrderingAsAdded(true);
 
@@ -202,6 +199,11 @@ public class AutofillPaymentMethodsFragment extends ChromeBaseSettingsFragment
                 PersonalDataManagerFactory.getForProfile(getProfile());
         ChromeSwitchPreference autofillSwitch =
                 new ChromeSwitchPreference(getStyledContext(), null);
+        // Do not persist this toggle to Android's SharedPreferences. Chrome natively
+        // persists this state across platforms via PersonalDataManager and UserPrefs.
+        // Failing to set this to false causes Android's PreferenceManager to override
+        // setChecked() with cached SharedPreferences values upon binding.
+        autofillSwitch.setPersistent(false);
         autofillSwitch.setKey(PREF_SAVE_AND_FILL_PAYMENT_METHODS);
         autofillSwitch.setTitle(R.string.autofill_enable_credit_cards_toggle_label);
         autofillSwitch.setSummary(R.string.autofill_enable_credit_cards_toggle_sublabel);
@@ -218,12 +220,6 @@ public class AutofillPaymentMethodsFragment extends ChromeBaseSettingsFragment
                     @Override
                     public boolean isPreferenceControlledByPolicy(Preference preference) {
                         return personalDataManager.isAutofillCreditCardManaged();
-                    }
-
-                    @Override
-                    public boolean isPreferenceClickDisabled(Preference preference) {
-                        return personalDataManager.isAutofillCreditCardManaged()
-                                && !personalDataManager.isAutofillPaymentMethodsEnabled();
                     }
                 });
         getPreferenceScreen().addPreference(autofillSwitch);
@@ -543,20 +539,22 @@ public class AutofillPaymentMethodsFragment extends ChromeBaseSettingsFragment
                         view ->
                                 CustomTabActivity.showInfoPage(
                                         getActivity(),
-                                        GoogleWalletLauncher.GOOGLE_WALLET_SETTINGS_URL));
+                                        AutofillPaymentMethodsConstants.WALLET_SETTINGS_URL));
         ChromeClickableSpan paymentMethodsLink =
                 new ChromeClickableSpan(
                         getContext(),
                         view ->
                                 CustomTabActivity.showInfoPage(
-                                        getActivity(), WALLET_PAYMENT_METHODS_URL));
+                                        getActivity(),
+                                        AutofillPaymentMethodsConstants
+                                                .WALLET_PAYMENT_METHODS_URL));
         ChromeClickableSpan passesLink =
                 new ChromeClickableSpan(
                         getContext(),
                         view ->
                                 CustomTabActivity.showInfoPage(
                                         getActivity(),
-                                        GoogleWalletLauncher.GOOGLE_WALLET_PASSES_URL));
+                                        AutofillPaymentMethodsConstants.WALLET_PASSES_URL));
 
         SpannableString summary =
                 SpanApplier.applySpans(
@@ -1010,7 +1008,8 @@ public class AutofillPaymentMethodsFragment extends ChromeBaseSettingsFragment
                                 frag,
                                 PREF_CARD_BENEFITS,
                                 R.string.autofill_settings_page_card_benefits_label,
-                                R.string.autofill_settings_page_card_benefits_preference_summary);
+                                R.string.autofill_settings_page_card_benefits_preference_summary,
+                                AutofillCardBenefitsFragment.class.getName());
                     }
                     if (shouldShowBnplPref(personalDataManager, profile)) {
                         indexData.addEntryForKey(

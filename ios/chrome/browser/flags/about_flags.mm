@@ -57,6 +57,7 @@
 #import "components/ntp_tiles/switches.h"
 #import "components/omnibox/browser/aim_eligibility_service_features.h"
 #import "components/omnibox/browser/omnibox_field_trial.h"
+#import "components/omnibox/common/composebox_features.h"
 #import "components/omnibox/common/omnibox_feature_configs.h"
 #import "components/omnibox/common/omnibox_features.h"
 #import "components/optimization_guide/core/optimization_guide_features.h"
@@ -170,7 +171,8 @@ const FeatureEntry::Choice kSendTabToSelfEnhancedHandoffChoices[] = {
      "SyncSimplifyDeviceNaming,"
      "SyncUseServerDeterminedDeviceName,"
      "SyncSessionsUsePreferredDisplayName,"
-     "SendTabToSelfIOSShareSheetDeviceList"},
+     "SendTabToSelfIOSShareSheetDeviceList,"
+     "SendTabToSelfMultiTabShare"},
     {flags_ui::kGenericExperimentChoiceDisabled, switches::kDisableFeatures,
      "SendTabToSelfAutoOpen,"
      "SendTabToSelfExtraEntryPoints,"
@@ -182,7 +184,8 @@ const FeatureEntry::Choice kSendTabToSelfEnhancedHandoffChoices[] = {
      "SyncSimplifyDeviceNaming,"
      "SyncUseServerDeterminedDeviceName,"
      "SyncSessionsUsePreferredDisplayName,"
-     "SendTabToSelfIOSShareSheetDeviceList"},
+     "SendTabToSelfIOSShareSheetDeviceList,"
+     "SendTabToSelfMultiTabShare"},
 };
 
 const FeatureEntry::Choice
@@ -458,6 +461,16 @@ const FeatureEntry::FeatureVariation
          nullptr},
         {"SettingsDefaultBrowserCell", kSettingsDefaultBrowserCellParam,
          nullptr},
+};
+
+const FeatureEntry::FeatureParam kDefaultBrowserPromoDestinationParam[] = {
+    {kDefaultBrowserPromoOverflowMenuTypeParam, "0"}};
+const FeatureEntry::FeatureParam kDefaultBrowserPromoShortcutsParam[] = {
+    {kDefaultBrowserPromoOverflowMenuTypeParam, "1"}};
+const FeatureEntry::FeatureVariation
+    kDefaultBrowserPromoOverflowMenuVariations[] = {
+        {"Destination", kDefaultBrowserPromoDestinationParam, nullptr},
+        {"Shortcuts", kDefaultBrowserPromoShortcutsParam, nullptr},
 };
 
 // Uses int values from Lens filters ablation mode enum.
@@ -1434,14 +1447,6 @@ const FeatureEntry::FeatureVariation
          kGeminiContextualSuggestionsCuesWithOnDeviceClassifierApcGPU,
          nullptr}};
 
-const FeatureEntry::FeatureParam
-    kNewTabPageRedesignStaticFakeboxParamEnabled[] = {
-        {kNewTabPageRedesignStaticFakeboxParam, "true"}};
-
-const FeatureEntry::FeatureVariation kNewTabPageRedesignVariations[] = {
-    {"Static Fakebox", kNewTabPageRedesignStaticFakeboxParamEnabled, nullptr},
-};
-
 // To add a new entry, add to the end of kFeatureEntries. There are four
 // distinct types of entries:
 // . ENABLE_DISABLE_VALUE: entry is either enabled, disabled, or uses the
@@ -1538,9 +1543,7 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      FEATURE_VALUE_TYPE(ntp_features::kNtpAlphaBackgroundCollections)},
     {"new-tab-page-redesign", flag_descriptions::kNewTabPageRedesignName,
      flag_descriptions::kNewTabPageRedesignDescription, flags_ui::kOsIos,
-     FEATURE_WITH_PARAMS_VALUE_TYPE(kNewTabPageRedesign,
-                                    kNewTabPageRedesignVariations,
-                                    "NewTabPageRedesign")},
+     FEATURE_VALUE_TYPE(kNewTabPageRedesign)},
     {"ntp-mvt-in-bottom-sheet", flag_descriptions::kMVTInBottomSheetName,
      flag_descriptions::kMVTInBottomSheetDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kMVTInBottomSheet)},
@@ -2038,6 +2041,9 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kGeneralizedGeminiEntryFlowName,
      flag_descriptions::kGeneralizedGeminiEntryFlowDescription,
      flags_ui::kOsIos, FEATURE_VALUE_TYPE(kGeneralizedGeminiEntryFlow)},
+    {"gemini-aureus", flag_descriptions::kGeminiAureusName,
+     flag_descriptions::kGeminiAureusDescription, flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(kGeminiAureus)},
     {"gemini-luminous", flag_descriptions::kGeminiLuminousName,
      flag_descriptions::kGeminiLuminousDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kGeminiLuminous)},
@@ -2130,6 +2136,13 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      FEATURE_WITH_PARAMS_VALUE_TYPE(kIOSSettingsDefaultBrowserPromoV2,
                                     kIOSSettingsDefaultBrowserPromoV2Variations,
                                     "IOSSettingsDefaultBrowserPromoV2")},
+    {"default-browser-promo-overflow-menu",
+     flag_descriptions::kDefaultBrowserPromoOverflowMenuName,
+     flag_descriptions::kDefaultBrowserPromoOverflowMenuDescription,
+     flags_ui::kOsIos,
+     FEATURE_WITH_PARAMS_VALUE_TYPE(kDefaultBrowserPromoOverflowMenu,
+                                    kDefaultBrowserPromoOverflowMenuVariations,
+                                    "DefaultBrowserPromoOverflowMenu")},
     {"shopping-alternate-server",
      commerce::flag_descriptions::kShoppingAlternateServerName,
      commerce::flag_descriptions::kShoppingAlternateServerDescription,
@@ -2222,6 +2235,11 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      FEATURE_WITH_PARAMS_VALUE_TYPE(kComposeboxDevTools,
                                     kComposeboxDevToolsVariations,
                                     "ComposeboxDevTools")},
+    {"context-management-in-composebox",
+     flag_descriptions::kContextManagementInComposeboxName,
+     flag_descriptions::kContextManagementInComposeboxDescription,
+     flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(omnibox::kContextManagementInComposebox)},
     {"contextual-tasks", flag_descriptions::kContextualTasksName,
      flag_descriptions::kContextualTasksDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(contextual_tasks::kContextualTasks)},
@@ -2269,6 +2287,10 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kNtpComposeboxUsesChromeComposeClientDescription,
      flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(omnibox::kComposeboxUsesChromeComposeClient)},
+    {"composebox-verbatim-suggestion-in-aim",
+     flag_descriptions::kComposeboxVerbatimSuggestionInAIMName,
+     flag_descriptions::kComposeboxVerbatimSuggestionInAIMDescription,
+     flags_ui::kOsIos, FEATURE_VALUE_TYPE(kComposeboxVerbatimSuggestionInAIM)},
     {"cache-identity-list-in-chrome",
      flag_descriptions::kCacheIdentityListInChromeName,
      flag_descriptions::kCacheIdentityListInChromeDescription, flags_ui::kOsIos,
@@ -2797,6 +2819,10 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
     {"ios-level-up", flag_descriptions::kIOSLevelUpName,
      flag_descriptions::kIOSLevelUpDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kIOSLevelUp)},
+    {"ios-backend-promo-custom-ui",
+     flag_descriptions::kIOSBackendPromoCustomUIName,
+     flag_descriptions::kIOSBackendPromoCustomUIDescription, flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(kIOSBackendPromoCustomUI)},
     {"ios-backend-promo-service-integration",
      flag_descriptions::kIOSBackendPromoServiceIntegrationName,
      flag_descriptions::kIOSBackendPromoServiceIntegrationDescription,
@@ -2838,6 +2864,11 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kComposeboxDriveContextMenuOptionDescription,
      flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(omnibox::kComposeboxDriveContextMenuOption)},
+    {"composebox-drive-context-menu-option-disclaimer",
+     flag_descriptions::kComposeboxDriveContextMenuOptionDisclaimerName,
+     flag_descriptions::kComposeboxDriveContextMenuOptionDisclaimerDescription,
+     flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(omnibox::kComposeboxDriveContextMenuOptionDisclaimer)},
     {"ios-password-manager-actor-login",
      flag_descriptions::kPasswordManagerActorLoginName,
      flag_descriptions::kPasswordManagerActorLoginDescription, flags_ui::kOsIos,
@@ -2934,10 +2965,6 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kPrepopulatedEnginesShadowVariantsDescription,
      flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(switches::kPrepopulatedEnginesShadowVariants)},
-    {"voice-search-mic-permissions",
-     flag_descriptions::kVoiceSearchMicPermissionsName,
-     flag_descriptions::kVoiceSearchMicPermissionsDescription, flags_ui::kOsIos,
-     FEATURE_VALUE_TYPE(kVoiceSearchMicPermissions)},
     {"glic-actor-autofill", flag_descriptions::kGlicActorAutofillName,
      flag_descriptions::kGlicActorAutofillDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(autofill::features::kGlicActorAutofill)},
@@ -2984,6 +3011,31 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kMetrickitDeferRegistrationName,
      flag_descriptions::kMetrickitDeferRegistrationDescription,
      flags_ui::kOsIos, FEATURE_VALUE_TYPE(kMetrickitDeferRegistration)},
+    {"autofill-enable-wallet-reminder-notice-public-pass",
+     flag_descriptions::kAutofillEnableWalletReminderNoticePublicPassName,
+     flag_descriptions::
+         kAutofillEnableWalletReminderNoticePublicPassDescription,
+     flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(
+         autofill::features::kAutofillEnableWalletReminderNoticePublicPass)},
+    {"new-tab-page-pinned-omnibox-color-update",
+     flag_descriptions::kNewTabPagePinnedOmniboxColorUpdateName,
+     flag_descriptions::kNewTabPagePinnedOmniboxColorUpdateDescription,
+     flags_ui::kOsIos, FEATURE_VALUE_TYPE(kNewTabPagePinnedOmniboxColorUpdate)},
+    {"gemini-insights-chip-ablation",
+     flag_descriptions::kGeminiInsightsChipAblationName,
+     flag_descriptions::kGeminiInsightsChipAblationDescription,
+     flags_ui::kOsIos, FEATURE_VALUE_TYPE(kGeminiInsightsChipAblation)},
+    {"domain-level-site-permissions",
+     flag_descriptions::kDomainLevelSitePermissionsName,
+     flag_descriptions::kDomainLevelSitePermissionsDescription,
+     flags_ui::kOsIos, FEATURE_VALUE_TYPE(kDomainLevelSitePermissions)},
+    {"autofill-add-chrome-user-context-fields",
+     flag_descriptions::kAutofillAddChromeUserContextFieldsName,
+     flag_descriptions::kAutofillAddChromeUserContextFieldsDescription,
+     flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(
+         autofill::features::kAutofillAddChromeUserContextFields)},
 });
 
 bool SkipConditionalFeatureEntry(const flags_ui::FeatureEntry& entry) {

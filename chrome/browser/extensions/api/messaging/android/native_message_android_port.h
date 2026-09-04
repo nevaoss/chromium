@@ -14,6 +14,7 @@
 #include "extensions/buildflags/buildflags.h"
 #include "extensions/common/api/messaging/message.h"
 #include "extensions/common/api/messaging/port_id.h"
+#include "extensions/common/api/messaging/signing_certificate.h"
 #include "extensions/common/extension_id.h"
 
 static_assert(BUILDFLAG(ENABLE_EXTENSIONS_CORE));
@@ -32,6 +33,7 @@ class NativeMessageAndroidPort : public MessagePort {
       const PortId& port_id,
       const std::string& package_name,
       const ExtensionId& extension_id,
+      const SigningCertificates& android_certificates,
       std::string* error_out);
 
   ~NativeMessageAndroidPort() override;
@@ -45,12 +47,10 @@ class NativeMessageAndroidPort : public MessagePort {
 
   // Called by Java when the app this port is communicating with sends a message
   // back to the browser.
-  void PostMessageFromApp(JNIEnv* env,
-                          const base::android::JavaRef<jstring>& message);
+  void PostMessageFromApp(const std::string& message);
 
   // Called by Java when the communication channel is closed by the app.
-  void CloseChannel(JNIEnv* env,
-                    const base::android::JavaRef<jstring>& error_message);
+  void CloseChannel(const std::string& error_message);
 
  private:
   NativeMessageAndroidPort(base::WeakPtr<ChannelDelegate> channel_delegate,

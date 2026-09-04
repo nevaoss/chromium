@@ -52,6 +52,9 @@
 #include "chrome/browser/ui/views/location_bar/webui_location_bar.h"
 #include "chrome/browser/ui/views/profiles/profile_menu_coordinator.h"
 #include "chrome/browser/ui/views/toolbar/app_menu_control.h"
+#include "chrome/browser/ui/views/toolbar/webui_home_control.h"
+#include "chrome/browser/ui/views/toolbar/webui_overflow_button.h"
+#include "chrome/browser/ui/views/toolbar/webui_performance_intervention_control.h"
 #include "chrome/browser/ui/views/toolbar/webui_split_tabs_control.h"
 #include "chrome/browser/ui/views/toolbar/webui_toolbar_extensions_container_wrapper.h"
 #include "chrome/browser/ui/waap/initial_web_ui_manager.h"
@@ -355,6 +358,7 @@ WebUIToolbarWebView::WebUIToolbarWebView(
       back_control_(this, BackForwardButton::Direction::kBack),
       forward_control_(this, BackForwardButton::Direction::kForward),
       pinned_toolbar_actions_(this),
+      overflow_button_(this, &pinned_toolbar_actions_),
       clock_(base::DefaultTickClock::GetInstance()),
       touch_ui_subscription_(ui::TouchUiController::Get()->RegisterCallback(
           base::BindRepeating(&WebUIToolbarWebView::OnTouchUiChanged,
@@ -384,6 +388,7 @@ WebUIToolbarWebView::WebUIToolbarWebView(
               /*text=*/std::u16string(),
               /*tooltip=*/std::u16string(),
               toolbar_ui_api::mojom::SecurityChipAccessibilityState::New(
+                  /*role=*/toolbar_ui_api::mojom::SecurityChipRole::kButton,
                   /*label=*/std::u16string(),
                   /*description=*/std::u16string()),
               /*is_clickable=*/false, /*is_text_dangerous=*/false,
@@ -584,20 +589,8 @@ void WebUIToolbarWebView::HandleContextMenu(
     toolbar_ui_api::mojom::ContextMenuType menu_type,
     const gfx::RectF& bounds_in_css_pixels,
     ui::mojom::MenuSourceType source) {
-  CHECK(web_view_);
-  // The coordinates are in CSS pixels relative the viewport origin. We need
-  // to multiply by the page scaling factor to convert them to DIPs before we
-  // can use them as the bounding rectangle relative to the viewport origin to
-  // show the menu.
-  double page_zoom_scale = blink::ZoomLevelToZoomFactor(
-      zoom::ZoomController::GetZoomLevelForWebContents(
-          web_view_->web_contents()));
-  gfx::Rect screen_rect = gfx::ToEnclosingRect(
-      gfx::ScaleRect(bounds_in_css_pixels, page_zoom_scale));
-
-  // Add the offset of the WebView's top-left corner in screen coordinates to
-  // convert the relative rect to an absolute screen rect.
-  screen_rect.Offset(GetBoundsInScreen().origin().OffsetFromOrigin());
+  gfx::Rect screen_rect =
+      ConvertBoundsFromCssPixelsToScreenCoords(bounds_in_css_pixels);
 
   switch (menu_type) {
     case toolbar_ui_api::mojom::ContextMenuType::kBack:
@@ -673,6 +666,17 @@ void WebUIToolbarWebView::HandleContextMenu(
   }
 }
 
+void WebUIToolbarWebView::ShowOverflowMenu(
+    std::vector<toolbar_ui_api::mojom::OverflowMenuItemPtr> controls,
+    const gfx::RectF& bounds_in_css_pixels,
+    ui::mojom::MenuSourceType source,
+    toolbar_ui_api::mojom::ToolbarUIService::ShowOverflowMenuCallback
+        callback) {
+  overflow_button_.ShowOverflowMenu(
+      controls, ConvertBoundsFromCssPixelsToScreenCoords(bounds_in_css_pixels),
+      source, std::move(callback));
+}
+
 void WebUIToolbarWebView::ShowContentSettingsBubble(
     ::toolbar_ui_api::mojom::ContentSettingImageType type,
     bool is_pointer_interaction,
@@ -703,6 +707,13 @@ void WebUIToolbarWebView::OnContentSettingImageAnimationEnded(
   if (location_bar_) {
     location_bar_->content_setting_image_control()
         .OnContentSettingImageAnimationEnded(type);
+  }
+}
+
+void WebUIToolbarWebView::OnPageActionPointerDown(
+    ::toolbar_ui_api::mojom::PageActionId action_id) {
+  if (location_bar_) {
+    location_bar_->page_action_control().OnPageActionPointerDown(action_id);
   }
 }
 
@@ -1182,6 +1193,11 @@ void WebUIToolbarWebView::OverflowButtonClicked(
     return;
   } else if (identifier == kToolbarHomeButtonElementId) {
     browser_controls_adapter_->NavigateHome(WindowOpenDisposition::CURRENT_TAB);
+    return;
+  } else if (identifier == kToolbarSplitTabsToolbarButtonElementId) {
+    // TODO(crbug.com/491791965): Implement this. The main complexity is that if
+    // the current tab is already split, rather than trying to split the current
+    // tab, we should show the split tab menu.
     return;
   }
   NOTREACHED();
@@ -1870,6 +1886,25 @@ bool WebUIToolbarWebView::RuleEnabledPredicate(
     return button_overflow_info.is_forward_button_overflowed ||
            button_overflow_info.is_home_button_overflowed;
   }
+}
+
+gfx::Rect WebUIToolbarWebView::ConvertBoundsFromCssPixelsToScreenCoords(
+    const gfx::RectF& bounds_in_css_pixels) const {
+  CHECK(web_view_);
+  // The coordinates are in CSS pixels relative the viewport origin. We need
+  // to multiply by the page scaling factor to convert them to DIPs before we
+  // can use them as the bounding rectangle relative to the viewport origin to
+  // show the menu.
+  double page_zoom_scale = blink::ZoomLevelToZoomFactor(
+      zoom::ZoomController::GetZoomLevelForWebContents(
+          web_view_->web_contents()));
+  gfx::Rect screen_rect = gfx::ToEnclosingRect(
+      gfx::ScaleRect(bounds_in_css_pixels, page_zoom_scale));
+
+  // Add the offset of the WebView's top-left corner in screen coordinates to
+  // convert the relative rect to an absolute screen rect.
+  screen_rect.Offset(GetBoundsInScreen().origin().OffsetFromOrigin());
+  return screen_rect;
 }
 
 BEGIN_METADATA(WebUIToolbarWebView)

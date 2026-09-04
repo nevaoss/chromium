@@ -75,6 +75,7 @@ import org.chromium.chrome.browser.ui.appmenu.AppMenuPropertiesDelegate;
 import org.chromium.chrome.browser.ui.appmenu.AppMenuRecentEntryItemProperties;
 import org.chromium.chrome.browser.ui.appmenu.AppMenuTabGroupItemProperties;
 import org.chromium.chrome.browser.ui.appmenu.AppMenuTabItemProperties;
+import org.chromium.chrome.browser.ui.extensions.ExtensionUi;
 import org.chromium.chrome.browser.util.BrowserUiUtils;
 import org.chromium.chrome.browser.util.BrowserUiUtils.ModuleTypeOnStartAndNtp;
 import org.chromium.chrome.browser.webapps.WebappRegistry;
@@ -107,7 +108,9 @@ import org.chromium.url.GURL;
 
 import java.lang.annotation.Retention;
 import java.lang.annotation.RetentionPolicy;
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
 import java.util.function.BiFunction;
 
 /**
@@ -510,11 +513,15 @@ public abstract class AppMenuPropertiesDelegateImpl implements AppMenuProperties
 
     /** Build the PropertyModel for the download this page action. */
     protected PropertyModel buildDownloadActionModel(@Nullable Tab currentTab) {
+        int titleId =
+                ChromeFeatureList.isEnabled(ChromeFeatureList.ENABLE_DOWNLOAD_SAVE_AS_CONTEXT_MENU)
+                        ? R.string.menu_save_page_as
+                        : R.string.download_page;
         PropertyModel downloadButton =
                 AppMenuItemUtils.buildModelForIcon(
                         mContext,
                         R.id.offline_page_id,
-                        R.string.download_page,
+                        titleId,
                         R.string.menu_download,
                         R.drawable.ic_file_download_white_24dp);
         downloadButton.set(AppMenuItemProperties.ENABLED, shouldEnableDownloadPage(currentTab));
@@ -558,6 +565,75 @@ public abstract class AppMenuPropertiesDelegateImpl implements AppMenuProperties
                         R.drawable.btn_info);
         pageInfoButton.set(AppMenuItemProperties.ENABLED, currentTab != null);
         return pageInfoButton;
+    }
+
+    protected ListItem buildExtensionsParentItem() {
+        assert shouldShowExtensionsItem();
+
+        List<ListItem> submenuItems = new ArrayList<>();
+        submenuItems.add(buildExtensionsMenuItem(/* showIcon= */ false));
+        submenuItems.add(buildManageExtensionsItem());
+        submenuItems.add(buildChromeWebstoreItem());
+
+        return new ListItem(
+                shouldShowIconBeforeItem()
+                        ? AppMenuHandler.AppMenuItemType.MENU_ITEM_WITH_SUBMENU
+                        : AppMenuHandler.AppMenuItemType.MENU_ITEM_WITH_SUBMENU_NO_ICON,
+                AppMenuItemUtils.buildModelForMenuItemWithSubmenu(
+                        mContext,
+                        getAppMenuItemTheme(),
+                        R.id.extensions_parent_menu_id,
+                        R.string.menu_extensions,
+                        shouldShowIconBeforeItem()
+                                ? R.drawable.ic_extension_24dp
+                                : Resources.ID_NULL,
+                        () -> submenuItems,
+                        isMenuIconAtStart()));
+    }
+
+    protected ListItem buildExtensionsMenuItem(boolean showIcon) {
+        assert shouldShowExtensionsItem();
+
+        return AppMenuItemUtils.createStandardListItem(
+                AppMenuItemUtils.buildModelForStandardMenuItem(
+                        mContext,
+                        getAppMenuItemTheme(),
+                        R.id.extensions_menu_menu_id,
+                        R.string.menu_extensions_menu,
+                        showIcon ? R.drawable.ic_extension_24dp : Resources.ID_NULL,
+                        isMenuIconAtStart()),
+                showIcon);
+    }
+
+    private ListItem buildManageExtensionsItem() {
+        assert shouldShowExtensionsItem();
+
+        // The id {@code R.id.extensions_menu_id} is used for both when this flag is enabled and
+        // disabled but in different context.
+        assert isSubmenusEnabled(mContext);
+
+        return AppMenuItemUtils.createStandardListItem(
+                AppMenuItemUtils.buildModelForStandardMenuItem(
+                        mContext,
+                        getAppMenuItemTheme(),
+                        R.id.manage_extensions_menu_id,
+                        R.string.menu_manage_extensions,
+                        Resources.ID_NULL,
+                        isMenuIconAtStart()),
+                /* showIcon= */ false);
+    }
+
+    private ListItem buildChromeWebstoreItem() {
+        assert shouldShowExtensionsItem();
+        return AppMenuItemUtils.createStandardListItem(
+                AppMenuItemUtils.buildModelForStandardMenuItem(
+                        mContext,
+                        getAppMenuItemTheme(),
+                        R.id.extensions_webstore_menu_id,
+                        R.string.menu_chrome_webstore,
+                        Resources.ID_NULL,
+                        isMenuIconAtStart()),
+                /* showIcon= */ false);
     }
 
     /** Build the PropertyModel for the reload/stop action. */
@@ -1121,9 +1197,7 @@ public abstract class AppMenuPropertiesDelegateImpl implements AppMenuProperties
 
     public @StringRes int getAddToGroupMenuItemString(@Nullable Token currentTabGroupId) {
         TabModel tabModel = mTabModelSelector.getCurrentModel();
-        boolean checkAllWindows = ChromeFeatureList.sCrossWindowTabGroupOperations.isEnabled();
-        return TabGroupUiUtils.getAddToGroupMenuItemString(
-                tabModel, currentTabGroupId, checkAllWindows);
+        return TabGroupUiUtils.getAddToGroupMenuItemString(tabModel, currentTabGroupId);
     }
 
     /** Returns whether to show the open in app menu item. */
@@ -1238,5 +1312,27 @@ public abstract class AppMenuPropertiesDelegateImpl implements AppMenuProperties
                         R.string.page_zoom_menu_title,
                         shouldShowIconBeforeItem() ? R.drawable.ic_zoom : 0,
                         isMenuIconAtStart()));
+    }
+
+    protected @Nullable Profile getProfileFromTabModel() {
+        TabModel model = mTabModelSelector.getModel(false);
+        return model != null ? model.getProfile() : null;
+    }
+
+    protected boolean shouldShowExtensionsItem() {
+        Profile profile = getProfileFromTabModel();
+        return profile != null && ExtensionUi.isEnabled(profile);
+    }
+
+    public static boolean isSubmenusEnabled(Context context) {
+        if (ChromeFeatureList.isEnabled(ChromeFeatureList.SUBMENUS_IN_APP_MENU)) {
+            return true;
+        }
+        if (ChromeFeatureList.isEnabled(ChromeFeatureList.SUBMENUS_IN_APP_MENU_LFF)
+                && DeviceFormFactor.isNonMultiDisplayContextOnTablet(context)
+                && !DeviceInfo.isFoldable()) {
+            return true;
+        }
+        return false;
     }
 }

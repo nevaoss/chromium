@@ -66,6 +66,7 @@ source_set("impl") {
     "//chrome/browser:defaults",
     "//chrome/browser:flags",
     "//chrome/browser/accessibility",
+    "//chrome/browser/accessibility/accessibility_prefs",
     "//chrome/browser/autocomplete:aim_eligibility_service",
     "//chrome/browser/background/glic",
     "//chrome/browser/component_updater",
@@ -366,7 +367,6 @@ source_set("impl") {
 
   if (is_android) {
     deps += [
-      "//chrome/browser/accessibility/accessibility_prefs",
       "//chrome/browser/auxiliary_search",
       "//chrome/browser/lens",
       "//chrome/browser/notifications",
@@ -393,7 +393,6 @@ source_set("impl") {
       "//chrome/browser/sharing_hub",
       "//chrome/browser/speech",
       "//chrome/browser/ui/commerce",
-      "//chrome/browser/ui/extensions",
       "//chrome/browser/ui/omnibox/omnibox_everywhere:prefs",
       "//chrome/browser/ui/performance_controls",
       "//chrome/browser/ui/send_tab_to_self",
@@ -427,6 +426,7 @@ source_set("impl") {
   if (enable_extensions_core) {
     deps += [
       "//chrome/browser/extensions",
+      "//chrome/browser/ui/extensions",
       "//extensions/browser",
     ]
   }
@@ -626,6 +626,7 @@ if (!is_android) {
       "//chrome/browser/search_engines",
       "//chrome/browser/sync/test/integration:sync_integration_test_support",
       "//chrome/browser/ui",
+      "//chrome/browser/ui:browser_window_state",
       "//chrome/browser/ui/browser_window",
       "//chrome/browser/ui/tabs:tab_strip",
       "//chrome/common",

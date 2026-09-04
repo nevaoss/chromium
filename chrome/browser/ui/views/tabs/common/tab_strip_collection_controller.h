@@ -8,7 +8,7 @@
 #include <optional>
 
 #include "base/callback_list.h"
-#include "chrome/browser/ui/tabs/tab_menu_model_factory.h"
+#include "chrome/browser/ui/tabs/tab_enums.h"
 #include "chrome/browser/ui/tabs/tab_strip_user_gesture_details.h"
 #include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h"
 #include "chrome/browser/ui/views/tabs/common/tab_drag_handler.h"
@@ -20,6 +20,7 @@
 class BrowserFrameView;
 class BrowserView;
 class ExpandOnHoverLock;
+class HorizontalTabClosingHelper;
 class RootTabCollectionNode;
 class TabCollectionNode;
 class TabGroup;
@@ -47,8 +48,7 @@ class TabStripCollectionController : public TabContextMenuController::Delegate {
                                RootTabCollectionNode& root_node,
                                TabDragHandler& drag_handler,
                                TabHoverCardController* hover_card_controller,
-                               std::unique_ptr<TabMenuModelFactory>
-                                   menu_model_factory_override = nullptr);
+                               TabStripOrientation orientation);
   TabStripCollectionController(const TabStripCollectionController&) = delete;
   TabStripCollectionController& operator=(const TabStripCollectionController&) =
       delete;
@@ -110,6 +110,10 @@ class TabStripCollectionController : public TabContextMenuController::Delegate {
     return hover_card_controller_.get();
   }
 
+  HorizontalTabClosingHelper* tab_closing_helper() const {
+    return tab_closing_helper_.get();
+  }
+
   // Notifies BrowserCommandController that the tab with keyboard focus has
   // changed.
   void TabKeyboardFocusChangedTo(const tabs::TabInterface* tab);
@@ -158,7 +162,6 @@ class TabStripCollectionController : public TabContextMenuController::Delegate {
   void AnnounceTabRemovedFromGroup(tab_groups::TabGroupId group_id);
 
   std::unique_ptr<TabContextMenuController> context_menu_controller_;
-  std::unique_ptr<TabMenuModelFactory> menu_model_factory_;
   std::unique_ptr<ExpandOnHoverLock> expand_on_hover_lock_;
 
   raw_ptr<TabStripModel> model_;
@@ -166,6 +169,8 @@ class TabStripCollectionController : public TabContextMenuController::Delegate {
   const raw_ref<RootTabCollectionNode> root_node_;
   const raw_ref<TabDragHandler> drag_handler_;
   raw_ptr<TabHoverCardController> hover_card_controller_;
+
+  std::unique_ptr<HorizontalTabClosingHelper> tab_closing_helper_;
 
   bool is_glass_frame_ = false;
   base::CallbackListSubscription glass_frame_service_subscription_;

@@ -108,6 +108,7 @@ import org.chromium.chrome.browser.fullscreen.FullscreenOptions;
 import org.chromium.chrome.browser.glic.GlicKeyedService.GlicInvocationSource;
 import org.chromium.chrome.browser.handoff.HandoffController;
 import org.chromium.chrome.browser.host_zoom.HostZoomListenerFactory;
+import org.chromium.chrome.browser.hub.HubManager;
 import org.chromium.chrome.browser.image_descriptions.ImageDescriptionsController;
 import org.chromium.chrome.browser.incognito.reauth.IncognitoReauthController;
 import org.chromium.chrome.browser.incognito.reauth.IncognitoReauthControllerImpl;
@@ -497,6 +498,7 @@ public class RootUiCoordinator
      * @param layoutStateProviderOneshotSupplier Supplier of the {@link LayoutStateProvider}.
      * @param browserControlsManager Manages the browser controls.
      * @param windowAndroid The current {@link WindowAndroid}.
+     * @param activityResultTracker Tracker dispatching activity result callbacks.
      * @param chromeAndroidTaskSupplier Supplies an {@link ChromeAndroidTask}.
      * @param activityLifecycleDispatcher Allows observation of the activity lifecycle.
      * @param layoutManagerSupplier Supplies the {@link LayoutManager}.
@@ -508,7 +510,7 @@ public class RootUiCoordinator
      * @param tabCreatorManagerSupplier Supplies the {@link TabCreatorManager}.
      * @param fullscreenManager Manages the fullscreen state.
      * @param compositorViewHolderSupplier Supplies the {@link CompositorViewHolder}.
-     * @param tabContentManagerSupplier Supplies the {@link TabContentManager}.
+     * @param tabContentManagerSupplier Supplier of the manager providing tab thumbnail snapshots.
      * @param snackbarManagerSupplier Supplies the {@link SnackbarManager}.
      * @param edgeToEdgeControllerSupplier Supplies an {@link EdgeToEdgeController}.
      * @param topInsetProvider The {@link TopInsetProvider} instance.
@@ -527,6 +529,7 @@ public class RootUiCoordinator
      * @param xrSpaceModeObservableSupplier Supplies current XR space mode status. True for XR full
      *     space mode, false otherwise.
      * @param desktopWindowStateManager Tracks whether in desktop windowing mode
+     * @param bottomBarHostManager Manager hosting and sizing the bottom bar container.
      */
     public RootUiCoordinator(
             AppCompatActivity activity,
@@ -1836,6 +1839,7 @@ public class RootUiCoordinator
      * This method is meant to be overridden for sub-classes which needs to provide an incognito
      * re-auth view.
      *
+     * @param profile The current active profile.
      * @return {@link IncognitoReauthCoordinatorFactory} instance.
      */
     protected IncognitoReauthCoordinatorFactory getIncognitoReauthCoordinatorFactory(
@@ -2273,7 +2277,8 @@ public class RootUiCoordinator
                             mCountrySupplier,
                             (preventClose, invocationSource) ->
                                     toggleGlic(preventClose, invocationSource),
-                            shouldSuppressTabStripAtStart());
+                            shouldSuppressTabStripAtStart(),
+                            getHubManagerSupplier());
             if (!mSupportsAppMenuSupplier.getAsBoolean()) {
                 mToolbarManager.getToolbar().disableMenuButton();
             }
@@ -3041,6 +3046,14 @@ public class RootUiCoordinator
      * the current activity does not support Side Panel.
      */
     protected @Nullable OneshotSupplier<SideUiStateProvider> getSideUiStateProviderSupplier() {
+        return null;
+    }
+
+    /**
+     * Returns the {@link OneshotSupplier} for {@link HubManager}, if supported by the current
+     * activity.
+     */
+    protected @Nullable OneshotSupplier<HubManager> getHubManagerSupplier() {
         return null;
     }
 }

@@ -55,6 +55,7 @@
 #include "ui/base/mojom/menu_source_type.mojom.h"
 #include "ui/strings/grit/ui_strings.h"
 #include "ui/views/controls/menu/menu_item_view.h"
+#include "ui/views/controls/menu/submenu_view.h"
 #include "ui/views/view.h"
 #include "ui/views/widget/widget.h"
 #include "ui/webui/webui_util.h"
@@ -67,6 +68,9 @@ enum ScreenshotMenuCommand {
   kScreenshotRegion,
 };
 
+// Minimum preferred width for the screenshot Views menu, matching UX specs
+// and the previous dropdown implementation (320px).
+constexpr int kScreenshotMenuWidth = 320;
 bool IsAimEligible(Profile* profile) {
   auto* aim_eligibility_service =
       AimEligibilityServiceFactory::GetForProfile(profile);
@@ -223,6 +227,15 @@ OmniboxEverywhereUI::OmniboxEverywhereUI(content::WebUI* web_ui)
       {"shareScreenshotLabel", IDS_OMNIBOX_EVERYWHERE_SHARE_SCREENSHOT},
   };
   source->AddLocalizedStrings(kStrings);
+
+  bool initial_show_fre =
+      base::FeatureList::IsEnabled(omnibox::kOmniboxEverywhereFre) &&
+      !profile_->GetPrefs()->GetBoolean(
+          omnibox_everywhere::prefs::kFreDismissed) &&
+      (profile_->GetPrefs()->GetInteger(
+           omnibox_everywhere::prefs::kFreImpressionCount) <
+       omnibox_everywhere::prefs::kMaxFreImpressions);
+  source->AddBoolean("initialShowFre", initial_show_fre);
 
   // Sanitized image and favicon source initialization
   content::URLDataSource::Add(profile_,
@@ -411,9 +424,6 @@ void OmniboxEverywhereUI::OnScreensharePickerOpened() {
   if (auto* service =
           OmniboxEverywhereServiceFactory::GetForProfile(profile_)) {
     service->OnScreensharePickerOpened();
-    // The popup widget must remain alive while the picker or screenshot capture
-    // is in flight so the WebUI handler can asynchronously receive the captured
-    // bitmap and attach it as context.
   }
 }
 
@@ -422,6 +432,18 @@ void OmniboxEverywhereUI::OnScreensharePickerClosed() {
           OmniboxEverywhereServiceFactory::GetForProfile(profile_)) {
     service->OnScreensharePickerClosed();
   }
+}
+
+void OmniboxEverywhereUI::ShowRegionSelectOverlay(
+    const SkBitmap& screenshot,
+    const RegionCaptureSource& source,
+    RegionSelectedCallback callback) {
+  if (auto* service =
+          OmniboxEverywhereServiceFactory::GetForProfile(profile_)) {
+    service->ShowRegionSelectOverlay(screenshot, source, std::move(callback));
+    return;
+  }
+  std::move(callback).Run(SkBitmap());
 }
 
 void OmniboxEverywhereUI::BindInterface(
@@ -519,7 +541,6 @@ void OmniboxEverywhereUI::ShowScreenshotMenu(
   }
 
   active_screenshot_handler_ = std::move(source_handler);
-  OnScreensharePickerOpened();
 
   screenshot_menu_model_ = std::make_unique<ui::SimpleMenuModel>(this);
   screenshot_menu_model_->AddTitle(
@@ -545,6 +566,9 @@ void OmniboxEverywhereUI::ShowScreenshotMenu(
       base::BindRepeating(&OmniboxEverywhereUI::OnScreenshotMenuClosed,
                           weak_factory_.GetWeakPtr()));
   std::unique_ptr<views::MenuItemView> menu = menu_model_adapter_->CreateMenu();
+  if (menu && menu->HasSubmenu()) {
+    menu->GetSubmenu()->set_minimum_preferred_width(kScreenshotMenuWidth);
+  }
 
   screenshot_menu_runner_ = std::make_unique<views::MenuRunner>(
       std::move(menu),
@@ -559,31 +583,27 @@ void OmniboxEverywhereUI::ShowScreenshotMenu(
 }
 
 void OmniboxEverywhereUI::OnScreenshotMenuClosed() {
-  OnScreensharePickerClosed();
   if (active_screenshot_handler_) {
     active_screenshot_handler_->OnScreenshotMenuClosed();
   }
-  active_screenshot_handler_.reset();
 }
 
 void OmniboxEverywhereUI::ExecuteCommand(int command_id, int event_flags) {
   if (!active_screenshot_handler_) {
     return;
   }
+  auto handler = std::move(active_screenshot_handler_);
   switch (command_id) {
     case kScreenshotEntireScreen:
-      active_screenshot_handler_->StartScreenshare(
+      handler->StartScreenshare(
           /*prefer_entire_screen=*/true, base::DoNothing());
       break;
     case kScreenshotWindow:
-      active_screenshot_handler_->StartScreenshare(
+      handler->StartScreenshare(
           /*prefer_entire_screen=*/false, base::DoNothing());
       break;
     case kScreenshotRegion:
-      // TODO(crbug.com/532198850): Region capture currently falls back to
-      // window capture pending region selection support.
-      active_screenshot_handler_->StartScreenshare(
-          /*prefer_entire_screen=*/false, base::DoNothing());
+      handler->CaptureRegionScreenshot(base::DoNothing());
       break;
   }
 }

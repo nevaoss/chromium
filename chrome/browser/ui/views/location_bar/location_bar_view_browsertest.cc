@@ -33,6 +33,8 @@
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/views/frame/toolbar_button_provider.h"
 #include "chrome/browser/ui/views/location_bar/location_icon_view.h"
+#include "chrome/browser/ui/views/location_bar/webui_content_setting_image_control.h"
+#include "chrome/browser/ui/views/location_bar/webui_location_bar.h"
 #include "chrome/browser/ui/views/location_bar/zoom_bubble_coordinator.h"
 #include "chrome/browser/ui/views/location_bar/zoom_bubble_view.h"
 #include "chrome/browser/ui/views/omnibox/omnibox_context_menu.h"
@@ -41,6 +43,8 @@
 #include "chrome/browser/ui/views/page_action/page_action_view.h"
 #include "chrome/browser/ui/views/page_action/page_action_view_interface.h"
 #include "chrome/browser/ui/views/page_action/test_support/page_action_test_accessor.h"
+#include "chrome/browser/ui/views/toolbar/webui_toolbar_web_view.h"
+#include "chrome/common/chrome_features.h"
 #include "chrome/grit/generated_resources.h"
 #include "chrome/test/base/in_process_browser_test.h"
 #include "chrome/test/base/ui_test_utils.h"
@@ -94,7 +98,9 @@ class TestLocationBarObserver : public LocationBar::Observer {
 
 class LocationBarViewBrowserTest : public InProcessBrowserTest {
  protected:
-  LocationBarViewBrowserTest() = default;
+  LocationBarViewBrowserTest() {
+    scoped_feature_list_.InitAndDisableFeature(features::kWebUILocationBar);
+  }
 
   LocationBarViewBrowserTest(const LocationBarViewBrowserTest&) = delete;
   LocationBarViewBrowserTest& operator=(const LocationBarViewBrowserTest&) =
@@ -122,12 +128,38 @@ class LocationBarViewBrowserTest : public InProcessBrowserTest {
       ContentSettingImageModel::ImageType image_type) {
     LocationBarView* location_bar_view =
         BrowserView::GetBrowserViewForBrowser(browser())->GetLocationBarView();
+    CHECK(location_bar_view);
     return **std::ranges::find(
         location_bar_view->GetContentSettingViewsForTest(), image_type,
         &ContentSettingImageView::GetType);
   }
 
+  bool IsContentSettingImageVisible(
+      ContentSettingImageModel::ImageType image_type) {
+    if (features::IsWebUILocationBarEnabled()) {
+      auto* const browser_view =
+          BrowserView::GetBrowserViewForBrowser(browser());
+      if (auto* const provider = browser_view->toolbar_button_provider()) {
+        if (auto* const webui_view =
+                provider->GetWebUIToolbarViewForTesting()) {
+          if (auto* const webui_loc_bar = webui_view->GetLocationBar()) {
+            if (auto* model =
+                    webui_loc_bar->content_setting_image_control().GetModel(
+                        image_type)) {
+              return model->is_visible();
+            }
+          }
+        }
+      }
+      return false;
+    }
+    return GetContentSettingImageView(image_type).GetVisible();
+  }
+
   raw_ptr<ZoomBubbleCoordinator> zoom_bubble_coordinator_;
+
+ private:
+  base::test::ScopedFeatureList scoped_feature_list_;
 };
 
 // Ensure the location bar decoration is added when zooming, and is removed when
@@ -251,10 +283,9 @@ IN_PROC_BROWSER_TEST_F(LocationBarViewBrowserTest, ScriptBlockedIcon) {
   GURL url(std::string("data:text/html,") + kHtml);
   ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), url));
 
-  // Get the script blocked icon on the omnibox. It should be hidden.
-  ContentSettingImageView& script_blocked_icon = GetContentSettingImageView(
-      ContentSettingImageModel::ImageType::kJavaScript);
-  EXPECT_FALSE(script_blocked_icon.GetVisible());
+  // Check that the script blocked icon on the omnibox is hidden.
+  EXPECT_FALSE(IsContentSettingImageVisible(
+      ContentSettingImageModel::ImageType::kJavaScript));
 
   // Disable javascript.
   HostContentSettingsMapFactory::GetForProfile(browser()->GetProfile())
@@ -263,9 +294,11 @@ IN_PROC_BROWSER_TEST_F(LocationBarViewBrowserTest, ScriptBlockedIcon) {
   // Reload the page
   chrome::Reload(browser(), WindowOpenDisposition::CURRENT_TAB);
 
-  // Waits until the geolocation icon is visible, or aborts the tests otherwise.
+  // Waits until the script blocked icon is visible, or aborts the tests
+  // otherwise.
   ASSERT_TRUE(base::test::RunUntil([&]() {
-    return script_blocked_icon.GetVisible();
+    return IsContentSettingImageVisible(
+        ContentSettingImageModel::ImageType::kJavaScript);
   })) << "Timeout waiting for the script blocked icon to become visible.";
 }
 
@@ -349,21 +382,16 @@ IN_PROC_BROWSER_TEST_F(TouchLocationBarViewBrowserTest, AccessibleProperties) {
   EXPECT_EQ(data.role, ax::mojom::Role::kGroup);
 }
 
-class SecurityIndicatorTest : public InProcessBrowserTest {
+class SecurityIndicatorTest : public LocationBarViewBrowserTest {
  public:
-  void SetUpOnMainThread() override {
-    host_resolver()->AddRule("*", "127.0.0.1");
-  }
-
   SecurityIndicatorTest() = default;
 
   SecurityIndicatorTest(const SecurityIndicatorTest&) = delete;
   SecurityIndicatorTest& operator=(const SecurityIndicatorTest&) = delete;
 
-  LocationBarView* GetLocationBarView() {
-    BrowserView* browser_view =
-        BrowserView::GetBrowserViewForBrowser(browser());
-    return browser_view->GetLocationBarView();
+  void SetUpOnMainThread() override {
+    LocationBarViewBrowserTest::SetUpOnMainThread();
+    host_resolver()->AddRule("*", "127.0.0.1");
   }
 };
 
@@ -414,6 +442,7 @@ class LocationBarViewGeolocationBackForwardCacheBrowserTest
   }
 
   void SetUpOnMainThread() override {
+    LocationBarViewBrowserTest::SetUpOnMainThread();
     // Replace any hostname to 127.0.0.1. (e.g. b.com -> 127.0.0.1)
     host_resolver()->AddRule("*", "127.0.0.1");
   }
@@ -447,12 +476,9 @@ IN_PROC_BROWSER_TEST_F(LocationBarViewGeolocationBackForwardCacheBrowserTest,
   EXPECT_TRUE(content::NavigateToURL(web_contents(), url_a));
   EXPECT_TRUE(content::WaitForLoadStop(web_contents()));
 
-  // Get the geolocation icon on the omnibox.
-  ContentSettingImageView& geolocation_icon = GetContentSettingImageView(
-      ContentSettingImageModel::ImageType::kGeolocation);
-
   // Geolocation icon should be off in the beginning.
-  EXPECT_FALSE(geolocation_icon.GetVisible());
+  EXPECT_FALSE(IsContentSettingImageVisible(
+      ContentSettingImageModel::ImageType::kGeolocation));
 
   // Query current position, and wait for the query to complete.
   content::RenderFrameHost* rfh_a = web_contents()->GetPrimaryMainFrame();
@@ -463,7 +489,8 @@ IN_PROC_BROWSER_TEST_F(LocationBarViewGeolocationBackForwardCacheBrowserTest,
   )"));
 
   // Geolocation icon should be on since geolocation API is used.
-  EXPECT_TRUE(geolocation_icon.GetVisible());
+  EXPECT_TRUE(IsContentSettingImageVisible(
+      ContentSettingImageModel::ImageType::kGeolocation));
 
   content::RenderFrameDeletedObserver deleted(rfh_a);
 
@@ -473,7 +500,8 @@ IN_PROC_BROWSER_TEST_F(LocationBarViewGeolocationBackForwardCacheBrowserTest,
   content::RenderFrameHost* rfh_b = web_contents()->GetPrimaryMainFrame();
 
   // Geolocation icon should be off after navigation.
-  EXPECT_FALSE(geolocation_icon.GetVisible());
+  EXPECT_FALSE(IsContentSettingImageVisible(
+      ContentSettingImageModel::ImageType::kGeolocation));
 
   // The previous page should be bfcached.
   EXPECT_FALSE(deleted.deleted());
@@ -489,7 +517,8 @@ IN_PROC_BROWSER_TEST_F(LocationBarViewGeolocationBackForwardCacheBrowserTest,
             content::RenderFrameHost::LifecycleState::kInBackForwardCache);
 
   // Geolocation icon should be on again.
-  EXPECT_TRUE(geolocation_icon.GetVisible());
+  EXPECT_TRUE(IsContentSettingImageVisible(
+      ContentSettingImageModel::ImageType::kGeolocation));
 
   // 4) Navigate forward to B. |RenderFrameHost| have to be restored from
   // BackForwardCache and be the primary main frame.
@@ -498,15 +527,18 @@ IN_PROC_BROWSER_TEST_F(LocationBarViewGeolocationBackForwardCacheBrowserTest,
   EXPECT_TRUE(rfh_b->IsInPrimaryMainFrame());
 
   // Geolocation icon should be off.
-  EXPECT_FALSE(geolocation_icon.GetVisible());
+  EXPECT_FALSE(IsContentSettingImageVisible(
+      ContentSettingImageModel::ImageType::kGeolocation));
 }
 
 class LocationBarViewPageActionHideWhileEditingTests
-    : public InProcessBrowserTest {
+    : public LocationBarViewBrowserTest {
  public:
   LocationBarViewPageActionHideWhileEditingTests() = default;
 
   void SetUpOnMainThread() override {
+    LocationBarViewBrowserTest::SetUpOnMainThread();
+
     // 1. Ensure the Zoom action is globally visible/enabled.
     auto* zoom_action =
         actions::ActionManager::Get().FindAction(kActionShowZoomBubble);
@@ -536,18 +568,11 @@ class LocationBarViewPageActionHideWhileEditingTests
         kActionShowZoomBubble);
   }
 
-  LocationBarView* GetLocationBarView() {
-    return BrowserView::GetBrowserViewForBrowser(browser())
-        ->GetLocationBarView();
-  }
-
   OmniboxView* GetOmniboxView() {
     return GetLocationBarView()->GetOmniboxView();
   }
 
   void EnsureLayout() { views::test::RunScheduledLayout(GetLocationBarView()); }
-
-  base::test::ScopedFeatureList scoped_feature_list_;
 };
 
 IN_PROC_BROWSER_TEST_F(LocationBarViewPageActionHideWhileEditingTests,
@@ -596,7 +621,7 @@ class LocationBarViewAddContextButtonBrowserTest
     : public LocationBarViewBrowserTest {
  public:
   LocationBarViewAddContextButtonBrowserTest() {
-    scoped_feature_list_.InitWithFeaturesAndParameters(
+    feature_list_.InitWithFeaturesAndParameters(
         /*enabled_features=*/
         {{omnibox::internal::kWebUIOmniboxAimPopup,
           {{omnibox::kShowToolsAndModels.name, "true"}}},
@@ -613,7 +638,7 @@ class LocationBarViewAddContextButtonBrowserTest
   ~LocationBarViewAddContextButtonBrowserTest() override = default;
 
  private:
-  base::test::ScopedFeatureList scoped_feature_list_;
+  base::test::ScopedFeatureList feature_list_;
 };
 
 // TODO(crbug.com/459561205): This test is flaky on Linux.
@@ -789,4 +814,89 @@ IN_PROC_BROWSER_TEST_F(LocationBarViewBrowserTest,
                            ->GetTabStripModel()
                            ->GetActiveWebContents()
                            ->GetLastCommittedURL());
+}
+
+class LocationBarViewElevatedToolbarBrowserTest
+    : public LocationBarViewBrowserTest {
+ public:
+  LocationBarViewElevatedToolbarBrowserTest() {
+    scoped_feature_list_.InitAndEnableFeature(
+        features::kPageActionsElevatedToolbar);
+  }
+
+  ~LocationBarViewElevatedToolbarBrowserTest() override = default;
+
+ protected:
+  LocationBarView* GetLocationBarView() {
+    return BrowserView::GetBrowserViewForBrowser(browser())
+        ->GetLocationBarView();
+  }
+
+  void EnsureLayout() { views::test::RunScheduledLayout(GetLocationBarView()); }
+
+ private:
+  base::test::ScopedFeatureList scoped_feature_list_;
+};
+
+IN_PROC_BROWSER_TEST_F(LocationBarViewElevatedToolbarBrowserTest,
+                       LayoutWithElevatedToolbarActiveAndInactive) {
+  LocationBarView* location_bar = GetLocationBarView();
+  ASSERT_TRUE(location_bar);
+
+  auto* tab_features = browser()->GetActiveTabInterface()->GetTabFeatures();
+  ASSERT_TRUE(tab_features);
+  auto* controller = tab_features->page_action_controller();
+  ASSERT_TRUE(controller);
+
+  // Hide any default actions to test clean transitions.
+  for (views::View* child : location_bar->page_action_container()->children()) {
+    if (auto* page_action_view =
+            views::AsViewClass<page_actions::PageActionView>(child)) {
+      controller->Hide(page_action_view->GetActionId());
+    }
+  }
+  EnsureLayout();
+
+  // Layout when no page actions are visible.
+  EXPECT_FALSE(location_bar->page_action_container()->IsCapsuleActive());
+  EnsureLayout();
+
+  // Make Zoom page action visible (capsule inactive, not a chip).
+  auto* zoom_action =
+      actions::ActionManager::Get().FindAction(kActionShowZoomBubble);
+  ASSERT_TRUE(zoom_action);
+  zoom_action->SetVisible(true);
+  zoom_action->SetEnabled(true);
+  controller->Show(kActionShowZoomBubble);
+
+  auto* web_contents = browser()->tab_strip_model()->GetActiveWebContents();
+  auto* zoom_controller = zoom::ZoomController::FromWebContents(web_contents);
+  ASSERT_TRUE(zoom_controller);
+  zoom_controller->SetZoomLevel(
+      blink::ZoomFactorToZoomLevel(/*zoom_factor=*/1.5));
+
+  EnsureLayout();
+  EXPECT_TRUE(location_bar->page_action_container()->GetVisible());
+  EXPECT_FALSE(location_bar->page_action_container()->IsCapsuleActive());
+  EXPECT_FALSE(location_bar->page_action_container()->IsFirstVisibleViewChip());
+
+  // Make a second action visible (capsule active).
+  auto* cookie_action =
+      actions::ActionManager::Get().FindAction(kActionShowCookieControls);
+  if (cookie_action) {
+    cookie_action->SetVisible(true);
+    cookie_action->SetEnabled(true);
+    controller->Show(kActionShowCookieControls);
+    EnsureLayout();
+    EXPECT_TRUE(location_bar->page_action_container()->IsCapsuleActive());
+  }
+
+  // Test suggestion chip branch when capsule is inactive.
+  if (cookie_action) {
+    controller->Hide(kActionShowCookieControls);
+  }
+  controller->ShowSuggestionChip(kActionShowZoomBubble);
+  EnsureLayout();
+  EXPECT_TRUE(location_bar->page_action_container()->IsFirstVisibleViewChip());
+  EXPECT_FALSE(location_bar->page_action_container()->IsCapsuleActive());
 }

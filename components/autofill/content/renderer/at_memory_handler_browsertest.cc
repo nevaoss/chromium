@@ -36,6 +36,7 @@
 #include "third_party/blink/public/web/web_local_frame.h"
 #include "third_party/blink/public/web/web_view.h"
 #include "ui/events/event_constants.h"
+#include "ui/events/keycodes/dom/dom_code.h"
 #include "ui/events/keycodes/keyboard_codes.h"
 
 namespace autofill {
@@ -152,7 +153,7 @@ TEST_F(AtMemoryHandlerTest, AtMemorySearchTrigger) {
   testing::MockFunction<void(int)> check_point;
   {
     testing::InSequence s;
-    // 1. "a" -> No @memory trigger.
+    // 1. "a" -> No AtMemory trigger.
     EXPECT_CALL(
         autofill_driver(),
         AskForValuesToFill(
@@ -161,7 +162,7 @@ TEST_F(AtMemoryHandlerTest, AtMemorySearchTrigger) {
         .Times(0);
     EXPECT_CALL(check_point, Call(1));
 
-    // 2. "a@" -> No @memory trigger.
+    // 2. "a@" -> No AtMemory trigger.
     EXPECT_CALL(
         autofill_driver(),
         AskForValuesToFill(
@@ -170,7 +171,7 @@ TEST_F(AtMemoryHandlerTest, AtMemorySearchTrigger) {
         .Times(0);
     EXPECT_CALL(check_point, Call(2));
 
-    // 3. "a@@" -> @memory has triggered.
+    // 3. "a@@" -> AtMemory has triggered.
     EXPECT_CALL(
         autofill_driver(),
         AskForValuesToFill(
@@ -179,7 +180,7 @@ TEST_F(AtMemoryHandlerTest, AtMemorySearchTrigger) {
         .Times(1);
     EXPECT_CALL(check_point, Call(3));
 
-    // 4. "a@@b" -> No @memory trigger.
+    // 4. "a@@b" -> No AtMemory trigger.
     EXPECT_CALL(
         autofill_driver(),
         AskForValuesToFill(
@@ -409,7 +410,8 @@ TEST_F(AtMemoryHandlerTest, AtMemorySearchTrigger_Constraints) {
   task_environment_.RunUntilIdle();
 }
 
-// Tests that typing "@@" into an empty field triggers the @memory search popup.
+// Tests that typing "@@" into an empty field triggers the AtMemory search
+// popup.
 TEST_F(AtMemoryHandlerTest, MemorySearchTriggerTypedIntoEmptyField) {
   // 1. Setup Expectations:
   // Ignore standard Autofill noise during setup.
@@ -419,7 +421,7 @@ TEST_F(AtMemoryHandlerTest, MemorySearchTriggerTypedIntoEmptyField) {
           _, _, _, Ne(AutofillSuggestionTriggerSource::kAtMemoryTriggerString),
           _))
       .Times(AnyNumber());
-  // Expect the specific @memory trigger.
+  // Expect the specific AtMemory trigger.
   EXPECT_CALL(
       autofill_driver(),
       AskForValuesToFill(
@@ -432,7 +434,7 @@ TEST_F(AtMemoryHandlerTest, MemorySearchTriggerTypedIntoEmptyField) {
   SimulateSlowTyping("@@");
 }
 
-// Tests that typing "@@" in the middle of a string also triggers @memory.
+// Tests that typing "@@" in the middle of a string also triggers AtMemory.
 TEST_F(AtMemoryHandlerTest, MemorySearchTriggerInMiddle) {
   // 1. Setup Expectations:
   // Ignore standard Autofill noise during setup.
@@ -442,7 +444,7 @@ TEST_F(AtMemoryHandlerTest, MemorySearchTriggerInMiddle) {
           _, _, _, Ne(AutofillSuggestionTriggerSource::kAtMemoryTriggerString),
           _))
       .Times(AnyNumber());
-  // Expect the specific @memory trigger.
+  // Expect the specific AtMemory trigger.
   EXPECT_CALL(
       autofill_driver(),
       AskForValuesToFill(
@@ -478,7 +480,7 @@ TEST_F(AtMemoryHandlerTest, MemorySearchTriggerOverlappingPrefix) {
   SimulateSlowTyping("aaaab");
 }
 
-// Tests that typing "@@" in the password field doesn't trigger @memory.
+// Tests that typing "@@" in the password field doesn't trigger AtMemory.
 TEST_F(AtMemoryHandlerTest, MemorySearchNotTriggeredOnPasswordField) {
   // 1. Setup Expectations:
   // Ignore standard Autofill noise during setup.
@@ -488,7 +490,7 @@ TEST_F(AtMemoryHandlerTest, MemorySearchNotTriggeredOnPasswordField) {
           _, _, _, Ne(AutofillSuggestionTriggerSource::kAtMemoryTriggerString),
           _))
       .Times(AnyNumber());
-  // Expect no @memory trigger.
+  // Expect no AtMemory trigger.
   EXPECT_CALL(
       autofill_driver(),
       AskForValuesToFill(
@@ -502,7 +504,7 @@ TEST_F(AtMemoryHandlerTest, MemorySearchNotTriggeredOnPasswordField) {
   SimulateSlowTyping("a@@");
 }
 
-// Tests that typing "@@" in a disabled field doesn't trigger @memory.
+// Tests that typing "@@" in a disabled field doesn't trigger AtMemory.
 TEST_F(AtMemoryHandlerTest, MemorySearchNotTriggeredOnDisabledField) {
   EXPECT_CALL(
       autofill_driver(),
@@ -522,7 +524,7 @@ TEST_F(AtMemoryHandlerTest, MemorySearchNotTriggeredOnDisabledField) {
   SimulateSlowTyping("a@@");
 }
 
-// Tests that typing "@@" in a read-only field doesn't trigger @memory.
+// Tests that typing "@@" in a read-only field doesn't trigger AtMemory.
 TEST_F(AtMemoryHandlerTest, MemorySearchNotTriggeredOnReadOnlyField) {
   EXPECT_CALL(
       autofill_driver(),
@@ -662,7 +664,7 @@ TEST_F(AtMemoryHandlerTest, RefocusesAndRestoresCaretIfUnfocused) {
           _, _, _, Ne(AutofillSuggestionTriggerSource::kAtMemoryTriggerString),
           _))
       .Times(AnyNumber());
-  // Expect the specific @memory trigger.
+  // Expect the specific AtMemory trigger.
   EXPECT_CALL(
       autofill_driver(),
       AskForValuesToFill(
@@ -683,6 +685,100 @@ TEST_F(AtMemoryHandlerTest, RefocusesAndRestoresCaretIfUnfocused) {
   EXPECT_EQ(input.GetDocument().FocusedElement(), input);
 }
 
+// Tests that ApplyFieldAction() with kReplaceSelectionForAtMemory waits for
+// window-level focus to return before filling if the window lost focus to a
+// popup.
+TEST_F(AtMemoryHandlerTest, WaitsForWindowFocusBeforeFilling) {
+  LoadHTML(R"(<input id="f">)");
+  WaitForFormsSeen();
+  GetWebFrameWidget()->SetFocus(true);
+  blink::WebInputElement input = GetInputElementById("f");
+  Focus("f");
+
+  // Ignore standard Autofill noise during setup.
+  EXPECT_CALL(
+      autofill_driver(),
+      AskForValuesToFill(
+          _, _, _, Ne(AutofillSuggestionTriggerSource::kAtMemoryTriggerString),
+          _))
+      .Times(AnyNumber());
+  EXPECT_CALL(
+      autofill_driver(),
+      AskForValuesToFill(
+          _, _, _, AutofillSuggestionTriggerSource::kAtMemoryTriggerString, _))
+      .WillOnce([this](const FormData& form, FieldRendererId field_id,
+                       const gfx::Rect& caret_bounds,
+                       AutofillSuggestionTriggerSource trigger_source,
+                       const std::optional<PasswordSuggestionRequest>&
+                           password_request) {
+        // Simulate the window losing focus to the popup.
+        GetWebFrameWidget()->SetFocus(false);
+        ApplyFieldActionAsync(field_id, u"result");
+      });
+
+  SimulateSlowTyping("hello @");
+  SimulateUserTypingAsciiCharacter('@', /*flush_message_loop=*/true);
+  // The first attempt (num_try = 0) fails because the window lacks focus and
+  // schedules a retry in 20 ms.
+  WaitForApplyFieldAction();
+  EXPECT_EQ(input.Value().Utf16(), u"hello @@");
+
+  // After 20 ms, the first retry runs and finds the window is still unfocused.
+  task_environment_.FastForwardBy(base::Milliseconds(20));
+  EXPECT_EQ(input.Value().Utf16(), u"hello @@");
+
+  // Restore window focus. The next retry in 20 ms will see the focused state.
+  GetWebFrameWidget()->SetFocus(true);
+  task_environment_.FastForwardBy(base::Milliseconds(20));
+
+  EXPECT_EQ(input.Value().Utf16(), u"hello result");
+  EXPECT_EQ(input.GetDocument().FocusedElement(), input);
+}
+
+// Tests that ApplyFieldAction() with kReplaceSelectionForAtMemory falls back to
+// filling the field without window focus once the retry limit is exceeded.
+TEST_F(AtMemoryHandlerTest, FillsAfterMaxRetriesIfWindowNeverGainsFocus) {
+  LoadHTML(R"(<input id="f">)");
+  WaitForFormsSeen();
+  GetWebFrameWidget()->SetFocus(true);
+  blink::WebInputElement input = GetInputElementById("f");
+  Focus("f");
+
+  // Ignore standard Autofill noise during setup.
+  EXPECT_CALL(
+      autofill_driver(),
+      AskForValuesToFill(
+          _, _, _, Ne(AutofillSuggestionTriggerSource::kAtMemoryTriggerString),
+          _))
+      .Times(AnyNumber());
+  EXPECT_CALL(
+      autofill_driver(),
+      AskForValuesToFill(
+          _, _, _, AutofillSuggestionTriggerSource::kAtMemoryTriggerString, _))
+      .WillOnce([this](const FormData& form, FieldRendererId field_id,
+                       const gfx::Rect& caret_bounds,
+                       AutofillSuggestionTriggerSource trigger_source,
+                       const std::optional<PasswordSuggestionRequest>&
+                           password_request) {
+        // Simulate the window losing focus and never regaining it.
+        GetWebFrameWidget()->SetFocus(false);
+        ApplyFieldActionAsync(field_id, u"result");
+      });
+
+  SimulateSlowTyping("hello @");
+  SimulateUserTypingAsciiCharacter('@', /*flush_message_loop=*/true);
+  WaitForApplyFieldAction();
+
+  // Fast forward through 4 retries (4 * 20 ms = 80 ms). The field is not filled
+  // yet.
+  task_environment_.FastForwardBy(base::Milliseconds(80));
+  EXPECT_EQ(input.Value().Utf16(), u"hello @@");
+
+  // The 5th retry (at 100 ms) hits kMaxRetries and fills as a fallback.
+  task_environment_.FastForwardBy(base::Milliseconds(20));
+  EXPECT_EQ(input.Value().Utf16(), u"hello result");
+}
+
 // Tests that a non-standard trigger string works in <input> fields.
 TEST_F(AtMemoryHandlerTest, NonStandardTriggerString) {
   // Ignore standard Autofill noise during setup.
@@ -692,7 +788,7 @@ TEST_F(AtMemoryHandlerTest, NonStandardTriggerString) {
           _, _, _, Ne(AutofillSuggestionTriggerSource::kAtMemoryTriggerString),
           _))
       .Times(AnyNumber());
-  // Expect the specific @memory trigger.
+  // Expect the specific AtMemory trigger.
   EXPECT_CALL(
       autofill_driver(),
       AskForValuesToFill(
@@ -718,7 +814,7 @@ class AtMemoryHandlerContentEditableTest : public AtMemoryHandlerTest {
   }
 };
 
-// Tests that @memory popup is triggered if we type just the "@@".
+// Tests that AtMemory popup is triggered if we type just the "@@".
 TEST_F(AtMemoryHandlerContentEditableTest, TriggerViaTyping) {
   EXPECT_CALL(
       autofill_driver(),
@@ -729,14 +825,14 @@ TEST_F(AtMemoryHandlerContentEditableTest, TriggerViaTyping) {
   SimulateSlowTyping("@@");
 }
 
-// Tests that @memory popup triggers if we type the "@@" one symbol at a
+// Tests that AtMemory popup triggers if we type the "@@" one symbol at a
 // time, and is not triggered when the subsequent characters are typed.
 TEST_F(AtMemoryHandlerContentEditableTest, TriggerSequence) {
   testing::MockFunction<void(int)> check_point;
   {
     testing::InSequence s;
 
-    // 1. Typing first "@" -> No @memory trigger.
+    // 1. Typing first "@" -> No AtMemory trigger.
     EXPECT_CALL(
         autofill_driver(),
         AskForValuesToFill(
@@ -745,7 +841,7 @@ TEST_F(AtMemoryHandlerContentEditableTest, TriggerSequence) {
         .Times(0);
     EXPECT_CALL(check_point, Call(1));
 
-    // 2. Typing second "@" -> @memory triggers.
+    // 2. Typing second "@" -> AtMemory triggers.
     EXPECT_CALL(
         autofill_driver(),
         AskForValuesToFill(
@@ -754,7 +850,7 @@ TEST_F(AtMemoryHandlerContentEditableTest, TriggerSequence) {
         .Times(1);
     EXPECT_CALL(check_point, Call(2));
 
-    // 3. Typing something else -> No @memory trigger.
+    // 3. Typing something else -> No AtMemory trigger.
     EXPECT_CALL(
         autofill_driver(),
         AskForValuesToFill(
@@ -775,7 +871,7 @@ TEST_F(AtMemoryHandlerContentEditableTest, TriggerSequence) {
   check_point.Call(3);
 }
 
-// Tests that @memory popup triggers in the presence of non-trivial symbols.
+// Tests that AtMemory popup triggers in the presence of non-trivial symbols.
 TEST_F(AtMemoryHandlerContentEditableTest, TriggerWithComplexPrecedingText) {
   EXPECT_CALL(
       autofill_driver(),
@@ -786,7 +882,7 @@ TEST_F(AtMemoryHandlerContentEditableTest, TriggerWithComplexPrecedingText) {
   SimulateSlowTyping("Memory log #123 (Feb 2026): @@");
 }
 
-// Tests that @memory popup doesn't trigger on a single "@".
+// Tests that AtMemory popup doesn't trigger on a single "@".
 TEST_F(AtMemoryHandlerContentEditableTest, NoTriggerOnSingleAt) {
   EXPECT_CALL(
       autofill_driver(),
@@ -797,7 +893,7 @@ TEST_F(AtMemoryHandlerContentEditableTest, NoTriggerOnSingleAt) {
   SimulateSlowTyping("@");
 }
 
-// Tests that @memory popup doesn't trigger on selection.
+// Tests that AtMemory popup doesn't trigger on selection.
 TEST_F(AtMemoryHandlerContentEditableTest, NoTriggerOnSelection) {
   EXPECT_CALL(
       autofill_driver(),
@@ -819,7 +915,7 @@ TEST_F(AtMemoryHandlerContentEditableTest, NoTriggerOnSelection) {
   test_api(autofill_agent()).ContentEditableDidChange(GetWebElementById("ce"));
 }
 
-// Tests that @memory popup triggers each time the new trigger is typed.
+// Tests that AtMemory popup triggers each time the new trigger is typed.
 TEST_F(AtMemoryHandlerContentEditableTest, MultipleTriggers) {
   // Verify that it triggers every time @@ is completed.
   EXPECT_CALL(
@@ -964,7 +1060,7 @@ TEST_F(AtMemoryHandlerContentEditableTest,
           _, _, _, Ne(AutofillSuggestionTriggerSource::kAtMemoryTriggerString),
           _))
       .Times(AnyNumber());
-  // Expect the specific @memory trigger.
+  // Expect the specific AtMemory trigger.
   EXPECT_CALL(
       autofill_driver(),
       AskForValuesToFill(
@@ -988,7 +1084,7 @@ TEST_F(AtMemoryHandlerContentEditableTest,
 // Tests that a non-standard trigger string works in <div contenteditable>
 // fields.
 TEST_F(AtMemoryHandlerContentEditableTest, NonStandardTriggerString) {
-  // Expect the specific @memory trigger.
+  // Expect the specific AtMemory trigger.
   EXPECT_CALL(
       autofill_driver(),
       AskForValuesToFill(
@@ -1025,6 +1121,257 @@ TEST_F(AtMemoryHandlerContentEditableTest, AtMemoryShortcutTrigger) {
   SendWebKeyboardEvent(event);
 
   task_environment_.RunUntilIdle();
+}
+
+class AtMemoryHandlerDoubleCtrlTest : public AtMemoryHandlerTest {
+ public:
+  enum class CommandKey { kLeft, kRight };
+
+  AtMemoryHandlerDoubleCtrlTest() {
+    feature_list_.InitAndEnableFeature(features::kAutofillAtMemoryDoubleCtrl);
+  }
+
+  // On Mac, we treat the Command (aka Windows aka Meta aka Super) key as the
+  // Ctrl key.
+  void SendCtrlKeyDown(CommandKey key = CommandKey::kLeft,
+                       bool is_auto_repeat = false) {
+    int modifiers = [] {
+      if constexpr (BUILDFLAG(IS_MAC)) {
+        return blink::WebInputEvent::kMetaKey;
+      } else {
+        return blink::WebInputEvent::kControlKey;
+      }
+    }();
+    if (is_auto_repeat) {
+      modifiers |= blink::WebInputEvent::kIsAutoRepeat;
+    }
+
+    blink::WebKeyboardEvent event(blink::WebInputEvent::Type::kRawKeyDown,
+                                  modifiers, base::TimeTicks::Now());
+
+    event.windows_key_code = [](CommandKey key) {
+      if constexpr (BUILDFLAG(IS_MAC)) {
+        switch (key) {
+          case CommandKey::kLeft:
+            return ui::VKEY_COMMAND;
+          case CommandKey::kRight:
+            return ui::VKEY_RIGHT_COMMAND;
+        }
+      } else {
+        // The WebKeyboardEvent::windows_key_code does not distinguish between
+        // left and right Ctrl buttons.
+        return ui::VKEY_CONTROL;
+      }
+    }(key);
+
+    event.dom_code = static_cast<int>([&key] {
+      if constexpr (BUILDFLAG(IS_MAC)) {
+        switch (key) {
+          case CommandKey::kLeft:
+            return ui::DomCode::META_LEFT;
+          case CommandKey::kRight:
+            return ui::DomCode::META_RIGHT;
+        }
+      } else {
+        switch (key) {
+          case CommandKey::kLeft:
+            return ui::DomCode::CONTROL_LEFT;
+          case CommandKey::kRight:
+            return ui::DomCode::CONTROL_RIGHT;
+        }
+      }
+      NOTREACHED();
+    }());
+
+    SendWebKeyboardEvent(event);
+  }
+
+ private:
+  base::test::ScopedFeatureList feature_list_;
+};
+
+// Tests that pressing Ctrl twice triggers AtMemory in an <input>.
+TEST_F(AtMemoryHandlerDoubleCtrlTest, DoubleCtrlTriggersAtMemoryInInput) {
+  LoadHTML(R"(<input id="f">)");
+  WaitForFormsSeen();
+  Focus("f");
+
+  EXPECT_CALL(autofill_driver(),
+              AskForValuesToFill(
+                  _, _, _,
+                  Eq(AutofillSuggestionTriggerSource::kAtMemoryDoubleCtrl), _));
+
+  SendCtrlKeyDown();
+  SendCtrlKeyDown();
+  task_environment_.RunUntilIdle();
+}
+
+// Tests that pressing Ctrl twice triggers AtMemory in a <textarea>.
+TEST_F(AtMemoryHandlerDoubleCtrlTest, DoubleCtrlTriggersAtMemoryInTextArea) {
+  LoadHTML(R"(<textarea id="f"></textarea>)");
+  WaitForFormsSeen();
+  Focus("f");
+
+  EXPECT_CALL(autofill_driver(),
+              AskForValuesToFill(
+                  _, _, _,
+                  Eq(AutofillSuggestionTriggerSource::kAtMemoryDoubleCtrl), _));
+
+  SendCtrlKeyDown();
+  SendCtrlKeyDown();
+  task_environment_.RunUntilIdle();
+}
+
+// Tests that pressing Ctrl twice triggers AtMemory in a contenteditable.
+TEST_F(AtMemoryHandlerDoubleCtrlTest,
+       DoubleCtrlTriggersAtMemoryInContentEditable) {
+  LoadHTML(R"(<div contenteditable id="f"></div>)");
+  WaitForFormsSeen();
+  Focus("f");
+
+  EXPECT_CALL(autofill_driver(),
+              AskForValuesToFill(
+                  _, _, _,
+                  Eq(AutofillSuggestionTriggerSource::kAtMemoryDoubleCtrl), _));
+
+  SendCtrlKeyDown();
+  SendCtrlKeyDown();
+  task_environment_.RunUntilIdle();
+}
+
+// Tests that typing an intervening character cancels the double Ctrl sequence.
+TEST_F(AtMemoryHandlerDoubleCtrlTest, InterveningKeyCancelsDoubleCtrl) {
+  LoadHTML(R"(<input id="f">)");
+  WaitForFormsSeen();
+  Focus("f");
+
+  EXPECT_CALL(
+      autofill_driver(),
+      AskForValuesToFill(
+          _, _, _, Eq(AutofillSuggestionTriggerSource::kAtMemoryDoubleCtrl), _))
+      .Times(0);
+  EXPECT_CALL(
+      autofill_driver(),
+      AskForValuesToFill(
+          _, _, _, Ne(AutofillSuggestionTriggerSource::kAtMemoryDoubleCtrl), _))
+      .Times(AnyNumber());
+
+  SendCtrlKeyDown();
+  SimulateUserTypingAsciiCharacter('a', /*flush_message_loop=*/true);
+  SendCtrlKeyDown();
+  task_environment_.RunUntilIdle();
+}
+
+// Tests that exceeding the timeout cancels the double Ctrl sequence.
+TEST_F(AtMemoryHandlerDoubleCtrlTest, TimeoutCancelsDoubleCtrl) {
+  LoadHTML(R"(<input id="f">)");
+  WaitForFormsSeen();
+  Focus("f");
+
+  EXPECT_CALL(
+      autofill_driver(),
+      AskForValuesToFill(
+          _, _, _, Eq(AutofillSuggestionTriggerSource::kAtMemoryDoubleCtrl), _))
+      .Times(0);
+  EXPECT_CALL(
+      autofill_driver(),
+      AskForValuesToFill(
+          _, _, _, Ne(AutofillSuggestionTriggerSource::kAtMemoryDoubleCtrl), _))
+      .Times(AnyNumber());
+
+  SendCtrlKeyDown();
+  task_environment_.FastForwardBy(base::Milliseconds(600));
+  SendCtrlKeyDown();
+  task_environment_.RunUntilIdle();
+}
+
+// Tests that an auto-repeat Ctrl keydown event does not trigger AtMemory.
+TEST_F(AtMemoryHandlerDoubleCtrlTest, AutoRepeatDoesNotTrigger) {
+  LoadHTML(R"(<input id="f">)");
+  WaitForFormsSeen();
+  Focus("f");
+
+  EXPECT_CALL(
+      autofill_driver(),
+      AskForValuesToFill(
+          _, _, _, Eq(AutofillSuggestionTriggerSource::kAtMemoryDoubleCtrl), _))
+      .Times(0);
+  EXPECT_CALL(
+      autofill_driver(),
+      AskForValuesToFill(
+          _, _, _, Ne(AutofillSuggestionTriggerSource::kAtMemoryDoubleCtrl), _))
+      .Times(AnyNumber());
+
+  SendCtrlKeyDown();
+  SendCtrlKeyDown(CommandKey::kLeft, /*is_auto_repeat=*/true);
+  task_environment_.RunUntilIdle();
+}
+
+// Tests that changing focus cancels the double Ctrl sequence.
+TEST_F(AtMemoryHandlerDoubleCtrlTest, FocusChangeCancelsDoubleCtrl) {
+  LoadHTML(R"(<input id="f1"><input id="f2">)");
+  WaitForFormsSeen();
+  Focus("f1");
+
+  EXPECT_CALL(
+      autofill_driver(),
+      AskForValuesToFill(
+          _, _, _, Eq(AutofillSuggestionTriggerSource::kAtMemoryDoubleCtrl), _))
+      .Times(0);
+  EXPECT_CALL(
+      autofill_driver(),
+      AskForValuesToFill(
+          _, _, _, Ne(AutofillSuggestionTriggerSource::kAtMemoryDoubleCtrl), _))
+      .Times(AnyNumber());
+
+  SendCtrlKeyDown();
+  Focus("f2");
+  SendCtrlKeyDown();
+  task_environment_.RunUntilIdle();
+}
+
+// Tests that Left Ctrl followed by Right Ctrl does not trigger AtMemory, but
+// Left Ctrl followed by two Right Ctrls does.
+TEST_F(AtMemoryHandlerDoubleCtrlTest, LeftCtrlFollowedByRightCtrl) {
+  LoadHTML(R"(<input id="f">)");
+  WaitForFormsSeen();
+  Focus("f");
+
+  testing::MockFunction<void(int)> check_point;
+  {
+    testing::InSequence s;
+    EXPECT_CALL(
+        autofill_driver(),
+        AskForValuesToFill(
+            _, _, _, Eq(AutofillSuggestionTriggerSource::kAtMemoryDoubleCtrl),
+            _))
+        .Times(0);
+    EXPECT_CALL(check_point, Call(1));
+    EXPECT_CALL(
+        autofill_driver(),
+        AskForValuesToFill(
+            _, _, _, Eq(AutofillSuggestionTriggerSource::kAtMemoryDoubleCtrl),
+            _))
+        .Times(1);
+    EXPECT_CALL(check_point, Call(2));
+  }
+
+  EXPECT_CALL(
+      autofill_driver(),
+      AskForValuesToFill(
+          _, _, _, Ne(AutofillSuggestionTriggerSource::kAtMemoryDoubleCtrl), _))
+      .Times(AnyNumber());
+
+  // 1. Left Ctrl followed by Right Ctrl does not trigger.
+  SendCtrlKeyDown(CommandKey::kLeft);
+  SendCtrlKeyDown(CommandKey::kRight);
+  task_environment_.RunUntilIdle();
+  check_point.Call(1);
+
+  // 2. A second Right Ctrl completes the Right Ctrl pair and triggers.
+  SendCtrlKeyDown(CommandKey::kRight);
+  task_environment_.RunUntilIdle();
+  check_point.Call(2);
 }
 
 class AtMemoryHandlerInactivityNudgeTest : public AtMemoryHandlerTest {

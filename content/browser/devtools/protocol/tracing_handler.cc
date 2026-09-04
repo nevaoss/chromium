@@ -60,6 +60,10 @@
 #include "third_party/abseil-cpp/absl/strings/ascii.h"
 #include "third_party/inspector_protocol/crdtp/json.h"
 
+#if BUILDFLAG(IS_WIN)
+#include "components/tracing/common/etw_stack_sampling_win.h"
+#endif
+
 #if BUILDFLAG(IS_ANDROID)
 #include "content/browser/renderer_host/compositor_impl_android.h"
 #endif
@@ -552,11 +556,13 @@ class TracingHandler::PerfettoTracingSession {
 
 TracingHandler::TracingHandler(DevToolsAgentHostImpl* host,
                                DevToolsIOContext* io_context,
-                               DevToolsSession* root_session)
+                               DevToolsSession* root_session,
+                               bool is_trusted)
     : DevToolsDomainHandler(Tracing::Metainfo::domainName),
       io_context_(io_context),
       host_(host),
       session_for_process_filter_(root_session),
+      is_trusted_(is_trusted),
       did_initiate_recording_(false),
       return_as_stream_(false),
       gzip_compression_(false),
@@ -756,6 +762,13 @@ void TracingHandler::Start(
     }
 
     ConvertToTrackEventConfigIfNeeded(trace_config);
+#if BUILDFLAG(IS_WIN)
+    // TODO(jessemckenna): replace this with
+    // `tracing::AdaptPerfettoConfigForChrome()`, to make sure all
+    // Chrome-specific config adaptations are applied.
+    tracing::AddEtwStackSamplingDebugIds(trace_config);
+#endif
+
   } else {
     base::trace_event::TraceConfig browser_config =
         base::trace_event::TraceConfig();
@@ -779,6 +792,12 @@ void TracingHandler::Start(
   if (!backend) {
     callback->sendFailure(Response::InvalidParams(
         "Unsupported value for tracing_backend parameter."));
+    return;
+  }
+
+  if (*backend == perfetto::BackendType::kSystemBackend && !is_trusted_) {
+    callback->sendFailure(Response::ServerError(
+        "System backend is not allowed for the current client"));
     return;
   }
 

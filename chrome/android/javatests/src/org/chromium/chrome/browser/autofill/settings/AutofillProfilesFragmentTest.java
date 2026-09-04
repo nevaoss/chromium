@@ -87,6 +87,7 @@ import org.chromium.base.test.util.Feature;
 import org.chromium.base.test.util.Features.DisableFeatures;
 import org.chromium.base.test.util.Features.EnableFeatures;
 import org.chromium.base.test.util.HistogramWatcher;
+import org.chromium.base.test.util.Restriction;
 import org.chromium.base.test.util.UserActionTester;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.R;
@@ -131,6 +132,7 @@ import org.chromium.components.sync.SyncService;
 import org.chromium.components.sync.UserSelectableType;
 import org.chromium.components.user_prefs.UserPrefs;
 import org.chromium.ui.KeyboardVisibilityDelegate;
+import org.chromium.ui.base.DeviceFormFactor;
 import org.chromium.ui.modaldialog.ModalDialogManager;
 import org.chromium.ui.modaldialog.ModalDialogProperties;
 import org.chromium.ui.modelutil.PropertyModel;
@@ -147,6 +149,8 @@ import java.util.concurrent.TimeoutException;
 /** Unit test suite for AutofillProfilesFragment. */
 @RunWith(ChromeJUnit4ClassRunner.class)
 @EnableFeatures({ChromeFeatureList.AUTOFILL_AI_SHOW_DIALOG_IN_SETTINGS_WHEN_UPSTREAMING_FAILS})
+// TODO(crbug.com/521895796): Adapt AutofillTestRule to work with SettingsInTab.
+@DisableFeatures({ChromeFeatureList.SETTINGS_IN_TAB})
 @CommandLineFlags.Add({ChromeSwitches.DISABLE_FIRST_RUN_EXPERIENCE})
 @Batch(Batch.PER_CLASS)
 public class AutofillProfilesFragmentTest {
@@ -2455,6 +2459,7 @@ public class AutofillProfilesFragmentTest {
 
     @Test
     @SmallTest
+    @Restriction(DeviceFormFactor.PHONE) // Tablets and desktops don't have a help button or menu.
     public void testHelpMenuTriggersAutofillHelp() {
         onView(withId(R.id.menu_id_targeted_help)).perform(click());
 
@@ -2937,5 +2942,74 @@ public class AutofillProfilesFragmentTest {
                         eq(AutofillProfilesFragment.class.getName()),
                         eq(AutofillProfilesFragment.PREF_EMAIL_VERIFICATION),
                         anyInt());
+    }
+
+    @Test
+    @SmallTest
+    @Feature({"Autofill"})
+    public void testSaveAndFillAddressesToggle_whenUserEnabled() {
+        PersonalDataManager spyPdm = setUpSpiedPersonalDataManager();
+        doReturn(true).when(spyPdm).isAutofillProfileEnabled();
+        ThreadUtils.runOnUiThreadBlocking(
+                () -> {
+                    mSettingsTestRule.getFragment().rebuildProfileList();
+                });
+        ChromeSwitchPreference switchPref =
+                mSettingsTestRule
+                        .getFragment()
+                        .findPreference(AutofillProfilesFragment.SAVE_AND_FILL_ADDRESSES);
+        assertNotNull(switchPref);
+        assertTrue(switchPref.isChecked());
+        assertTrue(switchPref.isEnabled());
+    }
+
+    @Test
+    @SmallTest
+    @Feature({"Autofill"})
+    public void testSaveAndFillAddressesToggle_whenUserDisabled() {
+        PersonalDataManager spyPdm = setUpSpiedPersonalDataManager();
+        doReturn(false).when(spyPdm).isAutofillProfileEnabled();
+        ThreadUtils.runOnUiThreadBlocking(
+                () -> {
+                    mSettingsTestRule.getFragment().rebuildProfileList();
+                });
+        ChromeSwitchPreference switchPref =
+                mSettingsTestRule
+                        .getFragment()
+                        .findPreference(AutofillProfilesFragment.SAVE_AND_FILL_ADDRESSES);
+        assertNotNull(switchPref);
+        assertFalse(switchPref.isChecked());
+        assertTrue(switchPref.isEnabled());
+    }
+
+    @Test
+    @SmallTest
+    @Feature({"Autofill"})
+    public void testSaveAndFillAddressesToggle_whenManagedByPolicy() {
+        PersonalDataManager spyPdm = setUpSpiedPersonalDataManager();
+        doReturn(true).when(spyPdm).isAutofillProfileManaged();
+        doReturn(false).when(spyPdm).isAutofillProfileEnabled();
+        ThreadUtils.runOnUiThreadBlocking(
+                () -> {
+                    mSettingsTestRule.getFragment().rebuildProfileList();
+                });
+        AutofillProfilesFragment fragment = mSettingsTestRule.getFragment();
+        ChromeSwitchPreference switchPref =
+                fragment.findPreference(AutofillProfilesFragment.SAVE_AND_FILL_ADDRESSES);
+        assertNotNull(switchPref);
+        // When managed by organization policy, the toggle must be shown as turned OFF.
+        assertFalse(switchPref.isChecked());
+        assertFalse(switchPref.isEnabled());
+        assertNotNull(switchPref.getManagedPreferenceDelegate());
+        assertTrue(
+                switchPref
+                        .getManagedPreferenceDelegate()
+                        .isPreferenceControlledByPolicy(switchPref));
+        assertTrue(switchPref.getManagedPreferenceDelegate().isPreferenceClickDisabled(switchPref));
+
+        // Add address button should not be shown when the setting is managed / disabled.
+        AutofillProfileEditorPreference addProfile =
+                fragment.findPreference(AutofillProfilesFragment.PREF_NEW_PROFILE);
+        assertNull(addProfile);
     }
 }

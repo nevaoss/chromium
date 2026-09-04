@@ -31,7 +31,7 @@ class EnterpriseSignalsDisclaimerBottomSheetView extends EnterpriseSignalsDiscla
         super(context, /* isDialog= */ false);
     }
 
-    public void setOnDestroyedCallback(Runnable callback) {
+    public void setOnDestroyedCallback(@Nullable Runnable callback) {
         mOnDestroyedCallback = callback;
     }
 
@@ -66,6 +66,11 @@ class EnterpriseSignalsDisclaimerBottomSheetView extends EnterpriseSignalsDiscla
 
     @Override
     public boolean swipeToDismissEnabled() {
+        return true;
+    }
+
+    @Override
+    public boolean showHandlebar() {
         return true;
     }
 

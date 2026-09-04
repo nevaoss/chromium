@@ -309,6 +309,7 @@
   E_CPONLY(kColorNewTabPageActiveBackground) \
   E_CPONLY(kColorNewTabPageAddShortcutBackground) \
   E_CPONLY(kColorNewTabPageAddShortcutForeground) \
+  E_CPONLY(kColorNewTabPageAddShortcutBackgroundHovered) \
   E_CPONLY(kColorNewTabPageAttributionForeground) \
   E_CPONLY(kColorNewTabPageBackground) \
   E_CPONLY(kColorNewTabPageBackgroundOverride) \
@@ -846,6 +847,8 @@
   E_CPONLY(kColorSettingsColumnedSectionDescriptionHeader) \
   /* Settings info card colors. */ \
   E_CPONLY(kColorSettingsInfoCardBackground) \
+  /* Settings page colors. */ \
+  E_CPONLY(kColorSettingsWebuiPageBackground) \
   /* Share-this-tab dialog colors. */ \
   E_CPONLY(kColorShareThisTabAudioToggleBackground) \
   E_CPONLY(kColorShareThisTabSourceViewBorder) \

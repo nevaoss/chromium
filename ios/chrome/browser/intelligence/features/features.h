@@ -290,6 +290,11 @@ PageActionMenuIconVariations GetPageActionMenuIcon();
 BASE_DECLARE_FEATURE(kGeminiBackendMigration);
 bool IsGeminiBackendMigrationEnabled();
 
+// Feature flag for enabling Project Aureus (quota enforcement and usage
+// limits).
+BASE_DECLARE_FEATURE(kGeminiAureus);
+bool IsGeminiAureusEnabled();
+
 // Feature flag for enabling Gemini actor.
 BASE_DECLARE_FEATURE(kGeminiActor);
 bool IsGeminiActorEnabled();
@@ -544,5 +549,11 @@ BASE_DECLARE_FEATURE(kPageContextScreenshotPasswordRedaction);
 
 // Returns true if `kPageContextScreenshotPasswordRedaction` is enabled.
 bool IsPageContextScreenshotPasswordRedactionEnabled();
+
+// When enabled, the "Get insights with Gemini chip" is disabled.
+BASE_DECLARE_FEATURE(kGeminiInsightsChipAblation);
+
+// Returns true if the `GeminiInsightsChipAblation` feature is enabled.
+bool IsGeminiInsightsChipAblationEnabled();
 
 #endif  // IOS_CHROME_BROWSER_INTELLIGENCE_FEATURES_FEATURES_H_

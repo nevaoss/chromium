@@ -111,6 +111,7 @@ class CONTENT_EXPORT WebContentsAccessibilityAndroid
   // happen multiple times. See WebContentsAccessibilityImpl.java for more info.
   void ConnectInstanceToRootManager(JNIEnv* env);
   bool IsRootManagerConnected(JNIEnv* env);
+  bool IsAXModeChangeAllowed(JNIEnv* env);
 
   // This method should only be used by the Auto-Disable accessibility feature.
   //
@@ -517,6 +518,10 @@ class CONTENT_EXPORT WebContentsAccessibilityAndroid
       JNIEnv* env,
       int32_t unique_id);
 
+  // Returns the selection range as text offsets for the given node.
+  // Returns nullptr if neither selection start nor end is on the given node, or
+  // `kAXAndroidUndefinedSelectionIndex` if either selection start or end is
+  // not on it.
   base::android::ScopedJavaLocalRef<jintArray> GetSelectionRangeAsTextOffsets(
       JNIEnv* env,
       int32_t unique_id);

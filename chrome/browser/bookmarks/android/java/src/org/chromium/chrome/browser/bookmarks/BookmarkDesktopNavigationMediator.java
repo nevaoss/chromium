@@ -5,6 +5,7 @@
 package org.chromium.chrome.browser.bookmarks;
 
 import android.content.Context;
+import android.content.res.Configuration;
 import android.graphics.drawable.Drawable;
 
 import androidx.appcompat.content.res.AppCompatResources;
@@ -228,7 +229,7 @@ class BookmarkDesktopNavigationMediator extends BookmarkModelObserver
         updateSelectionHighlight();
 
         if (Objects.equals(folder, mBookmarkModel.getRootFolderId()) && !isSmallScreen()) {
-            openFirstFolder();
+            refreshNavigationList();
         }
     }
 
@@ -237,6 +238,13 @@ class BookmarkDesktopNavigationMediator extends BookmarkModelObserver
         if (mode != BookmarkUiMode.FOLDER) {
             mCurrentFolderId = null;
             updateSelectionHighlight();
+        }
+    }
+
+    public void onConfigurationChanged(Configuration newConfig) {
+        if (!isSmallScreen(newConfig)
+                && Objects.equals(mCurrentFolderId, mBookmarkModel.getRootFolderId())) {
+            openFirstFolder();
         }
     }
 
@@ -250,14 +258,21 @@ class BookmarkDesktopNavigationMediator extends BookmarkModelObserver
         for (ListItem item : mModelList) {
             if (item.type == NavigationPaneProperties.ITEM_TYPE_NAVIGATION_ITEM) {
                 BookmarkId id = item.model.get(BookmarkDesktopNavigationProperties.BOOKMARK_ID);
-                mBookmarkDelegate.replaceFolder(id);
-                break;
+                if (id != null
+                        && mBookmarkModel.doesBookmarkExist(id)
+                        && !Objects.equals(id, mBookmarkModel.getRootFolderId())) {
+                    mBookmarkDelegate.replaceFolder(id);
+                    break;
+                }
             }
         }
     }
 
     private boolean isSmallScreen() {
-        return mContext.getResources().getConfiguration().screenWidthDp
-                < BookmarkUtils.WIDE_DISPLAY_THRESHOLD_DP;
+        return isSmallScreen(mContext.getResources().getConfiguration());
+    }
+
+    private static boolean isSmallScreen(Configuration config) {
+        return config.screenWidthDp < BookmarkUtils.WIDE_DISPLAY_THRESHOLD_DP;
     }
 }

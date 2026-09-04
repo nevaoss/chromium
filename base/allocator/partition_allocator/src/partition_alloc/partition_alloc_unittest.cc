@@ -2683,31 +2683,6 @@ TEST_P(PartitionAllocTest, LostFreeSlotSpansBug) {
   EXPECT_TRUE(bucket->decommitted_slot_spans_head);
 }
 
-TEST_P(PartitionAllocTest, CheckMetadataIntegrityPass) {
-  char* const small_ptr =
-      static_cast<char*>(allocator.root()->Alloc(kTestAllocSize));
-  ASSERT_TRUE(small_ptr);
-
-  // Should not crash.
-  PartitionRoot::CheckMetadataIntegrity(small_ptr);
-  PartitionRoot::CheckMetadataIntegrity(
-      PA_UNSAFE_TODO(small_ptr + kTestAllocSize - 1));
-
-  allocator.root()->Free(small_ptr);
-
-  constexpr size_t kDirectMapSize = BucketIndexLookup::kMaxBucketSize + 1;
-  char* const large_ptr =
-      static_cast<char*>(allocator.root()->Alloc(kDirectMapSize));
-  ASSERT_TRUE(large_ptr);
-
-  // Should not crash.
-  PartitionRoot::CheckMetadataIntegrity(large_ptr);
-  PartitionRoot::CheckMetadataIntegrity(
-      PA_UNSAFE_TODO(large_ptr + kDirectMapSize - 1));
-
-  allocator.root()->Free(large_ptr);
-}
-
 #if PA_USE_DEATH_TESTS()
 
 // Unit tests that check if an allocation fails in "return null" mode,
@@ -2914,13 +2889,6 @@ TEST_P(PartitionAllocDeathTest, ImmediateDoubleFree) {
   EXPECT_TRUE(ptr);
   allocator.root()->Free(ptr);
   EXPECT_DEATH(allocator.root()->Free(ptr), "");
-  if (
-#if PA_BUILDFLAG(ENABLE_BACKUP_REF_PTR_SUPPORT)
-      allocator.root()->brp_enabled() ||
-#endif  // PA_BUILDFLAG(ENABLE_BACKUP_REF_PTR_SUPPORT)
-      allocator.root()->settings_.use_cookie) {
-    EXPECT_DEATH(allocator.root()->CheckMetadataIntegrity(ptr), "");
-  }
 }
 
 // As above, but when this isn't the only slot in the span.
@@ -2931,13 +2899,6 @@ TEST_P(PartitionAllocDeathTest, ImmediateDoubleFree2ndSlot) {
   EXPECT_TRUE(ptr);
   allocator.root()->Free(ptr);
   EXPECT_DEATH(allocator.root()->Free(ptr), "");
-  if (
-#if PA_BUILDFLAG(ENABLE_BACKUP_REF_PTR_SUPPORT)
-      allocator.root()->brp_enabled() ||
-#endif  // PA_BUILDFLAG(ENABLE_BACKUP_REF_PTR_SUPPORT)
-      allocator.root()->settings_.use_cookie) {
-    EXPECT_DEATH(allocator.root()->CheckMetadataIntegrity(ptr), "");
-  }
   allocator.root()->Free(ptr0);
 }
 
@@ -3099,8 +3060,6 @@ TEST_P(PartitionAllocDeathTest, OffByOneDetectionByCookie) {
   // Crash at `free()`, either by cookie check failure or InSlotMetadata
   // corruption.
   EXPECT_DEATH(allocator.root()->Free(array), "");
-  // It should also crash with `CheckMetadataIntegrity()`.
-  EXPECT_DEATH(allocator.root()->CheckMetadataIntegrity(array), "");
   // Restore integrity, otherwise the process will crash in TearDown().
   PA_UNSAFE_TODO(array[usable_size] = previous_value);
   allocator.root()->Free(array);
@@ -3125,8 +3084,6 @@ TEST_P(PartitionAllocDeathTest, OffByOneDetectionByCookieWithRealisticData) {
   // Crash at `free()`, either by cookie check failure or InSlotMetadata
   // corruption.
   EXPECT_DEATH(allocator.root()->Free(array), "");
-  // It should also crash with `CheckMetadataIntegrity()`.
-  EXPECT_DEATH(allocator.root()->CheckMetadataIntegrity(array), "");
   // Restore integrity, otherwise the process will crash in TearDown().
   PA_UNSAFE_TODO(array[usable_size] = previous_value);
   allocator.root()->Free(array);
@@ -5069,8 +5026,7 @@ TEST_P(PartitionAllocTest, RefCountBasic) {
   EXPECT_TRUE(in_slot_metadata->ReleaseFromUnprotectedPtr());
   auto slot_info = partition_alloc::SlotAddressAndSize::FromBRPPool(
       reinterpret_cast<uintptr_t>(ptr1));
-  PartitionRoot::FreeAfterBRPQuarantine(
-      internal::UntaggedSlotStart(slot_info.slot_start), slot_info.size);
+  PartitionRoot::FreeAfterBRPQuarantine(slot_info);
   uint64_t* ptr3 =
       static_cast<uint64_t*>(allocator.root()->Alloc(alloc_size, type_name));
   PA_EXPECT_PTR_EQ(ptr1, ptr3);
@@ -5119,8 +5075,7 @@ void PartitionAllocTest::RunRefCountReallocSubtest(size_t orig_size,
 
     auto slot_info = partition_alloc::SlotAddressAndSize::FromBRPPool(
         reinterpret_cast<uintptr_t>(ptr1));
-    PartitionRoot::FreeAfterBRPQuarantine(
-        internal::UntaggedSlotStart(slot_info.slot_start), slot_info.size);
+    PartitionRoot::FreeAfterBRPQuarantine(slot_info);
   }
 
   allocator.root()->Free(ptr2);
@@ -5200,7 +5155,7 @@ TEST_P(PartitionAllocTest, ExtraExtrasNullfyOffByOneDetection) {
       {});
 
   // `ptr1` can be located at page start hence lacks in-slot style
-  // `InSlotMetadata`. See `InSlotMetadataPointer`.
+  // `InSlotMetadata`. See `InSlotMetadata::From`.
   int64_t* ptr1 = static_cast<int64_t*>(root_no_extra->Alloc(8));
   int64_t* ptr2 = static_cast<int64_t*>(root_no_extra->Alloc(8));
 
@@ -5306,7 +5261,7 @@ TEST_P(UnretainedDanglingRawPtrTest, UnretainedDanglingPtrShouldReport) {
 
   auto slot_info = partition_alloc::SlotAddressAndSize::FromBRPPool(
       reinterpret_cast<uintptr_t>(ptr));
-  PartitionRoot::FreeAfterBRPQuarantine(slot_info.slot_start, slot_info.size);
+  PartitionRoot::FreeAfterBRPQuarantine(slot_info);
 }
 
 #if !PA_BUILDFLAG(HAS_64_BIT_POINTERS)
@@ -5408,7 +5363,7 @@ TEST_P(PartitionAllocTest, DanglingPtr) {
 
   auto slot_info = partition_alloc::SlotAddressAndSize::FromBRPPool(
       reinterpret_cast<uintptr_t>(ptr));
-  PartitionRoot::FreeAfterBRPQuarantine(slot_info.slot_start, slot_info.size);
+  PartitionRoot::FreeAfterBRPQuarantine(slot_info);
 }
 
 // Allocate memory, and reference it from 3
@@ -5456,7 +5411,7 @@ TEST_P(PartitionAllocTest, DanglingDanglingPtr) {
 
   auto slot_info = partition_alloc::SlotAddressAndSize::FromBRPPool(
       reinterpret_cast<uintptr_t>(ptr));
-  PartitionRoot::FreeAfterBRPQuarantine(slot_info.slot_start, slot_info.size);
+  PartitionRoot::FreeAfterBRPQuarantine(slot_info);
 }
 
 // When 'free' is called, it remain one raw_ptr<> and one
@@ -5495,7 +5450,7 @@ TEST_P(PartitionAllocTest, DanglingMixedReleaseRawPtrFirst) {
 
   auto slot_info = partition_alloc::SlotAddressAndSize::FromBRPPool(
       reinterpret_cast<uintptr_t>(ptr));
-  PartitionRoot::FreeAfterBRPQuarantine(slot_info.slot_start, slot_info.size);
+  PartitionRoot::FreeAfterBRPQuarantine(slot_info);
 }
 
 // When 'free' is called, it remain one raw_ptr<> and one
@@ -5536,7 +5491,7 @@ TEST_P(PartitionAllocTest, DanglingMixedReleaseDanglingPtrFirst) {
 
   auto slot_info = partition_alloc::SlotAddressAndSize::FromBRPPool(
       reinterpret_cast<uintptr_t>(ptr));
-  PartitionRoot::FreeAfterBRPQuarantine(slot_info.slot_start, slot_info.size);
+  PartitionRoot::FreeAfterBRPQuarantine(slot_info);
 }
 
 // When 'free' is called, it remains one
@@ -5580,7 +5535,7 @@ TEST_P(PartitionAllocTest, DanglingPtrUsedToAcquireNewRawPtr) {
 
   auto slot_info = partition_alloc::SlotAddressAndSize::FromBRPPool(
       reinterpret_cast<uintptr_t>(ptr));
-  PartitionRoot::FreeAfterBRPQuarantine(slot_info.slot_start, slot_info.size);
+  PartitionRoot::FreeAfterBRPQuarantine(slot_info);
 }
 
 // Same as 'DanglingPtrUsedToAcquireNewRawPtr', but release the
@@ -5623,7 +5578,7 @@ TEST_P(PartitionAllocTest, DanglingPtrUsedToAcquireNewRawPtrVariant) {
 
   auto slot_info = partition_alloc::SlotAddressAndSize::FromBRPPool(
       reinterpret_cast<uintptr_t>(ptr));
-  PartitionRoot::FreeAfterBRPQuarantine(slot_info.slot_start, slot_info.size);
+  PartitionRoot::FreeAfterBRPQuarantine(slot_info);
 }
 
 // Acquire a raw_ptr<T>, and release it before freeing memory. In the
@@ -5663,7 +5618,7 @@ TEST_P(PartitionAllocTest, RawPtrReleasedBeforeFree) {
 
   auto slot_info = partition_alloc::SlotAddressAndSize::FromBRPPool(
       reinterpret_cast<uintptr_t>(ptr));
-  PartitionRoot::FreeAfterBRPQuarantine(slot_info.slot_start, slot_info.size);
+  PartitionRoot::FreeAfterBRPQuarantine(slot_info);
 }
 
 // Similar to `PartitionAllocTest.DanglingPtr`, but using
@@ -5724,7 +5679,7 @@ TEST_P(PartitionAllocTest, DanglingPtrReleaseToSchedulerLoopQuarantine) {
 
   auto slot_info = partition_alloc::SlotAddressAndSize::FromBRPPool(
       reinterpret_cast<uintptr_t>(ptr));
-  PartitionRoot::FreeAfterBRPQuarantine(slot_info.slot_start, slot_info.size);
+  PartitionRoot::FreeAfterBRPQuarantine(slot_info);
 
   EXPECT_TRUE(branch.IsQuarantined(ptr));
   branch.Purge();

@@ -126,6 +126,7 @@ public class UrlBar extends AutocompleteEditText {
     private boolean mDesiredCursorVisible = true;
     private boolean mFocusEventEmitted;
     private boolean mAllowFocus = true;
+    private boolean mAllowMultilineInput;
     private boolean mCurrentInputCanBeWrapped;
 
     /** Tracks whether a long-press was performed during the current touch gesture. */
@@ -435,9 +436,6 @@ public class UrlBar extends AutocompleteEditText {
 
         // Ensure the URL bar is ready to generate autocomplete suggestions on user input.
         if (focused) setIgnoreTextChangesForAutocomplete(false);
-        if (mFocusChangeCallback != null) {
-            mFocusChangeCallback.onResult(new UrlBarFocusChangeInfo(focused, direction));
-        }
 
         updateCursorVisibility();
 
@@ -455,6 +453,10 @@ public class UrlBar extends AutocompleteEditText {
             // limits.
             setEllipsize(focused ? null : TextUtils.TruncateAt.END);
             if (focused) clearBoundsEllipsisSpans(getText());
+        }
+
+        if (mFocusChangeCallback != null) {
+            mFocusChangeCallback.onResult(new UrlBarFocusChangeInfo(focused, direction));
         }
     }
 
@@ -504,8 +506,15 @@ public class UrlBar extends AutocompleteEditText {
                 && ToolbarVariationUtils.isToolbarUiRefactorEnabled(getContext());
     }
 
+    /** Sets whether this {@link UrlBar} should allow multiline input. */
+    public void setAllowMultilineInput(boolean allowMultiline) {
+        if (mAllowMultilineInput == allowMultiline) return;
+        mAllowMultilineInput = allowMultiline;
+        updateUrlBarForMultilineInput();
+    }
+
     private void updateUrlBarForMultilineInput() {
-        boolean wantWrap = mFocused && mCurrentInputCanBeWrapped;
+        boolean wantWrap = mAllowMultilineInput && mFocused && mCurrentInputCanBeWrapped;
         if (wantWrap == !isHorizontallyScrollable()) return;
         setHorizontallyScrolling(!wantWrap);
     }

@@ -7,6 +7,7 @@ package org.chromium.chrome.browser.ui.enterprise_signals_disclaimer;
 import android.content.Context;
 import android.graphics.drawable.Drawable;
 import android.text.method.LinkMovementMethod;
+import android.view.FocusFinder;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.View.OnClickListener;
@@ -53,10 +54,6 @@ class EnterpriseSignalsDisclaimerView extends FrameLayout {
         super(context);
         LayoutInflater.from(context)
                 .inflate(R.layout.enterprise_signals_disclaimer_layout, this, true);
-
-        // The handlebar should only be displayed for the bottom sheet version.
-        View handlebar = findViewById(R.id.bottom_sheet_handlebar);
-        handlebar.setVisibility(isDialog ? View.GONE : View.VISIBLE);
 
         mScrollView = findViewById(R.id.disclaimer_scroll_view);
         mDisclaimerLogo = findViewById(R.id.disclaimer_logo);
@@ -201,6 +198,20 @@ class EnterpriseSignalsDisclaimerView extends FrameLayout {
      */
     public void setOnCancelClicked(OnClickListener listener) {
         mCancelButton.setOnClickListener(listener);
+    }
+
+    /**
+     * Confines the focus search to the dialog. This prevents accidental dismissal by holding tab or
+     * arrows. If the last element is selected, the selection will loop back.
+     */
+    @Override
+    public View focusSearch(View focused, int direction) {
+        View nextCandidate = FocusFinder.getInstance().findNextFocus(this, focused, direction);
+        if (nextCandidate != null) {
+            return nextCandidate;
+        } else {
+            return FocusFinder.getInstance().findNextFocus(this, null, direction);
+        }
     }
 
     private void styleContainmentCard(

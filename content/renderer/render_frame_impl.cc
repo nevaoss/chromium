@@ -1053,7 +1053,14 @@ void FillMiscNavigationParams(
   navigation_params->should_have_sticky_user_activation =
       commit_params.should_have_sticky_user_activation;
 
+<<<<<<< HEAD
 #if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_NEVA_APPRUNTIME)
+=======
+  navigation_params->script_injection_policy =
+      commit_params.script_injection_policy;
+
+#if BUILDFLAG(IS_ANDROID)
+>>>>>>> 154.0.8030.0~1
   // Only android webview uses this.
   navigation_params->grant_load_local_resources =
       commit_params.can_load_local_resources;
@@ -4705,7 +4712,8 @@ void RenderFrameImpl::FinalizeRequestInternal(
     request.SetHttpHeaderField(
         blink::WebString::FromUtf8(blink::kDoNotTrackHeader), "1");
   }
-  if (blink::IsGlobalPrivacyControlFeatureAndSettingEnabled()) {
+  if (blink::IsGlobalPrivacyControlFeatureAndSettingEnabled(
+          GetWebView()->GetRendererPreferences())) {
     request.SetHttpHeaderField(
         blink::WebString::FromUtf8(blink::kGlobalPrivacyControlHeader), "1");
     blink::MaybeRecordGlobalPrivacyControlSourceMetric(

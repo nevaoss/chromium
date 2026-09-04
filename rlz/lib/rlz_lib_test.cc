@@ -740,6 +740,16 @@ TEST_F(RlzLibTest, SendFinancialPingDuringShutdown) {
 
   EXPECT_TRUE(rlz_lib::test::WasSendFinancialPingInterrupted());
   rlz_lib::test::ResetSendFinancialPingInterrupted();
+
+  // Wait for the background thread to finish and clean up any pending network
+  // requests so that the URLLoaderFactory remote is disconnected before
+  // `test_url_loader_factory` is destroyed.
+  io_thread.Stop();
+  while (test_url_loader_factory.NumPending() > 0) {
+    test_url_loader_factory.SimulateResponseForPendingRequest(
+        test_url_loader_factory.GetPendingRequest(0)->request.url.spec(), "",
+        net::HTTP_NOT_FOUND);
+  }
 }
 
 TEST_F(RlzLibTest, ClearProductState) {
@@ -1094,10 +1104,10 @@ TEST_F(ReadonlyRlzDirectoryTest, SupplementaryBrandingDoesNotCrash) {
 }
 
 // Regression test for http://crbug.com/141108
-#if BUILDFLAG(IS_MAC)
+#if BUILDFLAG(IS_APPLE)
 // Calling fork() without exec() in a multi-threaded process is not supported on
-// macOS by Apple's Foundation/libdispatch runtime and causes child processes
-// calling Cocoa APIs to crash or deadlock.
+// Apple platforms (macOS/iOS) by Apple's Foundation/libdispatch runtime and
+// causes child processes calling Cocoa APIs to crash or deadlock.
 #define MAYBE_ConcurrentStoreAccessWithProcessExitsWhileLockHeld \
   DISABLED_ConcurrentStoreAccessWithProcessExitsWhileLockHeld
 #else

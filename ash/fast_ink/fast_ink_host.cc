@@ -97,7 +97,6 @@ std::unique_ptr<FastInkHost::ScopedPaint> FastInkHost::CreateScopedPaint(
 
 std::unique_ptr<viz::CompositorFrame> FastInkHost::CreateCompositorFrame(
     const viz::BeginFrameAck& begin_frame_ack,
-    UiResourceManager& resource_manager,
     viz::ClientResourceProvider& client_resource_provider,
     cc::ResourcePool& resource_pool,
     bool auto_update,
@@ -110,7 +109,8 @@ std::unique_ptr<viz::CompositorFrame> FastInkHost::CreateCompositorFrame(
 
   auto frame = fast_ink_internal::CreateCompositorFrame(
       begin_frame_ack, GetContentRect(), GetTotalDamage(), auto_update,
-      *host_window(), &resource_manager, client_shared_image_, sync_token_);
+      *host_window(), client_resource_provider, client_shared_image_,
+      sync_token_);
 
   ResetDamage();
 

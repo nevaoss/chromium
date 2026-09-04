@@ -9,6 +9,7 @@
 #include <vector>
 
 #include "base/notimplemented.h"
+#include "base/task/sequenced_task_runner.h"
 #include "build/branding_buildflags.h"
 #include "build/buildflag.h"
 #include "chrome/browser/actor/ui/actor_ui_window_controller.h"
@@ -25,6 +26,7 @@
 #include "chrome/browser/ui/omnibox/omnibox_controller.h"
 #include "chrome/browser/ui/omnibox/omnibox_edit_model.h"
 #include "chrome/browser/ui/omnibox/omnibox_view.h"
+#include "chrome/browser/ui/page_info/page_info_dialog.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/views/bubble_anchor_util_views.h"
 #include "chrome/browser/ui/views/location_bar/location_bar_actions.h"
@@ -55,6 +57,7 @@
 #include "components/omnibox/browser/location_bar_model.h"
 #include "components/strings/grit/components_strings.h"
 #include "content/public/browser/navigation_entry.h"
+#include "content/public/browser/render_widget_host_view.h"
 #include "ui/base/dragdrop/drag_drop_types.h"
 #include "ui/base/dragdrop/mojom/drag_drop_types.mojom.h"
 #include "ui/base/dragdrop/os_exchange_data.h"
@@ -199,13 +202,17 @@ void WebUILocationBar::PropagateFocusRequest(
   // TODO(crbug.com/503784990): Handle immersive lock; this is tricky since
   // our focus request is async. Compare OmniboxViewViews::SetFocus.
   // `toolbar_delegate_` is null in some tests.
+
+  // In case of full popup, we want to hand over control to it immediately,
+  // so do what OmniboxViewViews would, rather than going to our WebUI.
   if (using_full_popup_) {
-    if (target == toolbar_ui_api::mojom::FocusRequestTarget::kSearch) {
-      omnibox_view_->EnterKeywordModeForDefaultSearchProvider();
-    }
-    omnibox_popup_view_->OnFocus(
-        /*query_zps=*/target !=
-        toolbar_ui_api::mojom::FocusRequestTarget::kLocationBar);
+    // ... well, almost immediately, since we may be in middle of activation
+    // (see views::Widget::Activate()), so trying to activate the popup instead
+    // can make things very unhappy.
+    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+        FROM_HERE,
+        base::BindOnce(&WebUILocationBar::HandleFocusRequestForFullPopup,
+                       weak_ptr_factory_.GetWeakPtr(), target));
   } else if (toolbar_delegate_) {
     toolbar_delegate_->OnFocusRequested(target);
   }
@@ -600,6 +607,9 @@ void WebUILocationBar::UpdateLhsChipsState(bool icon_known) {
           location_icon_, mojo_security_level, security_chip_text,
           location_bar::GetSecurityChipTooltipText(is_editing_or_empty),
           toolbar_ui_api::mojom::SecurityChipAccessibilityState::New(
+              accessibility_state.role == ax::mojom::Role::kImage
+                  ? toolbar_ui_api::mojom::SecurityChipRole::kImage
+                  : toolbar_ui_api::mojom::SecurityChipRole::kButton,
               accessibility_state.name, accessibility_state.description),
           is_clickable, is_text_dangerous, !ShouldChipOverrideLocationIcon(),
           is_context_menu_visible),
@@ -746,12 +756,18 @@ void WebUILocationBar::ShowPageInfoBubble() {
     anchor_element = GetAnchorOrNull();
   }
 
+  base::OnceClosure initialized_callback =
+      GetPageInfoDialogCreatedCallbackForTesting()                   // IN-TEST
+          ? std::move(GetPageInfoDialogCreatedCallbackForTesting())  // IN-TEST
+          : base::DoNothing();
+
   std::unique_ptr<PageInfoBubbleSpecification> specification =
       PageInfoBubbleSpecification::Builder(
           anchor_element ? views::BubbleAnchor(anchor_element)
                          : views::BubbleAnchor(toolbar_delegate_->GetView()),
           toolbar_delegate_->GetView()->GetWidget()->GetNativeWindow(),
           contents, entry->GetVirtualURL())
+          .AddInitializedCallback(std::move(initialized_callback))
           .AddPageInfoClosingCallback(
               base::BindOnce(&WebUILocationBar::OnPageInfoBubbleClosed,
                              weak_ptr_factory_.GetWeakPtr()))
@@ -781,6 +797,43 @@ void WebUILocationBar::OnPageInfoBubbleClosed(
   // the bubble via ESC key or close button. This allows the user to easily tab
   // into the reload infobar.
   FocusLocation(/*is_user_initiated=*/false, /*clear_focus_if_failed=*/false);
+}
+
+void WebUILocationBar::HandleFocusRequestForFullPopup(
+    toolbar_ui_api::mojom::FocusRequestTarget target) {
+  // Of things handled here, only kLocationBar is not user-inititiated.
+  const bool is_user_initiated =
+      (target != toolbar_ui_api::mojom::FocusRequestTarget::kLocationBar);
+  const bool omnibox_already_focused =
+      omnibox_view_->has_focus() ||
+      static_cast<OmniboxPopupViewFullWebUI*>(omnibox_popup_view_.get())
+          ->is_focused();
+
+  if (is_user_initiated) {
+    // TODO(crbug.com/546101626): this seems to fail sometimes because of
+    // incorrectly set user_input_in_progress() bit.
+    omnibox_controller_->edit_model()->Unelide();
+  }
+
+  if (omnibox_already_focused) {
+    omnibox_controller_->edit_model()->ClearKeyword();
+  }
+
+  // See comments in OmniboxViewViews::SetFocus.
+  if (is_user_initiated || !omnibox_already_focused) {
+    omnibox_view_->SelectAll(true);
+  }
+
+  if (target == toolbar_ui_api::mojom::FocusRequestTarget::kSearch) {
+    omnibox_view_->EnterKeywordModeForDefaultSearchProvider();
+  }
+
+  omnibox_popup_view_->OnFocus(is_user_initiated);
+
+  // TODO(crbug.com/546101626): This is a bit off; there is risk of races
+  // (but that's true overall), and sometimes this side doesn't know about
+  // unelide results.
+  omnibox_popup_view_->SyncNativeStateToWebUI(is_user_initiated);
 }
 
 void WebUILocationBar::SetSuppressionThresholdForTesting(

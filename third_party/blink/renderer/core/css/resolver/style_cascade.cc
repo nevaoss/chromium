@@ -226,13 +226,9 @@ const CSSSyntaxDefinition* FindOrNull(
   return it->value;
 }
 
-// The `container_tree_scope` is the tree scope holding the @container
-// rule being evaluated. For @container rules within @function, this is
-// the same tree scope as the enclosing @function is defined in.
 bool EvaluateContainerQueries(Element& element,
                               PseudoId pseudo_id,
                               const ContainerQuerySet& queries,
-                              const TreeScope* container_tree_scope,
                               Element* nearest_size_container,
                               MatchResult& match_result) {
   for (const ContainerQuery* query : queries.Queries()) {
@@ -249,8 +245,8 @@ bool EvaluateContainerQueries(Element& element,
     Element* starting_element =
         ContainerQueryEvaluator::DetermineStartingElement(
             element, pseudo_id, selector, nearest_size_container);
-    Element* container = ContainerQueryEvaluator::FindContainer(
-        starting_element, selector, container_tree_scope);
+    Element* container =
+        ContainerQueryEvaluator::FindContainer(starting_element, selector);
     if (!container) {
       continue;
     }
@@ -1294,7 +1290,7 @@ StyleCascade::MakeFunctionContextFromMixinAndResolveSubstitutions(
       for (const MixinParameterBindings::CQDependentValue& candidate :
            base::Reversed(candidates)) {
         if (EvaluateContainerQueries(state_.GetElement(), state_.GetPseudoId(),
-                                     *candidate.container_queries, tree_scope,
+                                     *candidate.container_queries,
                                      state_.NearestSizeContainer(),
                                      match_result_)) {
           locals_after_cq.Set(name, candidate.data);
@@ -1946,6 +1942,8 @@ bool StyleCascade::ResolveFunctionInto(StringView function_name,
     ++parameter_idx;
   }
 
+  wtf_size_t invocation_count = resolver.NextFunctionInvocationCount();
+
   if (!ResolveUnresolvedFunctionDefaults(
           unresolved_defaults, local_types, function, function_tree_scope,
           function_context, resolver, &context, function_arguments)) {
@@ -1972,7 +1970,8 @@ bool StyleCascade::ResolveFunctionInto(StringView function_name,
       .locals = {},  // Populated by ApplyLocalVariables.
       .unresolved_locals = unresolved_locals,
       .local_types = local_types,
-      .parent = function_context};
+      .parent = function_context,
+      .invocation_count = invocation_count};
 
   ApplyLocalVariables(resolver, context, local_function_context);
 
@@ -2069,7 +2068,8 @@ bool StyleCascade::ResolveUnresolvedFunctionDefaults(
         .locals = {},  // Populated by ApplyLocalVariables.
         .unresolved_locals = unresolved_defaults,
         .local_types = local_types,
-        .parent = function_context};
+        .parent = function_context,
+        .invocation_count = resolver.FunctionInvocationCount()};
 
     ApplyLocalVariables(resolver, *context, default_context);
 
@@ -2130,12 +2130,13 @@ CSSParserLocalContext StyleCascade::GetCSSParserLocalContext(
   // TODO(crbug.com/489688671): We might have the same function name between
   // different tree scopes, then we need to make CSSParserLocalContext aware of
   // tree scope name.
-  const AtomicString& function_name =
-      function_context && function_context->function
-          ? function_context->function->Name()
-          : g_null_atom;
+  if (function_context && function_context->function) {
+    return CSSParserLocalContext(*property_name, CSSPropertyID::kInvalid,
+                                 function_context->function->Name(),
+                                 function_context->invocation_count);
+  }
   return CSSParserLocalContext(*property_name, CSSPropertyID::kInvalid,
-                               function_name);
+                               g_null_atom);
 }
 
 // Resolves a typed expression; in practice, either a function
@@ -2325,10 +2326,10 @@ void StyleCascade::FlattenFunctionBody(
     } else if (auto* container_rule =
                    DynamicTo<StyleRuleContainer>(child.Get())) {
       state_.StyleBuilder().SetHasContainerRelativeValue();
-      if (EvaluateContainerQueries(
-              state_.GetElement(), state_.GetPseudoId(),
-              container_rule->GetContainerQuerySet(), function_tree_scope,
-              state_.NearestSizeContainer(), match_result_)) {
+      if (EvaluateContainerQueries(state_.GetElement(), state_.GetPseudoId(),
+                                   container_rule->GetContainerQuerySet(),
+                                   state_.NearestSizeContainer(),
+                                   match_result_)) {
         FlattenFunctionBody(*container_rule, function_tree_scope, result,
                             locals);
       }

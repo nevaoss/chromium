@@ -30,6 +30,11 @@ BASE_FEATURE(kPrerender2WarmUpCompositorForWebView,
 BASE_FEATURE(kStartupNonBlockingWebViewConstructor,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
+// When enabled, starts observing for Android OS accessibility changes on
+// startup.
+BASE_FEATURE(kWebViewObserveAccessibilityState,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+
 // Kill switch for Profile.addQuicHints.
 BASE_FEATURE(kWebViewAddQuicHints, base::FEATURE_ENABLED_BY_DEFAULT);
 
@@ -51,6 +56,10 @@ BASE_FEATURE(kWebViewBackgroundClassPreloading,
 // `kWebViewEarlyTracingInit`. If both flags are enabled,
 // `kWebViewEarlyTracingInit` will take precedent.
 BASE_FEATURE(kWebViewBackgroundTracingInit, base::FEATURE_DISABLED_BY_DEFAULT);
+
+// Enables boosting the renderer main thread priority during navigation.
+BASE_FEATURE(kWebViewBoostRendererPriorityOnNavigation,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables parsing a custom header passed by the WebView embedder during a
 // prefetch request that allows bypassing the HTTP cache for that request.

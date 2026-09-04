@@ -81,6 +81,9 @@ inline constexpr base::FeatureParam<int>
         &kOmniboxFullWebUIDeferShowUntilVisualStateReady,
         "omnibox_full_webui_defer_show_until_visual_state_ready_timeout_ms",
         250};
+BASE_DECLARE_FEATURE(kOmniboxWebUIDebounceResize);
+BASE_DECLARE_FEATURE(kOmniboxAimDebounceResize);
+BASE_DECLARE_FEATURE(kOmniboxFullWebUIDebounceResize);
 BASE_DECLARE_FEATURE(kOmniboxWebUIPopupStabilizeStartupShow);
 BASE_DECLARE_FEATURE(kOmniboxAimDetachWebContentsOnHide);
 BASE_DECLARE_FEATURE(kOmniboxWebUIDetachWebContentsOnHide);
@@ -98,6 +101,7 @@ BASE_DECLARE_FEATURE(kHideAimEntrypointForUrlSuggestions);
 BASE_DECLARE_FEATURE(kOmniboxMultimodalInput);
 BASE_DECLARE_FEATURE(kAndroidDesktopAimGate);
 BASE_DECLARE_FEATURE(kOmniboxDebounceKeyboardVisibility);
+BASE_DECLARE_FEATURE(kOmniboxDisableTabsForCanvas);
 BASE_DECLARE_FEATURE(kAim3pEntrypoint);
 extern const base::FeatureParam<bool> kAim3pEntrypointDebug;
 
@@ -124,6 +128,10 @@ BASE_DECLARE_FEATURE(kUrlScoringModel);
 // start prefetching the suggestion. The feature only applies to search
 // suggestions and only controls whether the signal is sent.
 BASE_DECLARE_FEATURE(kOmniboxTouchDownTriggerForPrefetch);
+
+// Allows for off-main-thread (OMT) prefetch of search suggestions upon touch
+// down on Android.
+BASE_DECLARE_FEATURE(kOmniboxPrefetchSelectedSuggestionsOmtAndroid);
 
 // Enables simultaneous prefetch and navigation on Enter KeyDown in Omnibox.
 BASE_DECLARE_FEATURE(kOmniboxSearchPrefetchOnEnterKeyDown);
@@ -188,6 +196,7 @@ extern const base::FeatureParam<bool> kComposeboxDriveIdentityFallback;
 BASE_DECLARE_FEATURE(kComposeboxDriveContextMenuOptionDisclaimer);
 extern const base::FeatureParam<int> kComposeboxDriveConsentFlowId;
 extern const base::FeatureParam<int> kComposeboxDriveConsentProductId;
+extern const base::FeatureParam<int> kComposeboxDriveConsentProductSurface;
 extern const base::FeatureParam<std::string>
     kComposeboxDriveConsentEntrypointId;
 
@@ -230,6 +239,7 @@ BASE_DECLARE_FEATURE(kSuppressIntermediateACUpdatesOnLowEndDevices);
 BASE_DECLARE_FEATURE(kPostDelayedTaskFocusTab);
 BASE_DECLARE_FEATURE(kResetSuggestionsScroll);
 BASE_DECLARE_FEATURE(kOmniboxSessionlessVoiceSearch);
+BASE_DECLARE_FEATURE(kSuppressStatusIconDuringHttpNavigation);
 #endif  // BUILDFLAG(IS_ANDROID)
 
 // If enabled, X-Geo headers are sent for all search navigations on all
@@ -289,6 +299,8 @@ extern const base::FeatureParam<bool> kAskGBlockAutoTabZeroStateSuggestions;
 extern const base::FeatureParam<bool> kAskGComposeboxPlaceholder;
 // Whether to bypass the Lens privacy notice.
 extern const base::FeatureParam<bool> kAskGBypassPrivacyNotice;
+// Whether to show a chip instead of action for Ask G.
+extern const base::FeatureParam<bool> kAskGShowChip;
 // Note: no new flags beyond this point.
 
 namespace flag_descriptions {

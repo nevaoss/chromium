@@ -250,7 +250,6 @@ class ManualFillingMediator
         if (controlsManager != null) {
             mAccessorySheet.setContentOffsetSupplier(controlsManager::getContentOffset);
         }
-        mAccessorySheet.setOnPageChangeListener(mKeyboardAccessory.getOnPageChangeListener());
         mAccessorySheet.setHeight(getIdealSheetHeight());
         mApplicationViewportInsetTracker =
                 mWindowAndroid.getApplicationBottomInsetTracker().getSupplier();
@@ -513,7 +512,7 @@ class ManualFillingMediator
         if (webContents != null && !webContents.isDestroyed()) {
             enabled = ManualFillingComponentBridge.isAtMemoryEnabled(webContents);
             if (!enabled) {
-                // Hide the @memory bottom sheet if not enabled.
+                // Hide the AtMemory bottom sheet if not enabled.
                 ManualFillingComponentBridge.hideAtMemoryBottomSheet(webContents);
             }
         }

@@ -11,6 +11,7 @@
 #include "base/check_is_test.h"
 #include "base/functional/bind.h"
 #include "base/i18n/time_formatting.h"
+#include "base/metrics/histogram_functions.h"
 #include "base/no_destructor.h"
 #include "base/notreached.h"
 #include "base/strings/escape.h"
@@ -258,9 +259,9 @@ void PolicyLogger::AddLog(PolicyLogger::Log&& new_log) {
   {
     base::AutoLock lock(lock_);
 
-    // The logs deque size should not exceed `kMaxLogsSize`. Remove the first
+    // The logs deque size should not exceed `kMaxLogCount`. Remove the first
     // log if the size is reached before adding the new log.
-    if (logs_.size() == kMaxLogsSize) {
+    if (logs_.size() == kMaxLogCount) {
       logs_.pop_front();
     }
 
@@ -319,10 +320,20 @@ void PolicyLogger::EnableLogDeletion() {
   is_log_deletion_enabled_ = true;
 }
 
-size_t PolicyLogger::GetPolicyLogsSizeForTesting() {
-  CHECK_IS_TEST();
-  base::AutoLock lock(lock_);
-  return logs_.size();
+void PolicyLogger::RecordPerformanceMetrics() {
+  size_t memory_usage = 0;
+  size_t log_count = 0;
+  {
+    base::AutoLock lock(lock_);
+    for (const auto& log : logs_) {
+      memory_usage += sizeof(Log) + log.message().size();
+    }
+    log_count = logs_.size();
+  }
+  base::UmaHistogramCounts1M("Enterprise.PolicyLogger.MemoryUsage.Uncompressed",
+                             memory_usage);
+  base::UmaHistogramCounts10000("Enterprise.PolicyLogger.LogCount.Uncompressed",
+                                log_count);
 }
 
 void PolicyLogger::ResetLoggerForTesting() {

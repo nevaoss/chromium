@@ -16,6 +16,7 @@
 #include "base/time/time.h"
 #include "chrome/browser/ui/browser_window/public/browser_collection_observer.h"
 #include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"
+#include "chrome/browser/ui/omnibox/omnibox_everywhere_service.h"
 #include "chrome/browser/ui/webui/top_chrome/webui_contents_wrapper.h"
 #include "components/prefs/pref_change_registrar.h"
 #include "content/public/browser/context_menu_params.h"
@@ -30,6 +31,7 @@
 
 class Profile;
 class ScopedKeepAlive;
+class SkBitmap;
 
 namespace views {
 class MenuRunner;
@@ -41,6 +43,7 @@ namespace omnibox_everywhere {
 #if defined(USE_AURA)
 class OmniboxEverywhereEventHandlerAura;
 #endif
+class OmniboxEverywhereRegionSelectOverlay;
 class OmniboxEverywhereWidgetDelegate;
 
 // Manages the desktop Omnibox Everywhere native window (views::Widget)
@@ -162,8 +165,17 @@ class OmniboxEverywhereUIManager : public views::WidgetObserver,
   void OnDrivePickerOpened();
   void OnDrivePickerClosed();
 
+  using RegionCaptureSource = OmniboxEverywhereService::RegionCaptureSource;
+
   void OnScreensharePickerOpened();
   void OnScreensharePickerClosed();
+  using RegionSelectedCallback =
+      base::OnceCallback<void(const SkBitmap& result_bitmap)>;
+  void ShowRegionSelectOverlay(const SkBitmap& screenshot,
+                               const RegionCaptureSource& source,
+                               RegionSelectedCallback callback);
+  void OnRegionSelectOverlayClosed(RegionSelectedCallback callback,
+                                   const SkBitmap& result_bitmap);
 
   // BrowserCollectionObserver:
   void OnBrowserCreated(BrowserWindowInterface* browser) override {}
@@ -197,6 +209,9 @@ class OmniboxEverywhereUIManager : public views::WidgetObserver,
   bool is_screenshare_picker_open_for_testing() const {
     return is_screenshare_picker_open_;
   }
+  OmniboxEverywhereRegionSelectOverlay* region_select_overlay_for_testing() {
+    return region_select_overlay_.get();
+  }
   bool is_context_menu_open_for_testing() const {
     return is_context_menu_open_;
   }
@@ -219,6 +234,7 @@ class OmniboxEverywhereUIManager : public views::WidgetObserver,
   void ActivateAndFocus();
   void OnEphemeralModelPrefChanged();
   void OnMostVisitedPrefChanged();
+  void RecordFreImpression();
   static gfx::Rect CalculateWidgetBounds(int height);
 
   // Try and acquire process and profile keep alives. If unsuccessful, releases
@@ -254,6 +270,7 @@ class OmniboxEverywhereUIManager : public views::WidgetObserver,
   std::unique_ptr<OmniboxEverywhereWidgetDelegate> widget_delegate_;
   std::unique_ptr<views::Widget> widget_;
   std::unique_ptr<ScopedKeepAlive> keep_alive_;
+  std::unique_ptr<OmniboxEverywhereRegionSelectOverlay> region_select_overlay_;
 
   bool is_file_chooser_open_ = false;
   bool is_drive_picker_open_ = false;

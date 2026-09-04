@@ -770,6 +770,8 @@ std::string AimEligibilityService::RequestSourceToString(RequestSource source) {
       return "RefreshTokenError";
     case RequestSource::kOAuthFallbackCookieChange:
       return "OAuthFallbackCookieChange";
+    case RequestSource::kLocaleChange:
+      return "LocaleChange";
   }
 }
 
@@ -1139,8 +1141,7 @@ void AimEligibilityService::StartServerEligibilityRequest(
     request->method = "POST";
   }
 
-  if (request_source == RequestSource::kAimUrlNavigation &&
-      base::FeatureList::IsEnabled(
+  if (base::FeatureList::IsEnabled(
           omnibox::kAimServerEligibilitySendCoBrowseUserAgentSuffixEnabled) &&
       !configuration_.user_agent_with_cobrowse_suffix.empty()) {
     request->headers.SetHeader("User-Agent",

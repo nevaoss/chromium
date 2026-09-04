@@ -31,11 +31,6 @@ GetReplacements() {
             base::FeatureList::IsEnabled(::kAutofillSupportDateInput)
         ? @"true"
         : @"false",
-    @"gCrWebPlaceholderAutofillCorrectUserEditedBitInParsedField" :
-            base::FeatureList::IsEnabled(
-                ::kAutofillCorrectUserEditedBitInParsedField)
-        ? @"true"
-        : @"false",
     @"gCrWebPlaceholderAutofillAllowDefaultPreventedSubmission" :
             base::FeatureList::IsEnabled(
                 ::kAutofillAllowDefaultPreventedSubmission)
@@ -60,6 +55,10 @@ GetReplacements() {
         : @"false",
     @"gCrWebPlaceholderAutofillTrackPasswordFieldsIos" :
             base::FeatureList::IsEnabled(::kAutofillTrackPasswordFieldsIos)
+        ? @"true"
+        : @"false",
+    @"gCrWebPlaceholderAutofillSupportContentEditable" :
+            base::FeatureList::IsEnabled(::kAutofillSupportContentEditableIos)
         ? @"true"
         : @"false",
   };

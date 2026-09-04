@@ -36,7 +36,7 @@ impl<'a> hb_ot_shape_planner_t<'a> {
         language: Option<&Language>,
     ) -> Self {
         let ot_map = hb_ot_map_builder_t::new(face, script, language);
-        let aat_map = AatMapBuilder::default();
+        let aat_map = AatMapBuilder::new(language);
 
         let mut shaper = match script {
             Some(script) => hb_ot_shape_complex_categorize(
@@ -51,7 +51,7 @@ impl<'a> hb_ot_shape_planner_t<'a> {
         let script_fallback_position = shaper.fallback_position;
 
         // https://github.com/harfbuzz/harfbuzz/issues/2124
-        let apply_morx = face.aat_tables.morx.is_some()
+        let apply_morx = (face.aat_tables.morx.is_some() || face.aat_tables.mort.is_some())
             && (direction.is_horizontal() || face.ot_tables.gsub.is_none());
 
         // https://github.com/harfbuzz/harfbuzz/issues/1528
@@ -413,7 +413,11 @@ impl OtShapeContext<'_, '_> {
 
         if self.plan.apply_morx {
             aat::layout::substitute(self.plan, self.face, self.buffer, self.features);
-            self.buffer.update_digest();
+            // The digest is only read by the OT lookup-apply loop; without
+            // GPOS ahead, nothing consumes it.
+            if self.plan.apply_gpos {
+                self.buffer.update_digest();
+            }
         } else {
             self.buffer.update_digest();
             ot_layout_gsub_table::substitute(self.plan, self.face, self.font_funcs, self.buffer);
@@ -448,8 +452,8 @@ impl OtShapeContext<'_, '_> {
                 let glyph = info.as_glyph();
                 pos.y_advance = self.font_funcs.advance_height(glyph);
                 let (x, y) = self.font_funcs.vertical_origin(glyph);
-                pos.x_offset -= x;
-                pos.y_offset -= y;
+                pos.x_offset = pos.x_offset.saturating_sub(x);
+                pos.y_offset = pos.y_offset.saturating_sub(y);
             }
         }
 
@@ -937,8 +941,8 @@ fn zero_mark_widths_by_gdef(buffer: &mut hb_buffer_t, adjust_offsets: bool) {
     for (info, pos) in buffer.info[..len].iter().zip(&mut buffer.pos[..len]) {
         if info.is_mark() {
             if adjust_offsets {
-                pos.x_offset -= pos.x_advance;
-                pos.y_offset -= pos.y_advance;
+                pos.x_offset = pos.x_offset.saturating_sub(pos.x_advance);
+                pos.y_offset = pos.y_offset.saturating_sub(pos.y_advance);
             }
 
             pos.x_advance = 0;

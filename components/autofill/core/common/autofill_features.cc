@@ -529,8 +529,16 @@ BASE_FEATURE(kAutofillAndroidKeyboardAccessoryHoverPreview,
              base::FEATURE_DISABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_ANDROID)
 
+// If enabled, on Android, form comparisons are done by comparing
+// `FormGlobalId`s instead of checking form similarity via `SimilarFormAs()`.
+BASE_FEATURE(kAutofillAndroidUseGlobalIdForFormComparison,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 // Feature flag for kAutofillAtMemory.
 BASE_FEATURE(kAutofillAtMemory, base::FEATURE_DISABLED_BY_DEFAULT);
+
+// If enabled, AtMemory can be triggered by pressing Ctrl twice.
+BASE_FEATURE(kAutofillAtMemoryDoubleCtrl, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // The subscription tiers for which AtMemory is eligible. Comma-separated list
 // of subscription tier integers. If empty/not defined, no tier restrictions
@@ -562,10 +570,14 @@ BASE_FEATURE(kAutofillAtMemoryInactivityNudge,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Controls whether the previously filled suggestions from AtMemory are shown.
+// Takes no effect when `kAutofillAtMemorySearchStatefulness` is disabled.
 BASE_FEATURE(kAutofillAtMemoryPreviouslyFilled,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-// Enables search statefulness for AtMemory.
+// When enabled, preserves the active AtMemory search query and fetched
+// suggestions when the popup is dismissed, restoring them if the user reopens
+// suggestions on the same field. State is reset once a suggestion is accepted
+// or a different field is focused.
 BASE_FEATURE(kAutofillAtMemorySearchStatefulness,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -786,6 +798,11 @@ BASE_FEATURE(kAutofillEnableSkippingUnrecognizedAttribute,
 BASE_FEATURE(kAutofillEnableStreetAddressMergeModes,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
+// When enabled, shows the Wallet Reminder Notice after submitting a form with a
+// non-private (public) pass.
+BASE_FEATURE(kAutofillEnableWalletReminderNoticePublicPass,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 // Enables extended zip code validation.
 // TODO(crbug.com/434140055): Clean up when launched.
 BASE_FEATURE(kAutofillExtendZipCodeValidation,
@@ -826,6 +843,9 @@ BASE_FEATURE(kAutofillFixRewriterRules, base::FEATURE_DISABLED_BY_DEFAULT);
 // TODO(crbug.com/444180493): Cleanup when launched.
 BASE_FEATURE(kAutofillFixStateCountryMisclassification,
              base::FEATURE_ENABLED_BY_DEFAULT);
+
+// Enables retrieval and filling of one-time passwords (OTPs) received in Gmail.
+BASE_FEATURE(kAutofillGmailOtp, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // When enabled, Greek regexes are used for parsing in branded builds.
 BASE_FEATURE(kAutofillGreekRegexes, base::FEATURE_ENABLED_BY_DEFAULT);

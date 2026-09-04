@@ -44,6 +44,8 @@
 #include "chrome/browser/ui/navigator/browser_navigator_params.h"
 #include "chrome/browser/ui/tab_dialogs.h"
 #include "chrome/browser/ui/tab_modal_confirm_dialog.h"
+#include "chrome/browser/ui/tabs/tab_strip_model.h"
+#include "chrome/browser/ui/tabs/tab_strip_model_delegate.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/views/frame/contents_web_view.h"
 #include "chrome/browser/ui/views/status_bubble_views.h"
@@ -53,7 +55,6 @@
 #include "chrome/browser/web_applications/web_app_tab_helper.h"
 #include "chrome/browser/web_applications/web_app_utils.h"
 #include "chrome/common/webui_url_constants.h"
-#include "components/blocked_content/list_item_position.h"
 #include "components/blocked_content/popup_blocker.h"
 #include "components/blocked_content/popup_tracker.h"
 #include "components/content_settings/core/browser/host_content_settings_map.h"
@@ -444,7 +445,7 @@ bool BrowserWebContentsDelegate::CanDragEnter(
   // external navigation.
   if ((operations_allowed & blink::kDragOperationLink) &&
       chrome::SettingsWindowManager::GetInstance()->IsSettingsBrowser(
-          browser_->GetBrowserForMigrationOnly())) {
+          &browser_.get())) {
     return false;
   }
 #endif
@@ -493,14 +494,8 @@ void BrowserWebContentsDelegate::OnDidBlockNavigation(
         tabs::TabInterface::MaybeGetFromContents(web_contents);
     if (auto* framebust_helper =
             tab ? FramebustBlockTabHelper::From(tab) : nullptr) {
-      auto on_click = [](const GURL& url, size_t index, size_t total_elements) {
-        UMA_HISTOGRAM_ENUMERATION(
-            "WebCore.Framebust.ClickThroughPosition",
-            blocked_content::GetListItemPositionFromDistance(index,
-                                                             total_elements));
-      };
       framebust_helper->AddBlockedUrl(blocked_url, initiator_origin,
-                                      base::BindOnce(on_click));
+                                      base::NullCallback());
     }
   }
 }
@@ -769,8 +764,7 @@ void BrowserWebContentsDelegate::LoadingStateChanged(
 
 void BrowserWebContentsDelegate::CloseContents(content::WebContents* source) {
   if (unload_controller_->CanCloseContents(source)) {
-    chrome::CloseWebContents(browser_->GetBrowserForMigrationOnly(), source,
-                             true);
+    chrome::CloseWebContents(&browser_.get(), source, true);
   }
 }
 

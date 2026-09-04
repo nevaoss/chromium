@@ -52,6 +52,7 @@
 #include "components/password_manager/core/browser/password_manager_metrics_util.h"
 #include "components/password_manager/core/browser/password_store/password_form_converters.h"
 #include "components/password_manager/core/browser/password_store/test_password_store.h"
+#include "components/password_manager/core/browser/password_string.h"
 #include "components/password_manager/core/common/password_manager_features.h"
 #include "components/password_manager/core/common/password_manager_pref_names.h"
 #include "components/signin/public/base/signin_prefs.h"
@@ -64,6 +65,7 @@
 #include "ui/base/clipboard/test/clipboard_test_util.h"
 #include "ui/base/ui_base_features.h"
 #include "ui/events/base_event_utils.h"
+#include "ui/views/controls/button/md_text_button.h"
 #include "ui/views/controls/editable_combobox/editable_combobox.h"
 #include "ui/views/controls/styled_label.h"
 #include "ui/views/controls/textarea/textarea.h"
@@ -79,6 +81,7 @@ using net::test_server::BasicHttpResponse;
 using net::test_server::HttpRequest;
 using net::test_server::HttpResponse;
 using password_manager::PasswordForm;
+using password_manager::PasswordString;
 using testing::_;
 using testing::ElementsAre;
 using testing::Eq;
@@ -123,7 +126,7 @@ PasswordForm CreateSharedCredentials(
   shared_credentials.signon_realm = url.GetWithEmptyPath().spec();
   shared_credentials.url = url;
   shared_credentials.username_value = username;
-  shared_credentials.password_value = u"12345";
+  shared_credentials.password_value = PasswordString(u"12345");
   shared_credentials.match_type = PasswordForm::MatchType::kExact;
   shared_credentials.type = PasswordForm::Type::kReceivedViaSharing;
   shared_credentials.sender_name = sender_name;
@@ -296,7 +299,7 @@ IN_PROC_BROWSER_TEST_F(PasswordBubbleInteractiveUiTest,
   form.url = origin;
   form.signon_realm = origin.GetWithEmptyPath().spec();
   form.username_value = u"Eve";
-  form.password_value = u"password";
+  form.password_value = PasswordString(u"password");
   GetController()->OnCredentialLeak(password_manager::LeakedPasswordDetails(
       password_manager::CredentialLeakFlags::kPasswordSaved, std::move(form),
       /*in_account_store=*/false));
@@ -654,7 +657,7 @@ IN_PROC_BROWSER_TEST_F(PasswordBubbleInteractiveUiTest,
   form.url = origin;
   form.signon_realm = origin.GetWithEmptyPath().spec();
   form.username_value = u"Eve";
-  form.password_value = u"password";
+  form.password_value = PasswordString(u"password");
   GetController()->OnCredentialLeak(password_manager::LeakedPasswordDetails(
       password_manager::CredentialLeakFlags::kPasswordSaved, std::move(form),
       /*in_account_store=*/false));
@@ -679,7 +682,7 @@ IN_PROC_BROWSER_TEST_F(PasswordBubbleInteractiveUiTest, LeakPromptHidesBubble) {
   form.url = origin;
   form.signon_realm = origin.GetWithEmptyPath().spec();
   form.username_value = u"Eve";
-  form.password_value = u"password";
+  form.password_value = PasswordString(u"password");
   GetController()->OnCredentialLeak(password_manager::LeakedPasswordDetails(
       password_manager::CredentialLeakFlags::kPasswordSaved, std::move(form),
       /*in_account_store=*/false));

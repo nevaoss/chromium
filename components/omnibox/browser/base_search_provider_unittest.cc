@@ -20,7 +20,6 @@
 #include "components/omnibox/browser/autocomplete_scheme_classifier.h"
 #include "components/omnibox/browser/mock_autocomplete_provider_client.h"
 #include "components/omnibox/browser/search_suggestion_parser.h"
-#include "components/omnibox/browser/suggestion_answer.h"
 #include "components/omnibox/browser/test_scheme_classifier.h"
 #include "components/omnibox/common/omnibox_feature_configs.h"
 #include "components/omnibox/common/omnibox_features.h"
@@ -130,8 +129,6 @@ TEST_F(BaseSearchProviderTest, PreserveAnswersWhenDeduplicating) {
   std::u16string query = u"weather los angeles";
 
   omnibox::RichAnswerTemplate answer_template;
-  answer_template.add_answers();
-  answer_template.mutable_answers(0)->mutable_headline()->set_text("headline");
 
   SearchSuggestionParser::SuggestResult more_relevant(
       query, AutocompleteMatchType::SEARCH_HISTORY, omnibox::TYPE_NATIVE_CHROME,
@@ -160,15 +157,9 @@ TEST_F(BaseSearchProviderTest, PreserveAnswersWhenDeduplicating) {
   AutocompleteMatch match = map.begin()->second;
   ASSERT_EQ(1U, match.duplicate_matches.size());
   AutocompleteMatch duplicate = match.duplicate_matches[0];
-  EXPECT_EQ(answer_template.answers(0).headline().text(),
-            match.answer_template->answers(0).headline().text());
 
   // Ensure answers are not copied over existing answers.
   map.clear();
-  omnibox::RichAnswerTemplate answer_template2;
-  answer_template2.add_answers();
-  answer_template2.mutable_answers(0)->mutable_headline()->set_text(
-      "headline2");
   more_relevant = SearchSuggestionParser::SuggestResult(
       query, AutocompleteMatchType::SEARCH_HISTORY, omnibox::TYPE_NATIVE_CHROME,
       /*subtypes=*/{}, /*from_keyword=*/false,
@@ -176,6 +167,7 @@ TEST_F(BaseSearchProviderTest, PreserveAnswersWhenDeduplicating) {
       /*relevance=*/1300,
       /*relevance_from_server=*/true,
       /*input_text=*/query);
+  omnibox::RichAnswerTemplate answer_template2;
   more_relevant.SetRichAnswerTemplate(answer_template2);
   provider_->AddMatchToMap(
       more_relevant, AutocompleteInput(), template_url.get(),
@@ -189,15 +181,9 @@ TEST_F(BaseSearchProviderTest, PreserveAnswersWhenDeduplicating) {
   match = map.begin()->second;
   ASSERT_EQ(1U, match.duplicate_matches.size());
   duplicate = match.duplicate_matches[0];
-
-  EXPECT_EQ(answer_template2.answers(0).headline().text(),
-            match.answer_template->answers(0).headline().text());
   EXPECT_EQ(AutocompleteMatchType::SEARCH_HISTORY, match.type);
   EXPECT_EQ(omnibox::TYPE_NATIVE_CHROME, match.suggest_type);
   EXPECT_EQ(1300, match.relevance);
-
-  EXPECT_EQ(answer_template.answers(0).headline().text(),
-            duplicate.answer_template->answers(0).headline().text());
   EXPECT_EQ(AutocompleteMatchType::SEARCH_SUGGEST, duplicate.type);
   EXPECT_EQ(omnibox::TYPE_QUERY, duplicate.suggest_type);
   EXPECT_EQ(850, duplicate.relevance);
@@ -822,7 +808,6 @@ TEST_F(BaseSearchProviderTest, SuggestTemplateInfoPopulatesMatch) {
 TEST_F(BaseSearchProviderTest, AnswerAndImageOnlyPopulatedForGoogle) {
   std::u16string query = u"weather";
   omnibox::RichAnswerTemplate answer_template;
-  answer_template.add_answers()->mutable_headline()->set_text("72°F");
 
   omnibox::EntityInfo entity_info;
   entity_info.set_image_url("https://example.com/image.png");

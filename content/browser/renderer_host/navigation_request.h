@@ -1916,6 +1916,11 @@ class CONTENT_EXPORT NavigationRequest
     return initiator_state_token_to_commit_;
   }
 
+  // Returns true if this navigation is for a subframe inside an ancestor ad
+  // frame tree that has site-keyed OAC status by default, and this navigation's
+  // origin is same-site to that ancestor ad frame.
+  bool HasSameSiteAdAncestor();
+
  private:
   friend class NavigationRequestTest;
   FRIEND_TEST_ALL_PREFIXES(
@@ -2255,6 +2260,13 @@ class CONTENT_EXPORT NavigationRequest
   // and decides whether the required allowlist may be enforced on the frame
   // (possibly blocking it).
   void SetupConnectionAllowlistEmbeddedEnforcement();
+
+  // Records `feature` against the embedder, which is the document that asserted
+  // (or inherited) the Connection-Allowlist requirement. The framed document
+  // may be blocked and never commit, so the parent is the only frame reliably
+  // available to attribute usage to.
+  void LogConnectionAllowlistEmbeddedEnforcementUseCounter(
+      blink::mojom::WebFeature feature);
 
   enum class ConnectionAllowlistEmbeddedEnforcementResult {
     ALLOW_RESPONSE,

@@ -353,6 +353,7 @@ chromium-metrics-reviews@google.com.
   <int value="7" label="Two-page view"/>
   <int value="8" label="Single page view"/>
   <int value="9" label="Document properties"/>
+  <int value="10" label="Annotation"/>
 </enum>
 
 <!-- LINT.ThenChange(//chrome/browser/ui/android/pdf/java/src/org/chromium/chrome/browser/pdf/PdfUtils.java:PdfToolbarAction) -->
@@ -452,6 +453,17 @@ chromium-metrics-reviews@google.com.
 </enum>
 
 <!-- LINT.ThenChange(//chrome/browser/ui/vertical_tabs/android/java/src/org/chromium/chrome/browser/ui/vertical_tabs/VerticalTabUtils.java:AndroidVerticalTabsLayoutToggleSourceAndDirection)-->
+
+<!-- LINT.IfChange(AndroidVerticalTabsWindowWidthBoundary) -->
+
+<enum name="AndroidVerticalTabsWindowWidthBoundary">
+  <int value="0" label="Not Showable"/>
+  <int value="1" label="Forced Collapsed"/>
+  <int value="2" label="Dynamic Expandable"/>
+  <int value="3" label="Fully Expandable"/>
+</enum>
+
+<!-- LINT.ThenChange(//chrome/browser/ui/vertical_tabs/android/java/src/org/chromium/chrome/browser/ui/vertical_tabs/VerticalTabUtils.java:AndroidVerticalTabsWindowWidthBoundary)-->
 
 <enum name="AndroidWebViewCrashCollectionState">
   <int value="0" label="ENABLED_BY_COMMANDLINE">
@@ -1583,6 +1595,7 @@ chromium-metrics-reviews@google.com.
   <int value="77" label="ImmersivePlaybackConfirmation"/>
   <int value="78" label="IntranetRedirect"/>
   <int value="79" label="PasswordSavedConfirmation"/>
+  <int value="80" label="EmailVerified"/>
 </enum>
 
 <!-- LINT.ThenChange(//components/messages/android/message_enums.h:MessageIdentifier) -->

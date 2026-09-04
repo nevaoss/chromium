@@ -161,6 +161,7 @@ chromium-metrics-reviews@google.com.
   <variant name=".DesktopSiteWindowSetting"/>
   <variant name=".DownloadIncognitoWarning"/>
   <variant name=".DownloadProgress"/>
+  <variant name=".EmailVerified"/>
   <variant name=".ExtensionDevTools"/>
   <variant name=".ExtensionsRequestAccess"/>
   <variant name=".ExternalNavigation"/>
@@ -6926,6 +6927,22 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="Android.VerticalTabs.WindowWidthBoundaryOnToggle.{Direction}"
+    enum="AndroidVerticalTabsWindowWidthBoundary" expires_after="2027-07-22">
+  <owner>agazal@google.com</owner>
+  <owner>jinsukkim@chromium.org</owner>
+  <owner>eleanorlee@google.com</owner>
+  <owner>spdonghao@google.com</owner>
+  <summary>
+    Records the window width boundary category when a user toggles Vertical Tabs
+    {Direction}.
+  </summary>
+  <token key="Direction">
+    <variant name="Disable" summary="off (reverting to horizontal tabs)"/>
+    <variant name="Enable" summary="on (switching to vertical tabs)"/>
+  </token>
+</histogram>
+
 <histogram name="Android.Wallet.BoardingPass.Detected" enum="BooleanDetected"
     expires_after="2024-12-31">
   <owner>hanfeng@google.com</owner>
@@ -7237,6 +7254,23 @@ chromium-metrics-reviews@google.com.
     This histogram logs whether the asset path workaround was needed during
     startup so that we can determine if it's safe to remove. This is logged once
     during WebViewChromiumAwInit#startChromium.
+  </summary>
+</histogram>
+
+<histogram
+    name="Android.WebView.AwBrowserContext.CreateAwPrefetchManager.Duration"
+    units="ms" expires_after="2027-03-01">
+  <owner>taiyo@chromium.org</owner>
+  <owner>wbjacksonjr@chromium.org</owner>
+  <owner>src/android_webview/OWNERS</owner>
+  <summary>
+    Records the time taken to instantiate an `AwPrefetchManager` object on the
+    UI thread during `AwBrowserContext` profile initialization.
+
+    Emitted synchronously during `AwBrowserContext` construction when
+    initializing `AwPrefetchManager`.
+
+    Only emitted for Android WebView.
   </summary>
 </histogram>
 

@@ -327,7 +327,7 @@ void ContextualCueingController::RunGlicSingleSourcePath(
   if (!glic_target) {
     CUEING_LOG(base::StringPrintf(
         "%s ineligible for cue: Target feature kGlic not registered.",
-        active_web_contents->GetLastCommittedURL().spec().c_str()));
+        active_web_contents->GetLastCommittedURL().spec()));
     RecordContextualCueingDecision(
         source_id, ContextualCueingDecision::kTargetFeatureNotRegistered);
     return;
@@ -336,7 +336,7 @@ void ContextualCueingController::RunGlicSingleSourcePath(
   if (!glic_target->IsPageEligible(result, active_web_contents)) {
     CUEING_LOG(base::StringPrintf(
         "%s ineligible for cue: Failed category classification.",
-        active_web_contents->GetLastCommittedURL().spec().c_str()));
+        active_web_contents->GetLastCommittedURL().spec()));
     RecordContextualCueingDecision(
         source_id, ContextualCueingDecision::kFailedCategoryClassification);
     return;
@@ -356,7 +356,7 @@ void ContextualCueingController::RunGlicSingleSourcePath(
   CUEING_LOG(base::StringPrintf(
       "%s eligible for cue: Category classification "
       "succeeded. Initiating model execution request.",
-      active_web_contents->GetLastCommittedURL().spec().c_str()));
+      active_web_contents->GetLastCommittedURL().spec()));
   InitiateModelExecutionRequest(CueTargetType::kGlic);
 }
 
@@ -385,7 +385,15 @@ void ContextualCueingController::OnTabNavigated(tabs::TabInterface* tab) {
 }
 
 void ContextualCueingController::OnTabActivated(tabs::TabInterface* tab) {
-  UrlChanged(tab_->GetURL());
+  OnUrlChanged(tab_->GetURL());
+}
+
+void ContextualCueingController::OnUrlChanged(const GURL& url) {
+  if (url == last_logged_active_url_) {
+    return;
+  }
+  last_logged_active_url_ = url;
+  CUEING_LOG(base::StringPrintf("Tab URL changed to %s", url.spec()));
 }
 
 void ContextualCueingController::OnTabDetached(
@@ -415,20 +423,10 @@ void ContextualCueingController::ObserveTabList() {
   }
 }
 
-void ContextualCueingController::UrlChanged(const GURL& url) {
-  if (url == last_logged_active_url_) {
+void ContextualCueingController::EvaluateCues() {
+  if (!base::FeatureList::IsEnabled(kContextualCueingV2MultiSource)) {
     return;
   }
-  last_logged_active_url_ = url;
-  CUEING_LOG(base::StringPrintf("Tab URL changed to %s", url.spec().c_str()));
-
-  // V2: kick off parallel eligibility fan-out for all registered targets.
-  if (base::FeatureList::IsEnabled(kContextualCueingV2MultiSource)) {
-    EvaluateCues();
-  }
-}
-
-void ContextualCueingController::EvaluateCues() {
   if (!tab_->IsActivated()) {
     return;
   }
@@ -455,22 +453,28 @@ void ContextualCueingController::EvaluateCues() {
     return;
   }
 
-  if (auto decision = contextual_cueing_service_->CanShowCue(url);
-      decision != ContextualCueingDecision::kSuccess) {
+  auto [allowed_tier, decision] =
+      contextual_cueing_service_->GetAllowedIntrusiveness(url);
+  if (allowed_tier ==
+      ContextualCueingService::AllowedIntrusivenessResult::kBlocked) {
     CUEING_LOG(base::StringPrintf("%s ineligible for cue with reason: %d.",
                                   url.spec(), static_cast<int>(decision)));
     RecordContextualCueingDecision(source_id, decision);
     return;
   }
 
-  // --- fan out eligibility checks ---
-  // Determine intrusiveness tier (loud unless in quiet-loads backoff).
-  CueIntrusiveness intrusiveness = CueIntrusiveness::kLoud;
+  // Determine intrusiveness tier (loud unless in quiet-loads backoff or caps
+  // exceeded).
+  CueIntrusiveness intrusiveness =
+      (allowed_tier ==
+       ContextualCueingService::AllowedIntrusivenessResult::kLoud)
+          ? CueIntrusiveness::kLoud
+          : CueIntrusiveness::kQuiet;
 
-  // Collect non-backed-off targets.
+  // Collect non-backed-off targets that support this intrusiveness level.
   std::vector<CueTargetType> candidates;
   for (const auto& [type, target] : cue_targets_) {
-    if (target->IsEligible()) {
+    if (target->IsEligible() && target->SupportsIntrusiveness(intrusiveness)) {
       candidates.push_back(type);
     }
   }
@@ -486,7 +490,8 @@ void ContextualCueingController::EvaluateCues() {
       candidates.size(),
       base::BindOnce(
           &ContextualCueingController::OnAllEligibilityChecksComplete,
-          weak_ptr_factory_.GetWeakPtr(), web_contents->GetWeakPtr(), url));
+          weak_ptr_factory_.GetWeakPtr(), web_contents->GetWeakPtr(), url,
+          intrusiveness));
 
   for (CueTargetType type : candidates) {
     CueTarget* target = GetTarget(type);
@@ -509,6 +514,7 @@ void ContextualCueingController::EvaluateCues() {
 void ContextualCueingController::OnAllEligibilityChecksComplete(
     base::WeakPtr<content::WebContents> web_contents,
     GURL url,
+    CueIntrusiveness intrusiveness,
     std::vector<EligibilityResult> results) {
   // Guard: if the tab navigated away while checks were in-flight, bail.
   if (!web_contents) {
@@ -564,15 +570,18 @@ void ContextualCueingController::OnAllEligibilityChecksComplete(
     // Target provides its own content — run the generator.
     std::move(winning_generator)
         .Run(base::BindOnce(&ContextualCueingController::OnContentGenerated,
-                            weak_ptr_factory_.GetWeakPtr(), best_type));
+                            weak_ptr_factory_.GetWeakPtr(), best_type,
+                            intrusiveness));
   } else {
     // No local generator — delegate to MES.
+    CHECK_EQ(intrusiveness, CueIntrusiveness::kLoud);
     InitiateModelExecutionRequest(best_type);
   }
 }
 
 void ContextualCueingController::OnContentGenerated(
     CueTargetType type,
+    CueIntrusiveness intrusiveness,
     std::optional<optimization_guide::proto::ContextualCue> cue) {
   if (!cue) {
     CUEING_LOG(base::StringPrintf("ContentGenerator for '%s' returned no cue.",
@@ -584,7 +593,7 @@ void ContextualCueingController::OnContentGenerated(
   if (!target) {
     return;
   }
-  ShowCue(type, *target, *cue, {});
+  ShowCue(type, intrusiveness, *target, *cue, {});
 }
 
 void ContextualCueingController::InitiateModelExecutionRequest(
@@ -803,7 +812,8 @@ void ContextualCueingController::OnModelExecutionResponseReceived(
   }
 
   if (IsAllowedToShowCue() == ContextualCueingDecision::kUnspecified) {
-    ShowCue(*target_type, *target, cue, background_tabs);
+    ShowCue(*target_type, CueIntrusiveness::kLoud, *target, cue,
+            background_tabs);
   }
 }
 
@@ -995,6 +1005,7 @@ ContextualCueingController::GetTabsToShow(
 
 void ContextualCueingController::ShowCue(
     CueTargetType cue_type,
+    CueIntrusiveness intrusiveness,
     const CueTarget& target,
     const optimization_guide::proto::ContextualCue& cue,
     const std::vector<optimization_guide::proto::Tab>& background_tabs) {
@@ -1003,6 +1014,11 @@ void ContextualCueingController::ShowCue(
   CueActionData action_data =
       target.CueActionDataFromResponse(cue, tabs_to_show);
 
+  const std::string cuj =
+      cue.suggested_cuj().empty() ? GetName(cue_type) : cue.suggested_cuj();
+
+  auto* window = tab_->GetBrowserWindowInterface();
+  CHECK(window);
   base::TimeDelta show_latency;
   base::Time page_load_time = tab_->GetContents()
                                   ->GetController()
@@ -1012,11 +1028,10 @@ void ContextualCueingController::ShowCue(
     show_latency = base::Time::Now() - page_load_time;
   }
 
-  RecordCueShownMetrics(GetTabSourceId(), cue.suggested_cuj(), tab_metrics,
-                        show_latency);
+  RecordCueShownMetrics(GetTabSourceId(), cuj, tab_metrics, show_latency);
 
   RecordCueShownToPrivateInsights(tab_->GetProfile(), cue_id, cue_type, cue,
-                                  tab_, tabs_to_show, background_tabs);
+                                  tab_, tabs_to_show, background_tabs, cuj);
 
   dependencies_.clear();
   for (const auto& handle : tabs_to_show) {
@@ -1032,8 +1047,8 @@ void ContextualCueingController::ShowCue(
       << "Contextual cueing anchored message UI is not implemented for Android";
 #else
   const auto& strings = cue.anchored_message_cue();
-  active_cue_data_.emplace(cue_type, cue, tabs_to_show, background_tabs,
-                           cue.suggested_cuj(), action_data, cue_id);
+  active_cue_data_.emplace(cue_type, cue, tabs_to_show, background_tabs, cuj,
+                           action_data, cue_id);
 
   page_actions::PageActionController* page_action_controller =
       tab_->GetTabFeatures()->page_action_controller();
@@ -1046,12 +1061,6 @@ void ContextualCueingController::ShowCue(
   ObserveSidePanel();
   page_action_observer_->RegisterAsPageActionObserver(*page_action_controller);
 
-  page_action_controller->Show(kActionAnchoredContextualCue);
-  page_action_controller->SetAnchoredMessageIcon(
-      kActionAnchoredContextualCue, target.GetAnchoredMessageIcon());
-  page_action_controller->SetAnchoredMessageText(
-      kActionAnchoredContextualCue,
-      base::UTF8ToUTF16(strings.anchored_message_text()));
   page_action_controller->OverrideText(
       kActionAnchoredContextualCue, base::UTF8ToUTF16(strings.action_text()));
   page_action_controller->OverrideImage(kActionAnchoredContextualCue,
@@ -1061,9 +1070,15 @@ void ContextualCueingController::ShowCue(
   page_action_controller->OverrideTooltip(
       kActionAnchoredContextualCue, base::UTF8ToUTF16(strings.action_text()));
 
+  page_action_controller->SetAnchoredMessageIcon(
+      kActionAnchoredContextualCue, target.GetAnchoredMessageIcon());
+  page_action_controller->SetAnchoredMessageText(
+      kActionAnchoredContextualCue,
+      base::UTF8ToUTF16(strings.anchored_message_text()));
+
   auto menu_model = std::make_unique<ContextualCueingMenuModel>(
       tab_->GetProfile(), weak_ptr_factory_.GetWeakPtr(), cue_type, cue,
-      tabs_to_show, background_tabs, cue.suggested_cuj(),
+      tabs_to_show, background_tabs, cuj,
       std::move(action_data), cue_id, target.SupportsEditPrompt());
   page_action_controller->SetAnchoredMessageAction(
       kActionAnchoredContextualCue,
@@ -1072,16 +1087,22 @@ void ContextualCueingController::ShowCue(
 
   MaybeShowTabList(page_action_controller, tabs_to_show);
 
-  page_action_controller->ShowAnchoredMessage(
-      kActionAnchoredContextualCue,
-      {.priority = page_actions::PageActionPriorityCategory::kContextualCue});
+  page_action_controller->Show(kActionAnchoredContextualCue);
+
+  if (intrusiveness == CueIntrusiveness::kLoud) {
+    page_action_controller->ShowAnchoredMessage(
+        kActionAnchoredContextualCue,
+        {.priority = page_actions::PageActionPriorityCategory::kContextualCue});
+  }
 
   CUEING_LOG(base::StringPrintf(
-      "Showing cue for CUJ %s: %s [%s]", cue.suggested_cuj(),
-      strings.anchored_message_text(), strings.action_text()));
+      "Showing %s cue for CUJ %s: %s [%s]",
+      intrusiveness == CueIntrusiveness::kLoud ? "loud" : "quiet",
+      cuj, strings.anchored_message_text(),
+      strings.action_text()));
 
   auto cue_log = contextual_cueing_internals::mojom::CueLog::New();
-  cue_log->cuj = cue.suggested_cuj();
+  cue_log->cuj = cuj;
   cue_log->anchored_message_text = strings.anchored_message_text();
   cue_log->action_text = strings.action_text();
   if (tab_ && tab_->GetContents()) {
@@ -1094,11 +1115,11 @@ void ContextualCueingController::ShowCue(
   contextual_cueing_service_->LogCueShownMetadata(std::move(cue_log));
 
   contextual_cueing_service_->OnCueShown(
-      tab_->GetContents()->GetLastCommittedURL(), cue_type);
+      tab_->GetContents()->GetLastCommittedURL(), cue_type, intrusiveness);
 #endif
 
   base::UmaHistogramSparse("ContextualCueing.ShownCueCUJ",
-                           base::HashMetricName(cue.suggested_cuj()));
+                           base::HashMetricName(cuj));
 
   RecordContextualCueingDecision(GetTabSourceId(),
                                  ContextualCueingDecision::kSuccess);

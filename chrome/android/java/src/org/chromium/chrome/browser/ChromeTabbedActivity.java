@@ -1656,8 +1656,7 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
 
             super.finishNativeInitialization();
 
-            TabbedStartupWindowPolicyDelegate.getInstance()
-                    .initializeWithNative(UserPrefs.get(profile));
+            TabbedStartupWindowPolicyDelegate.getInstance().initializeWithNative(profile);
 
             if (!ChromeFeatureList.sAndroidStartupImprovements.isEnabled()) {
                 recordFirstAppLaunchTimestampIfNeeded();
@@ -1936,7 +1935,11 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
                             intent, IntentHandler.EXTRA_OPEN_REGULAR_OVERVIEW_MODE, false);
             if (shouldShowRegularOverviewMode && IntentHandler.wasIntentSenderChrome(intent)) {
                 mTabModelSelector.selectModel(/* incognito= */ false);
-                mLayoutManager.showLayout(LayoutType.HUB, /* animate= */ false);
+                // On Desktop Android, selecting the regular model displays the desktop tab strip
+                // and active tab in LayoutType.BROWSING; opening LayoutType.HUB is suppressed.
+                if (!TabSwitcherUtils.isGridTabSwitcherDisabled()) {
+                    mLayoutManager.showLayout(LayoutType.HUB, /* animate= */ false);
+                }
             }
             // Launch history on an already running instance of Chrome.
             maybeLaunchHistory();
@@ -2019,7 +2022,7 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
                     PaneManager paneManager = hubManager.getPaneManager();
                     TabSwitcherPaneBase tabSwitcherPaneBase =
                             (TabSwitcherPaneBase) paneManager.getDefaultPane();
-                    TabSwitcherUtils.openTabGroupDialog(
+                    TabSwitcherUtils.focusTabGroup(
                             tabGroupId,
                             tabGroupSyncService,
                             ((TabbedRootUiCoordinator) mRootUiCoordinator)
@@ -3304,7 +3307,7 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
                 intent.getIntExtra(
                         IntentHandler.EXTRA_NEW_WINDOW_APP_SOURCE, NewWindowAppSource.UNKNOWN);
         if (newWindowAppSource == NewWindowAppSource.CRASH_RECOVERY
-                && ChromeFeatureList.sSessionRestoreAfterCrash.isEnabled()) {
+                && MultiWindowUtils.isSessionRestoreAfterCrashEnabled()) {
             TabbedCrashRecoveryDelegate.getInstance().registerRecovery(mWindowId);
         }
     }
@@ -3524,7 +3527,8 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
         mModuleRegistrySupplier.set(moduleRegistry);
     }
 
-    private EducationTipModuleActionDelegate createEducationTipModuleActionDelegate() {
+    @VisibleForTesting
+    EducationTipModuleActionDelegate createEducationTipModuleActionDelegate() {
         return new EducationTipModuleActionDelegate() {
             @Override
             public Context getContext() {
@@ -3548,7 +3552,7 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
 
             @Override
             public void openHubPane(int paneId) {
-                if (mLayoutManager == null) return;
+                if (mLayoutManager == null || TabSwitcherUtils.isGridTabSwitcherDisabled()) return;
 
                 // Opens the tab switcher and displays a specific pane.
                 HubShowPaneHelper hubShowPaneHelper = mHubProvider.getHubShowPaneHelper();
@@ -3558,6 +3562,8 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
 
             @Override
             public void openTabGroupIphDialog() {
+                if (TabSwitcherUtils.isGridTabSwitcherDisabled()) return;
+
                 TabGridIphDialogCoordinator tabGridIphDialogCoordinator =
                         new TabGridIphDialogCoordinator(
                                 ChromeTabbedActivity.this, getModalDialogManager());
@@ -3728,7 +3734,8 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
         };
     }
 
-    private VerticalTabsActionDelegate createVerticalTabsActionDelegate() {
+    @VisibleForTesting
+    VerticalTabsActionDelegate createVerticalTabsActionDelegate() {
         return new VerticalTabsActionDelegate() {
             @Override
             public void openTabSearch() {
@@ -3740,6 +3747,7 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
 
             @Override
             public void openHubSearch() {
+                if (TabSwitcherUtils.isGridTabSwitcherDisabled()) return;
                 onMenuOrKeyboardAction(R.id.tab_search, /* fromMenu= */ false);
             }
         };
@@ -4019,7 +4027,7 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
         Profile profile = mTabModelProfileSupplier.get();
         MessageDispatcher messageDispatcher = MessageDispatcherProvider.from(getWindowAndroid());
 
-        LauncherShortcutActivity.updateIncognitoShortcut(profile);
+        LauncherShortcutActivity.updateDynamicLauncherShortcuts(profile);
 
         ChromeSurveyController.initialize(
                 mTabModelSelector, getLifecycleDispatcher(), activity, messageDispatcher, profile);
@@ -4737,7 +4745,8 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
             if (fromMenu) {
                 RecordUserAction.record("MobileMenuToggleTabLayout");
                 boolean isEnabling = !VerticalTabUtils.isVerticalTabsEnabled(this);
-                VerticalTabUtils.recordLayoutToggle(LayoutSwitchEntryPoint.APP_MENU, isEnabling);
+                VerticalTabUtils.recordLayoutToggle(
+                        this, LayoutSwitchEntryPoint.APP_MENU, isEnabling);
             }
             ((TabbedRootUiCoordinator) mRootUiCoordinator).toggleTabStrip();
         } else {

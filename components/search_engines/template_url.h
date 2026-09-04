@@ -13,6 +13,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/containers/span.h"
 #include "base/gtest_prod_util.h"
 #include "base/memory/raw_ptr.h"
 #include "base/time/time.h"
@@ -678,7 +679,11 @@ class TemplateURL {
  public:
   using TemplateURLVector =
       std::vector<raw_ptr<TemplateURL, VectorExperimental>>;
+  using TemplateURLVectorSpan =
+      base::span<const raw_ptr<TemplateURL, VectorExperimental>>;
   using OwnedTemplateURLVector = std::vector<std::unique_ptr<TemplateURL>>;
+  using OwnedTemplateURLVectorSpan =
+      base::span<const std::unique_ptr<TemplateURL>>;
 
   // These values are not persisted and can be freely changed.
   // Their integer values are used for choosing the best engine during keyword

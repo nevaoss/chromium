@@ -685,10 +685,8 @@ void OmniboxEditModel::Revert() {
 void OmniboxEditModel::StartAutocomplete(bool prevent_inline_autocomplete) {
   const std::u16string input_text = MaybePrependKeyword(user_text_);
 
-  // This method currently only works when there's a view, but ideally the
-  // model should be primary for determining such state.
-  CHECK(view_);
-  size_t cursor_position = view_->GetSelectionBounds().end();
+  size_t cursor_position =
+      view_ ? view_->GetSelectionBounds().end() : user_text_.length();
 
   // For keyword searches, the text that AutocompleteInput expects is
   // of the form "<keyword> <query>", where our query is |user_text_|.
@@ -806,7 +804,7 @@ void OmniboxEditModel::PopulateActiveTabContext() {
   BrowserWindowInterface* browser =
       static_cast<ChromeOmniboxClient*>(client)->browser();
   SearchboxContextData* searchbox_context_data =
-      browser ? browser->GetFeatures().searchbox_context_data() : nullptr;
+      browser ? SearchboxContextData::From(browser) : nullptr;
   TabStripModel* tab_strip = browser ? browser->GetTabStripModel() : nullptr;
   tabs::TabInterface* tab = tab_strip ? tab_strip->GetActiveTab() : nullptr;
   content::WebContents* web_contents = tab ? tab->GetContents() : nullptr;
@@ -1409,7 +1407,17 @@ void OmniboxEditModel::OnUpOrDownPressed(bool down, bool page) {
                          : OmniboxPopupSelection::Step::kWholeLine;
 
   if (popup_view_ && popup_view_->IsSelectionPopupControlled()) {
-    popup_view_->StepSelection(direction, step);
+    const OmniboxPopupSelection old_selection = GetPopupSelection();
+    OmniboxPopupSelection new_selection = old_selection.GetNextSelection(
+        autocomplete_controller()->input(), autocomplete_controller()->result(),
+        controller_->client()->GetTemplateURLService(),
+        view_->AimButtonVisible(), direction, step);
+    // Pass through to native step if this is a keyword mode transition because
+    // the popup does not yet support keyword mode.
+    if (new_selection.state != OmniboxPopupSelection::LineState::KEYWORD_MODE) {
+      popup_view_->StepSelection(direction, step);
+      return;
+    }
   }
 
   StepPopupSelection(direction, step);
@@ -1423,7 +1431,17 @@ void OmniboxEditModel::OnTabPressed(bool shift) {
       OmniboxPopupSelection::Step::kStateOrLine;
 
   if (popup_view_ && popup_view_->IsSelectionPopupControlled()) {
-    popup_view_->StepSelection(direction, step);
+    const OmniboxPopupSelection old_selection = GetPopupSelection();
+    OmniboxPopupSelection new_selection = old_selection.GetNextSelection(
+        autocomplete_controller()->input(), autocomplete_controller()->result(),
+        controller_->client()->GetTemplateURLService(),
+        view_->AimButtonVisible(), direction, step);
+    // Pass through to native step if this is a keyword mode transition because
+    // the popup does not yet support keyword mode.
+    if (new_selection.state != OmniboxPopupSelection::LineState::KEYWORD_MODE) {
+      popup_view_->StepSelection(direction, step);
+      return;
+    }
   }
 
   StepPopupSelection(direction, step);
@@ -1991,9 +2009,6 @@ void OmniboxEditModel::ResetPopupToInitialState() {
   if (!popup_view_) {
     return;
   }
-  if (popup_view_->IsSelectionPopupControlled()) {
-    popup_view_->ResetPopupToInitialState();
-  }
   size_t new_line = autocomplete_controller()->result().default_match()
                         ? 0
                         : OmniboxPopupSelection::kNoMatch;
@@ -2503,8 +2518,8 @@ void OmniboxEditModel::StepPopupSelection(
   } else if (new_selection.state ==
              OmniboxPopupSelection::LineState::KEYWORD_MODE) {
     // Prepare for keyword mode before accepting it.
-    SetPopupSelection(new_selection, /*reset_to_default=*/false,
-                      /*force_update_ui=*/false, /*native_update=*/false);
+    SetPopupSelection(OmniboxPopupSelection(
+        new_selection.line, OmniboxPopupSelection::LineState::NORMAL));
     // Note: Popup behavior currently depends on the entry method being tab.
     // This is not ideal for nuanced metrics, but it is how it has worked
     // for a long time. Consider refactoring to fix this if needed.

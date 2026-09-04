@@ -1605,7 +1605,7 @@ class CORE_EXPORT LayoutObject : public GarbageCollected<LayoutObject>,
   // canvas transform in a canvas subtree.
   bool HasTransform() const {
     NOT_DESTROYED();
-    if (IsInCanvasSubtree() && IsBox()) [[unlikely]] {
+    if (IsInCanvasSubtree() && IsBoxModelObject()) [[unlikely]] {
       if (const auto* element = DynamicTo<Element>(GetNode())) {
         if (element->GetUsedCanvasTransform()) {
           return true;
@@ -1910,7 +1910,8 @@ class CORE_EXPORT LayoutObject : public GarbageCollected<LayoutObject>,
   // is closed shadow hidden from |base|.
   Element* OffsetParent(const Element* base = nullptr) const;
 
-  // Inclusive of |this|, exclusive of |below|.
+  // Inclusive of |this|, exclusive of |below|. |below| must be reachable
+  // through the layout Container() ancestry.
   const LayoutBoxModelObject* FindFirstStickyContainer(
       const LayoutBox* below) const;
 
@@ -3590,7 +3591,7 @@ class CORE_EXPORT LayoutObject : public GarbageCollected<LayoutObject>,
   // In this case, the code skips some unneeded expensive operations as we know
   // the tree is not reused (e.g. avoid clearing the containing block's line
   // box).
-  virtual void WillBeDestroyed();
+  virtual void WillBeDestroyed(const ComputedStyle*);
 
   virtual void InsertedIntoTree();
   virtual void WillBeRemovedFromTree();
