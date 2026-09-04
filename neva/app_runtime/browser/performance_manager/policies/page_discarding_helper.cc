@@ -221,7 +221,7 @@ void PageDiscardingHelper::DiscardMultiplePages(
       // Memory.Renderer.PrivateMemoryFootprint histogram value on Windows in
       // August 2021.
       std::optional<base::ByteSize> node_reclaim =
-          page_node_rss[node].is_zero() ? base::MiBU(80) : page_node_rss[node];
+          page_node_rss[node].is_zero() ? base::MiB(80) : page_node_rss[node];
       total_reclaim += node_reclaim.value();
 
       LOG(WARNING) << "Queueing discard attempt, type="
