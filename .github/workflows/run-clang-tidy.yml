@@ -1,0 +1,176 @@
+name: clang-tidy
+
+on:
+  workflow_dispatch:
+    inputs:
+      PullRequest:
+        description: "Pull Request number"
+        required: true
+        type: string
+  issue_comment:
+    types:
+      - created
+
+permissions:
+  contents: read
+  issues: write
+  pull-requests: read
+
+jobs:
+  clang-tidy:
+    name: Run clang-tidy review
+
+  if: >-
+    github.event_name == 'workflow_dispatch' ||
+    (
+      github.event_name == 'issue_comment' &&
+      github.event.issue.pull_request != null &&
+      github.event.comment.body == '/clang-tidy' &&
+      (
+        (
+          github.event.comment.author_association == 'OWNER' ||
+          github.event.comment.author_association == 'MEMBER' ||
+          github.event.comment.author_association == 'COLLABORATOR'
+      )
+    )
+    runs-on: self-hosted
+
+    steps:
+      - name: Validate Pull Request input
+        if: github.event_name == 'workflow_dispatch'
+        shell: bash
+        env:
+          PR_NUMBER: ${{ inputs.PullRequest }}
+        run: |
+          set -euo pipefail
+
+          if [[ ! "${PR_NUMBER}" =~ ^[0-9]+$ ]]; then
+            echo "::error::PullRequest should contain number of PR"
+            exit 1
+          fi
+
+      - name: Prepare PR parameters for manual run
+        if: github.event_name == 'workflow_dispatch'
+        id: manual_pr
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ inputs.PullRequest }}
+        run: |
+          set -euo pipefail
+
+          if [[ ! "${PR_NUMBER}" =~ ^[0-9]+$ ]]; then
+            echo "::error::Wrong input in the PullRequest field"
+            exit 1
+          fi
+
+          PR_JSON="$(
+            gh api \
+              "repos/${GH_REPO}/pulls/${PR_NUMBER}"
+          )"
+
+          echo "number=${PR_NUMBER}" >> "${GITHUB_OUTPUT}"
+          echo "branch=$(jq -r '.head.ref' <<< "${PR_JSON}")" \
+            >> "${GITHUB_OUTPUT}"
+          echo "commits=$(jq -r '.commits' <<< "${PR_JSON}")" \
+            >> "${GITHUB_OUTPUT}"
+
+      - name: Prepare PR parameters for comment run
+        if: github.event_name == 'issue_comment'
+        id: comment_pr
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.issue.number }}
+        run: |
+          set -euo pipefail
+
+          PR_JSON="$(
+            gh api \
+              "repos/${GH_REPO}/pulls/${PR_NUMBER}"
+          )"
+
+          echo "number=${PR_NUMBER}" >> "${GITHUB_OUTPUT}"
+          echo "branch=$(jq -r '.head.ref' <<< "${PR_JSON}")" \
+            >> "${GITHUB_OUTPUT}"
+          echo "commits=$(jq -r '.commits' <<< "${PR_JSON}")" \
+            >> "${GITHUB_OUTPUT}"
+
+      - name: Checkout CI repository
+        uses: actions/checkout@v6
+        with:
+          repository: nevaoss/ci
+          ref: main
+
+      - name: Run clang-tidy script
+        id: clang_tidy
+        shell: bash
+        env:
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          GITHUB_PR_BRANCH: ${{ steps.manual_pr.outputs.branch || steps.comment_pr.outputs.branch }}
+          GITHUB_PR_COMMITS: ${{ steps.manual_pr.outputs.commits || steps.comment_pr.outputs.commits }}
+          GITHUB_PR_NUMBER: ${{ steps.manual_pr.outputs.number || steps.comment_pr.outputs.number }}
+        run: |
+          set -euo pipefail
+
+          CURRENT_HEAD_SHA="$(
+            gh api \
+              "repos/${GITHUB_REPOSITORY}/pulls/${GITHUB_PR_NUMBER}" \
+              --jq '.head.sha'
+          )"
+
+          REVIEW_JSON="$(./tools/run-clang-tidy.sh)" || true
+
+          STATUS="$(jq -r '.status // empty' <<< "${REVIEW_JSON}")"
+
+          if [[ "${STATUS}" != "success" ]]; then
+            echo "clang-tidy check was not completed. PR comment will not be added."
+            exit 0
+          fi
+
+          REVIEW="$(jq -r '.review // empty' <<< "${REVIEW_JSON}")"
+
+          if [[ -z "${REVIEW}" ]]; then
+            COMMENT="clang-tidy check completed successfully. No issues found."
+          else
+            COMMENT="$(
+              printf 'clang-tidy found issues:\n\n```text\n%s\n```\n' "${REVIEW}"
+            )"
+          fi
+
+          {
+            echo "review<<CLANG_TIDY_REVIEW_EOF"
+            printf '%s\n' "${COMMENT}"
+            echo "CLANG_TIDY_REVIEW_EOF"
+          } >> "${GITHUB_OUTPUT}"
+          echo "current_head=${CURRENT_HEAD_SHA}" >> "${GITHUB_OUTPUT}"
+
+      - name: Add review comment to Pull Request
+        if: steps.clang_tidy.outputs.review != ''
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          PR_HEAD_SHA: ${{ steps.clang_tidy.outputs.current_head }}
+          PR_NUMBER: ${{ steps.manual_pr.outputs.number || steps.comment_pr.outputs.number }}
+          REVIEW: ${{ steps.clang_tidy.outputs.review }}
+        run: |
+          set -euo pipefail
+
+          CURRENT_HEAD_SHA="$(
+            gh api \
+              "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}" \
+              --jq '.head.sha'
+          )"
+
+          if [[ "${CURRENT_HEAD_SHA}" != "${PR_HEAD_SHA}" ]]; then
+            echo "Pull Request was updated. Obsolete result will not be posted."
+            exit 0
+          fi
+
+          printf '%s\n' "${REVIEW}" > clang-tidy-review.md
+          gh pr comment "${PR_NUMBER}" \
+            --repo "${GITHUB_REPOSITORY}" \
+            --body-file clang-tidy-review.md
