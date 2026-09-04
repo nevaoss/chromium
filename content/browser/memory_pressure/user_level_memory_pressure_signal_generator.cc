@@ -56,7 +56,7 @@ base::TimeDelta MeasurementInterval() {
 // FIXME(neva): Need to check the default value.
 constexpr size_t kMemoryThresholdMB = 738;
 base::ByteSize MemoryThresholdParam() {
-  return base::MiBU(kMemoryThresholdMB);
+  return base::MiB(kMemoryThresholdMB);
 }
 #else   // BUILDFLAG(IS_NEVA_APPRUNTIME)
 constexpr base::TimeDelta kDefaultMinimumInterval = base::Minutes(10);
