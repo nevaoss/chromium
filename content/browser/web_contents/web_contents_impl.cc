@@ -12654,7 +12654,17 @@ void WebContentsImpl::SetVisibilityForChildViews(bool visible) {
   GetPrimaryMainFrame()->SetVisibilityForChildViews(visible);
 }
 
-<<<<<<< HEAD
+void WebContentsImpl::ScheduleColorRelatedStateChanges() {
+  if (color_related_state_change_scheduled_) {
+    return;
+  }
+  color_related_state_change_scheduled_ = true;
+  GetUIThreadTaskRunner({})->PostTask(
+      FROM_HERE,
+      base::BindOnce(&WebContentsImpl::HandleColorRelatedStateChanges,
+                     weak_factory_.GetWeakPtr()));
+}
+
 #if BUILDFLAG(IS_NEVA_APPRUNTIME)
 bool WebContentsImpl::IsInspectablePage() const {
   return inspectable_page_;
@@ -12721,18 +12731,6 @@ void WebContentsImpl::OnDidDropAllPeerConnections(
   }
 }
 #endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
-=======
-void WebContentsImpl::ScheduleColorRelatedStateChanges() {
-  if (color_related_state_change_scheduled_) {
-    return;
-  }
-  color_related_state_change_scheduled_ = true;
-  GetUIThreadTaskRunner({})->PostTask(
-      FROM_HERE,
-      base::BindOnce(&WebContentsImpl::HandleColorRelatedStateChanges,
-                     weak_factory_.GetWeakPtr()));
-}
->>>>>>> 154.0.8030.0~1
 
 void WebContentsImpl::HandleColorRelatedStateChanges() {
   color_related_state_change_scheduled_ = false;
