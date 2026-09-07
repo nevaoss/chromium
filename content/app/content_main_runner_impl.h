@@ -86,18 +86,14 @@ class ContentMainRunnerImpl : public ContentMainRunner {
 
   // Received in Initialize(), handed-off in Run().
   std::optional<ContentMainParams> content_main_params_;
-<<<<<<< HEAD
 
 #if defined(USE_LTTNG)
   base::NativeLibrary lttng_native_library_ = nullptr;
 #endif
-||||||| 0b93c955ccf60
-=======
 
   // Disables BEST_EFFORT tasks until shutdown if the command-line includes
   // --disable-best-effort-tasks.
   std::optional<base::ScopedBestEffortExecutionFence> best_effort_fence_;
->>>>>>> 154.0.8037.0~1
 };
 
 }  // namespace content
