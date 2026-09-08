@@ -64,6 +64,7 @@ android_library("chrome_test_java_helper") {
     "//base:content_uri_utils_java",
     "//base:holder_java",
     "//base:service_loader_java",
+    "//base:tristate_java",
     "//base/test:public_transit_java",
     "//base/test:test_support_java",
     "//base/version_info/android:version_constants_java",
@@ -523,6 +524,7 @@ android_library("chrome_test_java_org.chromium.chrome.browser") {
   deps = [
     ":chrome_test_java_helper",
     "//chrome/browser/actor/android:java",
+    "//chrome/browser/settings:settings_in_tab_java",
     "//chrome/browser/ui/android/bars_common:java",
   ]
 }
@@ -609,6 +611,7 @@ android_library("chrome_test_java_org.chromium.chrome.browser.autofill") {
 
   deps = [
     ":chrome_test_java_helper",
+    "//chrome/browser/profiles/android:java",
     "//chrome/browser/ui/android/autofill/internal:java",
     "//chrome/browser/ui/android/autofill/internal:javatests",
     "//components/autofill/core/browser/data_model/payments:mojo_bindings_java",
@@ -1287,6 +1290,7 @@ android_library("chrome_test_java_org.chromium.chrome.browser.settings") {
     "src/org/chromium/chrome/browser/settings/SettingsActivityTest.java",
     "src/org/chromium/chrome/browser/settings/SettingsPageBackButtonTest.java",
     "src/org/chromium/chrome/browser/settings/SettingsPageRenderTest.java",
+    "src/org/chromium/chrome/browser/settings/SettingsPageSigninTest.java",
     "src/org/chromium/chrome/browser/settings/SettingsPageTest.java",
     "src/org/chromium/chrome/browser/settings/search/SearchIndexProviderRegistryTest.java",
     "src/org/chromium/chrome/browser/settings/search/SettingsSearchCoordinatorTest.java",

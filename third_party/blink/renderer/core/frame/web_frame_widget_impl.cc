@@ -152,7 +152,7 @@
 #include "third_party/blink/renderer/core/page/validation_message_client.h"
 #include "third_party/blink/renderer/core/page/viewport_description.h"
 #include "third_party/blink/renderer/core/paint/timing/first_meaningful_paint_detector.h"
-#include "third_party/blink/renderer/core/paint/timing/paint_timing_detector.h"
+#include "third_party/blink/renderer/core/paint/timing/paint_timing.h"
 #include "third_party/blink/renderer/core/probe/core_probes.h"
 #include "third_party/blink/renderer/core/scroll/scroll_into_view_util.h"
 #include "third_party/blink/renderer/core/scroll/scrollbar_theme.h"
@@ -1988,6 +1988,9 @@ void WebFrameWidgetImpl::UpdateVisualProperties(
         visual_properties.min_size_for_auto_resize,
         visual_properties.max_size_for_auto_resize,
         visual_properties.screen_infos.current().device_scale_factor);
+    if (View() && View()->GetPage()) {
+      View()->GetPage()->SetAlwaysOnTop(visual_properties.always_on_top);
+    }
   }
 
   if (!View()->AutoResizeMode()) {
@@ -5626,7 +5629,7 @@ void WebFrameWidgetImpl::NotifyInputObservers(
   }
 
   const WebInputEvent& input_event = coalesced_event.Event();
-  PaintTimingDetector::From(*document).NotifyInputEvent(input_event.GetType());
+  PaintTiming::From(*document).NotifyInputEvent(input_event.GetType());
 }
 
 Frame* WebFrameWidgetImpl::FocusedCoreFrame() const {

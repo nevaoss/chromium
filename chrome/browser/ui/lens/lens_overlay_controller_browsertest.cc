@@ -545,17 +545,8 @@ class LensOverlayControllerFake : public lens::TestLensOverlayController {
         TestLensOverlayController::IsResultsSidePanelShowing());
   }
 
-  bool ShouldWaitForSidePanelReflow() override {
-    return mock_should_wait_for_reflow_.value_or(
-        TestLensOverlayController::ShouldWaitForSidePanelReflow());
-  }
-
   void set_mock_results_side_panel_showing(bool showing) {
     mock_results_side_panel_showing_ = showing;
-  }
-
-  void set_mock_should_wait_for_reflow(bool wait) {
-    mock_should_wait_for_reflow_ = wait;
   }
 
   void FlushForTesting() { fake_overlay_page_receiver_.FlushForTesting(); }
@@ -564,7 +555,6 @@ class LensOverlayControllerFake : public lens::TestLensOverlayController {
   bool should_bind_overlay_ = true;
   bool is_screenshot_possible_ = true;
   std::optional<bool> mock_results_side_panel_showing_;
-  std::optional<bool> mock_should_wait_for_reflow_;
   mojo::Receiver<lens::mojom::LensPage> fake_overlay_page_receiver_{
       &fake_overlay_page_};
 };
@@ -4593,41 +4583,6 @@ IN_PROC_BROWSER_TEST_F(LensOverlayControllerBrowserTest,
 }
 
 IN_PROC_BROWSER_TEST_F(LensOverlayControllerBrowserTest,
-                       ShowModalUI_KeepPanelAndWait) {
-  WaitForPaint();
-
-  auto* controller = GetLensOverlayController();
-  auto* fake_controller = static_cast<LensOverlayControllerFake*>(controller);
-  ASSERT_EQ(controller->state(), State::kOff);
-
-  // Open the side panel (stub Bookmarks to represent CoBrowse)
-  auto* const side_panel_ui = browser()->GetFeatures().side_panel_ui();
-  side_panel_ui->Show(SidePanelEntry::Id::kBookmarks);
-  ASSERT_TRUE(base::test::RunUntil([&]() {
-    return side_panel_ui->IsSidePanelEntryShowing(
-        SidePanelEntryKey(SidePanelEntryId::kBookmarks));
-  }));
-
-  // Mock that the open panel is the target results panel (keep it open).
-  fake_controller->set_mock_results_side_panel_showing(true);
-  // Mock that we need to wait for reflow (programmatic trigger).
-  fake_controller->set_mock_should_wait_for_reflow(true);
-
-  // Trigger Lens.
-  OpenLensOverlay(LensOverlayInvocationSource::kOmniboxPageAction);
-
-  // Verify it immediately enters the opening wait state.
-  ASSERT_EQ(controller->state(), State::kWaitingForOpeningSidePanelReflow);
-
-  // Wait for reflow and verify it finishes.
-  ASSERT_TRUE(base::test::RunUntil(
-      [&]() { return controller->state() == State::kOverlay; }));
-
-  // Side panel should still be open (mocked as results panel).
-  EXPECT_TRUE(IsSidePanelOpen());
-}
-
-IN_PROC_BROWSER_TEST_F(LensOverlayControllerBrowserTest,
                        ShowModalUI_KeepPanelCaptureImmediately) {
   WaitForPaint();
 
@@ -4645,15 +4600,12 @@ IN_PROC_BROWSER_TEST_F(LensOverlayControllerBrowserTest,
 
   // Mock that the open panel is the target results panel.
   fake_controller->set_mock_results_side_panel_showing(true);
-  // Mock that we do NOT need to wait for reflow (manual trigger).
-  fake_controller->set_mock_should_wait_for_reflow(false);
 
   // Trigger Lens.
   OpenLensOverlay(LensOverlayInvocationSource::kContextualTasksComposebox);
 
   // Verify it bypasses wait states and goes straight to screenshot/overlay.
   ASSERT_NE(controller->state(), State::kClosingOpenedSidePanel);
-  ASSERT_NE(controller->state(), State::kWaitingForOpeningSidePanelReflow);
 
   ASSERT_TRUE(base::test::RunUntil(
       [&]() { return controller->state() == State::kOverlay; }));
@@ -7850,156 +7802,6 @@ IN_PROC_BROWSER_TEST_F(LensOverlayControllerBrowserTest, ProtectedPageShows) {
   histogram_tester.ExpectBucketCount("Lens.Overlay.SidePanelResultStatus",
                                      lens::SidePanelResultStatus::kResultShown,
                                      /*expected_count=*/1);
-}
-
-class LensOverlayControllerIframeBrowserTest
-    : public LensOverlayControllerBrowserTest {
-  void SetUp() override {
-    // Register a request handler to close the socket. This should result in an
-    // ERR_EMPTY_RESPONSE, which is not a special-cased error. Used for the
-    // SidePanelIframeLoadOtherError test case. The `test` query parameter is
-    // used to trigger this handler.
-    embedded_test_server()->RegisterRequestHandler(base::BindRepeating(
-        [](const net::test_server::HttpRequest& request)
-            -> std::unique_ptr<net::test_server::HttpResponse> {
-          if (base::StartsWith(request.relative_url, kDocumentWithNamedElement,
-                               base::CompareCase::SENSITIVE)) {
-            std::string fail_query_param;
-            net::GetValueForKeyInQuery(request.GetURL(), "fail",
-                                       &fail_query_param);
-            if (fail_query_param == "invalid-headers") {
-              return std::make_unique<net::test_server::RawHttpResponse>(
-                  "invalid-headers", "");
-            }
-          }
-          return nullptr;
-        }));
-
-    LensOverlayControllerBrowserTest::SetUp();
-  }
-
- protected:
-  void SetupFeatureList() override {
-    // Set the results search URL to the test server URL so that the iframe
-    // navigations are allowed by the iframe CORS policy and the navigation
-    // throttle.
-    feature_list_.InitWithFeaturesAndParameters(
-        {{lens::features::kLensOverlay,
-          {{"results-search-url", embedded_test_server()
-                                      ->GetURL(kDocumentWithNamedElement)
-                                      .spec()}}}},
-        /*disabled_features=*/{contextual_tasks::kContextualTasks,
-                               contextual_tasks::kContextualTasksSidePanel});
-  }
-};
-
-IN_PROC_BROWSER_TEST_F(LensOverlayControllerIframeBrowserTest,
-                       SidePanelIframeLoadSuccess) {
-  base::HistogramTester histogram_tester;
-  WaitForPaint();
-
-  // State should start in off.
-  auto* controller = GetLensOverlayController();
-  ASSERT_EQ(controller->state(), State::kOff);
-
-  // Showing UI should change the state to screenshot and eventually to overlay.
-  OpenLensOverlay(LensOverlayInvocationSource::kAppMenu);
-  ASSERT_EQ(controller->state(), State::kScreenshot);
-  ASSERT_TRUE(base::test::RunUntil(
-      [&]() { return controller->state() == State::kOverlay; }));
-  ASSERT_TRUE(content::WaitForLoadStop(GetOverlayWebContents()));
-
-  // Open the side panel.
-  controller->OpenSidePanelForTesting();
-  ASSERT_TRUE(content::WaitForLoadStop(
-      controller->GetSidePanelWebContentsForTesting()));
-
-  // Navigate the iframe to a successful URL.
-  GURL url(embedded_test_server()->GetURL(kDocumentWithNamedElement));
-  content::TestNavigationObserver navigation_observer(
-      controller->GetSidePanelWebContentsForTesting());
-  GetLensOverlaySidePanelCoordinator()->LoadURLInResultsFrameForTesting(url);
-  navigation_observer.WaitForNavigationFinished();
-
-  // Check histogram. The enum is defined in the .cc file so we can't reference
-  // it directly.
-  histogram_tester.ExpectUniqueSample("Lens.Overlay.SidePanel.IframeLoadStatus",
-                                      /*IframeLoadStatus::kSuccess=*/0, 1);
-}
-
-IN_PROC_BROWSER_TEST_F(LensOverlayControllerIframeBrowserTest,
-                       SidePanelIframeLoadConnectionRefused) {
-  base::HistogramTester histogram_tester;
-  WaitForPaint();
-
-  // State should start in off.
-  auto* controller = GetLensOverlayController();
-  ASSERT_EQ(controller->state(), State::kOff);
-
-  // Showing UI should change the state to screenshot and eventually to overlay.
-  OpenLensOverlay(LensOverlayInvocationSource::kAppMenu);
-  ASSERT_EQ(controller->state(), State::kScreenshot);
-  ASSERT_TRUE(base::test::RunUntil(
-      [&]() { return controller->state() == State::kOverlay; }));
-  ASSERT_TRUE(content::WaitForLoadStop(GetOverlayWebContents()));
-
-  // Open the side panel.
-  controller->OpenSidePanelForTesting();
-  ASSERT_TRUE(content::WaitForLoadStop(
-      controller->GetSidePanelWebContentsForTesting()));
-
-  // Create a URL and then shut down the server to force a connection refused
-  // error when the iframe tries to load the URL.
-  GURL url = embedded_test_server()->GetURL(kDocumentWithNamedElement);
-  ASSERT_TRUE(embedded_test_server()->ShutdownAndWaitUntilComplete());
-
-  // Navigate the iframe to the connection refused URL.
-  content::TestNavigationObserver navigation_observer(
-      controller->GetSidePanelWebContentsForTesting());
-  GetLensOverlaySidePanelCoordinator()->LoadURLInResultsFrameForTesting(url);
-  navigation_observer.WaitForNavigationFinished();
-
-  // Check histogram.
-  histogram_tester.ExpectUniqueSample(
-      "Lens.Overlay.SidePanel.IframeLoadStatus",
-      /*IframeLoadStatus::kFailedConnectionRefused=*/1, 1);
-}
-
-IN_PROC_BROWSER_TEST_F(LensOverlayControllerIframeBrowserTest,
-                       SidePanelIframeLoadOtherError) {
-  base::HistogramTester histogram_tester;
-  WaitForPaint();
-
-  // State should start in off.
-  auto* controller = GetLensOverlayController();
-  ASSERT_EQ(controller->state(), State::kOff);
-
-  // Showing UI should change the state to screenshot and eventually to overlay.
-  OpenLensOverlay(LensOverlayInvocationSource::kAppMenu);
-  ASSERT_EQ(controller->state(), State::kScreenshot);
-  ASSERT_TRUE(base::test::RunUntil(
-      [&]() { return controller->state() == State::kOverlay; }));
-  ASSERT_TRUE(content::WaitForLoadStop(GetOverlayWebContents()));
-
-  // Open the side panel.
-  controller->OpenSidePanelForTesting();
-  ASSERT_TRUE(content::WaitForLoadStop(
-      controller->GetSidePanelWebContentsForTesting()));
-
-  // Navigate the iframe to the URL with a query parameter. This will trigger
-  // the request handler that will close the socket.
-  GURL url = net::AppendOrReplaceQueryParameter(
-      embedded_test_server()->GetURL(kDocumentWithNamedElement), /*key=*/"fail",
-      /*value=*/"invalid-headers");
-  content::TestNavigationObserver navigation_observer(
-      controller->GetSidePanelWebContentsForTesting());
-  GetLensOverlaySidePanelCoordinator()->LoadURLInResultsFrameForTesting(url);
-  navigation_observer.WaitForNavigationFinished();
-
-  // Check histogram. The enum is defined in the .cc file so we can't reference
-  // it directly.
-  histogram_tester.ExpectUniqueSample("Lens.Overlay.SidePanel.IframeLoadStatus",
-                                      /*IframeLoadStatus::kFailedOther=*/6, 1);
 }
 
 class LensOverlayControllerInnerTextEnabledSmallByteLimitTest

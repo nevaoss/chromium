@@ -52,6 +52,7 @@
 #include "third_party/blink/public/common/context_menu_data/edit_flags.h"
 #include "third_party/metrics_proto/omnibox_event.pb.h"
 #include "third_party/skia/include/core/SkRect.h"
+#include "ui/color/color_provider_key.h"
 #include "ui/display/display.h"
 #include "ui/display/screen.h"
 #include "ui/events/event.h"
@@ -384,6 +385,11 @@ void OmniboxEverywhereUIManager::CreateAndInitWidget(
   }
 
   widget_ = std::make_unique<views::Widget>();
+
+  // TODO(crbug.com/542731882): Remove once dark mode for loomnibox is
+  // implemented.
+  widget_->SetColorModeOverride(ui::ColorProviderKey::ColorMode::kLight);
+
   views::Widget::InitParams params(
       views::Widget::InitParams::CLIENT_OWNS_WIDGET,
       views::Widget::InitParams::TYPE_WINDOW);
@@ -462,6 +468,13 @@ void OmniboxEverywhereUIManager::ActivateAndFocus() {
   }
   if (web_contents()) {
     web_contents()->Focus();
+  }
+
+  if (profile_) {
+    if (auto* service =
+            OmniboxEverywhereServiceFactory::GetForProfile(profile_)) {
+      service->MaybeShowLensPromo();
+    }
   }
 }
 
@@ -1068,8 +1081,8 @@ void OmniboxEverywhereUIManager::ExecuteCommand(int command_id,
       if (profile_ && profile_->GetPrefs()) {
         PrefService* prefs = profile_->GetPrefs();
         prefs->SetBoolean(
-            omnibox::kShowAiModeOmniboxButton,
-            !prefs->GetBoolean(omnibox::kShowAiModeOmniboxButton));
+            prefs::kOmniboxEverywhereShowAiMode,
+            !prefs->GetBoolean(prefs::kOmniboxEverywhereShowAiMode));
       }
       break;
     }
@@ -1168,8 +1181,11 @@ bool OmniboxEverywhereUIManager::IsCommandIdEnabled(int command_id) const {
 
 bool OmniboxEverywhereUIManager::IsCommandIdChecked(int command_id) const {
   if (command_id == kAlwaysShowAiMode) {
-    return profile_ &&
-           profile_->GetPrefs()->GetBoolean(omnibox::kShowAiModeOmniboxButton);
+    if (profile_ && profile_->GetPrefs()) {
+      return profile_->GetPrefs()->GetBoolean(
+          prefs::kOmniboxEverywhereShowAiMode);
+    }
+    return true;
   }
   if (command_id == kShowShortcuts) {
     if (g_browser_process && g_browser_process->local_state()) {

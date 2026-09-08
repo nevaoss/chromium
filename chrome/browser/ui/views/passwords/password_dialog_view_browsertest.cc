@@ -44,7 +44,10 @@
 #include "net/test/embedded_test_server/http_request.h"
 #include "net/test/embedded_test_server/http_response.h"
 #include "testing/gmock/include/gmock/gmock.h"
+#include "ui/accessibility/ax_enums.mojom.h"
+#include "ui/accessibility/ax_node_data.h"
 #include "ui/base/ui_base_switches.h"
+#include "ui/views/accessibility/view_accessibility.h"
 #include "ui/views/bubble/bubble_frame_view.h"
 #include "ui/views/controls/button/md_text_button.h"
 #include "ui/views/controls/button/radio_button.h"
@@ -237,10 +240,11 @@ class PasswordDialogViewTest : public base::test::WithFeatureOverride,
           local_credentials,
       const url::Origin& origin);
 
-  content::WebContents* SetupTabWithTestController(Browser* browser);
+  content::WebContents* SetupTabWithTestController(
+      BrowserWindowInterface* browser);
 
   TestManagePasswordsUIController* controller(
-      Browser* target_browser = nullptr) const {
+      BrowserWindowInterface* target_browser = nullptr) const {
     if (!target_browser) {
       target_browser = browser();
     }
@@ -310,7 +314,7 @@ void PasswordDialogViewTest::SetupChooseCredentials(
 }
 
 content::WebContents* PasswordDialogViewTest::SetupTabWithTestController(
-    Browser* browser) {
+    BrowserWindowInterface* browser) {
   // Open a new tab with modified ManagePasswordsUIController.
   content::WebContents* tab =
       browser->GetTabStripModel()->GetActiveWebContents();
@@ -560,7 +564,7 @@ IN_PROC_BROWSER_TEST_P(PasswordDialogViewTest, PopupAccountChooserInIncognito) {
   local_credentials.push_back(
       std::make_unique<password_manager::PasswordForm>(form));
 
-  Browser* incognito = CreateIncognitoBrowser();
+  BrowserWindowInterface* incognito = CreateIncognitoBrowser();
   content::WebContents* tab = SetupTabWithTestController(incognito);
   ChromePasswordManagerClient* client =
       ChromePasswordManagerClient::FromWebContents(tab);
@@ -983,6 +987,89 @@ IN_PROC_BROWSER_TEST_P(PasswordDialogViewTest, CancelCombinedSelectorDialog) {
   views::test::WidgetDestroyedWaiter waiter(view->GetWidget());
   view->GetWidget()->Close();
   waiter.Wait();
+}
+
+IN_PROC_BROWSER_TEST_P(PasswordDialogViewTest,
+                       InitialFocusMultipleCredentials) {
+  if (!IsParamFeatureEnabled()) {
+    return;
+  }
+  ShowUi("MultipleCredentials");
+
+  PasswordCombinedSelectorView* view =
+      static_cast<PasswordCombinedSelectorView*>(
+          controller()->current_account_chooser());
+  ASSERT_TRUE(view);
+
+  std::vector<views::RadioButton*> radio_buttons =
+      GetRadioButtons(view->GetWidget()->GetContentsView());
+  ASSERT_EQ(2u, radio_buttons.size());
+
+  EXPECT_EQ(view->GetInitiallyFocusedView(), radio_buttons[0]);
+
+  EXPECT_CALL(*this, OnChooseCredential(nullptr));
+  EXPECT_CALL(*controller(), OnDialogClosed());
+  views::test::WidgetDestroyedWaiter waiter(view->GetWidget());
+  view->GetWidget()->Close();
+  waiter.Wait();
+}
+
+IN_PROC_BROWSER_TEST_P(PasswordDialogViewTest,
+                       InitialFocusSingleCredential) {
+  if (!IsParamFeatureEnabled()) {
+    return;
+  }
+  ShowUi("SingleCredential");
+
+  PasswordCombinedSelectorView* view =
+      static_cast<PasswordCombinedSelectorView*>(
+          controller()->current_account_chooser());
+  ASSERT_TRUE(view);
+
+  EXPECT_EQ(view->GetInitiallyFocusedView(), view->GetOkButton());
+
+  EXPECT_CALL(*this, OnChooseCredential(nullptr));
+  EXPECT_CALL(*controller(), OnDialogClosed());
+  views::test::WidgetDestroyedWaiter waiter(view->GetWidget());
+  view->GetWidget()->Close();
+  waiter.Wait();
+}
+
+IN_PROC_BROWSER_TEST_P(PasswordDialogViewTest,
+                       RadioButtonAccessibilityAttributes) {
+  if (!IsParamFeatureEnabled()) {
+    return;
+  }
+  ShowUi("MultipleCredentials");
+
+  PasswordCombinedSelectorView* view =
+      static_cast<PasswordCombinedSelectorView*>(
+          controller()->current_account_chooser());
+  ASSERT_TRUE(view);
+
+  views::View* list_view = view->GetWidget()->GetContentsView()->GetViewByID(
+      PasswordCombinedSelectorView::kCredentialListId);
+  ASSERT_TRUE(list_view);
+  auto* scroll_view = static_cast<views::ScrollView*>(list_view->children()[0]);
+  views::View* wrapper = scroll_view->contents();
+  ASSERT_TRUE(wrapper);
+  ui::AXNodeData wrapper_data;
+  wrapper->GetViewAccessibility().GetAccessibleNodeData(&wrapper_data);
+  EXPECT_EQ(wrapper_data.role, ax::mojom::Role::kRadioGroup);
+
+  std::vector<views::RadioButton*> radio_buttons =
+      GetRadioButtons(view->GetWidget()->GetContentsView());
+  ASSERT_EQ(radio_buttons.size(), 2u);
+
+  ui::AXNodeData node_data_0;
+  radio_buttons[0]->GetViewAccessibility().GetAccessibleNodeData(&node_data_0);
+  EXPECT_EQ(node_data_0.GetIntAttribute(ax::mojom::IntAttribute::kPosInSet), 1);
+  EXPECT_EQ(node_data_0.GetIntAttribute(ax::mojom::IntAttribute::kSetSize), 2);
+
+  ui::AXNodeData node_data_1;
+  radio_buttons[1]->GetViewAccessibility().GetAccessibleNodeData(&node_data_1);
+  EXPECT_EQ(node_data_1.GetIntAttribute(ax::mojom::IntAttribute::kPosInSet), 2);
+  EXPECT_EQ(node_data_1.GetIntAttribute(ax::mojom::IntAttribute::kSetSize), 2);
 }
 
 IN_PROC_BROWSER_TEST_P(PasswordDialogViewTest,

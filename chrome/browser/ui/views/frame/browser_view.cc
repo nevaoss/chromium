@@ -974,7 +974,7 @@ BrowserView::BrowserView(BrowserWindowInterface* browser)
             vertical_tab_strip_state_controller,
             BrowserActions::From(browser_)->root_action_item(), this);
 
-    if (base::FeatureList::IsEnabled(features::kGlassFrame)) {
+    if (features::IsGlassFrameEnabled()) {
       vertical_tab_strip_background_blur_backdrop_ = AddChildView(
           std::make_unique<VerticalTabStripBackgroundBlurBackdrop>());
     }
@@ -5323,8 +5323,6 @@ bool BrowserView::MaybeShowBookmarkBar(WebContents* contents) {
     GetBrowserViewLayout()->set_bookmark_bar(bookmark_bar_view_);
   }
 
-  bookmark_bar_view_->SetPageNavigator(GetActiveWebContents());
-
   // BrowserViewLayout is responsible for handling the final visibility and
   // animation of the BookmarkBar.
   bool needs_layout = false;
@@ -5799,8 +5797,7 @@ void BrowserView::ShowAvatarBubbleFromAvatarButton(bool is_source_accelerator) {
   }
 
   // Default behavior -- show the profile menu.
-  browser()->GetFeatures().profile_menu_coordinator()->Show(
-      is_source_accelerator);
+  ProfileMenuCoordinator::From(browser())->Show(is_source_accelerator);
 }
 
 void BrowserView::MaybeShowProfileSwitchIPH() {

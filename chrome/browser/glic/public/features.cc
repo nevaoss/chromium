@@ -255,8 +255,6 @@ BASE_FEATURE(kGlicSparkSettingsAccessibleLabels,
 
 BASE_FEATURE(kGlicOptInDialogA11yFix, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kGlicStructuredYieldMetadata, base::FEATURE_DISABLED_BY_DEFAULT);
-// Whether to allow Mojo in the glic guest frame.
-BASE_FEATURE(kGlicEnableMojoJs, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Runs the glic client in a PrivilegedWebContents instead of a webview.
 // This is a work in progress. See b/534807813.
@@ -287,4 +285,8 @@ const base::FeatureParam<int> kGlicMarketingAutoOpenMaxCount{
 BASE_FEATURE(kGlicActionFirstFRE,
              "GlicActionFirstFRE",
              base::FEATURE_DISABLED_BY_DEFAULT);
+
+BASE_FEATURE(kGlicWarmOnNudge, base::FEATURE_DISABLED_BY_DEFAULT);
+
+BASE_FEATURE(kGlicWarmOnIph, base::FEATURE_DISABLED_BY_DEFAULT);
 }  // namespace features

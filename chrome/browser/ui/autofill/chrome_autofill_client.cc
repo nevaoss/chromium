@@ -106,7 +106,7 @@
 #include "components/autofill/content/browser/content_identity_credential_delegate.h"
 #include "components/autofill/content/browser/integrators/email_verifier/email_verifier_delegate.h"
 #include "components/autofill/core/browser/actor/actor_autofill_manager.h"
-#include "components/autofill/core/browser/at_memory/at_memory_enablement_utils.h"
+#include "components/autofill/core/browser/at_memory/at_memory_enablement_util.h"
 #include "components/autofill/core/browser/at_memory/at_memory_manager.h"
 #include "components/autofill/core/browser/autofill_type.h"
 #include "components/autofill/core/browser/data_manager/autofill_ai/entity_data_manager.h"
@@ -1285,7 +1285,9 @@ ChromeAutofillClient::ChromeAutofillClient(content::WebContents* web_contents)
                   web_contents->GetBrowserContext())));
   }
   if (base::FeatureList::IsEnabled(features::kAutofillAtMemory)) {
-    at_memory_manager_ = std::make_unique<AtMemoryManager>(this);
+    at_memory_manager_ = std::make_unique<AtMemoryManager>(
+        this, HistoryServiceFactory::GetForProfile(
+                  GetProfile(), ServiceAccessType::EXPLICIT_ACCESS));
   }
 #if BUILDFLAG(IS_ANDROID)
   if (base::FeatureList::IsEnabled(features::kAutofillAiWithDataSchema)) {

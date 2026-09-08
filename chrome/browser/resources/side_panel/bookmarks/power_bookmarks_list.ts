@@ -43,7 +43,14 @@ import {getFolderLabel} from './power_bookmarks_utils.js';
 
 // Height of the sp-empty-state folder empty state inside list buffers.
 // Matches the CSS height defined in power_bookmarks_list.css.
+// LINT.IfChange(FolderEmptyStateHeight)
 const FOLDER_EMPTY_STATE_HEIGHT: number = 300;
+// LINT.ThenChange(power_bookmarks_list.css:FolderEmptyStateHeight)
+
+// Constants for bookmark item heights in compact and expanded views.
+// Matches the CSS heights defined in cr_url_list_item.css.
+const COMPACT_ITEM_HEIGHT: number = 36;
+const EXPANDED_ITEM_HEIGHT: number = 68;
 
 export interface DisplayItem {
   bookmark: BookmarksTreeNode;
@@ -200,9 +207,12 @@ export class PowerBookmarksListElement extends CrLitElement implements
         type: Object,
       },
 
-      hasFolders_: {
+      hasFoldersA_: {
         type: Boolean,
-        reflect: true,
+      },
+
+      hasFoldersB_: {
+        type: Boolean,
       },
 
       firstSecondaryIndexA_: {
@@ -275,7 +285,8 @@ export class PowerBookmarksListElement extends CrLitElement implements
   protected accessor canDrag_: boolean = true;
   protected accessor hasActiveDrag_: boolean = false;
   protected accessor sectionVisibility_: ListSectionVisibility = {};
-  protected accessor hasFolders_: boolean = false;
+  protected accessor hasFoldersA_: boolean = false;
+  protected accessor hasFoldersB_: boolean = false;
   protected accessor scrollTarget_: HTMLElement = document.documentElement;
   protected accessor shoppingCollectionFolderId_: string = '';
   protected accessor updatedElementIds_: string[] = [];
@@ -334,23 +345,24 @@ export class PowerBookmarksListElement extends CrLitElement implements
     const changedPrivateProperties =
         changedProperties as Map<PropertyKey, unknown>;
 
-    if (changedPrivateProperties.has('searchQuery')) {
+    if (changedProperties.has('searchQuery')) {
       this.onSearchChanged_();
     }
 
     let displayListChanged = false;
-    if (changedPrivateProperties.has('activeFolderPath') ||
-        changedPrivateProperties.has('labels') ||
+    if (changedProperties.has('activeFolderPath') ||
+        changedProperties.has('labels') ||
         changedPrivateProperties.has('sortOrder') ||
-        changedPrivateProperties.has('searchQuery') ||
-        changedPrivateProperties.has('hasSomeActiveFilter')) {
+        changedProperties.has('searchQuery') ||
+        changedProperties.has('hasSomeActiveFilter') ||
+        changedPrivateProperties.has('compact_')) {
       this.updateDisplayList_();
       displayListChanged = true;
     }
 
-    if (changedPrivateProperties.has('editing') ||
-        changedPrivateProperties.has('renamingId') ||
-        changedPrivateProperties.has('hasSomeActiveFilter')) {
+    if (changedProperties.has('editing') ||
+        changedProperties.has('renamingId') ||
+        changedProperties.has('hasSomeActiveFilter')) {
       this.canDrag_ = this.computeCanDrag_();
     }
 
@@ -376,13 +388,6 @@ export class PowerBookmarksListElement extends CrLitElement implements
 
     if (changedPrivateProperties.has('canDrag_')) {
       this.onCanDragChange_();
-    }
-
-    // Lit does not automatically notify parent components on property changes
-    // (unlike Polymer's `notify: true`), so we must fire this custom event
-    // manually when the property changes.
-    if (changedPrivateProperties.has('hasShownBookmarks')) {
-      this.fire('has-shown-bookmarks-changed', {value: this.hasShownBookmarks});
     }
   }
 
@@ -415,7 +420,9 @@ export class PowerBookmarksListElement extends CrLitElement implements
 
     const listEl = this.list;
     const element = await listEl.ensureItemRendered(index);
-    element.scrollIntoView({block: 'nearest'});
+    if (element) {
+      element.scrollIntoView({block: 'nearest'});
+    }
   }
 
   onBookmarkAdded(bookmark: BookmarksTreeNode, parent: BookmarksTreeNode) {
@@ -727,22 +734,24 @@ export class PowerBookmarksListElement extends CrLitElement implements
       }
 
       // Write data to the target buffer.
+      const hasFolders =
+          !!displayList && displayList.some(item => !item.bookmark.url);
       if (targetListId === 'a') {
         this.displayListA_ = displayList;
         this.firstSecondaryIndexA_ =
             secondaryList.length > 0 ? firstSecondaryIndex : -1;
         this.activeFolderA_ = activeFolder;
+        this.hasFoldersA_ = hasFolders;
       } else {
         this.displayListB_ = displayList;
         this.firstSecondaryIndexB_ =
             secondaryList.length > 0 ? firstSecondaryIndex : -1;
         this.activeFolderB_ = activeFolder;
+        this.hasFoldersB_ = hasFolders;
       }
 
       this.transitioningList_ = targetListId;
       this.hasShownBookmarks = !!displayList && displayList.length > 0;
-      this.hasFolders_ =
-          !!displayList && displayList.some(item => !item.bookmark.url);
       this.updateListScrollOffset_();
 
       // Wait for Lit to render the contents into the target list buffer.
@@ -801,21 +810,23 @@ export class PowerBookmarksListElement extends CrLitElement implements
 
     } else {
       this.lastActiveFolderPathLength_ = currentPathLength;
+      const hasFolders =
+          !!displayList && displayList.some(item => !item.bookmark.url);
       if (this.activeList_ === 'a') {
         this.displayListA_ = displayList;
         this.firstSecondaryIndexA_ =
             secondaryList.length > 0 ? firstSecondaryIndex : -1;
         this.activeFolderA_ = activeFolder;
+        this.hasFoldersA_ = hasFolders;
       } else {
         this.displayListB_ = displayList;
         this.firstSecondaryIndexB_ =
             secondaryList.length > 0 ? firstSecondaryIndex : -1;
         this.activeFolderB_ = activeFolder;
+        this.hasFoldersB_ = hasFolders;
       }
 
       this.hasShownBookmarks = !!displayList && displayList.length > 0;
-      this.hasFolders_ =
-          !!displayList && displayList.some(item => !item.bookmark.url);
       this.updateListScrollOffset_();
 
       // After the lists are updated and all children updates are complete,
@@ -868,14 +879,17 @@ export class PowerBookmarksListElement extends CrLitElement implements
     return listId === this.activeList_ || listId === this.transitioningList_;
   }
 
+  protected getItemSize_(): number {
+    return this.compact_ ? COMPACT_ITEM_HEIGHT : EXPANDED_ITEM_HEIGHT;
+  }
+
   private getFolderHeight_(listId: string): number {
     if (this.isFolderEmptyStateVisible_(listId)) {
       return FOLDER_EMPTY_STATE_HEIGHT;
     }
     const displayList = this.getDisplayList_(listId);
     const itemsCount = displayList ? displayList.length : 0;
-    const itemHeight = this.compact_ ? 36 : 68;
-    return itemsCount * itemHeight;
+    return itemsCount * this.getItemSize_();
   }
 
   protected isFolderEmptyStateVisible_(listId: string): boolean {
@@ -890,6 +904,20 @@ export class PowerBookmarksListElement extends CrLitElement implements
     const hasSomeActiveFilter = this.hasSomeActiveFilter;
 
     return !hasShownBookmarks && !hasSomeActiveFilter && hasActiveFolder;
+  }
+
+  private resetListBuffer_(listId: string) {
+    if (listId === 'a') {
+      this.displayListA_ = [];
+      this.firstSecondaryIndexA_ = -1;
+      this.activeFolderA_ = undefined;
+      this.hasFoldersA_ = false;
+    } else {
+      this.displayListB_ = [];
+      this.firstSecondaryIndexB_ = -1;
+      this.activeFolderB_ = undefined;
+      this.hasFoldersB_ = false;
+    }
   }
 
   private finalizeTransition_(
@@ -924,6 +952,9 @@ export class PowerBookmarksListElement extends CrLitElement implements
 
     this.transitioningList_ = '';
     this.activeList_ = targetListId;
+
+    // Reset the inactive buffer so dormant rows are purged from the DOM.
+    this.resetListBuffer_(currentListId);
 
     this.updateListScrollOffset_();
     this.notifyBookmarksListResize_();
@@ -1216,9 +1247,6 @@ export class PowerBookmarksListElement extends CrLitElement implements
 
   protected onViewToggled_() {
     this.compact_ = !this.compact_;
-    if (this.compact_) {
-      this.updateDisplayList_();
-    }
     this.notifyBookmarksListResize_();
     recordViewType(this.compact_);
     const viewType = this.compact_ ? ViewType.kCompact : ViewType.kExpanded;

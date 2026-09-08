@@ -136,36 +136,39 @@ constexpr GateableEventSet kRequestsAndPageActions = {
     GateableEvent::kNavigationRequest, GateableEvent::kPageAction};
 
 // Splits a navigation gating callback, storing one split in
-// `pending_cancellations` (to invoke `arg_for_cancel_callback` when pending
-// navigations are cancelled) and another in a ScopedClosureRunner (to invoke
-// `arg_for_cancel_callback` if the callback is dropped before execution).
-// Returns a wrapped callback that disarms both upon normal invocation.
+// `pending_cancellations` (to invoke with `block_reason_if_dropped` when
+// pending navigations are cancelled) and another in a ScopedClosureRunner (to
+// invoke with `block_reason_if_dropped` if the callback is dropped before
+// execution).  Returns a wrapped callback that disarms both upon normal
+// invocation.
 ExecutionEngine::NavigationDecisionCallback TrackPendingNavigation(
     base::OnceCallbackList<void()>& pending_cancellations,
     ExecutionEngine::NavigationDecisionCallback callback,
-    bool arg_for_cancel_callback) {
+    MayActOnUrlBlockReason block_reason_if_dropped) {
   auto [cancel_1, temp] = base::SplitOnceCallback(std::move(callback));
   auto [cancel_2, wrapped] = base::SplitOnceCallback(std::move(temp));
 
   auto runner =
       base::MakeRefCounted<base::RefCountedData<base::ScopedClosureRunner>>(
           base::ScopedClosureRunner(
-              base::BindOnce(std::move(cancel_2), arg_for_cancel_callback)));
+              base::BindOnce(std::move(cancel_2), block_reason_if_dropped)));
 
   base::CallbackListSubscription subscription =
       pending_cancellations.Add(base::BindOnce(
           [](scoped_refptr<base::RefCountedData<base::ScopedClosureRunner>>
                  runner,
-             base::OnceCallback<void(bool)> cancel_cb, bool arg) {
+             ExecutionEngine::NavigationDecisionCallback cancel_cb,
+             MayActOnUrlBlockReason arg) {
             runner->data.ReplaceClosure(base::DoNothing());
             std::move(cancel_cb).Run(arg);
           },
-          runner, std::move(cancel_1), arg_for_cancel_callback));
+          runner, std::move(cancel_1), block_reason_if_dropped));
 
   return base::BindOnce(
              [](scoped_refptr<base::RefCountedData<base::ScopedClosureRunner>>
                     runner,
-                base::CallbackListSubscription sub, bool arg) {
+                base::CallbackListSubscription sub,
+                MayActOnUrlBlockReason arg) {
                runner->data.ReplaceClosure(base::DoNothing());
                return arg;
              },
@@ -316,11 +319,20 @@ void IsNonSensitiveUrl(Profile* profile,
                        base::OnceCallback<void(bool)> callback) {
   CHECK_NE(context, nullptr);
   auto* decision_context = static_cast<OriginGatingDecisionContext*>(context);
+
+  if (base::FeatureList::IsEnabled(kGlicActorLocalhostIsSensitive) &&
+      net::IsLocalhost(url)) {
+    decision_context->destination_is_sensitive = true;
+    std::move(callback).Run(/*not_sensitive=*/false);
+    return;
+  }
+
   if (decision_context->destination_is_sensitive.has_value()) {
     std::move(callback).Run(
         !decision_context->destination_is_sensitive.value());
     return;
   }
+
   base::expected<void, base::OnceCallback<void(bool)>> sensitive_check_result =
       MaybeCheckOptimizationGuideForSensitiveUrl(
           url, profile,
@@ -489,8 +501,8 @@ ExecutionEngine::GatingDecision MapGatingDecisionToEngineDecision(
           return ExecutionEngine::GatingDecision::kNeedsAsyncCheck;
         case DecisionSource::kAllowHttpLocalhost:
         case DecisionSource::kAllowAboutBlank:
-        case DecisionSource::kForbidIpAddress:
-        case DecisionSource::kRequireHttps:
+        case DecisionSource::kForbidNonLocalhostIpAddress:
+        case DecisionSource::kRequireHttpsOrLocalhost:
         case DecisionSource::kRequireHttpsOrHttp:
           NOTREACHED();
       }
@@ -522,9 +534,9 @@ MayActOnUrlBlockReason MapGatingDecisionToBlockReason(
       switch (decision.attribution.Source()) {
         case DecisionSource::kEnterprisePolicy:
           return MayActOnUrlBlockReason::kEnterprisePolicy;
-        case DecisionSource::kForbidIpAddress:
+        case DecisionSource::kForbidNonLocalhostIpAddress:
           return MayActOnUrlBlockReason::kIpAddress;
-        case DecisionSource::kRequireHttps:
+        case DecisionSource::kRequireHttpsOrLocalhost:
         case DecisionSource::kRequireHttpsOrHttp:
           return ProfileIOData::IsHandledURL(url)
                      ? MayActOnUrlBlockReason::kWrongScheme
@@ -682,8 +694,12 @@ ExecutionEngine::ExecutionEngine(
                            &BlockSafeBrowsingWarningIfSafetyChecksEnabled),
                        kTabSafeBrowsingObserverPredicateName),
                    {GateableEvent::kPageAction}},
+                  // If localhost should be treated as sensitive, only
+                  // auto-allow for navigation requests.
                   {DecisionSource::kAllowHttpLocalhost,
-                   kRequestsAndPageActions},
+                   base::FeatureList::IsEnabled(kGlicActorLocalhostIsSensitive)
+                       ? GateableEventSet{GateableEvent::kNavigationRequest}
+                       : kRequestsAndPageActions},
                   {DecisionSource::kAllowAboutBlank, kRequestsAndPageActions},
                   // Allow insecure HTTP for navigation requests, as in
                   // practice sites may have HTTP links that will get upgraded.
@@ -691,8 +707,10 @@ ExecutionEngine::ExecutionEngine(
                   // serious of an impediment.
                   {DecisionSource::kRequireHttpsOrHttp,
                    {GateableEvent::kNavigationRequest}},
-                  {DecisionSource::kRequireHttps, {GateableEvent::kPageAction}},
-                  {DecisionSource::kForbidIpAddress, kRequestsAndPageActions},
+                  {DecisionSource::kRequireHttpsOrLocalhost,
+                   {GateableEvent::kPageAction}},
+                  {DecisionSource::kForbidNonLocalhostIpAddress,
+                   kRequestsAndPageActions},
                   {CustomPredicate(
                        base::BindRepeating(&AllowIfSafetyChecksDisabled),
                        kSafetyChecksDisabledPredicateName),
@@ -705,7 +723,9 @@ ExecutionEngine::ExecutionEngine(
                   {CustomPredicate(base::BindRepeating(&BlockDangerousMimeType),
                                    kDangerousMimeTypePredicateName),
                    {GateableEvent::kNavigationResponse}},
-                  {DecisionSource::kEnterprisePolicy, GateableEventSet::All()},
+                  {DecisionSource::kEnterprisePolicy,
+                   {GateableEvent::kNavigationResponse,
+                    GateableEvent::kPageAction}},
                   {CustomPredicate(base::BindRepeating(&BlockLookalikeUrl,
                                                        task_->GetProfile()),
                                    kLookalikeUrlPredicateName),
@@ -822,7 +842,8 @@ void ExecutionEngine::ShouldNavigationCommit(
     ExecutionEngine::NavigationDecisionCallback callback) {
   if (!IsNavigationGatingEnabled()) {
     base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
-        FROM_HERE, base::BindOnce(std::move(callback), true));
+        FROM_HERE,
+        base::BindOnce(std::move(callback), MayActOnUrlBlockReason::kAllowed));
     return;
   }
 
@@ -840,7 +861,7 @@ void ExecutionEngine::ShouldNavigationCommit(
   auto event = GateableEvent::kNavigationResponse;
   auto wrapped_callback = TrackPendingNavigation(
       pending_navigation_cancellations_, std::move(callback),
-      /*arg_for_cancel_callback=*/false);
+      /*block_reason_if_dropped=*/MayActOnUrlBlockReason::kTaskCancelled);
   origin_gating_checker_.ComputeGatingDecision(
       std::make_unique<NavigationResponseContext>(
           GetPrimaryMainFrame(navigation_handle)->GetPageUkmSourceId(),
@@ -904,7 +925,8 @@ void ExecutionEngine::OnComputedGatingDecision(
                response_context->response_mime_type.value_or("null"))
           .Build());
 
-  std::move(callback).Run(decision.is_allowed);
+  std::move(callback).Run(
+      MapGatingDecisionToBlockReason(decision, destination_origin.GetURL()));
 }
 
 void ExecutionEngine::LogNavigationGating(
@@ -1075,7 +1097,7 @@ void ExecutionEngine::OnNavigationConfirmationDecision(
     ukm::SourceId ukm_source_id,
     base::ScopedUmaHistogramTimer timer,
     State engine_state,
-    ExecutionEngine::NavigationDecisionCallback callback,
+    base::OnceCallback<void(bool)> callback,
     webui::mojom::NavigationConfirmationResponsePtr response) {
   switch (response->result->which()) {
     case webui::mojom::ConfirmationRequestResult::Tag::kPermissionGranted: {
@@ -1131,7 +1153,7 @@ void ExecutionEngine::SendUserConfirmationDialogRequest(
 
 void ExecutionEngine::OnPromptUserToConfirmNavigationDecision(
     const url::Origin& destination,
-    ExecutionEngine::NavigationDecisionCallback callback,
+    base::OnceCallback<void(bool)> callback,
     webui::mojom::UserConfirmationDialogResponsePtr response) {
   switch (response->result->which()) {
     case webui::mojom::ConfirmationRequestResult::Tag::kPermissionGranted: {

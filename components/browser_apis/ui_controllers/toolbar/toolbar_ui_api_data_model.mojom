@@ -463,7 +463,16 @@ struct PageActionState {
   // Overrides background color from its usual behavior.
   skia.mojom.SkColor? background_color_override;
 
-  // TODO: crbug.com/501449027 - Add remaining fields.
+  // The TrackedElement id to use for the page action icon button. Used for
+  // element tracking.
+  tracked_element.mojom.TrackedElementIdentifier identifier;
+
+  // Whether the action is currently active, indicating there is at least one
+  // active `ScopedPageActionActivity` associated with this action in the
+  // C++ `PageActionModel` (for example, when a feature's UI like the Find bar
+  // is currently open). When true, the icon button is rendered with an active
+  // highlight state (via the `is-menu-open` attribute in WebUI).
+  bool is_active;
 };
 
 // Colors used by the omnibox.

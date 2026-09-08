@@ -84,6 +84,8 @@ targets.tests.gpu_telemetry_test(
     mixins = [
         "skia_gold_test",
         "has_native_resultdb_integration",
+        "gpu_integration_test_common_args",
+        "gpu_integration_test_pixel_args",
     ],
     module_scheme = "flat",
 )
@@ -1396,6 +1398,7 @@ targets.tests.gpu_telemetry_test(
     telemetry_test_name = "gpu_process",
     mixins = [
         "has_native_resultdb_integration",
+        "gpu_integration_test_common_args",
     ],
     module_scheme = "flat",
 )
@@ -1427,6 +1430,7 @@ targets.tests.gpu_telemetry_test(
     telemetry_test_name = "hardware_accelerated_feature",
     mixins = [
         "has_native_resultdb_integration",
+        "gpu_integration_test_common_args",
     ],
     module_scheme = "flat",
 )

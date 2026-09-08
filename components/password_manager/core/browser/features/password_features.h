@@ -183,6 +183,13 @@ BASE_DECLARE_FEATURE(kPasswordFormGroupedAffiliations);
 // terminal.
 BASE_DECLARE_FEATURE(kPasswordManagerLogToTerminal);
 
+#if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)  // Desktop
+// Enables the OnDeviceEncryptionMetricsReporter service which tracks
+// on-device encryption states of passwords and passkeys and records
+// readiness metrics.
+BASE_DECLARE_FEATURE(kPasswordManagerOnDeviceEncryptionMetricsReporter);
+#endif  // !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
+
 // Performs additional security checks wrt. the triggering frame before adding
 // the "Select password" entry to the context menu.
 BASE_DECLARE_FEATURE(kPasswordManualFallbackSecurityChecks);
@@ -223,6 +230,11 @@ BASE_DECLARE_FEATURE(kSkipUndecryptablePasswords);
 
 // Starts passwords resync when undecryptable passwords are detected.
 BASE_DECLARE_FEATURE(kTriggerPasswordResyncWhenUndecryptablePasswordsDetected);
+
+// Killswitch: When enabled, unifies the leak checkup dialog variations into a
+// single checkup dialog and removes the check for whether the credential was
+// saved on the current site.
+BASE_DECLARE_FEATURE(kUnifiedPasswordLeakDialog);
 
 // The feature enables the use of detached Widget during password change
 // to which WebContents is attached. This helps to resolve the problem

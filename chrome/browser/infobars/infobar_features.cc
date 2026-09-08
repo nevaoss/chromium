@@ -24,6 +24,11 @@ BASE_FEATURE_PARAM(bool,
                    false);
 
 BASE_FEATURE_PARAM(bool,
+                   kMigratedDefaultBrowser,
+                   &kCentralizedInfoBarFramework,
+                   false);
+
+BASE_FEATURE_PARAM(bool,
                    kMigratedDevToolsSharedProcess,
                    &kCentralizedInfoBarFramework,
                    false);
@@ -40,6 +45,11 @@ BASE_FEATURE_PARAM(bool,
 
 BASE_FEATURE_PARAM(bool,
                    kMigratedKnownInterceptionDisclosure,
+                   &kCentralizedInfoBarFramework,
+                   false);
+
+BASE_FEATURE_PARAM(bool,
+                   kMigratedLinkCapturing,
                    &kCentralizedInfoBarFramework,
                    false);
 
@@ -89,6 +99,11 @@ BASE_FEATURE_PARAM(bool,
                    &kCentralizedInfoBarFramework,
                    false);
 
+BASE_FEATURE_PARAM(bool,
+                   kMigratedInstallationError,
+                   &kCentralizedInfoBarFramework,
+                   false);
+
 const base::FeatureParam<bool>* GetInfoBarMigrationParam(
     InfoBarDelegate::InfoBarIdentifier infobar_id) {
   switch (infobar_id) {
@@ -96,6 +111,8 @@ const base::FeatureParam<bool>* GetInfoBarMigrationParam(
       return &kMigratedAutomation;
     case InfoBarDelegate::COLLECTED_COOKIES_INFOBAR_DELEGATE:
       return &kMigratedCollectedCookies;
+    case InfoBarDelegate::DEFAULT_BROWSER_INFOBAR_DELEGATE:
+      return &kMigratedDefaultBrowser;
     case InfoBarDelegate::DEV_TOOLS_SHARED_PROCESS_DELEGATE:
       return &kMigratedDevToolsSharedProcess;
     case InfoBarDelegate::GOOGLE_API_KEYS_INFOBAR_DELEGATE:
@@ -104,6 +121,8 @@ const base::FeatureParam<bool>* GetInfoBarMigrationParam(
       return &kMigratedInstallerDownloader;
     case InfoBarDelegate::KNOWN_INTERCEPTION_DISCLOSURE_INFOBAR_DELEGATE:
       return &kMigratedKnownInterceptionDisclosure;
+    case InfoBarDelegate::ENABLE_LINK_CAPTURING_INFOBAR_DELEGATE:
+      return &kMigratedLinkCapturing;
     case InfoBarDelegate::PAGE_INFO_INFOBAR_DELEGATE:
       return &kMigratedPageInfo;
     case InfoBarDelegate::PDF_INFOBAR_DELEGATE:
@@ -124,6 +143,8 @@ const base::FeatureParam<bool>* GetInfoBarMigrationParam(
       return &kMigratedExtensionDevTools;
     case InfoBarDelegate::SESSION_RESTORE_INFOBAR_DELEGATE:
       return &kMigratedSessionRestore;
+    case InfoBarDelegate::INSTALLATION_ERROR_INFOBAR_DELEGATE:
+      return &kMigratedInstallationError;
     default:
       return nullptr;
   }

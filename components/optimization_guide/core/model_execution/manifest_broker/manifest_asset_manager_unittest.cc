@@ -20,13 +20,14 @@
 #include "components/optimization_guide/core/model_execution/manifest_broker/manifest.h"
 #include "components/optimization_guide/core/model_execution/manifest_broker/manifest_asset_manager.h"
 #include "components/optimization_guide/core/model_execution/manifest_broker/manifest_broker_state.h"
+#include "components/optimization_guide/core/model_execution/manifest_broker/test/fake_manifest_broker.h"
 #include "components/optimization_guide/core/model_execution/manifest_broker/test/manifest_builder.h"
 #include "components/optimization_guide/core/model_execution/manifest_broker/test/test_manifest_asset_manager_component_state.h"
 #include "components/optimization_guide/core/model_execution/model_execution_prefs.h"
 #include "components/optimization_guide/core/model_execution/on_device_model_names.h"
 #include "components/optimization_guide/core/model_execution/test/fake_component_update_service.h"
-#include "components/optimization_guide/core/model_execution/test/fake_model_broker.h"
 #include "components/optimization_guide/core/model_execution/test/mock_download_progress_observer.h"
+#include "services/on_device_model/public/cpp/test_support/fake_service.h"
 #include "components/optimization_guide/core/model_execution/usage_tracker.h"
 #include "components/optimization_guide/core/optimization_guide_features.h"
 #include "components/optimization_guide/proto/manifest.pb.h"
@@ -247,7 +248,8 @@ class ManifestAssetManagerTest : public testing::Test {
 
 TEST_F(ManifestAssetManagerTest, DownloadProgressObserverReceivesUpdates) {
   DummyAsset asset = DummyAsset::For("compose");
-  usage_tracker_.OnDeviceEligibleUseCaseUsed(asset.use_case);
+  usage_tracker_.RaisePriority(asset.use_case,
+                               UsageTracker::Priority::kUserBlocking);
   UpdateManifest(DummyManifest().Add(asset));
   Startup();
   EXPECT_TRUE(component_state_.WaitForRegistration(asset.ToInstallTarget()));
@@ -277,7 +279,8 @@ TEST_F(ManifestAssetManagerTest,
       {{"ai_model_unloadable_progress_percent", "10"}});
 
   DummyAsset asset = DummyAsset::For("compose");
-  usage_tracker_.OnDeviceEligibleUseCaseUsed(asset.use_case);
+  usage_tracker_.RaisePriority(asset.use_case,
+                               UsageTracker::Priority::kUserBlocking);
   UpdateManifest(DummyManifest().Add(asset));
   Startup();
   EXPECT_TRUE(component_state_.WaitForRegistration(asset.ToInstallTarget()));
@@ -309,8 +312,10 @@ TEST_F(ManifestAssetManagerTest,
 TEST_F(ManifestAssetManagerTest, DownloadProgressObserverIsUseCaseSpecific) {
   DummyAsset compose_asset = DummyAsset::For("compose");
   DummyAsset test_asset = DummyAsset::For("test");
-  usage_tracker_.OnDeviceEligibleUseCaseUsed(compose_asset.use_case);
-  usage_tracker_.OnDeviceEligibleUseCaseUsed(test_asset.use_case);
+  usage_tracker_.RaisePriority(compose_asset.use_case,
+                               UsageTracker::Priority::kUserBlocking);
+  usage_tracker_.RaisePriority(test_asset.use_case,
+                               UsageTracker::Priority::kUserBlocking);
   UpdateManifest(DummyManifest().Add(compose_asset).Add(test_asset));
   Startup();
   EXPECT_TRUE(
@@ -345,9 +350,9 @@ TEST_F(ManifestAssetManagerTest, DownloadProgressObserverIsUseCaseSpecific) {
 TEST_F(ManifestAssetManagerTest, RegistersComponentsForActiveUseCases) {
   DummyAsset compose_asset = DummyAsset::For("compose");
   DummyAsset test_asset = DummyAsset::For("test");
-  usage_tracker_.OnDeviceEligibleUseCaseUsed(compose_asset.use_case);
   UpdateManifest(DummyManifest().Add(compose_asset).Add(test_asset));
   Startup();
+  manifest_broker_state_->SetUseCaseRequested(compose_asset.use_case, true);
   EXPECT_TRUE(
       component_state_.WaitForRegistration(compose_asset.ToInstallTarget()));
   EXPECT_TRUE(
@@ -358,21 +363,40 @@ TEST_F(ManifestAssetManagerTest, RegistersComponentsForActiveUseCases) {
 }
 
 // Test that the manager registers components for feature usage keyed on
-// mojom::OnDeviceFeature.
+// mojom::OnDeviceFeature without triggering on-demand downloads.
 TEST_F(ManifestAssetManagerTest, RegistersComponentsForLegacyFeatureUsage) {
   DummyAsset asset = DummyAsset::For("test");
-  usage_tracker_.OnDeviceEligibleFeatureUsed(mojom::OnDeviceFeature::kTest);
+  model_execution::prefs::RecordFeatureUsage(&local_state_.local_state(),
+                                             mojom::OnDeviceFeature::kTest);
 
   UpdateManifest(DummyManifest().Add(asset));
   Startup();
 
   EXPECT_TRUE(component_state_.WaitForRegistration(asset.ToInstallTarget()));
+  EXPECT_FALSE(component_state_.WasOnDemandUpdateRequested(asset.public_key));
+}
+
+TEST_F(ManifestAssetManagerTest,
+       BackgroundPriorityDoesNotRequestOnDemandUpdate) {
+  DummyAsset asset = DummyAsset::For("compose");
+  model_execution::prefs::RecordUseCaseUsage(&local_state_.local_state(),
+                                             asset.use_case);
+
+  UpdateManifest(DummyManifest().Add(asset));
+  Startup();
+
+  EXPECT_TRUE(component_state_.WaitForRegistration(asset.ToInstallTarget()));
+  EXPECT_FALSE(component_state_.WasOnDemandUpdateRequested(asset.public_key));
+
+  // Upgrading to foreground requests on-demand update.
+  manifest_broker_state_->SetUseCaseRequested(asset.use_case, true);
   EXPECT_TRUE(component_state_.WasOnDemandUpdateRequested(asset.public_key));
 }
 
 TEST_F(ManifestAssetManagerTest, DynamicEnterprisePolicyChange) {
   DummyAsset asset = DummyAsset::For("compose");
-  usage_tracker_.OnDeviceEligibleUseCaseUsed(asset.use_case);
+  usage_tracker_.RaisePriority(asset.use_case,
+                               UsageTracker::Priority::kUserBlocking);
   UpdateManifest(DummyManifest().Add(asset));
   Startup();
 
@@ -400,7 +424,8 @@ TEST_F(ManifestAssetManagerTest, DynamicEnterprisePolicyChange) {
 
 TEST_F(ManifestAssetManagerTest, DynamicOnDeviceAISettingsChange) {
   DummyAsset asset = DummyAsset::For("compose");
-  usage_tracker_.OnDeviceEligibleUseCaseUsed(asset.use_case);
+  usage_tracker_.RaisePriority(asset.use_case,
+                               UsageTracker::Priority::kUserBlocking);
   UpdateManifest(DummyManifest().Add(asset));
   Startup();
   EXPECT_TRUE(component_state_.WaitForRegistration(asset.ToInstallTarget()));
@@ -419,7 +444,8 @@ TEST_F(ManifestAssetManagerTest, DynamicOnDeviceAISettingsChange) {
 
 TEST_F(ManifestAssetManagerTest, AlreadyInstalledFlow) {
   DummyAsset asset = DummyAsset::For("compose");
-  usage_tracker_.OnDeviceEligibleUseCaseUsed(asset.use_case);
+  usage_tracker_.RaisePriority(asset.use_case,
+                               UsageTracker::Priority::kUserBlocking);
   MakeAssetsInstallable(DummyManifest().Add(asset));
 
   // First startup to install the asset.
@@ -444,7 +470,8 @@ TEST_F(ManifestAssetManagerTest, AlreadyInstalledFlow) {
 TEST_F(ManifestAssetManagerTest, NotYetInstalledFlow) {
   base::HistogramTester histogram_tester;
   DummyAsset asset = DummyAsset::For("compose");
-  usage_tracker_.OnDeviceEligibleUseCaseUsed(asset.use_case);
+  usage_tracker_.RaisePriority(asset.use_case,
+                               UsageTracker::Priority::kUserBlocking);
   UpdateManifest(DummyManifest().Add(asset));
   Startup();
   EXPECT_TRUE(component_state_.WaitForRegistration(asset.ToInstallTarget()));
@@ -456,7 +483,8 @@ TEST_F(ManifestAssetManagerTest, NotYetInstalledFlow) {
 
 TEST_F(ManifestAssetManagerTest, SimulatesAssetReady) {
   DummyAsset asset = DummyAsset::For("compose");
-  usage_tracker_.OnDeviceEligibleUseCaseUsed(asset.use_case);
+  usage_tracker_.RaisePriority(asset.use_case,
+                               UsageTracker::Priority::kUserBlocking);
   UpdateManifest(DummyManifest().Add(asset));
   Startup();
   EXPECT_TRUE(component_state_.WaitForRegistration(asset.ToInstallTarget()));
@@ -490,7 +518,8 @@ TEST_F(ManifestAssetManagerTest, SimulatesAssetReady) {
 
 TEST_F(ManifestAssetManagerTest, DoesNotLogNewInstallExistingComponent) {
   DummyAsset asset = DummyAsset::For("compose");
-  usage_tracker_.OnDeviceEligibleUseCaseUsed(asset.use_case);
+  usage_tracker_.RaisePriority(asset.use_case,
+                               UsageTracker::Priority::kUserBlocking);
   MakeAssetsInstallable(DummyManifest().Add(asset));
 
   {
@@ -520,7 +549,8 @@ TEST_F(ManifestAssetManagerTest, DoesNotLogNewInstallExistingComponent) {
 
 TEST_F(ManifestAssetManagerTest, ResumesInstallationOnStartup) {
   DummyAsset asset = DummyAsset::For("compose");
-  usage_tracker_.OnDeviceEligibleUseCaseUsed(asset.use_case);
+  usage_tracker_.RaisePriority(asset.use_case,
+                               UsageTracker::Priority::kUserBlocking);
   UpdateManifest(DummyManifest().Add(asset));
   Startup();
   EXPECT_TRUE(component_state_.WaitForRegistration(asset.ToInstallTarget()));
@@ -536,7 +566,8 @@ TEST_F(ManifestAssetManagerTest, ResumesInstallationOnStartup) {
 TEST_F(ManifestAssetManagerTest, ObsoleteVersionOnStartup) {
   DummyAsset asset_v1 = DummyAsset::For("compose").WithVersion("1.0.0.0");
   DummyAsset asset_v2 = DummyAsset::For("compose").WithVersion("2.0.0.0");
-  usage_tracker_.OnDeviceEligibleUseCaseUsed(asset_v1.use_case);
+  usage_tracker_.RaisePriority(asset_v1.use_case,
+                               UsageTracker::Priority::kUserBlocking);
   MakeAssetsInstallable(DummyManifest().Add(asset_v1));
   Startup();
   EXPECT_TRUE(component_state_.WaitForRegistration(asset_v1.ToInstallTarget()));
@@ -553,7 +584,8 @@ TEST_F(ManifestAssetManagerTest, ObsoleteVersionOnStartup) {
 TEST_F(ManifestAssetManagerTest, ChangedPublicKeyOnStartup) {
   DummyAsset test_v1 = DummyAsset::For("test").WithPublicKey("key1");
   DummyAsset test_v2 = DummyAsset::For("test").WithPublicKey("key2");
-  usage_tracker_.OnDeviceEligibleUseCaseUsed(test_v1.use_case);
+  usage_tracker_.RaisePriority(test_v1.use_case,
+                               UsageTracker::Priority::kUserBlocking);
   MakeAssetsInstallable(DummyManifest().Add(test_v1));
   Startup();
   EXPECT_TRUE(component_state_.WaitForRegistration(test_v1.ToInstallTarget()));
@@ -573,7 +605,8 @@ TEST_F(ManifestAssetManagerTest, ChangedAssetIdOnStartup) {
   DummyAsset asset_v2 = DummyAsset::For("prompt_api").WithAssetId("asset2");
   // These assets have the same public key and version.
   ASSERT_EQ(asset_v1.public_key, asset_v2.public_key);
-  usage_tracker_.OnDeviceEligibleUseCaseUsed(asset_v1.use_case);
+  usage_tracker_.RaisePriority(asset_v1.use_case,
+                               UsageTracker::Priority::kUserBlocking);
   MakeAssetsInstallable(DummyManifest().Add(asset_v1));
   Startup();
   EXPECT_TRUE(component_state_.WaitForRegistration(asset_v1.ToInstallTarget()));
@@ -593,7 +626,8 @@ TEST_F(ManifestAssetManagerTest, ChangedAssetIdOnStartup) {
 TEST_F(ManifestAssetManagerTest, ReRegistersWhenTargetVersionUpdated) {
   DummyAsset asset_v1 = DummyAsset::For("compose").WithVersion("1.0.0.0");
   DummyAsset asset_v2 = DummyAsset::For("compose").WithVersion("2.0.0.0");
-  usage_tracker_.OnDeviceEligibleUseCaseUsed(asset_v1.use_case);
+  usage_tracker_.RaisePriority(asset_v1.use_case,
+                               UsageTracker::Priority::kUserBlocking);
   MakeAssetsInstallable(DummyManifest().Add(asset_v1));
   Startup();
   EXPECT_TRUE(component_state_.WaitForRegistration(asset_v1.ToInstallTarget()));
@@ -605,7 +639,8 @@ TEST_F(ManifestAssetManagerTest,
        ReRegistersWhenVersionUpdatedWhileRegistering) {
   DummyAsset asset_v1 = DummyAsset::For("compose").WithVersion("1.0.0.0");
   DummyAsset asset_v2 = DummyAsset::For("compose").WithVersion("2.0.0.0");
-  usage_tracker_.OnDeviceEligibleUseCaseUsed(asset_v1.use_case);
+  usage_tracker_.RaisePriority(asset_v1.use_case,
+                               UsageTracker::Priority::kUserBlocking);
   component_state_.SetDeferRegistrationCallbacks(true);
   UpdateManifest(DummyManifest().Add(asset_v1));
   Startup();
@@ -623,7 +658,8 @@ TEST_F(ManifestAssetManagerTest,
 TEST_F(ManifestAssetManagerTest, KeepInstalledWhenAssetRenamed) {
   DummyAsset asset_v1 = DummyAsset::For("compose").WithAssetId("asset_1");
   DummyAsset asset_v2 = DummyAsset::For("compose").WithAssetId("asset_2");
-  usage_tracker_.OnDeviceEligibleUseCaseUsed(asset_v1.use_case);
+  usage_tracker_.RaisePriority(asset_v1.use_case,
+                               UsageTracker::Priority::kUserBlocking);
   MakeAssetsInstallable(DummyManifest().Add(asset_v1));
   Startup();
   EXPECT_TRUE(component_state_.WaitForRegistration(asset_v1.ToInstallTarget()));
@@ -636,7 +672,8 @@ TEST_F(ManifestAssetManagerTest, KeepInstalledWhenAssetRenamed) {
 TEST_F(ManifestAssetManagerTest, UninstallsWhenPublicKeyChanged) {
   DummyAsset asset_v1 = DummyAsset::For("compose").WithPublicKey("key1");
   DummyAsset asset_v2 = DummyAsset::For("compose").WithPublicKey("key2");
-  usage_tracker_.OnDeviceEligibleUseCaseUsed(asset_v1.use_case);
+  usage_tracker_.RaisePriority(asset_v1.use_case,
+                               UsageTracker::Priority::kUserBlocking);
   base::HistogramTester histogram_tester;
   MakeAssetsInstallable(DummyManifest().Add(asset_v1));
   Startup();
@@ -650,7 +687,8 @@ TEST_F(ManifestAssetManagerTest, UninstallsWhenPublicKeyChanged) {
 
 TEST_F(ManifestAssetManagerTest, UninstallsWhenRunningOutOfDiskSpace) {
   DummyAsset asset = DummyAsset::For("compose");
-  usage_tracker_.OnDeviceEligibleUseCaseUsed(asset.use_case);
+  usage_tracker_.RaisePriority(asset.use_case,
+                               UsageTracker::Priority::kUserBlocking);
   MakeAssetsInstallable(DummyManifest().Add(asset));
   Startup();
   EXPECT_TRUE(component_state_.WaitForRegistration(asset.ToInstallTarget()));
@@ -669,7 +707,8 @@ TEST_F(ManifestAssetManagerTest, UninstallsWhenRunningOutOfDiskSpace) {
 
 TEST_F(ManifestAssetManagerTest, DoesNotInstallWhenFeatureNotEnabled) {
   DummyAsset asset = DummyAsset::For("compose");
-  usage_tracker_.OnDeviceEligibleUseCaseUsed(asset.use_case);
+  usage_tracker_.RaisePriority(asset.use_case,
+                               UsageTracker::Priority::kUserBlocking);
   base::test::ScopedFeatureList features;
   features.InitAndDisableFeature(features::kOptimizationGuideModelExecution);
   UpdateManifest(DummyManifest().Add(asset));
@@ -680,7 +719,8 @@ TEST_F(ManifestAssetManagerTest, DoesNotInstallWhenFeatureNotEnabled) {
 
 TEST_F(ManifestAssetManagerTest, UninstallWhileRegistrationPending) {
   DummyAsset asset = DummyAsset::For("compose");
-  usage_tracker_.OnDeviceEligibleUseCaseUsed(asset.use_case);
+  usage_tracker_.RaisePriority(asset.use_case,
+                               UsageTracker::Priority::kUserBlocking);
   component_state_.SetDeferRegistrationCallbacks(true);
   UpdateManifest(DummyManifest().Add(asset));
   Startup();
@@ -704,7 +744,8 @@ TEST_F(ManifestAssetManagerTest, UninstallWhileRegistrationPending) {
 
 TEST_F(ManifestAssetManagerTest, RegisterWhileUninstallPending) {
   DummyAsset asset = DummyAsset::For("compose");
-  usage_tracker_.OnDeviceEligibleUseCaseUsed(asset.use_case);
+  usage_tracker_.RaisePriority(asset.use_case,
+                               UsageTracker::Priority::kUserBlocking);
   // 1. The component is already installed.
   MakeAssetsInstallable(DummyManifest().Add(asset));
   Startup();
@@ -726,7 +767,8 @@ TEST_F(ManifestAssetManagerTest, RegisterWhileUninstallPending) {
 TEST_F(ManifestAssetManagerTest, RemainsInstalledWhenReferencedInManifest) {
   DummyAsset asset_compose = DummyAsset::For("compose").WithAssetId("asset_1");
   DummyAsset asset_test = DummyAsset::For("test").WithAssetId("asset_1");
-  usage_tracker_.OnDeviceEligibleUseCaseUsed(asset_compose.use_case);
+  usage_tracker_.RaisePriority(asset_compose.use_case,
+                               UsageTracker::Priority::kUserBlocking);
   MakeAssetsInstallable(DummyManifest().Add(asset_compose));
   Startup();
   EXPECT_TRUE(
@@ -738,7 +780,8 @@ TEST_F(ManifestAssetManagerTest, RemainsInstalledWhenReferencedInManifest) {
 
 TEST_F(ManifestAssetManagerTest, AssetRemainsInstalledWhileNotRequested) {
   DummyAsset asset = DummyAsset::For("compose");
-  usage_tracker_.OnDeviceEligibleUseCaseUsed(asset.use_case);
+  usage_tracker_.RaisePriority(asset.use_case,
+                               UsageTracker::Priority::kUserBlocking);
   MakeAssetsInstallable(DummyManifest().Add(asset));
   Startup();
   EXPECT_TRUE(component_state_.WaitForRegistration(asset.ToInstallTarget()));
@@ -755,7 +798,8 @@ TEST_F(ManifestAssetManagerTest, AssetRemainsInstalledWhileNotRequested) {
 
 TEST_F(ManifestAssetManagerTest, DoesNotInstallWhenDisabledByEnterprisePolicy) {
   DummyAsset asset = DummyAsset::For("compose");
-  usage_tracker_.OnDeviceEligibleUseCaseUsed(asset.use_case);
+  usage_tracker_.RaisePriority(asset.use_case,
+                               UsageTracker::Priority::kUserBlocking);
   local_state_.local_state().SetInteger(
       model_execution::prefs::localstate::
           kGenAILocalFoundationalModelEnterprisePolicySettings,
@@ -773,7 +817,8 @@ TEST_F(ManifestAssetManagerTest, DoesNotInstallWhenDisabledByEnterprisePolicy) {
 TEST_F(ManifestAssetManagerTest,
        DoesNotInstallWhenDisabledByOnDeviceAIUserSetting) {
   DummyAsset asset = DummyAsset::For("compose");
-  usage_tracker_.OnDeviceEligibleUseCaseUsed(asset.use_case);
+  usage_tracker_.RaisePriority(asset.use_case,
+                               UsageTracker::Priority::kUserBlocking);
   local_state_.local_state().SetBoolean(
       model_execution::prefs::localstate::kOnDeviceAiUserSettingsEnabled,
       false);
@@ -787,7 +832,8 @@ TEST_F(ManifestAssetManagerTest,
 TEST_F(ManifestAssetManagerTest, DoesNotInstallWhenNotEnoughDiskSpace) {
   base::HistogramTester histogram_tester;
   DummyAsset asset = DummyAsset::For("compose");
-  usage_tracker_.OnDeviceEligibleUseCaseUsed(asset.use_case);
+  usage_tracker_.RaisePriority(asset.use_case,
+                               UsageTracker::Priority::kUserBlocking);
   // 20gb is the default in `IsFreeDiskSpaceSufficientForOnDeviceModelInstall`.
   component_state_.SetFreeDiskSpace(base::GiB(20) - base::ByteSizeDelta(1));
 
@@ -803,7 +849,8 @@ TEST_F(ManifestAssetManagerTest, DoesNotInstallWhenNotEnoughDiskSpace) {
 
 TEST_F(ManifestAssetManagerTest, DoesNotInstallWhenEligibleUseCaseUseTooOld) {
   DummyAsset asset = DummyAsset::For("compose");
-  usage_tracker_.OnDeviceEligibleUseCaseUsed(asset.use_case);
+  usage_tracker_.RaisePriority(asset.use_case,
+                               UsageTracker::Priority::kUserBlocking);
   task_environment_.FastForwardBy(base::Days(31));
 
   UpdateManifest(DummyManifest().Add(asset));
@@ -814,7 +861,8 @@ TEST_F(ManifestAssetManagerTest, DoesNotInstallWhenEligibleUseCaseUseTooOld) {
 
 TEST_F(ManifestAssetManagerTest, DoesNotInstallWhenNoEligibleUseCaseUse) {
   DummyAsset asset = DummyAsset::For("compose");
-  usage_tracker_.OnDeviceEligibleUseCaseUsed(asset.use_case);
+  usage_tracker_.RaisePriority(asset.use_case,
+                               UsageTracker::Priority::kUserBlocking);
   local_state_.local_state().ClearPref(
       model_execution::prefs::localstate::kLastUsageByFeature);
 
@@ -848,7 +896,8 @@ TEST_F(ManifestAssetManagerTest, BackgroundDownloadForManifestEnabledUseCase) {
 
 TEST_F(ManifestAssetManagerTest, UninstallModels) {
   DummyAsset asset = DummyAsset::For("compose");
-  usage_tracker_.OnDeviceEligibleUseCaseUsed(asset.use_case);
+  usage_tracker_.RaisePriority(asset.use_case,
+                               UsageTracker::Priority::kUserBlocking);
   MakeAssetsInstallable(DummyManifest().Add(asset));
   Startup();
 
@@ -861,7 +910,8 @@ TEST_F(ManifestAssetManagerTest, UninstallModels) {
 
 TEST_F(ManifestAssetManagerTest, AssetAvailableAfterManifestUpdate) {
   DummyAsset asset = DummyAsset::For("compose");
-  usage_tracker_.OnDeviceEligibleUseCaseUsed(asset.use_case);
+  usage_tracker_.RaisePriority(asset.use_case,
+                               UsageTracker::Priority::kUserBlocking);
   MakeAssetsInstallable(DummyManifest().Add(asset));
   Startup();
   EXPECT_TRUE(component_state_.WaitForRegistration(asset.ToInstallTarget()));
@@ -884,7 +934,8 @@ TEST_F(ManifestAssetManagerTest, AssetAvailableAfterManifestUpdate) {
 TEST_F(ManifestAssetManagerTest,
        InitiallyAvailableOnStartupWhenPreviouslyDownloaded) {
   DummyAsset asset = DummyAsset::For("compose");
-  usage_tracker_.OnDeviceEligibleUseCaseUsed(asset.use_case);
+  usage_tracker_.RaisePriority(asset.use_case,
+                               UsageTracker::Priority::kUserBlocking);
   MakeAssetsInstallable(DummyManifest().Add(asset));
 
   // First run: install the asset so it is saved in the ledger.
@@ -920,6 +971,56 @@ TEST_F(ManifestAssetManagerTest,
 // SessionBeforeAndAfterModelUpdate
 // UpdatingSafetyModelEnablesModels
 // SessionRequiresSafetyModel
+
+TEST(AssetPrioritiesTest, RaiseAndIsAtLeast) {
+  AssetPriorities priorities;
+
+  priorities.Raise(AssetPriority::kSpeculative, {"speculative_asset"});
+  priorities.Raise(AssetPriority::kBestEffort, {"best_effort_asset"});
+  priorities.Raise(AssetPriority::kUserBlocking, {"user_blocking_asset"});
+
+  EXPECT_TRUE(priorities.IsAtLeast(AssetPriority::kSpeculative,
+                                   "speculative_asset"));
+  EXPECT_FALSE(
+      priorities.IsAtLeast(AssetPriority::kBestEffort, "speculative_asset"));
+  EXPECT_FALSE(
+      priorities.IsAtLeast(AssetPriority::kUserBlocking, "speculative_asset"));
+
+  EXPECT_TRUE(
+      priorities.IsAtLeast(AssetPriority::kSpeculative, "best_effort_asset"));
+  EXPECT_TRUE(
+      priorities.IsAtLeast(AssetPriority::kBestEffort, "best_effort_asset"));
+  EXPECT_FALSE(
+      priorities.IsAtLeast(AssetPriority::kUserBlocking, "best_effort_asset"));
+
+  EXPECT_TRUE(
+      priorities.IsAtLeast(AssetPriority::kSpeculative, "user_blocking_asset"));
+  EXPECT_TRUE(
+      priorities.IsAtLeast(AssetPriority::kBestEffort, "user_blocking_asset"));
+  EXPECT_TRUE(
+      priorities.IsAtLeast(AssetPriority::kUserBlocking, "user_blocking_asset"));
+
+  EXPECT_FALSE(
+      priorities.IsAtLeast(AssetPriority::kSpeculative, "unknown_asset"));
+
+  // Raising to a lower priority does not decrease existing priority.
+  priorities.Raise(AssetPriority::kSpeculative, {"user_blocking_asset"});
+  EXPECT_TRUE(
+      priorities.IsAtLeast(AssetPriority::kUserBlocking, "user_blocking_asset"));
+
+  // Raising to a higher priority increases priority.
+  priorities.Raise(AssetPriority::kUserBlocking, {"best_effort_asset"});
+  EXPECT_TRUE(
+      priorities.IsAtLeast(AssetPriority::kUserBlocking, "best_effort_asset"));
+
+  priorities.Clear();
+  EXPECT_FALSE(
+      priorities.IsAtLeast(AssetPriority::kSpeculative, "speculative_asset"));
+  EXPECT_FALSE(
+      priorities.IsAtLeast(AssetPriority::kSpeculative, "best_effort_asset"));
+  EXPECT_FALSE(
+      priorities.IsAtLeast(AssetPriority::kSpeculative, "user_blocking_asset"));
+}
 
 }  // namespace
 }  // namespace optimization_guide

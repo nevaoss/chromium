@@ -8,6 +8,7 @@
 
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/interaction/browser_elements.h"
 #include "chrome/browser/ui/user_education/browser_user_education_interface.h"
 #include "chrome/browser/ui/webui/user_education_internals/user_education_internals_ui.h"
@@ -59,7 +60,7 @@ IN_PROC_BROWSER_TEST_F(BrowserUserEducationContextUiTest, OneProfileFindsView) {
 }
 
 IN_PROC_BROWSER_TEST_F(BrowserUserEducationContextUiTest,
-                       OneProfileFindsAnchor) {
+                       OneProfileFindsWebUiAnchor) {
   auto ue_context = BrowserUserEducationInterface::From(browser())
                         ->GetUserEducationContextForTesting();
   auto filter = ue_context->GetDefaultElementFilter();
@@ -131,11 +132,7 @@ IN_PROC_BROWSER_TEST_F(BrowserUserEducationContextUiTest,
 }
 
 IN_PROC_BROWSER_TEST_F(BrowserUserEducationContextUiTest,
-                       TwoProfilesFindsAnchor) {
-  if (views::test::InteractionTestUtilSimulatorViews::IsWayland()) {
-    GTEST_SKIP() << "Flaky on Wayland; see https://crbug.com/550727809";
-  }
-
+                       TwoProfilesFindsWebUiAnchor) {
   auto ue_context = BrowserUserEducationInterface::From(browser())
                         ->GetUserEducationContextForTesting();
   auto filter = ue_context->GetDefaultElementFilter();
@@ -170,7 +167,7 @@ IN_PROC_BROWSER_TEST_F(BrowserUserEducationContextUiTest,
 }
 
 IN_PROC_BROWSER_TEST_F(BrowserUserEducationContextUiTest,
-                       TwoProfilesDoesNotFindAnchor) {
+                       TwoProfilesDoesNotFindWebUiAnchor) {
   auto ue_context = BrowserUserEducationInterface::From(browser())
                         ->GetUserEducationContextForTesting();
   auto filter = ue_context->GetDefaultElementFilter();
@@ -302,11 +299,7 @@ IN_PROC_BROWSER_TEST_F(BrowserUserEducationContextUiTest,
 }
 
 IN_PROC_BROWSER_TEST_F(BrowserUserEducationContextUiTest,
-                       PrefersAnchorInOriginalBrowser) {
-  if (views::test::InteractionTestUtilSimulatorViews::IsWayland()) {
-    GTEST_SKIP() << "Flaky on Wayland; see https://crbug.com/552061334";
-  }
-
+                       PrefersWebUiAnchorInOriginalBrowser) {
   auto ue_context = BrowserUserEducationInterface::From(browser())
                         ->GetUserEducationContextForTesting();
   auto filter = ue_context->GetDefaultElementFilter();
@@ -367,11 +360,7 @@ IN_PROC_BROWSER_TEST_F(BrowserUserEducationContextUiTest,
 }
 
 IN_PROC_BROWSER_TEST_F(BrowserUserEducationContextUiTest,
-                       PrefersAnchorInActiveBrowser) {
-  if (views::test::InteractionTestUtilSimulatorViews::IsWayland()) {
-    GTEST_SKIP() << "Flaky on Wayland; see https://crbug.com/550727809";
-  }
-
+                       PrefersWebUiAnchorInActiveBrowser) {
   auto ue_context = BrowserUserEducationInterface::From(browser())
                         ->GetUserEducationContextForTesting();
   auto filter = ue_context->GetDefaultElementFilter();

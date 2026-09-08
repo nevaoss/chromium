@@ -73,11 +73,13 @@ source_set("geic") {
     deps += [
       "//chrome/browser/ui:browser_tab_strip",
       "//chrome/browser/ui/browser_window",
+      "//chrome/browser/ui/navigator",
       "//chrome/browser/ui/side_panel",
       "//chrome/browser/ui/tabs:tab_strip",
       "//components/content_extraction/content/browser",
       "//components/favicon/content",
       "//components/tabs:public",
+      "//google_apis",
       "//skia",
       "//ui/base",
       "//ui/gfx",
@@ -110,6 +112,7 @@ source_set("unit_tests") {
       "geic_pwc_manager_unittest.cc",
     ]
     deps += [
+      "//chrome/browser/ui",
       "//chrome/browser/ui/browser_window/test:test_support",
       "//chrome/browser/ui/tabs:tab_strip",
       "//chrome/browser/ui/tabs:test_support",
@@ -138,6 +141,7 @@ if (!is_android) {
       "//chrome/browser/ui/tabs:tab_strip",
       "//chrome/browser/ui/views",
       "//chrome/browser/ui/views/glic",
+      "//chrome/browser/ui/views/tabs:tab_strip_button",
       "//ui/base",
       "//ui/base/metadata",
       "//ui/base/unowned_user_data",

@@ -31,8 +31,10 @@
 #include "components/safe_browsing/core/common/safe_browsing_prefs.h"
 #include "content/public/test/browser_test.h"
 #include "content/public/test/browser_test_utils.h"
+#include "content/public/test/scoped_accessibility_mode_override.h"
 #include "content/public/test/test_utils.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "ui/accessibility/ax_mode.h"
 #include "ui/events/base_event_utils.h"
 #include "ui/views/layout/animating_layout_manager_test_util.h"
 
@@ -175,7 +177,8 @@ IN_PROC_BROWSER_TEST_F(DownloadToolbarUIControllerBrowserTest,
   EXPECT_NE(toolbar_button(browser()), nullptr);
   EXPECT_TRUE(toolbar_button(browser())->GetVisible());
   // Create another browser and set it as active so the button becomes dormant.
-  Browser* extra_browser = CreateBrowser(browser()->GetProfile());
+  BrowserWindowInterface* extra_browser =
+      CreateBrowser(browser()->GetProfile());
   ui_test_utils::DeprecatedFakeActivateBrowser(extra_browser);
   views::test::WaitForAnimatingLayoutManager(toolbar_container(browser()));
   EXPECT_NE(toolbar_button(extra_browser), nullptr);
@@ -275,6 +278,25 @@ IN_PROC_BROWSER_TEST_F(DownloadToolbarUIControllerBrowserTest,
 }
 
 IN_PROC_BROWSER_TEST_F(DownloadToolbarUIControllerBrowserTest,
+                       AutoCloseDelayDefaultAndAccessibility) {
+  // Verify the default auto-close delay.
+  EXPECT_EQ(controller(browser())->GetAutoCloseDelayForTesting(),
+            base::Seconds(5));
+
+  {
+    // Verify the auto-close delay when accessibility mode is enabled.
+    content::ScopedAccessibilityModeOverride ax_mode_override(
+        ui::AXMode::kScreenReader);
+    EXPECT_TRUE(controller(browser())->GetAutoCloseDelayForTesting().is_max());
+  }
+
+  // Verify that the auto-close delay returns to the default value after
+  // accessibility mode is disabled.
+  EXPECT_EQ(controller(browser())->GetAutoCloseDelayForTesting(),
+            base::Seconds(5));
+}
+
+IN_PROC_BROWSER_TEST_F(DownloadToolbarUIControllerBrowserTest,
                        OpenPrimaryDialog) {
   ui_test_utils::DownloadURL(
       browser(), chrome_test_utils::GetTestUrl(
@@ -353,7 +375,8 @@ IN_PROC_BROWSER_TEST_F(DownloadToolbarUIControllerBrowserTest,
   EXPECT_TRUE(toolbar_button(browser())->GetVisible());
   EXPECT_FALSE(controller(browser())->IsProgressRingInDormantStateForTesting());
   // Create another browser and set it as active so the button becomes dormant.
-  Browser* extra_browser = CreateBrowser(browser()->GetProfile());
+  BrowserWindowInterface* extra_browser =
+      CreateBrowser(browser()->GetProfile());
   ui_test_utils::DeprecatedFakeActivateBrowser(extra_browser);
   views::test::WaitForAnimatingLayoutManager(toolbar_container(extra_browser));
 

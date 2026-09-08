@@ -78,6 +78,8 @@ enum class ItemIdentifier {
 
   // Search results to display in the UI.
   NSArray<AtMemorySearchItem*>* _searchResults;
+  // Search query for which the current search results or state was produced.
+  NSString* _currentSearchQuery;
 
   // Tells if the notice is visible.
   BOOL _noticeIsVisible;
@@ -116,6 +118,8 @@ enum class ItemIdentifier {
   self.title = l10n_util::GetNSString(IDS_IOS_AUTOFILL_AI_FIND_AND_FILL_TITLE);
 
   RegisterTableViewHeaderFooter<TableViewLinkHeaderFooterView>(self.tableView);
+  self.tableView.backgroundColor =
+      [UIColor colorNamed:kGroupedPrimaryBackgroundColor];
   [self loadModel];
 }
 
@@ -147,14 +151,14 @@ enum class ItemIdentifier {
 #pragma mark - UISearchBarDelegate
 
 - (void)searchBarSearchButtonClicked:(UISearchBar*)searchBar {
-  [self.mutator startSearchWithQuery:searchBar.text];
-  [self createSnapshotForFetchingState];
+  [self startSearchWithQuery:searchBar.text];
 }
 
 #pragma mark - UISearchResultsUpdating
 
 - (void)updateSearchResultsForSearchController:
     (UISearchController*)searchController {
+  NSString* query = searchController.searchBar.text;
   BOOL isSearchItemPresent =
       [[_dataSource snapshot]
           indexOfItemIdentifier:@(static_cast<int>(
@@ -163,10 +167,21 @@ enum class ItemIdentifier {
 
   // Return to the initial state if the search bar is cleared and the current
   // state view is not the search state.
-  if (searchController.searchBar.text.length == 0 && !isSearchItemPresent) {
+  if (query.length == 0 && !isSearchItemPresent) {
+    _currentSearchQuery = nil;
+    _searchResults = nil;
     [self createSnapshotForInitialState];
     return;
   }
+
+  // Preserve existing search results and avoid resetting the snapshot when
+  // UIKit sends search updates for an unchanged query.
+  if (_currentSearchQuery && [query isEqualToString:_currentSearchQuery]) {
+    return;
+  }
+
+  _currentSearchQuery = nil;
+  _searchResults = nil;
 
   if (isSearchItemPresent) {
     [self updateSnapshotForItemIdentifier:ItemIdentifier::kSearchItem];
@@ -185,8 +200,7 @@ enum class ItemIdentifier {
         static_cast<ItemIdentifier>([item integerValue]);
     switch (itemIdentifier) {
       case ItemIdentifier::kSearchItem: {
-        [self.mutator startSearchWithQuery:_searchController.searchBar.text];
-        [self createSnapshotForFetchingState];
+        [self startSearchWithQuery:_searchController.searchBar.text];
         break;
       }
       case ItemIdentifier::kUnsupportedQueryItem: {
@@ -248,6 +262,16 @@ enum class ItemIdentifier {
   }
 }
 
+#pragma mark - AtMemoryInlineNoticeViewDelegate
+
+- (void)inlineNoticeViewDidTapOK:(AtMemoryInlineNoticeView*)view {
+  [self.mutator acknowledgePrivacyNotice];
+}
+
+- (void)inlineNoticeViewDidTapSettings:(AtMemoryInlineNoticeView*)view {
+  [self.mutator didTapSettingsLink];
+}
+
 #pragma mark - Actions
 
 - (void)handleCancelButton {
@@ -262,6 +286,7 @@ enum class ItemIdentifier {
 
 - (void)setErrorType:(AtMemoryErrorType)errorType {
   _errorType = errorType;
+  _currentSearchQuery = [_searchController.searchBar.text copy];
   [self createSnapshotForErrorState];
 }
 
@@ -308,6 +333,7 @@ enum class ItemIdentifier {
 
 - (void)setSearchResults:(NSArray<AtMemorySearchItem*>*)searchResults {
   _searchResults = searchResults;
+  _currentSearchQuery = [_searchController.searchBar.text copy];
   [self createSnapshotForSearchResultsState];
 }
 
@@ -717,7 +743,12 @@ enum class ItemIdentifier {
   UITableViewCell* cell =
       [AtMemoryInlineNoticeConfiguration dequeueTableViewCell:tableView];
   cell.selectionStyle = UITableViewCellSelectionStyleNone;
-  cell.backgroundColor = [UIColor colorNamed:kSecondaryBackgroundColor];
+
+  UIBackgroundConfiguration* backgroundConfiguration =
+      [UIBackgroundConfiguration listCellConfiguration];
+  backgroundConfiguration.backgroundColor =
+      [UIColor colorNamed:kGroupedSecondaryBackgroundColor];
+  cell.backgroundConfiguration = backgroundConfiguration;
 
   AtMemoryInlineNoticeConfiguration* config =
       [[AtMemoryInlineNoticeConfiguration alloc] init];
@@ -726,14 +757,11 @@ enum class ItemIdentifier {
   return cell;
 }
 
-#pragma mark - AtMemoryInlineNoticeViewDelegate
-
-- (void)inlineNoticeViewDidTapOK:(AtMemoryInlineNoticeView*)view {
-  [self.mutator acknowledgePrivacyNotice];
-}
-
-- (void)inlineNoticeViewDidTapSettings:(AtMemoryInlineNoticeView*)view {
-  [self.mutator didTapSettingsLink];
+// Starts an AtMemory search for `query` and transitions to the fetching state.
+- (void)startSearchWithQuery:(NSString*)query {
+  _currentSearchQuery = [query copy];
+  [self createSnapshotForFetchingState];
+  [self.mutator startSearchWithQuery:query];
 }
 
 @end

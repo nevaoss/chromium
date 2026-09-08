@@ -27,8 +27,8 @@
 #include "components/autofill/core/browser/suggestions/suggestion.h"
 #include "components/autofill/core/browser/suggestions/suggestion_test_helpers.h"
 #include "components/autofill/core/browser/suggestions/suggestion_type.h"
-#include "components/autofill/core/browser/test_utils/autofill_form_test_utils.h"
-#include "components/autofill/core/browser/test_utils/entity_data_test_utils.h"
+#include "components/autofill/core/browser/test_utils/autofill_form_test_util.h"
+#include "components/autofill/core/browser/test_utils/entity_data_test_util.h"
 #include "components/autofill/core/browser/webdata/autofill_ai/entity_table.h"
 #include "components/autofill/core/common/autofill_debug_features.h"
 #include "components/autofill/core/common/autofill_features.h"
@@ -1615,7 +1615,8 @@ TEST_F(AutofillAiSuggestionGeneratorTest, GetFillingSuggestions_Undo) {
 
   EXPECT_THAT(CreateAutofillAiFillingSuggestions(field(0)),
               Not(Contains(EqualsSuggestion(SuggestionType::kUndo))));
-  field_data().set_is_autofilled_according_to_renderer(true);
+  field(0).AddFieldModifier(FieldModifier::kAutofill);
+  field(0).set_filling_product(FillingProduct::kAutofillAi);
   EXPECT_THAT(CreateAutofillAiFillingSuggestions(field(0)),
               Contains(EqualsSuggestion(SuggestionType::kUndo)));
 }

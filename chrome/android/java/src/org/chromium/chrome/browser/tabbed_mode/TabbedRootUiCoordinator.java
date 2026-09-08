@@ -258,6 +258,7 @@ import org.chromium.chrome.browser.ui.side_panel.SidePanelContainerCoordinatorFa
 import org.chromium.chrome.browser.ui.side_panel.dev.SidePanelDevFeature;
 import org.chromium.chrome.browser.ui.side_panel.dev.SidePanelDevFeatureFactory;
 import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator;
+import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator.SideUiId;
 import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinatorFactory;
 import org.chromium.chrome.browser.ui.side_ui.SideUiStateProvider;
 import org.chromium.chrome.browser.ui.side_ui.ViewMarginAdjusterForSideUi;
@@ -2315,7 +2316,9 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                         sideUiStartAnchorContainerStub,
                         sideUiEndAnchorContainerStub,
                         webContentHairlineContainerStub,
-                        mIncognitoStateProvider);
+                        mIncognitoStateProvider,
+                        mTabModelSelectorSupplier.asNonNull().get());
+
         if (mSideUiCoordinator == null) {
             return;
         }
@@ -2366,7 +2369,8 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                                     mActivity.findViewById(
                                             R.id.vertical_tab_group_hover_card_holder_stub),
                                     mTabContentManagerSupplier,
-                                    mUndoGroupSnackbarController),
+                                    mUndoGroupSnackbarController,
+                                    mBrowserControlsManager),
                             mIsVerticalTabsActiveSupplier);
             mSideUiCoordinator.registerSideUiContainer(mVerticalTabsSideUiCoordinator);
             if (mToolbarManager != null) {
@@ -2565,6 +2569,10 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
         VerticalTabUtils.setVerticalTabsEnabled(shouldShowVerticalTabs);
 
         if (shouldShowVerticalTabs) {
+            if (mSideUiCoordinator != null
+                    && mSideUiCoordinator.isSideUiShowing(SideUiId.SIDE_PANEL)) {
+                RecordUserAction.record("Android.VerticalTabs.EnabledWithSidePanel");
+            }
             Profile profile = mProfileSupplier.get();
             if (profile != null) {
                 TrackerFactory.getTrackerForProfile(profile)

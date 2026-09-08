@@ -884,9 +884,9 @@ void TextControlElement::SelectionChanged(bool user_triggered) {
   if (!GetLayoutObject() || !IsTextControl())
     return;
 
-  // The cached selection is authoritative while unfocused, so only refresh it
-  // from the live DOM selection when focused.
-  if (IsFocused() ||
+  // The cached selection is authoritative when ShouldApplySelectionCache() is
+  // true, so only refresh it from the live DOM selection otherwise.
+  if (!ShouldApplySelectionCache() ||
       !RuntimeEnabledFeatures::PreserveUnfocusedSelectionCacheEnabled()) {
     ComputedSelection computed_selection;
     ComputeSelection(kStart | kEnd | kDirection, computed_selection);
@@ -1005,9 +1005,7 @@ Node* TextControlElement::CreatePlaceholderBreakElement() const {
   auto* element = MakeGarbageCollected<HTMLBRElement>(GetDocument());
   element->setAttribute(html_names::kIdAttr,
                         shadow_element_names::kIdPlaceholderBreak);
-  if (RuntimeEnabledFeatures::TextAreaEmptyPlaceholderBreakEnabled()) {
-    element->setAttribute(html_names::kAriaHiddenAttr, keywords::kTrue);
-  }
+  element->setAttribute(html_names::kAriaHiddenAttr, keywords::kTrue);
   return element;
 }
 
@@ -1047,8 +1045,7 @@ void TextControlElement::AdjustPlaceholderBreakElement() {
     }
     return;
   }
-  if (RuntimeEnabledFeatures::TextAreaEmptyPlaceholderBreakEnabled() &&
-      !last_child && IsA<HTMLTextAreaElement>(this)) {
+  if (!last_child && IsA<HTMLTextAreaElement>(this)) {
     // We need a placeholder break for an empty value in order to provide one
     // line-height and a baseline even if this element is not editable.
     inner_editor->AppendChild(CreatePlaceholderBreakElement());

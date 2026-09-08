@@ -20,7 +20,6 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.robolectric.RuntimeEnvironment;
 import org.robolectric.Shadows;
-import org.robolectric.annotation.Config;
 
 import org.chromium.base.ContextUtils;
 import org.chromium.base.test.BaseRobolectricTestRunner;
@@ -53,7 +52,6 @@ import java.util.Set;
  * expected.
  */
 @RunWith(BaseRobolectricTestRunner.class)
-@Config(manifest = Config.NONE)
 public class WebappRegistryTest {
     // These were copied from WebappRegistry for backward compatibility checking.
     private static final String REGISTRY_FILE_NAME = "webapp_registry";
@@ -1074,5 +1072,28 @@ public class WebappRegistryTest {
                 WebappRegistry.getInstance()
                         .getOriginsWithInstalledApp()
                         .contains(startUrlOrigin.toString()));
+    }
+
+    @Test
+    @Feature({"Webapp"})
+    public void testWebappRegistryObserverNotifiedOnRegister() throws Exception {
+        String webApkPackage = "test.webapk.package";
+        String startUrl = "https://example.com/start";
+        BrowserServicesIntentDataProvider intentDataProvider =
+                new WebApkIntentDataProviderBuilder(webApkPackage, startUrl).build();
+
+        // 1. Set up observer
+        final int[] notificationCount = {0};
+        WebappRegistry.Observer observer = () -> notificationCount[0]++;
+        WebappRegistry.getInstance().registerObserver(observer);
+
+        // 2. Register webapp
+        registerWebapp(intentDataProvider);
+
+        // 3. Verify observer was notified
+        assertEquals(1, notificationCount[0]);
+
+        // Clean up
+        WebappRegistry.getInstance().unregisterObserver(observer);
     }
 }

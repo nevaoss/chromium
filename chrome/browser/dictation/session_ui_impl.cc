@@ -48,6 +48,16 @@ UiState ToUiState(SessionState state) {
   }
 }
 
+ToastId GetToastId(StreamErrorReason reason) {
+  switch (reason) {
+    case StreamErrorReason::kNoMicrophone:
+      return ToastId::kDictationNoMicrophoneError;
+    case StreamErrorReason::kNone:
+    case StreamErrorReason::kUnknown:
+      return ToastId::kDictationError;
+  }
+}
+
 }  // namespace
 
 SessionUiImpl::SessionUiImpl(tabs::TabInterface& tab,
@@ -103,13 +113,13 @@ SessionUiImpl::SessionUiImpl(tabs::TabInterface& tab,
 
 SessionUiImpl::~SessionUiImpl() = default;
 
-void SessionUiImpl::OnError(StreamType stream_type) {
+void SessionUiImpl::OnError(StreamType stream_type, StreamErrorReason reason) {
   BrowserWindowInterface* const window = tab_->GetBrowserWindowInterface();
   if (window) {
     ToastController* const toast_controller =
         window->GetFeatures().toast_controller();
     if (toast_controller) {
-      toast_controller->MaybeShowToast(ToastParams(ToastId::kDictationError));
+      toast_controller->MaybeShowToast(ToastParams(GetToastId(reason)));
     }
   }
 
@@ -215,6 +225,7 @@ void SessionUiImpl::OnTabWillDeactivate(tabs::TabInterface* tab) {
              base::WeakPtr<tabs::TabInterface> tab_weak) {
             if (self && tab_weak && !tab_weak->IsActivated()) {
               tab_weak->GetTabFeatures()->tab_dialog_manager()->CloseDialog();
+              self->overlay_view_.reset();
               self->controller_->FinalizeAndShutdown();
               BrowserWindowInterface* const window =
                   tab_weak->GetBrowserWindowInterface();

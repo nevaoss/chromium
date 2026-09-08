@@ -87,6 +87,13 @@ abstract class TabListLayoutDelegate implements TabGroupObserver {
     abstract int getInsertionIndexOfTab(Tab tab);
 
     /**
+     * Returns the index in {@link #mModelList} of the group with {@code tabGroupId} and the {@link
+     * Tab} representing the group. Will be null if the entry is not present, the tab cannot be
+     * found, or the tab is not part of a tab group.
+     */
+    abstract @Nullable Pair<Integer, Tab> getIndexAndTabForTabGroupId(@Nullable Token tabGroupId);
+
+    /**
      * Handles tab insertion into {@link #mModelList} by resolving the target insertion index,
      * placing the tab after any leading archived message card, and delegating model creation to
      * {@link TabListMediator#addTabCardToModel}. If the tab is already present in the list, returns
@@ -292,6 +299,8 @@ abstract class TabListLayoutDelegate implements TabGroupObserver {
         mModelList.moveItem(currentUiIndex, targetUiIndex);
     }
 
+    // TabGroupObserver implementation.
+
     @Override
     public void didChangeTabGroupTitle(Token tabGroupId, String newTitle) {
         mMediator.updateTabGroupTitle(tabGroupId);
@@ -299,6 +308,8 @@ abstract class TabListLayoutDelegate implements TabGroupObserver {
 
     @Override
     public void didMoveWithinGroup(Tab movedTab, int tabModelOldIndex, int tabModelNewIndex) {
+        if (tabModelNewIndex == tabModelOldIndex) return;
+
         TabModel tabModel = mMediator.getCurrentTabModelChecked();
 
         // Maintain correct order.
@@ -407,9 +418,18 @@ abstract class TabListLayoutDelegate implements TabGroupObserver {
      */
     void populateAccessibilityNodeInfo(
             View host, AccessibilityNodeInfo info, @Nullable PropertyModel model) {
-        if (mAccessibilityHelper != null) {
-            for (AccessibilityAction action :
-                    mAccessibilityHelper.getPotentialActionsForView(host)) {
+        if (mAccessibilityHelper == null
+                || model == null
+                || !TabProperties.isTabOrTabGroup(model)) {
+            return;
+        }
+        for (AccessibilityAction action : mAccessibilityHelper.getPotentialActionsForView(host)) {
+            Pair<Integer, Integer> positions =
+                    mAccessibilityHelper.getPositionsOfReorderAction(host, action.getId());
+            if (positions != null
+                    && positions.first != null
+                    && positions.second != null
+                    && canReorderToPosition(positions.first, positions.second)) {
                 info.addAction(action);
             }
         }
@@ -429,16 +449,43 @@ abstract class TabListLayoutDelegate implements TabGroupObserver {
         if (mAccessibilityHelper != null && mAccessibilityHelper.isReorderAction(action)) {
             Pair<Integer, Integer> positions =
                     mAccessibilityHelper.getPositionsOfReorderAction(host, action);
-            int currentPosition = positions.first;
-            int targetPosition = positions.second;
-            if (!mModelList.isValidIndex(currentPosition)
-                    || !mModelList.isValidIndex(targetPosition)) {
+            if (positions == null
+                    || positions.first == null
+                    || positions.second == null
+                    || !canReorderToPosition(positions.first, positions.second)) {
                 return false;
             }
-            mModelList.move(currentPosition, targetPosition);
+            mModelList.move(positions.first, positions.second);
             RecordUserAction.record("TabGrid.AccessibilityDelegate.Reordered");
             return true;
         }
         return false;
+    }
+
+    /**
+     * Returns whether a card at {@code sourceIndex} can be reordered to {@code targetIndex}.
+     *
+     * <p>Reordering is valid if both indices are valid, both cards represent a tab or tab group,
+     * and their pinned status matches.
+     *
+     * @param sourceIndex The index of the item being moved.
+     * @param targetIndex The target index where the item would be moved.
+     * @return True if reordering between the two positions is valid, false otherwise.
+     */
+    boolean canReorderToPosition(int sourceIndex, int targetIndex) {
+        if (sourceIndex == targetIndex
+                || !mModelList.isValidIndex(sourceIndex)
+                || !mModelList.isValidIndex(targetIndex)) {
+            return false;
+        }
+        PropertyModel sourceModel = mModelList.get(sourceIndex).model;
+        PropertyModel targetModel = mModelList.get(targetIndex).model;
+        if (sourceModel == null
+                || targetModel == null
+                || !TabProperties.isTabOrTabGroup(sourceModel)
+                || !TabProperties.isTabOrTabGroup(targetModel)) {
+            return false;
+        }
+        return TabProperties.isPinnedTab(sourceModel) == TabProperties.isPinnedTab(targetModel);
     }
 }

@@ -28,6 +28,7 @@
 #include "chrome/browser/signin/signin_browser_test_base.h"
 #include "chrome/browser/sync/sync_service_factory.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+#include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/grit/generated_resources.h"
 #include "chrome/test/base/in_process_browser_test.h"
 #include "chrome/test/base/testing_profile.h"
@@ -38,7 +39,7 @@
 #include "components/autofill/core/browser/foundations/autofill_manager_test_api.h"
 #include "components/autofill/core/browser/foundations/browser_autofill_manager.h"
 #include "components/autofill/core/browser/foundations/test_autofill_manager_waiter.h"
-#include "components/autofill/core/browser/test_utils/autofill_test_utils.h"
+#include "components/autofill/core/browser/test_utils/autofill_test_util.h"
 #include "components/autofill/core/common/form_data.h"
 #include "components/autofill/core/common/form_data_test_api.h"
 #include "components/keyed_service/content/browser_context_dependency_manager.h"
@@ -900,7 +901,7 @@ class PasswordsFallbackWithGuestProfileTest : public PasswordsFallbackTestBase {
   }
 
   content::WebContents* web_contents() const override {
-    return guest_browser_->tab_strip_model()->GetActiveWebContents();
+    return guest_browser_->GetTabStripModel()->GetActiveWebContents();
   }
 
   Profile* profile() override { return guest_browser_->GetProfile(); }
@@ -913,7 +914,7 @@ class PasswordsFallbackWithGuestProfileTest : public PasswordsFallbackTestBase {
 #endif
 
  private:
-  raw_ptr<Browser> guest_browser_ = nullptr;
+  raw_ptr<BrowserWindowInterface> guest_browser_ = nullptr;
 };
 
 // When filling is disabled (for example in guest profiles), manual fallback

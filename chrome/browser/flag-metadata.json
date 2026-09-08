@@ -601,11 +601,6 @@
     "expiry_milestone": 160
   },
   {
-    "name": "apb144-patch5",
-    "owners": ["peilinwang@google.com"],
-    "expiry_milestone": 160
-  },
-  {
     "name": "apb144-patch6",
     "owners": ["peilinwang@google.com"],
     "expiry_milestone": 160
@@ -953,11 +948,6 @@
     "expiry_milestone": 160
   },
   {
-    "name": "autofill-and-passwords-remove-sign-in-promo",
-    "owners": [ "mikhe@google.com", "josefraska@google.com", "jsobiech@google.com" ],
-    "expiry_milestone": 162
-  },
-  {
     "name": "autofill-android-desktop-keyboard-accessory-revamp",
     "owners": [ "piotrkotynia@google.com", "luchenpeng@google.com" ],
     "expiry_milestone": 156
@@ -1059,6 +1049,11 @@
     "name": "autofill-enable-buy-now-pay-later-updated-suggestion-second-line-string",
     "owners": ["vinnypersky@google.com", "payments-autofill-team@google.com"],
     "expiry_milestone": 150
+  },
+  {
+    "name": "autofill-enable-card-on-device-verification-enforcement",
+    "owners": [ "junhuihe@google.com", "payments-autofill-team@google.com" ],
+    "expiry_milestone": 170
   },
   {
     "name": "autofill-enable-cvc-storage-and-filling-standalone-form-enhancement",
@@ -1499,11 +1494,6 @@
     "expiry_milestone": 155
   },
   {
-    "name": "browser-report-include-all-profiles",
-    "owners": ["nicolaso@chromium.org", "zmin@chromium.org"],
-    "expiry_milestone": 150
-  },
-  {
     "name": "browsing-data-model-clank",
     "owners": [
       "alimariam@google.com",
@@ -1749,11 +1739,6 @@
     "name": "cct-navigation-metrics",
     "owners": ["jinsukkim@chromium.org", "twellington@chromium.org"],
     "expiry_milestone": 155
-  },
-  {
-    "name": "cct-nested-security-icon",
-    "owners": ["sinansahin@google.com"],
-    "expiry_milestone": 140
   },
   {
     "name": "cct-open-in-browser-button-if-allowed-by-embedder",
@@ -2055,6 +2040,11 @@
     "expiry_milestone": 160
   },
   {
+    "name": "composebox-rich-image-suggestions",
+    "owners": [ "yvonneshi@google.com", "chrome-desktop-ntp@google.com" ],
+    "expiry_milestone": 165
+  },
+  {
     "name": "composebox-server-side-state",
     "owners": [ "radunitescu@google.com", "bling-search@google.com" ],
     "expiry_milestone": 160
@@ -2157,6 +2147,11 @@
   {
     "name": "contextual-cueing-v2",
     "owners": [ "iwells@chromium.org", "sophiechang@chromium.org"],
+    "expiry_milestone": 160
+  },
+  {
+    "name": "contextual-cueing-v2-multi-source",
+    "owners": [ "iwells@chromium.org", "sophiechang@chromium.org", "benedictwong@google.com" ],
     "expiry_milestone": 160
   },
   {
@@ -4116,7 +4111,12 @@
     "owners": [ "mercerd@google.com", "lens-chrome@google.com" ],
     "expiry_milestone": 140
   },
-    {
+  {
+    "name": "enable-lens-overlay-virtual-focus",
+    "owners": [ "adamyao@google.com", "chrome-desktop-search@google.com" ],
+    "expiry_milestone": 160
+  },
+  {
     "name": "enable-lens-search-aim-m3",
     "owners": [ "mercerd@google.com", "lens-chrome@google.com" ],
     "expiry_milestone": 142
@@ -4247,6 +4247,16 @@
     "expiry_milestone": 160
   },
   {
+    "name": "enable-omnibox-everywhere-virtual-focus",
+    "owners": [ "adamyao@google.com", "chrome-desktop-search@google.com" ],
+    "expiry_milestone": 160
+  },
+  {
+    "name": "enable-omnibox-popup-virtual-focus",
+    "owners": [ "adamyao@google.com", "chrome-desktop-search@google.com" ],
+    "expiry_milestone": 160
+  },
+  {
     "name": "enable-ongoing-processes",
     "owners": ["kradtke@chromium.org"],
     "expiry_milestone": 131
@@ -4344,11 +4354,6 @@
     "name": "enable-process-per-site-up-to-main-frame-threshold",
     "owners": [ "dtapuska@chromium.org", "blink-network-stack@google.com" ],
     "expiry_milestone": 145
-  },
-  {
-    "name": "enable-profile-reporting",
-    "owners": ["nicolaso@chromium.org", "zmin@chromium.org"],
-    "expiry_milestone": 150
   },
   {
     "name": "enable-projector-app-debug",
@@ -4741,6 +4746,11 @@
     "expiry_milestone": 88
   },
   {
+    "name": "enable-webui-browser-virtual-focus",
+    "owners": [ "adamyao@google.com", "chrome-desktop-search@google.com" ],
+    "expiry_milestone": 160
+  },
+  {
     "name": "enable-webusb-device-detection",
     "owners": [ "reillyg@chromium.org", "deviceapi-team@google.com" ],
     "expiry_milestone": 152
@@ -4847,6 +4857,11 @@
       "bling-alchemy-eng@google.com"
     ],
     "expiry_milestone": 160
+  },
+  {
+    "name": "enterprise-proxy-error-handling",
+    "owners": [ "xzonghan@google.com", "chrome-enterprise-networking-core@google.com" ],
+    "expiry_milestone": 162
   },
   {
     "name": "enterprise-published-skills-policy-enabled",
@@ -5906,6 +5921,11 @@
     "name": "glic-live-mode-only-glow",
     "owners": [ "wry@chromium.org", "//chrome/browser/glic/OWNERS" ],
     "expiry_milestone": 150
+  },
+  {
+    "name": "glic-message-first-fre-for-contextual-cue",
+    "owners": [ "iwells@chromium.org", "//chrome/browser/glic/OWNERS" ],
+    "expiry_milestone": 160
   },
   {
     "name": "glic-opt-in-dialog-a11y-fix",
@@ -7047,33 +7067,6 @@
     "expiry_milestone": -1
   },
   {
-    "name": "memlog",
-    "owners": [ "erikchen@chromium.org", "ssid@chromium.org", "etienneb@chromium.org", "alph@chromium.org" ],
-    // Memlog is Chrome's heap profiler. It is used for both automated and
-    // manual performance analysis. This flag allows a user or developer to
-    // capture a memlog without disturbing the situation under test by
-    // restarting to apply a switch. It should not be removed.
-    "expiry_milestone": -1
-  },
-  {
-    "name": "memlog-sampling-rate",
-    "owners": [ "erikchen@chromium.org", "ssid@chromium.org", "etienneb@chromium.org", "alph@chromium.org" ],
-    // Memlog is Chrome's heap profiler. It is used for both automated and
-    // manual performance analysis. This flag allows a user or developer to
-    // capture a memlog without disturbing the situation under test by
-    // restarting to apply a switch. It should not be removed.
-    "expiry_milestone": -1
-  },
-  {
-    "name": "memlog-stack-mode",
-    "owners": [ "erikchen@chromium.org", "ssid@chromium.org", "etienneb@chromium.org", "alph@chromium.org" ],
-    // Memlog is Chrome's heap profiler. It is used for both automated and
-    // manual performance analysis. This flag allows a user or developer to
-    // capture a memlog without disturbing the situation under test by
-    // restarting to apply a switch. It should not be removed.
-    "expiry_milestone": -1
-  },
-  {
     "name": "memory-purge-on-freeze-limit",
     "owners": [ "fdoray@chromium.org", "catan-team@chromium.org" ],
     "expiry_milestone": 142
@@ -7247,6 +7240,14 @@
     "expiry_milestone": 160
   },
   {
+    "name": "new-horizontal-pinned-tab-styling",
+    "owners": [
+      "lugli@google.com",
+      "top-chrome-desktop-ui@google.com"
+    ],
+    "expiry_milestone": 160
+  },
+  {
     "name": "new-tab-page-customization-theme-sync",
     "owners": ["hanxi@google.com", "xinyiji@google.com", "clank-start@google.com"],
     "expiry_milestone": 160
@@ -7254,11 +7255,6 @@
   {
     "name": "new-tab-page-customization-v2",
     "owners": ["hanxi@chromium.org", "clank-start@google.com"],
-    "expiry_milestone": 160
-  },
-  {
-    "name": "new-tab-page-pinned-omnibox-color-update",
-    "owners": [ "bmcclure@google.com", "bling-pandamonium@google.com" ],
     "expiry_milestone": 160
   },
   {
@@ -7521,11 +7517,6 @@
     "name": "ntp-realbox-next",
     "owners": [ "romanarora@chromium.com", "chrome-desktop-ntp@google.com" ],
     "expiry_milestone": 160
-  },
-  {
-    "name": "ntp-rich-image-suggestions",
-    "owners": [ "yvonneshi@google.com", "chrome-desktop-ntp@google.com" ],
-    "expiry_milestone": 165
   },
   {
     "name": "ntp-scaled-action-chips",
@@ -8571,7 +8562,7 @@
   },
   {
     "name": "prompt-api",
-   "owners": ["//chrome/browser/ai/OWNERS", "builtin-ai-team@google.com"],
+    "owners": ["//chrome/browser/ai/OWNERS", "builtin-ai-team@google.com"],
     "expiry_milestone": 160
   },
   {
@@ -8581,6 +8572,11 @@
   },
   {
     "name": "prompt-api-sampling-mode",
+    "owners": ["//chrome/browser/ai/OWNERS", "builtin-ai-team@google.com"],
+    "expiry_milestone": 160
+  },
+  {
+    "name": "prompt-api-tool-use",
     "owners": ["//chrome/browser/ai/OWNERS", "builtin-ai-team@google.com"],
     "expiry_milestone": 160
   },
@@ -9095,6 +9091,11 @@
     "name": "searchbox-embedded-permission",
     "owners": [ "jamesleung@google.com", "chrome-desktop-search@google.com"],
     "expiry_milestone": 160
+  },
+  {
+    "name": "secure-payment-confirmation-credential-discovery-mode",
+    "owners": [ "smcgruer@chromium.org", "chrome-payments-eng@google.com"],
+    "expiry_milestone": 170
   },
   {
     "name": "semantic-embedder-api",

@@ -386,16 +386,16 @@ chromium_strings.grd. -->
       <message name="IDS_TASK_MANAGER_TASK_KILL_FAIL_ACCESSIBILITY_MESSAGE" desc="The text announced when all tasks in the process could not be killed.">
         Failed to end task(s).
       </message>
-      <message name="IDS_TASK_MANAGER_CATEGORY_TABS_AND_EXTENSIONS_NAME" desc="The title of the 'Tabs and extensions' filter category.">
+      <message name="IDS_TASK_MANAGER_CATEGORY_TABS_AND_EXTENSIONS_NAME" desc="The title of the 'Tabs and extensions' filter category." formatter_data="android_java">
         Tabs &amp; extensions
       </message>
       <message name="IDS_TASK_MANAGER_CATEGORY_SYSTEM_NAME" desc="The title of the 'System' filter category on ChromeOS.">
         System
       </message>
-      <message name="IDS_TASK_MANAGER_CATEGORY_BROWSER_NAME" desc="The title of the 'System' filter category on Windows/Mac/Linux.">
+      <message name="IDS_TASK_MANAGER_CATEGORY_BROWSER_NAME" desc="The title of the 'System' filter category on Windows/Mac/Linux/Android desktop." formatter_data="android_java">
         Browser
       </message>
-      <message name="IDS_TASK_MANAGER_CATEGORY_ALL_NAME" desc="The title of the 'All tasks' filter category on Windows/Mac/Linux/ChromeOS.">
+      <message name="IDS_TASK_MANAGER_CATEGORY_ALL_NAME" desc="The title of the 'All tasks' filter category on Windows/Mac/Linux/ChromeOS/Android desktop." formatter_data="android_java">
         All tasks
       </message>
       <message name="IDS_SESSION_CRASHED_VIEW_UMA_OPTIN" desc="Text besides the checkbox to let users optin to UMA in the restore from previous crash bubble.">
@@ -1931,6 +1931,9 @@ Google Chrome is unable to recover your settings.
       </message>
 
       <!-- Desktop Capture -->
+      <message name="IDS_SEARCHBOX_PICKER_HEADLINE" desc="Title of the searchbox screen or window picker dialog.">
+        Choose what to share with Chrome
+      </message>
       <message name="IDS_DESKTOP_MEDIA_PICKER_SOURCE_TYPE_TAB" desc="Text for the button on the window picker dialog, clicking which takes one to tab sharing">
         Chrome Tab
       </message>
@@ -2677,6 +2680,27 @@ Google Chrome is unable to recover your settings.
         <message name="IDS_FRE_WELCOME_START_BUTTON_LABEL" desc="This string is found on a primary button that takes the user into the main browser experience. It is a verb-based call to action. (CHAR LIMIT = 20)">
           Start Chrome
         </message>
+        <message name="IDS_FRE_WELCOME_METRICS_LABEL" desc="This string is a confirmation message regarding data sharing settings. It informs users that their data helps improve the product. 'Manage' is a link that navigates to detailed settings. The tone should be informative and transparent.">
+          You’re helping make Chrome better by sending usage statistics and crash reports to Google. <ph name="BEGIN_LINK">&lt;a href="#"&gt;</ph>Manage<ph name="END_LINK">&lt;/a&gt;</ph>
+        </message>
+        <message name="IDS_FRE_WELCOME_METRICS_OFF_LABEL" desc="This string is a status message shown when data sharing is disabled. It identifies the current state of privacy settings. The tone should be neutral and cautionary.">
+          You’re not sending usage statistics and crash reports to Google. <ph name="BEGIN_LINK">&lt;a href="#"&gt;</ph>Manage<ph name="END_LINK">&lt;/a&gt;</ph>
+        </message>
+        <message name="IDS_FRE_WELCOME_METRICS_POPUP_DESCRIPTION" desc="This is the body text of a card explaining the intent of data sharing. It provides context on user control ('change... anytime'). The tone should be informative.">
+          Automatically sending this data to Google helps make Chrome better. You can change this setting anytime.
+        </message>
+        <message name="IDS_FRE_WELCOME_METRICS_POPUP_TITLE" desc="This is the title of a setting in a dialog regarding technical data sharing. It refers to data about app performance and stability. (CHAR LIMIT = 35)">
+          Usage statistics and crash reports
+        </message>
+        <message name="IDS_FRE_WELCOME_METRICS_POPUP_TURN_OFF_BUTTON_LABEL" desc="This string is found on a button that disables the current setting. It is a direct action verb. (CHAR LIMIT = 15)">
+          Turn off
+        </message>
+        <message name="IDS_FRE_WELCOME_METRICS_POPUP_TURN_ON_BUTTON_LABEL" desc="This string is found on a button that enables the current setting. It is a direct action verb. (CHAR LIMIT = 15)">
+          Turn on
+        </message>
+        <message name="IDS_FRE_WELCOME_METRICS_POPUP_CLOSE_BUTTON_LABEL" desc="Accessibility label for the close button on the first run welcome screen popup.">
+          Close
+        </message>
 
         <message name="IDS_FRE_SIGN_IN_TITLE_0" meaning="Title"
           desc="This string appears as a heading on a full-page screen that asks the user to sign in to Chrome with their Google Account. It appears when the user launches Chrome for the first time. When they sign in, they can personalize and customize Chrome and remember their settings in their Google Account. The tone should be inviting and alluring.">
@@ -3204,10 +3228,6 @@ Google Chrome is unable to recover your settings.
       <message name="IDS_GLIC_STATUS_ICON_MENU_TOGGLE" desc="This is the menu item for toggling the Gemini UI.">
         Toggle Gemini in Chrome
       </message>
-      <!-- TODO(crbug.com/532187976): Make strings translateable once finalized. -->
-      <message name="IDS_OMNIBOX_EVERYWHERE_STATUS_ICON_MENU_TOGGLE" desc="Label for the toggle item in the Omnibox Everywhere status tray context menu." translateable="false">
-        Toggle Search in Chrome
-      </message>
       <message name ="IDS_GLIC_INELIGIBLE_PROFILE_NOTICE" desc="This is the text of the Gemini ineligible profile notice.">
         To use Gemini in Chrome, sign in with a different Google Account
       </message>
@@ -3241,6 +3261,19 @@ Google Chrome is unable to recover your settings.
           Show Gemini in Chrome in system tray
         </message>
       </if>
+      <if expr="is_macosx">
+        <message name="IDS_OMNIBOX_EVERYWHERE_STATUS_ICON_MENU_TOGGLE" desc="In Title Case: Label for the toggle item in the Search in Chrome status tray context menu.">
+          Open Search with Chrome
+        </message>
+      </if>
+      <if expr="not is_macosx">
+        <message name="IDS_OMNIBOX_EVERYWHERE_STATUS_ICON_MENU_TOGGLE" desc="Label for the toggle item in the Search in Chrome status tray context menu.">
+          Open search with Chrome
+        </message>
+      </if>
+      <message name="IDS_OMNIBOX_EVERYWHERE_STATUS_ICON_TOOLTIP" desc="Tooltip text for the Search in Chrome status tray icon.">
+        Search in Chrome
+      </message>
       <message name="IDS_SETTINGS_OMNIBOX_EVERYWHERE_TITLE" desc="Title of the Omnibox Everywhere section on the search settings page.">
         Search with Chrome
       </message>
@@ -3360,7 +3393,7 @@ Google Chrome is unable to recover your settings.
         </if>
 
         <message name="IDS_DICTATION_ONBOARDING_TITLE" desc="The title string in the onboarding dialog for the dictation feature." translateable="false">
-          Allow Talk to type to use your microphone and page content to generate polished text?
+          Let Chrome use your microphone and page content to generate polished text?
         </message>
         <message name="IDS_DICTATION_ONBOARDING_BULLET_MICROPHONE" desc="The first paragraph in the onboarding dialog describing how the microphone is used." translateable="false">
           Your microphone will be used to capture your voice

@@ -100,7 +100,6 @@ import org.chromium.url.JUnitTestGURLs;
 
 /** Unit tests for {@link StatusMediator}. */
 @RunWith(BaseRobolectricTestRunner.class)
-@Config(manifest = Config.NONE)
 public final class StatusMediatorUnitTest {
     private static final String TAG = "StatusMediatorUnitTest";
     private static final int CURRENT_TAB_ID = 5;
@@ -1469,6 +1468,18 @@ public final class StatusMediatorUnitTest {
         mMediator.updateSecurityIcon(R.drawable.ic_info_24dp, 0, 0);
 
         assertModelIconResId(R.drawable.ic_info_24dp);
+    }
+
+    @Test
+    @SmallTest
+    public void statusIcon_searchEngineIconShownWhenPendingNavigationToNtp() {
+        doReturn(true).when(mNewTabPageDelegate).isCurrentlyVisible();
+        doReturn(JUnitTestGURLs.NTP_URL).when(mNavigationEntry).getUrl();
+        doReturn(mNavigationEntry).when(mNavigationController).getPendingEntry();
+        mMediator.updateLocationBarIcon(IconTransitionType.CROSSFADE);
+        assertEquals(
+                R.drawable.ic_logo_googleg_20dp,
+                mModel.get(StatusProperties.STATUS_ICON_RESOURCE).getIconRes());
     }
 
     private void setDisplayState(@DisplayState int state) {

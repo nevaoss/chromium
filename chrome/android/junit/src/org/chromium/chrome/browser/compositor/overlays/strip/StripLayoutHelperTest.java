@@ -182,7 +182,6 @@ import java.util.stream.IntStream;
 /** Tests for {@link StripLayoutHelper}. */
 @RunWith(BaseRobolectricTestRunner.class)
 @Config(
-        manifest = Config.NONE,
         qualifiers = "sw600dp",
         shadows = {ShadowAppCompatResources.class})
 @DisableFeatures({
@@ -781,8 +780,7 @@ public class StripLayoutHelperTest {
         assertTrue(
                 "Tab getting closed should be outside of the visible bounds",
                 tabs[closeTabIndex].getDrawX()
-                        > mStripLayoutHelper.getVisibleRightBound(
-                                /* clampToUnpinnedViews= */ true));
+                        > mStripLayoutHelper.getFullyVisibleRightUnpinnedBound());
 
         final StripLayoutHelper stripLayoutHelperSpy = spy(mStripLayoutHelper);
         closeTabAt(stripLayoutHelperSpy, closeTabIndex);
@@ -814,7 +812,7 @@ public class StripLayoutHelperTest {
         assertTrue(
                 "Tab getting closed should be outside of the visible bounds",
                 tabs[closeTabIndex].getDrawX() + tabs[closeTabIndex].getWidth()
-                        < mStripLayoutHelper.getVisibleLeftBound(/* clampToUnpinnedViews= */ true));
+                        < mStripLayoutHelper.getFullyVisibleLeftUnpinnedBound());
 
         final StripLayoutHelper stripLayoutHelperSpy = spy(mStripLayoutHelper);
         closeTabAt(stripLayoutHelperSpy, closeTabIndex);
@@ -844,8 +842,8 @@ public class StripLayoutHelperTest {
                         .filter(
                                 i ->
                                         tabs[i].getDrawX()
-                                                > mStripLayoutHelper.getVisibleRightBound(
-                                                        /* clampToUnpinnedViews= */ true))
+                                                > mStripLayoutHelper
+                                                        .getFullyVisibleRightUnpinnedBound())
                         .findFirst()
                         .getAsInt();
 
@@ -853,8 +851,7 @@ public class StripLayoutHelperTest {
         assertTrue(
                 "Tab getting closed should be inside of the visible bounds",
                 tabs[closeTabIndex].getDrawX()
-                        <= mStripLayoutHelper.getVisibleRightBound(
-                                /* clampToUnpinnedViews= */ true));
+                        <= mStripLayoutHelper.getFullyVisibleRightUnpinnedBound());
 
         final StripLayoutHelper stripLayoutHelperSpy = spy(mStripLayoutHelper);
         closeTabAt(stripLayoutHelperSpy, closeTabIndex);

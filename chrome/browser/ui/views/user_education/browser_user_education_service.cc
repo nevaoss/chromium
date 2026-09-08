@@ -50,6 +50,7 @@
 #include "chrome/browser/ui/tabs/split_view_iph_controller.h"
 #include "chrome/browser/ui/tabs/tab_group_model.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
+#include "chrome/browser/ui/toasts/toast_view.h"
 #include "chrome/browser/ui/toolbar/app_menu_model.h"
 #include "chrome/browser/ui/toolbar/bookmark_sub_menu_model.h"
 #include "chrome/browser/ui/toolbar/pinned_toolbar/pinned_toolbar_actions_model.h"
@@ -63,8 +64,11 @@
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/views/frame/contents_web_view.h"
 #include "chrome/browser/ui/views/frame/toolbar_button_provider.h"
+#include "chrome/browser/ui/views/global_media_controls/media_dialog_view.h"
 #include "chrome/browser/ui/views/page_action/page_action_view.h"
+#include "chrome/browser/ui/views/tabs/common/tab_view.h"
 #include "chrome/browser/ui/views/tabs/horizontal/tab_scroll_button_container.h"
+#include "chrome/browser/ui/views/tabs/tab.h"
 #include "chrome/browser/ui/views/tabs/tab/tab_icon.h"
 #include "chrome/browser/ui/views/toolbar/pinned_action_toolbar_button.h"
 #include "chrome/browser/ui/views/translate/translate_bubble_view.h"
@@ -178,6 +182,8 @@ constexpr std::initializer_list<Platforms> kComposePlatforms{
 constexpr char kTabGroupHeaderElementName[] = "TabGroupHeader";
 constexpr char kChromeThemeBackElementName[] = "ChromeThemeBackElement";
 constexpr char kLastInactiveTabElementName[] = "LastInactiveTab";
+constexpr char kSendTabToSelfActiveTabElementName[] =
+    "SendTabToSelfActiveTabElement";
 
 class IfView : public user_education::TutorialDescription::If {
  public:
@@ -259,6 +265,27 @@ bool HasTabGroups(const BrowserView* browser_view) {
 
 bool IsInVerticalTabsMode(const BrowserView* browser_view) {
   return browser_view->ShouldDrawVerticalTabStrip();
+}
+
+ui::TrackedElement* FilterToActiveTab(
+    const ui::ElementTracker::ElementList& elements) {
+  for (ui::TrackedElement* const element : elements) {
+    if (const auto* const tracked_views =
+            element->AsA<views::TrackedElementViews>()) {
+      const views::View* const view = tracked_views->view();
+      if (const auto* const tab = views::AsViewClass<Tab>(view)) {
+        if (tab->IsActive()) {
+          return element;
+        }
+      } else if (const auto* const tab_view =
+                     views::AsViewClass<TabView>(view)) {
+        if (tab_view->IsActive()) {
+          return element;
+        }
+      }
+    }
+  }
+  return nullptr;
 }
 
 using ContextPtr = const user_education::UserEducationContextPtr&;
@@ -970,6 +997,17 @@ void MaybeRegisterChromeFeaturePromos(
       IDS_GMC_LOCAL_MEDIA_CAST_START_PROMO,
       FeaturePromoSpecification::AcceleratorInfo()));
 
+  // kIPHGMCSaveVideoFrameFeature:
+  registry.RegisterFeature(std::move(
+      FeaturePromoSpecification::CreateForTutorialPromo(
+          feature_engagement::kIPHGMCSaveVideoFrameFeature,
+          kToolbarMediaButtonElementId, IDS_GMC_SAVE_VIDEO_FRAME_PROMO_TEXT,
+          kSaveVideoFrameTutorialId)
+          .SetBubbleIcon(kLightbulbOutlineIcon)
+          .SetBubbleArrow(HelpBubbleArrow::kTopRight)
+          .SetMetadata(153, "vpasupathy@chromium.org",
+                       "Triggered when Save Video Frame IPH timer fires.")));
+
   // kIPHPasswordsSavePrimingPromo:
   registry.RegisterFeature(std::move(
       FeaturePromoSpecification::CreateForToastPromo(
@@ -1355,6 +1393,20 @@ void MaybeRegisterChromeFeaturePromos(
           .SetMetadata(141, "lugli@google.com",
                        "Triggered when user swaps between two tabs three times "
                        "quickly.")));
+
+  // kIPHSendTabToSelfTutorialFeature:
+  registry.RegisterFeature(std::move(
+      FeaturePromoSpecification::CreateForTutorialPromo(
+          feature_engagement::kIPHSendTabToSelfTutorialFeature, kTabElementId,
+          IDS_SEND_TAB_TO_SELF_IPH_TUTORIAL_BODY, kSendTabToSelfTutorialId)
+          .SetAnchorElementFilter(base::BindRepeating(&FilterToActiveTab))
+          .SetBubbleArrow(HelpBubbleArrow::kTopLeft)
+          .SetBubbleIcon(&(features::IsRoundedIconsEnabled() ? kDevicesIcon
+                                                             : kDevicesOldIcon))
+          .SetBubbleTitleText(IDS_SEND_TAB_TO_SELF_IPH_TUTORIAL_TITLE)
+          .SetMetadata(
+              154, "ankushkush@google.com",
+              "Triggered on the first eligible tab after browser startup.")));
 
   // kIPHSidePanelGenericPinnableFeature:
   registry.RegisterFeature(std::move(
@@ -1850,6 +1902,22 @@ void MaybeRegisterChromeFeaturePromos(
           .SetMetadata(131, "juanmojica@google.com",
                        "Triggered to inform users of the availability of the "
                        "new translate screen feature on the Lens Overlay.")));
+
+  // kIPHOmniboxEverywhereLensPromoFeature:
+  registry.RegisterFeature(std::move(
+      FeaturePromoSpecification::CreateForSnoozePromo(
+          feature_engagement::kIPHOmniboxEverywhereLensPromoFeature,
+          kOmniboxEverywhereLensButtonElementId,
+          IDS_OMNIBOX_EVERYWHERE_LENS_PROMO_BODY,
+          IDS_OMNIBOX_EVERYWHERE_LENS_PROMO_ACCESSIBLE_TEXT,
+          FeaturePromoSpecification::AcceleratorInfo())
+          .SetBubbleArrow(HelpBubbleArrow::kTopRight)
+          .OverrideFocusOnShow(false)
+          .SetInAnyContext(true)
+          .SetMetadata(
+              154, "abhmadan@google.com",
+              "Triggered to inform users of the Lens search feature in "
+              "Omnibox Everywhere.")));
 
 #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_WIN) || \
     BUILDFLAG(IS_CHROMEOS)
@@ -2503,6 +2571,98 @@ void MaybeRegisterChromeTutorials(
     tutorial_registry.AddTutorial(kContextualTasksTutorialId,
                                   std::move(contextual_tasks_tutorial));
   }
+
+  {  // Save Video Frame tutorial
+    auto save_video_frame_tutorial =
+        TutorialDescription::Create<kSaveVideoFrameTutorialMetricPrefix>(
+            // Step 1 (IPH-2): BubbleStep pointing to GMC toolbar icon.
+            BubbleStep(kToolbarMediaButtonElementId)
+                .SetBubbleBodyText(IDS_GMC_SAVE_VIDEO_FRAME_TUTORIAL_STEP_1)
+                .SetBubbleArrow(HelpBubbleArrow::kTopRight),
+
+            // Step 2: HiddenStep observing
+            // MediaDialogView::kMediaItemUIUpdatedViewElementId becoming
+            // visible.
+            HiddenStep::WaitForShown(
+                MediaDialogView::kMediaItemUIUpdatedViewElementId)
+                .InAnyContext(),
+
+            // Step 3 (IPH-3): BubbleStep pointing to Save Video Frame button
+            // in GMC panel.
+            BubbleStep(MediaDialogView::kSaveVideoFrameButtonElementId)
+                .SetBubbleBodyText(IDS_GMC_SAVE_VIDEO_FRAME_TUTORIAL_STEP_2)
+                .SetBubbleArrow(HelpBubbleArrow::kTopLeft)
+                .InAnyContext(),
+
+            // Step 4: EventStep waiting for the video frame image file to
+            // finish downloading/saving.
+            EventStep(kDownloadEndedCustomEventId).InAnyContext(),
+
+            // Step 5 (IPH-4): Final step with celebration icon explaining
+            // right-click shortcut (unanchored, without caret).
+            BubbleStep(kToolbarMediaButtonElementId)
+                .SetBubbleTitleText(IDS_TUTORIAL_GENERIC_SUCCESS_TITLE)
+                .SetBubbleBodyText(IDS_GMC_SAVE_VIDEO_FRAME_TUTORIAL_SUCCESS)
+                .SetBubbleArrow(HelpBubbleArrow::kNone));
+
+    save_video_frame_tutorial.metadata.additional_description =
+        "Tutorial for Save Video Frame feature in Global Media Controls.";
+    save_video_frame_tutorial.metadata.launch_milestone = 153;
+    save_video_frame_tutorial.metadata.owners = "vpasupathy@chromium.org";
+
+    tutorial_registry.AddTutorial(kSaveVideoFrameTutorialId,
+                                  std::move(save_video_frame_tutorial));
+  }
+
+  {  // Send Tab to Self tutorial
+    auto send_tab_to_self_tutorial =
+        TutorialDescription::Create<kSendTabToSelfTutorialMetricPrefix>(
+            // Hidden step - name the active tab (horizontal or vertical)
+            HiddenStep::WaitForShown(kBrowserViewElementId)
+                .NameElements(
+                    base::BindRepeating([](ui::InteractionSequence* sequence,
+                                           ui::TrackedElement* element) {
+                      const auto elements =
+                          ui::ElementTracker::GetElementTracker()
+                              ->GetAllMatchingElements(kTabElementId,
+                                                       element->context());
+                      if (ui::TrackedElement* const active_tab =
+                              FilterToActiveTab(elements)) {
+                        sequence->NameElement(
+                            active_tab, kSendTabToSelfActiveTabElementName);
+                        return true;
+                      }
+                      return false;
+                    })),
+
+            // Bubble step - Right-click on the active tab
+            BubbleStep(kSendTabToSelfActiveTabElementName)
+                .SetBubbleBodyText(IDS_TUTORIAL_SEND_TAB_TO_SELF_STEP_1_BODY)
+                .SetBubbleArrow(HelpBubbleArrow::kTopLeft)
+                .InAnyContext(),
+
+            // Bubble step - Send to your devices menu item
+            BubbleStep(kTabSendTabToSelfMenuItem)
+                .SetBubbleBodyText(IDS_TUTORIAL_SEND_TAB_TO_SELF_STEP_2_BODY)
+                .SetBubbleArrow(HelpBubbleArrow::kRightCenter)
+                .InAnyContext()
+                .AbortIfVisibilityLost(false),
+
+            // Completion of the tutorial.
+            BubbleStep(toasts::ToastView::kToastViewId)
+                .SetBubbleTitleText(IDS_TUTORIAL_SEND_TAB_TO_SELF_SUCCESS_TITLE)
+                .SetBubbleBodyText(IDS_TUTORIAL_SEND_TAB_TO_SELF_SUCCESS_BODY)
+                .SetBubbleArrow(HelpBubbleArrow::kTopCenter)
+                .InAnyContext());
+
+    send_tab_to_self_tutorial.metadata.additional_description =
+        "Tutorial for sending tabs to other devices.";
+    send_tab_to_self_tutorial.metadata.launch_milestone = 154;
+    send_tab_to_self_tutorial.metadata.owners = "ankushkush@google.com";
+
+    tutorial_registry.AddTutorial(kSendTabToSelfTutorialId,
+                                  std::move(send_tab_to_self_tutorial));
+  }
 }
 
 // NOTES FOR FEATURE TEAMS:
@@ -2645,7 +2805,7 @@ CreateUserEducationResources(UserEducationService& user_education_service) {
       &user_education_service.user_education_storage_service(),
       &user_education_service.feature_promo_session_policy(),
       &user_education_service.tutorial_service(),
-      &user_education_service.product_messaging_controller());
+      user_education_service.product_messaging_controller());
   result->Init();
   return result;
 }

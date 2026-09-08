@@ -807,6 +807,9 @@ type InterfaceHistogramIds<I extends InterfaceDef> = {
        never]: M['histogram'] extends {id: infer Id} ? Id : never;
 };
 
+// Note: We are migrating API request reporting to C++. This list should be
+// trimmed down and fully deleted eventually.
+// See chrome/browser/glic/public/glic_api_metrics.h.
 // LINT.IfChange(ApiRequestType)
 // New values here must be added to histograms.xml and to enums.xml.
 // Note: Not for accessing in code, so it can be stripped from compiled js.
@@ -937,9 +940,15 @@ export function getHostRequestHistogramInfo(
     return undefined;
   }
   const method = interfaceDef.methodMap?.get(requestType);
-  // interfaceDef() ensures histogram satisfies HostRequestHistogramInfo, or is
-  // unset.
-  return method?.histogram as HostRequestHistogramInfo | undefined;
+  if (!method || !method.histogram) {
+    return undefined;
+  }
+  const name = (method.histogram as {name?: string}).name ??
+      (requestType.charAt(0).toUpperCase() + requestType.slice(1));
+  return {
+    name,
+    id: method.histogram.id,
+  };
 }
 
 //

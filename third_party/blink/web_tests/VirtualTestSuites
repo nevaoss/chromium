@@ -2337,6 +2337,33 @@
     ],
     "expires": "never"
   },
+  {
+    "prefix": "omit-subframe-detachment-events-on-removal",
+    "platforms": [
+      "Linux",
+      "Mac",
+      "Win"
+    ],
+    "bases": [
+      "external/wpt/html/syntax/parsing/adoption-agency-reparenting-pagehide.tentative.html",
+      "fast/frames/detached-shadow-frame.html",
+      "fast/frames/frame-unload-crash2.html",
+      "fast/frames/out-of-document-iframe-has-child-frame.html",
+      "fast/frames/reattach-in-unload.html",
+      "fast/frames/set-iframe-src-in-pagehide-crash.html",
+      "fast/frames/subframe-detachment-events-on-removal.html"
+    ],
+    "exclusive_tests": [
+      "fast/frames/subframe-detachment-events-on-removal.html"
+    ],
+    "args": [
+      "--enable-blink-features=OmitSubframeDetachmentEventsOnRemoval"
+    ],
+    "owners": [
+      "nrosenthal@chromium.org"
+    ],
+    "expires": "Jan 1, 2027"
+  },
   "Tests the legacy AbstractRange shape with OpaqueRange disabled. Remove when",
   "the OpaqueRange flag is removed. crbug.com/421421332",
   {
@@ -2756,7 +2783,6 @@
       "external/wpt/html/canvas/element/manual/draw-element-image/ink-overflow.tentative.html",
       "external/wpt/html/canvas/element/manual/draw-element-image/scale.tentative.html",
       "external/wpt/html/canvas/element/manual/draw-element-image/get-element-transform.tentative.html",
-      "external/wpt/html/canvas/element/manual/draw-element-image/draw-element-image-returned-matrix.tentative.html",
       "wpt_internal/webgl/draw-element-image/webgl-css-transform-on-div.html",
       "wpt_internal/webgl/draw-element-image/webgl-ink-overflow.html",
       "wpt_internal/webgl/draw-element-image/webgl-scaling.html"
@@ -2807,7 +2833,6 @@
       "external/wpt/html/canvas/element/manual/draw-element-image/ink-overflow.tentative.html",
       "external/wpt/html/canvas/element/manual/draw-element-image/scale.tentative.html",
       "external/wpt/html/canvas/element/manual/draw-element-image/get-element-transform.tentative.html",
-      "external/wpt/html/canvas/element/manual/draw-element-image/draw-element-image-returned-matrix.tentative.html",
       "wpt_internal/webgl/draw-element-image/webgl-css-transform-on-div.html",
       "wpt_internal/webgl/draw-element-image/webgl-ink-overflow.html",
       "wpt_internal/webgl/draw-element-image/webgl-scaling.html",
@@ -4835,7 +4860,8 @@
       "http/tests/origin_trials/xslt-deprecation-trial-disabled.html",
       "http/tests/origin_trials/xslt-deprecation-trial-enabled.html",
       "fast/parser/xml-cap-alert-xslt-use-counter.html",
-      "fast/parser/xml-cap-alert-xslt-enabled.html"
+      "fast/parser/xml-cap-alert-xslt-enabled.html",
+      "fast/parser/xml-xslt-warning-banner.html"
     ],
     "exclusive_tests": [
       "http/tests/xsl/xslt/xsltpi-issue.js",
@@ -4862,7 +4888,8 @@
       "inspector-protocol/debugger/unpause-after-xslt-commit.js",
       "http/tests/origin_trials/xslt-deprecation-trial-disabled.html",
       "http/tests/origin_trials/xslt-deprecation-trial-enabled.html",
-      "fast/parser/xml-cap-alert-xslt-enabled.html"
+      "fast/parser/xml-cap-alert-xslt-enabled.html",
+      "fast/parser/xml-xslt-warning-banner.html"
     ],
     "args": ["--disable-blink-features=XSLTSpecialTrial"],
     "owners": [
@@ -5118,7 +5145,8 @@
       "Win"
     ],
     "bases": [
-      "wpt_internal/html/canvas/drawElementImage/css-transform-on-div-disabled.html"
+      "wpt_internal/html/canvas/drawElementImage/css-transform-on-div-disabled.html",
+      "wpt_internal/html/canvas/drawElementImage/draw-element-image-returned-matrix-disabled.html"
     ],
     "exclusive_tests": "ALL",
     "args": [

@@ -85,7 +85,7 @@
 #include "components/autofill/core/browser/foundations/test_autofill_manager_waiter.h"
 #include "components/autofill/core/browser/foundations/test_browser_autofill_manager.h"
 #include "components/autofill/core/browser/foundations/with_test_autofill_client_driver_manager.h"
-#include "components/autofill/core/browser/geo/alternative_state_name_map_test_utils.h"
+#include "components/autofill/core/browser/geo/alternative_state_name_map_test_util.h"
 #include "components/autofill/core/browser/heuristic_source.h"
 #include "components/autofill/core/browser/integrators/at_memory/memory_search_result.h"
 #include "components/autofill/core/browser/integrators/at_memory/mock_at_memory_query_service.h"
@@ -105,7 +105,7 @@
 #include "components/autofill/core/browser/metrics/log_event.h"
 #include "components/autofill/core/browser/metrics/loyalty_cards_metrics.h"
 #include "components/autofill/core/browser/metrics/payments/iban_metrics.h"
-#include "components/autofill/core/browser/metrics/ukm_metrics_test_utils.h"
+#include "components/autofill/core/browser/metrics/ukm_metrics_test_util.h"
 #include "components/autofill/core/browser/ml_model/autofill_ai/mock_autofill_ai_model_cache.h"
 #include "components/autofill/core/browser/ml_model/autofill_ai/mock_autofill_ai_model_executor.h"
 #include "components/autofill/core/browser/payments/amount_extraction_manager.h"
@@ -126,10 +126,10 @@
 #include "components/autofill/core/browser/suggestions/suggestion.h"
 #include "components/autofill/core/browser/suggestions/suggestion_test_helpers.h"
 #include "components/autofill/core/browser/suggestions/suggestion_type.h"
-#include "components/autofill/core/browser/test_utils/autofill_form_test_utils.h"
-#include "components/autofill/core/browser/test_utils/autofill_test_utils.h"
-#include "components/autofill/core/browser/test_utils/entity_data_test_utils.h"
-#include "components/autofill/core/browser/test_utils/valuables_data_test_utils.h"
+#include "components/autofill/core/browser/test_utils/autofill_form_test_util.h"
+#include "components/autofill/core/browser/test_utils/autofill_test_util.h"
+#include "components/autofill/core/browser/test_utils/entity_data_test_util.h"
+#include "components/autofill/core/browser/test_utils/valuables_data_test_util.h"
 #include "components/autofill/core/browser/test_utils/vote_uploads_test_matchers.h"
 #include "components/autofill/core/browser/ui/payments/bubble_show_options.h"
 #include "components/autofill/core/browser/ui/test_autofill_external_delegate.h"
@@ -142,7 +142,7 @@
 #include "components/autofill/core/common/autofill_payments_features.h"
 #include "components/autofill/core/common/autofill_prefs.h"
 #include "components/autofill/core/common/autofill_switches.h"
-#include "components/autofill/core/common/autofill_test_utils.h"
+#include "components/autofill/core/common/autofill_test_util.h"
 #include "components/autofill/core/common/autofill_util.h"
 #include "components/autofill/core/common/credit_card_network_identifiers.h"
 #include "components/autofill/core/common/form_data.h"
@@ -219,7 +219,9 @@ using ::testing::Return;
 using ::testing::ReturnRef;
 using ::testing::SaveArg;
 using ::testing::UnorderedElementsAre;
+using ::testing::ValuesIn;
 using ::testing::VariantWith;
+using ::testing::WithParamInterface;
 using upload_contents_matchers::FieldAutofillTypeIs;
 using upload_contents_matchers::FieldsAre;
 using upload_contents_matchers::FormSignatureIs;
@@ -2442,7 +2444,7 @@ enum class LogAblationFormType {
 
 class BrowserAutofillManagerLogAblationTest
     : public BrowserAutofillManagerTest,
-      public testing::WithParamInterface<
+      public WithParamInterface<
           std::tuple<LogAblationTestParams, LogAblationFormType>> {};
 
 // Validate that UMA logging works correctly for ablation studies.
@@ -5467,7 +5469,7 @@ TEST_F(BrowserAutofillManagerTest, PageLanguageGetsCorrectlySet) {
 // not.
 class BrowserAutofillManagerTestPageLanguageDetection
     : public BrowserAutofillManagerTest,
-      public testing::WithParamInterface<bool> {
+      public WithParamInterface<bool> {
  public:
   BrowserAutofillManagerTestPageLanguageDetection() {
     scoped_features_.InitWithFeatures(
@@ -5508,7 +5510,7 @@ INSTANTIATE_TEST_SUITE_P(All,
 // BrowserAutofillManagerTest with different browser profile types.
 class BrowserAutofillManagerProfileMetricsTest
     : public BrowserAutofillManagerTest,
-      public testing::WithParamInterface<profile_metrics::BrowserProfileType> {
+      public WithParamInterface<profile_metrics::BrowserProfileType> {
  public:
   profile_metrics::BrowserProfileType profile_type() { return GetParam(); }
 
@@ -5540,9 +5542,9 @@ TEST_P(BrowserAutofillManagerProfileMetricsTest,
 INSTANTIATE_TEST_SUITE_P(
     All,
     BrowserAutofillManagerProfileMetricsTest,
-    testing::ValuesIn({profile_metrics::BrowserProfileType::kRegular,
-                       profile_metrics::BrowserProfileType::kIncognito,
-                       profile_metrics::BrowserProfileType::kGuest}));
+    ValuesIn({profile_metrics::BrowserProfileType::kRegular,
+              profile_metrics::BrowserProfileType::kIncognito,
+              profile_metrics::BrowserProfileType::kGuest}));
 
 // Tests that autocomplete-related metrics are emitted correctly on form
 // submission.
@@ -7249,68 +7251,213 @@ TEST_F(BrowserAutofillManagerTest,
       blocked_fields);
 }
 
-struct SuggestionMergingTestParams {
-  std::string test_name;
-  std::vector<std::pair<SuggestionGenerator::SuggestionDataSource,
-                        std::vector<SuggestionType>>>
-      input;
-  std::vector<SuggestionType> expected_output;
+class BrowserAutofillManagerSuggestionMergingTest
+    : public BrowserAutofillManagerTest {
+ protected:
+  static SuggestionGenerator::ReturnedSuggestions WithAddressFooter(
+      std::vector<Suggestion> suggestions) {
+    suggestions.emplace_back(SuggestionType::kSeparator);
+    suggestions.emplace_back(SuggestionType::kManageAddress);
+    return {SuggestionGenerator::SuggestionDataSource::kAddress,
+            std::move(suggestions)};
+  }
+
+ private:
+  base::test::ScopedFeatureList feature_list{
+      features::kAutofillMergeAddressAndAutocompleteEmailSuggestions};
 };
 
-class BrowserAutofillManagerSuggestionMergingTest
-    : public BrowserAutofillManagerTest,
-      public testing::WithParamInterface<SuggestionMergingTestParams> {};
-
-TEST_P(BrowserAutofillManagerSuggestionMergingTest, MergingLogic) {
-  const SuggestionMergingTestParams& params = GetParam();
-  FormData form = test::GetFormData(
+// Tests that the merging logic forwards the address suggestions if there are no
+// other suggestions that they can be merged with.
+TEST_F(BrowserAutofillManagerSuggestionMergingTest, AddressOnly) {
+  const FormData form = test::GetFormData(
       {.fields = {{.label = u"Field",
                    .form_control_type = FormControlType::kInputText}}});
-
-  std::vector<SuggestionGenerator::ReturnedSuggestions> returned_suggestions =
-      base::ToVector(params.input, [&](const auto& pair) {
-        const auto& [product, types] = pair;
-        std::vector<Suggestion> suggestions = base::ToVector(
-            types, [](SuggestionType type) { return Suggestion(type); });
-        return SuggestionGenerator::ReturnedSuggestions({product, suggestions});
-      });
 
   test_api(autofill_manager())
       .OnIndividualSuggestionsGenerated(
           form, form.fields()[0],
           AutofillSuggestionTriggerSource::kFormControlElementClicked,
-          base::TimeTicks::Now(), std::move(returned_suggestions));
+          base::TimeTicks::Now(),
+          {WithAddressFooter({Suggestion(SuggestionType::kAddressEntry)})});
 
-  std::vector<SuggestionType> actual_types =
-      base::ToVector(external_delegate()->suggestions(), &Suggestion::type);
-  EXPECT_EQ(actual_types, params.expected_output)
-      << "Failed for case: " << params.test_name;
+  EXPECT_THAT(external_delegate()->suggestions(),
+              SuggestionVectorIdsAre(SuggestionType::kAddressEntry,
+                                     SuggestionType::kSeparator,
+                                     SuggestionType::kManageAddress));
 }
 
-INSTANTIATE_TEST_SUITE_P(
-    BrowserAutofillManagerSuggestionMergingTest,
-    BrowserAutofillManagerSuggestionMergingTest,
-    testing::ValuesIn(std::vector<SuggestionMergingTestParams>{
-        {.test_name = "AddressOnly",
-         .input = {{SuggestionGenerator::SuggestionDataSource::kAddress,
-                    {SuggestionType::kAddressEntry}}},
-         .expected_output = {SuggestionType::kAddressEntry}},
-        {.test_name = "AddressAndIdentity",
-         .input =
-             {{SuggestionGenerator::SuggestionDataSource::kAddress,
-               {SuggestionType::kAddressEntry}},
-              {SuggestionGenerator::SuggestionDataSource::kIdentityCredential,
-               {SuggestionType::kWebauthnCredential}}},
-         .expected_output = {SuggestionType::kWebauthnCredential,
-                             SuggestionType::kAddressEntry}},
-        {.test_name = "AddressAndPasskey",
-         .input = {{SuggestionGenerator::SuggestionDataSource::kAddress,
-                    {SuggestionType::kAddressEntry}},
-                   {SuggestionGenerator::SuggestionDataSource::kPasskey,
-                    {SuggestionType::kWebauthnCredential}}},
-         .expected_output = {SuggestionType::kAddressEntry,
-                             SuggestionType::kWebauthnCredential}},
-    }));
+// Tests that address and identity suggestions are merged, with identity
+// suggestions coming first.
+TEST_F(BrowserAutofillManagerSuggestionMergingTest, AddressAndIdentity) {
+  const FormData form = test::GetFormData(
+      {.fields = {{.label = u"Field",
+                   .form_control_type = FormControlType::kInputText}}});
+
+  const std::vector<SuggestionGenerator::ReturnedSuggestions> input = {
+      WithAddressFooter({Suggestion(SuggestionType::kAddressEntry)}),
+      {SuggestionGenerator::SuggestionDataSource::kIdentityCredential,
+       {Suggestion(SuggestionType::kWebauthnCredential)}}};
+
+  test_api(autofill_manager())
+      .OnIndividualSuggestionsGenerated(
+          form, form.fields()[0],
+          AutofillSuggestionTriggerSource::kFormControlElementClicked,
+          base::TimeTicks::Now(), input);
+
+  EXPECT_THAT(external_delegate()->suggestions(),
+              SuggestionVectorIdsAre(SuggestionType::kWebauthnCredential,
+                                     SuggestionType::kAddressEntry,
+                                     SuggestionType::kSeparator,
+                                     SuggestionType::kManageAddress));
+}
+
+// Tests that address and passkey suggestions can be merged, with address
+// suggestions coming first.
+TEST_F(BrowserAutofillManagerSuggestionMergingTest, AddressAndPasskey) {
+  const FormData form = test::GetFormData(
+      {.fields = {{.label = u"Field",
+                   .form_control_type = FormControlType::kInputText}}});
+
+  const std::vector<SuggestionGenerator::ReturnedSuggestions> input = {
+      WithAddressFooter({Suggestion(SuggestionType::kAddressEntry)}),
+      {SuggestionGenerator::SuggestionDataSource::kPasskey,
+       {Suggestion(SuggestionType::kWebauthnCredential)}}};
+
+  test_api(autofill_manager())
+      .OnIndividualSuggestionsGenerated(
+          form, form.fields()[0],
+          AutofillSuggestionTriggerSource::kFormControlElementClicked,
+          base::TimeTicks::Now(), input);
+
+  EXPECT_THAT(external_delegate()->suggestions(),
+              SuggestionVectorIdsAre(SuggestionType::kAddressEntry,
+                                     SuggestionType::kSeparator,
+                                     SuggestionType::kManageAddress,
+                                     SuggestionType::kWebauthnCredential));
+}
+
+// Tests that address and autocomplete suggestions can be merged for email
+// fields if there are valid email addresses in the autocomplete entries.
+TEST_F(BrowserAutofillManagerSuggestionMergingTest,
+       AddressAndAutocomplete_EmailField) {
+  const FormData form = test::GetFormData(
+      {.fields = {{.label = u"Field",
+                   .form_control_type = FormControlType::kInputText}}});
+  autofill_manager().AddSeenForm(form, {EMAIL_ADDRESS});
+
+  const std::vector<SuggestionGenerator::ReturnedSuggestions> input = {
+      WithAddressFooter({test::CreateAutofillSuggestion(
+          SuggestionType::kAddressEntry, u"Mail@example.com")}),
+      {SuggestionGenerator::SuggestionDataSource::kAutocomplete,
+       {// This autocomplete entry will be filtered out because it is not a
+        // valid email format.
+        test::CreateAutofillSuggestion(SuggestionType::kAutocompleteEntry,
+                                       u"xyz"),
+        // This autocomplete entry is a valid and unique suggestion and should
+        // be added to the address entries.
+        test::CreateAutofillSuggestion(SuggestionType::kAutocompleteEntry,
+                                       u"example@mail.org"),
+        // This autocomplete entry will be filtered out because it is
+        // (case-insensitive) equal to an existing suggestion.
+        test::CreateAutofillSuggestion(SuggestionType::kAutocompleteEntry,
+                                       u"mail@example.com")}}};
+
+  test_api(autofill_manager())
+      .OnIndividualSuggestionsGenerated(
+          form, form.fields()[0],
+          AutofillSuggestionTriggerSource::kFormControlElementClicked,
+          base::TimeTicks::Now(), input);
+
+  EXPECT_THAT(external_delegate()->suggestions(),
+              ElementsAre(EqualsSuggestion(SuggestionType::kAddressEntry,
+                                           u"Mail@example.com",
+                                           /*is_main_text_primary=*/false),
+                          EqualsSuggestion(SuggestionType::kSeparator),
+                          EqualsSuggestion(SuggestionType::kAutocompleteEntry,
+                                           u"example@mail.org",
+                                           /*is_main_text_primary=*/false),
+                          EqualsSuggestion(SuggestionType::kSeparator),
+                          EqualsSuggestion(SuggestionType::kManageAddress)));
+}
+
+// Tests that the number of autocomplete suggestions is limited when merging
+// address and autocomplete suggestions for email fields.
+TEST_F(BrowserAutofillManagerSuggestionMergingTest,
+       AddressAndAutocomplete_EmailField_SuggestionLimit) {
+  const FormData form = test::GetFormData(
+      {.fields = {{.label = u"Field",
+                   .form_control_type = FormControlType::kInputText}}});
+  autofill_manager().AddSeenForm(form, {EMAIL_ADDRESS});
+
+  const std::vector<SuggestionGenerator::ReturnedSuggestions> input = {
+      WithAddressFooter(std::vector<Suggestion>(
+          8U, Suggestion(SuggestionType::kAddressEntry))),
+      {SuggestionGenerator::SuggestionDataSource::kAutocomplete,
+       {test::CreateAutofillSuggestion(SuggestionType::kAutocompleteEntry,
+                                       u"one@example.com"),
+        test::CreateAutofillSuggestion(SuggestionType::kAutocompleteEntry,
+                                       u"two@example.com"),
+        test::CreateAutofillSuggestion(SuggestionType::kAutocompleteEntry,
+                                       u"three@example.com"),
+        test::CreateAutofillSuggestion(SuggestionType::kAutocompleteEntry,
+                                       u"four@example.com")}}};
+
+  test_api(autofill_manager())
+      .OnIndividualSuggestionsGenerated(
+          form, form.fields()[0],
+          AutofillSuggestionTriggerSource::kFormControlElementClicked,
+          base::TimeTicks::Now(), input);
+
+  const std::vector<Suggestion> result = external_delegate()->suggestions();
+  // All address entries should be in the final suggestions.
+  EXPECT_THAT(base::span(result).first(8U),
+              Each(EqualsSuggestion(SuggestionType::kAddressEntry)));
+  // Remaining entries should contain only the top three Autocomplete
+  // suggestions.
+  EXPECT_THAT(base::span(result).subspan(8U),
+              ElementsAre(EqualsSuggestion(SuggestionType::kSeparator),
+                          EqualsSuggestion(SuggestionType::kAutocompleteEntry,
+                                           u"one@example.com",
+                                           /*is_main_text_primary=*/false),
+                          EqualsSuggestion(SuggestionType::kAutocompleteEntry,
+                                           u"two@example.com",
+                                           /*is_main_text_primary=*/false),
+                          EqualsSuggestion(SuggestionType::kAutocompleteEntry,
+                                           u"three@example.com",
+                                           /*is_main_text_primary=*/false),
+                          EqualsSuggestion(SuggestionType::kSeparator),
+                          EqualsSuggestion(SuggestionType::kManageAddress)));
+}
+
+// Tests that autocomplete and address suggestions are not merged when the
+// trigger field is not an email field.
+TEST_F(BrowserAutofillManagerSuggestionMergingTest,
+       AddressAndAutocomplete_NonEmailField) {
+  const FormData form = test::GetFormData(
+      {.fields = {{.label = u"Field",
+                   .form_control_type = FormControlType::kInputText}}});
+  autofill_manager().AddSeenForm(form, {NAME_FIRST});
+
+  const std::vector<SuggestionGenerator::ReturnedSuggestions> input = {
+      {SuggestionGenerator::SuggestionDataSource::kAddress,
+       {test::CreateAutofillSuggestion(SuggestionType::kAddressEntry,
+                                       u"Hans")}},
+      {SuggestionGenerator::SuggestionDataSource::kAutocomplete,
+       {test::CreateAutofillSuggestion(SuggestionType::kAutocompleteEntry,
+                                       u"name@last.at"),
+        test::CreateAutofillSuggestion(SuggestionType::kAutocompleteEntry,
+                                       u"Thomas")}}};
+
+  test_api(autofill_manager())
+      .OnIndividualSuggestionsGenerated(
+          form, form.fields()[0],
+          AutofillSuggestionTriggerSource::kFormControlElementClicked,
+          base::TimeTicks::Now(), input);
+
+  EXPECT_THAT(external_delegate()->suggestions(),
+              ElementsAre(EqualsSuggestion(SuggestionType::kAddressEntry)));
+}
 
 // Tests that the `Autofill.SuggestionGeneration.GeneratedFillingProduct` metric
 // is correctly emitted for all products that have suggestions generated.

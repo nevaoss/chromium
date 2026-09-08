@@ -458,9 +458,6 @@ BASE_FEATURE(kWriteBookmarkWithoutTitle, base::FEATURE_ENABLED_BY_DEFAULT);
 // If enabled, fullscreen window state is updated asynchronously.
 BASE_FEATURE(kAsyncFullscreenWindowState, base::FEATURE_DISABLED_BY_DEFAULT);
 
-// Feature flag for enabling platform clipboard monitoring.
-BASE_FEATURE(kPlatformClipboardMonitor, base::FEATURE_ENABLED_BY_DEFAULT);
-
 // If enabled, clipboard read APIs are non-blocking on UI thread.
 BASE_FEATURE(kNonBlockingOsClipboardReads, base::FEATURE_ENABLED_BY_DEFAULT);
 
@@ -524,11 +521,7 @@ BASE_FEATURE_PARAM(int,
 BASE_FEATURE(kDesktopGlowUp, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kGlassFrame, base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE_PARAM(double, kGlassTintOpacityForLightMode, &kGlassFrame, -1.0);
-BASE_FEATURE_PARAM(double, kGlassTintOpacityForDarkMode, &kGlassFrame, -1.0);
-BASE_FEATURE_PARAM(double, kGlassExpandOnHoverOpacity, &kGlassFrame, 0.95);
-BASE_FEATURE_PARAM(double, kGlassExpandOnHoverBlurRadius, &kGlassFrame, 5.0);
-BASE_FEATURE_PARAM(bool, kGlassRoundContentCorner, &kGlassFrame, true);
+BASE_FEATURE_PARAM(bool, kGlassExpandOnHoverEnabled, &kGlassFrame, true);
 
 BASE_FEATURE(kRoundedIcons, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kWebUIRoundedIcons, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -543,6 +536,9 @@ BASE_FEATURE(kUsePortalAccentColor, base::FEATURE_ENABLED_BY_DEFAULT);
 // Enables performance optimizations for theme changes, including caching
 // ColorProviderKey, hierarchical theme observation, and coalescing updates.
 BASE_FEATURE(kThemeChangeOptimization, base::FEATURE_DISABLED_BY_DEFAULT);
+
+BASE_FEATURE(kColorIdCssStyleSheetOptimization,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 bool IsGlassFrameEnabled() {
 #if BUILDFLAG(IS_MAC)
@@ -560,6 +556,10 @@ bool IsRoundedIconsEnabled() {
 
 bool IsWebUIRoundedIconsEnabled() {
   return base::FeatureList::IsEnabled(kWebUIRoundedIcons);
+}
+
+bool IsColorIdCssStyleSheetOptimizationEnabled() {
+  return base::FeatureList::IsEnabled(kColorIdCssStyleSheetOptimization);
 }
 
 }  // namespace features

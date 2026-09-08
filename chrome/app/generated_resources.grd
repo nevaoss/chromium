@@ -7480,24 +7480,108 @@ Keep your key file in a safe place. You will need it to create new versions of y
         desc="Label for a button that guides the user to composebox's context menu using a suggestion like label.">
         Ask about your tabs
       </message>
-      <message name="IDS_OMNIBOX_EVERYWHERE_STATUS_ICON_TOOLTIP" desc="Tooltip text for the Omnibox Everywhere status tray icon." translateable="false">
-        Omnibox Everywhere
-      </message>
-      <!-- TODO(crbug.com/532187976): Make strings translateable once finalized. -->
-      <message name="IDS_OMNIBOX_EVERYWHERE_STATUS_ICON_MENU_CUSTOMIZE_KEYBOARD_SHORTCUT" desc="Label for customizing keyboard shortcut item in the Omnibox Everywhere status tray context menu." translateable="false">
-        Customize keyboard shortcut
-      </message>
       <if expr="is_macosx">
-        <message name="IDS_OMNIBOX_EVERYWHERE_STATUS_ICON_MENU_SETTINGS" desc="Label for settings item in the Omnibox Everywhere status tray context menu [With ellipsis]." translateable="false">
+        <message name="IDS_OMNIBOX_EVERYWHERE_STATUS_ICON_MENU_CUSTOMIZE_KEYBOARD_SHORTCUT" desc="In Title Case: Label for customizing keyboard shortcut item in the Search in Chrome status tray context menu.">
+          Customize Keyboard Shortcut
+        </message>
+        <message name="IDS_OMNIBOX_EVERYWHERE_STATUS_ICON_MENU_SETTINGS" desc="In Title Case: Label for settings item in the Search in Chrome status tray context menu [With ellipsis].">
           Settings...
         </message>
       </if>
       <if expr="not is_macosx">
-        <message name="IDS_OMNIBOX_EVERYWHERE_STATUS_ICON_MENU_SETTINGS" desc="Label for settings item in the Omnibox Everywhere status tray context menu." translateable="false">
+        <message name="IDS_OMNIBOX_EVERYWHERE_STATUS_ICON_MENU_CUSTOMIZE_KEYBOARD_SHORTCUT" desc="Label for customizing keyboard shortcut item in the Search in Chrome status tray context menu.">
+          Customize keyboard shortcut
+        </message>
+        <message name="IDS_OMNIBOX_EVERYWHERE_STATUS_ICON_MENU_SETTINGS" desc="Label for settings item in the Search in Chrome status tray context menu.">
           Settings
         </message>
       </if>
+      <message name="IDS_OMNIBOX_EVERYWHERE_LENS_PROMO_BODY" desc="Body text for the promo highlighting screen sharing and Google Lens search in Omnibox Everywhere." translateable="false">
+        Ask about what's on your screen
+      </message>
+      <message name="IDS_OMNIBOX_EVERYWHERE_LENS_PROMO_ACCESSIBLE_TEXT" desc="Accessible text for the promo highlighting screen sharing and Google Lens search in Omnibox Everywhere." translateable="false">
+        Ask anything about what's on your screen by sharing your screen.
+      </message>
 
+      <!-- Contextual Search -->
+      <if expr="use_titlecase">
+        <then>
+          <message name="IDS_CONTEXTUAL_SEARCH_SEARCH_WITH_GOOGLE_LENS" desc="In Title Case: The name of the Search with Google Lens contextual search command in the context menu">
+            Search with Google Lens
+          </message>
+          <message name="IDS_CONTEXTUAL_SEARCH_SEARCH_THIS_PAGE_WITH_GOOGLE" desc="In Title Case: The name of the Search this page with Google contextual search command in the context menu">
+            Search This Page with Google
+          </message>
+          <message name="IDS_CONTEXTUAL_SEARCH_SEARCH_WITH_GOOGLE" desc="In Title Case: The name of the Search with Google contextual search command in the context menu">
+            Search with Google
+          </message>
+          <message name="IDS_CONTEXTUAL_SEARCH_SEARCH_THIS_IMAGE_WITH_GOOGLE" desc="In Title Case: The name of the Search this image with Google contextual search command in the context menu">
+            Search This Image with Google
+          </message>
+          <message name="IDS_CONTEXTUAL_SEARCH_SEARCH_GOOGLE_FOR" desc="In Title Case: The name of the Search Google for “string” contextual search command in the context menu">
+            Search Google for “<ph name="SEARCH_TERMS">$1<ex>flowers</ex></ph>”
+          </message>
+          <message name="IDS_CONTEXTUAL_SEARCH_SEARCH_FOR" desc="In Title Case: The name of the Search for “string” contextual search command in the context menu">
+            Search for “<ph name="SEARCH_TERMS">$1<ex>flowers</ex></ph>”
+          </message>
+          <message name="IDS_CONTEXTUAL_SEARCH_ASK_GOOGLE_ABOUT_THIS_PAGE" desc="In Title Case: The name of the Ask Google about this page contextual search command in the context menu">
+            Ask Google About This Page
+          </message>
+          <message name="IDS_CONTEXTUAL_SEARCH_ASK_ABOUT_THIS_PAGE" desc="In Title Case: The name of the Ask about this page contextual search command in the context menu">
+            Ask About This Page
+          </message>
+          <message name="IDS_CONTEXTUAL_SEARCH_ASK_GOOGLE_ABOUT_THIS_IMAGE" desc="In Title Case: The name of the Ask Google about this image contextual search command in the context menu">
+            Ask Google About This Image
+          </message>
+          <message name="IDS_CONTEXTUAL_SEARCH_ASK_ABOUT_THIS_IMAGE" desc="In Title Case: The name of the Ask about this image contextual search command in the context menu">
+            Ask About This Image
+          </message>
+          <message name="IDS_CONTEXTUAL_SEARCH_ASK_GOOGLE_ABOUT" desc="In Title Case: The name of the Ask Google about “string” contextual search command in the context menu">
+            Ask Google About “<ph name="SEARCH_TERMS">$1<ex>flowers</ex></ph>”
+          </message>
+          <message name="IDS_CONTEXTUAL_SEARCH_ASK_ABOUT" desc="In Title Case: The name of the Ask about “string” contextual search command in the context menu">
+            Ask About “<ph name="SEARCH_TERMS">$1<ex>flowers</ex></ph>”
+          </message>
+        </then>
+        <else>
+          <message name="IDS_CONTEXTUAL_SEARCH_SEARCH_WITH_GOOGLE_LENS" desc="The name of the Search with Google Lens contextual search command in the context menu">
+            Search with Google Lens
+          </message>
+          <message name="IDS_CONTEXTUAL_SEARCH_SEARCH_THIS_PAGE_WITH_GOOGLE" desc="The name of the Search this page with Google contextual search command in the context menu">
+            Search this page with Google
+          </message>
+          <message name="IDS_CONTEXTUAL_SEARCH_SEARCH_WITH_GOOGLE" desc="The name of the Search with Google contextual search command in the context menu">
+            Search with Google
+          </message>
+          <message name="IDS_CONTEXTUAL_SEARCH_SEARCH_THIS_IMAGE_WITH_GOOGLE" desc="The name of the Search this image with Google contextual search command in the context menu">
+            Search this image with Google
+          </message>
+          <message name="IDS_CONTEXTUAL_SEARCH_SEARCH_GOOGLE_FOR" desc="The name of the Search Google for “string” contextual search command in the context menu">
+            Search Google for “<ph name="SEARCH_TERMS">$1<ex>flowers</ex></ph>”
+          </message>
+          <message name="IDS_CONTEXTUAL_SEARCH_SEARCH_FOR" desc="The name of the Search for “string” contextual search command in the context menu">
+            Search for “<ph name="SEARCH_TERMS">$1<ex>flowers</ex></ph>”
+          </message>
+          <message name="IDS_CONTEXTUAL_SEARCH_ASK_GOOGLE_ABOUT_THIS_PAGE" desc="The name of the Ask Google about this page contextual search command in the context menu">
+            Ask Google about this page
+          </message>
+          <message name="IDS_CONTEXTUAL_SEARCH_ASK_ABOUT_THIS_PAGE" desc="The name of the Ask about this page contextual search command in the context menu">
+            Ask about this page
+          </message>
+          <message name="IDS_CONTEXTUAL_SEARCH_ASK_GOOGLE_ABOUT_THIS_IMAGE" desc="The name of the Ask Google about this image contextual search command in the context menu">
+            Ask Google about this image
+          </message>
+          <message name="IDS_CONTEXTUAL_SEARCH_ASK_ABOUT_THIS_IMAGE" desc="The name of the Ask about this image contextual search command in the context menu">
+            Ask about this image
+          </message>
+          <message name="IDS_CONTEXTUAL_SEARCH_ASK_GOOGLE_ABOUT" desc="The name of the Ask Google about “string” contextual search command in the context menu">
+            Ask Google about “<ph name="SEARCH_TERMS">$1<ex>flowers</ex></ph>”
+          </message>
+          <message name="IDS_CONTEXTUAL_SEARCH_ASK_ABOUT" desc="The name of the Ask about “string” contextual search command in the context menu">
+            Ask about “<ph name="SEARCH_TERMS">$1<ex>flowers</ex></ph>”
+          </message>
+        </else>
+      </if>
 
       <!-- NTP -->
       <!-- Google Drive integration disclaimer for New Tab Page -->
@@ -9735,6 +9819,12 @@ Keep your key file in a safe place. You will need it to create new versions of y
       <message name="IDS_READING_MODE_MEDIA_LABEL" desc="Accessibility label for the media combobox of the reading mode feature.">
         Media
       </message>
+      <message name="IDS_READING_MODE_TOOLS_LABEL" desc="Accessibility label for the tools combobox of the reading mode feature.">
+        Tools
+      </message>
+      <message name="IDS_READING_MODE_VOICE_LABEL" desc="Accessibility label for the voice combobox of the reading mode feature.">
+        Voice
+      </message>
       <message name="IDS_READING_MODE_COLORS_COMBOBOX_LABEL" desc="Accessibility label for the colors combobox of the reading mode feature.">
         Color theme
       </message>
@@ -9964,6 +10054,9 @@ Keep your key file in a safe place. You will need it to create new versions of y
       <message name="IDS_READING_MODE_LANGUAGE_MENU_CLOSE" desc="Label for a button to close a dialog with options for managing language preferences for Read Aloud.">
         Close language menu
       </message>
+      <message name="IDS_READING_MODE_ACCENT_MENU_CLOSE" desc="Label for a button to close a dialog with options for managing accent preferences for Read Aloud.">
+        Close accent menu
+      </message>
       <if expr="is_macosx">
         <message name="IDS_READING_MODE_CLOSE" desc="Tooltip and screen reader label for a button to close reading mode.">
           Close reading mode (<ph name="SHORTCUT">$1<ex>⌥⌘R</ex></ph>)
@@ -10027,6 +10120,9 @@ Keep your key file in a safe place. You will need it to create new versions of y
       </message>
       <message name="IDS_READING_MODE_VOICE_DOWNLOADED_MESSAGE" desc="Message for a notification to alert the user that a high quality TTS voice data file has been downloaded.">
         Voice files are shared among users to save disk space
+      </message>
+      <message name="IDS_READING_MODE_ACCENT_MENU_LABEL" desc="Dialog title label for a dialog with options for managing accent preferences for Read Aloud.">
+        Change voice accent
       </message>
       <message name="IDS_READING_MODE_SIDE_PANEL_PROMO"
                desc="Text for the in-product-help bubble shown for the reading mode bubble.">
@@ -13827,6 +13923,24 @@ Check your passwords anytime in <ph name="GOOGLE_PASSWORD_MANAGER">$1<ex>Google 
       <message name="IDS_SEND_TAB_TO_SELF_SIGN_IN_PROMO_BODY" desc="Body label text of the send-tab-to-self sign-in promo bubble.">
         To send links between devices, ensure both are signed in to the same Google account.
       </message>
+      <message name="IDS_SEND_TAB_TO_SELF_IPH_TUTORIAL_TITLE" desc="Title for the Send Tab to Self tutorial promo bubble.">
+        Send a link to another device
+      </message>
+      <message name="IDS_SEND_TAB_TO_SELF_IPH_TUTORIAL_BODY" desc="Body text for the Send Tab to Self tutorial promo bubble.">
+        Quickly send links to your phone or any other device where you're signed in
+      </message>
+      <message name="IDS_TUTORIAL_SEND_TAB_TO_SELF_STEP_1_BODY" desc="Step 1 instruction for Send Tab to Self tutorial.">
+        Right-click on a tab with the link you want to send
+      </message>
+      <message name="IDS_TUTORIAL_SEND_TAB_TO_SELF_STEP_2_BODY" desc="Step 2 instruction for Send Tab to Self tutorial.">
+        Select “Send to your device” and choose where you want to get the link
+      </message>
+      <message name="IDS_TUTORIAL_SEND_TAB_TO_SELF_SUCCESS_TITLE" desc="Title for the completed Send Tab to Self tutorial step.">
+        Sent!
+      </message>
+      <message name="IDS_TUTORIAL_SEND_TAB_TO_SELF_SUCCESS_BODY" desc="Success description educating about sign-in and cross-device sharing.">
+        When you’re signed in to Chrome with the same account, you can quickly send links between any devices
+      </message>
       <message name="IDS_SEND_TAB_TO_SELF_VERIFY_ITS_YOU_PROMO_TITLE" desc="Title of the send-tab-to-self sign-in promo bubble when the user needs to verify their identity (reauthenticate).">
         Send a link to another device
       </message>
@@ -16579,8 +16693,8 @@ Please help our engineers fix this problem. Tell us what happened right before y
       <message name="IDS_DESKTOP_MEDIA_PICKER_TITLE_WINDOW_ONLY" desc="Title for the window picker dialog shown when desktop capture of an application window is requested by an app.">
         Share an application window
       </message>
-      <message name="IDS_SEARCHBOX_PICKER_HEADLINE" desc="Title of the searchbox screen or window picker dialog.">
-        Choose what to share
+      <message name="IDS_SEARCHBOX_PICKER_DESCRIPTION" desc="Text on the searchbox screen picker dialog explaining capture privacy.">
+        Google will only see what's visible to you
       </message>
       <message name="IDS_DESKTOP_MEDIA_PICKER_TEXT" desc="Text for the window picker dialog shown when desktop capture is requested by an app to be used by the app itself.">
         <ph name="APP_NAME">$1<ex>Google Hangouts</ex></ph> wants to share the contents of your screen.
@@ -19142,6 +19256,31 @@ Please help our engineers fix this problem. Tell us what happened right before y
       <message name="IDS_DICTATION_ERROR_TOAST" desc="Text shown in a toast notification when a dictation session fails due to an error.">
         Something went wrong. Try again later
       </message>
+      <if expr="is_win">
+        <message name="IDS_DICTATION_NO_MIC_ERROR_TOAST" translateable="false" desc="Text shown in a toast notification when a voice typing/dictation session fails because no microphone was found.">
+          Can't detect microphone. Make sure it's plugged in or check your Windows settings
+        </message>
+      </if>
+      <if expr="is_macosx">
+        <message name="IDS_DICTATION_NO_MIC_ERROR_TOAST" translateable="false" desc="Text shown in a toast notification when a voice typing/dictation session fails because no microphone was found.">
+          Can't detect microphone. Make sure it's plugged in or check your Mac settings
+        </message>
+      </if>
+      <if expr="is_chromeos">
+        <message name="IDS_DICTATION_NO_MIC_ERROR_TOAST" translateable="false" desc="Text shown in a toast notification when a voice typing/dictation session fails because no microphone was found.">
+          Can't detect microphone. Make sure it's plugged in or check your ChromeOS settings
+        </message>
+      </if>
+      <if expr="is_linux">
+        <message name="IDS_DICTATION_NO_MIC_ERROR_TOAST" translateable="false" desc="Text shown in a toast notification when a voice typing/dictation session fails because no microphone was found.">
+          Can't detect microphone. Make sure it's plugged in or check your Linux settings
+        </message>
+      </if>
+      <if expr="not is_win and not is_macosx and not is_chromeos and not is_linux">
+        <message name="IDS_DICTATION_NO_MIC_ERROR_TOAST" translateable="false" desc="Text shown in a toast notification when a voice typing/dictation session fails because no microphone was found.">
+          Can't detect microphone. Make sure it's plugged in or check your system settings
+        </message>
+      </if>
       <message name="IDS_DICTATION_STOPPED_TOAST" translateable="false" desc="Text shown in a toast notification when a dictation session is stopped.">
         Listening stopped
       </message>
@@ -19246,10 +19385,16 @@ Please help our engineers fix this problem. Tell us what happened right before y
       Window
     </message>
     <message name="IDS_OMNIBOX_EVERYWHERE_REGION" desc="Label of the option to capture a region screenshot.">
-      Region
+      Select from screen
     </message>
     <message name="IDS_OMNIBOX_EVERYWHERE_REGION_SELECT_ACCESSIBLE_NAME" desc="Accessible name for the region screenshot capture overlay." is_accessibility_with_no_ui="true">
       Region select screenshot
+    </message>
+    <message name="IDS_OMNIBOX_EVERYWHERE_SCREENSHOT_DISCLOSURE_TITLE" desc="Title of the screenshot sharing disclosure dialog in Omnibox Everywhere.">
+      How screenshot sharing works
+    </message>
+    <message name="IDS_OMNIBOX_EVERYWHERE_SCREENSHOT_DISCLOSURE_BODY" desc="Body text explaining how screenshot sharing works in Omnibox Everywhere.">
+      You can share a screenshot with Google to reference its content in your search. When you share a screenshot of your entire screen, Google will only see what’s visible to you.
     </message>
 
     <!-- Responsive Toolbar -->

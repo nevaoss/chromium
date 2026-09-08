@@ -14,6 +14,7 @@ import {ContextType, recordContextAdditionMethod, recordContextualElementClicked
 import type {ComposeboxState, ContextualUpload, DriveUpload, TabUpload, TabUploadOrigin} from '//resources/cr_components/composebox/common.js';
 import type {ComposeboxFileInputsElement} from '//resources/cr_components/composebox/composebox_file_inputs.js';
 import type {ContextualEntrypointAndMenuElement} from '//resources/cr_components/composebox/contextual_entrypoint_and_menu.js';
+import {HelpBubbleMixinLit} from '//resources/cr_components/help_bubble/help_bubble_mixin_lit.js';
 import {ComposeboxContextAddedMethod, GlowAnimationState} from '//resources/cr_components/search/constants.js';
 import {DragAndDropHandler} from '//resources/cr_components/search/drag_drop_handler.js';
 import type {DragAndDropHost} from '//resources/cr_components/search/drag_drop_host.js';
@@ -23,6 +24,7 @@ import type {SearchboxDropdownElement} from '//resources/cr_components/searchbox
 import type {SearchboxInputElement} from '//resources/cr_components/searchbox/searchbox_input.js';
 import type {SearchboxMixinInterface} from '//resources/cr_components/searchbox/searchbox_mixin.js';
 import {SearchboxMixin} from '//resources/cr_components/searchbox/searchbox_mixin.js';
+import {SearchboxSelectionMixin} from '//resources/cr_components/searchbox/searchbox_selection_mixin.js';
 import {I18nMixinLit} from '//resources/cr_elements/i18n_mixin_lit.js';
 import {WebUiListenerMixinLit} from '//resources/cr_elements/web_ui_listener_mixin_lit.js';
 import {loadTimeData} from '//resources/js/load_time_data.js';
@@ -49,13 +51,21 @@ export interface OmniboxEverywhereOmniboxElement {
 }
 
 // Note: Copied from omnibox_popup_searchbox.ts.
-//       I18nMixinLit may eventually be moved to SearchboxMixin.
 const OmniboxEverywhereOmniboxElementBase =
-    SearchboxMixin(I18nMixinLit(WebUiListenerMixinLit(CrLitElement)));
+    HelpBubbleMixinLit(SearchboxMixin(SearchboxSelectionMixin(
+        I18nMixinLit(WebUiListenerMixinLit(CrLitElement)))));
 
 export class OmniboxEverywhereOmniboxElement extends
-    OmniboxEverywhereOmniboxElementBase implements SearchboxMixinInterface,
-                                                   DragAndDropHost {
+    OmniboxEverywhereOmniboxElementBase implements DragAndDropHost,
+                                                   SearchboxMixinInterface {
+  override get isAimButtonVisible(): boolean {
+    return this.composeButtonEnabled;
+  }
+
+  override get showContextEntrypoint(): boolean {
+    return false;
+  }
+
   static get is() {
     return 'omnibox-everywhere-omnibox';
   }
@@ -70,6 +80,9 @@ export class OmniboxEverywhereOmniboxElement extends
 
   static override get properties() {
     return {
+      virtualFocusEnabled: {
+        type: Boolean,
+      },
       placeholderText: {
         type: String,
         reflect: true,
@@ -124,6 +137,9 @@ export class OmniboxEverywhereOmniboxElement extends
     };
   }
 
+  override accessor virtualFocusEnabled: boolean =
+      loadTimeData.valueExists('omniboxEverywhereVirtualFocusNavigation') &&
+      loadTimeData.getBoolean('omniboxEverywhereVirtualFocusNavigation');
   accessor placeholderText: string = '';
   accessor entrypointName: string = 'OmniboxEverywhere';
   accessor isDraggingFile: boolean = false;
@@ -191,8 +207,11 @@ export class OmniboxEverywhereOmniboxElement extends
             });
     this.aimPopupEligibilityListenerId_ =
         this.callbackRouter_.updateAimPopupEligibility.addListener(
-            (eligible: boolean) => {
-              this.composeButtonEnabled = eligible;
+            (aiModePrefEnabled: boolean) => {
+              this.composeButtonEnabled = aiModePrefEnabled &&
+                  loadTimeData.getBoolean('searchboxShowComposeEntrypoint');
+              this.isFuseboxEnabled = aiModePrefEnabled &&
+                  loadTimeData.getBoolean('isFuseboxEnabled');
             });
     this.screenshotMenuClosedListenerId_ =
         this.callbackRouter_.onScreenshotMenuClosed.addListener(() => {
@@ -227,6 +246,12 @@ export class OmniboxEverywhereOmniboxElement extends
   override firstUpdated(changedProperties: PropertyValues<this>) {
     super.firstUpdated(changedProperties);
     this.initialInputScrollHeight = this.$.input.scrollHeight;
+    const lensButton =
+        this.shadowRoot?.querySelector<HTMLElement>('#lensSearchButton');
+    if (lensButton) {
+      this.registerHelpBubble(
+          'kOmniboxEverywhereLensButtonElementId', lensButton);
+    }
   }
 
   focusInput() {
@@ -331,6 +356,8 @@ export class OmniboxEverywhereOmniboxElement extends
   }
 
   protected onLensSearchClick_(e: Event) {
+    this.notifyHelpBubbleAnchorActivated(
+        'kOmniboxEverywhereLensButtonElementId');
     this.isScreenshotMenuOpen = true;
     const anchor = e.currentTarget as HTMLElement;
     const rect = anchor.getBoundingClientRect();

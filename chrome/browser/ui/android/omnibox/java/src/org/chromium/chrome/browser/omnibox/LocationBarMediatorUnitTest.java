@@ -111,7 +111,7 @@ import org.chromium.chrome.browser.omnibox.suggestions.OmniboxAnimator;
 import org.chromium.chrome.browser.omnibox.suggestions.OmniboxLoadUrlParams;
 import org.chromium.chrome.browser.omnibox.suggestions.OmniboxSuggestionsContainer;
 import org.chromium.chrome.browser.omnibox.suggestions.OmniboxSuggestionsDropdown;
-import org.chromium.chrome.browser.omnibox.suggestions.SelectionController.Mode;
+import org.chromium.chrome.browser.omnibox.suggestions.SelectionController.TraversalMode;
 import org.chromium.chrome.browser.omnibox.suggestions.SiteSearchActivationSource;
 import org.chromium.chrome.browser.omnibox.voice.VoiceRecognitionHandler;
 import org.chromium.chrome.browser.preferences.Pref;
@@ -162,6 +162,7 @@ import org.chromium.content_public.browser.LoadUrlParams;
 import org.chromium.content_public.browser.WebContents;
 import org.chromium.content_public.common.ResourceRequestBody;
 import org.chromium.ui.accessibility.AccessibilityStateTestHelper;
+import org.chromium.ui.base.DeviceInput;
 import org.chromium.ui.base.PageTransition;
 import org.chromium.ui.base.WindowAndroid;
 import org.chromium.ui.modaldialog.ModalDialogManager;
@@ -174,7 +175,9 @@ import java.util.Map;
 
 /** Unit tests for LocationBarMediator. */
 @RunWith(BaseRobolectricTestRunner.class)
-@Config(shadows = {LocationBarMediatorUnitTest.ObjectAnimatorShadow.class})
+@Config(
+        shadows = {LocationBarMediatorUnitTest.ObjectAnimatorShadow.class},
+        qualifiers = "w1000dp")
 @DisableFeatures({OmniboxFeatureList.OMNIBOX_SEARCH_PREFETCH_ON_ENTER_KEY_DOWN})
 @EnableFeatures(ChromeFeatureList.TOOLBAR_TABLET_RESIZE_REFACTOR)
 public class LocationBarMediatorUnitTest {
@@ -285,6 +288,7 @@ public class LocationBarMediatorUnitTest {
     @Captor private ArgumentCaptor<Boolean> mBooleanCaptor;
     @Captor private ArgumentCaptor<SearchEngineNameObserver> mObserverCaptor;
     @Captor private ArgumentCaptor<Callback<Boolean>> mCallbackCaptor;
+    @Captor private ArgumentCaptor<View.OnLayoutChangeListener> mOnLayoutChangeListenerCaptor;
 
     private Callback<Boolean> mOnInteractionCompletedCallback;
     private Context mContext;
@@ -331,7 +335,6 @@ public class LocationBarMediatorUnitTest {
                 new ContextThemeWrapper(
                         ApplicationProvider.getApplicationContext(),
                         R.style.Theme_BrowserUI_DayNight);
-
         mOmniboxResourceProvider =
                 new OmniboxResourceProvider(mContext, BrandedColorScheme.APP_DEFAULT);
 
@@ -639,17 +642,17 @@ public class LocationBarMediatorUnitTest {
     public void testDisplayStateChanged_updatesSelectionMode() {
         LocationBarSelectionController selectionController =
                 mMediator.getSelectionControllerForTesting();
-        assertEquals(Mode.SATURATING, selectionController.getSelectionModeForTesting());
+        assertEquals(TraversalMode.SATURATING, selectionController.getSelectionModeForTesting());
 
         AutocompleteInput input = mSessionState.getAutocompleteInput();
         mMediator.beginInput(input);
-        assertEquals(Mode.SATURATING, selectionController.getSelectionModeForTesting());
+        assertEquals(TraversalMode.SATURATING, selectionController.getSelectionModeForTesting());
 
         input.setDisplayState(DisplayState.SUGGESTIONS);
-        assertEquals(Mode.WRAPPING, selectionController.getSelectionModeForTesting());
+        assertEquals(TraversalMode.WRAPPING, selectionController.getSelectionModeForTesting());
 
         input.setDisplayState(DisplayState.DRAFTING);
-        assertEquals(Mode.SATURATING, selectionController.getSelectionModeForTesting());
+        assertEquals(TraversalMode.SATURATING, selectionController.getSelectionModeForTesting());
     }
 
     @Test
@@ -2585,6 +2588,7 @@ public class LocationBarMediatorUnitTest {
     public void testOnTouchAfterFocus_notHandled_notInStandby() {
         mMediator.onFinishNativeInitialization();
         mProfileSupplier.set(mProfile);
+        DeviceInput.setSupportsAlphabeticKeyboardForTesting(true);
         OmniboxCapabilities.setHasDesktopExperienceForTesting(true);
         OmniboxCapabilities.setIsDesktopPlatformForTesting(true);
 
@@ -2605,6 +2609,7 @@ public class LocationBarMediatorUnitTest {
     public void testOnTouchAfterFocus_withHardwareKeyboard_triggersSuggestions() {
         mMediator.onFinishNativeInitialization();
         mProfileSupplier.set(mProfile);
+        DeviceInput.setSupportsAlphabeticKeyboardForTesting(true);
         OmniboxCapabilities.setHasDesktopExperienceForTesting(true);
         OmniboxCapabilities.setIsDesktopPlatformForTesting(true);
 
@@ -2939,6 +2944,27 @@ public class LocationBarMediatorUnitTest {
         mMediator.onInstallabilityUpdated(mAppBannerManager);
         verify(mLocationBarLayout).setInstallButtonVisibility(false);
         verify(mLocationBarEmbedder).onWidthConsumerVisibilityChanged();
+    }
+
+    @Test
+    public void testInstallButton_visibilityRespondsToAppInstallationStateChange() {
+        doReturn(true).when(mAppBannerManagerJni).isProbablyPromotable(mWebContents);
+        mMediator.onUrlFocusChange(false);
+        mMediator.setUrlFocusChangeInProgress(false);
+
+        clearInvocations(mLocationBarLayout, mLocationBarEmbedder);
+
+        // 1. App is not installed yet -> Install button should show
+        doReturn(false).when(mLocationBarDataProvider).currentUrlHasInstalledApp();
+        mMediator.onAppInstallationStateChanged();
+        verify(mLocationBarLayout).setInstallButtonVisibility(true);
+
+        clearInvocations(mLocationBarLayout, mLocationBarEmbedder);
+
+        // 2. App becomes installed -> Install button should hide
+        doReturn(true).when(mLocationBarDataProvider).currentUrlHasInstalledApp();
+        mMediator.onAppInstallationStateChanged();
+        verify(mLocationBarLayout).setInstallButtonVisibility(false);
     }
 
     @Test
@@ -4476,6 +4502,7 @@ public class LocationBarMediatorUnitTest {
 
     @Test
     public void testShowUrlBarCursorWithoutFocusAnimations_disabledState_earlyReturns() {
+        DeviceInput.setSupportsAlphabeticKeyboardForTesting(true);
         OmniboxCapabilities.setHasDesktopExperienceForTesting(true);
         OmniboxCapabilities.setIsDesktopPlatformForTesting(true);
         mSessionState.getAutocompleteInput().setAutocompleteState(AutocompleteState.DISABLED);
@@ -4487,6 +4514,7 @@ public class LocationBarMediatorUnitTest {
 
     @Test
     public void testShowUrlBarCursorWithoutFocusAnimations_enabledState_startsSession() {
+        DeviceInput.setSupportsAlphabeticKeyboardForTesting(true);
         OmniboxCapabilities.setHasDesktopExperienceForTesting(true);
         OmniboxCapabilities.setIsDesktopPlatformForTesting(true);
         mSessionState.getAutocompleteInput().setAutocompleteState(AutocompleteState.ENABLED);
@@ -4499,6 +4527,7 @@ public class LocationBarMediatorUnitTest {
 
     @Test
     public void testShowUrlBarCursorWithoutFocusAnimations_activeSession_preservesExistingInput() {
+        DeviceInput.setSupportsAlphabeticKeyboardForTesting(true);
         OmniboxCapabilities.setHasDesktopExperienceForTesting(true);
         OmniboxCapabilities.setIsDesktopPlatformForTesting(true);
         mSessionState.getAutocompleteInput().setUserText("active text", TextSelection.SELECT_END);
@@ -4512,6 +4541,7 @@ public class LocationBarMediatorUnitTest {
 
     @Test
     public void testBeginInput_fromUnanimatedFocus_transitionsToEnabledAndShowsScrim() {
+        DeviceInput.setSupportsAlphabeticKeyboardForTesting(true);
         OmniboxCapabilities.setHasDesktopExperienceForTesting(true);
         OmniboxCapabilities.setIsDesktopPlatformForTesting(true);
         mSessionState.getAutocompleteInput().setAutocompleteState(AutocompleteState.ENABLED);
@@ -5040,9 +5070,9 @@ public class LocationBarMediatorUnitTest {
         input.setInitialUserText("page.com");
         input.setUserText("page.com");
         input.setPreviewMatchUrl(new GURL("https://page.com"));
-
+        clearInvocations(mLocationBarLayout);
         mMediator.beginInput(input);
-        verify(mLocationBarLayout, times(2)).setActivationChipVisibility(true);
+        verify(mLocationBarLayout, never()).setActivationChipVisibility(false);
         clearInvocations(mLocationBarLayout);
 
         input.setSiteSearchData(new SiteSearchData("test", "Test"));
@@ -5072,9 +5102,10 @@ public class LocationBarMediatorUnitTest {
         AutocompleteInput input = mSessionState.getAutocompleteInput();
         input.setRequestType(AutocompleteRequestType.SEARCH);
         input.setPreviewMatchUrl(null);
+        clearInvocations(mLocationBarLayout);
         mMediator.beginInput(input);
 
-        verify(mLocationBarLayout, times(2)).setActivationChipVisibility(true);
+        verify(mLocationBarLayout, never()).setActivationChipVisibility(false);
         clearInvocations(mLocationBarLayout);
 
         mWindowHasFocusSupplier.set(false);
@@ -5091,9 +5122,10 @@ public class LocationBarMediatorUnitTest {
         AutocompleteInput input = mSessionState.getAutocompleteInput();
         input.setRequestType(AutocompleteRequestType.SEARCH);
         input.setPreviewMatchUrl(null);
+        clearInvocations(mLocationBarLayout);
         mMediator.beginInput(input);
 
-        verify(mLocationBarLayout, times(2)).setActivationChipVisibility(true);
+        verify(mLocationBarLayout, never()).setActivationChipVisibility(false);
         clearInvocations(mLocationBarLayout);
 
         doReturn(123L).when(mProfile).getNativeBrowserContextPointer();
@@ -5104,18 +5136,29 @@ public class LocationBarMediatorUnitTest {
     }
 
     @Test
-    public void testOnConfigurationChanged_updatesActivationChipCompact() {
-        OmniboxCapabilities.setIsDesktopPlatformForTesting(true);
+    public void testUpdateActivationChip_draftingNoFocus() {
+        setUpMediatorAndCoordinator();
+        mFuseboxLayoutModeSupplier.set(FuseboxLayoutMode.SUGGESTIONS_POPOVER);
+        AutocompleteInput input = mSessionState.getAutocompleteInput();
+        input.setRequestType(AutocompleteRequestType.SEARCH);
+        input.setDisplayState(DisplayState.DRAFTING_NO_FOCUS);
+
+        mMediator.beginInput(input);
+        mMediator.updateActivationChip();
+
+        verify(mLocationBarLayout, never()).setActivationChipVisibility(true);
+    }
+
+    @Test
+    public void testOnUrlFocusChange_focusFromDraftingNoFocus_showsActivationChip() {
+        mFuseboxLayoutModeSupplier.set(FuseboxLayoutMode.SUGGESTIONS_POPOVER);
+        setupSession(DisplayState.DRAFTING_NO_FOCUS, /* textDiffers= */ true);
         clearInvocations(mLocationBarLayout);
-        Configuration config = mContext.getResources().getConfiguration();
 
-        config.screenWidthDp = 600;
-        mMediator.onConfigurationChanged(config);
-        verify(mLocationBarLayout).setActivationChipCompact(false);
+        mMediator.onUrlFocusChange(true);
 
-        config.screenWidthDp = 412;
-        mMediator.onConfigurationChanged(config);
-        verify(mLocationBarLayout).setActivationChipCompact(true);
+        assertEquals(DisplayState.DRAFTING, mSessionState.getAutocompleteInput().getDisplayState());
+        verify(mLocationBarLayout).setActivationChipVisibility(true);
     }
 
     @Test
@@ -5222,10 +5265,10 @@ public class LocationBarMediatorUnitTest {
         input.setRequestType(AutocompleteRequestType.SEARCH);
         input.setInitialUserText("page.com");
         input.setUserText("page.com");
-
+        clearInvocations(mLocationBarLayout);
         mMediator.beginInput(input);
 
-        verify(mLocationBarLayout, times(2)).setActivationChipVisibility(true);
+        verify(mLocationBarLayout, never()).setActivationChipVisibility(false);
     }
 
     @Test
@@ -5272,5 +5315,110 @@ public class LocationBarMediatorUnitTest {
         mMediator.onActivationChipSelectionChanged(true);
 
         verify(mUrlCoordinator, never()).setUrlBarData(any(), anyInt(), any());
+    }
+
+    @Test
+    @Config(qualifiers = "w300dp")
+    public void updatesActivationChipCompact_screenWidthTriggersCompact() {
+        OmniboxCapabilities.setIsDesktopPlatformForTesting(true);
+        mMediator.updateActivationChipCompact();
+        verify(mLocationBarLayout).setActivationChipCompact(true);
+    }
+
+    @Test
+    public void updateActivationChipCompact_textOverflowTriggersCompact() {
+        OmniboxCapabilities.setIsDesktopPlatformForTesting(true);
+        when(mLocationBarLayout.getUrlBarWidth()).thenReturn(100);
+        when(mLocationBarLayout.getActivationChipCompactWidthDelta()).thenReturn(50);
+        when(mLocationBarLayout.isActivationChipCompact()).thenReturn(false);
+        when(mLocationBarLayout.getUrlBarTextWidth()).thenReturn(150);
+
+        mMediator.updateActivationChipCompact();
+
+        verify(mLocationBarLayout).setActivationChipCompact(true);
+    }
+
+    @Test
+    public void updateActivationChipCompact_safeAgainstOscillation() {
+        OmniboxCapabilities.setIsDesktopPlatformForTesting(true);
+        when(mLocationBarLayout.getUrlBarTextWidth()).thenReturn(120);
+        when(mLocationBarLayout.getActivationChipCompactWidthDelta()).thenReturn(50);
+
+        // Initial state: expanded, url bar width is 100.
+        when(mLocationBarLayout.getUrlBarWidth()).thenReturn(100);
+        when(mLocationBarLayout.isActivationChipCompact()).thenReturn(false);
+        mMediator.updateActivationChipCompact();
+        verify(mLocationBarLayout).setActivationChipCompact(true);
+
+        // Transitioned state: compact, url bar width grew to 150 because chip shrank by 50.
+        when(mLocationBarLayout.getUrlBarWidth()).thenReturn(150);
+        when(mLocationBarLayout.isActivationChipCompact()).thenReturn(true);
+        mMediator.updateActivationChipCompact();
+
+        // Should remain compact (never set to false).
+        verify(mLocationBarLayout, never()).setActivationChipCompact(false);
+    }
+
+    @Test
+    public void updateActivationChipCompact_isTextWrappingTriggersCompact() {
+        OmniboxCapabilities.setIsDesktopPlatformForTesting(true);
+        when(mLocationBarLayout.getUrlBarWidth()).thenReturn(100);
+        when(mLocationBarLayout.getUrlBarTextWidth()).thenReturn(50);
+        when(mLocationBarLayout.getActivationChipCompactWidthDelta()).thenReturn(50);
+        when(mLocationBarLayout.isActivationChipCompact()).thenReturn(false);
+
+        mMediator.setIsTextWrapping(true);
+
+        verify(mLocationBarLayout).setActivationChipCompact(true);
+    }
+
+    @Test
+    public void updateActivationChipCompact_urlBarWidthIncrease() {
+        OmniboxCapabilities.setIsDesktopPlatformForTesting(true);
+        verify(mLocationBarLayout)
+                .addOnLayoutChangeListener(mOnLayoutChangeListenerCaptor.capture());
+        when(mLocationBarLayout.getUrlBarTextWidth()).thenReturn(120);
+        when(mLocationBarLayout.getActivationChipCompactWidthDelta()).thenReturn(50);
+
+        // Initial state: overflowed with url bar width 150 (expanded baseline 100), chip is
+        // compact.
+        when(mLocationBarLayout.getUrlBarWidth()).thenReturn(150);
+        when(mLocationBarLayout.isActivationChipCompact()).thenReturn(true);
+        mMediator.updateActivationChipCompact();
+
+        // Url bar width increases to 200 (expanded baseline is now 200 - 50 = 150 > 120 text
+        // width).
+        when(mLocationBarLayout.getUrlBarWidth()).thenReturn(200);
+
+        // Simulate layout change where location bar width expands.
+        mOnLayoutChangeListenerCaptor
+                .getValue()
+                .onLayoutChange(mLocationBarLayout, 0, 0, 400, 50, 0, 0, 300, 50);
+
+        verify(mLocationBarLayout).setActivationChipCompact(false);
+    }
+
+    @Test
+    public void updateActivationChipCompact_urlBarWidthDecrease() {
+        OmniboxCapabilities.setIsDesktopPlatformForTesting(true);
+        verify(mLocationBarLayout)
+                .addOnLayoutChangeListener(mOnLayoutChangeListenerCaptor.capture());
+        when(mLocationBarLayout.getUrlBarTextWidth()).thenReturn(120);
+        when(mLocationBarLayout.getActivationChipCompactWidthDelta()).thenReturn(50);
+
+        // Initial state: not overflowed with url bar width 200, chip is expanded.
+        when(mLocationBarLayout.getUrlBarWidth()).thenReturn(200);
+        when(mLocationBarLayout.isActivationChipCompact()).thenReturn(false);
+        mMediator.updateActivationChipCompact();
+
+        // Url bar width decreases to 100 (expanded baseline is 100 < 120 text width).
+        when(mLocationBarLayout.getUrlBarWidth()).thenReturn(100);
+
+        // Simulate layout change where location bar width shrinks.
+        mOnLayoutChangeListenerCaptor
+                .getValue()
+                .onLayoutChange(mLocationBarLayout, 0, 0, 200, 50, 0, 0, 300, 50);
+
+        verify(mLocationBarLayout).setActivationChipCompact(true);
     }
 }

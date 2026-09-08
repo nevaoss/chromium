@@ -185,13 +185,26 @@ class IndigoPageActionController : public tabs::ContentsObservingTabFeature,
   // Opens the settings page for Indigo.
   virtual void OpenSettings();
 
+  // Refreshes 1P discovery skills for the tab's profile.
+  virtual void RefreshDiscoverySkills();
+
+  // Records the trigger source to UMA.
+  void RecordTriggerSource();
+
   using EligibilityCallback = base::OnceCallback<void(bool)>;
 
   // Evaluates page-level eligibility for this tab. If the decision is already
   // known for the current navigation, resolves immediately. Otherwise, stores
   // the callback and waits until the decision arrives, page navigates, or a
   // time out occurs.
-  void CheckEligibility(EligibilityCallback callback);
+  //
+  // This should only be called by `IndigoCueTarget`.
+  void CheckEligibilityForCueing(EligibilityCallback callback);
+
+  void set_last_anchored_message_priority(
+      std::optional<page_actions::PageActionPriorityCategory> priority) {
+    last_anchored_message_priority_ = priority;
+  }
 
   // content::WebContentsObserver:
   void DidFinishNavigation(
@@ -278,6 +291,7 @@ class IndigoPageActionController : public tabs::ContentsObservingTabFeature,
   struct TriggerEvaluation {
     bool is_pending = false;
     std::optional<IndigoTriggerSource> source;
+    bool holds_regardless_of_url = false;
   };
 
   // Evaluates the current trigger state.
@@ -406,15 +420,19 @@ class IndigoPageActionController : public tabs::ContentsObservingTabFeature,
   // keywords.
   std::optional<bool> heuristic_result_;
 
-  // Pending callbacks for CheckEligibility.
-  std::vector<EligibilityCallback> pending_eligibility_callbacks_;
+  // Pending callback for CheckEligibilityForCueing.
+  EligibilityCallback pending_eligibility_callback_;
   base::OneShotTimer eligibility_timeout_timer_;
+  GURL last_evaluated_url_;
 
   // Remote to the Blink-side metadata extraction service.
   mojo::Remote<blink::mojom::DocumentMetadata> metadata_remote_;
 
   // True if a delete original photo request is currently in flight.
   bool delete_photo_in_flight_ = false;
+
+  // The trigger source that was evaluated when eligibility was determined.
+  std::optional<IndigoTriggerSource> last_trigger_source_;
 
   // Weak pointer factory used for the invocation flow. This is invalidated on
   // navigation to ensure that if a user starts an action (like onboarding) and

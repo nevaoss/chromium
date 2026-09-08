@@ -109,6 +109,10 @@ class SigninViewController;
 class SplitViewIphController;
 class TabDragServiceFeature;
 class TabListBridge;
+
+namespace send_tab_to_self {
+class SendTabToSelfIphController;
+}  // namespace send_tab_to_self
 class TabMenuModelDelegate;
 class TabStripModel;
 class TabStripServiceFeature;
@@ -317,15 +321,8 @@ class BrowserWindowFeatures {
     return accelerator_provider_;
   }
 
-  BrowserActions* browser_actions() { return browser_actions_.get(); }
-
   chrome::BrowserCommandController* browser_command_controller() const {
     return browser_command_controller_.get();
-  }
-
-  BrowserContentSettingBubbleModelDelegate*
-  content_setting_bubble_model_delegate() {
-    return content_setting_bubble_model_delegate_.get();
   }
 
   content_settings::CookieControlsController* cookie_controls_controller() {
@@ -576,6 +573,8 @@ class BrowserWindowFeatures {
   std::unique_ptr<UpgradeNotificationController>
       upgrade_notification_controller_;
   std::unique_ptr<BrowserUserEducationInterface> user_education_;
+  std::unique_ptr<send_tab_to_self::SendTabToSelfIphController>
+      send_tab_to_self_iph_controller_;
   std::unique_ptr<VerticalTabIphController> vertical_tab_iph_controller_;
   std::unique_ptr<tabs::VerticalTabStripStateController>
       vertical_tab_strip_state_controller_;

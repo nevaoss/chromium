@@ -37,8 +37,8 @@
 #include "components/autofill/core/browser/foundations/autofill_manager_test_api.h"
 #include "components/autofill/core/browser/foundations/test_browser_autofill_manager.h"
 #include "components/autofill/core/browser/integrators/one_time_tokens/otp_suggestion.h"
-#include "components/autofill/core/browser/test_utils/autofill_form_test_utils.h"
-#include "components/autofill/core/common/autofill_test_utils.h"
+#include "components/autofill/core/browser/test_utils/autofill_form_test_util.h"
+#include "components/autofill/core/common/autofill_test_util.h"
 #include "components/keyed_service/core/keyed_service.h"
 #include "components/one_time_tokens/core/browser/one_time_token.h"
 #include "components/one_time_tokens/core/browser/one_time_token_retrieval_error.h"
@@ -102,6 +102,15 @@ class FakeOneTimeTokenService : public one_time_tokens::OneTimeTokenService {
     return cached_tokens_;
   }
 
+  bool HasPendingRequests(
+      one_time_tokens::OneTimeTokenSource source) const override {
+    return has_pending_requests_;
+  }
+
+  void SetHasPendingRequests(bool has_pending_requests) {
+    has_pending_requests_ = has_pending_requests;
+  }
+
   one_time_tokens::ExpiringSubscription Subscribe(
       one_time_tokens::OneTimeTokenSource source,
       base::Time expiration,
@@ -149,6 +158,7 @@ class FakeOneTimeTokenService : public one_time_tokens::OneTimeTokenService {
       one_time_tokens::OneTimeTokenService::CallbackSignature>
       subscription_manager_;
   std::vector<one_time_tokens::OneTimeToken> cached_tokens_;
+  bool has_pending_requests_ = false;
   mutable int subscribe_call_count_ = 0;
   mutable int get_recent_tokens_call_count_ = 0;
 };
@@ -353,6 +363,44 @@ TEST_F(ActorOneTimeTokenFillingServiceImplTest, RetrieveOtp_SuccessFromCache) {
   histogram_tester_.ExpectBucketCount(
       kActorOtpRetrieveOtpCallbackSupersededHistogram,
       ActorOtpRetrieveOtpCallbackSuperseded::kCallbackSuperseded, 0);
+}
+
+// Tests that `RetrieveOtp` waits for pending backend requests to complete
+// before returning a cached OTP.
+TEST_F(ActorOneTimeTokenFillingServiceImplTest,
+       RetrieveOtp_WaitsForPendingRequestsBeforeReturningCache) {
+  NavigateAndCommit(GURL("https://example.com"));
+  const std::string kCachedOtp = "123456";
+  otp_service().SetCachedTokens(
+      {{one_time_tokens::OneTimeTokenType::kGmail, kCachedOtp,
+        base::TimeTicks::Now(), "sender@example.com"}});
+  otp_service().SetHasPendingRequests(true);
+
+  base::test::TestFuture<
+      base::expected<std::string, OneTimeTokenRetrievalError>>
+      future;
+  service().RetrieveOtp(tab().GetHandle(), main_rfh_origin(),
+                        /*trigger_field_ids=*/{},
+                        /*is_login_flow=*/false, future.GetCallback());
+
+  // Cached OTP should not resolve the future immediately while requests are
+  // pending.
+  EXPECT_FALSE(future.IsReady());
+
+  // Pending requests complete with no newer OTP. Cached OTP is returned.
+  otp_service().SetHasPendingRequests(false);
+  otp_service().NotifySubscribers(
+      one_time_tokens::OneTimeTokenSource::kGmail,
+      base::unexpected(
+          one_time_tokens::OneTimeTokenRetrievalError::kGmailOtpUnknown));
+
+  EXPECT_EQ(future.Get().value(), kCachedOtp);
+  histogram_tester_.ExpectBucketCount(
+      kActorOneTimeTokenFillingServiceRetrieveOtpHistogram,
+      ActorOneTimeTokenFillingServiceRetrieveOtp::kStart, 1);
+  histogram_tester_.ExpectBucketCount(
+      kActorOneTimeTokenFillingServiceRetrieveOtpHistogram,
+      ActorOneTimeTokenFillingServiceRetrieveOtp::kSuccessCacheMatchFound, 1);
 }
 
 // Tests that `RetrieveOtp` returns the OTP and records

@@ -14,6 +14,7 @@
 #include "base/state_transitions.h"
 #include "base/strings/string_util.h"
 #include "base/task/single_thread_task_runner.h"
+#include "base/time/time.h"
 #include "chrome/browser/dictation/features.h"
 #include "chrome/browser/dictation/logging.h"
 #include "chrome/browser/dictation/metrics.h"
@@ -83,6 +84,7 @@ void SessionController::StartDictationStream(
   if (is_shutting_down_) {
     VT_LOG(GetBrowserContext()) << "\tAborting session shutdown";
     is_shutting_down_ = false;
+    auto_session_end_timer_.Stop();
   }
 
   Observe(content::WebContents::FromRenderFrameHost(
@@ -204,6 +206,15 @@ void SessionController::PrimaryPageChanged(content::Page& page) {
   EndSessionAsynchronously();
 }
 
+void SessionController::PrimaryMainFrameRenderProcessGone(
+    base::TerminationStatus status) {
+  // If the page crashes, immediately end the session.
+  if (ui_) {
+    ui_->OnStopped();
+  }
+  EndSessionAsynchronously();
+}
+
 void SessionController::EndDictationStream(DictationStreamEndTrigger trigger) {
   VT_LOG(GetBrowserContext()) << __func__;
   CHECK(attached_stream_provider_);
@@ -272,13 +283,14 @@ SessionState SessionController::GetState() const {
 void SessionController::HostTabDidClose() {
   // Intentionally end the session synchronously in this path to avoid dangling
   // pointers to deleted UI components.
-  delegate_->EndSession();
+  EndSessionSynchronously();
   // WARNING: `this` is deleted, do not add code below here.
 }
 
 void SessionController::DidUpdateStreamProviderState(
     StreamProvider& stream_provider,
-    StreamProvider::StreamState old_state) {
+    StreamProvider::StreamState old_state,
+    StreamErrorReason reason) {
   using StreamState = StreamProvider::StreamState;
 
   const bool is_attached = attached_stream_provider_.get() == &stream_provider;
@@ -336,7 +348,7 @@ void SessionController::DidUpdateStreamProviderState(
         is_attached ? SessionUi::StreamType::kAttached
                     : SessionUi::StreamType::kFinalizing;
     if (ui_) {
-      ui_->OnError(stream_type);
+      ui_->OnError(stream_type, reason);
     }
   }
 }
@@ -370,23 +382,37 @@ void SessionController::MoveToState(SessionState new_state) {
   session_state_changed_callback_list_.Notify(new_state);
 
   if (state_ == SessionState::kInactive && is_shutting_down_) {
-    // EndSession destroys `this` so do this async so callers to MoveToState
-    // don't have to avoid the UAF landmine.
-    EndSessionAsynchronously();
+    if (kSessionEndsOnStreamEnd.Get()) {
+      auto_session_end_timer_.Start(
+          FROM_HERE, kAutoSessionEndDelay.Get(),
+          base::BindOnce(&SessionController::EndSessionSynchronously,
+                         weak_ptr_factory_.GetWeakPtr()));
+    } else {
+      // EndSession destroys `this` so do this async so callers to MoveToState
+      // don't have to avoid the UAF landmine.
+      EndSessionAsynchronously();
+    }
   }
 }
 
 void SessionController::EndSessionAsynchronously() {
+  auto_session_end_timer_.Stop();
   base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
       FROM_HERE, base::BindOnce(
                      [](base::WeakPtr<SessionController> this_ptr) {
                        if (!this_ptr) {
                          return;
                        }
-                       this_ptr->delegate_->EndSession();
+                       this_ptr->EndSessionSynchronously();
                        CHECK(!this_ptr);
                      },
                      weak_ptr_factory_.GetWeakPtr()));
+}
+
+void SessionController::EndSessionSynchronously() {
+  auto_session_end_timer_.Stop();
+  delegate_->EndSession();
+  // WARNING: `this` is deleted, do not add code below here.
 }
 
 void SessionController::PurgeToDeleteStreamProviders() {

@@ -69,7 +69,7 @@
 #include "components/autofill/core/browser/suggestions/suggestion.h"
 #include "components/autofill/core/browser/suggestions/suggestion_hiding_reason.h"
 #include "components/autofill/core/browser/suggestions/suggestion_type.h"
-#include "components/autofill/core/browser/ui/autofill_resource_utils.h"
+#include "components/autofill/core/browser/ui/autofill_resource_util.h"
 #include "components/autofill/core/browser/ui/tabbed_pane_enums.h"
 #include "components/autofill/core/common/aliases.h"
 #include "components/autofill/core/common/autofill_features.h"
@@ -435,7 +435,9 @@ bool PopupViewViews::Show(
     search_bar_->Focus();
   }
 
-  MaybeAutoSelectSuggestion(autoselect_first_suggestion);
+  if (*autoselect_first_suggestion) {
+    AutoSelectFirstSuggestion();
+  }
 
   // `SetSelectedCell` can hide the popup and destroy the controller.
   if (!controller_) {
@@ -478,27 +480,19 @@ bool PopupViewViews::Show(
   return !CanActivate() || (GetWidget() && GetWidget()->IsActive());
 }
 
-void PopupViewViews::MaybeAutoSelectSuggestion(
-    AutoselectFirstSuggestion force_by_trigger_source) {
+void PopupViewViews::AutoSelectFirstSuggestion() {
   if (!controller_ || controller_->GetLineCount() == 0) {
     return;
   }
 
-  const SuggestionType first_suggestion_type =
-      controller_->GetSuggestionAt(0).type;
-
-  if (ShouldAutoselectFirstSuggestion(force_by_trigger_source,
-                                      first_suggestion_type)) {
-    // Selecting first selectable row.
-    // TODO(crbug.com/327931044): Remove the if condition and make the else as
-    // the default as part of cleanup.
-    if (controller_->GetSuggestionAt(0).IsSelectable()) {
-      SetSelectedCell(CellIndex{0u, PopupRowView::CellType::kContent},
-                      PopupCellSelectionSource::kNonUserInput);
-    } else {
-      SetSelectedCell(std::nullopt, PopupCellSelectionSource::kNonUserInput);
-      SelectNextRow(PopupCellSelectionSource::kNonUserInput);
-    }
+  // TODO(crbug.com/327931044): Remove the if condition and make the else as
+  // the default as part of cleanup.
+  if (controller_->GetSuggestionAt(0).IsSelectable()) {
+    SetSelectedCell(CellIndex{0u, PopupRowView::CellType::kContent},
+                    PopupCellSelectionSource::kNonUserInput);
+  } else {
+    SetSelectedCell(std::nullopt, PopupCellSelectionSource::kNonUserInput);
+    SelectNextRow(PopupCellSelectionSource::kNonUserInput);
   }
 }
 
@@ -966,7 +960,6 @@ void PopupViewViews::OnSuggestionsChanged(bool prefer_prev_arrow_side) {
     return;
   }
 
-  MaybeAutoSelectSuggestion();
   MaybeAnnouncePasswordRecoveryPopup();
   MaybeAnnounceLoadingState();
   if (!MaybeA11yFocusInformationalSuggestion()) {

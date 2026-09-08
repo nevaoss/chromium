@@ -21,6 +21,7 @@
 #include "chrome/browser/ai/features.h"
 #include "chrome/browser/optimization_guide/mock_optimization_guide_keyed_service.h"
 #include "components/optimization_guide/core/model_execution/manifest_broker/test/scenario_builder.h"
+#include "components/optimization_guide/core/model_execution/test/feature_config_builder.h"
 #include "components/optimization_guide/core/model_execution/test/mock_on_device_capability.h"
 #include "components/optimization_guide/core/model_execution/test/substitution_builder.h"
 #include "components/optimization_guide/core/optimization_guide_proto_util.h"
@@ -82,7 +83,9 @@ class TestCreateWriterClient
     return receiver_.BindNewPipeAndPassRemote();
   }
 
-  void OnResult(mojo::PendingRemote<::blink::mojom::AIWriter> writer) override {
+  void OnResult(mojo::PendingRemote<::blink::mojom::AIWriter> writer,
+                uint64_t context_window) override {
+    context_window_ = context_window;
     result_.SetValue(std::move(writer));
   }
 
@@ -93,9 +96,11 @@ class TestCreateWriterClient
   }
 
   TestFuture<CreateWriterResult>& result() { return result_; }
+  uint64_t context_window() const { return context_window_; }
 
  private:
   TestFuture<CreateWriterResult> result_;
+  uint64_t context_window_ = 0;
   mojo::Receiver<blink::mojom::AIManagerCreateWriterClient> receiver_{this};
 };
 
@@ -284,9 +289,9 @@ TEST_F(AIWriterTest, CanCreateUnIsLanguagesSupported) {
 TEST_F(AIWriterTest, ToProtoOptionsLanguagesSupported) {
   // Writer proto expects base language display names in English.
   std::vector<std::pair<std::string, std::string>> languages = {
-      {"en", "English"},  {"en-us", "English"},  {"en-uk", "English"},
-      {"es", "Spanish"},  {"es-sp", "Spanish"},  {"es-mx", "Spanish"},
-      {"ja", "Japanese"}, {"ja-jp", "Japanese"}, {"ja-foo", "Japanese"},
+      {"en", "English"},  {"en-us", "English"},  {"en-gb", "English"},
+      {"es", "Spanish"},  {"es-es", "Spanish"},  {"es-mx", "Spanish"},
+      {"ja", "Japanese"}, {"ja-jp", "Japanese"},
   };
   blink::mojom::AIWriterCreateOptionsPtr options = GetDefaultOptions();
   for (const auto& language : languages) {
@@ -406,6 +411,17 @@ TEST_F(AIWriterTest, CreateWriterContextLimitExceededError) {
   EXPECT_EQ(result.error().quota_error_info->requested,
             blink::mojom::kWritingAssistanceMaxInputTokenSize + 1);
   EXPECT_EQ(result.error().quota_error_info->quota,
+            blink::mojom::kWritingAssistanceMaxInputTokenSize);
+}
+
+TEST_F(AIWriterTest, ContextWindowUsesContextLimit) {
+  TestCreateWriterClient client;
+  GetAIManagerRemote()->CreateWriter(client.BindNewPipeAndPassRemote(),
+                                     GetDefaultOptions(),
+                                     /*monitor=*/mojo::NullRemote());
+  CreateWriterResult result = client.result().Take();
+  ASSERT_TRUE(result.has_value());
+  EXPECT_EQ(client.context_window(),
             blink::mojom::kWritingAssistanceMaxInputTokenSize);
 }
 

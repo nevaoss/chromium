@@ -78,9 +78,17 @@ bool OmniboxPopupAimPresenter::ShouldDebounceResize() const {
   return base::FeatureList::IsEnabled(omnibox::kOmniboxAimDebounceResize);
 }
 
+bool OmniboxPopupAimPresenter::ShouldApplyHeightWorkarounds() const {
+  return base::FeatureList::IsEnabled(omnibox::kOmniboxAimHeightWorkarounds);
+}
+
 bool OmniboxPopupAimPresenter::ShouldDetachWebContentsOnHide() const {
   return base::FeatureList::IsEnabled(
       omnibox::kOmniboxAimDetachWebContentsOnHide);
+}
+
+bool OmniboxPopupAimPresenter::ShouldEvictOnHide() const {
+  return base::FeatureList::IsEnabled(omnibox::kOmniboxAimEvictOnHide);
 }
 
 void OmniboxPopupAimPresenter::OnWidgetActivationChanged(views::Widget* widget,

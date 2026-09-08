@@ -1270,7 +1270,11 @@ inline LayoutStateScenePassKey PassKey() {
   DCHECK(!self.isSigninInProgress);
 
   if (self.currentBrowser->type() == Browser::Type::kIncognito) {
-    NOTREACHED();
+    // This can occur if the URL ended up loading while the user switched to
+    // incognito mode. This can occur in particular in case of faulty internet
+    // connection, that caused the URL to ends up loading long after the request
+    // was sent.
+    return;
   }
   if (_settingsNavigationController) {
     [_settingsNavigationController
@@ -1499,6 +1503,34 @@ inline LayoutStateScenePassKey PassKey() {
   [self dismissModalDialogsWithCompletion:^{
     [weakSelf showAutofillSettingsFromNoticeAfterModalDismiss];
   }];
+}
+
+- (void)showEnhancedAutofillSettingsWithCompletion:(ProceduralBlock)completion {
+  CHECK(!self.isSigninInProgress);
+
+  if (self.sceneState.isUIBlocked) {
+    // This could occur due to race condition with multiple windows and
+    // simultaneous taps. See crbug.com/368310663.
+    return;
+  }
+  if (_settingsNavigationController) {
+    [_settingsNavigationController showEnhancedAutofillSettings];
+    return;
+  }
+  _settingsDismissalCompletion = [completion copy];
+  _settingsNavigationController = [[SettingsNavigationController alloc]
+      initWithRootViewController:nil
+                         browser:_regularBrowser.get()
+                        delegate:self];
+  [_settingsNavigationController showEnhancedAutofillSettings];
+
+  UIViewController* presenter = self.activeViewController;
+  while (presenter.presentedViewController) {
+    presenter = presenter.presentedViewController;
+  }
+  [presenter presentViewController:_settingsNavigationController
+                          animated:YES
+                        completion:nil];
 }
 
 - (void)showPasswordManagerForCredentialImport:(NSUUID*)UUID

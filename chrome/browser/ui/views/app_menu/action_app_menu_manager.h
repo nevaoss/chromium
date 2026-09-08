@@ -10,8 +10,8 @@
 #include <string>
 
 #include "base/memory/raw_ptr.h"
+#include "base/uuid.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
-#include "chrome/browser/ui/views/app_menu/app_menu_section_action_item.h"
 #include "ui/actions/action_id.h"
 #include "ui/actions/actions.h"
 #include "ui/base/class_property.h"
@@ -30,6 +30,7 @@ class ActionAppMenuManager {
     kBlock,
     kFooter,
     kDivider,
+    kSection,
     kCustom,
   };
 
@@ -37,17 +38,22 @@ class ActionAppMenuManager {
   static const ui::ClassProperty<ui::ColorId>* const kContainerColorKey;
   static const ui::ClassProperty<std::u16string*>* const kTextOverrideKey;
   static const ui::ClassProperty<ui::ImageModel*>* const kIconOverrideKey;
+  static const ui::ClassProperty<base::Uuid*>* const kSavedTabGroupGuidKey;
 
   static std::unique_ptr<actions::IndirectActionItem> CreateIndirectActionItem(
       actions::ActionId action_id,
       DisplayType display_type,
       std::optional<ui::ColorId> container_color = std::nullopt,
       std::optional<std::u16string> text_override = std::nullopt,
-      std::optional<ui::ImageModel> icon_override = std::nullopt);
+      std::optional<ui::ImageModel> icon_override = std::nullopt,
+      std::optional<base::Uuid> saved_tab_group_guid = std::nullopt);
 
-  static std::unique_ptr<AppMenuSectionActionItem> CreateSectionActionItem(
-      std::u16string text,
+  static std::unique_ptr<actions::ActionItem> CreateSectionActionItem(
       DisplayType display_type,
+      std::optional<ui::ColorId> container_color = std::nullopt);
+
+  static std::unique_ptr<actions::ActionItem> CreateSectionHeaderActionItem(
+      std::u16string text,
       std::optional<ui::ColorId> container_color = std::nullopt);
 
   static std::unique_ptr<actions::ActionItem> CreateDividerActionItem();
@@ -79,5 +85,6 @@ class ActionAppMenuManager {
 
 DECLARE_UI_CLASS_PROPERTY_TYPE(ActionAppMenuManager::DisplayType)
 DECLARE_UI_CLASS_PROPERTY_TYPE(ui::ImageModel*)
+DECLARE_UI_CLASS_PROPERTY_TYPE(base::Uuid*)
 
 #endif  // CHROME_BROWSER_UI_VIEWS_APP_MENU_ACTION_APP_MENU_MANAGER_H_

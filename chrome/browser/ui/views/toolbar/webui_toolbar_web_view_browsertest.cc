@@ -62,10 +62,13 @@
 #include "chrome/browser/ui/interaction/browser_elements.h"
 #include "chrome/browser/ui/layout_constants.h"
 #include "chrome/browser/ui/omnibox/omnibox_next_features.h"
+#include "chrome/browser/ui/page_action/action_ids.h"
+#include "chrome/browser/ui/page_action/page_action_controller.h"
 #include "chrome/browser/ui/side_panel/side_panel_entry.h"
 #include "chrome/browser/ui/side_panel/side_panel_enums.h"
 #include "chrome/browser/ui/side_panel/side_panel_ui.h"
 #include "chrome/browser/ui/tabs/split_tab_metrics.h"
+#include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/test/test_browser_dialog.h"
 #include "chrome/browser/ui/toolbar/pinned_toolbar/pinned_toolbar_actions_ids.h"
 #include "chrome/browser/ui/toolbar/pinned_toolbar/pinned_toolbar_actions_model.h"
@@ -78,6 +81,7 @@
 #include "chrome/browser/ui/views/frame/toolbar_button_provider.h"
 #include "chrome/browser/ui/views/location_bar/location_bar_view.h"
 #include "chrome/browser/ui/views/location_bar/webui_location_bar.h"
+#include "chrome/browser/ui/views/page_action/webui_page_action_control.h"
 #include "chrome/browser/ui/views/page_info/page_info_bubble_view_base.h"
 #include "chrome/browser/ui/views/performance_controls/battery_saver_bubble_view.h"
 #include "chrome/browser/ui/views/toolbar/home_button.h"
@@ -116,6 +120,7 @@
 #include "components/permissions/test/permission_request_observer.h"
 #include "components/prefs/pref_service.h"
 #include "components/strings/grit/components_strings.h"
+#include "components/tabs/public/tab_interface.h"
 #include "components/translate/core/browser/translate_step.h"
 #include "components/translate/core/common/translate_errors.h"
 #include "components/vector_icons/vector_icons.h"
@@ -1127,7 +1132,7 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewPixelBrowserTest,
       DispatchPointerDownAndUp(kForwardSelector, "mouse",
                                "detail: 1, button: 0, shiftKey: true")));
 
-  Browser* new_browser = new_browser_observer.Wait();
+  BrowserWindowInterface* new_browser = new_browser_observer.Wait();
   ASSERT_TRUE(new_browser);
 
   // Wait for the navigation in the new browser's active tab.
@@ -1574,7 +1579,7 @@ class WebUIToolbarWebViewRaceTest : public InProcessBrowserTest {
 IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewRaceTest,
                        BindInterfaceAfterCloseRace) {
   // 1. Setup: Create a new browser window.
-  Browser* new_browser = CreateBrowser(browser()->GetProfile());
+  BrowserWindowInterface* new_browser = CreateBrowser(browser()->GetProfile());
   ui_test_utils::WaitForBrowserSetLastActive(new_browser);
 
   WebUIToolbarWebView* toolbar_view = ::GetWebUIToolbarWebView(new_browser);
@@ -1710,7 +1715,7 @@ class WebUIToolbarLifecycleBrowserTest : public InProcessBrowserTest {
   };
 
   struct LifecycleTestSetup {
-    explicit LifecycleTestSetup(Browser* browser) {
+    explicit LifecycleTestSetup(BrowserWindowInterface* browser) {
       profile = browser->GetProfile();
       EXPECT_CALL(mock_browser, GetProfile())
           .WillRepeatedly(testing::Return(profile));
@@ -3041,7 +3046,7 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewBrowserTest,
   base::HistogramTester histogram_tester;
 
   // Open a new one to capture the initial metric if it was already recorded.
-  Browser* new_browser = CreateBrowser(browser()->GetProfile());
+  BrowserWindowInterface* new_browser = CreateBrowser(browser()->GetProfile());
   ui_test_utils::WaitForBrowserSetLastActive(new_browser);
   WebUIToolbarWebView* webui_toolbar_view = GetWebUIToolbarWebView(new_browser);
   ASSERT_TRUE(webui_toolbar_view);
@@ -4898,7 +4903,7 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewHomeButtonBrowserTest,
       DispatchPointerDownAndUp(kHomeSelector, "mouse",
                                "detail: 1, button: 0, shiftKey: true")));
 
-  Browser* new_browser = new_browser_observer.Wait();
+  BrowserWindowInterface* new_browser = new_browser_observer.Wait();
   ASSERT_TRUE(new_browser);
 
   content::WebContents* new_tab =
@@ -5041,6 +5046,64 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewHomeButtonBrowserTest,
   EXPECT_EQ(prefs->GetBoolean(prefs::kHomePageIsNewTabPage), old_is_ntp);
 }
 
+class WebUIPageActionBrowserTest : public WebUIToolbarWebViewBrowserTest {
+ public:
+  WebUIPageActionBrowserTest()
+      : WebUIToolbarWebViewBrowserTest(
+            {features::kInitialWebUI, features::kWebUILocationBar,
+             features::kSkipIPCChannelPausingForNonGuests,
+             features::kWebUIInProcessResourceLoadingV2},
+            {}) {}
+};
+
+IN_PROC_BROWSER_TEST_F(WebUIPageActionBrowserTest,
+                       AnchoredMessageShowsAndCloses) {
+  ui::TrackedElement* element = nullptr;
+  WebUIToolbarWebView* toolbar_webview = nullptr;
+  views::WebView* web_view = nullptr;
+  ASSERT_NO_FATAL_FAILURE(SetUpWebUI(kWebUIToolbarElementIdentifier, &element,
+                                     &toolbar_webview, &web_view, browser()));
+  ASSERT_TRUE(toolbar_webview);
+
+  auto* web_contents = browser()->tab_strip_model()->GetActiveWebContents();
+  auto* webui_location_bar = toolbar_webview->GetLocationBar();
+  ASSERT_TRUE(webui_location_bar);
+  webui_location_bar->Update(web_contents);
+
+  tabs::TabInterface* tab =
+      tabs::TabInterface::MaybeGetFromContents(web_contents);
+  ASSERT_TRUE(tab);
+  page_actions::PageActionController* controller =
+      page_actions::PageActionController::From(tab);
+  ASSERT_TRUE(controller);
+
+  actions::ActionId target_action_id = kActionShowTranslate;
+  auto* action_item = actions::ActionManager::Get().FindAction(
+      target_action_id, BrowserActions::From(browser())->root_action_item());
+  ASSERT_TRUE(action_item);
+  action_item->SetEnabled(true);
+
+  controller->Show(target_action_id);
+
+  controller->SetAnchoredMessageText(target_action_id, u"Test Message");
+  controller->ShowAnchoredMessage(target_action_id,
+                                  page_actions::AnchoredMessageConfig{});
+
+  auto& control = webui_location_bar->page_action_control();
+
+  ASSERT_TRUE(base::test::RunUntil([&]() -> bool {
+    return control.IsAnchoredMessageShowing(target_action_id);
+  }));
+
+  auto* bubble = control.GetAnchoredMessageForTesting(target_action_id);
+  ASSERT_TRUE(bubble);
+
+  controller->HideAnchoredMessage(target_action_id);
+
+  ASSERT_TRUE(base::test::RunUntil([&]() -> bool {
+    return !control.IsAnchoredMessageShowing(target_action_id);
+  }));
+}
 
 struct DragTestParam {
   const char* test_name;
@@ -5260,7 +5323,8 @@ IN_PROC_BROWSER_TEST_P(WebUIToolbarAlreadyExistsForTheSameProfileOnInitTest,
   // Create a second browser window. This will trigger the creation of a new
   // toolbar process for that window.
   base::HistogramTester histograms;
-  Browser* second_browser = CreateBrowser(browser()->GetProfile());
+  BrowserWindowInterface* second_browser =
+      CreateBrowser(browser()->GetProfile());
   ASSERT_TRUE(second_browser);
 
   content::FetchHistogramsFromChildProcesses();
@@ -5767,7 +5831,7 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarSynchronousStartupBrowserTest,
   // Move Tab 0 (with history) to a new browser window.
   ui_test_utils::BrowserCreatedObserver browser_created_observer;
   chrome::MoveTabsToNewWindow(browser(), {0});
-  Browser* new_browser = browser_created_observer.Wait();
+  BrowserWindowInterface* new_browser = browser_created_observer.Wait();
   ASSERT_TRUE(new_browser);
 
   // Set up WebUI on the new window and get views.

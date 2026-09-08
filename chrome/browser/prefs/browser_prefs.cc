@@ -251,6 +251,7 @@
 #include "chrome/browser/extensions/commands/command_service.h"
 #include "chrome/browser/extensions/extension_url_overrides.h"
 #include "chrome/browser/extensions/extension_util.h"
+#include "chrome/browser/extensions/low_trust_policy_install_block_manager.h"
 #include "chrome/browser/extensions/preinstalled_extensions.h"
 #include "chrome/browser/ui/extensions/extension_settings_overridden_dialog.h"
 #include "chrome/browser/ui/extensions/settings_api_bubble_helpers.h"
@@ -310,7 +311,6 @@
 #include "chrome/browser/new_tab_page/modules/v2/authentication/microsoft_auth_page_handler.h"
 #include "chrome/browser/new_tab_page/modules/v2/calendar/outlook_calendar_page_handler.h"
 #include "chrome/browser/new_tab_page/modules/v2/tab_groups/tab_groups_page_handler.h"
-#include "chrome/browser/new_tab_page/promos/promo_service.h"
 #include "chrome/browser/screen_ai/pref_names.h"
 #include "chrome/browser/search_engine_choice/search_engine_choice_dialog_service.h"
 #include "chrome/browser/signin/signin_promo.h"
@@ -866,6 +866,7 @@ constexpr char kUkmLoggingUserSecret[] =
     "accessibility_annotator.ukm_logging_user_secret";
 constexpr char kUkmLoggingUserSecretCreationTime[] =
     "accessibility_annotator.ukm_logging_user_secret_creation_time";
+constexpr char kObsoleteNtpPromoBlocklist[] = "ntp.promo_blocklist";
 
 // Deprecated 05/2026.
 constexpr char kHttpCacheFinchExperimentGroups[] =
@@ -1010,6 +1011,10 @@ constexpr char kBlockAll3pcToggleEnabled[] =
 constexpr char kEverythingMenuPinnedToTabstripMigrationComplete[] =
     "everything_menu.pinned_to_tabstrip_migration_complete";
 #endif  // !BUILDFLAG(IS_ANDROID)
+
+// Deprecated 08/2026.
+constexpr char kSigninInterceptionIDPCookiesUrl[] =
+    "signin.interception.idp_cookies.url";
 
 #if BUILDFLAG(IS_CHROMEOS)
 // Deprecated 07/2026.
@@ -1437,6 +1442,12 @@ void RegisterProfilePrefsForMigration(
   registry->RegisterBooleanPref(
       kEverythingMenuPinnedToTabstripMigrationComplete, false);
 #endif  // !BUILDFLAG(IS_ANDROID)
+
+  // Deprecated 08/2026.
+  registry->RegisterDictionaryPref(kObsoleteNtpPromoBlocklist);
+
+  // Deprecated 08/2026.
+  registry->RegisterStringPref(kSigninInterceptionIDPCookiesUrl, std::string());
 }
 
 }  // namespace
@@ -1945,6 +1956,7 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry,
   extensions::ActivityLog::RegisterProfilePrefs(registry);
   extensions::PermissionsManager::RegisterProfilePrefs(registry);
   extensions::ExtensionPrefs::RegisterProfilePrefs(registry);
+  extensions::LowTrustPolicyInstallBlockManager::RegisterProfilePrefs(registry);
   extensions::RuntimeAPI::RegisterPrefs(registry);
   extensions::CommandService::RegisterProfilePrefs(registry);
   extensions::util::RegisterProfilePrefs(registry);
@@ -2042,7 +2054,6 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry,
   OutlookCalendarPageHandler::RegisterProfilePrefs(registry);
   PinnedTabCodec::RegisterProfilePrefs(registry);
   promos_utils::RegisterProfilePrefs(registry);
-  PromoService::RegisterProfilePrefs(registry);
   RegisterReadAnythingProfilePrefs(registry);
   settings::SettingsUI::RegisterProfilePrefs(registry);
   signin::RegisterProfilePrefs(registry);
@@ -2785,6 +2796,12 @@ void MigrateObsoleteProfilePrefs(PrefService* profile_prefs,
   // Added 08/2026.
   profile_prefs->ClearPref(kEverythingMenuPinnedToTabstripMigrationComplete);
 #endif  // !BUILDFLAG(IS_ANDROID)
+
+  // Added 08/2026.
+  profile_prefs->ClearPref(kObsoleteNtpPromoBlocklist);
+
+  // Added 08/2026.
+  profile_prefs->ClearPref(kSigninInterceptionIDPCookiesUrl);
 
   // Please don't delete the following line. It is used by PRESUBMIT.py.
   // END_MIGRATE_OBSOLETE_PROFILE_PREFS

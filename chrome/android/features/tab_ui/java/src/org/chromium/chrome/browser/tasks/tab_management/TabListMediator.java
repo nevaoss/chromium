@@ -89,7 +89,6 @@ import org.chromium.chrome.browser.tabmodel.TabClosingSource;
 import org.chromium.chrome.browser.tabmodel.TabClosureParams;
 import org.chromium.chrome.browser.tabmodel.TabClosureParamsUtils;
 import org.chromium.chrome.browser.tabmodel.TabGroupColorUtils;
-import org.chromium.chrome.browser.tabmodel.TabGroupObserver;
 import org.chromium.chrome.browser.tabmodel.TabGroupTitleUtils;
 import org.chromium.chrome.browser.tabmodel.TabList;
 import org.chromium.chrome.browser.tabmodel.TabModel;
@@ -393,6 +392,7 @@ public class TabListMediator implements TabListNotificationHandler {
     private final @Nullable DataSharingTabManager mDataSharingTabManager;
     private final TabModelObserver mTabModelObserver;
     private final TabListLayoutDelegate mTabListLayoutDelegate;
+    private final TabListObserverManager mObserverManager;
     private final TabActionListener mTabClosedListener;
     private final TabGridItemTouchHelperCallback mTabGridItemTouchHelperCallback;
     private final @Nullable TabMultiSelectHelper mMultiSelectHelper;
@@ -677,86 +677,6 @@ public class TabListMediator implements TabListNotificationHandler {
                 }
             };
 
-    private final TabGroupObserver mTabGroupObserver =
-            new TabGroupObserver() {
-                @Override
-                public void didChangeTabGroupTitle(Token tabGroupId, String newTitle) {
-                    assert mShowingTabs;
-
-                    mTabListLayoutDelegate.didChangeTabGroupTitle(tabGroupId, newTitle);
-                }
-
-                @Override
-                public void didChangeTabGroupColor(
-                        Token tabGroupId, @TabGroupColorId int newColor) {
-                    assert mShowingTabs;
-
-                    mTabListLayoutDelegate.didChangeTabGroupColor(tabGroupId, newColor);
-                }
-
-                @Override
-                public void didChangeTabGroupCollapsed(
-                        Token tabGroupId, boolean isCollapsed, boolean animate) {
-                    assert mShowingTabs;
-
-                    mTabListLayoutDelegate.didChangeTabGroupCollapsed(
-                            tabGroupId, isCollapsed, animate);
-                }
-
-                @Override
-                public void didMoveWithinGroup(
-                        Tab movedTab, int tabModelOldIndex, int tabModelNewIndex) {
-                    assert mShowingTabs;
-                    if (tabModelNewIndex == tabModelOldIndex) return;
-
-                    mTabListLayoutDelegate.didMoveWithinGroup(
-                            movedTab, tabModelOldIndex, tabModelNewIndex);
-                }
-
-                @Override
-                public void didMoveTabOutOfGroup(Tab movedTab, int prevFilterIndex) {
-                    assert mShowingTabs;
-                    assert mTabGridDialogHandler == null || mLayoutType == TabListLayoutType.FLAT;
-
-                    mTabListLayoutDelegate.didMoveTabOutOfGroup(movedTab, prevFilterIndex);
-                }
-
-                @Override
-                public void didMergeTabToGroup(Tab movedTab, boolean isDestinationTab) {
-                    assert mShowingTabs;
-
-                    mTabListLayoutDelegate.didMergeTabToGroup(movedTab, isDestinationTab);
-                }
-
-                @Override
-                public void didMoveTabGroup(
-                        Tab movedTab, int tabModelOldIndex, int tabModelNewIndex) {
-                    assert mShowingTabs;
-                    if (tabModelNewIndex == tabModelOldIndex) {
-                        return;
-                    }
-
-                    mTabListLayoutDelegate.didMoveTabGroup(
-                            movedTab, tabModelOldIndex, tabModelNewIndex);
-                }
-
-                @Override
-                public void didCreateNewGroup(Tab destinationTab, TabModel tabModel) {
-                    mTabListLayoutDelegate.didCreateNewGroup(destinationTab, tabModel);
-                }
-
-                @Override
-                public void didRemoveTabGroup(
-                        int oldRootId,
-                        @Nullable Token oldTabGroupId,
-                        @DidRemoveTabGroupReason int removalReason) {
-                    assert mShowingTabs;
-
-                    mTabListLayoutDelegate.didRemoveTabGroup(
-                            oldRootId, oldTabGroupId, removalReason);
-                }
-            };
-
     /**
      * Construct the Mediator with the given Models and observing hooks from the given
      * ChromeActivity.
@@ -856,6 +776,7 @@ public class TabListMediator implements TabListNotificationHandler {
             default:
                 throw new IllegalArgumentException("Unsupported layout type: " + mLayoutType);
         }
+        mObserverManager = new TabListObserverManager(mTabListLayoutDelegate);
 
         mTabModelObserver =
                 new TabModelObserver() {
@@ -2777,31 +2698,6 @@ public class TabListMediator implements TabListNotificationHandler {
     }
 
     /**
-     * Returns the index in {@link mModelList} of the group with {@code tabGroupId} and the {@link
-     * Tab} representing the group. Will be null if the entry is not present, the tab cannot be
-     * found, or the tab is not part of a tab group.
-     */
-    @Nullable Pair<Integer, Tab> getIndexAndTabForTabGroupId(@Nullable Token tabGroupId) {
-        if (tabGroupId == null) return null;
-
-        TabModel tabModel = getCurrentTabModelChecked();
-        @TabId int lastShownTabId = tabModel.getGroupLastShownTabId(tabGroupId);
-
-        int index = getIndexForTabIdWithRelatedTabs(lastShownTabId);
-        if (index == TabModel.INVALID_TAB_INDEX) return null;
-
-        Tab tab = getTabForIndex(index);
-        // If the found tab has a different group ID from the tabGroupId set in the args then the
-        // update is likely for a group that no longer exists so we should drop the update.
-        if (tab == null
-                || !tabGroupId.equals(tab.getTabGroupId())
-                || !tabModel.isTabInTabGroup(tab)) {
-            return null;
-        }
-        return Pair.create(index, tab);
-    }
-
-    /**
      * If the specified tab is part of a tab group, returns the UI index of the corresponding group
      * header.
      *
@@ -2833,7 +2729,7 @@ public class TabListMediator implements TabListNotificationHandler {
         }
     }
 
-    private @Nullable Tab getTabForIndex(int index) {
+    @Nullable Tab getTabForIndex(int index) {
         return getCurrentTabModelChecked()
                 .getTabById(mModelList.get(index).model.get(TabProperties.TAB_ID));
     }
@@ -2896,7 +2792,7 @@ public class TabListMediator implements TabListNotificationHandler {
         }
 
         tabModel.addObserver(mTabModelObserver);
-        tabModel.addTabGroupObserver(mTabGroupObserver);
+        mObserverManager.addTabGroupObserver(tabModel);
     }
 
     private void removeObservers(@Nullable TabModel tabModel) {
@@ -2909,7 +2805,7 @@ public class TabListMediator implements TabListNotificationHandler {
             removeObserversForTab(tab);
         }
         tabModel.removeObserver(mTabModelObserver);
-        tabModel.removeTabGroupObserver(mTabGroupObserver);
+        mObserverManager.removeTabGroupObserver(tabModel);
     }
 
     /**
@@ -3433,7 +3329,8 @@ public class TabListMediator implements TabListNotificationHandler {
      * @param tabGroupId The {@link Token} of the tab group to update.
      */
     void updateTabGroupTitle(Token tabGroupId) {
-        @Nullable Pair<Integer, Tab> headerIndexAndTab = getIndexAndTabForTabGroupId(tabGroupId);
+        @Nullable Pair<Integer, Tab> headerIndexAndTab =
+                mTabListLayoutDelegate.getIndexAndTabForTabGroupId(tabGroupId);
         if (headerIndexAndTab == null) return;
         PropertyModel headerModel = mModelList.get(headerIndexAndTab.first).model;
         Tab tab = headerIndexAndTab.second;

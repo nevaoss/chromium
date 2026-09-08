@@ -347,6 +347,23 @@ void ChromeBrowserFieldTrials::RegisterFeatureOverrides(
   // complete.
   feature_overrides.EnableFeature(features::kAndroidMediaInsertion);
 
+  // Enables Custom IME Spellcheck UI on Android Desktop devices.
+  // TODO(crbug.com/553988342): Remove when rollout to all form factors is
+  // complete.
+  feature_overrides.EnableFeature(
+      blink::features::kAndroidSpellcheckFullApiBlink);
+  feature_overrides.EnableFeature(blink::features::kAndroidSpellcheckNativeUi);
+
+  // Enable updated FRE layout on Android Desktop.
+  // TODO(crbug.com/534451983): Remove when rollout is complete to all form
+  // factors.
+  feature_overrides.EnableFeature(chrome::android::kAndroidFreLayoutUpdate);
+
+  // Enable Account Picker dialog on Android Desktop.
+  // TODO(crbug.com/553630105): Remove when rollout is complete to all form
+  // factors.
+  feature_overrides.EnableFeature(chrome::android::kAccountPickerDialog);
+
 #endif  // BUILDFLAG(IS_DESKTOP_ANDROID)
   // Desktop-first features which are past incubation should either end up here,
   // or to a finch trial that enables it for all form factors.

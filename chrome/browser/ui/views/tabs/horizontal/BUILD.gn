@@ -15,6 +15,7 @@ source_set("horizontal") {
 
   public_deps = [
     "//base",
+    "//chrome/browser/ui/views/tabs:tab_strip_button",
     "//chrome/browser/ui/views/tabs/shared",
     "//ui/base/interaction",
     "//ui/gfx/animation",
@@ -33,16 +34,12 @@ source_set("horizontal") {
     "//ui/gfx",
     "//ui/gfx/geometry",
   ]
-
-  # TODO(crbug.com/451609048): Remove this circular dependency when the
-  # following header gets componentized:
-  # - c/b/ui/views/tabs/tab_strip_control_button.h
-  # (No allow_circular_includes_from entry belongs here -- the waiver that
-  # makes this legal is declared on //chrome/browser/ui:ui, which is the
-  # target that owns tab_strip_control_button.h and depends on this
-  # target.)
 }
 
+# Not merged into a single source_set with :horizontal despite having no
+# circular dependency into ui:ui left: common:impl depends on :horizontal
+# (headers only), and this :impl needs common/common:impl back, so merging
+# would create a peer-target cycle (common:impl -> horizontal -> common:impl).
 source_set("impl") {
   sources = [
     "horizontal_tab_closing_helper.cc",

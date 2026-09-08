@@ -8,6 +8,7 @@
 #include <vector>
 
 #include "build/build_config.h"
+#include "components/autofill/core/browser/autofill_browser_util.h"
 #include "components/autofill/core/browser/autofill_field.h"
 #include "components/autofill/core/browser/filling/filling_product.h"
 #include "components/autofill/core/browser/foundations/autofill_client.h"
@@ -93,6 +94,11 @@ std::vector<Suggestion> PrepareLoadingStateSuggestions(
     }
   }
   return current_suggestions;
+}
+
+bool ShouldOfferUndoOnField(const AutofillField& field) {
+  return field.last_modifier() == FieldModifier::kAutofill &&
+         ShouldRecordFillingHistory(field.filling_product());
 }
 
 Suggestion CreateUndoSuggestion() {
@@ -184,6 +190,31 @@ bool IsManagementFooterOption(const Suggestion& suggestion) {
     case SuggestionType::kWebauthnCredential:
       return false;
   }
+}
+
+void InsertBeforeFooter(std::vector<Suggestion>& suggestions,
+                        std::vector<Suggestion> suggestions_to_be_added) {
+  if (suggestions_to_be_added.empty()) {
+    return;
+  }
+  suggestions.reserve(suggestions.size() + suggestions_to_be_added.size() + 1);
+
+  auto find_footer_separator = [](const std::vector<Suggestion>& suggestions) {
+    if (auto it =
+            std::ranges::find(suggestions.rbegin(), suggestions.rend(),
+                              SuggestionType::kSeparator, &Suggestion::type);
+        it != suggestions.rend()) {
+      // Convert to forward iterator.
+      return std::prev(it.base());
+    }
+    return suggestions.end();
+  };
+
+  auto footer_it = find_footer_separator(suggestions);
+  auto it = suggestions.insert(
+      footer_it, std::move_iterator(suggestions_to_be_added.begin()),
+      std::move_iterator(suggestions_to_be_added.end()));
+  suggestions.emplace(it, SuggestionType::kSeparator);
 }
 
 }  // namespace autofill

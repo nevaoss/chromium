@@ -36,6 +36,7 @@ import com.google.android.material.progressindicator.CircularProgressIndicator;
 
 import org.chromium.base.DeviceInfo;
 import org.chromium.base.Token;
+import org.chromium.base.metrics.RecordUserAction;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.actor.ui.ActorUiTabController.UiTabState;
@@ -107,13 +108,7 @@ class TabVerticalViewBinder {
         } else if (TabProperties.TAB_GROUP_ID == propertyKey) {
             updateChildRowPadding(model, view);
         } else if (TabProperties.RAIL_COLLAPSE_STATE == propertyKey) {
-            int itemHeight =
-                    view.getContext()
-                            .getResources()
-                            .getDimensionPixelSize(
-                                    isTablet(view.getContext())
-                                            ? R.dimen.vertical_tab_item_height_tablet
-                                            : R.dimen.vertical_tab_item_height);
+            int itemHeight = getTabItemHeight(view.getContext());
             updateTabItemSize(model, view, ViewGroup.LayoutParams.MATCH_PARENT, itemHeight);
             updateTitle(R.id.tab_title, model, view);
             updateChildRowPadding(model, view);
@@ -135,13 +130,7 @@ class TabVerticalViewBinder {
         }
         bindCommonProperties(model, view, propertyKey);
 
-        Resources resources = view.getContext().getResources();
-        boolean isTablet = isTablet(view.getContext());
-        int pinnedHeight =
-                resources.getDimensionPixelSize(
-                        isTablet
-                                ? R.dimen.vertical_tab_pinned_item_height_tablet
-                                : R.dimen.vertical_tab_pinned_item_height);
+        int pinnedHeight = getPinnedItemHeight(view.getContext());
         int expandedWidth = ViewGroup.LayoutParams.MATCH_PARENT;
         updateTabItemSize(model, view, expandedWidth, pinnedHeight);
 
@@ -177,13 +166,7 @@ class TabVerticalViewBinder {
             updateChevronRotation(model, view);
             updateContentDescription(model, view);
         } else if (TabProperties.RAIL_COLLAPSE_STATE == propertyKey) {
-            int itemHeight =
-                    view.getContext()
-                            .getResources()
-                            .getDimensionPixelSize(
-                                    isTablet(view.getContext())
-                                            ? R.dimen.vertical_tab_item_height_tablet
-                                            : R.dimen.vertical_tab_item_height);
+            int itemHeight = getTabItemHeight(view.getContext());
             updateTabItemSize(model, view, ViewGroup.LayoutParams.MATCH_PARENT, itemHeight);
             updateTitle(R.id.group_title, model, view);
             updateChildRowPadding(model, view);
@@ -197,6 +180,30 @@ class TabVerticalViewBinder {
             }
             setupTabGroupHeaderHoverListener(model, view);
         }
+    }
+
+    static int getTabItemHeight(Context context) {
+        return context.getResources()
+                .getDimensionPixelSize(
+                        isTablet(context)
+                                ? R.dimen.vertical_tab_item_height_tablet
+                                : R.dimen.vertical_tab_item_height);
+    }
+
+    static int getPinnedItemHeight(Context context) {
+        return context.getResources()
+                .getDimensionPixelSize(
+                        isTablet(context)
+                                ? R.dimen.vertical_tab_pinned_item_height_tablet
+                                : R.dimen.vertical_tab_pinned_item_height);
+    }
+
+    static int getPinnedItemMinWidth(Context context) {
+        return context.getResources()
+                .getDimensionPixelSize(
+                        isTablet(context)
+                                ? R.dimen.vertical_tab_pinned_item_min_width_tablet
+                                : R.dimen.vertical_tab_pinned_item_min_width);
     }
 
     // Common Property Binding Helpers
@@ -1212,6 +1219,12 @@ class TabVerticalViewBinder {
 
         Runnable onHoverEnter =
                 () -> {
+                    boolean isRailCollapsed =
+                            model.get(TabProperties.RAIL_COLLAPSE_STATE)
+                                    == RailCollapseState.COLLAPSED;
+                    if (!isRailCollapsed && view.findViewById(R.id.menu_button) != null) {
+                        RecordUserAction.record("Android.VerticalTabs.GroupHeaderHovered");
+                    }
                     updateGroupHeaderIcons(model, view, /* isHovered= */ true);
                     notifyGroupHeaderHoverChange(model, view, /* isHovered= */ true);
                 };

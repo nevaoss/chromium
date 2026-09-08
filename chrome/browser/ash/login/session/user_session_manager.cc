@@ -76,7 +76,7 @@
 #include "chrome/browser/ash/login/demo_mode/demo_session.h"
 #include "chrome/browser/ash/login/existing_user_controller.h"
 #include "chrome/browser/ash/login/helper.h"
-#include "chrome/browser/ash/login/lock/screen_locker.h"
+#include "chrome/browser/ash/login/lock/screen_locker_controller.h"
 #include "chrome/browser/ash/login/onboarding_user_activity_counter.h"
 #include "chrome/browser/ash/login/profile_auth_data.h"
 #include "chrome/browser/ash/login/quick_unlock/pin_backend.h"
@@ -487,9 +487,7 @@ void OnPrepareTpmDeviceFinished() {
 void SaveSyncTrustedVaultKeysToProfile(
     const GaiaId& gaia_id,
     const SyncTrustedVaultKeys& trusted_vault_keys,
-    Profile* profile) {
-  trusted_vault::TrustedVaultService* trusted_vault_service =
-      TrustedVaultServiceFactory::GetForProfile(profile);
+    trusted_vault::TrustedVaultService* trusted_vault_service) {
   if (!trusted_vault_service) {
     return;
   }
@@ -856,7 +854,7 @@ void UserSessionManager::CompleteGuestSessionLogin(const GURL& start_url) {
 scoped_refptr<Authenticator> UserSessionManager::CreateAuthenticator(
     AuthStatusConsumer* consumer) {
   // Screen locker needs new Authenticator instance each time.
-  if (ScreenLocker::default_screen_locker()) {
+  if (ScreenLockerController::Get().screen_locker()) {
     if (authenticator_.get())
       authenticator_->SetConsumer(nullptr);
     authenticator_.reset();
@@ -1934,7 +1932,7 @@ void UserSessionManager::FinalizePrepareProfile(Profile* profile) {
     if (user_context_.GetSyncTrustedVaultKeys().has_value()) {
       SaveSyncTrustedVaultKeysToProfile(
           user_context_.GetGaiaID(), *user_context_.GetSyncTrustedVaultKeys(),
-          profile);
+          TrustedVaultServiceFactory::GetForProfile(profile));
     }
 
     VLOG(1) << "Clearing all secrets";

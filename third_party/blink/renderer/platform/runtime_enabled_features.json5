@@ -1154,6 +1154,11 @@
       status: "stable",
     },
     {
+      // Killswitch crbug.com/547894783
+      name: "ClearDisplayLockPrePaintFlags",
+      status: "stable",
+    },
+    {
       // Fixes a bug where ancestor elements retain a stale :focus-within
       // state if the focused element's subtree is removed during blur
       // or focusout events.
@@ -1922,7 +1927,7 @@
     {
       // https://github.com/w3c/csswg-drafts/issues/12122
       name: "CSSScrollMarkerGroupModes",
-      status: "experimental",
+      status: "stable",
     },
     {
       // https://drafts.csswg.org/css-overflow-5/#active-before-after-scroll-markers
@@ -2490,13 +2495,6 @@
       name: "DocumentWrite",
     },
     {
-      // DOMActivate event inherits bubbles from the underlying event to
-      // prevent activation behavior of parent elements when it doesn't bubble.
-      // crbug.com/41431966
-      name: "DOMActivateBubblesInheritance",
-      status: "stable",
-    },
-    {
       // Kill switch for marking scripts parsed by DOMParser in XML documents as
       // "already started" so they stay inert when cloned or imported.
       // https://crbug.com/542115030
@@ -2600,14 +2598,8 @@
       public: true,
       origin_trial_feature_name: "EmailVerificationProtocol",
       origin_trial_allows_third_party: true,
-      origin_trial_os: ["win", "mac", "linux", "chromeos"],
-      status: {
-        "Win": "experimental",
-        "Mac": "experimental",
-        "Linux": "experimental",
-        "ChromeOS": "experimental",
-        "default": "",
-      },
+      origin_trial_os: ["win", "mac", "linux", "chromeos", "android"],
+      status: "experimental",
       base_feature: "none",
       browser_process_read_access: true,
     },
@@ -2617,14 +2609,7 @@
       depends_on: ["EmailVerificationProtocol"],
       origin_trial_feature_name: "EmailVerificationProtocol",
       origin_trial_allows_third_party: true,
-      origin_trial_os: ["win", "mac", "linux", "chromeos"],
-      status: {
-        "Win": "experimental",
-        "Mac": "experimental",
-        "Linux": "experimental",
-        "ChromeOS": "experimental",
-        "default": "",
-      },
+      origin_trial_os: ["win", "mac", "linux", "chromeos", "android"],
       base_feature: "none",
     },
     {
@@ -3025,6 +3010,11 @@
       status: "stable",
     },
     {
+      // crbug.com/553136688 and crbug.com/553252820
+      name: "FindIgnoreSuggestionFix",
+      status: "stable",
+    },
+    {
       name: "FirstLineOnListItem",
       status: "stable",
     },
@@ -3299,6 +3289,12 @@
       // made the mouse hit test miss the drag source.
       name: "GenerateDragOverlayBeforeDragStart",
       status: "experimental",
+    },
+    {
+      // Killswitch for the visible deprecation warning banner shown on
+      // XSLT-transformed documents.
+      name: "GenerateXSLTWarningBanner",
+      status: "stable",
     },
     {
       // Tracking bug for the implementation: https://crbug.com/430204832
@@ -3671,6 +3667,16 @@
       // No plan to support complex UI for date/time INPUT types on Android and
       // iOS.
       status: {"Android": "test", "iOS": "test", "default": "stable"},
+      implied_by: ["InputMultipleFieldsUIWithPointerChecks"],
+    },
+    {
+      // Enables InputMultipleFieldsUI on all platforms by tweaking the inner
+      // fields to be non-focusable and making the whole input element
+      // focusable for coarse input devices. When this flag is removed, the
+      // InputMultipleFieldsUI flag can also be removed. Enabled in M154, safe
+      // to remove in M158.
+      name: "InputMultipleFieldsUIWithPointerChecks",
+      status: "stable",
     },
     // Enables the `alpha` and `colorspace` content/IDL attributes on
     // <input type=color>, allowing alpha and Display P3 color values.
@@ -3845,7 +3851,7 @@
       // bugs for touch inputs.
       // https://issues.chromium.org/issues/408010435
       name: "LightDismissFromClick",
-      status: "experimental",
+      status: "stable",
     },
     {
       name: "LineBreakAfterSpaceBeforeOpenTag",
@@ -4398,6 +4404,12 @@
       status: "test"
     },
     {
+      // iframes send pagehide/unload/visibilitychange when removed.
+      // This not spec-compliant, but might have web-compat consequences.
+      // This flag omits firing those events on element removal.
+      name: "OmitSubframeDetachmentEventsOnRemoval",
+    },
+    {
       name: "OnDeviceWebSpeechAvailable",
       status: "stable",
     },
@@ -4823,9 +4835,10 @@
     },
     {
       // When enabled, a text control's cached selection is preserved while the
-      // control is not focused instead of being refreshed from the live DOM
-      // selection. Kill switch for https://crbug.com/40884623. This feature
-      // ships in M153 and can be removed in M155.
+      // control is not focused or has a post-layout selection restore pending,
+      // instead of being refreshed from the live DOM selection. Kill switch
+      // for https://crbug.com/40884623. This feature ships in M154 and can be
+      // removed in M156.
       name: "PreserveUnfocusedSelectionCache",
       status: "stable",
     },
@@ -5090,11 +5103,6 @@
       // https://chromestatus.com/feature/5095987863486464
       // https://issues.chromium.org/issues/41228793
       name: "RemoveNonAllowlistedCreateEvent",
-      status: "stable",
-    },
-    {
-      // See https://issues.chromium.org/issues/524243473
-      name: "RemovePositionAnchorUAStyle",
       status: "stable",
     },
     {
@@ -5879,7 +5887,7 @@
     },
     {
       name: "SpellCheckChunking",
-      status: {"Android": "experimental"},
+      status: {"Android": "stable"},
     },
     {
       // API for accessing the Custom Dictionary for spell checking purpose.
@@ -6040,6 +6048,10 @@
     },
     {
       name: "SvgIgnoreNegativeEllipseRadii",
+      status: "stable",
+    },
+    {
+      name: "SvgIgnoreOuterTransforms",
       status: "stable",
     },
     {
@@ -6229,10 +6241,6 @@
     // For unit tests.
     {
       name: "TestFeatureStable",
-      status: "stable",
-    },
-    {
-      name: "TextAreaEmptyPlaceholderBreak",
       status: "stable",
     },
     {
@@ -6841,9 +6849,6 @@
       base_feature: "none",
       public: true,
     },
-    // Enables `uiMode` enumeration field in CredentialRequestOptions struct.
-    // and `get()` requests with `uiMode: 'immediate'`.
-    // See https://github.com/w3c/webauthn/issues/2228.
     {
       name: "WebAuthenticationRemoteDesktopSupport",
       base_feature: "none",
@@ -7149,6 +7154,12 @@
       base_feature: "none",
     },
     {
+      name: "WebTransportDatagramsWritable",
+      status: "experimental",
+      base_feature: "none",
+      depends_on: ["WebTransportSendGroup"],
+    },
+    {
       name: "WebTransportDraining",
       status: "experimental",
     },
@@ -7332,6 +7343,10 @@
     // no problems are encountered.
     {
       name: "WindowDefaultStatus",
+    },
+    {
+      name: "WindowOpenAlwaysOnTop",
+      status: "test",
     },
     {
       // Fixes an issue where Ctrl+Right Arrow skips punctuation before a newline.

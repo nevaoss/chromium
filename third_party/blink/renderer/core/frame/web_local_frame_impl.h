@@ -450,6 +450,7 @@ class CORE_EXPORT WebLocalFrameImpl final
       WindowAgentFactory*,
       WebFrame* opener,
       const DocumentToken& document_token,
+      const base::UnguessableToken& initiator_state_token,
       mojo::PendingRemote<mojom::blink::BrowserInterfaceBroker>
           interface_broker,
       std::unique_ptr<blink::WebPolicyContainer> policy_container,
@@ -474,6 +475,7 @@ class CORE_EXPORT WebLocalFrameImpl final
       const WebString& name,
       network::mojom::blink::WebSandboxFlags,
       const DocumentToken& document_token,
+      const base::UnguessableToken& initiator_state_token,
       std::unique_ptr<WebPolicyContainer>,
       const WebURL& creator_base_url,
       std::unique_ptr<base::UnguessableToken> sandbox_origin_token);
@@ -667,6 +669,7 @@ class CORE_EXPORT WebLocalFrameImpl final
       WindowAgentFactory*,
       WebFrame* opener,
       const DocumentToken& document_token,
+      const base::UnguessableToken& initiator_state_token,
       mojo::PendingRemote<mojom::blink::BrowserInterfaceBroker>
           interface_broker,
       std::unique_ptr<PolicyContainer> policy_container,

@@ -99,6 +99,7 @@ if (!is_android) {
     sources = [
       "glic_tab_sub_menu_model.h",
       "tab_menu_model.h",
+      "tab_menu_model_delegate.cc",
       "tab_menu_model_delegate.h",
     ]
 
@@ -106,8 +107,11 @@ if (!is_android) {
       "//base",
       "//chrome/browser/glic",
       "//ui/base/interaction",
+      "//ui/base/unowned_user_data",
       "//ui/menus",
     ]
+
+    deps = [ "//chrome/browser/ui/browser_window" ]
   }
 
   # Shared tab favicon theming helpers, used by both the Views tab strip
@@ -534,6 +538,7 @@ if (!is_android) {
       "//chrome/browser/media/webrtc",
       "//chrome/browser/metrics",
       "//chrome/browser/net",
+      "//chrome/browser/payments",
       "//chrome/browser/preloading/bookmarkbar_preload",
       "//chrome/browser/preloading/new_tab_page_preload",
       "//chrome/browser/preloading/prefetch:zero_suggest_prefetch",
@@ -553,6 +558,7 @@ if (!is_android) {
       "//chrome/browser/task_manager",
       "//chrome/browser/themes",
       "//chrome/browser/ui:browser_actions",
+      "//chrome/browser/ui:browser_live_tab_context",
       "//chrome/browser/ui:focus_tab_after_navigation_helper",
       "//chrome/browser/ui:layout_constants",
       "//chrome/browser/ui:sad_tab",
@@ -615,6 +621,7 @@ if (!is_android) {
       "//components/multistep_filter/core:features",
       "//components/optimization_guide/content/browser:page_context_eligibility",
       "//components/passage_embeddings/core",
+      "//components/payments/core",
       "//components/performance_manager",
       "//components/permissions",
       "//components/pref_registry",
@@ -874,7 +881,6 @@ if (!is_android) {
       "tab_strip_api:unit_tests",
       "//base/test:test_support",
       "//chrome/app:command_ids",
-      "//chrome/browser",
       "//chrome/browser/actor",
       "//chrome/browser/actor:test_support",
       "//chrome/browser/commerce",
@@ -886,7 +892,6 @@ if (!is_android) {
       "//chrome/browser/optimization_guide",
       "//chrome/browser/prefs",
       "//chrome/browser/sync",
-      "//chrome/browser/ui",
       "//chrome/browser/ui:browser_actions",
       "//chrome/browser/ui:ui_features",
       "//chrome/browser/ui/performance_controls",

@@ -28,6 +28,7 @@
 #include "chrome/browser/indigo/indigo_image_replacement.h"
 #include "chrome/browser/indigo/indigo_image_replacement_manager.h"
 #include "chrome/browser/indigo/indigo_menu_model.h"
+#include "chrome/browser/indigo/indigo_metrics.h"
 #include "chrome/browser/indigo/indigo_prefs.h"
 #include "chrome/browser/indigo/indigo_service.h"
 #include "chrome/browser/indigo/indigo_service_factory.h"
@@ -132,42 +133,6 @@ void RecordTransformationResultCannotGenerateImage(
   base::UmaHistogramEnumeration("Indigo.Transformation.Result", result);
 }
 
-void RecordInvokeEntryPointMetrics(
-    EntryPoint entry_point,
-    std::optional<page_actions::PageActionPriorityCategory>
-        last_anchored_message_priority) {
-  switch (entry_point) {
-    case EntryPoint::kSuggestionChip:
-      base::RecordAction(
-          base::UserMetricsAction("Indigo.PageAction.SuggestionChip.Click"));
-      base::UmaHistogramEnumeration(
-          "Indigo.PageAction.ClickedEntryPoint",
-          IndigoPageActionEntryPoint::kSuggestionChip);
-      break;
-    case EntryPoint::kAnchoredMessage:
-      base::RecordAction(
-          base::UserMetricsAction("Indigo.PageAction.AnchoredMessage.Click"));
-      if (last_anchored_message_priority ==
-          page_actions::PageActionPriorityCategory::kContextualCue) {
-        base::UmaHistogramEnumeration(
-            "Indigo.PageAction.ClickedEntryPoint",
-            IndigoPageActionEntryPoint::kProactiveAnchoredMessage);
-      } else if (last_anchored_message_priority ==
-                 page_actions::PageActionPriorityCategory::kUserInteraction) {
-        base::UmaHistogramEnumeration(
-            "Indigo.PageAction.ClickedEntryPoint",
-            IndigoPageActionEntryPoint::kReactiveAnchoredMessage);
-      }
-      break;
-    case EntryPoint::kErrorToast:
-      base::RecordAction(
-          base::UserMetricsAction("Indigo.ErrorToast.Retry.Click"));
-      base::UmaHistogramEnumeration("Indigo.PageAction.ClickedEntryPoint",
-                                    IndigoPageActionEntryPoint::kErrorToast);
-      break;
-  }
-}
-
 class Require1PSkillRefreshObserver : public skills::SkillsService::Observer {
  public:
   Require1PSkillRefreshObserver() = default;
@@ -252,7 +217,7 @@ IndigoPageActionController* IndigoPageActionController::From(
 }
 
 void IndigoPageActionController::InvokeAction(EntryPoint entry_point) {
-  RecordInvokeEntryPointMetrics(entry_point, last_anchored_message_priority_);
+  RecordClickedEntryPoint(entry_point, last_anchored_message_priority_);
 
   if (!indigo_service_) {
     return;
@@ -579,6 +544,7 @@ void IndigoPageActionController::DidFinishNavigation(
 
   invoke_weak_ptr_factory_.InvalidateWeakPtrs();
 
+  last_evaluated_url_ = navigation_handle->GetURL();
   ResetTriggeringState();
 
   if (navigation_handle->IsSameDocument()) {
@@ -700,10 +666,14 @@ void IndigoPageActionController::OnDeleteOriginalPhotoComplete(
 IndigoPageActionController::TriggerEvaluation
 IndigoPageActionController::EvaluateTriggerState() const {
   if (base::CommandLine::ForCurrentProcess()->HasSwitch(kForceIndigoSwitch)) {
-    return {.is_pending = false, .source = IndigoTriggerSource::kForced};
+    return {.is_pending = false,
+            .source = IndigoTriggerSource::kForced,
+            .holds_regardless_of_url = true};
   }
   if (!indigo_service_ || !indigo_service_->IsLocallyEligible()) {
-    return {.is_pending = false, .source = std::nullopt};
+    return {.is_pending = false,
+            .source = std::nullopt,
+            .holds_regardless_of_url = true};
   }
   if (optimization_guide_decision_ ==
       optimization_guide::OptimizationGuideDecision::kTrue) {
@@ -758,8 +728,8 @@ void IndigoPageActionController::ResetTriggeringState() {
       optimization_guide::OptimizationGuideDecision::kUnknown;
   heuristic_result_ = std::nullopt;
   last_anchored_message_priority_ = std::nullopt;
+  last_trigger_source_ = std::nullopt;
   metadata_remote_.reset();
-  ResolvePendingEligibilityCallbacks(/*eligible=*/false);
   UpdateEntryPointsState();
 }
 
@@ -771,11 +741,25 @@ void IndigoPageActionController::UpdateEntryPointsState() {
   }
 
   TriggerEvaluation eval = EvaluateTriggerState();
+  last_trigger_source_ = eval.source;
   const bool should_show = eval.source.has_value();
   if (should_show) {
     ResolvePendingEligibilityCallbacks(/*eligible=*/true);
+    // For V2, we defer recording the trigger source until
+    // `IndigoCueTarget::GenerateContent` is called. This ensures we only record
+    // it when the cue is actually prepared to be shown, rather than just when
+    // eligibility is evaluated (which might be called multiple times or not
+    // lead to a shown cue).
+    if (!base::FeatureList::IsEnabled(features::kIndigoContextualCueingV2)) {
+      base::UmaHistogramEnumeration("Indigo.PageAction.TriggerSource",
+                                    *eval.source);
+    }
   } else if (!eval.is_pending) {
     ResolvePendingEligibilityCallbacks(/*eligible=*/false);
+  }
+
+  if (base::FeatureList::IsEnabled(features::kIndigoContextualCueingV2)) {
+    return;
   }
 
   if (should_show == is_shown_) {
@@ -791,27 +775,34 @@ void IndigoPageActionController::UpdateEntryPointsState() {
     } else {
       page_action_controller_->ShowSuggestionChip(kActionIndigo);
     }
-    base::UmaHistogramEnumeration("Indigo.PageAction.TriggerSource",
-                                  *eval.source);
 
-    // Refresh discovery skills to make sure the latest skills are available for
-    // the user.
-    if (content::WebContents* web_contents = tab().GetContents()) {
-      if (Profile* profile =
-              Profile::FromBrowserContext(web_contents->GetBrowserContext())) {
-        if (skills::SkillsService* skills_service =
-                skills::SkillsServiceFactory::GetForProfile(profile)) {
-          Require1PSkillRefreshObserver observer;
-          skills_service->AddObserver(&observer);
-          skills_service->RefreshDiscoverySkills();
-          skills_service->RemoveObserver(&observer);
-        }
-      }
-    }
+    RefreshDiscoverySkills();
   } else {
     page_action_controller_->Hide(kActionIndigo);
   }
   is_shown_ = should_show;
+}
+
+void IndigoPageActionController::RefreshDiscoverySkills() {
+  if (content::WebContents* web_contents = tab().GetContents()) {
+    if (Profile* profile =
+            Profile::FromBrowserContext(web_contents->GetBrowserContext())) {
+      if (skills::SkillsService* skills_service =
+              skills::SkillsServiceFactory::GetForProfile(profile)) {
+        Require1PSkillRefreshObserver observer;
+        skills_service->AddObserver(&observer);
+        skills_service->RefreshDiscoverySkills();
+        skills_service->RemoveObserver(&observer);
+      }
+    }
+  }
+}
+
+void IndigoPageActionController::RecordTriggerSource() {
+  if (last_trigger_source_.has_value()) {
+    base::UmaHistogramEnumeration("Indigo.PageAction.TriggerSource",
+                                  *last_trigger_source_);
+  }
 }
 
 void IndigoPageActionController::OnOnboardingDialogClosed(
@@ -865,27 +856,17 @@ void IndigoPageActionController::OnPageActionAnchoredMessageShown(
   }
   if (last_anchored_message_priority_ ==
       page_actions::PageActionPriorityCategory::kUserInteraction) {
-    base::RecordAction(base::UserMetricsAction(
-        "Indigo.PageAction.AnchoredMessage.Reactive.Show"));
-    base::UmaHistogramEnumeration(
-        "Indigo.PageAction.ShownEntryPoint",
-        IndigoPageActionEntryPoint::kReactiveAnchoredMessage);
+    RecordShownEntryPoint(IndigoPageActionEntryPoint::kReactiveAnchoredMessage);
   } else if (last_anchored_message_priority_ ==
              page_actions::PageActionPriorityCategory::kContextualCue) {
-    base::RecordAction(base::UserMetricsAction(
-        "Indigo.PageAction.AnchoredMessage.Proactive.Show"));
-    base::UmaHistogramEnumeration(
-        "Indigo.PageAction.ShownEntryPoint",
+    RecordShownEntryPoint(
         IndigoPageActionEntryPoint::kProactiveAnchoredMessage);
   }
 }
 
 void IndigoPageActionController::OnPageActionChipShown(
     const page_actions::PageActionState& page_action) {
-  base::RecordAction(
-      base::UserMetricsAction("Indigo.PageAction.SuggestionChip.Show"));
-  base::UmaHistogramEnumeration("Indigo.PageAction.ShownEntryPoint",
-                                IndigoPageActionEntryPoint::kSuggestionChip);
+  RecordShownEntryPoint(IndigoPageActionEntryPoint::kSuggestionChip);
 }
 
 void IndigoPageActionController::OnOptimizationGuideDecision(
@@ -1037,6 +1018,7 @@ void IndigoPageActionController::OnDiscardContents(
 
   RegisterObserverWithHost(nullptr);
   Reset(ResetType::kResetReplacementsAndContentScript);
+  last_evaluated_url_ = GURL();
   ResetTriggeringState();
 }
 
@@ -1142,22 +1124,38 @@ void IndigoPageActionController::OnProductClassified(
   UpdateEntryPointsState();
 }
 
-void IndigoPageActionController::CheckEligibility(
+void IndigoPageActionController::CheckEligibilityForCueing(
     EligibilityCallback callback) {
   TriggerEvaluation eval = EvaluateTriggerState();
-  if (eval.is_pending) {
-    pending_eligibility_callbacks_.push_back(std::move(callback));
-    if (!eligibility_timeout_timer_.IsRunning()) {
-      // TODO(b/552501787): Remove or adjust this 3s timer once EvaluateCues
-      // is tied to page load lifecycle.
-      eligibility_timeout_timer_.Start(
-          FROM_HERE, base::Seconds(3), this,
-          &IndigoPageActionController::OnEligibilityTimeout);
+
+  // Check if our state is for the current URL.
+  // This check is needed because Contextual Cueing can call CheckEligibility
+  // before IndigoPageActionController::DidFinishNavigation has had a chance to
+  // run and update the state. In this case, the decision might appear
+  // up-to-date but is actually for the previous page. We can't assert here
+  // because this race condition is expected in normal operation.
+  bool url_matches = false;
+  if (content::WebContents* web_contents = tab().GetContents()) {
+    url_matches = web_contents->GetLastCommittedURL().EqualsIgnoringRef(
+        last_evaluated_url_);
+  }
+
+  if (eval.is_pending || (!eval.holds_regardless_of_url && !url_matches)) {
+    if (pending_eligibility_callback_) {
+      base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
+          FROM_HERE,
+          base::BindOnce(std::move(pending_eligibility_callback_), false));
     }
+    pending_eligibility_callback_ = std::move(callback);
+    eligibility_timeout_timer_.Stop();
+    eligibility_timeout_timer_.Start(
+        FROM_HERE, base::Seconds(3), this,
+        &IndigoPageActionController::OnEligibilityTimeout);
     return;
   }
 
   const bool eligible = eval.source.has_value();
+  last_trigger_source_ = eval.source;
   base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
       FROM_HERE, base::BindOnce(std::move(callback), eligible));
 }
@@ -1165,12 +1163,10 @@ void IndigoPageActionController::CheckEligibility(
 void IndigoPageActionController::ResolvePendingEligibilityCallbacks(
     bool eligible) {
   eligibility_timeout_timer_.Stop();
-  std::vector<EligibilityCallback> callbacks =
-      std::move(pending_eligibility_callbacks_);
-  pending_eligibility_callbacks_.clear();
-  for (auto& cb : callbacks) {
+  if (pending_eligibility_callback_) {
     base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
-        FROM_HERE, base::BindOnce(std::move(cb), eligible));
+        FROM_HERE,
+        base::BindOnce(std::move(pending_eligibility_callback_), eligible));
   }
 }
 

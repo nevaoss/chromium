@@ -485,11 +485,6 @@ BASE_FEATURE(kAutofillAmbientAutofillSuppression,
 BASE_FEATURE(kAutofillAmbientAutofillSuppressionUI,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-// Controls the removal of the sign-in promotional components from the
-// Autofill and passwords settings page across platforms.
-BASE_FEATURE(kAutofillAndPasswordsRemoveSignInPromo,
-             base::FEATURE_DISABLED_BY_DEFAULT);
-
 // If enabled, on Android desktop, the Autofill keyboard accessory will have a
 // new behavior and design.
 // TODO(crbug.com/438125774): Remove when launched.
@@ -590,6 +585,9 @@ BASE_FEATURE(kAutofillAtMemorySupportContenteditableOnAndroid,
 // Ctrl+Space.
 BASE_FEATURE(kAutofillAtMemoryTriggerShortcut,
              base::FEATURE_DISABLED_BY_DEFAULT);
+
+// If enabled, AtMemory can be triggered by typing the trigger string like "@@".
+BASE_FEATURE(kAutofillAtMemoryTriggerString, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // When enabled, the placeholder is not considered a label fallback on the
 // renderer side anymore. Instead, local heuristic will match regexes against
@@ -836,7 +834,7 @@ BASE_FEATURE(kAutofillFixLabelGenerationForStreetAddress,
 
 // When enabled, the rewriter uses updated rewrite rules.
 // TODO(crbug.com/445863287): Cleanup when launched.
-BASE_FEATURE(kAutofillFixRewriterRules, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kAutofillFixRewriterRules, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // When enabled, the rationalization engine will fix misclassifications where
 // a field is detected as a COUNTRY when it should be a STATE or vice versa.
@@ -875,6 +873,12 @@ BASE_FEATURE_PARAM(int,
                    &kAutofillLabelSensitiveAutocomplete,
                    "autocomplete_label_sensitive_migration_generation",
                    0);
+
+// If enabled, add autocomplete suggestions for email fields to the currently
+// shown address suggestions if they are valid email addresses.
+// TODO(crbug.com/506033768): Remove when launched.
+BASE_FEATURE(kAutofillMergeAddressAndAutocompleteEmailSuggestions,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 // When enabled, all behaviours related to the on-device machine learning
 // model for field type predictions will be guarded.
@@ -959,6 +963,12 @@ BASE_FEATURE(kAutofillPopupCheckHtmlFormPopupOverlap,
 // emitting of "Autofill.AcceptedSuggestionDesktopRowViewVisibleEnough".
 BASE_FEATURE(kAutofillPopupDontAcceptNonVisibleEnoughSuggestion,
              base::FEATURE_DISABLED_BY_DEFAULT);
+
+// If enabled, `PopupBaseView` uses `DeleteSoon` instead of synchronous
+// `delete this` during `DoHide()` when no widget has been created, and
+// guards against double destruction or showing while hiding.
+// TODO(crbug.com/524084900): Remove when launched.
+BASE_FEATURE(kAutofillPopupUseDeleteSoon, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Replaces blink::WebFormElementObserver usage in FormTracker by updated logic
 // for tracking the disappearance of forms as well as other submission

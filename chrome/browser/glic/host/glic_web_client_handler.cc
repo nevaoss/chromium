@@ -45,6 +45,7 @@
 #include "chrome/browser/glic/host/glic.mojom.h"
 #include "chrome/browser/glic/host/glic_annotation_manager.h"
 #include "chrome/browser/glic/host/glic_cookie_synchronizer.h"
+#include "chrome/browser/glic/host/glic_page_handler.h"
 #include "chrome/browser/glic/host/glic_skills_manager.h"
 #include "chrome/browser/glic/host/glic_synthetic_trial_manager.h"
 #include "chrome/browser/glic/host/glic_web_client_access.h"
@@ -55,6 +56,7 @@
 #include "chrome/browser/glic/media/glic_media_link_helper.h"
 #include "chrome/browser/glic/public/context/glic_sharing_manager.h"
 #include "chrome/browser/glic/public/features.h"
+#include "chrome/browser/glic/public/glic_api_metrics.h"
 #include "chrome/browser/glic/public/glic_enabling.h"
 #include "chrome/browser/glic/public/glic_keyed_service.h"
 #include "chrome/browser/glic/public/glic_keyed_service_factory.h"
@@ -450,6 +452,27 @@ class GlicWebClientHandler
     glic::NavigateAsync(std::move(params), base::DoNothing());
   }
 
+  void ReportApiRequestCount(int32_t request_type_id,
+                             glic::mojom::GlicRequestEvent event) override {
+    LogApiRequestCount(request_type_id, event);
+  }
+
+  void ReportApiRequestLatency(const std::string& request_type,
+                               base::TimeDelta latency) override {
+    if (request_type.empty()) {
+      return;
+    }
+    base::UmaHistogramTimes(
+        base::StrCat({"Glic.Api.RequestHostLatency.", request_type}), latency);
+  }
+
+  void RecordSparseValue(const std::string& name, int32_t value) override {
+    if (name.empty()) {
+      return;
+    }
+    base::UmaHistogramSparse(name, value);
+  }
+
   void WebClientCreated(
       ::mojo::PendingRemote<glic::mojom::WebClient> web_client,
       WebClientCreatedCallback callback) override {
@@ -583,8 +606,8 @@ class GlicWebClientHandler
   mojom::WebClientState web_client_state() const override { return state_; }
 
   void WebClientInitializeFailed() override {
-    SetState(mojom::WebClientState::kError);
     host().WebClientInitializeFailed();
+    SetState(mojom::WebClientState::kError);
   }
 
   void WebClientInitialized() override {
@@ -1179,6 +1202,8 @@ class GlicWebClientHandler
       std::optional<glic::mojom::ClientErrorDialogType> shown_dialog_type)
       override {
     if (shown_dialog_type) {
+      base::UmaHistogramEnumeration("Glic.Api.Client.ErrorDialogShown",
+                                    *shown_dialog_type);
       glic_service_->GetAuthController().OnClientError();
     }
   }
@@ -1664,15 +1689,18 @@ class GlicWebClientHandler
     if (state_changed_callback_) {
       state_changed_callback_.Run(state_);
     }
+    if (state_ == mojom::WebClientState::kError) {
+      if (disconnect_callback_) {
+        std::move(disconnect_callback_).Run();
+      }
+    }
   }
 
   void OnResponsivenessChanged(mojom::WebClientState state) { SetState(state); }
 
   void OnDisconnected() {
     VLOG(1) << "Glic [WebClientHandler] OnDisconnected";
-    if (disconnect_callback_) {
-      std::move(disconnect_callback_).Run();
-    }
+    SetState(mojom::WebClientState::kError);
   }
 
   void OnUserEnabledActuationOnWebChanged() {

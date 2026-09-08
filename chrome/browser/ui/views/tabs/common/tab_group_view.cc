@@ -6,9 +6,8 @@
 
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
-#include "chrome/browser/ui/layout_constants.h"
 #include "chrome/browser/ui/tabs/tab_group_data.h"
-#include "chrome/browser/ui/tabs/tab_group_theme.h"
+#include "chrome/browser/ui/tabs/tab_style.h"
 #include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/views/frame/vertical_tab_strip_region_view.h"
@@ -17,11 +16,13 @@
 #include "chrome/browser/ui/views/tabs/common/tab_collection_animating_layout_manager.h"
 #include "chrome/browser/ui/views/tabs/common/tab_collection_node.h"
 #include "chrome/browser/ui/views/tabs/common/tab_group_header_view.h"
+#include "chrome/browser/ui/views/tabs/common/tab_group_line_view.h"
 #include "chrome/browser/ui/views/tabs/common/tab_group_view_layout.h"
 #include "chrome/browser/ui/views/tabs/common/tab_strip_collection_controller.h"
 #include "chrome/browser/ui/views/tabs/common/tab_strip_utils.h"
 #include "chrome/browser/ui/views/tabs/common/tab_strip_view.h"
 #include "chrome/browser/ui/views/tabs/common/tab_view.h"
+#include "chrome/browser/ui/views/tabs/common/unpinned_tab_container_view.h"
 #include "chrome/browser/ui/views/tabs/groups/tab_group_accessibility.h"
 #include "chrome/browser/ui/views/tabs/horizontal/horizontal_tab_closing_helper.h"
 #include "chrome/browser/ui/views/tabs/hovercard/tab_hover_card_controller.h"
@@ -32,10 +33,7 @@
 #include "components/tabs/public/tab_group_tab_collection.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/base/models/list_selection_model.h"
-#include "ui/color/color_provider.h"
 #include "ui/gfx/geometry/rect.h"
-#include "ui/gfx/geometry/rounded_corners_f.h"
-#include "ui/views/background.h"
 #include "ui/views/controls/button/label_button.h"
 #include "ui/views/controls/scroll_view.h"
 #include "ui/views/layout/delegating_layout_manager.h"
@@ -46,7 +44,6 @@
 #include "ui/views/widget/widget.h"
 
 namespace {
-constexpr int kGroupLineCornerRadius = 4;
 
 const TabGroup* GetTabGroupFromNode(TabCollectionNode* node) {
   CHECK(node);
@@ -55,6 +52,7 @@ const TabGroup* GetTabGroupFromNode(TabCollectionNode* node) {
                  node->GetNodeData()))
       ->GetTabGroup();
 }
+
 }  // namespace
 
 TabGroupView::TabGroupView(TabCollectionNode* collection_node)
@@ -69,15 +67,16 @@ TabGroupView::TabGroupView(TabCollectionNode* collection_node)
                                  TabStripOrientation::kHorizontal
               ? DragLayout::kHorizontal
               : DragLayout::kVertical),
+      orientation_(collection_node->orientation()),
       collection_node_(collection_node),
       tab_group_visual_data_(
           *GetTabGroupFromNode(collection_node_)->visual_data()),
       group_header_(AddChildView(std::make_unique<TabGroupHeaderView>(
           *this,
-          collection_node_->orientation(),
+          orientation_,
           collection_node_->GetController()->GetStateController(),
           &tab_group_visual_data_))),
-      group_line_(AddChildView(std::make_unique<views::View>())),
+      group_line_(AddChildView(std::make_unique<TabGroupLineView>(*this))),
       layout_manager_(*SetLayoutManager(std::make_unique<
                                         TabCollectionAnimatingLayoutManager>(
           std::make_unique<TabGroupViewLayout>(collection_node->orientation()),
@@ -112,6 +111,16 @@ TabGroupView::TabGroupView(TabCollectionNode* collection_node)
 
 TabGroupView::~TabGroupView() = default;
 
+void TabGroupView::AddedToWidget() {
+  paint_as_active_subscription_ =
+      GetWidget()->RegisterPaintAsActiveChangedCallback(base::BindRepeating(
+          &TabGroupView::OnDataChanged, base::Unretained(this)));
+}
+
+void TabGroupView::RemovedFromWidget() {
+  paint_as_active_subscription_ = {};
+}
+
 void TabGroupView::OnThemeChanged() {
   views::View::OnThemeChanged();
   OnDataChanged();
@@ -124,6 +133,15 @@ void TabGroupView::OnGestureEvent(ui::GestureEvent* event) {
     group_header_->OnGestureEvent(&converted_event);
     event->SetHandled();
   }
+}
+
+views::View::Views TabGroupView::GetChildrenInZOrder() {
+  views::View::Views paint_order = views::View::GetChildrenInZOrder();
+  auto it = std::ranges::find(paint_order, group_line_.get());
+  if (it != paint_order.end() && std::next(it) != paint_order.end()) {
+    std::rotate(it, it + 1, paint_order.end());
+  }
+  return paint_order;
 }
 
 void TabGroupView::ToggleCollapsedState(
@@ -217,6 +235,31 @@ bool TabGroupView::ShouldSnapToTarget(const views::View& child_view) const {
   return views::IsViewClass<SplitTabView>(&child_view);
 }
 
+void TabGroupView::SetAvailableSpace(views::SizeBound space) {
+  available_space_ = space;
+}
+
+int TabGroupView::GetCrossoverWidth() const {
+  if (collection_node_ &&
+      collection_node_->orientation() == TabStripOrientation::kHorizontal) {
+    return static_cast<TabGroupViewLayout*>(
+               layout_manager_->target_layout_manager())
+        ->CalculateHorizontalCrossoverWidth(this);
+  }
+  return GetMinimumSize().width();
+}
+
+std::optional<views::SizeBound>
+TabGroupView::GetAvailableMainAxisSpaceOverride() const {
+  if (collection_node_ &&
+      collection_node_->orientation() == TabStripOrientation::kHorizontal) {
+    if (available_space_.is_bounded()) {
+      return available_space_;
+    }
+  }
+  return std::nullopt;
+}
+
 void TabGroupView::OnAnimationEnded() {
   // For collapsed tab groups update child visibility only once animations have
   // completed. This allows tabs to remain visible as the group animates closed.
@@ -288,13 +331,7 @@ void TabGroupView::OnDataChanged() {
     UpdateChildVisibilityForCollapseState(false);
   }
 
-  if (GetColorProvider()) {
-    SkColor color = GetColorProvider()->GetColor(GetTabGroupTabStripColorId(
-        tab_group_visual_data_.color(), GetWidget()->ShouldPaintAsActive()));
-    group_line_->SetBackground(views::CreateRoundedRectBackground(
-        color, gfx::RoundedCornersF(0, kGroupLineCornerRadius,
-                                    kGroupLineCornerRadius, 0)));
-  }
+  group_line_->SchedulePaint();
 
   InvalidateLayout();
 }
@@ -304,6 +341,9 @@ void TabGroupView::SetIsCollapsed(bool is_collapsed) {
     return;
   }
   is_collapsed_ = is_collapsed;
+  // Reset the cached available space so stale collapsed bounds (which only
+  // accommodated the header chip) do not constrain group tabs when expanding.
+  available_space_ = views::SizeBound();
   InvalidateLayout();
 }
 
@@ -351,8 +391,7 @@ std::optional<BrowserRootView::DropIndex> TabGroupView::GetLinkDropIndex(
   if (!collection_node_) {
     return std::nullopt;
   }
-  const bool is_horizontal =
-      collection_node_->orientation() == TabStripOrientation::kHorizontal;
+  const bool is_horizontal = orientation_ == TabStripOrientation::kHorizontal;
 
   // Use the position along drag axis to find the child view being dragged over.
   const int header_end = is_horizontal ? group_header_->bounds().right()

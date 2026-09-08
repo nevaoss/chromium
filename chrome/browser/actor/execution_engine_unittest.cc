@@ -267,6 +267,16 @@ class ExecutionEngineTest : public ChromeRenderViewHostTestHarness {
               base::BindRepeating(MakeOkResult,
                                   /*requires_page_stabilization=*/true)));
     }
+
+    ON_CALL(mock_actor_task_delegate_, RequestToShowUserConfirmationDialog)
+        .WillByDefault([](TaskId, const url::Origin&, bool,
+                          ActorTaskDelegate::UserConfirmationDialogCallback
+                              callback) {
+          std::move(callback).Run(
+              webui::mojom::UserConfirmationDialogResponse::New(
+                  webui::mojom::ConfirmationRequestResult::NewPermissionGranted(
+                      true)));
+        });
   }
 
   void TearDown() override {
@@ -1077,11 +1087,11 @@ TEST_F(ExecutionEngineNavigationGatingTest,
   content::MockNavigationHandle navigation_handle(kDestinationUrl, main_rfh());
   navigation_handle.set_initiator_origin(kInitiatorOrigin);
 
-  base::test::TestFuture<bool> future;
+  base::test::TestFuture<MayActOnUrlBlockReason> future;
   task_->GetExecutionEngine().ShouldNavigationCommit(navigation_handle,
                                                      future.GetCallback());
 
-  EXPECT_TRUE(future.Get());
+  EXPECT_EQ(future.Get(), MayActOnUrlBlockReason::kAllowed);
 
   histograms_.ExpectUniqueSample(
       "Actor.NavigationGating.GatingDecision2",
@@ -1112,11 +1122,11 @@ TEST_F(ExecutionEngineNavigationGatingTest,
 
   content::MockNavigationHandle navigation_handle(kDestinationUrl, main_rfh());
 
-  base::test::TestFuture<bool> future;
+  base::test::TestFuture<MayActOnUrlBlockReason> future;
   task_->GetExecutionEngine().ShouldNavigationCommit(navigation_handle,
                                                      future.GetCallback());
 
-  EXPECT_TRUE(future.Get());
+  EXPECT_EQ(future.Get(), MayActOnUrlBlockReason::kAllowed);
 
   // Verify that SameOriginSource is true, indicating it used the precursor
   // origin.
@@ -1288,14 +1298,43 @@ class ExecutionEngineUrlGatingTest : public ChromeRenderViewHostTestHarness {
 
 // TODO(crbug.com/480230075): Crashing on Android.
 #if BUILDFLAG(SKIP_ANDROID_UNMIGRATED_ACTOR_FILES)
-#define MAYBE_AllowLocalhost DISABLED_AllowLocalhost
+#define MAYBE_LocalhostPromptsForUserConfirmation \
+  DISABLED_LocalhostPromptsForUserConfirmation
 #else
-#define MAYBE_AllowLocalhost AllowLocalhost
+#define MAYBE_LocalhostPromptsForUserConfirmation \
+  LocalhostPromptsForUserConfirmation
 #endif
-TEST_F(ExecutionEngineUrlGatingTest, MAYBE_AllowLocalhost) {
-  CheckUrl(GURL("http://localhost/"), true);
-  CheckUrl(GURL("http://127.0.0.1/"), true);
-  CheckUrl(GURL("http://[::1]/"), true);
+TEST_F(ExecutionEngineUrlGatingTest,
+       MAYBE_LocalhostPromptsForUserConfirmation) {
+  const GURL localhost_url("http://localhost/");
+  EXPECT_CALL(mock_actor_task_delegate(),
+              RequestToShowUserConfirmationDialog(
+                  _, url::Origin::Create(localhost_url), _, _))
+      .WillOnce(base::test::RunOnceCallback<3>(
+          webui::mojom::UserConfirmationDialogResponse::New(
+              webui::mojom::ConfirmationRequestResult::NewPermissionGranted(
+                  true))));
+  CheckUrl(localhost_url, /*expected_allowed=*/true);
+
+  const GURL ipv4_url("http://127.0.0.1/");
+  EXPECT_CALL(mock_actor_task_delegate(),
+              RequestToShowUserConfirmationDialog(
+                  _, url::Origin::Create(ipv4_url), _, _))
+      .WillOnce(base::test::RunOnceCallback<3>(
+          webui::mojom::UserConfirmationDialogResponse::New(
+              webui::mojom::ConfirmationRequestResult::NewPermissionGranted(
+                  true))));
+  CheckUrl(ipv4_url, /*expected_allowed=*/true);
+
+  const GURL ipv6_url("http://[::1]/");
+  EXPECT_CALL(mock_actor_task_delegate(),
+              RequestToShowUserConfirmationDialog(
+                  _, url::Origin::Create(ipv6_url), _, _))
+      .WillOnce(base::test::RunOnceCallback<3>(
+          webui::mojom::UserConfirmationDialogResponse::New(
+              webui::mojom::ConfirmationRequestResult::NewPermissionGranted(
+                  true))));
+  CheckUrl(ipv6_url, /*expected_allowed=*/true);
 }
 
 TEST_F(ExecutionEngineUrlGatingTest, AllowAboutBlank) {
@@ -1541,11 +1580,11 @@ TEST_F(ExecutionEngineUrlGatingTest,
 
   content::MockNavigationHandle navigation_handle(destination_url, main_rfh());
 
-  base::test::TestFuture<bool> future;
+  base::test::TestFuture<MayActOnUrlBlockReason> future;
   GetExecutionEngine().ShouldNavigationCommit(navigation_handle,
                                               future.GetCallback());
 
-  EXPECT_TRUE(future.Get());
+  EXPECT_EQ(future.Get(), MayActOnUrlBlockReason::kAllowed);
 }
 
 TEST_F(ExecutionEngineUrlGatingTest,
@@ -1564,11 +1603,11 @@ TEST_F(ExecutionEngineUrlGatingTest,
 
   content::MockNavigationHandle navigation_handle(destination_url, main_rfh());
 
-  base::test::TestFuture<bool> future;
+  base::test::TestFuture<MayActOnUrlBlockReason> future;
   GetExecutionEngine().ShouldNavigationCommit(navigation_handle,
                                               future.GetCallback());
 
-  EXPECT_FALSE(future.Get());
+  EXPECT_EQ(future.Get(), MayActOnUrlBlockReason::kOptimizationGuideBlock);
 }
 
 struct MimeTestCase {
@@ -1584,7 +1623,11 @@ class ExecutionEngineMimeGatingTest
     return GetParam().content_type_header;
   }
 
-  bool expected_allowed() const { return GetParam().expected_allowed; }
+  MayActOnUrlBlockReason expected_reason() const {
+    return GetParam().expected_allowed
+               ? MayActOnUrlBlockReason::kAllowed
+               : MayActOnUrlBlockReason::kDangerousMimeType;
+  }
 };
 
 TEST_P(ExecutionEngineMimeGatingTest, HandlesMimeTypes) {
@@ -1609,11 +1652,11 @@ TEST_P(ExecutionEngineMimeGatingTest, HandlesMimeTypes) {
   }
   navigation_handle.set_response_headers(builder.Build());
 
-  base::test::TestFuture<bool> future;
+  base::test::TestFuture<MayActOnUrlBlockReason> future;
   GetExecutionEngine().ShouldNavigationCommit(navigation_handle,
                                               future.GetCallback());
 
-  EXPECT_EQ(future.Get(), expected_allowed());
+  EXPECT_EQ(future.Get(), expected_reason());
 }
 
 INSTANTIATE_TEST_SUITE_P(,
@@ -1659,11 +1702,11 @@ TEST_F(ExecutionEngineUrlGatingTest,
   builder.AddHeader("Content-Type", "application/json");
   navigation_handle.set_response_headers(builder.Build());
 
-  base::test::TestFuture<bool> future;
+  base::test::TestFuture<MayActOnUrlBlockReason> future;
   GetExecutionEngine().ShouldNavigationCommit(navigation_handle,
                                               future.GetCallback());
 
-  EXPECT_TRUE(future.Get());
+  EXPECT_EQ(future.Get(), MayActOnUrlBlockReason::kAllowed);
 }
 
 }  // namespace

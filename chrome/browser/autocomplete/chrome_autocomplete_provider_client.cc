@@ -123,6 +123,7 @@
 #include "base/android/jni_android.h"
 #include "chrome/browser/lens/jni_headers/LensSupportStatusHelper_jni.h"
 #else  // BUILDFLAG(IS_ANDROID)
+#include "chrome/browser/contextual_search/contextual_search_service_factory.h"
 #include "chrome/browser/contextual_search/contextual_search_web_contents_helper.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_panel_controller.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_service.h"
@@ -140,6 +141,7 @@
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/views/side_panel/history_clusters/history_clusters_side_panel_coordinator.h"
 #include "chrome/browser/upgrade_detector/upgrade_detector.h"
+#include "components/contextual_search/contextual_search_service.h"
 #include "components/lens/lens_overlay_invocation_source.h"
 #endif  // BUILDFLAG(IS_ANDROID)
 
@@ -812,8 +814,8 @@ bool ChromeAutocompleteProviderClient::OpenJourneys(const std::string& query) {
 
 bool ChromeAutocompleteProviderClient::ShouldOpenCoBrowsePanel() const {
 #if !BUILDFLAG(IS_ANDROID)
-  return omnibox::kAskGCoBrowse.Get()
-      || omnibox::kAskGCoBrowseWithVisualSelection.Get();
+  return omnibox::kAskGCoBrowse.Get() ||
+         omnibox::kAskGCoBrowseWithVisualSelection.Get();
 #else
   return false;
 #endif
@@ -832,11 +834,6 @@ void ChromeAutocompleteProviderClient::OpenCoBrowsePanel() {
                          : nullptr;
 
   if (ui_service) {
-    if (auto* lens_controller = LensSearchController::From(tab)) {
-      lens_controller->SetInvocationSource(
-          lens::LensOverlayInvocationSource::kOmniboxPageAction);
-    }
-
     GURL creation_url = ui_service->GetDefaultAiPageUrl();
     auto* tab_helper =
         ContextualSearchWebContentsHelper::GetOrCreateForWebContents(
@@ -844,6 +841,31 @@ void ChromeAutocompleteProviderClient::OpenCoBrowsePanel() {
     std::unique_ptr<contextual_search::ContextualSearchSessionHandle>
         session_handle = tab_helper->TakeSessionHandle();
 
+    if (!session_handle) {
+      auto* contextual_search_service =
+          ContextualSearchServiceFactory::GetForProfile(bwi->GetProfile());
+      if (contextual_search_service) {
+        session_handle = contextual_search_service->CreateSession(
+            omnibox::CreateQueryControllerConfigParams(),
+            // TODO (crbug.com/554084129) - Update
+            // toContextualSearchSource::kOmnibox or something new to decouple
+            // from lens.
+            contextual_search::ContextualSearchSource::kLens,
+            lens::LensOverlayInvocationSource::kOmniboxPageAction);
+      }
+    }
+
+    if (auto* lens_controller = LensSearchController::From(tab)) {
+      if (omnibox::kAskGCoBrowseWithVisualSelection.Get()) {
+        // Concurrently launch the Lens Overlay alongside the side panel
+        // opening.
+        lens_controller->OpenLensOverlay(
+            lens::LensOverlayInvocationSource::kOmniboxPageAction);
+      } else {
+        lens_controller->SetInvocationSource(
+            lens::LensOverlayInvocationSource::kOmniboxPageAction);
+      }
+    }
     contextual_tasks::StartTaskUiOptions options;
     options.entry_point =
         omnibox::ChromeAimEntryPoint::DESKTOP_CHROME_COBROWSE_OMNIBOX_ACTION;

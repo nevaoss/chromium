@@ -61,6 +61,7 @@ import org.chromium.chrome.browser.tabwindow.TabWindowManager;
 import org.chromium.chrome.browser.tabwindow.TabWindowManagerUtils;
 import org.chromium.chrome.browser.tabwindow.WindowId;
 import org.chromium.chrome.browser.tasks.tab_management.GroupWindowChecker;
+import org.chromium.chrome.browser.tasks.tab_management.GroupWindowInfo;
 import org.chromium.chrome.browser.tasks.tab_management.TabGroupListBottomSheetCoordinator;
 import org.chromium.chrome.browser.tasks.tab_management.TabGroupUiUtils;
 import org.chromium.chrome.browser.tasks.tab_management.TabShareUtils;
@@ -80,7 +81,6 @@ import org.chromium.components.browser_ui.widget.MenuOrKeyboardActionController;
 import org.chromium.components.browser_ui.widget.list_view.ListViewTouchTracker;
 import org.chromium.components.collaboration.CollaborationService;
 import org.chromium.components.embedder_support.util.UrlUtilities;
-import org.chromium.components.tab_group_sync.SavedTabGroup;
 import org.chromium.components.tab_group_sync.TabGroupSyncService;
 import org.chromium.components.tab_groups.TabGroupColorId;
 import org.chromium.content_public.browser.LoadUrlParams;
@@ -661,7 +661,7 @@ public class TabContextMenuCoordinator extends TabStripReorderingHelper<AnchorIn
         // Need to check list is non-empty before calling addAll; otherwise we get assertion error.
         if (!reorderItems.isEmpty()) itemList.addAll(reorderItems);
         itemList.add(buildMenuDivider(isIncognito));
-        if (!ChromeFeatureList.sAndroidContextMenuDisabledMenuItems.isEnabled()
+        if (ChromeFeatureList.sAndroidContextMenuDisabledMenuItems.isEnabled()
                 && ShareUtils.shouldEnableShare(tabs.get(0))) {
             // Share is only available for single tab selection.
             itemList.add(createShareItem(isIncognito));
@@ -1111,18 +1111,18 @@ public class TabContextMenuCoordinator extends TabStripReorderingHelper<AnchorIn
     private List<ListItem> getRegularTabGroups(
             List<Tab> tabs, @Nullable Token groupToNotBeIncluded) {
         GroupWindowChecker windowChecker =
-                new GroupWindowChecker(mTabGroupSyncService, getTabModel());
-        List<SavedTabGroup> sortedTabGroups = windowChecker.getDefaultSortedGroupList();
+                new GroupWindowChecker(mActivity, mTabGroupSyncService, getTabModel());
+        List<GroupWindowInfo> sortedTabGroups = windowChecker.getDefaultSortedGroupList();
 
         List<ListItem> result = new ArrayList<>();
 
         Set<Integer> activeInstanceIds = MultiWindowUtils.getUsableInstanceIds(ACTIVE);
-        for (SavedTabGroup tabGroup : sortedTabGroups) {
+        for (GroupWindowInfo tabGroup : sortedTabGroups) {
             if (tabGroup.localId == null) continue;
-            if (Objects.equals(groupToNotBeIncluded, tabGroup.localId.tabGroupId)) {
+            if (Objects.equals(groupToNotBeIncluded, tabGroup.localId)) {
                 continue;
             }
-            Token groupId = tabGroup.localId.tabGroupId;
+            Token groupId = tabGroup.localId;
 
             TabWindowManager tabWindowManager = TabWindowManagerSingleton.getInstance();
             @WindowId int windowId = tabWindowManager.findWindowIdForTabGroup(groupId);
@@ -1149,7 +1149,7 @@ public class TabContextMenuCoordinator extends TabStripReorderingHelper<AnchorIn
                         TabGroupUiUtils.addTabsToGroup(
                                 getTabModel(),
                                 tabs,
-                                groupId,
+                                tabGroup,
                                 /* tabMovedCallback= */ null,
                                 /* bringToFront= */ true);
                     };
@@ -1189,7 +1189,7 @@ public class TabContextMenuCoordinator extends TabStripReorderingHelper<AnchorIn
                         TabGroupUiUtils.addTabsToGroup(
                                 getTabModel(),
                                 tabs,
-                                groupId,
+                                GroupWindowInfo.forLocalGroup(mActivity, getTabModel(), groupId),
                                 /* tabMovedCallback= */ null,
                                 /* bringToFront= */ true);
                     };

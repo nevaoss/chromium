@@ -53,7 +53,6 @@ import org.mockito.Mock;
 import org.mockito.invocation.InvocationOnMock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
-import org.robolectric.annotation.Config;
 import org.robolectric.shadows.ShadowLooper;
 
 import org.chromium.base.ActivityState;
@@ -87,7 +86,6 @@ import org.chromium.ui.modelutil.PropertyModel;
 
 /** Unit tests for {@link TabBottomSheetCoordinator}. */
 @RunWith(BaseRobolectricTestRunner.class)
-@Config(manifest = Config.NONE)
 public class TabBottomSheetCoordinatorUnitTest {
     private static final float FULL_HEIGHT_RATIO = 0.7f;
     private static final float SMALL_SCREEN_HEIGHT_RATIO = 0.9f;
@@ -320,6 +318,30 @@ public class TabBottomSheetCoordinatorUnitTest {
         TabBottomSheetContent content = mBottomSheetContentArgumentCaptor.getValue();
         assertNotNull(content);
         assertEquals(HeightMode.WRAP_CONTENT, content.getFullHeightRatio(), EPSILON);
+    }
+
+    @Test
+    public void testMaxResizeContentHeightRatio_Default() {
+        simulateShowSuccessAndGetObserver();
+        verify(mMockBottomSheetController)
+                .requestShowContent(mBottomSheetContentArgumentCaptor.capture(), eq(true));
+        TabBottomSheetContent content = mBottomSheetContentArgumentCaptor.getValue();
+        assertNotNull(content);
+        assertEquals(
+                BottomSheetContent.MAX_HEIGHT_RATIO,
+                content.getMaxResizeContentHeightRatio(),
+                EPSILON);
+    }
+
+    @Test
+    @EnableFeatures(ChromeFeatureList.TAB_BOTTOM_SHEET_FULL_HEIGHT + ":full_height_ratio/0.85")
+    public void testMaxResizeContentHeightRatio_WithCustomFinchParam() {
+        simulateShowSuccessAndGetObserver();
+        verify(mMockBottomSheetController)
+                .requestShowContent(mBottomSheetContentArgumentCaptor.capture(), eq(true));
+        TabBottomSheetContent content = mBottomSheetContentArgumentCaptor.getValue();
+        assertNotNull(content);
+        assertEquals(0.85f, content.getMaxResizeContentHeightRatio(), EPSILON);
     }
 
     @Test
@@ -1127,10 +1149,12 @@ public class TabBottomSheetCoordinatorUnitTest {
                                         invocation.getArgument(2),
                                         invocation.getArgument(3),
                                         invocation.getArgument(4),
-                                        invocation.getArgument(5)))
+                                        invocation.getArgument(5),
+                                        invocation.getArgument(6)))
                 .when(mMockContentProvider)
                 .createContent(
                         any(View.class),
+                        anyFloat(),
                         anyFloat(),
                         anyInt(),
                         anyInt(),

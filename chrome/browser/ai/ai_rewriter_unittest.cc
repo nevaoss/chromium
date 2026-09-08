@@ -22,6 +22,7 @@
 #include "chrome/browser/optimization_guide/mock_optimization_guide_keyed_service.h"
 #include "components/optimization_guide/core/model_execution/manifest_broker/test/fake_manifest_broker.h"
 #include "components/optimization_guide/core/model_execution/manifest_broker/test/scenario_builder.h"
+#include "components/optimization_guide/core/model_execution/test/feature_config_builder.h"
 #include "components/optimization_guide/core/model_execution/test/mock_on_device_capability.h"
 #include "components/optimization_guide/core/model_execution/test/substitution_builder.h"
 #include "components/optimization_guide/core/optimization_guide_proto_util.h"
@@ -83,8 +84,9 @@ class TestCreateRewriterClient
     return receiver_.BindNewPipeAndPassRemote();
   }
 
-  void OnResult(
-      mojo::PendingRemote<::blink::mojom::AIRewriter> rewriter) override {
+  void OnResult(mojo::PendingRemote<::blink::mojom::AIRewriter> rewriter,
+                uint64_t context_window) override {
+    context_window_ = context_window;
     result_.SetValue(std::move(rewriter));
   }
 
@@ -95,9 +97,11 @@ class TestCreateRewriterClient
   }
 
   TestFuture<CreateRewriterResult>& result() { return result_; }
+  uint64_t context_window() const { return context_window_; }
 
  private:
   TestFuture<CreateRewriterResult> result_;
+  uint64_t context_window_ = 0;
   mojo::Receiver<blink::mojom::AIManagerCreateRewriterClient> receiver_{this};
 };
 
@@ -348,6 +352,17 @@ TEST_F(AIRewriterTest, CreateRewriterContextLimitExceededError) {
             blink::mojom::kWritingAssistanceMaxInputTokenSize);
 }
 
+TEST_F(AIRewriterTest, ContextWindowUsesContextLimit) {
+  TestCreateRewriterClient client;
+  GetAIManagerRemote()->CreateRewriter(client.BindNewPipeAndPassRemote(),
+                                       GetDefaultOptions(),
+                                       /*monitor=*/mojo::NullRemote());
+  CreateRewriterResult result = client.result().Take();
+  ASSERT_TRUE(result.has_value());
+  EXPECT_EQ(client.context_window(),
+            blink::mojom::kWritingAssistanceMaxInputTokenSize);
+}
+
 TEST_F(AIRewriterTest, CanCreateDefaultOptions) {
   {
     base::test::TestFuture<blink::mojom::ModelAvailabilityCheckResult> future;
@@ -403,9 +418,9 @@ TEST_F(AIRewriterTest, CanCreateUnIsLanguagesSupported) {
 TEST_F(AIRewriterTest, ToProtoOptionsLanguagesSupported) {
   // Rewriter proto expects base language display names in English.
   std::vector<std::pair<std::string, std::string>> languages = {
-      {"en", "English"},  {"en-us", "English"},  {"en-uk", "English"},
-      {"es", "Spanish"},  {"es-sp", "Spanish"},  {"es-mx", "Spanish"},
-      {"ja", "Japanese"}, {"ja-jp", "Japanese"}, {"ja-foo", "Japanese"},
+      {"en", "English"},  {"en-us", "English"},  {"en-gb", "English"},
+      {"es", "Spanish"},  {"es-es", "Spanish"},  {"es-mx", "Spanish"},
+      {"ja", "Japanese"}, {"ja-jp", "Japanese"},
   };
   blink::mojom::AIRewriterCreateOptionsPtr options = GetDefaultOptions();
   for (const auto& language : languages) {

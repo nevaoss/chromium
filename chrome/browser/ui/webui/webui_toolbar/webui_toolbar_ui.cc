@@ -21,6 +21,7 @@
 #include "chrome/browser/ui/extensions/extensions_container.h"
 #include "chrome/browser/ui/interaction/browser_elements.h"
 #include "chrome/browser/ui/omnibox/omnibox_next_features.h"
+#include "chrome/browser/ui/page_action/page_action_properties_provider.h"
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/views/frame/browser_widget.h"
 #include "chrome/browser/ui/views/permissions/chip/permission_chip_view.h"
@@ -273,12 +274,16 @@ WebUIToolbarUI::WebUIToolbarUI(content::WebUI* web_ui)
   web_ui->AddMessageHandler(std::make_unique<MetricsHandler>());
 
   if (browser) {
-    auto context = BrowserElements::From(browser)->GetContext();
+    // `base::Unretained(browser)` is safe because `browser` owns the
+    // WebContents hosting this WebUI and is guaranteed to outlive the
+    // `WebContentsUserData` holding this callback.
     ui::TrackedElementHandlerDocumentSingleton::Register(
         this, GetKnownElementIdentifiers(),
-        context ? base::BindRepeating([](ui::ElementContext c) { return c; },
-                                      context)
-                : base::RepeatingCallback<ui::ElementContext()>());
+        base::BindRepeating(
+            [](BrowserWindowInterface* bwi) {
+              return BrowserElements::From(bwi)->GetContext();
+            },
+            base::Unretained(browser)));
   }
 
   content::URLDataSource::Add(
@@ -547,11 +552,16 @@ WebUIToolbarUI::GetKnownElementIdentifiers() {
   auto result = webui_toolbar::GetPinnedToolbarActionElementIds();
   std::vector<ui::ElementIdentifier> content_setting_identifiers =
       ContentSettingImageModel::GetAllElementIdentifiers();
+  std::vector<ui::ElementIdentifier> page_action_identifiers =
+      page_actions::PageActionPropertiesProvider::GetAllElementIdentifiers();
   result.reserve(result.size() + ids->size() +
-                 content_setting_identifiers.size());
+                 content_setting_identifiers.size() +
+                 page_action_identifiers.size());
   result.insert(result.end(), ids->begin(), ids->end());
   result.insert(result.end(), content_setting_identifiers.begin(),
                 content_setting_identifiers.end());
+  result.insert(result.end(), page_action_identifiers.begin(),
+                page_action_identifiers.end());
 
   return result;
 }

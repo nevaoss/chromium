@@ -36,6 +36,7 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewGroup.MarginLayoutParams;
+import android.view.ViewStub;
 import android.view.ViewTreeObserver;
 
 import androidx.annotation.LayoutRes;
@@ -706,6 +707,7 @@ public class ToolbarControlContainerTest {
         // but is skipped since the initial margin is already 0.
         mControlContainer.onHeightChanged(80, 20, false);
         verify(mRightMarginCallback, never()).onResult(0);
+        assertFalse(mControlContainer.isToolbarInAppHeader());
 
         // Set app header with 10px padding on left, 20px on right, and 100px height.
         var appHeaderState =
@@ -716,10 +718,12 @@ public class ToolbarControlContainerTest {
         // right padding 20).
         mControlContainer.onHeightChanged(0, 20, false);
         verify(mRightMarginCallback).onResult(20);
+        assertTrue(mControlContainer.isToolbarInAppHeader());
 
         // Disable vertical tabs while tab strip height is 0. Callback should be called with 0.
         isVerticalTabsActiveSupplier.set(false);
         verify(mRightMarginCallback).onResult(0);
+        assertFalse(mControlContainer.isToolbarInAppHeader());
 
         // Exit desktop window. Margin is still 0, so callback should not be called again.
         var appHeaderState2 =
@@ -727,6 +731,7 @@ public class ToolbarControlContainerTest {
         when(mDesktopWindowStateManager.getAppHeaderState()).thenReturn(appHeaderState2);
         mControlContainer.onAppHeaderStateChanged(appHeaderState2);
         verify(mRightMarginCallback).onResult(0);
+        assertFalse(mControlContainer.isToolbarInAppHeader());
     }
 
     @Test
@@ -762,6 +767,13 @@ public class ToolbarControlContainerTest {
 
     private void checkSetToolbarContainerTopMarginForAutoHiddenVerticalTab() {
         initControlContainer(R.layout.toolbar_tablet);
+        SettableNonNullObservableSupplier<Boolean> isVerticalTabsActiveSupplier =
+                ObservableSuppliers.createNonNull(true);
+        mControlContainer.setIsVerticalTabsActiveSupplier(isVerticalTabsActiveSupplier);
+        var appHeaderState =
+                new AppHeaderState(new Rect(0, 0, 100, 100), new Rect(10, 0, 80, 100), true);
+        when(mDesktopWindowStateManager.getAppHeaderState()).thenReturn(appHeaderState);
+
         View toolbarContainer = mControlContainer.findViewById(R.id.toolbar_container);
         assertNotNull(toolbarContainer);
 
@@ -777,6 +789,44 @@ public class ToolbarControlContainerTest {
         assertEquals(tabStripHeight, lp.topMargin);
 
         mControlContainer.setToolbarContainerTopMarginForAutoHiddenVerticalTab(false);
+        mControlContainer.onMeasure(0, 0);
+        assertEquals(0, lp.topMargin);
+    }
+
+    @Test
+    public void testSetToolbarContainerTopMarginForAutoHiddenVerticalTab_NotInDesktopWindow() {
+        initControlContainer(R.layout.toolbar_tablet);
+        SettableNonNullObservableSupplier<Boolean> isVerticalTabsActiveSupplier =
+                ObservableSuppliers.createNonNull(true);
+        mControlContainer.setIsVerticalTabsActiveSupplier(isVerticalTabsActiveSupplier);
+        var appHeaderState =
+                new AppHeaderState(new Rect(0, 0, 100, 100), new Rect(0, 0, 100, 100), false);
+        when(mDesktopWindowStateManager.getAppHeaderState()).thenReturn(appHeaderState);
+
+        View toolbarContainer = mControlContainer.findViewById(R.id.toolbar_container);
+        assertNotNull(toolbarContainer);
+
+        MarginLayoutParams lp = (MarginLayoutParams) toolbarContainer.getLayoutParams();
+        mControlContainer.setToolbarContainerTopMarginForAutoHiddenVerticalTab(true);
+        mControlContainer.onMeasure(0, 0);
+        assertEquals(0, lp.topMargin);
+    }
+
+    @Test
+    public void testSetToolbarContainerTopMarginForAutoHiddenVerticalTab_InactiveVerticalTabs() {
+        initControlContainer(R.layout.toolbar_tablet);
+        SettableNonNullObservableSupplier<Boolean> isVerticalTabsActiveSupplier =
+                ObservableSuppliers.createNonNull(false);
+        mControlContainer.setIsVerticalTabsActiveSupplier(isVerticalTabsActiveSupplier);
+        var appHeaderState =
+                new AppHeaderState(new Rect(0, 0, 100, 100), new Rect(10, 0, 80, 100), true);
+        when(mDesktopWindowStateManager.getAppHeaderState()).thenReturn(appHeaderState);
+
+        View toolbarContainer = mControlContainer.findViewById(R.id.toolbar_container);
+        assertNotNull(toolbarContainer);
+
+        MarginLayoutParams lp = (MarginLayoutParams) toolbarContainer.getLayoutParams();
+        mControlContainer.setToolbarContainerTopMarginForAutoHiddenVerticalTab(true);
         mControlContainer.onMeasure(0, 0);
         assertEquals(0, lp.topMargin);
     }
@@ -1135,7 +1185,11 @@ public class ToolbarControlContainerTest {
         assertFalse(controlContainer.onInterceptTouchEvent(toolbarClickEvent));
         assertTrue(controlContainer.onTouchEvent(toolbarClickEvent));
 
-        // Click below the toolbar container (e.g. on bookmark bar or web contents).
+        // Click below the toolbar container when tablet find in page is open.
+        ViewStub findToolbarStub = controlContainer.findViewById(R.id.find_toolbar_tablet_stub);
+        View findToolbar = findToolbarStub.inflate();
+        findToolbar.setVisibility(View.VISIBLE);
+
         MotionEvent belowToolbarClickEvent =
                 MotionEvent.obtain(0, 0, MotionEvent.ACTION_DOWN, 100, 150, 0);
         assertFalse(controlContainer.onInterceptTouchEvent(belowToolbarClickEvent));

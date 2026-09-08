@@ -719,8 +719,9 @@ base::DictValue ContextualTasksUI::GetContextualTasksLoadTimeData(
   dict.Set("isSmallDeviceFormFactor",
            ui::GetDeviceFormFactor() == ui::DEVICE_FORM_FACTOR_PHONE);
 
+  auto forced_host = contextual_tasks::GetForcedEmbeddedPageHost();
   dict.Set("forcedEmbeddedPageHost",
-           contextual_tasks::GetForcedEmbeddedPageHost());
+           forced_host ? forced_host->ToString() : "");
   dict.Set("contextualTasksSignInDomains",
            base::JoinString(contextual_tasks::GetContextualTasksSignInDomains(),
                             ","));
@@ -881,13 +882,25 @@ void ContextualTasksUI::SetInNlm(bool in_nlm) {
   }
 }
 
+bool ContextualTasksUI::IsCoBrowseOmniboxAction() const {
+  if (!omnibox::kAskGCoBrowseWithVisualSelection.Get()) {
+    return false;
+  }
+  if (!ui_service_ || !task_id_.has_value()) {
+    return false;
+  }
+  return ui_service_->GetInitialEntryPointForTask(task_id_.value()) ==
+         omnibox::ChromeAimEntryPoint::DESKTOP_CHROME_COBROWSE_OMNIBOX_ACTION;
+}
+
 void ContextualTasksUI::SetIsAiPage(bool is_ai_page) {
   if (page_) {
     page_->OnAiPageStatusChanged(is_ai_page);
   }
 
-  // When AI page is first loaded, close the Lens overlay if it's open.
-  if (is_ai_page && !was_ai_page_) {
+  // When AI page is first loaded, close the Lens overlay if it's open,
+  // unless opened for Omnibox Co-Browse visual selection.
+  if (is_ai_page && !was_ai_page_ && !IsCoBrowseOmniboxAction()) {
     auto* browser = GetBrowser();
     if (browser) {
 #if !BUILDFLAG(IS_ANDROID)
@@ -1439,6 +1452,13 @@ bool ContextualTasksUI::CanUpdateSuggestedTabContext(
   }
 
   return true;
+}
+
+void ContextualTasksUI::SyncAutoSuggestedTabContext() {
+  if (composebox_handler_ && auto_suggestion_manager_) {
+    composebox_handler_->UpdateSuggestedTabContext(
+        auto_suggestion_manager_->GetCurrentSuggestion());
+  }
 }
 
 void ContextualTasksUI::OnActiveTabContextStatusChanged() {

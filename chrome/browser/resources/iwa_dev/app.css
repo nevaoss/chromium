@@ -17,24 +17,27 @@
 
 h1 {
   font-size: 1.75rem;
-  margin-bottom: 8px;
+  margin-bottom: 4px;
 }
 
-#learn-more {
+.subtitle {
   color: var(--cr-secondary-text-color);
   font-size: 1rem;
-  margin-bottom: 24px;
 }
 
-#learn-more a,
+.subtitle a,
 #dev-mode-disabled-message a {
   color: var(--cr-link-color);
   text-decoration: none;
 }
 
-#learn-more a:hover,
+.subtitle a:hover,
 #dev-mode-disabled-message a:hover {
   text-decoration: underline;
+}
+
+#learn-more {
+  margin-bottom: 32px;
 }
 
 #dev-mode-disabled-message {
@@ -50,7 +53,7 @@ h1 {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin-bottom: 16px;
+  margin-bottom: 8px;
 }
 
 h2 {
@@ -58,9 +61,14 @@ h2 {
   margin: 0;
 }
 
+#installed-apps-subtitle {
+  margin-top: 4px;
+}
+
 #iwa-list {
   display: flex;
   flex-direction: column;
+  padding-top: 8px;
 }
 
 #iwa-list-message:not(:empty) {

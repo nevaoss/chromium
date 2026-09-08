@@ -345,6 +345,8 @@ public class LocationBarCoordinator
             mLocationBarHolder = (ViewGroup) tabletLayout.getParent();
             tabletLayout.setHolderAndContainer(
                     mLocationBarHolder, mLocationBarEmbedder.getContainerView());
+            tabletLayout.setIsFullWidthExpansionAllowedSupplier(
+                    uiOverrides::isFullWidthExpansionAllowed);
         }
 
         View alignmentView = mLocationBarLayout.getAlignmentView();
@@ -366,7 +368,8 @@ public class LocationBarCoordinator
                         bottomWindowPaddingSupplier,
                         fuseboxStateSupplier,
                         fuseboxLayoutModeSupplier,
-                        topInsetProvider);
+                        topInsetProvider,
+                        uiOverrides::isFullWidthExpansionAllowed);
 
         mPageZoomIndicatorCoordinator =
                 pageZoomManager != null
@@ -1022,10 +1025,11 @@ public class LocationBarCoordinator
         mUrlCoordinator.setAllowFocus(focusable);
     }
 
-    private void onTextWrappingChanged(boolean isWrapping) {
+    /* package */ void onTextWrappingChanged(boolean isWrapping) {
         if (mFuseboxCoordinator != null) {
             mFuseboxCoordinator.onFuseboxTextWrappingChanged(isWrapping);
         }
+        mLocationBarMediator.setIsTextWrapping(isWrapping);
         mLocationBarMediator.updateButtonVisibility();
     }
 

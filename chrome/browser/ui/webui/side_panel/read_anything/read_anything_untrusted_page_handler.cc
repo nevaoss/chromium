@@ -31,7 +31,6 @@
 #include "chrome/browser/ui/read_anything/read_anything_controller.h"
 #include "chrome/browser/ui/read_anything/read_anything_enums.h"
 #include "chrome/browser/ui/read_anything/read_anything_prefs.h"
-#include "chrome/browser/ui/read_anything/read_anything_side_panel_controller.h"
 #include "chrome/browser/ui/tabs/public/tab_features.h"
 #include "chrome/browser/ui/toolbar/pinned_toolbar/pinned_toolbar_actions_model.h"
 #include "chrome/common/chrome_isolated_world_ids.h"
@@ -258,15 +257,13 @@ InstallationState GetInstallationStateFromStatusCode(
 #endif
 
 constexpr std::string_view kRendererLinkRequestHistogram =
-    "Accessibility.ReadAnything.RendererRequestForLinkClick.IsFromObservedTree";
+    "Accessibility.ReadAnything.RendererRequestForLinkClick.Result";
 constexpr std::string_view kRendererImageRequestHistogram =
-    "Accessibility.ReadAnything.RendererRequestForImageDataDownload."
-    "IsFromObservedTree";
+    "Accessibility.ReadAnything.RendererRequestForImageDataDownload.Result";
 constexpr std::string_view kRendererScrollRequestHistogram =
-    "Accessibility.ReadAnything.RendererRequestForScrollToTargetNode."
-    "IsFromObservedTree";
+    "Accessibility.ReadAnything.RendererRequestForScrollToTargetNode.Result";
 constexpr std::string_view kRendererSelectionRequestHistogram =
-    "Accessibility.ReadAnything.RendererRequestForSelection.IsFromObservedTree";
+    "Accessibility.ReadAnything.RendererRequestForSelection.Result";
 
 }  // namespace
 
@@ -461,13 +458,6 @@ ReadAnythingUntrustedPageHandler::~ReadAnythingUntrustedPageHandler() {
 
   if (read_anything_controller_) {
     read_anything_controller_->RemoveObserver(this);
-  }
-  if (side_panel_controller_) {
-    // If |this| is destroyed before the |ReadAnythingSidePanelController|, then
-    // remove |this| from the observer lists. In the cases where the coordinator
-    // is destroyed first, these will have been destroyed before this call.
-    side_panel_controller_->RemovePageHandlerAsObserver(
-        weak_factory_.GetWeakPtr());
   }
 
 #if BUILDFLAG(IS_CHROMEOS)
@@ -868,6 +858,24 @@ bool ReadAnythingUntrustedPageHandler::IsObservingTree(
   return pdf_rfh && rfh == pdf_rfh;
 }
 
+bool ReadAnythingUntrustedPageHandler::AreActionsAllowedInTree(
+    const ui::AXTreeID& tree_id) const {
+  content::RenderFrameHost* rfh =
+      content::RenderFrameHost::FromAXTreeID(tree_id);
+  if (!rfh) {
+    return false;
+  }
+
+  content::WebContents* contents = GetWebContents();
+  bool are_contents_pdf =
+      chrome_pdf::features::IsOopifPdfEnabled()
+          ? !!extensions::mime_handler::MimeHandlerStreamManager::
+                 FromWebContents(contents)
+          : !!pdf_observer_;
+
+  return are_contents_pdf || rfh->GetLastCommittedURL().SchemeIsHTTPOrHTTPS();
+}
+
 void ReadAnythingUntrustedPageHandler::OnLineSpaceChange(
     read_anything::mojom::LineSpacing line_spacing) {
   profile_->GetPrefs()->SetInteger(prefs::kAccessibilityReadAnythingLineSpacing,
@@ -1083,13 +1091,26 @@ void ReadAnythingUntrustedPageHandler::OnLinkClicked(
     return;
   }
 
-  bool is_observing_tree = IsObservingTree(target_tree_id);
-  base::UmaHistogramBoolean(kRendererLinkRequestHistogram, is_observing_tree);
-  if (!is_observing_tree) {
+  if (!IsObservingTree(target_tree_id)) {
+    base::UmaHistogramEnumeration(
+        kRendererLinkRequestHistogram,
+        ReadAnythingRendererRequestResult::kNotObservedTree);
     VLOG(1) << "Received link click request for tree_id " << target_tree_id
             << " which is not currently being observed";
     return;
   }
+
+  if (!AreActionsAllowedInTree(target_tree_id)) {
+    base::UmaHistogramEnumeration(
+        kRendererLinkRequestHistogram,
+        ReadAnythingRendererRequestResult::kDisallowedActionOnPageType);
+    VLOG(1) << "Ignoring link click on non-HTTP/HTTPS frame";
+    return;
+  }
+
+  base::UmaHistogramEnumeration(kRendererLinkRequestHistogram,
+                                ReadAnythingRendererRequestResult::kAllowed);
+
   if (!ui::IsValidAXNodeIDFromRenderer(target_node_id)) {
     VLOG(1) << "Received link click request with invalid target_node_id "
             << target_node_id;
@@ -1106,18 +1127,32 @@ void ReadAnythingUntrustedPageHandler::OnLinkClicked(
 void ReadAnythingUntrustedPageHandler::OnImageDataRequested(
     const ui::AXTreeID& target_tree_id,
     ui::AXNodeID target_node_id) {
-  bool is_observing_tree = IsObservingTree(target_tree_id);
-  base::UmaHistogramBoolean(kRendererImageRequestHistogram, is_observing_tree);
-  if (!is_observing_tree) {
+  if (!IsObservingTree(target_tree_id)) {
+    base::UmaHistogramEnumeration(
+        kRendererImageRequestHistogram,
+        ReadAnythingRendererRequestResult::kNotObservedTree);
     VLOG(1) << "Received image data request for tree_id " << target_tree_id
             << " which is not currently being observed";
     return;
   }
+
+  if (!AreActionsAllowedInTree(target_tree_id)) {
+    base::UmaHistogramEnumeration(
+        kRendererImageRequestHistogram,
+        ReadAnythingRendererRequestResult::kDisallowedActionOnPageType);
+    VLOG(1) << "Ignoring image data request on non-HTTP/HTTPS frame";
+    return;
+  }
+
+  base::UmaHistogramEnumeration(kRendererImageRequestHistogram,
+                                ReadAnythingRendererRequestResult::kAllowed);
+
   if (!ui::IsValidAXNodeIDFromRenderer(target_node_id)) {
     VLOG(1) << "Received image data request with invalid target_node_id "
             << target_node_id;
     return;
   }
+
   main_observer_->web_contents()->DownloadImageFromAxNode(
       target_tree_id, target_node_id,
       /*preferred_size=*/gfx::Size(),
@@ -1161,13 +1196,17 @@ void ReadAnythingUntrustedPageHandler::OnImageDataDownloaded(
 void ReadAnythingUntrustedPageHandler::ScrollToTargetNode(
     const ui::AXTreeID& target_tree_id,
     ui::AXNodeID target_node_id) {
-  bool is_observing_tree = IsObservingTree(target_tree_id);
-  base::UmaHistogramBoolean(kRendererScrollRequestHistogram, is_observing_tree);
-  if (!is_observing_tree) {
+  if (!IsObservingTree(target_tree_id)) {
+    base::UmaHistogramEnumeration(
+        kRendererScrollRequestHistogram,
+        ReadAnythingRendererRequestResult::kNotObservedTree);
     VLOG(1) << "Received scroll request for tree_id " << target_tree_id
             << " which is not currently being observed";
     return;
   }
+
+  base::UmaHistogramEnumeration(kRendererScrollRequestHistogram,
+                                ReadAnythingRendererRequestResult::kAllowed);
   if (!ui::IsValidAXNodeIDFromRenderer(target_node_id)) {
     VLOG(1) << "Received scroll request with invalid target_node_id "
             << target_node_id;
@@ -1265,14 +1304,25 @@ void ReadAnythingUntrustedPageHandler::OnSelectionChange(
     return;
   }
 
-  bool is_observing_tree = IsObservingTree(target_tree_id);
-  base::UmaHistogramBoolean(kRendererSelectionRequestHistogram,
-                            is_observing_tree);
-  if (!is_observing_tree) {
+  if (!IsObservingTree(target_tree_id)) {
+    base::UmaHistogramEnumeration(
+        kRendererSelectionRequestHistogram,
+        ReadAnythingRendererRequestResult::kNotObservedTree);
     VLOG(1) << "Received selection request for tree_id " << target_tree_id
             << " which is not currently being observed";
     return;
   }
+
+  if (!AreActionsAllowedInTree(target_tree_id)) {
+    base::UmaHistogramEnumeration(
+        kRendererSelectionRequestHistogram,
+        ReadAnythingRendererRequestResult::kDisallowedActionOnPageType);
+    VLOG(1) << "Ignoring selection change on non-HTTP/HTTPS frame";
+    return;
+  }
+
+  base::UmaHistogramEnumeration(kRendererSelectionRequestHistogram,
+                                ReadAnythingRendererRequestResult::kAllowed);
   if (!ui::IsValidAXNodeIDFromRenderer(anchor_node_id)) {
     VLOG(1) << "Received selection request with invalid anchor_node_id "
             << anchor_node_id;
@@ -1438,7 +1488,6 @@ void ReadAnythingUntrustedPageHandler::OnTabDiscarded(
 }
 
 void ReadAnythingUntrustedPageHandler::OnDestroyed() {
-  side_panel_controller_ = nullptr;
   read_anything_controller_ = nullptr;
 }
 
