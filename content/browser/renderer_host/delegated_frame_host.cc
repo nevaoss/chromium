@@ -800,7 +800,4 @@ void DelegatedFrameHost::SuspendCompositorDrawing() {
 }
 #endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
 
-void DelegatedFrameHost::SetEvictOnHide(bool evict_on_hide) {
-  frame_evictor_->SetEvictOnHide(evict_on_hide);
-}
 }  // namespace content
