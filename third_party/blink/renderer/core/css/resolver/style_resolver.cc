@@ -1087,15 +1087,12 @@ void StyleResolver::SetZoomedInitialLineWidths(float zoom,
       ComputedStyleInitialValues::InitialBorderLeftWidth() * zoom));
   builder.SetOutlineWidth(StyleBuilderConverter::ClampLineWidth(
       ComputedStyleInitialValues::InitialOutlineWidth() * zoom));
-  builder.SetColumnRuleWidthInternal(
-      GapDataList<int>(StyleBuilderConverter::ClampLineWidth(
-          ComputedStyleInitialValues::InitialColumnRuleWidth()
-              .GetLegacyValue() *
-          zoom)));
-  builder.SetRowRuleWidthInternal(
-      GapDataList<int>(StyleBuilderConverter::ClampLineWidth(
-          ComputedStyleInitialValues::InitialRowRuleWidth().GetLegacyValue() *
-          zoom)));
+  const int initial_gap_rule_width =
+      ComputedStyleInitialValues::InitialGapRuleWidth();
+  builder.SetColumnRuleWidthInternal(GapDataList<int>(
+      StyleBuilderConverter::ClampLineWidth(initial_gap_rule_width * zoom)));
+  builder.SetRowRuleWidthInternal(GapDataList<int>(
+      StyleBuilderConverter::ClampLineWidth(initial_gap_rule_width * zoom)));
 }
 
 template <typename Functor>
@@ -2476,8 +2473,7 @@ StyleResolver::CascadedValuesForElement(Element* element, PseudoId pseudo_id) {
 
 Element* StyleResolver::FindContainerForElement(
     Element* element,
-    const ContainerSelector& container_selector,
-    const TreeScope* selector_tree_scope) {
+    const ContainerSelector& container_selector) {
   CHECK(element);
   Element* start_candidate = FlatTreeTraversal::ParentElement(*element);
   if (PseudoElement* pseudo_element = DynamicTo<PseudoElement>(element)) {
@@ -2487,8 +2483,8 @@ Element* StyleResolver::FindContainerForElement(
       start_candidate = FlatTreeTraversal::ParentElement(*start_candidate);
     }
   }
-  return ContainerQueryEvaluator::FindContainer(
-      start_candidate, container_selector, selector_tree_scope);
+  return ContainerQueryEvaluator::FindContainer(start_candidate,
+                                                container_selector);
 }
 
 RuleIndexList* StyleResolver::PseudoCSSRulesForElement(

@@ -62,11 +62,14 @@ import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.settings.SettingsInTab;
 import org.chromium.chrome.browser.settings.SettingsNavigationFactory;
 import org.chromium.chrome.browser.tabmodel.SettableLookAheadObservableSupplier;
+import org.chromium.chrome.browser.ui.native_page.BeforeUnloadCallback;
 import org.chromium.chrome.browser.ui.native_page.NativePage;
 import org.chromium.components.autofill.AndroidAutofillFeatures;
 import org.chromium.components.autofill.AutofillProvider;
 import org.chromium.components.autofill.AutofillProviderJni;
 import org.chromium.components.browser_ui.settings.SettingsNavigation;
+import org.chromium.components.browser_ui.site_settings.WebsitePreferenceBridge;
+import org.chromium.components.browser_ui.site_settings.WebsitePreferenceBridgeJni;
 import org.chromium.components.prefs.PrefService;
 import org.chromium.components.security_state.ConnectionSecurityLevel;
 import org.chromium.components.security_state.SecurityStateModel;
@@ -75,6 +78,8 @@ import org.chromium.components.tabs.DetachReason;
 import org.chromium.components.user_prefs.UserPrefs;
 import org.chromium.components.user_prefs.UserPrefsJni;
 import org.chromium.content.browser.selection.SelectionPopupControllerImpl;
+import org.chromium.content_public.browser.LoadUrlParams;
+import org.chromium.content_public.browser.NavigationController;
 import org.chromium.content_public.browser.WebContents;
 import org.chromium.content_public.browser.WebContentsObserver;
 import org.chromium.ui.base.WindowAndroid;
@@ -84,7 +89,6 @@ import java.lang.ref.WeakReference;
 
 /** Tests for {@link Tab}. */
 @RunWith(BaseRobolectricTestRunner.class)
-@Config(manifest = Config.NONE)
 public class TabUnitTest {
     private static final int TAB1_ID = 456;
     private static final int TAB2_ID = 789;
@@ -93,7 +97,7 @@ public class TabUnitTest {
     @Mock private AutofillProvider mAutofillProvider;
     @Mock private Profile mProfile;
     @Mock private WindowAndroid mWindowAndroid;
-    @Mock private EmptyTabObserver mObserver;
+    @Mock private TabObserver mObserver;
     @Mock private Context mContext;
     @Mock private WeakReference<Context> mWeakReferenceContext;
     @Mock private WeakReference<Activity> mWeakReferenceActivity;
@@ -105,6 +109,8 @@ public class TabUnitTest {
     @Mock(extraInterfaces = {WebContentsObserver.Observable.class})
     private WebContents mWebContents;
 
+    @Mock private NavigationController mNavigationController;
+
     @Mock private View mNativePageView;
     @Mock private ChromeActivity mChromeActivity;
     @Mock private UserPrefs.Natives mUserPrefsNatives;
@@ -113,6 +119,7 @@ public class TabUnitTest {
     @Mock TabImpl.Natives mNativeMock;
     @Mock private SecurityStateModel.Natives mSecurityStateModelNatives;
     @Mock private SelectionPopupControllerImpl mSelectionPopupController;
+    @Mock private WebsitePreferenceBridge.Natives mWebsitePreferenceBridgeJniMock;
     @Captor private ArgumentCaptor<Callback<Tab>> mCallbackCaptor;
 
     private final SettableLookAheadObservableSupplier<Tab> mTabSupplier =
@@ -131,13 +138,14 @@ public class TabUnitTest {
         UserPrefsJni.setInstanceForTesting(mUserPrefsNatives);
         SecurityStateModelJni.setInstanceForTesting(mSecurityStateModelNatives);
         AutofillProviderJni.setInstanceForTesting(mAutofillProviderNatives);
+        WebsitePreferenceBridgeJni.setInstanceForTesting(mWebsitePreferenceBridgeJniMock);
+        TabImplJni.setInstanceForTesting(mNativeMock);
         when(mUserPrefsNatives.get(mProfile)).thenReturn(mPrefs);
         when(mWebContents.getOrSetUserData(eq(SelectionPopupControllerImpl.class), any()))
                 .thenReturn(mSelectionPopupController);
 
         mTab =
-                new TabImpl(
-                        TAB1_ID, mProfile, TabLaunchType.FROM_CHROME_UI, /* isArchived= */ false) {
+                new TabImpl(TAB1_ID, mProfile, TabLaunchType.FROM_CHROME_UI) {
                     @Override
                     public boolean isInitialized() {
                         return true;
@@ -389,8 +397,7 @@ public class TabUnitTest {
         doReturn(mChromeActivity).when(mWeakReferenceContext).get();
 
         mTab =
-                new TabImpl(
-                        TAB1_ID, mProfile, TabLaunchType.FROM_CHROME_UI, /* isArchived= */ false) {
+                new TabImpl(TAB1_ID, mProfile, TabLaunchType.FROM_CHROME_UI) {
                     @Override
                     public WindowAndroid getWindowAndroid() {
                         return mWindowAndroid;
@@ -478,8 +485,7 @@ public class TabUnitTest {
         when(mPrefs.getBoolean(TabImpl.AUTOFILL_PREF_USES_VIRTUAL_STRUCTURE)).thenReturn(false);
 
         TabImpl tab =
-                new TabImpl(
-                        TAB1_ID, mProfile, TabLaunchType.FROM_RESTORE, /* isArchived= */ false) {
+                new TabImpl(TAB1_ID, mProfile, TabLaunchType.FROM_RESTORE) {
                     @Override
                     public boolean isInitialized() {
                         return true;
@@ -536,8 +542,7 @@ public class TabUnitTest {
         when(mPrefs.getBoolean(TabImpl.AUTOFILL_PREF_USES_VIRTUAL_STRUCTURE)).thenReturn(true);
 
         TabImpl tab =
-                new TabImpl(
-                        TAB1_ID, mProfile, TabLaunchType.FROM_RESTORE, /* isArchived= */ false) {
+                new TabImpl(TAB1_ID, mProfile, TabLaunchType.FROM_RESTORE) {
                     @Override
                     public boolean isInitialized() {
                         return true;
@@ -581,8 +586,7 @@ public class TabUnitTest {
         when(mPrefs.getBoolean(TabImpl.AUTOFILL_PREF_USES_VIRTUAL_STRUCTURE)).thenReturn(true);
 
         TabImpl tab =
-                new TabImpl(
-                        TAB1_ID, mProfile, TabLaunchType.FROM_CHROME_UI, /* isArchived= */ false) {
+                new TabImpl(TAB1_ID, mProfile, TabLaunchType.FROM_CHROME_UI) {
                     @Override
                     public boolean isInitialized() {
                         return true;
@@ -595,7 +599,7 @@ public class TabUnitTest {
     @Test
     @SmallTest
     public void testDefaultInvalidTimestamp() {
-        Tab tab = new TabImpl(1, mProfile, TabLaunchType.FROM_LINK, /* isArchived= */ false);
+        Tab tab = new TabImpl(1, mProfile, TabLaunchType.FROM_LINK);
         assertThat(tab.getTimestampMillis(), equalTo(TabImpl.INVALID_TIMESTAMP));
     }
 
@@ -605,8 +609,7 @@ public class TabUnitTest {
         when(mSecurityStateModelNatives.getSecurityLevelForWebContents(mWebContents))
                 .thenReturn(ConnectionSecurityLevel.NONE);
         TabImpl tab =
-                new TabImpl(
-                        TAB1_ID, mProfile, TabLaunchType.FROM_CHROME_UI, /* isArchived= */ false) {
+                new TabImpl(TAB1_ID, mProfile, TabLaunchType.FROM_CHROME_UI) {
                     @Override
                     public boolean isInitialized() {
                         return true;
@@ -633,8 +636,7 @@ public class TabUnitTest {
         when(mSecurityStateModelNatives.getSecurityLevelForWebContents(mWebContents))
                 .thenReturn(ConnectionSecurityLevel.NONE);
         TabImpl tab =
-                new TabImpl(
-                        TAB1_ID, mProfile, TabLaunchType.FROM_CHROME_UI, /* isArchived= */ false) {
+                new TabImpl(TAB1_ID, mProfile, TabLaunchType.FROM_CHROME_UI) {
                     @Override
                     public boolean isInitialized() {
                         return true;
@@ -670,8 +672,7 @@ public class TabUnitTest {
                 .thenReturn(ConnectionSecurityLevel.NONE);
         when(mWebContents.getThemeColor()).thenReturn(Color.RED);
         TabImpl tab =
-                new TabImpl(
-                        TAB1_ID, mProfile, TabLaunchType.FROM_CHROME_UI, /* isArchived= */ false) {
+                new TabImpl(TAB1_ID, mProfile, TabLaunchType.FROM_CHROME_UI) {
                     @Override
                     public boolean isInitialized() {
                         return true;
@@ -730,8 +731,7 @@ public class TabUnitTest {
     public void testStopOffscreenRendering_DestroyedWindow_PassesNullToWebContents() {
         TabImplJni.setInstanceForTesting(mNativeMock);
         TabImpl tab =
-                new TabImpl(
-                        TAB1_ID, mProfile, TabLaunchType.FROM_CHROME_UI, /* isArchived= */ false) {
+                new TabImpl(TAB1_ID, mProfile, TabLaunchType.FROM_CHROME_UI) {
                     @Override
                     public boolean isInitialized() {
                         return true;
@@ -758,8 +758,7 @@ public class TabUnitTest {
     public void testStopOffscreenRendering_ValidWindow_PassesWindowToWebContents() {
         TabImplJni.setInstanceForTesting(mNativeMock);
         TabImpl tab =
-                new TabImpl(
-                        TAB1_ID, mProfile, TabLaunchType.FROM_CHROME_UI, /* isArchived= */ false) {
+                new TabImpl(TAB1_ID, mProfile, TabLaunchType.FROM_CHROME_UI) {
                     @Override
                     public boolean isInitialized() {
                         return true;
@@ -791,8 +790,7 @@ public class TabUnitTest {
         when(mProfile.isOffTheRecord()).thenReturn(true);
 
         TabImpl tab =
-                new TabImpl(
-                        TAB1_ID, mProfile, TabLaunchType.FROM_CHROME_UI, /* isArchived= */ false) {
+                new TabImpl(TAB1_ID, mProfile, TabLaunchType.FROM_CHROME_UI) {
                     @Override
                     public boolean isInitialized() {
                         return true;
@@ -820,8 +818,7 @@ public class TabUnitTest {
         when(mProfile.isOffTheRecord()).thenReturn(false);
 
         TabImpl tab =
-                new TabImpl(
-                        TAB1_ID, mProfile, TabLaunchType.FROM_CHROME_UI, /* isArchived= */ false) {
+                new TabImpl(TAB1_ID, mProfile, TabLaunchType.FROM_CHROME_UI) {
                     @Override
                     public boolean isInitialized() {
                         return true;
@@ -847,8 +844,7 @@ public class TabUnitTest {
         when(frozenNativePage.getUrl()).thenReturn("chrome://history");
 
         mTab =
-                new TabImpl(
-                        TAB1_ID, mProfile, TabLaunchType.FROM_CHROME_UI, /* isArchived= */ false) {
+                new TabImpl(TAB1_ID, mProfile, TabLaunchType.FROM_CHROME_UI) {
                     private NativePage mCurrentNativePage = frozenNativePage;
 
                     @Override
@@ -910,5 +906,147 @@ public class TabUnitTest {
                 /* isPdf= */ false,
                 /* isRendererInitiated= */ false,
                 /* initiatorOrigin= */ null);
+    }
+
+    @Test
+    @SmallTest
+    public void testLoadUrl_BeforeUnloadCallback_Cancelled() {
+        mTab.setNativePtrForTesting(1);
+        BeforeUnloadCallback callback =
+                (onProceed, onCancel) -> {
+                    onCancel.run();
+                    return true;
+                };
+        mTab.getUserDataHost().setUserData(BeforeUnloadCallback.class, callback);
+
+        LoadUrlParams params = new LoadUrlParams("https://www.google.com");
+        mTab.loadUrl(params);
+
+        verify(mObserver, never()).onLoadUrl(any(), any(), any());
+    }
+
+    @Test
+    @SmallTest
+    public void testLoadUrl_BeforeUnloadCallback_Proceeded() {
+        mTab.setNativePtrForTesting(1);
+        when(mWebContents.getNavigationController()).thenReturn(mNavigationController);
+        when(mWebContents.getTopLevelNativeWindow()).thenReturn(mWindowAndroid);
+        mTab.setWebContentsForTesting(mWebContents);
+        mTab.updateAttachment(mWindowAndroid, mDelegateFactory);
+
+        BeforeUnloadCallback callback =
+                (onProceed, onCancel) -> {
+                    onProceed.run();
+                    return true;
+                };
+        mTab.getUserDataHost().setUserData(BeforeUnloadCallback.class, callback);
+
+        LoadUrlParams params = new LoadUrlParams("https://www.google.com");
+        mTab.loadUrl(params);
+
+        verify(mNavigationController).loadUrl(any());
+        verify(mObserver).onLoadUrl(eq(mTab), eq(params), any());
+    }
+
+    @Test
+    @SmallTest
+    public void testGoBack_BeforeUnloadCallback_Cancelled() {
+        when(mNavigationController.canGoBack()).thenReturn(true);
+        when(mWebContents.getNavigationController()).thenReturn(mNavigationController);
+        mTab.setWebContentsForTesting(mWebContents);
+
+        BeforeUnloadCallback callback =
+                (onProceed, onCancel) -> {
+                    onCancel.run();
+                    return true;
+                };
+        mTab.getUserDataHost().setUserData(BeforeUnloadCallback.class, callback);
+
+        mTab.goBack();
+        verify(mNavigationController, never()).goBack();
+    }
+
+    @Test
+    @SmallTest
+    public void testGoBack_BeforeUnloadCallback_Proceeded() {
+        when(mNavigationController.canGoBack()).thenReturn(true);
+        when(mWebContents.getNavigationController()).thenReturn(mNavigationController);
+        mTab.setWebContentsForTesting(mWebContents);
+
+        BeforeUnloadCallback callback =
+                (onProceed, onCancel) -> {
+                    onProceed.run();
+                    return true;
+                };
+        mTab.getUserDataHost().setUserData(BeforeUnloadCallback.class, callback);
+
+        mTab.goBack();
+        verify(mNavigationController).goBack();
+    }
+
+    @Test
+    @SmallTest
+    public void testGoBack_CannotGoBack_BeforeUnloadNotTriggered() {
+        when(mNavigationController.canGoBack()).thenReturn(false);
+        when(mWebContents.getNavigationController()).thenReturn(mNavigationController);
+        mTab.setWebContentsForTesting(mWebContents);
+
+        BeforeUnloadCallback callback = mock(BeforeUnloadCallback.class);
+        mTab.getUserDataHost().setUserData(BeforeUnloadCallback.class, callback);
+
+        mTab.goBack();
+        verify(callback, never()).handleBeforeUnload(any(), any());
+        verify(mNavigationController, never()).goBack();
+    }
+
+    @Test
+    @SmallTest
+    public void testGoForward_BeforeUnloadCallback_Cancelled() {
+        when(mNavigationController.canGoForward()).thenReturn(true);
+        when(mWebContents.getNavigationController()).thenReturn(mNavigationController);
+        mTab.setWebContentsForTesting(mWebContents);
+
+        BeforeUnloadCallback callback =
+                (onProceed, onCancel) -> {
+                    onCancel.run();
+                    return true;
+                };
+        mTab.getUserDataHost().setUserData(BeforeUnloadCallback.class, callback);
+
+        mTab.goForward();
+        verify(mNavigationController, never()).goForward();
+    }
+
+    @Test
+    @SmallTest
+    public void testGoForward_BeforeUnloadCallback_Proceeded() {
+        when(mNavigationController.canGoForward()).thenReturn(true);
+        when(mWebContents.getNavigationController()).thenReturn(mNavigationController);
+        mTab.setWebContentsForTesting(mWebContents);
+
+        BeforeUnloadCallback callback =
+                (onProceed, onCancel) -> {
+                    onProceed.run();
+                    return true;
+                };
+        mTab.getUserDataHost().setUserData(BeforeUnloadCallback.class, callback);
+
+        mTab.goForward();
+        verify(mNavigationController).goForward();
+    }
+
+    @Test
+    @SmallTest
+    public void testGoForward_CannotGoForward_BeforeUnloadNotTriggered() {
+        when(mNavigationController.canGoForward()).thenReturn(false);
+        when(mWebContents.getNavigationController()).thenReturn(mNavigationController);
+        mTab.setWebContentsForTesting(mWebContents);
+
+        BeforeUnloadCallback callback = mock(BeforeUnloadCallback.class);
+        mTab.getUserDataHost().setUserData(BeforeUnloadCallback.class, callback);
+
+        mTab.goForward();
+        verify(callback, never()).handleBeforeUnload(any(), any());
+        verify(mNavigationController, never()).goForward();
     }
 }

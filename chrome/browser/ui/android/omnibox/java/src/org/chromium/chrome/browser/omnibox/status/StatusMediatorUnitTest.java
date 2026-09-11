@@ -100,7 +100,6 @@ import org.chromium.url.JUnitTestGURLs;
 
 /** Unit tests for {@link StatusMediator}. */
 @RunWith(BaseRobolectricTestRunner.class)
-@Config(manifest = Config.NONE)
 public final class StatusMediatorUnitTest {
     private static final String TAG = "StatusMediatorUnitTest";
     private static final int CURRENT_TAB_ID = 5;
@@ -182,6 +181,9 @@ public final class StatusMediatorUnitTest {
         doReturn(AutocompleteInput.AutocompleteState.ENABLED)
                 .when(mAutocompleteInput)
                 .getAutocompleteState();
+        doReturn(mTab).when(mLocationBarDataProvider).getTab();
+        doReturn(mWebContents).when(mTab).getWebContents();
+        doReturn(mNavigationController).when(mWebContents).getNavigationController();
 
         mContext =
                 new ContextThemeWrapper(
@@ -217,6 +219,10 @@ public final class StatusMediatorUnitTest {
 
     private int getModelIconID() {
         return mModel.get(StatusProperties.STATUS_ICON_RESOURCE).getIconRes();
+    }
+
+    private void assertModelIconResId(int resId) {
+        assertEquals(resId, mModel.get(StatusProperties.STATUS_ICON_RESOURCE).getIconRes());
     }
 
     @Test
@@ -1409,6 +1415,71 @@ public final class StatusMediatorUnitTest {
 
         assertNull(mModel.get(StatusProperties.STATUS_CLICK_LISTENER));
         assertFalse(mModel.get(StatusProperties.STATUS_VIEW_HOVER_ENABLED));
+    }
+
+    @Test
+    @SmallTest
+    public void statusIcon_blankWhenPendingHttpNavigation() {
+        mMediator.updateSecurityIcon(R.drawable.ic_settings_tune_24dp, 0, 0);
+
+        assertModelIconResId(R.drawable.ic_settings_tune_24dp);
+
+        doReturn(mNavigationEntry).when(mNavigationController).getPendingEntry();
+        doReturn(JUnitTestGURLs.BLUE_1).when(mNavigationEntry).getUrl();
+        mMediator.updateSecurityIcon(R.drawable.ic_info_24dp, 0, 0);
+
+        assertNull(mModel.get(StatusProperties.STATUS_ICON_RESOURCE));
+
+        doReturn(null).when(mNavigationController).getPendingEntry();
+        mMediator.updateSecurityIcon(R.drawable.ic_info_24dp, 0, 0);
+
+        assertModelIconResId(R.drawable.ic_info_24dp);
+    }
+
+    @Test
+    @SmallTest
+    @DisableFeatures(OmniboxFeatureList.SUPPRESS_STATUS_ICON_DURING_HTTP_NAVIGATION)
+    public void statusIcon_notBlankWhenPendingHttpNavigation_killSwitch() {
+        mMediator.updateSecurityIcon(R.drawable.ic_settings_tune_24dp, 0, 0);
+
+        assertModelIconResId(R.drawable.ic_settings_tune_24dp);
+
+        doReturn(mNavigationEntry).when(mNavigationController).getPendingEntry();
+        doReturn(JUnitTestGURLs.BLUE_1).when(mNavigationEntry).getUrl();
+        mMediator.updateSecurityIcon(R.drawable.ic_info_24dp, 0, 0);
+
+        assertModelIconResId(R.drawable.ic_info_24dp);
+    }
+
+    @Test
+    @SmallTest
+    public void statusIcon_infoIconWhenPendingNonHttpNavigation() {
+        mMediator.updateSecurityIcon(R.drawable.ic_settings_tune_24dp, 0, 0);
+
+        assertModelIconResId(R.drawable.ic_settings_tune_24dp);
+
+        doReturn(mNavigationEntry).when(mNavigationController).getPendingEntry();
+        doReturn(JUnitTestGURLs.CHROME_ABOUT).when(mNavigationEntry).getUrl();
+        mMediator.updateSecurityIcon(R.drawable.ic_info_24dp, 0, 0);
+
+        assertModelIconResId(R.drawable.ic_info_24dp);
+
+        doReturn(null).when(mNavigationController).getPendingEntry();
+        mMediator.updateSecurityIcon(R.drawable.ic_info_24dp, 0, 0);
+
+        assertModelIconResId(R.drawable.ic_info_24dp);
+    }
+
+    @Test
+    @SmallTest
+    public void statusIcon_searchEngineIconShownWhenPendingNavigationToNtp() {
+        doReturn(true).when(mNewTabPageDelegate).isCurrentlyVisible();
+        doReturn(JUnitTestGURLs.NTP_URL).when(mNavigationEntry).getUrl();
+        doReturn(mNavigationEntry).when(mNavigationController).getPendingEntry();
+        mMediator.updateLocationBarIcon(IconTransitionType.CROSSFADE);
+        assertEquals(
+                R.drawable.ic_logo_googleg_20dp,
+                mModel.get(StatusProperties.STATUS_ICON_RESOURCE).getIconRes());
     }
 
     private void setDisplayState(@DisplayState int state) {

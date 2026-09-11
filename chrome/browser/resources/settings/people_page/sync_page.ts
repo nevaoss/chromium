@@ -65,8 +65,6 @@ import {getHtml} from './sync_page.html.js';
 const SettingsSyncPageElementBase =
     SettingsViewMixinLit(WebUiListenerMixinLit(I18nMixinLit(CrLitElement)));
 
-export type SyncPageElement = SettingsSyncPageElement;
-
 export class SettingsSyncPageElement extends SettingsSyncPageElementBase {
   static get is() {
     return 'settings-sync-page';
@@ -158,8 +156,7 @@ export class SettingsSyncPageElement extends SettingsSyncPageElementBase {
 
   protected accessor enterPassphraseLabel_: TrustedHTML =
       window.trustedTypes!.emptyHTML;
-  protected accessor existingPassphraseLabel_: TrustedHTML =
-      window.trustedTypes!.emptyHTML;
+  protected accessor existingPassphraseLabel_: string = '';
 
   private metricsBrowserProxy_: MetricsBrowserProxy =
       MetricsBrowserProxyImpl.getInstance();
@@ -514,18 +511,18 @@ export class SettingsSyncPageElement extends SettingsSyncPageElementBase {
     });
   }
 
-  private computeExistingPassphraseLabel_(): TrustedHTML {
+  private computeExistingPassphraseLabel_(): string {
     if (!this.syncPrefs || !this.syncPrefs.encryptAllData) {
-      return window.trustedTypes!.emptyHTML;
+      return '';
     }
 
     if (!this.syncPrefs.explicitPassphraseTime) {
-      return this.i18nAdvanced('existingPassphraseLabel');
+      return this.i18n('existingPassphraseLabel');
     }
 
-    return this.i18nAdvanced('existingPassphraseLabelWithDate', {
-      substitutions: [this.syncPrefs.explicitPassphraseTime],
-    });
+    return this.i18n(
+        'existingPassphraseLabelWithDate',
+        this.syncPrefs.explicitPassphraseTime);
   }
 
   /**

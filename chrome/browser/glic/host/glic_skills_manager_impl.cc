@@ -372,6 +372,16 @@ void GlicSkillsClientSession::UpdateSkill(mojom::UpdateSkillRequestPtr request,
           manager_->profile())) {
     return;
   }
+
+  if (base::FeatureList::IsEnabled(features::kSkillsWebViewV2Enabled)) {
+    skills::Skill skill;
+    skill.id = request->id;
+    manager_->LaunchSkillsDialog(manager_->profile(), std::move(skill),
+                                 skills::mojom::SkillsDialogType::kEdit,
+                                 std::move(scoped_callback));
+    return;
+  }
+
   if (!skills_service_) {
     return;
   }
@@ -536,6 +546,13 @@ void GlicSkillsClientSession::NotifyContextualSkillsChanged(
 
 void GlicSkillsClientSession::OnSkillsEnabledChanged(bool enabled) {
   if (client_) {
+    if (enabled) {
+      UpdateSkillPreviews(std::nullopt);
+      client_->NotifySkillPreviewsChanged(GetSkillPreviewsList());
+    } else {
+      client_->NotifySkillPreviewsChanged({});
+      client_->NotifyContextualSkillPreviewsChanged({});
+    }
     client_->NotifySkillsEnabledChanged(enabled);
   }
 }

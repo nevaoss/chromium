@@ -11,6 +11,7 @@
 #include "base/time/time.h"
 #include "base/timer/timer.h"
 #include "chrome/browser/glic/host/glic.mojom.h"
+#include "chrome/browser/glic/host/glic_webui.mojom.h"
 #include "components/signin/public/identity_manager/identity_manager.h"
 
 class Profile;
@@ -121,6 +122,8 @@ class AuthController : public signin::IdentityManager::Observer {
       bool sync_success);
   void RecordSyncResult(GlicCookieSyncTrigger trigger, bool success);
   void MaybeSyncCookiesOnError();
+  void MaybeSetNeedsSync();
+  bool ShouldSyncCookiesDelayed();
 
   raw_ptr<Profile> profile_;
   raw_ptr<signin::IdentityManager> identity_manager_;

@@ -21,7 +21,6 @@
 #include "base/timer/timer.h"
 #include "build/build_config.h"
 #include "chrome/browser/ui/bookmarks/bookmark_bar_controller.h"
-#include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/immersive/immersive_mode_controller.h"
 #include "chrome/browser/ui/tabs/organizer/organizer_panel_state_controller.h"
@@ -74,7 +73,7 @@
 class AccessibilityFocusHighlight;
 class BookmarkBarController;
 class BookmarkBarView;
-class Browser;
+class BrowserWindowInterface;
 class BrowserViewLayout;
 class ContentsContainerView;
 struct DropData;
@@ -86,6 +85,7 @@ class MultiContentsView;
 class OrganizerPanelView;
 class ScrimView;
 class SidePanel;
+class SidePanelAnimationContentView;
 class TabDragTarget;
 class TabSearchBubbleHost;
 class TabStrip;
@@ -115,6 +115,7 @@ enum class Channel;
 }
 
 namespace views {
+class LabelButton;
 class WebView;
 }  // namespace views
 
@@ -144,7 +145,7 @@ class BrowserView : public BrowserWindow,
   // locate this object using just the handle.
   static constexpr char kBrowserViewKey[] = "__BROWSER_VIEW__";
 
-  explicit BrowserView(Browser* browser);
+  explicit BrowserView(BrowserWindowInterface* browser);
   BrowserView(const BrowserView&) = delete;
   BrowserView& operator=(const BrowserView&) = delete;
   ~BrowserView() override;
@@ -177,9 +178,9 @@ class BrowserView : public BrowserWindow,
 
   bool IsLoadingAnimationRunning() const;
 
-  // Returns a Browser instance of this view.
-  Browser* browser() { return browser_; }
-  const Browser* browser() const { return browser_; }
+  // Returns a BrowserWindowInterface instance of this view.
+  BrowserWindowInterface* browser() { return browser_; }
+  const BrowserWindowInterface* browser() const { return browser_; }
 
   Profile* GetProfile() const;
 
@@ -207,9 +208,10 @@ class BrowserView : public BrowserWindow,
   // handled by BrowserViewLayout. Used when opening the side panel using
   // SidePanelUI::ShowFrom which animates the side panel content from provided
   // bounds.
-  void SetSidePanelAnimationContent(views::View* content);
+  SidePanelAnimationContentView* SetSidePanelAnimationContent(
+      std::unique_ptr<SidePanelAnimationContentView> content);
   // Returns side panel content if it is currently parented to the BrowserView.
-  views::View* GetSidePanelAnimationContent();
+  SidePanelAnimationContentView* GetSidePanelAnimationContent();
 
   // Returns all the ContentsContainerViews that belong to this browser.
   std::vector<raw_ptr<ContentsContainerView, DanglingUntriaged>>
@@ -1075,8 +1077,8 @@ class BrowserView : public BrowserWindow,
   // The BrowserWidget that owns this view.
   std::unique_ptr<BrowserWidget> browser_widget_;
 
-  // The owning Browser object. `browser_` will outlive this.
-  const raw_ptr<Browser> browser_;
+  // The owning BrowserWindowInterface object. `browser_` will outlive this.
+  const raw_ptr<BrowserWindowInterface> browser_;
 
   base::CallbackListSubscription chip_visibility_subscription_;
 
@@ -1230,6 +1232,7 @@ class BrowserView : public BrowserWindow,
   // This is currently not used on macOS where the platform draws a native
   // scrim for window modals (NSWindow sheet).
   raw_ptr<ScrimView> window_scrim_view_ = nullptr;
+  raw_ptr<ScrimView> side_panel_content_transition_scrim_view_ = nullptr;
 
   // Anchor point for help bubbles and other dialogs that want to reliably
   // anchor outside the content area of the window.

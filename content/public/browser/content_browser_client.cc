@@ -702,6 +702,12 @@ void ContentBrowserClient::PrewarmServiceWorkerRegistrationForDSE(
     BrowserContext* browser_context,
     ServiceWorkerContext& service_worker_context) {}
 
+blink::mojom::ScriptInjectionPolicy
+ContentBrowserClient::GetScriptInjectionPolicy(BrowserContext* browser_context,
+                                               const GURL& url) {
+  return blink::mojom::ScriptInjectionPolicy::kNone;
+}
+
 bool ContentBrowserClient::CanSendSCTAuditingReport(
     BrowserContext* browser_context) {
   return false;
@@ -1158,6 +1164,7 @@ bool ContentBrowserClient::WillCreateRestrictedCookieManager(
     bool is_service_worker,
     int process_id,
     int frame_id,
+    bool prefer_bound_cookie_context,
     mojo::PendingReceiver<network::mojom::RestrictedCookieManager>* receiver) {
   return false;
 }
@@ -1968,12 +1975,6 @@ void ContentBrowserClient::QueryInstalledWebAppsByManifestId(
 
 bool ContentBrowserClient::AllowNonActivatedCrossOriginPaintHolding() {
   return false;
-}
-
-bool ContentBrowserClient::ShouldDispatchPagehideDuringCommit(
-    BrowserContext* browser_context,
-    const GURL& destination_url) {
-  return true;
 }
 
 std::optional<network::CrossOriginEmbedderPolicy>

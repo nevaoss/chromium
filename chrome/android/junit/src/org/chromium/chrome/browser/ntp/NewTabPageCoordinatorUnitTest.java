@@ -45,6 +45,7 @@ import org.robolectric.annotation.Config;
 import org.chromium.base.DeviceInfo;
 import org.chromium.base.FakeTimeTestRule;
 import org.chromium.base.FeatureOverrides;
+import org.chromium.base.TriState;
 import org.chromium.base.supplier.ObservableSuppliers;
 import org.chromium.base.supplier.OneshotSupplierImpl;
 import org.chromium.base.test.BaseRobolectricTestRunner;
@@ -115,11 +116,11 @@ import java.util.function.Supplier;
 
 /** Unit tests for {@link NewTabPageCoordinator}. */
 @RunWith(BaseRobolectricTestRunner.class)
-@Config(manifest = Config.NONE)
 @EnableFeatures({
     ChromeFeatureList.SEGMENTATION_PLATFORM_ANDROID_HOME_MODULE_RANKER_V2,
     SigninFeatures.ENABLE_SEAMLESS_SIGNIN,
-    SigninFeatures.MAKE_IDENTITY_MANAGER_SOURCE_OF_ACCOUNTS
+    SigninFeatures.MAKE_IDENTITY_MANAGER_SOURCE_OF_ACCOUNTS,
+    SigninFeatures.ENABLE_ACCOUNT_PREVIEW_PREFERRED_ACCOUNT
 })
 public class NewTabPageCoordinatorUnitTest {
     @Rule public final MockitoRule mMockitoRule = MockitoJUnit.rule();
@@ -490,7 +491,21 @@ public class NewTabPageCoordinatorUnitTest {
 
         View composeplateView = layout.findViewById(R.id.composeplate_view);
         assertNotNull(composeplateView);
-        assertEquals(expectedBoundedWidth, composeplateView.getLayoutParams().width);
+        int expectedComposeplateWidth = expectedBoundedWidth;
+        if (NewTabPageUtils.isNtpAuroraButtonColorEnabled()) {
+            int margin =
+                    mActivity
+                            .getResources()
+                            .getDimensionPixelSize(R.dimen.composeplate_view_lateral_margin);
+            expectedComposeplateWidth -= margin * 2;
+        } else if (NewTabPageUtils.isNtpAuroraEnabled()) {
+            int paddingForShadow =
+                    mActivity
+                            .getResources()
+                            .getDimensionPixelSize(R.dimen.search_box_padding_for_shadow_lateral);
+            expectedComposeplateWidth -= paddingForShadow * 2;
+        }
+        assertEquals(expectedComposeplateWidth, composeplateView.getLayoutParams().width);
 
         View logoView = layout.findViewById(R.id.logo_container_view);
         assertNotNull(logoView);
@@ -573,7 +588,7 @@ public class NewTabPageCoordinatorUnitTest {
         setupMockSubCoordinators();
         when(mManager.isVoiceSearchEnabled()).thenReturn(true);
         when(mMockSearchBox.isLensEnabled(anyInt())).thenReturn(false);
-        mCoordinator.setIsComposeplateEnabledForTesting(true);
+        mCoordinator.setIsComposeplateEnabledForTesting(TriState.TRUE);
         mCoordinator.setSearchProviderInfo(/* hasLogo= */ true, /* isGoogle= */ true);
         clearInvocations(mMockSearchBox, mMockComposeplate);
 
@@ -686,7 +701,7 @@ public class NewTabPageCoordinatorUnitTest {
     public void testUpdateActionButtonVisibility_ComposeplateHiddenWhenIncognitoDisabled() {
         setupMockSubCoordinators();
 
-        mCoordinator.setIsComposeplateEnabledForTesting(true);
+        mCoordinator.setIsComposeplateEnabledForTesting(TriState.TRUE);
         mCoordinator.setSearchProviderInfo(/* hasLogo= */ true, /* isGoogle= */ true);
 
         // Disables incognito mode.
@@ -718,7 +733,7 @@ public class NewTabPageCoordinatorUnitTest {
 
         when(mManager.isVoiceSearchEnabled()).thenReturn(true);
         when(mMockSearchBox.isLensEnabled(anyInt())).thenReturn(false);
-        mCoordinator.setIsComposeplateEnabledForTesting(true);
+        mCoordinator.setIsComposeplateEnabledForTesting(TriState.TRUE);
 
         mCoordinator.setSearchProviderInfo(targetHasLogo, targetIsGoogle);
         mCoordinator.updateActionButtonVisibility();
@@ -813,10 +828,10 @@ public class NewTabPageCoordinatorUnitTest {
     })
     public void testOnCustomizedBackgroundChanged_composeplateFlagNotInitialized_earlyExit() {
         setupMockSubCoordinators();
-        mCoordinator.setIsComposeplateEnabledForTesting(null);
+        mCoordinator.setIsComposeplateEnabledForTesting(TriState.NOT_SET);
         setupDiskImageBackground();
-        mCoordinator.setIsWhiteBackgroundOnComposeplateApplied(null);
-        mCoordinator.setIsWhiteBackgroundOnSearchBoxApplied(null);
+        mCoordinator.setIsWhiteBackgroundOnComposeplateApplied(TriState.NOT_SET);
+        mCoordinator.setIsWhiteBackgroundOnSearchBoxApplied(TriState.NOT_SET);
 
         assertTrue(mCoordinator.shouldApplyWhiteBackgroundOnSearchBox());
         assertTrue(NtpCustomizationUtils.shouldApplyWhiteBackgroundOnComposeplate());
@@ -834,11 +849,11 @@ public class NewTabPageCoordinatorUnitTest {
     })
     public void testOnCustomizedBackgroundChanged_searchBoxNotInitialized_earlyExit() {
         setupMockSubCoordinators();
-        mCoordinator.setIsComposeplateEnabledForTesting(true);
+        mCoordinator.setIsComposeplateEnabledForTesting(TriState.TRUE);
         mCoordinator.setSearchBoxCoordinatorForTesting(null);
         setupDiskImageBackground();
-        mCoordinator.setIsWhiteBackgroundOnComposeplateApplied(null);
-        mCoordinator.setIsWhiteBackgroundOnSearchBoxApplied(null);
+        mCoordinator.setIsWhiteBackgroundOnComposeplateApplied(TriState.NOT_SET);
+        mCoordinator.setIsWhiteBackgroundOnSearchBoxApplied(TriState.NOT_SET);
 
         assertTrue(mCoordinator.shouldApplyWhiteBackgroundOnSearchBox());
         assertTrue(NtpCustomizationUtils.shouldApplyWhiteBackgroundOnComposeplate());
@@ -853,7 +868,7 @@ public class NewTabPageCoordinatorUnitTest {
     public void
             testOnCustomizedBackgroundChanged_composeplateCoordinatorNotInitialized_earlyExit() {
         setupMockSubCoordinators();
-        mCoordinator.setIsComposeplateEnabledForTesting(true);
+        mCoordinator.setIsComposeplateEnabledForTesting(TriState.TRUE);
         mCoordinator.setComposeplateCoordinatorForTesting(null);
 
         mCoordinator.onCustomizedBackgroundChanged();
@@ -869,11 +884,11 @@ public class NewTabPageCoordinatorUnitTest {
     public void
             testOnCustomizedBackgroundChanged_searchBox_uninitializedAndShouldNotApply_doesNotApplyBackground() {
         setupMockSubCoordinators();
-        mCoordinator.setIsComposeplateEnabledForTesting(true);
+        mCoordinator.setIsComposeplateEnabledForTesting(TriState.TRUE);
 
         // If shouldn't apply a white background and the background hasn't been updated before, the
         // background is not applied.
-        mCoordinator.setIsWhiteBackgroundOnSearchBoxApplied(null);
+        mCoordinator.setIsWhiteBackgroundOnSearchBoxApplied(TriState.NOT_SET);
         assertFalse(mCoordinator.shouldApplyWhiteBackgroundOnSearchBox());
 
         mCoordinator.onCustomizedBackgroundChanged();
@@ -884,7 +899,7 @@ public class NewTabPageCoordinatorUnitTest {
         // applyWhiteBackground
         // is not called again on the search box.
         clearInvocations(mMockSearchBox);
-        mCoordinator.setIsWhiteBackgroundOnSearchBoxApplied(false);
+        mCoordinator.setIsWhiteBackgroundOnSearchBoxApplied(TriState.FALSE);
 
         mCoordinator.onCustomizedBackgroundChanged();
 
@@ -896,13 +911,13 @@ public class NewTabPageCoordinatorUnitTest {
     public void
             testOnCustomizedBackgroundChanged_searchBox_alreadyAppliedAndShouldApply_doesNotReapplyBackground() {
         setupMockSubCoordinators();
-        mCoordinator.setIsComposeplateEnabledForTesting(true);
+        mCoordinator.setIsComposeplateEnabledForTesting(TriState.TRUE);
         setupDiskImageBackground();
 
         // If white background is enabled and was already set to true,verify applyWhiteBackground is
         // not called again on the search box.
         assertTrue(mCoordinator.shouldApplyWhiteBackgroundOnSearchBox());
-        mCoordinator.setIsWhiteBackgroundOnSearchBoxApplied(true);
+        mCoordinator.setIsWhiteBackgroundOnSearchBoxApplied(TriState.TRUE);
 
         mCoordinator.onCustomizedBackgroundChanged();
 
@@ -910,15 +925,18 @@ public class NewTabPageCoordinatorUnitTest {
     }
 
     @Test
-    @Features.DisableFeatures(ChromeFeatureList.NEW_TAB_PAGE_CUSTOMIZATION_V2)
+    @Features.DisableFeatures({
+        ChromeFeatureList.NTP_AURORA,
+        ChromeFeatureList.NEW_TAB_PAGE_CUSTOMIZATION_V2
+    })
     public void
             testOnCustomizedBackgroundChanged_composeplate_uninitializedAndShouldNotApply_doesNotApplyBackground() {
         setupMockSubCoordinators();
-        mCoordinator.setIsComposeplateEnabledForTesting(true);
+        mCoordinator.setIsComposeplateEnabledForTesting(TriState.TRUE);
 
         // If shouldn't apply a white background and the background hasn't been updated before, the
         // background is not applied.
-        mCoordinator.setIsWhiteBackgroundOnComposeplateApplied(null);
+        mCoordinator.setIsWhiteBackgroundOnComposeplateApplied(TriState.NOT_SET);
         assertFalse(NtpCustomizationUtils.shouldApplyWhiteBackgroundOnComposeplate());
 
         mCoordinator.onCustomizedBackgroundChanged();
@@ -926,9 +944,8 @@ public class NewTabPageCoordinatorUnitTest {
         verify(mMockComposeplate, never()).applyWhiteBackground(anyBoolean());
 
         // If white background is disabled and the member variable was already set to false, verify
-        // applyWhiteBackground
-        // is not called again on the composeplate.
-        mCoordinator.setIsWhiteBackgroundOnComposeplateApplied(false);
+        // applyWhiteBackground is not called again on the composeplate.
+        mCoordinator.setIsWhiteBackgroundOnComposeplateApplied(TriState.FALSE);
         assertFalse(NtpCustomizationUtils.shouldApplyWhiteBackgroundOnComposeplate());
 
         mCoordinator.onCustomizedBackgroundChanged();
@@ -941,14 +958,14 @@ public class NewTabPageCoordinatorUnitTest {
     public void
             testOnCustomizedBackgroundChanged_composeplate_alreadyAppliedAndShouldApply_doesNotReapplyBackground() {
         setupMockSubCoordinators();
-        mCoordinator.setIsComposeplateEnabledForTesting(true);
+        mCoordinator.setIsComposeplateEnabledForTesting(TriState.TRUE);
         setupDiskImageBackground();
 
         // If the background has been updated to true before and it should remain true,
         // no additional invocation of applyWhiteBackground on the composeplate.
         clearInvocations(mMockComposeplate);
         assertTrue(NtpCustomizationUtils.shouldApplyWhiteBackgroundOnComposeplate());
-        mCoordinator.setIsWhiteBackgroundOnComposeplateApplied(true);
+        mCoordinator.setIsWhiteBackgroundOnComposeplateApplied(TriState.TRUE);
 
         mCoordinator.onCustomizedBackgroundChanged();
 
@@ -960,12 +977,12 @@ public class NewTabPageCoordinatorUnitTest {
     public void
             testOnCustomizedBackgroundChanged_searchBox_previouslyFalseAndShouldApply_appliesWhiteBackground() {
         setupMockSubCoordinators();
-        mCoordinator.setIsComposeplateEnabledForTesting(true);
+        mCoordinator.setIsComposeplateEnabledForTesting(TriState.TRUE);
         setupDiskImageBackground();
 
         // Applies the white background if previously null.
         assertTrue(mCoordinator.shouldApplyWhiteBackgroundOnSearchBox());
-        mCoordinator.setIsWhiteBackgroundOnSearchBoxApplied(null);
+        mCoordinator.setIsWhiteBackgroundOnSearchBoxApplied(TriState.NOT_SET);
 
         mCoordinator.onCustomizedBackgroundChanged();
 
@@ -973,7 +990,7 @@ public class NewTabPageCoordinatorUnitTest {
 
         // Applies the white background if previously false.
         clearInvocations(mMockSearchBox);
-        mCoordinator.setIsWhiteBackgroundOnSearchBoxApplied(false);
+        mCoordinator.setIsWhiteBackgroundOnSearchBoxApplied(TriState.FALSE);
 
         mCoordinator.onCustomizedBackgroundChanged();
 
@@ -985,11 +1002,11 @@ public class NewTabPageCoordinatorUnitTest {
     public void
             testOnCustomizedBackgroundChanged_searchBox_auroraEnabled_initialLaunchAppliesBackground() {
         setupMockSubCoordinators();
-        mCoordinator.setIsComposeplateEnabledForTesting(true);
+        mCoordinator.setIsComposeplateEnabledForTesting(TriState.TRUE);
 
         // On initial launch with default theme (desiredState = false), currentState is null.
         assertFalse(mCoordinator.shouldApplyWhiteBackgroundOnSearchBox());
-        mCoordinator.setIsWhiteBackgroundOnSearchBoxApplied(null);
+        mCoordinator.setIsWhiteBackgroundOnSearchBoxApplied(TriState.NOT_SET);
 
         mCoordinator.onCustomizedBackgroundChanged();
 
@@ -1007,12 +1024,12 @@ public class NewTabPageCoordinatorUnitTest {
     public void
             testOnCustomizedBackgroundChanged_composeplate_previouslyFalseAndShouldApply_appliesWhiteBackground() {
         setupMockSubCoordinators();
-        mCoordinator.setIsComposeplateEnabledForTesting(true);
+        mCoordinator.setIsComposeplateEnabledForTesting(TriState.TRUE);
         setupDiskImageBackground();
 
         // Applies the white background if previously null.
         assertTrue(NtpCustomizationUtils.shouldApplyWhiteBackgroundOnComposeplate());
-        mCoordinator.setIsWhiteBackgroundOnComposeplateApplied(null);
+        mCoordinator.setIsWhiteBackgroundOnComposeplateApplied(TriState.NOT_SET);
 
         mCoordinator.onCustomizedBackgroundChanged();
 
@@ -1020,7 +1037,7 @@ public class NewTabPageCoordinatorUnitTest {
 
         // Applies the white background if previously false.
         clearInvocations(mMockComposeplate);
-        mCoordinator.setIsWhiteBackgroundOnComposeplateApplied(false);
+        mCoordinator.setIsWhiteBackgroundOnComposeplateApplied(TriState.FALSE);
 
         mCoordinator.onCustomizedBackgroundChanged();
 
@@ -1035,11 +1052,11 @@ public class NewTabPageCoordinatorUnitTest {
     public void
             testOnCustomizedBackgroundChanged_searchBox_alreadyAppliedAndShouldNotApply_removesWhiteBackground() {
         setupMockSubCoordinators();
-        mCoordinator.setIsComposeplateEnabledForTesting(true);
+        mCoordinator.setIsComposeplateEnabledForTesting(TriState.TRUE);
 
         // Removes white background if previously true.
         assertFalse(mCoordinator.shouldApplyWhiteBackgroundOnSearchBox());
-        mCoordinator.setIsWhiteBackgroundOnSearchBoxApplied(true);
+        mCoordinator.setIsWhiteBackgroundOnSearchBoxApplied(TriState.TRUE);
 
         mCoordinator.onCustomizedBackgroundChanged();
 
@@ -1051,11 +1068,11 @@ public class NewTabPageCoordinatorUnitTest {
     public void
             testOnCustomizedBackgroundChanged_composeplate_alreadyAppliedAndShouldNotApply_removesWhiteBackground() {
         setupMockSubCoordinators();
-        mCoordinator.setIsComposeplateEnabledForTesting(true);
+        mCoordinator.setIsComposeplateEnabledForTesting(TriState.TRUE);
 
         // Removes white background if previously true.
         assertFalse(mCoordinator.shouldApplyWhiteBackgroundOnSearchBox());
-        mCoordinator.setIsWhiteBackgroundOnComposeplateApplied(true);
+        mCoordinator.setIsWhiteBackgroundOnComposeplateApplied(TriState.TRUE);
 
         mCoordinator.onCustomizedBackgroundChanged();
 
@@ -1087,6 +1104,10 @@ public class NewTabPageCoordinatorUnitTest {
 
     @Test
     public void testOnDisplayStyleChanged_Phone_Default() {
+        FeatureOverrides.overrideParam(
+                ChromeFeatureList.NTP_AURORA,
+                "padding_style",
+                NewTabPageUtils.PaddingStyle.DEFAULT);
         createCoordinator(/* isLff= */ false);
         verify(mUiConfig, never()).addObserver(any());
     }

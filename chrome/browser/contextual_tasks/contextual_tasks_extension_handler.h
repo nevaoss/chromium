@@ -11,11 +11,13 @@
 
 #include "base/callback_list.h"
 #include "base/memory/weak_ptr.h"
+#include "base/scoped_observation.h"
 #include "base/uuid.h"
 #include "build/build_config.h"
 #include "chrome/browser/contextual_tasks/aim_message_poster.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks.mojom.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_types.h"
+#include "chrome/browser/ui/views/permissions/permission_prompt_observer.h"
 #include "components/omnibox/browser/searchbox.mojom.h"
 #include "content/public/browser/document_user_data.h"
 #include "mojo/public/cpp/bindings/pending_receiver.h"
@@ -52,9 +54,14 @@ class ContextualTasksExtensionHandler
       public composebox::mojom::PageHandlerFactory,
       public composebox::mojom::PageHandler,
       public searchbox::mojom::PageHandler,
-      public contextual_tasks::AimMessagePoster {
+      public contextual_tasks::AimMessagePoster,
+      public PermissionPromptObserver::Observer {
  public:
   ~ContextualTasksExtensionHandler() override;
+
+  // PermissionPromptObserver::Observer:
+  void OnPermissionPromptChanged(bool is_showing,
+                                 const gfx::Size& prompt_size) override;
 
   // contextual_tasks::AimMessagePoster:
   void PostAimMessage(const lens::ClientToAimMessage& message) override;
@@ -109,8 +116,8 @@ class ContextualTasksExtensionHandler
                    bool meta_key,
                    bool shift_key,
                    bool is_voice_search) override;
-  void SetActiveToolMode(omnibox::ToolMode tool,
-                         bool is_set_by_server) override;
+
+  void SetActiveToolMode(omnibox::ToolMode tool, bool is_set_by_aim) override;
   void SetActiveModelMode(omnibox::ModelMode model,
                           bool is_set_by_aim) override;
 
@@ -119,6 +126,7 @@ class ContextualTasksExtensionHandler
   // composebox.
   void OnFocusChanged(bool focused) override;
   void QueryAutocomplete(int32_t query_id,
+                         std::optional<int32_t> tab_id,
                          const std::u16string& input,
                          bool prevent_inline_autocomplete,
                          uint32_t cursor_position,
@@ -187,10 +195,15 @@ class ContextualTasksExtensionHandler
   void OnDriveDisclaimerAccepted() override;
   void OnDriveUploadClicked(OnDriveUploadClickedCallback callback) override;
   void OpenProfilePicker() override;
+  void ShowScreenshotMenu(const gfx::Rect& anchor_rect) override;
   void GetPageClassification(GetPageClassificationCallback callback) override;
   void OnThumbnailRemoved() override;
   void StartScreenshare(bool prefer_entire_screen,
                         StartScreenshareCallback callback) override;
+  void CaptureRegionScreenshot(
+      CaptureRegionScreenshotCallback callback) override;
+  void DismissFre() override {}
+  void OpenHotkeySettings() override {}
 
  private:
   friend class content::DocumentUserData<ContextualTasksExtensionHandler>;
@@ -228,6 +241,10 @@ class ContextualTasksExtensionHandler
 
   base::WeakPtr<contextual_search::InputStateModel> input_state_model_;
   base::CallbackListSubscription input_state_subscription_;
+
+  base::ScopedObservation<PermissionPromptObserver,
+                          PermissionPromptObserver::Observer>
+      permission_prompt_observation_{this};
 
   std::optional<base::Uuid> task_id_;
   omnibox::ToolMode active_tool_ = omnibox::TOOL_MODE_UNSPECIFIED;

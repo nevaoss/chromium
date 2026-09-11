@@ -154,11 +154,15 @@
 
 #if BUILDFLAG(ENTERPRISE_CONTENT_ANALYSIS) || BUILDFLAG(IS_ANDROID)
 #include "components/enterprise/connectors/core/cloud_content_scanning/binary_upload_service.h"  // nogncheck crbug.com/40147906
-#include "components/enterprise/obfuscation/core/download_obfuscator.h"  // nogncheck crbug.com/40147906
+#include "components/enterprise/obfuscation/core/download_obfuscator.h"
+#include "components/enterprise/obfuscation/core/utils.h"
 #endif
 
 #if BUILDFLAG(IS_CHROMEOS)
 #include "chrome/browser/ash/policy/skyvault/skyvault_rename_handler.h"
+#if BUILDFLAG(ENTERPRISE_CONTENT_ANALYSIS)
+#include "chrome/browser/enterprise/connectors/analysis/obfuscation_rename_handler.h"
+#endif
 #endif
 
 #if BUILDFLAG(SAFE_BROWSING_AVAILABLE)
@@ -212,6 +216,19 @@ bool IsEphemeralWarningCancellationEnabled() {
 #endif
 }
 
+#if BUILDFLAG(IS_CHROMEOS) && BUILDFLAG(ENTERPRISE_CONTENT_ANALYSIS)
+base::FilePath CreateLocalTempFile() {
+  base::FilePath temp_dir;
+  if (base::GetTempDir(&temp_dir)) {
+    base::FilePath temp_file;
+    if (base::CreateTemporaryFileInDir(temp_dir, &temp_file)) {
+      return temp_file;
+    }
+  }
+  return base::FilePath();
+}
+#endif
+
 #if BUILDFLAG(IS_ANDROID)
 const char kPdfDirName[] = "pdfs";
 #endif
@@ -234,6 +251,17 @@ enum PlatformDownloadPathType {
 // How the platform path is determined is based on PlatformDownloadPathType.
 base::FilePath GetPlatformDownloadPath(const DownloadItem* download,
                                        PlatformDownloadPathType path_type) {
+#if BUILDFLAG(ENTERPRISE_CONTENT_ANALYSIS)
+  auto* obfuscation_data =
+      static_cast<enterprise_obfuscation::DownloadObfuscationData*>(
+          download->GetUserData(
+              enterprise_obfuscation::DownloadObfuscationData::kUserDataKey));
+  if (obfuscation_data && !obfuscation_data->original_target_path.empty() &&
+      path_type == PLATFORM_TARGET_PATH) {
+    return obfuscation_data->original_target_path;
+  }
+#endif
+
   if (path_type == PLATFORM_TARGET_PATH) {
     return download->GetTargetFilePath();
   }
@@ -397,15 +425,33 @@ bool ShouldOpenPdfInlineInternal(bool incognito) {
   return Java_PdfUtils_shouldOpenPdfInline(env, incognito);
 }
 
-void OnDetermineSavePackagePathDone(
+void OnSavePackageDownloadDialogClosed(
+    const GURL& url,
     content::SavePackagePathPickedCallback callback,
-    const base::FilePath& file_path,
-    const base::FilePath& display_name) {
-  content::SavePackagePathPickedParams param;
-  param.file_path = file_path;
-  param.save_type = content::SavePageType::SAVE_PAGE_TYPE_AS_MHTML;
-  param.display_name = display_name;
-  std::move(callback).Run(param, base::DoNothing());
+    DownloadDialogResult result) {
+  switch (result.location_result) {
+    case DownloadLocationDialogResult::USER_CONFIRMED:
+    case DownloadLocationDialogResult::CONFIRMED_WITHOUT_USER_INPUT:
+    case DownloadLocationDialogResult::DUPLICATE_DIALOG: {
+      download::DetermineSavePackagePath(
+          url, result.file_path,
+          base::BindOnce(
+              [](content::SavePackagePathPickedCallback callback,
+                 const base::FilePath& file_path,
+                 const base::FilePath& display_name) {
+                content::SavePackagePathPickedParams param;
+                param.file_path = file_path;
+                param.save_type =
+                    content::SavePageType::SAVE_PAGE_TYPE_AS_MHTML;
+                param.display_name = display_name;
+                std::move(callback).Run(param, base::DoNothing());
+              },
+              std::move(callback)));
+      break;
+    }
+    case DownloadLocationDialogResult::USER_CANCELED:
+      break;
+  }
 }
 #endif  // BUILDFLAG(IS_ANDROID)
 
@@ -513,7 +559,9 @@ void MaybeReportDangerousDownloadBlocked(
         download->GetTotalBytes(), referrer_chain,
         enterprise_connectors::CollectFrameUrls(
             content::DownloadItemUtils::GetWebContents(download),
-            enterprise_connectors::DeepScanAccessPoint::DOWNLOAD),
+            enterprise_connectors::DeepScanAccessPoint::DOWNLOAD,
+            std::make_optional(
+                content::DownloadItemUtils::GetRenderFrameHostId(download))),
         enterprise_connectors::EventResult::BLOCKED);
   }
 #endif  // BUILDFLAG(ENTERPRISE_CLOUD_CONTENT_ANALYSIS)
@@ -1144,10 +1192,13 @@ bool ChromeDownloadManagerDelegate::ShouldObfuscateDownload(
     if (settings.has_value() &&
         settings.value().block_until_verdict ==
             enterprise_connectors::BlockUntilVerdict::kBlock) {
-      item->SetUserData(
-          enterprise_obfuscation::DownloadObfuscationData::kUserDataKey,
-          std::make_unique<enterprise_obfuscation::DownloadObfuscationData>(
-              true));
+      if (!item->GetUserData(
+              enterprise_obfuscation::DownloadObfuscationData::kUserDataKey)) {
+        item->SetUserData(
+            enterprise_obfuscation::DownloadObfuscationData::kUserDataKey,
+            std::make_unique<enterprise_obfuscation::DownloadObfuscationData>(
+                true));
+      }
       return true;
     }
   }
@@ -1190,7 +1241,9 @@ bool ChromeDownloadManagerDelegate::InterceptDownloadIfApplicable(
       offline_pages::OfflinePageUtils::CanDownloadAsOfflinePage(url,
                                                                 mime_type)) {
 #if BUILDFLAG(IS_ANDROID)
-    if (profile_->IsOffTheRecord()) {
+    if (profile_->IsOffTheRecord() ||
+        base::FeatureList::IsEnabled(
+            download::features::kEnableDownloadSaveAsContextMenu)) {
       return false;
     }
 #endif  // BUILDFLAG(IS_ANDROID)
@@ -1264,7 +1317,7 @@ void ChromeDownloadManagerDelegate::ChooseSavePath(
   base::OnceCallback<void(bool)> confirm_callback =
       base::BindOnce(&ChromeDownloadManagerDelegate::
                          RequestIncognitoSavePackageConfirmationDone,
-                     weak_ptr_factory_.GetWeakPtr(), web_contents->GetURL(),
+                     weak_ptr_factory_.GetWeakPtr(), web_contents,
                      suggested_path, std::move(callback));
   if (profile_->IsOffTheRecord()) {
     RequestIncognitoWarningConfirmation(web_contents,
@@ -1769,8 +1822,63 @@ void ChromeDownloadManagerDelegate::DetermineLocalPath(
     const base::FilePath& virtual_path,
     download::LocalPathCallback callback) {
   DCHECK_CURRENTLY_ON(BrowserThread::UI);
+#if BUILDFLAG(IS_CHROMEOS) && BUILDFLAG(ENTERPRISE_CONTENT_ANALYSIS)
+  if (enterprise_obfuscation::IsVirtualFilesystem(virtual_path) &&
+      ShouldObfuscateDownload(download)) {
+    auto* obfuscation_data =
+        static_cast<enterprise_obfuscation::DownloadObfuscationData*>(
+            download->GetUserData(
+                enterprise_obfuscation::DownloadObfuscationData::kUserDataKey));
+    if (obfuscation_data) {
+      obfuscation_data->original_target_path = virtual_path;
+    }
+    base::ThreadPool::PostTaskAndReplyWithResult(
+        FROM_HERE, {base::MayBlock(), base::TaskPriority::USER_VISIBLE},
+        base::BindOnce(&CreateLocalTempFile),
+        base::BindOnce(
+            &ChromeDownloadManagerDelegate::OnCreateDeobfuscationTempFile,
+            weak_ptr_factory_.GetWeakPtr(), download->GetId(), virtual_path,
+            std::move(callback)));
+    return;
+  }
+#endif
   download::DetermineLocalPath(download, virtual_path, std::move(callback));
 }
+
+#if BUILDFLAG(IS_CHROMEOS)
+void ChromeDownloadManagerDelegate::OnCreateDeobfuscationTempFile(
+    uint32_t download_id,
+    const base::FilePath& virtual_path,
+    download::LocalPathCallback callback,
+    base::FilePath temp_file_path) {
+  if (!temp_file_path.empty()) {
+    std::move(callback).Run(std::move(temp_file_path),
+                            /*file_name=*/base::FilePath());
+    return;
+  }
+
+  // When failing to obtain a temporary directory for deobfuscation, clear the
+  // original target path to let the download proceed normally with
+  // deobfuscation.
+  if (!download_manager_) {
+    return;
+  }
+
+  DownloadItem* item = download_manager_->GetDownload(download_id);
+  if (!item) {
+    return;
+  }
+
+  auto* obfuscation_data =
+      static_cast<enterprise_obfuscation::DownloadObfuscationData*>(
+          item->GetUserData(
+              enterprise_obfuscation::DownloadObfuscationData::kUserDataKey));
+  if (obfuscation_data) {
+    obfuscation_data->original_target_path.clear();
+  }
+  download::DetermineLocalPath(item, virtual_path, std::move(callback));
+}
+#endif
 
 void ChromeDownloadManagerDelegate::CheckDownloadUrl(
     DownloadItem* download,
@@ -2359,11 +2467,33 @@ std::unique_ptr<download::DownloadItemRenameHandler>
 ChromeDownloadManagerDelegate::GetRenameHandlerForDownload(
     download::DownloadItem* download_item) {
 #if BUILDFLAG(IS_CHROMEOS)
-  return policy::SkyvaultRenameHandler::CreateIfNeeded(
+  auto skyvault_handler = policy::SkyvaultRenameHandler::CreateIfNeeded(
       CHECK_DEREF(g_browser_process->local_state()), download_item);
-#else
-  return nullptr;
+  if (skyvault_handler) {
+    return skyvault_handler;
+  }
+
+#if BUILDFLAG(ENTERPRISE_CONTENT_ANALYSIS)
+  // Check if this download requires obfuscation and is destined for a non-local
+  // virtual path (e.g. OneDrive).
+  if (ShouldObfuscateDownload(download_item)) {
+    auto* obfuscation_data =
+        static_cast<enterprise_obfuscation::DownloadObfuscationData*>(
+            download_item->GetUserData(
+                enterprise_obfuscation::DownloadObfuscationData::kUserDataKey));
+    const base::FilePath& target_path =
+        (obfuscation_data && !obfuscation_data->original_target_path.empty())
+            ? obfuscation_data->original_target_path
+            : download_item->GetTargetFilePath();
+    if (enterprise_obfuscation::IsVirtualFilesystem(target_path)) {
+      return enterprise_obfuscation::ObfuscationRenameHandler::CreateIfNeeded(
+          download_item);
+    }
+  }
+#endif  // BUILDFLAG(ENTERPRISE_CONTENT_ANALYSIS)
 #endif  // BUILDFLAG(IS_CHROMEOS)
+
+  return nullptr;
 }
 
 void ChromeDownloadManagerDelegate::CheckSavePackageAllowed(
@@ -2558,16 +2688,49 @@ void ChromeDownloadManagerDelegate::CancelAllEphemeralWarnings() {
 
 #if BUILDFLAG(IS_ANDROID)
 void ChromeDownloadManagerDelegate::RequestIncognitoSavePackageConfirmationDone(
-    const GURL& url,
+    content::WebContents* web_contents,
     const base::FilePath& suggested_path,
     content::SavePackagePathPickedCallback callback,
     bool accept) {
-  if (!accept) {
+  if (!accept || !web_contents) {
     return;
   }
+
+  bool is_save_as_enabled = base::FeatureList::IsEnabled(
+      download::features::kEnableDownloadSaveAsContextMenu);
+  if (is_save_as_enabled) {
+    gfx::NativeWindow native_window = web_contents->GetTopLevelNativeWindow();
+    base::FilePath mhtml_path = suggested_path.ReplaceExtension("mhtml");
+    ShowDownloadDialog(
+        native_window, 0 /* total_bytes */,
+        DownloadLocationDialogType::FORCE_PROMPT, mhtml_path,
+        base::BindOnce(&OnSavePackageDownloadDialogClosed,
+                       web_contents->GetURL(), std::move(callback)));
+    return;
+  }
+
   download::DetermineSavePackagePath(
-      url, suggested_path,
-      base::BindOnce(&OnDetermineSavePackagePathDone, std::move(callback)));
+      web_contents->GetURL(), suggested_path,
+      base::BindOnce(
+          &ChromeDownloadManagerDelegate::OnDetermineSavePackagePathDone,
+          weak_ptr_factory_.GetWeakPtr(), web_contents->GetWeakPtr(),
+          std::move(callback)));
+}
+
+void ChromeDownloadManagerDelegate::OnDetermineSavePackagePathDone(
+    base::WeakPtr<content::WebContents> web_contents,
+    content::SavePackagePathPickedCallback callback,
+    const base::FilePath& file_path,
+    const base::FilePath& display_name) {
+  if (!web_contents) {
+    return;
+  }
+
+  content::SavePackagePathPickedParams param;
+  param.file_path = file_path;
+  param.save_type = content::SavePageType::SAVE_PAGE_TYPE_AS_MHTML;
+  param.display_name = display_name;
+  std::move(callback).Run(param, base::DoNothing());
 }
 #endif
 

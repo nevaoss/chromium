@@ -78,23 +78,21 @@ ContextualTasksWebContentsUserData::GetOrCreateInputStateModel(
                                GetForBrowserContext(profile)
                          : nullptr;
   GURL url = web_contents->GetLastCommittedURL();
+  bool is_signed_in = false;
   bool browser_identity_matches_aim_identity = false;
   if (ui_service) {
+    is_signed_in = ui_service->IsSignedInToBrowserWithValidCredentials();
     browser_identity_matches_aim_identity =
-        ui_service->IsSignedInToBrowserWithValidCredentials() &&
-        ui_service->IsUrlForPrimaryAccount(url);
+        is_signed_in && ui_service->IsUrlForPrimaryAccount(url);
   } else if (profile &&
              omnibox::kComposeboxDriveIdentityFallback.Get()) {
     if (auto* identity_manager =
             IdentityManagerFactory::GetForProfile(profile)) {
-      if (identity_manager->HasPrimaryAccount(signin::ConsentLevel::kSignin)) {
-        CoreAccountId account_id = identity_manager->GetPrimaryAccountId(
-            signin::ConsentLevel::kSignin);
-        if (!identity_manager->HasAccountWithRefreshTokenInPersistentErrorState(
-                account_id)) {
-          browser_identity_matches_aim_identity =
-              contextual_tasks::IsUrlForPrimaryAccount(identity_manager, url);
-        }
+      if (contextual_tasks::IsSignedInToBrowserWithValidCredentials(
+              identity_manager)) {
+        is_signed_in = true;
+        browser_identity_matches_aim_identity =
+            contextual_tasks::IsUrlForPrimaryAccount(identity_manager, url);
       }
     }
   }
@@ -103,7 +101,7 @@ ContextualTasksWebContentsUserData::GetOrCreateInputStateModel(
 
   auto model = std::make_unique<contextual_search::InputStateModel>(
       session_handle, config ? *config : omnibox::SearchboxConfig(), url,
-      is_off_the_record, browser_identity_matches_aim_identity);
+      is_off_the_record, is_signed_in, browser_identity_matches_aim_identity);
 
   last_active_model_ = model->AsWeakPtr();
   input_state_models_[session_handle.session_id()] = std::move(model);

@@ -382,6 +382,7 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksUIBrowserTest,
       ui::PAGE_TRANSITION_LINK, /*is_renderer_initiated=*/false);
   controller_->TransferNavigationToEmbeddedPage(params);
   run_loop.Run();
+  browser()->tab_strip_model()->GetActiveWebContents()->Stop();
 }
 
 IN_PROC_BROWSER_TEST_F(ContextualTasksUIBrowserTest, HandleLensButtonClick) {
@@ -929,7 +930,8 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksUIBrowserTest,
   GURL initial_url("https://example.com/");
   auto input_state_model = std::make_unique<contextual_search::InputStateModel>(
       *session_handle, config, initial_url, /*is_off_the_record=*/false,
-      /*is_signed_in=*/true);
+      /*is_signed_in=*/true,
+      /*browser_identity_matches_aim_identity=*/true);
 
   content::WebContents* web_contents =
       TabListInterface::From(browser())->GetActiveTab()->GetContents();

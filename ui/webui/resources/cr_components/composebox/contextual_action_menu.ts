@@ -3,6 +3,7 @@
 // found in the LICENSE file.
 
 import './icons.html.js';
+import './searchbox_config_icons.html.js';
 import './composebox_tab_favicon.js';
 import './composebox_favicon_group.js';
 import '//resources/cr_elements/icons.html.js';
@@ -23,7 +24,7 @@ import type {InputState} from '//resources/mojo/components/omnibox/composebox/co
 import {InputType, ModelMode, ToolMode} from '//resources/mojo/components/omnibox/composebox/composebox_query.mojom-webui.js';
 import type {UnguessableToken} from '//resources/mojo/mojo/public/mojom/base/unguessable_token.mojom-webui.js';
 
-import {getLoadTimeBoolean, recordBoolean, recordContextAdditionMethod, TabUploadOrigin} from './common.js';
+import {getLoadTimeBoolean, recordBoolean, recordContextAdditionMethod, recordEnumerationValue, SmartTabSharingSurface, TabUploadOrigin} from './common.js';
 import {getCss} from './contextual_action_menu.css.js';
 import {getHtml} from './contextual_action_menu.html.js';
 import {WindowProxy} from './window_proxy.js';
@@ -40,9 +41,8 @@ export const VIEWPORT_BUFFER_PX = 16;
 export const MIN_MENU_HEIGHT_PX = 100;
 export const SHARE_TABS_FLYOUT_MAX_HEIGHT_PX = 344;
 export const SHARE_TABS_FLYOUT_INDENT_PX = 114;
-// From the CSS file (default max-height and min-height):
+// From the CSS file (default max-height):
 export const DEFAULT_MAX_MENU_HEIGHT_PX = 540;
-export const DEFAULT_MIN_MENU_HEIGHT_PX = 144;
 
 // Gap between tab shared menu and context menu in px.
 const MENU_GAP = 0;
@@ -143,6 +143,7 @@ export class ContextualActionMenuElement extends
         type: Boolean,
         attribute: 'unbounded-menu-enabled',
       },
+      isOpen_: {type: Boolean},
     };
   }
 
@@ -200,6 +201,8 @@ export class ContextualActionMenuElement extends
   private anchor_: HTMLElement|null = null;
   private wasShareTabsTriggerShown_: boolean = false;
   private wasShareTabsFlyoutOpen_: boolean = false;
+  private wasSmartTabSharingOptionShown_: boolean = false;
+  private accessor isOpen_: boolean = false;
 
   protected get supportedTools_(): Map<ToolMode, {
     icon: string,
@@ -221,43 +224,6 @@ export class ContextualActionMenuElement extends
         ToolMode.kCanvas,
         {
           icon: 'composebox:draft-spark',
-        },
-      ],
-    ]);
-  }
-
-  protected get supportedModels_(): Map<ModelMode, {
-    icon: string,
-  }> {
-    return new Map([
-      [
-        ModelMode.kGeminiRegular,
-        {
-          icon: 'composebox:acute',
-        },
-      ],
-      [
-        ModelMode.kGeminiProAutoroute,
-        {
-          icon: 'composebox:autorenew',
-        },
-      ],
-      [
-        ModelMode.kGeminiPro,
-        {
-          icon: 'composebox:timer',
-        },
-      ],
-      [
-        ModelMode.kGeminiProNoGenUi,
-        {
-          icon: 'composebox:timer',
-        },
-      ],
-      [
-        ModelMode.kGeminiFlashLatest,
-        {
-          icon: 'composebox:bolt',
         },
       ],
     ]);
@@ -325,7 +291,7 @@ export class ContextualActionMenuElement extends
       }
     }
 
-    const isShownNow = this.open &&
+    const isShownNow = this.isOpen_ &&
         this.isInputTypeAllowed_(InputType.kBrowserTab) &&
         this.contextManagementInComposeboxEnabled &&
         (this.tabSuggestions?.length > 0 || this.smartTabSharingActive) &&
@@ -346,6 +312,28 @@ export class ContextualActionMenuElement extends
           'ContextualSearch.AddTabsFlyout.Shown.' + this.metricsSource_, true);
     }
     this.wasShareTabsFlyoutOpen_ = isFlyoutOpenNow;
+
+    const isOptionVisibleDirectly = this.isOpen_ &&
+        this.smartTabSharingVisible && this.smartTabSharingActive;
+    const isOptionVisibleInFlyout =
+        isFlyoutOpenNow && this.smartTabSharingVisible;
+
+    if ((isOptionVisibleDirectly || isOptionVisibleInFlyout) &&
+        !this.wasSmartTabSharingOptionShown_) {
+      let surface: SmartTabSharingSurface|null = null;
+      if (this.metricsSource_ === 'NewTabPage' ||
+          this.metricsSource_ === 'Omnibox') {
+        surface = SmartTabSharingSurface.OMNIBOX_COMPOSEBOX;
+      } else if (this.metricsSource_ === 'ContextualTasks') {
+        surface = SmartTabSharingSurface.CONTEXTUAL_SEARCHBOX;
+      }
+      if (surface !== null) {
+        recordEnumerationValue(
+            'ContextualSearch.SmartTabSharing.MenuOptionShown', surface,
+            SmartTabSharingSurface.MAX_VALUE + 1);
+        this.wasSmartTabSharingOptionShown_ = true;
+      }
+    }
   }
   get open(): boolean {
     return this.$.menu.open;
@@ -414,13 +402,6 @@ export class ContextualActionMenuElement extends
     // creates larger height, which will cause the menu to overlap with the plus button.
     this.$.menu.style.setProperty(
         '--contextual-menu-max-height', `${constrainedHeight}px`);
-    // Only if constrainedHeight < CSS default, override the CSS default to allow shrinkage.
-    if (constrainedHeight < DEFAULT_MIN_MENU_HEIGHT_PX) {
-      this.$.menu.style.setProperty(
-          '--contextual-menu-min-height', `${constrainedHeight}px`);
-    } else {
-      this.$.menu.style.removeProperty('--contextual-menu-min-height');
-    }
   }
 
   private computeHorizontalLimit_(iconRect: DOMRect): number {
@@ -445,6 +426,7 @@ export class ContextualActionMenuElement extends
   }
 
   showAt(anchor: HTMLElement) {
+    this.wasSmartTabSharingOptionShown_ = false;
     this.shouldResetFlyoutScroll_ = true;
     this.anchor_ = anchor;
     const rect = anchor.getBoundingClientRect();
@@ -464,6 +446,7 @@ export class ContextualActionMenuElement extends
       anchorAlignmentY: AnchorAlignment.AFTER_END,
       noOffset: true,
     });
+    this.isOpen_ = true;
     const iconElement = anchor.querySelector('#entrypointIcon') || anchor;
     const iconRect = iconElement.getBoundingClientRect();
 
@@ -1261,9 +1244,10 @@ export class ContextualActionMenuElement extends
     this.lastConfig_ = undefined;
     this.resetShareTabsFlyout_();
     this.$.menu.style.removeProperty('--contextual-menu-max-height');
-    this.$.menu.style.removeProperty('--contextual-menu-min-height');
     this.wasShareTabsTriggerShown_ = false;
     this.wasShareTabsFlyoutOpen_ = false;
+    this.wasSmartTabSharingOptionShown_ = false;
+    this.isOpen_ = false;
     this.fire('close');
   }
 
@@ -1272,7 +1256,28 @@ export class ContextualActionMenuElement extends
   }
 
   protected getIconForModelMode_(mode: ModelMode): string|undefined {
-    return this.supportedModels_.get(mode)?.icon;
+    if (getLoadTimeBoolean('useSearchboxConfigIconIds', false) &&
+        this.inputState) {
+      const config = this.inputState.modelConfigs.find(c => c.model === mode);
+      if (config && config.icon) {
+        return `searchbox_config:${config.icon}`;
+      }
+    }
+    // Fallback to legacy hardcoded model mapping if flag is disabled or no icon
+    // is specified in config.
+    switch (mode) {
+      case ModelMode.kGeminiRegular:
+        return 'composebox:acute';
+      case ModelMode.kGeminiProAutoroute:
+        return 'composebox:autorenew';
+      case ModelMode.kGeminiPro:
+      case ModelMode.kGeminiProNoGenUi:
+        return 'composebox:timer';
+      case ModelMode.kGeminiFlashLatest:
+        return 'composebox:bolt';
+      default:
+        return undefined;
+    }
   }
 }
 

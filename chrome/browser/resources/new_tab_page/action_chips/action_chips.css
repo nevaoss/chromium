@@ -97,6 +97,18 @@
   -webkit-mask-image: url(chrome://new-tab-page/icons/ink_pen.svg);
 }
 
+.icon-type-bolt {
+  -webkit-mask-image: url(chrome://new-tab-page/icons/bolt.svg);
+}
+
+.icon-type-photo-spark {
+  -webkit-mask-image: url(chrome://new-tab-page/icons/photo_spark.svg);
+}
+
+.icon-type-tab {
+  -webkit-mask-image: url(chrome://new-tab-page/icons/tab.svg);
+}
+
 .action-chip {
   align-items: center;
   background-color: var(--chip-background-color);
@@ -124,12 +136,13 @@
 }
 
 :host([small-chips-enabled]) .action-chip {
+  border-radius: 20px;
   box-sizing: border-box;
   gap: 6px;
   height: 40px;
   max-height: 40px;
   min-height: 40px;
-  padding: 8px 16px 8px 12px;
+  padding: 8px 16px;
   width: fit-content;
   max-width: 208px;
 }

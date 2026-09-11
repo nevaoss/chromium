@@ -18,7 +18,6 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
-import org.robolectric.annotation.Config;
 
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.chrome.browser.browser_controls.BrowserControlsStateProvider;
@@ -29,7 +28,6 @@ import org.chromium.ui.base.WindowAndroid;
 
 /** Test for {@link FindToolbarManagerTest}. */
 @RunWith(BaseRobolectricTestRunner.class)
-@Config(manifest = Config.NONE)
 public class FindToolbarManagerTest {
     @Rule public final MockitoRule mMockitoRule = MockitoJUnit.rule();
     private FindToolbarManager mFindToolbarManager;
@@ -38,7 +36,9 @@ public class FindToolbarManagerTest {
     @Mock private Tab mTab;
     @Mock private ViewStub mViewStub;
     @Mock private FindToolbar mFindToolbar;
+    @Mock private WindowAndroid mWindowAndroid;
     @Mock private FrameLayout mSecondaryUiContainer;
+    @Mock private View mAnchorView;
     @Mock private BrowserControlsStateProvider mBrowserControlsStateProvider;
     @Mock private SideUiStateProvider mSideUiStateProvider;
 
@@ -51,10 +51,11 @@ public class FindToolbarManagerTest {
                 new FindToolbarManager(
                         mViewStub,
                         mTabModelSelector,
-                        Mockito.mock(WindowAndroid.class),
-                        null,
-                        null,
+                        mWindowAndroid,
+                        /* callback= */ null,
+                        /* backPressManager= */ null,
                         mSecondaryUiContainer,
+                        mAnchorView,
                         mBrowserControlsStateProvider);
     }
 
@@ -119,6 +120,12 @@ public class FindToolbarManagerTest {
         mFindToolbarManager.showToolbar();
         mFindToolbarManager.setSideUiStateProvider(mSideUiStateProvider);
         Mockito.verify(mFindToolbar).setSideUiStateProvider(mSideUiStateProvider);
+    }
+
+    @Test
+    public void testSetAnchorView() {
+        mFindToolbarManager.showToolbar();
+        Mockito.verify(mFindToolbar).setAnchorView(mAnchorView);
     }
 
     @Test

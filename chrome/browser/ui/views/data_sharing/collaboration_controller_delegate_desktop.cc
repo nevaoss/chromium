@@ -6,6 +6,7 @@
 
 #include "build/branding_buildflags.h"
 #include "chrome/browser/collaboration/collaboration_service_factory.h"
+#include "chrome/browser/signin/account_preview_data_service_factory.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
 #include "chrome/browser/signin/signin_ui_util.h"
 #include "chrome/browser/tab_group_sync/tab_group_sync_service_factory.h"
@@ -45,7 +46,7 @@ struct DialogText {
 
 DialogText GetPromptDialogTextFromStatus(
     const collaboration::ServiceStatus& status,
-    std::string email) {
+    std::string_view email) {
   bool valid;
   int title_id = 0;
   int body_id = 0;
@@ -482,7 +483,8 @@ void CollaborationControllerDelegateDesktop::MaybeShowSignInAndSyncUi() {
       break;
     case collaboration::SigninStatus::kSignedInPaused:
       signin_ui_util::ShowReauthForAccount(
-          profile, GetAccountInfoFromProfile(profile).email, access_point_);
+          profile, std::string(GetAccountInfoFromProfile(profile).GetEmail()),
+          access_point_);
       break;
     case collaboration::SigninStatus::kSignedIn:
       switch (status.sync_status) {
@@ -520,13 +522,15 @@ void CollaborationControllerDelegateDesktop::
   AccountInfo account_for_promo =
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
       signin_ui_util::GetSingleAccountForPromos(
-          IdentityManagerFactory::GetForProfile(browser_->GetProfile()));
+          IdentityManagerFactory::GetForProfile(browser_->GetProfile()),
+          AccountPreviewDataServiceFactory::GetForProfile(
+              browser_->GetProfile()));
 #else
       GetAccountInfoFromProfile(browser_->GetProfile());
 #endif
 
   DialogText dialog_text =
-      GetPromptDialogTextFromStatus(status, account_for_promo.email);
+      GetPromptDialogTextFromStatus(status, account_for_promo.GetEmail());
   if (!dialog_text.valid) {
     return;
   }

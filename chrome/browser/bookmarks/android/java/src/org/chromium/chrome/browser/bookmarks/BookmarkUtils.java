@@ -12,12 +12,13 @@ import android.os.Handler;
 import android.os.LocaleList;
 import android.os.Looper;
 import android.view.View;
+import android.view.ViewGroup;
 
+import androidx.annotation.IdRes;
 import androidx.annotation.VisibleForTesting;
 
 import org.chromium.base.ApkInfo;
 import org.chromium.base.Callback;
-import org.chromium.base.DeviceInfo;
 import org.chromium.base.Log;
 import org.chromium.base.ResettersForTesting;
 import org.chromium.base.metrics.RecordUserAction;
@@ -64,6 +65,7 @@ import java.util.concurrent.TimeUnit;
 public class BookmarkUtils {
     private static final String TAG = "BookmarkUtils";
     private static final int READING_LIST_SESSION_LENGTH_MS = (int) TimeUnit.HOURS.toMillis(1);
+    public static final int WIDE_DISPLAY_THRESHOLD_DP = 840;
 
     private static @Nullable Boolean sReadingListSupportedForTesting;
 
@@ -144,9 +146,7 @@ public class BookmarkUtils {
             boolean isBookmarkBarVisible) {
         assert bookmarkModel.isBookmarkModelLoaded();
         if (existingBookmarkItem != null) {
-            if (DeviceInfo.isDesktop()
-                    && ChromeFeatureList.isEnabled(
-                            ChromeFeatureList.ANDROID_DESKTOP_BOOKMARK_POPUP)) {
+            if (ChromeFeatureList.isEnabled(ChromeFeatureList.ANDROID_DESKTOP_BOOKMARK_POPUP)) {
                 showSaveFlow(
                         activity,
                         bottomSheetController,
@@ -308,17 +308,20 @@ public class BookmarkUtils {
 
         ShoppingService shoppingService = ShoppingServiceFactory.getForProfile(profile);
 
-        if (ChromeFeatureList.isEnabled(ChromeFeatureList.ANDROID_DESKTOP_BOOKMARK_POPUP)
-                && DeviceInfo.isDesktop()) {
-            View anchor = activity.findViewById(R.id.bookmark_button);
+        if (ChromeFeatureList.isEnabled(ChromeFeatureList.ANDROID_DESKTOP_BOOKMARK_POPUP)) {
+            View decorView =
+                    activity.getWindow() != null
+                            ? activity.getWindow().getDecorView()
+                            : activity.findViewById(android.R.id.content);
+            View anchor = findFirstShownView(decorView, R.id.bookmark_button);
 
             // When the bookmark button isn't visible, fallback to the 3-dot menu.
-            if (anchor == null || !anchor.isShown()) {
-                anchor = activity.findViewById(R.id.menu_button_wrapper);
+            if (anchor == null) {
+                anchor = findFirstShownView(decorView, R.id.menu_button_wrapper);
             }
 
             // As a last resort, anchor to the content view. This should be rare/never happen.
-            if (anchor == null || !anchor.isShown()) {
+            if (anchor == null) {
                 anchor = activity.findViewById(android.R.id.content);
             }
             assert anchor != null && anchor.isShown() : "Unable to find anchor for bookmark popup.";
@@ -944,8 +947,7 @@ public class BookmarkUtils {
      * @return Whether the desktop bookmarks layout is enabled.
      */
     public static boolean isDesktopBookmarksLayoutEnabled() {
-        return ChromeFeatureList.isEnabled(ChromeFeatureList.ANDROID_DESKTOP_BOOKMARK_LAYOUT)
-                && DeviceInfo.isDesktop();
+        return ChromeFeatureList.isEnabled(ChromeFeatureList.ANDROID_DESKTOP_BOOKMARK_LAYOUT);
     }
 
     private static Locale getLocale(Activity activity) {
@@ -979,5 +981,27 @@ public class BookmarkUtils {
     public static int getChildNonFolderBookmarkCountForFolder(
             BookmarkModel bookmarkModel, BookmarkId folderId) {
         return getNonFolderBookmarkCount(bookmarkModel, bookmarkModel.getChildIds(folderId));
+    }
+
+    /**
+     * Finds the first view with the given resource ID that is currently shown in the view
+     * hierarchy. Prunes non-visible subtrees for efficiency.
+     */
+    private static @Nullable View findFirstShownView(@Nullable View root, @IdRes int id) {
+        if (root == null || root.getVisibility() != View.VISIBLE) {
+            return null;
+        }
+        if (root.getId() == id && root.isShown()) {
+            return root;
+        }
+        if (root instanceof ViewGroup viewGroup) {
+            for (int i = 0; i < viewGroup.getChildCount(); i++) {
+                View found = findFirstShownView(viewGroup.getChildAt(i), id);
+                if (found != null) {
+                    return found;
+                }
+            }
+        }
+        return null;
     }
 }

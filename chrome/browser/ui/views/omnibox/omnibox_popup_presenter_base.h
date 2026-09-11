@@ -88,7 +88,8 @@ class OmniboxPopupPresenterBase
 
   // Creates and returns a new deactivation blocker. The caller is responsible
   // for managing the lifecycle of the returned blocker (typically via
-  // std::unique_ptr).
+  // std::unique_ptr). Returns nullptr if
+  // `omnibox::kOmniboxKeepOpenOnFileSelection` is disabled.
   virtual std::unique_ptr<OmniboxPopupDeactivationBlocker>
   CreateDeactivationBlocker();
   virtual void OnFileSelectionClosed();
@@ -114,15 +115,25 @@ class OmniboxPopupPresenterBase
 
   // Returns the currently "active" Popup content, whichever one is visible or
   // going to be visible within the popup.
-  OmniboxPopupWebUIBaseContent* GetWebUIContent() const;
+  OmniboxPopupWebUIBaseContent* GetWebUIContent();
+  const OmniboxPopupWebUIBaseContent* GetWebUIContent() const;
 
   // Returns the timeout if showing should be deferred until the WebUI has
   // painted a new frame, or std::nullopt if it should not be deferred.
   virtual std::optional<base::TimeDelta> ShouldDeferUntilVisualStateReady()
       const = 0;
 
+  // Returns whether resize events should be debounced.
+  virtual bool ShouldDebounceResize() const = 0;
+
+  // Returns whether height workarounds should be applied.
+  virtual bool ShouldApplyHeightWorkarounds() const = 0;
   // Returns if the WebContents should be detached when the popup is hidden.
   virtual bool ShouldDetachWebContentsOnHide() const = 0;
+
+  // Returns whether the popup should evict its saved compositor frame when
+  // hidden.
+  virtual bool ShouldEvictOnHide() const = 0;
 
   virtual std::string_view GetPopupMetricPrefix() const = 0;
 
@@ -168,6 +179,9 @@ class OmniboxPopupPresenterBase
   // Returns true if the presenter is currently deactivating.
   virtual bool IsDeactivating() const;
 
+  // Returns whether the WebUI content view receives focus.
+  virtual bool ShouldReceiveFocus() const;
+
  protected:
   inline static constexpr std::string_view kWebUIPopupMetricPrefix =
       "Omnibox.Popup.WebUI";
@@ -200,9 +214,6 @@ class OmniboxPopupPresenterBase
 
   // Returns whether or not the popup should include the location bar cutout.
   virtual bool ShouldShowLocationBarCutout() const;
-
-  // Returns whether the WebUI content view receive focus.
-  virtual bool ShouldReceiveFocus() const;
 
   // Returns true if the popup widget should start transparent to allow the
   // initial layout pass to complete without visual artifacts.

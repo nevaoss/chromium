@@ -405,11 +405,13 @@ NetworkService::NetworkService(
   if (registry_) {
     mojo::SetDefaultProcessErrorHandler(base::BindRepeating(&HandleBadMessage));
 #if BUILDFLAG(IS_LINUX)
-    if (base::FeatureList::IsEnabled(
-            net::features::kAddressTrackerLinuxIsProxied)) {
-      net::NetworkChangeNotifier::SetFactory(
-          new network::NetworkChangeNotifierPassiveFactory());
-    }
+    // TODO(neva): Workaround to fix webruntime crash caused by enabling
+    // AddressTrackerLinuxIsProxied feature by default in the upstream CL
+    // http://crrev.com/c/7887860. We'll revise this issue in NEVA-8175.
+#if !BUILDFLAG(IS_NEVA_APPRUNTIME)
+    net::NetworkChangeNotifier::SetFactory(
+        new network::NetworkChangeNotifierPassiveFactory());
+#endif  // !BUILDFLAG(IS_NEVA_APPRUNTIME)
 #endif
   }
 
@@ -460,8 +462,6 @@ void NetworkService::Initialize(mojom::NetworkServiceParamsPtr params,
     // The NetworkChangeNotifierPassive should only be included if it's
     // necessary to instantiate an AddressMapCacheLinux rather than an
     // AddressTrackerLinux.
-    DCHECK(base::FeatureList::IsEnabled(
-        net::features::kAddressTrackerLinuxIsProxied));
     // There should be a factory that creates NetworkChangeNotifierPassives.
     DCHECK(net::NetworkChangeNotifier::GetFactory());
     // Network service should be out of process or it's unsandboxed and can just

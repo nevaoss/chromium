@@ -35,11 +35,10 @@ export function createAutocompleteMatch(
     removeButtonA11yLabel: '',
     type: '',
     isContextualSuggestion: false,
-    isRichSuggestion: false,
-    isWeatherAnswerSuggestion: null,
-    answer: null,
+    isTwoRowSuggestion: false,
     tailSuggestCommonPrefix: null,
     keywordModel: null,
+    fuseboxAction: null,
     ...config,
   };
 }
@@ -81,6 +80,7 @@ export class ComposeboxProxyImpl implements ComposeboxProxy {
     return this.searchboxCallbackRouter.updateSmartTabSharingActive.addListener(
         callback);
   }
+
   // </if>
 
   static getInstance(): ComposeboxProxyImpl {

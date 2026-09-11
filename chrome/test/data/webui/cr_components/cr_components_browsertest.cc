@@ -123,6 +123,12 @@ IN_PROC_BROWSER_TEST_F(CrComponentsSearchboxTest, SearchboxSelectionMixin) {
           "mocha.run()");
 }
 
+IN_PROC_BROWSER_TEST_F(CrComponentsSearchboxTest, KeywordModeManagerTest) {
+  set_test_loader_host(chrome::kChromeUINewTabPageHost);
+  RunTest("cr_components/searchbox/keyword_mode_manager_test.js",
+          "mocha.run()");
+}
+
 IN_PROC_BROWSER_TEST_F(CrComponentsSearchboxTest, SearchboxIconTest) {
   set_test_loader_host(chrome::kChromeUINewTabPageHost);
   RunTest("cr_components/searchbox/searchbox_icon_test.js", "mocha.run()");
@@ -163,6 +169,10 @@ IN_PROC_BROWSER_TEST_F(CrComponentsHistoryClustersTest, MAYBE_All) {
 
 IN_PROC_BROWSER_TEST_F(CrComponentsHistoryClustersTest, Cluster) {
   RunTest("cr_components/history_clusters/cluster_test.js", "mocha.run()");
+}
+
+IN_PROC_BROWSER_TEST_F(CrComponentsHistoryClustersTest, UrlVisit) {
+  RunTest("cr_components/history_clusters/url_visit_test.js", "mocha.run()");
 }
 
 class CrComponentsMostVisitedTest : public WebUIMochaBrowserTest {

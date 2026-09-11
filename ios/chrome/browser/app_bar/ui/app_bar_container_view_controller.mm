@@ -144,6 +144,19 @@
   _fullscreenProgress = 1;
 }
 
+- (void)viewWillTransitionToSize:(CGSize)size
+       withTransitionCoordinator:
+           (id<UIViewControllerTransitionCoordinator>)coordinator {
+  [super viewWillTransitionToSize:size withTransitionCoordinator:coordinator];
+  __weak __typeof(self) weakSelf = self;
+  [coordinator
+      animateAlongsideTransition:^(
+          id<UIViewControllerTransitionCoordinatorContext> context) {
+        [weakSelf.view windowSizeDidChange];
+      }
+                      completion:nil];
+}
+
 #pragma mark - AppBarContainerViewDelegate
 
 - (void)appBarContainerDidMoveToWindow:(AppBarContainerView*)appBarContainer {
@@ -154,9 +167,6 @@
 
 - (void)updateForFullscreenProgress:(CGFloat)progress {
   _fullscreenProgress = progress;
-  if (self.sceneLayoutState.assistantContainerInvoked) {
-    return;
-  }
   [self updateAndApplyLayout];
 }
 
@@ -186,13 +196,6 @@
 }
 
 - (void)fullscreenWillUpdateState:(FullscreenBrowserAgent*)agent {
-  if (self.sceneLayoutState.assistantContainerInvoked &&
-      !IsAppBarHiddenInFullscreen()) {
-    _fullscreenProgress = agent->bottom_progress();
-    agent->AddObscuredInset(UIRectEdgeBottom, kAppBarHeightFullscreen);
-    return;
-  }
-
   AppBarPosition position = self.sceneLayoutState.appBarPosition;
   switch (position) {
     case AppBarPosition::kBottom: {
@@ -253,14 +256,9 @@
   }
 
   self.view.transform = CGAffineTransformMakeRotation(angle);
-  CGFloat progress = _fullscreenProgress;
-  if (self.sceneLayoutState.assistantContainerInvoked &&
-      !IsAppBarHiddenInFullscreen()) {
-    progress = 0.0;
-  }
   self.view.assistantContainerInvoked =
       self.sceneLayoutState.assistantContainerInvoked;
-  self.view.fullscreenProgress = progress;
+  self.view.fullscreenProgress = _fullscreenProgress;
   self.view.appBarPosition = position;
   [_appBar updateForAngle:-angle];
   [self

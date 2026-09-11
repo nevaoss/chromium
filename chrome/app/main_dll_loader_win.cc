@@ -11,6 +11,7 @@
 #include <userenv.h>
 
 #include <memory>
+#include <optional>
 #include <string>
 #include <string_view>
 
@@ -38,6 +39,7 @@
 #include "base/win/shlwapi.h"
 #include "base/win/windows_version.h"
 #include "build/branding_buildflags.h"
+#include "chrome/app/llvm_profile_util.h"
 #include "chrome/browser/active_use_util.h"
 #include "chrome/chrome_elf/chrome_elf_main.h"
 #include "chrome/common/buildflags.h"
@@ -88,8 +90,6 @@ typedef int (*DLL_MAIN)(HINSTANCE,
                         int64_t preread_begin_ticks,
                         int64_t preread_end_ticks);
 
-typedef void (*RelaunchChromeBrowserWithNewCommandLineIfNeededFunc)();
-
 // Properties for the main module to be loaded.
 struct ModuleProperties {
   // The basename of the module (e.g., "chrome.dll").
@@ -97,18 +97,22 @@ struct ModuleProperties {
 
   // The name of the main entrypoint of the module (e.g., "ChromeMain").
   base::cstring_view entrypoint_name;
+
+  // The profile type to configure for PGO, if any.
+  std::optional<ProfileProcessType> profile_type;
 };
 
 // Returns the properties for the module to be loaded in `process_type`.
 const ModuleProperties& ModulePropertiesFromProcessType(
     std::string_view process_type) {
   // Most process types load chrome.dll and run `ChromeMain`.
-  static constexpr ModuleProperties kOtherProperties = {installer::kChromeDll,
-                                                        "ChromeMain"};
+  static constexpr ModuleProperties kOtherProperties = {
+      installer::kChromeDll, "ChromeMain", std::nullopt};
 #if BUILDFLAG(ENABLE_SEPARATE_RENDERER_BINARY)
   // Renderers load chrome_renderer.dll and run `ChromeRendererMain`.
   static constexpr ModuleProperties kRendererProperties = {
-      chrome::kRendererDll, "ChromeRendererMain"};
+      chrome::kRendererDll, "ChromeRendererMain",
+      ProfileProcessType::kRenderer};
   return process_type == "renderer" ? kRendererProperties : kOtherProperties;
 #else
   return kOtherProperties;
@@ -279,6 +283,10 @@ int MainDllLoader::Launch(HINSTANCE instance,
   const auto& module_properties =
       ModulePropertiesFromProcessType(process_type_);
 
+  if (module_properties.profile_type.has_value()) {
+    SetLLVMProfileProcessType(*module_properties.profile_type);
+  }
+
   base::FilePath file;
   dll_ = Load(&file, module_properties.module_name, cmd_line, is_browser,
               preread_begin_ticks, preread_end_ticks);
@@ -295,19 +303,6 @@ int MainDllLoader::Launch(HINSTANCE instance,
   return rc;
 }
 
-void MainDllLoader::RelaunchChromeBrowserWithNewCommandLineIfNeeded() {
-  // The relaunch-if-needed behavior is a NOP for processes other than the
-  // browser process, so early out here.
-  if (!dll_ || !process_type_.empty())
-    return;
-
-  RelaunchChromeBrowserWithNewCommandLineIfNeededFunc relaunch_function =
-      reinterpret_cast<RelaunchChromeBrowserWithNewCommandLineIfNeededFunc>(
-          ::GetProcAddress(dll_,
-                           "RelaunchChromeBrowserWithNewCommandLineIfNeeded"));
-  CHECK(relaunch_function);
-  relaunch_function();
-}
 
 //=============================================================================
 

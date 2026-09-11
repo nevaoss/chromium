@@ -360,12 +360,13 @@ class MessageServiceFactory
       Source source,
       const PortId& source_port_id,
       const std::string& native_app_name,
+      const SigningCertificates& android_certificates,
       mojo::PendingAssociatedRemote<extensions::mojom::MessagePort> port,
       mojo::PendingAssociatedReceiver<extensions::mojom::MessagePortHost>
           port_host) override {
     MessageService::Get(context)->OpenChannelToNativeApp(
         GetEndpoint(context, source), source_port_id, native_app_name,
-        std::move(port), std::move(port_host));
+        android_certificates, std::move(port), std::move(port_host));
   }
 
   void OpenChannelToTab(
@@ -545,10 +546,8 @@ void MessageService::OpenChannelToExtension(
         // Check that the web page URL matches. Skip error pages, whose last
         // committed URL reflects the failed navigation target rather than a
         // document the source process actually hosts.
-        is_externally_connectable =
-            !source_render_frame_host->IsErrorDocument() &&
-            externally_connectable->matches.MatchesURL(
-                source_render_frame_host->GetLastCommittedURL());
+        is_externally_connectable = externally_connectable->matches.MatchesURL(
+            util::GetURLForExtensionPermissionCheck(source_render_frame_host));
       }
     } else {
       // Default behaviour. Any extension or content script, no webpages.
@@ -695,6 +694,7 @@ void MessageService::OpenChannelToNativeAppImpl(
     const ChannelEndpoint& source,
     const PortId& source_port_id,
     const std::string& native_app_name,
+    const SigningCertificates& android_certificates,
     mojo::PendingAssociatedRemote<extensions::mojom::MessagePort> port,
     mojo::PendingAssociatedReceiver<extensions::mojom::MessagePortHost>
         port_host) {
@@ -755,7 +755,7 @@ void MessageService::OpenChannelToNativeAppImpl(
           context_, weak_factory_.GetWeakPtr(), source_render_frame_host,
           extension->id(), receiver_port_id, native_app_name,
           policy_permission == MessagingDelegate::PolicyPermission::ALLOW_ALL,
-          &error));
+          android_certificates, &error));
 
   if (!receiver.get()) {
     // Abandon the channel.

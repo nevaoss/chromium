@@ -39,7 +39,6 @@
 <translation id="1356661055722410047">חדש! אפשר לתרגם טקסט ותמונות במסך</translation>
 <translation id="1383876407941801731">חיפוש</translation>
 <translation id="1388276868779258475">‏עם אפליקציית Chromium אפשר להמשיך לגלוש בכל מקום</translation>
-<translation id="1397530502368084401">‏&amp;ניהול הפרופילים ב-Chromium</translation>
 <translation id="141901961143729572">כאן אפשר לשתף את המחשבות שלך</translation>
 <translation id="1465192221147974788">‏כדי לשתף את החלון, צריך לאפשר הקלטת מסך ב-Chromium בקטע "הגדרות המערכת".</translation>
 <translation id="1478370723027452770">‏קבלת עזרה לגבי Chrome for Testing</translation>
@@ -75,6 +74,7 @@
 <translation id="1857749206890802997">‏כדי לפתוח או ליצור קבוצות חדשות של כרטיסיות תוך כדי תנועה, כדאי להוריד את Chromium לטלפון שלך.</translation>
 <translation id="185970820835152459">‏יש לך אפשרות לנהל את חשבונות Google שאליהם נכנסת. כדי ליהנות מחיבור לחשבון בדפדפן Chromium, בחנות Play, ב-‏Gmail ובשירותים נוספים, עליך להיכנס עם חשבונות Google שלך. כדי להוסיף חשבון של מישהו אחר, כמו חבר/ה בקבוצה המשפחתית, יש להוסיף משתמש חדש ל-<ph name="DEVICE_TYPE" />. <ph name="LINK_BEGIN" />מידע נוסף<ph name="LINK_END" /></translation>
 <translation id="1862852878885210965">חיפוש באמצעות התכונה 'חיפוש תמונות'</translation>
+<translation id="1863837059069884561">‏הדפדפן כבר מחובר לחשבון של <ph name="EXISTING_USER" />. כדי להפריד בין נתוני הגלישה של החשבונות, עליך להיכנס לפרופיל שלך ב-Chromium בתור <ph name="USER_EMAIL_ADDRESS" />. הסימניות ופריטים נוספים יופיעו במכשיר <ph name="DEVICE" />.</translation>
 <translation id="1880677175115548835">בחירת טקסט</translation>
 <translation id="1881322772814446296">‏נכנסת עם חשבון מנוהל שנותן למנהל המערכת שלו שליטה על הפרופיל שלך ב-Chromium. הנתונים שלך ב-Chromium, כגון אפליקציות, סימניות, היסטוריה, סיסמאות והגדרות אחרות ייקשרו באופן קבוע ל-<ph name="USER_NAME" />. ניתן למחוק את הנתונים האלה באמצעות לוח הבקרה של חשבונות Google, אבל אי אפשר לשייך את הנתונים האלה לחשבון אחר. לחלופין, באפשרותך ליצור פרופיל חדש כדי לשמור את הנתונים הקיימים שלך ב-Chromium בנפרד.<ph name="LEARN_MORE" /></translation>
 <translation id="1896836275755235458">‏‫Chromium חוסך בחיי הסוללה על ידי הגבלת הפעילות ברקע והאפקטים החזותיים, כמו גלילה חלקה וקצב פריימים של סרטונים. <ph name="BEGIN_LINK" />מידע נוסף על מצב חיסכון באנרגיה<ph name="END_LINK" /></translation>
@@ -133,6 +133,7 @@
 <translation id="2418322681019544463">‏הגדרת Chromium כברירת מחדל מאפשרת לפתוח קישורים מכל אפליקציה ולהשאיר את הדפדפן נגיש בסרגל האפליקציות</translation>
 <translation id="2425157128016763890">‏כדי לקבל סקירה כללית מהירה ולשאול שאלות המשך, אפשר ללחוץ על כפתור הסיכום ולשתף את המסמך הזה עם Gemini ב-Chromium.</translation>
 <translation id="2440750600860946460">‏בעזרת <ph name="BEGIN_LINK" />הכלים של Chromium<ph name="END_LINK" /> אפשר לגלוש בבטחה ובשליטה</translation>
+<translation id="2449487342837813167">‏הדפדפן כבר מחובר לחשבון של <ph name="EXISTING_USER" />. כדי להפריד בין נתוני הגלישה של החשבונות, עליך להיכנס לפרופיל שלך ב-Chromium בתור <ph name="USER_EMAIL_ADDRESS" />. הסיסמאות ופריטים נוספים יופיעו בכל המכשירים שלך.</translation>
 <translation id="2451727308784734061">באמצעות קיצורי הדרך אפשר להגיע מהר למנהל הסיסמאות. ניתן להעביר את קיצור הדרך למרכז האפליקציות או למסך הבית של המחשב.</translation>
 <translation id="2478295928299953161">‏Chromium ייסגר בקרוב</translation>
 <translation id="2483889755041906834">‏ב-Chromium</translation>
@@ -150,7 +151,6 @@
 <translation id="2620436844016719705">מערכת</translation>
 <translation id="2629740064077610681">‏האדמין בארגון שלך יכול לראות ולנהל את נתוני הגלישה, כמו הסימניות, ההיסטוריה והסיסמאות. אין לאדמין אפשרות לראות את נתוני הגלישה בפרופילים אחרים של Chromium</translation>
 <translation id="2635452620547538388">‏כדי להשתמש בנתונים של Chromium ולשמור אותם בחשבון <ph name="ACCOUNT_EMAIL" />, עליך לאמת את הזהות שלך</translation>
-<translation id="2636783171884046627">‏כדי לצאת מ-Gemini ב-Chromium או לחזור אליו, אפשר להשתמש במקש קיצור.</translation>
 <translation id="2637732208198500597">{COUNT,plural, =0{‏כדי שהעדכון ייכנס לתוקף, צריך להפעיל מחדש את Chromium במסגרת ההגנה המתקדמת}=1{‏כדי שהעדכונים ייכנסו לתוקף, צריך להפעיל מחדש את Chromium במסגרת ההגנה המתקדמת. החלון הפרטי לא ייפתח מחדש.}one{‏כדי שהעדכונים ייכנסו לתוקף, צריך להפעיל מחדש את Chromium במסגרת ההגנה המתקדמת. # החלונות הפרטיים לא ייפתחו מחדש.}two{‏כדי שהעדכונים ייכנסו לתוקף, צריך להפעיל מחדש את Chromium במסגרת ההגנה המתקדמת. # החלונות הפרטיים לא ייפתחו מחדש.}other{‏כדי שהעדכונים ייכנסו לתוקף, צריך להפעיל מחדש את Chromium במסגרת ההגנה המתקדמת. # החלונות הפרטיים לא ייפתחו מחדש.}}</translation>
 <translation id="263863604136125912">‏הפעל את Chromium</translation>
 <translation id="2648074677641340862">‏במהלך ההתקנה ארעה שגיאה של מערכת ההפעלה. יש להוריד שוב את Chromium.</translation>
@@ -225,6 +225,7 @@
 <translation id="3387527074123400161">ChromiumOS</translation>
 <translation id="3406848076815591792">‏לעבור לפרופיל קיים של Chromium?</translation>
 <translation id="3412460710772753638">עדכון במנהל הסיסמאות במכשיר הזה</translation>
+<translation id="3438772217992559640">חיפוש בכרטיסייה בעזרת "חיפוש תמונות"</translation>
 <translation id="3455907671758333080">‏רוצה להרחיב את הגרסה המשופרת של גלישה בטוחה ב-Chromium בטלפון?</translation>
 <translation id="3461644266919055473">‏‫Chromium מבצע התאמה אישית…</translation>
 <translation id="3474745554856756813">‏פעולה זו תמחק <ph name="ITEMS_COUNT" /> פריטים מהמכשיר. כדי לשחזר את הנתונים מאוחר יותר, יש להיכנס אל Chromium עם <ph name="USER_EMAIL" />.</translation>
@@ -263,7 +264,6 @@
 <translation id="3892148308691398805">העתקת הטקסט</translation>
 <translation id="390528597099634151">‏המשתמש <ph name="EXISTING_USER" /> כבר מחובר לפרופיל Chromium הזה. כדי להפריד בין פעילויות גלישה, Chromium יכול ליצור עבורך פרופיל משלך.</translation>
 <translation id="3909353120217047026">‏התוסף הזה מפר את המדיניות של חנות האינטרנט של Chrome, ויכול להיות שהוא לא בטוח. צריך להסיר אותו מ-Chromium כדי לא לאפשר לו יותר להציג ולשנות את הנתונים שלך באתרים שאליהם תתבצע כניסה, כולל הפרטים האישיים שלך.</translation>
-<translation id="3937491663738985329">‏התאמה אישית של Chromium</translation>
 <translation id="3941890832296813527">שגיאת התקנה: שם הקובץ של מנהל ההתקנה לא תקין או לא נתמך.</translation>
 <translation id="3945058413678539331">‏Chromium מנסה להעתיק את הסיסמאות. כדי לאפשר למערכת לעשות זאת, יש להזין את הסיסמה שלך ל-Windows.</translation>
 <translation id="3954172517175569325">‏הסיסמאות, אמצעי התשלום והכתובות ששמרת בחשבון שלך ב-Google יוסרו מהמכשיר הזה. כדי להשתמש בהם שוב ב-Chromium, צריך להיכנס שוב לחשבון.</translation>
@@ -403,6 +403,7 @@
 
 אם הדף הזה לא פועל כמו שצריך, כדאי להפעיל את האופטימיזציה.</translation>
 <translation id="5575874067957905201">‏הצגת Gemini ב-Chromium בסרגל התפריטים של Mac והפעלת מקשי הקיצור</translation>
+<translation id="5576587363991567745">‏הדפדפן כבר מחובר לחשבון של <ph name="EXISTING_USER" />. כדי להפריד בין נתוני הגלישה של החשבונות, עליך להיכנס לפרופיל שלך ב-Chromium בתור <ph name="USER_EMAIL_ADDRESS" />. המידע השמור ופריטים נוספים יופיעו במכשיר <ph name="DEVICE" />.</translation>
 <translation id="5579324208890605088">שגיאת הפעלה: יש להפעיל את מנהל ההתקנה כמשתמש רגיל ולא כאדמין.</translation>
 <translation id="5580770360767802657">‏שימוש ב-Chromium כברירת מחדל והצמדה שלו</translation>
 <translation id="5596627076506792578">אפשרויות נוספות</translation>
@@ -438,6 +439,7 @@
 <translation id="5977420883993828287">התכונה הוצמדה. מעכשיו אפשר להשתמש ב"משימות לפי הקשר" דרך סרגל הכלים</translation>
 <translation id="5986585015444752010">{COUNT,plural, =1{‏לפי הגדרת הארגון, Chromium נסגר אוטומטית כשלא משתמשים בו במשך דקה.}one{‏לפי הגדרת הארגון, Chromium נסגר אוטומטית כשלא משתמשים בו במשך # דקות.}two{‏לפי הגדרת הארגון, Chromium נסגר אוטומטית כשלא משתמשים בו במשך # דקות.}other{‏לפי הגדרת הארגון, Chromium נסגר אוטומטית כשלא משתמשים בו במשך # דקות.}}</translation>
 <translation id="5987687638152509985">‏יש לעדכן את Chromium כדי להתחיל את הסנכרון</translation>
+<translation id="5990360079535151574">כדי לשאול שאלות תוך כדי גלישה, אפשר ללחוץ על הכפתור משימות לפי הקשר שבסרגל הכלים ולפתוח את החלונית מחדש</translation>
 <translation id="6003112304606738118">מתבצעת הורדה… יש עוד <ph name="HOURS" /> שע'</translation>
 <translation id="6009821354356307391">הוספה של שאילתת המשך</translation>
 <translation id="6040143037577758943">סגירה</translation>
@@ -577,6 +579,7 @@
 <translation id="7213407614656404070">‏שימוש ב-Chromium בכל פעם שלוחצים על קישורים בהודעות, במסמכים ובאפליקציות אחרות.</translation>
 <translation id="7216228761061470870">‏כשמשתמשים ב"חיפוש תמונות" במחשב, כותרת הדף, כתובת ה-URL והתוכן שלו, כולל קובצי PDF, נשלחים לשרת</translation>
 <translation id="7223968959479464213">‏מנהל המשימות - Chromium</translation>
+<translation id="7227958669698166857">‏הדפדפן כבר מחובר לחשבון של <ph name="EXISTING_USER" />. כדי להפריד בין נתוני הגלישה של החשבונות, עליך להיכנס לפרופיל שלך ב-Chromium בתור <ph name="USER_EMAIL_ADDRESS" />. המידע השמור ופריטים נוספים יופיעו בכל המכשירים שלך.</translation>
 <translation id="7252276985725323153">‏רוצה לגלוש מיד? עכשיו אפשר להגדיר את Chromium להתחיל לפעול יחד עם Windows.</translation>
 <translation id="7274695763216404502">התכונה הוצמדה. מעכשיו אפשר להשתמש בתכונה 'חיפוש תמונות' דרך סרגל הכלים</translation>
 <translation id="7288567540154601580">כרטיסיות ותוספים</translation>
@@ -586,6 +589,7 @@
 <translation id="7318036098707714271">‏קובץ ההעדפות שלך פגום או לא חוקי. 
 
 Chromium לא יכול לשחזר את ההגדרות שלך.</translation>
+<translation id="7324051657739063017">כדי לשאול שאלות תוך כדי גלישה, אפשר לפתוח מחדש את החלונית "משימות לפי הקשר"</translation>
 <translation id="734373864078049451">‏היסטוריית האתרים, הסימניות ונתונים נוספים מ-Chromium נמצאים כאן.</translation>
 <translation id="7347827960336370838">‏רק מי שיודע את ביטוי הסיסמה יכול לקרוא את הנתונים המוצפנים. ביטוי הסיסמה לא נשלח אל Google ולא מאוחסן אצלה. אם שכחת את ביטוי הסיסמה או שברצונך לשנות את ההגדרה הזו, עליך <ph name="BEGIN_LINK" />למחוק את נתוני Chromium בחשבון<ph name="END_LINK" />.</translation>
 <translation id="7349591376906416160">‏לפי הגדרת מנהל המערכת, Chromium יפתח את<ph name="ALTERNATIVE_BROWSER_NAME" /> כדי לגשת אל <ph name="TARGET_URL_HOSTNAME" />.</translation>
@@ -594,6 +598,7 @@ Chromium לא יכול לשחזר את ההגדרות שלך.</translation>
 <translation id="7376384068949534168">‏לא נכנסת לאתר הזה בזמן האחרון. ההרשאות "<ph name="PERMISSION_1" />" ו"<ph name="PERMISSION_2" />" הוסרו על ידי Chromium.</translation>
 <translation id="73786666777299047">‏פתיחת חנות האינטרנט של Chrome</translation>
 <translation id="7394275517973019558">‏הצגת Gemini ב-Chromium במגש המערכת</translation>
+<translation id="7401687852903179959">חיפוש בסרטון בעזרת "חיפוש תמונות"</translation>
 <translation id="7407655596887111931">‏‫Chromium מוגדר עכשיו כדפדפן ברירת המחדל</translation>
 <translation id="7413153308467572558">‏אפשר להמשיך מהמקום שבו הפסקת: Chromium משחזר את הכרטיסיות שלך בכל הפעלה מחדש. כדי להשבית את האפשרות הזו, צריך לעבור אל</translation>
 <translation id="7427879960656355200">‏ייבוא סיסמאות אל Chromium</translation>
@@ -646,6 +651,7 @@ Chromium לא יכול לשחזר את ההגדרות שלך.</translation>
 <translation id="7888981273428720788">‏הגדרת Chromium כדפדפן ברירת המחדל</translation>
 <translation id="7934340546140346950">‏‫Chromium משדרג חיבורים לא מאובטחים ל-HTTPS באופן אוטומטי כשאפשר</translation>
 <translation id="7937630085815544518">‏נכנסת ל-Chromium כ-<ph name="USER_EMAIL_ADDRESS" />. יש להשתמש באותו חשבון כדי להיכנס שוב.</translation>
+<translation id="7944602660083060118">‏הדפדפן כבר מחובר לחשבון של <ph name="EXISTING_USER" />. כדי להפריד בין נתוני הגלישה של החשבונות, עליך להיכנס לפרופיל שלך ב-Chromium בתור <ph name="USER_EMAIL_ADDRESS" />. הסימניות ופריטים נוספים יופיעו בכל המכשירים שלך.</translation>
 <translation id="7975919845073681630">‏זוהי התקנה משנית של Chromium, ולא ניתן להפוך אותו לדפדפן ברירת המחדל שלך.</translation>
 <translation id="7997934263947464652">‏תוספים, אפליקציות ועיצובים ממקורות לא מוכרים עלולים להזיק למכשיר. ההמלצה של Chromium היא להתקין אותם רק מ<ph name="IDS_EXTENSION_WEB_STORE_TITLE" /></translation>
 <translation id="8000759043835159571">‏עם אפליקציית Chromium במכשיר <ph name="DEVICE_TYPE" />, אפשר לקבל כל מה שיש ל-Google להציע</translation>
@@ -672,11 +678,13 @@ Chromium לא יכול לשחזר את ההגדרות שלך.</translation>
 <translation id="81770708095080097">‏Chromium‏ חסם את הקובץ הזה כי הוא מסוכן.</translation>
 <translation id="8177472873527554730">לא נמצא תוכן בדף</translation>
 <translation id="8200109504272824693">‏כדי להשתמש בנתונים של Chromium ולשמור אותם בחשבון <ph name="USER_EMAIL" />, צריך להזין את ביטוי הסיסמה</translation>
+<translation id="820759916613250543">חיפוש בתמונה בעזרת "חיפוש תמונות"</translation>
 <translation id="8221491193165283816">הבחירה שלך היא בדרך כלל לחסום התראות. כדי לאפשר לאתר הזה להציג התראות יש ללחוץ כאן.</translation>
 <translation id="8223363452568144035">‏כדי להשתמש במצלמה, צריך להיכנס אל <ph name="BEGIN_LINK" />הגדרות המערכת<ph name="END_LINK" /> ולתת ל-Chromium גישה</translation>
 <translation id="8232193495299001329">‏‫Chromium לא יכול לאמת את מקור התוסף הזה ויכול להיות שהוא לא בטוח. צריך להסיר אותו מ-Chromium כדי לא לאפשר לו יותר לראות ולשנות את הנתונים שלך באתרים שאליהם תתבצע כניסה, כולל הפרטים האישיים שלך.</translation>
 <translation id="8248265253516264921">‏אם אין לתמונה תיאור מועיל, Chromium ינסה לספק לך תיאור. כדי ליצור תיאורים, התמונות נשלחות אל Google. אפשר להשבית את האפשרות הזו בכל זמן דרך ההגדרות.</translation>
 <translation id="8254601181414348851">‏להיכנס ל-Chromium עם פרופיל חדש?</translation>
+<translation id="8262224117913639129">‏הדפדפן כבר מחובר לחשבון של <ph name="EXISTING_USER" />. כדי להפריד בין נתוני הגלישה של החשבונות, עליך להיכנס לפרופיל שלך ב-Chromium בתור <ph name="USER_EMAIL_ADDRESS" />. הסיסמאות שלך ופרטים נוספים יופיעו במכשיר <ph name="DEVICE" />.</translation>
 <translation id="8277334259226003205">‏הצגת Gemini ב-Chromium במגש המערכת והפעלת מקשי הקיצור</translation>
 <translation id="8286943863733751221">‏<ph name="BEGIN_LINK" />ב-Chromium מוצגות אזהרות<ph name="END_LINK" /> מפני הורדות ואתרים לא בטוחים</translation>
 <translation id="8295827201165805317">‏לא נכנסת לאתר הזה בזמן האחרון. ההרשאה "<ph name="PERMISSION" />" הוסרה על ידי Chromium.</translation>
@@ -754,6 +762,7 @@ Chromium לא יכול לשחזר את ההגדרות שלך.</translation>
 <translation id="8980139959902937527">‏עם אפליקציית Chromium במכשיר <ph name="DEVICE_TYPE" />, תכונות הבטיחות של Google הולכות איתך לכל מקום</translation>
 <translation id="8981150672034878610">‏אי אפשר להפעיל את Chromium בגלל שמשהו השתבש בפתיחת הפרופיל. כדאי לנסות להפעיל מחדש את Chromium.</translation>
 <translation id="8988036198400390003">‏ניהול הפרופילים ב-Chromium</translation>
+<translation id="8993855408334954620">‏כדי לעבור בין Gemini ב-Chromium לבין הכרטיסייה הפתוחה, אפשר להשתמש במקלדת.</translation>
 <translation id="9018218886431812662">ההתקנה הושלמה</translation>
 <translation id="9019929317751753759">‏כדי לשפר את האבטחה של Chromium, השבתנו את התוסף הבא שאינו רשום ב-<ph name="IDS_EXTENSION_WEB_STORE_TITLE" /> וייתכן שנוסף ללא ידיעתך.</translation>
 <translation id="9022552996538154597">‏כניסה אל Chromium</translation>

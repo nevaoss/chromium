@@ -35,7 +35,6 @@
 <translation id="1086486568852410168">Cerca amb Google Lens</translation>
 <translation id="1095093219235104018">Cerca i emplena amb Gemini</translation>
 <translation id="1096992026380844478">La configuració de sincronització es restaurarà a partir de la darrera còpia de seguretat. <ph name="BEGIN_LINK" />Consulta què pots sincronitzar<ph name="END_LINK" /></translation>
-<translation id="1097807529207545420">{count,plural, =1{S'ha verificat 1 contrasenya a l'instant}other{S'han verificat # contrasenyes a l'instant}}</translation>
 <translation id="1103523840287552314">Tradueix sempre el text en <ph name="LANGUAGE" /></translation>
 <translation id="1110772719190051587">Desbloqueja amb Face ID</translation>
 <translation id="1111776967764068277">T'has cansat de copiar enllaços?</translation>
@@ -52,6 +51,7 @@
 <translation id="1149401351239820326">Mes de caducitat</translation>
 <translation id="1150989369772528668">Calendari</translation>
 <translation id="1158134713295836892">Gemini a Chrome</translation>
+<translation id="1159484622358475170">{count,plural, =1{Has comprovat 1 contrasenya}other{Has comprovat # contrasenyes}}</translation>
 <translation id="1161444134753003495">Inicia la sessió</translation>
 <translation id="1161663161838091892">Sincronitza les pestanyes i l'historial per continuar</translation>
 <translation id="1162834932051545794">{count,plural, =1{{count} targeta de crèdit}other{{count} targetes de crèdit}}</translation>
@@ -102,6 +102,7 @@
 <translation id="1312168552565502328">Galetes, dades de llocs</translation>
 <translation id="1312721752506309252">La protecció millorada està activada</translation>
 <translation id="1321993286294231467">Hi ha hagut un error en desar la imatge.</translation>
+<translation id="1322683976135389755">Indicació: Resumeix aquest article (1 de 3)</translation>
 <translation id="1322735045095424339">La teva organització requereix el mode d'incògnit</translation>
 <translation id="1323735185997015385">Suprimeix</translation>
 <translation id="132683371494960526">Feu doble toc per canviar la carpeta principal.</translation>
@@ -334,6 +335,7 @@
 <translation id="1993126639825654370">Copia l'URL de l'enllaç</translation>
 <translation id="199425419756152024">Mostra la contrasenya</translation>
 <translation id="1996318269856535896">Pots continuar utilitzant les dades de navegació existents en aquest dispositiu. Per utilitzar-les, tanca la sessió del compte gestionat.</translation>
+<translation id="2002971615187574739">Utilitza la IA per fer més coses</translation>
 <translation id="2010008505735295285">Torna a carregar</translation>
 <translation id="2012723204723845092">Et donem la benvinguda de nou!</translation>
 <translation id="2015722694326466240">Per veure les contrasenyes, primer has d'establir una contrasenya al dispositiu.</translation>
@@ -604,6 +606,7 @@
 <translation id="2918688092312652908">Marca com a no llegit</translation>
 <translation id="2922210239002704889">Ves a la pàgina d'inici o al teclat</translation>
 <translation id="2924940770243654951">Obre en una pestanya d'incògnit nova</translation>
+<translation id="2934607171563543600">des que s'ha completat l'acció Comprova les contrasenyes</translation>
 <translation id="2952278131021475699">Cerca amb la càmera de Lens</translation>
 <translation id="2953821385349876107">Tria un altre Compte de Google</translation>
 <translation id="2962516096219646456">Mostra totes les dades d'Emplenament automàtic</translation>
@@ -628,6 +631,7 @@
 <translation id="3037177537145227281">Estàs fent un seguiment del preu</translation>
 <translation id="3038136505713492417">Verifica la teva identitat per utilitzar les claus d'accés en aquest dispositiu</translation>
 <translation id="3039671569659952257">Suprimeix la carpeta</translation>
+<translation id="3041835740069544003">Ara Chrome pot detectar i emplenar més formularis amb la comprensió de formularis més intel·ligent. Per fer-ho, el contingut i els URL de les pàgines es poden processar en un espai privat al núvol. Gestiona-ho a la configuració.</translation>
 <translation id="3050988301648974170">Obre Comprovació de contrasenya</translation>
 <translation id="3053332585453689122">Envia a Navegació segura de Google els URL que visites i una petita mostra del contingut de les pàgines, les baixades, l'activitat de les extensions i informació del sistema per comprovar si són perjudicials.</translation>
 <translation id="3055102495753300780">Emmagatzematge d'informació</translation>
@@ -695,9 +699,11 @@
 <translation id="325717987950204592">Toca Privadesa i seguretat</translation>
 <translation id="3259451381796379533">Aquest compte no funcionarà amb Gemini. Inicia la sessió amb un altre Compte de Google.</translation>
 <translation id="3265736395246760288">Inicia la sessió més ràpidament des de qualsevol dels teus dispositius sincronitzats.</translation>
+<translation id="3268166994745151153">Això vol dir que perdràs el progrés actual</translation>
 <translation id="3272527697863656322">Cancel·la</translation>
 <translation id="3272955648592358996">Les teves dades milloren la IA de Google</translation>
 <translation id="3273510436356991673">Personalitza la pantalla d'inici</translation>
+<translation id="327455571215090823">Emplenament automàtic més intel·ligent mantenint la privadesa</translation>
 <translation id="3277021493514034324">S'ha copiat l'adreça del lloc web</translation>
 <translation id="3280562213547448728">Cerca per veu</translation>
 <translation id="3289505634533552500">Cerca per veu</translation>
@@ -749,6 +755,7 @@
 <translation id="3474048842645761983">{COUNT,plural, =1{per a {COUNT} lloc web o aplicació}other{per a {COUNT} llocs web i aplicacions}}</translation>
 <translation id="3474624961160222204">Continua com a <ph name="NAME" /></translation>
 <translation id="3476450923187944815">Accedeix a les teves contrasenyes en altres aplicacions.</translation>
+<translation id="3479552764303398839">Ara no</translation>
 <translation id="3485558910355485767">Finestra d'incògnit nova</translation>
 <translation id="3488501490964659223">Les pestanyes s'han tancat i les dades de navegació s'han suprimit. S'ha tancat la teva sessió</translation>
 <translation id="3490396108106323715">Comparteix la pestanya actual</translation>
@@ -805,6 +812,7 @@
 <translation id="3643338347976071250">{count,plural, =1{{count} contrasenya s'ha desat només en aquest dispositiu. Per utilitzar-la en altres dispositius, desa-la al teu Compte de Google {email}.}other{{count} contrasenyes s'han desat només en aquest dispositiu. Per utilitzar-les en altres dispositius, desa-les al teu Compte de Google {email}.}}</translation>
 <translation id="3659297405161482746">No s'ha trobat cap forma de pagament</translation>
 <translation id="3662966164093827811">{count,plural, =1{1 element seleccionat}other{# elements seleccionats}}</translation>
+<translation id="3668035568083954765">Protegeix la teva privadesa i mantén la seguretat</translation>
 <translation id="3668816008081204991">La llista de lectura està amagada</translation>
 <translation id="3670030362669914947">Número</translation>
 <translation id="3672283986707092811">Selecciona-ho tot</translation>
@@ -911,6 +919,7 @@
 <translation id="4004204301268239848">Les contrasenyes es desen al Compte de Google perquè les puguis utilitzar en tots els dispositius.</translation>
 <translation id="4007463141047732631">Edita el grup</translation>
 <translation id="4011489366247192265">De</translation>
+<translation id="4014099645251211155">Pregunta sobre qualsevol cosa de la pàgina amb Gemini a Chrome</translation>
 <translation id="4017599800655151880">Miniatura</translation>
 <translation id="4018440314314549819">Emplena automàticament les contrasenyes desades</translation>
 <translation id="4021447724486050609">Actualitza el navegador</translation>
@@ -1031,6 +1040,7 @@
 <translation id="4430505936695785931">Obtén les contrasenyes desades en altres aplicacions</translation>
 <translation id="4431224949908513835">Selecciona una forma de pagament per emplenar.</translation>
 <translation id="4432122368769493392">Configuració…</translation>
+<translation id="4439968635693513370">Planifica el teu cap de setmana amb</translation>
 <translation id="4442550905108052454">Obre <ph name="BEGIN_BOLD" />Configuració<ph name="END_BOLD" /></translation>
 <translation id="4445840280797509738">Més opcions per a <ph name="CELL_ACCESSIBILITY_LABEL" /></translation>
 <translation id="4455710003856931944">Pots fer lliscar la vora per anar enrere o endavant.</translation>
@@ -1052,6 +1062,7 @@
 <translation id="4509345063551561634">Ubicació:</translation>
 <translation id="4517684186578051919">Informació del dispositiu</translation>
 <translation id="4520798012560649652">Més informació sobre el mode d'incògnit</translation>
+<translation id="4524737913322680818">Compra, planifica i fes més coses amb Gemini a Chrome</translation>
 <translation id="452503091941773389">{count,plural, =1{{count} adreça d'interès}other{{count} adreces d'interès}}</translation>
 <translation id="4525629404718770519">Mostra les previsualitzacions dels enllaços</translation>
 <translation id="452750746583162491">Revisa les teves dades sincronitzades</translation>
@@ -1059,6 +1070,7 @@
 <translation id="454217142158335225">Pots tornar a obrir els elements tancats des de les seccions de pestanyes o grups de pestanyes recents. Les pestanyes fixades no es tancaran.</translation>
 <translation id="4547181496285029457">Torna a la pestanya recent</translation>
 <translation id="4552042254369397518">S'està copiant…</translation>
+<translation id="4552089082226364758">Flash</translation>
 <translation id="4553044860350038560">Més claus d'accés</translation>
 <translation id="4564893319561643483">Amaga "<ph name="TITLE" />"</translation>
 <translation id="456502772933839252">S'està compartint <ph name="PAGE_TITLE" /></translation>
@@ -1096,10 +1108,12 @@
 <translation id="4652817563047461855">Assegura't que les teves contrasenyes siguin segures, esbrina si estan en perill i obtén consells per protegir-te en línia. <ph name="BEGIN_LINK" />Més informació<ph name="END_LINK" /></translation>
 <translation id="4653053602672040238">Activa la compartició de pestanyes</translation>
 <translation id="4658335131052370646">Desa</translation>
+<translation id="465947902531722727">Canvia de perfil</translation>
 <translation id="466307903888586355">La teva organització ha bloquejat l'opció de desar fitxers</translation>
 <translation id="4668929960204016307">,</translation>
 <translation id="4669618761237477717">La teva organització requereix que naveguis de manera privada. Els grups de pestanyes no se sincronitzen en mode d'incògnit.
 <ph name="BEGIN_LINK" />Més informació<ph name="END_LINK" /></translation>
+<translation id="4670422040696550256">Compra amb confiança amb</translation>
 <translation id="467189612236587057">Connecta amb una empresa iniciant una trucada telefònica</translation>
 <translation id="4673565891421389203">Si inicies la sessió amb el compte gestionat, podràs mantenir la navegació relacionada amb la teva organització (incloses les pestanyes, l'historial i les contrasenyes) separada de la teva altra activitat de navegació.
 
@@ -1205,6 +1219,8 @@
 <translation id="4979397965658815378">Inicia la sessió amb el compte de Google per tenir les adreces d'interès, l'historial, les contrasenyes i altres opcions de configuració en tots els dispositius.</translation>
 <translation id="4985921635659180565">Un cop programada, la supressió d'un fitxer no es pot cancel·lar.</translation>
 <translation id="498624032394115435">Tothom que tingui l'enllaç pot editar totes les pestanyes.</translation>
+<translation id="4986428648020277392">Indicació: Quins hauria de comprar? 2 de 3</translation>
+<translation id="498768198683310172">Comença a utilitzar Gemini</translation>
 <translation id="499122600724363620"><ph name="NAME" />, <ph name="EMAIL" />, gestionat per la teva organització.</translation>
 <translation id="4991383000638469704"><ph name="USER_NAME" />, <ph name="EMAIL" />. <ph name="AI_TIER" />.</translation>
 <translation id="4992255726304765516">Grup de pestanyes de color <ph name="COLOR" /></translation>
@@ -1225,6 +1241,7 @@
 <translation id="5056446788882570708">S'han trobat errors <ph name="TIME" />.</translation>
 <translation id="5056587122125565772">Crea una imatge</translation>
 <translation id="5059136629401106827">D'acord</translation>
+<translation id="5061202435354361813">Millora la teva navegació</translation>
 <translation id="5062321486222145940">Instal. de Google Drive</translation>
 <translation id="5067540696062462445">Baixades</translation>
 <translation id="5070314445039955096">Els permisos per a "<ph name="SITE_DOMAIN" />" es restabliran a desactivats quan surtis d'aquest lloc web</translation>
@@ -1291,6 +1308,7 @@
 <translation id="5238596603078743134">Ara, <ph name="BEGIN_BOLD" /><ph name="USERNAME" /><ph name="END_BOLD" /> pot fer servir el teu nom d'usuari i la teva contrasenya quan utilitzi el gestor de contrasenyes de Google per iniciar la sessió a <ph name="BEGIN_BOLD" /><ph name="WEBSITE" /><ph name="END_BOLD" />.</translation>
 <translation id="5241106044372754566"><ph name="NAME" />, <ph name="EMAIL" />, gestionat per la teva organització, està seleccionat actualment. Tria un compte.</translation>
 <translation id="5242899254250321823">Canvia la contrasenya al lloc web</translation>
+<translation id="524751727772074981">Fes una pregunta, des d'on siguis, amb Gemini a Chrome</translation>
 <translation id="5248640482715684545">Aquest lloc web està provant d'obrir una altra aplicació.</translation>
 <translation id="5250371859659394278">Des d'una font desconeguda</translation>
 <translation id="525510229763628836">Minimitzat</translation>
@@ -1307,6 +1325,7 @@
 <translation id="5300589172476337783">Mostra</translation>
 <translation id="5311061401280561833">S'ha permès l'accés a la càmera i al micròfon</translation>
 <translation id="5313967007315987356">Afegeix un lloc web</translation>
+<translation id="5315029634103634221">Gemini és una IA i pot cometre errors. <ph name="BEGIN_LINK" />Més informació sobre les dades rellevants que s'envien a Google<ph name="END_LINK" /></translation>
 <translation id="5315870524563628285">No hi ha res per importar</translation>
 <translation id="5316356981864168850"><ph name="INDEX" /> de <ph name="NUM_SUGGESTIONS" /></translation>
 <translation id="5317780077021120954">Desa</translation>
@@ -1389,6 +1408,7 @@ Handoff també ha d'estar activat a la secció General de Configuració, i els v
 <translation id="5596627076506792578">Més opcions</translation>
 <translation id="560322036295180549">Desactivat per l'organització</translation>
 <translation id="5611398002774823980">Desa al compte</translation>
+<translation id="5612225021788368236">Tanca la promoció del navegador predeterminat</translation>
 <translation id="561269594905823128">Toca <ph name="BEGIN_BOLD" />Selecciona el fitxer<ph name="END_BOLD" /></translation>
 <translation id="5613297089029360427">Ordena per més recents</translation>
 <translation id="5614553682702429503">Vols desar la contrasenya?</translation>
@@ -1467,6 +1487,7 @@ Handoff també ha d'estar activat a la secció General de Configuració, i els v
 <translation id="583281660410589416">Desconegut</translation>
 <translation id="5838430324585198889">Desbloqueja més funcions per al teu iPad amb les aplicacions de Google</translation>
 <translation id="583923961930319521">Utilitza contrasenyes en tots els teus dispositius</translation>
+<translation id="5841763734702350465">Indicació: Afegeix-ho al meu calendari, 3 de 3</translation>
 <translation id="5843013299019689749">Color de fons negre</translation>
 <translation id="5844284118433003733">Si tens la sessió iniciada, aquestes dades s'enllacen al teu Compte de Google per protegir-te als serveis de Google; per exemple, augmentant la protecció a Gmail després d'un incident de seguretat.</translation>
 <translation id="5854790677617711513">Anterior a 30 dies</translation>
@@ -1670,6 +1691,7 @@ Handoff també ha d'estar activat a la secció General de Configuració, i els v
 <translation id="6454311990702999318">Dades no vàlides</translation>
 <translation id="6459411599807878608">Els detalls estan amagats</translation>
 <translation id="646394917185284261">Arxius</translation>
+<translation id="6470721056280836221">Google utilitza les dades d'ús de les funcions per recomanar tasques i actualitzar el progrés. Pots desactivar Puja de nivell en qualsevol moment.</translation>
 <translation id="6472069383518492189">Trobaràs les baixades aquí</translation>
 <translation id="6476253015009698798">El seguiment de preus no està disponible per a aquesta pàgina.</translation>
 <translation id="6476284679642588870">Gestiona les formes de pagament</translation>
@@ -1747,6 +1769,7 @@ Handoff també ha d'estar activat a la secció General de Configuració, i els v
 <translation id="667999046851023355">Document</translation>
 <translation id="6681791404926413601">{count,plural, =1{Hi ha {count} opció de forma de pagament disponible a sobre del teclat.}other{Hi ha {count} opcions de forma de pagament disponibles a sobre del teclat.}}</translation>
 <translation id="6682680306647339111">S'ha suprimit el recordatori</translation>
+<translation id="6683022854667115063">Auriculars</translation>
 <translation id="6684262542644248484">Inicia la sessió en un lloc web</translation>
 <translation id="6685259053455152195">Dreceres per modificar ràpidament la configuració i utilitzar funcions des de la barra d'adreces.</translation>
 <translation id="6689342293888598653">Color de fons blanc</translation>
@@ -1776,6 +1799,7 @@ Handoff també ha d'estar activat a la secció General de Configuració, i els v
 <translation id="6775952316617222141">Utilitza Live amb Gemini a Chrome</translation>
 <translation id="6779455296366983087">Les dades de navegació se suprimiran</translation>
 <translation id="6782531425936234573">Exporta les dades</translation>
+<translation id="6789665473250283877">Suprimeix <ph name="TOOL_NAME" /></translation>
 <translation id="6791425686608802741">Toca Afegeix una pestanya al grup nou</translation>
 <translation id="6794476726485507147">Tria la data i l'hora en què vols rebre una notificació de recordatori per tornar a visitar aquesta pàgina</translation>
 <translation id="6797543908718012274">Activa el mode de lectura</translation>
@@ -1908,6 +1932,7 @@ Per continuar des de l'ordinador, canvia a <ph name="OTHER_EMAIL" />. Obtindràs
 <translation id="7233006041370588369">Selecciona una contrasenya per emplenar.</translation>
 <translation id="723874023660911012">Canvia de perfil</translation>
 <translation id="7241135764990439166">El mode d'incògnit no està disponible</translation>
+<translation id="7245288034498365666">Organitza't i estalvia temps</translation>
 <translation id="7253951228444156601">S'estan comprovant les contrasenyes…</translation>
 <translation id="7261217796641151584">Comparteix el grup</translation>
 <translation id="7266578100016339897">Això t'ajuda a mantenir l'organització. Pots canviar-ho en qualsevol moment a la configuració.</translation>
@@ -1970,7 +1995,6 @@ Per continuar des de l'ordinador, canvia a <ph name="OTHER_EMAIL" />. Obtindràs
 <translation id="7464143666517313304">Se suprimiran les adreces desades en aquest dispositiu.</translation>
 <translation id="7468373585447318060">Estigues al corrent de les baixades de preu en tots els productes que segueixes.</translation>
 <translation id="746872191028309255">Compra el que veus amb la càmera o la galeria de fotos.</translation>
-<translation id="7469215556134875318">des que utilitzes Comprovació de contrasenya</translation>
 <translation id="7471557245617580330">Crea una pestanya nova</translation>
 <translation id="7473555040328423550">Afegeix una pestanya</translation>
 <translation id="7476548258282096076">Aquesta targeta mostra els llocs web que visites més sovint.</translation>
@@ -2147,6 +2171,7 @@ Per continuar des de l'ordinador, canvia a <ph name="OTHER_EMAIL" />. Obtindràs
 <translation id="8011489434346330032">Web Inspector</translation>
 <translation id="8014007212279733632">Verifica la teva identitat per emplenar automàticament la informació sensible</translation>
 <translation id="8015826420689927262">Suprimeix el fitxer adjunt</translation>
+<translation id="8016869623424294549">Estàs a punt de canviar de perfil</translation>
 <translation id="8017015647846870183">Del gestor de contrasenyes de Google, incloses les contrasenyes i les claus d'accés</translation>
 <translation id="802154636333426148">Error de baixada</translation>
 <translation id="8023170444051056234">Perdràs immediatament l'accés al grup de pestanyes "<ph name="GROUP_NAME" />" i se suprimirà de tots els teus dispositius</translation>
@@ -2474,6 +2499,7 @@ Per continuar des de l'ordinador, canvia a <ph name="OTHER_EMAIL" />. Obtindràs
 <translation id="9029650858822697271">S'ha tancat la teva sessió</translation>
 <translation id="9032405509996909363">Confirma si vols suprimir les dades de navegació</translation>
 <translation id="9035699147763101514">Amb la tecnologia d'Intel·ligència personal de Gemini. Gestiona les teves opcions a la configuració.</translation>
+<translation id="9038526468059454274">Resumeix-ho amb</translation>
 <translation id="9039373489628511875">Amplada de banda</translation>
 <translation id="9042893549633094279">Privadesa i seguretat</translation>
 <translation id="9055291197094969722">Crea grups de pestanyes per organitzar les pestanyes obertes i mantenir la productivitat</translation>

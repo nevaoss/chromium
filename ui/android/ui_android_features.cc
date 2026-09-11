@@ -9,6 +9,9 @@ namespace ui {
 
 BASE_FEATURE(kAndroidHDR, base::FEATURE_ENABLED_BY_DEFAULT);
 
+BASE_FEATURE(kAndroidResourceMemoryOptimization,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 BASE_FEATURE(kAndroidUseCorrectDisplayWorkArea,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -31,6 +34,8 @@ BASE_FEATURE(kClipboardConfusedDeputyDefenseText,
 BASE_FEATURE(kClipboardConfusedDeputyDefenseImages,
              base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kClipboardConfusedDeputyDefenseFiles,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kClipboardOversizedPayloadProvider,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kDeprecatedExternalPickerFunction,

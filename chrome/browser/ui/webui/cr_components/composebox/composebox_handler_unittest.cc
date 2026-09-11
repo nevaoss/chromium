@@ -240,9 +240,9 @@ TEST_F(ComposeboxHandlerTest, SubmitQueryWithToolMetric) {
 
   // Submitting with deep search and Gemini regular model enabled.
   handler().SetActiveToolMode(omnibox::ToolMode::TOOL_MODE_DEEP_SEARCH,
-                              /*is_set_by_server=*/false);
+                              /*is_set_by_aim=*/false);
   handler().SetActiveToolMode(omnibox::ToolMode::TOOL_MODE_DEEP_SEARCH,
-                              /*is_set_by_server=*/false);
+                              /*is_set_by_aim=*/false);
   handler().RecordToolSelectionAction(omnibox::ToolMode::TOOL_MODE_DEEP_SEARCH);
   handler().SetActiveModelMode(omnibox::ModelMode::MODEL_MODE_GEMINI_REGULAR,
                                /*is_set_by_server=*/false);
@@ -263,7 +263,7 @@ TEST_F(ComposeboxHandlerTest, SubmitQueryWithToolMetric) {
 
   // Submitting with create image and Gemini Pro model enabled.
   handler().SetActiveToolMode(omnibox::ToolMode::TOOL_MODE_IMAGE_GEN,
-                              /*is_set_by_server=*/false);
+                              /*is_set_by_aim=*/false);
   handler().RecordToolSelectionAction(omnibox::ToolMode::TOOL_MODE_IMAGE_GEN);
   handler().SetActiveModelMode(omnibox::ModelMode::MODEL_MODE_GEMINI_PRO,
                                /*is_set_by_server=*/false);
@@ -302,6 +302,25 @@ TEST_F(ComposeboxHandlerTest, SetSmartTabSharingActive) {
   EXPECT_TRUE(handler().IsSmartTabSharingActive());
 
   handler().SetSmartTabSharingActive(false);
+  EXPECT_FALSE(handler().IsSmartTabSharingActive());
+}
+
+TEST_F(ComposeboxHandlerTest, ResetInputStateModelClearsSmartTabSharingActive) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitWithFeaturesAndParameters(
+      {{contextual_tasks::kContextualTasksContext,
+        {{"ContextualTasksContextSmartTabSharing", "true"}}},
+       {contextual_tasks::kContextualTasksForceEntryPointEligibility, {}}},
+      {});
+
+  EXPECT_FALSE(handler().IsSmartTabSharingActive());
+
+  handler().SetSmartTabSharingActive(true);
+  EXPECT_TRUE(handler().IsSmartTabSharingActive());
+
+  // Starting a new session resets the session handle and input state model.
+  contextual_session_handle()->set_smart_tab_sharing_active(std::nullopt);
+  handler().ResetInputStateModel();
   EXPECT_FALSE(handler().IsSmartTabSharingActive());
 }
 
@@ -517,7 +536,7 @@ class DestructingTestWebContentsDelegate : public TestWebContentsDelegate {
   base::OnceClosure on_open_url_;
 };
 
-TEST_F(ComposeboxHandlerTest, OpenUrl_DestructionSafe) {
+TEST_F(ComposeboxHandlerTest, ProcessContextAndOpenUrl_DestructionSafe) {
   base::test::ScopedFeatureList feature_list;
   feature_list.InitAndEnableFeature(omnibox::kOmniboxEverywhere);
 
@@ -525,9 +544,11 @@ TEST_F(ComposeboxHandlerTest, OpenUrl_DestructionSafe) {
    public:
     using ComposeboxHandler::ComposeboxHandler;
 
-    void OpenUrl(GURL url, const WindowOpenDisposition disposition) override {
+    void ProcessContextAndOpenUrl(
+        GURL url,
+        const WindowOpenDisposition disposition) override {
       auto weak_this = weak_ptr_factory_.GetWeakPtr();
-      ContextualSearchboxHandler::OpenUrl(url, disposition);
+      ContextualSearchboxHandler::ProcessContextAndOpenUrl(url, disposition);
       if (!weak_this) {
         return;
       }
@@ -558,12 +579,12 @@ TEST_F(ComposeboxHandlerTest, OpenUrl_DestructionSafe) {
       base::BindLambdaForTesting([&]() { return contextual_session_handle(); }),
       base::DoNothing());
 
-  // Calling OpenUrl will post a navigation task to the task runner.
-  // Running pending tasks will trigger WebContentsDelegate::OpenURLFromTab,
-  // which synchronously destroys the handler, and it should complete safely
-  // without any use-after-free crashes.
-  test_handler->OpenUrl(GURL("https://google.com"),
-                        WindowOpenDisposition::CURRENT_TAB);
+  // Calling ProcessContextAndOpenUrl will post a navigation task to the task
+  // runner. Running pending tasks will trigger
+  // WebContentsDelegate::OpenURLFromTab, which synchronously destroys the
+  // handler, and it should complete safely without any use-after-free crashes.
+  test_handler->ProcessContextAndOpenUrl(GURL("https://google.com"),
+                                         WindowOpenDisposition::CURRENT_TAB);
 
   base::RunLoop().RunUntilIdle();
 
@@ -578,9 +599,11 @@ TEST_F(ComposeboxHandlerTest, SubmitQuery_DestructionSafe) {
    public:
     using ComposeboxHandler::ComposeboxHandler;
 
-    void OpenUrl(GURL url, const WindowOpenDisposition disposition) override {
+    void ProcessContextAndOpenUrl(
+        GURL url,
+        const WindowOpenDisposition disposition) override {
       auto weak_this = weak_ptr_factory_.GetWeakPtr();
-      ContextualSearchboxHandler::OpenUrl(url, disposition);
+      ContextualSearchboxHandler::ProcessContextAndOpenUrl(url, disposition);
       if (!weak_this) {
         return;
       }
@@ -775,6 +798,103 @@ TEST_F(ComposeboxHandlerTest, ShouldOpenInLensSidePanel_MultipleTabsAttached) {
       SessionID::FromSerializedValue(tab_id.id() + 1));
   contextual_session_handle()->set_submitted_context_tokens({token1, token2});
 
+  EXPECT_TRUE(handler().ShouldOpenInLensSidePanelForTesting(
+      web_contents(), contextual_session_handle()));
+}
+
+TEST_F(
+    ComposeboxHandlerTest,
+    ShouldOpenInLensSidePanel_ContextualTasksCobrowseEligible_MultipleTabsAttached) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitWithFeatures(
+      /*enabled_features=*/{contextual_tasks::kContextualTasks,
+                            contextual_tasks::
+                                kContextualTasksForceEntryPointEligibility},
+      /*disabled_features=*/{});
+
+  sessions::SessionTabHelper::CreateForWebContents(
+      web_contents(), base::BindRepeating([](content::WebContents* contents) {
+        return static_cast<sessions::SessionTabHelperDelegate*>(nullptr);
+      }));
+  SessionID tab_id = sessions::SessionTabHelper::IdForTab(web_contents());
+
+  base::UnguessableToken token1 = base::UnguessableToken::Create();
+  base::UnguessableToken token2 = base::UnguessableToken::Create();
+  query_controller().AddTabFileInfoForTesting(
+      token1, GURL("https://example1.com"),
+      lens::MimeType::kAnnotatedPageContent, tab_id);
+  query_controller().AddTabFileInfoForTesting(
+      token2, GURL("https://example2.com"),
+      lens::MimeType::kAnnotatedPageContent,
+      SessionID::FromSerializedValue(tab_id.id() + 1));
+  contextual_session_handle()->set_submitted_context_tokens({token1, token2});
+
+  // When kContextualTasks (cobrowse) is enabled and eligible, cobrowse handles
+  // navigation for multiple tabs as well, so ShouldOpenInLensSidePanel returns
+  // false.
+  EXPECT_FALSE(handler().ShouldOpenInLensSidePanelForTesting(
+      web_contents(), contextual_session_handle()));
+}
+
+TEST_F(ComposeboxHandlerTest,
+       ShouldOpenInLensSidePanel_MultipleTabsAttached_CurrentTabNotInContext) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitWithFeatures(
+      /*enabled_features=*/{contextual_tasks::kContextualTasksSidePanel},
+      /*disabled_features=*/{contextual_tasks::kContextualTasks});
+
+  sessions::SessionTabHelper::CreateForWebContents(
+      web_contents(), base::BindRepeating([](content::WebContents* contents) {
+        return static_cast<sessions::SessionTabHelperDelegate*>(nullptr);
+      }));
+  SessionID tab_id = sessions::SessionTabHelper::IdForTab(web_contents());
+
+  base::UnguessableToken token1 = base::UnguessableToken::Create();
+  base::UnguessableToken token2 = base::UnguessableToken::Create();
+  query_controller().AddTabFileInfoForTesting(
+      token1, GURL("https://example1.com"),
+      lens::MimeType::kAnnotatedPageContent,
+      SessionID::FromSerializedValue(tab_id.id() + 1));
+  query_controller().AddTabFileInfoForTesting(
+      token2, GURL("https://example2.com"),
+      lens::MimeType::kAnnotatedPageContent,
+      SessionID::FromSerializedValue(tab_id.id() + 2));
+  contextual_session_handle()->set_submitted_context_tokens({token1, token2});
+
+  EXPECT_FALSE(handler().ShouldOpenInLensSidePanelForTesting(
+      web_contents(), contextual_session_handle()));
+}
+
+TEST_F(
+    ComposeboxHandlerTest,
+    ShouldOpenInLensSidePanel_ContextualTasksDisabled_MultipleTabsAttached) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitWithFeatures(
+      /*enabled_features=*/{},
+      /*disabled_features=*/{
+          contextual_tasks::kContextualTasksSidePanel,
+          contextual_tasks::kContextualTasks,
+          contextual_tasks::kContextualTasksRearchitecture});
+
+  sessions::SessionTabHelper::CreateForWebContents(
+      web_contents(), base::BindRepeating([](content::WebContents* contents) {
+        return static_cast<sessions::SessionTabHelperDelegate*>(nullptr);
+      }));
+  SessionID tab_id = sessions::SessionTabHelper::IdForTab(web_contents());
+
+  base::UnguessableToken token1 = base::UnguessableToken::Create();
+  base::UnguessableToken token2 = base::UnguessableToken::Create();
+  query_controller().AddTabFileInfoForTesting(
+      token1, GURL("https://example1.com"),
+      lens::MimeType::kAnnotatedPageContent, tab_id);
+  query_controller().AddTabFileInfoForTesting(
+      token2, GURL("https://example2.com"),
+      lens::MimeType::kAnnotatedPageContent,
+      SessionID::FromSerializedValue(tab_id.id() + 1));
+  contextual_session_handle()->set_submitted_context_tokens({token1, token2});
+
+  // When contextual tasks is disabled, old Lens fallback behavior does not
+  // support multiple context tokens and should return false.
   EXPECT_FALSE(handler().ShouldOpenInLensSidePanelForTesting(
       web_contents(), contextual_session_handle()));
 }

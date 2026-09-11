@@ -279,6 +279,7 @@ def GitCherryPick(
       git_repository,
       'cherry-pick',
       '--keep-redundant-commits',
+      '--no-gpg-sign',
       commit,
     ],
     env=env,
@@ -293,7 +294,16 @@ def GitRevert(git_repository, commit):
   env = os.environ.copy()
   env.update(GIT_METADATA_OVERRIDES)
   RunCommand(
-    ['git', '-C', git_repository, 'revert', '--no-edit', commit], env=env
+    [
+      'git',
+      '-C',
+      git_repository,
+      'revert',
+      '--no-edit',
+      '--no-gpg-sign',
+      commit,
+    ],
+    env=env,
   )
 
 
@@ -1056,8 +1066,8 @@ def main():
       CheckoutGitRepo(
         'LLVM monorepo', LLVM_GIT_URL, checkout_revision, LLVM_DIR
       )
-      # TODO(crbug.com/461828767): remove once we roll past this revision
-      GitCherryPick(LLVM_DIR, '10e97641f53a6eba5ad9430dc25f1ad6e5e8abed')
+      # TODO(crbug.com/549080734): remove once we roll past this revision
+      GitCherryPick(LLVM_DIR, '061865f32607cd064ab944407cc863186702d6f1')
 
   if args.llvm_force_head_revision:
     CLANG_REVISION = GetCommitDescription(checkout_revision)

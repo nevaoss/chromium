@@ -195,6 +195,7 @@ class ContextualTasksUI
   void CloseSidePanel() override;
   void OnSidePanelStateChanged() override;
   void OnActiveTabContextStatusChanged() override;
+  void SyncAutoSuggestedTabContext() override;
   void OnLensOverlayStateChanged(
       bool is_showing,
       std::optional<lens::LensOverlayInvocationSource> invocation_source)
@@ -252,6 +253,10 @@ class ContextualTasksUI
   // Returns true if two URLs are equal. Unlike GURL::operator==, this method
   // ignores the order of query parameters.
   static bool AreUrlsEqual(const GURL& a, const GURL& b);
+
+  // Returns whether this side panel instance was opened via the Omnibox
+  // Co-Browse action with visual selection enabled.
+  bool IsCoBrowseOmniboxAction() const;
 
   // Returns whether OnActiveTabContextStatusChanged should proceed with trying
   // to add the current tab as an auto-chip.

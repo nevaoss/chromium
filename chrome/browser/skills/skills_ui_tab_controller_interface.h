@@ -42,10 +42,17 @@ class SkillsUiTabControllerInterface {
                           skills::mojom::SkillsDialogType dialog_type,
                           std::unique_ptr<glic::Target> target) = 0;
 
+  // Closes the skills dialog if open.
+  virtual void CloseDialog() = 0;
+
+  // Returns true if the skills dialog is currently being shown.
+  virtual bool IsShowing() const = 0;
+
   // Invokes the skill with skill_id in sidepanel.
   virtual void InvokeSkill(std::string_view skill_id,
                            std::string_view skill_name,
-                           std::string_view skill_icon) = 0;
+                           std::string_view skill_icon,
+                           bool auto_submit) = 0;
 
   // Sends a prompt to the side panel.
   virtual void SendPrompt(std::string_view prompt) = 0;

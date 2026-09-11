@@ -1048,6 +1048,16 @@ bool WebRequestAPI::HasWebRequestOrDeclarativeWebRequestExtension() const {
          (declarative_request_extension_count_ > 0);
 }
 
+bool WebRequestAPI::HasWebRequestExtension() const {
+  DCHECK_CURRENTLY_ON(BrowserThread::UI);
+  if (base::FeatureList::IsEnabled(
+          extensions_features::kForceWebRequestProxyForTest)) {
+    return true;
+  }
+
+  return web_request_extension_count_ > 0;
+}
+
 bool WebRequestAPI::IsAvailableToWebViewEmbedderWebUIFrame(
     content::RenderFrameHost* render_frame_host) const {
 #if BUILDFLAG(ENABLE_GUEST_VIEW)
@@ -1059,7 +1069,8 @@ bool WebRequestAPI::IsAvailableToWebViewEmbedderWebUIFrame(
       render_frame_host->GetBrowserContext();
   content::RenderFrameHost* embedder_frame =
       render_frame_host->GetOutermostMainFrameOrEmbedder();
-  const auto& embedder_url = embedder_frame->GetLastCommittedURL();
+  const GURL& embedder_url =
+      util::GetURLForExtensionPermissionCheck(embedder_frame);
   // TODO(crbug.com/40288053): Remove the scheme check once we're sure
   // that WebUIs with WebView run in real WebUI processes and check the
   // context type using |IsAvailableToWebViewEmbedderWebPageFrame()| below.
@@ -1120,7 +1131,8 @@ bool WebRequestAPI::IsAvailableToWebViewEmbedderWebPageFrame(
   Feature::Availability availability =
       ExtensionAPI::GetSharedInstance()->IsAvailable(
           "webRequestInternal", /*extension=*/nullptr,
-          mojom::ContextType::kWebPage, embedder_frame->GetLastCommittedURL(),
+          mojom::ContextType::kWebPage,
+          util::GetURLForExtensionPermissionCheck(embedder_frame),
           CheckAliasStatus::ALLOWED, util::GetBrowserContextId(browser_context),
           BrowserFrameContextData(embedder_frame));
   return availability.is_available();

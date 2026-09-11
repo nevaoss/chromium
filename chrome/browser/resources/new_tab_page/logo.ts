@@ -3,7 +3,6 @@
 // found in the LICENSE file.
 
 import 'chrome://resources/cr_elements/cr_button/cr_button.js';
-import './iframe.js';
 import './doodle_share_dialog.js';
 
 import {assert} from 'chrome://resources/js/assert.js';
@@ -191,9 +190,12 @@ export class LogoElement extends CrLitElement {
   }
 
   private computeDoodleBoxed_(): boolean {
+    if (!this.imageDoodle_) {
+      return false;
+    }
+
     const backgroundColor = this.computeBackgroundColor_();
     return !backgroundColor ||
-        !!this.imageDoodle_ &&
         this.imageDoodle_.backgroundColor.value !== backgroundColor.value;
   }
 

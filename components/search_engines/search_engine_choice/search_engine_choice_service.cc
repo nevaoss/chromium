@@ -736,8 +736,7 @@ void SearchEngineChoiceService::RecordProfileLoadEligibility(
                                              *profile_metrics_service_);
   }
 
-  CHECK(!recorded_profile_load_choice_screen_eligibility_.has_value(),
-        base::NotFatalUntil::M149);
+  CHECK(!recorded_profile_load_choice_screen_eligibility_.has_value());
   recorded_profile_load_choice_screen_eligibility_ = condition;
 }
 
@@ -812,8 +811,7 @@ std::unique_ptr<search_engines::ChoiceScreenData>
 SearchEngineChoiceService::GetChoiceScreenData(
     const SearchTermsData& search_terms_data,
     const TemplateURL* default_search_provider) {
-  CHECK(regional_capabilities_service_->IsInSearchEngineChoiceScreenRegion(),
-        base::NotFatalUntil::M149);
+  CHECK(regional_capabilities_service_->IsInSearchEngineChoiceScreenRegion());
   // We call `GetPrepopulatedEngines` instead of
   // `GetSearchProvidersUsingLoadedEngines` because the latter will return the
   // list of search engines that might have been modified by the user (by
@@ -893,7 +891,7 @@ void SearchEngineChoiceService::RecordChoiceMade(
     // There is an existing record AND we should keep it. In this case, being
     // called from a choice screen is not expected.
     CHECK_NE(choice_location, ChoiceMadeLocation::kChoiceScreen,
-             base::NotFatalUntil::M153);
+             base::NotFatalUntil::M156);
     return;
   }
 
@@ -956,7 +954,7 @@ void SearchEngineChoiceService::MaybeRecordChoiceScreenDisplayState(
         // cache. If programs are compatible, we should NOT have reached this
         // state. Re-entry for the same program is a bug. See
         // crbug.com/390272573.
-        NOTREACHED(base::NotFatalUntil::M153);
+        NOTREACHED(base::NotFatalUntil::M156);
       }
 
       // If we are recording a new display state because we changed programs,

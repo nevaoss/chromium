@@ -18,6 +18,7 @@
 #define NEVA_INJECTION_COMMON_GIN_FUNCTION_TEMPLATE_NEVA_H_
 
 #include "gin/function_template.h"
+#include "v8/include/cppgc/allocation.h"
 
 namespace gin {
 
@@ -27,13 +28,13 @@ v8::Local<v8::FunctionTemplate> CreateConstructorTemplate(
     base::RepeatingCallback<Sig> callback,
     InvokerOptions invoker_options = {}) {
   typedef internal::CallbackHolder<Sig> HolderT;
-  HolderT* holder =
-      new HolderT(isolate, std::move(callback), std::move(invoker_options));
+  HolderT* holder = cppgc::MakeGarbageCollected<HolderT>(
+      isolate->GetCppHeap()->GetAllocationHandle(), std::move(callback),
+      std::move(invoker_options));
 
   v8::Local<v8::FunctionTemplate> tmpl = v8::FunctionTemplate::New(
       isolate, &internal::Dispatcher<Sig>::DispatchToCallback,
-      ConvertToV8<v8::Local<v8::External>>(isolate,
-                                           holder->GetHandle(isolate)));
+      ConvertToV8(isolate, holder).ToLocalChecked());
   return tmpl;
 }
 

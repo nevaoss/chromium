@@ -8,7 +8,9 @@
 
 #include "base/functional/bind.h"
 #include "base/functional/callback_helpers.h"
+#include "base/i18n/rtl.h"
 #include "base/memory/raw_ptr.h"
+#include "chrome/browser/dictation/features.h"
 #include "chrome/browser/ui/views/dictation/waveform_view.h"
 #include "chrome/browser/ui/views/dictation/waveform_view_button.h"
 #include "chrome/grit/generated_resources.h"
@@ -24,8 +26,11 @@
 #include "ui/color/color_variant.h"
 #include "ui/gfx/geometry/point.h"
 #include "ui/gfx/geometry/rect.h"
+#include "ui/gfx/geometry/rounded_corners_f.h"
 #include "ui/gfx/geometry/size.h"
+#include "ui/gfx/geometry/vector2d.h"
 #include "ui/views/bubble/bubble_border.h"
+#include "ui/views/bubble/bubble_frame_view.h"
 #include "ui/views/controls/button/image_button.h"
 #include "ui/views/controls/button/image_button_factory.h"
 #include "ui/views/controls/image_view.h"
@@ -48,6 +53,7 @@ DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(DictationOverlayView,
 namespace {
 
 constexpr int kCornerRadius = 16;
+constexpr int kTeardropCornerRadius = 4;
 
 class DictationOverlayContentsView : public views::View {
   METADATA_HEADER(DictationOverlayContentsView, views::View)
@@ -80,7 +86,14 @@ class DictationOverlayContentsView : public views::View {
     waveform_view->SetProperty(
         views::kElementIdentifierKey,
         DictationOverlayView::kWaveformElementIdForTesting);
-    waveform_view->SetVisible(false);
+    if (kSessionEndsOnStreamEnd.Get()) {
+      // When `kSessionEndsOnStreamEnd` is enabled, there is no point
+      // in showing the mic. It cannot start a new stream.
+      mic_button_->SetVisible(false);
+      waveform_view->SetVisible(true);
+    } else {
+      waveform_view->SetVisible(false);
+    }
     waveform_view_ = AddChildView(std::move(waveform_view));
   }
 
@@ -94,21 +107,29 @@ class DictationOverlayContentsView : public views::View {
 
     bool mic_visible = false;
     bool waveform_visible = false;
-    switch (state) {
-      case UiState::kInactive:
-      case UiState::kInitializing:
-        mic_visible = true;
-        break;
-      case UiState::kTranscribing:
-      case UiState::kFinalizing:
-        waveform_visible = true;
-        break;
+    if (kSessionEndsOnStreamEnd.Get()) {
+      // When `kSessionEndsOnStreamEnd` is enabled, there is no point
+      // in showing the mic. It cannot start a new stream.
+      waveform_visible = true;
+    } else {
+      switch (state) {
+        case UiState::kInactive:
+          mic_visible = true;
+          break;
+        case UiState::kInitializing:
+        case UiState::kTranscribing:
+        case UiState::kFinalizing:
+          waveform_visible = true;
+          break;
+      }
     }
 
     mic_button_->SetVisible(mic_visible);
 
     waveform_view_->SetVisible(waveform_visible);
     waveform_view_->SetState(state);
+    waveform_view_->SetEnabled(state == UiState::kInitializing ||
+                               state == UiState::kTranscribing);
 
     PreferredSizeChanged();
   }
@@ -153,6 +174,18 @@ DictationOverlayView::DictationOverlayView(
 
 DictationOverlayView::~DictationOverlayView() = default;
 
+void DictationOverlayView::OnWidgetInitialized() {
+  views::BubbleDialogDelegate::OnWidgetInitialized();
+  if (GetBubbleFrameView()) {
+    GetBubbleFrameView()->SetRoundedCorners(
+        base::i18n::IsRTL()
+            ? gfx::RoundedCornersF(kCornerRadius, kTeardropCornerRadius,
+                                   kCornerRadius, kCornerRadius)
+            : gfx::RoundedCornersF(kTeardropCornerRadius, kCornerRadius,
+                                   kCornerRadius, kCornerRadius));
+  }
+}
+
 void DictationOverlayView::Show() {
   if (!widget_) {
     widget_ = views::BubbleDialogDelegate::CreateBubble(this);
@@ -181,7 +214,7 @@ void DictationOverlayView::OnStartedStream(content::GlobalDOMNodeId target_id) {
     return;
   }
 
-  last_target_document_ = target_id.document;
+  last_target_node_id_ = target_id;
 
   focus_selection_bounds_changed_subscription_ =
       web_contents->RegisterFocusSelectionBoundsChanged(base::BindRepeating(
@@ -194,7 +227,7 @@ void DictationOverlayView::OnStartedStream(content::GlobalDOMNodeId target_id) {
 void DictationOverlayView::OnFocusSelectionBoundsChanged(
     content::RenderWidgetHostView* render_widget_host_view) {
   content::RenderFrameHost* target_rfh =
-      last_target_document_.AsRenderFrameHostIfValid();
+      last_target_node_id_.document.AsRenderFrameHostIfValid();
   if (!target_rfh || target_rfh->GetView() != render_widget_host_view) {
     return;
   }
@@ -210,20 +243,22 @@ void DictationOverlayView::UpdatePosition(
     return;
   }
 
-  std::optional<gfx::Point> point =
-      web_contents->GetFocusSelectionPoint(target_rfh);
-  if (!point.has_value()) {
+  std::optional<gfx::Rect> bounds =
+      web_contents->GetFocusSelectionBounds(target_rfh);
+  if (!bounds.has_value()) {
     return;
   }
 
-  if (widget_ && !web_contents->IsFocusedElementEditable()) {
-    // If the user's selection changed to something that isn't editable, leave
-    // the icon where it is. Since the last editable is where new text will go
-    // for a new stream.
+  if (widget_ && (web_contents->GetFocusedFrame() != target_rfh ||
+                  target_rfh->GetFocusedDOMNodeId() !=
+                      last_target_node_id_.target_element_dom_id)) {
+    // If the targeted editable node lost focus, leave the icon where it is, as
+    // that's where the text is going to be committed.
     return;
   }
 
-  UpdatePosition(*point);
+  gfx::Point point = bounds->origin() + gfx::Vector2d(bounds->width(), 0);
+  UpdatePosition(point);
   Show();
 }
 

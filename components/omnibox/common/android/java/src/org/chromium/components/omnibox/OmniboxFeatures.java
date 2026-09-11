@@ -88,6 +88,11 @@ public class OmniboxFeatures {
                     OmniboxFeatureList.OMNIBOX_TOUCH_DOWN_TRIGGER_FOR_PREFETCH,
                     FeatureState.ENABLED_IN_PROD);
 
+    public static final CachedFlag sPrefetchSelectedSuggestionsOmtAndroid =
+            newFlag(
+                    OmniboxFeatureList.OMNIBOX_PREFETCH_SELECTED_SUGGESTIONS_OMT_ANDROID,
+                    FeatureState.DISABLED);
+
     public static final CachedFlag sOmniboxSearchPrefetchOnEnterKeyDown =
             newFlag(
                     OmniboxFeatureList.OMNIBOX_SEARCH_PREFETCH_ON_ENTER_KEY_DOWN,
@@ -132,6 +137,9 @@ public class OmniboxFeatures {
     public static final CachedFlag sForceAndroidRealbox =
             newFlag(OmniboxFeatureList.FORCE_ANDROID_REALBOX, FeatureState.DISABLED);
 
+    public static final CachedFlag sDebounceKeyboardVisibility =
+            newFlag(OmniboxFeatureList.OMNIBOX_DEBOUNCE_KEYBOARD_VISIBILITY, FeatureState.DISABLED);
+
     public static final CachedFlag sPostDelayedTaskFocusTab =
             newFlag(OmniboxFeatureList.POST_DELAYED_TASK_FOCUS_TAB, FeatureState.ENABLED_IN_PROD);
 
@@ -144,6 +152,11 @@ public class OmniboxFeatures {
     public static final CachedFlag sOmniboxSessionlessVoiceSearch =
             newFlag(
                     OmniboxFeatureList.OMNIBOX_SESSIONLESS_VOICE_SEARCH,
+                    FeatureState.ENABLED_IN_PROD);
+
+    public static final CachedFlag sSuppressStatusIconDuringHttpNavigation =
+            newFlag(
+                    OmniboxFeatureList.SUPPRESS_STATUS_ICON_DURING_HTTP_NAVIGATION,
                     FeatureState.ENABLED_IN_PROD);
 
     private static final CachedFlag sOmniboxMultimodalInput =
@@ -167,6 +180,9 @@ public class OmniboxFeatures {
     public static final BooleanCachedFeatureParam sShowModelPicker =
             newBooleanParam(sOmniboxMultimodalInput, "show_model_picker", false);
 
+    public static final BooleanCachedFeatureParam sModelPickerOptimizations =
+            newBooleanParam(sOmniboxMultimodalInput, "model_picker_optimizations", true);
+
     /**
      * Whether the bottom sheet popup should be shown. This is private to ensure that callers use
      * {@link #shouldShowBottomSheetPopup()} which also checks if the platform is desktop.
@@ -179,6 +195,9 @@ public class OmniboxFeatures {
 
     public static final BooleanCachedFeatureParam sShowNtpPlusButton =
             newBooleanParam(sOmniboxMultimodalInput, "show_ntp_plus_button", false);
+
+    public static final BooleanCachedFeatureParam sFocusFuseboxFromNtpPlusButton =
+            newBooleanParam(sOmniboxMultimodalInput, "focus_fusebox_from_ntp_plus_button", false);
 
     public static final CachedFlag sAndroidDesktopAimGate =
             newFlag(OmniboxFeatureList.ANDROID_DESKTOP_AIM_GATE, FeatureState.ENABLED_IN_PROD);
@@ -198,6 +217,11 @@ public class OmniboxFeatures {
 
     public static final CachedFlag sResetSuggestionsScroll =
             newFlag(OmniboxFeatureList.RESET_SUGGESTIONS_SCROLL, FeatureState.DISABLED);
+
+    public static final CachedFlag sOmniboxDisableTabsForCanvas =
+            newFlag(
+                    OmniboxFeatureList.OMNIBOX_DISABLE_TABS_FOR_CANVAS,
+                    FeatureState.ENABLED_IN_PROD);
 
     public static final IntCachedFeatureParam sGeolocationRequestTimeoutMinutes =
             newIntParam(
@@ -330,6 +354,29 @@ public class OmniboxFeatures {
      */
     public static boolean isTouchDownTriggerForPrefetchEnabled() {
         return sTouchDownTriggerForPrefetch.isEnabled();
+    }
+
+    /**
+     * Returns whether off-main-thread (OMT) prefetch of search suggestions upon touch down is
+     * enabled on Android.
+     */
+    public static boolean isPrefetchSelectedSuggestionsOmtAndroidEnabled() {
+        return sPrefetchSelectedSuggestionsOmtAndroid.isEnabled();
+    }
+
+    private static @Nullable Boolean sDebounceKeyboardVisibilityForTesting;
+
+    /** Returns whether keyboard visibility transitions should be debounced. */
+    public static boolean isDebounceKeyboardVisibilityEnabled() {
+        if (sDebounceKeyboardVisibilityForTesting != null) {
+            return sDebounceKeyboardVisibilityForTesting;
+        }
+        return sDebounceKeyboardVisibility.isEnabled();
+    }
+
+    /** Modifies the output of {@link #isDebounceKeyboardVisibilityEnabled()} for testing. */
+    public static void setDebounceKeyboardVisibilityForTesting(@Nullable Boolean value) {
+        sDebounceKeyboardVisibilityForTesting = value;
     }
 
     /**

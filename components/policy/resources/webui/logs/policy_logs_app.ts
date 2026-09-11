@@ -2,6 +2,10 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+// <if expr="is_ios">
+import 'chrome://resources/js/ios/web_ui.js';
+// </if>
+
 import {sendWithPromise} from 'chrome://resources/js/cr.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {CrLitElement} from 'chrome://resources/lit/v3_0/lit.rollup.js';
@@ -125,7 +129,7 @@ export class PolicyLogsAppElement extends CrLitElement {
   }
 
   protected getLogTimestamp(log: Log): string {
-    return new Date(Number(log.timestamp)).toLocaleString('en-CA', {
+    return new Date(log.timestamp).toLocaleString('en-CA', {
       timeZoneName: 'short',
       hour12: false,
     });

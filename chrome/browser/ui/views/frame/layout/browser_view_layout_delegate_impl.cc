@@ -13,6 +13,8 @@
 #include "chrome/browser/ui/find_bar/find_bar.h"
 #include "chrome/browser/ui/find_bar/find_bar_controller.h"
 #include "chrome/browser/ui/tabs/features.h"
+#include "chrome/browser/ui/tabs/tab_model.h"
+#include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/tabs/tab_strip_prefs.h"
 #include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h"
 #include "chrome/browser/ui/views/frame/browser_frame_view.h"
@@ -163,7 +165,7 @@ bool BrowserViewLayoutDelegateImpl::IsActiveTabSplit() const {
   // inconsistency would cause unnecessary re-layout of content view during
   // tab switch.
   auto* const active_tab =
-      browser_view_->browser()->tab_strip_model()->GetActiveTab();
+      browser_view_->browser()->GetTabStripModel()->GetActiveTab();
   return active_tab && active_tab->IsSplit();
 }
 
@@ -176,7 +178,7 @@ bool BrowserViewLayoutDelegateImpl::IsActiveTabAtLeadingWindowEdge() const {
     // of leading edge of horizontal tab strip.
     has_leading_search_button &= tab_search_pinned_to_tab_strip_;
     if (!frame->CaptionButtonsOnLeadingEdge() && !has_leading_search_button) {
-      return browser_view_->browser()->tab_strip_model()->IsTabInForeground(0);
+      return browser_view_->browser()->GetTabStripModel()->IsTabInForeground(0);
     }
   }
   return false;

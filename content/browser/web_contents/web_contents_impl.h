@@ -149,6 +149,7 @@ class BackForwardCacheImpl;
 class BeforeUnloadBlockingDelegate;  // content_browser_test_utils_internal.h
 class BrowserPluginEmbedder;
 class BrowserPluginGuest;
+class FrameEvictionOptOutClient;
 class FindRequestManager;
 class JavaScriptDialogDismissNotifier;
 class MediaSession;
@@ -421,6 +422,8 @@ class CONTENT_EXPORT WebContentsImpl
   // WebContents ------------------------------------------------------
   WebContentsDelegate* GetDelegate() final;
   void SetDelegate(WebContentsDelegate* delegate) override;
+  void OptOutFrameEviction(
+      base::PassKey<FrameEvictionOptOutClient>) override;
   SurfaceEmbedConnector* GetSurfaceEmbedConnector() const override;
   NavigationControllerImpl& GetController() override;
 
@@ -721,7 +724,8 @@ class CONTENT_EXPORT WebContentsImpl
   void SetV8CompileHints(base::ReadOnlySharedMemoryRegion data) override;
   void SetTabSwitchStartTime(base::TimeTicks start_time,
                              bool destination_is_loaded,
-                             bool had_saved_frame_at_start) override;
+                             bool had_saved_frame_at_start,
+                             bool destination_is_frozen) override;
   WindowOpenDisposition GetOriginalWindowOpenDisposition() const override;
 
   // Implementation of PageNavigator.
@@ -798,6 +802,7 @@ class CONTENT_EXPORT WebContentsImpl
                        const GURL& url) override;
   bool IsNeverComposited() override;
   ui::AXMode GetAccessibilityMode() override;
+  void NotifyAccessibilityParentChanged() override;
   // Broadcasts the mode change to all frames.
   void ResetAccessibility() override;
   void AXTreeIDForMainFrameHasChanged() override;
@@ -1074,7 +1079,8 @@ class CONTENT_EXPORT WebContentsImpl
       scoped_refptr<PreloadPipelineInfo> preload_pipeline_info,
       base::WeakPtr<PreloadingAttempt> attempt,
       PreloadingHoldbackStatus holdback_status_override,
-      std::optional<base::TimeDelta> ttl) override;
+      std::optional<base::TimeDelta> ttl,
+      bool should_ignore_saver_modes) override;
   std::unique_ptr<PrerenderHandle> StartPrerendering(
       const GURL& prerendering_url,
       PreloadingTriggerType trigger_type,
@@ -1232,7 +1238,7 @@ class CONTENT_EXPORT WebContentsImpl
                                         bool show_selection_menu) override;
   const std::optional<gfx::Rect> GetTextSelectionBounds(
       RenderFrameHost* render_frame_host) const override;
-  const std::optional<gfx::Point> GetFocusSelectionPoint(
+  const std::optional<gfx::Rect> GetFocusSelectionBounds(
       RenderFrameHost* render_frame_host) const override;
   base::CallbackListSubscription RegisterFocusSelectionBoundsChanged(
       FocusSelectionBoundsChangedCallback callback) override;
@@ -1267,6 +1273,7 @@ class CONTENT_EXPORT WebContentsImpl
   ui::mojom::WindowShowState GetWindowShowState() override;
   DevicePostureProviderImpl* GetDevicePostureProvider() override;
   bool GetResizable() override;
+  bool GetIsAlwaysOnTop() override;
   void LostPointerLock(RenderWidgetHostImpl* render_widget_host) override;
   bool IsPointerLockSandboxedForWidget(
       RenderWidgetHostImpl* render_widget_host) override;
@@ -1759,6 +1766,8 @@ class CONTENT_EXPORT WebContentsImpl
   FRIEND_TEST_ALL_PREFIXES(WebContentsImplTest,
                            OnColorProviderChangedNoOpDuringDestruction);
   FRIEND_TEST_ALL_PREFIXES(WebContentsImplTest,
+                           ColorRelatedStateChangesCoalesced);
+  FRIEND_TEST_ALL_PREFIXES(WebContentsImplTest,
                            OnNativeThemeUpdatedNoOpDuringDestruction);
   FRIEND_TEST_ALL_PREFIXES(WebContentsImplTest, NoJSMessageOnInterstitials);
   FRIEND_TEST_ALL_PREFIXES(WebContentsImplTest, UpdateTitle);
@@ -2223,6 +2232,7 @@ class CONTENT_EXPORT WebContentsImpl
   // `NativeTheme` or `ColorProviderSource` are updated. Updates color maps
   // and/or calls `NotifyPreferencesChanged()` as needed.
   void HandleColorRelatedStateChanges();
+  void ScheduleColorRelatedStateChanges();
 
   // implements SlowWebPreferenceCacheObserver
   void OnSlowWebPreferenceChanged() override;
@@ -2981,6 +2991,10 @@ class CONTENT_EXPORT WebContentsImpl
       tracing_track_;
 
   void EmitTracingSlice(const std::string& name);
+
+  bool opt_out_frame_eviction_ = false;
+
+  bool color_related_state_change_scheduled_ = false;
 
   base::WeakPtrFactory<WebContentsImpl> loading_weak_factory_{this};
   base::WeakPtrFactory<WebContentsImpl> weak_factory_{this};

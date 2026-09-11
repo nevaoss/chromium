@@ -12,6 +12,7 @@
 #import "base/time/time.h"
 #import "base/timer/timer.h"
 #import "ios/chrome/browser/intelligence/bwg/ui/gemini_first_run_carousel_slide_view.h"
+#import "ios/chrome/browser/intelligence/bwg/utils/gemini_constants.h"
 #import "ios/chrome/browser/shared/ui/symbols/symbols.h"
 #import "ios/chrome/common/ui/colors/semantic_color_names.h"
 #import "ios/chrome/common/ui/util/constraints_ui_util.h"
@@ -61,6 +62,7 @@ const base::TimeDelta kAutoScrollInterval = base::Seconds(3);
     CHECK(slides.count > 1);
     _slides = [slides copy];
     _slideViews = [NSMutableArray array];
+    self.shouldGroupAccessibilityChildren = YES;
 
     [self setupSubviews];
     [self setupConstraints];
@@ -79,6 +81,11 @@ const base::TimeDelta kAutoScrollInterval = base::Seconds(3);
 
 - (void)startAutoScrolling {
   [self playCurrentSlideAnimation];
+  // Don't start auto-scrolling if the user is using VoiceOver or Reduce Motion.
+  if (UIAccessibilityIsVoiceOverRunning() ||
+      UIAccessibilityIsReduceMotionEnabled()) {
+    return;
+  }
   [self stopAutoScrolling];
   __weak __typeof(self) weakSelf = self;
   _autoScrollTimer.Start(FROM_HERE, kAutoScrollInterval, base::BindRepeating(^{
@@ -310,7 +317,7 @@ const base::TimeDelta kAutoScrollInterval = base::Seconds(3);
     ]];
     [_slideStack layoutIfNeeded];
   }
-  [_dummyFirstSlideView resetToFirstFrame];
+  [_dummyFirstSlideView stopAnimation];
 }
 
 - (void)setupSubviews {
@@ -322,6 +329,8 @@ const base::TimeDelta kAutoScrollInterval = base::Seconds(3);
   _scrollView.showsVerticalScrollIndicator = NO;
   _scrollView.clipsToBounds = NO;
   _scrollView.delegate = self;
+  _scrollView.accessibilityIdentifier =
+      kGeminiFRECarouselScrollViewAccessibilityIdentifier;
   [self addSubview:_scrollView];
 
   // Horizontal stack view inside the scroll view that holds all slide views
@@ -411,7 +420,7 @@ const base::TimeDelta kAutoScrollInterval = base::Seconds(3);
 }
 
 - (void)resetSlideToFirstFrame:(NSInteger)slideIndex {
-  [_slideViews[slideIndex] resetToFirstFrame];
+  [_slideViews[slideIndex] stopAnimation];
 }
 
 - (void)playCurrentSlideAnimation {

@@ -74,6 +74,7 @@ Važne napomene:
 <translation id="2427791862912929107">Chrome ima značajke koje vam mogu pomoći u upravljanju internetskim podacima i brzinom kojom se učitavaju web-stranice.
 <ph name="BEGIN_LINK" />Saznajte više<ph name="END_LINK" /></translation>
 <translation id="2450221499140985490">Otvorite veze iz poruka i dokumenata izravno u Chromeu.</translation>
+<translation id="2459400997522001951">Dovršite brze zadatke i otkrijte sve prednosti Chromea:</translation>
 <translation id="2464852008153767546">{THRESHOLD,plural, =1{To se događa kad se Chrome ne koristi {THRESHOLD} minutu. To može uključivati povijest i automatsko popunjavanje.}one{To se događa kada se Chrome ne koristi {THRESHOLD} minutu. To može uključivati povijest i automatsko popunjavanje.}few{To se događa kada se Chrome ne koristi {THRESHOLD} minute. To može uključivati povijest i automatsko popunjavanje.}other{To se događa kada se Chrome ne koristi {THRESHOLD} minuta. To može uključivati povijest i automatsko popunjavanje.}}</translation>
 <translation id="2561231791489583059">Koristite Chrome kao zadani preglednik da biste se zaštitili od opasnih web-lokacija i očuvali sigurnost svojih zaporki</translation>
 <translation id="2574249610672786438">Da biste vidjeli svoje kartice bez obzira na to gdje koristite Chrome, prijavite se na svim svojim uređajima</translation>
@@ -110,6 +111,7 @@ Nove oznake ne mogu se spremiti na vaš račun dok neke ne izbrišete. Ako se sa
 <translation id="322254490661677575">Da biste upotrebljavali i spremili podatke Chromea na svoj Google račun, unesite šifru.</translation>
 <translation id="3303503998967553377">Koristite radnje u Chromeu na iOS-u</translation>
 <translation id="3348862487678490430">Dodavanje stavke popisa za čitanje u Chrome</translation>
+<translation id="3350281376951945723">Brže otvarajte veze kad postavite Chrome kao zadani preglednik</translation>
 <translation id="3357827134511189025">Prijavljujte se pomoću spremljenih zaporki i pristupnih ključeva iz bilo koje aplikacije pomoću Chroma za automatsko popunjavanje</translation>
 <translation id="3360031466389132716">{THRESHOLD,plural, =1{To se događa kad se Chrome ne koristi {THRESHOLD} minutu}one{To se događa kad se Chrome ne koristi {THRESHOLD} minutu}few{To se događa kad se Chrome ne koristi {THRESHOLD} minute}other{To se događa kad se Chrome ne koristi {THRESHOLD} minuta}}</translation>
 <translation id="3367797402528056312">Dovršite postavljanje Chromea</translation>
@@ -140,6 +142,7 @@ Nove oznake ne mogu se spremiti na vaš račun dok neke ne izbrišete. Ako se sa
 <translation id="411154422556990518">Pratite ažuriranja praćenja cijena i savjete za Chrome.</translation>
 <translation id="417201473131094001">Nije podržano u Chrome Canaryju</translation>
 <translation id="424864128008805179">Želite li se odjaviti s Chromea?</translation>
+<translation id="4314240881330431451">Pomoću Google objektiva u Chromeu možete pretražiti sve što vidite</translation>
 <translation id="4409545895715116037">Sljedeći pristupni ključevi nisu uvezeni u Google upravitelj zaporki jer ne ispunjavaju zahtjeve.</translation>
 <translation id="4430797724889237570">Otvorite veze iz Gmaila, Karata, YouTubea i drugih aplikacija u Chromeu</translation>
 <translation id="447252321002412580">Pomozite poboljšati Chromeove značajke i izvedbu</translation>

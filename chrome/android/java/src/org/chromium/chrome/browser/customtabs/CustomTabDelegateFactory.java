@@ -56,6 +56,7 @@ import org.chromium.chrome.browser.tab.TabStateBrowserControlsVisibilityDelegate
 import org.chromium.chrome.browser.tab.TabWebContentsDelegateAndroid;
 import org.chromium.chrome.browser.tabmodel.TabCreatorManager;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
+import org.chromium.chrome.browser.tabmodel.TabModelType;
 import org.chromium.chrome.browser.ui.ExclusiveAccessManager;
 import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager;
 import org.chromium.chrome.browser.ui.native_page.NativePage;
@@ -301,6 +302,10 @@ public class CustomTabDelegateFactory implements TabDelegateFactory {
 
         @Override
         public @DisplayMode.EnumType int getDisplayMode() {
+            if (isFullscreen()) {
+                return DisplayMode.FULLSCREEN;
+            }
+
             // A page using `window-controls-overlay` and `minimal-ui` display modes expects certain
             // UI features to be in the web app header. If these features cannot be rendred for
             // whatever reason (e.g. desktop window is too small) then it is not accurate to set the
@@ -663,8 +668,8 @@ public class CustomTabDelegateFactory implements TabDelegateFactory {
                 tabModelSelector,
                 () -> assumeNonNull(mEphemeralTabCoordinatorSupplier).get(),
                 CallbackUtils.emptyRunnable(),
-                () -> mSnackbarManager.get(),
-                () -> mBottomSheetController.get());
+                mSnackbarManager,
+                mBottomSheetController);
     }
 
     @Override
@@ -678,8 +683,7 @@ public class CustomTabDelegateFactory implements TabDelegateFactory {
                 createTabContextMenuItemDelegate(tab),
                 mShareDelegateSupplier,
                 contextMenuMode,
-                mIntentDataProvider.getCustomContentActions(),
-                /* leftSideUiWidthSupplier= */ () -> 0);
+                mIntentDataProvider.getCustomContentActions());
     }
 
     @Override
@@ -744,6 +748,11 @@ public class CustomTabDelegateFactory implements TabDelegateFactory {
     }
 
     @Override
+    public @TabModelType int getTabModelType() {
+        return TabModelType.STANDARD;
+    }
+
+    @Override
     public boolean isCustomTab() {
         return mActivityType == ActivityType.CUSTOM_TAB
                 || mActivityType == ActivityType.AUTH_TAB
@@ -759,5 +768,11 @@ public class CustomTabDelegateFactory implements TabDelegateFactory {
     @Override
     public boolean isTabInBrowser() {
         return false;
+    }
+
+    @Override
+    public boolean isTabInPopup() {
+        return mIntentDataProvider != null
+                && mIntentDataProvider.getUiType() == CustomTabsUiType.POPUP;
     }
 }

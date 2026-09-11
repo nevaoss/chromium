@@ -74,6 +74,7 @@ Tasub teada
 <translation id="2427791862912929107">Chrome'il on funktsioone, mis aitavad teil hallata oma internetiandmeid ja seda, kui kiiresti saate veebilehti laadida.
 <ph name="BEGIN_LINK" />Lisateave<ph name="END_LINK" /></translation>
 <translation id="2450221499140985490">Avage sõnumitest ja dokumentidest pärinevad lingid otse Chromiumis.</translation>
+<translation id="2459400997522001951">Tehke kiireid toiminguid ja avastage viise, kuidas Chrome'i parimal moel kasutada.</translation>
 <translation id="2464852008153767546">{THRESHOLD,plural, =1{See juhtub siis, kui Chrome'i ei kasutata {THRESHOLD} minuti jooksul. Need võivad hõlmata ajalugu ja automaattäidet.}other{See juhtub siis, kui Chrome'i ei kasutata {THRESHOLD} minuti jooksul. Need võivad hõlmata ajalugu ja automaattäidet.}}</translation>
 <translation id="2561231791489583059">Kasutage Chrome'i vaikebrauserina, et ohtlike saitide eest kaitstud olla ja oma paroole turvalisena hoida</translation>
 <translation id="2574249610672786438">Selleks et näha vahelehti kõikjalt, kus Chrome'i kasutate, logige kõigisse oma seadmetesse sisse</translation>
@@ -141,6 +142,7 @@ Uusi järjehoidjaid ei saa teie kontole salvestada, enne kui mõned kustutate. K
 <translation id="411154422556990518">Püsige kursis hinnajälgimise värskenduste ja Chrome'i nõuannetega.</translation>
 <translation id="417201473131094001">Ei toetata versioonis Chrome Canary</translation>
 <translation id="424864128008805179">Kas logida Chrome'ist välja?</translation>
+<translation id="4314240881330431451">Chrome'i Google Lensi abil saate otsida kõike, mida näete.</translation>
 <translation id="4409545895715116037">Järgmiseid pääsuvõtmeid ei imporditud Google’i paroolihaldurisse, kuna need ei vasta nõuetele.</translation>
 <translation id="4430797724889237570">Avage Gmaili, Mapsi, YouTube'i ja muude rakenduste lingid Chrome'is</translation>
 <translation id="447252321002412580">Aidake täiustada Chrome'i funktsioone ja toimivust</translation>

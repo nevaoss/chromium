@@ -291,6 +291,11 @@ class ContextualTasksUiService : public KeyedService {
   // Returns whether the provided URL is to an AI page.
   virtual bool IsAiUrl(const GURL& url);
 
+  // Returns whether the contextual tasks side panel is open and the given
+  // WebContents is inside the side panel.
+  virtual bool IsSidePanelOpenAndRequestInSidePanel(
+      content::WebContents* web_contents);
+
   // Returns whether the provided task ID is for a task that should show the
   // error page on load.
   virtual bool IsPendingErrorPage(const base::Uuid& task_id);
@@ -423,10 +428,12 @@ class ContextualTasksUiService : public KeyedService {
       std::unique_ptr<contextual_search::ContextualSearchSessionHandle>
           session_handle);
 
-  // Appends common search parameters (gsc=2, hl, cs, theme, country overrides)
-  // to the given URL for side panel load.
-  static GURL AddCommonSidePanelParams(const GURL& url,
-                                       content::WebContents* source_contents);
+  // Applies required side panel URL modifications (e.g. forced host override,
+  // gsc=2, hl, cs, theme, country overrides) to the given URL for side panel
+  // load.
+  static GURL AddRequiredSidePanelUrlChanges(
+      const GURL& url,
+      content::WebContents* source_contents);
 
  protected:
   virtual void StartTaskUiInSidePanelImpl(
@@ -467,17 +474,18 @@ class ContextualTasksUiService : public KeyedService {
           initiator_frame_token,
       const blink::mojom::WindowFeatures& window_features);
 
-  // Determines if a navigation in the side panel requires
-  // common search parameters (e.g. gsc=2, hl, cs) to be appended or updated.
+  // Determines if a navigation in the side panel requires URL modifications
+  // (e.g. forced host override, gsc=2, hl, cs) to be applied.
   // Only applies when source_contents is explicitly the side panel WebContents.
-  virtual bool ShouldAddRequiredSidePanelParams(
+  virtual bool ShouldAddRequiredSidePanelUrlChanges(
       const content::OpenURLParams& url_params,
       content::WebContents* source_contents);
 
-  // Handles side panel navigation by appending common search parameters
-  // (gsc=2, hl, cs, theme, country overrides) and reloading the URL in the
-  // side panel WebContents. Returns true if the navigation was handled.
-  virtual bool AddRequiredSidePanelParams(
+  // Handles side panel navigation by applying required side panel URL
+  // modifications (forced host override, gsc=2, hl, cs, theme, country
+  // overrides) and reloading the URL in the side panel WebContents. Returns
+  // true if the navigation was handled.
+  virtual bool AddRequiredSidePanelUrlChanges(
       content::OpenURLParams url_params,
       content::WebContents* source_contents);
 
@@ -596,6 +604,17 @@ class ContextualTasksUiService : public KeyedService {
       const base::Uuid& task_id,
       std::unique_ptr<contextual_search::ContextualSearchSessionHandle>
           session_handle);
+
+  // Re-initializes the open side panel with a new zero-state task. This
+  // provides a clean start by creating a new task, attaching the entry point,
+  // and reloading the parent WebUI.
+  void ReloadZeroStateInOpenSidePanel(
+      content::WebContents* panel_contents,
+      tabs::TabInterface* tab_interface,
+      const GURL& url,
+      std::unique_ptr<contextual_search::ContextualSearchSessionHandle>
+          session_handle,
+      omnibox::ChromeAimEntryPoint entry_point);
 
   // Navigates to a share URL.
   virtual void OpenUrl(const content::OpenURLParams& url_params,

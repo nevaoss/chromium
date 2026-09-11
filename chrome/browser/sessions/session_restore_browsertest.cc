@@ -101,7 +101,7 @@
 #include "chrome/common/pref_names.h"
 #include "chrome/common/url_constants.h"
 #include "chrome/common/webui_url_constants.h"
-#include "chrome/test/base/chrome_test_utils.h"
+#include "chrome/test/base/chrome_test_path_utils.h"
 #include "chrome/test/base/in_process_browser_test.h"
 #include "chrome/test/base/testing_profile.h"
 #include "chrome/test/base/ui_test_utils.h"
@@ -174,6 +174,7 @@
 #endif
 
 #if BUILDFLAG(IS_CHROMEOS)
+#include "ash/constants/ash_switches.h"
 #include "ash/constants/web_app_id_constants.h"
 #include "base/json/json_reader.h"
 #include "chrome/browser/web_applications/test/web_app_test_observers.h"
@@ -277,7 +278,7 @@ class SessionRestoreTest : public InProcessBrowserTest {
 #if BUILDFLAG(IS_CHROMEOS)
   void SetUpCommandLine(base::CommandLine* command_line) override {
     // TODO(nkostylev): Investigate if we can remove this switch.
-    command_line->AppendSwitch(switches::kCreateBrowserOnStartupForTests);
+    command_line->AppendSwitch(ash::switches::kCreateBrowserOnStartupForTests);
   }
 #endif
 

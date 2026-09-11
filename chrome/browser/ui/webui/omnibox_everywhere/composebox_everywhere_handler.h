@@ -28,7 +28,8 @@ class ComposeboxEverywhereHandler : public ComposeboxHandler {
       Profile* profile,
       content::WebContents* web_contents,
       GetSessionHandleCallback get_session_callback,
-      ClearSessionHandleCallback clear_session_callback);
+      ClearSessionHandleCallback clear_session_callback,
+      ScreenshareDelegate* screenshare_delegate = nullptr);
 
   ComposeboxEverywhereHandler(const ComposeboxEverywhereHandler&) = delete;
   ComposeboxEverywhereHandler& operator=(const ComposeboxEverywhereHandler&) =
@@ -40,6 +41,10 @@ class ComposeboxEverywhereHandler : public ComposeboxHandler {
   void OnDriveUploadClicked(OnDriveUploadClickedCallback callback) override;
 
   // ContextualSearchboxHandler:
+  void OpenUrl(GURL url,
+               const WindowOpenDisposition disposition,
+               base::OnceCallback<void(content::NavigationHandle&)>
+                   navigation_handle_callback) override;
   void CleanupDrivePicker() override;
 
  private:

@@ -74,7 +74,6 @@ ci/GPU FYI Linux Builder
 ci/GPU FYI Linux Builder (dbg)
 ci/GPU FYI Linux Wayland Builder
 ci/GPU FYI Mac Builder
-ci/GPU FYI Mac Builder (asan)
 ci/GPU FYI Mac Builder (dbg)
 ci/GPU FYI Mac arm64 Builder
 ci/GPU FYI Mac arm64 Builder (asan)
@@ -93,7 +92,6 @@ ci/GPU Mac arm64 Builder
 ci/GPU Win x64 Builder
 ci/GPU Win x64 Builder (dbg)
 ci/Linux Debug (NVIDIA)
-ci/Linux FYI Debug (NVIDIA)
 ci/Linux FYI Experimental Release (AMD 780M)
 ci/Linux FYI Experimental Release (AMD 890M)
 ci/Linux FYI Experimental Release (AMD RX 5500XT)
@@ -111,7 +109,6 @@ ci/Linux FYI Release (NVIDIA)
 ci/Linux Release (NVIDIA)
 ci/Linux Wayland FYI Release (AMD)
 ci/Mac Debug (Intel)
-ci/Mac FYI ASAN (Intel)
 ci/Mac FYI Debug (Intel)
 ci/Mac FYI Experimental Release (Apple M1)
 ci/Mac FYI Experimental Release (Intel)
@@ -119,7 +116,6 @@ ci/Mac FYI Experimental Retina Release (AMD)
 ci/Mac FYI Experimental Retina Release (Apple M2)
 ci/Mac FYI Release (Apple M1)
 ci/Mac FYI Release (Intel)
-ci/Mac FYI Retina ASAN (AMD)
 ci/Mac FYI Retina Debug (AMD)
 ci/Mac FYI Retina Release (AMD Radeon Pro 555X)
 ci/Mac FYI Retina Release (AMD)
@@ -216,7 +212,6 @@ try/gpu-fyi-try-linux-amd-rx-9070xt-exp
 try/gpu-fyi-try-linux-intel-exp
 try/gpu-fyi-try-linux-intel-rel
 try/gpu-fyi-try-linux-intel-uhd770-rel
-try/gpu-fyi-try-linux-nvidia-dbg
 try/gpu-fyi-try-linux-nvidia-exp
 try/gpu-fyi-try-linux-nvidia-rel
 try/gpu-fyi-try-linux-nvidia-rtx-4070-super-rel
@@ -224,7 +219,6 @@ try/gpu-fyi-try-linux-nvidia-rtx-5080-exp
 try/gpu-fyi-try-linux-nvidia-tsn
 try/gpu-fyi-try-linux-wayland-amd-rel
 try/gpu-fyi-try-mac-amd-retina-555x-rel
-try/gpu-fyi-try-mac-amd-retina-asan
 try/gpu-fyi-try-mac-amd-retina-dbg
 try/gpu-fyi-try-mac-amd-retina-exp
 try/gpu-fyi-try-mac-amd-retina-rel
@@ -234,7 +228,6 @@ try/gpu-fyi-try-mac-arm64-apple-m2-asan
 try/gpu-fyi-try-mac-arm64-apple-m2-exp
 try/gpu-fyi-try-mac-arm64-apple-m2-retina-rel
 try/gpu-fyi-try-mac-arm64-apple-m3-retina-rel
-try/gpu-fyi-try-mac-intel-asan
 try/gpu-fyi-try-mac-intel-dbg
 try/gpu-fyi-try-mac-intel-exp
 try/gpu-fyi-try-mac-intel-rel

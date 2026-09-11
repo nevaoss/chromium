@@ -16,7 +16,6 @@
 #include "chrome/browser/contextual_tasks/contextual_tasks_utils.h"
 #include "chrome/browser/contextual_tasks/entry_point_eligibility_manager.h"
 #include "chrome/browser/profiles/profile.h"
-#include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_actions.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
@@ -25,6 +24,7 @@
 #include "chrome/browser/ui/layout_constants.h"
 #include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h"
 #include "chrome/browser/ui/ui_features.h"
+#include "chrome/browser/ui/user_education/browser_user_education_interface.h"
 #include "chrome/browser/ui/views/contextual_tasks/contextual_tasks_ephemeral_button_controller.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/views/toolbar/toolbar_button.h"
@@ -33,6 +33,7 @@
 #include "chrome/grit/branded_strings.h"
 #include "chrome/grit/theme_resources.h"
 #include "components/contextual_tasks/public/features.h"
+#include "components/feature_engagement/public/feature_constants.h"
 #include "components/prefs/pref_member.h"
 #include "components/prefs/pref_service.h"
 #include "components/strings/grit/components_strings.h"
@@ -46,6 +47,7 @@
 #include "ui/base/models/image_model.h"
 #include "ui/base/ui_base_features.h"
 #include "ui/compositor/layer.h"
+#include "ui/compositor/layer_animator.h"
 #include "ui/compositor/layer_owner.h"
 #include "ui/gfx/canvas.h"
 #include "ui/gfx/geometry/skia_conversions.h"
@@ -272,9 +274,7 @@ ContextualTasksButton::ContextualTasksButton(
 }
 
 ContextualTasksButton::~ContextualTasksButton() {
-  if (drop_shadow_painted_layer_) {
-    views::View::RemoveLayerFromRegions(drop_shadow_painted_layer_->layer());
-  }
+  ClearDropShadow();
 }
 
 float ContextualTasksButton::GetCornerRadiusFor(
@@ -308,6 +308,16 @@ void ContextualTasksButton::OnImmersiveModeControllerDestroyed() {
 }
 
 void ContextualTasksButton::OnButtonPress() {
+  if (auto* const user_ed =
+          BrowserUserEducationInterface::From(browser_window_interface_);
+      user_ed && user_ed->IsFeaturePromoActive(
+                     feature_engagement::
+                         kIPHContextualTasksEphemeralToolbarButtonFeature)) {
+    user_ed->NotifyFeaturePromoFeatureUsed(
+        feature_engagement::kIPHContextualTasksEphemeralToolbarButtonFeature,
+        FeaturePromoFeatureUsedAction::kClosePromoIfPresent);
+  }
+
   auto* controller = contextual_tasks::ContextualTasksPanelController::From(
       browser_window_interface_);
   CHECK(controller);
@@ -478,11 +488,23 @@ void ContextualTasksButton::MaybeUpdateVisibility() {
         "ContextualTasks.EphemeralToolbarButton.Shown"));
     base::UmaHistogramBoolean("ContextualTasks.EphemeralToolbarButton.Shown",
                               true);
+    MaybeShowFeaturePromo();
   } else {
-    SetVisible(will_be_visible);
-    if (was_visible && !will_be_visible) {
+    if (!will_be_visible) {
+      if (layer() && layer()->GetAnimator()) {
+        layer()->GetAnimator()->AbortAllAnimations();
+      }
       ClearDropShadow();
     }
+    SetVisible(will_be_visible);
+  }
+}
+
+void ContextualTasksButton::MaybeShowFeaturePromo() {
+  if (auto* const user_ed =
+          BrowserUserEducationInterface::From(browser_window_interface_)) {
+    user_ed->MaybeShowFeaturePromo(
+        feature_engagement::kIPHContextualTasksEphemeralToolbarButtonFeature);
   }
 }
 
@@ -550,7 +572,12 @@ void ContextualTasksButton::AnimateShow() {
 
 void ContextualTasksButton::ClearDropShadow() {
   if (drop_shadow_painted_layer_) {
-    views::View::RemoveLayerFromRegions(drop_shadow_painted_layer_->layer());
+    if (auto* drop_shadow_layer = drop_shadow_painted_layer_->layer()) {
+      if (drop_shadow_layer->GetAnimator()) {
+        drop_shadow_layer->GetAnimator()->AbortAllAnimations();
+      }
+      views::View::RemoveLayerFromRegions(drop_shadow_layer);
+    }
     drop_shadow_painted_layer_.reset();
   }
 }

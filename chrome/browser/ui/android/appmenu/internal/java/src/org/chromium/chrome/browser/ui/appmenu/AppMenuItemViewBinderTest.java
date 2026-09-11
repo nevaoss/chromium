@@ -16,6 +16,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.accessibility.AccessibilityNodeInfo;
 import android.widget.ImageView;
+import android.widget.RadioButton;
 import android.widget.TextView;
 
 import androidx.annotation.Nullable;
@@ -248,6 +249,41 @@ public class AppMenuItemViewBinderTest {
                 AppMenuItemProperties.ICON,
                 AppCompatResources.getDrawable(mActivity, R.drawable.test_ic_vintage_filter));
         Assert.assertNotNull("Should have icon for item 1", itemIcon.getDrawable());
+    }
+
+    @Test
+    @UiThreadTest
+    @MediumTest
+    public void testStandardMenuItem_WithCheckedAndCheckable() {
+        PropertyModel standardModel = createStandardMenuItem(MENU_ID1, TITLE_1);
+
+        ViewGroup parentView = mActivity.findViewById(android.R.id.content);
+        View view = mModelListAdapter.getView(0, null, parentView);
+
+        AccessibilityNodeInfo info = AccessibilityNodeInfo.obtain();
+        view.onInitializeAccessibilityNodeInfo(info);
+        Assert.assertNull("Should not have RadioButton class initially", info.getClassName());
+        Assert.assertFalse("Should not be selected initially", info.isSelected());
+        Assert.assertNull(
+                "Should not have collection item info initially", info.getCollectionItemInfo());
+
+        standardModel.set(AppMenuItemProperties.CHECKABLE, true);
+        standardModel.set(AppMenuItemProperties.CHECKED, true);
+
+        AccessibilityNodeInfo checkedInfo = AccessibilityNodeInfo.obtain();
+        view.onInitializeAccessibilityNodeInfo(checkedInfo);
+        Assert.assertEquals(RadioButton.class.getName(), checkedInfo.getClassName());
+        Assert.assertTrue("Should be checked", checkedInfo.isChecked());
+        Assert.assertNotNull(checkedInfo.getCollectionItemInfo());
+        Assert.assertEquals(0, checkedInfo.getCollectionItemInfo().getColumnIndex());
+        Assert.assertEquals(0, checkedInfo.getCollectionItemInfo().getRowIndex());
+
+        standardModel.set(AppMenuItemProperties.CHECKED, false);
+        AccessibilityNodeInfo uncheckedInfo = AccessibilityNodeInfo.obtain();
+        view.onInitializeAccessibilityNodeInfo(uncheckedInfo);
+        Assert.assertEquals(RadioButton.class.getName(), uncheckedInfo.getClassName());
+        Assert.assertFalse("Should not be selected", uncheckedInfo.isSelected());
+        Assert.assertNotNull(uncheckedInfo.getCollectionItemInfo());
     }
 
     @Test

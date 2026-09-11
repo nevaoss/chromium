@@ -2032,15 +2032,6 @@ std::optional<webrtc::RtpTransceiverInit> ValidateRtpTransceiverInit(
     ExceptionState& exception_state,
     const RTCRtpTransceiverInit* init,
     const String kind) {
-  if (init->hasSendEncodings()) {
-    for (const auto& encoding : init->sendEncodings()) {
-      if (encoding->hasMaxBitrate() && encoding->maxBitrate() == 0) {
-        exception_state.ThrowRangeError("maxBitrate must be greater than 0.");
-        return std::nullopt;
-      }
-    }
-  }
-
   auto webrtc_init = ToRtpTransceiverInit(execution_context, init, kind);
   // Validate sendEncodings.
   for (auto& encoding : webrtc_init.send_encodings) {
@@ -2223,7 +2214,7 @@ RTCDataChannel* RTCPeerConnection::createDataChannel(
   }
   init.protocol = data_channel_dict->protocol().Utf8();
   init.negotiated = data_channel_dict->negotiated();
-  if (data_channel_dict->hasId()) {
+  if (init.negotiated && data_channel_dict->hasId()) {
     init.id = data_channel_dict->id();
   }
   if (data_channel_dict->hasPriority()) {
@@ -2781,6 +2772,11 @@ void RTCPeerConnection::DidModifyTransceivers(
     auto* track_event = MakeGarbageCollected<RTCTrackEvent>(
         transceiver->receiver(), transceiver->receiver()->track(),
         transceiver->receiver()->streams(), transceiver);
+    // Only log events that are actually dispatched to JavaScript, matching
+    // the condition in MaybeDispatchEvent().
+    if (!suppress_events_) {
+      peer_handler_->TrackOnTrack(*track_event);
+    }
     MaybeDispatchEvent(track_event);
   }
 
@@ -3119,8 +3115,8 @@ void RTCPeerConnection::CloseInternal() {
   if (sctp_transport_) {
     sctp_transport_->Close();
   }
-  // Since Close() can trigger JS-level callbacks, iterate over a copy
-  // of the transports list.
+  // Closing a transport can invalidate its weak map entry, so iterate over a
+  // copy of the transports list.
   auto dtls_transports_copy = dtls_transports_by_native_transport_;
   for (auto& dtls_transport_iter : dtls_transports_copy) {
     // Since "value" is a WeakPtr, check if it's still valid.

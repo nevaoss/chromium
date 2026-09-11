@@ -28,7 +28,6 @@
 #include "components/omnibox/browser/page_classification_functions.h"
 #include "components/omnibox/browser/remote_suggestions_service.h"
 #include "components/omnibox/browser/search_scoring_signals_annotator.h"
-#include "components/omnibox/browser/suggestion_answer.h"
 #include "components/omnibox/common/omnibox_feature_configs.h"
 #include "components/omnibox/common/omnibox_features.h"
 #include "components/search/search.h"
@@ -147,7 +146,6 @@ AutocompleteMatch BaseSearchProvider::CreateSearchSuggestion(
       match.image_url = GURL(suggestion.entity_info().image_url());
     }
     match.answer_template = suggestion.answer_template();
-    match.answer_type = suggestion.answer_type();
   }
   match.entity_id = suggestion.entity_info().entity_id();
   match.website_uri = suggestion.entity_info().website_uri();
@@ -704,7 +702,6 @@ void BaseSearchProvider::AddMatchToMap(
       existing_match.actions = less_relevant_duplicate_match.actions;
       existing_match.answer_template =
           less_relevant_duplicate_match.answer_template;
-      existing_match.answer_type = less_relevant_duplicate_match.answer_type;
     }
     // This is to avoid having shopping categorical queries lose their images to
     // higher-relevance local history and verbatim matches. This works for the

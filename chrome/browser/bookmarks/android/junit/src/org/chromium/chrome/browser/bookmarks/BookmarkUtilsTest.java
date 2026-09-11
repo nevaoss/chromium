@@ -21,6 +21,9 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import android.app.Activity;
+import android.view.View;
+import android.view.ViewGroup;
+import android.widget.FrameLayout;
 
 import androidx.test.ext.junit.rules.ActivityScenarioRule;
 
@@ -36,7 +39,6 @@ import org.mockito.junit.MockitoRule;
 import org.robolectric.annotation.Config;
 
 import org.chromium.base.Callback;
-import org.chromium.base.DeviceInfo;
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.base.test.util.Features.DisableFeatures;
 import org.chromium.base.test.util.Features.EnableFeatures;
@@ -308,7 +310,6 @@ public class BookmarkUtilsTest {
     @Test
     @EnableFeatures(ChromeFeatureList.ANDROID_DESKTOP_BOOKMARK_POPUP)
     public void testAddOrEditBookmark_desktopPopup() {
-        DeviceInfo.setIsDesktopForTesting(true);
         BookmarkModel.setInstanceForTesting(mBookmarkModel);
 
         mActivity.setTheme(R.style.Theme_BrowserUI_DayNight);
@@ -339,9 +340,56 @@ public class BookmarkUtilsTest {
 
     @Test
     @EnableFeatures(ChromeFeatureList.ANDROID_DESKTOP_BOOKMARK_POPUP)
-    public void testAddOrEditBookmark_existingBookmark_desktopPopup() {
-        DeviceInfo.setIsDesktopForTesting(true);
+    public void testAddOrEditBookmark_desktopPopup_anchorsToVisibleMenuButton() {
+        BookmarkModel.setInstanceForTesting(mBookmarkModel);
+        mActivity.setTheme(R.style.Theme_BrowserUI_DayNight);
 
+        ViewGroup content = mActivity.findViewById(android.R.id.content);
+
+        // Simulate a hidden toolbar with a menu_button_wrapper (e.g. ToolbarTablet in tab
+        // switcher).
+        FrameLayout hiddenToolbar = new FrameLayout(mActivity);
+        hiddenToolbar.setVisibility(View.GONE);
+        View hiddenMenuButton = new View(mActivity);
+        hiddenMenuButton.setId(R.id.menu_button_wrapper);
+        hiddenToolbar.addView(hiddenMenuButton);
+        content.addView(hiddenToolbar);
+
+        // Simulate a visible hub toolbar with a menu_button_wrapper (e.g. HubToolbarView in tab
+        // switcher).
+        FrameLayout hubToolbar = new FrameLayout(mActivity);
+        hubToolbar.setVisibility(View.VISIBLE);
+        View visibleMenuButton = new View(mActivity);
+        visibleMenuButton.setId(R.id.menu_button_wrapper);
+        hubToolbar.addView(visibleMenuButton);
+        content.addView(hubToolbar);
+
+        doReturn("test title").when(mTab).getTitle();
+        doReturn(new GURL("https://test.com")).when(mTab).getOriginalUrl();
+
+        BookmarkUtils.addOrEditBookmark(
+                Collections.singletonList(null),
+                mBookmarkModel,
+                Collections.singletonList(mTab),
+                /* snackbarManager= */ null,
+                mBottomSheetController,
+                mActivity,
+                BookmarkType.NORMAL,
+                mBookmarkIdListCallback,
+                /* fromExplicitTrackUi= */ false,
+                mBookmarkManagerOpener,
+                mPriceDropNotificationManager,
+                false);
+
+        verify(mBookmarkIdListCallback).onResult(mBookmarkIdListCaptor.capture());
+        assertEquals(1, mBookmarkIdListCaptor.getValue().size());
+        assertNotNull(mBookmarkIdListCaptor.getValue().get(0));
+        verifyNoInteractions(mBottomSheetController);
+    }
+
+    @Test
+    @EnableFeatures(ChromeFeatureList.ANDROID_DESKTOP_BOOKMARK_POPUP)
+    public void testAddOrEditBookmark_existingBookmark_desktopPopup() {
         BookmarkItem existingBookmark = mock(BookmarkItem.class);
         BookmarkId bookmarkId = new BookmarkId(123, BookmarkType.NORMAL);
         doReturn(bookmarkId).when(existingBookmark).getId();
@@ -668,29 +716,13 @@ public class BookmarkUtilsTest {
 
     @Test
     @EnableFeatures(ChromeFeatureList.ANDROID_DESKTOP_BOOKMARK_LAYOUT)
-    public void testIsDesktopBookmarksLayoutEnabled_featureEnabled_deviceDesktop() {
-        DeviceInfo.setIsDesktopForTesting(true);
+    public void testIsDesktopBookmarksLayoutEnabled_featureEnabled() {
         assertTrue(BookmarkUtils.isDesktopBookmarksLayoutEnabled());
     }
 
     @Test
-    @EnableFeatures(ChromeFeatureList.ANDROID_DESKTOP_BOOKMARK_LAYOUT)
-    public void testIsDesktopBookmarksLayoutEnabled_featureEnabled_deviceNotDesktop() {
-        DeviceInfo.setIsDesktopForTesting(false);
-        assertFalse(BookmarkUtils.isDesktopBookmarksLayoutEnabled());
-    }
-
-    @Test
     @DisableFeatures(ChromeFeatureList.ANDROID_DESKTOP_BOOKMARK_LAYOUT)
-    public void testIsDesktopBookmarksLayoutEnabled_featureDisabled_deviceDesktop() {
-        DeviceInfo.setIsDesktopForTesting(true);
-        assertFalse(BookmarkUtils.isDesktopBookmarksLayoutEnabled());
-    }
-
-    @Test
-    @DisableFeatures(ChromeFeatureList.ANDROID_DESKTOP_BOOKMARK_LAYOUT)
-    public void testIsDesktopBookmarksLayoutEnabled_featureDisabled_deviceNotDesktop() {
-        DeviceInfo.setIsDesktopForTesting(false);
+    public void testIsDesktopBookmarksLayoutEnabled_featureDisabled() {
         assertFalse(BookmarkUtils.isDesktopBookmarksLayoutEnabled());
     }
 }

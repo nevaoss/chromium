@@ -2,15 +2,11 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import './action_chips/action_chips.js';
-import './iframe.js';
 import './logo.js';
 import './ntp_composebox.js';
 import './ntp_searchbox.js';
 import '/strings.m.js';
 import 'chrome://new-tab-page/shared/customize_buttons/customize_buttons.js';
-import 'chrome://resources/cr_elements/cr_button/cr_button.js';
-import 'chrome://resources/cr_elements/cr_toast/cr_toast.js';
 import 'chrome://resources/cr_components/composebox/threads_rail.js';
 import 'chrome://resources/cr_components/composebox/composebox_voice_search.js';
 import 'chrome://resources/cr_components/search/animated_glow.js';
@@ -21,7 +17,6 @@ import {ColorChangeUpdater} from 'chrome://resources/cr_components/color_change_
 import {GlifAnimationState} from 'chrome://resources/cr_components/composebox/common.js';
 import type {ComposeboxState} from 'chrome://resources/cr_components/composebox/common.js';
 import {VoiceSearchAction as ComposeVoiceSearchAction} from 'chrome://resources/cr_components/composebox/composebox.js';
-import {ModelMode, ToolMode} from 'chrome://resources/cr_components/composebox/composebox_query.mojom-webui.js';
 import type {ComposeboxVoiceSearchElement, VoicePermissionPromptState} from 'chrome://resources/cr_components/composebox/composebox_voice_search.js';
 import {HelpBubbleMixinLit} from 'chrome://resources/cr_components/help_bubble/help_bubble_mixin_lit.js';
 import type {SearchAnimatedGlowElement} from 'chrome://resources/cr_components/search/animated_glow.js';
@@ -37,6 +32,8 @@ import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {getTrustedScriptURL} from 'chrome://resources/js/static_types.js';
 import {CrLitElement} from 'chrome://resources/lit/v3_0/lit.rollup.js';
 import type {PropertyValues} from 'chrome://resources/lit/v3_0/lit.rollup.js';
+import type {FuseboxAction} from 'chrome://resources/mojo/components/omnibox/browser/fusebox_action.mojom-webui.js';
+import {SearchboxOverride} from 'chrome://resources/mojo/components/omnibox/browser/fusebox_action.mojom-webui.js';
 import type {PageCallbackRouter as SearchboxPageCallbackRouter} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 import type {SkColor} from 'chrome://resources/mojo/skia/public/mojom/skcolor.mojom-webui.js';
 
@@ -50,8 +47,6 @@ import {SidePanelOpenTrigger} from './customize_buttons.mojom-webui.js';
 import {CustomizeButtonsProxy} from './customize_buttons_proxy.js';
 import {CustomizeChromeSection} from './customize_chrome.mojom-webui.js';
 import {CustomizeDialogPage} from './customize_dialog_types.js';
-import type {FuseboxAction} from './fusebox_action.mojom-webui.js';
-import {QueryActionOverride, SearchboxOverride} from './fusebox_action.mojom-webui.js';
 import type {IframeElement} from './iframe.js';
 import type {LogoElement} from './logo.js';
 import {recordBoolean, recordDuration, recordEnumeration, recordLinearValue, recordLoadDuration, recordSparseValueWithPersistentHash} from './metrics_utils.js';
@@ -95,7 +90,7 @@ export enum NtpElement {
   LOGO = 3,
   REALBOX = 4,
   MOST_VISITED = 5,
-  MIDDLE_SLOT_PROMO = 6,
+  MIDDLE_SLOT_PROMO = 6,  // Obsolete
   MODULE = 7,
   CUSTOMIZE = 8,  // Obsolete
   CUSTOMIZE_BUTTON = 9,
@@ -292,7 +287,6 @@ export class AppElement extends AppElementBase {
       logoEnabled_: {type: Boolean},
       oneGoogleBarEnabled_: {type: Boolean},
       shortcutsEnabled_: {type: Boolean},
-      middleSlotPromoEnabled_: {type: Boolean},
       modulesEnabled_: {type: Boolean},
 
       browserPromoType_: {type: String},
@@ -315,11 +309,9 @@ export class AppElement extends AppElementBase {
       multiLineEnabled_: {type: Boolean},
 
       /**
-       * In order to avoid flicker, the promo and modules are hidden until both
-       * are loaded. If modules are disabled, the promo is shown as soon as it
-       * is loaded.
+       * Modules are hidden until loaded.
        */
-      promoAndModulesLoaded_: {type: Boolean},
+      modulesLoaded_: {type: Boolean},
 
       /**
        * If true, renders additional elements that were not deemed crucial to
@@ -373,8 +365,6 @@ export class AppElement extends AppElementBase {
       // =======================================================================
 
       selectedCustomizeDialogPage_: {type: String},
-      middleSlotPromoLoaded_: {type: Boolean},
-
       modulesLoadedStatus_: {
         type: Number,
         reflect: true,
@@ -444,8 +434,6 @@ export class AppElement extends AppElementBase {
       loadTimeData.getBoolean('oneGoogleBarEnabled');
   protected accessor shortcutsEnabled_: boolean =
       loadTimeData.getBoolean('shortcutsEnabled');
-  protected accessor middleSlotPromoEnabled_: boolean =
-      loadTimeData.getBoolean('middleSlotPromoEnabled');
   protected accessor modulesEnabled_: boolean =
       loadTimeData.getBoolean('modulesEnabled');
   protected accessor browserPromoType_: string =
@@ -461,7 +449,7 @@ export class AppElement extends AppElementBase {
   protected accessor microsoftAuthIframePath_: string = MSAL_IFRAME_ORIGIN;
   protected accessor multiLineEnabled_: boolean =
       loadTimeData.getBoolean('multiLineEnabled');
-  protected accessor promoAndModulesLoaded_: boolean = false;
+  protected accessor modulesLoaded_: boolean = false;
   protected accessor lazyRender_: boolean = false;
   protected accessor scrolledToTop_: boolean =
       document.documentElement.scrollTop <= 0;
@@ -510,7 +498,6 @@ export class AppElement extends AppElementBase {
 
   private voiceSearchActivatedByKeyboard_: boolean = false;
   private accessor selectedCustomizeDialogPage_: string|null = null;
-  private accessor middleSlotPromoLoaded_: boolean = false;
   private accessor modulesLoadedStatus_: ModuleLoadStatus =
       ModuleLoadStatus.MODULE_LOAD_IN_PROGRESS;
   private callbackRouter_: PageCallbackRouter;
@@ -744,8 +731,8 @@ export class AppElement extends AppElementBase {
     // theme_, showLensUploadDialog_
     this.realboxShown_ = this.computeRealboxShown_();
 
-    // middleSlotPromoLoaded_, modulesLoadedStatus_
-    this.promoAndModulesLoaded_ = this.computePromoAndModulesLoaded_();
+    // modulesLoadedStatus_
+    this.modulesLoaded_ = this.computeModulesLoaded_();
 
     // wallpaperSearchButtonEnabled_, showBackgroundImage_, backgroundColor_
     this.showWallpaperSearchButton_ = this.computeShowWallpaperSearchButton_();
@@ -850,8 +837,8 @@ export class AppElement extends AppElementBase {
       this.onShowBackgroundImageChange_();
     }
 
-    if (changedPrivateProperties.has('promoAndModulesLoaded_')) {
-      this.onPromoAndModulesLoadedChange_();
+    if (changedPrivateProperties.has('modulesLoaded_')) {
+      this.onModulesLoadedChange_();
     }
 
     if (changedPrivateProperties.has('showComposebox_')) {
@@ -944,11 +931,9 @@ export class AppElement extends AppElementBase {
         !this.showComposebox_;
   }
 
-  private computePromoAndModulesLoaded_(): boolean {
-    return (!loadTimeData.getBoolean('middleSlotPromoEnabled') ||
-            this.middleSlotPromoLoaded_) &&
-        (!loadTimeData.getBoolean('modulesEnabled') ||
-         this.modulesLoadedStatus_ === ModuleLoadStatus.MODULE_LOAD_COMPLETE);
+  private computeModulesLoaded_(): boolean {
+    return !loadTimeData.getBoolean('modulesEnabled') ||
+        this.modulesLoadedStatus_ === ModuleLoadStatus.MODULE_LOAD_COMPLETE;
   }
 
   private onRealboxCanShowSecondarySideChanged_ = (e: MediaQueryListEvent) => {
@@ -988,21 +973,11 @@ export class AppElement extends AppElementBase {
       return;
     }
     this.pageHandler_.onContextualSearchIPHEngaged();
-    // Minimal state mapping, not a route classifier: a hint suggestion is
-    // shown as the Composebox placeholder instead of populating the input.
-    const isHintAction =
-        detail.fuseboxAction?.queryActionOverride === QueryActionOverride.kHint;
-    this.openComposebox_({
-      text: isHintAction ? '' : detail.suggestion,
-      files: detail.files,
-      mode: detail.fuseboxAction?.preselectedTool ?? ToolMode.kUnspecified,
-      model: detail.fuseboxAction?.preselectedModel ?? ModelMode.kUnspecified,
-      suggestInventory: detail.fuseboxAction?.preferredInventory ?? undefined,
-      // <if expr="not is_android">
-      smartTabSharingActive: false,
-      // </if>
-    });
-    this.handleFuseboxAction_(detail.fuseboxAction, detail.suggestion);
+    if (this.hasRealboxOverride(detail.fuseboxAction)) {
+      this.$.searchbox.handleFuseboxAction(detail.fuseboxAction);
+      return;
+    }
+    this.openComposeboxForActionChip_(detail);
   }
 
   // The Composebox is the only searchbox surface supported for action chip
@@ -1012,22 +987,21 @@ export class AppElement extends AppElementBase {
     if (!action || action.searchboxOverride === null) {
       return false;
     }
-    return action.searchboxOverride !== SearchboxOverride.kComposebox;
+    return action.searchboxOverride === SearchboxOverride.kUnspecified;
   }
 
   protected onOpenComposebox_(e: CustomEvent<ComposeboxState>) {
     this.openComposebox_(e.detail);
   }
 
-  protected async handleFuseboxAction_(
-      action: FuseboxAction|undefined, suggestion: string) {
-    if (action) {
-      await this.updateComplete;
-      const composebox =
-          this.shadowRoot?.querySelector<NtpComposeboxElement>('#composebox');
-      if (composebox) {
-        await composebox.handleFuseboxAction(action, suggestion);
-      }
+  private async openComposeboxForActionChip_(detail: ActionChipClickDetail) {
+    this.composeboxState_ = null;
+    this.ensureComposeboxOpen_();
+    await this.updateComplete;
+    const composebox =
+        this.shadowRoot?.querySelector<NtpComposeboxElement>('#composebox');
+    if (composebox) {
+      await composebox.handleFuseboxAction(detail);
     }
   }
 
@@ -1037,6 +1011,10 @@ export class AppElement extends AppElementBase {
 
   protected openComposebox_(state: ComposeboxState) {
     this.composeboxState_ = state;
+    this.ensureComposeboxOpen_();
+  }
+
+  private ensureComposeboxOpen_() {
     if (!this.showComposebox_) {
       this.showComposebox_ = true;
     }
@@ -1082,10 +1060,15 @@ export class AppElement extends AppElementBase {
     this.onCloseComposebox_(closeComposebox);
   }
 
+  protected onComposeboxContextMenuOpened_() {
+    this.$.searchbox.closeContextMenu();
+  }
+
   protected onCloseComposebox_(e: CustomEvent<{composeboxText?: string}>) {
     if (!this.showComposebox_) {
       return;
     }
+    this.$.searchbox.closeContextMenu();
     const composeboxText = e.detail.composeboxText;
 
     if (composeboxText && composeboxText.trim()) {
@@ -1359,8 +1342,8 @@ export class AppElement extends AppElementBase {
     }
   }
 
-  private onPromoAndModulesLoadedChange_() {
-    if (this.promoAndModulesLoaded_ &&
+  private onModulesLoadedChange_() {
+    if (this.modulesLoaded_ &&
         loadTimeData.getBoolean('modulesEnabled')) {
       recordLoadDuration(
           'NewTabPage.Modules.ShownTime', WindowProxy.getInstance().now());
@@ -1504,10 +1487,6 @@ export class AppElement extends AppElementBase {
     }
   }
 
-  protected onNtpMiddleSlotPromoLoaded_() {
-    this.middleSlotPromoLoaded_ = true;
-  }
-
   protected onModulesLoaded_(e: CustomEvent<number|null>) {
     this.modulesLoadedStatus_ = e.detail ?
         ModuleLoadStatus.MODULE_LOAD_COMPLETE :
@@ -1645,9 +1624,6 @@ export class AppElement extends AppElementBase {
           return;
         case $$(this, 'cr-most-visited'):
           recordClick(NtpElement.MOST_VISITED);
-          return;
-        case $$(this, 'ntp-middle-slot-promo'):
-          recordClick(NtpElement.MIDDLE_SLOT_PROMO);
           return;
         case $$(this, '#modules'):
           recordClick(NtpElement.MODULE);
@@ -1863,6 +1839,10 @@ export class AppElement extends AppElementBase {
         element.removeAttribute('inert');
       }
     });
+  }
+
+  private hasRealboxOverride(action?: FuseboxAction): boolean {
+    return !!action && action?.searchboxOverride === SearchboxOverride.kRealbox;
   }
 }
 

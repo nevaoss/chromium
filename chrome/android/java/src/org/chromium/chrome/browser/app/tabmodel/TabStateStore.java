@@ -30,7 +30,6 @@ import org.chromium.chrome.browser.tab.TabStateAttributes.DirtinessState;
 import org.chromium.chrome.browser.tab.TabStateAttributesRegistry;
 import org.chromium.chrome.browser.tab.TabStateStorageService;
 import org.chromium.chrome.browser.tab.TabStateStorageServiceFactory;
-import org.chromium.chrome.browser.tab.WebContentsState;
 import org.chromium.chrome.browser.tabmodel.PersistentStoreMigrationManager;
 import org.chromium.chrome.browser.tabmodel.PersistentStoreMigrationManager.StoreType;
 import org.chromium.chrome.browser.tabmodel.TabCreatorManager;
@@ -73,6 +72,7 @@ public class TabStateStore implements TabPersistentStore {
     private @Nullable CombinedTabRestorer mMergeCombinedTabRestorer;
     private int mRestoredTabCount;
     private boolean mIsDestroyed;
+    private boolean mHasLoadWarnings;
 
     private final TabModelObserver mTabModelObserver =
             new TabModelObserver() {
@@ -93,8 +93,7 @@ public class TabStateStore implements TabPersistentStore {
                 }
 
                 @Override
-                public void willCloseTabs(
-                        List<Tab> tabs, boolean isAllTabs, boolean allowUndo) {
+                public void willCloseTabs(List<Tab> tabs, boolean isAllTabs, boolean allowUndo) {
                     if (!isAllTabs) return;
                     cancelLoadingTabs(tabs.get(0).isOffTheRecord());
                 }
@@ -379,7 +378,7 @@ public class TabStateStore implements TabPersistentStore {
                     incognitoFinal,
                     data -> {
                         if (mIsDestroyed) {
-                            fullyDestroyLoadedData(data);
+                            data.destroy();
                             return;
                         }
                         assumeNonNull(mMergeCombinedTabRestorer);
@@ -504,6 +503,11 @@ public class TabStateStore implements TabPersistentStore {
         }
     }
 
+    /** Returns whether any {@link StorageLoadWarning}s occurred during data loading. */
+    public boolean hasLoadWarnings() {
+        return mHasLoadWarnings;
+    }
+
     @Override
     public void addObserver(TabPersistentStoreObserver observer) {
         mObservers.addObserver(observer);
@@ -599,6 +603,9 @@ public class TabStateStore implements TabPersistentStore {
         StorageLoadWarning[] warnings = data.getWarnings();
         RecordHistogram.recordCount1000Histogram(
                 "Tabs.TabStateStore.LoadWarningCount", warnings.length);
+        if (warnings.length > 0) {
+            mHasLoadWarnings = true;
+        }
         if (!mIsAuthoritative && warnings.length > 0) {
             mTabStateStorageService.clearUnusedNodesForWindow(
                     mWindowTag, incognito, /* tabStripCollection= */ null);
@@ -617,7 +624,7 @@ public class TabStateStore implements TabPersistentStore {
             Log.e(TAG, formattedErrorMessage);
 
             mMigrationManager.onShadowStoreRazed();
-            fullyDestroyLoadedData(data);
+            data.destroy();
 
             // Leave to guarantee failures are caught in debug.
             assert false : formattedErrorMessage;
@@ -625,7 +632,7 @@ public class TabStateStore implements TabPersistentStore {
         }
 
         if (mIsDestroyed) {
-            fullyDestroyLoadedData(data);
+            data.destroy();
             return;
         }
 
@@ -701,17 +708,6 @@ public class TabStateStore implements TabPersistentStore {
     private void assertInitialized() {
         assert mTabStateStorageService != null;
         assert mModelTrackingManager != null;
-    }
-
-    private void fullyDestroyLoadedData(StorageLoadedData data) {
-        assumeNonNull(mModelTrackingManager).onRestoreCancelled();
-        LoadedTabState[] loadedTabStates = data.getLoadedTabStates();
-        for (LoadedTabState loadedTabState : loadedTabStates) {
-            WebContentsState contentsState = loadedTabState.tabState.contentsState;
-            if (contentsState == null) continue;
-            contentsState.destroy();
-        }
-        data.destroy();
     }
 
     private void updateTabCountForModel(boolean incognito) {

@@ -109,7 +109,8 @@
 #include "ui/base/ui_base_features.h"
 #include "ui/base/ui_base_switches.h"
 #include "ui/compositor/compositor.h"
-#include "ui/compositor/layer.h"
+#include "ui/compositor/layer_solid_color.h"
+#include "ui/compositor/layer_surface.h"
 #include "ui/compositor/layer_tree_owner.h"
 #include "ui/compositor/test/draw_waiter_for_test.h"
 #include "ui/display/display.h"
@@ -3164,7 +3165,7 @@ TEST_F(RenderWidgetHostViewAuraTest, BackgroundColorMatchesCompositorFrame) {
   auto* parent_layer = view_->GetNativeView()->layer()->AsSurface();
 
   EXPECT_EQ(gfx::Rect(0, 0, 100, 100), parent_layer->bounds());
-  EXPECT_EQ(SkColors::kRed, parent_layer->GetBackgroundColor());
+  EXPECT_EQ(SkColors::kRed, parent_layer->GetFallbackBackgroundColor());
 }
 
 // Tests background setting priority.

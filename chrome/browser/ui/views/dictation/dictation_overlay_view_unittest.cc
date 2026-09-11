@@ -9,6 +9,7 @@
 #include "base/functional/bind.h"
 #include "base/functional/callback_helpers.h"
 #include "base/test/bind.h"
+#include "base/test/icu_test_util.h"
 #include "chrome/browser/dictation/test_util.h"
 #include "chrome/browser/ui/views/dictation/ui_state.h"
 #include "chrome/browser/ui/views/dictation/waveform_view.h"
@@ -18,6 +19,8 @@
 #include "ui/events/event.h"
 #include "ui/gfx/geometry/point.h"
 #include "ui/gfx/geometry/rect.h"
+#include "ui/gfx/geometry/rounded_corners_f.h"
+#include "ui/views/bubble/bubble_frame_view.h"
 #include "ui/views/interaction/element_tracker_views.h"
 #include "ui/views/test/button_test_api.h"
 #include "ui/views/view_utils.h"
@@ -25,9 +28,11 @@
 
 namespace dictation {
 
-class DictationOverlayViewTest : public ChromeViewsTestBase {
+class DictationOverlayViewTest : public ChromeViewsTestBase,
+                                 public testing::WithParamInterface<bool> {
  public:
-  DictationOverlayViewTest() = default;
+  DictationOverlayViewTest()
+      : scoped_feature_list_(CreateEnablingFeatureList(GetParam())) {}
   DictationOverlayViewTest(const DictationOverlayViewTest&) = delete;
   DictationOverlayViewTest& operator=(const DictationOverlayViewTest&) = delete;
   ~DictationOverlayViewTest() override = default;
@@ -46,11 +51,10 @@ class DictationOverlayViewTest : public ChromeViewsTestBase {
 
  protected:
   std::unique_ptr<views::Widget> parent_widget_;
-  base::test::ScopedFeatureList scoped_feature_list_{
-      CreateEnablingFeatureList()};
+  base::test::ScopedFeatureList scoped_feature_list_;
 };
 
-TEST_F(DictationOverlayViewTest, ShowAndReposition) {
+TEST_P(DictationOverlayViewTest, ShowAndReposition) {
   auto overlay = std::make_unique<DictationOverlayView>(
       parent_widget_->GetNativeView(), base::DoNothing());
 
@@ -64,7 +68,35 @@ TEST_F(DictationOverlayViewTest, ShowAndReposition) {
   EXPECT_EQ(overlay->GetAnchorRect(), gfx::Rect(selection_point, gfx::Size()));
 }
 
-TEST_F(DictationOverlayViewTest, StateTransitionsUpdateSubviews) {
+TEST_P(DictationOverlayViewTest, TeardropShape_LTR) {
+  base::test::ScopedRestoreICUDefaultLocale scoped_locale("en");
+  auto overlay = std::make_unique<DictationOverlayView>(
+      parent_widget_->GetNativeView(), base::DoNothing());
+
+  overlay->Show();
+  views::BubbleFrameView* frame_view = overlay->GetBubbleFrameView();
+  ASSERT_NE(frame_view, nullptr);
+  EXPECT_EQ(frame_view->GetRoundedCorners(),
+            gfx::RoundedCornersF(4.0f, 16.0f, 16.0f, 16.0f));
+}
+
+TEST_P(DictationOverlayViewTest, TeardropShape_RTL) {
+  base::test::ScopedRestoreICUDefaultLocale scoped_locale("he");
+  auto overlay = std::make_unique<DictationOverlayView>(
+      parent_widget_->GetNativeView(), base::DoNothing());
+
+  overlay->Show();
+  views::BubbleFrameView* frame_view = overlay->GetBubbleFrameView();
+  ASSERT_NE(frame_view, nullptr);
+  EXPECT_EQ(frame_view->GetRoundedCorners(),
+            gfx::RoundedCornersF(16.0f, 4.0f, 16.0f, 16.0f));
+}
+
+TEST_P(DictationOverlayViewTest, StateTransitionsUpdateSubviews) {
+  if (GetParam()) {
+    GTEST_SKIP() << "UI state behaviour differs in this config.";
+  }
+
   auto overlay = std::make_unique<DictationOverlayView>(
       parent_widget_->GetNativeView(), base::DoNothing());
 
@@ -88,23 +120,26 @@ TEST_F(DictationOverlayViewTest, StateTransitionsUpdateSubviews) {
   EXPECT_TRUE(mic_button->GetVisible());
   EXPECT_FALSE(waveform_view->GetVisible());
 
-  // Transition to kInitializing: mic_button visible.
+  // Transition to kInitializing: waveform visible, mic hidden.
   overlay->SetState(UiState::kInitializing);
   EXPECT_EQ(overlay->state_for_testing(), UiState::kInitializing);
-  EXPECT_TRUE(mic_button->GetVisible());
-  EXPECT_FALSE(waveform_view->GetVisible());
+  EXPECT_FALSE(mic_button->GetVisible());
+  EXPECT_TRUE(waveform_view->GetVisible());
+  EXPECT_TRUE(waveform_view->GetEnabled());
 
   // Transition to kTranscribing: waveform visible, mic hidden.
   overlay->SetState(UiState::kTranscribing);
   EXPECT_EQ(overlay->state_for_testing(), UiState::kTranscribing);
   EXPECT_FALSE(mic_button->GetVisible());
   EXPECT_TRUE(waveform_view->GetVisible());
+  EXPECT_TRUE(waveform_view->GetEnabled());
 
   // Transition to kFinalizing: waveform visible (with wave animation).
   overlay->SetState(UiState::kFinalizing);
   EXPECT_EQ(overlay->state_for_testing(), UiState::kFinalizing);
   EXPECT_FALSE(mic_button->GetVisible());
   EXPECT_TRUE(waveform_view->GetVisible());
+  EXPECT_FALSE(waveform_view->GetEnabled());
 
   // Transition back to kInactive: mic_button visible.
   overlay->SetState(UiState::kInactive);
@@ -113,7 +148,7 @@ TEST_F(DictationOverlayViewTest, StateTransitionsUpdateSubviews) {
   EXPECT_FALSE(waveform_view->GetVisible());
 }
 
-TEST_F(DictationOverlayViewTest, AudioLevelPropagatesToWaveform) {
+TEST_P(DictationOverlayViewTest, AudioLevelPropagatesToWaveform) {
   auto overlay = std::make_unique<DictationOverlayView>(
       parent_widget_->GetNativeView(), base::DoNothing());
   overlay->Show();
@@ -136,10 +171,10 @@ TEST_F(DictationOverlayViewTest, AudioLevelPropagatesToWaveform) {
   EXPECT_FLOAT_EQ(waveform_view->audio_level_for_testing(), 0.0f);
 
   overlay->UpdateAudioLevel(0.05f);
-  EXPECT_FLOAT_EQ(waveform_view->audio_level_for_testing(), 0.5f);
+  EXPECT_FLOAT_EQ(waveform_view->audio_level_for_testing(), 0.05f);
 }
 
-TEST_F(DictationOverlayViewTest, SubviewSizingAndMargin) {
+TEST_P(DictationOverlayViewTest, SubviewSizingAndMargin) {
   auto overlay = std::make_unique<DictationOverlayView>(
       parent_widget_->GetNativeView(), base::DoNothing());
   overlay->Show();
@@ -161,17 +196,17 @@ TEST_F(DictationOverlayViewTest, SubviewSizingAndMargin) {
   // Subviews are sized to 20x20 when active.
   EXPECT_EQ(mic_button->GetPreferredSize(), gfx::Size(20, 20));
 
-  // Inactive state overlay preferred size is a 32x32 circle (20px content +
+  // Inactive state overlay preferred size is a 32x32 teardrop (20px content +
   // 12px inset).
   EXPECT_EQ(contents_view->GetPreferredSize(), gfx::Size(32, 32));
 
-  // Transcribing state overlay preferred size remains a 32x32 circle.
+  // Transcribing state overlay preferred size remains a 32x32 teardrop.
   overlay->SetState(UiState::kTranscribing);
   EXPECT_EQ(waveform_view->GetPreferredSize(), gfx::Size(20, 20));
   EXPECT_EQ(contents_view->GetPreferredSize(), gfx::Size(32, 32));
 }
 
-TEST_F(DictationOverlayViewTest, ClicksToggleActiveStream) {
+TEST_P(DictationOverlayViewTest, ClicksToggleActiveStream) {
   int toggle_count = 0;
   auto overlay = std::make_unique<DictationOverlayView>(
       parent_widget_->GetNativeView(),
@@ -195,19 +230,31 @@ TEST_F(DictationOverlayViewTest, ClicksToggleActiveStream) {
   ui::MouseEvent click_event(ui::EventType::kMousePressed, gfx::Point(),
                              gfx::Point(), base::TimeTicks::Now(), 0, 0);
 
-  views::test::ButtonTestApi(views::AsViewClass<views::Button>(mic_button))
-      .NotifyClick(click_event);
-  EXPECT_EQ(toggle_count, 1);
+  const bool session_ends_on_stream_end = GetParam();
 
-  overlay->SetState(UiState::kInitializing);
-  views::test::ButtonTestApi(views::AsViewClass<views::Button>(mic_button))
-      .NotifyClick(click_event);
-  EXPECT_EQ(toggle_count, 2);
+  if (session_ends_on_stream_end) {
+    overlay->SetState(UiState::kInitializing);
+    overlay->SetState(UiState::kTranscribing);
+    views::test::ButtonTestApi(views::AsViewClass<views::Button>(waveform_view))
+        .NotifyClick(click_event);
+    EXPECT_EQ(toggle_count, 1);
+  } else {
+    views::test::ButtonTestApi(views::AsViewClass<views::Button>(waveform_view))
+        .NotifyClick(click_event);
+    EXPECT_EQ(toggle_count, 1);
 
-  overlay->SetState(UiState::kTranscribing);
-  views::test::ButtonTestApi(views::AsViewClass<views::Button>(waveform_view))
-      .NotifyClick(click_event);
-  EXPECT_EQ(toggle_count, 3);
+    overlay->SetState(UiState::kInitializing);
+    views::test::ButtonTestApi(views::AsViewClass<views::Button>(mic_button))
+        .NotifyClick(click_event);
+    EXPECT_EQ(toggle_count, 2);
+
+    overlay->SetState(UiState::kTranscribing);
+    views::test::ButtonTestApi(views::AsViewClass<views::Button>(waveform_view))
+        .NotifyClick(click_event);
+    EXPECT_EQ(toggle_count, 3);
+  }
 }
+
+INSTANTIATE_TEST_SUITE_P(All, DictationOverlayViewTest, testing::Bool());
 
 }  // namespace dictation

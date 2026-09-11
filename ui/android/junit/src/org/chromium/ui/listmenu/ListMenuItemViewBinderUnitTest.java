@@ -20,6 +20,7 @@ import android.graphics.drawable.Drawable;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewGroup.LayoutParams;
+import android.view.accessibility.AccessibilityNodeInfo;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
@@ -27,6 +28,7 @@ import android.widget.TextView;
 import androidx.appcompat.content.res.AppCompatResources;
 import androidx.test.filters.SmallTest;
 
+import org.junit.Assert;
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -35,7 +37,6 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 import org.robolectric.RuntimeEnvironment;
-import org.robolectric.annotation.Config;
 
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.ui.R;
@@ -43,7 +44,6 @@ import org.chromium.ui.modelutil.PropertyModel;
 
 /** Tests for {@link ListMenuItemViewBinder}. */
 @RunWith(BaseRobolectricTestRunner.class)
-@Config(manifest = Config.NONE)
 public class ListMenuItemViewBinderUnitTest {
     @Rule public MockitoRule mMockitoRule = MockitoJUnit.rule();
 
@@ -429,5 +429,76 @@ public class ListMenuItemViewBinderUnitTest {
         ListMenuItemViewBinder.binder(
                 propertyModel, mListItemView, ListMenuItemProperties.GENERIC_MOTION_LISTENER);
         verify(mListItemView).setOnGenericMotionListener(mOnGenericMotionListener);
+    }
+
+    @Test
+    @SmallTest
+    public void testCheckableAndChecked_CheckedTrue() {
+        PropertyModel propertyModel =
+                new PropertyModel.Builder(ListMenuItemProperties.ALL_KEYS)
+                        .with(ListMenuItemProperties.CHECKABLE, true)
+                        .with(ListMenuItemProperties.CHECKED, true)
+                        .build();
+
+        View view =
+                new TextView(mContext) {
+                    @Override
+                    public void setAccessibilityDelegate(AccessibilityDelegate delegate) {
+                        super.setAccessibilityDelegate(delegate);
+                        AccessibilityNodeInfo nodeInfo = AccessibilityNodeInfo.obtain();
+                        delegate.onInitializeAccessibilityNodeInfo(this, nodeInfo);
+                        Assert.assertTrue(nodeInfo.isCheckable());
+                        Assert.assertTrue(nodeInfo.isChecked());
+                    }
+                };
+
+        ListMenuItemViewBinder.binder(propertyModel, view, ListMenuItemProperties.CHECKABLE);
+    }
+
+    @Test
+    @SmallTest
+    public void testCheckableAndChecked_CheckedFalse() {
+        PropertyModel propertyModel =
+                new PropertyModel.Builder(ListMenuItemProperties.ALL_KEYS)
+                        .with(ListMenuItemProperties.CHECKABLE, true)
+                        .with(ListMenuItemProperties.CHECKED, false)
+                        .build();
+
+        View view =
+                new TextView(mContext) {
+                    @Override
+                    public void setAccessibilityDelegate(AccessibilityDelegate delegate) {
+                        super.setAccessibilityDelegate(delegate);
+                        AccessibilityNodeInfo nodeInfo = AccessibilityNodeInfo.obtain();
+                        delegate.onInitializeAccessibilityNodeInfo(this, nodeInfo);
+                        Assert.assertTrue(nodeInfo.isCheckable());
+                        Assert.assertFalse(nodeInfo.isChecked());
+                    }
+                };
+
+        ListMenuItemViewBinder.binder(propertyModel, view, ListMenuItemProperties.CHECKABLE);
+    }
+
+    @Test
+    @SmallTest
+    public void testCheckableAndChecked_NotCheckedProperty() {
+        PropertyModel propertyModel =
+                new PropertyModel.Builder(ListMenuItemProperties.ALL_KEYS)
+                        .with(ListMenuItemProperties.CHECKABLE, true)
+                        .build();
+
+        View view =
+                new TextView(mContext) {
+                    @Override
+                    public void setAccessibilityDelegate(AccessibilityDelegate delegate) {
+                        super.setAccessibilityDelegate(delegate);
+                        AccessibilityNodeInfo nodeInfo = AccessibilityNodeInfo.obtain();
+                        delegate.onInitializeAccessibilityNodeInfo(this, nodeInfo);
+                        Assert.assertTrue(nodeInfo.isCheckable());
+                        Assert.assertFalse(nodeInfo.isChecked());
+                    }
+                };
+
+        ListMenuItemViewBinder.binder(propertyModel, view, ListMenuItemProperties.CHECKABLE);
     }
 }

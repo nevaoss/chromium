@@ -172,6 +172,7 @@ interface SetUpTestOptions {
   maxShortcutsInExpandedState: number;
   maxMostVisitedTilesInExpandedState: number;
   maxEnterpriseShortcuts: number;
+  maxTiles: number;
 }
 
 function setUpTest(providedOptions: Partial<SetUpTestOptions> = {}) {
@@ -185,6 +186,7 @@ function setUpTest(providedOptions: Partial<SetUpTestOptions> = {}) {
     maxShortcutsInExpandedState: 10,
     maxMostVisitedTilesInExpandedState: 8,
     maxEnterpriseShortcuts: 10,
+    maxTiles: 0,
   };
   const options = {...defaultOptions, ...providedOptions};
   document.body.innerHTML = window.trustedTypes!.emptyHTML;
@@ -211,6 +213,9 @@ function setUpTest(providedOptions: Partial<SetUpTestOptions> = {}) {
       options.maxMostVisitedTilesInExpandedState.toString());
   mostVisited.setAttribute(
       'max-enterprise-shortcuts', options.maxEnterpriseShortcuts.toString());
+  if (options.maxTiles > 0) {
+    mostVisited.setAttribute('max-tiles', options.maxTiles.toString());
+  }
   document.body.appendChild(mostVisited);
   assertEquals(1, handler.getCallCount('updateMostVisitedInfo'));
   return wide();
@@ -250,6 +255,34 @@ suite('General', () => {
         new KeyboardEvent('keyup', {key: ' '}));
     assertTrue(mostVisited.$.dialog.open);
   });
+
+  test(
+      'favicon scale factor when mostVisitedHighDpiFaviconsEnabled is false',
+      async () => {
+        document.body.innerHTML = window.trustedTypes!.emptyHTML;
+        loadTimeData.overrideValues({mostVisitedHighDpiFaviconsEnabled: false});
+        await setUpTest();
+        await addTiles(1);
+        const img = mostVisited.shadowRoot.querySelector<HTMLImageElement>(
+            '.tile-icon img')!;
+        const url = new URL(img.src);
+        assertEquals('1x', url.searchParams.get('scaleFactor'));
+      });
+
+  test(
+      'favicon scale factor when mostVisitedHighDpiFaviconsEnabled is true',
+      async () => {
+        document.body.innerHTML = window.trustedTypes!.emptyHTML;
+        loadTimeData.overrideValues({mostVisitedHighDpiFaviconsEnabled: true});
+        await setUpTest();
+        await addTiles(1);
+        const img = mostVisited.shadowRoot.querySelector<HTMLImageElement>(
+            '.tile-icon img')!;
+        const url = new URL(img.src);
+        assertEquals(
+            `${window.devicePixelRatio || 1}x`,
+            url.searchParams.get('scaleFactor'));
+      });
 });
 
 suite('ShowAddButton', () => {
@@ -2376,5 +2409,19 @@ suite('NonEditable', () => {
     const titleElements = queryAll<HTMLElement>('.tile-title');
     assertTrue(titleElements.length > 0);
     titleElements.forEach(el => assertTrue(el.hidden));
+  });
+
+  test('maxTiles limits total tiles in single row', async () => {
+    document.body.innerHTML = window.trustedTypes!.emptyHTML;
+    await setUpTest({
+      nonEditable: true,
+      hideTitle: true,
+      singleRow: true,
+      maxTiles: 7,
+    });
+    await addTiles(10, /*customLinksEnabled=*/ false);
+    const tiles = queryTiles();
+    assertEquals(7, tiles.length);
+    tiles.forEach(el => assertFalse(el.hidden));
   });
 });

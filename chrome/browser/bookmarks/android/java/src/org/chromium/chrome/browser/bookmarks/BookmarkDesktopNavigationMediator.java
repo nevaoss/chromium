@@ -5,6 +5,7 @@
 package org.chromium.chrome.browser.bookmarks;
 
 import android.content.Context;
+import android.content.res.Configuration;
 import android.graphics.drawable.Drawable;
 
 import androidx.appcompat.content.res.AppCompatResources;
@@ -55,10 +56,18 @@ class BookmarkDesktopNavigationMediator extends BookmarkModelObserver
         mModelList = modelList;
         mBookmarkDelegate = bookmarkDelegate;
 
-        refreshNavigationList();
-
         mBookmarkDelegate.addUiObserver(this);
         mBookmarkModel.addObserver(this);
+
+        if (mBookmarkModel.isBookmarkModelLoaded()) {
+            refreshNavigationList();
+
+            BookmarkId initialFolder =
+                    mBookmarkDelegate.getCurrentUiMode() == BookmarkUiMode.FOLDER
+                            ? mBookmarkDelegate.getCurrentFolderId()
+                            : null;
+            onFolderStateSet(initialFolder);
+        }
     }
 
     /** Destroys the mediator and removes observers. */
@@ -114,12 +123,6 @@ class BookmarkDesktopNavigationMediator extends BookmarkModelObserver
         }
         for (BookmarkId id : localFolders) {
             mModelList.add(createFolderItem(id));
-        }
-
-        updateSelectionHighlight();
-
-        if (Objects.equals(mCurrentFolderId, mBookmarkModel.getRootFolderId())) {
-            openFirstFolder();
         }
     }
 
@@ -199,11 +202,28 @@ class BookmarkDesktopNavigationMediator extends BookmarkModelObserver
         }
     }
 
+    private boolean isTopLevelFolder(BookmarkId id) {
+        for (ListItem item : mModelList) {
+            if (item.type == NavigationPaneProperties.ITEM_TYPE_NAVIGATION_ITEM) {
+                BookmarkId itemId = item.model.get(BookmarkDesktopNavigationProperties.BOOKMARK_ID);
+                if (Objects.equals(itemId, id)) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
     private @Nullable BookmarkId getTopLevelAncestorId(@Nullable BookmarkId id) {
-        if (id == null) return null;
+        if (id == null || Objects.equals(id, mBookmarkModel.getRootFolderId())) {
+            return null;
+        }
 
         BookmarkId current = id;
         while (current != null) {
+            if (isTopLevelFolder(current)) {
+                return current;
+            }
             BookmarkItem item = mBookmarkModel.getBookmarkById(current);
             if (item == null) return null;
 
@@ -225,10 +245,6 @@ class BookmarkDesktopNavigationMediator extends BookmarkModelObserver
     public void onFolderStateSet(@Nullable BookmarkId folder) {
         mCurrentFolderId = folder;
         updateSelectionHighlight();
-
-        if (Objects.equals(folder, mBookmarkModel.getRootFolderId())) {
-            openFirstFolder();
-        }
     }
 
     @Override
@@ -239,19 +255,23 @@ class BookmarkDesktopNavigationMediator extends BookmarkModelObserver
         }
     }
 
+    public void onConfigurationChanged(Configuration newConfig) {
+        updateSelectionHighlight();
+    }
+
     // BookmarkModelObserver implementation
     @Override
     public void bookmarkModelChanged() {
-        refreshNavigationList();
-    }
-
-    private void openFirstFolder() {
-        for (ListItem item : mModelList) {
-            if (item.type == NavigationPaneProperties.ITEM_TYPE_NAVIGATION_ITEM) {
-                BookmarkId id = item.model.get(BookmarkDesktopNavigationProperties.BOOKMARK_ID);
-                mBookmarkDelegate.replaceFolder(id);
-                break;
-            }
+        if (!mBookmarkModel.isBookmarkModelLoaded()) {
+            return;
         }
+        refreshNavigationList();
+        BookmarkId currentFolder =
+                mCurrentFolderId != null
+                        ? mCurrentFolderId
+                        : (mBookmarkDelegate.getCurrentUiMode() == BookmarkUiMode.FOLDER
+                                ? mBookmarkDelegate.getCurrentFolderId()
+                                : null);
+        onFolderStateSet(currentFolder);
     }
 }

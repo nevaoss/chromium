@@ -30,6 +30,7 @@
 #include "components/password_manager/core/browser/password_form_metrics_recorder.h"
 #include "components/password_manager/core/browser/password_manager_metrics_util.h"
 #include "components/password_manager/core/browser/password_manager_util.h"
+#include "components/password_manager/core/browser/password_string.h"
 #include "components/password_manager/core/browser/password_sync_util.h"
 #include "components/password_manager/core/browser/password_ui_utils.h"
 #include "components/prefs/pref_service.h"
@@ -44,6 +45,7 @@
 namespace {
 
 using password_manager::PasswordForm;
+using password_manager::PasswordString;
 
 // Duration of message before timeout; 20 seconds.
 const int kMessageDismissDurationMs = 20000;
@@ -182,19 +184,20 @@ void SaveUpdatePasswordMessageDelegate::CreateMessage(bool update_password) {
   message_->SetTitle(GetMessageTitle(
       update_password, pending_credentials.IsFederatedCredential()));
 
-  std::u16string description = GetMessageDescription(
-      pending_credentials, update_password,
-      password_manager_util::IsSavingBlockedByTrustedVaultError(
-          passwords_state_.client(), passwords_state_.form_manager()));
-  message_->SetDescription(description);
-
   update_password_ = update_password;
 
+  const bool is_saving_blocked_by_trusted_vault_error =
+      IsSavingBlockedByTrustedVaultError();
+
+  std::u16string description =
+      GetMessageDescription(pending_credentials, update_password,
+                            is_saving_blocked_by_trusted_vault_error);
+  message_->SetDescription(description);
+
   bool use_followup_button = HasMultipleCredentialsStored();
-  message_->SetPrimaryButtonText(GetPrimaryButtonText(
-      update_password, use_followup_button,
-      password_manager_util::IsSavingBlockedByTrustedVaultError(
-          passwords_state_.client(), passwords_state_.form_manager())));
+  message_->SetPrimaryButtonText(
+      GetPrimaryButtonText(update_password, use_followup_button,
+                           is_saving_blocked_by_trusted_vault_error));
 
   message_->SetIconResourceId(ResourceMapper::MapToJavaDrawableId(
       IDR_ANDROID_PASSWORD_MANAGER_LOGO_24DP));
@@ -350,6 +353,11 @@ void SaveUpdatePasswordMessageDelegate::SolveTrustedVaultCheck(
     bool flow_involved_device_lock_ui,
     bool is_device_lock_requirement_met) {
   if (!is_device_lock_requirement_met) {
+    if (IsSavingBlockedByTrustedVaultError()) {
+      password_manager::metrics_util::LogSaveWithTrustedVaultErrorOutcome(
+          password_manager::metrics_util::SaveWithTrustedVaultErrorOutcome::
+              kDeviceLockCanceled);
+    }
     // `SolveTrustedVaultCheck` can be called from `StartSavePasswordFlow`
     // synchronously, in which case `HandleMessageDismissed` or
     // `HandleDialogDismissed` is called afterwards and it will clear the state.
@@ -365,12 +373,8 @@ void SaveUpdatePasswordMessageDelegate::SolveTrustedVaultCheck(
     }
     return;
   }
-  bool needs_trusted_vault_key =
-      passwords_state_.client() &&
-      password_manager_util::IsSavingBlockedByTrustedVaultError(
-          passwords_state_.client(), passwords_state_.form_manager());
 
-  if (needs_trusted_vault_key) {
+  if (IsSavingBlockedByTrustedVaultError()) {
     // TODO(crbug.com/483651030): Save password after password unlock.
     // In case when the trusted vault unlock is the last step in the flow,
     // and `SolveTrustedVaultCheck` was called asynchronously, the message or
@@ -380,8 +384,12 @@ void SaveUpdatePasswordMessageDelegate::SolveTrustedVaultCheck(
     waiting_for_unlocking_trusted_vault_ = true;
     password_manager_error_message_helper_bridge_
         ->StartTrustedVaultKeyRetrievalFlow(
-            web_contents_, trusted_vault::TrustedVaultUserActionTriggerForUMA::
-                               kPasswordSavePrompt);
+            web_contents_,
+            trusted_vault::TrustedVaultUserActionTriggerForUMA::
+                kPasswordSavePrompt,
+            base::BindOnce(
+                &SaveUpdatePasswordMessageDelegate::OnTrustedVaultRecoveryDone,
+                weak_ptr_factory_.GetWeakPtr()));
     // We don't save the credential or clear state yet.
     return;
   }
@@ -396,6 +404,11 @@ void SaveUpdatePasswordMessageDelegate::SolveTrustedVaultCheck(
       web_contents_->GetNativeView()->GetWindowAndroid()) {
     ClearState();
   }
+}
+
+void SaveUpdatePasswordMessageDelegate::OnTrustedVaultRecoveryDone() {
+  // TODO(crbug.com/543028154): Handle the result of the trusted vault unlock
+  // activity.
 }
 
 void SaveUpdatePasswordMessageDelegate::SaveFormManager(
@@ -484,7 +497,6 @@ void SaveUpdatePasswordMessageDelegate::DisplayEditDialog(
   const password_manager::PasswordForm& password_form =
       passwords_state_.form_manager()->GetPendingCredentials();
   const std::u16string& current_username = password_form.username_value;
-  const std::u16string& current_password = password_form.password_value;
 
   CreatePasswordEditDialog();
 
@@ -497,7 +509,8 @@ void SaveUpdatePasswordMessageDelegate::DisplayEditDialog(
   std::vector<std::u16string> usernames;
   GetDisplayUsernames(&usernames);
   password_edit_dialog_->ShowPasswordEditDialog(
-      usernames, current_username, current_password, account_email_);
+      usernames, current_username, password_form.password_value.value(),
+      account_email_);
 
   DismissSaveUpdatePasswordMessage(messages::DismissReason::SECONDARY_ACTION);
 }
@@ -511,8 +524,26 @@ void SaveUpdatePasswordMessageDelegate::HandleMessageDismissed(
     return;
   }
 
-  // TODO(crbug.com/483651031): Record metrics for the message when the trusted
-  // vault key retrieval flow is in progress.
+  // Record metrics.
+  RecordDismissalReasonMetrics(
+      MessageDismissReasonToPasswordManagerUIDismissalReason(dismiss_reason));
+
+  if (IsSavingBlockedByTrustedVaultError()) {
+    if (dismiss_reason == messages::DismissReason::TIMER) {
+      password_manager::metrics_util::LogSaveWithTrustedVaultErrorOutcome(
+          password_manager::metrics_util::SaveWithTrustedVaultErrorOutcome::
+              kMessageTimedOut);
+    } else if (dismiss_reason == messages::DismissReason::SECONDARY_ACTION) {
+      password_manager::metrics_util::LogSaveWithTrustedVaultErrorOutcome(
+          password_manager::metrics_util::SaveWithTrustedVaultErrorOutcome::
+              kNeverForThisSite);
+    } else if (dismiss_reason == messages::DismissReason::GESTURE ||
+               dismiss_reason == messages::DismissReason::CLOSE_BUTTON) {
+      password_manager::metrics_util::LogSaveWithTrustedVaultErrorOutcome(
+          password_manager::metrics_util::SaveWithTrustedVaultErrorOutcome::
+              kUserDismissedPrompt);
+    }
+  }
 
   // If the message was dismissed before the trusted vault key retrieval flow
   // was completed, do not clear the state.
@@ -520,13 +551,9 @@ void SaveUpdatePasswordMessageDelegate::HandleMessageDismissed(
     return;
   }
 
-  // Record metrics and cleanup state.
-  RecordDismissalReasonMetrics(
-      MessageDismissReasonToPasswordManagerUIDismissalReason(dismiss_reason));
-
-  // If Device Lock UI needs to be shown and can be (i.e. WindowAndroid is
-  // available), these lines are handled in the `SolveTrustedVaultCheck`
-  // callback.
+  // Clean up the state. If Device Lock UI needs to be shown and can be (i.e.
+  // WindowAndroid is available), these lines are handled in the
+  // `SolveTrustedVaultCheck` callback.
   if (!(device_lock_bridge_->ShouldShowDeviceLockUi() &&
         web_contents_->GetNativeView()->GetWindowAndroid())) {
     ClearState();
@@ -546,20 +573,23 @@ void SaveUpdatePasswordMessageDelegate::CreatePasswordEditDialog() {
 
 void SaveUpdatePasswordMessageDelegate::HandleDialogDismissed(
     bool dialog_accepted) {
-  // TODO(crbug.com/483651031): Record metrics for the dialog when the trusted
-  // vault key retrieval flow is in progress.
-
   password_edit_dialog_.reset();
+
+  RecordDismissalReasonMetrics(
+      dialog_accepted ? password_manager::metrics_util::CLICKED_ACCEPT
+                      : password_manager::metrics_util::CLICKED_CANCEL);
+
+  if (!dialog_accepted && IsSavingBlockedByTrustedVaultError()) {
+    password_manager::metrics_util::LogSaveWithTrustedVaultErrorOutcome(
+        password_manager::metrics_util::SaveWithTrustedVaultErrorOutcome::
+            kUserDismissedPrompt);
+  }
 
   // If the dialog was dismissed before the trusted vault key retrieval flow was
   // completed, do not clear the state.
   if (waiting_for_unlocking_trusted_vault_) {
     return;
   }
-
-  RecordDismissalReasonMetrics(
-      dialog_accepted ? password_manager::metrics_util::CLICKED_ACCEPT
-                      : password_manager::metrics_util::CLICKED_CANCEL);
 
   // If Device Lock UI needs to be shown and can be (i.e. WindowAndroid is
   // available), these lines are handled in the `SolveTrustedVaultCheck`
@@ -573,8 +603,11 @@ void SaveUpdatePasswordMessageDelegate::HandleDialogDismissed(
 void SaveUpdatePasswordMessageDelegate::HandleSavePasswordFromDialog(
     const std::u16string& username,
     const std::u16string& password) {
-  UpdatePasswordFormUsernameAndPassword(username, password,
-                                        passwords_state_.form_manager());
+  // TODO(crbug.com/513276101): Explicit construction of std::u16string
+  // R-Value to be removed once argument converted to PasswordString
+  UpdatePasswordFormUsernameAndPassword(
+      username, PasswordString(std::u16string(password)),
+      passwords_state_.form_manager());
   StartSavePasswordFlow();
 }
 
@@ -610,6 +643,16 @@ void SaveUpdatePasswordMessageDelegate::ClearState() {
   web_contents_ = nullptr;
 }
 
+bool SaveUpdatePasswordMessageDelegate::IsSavingBlockedByTrustedVaultError()
+    const {
+  // Updating passwords does not require resolving trusted vault keys in
+  // context. Verify `passwords_state_.client()` is non-null before passing
+  // to `password_manager_util::IsSavingBlockedByTrustedVaultError`.
+  return !update_password_ && passwords_state_.client() &&
+         password_manager_util::IsSavingBlockedByTrustedVaultError(
+             passwords_state_.client(), passwords_state_.form_manager());
+}
+
 void SaveUpdatePasswordMessageDelegate::RecordMessageShownMetrics(
     bool update_password) {
   if (auto* recorder = passwords_state_.form_manager()->GetMetricsRecorder()) {
@@ -628,9 +671,14 @@ void SaveUpdatePasswordMessageDelegate::RecordDismissalReasonMetrics(
     password_manager::metrics_util::LogUpdateUIDismissalReason(
         ui_dismissal_reason);
   } else {
+    std::optional<password_manager::ActionableError> saving_blocked_error;
+    if (IsSavingBlockedByTrustedVaultError()) {
+      saving_blocked_error =
+          password_manager::ActionableError::kTrustedVaultKeyNeeded;
+    }
     password_manager::metrics_util::LogSaveUIDismissalReason(
         ui_dismissal_reason, /*user_state=*/std::nullopt,
-        /*log_adoption_metric=*/false);
+        /*log_adoption_metric=*/false, saving_blocked_error);
   }
   if (auto* recorder = passwords_state_.form_manager()->GetMetricsRecorder()) {
     recorder->RecordUIDismissalReason(ui_dismissal_reason);
@@ -649,6 +697,9 @@ void SaveUpdatePasswordMessageDelegate::OnLoginsRetained(
 void SaveUpdatePasswordMessageDelegate::OnErrorStateChanged(
     password_manager::PasswordStoreInterface* store,
     password_manager::ActionableError changed_error) {
+  // If the trusted vault key retrieval flow is not started, do not handle the
+  // error. The current implementation always skips trusted vault unlock for
+  // update password flow so that doesn't need to be explicitly checked here.
   if (!waiting_for_unlocking_trusted_vault_) {
     return;
   }
@@ -657,9 +708,18 @@ void SaveUpdatePasswordMessageDelegate::OnErrorStateChanged(
   // by re-showing the message and clearing the state if the message times
   // out.
   if (changed_error == password_manager::ActionableError::kNoError &&
-      !password_manager_util::IsSavingBlockedByTrustedVaultError(
-          passwords_state_.client(), passwords_state_.form_manager())) {
+      !IsSavingBlockedByTrustedVaultError()) {
     SaveFormManager(/*show_confirmation_message=*/true);
+    password_manager::metrics_util::LogSaveWithTrustedVaultErrorOutcome(
+        password_manager::metrics_util::SaveWithTrustedVaultErrorOutcome::
+            kSavedSuccessfully);
+    ClearState();
+  } else if (changed_error != password_manager::ActionableError::kNoError &&
+             changed_error !=
+                 password_manager::ActionableError::kTrustedVaultKeyNeeded) {
+    password_manager::metrics_util::LogSaveWithTrustedVaultErrorOutcome(
+        password_manager::metrics_util::SaveWithTrustedVaultErrorOutcome::
+            kNewStoreError);
     ClearState();
   }
 }

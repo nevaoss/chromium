@@ -23,7 +23,6 @@
 #include "base/notimplemented.h"
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
-#include "components/services/heap_profiling/public/cpp/profiling_client.h"
 #include "mojo/public/cpp/bindings/binder_map.h"
 #include "mojo/public/cpp/bindings/pending_receiver.h"
 #include "ui/base/resource/resource_bundle.h"
@@ -76,18 +75,6 @@ void AppRuntimeContentClient::AddContentDecryptionModules(
 void AppRuntimeContentClient::ExposeInterfacesToBrowser(
     scoped_refptr<base::SequencedTaskRunner> io_task_runner,
     mojo::BinderMap* binders) {
-  // This creates a process-wide heap_profiling::ProfilingClient that listens
-  // for requests from the HeapProfilingService to start profiling the current
-  // process.
-  binders->Add<heap_profiling::mojom::ProfilingClient>(
-      base::BindRepeating(
-          [](mojo::PendingReceiver<heap_profiling::mojom::ProfilingClient>
-                 receiver) {
-            static base::NoDestructor<heap_profiling::ProfilingClient>
-                profiling_client;
-            profiling_client->BindToInterface(std::move(receiver));
-          }),
-      io_task_runner);
 }
 
 #if defined(USE_NEVA_CHROME_EXTENSIONS)

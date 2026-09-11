@@ -131,6 +131,11 @@ void ReportUploader::SetRequestAndUpload(const ReportGenerationConfig& config,
 }
 
 void ReportUploader::Upload() {
+  if (requests_.empty()) {
+    SendResponse(ReportStatus::kSuccess);
+    return;
+  }
+
   auto callback = base::BindRepeating(&ReportUploader::OnRequestFinished,
                                       weak_ptr_factory_.GetWeakPtr());
 
@@ -245,9 +250,11 @@ void ReportUploader::SetListener(Listener* listener) {
 }
 
 void ReportUploader::RemoveListener(Listener* listener) {
-  if (listener_ == listener) {
-    listener_ = nullptr;
+  if (listener_ != listener) {
+    CHECK(!listener_);
   }
+  listener_ = nullptr;
+  backoff_request_timer_.Stop();
 }
 
 bool ReportUploader::HasListener(Listener* listener) const {
@@ -271,7 +278,9 @@ void ReportUploader::NotifyReportWillRetry(
   if (listener_) {
     // The listener is responsible for resending the request by calling
     // `SetRequestAndUpload` again.
-    listener_->OnReportWillRetry(config);
+    Listener* listener = listener_;
+    listener_ = nullptr;
+    listener->OnReportWillRetry(config);
   }
 }
 
@@ -288,19 +297,26 @@ bool ReportUploader::HasRetriedTooOften() {
 }
 
 void ReportUploader::SendResponse(const ReportStatus status) {
-  std::move(callback_).Run(status);
+  listener_ = nullptr;
+  if (callback_) {
+    std::move(callback_).Run(status);
+  }
 }
 
 void ReportUploader::NextRequest() {
+  if (requests_.empty()) {
+    SendResponse(ReportStatus::kSuccess);
+    return;
+  }
   // We don't reset the backoff in case there are multiple requests in a row
   // and we don't start from 1 minute again.
   backoff_entry_.InformOfRequest(true);
   requests_.pop();
-  if (requests_.empty())
+  if (requests_.empty()) {
     SendResponse(ReportStatus::kSuccess);
-  else
+  } else {
     Upload();
-  return;
+  }
 }
 
 }  // namespace enterprise_reporting

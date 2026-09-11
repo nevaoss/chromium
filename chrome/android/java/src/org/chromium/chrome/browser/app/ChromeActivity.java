@@ -88,6 +88,7 @@ import org.chromium.chrome.browser.WarmupManager;
 import org.chromium.chrome.browser.about_settings.AboutChromeSettings;
 import org.chromium.chrome.browser.actor.ActorMetrics;
 import org.chromium.chrome.browser.actor.ActorPictureInPictureController;
+import org.chromium.chrome.browser.actor.ActorUtils;
 import org.chromium.chrome.browser.app.appmenu.AppMenuPropertiesDelegateImpl;
 import org.chromium.chrome.browser.app.download.DownloadMessageUiDelegate;
 import org.chromium.chrome.browser.app.metrics.LaunchCauseMetrics;
@@ -194,6 +195,7 @@ import org.chromium.chrome.browser.tab.RequestDesktopUtils;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tab.TabDestroyStatus;
 import org.chromium.chrome.browser.tab.TabHidingType;
+import org.chromium.chrome.browser.tab.TabId;
 import org.chromium.chrome.browser.tab.TabLaunchType;
 import org.chromium.chrome.browser.tab.TabObscuringHandler;
 import org.chromium.chrome.browser.tab.TabSelectionType;
@@ -1465,7 +1467,7 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
                 || !GlicEnabling.isProfileEligible(
                         getProfileProviderSupplier().get().getOriginalProfile())
                 || DeviceFormFactor.isNonMultiDisplayContextOnTablet(this)
-                || ChromeFeatureList.sGlicBackgroundActuation.isEnabled()) {
+                || ActorUtils.isBackgroundActuationEnabled()) {
             return;
         }
 
@@ -2956,7 +2958,7 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
             RecordHistogram.recordEnumeratedHistogram(
                     "Settings.OpenSettingsFromMenu.PerProfileType",
                     type,
-                    BrowserProfileType.MAX_VALUE);
+                    BrowserProfileType.MAX_VALUE + 1);
             return true;
         }
 
@@ -3090,10 +3092,20 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
         if (id == R.id.tab_group_tab_menu_item) {
             assert menuItemData != null
                     && menuItemData.containsKey(AppMenuPropertiesDelegateImpl.TAB_ID_BUNDLE_KEY);
-            TabModelUtils.selectTabById(
-                    getTabModelSelector(),
-                    menuItemData.getInt(AppMenuPropertiesDelegateImpl.TAB_ID_BUNDLE_KEY),
-                    TabSelectionType.FROM_USER);
+            @TabId int tabId = menuItemData.getInt(AppMenuPropertiesDelegateImpl.TAB_ID_BUNDLE_KEY);
+            if (ChromeFeatureList.sCrossWindowTabGroupOperations.isEnabled()) {
+                Tab tab = TabWindowManagerSingleton.getInstance().getTabById(tabId);
+                if (tab != null) {
+                    getTabCreator(tab.isIncognito())
+                            .createNewTab(
+                                    new LoadUrlParams(tab.getUrl()),
+                                    TabLaunchType.FROM_CHROME_UI,
+                                    /* parent= */ null);
+                }
+            } else {
+                TabModelUtils.selectTabById(
+                        getTabModelSelector(), tabId, TabSelectionType.FROM_USER);
+            }
             RecordUserAction.record("MobileMenuSelectTabFromGroup");
             return true;
         }
@@ -3575,7 +3587,7 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
     // === START of ThemeResourceProvider functionality ===
 
     private void initializeThemeResourceWrapper() {
-        if (!ChromeFeatureList.sAndroidThemeResourceProvider.isEnabled()) {
+        if (!ChromeFeatureList.isEnabled(ChromeFeatureList.ANDROID_THEME_RESOURCE_PROVIDER)) {
             return;
         }
 
@@ -3589,9 +3601,12 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
             return;
         }
 
-        int resourceId = ChromeFeatureList.sAndroidThemeResourceProviderForceLight.getValue() ?
-                R.style.ThemeOverlay_BrowserUI_ForcedLightForTesting :
-                R.style.ThemeOverlay_BrowserUI_TabbedMode_Incognito;
+        int resourceId =
+                ChromeFeatureList.getFieldTrialParamByFeatureAsBoolean(
+                                ChromeFeatureList.ANDROID_THEME_RESOURCE_PROVIDER,
+                                ChromeFeatureList.ANDROID_THEME_RESOURCE_PROVIDER_FORCE_LIGHT)
+                        ? R.style.ThemeOverlay_BrowserUI_ForcedLightForTesting
+                        : R.style.ThemeOverlay_BrowserUI_TabbedMode_Incognito;
         mThemeResourceProvider =
                 new TabStateThemeResourceProvider(
                         this, resourceId, mActivityTabProvider, mLayoutManagerSupplier);

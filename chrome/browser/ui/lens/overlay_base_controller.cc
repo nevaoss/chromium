@@ -78,18 +78,6 @@ OverlayBaseController::OverlayBaseController(tabs::TabInterface* tab,
 
 OverlayBaseController::~OverlayBaseController() {
   state_ = State::kOff;
-  if (overlay_web_view_) {
-    // Remove render frame observer.
-    overlay_web_view_->GetWebContents()
-        ->GetPrimaryMainFrame()
-        ->GetProcess()
-        ->RemoveObserver(this);
-  } else if (owned_overlay_web_view_) {
-    owned_overlay_web_view_->GetWebContents()
-        ->GetPrimaryMainFrame()
-        ->GetProcess()
-        ->RemoveObserver(this);
-  }
 }
 
 bool OverlayBaseController::IsOverlayShowing() const {
@@ -103,8 +91,7 @@ bool OverlayBaseController::IsOverlayActive() const {
 
 bool OverlayBaseController::IsOverlayInitializing() {
   return state_ == State::kStartingWebUI || state_ == State::kScreenshot ||
-         state_ == State::kClosingOpenedSidePanel ||
-         state_ == State::kWaitingForOpeningSidePanelReflow;
+         state_ == State::kClosingOpenedSidePanel;
 }
 
 bool OverlayBaseController::IsOverlayClosing() {
@@ -225,6 +212,13 @@ void OverlayBaseController::RenderProcessExited(
               : DismissalSource::kOverlayRendererClosedUnexpectedly));
 }
 
+void OverlayBaseController::RenderProcessHostDestroyed(
+    content::RenderProcessHost* host) {
+  if (render_process_host_observation_.IsObservingSource(host)) {
+    render_process_host_observation_.Reset();
+  }
+}
+
 raw_ptr<views::View> OverlayBaseController::CreateViewForOverlay() {
   views::View* host_view = GetHostView();
   CHECK(host_view);
@@ -295,10 +289,8 @@ raw_ptr<views::View> OverlayBaseController::CreateViewForOverlay() {
   overlay_web_view_ = host_view->AddChildView(std::move(web_view));
 
   // Listen to the render process housing out overlay.
-  overlay_web_view_->GetWebContents()
-      ->GetPrimaryMainFrame()
-      ->GetProcess()
-      ->AddObserver(this);
+  render_process_host_observation_.Observe(
+      overlay_web_view_->GetWebContents()->GetPrimaryMainFrame()->GetProcess());
 
   return host_view;
 }
@@ -623,15 +615,12 @@ void OverlayBaseController::ShowModalUI() {
     state_ = State::kClosingOpenedSidePanel;
     side_panel_ui->Close(SidePanelEntryHideReason::kSidePanelClosed,
                          /*suppress_animations=*/true);
-  } else if (ShouldWaitForSidePanelReflow()) {
-    state_ = State::kWaitingForOpeningSidePanelReflow;
   } else {
     state_ = State::kScreenshot;
   }
 
   // 2. Execute the action corresponding to the state.
-  if (state_ == State::kClosingOpenedSidePanel ||
-      state_ == State::kWaitingForOpeningSidePanelReflow) {
+  if (state_ == State::kClosingOpenedSidePanel) {
     base::SingleThreadTaskRunner::GetCurrentDefault()
         ->PostNonNestableDelayedTask(
             FROM_HERE,
@@ -654,14 +643,9 @@ void OverlayBaseController::ShowModalUI() {
   }
 }
 
-bool OverlayBaseController::ShouldWaitForSidePanelReflow() {
-  return false;
-}
-
 void OverlayBaseController::FinishedWaitingForReflow(
     base::TimeTicks reflow_start_time) {
-  if (state_ == State::kClosingOpenedSidePanel ||
-      state_ == State::kWaitingForOpeningSidePanelReflow) {
+  if (state_ == State::kClosingOpenedSidePanel) {
     state_ = State::kScreenshot;
     StartScreenshotFlow();
   }
@@ -812,18 +796,7 @@ void OverlayBaseController::CloseUI() {
   CHECK(contents_web_view);
   contents_web_view->SetEnabled(true);
 
-  if (overlay_web_view_) {
-    // Remove render frame observer.
-    overlay_web_view_->GetWebContents()
-        ->GetPrimaryMainFrame()
-        ->GetProcess()
-        ->RemoveObserver(this);
-  } else if (owned_overlay_web_view_) {
-    owned_overlay_web_view_->GetWebContents()
-        ->GetPrimaryMainFrame()
-        ->GetProcess()
-        ->RemoveObserver(this);
-  }
+  render_process_host_observation_.Reset();
 
   owned_preselection_widget_anchor_.reset();
   owned_promo_anchor_.reset();
@@ -1117,7 +1090,9 @@ void OverlayBaseController::OnSidePanelAlignmentChanged() {
 
 void OverlayBaseController::OnSidePanelDidOpen() {
   if (IsResultsSidePanelShowing()) {
-    SetOverlayRoundedCorner();
+    if (IsOverlayShowing()) {
+      SetOverlayRoundedCorner();
+    }
   } else {
     // If a side panel opens that is not ours, we must close the overlay.
     RequestSyncClose(DismissalSource::kUnexpectedSidePanelOpen);

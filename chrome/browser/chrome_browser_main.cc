@@ -9,7 +9,6 @@
 #include <tuple>
 #include <utility>
 
-#include "base/at_exit.h"
 #include "base/base_switches.h"
 #include "base/check.h"
 #include "base/command_line.h"
@@ -67,7 +66,6 @@
 #include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/browser/profiles/profile_manager_observer.h"
 #include "chrome/browser/profiles/profiles_state.h"
-#include "chrome/browser/profiling_host/chrome_browser_main_extra_parts_profiling.h"
 #include "chrome/browser/segmentation_platform/chrome_browser_main_extra_parts_segmentation_platform.h"
 #include "chrome/browser/sessions/chrome_serialized_navigation_driver.h"
 #include "chrome/browser/shell_integration.h"
@@ -225,6 +223,7 @@
 #include <Security/Security.h>
 
 #include "chrome/browser/mac/chrome_browser_main_extra_parts_mac.h"
+#include "chrome/browser/shutdown_watchdog_mac.h"
 #include "chrome/browser/ui/cocoa/keystone_infobar_delegate.h"
 #include "chrome/browser/ui/ui_features.h"
 
@@ -265,6 +264,9 @@
 
 #if BUILDFLAG(ENABLE_EXTENSIONS)
 #include "extensions/browser/pref_names.h"
+#endif
+
+#if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
 #include "extensions/components/javascript_dialog_extensions_client/javascript_dialog_extension_client_impl.h"
 #endif
 
@@ -364,6 +366,16 @@ void DeleteMediaHistoryDatabase(const base::FilePath& profile_path) {
   base::UmaHistogramBoolean("Media.MediaHistory.DatabaseExists",
                             base::PathExists(db_path));
   sql::Database::Delete(db_path);
+}
+
+constexpr base::FilePath::CharType kAccessibilityAnnotatorDatabaseFileName[] =
+    FILE_PATH_LITERAL("AccessibilityAnnotatorDB");
+
+void DeleteAccessibilityAnnotatorDatabase(const base::FilePath& profile_path) {
+  auto db_path = profile_path.Append(kAccessibilityAnnotatorDatabaseFileName);
+  if (base::PathExists(db_path)) {
+    sql::Database::Delete(db_path);
+  }
 }
 
 void DeleteDeprecatedPrivacySandboxData(const base::FilePath& profile_path) {
@@ -824,9 +836,6 @@ std::unique_ptr<content::BrowserMainParts> ChromeBrowserMainParts::Create(
   main_parts->AddParts(
       std::make_unique<ChromeBrowserMainExtraPartsPerformanceManager>());
 
-  main_parts->AddParts(
-      std::make_unique<ChromeBrowserMainExtraPartsProfiling>());
-
   main_parts->AddParts(std::make_unique<ChromeBrowserMainExtraPartsMemory>());
 
   chrome::AddMetricsExtraParts(main_parts.get());
@@ -876,6 +885,12 @@ ChromeBrowserMainParts::~ChromeBrowserMainParts() {
   while (!chrome_extra_parts_.empty()) {
     chrome_extra_parts_.pop_back();
   }
+#if BUILDFLAG(IS_MAC)
+  // As late as //chrome/browser gets: after ~BrowserProcessImpl and the
+  // browser_shutdown::ShutdownPostThreadsStop() I/O. The remaining
+  // content-layer exit path is short and not worth a false-positive kill.
+  shutdown_watchdog::OnShutdownComplete();
+#endif
 }
 
 void ChromeBrowserMainParts::SetupMetrics() {
@@ -979,22 +994,7 @@ void ChromeBrowserMainParts::RecordBrowserStartupTime() {
 // -----------------------------------------------------------------------------
 // TODO(viettrungluu): move more/rest of BrowserMain() into BrowserMainParts.
 
-#if BUILDFLAG(IS_WIN)
-#define DLLEXPORT __declspec(dllexport)
 
-// We use extern C for the prototype DLLEXPORT to avoid C++ name mangling.
-extern "C" {
-DLLEXPORT void __cdecl RelaunchChromeBrowserWithNewCommandLineIfNeeded();
-}
-
-DLLEXPORT void __cdecl RelaunchChromeBrowserWithNewCommandLineIfNeeded() {
-  // Need an instance of AtExitManager to handle singleton creations and
-  // deletions.  We need this new instance because, the old instance created
-  // in ChromeMain() got destructed when the function returned.
-  base::AtExitManager exit_manager;
-  upgrade_util::RelaunchChromeBrowserWithNewCommandLineIfNeeded();
-}
-#endif
 
 // content::BrowserMainParts implementation ------------------------------------
 
@@ -1532,7 +1532,7 @@ void ChromeBrowserMainParts::PreProfileInit() {
           std::make_unique<apps::PublisherHostFactoryImpl>());
 #endif
 
-#if BUILDFLAG(ENABLE_EXTENSIONS)
+#if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
   javascript_dialog_extensions_client::InstallClient();
 #endif
 
@@ -1547,7 +1547,7 @@ void ChromeBrowserMainParts::PreProfileInit() {
   InstallChromeJavaScriptAppModalDialogViewFactory();
 #endif
 
-#if BUILDFLAG(ENABLE_EXTENSIONS)
+#if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
   SetChromeAppModalDialogManagerDelegate();
 #endif
 
@@ -1610,6 +1610,15 @@ void ChromeBrowserMainParts::PostProfileInit(Profile* profile,
       {base::MayBlock(), base::TaskPriority::BEST_EFFORT,
        base::TaskShutdownBehavior::SKIP_ON_SHUTDOWN},
       base::BindOnce(&DeleteMediaHistoryDatabase, profile->GetPath()));
+
+  // Delete the deprecated AccessibilityAnnotatorDB if it still exists.
+  // TODO(crbug.com/531591319): Remove this in August 2027.
+  base::ThreadPool::PostTask(
+      FROM_HERE,
+      {base::MayBlock(), base::TaskPriority::BEST_EFFORT,
+       base::TaskShutdownBehavior::SKIP_ON_SHUTDOWN},
+      base::BindOnce(&DeleteAccessibilityAnnotatorDatabase,
+                     profile->GetPath()));
 
   // Delete the deprecated Privacy Sandbox data if they still exist.
   // TODO(crbug.com/462465887): Remove this in August 2028.

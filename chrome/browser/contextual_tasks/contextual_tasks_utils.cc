@@ -4,7 +4,8 @@
 
 #include "chrome/browser/contextual_tasks/contextual_tasks_utils.h"
 
-#include "base/containers/flat_set.h"
+#include <algorithm>
+
 #include "base/feature_list.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/strings/strcat.h"
@@ -23,6 +24,8 @@
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #if !BUILDFLAG(IS_ANDROID)
+#include "chrome/browser/themes/theme_service.h"
+#include "chrome/browser/themes/theme_service_factory.h"
 #include "chrome/browser/ui/actions/chrome_action_id.h"
 #include "chrome/browser/ui/browser_actions.h"
 #include "chrome/browser/ui/toolbar/pinned_toolbar/pinned_toolbar_actions_model.h"
@@ -33,6 +36,7 @@
 #include "components/contextual_search/contextual_search_session_handle.h"
 #include "components/contextual_tasks/public/features.h"
 #include "components/contextual_tasks/public/prefs.h"
+#include "components/contextual_tasks/public/utils.h"
 #include "components/omnibox/browser/aim_eligibility_service.h"
 #include "components/omnibox/browser/location_bar_model_util.h"
 #include "content/public/browser/web_contents.h"
@@ -212,7 +216,7 @@ PrepareClientToAimRequestInfo(
     info->context_turn_metadata.push_back(active_tab_context_turn_metadata);
   }
 
-  base::flat_set<base::UnguessableToken> file_tokens;
+  std::vector<base::UnguessableToken> file_tokens;
   if (session_handle) {
     file_tokens = session_handle->GetUploadedContextTokens();
   }
@@ -227,7 +231,9 @@ PrepareClientToAimRequestInfo(
   }
 
   if (overlay_token.has_value()) {
-    file_tokens.insert(*overlay_token);
+    if (!std::ranges::contains(file_tokens, *overlay_token)) {
+      file_tokens.push_back(*overlay_token);
+    }
     // When an overlay token is present, it implies a recent Lens Overlay
     // interaction, such as a region search. Setting this flag forces the
     // inclusion of that interaction's data in the request. This is required
@@ -237,7 +243,7 @@ PrepareClientToAimRequestInfo(
     info->force_include_latest_interaction_request_data = true;
   }
 
-  info->file_tokens = std::move(file_tokens).extract();
+  info->file_tokens = std::move(file_tokens);
 
   return info;
 }
@@ -388,6 +394,34 @@ std::vector<uint8_t> GetSerializedHandshakeMessage() {
   std::vector<uint8_t> serialized_message(size);
   message.SerializeToArray(serialized_message.data(), size);
   return serialized_message;
+}
+
+bool ShouldUseDarkMode(Profile* profile, const GURL& url) {
+  std::optional<bool> url_dark_mode = GetDarkModeFromUrl(url);
+  if (url_dark_mode.has_value()) {
+    return *url_dark_mode;
+  }
+  return ShouldUseDarkMode(profile);
+}
+
+bool ShouldUseDarkMode(Profile* profile) {
+#if !BUILDFLAG(IS_ANDROID)
+  // Assume light mode as fallback.
+  if (!profile) {
+    return false;
+  }
+
+  // Always use dark mode in incognito.
+  if (profile->IsOffTheRecord()) {
+    return true;
+  }
+
+  // In all other cases, respect the theme service dark mode preferences.
+  ThemeService* theme_service = ThemeServiceFactory::GetForProfile(profile);
+  return theme_service && theme_service->BrowserUsesDarkColors();
+#else
+  return false;
+#endif
 }
 
 }  // namespace contextual_tasks

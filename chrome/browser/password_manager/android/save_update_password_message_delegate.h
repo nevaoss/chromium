@@ -144,6 +144,7 @@ class SaveUpdatePasswordMessageDelegate
   void StartSavePasswordFlow();
   void SolveTrustedVaultCheck(bool flow_involved_device_lock_ui,
                               bool is_device_lock_requirement_met);
+  void OnTrustedVaultRecoveryDone();
   void SaveFormManager(bool show_confirmation_message);
   void HandleNeverSaveClicked();
   void HandleUpdateButtonClicked();
@@ -159,6 +160,10 @@ class SaveUpdatePasswordMessageDelegate
       messages::DismissReason dismiss_reason);
 
   void ClearState();
+
+  // Returns true if password saving (not updating) is blocked by a trusted
+  // vault error. Ensures the client is non-null before checking error state.
+  bool IsSavingBlockedByTrustedVaultError() const;
 
   void RecordMessageShownMetrics(bool update_password);
   void RecordDismissalReasonMetrics(

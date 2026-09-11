@@ -23,25 +23,35 @@ HOST_PATH="$INSTALL_DIR/chrome-remote-desktop-host"
 # Per Debian policy 9.2.1, system usernames should all start with an underscore.
 CRD_NETWORK_USER="_crd_network"
 CRD_PEER_CONNECTION_USER="_crd_peer_connection"
+CRD_CRASHPAD_USER="_crd_crashpad"
 
 kill_processes() {
   # Kill CRD processes except for the service script process. The script process
   # command line conveniently starts with /usr/bin/python3, so the pkill pattern
-  # won't kill it. SIGKILL is used because the wrapper script will restart the
-  # host immediately (so any cleanup that might otherwise happen is not useful),
-  # and this ensures that hosts restart even if they are deadlocked.
+  # won't kill it. SIGUSR2 is tried first to allow host processes to shut down
+  # cleanly after notifying clients. SIGKILL is used as a fallback if they are
+  # deadlocked or fail to exit.
   # For the multi-process host, this kills the daemon process and all its
-  # children with SIGKILL, then the systemd service will relaunch the daemon
+  # children, then the systemd service will relaunch the daemon
   # process, which will recover GDM remote displays created by the previous
   # incarnation.
   # TODO: crbug.com/496325766 - Improve the upgrade experience.
   echo "Killing Chrome Remote Desktop processes so that they can be reloaded (sessions will be unaffected)..."
+  pkill -USR2 -f "^$INSTALL_DIR" || true
+  # Wait up to 5 seconds for the host processes to shut down cleanly.
+  for i in {1..10}; do
+    if ! pgrep -f "^$INSTALL_DIR" > /dev/null; then
+      return
+    fi
+    sleep 0.5
+  done
+  echo "Clean shutdown failed, killing processes..."
   pkill -KILL -f "^$INSTALL_DIR" || true
 }
 
 case "$1" in
   "configure")
-    echo "Adding users $CRD_NETWORK_USER and $CRD_PEER_CONNECTION_USER to allow"
+    echo "Adding users $CRD_NETWORK_USER, $CRD_PEER_CONNECTION_USER, and $CRD_CRASHPAD_USER to allow"
     echo 'Chrome Remote Desktop processes to be run in sandboxed environments.'
     # On Debian 11 or older, usernames with a leading underscore are not allowed
     # unless --allow-bad-names or --force-badname is set. --allow-bad-names is
@@ -55,6 +65,12 @@ case "$1" in
     fi
     adduser $ADDUSER_OPTS "$CRD_NETWORK_USER"
     adduser $ADDUSER_OPTS "$CRD_PEER_CONNECTION_USER"
+    adduser $ADDUSER_OPTS "$CRD_CRASHPAD_USER"
+
+    # Clean up legacy per-process Crashpad database directories.
+    # Note: The new unified crashpad database directory is created and managed
+    # by the daemon process when setting up crashpad.
+    rm -rf "$VAR_DIR"/crashpad.{daemon,network,peer_connection}
 
     kill_processes
 

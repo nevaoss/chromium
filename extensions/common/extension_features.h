@@ -40,9 +40,6 @@ namespace extensions_features {
 // Controls the limit for action.setBadgeText() API input.
 BASE_DECLARE_FEATURE(kApiActionSetBadgeTextByteLimit);
 
-// Controls the limit for alarms.create() API input.
-BASE_DECLARE_FEATURE(kApiAlarmsCreateLengthLimit);
-
 // Controls the availability of SplitView Extension APIs.
 BASE_DECLARE_FEATURE(kApiTabsSplitView);
 
@@ -155,6 +152,12 @@ BASE_DECLARE_FEATURE(kCWSReviewPromptingNativeUI);
 // If enabled, <webview>s will be allowed to request permission from an
 // embedding Chrome App to request access to Human Interface Devices.
 BASE_DECLARE_FEATURE(kEnableWebHidInWebView);
+
+// If enabled, extensions can opt in to asynchronous listener registration via
+// the `background.async_listener_registration` manifest key to defer event
+// dispatch on worker start until the extension signals that its listeners are
+// registered.
+BASE_DECLARE_FEATURE(kExtensionAsyncListenerRegistration);
 
 // If enabled, JS content scripts injected at document start will be compiled
 // in a background thread.
@@ -282,12 +285,6 @@ BASE_DECLARE_FEATURE(kDebuggerAPIRestrictedToDevMode);
 // even if they are not externally connectable.
 BASE_DECLARE_FEATURE(kExtensionBrowserNamespaceOnWebPages);
 
-// When enabled, a call to base::ListValue::Clone is avoided when dispatching an
-// extension function. Behind a feature to assess impact
-// (go/chrome-performance-work-should-be-finched).
-// TODO(crbug.com/424432184): Clean up when experiment is complete.
-BASE_DECLARE_FEATURE(kAvoidCloneArgsOnExtensionFunctionDispatch);
-
 // If enabled, the ContentVerifier cache key will include the extension root
 // path. This prevents collisions when an extension is updated or reloaded
 // to a new directory while keeping the same version ID.
@@ -336,6 +333,9 @@ BASE_DECLARE_FEATURE(kOptimizeWebRequestProxy);
 // `webRequestInternal.eventHandled` function, and signals completion with a
 // single `WebRequestHost.EventHandlingDone` mojo call per target.
 BASE_DECLARE_FEATURE(kWebRequestPerContextEventDispatch);
+
+// If enabled, `HashedExtensionId` uses SHA-256 hashes instead of SHA-1.
+BASE_DECLARE_FEATURE(kUseSha256ForExtensionHashes);
 
 }  // namespace extensions_features
 

@@ -7,6 +7,7 @@
 #import "base/apple/foundation_util.h"
 #import "base/memory/raw_ptr.h"
 #import "base/strings/sys_string_conversions.h"
+#import "base/test/metrics/histogram_tester.h"
 #import "base/test/scoped_feature_list.h"
 #import "base/test/task_environment.h"
 #import "components/autofill/core/common/autofill_prefs.h"
@@ -71,6 +72,11 @@
 #import "ui/base/l10n/l10n_util_mac.h"
 
 using web::WebTaskEnvironment;
+
+@interface SettingsTableViewController ()
+- (BOOL)triggerPassivePromoIfNeeded:(const base::Feature&)feature;
+- (void)didTapDefaultBrowserPromoCardCloseButton:(UIButton*)sender;
+@end
 
 std::unique_ptr<KeyedService> BuildFeatureEngagementMockTracker(
     ProfileIOS* profile) {
@@ -327,6 +333,105 @@ TEST_F(SettingsTableViewControllerTest,
   EXPECT_EQ(default_passive_index, account_index + 1);
 }
 
+// Test that the Card promo persists within the same session even if
+// ShouldTriggerHelpUI subsequently returns false.
+TEST_F(SettingsTableViewControllerTest,
+       DefaultBrowserCardPromoSameSessionPersistence) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeatureWithParameters(
+      kIOSSettingsDefaultBrowserPromoV2,
+      {{kIOSSettingsDefaultBrowserPromoTypeParam, "0"}});
+
+  feature_engagement::test::MockTracker* tracker =
+      static_cast<feature_engagement::test::MockTracker*>(
+          feature_engagement::TrackerFactory::GetForProfile(profile_));
+  EXPECT_CALL(
+      *tracker,
+      ShouldTriggerHelpUI(testing::Ref(
+          feature_engagement::kIPHiOSPromoSettingsCardDefaultBrowserFeature)))
+      .WillOnce(testing::Return(true))
+      .WillRepeatedly(testing::Return(false));
+  EXPECT_CALL(
+      *tracker,
+      Dismissed(testing::Ref(
+          feature_engagement::kIPHiOSPromoSettingsCardDefaultBrowserFeature)))
+      .Times(testing::AnyNumber());
+
+  auth_service_->SignIn(fake_identity_,
+                        signin_metrics::AccessPoint::kStartPage);
+  sync_service_->SetSignedIn(signin::ConsentLevel::kSignin);
+
+  CreateController();
+  CheckController();
+
+  TableViewModel<TableViewItem*>* model = controller().tableViewModel;
+  ASSERT_TRUE([model hasSectionForSectionIdentifier:
+                         SettingsSectionIdentifier::
+                             SettingsSectionIdentifierDefaultPassiveCard]);
+
+  // Verify that calling triggerPassivePromoIfNeeded again in the same session
+  // returns YES even when ShouldTriggerHelpUI now returns false, because
+  // card_shown_in_current_session is YES.
+  BOOL triggered = [static_cast<SettingsTableViewController*>(controller())
+      triggerPassivePromoIfNeeded:
+          feature_engagement::kIPHiOSPromoSettingsCardDefaultBrowserFeature];
+  ASSERT_TRUE(triggered);
+}
+
+// Test that dismissing the Card promo resets session state and logs UMA,
+// preventing subsequent automatic triggers without ShouldTriggerHelpUI.
+TEST_F(SettingsTableViewControllerTest,
+       DefaultBrowserCardPromoDismissalResetsSessionState) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeatureWithParameters(
+      kIOSSettingsDefaultBrowserPromoV2,
+      {{kIOSSettingsDefaultBrowserPromoTypeParam, "0"}});
+
+  base::HistogramTester histogram_tester;
+
+  feature_engagement::test::MockTracker* tracker =
+      static_cast<feature_engagement::test::MockTracker*>(
+          feature_engagement::TrackerFactory::GetForProfile(profile_));
+  EXPECT_CALL(
+      *tracker,
+      ShouldTriggerHelpUI(testing::Ref(
+          feature_engagement::kIPHiOSPromoSettingsCardDefaultBrowserFeature)))
+      .WillOnce(testing::Return(true))
+      .WillRepeatedly(testing::Return(false));
+  EXPECT_CALL(
+      *tracker,
+      Dismissed(testing::Ref(
+          feature_engagement::kIPHiOSPromoSettingsCardDefaultBrowserFeature)))
+      .Times(testing::AnyNumber());
+
+  auth_service_->SignIn(fake_identity_,
+                        signin_metrics::AccessPoint::kStartPage);
+  sync_service_->SetSignedIn(signin::ConsentLevel::kSignin);
+
+  CreateController();
+  CheckController();
+
+  TableViewModel<TableViewItem*>* model = controller().tableViewModel;
+  ASSERT_TRUE([model hasSectionForSectionIdentifier:
+                         SettingsSectionIdentifier::
+                             SettingsSectionIdentifierDefaultPassiveCard]);
+
+  // Simulate tapping the close button on the card promo.
+  [static_cast<SettingsTableViewController*>(controller())
+      didTapDefaultBrowserPromoCardCloseButton:nil];
+
+  histogram_tester.ExpectUniqueSample(
+      "IOS.Settings.DefaultBrowserSettingsPassivePromo", 0 /* kClosed */, 1);
+
+  // Calling triggerPassivePromoIfNeeded should now return NO because
+  // card_shown_in_current_session was reset to NO and ShouldTriggerHelpUI
+  // returns false.
+  BOOL triggered = [static_cast<SettingsTableViewController*>(controller())
+      triggerPassivePromoIfNeeded:
+          feature_engagement::kIPHiOSPromoSettingsCardDefaultBrowserFeature];
+  ASSERT_FALSE(triggered);
+}
+
 // Verifies the correct relative section placement of the Default Passive
 // section when the user is signed out.
 TEST_F(SettingsTableViewControllerTest,
@@ -537,6 +642,20 @@ TEST_F(SettingsTableViewControllerTest, HasDownloadsMenuItem) {
 
   EXPECT_TRUE([controller().tableViewModel
       hasItemForItemType:SettingsItemTypeDownloadsSettings
+       sectionIdentifier:SettingsSectionIdentifierInfo]);
+}
+
+// Verifies that if kDomainLevelSitePermissions is enabled, then there is a
+// Site Permissions Settings item in the Info section.
+TEST_F(SettingsTableViewControllerTest, HasSitePermissionsMenuItem) {
+  base::test::ScopedFeatureList features;
+  features.InitAndEnableFeature(kDomainLevelSitePermissions);
+
+  CreateController();
+  CheckController();
+
+  EXPECT_TRUE([controller().tableViewModel
+      hasItemForItemType:SettingsItemTypeSitePermissions
        sectionIdentifier:SettingsSectionIdentifierInfo]);
 }
 

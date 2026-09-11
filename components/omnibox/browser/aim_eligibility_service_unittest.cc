@@ -16,6 +16,7 @@
 #include "base/test/scoped_feature_list.h"
 #include "base/test/task_environment.h"
 #include "components/contextual_tasks/public/features.h"
+#include "components/contextual_tasks/public/host_override.h"
 #include "components/country_codes/country_codes.h"
 #include "components/omnibox/browser/aim_eligibility_service_features.h"
 #include "components/prefs/testing_pref_service.h"
@@ -242,7 +243,8 @@ TEST_F(AimEligibilityServiceTest, IsAimUrl) {
 
   // Check that the host override works correctly
   EXPECT_FALSE(aim_eligibility_service_->IsAimUrl(
-      GURL("https://goo.gl/feature?a=1&b=2"), "goo.gl"));
+      GURL("https://goo.gl/feature?a=1&b=2"),
+      contextual_tasks::HostOverride::FromString("goo.gl")));
 }
 
 TEST_F(AimEligibilityServiceTest, IsAimUrl_HostWildcard) {
@@ -760,8 +762,8 @@ TEST_F(AimEligibilityServiceTest, CoBrowseUserAgentSuffix) {
   EXPECT_TRUE(ua_value.has_value());
   EXPECT_EQ(*ua_value, "UA with Suffix");
 
-  // 2. Trigger a request with another source (e.g. kUser). Header SHOULD NOT be
-  // present.
+  // 2. Trigger a request with another source (e.g. kUser). Header SHOULD also
+  // be present.
   test_url_loader_factory_.pending_requests()->clear();
   aim_eligibility_service_->StartServerEligibilityRequestForDebugging();
 
@@ -769,7 +771,10 @@ TEST_F(AimEligibilityServiceTest, CoBrowseUserAgentSuffix) {
   const network::ResourceRequest& request2 =
       test_url_loader_factory_.GetPendingRequest(0)->request;
 
-  EXPECT_FALSE(request2.headers.HasHeader("User-Agent"));
+  std::optional<std::string> ua_value2 =
+      request2.headers.GetHeader("User-Agent");
+  EXPECT_TRUE(ua_value2.has_value());
+  EXPECT_EQ(*ua_value2, "UA with Suffix");
 }
 
 TEST_F(AimEligibilityServiceTest, IsFuseboxEligible_FeatureEnabled) {
@@ -845,4 +850,29 @@ TEST_F(AimEligibilityServiceTest, LogsFuseboxEligibilityHistogram) {
   histogram_tester.ExpectUniqueSample(
       "Omnibox.AimEligibility.EligibilityResponse.is_fusebox_eligible", true,
       1);
+}
+
+TEST_F(AimEligibilityServiceTest, FetchEligibilityWithLocaleChange) {
+  base::HistogramTester histogram_tester;
+  omnibox::AimEligibilityResponse response;
+  response.set_is_eligible(true);
+
+  test_url_loader_factory_.pending_requests()->clear();
+  aim_eligibility_service_->FetchEligibility(
+      AimEligibilityService::RequestSource::kLocaleChange);
+
+  ASSERT_EQ(test_url_loader_factory_.NumPending(), 1);
+  const network::ResourceRequest& request =
+      test_url_loader_factory_.GetPendingRequest(0)->request;
+
+  std::string response_string;
+  response.SerializeToString(&response_string);
+  test_url_loader_factory_.SimulateResponseForPendingRequest(
+      request.url.spec(), response_string, net::HTTP_OK);
+
+  histogram_tester.ExpectUniqueSample(
+      "Omnibox.AimEligibility.EligibilityResponse.LocaleChange.is_eligible",
+      true, 1);
+  histogram_tester.ExpectUniqueSample(
+      "Omnibox.AimEligibility.EligibilityResponse.is_eligible", true, 1);
 }

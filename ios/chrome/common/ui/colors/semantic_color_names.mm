@@ -24,9 +24,17 @@ NSString* const kBackgroundShadowColor = @"background_shadow_color";
 NSString* const kMDCInkColor = @"mdc_ink_color";
 NSString* const kMDCSecondaryInkColor = @"mdc_secondary_ink_color";
 NSString* const kPlaceholderImageTintColor = @"placeholder_image_tint_color";
-NSString* const kSurfaceContainerColor = @"surface_container_color";
+NSString* const kNewTabPageBackgroundColor = @"new_tab_page_background_color";
 NSString* const kSurfaceContainerLowColor = @"surface_container_low_color";
-NSString* const kPrimaryColor = @"primary_color";
+NSString* const kNTPQuickActionChipColor = @"ntp_quick_action_chip_color";
+NSString* const kNTPRedesignBackgroundColor = @"ntp_redesign_background_color";
+NSString* const kNTPRedesignCustomizationMenuButtonIconColor =
+    @"ntp_redesign_customization_menu_button_icon_color";
+NSString* const kNTPRedesignFakeboxBackgroundColor =
+    @"ntp_redesign_fakebox_background_color";
+NSString* const kNTPRedesignTileBackgroundColor =
+    @"ntp_redesign_tile_background_color";
+NSString* const kNTPCardBackgroundColor = @"ntp_card_background_color";
 NSString* const kPrimaryBackgroundColor = @"primary_background_color";
 NSString* const kInvertedPrimaryBackgroundColor =
     @"inverted_primary_background_color";

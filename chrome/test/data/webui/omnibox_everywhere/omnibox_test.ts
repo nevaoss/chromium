@@ -13,8 +13,10 @@ import {InputType} from 'chrome://resources/cr_components/composebox/composebox_
 import type {ContextualEntrypointAndMenuElement} from 'chrome://resources/cr_components/composebox/contextual_entrypoint_and_menu.js';
 import type {SearchAnimatedGlowElement} from 'chrome://resources/cr_components/search/animated_glow.js';
 import {GlowAnimationState} from 'chrome://resources/cr_components/search/constants.js';
+import {createAutocompleteResultForTesting, createSearchMatchForTesting} from 'chrome://resources/cr_components/searchbox/searchbox_browser_proxy.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
-import type {PageCallbackRouter as SearchboxPageCallbackRouter, PageHandlerRemote as SearchboxPageHandlerRemote} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
+import type {PageCallbackRouter as SearchboxPageCallbackRouter, PageHandlerRemote as SearchboxPageHandlerRemote, SelectedFileInfo} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
+import type {UnguessableToken} from 'chrome://resources/mojo/mojo/public/mojom/base/unguessable_token.mojom-webui.js';
 import type {Url} from 'chrome://resources/mojo/url/mojom/url.mojom-webui.js';
 import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import {TestMock} from 'chrome://webui-test/test_mock.js';
@@ -243,6 +245,8 @@ suite('OmniboxEverywhereOmniboxTest', () => {
         const composeButton =
             omnibox.shadowRoot.querySelector<HTMLElement>('#composeButton')!;
         assertTrue(!!composeButton);
+        assertTrue(composeButton.hasAttribute('has-user-input'));
+
         composeButton.dispatchEvent(new CustomEvent('compose-click', {
           bubbles: true,
           composed: true,
@@ -268,7 +272,70 @@ suite('OmniboxEverywhereOmniboxTest', () => {
         assertEquals(false, submitArgs[5]);  // shiftKey
         assertEquals(false, submitArgs[6]);  // isVoiceSearch
         assertFalse(openComposeboxCalled);
+        assertEquals('', omnibox.$.input.inputElement.value);
+        assertFalse(composeButton.hasAttribute('has-user-input'));
       });
+
+  test('navigateToMatch clears input text on keyboard navigation', async () => {
+    omnibox.setInputText('query');
+    omnibox.activeQueryId = 0;
+    omnibox.lastQueriedInput = 'query';
+    testProxy.page.autocompleteResultChanged(
+        createAutocompleteResultForTesting({
+          queryId: 0,
+          input: 'query',
+          matches: [
+            createSearchMatchForTesting({
+              allowedToBeDefaultMatch: true,
+              fillIntoEdit: 'query match',
+            }),
+          ],
+        }));
+    await microtasksFinished();
+
+    const keyboardEvent = new KeyboardEvent('keydown', {
+      key: 'Enter',
+      cancelable: true,
+    });
+    omnibox.navigateToMatch(0, keyboardEvent);
+    await microtasksFinished();
+
+    assertEquals('', omnibox.$.input.inputElement.value);
+  });
+
+  test('openCtrlEnterMatch clears input text', async () => {
+    omnibox.setInputText('query');
+    omnibox.activeQueryId = 0;
+    omnibox.lastQueriedInput = 'query';
+    testProxy.page.autocompleteResultChanged(
+        createAutocompleteResultForTesting({
+          queryId: 0,
+          input: 'query',
+          matches: [
+            createSearchMatchForTesting({
+              allowedToBeDefaultMatch: true,
+              fillIntoEdit: 'query match',
+            }),
+          ],
+        }));
+    await microtasksFinished();
+
+    omnibox.openCtrlEnterMatch(0);
+    await microtasksFinished();
+
+    assertEquals('', omnibox.$.input.inputElement.value);
+  });
+
+  test('onMatchClick clears input text', async () => {
+    omnibox.setInputText('query');
+    await microtasksFinished();
+    assertEquals('query', omnibox.$.input.inputElement.value);
+
+    omnibox.onMatchClick();
+    await microtasksFinished();
+
+    assertEquals('', omnibox.$.input.inputElement.value);
+  });
 
   test('respects isFuseboxEnabled false', async () => {
     document.body.innerHTML = window.trustedTypes!.emptyHTML;
@@ -285,6 +352,56 @@ suite('OmniboxEverywhereOmniboxTest', () => {
     assertFalse(!!element.shadowRoot.querySelector('#lensSearchButton'));
     assertTrue(!!element.shadowRoot.querySelector('#voiceSearchButton'));
   });
+
+  test(
+      'updateAimPopupEligibility toggles compose button and plus button',
+      async () => {
+        assertTrue(!!omnibox.shadowRoot.querySelector('#composeButton'));
+        assertTrue(!!omnibox.shadowRoot.querySelector('#context'));
+
+        testProxy.page.updateAimPopupEligibility(false);
+        await microtasksFinished();
+
+        assertFalse(!!omnibox.shadowRoot.querySelector('#composeButton'));
+        assertFalse(!!omnibox.shadowRoot.querySelector('#context'));
+        assertTrue(!!omnibox.shadowRoot.querySelector('#voiceSearchButton'));
+
+        testProxy.page.updateAimPopupEligibility(true);
+        await microtasksFinished();
+
+        assertTrue(!!omnibox.shadowRoot.querySelector('#composeButton'));
+        assertTrue(!!omnibox.shadowRoot.querySelector('#context'));
+      });
+
+  test(
+      'updateAimPopupEligibility respects isFuseboxEnabled false capability ' +
+          'in loadTimeData',
+      async () => {
+        document.body.innerHTML = window.trustedTypes!.emptyHTML;
+        loadTimeData.overrideValues({
+          isFuseboxEnabled: false,
+          searchboxShowComposeEntrypoint: true,
+        });
+        const testOmnibox =
+            document.createElement('omnibox-everywhere-omnibox');
+        document.body.appendChild(testOmnibox);
+        await microtasksFinished();
+
+        assertTrue(!!testOmnibox.shadowRoot.querySelector('#composeButton'));
+        assertFalse(!!testOmnibox.shadowRoot.querySelector('#context'));
+
+        testProxy.page.updateAimPopupEligibility(false);
+        await microtasksFinished();
+
+        assertFalse(!!testOmnibox.shadowRoot.querySelector('#composeButton'));
+        assertFalse(!!testOmnibox.shadowRoot.querySelector('#context'));
+
+        testProxy.page.updateAimPopupEligibility(true);
+        await microtasksFinished();
+
+        assertTrue(!!testOmnibox.shadowRoot.querySelector('#composeButton'));
+        assertFalse(!!testOmnibox.shadowRoot.querySelector('#context'));
+      });
 
   test('ContextMenuUnboundedToggleEvent', async () => {
     const contextMenu =
@@ -306,7 +423,7 @@ suite('OmniboxEverywhereOmniboxTest', () => {
     contextMenu.dispatchEvent(new CustomEvent('context-menu-opened'));
     await omnibox.updateComplete;
 
-    const event = new ToggleEvent('unbounded', {
+    const event = new ToggleEvent('beforetoggle', {
       oldState: 'open',
       newState: 'closed',
     });
@@ -397,6 +514,61 @@ suite('OmniboxEverywhereOmniboxTest', () => {
     assertFalse(omnibox.hasAttribute('dropdown-is-visible'));
     assertEquals('flex', window.getComputedStyle(bottomControls).display);
   });
+
+  test('balanced layout and element clearances', () => {
+    const inputWrapper =
+        omnibox.shadowRoot.querySelector<HTMLElement>('#inputWrapper');
+    assertTrue(!!inputWrapper);
+    const wrapperStyle = window.getComputedStyle(inputWrapper);
+    assertEquals('28px', wrapperStyle.borderRadius);
+    assertEquals('6px', wrapperStyle.paddingTop);
+
+    const bottomControls =
+        omnibox.shadowRoot.querySelector<HTMLElement>('#bottomControls');
+    assertTrue(!!bottomControls);
+    const bottomControlsStyle = window.getComputedStyle(bottomControls);
+    assertEquals('4px', bottomControlsStyle.paddingTop);
+    assertEquals('12px', bottomControlsStyle.paddingBottom);
+
+    const composeButton =
+        omnibox.shadowRoot.querySelector<HTMLElement>('#composeButton');
+    assertTrue(!!composeButton);
+    assertEquals('12px', window.getComputedStyle(composeButton).top);
+
+    const profileIcon =
+        omnibox.shadowRoot.querySelector<HTMLElement>('#profileIcon');
+    assertTrue(!!profileIcon);
+    assertEquals('12px', window.getComputedStyle(profileIcon).top);
+  });
+
+  test(
+      'clicking lens button calls showScreenshotMenu and sets ' +
+          'isScreenshotMenuOpen',
+      async () => {
+        const lensButton =
+            omnibox.shadowRoot.querySelector<HTMLElement>('#lensSearchButton');
+        assertTrue(!!lensButton);
+        assertFalse(omnibox.isScreenshotMenuOpen);
+
+        lensButton.click();
+        await microtasksFinished();
+
+        assertTrue(omnibox.isScreenshotMenuOpen);
+        const lensContainer = omnibox.shadowRoot.querySelector(
+            '.searchbox-icon-button-container.lens');
+        assertTrue(
+            !!lensContainer && lensContainer.classList.contains('menu-open'));
+
+        assertEquals(1, testProxy.handler.getCallCount('showScreenshotMenu'));
+        const args = testProxy.handler.getArgs('showScreenshotMenu')[0];
+        assertTrue(args !== undefined);
+
+        testProxy.page.onScreenshotMenuClosed();
+        await microtasksFinished();
+
+        assertFalse(omnibox.isScreenshotMenuOpen);
+        assertFalse(lensContainer.classList.contains('menu-open'));
+      });
 });
 
 
@@ -497,6 +669,18 @@ suite('OmniboxEverywhereComposeboxTest', () => {
     assertEquals('test composebox query', composebox.getInputElement().input);
   });
 
+  test('submitting query clears composebox input', async () => {
+    composebox.setInputText('test composebox query');
+    await microtasksFinished();
+    assertEquals('test composebox query', composebox.getInputElement().input);
+
+    composebox.submitQuery();
+    await microtasksFinished();
+
+    assertEquals('', composebox.input);
+    assertEquals('', composebox.getInputElement().input);
+  });
+
   test(
       'sets is-dragging-file attribute on dragenter and removes on dragleave',
       async () => {
@@ -567,7 +751,7 @@ suite('OmniboxEverywhereComposeboxTest', () => {
     composebox.onContextMenuOpened();
     await composebox.updateComplete;
 
-    const event = new ToggleEvent('unbounded', {
+    const event = new ToggleEvent('beforetoggle', {
       oldState: 'open',
       newState: 'closed',
     });
@@ -711,6 +895,41 @@ suite('OmniboxEverywhereComposeboxTest', () => {
         assertTrue(closeEventFired);
         assertEquals(1, testProxy.handler.getCallCount('clearFiles'));
       });
+
+  test('getFileInputsElement returns element or null when disabled', () => {
+    assertEquals(composebox.$.fileInputs, composebox.getFileInputsElement());
+    composebox.contextMenuEnabled = false;
+    assertEquals(null, composebox.getFileInputsElement());
+  });
+
+  test(
+      'clicking lens button in composebox calls showScreenshotMenu and sets ' +
+          'isScreenshotMenuOpen',
+      async () => {
+        const lensButton = composebox.shadowRoot.querySelector<HTMLElement>(
+            '#lensSearchButton');
+        assertTrue(!!lensButton);
+        assertFalse(composebox.isScreenshotMenuOpen);
+
+        lensButton.click();
+        await microtasksFinished();
+
+        assertTrue(composebox.isScreenshotMenuOpen);
+        const lensContainer = composebox.shadowRoot.querySelector(
+            '.searchbox-icon-button-container.lens');
+        assertTrue(
+            !!lensContainer && lensContainer.classList.contains('menu-open'));
+
+        assertEquals(1, testProxy.handler.getCallCount('showScreenshotMenu'));
+        const args = testProxy.handler.getArgs('showScreenshotMenu')[0];
+        assertTrue(args !== undefined);
+
+        testProxy.page.onScreenshotMenuClosed();
+        await microtasksFinished();
+
+        assertFalse(composebox.isScreenshotMenuOpen);
+        assertFalse(lensContainer.classList.contains('menu-open'));
+      });
 });
 
 suite('UnboundedUtilsTest', () => {
@@ -775,7 +994,7 @@ suite('UnboundedUtilsTest', () => {
     manager.onContextMenuOpened();
     assertTrue(showCalled);
 
-    const event = new ToggleEvent('unbounded', {
+    const event = new ToggleEvent('beforetoggle', {
       oldState: 'open',
       newState: 'closed',
     });
@@ -890,6 +1109,8 @@ suite('OmniboxEverywhereAppTest', () => {
       profileName: 'Test Profile',
       profileEmail: 'test@example.com',
       omniboxEverywhereProfilePickerEnabled: false,
+      omniboxEverywhereShowShortcuts: true,
+      initialShowFre: false,
       composeboxCancelButtonTitle: 'Close AI Mode',
       composeboxCancelButtonTitleInput: 'Clear text',
     });
@@ -944,8 +1165,7 @@ suite('OmniboxEverywhereAppTest', () => {
         assertFalse(!!dialog);
 
         assertTrue(!!searchbox);
-        assertEquals(
-            'test query from speech', searchbox.$.input.inputElement.value);
+        assertEquals('', searchbox.$.input.inputElement.value);
 
         await testProxy.handler.whenCalled('submitQuery');
         const args = testProxy.handler.getArgs('submitQuery')[0];
@@ -957,6 +1177,35 @@ suite('OmniboxEverywhereAppTest', () => {
         assertFalse(args[5]);      // shift_key
         assertTrue(args[6]);       // is_voice_search
       });
+
+  test('submitting composebox switches out of composebox mode', async () => {
+    const searchbox =
+        app.shadowRoot.querySelector('omnibox-everywhere-omnibox')!;
+    searchbox.setInputText('searchbox text');
+    searchbox.dispatchEvent(new CustomEvent('open-composebox', {
+      detail: {text: 'searchbox text', files: [], mode: 0, model: 0},
+      bubbles: true,
+      composed: true,
+    }));
+    await microtasksFinished();
+
+    const composebox =
+        app.shadowRoot.querySelector('omnibox-everywhere-composebox')!;
+    assertTrue(!!composebox);
+
+    composebox.dispatchEvent(new CustomEvent('composebox-submit', {
+      bubbles: true,
+      composed: true,
+    }));
+    await microtasksFinished();
+
+    assertFalse(
+        !!app.shadowRoot.querySelector('omnibox-everywhere-composebox'));
+    const restoredSearchbox =
+        app.shadowRoot.querySelector('omnibox-everywhere-omnibox')!;
+    assertTrue(!!restoredSearchbox);
+    assertEquals('', restoredSearchbox.$.input.inputElement.value);
+  });
 
   test(
       'voice search final result in composebox submits query and closes dialog',
@@ -1113,6 +1362,62 @@ suite('OmniboxEverywhereAppTest', () => {
     assertFalse(voiceSearch.classList.contains('permission-prompt-showing'));
   });
 
+  // TODO(crbug.com/552283274): Flaky on Mac.
+  // <if expr="not is_macosx">
+  test(
+      'open-voice-search reflects attribute on app and hides MV tiles and ' +
+          'content',
+      async () => {
+        document.body.innerHTML = window.trustedTypes!.emptyHTML;
+        loadTimeData.overrideValues({
+          omniboxEverywhereMostVisitedEnabled: true,
+          omniboxEverywhereShowShortcuts: true,
+          initialShowFre: false,
+        });
+        const appWithMv = document.createElement('omnibox-everywhere-app');
+        document.body.appendChild(appWithMv);
+        await microtasksFinished();
+
+        const searchbox =
+            appWithMv.shadowRoot.querySelector('omnibox-everywhere-omnibox');
+        const mvContainer = appWithMv.shadowRoot.querySelector<HTMLElement>(
+            '#mostVisitedContainer');
+        const content =
+            appWithMv.shadowRoot.querySelector<HTMLElement>('#content');
+        assertTrue(!!searchbox);
+        assertTrue(!!mvContainer);
+        assertTrue(!!content);
+        assertFalse(appWithMv.hasAttribute('show-voice-search-overlay_'));
+
+        searchbox.dispatchEvent(new CustomEvent(
+            'open-voice-search', {bubbles: true, composed: true}));
+        await microtasksFinished();
+
+        assertTrue(appWithMv.hasAttribute('show-voice-search-overlay_'));
+
+        const dialog = appWithMv.shadowRoot.querySelector<HTMLDialogElement>(
+            '#voiceSearchDialog');
+        assertTrue(!!dialog);
+        assertTrue(dialog.open);
+
+        assertEquals('none', window.getComputedStyle(content).display);
+        assertEquals(null, mvContainer.offsetParent);
+
+        const voiceSearch = appWithMv.shadowRoot.querySelector('#voiceSearch');
+        assertTrue(!!voiceSearch);
+        voiceSearch.dispatchEvent(new CustomEvent('voice-search-cancel', {
+          bubbles: true,
+          composed: true,
+        }));
+        await microtasksFinished();
+
+        assertFalse(appWithMv.hasAttribute('show-voice-search-overlay_'));
+        assertFalse(!!appWithMv.shadowRoot.querySelector('#voiceSearchDialog'));
+        assertEquals('block', window.getComputedStyle(content).display);
+        assertEquals('flex', window.getComputedStyle(mvContainer).display);
+      });
+  // </if>
+
   test(
       'close-composebox event exits composebox mode and focuses searchbox',
       async () => {
@@ -1174,6 +1479,115 @@ suite('OmniboxEverywhereAppTest', () => {
         const restoredSearchbox =
             app.shadowRoot.querySelector('omnibox-everywhere-omnibox');
         assertTrue(!!restoredSearchbox);
+      });
+
+  test(
+      'open-voice-search in composebox reflects attribute on app and ' +
+          'hides content',
+      async () => {
+        const searchbox =
+            app.shadowRoot.querySelector('omnibox-everywhere-omnibox');
+        assertTrue(!!searchbox);
+        searchbox.dispatchEvent(new CustomEvent('open-composebox', {
+          detail: {text: '', files: [], mode: 0, model: 0},
+          bubbles: true,
+          composed: true,
+        }));
+        await microtasksFinished();
+
+        const composebox =
+            app.shadowRoot.querySelector('omnibox-everywhere-composebox');
+        assertTrue(!!composebox);
+        assertFalse(app.hasAttribute('show-voice-search-overlay_'));
+
+        composebox.dispatchEvent(new CustomEvent(
+            'open-voice-search', {bubbles: true, composed: true}));
+        await microtasksFinished();
+
+        assertTrue(app.hasAttribute('show-voice-search-overlay_'));
+
+        const content = app.shadowRoot.querySelector('#content');
+        assertTrue(!!content);
+        assertEquals('none', window.getComputedStyle(content).display);
+
+        const voiceSearch = app.shadowRoot.querySelector('#voiceSearch');
+        assertTrue(!!voiceSearch);
+        voiceSearch.dispatchEvent(new CustomEvent('voice-search-cancel', {
+          bubbles: true,
+          composed: true,
+        }));
+        await microtasksFinished();
+
+        assertFalse(app.hasAttribute('show-voice-search-overlay_'));
+      });
+
+  test('addFileContext Mojo event updates composebox thumbnail', async () => {
+    const omniboxElement =
+        app.shadowRoot.querySelector('omnibox-everywhere-omnibox')!;
+    const mockToken: UnguessableToken = '1234567890ABCDEF1234567890ABCDEF';
+
+    omniboxElement.dispatchEvent(new CustomEvent('open-composebox', {
+      detail: {
+        text: '',
+        mode: 0,
+        model: 0,
+        smartTabSharingActive: false,
+        files: [],
+      },
+      bubbles: true,
+      composed: true,
+    }));
+    await microtasksFinished();
+
+    const composeboxElement =
+        app.shadowRoot.querySelector('omnibox-everywhere-composebox')!;
+    assertTrue(!!composeboxElement);
+    assertEquals(0, composeboxElement.files.size);
+
+    const fileInfo = {
+      fileName: 'Screenshot.png',
+      mimeType: 'image/png',
+      imageDataUrl: 'data:image/png;base64,image_data',
+      isDeletable: true,
+      selectionTime: new Date(),
+      thumbnailUrl: null,
+    };
+    testProxy.page.addFileContext(mockToken, fileInfo as SelectedFileInfo);
+    await testProxy.page.$.flushForTesting();
+
+    assertEquals(1, composeboxElement.files.size);
+    const updatedFile = Array.from(composeboxElement.files.values())[0]!;
+    assertEquals('data:image/png;base64,image_data', updatedFile.dataUrl);
+  });
+
+  test(
+      'addFileContext Mojo event automatically opens composebox when in ' +
+          'omnibox mode',
+      async () => {
+        assertFalse(
+            !!app.shadowRoot.querySelector('omnibox-everywhere-composebox'));
+
+        const mockToken: UnguessableToken = 'FEDCBA0987654321FEDCBA0987654321';
+        const fileInfo = {
+          fileName: 'Screenshot.png',
+          mimeType: 'image/png',
+          imageDataUrl: 'data:image/png;base64,image_data_buffered',
+          isDeletable: true,
+          selectionTime: new Date(),
+          thumbnailUrl: null,
+        };
+
+        // Mojo event arrives while in standard omnibox mode.
+        testProxy.page.addFileContext(mockToken, fileInfo as SelectedFileInfo);
+        await testProxy.page.$.flushForTesting();
+        await microtasksFinished();
+
+        const composeboxElement =
+            app.shadowRoot.querySelector('omnibox-everywhere-composebox')!;
+        assertTrue(!!composeboxElement);
+        assertEquals(1, composeboxElement.files.size);
+        const file = Array.from(composeboxElement.files.values())[0]!;
+        assertEquals('data:image/png;base64,image_data_buffered', file.dataUrl);
       });
 });
 

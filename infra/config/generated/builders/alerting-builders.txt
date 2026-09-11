@@ -93,7 +93,6 @@ ci/GPU FYI Linux Builder
 ci/GPU FYI Linux Builder (dbg)
 ci/GPU FYI Linux Wayland Builder
 ci/GPU FYI Mac Builder
-ci/GPU FYI Mac Builder (asan)
 ci/GPU FYI Mac Builder (dbg)
 ci/GPU FYI Mac arm64 Builder
 ci/GPU FYI Mac arm64 Builder (asan)
@@ -133,7 +132,6 @@ ci/Linux Chromium OS ASan LSan Builder
 ci/Linux Chromium OS ASan LSan Tests (1)
 ci/Linux ChromiumOS MSan Builder
 ci/Linux ChromiumOS MSan Tests
-ci/Linux FYI Debug (NVIDIA)
 ci/Linux FYI Experimental Release (AMD 780M)
 ci/Linux FYI Experimental Release (AMD 890M)
 ci/Linux FYI Experimental Release (Intel UHD 630)
@@ -161,7 +159,6 @@ ci/Mac ASan 64 Builder
 ci/Mac ASan 64 Tests (1)
 ci/Mac Builder
 ci/Mac Builder (dbg)
-ci/Mac FYI ASAN (Intel)
 ci/Mac FYI Debug (Intel)
 ci/Mac FYI Experimental Release (Apple M1)
 ci/Mac FYI Experimental Release (Intel)
@@ -169,7 +166,6 @@ ci/Mac FYI Experimental Retina Release (AMD)
 ci/Mac FYI Experimental Retina Release (Apple M2)
 ci/Mac FYI Release (Apple M1)
 ci/Mac FYI Release (Intel)
-ci/Mac FYI Retina ASAN (AMD)
 ci/Mac FYI Retina Debug (AMD)
 ci/Mac FYI Retina Release (AMD Radeon Pro 555X)
 ci/Mac FYI Retina Release (AMD)
@@ -305,7 +301,6 @@ ci/android-cronet-x64-rel
 ci/android-cronet-x86-dbg
 ci/android-cronet-x86-dbg-10-tests
 ci/android-cronet-x86-dbg-11-tests
-ci/android-cronet-x86-dbg-marshmallow-tests
 ci/android-cronet-x86-dbg-nougat-tests
 ci/android-cronet-x86-dbg-oreo-tests
 ci/android-cronet-x86-dbg-pie-tests
@@ -330,7 +325,6 @@ ci/chromeos-arm-generic-rel
 ci/chromeos-arm64-generic-rel
 ci/chromeos-x64-libfuzzer-asan-rel-tests
 ci/fuchsia-angle-builder
-ci/fuchsia-arm64-cast-receiver-rel
 ci/fuchsia-fyi-arm64-dbg
 ci/fuchsia-fyi-x64-asan
 ci/fuchsia-fyi-x64-dbg-persistent-emulator
@@ -346,6 +340,7 @@ ci/ios-device
 ci/ios-simulator
 ci/ios-simulator-full-configs
 ci/ios-simulator-noncq
+ci/linux-angle-chromium-amd
 ci/linux-angle-chromium-builder
 ci/linux-angle-chromium-intel
 ci/linux-angle-chromium-nvidia
@@ -481,7 +476,6 @@ try/android-cronet-x64-rel
 try/android-cronet-x86-dbg
 try/android-cronet-x86-dbg-10-tests
 try/android-cronet-x86-dbg-11-tests
-try/android-cronet-x86-dbg-marshmallow-tests
 try/android-cronet-x86-dbg-nougat-tests
 try/android-cronet-x86-dbg-oreo-tests
 try/android-cronet-x86-dbg-pie-tests
@@ -515,7 +509,6 @@ try/chromeos-libfuzzer-asan-rel
 try/chromeos-x64-libfuzzer-asan-rel-tests
 try/compile-size
 try/fuchsia-angle-try
-try/fuchsia-arm64-cast-receiver-rel
 try/fuchsia-binary-size
 try/fuchsia-fyi-arm64-dbg
 try/fuchsia-fyi-x64-asan
@@ -545,7 +538,6 @@ try/gpu-fyi-try-linux-amd-rx-9070xt-exp
 try/gpu-fyi-try-linux-intel-exp
 try/gpu-fyi-try-linux-intel-rel
 try/gpu-fyi-try-linux-intel-uhd770-rel
-try/gpu-fyi-try-linux-nvidia-dbg
 try/gpu-fyi-try-linux-nvidia-exp
 try/gpu-fyi-try-linux-nvidia-rel
 try/gpu-fyi-try-linux-nvidia-rtx-4070-super-rel
@@ -553,7 +545,6 @@ try/gpu-fyi-try-linux-nvidia-rtx-5080-exp
 try/gpu-fyi-try-linux-nvidia-tsn
 try/gpu-fyi-try-linux-wayland-amd-rel
 try/gpu-fyi-try-mac-amd-retina-555x-rel
-try/gpu-fyi-try-mac-amd-retina-asan
 try/gpu-fyi-try-mac-amd-retina-dbg
 try/gpu-fyi-try-mac-amd-retina-exp
 try/gpu-fyi-try-mac-amd-retina-rel
@@ -563,7 +554,6 @@ try/gpu-fyi-try-mac-arm64-apple-m2-asan
 try/gpu-fyi-try-mac-arm64-apple-m2-exp
 try/gpu-fyi-try-mac-arm64-apple-m2-retina-rel
 try/gpu-fyi-try-mac-arm64-apple-m3-retina-rel
-try/gpu-fyi-try-mac-intel-asan
 try/gpu-fyi-try-mac-intel-dbg
 try/gpu-fyi-try-mac-intel-exp
 try/gpu-fyi-try-mac-intel-rel

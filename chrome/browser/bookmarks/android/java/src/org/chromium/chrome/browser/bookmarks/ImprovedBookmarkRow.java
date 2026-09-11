@@ -16,6 +16,8 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewOutlineProvider;
 import android.view.ViewPropertyAnimator;
+import android.view.accessibility.AccessibilityEvent;
+import android.view.accessibility.AccessibilityNodeInfo;
 import android.widget.FrameLayout;
 import android.widget.ImageView;
 import android.widget.TextView;
@@ -24,6 +26,7 @@ import androidx.annotation.ColorInt;
 import androidx.annotation.IntDef;
 import androidx.annotation.VisibleForTesting;
 
+import org.chromium.base.ResettersForTesting;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.components.browser_ui.widget.RoundedCornerImageView;
@@ -55,6 +58,8 @@ public class ImprovedBookmarkRow extends ViewLookupCachingFrameLayout
         int BOTTOM = 2;
         int SOLO = 3;
     }
+
+    private static boolean sEnableIconAnimationForTesting = true;
 
     private ViewGroup mContainer;
     // The start image view which is shows the favicon.
@@ -113,6 +118,7 @@ public class ImprovedBookmarkRow extends ViewLookupCachingFrameLayout
         super(context, attrs);
         // The view from buildView should have a focus highlight, so avoid duplicate focus
         setDefaultFocusHighlightEnabled(false);
+        setFocusable(true);
     }
 
     public void setDragEnabled(boolean dragEnabled) {
@@ -239,6 +245,7 @@ public class ImprovedBookmarkRow extends ViewLookupCachingFrameLayout
 
     void setRowEnabled(boolean enabled) {
         setEnabled(enabled);
+        setFocusable(enabled);
         int alphaRes = enabled ? R.dimen.default_enabled_alpha : R.dimen.default_disabled_alpha;
         float alpha = ValueUtils.getFloat(getResources(), alphaRes);
         mContainer.setAlpha(alpha);
@@ -273,8 +280,8 @@ public class ImprovedBookmarkRow extends ViewLookupCachingFrameLayout
         cancelAnimation();
 
         mStartImageView.setImageDrawable(drawable);
-        // No need to fade-in a null drawable.
-        if (drawable == null) return;
+        // No need to fade-in a null drawable or when animations are disabled in tests.
+        if (drawable == null || !sEnableIconAnimationForTesting) return;
 
         mStartImageView.setAlpha(0f);
 
@@ -311,12 +318,24 @@ public class ImprovedBookmarkRow extends ViewLookupCachingFrameLayout
         mMoreButton.addPopupListener(listener);
     }
 
+    @Override
+    public void onInitializeAccessibilityNodeInfo(AccessibilityNodeInfo info) {
+        super.onInitializeAccessibilityNodeInfo(info);
+        info.setCheckable(mSelectionEnabled);
+        info.setChecked(mSelectionEnabled && mIsSelected);
+    }
+
     void setIsSelected(boolean selected) {
+        boolean changed = mIsSelected != selected;
         mIsSelected = selected;
         updateView();
+        if (changed && mSelectionEnabled) {
+            sendAccessibilityEvent(AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED);
+        }
     }
 
     void setSelectionEnabled(boolean selectionEnabled) {
+        boolean changed = mSelectionEnabled != selectionEnabled;
         mSelectionEnabled = selectionEnabled;
         mMoreButton.setClickable(!selectionEnabled);
         mMoreButton.setEnabled(!selectionEnabled);
@@ -325,6 +344,9 @@ public class ImprovedBookmarkRow extends ViewLookupCachingFrameLayout
                         ? IMPORTANT_FOR_ACCESSIBILITY_YES
                         : IMPORTANT_FOR_ACCESSIBILITY_NO);
         updateView();
+        if (changed) {
+            sendAccessibilityEvent(AccessibilityEvent.TYPE_WINDOW_CONTENT_CHANGED);
+        }
     }
 
     // TODO: Maybe this can be removed.
@@ -360,6 +382,7 @@ public class ImprovedBookmarkRow extends ViewLookupCachingFrameLayout
     }
 
     void updateView() {
+        setDefaultFocusHighlightEnabled(mIsSelected);
         mContainer.setBackgroundResource(
                 mIsSelected
                         ? R.drawable.rounded_rectangle_surface_container_low
@@ -397,5 +420,10 @@ public class ImprovedBookmarkRow extends ViewLookupCachingFrameLayout
 
     public String getTitleForTesting() {
         return mTitleView.getText().toString();
+    }
+
+    public static void setEnableIconAnimationForTesting(boolean enable) {
+        sEnableIconAnimationForTesting = enable;
+        ResettersForTesting.register(() -> sEnableIconAnimationForTesting = true);
     }
 }

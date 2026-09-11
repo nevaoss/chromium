@@ -237,10 +237,9 @@ const ComputedStyle* GetComputedStyleFromScrollbar(
       return nullptr;
     }
 
-    LayoutCustomScrollbarPart* scroll_corner_layout_object =
-        scrollable_area->ScrollCorner();
-    if (scroll_corner_layout_object) {
-      return scroll_corner_layout_object->Style();
+    if (const LayoutCustomScrollbarPart* scroll_corner_layout_object =
+            scrollable_area->ScrollCorner()) {
+      return &scroll_corner_layout_object->StyleRef();
     }
   }
 
@@ -442,7 +441,8 @@ HitTestResult EventHandler::HitTestResultAtLocation(
               frame_view->ConvertToRootFrame(location.Point())));
         }
         return main_frame.GetEventHandler().HitTestResultAtLocation(
-            adjusted_location, hit_type, stop_node, no_lifecycle_update);
+            adjusted_location, hit_type, stop_node, no_lifecycle_update,
+            std::move(hit_node_cb));
       }
     }
   }

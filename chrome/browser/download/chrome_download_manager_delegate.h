@@ -397,10 +397,25 @@ class ChromeDownloadManagerDelegate
   // Called after user interacted on the incognito download confirmation message
   // before proceeding to save a package.
   void RequestIncognitoSavePackageConfirmationDone(
-      const GURL& url,
+      content::WebContents* web_contents,
       const base::FilePath& suggested_path,
       content::SavePackagePathPickedCallback callback,
       bool accept);
+
+  void OnDetermineSavePackagePathDone(
+      base::WeakPtr<content::WebContents> web_contents,
+      content::SavePackagePathPickedCallback callback,
+      const base::FilePath& file_path,
+      const base::FilePath& display_name);
+#endif
+
+#if BUILDFLAG(IS_CHROMEOS)
+  // Called after attempting to obtain a temporary directory for deobfuscating
+  // virtual files.
+  void OnCreateDeobfuscationTempFile(uint32_t download_id,
+                                     const base::FilePath& virtual_path,
+                                     download::LocalPathCallback callback,
+                                     base::FilePath temp_file_path);
 #endif
 
   raw_ptr<Profile, DanglingUntriaged> profile_;

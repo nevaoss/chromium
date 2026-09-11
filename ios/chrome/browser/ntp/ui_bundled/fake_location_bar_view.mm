@@ -23,16 +23,22 @@ constexpr CGFloat kFakeboxHighlightDuration = 0.4;
 constexpr CGFloat kFakeboxHighlightAlpha = 0.06;
 
 // Fakebox shadow parameters for NTP UI cleanup.
-constexpr CGFloat kFakeboxShadowRadius = 12.0;
-constexpr CGFloat kFakeboxShadowVerticalOffset = 2.0;
-constexpr CGFloat kFakeboxShadowOpacity = 0.15;
+constexpr CGFloat kFakeboxShadowRadius = 14.0;
+constexpr CGFloat kFakeboxShadowVerticalOffset = 3.0;
+constexpr CGFloat kFakeboxShadowOpacity = 0.16;
+
+// Returns whether the fakebox background color and shadow should be applied.
+bool ShouldApplyFakeboxBackgroundAndShadow() {
+  return IsNewTabPageUICleanupEnabled() ||
+         IsNewTabPageUICleanupFakeboxOnlyEnabled();
+}
 
 // Helper function to resolve dynamic fakebox background color. The fakebox
-// background color is dependent on if kNewTabPageUICleanup is enabled.
+// background color is dependent on if `kNewTabPageUICleanup` is enabled.
 UIColor* DynamicFakeboxColor(NSString* solid_color_name,
                              NSString* gradient_color_name) {
-  if (IsNewTabPageUICleanupEnabled()) {
-    return [UIColor colorNamed:kPrimaryBackgroundColor];
+  if (ShouldApplyFakeboxBackgroundAndShadow()) {
+    return [UIColor colorNamed:kNTPRedesignFakeboxBackgroundColor];
   }
   return UIAccessibilityIsReduceTransparencyEnabled()
              ? [UIColor colorNamed:solid_color_name]
@@ -64,7 +70,7 @@ UIColor* FakeboxBottomColor() {
   self = [super initWithFrame:frame];
   if (self) {
     self.translatesAutoresizingMaskIntoConstraints = NO;
-    if (!IsNewTabPageUICleanupEnabled()) {
+    if (!ShouldApplyFakeboxBackgroundAndShadow()) {
       self.clipsToBounds = YES;
     }
 
@@ -94,7 +100,7 @@ UIColor* FakeboxBottomColor() {
     [self addSubview:_fakeLocationBarHighlightView];
     AddSameConstraints(self, _fakeLocationBarHighlightView);
 
-    if (IsNewTabPageUICleanupEnabled()) {
+    if (ShouldApplyFakeboxBackgroundAndShadow()) {
       _fakeLocationBarGradientView.layer.masksToBounds = YES;
       _fakeLocationBarBlurEffectView.layer.masksToBounds = YES;
       _fakeLocationBarHighlightView.layer.masksToBounds = YES;
@@ -116,7 +122,7 @@ UIColor* FakeboxBottomColor() {
 
 - (void)layoutSubviews {
   [super layoutSubviews];
-  if (IsNewTabPageUICleanupEnabled() &&
+  if (ShouldApplyFakeboxBackgroundAndShadow() &&
       !CGRectEqualToRect(self.bounds, _lastLayoutBounds)) {
     _lastLayoutBounds = self.bounds;
     CGFloat cornerRadius = self.bounds.size.height / 2;
@@ -158,7 +164,7 @@ UIColor* FakeboxBottomColor() {
                                              : FakeboxBottomColor(),
                                 pinnedColor, progress)];
 
-  if (IsNewTabPageUICleanupEnabled()) {
+  if (ShouldApplyFakeboxBackgroundAndShadow()) {
     self.layer.shadowOpacity = (1.0 - progress) * kFakeboxShadowOpacity;
   }
 }
@@ -175,7 +181,7 @@ UIColor* FakeboxBottomColor() {
     _fakeLocationBarBlurEffectView.hidden = YES;
   }
 
-  if (IsNewTabPageUICleanupEnabled()) {
+  if (ShouldApplyFakeboxBackgroundAndShadow()) {
     self.layer.shadowColor =
         [UIColor colorNamed:kBackgroundShadowColor].CGColor;
   }

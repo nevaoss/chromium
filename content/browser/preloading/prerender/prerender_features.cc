@@ -4,7 +4,6 @@
 
 #include "content/browser/preloading/prerender/prerender_features.h"
 
-#include "build/build_config.h"
 #include "content/public/browser/content_browser_client.h"
 #include "content/public/common/content_client.h"
 #include "content/public/common/content_features.h"
@@ -27,12 +26,7 @@ const base::FeatureParam<Prerender2FallbackPrefetchSchedulerPolicy>
     kPrerender2FallbackPrefetchSchedulerPolicy{
         &kPrerender2FallbackPrefetchSpecRules,
         "kPrerender2FallbackPrefetchSchedulerPolicy",
-// TODO(crbug.com/342089123): Use consistent policy if possible.
-#if BUILDFLAG(IS_ANDROID)
-        Prerender2FallbackPrefetchSchedulerPolicy::kNotUse,
-#else
         Prerender2FallbackPrefetchSchedulerPolicy::kBurst,
-#endif
         &kPrerender2FallbackPrefetchSchedulerPolicyOptios};
 
 BASE_FEATURE(kPrerender2NoVarySearch, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -82,7 +76,7 @@ const base::FeatureParam<int> kPrerender2ReuseInitiatorProcessMaxReuseCount{
     &kPrerender2ReuseInitiatorProcess, "max_reuse_count", 2};
 
 const base::FeatureParam<bool> kPrerender2CrossOriginIframesNesting{
-    &blink::features::kPrerender2CrossOriginIframes, "nesting", false};
+    &blink::features::kPrerender2CrossOriginIframes, "nesting", true};
 
 bool UsePrefetchPrerenderIntegration() {
   return base::FeatureList::IsEnabled(

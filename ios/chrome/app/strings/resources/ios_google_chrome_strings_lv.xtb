@@ -74,6 +74,7 @@ Svarīga informācija
 <translation id="2427791862912929107">Pārlūkā Chrome ir funkcijas, ko varat izmantot, lai pārvaldītu savus interneta datus un tīmekļa lapu ielādes ātrumu.
 <ph name="BEGIN_LINK" />Uzziniet vairāk<ph name="END_LINK" />.</translation>
 <translation id="2450221499140985490">Atveriet saites no ziņojumiem un dokumentiem tieši pārlūkā Chrome.</translation>
+<translation id="2459400997522001951">Veiciet ātrus uzdevumus un atklājiet veidus, kā pilnvērtīgi izmantot pārlūku Chrome.</translation>
 <translation id="2464852008153767546">{THRESHOLD,plural, =1{Tas notiek, ja pārlūks Chrome nav izmantots {THRESHOLD} minūti. Var tikt dzēsta arī vēsture un automātiskās aizpildes dati.}zero{Tas notiek, ja pārlūks Chrome nav izmantots {THRESHOLD} minūtes. Var tikt dzēsta arī vēsture un automātiskās aizpildes dati.}one{Tas notiek, ja pārlūks Chrome nav izmantots {THRESHOLD} minūti. Var tikt dzēsta arī vēsture un automātiskās aizpildes dati.}other{Tas notiek, ja pārlūks Chrome nav izmantots {THRESHOLD} minūtes. Var tikt dzēsta arī vēsture un automātiskās aizpildes dati.}}</translation>
 <translation id="2561231791489583059">Parūpējieties par aizsardzību no bīstamām vietnēm un savu paroļu drošību, izmantojot pārlūku Chrome kā savu noklusējuma pārlūku</translation>
 <translation id="2574249610672786438">Lai skatītu cilnes no ierīcēm, kurās lietojat pārlūku Chrome, pierakstieties visās savās ierīcēs.</translation>
@@ -141,6 +142,7 @@ Jaunas grāmatzīmes nevarēs saglabāt jūsu kontā, kamēr neizdzēsīsiet da�
 <translation id="411154422556990518">Sekojiet līdzi cenu izsekošanas jaunumiem un Chrome padomiem.</translation>
 <translation id="417201473131094001">Netiek atbalstīta pārlūkā Chrome Canary.</translation>
 <translation id="424864128008805179">Vai izrakstīties no pārlūka Chrome?</translation>
+<translation id="4314240881330431451">Varat izmantot Google Lens pārlūkā Chrome, lai meklētu jebkādu redzamo saturu.</translation>
 <translation id="4409545895715116037">Tālāk norādītās piekļuves atslēgas netika importētas Google paroļu pārvaldniekā, jo tās neatbilst prasībām.</translation>
 <translation id="4430797724889237570">Atveriet saites no Gmail, Maps, YouTube un citām lietotnēm pārlūkā Chrome.</translation>
 <translation id="447252321002412580">Palīdzēt uzlabot Chrome funkcijas un veiktspēju</translation>

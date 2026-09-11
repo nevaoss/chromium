@@ -33,7 +33,6 @@ import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
-import org.robolectric.annotation.Config;
 import org.robolectric.shadows.ShadowLooper;
 
 import org.chromium.base.test.BaseRobolectricTestRunner;
@@ -48,7 +47,6 @@ import java.util.concurrent.TimeUnit;
 
 /** Unit tests for {@link ActorForegroundServiceManager}. */
 @RunWith(BaseRobolectricTestRunner.class)
-@Config(manifest = Config.NONE)
 @EnableFeatures(ChromeFeatureList.ANDROID_ACTOR_TASK_TIMEOUT)
 public class ActorForegroundServiceManagerTest {
     @Rule public MockitoRule mMockitoRule = MockitoJUnit.rule();
@@ -160,9 +158,9 @@ public class ActorForegroundServiceManagerTest {
         stopCallback.waitForOnly();
 
         assertFalse("Service should be unbound after delay.", mManager.isServiceBoundForTesting());
-        verify(mServiceController).stopActorForegroundService(ServiceCompat.STOP_FOREGROUND_REMOVE);
+        verify(mServiceController).onTaskCompleted(1);
+        verify(mServiceController).stopActorForegroundService(ServiceCompat.STOP_FOREGROUND_DETACH);
         verify(mServiceController).unbindService();
-        verify(mNotificationService).repostNotification(1);
     }
 
     @Test
@@ -346,8 +344,7 @@ public class ActorForegroundServiceManagerTest {
         assertFalse(
                 "Service should be unbound after terminal timeout.",
                 mManager.isServiceBoundForTesting());
-        verify(mServiceController)
-                .stopActorForegroundService(ServiceCompat.STOP_FOREGROUND_REMOVE);
+        verify(mServiceController).stopActorForegroundService(ServiceCompat.STOP_FOREGROUND_DETACH);
     }
 
     @Test
@@ -382,5 +379,18 @@ public class ActorForegroundServiceManagerTest {
                 ActorTaskTimeoutParameters.getWarningTimeoutMs(), TimeUnit.MILLISECONDS);
 
         verify(mKeyedService, never()).stopTask(eq(taskId), anyInt());
+    }
+
+    @Test
+    @EnableFeatures(ChromeFeatureList.ACTOR_STEP_PROGRESS_NOTIFICATION)
+    public void testOnTaskStepProgressUpdated_RefreshesNotification() {
+        int taskId = 1;
+        mManager.setKeyedServiceForTesting(mKeyedService);
+        mManager.onTaskStateChanged(taskId, ActorTaskState.ACTING);
+
+        clearInvocations(mNotificationService);
+
+        mManager.onTaskStepProgressUpdated(taskId, "Navigating to site");
+        verify(mNotificationService).updateNotificationForStepProgress(taskId);
     }
 }

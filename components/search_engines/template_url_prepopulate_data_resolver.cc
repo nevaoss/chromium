@@ -16,6 +16,7 @@
 #include "components/regional_capabilities/regional_capabilities_service.h"
 #include "components/regional_capabilities/regional_capabilities_switches.h"
 #include "components/regional_capabilities/regional_capabilities_utils.h"
+#include "components/search_engines/keyword_table.h"
 #include "components/search_engines/keyword_web_data_service.h"
 #include "components/search_engines/template_url_data.h"
 #include "components/search_engines/template_url_prepopulate_data.h"
@@ -48,14 +49,15 @@ std::unique_ptr<TemplateURLData> Resolver::GetEngineFromFullList(
   return TemplateURLPrepopulateData::GetPrepopulatedEngineFromFullList(
       profile_prefs_.get(),
       regional_capabilities_->GetRegionalPrepopulatedEngines(),
-      prepopulated_id);
+      regional_capabilities_->GetRegionalVariants(), prepopulated_id);
 }
 
 std::unique_ptr<TemplateURLData> Resolver::GetEngineFromFullList(
     std::u16string_view keyword) const {
   return TemplateURLPrepopulateData::GetPrepopulatedEngineFromFullList(
       profile_prefs_.get(),
-      regional_capabilities_->GetRegionalPrepopulatedEngines(), keyword);
+      regional_capabilities_->GetRegionalPrepopulatedEngines(),
+      regional_capabilities_->GetRegionalVariants(), keyword);
 }
 
 std::unique_ptr<TemplateURLData> Resolver::GetFallbackSearch() const {
@@ -67,16 +69,27 @@ std::unique_ptr<TemplateURLData> Resolver::GetFallbackSearch() const {
 std::optional<BuiltinKeywordsMetadata>
 Resolver::ComputeDatabaseUpdateRequirements(
     const WDKeywordsResult::Metadata& keywords_metadata) const {
+  KeywordTable::PrepopulatedEngineMigrationSet current_migration_state;
+  if (base::FeatureList::IsEnabled(switches::kPrepopulatedEnginesMigration)) {
+    current_migration_state.Put(
+        KeywordTable::PrepopulatedEngineMigration::kMigration);
+  }
+  if (switches::ArePrepopulatedEnginesShadowVariantsEnabled()) {
+    current_migration_state.Put(
+        KeywordTable::PrepopulatedEngineMigration::kShadowVariants);
+  }
+
   BuiltinKeywordsMetadata current_metadata{
       .country_id = regional_capabilities_->GetCountryId(),
       .data_version =
           TemplateURLPrepopulateData::GetDataVersion(&profile_prefs_.get()),
-      // Always keep track of the fact that some migration may have taken place.
-      .prepopulated_engines_migration_enabled = base::FeatureList::IsEnabled(
-          switches::kPrepopulatedEnginesMigration)};
+      .prepopulated_engines_migration_state = current_migration_state,
+  };
 
-  if (keywords_metadata.prepopulated_engines_migration_enabled &&
-      !current_metadata.prepopulated_engines_migration_enabled) {
+  // Rollback check: if DB has bits set that current doesn't have.
+  if (!base::Difference(keywords_metadata.prepopulated_engines_migration_state,
+                        current_metadata.prepopulated_engines_migration_state)
+           .empty()) {
     // The keywords DB indicates that it was updated with some post-migration
     // data, but the feature state checks indicates that the feature is not
     // enabled.
@@ -116,11 +129,12 @@ Resolver::ComputeDatabaseUpdateRequirements(
     return current_metadata;
   }
 
-  if (!keywords_metadata.prepopulated_engines_migration_enabled &&
-      current_metadata.prepopulated_engines_migration_enabled) {
-    // Ensure that when we enable the migration feature for this client, the
-    // database gets updated. Continue and deliberately not do a migration if
-    // the divergence is the other way.
+  // Upgrade check: if current has bits set that DB doesn't have.
+  if (!base::Difference(current_metadata.prepopulated_engines_migration_state,
+                        keywords_metadata.prepopulated_engines_migration_state)
+           .empty()) {
+    // Ensure that when we enable a new migration feature for this client, the
+    // database gets updated.
     return current_metadata;
   }
 
@@ -142,7 +156,7 @@ bool Resolver::IsMatch(MigrationMatch match) {
 Resolver::MigrationMatch Resolver::CompareEngineUnderMigration(
     const TemplateURLData& checked_data,
     const PrepopulatedEngine* deprecated_engine) const {
-  CHECK(deprecated_engine->migrate_to_id != 0, base::NotFatalUntil::M149);
+  CHECK_NE(deprecated_engine->migrate_to_id, 0);
 
   if (checked_data.prepopulate_id != deprecated_engine->id) {
     return MigrationMatch::kIdsDontMatch;
@@ -180,11 +194,8 @@ std::unique_ptr<TemplateURLData> Resolver::TryGetMigratedEngine(
     return {};
   }
 
-  if (pre_migration_engine.prepopulate_id == 0) {
-    // Should only be requested for prepopulated engines.
-    NOTREACHED(base::NotFatalUntil::M149);
-    return {};
-  }
+  // Should only be requested for prepopulated engines.
+  CHECK_NE(pre_migration_engine.prepopulate_id, 0);
 
   const auto& migrating_engines =
       regional_capabilities::GetMigratingPrepopulatedEngines();
