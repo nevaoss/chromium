@@ -150,16 +150,7 @@ void TabStripFlatEdgeButton::SetFlatEdgeFactor(float factor) {
   }
   flat_edge_factor_ = factor;
 
-  SetProperty(views::kHighlightPathGeneratorKey,
-              std::make_unique<views::RoundRectHighlightPathGenerator>(
-                  gfx::Insets(), GetButtonCornerRadii()));
-  // The ink drop doesn't automatically pick up on rounded corner changes, so
-  // we need to manually notify it here.
-  if (GetWidget() && views::InkDrop::Get(this)->HasInkDrop()) {
-    views::InkDrop::Get(this)->GetInkDrop()->HostSizeChanged(size());
-  }
-
-  SchedulePaint();
+  UpdateHighlightPathAndInkDrop();
 }
 
 void TabStripFlatEdgeButton::SetShouldShowLabel(bool show_label) {
@@ -183,7 +174,7 @@ void TabStripFlatEdgeButton::NotifyWillInvokeAction() {
 }
 
 void TabStripFlatEdgeButton::OnPaintBackground(gfx::Canvas* canvas) {
-  if (features::IsGlassFrameEnabled()) {
+  if (paint_transparent_for_glass_ && features::IsGlassFrameEnabled()) {
     return;
   }
   const SkColor color = GetColorProvider()->GetColor(GetBackgroundColor());
@@ -219,14 +210,7 @@ void TabStripFlatEdgeButton::SetFlatEdge(FlatEdge flat_edge) {
   }
   flat_edge_ = flat_edge;
 
-  SetProperty(views::kHighlightPathGeneratorKey,
-              std::make_unique<views::RoundRectHighlightPathGenerator>(
-                  gfx::Insets(), GetButtonCornerRadii()));
-  if (GetWidget() && views::InkDrop::Get(this)->HasInkDrop()) {
-    views::InkDrop::Get(this)->GetInkDrop()->HostSizeChanged(size());
-  }
-
-  SchedulePaint();
+  UpdateHighlightPathAndInkDrop();
 }
 
 void TabStripFlatEdgeButton::SetCornerRadius(float corner_radius) {
@@ -235,13 +219,28 @@ void TabStripFlatEdgeButton::SetCornerRadius(float corner_radius) {
   }
   corner_radius_ = corner_radius;
 
+  UpdateHighlightPathAndInkDrop();
+}
+
+void TabStripFlatEdgeButton::UpdateHighlightPathAndInkDrop() {
   SetProperty(views::kHighlightPathGeneratorKey,
               std::make_unique<views::RoundRectHighlightPathGenerator>(
                   gfx::Insets(), GetButtonCornerRadii()));
+  // The ink drop doesn't automatically pick up on rounded corner changes, so
+  // we need to manually notify it here.
   if (GetWidget() && views::InkDrop::Get(this)->HasInkDrop()) {
     views::InkDrop::Get(this)->GetInkDrop()->HostSizeChanged(size());
   }
 
+  SchedulePaint();
+}
+
+void TabStripFlatEdgeButton::SetPaintTransparentForGlass(
+    bool paint_transparent) {
+  if (paint_transparent_for_glass_ == paint_transparent) {
+    return;
+  }
+  paint_transparent_for_glass_ = paint_transparent;
   SchedulePaint();
 }
 

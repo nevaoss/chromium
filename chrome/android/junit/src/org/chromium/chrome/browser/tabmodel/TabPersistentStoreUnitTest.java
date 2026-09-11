@@ -153,7 +153,7 @@ public class TabPersistentStoreUnitTest {
 
         mPersistentStore =
                 new TabPersistentStoreImpl(
-                        TabPersistentStoreImpl.CLIENT_TAG_REGULAR,
+                        TabOrchestratorType.TABBED,
                         mPersistencePolicy,
                         mTabModelSelector,
                         mTabCreatorManager,
@@ -185,7 +185,7 @@ public class TabPersistentStoreUnitTest {
     public void testNotActiveEmptyNtpNotIgnoredDuringRestore() {
         mPersistentStore =
                 new TabPersistentStoreImpl(
-                        TabPersistentStoreImpl.CLIENT_TAG_REGULAR,
+                        TabOrchestratorType.TABBED,
                         mPersistencePolicy,
                         mTabModelSelector,
                         mTabCreatorManager,
@@ -223,7 +223,7 @@ public class TabPersistentStoreUnitTest {
 
         mPersistentStore =
                 new TabPersistentStoreImpl(
-                        TabPersistentStoreImpl.CLIENT_TAG_REGULAR,
+                        TabOrchestratorType.TABBED,
                         mPersistencePolicy,
                         mTabModelSelector,
                         mTabCreatorManager,
@@ -261,7 +261,7 @@ public class TabPersistentStoreUnitTest {
 
         mPersistentStore =
                 new TabPersistentStoreImpl(
-                        TabPersistentStoreImpl.CLIENT_TAG_REGULAR,
+                        TabOrchestratorType.TABBED,
                         mPersistencePolicy,
                         mTabModelSelector,
                         mTabCreatorManager,
@@ -305,7 +305,7 @@ public class TabPersistentStoreUnitTest {
     public void testNtpWithStateNotIgnoredDuringRestore() {
         mPersistentStore =
                 new TabPersistentStoreImpl(
-                        TabPersistentStoreImpl.CLIENT_TAG_REGULAR,
+                        TabOrchestratorType.TABBED,
                         mPersistencePolicy,
                         mTabModelSelector,
                         mTabCreatorManager,
@@ -332,7 +332,7 @@ public class TabPersistentStoreUnitTest {
 
         mPersistentStore =
                 new TabPersistentStoreImpl(
-                        TabPersistentStoreImpl.CLIENT_TAG_REGULAR,
+                        TabOrchestratorType.TABBED,
                         mPersistencePolicy,
                         mTabModelSelector,
                         mTabCreatorManager,
@@ -370,7 +370,7 @@ public class TabPersistentStoreUnitTest {
                 .add(1, new AsyncTabCreationParams(new LoadUrlParams(url)));
         mPersistentStore =
                 new TabPersistentStoreImpl(
-                        TabPersistentStoreImpl.CLIENT_TAG_REGULAR,
+                        TabOrchestratorType.TABBED,
                         mPersistencePolicy,
                         mTabModelSelector,
                         mTabCreatorManager,
@@ -398,7 +398,7 @@ public class TabPersistentStoreUnitTest {
     public void testNotActiveIncognitoNtpIgnoredDuringRestore() {
         mPersistentStore =
                 new TabPersistentStoreImpl(
-                        TabPersistentStoreImpl.CLIENT_TAG_REGULAR,
+                        TabOrchestratorType.TABBED,
                         mPersistencePolicy,
                         mTabModelSelector,
                         mTabCreatorManager,
@@ -421,7 +421,7 @@ public class TabPersistentStoreUnitTest {
     public void testActiveEmptyIncognitoNtpIgnoredDuringRestoreIfIncognitoLoadingIsDisabled() {
         mPersistentStore =
                 new TabPersistentStoreImpl(
-                        TabPersistentStoreImpl.CLIENT_TAG_REGULAR,
+                        TabOrchestratorType.TABBED,
                         mPersistencePolicy,
                         mTabModelSelector,
                         mTabCreatorManager,
@@ -444,7 +444,7 @@ public class TabPersistentStoreUnitTest {
     public void testDuplicateTabIds() {
         mPersistentStore =
                 new TabPersistentStoreImpl(
-                        TabPersistentStoreImpl.CLIENT_TAG_REGULAR,
+                        TabOrchestratorType.TABBED,
                         mPersistencePolicy,
                         mTabModelSelector,
                         mTabCreatorManager,
@@ -679,7 +679,7 @@ public class TabPersistentStoreUnitTest {
         when(mTab.getUrl()).thenReturn(GURL.emptyGURL());
         mPersistentStore =
                 new TabPersistentStoreImpl(
-                        TabPersistentStoreImpl.CLIENT_TAG_REGULAR,
+                        TabOrchestratorType.TABBED,
                         mPersistencePolicy,
                         mTabModelSelector,
                         mTabCreatorManager,
@@ -735,7 +735,7 @@ public class TabPersistentStoreUnitTest {
         when(mTab.getUrl()).thenReturn(GURL.emptyGURL());
         mPersistentStore =
                 new TabPersistentStoreImpl(
-                        TabPersistentStoreImpl.CLIENT_TAG_REGULAR,
+                        TabOrchestratorType.TABBED,
                         mPersistencePolicy,
                         mTabModelSelector,
                         mTabCreatorManager,
@@ -770,7 +770,7 @@ public class TabPersistentStoreUnitTest {
     public void testWillCloseAllTabs_CancelsTabLoading() {
         mPersistentStore =
                 new TabPersistentStoreImpl(
-                        TabPersistentStoreImpl.CLIENT_TAG_REGULAR,
+                        TabOrchestratorType.TABBED,
                         mPersistencePolicy,
                         mTabModelSelector,
                         mTabCreatorManager,
@@ -797,7 +797,7 @@ public class TabPersistentStoreUnitTest {
     public void testWillCloseAllTabs_CancelsTabLoading_WillCloseTabs() {
         mPersistentStore =
                 new TabPersistentStoreImpl(
-                        TabPersistentStoreImpl.CLIENT_TAG_REGULAR,
+                        TabOrchestratorType.TABBED,
                         mPersistencePolicy,
                         mTabModelSelector,
                         mTabCreatorManager,
@@ -831,7 +831,7 @@ public class TabPersistentStoreUnitTest {
         when(mTab.getUrl()).thenReturn(GURL.emptyGURL());
         mPersistentStore =
                 new TabPersistentStoreImpl(
-                        TabPersistentStoreImpl.CLIENT_TAG_REGULAR,
+                        TabOrchestratorType.TABBED,
                         mPersistencePolicy,
                         mTabModelSelector,
                         mTabCreatorManager,
@@ -879,7 +879,7 @@ public class TabPersistentStoreUnitTest {
         when(mTab.getUrl()).thenReturn(GURL.emptyGURL());
         mPersistentStore =
                 new TabPersistentStoreImpl(
-                        TabPersistentStoreImpl.CLIENT_TAG_REGULAR,
+                        TabOrchestratorType.TABBED,
                         mPersistencePolicy,
                         mTabModelSelector,
                         mTabCreatorManager,
@@ -965,7 +965,7 @@ public class TabPersistentStoreUnitTest {
 
         mPersistentStore =
                 new TabPersistentStoreImpl(
-                        TabPersistentStoreImpl.CLIENT_TAG_REGULAR,
+                        TabOrchestratorType.TABBED,
                         mPersistencePolicy,
                         mTabModelSelector,
                         mTabCreatorManager,
@@ -1004,7 +1004,7 @@ public class TabPersistentStoreUnitTest {
 
         mPersistentStore =
                 new TabPersistentStoreImpl(
-                        TabPersistentStoreImpl.CLIENT_TAG_REGULAR,
+                        TabOrchestratorType.TABBED,
                         mPersistencePolicy,
                         mTabModelSelector,
                         mTabCreatorManager,

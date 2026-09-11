@@ -26,10 +26,19 @@ const char kAccountPreviewPreference[] = "signin.account_preview_preference";
 const char kAccountPreviewDataLastUpdatePref[] =
     "signin.account_preview_data_last_update";
 
+// Time pref that tracks the last time account preview data request hit 429.
+const char kAccountPreviewDataLast429TimePref[] =
+    "signin.account_preview_data_last_429_time";
+
 // List pref that tracks the GAIA IDs of accounts present during the last data
 // fetch.
 const char kAccountPreviewDataLastFetchAccounts[] =
     "signin.account_preview_data_last_fetch_accounts";
+
+// Time pref that tracks the last time account preview selection heuristic
+// scores metrics were recorded.
+const char kAccountPreviewSelectionHeuristicScoresLastRecordedPref[] =
+    "signin.account_preview.selection_heuristic_scores_last_recorded";
 
 #if BUILDFLAG(IS_ANDROID)
 // Dictionary pref that contains the external app account GaiaId and timestamp.
@@ -181,10 +190,6 @@ const char kBrowserSigninPolicy[] = "signin.browser_signin_policy";
 // next startup.
 const char kSigninAllowedOnNextStartup[] = "signin.allowed_on_next_startup";
 
-// String that represent the url for which cookies will have to be moved to a
-// newly created profile via signin interception.
-const char kSigninInterceptionIDPCookiesUrl[] =
-    "signin.interception.idp_cookies.url";
 
 // Integer pref to store the number of times the address bubble signin promo
 // has been shown per profile while the user is signed out used for

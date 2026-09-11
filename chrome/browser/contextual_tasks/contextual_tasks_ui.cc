@@ -98,6 +98,7 @@
 #include "third_party/lens_server_proto/aim_communication.pb.h"
 #include "ui/base/device_form_factor.h"
 #include "ui/base/l10n/l10n_util.h"
+#include "ui/base/ui_base_features.h"
 #include "ui/color/color_provider_key.h"
 #include "ui/webui/buildflags.h"
 #include "ui/webui/tracked_element/tracked_element_handler_document_singleton.h"
@@ -373,15 +374,7 @@ ContextualTasksUI::ContextualTasksUI(content::WebUI* web_ui)
 
 #if !BUILDFLAG(IS_ANDROID)
   GURL url = web_ui->GetWebContents()->GetVisibleURL();
-  // Incognito browsers always use dark mode. This is checked explicitly
-  // because the ThemeService only tracks the parent profile's theme.
-  // See BrowserWidget::GetColorProviderKey() in
-  // chrome/browser/ui/views/frame/browser_widget.cc.
-  bool is_dark_mode =
-      ThemeServiceFactory::GetForProfile(profile)->BrowserUsesDarkColors() ||
-      profile->IsOffTheRecord();
-  is_dark_mode =
-      contextual_tasks::GetDarkModeFromUrl(url).value_or(is_dark_mode);
+  bool is_dark_mode = contextual_tasks::ShouldUseDarkMode(profile, url);
   source->AddBoolean("darkMode", is_dark_mode);
 #else
   bool is_dark_mode = web_ui->GetWebContents()->GetColorMode() ==
@@ -659,7 +652,7 @@ base::DictValue ContextualTasksUI::GetContextualTasksLoadTimeData(
            contextual_tasks::GetEnableNativeZeroStateSuggestions());
 
   AddContextMenuItemEligibilityLoadTimeData(dict, profile);
-  dict.Set("composeboxShowLensSearchChip", false);
+  dict.Set("composeboxShowChip", false);
   dict.Set("composeboxShowContextMenuTabPreviews", false);
   dict.Set("composeboxContextMenuEnableMultiTabSelection", true);
   dict.Set("composeboxContextMenuEnableTabDeselection",
@@ -707,13 +700,7 @@ base::DictValue ContextualTasksUI::GetContextualTasksLoadTimeData(
           ContextualSearchSourceToString(
               contextual_search::ContextualSearchSource::kContextualTasks));
 #if !BUILDFLAG(IS_ANDROID)
-  // Incognito browsers always use dark mode. This is checked explicitly
-  // because the ThemeService only tracks the parent profile's theme.
-  // See BrowserWidget::GetColorProviderKey() in
-  // chrome/browser/ui/views/frame/browser_widget.cc.
-  bool is_dark_mode =
-      ThemeServiceFactory::GetForProfile(profile)->BrowserUsesDarkColors() ||
-      profile->IsOffTheRecord();
+  bool is_dark_mode = contextual_tasks::ShouldUseDarkMode(profile);
 #else
   bool is_dark_mode = false;
 #endif
@@ -732,8 +719,9 @@ base::DictValue ContextualTasksUI::GetContextualTasksLoadTimeData(
   dict.Set("isSmallDeviceFormFactor",
            ui::GetDeviceFormFactor() == ui::DEVICE_FORM_FACTOR_PHONE);
 
+  auto forced_host = contextual_tasks::GetForcedEmbeddedPageHost();
   dict.Set("forcedEmbeddedPageHost",
-           contextual_tasks::GetForcedEmbeddedPageHost());
+           forced_host ? forced_host->ToString() : "");
   dict.Set("contextualTasksSignInDomains",
            base::JoinString(contextual_tasks::GetContextualTasksSignInDomains(),
                             ","));
@@ -766,6 +754,9 @@ base::DictValue ContextualTasksUI::GetContextualTasksLoadTimeData(
       "enableContextManagementInComposebox",
       base::FeatureList::IsEnabled(omnibox::kContextManagementInComposebox));
 
+  dict.Set("webuiRoundedIconsAttribute",
+           features::IsWebUIRoundedIconsEnabled() ? "webui-rounded-icons" : "");
+
   AddZeroStateStrings(dict, profile);
 
   return dict;
@@ -787,10 +778,12 @@ void ContextualTasksUI::CreatePageHandler(
 #if !BUILDFLAG(IS_ANDROID)
   // Determine if the Lens overlay is showing when the page is created.
   if (auto* browser = GetBrowser()) {
-    if (auto* controller = LensSearchController::FromTabWebContents(
-            browser->GetTabStripModel()->GetActiveWebContents())) {
-      OnLensOverlayStateChanged(controller->IsShowingUI(),
-                                controller->invocation_source());
+    if (auto* tab = browser->GetActiveTabInterface()) {
+      if (auto* controller =
+              LensSearchController::FromTabWebContents(tab->GetContents())) {
+        OnLensOverlayStateChanged(controller->IsShowingUI(),
+                                  controller->invocation_source());
+      }
     }
   }
 #endif
@@ -889,20 +882,34 @@ void ContextualTasksUI::SetInNlm(bool in_nlm) {
   }
 }
 
+bool ContextualTasksUI::IsCoBrowseOmniboxAction() const {
+  if (!omnibox::kAskGCoBrowseWithVisualSelection.Get()) {
+    return false;
+  }
+  if (!ui_service_ || !task_id_.has_value()) {
+    return false;
+  }
+  return ui_service_->GetInitialEntryPointForTask(task_id_.value()) ==
+         omnibox::ChromeAimEntryPoint::DESKTOP_CHROME_COBROWSE_OMNIBOX_ACTION;
+}
+
 void ContextualTasksUI::SetIsAiPage(bool is_ai_page) {
   if (page_) {
     page_->OnAiPageStatusChanged(is_ai_page);
   }
 
-  // When AI page is first loaded, close the Lens overlay if it's open.
-  if (is_ai_page && !was_ai_page_) {
+  // When AI page is first loaded, close the Lens overlay if it's open,
+  // unless opened for Omnibox Co-Browse visual selection.
+  if (is_ai_page && !was_ai_page_ && !IsCoBrowseOmniboxAction()) {
     auto* browser = GetBrowser();
     if (browser) {
 #if !BUILDFLAG(IS_ANDROID)
-      if (auto* controller = LensSearchController::FromTabWebContents(
-              browser->GetTabStripModel()->GetActiveWebContents())) {
-        controller->CloseLensAsync(
-            lens::LensOverlayDismissalSource::kContextualTasksQuerySubmitted);
+      if (auto* tab = browser->GetActiveTabInterface()) {
+        if (auto* controller =
+                LensSearchController::FromTabWebContents(tab->GetContents())) {
+          controller->CloseLensAsync(
+              lens::LensOverlayDismissalSource::kContextualTasksQuerySubmitted);
+        }
       }
 #endif
     }
@@ -1147,27 +1154,27 @@ void ContextualTasksUI::ClearContextualSessionHandle() {}
 
 std::unique_ptr<contextual_search::InputStateModel>
 ContextualTasksUI::TakeInputStateModel() {
-  if (!task_id_.has_value()) {
-    return nullptr;
-  }
-
   content::WebContents* web_contents = web_ui()->GetWebContents();
   auto* helper = ContextualSearchWebContentsHelper::GetOrCreateForWebContents(
       web_contents);
 
-  return helper->TakeInputStateModelForTask(task_id_.value());
+  if (task_id_.has_value()) {
+    return helper->TakeInputStateModelForTask(task_id_.value());
+  }
+
+  return helper->TakeInputStateModel();
 }
 
 std::vector<int32_t> ContextualTasksUI::GetRestoredTabIds() {
-  if (!task_id_.has_value()) {
-    return {};
-  }
-
   content::WebContents* web_contents = web_ui()->GetWebContents();
   auto* helper = ContextualSearchWebContentsHelper::GetOrCreateForWebContents(
       web_contents);
 
-  return helper->GetSelectedTabIdsForTask(task_id_.value());
+  if (task_id_.has_value()) {
+    return helper->GetSelectedTabIdsForTask(task_id_.value());
+  }
+
+  return helper->GetSelectedTabIds();
 }
 
 void ContextualTasksUI::SetComposeboxHandler(
@@ -1445,6 +1452,13 @@ bool ContextualTasksUI::CanUpdateSuggestedTabContext(
   }
 
   return true;
+}
+
+void ContextualTasksUI::SyncAutoSuggestedTabContext() {
+  if (composebox_handler_ && auto_suggestion_manager_) {
+    composebox_handler_->UpdateSuggestedTabContext(
+        auto_suggestion_manager_->GetCurrentSuggestion());
+  }
 }
 
 void ContextualTasksUI::OnActiveTabContextStatusChanged() {
@@ -1817,12 +1831,20 @@ void ContextualTasksUI::FrameNavObserver::DidFinishNavigation(
     bool is_thread_switch =
         webui_thread_id && webui_thread_id.value() != url_thread_id;
 
+    // A same-document navigation with an updated thread ID for the same query
+    // represents an in-place server thread ID resolution (e.g. client mtid to
+    // canonical server mtid) rather than a switch between distinct threads.
+    bool is_in_place_thread_update =
+        is_thread_switch && navigation_handle->IsSameDocument() &&
+        current_title.has_value() && !query_value.empty() &&
+        current_title.value() == query_value;
+
     bool has_reusable_task =
         base::FeatureList::IsEnabled(omnibox::kContextManagementInComposebox) &&
         task_info_delegate_->GetTaskId().has_value();
 
     bool should_create_new_task =
-        is_thread_switch ||
+        (is_thread_switch && !is_in_place_thread_update) ||
         (!has_reusable_task &&
          (pending_task_title_mismatch || is_new_conversation));
 
@@ -1856,12 +1878,14 @@ void ContextualTasksUI::FrameNavObserver::DidFinishNavigation(
     mstk = url_param_mstk;
   }
 
-  contextual_tasks_service_->UpdateThreadForTask(
-      task_info_delegate_->GetTaskId().value(),
-      contextual_tasks::ThreadType::kAiMode, url_thread_id, mstk,
-      task_info_delegate_->GetThreadTitle());
+  if (task_info_delegate_->GetTaskId().has_value()) {
+    contextual_tasks_service_->UpdateThreadForTask(
+        task_info_delegate_->GetTaskId().value(),
+        contextual_tasks::ThreadType::kAiMode, url_thread_id, mstk,
+        task_info_delegate_->GetThreadTitle());
+  }
 
-  if (task_changed) {
+  if (task_changed && task_info_delegate_->GetTaskId().has_value()) {
     OMNIBOX_LOG("embedded_page_nav")
         << "Task changed: "
         << task_info_delegate_->GetTaskId().value().AsLowercaseString();

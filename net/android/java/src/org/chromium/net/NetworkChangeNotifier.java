@@ -146,6 +146,12 @@ public class NetworkChangeNotifier {
         mNativeChangeNotifiers.remove(nativeChangeNotifier);
     }
 
+    /** Returns {@code true} if default NetworkCallback failed to register. */
+    @VisibleForTesting
+    public boolean registerDefaultNetworkCallbackFailed() {
+        return mAutoDetector == null ? false : mAutoDetector.registerDefaultNetworkCallbackFailed();
+    }
+
     /**
      * Returns {@code true} if NetworkCallback failed to register, indicating that network-specific
      * callbacks will not be issued.
@@ -194,14 +200,10 @@ public class NetworkChangeNotifier {
 
     /**
      * Registers to receive network change notification based on the provided registration policy.
-     * By default, queries current network state from the system after creating the
-     * NetworkChangeNotifierAutoDetect instance. Callers can override this by passing
-     * forceUpdateNetworkState = false to speed up the execution.
      */
     public static void setAutoDetectConnectivityState(
-            NetworkChangeNotifierAutoDetect.RegistrationPolicy policy,
-            boolean forceUpdateNetworkState) {
-        getInstance().setAutoDetectConnectivityStateInternal(true, policy, forceUpdateNetworkState);
+            NetworkChangeNotifierAutoDetect.RegistrationPolicy policy) {
+        getInstance().setAutoDetectConnectivityStateInternal(true, policy);
     }
 
     private void destroyAutoDetector() {
@@ -213,14 +215,6 @@ public class NetworkChangeNotifier {
 
     private void setAutoDetectConnectivityStateInternal(
             boolean shouldAutoDetect, NetworkChangeNotifierAutoDetect.RegistrationPolicy policy) {
-        setAutoDetectConnectivityStateInternal(
-                shouldAutoDetect, policy, /* forceUpdateNetworkState= */ true);
-    }
-
-    private void setAutoDetectConnectivityStateInternal(
-            boolean shouldAutoDetect,
-            NetworkChangeNotifierAutoDetect.RegistrationPolicy policy,
-            boolean forceUpdateNetworkState) {
         try (ScopedSysTraceEvent event =
                 ScopedSysTraceEvent.scoped(
                         "NetworkChangeNotifier.setAutoDetectConnectivityStateInternal")) {
@@ -269,9 +263,6 @@ public class NetworkChangeNotifier {
                                         }
                                     },
                                     policy);
-                    // TODO(crbug.com/376646498): Remove this once we have finished
-                    // the experiment as its definitely a redundant call.
-                    if (forceUpdateNetworkState) mAutoDetector.updateCurrentNetworkState();
 
                     final ConnectivityManagerWrapper.NetworkState networkState =
                             mAutoDetector.getCurrentNetworkState();

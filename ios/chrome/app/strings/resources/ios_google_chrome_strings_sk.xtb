@@ -74,6 +74,7 @@
 <translation id="2427791862912929107">Chrome má funkcie, ktoré vám pomôžu spravovať internetové dáta a rýchlosť načítania webových stránok.
 <ph name="BEGIN_LINK" />Ďalšie informácie<ph name="END_LINK" /></translation>
 <translation id="2450221499140985490">Otvárajte odkazy zo správ a dokumentov priamo v Chrome.</translation>
+<translation id="2459400997522001951">Dokončujte rýchle úlohy a objavte spôsoby, ako využívať Chrome naplno:</translation>
 <translation id="2464852008153767546">{THRESHOLD,plural, =1{Dochádza k tomu, keď Chrome nepoužívate {THRESHOLD} minútu. Môže to zahŕňať históriu a automatické dopĺňanie.}few{Dochádza k tomu, keď Chrome nepoužívate {THRESHOLD} minúty. Môže to zahŕňať históriu a automatické dopĺňanie.}many{Dochádza k tomu, keď Chrome nepoužívate {THRESHOLD} minúty. Môže to zahŕňať históriu a automatické dopĺňanie.}other{Dochádza k tomu, keď Chrome nepoužívate {THRESHOLD} minút. Môže to zahŕňať históriu a automatické dopĺňanie.}}</translation>
 <translation id="2561231791489583059">Používajte Chrome ako svoj predvolený prehliadač, aby ste sa naďalej chránili pred nebezpečnými webmi a zaistili ochranu svojich hesiel</translation>
 <translation id="2574249610672786438">Ak chcete vidieť svoje karty vo všetkých zariadeniach, v ktorých používate Chrome, prihláste sa v nich</translation>
@@ -141,6 +142,7 @@ Nové záložky sa nebudú môcť ukladať do vášho účtu, kým niektoré neo
 <translation id="411154422556990518">Majte prehľad o aktuálnom sledovaní cien a tipoch pre Chrome.</translation>
 <translation id="417201473131094001">Nepodporované vo verzii Chrome Canary</translation>
 <translation id="424864128008805179">Odhlásiť sa z Chromu?</translation>
+<translation id="4314240881330431451">Pomocou funkcie Google Lens v Chrome môžete vyhľadať čokoľvek, čo vidíte</translation>
 <translation id="4409545895715116037">Nasledujúce prístupové kľúče neboli importované do Správcu hesiel Google, pretože nespĺňajú požiadavky.</translation>
 <translation id="4430797724889237570">Otvárajte odkazy z aplikácií Gmail, Mapy, YouTube a ďalších v Chrome</translation>
 <translation id="447252321002412580">Pomáhať s vylepšovaním funkcií a výkonu Chromu</translation>

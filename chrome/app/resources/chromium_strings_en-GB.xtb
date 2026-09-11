@@ -41,7 +41,6 @@ Some features may be unavailable and changes to preferences won't be saved.</tra
 <translation id="1356661055722410047">New! You can translate both text and images on your screen</translation>
 <translation id="1383876407941801731">Search</translation>
 <translation id="1388276868779258475">Use the Chromium app to keep browsing on the go</translation>
-<translation id="1397530502368084401">&amp;Manage Chromium profiles</translation>
 <translation id="141901961143729572">Share your thoughts</translation>
 <translation id="1465192221147974788">To share your window, allow screen recording for Chromium in System Settings.</translation>
 <translation id="1478370723027452770">Get help with Chrome for testing</translation>
@@ -77,6 +76,7 @@ Some features may be unavailable and changes to preferences won't be saved.</tra
 <translation id="1857749206890802997">Download Chromium on your phone to open or create new tab groups on the go.</translation>
 <translation id="185970820835152459">You can manage your signed-in Google Accounts. Your Google Accounts are used for Chromium browser, Play Store, Gmail and more. If you want to add an account for someone else, like a family member, add a new person to your <ph name="DEVICE_TYPE" /> instead. <ph name="LINK_BEGIN" />Learn more<ph name="LINK_END" /></translation>
 <translation id="1862852878885210965">Search with image search</translation>
+<translation id="1863837059069884561"><ph name="EXISTING_USER" /> is already signed in. To keep your browsing separate, sign in to Chromium in your own profile as <ph name="USER_EMAIL_ADDRESS" />. You'll also get your bookmarks and more from <ph name="DEVICE" />.</translation>
 <translation id="1880677175115548835">Select text</translation>
 <translation id="1881322772814446296">You are signing in with a managed account and giving its administrator control over your Chromium profile. Your Chromium data, such as your apps, bookmarks, history, passwords and other settings will become permanently tied to <ph name="USER_NAME" />. You will be able to delete this data via the Google Accounts Dashboard, but you will not be able to associate this data with another account. You can optionally create a new profile to keep your existing Chromium data separate. <ph name="LEARN_MORE" /></translation>
 <translation id="1896836275755235458">Chromium conserves battery power by limiting background activity and visual effects, such as smooth scrolling and video frame rates. <ph name="BEGIN_LINK" />Learn more about Energy Saver<ph name="END_LINK" /></translation>
@@ -135,6 +135,7 @@ Some features may be unavailable and changes to preferences won't be saved.</tra
 <translation id="2418322681019544463">Open links in Chromium from any app and keep the browser accessible on your taskbar</translation>
 <translation id="2425157128016763890">Click the Summarise button to share this document with Gemini in Chromium to get a quick overview and ask follow-up questions</translation>
 <translation id="2440750600860946460">With <ph name="BEGIN_LINK" />tools from Chromium<ph name="END_LINK" />, you can browse safely and stay in control</translation>
+<translation id="2449487342837813167"><ph name="EXISTING_USER" /> is already signed in. To keep your browsing separate, sign in to Chromium in your own profile as <ph name="USER_EMAIL_ADDRESS" />. You'll also get your passwords and more on all your devices.</translation>
 <translation id="2451727308784734061">Use your shortcut to quickly get to the Password Manager. You can move your shortcut to your computer's home screen or app launcher.</translation>
 <translation id="2478295928299953161">Chromium will soon close</translation>
 <translation id="2483889755041906834">In Chromium</translation>
@@ -152,7 +153,6 @@ Some features may be unavailable and changes to preferences won't be saved.</tra
 <translation id="2620436844016719705">System</translation>
 <translation id="2629740064077610681">Your organisation can see and manage browsing data, such as your bookmarks, history and passwords. It can't see browsing data in other Chromium profiles</translation>
 <translation id="2635452620547538388">Verify that it's you to use and save Chromium data in your account, <ph name="ACCOUNT_EMAIL" /></translation>
-<translation id="2636783171884046627">To leave or return to Gemini in Chromium, use keyboard shortcut.</translation>
 <translation id="2637732208198500597">{COUNT,plural, =0{Advanced Protection requires that you relaunch Chromium to apply an update}=1{Advanced Protection requires that you relaunch Chromium to apply an update. Your Incognito window won't reopen.}other{Advanced Protection requires that you relaunch Chromium to apply an update. Your # Incognito windows won't reopen.}}</translation>
 <translation id="263863604136125912">Start Chromium</translation>
 <translation id="2648074677641340862">An operating system error occurred during installation. Please download Chromium again.</translation>
@@ -229,6 +229,7 @@ Some features may be unavailable and changes to preferences won't be saved.</tra
 <translation id="3387527074123400161">Chromium OS</translation>
 <translation id="3406848076815591792">Switch to existing Chromium profile?</translation>
 <translation id="3412460710772753638">In Password Manager on this device</translation>
+<translation id="3438772217992559640">Search this tab with image search</translation>
 <translation id="3455907671758333080">Extend Enhanced Safe Browsing with Chromium on your phone</translation>
 <translation id="3461644266919055473">Making Chromium yours…</translation>
 <translation id="3474745554856756813">This will delete <ph name="ITEMS_COUNT" /> items from this device. To retrieve your data later, sign in to Chromium as <ph name="USER_EMAIL" />.</translation>
@@ -267,7 +268,6 @@ Some features may be unavailable and changes to preferences won't be saved.</tra
 <translation id="3892148308691398805">Copy text</translation>
 <translation id="390528597099634151"><ph name="EXISTING_USER" /> is already signed in to this Chromium profile. To keep your browsing separate, Chromium can create your own profile for you.</translation>
 <translation id="3909353120217047026">This extension violates the Chrome Web Store policy and might be unsafe. Remove it from Chromium so that it can no longer see and change your data on sites that you visit, including your personal info.</translation>
-<translation id="3937491663738985329">Customise your Chromium</translation>
 <translation id="3941890832296813527">Install error: The installer filename is invalid or unsupported.</translation>
 <translation id="3945058413678539331">Chromium is trying to copy passwords. Type your Windows password to allow this.</translation>
 <translation id="3954172517175569325">Your passwords, payment methods and addresses that you saved in your Google Account will be removed from this device. To use them again in Chromium, sign back in.</translation>
@@ -407,6 +407,7 @@ Some features may be unavailable and changes to preferences won't be saved.</tra
 
 If this page isn't working as expected, try allowing optimisation.</translation>
 <translation id="5575874067957905201">Show Gemini in Chromium in Mac menu bar and turn on keyboard shortcut</translation>
+<translation id="5576587363991567745"><ph name="EXISTING_USER" /> is already signed in. To keep your browsing separate, sign in to Chromium in your own profile as <ph name="USER_EMAIL_ADDRESS" />. You'll also get your saved info and more from <ph name="DEVICE" />.</translation>
 <translation id="5579324208890605088">Startup error: Please run the installer as a regular user, not as administrator.</translation>
 <translation id="5580770360767802657">Use Chromium by default and get it pinned</translation>
 <translation id="5596627076506792578">More options</translation>
@@ -442,6 +443,7 @@ If this page isn't working as expected, try allowing optimisation.</translation>
 <translation id="5977420883993828287">Pinned! Use contextual tasks again from the toolbar</translation>
 <translation id="5986585015444752010">{COUNT,plural, =1{Your organisation closes Chromium automatically when it isn't used for one minute.}other{Your organisation closes Chromium automatically when it isn't used for # minutes.}}</translation>
 <translation id="5987687638152509985">Update Chromium to start sync</translation>
+<translation id="5990360079535151574">From the 'Contextual tasks' button on the toolbar, you can reopen Contextual tasks to ask questions while you browse</translation>
 <translation id="6003112304606738118">Downloading… <ph name="HOURS" /> hour(s) remaining</translation>
 <translation id="6009821354356307391">Ask a follow-up</translation>
 <translation id="6040143037577758943">Close</translation>
@@ -581,6 +583,7 @@ New bookmarks can't be saved in your account until you delete some. If you sign 
 <translation id="7213407614656404070">Use Chromium any time that you click links in messages, documents and other apps</translation>
 <translation id="7216228761061470870">When you use image search on desktop, the page title, URL and content, including PDFs, are sent to the server</translation>
 <translation id="7223968959479464213">Task Manager - Chromium</translation>
+<translation id="7227958669698166857"><ph name="EXISTING_USER" /> is already signed in. To keep your browsing separate, sign in to Chromium in your own profile as <ph name="USER_EMAIL_ADDRESS" />. You'll also get your saved info and more on all your devices.</translation>
 <translation id="7252276985725323153">Begin browsing instantly: Chromium can now launch when Windows starts.</translation>
 <translation id="7274695763216404502">Pinned! Use image search again from the toolbar</translation>
 <translation id="7288567540154601580">Tabs and extensions</translation>
@@ -590,6 +593,7 @@ New bookmarks can't be saved in your account until you delete some. If you sign 
 <translation id="7318036098707714271">Your preferences file is corrupt or invalid.
 
 Google Chrome is unable to recover your settings.</translation>
+<translation id="7324051657739063017">You can reopen Contextual tasks to ask questions while you browse</translation>
 <translation id="734373864078049451">Your web, bookmarks and other Chromium stuff live here.</translation>
 <translation id="7347827960336370838">Only someone with your passphrase can read your encrypted data. The passphrase is not sent to or stored by Google. If you forget your passphrase or want to change this setting, you'll need to <ph name="BEGIN_LINK" />delete the Chromium data in your account<ph name="END_LINK" />.</translation>
 <translation id="7349591376906416160">Your system administrator has configured Chromium to open <ph name="ALTERNATIVE_BROWSER_NAME" /> to access <ph name="TARGET_URL_HOSTNAME" />.</translation>
@@ -598,6 +602,7 @@ Google Chrome is unable to recover your settings.</translation>
 <translation id="7376384068949534168">You haven't visited recently. Chromium removed <ph name="PERMISSION_1" />, <ph name="PERMISSION_2" />.</translation>
 <translation id="73786666777299047">Open Chrome Web Store</translation>
 <translation id="7394275517973019558">Show Gemini in Chromium in system tray</translation>
+<translation id="7401687852903179959">Search this video with image search</translation>
 <translation id="7407655596887111931">Chromium is now your default browser</translation>
 <translation id="7413153308467572558">Continue where you left off: Chromium restores your tabs every time you restart. To turn this off, go to</translation>
 <translation id="7427879960656355200">Import passwords to Chromium</translation>
@@ -650,6 +655,7 @@ Google Chrome is unable to recover your settings.</translation>
 <translation id="7888981273428720788">Set Chromium as your default</translation>
 <translation id="7934340546140346950">Chromium upgrades insecure connections to HTTPS automatically when possible</translation>
 <translation id="7937630085815544518">You were signed in to Chromium as <ph name="USER_EMAIL_ADDRESS" />. Please use the same account to sign in again.</translation>
+<translation id="7944602660083060118"><ph name="EXISTING_USER" /> is already signed in. To keep your browsing separate, sign in to Chromium in your own profile as <ph name="USER_EMAIL_ADDRESS" />. You’ll also get your bookmarks and more on all your devices.</translation>
 <translation id="7975919845073681630">This is a secondary installation of Chromium, and cannot be made your default browser.</translation>
 <translation id="7997934263947464652">Extensions, apps and themes from unknown sources can harm your device. Chromium recommends only installing them from the <ph name="IDS_EXTENSION_WEB_STORE_TITLE" /></translation>
 <translation id="8000759043835159571">Get the best of Google with the Chromium app on your <ph name="DEVICE_TYPE" /></translation>
@@ -676,11 +682,13 @@ Google Chrome is unable to recover your settings.</translation>
 <translation id="81770708095080097">This file is dangerous, so Chromium has blocked it.</translation>
 <translation id="8177472873527554730">Can't find content in page</translation>
 <translation id="8200109504272824693">Enter your passphrase to use and save Chromium data in your account, <ph name="USER_EMAIL" /></translation>
+<translation id="820759916613250543">Search this image with image search</translation>
 <translation id="8221491193165283816">You usually block notifications. To let this site notify you, click here.</translation>
 <translation id="8223363452568144035">To use your camera, give Chromium access in <ph name="BEGIN_LINK" />system settings<ph name="END_LINK" /></translation>
 <translation id="8232193495299001329">Chromium can't verify where this extension comes from, and it might be unsafe. Remove it from Chromium so that it can no longer see and change your data on sites that you visit, including personal info.</translation>
 <translation id="8248265253516264921">If an image doesn’t have a useful description, Chromium will try to provide one for you. To create descriptions, images are sent to Google. You can turn this off in settings at any time.</translation>
 <translation id="8254601181414348851">Sign in to Chromium in a new profile?</translation>
+<translation id="8262224117913639129"><ph name="EXISTING_USER" /> is already signed in. To keep your browsing separate, sign in to Chromium in your own profile as <ph name="USER_EMAIL_ADDRESS" />. You'll also get your passwords and more from <ph name="DEVICE" />.</translation>
 <translation id="8277334259226003205">Show Gemini in Chromium in system tray and turn on keyboard shortcut</translation>
 <translation id="8286943863733751221"><ph name="BEGIN_LINK" />Chromium warns you<ph name="END_LINK" /> about unsafe sites and downloads</translation>
 <translation id="8295827201165805317">You haven't visited recently. Chromium removed <ph name="PERMISSION" />.</translation>
@@ -758,6 +766,7 @@ Google Chrome is unable to recover your settings.</translation>
 <translation id="8980139959902937527">Take the safety of Google on the go with the Chromium app on your <ph name="DEVICE_TYPE" /></translation>
 <translation id="8981150672034878610">Cannot start Chromium because something went wrong when opening your profile. Try to restart Chromium.</translation>
 <translation id="8988036198400390003">Manage Chromium profiles</translation>
+<translation id="8993855408334954620">Use your keyboard to navigate between Gemini in Chromium and your open tab.</translation>
 <translation id="9018218886431812662">Installation complete</translation>
 <translation id="9019929317751753759">To make Chromium safer, we disabled the following extension that isn't listed in the <ph name="IDS_EXTENSION_WEB_STORE_TITLE" /> and may have been added without your knowledge.</translation>
 <translation id="9022552996538154597">Sign in to Chromium</translation>

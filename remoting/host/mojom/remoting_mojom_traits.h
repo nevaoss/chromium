@@ -25,6 +25,7 @@
 #include "mojo/public/cpp/bindings/array_traits_protobuf.h"
 #include "mojo/public/cpp/bindings/enum_traits.h"
 #include "mojo/public/cpp/bindings/map_traits_protobuf.h"
+#include "mojo/public/cpp/bindings/optional_as_pointer.h"
 #include "mojo/public/cpp/bindings/struct_traits.h"
 #include "remoting/base/buildflags.h"
 #include "remoting/base/errors.h"
@@ -1119,12 +1120,12 @@ class StructTraits<remoting::mojom::MouseEventDataView,
     return std::nullopt;
   }
 
-  static std::optional<::remoting::protocol::FractionalCoordinate>
+  static mojo::OptionalAsPointer<
+      const ::remoting::protocol::FractionalCoordinate>
   fractional_coordinate(const ::remoting::protocol::MouseEvent& event) {
-    if (event.has_fractional_coordinate()) {
-      return event.fractional_coordinate();
-    }
-    return std::nullopt;
+    return event.has_fractional_coordinate()
+               ? mojo::OptionalAsPointer(&event.fractional_coordinate())
+               : nullptr;
   }
 
   static bool Read(remoting::mojom::MouseEventDataView data_view,
@@ -1378,6 +1379,8 @@ struct EnumTraits<remoting::mojom::ProtocolErrorCode, ::remoting::ErrorCode> {
         return remoting::mojom::ProtocolErrorCode::kNetworkFailure;
       case ::remoting::ErrorCode::OPERATION_TIMEOUT:
         return remoting::mojom::ProtocolErrorCode::kOperationTimeout;
+      case ::remoting::ErrorCode::SOFTWARE_UPGRADED:
+        return remoting::mojom::ProtocolErrorCode::kSoftwareUpgraded;
     }
 
     NOTREACHED();
@@ -1446,6 +1449,8 @@ struct EnumTraits<remoting::mojom::ProtocolErrorCode, ::remoting::ErrorCode> {
         return ::remoting::ErrorCode::NETWORK_FAILURE;
       case remoting::mojom::ProtocolErrorCode::kOperationTimeout:
         return ::remoting::ErrorCode::OPERATION_TIMEOUT;
+      case remoting::mojom::ProtocolErrorCode::kSoftwareUpgraded:
+        return ::remoting::ErrorCode::SOFTWARE_UPGRADED;
     }
 
     NOTREACHED();

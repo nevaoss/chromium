@@ -74,6 +74,7 @@ Points à prendre en compte :
 <translation id="2427791862912929107">Chrome dispose de fonctionnalités qui vous permettent de gérer vos données Internet et la vitesse de chargement des pages Web.
 <ph name="BEGIN_LINK" />En savoir plus<ph name="END_LINK" /></translation>
 <translation id="2450221499140985490">Ouvrez les liens des messages et documents directement dans Chrome.</translation>
+<translation id="2459400997522001951">Effectuez des tâches rapides et découvrez comment profiter pleinement de Chrome :</translation>
 <translation id="2464852008153767546">{THRESHOLD,plural, =1{Cela se produit quand Chrome est inutilisé pendant {THRESHOLD} minute. Il peut s'agir de l'historique et de la saisie automatique.}one{Cela se produit quand Chrome est inutilisé pendant {THRESHOLD} minute. Il peut s'agir de l'historique et de la saisie automatique.}other{Cela se produit quand Chrome est inutilisé pendant {THRESHOLD} minutes. Il peut s'agir de l'historique et de la saisie automatique.}}</translation>
 <translation id="2561231791489583059">Utilisez Chrome comme navigateur par défaut pour rester à l'abri des sites dangereux et protéger vos mots de passe</translation>
 <translation id="2574249610672786438">Pour retrouver vos onglets Chrome quel que soit l'appareil utilisé, connectez-vous à votre compte</translation>
@@ -110,6 +111,7 @@ Vous ne pourrez pas enregistrer de nouveaux favoris dans votre compte tant que v
 <translation id="322254490661677575">Pour utiliser et enregistrer des données Chrome dans votre compte Google, saisissez votre phrase secrète.</translation>
 <translation id="3303503998967553377">Utiliser Actions Chrome sur iOS</translation>
 <translation id="3348862487678490430">Ajouter un élément de liste de lecture à Chrome</translation>
+<translation id="3350281376951945723">Ouvrez les liens plus rapidement en définissant Chrome comme navigateur par défaut</translation>
 <translation id="3357827134511189025">Connectez-vous avec vos mots de passe et clés d'accès enregistrés depuis n'importe quelle appli avec Chrome pour la saisie automatique</translation>
 <translation id="3360031466389132716">{THRESHOLD,plural, =1{Cela se produit quand Chrome est inutilisé pendant {THRESHOLD} minute}one{Cela se produit quand Chrome est inutilisé pendant {THRESHOLD} minute}other{Cela se produit quand Chrome est inutilisé pendant {THRESHOLD} minutes}}</translation>
 <translation id="3367797402528056312">Finir de configurer Chrome</translation>
@@ -140,6 +142,7 @@ Vous ne pourrez pas enregistrer de nouveaux favoris dans votre compte tant que v
 <translation id="411154422556990518">Suivez les changements de prix et découvrez des conseils sur Chrome.</translation>
 <translation id="417201473131094001">Non disponible dans Chrome Canary</translation>
 <translation id="424864128008805179">Se déconnecter de Chrome ?</translation>
+<translation id="4314240881330431451">Vous pouvez utiliser Google Lens dans Chrome pour rechercher tout ce que vous voyez</translation>
 <translation id="4409545895715116037">Les clés d'accès suivantes n'ont pas été importées dans le Gestionnaire de mots de passe de Google, car elles ne répondent pas aux exigences.</translation>
 <translation id="4430797724889237570">Ouvrez les liens de Gmail, Maps, YouTube et d'autres applis dans Chrome</translation>
 <translation id="447252321002412580">Contribuer à améliorer les fonctionnalités et performances de Chrome</translation>

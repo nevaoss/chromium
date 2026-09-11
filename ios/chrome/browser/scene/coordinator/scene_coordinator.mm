@@ -760,6 +760,10 @@ inline LayoutStateScenePassKey PassKey() {
   }
   if (_assistantAIMCoordinator) {
     [self revealAssistantInMinimizedState:minimized];
+    // If the app was backgrounded, the OS might have killed the WebProcess.
+    // Calling loadIfNecessary ensures the WebState restarts the process and
+    // reloads the page if it died, while being a no-op if it is still alive.
+    [_assistantAIMCoordinator loadIfNecessary];
     return;
   }
   _assistantAIMCoordinator = [[AssistantAIMCoordinator alloc]
@@ -1266,7 +1270,11 @@ inline LayoutStateScenePassKey PassKey() {
   DCHECK(!self.isSigninInProgress);
 
   if (self.currentBrowser->type() == Browser::Type::kIncognito) {
-    NOTREACHED();
+    // This can occur if the URL ended up loading while the user switched to
+    // incognito mode. This can occur in particular in case of faulty internet
+    // connection, that caused the URL to ends up loading long after the request
+    // was sent.
+    return;
   }
   if (_settingsNavigationController) {
     [_settingsNavigationController
@@ -1298,6 +1306,25 @@ inline LayoutStateScenePassKey PassKey() {
   _settingsNavigationController = [SettingsNavigationController
       BWGControllerForBrowser:_regularBrowser.get()
                      delegate:self];
+
+  UIViewController* presenter = self.activeViewController;
+  while (presenter.presentedViewController) {
+    presenter = presenter.presentedViewController;
+  }
+  [presenter presentViewController:_settingsNavigationController
+                          animated:YES
+                        completion:nil];
+}
+
+- (void)showSuggestionsFromGeminiHelpImprove {
+  if (_settingsNavigationController) {
+    [_settingsNavigationController showSuggestionsFromGeminiHelpImprove];
+    return;
+  }
+
+  _settingsNavigationController = [SettingsNavigationController
+      geminiHelpImproveControllerForBrowser:_regularBrowser.get()
+                                   delegate:self];
 
   UIViewController* presenter = self.activeViewController;
   while (presenter.presentedViewController) {
@@ -1476,6 +1503,34 @@ inline LayoutStateScenePassKey PassKey() {
   [self dismissModalDialogsWithCompletion:^{
     [weakSelf showAutofillSettingsFromNoticeAfterModalDismiss];
   }];
+}
+
+- (void)showEnhancedAutofillSettingsWithCompletion:(ProceduralBlock)completion {
+  CHECK(!self.isSigninInProgress);
+
+  if (self.sceneState.isUIBlocked) {
+    // This could occur due to race condition with multiple windows and
+    // simultaneous taps. See crbug.com/368310663.
+    return;
+  }
+  if (_settingsNavigationController) {
+    [_settingsNavigationController showEnhancedAutofillSettings];
+    return;
+  }
+  _settingsDismissalCompletion = [completion copy];
+  _settingsNavigationController = [[SettingsNavigationController alloc]
+      initWithRootViewController:nil
+                         browser:_regularBrowser.get()
+                        delegate:self];
+  [_settingsNavigationController showEnhancedAutofillSettings];
+
+  UIViewController* presenter = self.activeViewController;
+  while (presenter.presentedViewController) {
+    presenter = presenter.presentedViewController;
+  }
+  [presenter presentViewController:_settingsNavigationController
+                          animated:YES
+                        completion:nil];
 }
 
 - (void)showPasswordManagerForCredentialImport:(NSUUID*)UUID
@@ -2567,14 +2622,22 @@ inline LayoutStateScenePassKey PassKey() {
     return;
   }
 
-  if (_geminiContainerCoordinator) {
-    __weak __typeof(self) weakSelf = self;
-    [_geminiContainerCoordinator dismissWithCompletion:^{
-      [weakSelf geminiContainerCoordinatorDidDismiss];
-      if (completion) {
-        completion();
-      }
-    }];
+  if (IsIOSGeminiBottomSheetMigrationEnabled()) {
+    if (_geminiContainerCoordinator) {
+      __weak __typeof(self) weakSelf = self;
+      [_geminiContainerCoordinator dismissWithCompletion:^{
+        [weakSelf geminiContainerCoordinatorDidDismiss];
+        if (completion) {
+          completion();
+        }
+      }];
+      return;
+    }
+    // If feature flag is enabled but container is not present then just run the
+    // completion block.
+    if (completion) {
+      completion();
+    }
     return;
   }
 
@@ -2717,6 +2780,15 @@ inline LayoutStateScenePassKey PassKey() {
         animated, gemini::FloatyUpdateSource::IneligibleSite);
   } else {
     geminiBrowserAgent->ShowFloatyIfInvoked(animated, source);
+  }
+}
+
+
+- (void)minimizeGeminiIfInvoked {
+  GeminiBrowserAgent* geminiBrowserAgent =
+      GeminiBrowserAgent::FromBrowser(_regularBrowser.get());
+  if (geminiBrowserAgent) {
+    geminiBrowserAgent->CollapseFloatyIfInvoked();
   }
 }
 

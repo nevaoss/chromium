@@ -12,7 +12,6 @@ ci/Win 10 Fast Ring
 ci/android-11-x86-fyi-rel
 ci/android-11-x86-rel
 ci/android-12-x64-dbg-tests
-ci/android-annotator-rel
 ci/android-arm64-archive-rel
 ci/android-avd-packager
 ci/android-code-coverage
@@ -20,9 +19,6 @@ ci/android-code-coverage-native
 ci/android-device-flasher
 ci/android-fieldtrial-rel
 ci/android-perfetto-rel
-ci/android-rust-arm32-rel
-ci/android-rust-arm64-dbg
-ci/android-rust-arm64-rel
 ci/android-sdk-packager
 ci/android-webview-12-x64-dbg-tests
 ci/android-webview-13-x64-dbg-tests
@@ -41,11 +37,9 @@ ci/ios26-beta-simulator
 ci/ios26-sdk-simulator
 ci/ios27-beta-simulator
 ci/ios27-sdk-simulator
-ci/linux-annotator-rel
 ci/linux-blink-heap-verification
 ci/linux-blink-web-tests-force-accessibility-rel
 ci/linux-blink-wpt-reset-rel
-ci/linux-chromeos-annotator-rel
 ci/linux-chromeos-archive-rel
 ci/linux-chromeos-code-coverage
 ci/linux-code-coverage
@@ -55,8 +49,6 @@ ci/linux-headless-shell-rel
 ci/linux-js-code-coverage
 ci/linux-perfetto-rel
 ci/linux-rel-no-external-ip
-ci/linux-rust-x64-dbg
-ci/linux-rust-x64-rel
 ci/linux-upload-perfetto
 ci/linux-v4l2-codec-rel
 ci/mac-code-coverage
@@ -67,11 +59,8 @@ ci/mac-perfetto-rel
 ci/mac-ubsan-fyi-rel
 ci/metadata-exporter
 ci/rts-suite-analysis
-ci/win-annotator-rel
 ci/win-fieldtrial-rel
 ci/win-perfetto-rel
-ci/win-rust-x64-dbg
-ci/win-rust-x64-rel
 ci/win-upload-perfetto
 ci/win10-code-coverage
 ci/win10-rel-no-external-ip
@@ -112,9 +101,6 @@ try/android-deterministic-dbg
 try/android-deterministic-rel
 try/android-fieldtrial-rel
 try/android-perfetto-rel
-try/android-rust-arm32-rel
-try/android-rust-arm64-dbg
-try/android-rust-arm64-rel
 try/android-webview-10-x86-rel-tests
 try/android-webview-12-x64-dbg
 try/android-webview-13-x64-dbg
@@ -157,7 +143,6 @@ try/ios26-sdk-simulator
 try/ios27-beta-simulator
 try/ios27-sdk-simulator
 try/leak_detection_linux
-try/linux-annotator-rel
 try/linux-asan-dbg
 try/linux-asan-media-rel
 try/linux-asan-media-v8-arm-rel
@@ -168,7 +153,6 @@ try/linux-blink-heap-verification-try
 try/linux-blink-web-tests-force-accessibility-rel
 try/linux-centipede-asan-rel
 try/linux-cfm-rel
-try/linux-chromeos-annotator-rel
 try/linux-chromeos-asan-rel
 try/linux-chromeos-clang-tidy-rel
 try/linux-chromeos-code-coverage
@@ -192,8 +176,6 @@ try/linux-perfetto-rel
 try/linux-rel
 try/linux-rel-cft
 try/linux-rel-compilator
-try/linux-rust-x64-dbg
-try/linux-rust-x64-rel
 try/linux-swangle-chromium-try-x64
 try/linux-swangle-chromium-try-x64-exp
 try/linux-swangle-try-tot-swiftshader-x64
@@ -255,7 +237,6 @@ try/targets-config-verifier
 try/tricium-clang-tidy
 try/tricium-metrics-analysis
 try/tricium-oilpan-analysis
-try/win-annotator-rel
 try/win-asan
 try/win-asan-media-rel
 try/win-asan-rel
@@ -267,8 +248,6 @@ try/win-presubmit
 try/win-rel
 try/win-rel-cft
 try/win-rel-compilator
-try/win-rust-x64-dbg
-try/win-rust-x64-rel
 try/win-swangle-chromium-try-x86
 try/win-swangle-try-tot-swiftshader-x64
 try/win-swangle-try-tot-swiftshader-x86

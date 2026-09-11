@@ -737,11 +737,11 @@ TEST_F(ShowSigninPromoTestWithFeatureFlags,
   EXPECT_EQ(1, profile()->GetPrefs()->GetInteger(
                    prefs::kBookmarkSignInPromoShownCountPerProfile));
   EXPECT_EQ(0, SigninPrefs(*profile()->GetPrefs())
-                   .GetPasswordSigninPromoImpressionCount(account.gaia));
+                   .GetPasswordSigninPromoImpressionCount(account.GetGaiaId()));
   EXPECT_EQ(0, SigninPrefs(*profile()->GetPrefs())
-                   .GetAddressSigninPromoImpressionCount(account.gaia));
+                   .GetAddressSigninPromoImpressionCount(account.GetGaiaId()));
   EXPECT_EQ(0, SigninPrefs(*profile()->GetPrefs())
-                   .GetBookmarkSigninPromoImpressionCount(account.gaia));
+                   .GetBookmarkSigninPromoImpressionCount(account.GetGaiaId()));
 
   EXPECT_TRUE(ShouldShowPasswordSignInPromo(*profile()));
   EXPECT_TRUE(ShouldShowAddressSignInPromo(*profile(), CreateAddress()));
@@ -781,7 +781,7 @@ TEST_F(ShowSigninPromoTestWithFeatureFlags,
   EXPECT_EQ(5, profile()->GetPrefs()->GetInteger(
                    prefs::kPasswordSignInPromoShownCountPerProfile));
   EXPECT_EQ(0, SigninPrefs(*profile()->GetPrefs())
-                   .GetPasswordSigninPromoImpressionCount(account.gaia));
+                   .GetPasswordSigninPromoImpressionCount(account.GetGaiaId()));
 
   EXPECT_FALSE(ShouldShowPasswordSignInPromo(*profile()));
   EXPECT_TRUE(ShouldShowAddressSignInPromo(*profile(), CreateAddress()));
@@ -828,11 +828,11 @@ TEST_F(ShowSigninPromoTestWithFeatureFlags, RecordSignInPromoShownWithAccount) {
   EXPECT_EQ(0, profile.get()->GetPrefs()->GetInteger(
                    prefs::kBookmarkSignInPromoShownCountPerProfile));
   EXPECT_EQ(1, SigninPrefs(*profile.get()->GetPrefs())
-                   .GetPasswordSigninPromoImpressionCount(account.gaia));
+                   .GetPasswordSigninPromoImpressionCount(account.GetGaiaId()));
   EXPECT_EQ(1, SigninPrefs(*profile.get()->GetPrefs())
-                   .GetAddressSigninPromoImpressionCount(account.gaia));
+                   .GetAddressSigninPromoImpressionCount(account.GetGaiaId()));
   EXPECT_EQ(1, SigninPrefs(*profile.get()->GetPrefs())
-                   .GetBookmarkSigninPromoImpressionCount(account.gaia));
+                   .GetBookmarkSigninPromoImpressionCount(account.GetGaiaId()));
 }
 
 TEST_F(ShowSigninPromoTestWithFeatureFlags,
@@ -883,7 +883,7 @@ TEST_F(ShowSigninPromoTestWithFeatureFlags,
   EXPECT_EQ(0, profile->GetPrefs()->GetInteger(
                    prefs::kAddressSignInPromoShownCountPerProfile));
   EXPECT_EQ(5, SigninPrefs(*profile.get()->GetPrefs())
-                   .GetAddressSigninPromoImpressionCount(account.gaia));
+                   .GetAddressSigninPromoImpressionCount(account.GetGaiaId()));
 
   EXPECT_FALSE(ShouldShowAddressSignInPromo(*profile.get(), CreateAddress()));
   EXPECT_TRUE(ShouldShowPasswordSignInPromo(*profile.get()));
@@ -1090,11 +1090,11 @@ TEST_F(ShowSigninPromoTestWithFeatureFlagsPromoLimitsExperiment,
       profile()->GetPrefs()->GetInteger(
           prefs::kBookmarkSignInPromoShownCountPerProfileForLimitsExperiment));
   EXPECT_EQ(0, SigninPrefs(*profile()->GetPrefs())
-                   .GetPasswordSigninPromoImpressionCount(account.gaia));
+                   .GetPasswordSigninPromoImpressionCount(account.GetGaiaId()));
   EXPECT_EQ(0, SigninPrefs(*profile()->GetPrefs())
-                   .GetAddressSigninPromoImpressionCount(account.gaia));
+                   .GetAddressSigninPromoImpressionCount(account.GetGaiaId()));
   EXPECT_EQ(0, SigninPrefs(*profile()->GetPrefs())
-                   .GetBookmarkSigninPromoImpressionCount(account.gaia));
+                   .GetBookmarkSigninPromoImpressionCount(account.GetGaiaId()));
 
   EXPECT_TRUE(ShouldShowPasswordSignInPromo(*profile()));
   EXPECT_TRUE(ShouldShowAddressSignInPromo(*profile(), CreateAddress()));
@@ -1148,11 +1148,11 @@ TEST_F(ShowSigninPromoTestWithFeatureFlagsPromoLimitsExperiment,
       profile.get()->GetPrefs()->GetInteger(
           prefs::kBookmarkSignInPromoShownCountPerProfileForLimitsExperiment));
   EXPECT_EQ(1, SigninPrefs(*profile.get()->GetPrefs())
-                   .GetPasswordSigninPromoImpressionCount(account.gaia));
+                   .GetPasswordSigninPromoImpressionCount(account.GetGaiaId()));
   EXPECT_EQ(1, SigninPrefs(*profile.get()->GetPrefs())
-                   .GetAddressSigninPromoImpressionCount(account.gaia));
+                   .GetAddressSigninPromoImpressionCount(account.GetGaiaId()));
   EXPECT_EQ(1, SigninPrefs(*profile.get()->GetPrefs())
-                   .GetBookmarkSigninPromoImpressionCount(account.gaia));
+                   .GetBookmarkSigninPromoImpressionCount(account.GetGaiaId()));
 }
 
 TEST_F(ShowSigninPromoTestWithFeatureFlagsPromoLimitsExperiment,
@@ -1355,8 +1355,9 @@ TEST_F(AvatarButtonPromoManagerTest, PromoTypesUseDifferentShownLimits) {
   };
 
   const size_t max_shown_count = 4;
-  AvatarButtonPromoManager manager(identity_manager(), &pref_service(),
-                                   max_shown_count, /*max_used_count=*/2);
+  AvatarButtonPromoManager manager(
+      identity_manager(), /*account_preview_data_service=*/nullptr,
+      &pref_service(), max_shown_count, /*max_used_count=*/2);
 
   for (auto promo_type : promo_type_list) {
     SCOPED_TRACE("Iteration: promo_type - " + base::ToString(promo_type));
@@ -1382,7 +1383,9 @@ TEST_F(AvatarButtonPromoManagerTest, PromoTypesUseDifferentUsedLimits) {
   };
 
   const size_t max_used_count = 2;
-  AvatarButtonPromoManager manager(identity_manager(), &pref_service(),
+  AvatarButtonPromoManager manager(identity_manager(),
+                                   /*account_preview_data_service=*/nullptr,
+                                   &pref_service(),
                                    /*max_shown_count=*/4, max_used_count);
 
   for (auto promo_type : promo_type_list) {
@@ -1401,8 +1404,9 @@ TEST_F(AvatarButtonPromoManagerTest,
   ProfileMenuAvatarButtonPromoInfo::Type promo_type =
       ProfileMenuAvatarButtonPromoInfo::Type::kSigninPromo;
   const int max_shown_count = 3;
-  AvatarButtonPromoManager manager(identity_manager(), &pref_service(),
-                                   max_shown_count, /*max_used_count=*/2);
+  AvatarButtonPromoManager manager(
+      identity_manager(), /*account_preview_data_service=*/nullptr,
+      &pref_service(), max_shown_count, /*max_used_count=*/2);
   // Signed out state.
   {
     ASSERT_EQ(signin_util::GetSignedInState(identity_manager()),
@@ -1448,7 +1452,9 @@ TEST_F(AvatarButtonPromoManagerTest,
   ProfileMenuAvatarButtonPromoInfo::Type promo_type =
       ProfileMenuAvatarButtonPromoInfo::Type::kSigninPromo;
   const int max_used_count = 2;
-  AvatarButtonPromoManager manager(identity_manager(), &pref_service(),
+  AvatarButtonPromoManager manager(identity_manager(),
+                                   /*account_preview_data_service=*/nullptr,
+                                   &pref_service(),
                                    /*max_shown_count=*/3, max_used_count);
   // Signed out state.
   {
@@ -1492,7 +1498,9 @@ TEST_F(AvatarButtonPromoManagerTest,
        SigninPromoHasShownTimeCheckForSignedOutState) {
   ProfileMenuAvatarButtonPromoInfo::Type signin_promo_type =
       ProfileMenuAvatarButtonPromoInfo::Type::kSigninPromo;
-  AvatarButtonPromoManager manager(identity_manager(), &pref_service(),
+  AvatarButtonPromoManager manager(identity_manager(),
+                                   /*account_preview_data_service=*/nullptr,
+                                   &pref_service(),
                                    /*max_shown_count=*/3, /*max_used_count=*/2);
 
   ASSERT_EQ(signin_util::GetSignedInState(identity_manager()),
@@ -1522,7 +1530,9 @@ TEST_F(AvatarButtonPromoManagerTest,
        SigninPromoHasShownTimeCheckForWebSigninState) {
   ProfileMenuAvatarButtonPromoInfo::Type signin_promo_type =
       ProfileMenuAvatarButtonPromoInfo::Type::kSigninPromo;
-  AvatarButtonPromoManager manager(identity_manager(), &pref_service(),
+  AvatarButtonPromoManager manager(identity_manager(),
+                                   /*account_preview_data_service=*/nullptr,
+                                   &pref_service(),
                                    /*max_shown_count=*/3, /*max_used_count=*/2);
 
   signin::MakeAccountAvailable(
@@ -1556,7 +1566,9 @@ TEST_F(AvatarButtonPromoManagerTest,
 TEST_F(AvatarButtonPromoManagerTest, SigninPromoHasLastExternalEventTimeCheck) {
   ProfileMenuAvatarButtonPromoInfo::Type signin_promo_type =
       ProfileMenuAvatarButtonPromoInfo::Type::kSigninPromo;
-  AvatarButtonPromoManager manager(identity_manager(), &pref_service(),
+  AvatarButtonPromoManager manager(identity_manager(),
+                                   /*account_preview_data_service=*/nullptr,
+                                   &pref_service(),
                                    /*max_shown_count=*/3, /*max_used_count=*/2);
 
   AccountInfo account_info = signin::MakeAccountAvailable(
@@ -1602,8 +1614,9 @@ class AvatarButtonPromoManagerPromoTypeParamTest
 TEST_P(AvatarButtonPromoManagerPromoTypeParamTest, MaxShownCountReached) {
   SetSigninStateFromPromoType(GetParam());
   const int max_shown_count = 10;
-  AvatarButtonPromoManager manager(identity_manager(), &pref_service(),
-                                   max_shown_count,
+  AvatarButtonPromoManager manager(identity_manager(),
+                                   /*account_preview_data_service=*/nullptr,
+                                   &pref_service(), max_shown_count,
                                    /*max_used_count=*/1);
 
   for (int i = 0; i < max_shown_count; ++i) {
@@ -1621,7 +1634,9 @@ TEST_P(AvatarButtonPromoManagerPromoTypeParamTest, MaxShownCountReached) {
 TEST_P(AvatarButtonPromoManagerPromoTypeParamTest, MaxUsedCountReached) {
   SetSigninStateFromPromoType(GetParam());
   const int max_used_count = 5;
-  AvatarButtonPromoManager manager(identity_manager(), &pref_service(),
+  AvatarButtonPromoManager manager(identity_manager(),
+                                   /*account_preview_data_service=*/nullptr,
+                                   &pref_service(),
                                    /*max_shown_count=*/10, max_used_count);
 
   for (int i = 0; i < max_used_count; ++i) {
@@ -1636,7 +1651,9 @@ TEST_P(AvatarButtonPromoManagerPromoTypeParamTest, MaxUsedCountReached) {
 }
 
 TEST_P(AvatarButtonPromoManagerPromoTypeParamTest, ShowPromoStateIfSignedOut) {
-  AvatarButtonPromoManager manager(identity_manager(), &pref_service(),
+  AvatarButtonPromoManager manager(identity_manager(),
+                                   /*account_preview_data_service=*/nullptr,
+                                   &pref_service(),
                                    /*max_shown_count=*/10,
                                    /*max_used_count=*/2);
 
@@ -1664,7 +1681,9 @@ TEST_P(AvatarButtonPromoManagerPromoTypeParamTest,
 
   SetSigninStateFromPromoType(GetParam());
   signin::SetInvalidRefreshTokenForPrimaryAccount(identity_manager());
-  AvatarButtonPromoManager manager(identity_manager(), &pref_service(),
+  AvatarButtonPromoManager manager(identity_manager(),
+                                   /*account_preview_data_service=*/nullptr,
+                                   &pref_service(),
                                    /*max_shown_count=*/10,
                                    /*max_used_count=*/2);
   EXPECT_FALSE(manager.ShouldShowPromo(GetParam()));
@@ -1675,7 +1694,9 @@ TEST_P(AvatarButtonPromoManagerPromoTypeParamTest,
   TestingBrowserProcess::GetGlobal()->local_state()->SetBoolean(
       prefs::kPromotionsEnabled, false);
   SetSigninStateFromPromoType(GetParam());
-  AvatarButtonPromoManager manager(identity_manager(), &pref_service(),
+  AvatarButtonPromoManager manager(identity_manager(),
+                                   /*account_preview_data_service=*/nullptr,
+                                   &pref_service(),
                                    /*max_shown_count=*/10,
                                    /*max_used_count=*/2);
   EXPECT_FALSE(manager.ShouldShowPromo(GetParam()));
@@ -1856,7 +1877,7 @@ class ComputeProfileMenuAvatarButtonPromoInfoParamTest
         AccountInfo primary_account = Signin();
         profile()->GetPrefs()->SetString(
             prefs::kGoogleServicesLastSyncingGaiaId,
-            primary_account.gaia.ToString());
+            primary_account.GetGaiaId().ToString());
         batch_upload_test_helper_.SetReturnDescriptions(
             syncer::BOOKMARKS, GetLocalDataCount(promo_type));
         break;

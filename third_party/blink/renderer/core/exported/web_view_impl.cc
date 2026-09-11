@@ -196,7 +196,8 @@
 #include "ui/base/ui_base_features.h"
 #include "ui/gfx/geometry/skia_conversions.h"
 
-#if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_WIN)
+#if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || \
+    BUILDFLAG(IS_WIN)
 #include "ui/native_theme/native_theme.h"
 #endif
 
@@ -461,7 +462,8 @@ void MaybePreloadSystemFonts(Page* page) {
       FROM_HERE, BindOnce([]() { FontCache::MaybePreloadSystemFonts(); }));
 }
 
-#if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_WIN)
+#if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || \
+    BUILDFLAG(IS_WIN)
 void UpdateUseOverlayScrollbar(bool use_overlay_scrollbar) {
   ui::NativeTheme::GetInstanceForWeb()->set_use_overlay_scrollbar(
       use_overlay_scrollbar);
@@ -3496,12 +3498,18 @@ void WebViewImpl::ConfigureAutoResizeMode() {
     return;
   }
 
+  PageScaleConstraints constraints =
+      GetPageScaleConstraintsSet().UserAgentConstraints();
   if (should_auto_resize_) {
     MainFrameImpl()->GetFrame()->View()->EnableAutoSizeMode(min_auto_size_,
                                                             max_auto_size_);
+    constraints.minimum_scale = 1.0f;
   } else {
     MainFrameImpl()->GetFrame()->View()->DisableAutoSizeMode();
+    constraints.minimum_scale = -1.0f;
   }
+  GetPageScaleConstraintsSet().SetNeedsReset(true);
+  GetPage()->SetUserAgentPageScaleConstraints(constraints);
 }
 
 void WebViewImpl::SetCompositorDeviceScaleFactorOverride(
@@ -3837,7 +3845,8 @@ void WebViewImpl::UpdateRendererPreferences(
   SetExplicitlyAllowedPorts(
       renderer_preferences_.explicitly_allowed_network_ports);
 
-#if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_WIN)
+#if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || \
+    BUILDFLAG(IS_WIN)
   if (!ScrollbarTheme::MockScrollbarsEnabled()) {
     // DevTools emulation can update Blink's overlay scrollbar setting,
     // while OS theme updates can update NativeTheme before renderer preferences
@@ -4437,7 +4446,7 @@ void WebViewImpl::CreateRemoteMainFrame(
 }
 
 scheduler::WebAgentGroupScheduler& WebViewImpl::GetWebAgentGroupScheduler() {
-  return web_agent_group_scheduler_;
+  return *web_agent_group_scheduler_;
 }
 
 void WebViewImpl::UpdatePageBrowsingContextGroup(

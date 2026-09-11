@@ -61,7 +61,7 @@
 }
 
 #aimIcon {
-  -webkit-mask-image: var(--search-spark-icon-url, url(//resources/cr_components/searchbox/icons/search_spark_old.svg));
+  -webkit-mask-image: url(//resources/cr_components/searchbox/icons/search_spark_old.svg);
   -webkit-mask-position: center;
   -webkit-mask-repeat: no-repeat;
   -webkit-mask-size: cover;
@@ -107,7 +107,7 @@
   position: absolute;
   top: 0;
   user-select: none;
-  white-space: pre-wrap;
+  white-space: break-spaces;
   word-break: break-word;
 }
 
@@ -131,12 +131,13 @@
   outline: none;
   position: relative;
   resize: none;
+  white-space: break-spaces;
 }
 
 :host([composebox-skills-enabled]) #input {
   display: inline-block;
   min-height: 24px;
-  white-space: pre-wrap;
+  white-space: break-spaces;
   word-break: break-word;
 }
 
@@ -242,12 +243,12 @@
 
 #invisibleText {
   color: transparent;
-  white-space: pre-wrap;
+  white-space: break-spaces;
 }
 
 #ghostText {
   color: var(--color-composebox-type-ahead);
-  white-space: pre-wrap;
+  white-space: break-spaces;
 }
 
 #tabChip {
@@ -305,14 +306,6 @@
   transition: var(--submit-enabled-transition);
 }
 
-#cancelIcon.icon-clear {
-  --cr-icon-image: var(--cr-composebox-cancel-icon, url(//resources/images/icon_clear_old.svg));
-}
-
-:host-context([webui-rounded-icons]) #cancelIcon.icon-clear {
-  --cr-icon-image: var(--cr-composebox-cancel-icon, url(//resources/images/icon_clear.svg));
-}
-
 :host-context([searchbox-layout-mode='Compact']) {
   /* Used in search-animated-glow-element. */
   --search-animated-glow-drag-drop-placeholder-top: 16px;
@@ -340,6 +333,7 @@
 
 :host-context([webui-rounded-icons]) {
   #aimIcon {
-    -webkit-mask-image: var(--search-spark-icon-url, url(//resources/cr_components/searchbox/icons/search_spark.svg));
+    -webkit-mask-image: url(//resources/cr_components/searchbox/icons/search_spark.svg);
   }
 }
+

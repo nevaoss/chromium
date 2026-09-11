@@ -76,10 +76,6 @@ export class SearchboxIconElement extends CrLitElement {
        * Whether icon belongs to an answer or not. Used to prevent
        * the match image from taking size of container.
        */
-      isAnswer: {
-        type: Boolean,
-        reflect: true,
-      },
 
       /**
        * Whether icon belongs to a starter pack match.
@@ -101,10 +97,6 @@ export class SearchboxIconElement extends CrLitElement {
        * Whether suggestion answer is of answer type weather. Weather answers
        * don't have the same background as other suggestion answers.
        */
-      isWeatherAnswer: {
-        type: Boolean,
-        reflect: true,
-      },
 
       /**
        * Whether suggestion is an enterprise search aggregator people
@@ -218,10 +210,8 @@ export class SearchboxIconElement extends CrLitElement {
   accessor defaultIcon: string = '';
   accessor hasIconContainerBackground: boolean = false;
   accessor inSearchbox: boolean = false;
-  accessor isAnswer: boolean = false;
   accessor isStarterPack = false;
   accessor isFeaturedEnterpriseSearch = false;
-  accessor isWeatherAnswer: boolean = false;
   accessor isEnterpriseSearchAggregatorPeopleType: boolean = false;
   accessor maskImage: string = '';
   accessor match: AutocompleteMatch|null = null;
@@ -247,69 +237,69 @@ export class SearchboxIconElement extends CrLitElement {
   override willUpdate(changedProperties: PropertyValues<this>) {
     super.willUpdate(changedProperties);
 
+    const changedPrivateProperties =
+        changedProperties as Map<PropertyKey, unknown>;
+
     if (changedProperties.has('match') || changedProperties.has('pageUrl')) {
+      // In Lit, setting properties synchronously within `willUpdate()` does not
+      // add them to `changedProperties` for the current update cycle. Track
+      // loading state transitions directly when computed URLs change.
+      const oldIconSrc = this.iconSrc_;
       this.iconSrc_ = this.computeIconSrc_();
+      if (this.iconSrc_ !== oldIconSrc) {
+        // If `iconSrc_` changes to a new truthy value, a new icon is being
+        // loaded.
+        this.iconLoading_ = !!this.iconSrc_;
+      }
+
+      const oldImageSrc = this.imageSrc_;
       this.imageSrc_ = this.computeImageSrc_();
-      this.isAnswer = this.computeIsAnswer_();
+      if (this.imageSrc_ !== oldImageSrc) {
+        // If imageSrc_ changes to a new truthy value, a new image is being
+        // loaded.
+        this.imageLoading_ = !!this.imageSrc_;
+        this.imageError_ = false;
+      }
       this.isEnterpriseSearchAggregatorPeopleType =
           this.computeIsEnterpriseSearchAggregatorPeopleType_();
       this.isStarterPack = this.computeIsStarterPack_();
       this.isFeaturedEnterpriseSearch =
-          this.computeIsFeaturedEnterpriseSearch();
-      this.isWeatherAnswer = this.computeIsWeatherAnswer_();
+          this.computeIsFeaturedEnterpriseSearch_();
       this.hasImage_ = this.computeHasImage_();
       this.maskImage = this.computeMaskImage_();
     }
 
-    if (changedProperties.has('match') ||
-        changedProperties.has('isWeatherAnswer')) {
+    if (changedProperties.has('match')) {
       this.hasIconContainerBackground =
           this.computeHasIconContainerBackground_();
     }
 
-    const changedPrivateProperties =
-        changedProperties as Map<PropertyKey, unknown>;
-
     if (changedProperties.has('match') || changedProperties.has('pageUrl') ||
         changedProperties.has('defaultIcon') ||
         changedPrivateProperties.has('isTopChromeSearchbox_')) {
+      const oldFaviconImage = this.faviconImage_;
       this.faviconImage_ = this.computeFaviconImage_();
-    }
-
-    if (changedProperties.has('match') ||
-        changedPrivateProperties.has('faviconImage_') ||
-        changedPrivateProperties.has('isTopChromeSearchbox_')) {
+      if (this.faviconImage_ !== oldFaviconImage) {
+        // If `faviconImage_` changes to a new truthy value, a new favicon is
+        // being loaded.
+        this.faviconLoading_ = !!this.faviconImage_;
+        this.faviconError_ = false;
+      }
       this.faviconImageSrcSet_ = this.computeFaviconImageSrcSet_();
     }
 
-    if (changedPrivateProperties.has('faviconImage_')) {
-      // If `faviconImage_` changes to a new truthy value, a new favicon is
-      // being loaded.
-      this.faviconLoading_ = !!this.faviconImage_;
-      this.faviconError_ = false;
-    }
-
-    if (changedProperties.has('match') ||
+    if (changedProperties.has('match') || changedProperties.has('pageUrl') ||
+        changedProperties.has('defaultIcon') ||
         changedPrivateProperties.has('isLensSearchbox_') ||
+        changedPrivateProperties.has('isTopChromeSearchbox_') ||
         changedPrivateProperties.has('faviconImage_') ||
         changedPrivateProperties.has('faviconLoading_') ||
         changedPrivateProperties.has('faviconError_')) {
       this.showFaviconImage_ = this.computeShowFaviconImage_();
     }
 
-    if (changedPrivateProperties.has('iconSrc_')) {
-      // If iconSrc_ changes to a new truthy value, a new icon is being loaded.
-      this.iconLoading_ = !!this.iconSrc_;
-    }
-
-    if (changedPrivateProperties.has('imageSrc_')) {
-      // If imageSrc_ changes to a new truthy value, a new image is being
-      // loaded.
-      this.imageLoading_ = !!this.imageSrc_;
-      this.imageError_ = false;
-    }
-
-    if (changedPrivateProperties.has('imageSrc_') ||
+    if (changedProperties.has('match') ||
+        changedPrivateProperties.has('imageSrc_') ||
         changedPrivateProperties.has('imageError_')) {
       this.showImage_ = this.computeShowImage_();
     }
@@ -387,14 +377,6 @@ export class SearchboxIconElement extends CrLitElement {
     return '';
   }
 
-  private computeIsAnswer_(): boolean {
-    return !!this.match && !!this.match.answer;
-  }
-
-  private computeIsWeatherAnswer_(): boolean {
-    return this.match?.isWeatherAnswerSuggestion || false;
-  }
-
   private computeHasImage_(): boolean {
     return !!this.match && !!this.match.imageUrl;
   }
@@ -415,10 +397,10 @@ export class SearchboxIconElement extends CrLitElement {
       return `url(${this.defaultIcon})`;
     }
     // Enterprise search aggregator people, starter pack/featured enterprise
-    // search suggestions, top-chrome searchbox (WebUI Omnibox), and non-rich
+    // search suggestions, top-chrome searchbox (WebUI Omnibox), and non-two-row
     // suggestions should show icon even in searchbox.
     if (this.match &&
-        (!this.match.isRichSuggestion || this.match.type === STARTER_PACK ||
+        (!this.match.isTwoRowSuggestion || this.match.type === STARTER_PACK ||
          this.match.type === FEATURED_ENTERPRISE_SEARCH ||
          this.match.isEnterpriseSearchAggregatorPeopleType ||
          this.isTopChromeSearchbox_ || !this.inSearchbox)) {
@@ -567,8 +549,7 @@ export class SearchboxIconElement extends CrLitElement {
       return this.match.type === PEDAL ||
           this.match.type === HISTORY_CLUSTER_MATCH_TYPE ||
           this.match.type === CALCULATOR || this.match.type === STARTER_PACK ||
-          this.match.type === FEATURED_ENTERPRISE_SEARCH ||
-          (!!this.match.answer && !this.isWeatherAnswer);
+          this.match.type === FEATURED_ENTERPRISE_SEARCH;
     }
     return false;
   }
@@ -577,7 +558,7 @@ export class SearchboxIconElement extends CrLitElement {
     return this.match?.type === STARTER_PACK;
   }
 
-  private computeIsFeaturedEnterpriseSearch(): boolean {
+  private computeIsFeaturedEnterpriseSearch_(): boolean {
     return this.match?.type === FEATURED_ENTERPRISE_SEARCH;
   }
 }

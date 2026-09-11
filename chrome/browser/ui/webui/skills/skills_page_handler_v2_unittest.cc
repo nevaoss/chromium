@@ -85,11 +85,14 @@ class MockSkillsUiTabController : public SkillsUiTabControllerInterface {
                skills::mojom::SkillsDialogType dialog_type,
                std::unique_ptr<glic::Target> target),
               (override));
+  MOCK_METHOD(void, CloseDialog, (), (override));
+  MOCK_METHOD(bool, IsShowing, (), (const, override));
   MOCK_METHOD(void,
               InvokeSkill,
               (std::string_view skill_id,
                std::string_view skill_name,
-               std::string_view skill_icon),
+               std::string_view skill_icon,
+               bool auto_submit),
               (override));
   MOCK_METHOD(void, SendPrompt, (std::string_view prompt), (override));
 };
@@ -161,7 +164,8 @@ TEST_F(SkillsPageHandlerV2Test, InvokeSkill) {
 
   EXPECT_CALL(mock_tab_controller,
               InvokeSkill("test_skill_id", std::string_view("test_name"),
-                          std::string_view("test_icon")))
+                          std::string_view("test_icon"),
+                          /*auto_submit=*/true))
       .Times(1);
 
   remote_handler_->InvokeSkill("test_skill_id", "test_name", "test_icon");
@@ -198,7 +202,7 @@ TEST_F(SkillsPageHandlerV2Test, InvokeSkill_NoOpWhenDisabled) {
   MockSkillsUiTabController mock_tab_controller(mock_tab);
 
   EXPECT_CALL(mock_tab_controller,
-              InvokeSkill(testing::_, testing::_, testing::_))
+              InvokeSkill(testing::_, testing::_, testing::_, testing::_))
       .Times(0);
 
   remote_handler_->InvokeSkill("test_skill_id", "test_name", "test_icon");

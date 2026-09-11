@@ -216,7 +216,7 @@ class NdkVideoEncoderAcceleratorTest
       scoped_refptr<VideoFrame> software_frame) {
     gfx::Size size = software_frame->visible_rect().size();
     auto mailbox = gpu::Mailbox::Generate();
-    auto color_space = gfx::ColorSpace::CreateSRGB();
+    auto color_space = software_frame->ColorSpace();
     GrSurfaceOrigin surface_origin = kTopLeft_GrSurfaceOrigin;
     SkAlphaType alpha_type = kPremul_SkAlphaType;
     auto sync_token = gpu::SyncToken();
@@ -554,9 +554,9 @@ class NdkVideoEncoderAcceleratorTest
   VideoCodecProfile profile_;
   VideoPixelFormat pixel_format_;
 
+  base::test::ScopedFeatureList feature_list_;
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::ThreadingMode::MULTIPLE_THREADS};
-  base::test::ScopedFeatureList feature_list_;
   std::unique_ptr<base::RunLoop> loop_ = std::make_unique<base::RunLoop>();
   std::unique_ptr<VideoEncodeAccelerator> accelerator_;
   size_t output_buffer_size_ = 0;

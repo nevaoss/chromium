@@ -13,6 +13,7 @@
 #include "components/keyed_service/content/browser_context_dependency_manager.h"
 #include "components/omnibox/browser/mock_aim_eligibility_service.h"
 #include "content/public/test/browser_test.h"
+#include "extensions/buildflags/buildflags.h"
 #include "services/network/public/cpp/shared_url_loader_factory.h"
 #include "testing/gmock/include/gmock/gmock.h"
 
@@ -54,6 +55,8 @@ class ContextualTasksBrowserTest : public WebUIMochaBrowserTest {
         .WillByDefault(testing::Return(true));
     ON_CALL(*aim_eligibility_service, IsCobrowseEligible())
         .WillByDefault(testing::Return(true));
+    ON_CALL(*aim_eligibility_service, IsAimUrl(testing::_, testing::_))
+        .WillByDefault(testing::Return(true));
     return aim_eligibility_service;
   }
 
@@ -65,6 +68,21 @@ class ContextualTasksBrowserTest : public WebUIMochaBrowserTest {
 // TODO(crbug.com/487147580): Re-enable the test
 IN_PROC_BROWSER_TEST_F(ContextualTasksBrowserTest, DISABLED_App) {
   RunTest("contextual_tasks/app_test.js", "mocha.run();");
+}
+
+IN_PROC_BROWSER_TEST_F(ContextualTasksBrowserTest,
+                       App_TracksFinishedTopLevelNavigation) {
+  RunTest("contextual_tasks/app_test.js",
+          "runMochaTest('ContextualTasksAppTest', "
+          "'tracks finished top level navigation')");
+}
+
+IN_PROC_BROWSER_TEST_F(ContextualTasksBrowserTest,
+                       App_TracksFinishedTopLevelNavigationRace) {
+  RunTest(
+      "contextual_tasks/app_test.js",
+      "runMochaTest('ContextualTasksAppTest', "
+      "'tracks finished top level navigation when content load wins race')");
 }
 
 #if !BUILDFLAG(IS_ANDROID)
@@ -261,6 +279,12 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksBrowserTest,
           "runMochaSuite('ContextualTasksComposeboxForkErrorScrimTest "
           "\\\\(useContextualTasksComposeboxFork = false\\\\)')");
 }
+
+#if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+IN_PROC_BROWSER_TEST_F(ContextualTasksBrowserTest, InputPlate) {
+  RunTest("contextual_tasks/input_plate_test.js", "mocha.run();");
+}
+#endif
 
 // TODO(crbug.com/480689282): Flaky on ChromeOS debug.
 // TODO(crbug.com/487147580): Re-enable on Linux.

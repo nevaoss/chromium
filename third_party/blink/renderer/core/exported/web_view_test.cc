@@ -37,6 +37,8 @@
 #include <string>
 
 #include "base/functional/callback_helpers.h"
+#include "base/memory/raw_ptr.h"
+#include "base/memory/raw_ref.h"
 #include "base/test/metrics/histogram_tester.h"
 #include "base/test/mock_callback.h"
 #include "base/test/scoped_feature_list.h"
@@ -214,7 +216,7 @@ class TestData {
 
  private:
   gfx::Size size_;
-  WebViewImpl* web_view_;
+  raw_ptr<WebViewImpl, UnprotectedInRelease | DanglingUntriaged> web_view_;
 };
 
 class AutoResizeWebViewClient : public WebViewClient {
@@ -554,7 +556,8 @@ TEST_F(WebViewTest, SetBaseBackgroundColorBeforeMainFrame) {
   frame_test_helpers::TestWebFrameClient web_frame_client;
   WebLocalFrame* frame = WebLocalFrame::CreateMainFrame(
       web_view, &web_frame_client, nullptr, mojo::NullRemote(),
-      LocalFrameToken(), DocumentToken(), nullptr);
+      LocalFrameToken(), DocumentToken(), base::UnguessableToken::Create(),
+      nullptr);
   web_frame_client.Bind(frame);
 
   frame_test_helpers::TestWebFrameWidget* widget =
@@ -765,17 +768,25 @@ TEST_F(WebViewTest, PlatformColorsChangedOnDeviceEmulation) {
   EXPECT_NE(custom_color, original);
   web_view_impl->EnableDeviceEmulation(params);
 
-  // All <span>s should have the custom outline color, and not (for example)
-  // the original color fetched from cache.
+  // Enabling the mobile profile must synchronously process the platform-color
+  // invalidation rather than leave the original color in computed style.
+  EXPECT_FALSE(document.NeedsLayoutTreeUpdate());
+  EXPECT_EQ(custom_color, OutlineColor(span1));
+
+  // Elements attached after the transition should use the mobile theme too.
   auto* span2 = MakeGarbageCollected<HTMLSpanElement>(document);
   document.body()->AppendChild(span2);
   UpdateAllLifecyclePhases();
   EXPECT_EQ(custom_color, OutlineColor(span1));
   EXPECT_EQ(custom_color, OutlineColor(span2));
 
-  // Disable mobile emulation. All <span>s should once again have the
-  // original outline color.
+  // Disabling the mobile profile must synchronously restore the embedder
+  // theme's computed color as well.
   web_view_impl->DisableDeviceEmulation();
+  EXPECT_FALSE(document.NeedsLayoutTreeUpdate());
+  EXPECT_EQ(original, OutlineColor(span1));
+  EXPECT_EQ(original, OutlineColor(span2));
+
   auto* span3 = MakeGarbageCollected<HTMLSpanElement>(document);
   document.body()->AppendChild(span3);
   UpdateAllLifecyclePhases();
@@ -1197,6 +1208,57 @@ TEST_F(WebViewTest, AutoResizeShrinksFromMaximumWidth) {
   frame->ExecuteScript(WebScriptSource("document.body.style.width = '200px';"));
   UpdateAllLifecyclePhases();
   EXPECT_EQ(200, client.GetTestData().Width());
+
+  web_view_helper_.Reset();
+}
+
+TEST_F(WebViewTest, AutoResizeWithMinimumPageScale) {
+  AutoResizeWebViewClient client;
+  WebViewImpl* web_view = web_view_helper_.Initialize(nullptr, &client);
+  client.GetTestData().SetWebView(web_view);
+  web_view->SetDefaultPageScaleLimits(0.25f, 5.0f);
+  frame_test_helpers::LoadHTMLString(
+      web_view->MainFrameImpl(),
+      "<!DOCTYPE html><style>body { margin: 0; width: 400px; height: 300px; "
+      "}</style><div>content</div>",
+      url_test_helpers::ToKURL("http://example.com/"));
+  UpdateAllLifecyclePhases();
+  web_view->EnableAutoResizeMode(gfx::Size(25, 25), gfx::Size(800, 600));
+  UpdateAllLifecyclePhases();
+
+  // In auto-resize mode, MainFrameSize should match the auto-sized content
+  // bounds (400x300), rather than being scaled by 1 / MinimumPageScaleFactor
+  // (which would be 1600x1200).
+  EXPECT_EQ(gfx::Size(400, 300), web_view->MainFrameSize());
+  EXPECT_EQ(400, client.GetTestData().Width());
+  EXPECT_EQ(300, client.GetTestData().Height());
+  EXPECT_FALSE(web_view->MainFrameImpl()->GetFrame()->View()->NeedsLayout());
+
+  web_view_helper_.Reset();
+}
+
+TEST_F(WebViewTest, AutoResizeWithViewportMetaDoesNotZoomOut) {
+  AutoResizeWebViewClient client;
+  WebViewImpl* web_view = web_view_helper_.Initialize(nullptr, &client);
+  client.GetTestData().SetWebView(web_view);
+  web_view->GetSettings()->SetViewportEnabled(true);
+  web_view->GetSettings()->SetViewportMetaEnabled(true);
+  web_view->SetDefaultPageScaleLimits(0.25f, 5.0f);
+  web_view->EnableAutoResizeMode(gfx::Size(25, 25), gfx::Size(800, 600));
+  frame_test_helpers::LoadHTMLString(
+      web_view->MainFrameImpl(),
+      "<!DOCTYPE html><meta name='viewport' content='width=device-width'>"
+      "<style>body { margin: 0; width: 450px; height: 500px; }</style>"
+      "<div>content</div>",
+      url_test_helpers::ToKURL("http://example.com/"));
+  UpdateAllLifecyclePhases();
+
+  // In auto-resize mode, a page with <meta name="viewport"
+  // content="width=device-width"> (initial-scale undefined) should default to
+  // scale 1.0f rather than the minimum scale (0.25f).
+  EXPECT_EQ(1.0f, web_view->PageScaleFactor());
+  EXPECT_EQ(450, client.GetTestData().Width());
+  EXPECT_EQ(500, client.GetTestData().Height());
 
   web_view_helper_.Reset();
 }
@@ -3513,7 +3575,8 @@ TEST_F(WebViewTest, ClientTapHandlingNullWebViewClient) {
   frame_test_helpers::TestWebFrameClient web_frame_client;
   WebLocalFrame* local_frame = WebLocalFrame::CreateMainFrame(
       web_view, &web_frame_client, nullptr, mojo::NullRemote(),
-      LocalFrameToken(), DocumentToken(), nullptr);
+      LocalFrameToken(), DocumentToken(), base::UnguessableToken::Create(),
+      nullptr);
   web_frame_client.Bind(local_frame);
   WebNonCompositedWidgetClient widget_client;
   frame_test_helpers::TestWebFrameWidget* widget =
@@ -4907,7 +4970,8 @@ class ViewReusingWebFrameClient
   void SetWebView(WebView* view) { web_view_ = view; }
 
  private:
-  WebView* web_view_ = nullptr;
+  raw_ptr<WebView, UnprotectedInRelease | DanglingUntriaged> web_view_ =
+      nullptr;
 };
 
 TEST_F(WebViewTest,
@@ -4974,8 +5038,12 @@ static void OpenDateTimeChooser(WebView* web_view,
       WebCoalescedInputEvent(key_event, ui::LatencyInfo()));
 }
 
+// TODO(crbug.com/529822615): Delete this test when the input multiple fields
+// flags are removed.
 TEST_F(WebViewTest, ChooseValueFromDateTimeChooser) {
   ScopedInputMultipleFieldsUIForTest input_multiple_fields_ui(false);
+  ScopedInputMultipleFieldsUIWithPointerChecksForTest
+      input_multiple_fields_with_pointer_checks(false);
   std::string url = RegisterMockedHttpURLLoad("date_time_chooser.html");
   WebViewImpl* web_view_impl =
       web_view_helper_.InitializeAndLoad(url, nullptr, nullptr);
@@ -5074,6 +5142,7 @@ class CreateChildCounterFrameClient
       base::FunctionRef<void(
           WebLocalFrame*,
           const DocumentToken&,
+          const base::UnguessableToken& initiator_state_token,
           CrossVariantMojoRemote<mojom::BrowserInterfaceBrokerInterfaceBase>,
           std::unique_ptr<base::UnguessableToken> sandbox_origin_token)>
           complete_initialization) override;
@@ -5096,6 +5165,7 @@ WebLocalFrame* CreateChildCounterFrameClient::CreateChildFrame(
     base::FunctionRef<
         void(WebLocalFrame*,
              const DocumentToken&,
+             const base::UnguessableToken& initiator_state_token,
              CrossVariantMojoRemote<mojom::BrowserInterfaceBrokerInterfaceBase>,
              std::unique_ptr<base::UnguessableToken> sandbox_origin_token)>
         complete_initialization) {
@@ -6645,7 +6715,8 @@ TEST_F(WebViewTest, DetachPluginInLayout) {
     }
 
    private:
-    WebLocalFrame* frame_;  // Unowned
+    raw_ptr<WebLocalFrame, UnprotectedInRelease | DanglingUntriaged>
+        frame_;  // Unowned
   };
 
   class PluginCreatingWebFrameClient
@@ -6886,11 +6957,13 @@ class MockClockAdvancingWebFrameClient
                               const WebString& source_name,
                               unsigned source_line,
                               const WebString& stack_trace) override {
-    task_environment_.FastForwardBy(event_handling_delay_);
+    task_environment_->FastForwardBy(event_handling_delay_);
   }
 
  private:
-  base::test::TaskEnvironment& task_environment_;
+  const raw_ref<base::test::TaskEnvironment,
+                UnprotectedInRelease | DanglingUntriaged>
+      task_environment_;
   base::TimeDelta event_handling_delay_;
 };
 

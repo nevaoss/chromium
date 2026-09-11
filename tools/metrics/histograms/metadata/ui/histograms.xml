@@ -784,7 +784,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="InitialWebUI.Startup{Scenario}.BrowserWindow.FirstPaint{StartupTemperature}"
-    units="ms" expires_after="2026-12-16">
+    units="ms" expires_after="2027-02-14">
   <owner>mych@chromium.org</owner>
   <owner>chrome-webium-product-eng@google.com</owner>
   <summary>
@@ -802,7 +802,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="InitialWebUI.Startup{Scenario}.BrowserWindow.ShowRequestedToFirstPaint{StartupTemperature}"
-    units="ms" expires_after="2026-12-16">
+    units="ms" expires_after="2027-02-14">
   <owner>mych@chromium.org</owner>
   <owner>chrome-webium-product-eng@google.com</owner>
   <summary>
@@ -849,7 +849,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="InitialWebUI.Startup{Scenario}.ReloadButton.RendererProcessCreated{StartupTemperature}"
-    units="ms" expires_after="2026-12-16">
+    units="ms" expires_after="2027-02-14">
   <owner>elkurin@chromium.org</owner>
   <owner>chrome-webium-product-eng@google.com</owner>
   <summary>
@@ -870,7 +870,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="InitialWebUI.Startup{Scenario}.ReloadButton.RendererProcessLaunched{StartupTemperature}"
-    units="ms" expires_after="2026-12-16">
+    units="ms" expires_after="2027-02-14">
   <owner>elkurin@chromium.org</owner>
   <owner>chrome-webium-product-eng@google.com</owner>
   <summary>
@@ -963,6 +963,44 @@ chromium-metrics-reviews@google.com.
   <summary>
     Record the number of times that the Web UI Toolbar render process is
     terminated abnormmaly and it exceeds the recovery limit.
+  </summary>
+</histogram>
+
+<histogram name="InitialWebUI.Toolbar.TimeToWindowMetricsManagerBound"
+    units="ms" expires_after="2027-08-01">
+  <owner>leimy@chromium.org</owner>
+  <owner>chrome-webium-product-eng@google.com</owner>
+  <summary>
+    Recorded when the `InitialWebUIWindowMetricsManager` is bound to the
+    `InitialWebUIPageLoadMetricsObserver` after being initially unavailable
+    (e.g., for prewarmed WebContents waiting for a BrowserWindowInterface).
+    Measures the elapsed time from observer creation until the manager is bound.
+  </summary>
+</histogram>
+
+<histogram
+    name="InitialWebUI.Toolbar.TimeWithoutWindowMetricsManagerOnDestruction"
+    units="ms" expires_after="2027-08-01">
+  <owner>leimy@chromium.org</owner>
+  <owner>chrome-webium-product-eng@google.com</owner>
+  <summary>
+    Recorded in `~InitialWebUIPageLoadMetricsObserver` upon destruction when no
+    `InitialWebUIWindowMetricsManager` was ever bound to the observer. Measures
+    the elapsed time from observer creation until destruction.
+  </summary>
+</histogram>
+
+<histogram name="InitialWebUI.Toolbar.WindowMetricsManagerBindingStatus"
+    enum="InitialWebUIWindowMetricsManagerBindingStatus"
+    expires_after="2027-08-01">
+  <owner>leimy@chromium.org</owner>
+  <owner>chrome-webium-product-eng@google.com</owner>
+  <summary>
+    Recorded in `~InitialWebUIPageLoadMetricsObserver` upon destruction. Records
+    the binding status of `InitialWebUIWindowMetricsManager`: whether it was
+    bound immediately at start, bound deferred (after receiving the
+    `BrowserWindowInterface` change notification), or never bound before
+    destruction.
   </summary>
 </histogram>
 
@@ -1297,7 +1335,7 @@ features through Chrome Labs. -->
 </histogram>
 
 <histogram name="WebUI.ColorsStylesheetServingDuration" units="ms"
-    expires_after="2026-12-13">
+    expires_after="2027-02-14">
   <owner>skau@chromium.org</owner>
   <owner>tluk@chromium.org</owner>
   <improvement direction="LOWER_IS_BETTER"/>
@@ -1333,7 +1371,7 @@ features through Chrome Labs. -->
 </histogram>
 
 <histogram name="WebUI.ShownUrl" enum="WebUIUrlHashes"
-    expires_after="2026-12-16">
+    expires_after="2027-02-14">
   <owner>kerenzhu@chromium.org</owner>
   <owner>dpapad@chromium.org</owner>
   <owner>chrome-webui@google.com</owner>

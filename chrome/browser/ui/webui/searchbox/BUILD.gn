@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import("//components/signin/features.gni")
 import("//ui/webui/webui_features.gni")
 
 assert(!is_ios)
@@ -91,6 +92,7 @@ source_set("searchbox") {
       "//chrome/browser/contextual_tasks",
       "//chrome/browser/resources/new_tab_page:resources",
       "//chrome/browser/resources/new_tab_page:resources_grit",
+      "//chrome/browser/ui:tab_ui_helper",
       "//chrome/browser/ui/bookmarks",
       "//chrome/browser/ui/search",
       "//chrome/browser/ui/tabs:tab_strip",
@@ -122,7 +124,6 @@ source_set("searchbox_test_utils") {
     "//components/contextual_search/internal:test_support",
     "//components/lens",
     "//components/omnibox/browser",
-    "//components/omnibox/browser:test_support",
     "//mojo/public/cpp/bindings",
     "//services/network:test_support",
     "//testing/gmock",
@@ -138,6 +139,11 @@ source_set("searchbox_test_utils") {
     "//components/search",
   ]
   if (!is_android) {
+    public_deps += [
+      "//chrome/browser/tab_list:test_support",
+      "//chrome/browser/ui/browser_window/test:test_support",
+      "//components/tabs:test_support",
+    ]
     deps += [ "//chrome/browser/ui/webui/omnibox_popup/mojom" ]
   }
 }
@@ -182,6 +188,9 @@ if (!is_android) {
       "//ui/display",
       "//ui/gfx",
     ]
+    if (enable_dice_support) {
+      deps += [ "//chrome/browser/ui/views/search_ai_mode" ]
+    }
   }
 }
 
@@ -221,6 +230,7 @@ source_set("unit_tests") {
       "//chrome/browser/feature_engagement",
       "//chrome/browser/search_engines",
       "//chrome/browser/signin",
+      "//chrome/browser/ui:tab_ui_helper",
       "//chrome/browser/ui/tabs:tab_strip",
       "//chrome/browser/ui/views/drive_picker_host",
       "//chrome/browser/ui/webui/cr_components/composebox",
@@ -252,6 +262,7 @@ source_set("unit_tests") {
     deps += [
       ":searchbox",
       "//chrome/browser/bookmarks",
+      "//chrome/browser/ui:ui_features",
       "//chrome/browser/ui/omnibox",
       "//chrome/browser/ui/omnibox:test_support",
       "//chrome/browser/ui/webui/cr_components/searchbox",
@@ -289,6 +300,7 @@ if (enable_webui_ntp && !is_android) {
       "//chrome/browser/contextual_search",
       "//chrome/browser/signin",
       "//chrome/browser/ui",
+      "//chrome/browser/ui/views/frame:contents_web_view",
       "//chrome/browser/ui/views/page_action:test_support",
       "//chrome/browser/ui/webui/new_tab_page/composebox/variations",
       "//chrome/browser/ui/webui/test_support",

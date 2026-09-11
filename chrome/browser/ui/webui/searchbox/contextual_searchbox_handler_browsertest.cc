@@ -9,10 +9,13 @@
 #include "base/test/test_future.h"
 #include "chrome/browser/contextual_search/contextual_search_service_factory.h"
 #include "chrome/browser/profiles/profile.h"
-#include "chrome/browser/ui/browser.h"
+#include "chrome/browser/signin/identity_manager_factory.h"
+#include "chrome/browser/ui/browser_window.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/contextual_search/tab_contextualization_controller.h"
 #include "chrome/browser/ui/omnibox/omnibox_controller.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
+#include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/webui/new_tab_page/composebox/variations/composebox_fieldtrial.h"
 #include "chrome/browser/ui/webui/searchbox/searchbox_test_utils.h"
 #include "chrome/browser/ui/webui/searchbox/webui_omnibox_handler.h"
@@ -22,7 +25,10 @@
 #include "components/contextual_search/contextual_search_session_handle.h"
 #include "components/contextual_search/pref_names.h"
 #include "components/contextual_tasks/public/features.h"
+#include "components/omnibox/common/omnibox_features.h"
 #include "components/prefs/pref_service.h"
+#include "components/signin/public/base/signin_switches.h"
+#include "components/signin/public/identity_manager/identity_test_utils.h"
 #include "components/tabs/public/tab_interface.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/test/browser_test.h"
@@ -31,6 +37,11 @@
 #include "net/test/embedded_test_server/embedded_test_server.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "ui/display/display_switches.h"
+#include "ui/views/interaction/element_tracker_views.h"
+
+#if BUILDFLAG(ENABLE_DICE_SUPPORT)
+#include "chrome/browser/ui/views/search_ai_mode/signin_promo_view.h"
+#endif
 
 class TestSearchboxHandler : public ContextualSearchboxHandler {
  public:
@@ -86,7 +97,7 @@ class ContextualSearchboxHandlerBrowserTest : public InProcessBrowserTest {
     handler_ = std::make_unique<TestSearchboxHandler>(
         mojo::PendingReceiver<searchbox::mojom::PageHandler>(),
         page_.BindAndGetRemote(), browser()->GetProfile(),
-        /*web_contents=*/browser()->tab_strip_model()->GetActiveWebContents(),
+        /*web_contents=*/browser()->GetTabStripModel()->GetActiveWebContents(),
         base::BindLambdaForTesting([&]() { return session_handle_.get(); }));
   }
 
@@ -107,7 +118,7 @@ IN_PROC_BROWSER_TEST_F(ContextualSearchboxHandlerBrowserTest,
   int expected_height = 200 * 1;
 
   content::WebContents* web_contents =
-      browser()->tab_strip_model()->GetActiveWebContents();
+      browser()->GetTabStripModel()->GetActiveWebContents();
   auto options = handler_->CreateTabPreviewEncodingOptions(web_contents);
 
   ASSERT_TRUE(options.has_value());
@@ -133,7 +144,7 @@ IN_PROC_BROWSER_TEST_F(ContextualSearchboxHandlerBrowserTestDSF2,
   int expected_height = 200 * 2;
 
   content::WebContents* web_contents =
-      browser()->tab_strip_model()->GetActiveWebContents();
+      browser()->GetTabStripModel()->GetActiveWebContents();
   auto options = handler_->CreateTabPreviewEncodingOptions(web_contents);
 
   ASSERT_TRUE(options.has_value());
@@ -161,7 +172,7 @@ IN_PROC_BROWSER_TEST_F(ContextualSearchboxHandlerBrowserTest,
       browser(), url, WindowOpenDisposition::CURRENT_TAB,
       ui_test_utils::BROWSER_TEST_NO_WAIT);
 
-  tabs::TabInterface* tab = browser()->tab_strip_model()->GetActiveTab();
+  tabs::TabInterface* tab = browser()->GetTabStripModel()->GetActiveTab();
   ASSERT_TRUE(tab);
   int32_t tab_id = tab->GetHandle().raw_value();
 
@@ -178,7 +189,7 @@ IN_PROC_BROWSER_TEST_F(ContextualSearchboxHandlerBrowserTest,
   GURL url = embedded_test_server()->GetURL("/favicon/page_with_favicon.html");
   ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), url));
 
-  tabs::TabInterface* tab = browser()->tab_strip_model()->GetActiveTab();
+  tabs::TabInterface* tab = browser()->GetTabStripModel()->GetActiveTab();
   ASSERT_TRUE(tab);
   int32_t tab_id = tab->GetHandle().raw_value();
 
@@ -208,7 +219,7 @@ IN_PROC_BROWSER_TEST_F(ContextualSearchboxHandlerBrowserTest,
       browser(), url, WindowOpenDisposition::NEW_FOREGROUND_TAB,
       ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP);
 
-  tabs::TabInterface* tab = browser()->tab_strip_model()->GetActiveTab();
+  tabs::TabInterface* tab = browser()->GetTabStripModel()->GetActiveTab();
   ASSERT_TRUE(tab);
   int32_t tab_id = tab->GetHandle().raw_value();
 
@@ -216,7 +227,7 @@ IN_PROC_BROWSER_TEST_F(ContextualSearchboxHandlerBrowserTest,
   handler_->WaitForTabFaviconLoad(tab_id, future.GetCallback());
 
   // Destroy the WebContents by closing the tab.
-  browser()->tab_strip_model()->CloseSelectedTabs();
+  browser()->GetTabStripModel()->CloseSelectedTabs();
 
   std::optional<GURL> data_url = future.Get();
   EXPECT_FALSE(data_url.has_value());
@@ -235,6 +246,77 @@ IN_PROC_BROWSER_TEST_F(ContextualSearchboxHandlerBrowserTest,
   EXPECT_TRUE(get_future2.Get());
 }
 
+#if BUILDFLAG(ENABLE_DICE_SUPPORT)
+class ContextualSearchboxHandlerDriveSigninPromoBrowserTest
+    : public ContextualSearchboxHandlerBrowserTest {
+ public:
+  ContextualSearchboxHandlerDriveSigninPromoBrowserTest() {
+    scoped_feature_list_.Reset();
+    scoped_feature_list_.InitWithFeaturesAndParameters(
+        {{contextual_tasks::kContextualTasksContext,
+          {{"ContextualTasksContextSmartTabSharing", "true"}}},
+         {contextual_tasks::kContextualTasksForceEntryPointEligibility, {}},
+         {omnibox::kComposeboxDriveContextMenuOption, {}},
+         {omnibox::kComposeboxDriveContextMenuOptionSigninPromo, {}},
+         {switches::kEnableSearchAIModeSigninPromo, {}}},
+        {});
+  }
+};
+
+IN_PROC_BROWSER_TEST_F(
+    ContextualSearchboxHandlerDriveSigninPromoBrowserTest,
+    OnDriveUploadClicked_SignedOut_ShowsComposeboxDriveSigninPromo) {
+  // Enable context sharing in prefs.
+  browser()->GetProfile()->GetPrefs()->SetInteger(
+      contextual_search::kSearchContentSharingSettings,
+      static_cast<int>(
+          contextual_search::SearchContentSharingSettingsValue::kEnabled));
+
+  base::test::TestFuture<searchbox::mojom::DriveUploadResponsePtr> future;
+  handler_->OnDriveUploadClicked(future.GetCallback());
+  EXPECT_TRUE(future.Wait());
+
+  views::View* promo_view =
+      views::ElementTrackerViews::GetInstance()->GetFirstMatchingView(
+          kComposeboxDriveSignInPromoViewId,
+          BrowserView::GetBrowserViewForBrowser(browser())
+              ->GetElementContext());
+  EXPECT_NE(promo_view, nullptr);
+}
+
+IN_PROC_BROWSER_TEST_F(
+    ContextualSearchboxHandlerDriveSigninPromoBrowserTest,
+    OnDriveUploadClicked_SigninPending_ShowsComposeboxDriveSigninPromo) {
+  // Enable context sharing in prefs.
+  browser()->GetProfile()->GetPrefs()->SetInteger(
+      contextual_search::kSearchContentSharingSettings,
+      static_cast<int>(
+          contextual_search::SearchContentSharingSettingsValue::kEnabled));
+
+  // Set up primary account in persistent error state (Signin Pending).
+  signin::IdentityManager* identity_manager =
+      IdentityManagerFactory::GetForProfile(browser()->GetProfile());
+  AccountInfo account_info = signin::MakePrimaryAccountAvailable(
+      identity_manager, "test@gmail.com", signin::ConsentLevel::kSignin);
+  signin::UpdatePersistentErrorOfRefreshTokenForAccount(
+      identity_manager, account_info.account_id,
+      GoogleServiceAuthError::FromInvalidGaiaCredentialsReason(
+          GoogleServiceAuthError::InvalidGaiaCredentialsReason::
+              CREDENTIALS_REJECTED_BY_SERVER));
+
+  base::test::TestFuture<searchbox::mojom::DriveUploadResponsePtr> future;
+  handler_->OnDriveUploadClicked(future.GetCallback());
+  EXPECT_TRUE(future.Wait());
+
+  views::View* promo_view =
+      views::ElementTrackerViews::GetInstance()->GetFirstMatchingView(
+          kComposeboxDriveSignInPromoViewId,
+          BrowserView::GetBrowserViewForBrowser(browser())
+              ->GetElementContext());
+  EXPECT_NE(promo_view, nullptr);
+}
+#endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
+
 class WebuiOmniboxHandlerBrowserTest
     : public ContextualSearchboxHandlerBrowserTest {
  protected:
@@ -242,7 +324,7 @@ class WebuiOmniboxHandlerBrowserTest
     ContextualSearchboxHandlerBrowserTest::SetUpOnMainThread();
 
     test_web_ui_.set_web_contents(
-        browser()->tab_strip_model()->GetActiveWebContents());
+        browser()->GetTabStripModel()->GetActiveWebContents());
 
     omnibox_controller_ = std::make_unique<OmniboxController>(
         std::make_unique<TestOmniboxClient>());
@@ -271,9 +353,9 @@ class WebuiOmniboxHandlerBrowserTest
 
 IN_PROC_BROWSER_TEST_F(WebuiOmniboxHandlerBrowserTest,
                        AddTabContextRejectsTabFromDifferentProfile) {
-  Browser* incognito_browser = CreateIncognitoBrowser();
+  BrowserWindowInterface* incognito_browser = CreateIncognitoBrowser();
   tabs::TabInterface* incognito_tab =
-      incognito_browser->tab_strip_model()->GetActiveTab();
+      incognito_browser->GetTabStripModel()->GetActiveTab();
   ASSERT_TRUE(incognito_tab);
   ASSERT_NE(incognito_tab->GetProfile(), browser()->GetProfile());
 
@@ -298,7 +380,7 @@ IN_PROC_BROWSER_TEST_F(WebuiOmniboxHandlerBrowserTest,
       static_cast<int>(
           contextual_search::SearchContentSharingSettingsValue::kDisabled));
 
-  tabs::TabInterface* tab = browser()->tab_strip_model()->GetActiveTab();
+  tabs::TabInterface* tab = browser()->GetTabStripModel()->GetActiveTab();
   ASSERT_TRUE(tab);
 
   base::test::TestFuture<base::expected<

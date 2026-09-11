@@ -59,7 +59,7 @@
 #include "ui/color/color_provider.h"
 #include "ui/compositor/clip_recorder.h"
 #include "ui/compositor/compositor.h"
-#include "ui/compositor/layer.h"
+#include "ui/compositor/layer_textured.h"
 #include "ui/compositor/layer_type.h"
 #include "ui/compositor/paint_context.h"
 #include "ui/compositor/paint_recorder.h"
@@ -2722,7 +2722,7 @@ void View::AddLayerToRegionImpl(
 
   CreateOrDestroyLayer();
 
-  if (layer()->type() != ui::LAYER_SOLID_COLOR) {
+  if (!layer()->AsSolidColor()) {
     layer()->SetFillsBoundsOpaquely(false);
   }
 }
@@ -3824,7 +3824,7 @@ void View::ReparentLayer(ui::Layer* parent_layer) {
 void View::CreateMaskLayer() {
   DCHECK(layer());
   mask_layer_ = std::make_unique<views::ViewMaskLayer>(clip_path_, this);
-  layer()->SetMaskLayer(mask_layer_->layer());
+  layer()->SetMaskLayer(mask_layer_->layer()->AsTextured());
 }
 
 // Layout ----------------------------------------------------------------------

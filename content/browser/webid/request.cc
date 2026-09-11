@@ -366,7 +366,6 @@ bool Request::RequestToken(
   fedcm_metrics_->RecordHasNonceOutsideParamsOnly(
       idps_with_nonce_outside_params_only);
 
-  // TODO(crbug.com/40218857): handle active mode with multiple IdP.
   if (idp_get_params_ptrs[0]->mode == blink::mojom::RpMode::kActive) {
     rp_mode_ = RpMode::kActive;
     if (!had_transient_user_activation_) {
@@ -503,14 +502,16 @@ bool Request::RequestToken(
   // the config file to get the login_url which may take some time.
   if (rp_mode_ == RpMode::kActive) {
     CHECK_GT(idp_order_.size(), 0u);
-    // TODO(crbug.com/40218857): Handle active mode with multiple IdP.
-    const GURL& idp_config_url = idp_order_[0];
-    auto get_info_it = token_request_get_infos_.find(idp_config_url);
-    CHECK(get_info_it != token_request_get_infos_.end());
+    // If there is more than 1 IDP, do not show the IDP info in the loading
+    // dialog.
+    std::string idp_for_display =
+        idp_order_.size() == 1u
+            ? FormatOriginForDisplay(url::Origin::Create(idp_order_[0]))
+            : "";
+    blink::mojom::RpContext rp_context = idp_get_params_ptrs[0]->context;
     if (!GetDialogController()->ShowLoadingDialog(
-            CreateRpData(/*client_metadata_received=*/false),
-            FormatOriginForDisplay(url::Origin::Create(idp_config_url)),
-            get_info_it->second.rp_context, rp_mode_,
+            CreateRpData(/*client_metadata_received=*/false), idp_for_display,
+            rp_context, rp_mode_,
             base::BindOnce(&Request::OnDialogDismissed,
                            weak_ptr_factory_.GetWeakPtr()))) {
       return false;
@@ -1498,16 +1499,18 @@ void Request::ShowModalDialog(DialogType dialog_type,
   // the popup window is open. When using the active flow the dialog may
   // still be up in some cases, but we do not expect that browser automation
   // needs to interact with the account chooser in this case.
-  if (dialog_type_ != DialogType::kNone) {
+  if (dialog_type_ != DialogType::kNone && dialog_type_ != dialog_type) {
     // This call ensures that we send a dialogClosed event if an account
     // chooser or mismatch dialog is open.
     devtools_instrumentation::DidCloseFedCmDialog(render_frame_host());
   }
   // TODO(crbug.com/336815315): Should we notify browser automation of this
   // dialog?
+  if (dialog_type_ != dialog_type) {
+    UMA_HISTOGRAM_ENUMERATION("Blink.FedCm.Popup.DialogType", dialog_type);
+  }
   dialog_type_ = dialog_type;
   config_url_ = idp_config_url;
-  UMA_HISTOGRAM_ENUMERATION("Blink.FedCm.Popup.DialogType", dialog_type_);
 
   auto create_registry_async = [](base::WeakPtr<Request> weak_this,
                                   const GURL& idp_config_url,
@@ -2440,6 +2443,12 @@ void Request::LoginToIdP(bool can_append_hints,
     // needed.
     MaybeAppendQueryParameters(it->second, &login_url);
   }
+
+  if (dialog_type_ == DialogType::kLoginToIdpPopup) {
+    ShowModalDialog(DialogType::kLoginToIdpPopup, idp_config_url, login_url);
+    return;
+  }
+
   permission_delegate()->AddIdpSigninStatusObserver(this);
 
   account_ids_before_login_.clear();

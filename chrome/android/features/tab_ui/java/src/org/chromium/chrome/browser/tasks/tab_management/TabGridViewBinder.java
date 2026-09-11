@@ -21,7 +21,9 @@ import android.widget.ImageView;
 import android.widget.TextView;
 
 import androidx.annotation.ColorInt;
+import androidx.annotation.DrawableRes;
 import androidx.annotation.StringRes;
+import androidx.appcompat.content.res.AppCompatResources;
 import androidx.core.graphics.drawable.DrawableCompat;
 import androidx.core.view.ViewCompat;
 import androidx.core.widget.ImageViewCompat;
@@ -139,7 +141,8 @@ public class TabGridViewBinder {
                             ? model.get(TabProperties.MEDIA_INDICATOR)
                             : MediaState.NONE;
             @StringRes
-            int contentDescriptionStringId = getTabContentDescriptionStringId(isPinned, mediaState);
+            int contentDescriptionStringId =
+                    TabListViewBinderUtils.getTabContentDescriptionStringId(isPinned, mediaState);
             tabTitleView.setContentDescription(
                     view.getResources().getString(contentDescriptionStringId, title));
         } else if (TabProperties.IS_SELECTED == propertyKey) {
@@ -471,6 +474,17 @@ public class TabGridViewBinder {
         mediaIndicator.setImageTintList(
                 TabCardThemeUtil.getMediaIndicatorColorStateList(
                         mediaIndicator.getContext(), isIncognito, isSelected));
+
+        View contentView = rootView.fastFindViewById(R.id.content_view);
+        if (contentView != null) {
+            @DrawableRes
+            int focusRingRes =
+                    isIncognito
+                            ? R.drawable.tab_grid_focus_ring_incognito
+                            : R.drawable.tab_grid_focus_ring;
+            contentView.setForeground(
+                    AppCompatResources.getDrawable(contentView.getContext(), focusRingRes));
+        }
     }
 
     private static void updateColorForSelectionToggleButton(
@@ -514,33 +528,6 @@ public class TabGridViewBinder {
             labelView = rootView.fastFindViewById(R.id.tab_card_label);
         }
         labelView.setData(tabCardLabelData);
-    }
-
-    private static @StringRes int getTabContentDescriptionStringId(
-            boolean isPinned, @MediaState int mediaState) {
-        switch (mediaState) {
-            case MediaState.MUTED:
-                return isPinned
-                        ? R.string.accessibility_tabstrip_tab_pinned_muted
-                        : R.string.accessibility_tabstrip_tab_muted;
-            case MediaState.AUDIBLE:
-                return isPinned
-                        ? R.string.accessibility_tabstrip_tab_pinned_audible
-                        : R.string.accessibility_tabstrip_tab_audible;
-            case MediaState.RECORDING:
-                return isPinned
-                        ? R.string.accessibility_tabstrip_tab_pinned_recording
-                        : R.string.accessibility_tabstrip_tab_recording;
-            case MediaState.SHARING:
-                return isPinned
-                        ? R.string.accessibility_tabstrip_tab_pinned_sharing
-                        : R.string.accessibility_tabstrip_tab_sharing;
-            case MediaState.NONE:
-            default:
-                return isPinned
-                        ? R.string.accessibility_tabstrip_tab_pinned
-                        : R.string.accessibility_tabstrip_tab;
-        }
     }
 
     static void setThumbnailFetcherForTesting(ThumbnailFetcher fetcher) {

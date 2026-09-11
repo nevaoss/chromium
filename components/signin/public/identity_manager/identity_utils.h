@@ -30,7 +30,7 @@ bool IsUsernameAllowedByPattern(std::string_view username,
 // |prefs::kGoogleServicesUsernamePattern| with the preferences service
 // referenced by |prefs|.
 bool IsUsernameAllowedByPatternFromPrefs(const PrefService* prefs,
-                                         const std::string& username);
+                                         std::string_view username);
 
 // Returns all accounts for which Chrome should keep account-keyed preferences.
 // These are the accounts in the cookie (signed in or signed out) plus the
@@ -51,17 +51,11 @@ base::flat_set<GaiaId> GetAllGaiaIdsForKeyedPreferences(
 // - On Android: accounts with refresh tokens in device order.
 // - On Desktop: accounts with refresh tokens in Gaia cookie jar order.
 //
-// If `prefs` is provided, accounts disallowed by enterprise pattern policies
-// (`prefs::kGoogleServicesUsernamePattern`) are filtered out.
+// If `local_state` is provided, accounts disallowed by enterprise pattern
+// policies (`prefs::kGoogleServicesUsernamePattern`) are filtered out.
 std::vector<AccountInfo> GetOrderedAccountsForDisplay(
     const IdentityManager* identity_manager,
-    const PrefService* prefs = nullptr);
-
-// Returns the single default account that should be promoted in sign-in promos
-// (the first account in `GetOrderedAccountsForDisplay()`), or an empty
-// AccountInfo if no eligible account is found.
-AccountInfo GetDefaultAccountForPromo(const IdentityManager* identity_manager,
-                                      const PrefService* prefs = nullptr);
+    const PrefService* local_state = nullptr);
 
 }  // namespace signin
 

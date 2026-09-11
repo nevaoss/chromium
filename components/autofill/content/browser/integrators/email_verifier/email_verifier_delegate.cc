@@ -5,6 +5,7 @@
 #include "components/autofill/content/browser/integrators/email_verifier/email_verifier_delegate.h"
 
 #include "base/check.h"
+#include "base/check_deref.h"
 #include "base/feature_list.h"
 #include "base/functional/bind.h"
 #include "base/functional/function_ref.h"
@@ -15,6 +16,7 @@
 #include "base/strings/utf_string_conversions.h"
 #include "base/task/single_thread_task_runner.h"
 #include "base/time/time.h"
+#include "base/types/optional_util.h"
 #include "base/values.h"
 #include "components/autofill/content/browser/content_autofill_client.h"
 #include "components/autofill/content/browser/content_autofill_driver.h"
@@ -25,7 +27,8 @@
 #include "components/autofill/core/browser/form_structure.h"
 #include "components/autofill/core/browser/foundations/autofill_client.h"
 #include "components/autofill/core/browser/foundations/browser_autofill_manager.h"
-#include "components/autofill/core/browser/strike_databases/email_verification_strike_database.h"
+#include "components/autofill/core/browser/strike_databases/evp/email_verification_not_signed_in_strike_database.h"
+#include "components/autofill/core/browser/strike_databases/evp/email_verification_strike_database.h"
 #include "components/autofill/core/common/autofill_prefs.h"
 #include "components/page_load_metrics/browser/metrics_web_contents_observer.h"
 #include "components/prefs/pref_service.h"
@@ -230,20 +233,25 @@ void EmailVerifierDelegate::OnEmailVerificationDecision(
 
       Verify(manager, email_field_id, display_email, nonce, result);
 
-      if (manager->client().GetStrikeDatabase()) {
-        EmailVerificationStrikeDatabase strike_db(
-            manager->client().GetStrikeDatabase());
-        strike_db.ClearStrikes(
-            EmailVerificationStrikeDatabase::GetId(display_email));
+      const std::string strike_id =
+          GetEmailVerificationStrikeDatabaseId(display_email);
+      // User acceptance clears any accumulated strikes across both prompt
+      // decline and not-signed-in strike databases for this email address.
+      if (EmailVerificationStrikeDatabase* strike_db =
+              GetEmailVerificationStrikeDatabase()) {
+        strike_db->ClearStrikes(strike_id);
+      }
+      if (EmailVerificationNotSignedInStrikeDatabase* not_signed_in_strike_db =
+              GetEmailVerificationNotSignedInStrikeDatabase()) {
+        not_signed_in_strike_db->ClearStrikes(strike_id);
       }
       break;
     }
     case AutofillClient::EmailVerificationPermissionUiStatus::kDeclined: {
-      if (manager->client().GetStrikeDatabase()) {
-        EmailVerificationStrikeDatabase strike_db(
-            manager->client().GetStrikeDatabase());
-        strike_db.AddStrike(
-            EmailVerificationStrikeDatabase::GetId(display_email));
+      if (EmailVerificationStrikeDatabase* strike_db =
+              GetEmailVerificationStrikeDatabase()) {
+        strike_db->AddStrike(
+            GetEmailVerificationStrikeDatabaseId(display_email));
       }
       NotifyFlowCompleted(manager.get(), email_field_id,
                           EvpAutofillFlowResult::kUserDeclinedPermissionPrompt);
@@ -278,7 +286,7 @@ void EmailVerifierDelegate::OnIsVerifiable(
   auto it = pending_request_metrics_.find(email_field_id);
   if (it == pending_request_metrics_.end()) {
     // Navigation already completed this flow and recorded
-    // kPageNavigatedDuringVerification.
+    // kPageNavigatedDuringCheckIfVerifiable.
     return;
   }
   RequestMetrics& metrics = it->second;
@@ -302,6 +310,16 @@ void EmailVerifierDelegate::OnIsVerifiable(
   }
 
   if (!result) {
+    if (status ==
+            blink::mojom::EmailVerificationRequestResult::kUserLoggedOut &&
+        GetEmailVerificationNotSignedInStrikeDatabase()) {
+      // Record a strike when the email verification check determines that
+      // the user is not signed in with the given email address. This enforces
+      // the 3-strike rate-limiting mechanism for unauthenticated emails.
+      std::string display_email = base::ToLowerASCII(base::UTF16ToUTF8(email));
+      GetEmailVerificationNotSignedInStrikeDatabase()->AddStrike(
+          GetEmailVerificationStrikeDatabaseId(display_email));
+    }
     NotifyFlowCompleted(manager.get(), email_field_id,
                         EvpAutofillFlowResult::kNotVerifiable);
     return;
@@ -309,9 +327,21 @@ void EmailVerifierDelegate::OnIsVerifiable(
 
   std::string display_email = base::ToLowerASCII(base::UTF16ToUTF8(email));
   if (already_allowed) {
+    if (EmailVerificationNotSignedInStrikeDatabase* not_signed_in_strike_db =
+            GetEmailVerificationNotSignedInStrikeDatabase()) {
+      // Clear past not-signed-in strikes since the email is already permitted
+      // and now successfully verified as verifiable.
+      not_signed_in_strike_db->ClearStrikes(
+          GetEmailVerificationStrikeDatabaseId(display_email));
+    }
     Verify(manager, email_field_id, display_email, nonce, *result);
     return;
   }
+
+  // We don't want the loading indicator to show while waiting for user input,
+  // so set the state to none.
+  manager->driver().UpdateEmailVerificationState(
+      email_field_id, mojom::EmailVerificationState::kNone);
 
   net::SchemefulSite issuer_site = result->issuer_site;
   manager->client().ShowEmailVerificationPopup(
@@ -321,7 +351,22 @@ void EmailVerifierDelegate::OnIsVerifiable(
                      display_email, nonce, std::move(*result)));
 }
 
-EmailVerifierDelegate::EmailVerifierDelegate(AutofillClient* client) {
+void EmailVerifierDelegate::OnDnsCheckPassed(
+    base::WeakPtr<AutofillManager> manager,
+    FieldGlobalId email_field_id) {
+  if (!pending_request_metrics_.contains(email_field_id)) {
+    return;
+  }
+  if (!manager || manager->driver().GetLifecycleState() !=
+                      AutofillDriver::LifecycleState::kActive) {
+    return;
+  }
+  manager->driver().UpdateEmailVerificationState(
+      email_field_id, mojom::EmailVerificationState::kLoading);
+}
+
+EmailVerifierDelegate::EmailVerifierDelegate(AutofillClient* client)
+    : client_(CHECK_DEREF(client)) {
   AddObserver(&metrics_observer_);
   observation_.Observe(client);
   if (auto* content_client = static_cast<ContentAutofillClient*>(client)) {
@@ -331,6 +376,24 @@ EmailVerifierDelegate::EmailVerifierDelegate(AutofillClient* client) {
 
 EmailVerifierDelegate::~EmailVerifierDelegate() {
   RemoveObserver(&metrics_observer_);
+}
+
+EmailVerificationStrikeDatabase*
+EmailVerifierDelegate::GetEmailVerificationStrikeDatabase() {
+  if (!email_verification_strike_db_ && client_->GetStrikeDatabase()) {
+    email_verification_strike_db_.emplace(client_->GetStrikeDatabase());
+  }
+  return base::OptionalToPtr(email_verification_strike_db_);
+}
+
+EmailVerificationNotSignedInStrikeDatabase*
+EmailVerifierDelegate::GetEmailVerificationNotSignedInStrikeDatabase() {
+  if (!email_verification_not_signed_in_strike_db_ &&
+      client_->GetStrikeDatabase()) {
+    email_verification_not_signed_in_strike_db_.emplace(
+        client_->GetStrikeDatabase());
+  }
+  return base::OptionalToPtr(email_verification_not_signed_in_strike_db_);
 }
 
 void EmailVerifierDelegate::AddObserver(Observer* observer) {
@@ -413,12 +476,14 @@ void EmailVerifierDelegate::NotifyFlowCompleted(AutofillManager* manager,
       case EvpAutofillFlowResult::kTokenFieldHasNoNonce:
       case EvpAutofillFlowResult::kUserPrefDisabled:
       case EvpAutofillFlowResult::kStrikeDatabaseBlock:
+      case EvpAutofillFlowResult::kNotSignedInStrikeDatabaseBlock:
       case EvpAutofillFlowResult::kVerifierUnavailable:
       case EvpAutofillFlowResult::kUserDeclinedPermissionPrompt:
       case EvpAutofillFlowResult::kUserIgnoredPermissionPrompt:
       case EvpAutofillFlowResult::kManagerDestroyed:
       case EvpAutofillFlowResult::kDriverInactive:
       case EvpAutofillFlowResult::kPageNavigatedDuringVerification:
+      case EvpAutofillFlowResult::kPageNavigatedDuringCheckIfVerifiable:
         // Reset to none in case we had a previous request and this new request
         // was declined by the user or otherwise did not end in success.
         state = mojom::EmailVerificationState::kNone;
@@ -437,16 +502,20 @@ void EmailVerifierDelegate::DidFinishNavigation(
       navigation_handle->HasCommitted()) {
     if (!navigation_handle->IsSameDocument() &&
         !pending_request_metrics_.empty()) {
-      // Create a copy of keys because NotifyFlowCompleted erases from the map.
-      std::vector<FieldGlobalId> pending_field_ids;
-      pending_field_ids.reserve(pending_request_metrics_.size());
+      // Create a copy of keys and flow results because NotifyFlowCompleted
+      // erases from the map.
+      std::vector<std::pair<FieldGlobalId, EvpAutofillFlowResult>>
+          pending_requests;
+      pending_requests.reserve(pending_request_metrics_.size());
       for (const auto& [email_field_id, metrics] : pending_request_metrics_) {
-        pending_field_ids.push_back(email_field_id);
+        EvpAutofillFlowResult flow_result =
+            metrics.is_verifiable_status.has_value()
+                ? EvpAutofillFlowResult::kPageNavigatedDuringVerification
+                : EvpAutofillFlowResult::kPageNavigatedDuringCheckIfVerifiable;
+        pending_requests.emplace_back(email_field_id, flow_result);
       }
-      for (const FieldGlobalId& email_field_id : pending_field_ids) {
-        NotifyFlowCompleted(
-            nullptr, email_field_id,
-            EvpAutofillFlowResult::kPageNavigatedDuringVerification);
+      for (const auto& [email_field_id, flow_result] : pending_requests) {
+        NotifyFlowCompleted(nullptr, email_field_id, flow_result);
       }
     }
     // `HasCommitted` returns true even for same document commits, e.g.
@@ -537,6 +606,10 @@ void EmailVerifierDelegate::OnBeforeFormWithEmailVerificationTokenSubmitted(
     issuers_.erase(it);
     manager.client().ShowEmailVerifiedToast(issuer_url);
     base::UmaHistogramBoolean("Blink.Evp.Autofill.FormSubmitted", true);
+    ukm::builders::Blink_EmailVerificationProtocol_FormSubmission(
+        manager.driver().GetPageUkmSourceId())
+        .SetAutofill_FormSubmitted(true)
+        .Record(ukm::UkmRecorder::Get());
   }
 }
 
@@ -704,15 +777,26 @@ void EmailVerifierDelegate::TriggerVerification(AutofillManager& manager,
   page_load_metrics::MetricsWebContentsObserver::RecordFeatureUsage(
       rfh, blink::mojom::WebFeature::kEmailVerificationProtocol);
 
-  if (manager.client().GetStrikeDatabase()) {
-    EmailVerificationStrikeDatabase strike_db(
-        manager.client().GetStrikeDatabase());
-    if (strike_db.ShouldBlockFeature(
-            EmailVerificationStrikeDatabase::GetId(display_email))) {
-      NotifyFlowCompleted(&manager, email_field_id,
-                          EvpAutofillFlowResult::kStrikeDatabaseBlock);
-      return;
-    }
+  const std::string strike_id =
+      GetEmailVerificationStrikeDatabaseId(display_email);
+  EmailVerificationStrikeDatabase* strike_db =
+      GetEmailVerificationStrikeDatabase();
+  if (strike_db && strike_db->ShouldBlockFeature(strike_id)) {
+    // If the email has reached the strike limit for user prompt declines,
+    // suppress the verification flow early.
+    NotifyFlowCompleted(&manager, email_field_id,
+                        EvpAutofillFlowResult::kStrikeDatabaseBlock);
+    return;
+  }
+  EmailVerificationNotSignedInStrikeDatabase* not_signed_in_strike_db =
+      GetEmailVerificationNotSignedInStrikeDatabase();
+  if (not_signed_in_strike_db &&
+      not_signed_in_strike_db->ShouldBlockFeature(strike_id)) {
+    // If the email has reached the strike limit for not-signed-in attempts,
+    // suppress the verification flow early.
+    NotifyFlowCompleted(&manager, email_field_id,
+                        EvpAutofillFlowResult::kNotSignedInStrikeDatabaseBlock);
+    return;
   }
 
   const base::DictValue& state =
@@ -723,6 +807,9 @@ void EmailVerifierDelegate::TriggerVerification(AutofillManager& manager,
 
   verifier->CheckIfVerifiable(
       display_email,
+      base::BindOnce(&EmailVerifierDelegate::OnDnsCheckPassed,
+                     weak_ptr_factory_.GetWeakPtr(), manager.GetWeakPtr(),
+                     email_field_id),
       base::BindOnce(&EmailVerifierDelegate::OnIsVerifiable,
                      weak_ptr_factory_.GetWeakPtr(), manager.GetWeakPtr(),
                      email_field_id, email_field_bounds, email_value, nonce,

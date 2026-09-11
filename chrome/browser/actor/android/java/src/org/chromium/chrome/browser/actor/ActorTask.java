@@ -6,11 +6,13 @@ package org.chromium.chrome.browser.actor;
 
 import org.jni_zero.CalledByNative;
 import org.jni_zero.JNINamespace;
+import org.jni_zero.JniType;
 import org.jni_zero.NativeMethods;
 
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.profiles.Profile;
+import org.chromium.chrome.browser.tab.Tab;
 
 import java.lang.ref.WeakReference;
 import java.util.HashSet;
@@ -26,7 +28,8 @@ public class ActorTask {
     private final WeakReference<Profile> mProfile;
 
     @CalledByNative
-    private ActorTask(long nativeTask, int id, String title, Profile profile) {
+    private ActorTask(
+            long nativeTask, int id, @JniType("std::string") String title, Profile profile) {
         mNativeTask = nativeTask;
         mId = id;
         mTitle = title;
@@ -118,6 +121,16 @@ public class ActorTask {
     }
 
     /**
+     * @return The ID of the tab most recently added or actuated on, or Tab.INVALID_TAB_ID if none.
+     *     Unlike {@link #getTabs()} and {@link #getLastActedTabs()}, this ID is preserved after
+     *     task completion as long as the underlying tab is still open.
+     */
+    public int getLastActuatedTabId() {
+        if (mNativeTask == 0) return Tab.INVALID_TAB_ID;
+        return ActorTaskJni.get().getLastActuatedTabId(mNativeTask);
+    }
+
+    /**
      * @param tabId The tab ID to check if the task is acting on.
      * @return true if the task is acting on the given tab, false otherwise.
      */
@@ -141,6 +154,7 @@ public class ActorTask {
 
     @NativeMethods
     interface Natives {
+        @JniType("std::string")
         String getCurrentActionName(long nativeActorTaskAndroid);
 
         int getState(long nativeActorTaskAndroid);
@@ -153,8 +167,12 @@ public class ActorTask {
 
         void resume(long nativeActorTaskAndroid);
 
+        @JniType("std::vector<int32_t>")
         int[] getTabs(long nativeActorTaskAndroid);
 
+        @JniType("std::vector<int32_t>")
         int[] getLastActedTabs(long nativeActorTaskAndroid);
+
+        int getLastActuatedTabId(long nativeActorTaskAndroid);
     }
 }

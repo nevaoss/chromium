@@ -78,10 +78,10 @@
 #include "chrome/browser/web_applications/web_app_tab_helper.h"
 #include "chrome/browser/web_applications/web_app_ui_manager.h"
 #include "chrome/browser/web_applications/web_app_utils.h"
-#include "chromeos/constants/chromeos_features.h"
 #include "components/services/app_service/public/cpp/app_launch_params.h"
 #include "components/services/app_service/public/cpp/app_launch_util.h"
 #include "components/site_engagement/content/site_engagement_service.h"
+#include "components/tabs/public/tab_interface.h"
 #include "components/webapps/browser/launch_queue/launch_params.h"
 #include "components/webapps/browser/launch_queue/launch_queue.h"
 #include "components/webapps/common/web_app_id.h"
@@ -115,6 +115,7 @@
 #include "chrome/browser/web_applications/chromeos_web_app_experiments.h"
 #include "chromeos/ash/experiences/system_web_apps/types/system_web_app_delegate.h"
 #include "chromeos/components/kiosk/kiosk_utils.h"
+#include "chromeos/constants/chromeos_features.h"
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
 #if BUILDFLAG(IS_WIN)
@@ -372,8 +373,8 @@ void ReparentWebContentsIntoBrowserImpl(BrowserWindowInterface* source_browser,
   }
 
   if (!target_app_id) {
-    IntentPickerTabHelper* helper =
-        IntentPickerTabHelper::FromWebContents(web_contents);
+    IntentPickerTabHelper* helper = IntentPickerTabHelper::From(
+        tabs::TabInterface::GetFromContents(web_contents));
     CHECK(helper);
     helper->MaybeShowIntentPickerIcon();
   }

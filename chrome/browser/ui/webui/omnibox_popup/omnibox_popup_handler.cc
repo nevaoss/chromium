@@ -4,16 +4,23 @@
 
 #include "chrome/browser/ui/webui/omnibox_popup/omnibox_popup_handler.h"
 
+#include "base/feature_list.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/strings/strcat.h"
 #include "base/strings/utf_string_conversions.h"
+#include "chrome/browser/devtools/devtools_window.h"
 #include "chrome/browser/history_clusters/history_clusters_tab_helper.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+#include "chrome/browser/ui/omnibox/chrome_omnibox_client.h"
 #include "chrome/browser/ui/omnibox/omnibox_controller.h"
 #include "chrome/browser/ui/omnibox/omnibox_edit_model.h"
+#include "chrome/browser/ui/omnibox/omnibox_next_features.h"
 #include "chrome/browser/ui/omnibox/omnibox_popup_view.h"
 #include "chrome/browser/ui/omnibox/omnibox_view.h"
+#include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/views/omnibox/omnibox_view_views.h"
 #include "components/omnibox/browser/omnibox_popup_selection.h"
+#include "components/tabs/public/tab_interface.h"
 #include "content/public/browser/browser_context.h"
 #include "third_party/metrics_proto/omnibox_event.pb.h"
 #include "ui/base/clipboard/scoped_clipboard_writer.h"
@@ -49,18 +56,14 @@ void OmniboxPopupHandler::ShowContextMenu(const gfx::Point& point) {
 
 void OmniboxPopupHandler::CloseUI() {
   if (embedder_) {
+    // NOTE: `embedder_->CloseUI()` transitions the popup state to `kNone`,
+    // which prompts `LocationBarView::OnPopupStateChanged()` to centrally clear
+    // Views focus and notify the edit model via `OnKillFocus()`.
     embedder_->CloseUI();
   }
-  // Transfer focus from the location bar to the active web tab DOM and notify
-  // the edit model that focus was killed so internal focus state and metrics
-  // trackers are updated.
-  if (controller_) {
-    if (controller_->client()) {
-      controller_->client()->FocusWebContents();
-    }
-    if (controller_->edit_model()) {
-      controller_->edit_model()->OnKillFocus();
-    }
+  // Return keyboard focus to the active webpage.
+  if (controller_ && controller_->client()) {
+    controller_->client()->FocusWebContents();
   }
 }
 
@@ -206,6 +209,17 @@ void OmniboxPopupHandler::SetInputState(
   state->show_full_url = show_full_url;
   state->query_zps = query_zps;
   state->keyword_model = std::move(keyword_model);
+  // Extract active tab ID if in a Chrome browser window context.
+  if (controller_ && controller_->client()->IsChromeOmniboxClient()) {
+    auto* chrome_client =
+        static_cast<ChromeOmniboxClient*>(controller_->client());
+    auto* browser = chrome_client->browser();
+    auto* tab_strip = browser ? browser->GetTabStripModel() : nullptr;
+    auto* tab = tab_strip ? tab_strip->GetActiveTab() : nullptr;
+    if (tab) {
+      state->tab_id = tab->GetHandle().raw_value();
+    }
+  }
   page_->SetInputState(std::move(state));
 }
 
@@ -350,5 +364,18 @@ void OmniboxPopupHandler::OnCutOrCopy(uint32_t sequence_number,
   if (something_changed &&
       (state_changes.text_differs || state_changes.keyword_differs)) {
     controller_->edit_model()->OnChanged();
+  }
+}
+
+void OmniboxPopupHandler::SetEditHistoryState(bool can_undo, bool can_redo) {
+  can_undo_ = can_undo;
+  can_redo_ = can_redo;
+}
+
+void OmniboxPopupHandler::OpenDevTools() {
+  CHECK(base::FeatureList::IsEnabled(omnibox::kWebUIOmniboxPopupDebug));
+  if (web_contents_) {
+    DevToolsWindow::OpenDevToolsWindow(web_contents_,
+                                       DevToolsOpenedByAction::kUnknown);
   }
 }

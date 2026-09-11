@@ -172,6 +172,15 @@ BASE_FEATURE(kBackForwardCacheDWCOnJavaScriptExecution,
 BASE_FEATURE(kBackForwardCachePauseMicrotasks,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
+// When enabled, JavaScript network requests with "Cache-Control: no-store"
+// headers from domains specified in `kBackForwardCacheCCNSAllowedDomains` will
+// not disable Back/Forward cache.
+BASE_FEATURE(kBackForwardCacheCCNSAllowlist, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE_PARAM(std::string,
+                   kBackForwardCacheCCNSAllowedDomains,
+                   &kBackForwardCacheCCNSAllowlist,
+                   "");
+
 // Enable background resource fetch in Blink. See https://crbug.com/1379780 for
 // more details.
 BASE_FEATURE(kBackgroundResourceFetch, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -190,6 +199,10 @@ BASE_FEATURE_PARAM(bool,
                    &kBackgroundResourceFetch,
                    "background-code-cache-decoder-start",
                    true);
+BASE_FEATURE_PARAM(bool,
+                   kBackgroundResourceFetchSupportsWebUI,
+                   &kBackgroundResourceFetch,
+                   false);
 
 BASE_FEATURE(kRestrictBackgroundFetchFromServiceWorker,
              base::FEATURE_ENABLED_BY_DEFAULT);
@@ -264,9 +277,6 @@ BASE_FEATURE(kCaptureJSExecutionLocation, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kClearSiteDataPrefetchPrerenderCache,
              base::FEATURE_ENABLED_BY_DEFAULT);
-
-// Fix for CSS font comparison logic.
-BASE_FEATURE(kCSSFontComparisonFix, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enable legacy `dpr` client hint.
 BASE_FEATURE(kClientHintsDPR_DEPRECATED, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -540,8 +550,6 @@ BASE_FEATURE_PARAM(base::TimeDelta,
                    base::Milliseconds(1000));
 
 BASE_FEATURE(kDetectJSFrameworksOnWorker, base::FEATURE_ENABLED_BY_DEFAULT);
-
-BASE_FEATURE(kDetectZhVariants, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Improves the signal-to-noise ratio of network error related messages in the
 // DevTools Console.
@@ -1700,6 +1708,9 @@ BASE_FEATURE(kOriginAgentClusterDefaultEnabled,
 // Enable defer commits to avoid flash of unstyled content, for all navigations.
 BASE_FEATURE(kPaintHolding, base::FEATURE_ENABLED_BY_DEFAULT);
 
+BASE_FEATURE(kPaintTimingIngnoreOutOfLifecyclePaints,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+
 #if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_CHROMEOS)
 // A parameter to exclude or not exclude CanvasFontCache from
 // PartialLowModeOnMidRangeDevices. This is used to see how
@@ -2096,6 +2107,13 @@ BASE_FEATURE(kServiceWorkerRaceNetworkRequestFallbackOnDisconnect,
 // ServiceWorker. For navigation requests, the pre-learned static response
 // header is returned in parallel with dispatching the network request.
 BASE_FEATURE(kServiceWorkerSyntheticResponse,
+             "ServiceWorkerSyntheticResponse",
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
+// (crbug.com/539155958): When enabled, ServiceWorkerDatabase treats missing
+// next available ID metadata as database corruption if registrations exist on
+// disk, triggering database doom and clean recovery.
+BASE_FEATURE(kServiceWorkerDatabaseDoomOnMissingNextId,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Define the allowed websites to enable SyntheticResponse. Allowed urls are
@@ -2374,6 +2392,11 @@ BASE_FEATURE(kWebUIBypassMojoConnections, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kWebRtcUseCaptureBeginTimestamp, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kWebRtcPqcForDtls, base::FEATURE_ENABLED_BY_DEFAULT);
+
+// TODO(crbug.com/501209160): Remove this kill switch after confirming the
+// standards-compliant behavior does not cause regressions.
+BASE_FEATURE(kWebRtcSuppressDtlsStateChangeOnClose,
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kWebRtcUseMediaThreadTypes, base::FEATURE_DISABLED_BY_DEFAULT);
 

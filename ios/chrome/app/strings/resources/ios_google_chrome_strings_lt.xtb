@@ -74,6 +74,7 @@
 <translation id="2427791862912929107">„Chrome“ yra funkcijų, kurias naudojant lengva tvarkyti internetinius duomenis ir tinklalapių įkėlimo spartą.
 <ph name="BEGIN_LINK" />Sužinokite daugiau<ph name="END_LINK" /></translation>
 <translation id="2450221499140985490">Atidarykite nuorodas iš pranešimų ir dokumentų tiesiogiai naršyklėje „Chrome“.</translation>
+<translation id="2459400997522001951">Atlikite sparčias užduotis ir atraskite būdų, kaip išnaudoti visas „Chrome“ galimybes.</translation>
 <translation id="2464852008153767546">{THRESHOLD,plural, =1{Taip nutinka, kai „Chrome“ nenaudojama {THRESHOLD} minutę. Tai gali būti istorija ir automatinis pildymas.}one{Taip nutinka, kai „Chrome“ nenaudojama {THRESHOLD} minutę. Tai gali būti istorija ir automatinis pildymas.}few{Taip nutinka, kai „Chrome“ nenaudojama {THRESHOLD} minutes. Tai gali būti istorija ir automatinis pildymas.}many{Taip nutinka, kai „Chrome“ nenaudojama {THRESHOLD} minutės. Tai gali būti istorija ir automatinis pildymas.}other{Taip nutinka, kai „Chrome“ nenaudojama {THRESHOLD} minučių. Tai gali būti istorija ir automatinis pildymas.}}</translation>
 <translation id="2561231791489583059">Naudokite „Chrome“ kaip numatytąją naršyklę, kad apsisaugotumėte nuo pavojingų svetainių ir užtikrintumėte slaptažodžių apsaugą</translation>
 <translation id="2574249610672786438">Kad matytumėte skirtukus iš visų įrenginių, kuriuose naudojate „Chrome“, prisijunkite visuose įrenginiuose</translation>
@@ -141,6 +142,7 @@ Naujų žymių negalima išsaugoti paskyroje, kol ištrinsite kai kurias žymes.
 <translation id="411154422556990518">Nepraleiskite kainų stebėjimo atnaujinimų ir „Chrome“ patarimų.</translation>
 <translation id="417201473131094001">Nepalaikoma versijoje „Chrome Canary“</translation>
 <translation id="424864128008805179">Atsijungti nuo „Chrome“?</translation>
+<translation id="4314240881330431451">Naudodami „Google Lens“ naršyklėje „Chromium“ galite ieškoti bet ko, ką matote</translation>
 <translation id="4409545895715116037">Toliau nurodyti prieigos raktai nebuvo importuoti į „Google“ slaptažodžių tvarkyklę, nes jie neatitinka reikalavimų.</translation>
 <translation id="4430797724889237570">Atidarykite nuorodas iš „Gmail“, Žemėlapių, „YouTube“ ir kitų programų naršyklėje „Chrome“</translation>
 <translation id="447252321002412580">Padėti tobulinti „Chrome“ funkcijas ir našumą</translation>

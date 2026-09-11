@@ -41,6 +41,8 @@ enum class EntryPoint {
   Toolbar = 12,
   // Gemini was opened via App Switcher AI Summarization entry point.
   AppSwitcherAISummarization = 13,
+  // Gemini was opened from an unsupported query in AtMemory search.
+  AtMemorySearch = 14,
   // The entry point is unknown.
   Unknown = 100,
   kMaxValue = Unknown,
@@ -256,6 +258,25 @@ extern NSString* const kGeminiPromoConsentFullDetentIdentifier;
 
 // Gemini UI Lottie Animation name for First Run Banner.
 extern NSString* const kLottieAnimationFirstRunBannerName;
+
+// Lottie animation names for Gemini Visual Rich First Run carousel slides.
+extern NSString* const kLottieAnimationFRESummarizeSlideName;
+extern NSString* const kLottieAnimationFRESummarizeSlideDarkName;
+extern NSString* const kLottieAnimationFRESummarizeSlideRTLName;
+extern NSString* const kLottieAnimationFRESummarizeSlideDarkRTLName;
+
+extern NSString* const kLottieAnimationFREShoppingSlideName;
+extern NSString* const kLottieAnimationFREShoppingSlideDarkName;
+extern NSString* const kLottieAnimationFREShoppingSlideRTLName;
+extern NSString* const kLottieAnimationFREShoppingSlideDarkRTLName;
+
+extern NSString* const kLottieAnimationFREPlanningSlideName;
+extern NSString* const kLottieAnimationFREPlanningSlideDarkName;
+extern NSString* const kLottieAnimationFREPlanningSlideRTLName;
+extern NSString* const kLottieAnimationFREPlanningSlideDarkRTLName;
+
+// Accessibility identifier for the Gemini Visual Rich FRE carousel scroll view.
+extern NSString* const kGeminiFRECarouselScrollViewAccessibilityIdentifier;
 
 // Session map dictionary key for the last interaction timestamp.
 extern const char kLastInteractionTimestampDictKey[];

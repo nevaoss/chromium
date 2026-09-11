@@ -5,11 +5,13 @@
 #ifndef COMPONENTS_CONTEXTUAL_TASKS_PUBLIC_FEATURES_H_
 #define COMPONENTS_CONTEXTUAL_TASKS_PUBLIC_FEATURES_H_
 
+#include <optional>
 #include <string>
 #include <vector>
 
 #include "base/feature_list.h"
 #include "base/metrics/field_trial_params.h"
+#include "components/contextual_tasks/public/host_override.h"
 
 namespace contextual_tasks {
 
@@ -21,10 +23,12 @@ BASE_DECLARE_FEATURE(kContextualTasksExtraOauthScopes);
 BASE_DECLARE_FEATURE(kEnableContextualTasksPinButtonInToolbar);
 BASE_DECLARE_FEATURE(kContextualTasksContext);
 BASE_DECLARE_FEATURE(kContextualTasksSearchQuery);
+BASE_DECLARE_FEATURE(kContextualTasksContextMultiTurnTabRelevance);
 BASE_DECLARE_FEATURE(
     kContextualTasksContextSmartTabSharingDefaultOnAvailability);
 BASE_DECLARE_FEATURE(kContextualTasksContextLibrary);
 BASE_DECLARE_FEATURE(kContextualTasksContextLogging);
+BASE_DECLARE_FEATURE(kContextualTasksScriptTools);
 BASE_DECLARE_FEATURE(kContextualTasksShowOnboardingTooltip);
 
 // Bypasses the dismissed cap for contextual tasks tooltips.
@@ -196,6 +200,11 @@ extern const base::FeatureParam<bool> kDeduplicateRelevantTabsByUrl;
 extern const base::FeatureParam<double> kTabSelectionScoreThreshold;
 // Minimum score required for a tab to be considered visible.
 extern const base::FeatureParam<double> kContentVisibilityThreshold;
+
+// Maximum number of conversation turns to embed and pass to the model.
+extern const base::FeatureParam<int> kMaxConversationTurns;
+// Maximum number of shared tab titles from context library to embed and pass.
+extern const base::FeatureParam<int> kMaxTitlesPerThread;
 
 // Whether to use the immediately previous visited tab as the active tab signal
 // fallback.
@@ -369,10 +378,11 @@ extern bool ShouldShowExpandedSecurityChip();
 
 // Returns the host that all URLs loaded in the embedded page in the Contextual
 // Tasks WebUi should be routed to.
-extern std::string GetForcedEmbeddedPageHost();
+extern std::optional<HostOverride> GetForcedEmbeddedPageHost();
 
 // Allows overriding the embedded page host at runtime for debugging.
-extern void SetForcedEmbeddedPageHostOverride(const std::string& host);
+extern void SetForcedEmbeddedPageHostOverride(
+    std::optional<HostOverride> host_override);
 
 // Returns the domains for the sign in page.
 extern std::vector<std::string> GetContextualTasksSignInDomains();
@@ -383,8 +393,6 @@ extern bool GetIsContextualTasksSuggestionsEnabled();
 // Returns the timeout for smart tab sharing tab selection.
 extern base::TimeDelta GetSmartTabSharingTabSelectionTimeout();
 
-// Returns the score threshold required to display the smart tab sharing promo.
-extern double GetSmartTabSharingPromoScoreThreshold();
 
 // Enables tab auto-chip for contextual tasks. When disabled, no suggested
 // chips will be shown in the composebox automatically.
@@ -476,6 +484,14 @@ extern bool GetIsWebpageApcComparisonEnabled();
 
 extern bool IsContextualTasksRearchitectureEnabled();
 extern bool IsContextualTasksSidePanelRearchitectureEnabled();
+
+inline constexpr char kContextualTasksSearchCapabilitiesHeaderName[] =
+    "Chrome-Search-Capabilities-Version";
+inline constexpr char kContextualTasksSearchCapabilitiesDefaultVersion[] = "1";
+
+extern const base::FeatureParam<std::string>
+    kContextualTasksSearchCapabilitiesVersion;
+std::string GetContextualTasksSearchCapabilitiesVersion();
 
 namespace flag_descriptions {
 

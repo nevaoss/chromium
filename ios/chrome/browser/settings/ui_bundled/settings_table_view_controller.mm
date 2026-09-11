@@ -117,6 +117,8 @@
 #import "ios/chrome/browser/settings/ui_bundled/safety_check/safety_check_utils.h"
 #import "ios/chrome/browser/settings/ui_bundled/search_engine_table_view_controller.h"
 #import "ios/chrome/browser/settings/ui_bundled/settings_table_view_controller_constants.h"
+#import "ios/chrome/browser/settings/ui_bundled/site_permissions/site_permissions_coordinator.h"
+#import "ios/chrome/browser/settings/ui_bundled/site_permissions/site_permissions_coordinator_delegate.h"
 #import "ios/chrome/browser/settings/ui_bundled/tabs/tabs_settings_coordinator.h"
 #import "ios/chrome/browser/settings/ui_bundled/voice_search_table_view_controller.h"
 #import "ios/chrome/browser/shared/model/application_context/application_context.h"
@@ -220,13 +222,18 @@ struct EnhancedSafeBrowsingActivePromoData
   static constexpr char key[] = "EnhancedSafeBrowsingActivePromoData";
 };
 
-// Struct used to count and store the number of active Settings Default Browser
-// passive promos, as the FET does not support showing multiple promos for the
-// same FET feature at the same time in a multi-window setup.
+// Struct used to count active Settings Default Browser passive promos across
+// windows (as the FET does not support showing multiple promos for the same FET
+// feature at the same time in a multi-window setup) and track whether the card
+// promo has been shown in the current session.
 struct DefaultBrowserPassivePromoActiveData
     : public base::SupportsUserData::Data {
   // The number of active promos across all windows.
   int active_promos = 0;
+
+  // Whether the default browser promo card should be shown in the current
+  // session and bypass the FET.
+  BOOL should_show_promo_card = NO;
 
   // Key to use for this type in SupportsUserData
   static constexpr char key[] = "DefaultBrowserPassivePromoActiveData";
@@ -272,6 +279,7 @@ enum class IOSDefaultBrowserSettingsPassivePromoAction {
     SafariDataImportUIHandler,
     SafetyCheckCoordinatorDelegate,
     SearchEngineObserving,
+    SitePermissionsCoordinatorDelegate,
     SyncObserverModelBridge,
     TabsSettingsCoordinatorDelegate> {
   // The browser where the settings are being displayed.
@@ -388,6 +396,9 @@ enum class IOSDefaultBrowserSettingsPassivePromoAction {
 
   // Downloads settings coordinator.
   DownloadsSettingsCoordinator* _downloadsSettingsCoordinator;
+
+  // Site permissions coordinator.
+  SitePermissionsCoordinator* _sitePermissionsCoordinator;
 }
 
 // The item related to the switch for the show feed settings.
@@ -669,6 +680,10 @@ enum class IOSDefaultBrowserSettingsPassivePromoAction {
       toSectionWithIdentifier:SettingsSectionIdentifierInfo];
   [model addItem:[self contentSettingsDetailItem]
       toSectionWithIdentifier:SettingsSectionIdentifierInfo];
+  if (IsDomainLevelSitePermissionsEnabled()) {
+    [model addItem:[self sitePermissionsDetailItem]
+        toSectionWithIdentifier:SettingsSectionIdentifierInfo];
+  }
   if (shouldShowDownloadsSettings) {
     [model addItem:[self downloadsSettingsDetailItem]
         toSectionWithIdentifier:SettingsSectionIdentifierInfo];
@@ -1175,6 +1190,16 @@ enum class IOSDefaultBrowserSettingsPassivePromoAction {
           accessibilityIdentifier:kSettingsContentSettingsCellId];
 }
 
+- (TableViewItem*)sitePermissionsDetailItem {
+  // TODO(crbug.com/553098545): Use localized string.
+  return [self detailItemWithType:SettingsItemTypeSitePermissions
+                             text:@"Site Permissions"
+                       detailText:nil
+                           symbol:SettingsRootSymbol(SymbolGearshape2)
+            symbolBackgroundColor:[UIColor colorNamed:kGrey400Color]
+          accessibilityIdentifier:kSettingsSitePermissionsCellId];
+}
+
 - (TableViewItem*)downloadsSettingsDetailItem {
   return [self detailItemWithType:SettingsItemTypeDownloadsSettings
                              text:l10n_util::GetNSString(
@@ -1540,6 +1565,10 @@ enum class IOSDefaultBrowserSettingsPassivePromoAction {
       base::RecordAction(base::UserMetricsAction("Settings.ContentSettings"));
       [self showContentSettings];
       break;
+    case SettingsItemTypeSitePermissions:
+      base::RecordAction(base::UserMetricsAction("Settings.SitePermissions"));
+      [self showSitePermissionsSettings];
+      break;
     case SettingsItemTypeDownloadsSettings:
       base::RecordAction(base::UserMetricsAction("Settings.DownloadsSettings"));
       [self showDownloadsSettings];
@@ -1647,6 +1676,14 @@ enum class IOSDefaultBrowserSettingsPassivePromoAction {
   _featureEngagementTracker->NotifyEvent(
       feature_engagement::events::kDefaultBrowserSettingsCardPromoUsed);
 
+  DefaultBrowserPassivePromoActiveData* data =
+      static_cast<DefaultBrowserPassivePromoActiveData*>(
+          _featureEngagementTracker->GetUserData(
+              DefaultBrowserPassivePromoActiveData::key));
+  if (data) {
+    data->should_show_promo_card = NO;
+  }
+
   [self dismissPassivePromoWithFeature:
             feature_engagement::kIPHiOSPromoSettingsCardDefaultBrowserFeature];
 
@@ -1664,21 +1701,33 @@ enum class IOSDefaultBrowserSettingsPassivePromoAction {
   _featureEngagementTracker->NotifyEvent(
       feature_engagement::events::kDefaultBrowserSettingsCardPromoUsed);
 
+  DefaultBrowserPassivePromoActiveData* data =
+      static_cast<DefaultBrowserPassivePromoActiveData*>(
+          _featureEngagementTracker->GetUserData(
+              DefaultBrowserPassivePromoActiveData::key));
+  if (data) {
+    data->should_show_promo_card = NO;
+  }
+
   [self dismissPassivePromoWithFeature:
             feature_engagement::kIPHiOSPromoSettingsCardDefaultBrowserFeature];
 
   [self removeDefaultPassiveCardSection];
+
+  id<PictureInPictureCommands> pipHandler = HandlerForProtocol(
+      _browser->GetCommandDispatcher(), PictureInPictureCommands);
+
+  if (IsDefaultBrowserPictureInPictureEnabled()) {
+    [self.sceneHandler closePresentedViews];
+  }
 
   BOOL useDefaultAppsDestination =
       IsDefaultBrowserPictureInPictureEnabled()
           ? IsDefaultAppsPictureInPictureVariant()
           : (IsDefaultAppsDestinationAvailable() &&
              IsUseDefaultAppsDestinationForPromosEnabled());
-  OpenIOSDefaultBrowserSettingsPage(
-      useDefaultAppsDestination,
-      /*ui_application_to_use=*/nil,
-      HandlerForProtocol(_browser->GetCommandDispatcher(),
-                         PictureInPictureCommands));
+  OpenIOSDefaultBrowserSettingsPage(useDefaultAppsDestination,
+                                    /*ui_application_to_use=*/nil, pipHandler);
 }
 
 #pragma mark - Actions
@@ -2410,6 +2459,22 @@ enum class IOSDefaultBrowserSettingsPassivePromoAction {
   [_downloadsSettingsCoordinator start];
 }
 
+- (void)showSitePermissionsSettings {
+  if (_sitePermissionsCoordinator &&
+      self.navigationController.topViewController != self) {
+    base::debug::DumpWithoutCrashing();
+  }
+
+  // Stop the coordinator before restarting it, if it exists.
+  [_sitePermissionsCoordinator stop];
+
+  _sitePermissionsCoordinator = [[SitePermissionsCoordinator alloc]
+      initWithBaseNavigationController:self.navigationController
+                               browser:_browser];
+  _sitePermissionsCoordinator.delegate = self;
+  [_sitePermissionsCoordinator start];
+}
+
 // Records that the user has reached the impression limit for the enhanced safe
 // browsing inline promo.
 - (void)maybeRecordEnhancedSafeBrowsingImpressionLimitReached {
@@ -2544,6 +2609,10 @@ enum class IOSDefaultBrowserSettingsPassivePromoAction {
 // Evaluates conditions and FET states to determine if the passive default
 // browser promo (either card or cell) should be visible in Settings.
 - (void)evaluateDefaultBrowserPassivePromoVisibility {
+  if (IsChromeLikelyDefaultBrowser()) {
+    return;
+  }
+
   if (!IsIOSSettingsDefaultBrowserPromoV2Enabled()) {
     return;
   }
@@ -2580,21 +2649,39 @@ enum class IOSDefaultBrowserSettingsPassivePromoAction {
           _featureEngagementTracker->GetUserData(
               DefaultBrowserPassivePromoActiveData::key));
 
-  if (data) {
+  BOOL isPromoTypeCard =
+      &feature ==
+      &feature_engagement::kIPHiOSPromoSettingsCardDefaultBrowserFeature;
+
+  // If the promo is already active in another window or has already been shown
+  // in this session (card promo), increment the refcount without re-querying
+  // the FET.
+  BOOL isPromoAlreadyActive =
+      data && (isPromoTypeCard ? data->should_show_promo_card
+                               : data->active_promos > 0);
+  if (isPromoAlreadyActive) {
     data->active_promos++;
     return YES;
   }
 
-  BOOL shouldShow = _featureEngagementTracker->ShouldTriggerHelpUI(feature);
-  if (shouldShow) {
-    std::unique_ptr<DefaultBrowserPassivePromoActiveData> new_data =
-        std::make_unique<DefaultBrowserPassivePromoActiveData>();
-    new_data->active_promos++;
+  if (!_featureEngagementTracker->ShouldTriggerHelpUI(feature)) {
+    return NO;
+  }
+
+  // Create user data struct on first trigger.
+  if (!data) {
+    auto new_data = std::make_unique<DefaultBrowserPassivePromoActiveData>();
+    data = new_data.get();
     _featureEngagementTracker->SetUserData(
         DefaultBrowserPassivePromoActiveData::key, std::move(new_data));
   }
 
-  return shouldShow;
+  data->active_promos++;
+  if (isPromoTypeCard) {
+    data->should_show_promo_card = YES;
+  }
+
+  return YES;
 }
 
 // Decrements the active counter for a passive promo and dismisses the FET when
@@ -2610,9 +2697,11 @@ enum class IOSDefaultBrowserSettingsPassivePromoAction {
   if (data) {
     data->active_promos--;
     if (data->active_promos <= 0) {
-      _featureEngagementTracker->RemoveUserData(
-          DefaultBrowserPassivePromoActiveData::key);
       _featureEngagementTracker->Dismissed(feature);
+      if (!data->should_show_promo_card) {
+        _featureEngagementTracker->RemoveUserData(
+            DefaultBrowserPassivePromoActiveData::key);
+      }
     }
   } else {
     _featureEngagementTracker->Dismissed(feature);
@@ -2761,6 +2850,9 @@ enum class IOSDefaultBrowserSettingsPassivePromoAction {
 
   [_downloadsSettingsCoordinator stop];
   _downloadsSettingsCoordinator = nil;
+
+  [_sitePermissionsCoordinator stop];
+  _sitePermissionsCoordinator = nil;
 
   // Stop observable prefs.
   [_showMemoryDebugToolsEnabled stop];
@@ -2965,22 +3057,21 @@ enum class IOSDefaultBrowserSettingsPassivePromoAction {
   if (!IsYourSavedInfoSettingsPageIosEnabled()) {
     if (preferenceName == password_manager::prefs::kCredentialsEnableService) {
       _passwordsDetailItem.detailText =
-          PasswordsItemDetailText(_profile->GetPrefs()->GetBoolean(
+          DetailTextForEnabledState(_profile->GetPrefs()->GetBoolean(
               password_manager::prefs::kCredentialsEnableService));
       [self reconfigureCellsForItems:@[ _passwordsDetailItem ]];
     }
 
     if (preferenceName == autofill::prefs::kAutofillProfileEnabled) {
-      _autoFillProfileDetailItem.detailText = AutofillProfileItemDetailText(
+      _autoFillProfileDetailItem.detailText = DetailTextForEnabledState(
           autofill::prefs::IsAutofillProfileEnabled(_profile->GetPrefs()));
       [self reconfigureCellsForItems:@[ _autoFillProfileDetailItem ]];
     }
 
     if (preferenceName == autofill::prefs::kAutofillCreditCardEnabled) {
-      _autoFillCreditCardDetailItem.detailText =
-          AutofillCreditCardItemDetailText(
-              autofill::prefs::IsAutofillPaymentMethodsEnabled(
-                  _profile->GetPrefs()));
+      _autoFillCreditCardDetailItem.detailText = DetailTextForEnabledState(
+          autofill::prefs::IsAutofillPaymentMethodsEnabled(
+              _profile->GetPrefs()));
       [self reconfigureCellsForItems:@[ _autoFillCreditCardDetailItem ]];
     }
   }
@@ -3187,6 +3278,14 @@ enum class IOSDefaultBrowserSettingsPassivePromoAction {
     (DownloadsSettingsCoordinator*)coordinator {
   [_downloadsSettingsCoordinator stop];
   _downloadsSettingsCoordinator = nil;
+}
+
+#pragma mark - SitePermissionsCoordinatorDelegate
+
+- (void)sitePermissionsCoordinatorWasRemoved:
+    (SitePermissionsCoordinator*)coordinator {
+  [_sitePermissionsCoordinator stop];
+  _sitePermissionsCoordinator = nil;
 }
 
 #pragma mark - EnhancedSafeBrowsingInlinePromoDelegate

@@ -8,6 +8,7 @@
 #include <memory>
 #include <optional>
 
+#include "base/functional/callback.h"
 #include "base/memory/raw_ptr.h"
 #include "chrome/browser/ui/views/tabs/shared/tab_strip_flat_edge_button.h"
 #include "ui/base/metadata/metadata_header_macros.h"
@@ -34,19 +35,30 @@ class NewTabButton : public TabStripFlatEdgeButton,
                std::optional<float> corner_radius = std::nullopt);
   ~NewTabButton() override;
 
+  void SetOnContextMenuWillShowCallback(base::RepeatingClosure callback);
+  void SetOnContextMenuClosedCallback(base::RepeatingClosure callback);
+  void SetMiddleClickCallbackForTesting(base::RepeatingClosure callback);
+
   // views::ContextMenuController:
   void ShowContextMenuForViewImpl(
       views::View* source,
       const gfx::Point& point,
       ui::mojom::MenuSourceType source_type) override;
 
-  // views::View:
-  void OnMouseEvent(ui::MouseEvent* event) override;
+ protected:
+  // views::Button:
+  void NotifyClick(const ui::Event& event) override;
 
  private:
+  void OnContextMenuClosed();
+
   std::unique_ptr<views::ActionViewController> action_view_controller_;
   std::unique_ptr<NewTabButtonMenuModel> context_menu_model_;
   std::unique_ptr<views::MenuRunner> context_menu_runner_;
+
+  base::RepeatingClosure on_context_menu_will_show_callback_;
+  base::RepeatingClosure on_context_menu_closed_callback_;
+  base::RepeatingClosure middle_click_callback_for_testing_;
 
   raw_ptr<BrowserWindowInterface> browser_;
 };

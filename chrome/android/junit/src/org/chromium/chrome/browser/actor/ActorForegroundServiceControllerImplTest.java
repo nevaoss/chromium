@@ -9,6 +9,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertSame;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -28,13 +29,13 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 import org.robolectric.RuntimeEnvironment;
-import org.robolectric.annotation.Config;
 import org.robolectric.shadows.ShadowApplication;
 
 import org.chromium.base.ActivityState;
 import org.chromium.base.ApplicationStatus;
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.base.test.util.CallbackHelper;
+import org.chromium.chrome.browser.IntentHandler;
 import org.chromium.chrome.browser.init.AsyncInitializationActivity;
 import org.chromium.chrome.browser.notifications.NotificationConstants;
 import org.chromium.chrome.browser.settings.SettingsActivity;
@@ -47,7 +48,6 @@ import java.util.Collections;
 
 /** Unit tests for {@link ActorForegroundServiceControllerImpl}. */
 @RunWith(BaseRobolectricTestRunner.class)
-@Config(manifest = Config.NONE)
 public class ActorForegroundServiceControllerImplTest {
     @Rule public MockitoRule mMockitoRule = MockitoJUnit.rule();
 
@@ -150,8 +150,7 @@ public class ActorForegroundServiceControllerImplTest {
     public void testTransitionActiveTasksToBackground_NotConnected_DoesNothing() {
         mController.setBackgroundManagerForTesting(mMockBackgroundManager);
         mController.transitionActiveTasksToBackground(mTabModelSelector);
-        verify(mMockBackgroundManager, never())
-                .transitionActiveTasksToBackground(org.mockito.ArgumentMatchers.any());
+        verify(mMockBackgroundManager, never()).transitionActiveTasksToBackground(any());
     }
 
     @Test
@@ -165,20 +164,34 @@ public class ActorForegroundServiceControllerImplTest {
     }
 
     @Test
+    public void testOnMessageTriggerTaskStopped_DelegatesToBackgroundManager() {
+        mController.setBackgroundManagerForTesting(mMockBackgroundManager);
+        mController.onMessageTriggerTaskStopped("test_context_id");
+        verify(mMockBackgroundManager).cleanupContext("test_context_id");
+    }
+
+    @Test
+    public void testOnMessageTriggerTaskStopped_NullBackgroundManager_DoesNotCrash() {
+        mController.setBackgroundManagerForTesting(null);
+        mController.onMessageTriggerTaskStopped("test_context_id");
+        verify(mMockBackgroundManager, never()).cleanupContext("test_context_id");
+    }
+
+    @Test
     public void testCreateTrustedBringTabToFrontIntent() {
         int tabId = 123;
         int taskId = 456;
         int taskState = ActorTaskState.ACTING;
         when(mActorTask.getId()).thenReturn(taskId);
         when(mActorTask.getState()).thenReturn(taskState);
-        when(mActorTask.getLastActedTabs()).thenReturn(Collections.singleton(tabId));
+        when(mActorTask.getLastActuatedTabId()).thenReturn(tabId);
 
         Intent intent = mController.createTrustedBringTabToFrontIntent(mActorTask);
         assertNotNull("Intent should not be null.", intent);
         assertEquals(
                 "Intent extra should contain the correct tabId.",
                 tabId,
-                intent.getIntExtra("BRING_TAB_TO_FRONT", Tab.INVALID_TAB_ID));
+                IntentHandler.getBringTabToFrontId(intent));
         assertTrue(
                 "Intent should have EXTRA_SHOW_ACTOR_CONTROL.",
                 intent.getBooleanExtra(ActorNotificationFactory.EXTRA_SHOW_ACTOR_CONTROL, false));
@@ -193,19 +206,47 @@ public class ActorForegroundServiceControllerImplTest {
     }
 
     @Test
-    public void testCreateTrustedBringTabToFrontIntent_EmptyTabs() {
+    public void testCreateTrustedBringTabToFrontIntent_FinishedTaskWithValidTabId() {
+        int tabId = 123;
         int taskId = 456;
         int taskState = ActorTaskState.FINISHED;
         when(mActorTask.getId()).thenReturn(taskId);
         when(mActorTask.getState()).thenReturn(taskState);
-        when(mActorTask.getLastActedTabs()).thenReturn(Collections.emptySet());
+        when(mActorTask.getLastActuatedTabId()).thenReturn(tabId);
 
         Intent intent = mController.createTrustedBringTabToFrontIntent(mActorTask);
         assertNotNull("Intent should not be null.", intent);
         assertEquals(
-                "Intent extra should contain INVALID_TAB_ID for empty tabs.",
+                "Intent extra should contain the preserved tabId after task completion.",
+                tabId,
+                IntentHandler.getBringTabToFrontId(intent));
+        assertTrue(
+                "Intent should have EXTRA_SHOW_ACTOR_CONTROL.",
+                intent.getBooleanExtra(ActorNotificationFactory.EXTRA_SHOW_ACTOR_CONTROL, false));
+        assertEquals(
+                "Intent should have the correct taskId.",
+                taskId,
+                intent.getIntExtra(NotificationConstants.EXTRA_ACTOR_TASK_ID, -1));
+        assertEquals(
+                "Intent should have the correct task state.",
+                taskState,
+                intent.getIntExtra(NotificationConstants.EXTRA_ACTOR_TASK_STATE, -1));
+    }
+
+    @Test
+    public void testCreateTrustedBringTabToFrontIntent_InvalidTabId() {
+        int taskId = 456;
+        int taskState = ActorTaskState.FINISHED;
+        when(mActorTask.getId()).thenReturn(taskId);
+        when(mActorTask.getState()).thenReturn(taskState);
+        when(mActorTask.getLastActuatedTabId()).thenReturn(Tab.INVALID_TAB_ID);
+
+        Intent intent = mController.createTrustedBringTabToFrontIntent(mActorTask);
+        assertNotNull("Intent should not be null.", intent);
+        assertEquals(
+                "Intent extra should contain INVALID_TAB_ID for invalid tab ID.",
                 Tab.INVALID_TAB_ID,
-                intent.getIntExtra("BRING_TAB_TO_FRONT", Tab.INVALID_TAB_ID));
+                IntentHandler.getBringTabToFrontId(intent));
         assertTrue(
                 "Intent should have EXTRA_SHOW_ACTOR_CONTROL.",
                 intent.getBooleanExtra(ActorNotificationFactory.EXTRA_SHOW_ACTOR_CONTROL, false));

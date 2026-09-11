@@ -135,6 +135,14 @@ public class IntentHandler {
     public static final String EXTRA_SCROLL_TO_TEXT_FRAGMENT =
             "com.google.chrome.scroll_to_text_fragment";
 
+    /**
+     * An extra to pass serialized PageContext proto bytes for form field propagation. Carries
+     * sensitive user form data and must only be processed from trusted internal intents validated
+     * with {@link org.chromium.base.IntentUtils#isTrustedIntentFromSelf}.
+     */
+    public static final String EXTRA_SEND_TAB_TO_SELF_PAGE_CONTEXT =
+            "com.google.chrome.send_tab_to_self_page_context";
+
     /** The original intent of the given intent before it was modified. */
     public static final String EXTRA_ORIGINAL_INTENT = "com.android.chrome.original_intent";
 
@@ -1291,7 +1299,6 @@ public class IntentHandler {
     private static @Nullable String extractUrlFromIntent(@Nullable Intent intent) {
         if (intent == null) return null;
         String url = getUrlFromVoiceSearchResult(intent);
-        if (url == null) url = getUrlForCustomTab(intent);
         if (url == null) url = getUrlForWebapp(intent);
         if (url == null) url = getUrlFromShareIntent(intent);
         if (url == null) url = getUrlForHandoff(intent);
@@ -1362,14 +1369,6 @@ public class IntentHandler {
         if (match != null) return match.getUrl().getSpec();
 
         return TemplateUrlServiceFactory.getForProfile(profile).getUrlForSearchQuery(text);
-    }
-
-    private static @Nullable String getUrlForCustomTab(@Nullable Intent intent) {
-        if (intent == null || intent.getData() == null) return null;
-        Uri data = intent.getData();
-        return TextUtils.equals(data.getScheme(), UrlConstants.CUSTOM_TAB_SCHEME)
-                ? data.getQuery()
-                : null;
     }
 
     private static @Nullable String getUrlForWebapp(@Nullable Intent intent) {
@@ -1793,6 +1792,11 @@ public class IntentHandler {
     public static int getBringTabToFrontId(Intent intent) {
         if (!wasIntentSenderChrome(intent)) return Tab.INVALID_TAB_ID;
         return IntentUtils.safeGetIntExtra(intent, BRING_TAB_TO_FRONT_EXTRA, Tab.INVALID_TAB_ID);
+    }
+
+    /** Sets the Bring Tab to Front ID extra for a given intent. */
+    public static void setBringTabToFrontId(Intent intent, int tabId) {
+        intent.putExtra(BRING_TAB_TO_FRONT_EXTRA, tabId);
     }
 
     public static @Nullable String getBringTabGroupToFrontId(Intent intent) {

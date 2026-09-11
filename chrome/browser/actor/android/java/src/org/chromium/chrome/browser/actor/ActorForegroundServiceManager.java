@@ -18,6 +18,7 @@ import androidx.core.app.ServiceCompat;
 import org.chromium.base.ApplicationStatus;
 import org.chromium.base.Log;
 import org.chromium.base.ResettersForTesting;
+import org.chromium.base.ThreadUtils;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
@@ -63,7 +64,6 @@ public class ActorForegroundServiceManager implements ActorKeyedService.Observer
     @Nullable private ActorKeyedService mKeyedService;
     @Nullable private ActorNotificationService mNotificationService;
     @Nullable private ActorTaskTimeoutManager mTimeoutManager;
-    private final ActorForegroundServiceController mServiceController;
     private int mPinnedNotificationId = INVALID_NOTIFICATION_ID;
     @Nullable private Notification mPinnedNotification;
     private final Set<Integer> mActiveTaskIds = new HashSet<>();
@@ -87,7 +87,6 @@ public class ActorForegroundServiceManager implements ActorKeyedService.Observer
 
     @VisibleForTesting
     ActorForegroundServiceManager() {
-        mServiceController = ActorForegroundServiceController.get();
         mProfileObserver =
                 new ProfileManager.Observer() {
                     @Override
@@ -182,9 +181,20 @@ public class ActorForegroundServiceManager implements ActorKeyedService.Observer
             mActiveTaskIds.add(taskId);
         } else {
             mActiveTaskIds.remove(taskId);
+            getServiceController().onTaskCompleted(taskId);
         }
 
         refreshTaskUI(taskId, newState);
+    }
+
+    @Override
+    public void onTaskStepProgressUpdated(int taskId, String stepProgress) {
+        if (!ChromeFeatureList.sActorStepProgressNotification.isEnabled()) {
+            return;
+        }
+        if (mNotificationService == null) return;
+        mNotificationService.updateNotificationForStepProgress(taskId);
+        processTaskUpdateQueue();
     }
 
     /**
@@ -194,7 +204,7 @@ public class ActorForegroundServiceManager implements ActorKeyedService.Observer
     public boolean isActivityVisibleForTask(int taskId) {
         if (mNotificationService == null) return false;
         ActorTask task = mNotificationService.getTask(taskId);
-        return task != null && mServiceController.isActivityVisibleForTabs(task.getTabs());
+        return task != null && getServiceController().isActivityVisibleForTabs(task.getTabs());
     }
 
     /** Process the current task state and initiate any needed service actions. */
@@ -210,7 +220,7 @@ public class ActorForegroundServiceManager implements ActorKeyedService.Observer
             return;
         }
 
-        if (!mServiceController.isConnected()) {
+        if (!getServiceController().isConnected()) {
             return;
         }
 
@@ -265,13 +275,14 @@ public class ActorForegroundServiceManager implements ActorKeyedService.Observer
     void startAndBindService() {
         mIsServiceBound = true;
         mStartForegroundCalled = false;
-        mServiceController.startAndBindService(() -> mHandler.post(this::processTaskUpdateQueue));
+        getServiceController()
+                .startAndBindService(() -> mHandler.post(this::processTaskUpdateQueue));
     }
 
     @VisibleForTesting
     void startOrUpdateForegroundService(int notificationId, @Nullable Notification notification) {
         if (notification == null
-                || !mServiceController.isConnected()
+                || !getServiceController().isConnected()
                 || notificationId == INVALID_NOTIFICATION_ID) {
             return;
         }
@@ -284,8 +295,9 @@ public class ActorForegroundServiceManager implements ActorKeyedService.Observer
                 mPinnedNotificationId != INVALID_NOTIFICATION_ID
                         && mPinnedNotificationId != notificationId;
 
-        mServiceController.startOrUpdateForegroundService(
-                notificationId, notification, mPinnedNotificationId, killOldNotification);
+        getServiceController()
+                .startOrUpdateForegroundService(
+                        notificationId, notification, mPinnedNotificationId, killOldNotification);
 
         mStartForegroundCalled = true;
         mPinnedNotificationId = notificationId;
@@ -297,22 +309,20 @@ public class ActorForegroundServiceManager implements ActorKeyedService.Observer
         if (!mIsServiceBound) return;
         mIsServiceBound = false;
 
-        int lastNotificationId = mPinnedNotificationId;
-
-        mServiceController.stopActorForegroundService(ServiceCompat.STOP_FOREGROUND_REMOVE);
-        mServiceController.unbindService();
+        getServiceController().stopActorForegroundService(ServiceCompat.STOP_FOREGROUND_DETACH);
+        getServiceController().unbindService();
 
         mStartForegroundCalled = false;
         mPinnedNotificationId = INVALID_NOTIFICATION_ID;
         mPinnedNotification = null;
 
-        if (lastNotificationId != INVALID_NOTIFICATION_ID && mNotificationService != null) {
-            mNotificationService.repostNotification(lastNotificationId);
-        }
-
         if (mStopCallbackForTesting != null) {
             mStopCallbackForTesting.run();
         }
+    }
+
+    private ActorForegroundServiceController getServiceController() {
+        return ActorForegroundServiceController.get();
     }
 
     @VisibleForTesting
@@ -337,27 +347,47 @@ public class ActorForegroundServiceManager implements ActorKeyedService.Observer
         return mIsServiceBound;
     }
 
-    static void setInstanceForTesting(ActorForegroundServiceManager instance) {
-        ActorForegroundServiceManager oldInstance = sInstance;
-        if (oldInstance != null) {
-            ProfileManager.removeObserver(oldInstance.mProfileObserver);
-        }
-
-        sInstance = instance;
-        if (instance != null) {
-            ProfileManager.addObserver(instance.mProfileObserver);
-        }
-
-        ResettersForTesting.register(
+    public static void resetInstanceForTesting() {
+        ThreadUtils.runOnUiThreadBlocking(
                 () -> {
-                    ActorForegroundServiceManager currentInstance = sInstance;
-                    if (currentInstance != null) {
-                        ProfileManager.removeObserver(currentInstance.mProfileObserver);
+                    if (sInstance != null) {
+                        ProfileManager.removeObserver(sInstance.mProfileObserver);
+                        sInstance.setKeyedService(null);
+                        sInstance = null;
                     }
-                    sInstance = oldInstance;
+                });
+    }
+
+    static void setInstanceForTesting(ActorForegroundServiceManager instance) {
+        ThreadUtils.runOnUiThreadBlocking(
+                () -> {
+                    ActorForegroundServiceManager oldInstance = sInstance;
                     if (oldInstance != null) {
-                        ProfileManager.addObserver(oldInstance.mProfileObserver);
+                        ProfileManager.removeObserver(oldInstance.mProfileObserver);
                     }
+
+                    sInstance = instance;
+                    if (instance != null) {
+                        ProfileManager.addObserver(instance.mProfileObserver);
+                    }
+
+                    ResettersForTesting.register(
+                            () -> {
+                                ThreadUtils.runOnUiThreadBlocking(
+                                        () -> {
+                                            ActorForegroundServiceManager currentInstance =
+                                                    sInstance;
+                                            if (currentInstance != null) {
+                                                ProfileManager.removeObserver(
+                                                        currentInstance.mProfileObserver);
+                                            }
+                                            sInstance = oldInstance;
+                                            if (oldInstance != null) {
+                                                ProfileManager.addObserver(
+                                                        oldInstance.mProfileObserver);
+                                            }
+                                        });
+                            });
                 });
     }
 

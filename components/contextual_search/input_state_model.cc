@@ -20,6 +20,7 @@
 #include "components/lens/contextual_input.h"
 #include "components/omnibox/common/omnibox_features.h"
 #include "components/prefs/pref_service.h"
+#include "components/signin/public/base/signin_buildflags.h"
 #include "net/base/url_util.h"
 #include "third_party/omnibox_proto/input_type.pb.h"
 #include "third_party/omnibox_proto/rule_set.pb.h"
@@ -88,6 +89,47 @@ void MaybePopulateBrowserTabInputTypeRule(omnibox::SearchboxConfig* config) {
       model_rule.add_allowed_input_types(omnibox::INPUT_TYPE_BROWSER_TAB);
     }
   }
+}
+
+// Populates `InputTypeRule` for `omnibox::INPUT_TYPE_DRIVE` if it does
+// not exist and the signin promo feature is enabled on DICE platforms.
+// This option is available even on signout, which will prompt the signin promo
+// when clicked.
+void MaybePopulateDriveInputTypeRule(omnibox::SearchboxConfig* config) {
+#if BUILDFLAG(ENABLE_DICE_SUPPORT)
+  if (!config || !base::FeatureList::IsEnabled(
+                     omnibox::kComposeboxDriveContextMenuOptionSigninPromo)) {
+    return;
+  }
+  omnibox::RuleSet* rule_set = config->mutable_rule_set();
+
+  bool drive_rule_exists =
+      std::ranges::any_of(rule_set->input_type_rules(), [](const auto& rule) {
+        return rule.input_type() == omnibox::INPUT_TYPE_DRIVE;
+      });
+
+  if (drive_rule_exists) {
+    return;
+  }
+
+  // Populate `InputTypeRule` for `omnibox::INPUT_TYPE_DRIVE`.
+  omnibox::InputTypeRule* new_rule = rule_set->add_input_type_rules();
+  new_rule->set_input_type(omnibox::INPUT_TYPE_DRIVE);
+  new_rule->add_allowed_input_types(omnibox::INPUT_TYPE_DRIVE);
+
+  for (auto& tool_rule : *rule_set->mutable_tool_rules()) {
+    if (!std::ranges::contains(tool_rule.allowed_input_types(),
+                               omnibox::INPUT_TYPE_DRIVE)) {
+      tool_rule.add_allowed_input_types(omnibox::INPUT_TYPE_DRIVE);
+    }
+  }
+  for (auto& model_rule : *rule_set->mutable_model_rules()) {
+    if (!std::ranges::contains(model_rule.allowed_input_types(),
+                               omnibox::INPUT_TYPE_DRIVE)) {
+      model_rule.add_allowed_input_types(omnibox::INPUT_TYPE_DRIVE);
+    }
+  }
+#endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
 }
 
 std::optional<omnibox::ModelMode> GetActiveModelFromUrl(
@@ -199,9 +241,11 @@ InputStateModel::InputStateModel(
     const SearchboxConfig& config,
     const GURL& active_url,
     bool is_off_the_record,
+    bool is_signed_in,
     bool browser_identity_matches_aim_identity)
     : session_handle_(session_handle.AsWeakPtr()),
       is_off_the_record_(is_off_the_record),
+      is_signed_in_(is_signed_in),
       browser_identity_matches_aim_identity_(
           browser_identity_matches_aim_identity),
       current_url_(active_url) {
@@ -212,6 +256,7 @@ InputStateModel::InputStateModel(
 
   SearchboxConfig mutable_config = config;
   MaybePopulateBrowserTabInputTypeRule(&mutable_config);
+  MaybePopulateDriveInputTypeRule(&mutable_config);
 
   if (mutable_config.has_rule_set()) {
     rule_set_ = mutable_config.rule_set();
@@ -219,6 +264,9 @@ InputStateModel::InputStateModel(
     // Initialize allowed tools, models, inputs in `state_`.
     state_.allowed_tools.reserve(mutable_config.tool_configs().size());
     for (const auto& tool_config : mutable_config.tool_configs()) {
+      if (tool_config.hide_from_menu()) {
+        continue;
+      }
       if (tool_config.tool() == omnibox::ToolMode::TOOL_MODE_IMAGE_GEN_UPLOAD) {
         continue;
       }
@@ -301,10 +349,10 @@ InputStateModel::InputStateModel(
     contextual_search::ContextualSearchSessionHandle& new_session_handle)
     : session_handle_(new_session_handle.AsWeakPtr()),
       is_off_the_record_(new_input_state_model.is_off_the_record_),
+      is_signed_in_(new_input_state_model.is_signed_in_),
       browser_identity_matches_aim_identity_(
           new_input_state_model.browser_identity_matches_aim_identity_),
-      current_url_(new_input_state_model.current_url_),
-      drive_consent_state_(new_input_state_model.drive_consent_state_) {
+      current_url_(new_input_state_model.current_url_) {
   state_ = new_input_state_model.state_;
   rule_set_ = new_input_state_model.rule_set_;
   configured_input_types_ = new_input_state_model.configured_input_types_;
@@ -409,10 +457,6 @@ void InputStateModel::SetPrefService(PrefService* pref_service) {
   if (pref_service_) {
     pref_change_registrar_.Init(pref_service_);
     pref_change_registrar_.Add(
-        contextual_search::kDriveConsentState,
-        base::BindRepeating(&InputStateModel::OnPrefChanged,
-                            base::Unretained(this)));
-    pref_change_registrar_.Add(
         contextual_search::kSearchContentSharingSettings,
         base::BindRepeating(&InputStateModel::OnPrefChanged,
                             base::Unretained(this)));
@@ -426,9 +470,6 @@ void InputStateModel::OnPrefChanged() {
   if (!pref_service_) {
     return;
   }
-  int pref_value =
-      pref_service_->GetInteger(contextual_search::kDriveConsentState);
-  drive_consent_state_ = static_cast<DriveConsentState>(pref_value);
 
   updateDisabledState();
   notifySubscribers();
@@ -567,14 +608,32 @@ void InputStateModel::updateSelectedState(ToolMode tool, ModelMode model) {
 }
 
 bool InputStateModel::IsDriveSupported() const {
-  bool identity_matches = browser_identity_matches_aim_identity_;
   bool incognito = is_off_the_record_;
   bool feature_enabled =
       base::FeatureList::IsEnabled(omnibox::kComposeboxDriveContextMenuOption);
+  bool identity_matches = browser_identity_matches_aim_identity_;
 
-  bool is_restricted = drive_consent_state_ == DriveConsentState::kRestricted;
+  // TODO(545561312): When restricted, the option should still be visible but
+  // greyed out (disabled).
 
-  return identity_matches && !incognito && feature_enabled && !is_restricted;
+  if (incognito || !feature_enabled) {
+    return false;
+  }
+
+#if BUILDFLAG(ENABLE_DICE_SUPPORT)
+  // Drive option is available even on signout with the signin promo.
+  if (!is_signed_in_ &&
+      base::FeatureList::IsEnabled(
+          omnibox::kComposeboxDriveContextMenuOptionSigninPromo)) {
+    return true;
+  }
+#endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
+
+  if (!is_signed_in_ || !identity_matches) {
+    return false;
+  }
+
+  return true;
 }
 
 // Helper to check if search content sharing is enabled based on the
@@ -785,6 +844,14 @@ void InputStateModel::RebuildAllowedInputTypes() {
       contains(omnibox::INPUT_TYPE_LENS_IMAGE) &&
       contains(omnibox::INPUT_TYPE_LENS_FILE) && sharing_enabled) {
     state_.allowed_input_types.push_back(omnibox::INPUT_TYPE_BROWSER_TAB);
+  }
+
+  // Fallback for drive if not already present in SearchboxConfig and drive is
+  // supported. This option is available even on signout when the signin promo
+  // feature flag is enabled, which will prompt the signin promo when clicked.
+  if (!contains(omnibox::INPUT_TYPE_DRIVE) && IsDriveSupported() &&
+      sharing_enabled) {
+    state_.allowed_input_types.push_back(omnibox::INPUT_TYPE_DRIVE);
   }
 }
 

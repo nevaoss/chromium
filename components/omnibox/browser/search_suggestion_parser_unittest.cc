@@ -23,8 +23,6 @@
 #include "components/omnibox/common/omnibox_features.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
-#include "third_party/omnibox_proto/answer_data.pb.h"
-#include "third_party/omnibox_proto/answer_type.pb.h"
 #include "third_party/omnibox_proto/entity_info.pb.h"
 #include "third_party/omnibox_proto/navigational_intent.pb.h"
 #include "third_party/omnibox_proto/rich_answer_template.pb.h"
@@ -831,12 +829,7 @@ TEST(SearchSuggestionParserTest, ParseSuggestionTemplateInfo) {
   {
     // Setup RichAnswerTemplate with answer data.
     omnibox::RichSuggestTemplate suggest_template;
-    omnibox::RichAnswerTemplate* answer_template =
-        suggest_template.mutable_rich_answer_template();
-    omnibox::AnswerData* answer_data = answer_template->add_answers();
-    answer_data->mutable_headline()->set_text("weather los angeles");
-    answer_data->mutable_subhead()->set_text("68F Fri - Los Angeles, CA");
-    answer_data->mutable_image()->set_url("//www.gstatic.com/images/image.png");
+    suggest_template.mutable_rich_answer_template();
 
     std::string json_data =
         R"([
@@ -890,28 +883,9 @@ TEST(SearchSuggestionParserTest, ParseSuggestionTemplateInfo) {
     // Ensure the correct suggestion has RichAnswerTemplate info and is
     // correctly parsed.
     ASSERT_EQ(3U, results.suggest_results.size());
-    ASSERT_EQ(results.suggest_results[0].answer_type(),
-              omnibox::ANSWER_TYPE_WEATHER);
-    ASSERT_EQ(results.suggest_results[1].answer_type(),
-              omnibox::ANSWER_TYPE_UNSPECIFIED);
-    ASSERT_EQ(results.suggest_results[2].answer_type(),
-              omnibox::ANSWER_TYPE_UNSPECIFIED);
     ASSERT_TRUE(results.suggest_results[0].answer_template().has_value());
     ASSERT_FALSE(results.suggest_results[1].answer_template().has_value());
     ASSERT_FALSE(results.suggest_results[2].answer_template().has_value());
-
-    // Protos should initially not be equal because there is formatting done to
-    // a template's URL after decoding "google:templateinfo".
-    ASSERT_FALSE(
-        ProtosAreEqual(results.suggest_results[0].answer_template().value(),
-                       *answer_template));
-    // Change `answer_data` image URL to formatted version to reflect formatting
-    // done when parsing results. Now the protos should be equal.
-    answer_data->mutable_image()->set_url(
-        "https://www.gstatic.com/images/image.png");
-    ASSERT_TRUE(
-        ProtosAreEqual(results.suggest_results[0].answer_template().value(),
-                       *answer_template));
   }
   // Test behavior with no template present; template is set from parsing "ansa"
   // JSON field.
@@ -963,24 +937,10 @@ TEST(SearchSuggestionParserTest, ParseSuggestionTemplateInfo) {
     // Ensure the correct suggestion has RichAnswerTemplate info and is
     // correctly parsed.
     ASSERT_EQ(3U, results.suggest_results.size());
-    ASSERT_EQ(results.suggest_results[0].answer_type(),
-              omnibox::ANSWER_TYPE_WEATHER);
-    ASSERT_EQ(results.suggest_results[1].answer_type(),
-              omnibox::ANSWER_TYPE_UNSPECIFIED);
-    ASSERT_EQ(results.suggest_results[2].answer_type(),
-              omnibox::ANSWER_TYPE_UNSPECIFIED);
-    ASSERT_TRUE(results.suggest_results[0].answer_template().has_value());
+    ASSERT_FALSE(results.suggest_results[0].answer_template().has_value());
     ASSERT_FALSE(results.suggest_results[1].answer_template().has_value());
     ASSERT_FALSE(results.suggest_results[2].answer_template().has_value());
 
-    omnibox::AnswerData answer_data =
-        results.suggest_results[0].answer_template()->answers(0);
-    // The first image line in "ansa" is equivalent to AnswerData's headline and
-    // second image line is equivalent to subhead.
-    EXPECT_EQ(answer_data.headline().text(), "weather los angeles");
-    EXPECT_EQ(answer_data.subhead().text(), "68F Fri - Los Angeles, CA");
-    EXPECT_EQ(answer_data.image().url(),
-              "https://www.gstatic.com/images/image.png");
   }
   {
     // Fallback to JSON parsing when decoding RichAnswerTemplate fails.
@@ -1032,32 +992,16 @@ TEST(SearchSuggestionParserTest, ParseSuggestionTemplateInfo) {
     // Ensure the correct suggestion has RichAnswerTemplate info and is
     // correctly parsed.
     ASSERT_EQ(3U, results.suggest_results.size());
-    ASSERT_EQ(results.suggest_results[0].answer_type(),
-              omnibox::ANSWER_TYPE_WEATHER);
-    ASSERT_EQ(results.suggest_results[1].answer_type(),
-              omnibox::ANSWER_TYPE_UNSPECIFIED);
-    ASSERT_EQ(results.suggest_results[2].answer_type(),
-              omnibox::ANSWER_TYPE_UNSPECIFIED);
-    ASSERT_TRUE(results.suggest_results[0].answer_template().has_value());
+    ASSERT_FALSE(results.suggest_results[0].answer_template().has_value());
     ASSERT_FALSE(results.suggest_results[1].answer_template().has_value());
     ASSERT_FALSE(results.suggest_results[2].answer_template().has_value());
 
-    omnibox::AnswerData answer_data =
-        results.suggest_results[0].answer_template()->answers(0);
-    // The first image line in "ansa" is equivalent to AnswerData's headline and
-    // second image line is equivalent to subhead.
-    EXPECT_EQ(answer_data.headline().text(), "weather los angeles");
-    EXPECT_EQ(answer_data.subhead().text(), "68F Fri - Los Angeles, CA");
-    EXPECT_EQ(answer_data.image().url(),
-              "https://www.gstatic.com/images/image.png");
   }
   // Test behavior with template present but has no answers.
   {
     // Setup RichAnswerTemplate.
     omnibox::RichSuggestTemplate suggest_template;
-    omnibox::RichAnswerTemplate* answer_template =
-        suggest_template.mutable_rich_answer_template();
-    ASSERT_TRUE(answer_template->answers_size() == 0);
+    suggest_template.mutable_rich_answer_template();
 
     std::string json_data =
         R"([
@@ -1104,84 +1048,7 @@ TEST(SearchSuggestionParserTest, ParseSuggestionTemplateInfo) {
     // Results do not have a RichAnswerTemplate populated because of the lack of
     // answers.
     ASSERT_EQ(3U, results.suggest_results.size());
-    ASSERT_EQ(results.suggest_results[0].answer_type(),
-              omnibox::ANSWER_TYPE_UNSPECIFIED);
-    ASSERT_EQ(results.suggest_results[1].answer_type(),
-              omnibox::ANSWER_TYPE_UNSPECIFIED);
-    ASSERT_EQ(results.suggest_results[2].answer_type(),
-              omnibox::ANSWER_TYPE_UNSPECIFIED);
-    ASSERT_FALSE(results.suggest_results[0].answer_template().has_value());
-    ASSERT_FALSE(results.suggest_results[1].answer_template().has_value());
-    ASSERT_FALSE(results.suggest_results[2].answer_template().has_value());
-  }
-  // Test behavior when template is present but answer type is invalid.
-  {
-    // Setup RichAnswerTemplate with answer data.
-    omnibox::RichSuggestTemplate suggest_template;
-    omnibox::RichAnswerTemplate* answer_template =
-        suggest_template.mutable_rich_answer_template();
-    omnibox::AnswerData* answer_data = answer_template->add_answers();
-    answer_data->mutable_headline()->set_text("weather los angeles");
-    answer_data->mutable_subhead()->set_text("68F Fri - Los Angeles, CA");
-    answer_data->mutable_image()->set_url("//www.gstatic.com/images/image.png");
-
-    std::string json_data =
-        R"([
-      "weather los",
-      ["weather los angeles", "weather los angeles ca", "weather los alamitos"],
-      ["", "", ""],
-      [],
-      {
-        "google:clientdata": {
-          "bpc": false,
-          "tlw": false
-        },
-        "google:suggestdetail": [
-          {
-            "ansa": {
-              "l": [{"il": {"t": [{"t": "weather los angeles", "tt": 8}]}},
-                {"il": {"at": {"t": "Fri - Los Angeles, CA","tt": 19},
-                "i": {"d": "//www.gstatic.com/images/image.png", "t": 3},
-                "t": [{"t": "68F", "tt": 18}]}}]
-            },
-            "ansb": "20",
-            "google:templateinfo": ")" +
-        SerializeAndEncodeProto(suggest_template) +
-        R"("
-          },
-          {},
-          {}
-        ],
-        "google:suggestrelevance": [1252, 1251, 1250],
-        "google:suggestsubtypes": [
-          [512, 433],
-          [512],
-          [512]
-        ],
-        "google:suggesttype": ["QUERY", "QUERY", "QUERY"],
-        "google:verbatimrelevance": 851
-      }
-    ])";
-    std::optional<base::Value> root_val =
-        base::JSONReader::Read(json_data, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
-    ASSERT_TRUE(root_val);
-    ASSERT_TRUE(root_val.value().is_list());
-
-    SearchSuggestionParser::Results results;
-    ASSERT_TRUE(SearchSuggestionParser::ParseSuggestResults(
-        root_val->GetList(), input, scheme_classifier,
-        /*default_result_relevance=*/400,
-        /*is_keyword_result=*/false, &results));
-
-    // Results should not have RichAnswerTemplate populated.
-    ASSERT_EQ(3U, results.suggest_results.size());
-    ASSERT_EQ(results.suggest_results[0].answer_type(),
-              omnibox::ANSWER_TYPE_UNSPECIFIED);
-    ASSERT_EQ(results.suggest_results[1].answer_type(),
-              omnibox::ANSWER_TYPE_UNSPECIFIED);
-    ASSERT_EQ(results.suggest_results[2].answer_type(),
-              omnibox::ANSWER_TYPE_UNSPECIFIED);
-    ASSERT_FALSE(results.suggest_results[0].answer_template().has_value());
+    ASSERT_TRUE(results.suggest_results[0].answer_template().has_value());
     ASSERT_FALSE(results.suggest_results[1].answer_template().has_value());
     ASSERT_FALSE(results.suggest_results[2].answer_template().has_value());
   }

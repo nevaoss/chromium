@@ -41,7 +41,6 @@ class OmniboxFullPopupWebUIContent
 
   bool EscClosesUI() const override;
 
-  void CloseUI() override;
   void Clear() override;
 
  private:
@@ -66,6 +65,12 @@ class OmniboxFullPopupWebUIContent
                          const content::ContextMenuParams& params) override;
 
   void ShowContextMenuComplete(const content::ContextMenuParams& params);
+
+  OmniboxPopupHandler* GetPopupHandler() {
+    return const_cast<OmniboxPopupHandler*>(
+        std::as_const(*this).GetPopupHandler());
+  }
+  const OmniboxPopupHandler* GetPopupHandler() const;
 
   content::ContextMenuParams params_;
   std::unique_ptr<ui::SimpleMenuModel> menu_model_;

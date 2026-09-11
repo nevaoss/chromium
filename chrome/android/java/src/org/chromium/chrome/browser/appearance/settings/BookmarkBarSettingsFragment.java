@@ -20,15 +20,16 @@ import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.bookmarks.bar.BookmarkBarConstants;
 import org.chromium.chrome.browser.bookmarks.bar.BookmarkBarUtils;
+import org.chromium.chrome.browser.bookmarks.bar.BookmarkBarUtils.BookmarkBarSettingChangeOrigin;
 import org.chromium.chrome.browser.preferences.Pref;
 import org.chromium.chrome.browser.preferences.PrefServiceUtil;
 import org.chromium.chrome.browser.settings.ChromeBaseSettingsFragment;
 import org.chromium.chrome.browser.settings.ChromeManagedPreferenceDelegate;
 import org.chromium.chrome.browser.settings.search.ChromeBaseSearchIndexProvider;
+import org.chromium.components.bookmarks.BookmarkBarVisibilityState;
 import org.chromium.components.browser_ui.settings.CustomDividerFragment;
 import org.chromium.components.browser_ui.settings.ManagedPreferenceDelegate;
 import org.chromium.components.browser_ui.settings.SettingsUtils;
-import org.chromium.components.browser_ui.settings.search.SettingsIndexData;
 import org.chromium.components.prefs.PrefChangeRegistrar;
 import org.chromium.components.prefs.PrefChangeRegistrar.PrefObserver;
 
@@ -67,7 +68,7 @@ public class BookmarkBarSettingsFragment extends ChromeBaseSettingsFragment
         super.onDestroy();
 
         if (mPrefChangeRegistrar != null) {
-            mPrefChangeRegistrar.removeObserver(Pref.SHOW_BOOKMARK_BAR);
+            mPrefChangeRegistrar.removeObserver(Pref.BOOKMARK_BAR_VISIBILITY_STATE);
             mPrefChangeRegistrar.destroy();
             mPrefChangeRegistrar = null;
         }
@@ -112,6 +113,7 @@ public class BookmarkBarSettingsFragment extends ChromeBaseSettingsFragment
         } else {
             initBookmarkBarPrefForDevicePreference();
         }
+        updateBookmarkBarPref();
     }
 
     private ChromeManagedPreferenceDelegate createManagedPreferenceDelegate() {
@@ -157,14 +159,15 @@ public class BookmarkBarSettingsFragment extends ChromeBaseSettingsFragment
         mPrefChangeRegistrar = PrefServiceUtil.createFor(getProfile());
         mPrefObserver = this::updateBookmarkBarPref;
 
-        mPrefChangeRegistrar.addObserver(Pref.SHOW_BOOKMARK_BAR, mPrefObserver);
+        mPrefChangeRegistrar.addObserver(Pref.BOOKMARK_BAR_VISIBILITY_STATE, mPrefObserver);
         if (mBookmarkBarPref != null) {
             mBookmarkBarPref.setOnPreferenceChangeListener(
                     (pref, newValue) -> {
-                        BookmarkBarUtils.setUserPrefsShowBookmarksBar(
+                        @BookmarkBarVisibilityState int state = (int) newValue;
+                        BookmarkBarUtils.setUserPrefsBookmarkBarVisibilityState(
                                 getProfile(),
-                                (boolean) newValue,
-                                /* fromKeyboardShortcut= */ false);
+                                state,
+                                BookmarkBarSettingChangeOrigin.APPEARANCE_SETTINGS);
                         return true;
                     });
         }
@@ -175,7 +178,9 @@ public class BookmarkBarSettingsFragment extends ChromeBaseSettingsFragment
         mDevicePrefsListener =
                 (sharedPreferences, key) -> {
                     if (key != null
-                            && key.equals(BookmarkBarConstants.BOOKMARK_BAR_SHOW_BOOKMARK_BAR)) {
+                            && key.equals(
+                                    BookmarkBarConstants
+                                            .BOOKMARK_BAR_BOOKMARK_BAR_VISIBILITY_STATE)) {
                         updateBookmarkBarPref();
                     }
                 };
@@ -185,8 +190,9 @@ public class BookmarkBarSettingsFragment extends ChromeBaseSettingsFragment
         if (mBookmarkBarPref != null) {
             mBookmarkBarPref.setOnPreferenceChangeListener(
                     (pref, newValue) -> {
-                        BookmarkBarUtils.setDevicePrefShowBookmarksBar(
-                                (boolean) newValue, /* fromKeyboardShortcut= */ false);
+                        @BookmarkBarVisibilityState int state = (int) newValue;
+                        BookmarkBarUtils.setDevicePrefBookmarkBarVisibilityState(
+                                state, BookmarkBarSettingChangeOrigin.APPEARANCE_SETTINGS);
                         return true;
                     });
         }
@@ -197,13 +203,12 @@ public class BookmarkBarSettingsFragment extends ChromeBaseSettingsFragment
             return;
         }
 
-        if (mUseProfileUserPrefs) {
-            mBookmarkBarPref.setCheckedState(
-                    BookmarkBarUtils.isUserPrefsShowBookmarksBarEnabled(getProfile()));
-        } else {
-            mBookmarkBarPref.setCheckedState(
-                    BookmarkBarUtils.isDevicePrefShowBookmarksBarEnabled(getProfile()));
-        }
+        @BookmarkBarVisibilityState
+        int state =
+                mUseProfileUserPrefs
+                        ? BookmarkBarUtils.getUserPrefsBookmarkBarVisibilityState(getProfile())
+                        : BookmarkBarUtils.getDevicePrefBookmarkBarVisibilityState(getProfile());
+        mBookmarkBarPref.setCheckedState(state);
     }
 
     @Override
@@ -218,21 +223,8 @@ public class BookmarkBarSettingsFragment extends ChromeBaseSettingsFragment
 
     public static final ChromeBaseSearchIndexProvider SEARCH_INDEX_DATA_PROVIDER =
             new ChromeBaseSearchIndexProvider(
-                    BookmarkBarSettingsFragment.class.getName(), R.xml.bookmark_bar_preferences) {
-                @Override
-                public void updateDynamicPreferences(Context context, SettingsIndexData indexData) {
-                    if (!shouldShowBookmarkPref(context)) {
-                        indexData.removeEntryForKey(
-                                BookmarkBarSettingsFragment.class.getName(), PREF_BOOKMARK_BAR);
-                        return;
-                    }
-
-                    indexData.updateEntrySummaryForKey(
-                            BookmarkBarSettingsFragment.class.getName(),
-                            PREF_BOOKMARK_BAR,
-                            R.string.bookmark_bar_setting_subtitle);
-                }
-            };
+                    BookmarkBarSettingsFragment.class.getName(),
+                    ChromeBaseSearchIndexProvider.INDEX_OPT_OUT);
 
     @Nullable PrefObserver getPrefObserverForTesting() {
         return mPrefObserver;

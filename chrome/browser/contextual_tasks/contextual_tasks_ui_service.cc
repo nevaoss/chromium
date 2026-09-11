@@ -4,6 +4,7 @@
 
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_service.h"
 
+#include <algorithm>
 #include <optional>
 
 #include "base/command_line.h"
@@ -245,13 +246,21 @@ EntrypointSource ConvertContextualSearchSourceToEntrypointSource(
 }
 
 #if !BUILDFLAG(IS_ANDROID)
-bool ShouldReloadZeroState(const GURL& url, ContextualTasksUiService* service) {
+bool ShouldReloadZeroStateForOmniboxAction(
+    const GURL& url,
+    ContextualTasksUiService* service,
+    omnibox::ChromeAimEntryPoint entry_point) {
   return base::FeatureList::IsEnabled(
              omnibox::kWebUIOmniboxAskGAboutThisPage) &&
+         entry_point == omnibox::ChromeAimEntryPoint::
+                            DESKTOP_CHROME_COBROWSE_OMNIBOX_ACTION &&
          ContextualTasksUI::IsZeroState(url, service);
 }
 #else
-bool ShouldReloadZeroState(const GURL& url, ContextualTasksUiService* service) {
+bool ShouldReloadZeroStateForOmniboxAction(
+    const GURL& url,
+    ContextualTasksUiService* service,
+    omnibox::ChromeAimEntryPoint entry_point) {
   return false;
 }
 #endif
@@ -1138,6 +1147,28 @@ void ContextualTasksUiService::InitializeTaskInSidePanel(
   AssociateWebContentsToTask(web_contents, task_id);
 }
 
+void ContextualTasksUiService::ReloadZeroStateInOpenSidePanel(
+    content::WebContents* panel_contents,
+    tabs::TabInterface* tab_interface,
+    const GURL& url,
+    std::unique_ptr<contextual_search::ContextualSearchSessionHandle>
+        session_handle,
+    omnibox::ChromeAimEntryPoint entry_point) {
+  // Cleanly start over: Create a new task, record entry point, and reload the
+  // parent WebUI.
+  ContextualTask task = contextual_tasks_service_->CreateTaskFromUrl(url);
+  SetInitialEntryPointForTask(task.GetTaskId(), entry_point);
+  task_id_to_creation_url_[task.GetTaskId()] = url;
+  AssociateWebContentsToTask(tab_interface->GetContents(), task.GetTaskId());
+
+  content::NavigationController::LoadURLParams load_params(
+      GetContextualTaskUrlForTask(task.GetTaskId()));
+  panel_contents->GetController().LoadURLWithParams(load_params);
+
+  InitializeTaskInSidePanel(panel_contents, task.GetTaskId(),
+                            std::move(session_handle));
+}
+
 void ContextualTasksUiService::OnNonThreadNavigationInTab(
     content::OpenURLParams url_params,
     base::WeakPtr<tabs::TabInterface> tab) {
@@ -1309,18 +1340,20 @@ bool ContextualTasksUiService::HandleNavigationImplPostRearchitecture(
       << "ContextualTasks HandleNavigationImplPostRearchitecture: "
       << url_params.url.spec();
   // Check if the navigation originates from the side panel WebContents and
-  // requires parameters to be added.
-  if (ShouldAddRequiredSidePanelParams(url_params, source_contents)) {
+  // requires URL changes (e.g. forced host override, missing parameters) to be
+  // applied.
+  if (ShouldAddRequiredSidePanelUrlChanges(url_params, source_contents)) {
     OMNIBOX_LOG("nav_trace")
-        << "ContextualTasks HandleNavigationImplPostRearchitecture: adding "
-           "params";
-    return AddRequiredSidePanelParams(std::move(url_params), source_contents);
+        << "ContextualTasks HandleNavigationImplPostRearchitecture: adding url "
+           "changes";
+    return AddRequiredSidePanelUrlChanges(std::move(url_params),
+                                          source_contents);
   }
 
   return false;
 }
 
-bool ContextualTasksUiService::ShouldAddRequiredSidePanelParams(
+bool ContextualTasksUiService::ShouldAddRequiredSidePanelUrlChanges(
     const content::OpenURLParams& url_params,
     content::WebContents* source_contents) {
   if (!source_contents) {
@@ -1371,6 +1404,15 @@ bool ContextualTasksUiService::ShouldAddRequiredSidePanelParams(
     return false;
   }
 
+  // Check if host override is set and needs to be applied.
+  std::optional<HostOverride> forced_host = GetForcedEmbeddedPageHost();
+  if (forced_host && !forced_host->Matches(url) && !IsSignInDomain(url)) {
+    OMNIBOX_LOG("nav_trace")
+        << "ShouldAddRequiredSidePanelUrlChanges: host mismatch: "
+        << std::string(url.host()) << " vs forced " << forced_host->ToString();
+    return true;
+  }
+
   // Retrieve expected common search parameters (gsc=2, hl, cs, gl=us, etc.).
   auto expected_params =
       GetCommonSearchParamsMapForContextualTasks(source_contents);
@@ -1382,12 +1424,13 @@ bool ContextualTasksUiService::ShouldAddRequiredSidePanelParams(
     bool has_key = net::GetValueForKeyInQuery(url, key, &current_val);
     if (!has_key) {
       OMNIBOX_LOG("nav_trace")
-          << "ShouldAddRequiredSidePanelParams: missing param " << key;
+          << "ShouldAddRequiredSidePanelUrlChanges: missing param " << key;
       return true;  // Missing parameter -> needs handling.
     }
     if (key == lens::kChromeSidePanelParameterKey && current_val != value) {
       OMNIBOX_LOG("nav_trace")
-          << "ShouldAddRequiredSidePanelParams: " << key << " value mismatch";
+          << "ShouldAddRequiredSidePanelUrlChanges: " << key
+          << " value mismatch";
       return true;
     }
   }
@@ -1395,17 +1438,18 @@ bool ContextualTasksUiService::ShouldAddRequiredSidePanelParams(
   return false;
 }
 
-bool ContextualTasksUiService::AddRequiredSidePanelParams(
+bool ContextualTasksUiService::AddRequiredSidePanelUrlChanges(
     content::OpenURLParams url_params,
     content::WebContents* source_contents) {
   if (!source_contents) {
     return false;
   }
 
-  GURL new_url = AddCommonSidePanelParams(url_params.url, source_contents);
+  GURL new_url =
+      AddRequiredSidePanelUrlChanges(url_params.url, source_contents);
 
   OMNIBOX_LOG("nav_trace")
-      << "AddRequiredSidePanelParams: loading parameterized URL: "
+      << "AddRequiredSidePanelUrlChanges: loading parameterized URL: "
       << new_url.spec();
 
   // Load the parameterized URL into the side panel WebContents asynchronously
@@ -1429,10 +1473,10 @@ bool ContextualTasksUiService::AddRequiredSidePanelParams(
   return true;
 }
 
-GURL ContextualTasksUiService::AddCommonSidePanelParams(
+GURL ContextualTasksUiService::AddRequiredSidePanelUrlChanges(
     const GURL& url,
     content::WebContents* source_contents) {
-  if (!source_contents) {
+  if (!source_contents || !url.SchemeIsHTTPOrHTTPS()) {
     return url;
   }
 
@@ -1453,6 +1497,12 @@ GURL ContextualTasksUiService::AddCommonSidePanelParams(
       new_url = net::AppendOrReplaceQueryParameter(new_url, key, value);
     }
   }
+
+  std::optional<HostOverride> forced_host = GetForcedEmbeddedPageHost();
+  if (forced_host && !IsSignInDomain(new_url)) {
+    new_url = forced_host->ApplyToUrl(new_url);
+  }
+
   return new_url;
 }
 
@@ -1468,9 +1518,7 @@ ContextualTasksUiService::GetCommonSearchParamsMapForContextualTasks(
 #if !BUILDFLAG(IS_ANDROID)
   Profile* profile =
       Profile::FromBrowserContext(source_contents->GetBrowserContext());
-  ThemeService* theme_service =
-      profile ? ThemeServiceFactory::GetForProfile(profile) : nullptr;
-  is_dark_mode = theme_service ? theme_service->BrowserUsesDarkColors() : false;
+  is_dark_mode = contextual_tasks::ShouldUseDarkMode(profile);
 #endif
 
   bool is_side_panel =
@@ -1792,6 +1840,7 @@ bool ContextualTasksUiService::HandleNavigationImpl(
 
   if (is_nav_to_ai) {
     should_bypass_interception =
+        aim_eligibility_service_ &&
         aim_eligibility_service_->HasNoCobrowseParams(url_params.url);
 
     // If the page is to AI and the navigation is not same site, apply a param
@@ -2224,7 +2273,8 @@ bool ContextualTasksUiService::HandleNavigationImpl(
   // Navigations to the AI URL in the topmost frame should always be
   // intercepted.
   if (is_nav_to_ai) {
-    if (!aim_eligibility_service_->IsCobrowseEligible() &&
+    if ((!aim_eligibility_service_ ||
+         !aim_eligibility_service_->IsCobrowseEligible()) &&
         !IsActiveTabInContext(source_contents)) {
       OMNIBOX_LOG("nav_trace")
           << "ContextualTasks navigation trace: HandleNavigationImpl "
@@ -2374,24 +2424,8 @@ bool ContextualTasksUiService::IsUrlForPrimaryAccount(const GURL& url) {
 }
 
 bool ContextualTasksUiService::IsSignedInToBrowserWithValidCredentials() {
-  if (!identity_manager_) {
-    return false;
-  }
-
-  // If the primary account doesn't have a refresh token, the <webview> will
-  // not be properly authenticated, so treat this as signed out.
-  if (!identity_manager_->HasPrimaryAccountWithRefreshToken(
-          signin::ConsentLevel::kSignin)) {
-    return false;
-  }
-
-  // Verify that the primary account refresh token does not have any errors. If
-  // it does, the <webview> will not be properly authenticated, so treat as
-  // signed out.
-  const CoreAccountId primary_account =
-      identity_manager_->GetPrimaryAccountId(signin::ConsentLevel::kSignin);
-  return !identity_manager_->HasAccountWithRefreshTokenInPersistentErrorState(
-      primary_account);
+  return contextual_tasks::IsSignedInToBrowserWithValidCredentials(
+      identity_manager_);
 }
 
 bool ContextualTasksUiService::CookieJarContainsPrimaryAccount() {
@@ -2515,9 +2549,9 @@ std::string ContextualTasksUiService::GetHostForTask(
     }
   }
 
-  std::string forced_host = GetForcedEmbeddedPageHost();
-  if (!forced_host.empty()) {
-    return forced_host;
+  std::optional<HostOverride> forced_host = GetForcedEmbeddedPageHost();
+  if (forced_host.has_value()) {
+    return forced_host->ToString();
   }
 
   return "";
@@ -2562,13 +2596,32 @@ void ContextualTasksUiService::CloseTrackedWindow(
 }
 
 bool ContextualTasksUiService::IsTrustedHost(const std::string& host) {
-  if (base::EndsWith(host, ".corp.google.com") ||
-      base::EndsWith(host, ".c.googlers.com") ||
-      base::EndsWith(host, ".proxy.googlers.com")) {
+  if (host.empty()) {
+    return false;
+  }
+
+  // Handle localhost and loopback addresses. Note: `net::HostStringIsLocalhost`
+  // does not recognize bracketed IPv6 literals like "[::1]", so we explicitly
+  // check for "[::1]" in addition to standard loopback host strings.
+  if (host == "localhost" || host == "127.0.0.1" || host == "[::1]" ||
+      host == "::1" || net::HostStringIsLocalhost(host)) {
     return true;
   }
 
-  if (host == "localhost" || host == "127.0.0.1" || host == "[::1]") {
+  url::CanonHostInfo host_info;
+  std::string canonical_host = net::CanonicalizeHost(host, &host_info);
+  if (canonical_host.empty() ||
+      host_info.family == url::CanonHostInfo::BROKEN) {
+    return false;
+  }
+
+  if (!net::IsCanonicalizedHostCompliant(canonical_host)) {
+    return false;
+  }
+
+  if (net::IsSubdomainOf(canonical_host, "corp.google.com") ||
+      net::IsSubdomainOf(canonical_host, "c.googlers.com") ||
+      net::IsSubdomainOf(canonical_host, "proxy.googlers.com")) {
     return true;
   }
 
@@ -2577,12 +2630,31 @@ bool ContextualTasksUiService::IsTrustedHost(const std::string& host) {
 
 std::optional<std::string> ContextualTasksUiService::GetHostFromUrl(
     const GURL& url) {
-  std::string host;
-  if (net::GetValueForKeyInQuery(url, kChromeHostParam, &host) &&
-      IsTrustedHost(host)) {
-    return host;
+  std::string host_str;
+  if (!net::GetValueForKeyInQuery(url, kChromeHostParam, &host_str) ||
+      !IsTrustedHost(host_str)) {
+    return std::nullopt;
   }
-  return std::nullopt;
+
+  std::optional<HostOverride> host_override =
+      HostOverride::FromString(host_str);
+  if (!host_override) {
+    return std::nullopt;
+  }
+
+  if (host_override->host == "[::1]" || host_override->host == "::1") {
+    host_override->host = "::1";
+    return host_override->ToString();
+  }
+
+  url::CanonHostInfo host_info;
+  std::string canonical_host =
+      net::CanonicalizeHost(host_override->host, &host_info);
+  if (!canonical_host.empty() &&
+      host_info.family != url::CanonHostInfo::BROKEN) {
+    host_override->host = canonical_host;
+  }
+  return host_override->ToString();
 }
 
 void ContextualTasksUiService::SetInitialEntryPointForTask(
@@ -2911,7 +2983,7 @@ void ContextualTasksUiService::StartTaskUiInSidePanelImpl(
   }
 
   if (IsContextualTasksSidePanelRearchitectureEnabled()) {
-    if (ShouldReloadZeroState(url, this)) {
+    if (ShouldReloadZeroStateForOmniboxAction(url, this, options.entry_point)) {
       // TODO(crbug.com/537842795): Understand if this flow is possible in the
       // rearchitecture and handle accordingly. For now, just load the URL.
     }
@@ -2923,19 +2995,10 @@ void ContextualTasksUiService::StartTaskUiInSidePanelImpl(
   // navigation directly to the embedded page.
   if (ContextualTasksUIInterface* web_ui_interface =
           GetWebUiInterface(panel_contents)) {
-    if (ShouldReloadZeroState(url, this)) {
-      // Cleanly start over: Create a new task and reload the parent WebUI.
-      ContextualTask task = contextual_tasks_service_->CreateTaskFromUrl(url);
-      task_id_to_creation_url_[task.GetTaskId()] = url;
-      AssociateWebContentsToTask(tab_interface->GetContents(),
-                                 task.GetTaskId());
-
-      content::NavigationController::LoadURLParams load_params(
-          GetContextualTaskUrlForTask(task.GetTaskId()));
-      panel_contents->GetController().LoadURLWithParams(load_params);
-
-      InitializeTaskInSidePanel(panel_contents, task.GetTaskId(),
-                                std::move(session_handle));
+    if (ShouldReloadZeroStateForOmniboxAction(url, this, options.entry_point)) {
+      ReloadZeroStateInOpenSidePanel(panel_contents, tab_interface, url,
+                                     std::move(session_handle),
+                                     options.entry_point);
       return;
     }
 
@@ -3034,7 +3097,35 @@ void ContextualTasksUiService::StartTaskUiInSidePanelWithErrorPage(
 }
 
 bool ContextualTasksUiService::IsAiUrl(const GURL& url) {
-  return aim_eligibility_service_->IsAimUrl(url, GetForcedEmbeddedPageHost());
+  if (!url.is_valid() || !url.SchemeIsHTTPOrHTTPS()) {
+    return false;
+  }
+
+  // TODO(crbug.com/543997783): Have the PEC API return this as an AIM URL
+  // instead of hardcoding it here.
+  if (url.host() == "g.ai" || url.host() == "www.g.ai") {
+    return true;
+  }
+  return aim_eligibility_service_ &&
+         aim_eligibility_service_->IsAimUrl(url, GetForcedEmbeddedPageHost());
+}
+
+bool ContextualTasksUiService::IsSidePanelOpenAndRequestInSidePanel(
+    content::WebContents* web_contents) {
+  if (!web_contents) {
+    return false;
+  }
+  BrowserWindowInterface* browser =
+      webui::GetBrowserWindowInterface(web_contents);
+  if (!browser) {
+    return false;
+  }
+  auto* controller = ContextualTasksPanelController::From(browser);
+  if (!controller || !controller->IsPanelOpenForContextualTask()) {
+    return false;
+  }
+  return std::ranges::contains(controller->GetPanelWebContentsList(),
+                               web_contents);
 }
 
 bool ContextualTasksUiService::IsPendingErrorPage(const base::Uuid& task_id) {
@@ -3160,9 +3251,11 @@ GURL ContextualTasksUiService::GetAiUrlFromWebUIUrl(const GURL& base_url,
 
   std::optional<std::string> host_value = GetHostFromUrl(url);
   if (host_value.has_value()) {
-    GURL::Replacements replacements;
-    replacements.SetHostStr(*host_value);
-    url = url.ReplaceComponents(replacements);
+    std::optional<HostOverride> host_override =
+        HostOverride::FromString(*host_value);
+    if (host_override) {
+      url = host_override->ApplyToUrl(url);
+    }
   }
 
   // Remove kChromeHostParam from the new url if it exists.
@@ -3330,7 +3423,8 @@ void ContextualTasksUiService::OnImageClickedFromSourcesMenu(
 }
 
 bool ContextualTasksUiService::IsAllowedHost(const GURL& url) {
-  return aim_eligibility_service_->IsAimHost(url, GetForcedEmbeddedPageHost());
+  return aim_eligibility_service_ &&
+         aim_eligibility_service_->IsAimHost(url, GetForcedEmbeddedPageHost());
 }
 
 void ContextualTasksUiService::OnInitialThreadUrlAvailable(

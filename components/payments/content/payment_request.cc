@@ -46,6 +46,7 @@
 #include "content/public/browser/web_contents.h"
 #include "content/public/common/content_features.h"
 #include "mojo/public/cpp/bindings/message.h"
+#include "net/base/schemeful_site.h"
 #include "services/metrics/public/cpp/ukm_source_id.h"
 #include "services/network/public/cpp/is_potentially_trustworthy.h"
 #include "third_party/blink/public/common/features.h"
@@ -80,7 +81,8 @@ SecurePaymentConfirmationRequestValidationError
 ValidateSecurePaymentConfirmationRequest(
     const std::vector<mojom::PaymentMethodDataPtr>& method_data,
     const mojom::PaymentOptionsPtr& options,
-    const url::Origin& initiator_origin) {
+    const url::Origin& initiator_origin,
+    const std::string& application_locale) {
   CHECK_GT(method_data.size(), 0u);
 
   if (!base::FeatureList::IsEnabled(::features::kSecurePaymentConfirmation)) {
@@ -118,8 +120,12 @@ ValidateSecurePaymentConfirmationRequest(
         kSPCMethodMustNotBeNull;
   }
 
+  RecordSpcLocaleOutcome(method_data_entry->secure_payment_confirmation,
+                         application_locale);
+
   return IsValidSecurePaymentConfirmationRequest(
-      method_data_entry->secure_payment_confirmation, initiator_origin);
+      method_data_entry->secure_payment_confirmation, initiator_origin,
+      application_locale);
 }
 
 // Helper to map JourneyLogger::AbortReason to aborted PaymentRequestOutcomes.
@@ -221,6 +227,13 @@ void PaymentRequest::Init(
 
   journey_logger_.RecordCheckoutStep(
       JourneyLogger::CheckoutFunnelStep::kInitiated);
+  content::RenderFrameHost* rfh = delegate_->GetRenderFrameHost();
+  if (rfh && rfh->GetParent() && rfh->GetMainFrame() &&
+      !net::SchemefulSite::IsSameSite(
+          rfh->GetLastCommittedOrigin(),
+          rfh->GetMainFrame()->GetLastCommittedOrigin())) {
+    journey_logger_.SetInitiatedInCrossSiteIframe();
+  }
   is_initialized_ = true;
   init_time_ = base::TimeTicks::Now();
   client_.Bind(std::move(client));
@@ -283,8 +296,9 @@ void PaymentRequest::Init(
                datum->supported_method == methods::kSecurePaymentConfirmation;
       })) {
     SecurePaymentConfirmationRequestValidationError validation_result =
-        ValidateSecurePaymentConfirmationRequest(method_data, options,
-                                                 frame_security_origin_);
+        ValidateSecurePaymentConfirmationRequest(
+            method_data, options, frame_security_origin_,
+            delegate_->GetApplicationLocale());
     if (validation_result !=
         SecurePaymentConfirmationRequestValidationError::kOk) {
       std::string error_message =
@@ -292,14 +306,17 @@ void PaymentRequest::Init(
               validation_result);
       log_.Error(error_message);
 
-      // The renderer cannot check whether WebAuthn extensions are allowed or
-      // not, as it doesn't know whether the page origin can claim the
-      // relying party ID. For that case we return an error.
+      /// We return an error because the renderer cannot check for:
+      // - WebAuthn extensions: the renderer doesn't know whether the page
+      // origin can claim the relying party ID.
+      // - Locale matches: the renderer doesn't know the browser's UI locale.
       //
       // All other failures indicate an invalid request. In that case we
       // report it as a bad message and mojo will kill the renderer.
       if (validation_result == SecurePaymentConfirmationRequestValidationError::
-                                   kWebAuthnExtensionsNotSupported) {
+                                   kWebAuthnExtensionsNotSupported ||
+          validation_result == SecurePaymentConfirmationRequestValidationError::
+                                   kLocaleDoesNotMatch) {
         client_->OnError(mojom::PaymentErrorReason::NOT_SUPPORTED,
                          error_message);
       } else {
@@ -737,6 +754,7 @@ void PaymentRequest::CanMakePayment() {
   }
 
   // It's valid to call canMakePayment() without calling show() first.
+  journey_logger_.SetCanMakePaymentCalled();
 
   if (observer_for_testing_)
     observer_for_testing_->OnCanMakePaymentCalled();
@@ -773,6 +791,7 @@ void PaymentRequest::HasEnrolledInstrument() {
   }
 
   // It's valid to call hasEnrolledInstrument() without calling show() first.
+  journey_logger_.SetHasEnrolledInstrumentCalled();
 
   if (observer_for_testing_)
     observer_for_testing_->OnHasEnrolledInstrumentCalled();

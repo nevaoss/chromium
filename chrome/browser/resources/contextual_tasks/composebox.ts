@@ -101,6 +101,10 @@ export class ContextualTasksComposeboxElement extends I18nMixinLit
         type: Boolean,
         reflect: true,
       },
+      isLensSearchTooltipShowing: {
+        type: Boolean,
+        reflect: true,
+      },
       isLensOverlayShowing: {
         type: Boolean,
         reflect: true,
@@ -164,6 +168,7 @@ export class ContextualTasksComposeboxElement extends I18nMixinLit
   accessor inToolMode_: boolean = false;
   accessor isZeroState: boolean = false;
   accessor isSidePanel: boolean = false;
+  accessor isLensSearchTooltipShowing: boolean = false;
   accessor isLensOverlayShowing: boolean = false;
   accessor isOverlayOpenForAimVisualSearch: boolean = false;
   accessor inputEnabled: boolean = true;
@@ -263,6 +268,7 @@ export class ContextualTasksComposeboxElement extends I18nMixinLit
               this.shouldSubmitAfterUpload_ = false;
               composebox.submitQuery();
             }
+            this.fire('update-tooltip-visibility');
           });
       this.eventTracker_.add(composebox, 'composebox-focus-in', () => {
         this.isComposeboxFocused_ = true;
@@ -521,9 +527,15 @@ export class ContextualTasksComposeboxElement extends I18nMixinLit
     const hadContent = this.$.composebox.input.trim().length > 0 ||
         this.$.composebox.hasFiles();
 
-    // Clear text from composebox and focus.
-    this.$.composebox.clearAllInputs(
-        querySubmitted, /* shouldBlockAutoSuggestedTabs= */ false);
+    // When submitting a query, clear all inputs. When refocusing or starting a
+    // new thread, only clear typed text and manual attachments to keep the
+    // auto-suggested tab.
+    if (querySubmitted) {
+      this.$.composebox.clearAllInputs(
+          querySubmitted, /* shouldBlockAutoSuggestedTabs= */ false);
+    } else {
+      this.$.composebox.clearInputsForNewThread();
+    }
     this.$.composebox.focusInput();
 
     // Unconditionally clearing matches wipes out the zero state suggestions
@@ -618,7 +630,7 @@ export class ContextualTasksComposeboxElement extends I18nMixinLit
           (this.inputState_?.activeTool ?? toolMode) !== ToolMode.kUnspecified;
 
       this.searchboxHandler_.setActiveToolMode(
-          toolMode as ToolMode, /*isSetByServer=*/ true);
+          toolMode as ToolMode, /*isSetByAim=*/ true);
     }
 
     if (modelMode !== undefined && modelMode !== null) {

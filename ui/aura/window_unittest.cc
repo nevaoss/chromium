@@ -44,9 +44,10 @@
 #include "ui/base/hit_test.h"
 #include "ui/compositor/compositor.h"
 #include "ui/compositor/compositor_observer.h"
-#include "ui/compositor/layer.h"
 #include "ui/compositor/layer_animation_observer.h"
 #include "ui/compositor/layer_animator.h"
+#include "ui/compositor/layer_not_drawn.h"
+#include "ui/compositor/layer_textured.h"
 #include "ui/compositor/scoped_layer_animation_settings.h"
 #include "ui/compositor/test/layer_animator_test_controller.h"
 #include "ui/compositor/test/test_layers.h"
@@ -3141,7 +3142,7 @@ TEST_F(WindowTest, RecreateLayer) {
 
   std::unique_ptr<ui::Layer> old_layer(w.RecreateLayer());
   layer = w.layer();
-  EXPECT_EQ(ui::LAYER_SOLID_COLOR, layer->type());
+  EXPECT_TRUE(layer->AsSolidColor());
   EXPECT_FALSE(layer->visible());
   EXPECT_EQ(1u, layer->children().size());
   EXPECT_TRUE(layer->GetMasksToBounds());

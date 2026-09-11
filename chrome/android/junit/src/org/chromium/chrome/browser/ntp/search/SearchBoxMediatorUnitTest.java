@@ -42,7 +42,6 @@ import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
-import org.robolectric.annotation.Config;
 
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.base.test.util.Features.DisableFeatures;
@@ -52,10 +51,12 @@ import org.chromium.chrome.R;
 import org.chromium.chrome.browser.composeplate.ComposeplateUtils;
 import org.chromium.chrome.browser.composeplate.ComposeplateUtilsJni;
 import org.chromium.chrome.browser.feed.FeedSurfaceScrollDelegate;
+import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.lens.LensController;
 import org.chromium.chrome.browser.lens.LensIntentParams;
 import org.chromium.chrome.browser.lifecycle.ActivityLifecycleDispatcher;
 import org.chromium.chrome.browser.ntp.NewTabPageManager;
+import org.chromium.chrome.browser.ntp.NewTabPageUtils;
 import org.chromium.chrome.browser.omnibox.fusebox.ComposeboxQueryControllerBridge;
 import org.chromium.chrome.browser.omnibox.fusebox.ComposeboxQueryControllerBridgeJni;
 import org.chromium.chrome.browser.omnibox.status.StatusProperties.StatusIconResource;
@@ -75,7 +76,6 @@ import java.util.function.Supplier;
 
 /** Unit tests for {@link SearchBoxMediator}. */
 @RunWith(BaseRobolectricTestRunner.class)
-@Config(manifest = Config.NONE)
 public class SearchBoxMediatorUnitTest {
     @Rule public MockitoRule mMockitoRule = MockitoJUnit.rule();
 
@@ -315,6 +315,7 @@ public class SearchBoxMediatorUnitTest {
     }
 
     @Test
+    @DisableFeatures(ChromeFeatureList.NTP_AURORA)
     public void testApplyWhiteBackgroundWithShadow() {
         Drawable defaultBackground =
                 mContext.getDrawable(R.drawable.home_surface_search_box_background);
@@ -664,21 +665,65 @@ public class SearchBoxMediatorUnitTest {
     }
 
     private void verifyApplyBackground(View view) {
-        // Verifies that the background is set to color white.
         View searchBoxShadowContainer = view.findViewById(R.id.search_box_shadow_container);
         Drawable whiteBackground = searchBoxShadowContainer.getBackground();
-        assertTrue(whiteBackground instanceof GradientDrawable);
-        assertEquals(
-                Color.WHITE, ((GradientDrawable) whiteBackground).getColor().getDefaultColor());
+        if (NewTabPageUtils.isNtpAuroraEnabled()) {
+            assertEquals(
+                    R.drawable.fake_search_box_white_with_primary_color_alpha_2,
+                    shadowOf(whiteBackground).getCreatedFromResId());
+        } else {
+            // Verifies that the background is set to color white.
+            assertTrue(whiteBackground instanceof GradientDrawable);
+            assertEquals(
+                    Color.WHITE, ((GradientDrawable) whiteBackground).getColor().getDefaultColor());
+        }
     }
 
     private void verifyResetBackground(View view, Drawable defaultBackground) {
-        // Verifies that the background of the view is to reset.
         View searchBoxShadowContainer = view.findViewById(R.id.search_box_shadow_container);
+        if (NewTabPageUtils.isNtpAuroraEnabled()) {
+            assertEquals(
+                    R.drawable.fake_search_box_background,
+                    shadowOf(searchBoxShadowContainer.getBackground()).getCreatedFromResId());
+        } else {
+            // Verifies that the background of the view is to reset.
+            assertEquals(
+                    ((GradientDrawable) defaultBackground).getColor().getDefaultColor(),
+                    ((GradientDrawable) searchBoxShadowContainer.getBackground())
+                            .getColor()
+                            .getDefaultColor());
+        }
+    }
+
+    @Test
+    @EnableFeatures(ChromeFeatureList.NTP_AURORA)
+    public void testGetFakeSearchBoxTextStyle_auroraEnabled_applyTrue() {
         assertEquals(
-                ((GradientDrawable) defaultBackground).getColor().getDefaultColor(),
-                ((GradientDrawable) searchBoxShadowContainer.getBackground())
-                        .getColor()
-                        .getDefaultColor());
+                R.style.TextAppearance_FakeSearchBoxTextNewStyle,
+                SearchBoxMediator.getFakeSearchBoxTextStyle(/* apply= */ true));
+    }
+
+    @Test
+    @EnableFeatures(ChromeFeatureList.NTP_AURORA)
+    public void testGetFakeSearchBoxTextStyle_auroraEnabled_applyFalse() {
+        assertEquals(
+                R.style.TextAppearance_FakeSearchBoxTextNewStyle,
+                SearchBoxMediator.getFakeSearchBoxTextStyle(/* apply= */ false));
+    }
+
+    @Test
+    @DisableFeatures(ChromeFeatureList.NTP_AURORA)
+    public void testGetFakeSearchBoxTextStyle_auroraDisabled_applyTrue() {
+        assertEquals(
+                R.style.TextAppearance_FakeSearchBoxTextMediumDark,
+                SearchBoxMediator.getFakeSearchBoxTextStyle(/* apply= */ true));
+    }
+
+    @Test
+    @DisableFeatures(ChromeFeatureList.NTP_AURORA)
+    public void testGetFakeSearchBoxTextStyle_auroraDisabled_applyFalse() {
+        assertEquals(
+                R.style.TextAppearance_FakeSearchBoxTextMedium,
+                SearchBoxMediator.getFakeSearchBoxTextStyle(/* apply= */ false));
     }
 }

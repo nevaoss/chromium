@@ -8,13 +8,15 @@
 #include "chrome/browser/enterprise/browser_management/management_service_factory.h"
 #include "chrome/browser/enterprise/util/managed_browser_utils.h"
 #include "chrome/browser/profiles/batch_upload/batch_upload_service_test_helper.h"
+#include "chrome/browser/profiles/profile_attributes_storage.h"
+#include "chrome/browser/signin/account_preview_data_service_factory.h"
 #include "chrome/browser/signin/signin_util.h"
 #include "chrome/browser/sync/device_info_sync_service_factory.h"
 #include "chrome/browser/sync/sync_service_factory.h"
 #include "chrome/browser/themes/theme_service.h"
 #include "chrome/browser/themes/theme_service_factory.h"
-#include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/test/test_browser_dialog.h"
 #include "chrome/browser/ui/test/test_browser_ui.h"
 #include "chrome/browser/ui/ui_features.h"
@@ -28,12 +30,14 @@
 #include "chrome/test/base/testing_browser_process.h"
 #include "chrome/test/base/ui_test_utils.h"
 #include "components/policy/core/common/management/scoped_management_service_override_for_testing.h"
+#include "components/signin/core/browser/test_account_preview_data_service.h"
 #include "components/signin/public/base/signin_pref_names.h"
 #include "components/signin/public/base/signin_switches.h"
 #include "components/signin/public/identity_manager/identity_manager.h"
 #include "components/subscription_eligibility/subscription_eligibility_prefs.h"
 #include "components/supervised_user/test_support/supervised_user_signin_test_utils.h"
 #include "components/sync/base/features.h"
+#include "components/sync/protocol/sync_enums.pb.h"
 #include "components/sync/test/test_sync_service.h"
 #include "components/sync_device_info/device_info.h"
 #include "components/sync_device_info/fake_device_info_sync_service.h"
@@ -95,6 +99,7 @@ struct ProfileMenuViewPixelTestParam {
   WithLocalData with_local_data = WithLocalData::kNoLocalData;
   bool with_cross_device_signin_promo = false;
   bool with_cross_device_signin_new_badge = false;
+  bool with_account_preview_preference = false;
 
   // Features and parameters that are enabled in addition to the features
   // enabled by default.
@@ -152,6 +157,12 @@ const ProfileMenuViewPixelTestParam kPixelTestParams[] = {
                              .use_dark_theme = true},
         .signin_status = SigninStatusPixelTestParam::kWebSignedIn,
         .account_image_available = false,
+    },
+    {
+        .pixel_test_param = {.test_suffix =
+                                 "WebSignedIn_AccountPreviewPreference"},
+        .signin_status = SigninStatusPixelTestParam::kWebSignedIn,
+        .with_account_preview_preference = true,
     },
     {
         .pixel_test_param = {.test_suffix = "SignedIn_MultipleProfiles"},
@@ -467,6 +478,12 @@ class ProfileMenuViewPixelTest
                   .Build());
           return service;
         }));
+
+    AccountPreviewDataServiceFactory::GetInstance()->SetTestingFactory(
+        context, base::BindRepeating([](content::BrowserContext* context)
+                                         -> std::unique_ptr<KeyedService> {
+          return std::make_unique<signin::TestAccountPreviewDataService>();
+        }));
   }
 
   void ClearAllSignedInDevices() {
@@ -540,7 +557,7 @@ class ProfileMenuViewPixelTest
     }
 
     // Open browser to make changes effective.
-    Browser* tmp_browser = CreateBrowser(&profile);
+    BrowserWindowInterface* tmp_browser = CreateBrowser(&profile);
     CloseBrowserAsynchronously(tmp_browser);
   }
 
@@ -550,7 +567,7 @@ class ProfileMenuViewPixelTest
     // Configures the browser according to the profile type.
     auto browser_created_observer =
         std::make_optional<ui_test_utils::BrowserCreatedObserver>();
-    Browser* new_browser = nullptr;
+    BrowserWindowInterface* new_browser = nullptr;
 
     switch (GetProfileType()) {
       case ProfileTypePixelTestParam::kRegular:
@@ -750,7 +767,7 @@ class ProfileMenuViewPixelTest
     if (GetParam().with_local_data == WithLocalData::kWithBookmarksLocalData) {
       browser()->GetProfile()->GetPrefs()->SetString(
           prefs::kGoogleServicesLastSyncingGaiaId,
-          account_info.gaia.ToString());
+          account_info.GetGaiaId().ToString());
     }
 
     if (GetParam().with_ai_avatar_ring) {
@@ -761,6 +778,22 @@ class ProfileMenuViewPixelTest
     if (GetParam().with_cross_device_signin_promo) {
       // Remove all the signed in devices - so that the promo can be shown.
       ClearAllSignedInDevices();
+    }
+
+    if (GetParam().with_account_preview_preference) {
+      signin::AccountPreviewDataService::AccountPreviewPreference pref{
+          .gaia_id = GaiaId(account_info.GetGaiaId()),
+          .preferred_data_types =
+              {
+                  {syncer::PASSWORDS, signin::SyncDataQuartile::kAboveQ3},
+              },
+          .other_device_form_factor =
+              sync_pb::SyncEnums_DeviceFormFactor_DEVICE_FORM_FACTOR_DESKTOP,
+      };
+      auto* test_service = static_cast<signin::TestAccountPreviewDataService*>(
+          AccountPreviewDataServiceFactory::GetForProfile(
+              browser()->GetProfile()));
+      test_service->SetPreferredAccountForPromo(pref);
     }
   }
 
@@ -823,7 +856,7 @@ class ProfileMenuViewPixelTest
   }
 
   ProfileMenuViewBase* profile_menu_view() {
-    auto* coordinator = browser()->GetFeatures().profile_menu_coordinator();
+    auto* coordinator = ProfileMenuCoordinator::From(browser());
     return coordinator ? coordinator->GetProfileMenuViewBaseForTesting()
                        : nullptr;
   }

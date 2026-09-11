@@ -59,10 +59,10 @@
 #include "chrome/browser/search_engines/template_url_service_factory.h"
 #include "chrome/browser/ssl/typed_navigation_upgrade_throttle.h"
 #include "chrome/browser/ui/bookmarks/bookmark_stats.h"
-#include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_commands.h"
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/hats/hats_service.h"
 #include "chrome/browser/ui/hats/hats_service_factory.h"
 #include "chrome/browser/ui/layout_constants.h"
@@ -70,6 +70,7 @@
 #include "chrome/browser/ui/lens/lens_searchbox_controller.h"
 #include "chrome/browser/ui/location_bar/location_bar.h"
 #include "chrome/browser/ui/navigator/browser_navigator.h"
+#include "chrome/browser/ui/navigator/browser_navigator_params.h"
 #include "chrome/browser/ui/omnibox/chrome_omnibox_navigation_observer.h"
 #include "chrome/browser/ui/omnibox/omnibox_next_features.h"
 #include "chrome/browser/ui/omnibox/omnibox_tab_helper.h"
@@ -220,7 +221,7 @@ ExtensionControlledDialogResult SettingDialogResultToExtensionDialogResult(
 }  // namespace
 
 ChromeOmniboxClient::ChromeOmniboxClient(LocationBar* location_bar,
-                                         Browser* browser,
+                                         BrowserWindowInterface* browser,
                                          Profile* profile)
     : location_bar_(location_bar),
       browser_(browser),
@@ -390,11 +391,7 @@ omnibox::OmniboxPopupCloser* ChromeOmniboxClient::GetOmniboxPopupCloser() {
   if (!browser_) {
     return nullptr;
   }
-  auto* bwf = &browser_->GetFeatures();
-  if (!bwf) {
-    return nullptr;
-  }
-  return bwf->omnibox_popup_closer();
+  return omnibox::OmniboxPopupCloser::From(browser_);
 }
 
 bool ChromeOmniboxClient::ShouldDefaultTypedNavigationsToHttps() const {

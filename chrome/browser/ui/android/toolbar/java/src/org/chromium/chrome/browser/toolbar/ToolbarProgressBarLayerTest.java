@@ -23,7 +23,6 @@ import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
-import org.robolectric.annotation.Config;
 import org.robolectric.shadows.ShadowLooper;
 
 import org.chromium.base.supplier.ObservableSuppliers;
@@ -40,7 +39,6 @@ import org.chromium.ui.base.TestActivity;
 
 /** Unit tests for {@link ToolbarProgressBarLayer}. */
 @RunWith(BaseRobolectricTestRunner.class)
-@Config(manifest = Config.NONE)
 public class ToolbarProgressBarLayerTest {
     @Rule public MockitoRule mMockitoRule = MockitoJUnit.rule();
 
@@ -160,11 +158,11 @@ public class ToolbarProgressBarLayerTest {
 
         mLayer.onProgressBarInfoUpdate(drawingInfo);
 
-        assertEquals(240, drawingInfo.progressBarRect.left);
-        assertEquals(340, drawingInfo.progressBarRect.right);
-        assertEquals(340, drawingInfo.progressBarBackgroundRect.left);
-        assertEquals(740, drawingInfo.progressBarBackgroundRect.right);
-        assertEquals(240, drawingInfo.progressBarStaticBackgroundRect.left);
-        assertEquals(740, drawingInfo.progressBarStaticBackgroundRect.right);
+        assertEquals(0, drawingInfo.progressBarRect.left);
+        assertEquals(100, drawingInfo.progressBarRect.right);
+        assertEquals(100, drawingInfo.progressBarBackgroundRect.left);
+        assertEquals(500, drawingInfo.progressBarBackgroundRect.right);
+        assertEquals(0, drawingInfo.progressBarStaticBackgroundRect.left);
+        assertEquals(500, drawingInfo.progressBarStaticBackgroundRect.right);
     }
 }

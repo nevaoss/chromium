@@ -5,7 +5,10 @@
 #ifndef CONTENT_BROWSER_WEBID_DELEGATION_EMAIL_VERIFICATION_REQUEST_H_
 #define CONTENT_BROWSER_WEBID_DELEGATION_EMAIL_VERIFICATION_REQUEST_H_
 
+#include <string_view>
+
 #include "base/barrier_closure.h"
+#include "base/compiler_specific.h"
 #include "base/functional/callback.h"
 #include "base/memory/ref_counted.h"
 #include "base/memory/weak_ptr.h"
@@ -40,8 +43,8 @@ namespace content::webid {
 // For a given email address, returns the domain. Returns std::nullopt if the
 // email is not valid.
 // e.g. "test@example.com" -> "example.com"
-CONTENT_EXPORT std::optional<std::string> GetDomainFromEmail(
-    const std::string& email);
+CONTENT_EXPORT std::optional<std::string_view> GetDomainFromEmail(
+    std::string_view email LIFETIME_BOUND);
 
 // Performs the email verification process, which involves making a DNS TXT
 // record request to determine the issuer, and then fetching a token from the
@@ -74,8 +77,11 @@ class CONTENT_EXPORT EmailVerificationRequest {
   EmailVerificationRequest& operator=(const EmailVerificationRequest&) = delete;
 
   // Checks if the given `email` is verifiable. This also checks if the user is
-  // logged in to the issuer.
+  // logged in to the issuer. `on_dns_resolved_callback` is invoked immediately
+  // after DNS TXT record lookup confirms the domain supports EVP, before
+  // well-known and account metadata fetches begin.
   virtual void CheckIfVerifiable(const std::string& email,
+                                 base::OnceClosure on_dns_resolved_callback,
                                  EmailVerifier::IsVerifiableCallback callback);
 
   // Issues the verification token.
@@ -86,24 +92,22 @@ class CONTENT_EXPORT EmailVerificationRequest {
  private:
   void OnDnsRequestComplete(
       const std::string& email,
+      base::OnceClosure on_dns_resolved_callback,
       EmailVerifier::IsVerifiableCallback callback,
       const std::optional<std::vector<std::string>>& text_records);
 
   void OnEmailVerificationWellKnownFetched(
       base::RepeatingClosure barrier,
-      const url::Origin& issuer,
       scoped_refptr<WellKnownOrError> well_known,
       FetchStatus status,
       EmailVerifierNetworkRequestManager::WellKnown fetched_well_known);
   void OnWebIdentityWellKnownFetched(
       const url::Origin& issuer,
-      const std::string& email,
       base::RepeatingClosure barrier,
       scoped_refptr<AccountsOrError> accounts,
       FetchStatus status,
       const IdpNetworkRequestManager::WellKnown& well_known);
   void OnAccountsResponseReceived(
-      const std::string& email,
       base::RepeatingClosure barrier,
       scoped_refptr<AccountsOrError> accounts,
       FetchStatus status,

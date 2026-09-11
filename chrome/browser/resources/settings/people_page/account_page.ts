@@ -37,8 +37,6 @@ import {getHtml} from './account_page.html.js';
 const SettingsAccountPageElementBase =
     SettingsViewMixinLit(WebUiListenerMixinLit(I18nMixinLit(CrLitElement)));
 
-export type AccountPageElement = SettingsAccountPageElement;
-
 export class SettingsAccountPageElement extends SettingsAccountPageElementBase {
   static get is() {
     return 'settings-account-page';
@@ -86,8 +84,7 @@ export class SettingsAccountPageElement extends SettingsAccountPageElementBase {
   protected accessor personalizationCollapseExpanded_: boolean = false;
   protected accessor dataEncrypted_: boolean = false;
   protected accessor encryptionExpanded_: boolean = false;
-  protected accessor existingPassphraseLabel_: TrustedHTML =
-      window.trustedTypes!.emptyHTML;
+  protected accessor existingPassphraseLabel_: string = '';
 
   override connectedCallback() {
     super.connectedCallback();
@@ -185,18 +182,18 @@ export class SettingsAccountPageElement extends SettingsAccountPageElementBase {
   }
   //</if>
 
-  private computeExistingPassphraseLabel_(): TrustedHTML {
+  private computeExistingPassphraseLabel_(): string {
     if (!this.syncPrefs || !this.syncPrefs.encryptAllData) {
-      return window.trustedTypes!.emptyHTML;
+      return '';
     }
 
     if (!this.syncPrefs.explicitPassphraseTime) {
-      return this.i18nAdvanced('existingPassphraseLabel');
+      return this.i18n('existingPassphraseLabel');
     }
 
-    return this.i18nAdvanced('existingPassphraseLabelWithDate', {
-      substitutions: [this.syncPrefs.explicitPassphraseTime],
-    });
+    return this.i18n(
+        'existingPassphraseLabelWithDate',
+        this.syncPrefs.explicitPassphraseTime);
   }
 
   private computeDataEncrypted_(): boolean {

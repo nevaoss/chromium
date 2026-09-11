@@ -156,9 +156,8 @@ public class StatusMediator
      * @param windowAndroid The current {@link WindowAndroid}.
      * @param pageInfoAction Callback to display the page info UI surface.
      * @param fuseboxStateSupplier Notifies about the state of the fusebox.
-     * @param onPlusButtonClicked Toggle the fusebox attachments menu when plus button used.
      * @param fuseboxLayoutModeSupplier Notifies about the layout mode of the fusebox.
-     * @param previewMatchUrlSupplier Holds the url of a preview match, null otherwise.
+     * @param onPlusButtonClicked Toggle the fusebox attachments menu when plus button used.
      */
     public StatusMediator(
             OmniboxResourceProvider resourceProvider,
@@ -601,6 +600,8 @@ public class StatusMediator
                         || displayState == DisplayState.DRAFTING
                         || displayState == DisplayState.DRAFTING_NO_FOCUS;
 
+        boolean showBlankIcon = false;
+
         if (PageClassificationUtils.isHubOrTabSearch(
                 mLocationBarDataProvider.getPageClassification(/* prefetch= */ false))) {
             mPermissionStatusHandler.reset(/* shouldDismissNativePrompt= */ false);
@@ -639,6 +640,13 @@ public class StatusMediator
             clickListener = mFuseboxOnPlusButtonClicked;
             descRes = R.string.accessibility_omnibox_open_context_popup;
             doubleTapDescriptionRes = Resources.ID_NULL;
+        } else if (OmniboxFeatures.sSuppressStatusIconDuringHttpNavigation.isEnabled()
+                && hasPendingHttpOrHttpsNavigation()) {
+            // Prevent jank due to the info (i) icon appearing during page navigation. But if the
+            // destination page isn't http, then it's fine to show the info icon, because that's
+            // what it'll end up being anyway.
+            mPermissionStatusHandler.reset(/* shouldDismissNativePrompt= */ false);
+            showBlankIcon = true;
         } else if (maybeUpdateStatusIconForSearchEngineIcon()) {
             mPermissionStatusHandler.reset(/* shouldDismissNativePrompt= */ true);
             // No need to proceed further if we've already updated it for the search engine icon.
@@ -674,7 +682,9 @@ public class StatusMediator
         }
 
         StatusIconResource statusIcon = null;
-        if (customDrawable != null) {
+        if (showBlankIcon) {
+            statusIcon = null;
+        } else if (customDrawable != null) {
             statusIcon = new StatusIconResource(customDrawable);
         } else if (bitmap != null) {
             statusIcon = new StatusIconResource(/* iconIdentifier= */ null, bitmap, tintRes);
@@ -753,20 +763,32 @@ public class StatusMediator
         return (isNtpVisible() || isIncognitoNtpVisible()) && mProfileSupplier.get() != null;
     }
 
-    private boolean hasPendingNonNtpNavigation() {
+    private @Nullable NavigationEntry getPendingEntry() {
         Tab tab = mLocationBarDataProvider.getTab();
-        if (tab == null) return false;
+        if (tab == null) return null;
 
         WebContents webContents = tab.getWebContents();
-        if (webContents == null) return false;
+        if (webContents == null) return null;
 
         NavigationController navigationController = webContents.getNavigationController();
-        if (navigationController == null) return false;
+        if (navigationController == null) return null;
 
-        NavigationEntry pendingEntry = navigationController.getPendingEntry();
-        if (pendingEntry == null) return false;
+        return navigationController.getPendingEntry();
+    }
 
-        return !UrlUtilities.isNtpUrl(pendingEntry.getUrl());
+    private @Nullable GURL getPendingUrl() {
+        NavigationEntry pendingEntry = getPendingEntry();
+        return pendingEntry != null ? pendingEntry.getUrl() : null;
+    }
+
+    private boolean hasPendingNonNtpNavigation() {
+        GURL url = getPendingUrl();
+        return url != null && !UrlUtilities.isNtpUrl(url);
+    }
+
+    private boolean hasPendingHttpOrHttpsNavigation() {
+        GURL url = getPendingUrl();
+        return url != null && UrlUtilities.isHttpOrHttps(url);
     }
 
     /** Returns status icon resource for the user-selected default search engine. */

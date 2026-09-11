@@ -122,7 +122,6 @@ class ColorProviderSource;
 }  // namespace ui
 
 namespace gfx {
-class Point;
 class PointF;
 class Rect;
 }  // namespace gfx
@@ -132,6 +131,7 @@ namespace content {
 class BackForwardTransitionAnimationManager;
 class BrowserContext;
 class BrowserPluginGuestDelegate;
+class FrameEvictionOptOutClient;
 class GuestPageHolder;
 class NavigationController;
 class NavigationEntry;
@@ -532,6 +532,16 @@ class WebContents : public PageNavigator, public base::SupportsUserData {
   // See also GetVisibleURL above, which may differ from this URL. Note that
   // this might return an empty GURL if no navigation has committed in the
   // WebContents' main frame.
+  //
+  // Note: When a navigation fails and commits an error page (e.g.
+  // `chrome-error://chromewebdata/`), `GetLastCommittedURL()` continues to
+  // return the failed destination target URL rather than an error URL.
+  // Therefore, this should not be used directly for security, authorization,
+  // or permission checks without verifying that the primary main frame is not
+  // an error document (`!GetPrimaryMainFrame()->IsErrorDocument()`).
+  // Higher-level layers (such as extensions) should use their dedicated
+  // permission-check URL helper (e.g.,
+  // `extensions::util::GetURLForExtensionPermissionCheck()`).
   virtual const GURL& GetLastCommittedURL() const = 0;
 
 #if BUILDFLAG(IS_NEVA_APPRUNTIME)
@@ -751,6 +761,10 @@ class WebContents : public PageNavigator, public base::SupportsUserData {
   virtual bool IsFullAccessibilityModeForTesting() = 0;
 
   virtual ui::AXMode GetAccessibilityMode() = 0;
+
+  // Notifies this WebContents that the platform accessibility parent of its
+  // primary main frame may have changed.
+  virtual void NotifyAccessibilityParentChanged() = 0;
 
   // Forces a reset of accessibility state in the instance's renderers.
   // Observers will receive a new accessibility tree.
@@ -1054,6 +1068,13 @@ class WebContents : public PageNavigator, public base::SupportsUserData {
   // TODO(crbug.com/40911760): Make updating Visibility more robust.
   virtual void UpdateWebContentsVisibility(Visibility visibility) = 0;
 
+  // Opts the WebContents out of frame eviction. Once opted out, a WebContents
+  // cannot be opted back in. You should evaluate the trade-offs before using
+  // this API.
+  // See FrameEvictionOptOutClient for instructions.
+  virtual void OptOutFrameEviction(
+      base::PassKey<FrameEvictionOptOutClient>) = 0;
+
   // This function checks *all* frames in this WebContents (not just the main
   // frame) and returns true if at least one frame has either a beforeunload or
   // an unload/pagehide/visibilitychange handler.
@@ -1211,9 +1232,9 @@ class WebContents : public PageNavigator, public base::SupportsUserData {
   virtual const std::optional<gfx::Rect> GetTextSelectionBounds(
       RenderFrameHost* render_frame_host) const = 0;
 
-  // Returns the point of the focus selection in global screen coordinates in
+  // Returns the bounds of the focus selection in global screen coordinates in
   // DIPs.
-  virtual const std::optional<gfx::Point> GetFocusSelectionPoint(
+  virtual const std::optional<gfx::Rect> GetFocusSelectionBounds(
       RenderFrameHost* render_frame_host) const = 0;
 
   // Notifies when the selection bounds change. This is provided using a
@@ -1675,11 +1696,13 @@ class WebContents : public PageNavigator, public base::SupportsUserData {
   // since the last navigation.
   virtual bool CompletedFirstVisuallyNonEmptyPaint() = 0;
 
-  // TODO(crbug.com/41379215): This is a simple mitigation to validate
-  // that an action that requires a user gesture actually has one in the
-  // trustworthy browser process, rather than relying on the untrustworthy
-  // renderer. This should be eventually merged into and accounted for in the
-  // user activation work: crbug.com/848778
+  // TODO(crbug.com/550284226): This is a simple mitigation to validate that an
+  // action that requires a user gesture actually has one in the trustworthy
+  // browser process, rather than relying on the untrustworthy renderer. This
+  // should be merged with the trusted user activation states tracked at frame
+  // granularity: crbug.com/40091540
+  //
+  // This is a page-wide signal and must not be used for frame-scoped actions.
   virtual bool HasRecentInteraction() = 0;
 
   // Returns the time ticks of the last user interaction.
@@ -1768,9 +1791,12 @@ class WebContents : public PageNavigator, public base::SupportsUserData {
   // event and the time when the WebContents is painted.
   // `had_saved_frame_at_start` is true if a compositor frame for this view was
   // already available when the tab switch started.
+  // `destination_is_frozen` is true if the destination tab was frozen when the
+  // tab switch started.
   virtual void SetTabSwitchStartTime(base::TimeTicks start_time,
                                      bool destination_is_loaded,
-                                     bool had_saved_frame_at_start) = 0;
+                                     bool had_saved_frame_at_start,
+                                     bool destination_is_frozen) = 0;
 
   // Starts browser-initiated prefetch, triggered by embedder.
   // - `prefetch_url` is the url the prefetch will be performed.
@@ -1809,7 +1835,8 @@ class WebContents : public PageNavigator, public base::SupportsUserData {
       scoped_refptr<PreloadPipelineInfo> preload_pipeline_info,
       base::WeakPtr<PreloadingAttempt> attempt,
       PreloadingHoldbackStatus holdback_status_override,
-      std::optional<base::TimeDelta> ttl) = 0;
+      std::optional<base::TimeDelta> ttl,
+      bool should_ignore_saver_modes) = 0;
 
   // Starts an embedder triggered (browser-initiated) prerendering page and
   // returns the unique_ptr<PrerenderHandle>, which cancels prerendering on its

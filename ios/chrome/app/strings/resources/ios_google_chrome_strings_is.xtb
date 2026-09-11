@@ -74,6 +74,7 @@ Hafðu í huga:
 <translation id="2427791862912929107">Chrome inniheldur eiginleika sem hjálpa þér að stjórna netgögnunum þínum og hleðsluhraða vefsíðna.
 <ph name="BEGIN_LINK" />Frekari upplýsingar<ph name="END_LINK" /></translation>
 <translation id="2450221499140985490">Opnaðu tengla í skilaboðum og skjölum beint í Chrome.</translation>
+<translation id="2459400997522001951">Ljúktu fljótlegum verkefnum og uppgötvaðu leiðir til að fá sem mest út úr Chrome:</translation>
 <translation id="2464852008153767546">{THRESHOLD,plural, =1{Þetta gerist þegar Chrome er ekki í notkun í {THRESHOLD} mín. Þetta getur falið í sér feril og sjálfvirka útfyllingu.}one{Þetta gerist þegar Chrome er ekki í notkun í {THRESHOLD} mín. Þetta getur falið í sér feril og sjálfvirka útfyllingu.}other{Þetta gerist þegar Chrome er ekki í notkun í {THRESHOLD} mín. Þetta getur falið í sér feril og sjálfvirka útfyllingu.}}</translation>
 <translation id="2561231791489583059">Notaðu Chrome sem sjálfgefinn vafra til að njóta verndar gegn hættulegum vefsvæðum og tryggja öryggi aðgangsorðanna þinna</translation>
 <translation id="2574249610672786438">Skráðu þig inn í öllum tækjunum þínum til að sjá flipana þína hvar sem þú notar Chrome</translation>
@@ -131,7 +132,7 @@ Ekki er hægt að vista ný bókamerki á reikningnum þínum fyrr en þú eyði
 <translation id="3827545470516145620">Þú er með staðlaða öryggisvörn í þessu tæki</translation>
 <translation id="384394811301901750">Google Chrome getur ekki notað myndavélina að svo stöddu</translation>
 <translation id="3863841106411295595">Bætir innfærðum vefslóðum við leslistann þinn í Chrome.</translation>
-<translation id="3878515067127964393">Forðastu að afrita. Veldu Chrome sem sjálfgefinn iOS-vafra</translation>
+<translation id="3878515067127964393">Forðastu að afrita. Veldu Chrome sem sjálfgefinn iOS-vafra.</translation>
 <translation id="3901001113120561395">Fáðu sem mest út úr Chrome.</translation>
 <translation id="3913386780052199712">Skráð(ur) inn á Chrome</translation>
 <translation id="3913747277937572860">Veldu Chrome sem sjálfgefinn vafra og opnaðu vefefni sjálfkrafa.</translation>
@@ -141,6 +142,7 @@ Ekki er hægt að vista ný bókamerki á reikningnum þínum fyrr en þú eyði
 <translation id="411154422556990518">Fáðu tilkynningar um verðrakningu og ábendingar frá Chrome til að vera með á nótunum.</translation>
 <translation id="417201473131094001">Ekki stutt í Chrome Canary</translation>
 <translation id="424864128008805179">Viltu skrá þig út úr Chrome?</translation>
+<translation id="4314240881330431451">Þú getur notað Google-linsu í Chrome til að leita að öllu sem þú sérð</translation>
 <translation id="4409545895715116037">Eftirfarandi aðgangslyklar voru ekki fluttir inn í Google-aðgangsorðastjórnun því þeir uppfylla ekki skilyrðin.</translation>
 <translation id="4430797724889237570">Opna tengla frá Gmail, Kortum, YouTube og öðrum forritum í Chrome</translation>
 <translation id="447252321002412580">Hjálpaðu til við að bæta eiginleika og afköst Chrome</translation>
@@ -242,7 +244,7 @@ Gögnin þín eru dulkóðuð með aðgangsorði. Sláðu það inn til að nota
 <translation id="6533470733797826516">Skráðu þig inn í hvelli með sjálfvirkri útfyllingu Chrome</translation>
 <translation id="6536544321553662809">Stilla Chrome sem sjálfgefinn vafra til að deila og opna tengla á auðveldan hátt</translation>
 <translation id="6545449117344801102">Chrome greinir heimilisföng og notar Google-kort til að sýna þér leiðarlýsingu og staðbundnar upplýsingar.</translation>
-<translation id="660537754475262202">Veldu Chrome sem sjálfgefinn vafra þínum til að opna tengla hér í einum grænum.</translation>
+<translation id="660537754475262202">Veldu Chrome sem sjálfgefinn vafra til að opna tengla hér á augabragði.</translation>
 <translation id="6611692150236062461">Notaðu sjálfvirka útfyllingu í Chrome til að hafa greiðan aðgang að vistuðu aðgangsorðunum þínum í öðrum forritum.</translation>
 <translation id="6636941099779251629">Fyrirtækið þitt krefst þess að þú skráir þig inn til að nota Chrome. <ph name="BEGIN_LINK" />Nánar<ph name="END_LINK" /></translation>
 <translation id="6646696210740573446">Sendir ruglaðan hluta vefslóðarinnar til Google í gegnum traustan þjón sem felur IP-töluna þína. Ef vefsvæði reynir að stela aðgangsorðinu þínu, eða ef þú sækir skaðlega skrá, gæti Chrome einnig sent vefslóðir til Google, þar á meðal hluta af efni síðna.</translation>

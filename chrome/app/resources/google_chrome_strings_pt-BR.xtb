@@ -144,6 +144,7 @@
 <translation id="2424440923901031101">Esta extensão viola a política da Chrome Web Store e pode não ser segura. Remova do Chrome para que ela não apareça mais e altere seus dados nos sites que você visitar, incluindo suas informações pessoais.</translation>
 <translation id="2467438592969358367">O Google Chrome quer exportar suas senhas. Digite sua senha do Windows para permitir isso.</translation>
 <translation id="2472092250898121027">Esta extensão contém malware e não é segura. Remova do Chrome para que ela não apareça mais e altere seus dados nos sites que você visitar, incluindo suas informações pessoais.</translation>
+<translation id="2482846200327569645">A conta <ph name="EXISTING_USER" /> já está conectada. Para manter sua navegação separada, faça login no Chrome no seu perfil como <ph name="USER_EMAIL_ADDRESS" />. Você também terá acesso aos seus favoritos e muito mais do <ph name="DEVICE" />.</translation>
 <translation id="2485422356828889247">Desinstalar</translation>
 <translation id="2513154137948333830">Reinicialização necessária: <ph name="INSTALL_SUCCESS" /></translation>
 <translation id="2523492931736391680">Seu trabalho está seguro no Chrome</translation>
@@ -161,7 +162,7 @@ Se esta página não funcionar como o esperado, ative a otimização.</translati
 <translation id="259935314519650377">Falha de cache após o download do instalador. Erro: <ph name="UNPACK_CACHING_ERROR_CODE" />.</translation>
 <translation id="2608461706055011366">Confira uma visão geral rápida deste documento e faça perguntas com o Gemini no Chrome</translation>
 <translation id="2620436844016719705">Sistema</translation>
-<translation id="263447411082773721">Mantenha senhas, favoritos e histórico sincronizados em todos os dispositivos. Acesse com facilidade seus recursos favoritos definindo o Chrome como o navegador padrão. O Chrome será fixado na barra de tarefas para agilizar o acesso.</translation>
+<translation id="263447411082773721">Acesse facilmente seus recursos preferidos e mantenha senhas, favoritos e histórico sincronizados em todos os dispositivos. O Chrome ficará fixado na barra de tarefas para agilizar o acesso.</translation>
 <translation id="2645435784669275700">ChromeOS</translation>
 <translation id="2649768380733403658">O Chrome verifica regularmente se o navegador tem as configurações mais seguras. Avisaremos se algo precisar da sua análise.</translation>
 <translation id="2652691236519827073">Abrir link em nova &amp;guia do Chrome</translation>
@@ -195,6 +196,7 @@ Se esta página não funcionar como o esperado, ative a otimização.</translati
 <translation id="2916983411556218750">Vamos preparar seu Chrome</translation>
 <translation id="2926952073016206995">O Chrome precisa da permissão de acesso à câmera para este site</translation>
 <translation id="2945997411976714835">Erro de instalação: falha ao iniciar o processo do instalador.</translation>
+<translation id="2959224682348913614">A conta <ph name="EXISTING_USER" /> já está conectada. Para manter sua navegação separada, faça login no Chrome no seu perfil como <ph name="USER_EMAIL_ADDRESS" />. Você também terá acesso a senhas e muito mais do <ph name="DEVICE" />.</translation>
 <translation id="2969728957078202736"><ph name="PAGE_TITLE" /> - Login na rede - Chrome</translation>
 <translation id="2970681950995291301">Para remover sua Conta do Google do Chrome, saia dela na página "Configurações"</translation>
 <translation id="2976869732253036751">Receba alertas de Monitoramento de Preços no seu celular com o Chrome</translation>
@@ -214,6 +216,7 @@ Se esta página não funcionar como o esperado, ative a otimização.</translati
 <translation id="3073571714401714450">Ativar/desativar o Gemini no Chrome Dev</translation>
 <translation id="3080151273017101988">Executar aplicativos em segundo plano quando o Google Chrome estiver fechado</translation>
 <translation id="308397506772922478">Se você esqueceu a senha longa ou quer mudar essa configuração, <ph name="BEGIN_LINK" />exclua os dados do Chrome na sua conta<ph name="END_LINK" />.</translation>
+<translation id="3089427491314610412">A conta <ph name="EXISTING_USER" /> já está conectada. Para manter sua navegação separada, faça login no Chrome no seu perfil como <ph name="USER_EMAIL_ADDRESS" />. Você também terá acesso às informações salvas e muito mais do <ph name="DEVICE" />.</translation>
 <translation id="3100998948628680988">Nomear seu perfil do Chrome</translation>
 <translation id="310459126943037700">Falha ao encerrar tarefas.</translation>
 <translation id="3104828284009500087">Pesquise o que quiser na página</translation>
@@ -226,6 +229,7 @@ Se esta página não funcionar como o esperado, ative a otimização.</translati
 <translation id="3140883423282498090">Suas alterações terão efeito na próxima vez que você reiniciar o Google Chrome.</translation>
 <translation id="3149510190863420837">apps do Chrome</translation>
 <translation id="3161522574479303604">Todos os idiomas</translation>
+<translation id="318555301233810762">A conta <ph name="EXISTING_USER" /> já está conectada. Para manter sua navegação separada, faça login no Chrome no seu perfil como <ph name="USER_EMAIL_ADDRESS" />. Você também terá acesso a favoritos e muito mais em todos os seus dispositivos.</translation>
 <translation id="319199214552513804">Para acessar essa extensão e muito mais em todos os seus computadores, faça login no Chrome</translation>
 <translation id="3196187562065225381">O Chrome bloqueou o download porque o arquivo é perigoso</translation>
 <translation id="3222857603094643834">Pesquise o que quiser nesta página com o Google Lens</translation>
@@ -264,8 +268,9 @@ Se esta página não funcionar como o esperado, ative a otimização.</translati
 <translation id="3598673391539778844">Mostrar o Gemini no Chrome na bandeja do sistema</translation>
 <translation id="3622716124581627104">Identifique itens ou lugares e copie ou traduza textos. Quando você usa o Lens, uma captura de tela da página é enviada ao Google. <ph name="LEARN_MORE" /></translation>
 <translation id="3622797965165704966">Agora ficou mais fácil usar o Chrome com sua Conta do Google e em computadores compartilhados.</translation>
+<translation id="3628103251823745322">A conta <ph name="EXISTING_USER" /> já está conectada. Para manter sua navegação separada, faça login no Chrome no seu perfil como <ph name="USER_EMAIL_ADDRESS" />. Você também terá acesso às informações salvas e muito mais em todos os seus dispositivos.</translation>
 <translation id="3635073343384702370">O Chrome poderá verificar suas senhas quando elas forem salvas</translation>
-<translation id="3636970668267555808">Defina o Chrome como o navegador padrão para acessar seus recursos favoritos com facilidade.</translation>
+<translation id="3636970668267555808">Acesse seus recursos favoritos com mais facilidade.</translation>
 <translation id="3667616615096815454">Não foi possível fazer a instalação. O app é desconhecido para o servidor.</translation>
 <translation id="3673813398384385993">O Chrome encontrou malware na extensão <ph name="EXTENSION_NAME" /></translation>
 <translation id="3697952514309507634">Outros perfis do Chrome</translation>
@@ -294,7 +299,7 @@ Se esta página não funcionar como o esperado, ative a otimização.</translati
 <translation id="3892148308691398805">Copiar texto</translation>
 <translation id="3893650521827656233">Aproveite os melhores recursos de segurança do Google em qualquer lugar com o Chrome.</translation>
 <translation id="3941890832296813527">Erro de instalação: o nome do arquivo do instalador é inválido ou não tem suporte.</translation>
-<translation id="395904275706073188">Não é possível ler páginas protegidas. Tente usar outra.</translation>
+<translation id="395904275706073188">Não é possível ler páginas protegidas. Tente acessar outra.</translation>
 <translation id="3965532487635448963">Mostrar o Gemini no Chrome na bandeja do sistema e ativar o atalho do teclado</translation>
 <translation id="3967822245660637423">Download concluído</translation>
 <translation id="3968962723676998462">Digite a senha longa para usar e salvar os dados do Chrome na sua conta <ph name="ACCOUNT_EMAIL" /></translation>
@@ -368,6 +373,7 @@ Se esta página não funcionar como o esperado, ative a otimização.</translati
 <translation id="475321580758063259">Atualize o Chrome para continuar usando os dados dele na sua Conta do Google <ph name="ACCOUNT_EMAIL" /></translation>
 <translation id="4754614261631455953">Google Chrome Canary (mDNS-In)</translation>
 <translation id="4756182432527369254">Deixa os sites mais rápidos com o mecanismo V8 do Chrome, mas o navegador fica um pouco menos resistente a ataques</translation>
+<translation id="4768676935374695498">Pesquisar Este Vídeo com o Google Lens</translation>
 <translation id="479167709087336770">Esta opção usa o mesmo corretor ortográfico usado na Pesquisa Google. O texto digitado no navegador é enviado para o Google. É possível alterar esse comportamento nas configurações a qualquer momento.</translation>
 <translation id="4793679854893018356">Saiba como o Chrome protege você</translation>
 <translation id="4799870290441980300">Ativa recursos extras para oferecer a proteção mais segura do Chrome.</translation>
@@ -446,7 +452,6 @@ Se esta página não funcionar como o esperado, ative a otimização.</translati
 <translation id="5649156266046089790">Com os perfis do Chrome, tudo fica bem separado e organizado. Crie perfis diferentes para amigos, familiares, trabalho e lazer.</translation>
 <translation id="5655063652337498476">Use a câmera para pesquisar produtos, ficar por dentro de descontos e muito mais com o Chrome no iOS.</translation>
 <translation id="565744775970812598">O arquivo <ph name="FILE_NAME" /> pode ser perigoso. Por isso, ele foi bloqueado pelo Chrome.</translation>
-<translation id="566040795510471729">&amp;Personalizar o Chrome</translation>
 <translation id="566568153320186256">O Chrome economiza energia da bateria limitando atividades em segundo plano e efeitos visuais, como rolagem suave e frame rates de vídeos. <ph name="BEGIN_LINK" />Saiba mais sobre a Economia de energia<ph name="END_LINK" /></translation>
 <translation id="567202749201779594">Limpar os dados do Chrome da sua conta</translation>
 <translation id="5678190148303298925">{COUNT,plural, =0{Seu administrador pede que você reinicie o Chrome para que esta atualização seja feita.}=1{Seu administrador pede que você reinicie o Chrome para que esta atualização seja feita. Sua janela anônima não será aberta novamente.}one{Seu administrador pede que você reinicie o Chrome para que esta atualização seja feita. Sua janela anônima não será aberta novamente.}other{Seu administrador pede que você reinicie o Chrome para que esta atualização seja feita. Suas # janelas anônimas não serão abertas novamente.}}</translation>
@@ -587,6 +592,7 @@ Se esta página não funcionar como o esperado, ative a otimização.</translati
 <translation id="6933858244219479645">Sistema ChromeOS</translation>
 <translation id="6938166777909186039">Para receber as futuras atualizações do Google Chrome, você precisa do Windows 10 ou versão mais recente. Este computador está usando o Windows 8.1.</translation>
 <translation id="6943584222992551122">Os dados de navegação dessa pessoa serão excluídos deste dispositivo. Para recuperar os dados, faça login no Chrome como <ph name="USER_EMAIL" />.</translation>
+<translation id="6962628299694876291">A conta <ph name="EXISTING_USER" /> já está conectada. Para manter sua navegação separada, faça login no Chrome no seu perfil como <ph name="USER_EMAIL_ADDRESS" />. Você também terá acesso a senhas e muito mais em todos os seus dispositivos.</translation>
 <translation id="6965382102122355670">OK</translation>
 <translation id="6967962315388095737">Regra interna do Google Chrome Beta que permite o tráfego mDNS.</translation>
 <translation id="6979589607440534284">Saiba por que o Chrome bloqueia alguns arquivos (abre em uma nova guia)</translation>
@@ -614,7 +620,6 @@ Se esta página não funcionar como o esperado, ative a otimização.</translati
 <translation id="7161904924553537242">Que bom te ver no Google Chrome!</translation>
 <translation id="7193885263065350793">Sua organização vai fechar o Chrome se ele não for usado por <ph name="TIMEOUT_DURATION" />.</translation>
 <translation id="7242029209006116544">Você está fazendo login com uma conta gerenciada e concedendo ao administrador da conta o controle sobre seu perfil do Google Chrome. Seus dados do Google Chrome, como aplicativos, favoritos, histórico, senhas e outras configurações serão permanentemente vinculados a <ph name="USER_NAME" />. Você pode excluir esses dados pelo painel das Contas do Google, mas não pode associá-los a outra conta. Você tem a opção de criar um novo perfil para manter seus dados existentes do Google Chrome separados. <ph name="LEARN_MORE" /></translation>
-<translation id="7257689164441568409">Para sair ou voltar ao Gemini no Chrome, use o atalho do teclado.</translation>
 <translation id="7274402351400635015">Você pode usar o Chrome sempre que clicar em links contidos em mensagens, documentos e outros apps. Ele também será fixado na barra de tarefas.</translation>
 <translation id="7285616922384953075"><ph name="MANAGER" /> gerencia o Chrome</translation>
 <translation id="7285990705317078173">Baixe o Chrome no seu celular para monitorar preços e receber alertas quando houver uma redução em algum site</translation>
@@ -672,7 +677,6 @@ Se esta página não funcionar como o esperado, ative a otimização.</translati
 <translation id="7777080907402804672">Se uma imagem não tiver uma descrição útil, o Chrome tentará fornecer uma para você. As imagens serão enviadas ao Google para a criação de descrições. É possível desativar essa opção nas configurações a qualquer momento.</translation>
 <translation id="778331955594035129">O Chrome precisa da permissão de localização para este site</translation>
 <translation id="7787950393032327779">O perfil parece estar em uso por outro processo do Google Chrome (<ph name="PROCESS_ID" />) em outro computador (<ph name="HOST_NAME" />). O Chrome bloqueou o perfil para que ele não seja corrompido. Se você tiver certeza de que nenhum outro processo está usando este perfil, pode desbloquear o perfil e reiniciar o Chrome.</translation>
-<translation id="7792336732117553384">&amp;Gerenciar perfis do Chrome</translation>
 <translation id="7801699035218095297">O Google Chrome está tentando copiar senhas. Digite a senha do Windows para permitir essa ação.</translation>
 <translation id="7804364787702057554">Sua conta no Chrome</translation>
 <translation id="7804947029129221742">Seu mecanismo de pesquisa foi alterado fora do Chrome. Para sua segurança, o Chrome redefiniu essa configuração para o padrão original. <ph name="LEARN_MORE_LINK" /></translation>
@@ -707,13 +711,14 @@ Se esta página não funcionar como o esperado, ative a otimização.</translati
 <translation id="8041795619940733262">Pergunte ao Google<ph name="LINE_BREAK" />sobre esta guia</translation>
 <translation id="80471789339884597">Agradecemos por fazer a instalação. É necessário reiniciar todos os navegadores antes de utilizar o <ph name="BUNDLE_NAME" />.</translation>
 <translation id="8064015586118426197">ChromeOS Flex</translation>
-<translation id="8064965390968184078">1. Clique em <ph name="BUTTON_LABEL" /> abaixo
+<translation id="8064965390968184078">1. Clique abaixo em <ph name="BUTTON_LABEL" />
 2. Clique em <ph name="BUTTON_2" /> nas configurações do Windows
 3. Clique em <ph name="BUTTON_3" /> na notificação do Windows para fixar o Chrome na barra de tarefas e ter acesso rápido</translation>
 <translation id="8069447462453318634">Selecione "Fixar na barra de ferramentas"</translation>
 <translation id="8074398340364918139">Para pesquisar recursos ou extensões específicos do Chrome, digite o atalho na barra de endereço, seguido da tecla escolhida</translation>
 <translation id="8077579734294125741">Outros perfis do Chrome</translation>
 <translation id="8086881907087796310">A instalação falhou porque o computador não atende aos requisitos mínimos de hardware.</translation>
+<translation id="8110438089258398864">Você pode reabrir o Modo IA da Pesquisa Google para fazer perguntas enquanto navega</translation>
 <translation id="8113883687556086139">Confirme sua identidade para usar e salvar os dados do Chrome na sua conta <ph name="ACCOUNT_EMAIL" /></translation>
 <translation id="8115695070094288807">Deixe o Chrome do seu jeito</translation>
 <translation id="8118331347066725040">Enviar feedback sobre a pesquisa com o Lens</translation>
@@ -742,6 +747,7 @@ Se esta página não funcionar como o esperado, ative a otimização.</translati
 <translation id="8370517070665726704">Copyright <ph name="YEAR" /> Google LLC. Todos os direitos reservados.</translation>
 <translation id="8370748943308169953">QR code para fazer login no Chrome como <ph name="USER_NAME" /></translation>
 <translation id="8377158135256176353">Ativar/desativar o Gemini no Chrome Canary</translation>
+<translation id="8380754585531979907">Use o teclado para navegar entre o Gemini e a guia aberta no Chrome.</translation>
 <translation id="8387459386171870978">Continuar usando o Chrome</translation>
 <translation id="8394720698884623075">Confere se os URLs estão em uma lista de sites não seguros armazenada no Chrome</translation>
 <translation id="8403038600646341038">Logotipo do Chrome na tela de um computador.</translation>
@@ -755,14 +761,17 @@ Exclua alguns dos favoritos da sua conta para poder salvar novos. Se você sair 
 <translation id="848851325211467878">Login feito como <ph name="USER_NAME" />, <ph name="USER_EMAIL" />, assinatura do Google. Abrir menu da conta</translation>
 <translation id="8496177819998570653">Gerenciador de senhas do Google</translation>
 <translation id="8498858610309223613">Uma atualização especial de segurança para o Google Chrome acabou de ser aplicada. Reinicie agora, e suas guias serão restauradas.</translation>
+<translation id="8502181052659370">Pesquisar Esta Guia com o Google Lens</translation>
 <translation id="8521348052903287641">Regra interna do Google Chrome Dev que permite o tráfego mDNS.</translation>
 <translation id="852529348814672339">Mostrar o Chrome neste idioma</translation>
 <translation id="8525579356836940628">Instalação interrompida</translation>
 <translation id="8533056045953418157">Defina o Google Chrome como seu leitor de PDF padrão</translation>
+<translation id="854593887324189900">Pesquisar Esta Imagem com o Google Lens</translation>
 <translation id="8555465886620020932">Erro de serviço: <ph name="SERVICE_ERROR" />.</translation>
 <translation id="856656450041460113">Pesquisar na lista de idiomas</translation>
 <translation id="8575047640889685742">Usar <ph name="BEGIN_LINK" />sua senha longa<ph name="END_LINK" /> para criptografar todos os dados do Chrome na sua Conta do Google. As formas de pagamento e os endereços do Google Pay não serão criptografados. O histórico de navegação do Chrome não será sincronizado.</translation>
 <translation id="8590782867495422699">Reabrir o Modo IA da Pesquisa Google</translation>
+<translation id="8598779894319572882">O botão "Modo IA da Pesquisa Google" na barra de ferramentas reabre essa função para você fazer perguntas enquanto navega</translation>
 <translation id="8601359445272098721">Novidade! Agora você pode traduzir texto e imagens na sua tela selecionando o botão "Traduzir tela".</translation>
 <translation id="8614913330719544658">O Google Chrome não responde. Reiniciar agora?</translation>
 <translation id="8623450603356630491">Fazer login no Chrome pelo celular</translation>

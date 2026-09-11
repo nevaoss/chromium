@@ -12,6 +12,7 @@ import static org.chromium.base.test.transit.ViewSpec.viewSpec;
 
 import android.view.View;
 
+import org.chromium.base.ThreadUtils;
 import org.chromium.base.test.transit.Facility;
 import org.chromium.base.test.transit.OptionalViewElement;
 import org.chromium.base.test.transit.ViewElement;
@@ -22,6 +23,7 @@ import org.chromium.chrome.browser.omnibox.UrlBar;
 import org.chromium.chrome.test.transit.page.CtaPageStation;
 import org.chromium.chrome.test.transit.page.WebPageStation;
 import org.chromium.components.browser_ui.widget.scrim.ScrimView;
+import org.chromium.components.omnibox.OmniboxCapabilities;
 
 /** Represents the Omnibox focused state showing the URL bar and accepting keyboard input. */
 public class OmniboxFacility extends Facility<CtaPageStation> {
@@ -38,8 +40,11 @@ public class OmniboxFacility extends Facility<CtaPageStation> {
     public OptionalViewElement<View> statusIconElement;
     public OptionalViewElement<View> micButtonElement;
     public OptionalViewElement<View> deleteButtonElement;
+    final boolean mIsDesktopPlatform;
 
     public OmniboxFacility(boolean incognito, @Nullable FakeOmniboxSuggestions fakeSuggestions) {
+        mIsDesktopPlatform =
+                ThreadUtils.runOnUiThreadBlocking(OmniboxCapabilities::isDesktopPlatform);
         mIncognito = incognito;
         mFakeSuggestions = fakeSuggestions;
 
@@ -59,11 +64,11 @@ public class OmniboxFacility extends Facility<CtaPageStation> {
         return mFakeSuggestions;
     }
 
-    /** Enter text into the omnibox char by char. */
-    public OmniboxEnteredTextFacility typeText(String textToTypeAndExpect) {
+    /** Enter text into the omnibox char by char, transitioning to OmniboxDraftingFacility. */
+    public OmniboxDraftingFacility typeText(String textToTypeAndExpect) {
         return urlBarElement
                 .typeTextTo(textToTypeAndExpect)
-                .enterFacility(new OmniboxEnteredTextFacility(this, textToTypeAndExpect));
+                .enterFacility(new OmniboxDraftingFacility(this, textToTypeAndExpect));
     }
 
     /** Set text into the omnibox as an atomic operation. */

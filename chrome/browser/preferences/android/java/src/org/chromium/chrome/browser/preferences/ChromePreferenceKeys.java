@@ -117,14 +117,6 @@ public final class ChromePreferenceKeys {
     public static final String AUXILIARY_SEARCH_CONSUMER_SCHEMA_FOUND =
             "Chrome.AuxiliarySearch.ConsumerSchemaFound";
 
-    /** The total times that the opt in card was shown to the user. */
-    public static final String AUXILIARY_SEARCH_MODULE_IMPRESSION =
-            "Chrome.AuxiliarySearchModule.Impression";
-
-    /** Whether users have responded to the opt in card. */
-    public static final String AUXILIARY_SEARCH_MODULE_USER_RESPONDED =
-            "Chrome.AuxiliarySearchModule.UserResponded";
-
     public static final String AUTOFILL_THIRD_PARTY_MODE_STATE =
             "Chrome.AutofillThirdPartyMode.State";
 
@@ -911,6 +903,8 @@ public final class ChromePreferenceKeys {
             "Chrome.Widget.IsGoogleLensAvailable";
     public static final String SEARCH_WIDGET_IS_INCOGNITO_AVAILABLE =
             "Chrome.Widget.IsIncognitoAvailable";
+    public static final String SEARCH_WIDGET_IS_AI_MODE_AVAILABLE =
+            "Chrome.Widget.IsAiModeAvailable";
 
     // Segmentation platform related prefs.
     public static final String SEGMENTATION_FEED_ACTIVE_USER = "Chrome.Segmentation.FeedActiveUser";
@@ -1194,8 +1188,6 @@ public final class ChromePreferenceKeys {
                 AUTOFILL_ASSISTANT_PROACTIVE_HELP_ENABLED,
                 AUTOFILL_THIRD_PARTY_MODE_STATE,
                 AUXILIARY_SEARCH_CONSUMER_SCHEMA_FOUND,
-                AUXILIARY_SEARCH_MODULE_USER_RESPONDED,
-                AUXILIARY_SEARCH_MODULE_IMPRESSION,
                 AUXILIARY_SEARCH_IS_SCHEMA_SET,
                 AUXILIARY_SEARCH_SCHEMA_VERSION,
                 APP_LAUNCH_LAST_KNOWN_ACTIVE_TAB_STATE,
@@ -1341,6 +1333,7 @@ public final class ChromePreferenceKeys {
                 SEARCH_ENGINE_CHOICE_OS_CHOICE_APPLIED_TIMESTAMP,
                 SEARCH_ENGINE_CHOICE_PENDING_OS_CHOICE_DIALOG_SHOWN_ATTEMPTS,
                 SEARCH_WIDGET_ACCOUNT_EMAIL,
+                SEARCH_WIDGET_IS_AI_MODE_AVAILABLE,
                 SEARCH_WIDGET_IS_GOOGLE_LENS_AVAILABLE,
                 SEARCH_WIDGET_IS_INCOGNITO_AVAILABLE,
                 SEARCH_WIDGET_IS_VOICE_SEARCH_AVAILABLE,

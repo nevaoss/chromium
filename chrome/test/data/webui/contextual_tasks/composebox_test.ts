@@ -23,7 +23,8 @@ import {WindowProxy} from 'chrome://resources/cr_components/composebox/window_pr
 import {GlowAnimationState, VoiceSearchState} from 'chrome://resources/cr_components/search/constants.js';
 import {createAutocompleteMatch, createAutocompleteResultForTesting} from 'chrome://resources/cr_components/searchbox/searchbox_browser_proxy.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
-import {PageCallbackRouter as SearchboxPageCallbackRouter, PageHandlerRemote as SearchboxPageHandlerRemote, SuggestInventory} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
+import {SuggestInventory} from 'chrome://resources/mojo/components/omnibox/browser/fusebox_action.mojom-webui.js';
+import {PageCallbackRouter as SearchboxPageCallbackRouter, PageHandlerRemote as SearchboxPageHandlerRemote} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 import type {AutocompleteResult, PageRemote as SearchboxPageRemote, SelectedFileInfo} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 import type {UnguessableToken} from 'chrome://resources/mojo/mojo/public/mojom/base/unguessable_token.mojom-webui.js';
 import {assertEquals, assertFalse, assertNotEquals, assertTrue} from 'chrome://webui-test/chai_assert.js';
@@ -643,8 +644,8 @@ suite('ContextualTasksComposeboxTest', () => {
     await mockSearchboxPageHandler.whenCalled('queryAutocomplete');
     const calls = mockSearchboxPageHandler.getArgs('queryAutocomplete');
     const lastCall = calls[calls.length - 1];
-    assertEquals('new query', lastCall[1]);
-    assertEquals(SuggestInventory.kDefault, lastCall[4]);
+    assertEquals('new query', lastCall[2]);
+    assertEquals(SuggestInventory.kDefault, lastCall[5]);
   });
 
   test('inputEnabled attribute reflected on composebox', async () => {
@@ -746,9 +747,9 @@ suite('ContextualTasksComposeboxTest', () => {
     const [toolMode] =
         await mockSearchboxPageHandler.whenCalled('setActiveToolMode');
     assertEquals(1, toolMode);
-    const [, isSetByServer] =
+    const [, isSetByAim] =
         mockSearchboxPageHandler.getArgs('setActiveToolMode')[0];
-    assertTrue(isSetByServer);
+    assertTrue(isSetByAim);
 
     const [modelMode] =
         await mockSearchboxPageHandler.whenCalled('setActiveModelMode');
@@ -1061,6 +1062,52 @@ suite('ContextualTasksComposeboxTest', () => {
     await microtasksFinished();
     await innerComposebox.updateComplete;
     assertEquals(0, innerComposebox.files.size);
+  });
+
+  test('OpeningMultipleNewThreadsPreservesAutoSuggestedTab', async () => {
+    const innerComposebox = contextualTasksApp.$.composebox.$.composebox;
+
+    const tabInfo = {
+      tabId: 1,
+      title: 'Auto Tab',
+      url: 'https://example.com',
+      lastActive: {internalValue: BigInt(100)},
+      showInCurrentTabChip: true,
+      showInPreviousTabChip: false,
+    };
+    searchboxCallbackRouterRemote.updateAutoSuggestedTabContext(tabInfo, null);
+    await searchboxCallbackRouterRemote.$.flushForTesting();
+    await microtasksFinished();
+    await innerComposebox.updateComplete;
+
+    assertEquals(1, innerComposebox.files.size);
+    assertTrue(innerComposebox.getHasAutomaticActiveTabChipToken());
+
+    // Calling `clearInputAndFocus()` (what `onNewThreadClick_()` calls)
+    // multiple times should preserve the auto-suggested tab.
+    contextualTasksApp.$.composebox.clearInputAndFocus();
+    await microtasksFinished();
+    await innerComposebox.updateComplete;
+
+    assertEquals(1, innerComposebox.files.size);
+    assertTrue(innerComposebox.getHasAutomaticActiveTabChipToken());
+
+    contextualTasksApp.$.composebox.clearInputAndFocus();
+    await microtasksFinished();
+    await innerComposebox.updateComplete;
+
+    assertEquals(1, innerComposebox.files.size);
+    assertTrue(innerComposebox.getHasAutomaticActiveTabChipToken());
+
+    // Explicitly clearing all inputs removes the auto-suggested tab.
+    innerComposebox.clearAllInputs(
+        /* querySubmitted= */ false,
+        /* shouldBlockAutoSuggestedTabs= */ true);
+    await microtasksFinished();
+    await innerComposebox.updateComplete;
+
+    assertEquals(0, innerComposebox.files.size);
+    assertFalse(innerComposebox.getHasAutomaticActiveTabChipToken());
   });
 
   test('SingleAutoTabFileDoesNotUpdatePlaceholder', async () => {
@@ -1470,6 +1517,25 @@ suite('ContextualTasksComposeboxTest', () => {
           assertEquals('', innerComposebox.inputPlaceholderOverride);
           assertEquals(
               initialPlaceholder, inputElement.getAttribute('placeholder'));
+        });
+
+        test('lens search tooltip showing reflects attribute', async () => {
+          const {wrapper} = parts;
+
+          assertFalse(wrapper.isLensSearchTooltipShowing);
+          assertFalse(wrapper.hasAttribute('is-lens-search-tooltip-showing'));
+
+          wrapper.isLensSearchTooltipShowing = true;
+          await wrapper.updateComplete;
+
+          assertTrue(wrapper.isLensSearchTooltipShowing);
+          assertTrue(wrapper.hasAttribute('is-lens-search-tooltip-showing'));
+
+          wrapper.isLensSearchTooltipShowing = false;
+          await wrapper.updateComplete;
+
+          assertFalse(wrapper.isLensSearchTooltipShowing);
+          assertFalse(wrapper.hasAttribute('is-lens-search-tooltip-showing'));
         });
 
         test('ClearInputAndFocusClearsMatchesOnSubmit', () => {
@@ -3521,7 +3587,7 @@ function createVoiceResults(transcripts: string[]): SpeechRecognitionEvent {
                             'queryAutocomplete'));
                     const queryArgs = mockSearchboxPageHandler.getArgs(
                         'queryAutocomplete')[0];
-                    assertEquals('helloworld', queryArgs[1]);
+                    assertEquals('helloworld', queryArgs[2]);
                     assertEquals(
                         0,
                         mockSearchboxPageHandler.getCallCount('submitQuery'));

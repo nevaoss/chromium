@@ -1515,7 +1515,7 @@
 <translation id="5319712128756744240">配對新裝置</translation>
 <translation id="5322611492012084517">找不到你的手機</translation>
 <translation id="5323994101633366939">隱藏桌面名稱</translation>
-<translation id="5327248766486351172">名稱</translation>
+<translation id="5327248766486351172">姓名</translation>
 <translation id="5327570636534774768">這個裝置的標記狀態是由其他網域管理。請先從該網域取消佈建裝置，再設定展示模式。</translation>
 <translation id="532943162177641444">在 <ph name="PHONE_NAME" /> 上輕觸通知，即可設定可供這個裝置使用的可攜式無線基地台。</translation>
 <translation id="5329548388331921293">連線中...</translation>
@@ -2133,6 +2133,7 @@
 <translation id="7086931198345821656">這項更新會對你的 <ph name="DEVICE_TYPE" /> 執行 Powerwash。請注意，這麼做將刪除裝置上的所有資料。進一步瞭解最新的 <ph name="SYSTEM_APP_NAME" /> 更新內容。</translation>
 <translation id="7088960765736518739">切換控制功能</translation>
 <translation id="709015856939120012">放大網頁</translation>
+<translation id="7098252678146172845">開啟/關閉閱讀模式</translation>
 <translation id="7098389117866926363">USB-C 裝置 (背面左側連接埠)</translation>
 <translation id="7100906357717321275">顯示「檔案」應用程式中隱藏的檔案</translation>
 <translation id="710640343305609397">開啟網路設定</translation>

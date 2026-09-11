@@ -12,18 +12,20 @@
 
 #include "base/functional/callback_forward.h"
 #include "build/build_config.h"
-#include "chrome/browser/apps/link_capturing/intent_picker_info.h"
 #include "chrome/browser/lifetime/browser_close_manager.h"
 #include "chrome/browser/signin/chrome_signin_helper.h"
 #include "chrome/browser/ui/bookmarks/bookmark_bar.h"
 #include "chrome/browser/ui/browser.h"
+#include "chrome/browser/ui/browser_window_deleter.h"
 #include "chrome/browser/ui/exclusive_access/exclusive_access_bubble_type.h"
 #include "chrome/browser/ui/hats/hats_service.h"
 #include "chrome/browser/ui/page_action/page_action_icon_type.h"
 #include "chrome/browser/ui/translate/partial_translate_bubble_model.h"
 #include "chrome/browser/ui/unload_controller.h"
 #include "chrome/browser/ui/webui/tab_search/tab_search.mojom.h"
+#include "chrome/browser/ui/window_feature_controller/window_feature_controller.h"
 #include "chrome/common/buildflags.h"
+#include "components/apps/link_capturing/intent_picker_info.h"
 #include "components/content_settings/core/common/content_settings_types.h"
 #include "components/translate/core/browser/translate_step.h"
 #include "components/translate/core/common/translate_errors.h"
@@ -38,7 +40,6 @@
 #error This file should only be included on desktop.
 #endif
 
-class Browser;
 class BrowserView;
 class BrowserWindowInterface;
 class DownloadBubbleUIController;
@@ -53,10 +54,17 @@ class AutofillBubbleHandler;
 }  // namespace autofill
 
 namespace content {
+class EyeDropper;
+class EyeDropperListener;
+class RenderFrameHost;
 class WebContents;
-struct NativeWebKeyboardEvent;
+struct DropData;
 enum class KeyboardEventProcessingResult;
 }  // namespace content
+
+namespace input {
+struct NativeWebKeyboardEvent;
+}  // namespace input
 
 namespace gfx {
 class Size;
@@ -414,7 +422,7 @@ class BrowserWindow : public ui::BaseWindow {
 
   // Construct a BrowserWindow implementation for the specified |browser|.
   static std::unique_ptr<BrowserWindow, BrowserWindowDeleter>
-  CreateBrowserWindow(Browser* browser,
+  CreateBrowserWindow(BrowserWindowInterface* browser,
                       bool user_gesture,
                       bool in_tab_dragging);
 

@@ -17,6 +17,9 @@ namespace ui {
 // ships.
 UI_ANDROID_EXPORT BASE_DECLARE_FEATURE(kAndroidHDR);
 
+// Drops the cached bitmap in SoftwareDraw immediately after capture.
+UI_ANDROID_EXPORT BASE_DECLARE_FEATURE(kAndroidResourceMemoryOptimization);
+
 // Feature controlling how to compute work area on Android.
 // TODO(crbug.com/372385871): Cleanup flag after investigating nothing is broken
 // after changing the default behavior for
@@ -51,6 +54,10 @@ UI_ANDROID_EXPORT BASE_DECLARE_FEATURE(kCheckIntentCallerPermission);
 UI_ANDROID_EXPORT BASE_DECLARE_FEATURE(kClipboardConfusedDeputyDefenseText);
 UI_ANDROID_EXPORT BASE_DECLARE_FEATURE(kClipboardConfusedDeputyDefenseImages);
 UI_ANDROID_EXPORT BASE_DECLARE_FEATURE(kClipboardConfusedDeputyDefenseFiles);
+
+// Controls whether oversized text and HTML clipboard payloads are streamed
+// across processes via ClipboardTextDataProvider on Android.
+UI_ANDROID_EXPORT BASE_DECLARE_FEATURE(kClipboardOversizedPayloadProvider);
 
 // Use the old-style opening of an External Picker when uploading files.
 UI_ANDROID_EXPORT BASE_DECLARE_FEATURE(kDeprecatedExternalPickerFunction);

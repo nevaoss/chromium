@@ -181,7 +181,7 @@ suite('OverflowMenuTest', () => {
       });
       overflowMenu = document.createElement('contextual-tasks-overflow-menu');
       overflowMenu.isHandshakeComplete = true;
-      overflowMenu.isCobrowseEligible = true;
+      overflowMenu.isAimEligible = true;
       document.body.appendChild(overflowMenu);
       await microtasksFinished();
     });
@@ -204,6 +204,15 @@ suite('OverflowMenuTest', () => {
 
     test('hides pin button when not on AI page', async () => {
       overflowMenu.isAiPage = false;
+      await microtasksFinished();
+
+      const pinButton =
+          overflowMenu.shadowRoot.querySelector<HTMLElement>('#pinButton');
+      assertFalse(!!pinButton);
+    });
+
+    test('hides pin button when not aim eligible', async () => {
+      overflowMenu.isAimEligible = false;
       await microtasksFinished();
 
       const pinButton =

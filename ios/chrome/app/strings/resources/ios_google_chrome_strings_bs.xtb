@@ -74,6 +74,7 @@ Stvari za razmatranje:
 <translation id="2427791862912929107">Chrome sadržava funkcije koje vam pomažu prilikom upravljanja internetskim podacima i brzinom učitavanja web lokacija.
 <ph name="BEGIN_LINK" />Saznajte više<ph name="END_LINK" /></translation>
 <translation id="2450221499140985490">Otvarajte linkove iz poruka i dokumenata direktno u Chromeu.</translation>
+<translation id="2459400997522001951">Brzo obavite zadatke i otkrijte načine da iskoristite sve prednosti Chromea:</translation>
 <translation id="2464852008153767546">{THRESHOLD,plural, =1{Ovo se dešava kad se Chrome ne koristi {THRESHOLD} minutu. Ovo može uključivati historiju i automatsko popunjavanje.}one{Ovo se dešava kad se Chrome ne koristi {THRESHOLD} minutu. Ovo može uključivati historiju i automatsko popunjavanje.}few{Ovo se dešava kad se Chrome ne koristi {THRESHOLD} minute. Ovo može uključivati historiju i automatsko popunjavanje.}other{Ovo se dešava kad se Chrome ne koristi {THRESHOLD} minuta. Ovo može uključivati historiju i automatsko popunjavanje.}}</translation>
 <translation id="2561231791489583059">Koristite Chrome kao zadani preglednik da se zaštitite od opasnih web lokacija i da zaštitite lozinke</translation>
 <translation id="2574249610672786438">Da vidite kartice s bilo kojeg uređaja na kojem koristite Chrome, prijavite se na svim uređajima</translation>
@@ -141,6 +142,7 @@ Nove oznake se ne mogu sačuvati na računu dok ne izbrišete neke. Ako se sada 
 <translation id="411154422556990518">Pratite novosti o praćenju cijena i savjete za Chrome.</translation>
 <translation id="417201473131094001">Nije podržano na Chrome Canaryju</translation>
 <translation id="424864128008805179">Odjaviti se iz Chromea?</translation>
+<translation id="4314240881330431451">Možete koristiti Google Objektiv u Chromeu da pretražite bilo šta što vidite</translation>
 <translation id="4409545895715116037">Sljedeći pristupni ključevi nisu uvezeni na Google upravitelj lozinki jer se ne podudaraju sa zahtjevima.</translation>
 <translation id="4430797724889237570">Otvarajte linkove s Gmaila, Mapa, YouTubea i iz drugih aplikacija u Chromeu</translation>
 <translation id="447252321002412580">Pomozite nam da poboljšamo funkcije i performanse Chromea</translation>

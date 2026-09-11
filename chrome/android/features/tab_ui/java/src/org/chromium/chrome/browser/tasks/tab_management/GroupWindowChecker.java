@@ -4,11 +4,12 @@
 
 package org.chromium.chrome.browser.tasks.tab_management;
 
+import android.content.Context;
+
 import org.chromium.base.Token;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.app.tabwindow.TabWindowManagerSingleton;
-import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tabmodel.TabList;
 import org.chromium.chrome.browser.tabmodel.TabModel;
@@ -21,10 +22,14 @@ import org.chromium.components.tab_group_sync.TabGroupSyncService;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Objects;
 
 /** For tab group lists to interact with {@link TabGroupSyncService} and multiple windows. */
 @NullMarked
 public class GroupWindowChecker {
+    public static final Comparator<GroupWindowInfo> UPDATE_TIME_COMPARATOR =
+            (a, b) -> Long.compare(b.lastModifiedTimeMs, a.lastModifiedTimeMs);
+
     /** Used to filter tab groups while processing tab groups. */
     @FunctionalInterface
     public interface TabGroupSelectionPredicate {
@@ -36,20 +41,32 @@ public class GroupWindowChecker {
         boolean shouldInclude(@GroupWindowState Integer groupWindowState);
     }
 
+    private final Context mContext;
     private final @Nullable TabGroupSyncService mSyncService;
     private final TabModel mTabModel;
 
     /**
+     * @param context Context for tab group titles.
      * @param syncService The service to use for accessing synced tab groups.
      * @param tabModel Used for accessing tab information.
      */
-    public GroupWindowChecker(@Nullable TabGroupSyncService syncService, TabModel tabModel) {
+    public GroupWindowChecker(
+            Context context, @Nullable TabGroupSyncService syncService, TabModel tabModel) {
+        mContext = context;
         mSyncService = syncService;
         mTabModel = tabModel;
     }
 
     /**
-     * Returns a sorted list of {@link SavedTabGroup}s.
+     * Returns a sorted list of {@link GroupWindowInfo}s using the default filter and comparator.
+     */
+    public List<GroupWindowInfo> getDefaultSortedGroupList() {
+        return getSortedGroupList(
+                GroupWindowChecker::shouldShowGroupByState, UPDATE_TIME_COMPARATOR);
+    }
+
+    /**
+     * Returns a sorted list of {@link GroupWindowInfo}s.
      *
      * <p>The list includes all synced tab groups filtered by the provided predicate and sorted
      * using the provided comparator.
@@ -58,23 +75,60 @@ public class GroupWindowChecker {
      *     included in the returned list.
      * @param comparator Used for sorting the list.
      */
-    public List<SavedTabGroup> getSortedGroupList(
+    public List<GroupWindowInfo> getSortedGroupList(
             TabGroupSelectionPredicate tabGroupSelectionPredicate,
-            Comparator<SavedTabGroup> comparator) {
-        List<SavedTabGroup> groupList = new ArrayList<>();
-        if (mSyncService == null) return groupList;
+            Comparator<GroupWindowInfo> comparator) {
+        List<GroupWindowInfo> groupList = new ArrayList<>();
+        // All non-incognito tab groups are tracked by TabGroupSyncService.
+        if (mSyncService != null && !mTabModel.isIncognito()) {
+            for (String syncGroupId : mSyncService.getAllGroupIds()) {
+                SavedTabGroup savedTabGroup = mSyncService.getGroup(syncGroupId);
+                assert savedTabGroup != null && !savedTabGroup.savedTabs.isEmpty();
 
-        for (String syncGroupId : mSyncService.getAllGroupIds()) {
-            SavedTabGroup savedTabGroup = mSyncService.getGroup(syncGroupId);
-            assert savedTabGroup != null && !savedTabGroup.savedTabs.isEmpty();
-
-            @GroupWindowState int groupWindowState = getState(savedTabGroup);
-            if (tabGroupSelectionPredicate.shouldInclude(groupWindowState)) {
-                groupList.add(savedTabGroup);
+                @GroupWindowState int groupWindowState = getState(savedTabGroup);
+                if (tabGroupSelectionPredicate.shouldInclude(groupWindowState)) {
+                    groupList.add(
+                            GroupWindowInfo.forSyncedGroup(
+                                    mContext, savedTabGroup, groupWindowState));
+                }
+            }
+        } else if (tabGroupSelectionPredicate.shouldInclude(GroupWindowState.IN_CURRENT)) {
+            for (Token groupId : mTabModel.getAllTabGroupIds()) {
+                groupList.add(GroupWindowInfo.forLocalGroup(mContext, mTabModel, groupId));
             }
         }
         groupList.sort(comparator);
         return groupList;
+    }
+
+    /**
+     * Returns whether there is any tab group other than the given group ID.
+     *
+     * @param currentGroupId The tab group ID to exclude, or null if checking for any tab group.
+     * @return True if another tab group exists, false otherwise.
+     */
+    public boolean hasOtherGroups(@Nullable Token currentGroupId) {
+        for (GroupWindowInfo group : getDefaultSortedGroupList()) {
+            if (group.localId != null && !Objects.equals(currentGroupId, group.localId)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Whether a tab group should be shown based on its {@link GroupWindowState}.
+     *
+     * @param state The {@link GroupWindowState} of the group.
+     */
+    public static boolean shouldShowGroupByState(@GroupWindowState int state) {
+        if (state == GroupWindowState.IN_CURRENT_CLOSING || state == GroupWindowState.HIDDEN) {
+            return false;
+        }
+        if (state == GroupWindowState.IN_ANOTHER) {
+            return TabGroupUiUtils.isCrossWindowTabGroupOperationsEnabled();
+        }
+        return true;
     }
 
     /** Returns the {@link GroupWindowState} of the given {@link SavedTabGroup}. */
@@ -95,7 +149,7 @@ public class GroupWindowChecker {
             }
         }
         if (!foundGroup) {
-            if (ChromeFeatureList.sCrossWindowTabGroupOperations.isEnabled()
+            if (TabGroupUiUtils.isCrossWindowTabGroupOperationsEnabled()
                     && isWindowForGroupNotActive(groupId)) {
                 return GroupWindowState.HIDDEN;
             }

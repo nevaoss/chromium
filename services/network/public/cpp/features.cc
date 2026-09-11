@@ -193,6 +193,12 @@ BASE_FEATURE_PARAM(bool,
 BASE_FEATURE(kCorsNonWildcardRequestHeadersSupport,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
+// When enabled, CORS preflight cache keys take the tainted origin flag into
+// account (using an opaque / null origin), preventing tainted preflight
+// results from satisfying untainted requests.
+BASE_FEATURE(kCorsPreflightCacheKeyTaintedOrigin,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+
 // Do not send TLS client certificates in CORS preflight. Omit all client certs
 // and continue the handshake without sending one if requested.
 BASE_FEATURE(kOmitCorsClientCert, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -484,8 +490,10 @@ BASE_FEATURE_PARAM(bool,
                    "url_loader",
                    true);
 
+// TODO(crbug.com/549684526): Enable this universally across all platforms as
+// there is no reason to keep the disabled behavior.
 BASE_FEATURE(kUseUnexportableKeyServiceInBrowserProcess,
-#if BUILDFLAG(IS_WIN)
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
              base::FEATURE_ENABLED_BY_DEFAULT
 #else
              base::FEATURE_DISABLED_BY_DEFAULT
@@ -495,10 +503,14 @@ BASE_FEATURE(kUseUnexportableKeyServiceInBrowserProcess,
 BASE_FEATURE(kBypassRequestForbiddenHeadersCheck,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
-// When enabled, the network service will prohibit modifications to the Origin
-// header in FollowRedirect.
-BASE_FEATURE(kBlockOriginHeaderModificationOnRedirect,
+// When enabled, the network service will prohibit invalid modifications to the
+// Origin header in CorsURLLoader::FollowRedirect.
+BASE_FEATURE(kBlockInvalidOriginHeaderModificationOnRedirect,
              base::FEATURE_ENABLED_BY_DEFAULT);
+
+// When enabled, the network service will prohibit invalid Origin headers in
+// CorsURLLoader::StartRequest.
+BASE_FEATURE(kBlockInvalidOriginHeader, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kServiceWorkerSyntheticResponseHeaderCheck,
              base::FEATURE_DISABLED_BY_DEFAULT);
@@ -524,7 +536,7 @@ BASE_FEATURE_PARAM(int,
                    kDurableMessagesGlobalBufferSize,
                    &kDurableMessages,
                    /*name=*/"max_global_buffer_size",
-                   /*default_value=*/base::MiBU(350).InBytes());
+                   /*default_value=*/base::MiB(350).InBytes());
 
 BASE_FEATURE(kReportingApiEnableVariationsHeaders,
              base::FEATURE_ENABLED_BY_DEFAULT);
@@ -532,7 +544,7 @@ BASE_FEATURE(kReportingApiEnableVariationsHeaders,
 BASE_FEATURE(kNetworkContextDirectReceiver, base::FEATURE_DISABLED_BY_DEFAULT);
 
 bool ShouldBindNetworkContextDirectReceiver() {
-  return mojo::IsDirectReceiverSupported() && base::CurrentIOThread::IsSet() &&
+  return base::CurrentIOThread::IsSet() &&
          base::FeatureList::IsEnabled(features::kNetworkContextDirectReceiver);
 }
 
@@ -547,13 +559,6 @@ BASE_FEATURE_PARAM(base::TimeDelta,
                    "initial_doh_probe_timeout",
                    base::Seconds(5));
 
-BASE_FEATURE(kRestrictForbiddenSecurityHeaders,
-             base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE_PARAM(bool,
-                   kRestrictForbiddenSecurityHeadersDump,
-                   &kRestrictForbiddenSecurityHeaders,
-                   false);
-
 BASE_FEATURE(kDirectSocketsUdpSendRequireMulticastPermissionPolicy,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
@@ -561,5 +566,8 @@ BASE_FEATURE(kBrowserInitiatedFileUploadValidation,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kSafeRevalidation, base::FEATURE_ENABLED_BY_DEFAULT);
+
+BASE_FEATURE(kBindURLLoaderFactoryToHighPriorityTaskRunner,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 }  // namespace network::features

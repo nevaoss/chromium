@@ -175,9 +175,8 @@ void BrowserWidget::InitBrowserWidget() {
       browser->GetType() == BrowserWindowInterface::Type::TYPE_APP ||
       browser->GetType() == BrowserWindowInterface::Type::TYPE_APP_POPUP;
 
-  params.session_data = browser->GetFeatures()
-                            .session_service_browser_helper()
-                            ->platform_session_data();
+  params.session_data =
+      SessionServiceBrowserHelper::From(browser)->platform_session_data();
 #endif
 
   if (browser_native_widget_->ShouldRestorePreviousBrowserWidgetState()) {
@@ -217,6 +216,14 @@ void BrowserWidget::InitBrowserWidget() {
   }
 
   Init(std::move(params));
+
+  if (auto* const glass_frame_service = GlassFrameService::GetInstance()) {
+    glass_frame_subscription_ =
+        glass_frame_service->RegisterGlassFrameEligibilityChangedCallback(
+            browser_view_->browser(),
+            base::BindRepeating(&BrowserWidget::OnGlassFrameEligibilityChanged,
+                                base::Unretained(this)));
+  }
 
 #if BUILDFLAG(IS_LINUX)
   SelectNativeTheme();
@@ -351,9 +358,11 @@ const ui::ThemeProvider* BrowserWidget::GetBaseThemeProvider() const {
 
 ui::ColorProviderKey::ThemeInitializerSupplier* BrowserWidget::GetCustomTheme()
     const {
-  // Do not return any custom theme if this is an incognito browser or if there
-  // is a user color override (e.g. Focus Mode).
-  if (IsIncognitoBrowser() || user_color_override().has_value()) {
+  // Do not return any custom theme if this is an incognito browser, an
+  // enterprise isolated mode browser, or if there is a user color override
+  // (e.g. Focus Mode).
+  if (IsIncognitoBrowser() || IsEnterpriseIsolatedModeBrowser() ||
+      user_color_override().has_value()) {
     return nullptr;
   }
 
@@ -515,6 +524,13 @@ ui::ColorProviderKey BrowserWidget::GetColorProviderKey() const {
   }
 #endif
 
+  if (auto* const glass_frame_service = GlassFrameService::GetInstance()) {
+    if (glass_frame_service->IsBrowserWindowEligible(
+            browser_view_->browser())) {
+      key.frame_style = ui::ColorProviderKey::FrameStyle::kGlass;
+    }
+  }
+
   return key;
 }
 
@@ -524,10 +540,10 @@ void BrowserWidget::OnMenuClosed() {
 
 void BrowserWidget::SelectNativeTheme() {
 #if BUILDFLAG(IS_LINUX)
-  // Use the regular NativeTheme instance if running incognito mode, regardless
-  // of system theme (gtk, qt etc).
+  // Use the regular NativeTheme instance if running incognito mode or
+  // enterprise isolated mode, regardless of system theme (gtk, qt etc).
   ui::NativeTheme* native_theme = ui::NativeTheme::GetInstanceForNativeUi();
-  if (IsIncognitoBrowser()) {
+  if (IsIncognitoBrowser() || IsEnterpriseIsolatedModeBrowser()) {
     SetNativeTheme(native_theme);
     return;
   }
@@ -561,6 +577,12 @@ void BrowserWidget::OnTouchUiChanged() {
   GetRootView()->InvalidateLayout();
 }
 
+void BrowserWidget::OnGlassFrameEligibilityChanged(bool is_eligible) {
+  // TODO(crbug.com/40280130): Update to NotifyColorProviderChanged() once it
+  // properly triggers ThemeChanged().
+  ThemeChanged();
+}
+
 bool BrowserWidget::RegenerateFrameOnThemeChange(
     BrowserThemeChangeType theme_change_type) {
   bool need_regenerate = false;
@@ -590,4 +612,10 @@ bool BrowserWidget::RegenerateFrameOnThemeChange(
 
 bool BrowserWidget::IsIncognitoBrowser() const {
   return browser_view_->browser()->GetProfile()->IsIncognitoProfile();
+}
+
+bool BrowserWidget::IsEnterpriseIsolatedModeBrowser() const {
+  return browser_view_->browser()
+      ->GetProfile()
+      ->IsEnterpriseIsolatedModeProfile();
 }

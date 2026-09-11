@@ -14,6 +14,7 @@
 #include "chrome/browser/ui/views/dictation/waveform_view.h"
 #include "chrome/test/views/chrome_views_test_base.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "ui/views/controls/button/md_text_button.h"
 #include "ui/views/interaction/element_tracker_views.h"
 #include "ui/views/view_utils.h"
 #include "ui/views/widget/widget.h"
@@ -26,9 +27,11 @@ constexpr size_t kBarCount = 9;
 
 }  // namespace
 
-class DictationBubbleUiTest : public ChromeViewsTestBase {
+class DictationBubbleUiTest : public ChromeViewsTestBase,
+                              public testing::WithParamInterface<bool> {
  public:
-  DictationBubbleUiTest() = default;
+  DictationBubbleUiTest()
+      : scoped_feature_list_(CreateEnablingFeatureList(GetParam())) {}
   DictationBubbleUiTest(const DictationBubbleUiTest&) = delete;
   DictationBubbleUiTest& operator=(const DictationBubbleUiTest&) = delete;
   ~DictationBubbleUiTest() override = default;
@@ -51,11 +54,10 @@ class DictationBubbleUiTest : public ChromeViewsTestBase {
  protected:
   std::unique_ptr<views::Widget> anchor_widget_;
   raw_ptr<views::View> anchor_view_ = nullptr;
-  base::test::ScopedFeatureList scoped_feature_list_{
-      CreateEnablingFeatureList()};
+  base::test::ScopedFeatureList scoped_feature_list_;
 };
 
-TEST_F(DictationBubbleUiTest, StatePropagatesToWaveform) {
+TEST_P(DictationBubbleUiTest, StatePropagatesToWaveform) {
   auto bubble = std::make_unique<DictationBubbleUi>(
       anchor_view_, base::DoNothing(), base::DoNothing());
   bubble->Show();
@@ -94,7 +96,37 @@ TEST_F(DictationBubbleUiTest, StatePropagatesToWaveform) {
   EXPECT_EQ(waveform_view->state(), UiState::kInactive);
 }
 
-TEST_F(DictationBubbleUiTest, AudioLevelPropagatesToWaveform) {
+TEST_P(DictationBubbleUiTest, StatePropagatesToToggleButton) {
+  auto bubble = std::make_unique<DictationBubbleUi>(
+      anchor_view_, base::DoNothing(), base::DoNothing());
+  bubble->Show();
+
+  views::View* contents_view = bubble->GetContentsView();
+  ASSERT_NE(contents_view, nullptr);
+
+  views::View* toggle_button_raw =
+      views::ElementTrackerViews::GetInstance()->GetFirstMatchingView(
+          DictationBubbleUi::kToggleButtonElementIdForTesting,
+          views::ElementTrackerViews::GetContextForView(contents_view));
+  ASSERT_NE(toggle_button_raw, nullptr);
+
+  auto* toggle_button =
+      views::AsViewClass<views::MdTextButton>(toggle_button_raw);
+  ASSERT_NE(toggle_button, nullptr);
+
+  const bool session_ends_on_stream_end = GetParam();
+
+  bubble->SetState(UiState::kTranscribing);
+  EXPECT_TRUE(toggle_button->GetEnabled());
+
+  bubble->SetState(UiState::kFinalizing);
+  EXPECT_FALSE(toggle_button->GetEnabled());
+
+  bubble->SetState(UiState::kInactive);
+  EXPECT_EQ(toggle_button->GetEnabled(), !session_ends_on_stream_end);
+}
+
+TEST_P(DictationBubbleUiTest, AudioLevelPropagatesToWaveform) {
   auto bubble = std::make_unique<DictationBubbleUi>(
       anchor_view_, base::DoNothing(), base::DoNothing());
   bubble->Show();
@@ -114,15 +146,15 @@ TEST_F(DictationBubbleUiTest, AudioLevelPropagatesToWaveform) {
   // Initial audio level should be 0.
   EXPECT_FLOAT_EQ(waveform_view->audio_level_for_testing(), 0.0f);
 
-  // Update audio level. Note the boost factor in WaveformView::SetAudioLevel.
+  // Update audio level.
   bubble->UpdateAudioLevel(0.05f);
-  EXPECT_FLOAT_EQ(waveform_view->audio_level_for_testing(), 0.5f);
+  EXPECT_FLOAT_EQ(waveform_view->audio_level_for_testing(), 0.05f);
 
   bubble->UpdateAudioLevel(0.2f);
-  EXPECT_FLOAT_EQ(waveform_view->audio_level_for_testing(), 1.0f);
+  EXPECT_FLOAT_EQ(waveform_view->audio_level_for_testing(), 0.2f);
 }
 
-TEST_F(DictationBubbleUiTest, FinalizingWaveAnimation) {
+TEST_P(DictationBubbleUiTest, FinalizingWaveAnimation) {
   auto bubble = std::make_unique<DictationBubbleUi>(
       anchor_view_, base::DoNothing(), base::DoNothing());
   bubble->Show();
@@ -175,7 +207,53 @@ TEST_F(DictationBubbleUiTest, FinalizingWaveAnimation) {
   }
 }
 
-TEST_F(DictationBubbleUiTest, WaveformCollapseWhenInactive) {
+TEST_P(DictationBubbleUiTest, AudioLevelMath) {
+  auto bubble = std::make_unique<DictationBubbleUi>(
+      anchor_view_, base::DoNothing(), base::DoNothing());
+  bubble->Show();
+  bubble->SetState(UiState::kTranscribing);
+
+  views::View* contents_view = bubble->GetContentsView();
+  ASSERT_NE(contents_view, nullptr);
+  views::View* waveform_view_raw =
+      views::ElementTrackerViews::GetInstance()->GetFirstMatchingView(
+          DictationBubbleUi::kWaveformElementIdForTesting,
+          views::ElementTrackerViews::GetContextForView(contents_view));
+  ASSERT_NE(waveform_view_raw, nullptr);
+
+  auto* waveform_view = views::AsViewClass<WaveformView>(waveform_view_raw);
+  ASSERT_NE(waveform_view, nullptr);
+
+  // Constants that match what WaveformView uses.
+  const float kMinBarHeight = 4.0f;
+  const float kMaxBarHeight = 20.0f;
+  const size_t center_index = waveform_view->GetCenterBarIndex();
+
+  // Test Silence (0.0f level). Should result in minimum height.
+  waveform_view->SetAudioLevel(0.0f);
+  waveform_view->UpdatePhysics(base::Milliseconds(50));
+  float height_silence = waveform_view->GetTargetHeightForBar(
+      center_index, kMinBarHeight, kMaxBarHeight);
+  EXPECT_FLOAT_EQ(height_silence, kMinBarHeight);
+
+  // Test Small noise (0.05f level). Should still be relatively small, but above
+  // min. We advance physics again to propagate it to audio_history_[0].
+  waveform_view->SetAudioLevel(0.05f);
+  waveform_view->UpdatePhysics(base::Milliseconds(50));
+  float height_small = waveform_view->GetTargetHeightForBar(
+      center_index, kMinBarHeight, kMaxBarHeight);
+  EXPECT_GT(height_small, kMinBarHeight);
+
+  // Test Max level (1.0f level). Should be fully at max height.
+  waveform_view->SetAudioLevel(1.0f);
+  waveform_view->UpdatePhysics(base::Milliseconds(50));
+  float height_max = waveform_view->GetTargetHeightForBar(
+      center_index, kMinBarHeight, kMaxBarHeight);
+  EXPECT_GT(height_max, height_small);
+  EXPECT_FLOAT_EQ(height_max, kMaxBarHeight);
+}
+
+TEST_P(DictationBubbleUiTest, WaveformSizing) {
   auto bubble = std::make_unique<DictationBubbleUi>(
       anchor_view_, base::DoNothing(), base::DoNothing());
   bubble->Show();
@@ -192,14 +270,26 @@ TEST_F(DictationBubbleUiTest, WaveformCollapseWhenInactive) {
   auto* waveform_view = views::AsViewClass<WaveformView>(waveform_view_raw);
   ASSERT_NE(waveform_view, nullptr);
 
+  const bool session_ends_on_stream_end = GetParam();
+
   // Inactive state
   EXPECT_EQ(waveform_view->state(), UiState::kInactive);
-  EXPECT_EQ(waveform_view->GetPreferredSize(), gfx::Size(0, 0));
+  if (session_ends_on_stream_end) {
+    EXPECT_GT(waveform_view->GetPreferredSize().width(), 0);
+    EXPECT_GT(waveform_view->GetPreferredSize().height(), 0);
+  } else {
+    EXPECT_EQ(waveform_view->GetPreferredSize(), gfx::Size(0, 0));
+  }
 
   // Initializing state
   bubble->SetState(UiState::kInitializing);
   EXPECT_EQ(waveform_view->state(), UiState::kInitializing);
-  EXPECT_EQ(waveform_view->GetPreferredSize(), gfx::Size(0, 0));
+  if (session_ends_on_stream_end) {
+    EXPECT_GT(waveform_view->GetPreferredSize().width(), 0);
+    EXPECT_GT(waveform_view->GetPreferredSize().height(), 0);
+  } else {
+    EXPECT_GT(waveform_view->GetPreferredSize().width(), 0);
+  }
 
   // Transcribing state
   bubble->SetState(UiState::kTranscribing);
@@ -209,7 +299,14 @@ TEST_F(DictationBubbleUiTest, WaveformCollapseWhenInactive) {
   // Transitioning back to inactive state
   bubble->SetState(UiState::kInactive);
   EXPECT_EQ(waveform_view->state(), UiState::kInactive);
-  EXPECT_EQ(waveform_view->GetPreferredSize(), gfx::Size(0, 0));
+  if (session_ends_on_stream_end) {
+    EXPECT_GT(waveform_view->GetPreferredSize().width(), 0);
+    EXPECT_GT(waveform_view->GetPreferredSize().height(), 0);
+  } else {
+    EXPECT_EQ(waveform_view->GetPreferredSize(), gfx::Size(0, 0));
+  }
 }
+
+INSTANTIATE_TEST_SUITE_P(All, DictationBubbleUiTest, testing::Bool());
 
 }  // namespace dictation

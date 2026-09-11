@@ -74,6 +74,7 @@ Kaj je treba upoštevati:
 <translation id="2427791862912929107">Chrome ima funkcije, s katerimi lažje upravljate internetne podatke in hitrost nalaganja spletnih strani.
 <ph name="BEGIN_LINK" />Več o tem<ph name="END_LINK" /></translation>
 <translation id="2450221499140985490">Odpirajte povezave iz sporočil in dokumentov neposredno v Chromu.</translation>
+<translation id="2459400997522001951">Dokončajte hitra opravila in odkrijte načine, kako kar najbolje izkoristiti Chrome:</translation>
 <translation id="2464852008153767546">{THRESHOLD,plural, =1{To se zgodi, če Chroma ne uporabljate {THRESHOLD} minuto. To lahko vključuje zgodovino in samodejno izpolnjevanje.}one{To se zgodi, če Chroma ne uporabljate {THRESHOLD} minuto. To lahko vključuje zgodovino in samodejno izpolnjevanje.}two{To se zgodi, če Chroma ne uporabljate {THRESHOLD} minuti. To lahko vključuje zgodovino in samodejno izpolnjevanje.}few{To se zgodi, če Chroma ne uporabljate {THRESHOLD} minute. To lahko vključuje zgodovino in samodejno izpolnjevanje.}other{To se zgodi, če Chroma ne uporabljate {THRESHOLD} minut. To lahko vključuje zgodovino in samodejno izpolnjevanje.}}</translation>
 <translation id="2561231791489583059">Uporabljajte Chrome kot privzeti brskalnik, če se želite zaščititi pred nevarnimi spletnimi mesti in poskrbeti za varnost gesel.</translation>
 <translation id="2574249610672786438">Če si želite ogledati zavihke iz naprav, v katerih uporabljate Chrome, se prijavite v vseh napravah</translation>
@@ -141,6 +142,7 @@ Novih zaznamkov ni mogoče shraniti v račun, dokler nekaterih ne izbrišete. Č
 <translation id="411154422556990518">Bodite na tekočem z obvestili o spremljanju cen in nasveti za Chrome.</translation>
 <translation id="417201473131094001">Ni podprto v Chromu Canary</translation>
 <translation id="424864128008805179">Se želite odjaviti iz Chroma?</translation>
+<translation id="4314240881330431451">Z Googlom Lens v Chromu lahko iščete vse, kar vidite</translation>
 <translation id="4409545895715116037">Googlov upravitelj gesel ni mogel uvoziti naslednjih gesel, ker se ne ujemajo z zahtevami.</translation>
 <translation id="4430797724889237570">Odpiranje povezav iz Gmaila, Zemljevidov, YouTuba in drugih aplikacij v Chromu</translation>
 <translation id="447252321002412580">Pomagajte izboljšati funkcije in delovanje Chroma</translation>

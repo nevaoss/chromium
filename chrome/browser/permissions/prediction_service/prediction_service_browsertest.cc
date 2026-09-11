@@ -31,7 +31,9 @@
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/profiles/profile_key.h"
 #include "chrome/browser/translate/chrome_translate_client.h"
-#include "chrome/browser/ui/browser.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+#include "chrome/browser/ui/tabs/tab_enums.h"
+#include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/common/chrome_features.h"
 #include "chrome/test/base/in_process_browser_test.h"
 #include "chrome/test/base/ui_test_utils.h"
@@ -350,8 +352,10 @@ class PredictionServiceBrowserTestBase : public InProcessBrowserTest {
     mock_permission_prompt_factory_.reset();
   }
 
+  void reset_bubble_factory() { mock_permission_prompt_factory_.reset(); }
+
   content::WebContents* web_contents() {
-    return browser()->tab_strip_model()->GetActiveWebContents();
+    return browser()->GetTabStripModel()->GetActiveWebContents();
   }
 
   content::RenderFrameHost* primary_main_frame() {
@@ -360,7 +364,7 @@ class PredictionServiceBrowserTestBase : public InProcessBrowserTest {
 
   PermissionRequestManager* permission_request_manager() {
     return PermissionRequestManager::FromWebContents(
-        browser()->tab_strip_model()->GetActiveWebContents());
+        browser()->GetTabStripModel()->GetActiveWebContents());
   }
 
   MockPermissionPromptFactory* bubble_factory() {
@@ -1868,12 +1872,10 @@ struct PredictionServiceGeolocationAccuracyTestCase {
   GeolocationAccuracy expected_accuracy;
 };
 
-class PredictionServiceGeolocationAccuracyBrowserTest
-    : public PredictionServiceBrowserTestBase,
-      public testing::WithParamInterface<
-          PredictionServiceGeolocationAccuracyTestCase> {
+class PredictionServiceGeolocationAccuracyBrowserTestBase
+    : public PredictionServiceBrowserTestBase {
  public:
-  PredictionServiceGeolocationAccuracyBrowserTest()
+  PredictionServiceGeolocationAccuracyBrowserTestBase()
       : PredictionServiceBrowserTestBase(
             /*enabled_features=*/
             {{permissions::features::kPermissionPredictionsV2, {}},
@@ -1891,6 +1893,11 @@ class PredictionServiceGeolocationAccuracyBrowserTest
     return RequestType::kGeolocation;
   }
 };
+
+class PredictionServiceGeolocationAccuracyBrowserTest
+    : public PredictionServiceGeolocationAccuracyBrowserTestBase,
+      public testing::WithParamInterface<
+          PredictionServiceGeolocationAccuracyTestCase> {};
 
 IN_PROC_BROWSER_TEST_P(PredictionServiceGeolocationAccuracyBrowserTest,
                        UseGeolocationAccuracyFromResponse) {
@@ -1934,6 +1941,55 @@ IN_PROC_BROWSER_TEST_P(PredictionServiceGeolocationAccuracyBrowserTest,
       entry,
       ukm::builders::Permission::kInitialGeolocationAccuracySelectionName,
       static_cast<int64_t>(GetParam().expected_accuracy));
+}
+
+// Regression test for crbug.com/548056474.
+IN_PROC_BROWSER_TEST_F(
+    PredictionServiceGeolocationAccuracyBrowserTestBase,
+    WebContentsDestroyedWhilePredictionInFlightDoesNotCrash) {
+  // Reset the mock prompt factory so the test uses the production prompt path
+  // and avoids holding a dangling pointer when tab 0 is closed.
+  reset_bubble_factory();
+  permission_request_manager()->set_view_factory_for_testing(
+      base::BindRepeating(&PermissionPrompt::Create));
+
+  ASSERT_TRUE(embedded_test_server()->Start());
+
+  // Open a new foreground tab before starting so closing the test tab does not
+  // close the last tab and shut down the browser.
+  ui_test_utils::NavigateToURLWithDisposition(
+      browser(), GURL(url::kAboutBlankURL),
+      WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP);
+
+  // Switch back to the first tab to run the test.
+  browser()->GetTabStripModel()->ActivateTabAt(/*index=*/0);
+
+  PredictionRequestFeatures expected_features = BuildRequestFeatures(
+      RequestType::kGeolocation, ExperimentId::kNoExperimentId,
+      PermissionRequestRelevance::kUnspecified);
+
+  base::RunLoop run_loop;
+  EXPECT_CALL(prediction_service(),
+              StartLookup(PredictionRequestFeatureEq(expected_features), _, _))
+      .WillOnce(WithArg<2>(
+          [&](PredictionService::LookupResponseCallback response_callback) {
+            run_loop.Quit();
+          }));
+
+  GURL url = embedded_test_server()->GetURL("test.a", "/title1.html");
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), url));
+
+  auto req = std::make_unique<MockPermissionRequest>(
+      request_type(), PermissionRequestGestureType::GESTURE);
+  permission_request_manager()->AddRequest(primary_main_frame(),
+                                           std::move(req));
+
+  run_loop.Run();
+
+  // Close the tab while the prediction lookup is still in flight.
+  browser()->GetTabStripModel()->CloseWebContentsAt(
+      /*index=*/0, TabCloseTypes::CLOSE_USER_GESTURE);
 }
 
 INSTANTIATE_TEST_SUITE_P(

@@ -17,6 +17,7 @@ namespace {
 
 // Array of features exposed through the Java UiAndroidFeatureMap API.
 const base::Feature* const kFeaturesExposedToJava[] = {
+    &ui::kAndroidResourceMemoryOptimization,
     &ui::kAndroidUseCorrectDisplayWorkArea,
     &ui::kAndroidUseCorrectWindowBounds,
     &ui::kAndroidUseDisplayTopology,
@@ -28,6 +29,7 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &ui::kClipboardConfusedDeputyDefenseText,
     &ui::kClipboardConfusedDeputyDefenseImages,
     &ui::kClipboardConfusedDeputyDefenseFiles,
+    &ui::kClipboardOversizedPayloadProvider,
     &ui::kDeprecatedExternalPickerFunction,
     &ui::kDisablePhotoPickerForVideoCapture,
     &ui::kMaximumWindowForGestureNavDetection,

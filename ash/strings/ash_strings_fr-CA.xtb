@@ -1283,7 +1283,7 @@ Un appareil connecté.</translation>
 <translation id="4667099493359681081">Téléchargement du fichier <ph name="FILENAME" /> en cours…</translation>
 <translation id="4668936527507421457">Le NIP doit être composé uniquement de chiffres</translation>
 <translation id="4672539464599646374">L'Économiseur de pile est activé</translation>
-<translation id="4673427585974421255">Garder activé</translation>
+<translation id="4673427585974421255">Ne pas désactiver</translation>
 <translation id="4677040906536311086">Feuille de calcul Google</translation>
 <translation id="468019262817532242">Personne ne peut partager avec vous</translation>
 <translation id="468293128311738995">Applications de votre téléphone</translation>
@@ -2138,6 +2138,7 @@ Nouvelle installation</translation>
 <translation id="7086931198345821656">Cette mise à jour requiert l'utilisation de la fonctionnalité Powerwash sur votre <ph name="DEVICE_TYPE" />. Toutes les données qu'il contient seront supprimées. Apprenez-en plus à propos de la dernière mise à jour de <ph name="SYSTEM_APP_NAME" />.</translation>
 <translation id="7088960765736518739">Switch Access</translation>
 <translation id="709015856939120012">Zoomer sur la page</translation>
+<translation id="7098252678146172845">Ouvrir/Fermer le mode Lecture</translation>
 <translation id="7098389117866926363">Appareil USB-C (port arrière-gauche)</translation>
 <translation id="7100906357717321275">Afficher les fichiers cachés dans l'application Fichiers</translation>
 <translation id="710640343305609397">Ouvrir les paramètres réseau</translation>

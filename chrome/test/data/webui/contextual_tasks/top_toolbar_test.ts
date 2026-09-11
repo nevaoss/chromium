@@ -403,12 +403,13 @@ suite('TopToolbarTest', () => {
       loadTimeData.overrideValues({
         enablePinButton: true,
         isAiPage: true,
-        isCobrowseEligible: true,
+        isAimEligible: true,
         pinTooltip: 'Pin side panel',
         unpinTooltip: 'Unpin side panel',
       });
       topToolbar = document.createElement('top-toolbar');
       topToolbar.isHandshakeComplete = true;
+      topToolbar.isAimEligible = true;
       document.body.appendChild(topToolbar);
       await microtasksFinished();
     });
@@ -433,6 +434,23 @@ suite('TopToolbarTest', () => {
 
     test('hides pin button when not on AI page', async () => {
       topToolbar.isAiPage = false;
+      await microtasksFinished();
+
+      const moreButton =
+          topToolbar.shadowRoot.querySelector<CrIconButtonElement>(
+              '#overflowMenuButton');
+      assertTrue(!!moreButton);
+      moreButton.click();
+      await microtasksFinished();
+
+      const menu = topToolbar.$.overflowMenu.get();
+      const pinButton =
+          menu.shadowRoot.querySelector<HTMLElement>('#pinButton');
+      assertFalse(!!pinButton);
+    });
+
+    test('hides pin button when not aim eligible', async () => {
+      topToolbar.isAimEligible = false;
       await microtasksFinished();
 
       const moreButton =

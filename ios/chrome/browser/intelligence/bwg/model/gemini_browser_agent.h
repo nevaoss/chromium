@@ -41,6 +41,10 @@ class AppBarMediatorTest;
 class ToolbarMediatorTest;
 class LocationBarBadgeMediatorTest;
 
+namespace web {
+class WebState;
+}  // namespace web
+
 namespace gemini {
 enum class FloatyUpdateSource;
 }  // namespace gemini
@@ -164,6 +168,9 @@ class GeminiBrowserAgent : public BrowserUserData<GeminiBrowserAgent>,
   // floaty to be shown.
   void ShowFloatyIfInvoked(bool animated, gemini::FloatyUpdateSource source);
 
+  // Collapses floaty if invoked.
+  void CollapseFloatyIfInvoked();
+
   // Temporarily route SDK events from GeminiContainerMediator to
   // GeminiBrowserAgent to handle work that is necessary for the overlay UI but
   // not for the embedded UI. TODO(crbug.com/535579970): Remove this once
@@ -174,7 +181,6 @@ class GeminiBrowserAgent : public BrowserUserData<GeminiBrowserAgent>,
   void OnProcessingStatusChanged(
       ios::provider::GeminiClientMode processing_status,
       ios::provider::GeminiDormantReason dormant_reason) override;
-  void CollapseFloatyIfInvoked() override;
   void SetLastShownViewState(
       ios::provider::GeminiViewState view_state) override;
   void OnLiveButtonTapped() override;
@@ -241,12 +247,27 @@ class GeminiBrowserAgent : public BrowserUserData<GeminiBrowserAgent>,
   // Records the page type when Gemini is invoked.
   void RecordInvocationPageType();
 
+  // Configures Gemini with startup parameters.
+  void ConfigureGemini();
+
   // Helper to get the GeminiTabHelper for the active web state if it matches
   // the provided web state.
   GeminiTabHelper* GetActiveTabHelper(web::WebState* web_state) const;
 
   // Returns the ID of the active web state, or an invalid ID if none exists.
   web::WebStateID GetActiveWebStateID() const;
+
+  // Handles tab switching between `old_active` and `new_active` by updating
+  // observers, attached tab contexts, and UI state.
+  void SwitchTabs(web::WebState* old_active, web::WebState* new_active);
+
+  // Cleans up observation and updates attached tab context when leaving
+  // `web_state`.
+  void LeaveTab(web::WebState* web_state);
+
+  // Sets up observation, attached tabs, and page context when entering
+  // `web_state`.
+  void EnterTab(web::WebState* web_state);
 
   // Callback for scroll events.
   void OnScrollEvent();
@@ -424,6 +445,9 @@ class GeminiBrowserAgent : public BrowserUserData<GeminiBrowserAgent>,
 
   // Mediator for the Gemini container. Remove after bottom sheet migrations.
   __strong GeminiContainerMediator* gemini_container_mediator_ = nil;
+
+  // Handler for link opening.
+  __strong GeminiLinkOpeningHandler* link_opening_handler_ = nil;
 
   // Reference to fullscreen controller. Used to observe fullscreen progress
   // updates related to the Gemini overlay for the legacy fullscreen

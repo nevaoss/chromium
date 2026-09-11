@@ -56,8 +56,9 @@
 #include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/base/ui_base_features.h"
 #include "ui/compositor/compositor.h"
-#include "ui/compositor/layer.h"
 #include "ui/compositor/layer_animator.h"
+#include "ui/compositor/layer_surface.h"
+#include "ui/compositor/layer_textured.h"
 #include "ui/compositor/layer_type.h"
 #include "ui/display/display.h"
 #include "ui/display/screen.h"
@@ -321,7 +322,7 @@ void Window::Init(ui::LayerType layer_type) {
   layer()->SetVisible(false);
   layer()->set_delegate(this);
   if (auto* surface = layer()->AsSurface()) {
-    surface->SetBackgroundColor(SkColors::kWhite);
+    surface->SetFallbackBackgroundColor(SkColors::kWhite);
   }
 
   UpdateLayerName();
@@ -392,7 +393,7 @@ void Window::SetTransparent(bool transparent) {
     return;
   transparent_ = transparent;
 
-  if (layer()->type() != ui::LAYER_SOLID_COLOR) {
+  if (!layer()->AsSolidColor()) {
     layer()->SetFillsBoundsOpaquely(!transparent_);
   }
   TriggerChangedCallback(&transparent_);
@@ -1144,6 +1145,9 @@ void Window::GetDebugInfo(const aura::Window* active_window,
     case ui::LAYER_SURFACE:
       *out << " layer(surface ";
       break;
+    case ui::LAYER_WITH_EXTERNAL_TEXTURE:
+      *out << " layer(with_external_texture ";
+      break;
   }
 
   *out << (layer()->GetTargetVisibility() ? " visible)" : " hidden)");
@@ -1792,7 +1796,7 @@ void Window::SetOpaqueRegionsForOcclusion(
   // Opaque regions for occlusion do not apply to opaque windows, so only
   // allow opaque regions for occlusion to be set for them if they are the
   // same as the window bounds size.
-  DCHECK(GetTransparent() || layer()->type() == ui::LAYER_NOT_DRAWN ||
+  DCHECK(GetTransparent() || layer()->AsNotDrawn() ||
          opaque_regions_for_occlusion.empty() ||
          (opaque_regions_for_occlusion.size() == 1 &&
           opaque_regions_for_occlusion[0] == gfx::Rect(bounds().size())));
@@ -1887,7 +1891,7 @@ void Window::OnLayerFillsBoundsOpaquelyChanged(
 
   // Non-transparent windows should not have opaque regions for occlusion set.
 #if DCHECK_IS_ON()
-  if (!GetTransparent() && layer()->type() != ui::LAYER_NOT_DRAWN) {
+  if (!GetTransparent() && !layer()->AsNotDrawn()) {
     DCHECK(opaque_regions_for_occlusion_.empty());
   }
 #endif

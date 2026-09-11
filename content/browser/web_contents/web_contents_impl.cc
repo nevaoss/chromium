@@ -228,6 +228,7 @@
 #include "ui/base/ime/mojom/virtual_keyboard_types.mojom.h"
 #include "ui/base/mojom/window_show_state.mojom.h"
 #include "ui/base/pointer/pointer_device.h"
+#include "ui/base/ui_base_features.h"
 #include "ui/base/ui_base_types.h"
 #include "ui/base/window_open_disposition.h"
 #include "ui/color/color_provider_key.h"
@@ -305,10 +306,6 @@ enum class CrashRepHandlingOutcome {
 
 // The window which we dobounce load info updates in.
 constexpr auto kUpdateLoadStatesInterval = base::Milliseconds(250);
-
-// Kill switch for inner WebContents visibility updates.
-BASE_FEATURE(kUpdateInnerWebContentsVisibility,
-             base::FEATURE_ENABLED_BY_DEFAULT);
 
 using LifecycleState = RenderFrameHost::LifecycleState;
 using LifecycleStateImpl = RenderFrameHostImpl::LifecycleStateImpl;
@@ -1315,6 +1312,18 @@ class WebContentsOfBrowserContext : public base::SupportsUserData::Data {
   std::set<raw_ptr<WebContentsImpl>> web_contents_set_;
 };
 
+Visibility FrameVisibilityToVisibility(
+    blink::mojom::FrameVisibility visibility) {
+  switch (visibility) {
+    case blink::mojom::FrameVisibility::kRenderedInViewport:
+      return Visibility::VISIBLE;
+    case blink::mojom::FrameVisibility::kRenderedOutOfViewport:
+      return Visibility::OCCLUDED;
+    case blink::mojom::FrameVisibility::kNotRendered:
+      return Visibility::HIDDEN;
+  }
+}
+
 }  // namespace
 
 WebContentsImpl::WebContentsImpl(BrowserContext* browser_context)
@@ -1373,7 +1382,8 @@ WebContentsImpl::WebContentsImpl(BrowserContext* browser_context)
       SlowWebPreferenceCache::GetInstance());
   renderer_preferences_.caret_blink_interval =
       native_theme->caret_blink_interval();
-#if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_WIN)
+#if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || \
+    BUILDFLAG(IS_WIN)
   renderer_preferences_.use_overlay_scrollbar =
       native_theme->use_overlay_scrollbar();
 #endif
@@ -1766,6 +1776,18 @@ void WebContentsImpl::SetDelegate(WebContentsDelegate* delegate) {
   // Re-read values from the new delegate and apply them.
   if (view_) {
     view_->SetOverscrollControllerEnabled(CanOverscrollContent());
+  }
+}
+
+void WebContentsImpl::OptOutFrameEviction(
+    base::PassKey<FrameEvictionOptOutClient>) {
+  if (opt_out_frame_eviction_) {
+    return;
+  }
+  opt_out_frame_eviction_ = true;
+  if (RenderWidgetHostViewBase* view =
+          static_cast<RenderWidgetHostViewBase*>(GetRenderWidgetHostView())) {
+    view->OptOutFrameEviction();
   }
 }
 
@@ -5133,6 +5155,10 @@ bool WebContentsImpl::GetResizable() {
   return GetDelegate() && GetDelegate()->GetCanResize();
 }
 
+bool WebContentsImpl::GetIsAlwaysOnTop() {
+  return GetDelegate() && GetDelegate()->GetIsAlwaysOnTop();
+}
+
 void WebContentsImpl::FullscreenFrameSetUpdated() {
   OPTIONAL_TRACE_EVENT0("content",
                         "WebContentsImpl::FullscreenFrameSetUpdated");
@@ -5195,6 +5221,18 @@ void WebContentsImpl::UpdateVisibilityAndNotifyPageAndView(
     Visibility new_visibility,
     bool is_activity) {
   DCHECK(!IsBeingDestroyed());
+
+  if (GetOuterWebContents()) {
+    new_visibility =
+        std::min(new_visibility, GetOuterWebContents()->GetVisibility());
+    RenderFrameProxyHost* proxy = GetRenderManager()->GetProxyToOuterDelegate();
+    if (proxy && proxy->cross_process_frame_connector()) {
+      new_visibility =
+          std::min(new_visibility,
+                   FrameVisibilityToVisibility(
+                       proxy->cross_process_frame_connector()->visibility()));
+    }
+  }
 
   PageVisibilityState page_visibility =
       CalculatePageVisibilityState(new_visibility);
@@ -5275,17 +5313,11 @@ void WebContentsImpl::UpdateVisibilityAndNotifyPageAndView(
   }
   SetVisibilityAndNotifyObservers(new_visibility);
 
-  if (base::FeatureList::IsEnabled(kUpdateInnerWebContentsVisibility)) {
-    // Inner WebContents are skipped in ForEachRenderViewHost() above, which
-    // causes inner WebContents to not be notified of visibility changes.
-    //
-    // Note: An inner WebContents that is hidden within the embedder could
-    // spuriously be set to visible (e.g. if its parent is display:none), but
-    // this is ignored here for now.
-    for (WebContents* inner : GetInnerWebContents()) {
-      static_cast<WebContentsImpl*>(inner)
-          ->UpdateVisibilityAndNotifyPageAndView(new_visibility, is_activity);
-    }
+  // Inner WebContents are skipped in ForEachRenderViewHost() above, which
+  // causes inner WebContents to not be notified of visibility changes.
+  for (WebContents* inner : GetInnerWebContents()) {
+    static_cast<WebContentsImpl*>(inner)->UpdateVisibilityAndNotifyPageAndView(
+        new_visibility, is_activity);
   }
 
   if (!is_never_composited_ && hide_or_reveal &&
@@ -5574,14 +5606,18 @@ bool WebContentsImpl::OnRenderFrameProxyVisibilityChanged(
 
   DCHECK(GetOuterWebContents());
 
-  switch (visibility) {
-    case blink::mojom::FrameVisibility::kRenderedInViewport:
+  Visibility capped_visibility =
+      std::min(FrameVisibilityToVisibility(visibility),
+               GetOuterWebContents()->GetVisibility());
+
+  switch (capped_visibility) {
+    case Visibility::VISIBLE:
       WasShown();
       break;
-    case blink::mojom::FrameVisibility::kNotRendered:
+    case Visibility::HIDDEN:
       WasHidden();
       break;
-    case blink::mojom::FrameVisibility::kRenderedOutOfViewport:
+    case Visibility::OCCLUDED:
       WasOccluded();
       break;
   }
@@ -6345,6 +6381,10 @@ ui::AXMode WebContentsImpl::GetAccessibilityMode() {
   return accessibility_mode_;
 }
 
+void WebContentsImpl::NotifyAccessibilityParentChanged() {
+  GetPrimaryMainFrame()->UpdateAXTreeData();
+}
+
 void WebContentsImpl::AXTreeIDForMainFrameHasChanged() {
   OPTIONAL_TRACE_EVENT0("content",
                         "WebContentsImpl::AXTreeIDForMainFrameHasChanged");
@@ -6697,7 +6737,7 @@ const std::optional<gfx::Rect> WebContentsImpl::GetTextSelectionBounds(
   return std::nullopt;
 }
 
-const std::optional<gfx::Point> WebContentsImpl::GetFocusSelectionPoint(
+const std::optional<gfx::Rect> WebContentsImpl::GetFocusSelectionBounds(
     RenderFrameHost* render_frame_host) const {
   if (text_input_manager_ && render_frame_host) {
     auto* view =
@@ -6711,8 +6751,7 @@ const std::optional<gfx::Point> WebContentsImpl::GetFocusSelectionPoint(
         gfx::Rect bounds = gfx::BoundingRect(start, end);
         gfx::Point origin = bounds.origin();
         origin += root_view->GetViewBounds().OffsetFromOrigin();
-        origin += gfx::Vector2d(bounds.width(), bounds.height());
-        return origin;
+        return gfx::Rect(origin, bounds.size());
       }
     }
   }
@@ -11421,6 +11460,13 @@ void WebContentsImpl::CreateRenderWidgetHostViewForRenderManager(
     view_->SetOverscrollControllerEnabled(CanOverscrollContent());
     rwh_view->SetSize(GetSizeForMainFrame());
   }
+
+  if (opt_out_frame_eviction_) {
+    if (RenderWidgetHostViewBase* view = static_cast<RenderWidgetHostViewBase*>(
+            render_view_host->GetWidget()->GetView())) {
+      view->OptOutFrameEviction();
+    }
+  }
 }
 
 void WebContentsImpl::ReattachOuterDelegateIfNeeded() {
@@ -12608,6 +12654,17 @@ void WebContentsImpl::SetVisibilityForChildViews(bool visible) {
   GetPrimaryMainFrame()->SetVisibilityForChildViews(visible);
 }
 
+void WebContentsImpl::ScheduleColorRelatedStateChanges() {
+  if (color_related_state_change_scheduled_) {
+    return;
+  }
+  color_related_state_change_scheduled_ = true;
+  GetUIThreadTaskRunner({})->PostTask(
+      FROM_HERE,
+      base::BindOnce(&WebContentsImpl::HandleColorRelatedStateChanges,
+                     weak_factory_.GetWeakPtr()));
+}
+
 #if BUILDFLAG(IS_NEVA_APPRUNTIME)
 bool WebContentsImpl::IsInspectablePage() const {
   return inspectable_page_;
@@ -12676,6 +12733,8 @@ void WebContentsImpl::OnDidDropAllPeerConnections(
 #endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
 
 void WebContentsImpl::HandleColorRelatedStateChanges() {
+  color_related_state_change_scheduled_ = false;
+
   // This can be reached re-entrantly during ~WebContentsImpl, after the
   // primary main frame has begun being destroyed. Bail out before
   // dereferencing it via GetPrimaryMainFrame() below.
@@ -12716,10 +12775,15 @@ void WebContentsImpl::OnNativeThemeUpdated(ui::NativeTheme* observed_theme) {
   OPTIONAL_TRACE_EVENT0("content", "WebContentsImpl::OnNativeThemeUpdated");
   DCHECK_EQ(observed_theme, ui::NativeTheme::GetInstanceForWeb());
 
-  HandleColorRelatedStateChanges();
+  if (base::FeatureList::IsEnabled(features::kThemeChangeOptimization)) {
+    ScheduleColorRelatedStateChanges();
+  } else {
+    HandleColorRelatedStateChanges();
+  }
 
   const auto caret_blink_interval = observed_theme->caret_blink_interval();
-#if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_WIN)
+#if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || \
+    BUILDFLAG(IS_WIN)
   const auto use_overlay_scrollbar = observed_theme->use_overlay_scrollbar();
 #endif
   bool renderer_preference_changed = false;
@@ -12727,7 +12791,8 @@ void WebContentsImpl::OnNativeThemeUpdated(ui::NativeTheme* observed_theme) {
     renderer_preferences_.caret_blink_interval = caret_blink_interval;
     renderer_preference_changed = true;
   }
-#if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_WIN)
+#if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || \
+    BUILDFLAG(IS_WIN)
   if (renderer_preferences_.use_overlay_scrollbar != use_overlay_scrollbar) {
     renderer_preferences_.use_overlay_scrollbar = use_overlay_scrollbar;
     renderer_preference_changed = true;
@@ -12761,7 +12826,11 @@ void WebContentsImpl::OnColorProviderChanged() {
 
   observers_.NotifyObservers(&WebContentsObserver::OnColorProviderChanged);
 
-  HandleColorRelatedStateChanges();
+  if (base::FeatureList::IsEnabled(features::kThemeChangeOptimization)) {
+    ScheduleColorRelatedStateChanges();
+  } else {
+    HandleColorRelatedStateChanges();
+  }
 }
 
 const ui::ColorProvider& WebContentsImpl::GetColorProvider() const {
@@ -12986,12 +13055,14 @@ void WebContentsImpl::SetV8CompileHints(base::ReadOnlySharedMemoryRegion data) {
 
 void WebContentsImpl::SetTabSwitchStartTime(base::TimeTicks start_time,
                                             bool destination_is_loaded,
-                                            bool had_saved_frame_at_start) {
+                                            bool had_saved_frame_at_start,
+                                            bool destination_is_frozen) {
   GetVisibleTimeRequestTrigger().UpdateRequest(blink::VisibleTimeEvent{
       .event_start_time = start_time,
       .reason = blink::VisibleTimeEvent::TabSwitchReason{
           .destination_is_loaded = destination_is_loaded,
-          .had_saved_frame_at_start = had_saved_frame_at_start}});
+          .had_saved_frame_at_start = had_saved_frame_at_start,
+          .destination_is_frozen = destination_is_frozen}});
 }
 
 VisibleTimeRequestTrigger& WebContentsImpl::GetVisibleTimeRequestTrigger() {
@@ -13035,7 +13106,8 @@ std::unique_ptr<PrefetchHandle> WebContentsImpl::StartPrefetch(
     scoped_refptr<PreloadPipelineInfo> preload_pipeline_info,
     base::WeakPtr<PreloadingAttempt> attempt,
     PreloadingHoldbackStatus holdback_status_override,
-    std::optional<base::TimeDelta> ttl) {
+    std::optional<base::TimeDelta> ttl,
+    bool should_ignore_saver_modes) {
   PrefetchService* prefetch_service =
       BrowserContextImpl::From(GetBrowserContext())->GetPrefetchService();
   if (!prefetch_service) {
@@ -13048,7 +13120,7 @@ std::unique_ptr<PrefetchHandle> WebContentsImpl::StartPrefetch(
       *this, prefetch_url, prefetch_type, embedder_histogram_suffix, referrer,
       referring_origin, std::move(no_vary_search_hint), std::move(priority),
       std::move(preload_pipeline_info), std::move(attempt),
-      holdback_status_override, std::move(ttl));
+      holdback_status_override, std::move(ttl), should_ignore_saver_modes);
 
   return prefetch_service->AddPrefetchRequestWithHandle(std::move(request));
 }

@@ -528,9 +528,10 @@ bool AimEligibilityService::IsFuseboxEligible() const {
 
 bool AimEligibilityService::IsAimUrl(
     const GURL& url,
-    std::optional<std::string> host_override) const {
-  OMNIBOX_LOG("aim_url_check") << "IsAimUrl: Checking " << url
-                               << " override: " << host_override.value_or("");
+    std::optional<contextual_tasks::HostOverride> host_override) const {
+  OMNIBOX_LOG("aim_url_check")
+      << "IsAimUrl: Checking " << url
+      << " override: " << (host_override ? host_override->ToString() : "");
   bool is_aim_url =
       IsAimHost(url, host_override) && IsAimPath(url) && HasAimUrlParams(url);
   OMNIBOX_LOG("aim_url_check") << "IsAimUrl: " << (is_aim_url ? "yes" : "no");
@@ -539,10 +540,9 @@ bool AimEligibilityService::IsAimUrl(
 
 bool AimEligibilityService::IsAimHost(
     const GURL& url,
-    std::optional<std::string> host_override) const {
+    std::optional<contextual_tasks::HostOverride> host_override) const {
   OMNIBOX_LOG("aim_url_check") << "IsAimHost: Checking host...";
-  if (host_override &&
-      base::EqualsCaseInsensitiveASCII(host_override.value(), url.host())) {
+  if (host_override && host_override->Matches(url)) {
     OMNIBOX_LOG("aim_url_check") << "Found overridden host!";
     return true;
   }
@@ -770,6 +770,8 @@ std::string AimEligibilityService::RequestSourceToString(RequestSource source) {
       return "RefreshTokenError";
     case RequestSource::kOAuthFallbackCookieChange:
       return "OAuthFallbackCookieChange";
+    case RequestSource::kLocaleChange:
+      return "LocaleChange";
   }
 }
 
@@ -1139,8 +1141,7 @@ void AimEligibilityService::StartServerEligibilityRequest(
     request->method = "POST";
   }
 
-  if (request_source == RequestSource::kAimUrlNavigation &&
-      base::FeatureList::IsEnabled(
+  if (base::FeatureList::IsEnabled(
           omnibox::kAimServerEligibilitySendCoBrowseUserAgentSuffixEnabled) &&
       !configuration_.user_agent_with_cobrowse_suffix.empty()) {
     request->headers.SetHeader("User-Agent",

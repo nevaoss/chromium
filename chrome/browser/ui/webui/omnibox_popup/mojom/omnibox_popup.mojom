@@ -14,6 +14,8 @@ struct OmniboxInputState {
   // selection changes sent back from WebUI during asynchronous state
   // restoration.
   uint32 sequence_number;
+  // The tab ID associated with this input state.
+  int32 tab_id;
   // The text that should be displayed in the Omnibox input field.
   string text;
   // The selection range (or cursor position if start == end) in the input
@@ -90,6 +92,12 @@ interface PageHandler {
   // Opens the AIM (AI Mode) popup. `via_keyboard` is true if triggered via
   // keyboard.
   OpenAimPopup(bool via_keyboard);
+
+  // Updates the client-side edit history undo/redo availability state.
+  SetEditHistoryState(bool can_undo, bool can_redo);
+
+  // Opens DevTools to inspect the Omnibox popup WebUI.
+  OpenDevTools();
 };
 
 // The WebUI page for the Omnibox Popup.
