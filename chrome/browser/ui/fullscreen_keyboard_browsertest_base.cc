@@ -11,9 +11,9 @@
 #include "base/strings/to_string.h"
 #include "build/build_config.h"
 #include "chrome/app/chrome_command_ids.h"
-#include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_commands.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface_iterator.h"
 #include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
 #include "chrome/browser/ui/exclusive_access/exclusive_access_context.h"
@@ -25,6 +25,8 @@
 #include "content/public/test/browser_test_utils.h"
 #include "content/public/test/test_utils.h"
 #include "third_party/blink/public/common/switches.h"
+#include "ui/base/page_transition_types.h"
+#include "ui/base/window_open_disposition.h"
 #include "ui/events/keycodes/dom/keycode_converter.h"
 #include "ui/events/keycodes/keyboard_code_conversion.h"
 #include "ui/events/keycodes/keyboard_codes.h"
@@ -71,9 +73,7 @@ bool FullscreenKeyboardBrowserTestBase::IsActiveTabFullscreen() const {
 }
 
 bool FullscreenKeyboardBrowserTestBase::IsInBrowserFullscreen() const {
-  return GetActiveBrowser()
-      ->GetFeatures()
-      .exclusive_access_manager()
+  return ExclusiveAccessManager::From(GetActiveBrowser())
       ->fullscreen_controller()
       ->IsFullscreenForBrowser();
 }
@@ -194,9 +194,7 @@ void FullscreenKeyboardBrowserTestBase::SendShiftShortcut(
 void FullscreenKeyboardBrowserTestBase::SendFullscreenShortcutAndWait() {
   // On MacOSX, entering and exiting fullscreen are not synchronous. So we wait
   // for the observer to notice the change of fullscreen state.
-  bool current = GetActiveBrowser()
-                     ->GetFeatures()
-                     .exclusive_access_manager()
+  bool current = ExclusiveAccessManager::From(GetActiveBrowser())
                      ->context()
                      ->IsFullscreen();
   ui_test_utils::FullscreenWaiter waiter(

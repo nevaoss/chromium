@@ -78,6 +78,7 @@
 #include "content/browser/back_forward_cache/back_forward_cache_disable.h"
 #include "content/browser/back_forward_cache/back_forward_cache_impl.h"
 #include "content/browser/bad_message.h"
+#include "content/browser/blob_storage/chrome_blob_storage_context.h"
 #include "content/browser/blob_storage/file_backed_blob_factory_frame_impl.h"
 #include "content/browser/bluetooth/web_bluetooth_service_impl.h"
 #include "content/browser/broadcast_channel/broadcast_channel_provider.h"
@@ -7867,6 +7868,18 @@ void RenderFrameHostImpl::ClosePage(
   CHECK(IsOutermostMainFrame());
   if (!IsActive() && source == ClosePageSource::kRenderer) {
     return;
+  }
+
+  if (source == ClosePageSource::kBrowser && owner_) {
+    // Browser (but not renderer)-initiated page closures should not
+    // be canceled by a navigation that can destroy `this` and wipe out
+    // `page_close_state_`.
+    // Therefore, cancel all main frame navigations, including those
+    // already moved to the speculative RFH.
+    NavigationDiscardReason reason = NavigationDiscardReason::kWillRemoveFrame;
+    owner_->CancelNavigation(reason);
+    owner_->GetRenderFrameHostManager().DiscardSpeculativeRFH(reason);
+    ResetOwnedNavigationRequests(reason);
   }
 
   page_close_state_ = PageCloseState::kRunningUnloadHandlers;
@@ -16144,6 +16157,83 @@ bool RenderFrameHostImpl::ValidateDidCommitParams(
     return false;
   }
 
+  // Validate PageTransition.
+  if (!ui::IsValidPageTransitionType(params->transition)) {
+    bad_message::ReceivedBadMessage(
+        process, bad_message::RFH_COMMIT_NAVIGATION_INVALID_TRANSITION_TYPE);
+    return false;
+  }
+
+  ui::PageTransition transition = ui::PageTransitionFromInt(params->transition);
+  bool is_main_frame = !GetParent() && !IsFencedFrameRoot();
+
+  // Main frame transitions must only be used by main frames (excluding fenced
+  // frame roots). Subframes and fenced frame roots must use subframe
+  // transitions.
+  if (ui::PageTransitionIsMainFrame(transition) != is_main_frame) {
+    bad_message::ReceivedBadMessage(
+        process,
+        bad_message::RFH_COMMIT_NAVIGATION_TRANSITION_FRAME_TYPE_MISMATCH);
+    return false;
+  }
+
+  // Fenced frame roots must only use PAGE_TRANSITION_AUTO_SUBFRAME (plus
+  // optional client redirect qualifier). Fenced frames are being removed and
+  // shouldn't be enabled by default (see crbug.com/540020472), hence a CHECK is
+  // used here instead of a bad message.
+  if (IsFencedFrameRoot()) {
+    CHECK(ui::PageTransitionCoreTypeIs(transition,
+                                       ui::PAGE_TRANSITION_AUTO_SUBFRAME));
+  }
+
+  // Ensure the renderer does not add privileged / browser-only qualifiers.
+  uint32_t request_qualifiers =
+      navigation_request
+          ? static_cast<uint32_t>(
+                navigation_request->common_params().transition &
+                ui::PAGE_TRANSITION_RENDERER_DISALLOWED_QUALIFIERS_MASK)
+          : 0;
+  uint32_t commit_qualifiers = static_cast<uint32_t>(
+      params->transition &
+      ui::PAGE_TRANSITION_RENDERER_DISALLOWED_QUALIFIERS_MASK);
+  if ((commit_qualifiers & ~request_qualifiers) != 0) {
+    bad_message::ReceivedBadMessage(
+        process, bad_message::RFH_COMMIT_NAVIGATION_DISALLOWED_QUALIFIER);
+    return false;
+  }
+
+  if (is_main_frame) {
+    if (!navigation_request) {
+      // For synchronous same-document navigations initiated by the renderer
+      // without a browser NavigationRequest, the transition must be
+      // web-triggerable.
+      if (!ui::PageTransitionIsWebTriggerable(transition)) {
+        bad_message::ReceivedBadMessage(
+            process, bad_message::RFH_COMMIT_NAVIGATION_NON_WEBBY_TRANSITION);
+        return false;
+      }
+    } else {
+      // For main-frame navigations where the browser provided an expected
+      // transition in NavigationRequest, the renderer must not change the core
+      // transition type (except possibly FORM_SUBMIT for POST requests).
+      ui::PageTransition expected_core_transition =
+          ui::PageTransitionStripQualifier(ui::PageTransitionFromInt(
+              navigation_request->common_params().transition));
+      bool core_type_matches =
+          ui::PageTransitionCoreTypeIs(transition, expected_core_transition) ||
+          (navigation_request->common_params().post_data &&
+           ui::PageTransitionCoreTypeIs(transition,
+                                        ui::PAGE_TRANSITION_FORM_SUBMIT));
+      if (!core_type_matches) {
+        bad_message::ReceivedBadMessage(
+            process,
+            bad_message::
+                RFH_COMMIT_NAVIGATION_BROWSER_INITIATED_TRANSITION_MISMATCH);
+        return false;
+      }
+    }
+  }
+
   return true;
 }
 
@@ -16416,12 +16506,6 @@ bool RenderFrameHostImpl::DidCommitNavigationInternal(
     mojom::DidCommitSameDocumentNavigationParamsPtr same_document_params,
     const base::TimeTicks& did_commit_ipc_received_time) {
   const bool is_same_document_navigation = !!same_document_params;
-  // Sanity-check the page transition for frame type. Fenced Frames
-  // will set page transition to AUTO_SUBFRAME.
-  // TODO(523085714): CHECK-exclusion: Convert to a CHECK once we are confident
-  // it won't be triggered.
-  DCHECK_EQ(ui::PageTransitionIsMainFrame(params->transition),
-            !GetParent() && !IsFencedFrameRoot());
   // TODO(https://crbug.com/445585641): Make this enforceable on Android.
   if (navigation_request &&
       navigation_request->commit_params().navigation_token !=
@@ -19214,7 +19298,8 @@ bool RenderFrameHostImpl::IsOutermostMainFrame() const {
 }
 
 bool RenderFrameHostImpl::IsAdFrame() const {
-  return browsing_context_state_->IsAdFrame();
+  return browsing_context_state_->ad_frame_status() !=
+         blink::mojom::FrameAdStatus::kNotAd;
 }
 
 void RenderFrameHostImpl::SetIsLoadingForRendererDebugURL() {
@@ -19241,13 +19326,18 @@ bool RenderFrameHostImpl::IsDOMContentLoaded() {
   return document_associated_data_->dom_content_loaded();
 }
 
-void RenderFrameHostImpl::UpdateIsAdFrame(bool is_ad_frame) {
+void RenderFrameHostImpl::UpdateToAdFrame() {
+  UpdateAdFrameStatus(blink::mojom::FrameAdStatus::kAd);
+}
+
+void RenderFrameHostImpl::UpdateAdFrameStatus(
+    blink::mojom::FrameAdStatus ad_frame_status) {
   if (!CanApplyFrameReplicationUpdate(
-          this,
-          BackForwardCacheMetrics::NotRestoredReason::kRfhUpdateIsAdFrame)) {
+          this, BackForwardCacheMetrics::NotRestoredReason::
+                    kRfhUpdateAdFrameStatus)) {
     return;
   }
-  browsing_context_state_->SetIsAdFrame(is_ad_frame);
+  browsing_context_state_->SetAdFrameStatus(ad_frame_status);
 }
 
 #if BUILDFLAG(IS_ANDROID)

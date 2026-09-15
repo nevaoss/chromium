@@ -22,6 +22,7 @@
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
 #include "chrome/browser/ui/interaction/browser_elements.h"
+#include "chrome/browser/ui/tabs/tab_enums.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/toasts/api/toast_id.h"
 #include "chrome/browser/ui/toasts/toast_controller.h"
@@ -32,6 +33,7 @@
 #include "chrome/browser/ui/views/dictation/waveform_view_button.h"
 #include "chrome/common/extensions/api/dictation_private.h"
 #include "chrome/test/base/chrome_test_utils.h"
+#include "chrome/test/base/ui_test_utils.h"
 #include "chrome/test/interaction/interactive_browser_test.h"
 #include "content/public/browser/render_process_host.h"
 #include "content/public/common/result_codes.h"
@@ -40,6 +42,7 @@
 #include "extensions/common/switches.h"
 #include "ui/base/interaction/element_tracker.h"
 #include "ui/base/interaction/state_observer.h"
+#include "ui/base/page_transition_types.h"
 #include "ui/views/controls/button/label_button.h"
 #include "url/gurl.h"
 
@@ -115,7 +118,7 @@ class DictationSessionUiImplBrowserTest
   auto CheckShowingToast(ToastId toast_id, bool showing) {
     return Check([this, toast_id, showing]() {
       ToastController* const toast_controller =
-          browser()->GetFeatures().toast_controller();
+          ToastController::From(browser());
       CHECK(toast_controller);
       const bool is_showing_toast =
           toast_controller->IsShowingToast() &&
@@ -141,6 +144,32 @@ class DictationSessionUiImplBrowserTest
       dictation_service().session_controller()->StartDictationStream(
           DefaultInPageTarget(web_contents()), trigger);
     });
+  }
+
+  auto LookupTargetElementBounds(ui::ElementIdentifier web_contents_id,
+                                 std::string_view selector,
+                                 gfx::Rect& target_bounds) {
+    return WithElement(
+        web_contents_id, [&target_bounds, selector = std::string(selector)](
+                             ui::TrackedElement* el) {
+          target_bounds =
+              AsInstrumentedWebContents(el)->GetElementBoundsInScreen(selector);
+        });
+  }
+
+  auto CheckElementWithinBounds(ui::ElementIdentifier element_id,
+                                const gfx::Rect& target_bounds) {
+    return InAnyContext(
+        CheckElement(element_id, [&target_bounds](ui::TrackedElement* el) {
+          const views::View* const view = AsView(el);
+          const gfx::Rect view_bounds = view->GetBoundsInScreen();
+          return target_bounds.Contains(view_bounds.origin());
+        }));
+  }
+
+  auto ToggleFullscreen() {
+    return Do(
+        [this]() { ui_test_utils::ToggleFullscreenModeAndWait(browser()); });
   }
 
  private:
@@ -383,6 +412,36 @@ IN_PROC_BROWSER_TEST_P(DictationSessionUiImplBrowserTest,
               WaitForShow(DictationBubbleUi::kViewElementIdForTesting)),
     InContext(BrowserElements::From(browser())->GetContext(),
               EnsureNotPresent(DictationBubbleUi::kViewElementIdForTesting)),
+    CheckHasSession(true)
+  );
+  // clang-format on
+}
+
+IN_PROC_BROWSER_TEST_P(DictationSessionUiImplBrowserTest,
+                       ReparentTabBetweenWindowsDoesNotCrash) {
+  // Add a second tab with the first tab in the foreground so the initial
+  // browser window does not close when its active tab is detached.
+  ASSERT_TRUE(AddTabAtIndex(1, GURL("about:blank"), ui::PAGE_TRANSITION_TYPED));
+  browser()->GetTabStripModel()->ActivateTabAt(0);
+
+  // Create a second browser window.
+  BrowserWindowInterface* second_browser =
+      CreateBrowser(browser()->GetProfile());
+
+  // clang-format off
+  RunTestSequence(
+    StartSession(),
+    WaitForShow(DictationBubbleUi::kViewElementIdForTesting),
+
+    // Move the dictating tab to the second window.
+    MoveTabToWindow(browser(), second_browser, 0),
+
+    // Move the tab back to the original window.
+    MoveTabToWindow(second_browser, browser(), 1),
+
+    // Verify the session remains active and UI is present without crashing.
+    InContext(BrowserElements::From(browser())->GetContext(),
+              WaitForShow(DictationBubbleUi::kViewElementIdForTesting)),
     CheckHasSession(true)
   );
   // clang-format on
@@ -656,19 +715,37 @@ IN_PROC_BROWSER_TEST_P(DictationSessionUiImplBrowserTest,
     NavigateWebContents(kWebContentsElementId, url),
     StartSessionWithTarget(kWebContentsElementId, "#text_id"),
     InAnyContext(WaitForShow(DictationOverlayView::kViewElementIdForTesting)),
-    WithElement(
-        kWebContentsElementId,
-        [&target_bounds](ui::TrackedElement* el) {
-          target_bounds = AsInstrumentedWebContents(el)
-                              ->GetElementBoundsInScreen("#text_id");
-        }),
-    InAnyContext(CheckElement(
-        DictationOverlayView::kViewElementIdForTesting,
-        [&target_bounds](ui::TrackedElement* el) {
-          const views::View* const overlay_view = AsView(el);
-          const gfx::Rect overlay_bounds = overlay_view->GetBoundsInScreen();
-          return target_bounds.Contains(overlay_bounds.origin());
-        }))
+    LookupTargetElementBounds(kWebContentsElementId, "#text_id", target_bounds),
+    CheckElementWithinBounds(DictationOverlayView::kViewElementIdForTesting,
+                             target_bounds)
+  );
+  // clang-format on
+}
+
+IN_PROC_BROWSER_TEST_P(DictationSessionUiImplBrowserTest,
+                       OverlayPositionUpdatedOnFullscreen) {
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kWebContentsElementId);
+  const GURL url =
+      embedded_test_server()->GetURL("/textinput/simple_textarea.html");
+  gfx::Rect target_bounds;
+
+  // clang-format off
+  RunTestSequence(
+    InstrumentTab(kWebContentsElementId),
+    NavigateWebContents(kWebContentsElementId, url),
+    StartSessionWithTarget(kWebContentsElementId, "#text_id"),
+    InAnyContext(WaitForShow(DictationOverlayView::kViewElementIdForTesting)),
+    LookupTargetElementBounds(kWebContentsElementId, "#text_id", target_bounds),
+    CheckElementWithinBounds(DictationOverlayView::kViewElementIdForTesting,
+                             target_bounds),
+    ToggleFullscreen(),
+    LookupTargetElementBounds(kWebContentsElementId, "#text_id", target_bounds),
+    CheckElementWithinBounds(DictationOverlayView::kViewElementIdForTesting,
+                             target_bounds),
+    ToggleFullscreen(),
+    LookupTargetElementBounds(kWebContentsElementId, "#text_id", target_bounds),
+    CheckElementWithinBounds(DictationOverlayView::kViewElementIdForTesting,
+                             target_bounds)
   );
   // clang-format on
 }
@@ -692,12 +769,7 @@ IN_PROC_BROWSER_TEST_P(DictationSessionUiImplBrowserTest,
     NavigateWebContents(kWebContentsElementId, url),
     StartSessionWithTarget(kWebContentsElementId, "#text_id"),
     InAnyContext(WaitForShow(DictationOverlayView::kViewElementIdForTesting)),
-    WithElement(
-        kWebContentsElementId,
-        [&target_bounds](ui::TrackedElement* el) {
-          target_bounds = AsInstrumentedWebContents(el)
-                              ->GetElementBoundsInScreen("#text_id");
-        }),
+    LookupTargetElementBounds(kWebContentsElementId, "#text_id", target_bounds),
     // Focus a second textarea, causing the first textarea to lose focus.
     ExecuteJs(kWebContentsElementId,
               "() => {"
@@ -707,13 +779,8 @@ IN_PROC_BROWSER_TEST_P(DictationSessionUiImplBrowserTest,
               "  textarea2.focus();"
               "}"),
     // The overlay should remain in its last position.
-    InAnyContext(CheckElement(
-        DictationOverlayView::kViewElementIdForTesting,
-        [&target_bounds](ui::TrackedElement* el) {
-          const views::View* const overlay_view = AsView(el);
-          const gfx::Rect overlay_bounds = overlay_view->GetBoundsInScreen();
-          return target_bounds.Contains(overlay_bounds.origin());
-        }))
+    CheckElementWithinBounds(DictationOverlayView::kViewElementIdForTesting,
+                             target_bounds)
   );
   // clang-format on
 }

@@ -19,6 +19,7 @@
 #include "base/memory/ref_counted_memory.h"
 #include "base/numerics/safe_conversions.h"
 #include "base/process/process_handle.h"
+#include "base/strings/strcat.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_util.h"
 #include "base/strings/to_string.h"
@@ -1106,13 +1107,13 @@ void PageHandler::GetAnnotatedPageContent(
         web_contents, include_actionable_information.value_or(true),
         base::BindOnce(
             [](std::unique_ptr<GetAnnotatedPageContentCallback> callback,
-               const std::string& serialized_proto) {
-              if (!serialized_proto.empty()) {
-                callback->sendSuccess(
-                    protocol::Binary::fromString(serialized_proto));
+               base::expected<std::string, std::string> result) {
+              if (result.has_value()) {
+                callback->sendSuccess(protocol::Binary::fromString(*result));
               } else {
                 callback->sendFailure(Response::ServerError(
-                    "Failed to get annotated page content"));
+                    base::StrCat({"Failed to get annotated page content: ",
+                                  result.error()})));
               }
             },
             std::move(callback)));
@@ -2178,7 +2179,7 @@ Page::BackForwardCacheNotRestoredReason NotRestoredReasonToProtocol(
     case Reason::kRfhEnforceInsecureNavigationsSet:
     case Reason::kRfhEnforceInsecureRequestPolicy:
     case Reason::kRfhHadStickyUserActivationBeforeNavigationChanged:
-    case Reason::kRfhUpdateIsAdFrame:
+    case Reason::kRfhUpdateAdFrameStatus:
       return Page::BackForwardCacheNotRestoredReasonEnum::Unknown;
     case Reason::kCacheControlNoStoreDeviceBoundSessionTerminated:
       return Page::BackForwardCacheNotRestoredReasonEnum::
@@ -2508,7 +2509,7 @@ Page::BackForwardCacheNotRestoredReasonType MapNotRestoredReasonToType(
     case Reason::kRfhEnforceInsecureNavigationsSet:
     case Reason::kRfhEnforceInsecureRequestPolicy:
     case Reason::kRfhHadStickyUserActivationBeforeNavigationChanged:
-    case Reason::kRfhUpdateIsAdFrame:
+    case Reason::kRfhUpdateAdFrameStatus:
     case Reason::kUnknown:
       return Page::BackForwardCacheNotRestoredReasonTypeEnum::SupportPending;
     case Reason::kBlocklistedFeatures:

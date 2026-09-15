@@ -34,33 +34,16 @@ BASE_FEATURE(kSafetyCheckAutorunByManagerKillswitch,
 BASE_FEATURE(kSafetyCheckModuleHiddenIfNoIssuesKillswitch,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
-BASE_FEATURE(kOmahaServiceRefactor, base::FEATURE_DISABLED_BY_DEFAULT);
-
-BASE_FEATURE(kHideToolbarsInOverflowMenu, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kHideToolbar, base::FEATURE_DISABLED_BY_DEFAULT);
 
 bool IsHideToolbarEnabled() {
-  return base::FeatureList::IsEnabled(kHideToolbarsInOverflowMenu);
+  return base::FeatureList::IsEnabled(kHideToolbar);
 }
 BASE_FEATURE(kHideFuseboxVoiceLensActions, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kSharedHighlightingIOS, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kIOSBrowserEditMenuMetrics, base::FEATURE_DISABLED_BY_DEFAULT);
-
-const char kIOSDockingPromoV2VariationParam[] =
-    "IOSDockingPromoV2VariationParam";
-const char kIOSDockingPromoV2VariationHeader1[] =
-    "IOSDockingPromoV2VariationHeader1";
-const char kIOSDockingPromoV2VariationHeader2[] =
-    "IOSDockingPromoV2VariationHeader2";
-const char kIOSDockingPromoV2VariationHeader3[] =
-    "IOSDockingPromoV2VariationHeader3";
-
-BASE_FEATURE(kIOSDockingPromoV2, base::FEATURE_DISABLED_BY_DEFAULT);
-
-bool IsDockingPromoV2Enabled() {
-  return base::FeatureList::IsEnabled(kIOSDockingPromoV2);
-}
 
 BASE_FEATURE(kIOSLevelUp, base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -115,10 +98,6 @@ bool IsSafetyCheckAutorunByManagerEnabled() {
 bool ShouldHideSafetyCheckModuleIfNoIssues() {
   return base::FeatureList::IsEnabled(
       kSafetyCheckModuleHiddenIfNoIssuesKillswitch);
-}
-
-bool IsOmahaServiceRefactorEnabled() {
-  return base::FeatureList::IsEnabled(kOmahaServiceRefactor);
 }
 
 BASE_FEATURE(kIOSChooseFromDriveSignedOut, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -375,12 +354,6 @@ BASE_FEATURE(kSeparateProfilesForManagedAccounts,
 BASE_FEATURE(kAuthenticationFlowReauthFirstKillswitch,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-BASE_FEATURE(kSeparateProfilesForManagedAccountsForceMigration,
-             base::FEATURE_ENABLED_BY_DEFAULT);
-
-BASE_FEATURE(kSeparateProfilesForManagedAccountsImmediateForceMigration,
-             base::FEATURE_ENABLED_BY_DEFAULT);
-
 BASE_FEATURE(kOmahaResyncTimerOnForeground, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kIOSReactivationNotifications, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -565,9 +538,6 @@ constexpr base::FeatureParam<double>
         &kIOSOneTapMiniMapRestrictions,
         /*name=*/kIOSOneTapMiniMapRestrictionMinAlphanumProportionParamName,
         /*default_value=*/0.8};
-
-BASE_FEATURE(kIOSMiniMapUniversalLinkCounterfactual,
-             base::FEATURE_DISABLED_BY_DEFAULT);
 
 namespace {
 
@@ -817,9 +787,6 @@ bool IsLocationBarBadgeMigrationEnabled() {
 }
 
 bool IsComposeboxIOSEnabled() {
-  if (ui::GetDeviceFormFactor() != ui::DEVICE_FORM_FACTOR_PHONE) {
-    return IsComposeboxIpadEnabled();
-  }
   return true;
 }
 
@@ -899,12 +866,6 @@ NSInteger GetAssistantMediumDetentPercentage() {
       kAssistantContainer, kAssistantContainerMediumDetentPercentParam, 0);
 }
 
-BASE_FEATURE(kComposeboxIpad, base::FEATURE_ENABLED_BY_DEFAULT);
-
-bool IsComposeboxIpadEnabled() {
-  return base::FeatureList::IsEnabled(kComposeboxIpad);
-}
-
 BASE_FEATURE(kComposeboxPlusButtonBottomSheet,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -933,12 +894,6 @@ bool IsChromeNextIaLensIconVisible() {
 
 bool IsChromeNextIaShareIconVisible() {
   return IsChromeNextIaEnabled() && kChromeNextIaShareIconVisible.Get();
-}
-
-BASE_FEATURE(kComposeboxAIMDisabled, base::FEATURE_DISABLED_BY_DEFAULT);
-
-bool IsComposeboxAIMDisabled() {
-  return base::FeatureList::IsEnabled(kComposeboxAIMDisabled);
 }
 
 NSString* const kNewStartupFlowKey = @"IsEnableNewStartupFlowEnabled";
@@ -1135,7 +1090,7 @@ BASE_FEATURE(kPlusButtonInFakebox, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Returns true if the plus button in NTP fakebox is enabled.
 bool IsPlusButtonInFakeboxEnabled() {
-  if (IsComposeboxAIMDisabled() || !IsComposeboxIOSEnabled()) {
+  if (!IsComposeboxIOSEnabled()) {
     return false;
   }
 
@@ -1265,4 +1220,10 @@ BASE_FEATURE(kDomainLevelSitePermissions, base::FEATURE_DISABLED_BY_DEFAULT);
 
 bool IsDomainLevelSitePermissionsEnabled() {
   return base::FeatureList::IsEnabled(kDomainLevelSitePermissions);
+}
+
+BASE_FEATURE(kAimHistoryThreadsManagement, base::FEATURE_DISABLED_BY_DEFAULT);
+
+bool IsAimHistoryThreadsManagementEnabled() {
+  return base::FeatureList::IsEnabled(kAimHistoryThreadsManagement);
 }

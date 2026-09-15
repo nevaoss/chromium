@@ -967,7 +967,7 @@ void NewEmptyWindow(Profile* profile, bool should_trigger_session_restore) {
 BrowserWindowInterface* OpenEmptyWindow(Profile* profile,
                                         bool should_trigger_session_restore) {
   if (GetBrowserWindowCreationStatusForProfile(*profile) !=
-      Browser::CreationStatus::kOk) {
+      BrowserWindowInterface::CreationStatus::kOk) {
     return nullptr;
   }
 
@@ -1490,7 +1490,7 @@ void CloseTab(BrowserWindowInterface* browser) {
   }
 #endif
 
-  ToastController* toast_controller = browser->GetFeatures().toast_controller();
+  ToastController* toast_controller = ToastController::From(browser);
   if (!toast_controller) {
     CloseSelectedTabAndRecordTabCountMetric(browser);
     return;
@@ -2170,13 +2170,12 @@ void MoveTabsToReadLater(BrowserWindowInterface* browser,
 #if !BUILDFLAG(IS_ANDROID)
   if (toast_features::IsEnabled(toast_features::kReadingListToast)) {
     // Don't show the reading list toast if the side panel is visible.
-    if (browser->GetFeatures().side_panel_ui()->IsSidePanelEntryShowing(
+    if (SidePanelUI::From(browser)->IsSidePanelEntryShowing(
             SidePanelEntryKey(SidePanelEntryId::kReadingList))) {
       return;
     }
 
-    ToastController* const toast_controller =
-        browser->GetFeatures().toast_controller();
+    ToastController* const toast_controller = ToastController::From(browser);
     if (toast_controller) {
       ToastParams params = ToastParams(ToastId::kAddedToReadingList);
       params.body_string_cardinality_param = added_to_read_later;
@@ -2852,8 +2851,7 @@ void SetAndroidOsForTabletSite(content::WebContents* current_tab) {
 void ToggleFullscreenMode(BrowserWindowInterface* browser,
                           bool user_initiated) {
   DCHECK(browser);
-  browser->GetFeatures()
-      .exclusive_access_manager()
+  ExclusiveAccessManager::From(browser)
       ->fullscreen_controller()
       ->ToggleBrowserFullscreenMode(user_initiated);
 }
@@ -2880,8 +2878,7 @@ void CopyURL(BrowserWindowInterface* browser,
 
 #if !BUILDFLAG(IS_ANDROID)
   if (toast_features::IsEnabled(toast_features::kLinkCopiedToast)) {
-    ToastController* const toast_controller =
-        browser->GetFeatures().toast_controller();
+    ToastController* const toast_controller = ToastController::From(browser);
     if (toast_controller) {
       toast_controller->MaybeShowToast(ToastParams(ToastId::kLinkCopied));
     }

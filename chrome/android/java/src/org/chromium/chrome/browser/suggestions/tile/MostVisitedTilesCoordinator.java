@@ -60,6 +60,7 @@ public class MostVisitedTilesCoordinator implements ConfigurationChangedObserver
      *     e.g.configuration changes. We need this to adjust the paddings and margins of the tile
      *     views.
      * @param mvTilesContainerLayout The container view of most visited tiles layout.
+     * @param uiConfig UiConfig providing display style information for the surface.
      * @param snapshotTileGridChangedRunnable The runnable called when the snapshot tile grid is
      *     changed.
      * @param tileCountChangedRunnable The runnable called when the tile count is changed.
@@ -68,11 +69,13 @@ public class MostVisitedTilesCoordinator implements ConfigurationChangedObserver
             Activity activity,
             ActivityLifecycleDispatcher activityLifecycleDispatcher,
             View mvTilesContainerLayout,
+            UiConfig uiConfig,
             @Nullable Runnable snapshotTileGridChangedRunnable,
             @Nullable Runnable tileCountChangedRunnable) {
         mActivity = activity;
         mActivityLifecycleDispatcher = activityLifecycleDispatcher;
         mMvTilesContainerLayout = mvTilesContainerLayout;
+        mUiConfig = uiConfig;
         mIsLff = DeviceFormFactor.isNonMultiDisplayContextOnTablet(mActivity);
 
         @PaddingStyle int paddingStyle = NewTabPageUtils.getPaddingStyleForAurora();
@@ -100,7 +103,6 @@ public class MostVisitedTilesCoordinator implements ConfigurationChangedObserver
         MostVisitedTilesLayout tilesLayout =
                 mvTilesContainerLayout.findViewById(R.id.mv_tiles_layout);
 
-        mUiConfig = new UiConfig(tilesLayout);
         PropertyModel propertyModel = new PropertyModel(MostVisitedTilesProperties.ALL_KEYS);
         PropertyModelChangeProcessor.create(
                 propertyModel,
@@ -180,14 +182,15 @@ public class MostVisitedTilesCoordinator implements ConfigurationChangedObserver
     }
 
     /**
-     * Updates the width and margins of the MV tiles container.
+     * Updates the width and lateral margins of the MVT container.
      *
-     * @param totalWidth The total width of the MV tiles layout.
+     * @param totalWidth The total available width of the parent layout.
+     * @param mvtWidth The target width that the MVT layout should align to.
      */
-    public void updateMvtWidth(int totalWidth) {
-        if (mMvTilesContainerLayout.getVisibility() == GONE) return;
-
-        mMediator.updateMvtWidth(totalWidth);
+    public void updateMvtWidth(int totalWidth, int mvtWidth) {
+        if (mMvTilesContainerLayout.getVisibility() != GONE) {
+            mMediator.updateMvtWidth(totalWidth, mvtWidth);
+        }
     }
 
     /**

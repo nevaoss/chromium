@@ -88,9 +88,12 @@ import org.chromium.chrome.browser.layouts.LayoutType;
 import org.chromium.chrome.browser.layouts.scene_layer.SceneLayer;
 import org.chromium.chrome.browser.layouts.scene_layer.SceneLayerJni;
 import org.chromium.chrome.browser.lifecycle.ActivityLifecycleDispatcher;
+import org.chromium.chrome.browser.media.PictureInPictureWindowManagerBridge;
+import org.chromium.chrome.browser.media.PictureInPictureWindowManagerBridgeJni;
 import org.chromium.chrome.browser.merchant_viewer.MerchantTrustSignalsCoordinator;
 import org.chromium.chrome.browser.multiwindow.MultiInstanceOrchestrator;
 import org.chromium.chrome.browser.multiwindow.MultiInstanceOrchestratorFactory;
+import org.chromium.chrome.browser.multiwindow.MultiWindowModeStateDispatcher;
 import org.chromium.chrome.browser.ntp.IncognitoNewTabPage;
 import org.chromium.chrome.browser.ntp.NewTabPage;
 import org.chromium.chrome.browser.omnibox.ChromeAutocompleteSchemeClassifier;
@@ -221,6 +224,7 @@ public class ToolbarManagerUnitTest {
     @Mock private LargeIconBridge.Natives mLargeIconBridgeNatives;
     @Mock private ChromeAutocompleteSchemeClassifier.Natives mChromeAutocompleteSchemeClassifierJni;
     @Mock private PaintPreviewTabServiceFactory.Natives mPaintPreviewTabServiceFactoryNatives;
+    @Mock private PictureInPictureWindowManagerBridge.Natives mPictureInPictureBridgeNatives;
     @Mock private Runnable mOpenGridTabSwitcherHandler;
     @Mock private Tracker mTracker;
     @Mock private TopToolbarSceneLayer.Natives mTopToolbarSceneLayerNatives;
@@ -245,6 +249,7 @@ public class ToolbarManagerUnitTest {
     @Mock private StatusBarColorController mStatusBarColorController;
     @Mock private AppMenuDelegate mAppMenuDelegate;
     @Mock private ActivityLifecycleDispatcher mActivityLifecycleDispatcher;
+    @Mock private MultiWindowModeStateDispatcher mMultiWindowModeStateDispatcher;
     @Mock private BottomSheetController mBottomSheetController;
     @Mock private DataSharingTabManager mDataSharingTabManager;
     @Mock private TabContentManager mTabContentManager;
@@ -313,6 +318,8 @@ public class ToolbarManagerUnitTest {
         when(mFaviconHelperNatives.init()).thenReturn(1L);
         LargeIconBridgeJni.setInstanceForTesting(mLargeIconBridgeNatives);
         when(mLargeIconBridgeNatives.init()).thenReturn(1L);
+        PictureInPictureWindowManagerBridgeJni.setInstanceForTesting(
+                mPictureInPictureBridgeNatives);
         PaintPreviewTabServiceFactoryJni.setInstanceForTesting(
                 mPaintPreviewTabServiceFactoryNatives);
         when(mPaintPreviewTabServiceFactoryNatives.getServiceInstanceForCurrentProfile())
@@ -486,6 +493,7 @@ public class ToolbarManagerUnitTest {
                         mStatusBarColorController,
                         mAppMenuDelegate,
                         mActivityLifecycleDispatcher,
+                        mMultiWindowModeStateDispatcher,
                         mBottomSheetController,
                         mDataSharingTabManager,
                         mTabContentManager,

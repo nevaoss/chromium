@@ -15,7 +15,6 @@ import android.graphics.Region.Op;
 import android.view.View;
 
 import androidx.recyclerview.widget.RecyclerView;
-import androidx.test.filters.SmallTest;
 
 import org.junit.Before;
 import org.junit.Rule;
@@ -34,7 +33,7 @@ import org.chromium.ui.modelutil.SimpleRecyclerViewAdapter;
 /** Tests for {@link SuggestionHorizontalDivider}. */
 @RunWith(BaseRobolectricTestRunner.class)
 public class SuggestionHorizontalDividerUnitTest {
-    @Rule public final MockitoRule mockitoRule = MockitoJUnit.rule();
+    @Rule public final MockitoRule mMockitoRule = MockitoJUnit.rule();
     @Mock private RecyclerView mRecyclerView;
     @Mock private View mChildViewWithDivider;
     @Mock private View mChildViewWithNoDivider;
@@ -75,14 +74,12 @@ public class SuggestionHorizontalDividerUnitTest {
     }
 
     @Test
-    @SmallTest
     public void testShouldDraw() {
         assertTrue(mDecoration.shouldDrawDivider(mChildViewWithDivider, mRecyclerView));
         assertFalse(mDecoration.shouldDrawDivider(mChildViewWithNoDivider, mRecyclerView));
     }
 
     @Test
-    @SmallTest
     public void testDraw() {
         doReturn(8.0f).when(mChildViewWithDivider).getX();
         doReturn(92).when(mChildViewWithDivider).getWidth();

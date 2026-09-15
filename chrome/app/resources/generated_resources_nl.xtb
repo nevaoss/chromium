@@ -621,6 +621,7 @@ Je kunt je wachtwoorden altijd checken in <ph name="GOOGLE_PASSWORD_MANAGER" />.
 <translation id="1482626744466814421">Bookmark toevoegen voor dit tabblad…</translation>
 <translation id="1482772681918035149">wachtwoorden bewerken</translation>
 <translation id="1483137792530497944">Rivier</translation>
+<translation id="1483151333977672176">Verzonden.</translation>
 <translation id="1483431819520123112">Weergavenaam gekopieerd naar klembord</translation>
 <translation id="1483493594462132177">Verzenden</translation>
 <translation id="1484102317210609525"><ph name="DEVICE_NAME" /> (HDMI/DP)</translation>
@@ -687,7 +688,6 @@ Je kunt je wachtwoorden altijd checken in <ph name="GOOGLE_PASSWORD_MANAGER" />.
 <translation id="1539248305642687917">Niet toestaan dat sites je toetsenbordinvoer overschrijven</translation>
 <translation id="1539727654733007771">Geen mobiele netwerken ingesteld. Download een nieuw <ph name="BEGIN_LINK" />profiel<ph name="END_LINK" />.</translation>
 <translation id="1540265419569299117">ChromeOS-app-service</translation>
-<translation id="1540543470504988112">Geïmporteerde certificaten van macOS beheren</translation>
 <translation id="1541346352678737112">Geen netwerk gevonden</translation>
 <translation id="154198613844929213">{0,plural, =0{Deze gegevens worden nu verwijderd}=1{Deze gegevens worden over 1 seconde verwijderd}other{Deze gegevens worden over # seconden verwijderd}}</translation>
 <translation id="1542137295869176367">Je inloggegevens kunnen niet worden geüpdatet</translation>
@@ -1331,7 +1331,6 @@ Dit is niet van invloed op apps of content op andere apparaten.</translation>
 <translation id="2026367923222947564">Hele pagina</translation>
 <translation id="2026377162111110983">Omgevingsstem</translation>
 <translation id="2028449514182362831">Functies waarvoor bewegingssensoren nodig zijn, werken niet</translation>
-<translation id="2028479214883337535">Geïmporteerd vanuit macOS</translation>
 <translation id="202918510990975568">Geef je wachtwoord op om beveiliging en inloggen te configureren</translation>
 <translation id="2030455719695904263">Trackpad</translation>
 <translation id="2030803782168502207">Abonnement van apparaat verwijderen</translation>
@@ -5237,7 +5236,6 @@ Gebruik Ctrl + Alt + Helderheid omlaag om uit te zoomen.</translation>
 <translation id="5017250179386090956">Annotatiebestanden voor hoofdknooppunt downloaden</translation>
 <translation id="5017529052065664584">Afgelopen 15 minuten</translation>
 <translation id="5018207570537526145">Website voor extensie openen</translation>
-<translation id="5019487038187875030">Geïmporteerde certificaten van macOS bekijken</translation>
 <translation id="5020008942039547742">Ander venster kiezen</translation>
 <translation id="5020146655450187658">Je bent offline. Check je internetverbinding om sites te beheren waarop Gemini je kan inloggen.</translation>
 <translation id="5020651427400641814">Spraakregistratie aanzetten</translation>
@@ -8332,7 +8330,6 @@ Je kunt instellingen beheren via het kaartmenu of meer opties bekijken in het ge
 <translation id="7460045493116006516">Huidig thema dat je hebt geïnstalleerd</translation>
 <translation id="7461924472993315131">Vastzetten</translation>
 <translation id="7462644385455960321">Sluit het volledige scherm om tabbladen horizontaal te tonen</translation>
-<translation id="746329643760972486">macOS</translation>
 <translation id="7463985990119325874">Je organisatie beheert hoe gegevens die door deze functies worden verzameld, mogen worden gebruikt.</translation>
 <translation id="7464645554245611385">Nieuwste update voor dit tabblad</translation>
 <translation id="7465777686629334728">Beheerde ontwikkelomgeving verwijderen (<ph name="SPECIFIC_NAME" />)</translation>
@@ -8939,6 +8936,7 @@ Druk op een toegewezen schakelaar of toets om de toewijzing te verwijderen.</tra
 <translation id="7943837619101191061">Locatie toevoegen...</translation>
 <translation id="79446453817422139">Dit bestand kan gevaarlijk zijn</translation>
 <translation id="7944772052836377867">Synchronisatie moet bevestigen dat jij het bent</translation>
+<translation id="794567586469801724">macOS</translation>
 <translation id="7945703887991230167">Voorkeurstem</translation>
 <translation id="7946243258100028201"><ph name="ORIGIN" /> kan bestanden in <ph name="FOLDERNAME" /> bekijken en er eigen kopieën van maken totdat je alle tabbladen voor deze site sluit</translation>
 <translation id="7946586320617670168">Herkomst moet zijn beveiligd</translation>

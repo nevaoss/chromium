@@ -24,7 +24,6 @@ source_set("external_protocol_dialog_test_support") {
     "//base",
     "//base/test:test_support",
     "//chrome/browser/external_protocol",
-    "//chrome/browser/ui",
     "//chrome/browser/ui/test:dialog",
     "//url",
   ]
@@ -167,6 +166,7 @@ source_set("file_system_access_test_support") {
     "//url",
   ]
 }
+
 source_set("confirm_bubble") {
   sources = [
     "confirm_bubble_views.cc",
@@ -249,6 +249,27 @@ source_set("status_bubble") {
 }
 
 if (is_win) {
+  source_set("network_profile_bubble_view") {
+    sources = [ "network_profile_bubble_view.cc" ]
+    public_deps = [ "//chrome/browser:browser_public_dependencies" ]
+    deps = [
+      "//base",
+      "//chrome/app:branded_strings",
+      "//chrome/app:generated_resources",
+      "//chrome/browser/profiles:profile",
+      "//chrome/browser/ui/browser_window",
+      "//chrome/browser/ui/views/toolbar",
+      "//chrome/common:constants",
+      "//components/prefs",
+      "//components/strings:components_strings",
+      "//content/public/browser",
+      "//ui/base",
+      "//ui/base/metadata",
+      "//ui/base/mojom:ui_base_types",
+      "//ui/views",
+    ]
+  }
+
   source_set("critical_notification_bubble_view") {
     public = [ "critical_notification_bubble_view.h" ]
     sources = [ "critical_notification_bubble_view.cc" ]
@@ -607,6 +628,25 @@ source_set("bubble_menu_item_factory") {
 }
 
 if (is_linux) {
+  source_set("window_sizer_linux") {
+    public = [ "window_sizer_linux.h" ]
+    sources = [ "window_sizer_linux.cc" ]
+    public_deps = [
+      "//base",
+      "//chrome/browser/ui/window_sizer",
+      "//ui/gfx/geometry",
+    ]
+    deps = [
+      "//chrome/browser:browser_public_dependencies",
+      "//chrome/browser/profiles:profile",
+      "//chrome/browser/ui/browser_window",
+      "//chrome/common:constants",
+      "//components/prefs",
+      "//ui/base/mojom:ui_base_types",
+      "//ui/ozone",
+    ]
+  }
+
   source_set("eula_dialog_linux") {
     public = [ "eula_dialog_linux.h" ]
     sources = [ "eula_dialog_linux.cc" ]
@@ -817,6 +857,7 @@ source_set("simple_web_view_dialog") {
     "//ui/display",
   ]
 }
+
 source_set("screen_capture_notification_ui_views") {
   sources = [ "screen_capture_notification_ui_views.cc" ]
   deps = [
@@ -1237,6 +1278,7 @@ source_set("global_error_bubble_view") {
     "//chrome/browser/ui:bubble_anchor_util",
     "//chrome/browser/ui/browser_window",
     "//chrome/browser/ui/global_error",
+    "//chrome/browser/ui/views/interaction",
     "//chrome/browser/ui/views/toolbar",
     "//ui/base",
     "//ui/gfx",

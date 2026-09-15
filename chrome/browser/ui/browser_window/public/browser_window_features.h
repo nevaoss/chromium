@@ -38,10 +38,6 @@ class BookmarksSidePanelCoordinator;
 class BookmarksServiceFeature;
 class BreadcrumbManagerBrowserAgent;
 
-namespace geic {
-class GeicSidePanelCoordinator;
-}  // namespace geic
-class Browser;
 class BrowserActions;
 class BrowserActiveStateManager;
 class BrowserAnimationController;
@@ -104,7 +100,6 @@ class SessionServiceBrowserHelper;
 class SharingWindowController;
 class SidePanelCoordinator;
 class SidePanelRegistry;
-class SidePanelUI;
 class SigninViewController;
 class SplitViewIphController;
 class TabDragServiceFeature;
@@ -308,7 +303,7 @@ class BrowserWindowFeatures {
 
   // Called exactly once to initialize features that depend on the window object
   // being created.
-  void InitPostWindowConstruction(Browser* browser);
+  void InitPostWindowConstruction(BrowserWindowInterface* browser);
 
   // Called exactly once to initialize features that depend on the view
   // hierarchy in BrowserView.
@@ -356,8 +351,6 @@ class BrowserWindowFeatures {
   // Returns true if a FindBarController exists for this browser window.
   bool HasFindBarController() const;
 
-  sessions::LiveTabContext* live_tab_context();
-
   // Returns the LocationBar for this browser window. Currently delegates to
   // BrowserWindow::GetLocationBar() via downcast, but should eventually become
   // an owned member of BrowserWindowFeatures.
@@ -379,28 +372,8 @@ class BrowserWindowFeatures {
     return pinned_toolbar_actions_;
   }
 
-  ProfileMenuCoordinator* profile_menu_coordinator() {
-    return profile_menu_coordinator_.get();
-  }
-
-  // TODO(crbug.com/346158959): For historical reasons, side_panel_ui is an
-  // abstract base class that contains some, but not all of the public interface
-  // of SidePanelCoordinator. One of the accessors side_panel_ui() or
-  // side_panel_coordinator() should be removed. For consistency with the rest
-  // of this class, we use lowercase_with_underscores even though the
-  // implementation is not inlined.
-  SidePanelUI* side_panel_ui();
-
   SigninViewController* signin_view_controller() {
     return signin_view_controller_.get();
-  }
-
-  BrowserSyncedWindowDelegate* synced_window_delegate() {
-    return synced_window_delegate_.get();
-  }
-
-  TabMenuModelDelegate* tab_menu_model_delegate() {
-    return tab_menu_model_delegate_.get();
   }
 
   TabStripModel* tab_strip_model() { return tab_strip_model_; }
@@ -431,7 +404,6 @@ class BrowserWindowFeatures {
   std::unique_ptr<BookmarksServiceFeature> bookmarks_service_feature_;
   std::unique_ptr<BookmarksSidePanelCoordinator>
       bookmarks_side_panel_coordinator_;
-  std::unique_ptr<geic::GeicSidePanelCoordinator> geic_side_panel_coordinator_;
 
   // Listens for browser-related breadcrumb events to be added to crash reports.
   std::unique_ptr<BreadcrumbManagerBrowserAgent>

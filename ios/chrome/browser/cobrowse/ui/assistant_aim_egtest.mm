@@ -152,12 +152,9 @@ id<GREYMatcher> CloseButton() {
 
 - (AppLaunchConfiguration)appConfigurationForTestCase {
   AppLaunchConfiguration config = [super appConfigurationForTestCase];
-  // Enable features needed for composebox.
-  config.features_enabled.push_back(kComposeboxIpad);
   config.features_enabled.push_back(kAimCobrowse);
   config.features_enabled.push_back(kAssistantContainer);
   config.features_enabled.push_back(kComposeboxPhysicalKeyboardReturnKeys);
-  config.features_disabled.push_back(kComposeboxAIMDisabled);
   config.features_disabled.push_back(omnibox::kAimServerEligibilityEnabled);
   config.features_disabled.push_back(kAssistantAimMinimizedState);
   config.features_disabled.push_back(kComposeboxServerSideState);

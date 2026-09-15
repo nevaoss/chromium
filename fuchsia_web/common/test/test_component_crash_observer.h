@@ -7,12 +7,21 @@
 
 #include <fuchsia/component/cpp/fidl.h>
 
+#include <string>
 #include <vector>
+
+#include "base/containers/flat_set.h"
 
 namespace test {
 
 // Observes component lifecycle events via the `fuchsia.component.EventStream`
 // protocol to detect abnormal component terminations and crashes.
+//
+// An instance of this class must be created before any dynamic components or
+// test realms (e.g. `RealmBuilder` roots) are started. The constructor
+// synchronously waits for the `EventStream` subscription to be registered
+// with Component Manager so that subsequent component start events are not
+// missed.
 class TestComponentCrashObserver {
  public:
   TestComponentCrashObserver();
@@ -22,8 +31,14 @@ class TestComponentCrashObserver {
   TestComponentCrashObserver& operator=(const TestComponentCrashObserver&) =
       delete;
 
-  // Drains pending lifecycle events and verifies that all observed component
-  // stops were clean.
+  // Registers a dynamic component moniker that is expected to terminate
+  // abnormally. The test will fail if the specified component is observed
+  // to stop normally, or is never observed to stop.
+  void ExpectAbnormalTermination(std::string moniker);
+
+  // Drains pending lifecycle events and verifies that all observed dynamic
+  // component stops were clean, and that all expected abnormal terminations
+  // occurred.
   void VerifyNoCrashes();
 
  private:
@@ -32,6 +47,8 @@ class TestComponentCrashObserver {
   void OnEvents(std::vector<fuchsia::component::Event> events);
 
   fuchsia::component::EventStreamPtr event_stream_;
+  base::flat_set<std::string> running_components_;
+  base::flat_set<std::string> expected_abnormal_terminations_;
 };
 
 }  // namespace test

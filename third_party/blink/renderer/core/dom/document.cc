@@ -227,7 +227,7 @@
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/frame/local_frame_client.h"
-#include "third_party/blink/renderer/core/frame/local_frame_ukm_aggregator.h"
+#include "third_party/blink/renderer/core/frame/local_frame_metrics_aggregator.h"
 #include "third_party/blink/renderer/core/frame/local_frame_view.h"
 #include "third_party/blink/renderer/core/frame/page_dismissal_scope.h"
 #include "third_party/blink/renderer/core/frame/performance_monitor.h"
@@ -2720,8 +2720,8 @@ void Document::UpdateStyleAndLayoutTreeForThisDocument() {
     }
   }
 
-  SCOPED_UMA_AND_UKM_TIMER(View()->GetUkmAggregator(),
-                           LocalFrameUkmAggregator::kStyle);
+  SCOPED_UMA_AND_UKM_TIMER(View()->GetMetricsAggregator(),
+                           LocalFrameMetricsAggregator::kStyle);
   FontPerformance::StyleScope font_performance_scope;
   ENTER_EMBEDDER_STATE(GetAgent().isolate(), GetFrame(), BlinkState::STYLE);
 
@@ -3131,8 +3131,12 @@ void Document::UpdateStyleAndLayout(DocumentUpdateReason reason) {
   TRACE_EVENT("blink", "Document::UpdateStyleAndLayout");
   LocalFrameView* frame_view = View();
 
+  bool is_potentially_clean =
+      (Lifecycle().GetState() >= DocumentLifecycle::kLayoutClean) &&
+      !NeedsLayoutTreeUpdate() && (!frame_view || !frame_view->NeedsLayout());
+
   if (reason != DocumentUpdateReason::kBeginMainFrame && frame_view)
-    frame_view->WillStartForcedLayout(reason);
+    frame_view->WillStartForcedLayout(reason, is_potentially_clean);
 
   HTMLFrameOwnerElement::PluginDisposeSuspendScope suspend_plugin_dispose;
   ScriptForbiddenScope forbid_script;
@@ -8508,7 +8512,7 @@ ukm::SourceId Document::UkmSourceID() const {
 bool Document::AllowInlineEventHandler(Node* node,
                                        EventListener* listener,
                                        const String& context_url,
-                                       const OrdinalNumber& context_line) {
+                                       const TextPosition& context_position) {
   auto* element = DynamicTo<Element>(node);
   // HTML says that inline script needs browsing context to create its execution
   // environment.
@@ -8527,15 +8531,17 @@ bool Document::AllowInlineEventHandler(Node* node,
   if (!window->GetContentSecurityPolicyForCurrentWorld()->AllowInline(
           ContentSecurityPolicy::InlineType::kScriptAttribute, element,
           listener->ScriptBody(), String() /* nonce */, context_url,
-          context_line))
+          context_position)) {
     return false;
+  }
 
   if (!window->CanExecuteScripts(kNotAboutToExecuteScript))
     return false;
   if (node && node->GetDocument() != this &&
       !node->GetDocument().AllowInlineEventHandler(node, listener, context_url,
-                                                   context_line))
+                                                   context_position)) {
     return false;
+  }
 
   return true;
 }

@@ -619,6 +619,60 @@ ci.thin_tester(
 )
 
 ci.thin_tester(
+    name = "Android FYI Experimental Release (Pixel 11)",
+    description_html = "Runs release GPU tests on experimental Pixel 11 configs",
+    parent = "GPU FYI Android arm64 Builder",
+    builder_spec = gpu_fyi_thin_tester_builder_spec(
+        gclient_config = builder_config.gclient_config(
+            config = "chromium",
+            apply_configs = [
+                "android",
+            ],
+        ),
+        chromium_config = builder_config.chromium_config(
+            config = "main_builder",
+            apply_configs = [
+                "mb",
+                "download_xr_test_apks",
+            ],
+            build_config = builder_config.build_config.RELEASE,
+            target_arch = builder_config.target_arch.ARM,
+            target_bits = 64,
+            target_platform = builder_config.target_platform.ANDROID,
+        ),
+        android_config = builder_config.android_config(
+            config = "base_config",
+        ),
+    ),
+    targets = targets.bundle(
+        # If the experimental configuration is the same as stable, this should
+        # only be running 'gpu_noop_sleep_telemetry_test'. Otherwise, this
+        # should be running the same tests as 'Android FYI Release (Pixel 11)'.
+        targets = [
+            "gpu_noop_sleep_telemetry_test",
+        ],
+        mixins = [
+            "has_native_resultdb_integration",
+            "gpu_pixel_11_experimental",
+            "very_limited_capacity_bot",
+        ],
+    ),
+    targets_settings = targets.settings(
+        browser_config = targets.browser_config.ANDROID_CHROMIUM,
+        os_type = targets.os_type.ANDROID,
+        use_android_merge_script_by_default = False,
+    ),
+    gardener_rotations = args.ignore_default(None),
+    # Uncomment this entry when this experimental tester is actually in use.
+    # console_view_entry = consoles.console_view_entry(
+    #     category = "Android|arm64|IMG",
+    #     short_name = "P11e",
+    # ),
+    list_view = "chromium.gpu.experimental",
+    execution_timeout = 12 * time.hour,
+)
+
+ci.thin_tester(
     name = "Android FYI Release (Samsung A13)",
     description_html = "Runs release GPU tests on stable Samsung A13 configs",
     parent = "GPU FYI Android arm Builder",
@@ -1282,6 +1336,7 @@ shared_gpu.ci.linux_builder(
 
 shared_gpu.ci.mac_builder(
     name = "GPU FYI Mac Builder",
+    branch_selector = branches.selector.MAC_BRANCHES,
     description_html = "Builds release Mac x64 binaries for GPU testing",
     builder_spec = builder_config.builder_spec(
         gclient_config = builder_config.gclient_config(
@@ -2496,6 +2551,7 @@ ci.thin_tester(
 
 ci.thin_tester(
     name = "Mac FYI Release (Intel)",
+    branch_selector = branches.selector.MAC_BRANCHES,
     description_html = "Runs release GPU tests on stable Mac/Intel UHD 630 Mac Mini configs",
     parent = "GPU FYI Mac Builder",
     builder_spec = gpu_fyi_thin_tester_builder_spec(
@@ -2570,6 +2626,7 @@ ci.thin_tester(
 
 ci.thin_tester(
     name = "Mac FYI Retina Release (AMD)",
+    branch_selector = branches.selector.MAC_BRANCHES,
     description_html = "Runs release GPU tests on stable Mac/AMD Macbook Pro configs",
     parent = "GPU FYI Mac Builder",
     builder_spec = gpu_fyi_thin_tester_builder_spec(

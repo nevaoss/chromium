@@ -52,6 +52,8 @@ BASE_FEATURE(kOptimisticDnsForTcp, base::FEATURE_DISABLED_BY_DEFAULT);
 const base::FeatureParam<bool> kUseStaleConnectorsForOptimisticDns{
     &kOptimisticDnsForTcp, "use_stale_connectors", false};
 
+BASE_FEATURE(kOptimisticDnsForQuic, base::FEATURE_DISABLED_BY_DEFAULT);
+
 BASE_FEATURE(kAddressSorterConnectCache, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE_PARAM(size_t,
@@ -81,6 +83,8 @@ const base::FeatureParam<bool> kDnsPlatformCancelPreviousAttemptOnRetry{
     &kDnsPlatformFailFastAndRetry, "cancel_previous_attempt_on_retry", false};
 
 BASE_FEATURE(kUseDnsHttpsSvcb, base::FEATURE_ENABLED_BY_DEFAULT);
+
+BASE_FEATURE(kUseDnsHttpsSvcbAddressHints, base::FEATURE_DISABLED_BY_DEFAULT);
 
 const base::FeatureParam<bool> kUseDnsHttpsSvcbEnforceSecureResponse{
     &kUseDnsHttpsSvcb, "UseDnsHttpsSvcbEnforceSecureResponse", false};
@@ -454,7 +458,7 @@ BASE_FEATURE(kDeviceBoundSessions, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kDeviceBoundSessions, base::FEATURE_DISABLED_BY_DEFAULT);
 #endif
 BASE_FEATURE(kDeviceBoundSessionsBypassDeferralsForRefreshRequests,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kDeviceBoundSessionsRetryTransientRefreshErrors,
              base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE_PARAM(bool,

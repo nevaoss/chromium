@@ -2165,9 +2165,7 @@ IN_PROC_BROWSER_TEST_F(BrowserTest, TabFullscreenHiddenBookmarkBarSplitView) {
   content::WebContents* web_contents =
       browser()->tab_strip_model()->GetActiveWebContents();
 
-  browser()
-      ->GetFeatures()
-      .exclusive_access_manager()
+  ExclusiveAccessManager::From(browser())
       ->fullscreen_controller()
       ->EnterFullscreenModeForTab(web_contents->GetPrimaryMainFrame());
 
@@ -2829,8 +2827,7 @@ IN_PROC_BROWSER_TEST_F(BrowserTest, DISABLED_ChangeDisplayMode) {
   auto* app_contents = app_browser->tab_strip_model()->GetActiveWebContents();
   CheckDisplayModeMQ(u"standalone", app_contents);
 
-  app_browser->GetFeatures()
-      .exclusive_access_manager()
+  ExclusiveAccessManager::From(app_browser)
       ->context()
       ->EnterFullscreen(
           url::Origin(),
@@ -3475,7 +3472,7 @@ IN_PROC_BROWSER_TEST_F(GuestSessionBrowserTest, CreateGuestSessionBrowser) {
   EXPECT_TRUE(guest_profile->IsOffTheRecord());
 
   // Try creating a browser in original non-OTR guest profile - it should fail.
-  EXPECT_EQ(Browser::CreationStatus::kErrorProfileUnsuitable,
+  EXPECT_EQ(BrowserWindowInterface::CreationStatus::kErrorProfileUnsuitable,
             GetBrowserWindowCreationStatusForProfile(
                 *guest_profile->GetOriginalProfile()));
 }

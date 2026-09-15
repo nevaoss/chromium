@@ -662,8 +662,8 @@ void BrowserActions::InitializeSidePanelActions() {
                     std::underlying_type_t<actions::ActionPinnableState>>(
                     actions::ActionPinnableState::kPinnable))
             .SetVisible(
-                contextual_tasks::EntryPointEligibilityManager::IsEligible(
-                    profile))
+                contextual_tasks::EntryPointEligibilityManager::
+                    IsPinningEligible(profile))
             .Build());
   }
 
@@ -3242,62 +3242,10 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
               },
               bwi))
           .SetActionId(kActionCreateNewTabGroup)
-          .Build());
-
-  root_action_item_->AddChild(
-      actions::ActionItem::Builder(
-          base::BindRepeating(
-              &BrowserActions::PerformTabGroupAction, base::Unretained(this),
-              tab_groups::TabGroupMenuAction::Type::OPEN_IN_BROWSER, bwi))
-          .SetActionId(kActionTabGroupOpenInBrowser)
-          .SetText(l10n_util::GetStringUTF16(IDS_OPEN_GROUP_IN_BROWSER_MENU))
+          .SetText(l10n_util::GetStringUTF16(IDS_CREATE_NEW_TAB_GROUP))
           .SetImage(ui::ImageModel::FromVectorIcon(
-              features::IsRoundedIconsEnabled() ? kOpenInBrowserIcon
-                                                : kOpenInBrowserOldIcon,
-              ui::kColorMenuIcon, 16))
-          .Build());
-
-  root_action_item_->AddChild(
-      actions::ActionItem::Builder(
-          base::BindRepeating(
-              &BrowserActions::PerformTabGroupAction, base::Unretained(this),
-              tab_groups::TabGroupMenuAction::Type::OPEN_OR_MOVE_TO_NEW_WINDOW,
-              bwi))
-          .SetActionId(kActionTabGroupOpenInNewWindow)
-          .SetText(l10n_util::GetStringUTF16(
-              IDS_TAB_GROUP_HEADER_CXMENU_OPEN_GROUP_IN_NEW_WINDOW))
-          .SetImage(ui::ImageModel::FromVectorIcon(
-              features::IsRoundedIconsEnabled()
-                  ? kMoveGroupIcon
-                  : kMoveGroupToNewWindowRefreshOldIcon,
-              ui::kColorMenuIcon, 16))
-          .Build());
-
-  root_action_item_->AddChild(
-      actions::ActionItem::Builder(
-          base::BindRepeating(
-              &BrowserActions::PerformTabGroupAction, base::Unretained(this),
-              tab_groups::TabGroupMenuAction::Type::PIN_OR_UNPIN_GROUP, bwi))
-          .SetActionId(kActionTabGroupPin)
-          .SetText(
-              l10n_util::GetStringUTF16(IDS_TAB_GROUP_HEADER_CXMENU_PIN_GROUP))
-          .SetImage(ui::ImageModel::FromVectorIcon(
-              features::IsRoundedIconsEnabled() ? kKeepIcon : kKeepOldIcon,
-              ui::kColorMenuIcon, 16))
-          .Build());
-
-  root_action_item_->AddChild(
-      actions::ActionItem::Builder(
-          base::BindRepeating(
-              &BrowserActions::PerformTabGroupAction, base::Unretained(this),
-              tab_groups::TabGroupMenuAction::Type::DELETE_GROUP, bwi))
-          .SetActionId(kActionTabGroupDelete)
-          .SetText(l10n_util::GetStringUTF16(
-              IDS_TAB_GROUP_HEADER_CXMENU_DELETE_GROUP))
-          .SetImage(ui::ImageModel::FromVectorIcon(
-              features::IsRoundedIconsEnabled() ? kTabCloseIcon
-                                                : kCloseGroupRefreshOldIcon,
-              ui::kColorMenuIcon, 16))
+              features::IsRoundedIconsEnabled() ? kLibraryAddIcon
+                                                : kCreateNewTabGroupOldIcon))
           .Build());
 
   root_action_item_->AddChild(
@@ -3427,6 +3375,11 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
               },
               bwi))
           .SetActionId(kActionReadingListMenuAddTab)
+          .SetText(l10n_util::GetStringUTF16(IDS_READING_LIST_MENU_ADD_TAB))
+          .SetImage(ui::ImageModel::FromVectorIcon(
+              features::IsRoundedIconsEnabled() ? kListAltAddIcon
+                                                : kReadLaterAddOldIcon,
+              ui::kColorIcon))
           .Build());
 
   root_action_item_->AddChild(
@@ -3933,6 +3886,11 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
               },
               bwi))
           .SetActionId(kActionImportSettings)
+          .SetText(l10n_util::GetStringUTF16(IDS_IMPORT_SETTINGS_MENU_LABEL))
+          .SetImage(ui::ImageModel::FromVectorIcon(
+              features::IsRoundedIconsEnabled() ? kMenuBookIcon
+                                                : kMenuBookChromeRefreshOldIcon,
+              ui::kColorIcon))
           .Build());
 
   root_action_item_->AddChild(
@@ -4184,6 +4142,11 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
               },
               bwi))
           .SetActionId(kActionShowBookmarkBar)
+          .SetText(l10n_util::GetStringUTF16(IDS_SHOW_BOOKMARK_BAR))
+          .SetImage(ui::ImageModel::FromVectorIcon(
+              features::IsRoundedIconsEnabled() ? kToolbarIcon
+                                                : kToolbarChromeRefreshOldIcon,
+              ui::kColorIcon))
           .Build());
 
   root_action_item_->AddChild(
@@ -4241,6 +4204,13 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
               },
               bwi))
           .SetActionId(kActionShowBookmarkManager)
+          .SetText(l10n_util::GetStringUTF16(
+              features::IsMenuSimplificationEnabled() ? IDS_BOOKMARK_MANAGER_V2
+                                                      : IDS_BOOKMARK_MANAGER))
+          .SetImage(ui::ImageModel::FromVectorIcon(
+              features::IsRoundedIconsEnabled() ? kBookmarkManagerIcon
+                                                : kBookmarksManagerOldIcon,
+              ui::kColorIcon))
           .Build());
 
   root_action_item_->AddChild(
@@ -4924,8 +4894,8 @@ void BrowserActions::InitializeSubmenuActions() {
               bwi),
           kActionBookmarkBarSubmenu, IDS_BOOKMARK_BAR_SUBMENU_LABEL,
           IDS_BOOKMARK_BAR_SUBMENU_LABEL,
-          features::IsRoundedIconsEnabled() ? kStarIcon
-                                            : kBookmarksListsMenuOldIcon,
+          features::IsRoundedIconsEnabled() ? kToolbarIcon
+                                            : kToolbarChromeRefreshOldIcon,
           /*is_pinnable=*/false)
           .Build());
 
@@ -5080,39 +5050,6 @@ void BrowserActions::InitializeSubmenuActions() {
               : vector_icons::kExtensionChromeRefreshOldIcon,
           /*is_pinnable=*/false)
           .Build());
-}
-
-void BrowserActions::PerformTabGroupAction(
-    tab_groups::TabGroupMenuAction::Type type,
-    BrowserWindowInterface* bwi,
-    actions::ActionItem* item,
-    actions::ActionInvocationContext context) {
-  if (!bwi || !item) {
-    return;
-  }
-  base::Uuid* guid =
-      item->GetProperty(ActionAppMenuManager::kSavedTabGroupGuidKey);
-  if (!guid || !guid->is_valid()) {
-    return;
-  }
-
-  tab_groups::TabGroupMenuAction::Type final_type = type;
-
-  // Find it we are the owner of the group we want to delete, if not we change
-  // type to leave
-  if (type == tab_groups::TabGroupMenuAction::Type::DELETE_GROUP) {
-    bool is_owner = tab_groups::SavedTabGroupUtils::IsOwnerOfSharedTabGroup(
-        bwi->GetProfile(), *guid);
-    if (!is_owner) {
-      final_type = tab_groups::TabGroupMenuAction::Type::LEAVE_GROUP;
-    }
-  }
-
-  tab_groups::TabGroupMenuAction action(final_type, *guid);
-  tab_groups::TabGroupSyncService* service =
-      tab_groups::TabGroupSyncServiceFactory::GetForProfile(bwi->GetProfile());
-  tab_groups::SavedTabGroupUtils::PerformTabGroupMenuAction(
-      action, tab_groups::TabGroupMenuContext::APP_MENU, bwi, service);
 }
 
 void BrowserActions::AddListeners() {

@@ -12,6 +12,7 @@
 #include "base/scoped_observation.h"
 #include "base/task/single_thread_task_runner.h"
 #include "base/test/test_timeouts.h"
+#include "base/threading/thread_restrictions.h"
 #include "build/build_config.h"
 #include "build/chromeos_buildflags.h"
 #include "chrome/browser/download/download_prefs.h"
@@ -25,6 +26,7 @@
 #include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"
 #include "chrome/browser/ui/extensions/extension_action_test_helper.h"
 #include "chrome/browser/ui/navigator/browser_navigator_params.h"
+#include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/toolbar/toolbar_action_view_model.h"
 #include "chrome/browser/ui/toolbar/toolbar_actions_model.h"
 #include "chrome/browser/ui/ui_features.h"
@@ -63,6 +65,8 @@
 #include "testing/gmock/include/gmock/gmock.h"
 #include "third_party/blink/public/common/page/page_zoom.h"
 #include "ui/base/buildflags.h"
+#include "ui/base/page_transition_types.h"
+#include "ui/base/window_open_disposition.h"
 #include "ui/gfx/geometry/rect.h"
 #include "ui/gfx/scrollbar_size.h"
 #include "ui/views/widget/widget.h"
@@ -273,10 +277,11 @@ class BrowserActionInteractiveTest : public ExtensionApiTest {
     // This works because bubbles on Mac are always toplevel.
     EXPECT_TRUE(ui_test_utils::BringBrowserWindowToFront(browser()));
 #else
-    // Elsewhere, click on the omnibox. Note that with aura, the browser may be
-    // "active" the entire time when the popup is not a toplevel window. It's
-    // aura::Window::Focus() that determines where key events go in this case.
-    ui_test_utils::ClickOnView(browser(), VIEW_ID_OMNIBOX);
+    // Elsewhere, click on the tab container. Note that with aura, the browser
+    // may be "active" the entire time when the popup is not a toplevel window.
+    // It's aura::Window::Focus() that determines where key events go in this
+    // case.
+    ui_test_utils::ClickOnView(browser(), VIEW_ID_TAB_CONTAINER);
 #endif
 
     // The window disappears immediately.
@@ -505,7 +510,14 @@ IN_PROC_BROWSER_TEST_F(BrowserActionInteractiveTest, FocusLossClosesPopup1) {
 }
 
 // Test that the extension popup is closed when the browser window is focused.
-IN_PROC_BROWSER_TEST_F(BrowserActionInteractiveTest, FocusLossClosesPopup2) {
+// TODO(crbug.com/556054354): Flaky on Windows.
+#if BUILDFLAG(IS_WIN)
+#define MAYBE_FocusLossClosesPopup2 DISABLED_FocusLossClosesPopup2
+#else
+#define MAYBE_FocusLossClosesPopup2 FocusLossClosesPopup2
+#endif
+IN_PROC_BROWSER_TEST_F(BrowserActionInteractiveTest,
+                       MAYBE_FocusLossClosesPopup2) {
   // Load a first extension that can open a popup.
   ASSERT_TRUE(
       LoadExtension(test_data_dir_.AppendASCII("browser_action/popup")));

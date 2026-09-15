@@ -74,6 +74,8 @@
 #include "components/zoom/zoom_controller.h"
 #include "content/public/browser/browser_accessibility_state.h"
 #include "content/public/browser/context_menu_params.h"
+#include "content/public/browser/navigation_controller.h"
+#include "content/public/browser/navigation_entry.h"
 #include "content/public/browser/navigation_handle.h"
 #include "content/public/browser/reload_type.h"
 #include "content/public/browser/render_frame_host.h"
@@ -94,6 +96,7 @@
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/base/mojom/menu_source_type.mojom.h"
+#include "ui/base/window_open_disposition.h"
 #include "ui/display/screen.h"
 #include "ui/events/blink/web_input_event.h"
 #include "ui/gfx/geometry/point.h"
@@ -402,6 +405,8 @@ WebUIToolbarWebView::WebUIToolbarWebView(
   last_queued_state_.app_menu_control_state = app_menu_control_.GetState();
   last_queued_state_.avatar_control_state =
       toolbar_ui_api::mojom::AvatarControlState::New();
+  last_queued_state_.overflow_button_control_state =
+      toolbar_ui_api::mojom::OverflowButtonControlState::New();
 
   if (auto* manager = InitialWebUIWindowMetricsManager::From(browser_)) {
     manager->OnReloadButtonCreated();
@@ -1440,6 +1445,14 @@ void WebUIToolbarWebView::OnAppMenuControlStateChanged(
     toolbar_ui_api::mojom::AppMenuControlStatePtr state) {
   if (*state != *last_queued_state_.app_menu_control_state) {
     last_queued_state_.app_menu_control_state = std::move(state);
+    PostPushNavigationState();
+  }
+}
+
+void WebUIToolbarWebView::OnOverflowButtonControlStateChanged(
+    toolbar_ui_api::mojom::OverflowButtonControlStatePtr state) {
+  if (*state != *last_queued_state_.overflow_button_control_state) {
+    last_queued_state_.overflow_button_control_state = std::move(state);
     PostPushNavigationState();
   }
 }

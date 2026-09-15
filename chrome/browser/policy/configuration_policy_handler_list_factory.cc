@@ -789,9 +789,6 @@ const PolicyToPreferenceMapEntry kSimplePolicyMap[] = {
   { key::kNTPCardsVisible,
     prefs::kNtpModulesVisible,
     base::Value::Type::BOOLEAN },
-  { key::kNTPMiddleSlotAnnouncementVisible,
-    prefs::kNtpPromoVisible,
-    base::Value::Type::BOOLEAN },
   { key::kNTPOutlookCardVisible,
     prefs::kNtpOutlookModuleVisible,
     base::Value::Type::BOOLEAN },
@@ -2271,6 +2268,9 @@ const PolicyToPreferenceMapEntry kSimplePolicyMap[] = {
 #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
   { key::kExtensionDOMActivityLoggingEnabled,
     prefs::kExtensionDOMActivityLoggingEnabled,
+    base::Value::Type::BOOLEAN },
+  { key::kExtensionReviewPromptsEnabled,
+    prefs::kExtensionReviewPromptsAllowed,
     base::Value::Type::BOOLEAN },
 #endif // BUILDFLAG(ENABLE_EXTENSIONS_CORE)
 

@@ -21,6 +21,7 @@
 #include "chrome/browser/ui/interaction/browser_elements.h"
 #include "chrome/browser/ui/side_panel/side_panel_entry_id.h"
 #include "chrome/browser/ui/side_panel/side_panel_ui.h"
+#include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/views/omnibox/omnibox_view_views.h"
 #include "chrome/browser/ui/views/user_education/impl/browser_user_education_context.h"
@@ -426,17 +427,14 @@ IN_PROC_BROWSER_TEST_F(NtpPromoUiTest,
 
       // Verify the side panel is showing in the second browser.
       Check([browser2]() {
-        return browser2->GetFeatures().side_panel_ui()->IsSidePanelEntryShowing(
+        return SidePanelUI::From(browser2)->IsSidePanelEntryShowing(
             SidePanelEntryKey(SidePanelEntryId::kCustomizeChrome));
       }),
 
       // Verify the side panel is NOT showing in the first browser.
       Check([this]() {
-        return !browser()
-                    ->GetFeatures()
-                    .side_panel_ui()
-                    ->IsSidePanelEntryShowing(
-                        SidePanelEntryKey(SidePanelEntryId::kCustomizeChrome));
+        return !SidePanelUI::From(browser())->IsSidePanelEntryShowing(
+            SidePanelEntryKey(SidePanelEntryId::kCustomizeChrome));
       }));
 }
 

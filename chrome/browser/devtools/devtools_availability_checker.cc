@@ -21,6 +21,7 @@
 #include "content/public/browser/devtools_agent_host.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/web_contents.h"
+#include "extensions/buildflags/buildflags.h"
 #include "url/gurl.h"
 #include "url/url_constants.h"
 
@@ -92,6 +93,22 @@ bool IsInspectionAllowed(Profile* profile,
     if (!IsInspectionAllowed(profile, target_url)) {
       return false;
     }
+
+#if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+    // Enforce extension policy at the target level before falling back to the
+    // parent WebContents.
+    if (target_url.SchemeIs(extensions::kExtensionScheme)) {
+      if (auto* registry = extensions::ExtensionRegistry::Get(profile)) {
+        if (const extensions::Extension* extension =
+                registry->GetInstalledExtension(
+                    std::string(target_url.host()))) {
+          if (!IsInspectionAllowed(profile, extension)) {
+            return false;
+          }
+        }
+      }
+    }
+#endif
 
     if (content::WebContents* web_contents = agent_host->GetWebContents()) {
       return IsInspectionAllowed(profile, web_contents);

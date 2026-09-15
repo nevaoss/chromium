@@ -41,6 +41,8 @@
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/tab_list/tab_list_interface.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
+#include "components/sessions/core/session_id.h"
+#include "extensions/buildflags/buildflags.h"
 #if !BUILDFLAG(IS_ANDROID)
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/views/page_info/page_info_bubble_specification.h"
@@ -1395,6 +1397,10 @@ bool ContextualTasksSidePanelCoordinator::CanExpandToFullTab() const {
 void ContextualTasksSidePanelCoordinator::ShowPageInfoBubble(
     bool is_pointer_interaction) {
 #if !BUILDFLAG(IS_ANDROID)
+  if (!IsContextualTasksSidePanelRearchitectureEnabled()) {
+    return;
+  }
+
   if (page_info_bubble_suppressor_.ShouldSuppressBubbleShow(
           is_pointer_interaction)) {
     return;
@@ -1441,6 +1447,8 @@ void ContextualTasksSidePanelCoordinator::ShowPageInfoBubble(
       PageInfoBubbleSpecification::Builder(
           specification_anchor, browser_view->GetWidget()->GetNativeWindow(),
           contents, contents->GetVisibleURL())
+          .SetShowExtensionsMenu(
+              IsContextualTasksSidePanelRearchitectureEnabled())
           .Build();
 
   views::BubbleDialogDelegateView* const bubble =
@@ -1457,6 +1465,10 @@ void ContextualTasksSidePanelCoordinator::ShowPageInfoBubble(
 
 void ContextualTasksSidePanelCoordinator::OnLogoPointerDown() {
 #if !BUILDFLAG(IS_ANDROID)
+  if (!IsContextualTasksSidePanelRearchitectureEnabled()) {
+    return;
+  }
+
   page_info_bubble_suppressor_.OnMousePressed();
 #endif
 }

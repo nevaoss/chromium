@@ -125,10 +125,17 @@ class OmniboxEverywhereUI
   }
   OmniboxEverywhereHandler* omnibox_handler() { return omnibox_handler_.get(); }
 
+  // TODO(b/555331826): Clean up handler retrieval to avoid inspecting handler
+  // instantiation state.
+  // Returns the active ContextualSearchboxHandler (either composebox_handler_
+  // or omnibox_handler_).
+  ContextualSearchboxHandler* GetContextualSearchboxHandler();
+
   // ContextualSearchboxHandler::ScreenshareDelegate:
   void ShowScreenshotMenu(
       const gfx::Rect& anchor_rect,
-      base::WeakPtr<ContextualSearchboxHandler> source_handler) override;
+      base::WeakPtr<ContextualSearchboxScreenshareController> controller)
+      override;
   void OnScreensharePickerOpened() override;
   void OnScreensharePickerClosed() override;
   void ShowRegionSelectOverlay(const SkBitmap& screenshot,
@@ -142,11 +149,11 @@ class OmniboxEverywhereUI
   bool IsCommandIdEnabled(int command_id) const override;
   bool IsCommandIdVisible(int command_id) const override;
 
- private:
   contextual_search::ContextualSearchSessionHandle*
   GetOrCreateContextualSessionHandle();
   void ClearContextualSessionHandle();
 
+ private:
   raw_ptr<Profile> profile_;
 
   std::unique_ptr<ComposeboxEverywhereHandler> composebox_handler_;
@@ -165,7 +172,8 @@ class OmniboxEverywhereUI
   std::unique_ptr<ui::SimpleMenuModel> screenshot_menu_model_;
   std::unique_ptr<views::MenuModelAdapter> menu_model_adapter_;
   std::unique_ptr<views::MenuRunner> screenshot_menu_runner_;
-  base::WeakPtr<ContextualSearchboxHandler> active_screenshot_handler_;
+  base::WeakPtr<ContextualSearchboxScreenshareController>
+      active_screenshot_controller_;
 
   mojo::Receiver<composebox::mojom::PageHandlerFactory>
       composebox_page_factory_receiver_{this};

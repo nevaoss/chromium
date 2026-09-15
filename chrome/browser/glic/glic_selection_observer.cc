@@ -227,6 +227,13 @@ class GlicSelectionObserver::WidgetActionDelegate
   raw_ptr<GlicSelectionObserver> observer_;
 };
 
+DEFINE_USER_DATA(GlicSelectionObserver);
+
+// static
+GlicSelectionObserver* GlicSelectionObserver::From(tabs::TabInterface* tab) {
+  return tab ? Get(tab->GetUnownedUserDataHost()) : nullptr;
+}
+
 GlicSelectionObserver::GlicSelectionObserver(content::WebContents* web_contents)
     : content::WebContentsObserver(web_contents),
       action_delegate_(std::make_unique<WidgetActionDelegate>(this)) {
@@ -253,6 +260,11 @@ GlicSelectionObserver::GlicSelectionObserver(content::WebContents* web_contents)
   }
 
   auto* tab_interface = tabs::TabInterface::MaybeGetFromContents(web_contents);
+  if (tab_interface) {
+    scoped_unowned_user_data_ =
+        std::make_unique<ui::ScopedUnownedUserData<GlicSelectionObserver>>(
+            tab_interface->GetUnownedUserDataHost(), *this);
+  }
   auto* helper = tab_interface
                      ? tabs::PageContextEligibilityHelper::From(tab_interface)
                      : nullptr;
@@ -289,6 +301,12 @@ bool GlicSelectionObserver::IsSelectionPromptEnabled() const {
     return false;
   }
   return GlicEnabling::IsSelectionPromptEnabledForProfile(profile);
+}
+
+void GlicSelectionObserver::UpdateSelectionStateFromContextMenu(
+    const std::u16string& selected_text) {
+  UpdateSelectionState(selected_text, /*is_pending_selection=*/false,
+                       SelectionSource::kContextMenu);
 }
 
 GlicSelectionObserver::~GlicSelectionObserver() {
@@ -360,12 +378,7 @@ void GlicSelectionObserver::OnVisibilityChanged(
 }
 
 void GlicSelectionObserver::PrimaryPageChanged(content::Page& page) {
-  is_hidden_on_current_page_ = false;
-  UpdatePageBlockedState();
-  if (widget_delegate_) {
-    is_explaining_ = false;
-    widget_delegate_->CloseWidget();
-  }
+  ResetSelectionState();
 }
 
 void GlicSelectionObserver::PrimaryMainFrameWasResized(bool width_changed) {
@@ -390,7 +403,11 @@ void GlicSelectionObserver::OnInputEvent(
   if (!IsListenedToInputEvent(event.GetType())) {
     return;
   }
-  if (!IsTabValidForSharing(web_contents())) {
+  // If text selection context was previously sent to the panel (e.g. via the
+  // "Ask Gemini" context menu), we must still process input events even on
+  // unshareable pages (such as chrome:// URLs) so that clicking away can clear
+  // the selection chip from the panel.
+  if (!IsTabValidForSharing(web_contents()) && !has_sent_selection_context_) {
     return;
   }
   base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
@@ -400,7 +417,7 @@ void GlicSelectionObserver::OnInputEvent(
 
 void GlicSelectionObserver::ProcessInputEvent(
     std::unique_ptr<blink::WebInputEvent> event) {
-  if (!IsSelectionPromptEnabled()) {
+  if (!IsSelectionPromptEnabled() && !has_sent_selection_context_) {
     return;
   }
 
@@ -443,7 +460,8 @@ void GlicSelectionObserver::ProcessInputEvent(
         ResetPendingSelection();
         if (has_sent_selection_context_) {
           UpdateSelectionState(std::u16string(),
-                               /*is_pending_selection=*/false);
+                               /*is_pending_selection=*/false,
+                               SelectionSource::kAutomatic);
         }
       }
       break;
@@ -521,11 +539,18 @@ void GlicSelectionObserver::ProcessInputEvent(
 void GlicSelectionObserver::OnTextSelectionChanged(
     content::RenderFrameHost* render_frame_host,
     std::u16string_view selected_text) {
-  if (!IsSelectionPromptEnabled()) {
+  if (!IsSelectionPromptEnabled() && !has_sent_selection_context_) {
     return;
   }
 
+  // On unshareable pages (such as chrome:// URLs), automatic selection sharing
+  // is disabled. However, if context was explicitly sent (e.g. via the context
+  // menu), any deselection must clear that context from the panel.
   if (!IsTabValidForSharing(web_contents())) {
+    if (has_sent_selection_context_) {
+      UpdateSelectionState(std::u16string(), /*is_pending_selection=*/false,
+                           SelectionSource::kAutomatic);
+    }
     return;
   }
 
@@ -601,7 +626,8 @@ void GlicSelectionObserver::ProcessPendingSelection() {
   std::u16string selected_text = std::move(*pending_selection_text_);
   ResetPendingSelection();
 
-  UpdateSelectionState(selected_text, /*is_pending_selection=*/true);
+  UpdateSelectionState(selected_text, /*is_pending_selection=*/true,
+                       SelectionSource::kAutomatic);
 }
 
 void GlicSelectionObserver::ResetPendingSelection() {
@@ -705,18 +731,26 @@ void GlicSelectionObserver::InvokeGlicFromSelectionAffordance(
 
 void GlicSelectionObserver::UpdateSelectionState(
     const std::u16string& selected_text,
-    bool is_pending_selection) {
+    bool is_pending_selection,
+    SelectionSource source) {
   last_selected_text_ = selected_text;
   auto* tab_interface =
       tabs::TabInterface::MaybeGetFromContents(web_contents());
   if (!tab_interface) {
     return;
   }
+
+  if (source == SelectionSource::kContextMenu) {
+    has_sent_selection_context_ = !selected_text.empty();
+    return;
+  }
+
   BrowserWindowInterface* bwi = tab_interface->GetBrowserWindowInterface();
 
   if (selected_text.empty()) {
     if (widget_delegate_ && !is_explaining_) {
       widget_delegate_->CloseWidget();
+      generated_link_.reset();
     }
 
     if (has_sent_selection_context_) {
@@ -724,6 +758,7 @@ void GlicSelectionObserver::UpdateSelectionState(
       has_sent_selection_context_ = false;
     }
 
+    last_selection_frame_token_.reset();
     return;
   }
 
@@ -922,7 +957,7 @@ void GlicSelectionObserver::WriteLinkToClipboard(
       if (auto* tab_interface =
               tabs::TabInterface::MaybeGetFromContents(web_contents_ptr)) {
         if (auto* bwi = tab_interface->GetBrowserWindowInterface()) {
-          if (auto* toast_controller = bwi->GetFeatures().toast_controller()) {
+          if (auto* toast_controller = ToastController::From(bwi)) {
             toast_controller->MaybeShowToast(
                 ToastParams(ToastId::kLinkToHighlightCopied));
           }
@@ -1065,7 +1100,8 @@ void GlicSelectionObserver::OnGlobalPanelShowHide() {
     return;
   }
 
-  UpdateSelectionState(last_selected_text_, /*is_pending_selection=*/false);
+  UpdateSelectionState(last_selected_text_, /*is_pending_selection=*/false,
+                       SelectionSource::kAutomatic);
 }
 
 void GlicSelectionObserver::OnAskGemini() {
@@ -1348,6 +1384,17 @@ void GlicSelectionObserver::ResetShakeDetector() {
   last_shake_dir_.reset();
   direction_change_count_ = 0;
   last_direction_change_time_ = base::TimeTicks();
+}
+
+void GlicSelectionObserver::ResetSelectionState() {
+  is_hidden_on_current_page_ = false;
+  is_explaining_ = false;
+  UpdatePageBlockedState();
+  // This should close the widget and clear most selection state.
+  UpdateSelectionState(u"", /*is_pending_selection=*/false,
+                       SelectionSource::kAutomatic);
+  // This should clear the rest.
+  ResetPendingSelection();
 }
 
 }  // namespace glic

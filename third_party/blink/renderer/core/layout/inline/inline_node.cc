@@ -673,6 +673,10 @@ void InlineNode::PrepareLayout(InlineNodeData* previous_data) const {
   AssociateItemsWithInlines(data);
   DCHECK_EQ(data, MutableData());
 
+  // `EstimateInlineItemsCount` may have over-reserved. It's now safe to shrink.
+  data->items.shrink_to_fit();
+  data->LogCapacity();
+
   LayoutBlockFlow* block_flow = GetLayoutBlockFlow();
   block_flow->ClearNeedsCollectInlines();
 
@@ -1558,11 +1562,9 @@ void InlineNode::ShapeText(InlineItemsData* data,
   InlineItem::CheckIndex(items);
 #endif  // EXPENSIVE_DCHECKS_ARE_ON()
 
-  ShapeResultSpacing spacing(
-      text_content,
-      /*allow_word_spacing_anywhere=*/IsSvgText() ||
-          (RuntimeEnabledFeatures::WordSpacingWhiteSpacePreEnabled() &&
-           Style().ShouldPreserveWhiteSpaces()));
+  ShapeResultSpacing spacing(text_content,
+                             /*allow_word_spacing_anywhere=*/IsSvgText() ||
+                                 Style().ShouldPreserveWhiteSpaces());
   TextAutoSpace auto_space(*data);
 
   const bool allow_shape_cache =
@@ -2144,18 +2146,16 @@ static LayoutUnit ComputeContentSize(InlineNode node,
       DCHECK(item.Style());
       const ComputedStyle& style = *item.Style();
       const TabSize& tab_size = style.GetTabSize();
-      const Font* font = RuntimeEnabledFeatures::TabSizeAncestorEnabled()
-                             ? &node.FontForTab()
-                             : style.GetFont();
-      const SimpleFontData* font_data = font->PrimaryFontForTabSize();
+      const Font& font = node.FontForTab();
+      const SimpleFontData* font_data = font.PrimaryFontForTabSize();
       // Sync with `ShapeResult::CreateForTabulationCharacters()`.
       TextRunLayoutUnit glyph_advance = TextRunLayoutUnit::FromFloatRound(
-          font->TabWidth(font_data, tab_size, position));
+          font.TabWidth(font_data, tab_size, position));
       InlineLayoutUnit run_advance = glyph_advance;
       DCHECK_GE(length, 1u);
       if (length > 1u) {
         glyph_advance = TextRunLayoutUnit::FromFloatRound(
-            font->TabWidth(font_data, tab_size));
+            font.TabWidth(font_data, tab_size));
         run_advance += glyph_advance.To<InlineLayoutUnit>() * (length - 1);
       }
       position += run_advance.ToCeil<LayoutUnit>().ClampNegativeToZero();

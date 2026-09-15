@@ -385,7 +385,7 @@ public class ContextMenuTest {
 
         verify(mDataProtectionBridgeMock)
                 .verifyGenericCopyImageActionIsAllowedByPolicy(anyString(), any(), any());
-        verify(mItemDelegate, Mockito.never()).onOpenInEphemeralTab(any(), anyString());
+        verify(mItemDelegate, Mockito.never()).onOpenInEphemeralTab(any(), anyString(), any());
     }
 
     @Test
@@ -568,7 +568,8 @@ public class ContextMenuTest {
         switchToDesktopUserAgent(tab);
         int callCount = mDownloadTestRule.getChromeDownloadCallCount();
         boolean isSaveAsEnabled =
-                ChromeFeatureList.isEnabled(ChromeFeatureList.ENABLE_DOWNLOAD_SAVE_AS_CONTEXT_MENU);
+                ChromeFeatureList.isEnabled(ChromeFeatureList.ENABLE_DOWNLOAD_SAVE_AS_CONTEXT_MENU)
+                        && DeviceInfo.isDesktop();
         ContextMenuUtils.selectContextMenuItem(
                 InstrumentationRegistry.getInstrumentation(),
                 isSaveAsEnabled ? null : mActivityTestRule.getActivity(),
@@ -597,7 +598,8 @@ public class ContextMenuTest {
         Tab tab = mActivityTestRule.getActivityTab();
         int callCount = mDownloadTestRule.getChromeDownloadCallCount();
         boolean isSaveAsEnabled =
-                ChromeFeatureList.isEnabled(ChromeFeatureList.ENABLE_DOWNLOAD_SAVE_AS_CONTEXT_MENU);
+                ChromeFeatureList.isEnabled(ChromeFeatureList.ENABLE_DOWNLOAD_SAVE_AS_CONTEXT_MENU)
+                        && DeviceInfo.isDesktop();
         ContextMenuUtils.selectContextMenuItemFromRightClick(
                 InstrumentationRegistry.getInstrumentation(),
                 isSaveAsEnabled ? null : mActivityTestRule.getActivity(),
@@ -1463,7 +1465,8 @@ public class ContextMenuTest {
         Tab tab = mActivityTestRule.getActivityTab();
         int callCount = mDownloadTestRule.getChromeDownloadCallCount();
         boolean isSaveAsEnabled =
-                ChromeFeatureList.isEnabled(ChromeFeatureList.ENABLE_DOWNLOAD_SAVE_AS_CONTEXT_MENU);
+                ChromeFeatureList.isEnabled(ChromeFeatureList.ENABLE_DOWNLOAD_SAVE_AS_CONTEXT_MENU)
+                        && DeviceInfo.isDesktop();
         ContextMenuUtils.selectContextMenuItem(
                 InstrumentationRegistry.getInstrumentation(),
                 isSaveAsEnabled ? null : mActivityTestRule.getActivity(),

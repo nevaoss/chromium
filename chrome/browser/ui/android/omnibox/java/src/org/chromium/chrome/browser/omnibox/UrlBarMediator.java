@@ -5,9 +5,7 @@
 package org.chromium.chrome.browser.omnibox;
 
 import android.content.Context;
-import android.text.Spanned;
 import android.text.TextUtils;
-import android.view.View.OnKeyListener;
 
 import androidx.annotation.ColorInt;
 import androidx.annotation.VisibleForTesting;
@@ -68,14 +66,12 @@ class UrlBarMediator implements UrlBarTextContextMenuDelegate {
      * @param model MVC property model to write changes to.
      * @param textChangeListener The listener for text changes.
      * @param richTextChangeListener The listener for rich text changes.
-     * @param keyDownListener The listener for key down events.
      */
     public UrlBarMediator(
             Context context,
             PropertyModel model,
             @Nullable Callback<String> textChangeListener,
-            @Nullable Callback<UrlBarTextChangeInfo> richTextChangeListener,
-            @Nullable OnKeyListener keyDownListener) {
+            @Nullable Callback<UrlBarTextChangeInfo> richTextChangeListener) {
         mContext = context;
         mModel = model;
         mTextChangeListener = textChangeListener;
@@ -86,7 +82,6 @@ class UrlBarMediator implements UrlBarTextContextMenuDelegate {
         mModel.set(UrlBarProperties.HAS_URL_SUGGESTIONS, false);
         mModel.set(UrlBarProperties.TEXT_CHANGE_LISTENER, this::onTextChanged);
         mModel.set(UrlBarProperties.RICH_TEXT_CHANGE_LISTENER, this::onRichTextChanged);
-        mModel.set(UrlBarProperties.KEY_DOWN_LISTENER, keyDownListener);
         mModel.set(UrlBarProperties.SHOW_HINT_TEXT, true);
         if (DeviceFormFactor.isNonMultiDisplayContextOnTablet(context)) {
             mModel.set(
@@ -103,6 +98,7 @@ class UrlBarMediator implements UrlBarTextContextMenuDelegate {
         }
         mModel.set(UrlBarProperties.TEXT_CONTEXT_MENU_DELEGATE, null);
         mModel.set(UrlBarProperties.TEXT_CHANGE_LISTENER, null);
+        mModel.set(UrlBarProperties.RICH_TEXT_CHANGE_LISTENER, null);
         mModel.set(UrlBarProperties.MANAGE_SEARCH_ENGINES_CALLBACK, null);
     }
 
@@ -340,33 +336,8 @@ class UrlBarMediator implements UrlBarTextContextMenuDelegate {
         // equality. Internally, TextView applies many additional spans that need to be
         // ignored for this comparison to be useful, so this is scoped to only the span types
         // applied by our UI.
-        UrlEmphasisSpan[] currentSpans =
-                existingCharSequence instanceof Spanned
-                        ? ((Spanned) existingCharSequence)
-                                .getSpans(0, existingCharSequence.length(), UrlEmphasisSpan.class)
-                        : new UrlEmphasisSpan[0];
-        UrlEmphasisSpan[] newSpans =
-                newCharSequence instanceof Spanned
-                        ? ((Spanned) newCharSequence)
-                                .getSpans(0, newCharSequence.length(), UrlEmphasisSpan.class)
-                        : new UrlEmphasisSpan[0];
-        if (currentSpans.length != newSpans.length) return false;
-        if (currentSpans.length == 0) return true;
-
-        Spanned currentText = (Spanned) existingCharSequence;
-        Spanned newText = (Spanned) newCharSequence;
-        for (int i = 0; i < currentSpans.length; i++) {
-            UrlEmphasisSpan currentSpan = currentSpans[i];
-            UrlEmphasisSpan newSpan = newSpans[i];
-            if (!currentSpan.equals(newSpan)
-                    || currentText.getSpanStart(currentSpan) != newText.getSpanStart(newSpan)
-                    || currentText.getSpanEnd(currentSpan) != newText.getSpanEnd(newSpan)
-                    || currentText.getSpanFlags(currentSpan) != newText.getSpanFlags(newSpan)) {
-                return false;
-            }
-        }
-
-        return true;
+        return OmniboxViewUtil.haveEquivalentSpans(
+                existingCharSequence, newCharSequence, UrlEmphasisSpan.class);
     }
 
     /**

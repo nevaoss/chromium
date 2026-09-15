@@ -124,6 +124,10 @@ class FuseboxProperties {
     public static final WritableIntDefPropertyKey<FuseboxState> FUSEBOX_STATE =
             new WritableIntDefPropertyKey<>(FuseboxState.DISABLED);
 
+    /** The style of the background for the plus button. */
+    public static final WritableIntDefPropertyKey<BackgroundStyle> PLUS_BUTTON_BACKGROUND_STYLE =
+            new WritableIntDefPropertyKey<>(BackgroundStyle.INTERACT_ONLY_SMALL);
+
     /** Action to perform when the user clicks the Plus button. */
     public static final WritableObjectPropertyKey<Runnable> PLUS_BUTTON_CLICKED =
             new WritableObjectPropertyKey<>();
@@ -131,10 +135,6 @@ class FuseboxProperties {
     /** Whether the plus button is visible. */
     public static final WritableBooleanPropertyKey PLUS_BUTTON_VISIBLE =
             new WritableBooleanPropertyKey();
-
-    /** The style of the background for the plus button. */
-    public static final WritableIntDefPropertyKey<BackgroundStyle> PLUS_BUTTON_BACKGROUND_STYLE =
-            new WritableIntDefPropertyKey<>(BackgroundStyle.INTERACT_ONLY_SMALL);
 
     /** Action to perform when the user clicks the Camera button in the popup. */
     public static final WritableObjectPropertyKey<Runnable> POPUP_ATTACH_CAMERA_CLICKED =
@@ -148,7 +148,7 @@ class FuseboxProperties {
     public static final WritableBooleanPropertyKey POPUP_ATTACH_CAMERA_VISIBLE =
             new WritableBooleanPropertyKey();
 
-    /** Action to perform when the user clicks the "add current tab" button */
+    /** Action to perform when the user clicks the "add current tab" button. */
     public static final WritableObjectPropertyKey<Runnable> POPUP_ATTACH_CURRENT_TAB_CLICKED =
             new WritableObjectPropertyKey<>();
 

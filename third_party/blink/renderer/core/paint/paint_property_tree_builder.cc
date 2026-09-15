@@ -1116,9 +1116,15 @@ void FragmentPaintPropertyTreeBuilder::UpdateElementCanvasTransform() {
   if (NeedsPaintPropertyUpdate()) {
     if (NeedsElementCanvasTransform(object_)) {
       const auto& element = *To<Element>(object_.GetNode());
-      const auto* canvas_transform = element.GetUsedCanvasTransform();
-      TransformPaintPropertyNode::State state{
-          {canvas_transform ? *canvas_transform : gfx::Transform()}};
+      gfx::Transform transform;
+      if (const auto* canvas_transform = element.GetUsedCanvasTransform()) {
+        transform = *canvas_transform;
+        float zoom = object_.StyleRef().EffectiveZoom();
+        if (zoom != 1.f) {
+          transform.Zoom(zoom);
+        }
+      }
+      TransformPaintPropertyNode::State state{{transform}};
       state.flattens_inherited_transform =
           context_.should_flatten_inherited_transform;
       state.rendering_context_id = context_.rendering_context_id;
@@ -2636,9 +2642,7 @@ void FragmentPaintPropertyTreeBuilder::UpdateFilter() {
       UpdateFilterEffect(object_, properties_->Filter(), filter_info);
       bool is_filter_tainted = filter_info.operations.OriginTainted();
       bool is_filter_disallowed =
-          RuntimeEnabledFeatures::CanvasDrawElementEnabled(
-              object_.GetDocument().GetExecutionContext()) &&
-          object_.IsInCanvasSubtree() && is_filter_tainted;
+          state.is_in_drawable_canvas_subtree && is_filter_tainted;
       if (!(filter_info.operations.IsEmpty() || is_filter_disallowed)) {
         state.filter_info =
             std::make_unique<EffectPaintPropertyNode::FilterInfo>(
@@ -4416,9 +4420,7 @@ void FragmentPaintPropertyTreeBuilder::PopulateBackdropFilterIfNeeded(
   }
   if (!operations.IsEmpty()) {
     bool is_filter_disallowed =
-        RuntimeEnabledFeatures::CanvasDrawElementEnabled(
-            object_.GetDocument().GetExecutionContext()) &&
-        object_.IsInCanvasSubtree() && operations.OriginTainted();
+        state.is_in_drawable_canvas_subtree && operations.OriginTainted();
     if (!is_filter_disallowed) {
       state.backdrop_filter_info =
           base::WrapUnique(new EffectPaintPropertyNode::BackdropFilterInfo{

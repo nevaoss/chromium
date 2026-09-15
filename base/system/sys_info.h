@@ -164,6 +164,9 @@ class BASE_EXPORT SysInfo {
   // synchronously. This is only supported on Android as Windows and Linux
   // would require IO operations and other platforms are static.
   static std::string HardwareManufacturer();
+
+  // Returns true if the device has support for large process counts.
+  static bool HasLargeProcessCountSupport();
 #endif
 
 #if BUILDFLAG(IS_MAC)
@@ -225,6 +228,17 @@ class BASE_EXPORT SysInfo {
   static void OperatingSystemVersionNumbers(int32_t* major_version,
                                             int32_t* minor_version,
                                             int32_t* bugfix_version);
+
+#if BUILDFLAG(IS_APPLE)
+  // Returns the iOS/macOS build version, which is a structured alphanumeric
+  // string (e.g. 20A2411, 11A465, 9A2264r). Build versions are useful to
+  // differentiate between different releases of iOS/macOS that have the same
+  // major/minor/bugfix version numbers. For example, beta releases have the
+  // same version number but different build versions, as do releases of the OS
+  // that support new hardware before support is rolled into the mainline OS
+  // branch.
+  static std::string OperatingSystemBuildVersion();
+#endif  // BUILDFLAG(IS_APPLE)
 
 #if BUILDFLAG(IS_POSIX)
   // Struct containing the the kernel version number of the host operating
@@ -344,13 +358,6 @@ class BASE_EXPORT SysInfo {
 #endif  // BUILDFLAG(IS_ANDROID)
 
 #if BUILDFLAG(IS_IOS)
-  // Returns the iOS build number string which is normally an alphanumeric
-  // string like 12E456. This build number can differentiate between different
-  // versions of iOS that may have the same major/minor/bugfix version numbers.
-  // For example, iOS beta releases have the same version number but different
-  // build number strings.
-  static std::string GetIOSBuildNumber();
-
   // Overrides the hardware model name. The overridden value is used instead of
   // `StringSysctl({CTL_HW, HW_MACHINE})`. `name` should not be empty.
   static void OverrideHardwareModelName(std::string name);

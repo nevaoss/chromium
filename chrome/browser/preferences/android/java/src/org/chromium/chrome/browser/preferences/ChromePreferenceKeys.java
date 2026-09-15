@@ -120,6 +120,15 @@ public final class ChromePreferenceKeys {
     public static final String AUTOFILL_THIRD_PARTY_MODE_STATE =
             "Chrome.AutofillThirdPartyMode.State";
 
+    /**
+     * Key for the last used profile token in BackgroundTabPool.
+     *
+     * <p>// TODO(crbug.com/491791326): Support multi-profile key partitioning for background tab
+     * pools.
+     */
+    public static final String BACKGROUND_TAB_POOL_LAST_PROFILE_TOKEN =
+            "Chrome.BackgroundTabPool.LastProfileToken";
+
     public static final String BACKUP_FIRST_BACKUP_DONE = "first_backup_done";
 
     public static final String BOOKMARKS_LAST_MODIFIED_FOLDER_ID = "last_bookmark_folder_id";
@@ -1039,6 +1048,7 @@ public final class ChromePreferenceKeys {
     public static final String TAB_DECLUTTER_ARCHIVE_ENABLED = "Chrome.Tab.ArchiveEnabled";
     public static final String TAB_DECLUTTER_ARCHIVE_TIME_DELTA_HOURS =
             "Chrome.Tab.ArchiveTimeDeltaHours";
+    public static final String TAB_DECLUTTER_ARCHIVED_TAB_COUNT = "Chrome.Tab.ArchivedTabCount";
     public static final String TAB_DECLUTTER_AUTO_DELETE_ENABLED =
             "Chrome.Tab.ArchiveAutoDeleteEnabled";
     public static final String TAB_DECLUTTER_AUTO_DELETE_DECISION_MADE =
@@ -1193,6 +1203,7 @@ public final class ChromePreferenceKeys {
                 APP_LAUNCH_LAST_KNOWN_ACTIVE_TAB_STATE,
                 APP_LAUNCH_SEARCH_ENGINE_HAD_LOGO,
                 APPLICATION_OVERRIDE_LANGUAGE,
+                BACKGROUND_TAB_POOL_LAST_PROFILE_TOKEN,
                 BLUETOOTH_NOTIFICATION_IDS,
                 BOOKMARKS_SORT_ORDER,
                 BOOKMARKS_VISUALS_PREF,
@@ -1363,6 +1374,7 @@ public final class ChromePreferenceKeys {
                 TAB_DECLUTTER_ARCHIVE_DUPLICATE_TABS_ENABLED,
                 TAB_DECLUTTER_ARCHIVE_ENABLED,
                 TAB_DECLUTTER_ARCHIVE_TIME_DELTA_HOURS,
+                TAB_DECLUTTER_ARCHIVED_TAB_COUNT,
                 TAB_DECLUTTER_AUTO_DELETE_ENABLED,
                 TAB_DECLUTTER_AUTO_DELETE_DECISION_MADE,
                 TAB_DECLUTTER_AUTO_DELETE_TIME_DELTA_HOURS,

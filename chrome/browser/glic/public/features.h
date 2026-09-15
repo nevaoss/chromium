@@ -69,6 +69,8 @@ extern const base::FeatureParam<bool> kGlicContextMenuWithOnboarding;
 BASE_DECLARE_FEATURE(kGlicContextMenuBelowSearch);
 
 BASE_DECLARE_FEATURE(kGlicTextSelectionContextMenu);
+extern const base::FeatureParam<bool>
+    kGlicTextSelectionContextMenuMessageFirstFre;
 
 BASE_DECLARE_FEATURE(kGlicTieredRolloutV2);
 extern const base::FeatureParam<std::string> kGlicTieredRolloutV2EligibleTiers;
@@ -114,6 +116,8 @@ extern const base::FeatureParam<int> kGlicMaxLoadingTimeMs;
 extern const base::FeatureParam<int> kGlicReloadMaxLoadingTimeMs;
 
 BASE_DECLARE_FEATURE(kGlicContextualCueingV2AutoSubmit);
+BASE_DECLARE_FEATURE(kGlicContextualCueV2ActiveUserBackoff);
+extern const base::FeatureParam<int> kMinDaysSinceLastInvocation;
 
 BASE_DECLARE_FEATURE(kGlicMessageFirstFreForContextualCue);
 

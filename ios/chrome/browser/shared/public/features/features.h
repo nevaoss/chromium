@@ -32,31 +32,14 @@ BASE_DECLARE_FEATURE(kSafetyCheckAutorunByManagerKillswitch);
 // Stack if no issues are found.
 BASE_DECLARE_FEATURE(kSafetyCheckModuleHiddenIfNoIssuesKillswitch);
 
-// Feature to enable the refactored implementation of the `OmahaService`, using
-// new `OmahaServiceObserver`(s) for Omaha clients. Acts as a killswitch.
-BASE_DECLARE_FEATURE(kOmahaServiceRefactor);
-
 // Feature flag to enable Shared Highlighting (Link to Text).
 BASE_DECLARE_FEATURE(kSharedHighlightingIOS);
 
 // Feature flag to log metrics for the edit menu.
 BASE_DECLARE_FEATURE(kIOSBrowserEditMenuMetrics);
 
-
-// Docking Promo experiment variations.
-extern const char kIOSDockingPromoV2VariationParam[];
-extern const char kIOSDockingPromoV2VariationHeader1[];
-extern const char kIOSDockingPromoV2VariationHeader2[];
-extern const char kIOSDockingPromoV2VariationHeader3[];
-
-// Feature flag to enable the Docking Promo V2.
-BASE_DECLARE_FEATURE(kIOSDockingPromoV2);
-
 // Feature flag to enable the "Level Up" feature.
 BASE_DECLARE_FEATURE(kIOSLevelUp);
-
-// Helper function to check if `kIOSDockingPromoV2` is enabled.
-bool IsDockingPromoV2Enabled();
 
 // Helper function to check if `kIOSLevelUp` is enabled.
 bool IsLevelUpEnabled();
@@ -120,8 +103,8 @@ BASE_DECLARE_FEATURE(kNonModalDefaultBrowserPromoImpressionLimit);
 extern const base::FeatureParam<int>
     kNonModalDefaultBrowserPromoImpressionLimitParam;
 
-// Feature flag the "Hide Toolbar" button in the overflow menu.
-BASE_DECLARE_FEATURE(kHideToolbarsInOverflowMenu);
+// Feature flag for the "Hide Toolbar" button.
+BASE_DECLARE_FEATURE(kHideToolbar);
 
 // Returns true if the "Hide Toolbar" button is enabled.
 bool IsHideToolbarEnabled();
@@ -134,9 +117,6 @@ bool IsSafetyCheckAutorunByManagerEnabled();
 
 // Whether the Safety Check module is hidden when no issues are found.
 bool ShouldHideSafetyCheckModuleIfNoIssues();
-
-// Whether the refactored implementation of the `OmahaService` is enabled.
-bool IsOmahaServiceRefactorEnabled();
 
 // Feature flag enabling Choose from Drive for signed out users.
 BASE_DECLARE_FEATURE(kIOSChooseFromDriveSignedOut);
@@ -362,15 +342,6 @@ BASE_DECLARE_FEATURE(kSeparateProfilesForManagedAccounts);
 
 // Killswitch for the reauth-first step in AuthenticationFlowInProfile.
 BASE_DECLARE_FEATURE(kAuthenticationFlowReauthFirstKillswitch);
-// Feature flag to control force-migrating the primary managed account to its
-// own separate profile.
-BASE_DECLARE_FEATURE(kSeparateProfilesForManagedAccountsForceMigration);
-
-// Feature flag to control force-migrating the primary managed account to its
-// own separate profile *immediately*, i.e. without the usual grace period
-// that's observed by `kSeparateProfilesForManagedAccountsForceMigration`.
-BASE_DECLARE_FEATURE(
-    kSeparateProfilesForManagedAccountsImmediateForceMigration);
 
 // Feature to control resyncing the omaha ping timer on foregrounding.
 BASE_DECLARE_FEATURE(kOmahaResyncTimerOnForeground);
@@ -428,7 +399,6 @@ extern const std::string_view kFRESignInHeaderTextUpdateParamArm1;
 
 // Returns whether 'kFRESignInHeaderTextUpdate' is enabled.
 bool FRESignInHeaderTextUpdate();
-
 
 // Enables Profile-specific push notification handling logic. When enabled, this
 // routes incoming notifications to the PushNotificationClientManager associated
@@ -517,10 +487,6 @@ extern const base::FeatureParam<int>
 extern const char kIOSOneTapMiniMapRestrictionMinAlphanumProportionParamName[];
 extern const base::FeatureParam<double>
     kIOSOneTapMiniMapRestrictionMinAlphanumProportionParam;
-
-// Feature flag for counterfactual logging for the universal link native map
-// experiment.
-BASE_DECLARE_FEATURE(kIOSMiniMapUniversalLinkCounterfactual);
 
 // Returns true if Maps Universal links are enabled (i.e. the current country
 // is not in the excluded list).
@@ -721,16 +687,10 @@ bool IsAssistantContainerDebugEnabled();
 // Returns 0 if no experimental percentage is selected.
 NSInteger GetAssistantMediumDetentPercentage();
 
-// Enables the ComposeboxIpad feature.
-BASE_DECLARE_FEATURE(kComposeboxIpad);
-
-// Returns true if the ComposeboxIpad feature is enabled.
-bool IsComposeboxIpadEnabled();
-
 // Enables the ComposeboxPlusButtonBottomSheet feature.
 BASE_DECLARE_FEATURE(kComposeboxPlusButtonBottomSheet);
 
-// Returns true if the ComposeboxIpad feature is enabled.
+// Returns true if the ComposeboxPlusButtonBottomSheet feature is enabled.
 bool IsComposeboxPlusButtonBottomSheet();
 
 // Enables the ChromeNextIa feature.
@@ -748,12 +708,6 @@ bool IsChromeNextIaLensIconVisible();
 
 // Returns true if Share icon should be visible in ChromeNextIa.
 bool IsChromeNextIaShareIconVisible();
-
-// Enables the ComposeboxAIMDisabled feature.
-BASE_DECLARE_FEATURE(kComposeboxAIMDisabled);
-
-// Returns true if the ComposeboxAIMDisabled feature is enabled.
-bool IsComposeboxAIMDisabled();
 
 // Enables the EnableNewStartupFlow feature.
 BASE_DECLARE_FEATURE(kEnableNewStartupFlow);
@@ -1027,5 +981,11 @@ BASE_DECLARE_FEATURE(kDomainLevelSitePermissions);
 
 // Returns true if DomainLevelSitePermissions is enabled.
 bool IsDomainLevelSitePermissionsEnabled();
+
+// Enables the AimHistoryThreadsManagement feature.
+BASE_DECLARE_FEATURE(kAimHistoryThreadsManagement);
+
+// Returns true if the AimHistoryThreadsManagement feature is enabled.
+bool IsAimHistoryThreadsManagementEnabled();
 
 #endif  // IOS_CHROME_BROWSER_SHARED_PUBLIC_FEATURES_FEATURES_H_

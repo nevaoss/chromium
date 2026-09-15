@@ -183,6 +183,7 @@ source_set("impl") {
       "//components/security_interstitials/content:security_interstitial_page",
       "//components/security_state/content",
       "//components/security_state/core",
+      "//components/startup_metric_utils",
       "//components/strings:components_strings",
       "//components/user_education/common",
       "//components/zoom",
@@ -287,6 +288,7 @@ source_set("browser_tests") {
     "//chrome/browser/ui/views/page_action",
     "//chrome/browser/ui/views/toolbar",
     "//chrome/browser/ui/web_applications",
+    "//chrome/browser/ui/web_applications/test:test_support_ui",
     "//chrome/browser/web_applications",
     "//chrome/browser/web_applications:web_applications_test_support",
     "//chrome/test:test_support",
@@ -388,6 +390,7 @@ source_set("test_support") {
     "//chrome/browser/ui/views/frame:toolbar_button_provider",
     "//chrome/browser/ui/views/page_info",
     "//chrome/browser/ui/views/toolbar",
+    "//content/test:test_support",
     "//ui/events:test_support",
   ]
   public_deps = [ "//base" ]

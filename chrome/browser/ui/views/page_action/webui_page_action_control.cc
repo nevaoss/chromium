@@ -23,6 +23,7 @@
 #include "chrome/browser/ui/side_panel/side_panel_action_callback.h"
 #include "chrome/browser/ui/side_panel/side_panel_enums.h"
 #include "chrome/browser/ui/tabs/public/tab_features.h"
+#include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/views/bubble/webui_bubble_reopen_suppressor.h"
 #include "chrome/browser/ui/views/page_action/anchored_message_view.h"
 #include "chrome/browser/ui/views/page_action/page_action_view_util.h"
@@ -31,6 +32,7 @@
 #include "chrome/browser/ui/webui/webui_toolbar/utils/toolbar_button_utils.h"
 #include "chrome/grit/generated_resources.h"
 #include "components/tabs/public/tab_interface.h"
+#include "content/public/browser/navigation_controller.h"
 #include "mojo/public/mojom/base/error.mojom.h"
 #include "ui/actions/actions.h"
 #include "ui/base/interaction/element_tracker.h"
@@ -407,6 +409,11 @@ void WebUIPageActionControl::WebUIPageActionDelegate::OnPointerDown() {
 
 void WebUIPageActionControl::WebUIPageActionDelegate::NotifyClick(
     PageActionTrigger trigger) {
+  // Ignore clicks received during shutdown.
+  if (!observation_.IsObserving() || !observation_.GetSource()->GetVisible()) {
+    return;
+  }
+
   const bool is_pointer_interaction = (trigger == PageActionTrigger::kMouse ||
                                        trigger == PageActionTrigger::kGesture);
   if (bubble_reopen_suppressor_.ShouldSuppressBubbleShow(

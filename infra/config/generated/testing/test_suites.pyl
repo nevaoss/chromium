@@ -1284,7 +1284,10 @@
       'angle_unittests': {
         'test_common': {
           'mixins': [
+            'android_extra_verbosity',
             'gpu_gtest_common_args',
+            'no_xvfb',
+            'use_isolated_scripts_api',
           ],
         },
         'android_args': [
@@ -2038,35 +2041,6 @@
       },
     },
 
-    'gpu_webgl2_conformance_gles_passthrough_telemetry_tests': {
-      'webgl2_conformance_gles_passthrough_tests': {
-        'test_common': {
-          'mixins': [
-            'has_native_resultdb_integration',
-            'gpu_force_command_decoder_passthrough',
-            'gpu_force_angle_gles',
-            'gpu_force_high_performance_gpu',
-            'gpu_integration_test_webgl2_args',
-            'gpu_integration_test_common_args',
-          ],
-          'module_scheme': 'flat',
-        },
-        'telemetry_test_name': 'webgl2_conformance',
-        'swarming': {
-          'shards': 5,
-        },
-        'android_swarming': {
-          'shards': 20,
-        },
-        'chromeos_swarming': {
-          'shards': 20,
-        },
-        'skylab': {
-          'shards': 20,
-        },
-      },
-    },
-
     'gpu_webgl2_conformance_metal_passthrough_graphite_telemetry_tests': {
       'webgl2_conformance_metal_passthrough_graphite_tests': {
         'test_common': {
@@ -2125,35 +2099,6 @@
         'telemetry_test_name': 'webgl1_conformance',
         'swarming': {
           'shards': 2,
-        },
-      },
-    },
-
-    'gpu_webgl_conformance_gles_passthrough_telemetry_tests': {
-      'webgl_conformance_gles_passthrough_tests': {
-        'test_common': {
-          'mixins': [
-            'has_native_resultdb_integration',
-            'gpu_force_angle_gles',
-            'gpu_force_command_decoder_passthrough',
-            'gpu_force_high_performance_gpu',
-            'gpu_integration_test_webgl1_args',
-            'gpu_integration_test_common_args',
-          ],
-          'module_scheme': 'flat',
-        },
-        'telemetry_test_name': 'webgl1_conformance',
-        'swarming': {
-          'shards': 2,
-        },
-        'android_swarming': {
-          'shards': 6,
-        },
-        'chromeos_swarming': {
-          'shards': 6,
-        },
-        'skylab': {
-          'shards': 6,
         },
       },
     },
@@ -2267,6 +2212,24 @@
           'module_scheme': 'flat',
         },
         'telemetry_test_name': 'webrtc',
+      },
+    },
+
+    'legacy_webgl_conformance_gles_passthrough_tests': {
+      'webgl_conformance_gles_passthrough_tests': {
+        'test_common': {
+          'mixins': [
+            'has_native_resultdb_integration',
+            'gpu_force_angle_gles',
+            'gpu_force_command_decoder_passthrough',
+            'gpu_force_high_performance_gpu',
+            'gpu_integration_test_webgl1_args',
+            'gpu_integration_test_common_args',
+            'legacy_gpu_webgl_conformance_shards',
+          ],
+          'module_scheme': 'flat',
+        },
+        'telemetry_test_name': 'webgl1_conformance',
       },
     },
 
@@ -2828,8 +2791,8 @@
     'gpu_telemetry_tests_v8': [
       'gpu_common_and_optional_telemetry_tests',
       'gpu_validating_telemetry_tests',
-      'gpu_webgl_conformance_gles_passthrough_telemetry_tests',
       'gpu_webgl_conformance_validating_telemetry_tests',
+      'legacy_webgl_conformance_gles_passthrough_tests',
     ],
 
     'gpu_v8_win_release_telemetry_tests': [
@@ -3508,54 +3471,6 @@
         ],
         'variants': [
           'CROS_GPU_CORSOLA_RELEASE_LKGM',
-        ],
-      },
-    },
-
-    'gpu_fyi_chromeos_release_telemetry_tests_jacuzzi_skylab': {
-      'gpu_common_and_optional_telemetry_tests': {
-        'mixins': [
-          'skylab-rdb-native',
-          'skylab-tauto-chromium-graphics',
-        ],
-        'variants': [
-          'CROS_JACUZZI_RELEASE_LKGM',
-        ],
-      },
-      'gpu_passthrough_telemetry_tests': {
-        'mixins': [
-          'skylab-rdb-native',
-          'skylab-tauto-chromium-graphics',
-        ],
-        'variants': [
-          'CROS_JACUZZI_RELEASE_LKGM',
-        ],
-      },
-      'gpu_webcodecs_telemetry_test': {
-        'mixins': [
-          'skylab-rdb-native',
-          'skylab-tauto-chromium-graphics',
-        ],
-        'variants': [
-          'CROS_JACUZZI_RELEASE_LKGM',
-        ],
-      },
-      'gpu_webgl2_conformance_gles_passthrough_telemetry_tests': {
-        'mixins': [
-          'skylab-rdb-native',
-          'skylab-tauto-chromium-graphics',
-        ],
-        'variants': [
-          'CROS_JACUZZI_RELEASE_LKGM',
-        ],
-      },
-      'gpu_webgl_conformance_gles_passthrough_telemetry_tests': {
-        'mixins': [
-          'skylab-rdb-native',
-          'skylab-tauto-chromium-graphics',
-        ],
-        'variants': [
-          'CROS_JACUZZI_RELEASE_LKGM',
         ],
       },
     },

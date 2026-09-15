@@ -6,6 +6,7 @@
 
 #include <string>
 
+#include "base/trace_event/trace_event.h"
 #include "chrome/browser/search/search.h"
 #include "chrome/browser/ui/location_bar/location_bar.h"
 #include "chrome/browser/ui/omnibox/omnibox_controller.h"
@@ -30,6 +31,7 @@
 #include "chrome/common/webui_url_constants.h"
 #include "components/omnibox/browser/searchbox.mojom.h"
 #include "components/strings/grit/components_strings.h"
+#include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/navigation_entry.h"
 #include "content/public/browser/web_contents.h"
 #include "ui/base/l10n/l10n_util.h"
@@ -116,12 +118,17 @@ void OmniboxPopupViewFullWebUI::UpdatePopupAppearance() {
   if (widget && widget->IsActive() && location_bar()->IsFocusWithin()) {
     if (!IsReverting()) {
       OnFocus(/*query_zps=*/false);
-      SyncNativeStateToWebUI(/*query_zps=*/true);
+      SyncNativeStateToWebUI(/*query_zps=*/false);
     }
   }
 }
 
+// TODO(crbug.com/553005514): Instrument callsite traces
+// (ex: OnNewTabFocus, OnFocus, OnTabChanged, SaveStateToTab) at their
+// respective entry points to capture individual trigger contexts.
 void OmniboxPopupViewFullWebUI::SyncNativeStateToWebUI(bool query_zps) {
+  TRACE_EVENT1("omnibox", "OmniboxPopupViewFullWebUI::SyncNativeStateToWebUI",
+               "query_zps", query_zps);
   auto* edit_model = controller()->edit_model();
 
   edit_model->ResetDisplayTexts();
@@ -155,7 +162,7 @@ void OmniboxPopupViewFullWebUI::SyncNativeStateToWebUI(bool query_zps) {
   bool selection_changed = selection != popup_handler->latest_selection();
   bool focus_changed = !last_sent_focus_ || focus != *last_sent_focus_;
 
-  if (text_changed || selection_changed || focus_changed) {
+  if (text_changed || selection_changed || focus_changed || query_zps) {
     searchbox::mojom::InputKeywordModelPtr keyword_model =
         CreateInputKeywordModel(
             edit_model->keyword_state(), edit_model->keyword(),
@@ -377,9 +384,9 @@ void OmniboxPopupViewFullWebUI::OnFocus(bool query_zps) {
     SyncNativeStateToWebUI(query_zps);
   } else if (auto* popup_handler = GetPopupHandler()) {
     // If the popup was already open (`!changed`), explicitly send
-    // `SetFocus(true)` via IPC to ensure WebUI DOM input element focus is
-    // restored if it was lost.
-    popup_handler->SetFocus(true);
+    // `SetFocus(true, query_zps)` via IPC to ensure WebUI DOM input element
+    // focus and suggestions are restored.
+    popup_handler->SetFocus(true, query_zps);
   }
 }
 

@@ -31,6 +31,8 @@
 #include "components/user_education/common/feature_promo/feature_promo_controller.h"
 #include "content/public/browser/navigation_handle.h"
 #include "third_party/skia/include/core/SkBitmap.h"
+#include "ui/base/page_transition_types.h"
+#include "ui/base/window_open_disposition.h"
 
 OmniboxEverywhereService::OmniboxEverywhereService(Profile* profile)
     : profile_(profile) {
@@ -171,6 +173,18 @@ void OmniboxEverywhereService::ShowRegionSelectOverlay(
     return;
   }
   std::move(callback).Run(SkBitmap());
+}
+
+void OmniboxEverywhereService::OnFileChooserOpened() {
+  if (ui_manager()) {
+    ui_manager()->OnFileChooserOpened();
+  }
+}
+
+void OmniboxEverywhereService::OnFileChooserClosed() {
+  if (ui_manager()) {
+    ui_manager()->OnFileChooserClosed();
+  }
 }
 
 void OmniboxEverywhereService::OpenUrl(const GURL& url,

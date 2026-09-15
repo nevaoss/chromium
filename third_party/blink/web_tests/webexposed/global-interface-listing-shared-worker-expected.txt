@@ -2846,6 +2846,7 @@ Starting worker: resources/global-interface-listing-worker.js
 [Worker]     method drawElementsInstanced
 [Worker]     method drawRangeElements
 [Worker]     method drawingBufferStorage
+[Worker]     method drawingBufferToneMapping
 [Worker]     method enable
 [Worker]     method enableVertexAttribArray
 [Worker]     method endQuery
@@ -3381,6 +3382,7 @@ Starting worker: resources/global-interface-listing-worker.js
 [Worker]     method drawArrays
 [Worker]     method drawElements
 [Worker]     method drawingBufferStorage
+[Worker]     method drawingBufferToneMapping
 [Worker]     method enable
 [Worker]     method enableVertexAttribArray
 [Worker]     method finish
@@ -3540,6 +3542,7 @@ Starting worker: resources/global-interface-listing-worker.js
 [Worker]     method close
 [Worker]     method constructor
 [Worker] interface WebTransport
+[Worker]     static getter supportsReliableOnly
 [Worker]     attribute @@toStringTag
 [Worker]     getter anticipatedConcurrentIncomingBidirectionalStreams
 [Worker]     getter anticipatedConcurrentIncomingUnidirectionalStreams
@@ -3551,6 +3554,7 @@ Starting worker: resources/global-interface-listing-worker.js
 [Worker]     getter incomingUnidirectionalStreams
 [Worker]     getter protocol
 [Worker]     getter ready
+[Worker]     getter reliability
 [Worker]     getter responseHeaders
 [Worker]     method close
 [Worker]     method constructor

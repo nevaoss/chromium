@@ -139,6 +139,7 @@
 #include "components/language/content/browser/ulp_language_code_locator/ulp_language_code_locator.h"
 #include "components/language/core/browser/language_prefs.h"
 #include "components/lens/buildflags.h"
+#include "components/lens/lens_overlay_permission_utils.h"
 #include "components/lookalikes/core/lookalike_url_util.h"
 #include "components/media_device_salt/media_device_id_salt.h"
 #include "components/metrics/demographics/user_demographics.h"
@@ -335,7 +336,6 @@
 #include "chrome/browser/user_education/browser_user_education_storage_service.h"
 #include "chrome/browser/webauthn/chrome_authenticator_request_delegate.h"
 #include "components/headless/policy/headless_mode_prefs.h"  // nogncheck crbug.com/40147906
-#include "components/lens/lens_overlay_permission_utils.h"
 #include "components/live_caption/live_caption_controller.h"
 #include "components/live_caption/live_translate_controller.h"
 #endif  // !BUILDFLAG(IS_ANDROID)
@@ -384,7 +384,6 @@
 #include "chrome/browser/ash/cryptauth/cryptauth_device_id_provider.h"
 #include "chrome/browser/ash/customization/customization_document.h"
 #include "chrome/browser/ash/extensions/extensions_permissions_tracker.h"
-#include "chrome/browser/ash/file_manager/file_manager_pref_names.h"
 #include "chrome/browser/ash/file_manager/file_tasks.h"
 #include "chrome/browser/ash/file_system_provider/registry.h"
 #include "chrome/browser/ash/first_run/first_run.h"
@@ -590,12 +589,6 @@ namespace {
 
 // Please keep the list of deprecated prefs in chronological order. i.e. Add to
 // the bottom of the list, not here at the top.
-
-// Deprecated 08/2025.
-inline constexpr char kInvalidationClientIDCache[] =
-    "invalidation.per_sender_client_id_cache";
-inline constexpr char kInvalidationTopicsToHandler[] =
-    "invalidation.per_sender_topics_to_handler";
 
 #if BUILDFLAG(IS_ANDROID)
 // Deprecated 08/2025.
@@ -1005,6 +998,8 @@ constexpr char kTrackingProtection3pcdEnabled[] =
     "tracking_protection.tracking_protection_3pcd_enabled";
 constexpr char kBlockAll3pcToggleEnabled[] =
     "tracking_protection.block_all_3pc_toggle_enabled";
+inline constexpr char kExternalAppRedirectTimestamps[] =
+    "safe_browsing.external_app_redirect_timestamps";
 
 #if !BUILDFLAG(IS_ANDROID)
 // Deprecated 08/2026.
@@ -1041,13 +1036,15 @@ inline constexpr char kPluginVmEngagementTimeDayId[] =
     "plugin_vm.metrics.engagement_time.day_id";
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
+#if BUILDFLAG(IS_CHROMEOS)
+// Deprecated 09/2026.
+constexpr char kNSSCertsMigratedToServerCertDb[] =
+    "certificates.nss_certs_migrated_to_server_cert_db";
+#endif  // BUILDFLAG(IS_CHROMEOS)
+
 // Register local state used only for migration (clearing or moving to a new
 // key).
 void RegisterLocalStatePrefsForMigration(PrefRegistrySimple* registry) {
-  // Deprecated 08/2025.
-  registry->RegisterDictionaryPref(kInvalidationClientIDCache);
-  registry->RegisterDictionaryPref(kInvalidationTopicsToHandler);
-
 #if BUILDFLAG(IS_CHROMEOS)
   // Deprecated 08/2025.
   registry->RegisterDictionaryPref(kAutoScreenBrightnessMetricsDailySample);
@@ -1154,10 +1151,6 @@ void RegisterLocalStatePrefsForMigration(PrefRegistrySimple* registry) {
 // Register prefs used only for migration (clearing or moving to a new key).
 void RegisterProfilePrefsForMigration(
     user_prefs::PrefRegistrySyncable* registry) {
-  // Deprecated 08/2025.
-  registry->RegisterDictionaryPref(kInvalidationClientIDCache);
-  registry->RegisterDictionaryPref(kInvalidationTopicsToHandler);
-
 #if BUILDFLAG(IS_ANDROID)
   // Deprecated 08/2025.
   registry->RegisterBooleanPref(kObsoleteAccountStorageNoticeShown, false);
@@ -1436,6 +1429,7 @@ void RegisterProfilePrefsForMigration(
   // Deprecated 08/2026.
   registry->RegisterStringPref(kUkmLoggingUserSecret, std::string());
   registry->RegisterTimePref(kUkmLoggingUserSecretCreationTime, base::Time());
+  registry->RegisterDictionaryPref(kExternalAppRedirectTimestamps);
 
 #if !BUILDFLAG(IS_ANDROID)
   // Deprecated 08/2026.
@@ -1448,6 +1442,11 @@ void RegisterProfilePrefsForMigration(
 
   // Deprecated 08/2026.
   registry->RegisterStringPref(kSigninInterceptionIDPCookiesUrl, std::string());
+
+#if BUILDFLAG(IS_CHROMEOS)
+  // Deprecated 09/2026.
+  registry->RegisterIntegerPref(kNSSCertsMigratedToServerCertDb, 0);
+#endif  // BUILDFLAG(IS_CHROMEOS)
 }
 
 }  // namespace
@@ -1889,7 +1888,7 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry,
   registry->RegisterIntegerPref(prefs::kVoiceTypingSettings, 0);
   registry->RegisterBooleanPref(prefs::kPrefDictationOnboardingCompleted,
                                 false);
-#if BUILDFLAG(IS_LINUX)
+#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_WIN)
   registry->RegisterStringPref(prefs::kVoiceTypingHotkey, "Ctrl+Space");
 #else
   registry->RegisterStringPref(prefs::kVoiceTypingHotkey, "Alt+Space");
@@ -2046,7 +2045,6 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry,
   first_run::RegisterProfilePrefs(registry);
   gcm::RegisterProfilePrefs(registry);
   HatsServiceDesktop::RegisterProfilePrefs(registry);
-  lens::prefs::RegisterProfilePrefs(registry);
   media_router::RegisterAccessCodeProfilePrefs(registry);
   media_router::RegisterProfilePrefs(registry);
   MicrosoftAuthPageHandler::RegisterProfilePrefs(registry);
@@ -2065,6 +2063,10 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry,
   ThemeService::RegisterProfilePrefs(registry);
   toolbar::RegisterProfilePrefs(registry);
 #endif  // BUILDFLAG(IS_ANDROID)
+
+#if BUILDFLAG(ENABLE_LENS_OVERLAY_BACKEND)
+  lens::prefs::RegisterProfilePrefs(registry);
+#endif
 
   ManagementUI::RegisterProfilePrefs(registry);
 
@@ -2180,7 +2182,6 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry,
   policy::RebootNotificationsScheduler::RegisterProfilePrefs(registry);
   ash::KioskController::RegisterProfilePrefs(registry);
   file_manager::file_tasks::RegisterProfilePrefs(registry);
-  file_manager::prefs::RegisterProfilePrefs(registry);
   bruschetta::prefs::RegisterProfilePrefs(registry);
   wallpaper_handlers::prefs::RegisterProfilePrefs(registry);
   ash::reporting::RegisterProfilePrefs(registry);
@@ -2372,10 +2373,6 @@ void MigrateObsoleteLocalStatePrefs(PrefService* local_state) {
   // BEGIN_MIGRATE_OBSOLETE_LOCAL_STATE_PREFS
   // Please don't delete the preceding line. It is used by PRESUBMIT.py.
 
-  // Added 08/2025.
-  local_state->ClearPref(kInvalidationClientIDCache);
-  local_state->ClearPref(kInvalidationTopicsToHandler);
-
 #if BUILDFLAG(IS_CHROMEOS)
   // Added 08/2025.
   local_state->ClearPref(kAutoScreenBrightnessMetricsDailySample);
@@ -2535,10 +2532,6 @@ void MigrateObsoleteProfilePrefs(PrefService* profile_prefs,
 
   // Check MigrateDeprecatedAutofillPrefs() to see if this is safe to remove.
   autofill::prefs::MigrateDeprecatedAutofillPrefs(profile_prefs);
-
-  // Added 08/2025.
-  profile_prefs->ClearPref(kInvalidationClientIDCache);
-  profile_prefs->ClearPref(kInvalidationTopicsToHandler);
 
 #if BUILDFLAG(IS_ANDROID)
   // Added 08/2025.
@@ -2787,6 +2780,7 @@ void MigrateObsoleteProfilePrefs(PrefService* profile_prefs,
   profile_prefs->ClearPref(kShowRollbackUiModeB);
   profile_prefs->ClearPref(kBlockAll3pcToggleEnabled);
   profile_prefs->ClearPref(kTrackingProtection3pcdEnabled);
+  profile_prefs->ClearPref(kExternalAppRedirectTimestamps);
 
   // Added 08/2026.
   profile_prefs->ClearPref(kUkmLoggingUserSecret);
@@ -2802,6 +2796,11 @@ void MigrateObsoleteProfilePrefs(PrefService* profile_prefs,
 
   // Added 08/2026.
   profile_prefs->ClearPref(kSigninInterceptionIDPCookiesUrl);
+
+#if BUILDFLAG(IS_CHROMEOS)
+  // Added 09/2026.
+  profile_prefs->ClearPref(kNSSCertsMigratedToServerCertDb);
+#endif  // BUILDFLAG(IS_CHROMEOS)
 
   // Please don't delete the following line. It is used by PRESUBMIT.py.
   // END_MIGRATE_OBSOLETE_PROFILE_PREFS

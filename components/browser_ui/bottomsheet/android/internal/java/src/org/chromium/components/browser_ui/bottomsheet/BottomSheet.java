@@ -816,6 +816,16 @@ class BottomSheet extends BottomSheetView
 
                         mSettleAnimator = null;
                         setInternalCurrentState(targetState, reason);
+                        if (isLargeFormFactorUiEnabled()
+                                && !mIsDestroyed
+                                && mCurrentState == targetState) {
+                            // Re-synchronize sheet offset after observers run in
+                            // setInternalCurrentState, ensuring any layout or measurement
+                            // adjustments made by observers (e.g. BottomSheetListViewBase or
+                            // EnhancedTargetDevicePickerView) are immediately reflected in
+                            // mCurrentOffsetPx and view translation.
+                            setSheetOffsetFromBottom(getSheetHeightForState(targetState), reason);
+                        }
                         mTargetState = SheetState.NONE;
                     }
                 });
@@ -1233,7 +1243,7 @@ class BottomSheet extends BottomSheetView
 
     /**
      * @return The current state of the bottom sheet. If the sheet is animating, this will be the
-     *         state the sheet is animating to.
+     *     state the sheet is animating to.
      */
     @SheetState
     int getSheetState() {
@@ -1268,16 +1278,22 @@ class BottomSheet extends BottomSheetView
         super.setSheetLayoutMode(mode);
         boolean isPopup = mode == SheetLayoutMode.DESKTOP_POPUP;
         if (isPopup) {
-            boolean showCloseButton =
-                    mSheetContent != null && mSheetContent.hasCustomScrimLifecycle();
-            setCloseButtonVisible(showCloseButton);
-            setCloseButtonClickListener(
-                    v -> setSheetState(SheetState.HIDDEN, true, StateChangeReason.CLOSE_BUTTON));
             setBottomMargin(0);
-        } else {
-            setCloseButtonVisible(false);
         }
+        updateCloseButton(isPopup, mSheetContent);
         updateContainerClipping(isPopup);
+    }
+
+    private void updateCloseButton(boolean isPopup, @Nullable BottomSheetContent content) {
+        boolean showCloseButton = isPopup && content != null && content.hasCustomScrimLifecycle();
+        mModel.set(BottomSheetProperties.CLOSE_BUTTON_VISIBILITY, showCloseButton);
+        if (showCloseButton) {
+            mModel.set(
+                    BottomSheetProperties.CLOSE_BUTTON_CLICK_LISTENER,
+                    v -> setSheetState(SheetState.HIDDEN, true, StateChangeReason.CLOSE_BUTTON));
+        } else {
+            mModel.set(BottomSheetProperties.CLOSE_BUTTON_CLICK_LISTENER, null);
+        }
     }
 
     private boolean isLargeFormFactorFallbackUiEnabled() {
@@ -1692,6 +1708,7 @@ class BottomSheet extends BottomSheetView
         updateContentContainerHeight();
         updateBackgroundColor();
         mModel.set(BottomSheetProperties.SHEET_LAYOUT_MODE, mode);
+        updateCloseButton(mode == SheetLayoutMode.DESKTOP_POPUP, content);
         mModel.set(BottomSheetProperties.GLOW_SPEC, getGlowSpecOrDefault());
         for (BottomSheetObserver o : mObservers) {
             o.onSheetContentChanged(content);
@@ -1739,7 +1756,8 @@ class BottomSheet extends BottomSheetView
             }
             mModel.set(BottomSheetProperties.CONTAINER_HEIGHT, targetHeight);
 
-            @Px int viewportBottomInset = getViewportBottomInset();
+            @Px
+            int viewportBottomInset = isLargeFormFactorUiEnabled() ? 0 : getViewportBottomInset();
             if (mBottomSheetContentContainer.getPaddingBottom() != viewportBottomInset) {
                 mBottomSheetContentContainer.setPadding(
                         mBottomSheetContentContainer.getPaddingLeft(),

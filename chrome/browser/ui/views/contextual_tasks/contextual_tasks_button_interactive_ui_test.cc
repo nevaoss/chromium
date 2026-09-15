@@ -87,12 +87,25 @@ class TestingAimEligibilityService : public ChromeAimEligibilityService {
     OnEligibilityResponseChanged();
   }
 
+  bool IsFuseboxEligible() const override {
+    return is_fusebox_eligible_ && IsAimEligible();
+  }
+
+  void SetIsFuseboxEligible(bool eligible) {
+    if (is_fusebox_eligible_ == eligible) {
+      return;
+    }
+    is_fusebox_eligible_ = eligible;
+    OnEligibilityResponseChanged();
+  }
+
   variations::VariationsService* GetVariationsService() const override {
     return nullptr;
   }
 
  private:
   bool is_aim_eligible_ = true;
+  bool is_fusebox_eligible_ = true;
   const base::raw_ref<PrefService> pref_service_;
 };
 
@@ -295,6 +308,15 @@ class ContextualTasksButtonInteractiveTestMixin : public T {
     });
   }
 
+  auto SetIsFuseboxEligible(bool eligible) {
+    return this->Do([&, eligible]() {
+      auto* service = static_cast<TestingAimEligibilityService*>(
+          AimEligibilityServiceFactory::GetForProfile(
+              this->browser()->GetProfile()));
+      service->SetIsFuseboxEligible(eligible);
+    });
+  }
+
   GURL GetTestURL() {
     return this->embedded_test_server()->GetURL("example.com", "/title1.html");
   }
@@ -331,7 +353,8 @@ class ContextualTasksEphemeralButtonInteractiveTestMixin
           {{"ContextualTasksExpandButtonOptions", "toolbar-close-button"}}},
          {contextual_tasks::kContextualTasksEphemeralBrandedEntryPoint,
           {{"ContextualTasksEntryPoint", "toolbar-ephemeral-branded"}}},
-         {contextual_tasks::kContextualTasksHideCloseButtonInVerticalTabs, {}}},
+         {contextual_tasks::kContextualTasksHideCloseButtonInVerticalTabs, {}},
+         {contextual_tasks::kEnableContextualTasksPinButtonInToolbar, {}}},
         {});
     Base::SetUp();
   }
@@ -340,10 +363,7 @@ class ContextualTasksEphemeralButtonInteractiveTestMixin
     Base::SetUpOnMainThread();
     this->host_resolver()->AddRule("*", "127.0.0.1");
     ASSERT_TRUE(this->embedded_test_server()->Start());
-    this->browser()
-        ->GetFeatures()
-        .side_panel_ui()
-        ->DisableAnimationsForTesting();
+    SidePanelUI::From(this->browser())->DisableAnimationsForTesting();
   }
 
   auto CreateTaskForTab(int tab_index) {
@@ -780,7 +800,7 @@ class ContextualTasksEphemeralButtonCobrowseDisabledInteractiveTest
     ContextualTasksButtonInteractiveTestBase::SetUpOnMainThread();
     host_resolver()->AddRule("*", "127.0.0.1");
     ASSERT_TRUE(embedded_test_server()->Start());
-    browser()->GetFeatures().side_panel_ui()->DisableAnimationsForTesting();
+    SidePanelUI::From(browser())->DisableAnimationsForTesting();
   }
 
   auto CreateTaskForTab(int tab_index) {

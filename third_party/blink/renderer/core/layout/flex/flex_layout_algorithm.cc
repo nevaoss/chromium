@@ -518,8 +518,7 @@ void FlexLayoutAlgorithm::HandleOutOfFlowPositionedItems(
   // size information (e.g. any expanded rows, etc), so for center aligned
   // items, we could end up with an incorrect static position.
   if (InvolvedInBlockFragmentation(container_builder_)) [[unlikely]] {
-    should_process_block_end = !container_builder_.DidBreakSelf() &&
-                               !container_builder_.ShouldBreakInside();
+    should_process_block_end = !container_builder_.ShouldBreak();
     if (should_process_block_end) {
       // Recompute the total block size in case |total_intrinsic_block_size|
       // changed as a result of fragmentation.
@@ -1295,7 +1294,7 @@ const LayoutResult* FlexLayoutAlgorithm::LayoutInternal() {
 
   std::optional<FlexGapAccumulator> gap_accumulator = std::nullopt;
   if (Style().HasGapRule() && !flex_lines.empty()) {
-    std::optional<GapGeometry::FlexGapPlacementReversal> gap_placement_reversal;
+    std::optional<GapGeometry::PlacementReversal> gap_placement_reversal;
     if (is_wrap_reverse_ || is_reverse_direction_) {
       gap_placement_reversal.emplace(is_wrap_reverse_, is_reverse_direction_);
     }

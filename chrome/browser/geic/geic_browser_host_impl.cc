@@ -20,9 +20,11 @@
 #include "chrome/browser/ui/navigator/browser_navigator.h"
 #include "chrome/browser/ui/navigator/browser_navigator_params.h"
 #include "chrome/browser/ui/side_panel/side_panel_ui.h"
+#include "chrome/browser/ui/tabs/tab_change_type.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "components/content_extraction/content/browser/inner_text.h"
 #include "components/favicon/content/content_favicon_driver.h"
+#include "components/sessions/core/session_id.h"
 #include "components/tabs/public/tab_interface.h"
 #include "components/viz/common/frame_sinks/copy_output_result.h"
 #include "content/public/browser/navigation_controller.h"
@@ -495,8 +497,8 @@ void GeicBrowserHostImpl::CloseSignInTab(CloseSignInTabCallback callback) {
 void GeicBrowserHostImpl::ClosePanel() {
   BrowserWindowInterface* browser =
       tab_ ? tab_->GetBrowserWindowInterface() : nullptr;
-  if (browser && browser->GetFeatures().side_panel_ui()) {
-    browser->GetFeatures().side_panel_ui()->Close();
+  if (browser && SidePanelUI::From(browser)) {
+    SidePanelUI::From(browser)->Close();
   }
 }
 

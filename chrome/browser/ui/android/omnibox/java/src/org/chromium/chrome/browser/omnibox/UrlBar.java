@@ -576,8 +576,14 @@ public class UrlBar extends AutocompleteEditText {
     }
 
     @Override
-    public View focusSearch(int direction) {
-        if (mUrlBarDelegate != null
+    public @Nullable View focusSearch(int direction) {
+        if (isInTouchMode()) {
+            // TextView#onEditorAction will throw an IllegalStateException when focusSearch returns
+            // a View that returns false for #requestFocus. This will happen when in touch mode
+            // because the next view (typically the close button) is not focusable in touch mode.
+            // See https://crbug.com/553939053. This is triggered by IME_ACTION_NEXT from some IMEs.
+            return this;
+        } else if (mUrlBarDelegate != null
                 && direction == View.FOCUS_BACKWARD
                 && mUrlBarDelegate.getViewForUrlBackFocus() != null) {
             return mUrlBarDelegate.getViewForUrlBackFocus();
@@ -775,9 +781,10 @@ public class UrlBar extends AutocompleteEditText {
     }
 
     /**
-     * Set the listener to be notified when the URL text wraps.
+     * Sets the listener to be notified when the URL text wraps.
      *
-     * @param listener The listener to be notified.
+     * @param listener The listener to be notified, or null to unregister any previously registered
+     *     listener.
      */
     /* package */ void setUrlTextWrappingChangeListener(@Nullable Callback<Boolean> listener) {
         if (mDetectAndNotifyOnTextWrappingChanges != null) {
@@ -799,7 +806,7 @@ public class UrlBar extends AutocompleteEditText {
     }
 
     /**
-     * Set the listener to be notified when the URL text has changed. (for autocomplete suggestions)
+     * Set the listener to be notified when the URL text has changed (for autocomplete suggestions).
      *
      * @param listener The listener to be notified.
      */

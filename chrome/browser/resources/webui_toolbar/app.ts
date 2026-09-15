@@ -66,6 +66,7 @@ import type {PermissionDashboardElement} from '/shared/permission_dashboard.js';
 
 import {INVALID_FOCUS_REQUEST_HANDLE} from './browser_proxy.js';
 import {AppMenuButtonElement} from './app_menu_button.js';
+import {BatterySaverButtonElement} from './battery_saver_button.js';
 import {ContentSettingIconElement} from './content_setting_icon.js';
 import {ContentSettingsIconsElement} from './content_settings_icons.js';
 import type {ExtensionsElement} from './extensions.js';
@@ -98,6 +99,7 @@ export {
   AppMenuButtonElement,
   AppMenuIconType,
   AppMenuSeverity,
+  BatterySaverButtonElement,
   BrowserProxyImpl,
   ContextMenuType,
   ContentSettingIconElement,
@@ -461,6 +463,9 @@ export class ToolbarAppElement extends AppElementBase {
       accessibilityDescription: '',
       enabled: true,
       hasLinearGradientRing: false,
+    },
+    overflowButtonControlState: {
+      isContextMenuVisible: false,
     },
     layoutConstantsVersion:
         getTypedInteger(ToolbarStateKey.LAYOUT_CONSTANTS_VERSION),

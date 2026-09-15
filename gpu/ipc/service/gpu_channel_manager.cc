@@ -357,7 +357,7 @@ GpuChannelManager::GpuChannelManager(
     const GpuFeatureInfo& gpu_feature_info,
     GpuProcessShmCount* use_shader_cache_shm_count,
     scoped_refptr<gl::GLSurface> default_offscreen_surface,
-    viz::VulkanContextProvider* vulkan_context_provider,
+    VulkanContextProvider* vulkan_context_provider,
     DawnContextProvider* dawn_context_provider,
     webgpu::DawnCachingInterfaceFactory* dawn_caching_interface_factory,
     const SharedContextState::GrContextOptionsProvider*
@@ -896,12 +896,6 @@ scoped_refptr<SharedContextState> GpuChannelManager::GetSharedContextState(
     *result = ContextResult::kSuccess;
     return shared_context_state_;
   }
-
-  // Temporarily check the ANGLE metal experiment early in GPU process
-  // initialization. This will help us determine why users sometimes do not
-  // check the feature on subsequent runs of Chrome. crbug.com/1423439
-  [[maybe_unused]] bool default_angle_metal =
-      base::FeatureList::IsEnabled(features::kDefaultANGLEMetal);
 
   scoped_refptr<gl::GLSurface> surface = default_offscreen_surface();
   bool use_virtualized_gl_contexts = false;

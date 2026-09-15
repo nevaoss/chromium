@@ -127,6 +127,13 @@ targets.mixin(
 )
 
 targets.mixin(
+    name = "android_extra_verbosity",
+    android_args = [
+        "-v",
+    ],
+)
+
+targets.mixin(
     name = "arm64",
     swarming = targets.swarming(
         dimensions = {
@@ -595,6 +602,21 @@ targets.mixin(
 )
 
 targets.mixin(
+    # TODO(crbug.com/554055689): Remove this mixin and use an anonymous mixin
+    # in the test definition once V8 uses Starlark test specs.
+    name = "legacy_gpu_webgl_conformance_shards",
+    swarming = targets.swarming(
+        shards = 2,
+    ),
+    android_swarming = targets.swarming(
+        shards = 6,
+    ),
+    chromeos_swarming = targets.swarming(
+        shards = 6,
+    ),
+)
+
+targets.mixin(
     name = "gpu_integration_test_common_args",
     args = [
         targets.magic_args.GPU_PARALLEL_JOBS,
@@ -729,6 +751,19 @@ targets.mixin(
             "device_type": "frankel",
             "device_os": "CP1A.260405.005",
             "device_os_type": "userdebug",
+            "pool": "chromium.tests.gpu",
+        },
+    ),
+)
+
+targets.mixin(
+    name = "gpu_pixel_11_experimental",
+    swarming = targets.swarming(
+        dimensions = {
+            "device_os_type": "userdebug",
+            "device_os": "CD1A.260714.001.A9",
+            "device_type": "kodiak",
+            "os": "Android",
             "pool": "chromium.tests.gpu",
         },
     ),
@@ -1739,6 +1774,13 @@ targets.mixin(
 )
 
 targets.mixin(
+    name = "no_xvfb",
+    linux_args = [
+        "--no-xvfb",
+    ],
+)
+
+targets.mixin(
     name = "nougat",
     swarming = targets.swarming(
         dimensions = {
@@ -1911,6 +1953,11 @@ targets.mixin(
     args = [
         "--use-simulator-cache",
     ],
+)
+
+targets.mixin(
+    name = "use_isolated_scripts_api",
+    use_isolated_scripts_api = True,
 )
 
 targets.mixin(

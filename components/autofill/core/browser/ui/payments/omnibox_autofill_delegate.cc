@@ -233,6 +233,10 @@ void OmniboxAutofillDelegate::OnFieldTypesDetermined(
     return;
   }
   for (const url::Origin& origin : iframe_origins) {
+    // Skip if the iframe origin matches the main frame origin.
+    if (origin == manager.client().GetLastCommittedPrimaryMainFrameOrigin()) {
+      continue;
+    }
     if (!manager.client()
              .GetAutofillOptimizationGuideDecider()
              ->IsUrlEligibleForOmniboxAutofill(origin.GetURL())) {
@@ -346,7 +350,7 @@ OmniboxAutofillDelegate::GetDriver_DoNotUse() {
 
 void OmniboxAutofillDelegate::OnSuggestionsShown(
     base::span<const Suggestion> suggestions,
-    base::optional_ref<const SuggestionMetadata> parent_suggestion_metadata) {
+    const SuggestionUiMetadata& metadata) {
   auto* manager =
       static_cast<BrowserAutofillManager*>(trigger_autofill_manager_.get());
   if (!manager) {
@@ -384,8 +388,7 @@ void OmniboxAutofillDelegate::OnSuggestionsShown(
 
   // TODO(crbug.com/7988776): Use an omnibox-specific trigger source.
   manager->DidShowSuggestions(
-      suggestions, parent_suggestion_metadata, trigger_form_global_id_,
-      trigger_field_global_id_,
+      suggestions, metadata, trigger_form_global_id_, trigger_field_global_id_,
       AutofillExternalDelegate::UpdateSuggestionsCallback());
 
   manager->GetCreditCardFormEventLogger().OnOmniboxAutofillChipClicked();
@@ -489,7 +492,7 @@ void OmniboxAutofillDelegate::OnFieldBecameVisible() {
           [](base::WeakPtr<OmniboxAutofillDelegate> delegate,
              base::span<const Suggestion> suggestions) {
             if (delegate) {
-              delegate->OnSuggestionsShown(suggestions, std::nullopt);
+              delegate->OnSuggestionsShown(suggestions, /*metadata=*/{});
             }
           },
           weak_ptr_factory_.GetWeakPtr()),

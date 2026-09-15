@@ -14,6 +14,7 @@ import org.chromium.chrome.browser.tab.TabId;
 import org.chromium.chrome.browser.tab.TabState;
 import org.chromium.chrome.browser.tabmodel.TabModel;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
+import org.chromium.chrome.browser.tabmodel.TabOrchestratorType;
 
 import java.util.Collections;
 import java.util.Set;
@@ -28,16 +29,20 @@ public final class BackgroundTabRestorationHelper {
     /**
      * Returns whether background tab interception should occur.
      *
+     * @param orchestratorType The orchestrator type for the tab store or restorer.
      * @param isIncognito Whether the model is off-the-record.
      * @return Whether background tabs should be intercepted.
      */
-    public static boolean shouldIntercept(boolean isIncognito) {
-        return ActorUtils.isBackgroundActuationEnabled() && !isIncognito;
+    public static boolean shouldIntercept(
+            @TabOrchestratorType int orchestratorType, boolean isIncognito) {
+        return orchestratorType == TabOrchestratorType.TABBED
+                && ActorUtils.isBackgroundActuationEnabled()
+                && !isIncognito;
     }
 
     /**
      * Acquires a leased {@link BackgroundTabPool} instance for the regular profile of the given
-     * selector.
+     * selector, falling back to restoring from persisted token if profile is null.
      *
      * @param selector The {@link TabModelSelector} to query for profile.
      * @return The leased {@link BackgroundTabPool}, or null if unavailable or incognito.
@@ -50,22 +55,32 @@ public final class BackgroundTabRestorationHelper {
         if (model == null) return null;
 
         Profile profile = model.getProfile();
-        if (profile == null || profile.isOffTheRecord()) return null;
+        if (profile != null) {
+            if (profile.isOffTheRecord()) return null;
+            if (!BackgroundTabPoolManager.hasPoolForTesting() && !profile.isNativeInitialized()) {
+                return null;
+            }
+            return BackgroundTabPoolManager.acquire(profile);
+        }
 
-        return BackgroundTabPoolManager.acquire(profile);
+        return BackgroundTabPoolManager.restorePoolIfTokenExists();
     }
 
     /**
-     * Fetches the set of background tab IDs currently held or cached in {@link BackgroundTabPool}.
+     * Fetches the set of background placeholder tab IDs currently held or cached in {@link
+     * BackgroundTabPool}.
      *
+     * @param orchestratorType The orchestrator type for the caller.
      * @param selector The {@link TabModelSelector} to acquire pool from.
      * @param isIncognito Whether the caller is incognito.
-     * @return A {@link Set} of {@link TabId} integers.
+     * @return A {@link Set} of placeholder {@link TabId} integers.
      */
     public static Set<@TabId Integer> fetchBackgroundTabIds(
-            @Nullable TabModelSelector selector, boolean isIncognito) {
+            @TabOrchestratorType int orchestratorType,
+            @Nullable TabModelSelector selector,
+            boolean isIncognito) {
         assertOnUiThread();
-        if (!shouldIntercept(isIncognito)) {
+        if (!shouldIntercept(orchestratorType, isIncognito)) {
             return Collections.emptySet();
         }
 
@@ -73,29 +88,32 @@ public final class BackgroundTabRestorationHelper {
         if (pool == null) return Collections.emptySet();
 
         try {
-            return pool.getAllTabIds();
+            return pool.getAllPlaceholderTabIds();
         } finally {
             BackgroundTabPoolManager.release(pool);
         }
     }
 
     /**
-     * Attempts to restore and attach a background tab from {@link BackgroundTabPool}.
+     * Attempts to restore and attach a background tab from {@link BackgroundTabPool} given its
+     * placeholder tab ID.
      *
+     * @param orchestratorType The orchestrator type for the caller.
      * @param selector The {@link TabModelSelector} managing tab models.
-     * @param tabId The ID of the background tab to restore.
+     * @param placeholderTabId The placeholder tab ID of the background tab to restore.
      * @param index The index to insert the restored tab into the model.
      * @param tabState Optional placeholder {@link TabState} whose WebContentsState will be
      *     destroyed upon attachment.
      * @return The restored {@link Tab}, or null if not found or restoration failed.
      */
     public static @Nullable Tab maybeRestoreBackgroundTab(
+            @TabOrchestratorType int orchestratorType,
             @Nullable TabModelSelector selector,
-            @TabId int tabId,
+            @TabId int placeholderTabId,
             int index,
             @Nullable TabState tabState) {
         assertOnUiThread();
-        if (!ActorUtils.isBackgroundActuationEnabled() || selector == null) {
+        if (!shouldIntercept(orchestratorType, /* isIncognito= */ false) || selector == null) {
             return null;
         }
 
@@ -103,7 +121,7 @@ public final class BackgroundTabRestorationHelper {
         if (pool == null) return null;
 
         try {
-            BackgroundPoolTab backgroundTab = pool.loadTab(tabId, tabId);
+            BackgroundPoolTab backgroundTab = pool.loadTab(placeholderTabId);
             if (backgroundTab == null) return null;
 
             if (tabState != null && tabState.contentsState != null) {

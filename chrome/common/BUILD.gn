@@ -34,6 +34,7 @@ fuzzer_test("ini_parser_fuzzer") {
   # Large ini files can cause test cases to timeout
   libfuzzer_options = [ "max_len=100000" ]
 }
+
 grit("resources") {
   source = "common_resources.grd"
   inputs = [
@@ -488,6 +489,10 @@ static_library("non_code_constants") {
   if (is_win) {
     sources += [ "chrome_icon_resources_win.h" ]
   }
+
+  if (is_chromeos) {
+    deps += [ "//ash/constants" ]
+  }
 }
 
 component("chrome_features") {
@@ -697,6 +702,7 @@ mojom("mojo_bindings") {
     "plugin.mojom",
     "readaloud/read_aloud.mojom",
     "renderer_configuration.mojom",
+    "tab_context_decryption_token_extension.mojom",
     "trusted_vault_encryption_keys_extension.mojom",
   ]
 

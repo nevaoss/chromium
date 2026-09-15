@@ -42,6 +42,7 @@
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/devtools/device/tcp_device_provider.h"
 #include "chrome/browser/devtools/devtools_availability_checker.h"
+#include "chrome/browser/devtools/devtools_ui_bindings.h"
 #include "chrome/browser/devtools/devtools_window.h"
 #include "chrome/browser/devtools/devtools_window_testing.h"
 #include "chrome/browser/devtools/features.h"
@@ -103,6 +104,7 @@
 #include "content/public/browser/child_process_data.h"
 #include "content/public/browser/devtools_agent_host.h"
 #include "content/public/browser/devtools_agent_host_client.h"
+#include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/render_widget_host.h"
 #include "content/public/browser/render_widget_host_view.h"
@@ -122,6 +124,7 @@
 #include "content/public/test/test_navigation_observer.h"
 #include "content/public/test/test_utils.h"
 #include "content/public/test/url_loader_interceptor.h"
+#include "extensions/buildflags/buildflags.h"
 #include "mojo/public/cpp/bindings/sync_call_restrictions.h"
 #include "net/base/filename_util.h"
 #include "net/dns/mock_host_resolver.h"
@@ -136,7 +139,9 @@
 #include "third_party/blink/public/common/chrome_debug_urls.h"
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/public/common/input/web_input_event.h"
+#include "ui/base/page_transition_types.h"
 #include "ui/base/ui_base_switches.h"
+#include "ui/base/window_open_disposition.h"
 #include "ui/compositor/compositor_switches.h"
 #include "ui/gl/gl_switches.h"
 #include "url/gurl.h"
@@ -2094,8 +2099,8 @@ IN_PROC_BROWSER_TEST_F(DevToolsExtensionTest,
   ASSERT_TRUE(extension);
 
   ExtensionTestMessageListener default_path_listener("default_path");
-  browser_window_interface()->GetFeatures().side_panel_ui()->Show(
-      SidePanelEntryKey(SidePanelEntryId::kExtension, extension->id()));
+  SidePanelUI::From(browser_window_interface())
+      ->Show(SidePanelEntryKey(SidePanelEntryId::kExtension, extension->id()));
   ASSERT_TRUE(default_path_listener.WaitUntilSatisfied());
 
   content::WebContents* side_panel_contents =
@@ -3263,6 +3268,119 @@ IN_PROC_BROWSER_TEST_F(DevToolsDisallowedForForceInstalledExtensionsPolicyTest,
                                      DevToolsOpenedByAction::kUnknown);
   auto agent_host = GetOrCreateDevToolsHostForWebContents(web_contents);
   EXPECT_TRUE(DevToolsWindow::FindDevToolsWindow(agent_host.get()));
+}
+
+IN_PROC_BROWSER_TEST_F(
+    DevToolsDisallowedForForceInstalledExtensionsPolicyTest,
+    AllowlistedMainFrameWithRestrictedExtensionIframeBlocked) {
+  ASSERT_TRUE(embedded_test_server()->Start());
+  GURL allowed_url(embedded_test_server()->GetURL("/title1.html"));
+
+  base::ListValue allowlist;
+  allowlist.Append(allowed_url.spec());
+  profile()->GetPrefs()->SetList(prefs::kDeveloperToolsAvailabilityAllowlist,
+                                 std::move(allowlist));
+
+  base::FilePath extension_path =
+      test_data_dir_.AppendASCII("web_accessible_resources")
+          .AppendASCII("subframe");
+  const Extension* extension = InstallExtension(
+      extension_path, 1, ManifestLocation::kExternalPolicyDownload);
+  ASSERT_TRUE(extension);
+  std::string extension_id = extension->id();
+
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), allowed_url));
+  content::WebContents* web_contents =
+      browser()->tab_strip_model()->GetActiveWebContents();
+
+  EXPECT_TRUE(DevToolsWindow::AllowDevToolsFor(profile(), web_contents));
+
+  GURL extension_url("chrome-extension://" + extension_id +
+                     "/web_accessible_page.html");
+  content::TestNavigationObserver nav_observer(extension_url);
+  nav_observer.WatchExistingWebContents();
+  ASSERT_TRUE(content::ExecJs(
+      web_contents->GetPrimaryMainFrame(),
+      content::JsReplace("let iframe = document.createElement('iframe');"
+                         "iframe.src = $1;"
+                         "document.body.appendChild(iframe);",
+                         extension_url)));
+  nav_observer.Wait();
+
+  EXPECT_TRUE(DevToolsWindow::AllowDevToolsFor(profile(), web_contents));
+
+  DevToolsWindow::OpenDevToolsWindow(web_contents,
+                                     DevToolsOpenedByAction::kUnknown);
+  auto agent_host = GetOrCreateDevToolsHostForWebContents(web_contents);
+  EXPECT_TRUE(DevToolsWindow::FindDevToolsWindow(agent_host.get()));
+
+  scoped_refptr<content::DevToolsAgentHost> subframe_agent_host;
+  for (const auto& host : content::DevToolsAgentHost::GetOrCreateAll()) {
+    if (host->GetURL() == extension_url) {
+      subframe_agent_host = host;
+      break;
+    }
+  }
+  ASSERT_TRUE(subframe_agent_host);
+  EXPECT_FALSE(IsInspectionAllowed(profile(), subframe_agent_host.get()));
+}
+
+IN_PROC_BROWSER_TEST_F(
+    DevToolsDisallowedForForceInstalledExtensionsPolicyTest,
+    AllowlistedMainFrameWithRestrictedExtensionIframeAllowedWhenPolicyAllowed) {
+  AllowDevTools(browser_window_interface());
+
+  ASSERT_TRUE(embedded_test_server()->Start());
+  GURL allowed_url(embedded_test_server()->GetURL("/title1.html"));
+
+  base::ListValue allowlist;
+  allowlist.Append("chrome-extension://*");
+  allowlist.Append(allowed_url.spec());
+  profile()->GetPrefs()->SetList(prefs::kDeveloperToolsAvailabilityAllowlist,
+                                 std::move(allowlist));
+
+  base::FilePath extension_path =
+      test_data_dir_.AppendASCII("web_accessible_resources")
+          .AppendASCII("subframe");
+  const Extension* extension = InstallExtension(
+      extension_path, 1, ManifestLocation::kExternalPolicyDownload);
+  ASSERT_TRUE(extension);
+  std::string extension_id = extension->id();
+
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), allowed_url));
+  content::WebContents* web_contents =
+      browser()->tab_strip_model()->GetActiveWebContents();
+
+  EXPECT_TRUE(DevToolsWindow::AllowDevToolsFor(profile(), web_contents));
+
+  GURL extension_url("chrome-extension://" + extension_id +
+                     "/web_accessible_page.html");
+  content::TestNavigationObserver nav_observer(extension_url);
+  nav_observer.WatchExistingWebContents();
+  ASSERT_TRUE(content::ExecJs(
+      web_contents->GetPrimaryMainFrame(),
+      content::JsReplace("let iframe = document.createElement('iframe');"
+                         "iframe.src = $1;"
+                         "document.body.appendChild(iframe);",
+                         extension_url)));
+  nav_observer.Wait();
+
+  EXPECT_TRUE(DevToolsWindow::AllowDevToolsFor(profile(), web_contents));
+
+  DevToolsWindow::OpenDevToolsWindow(web_contents,
+                                     DevToolsOpenedByAction::kUnknown);
+  auto agent_host = GetOrCreateDevToolsHostForWebContents(web_contents);
+  EXPECT_TRUE(DevToolsWindow::FindDevToolsWindow(agent_host.get()));
+
+  scoped_refptr<content::DevToolsAgentHost> subframe_agent_host;
+  for (const auto& host : content::DevToolsAgentHost::GetOrCreateAll()) {
+    if (host->GetURL() == extension_url) {
+      subframe_agent_host = host;
+      break;
+    }
+  }
+  ASSERT_TRUE(subframe_agent_host);
+  EXPECT_TRUE(IsInspectionAllowed(profile(), subframe_agent_host.get()));
 }
 #endif  // !BUILDFLAG(IS_ANDROID)
 
@@ -4699,6 +4817,162 @@ IN_PROC_BROWSER_TEST_F(DevToolsProcessPerSiteUpToMainFrameThresholdTest,
 
   ASSERT_NE(webcontents->GetPrimaryMainFrame()->GetProcess(),
             webcontents2->GetPrimaryMainFrame()->GetProcess());
+}
+
+class DevToolsConfirmInfoBarTest : public DevToolsTest,
+                                   public testing::WithParamInterface<bool> {
+ protected:
+  DevToolsConfirmInfoBarTest() {
+    if (GetParam()) {
+      scoped_feature_list_.InitAndEnableFeatureWithParameters(
+          infobars::kCentralizedInfoBarFramework,
+          {{"MigratedDevToolsConfirm", "true"}});
+    } else {
+      scoped_feature_list_.InitAndDisableFeature(
+          infobars::kCentralizedInfoBarFramework);
+    }
+  }
+
+ private:
+  base::test::ScopedFeatureList scoped_feature_list_;
+};
+
+INSTANTIATE_TEST_SUITE_P(All,
+                         DevToolsConfirmInfoBarTest,
+                         testing::Bool(),
+                         [](const testing::TestParamInfo<bool>& info) {
+                           return info.param ? "MigratedInfobar"
+                                             : "LegacyInfobar";
+                         });
+
+IN_PROC_BROWSER_TEST_P(DevToolsConfirmInfoBarTest, AllowRunsCallbackOnce) {
+  DevToolsWindow* window =
+      DevToolsWindowTesting::OpenDevToolsWindowSync(GetInspectedTab(), true);
+  DevToolsUIBindings* bindings = DevToolsUIBindings::ForWebContents(
+      DevToolsWindowTesting::Get(window)->main_web_contents());
+  ASSERT_TRUE(bindings);
+
+  std::vector<bool> decisions;
+  bindings->ShowDevToolsInfoBarForTesting(
+      u"DevTools requests access",
+      base::BindLambdaForTesting(
+          [&](bool allowed) { decisions.push_back(allowed); }));
+
+  // Both paths show the confirmation on the inspected tab.
+  auto* infobar_manager =
+      infobars::ContentInfoBarManager::FromWebContents(GetInspectedTab());
+  ASSERT_EQ(1u, infobar_manager->infobars().size());
+  auto* delegate =
+      infobar_manager->infobars()[0]->delegate()->AsConfirmInfoBarDelegate();
+  ASSERT_TRUE(delegate);
+  EXPECT_EQ(infobars::InfoBarDelegate::DEV_TOOLS_INFOBAR_DELEGATE,
+            delegate->GetIdentifier());
+  EXPECT_EQ(u"DevTools requests access", delegate->GetMessageText());
+
+  // Allowing answers the caller exactly once with true.
+  delegate->Accept();
+  EXPECT_THAT(decisions, testing::ElementsAre(true));
+
+  DevToolsWindowTesting::CloseDevToolsWindowSync(window);
+  EXPECT_EQ(1u, decisions.size());
+}
+
+IN_PROC_BROWSER_TEST_P(DevToolsConfirmInfoBarTest, DenyRunsCallbackOnce) {
+  DevToolsWindow* window =
+      DevToolsWindowTesting::OpenDevToolsWindowSync(GetInspectedTab(), true);
+  DevToolsUIBindings* bindings = DevToolsUIBindings::ForWebContents(
+      DevToolsWindowTesting::Get(window)->main_web_contents());
+  ASSERT_TRUE(bindings);
+
+  std::vector<bool> decisions;
+  bindings->ShowDevToolsInfoBarForTesting(
+      u"DevTools requests access",
+      base::BindLambdaForTesting(
+          [&](bool allowed) { decisions.push_back(allowed); }));
+
+  auto* infobar_manager =
+      infobars::ContentInfoBarManager::FromWebContents(GetInspectedTab());
+  ASSERT_EQ(1u, infobar_manager->infobars().size());
+  auto* delegate =
+      infobar_manager->infobars()[0]->delegate()->AsConfirmInfoBarDelegate();
+  ASSERT_TRUE(delegate);
+
+  // Canceling/denying answers the caller with false.
+  delegate->Cancel();
+  EXPECT_THAT(decisions, testing::ElementsAre(false));
+
+  DevToolsWindowTesting::CloseDevToolsWindowSync(window);
+  EXPECT_THAT(decisions, testing::ElementsAre(false));
+}
+
+IN_PROC_BROWSER_TEST_P(DevToolsConfirmInfoBarTest,
+                       DismissalRunsCallbackOnceWithFalse) {
+  DevToolsWindow* window =
+      DevToolsWindowTesting::OpenDevToolsWindowSync(GetInspectedTab(), true);
+  DevToolsUIBindings* bindings = DevToolsUIBindings::ForWebContents(
+      DevToolsWindowTesting::Get(window)->main_web_contents());
+  ASSERT_TRUE(bindings);
+
+  std::vector<bool> decisions;
+  bindings->ShowDevToolsInfoBarForTesting(
+      u"DevTools requests access",
+      base::BindLambdaForTesting(
+          [&](bool allowed) { decisions.push_back(allowed); }));
+
+  auto* infobar_manager =
+      infobars::ContentInfoBarManager::FromWebContents(GetInspectedTab());
+  ASSERT_EQ(1u, infobar_manager->infobars().size());
+  auto* delegate =
+      infobar_manager->infobars()[0]->delegate()->AsConfirmInfoBarDelegate();
+  ASSERT_TRUE(delegate);
+
+  // Dismissing the infobar (e.g. clicking 'X') resolves with false.
+  delegate->InfoBarDismissed();
+  EXPECT_THAT(decisions, testing::ElementsAre(false));
+
+  DevToolsWindowTesting::CloseDevToolsWindowSync(window);
+  EXPECT_THAT(decisions, testing::ElementsAre(false));
+}
+
+IN_PROC_BROWSER_TEST_P(DevToolsConfirmInfoBarTest, ConcurrentRequestHandling) {
+  DevToolsWindow* window =
+      DevToolsWindowTesting::OpenDevToolsWindowSync(GetInspectedTab(), true);
+  DevToolsUIBindings* bindings = DevToolsUIBindings::ForWebContents(
+      DevToolsWindowTesting::Get(window)->main_web_contents());
+  ASSERT_TRUE(bindings);
+
+  std::vector<bool> decisions1;
+  bindings->ShowDevToolsInfoBarForTesting(
+      u"First request", base::BindLambdaForTesting([&](bool allowed) {
+        decisions1.push_back(allowed);
+      }));
+
+  auto* infobar_manager =
+      infobars::ContentInfoBarManager::FromWebContents(GetInspectedTab());
+  ASSERT_EQ(1u, infobar_manager->infobars().size());
+
+  std::vector<bool> decisions2;
+  bindings->ShowDevToolsInfoBarForTesting(
+      u"Second request", base::BindLambdaForTesting([&](bool allowed) {
+        decisions2.push_back(allowed);
+      }));
+
+  if (GetParam()) {
+    // Under the centralized infobar framework, a second concurrent request
+    // is synchronously denied instead of stacking another infobar.
+    EXPECT_THAT(decisions2, testing::ElementsAre(false));
+    EXPECT_EQ(1u, infobar_manager->infobars().size());
+  }
+
+  // Resolving the first infobar should not trigger callbacks multiple times.
+  auto* delegate =
+      infobar_manager->infobars()[0]->delegate()->AsConfirmInfoBarDelegate();
+  ASSERT_TRUE(delegate);
+  delegate->Accept();
+
+  EXPECT_THAT(decisions1, testing::ElementsAre(true));
+
+  DevToolsWindowTesting::CloseDevToolsWindowSync(window);
 }
 
 // Runs against the legacy and the centralized infobar; behavior must match.

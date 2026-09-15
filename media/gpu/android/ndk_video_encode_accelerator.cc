@@ -93,27 +93,47 @@ bool IsTemporalLayerEncodingEnabled() {
   return enabled;
 }
 
-bool IsTemporalLayerIdSupported() {
+bool IsNdkSvcApiSupported() {
   if (__builtin_available(android 37, *)) {
-    return base::FeatureList::IsEnabled(
-               media::kNdkVideoEncodeAcceleratorNativeSvc) &&
-           IsTemporalLayerEncodingEnabled();
+    // On preview/canary OS builds, __builtin_available() evaluates to true
+    // because Bionic returns API 10000. Check sdk_int() to ensure we are
+    // running on actual Android 17+ (Cinnamon Bun, API 37) and not an
+    // Android 16 Canary.
+    if (base::android::android_info::sdk_int() <
+        base::android::android_info::SDK_VERSION_CINNAMON_BUN) {
+      return false;
+    }
+
+    // Guard against early preview images or incomplete platform stubs that may
+    // not export all required symbols in libmediandk.so.
+    return &AMediaCodecStore_getCodecInfo != nullptr &&
+           &AMediaCodecInfo_getEncoderCapabilities != nullptr &&
+           &ACodecEncoderCapabilities_getSupportedLayeringSchemas != nullptr;
   }
   return false;
 }
 
+bool IsTemporalLayerIdSupported() {
+  return IsNdkSvcApiSupported() &&
+         base::FeatureList::IsEnabled(
+             media::kNdkVideoEncodeAcceleratorNativeSvc) &&
+         IsTemporalLayerEncodingEnabled();
+}
+
 bool IsBitrateLayeringSupported() {
-  if (__builtin_available(android 37, *)) {
-    return base::FeatureList::IsEnabled(
-               media::kNdkVideoEncodeAcceleratorBitrateLayering) &&
-           IsTemporalLayerEncodingEnabled();
-  }
-  return false;
+  return IsNdkSvcApiSupported() &&
+         base::FeatureList::IsEnabled(
+             media::kNdkVideoEncodeAcceleratorBitrateLayering) &&
+         IsTemporalLayerEncodingEnabled();
 }
 
 std::vector<std::string> GetSupportedLayeringSchemas(
     const std::string& codec_name) {
   if (__builtin_available(android 37, *)) {
+    if (!IsNdkSvcApiSupported()) {
+      return {};
+    }
+
     const AMediaCodecInfo* info = nullptr;
     media_status_t status =
         AMediaCodecStore_getCodecInfo(codec_name.c_str(), &info);

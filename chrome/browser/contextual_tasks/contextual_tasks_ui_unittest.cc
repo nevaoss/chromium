@@ -858,6 +858,23 @@ TEST_F(ContextualTasksUiTest,
                 "voiceSearchCoherenceCobrowsingComposeboxEnabled"),
             true);
 }
+
+TEST_F(ContextualTasksUiTest, ShouldClearAllInputsOnSubmit) {
+  // Default / no invocation source should clear inputs.
+  EXPECT_TRUE(ContextualTasksUI::ShouldClearAllInputsOnSubmit(std::nullopt));
+
+#if !BUILDFLAG(IS_ANDROID)
+  // Omnibox page action entrypoint should retain inputs.
+  EXPECT_FALSE(ContextualTasksUI::ShouldClearAllInputsOnSubmit(
+      lens::LensOverlayInvocationSource::kOmniboxPageAction));
+
+  // Other entrypoints should clear inputs.
+  EXPECT_TRUE(ContextualTasksUI::ShouldClearAllInputsOnSubmit(
+      lens::LensOverlayInvocationSource::kAppMenu));
+  EXPECT_TRUE(ContextualTasksUI::ShouldClearAllInputsOnSubmit(
+      lens::LensOverlayInvocationSource::kToolbar));
+#endif
+}
 #endif  // BUILDFLAG(ENABLE_WEBUI_CONTEXTUAL_TASKS_COMPOSEBOX)
 
 TEST_F(ContextualTasksUiTest, DidFinishNavigation_ZeroState) {
@@ -1757,6 +1774,27 @@ TEST_F(ContextualTasksUiTest,
   observer->DidFinishNavigation(nav_handle2.get());
 
   observer.reset();
+}
+
+TEST_F(ContextualTasksUiTest, DidFinishNavigation_NonAiPage_ResetsTitle) {
+  MockTaskInfoDelegate delegate;
+  std::optional<base::Uuid> task_id = base::Uuid::ParseCaseInsensitive(kUuid);
+  std::optional<std::string> thread_id = "5678";
+  std::optional<std::string> title = "previous query title";
+
+  SetupMockDelegate(&delegate, task_id, thread_id, title);
+  auto observer = std::make_unique<ContextualTasksUI::FrameNavObserver>(
+      embedded_web_contents_.get(), service_for_nav_.get(),
+      contextual_tasks_service_.get(), &delegate);
+
+  GURL non_ai_url("https://google.com/search?q=puppy");
+  ON_CALL(*service_for_nav_, IsAiUrl(non_ai_url)).WillByDefault(Return(false));
+
+  std::unique_ptr<content::MockNavigationHandle> nav_handle =
+      CreateMockNavigationHandle(non_ai_url);
+  observer->DidFinishNavigation(nav_handle.get());
+
+  EXPECT_EQ(delegate.GetThreadTitle(), std::nullopt);
 }
 
 TEST_F(ContextualTasksUiTest, OnPageContextEligibilityChecked) {

@@ -18,7 +18,7 @@ import org.chromium.ui.modelutil.PropertyModel;
  * PropertyModel} to the suitable method in {@link TouchToFillAutofillView}.
  */
 @NullMarked
-class TouchToFillAutofillViewBinder {
+final class TouchToFillAutofillViewBinder {
     static void bind(PropertyModel model, TouchToFillAutofillView view, PropertyKey propertyKey) {
         if (propertyKey == VISIBLE) {
             view.setVisible(model.get(VISIBLE));
@@ -28,6 +28,8 @@ class TouchToFillAutofillViewBinder {
             view.setSettingsLinkHandler(model.get(SETTINGS_LINK_HANDLER));
         } else if (propertyKey == DISMISS_HANDLER) {
             view.setDismissHandler(model.get(DISMISS_HANDLER));
+        } else {
+            assert false : "Unhandled update to property: " + propertyKey;
         }
     }
 

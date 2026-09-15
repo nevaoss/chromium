@@ -618,14 +618,6 @@ bool IsAccessibilityMouseKeysEnabled() {
   return ::features::IsAccessibilityMouseKeysEnabled();
 }
 
-bool IsAccessibilityDisableTouchpadEnabled() {
-  return ::features::IsAccessibilityDisableTouchpadEnabled();
-}
-
-bool IsAccessibilityFlashNotificationFeatureEnabled() {
-  return ::features::IsAccessibilityFlashScreenFeatureEnabled();
-}
-
 }  // namespace
 
 AccessibilitySection::AccessibilitySection(
@@ -1599,14 +1591,8 @@ void AccessibilitySection::AddLoadTimeData(
   html_source->AddString("faceGazeLearnMoreUrl",
                          ash::external_urls::kFaceGazeLearnMoreURL);
 
-  html_source->AddBoolean("isAccessibilityDisableTouchpadEnabled",
-                          IsAccessibilityDisableTouchpadEnabled());
-
   html_source->AddBoolean("isAccessibilityMouseKeysEnabled",
                           IsAccessibilityMouseKeysEnabled());
-
-  html_source->AddBoolean("isAccessibilityFlashNotificationFeatureEnabled",
-                          IsAccessibilityFlashNotificationFeatureEnabled());
 
   html_source->AddBoolean(
       "isAccessibilityInvertedMouseCursorEnabled",
@@ -2065,9 +2051,7 @@ void AccessibilitySection::UpdateSearchTags() {
   updater.AddSearchTags(GetA11yColorCorrectionSearchConcepts());
   updater.AddSearchTags(GetA11yOverscrollSettingSearchConcepts());
 
-  if (IsAccessibilityFlashNotificationFeatureEnabled()) {
-    updater.AddSearchTags(GetA11yFlashNotificationsSearchConcepts());
-  }
+  updater.AddSearchTags(GetA11yFlashNotificationsSearchConcepts());
 
   updater.AddSearchTags(GetA11yFaceGazeSearchConcepts());
 
@@ -2078,9 +2062,7 @@ void AccessibilitySection::UpdateSearchTags() {
     updater.AddSearchTags(GetA11yMouseKeysSearchConcepts());
   }
 
-  if (IsAccessibilityDisableTouchpadEnabled()) {
-    updater.AddSearchTags(GetA11yDisableTouchpadSearchConcepts());
-  }
+  updater.AddSearchTags(GetA11yDisableTouchpadSearchConcepts());
 
   if (!pref_service_->GetBoolean(prefs::kAccessibilitySwitchAccessEnabled)) {
     return;

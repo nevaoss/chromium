@@ -767,7 +767,8 @@ auto GraphBuilderTflite::CreateAndBuild(
 }
 
 // static
-ContextProperties GraphBuilderTflite::GetContextProperties() {
+ContextProperties GraphBuilderTflite::GetContextProperties(
+    mojom::Device context_device) {
   // TODO: crbug.com/345271830 - specify data types for all parameters.
   static constexpr SupportedDataTypes kInt4AndInts8Int32 = {
       OperandDataType::kInt4, OperandDataType::kUint8, OperandDataType::kInt8,
@@ -826,7 +827,7 @@ ContextProperties GraphBuilderTflite::GetContextProperties() {
   static constexpr uint64_t kTensorByteLengthLimit = 1024 * 1024 * 1024;
 #endif
 
-  return ContextProperties(
+  ContextProperties properties(
       InputOperandLayout::kNhwc, Resample2DAxes::kChannelsLast,
       BatchNormalizationAxis::kAny,
       /*tensor_byte_length_limit=*/kTensorByteLengthLimit,
@@ -1154,6 +1155,15 @@ ContextProperties GraphBuilderTflite::GetContextProperties() {
        {DataTypeConstraint::kUint8, SupportedRanks::UpTo(5)},
        /*where_value=*/
        {kFloat16To32AndInt8To64AndUint32, SupportedRanks::UpTo(5)}});
+
+  // The ML Drift GPU delegate does not support the int64 data type, so remove
+  // it from all op support limits when targeting the GPU to guide developers
+  // away from using operators that will fall back to the CPU.
+  if (context_device == mojom::Device::kGpu) {
+    properties.data_type_limits.RemoveDataType(OperandDataType::kInt64);
+  }
+
+  return properties;
 }
 
 GraphBuilderTflite::GraphBuilderTflite(
@@ -5784,17 +5794,21 @@ auto GraphBuilderTflite::SerializeGather(const mojom::Gather& gather)
   ASSIGN_OR_RETURN(std::optional<TensorInfo> quantized_output,
                    CanFuseQuantizeAndGetOutput(gather));
   const bool fuse_dequantize = quantized_output.has_value();
+  // The ML Drift accelerator's GATHER implementation supports float16 inputs.
+  const bool supports_float16 = context_device_ == mojom::Device::kGpu;
   ASSIGN_OR_RETURN(const TensorInfo& input_tensor_info,
-                   SerializeInputTensorInfo(
-                       gather.input_operand_id,
-                       /*quantize_params=*/0,
-                       /*operation_supports_float16=*/false, fuse_dequantize));
+                   SerializeInputTensorInfo(gather.input_operand_id,
+                                            /*quantize_params=*/0,
+                                            supports_float16, fuse_dequantize));
   TensorIndex output_tensor_index;
   if (fuse_dequantize) {
     output_tensor_index = quantized_output->index;
   } else {
-    ASSIGN_OR_RETURN(const TensorInfo output_tensor_info,
-                     SerializeOutputTensorInfo(gather.output_operand_id));
+    ASSIGN_OR_RETURN(
+        const TensorInfo output_tensor_info,
+        SerializeOutputTensorInfo(gather.output_operand_id,
+                                  /*quantize_params=*/0, supports_float16,
+                                  input_tensor_info.data_type));
     output_tensor_index = output_tensor_info.index;
   }
 

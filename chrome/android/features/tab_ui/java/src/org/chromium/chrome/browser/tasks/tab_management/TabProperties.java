@@ -27,6 +27,7 @@ import org.chromium.chrome.browser.tasks.tab_management.vertical_tabs.VerticalTa
 import org.chromium.components.browser_ui.util.TextResolver;
 import org.chromium.components.browser_ui.widget.selectable_list.SelectionDelegate;
 import org.chromium.components.tab_groups.TabGroupColorId;
+import org.chromium.components.tabs.TabAlert;
 import org.chromium.ui.modelutil.PropertyKey;
 import org.chromium.ui.modelutil.PropertyModel;
 import org.chromium.ui.modelutil.PropertyModel.ReadableBooleanPropertyKey;
@@ -234,8 +235,9 @@ public class TabProperties {
     public static final WritableObjectPropertyKey<String> TAB_GROUP_SYNC_ID =
             new WritableObjectPropertyKey<>();
 
-    /** The {@link org.chromium.chrome.browser.tab.TabImpl.MediaState} indicator of the tab. */
-    public static final WritableIntPropertyKey MEDIA_INDICATOR = new WritableIntPropertyKey();
+    /** The {@link TabAlert} state of the tab. */
+    public static final WritableIntDefPropertyKey<TabAlert> ALERT_STATE =
+            new WritableIntDefPropertyKey<>(TabAlert.NONE);
 
     /** Whether Glic context sharing is active for the tab. */
     public static final WritableBooleanPropertyKey IS_GLIC_ACTIVE =
@@ -251,6 +253,7 @@ public class TabProperties {
 
     private static final PropertyKey[] COMMON_KEYS_TAB_AND_GROUP_GRID =
             new PropertyKey[] {
+                ALERT_STATE,
                 DRAGGING_Y,
                 IS_INCOGNITO,
                 IS_SELECTED,
@@ -299,7 +302,6 @@ public class TabProperties {
                         IS_GLIC_ACTIVE,
                         TAB_GROUP_ID,
                         TAB_GROUP_HEADER_ID,
-                        MEDIA_INDICATOR,
                         IS_LOADING,
                         TAB_HOVER_CARD_LISTENER
                     },
@@ -342,6 +344,7 @@ public class TabProperties {
                 ACCESSIBILITY_DELEGATE,
                 ACTION_BUTTON_DESCRIPTION_TEXT_RESOLVER,
                 ACTOR_UI_STATE,
+                ALERT_STATE,
                 CARD_TYPE,
                 CONTENT_DESCRIPTION_TEXT_RESOLVER,
                 DRAGGING_Y,
@@ -353,12 +356,13 @@ public class TabProperties {
                 IS_MULTI_SELECTED,
                 IS_PINNED,
                 IS_SELECTED,
-                MEDIA_INDICATOR,
                 RAIL_COLLAPSE_STATE,
                 TAB_ACTION_BUTTON_DATA,
+                TAB_ACTION_STATE,
                 TAB_CLICK_LISTENER,
                 TAB_CONTEXT_CLICK_LISTENER,
                 TAB_GROUP_CARD_COLOR,
+                TAB_GROUP_COLOR_VIEW_PROVIDER,
                 TAB_GROUP_HEADER_ID,
                 TAB_GROUP_ID,
                 TAB_HOVER_CARD_LISTENER,

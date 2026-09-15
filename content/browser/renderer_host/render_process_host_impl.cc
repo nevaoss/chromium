@@ -1520,6 +1520,15 @@ size_t RenderProcessHost::GetMaxRendererProcessCount() {
   // This has shown to have adversarial effects, so we fall back to desktop
   // behavior for desktop-like form factors.
   if (base::FeatureList::IsEnabled(features::kRendererProcessLimitOnAndroid)) {
+    if (base::SysInfo::HasLargeProcessCountSupport() &&
+        base::FeatureList::IsEnabled(
+            features::kHigherRendererProcessLimitOnAndroid)) {
+      size_t memory_mib = base::SysInfo::AmountOfTotalPhysicalMemory().InMiB();
+      // Arbitrary, 200 for a 16GiB machine is not implausible for actual
+      // workloads.
+      return std::max(memory_mib / 80,
+                      features::kRendererProcessLimitOnAndroidCount.Get());
+    }
     return features::kRendererProcessLimitOnAndroidCount.Get();
   } else {
     return std::numeric_limits<size_t>::max();
@@ -1929,8 +1938,9 @@ bool RenderProcessHostImpl::Init() {
 #endif
 
 #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
-  int flags = renderer_prefix.empty() ? ChildProcessHost::CHILD_ALLOW_SELF
-                                      : ChildProcessHost::CHILD_NORMAL;
+  int flags = renderer_prefix.empty() ? (ChildProcessHost::CHILD_ALLOW_SELF |
+                                         ChildProcessHost::CHILD_RENDERER)
+                                      : ChildProcessHost::CHILD_RENDERER;
 #elif BUILDFLAG(IS_MAC)
   int flags = ChildProcessHost::CHILD_RENDERER;
 #else
@@ -2418,7 +2428,7 @@ void RenderProcessHostImpl::BindFileBackedBlobFactory(
   if (!file_backed_blob_factory_) {
     file_backed_blob_factory_ =
         std::make_unique<FileBackedBlobFactoryWorkerImpl>(browser_context_,
-                                                          GetDeprecatedID());
+                                                          GetID());
   }
   file_backed_blob_factory_->BindReceiver(std::move(receiver), origin.GetURL());
 }
@@ -6244,10 +6254,12 @@ void RenderProcessHostImpl::OnProcessLaunched() {
   aec_dump_manager_.set_pid(GetProcess().Pid());
   aec_dump_manager_.AutoStart();
 
-  tracing_registration_ = TracingServiceController::Get().RegisterClient(
-      GetProcess().Pid(),
-      base::BindRepeating(&RenderProcessHostImpl::BindTracedProcess,
-                          instance_weak_factory_.GetWeakPtr()));
+  if (!run_renderer_in_process()) {
+    tracing_registration_ = TracingServiceController::Get().RegisterClient(
+        GetProcess().Pid(),
+        base::BindRepeating(&RenderProcessHostImpl::BindTracedProcess,
+                            instance_weak_factory_.GetWeakPtr()));
+  }
 
 #if BUILDFLAG(IS_POSIX) && !BUILDFLAG(IS_ANDROID)
   system_tracing_service_ = std::make_unique<tracing::SystemTracingService>();

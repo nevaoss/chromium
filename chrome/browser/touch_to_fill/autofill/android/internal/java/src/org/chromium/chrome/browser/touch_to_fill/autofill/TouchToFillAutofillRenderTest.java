@@ -31,8 +31,8 @@ import org.chromium.base.test.util.DoNotBatch;
 import org.chromium.base.test.util.Feature;
 import org.chromium.chrome.browser.flags.ChromeSwitches;
 import org.chromium.chrome.browser.night_mode.ChromeNightModeTestUtils;
+import org.chromium.chrome.browser.touch_to_fill.R;
 import org.chromium.chrome.browser.touch_to_fill.common.BottomSheetFocusHelper;
-import org.chromium.chrome.browser.touch_to_fill.payments.R;
 import org.chromium.chrome.test.ChromeJUnit4RunnerDelegate;
 import org.chromium.chrome.test.transit.ChromeTransitTestRules;
 import org.chromium.chrome.test.transit.FreshCtaTransitTestRule;
@@ -101,12 +101,12 @@ public class TouchToFillAutofillRenderTest {
                         .getBottomSheetController();
         runOnUiThreadBlocking(
                 () -> {
-                    mCoordinator = new TouchToFillAutofillCoordinator();
-                    mCoordinator.initialize(
-                            mActivityTestRule.getActivity(),
-                            mBottomSheetController,
-                            mDelegateMock,
-                            mBottomSheetFocusHelper);
+                    mCoordinator =
+                            new TouchToFillAutofillCoordinator(
+                                    mActivityTestRule.getActivity(),
+                                    mBottomSheetController,
+                                    mDelegateMock,
+                                    mBottomSheetFocusHelper);
                 });
     }
 

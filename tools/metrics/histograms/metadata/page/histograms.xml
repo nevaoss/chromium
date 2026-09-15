@@ -428,6 +428,7 @@ chromium-metrics-reviews@google.com.
   <variant name=".borealis-credits"/>
   <variant name=".borealis-installer"/>
   <variant name=".borealis-motd"/>
+  <variant name=".browser-actuator-internals"/>
   <variant name=".browser-switch"/>
   <variant name=".camera-app"/>
   <variant name=".cast-feedback"/>
@@ -2301,8 +2302,8 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="PageLoad.Clients.GoogleSearch.NavigationTiming.ConnectedCallbackDelay2"
-    units="ms" expires_after="2026-10-11">
-  <owner>hayato@chromium.org</owner>
+    units="ms" expires_after="2027-10-11">
+  <owner>chikamune@chromium.org</owner>
   <owner>chrome-loading@google.com</owner>
   <improvement direction="LOWER_IS_BETTER"/>
   <summary>
@@ -2316,7 +2317,7 @@ chromium-metrics-reviews@google.com.
 <histogram
     name="PageLoad.Clients.GoogleSearch.NavigationTiming.CreateStreamDelay2"
     units="ms" expires_after="2027-02-14">
-  <owner>hayato@chromium.org</owner>
+  <owner>chikamune@chromium.org</owner>
   <owner>chrome-loading@google.com</owner>
   <improvement direction="LOWER_IS_BETTER"/>
   <summary>
@@ -2370,7 +2371,7 @@ chromium-metrics-reviews@google.com.
 <histogram
     name="PageLoad.Clients.GoogleSearch.NavigationTiming.FirstFetchStartToFirstRequestStart"
     units="ms" expires_after="2027-01-03">
-  <owner>hayato@chromium.org</owner>
+  <owner>chikamune@chromium.org</owner>
   <owner>chrome-loading@google.com</owner>
   <improvement direction="LOWER_IS_BETTER"/>
   <summary>
@@ -2420,7 +2421,7 @@ chromium-metrics-reviews@google.com.
 <histogram
     name="PageLoad.Clients.GoogleSearch.NavigationTiming.InitializeStreamDelay"
     units="ms" expires_after="2027-09-13">
-  <owner>hayato@chromium.org</owner>
+  <owner>chikamune@chromium.org</owner>
   <owner>chrome-loading@google.com</owner>
   <improvement direction="LOWER_IS_BETTER"/>
   <summary>
@@ -4326,7 +4327,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="PageLoad.Experimental.ClickInputBurst" units="count"
-    expires_after="2026-11-01">
+    expires_after="2027-02-28">
   <owner>dougarnett@chromium.org</owner>
   <owner>tbansal@chromium.org</owner>
   <owner>sullivan@chromium.org</owner>
@@ -4341,7 +4342,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="PageLoad.Experimental.InputTiming.InputToNavigationStart"
-    units="ms" expires_after="2026-12-27">
+    units="ms" expires_after="2027-02-28">
   <owner>spelchat@chromium.org</owner>
   <owner>chrome-brapp-loading@google.com</owner>
   <summary>
@@ -4384,7 +4385,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="PageLoad.Experimental.InputTiming.InputToNavigationStart.FromLinkClick"
-    units="ms" expires_after="2026-12-27">
+    units="ms" expires_after="2027-02-28">
   <owner>spelchat@chromium.org</owner>
   <owner>chrome-brapp-loading@google.com</owner>
   <summary>
@@ -4395,7 +4396,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="PageLoad.Experimental.InputTiming.InputToNavigationStart.FromOmnibox"
-    units="ms" expires_after="2026-12-27">
+    units="ms" expires_after="2027-02-28">
   <owner>spelchat@chromium.org</owner>
   <owner>chrome-brapp-loading@google.com</owner>
   <summary>
@@ -4529,7 +4530,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="PageLoad.Experimental.PageVisitFinalStatus"
-    enum="PageVisitFinalStatus" expires_after="2026-12-22">
+    enum="PageVisitFinalStatus" expires_after="2027-02-28">
   <owner>sullivan@chromium.org</owner>
   <owner>speed-metrics-dev@chromium.org</owner>
   <summary>
@@ -4565,7 +4566,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="PageLoad.Experimental.TotalForegroundDuration" units="ms"
-    expires_after="2026-12-20">
+    expires_after="2027-02-28">
   <owner>npm@chromium.org</owner>
   <owner>speed-metrics-dev@chromium.org</owner>
   <owner>chrome-prerendering@google.com</owner>
@@ -5055,7 +5056,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="PageLoad.LayoutInstability.CumulativeShiftScoreAtFirstOnHidden"
-    units="scorex10" expires_after="2026-11-30">
+    units="scorex10" expires_after="2027-02-28">
   <owner>lanwei@chromium.org</owner>
   <owner>speed-metrics-dev@chromium.org</owner>
   <summary>

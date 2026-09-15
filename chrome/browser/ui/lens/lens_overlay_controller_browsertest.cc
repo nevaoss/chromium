@@ -124,6 +124,7 @@
 #include "components/policy/core/common/mock_configuration_policy_provider.h"
 #include "components/prefs/pref_service.h"
 #include "components/sessions/content/session_tab_helper.h"
+#include "components/sessions/core/session_id.h"
 #include "components/tabs/public/tab_interface.h"
 #include "components/ukm/test_ukm_recorder.h"
 #include "content/public/browser/context_menu_params.h"
@@ -568,10 +569,8 @@ class LensSearchControllerFake : public lens::TestLensSearchController {
 
   void CloseLensAsync(lens::LensOverlayDismissalSource dismissal_source,
                       bool side_panel_already_closing) override {
-    auto* const side_panel_ui = GetTabInterface()
-                                    ->GetBrowserWindowInterface()
-                                    ->GetFeatures()
-                                    .side_panel_ui();
+    auto* const side_panel_ui =
+        SidePanelUI::From(GetTabInterface()->GetBrowserWindowInterface());
     if (!side_panel_already_closing && IsActive() &&
         side_panel_ui->IsSidePanelEntryShowing(
             SidePanelEntryKey(SidePanelEntry::Id::kLensOverlayResults))) {
@@ -798,7 +797,7 @@ class LensOverlayControllerBrowserTest : public InProcessBrowserTest {
   }
 
   bool IsSidePanelOpen() {
-    return browser()->GetFeatures().side_panel_ui()->IsSidePanelShowing();
+    return SidePanelUI::From(browser())->IsSidePanelShowing();
   }
 
   bool IsLensResultsSidePanelShowing() {
@@ -1475,7 +1474,7 @@ IN_PROC_BROWSER_TEST_F(LensOverlayControllerBrowserTest,
   ASSERT_FALSE(GetWebView()->GetEnabled());
 
   // Close the side panel.
-  browser()->GetFeatures().side_panel_ui()->Close();
+  SidePanelUI::From(browser())->Close();
 
   // Ensure the overlay closes too.
   ASSERT_TRUE(base::test::RunUntil(
@@ -1507,7 +1506,7 @@ IN_PROC_BROWSER_TEST_F(LensOverlayControllerBrowserTest,
   EXPECT_TRUE(IsLensResultsSidePanelShowing());
 
   // Close the side panel.
-  browser()->GetFeatures().side_panel_ui()->Close();
+  SidePanelUI::From(browser())->Close();
 
   // Verify that the side panel close logic was not iteratively re-triggered
   // by the notification loop, which prevents reentrancy on the ObserverList.
@@ -4534,7 +4533,7 @@ IN_PROC_BROWSER_TEST_F(LensOverlayControllerBrowserTest,
   ASSERT_EQ(controller->state(), State::kOff);
 
   // Open the side panel
-  auto* const side_panel_ui = browser()->GetFeatures().side_panel_ui();
+  auto* const side_panel_ui = SidePanelUI::From(browser());
   side_panel_ui->Show(SidePanelEntry::Id::kBookmarks);
   ASSERT_TRUE(base::test::RunUntil([&]() {
     return side_panel_ui->IsSidePanelEntryShowing(
@@ -4560,7 +4559,7 @@ IN_PROC_BROWSER_TEST_F(LensOverlayControllerBrowserTest,
   ASSERT_EQ(controller->state(), State::kOff);
 
   // Open the side panel (unrelated panel, e.g. Bookmarks)
-  auto* const side_panel_ui = browser()->GetFeatures().side_panel_ui();
+  auto* const side_panel_ui = SidePanelUI::From(browser());
   side_panel_ui->Show(SidePanelEntry::Id::kBookmarks);
   ASSERT_TRUE(base::test::RunUntil([&]() {
     return side_panel_ui->IsSidePanelEntryShowing(
@@ -4591,7 +4590,7 @@ IN_PROC_BROWSER_TEST_F(LensOverlayControllerBrowserTest,
   ASSERT_EQ(controller->state(), State::kOff);
 
   // Open the side panel
-  auto* const side_panel_ui = browser()->GetFeatures().side_panel_ui();
+  auto* const side_panel_ui = SidePanelUI::From(browser());
   side_panel_ui->Show(SidePanelEntry::Id::kBookmarks);
   ASSERT_TRUE(base::test::RunUntil([&]() {
     return side_panel_ui->IsSidePanelEntryShowing(
@@ -4636,7 +4635,7 @@ IN_PROC_BROWSER_TEST_F(LensOverlayControllerBrowserTest,
   EXPECT_FALSE(fake_controller->fake_overlay_page_.did_notify_overlay_closing_);
 
   // Open the side panel
-  auto* const side_panel_ui = browser()->GetFeatures().side_panel_ui();
+  auto* const side_panel_ui = SidePanelUI::From(browser());
   side_panel_ui->Show(SidePanelEntry::Id::kBookmarks);
   ASSERT_TRUE(base::test::RunUntil([&]() {
     return side_panel_ui->IsSidePanelEntryShowing(
@@ -4680,8 +4679,7 @@ IN_PROC_BROWSER_TEST_F(LensOverlayControllerBrowserTest,
       base::test::RunUntil([&]() { return IsLensResultsSidePanelShowing(); }));
 
   // Open a different side panel
-  browser()->GetFeatures().side_panel_ui()->Show(
-      SidePanelEntry::Id::kBookmarks);
+  SidePanelUI::From(browser())->Show(SidePanelEntry::Id::kBookmarks);
 
   // Overlay should close.
   ASSERT_TRUE(base::test::RunUntil(
@@ -4692,8 +4690,7 @@ IN_PROC_BROWSER_TEST_F(LensOverlayControllerBrowserTest, SidePanelOpen) {
   WaitForPaint();
 
   // Wait for side panel to fully open.
-  browser()->GetFeatures().side_panel_ui()->Show(
-      SidePanelEntry::Id::kBookmarks);
+  SidePanelUI::From(browser())->Show(SidePanelEntry::Id::kBookmarks);
   ASSERT_TRUE(base::test::RunUntil(
       [&]() { return GetSidePanel()->state() == SidePanel::State::kOpen; }));
 
@@ -5333,10 +5330,8 @@ IN_PROC_BROWSER_TEST_F(LensOverlayControllerBrowserFullscreenDisabled,
       [&]() { return controller->state() == State::kOverlay; }));
 
   // Enter into fullscreen mode.
-  FullscreenController* fullscreen_controller = browser()
-                                                    ->GetFeatures()
-                                                    .exclusive_access_manager()
-                                                    ->fullscreen_controller();
+  FullscreenController* fullscreen_controller =
+      ExclusiveAccessManager::From(browser())->fullscreen_controller();
   content::WebContents* tab_web_contents =
       browser()->GetTabStripModel()->GetActiveWebContents();
   fullscreen_controller->EnterFullscreenModeForTab(
@@ -5362,10 +5357,8 @@ IN_PROC_BROWSER_TEST_F(LensOverlayControllerBrowserFullscreenDisabled,
           IDC_CONTENT_CONTEXT_LENS_OVERLAY));
 
   // Enter into fullscreen mode.
-  FullscreenController* fullscreen_controller = browser()
-                                                    ->GetFeatures()
-                                                    .exclusive_access_manager()
-                                                    ->fullscreen_controller();
+  FullscreenController* fullscreen_controller =
+      ExclusiveAccessManager::From(browser())->fullscreen_controller();
   content::WebContents* tab_web_contents =
       browser()->GetTabStripModel()->GetActiveWebContents();
   fullscreen_controller->EnterFullscreenModeForTab(
@@ -6278,7 +6271,7 @@ IN_PROC_BROWSER_TEST_P(LensOverlayControllerBrowserPDFContextualizationTest,
             metrics::OmniboxEventProto::CONTEXTUAL_SEARCHBOX);
 
   // Expect the Lens Overlay results panel to open.
-  EXPECT_TRUE(browser()->GetFeatures().side_panel_ui()->IsSidePanelEntryShowing(
+  EXPECT_TRUE(SidePanelUI::From(browser())->IsSidePanelEntryShowing(
       SidePanelEntryKey(SidePanelEntryId::kLensOverlayResults)));
   EXPECT_TRUE(content::WaitForLoadStop(
       controller->GetSidePanelWebContentsForTesting()));
@@ -9034,7 +9027,7 @@ IN_PROC_BROWSER_TEST_F(LensOverlayControllerSideBySideBrowserTest,
   EXPECT_TRUE(rounded_corners.upper_left() == 0);
 
   // Test per-entry alignment override to left-align the active side panel.
-  auto* side_panel_ui = browser()->GetFeatures().side_panel_ui();
+  auto* side_panel_ui = SidePanelUI::From(browser());
   ASSERT_TRUE(side_panel_ui);
   auto current_entry_id = side_panel_ui->GetCurrentEntryId();
   ASSERT_TRUE(current_entry_id.has_value());
@@ -9191,7 +9184,7 @@ IN_PROC_BROWSER_TEST_F(LensOverlayControllerBrowserTest,
                                     0);
 
   // Open the side panel so we can test the side panel closing metric.
-  auto* const side_panel_ui = browser()->GetFeatures().side_panel_ui();
+  auto* const side_panel_ui = SidePanelUI::From(browser());
   side_panel_ui->Show(SidePanelEntry::Id::kBookmarks);
   ASSERT_TRUE(base::test::RunUntil([&]() {
     return side_panel_ui->IsSidePanelEntryShowing(
@@ -9703,7 +9696,7 @@ IN_PROC_BROWSER_TEST_F(LensOverlayControllerReinvocationBrowserTest,
   controller->IssueLensRegionRequestForTesting(kTestRegion->Clone(),
                                                /*is_click=*/false);
   // Expect the Lens Overlay results panel to open.
-  ASSERT_TRUE(browser()->GetFeatures().side_panel_ui()->IsSidePanelEntryShowing(
+  ASSERT_TRUE(SidePanelUI::From(browser())->IsSidePanelEntryShowing(
       SidePanelEntryKey(SidePanelEntryId::kLensOverlayResults)));
   EXPECT_TRUE(content::WaitForLoadStop(
       controller->GetSidePanelWebContentsForTesting()));

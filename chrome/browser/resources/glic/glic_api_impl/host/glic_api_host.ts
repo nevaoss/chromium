@@ -7,7 +7,7 @@
 
 import {assert} from '//resources/js/assert.js';
 
-import {ActorClientReceiver, ActorHandlerRemote, AnnotationHandlerRemote, ExperimentalTriggeringClientReceiver, GlicRequestEvent as MojomGlicRequestEvent, SkillsClientReceiver, SkillsHandlerRemote, WebClientHandlerRemote, ZeroStateSuggestionsHandlerRemote} from '../../glic.mojom-webui.js';
+import {ActorClientReceiver, ActorHandlerRemote, AnnotationHandlerRemote, ExperimentalTriggeringClientReceiver, GlicRequestEvent as MojomGlicRequestEvent, WebClientHandlerRemote, ZeroStateSuggestionsHandlerRemote} from '../../glic.mojom-webui.js';
 import type {ExperimentalTriggeringUpdatesHandlerRemote, WebClientInitialState} from '../../glic.mojom-webui.js';
 import {ObservableValue} from '../../observable.js';
 import type {ObservableValueReadOnly} from '../../observable.js';
@@ -20,10 +20,9 @@ import type {AnnotationHost} from '../annotation/annotation_types.js';
 import {ExperimentalTriggeringClientImpl} from '../experimental_triggering/experimental_triggering_host.js';
 import {ExperimentalTriggeringClientDef} from '../experimental_triggering/experimental_triggering_types.js';
 import type {ExperimentalTriggeringClient} from '../experimental_triggering/experimental_triggering_types.js';
+import {maybeWrapWithLogging} from '../mojo_logging.js';
 import {getHostRequestHistogramInfo} from '../request_types.js';
-import type {ActorClient, ActorHost, SkillsClient, SkillsHost, WebClient, ZeroStateSuggestionsHost} from '../request_types.js';
-import {SkillsClientImpl, SkillsHostMessageHandler} from '../skills/skills_host.js';
-import {SkillsClientDef, SkillsHostDef} from '../skills/skills_types.js';
+import type {ActorClient, ActorHost, WebClient, ZeroStateSuggestionsHost} from '../request_types.js';
 import type {ResponseExtras} from '../transport/messaging.js';
 import type {InterfaceDef, PendingReceiver, PendingRemote, PostMessageLifecycleObserver, PostMessageRemote, PostMessageRouter} from '../transport/post_message_transport.js';
 import {ZeroStateSuggestionsHostMessageHandler} from '../zero_state_suggestions/zero_state_suggestions_host.js';
@@ -31,7 +30,7 @@ import {ZeroStateSuggestionsHostDef} from '../zero_state_suggestions/zero_state_
 
 import {urlFromClient} from './conversions.js';
 import {HostMessageHandler} from './host_from_client.js';
-import type {CaptureRegionObserverImpl, PinCandidatesObserverImpl} from './host_from_client.js';
+import type {CaptureRegionObserverImpl} from './host_from_client.js';
 import {PanelOpenState} from './types.js';
 
 
@@ -76,7 +75,7 @@ export class GlicApiHost implements PostMessageLifecycleObserver {
   sender: PostMessageRemote<WebClient>;
   panelIsActive = false;
 
-  private handler: WebClientHandlerRemote;
+  readonly handler: WebClientHandlerRemote;
   get handlerForTesting(): WebClientHandlerRemote {
     return this.handler;
   }
@@ -93,13 +92,10 @@ export class GlicApiHost implements PostMessageLifecycleObserver {
   private panelOpenState = PanelOpenState.CLOSED;
   private instanceIsActive = true;
   detailedWebClientState = DetailedWebClientState.BOOTSTRAP_PENDING;
-  // Present while the client is monitoring pin candidates.
-  pinCandidatesObserver?: PinCandidatesObserverImpl;
   captureRegionObserver?: CaptureRegionObserverImpl;
 
   actorHandler?: ActorHandlerRemote;
   annotationHandler?: AnnotationHandlerRemote;
-  skillsHandler?: SkillsHandlerRemote;
   readonly router: PostMessageRouter;
 
   zeroStateSuggestionsHandler?: ZeroStateSuggestionsHandlerRemote;
@@ -117,7 +113,8 @@ export class GlicApiHost implements PostMessageLifecycleObserver {
   ) {
     this.router = hostRouter;
     this.sender = hostRemote;
-    this.handler = new WebClientHandlerRemote();
+    this.handler = maybeWrapWithLogging(
+        new WebClientHandlerRemote(), {prefix: 'WebClientHandler'});
     this.handler.onConnectionError.addListener(() => {
       if (this.isDestroyed ||
           this.webClientState.getCurrentValue() === WebClientState.ERROR) {
@@ -146,7 +143,6 @@ export class GlicApiHost implements PostMessageLifecycleObserver {
     this.webClientState = ObservableValue.withValue<WebClientState>(
         WebClientState.ERROR);  // Final state
     this.hostMessageHandler.destroy();
-    this.pinCandidatesObserver?.disconnectFromSource();
     this.captureRegionObserver?.destroy();
     if (this.actorHandler) {
       this.actorHandler.$.close();
@@ -155,10 +151,6 @@ export class GlicApiHost implements PostMessageLifecycleObserver {
     if (this.annotationHandler) {
       this.annotationHandler.$.close();
       this.annotationHandler = undefined;
-    }
-    if (this.skillsHandler) {
-      this.skillsHandler.$.close();
-      this.skillsHandler = undefined;
     }
     for (const handler of this.experimentalTriggeringUpdatesHandler.values()) {
       handler.$.close();
@@ -169,8 +161,6 @@ export class GlicApiHost implements PostMessageLifecycleObserver {
   setInitialState(initialState: WebClientInitialState): {
     actorRemote?: PendingRemote<ActorHost>,
     actorReceiver?: PendingReceiver<ActorClient>,
-    skillsRemote?: PendingRemote<SkillsHost>,
-    skillsReceiver?: PendingReceiver<SkillsClient>,
     experimentalTriggeringReceiver?: PendingReceiver<
                                       ExperimentalTriggeringClient>,
     zeroStateSuggestionsRemote?: PendingRemote<ZeroStateSuggestionsHost>,
@@ -182,7 +172,8 @@ export class GlicApiHost implements PostMessageLifecycleObserver {
     let actorReceiver: PendingReceiver<ActorClient>|undefined;
 
     if (initialState.enableActInFocusedTab) {
-      this.actorHandler = new ActorHandlerRemote();
+      this.actorHandler = maybeWrapWithLogging(
+          new ActorHandlerRemote(), {prefix: 'ActorHandler'});
       const {remote: clientRemote, receiver: receiverVal} =
           this.router.newPipeWithRemote(ActorClientDef);
       const actorClientReceiver =
@@ -198,20 +189,6 @@ export class GlicApiHost implements PostMessageLifecycleObserver {
       actorReceiver = receiverVal;
     }
 
-    this.skillsHandler = new SkillsHandlerRemote();
-    const {remote: skillsClientRemote, receiver: skillsReceiver} =
-        this.router.newPipeWithRemote(SkillsClientDef);
-    const skillsClientReceiver =
-        new SkillsClientReceiver(new SkillsClientImpl(skillsClientRemote));
-    this.handler.createSkillsHandler(
-        this.skillsHandler.$.bindNewPipeAndPassReceiver(),
-        skillsClientReceiver.$.bindNewPipeAndPassRemote());
-    const skillsHostMessageHandler =
-        new SkillsHostMessageHandler(this.skillsHandler);
-    const {remote: hostRemote} = this.router.newPipeWithReceiver(
-        skillsHostMessageHandler, SkillsHostDef);
-    const skillsRemote = hostRemote;
-
     const {remote: clientRemote, receiver: experimentalTriggeringReceiver} =
         this.router.newPipeWithRemote(ExperimentalTriggeringClientDef);
     const experimentalTriggeringClientReceiver =
@@ -223,8 +200,9 @@ export class GlicApiHost implements PostMessageLifecycleObserver {
     let zeroStateSuggestionsRemote: PendingRemote<ZeroStateSuggestionsHost>|
         undefined;
     if (initialState.enableZeroStateSuggestions) {
-      this.zeroStateSuggestionsHandler =
-          new ZeroStateSuggestionsHandlerRemote();
+      this.zeroStateSuggestionsHandler = maybeWrapWithLogging(
+          new ZeroStateSuggestionsHandlerRemote(),
+          {prefix: 'ZeroStateSuggestionsHandler'});
       this.handler.createZeroStateSuggestionsHandler(
           this.zeroStateSuggestionsHandler.$.bindNewPipeAndPassReceiver());
       const zeroStateSuggestionsHostMessageHandler =
@@ -240,8 +218,6 @@ export class GlicApiHost implements PostMessageLifecycleObserver {
     return {
       actorRemote,
       actorReceiver,
-      skillsRemote,
-      skillsReceiver,
       experimentalTriggeringReceiver,
       zeroStateSuggestionsRemote,
     };
@@ -249,7 +225,8 @@ export class GlicApiHost implements PostMessageLifecycleObserver {
 
   createAnnotationHandler(receiver: PendingReceiver<AnnotationHost>): void {
     assert(!this.annotationHandler);
-    this.annotationHandler = new AnnotationHandlerRemote();
+    this.annotationHandler = maybeWrapWithLogging(
+        new AnnotationHandlerRemote(), {prefix: 'AnnotationHandler'});
     this.handler.createAnnotationHandler(
         this.annotationHandler.$.bindNewPipeAndPassReceiver());
     const annotationHostMessageHandler =
@@ -288,11 +265,6 @@ export class GlicApiHost implements PostMessageLifecycleObserver {
   panelOpenStateChanged(state: PanelOpenState) {
     this.panelOpenState = state;
     this.clientActiveObs.assignAndSignal(this.isClientActive());
-    if (state === PanelOpenState.CLOSED) {
-      this.pinCandidatesObserver?.disconnectFromSource();
-    } else {
-      this.pinCandidatesObserver?.connectToSource();
-    }
   }
 
   setInstanceIsActive(instanceIsActive: boolean) {

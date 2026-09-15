@@ -10,7 +10,9 @@
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/time/time.h"
+#include "base/timer/timer.h"
 #include "components/one_time_tokens/core/browser/one_time_token_service.h"
+#include "components/one_time_tokens/core/browser/one_time_token_service_constants.h"
 #include "components/one_time_tokens/core/browser/util/expiring_subscription.h"
 
 namespace autofill {
@@ -22,6 +24,8 @@ class OtpMetricsTracker {
  public:
   static constexpr char kFieldDetectionToTickleLatencyHistogram[] =
       "Autofill.OneTimeTokens.FieldDetectionToTickleLatency";
+  static constexpr char kTickleToFieldDetectionLatencyHistogram[] =
+      "Autofill.OneTimeTokens.TickleToFieldDetectionLatency";
 
   // Maximum duration between OTP field detection and tickle arrival for them to
   // be considered correlated. If more than this time has passed, the tickle is
@@ -47,6 +51,7 @@ class OtpMetricsTracker {
 
  private:
   void OnTickleReceived(one_time_tokens::OneTimeTokenSource source);
+  void OnTickleTimeout();
 
   raw_ptr<one_time_tokens::OneTimeTokenService> one_time_token_service_;
   one_time_tokens::ExpiringSubscription tickle_subscription_;
@@ -54,6 +59,14 @@ class OtpMetricsTracker {
   // Timestamp of the most recently detected OTP field. `std::nullopt` before
   // any OTP field is detected or once a session has completed/timed out.
   std::optional<base::TimeTicks> field_detection_time_;
+
+  // Timestamp of the most recently received tickle.
+  std::optional<base::TimeTicks> tickle_time_;
+
+  // Timer to record `TickleArrival::kWithoutFieldDetection` when a tickle is
+  // not followed by an OTP field detection within
+  // `kNotificationExpirationDuration`.
+  base::OneShotTimer tickle_timeout_timer_;
 
   base::WeakPtrFactory<OtpMetricsTracker> weak_ptr_factory_{this};
 };

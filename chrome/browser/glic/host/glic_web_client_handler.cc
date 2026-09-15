@@ -97,6 +97,8 @@
 #include "mojo/public/cpp/bindings/callback_helpers.h"
 #include "third_party/skia/include/core/SkBitmap.h"
 #include "ui/base/base_window.h"
+#include "ui/base/page_transition_types.h"
+#include "ui/base/window_open_disposition.h"
 #include "ui/display/screen.h"
 
 #if !BUILDFLAG(IS_ANDROID)
@@ -415,6 +417,16 @@ class GlicWebClientHandler
     return host().GetSharingManagerInternal();
   }
 
+  void LogApiRequest(GlicHostApiRequestId request_type_id) {
+    LogApiRequestCount(request_type_id,
+                       mojom::GlicRequestEvent::kRequestReceived);
+    if (!active_state_calculator_.IsActive()) {
+      LogApiRequestCount(
+          request_type_id,
+          mojom::GlicRequestEvent::kRequestReceivedWhileInactive);
+    }
+  }
+
   // glic::mojom::WebClientHandler implementation.
   void SwitchConversation(glic::mojom::ConversationInfoPtr info,
                           SwitchConversationCallback callback) override {
@@ -643,6 +655,7 @@ class GlicWebClientHandler
   void CreateTab(const ::GURL& url,
                  glic::mojom::CreateTabOptionsPtr create_options,
                  CreateTabCallback callback) override {
+    LogApiRequest(GlicHostApiRequestId::kCreateTab);
     bool open_in_background = create_options->open_in_background;
     std::optional<int32_t> window_id = create_options->window_id;
     if (base::FeatureList::IsEnabled(media::kMediaLinkHelpers)) {
@@ -664,6 +677,7 @@ class GlicWebClientHandler
   void ActivateTabWithUrl(const ::GURL& exact_url,
                           glic::mojom::ActivateTabOptionsPtr options,
                           ActivateTabWithUrlCallback callback) override {
+    LogApiRequestCount(GlicHostApiRequestId::kActivateTabWithUrl);
     tabs::TabInterface* exact_match_tab = nullptr;
     tabs::TabInterface* pattern_match_tab = nullptr;
     std::string pattern_str = options ? options->pattern : "";
@@ -1194,8 +1208,12 @@ class GlicWebClientHandler
   }
 
   void SyncCookies(SyncCookiesCallback callback) override {
-    glic_service_->GetAuthController().ForceSyncCookies(
-        GlicCookieSyncTrigger::kGlicClient, std::move(callback));
+    if (auto* auth_controller = glic_service_->GetAuthController()) {
+      auth_controller->ForceSyncCookies(GlicCookieSyncTrigger::kGlicClient,
+                                        std::move(callback));
+    } else {
+      std::move(callback).Run(true);
+    }
   }
 
   void ClientErrorDialogStateChanged(
@@ -1204,13 +1222,17 @@ class GlicWebClientHandler
     if (shown_dialog_type) {
       base::UmaHistogramEnumeration("Glic.Api.Client.ErrorDialogShown",
                                     *shown_dialog_type);
-      glic_service_->GetAuthController().OnClientError();
+      if (auto* auth_controller = glic_service_->GetAuthController()) {
+        auth_controller->OnClientError();
+      }
     }
   }
 
   void ReportClientTransientError(
       mojo_base::mojom::AbslStatusCode status_code) override {
-    glic_service_->GetAuthController().OnClientTransientError(status_code);
+    if (auto* auth_controller = glic_service_->GetAuthController()) {
+      auth_controller->OnClientTransientError(status_code);
+    }
     base::UmaHistogramSparse("Glic.Api.Client.TransientError",
                              static_cast<int>(status_code));
   }
@@ -1415,6 +1437,7 @@ class GlicWebClientHandler
   void SubscribeToPinCandidates(
       mojom::GetPinCandidatesOptionsPtr options,
       mojo::PendingRemote<mojom::PinCandidatesObserver> observer) override {
+    LogApiRequest(GlicHostApiRequestId::kSubscribeToPinCandidates);
     host().pin_candidate_provider().SubscribeToPinCandidates(
         std::move(options), std::move(observer));
   }

@@ -276,6 +276,7 @@ CONTENT_EXPORT BASE_DECLARE_FEATURE(kRegionCaptureOfOtherTabs);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kRenderDocument);
 #if BUILDFLAG(IS_ANDROID)
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kRendererProcessLimitOnAndroid);
+CONTENT_EXPORT BASE_DECLARE_FEATURE(kHigherRendererProcessLimitOnAndroid);
 CONTENT_EXPORT BASE_DECLARE_FEATURE_PARAM(size_t,
                                           kRendererProcessLimitOnAndroidCount);
 #endif
@@ -398,7 +399,6 @@ CONTENT_EXPORT BASE_DECLARE_FEATURE(
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kAccessibilitySequentialFocus);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(
     kAccessibilitySetSelectableOnAllNodesWithText);
-CONTENT_EXPORT BASE_DECLARE_FEATURE(kAccessibilityUnifiedSnapshots);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(
     kAccessibilityManageBroadcastReceiverOnBackground);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kAndroidDesktopZoomScaling);

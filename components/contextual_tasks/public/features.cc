@@ -51,6 +51,9 @@ BASE_FEATURE(kContextualTasksEphemeralBrandedEntryPoint,
 BASE_FEATURE(kContextualTasksExtraOauthScopes,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
+// Enables the Google Drive OAuth scope for contextual tasks.
+BASE_FEATURE(kContextualTasksDriveOAuthScope, base::FEATURE_ENABLED_BY_DEFAULT);
+
 // Enables the pin button in the toolbar for contextual tasks.
 BASE_FEATURE(kEnableContextualTasksPinButtonInToolbar,
              base::FEATURE_DISABLED_BY_DEFAULT);
@@ -117,8 +120,6 @@ BASE_FEATURE(kContextualTasksSendContextualInputUploadType,
 BASE_FEATURE(kContextualTasksUrlRedirectToAimUrl,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-BASE_FEATURE(kContextualTasksUseStratusDarkModeColors,
-             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // If enabled, animates the caret.
 BASE_FEATURE(kContextualTasksAnimatedCaret, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -193,6 +194,13 @@ BASE_FEATURE(kContextualTasksSidePanelRearchitecture,
 
 BASE_FEATURE(kContextualTasksEnableStickyConversation,
              base::FEATURE_DISABLED_BY_DEFAULT);
+
+BASE_FEATURE(kContextualTasksNonBlockingUrlNavigation,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+
+bool GetIsContextualTasksNonBlockingUrlNavigationEnabled() {
+  return base::FeatureList::IsEnabled(kContextualTasksNonBlockingUrlNavigation);
+}
 
 bool GetIsContextualTasksPdfCitationsEnabled() {
   return base::FeatureList::IsEnabled(kContextualTasksPdfCitations);
@@ -840,9 +848,6 @@ bool ShouldEnableLockAndUnlockInputCapability() {
          kContextualTasksLockAndUnlockInputCapability.Get();
 }
 
-bool ShouldUseStratusDarkModeColors() {
-  return base::FeatureList::IsEnabled(kContextualTasksUseStratusDarkModeColors);
-}
 
 bool GetEnableFileHint() {
   return base::FeatureList::IsEnabled(kContextualTasksEnableFileHint);
@@ -879,6 +884,11 @@ const base::FeatureParam<std::string> kContextualTasksSearchCapabilitiesVersion{
 
 std::string GetContextualTasksSearchCapabilitiesVersion() {
   return kContextualTasksSearchCapabilitiesVersion.Get();
+}
+
+bool IsContextualTasksUnboundedMenuEnabled() {
+  return base::FeatureList::IsEnabled(kContextualTasksUnboundedMenu) ||
+         IsContextualTasksSidePanelRearchitectureEnabled();
 }
 
 bool IsContextualTasksUIEnabled() {

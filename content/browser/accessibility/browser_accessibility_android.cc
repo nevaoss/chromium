@@ -866,13 +866,14 @@ bool BrowserAccessibilityAndroid::ComputeIsLeaf() const {
     return false;
   }
 
-  // Button, date and time controls should not expose their children to Android
-  // accessibility APIs.
+  // Button, date, time, and slider controls should not expose their children
+  // to Android accessibility APIs.
   switch (GetRole()) {
     case ax::mojom::Role::kButton:
     case ax::mojom::Role::kDate:
     case ax::mojom::Role::kDateTime:
     case ax::mojom::Role::kInputTime:
+    case ax::mojom::Role::kSlider:
       return true;
     default:
       break;
@@ -924,6 +925,13 @@ bool BrowserAccessibilityAndroid::ComputeIsLeaf() const {
   // that list markers have a different role and should not be dropped.
   if (HasOnlyTextChildren() && !HasListMarkerChild()) {
     return true;
+  }
+
+  // Headings can drop their children if the name comes from an attribute (e.g.
+  // aria-label) in order to avoid announcing the contents twice.
+  if (GetRole() == ax::mojom::Role::kHeading &&
+      GetNameFrom() == ax::mojom::NameFrom::kAttribute) {
+    return IsLeafConsideringChildren();
   }
 
   // Headings, focusable nodes, and options/menu-items can drop their children

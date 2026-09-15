@@ -99,6 +99,10 @@ inline constexpr char16_t kChromeUICookieSettingsURL[] =
     u"chrome://settings/cookies";
 inline constexpr char kChromeUICrashesHost[] = "crashes";
 inline constexpr char kChromeUICrashesUrl[] = "chrome://crashes";
+inline constexpr char kChromeUICriticalActionsInternalsHost[] =
+    "critical-actions-internals";
+inline constexpr char kChromeUICriticalActionsInternalsURL[] =
+    "chrome://critical-actions-internals/";
 inline constexpr char kChromeUICreditsHost[] = "credits";
 inline constexpr char kChromeUICreditsURL[] = "chrome://credits/";
 inline constexpr char16_t kChromeUICreditsURL16[] = u"chrome://credits/";
@@ -171,6 +175,7 @@ inline constexpr char16_t kChromeUIFlagsURL16[] = u"chrome://flags/";
 inline constexpr char kChromeUIGCMInternalsHost[] = "gcm-internals";
 inline constexpr char kChromeUIGlicHost[] = "glic";
 inline constexpr char kChromeUIGlicURL[] = "chrome://glic/";
+inline constexpr char kChromeUIGlicOverlayURL[] = "chrome://glic/overlay";
 inline constexpr char kChromeUIGlicUntrustedHost[] = "glic";
 inline constexpr char kChromeUIGlicUntrustedURL[] = "chrome-untrusted://glic/";
 inline constexpr char kChromeUIGlicSelectionOverlayURL[] =

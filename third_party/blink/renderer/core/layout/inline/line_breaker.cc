@@ -2331,20 +2331,14 @@ void LineBreaker::AppendCandidates(const InlineItemResult& item_result,
 
 bool LineBreaker::CanBreakInside(const LineInfo& line_info) {
   const InlineItemResults& item_results = line_info.Results();
-  if (RuntimeEnabledFeatures::SkipOofItemForBreakCandidateEnabled()) {
-    for (wtf_size_t i = 0; i < item_results.size() - 1; ++i) {
-      if (item_results[i].can_break_after) {
-        for (++i; i < item_results.size(); ++i) {
-          if (!item_results[i].item->IsFloatingOrOutOfFlowPositioned()) {
-            return true;
-          }
+  for (wtf_size_t i = 0; i < item_results.size() - 1; ++i) {
+    if (item_results[i].can_break_after) {
+      for (++i; i < item_results.size(); ++i) {
+        if (!item_results[i].item->IsFloatingOrOutOfFlowPositioned()) {
+          return true;
         }
       }
     }
-  } else if (std::ranges::any_of(
-                 base::span(item_results).first(item_results.size() - 1),
-                 std::identity(), &InlineItemResult::can_break_after)) {
-    return true;
   }
   for (const InlineItemResult& item_result : item_results) {
     DCHECK(item_result.item);
@@ -2971,12 +2965,9 @@ void LineBreaker::HandleControlItem(const InlineItem& item,
         HandleEmptyText(item, line_info);
         return;
       }
-      const Font* font = RuntimeEnabledFeatures::TabSizeAncestorEnabled()
-                             ? &node_.FontForTab()
-                             : style.GetFont();
       const ShapeResult* shape_result =
           ShapeResult::CreateForTabulationCharacters(
-              font, item.Direction(), style.GetTabSize(),
+              &node_.FontForTab(), item.Direction(), style.GetTabSize(),
               (RuntimeEnabledFeatures::TabAlignmentWithFloatsEnabled()
                    ? position_ + ComputeFloatOffset()
                    : position_) +
@@ -3045,8 +3036,13 @@ void LineBreaker::HandleBidiControlItem(const InlineItem& item,
       state_ = LineBreakState::kDone;
       return;
     }
-    InlineItemResult* item_result = AddItem(item, line_info);
-    DCHECK(!item_result->can_break_after);
+    if (!item_results->empty() &&
+        RuntimeEnabledFeatures::LineBreakBidiControlEnterEnabled()) {
+      InlineItemResult* item_result = AddItem(item, line_info);
+      ComputeCanBreakAfter(item_result, auto_wrap_, break_iterator_);
+    } else {
+      AddItem(item, line_info);
+    }
   }
   MoveToNextOf(item);
 }

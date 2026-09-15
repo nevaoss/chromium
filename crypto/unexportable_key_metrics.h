@@ -8,6 +8,7 @@
 #include <string>
 
 #include "crypto/crypto_export.h"
+#include "crypto/sign.h"
 #include "crypto/unexportable_key.h"
 
 namespace crypto {

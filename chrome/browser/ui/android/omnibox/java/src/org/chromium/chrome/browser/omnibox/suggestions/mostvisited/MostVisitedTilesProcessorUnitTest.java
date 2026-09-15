@@ -11,9 +11,7 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.lenient;
-import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.robolectric.Shadows.shadowOf;
@@ -31,7 +29,6 @@ import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
-import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
@@ -77,7 +74,7 @@ public final class MostVisitedTilesProcessorUnitTest {
     private static final GURL NAV_URL_2 = JUnitTestGURLs.URL_2;
     private static final GURL SEARCH_URL = JUnitTestGURLs.SEARCH_URL;
 
-    @Rule public final MockitoRule mockitoRule = MockitoJUnit.rule();
+    @Rule public final MockitoRule mMockitoRule = MockitoJUnit.rule();
 
     private Context mContext;
     private PropertyModel mPropertyModel;
@@ -240,7 +237,7 @@ public final class MostVisitedTilesProcessorUnitTest {
         List<ListItem> tileList =
                 populateMatchesForHorizontalRenderGroup(0, new TileData("title", NAV_URL, false));
 
-        verify(mImageSupplier, times(1)).fetchFavicon(eq(NAV_URL), any());
+        verify(mImageSupplier).fetchFavicon(eq(NAV_URL), any());
         mFavIconCallbackCaptor
                 .getValue()
                 .onResult(new BitmapDrawable(mContext.getResources(), mFaviconBitmap));
@@ -332,21 +329,18 @@ public final class MostVisitedTilesProcessorUnitTest {
                         new TileData("nav1", NAV_URL, false),
                         new TileData("nav2", NAV_URL_2, false));
 
-        InOrder ordered = inOrder(mSuggestionHost);
-
         // Simulate tile clicks.
         // Note that the value being passed to the suggestion host denotes position of the Carousel
         // on the list, rather than placement of the tile.
         tileList.get(1).model.get(TileViewProperties.ON_CLICK).onClick(null);
-        ordered.verify(mSuggestionHost, times(1))
-                .onSuggestionClicked(eq(mMatches.get(1)), eq(3), eq(NAV_URL), eq(0));
+        verify(mSuggestionHost).onSuggestionClicked(eq(mMatches.get(1)), eq(3), eq(NAV_URL), eq(0));
 
         tileList.get(2).model.get(TileViewProperties.ON_CLICK).onClick(null);
-        ordered.verify(mSuggestionHost, times(1))
+        verify(mSuggestionHost)
                 .onSuggestionClicked(eq(mMatches.get(2)), eq(3), eq(NAV_URL_2), eq(0));
 
         tileList.get(0).model.get(TileViewProperties.ON_CLICK).onClick(null);
-        ordered.verify(mSuggestionHost, times(1))
+        verify(mSuggestionHost)
                 .onSuggestionClicked(eq(mMatches.get(0)), eq(3), eq(SEARCH_URL), eq(0));
 
         verifyNoMoreInteractions(mSuggestionHost);
@@ -383,21 +377,18 @@ public final class MostVisitedTilesProcessorUnitTest {
                         new TileData("nav1", NAV_URL, false),
                         new TileData("nav2", NAV_URL_2, false));
 
-        InOrder ordered = inOrder(mSuggestionHost);
-
         // Simulate tile clicks.
         // Note that the value being passed to the suggestion host denotes position of the Carousel
         // on the list, rather than placement of the tile.
         tileList.get(1).model.get(TileViewProperties.ON_CLICK).onClick(null);
-        ordered.verify(mSuggestionHost, times(1))
-                .onSuggestionClicked(eq(mMatches.get(1)), eq(3), eq(NAV_URL), eq(0));
+        verify(mSuggestionHost).onSuggestionClicked(eq(mMatches.get(1)), eq(3), eq(NAV_URL), eq(0));
 
         tileList.get(2).model.get(TileViewProperties.ON_CLICK).onClick(null);
-        ordered.verify(mSuggestionHost, times(1))
+        verify(mSuggestionHost)
                 .onSuggestionClicked(eq(mMatches.get(2)), eq(3), eq(NAV_URL_2), eq(0));
 
         tileList.get(0).model.get(TileViewProperties.ON_CLICK).onClick(null);
-        ordered.verify(mSuggestionHost, times(1))
+        verify(mSuggestionHost)
                 .onSuggestionClicked(eq(mMatches.get(0)), eq(3), eq(SEARCH_URL), eq(0));
 
         verifyNoMoreInteractions(mSuggestionHost);
@@ -434,22 +425,17 @@ public final class MostVisitedTilesProcessorUnitTest {
                         new TileData("nav1", NAV_URL, true),
                         new TileData("nav2", NAV_URL_2, true));
 
-        InOrder ordered = inOrder(mSuggestionHost);
-
         // Simulate tile long-clicks.
         // Note that this passes both placement of the carousel in the list as well as particular
         // element that is getting removed.
         tileList.get(1).model.get(TileViewProperties.ON_LONG_CLICK).onLongClick(null);
-        ordered.verify(mSuggestionHost, times(1))
-                .confirmDeleteMatch(eq(mMatches.get(1)), eq("nav1"));
+        verify(mSuggestionHost).confirmDeleteMatch(eq(mMatches.get(1)), eq("nav1"));
 
         tileList.get(2).model.get(TileViewProperties.ON_LONG_CLICK).onLongClick(null);
-        ordered.verify(mSuggestionHost, times(1))
-                .confirmDeleteMatch(eq(mMatches.get(2)), eq("nav2"));
+        verify(mSuggestionHost).confirmDeleteMatch(eq(mMatches.get(2)), eq("nav2"));
 
         tileList.get(0).model.get(TileViewProperties.ON_LONG_CLICK).onLongClick(null);
-        ordered.verify(mSuggestionHost, times(1))
-                .confirmDeleteMatch(eq(mMatches.get(0)), eq("search1"));
+        verify(mSuggestionHost).confirmDeleteMatch(eq(mMatches.get(0)), eq("search1"));
 
         verifyNoMoreInteractions(mSuggestionHost);
         verifyNoMoreInteractions(mImageSupplier);
@@ -464,19 +450,17 @@ public final class MostVisitedTilesProcessorUnitTest {
                         new TileData("nav1", NAV_URL, true),
                         new TileData("nav2", NAV_URL_2, true));
 
-        InOrder ordered = inOrder(mSuggestionHost);
-
         // Simulate tile long-clicks.
         // Note that this passes both placement of the carousel in the list as well as particular
         // element that is getting removed.
         tileList.get(1).model.get(TileViewProperties.ON_LONG_CLICK).onLongClick(null);
-        ordered.verify(mSuggestionHost).confirmDeleteMatch(eq(mMatches.get(1)), eq("nav1"));
+        verify(mSuggestionHost).confirmDeleteMatch(eq(mMatches.get(1)), eq("nav1"));
 
         tileList.get(2).model.get(TileViewProperties.ON_LONG_CLICK).onLongClick(null);
-        ordered.verify(mSuggestionHost).confirmDeleteMatch(eq(mMatches.get(2)), eq("nav2"));
+        verify(mSuggestionHost).confirmDeleteMatch(eq(mMatches.get(2)), eq("nav2"));
 
         tileList.get(0).model.get(TileViewProperties.ON_LONG_CLICK).onLongClick(null);
-        ordered.verify(mSuggestionHost).confirmDeleteMatch(eq(mMatches.get(0)), eq("search1"));
+        verify(mSuggestionHost).confirmDeleteMatch(eq(mMatches.get(0)), eq("search1"));
 
         verifyNoMoreInteractions(mSuggestionHost);
         verifyNoMoreInteractions(mImageSupplier);
@@ -491,18 +475,16 @@ public final class MostVisitedTilesProcessorUnitTest {
                         new TileData("nav1", NAV_URL, true),
                         new TileData("nav2", NAV_URL_2, true));
 
-        InOrder ordered = inOrder(mSuggestionHost);
-
         // Simulate navigation between the tiles. Expect the signal to be passed back to the
         // suggestions host, describing what should be shown in the Omnibox.
         tileList.get(1).model.get(TileViewProperties.ON_FOCUS_VIA_SELECTION).run();
-        ordered.verify(mSuggestionHost, times(1)).setOmniboxEditingText(eq(NAV_URL.getSpec()));
+        verify(mSuggestionHost).setOmniboxEditingText(eq(NAV_URL.getSpec()));
 
         tileList.get(2).model.get(TileViewProperties.ON_FOCUS_VIA_SELECTION).run();
-        ordered.verify(mSuggestionHost, times(1)).setOmniboxEditingText(eq(NAV_URL_2.getSpec()));
+        verify(mSuggestionHost).setOmniboxEditingText(eq(NAV_URL_2.getSpec()));
 
         tileList.get(0).model.get(TileViewProperties.ON_FOCUS_VIA_SELECTION).run();
-        ordered.verify(mSuggestionHost, times(1)).setOmniboxEditingText(eq(SEARCH_URL.getSpec()));
+        verify(mSuggestionHost).setOmniboxEditingText(eq(SEARCH_URL.getSpec()));
 
         verifyNoMoreInteractions(mSuggestionHost);
         verifyNoMoreInteractions(mImageSupplier);

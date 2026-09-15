@@ -70,6 +70,7 @@
 #include "third_party/blink/renderer/core/dom/focus_params.h"
 #include "third_party/blink/renderer/core/dom/id_target_observer.h"
 #include "third_party/blink/renderer/core/dom/invoker_data.h"
+#include "third_party/blink/renderer/core/dom/node-inl.h"
 #include "third_party/blink/renderer/core/dom/node_lists_node_data.h"
 #include "third_party/blink/renderer/core/dom/node_rare_data.h"
 #include "third_party/blink/renderer/core/dom/node_traversal.h"
@@ -1884,9 +1885,8 @@ UnboundedEventData* HTMLElement::GetUnboundedEventData() const {
 }
 
 UnboundedEventData& HTMLElement::EnsureUnboundedEventData() {
-  auto pair = EnsureRareData().EnsureUnboundedEventData();
-  data_ = pair.second;
-  return pair.first.get();
+  return EnsureRareData().EnsureUnboundedEventData().RefreshNodeAndUnwrap(
+      *this);
 }
 
 gfx::Rect HTMLElement::LastSentUnboundedBounds() const {
@@ -1897,7 +1897,7 @@ gfx::Rect HTMLElement::LastSentUnboundedBounds() const {
 }
 
 void HTMLElement::SetLastSentUnboundedBounds(const gfx::Rect& bounds) {
-  data_ = EnsureRareData().SetLastSentUnboundedBounds(bounds);
+  EnsureRareData().SetLastSentUnboundedBounds(bounds).RefreshNode(*this);
 }
 
 bool HTMLElement::togglePopover(ExceptionState& exception_state) {
@@ -4286,7 +4286,6 @@ void HTMLElement::HandleKeydownEvent(KeyboardEvent& event) {
   if (is_focused_contenteditable) {
     // Handles only contenteditables. TextFieldInputType and HTMLTextAreaElement
     // analogously handle the event for <input> and <textarea>.
-    GetDocument().UpdateStyleAndLayoutTree();
     if (Page* page = GetDocument().GetPage();
         page && page->GetChromeClient().HandleKeyboardEventOnEditableElement(
                     *this, event)) {

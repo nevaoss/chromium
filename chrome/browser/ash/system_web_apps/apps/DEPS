@@ -43,6 +43,7 @@ include_rules = [
   "+chrome/browser/ash/profiles",
   "+chrome/browser/ash/release_notes",
   "+chrome/browser/ash/settings",
+  "+chrome/browser/ash/smb_client",
   "+chrome/browser/ash/system_web_apps",
   "+chrome/browser/ash/wallpaper",
   "+chrome/browser/ash/wallpaper_handlers",
@@ -64,7 +65,6 @@ include_rules = [
   "+chrome/browser/profiles",
   # TODO(b/338516458): Allow ash to use ScreenAI without depending on //chrome.
   "+chrome/browser/screen_ai/public",
-  "+chrome/browser/search_engines/template_url_service_factory.h",
   "+chrome/browser/signin/identity_manager_factory.h",
   "+chrome/browser/ui/ash",
   "+chrome/browser/ui/browser_window/public",
@@ -87,7 +87,6 @@ include_rules = [
   "+chrome/browser/web_applications/web_app_utils.h",
   "+chrome/common/chrome_constants.h",
   "+chrome/common/chrome_paths.h",
-  "+chrome/common/chrome_switches.h",
   "+chrome/common/url_constants.h",
   "+chrome/grit",
   "+chrome/services/pdf/public/mojom",
@@ -101,9 +100,6 @@ specific_include_rules = {
   ],
 
   # Tests.
-  ".*test.*\\.cc": [
-    "+chrome/browser/ui/browser_window/public",
-  ],
   "boca_app_integration_browsertest\\.cc": [
     "+chrome/app/chrome_command_ids.h",
     "+chrome/browser/extensions/chrome_test_extension_loader.h",
@@ -125,7 +121,6 @@ specific_include_rules = {
   "personalization_app_utils_unittest\\.cc": [
     "+chrome/browser/ash/browser_delegate/browser_controller_impl.h",
     "+chrome/browser/global_features.h",
-    "+chrome/browser/signin/identity_manager_factory.h",
   ],
   "media_app_integration_browsertest\\.cc": [
     "+chrome/browser/ui/browser_init_state.h",

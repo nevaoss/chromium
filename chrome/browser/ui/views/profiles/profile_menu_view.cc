@@ -145,18 +145,6 @@ std::u16string GetSyncErrorButtonText(
       GetSyncErrorButtonStringId(error, /*support_title_case=*/true));
 }
 
-std::u16string GetProfileIdentifier(const ProfileAttributesEntry& entry) {
-  switch (entry.GetNameForm()) {
-    case NameForm::kGaiaName:
-    case NameForm::kLocalName:
-      return entry.GetName();
-    case NameForm::kGaiaAndLocalName:
-      return l10n_util::GetStringFUTF16(
-          IDS_PROFILE_MENU_PROFILE_IDENTIFIER_WITH_SEPARATOR,
-          entry.GetGAIANameToDisplay(), entry.GetLocalProfileName());
-  }
-}
-
 }  // namespace
 
 // static
@@ -435,11 +423,12 @@ void ProfileMenuView::OnSignoutButtonClicked() {
     return;
   }
   GetWidget()->CloseWithReason(views::Widget::ClosedReason::kUnspecified);
-  browser().GetFeatures().signin_view_controller()->SignoutOrReauthWithPrompt(
-      signin_metrics::AccessPoint::kProfileMenuSignoutConfirmationPrompt,
-      signin_metrics::ProfileSignout::kUserClickedSignoutProfileMenu,
-      signin_metrics::SourceForRefreshTokenOperation::
-          kUserMenu_SignOutAllAccounts);
+  SigninViewController::From(&browser())
+      ->SignoutOrReauthWithPrompt(
+          signin_metrics::AccessPoint::kProfileMenuSignoutConfirmationPrompt,
+          signin_metrics::ProfileSignout::kUserClickedSignoutProfileMenu,
+          signin_metrics::SourceForRefreshTokenOperation::
+              kUserMenu_SignOutAllAccounts);
 }
 
 void ProfileMenuView::OnOtherProfileSelected(

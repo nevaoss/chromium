@@ -280,6 +280,10 @@
     "META": {"sizes": {"includes": [50],}},
     "includes": [2900],
   },
+  "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/browser_actuator_internals/resources.grd": {
+    "META": {"sizes": {"includes": [10],}},
+    "includes": [2910],
+  },
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/browser_switch/resources.grd": {
     "META": {"sizes": {"includes": [10],}},
     "includes": [2920],
@@ -488,6 +492,10 @@
     "META": {"sizes": {"includes": [100]}},
     "includes": [3771],
   },
+  "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/critical_actions/resources.grd": {
+    "META": {"sizes": {"includes": [10]}},
+    "includes": [3775],
+  },
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/data_sharing/resources.grd": {
    "META": {"sizes": {"includes": [20]}},
     "includes": [3780],
@@ -497,7 +505,7 @@
     "includes": [3820],
   },
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/discards/resources.grd": {
-    "META": {"sizes": {"includes": [20],}},
+    "META": {"sizes": {"includes": [30],}},
     "includes": [3840],
   },
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/chromeos/dlp_internals/resources.grd": {

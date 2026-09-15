@@ -556,10 +556,6 @@ TEST_F(OverflowMenuMediatorTest, TestMenuItemsCount) {
   if (send_tab_to_self::AreIOSTabRemindersEnabled() && !mediator_.incognito) {
     number_of_action_items++;
   }
-  if (IsHideToolbarEnabled()) {
-    number_of_action_items++;
-  }
-
   // New Tab, New Incognito Tab.
   NSUInteger number_of_tab_actions = 2;
   BOOL showReloadStopAction;
@@ -775,9 +771,6 @@ TEST_F(OverflowMenuMediatorTest, TestItemsStatusOnNTP) {
 
   EXPECT_TRUE(HasItem(kToolsMenuNewTabId, /*enabled=*/YES));
   EXPECT_FALSE(HasItem(kToolsMenuSiteInformation, /*enabled=*/YES));
-  if (IsHideToolbarEnabled()) {
-    EXPECT_TRUE(HasItem(kToolsMenuHideToolbars, /*enabled=*/NO));
-  }
 }
 
 // Tests that the share action is not added to the overflow menu when the share
@@ -785,9 +778,7 @@ TEST_F(OverflowMenuMediatorTest, TestItemsStatusOnNTP) {
 TEST_F(OverflowMenuMediatorTest, TestShareActionNotVisibleByDefault) {
   base::test::ScopedFeatureList scoped_feature_list;
   scoped_feature_list.InitWithFeaturesAndParameters(
-      {{kChromeNextIa, {{"chrome_next_ia_share_icon_visible", "true"}}},
-       {kComposeboxIpad, {}}},
-      {});
+      {{kChromeNextIa, {{"chrome_next_ia_share_icon_visible", "true"}}}}, {});
 
   CreateMediator(/*incognito=*/NO);
   SetUpActiveWebState();
@@ -802,9 +793,7 @@ TEST_F(OverflowMenuMediatorTest, TestShareActionNotVisibleByDefault) {
 TEST_F(OverflowMenuMediatorTest, TestShareActionVisibleWithChromeNextIa) {
   base::test::ScopedFeatureList scoped_feature_list;
   scoped_feature_list.InitWithFeaturesAndParameters(
-      {{kChromeNextIa, {{"chrome_next_ia_share_icon_visible", "false"}}},
-       {kComposeboxIpad, {}}},
-      {});
+      {{kChromeNextIa, {{"chrome_next_ia_share_icon_visible", "false"}}}}, {});
 
   CreateMediator(/*incognito=*/NO);
   SetUpActiveWebState();
@@ -1537,8 +1526,7 @@ TEST_F(OverflowMenuMediatorTest, TestReadingModeMenu) {
 TEST_F(OverflowMenuMediatorTest, TestCustomizeHomePageShownOnNTP) {
   base::test::ScopedFeatureList scoped_feature_list;
   scoped_feature_list.InitWithFeatures(
-      /*enabled_features=*/{kComposeboxIpad, kChromeNextIa,
-                            kOverflowMenuNTPRefactor,
+      /*enabled_features=*/{kChromeNextIa, kOverflowMenuNTPRefactor,
                             kOverflowMenuHomeCustomizationEntrypoint},
       /*disabled_features=*/{});
 
@@ -1558,8 +1546,7 @@ TEST_F(OverflowMenuMediatorTest, TestCustomizeHomePageShownOnNTP) {
 TEST_F(OverflowMenuMediatorTest, TestCustomizeHomePageHasPreviewImage) {
   base::test::ScopedFeatureList scoped_feature_list;
   scoped_feature_list.InitWithFeatures(
-      /*enabled_features=*/{kComposeboxIpad, kChromeNextIa,
-                            kOverflowMenuNTPRefactor,
+      /*enabled_features=*/{kChromeNextIa, kOverflowMenuNTPRefactor,
                             kOverflowMenuHomeCustomizationEntrypoint},
       /*disabled_features=*/{});
 
@@ -1596,8 +1583,7 @@ TEST_F(OverflowMenuMediatorTest,
        TestCustomizeHomePageHasPreviewImageWithCustomBackgroundFallback) {
   base::test::ScopedFeatureList scoped_feature_list;
   scoped_feature_list.InitWithFeatures(
-      /*enabled_features=*/{kComposeboxIpad, kChromeNextIa,
-                            kOverflowMenuNTPRefactor,
+      /*enabled_features=*/{kChromeNextIa, kOverflowMenuNTPRefactor,
                             kOverflowMenuHomeCustomizationEntrypoint},
       /*disabled_features=*/{});
 
@@ -1653,8 +1639,7 @@ TEST_F(OverflowMenuMediatorTest,
 TEST_F(OverflowMenuMediatorTest, TestCustomizeHomePageNotShownOnWebPage) {
   base::test::ScopedFeatureList scoped_feature_list;
   scoped_feature_list.InitWithFeatures(
-      /*enabled_features=*/{kComposeboxIpad, kChromeNextIa,
-                            kOverflowMenuNTPRefactor,
+      /*enabled_features=*/{kChromeNextIa, kOverflowMenuNTPRefactor,
                             kOverflowMenuHomeCustomizationEntrypoint},
       /*disabled_features=*/{});
 
@@ -1674,8 +1659,7 @@ TEST_F(OverflowMenuMediatorTest, TestCustomizeHomePageNotShownOnWebPage) {
 TEST_F(OverflowMenuMediatorTest, TestCustomizeHomePageNotShownInIncognito) {
   base::test::ScopedFeatureList scoped_feature_list;
   scoped_feature_list.InitWithFeatures(
-      /*enabled_features=*/{kComposeboxIpad, kChromeNextIa,
-                            kOverflowMenuNTPRefactor,
+      /*enabled_features=*/{kChromeNextIa, kOverflowMenuNTPRefactor,
                             kOverflowMenuHomeCustomizationEntrypoint},
       /*disabled_features=*/{});
 

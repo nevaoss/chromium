@@ -36,7 +36,9 @@
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/models/image_model.h"
 #include "ui/base/mojom/menu_source_type.mojom.h"
+#include "ui/base/page_transition_types.h"
 #include "ui/base/ui_base_features.h"
+#include "ui/base/window_open_disposition.h"
 #include "ui/color/color_id.h"
 #include "ui/views/accessibility/view_accessibility.h"
 #include "ui/views/controls/button/image_button.h"
@@ -371,7 +373,7 @@ void SidePanelHeaderController::Close() {
     return;
   }
 
-  browser_->GetFeatures().side_panel_ui()->Close();
+  SidePanelUI::From(&browser_.get())->Close();
 }
 
 void SidePanelHeaderController::MaybeQueuePinPromo(SidePanelEntryId id) {

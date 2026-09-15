@@ -207,8 +207,10 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
       }
       if (changedPrivateProperties.has('result') ||
           changedPrivateProperties.has('selectedMatchIndex') ||
-          changedPrivateProperties.has('selectedMatch')) {
-        this.keywordModeManager_.onSelectedMatchChanged(this.selectedMatch);
+          changedPrivateProperties.has('selectedMatch') ||
+          changedPrivateProperties.has('selection')) {
+        this.keywordModeManager_.onSelectedMatchChanged(
+            this.selectedMatch, this.selection);
       }
     }
 
@@ -550,6 +552,9 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
      */
     private isVirtualFocusEventTarget_(e: KeyboardEvent): boolean {
       const path = e.composedPath();
+      if (path.length === 0) {
+        return true;
+      }
       return path.includes(this.getInputElement()) ||
           path.includes(this.getDropdownElement()) || path.some(el => {
             const node = el as HTMLElement;
@@ -604,26 +609,32 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
         return true;
       }
 
+      if (this.selection.state === SelectionLineState.kKeywordMode) {
+        e.preventDefault();
+        this.getInputElement().focus();
+        return true;
+      }
+
       return false;
     }
 
     private updateInputForSelection_(
         nextSelection: OmniboxPopupSelection, key: string) {
       if (this.selectedMatch) {
-        const newFill = this.selectedMatch.fillIntoEdit;
-        const newInline = nextSelection.line === 0 &&
+        const newFill = this.computeMatchFillIntoEdit(this.selectedMatch);
+        const isKeywordMode = this.keywordModeManager_.isInKeywordMode ||
+            nextSelection.state === SelectionLineState.kKeywordMode;
+        const newInline = !isKeywordMode && nextSelection.line === 0 &&
                 this.selectedMatch.allowedToBeDefaultMatch ?
             this.selectedMatch.inlineAutocompletion :
             '';
         const newFillEnd = newFill.length - newInline.length;
         const text = newFill.substr(0, newFillEnd);
-        if (text) {
-          this.getInputElement().setInput({
-            text: text,
-            inline: newInline,
-            moveCursorToEnd: newInline.length === 0,
-          });
-        }
+        this.getInputElement().setInput({
+          text: text,
+          inline: newInline,
+          moveCursorToEnd: newInline.length === 0,
+        });
 
         if (key === 'ArrowDown' || key === 'ArrowUp') {
           this.pageHandler().onNavigationLikely(
@@ -686,9 +697,9 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
       }
 
       if (e.key === 'Tab') {
-        if (!e.shiftKey && !e.isComposing &&
+        if (!this.virtualFocusEnabled && !e.shiftKey && !e.isComposing &&
             this.keywordModeManager_.acceptTab(
-                this.selectedMatch, this.selectedMatchIndex)) {
+                this.selectedMatch, this.matchIndex)) {
           e.preventDefault();
           return;
         }
@@ -872,7 +883,9 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
             '';
         const newFillEnd = newFill.length - newInline.length;
         const text = newFill.substr(0, newFillEnd);
-        assert(text);
+        if (!this.keywordModeManager_.isInKeywordMode) {
+          assert(text);
+        }
         this.getInputElement().setInput({
           text: text,
           inline: newInline,
@@ -910,11 +923,24 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
           match, this.matchIndex, this.lastQueriedInput);
     }
 
-    onKeywordClick(e: Event) {
-      const match =
-          (e as CustomEvent<{match?: AutocompleteMatch}>).detail.match;
+    async onKeywordClick(e: Event) {
+      const detail =
+          (e as CustomEvent<{match?: AutocompleteMatch, matchIndex?: number}>)
+              .detail;
+      const match = detail.match;
       assert(match?.keywordModel);
       this.keywordModeManager_.handleKeywordClick(match);
+      const matchIndex = detail.matchIndex ??
+          (this.result?.matches ? this.result.matches.indexOf(match) : 0);
+      const selection: OmniboxPopupSelection = {
+        line: matchIndex >= 0 ? matchIndex : 0,
+        state: SelectionLineState.kKeywordMode,
+        actionIndex: 0,
+      };
+      this.setSelection(selection);
+      await this.updateComplete;
+      this.updateInputForSelection_(selection, 'click');
+      this.getInputElement().focus();
     }
 
     private computeSelectedMatch_() {

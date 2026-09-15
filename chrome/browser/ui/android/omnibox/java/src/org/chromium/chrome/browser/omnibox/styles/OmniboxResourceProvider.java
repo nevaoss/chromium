@@ -60,11 +60,13 @@ import java.util.function.Function;
 /**
  * Provides resources specific to Omnibox.
  *
- * <p>This class is currently being migrated to an instance-based calls to remove the requirement
- * that each of its clients caches a lot of state information, possibly leading to an inconsistent
- * UI and overabundance of caching.
+ * <p>This class is actively being migrated to instance methods to remove the requirement that each
+ * of its clients caches state information, which can lead to an inconsistent UI and an
+ * overabundance of caching.
  *
- * <p>Where possible please use an Instance. Static methods are set to be retired.
+ * <p><b>NOTE: No new static methods should be added to this class.</b> The component is being
+ * migrated to instance methods. Where possible, please use an {@link OmniboxResourceProvider}
+ * instance. Existing static methods are set to be retired.
  */
 @NullMarked
 public class OmniboxResourceProvider implements ComponentCallbacks2 {
@@ -775,6 +777,12 @@ public class OmniboxResourceProvider implements ComponentCallbacks2 {
         return getDrawable(resId);
     }
 
+    // ============================================================================================
+    // Static methods.
+    // NOTE: Do not add new static methods here. The component is actively being migrated to
+    // instance methods; any new capabilities must be added as instance methods instead.
+    // ============================================================================================
+
     /**
      * As {@link android.content.res.Resources#getString(int, Object...)} but potentially augmented
      * with caching. If caching is enabled, there is a single, unbounded string cache shared by all
@@ -835,7 +843,7 @@ public class OmniboxResourceProvider implements ComponentCallbacks2 {
     }
 
     /**
-     * Returns a drawable for a given attribute depending on a {@link BrandedColorScheme}
+     * Returns a drawable for a given attribute depending on a {@link BrandedColorScheme}.
      *
      * @param context The {@link Context} used to retrieve resources.
      * @param brandedColorScheme {@link BrandedColorScheme} to use.

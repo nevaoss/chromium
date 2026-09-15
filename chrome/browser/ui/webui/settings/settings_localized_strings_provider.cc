@@ -134,6 +134,7 @@
 #include "ui/base/l10n/time_format.h"
 #include "ui/base/ui_base_features.h"
 #include "ui/base/webui/web_ui_util.h"
+#include "ui/base/window_open_disposition.h"
 #include "ui/strings/grit/ui_strings.h"
 #include "ui/webui/webui_util.h"
 
@@ -607,6 +608,8 @@ void AddAppearanceStrings(content::WebUIDataSource* html_source,
        IDS_SETTINGS_VERTICAL_TABS_EXPAND_ON_HOVER},
       {"allowSplitViewDragAndDrop",
        IDS_SETTINGS_ALLOW_SPLIT_VIEW_DRAG_AND_DROP},
+      {"allowSplitViewDragAndDropHorizontal",
+       IDS_SETTINGS_ALLOW_SPLIT_VIEW_DRAG_AND_DROP_HORIZONTAL},
       {"showTabGroupsInBookmarksBar",
        IDS_SETTINGS_SHOW_TAB_GROUPS_IN_BOOKMARKS_BAR},
       {"autoPinNewTabGroups", IDS_SETTINGS_AUTO_PIN_NEW_TAB_GROUPS},
@@ -687,6 +690,9 @@ void AddAppearanceStrings(content::WebUIDataSource* html_source,
   html_source->AddBoolean(
       "tabStripUnificationEnabled",
       base::FeatureList::IsEnabled(tabs::kTabStripUnification));
+  html_source->AddBoolean(
+      "splitViewHorizontalEnabled",
+      base::FeatureList::IsEnabled(tabs::kSplitViewHorizontal));
 
   std::string configurable_alignments_json;
   base::JSONWriter::Write(

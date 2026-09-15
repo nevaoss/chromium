@@ -24,15 +24,15 @@ import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 import org.robolectric.RuntimeEnvironment;
-import org.robolectric.annotation.Config;
 
 import org.chromium.base.ContextUtils;
 import org.chromium.base.test.BaseRobolectricTestRunner;
+import org.chromium.base.test.util.HistogramWatcher;
+import org.chromium.chrome.browser.extensions.api.messaging.NativeMessagingConnection.DisconnectionReason;
 import org.chromium.chrome.browser.profiles.Profile;
 
 /** Unit tests for {@link NativeMessagingManager} and {@link NativeMessagingConnection}. */
 @RunWith(BaseRobolectricTestRunner.class)
-@Config(manifest = Config.NONE)
 public class NativeMessagingManagerTest {
     private static final String TARGET_PACKAGE = "com.example.extensionreceiver";
     private static final String EXTENSION_ID = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
@@ -196,10 +196,22 @@ public class NativeMessagingManagerTest {
         Assert.assertNotNull(connection);
         Assert.assertTrue(connection.isBound());
 
+        var reasonWatcher =
+                HistogramWatcher.newSingleRecordWatcher(
+                        "Extensions.NativeMessaging.Android.DisconnectionReason",
+                        DisconnectionReason.NULL_BINDING);
+        var durationWatcher =
+                HistogramWatcher.newBuilder()
+                        .expectNoRecords(
+                                "Extensions.NativeMessaging.Android.UnexpectedDisconnectionDuration")
+                        .build();
+
         mTestContext.triggerNullBinding();
 
         Assert.assertFalse(connection.isBound());
         Assert.assertNull(mManager.getConnectionForTesting(TARGET_PACKAGE));
+        reasonWatcher.assertExpected();
+        durationWatcher.assertExpected();
     }
 
     @Test

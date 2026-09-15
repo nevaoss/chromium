@@ -13,6 +13,7 @@ import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {getCss} from './app.css.js';
 import {getHtml} from './app.html.js';
 import {OpenTabsDelegate} from './delegates/open_tabs_delegate.js';
+import {RecentTabsDelegate} from './delegates/recent_tabs_delegate.js';
 import type {OrganizerListElement} from './organizer_list.js';
 import type {OrganizerListSectionDelegate} from './organizer_list_section_delegate.js';
 
@@ -40,13 +41,22 @@ export class OrganizerPanelAppElement extends CrLitElement {
     return {
       shortcut_: {type: String},
       sectionDelegates_: {type: Array},
+      searchQuery_: {type: String},
     };
   }
 
   protected accessor shortcut_: string = loadTimeData.getString('shortcutText');
-  protected accessor sectionDelegates_: OrganizerListSectionDelegate[] = [
-    new OpenTabsDelegate(),
-  ];
+  protected accessor searchQuery_: string = '';
+  protected accessor sectionDelegates_:
+      Array<OrganizerListSectionDelegate<unknown>> = [
+        new OpenTabsDelegate(),
+        new RecentTabsDelegate(),
+      ];
+
+
+  protected onSearchChanged_(e: CustomEvent<string>) {
+    this.searchQuery_ = e.detail;
+  }
 }
 
 declare global {

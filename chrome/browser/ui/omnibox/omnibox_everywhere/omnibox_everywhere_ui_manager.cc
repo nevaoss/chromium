@@ -52,6 +52,8 @@
 #include "third_party/blink/public/common/context_menu_data/edit_flags.h"
 #include "third_party/metrics_proto/omnibox_event.pb.h"
 #include "third_party/skia/include/core/SkRect.h"
+#include "ui/base/page_transition_types.h"
+#include "ui/base/window_open_disposition.h"
 #include "ui/color/color_provider_key.h"
 #include "ui/display/display.h"
 #include "ui/display/screen.h"
@@ -146,11 +148,24 @@ class OmniboxEverywhereFileSelectListener : public content::FileSelectListener {
 SkRegion ComputeDraggableRegion(
     const std::vector<blink::mojom::DraggableRegionPtr>& regions) {
   SkRegion draggable_region;
+  // First, union all draggable background areas.
   for (const blink::mojom::DraggableRegionPtr& region : regions) {
-    draggable_region.op(
-        SkIRect::MakeXYWH(region->bounds.x(), region->bounds.y(),
-                          region->bounds.width(), region->bounds.height()),
-        region->draggable ? SkRegion::kUnion_Op : SkRegion::kDifference_Op);
+    if (region->draggable) {
+      draggable_region.op(
+          SkIRect::MakeXYWH(region->bounds.x(), region->bounds.y(),
+                            region->bounds.width(), region->bounds.height()),
+          SkRegion::kUnion_Op);
+    }
+  }
+  // Next, subtract non-draggable regions so they take precedence over DOM
+  // order.
+  for (const blink::mojom::DraggableRegionPtr& region : regions) {
+    if (!region->draggable) {
+      draggable_region.op(
+          SkIRect::MakeXYWH(region->bounds.x(), region->bounds.y(),
+                            region->bounds.width(), region->bounds.height()),
+          SkRegion::kDifference_Op);
+    }
   }
   return draggable_region;
 }
@@ -259,13 +274,11 @@ void OmniboxEverywhereUIManager::ShowForProfile(Profile* profile,
           base::BindRepeating(
               &OmniboxEverywhereUIManager::OnMostVisitedPrefChanged,
               base::Unretained(this)));
-#if !BUILDFLAG(IS_ANDROID)
       profile_pref_change_registrar_.Add(
           ntp_tiles::prefs::kEnterpriseShortcutsPolicyList,
           base::BindRepeating(
               &OmniboxEverywhereUIManager::OnMostVisitedPrefChanged,
               base::Unretained(this)));
-#endif
     }
   }
   profile_ = profile;

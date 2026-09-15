@@ -120,7 +120,7 @@
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/frame/local_frame_client.h"
-#include "third_party/blink/renderer/core/frame/local_frame_ukm_aggregator.h"
+#include "third_party/blink/renderer/core/frame/local_frame_metrics_aggregator.h"
 #include "third_party/blink/renderer/core/frame/local_frame_view.h"
 #include "third_party/blink/renderer/core/frame/page_scale_constraints_set.h"
 #include "third_party/blink/renderer/core/frame/remote_frame.h"
@@ -1798,6 +1798,8 @@ void WebView::ApplyWebPreferences(const web_pref::WebPreferences& prefs,
   settings->SetDontSendKeyEventsToJavascript(
       prefs.dont_send_key_events_to_javascript);
   settings->SetWebAppScope(WebString::FromAscii(prefs.web_app_scope.spec()));
+  settings->SetWebAppCustomManifestUrl(
+      WebURL(KURL(prefs.web_app_custom_manifest_url)));
   settings->SetIsInitialProfile(prefs.is_initial_profile);
 
 #if BUILDFLAG(IS_ANDROID)
@@ -3429,6 +3431,17 @@ float WebViewImpl::DefaultMaximumPageScaleFactor() const {
 }
 
 float WebViewImpl::MinimumPageScaleFactor() const {
+#if BUILDFLAG(IS_ANDROID)
+  // We have to force this on Android because WebViewImpl::ApplyWebPreferences()
+  // sets SetIgnoreViewportTagScaleLimits(prefs.force_enable_zoom) on Android,
+  // which sometimes overrides the minimum scale that we set in
+  // WebViewImpl::ConfigureAutoResizeMode().
+  if (base::FeatureList::IsEnabled(
+          features::kAutoResizeMinimumPageScaleFactor) &&
+      should_auto_resize_) {
+    return 1.0f;
+  }
+#endif
   return GetPageScaleConstraintsSet().FinalConstraints().minimum_scale;
 }
 

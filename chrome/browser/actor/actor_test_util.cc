@@ -15,6 +15,7 @@
 #include "base/no_destructor.h"
 #include "base/run_loop.h"
 #include "base/task/single_thread_task_runner.h"
+#include "base/threading/thread_restrictions.h"
 #include "base/values.h"
 #include "chrome/browser/actor/actor_keyed_service.h"
 #include "chrome/browser/actor/actor_proto_conversion.h"
@@ -49,6 +50,7 @@
 #include "components/optimization_guide/core/hints/hints_manager.h"
 #include "components/optimization_guide/proto/features/actions_data.pb.h"
 #include "components/optimization_guide/proto/hints.pb.h"
+#include "components/sessions/core/session_id.h"
 #include "components/tabs/public/tab_interface.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/web_contents.h"
@@ -535,6 +537,21 @@ Actions MakeMediaControl(tabs::TabHandle tab_handle,
   } else if (const auto* seek = std::get_if<SeekMedia>(&media_control)) {
     media_control_action->mutable_seek()->set_seek_time_milliseconds(
         seek->seek_time_milliseconds);
+  }
+  if (task_id.has_value()) {
+    action.set_task_id(task_id->value());
+  }
+  return action;
+}
+
+Actions MakeTranslatePage(tabs::TabHandle tab_handle,
+                          std::string target_language,
+                          std::optional<actor::TaskId> task_id) {
+  Actions action;
+  auto* translate_page_action = action.add_actions()->mutable_translate_page();
+  translate_page_action->set_tab_id(tab_handle.raw_value());
+  if (!target_language.empty()) {
+    translate_page_action->set_target_language(target_language);
   }
   if (task_id.has_value()) {
     action.set_task_id(task_id->value());

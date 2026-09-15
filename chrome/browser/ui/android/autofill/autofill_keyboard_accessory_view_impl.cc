@@ -215,6 +215,10 @@ void AutofillKeyboardAccessoryViewImpl::Show() {
                    std::get_if<Suggestion::AutofillAiPayload>(
                        &suggestion.payload)) {
       payload = ai_payload->CreateJavaObject();
+    } else if (const auto* at_memory_payload =
+                   std::get_if<Suggestion::AtMemoryPayload>(
+                       &suggestion.payload)) {
+      payload = at_memory_payload->CreateJavaObject();
     }
 
     auto* custom_icon_url =
@@ -280,9 +284,7 @@ void AutofillKeyboardAccessoryViewImpl::SuggestionSelectionStateChanged(
 void AutofillKeyboardAccessoryViewImpl::DeletionRequested(JNIEnv* env,
                                                           int32_t list_index) {
   if (controller_) {
-    controller_->RemoveSuggestion(
-        list_index,
-        AutofillMetrics::SingleEntryRemovalMethod::kKeyboardAccessory);
+    controller_->RemoveSuggestion(list_index);
   }
 }
 

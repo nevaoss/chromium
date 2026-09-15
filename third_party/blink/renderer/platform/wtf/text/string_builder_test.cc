@@ -708,4 +708,43 @@ TEST(StringBuilderTest, DoesAppendCauseOverflow) {
   }
 }
 
+TEST(StringBuilderTest, AppendRange) {
+  Vector<StringView> str_vector{"1", "2", "3"};
+  {
+    StringBuilder builder;
+    builder.AppendRange(str_vector, ", ");
+    EXPECT_EQ("1, 2, 3", builder.ReleaseString());
+  }
+  Vector<int> int_vector{1, 2, 3};
+  {
+    StringBuilder builder;
+    builder.AppendRange(int_vector, ";", [](const auto& val, StringBuilder& b) {
+      b.AppendNumber(val * 10);
+    });
+    EXPECT_EQ("10;20;30", builder.ReleaseString());
+  }
+  Vector<int> empty_vector;
+  {
+    StringBuilder builder;
+    builder.AppendRange(empty_vector, ", ",
+                        [](const auto&, StringBuilder& b) { b.Append("foo"); });
+    EXPECT_TRUE(builder.empty());
+  }
+}
+
+TEST(StringBuilderTest, Utf8) {
+  {
+    StringBuilder builder;
+    builder.Append("Hello, world!");
+    EXPECT_EQ("Hello, world!", builder.Utf8());
+  }
+  {
+    StringBuilder builder;
+    builder.Append(String(u"Hello, \u3053\u3093\u306b\u3061\u306f!"));
+    EXPECT_EQ(
+        "Hello, \xe3\x81\x93\xe3\x82\x93\xe3\x81\xab\xe3\x81\xa1\xe3\x81\xaf!",
+        builder.Utf8());
+  }
+}
+
 }  // namespace blink

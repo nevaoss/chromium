@@ -924,6 +924,7 @@ class LocationBarMediator
             mCurrentInput
                     .setRequestType(AutocompleteRequestType.SEARCH)
                     .setAutocompleteState(AutocompleteState.STANDBY)
+                    .setDisplayState(DisplayState.DRAFTING)
                     .setUserText(mCurrentInput.getInitialUserText())
                     .setSelection(TextSelection.SELECT_ALL);
             pushUrlBarDataFromCurrentInput();
@@ -1334,8 +1335,7 @@ class LocationBarMediator
             // Should only have been visible when in any aim type.
             assert ToolModeUtils.isAimRequest(mCurrentInput.getRequestType());
 
-            boolean hasAttachments =
-                    mFuseboxAttachmentModelList != null && !mFuseboxAttachmentModelList.isEmpty();
+            boolean hasAttachments = fuseboxHasAttachments();
             boolean hasCustomTool =
                     mCurrentInput.getRequestType() != AutocompleteRequestType.AI_MODE;
             boolean hasText = !TextUtils.isEmpty(mCurrentInput.getUserText());
@@ -1352,7 +1352,8 @@ class LocationBarMediator
                 mCurrentInput
                         .setRequestType(AutocompleteRequestType.SEARCH)
                         .setUserText(mCurrentInput.getInitialUserText())
-                        .setAutocompleteState(AutocompleteState.STANDBY);
+                        .setAutocompleteState(AutocompleteState.STANDBY)
+                        .setDisplayState(DisplayState.DRAFTING);
                 pushUrlBarDataFromCurrentInput();
             }
         } else {
@@ -2364,11 +2365,29 @@ class LocationBarMediator
         }
     }
 
+    /** Returns whether the fusebox attachment model list is non-null and has attachments. */
+    private boolean fuseboxHasAttachments() {
+        return mFuseboxAttachmentModelList != null && !mFuseboxAttachmentModelList.isEmpty();
+    }
+
     /**
      * @see FuseboxAttachmentChangeListener#onAttachmentListChanged()
      */
     @Override
     public void onAttachmentListChanged() {
+        // When attachments are added to the Fusebox (e.g. attaching a tab from the tab picker),
+        // promote to SUGGESTIONS so the Fusebox expands to show the attachment shelf. In Incognito
+        // mode, AI mode autocomplete is disabled, so onSuggestionsChanged() is never called and
+        // the Omnibox would otherwise remain stuck in DRAFTING.
+        //
+        // Note: This is fragile. It relies on onAttachmentListChanged() never being triggered
+        // during beginInput() (e.g. via setAttachmentModelList() when switching tabs or
+        // initializing sessions). If this signal were triggered on beginInput, it would
+        // prematurely promote the display state to SUGGESTIONS.
+        // TODO(b/555311270): Decouple attachment shelf expansion from onAttachmentListChanged.
+        if (mCurrentInput != null && fuseboxHasAttachments()) {
+            mCurrentInput.setDisplayState(DisplayState.SUGGESTIONS);
+        }
         updateNavigateButtonVisibility();
     }
 
@@ -2676,7 +2695,7 @@ class LocationBarMediator
         }
         updateShowFocusRing();
         updateReparentingState();
-        updateActivationChip();
+        updateButtonVisibility();
     }
 
     private void updateReparentingState() {
@@ -2914,7 +2933,8 @@ class LocationBarMediator
             }
             mCurrentInput
                     .setRequestType(AutocompleteRequestType.SEARCH)
-                    .setAutocompleteState(AutocompleteState.STANDBY);
+                    .setAutocompleteState(AutocompleteState.STANDBY)
+                    .setDisplayState(DisplayState.DRAFTING);
             // TODO(https://crbug.com/534359434): Remove bespoke update calls.
             updateButtonVisibility();
         } else if (!TextUtils.equals(
@@ -3223,7 +3243,7 @@ class LocationBarMediator
         }
     }
 
-    /** Enter the DRAFTING_NO_FOCUS state, executing all necessary and convenient pre-processing */
+    /** Enter the DRAFTING_NO_FOCUS state, executing all necessary and convenient pre-processing. */
     @VisibleForTesting
     /* package */ void enterDraftingNoFocus() {
         assert mCurrentInput != null;

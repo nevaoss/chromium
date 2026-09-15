@@ -189,6 +189,14 @@ TEST_F(ChromeSecurityDelegateTest, CanLockPointer) {
   EXPECT_FALSE(security_delegate->CanLockPointer(crostini_toplevel.get()));
 }
 
+TEST_F(ChromeSecurityDelegateTest, CanSetSystemModal) {
+  ChromeSecurityDelegate chrome_security_delegate;
+  EXPECT_TRUE(chrome_security_delegate.CanSetSystemModal());
+
+  guest_os::GuestOsSecurityDelegate crostini_security_delegate("termina");
+  EXPECT_FALSE(crostini_security_delegate.CanSetSystemModal());
+}
+
 TEST_F(ChromeSecurityDelegateTest, GetFilenames) {
   ChromeSecurityDelegate security_delegate;
   base::FilePath shared_path = myfiles_dir_.Append("shared");
@@ -200,13 +208,16 @@ TEST_F(ChromeSecurityDelegateTest, GetFilenames) {
                                           shared_path);
 
   std::vector<ui::FileInfo> files;
-  // When kChromeSecurityDelegateIgnoreArcVm is enabled, Arc paths should be
-  // ignored.
+  // When kChromeSecurityDelegateIgnoreArcVm is enabled, Arc paths and unknown
+  // VMs should be ignored.
   {
     base::test::ScopedFeatureList feature_list;
     feature_list.InitAndEnableFeature(kChromeSecurityDelegateIgnoreArcVm);
     files = security_delegate.GetFilenames(
         ui::EndpointType::kArc, Data("file:///file1\r\nfile:///file2"));
+    EXPECT_TRUE(files.empty());
+    files = security_delegate.GetFilenames(
+        ui::EndpointType::kUnknownVm, Data("file:///file1\r\nfile:///file2"));
     EXPECT_TRUE(files.empty());
   }
 
@@ -322,8 +333,14 @@ TEST_F(ChromeSecurityDelegateTest, SendFileInfoConvertPaths) {
   ui::FileInfo file1(myfiles_dir_.Append("file1"), base::FilePath());
   ui::FileInfo file2(myfiles_dir_.Append("file2"), base::FilePath());
 
-  // Arc should convert path to UTF16 URL.
+  // Unknown VMs should be ignored.
   std::string data;
+  security_delegate.SendFileInfo(ui::EndpointType::kUnknownVm, {file1},
+                                 base::BindOnce(&CaptureUTF16, &data));
+  task_environment_.RunUntilIdle();
+  EXPECT_EQ("", data);
+
+  // Arc should convert path to UTF16 URL.
   security_delegate.SendFileInfo(ui::EndpointType::kArc, {file1},
                                  base::BindOnce(&CaptureUTF16, &data));
   task_environment_.RunUntilIdle();

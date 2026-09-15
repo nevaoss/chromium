@@ -35,8 +35,10 @@
 #include "components/services/app_service/public/cpp/intent_util.h"
 #include "components/webapps/browser/launch_queue/launch_queue.h"
 #include "extensions/common/constants.h"
+#include "ui/base/page_transition_types.h"
 #include "ui/base/window_open_disposition.h"
 #include "ui/display/scoped_display_for_new_windows.h"
+#include "ui/display/types/display_constants.h"
 #include "url/gurl.h"
 #include "url/origin.h"
 
@@ -237,7 +239,7 @@ content::WebContents* WebAppLaunchProcess::Run() {
   WindowOpenDisposition navigation_disposition =
       GetNavigationDisposition(is_new_browser);
   content::WebContents* existing_tab =
-      browser->GetFeatures().tab_strip_model()->GetActiveWebContents();
+      browser->GetTabStripModel()->GetActiveWebContents();
   bool open_in_new_window =
       !existing_tab ||
       navigation_disposition != WindowOpenDisposition::CURRENT_TAB;

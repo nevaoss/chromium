@@ -355,6 +355,7 @@
 #include "content/public/browser/browser_url_handler.h"
 #include "content/public/browser/certificate_request_result_type.h"
 #include "content/public/browser/child_process_data.h"
+#include "content/public/browser/child_process_host.h"
 #include "content/public/browser/child_process_security_policy.h"
 #include "content/public/browser/client_certificate_delegate.h"
 #include "content/public/browser/digital_identity_provider.h"
@@ -427,6 +428,7 @@
 #include "services/network/public/cpp/permissions_policy/permissions_policy_features.h"
 #include "services/network/public/cpp/resource_request.h"
 #include "services/network/public/cpp/self_deleting_url_loader_factory.h"
+#include "services/network/public/cpp/shared_url_loader_factory.h"
 #include "services/network/public/cpp/web_sandbox_flags.h"
 #include "services/network/public/mojom/cert_verifier_service.mojom.h"
 #include "services/network/public/mojom/fetch_api.mojom.h"
@@ -450,6 +452,7 @@
 #include "ui/base/page_transition_types.h"
 #include "ui/base/resource/resource_bundle.h"
 #include "ui/base/ui_base_features.h"
+#include "ui/base/window_open_disposition.h"
 #include "ui/color/color_provider.h"
 #include "ui/color/color_provider_key.h"
 #include "ui/gfx/color_utils.h"
@@ -577,12 +580,10 @@
 #include "chrome/browser/search/instant_service_factory.h"
 #include "chrome/browser/themes/theme_service.h"
 #include "chrome/browser/themes/theme_service_factory.h"
-#include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
 #include "chrome/browser/ui/chrome_pages.h"
 #include "chrome/browser/ui/dialogs/browser_dialogs.h"
-#include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/waap/waap_utils.h"
 #include "chrome/browser/ui/webui/chrome_content_browser_client_webui_part.h"
 #include "chrome/browser/ui/webui/util/webui_util_desktop.h"
@@ -593,10 +594,12 @@
 #include "chrome/browser/web_applications/locks/app_lock.h"
 #include "chrome/browser/web_applications/policy/web_app_policy_manager.h"
 #include "chrome/browser/web_applications/proto/web_app_install_state.pb.h"  // nogncheck
+#include "chrome/browser/web_applications/web_app.h"
 #include "chrome/browser/web_applications/web_app_filter.h"
 #include "chrome/browser/web_applications/web_app_helpers.h"
 #include "chrome/browser/web_applications/web_app_provider.h"
 #include "chrome/browser/web_applications/web_app_registrar.h"
+#include "chrome/browser/web_applications/web_app_tab_helper.h"
 #include "chrome/browser/web_applications/web_app_utils.h"
 #include "chrome/browser/webauthn/authenticator_request_scheduler.h"
 #include "chrome/browser/webauthn/chrome_authenticator_request_delegate.h"
@@ -627,7 +630,6 @@
 #include "chrome/browser/policy/system_features_disable_list_policy_handler.h"
 #include "chrome/browser/smart_card/chromeos_smart_card_delegate.h"
 #include "chrome/browser/web_applications/chromeos_web_app_experiments.h"
-#include "chrome/browser/web_applications/web_app_tab_helper.h"
 #include "chrome/common/chromeos/extensions/chromeos_system_extension_info.h"
 #include "chromeos/ash/components/quickoffice/quickoffice_prefs.h"
 #include "chromeos/components/kiosk/kiosk_utils.h"
@@ -727,7 +729,10 @@
 #if BUILDFLAG(ENABLE_MEDIA_REMOTING)
 #include "chrome/browser/media/cast_remoting_connector.h"
 #include "chrome/browser/media/remoting_bridge.h"
-#endif
+#if BUILDFLAG(ENABLE_MEDIA_REMOTING_REDIRECTION)
+#include "chrome/browser/media/redirection_connector.h"
+#endif  // BUILDFLAG(ENABLE_MEDIA_REMOTING_REDIRECTION)
+#endif  // BUILDFLAG(ENABLE_MEDIA_REMOTING)
 
 #if BUILDFLAG(SAFE_BROWSING_AVAILABLE)
 #include "chrome/browser/enterprise/connectors/connectors_service.h"
@@ -1501,8 +1506,23 @@ bool ShouldGrantWindowManagementPrivilegesToIwaChildWindow(
                          blink::PermissionType::WINDOW_MANAGEMENT),
                  opener_frame) == blink::mojom::PermissionStatus::GRANTED;
 }
-#endif  // BUILDFLAG(ENABLE_EXTENSIONS_CORE) && !BUILDFLAG(IS_ANDROID)
 
+std::optional<GURL> GetIwaCustomManifestUrl(
+    content::WebContents* web_contents) {
+  if (const auto* app_id = web_app::WebAppTabHelper::GetAppId(web_contents)) {
+    Profile* profile =
+        Profile::FromBrowserContext(web_contents->GetBrowserContext());
+    const auto& registrar =
+        web_app::WebAppProvider::GetForWebApps(profile)->registrar_unsafe();
+    if (const auto* web_app = registrar.GetAppById(
+            *app_id, web_app::WebAppFilter::IsIsolatedApp() |
+                         web_app::WebAppFilter::IsIsolatedSubApp())) {
+      return web_app->manifest_url();
+    }
+  }
+  return std::nullopt;
+}
+#endif  // BUILDFLAG(ENABLE_EXTENSIONS_CORE) && !BUILDFLAG(IS_ANDROID)
 }  // namespace
 
 // static
@@ -4918,6 +4938,14 @@ bool ChromeContentBrowserClient::OverrideWebPreferencesAfterNavigation(
     web_prefs->allow_unrestricted_window_focus = true;
     prefs_changed = true;
   }
+
+  if (std::optional<GURL> manifest_url =
+          GetIwaCustomManifestUrl(web_contents)) {
+    if (web_prefs->web_app_custom_manifest_url != *manifest_url) {
+      web_prefs->web_app_custom_manifest_url = std::move(*manifest_url);
+      prefs_changed = true;
+    }
+  }
 #endif  // BUILDFLAG(ENABLE_EXTENSIONS_CORE) && !BUILDFLAG(IS_ANDROID)
 
   for (auto& parts : extra_parts_) {
@@ -5734,8 +5762,23 @@ void ChromeContentBrowserClient::CreateMediaRemoter(
   if (!contents) {
     return;
   }
-  RemotingBridge::CreateMediaRemoter(CastRemotingConnector::Get(contents),
-                                     std::move(source), std::move(receiver));
+  // A null connector means Media Router is disabled for this profile, in which
+  // case no remoting path is available for this source.
+  auto* const cast_connector = CastRemotingConnector::Get(contents);
+  if (!cast_connector) {
+    return;
+  }
+  // The remoting paths that can serve this source, in order of preference.
+  std::vector<RemotingBridge::Client*> clients = {cast_connector};
+#if BUILDFLAG(ENABLE_MEDIA_REMOTING_REDIRECTION)
+  // Without the provider there is no route to start redirection, so the
+  // connector would never have a session to offer.
+  if (media_router::RedirectionMediaRouteProviderEnabled()) {
+    clients.push_back(RedirectionConnector::Get());
+  }
+#endif
+  RemotingBridge::CreateMediaRemoter(clients, std::move(source),
+                                     std::move(receiver));
 }
 #endif  // BUILDFLAG(ENABLE_MEDIA_REMOTING)
 
@@ -8703,6 +8746,26 @@ bool ChromeContentBrowserClient::
 #else   // !BUILDFLAG(IS_ANDROID)
   return true;
 #endif  // !BUILDFLAG(IS_ANDROID)
+}
+
+base::FilePath ChromeContentBrowserClient::GetChildProcessPath(int flags) {
+#if BUILDFLAG(ENABLE_SEPARATE_RENDERER_BINARY) && BUILDFLAG(IS_LINUX)
+  if (flags & content::ChildProcessHost::CHILD_RENDERER) {
+    // TODO(crbug.com/552312254): Dedicated zygote for separate renderer binary
+    // on Linux is not yet supported. Until supported, launching chrome_renderer
+    // requires --no-zygote.
+    CHECK(
+        base::CommandLine::ForCurrentProcess()->HasSwitch(switches::kNoZygote))
+        << "--no-zygote is required when running separate renderer binary";
+
+    base::FilePath child_path;
+    if (base::PathService::Get(base::DIR_EXE, &child_path)) {
+      return child_path.Append(FILE_PATH_LITERAL("chrome_renderer"));
+    }
+  }
+#endif
+
+  return base::FilePath();
 }
 
 #if BUILDFLAG(IS_MAC)

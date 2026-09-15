@@ -64,6 +64,7 @@ public final class ProductionSupportedFlagList {
      * updating the "LoginCustomFlags" field in tools/metrics/histograms/enums.xml.
      */
     public static final Flag[] sFlagList = {
+        Flag.baseFeature("AwMetricsLogTrimming", "Auto-generated flag for AwMetricsLogTrimming."),
         Flag.commandLine(
                 AwSwitches.HIGHLIGHT_ALL_WEBVIEWS,
                 "Highlight the contents (including web contents) of all WebViews with a yellow "
@@ -510,12 +511,19 @@ public final class ProductionSupportedFlagList {
         Flag.baseFeature(NetFeatures.HAPPY_EYEBALLS_V2, "Enables Happy Eyeballs V2"),
         Flag.baseFeature(NetFeatures.HAPPY_EYEBALLS_V3, "Enables Happy Eyeballs V3"),
         Flag.baseFeature(NetFeatures.OPTIMISTIC_DNS_FOR_TCP, "Enables optimistic DNS for TCP"),
+        Flag.baseFeature(NetFeatures.OPTIMISTIC_DNS_FOR_QUIC, "Enables optimistic DNS for QUIC"),
         Flag.baseFeature(
                 NetFeatures.ADJUST_I_PV6_FALLBACK_TIME,
                 "Enables controlling the Happy Eyeballs slow timer (IPv6 fallback time)"),
         Flag.baseFeature(
                 NetFeatures.I_PV6_FALLBACK_BASED_ON_RTT,
                 "Enables the Happy Eyeballs slow timer to be based on the network RTT"),
+        Flag.baseFeature(
+                NetFeatures.ADJUST_QUIC_SLOW_TIMER_DELAY,
+                "Enables controlling the QUIC slow timer"),
+        Flag.baseFeature(
+                NetFeatures.QUIC_SLOW_TIMER_BASED_ON_RTT,
+                "Enables the QUIC slow timer to be based on the network RTT"),
         Flag.baseFeature(NetFeatures.ENABLE_TLS13_EARLY_DATA, "Enables TLS 1.3 Early Data"),
         Flag.baseFeature(
                 NetFeatures.HTTP_CACHE_NO_VARY_SEARCH,
@@ -607,6 +615,9 @@ public final class ProductionSupportedFlagList {
                 BaseFeatures.PARTITION_ALLOC_STRAIGHTEN_LARGER_SLOT_SPAN_FREE_LISTS,
                 "Straightens free lists for larger slot spans in PartitionRoot::PurgeMemory() -> "
                         + "... -> PartitionPurgeSlotSpan()."),
+        Flag.baseFeature(
+                BaseFeatures.PARTITION_ALLOC_TIGHTER_ALIGNED_ALLOC_BOUND,
+                "Allocates less memory for aligned allocations."),
         Flag.baseFeature(
                 "PartitionAllocUseSmallSingleSlotSpans",
                 "Uses a more nuanced heuristic to classify small single-slot spans."),
@@ -1266,6 +1277,7 @@ public final class ProductionSupportedFlagList {
                 ContentFeatureList.TEXT_CLASSIFIER_TIMEOUT,
                 "Enable timeout for TextClassifier calls. The timeout is configurable with a"
                         + " default of 200ms."),
+        Flag.baseFeature(BlinkFeatures.HARF_RUST_SHAPING, "Use HarfRust for text shaping."),
         Flag.baseFeature(
                 BlinkFeatures.XML_RUST_FOR_NON_XSLT,
                 "Enables the Rust based XML parser in situations where the XML document is"
@@ -1375,6 +1387,11 @@ public final class ProductionSupportedFlagList {
         Flag.baseFeature(
                 "EarlyCookieLoadOnPreconnect",
                 "When enabled, cookies are loaded early on preconnect requests."),
+        Flag.baseFeature(
+                "PreconnectManagerDirectFastPath",
+                "When enabled, PreconnectManager bypasses intermediate proxy and host lookups"
+                        + " for direct StartPreconnectUrl calls and immediately issues"
+                        + " NetworkContext::PreconnectSockets."),
         Flag.baseFeature(
                 "NoVarySearchCacheLoadOnSeparateTaskRunner",
                 "Enable loading the No Vary Search cache on a separate task runner."),

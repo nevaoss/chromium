@@ -14,12 +14,14 @@
 #include <variant>
 #include <vector>
 
+#include "base/containers/flat_map.h"
 #include "base/containers/flat_set.h"
 #include "base/memory/stack_allocated.h"
 #include "base/time/time.h"
 #include "components/autofill/core/browser/data_model/addresses/autofill_profile.h"
 #include "components/autofill/core/browser/data_model/payments/credit_card.h"
 #include "components/autofill/core/browser/field_types.h"
+#include "components/autofill/core/browser/filling/field_filling_skip_reason.h"
 #include "components/autofill/core/browser/filling/filling_product.h"
 #include "components/autofill/core/browser/form_types.h"
 #include "components/autofill/core/browser/metrics/form_events/form_events.h"
@@ -97,22 +99,6 @@ class AutofillMetrics {
     kMaxValue = kLinkButtonClicked,
   };
   // LINT.ThenChange(//tools/metrics/histograms/metadata/personal_context/enums.xml:PopupNoticeInteractions)
-
-  // The user action that triggered the deletion of a suggestion entry.
-  // These values are used in enums.xml; do not reorder or renumber entries!
-  // These values are persisted to logs. Entries should not be renumbered and
-  // numeric values should never be reused.
-  enum class SingleEntryRemovalMethod {
-    // The user pressed shift delete while an Autofill popup menu entry was
-    // selected.
-    kKeyboardShiftDeletePressed = 0,
-    // The user clicked the delete button in the Autofill popup menu.
-    kDeleteButtonClicked = 1,
-    // The user confirmed the entry deletion via the dialog shown by the
-    // keyboard accessory.
-    kKeyboardAccessory = 2,
-    kMaxValue = kKeyboardAccessory
-  };
 
   // The user action that triggered the acceptance of a suggestion entry.
   // These values are used in enums.xml; do not reorder or renumber entries!
@@ -770,11 +756,6 @@ class AutofillMetrics {
   // Logs the fact that an autocomplete popup was shown.
   static void OnAutocompleteSuggestionsShown();
 
-  // Logs that an autocomplete suggestion was deleted directly from the popup
-  // menu.
-  static void OnAutocompleteSuggestionDeleted(
-      SingleEntryRemovalMethod removal_method);
-
   // This should be called each time a server response is parsed for a form.
   static void LogServerResponseHasDataForForm(bool has_data);
 
@@ -790,7 +771,8 @@ class AutofillMetrics {
     autofill_metrics::FormEventLoggerBase& event_logger;
     const FormStructure& form;
     const AutofillField& field;
-    const base::flat_set<FieldGlobalId>& newly_filled_fields;
+    const base::flat_map<FieldGlobalId, DenseSet<FieldFillingSkipReason>>&
+        skip_reasons;
     const base::flat_set<FieldGlobalId>& safe_fields;
   };
 

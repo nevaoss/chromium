@@ -109,6 +109,17 @@ std::u16string GetBadgeString(ui::NewBadgeType new_badge_type) {
       return l10n_util::GetStringUTF16(IDS_PREVIEW_BADGE);
   }
 }
+
+void NotifyControllerOfDestructionRecursively(MenuItemView* item,
+                                              MenuController* controller) {
+  controller->OnMenuItemDestroying(item);
+  if (item->HasSubmenu()) {
+    for (auto* child : item->GetSubmenu()->GetMenuItems()) {
+      NotifyControllerOfDestructionRecursively(child, controller);
+    }
+  }
+}
+
 }  // namespace
 
 // MenuItemView ---------------------------------------------------------------
@@ -120,8 +131,13 @@ MenuItemView::MenuItemView(MenuDelegate* delegate)
                    delegate) {}
 
 MenuItemView::~MenuItemView() {
-  if (GetMenuController()) {
-    GetMenuController()->OnMenuItemDestroying(this);
+  if (controller_) {
+    NotifyControllerOfDestructionRecursively(this, controller_.get());
+  }
+  if (submenu_) {
+    for (auto* item : submenu_->GetMenuItems()) {
+      item->parent_menu_item_ = nullptr;
+    }
   }
   for (views::View* item : removed_items_) {
     delete item;
@@ -175,6 +191,7 @@ void MenuItemView::UpdateAccessibleCheckedState() {
 
 void MenuItemView::RefreshCheckmarkState() {
   UpdateAccessibleCheckedState();
+  UpdateAccessibleDefaultActionVerb();
   if (radio_check_image_view_) {
     if (type_ == Type::kCheckbox) {
       bool is_checked =
@@ -190,6 +207,7 @@ void MenuItemView::RefreshCheckmarkState() {
 void MenuItemView::SetCommand(int command) {
   command_ = command;
   UpdateAccessibleCheckedState();
+  UpdateAccessibleDefaultActionVerb();
 }
 
 void MenuItemView::ViewHierarchyChanged(
@@ -238,9 +256,15 @@ bool MenuItemView::HandleAccessibleAction(const ui::AXActionData& action_data) {
   switch (action_data.action) {
     case ax::mojom::Action::kExpand: {
       DCHECK(HasSubmenu());
-      [[fallthrough]];
+      GetMenuController()->SelectItemAndOpenSubmenu(this);
+      return true;
     }
     case ax::mojom::Action::kDoDefault: {
+      if (HasSubmenu()) {
+        GetMenuController()->SelectItemAndOpenSubmenu(this);
+        return true;
+      }
+
       // kDoDefault in View would simulate a mouse click in the center of this
       // MenuItemView. However, mouse events for menus are dispatched via
       // Widget::SetCapture() to the MenuController rather than to
@@ -995,10 +1019,15 @@ MenuItemView::MenuItemView(MenuItemView* parent,
       &MenuItemView::UpdateAccessibleSelection, base::Unretained(this)));
   enabled_changed_callback_ =
       AddEnabledInViewsSubtreeChangedCallback(base::BindRepeating(
-          &MenuItemView::UpdateAccessibleSelection, base::Unretained(this)));
+          [](MenuItemView* item) {
+            item->UpdateAccessibleSelection();
+            item->UpdateAccessibleDefaultActionVerb();
+          },
+          base::Unretained(this)));
 
   UpdateAccessibleSelection();
   UpdateAccessibleKeyShortcuts();
+  UpdateAccessibleDefaultActionVerb();
   UpdateAccessibleExpandedCollapsedState();
 
   UpdateTooltipText();
@@ -1854,6 +1883,38 @@ void MenuItemView::UpdateAccessibleKeyShortcuts() {
 
 void MenuItemView::UpdateAccessibleSelection() {
   GetViewAccessibility().SetIsSelected(IsTraversableByKeyboard() && selected_);
+}
+
+void MenuItemView::UpdateAccessibleDefaultActionVerb() {
+  if (!parent_menu_item_ || !GetEnabledInViewsSubtree()) {
+    GetViewAccessibility().RemoveDefaultActionVerb();
+    return;
+  }
+
+  switch (type_) {
+    case Type::kSubMenu:
+    case Type::kActionableSubMenu:
+      GetViewAccessibility().SetDefaultActionVerb(
+          ax::mojom::DefaultActionVerb::kOpen);
+      return;
+    case Type::kCheckbox:
+      GetViewAccessibility().SetDefaultActionVerb(
+          GetDelegate() && GetDelegate()->IsItemChecked(GetCommand())
+              ? ax::mojom::DefaultActionVerb::kUncheck
+              : ax::mojom::DefaultActionVerb::kCheck);
+      return;
+    case Type::kRadio:
+    case Type::kNormal:
+    case Type::kHighlighted:
+      GetViewAccessibility().SetDefaultActionVerb(
+          ax::mojom::DefaultActionVerb::kSelect);
+      return;
+    case Type::kTitle:
+    case Type::kSeparator:
+    case Type::kEmpty:
+      GetViewAccessibility().RemoveDefaultActionVerb();
+      return;
+  }
 }
 
 void MenuItemView::UpdateAccessibleRole() {

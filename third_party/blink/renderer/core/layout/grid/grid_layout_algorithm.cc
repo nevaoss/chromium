@@ -1919,6 +1919,8 @@ void GridLayoutAlgorithm::PlaceGridItemsForFragmentation(
     wtf_size_t* first_unprocessed_row_gap_idx) {
   DCHECK(grid_items_placement_data && row_offset_adjustments &&
          intrinsic_block_size && offset_in_stitched_container);
+  DCHECK(*offset_in_stitched_container == LayoutUnit() ||
+         IsBreakInside(GetBreakToken()));
 
   // TODO(ikilpatrick): Update `SetHasSeenAllChildren` and early exit if true.
   const auto& constraint_space = GetConstraintSpace();
@@ -2471,15 +2473,16 @@ void GridLayoutAlgorithm::PlaceGridItemsForFragmentation(
     // Create gap geometry for this fragmentainer if we have gaps.
     if (Style().HasGapRule() && (!fragment_main_gaps.empty() ||
                                  !full_gap_geometry->GetCrossGaps().empty())) {
-      // Update content block offsets for this fragmentainer.
-      // - Block start: Use the original gap geometry's start for the first
-      // fragment and zero for subsequent fragments.
-      // - Block end: Use the smaller of the fragmentainer space and the grid's
-      // remaining block size.
-      LayoutUnit fragment_block_start =
-          *offset_in_stitched_container > LayoutUnit()
-              ? full_gap_geometry->GetContentBlockStart()
-              : LayoutUnit();
+      // Translate the block-start from the stitched container into the current
+      // fragment, accounting for any cloned block-start decorations.
+      const LayoutUnit translated_block_start =
+          full_gap_geometry->GetContentBlockStart() -
+          *offset_in_stitched_container + cloned_block_start_decoration;
+      const LayoutUnit fragment_block_start =
+          std::max(cloned_block_start_decoration, translated_block_start);
+
+      // Use the smaller of the fragmentainer space and the grid's remaining
+      // block size for the block-end.
       LayoutUnit fragment_block_end =
           std::min(fragmentainer_space,
                    *intrinsic_block_size - *offset_in_stitched_container);
@@ -2554,11 +2557,9 @@ void GridLayoutAlgorithm::PlaceOutOfFlowItems(
   HeapVector<Member<LayoutBox>> oofs;
   std::swap(oofs, oof_children);
 
-  bool should_process_block_end = true;
-  if (InvolvedInBlockFragmentation(container_builder_)) [[unlikely]] {
-    should_process_block_end = !container_builder_.DidBreakSelf() &&
-                               !container_builder_.ShouldBreakInside();
-  }
+  const bool should_process_block_end =
+      !InvolvedInBlockFragmentation(container_builder_) ||
+      !container_builder_.ShouldBreak();
 
   const auto& node = Node();
   const auto& container_style = Style();

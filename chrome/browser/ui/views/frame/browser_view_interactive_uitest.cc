@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "chrome/browser/ui/views/frame/browser_view.h"
+
 #include "base/strings/string_util.h"
 #include "build/build_config.h"
 #include "chrome/app/chrome_command_ids.h"
@@ -14,8 +16,8 @@
 #include "chrome/browser/ui/focus/browser_focus_controller.h"
 #include "chrome/browser/ui/tab_modal_confirm_dialog.h"
 #include "chrome/browser/ui/tabs/split_tab_metrics.h"
+#include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/ui_features.h"
-#include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/views/location_bar/location_bar_view.h"
 #include "chrome/browser/ui/views/tabs/tab_strip.h"
 #include "chrome/grit/branded_strings.h"
@@ -25,12 +27,15 @@
 #include "chrome/test/base/ui_test_utils.h"
 #include "components/input/native_web_keyboard_event.h"
 #include "components/split_tabs/split_tab_visual_data.h"
+#include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/test/browser_test.h"
 #include "content/public/test/test_navigation_observer.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "ui/base/ozone_buildflags.h"
+#include "ui/base/page_transition_types.h"
 #include "ui/base/ui_base_features.h"
+#include "ui/base/window_open_disposition.h"
 #include "ui/ozone/public/ozone_platform.h"
 #include "ui/views/bubble/bubble_dialog_delegate_view.h"
 #include "ui/views/bubble/bubble_dialog_model_host.h"
@@ -272,10 +277,8 @@ IN_PROC_BROWSER_TEST_F(BrowserViewTest, MAYBE_BrowserFullscreenShowTopView) {
             chrome::IsCommandEnabled(browser(), IDC_SHOW_BOOKMARK_BAR));
 
   // Enter into tab fullscreen mode from browser fullscreen mode.
-  FullscreenController* controller = browser()
-                                         ->GetFeatures()
-                                         .exclusive_access_manager()
-                                         ->fullscreen_controller();
+  FullscreenController* controller =
+      ExclusiveAccessManager::From(browser())->fullscreen_controller();
   content::WebContents* web_contents =
       browser()->GetTabStripModel()->GetActiveWebContents();
   controller->EnterFullscreenModeForTab(web_contents->GetPrimaryMainFrame());
@@ -292,8 +295,7 @@ IN_PROC_BROWSER_TEST_F(BrowserViewTest, MAYBE_BrowserFullscreenShowTopView) {
       blink::WebInputEvent::Type::kKeyDown, blink::WebInputEvent::kNoModifiers,
       blink::WebInputEvent::GetStaticTimeStampForTests());
   event.windows_key_code = ui::VKEY_ESCAPE;
-  browser()->GetFeatures().exclusive_access_manager()->HandleUserKeyEvent(
-      event);
+  ExclusiveAccessManager::From(browser())->HandleUserKeyEvent(event);
   EXPECT_TRUE(browser_view->IsFullscreen());
   EXPECT_EQ(top_view_in_browser_fullscreen, browser_view->GetTabStripVisible());
   // This makes sure that the layout was updated accordingly.
@@ -318,10 +320,8 @@ IN_PROC_BROWSER_TEST_F(BrowserViewTest, TabFullscreenShowTopView) {
   EXPECT_TRUE(browser_view->GetTabStripVisible());
 
   // Enter into tab fullscreen mode.
-  FullscreenController* controller = browser()
-                                         ->GetFeatures()
-                                         .exclusive_access_manager()
-                                         ->fullscreen_controller();
+  FullscreenController* controller =
+      ExclusiveAccessManager::From(browser())->fullscreen_controller();
   content::WebContents* web_contents =
       browser()->GetTabStripModel()->GetActiveWebContents();
   controller->EnterFullscreenModeForTab(web_contents->GetPrimaryMainFrame());
@@ -356,10 +356,8 @@ IN_PROC_BROWSER_TEST_F(BrowserViewTest, TabFullscreenHideSplitView) {
   EXPECT_TRUE(browser_view->IsInSplitView());
 
   // Enter into tab fullscreen mode.
-  FullscreenController* controller = browser()
-                                         ->GetFeatures()
-                                         .exclusive_access_manager()
-                                         ->fullscreen_controller();
+  FullscreenController* controller =
+      ExclusiveAccessManager::From(browser())->fullscreen_controller();
   content::WebContents* web_contents =
       browser()->GetTabStripModel()->GetActiveWebContents();
   controller->EnterFullscreenModeForTab(web_contents->GetPrimaryMainFrame());
@@ -683,9 +681,7 @@ using BrowserViewLockedFullscreenTestChromeOS = BrowserViewTest;
 IN_PROC_BROWSER_TEST_F(BrowserViewLockedFullscreenTestChromeOS,
                        ShowExclusiveAccessBubbleWhenNotLocked) {
   ash::PinWindow(browser()->GetWindow()->GetNativeWindow(), /*trusted=*/false);
-  browser()
-      ->GetFeatures()
-      .exclusive_access_manager()
+  ExclusiveAccessManager::From(browser())
       ->context()
       ->UpdateExclusiveAccessBubble(
           {
@@ -705,9 +701,7 @@ IN_PROC_BROWSER_TEST_F(BrowserViewLockedFullscreenTestChromeOS,
 IN_PROC_BROWSER_TEST_F(BrowserViewLockedFullscreenTestChromeOS,
                        HideExclusiveAccessBubbleWhenLocked) {
   ash::PinWindow(browser()->GetWindow()->GetNativeWindow(), /*trusted=*/true);
-  browser()
-      ->GetFeatures()
-      .exclusive_access_manager()
+  ExclusiveAccessManager::From(browser())
       ->context()
       ->UpdateExclusiveAccessBubble(
           {.origin = url::Origin::Create(

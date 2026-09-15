@@ -44,6 +44,7 @@ BASE_DECLARE_FEATURE(kAndroidBottomBar);
 BASE_DECLARE_FEATURE(kAndroidBottomBarAim);
 BASE_DECLARE_FEATURE(kAndroidBricksNativePage);
 BASE_DECLARE_FEATURE(kAndroidContextMenuDisabledMenuItems);
+BASE_DECLARE_FEATURE(kAndroidDesktopBookmarkDialog);
 BASE_DECLARE_FEATURE(kAndroidDesktopBookmarkLayout);
 BASE_DECLARE_FEATURE(kAndroidDesktopBookmarkPopup);
 BASE_DECLARE_FEATURE(kAndroidDesktopHistoryLayout);
@@ -52,6 +53,7 @@ BASE_DECLARE_FEATURE(kAndroidElegantTextHeight);
 BASE_DECLARE_FEATURE(kAndroidFirstRunLaunchBounds);
 BASE_DECLARE_FEATURE(kAndroidFreLayoutUpdate);
 BASE_DECLARE_FEATURE(kAndroidHistoryClustering);
+BASE_DECLARE_FEATURE(kAndroidKeyboardShortcutOpenFile);
 BASE_DECLARE_FEATURE(kAndroidNoCaptureWhenScrollingDisabledOnDesktop);
 BASE_DECLARE_FEATURE(kAndroidNoVisibleHintForDifferentTLD);
 BASE_DECLARE_FEATURE(kAndroidOmniboxFocusedNewTabPage);
@@ -169,6 +171,7 @@ BASE_DECLARE_FEATURE(kDefaultBrowserPromoAndroid2);
 BASE_DECLARE_FEATURE(kDefaultBrowserPromoEntryPoint);
 BASE_DECLARE_FEATURE(kDefaultBrowserPromoFre);
 BASE_DECLARE_FEATURE(kDeferNavigationStateChanged);
+BASE_DECLARE_FEATURE(kDesktopAndroidBackgroundTabLoading);
 BASE_DECLARE_FEATURE(kDesktopAndroidLinkCapturing);
 BASE_DECLARE_FEATURE(kDesktopAndroidTWADeleteBrowserData);
 BASE_DECLARE_FEATURE(kDesktopAndroidTWADisclosures);
@@ -210,6 +213,7 @@ BASE_DECLARE_FEATURE(kGridTabSwitcherSurfaceColorUpdate);
 BASE_DECLARE_FEATURE(kHistoryPaneAndroid);
 BASE_DECLARE_FEATURE(kHomeButtonRemoval);
 BASE_DECLARE_FEATURE(kImprovedA2HS);
+BASE_DECLARE_FEATURE(kInAppUpdateFlow);
 BASE_DECLARE_FEATURE(kInAppWindowManagerDeprecation);
 BASE_DECLARE_FEATURE(kIncognitoAsWindowFullScreen);
 BASE_DECLARE_FEATURE(kIncognitoModeForcedAndroid);
@@ -248,7 +252,6 @@ BASE_DECLARE_FEATURE(kOnStartupWindowPolicy);
 BASE_DECLARE_FEATURE(kOneStepAimAccess);
 BASE_DECLARE_FEATURE(kOpenDownloadInPreferredApp);
 BASE_DECLARE_FEATURE(kOptimizeGeolocationHeaderGeneration);
-BASE_DECLARE_FEATURE(kOptionalButtonNoHardwareLayerKillswitch);
 BASE_DECLARE_FEATURE(kPCCTMinimumHeight);
 BASE_DECLARE_FEATURE(kPageAnnotationsService);
 BASE_DECLARE_FEATURE(kPageContentProvider);
@@ -257,6 +260,7 @@ BASE_DECLARE_FEATURE(kPdfLauncherActivity);
 BASE_DECLARE_FEATURE(kPdfReuseFragment);
 BASE_DECLARE_FEATURE(kPersistAcrossReboots);
 BASE_DECLARE_FEATURE(kPersistAcrossRebootsDebugLogs);
+BASE_DECLARE_FEATURE(kPictureInPictureMovesToolbarAndroid);
 BASE_DECLARE_FEATURE(kPowerSavingModeBroadcastReceiverInBackground);
 BASE_DECLARE_FEATURE(kPreconnectOnTabCreation);
 BASE_DECLARE_FEATURE(kPriceChangeModule);
@@ -408,6 +412,33 @@ inline constexpr base::FeatureParam<int> kGestureUserEducationPageDelay(
     &kGestureUserEducationBackSwipe,
     "gesture-user-education-page-delay",
     /*default_value=*/4000);
+
+// The initial fallback delay in seconds for TabContextCaptureRequest before
+// triggering page context capture if page load events do not arrive.
+inline constexpr base::FeatureParam<int>
+    kOnDemandBackgroundTabContextCaptureInitialFallbackDelaySeconds(
+        &kOnDemandBackgroundTabContextCaptureOptimization,
+        "initial_fallback_delay_seconds",
+        /*default_value=*/25);
+
+// The overall flush timeout in seconds for TabContextualizationController to
+// flush pending page context callbacks if primary main frame load completion
+// does not arrive within this duration, preventing indefinite hangs on pages
+// with continuous subframe/ad loading.
+inline constexpr base::FeatureParam<int>
+    kOnDemandBackgroundTabContextCaptureOverallFlushTimeoutSeconds(
+        &kOnDemandBackgroundTabContextCaptureOptimization,
+        "overall_flush_timeout_seconds",
+        /*default_value=*/5);
+
+// The overall hard timeout in seconds for TabContextCaptureRequest covering
+// the entire capture lifecycle (load wait, APC extraction, and screenshot)
+// before aborting with UnableToCapture().
+inline constexpr base::FeatureParam<int>
+    kOnDemandBackgroundTabContextCaptureOverallTimeoutSeconds(
+        &kOnDemandBackgroundTabContextCaptureOptimization,
+        "overall_timeout_seconds",
+        /*default_value=*/35);
 
 inline constexpr base::FeatureParam<int> kProtectRecentlyVisibleTabDuration(
     &kProtectRecentlyVisibleTab,
