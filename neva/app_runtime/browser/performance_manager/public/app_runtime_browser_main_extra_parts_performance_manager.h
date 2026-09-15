@@ -59,7 +59,7 @@ class AppRuntimeBrowserMainExtraPartsPerformanceManager
   static void CreatePoliciesAndDecorators(performance_manager::Graph* graph);
 
   // AppRuntimeBrowserMainExtraParts overrides.
-  void PostCreateThreads() override;
+  int PostCreateThreads() override;
   void PostMainMessageLoopRun() override;
 
   // Manages the lifetime of the PerformanceManager graph and registry for the
