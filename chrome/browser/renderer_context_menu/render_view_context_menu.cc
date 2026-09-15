@@ -76,6 +76,7 @@
 #include "chrome/browser/navigation_predictor/navigation_predictor_features.h"
 #include "chrome/browser/navigation_predictor/navigation_predictor_keyed_service.h"
 #include "chrome/browser/navigation_predictor/navigation_predictor_keyed_service_factory.h"
+#include "chrome/browser/page_load_metrics/chrome_initiator_location.h"
 #include "chrome/browser/password_manager/chrome_password_manager_client.h"
 #include "chrome/browser/platform_util.h"
 #include "chrome/browser/policy/chrome_policy_blocklist_service_factory.h"
@@ -225,6 +226,7 @@
 #include "content/public/browser/browser_context.h"
 #include "content/public/browser/child_process_security_policy.h"
 #include "content/public/browser/download_manager.h"
+#include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/navigation_details.h"
 #include "content/public/browser/navigation_entry.h"
 #include "content/public/browser/picture_in_picture_window_controller.h"
@@ -274,8 +276,10 @@
 #include "ui/base/mojom/menu_source_type.mojom.h"
 #include "ui/base/resource/resource_bundle.h"
 #include "ui/base/ui_base_features.h"
+#include "ui/base/window_open_disposition.h"
 #include "ui/base/window_open_disposition_utils.h"
 #include "ui/color/color_provider.h"
+#include "ui/display/types/display_constants.h"
 #include "ui/gfx/favicon_size.h"
 #include "ui/gfx/geometry/point.h"
 #include "ui/gfx/geometry/point_conversions.h"
@@ -361,6 +365,7 @@
 #include "chrome/browser/chromeos/policy/dlp/dlp_rules_manager_factory.h"
 #include "chrome/browser/renderer_context_menu/read_write_card_observer.h"
 #include "chrome/browser/ui/ash/system_web_apps/system_web_app_ui_utils.h"
+#include "chrome/browser/ui/chromeos/locked_state/locked_state_controller.h"
 #include "chrome/browser/ui/settings_window_manager_chromeos.h"
 #include "chrome/browser/ui/webui/ash/system_web_dialog/system_web_dialog_delegate.h"
 #include "chromeos/ash/components/system_web_apps/system_web_app_type.h"
@@ -1781,9 +1786,8 @@ bool RenderViewContextMenu::IsHTML5Fullscreen() const {
     return false;
   }
 
-  FullscreenController* controller = browser->GetFeatures()
-                                         .exclusive_access_manager()
-                                         ->fullscreen_controller();
+  FullscreenController* controller =
+      ExclusiveAccessManager::From(browser)->fullscreen_controller();
   return controller->IsTabFullscreen();
 }
 
@@ -1795,9 +1799,8 @@ bool RenderViewContextMenu::IsPressAndHoldEscRequiredToExitFullscreen() const {
     return false;
   }
 
-  KeyboardLockController* controller = browser->GetFeatures()
-                                           .exclusive_access_manager()
-                                           ->keyboard_lock_controller();
+  KeyboardLockController* controller =
+      ExclusiveAccessManager::From(browser)->keyboard_lock_controller();
   return controller->RequiresPressAndHoldEscToExit();
 }
 
@@ -3343,25 +3346,33 @@ bool RenderViewContextMenu::IsCommandIdEnabled(int id) const {
   // NOTE: If new commands are being added, please disable them by default and
   // notify the ChromeOS team by filing a bug under this component --
   // b/?q=componentid:1389107.
-  bool should_disable_command_for_locked_fullscreen_or_on_task = false;
   BrowserWindowInterface* const browser_window = GetBrowser();
-  if (browser_window &&
-      platform_util::IsBrowserLockedFullscreen(browser_window)) {
-    should_disable_command_for_locked_fullscreen_or_on_task = true;
-  }
-  if (browser_window && ash::boca::OnTaskLockedController::From(browser_window)
-                            ->is_locked_for_on_task()) {
-    bool is_page_nav_command =
-        (id == IDC_BACK) || (id == IDC_FORWARD) || (id == IDC_RELOAD);
-    bool is_allowed_content_context_command =
-        (id == IDC_CONTENT_CONTEXT_COPYIMAGE) ||
-        (id == IDC_CONTENT_CONTEXT_COPYIMAGELOCATION);
-    should_disable_command_for_locked_fullscreen_or_on_task =
-        !is_page_nav_command && !is_allowed_content_context_command &&
-        !ContextMenuMatcher::IsExtensionsCustomCommandId(id);
-  }
-  if (should_disable_command_for_locked_fullscreen_or_on_task) {
-    return false;
+  if (features::IsUseUnifiedLockedStateControllerEnabled()) {
+    if (browser_window && !chromeos::LockedStateController::From(browser_window)
+                               ->IsCommandIdEnabled(id)) {
+      return false;
+    }
+  } else {
+    bool should_disable_command_for_locked_fullscreen_or_on_task = false;
+    if (browser_window &&
+        platform_util::IsBrowserLockedFullscreen(browser_window)) {
+      should_disable_command_for_locked_fullscreen_or_on_task = true;
+    }
+    if (browser_window &&
+        ash::boca::OnTaskLockedController::From(browser_window)
+            ->is_locked_for_on_task()) {
+      bool is_page_nav_command =
+          (id == IDC_BACK) || (id == IDC_FORWARD) || (id == IDC_RELOAD);
+      bool is_allowed_content_context_command =
+          (id == IDC_CONTENT_CONTEXT_COPYIMAGE) ||
+          (id == IDC_CONTENT_CONTEXT_COPYIMAGELOCATION);
+      should_disable_command_for_locked_fullscreen_or_on_task =
+          !is_page_nav_command && !is_allowed_content_context_command &&
+          !ContextMenuMatcher::IsExtensionsCustomCommandId(id);
+    }
+    if (should_disable_command_for_locked_fullscreen_or_on_task) {
+      return false;
+    }
   }
 #endif
 
@@ -4188,8 +4199,10 @@ void RenderViewContextMenu::ExecuteCommand(int id, int event_flags) {
                 if (!web_contents) {
                   return;
                 }
-                web_contents->OpenURL(params,
-                                      /*navigation_handle_callback=*/{});
+                web_contents->OpenURL(
+                    params,
+                    base::BindOnce(
+                        &AttachContextMenuSearchNavigationHandleUserData));
               },
               source_web_contents_->GetWeakPtr(), std::move(open_url_params)));
       break;
@@ -4261,9 +4274,17 @@ void RenderViewContextMenu::ExecuteCommand(int id, int event_flags) {
 #endif  // BUILDFLAG(ENABLE_COMPOSE)
 
     default:
+      if (ExecPlatformCommand(id, event_flags)) {
+        break;
+      }
       DUMP_WILL_BE_NOTREACHED() << "Unhandled id: " << id;
       break;
   }
+}
+
+bool RenderViewContextMenu::ExecPlatformCommand(int command_id,
+                                                int event_flags) {
+  return false;
 }
 
 void RenderViewContextMenu::AddSpellCheckServiceItem(bool is_checked) {
@@ -5819,7 +5840,7 @@ ToastController* RenderViewContextMenu::GetToastController() const {
   }
 #endif
 
-  return browser ? browser->GetFeatures().toast_controller() : nullptr;
+  return browser ? ToastController::From(browser) : nullptr;
 }
 
 bool RenderViewContextMenu::CanTranslate(bool menu_logging) {

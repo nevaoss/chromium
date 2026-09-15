@@ -71,6 +71,7 @@
 #include "chrome/browser/ui/signin/account_preview_utils.h"
 #include "chrome/browser/ui/signin/signin_view_controller.h"
 #include "chrome/browser/ui/tabs/tab_enums.h"
+#include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/test/test_browser_dialog.h"
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
@@ -102,6 +103,7 @@
 #include "components/bookmarks/browser/bookmark_model.h"
 #include "components/bookmarks/browser/bookmark_node.h"
 #include "components/bookmarks/test/bookmark_test_helpers.h"
+#include "components/enterprise/isolated_mode/isolated_mode_features.h"
 #include "components/feature_engagement/public/feature_constants.h"
 #include "components/google/core/common/google_util.h"
 #include "components/password_manager/core/common/password_manager_features.h"
@@ -131,6 +133,7 @@
 #include "components/user_education/common/feature_promo/feature_promo_controller.h"
 #include "components/user_education/common/feature_promo/feature_promo_result.h"
 #include "components/webapps/common/web_app_id.h"
+#include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/navigation_entry.h"
 #include "content/public/test/browser_test.h"
 #include "content/public/test/test_navigation_observer.h"
@@ -147,6 +150,7 @@
 #include "services/network/test/test_url_loader_factory.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "ui/base/page_transition_types.h"
 #include "ui/events/event_utils.h"
 #include "ui/views/accessibility/view_accessibility.h"
 #include "ui/views/controls/button/label_button.h"
@@ -682,8 +686,7 @@ class ProfileMenuViewSignoutTest : public ProfileMenuViewTestBase,
 #if BUILDFLAG(ENABLE_DICE_SUPPORT)
     if (observer.get()) {
       observer->Wait();
-      auto* signin_view_controller =
-          browser()->GetFeatures().signin_view_controller();
+      auto* signin_view_controller = SigninViewController::From(browser());
       auto* signout_ui = SignoutConfirmationUI::GetForTesting(
           signin_view_controller->GetModalDialogWebContentsForTesting());
       if (!signout_ui) {
@@ -1502,7 +1505,7 @@ class ProfileMenuViewBookmarksLimitExceededTest
 
     // Wait for the error to appear in SyncService.
     BookmarksLimitExceededChecker checker(GetSyncService(0));
-    checker.Wait();
+    ASSERT_TRUE(checker.Wait());
   }
 
  private:
@@ -2495,6 +2498,43 @@ constexpr std::array kActionableItems_IncognitoProfile = {
 PROFILE_MENU_CLICK_TEST(kActionableItems_IncognitoProfile,
                         ProfileMenuClickTest_IncognitoProfile) {
   SetTargetBrowser(CreateIncognitoBrowser(browser()->GetProfile()));
+
+  RunTest();
+}
+
+class ProfileMenuClickTestEnterpriseIsolated : public ProfileMenuClickTest {
+ public:
+  void SetUpCommandLine(base::CommandLine* command_line) override {
+    ProfileMenuClickTest::SetUpCommandLine(command_line);
+    command_line->AppendSwitch(
+        enterprise_isolated_mode::switches::
+            kForceEnterpriseIsolatedModeReplacesIncognito);
+  }
+};
+
+// List of actionable items in the correct order as they appear in the menu.
+// If a new button is added to the menu, it should also be added to this list.
+constexpr std::array kActionableItems_EnterpriseIsolatedProfile = {
+    ProfileMenuViewBase::ActionableItem::kProfileManagementLabel,
+    ProfileMenuViewBase::ActionableItem::kExitProfileButton,
+    // The first button is added again to finish the cycle and test that
+    // there are no other buttons at the end.
+    ProfileMenuViewBase::ActionableItem::kProfileManagementLabel};
+
+PROFILE_MENU_CLICK_TEST_F(ProfileMenuClickTestEnterpriseIsolated,
+                          kActionableItems_EnterpriseIsolatedProfile,
+                          ProfileMenuClickTest_EnterpriseIsolatedProfile) {
+  enterprise_util::SetUserAcceptedAccountManagement(browser()->GetProfile(),
+                                                    true);
+  policy::ScopedManagementServiceOverrideForTesting scoped_browser_management(
+      policy::ManagementServiceFactory::GetForProfile(browser()->GetProfile()),
+      policy::EnterpriseManagementAuthority::CLOUD);
+
+  BrowserWindowInterface* isolated_browser =
+      CreateIncognitoBrowser(browser()->GetProfile());
+  ASSERT_TRUE(
+      isolated_browser->GetProfile()->IsEnterpriseIsolatedModeProfile());
+  SetTargetBrowser(isolated_browser);
 
   RunTest();
 }

@@ -22,7 +22,7 @@
 #include "chrome/browser/sync/session_sync_service_factory.h"
 #include "chrome/browser/sync/sync_service_factory.h"
 #include "chrome/browser/ui/actions/chrome_action_id.h"
-#include "chrome/browser/ui/browser_window/public/browser_window_features.h"
+#include "chrome/browser/ui/side_panel/side_panel_ui.h"
 #include "chrome/browser/ui/tabs/recent_tabs_sub_menu_model.h"
 #include "chrome/browser/ui/tabs/tab_group_theme.h"
 #include "chrome/browser/ui/toolbar/app_menu_model.h"
@@ -41,6 +41,7 @@
 #include "components/sync_sessions/session_sync_service.h"
 #include "components/sync_sessions/synced_session.h"
 #include "components/vector_icons/vector_icons.h"
+#include "content/public/browser/navigation_entry.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/models/image_model.h"
 #include "ui/base/ui_base_features.h"
@@ -210,13 +211,13 @@ RecentTabItem::~RecentTabItem() = default;
 
 std::vector<RecentTabItem> RecentTabsBuilder::BuildRecentTabs(
     Profile* profile,
-    BrowserWindowFeatures* feature) {
+    BrowserWindowInterface* browser) {
   std::vector<RecentTabItem> items;
-  if (!profile || !feature) {
+  if (!profile || !browser) {
     return items;
   }
 
-  auto history_items = BuildHistoryEntries(profile, feature);
+  auto history_items = BuildHistoryEntries(profile, browser);
   items.insert(items.end(), std::make_move_iterator(history_items.begin()),
                std::make_move_iterator(history_items.end()));
 
@@ -233,9 +234,9 @@ std::vector<RecentTabItem> RecentTabsBuilder::BuildRecentTabs(
 
 std::vector<RecentTabItem> RecentTabsBuilder::BuildHistoryEntries(
     Profile* profile,
-    BrowserWindowFeatures* feature) {
+    BrowserWindowInterface* browser) {
   std::vector<RecentTabItem> items;
-  if (!profile || !feature) {
+  if (!profile || !browser) {
     return items;
   }
 
@@ -249,7 +250,7 @@ std::vector<RecentTabItem> RecentTabsBuilder::BuildHistoryEntries(
       ui::kColorMenuIcon, gfx::kFaviconSize));
   items.push_back(std::move(history));
 
-  if (feature->side_panel_ui()) {
+  if (SidePanelUI::From(browser)) {
     if (HistoryClustersSidePanelCoordinator::IsSupported(profile)) {
       RecentTabItem clusters(
           RecentTabItem::Type::kCommand,

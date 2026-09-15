@@ -249,6 +249,7 @@ const LayoutResult* GridLanesLayoutAlgorithm::Layout() {
     grid_lanes = grid_lanes_data->grid_lanes;
     grid_layout_subtree = grid_lanes_data->grid_layout_subtree;
     layout_data = grid_layout_subtree->LayoutData();
+    oof_children = grid_lanes_data->oof_children;
 
     // TODO(almaher): We may need to do something here with
     // EBoxDecorationBreak::kClone.
@@ -267,7 +268,7 @@ const LayoutResult* GridLanesLayoutAlgorithm::Layout() {
 
     // TODO(javiercon): Handle gap decorations in fragmented grid lanes.
     if (!has_block_fragmentation && style.HasGapRule()) {
-      gap_accumulator.emplace();
+      gap_accumulator.emplace(style);
       gap_accumulator->BuildMainGaps(track_collection);
     }
 
@@ -333,10 +334,9 @@ const LayoutResult* GridLanesLayoutAlgorithm::Layout() {
     intrinsic_block_size_ = total_intrinsic_block_size;
   }
 
-  auto block_size = ComputeBlockSizeForFragment(
+  const auto block_size = ComputeBlockSizeForFragment(
       GetConstraintSpace(), Node(), BorderPadding(),
-      previously_consumed_block_size +
-          contain_intrinsic_block_size_.value_or(intrinsic_block_size_),
+      contain_intrinsic_block_size_.value_or(total_intrinsic_block_size),
       container_builder_.InlineSize());
   container_builder_.SetFragmentsTotalBlockSize(block_size);
   container_builder_.SetIntrinsicBlockSize(intrinsic_block_size_);
@@ -424,7 +424,8 @@ const LayoutResult* GridLanesLayoutAlgorithm::Layout() {
   if (has_block_fragmentation) {
     container_builder_.SetBreakTokenData(
         MakeGarbageCollected<GridLanesBreakTokenData>(
-            grid_lanes, grid_layout_subtree, total_intrinsic_block_size));
+            grid_lanes, grid_layout_subtree, total_intrinsic_block_size,
+            oof_children));
   }
 
   container_builder_.HandleOofsAndSpecialDescendants();
@@ -792,10 +793,6 @@ void GridLanesLayoutAlgorithm::PlaceGridLanesItems(
       // collection pass that computes stitched-container placement without
       // adding child results to the builder. Persist the final offset
       // adjustment so it is applied during each item's per-fragment layout.
-      //
-      // TODO(almaher): Fragmented OOF placement will need to apply this
-      // adjustment separately because `out_grid_lanes` only stores in-flow
-      // items.
       const LayoutUnit offset_adjustment =
           align_content_offset + (is_deferred_fill_reverse
                                       ? effective_stacking_axis_size
@@ -1450,7 +1447,7 @@ void GridLanesLayoutAlgorithm::RunGridLanesPlacementPhase(
     const auto& item_node = grid_lanes_item.node;
     const auto& item_style = item_node.Style();
     const LayoutResult* result =
-        is_for_layout ? result = item_node.Layout(space)
+        is_for_layout ? item_node.Layout(space)
                       : LayoutGridItemForMeasure(grid_lanes_item, space,
                                                  *sizing_constraint);
 
@@ -1785,6 +1782,18 @@ void GridLanesLayoutAlgorithm::PlaceOutOfFlowItems(
     const GridLayoutData& layout_data,
     LayoutUnit block_size,
     HeapVector<Member<LayoutBox>>& oof_children) {
+  DCHECK(!oof_children.empty());
+
+  HeapVector<Member<LayoutBox>> oofs;
+  std::swap(oofs, oof_children);
+
+  const bool should_process_block_end =
+      !InvolvedInBlockFragmentation(container_builder_) ||
+      !container_builder_.ShouldBreak();
+
+  const LayoutUnit previously_consumed_block_size =
+      GetBreakToken() ? GetBreakToken()->ConsumedBlockSize() : LayoutUnit();
+
   const auto& container_style = Style();
   const auto& node = Node();
   const auto& placement_data = node.CachedPlacementData();
@@ -1808,7 +1817,7 @@ void GridLanesLayoutAlgorithm::PlaceOutOfFlowItems(
                      : (container_builder_.InlineSize() -
                         border_scrollbar_padding.inline_end);
 
-  for (LayoutBox* oof_child : oof_children) {
+  for (LayoutBox* oof_child : oofs) {
     GridItemData* out_of_flow_item = MakeGarbageCollected<GridItemData>(
         BlockNode(oof_child), container_style);
     DCHECK(out_of_flow_item->IsOutOfFlow());
@@ -1850,11 +1859,21 @@ void GridLanesLayoutAlgorithm::PlaceOutOfFlowItems(
       }
     }
 
-    // TODO(kschmi): Handle fragmentation. Once fragmentation is implemented,
-    // fill-reverse offsets will also need to be applied to
-    // `oof_positioned_fragmentainer_descendants_`.
-    container_builder_.AddOutOfFlowChildCandidate(out_of_flow_item->node,
-                                                  static_pos);
+    // Make the child offset relative to our fragment.
+    static_pos.offset.block_offset -= previously_consumed_block_size;
+
+    // We will attempt to add OOFs in the fragment in which their static
+    // position belongs. However, the last fragment has the most up-to-date grid
+    // geometry information (e.g. any expanded rows, etc), so for center aligned
+    // items or items with a grid-area that is not in the first or last
+    // fragment, we could end up with an incorrect static position.
+    if (should_process_block_end ||
+        static_pos.offset.block_offset <= FragmentainerCapacityForChildren()) {
+      container_builder_.AddOutOfFlowChildCandidate(out_of_flow_item->node,
+                                                    static_pos);
+    } else {
+      oof_children.emplace_back(oof_child);
+    }
   }
 }
 

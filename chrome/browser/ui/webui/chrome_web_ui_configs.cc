@@ -7,6 +7,7 @@
 #include "build/android_buildflags.h"
 #include "build/branding_buildflags.h"
 #include "build/build_config.h"
+#include "chrome/browser/browser_actuator/internals/browser_actuator_internals_ui.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui.h"
 #include "chrome/browser/glic/experimental_opt_in/glic_experimental_opt_in_ui.h"
 #include "chrome/browser/glic/host/glic_ui.h"
@@ -160,7 +161,8 @@
 #endif  // BUILDFLAG(ENABLE_PRINT_PREVIEW)
 
 #if BUILDFLAG(IS_CHROMEOS)
-#include "chrome/browser/ui/webui/ash/config/chrome_web_ui_configs_chromeos.h"
+#include "base/check_is_test.h"
+#include "chrome/browser/ui/webui/ash/config/ash_web_ui_config_manager.h"
 #include "chrome/browser/ui/webui/ash/dlp_internals/dlp_internals_ui.h"
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
@@ -246,13 +248,23 @@ void RegisterChromeWebUIConfigs() {
   // Don't add calls to `AddWebUIConfig()` for Ash-specific WebUIs here. Add
   // them in chrome_web_ui_configs_chromeos.cc.
 #if BUILDFLAG(IS_CHROMEOS)
-  ash::RegisterAshChromeWebUIConfigs();
+  if (auto* ash_webui_config_manager =
+          ash::AshWebUIConfigManager::GetInstance()) {
+    ash_webui_config_manager->RegisterWebUIConfigs();
+  } else {
+    // AshWebUIConfigManager is created in
+    // ChromeBrowserMainPartsAsh::PreProfileInit() and is not instantiated in
+    // unit tests by default. Unit tests that require specific WebUIs should
+    // register their configs individually in test fixtures.
+    CHECK_IS_TEST();
+  }
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
   auto& map = content::WebUIConfigMap::GetInstance();
   map.AddWebUIConfig(std::make_unique<AccessibilityUIConfig>());
   map.AddWebUIConfig(std::make_unique<AutofillInternalsUIConfig>());
   map.AddWebUIConfig(std::make_unique<BluetoothInternalsUIConfig>());
+  map.AddWebUIConfig(std::make_unique<BrowserActuatorInternalsUIConfig>());
   map.AddWebUIConfig(
       std::make_unique<chrome_finds_internals::ChromeFindsInternalsUIConfig>());
   map.AddWebUIConfig(std::make_unique<chrome_urls::ChromeUrlsUIConfig>());

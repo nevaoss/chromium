@@ -58,7 +58,6 @@
 #include "ui/views/input_protection/default_input_protection_policy.h"
 #include "ui/views/input_protection/input_protection_event_handler.h"
 #include "ui/views/input_protection/occluded_widget_input_protector.h"
-#include "ui/views/input_protection/occlusion_aware_input_protection_policy.h"
 #include "ui/views/input_protection/window_activation_input_protection_policy.h"
 #include "ui/views/views_delegate.h"
 #include "ui/views/views_features.h"
@@ -91,9 +90,7 @@ namespace {
 class ParentThemeObserver : public ui::ColorProviderSourceObserver {
  public:
   ParentThemeObserver(Widget* widget, ui::ColorProviderSource* parent)
-      : widget_(widget) {
-    parent_theme_observation_.Observe(parent);
-  }
+      : ColorProviderSourceObserver(parent), widget_(widget) {}
   ~ParentThemeObserver() override = default;
 
   void OnColorProviderChanged() override {
@@ -103,9 +100,6 @@ class ParentThemeObserver : public ui::ColorProviderSourceObserver {
 
  private:
   raw_ptr<Widget> widget_;
-  base::ScopedObservation<ui::ColorProviderSource,
-                          ui::ColorProviderSourceObserver>
-      parent_theme_observation_{this};
 };
 
 // If `view` has a layer the layer is added to `layers`. Else this recurses
@@ -1389,8 +1383,6 @@ void Widget::EnableInputEventActivationProtection(
 
   input_protector_ = std::make_unique<InputEventActivationProtector>(
       std::make_unique<DefaultInputProtectionPolicy>(GetRootView()));
-  input_protector_->AddPolicy(
-      std::make_unique<OcclusionAwareInputProtectionPolicy>());
   input_protector_->AddPolicy(
       std::make_unique<WindowActivationInputProtectionPolicy>(this));
 }

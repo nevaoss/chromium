@@ -55,6 +55,7 @@ import org.chromium.components.content_settings.CookieControlsObserver;
 import org.chromium.components.embedder_support.util.UrlUtilities;
 import org.chromium.components.metrics.OmniboxEventProtosIntDef.PageClassification;
 import org.chromium.components.omnibox.AutocompleteInput;
+import org.chromium.components.omnibox.AutocompleteInput.AutocompleteState;
 import org.chromium.components.omnibox.AutocompleteInput.DisplayState;
 import org.chromium.components.omnibox.AutocompleteInput.SiteSearchData;
 import org.chromium.components.omnibox.AutocompleteRequestType;
@@ -110,6 +111,10 @@ public class StatusMediator
             this::onPreviewMatchUrlChanged;
     private final Callback<@AutocompleteRequestType Integer> mOnAutocompleteRequestTypeChanged =
             this::onAutocompleteRequestTypeChanged;
+    private final Callback<@DisplayState Integer> mOnDisplayStateChanged =
+            this::onDisplayStateChanged;
+    private final Callback<@AutocompleteState Integer> mOnAutocompleteStateChanged =
+            this::onAutocompleteStateChanged;
 
     private boolean mUrlHasFocus;
     private boolean mVerboseStatusSpaceAvailable;
@@ -247,8 +252,20 @@ public class StatusMediator
         if (mInputSessionState != null) {
             mInputSessionState
                     .getAutocompleteInput()
+                    .getRequestTypeSupplier()
+                    .removeObserver(mOnAutocompleteRequestTypeChanged);
+            mInputSessionState
+                    .getAutocompleteInput()
                     .getPreviewMatchUrlSupplier()
                     .removeObserver(mOnPreviewMatchUrlChanged);
+            mInputSessionState
+                    .getAutocompleteInput()
+                    .getDisplayStateSupplier()
+                    .removeObserver(mOnDisplayStateChanged);
+            mInputSessionState
+                    .getAutocompleteInput()
+                    .getAutocompleteStateSupplier()
+                    .removeObserver(mOnAutocompleteStateChanged);
         }
         mImageSupplier.destroy();
     }
@@ -385,29 +402,22 @@ public class StatusMediator
 
         if (mInputSessionState != null) {
             setSiteSearchDataSupplier(null);
-            mInputSessionState
-                    .getAutocompleteInput()
-                    .getRequestTypeSupplier()
-                    .removeObserver(mOnAutocompleteRequestTypeChanged);
-            mInputSessionState
-                    .getAutocompleteInput()
-                    .getPreviewMatchUrlSupplier()
-                    .removeObserver(mOnPreviewMatchUrlChanged);
+            AutocompleteInput input = mInputSessionState.getAutocompleteInput();
+            input.getRequestTypeSupplier().removeObserver(mOnAutocompleteRequestTypeChanged);
+            input.getPreviewMatchUrlSupplier().removeObserver(mOnPreviewMatchUrlChanged);
+            input.getDisplayStateSupplier().removeObserver(mOnDisplayStateChanged);
+            input.getAutocompleteStateSupplier().removeObserver(mOnAutocompleteStateChanged);
         }
 
         mInputSessionState = sessionState;
 
         if (mInputSessionState != null) {
-            setSiteSearchDataSupplier(
-                    mInputSessionState.getAutocompleteInput().getSiteSearchDataSupplier());
-            mInputSessionState
-                    .getAutocompleteInput()
-                    .getRequestTypeSupplier()
-                    .addSyncObserver(mOnAutocompleteRequestTypeChanged);
-            mInputSessionState
-                    .getAutocompleteInput()
-                    .getPreviewMatchUrlSupplier()
-                    .addSyncObserverAndCall(mOnPreviewMatchUrlChanged);
+            AutocompleteInput input = mInputSessionState.getAutocompleteInput();
+            setSiteSearchDataSupplier(input.getSiteSearchDataSupplier());
+            input.getRequestTypeSupplier().addSyncObserver(mOnAutocompleteRequestTypeChanged);
+            input.getPreviewMatchUrlSupplier().addSyncObserverAndCall(mOnPreviewMatchUrlChanged);
+            input.getDisplayStateSupplier().addSyncObserver(mOnDisplayStateChanged);
+            input.getAutocompleteStateSupplier().addSyncObserver(mOnAutocompleteStateChanged);
         }
     }
 
@@ -585,16 +595,13 @@ public class StatusMediator
         Drawable customDrawable = null;
 
         boolean previewMatchFaviconsEnabled = OmniboxFeatures.sPreviewMatchFavicons.isEnabled();
-        @AutocompleteRequestType
-        int requestType =
-                mInputSessionState == null
-                        ? AutocompleteRequestType.SEARCH
-                        : mInputSessionState.getAutocompleteInput().getRequestType();
-        @DisplayState
-        int displayState =
-                mInputSessionState == null
-                        ? DisplayState.WEBSITE
-                        : mInputSessionState.getAutocompleteInput().getDisplayState();
+        @AutocompleteRequestType int requestType = AutocompleteRequestType.SEARCH;
+        @DisplayState int displayState = DisplayState.WEBSITE;
+        if (mInputSessionState != null) {
+            AutocompleteInput autocompleteInput = mInputSessionState.getAutocompleteInput();
+            requestType = autocompleteInput.getRequestType();
+            displayState = autocompleteInput.getDisplayState();
+        }
         boolean shouldShowFavicon =
                 displayState == DisplayState.SUGGESTIONS
                         || displayState == DisplayState.DRAFTING
@@ -651,7 +658,7 @@ public class StatusMediator
             mPermissionStatusHandler.reset(/* shouldDismissNativePrompt= */ true);
             // No need to proceed further if we've already updated it for the search engine icon.
             return;
-        } else if (mUrlHasFocus) {
+        } else if (mUrlHasFocus && !isInStandbyOnWebpage()) {
             mPermissionStatusHandler.reset(/* shouldDismissNativePrompt= */ true);
             iconRes =
                     isUrlBarTextSearch()
@@ -661,6 +668,9 @@ public class StatusMediator
         } else if (mPermissionStatusHandler.isClapperQuietIconShowing()) {
             return;
         } else if (mSecurityIconRes != Resources.ID_NULL) {
+            if (mUrlHasFocus) {
+                mPermissionStatusHandler.reset(/* shouldDismissNativePrompt= */ true);
+            }
             if (mPageSecurityLevel == ConnectionSecurityLevel.SECURE
                     && (isPageInfoMovedToAppMenu() || !mShowStatusIconForSecureOrigins)) {
                 mIsSecurityViewShown = false;
@@ -728,6 +738,21 @@ public class StatusMediator
         updateLocationBarIcon(IconTransitionType.CROSSFADE);
     }
 
+    private void onDisplayStateChanged(@DisplayState int state) {
+        updateLocationBarIcon(IconTransitionType.CROSSFADE);
+    }
+
+    private void onAutocompleteStateChanged(@AutocompleteState int state) {
+        updateLocationBarIcon(IconTransitionType.CROSSFADE);
+    }
+
+    private boolean isInStandbyOnWebpage() {
+        return mInputSessionState != null
+                && mInputSessionState.getAutocompleteInput().isStandby()
+                && !isNtpVisible()
+                && !isIncognitoNtpVisible();
+    }
+
     /** Returns true if the security icon has been set for the search engine icon. */
     @VisibleForTesting
     boolean maybeUpdateStatusIconForSearchEngineIcon() {
@@ -757,6 +782,9 @@ public class StatusMediator
         }
 
         if (mUrlHasFocus) {
+            if (isInStandbyOnWebpage()) {
+                return false;
+            }
             return true;
         }
 

@@ -10,6 +10,7 @@
 #include "base/functional/bind.h"
 #include "base/memory/raw_ptr.h"
 #include "base/notreached.h"
+#include "base/numerics/safe_conversions.h"
 #include "base/strings/string_util.h"
 #include "base/strings/string_view_util.h"
 #include "base/task/sequenced_task_runner.h"
@@ -34,6 +35,8 @@
 namespace network {
 
 namespace {
+
+constexpr size_t kMaxFinalReceiveStreamStatsEntries = 512;
 
 net::WebTransportParameters CreateParameters(
     const std::vector<mojom::WebTransportCertificateFingerprintPtr>&
@@ -117,14 +120,13 @@ class WebTransport::Stream final {
         return;
       }
       if (stream->incoming_) {
+        const uint64_t bytes_received = stream->FinalizeReceiveStats();
         stream->writable_watcher_.Cancel();
         stream->writable_.reset();
         if (stream->transport_->client_) {
           stream->transport_->client_->OnIncomingStreamClosed(
-              stream->id_,
-              /*fin_received=*/false);
+              stream->id_, /*fin_received=*/false, bytes_received);
         }
-        stream->incoming_ = nullptr;
       }
       if (stream->outgoing_) {
         stream->readable_watcher_.Cancel();
@@ -239,8 +241,9 @@ class WebTransport::Stream final {
     if (!incoming_) {
       return;
     }
-    incoming_->SendStopSending(code);
-    incoming_ = nullptr;
+    auto* incoming = incoming_.get();
+    FinalizeReceiveStats();
+    incoming->SendStopSending(code);
     writable_watcher_.Cancel();
     writable_.reset();
     MayDisposeLater();
@@ -254,7 +257,21 @@ class WebTransport::Stream final {
     stream->MaybeResetDueToStreamObjectGone();
   }
 
+  // Spec bytesReceived: contiguous application bytes received on this stream.
+  // This is bytes already forwarded into the Mojo pipe plus bytes still
+  // buffered in the QUICHE sequencer, for example due to backpressure.
+  uint64_t bytes_received() const {
+    return bytes_forwarded_to_data_pipe_ +
+           (incoming_ ? incoming_->ReadableBytes() : 0u);
+  }
+
  private:
+  uint64_t FinalizeReceiveStats() {
+    bytes_forwarded_to_data_pipe_ = bytes_received();
+    incoming_ = nullptr;
+    return bytes_forwarded_to_data_pipe_;
+  }
+
   using ArmingPolicy = mojo::SimpleWatcher::ArmingPolicy;
 
   void Init() {
@@ -347,9 +364,10 @@ class WebTransport::Stream final {
         }
         if (result == MOJO_RESULT_FAILED_PRECONDITION) {
           // The client doesn't want further data.
+          transport_->final_receive_stream_stats_.Put(id_,
+                                                      FinalizeReceiveStats());
           writable_watcher_.Cancel();
           writable_.reset();
-          incoming_ = nullptr;
           MayDisposeLater();
           return;
         }
@@ -357,6 +375,7 @@ class WebTransport::Stream final {
 
         base::span<char> chars = base::as_writable_chars(buffer);
         read_result = incoming_->Read(absl::MakeSpan(chars));
+        bytes_forwarded_to_data_pipe_ += read_result.bytes_read;
         writable_->EndWriteData(read_result.bytes_read);
       } else {
         // Even if ReadableBytes() == 0, we may need to read the FIN at the end
@@ -367,13 +386,13 @@ class WebTransport::Stream final {
         }
       }
       if (read_result.fin) {
+        const uint64_t bytes_received = FinalizeReceiveStats();
         if (transport_->client_) {
-          transport_->client_->OnIncomingStreamClosed(id_,
-                                                      /*fin_received=*/true);
+          transport_->client_->OnIncomingStreamClosed(
+              id_, /*fin_received=*/true, bytes_received);
         }
         writable_watcher_.Cancel();
         writable_.reset();
-        incoming_ = nullptr;
         MayDisposeLater();
         return;
       }
@@ -381,10 +400,10 @@ class WebTransport::Stream final {
   }
 
   void OnResetStreamReceived(quic::WebTransportStreamError error) {
+    const uint64_t bytes_received = FinalizeReceiveStats();
     if (transport_->client_) {
-      transport_->client_->OnReceivedResetStream(id_, error);
+      transport_->client_->OnReceivedResetStream(id_, error, bytes_received);
     }
-    incoming_ = nullptr;
     writable_watcher_.Cancel();
     writable_.reset();
     MayDisposeLater();
@@ -443,6 +462,9 @@ class WebTransport::Stream final {
   bool has_seen_end_of_pipe_for_readable_ = false;
   bool has_received_fin_from_client_ = false;
 
+  // Bytes removed from the QUICHE sequencer and forwarded to the Mojo pipe.
+  uint64_t bytes_forwarded_to_data_pipe_ = 0;
+
   // This must be the last member.
   base::WeakPtrFactory<Stream> weak_factory_{this};
 };
@@ -484,6 +506,7 @@ WebTransport::WebTransport(
       url_(url),
       origin_(origin),
       context_(context),
+      final_receive_stream_stats_(kMaxFinalReceiveStreamStatsEntries),
       receiver_(this),
       handshake_client_(std::move(handshake_client)),
       url_loader_network_observer_(std::move(url_loader_network_observer)),
@@ -600,10 +623,17 @@ void WebTransport::AbortStream(uint32_t stream, uint8_t code) {
 
 void WebTransport::StopSending(uint32_t stream, uint8_t code) {
   auto it = streams_.find(stream);
-  if (it == streams_.end()) {
-    return;
+  if (it != streams_.end()) {
+    it->second->StopSending(code);
   }
-  it->second->StopSending(code);
+  // The renderer requests final stats before StopSending(). Messages on the
+  // WebTransport remote are ordered, so the cancellation snapshot is no longer
+  // needed once this request arrives. A renderer disconnect instead destroys
+  // the WebTransport through receiver_'s disconnect handler.
+  auto final_it = final_receive_stream_stats_.Peek(stream);
+  if (final_it != final_receive_stream_stats_.end()) {
+    final_receive_stream_stats_.Erase(final_it);
+  }
 }
 
 void WebTransport::SetStreamPriority(
@@ -760,12 +790,17 @@ void WebTransport::OnConnected(
   filtered_response_headers->RemoveHeader("Set-Cookie");
   filtered_response_headers->RemoveHeader("Set-Cookie2");
 
+  auto max_datagram_size =
+      transport_->GetMaxDatagramSize().transform([](quic::QuicByteCount size) {
+        return base::saturated_cast<uint32_t>(size);
+      });
   handshake_client_->OnConnectionEstablished(
       receiver_.BindNewPipeAndPassRemote(),
       client_.BindNewPipeAndPassReceiver(),
       std::move(filtered_response_headers),
       transport_->session()->GetNegotiatedSubprotocol(),
-      StatsToMojom(transport_->session()->GetSessionStats()));
+      StatsToMojom(transport_->session()->GetSessionStats()),
+      max_datagram_size);
 
   handshake_client_.reset();
   // We set the disconnect handler for `receiver_`, not `client_`, in order
@@ -968,6 +1003,38 @@ void WebTransport::GetStats(GetStatsCallback callback) {
 
   webtransport::SessionStats stats = session->GetSessionStats();
   std::move(callback).Run(StatsToMojom(stats));
+}
+
+void WebTransport::GetReceiveStreamStats(
+    uint32_t stream_id,
+    GetReceiveStreamStatsCallback callback) {
+  if (torn_down_) {
+    std::move(callback).Run(nullptr);
+    return;
+  }
+
+  // During local cancellation, closing the data pipe and this request arrive
+  // independently. If pipe closure is observed first, use the saved snapshot;
+  // otherwise, return the stream's value when this request is handled. Both
+  // represent the receive count at the cancellation boundary.
+  auto final_it = final_receive_stream_stats_.Peek(stream_id);
+  if (final_it != final_receive_stream_stats_.end()) {
+    auto stats = mojom::WebTransportReceiveStreamStats::New();
+    stats->bytes_received = final_it->second;
+    std::move(callback).Run(std::move(stats));
+    return;
+  }
+
+  auto it = streams_.find(stream_id);
+  if (it == streams_.end()) {
+    std::move(callback).Run(nullptr);
+    return;
+  }
+
+  Stream* stream = it->second.get();
+  auto stats = mojom::WebTransportReceiveStreamStats::New();
+  stats->bytes_received = stream->bytes_received();
+  std::move(callback).Run(std::move(stats));
 }
 
 void WebTransport::TearDown() {

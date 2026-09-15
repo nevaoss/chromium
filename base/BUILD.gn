@@ -35,6 +35,7 @@ import("//build/config/sanitizers/sanitizers.gni")
 import("//build/config/sysroot.gni")
 import("//build/config/ui.gni")
 import("//build/nocompile.gni")
+import("//build/rust/rust_macro.gni")
 import("//build/rust/rust_static_library.gni")
 import("//build/util/process_version.gni")
 import("//build_overrides/build.gni")
@@ -1955,8 +1956,6 @@ component("base") {
       "win/delayload_helpers.h",
       "win/elevation_util.cc",
       "win/elevation_util.h",
-      "win/embedded_i18n/language_selector.cc",
-      "win/embedded_i18n/language_selector.h",
       "win/enum_variant.cc",
       "win/enum_variant.h",
       "win/event_trace_consumer.h",
@@ -1968,8 +1967,6 @@ component("base") {
       "win/hardware_check.h",
       "win/hstring_reference.cc",
       "win/hstring_reference.h",
-      "win/i18n.cc",
-      "win/i18n.h",
       "win/iat_patch_function.cc",
       "win/iat_patch_function.h",
       "win/limited_access_features.cc",
@@ -2032,8 +2029,6 @@ component("base") {
       "win/security_descriptor.h",
       "win/security_util.cc",
       "win/security_util.h",
-      "win/shell_util.cc",
-      "win/shell_util.h",
       "win/shlwapi.h",
       "win/shortcut.cc",
       "win/shortcut.h",
@@ -2159,6 +2154,7 @@ component("base") {
       "message_loop/message_pump_apple.h",
       "message_loop/message_pump_apple.mm",
       "native_library_apple.mm",
+      "process/process_apple.cc",
       "process/process_metrics_apple.mm",
       "profiler/module_cache_apple.cc",
       "strings/sys_string_conversions_apple.mm",
@@ -2661,6 +2657,7 @@ group("base_rust") {
     ":command_line",
     ":feature",
     ":file_path",
+    ":histogram",
     ":run_loop",
     ":sequenced_task_runner",
     ":unguessable_token",
@@ -2792,6 +2789,40 @@ rust_static_library("unguessable_token") {
   ]
 }
 
+rust_static_library("histogram") {
+  sources = [ "metrics/histogram.rs" ]
+  crate_root = "metrics/histogram.rs"
+  cxx_bindings = [ "metrics/histogram.rs" ]
+  allow_unsafe = true
+  deps = [
+    ":histogram_enum_macro",
+    ":histogram_shim",
+    "//base",
+  ]
+  public_deps = [ ":histogram_enum_macro" ]
+}
+
+rust_macro("histogram_enum_macro") {
+  sources = [ "metrics/histogram_enum_macro.rs" ]
+  crate_root = "metrics/histogram_enum_macro.rs"
+  deps = [
+    "//third_party/rust/proc_macro2/v1:lib",
+    "//third_party/rust/quote/v1:lib",
+    "//third_party/rust/syn/v2:lib",
+  ]
+}
+
+source_set("histogram_shim") {
+  sources = [
+    "metrics/histogram_rust_shim.cc",
+    "metrics/histogram_rust_shim.h",
+  ]
+  deps = [
+    "//base",
+    "//third_party/rust/cxx/v1:lib",
+  ]
+}
+
 rust_static_library("sequenced_task_runner") {
   sources = [ "task/sequenced_task_runner.rs" ]
   crate_root = "task/sequenced_task_runner.rs"
@@ -2861,15 +2892,18 @@ rust_static_library("base_rust_unittests") {
     "base_rust_unittests.rs",
     "command_line_unittest.rs",
     "files/file_path_unittest.rs",
+    "metrics/histogram_unittest.rs",
     "task/sequenced_task_runner_unittest.rs",
   ]
   crate_root = "base_rust_unittests.rs"
   deps = [
     ":command_line",
     ":file_path",
+    ":histogram",
     ":scoped_refptr",
     ":sequenced_task_runner",
     ":sequenced_task_runner_test_bridge",
+    "//base/test:histogram_tester",
     "//base/test:task_environment",
     "//testing/rust_gtest_interop",
   ]
@@ -3196,6 +3230,8 @@ component("i18n") {
     "i18n/file_util_icu.h",
     "i18n/i18n_constants.cc",
     "i18n/i18n_constants.h",
+    "i18n/icu4c_tag_converter.cc",
+    "i18n/icu4c_tag_converter.h",
     "i18n/icu_string_conversions.cc",
     "i18n/icu_string_conversions.h",
     "i18n/icu_util.cc",
@@ -3234,6 +3270,7 @@ component("i18n") {
   ]
   deps = [
     ":i18n_transliterator",
+    "//base/i18n/internal:canonical_language_tags",
     "//build:chromecast_buildflags",
   ]
 
@@ -3247,6 +3284,10 @@ component("i18n") {
 
   if (is_mac) {
     frameworks = [ "CoreFoundation.framework" ]
+  }
+
+  if (is_win) {
+    public_deps += [ "//base/i18n:win_i18n" ]
   }
 }
 
@@ -4261,6 +4302,8 @@ test("base_unittests") {
     sources += [
       "debug/gdi_debug_util_win_unittest.cc",
       "file_version_info_win_unittest.cc",
+      "i18n/win/embedded_i18n/language_selector_unittest.cc",
+      "i18n/win/preferred_languages_unittest.cc",
       "process/launch_unittest_win.cc",
       "test/fake_iasync_operation_win_unittest.cc",
       "test/test_file_util_win_unittest.cc",
@@ -4279,14 +4322,12 @@ test("base_unittests") {
       "win/dispatch_stub.h",
       "win/dllmain.cc",
       "win/elevation_util_unittest.cc",
-      "win/embedded_i18n/language_selector_unittest.cc",
       "win/enum_variant_unittest.cc",
       "win/event_trace_consumer_unittest.cc",
       "win/event_trace_controller_unittest.cc",
       "win/event_trace_provider_unittest.cc",
       "win/hardware_check_unittest.cc",
       "win/hstring_reference_unittest.cc",
-      "win/i18n_unittest.cc",
       "win/limited_access_features_unittest.cc",
       "win/map_unittest.cc",
       "win/message_window_unittest.cc",
@@ -4306,7 +4347,6 @@ test("base_unittests") {
       "win/scoped_winrt_initializer_unittest.cc",
       "win/security_descriptor_unittest.cc",
       "win/security_util_unittest.cc",
-      "win/shell_util_unittest.cc",
       "win/shortcut_unittest.cc",
       "win/sid_unittest.cc",
       "win/startup_information_unittest.cc",
@@ -4471,6 +4511,7 @@ test("base_unittests") {
       "apple/bind_objc_block_unittest.mm",
       "apple/dispatch_source_unittest.cc",
       "apple/foundation_util_unittest.mm",
+      "process/process_apple_unittest.cc",
       "strings/sys_string_conversions_apple_unittest.mm",
       "types/is_arc_pointer_unittest.mm",
     ]
@@ -4929,6 +4970,7 @@ if (is_android) {
       "android/java/src/org/chromium/base/JniCallbackImpl.java",
     ]
   }
+
   android_library("jni_callback_java") {
     public_deps = [ ":jni_callback_jni_java" ]
     sources = [
@@ -4952,6 +4994,7 @@ if (is_android) {
     sources =
         [ "android/java/src/org/chromium/base/JavaExceptionReporter.java" ]
   }
+
   android_library("java_exception_reporter_java") {
     public_deps = [ ":java_exception_reporter_jni_java" ]
     sources =
@@ -4972,6 +5015,7 @@ if (is_android) {
       "android/java/src/org/chromium/base/UnguessableToken.java",
     ]
   }
+
   android_library("token_java") {
     public_deps = [ ":token_jni_java" ]
     sources = [
@@ -5262,9 +5306,11 @@ if (is_android) {
       ":tasks_java",
     ]
   }
+
   android_library("file_provider_utils_java") {
     sources = [ "android/java/src/org/chromium/base/FileProviderUtils.java" ]
   }
+
   generate_jni("features_jni") {
     sources = [
       "android/java/src/org/chromium/base/FeatureList.java",
@@ -5272,6 +5318,7 @@ if (is_android) {
       "android/java/src/org/chromium/base/Features.java",
     ]
   }
+
   android_library("features_java") {
     srcjar_deps = [ ":features_jni" ]
     sources = [
@@ -5302,6 +5349,7 @@ if (is_android) {
   generate_jni("bundle_utils_jni") {
     sources = [ "android/java/src/org/chromium/base/BundleUtils.java" ]
   }
+
   android_library("bundle_utils_java") {
     srcjar_deps = [ ":bundle_utils_jni" ]
     sources = [ "android/java/src/org/chromium/base/BundleUtils.java" ]
@@ -5327,6 +5375,7 @@ if (is_android) {
   generate_jni("jni_utils_jni") {
     sources = [ "android/java/src/org/chromium/base/JNIUtils.java" ]
   }
+
   android_library("jni_utils_java") {
     srcjar_deps = [ ":jni_utils_jni" ]
     sources = [ "android/java/src/org/chromium/base/JNIUtils.java" ]
@@ -5622,6 +5671,7 @@ if (is_android) {
       "//third_party/jni_zero:jni_zero_java",
     ]
   }
+
   android_library("log_java") {
     sources = [
       "android/java/src/org/chromium/base/JavaUtils.java",
@@ -5633,6 +5683,7 @@ if (is_android) {
   generate_jni("command_line_jni") {
     sources = [ "android/java/src/org/chromium/base/CommandLine.java" ]
   }
+
   android_library("command_line_java") {
     sources = [ "android/java/src/org/chromium/base/CommandLine.java" ]
     deps = [
@@ -5648,6 +5699,7 @@ if (is_android) {
   generate_jni("content_uri_utils_jni") {
     sources = [ "android/java/src/org/chromium/base/ContentUriUtils.java" ]
   }
+
   android_library("content_uri_utils_java") {
     srcjar_deps = [ ":content_uri_utils_jni" ]
     deps = [
@@ -5665,6 +5717,7 @@ if (is_android) {
   generate_jni("virtual_document_path_jni") {
     sources = [ "android/java/src/org/chromium/base/VirtualDocumentPath.java" ]
   }
+
   android_library("virtual_document_path_java") {
     srcjar_deps = [ ":virtual_document_path_jni" ]
     deps = [
@@ -6459,6 +6512,7 @@ if (is_mac) {
       rebase_path(inputs[0], root_build_dir),
     ]
   }
+
   fuzzer_test("base_mach_port_rendezvous_fuzzer") {
     sources = [ "apple/mach_port_rendezvous_fuzzer.cc" ]
     deps = [

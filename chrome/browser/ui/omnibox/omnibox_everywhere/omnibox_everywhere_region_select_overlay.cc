@@ -13,6 +13,8 @@
 #include "base/functional/bind.h"
 #include "base/memory/ptr_util.h"
 #include "base/memory/raw_ptr.h"
+#include "base/numerics/safe_conversions.h"
+#include "build/branding_buildflags.h"
 #include "build/build_config.h"
 #include "cc/paint/paint_filter.h"
 #include "cc/paint/paint_flags.h"
@@ -125,9 +127,15 @@ class InstructionToastChipView : public views::View {
     constexpr SkColor kForegroundColor = SkColorSetRGB(0xEE, 0xF0, 0xF9);
     constexpr int kIconSize = 20;
 
+#if BUILDFLAG(GOOGLE_CHROME_BRANDING)
+    const gfx::VectorIcon& icon = vector_icons::kGoogleLensMonochromeLogoIcon;
+#else
+    const gfx::VectorIcon& icon = vector_icons::kSearchIcon;
+#endif
+
     auto icon_view = std::make_unique<views::ImageView>();
-    icon_view->SetImage(ui::ImageModel::FromVectorIcon(
-        vector_icons::kSearchIcon, kForegroundColor, kIconSize));
+    icon_view->SetImage(
+        ui::ImageModel::FromVectorIcon(icon, kForegroundColor, kIconSize));
     AddChildView(std::move(icon_view));
 
     auto label = std::make_unique<views::Label>(l10n_util::GetStringUTF16(
@@ -226,7 +234,12 @@ class TeardropCursorChipView : public views::View {
     const int icon_y = kPadding + (kChipSize - kIconSize) / 2;
     canvas->Save();
     canvas->Translate(gfx::Vector2d(icon_x, icon_y));
-    gfx::PaintVectorIcon(canvas, vector_icons::kSearchIcon, kIconSize,
+#if BUILDFLAG(GOOGLE_CHROME_BRANDING)
+    const gfx::VectorIcon& icon = vector_icons::kGoogleLensMonochromeLogoIcon;
+#else
+    const gfx::VectorIcon& icon = vector_icons::kSearchIcon;
+#endif
+    gfx::PaintVectorIcon(canvas, icon, kIconSize,
                          SkColorSetRGB(0x1F, 0x1F, 0x1F));
     canvas->Restore();
   }
@@ -417,7 +430,7 @@ class RegionSelectOverlayView : public views::View {
     if (!toast_chip_ || width() <= 0 || height() <= 0) {
       return;
     }
-    gfx::Size toast_size = toast_chip_->GetPreferredSize();
+    const gfx::Size toast_size = toast_chip_->GetPreferredSize();
     constexpr int kTopMargin = 28;
     auto* screen = display::Screen::Get();
     if (!screen) {
@@ -426,29 +439,81 @@ class RegionSelectOverlayView : public views::View {
       return;
     }
 
-    gfx::Point cursor_point = screen->GetCursorScreenPoint();
     display::Display target_display =
-        screen->GetDisplayNearestPoint(cursor_point);
+        screen->GetDisplayNearestPoint(screen->GetCursorScreenPoint());
+    if (!target_display.is_valid()) {
+      toast_chip_->SetBounds((width() - toast_size.width()) / 2, kTopMargin,
+                             toast_size.width(), toast_size.height());
+      return;
+    }
 
-    gfx::Rect widget_screen_bounds =
+    const gfx::Rect widget_screen_bounds =
         GetWidget() ? GetWidget()->GetWindowBoundsInScreen()
                     : gfx::Rect(0, 0, width(), height());
-    gfx::Rect display_bounds = target_display.is_valid()
-                                   ? target_display.bounds()
-                                   : gfx::Rect(0, 0, width(), height());
+    const gfx::Rect display_bounds = target_display.bounds();
 
-    int local_display_x = display_bounds.x() - widget_screen_bounds.x();
-    int local_display_y = display_bounds.y() - widget_screen_bounds.y();
+    // In mixed-DPI multi-display setups, display::Display bounds are reported
+    // in each monitor's native DIP scale. However, the top-level overlay window
+    // uses a single coordinate scale (the host window's scale). Convert the
+    // target monitor's physical dimensions to the host window's DIP space to
+    // ensure the toast is accurately centered on the target monitor.
+    float host_scale = 1.0f;
+    if (GetWidget() && GetWidget()->GetNativeWindow()) {
+      const float scale =
+          screen->GetDisplayNearestWindow(GetWidget()->GetNativeWindow())
+              .device_scale_factor();
+      if (scale > 0.0f) {
+        host_scale = scale;
+      }
+    }
+    const float target_scale = target_display.device_scale_factor();
 
-    int toast_x =
-        local_display_x + (display_bounds.width() - toast_size.width()) / 2;
-    int toast_y = local_display_y + kTopMargin;
+    const int view_display_width =
+        base::ClampRound((display_bounds.width() * target_scale) / host_scale);
+    const int view_display_height =
+        base::ClampRound((display_bounds.height() * target_scale) / host_scale);
 
-    toast_x = std::clamp(toast_x, 0, std::max(0, width() - toast_size.width()));
-    toast_y =
-        std::clamp(toast_y, 0, std::max(0, height() - toast_size.height()));
+    const int local_display_x = display_bounds.x() - widget_screen_bounds.x();
+    const int local_display_y = display_bounds.y() - widget_screen_bounds.y();
 
-    toast_chip_->SetBounds(toast_x, toast_y, toast_size.width(),
+    const int toast_x =
+        local_display_x + (view_display_width - toast_size.width()) / 2;
+    const int toast_y = local_display_y + kTopMargin;
+
+    // In a single multi-monitor overlay window spanning mixed-DPI displays,
+    // scaling discrepancies and fractional DIP rounding can cause a display's
+    // calculated view bounds to extend beyond the canvas. Clamp to the
+    // intersection of the target display's view bounds and the overlay canvas
+    // bounds.
+    const gfx::Rect monitor_view_bounds(local_display_x, local_display_y,
+                                        view_display_width,
+                                        view_display_height);
+    const gfx::Rect canvas_bounds(0, 0, width(), height());
+    gfx::Rect allowed_bounds =
+        gfx::IntersectRects(monitor_view_bounds, canvas_bounds);
+    if (allowed_bounds.IsEmpty()) {
+      allowed_bounds = canvas_bounds;
+    }
+
+    const int min_x = allowed_bounds.x();
+    const int max_x =
+        std::max(min_x, allowed_bounds.right() - toast_size.width());
+    const int min_y = allowed_bounds.y();
+    const int max_y =
+        std::max(min_y, allowed_bounds.bottom() - toast_size.height());
+
+    int clamped_toast_x = std::clamp(toast_x, min_x, max_x);
+    int clamped_toast_y = std::clamp(toast_y, min_y, max_y);
+
+    // Final safety clamp against the canvas bounds to guarantee the toast is
+    // never placed outside the overlay view, even if the toast is wider/taller
+    // than the monitor's intersection area.
+    clamped_toast_x = std::clamp(clamped_toast_x, 0,
+                                 std::max(0, width() - toast_size.width()));
+    clamped_toast_y = std::clamp(clamped_toast_y, 0,
+                                 std::max(0, height() - toast_size.height()));
+
+    toast_chip_->SetBounds(clamped_toast_x, clamped_toast_y, toast_size.width(),
                            toast_size.height());
   }
 

@@ -14,6 +14,7 @@
 #include "components/variations/service/variations_service.h"
 #include "components/webui/flags/feature_entry.h"
 #include "content/public/common/content_features.h"
+#include "extensions/buildflags/buildflags.h"
 #include "ui/base/ui_base_features.h"
 
 #if !BUILDFLAG(IS_ANDROID)
@@ -48,7 +49,7 @@ BASE_FEATURE(kCtrlTabMru, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kImportExportFlags, base::FEATURE_DISABLED_BY_DEFAULT);
 
-BASE_FEATURE(kInfoBarInlineLinks, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kInfoBarInlineLinks, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kTabStripDeclutter, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kToolbarGlowUp, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -102,6 +103,12 @@ bool IsTabGroupColorRefreshEnabled() {
 bool IsWebuiRefresh2026Enabled() {
   return base::FeatureList::IsEnabled(kDesktopGlowUp) ||
          base::FeatureList::IsEnabled(kWebuiRefresh2026);
+}
+
+bool IsSettingsRefresh2026Enabled() {
+  return (base::FeatureList::IsEnabled(kDesktopGlowUp) ||
+          base::FeatureList::IsEnabled(kWebuiRefresh2026)) &&
+         base::FeatureList::IsEnabled(kSettingsRefresh2026);
 }
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)

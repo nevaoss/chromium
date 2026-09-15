@@ -1119,7 +1119,7 @@ class ChromeContentBrowserClient : public content::ContentBrowserClient {
 
   bool ShouldEnableBtm(content::BrowserContext* browser_context) override;
   void OnBtmServiceCreated(content::BrowserContext* browser_context,
-                           content::BtmService* dips_service) override;
+                           content::BtmService* btm_service) override;
   uint64_t GetBtmRemoveMask() override;
   bool ShouldBtmDeleteInteractionRecords(uint64_t remove_mask) override;
 
@@ -1405,7 +1405,11 @@ class ChromeContentBrowserClient : public content::ContentBrowserClient {
       fetch_keepalive_process_manager_;
 #endif
 
+  base::FilePath GetChildProcessPath(int flags) override;
+
 #if BUILDFLAG(IS_MAC)
+  // TODO(crbug.com/534570563): Deprecate GetChildProcessSuffix in favor of
+  // GetChildProcessPath.
   std::string GetChildProcessSuffix(int child_flags) override;
 #endif  // BUILDFLAG(IS_MAC)
 

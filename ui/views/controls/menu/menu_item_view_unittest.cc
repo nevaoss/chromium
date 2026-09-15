@@ -961,14 +961,56 @@ TEST_F(MenuItemViewA11yTest, HandlesExpandCollapseActions) {
   // Send an expand action to the menu item.
   ui::AXActionData expand_action_data;
   expand_action_data.action = ax::mojom::Action::kExpand;
-  submenu->HandleAccessibleAction(expand_action_data);
+  EXPECT_TRUE(submenu->HandleAccessibleAction(expand_action_data));
   EXPECT_TRUE(submenu->SubmenuIsShowing());
 
   // Send a collapse action to the menu item.
   ui::AXActionData collapse_action_data;
   collapse_action_data.action = ax::mojom::Action::kCollapse;
-  submenu->HandleAccessibleAction(collapse_action_data);
+  EXPECT_TRUE(submenu->HandleAccessibleAction(collapse_action_data));
   EXPECT_FALSE(submenu->SubmenuIsShowing());
+}
+
+TEST_F(MenuItemViewA11yTest, AccessibleDefaultActionVerbs) {
+  MenuItemView* normal = menu_item_view()->AppendMenuItem(1, u"Normal");
+  MenuItemView* submenu = menu_item_view()->AppendSubMenu(2, u"Submenu");
+  MenuItemView* title = menu_item_view()->AppendTitle(u"Title");
+
+  ui::AXNodeData data;
+  normal->GetViewAccessibility().GetAccessibleNodeData(&data);
+  EXPECT_EQ(data.GetDefaultActionVerb(), ax::mojom::DefaultActionVerb::kSelect);
+
+  data = ui::AXNodeData();
+  submenu->GetViewAccessibility().GetAccessibleNodeData(&data);
+  EXPECT_EQ(data.GetDefaultActionVerb(), ax::mojom::DefaultActionVerb::kOpen);
+
+  data = ui::AXNodeData();
+  title->GetViewAccessibility().GetAccessibleNodeData(&data);
+  EXPECT_EQ(data.GetDefaultActionVerb(), ax::mojom::DefaultActionVerb::kNone);
+
+  normal->SetEnabled(false);
+  data = ui::AXNodeData();
+  normal->GetViewAccessibility().GetAccessibleNodeData(&data);
+  EXPECT_EQ(data.GetDefaultActionVerb(), ax::mojom::DefaultActionVerb::kNone);
+
+  normal->SetEnabled(true);
+  data = ui::AXNodeData();
+  normal->GetViewAccessibility().GetAccessibleNodeData(&data);
+  EXPECT_EQ(data.GetDefaultActionVerb(), ax::mojom::DefaultActionVerb::kSelect);
+}
+
+TEST_F(MenuItemViewA11yTest, DefaultActionOpensSubmenu) {
+  menu_item_view()->AppendMenuItem(1, u"Menu Item");
+  MenuItemView* submenu = menu_item_view()->AppendSubMenu(2, u"SubMenu");
+  menu_runner()->RunMenuAt(widget(), nullptr, gfx::Rect(),
+                           MenuAnchorPosition::kTopLeft,
+                           ui::mojom::MenuSourceType::kKeyboard);
+  ASSERT_FALSE(submenu->SubmenuIsShowing());
+
+  ui::AXActionData action_data;
+  action_data.action = ax::mojom::Action::kDoDefault;
+  EXPECT_TRUE(submenu->HandleAccessibleAction(action_data));
+  EXPECT_TRUE(submenu->SubmenuIsShowing());
 }
 
 TEST_F(MenuItemViewA11yTest, AccessibleSelectedTest) {

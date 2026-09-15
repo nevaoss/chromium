@@ -47,6 +47,9 @@ NET_EXPORT BASE_DECLARE_FEATURE(kOptimisticDnsForTcp);
 NET_EXPORT extern const base::FeatureParam<bool>
     kUseStaleConnectorsForOptimisticDns;
 
+// Enables optimistic DNS for QUIC.
+NET_EXPORT BASE_DECLARE_FEATURE(kOptimisticDnsForQuic);
+
 // Caches UDP connect() results in AddressSorterPosix.
 NET_EXPORT BASE_DECLARE_FEATURE(kAddressSorterConnectCache);
 NET_EXPORT BASE_DECLARE_FEATURE_PARAM(size_t,
@@ -77,6 +80,11 @@ NET_EXPORT extern const base::FeatureParam<bool>
 // and may be used to affect connection behavior. Whether or not those results
 // are used (e.g. to connect via ECH) may be controlled by separate features.
 NET_EXPORT BASE_DECLARE_FEATURE(kUseDnsHttpsSvcb);
+
+// If enabled, HostResolver carries address hints (ipv4hint/ipv6hint) from
+// HTTPS DNS records in its results for consumption by the
+// ServiceEndpointRequest path.
+NET_EXPORT BASE_DECLARE_FEATURE(kUseDnsHttpsSvcbAddressHints);
 
 // Enables partial support for Structured DNS Errors
 // (draft-ietf-dnsop-structured-dns-error). When enabled, the Chrome DNS

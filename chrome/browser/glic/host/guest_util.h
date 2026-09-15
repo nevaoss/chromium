@@ -33,11 +33,28 @@ class TabInterface;
 }
 
 namespace glic {
+class Host;
+class GlicWebContentsManager;
+class GlicWebClientManager;
+
+// Prepares a WebContents to host the Glic guest client by configuring
+// preferences, draggable regions, process markers, and attaching
+// GlicGuestObserver.
+void PrepareGlicGuestWebContents(content::WebContents& guest_contents,
+                                 GlicWebContentsManager& contents_manager);
+
+void SetHostForGuest(content::WebContents& guest_contents, Host* host);
+void SetContentsManagerForWebContents(content::WebContents* web_contents,
+                                      GlicWebContentsManager* contents_manager);
+GlicWebContentsManager* GetContentsManagerForWebContents(
+    content::WebContents* web_contents);
+GlicWebClientManager* GetWebClientManagerForWebContents(
+    content::WebContents* web_contents);
 
 // Returns the URL/origin from where the guest web client will be loaded from.
 GURL GetGuestURL();
 url::Origin GetGuestOrigin();
-std::string GetGlicAllowedOrigins(bool is_internal_google_account = false);
+std::string GetGlicAllowedOrigins();
 bool IsOriginAllowedGlicApi(const url::Origin& origin);
 bool IsGuestOriginAllowed(const url::Origin& origin);
 bool IsAdminBlockedUrl(const GURL& url);

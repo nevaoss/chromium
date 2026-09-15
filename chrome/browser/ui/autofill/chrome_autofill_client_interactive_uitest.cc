@@ -57,9 +57,8 @@ class TestAutofillExternalDelegate : public AutofillExternalDelegate {
       : AutofillExternalDelegate(autofill_manager), client_(*autofill_client) {}
   ~TestAutofillExternalDelegate() override = default;
 
-  void OnSuggestionsShown(
-      base::span<const Suggestion>,
-      base::optional_ref<const SuggestionMetadata>) override {
+  void OnSuggestionsShown(base::span<const Suggestion>,
+                          const SuggestionUiMetadata&) override {
     ++show_counter_;
     ui_session_id_at_last_show_ =
         client_->GetSessionIdForCurrentAutofillSuggestions();
@@ -99,7 +98,7 @@ class ChromeAutofillClientBrowserTest : public InProcessBrowserTest {
     // `BrowserWindow::MaybeShowFeaturePromo()` doesn't work in tests unless the
     // IPH feature is explicitly enabled.
     iph_feature_list_.InitAndEnableFeatures(
-        {feature_engagement::kIPHAutofillAiOptInFeature});
+        {feature_engagement::kIPHAutofillAiValuablesFeature});
   }
 
   void SetUpOnMainThread() override {
@@ -193,7 +192,7 @@ IN_PROC_BROWSER_TEST_F(ChromeAutofillClientBrowserTest,
 
   EXPECT_FALSE(
       BrowserUserEducationInterface::From(browser())->IsFeaturePromoActive(
-          feature_engagement::kIPHAutofillAiOptInFeature));
+          feature_engagement::kIPHAutofillAiValuablesFeature));
 }
 
 IN_PROC_BROWSER_TEST_F(ChromeAutofillClientBrowserTest, SuggestionUiSessionId) {

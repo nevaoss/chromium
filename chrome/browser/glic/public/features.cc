@@ -121,6 +121,8 @@ const base::FeatureParam<bool> kGlicContextMenuWithOnboarding{
 BASE_FEATURE(kGlicContextMenuBelowSearch, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kGlicTextSelectionContextMenu, base::FEATURE_DISABLED_BY_DEFAULT);
+const base::FeatureParam<bool> kGlicTextSelectionContextMenuMessageFirstFre{
+    &kGlicTextSelectionContextMenu, "message_first_fre", false};
 
 BASE_FEATURE(kGlicTieredRolloutV2, base::FEATURE_DISABLED_BY_DEFAULT);
 const base::FeatureParam<std::string> kGlicTieredRolloutV2EligibleTiers{
@@ -189,6 +191,11 @@ const base::FeatureParam<int> kGlicReloadMaxLoadingTimeMs{
 BASE_FEATURE(kGlicContextualCueingV2AutoSubmit,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
+BASE_FEATURE(kGlicContextualCueV2ActiveUserBackoff,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+const base::FeatureParam<int> kMinDaysSinceLastInvocation{
+    &kGlicContextualCueV2ActiveUserBackoff, "MinDaysSinceLastInvocation", 2};
+
 BASE_FEATURE(kGlicMessageFirstFreForContextualCue,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -254,7 +261,7 @@ BASE_FEATURE(kGlicSparkSettingsAccessibleLabels,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kGlicOptInDialogA11yFix, base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE(kGlicStructuredYieldMetadata, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kGlicStructuredYieldMetadata, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Runs the glic client in a PrivilegedWebContents instead of a webview.
 // This is a work in progress. See b/534807813.

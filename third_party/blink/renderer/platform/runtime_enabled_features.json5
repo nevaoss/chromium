@@ -633,6 +633,12 @@
       name: "AnimationWorklet",
     },
     {
+      // crbug.com/538260158
+      name: "AnnotationSpaceForMultiCol",
+      status: "experimental",
+      depends_on: ["AnnotationSpaceOnStart"],
+    },
+    {
       // crbug.com/445727139
       name: "AnnotationSpaceOnStart",
       status: "stable",
@@ -1212,10 +1218,6 @@
       status: "test",
     },
     {
-      name: "CollapseZeroWidthSpaceWhenReuseItem",
-      status: "stable",
-    },
-    {
       // Allows <input type=color> to accept any valid CSS color value
       // (named colors, rgb(), hsl(), system colors, etc.) in addition to
       // the legacy 7-character hex format (#rrggbb).
@@ -1605,12 +1607,16 @@
       // The symbols() function for defining an anonymous counter style inline.
       // https://drafts.csswg.org/css-counter-styles-3/#symbols-function
       name: "CSSCounterStyleSymbolsFunction",
-      status: "experimental",
+      status: "stable",
     },
     {
       // Unprefixed cross-fade() (in addition to the existing -webkit-cross-fade()).
       // https://drafts.csswg.org/css-images-4/#cross-fade-function
       name: "CSSCrossFade",
+      status: "experimental",
+    },
+    {
+      name: "CSSCustomHighlightUniversalSelector",
       status: "experimental",
     },
     {
@@ -2046,11 +2052,6 @@
       name: "CssTextFitReshaping",
     },
     {
-      // crbug.com/434361099
-      name: "CssTextIndent",
-      status: "stable",
-    },
-    {
       // crbug.com/1463890, crbug.com/1463891: CSS `text-spacing` shorthand
       name: "CSSTextSpacing",
       status: "test",
@@ -2398,6 +2399,13 @@
       base_feature: "none",
     },
     {
+      // Kill switch for including non-exposed <object> and <embed> elements in
+      // document named properties. crbug.com/551807991
+      // Lands in M155 and can be removed in M157.
+      name: "DocumentNamedPropertiesIgnoreExposedness",
+      status: "stable",
+    },
+    {
       // Fix iframe unload events not firing during document.open()
       // https://crbug.com/40947017
       // Lands in M144; remove this flag in M146 after the milestone rolls.
@@ -2541,10 +2549,6 @@
       name: "EditContextHandleTextOrSelectionUpdateDuringComposition",
       status: "test",
       settable_from_internals: true
-    },
-    {
-      name: "EditingLineMovementWithRubyFix",
-      status: "stable",
     },
     {
       name: "EditingUseDomPositionApi",
@@ -3019,8 +3023,9 @@
       status: "stable",
     },
     {
+      // It turned out that this fix was wrong. The plan is to turn it off, and
+      // remove if that goes well. crbug.com/41362700
       name: "FirstLineTextMetrics",
-      status: "stable",
     },
     {
       name: "FirstLineTextTransform",
@@ -3414,6 +3419,7 @@
     },
     {
       name: "HarfRustShaping",
+      status: "test",
     },
     {
       name: "HasUAVisualTransition",
@@ -3858,6 +3864,10 @@
       status: "stable",
     },
     {
+      name: "LineBreakBidiControlEnter",
+      status: "stable",
+    },
+    {
       name: "LineBreakerHanKerningEnd",
       status: "stable",
     },
@@ -3978,7 +3988,7 @@
     {
       // CSS margin-trim property: https://drafts.csswg.org/css-box-4/#margin-trim
       name: "MarginTrim",
-      status: "experimental",
+      status: "stable",
     },
     {
       name: "MaskDeserializationTimeForCrossOriginMessages",
@@ -4418,6 +4428,12 @@
       status: "stable",
     },
     {
+      // Skip layout of all out-of-flow positioned elements if side-effects are
+      // disabled. See DisableLayoutSideEffectsScope.
+      name: "OofLayoutRequiresSideEffects",
+      status: "stable",
+    },
+    {
       // The OpaqueRange interface provides a live AbstractRange subtype
       // for encapsulated content within <textarea> and <input> elements.
       // "This can be removed in M155. crbug.com/421421332
@@ -4793,6 +4809,12 @@
       status: "stable",
     },
     {
+      // Kill switch for skipping MathML <script src> and simulating the HTML
+      // breakout tags in the HTML preload scanner. https://crbug.com/40728681
+      name: "PreloadScannerSkipMathMLScript",
+      status: "stable",
+    },
+    {
       // Used to allow chrome://flags to turn off prerendering. (Without using
       // the user-facing preloading settings page to turn off other
       // preloading.) See https://crbug.com/1494471.
@@ -5126,6 +5148,12 @@
       name: "RenderPriorityAttribute",
     },
     {
+      // When enabled, avoids calling RemoveChildren() in
+      // ReplaceChildrenWithFragment() if the container is already empty.
+      name: "ReplaceChildrenWithFragmentFastPath",
+      status: "stable",
+    },
+    {
       // Kill switch for painting non-SVG replaced normal-flow stacking
       // contexts inline with their siblings.
       // This was set to experimental due to crbug.com/532229489.
@@ -5142,10 +5170,6 @@
     },
     {
       name: "RequestIsReloadNavigation",
-      status: "stable",
-    },
-    {
-      name: "RequestMainFrameAfterFirstVideoFrame",
       status: "stable",
     },
     {
@@ -5771,10 +5795,6 @@
       status: "stable",
     },
     {
-      name: "SkipOofItemForBreakCandidate",
-      status: "stable",
-    },
-    {
       // crbug.com/517761566
       name: "SkipStaleUndoStepsInIdleSpellCheck",
       status: "stable",
@@ -6155,15 +6175,7 @@
       status: "test",
     },
     {
-      name: "TabSizeAncestor",
-      status: "stable",
-    },
-    {
       name: "TabSizeInRubyBase",
-      status: "stable",
-    },
-    {
-      name: "TabSizeWithSpacing",
       status: "stable",
     },
     {
@@ -6265,11 +6277,6 @@
     {
       name: "TextDetector",
       status: "experimental",
-    },
-    {
-      // crbug.com/488458870, crbug.com/522298908, and crbug.com/522298908
-      name: "TextEmphasisAsRuby",
-      status: "stable",
     },
     {
       // crbug.com/40812040
@@ -6940,6 +6947,13 @@
       name: "WebGLOnWebGPU",
     },
     {
+      // WebGL tone mapping support
+      // https://issues.chromium.org/issues/555806830
+      // https://chromestatus.com/feature/5424242161221632
+      name: "WebGLToneMapping",
+      status: "experimental",
+    },
+    {
       // WebGPU developer features are deliberately not enabled by experimental
       // web platform features.
       name: "WebGPUDeveloperFeatures",
@@ -7174,6 +7188,11 @@
       base_feature: "none",
     },
     {
+      name: "WebTransportReliability",
+      status: "experimental",
+      base_feature: "none",
+    },
+    {
       name: "WebTransportSendGroup",
       status: "experimental",
       base_feature: "none",
@@ -7351,10 +7370,6 @@
     {
       // Fixes an issue where Ctrl+Right Arrow skips punctuation before a newline.
       name: "WordSkipSpacesPunctuationFix",
-      status: "stable",
-    },
-    {
-      name: "WordSpacingWhiteSpacePre",
       status: "stable",
     },
     {

@@ -533,12 +533,12 @@ suite('OmniboxEverywhereOmniboxTest', () => {
     const composeButton =
         omnibox.shadowRoot.querySelector<HTMLElement>('#composeButton');
     assertTrue(!!composeButton);
-    assertEquals('12px', window.getComputedStyle(composeButton).top);
+    assertEquals('16px', window.getComputedStyle(composeButton).top);
 
     const profileIcon =
         omnibox.shadowRoot.querySelector<HTMLElement>('#profileIcon');
     assertTrue(!!profileIcon);
-    assertEquals('12px', window.getComputedStyle(profileIcon).top);
+    assertEquals('16px', window.getComputedStyle(profileIcon).top);
   });
 
   test(
@@ -637,8 +637,8 @@ suite('OmniboxEverywhereComposeboxTest', () => {
     assertFalse(args[1]);
 
     await microtasksFinished();
-    assertEquals(1, composebox.files.size);
-    const file = Array.from(composebox.files.values())[0]!;
+    assertEquals(1, composebox.attachedContext.size);
+    const file = Array.from(composebox.attachedContext.values())[0]!;
     assertEquals(789, file.tabId);
     assertEquals('Composebox Direct Tab', file.name);
   });
@@ -729,7 +729,7 @@ suite('OmniboxEverywhereComposeboxTest', () => {
     await testProxy.handler.whenCalled('addFileContext');
     assertEquals(1, testProxy.handler.getCallCount('addFileContext'));
     await microtasksFinished();
-    assertEquals(1, composebox.files.size);
+    assertEquals(1, composebox.attachedContext.size);
   });
 
   test('ContextMenuUnboundedToggleEvent', async () => {
@@ -822,8 +822,8 @@ suite('OmniboxEverywhereComposeboxTest', () => {
     const mockToken = 'mock-token-uuid';
     const file = new ComposeboxFile(
         mockToken, 'test.png', 'image/png', InputType.kLensImage);
-    composebox.files.set(mockToken, file);
-    composebox.files = new Map(composebox.files);
+    composebox.attachedContext.set(mockToken, file);
+    composebox.attachedContext = new Map(composebox.attachedContext);
     await composebox.updateComplete;
     await microtasksFinished();
     assertEquals('Clear text', cancelIcon.getAttribute('title'));
@@ -855,8 +855,8 @@ suite('OmniboxEverywhereComposeboxTest', () => {
     const mockToken = 'mock-token-uuid';
     const file = new ComposeboxFile(
         mockToken, 'test.png', 'image/png', InputType.kLensImage);
-    composebox.files.set(mockToken, file);
-    composebox.files = new Map(composebox.files);
+    composebox.attachedContext.set(mockToken, file);
+    composebox.attachedContext = new Map(composebox.attachedContext);
     await composebox.updateComplete;
     await microtasksFinished();
 
@@ -872,7 +872,7 @@ suite('OmniboxEverywhereComposeboxTest', () => {
     await composebox.updateComplete;
     await microtasksFinished();
 
-    assertEquals(0, composebox.files.size);
+    assertEquals(0, composebox.attachedContext.size);
     assertEquals(1, testProxy.handler.getCallCount('clearFiles'));
     assertFalse(closeEventFired);
   });
@@ -1142,6 +1142,122 @@ suite('OmniboxEverywhereAppTest', () => {
     const voiceSearch = app.shadowRoot.querySelector('#voiceSearch');
     assertTrue(!!voiceSearch);
   });
+
+  test(
+      'clicking voice search button opens voice search dialog overlay and handles permission prompt',
+      async () => {
+        const searchbox =
+            app.shadowRoot.querySelector('omnibox-everywhere-omnibox')!;
+        const voiceBtn = searchbox.shadowRoot.querySelector<HTMLElement>(
+            '#voiceSearchButton')!;
+        assertTrue(!!voiceBtn);
+        voiceBtn.click();
+        await microtasksFinished();
+
+        const dialog = app.shadowRoot.querySelector<HTMLDialogElement>(
+            '#voiceSearchDialog');
+        assertTrue(!!dialog);
+        const voiceSearch = app.shadowRoot.querySelector('#voiceSearch')!;
+        assertTrue(!!voiceSearch);
+        const glow = app.shadowRoot.querySelector<SearchAnimatedGlowElement>(
+            '#voiceSearchGlow');
+        assertTrue(!!glow);
+
+        // Verify permission prompt showing state is handled.
+        voiceSearch.dispatchEvent(new CustomEvent('voice-permission-changed', {
+          detail: {
+            isOpened: true,
+            width: 100,
+            height: 200,
+          },
+          bubbles: true,
+          composed: true,
+        }));
+        await microtasksFinished();
+        assertTrue(voiceSearch.classList.contains('permission-prompt-showing'));
+        assertTrue(glow.classList.contains('permission-prompt-showing'));
+
+        // Verify permission prompt closed state is handled.
+        voiceSearch.dispatchEvent(new CustomEvent('voice-permission-changed', {
+          detail: {
+            isOpened: false,
+            width: 0,
+            height: 0,
+          },
+          bubbles: true,
+          composed: true,
+        }));
+        await microtasksFinished();
+        assertFalse(
+            voiceSearch.classList.contains('permission-prompt-showing'));
+        assertFalse(glow.classList.contains('permission-prompt-showing'));
+      });
+
+  test(
+      'clicking voice search button in composebox opens voice search dialog' +
+          ' overlay and handles permission prompt',
+      async () => {
+        const searchbox =
+            app.shadowRoot.querySelector('omnibox-everywhere-omnibox')!;
+        searchbox.dispatchEvent(new CustomEvent('open-composebox', {
+          detail: {
+            text: '',
+            files: [],
+            mode: 0,
+            model: 0,
+          },
+          bubbles: true,
+          composed: true,
+        }));
+        await microtasksFinished();
+
+        const composebox =
+            app.shadowRoot.querySelector('omnibox-everywhere-composebox')!;
+        assertTrue(!!composebox);
+        const voiceBtn = composebox.shadowRoot.querySelector<HTMLElement>(
+            '#voiceSearchButton')!;
+        assertTrue(!!voiceBtn);
+        voiceBtn.click();
+        await microtasksFinished();
+
+        const dialog = app.shadowRoot.querySelector<HTMLDialogElement>(
+            '#voiceSearchDialog');
+        assertTrue(!!dialog);
+        const voiceSearch = app.shadowRoot.querySelector('#voiceSearch')!;
+        assertTrue(!!voiceSearch);
+        const glow = app.shadowRoot.querySelector<SearchAnimatedGlowElement>(
+            '#voiceSearchGlow');
+        assertTrue(!!glow);
+
+        // Verify permission prompt showing state is handled in composebox mode.
+        voiceSearch.dispatchEvent(new CustomEvent('voice-permission-changed', {
+          detail: {
+            isOpened: true,
+            width: 100,
+            height: 200,
+          },
+          bubbles: true,
+          composed: true,
+        }));
+        await microtasksFinished();
+        assertTrue(voiceSearch.classList.contains('permission-prompt-showing'));
+        assertTrue(glow.classList.contains('permission-prompt-showing'));
+
+        // Verify permission prompt closed state is handled in composebox mode.
+        voiceSearch.dispatchEvent(new CustomEvent('voice-permission-changed', {
+          detail: {
+            isOpened: false,
+            width: 0,
+            height: 0,
+          },
+          bubbles: true,
+          composed: true,
+        }));
+        await microtasksFinished();
+        assertFalse(
+            voiceSearch.classList.contains('permission-prompt-showing'));
+        assertFalse(glow.classList.contains('permission-prompt-showing'));
+      });
 
   test(
       'voice search final result submits query and closes dialog', async () => {
@@ -1542,7 +1658,7 @@ suite('OmniboxEverywhereAppTest', () => {
     const composeboxElement =
         app.shadowRoot.querySelector('omnibox-everywhere-composebox')!;
     assertTrue(!!composeboxElement);
-    assertEquals(0, composeboxElement.files.size);
+    assertEquals(0, composeboxElement.attachedContext.size);
 
     const fileInfo = {
       fileName: 'Screenshot.png',
@@ -1555,8 +1671,9 @@ suite('OmniboxEverywhereAppTest', () => {
     testProxy.page.addFileContext(mockToken, fileInfo as SelectedFileInfo);
     await testProxy.page.$.flushForTesting();
 
-    assertEquals(1, composeboxElement.files.size);
-    const updatedFile = Array.from(composeboxElement.files.values())[0]!;
+    assertEquals(1, composeboxElement.attachedContext.size);
+    const updatedFile =
+        Array.from(composeboxElement.attachedContext.values())[0]!;
     assertEquals('data:image/png;base64,image_data', updatedFile.dataUrl);
   });
 
@@ -1585,8 +1702,8 @@ suite('OmniboxEverywhereAppTest', () => {
         const composeboxElement =
             app.shadowRoot.querySelector('omnibox-everywhere-composebox')!;
         assertTrue(!!composeboxElement);
-        assertEquals(1, composeboxElement.files.size);
-        const file = Array.from(composeboxElement.files.values())[0]!;
+        assertEquals(1, composeboxElement.attachedContext.size);
+        const file = Array.from(composeboxElement.attachedContext.values())[0]!;
         assertEquals('data:image/png;base64,image_data_buffered', file.dataUrl);
       });
 });

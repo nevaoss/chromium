@@ -114,9 +114,6 @@ public class LocationBarLayout extends ConstraintLayout {
         mInstallButton = findViewById(R.id.install_button);
         mNavigateButton = findViewById(R.id.navigate_button);
         mActivationChip = findViewById(R.id.fusebox_activation_chip);
-        // TODO(crbug.com/544731730): Remove this once ChipView#updateLayoutDirection is cleaned up
-        // and its render tests are updated to set layout direction on their test containers.
-        mActivationChip.setLayoutDirection(LAYOUT_DIRECTION_INHERIT);
         mMarginSpacer = findViewById(R.id.margin_spacer);
         mFocusThief = findViewById(R.id.focus_thief);
 
@@ -606,9 +603,9 @@ public class LocationBarLayout extends ConstraintLayout {
 
     /**
      * Signal that the list of suggestions shown in the associated omnibox suggestions list has
-     * changed
+     * changed.
      *
-     * @param hasSuggestions Number of suggestions being presented
+     * @param hasSuggestions Number of suggestions being presented.
      */
     void onSuggestionsChanged(boolean hasSuggestions) {}
 

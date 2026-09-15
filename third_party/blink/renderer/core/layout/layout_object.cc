@@ -2777,7 +2777,7 @@ void LayoutObject::ShowLayoutObject() const {
 
   StringBuilder string_builder;
   DumpLayoutObject(string_builder, true, kShowTreeCharacterOffset);
-  DLOG(INFO) << "\n" << string_builder.ToString().Utf8();
+  DLOG(INFO) << "\n" << string_builder.Utf8();
 }
 
 void LayoutObject::DumpLayoutObject(StringBuilder& string_builder,
@@ -3271,25 +3271,15 @@ void LayoutObject::StyleWillChange(StyleDifference diff,
   NOT_DESTROYED();
   DCHECK(!IsText());
 
-  if (old_style) {
-    bool visibility_changed = old_style->Visibility() != new_style.Visibility();
-    // If our z-index changes value or our visibility changes,
-    // we need to dirty our stacking context's z-order list.
-    if (visibility_changed ||
-        old_style->EffectiveZIndex() != new_style.EffectiveZIndex() ||
-        IsStackingContext(*old_style) != IsStackingContext(new_style)) {
-      GetDocument().SetDraggableRegionsDirty(true);
+  // Keep layer hierarchy visibility bits up to date if visibility changes.
+  if (old_style && old_style->Visibility() != new_style.Visibility()) {
+    // We might not have an enclosing layer yet because we might not be in the
+    // tree.
+    if (PaintLayer* layer = EnclosingLayer()) {
+      layer->DirtyVisibleContentStatus();
     }
-
-    // Keep layer hierarchy visibility bits up to date if visibility changes.
-    if (visibility_changed) {
-      // We might not have an enclosing layer yet because we might not be in the
-      // tree.
-      if (PaintLayer* layer = EnclosingLayer())
-        layer->DirtyVisibleContentStatus();
-      GetDocument().GetFrame()->GetInputMethodController().DidChangeVisibility(
-          *this);
-    }
+    GetDocument().GetFrame()->GetInputMethodController().DidChangeVisibility(
+        *this);
   }
 }
 
@@ -3470,6 +3460,13 @@ void LayoutObject::StyleDidChange(
       old_style->UsedPointerEvents() != new_style.UsedPointerEvents()) {
     // UsedPointerEvents affects hit test opacity.
     SetShouldInvalidatePaintForHitTest();
+  }
+
+  if (old_style &&
+      (old_style->Visibility() != new_style.Visibility() ||
+       old_style->EffectiveZIndex() != new_style.EffectiveZIndex() ||
+       IsStackingContext(*old_style) != IsStackingContext(new_style))) {
+    GetDocument().SetDraggableRegionsDirty(true);
   }
 
   if (new_style.AnchorName()) {
@@ -5643,7 +5640,7 @@ void ShowLayoutTree(const blink::LayoutObject* object1,
       blink::StringBuilder string_builder;
       root->DumpLayoutTreeAndMark(string_builder, object1, "*", object2, "-",
                                   0);
-      DLOG(INFO) << "\n" << string_builder.ToString().Utf8();
+      DLOG(INFO) << "\n" << string_builder.Utf8();
     }
   } else {
     DLOG(INFO) << "Cannot showLayoutTree. Root is (nil)";

@@ -71,6 +71,7 @@
 #include "components/search_engines/template_url_service.h"
 #include "components/search_engines/util.h"
 #include "components/sessions/content/session_tab_helper.h"
+#include "components/sessions/core/session_id.h"
 #include "components/shared_highlighting/core/common/fragment_directives_utils.h"
 #include "components/signin/public/base/consent_level.h"
 #include "components/signin/public/identity_manager/access_token_fetcher.h"
@@ -2600,16 +2601,31 @@ bool ContextualTasksUiService::IsTrustedHost(const std::string& host) {
     return false;
   }
 
-  // Handle localhost and loopback addresses. Note: `net::HostStringIsLocalhost`
-  // does not recognize bracketed IPv6 literals like "[::1]", so we explicitly
-  // check for "[::1]" in addition to standard loopback host strings.
+  // Handle localhost and loopback addresses without port first.
   if (host == "localhost" || host == "127.0.0.1" || host == "[::1]" ||
       host == "::1" || net::HostStringIsLocalhost(host)) {
     return true;
   }
 
+  std::string parsed_host;
+  int parsed_port = -1;
+  if (!net::ParseHostAndPort(host, &parsed_host, &parsed_port)) {
+    return false;
+  }
+
+  if (parsed_port != -1 && (parsed_port < 1 || parsed_port > 65535)) {
+    return false;
+  }
+
+  // Handle localhost and loopback addresses with or without port.
+  if (parsed_host == "localhost" || parsed_host == "127.0.0.1" ||
+      parsed_host == "[::1]" || parsed_host == "::1" ||
+      net::HostStringIsLocalhost(parsed_host)) {
+    return true;
+  }
+
   url::CanonHostInfo host_info;
-  std::string canonical_host = net::CanonicalizeHost(host, &host_info);
+  std::string canonical_host = net::CanonicalizeHost(parsed_host, &host_info);
   if (canonical_host.empty() ||
       host_info.family == url::CanonHostInfo::BROKEN) {
     return false;

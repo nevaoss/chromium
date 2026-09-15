@@ -141,6 +141,16 @@ const ui::Layer* GetRootLayer(const ui::Layer* layer) {
   return root;
 }
 
+// When the layer is not managed by the parent (e.g. hosted in
+// NativeViewHost), the window may be reparented across root windows before
+// its layer is reparented into the new root layer tree. In that transient
+// state, the layer root does not match the root window's layer.
+bool IsLayerDivergedFromRoot(const Window* window, const Window* root_window) {
+  CHECK(root_window);
+  return !window->layer_managed_by_parent() &&
+         GetRootLayer(window->layer()) != root_window->layer();
+}
+
 gfx::Vector2d GetLayerTargetOffsetToRoot(const ui::Layer* layer) {
   gfx::Vector2d offset;
   while (layer) {
@@ -483,19 +493,29 @@ ScopedWindowCaptureRequest Window::MakeWindowCapturable() {
 }
 
 gfx::Rect Window::GetBoundsInRootWindow() const {
-  if (!GetRootWindow())
+  const Window* root_window = GetRootWindow();
+  if (!root_window) {
     return bounds();
+  }
+  if (IsLayerDivergedFromRoot(this, root_window)) {
+    return bounds();
+  }
   gfx::Rect bounds_in_root(bounds().size());
-  ConvertRectToTarget(this, GetRootWindow(), &bounds_in_root);
+  ConvertRectToTarget(this, root_window, &bounds_in_root);
   return bounds_in_root;
 }
 
 gfx::Rect Window::GetActualBoundsInRootWindow() const {
-  if (!GetRootWindow())
+  const Window* root_window = GetRootWindow();
+  if (!root_window) {
     return bounds();
+  }
+  if (IsLayerDivergedFromRoot(this, root_window)) {
+    return bounds();
+  }
   gfx::Rect bounds_in_root(bounds().size());
   gfx::PointF origin_f = gfx::PointF(bounds_in_root.origin());
-  ui::Layer::ConvertPointToLayer(layer(), GetRootWindow()->layer(),
+  ui::Layer::ConvertPointToLayer(layer(), root_window->layer(),
                                  /*use_target_transform=*/false, &origin_f);
   bounds_in_root.set_origin(gfx::ToFlooredPoint(origin_f));
   return bounds_in_root;
@@ -893,8 +913,12 @@ void Window::SetEventTargetingPolicy(EventTargetingPolicy policy) {
 
 bool Window::ContainsPointInRoot(const gfx::Point& point_in_root) const {
   const Window* root_window = GetRootWindow();
-  if (!root_window)
+  if (!root_window) {
     return false;
+  }
+  if (IsLayerDivergedFromRoot(this, root_window)) {
+    return false;
+  }
   gfx::Point local_point(point_in_root);
   ConvertPointToTarget(root_window, this, &local_point);
   return gfx::Rect(GetTargetBounds().size()).Contains(local_point);
@@ -1268,10 +1292,20 @@ void Window::SetBoundsInternal(const gfx::Rect& new_bounds) {
   // This may cause important side effects such as stopping animation.
   layer()->SetBounds(layer_bounds);
 
-  // If we are currently not the layer's delegate, we will not get bounds
-  // changed notification from the layer (this typically happens after animating
-  // hidden). We must notify ourselves.
-  if (layer()->delegate() != this) {
+  // We will not get bounds changed notification
+  // from the layer (this typically happens after animating hidden).
+  // This can happen if:
+  // 1) we are currently not the layer's delegate.
+  //    We must notify ourselves because layer will notify
+  //    another delegatee.
+  // 2) The layer_bounds is the same, but window bounds is different.
+  //    If `layer_managed_by_parent` is off, we need to notify to
+  //    update the window bounds based on the layer hierarchy.
+  bool notify_now =
+      layer()->delegate() != this ||
+      (new_bounds != bounds_ && old_layer_bounds == layer_bounds &&
+       !layer_managed_by_parent());
+  if (notify_now) {
     OnLayerBoundsChanged(old_layer_bounds,
                          ui::PropertyChangeReason::NOT_FROM_ANIMATION);
   }

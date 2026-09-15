@@ -26,6 +26,7 @@
 #include "net/test/embedded_test_server/embedded_test_server.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "ui/base/window_open_disposition.h"
 #include "url/gurl.h"
 
 namespace {
@@ -273,7 +274,7 @@ class CustomCursorSuppressorExtensionBrowserTest
     CHECK(entry);
 
     ExtensionTestMessageListener default_path_listener("default_path");
-    SidePanelUI* const side_panel_ui = browser()->GetFeatures().side_panel_ui();
+    SidePanelUI* const side_panel_ui = SidePanelUI::From(browser());
     side_panel_ui->Show(extension_key);
     CHECK(default_path_listener.WaitUntilSatisfied());
     CHECK(side_panel_ui->IsSidePanelShowing());

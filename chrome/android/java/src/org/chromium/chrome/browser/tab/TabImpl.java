@@ -126,7 +126,6 @@ import org.chromium.ui.base.ImmutableWeakReference;
 import org.chromium.ui.base.PageTransition;
 import org.chromium.ui.base.ViewAndroidDelegate;
 import org.chromium.ui.base.WindowAndroid;
-import org.chromium.ui.xr.scenecore.XrInteractableComponent.OnDragListener;
 import org.chromium.url.GURL;
 import org.chromium.url.Origin;
 
@@ -1885,7 +1884,12 @@ class TabImpl implements Tab, TabInternal {
                     mNativePageSmoothTransitionDelegate.start(
                             () -> {
                                 if (isDestroyed()) return;
-                                assumeNonNull(getWebContents()).onContentForNavigationEntryShown();
+                                WebContents currentWebContents = getWebContents();
+                                if (currentWebContents == null
+                                        || currentWebContents.isDestroyed()) {
+                                    return;
+                                }
+                                currentWebContents.onContentForNavigationEntryShown();
                                 notifyContentChanged();
                             });
                     mNativePageSmoothTransitionDelegate = null;
@@ -1893,7 +1897,11 @@ class TabImpl implements Tab, TabInternal {
                     if (view.getAlpha() != 1f) {
                         // This means the content/ is waiting for the NTP to be fully visible.
                         view.setAlpha(1f);
-                        view.post(webContents::onContentForNavigationEntryShown);
+                        view.post(
+                                () -> {
+                                    if (isDestroyed() || webContents.isDestroyed()) return;
+                                    webContents.onContentForNavigationEntryShown();
+                                });
                     }
                 }
         }

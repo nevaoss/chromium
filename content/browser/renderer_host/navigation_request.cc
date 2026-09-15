@@ -6445,7 +6445,7 @@ void NavigationRequest::OnRedirectChecksComplete(
     const network::mojom::URLResponseHead* response_head =
         commit_params_->redirect_params.back()->response_head.get();
     ParseAndPersistAcceptCHForNavigation(
-        source_origin, response_head->ssl_info, response_head->parsed_headers,
+        source_origin, response_head->parsed_headers,
         response_head->headers.get(), browser_context, client_hints_delegate,
         frame_tree_node_);
 
@@ -7076,9 +7076,9 @@ void NavigationRequest::CommitNavigation() {
         opt_in_hints_from_response;
     if (response()) {
       opt_in_hints_from_response = ParseAndPersistAcceptCHForNavigation(
-          url::Origin::Create(common_params_->url), response()->ssl_info,
-          response()->parsed_headers, response()->headers.get(),
-          browser_context, client_hints_delegate, frame_tree_node_);
+          url::Origin::Create(common_params_->url), response()->parsed_headers,
+          response()->headers.get(), browser_context, client_hints_delegate,
+          frame_tree_node_);
     }
     commit_params_->enabled_client_hints =
         LookupAcceptCHForCommit(origin_to_commit, client_hints_delegate,
@@ -7761,6 +7761,11 @@ void NavigationRequest::UpdateNavigationHandleTimingsOnResponseReceived(
                 ->max_stream_limit_pending_delay,
         .resolution_details =
             response_head_->load_timing_internal_info->resolution_details,
+        .quic_connection_reuse_details =
+            response_head_->load_timing_internal_info
+                ->quic_connection_reuse_details,
+        .session_creation_initiator = response_head_->load_timing_internal_info
+                                          ->session_creation_initiator,
     };
   }
 

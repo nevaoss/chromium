@@ -31,6 +31,15 @@
 
 @end
 
+// Holder object containing command handlers that context menu items may invoke.
+@interface ContextMenuHandlers : NSObject
+
+@property(nonatomic, weak) id<MiniMapCommands> miniMapHandler;
+@property(nonatomic, weak) id<UnitConversionCommands> unitConversionHandler;
+@property(nonatomic, weak) id<EnhancedCalendarCommands> enhancedCalendarHandler;
+
+@end
+
 namespace web {
 class WebState;
 }  // namespace web
@@ -43,9 +52,7 @@ ElementsToAddToContextMenu* GetContextMenuElementsToAdd(
     web::WebState* web_state,
     web::ContextMenuParams params,
     UIViewController* presenting_view_controller,
-    id<MiniMapCommands> mini_map_handler,
-    id<UnitConversionCommands> unit_conversion_handler,
-    id<EnhancedCalendarCommands> enhanced_calendar_handler);
+    ContextMenuHandlers* context_menu_handlers);
 
 // Returns a default context menu configuration.
 UIContextMenuConfiguration* GetDefaultContextMenuConfiguration();

@@ -8,6 +8,9 @@
 #include "base/feature_list.h"
 #include "base/notimplemented.h"
 #include "chrome/browser/app_mode/app_mode_utils.h"
+#include "chrome/browser/ui/tabs/tab_strip_model.h"
+#include "content/public/browser/navigation_controller.h"
+#include "ui/base/window_open_disposition.h"
 #if BUILDFLAG(IS_MAC)
 #include "chrome/browser/global_keyboard_shortcuts_mac.h"
 #endif
@@ -16,7 +19,6 @@
 #include "chrome/browser/themes/theme_service.h"
 #include "chrome/browser/themes/theme_service_factory.h"
 #include "chrome/browser/ui/accelerator_table.h"
-#include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_active_state_manager/browser_active_state_manager.h"
 #include "chrome/browser/ui/browser_commands.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
@@ -480,8 +482,9 @@ float WebUIBrowserWindow::GetScaleFactor() const {
 
 ui::ColorProviderKey::ThemeInitializerSupplier*
 WebUIBrowserWindow::GetThemeInitializerSupplier() const {
-  // Do not return any custom theme if this is an incognito browser.
-  if (browser_->GetProfile()->IsIncognitoProfile()) {
+  // Do not return any custom theme if this is an incognito browser or an
+  // enterprise isolated mode browser.
+  if (browser_->GetProfile()->IsPrimaryOTRProfileWithRegularParent()) {
     return nullptr;
   }
 
@@ -525,6 +528,11 @@ ui::ColorProviderKey WebUIBrowserWindow::GetColorProviderKey() const {
       return;
     }
 
+    if (browser_->GetProfile()->IsEnterpriseIsolatedModeProfile()) {
+      key.color_mode = ui::ColorProviderKey::ColorMode::kLight;
+      return;
+    }
+
     const auto browser_color_scheme = theme_service->GetBrowserColorScheme();
     if (browser_color_scheme != ThemeService::BrowserColorScheme::kSystem) {
       key.color_mode =
@@ -547,6 +555,8 @@ ui::ColorProviderKey WebUIBrowserWindow::GetColorProviderKey() const {
   // Determine appropriate key.user_color_source.
   if (browser_->GetProfile()->IsIncognitoProfile()) {
     key.user_color_source = ui::ColorProviderKey::UserColorSource::kGrayscale;
+  } else if (browser_->GetProfile()->IsEnterpriseIsolatedModeProfile()) {
+    key.user_color_source = ui::ColorProviderKey::UserColorSource::kBaseline;
   } else if (theme_service->UsingDeviceTheme()) {
     key.user_color_source = ui::ColorProviderKey::UserColorSource::kAccent;
   } else if (theme_service->GetIsGrayscale()) {
@@ -628,7 +638,7 @@ gfx::Rect WebUIBrowserWindow::GetContentsBoundsInScreen() const {
 void WebUIBrowserWindow::ProcessFullscreen(bool fullscreen) {
   widget_->SetFullscreen(fullscreen);
 
-  auto* manager = browser_->GetFeatures().exclusive_access_manager();
+  auto* manager = ExclusiveAccessManager::From(browser_);
   if (!manager) {
     return;
   }
@@ -649,8 +659,7 @@ void WebUIBrowserWindow::ProcessFullscreen(bool fullscreen) {
     page->OnFullscreenModeChanged(fullscreen, context);
   }
 
-  browser_->GetFeatures()
-      .exclusive_access_manager()
+  ExclusiveAccessManager::From(browser_)
       ->fullscreen_controller()
       ->WindowFullscreenStateChanged();
 }
@@ -1334,6 +1343,5 @@ void WebUIBrowserWindow::CloseSidePanel() {
 }
 
 WebUIBrowserSidePanelUI* WebUIBrowserWindow::GetWebUIBrowserSidePanelUI() {
-  return static_cast<WebUIBrowserSidePanelUI*>(
-      browser_->GetFeatures().side_panel_ui());
+  return static_cast<WebUIBrowserSidePanelUI*>(SidePanelUI::From(browser_));
 }

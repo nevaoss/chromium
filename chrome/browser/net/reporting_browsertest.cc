@@ -18,6 +18,7 @@
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/navigator/browser_navigator.h"
 #include "chrome/browser/ui/navigator/browser_navigator_params.h"
+#include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/test/base/ui_test_utils.h"
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/render_frame_host.h"
@@ -39,6 +40,7 @@
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/blink/public/common/chrome_debug_urls.h"
 #include "third_party/blink/public/common/features.h"
+#include "ui/base/page_transition_types.h"
 #include "url/gurl.h"
 
 namespace {
@@ -418,6 +420,7 @@ IN_PROC_BROWSER_TEST_P(ReportingBrowserTest, TestReportingHeadersProcessed) {
         [ {
            "body": {
               "blockedURL": "inline",
+              "columnNumber": 11,
               "disposition": "enforce",
               "documentURL": "%s",
               "effectiveDirective": "script-src-elem",
@@ -470,6 +473,7 @@ IN_PROC_BROWSER_TEST_P(NonIsolatedReportingBrowserTest,
         [ {
            "body": {
               "blockedURL": "inline",
+              "columnNumber": 11,
               "disposition": "enforce",
               "documentURL": "%s",
               "effectiveDirective": "script-src-elem",

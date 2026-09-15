@@ -20,6 +20,7 @@ BASE_DECLARE_FEATURE(kContextualTasksPrivateApiNoAnimation);
 BASE_DECLARE_FEATURE(kContextualTasksSidePanel);
 BASE_DECLARE_FEATURE(kContextualTasksEphemeralBrandedEntryPoint);
 BASE_DECLARE_FEATURE(kContextualTasksExtraOauthScopes);
+BASE_DECLARE_FEATURE(kContextualTasksDriveOAuthScope);
 BASE_DECLARE_FEATURE(kEnableContextualTasksPinButtonInToolbar);
 BASE_DECLARE_FEATURE(kContextualTasksContext);
 BASE_DECLARE_FEATURE(kContextualTasksSearchQuery);
@@ -70,8 +71,6 @@ BASE_DECLARE_FEATURE(kContextualTasksSendContextualInputUploadType);
 // contextual tasks URL and redirect to aim URL.
 BASE_DECLARE_FEATURE(kContextualTasksUrlRedirectToAimUrl);
 
-// Enables the use of Stratus dark mode colors.
-BASE_DECLARE_FEATURE(kContextualTasksUseStratusDarkModeColors);
 
 // If enabled, animates the caret.
 BASE_DECLARE_FEATURE(kContextualTasksAnimatedCaret);
@@ -140,6 +139,14 @@ BASE_DECLARE_FEATURE(kContextualTasksSidePanelRearchitecture);
 
 // Enables sticky conversation UI that follows the user around.
 BASE_DECLARE_FEATURE(kContextualTasksEnableStickyConversation);
+
+// When enabled, allows AIM search URLs to be created and navigated immediately
+// upon starting contextual input uploads without waiting for background
+// network uploads to complete.
+BASE_DECLARE_FEATURE(kContextualTasksNonBlockingUrlNavigation);
+
+// Returns whether non-blocking AIM URL navigation is enabled.
+bool GetIsContextualTasksNonBlockingUrlNavigationEnabled();
 
 BASE_DECLARE_FEATURE(kContextualTasksEnableSpatialModelToolbarLayout);
 
@@ -457,8 +464,6 @@ extern bool ShouldEnableCookiePrefetch();
 // from AIM.
 extern bool ShouldEnableLockAndUnlockInputCapability();
 
-// Returns whether the Stratus dark mode colors should be used.
-extern bool ShouldUseStratusDarkModeColors();
 
 // Returns whether the file hint is enabled in the composebox.
 extern bool GetEnableFileHint();
@@ -484,6 +489,7 @@ extern bool GetIsWebpageApcComparisonEnabled();
 
 extern bool IsContextualTasksRearchitectureEnabled();
 extern bool IsContextualTasksSidePanelRearchitectureEnabled();
+extern bool IsContextualTasksUnboundedMenuEnabled();
 
 inline constexpr char kContextualTasksSearchCapabilitiesHeaderName[] =
     "Chrome-Search-Capabilities-Version";

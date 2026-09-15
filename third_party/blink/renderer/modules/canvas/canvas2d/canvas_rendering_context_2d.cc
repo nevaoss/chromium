@@ -303,9 +303,7 @@ void CanvasRenderingContext2D::LoseContext(LostContextMode lost_mode) {
   ResetInternal();
   HTMLCanvasElement* const element = canvas();
   if (element != nullptr) [[likely]] {
-    shared_image_provider_ = nullptr;
-    bitmap_provider_ = nullptr;
-    last_recording_ = std::nullopt;
+    ResetResourceProvider();
     element->DiscardResources();
     element->DiscardResourceDispatcher();
 
@@ -1165,9 +1163,7 @@ UniqueFontSelector* CanvasRenderingContext2D::GetFontSelector() const {
 }
 
 void CanvasRenderingContext2D::SizeChanged() {
-  shared_image_provider_ = nullptr;
-  bitmap_provider_ = nullptr;
-  last_recording_ = std::nullopt;
+  ResetResourceProvider();
   did_fail_to_create_resource_provider_ = false;
 }
 
@@ -1179,9 +1175,7 @@ CanvasHibernationHandler* CanvasRenderingContext2D::GetHibernationHandler()
 void CanvasRenderingContext2D::Dispose() {
   FlushForImageListener::Get()->RemoveObserver(this);
   hibernation_handler_ = nullptr;
-  shared_image_provider_ = nullptr;
-  bitmap_provider_ = nullptr;
-  last_recording_ = std::nullopt;
+  ResetResourceProvider();
   CanvasRenderingContext::Dispose();
 }
 

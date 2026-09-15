@@ -73,7 +73,7 @@ BASE_FEATURE(kIPHDesktopCustomizeChromeAutoOpenFeature,
              base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHDesktopRealboxContextualSearchFeature,
              "IPH_DesktopRealboxContextualSearchFeature",
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHDiscardRingFeature,
              "IPH_DiscardRing",
              base::FEATURE_ENABLED_BY_DEFAULT);
@@ -365,6 +365,9 @@ BASE_FEATURE(kIPHAndroidBottomBarPromoDialog,
              base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHAndroidTabDeclutter,
              "IPH_AndroidTabDeclutter",
+             base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kIPHAndroidVerticalTabsNewLabel,
+             "IPH_AndroidVerticalTabsNewLabel",
              base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHAndroidVerticalTabsPromoFeature,
              "IPH_AndroidVerticalTabsPromo",
@@ -1033,9 +1036,6 @@ BASE_FEATURE(kIPHAutofillHomeWorkProfileSuggestionFeature,
              base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHAutofillAccountNameEmailSuggestionFeature,
              "IPH_AutofillAccountNameEmailSuggestion",
-             base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHAutofillAiOptInFeature,
-             "IPH_AutofillAiOptIn",
              base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHAutofillAiValuablesFeature,
              "IPH_AutofillAiValuables",

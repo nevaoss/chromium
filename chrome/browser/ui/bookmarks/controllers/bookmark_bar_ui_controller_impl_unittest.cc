@@ -11,6 +11,7 @@
 #include "base/functional/callback.h"
 #include "base/memory/raw_ptr.h"
 #include "chrome/browser/ui/bookmarks/controllers/adapters/bookmark_bar_action_adapter.h"
+#include "chrome/browser/ui/bookmarks/controllers/adapters/bookmark_bar_model_adapter.h"
 #include "chrome/browser/ui/bookmarks/controllers/adapters/bookmark_bar_prefs_adapter.h"
 #include "chrome/browser/ui/bookmarks/controllers/bookmark_bar_ui_client.h"
 #include "chrome/browser/ui/bookmarks/controllers/bookmark_bar_ui_controller_injector.h"
@@ -26,6 +27,10 @@ class MockBookmarkBarUIClient : public BookmarkBarUIClient {
   MOCK_METHOD(void, SetAppsPageShortcutVisibility, (bool), (override));
   MOCK_METHOD(void, SetSavedTabGroupsVisibility, (bool), (override));
   MOCK_METHOD(void, SetManagedBookmarksFolderVisibility, (bool), (override));
+  MOCK_METHOD(void,
+              ShowFolderMenu,
+              (const bookmarks::BookmarkNodeId&),
+              (override));
 };
 
 class MockBookmarkBarPrefsAdapter : public BookmarkBarPrefsAdapter {
@@ -52,6 +57,28 @@ class MockBookmarkBarActionAdapter : public BookmarkBarActionAdapter {
  public:
   MOCK_METHOD(void, OpenAppsPage, (WindowOpenDisposition), (override));
   MOCK_METHOD(void, OpenBookmark, (int64_t, WindowOpenDisposition), (override));
+  MOCK_METHOD(void, NotifyFolderOpened, (), (override));
+  MOCK_METHOD(void,
+              OpenFolderNodes,
+              (const bookmarks::BookmarkNodeId&, WindowOpenDisposition),
+              (override));
+};
+
+class MockBookmarkBarModelAdapter : public BookmarkBarModelAdapter {
+ public:
+  MOCK_METHOD(bool, IsLoaded, (), (const, override));
+  MOCK_METHOD(const bookmarks::BookmarkNode*,
+              GetNodeById,
+              (int64_t),
+              (const, override));
+  MOCK_METHOD((std::vector<const bookmarks::BookmarkNode*>),
+              GetUnderlyingNodes,
+              (const bookmarks::BookmarkNodeId&),
+              (const, override));
+  MOCK_METHOD(void,
+              CanPasteFromClipboard,
+              (const BookmarkParentFolder*, base::OnceCallback<void(bool)>),
+              (override));
 };
 
 class MockBookmarkBarUIControllerInjector
@@ -59,6 +86,7 @@ class MockBookmarkBarUIControllerInjector
  public:
   MOCK_METHOD(BookmarkBarPrefsAdapter*, GetPrefsAdapter, (), (override));
   MOCK_METHOD(BookmarkBarActionAdapter*, GetActionAdapter, (), (override));
+  MOCK_METHOD(BookmarkBarModelAdapter*, GetModelAdapter, (), (override));
 };
 
 class BookmarkBarUIControllerImplTest : public testing::Test {
@@ -72,6 +100,8 @@ class BookmarkBarUIControllerImplTest : public testing::Test {
         .WillByDefault(testing::Return(&mock_prefs_adapter_));
     ON_CALL(*mock_injector_, GetActionAdapter())
         .WillByDefault(testing::Return(&mock_action_adapter_));
+    ON_CALL(*mock_injector_, GetModelAdapter())
+        .WillByDefault(testing::Return(&mock_model_adapter_));
 
     controller_ =
         std::make_unique<BookmarkBarUIControllerImpl>(std::move(injector));
@@ -84,6 +114,7 @@ class BookmarkBarUIControllerImplTest : public testing::Test {
 
   testing::NiceMock<MockBookmarkBarPrefsAdapter> mock_prefs_adapter_;
   testing::NiceMock<MockBookmarkBarActionAdapter> mock_action_adapter_;
+  testing::NiceMock<MockBookmarkBarModelAdapter> mock_model_adapter_;
   raw_ptr<testing::NiceMock<MockBookmarkBarUIControllerInjector>>
       mock_injector_;
   std::unique_ptr<BookmarkBarUIControllerImpl> controller_;
@@ -158,6 +189,23 @@ TEST_F(BookmarkBarUIControllerImplTest, OpenBookmarkDelegates) {
   EXPECT_CALL(mock_action_adapter_,
               OpenBookmark(42, WindowOpenDisposition::NEW_WINDOW));
   controller_->OpenBookmark(42, WindowOpenDisposition::NEW_WINDOW);
+}
+
+TEST_F(BookmarkBarUIControllerImplTest, OpenFolderCurrentTabShowsMenu) {
+  controller_->Bind(&mock_client_);
+  bookmarks::BookmarkNodeId folder_id = int64_t{42};
+  EXPECT_CALL(mock_action_adapter_, NotifyFolderOpened());
+  EXPECT_CALL(mock_client_, ShowFolderMenu(folder_id));
+  controller_->OpenFolder(folder_id, WindowOpenDisposition::CURRENT_TAB);
+}
+
+TEST_F(BookmarkBarUIControllerImplTest, OpenFolderOtherDispositionOpensNodes) {
+  controller_->Bind(&mock_client_);
+  bookmarks::BookmarkNodeId folder_id = int64_t{42};
+  EXPECT_CALL(mock_action_adapter_,
+              OpenFolderNodes(folder_id, WindowOpenDisposition::NEW_WINDOW));
+  EXPECT_CALL(mock_client_, ShowFolderMenu(testing::_)).Times(0);
+  controller_->OpenFolder(folder_id, WindowOpenDisposition::NEW_WINDOW);
 }
 
 }  // namespace

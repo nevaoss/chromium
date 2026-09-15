@@ -36,6 +36,7 @@
 #include "components/saved_tab_groups/test_support/fake_tab_group_sync_service.h"
 #include "components/saved_tab_groups/test_support/saved_tab_group_test_utils.h"
 #include "components/sessions/content/session_tab_helper.h"
+#include "components/sessions/core/session_id.h"
 #include "components/signin/public/identity_manager/identity_test_environment.h"
 #include "components/tab_groups/tab_group_color.h"
 #include "components/tabs/public/mock_tab_interface.h"
@@ -50,6 +51,7 @@
 
 #if !BUILDFLAG(IS_ANDROID)
 #include "chrome/browser/tab_list/tab_removed_reason.h"
+#include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/tabs/tab_strip_model_observer.h"
 #endif
 
@@ -649,6 +651,33 @@ TEST_F(ContextHubServiceTest, GenerateTabBasedTodos_VisibleTabNotEligible) {
                                  future.GetCallback());
 
   EXPECT_TRUE(future.Get());
+}
+
+TEST_F(ContextHubServiceTest, GenerateTabBasedTodos_PinnedTabNotEligible) {
+  // Tab is pinned and therefore not eligible.
+  tabs::MockTabInterface mock_tab;
+  ui::UnownedUserDataHost user_data_host;
+  ON_CALL(mock_tab, GetUnownedUserDataHost())
+      .WillByDefault(testing::ReturnRef(user_data_host));
+  ON_CALL(mock_tab, IsPinned()).WillByDefault(testing::Return(true));
+
+  auto web_contents = CreateEligibleTab(GURL("https://example.com"));
+  ON_CALL(mock_tab, GetContents())
+      .WillByDefault(testing::Return(web_contents.get()));
+
+  tabs::TabLookupFromWebContents::CreateForWebContents(web_contents.get(),
+                                                       &mock_tab);
+
+  EXPECT_CALL(mock_page_content_extraction_service_,
+              GetExtractedPageContentAndEligibilityForPageAsync(_, _, _))
+      .Times(0);
+
+  base::test::TestFuture<bool> future;
+  service_.GenerateTabBasedTodos({web_contents->GetWeakPtr()},
+                                 future.GetCallback());
+
+  EXPECT_TRUE(future.Get());
+  EXPECT_EQ(service_.GetLastThirdPartyGenerationTime(), base::Time::Now());
 }
 
 TEST_F(ContextHubServiceTest, GenerateTabBasedTodos_ReentrancyBlocked) {

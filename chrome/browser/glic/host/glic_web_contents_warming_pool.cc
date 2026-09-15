@@ -10,7 +10,8 @@
 #include "base/metrics/histogram_functions.h"
 #include "base/time/time.h"
 #include "base/trace_event/trace_event.h"
-#include "chrome/browser/glic/host/webui_contents_container.h"
+#include "chrome/browser/glic/host/glic_web_contents_manager.h"
+#include "chrome/browser/glic/host/glic_webui_contents_manager.h"
 #include "chrome/browser/glic/public/features.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/common/chrome_features.h"
@@ -67,14 +68,12 @@ class GlicWebContentsWarmingPool::Metrics {
   }
 
   GlicWebContentsWarmingPool::WarmingPoolStatus RecordTakeContainerStatus(
-      const std::unique_ptr<WebUIContentsContainer>& warmed_container,
+      const std::unique_ptr<GlicWebContentsManager>& warmed_container,
       bool is_warming_allowed_by_memory_pressure) {
     WarmingPoolStatus status = WarmingPoolStatus::kCold;
     if (warmed_container) {
-      status = warmed_container->web_contents()->IsCrashed()
-                   ? WarmingPoolStatus::kCrashed
-                   : WarmingPoolStatus::kHit;
-      warmed_container_creation_time_ = warmed_container->creation_time();
+      status = warmed_container->IsCrashed() ? WarmingPoolStatus::kCrashed
+                                             : WarmingPoolStatus::kHit;
       if (status == WarmingPoolStatus::kHit) {
         RecordWarmedContainerFate(WarmedContainerFate::kUsed);
       }
@@ -94,7 +93,7 @@ class GlicWebContentsWarmingPool::Metrics {
   }
 
   void RecordClearWarmedContainer(
-      const std::unique_ptr<WebUIContentsContainer>& warmed_container,
+      const std::unique_ptr<GlicWebContentsManager>& warmed_container,
       ClearReason reason) {
     if (!warmed_container) {
       return;
@@ -138,6 +137,7 @@ class GlicWebContentsWarmingPool::Metrics {
 
 GlicWebContentsWarmingPool::GlicWebContentsWarmingPool(Profile* profile)
     : profile_(profile), metrics_(std::make_unique<Metrics>()) {
+  profile_observation_.Observe(profile_);
   if (base::FeatureList::IsEnabled(features::kGlicWebContentsWarming)) {
     expiry_delay_ = features::kGlicWebContentsWarmingPoolExpiryDelay.Get();
     warming_delay_ = features::kGlicWebContentsWarmingDelay.Get();
@@ -148,7 +148,7 @@ GlicWebContentsWarmingPool::~GlicWebContentsWarmingPool() {
   Shutdown();
 }
 
-std::unique_ptr<WebUIContentsContainer>
+std::unique_ptr<GlicWebContentsManager>
 GlicWebContentsWarmingPool::TakeContainer() {
   metrics_->RecordTakeContainerStatus(warmed_container_,
                                       IsWarmingAllowedByMemoryPressure());
@@ -156,7 +156,7 @@ GlicWebContentsWarmingPool::TakeContainer() {
   is_active_ = true;
 
   EnsurePreload(ContainerCreationReason::kUserTriggeredColdStart);
-  std::unique_ptr<WebUIContentsContainer> result = std::move(warmed_container_);
+  std::unique_ptr<GlicWebContentsManager> result = std::move(warmed_container_);
   warmed_container_ = nullptr;
   expiry_timer_.Stop();
 
@@ -165,6 +165,9 @@ GlicWebContentsWarmingPool::TakeContainer() {
 }
 
 bool GlicWebContentsWarmingPool::MaybeStartWarming(GlicWarmingTrigger trigger) {
+  if (profile_->ShutdownStarted()) {
+    return false;
+  }
   is_active_ = true;
   if (memory_pressure_level_ >= base::MEMORY_PRESSURE_LEVEL_CRITICAL) {
     return false;
@@ -174,16 +177,20 @@ bool GlicWebContentsWarmingPool::MaybeStartWarming(GlicWarmingTrigger trigger) {
 }
 
 void GlicWebContentsWarmingPool::Shutdown() {
+  profile_observation_.Reset();
   Clear(ClearReason::kShutdown);
 }
 
-std::unique_ptr<WebUIContentsContainer>
+void GlicWebContentsWarmingPool::OnProfileWillBeDestroyed(Profile* profile) {
+  Shutdown();
+}
+
+std::unique_ptr<GlicWebContentsManager>
 GlicWebContentsWarmingPool::CreateContainer() {
   TRACE_EVENT("glic", "GlicWebContentsWarmingPool::CreateContainer");
   bool initially_hidden =
       base::FeatureList::IsEnabled(features::kGlicContentsInitiallyHidden);
-  return std::make_unique<WebUIContentsContainerImpl>(profile_,
-                                                      initially_hidden);
+  return std::make_unique<GlicWebUIContentsManager>(profile_, initially_hidden);
 }
 
 void GlicWebContentsWarmingPool::Clear(ClearReason reason) {
@@ -226,10 +233,13 @@ void GlicWebContentsWarmingPool::OnContainerExpired() {
 }
 
 void GlicWebContentsWarmingPool::EnsurePreload(ContainerCreationReason reason) {
+  if (profile_->ShutdownStarted()) {
+    return;
+  }
   CHECK(IsWarmingAllowedByMemoryPressure() ||
         reason == ContainerCreationReason::kUserTriggeredColdStart);
   delay_timer_.Stop();
-  if (warmed_container_ && warmed_container_->web_contents()->IsCrashed()) {
+  if (warmed_container_ && warmed_container_->IsCrashed()) {
     metrics_->RecordWarmedContainerFate(Metrics::WarmedContainerFate::kCrashed);
     warmed_container_ = nullptr;
   }
@@ -272,6 +282,9 @@ bool GlicWebContentsWarmingPool::IsWarmingAllowedByMemoryPressure() const {
 
 void GlicWebContentsWarmingPool::EnsurePreloadDelayed(
     ContainerCreationReason reason) {
+  if (profile_->ShutdownStarted()) {
+    return;
+  }
   CHECK(!warmed_container_);
   if (!IsWarmingAllowedByMemoryPressure()) {
     return;
@@ -292,7 +305,7 @@ bool GlicWebContentsWarmingPool::HasWarmedContainerForTesting() const {
   return !!warmed_container_;
 }
 
-WebUIContentsContainer*
+GlicWebContentsManager*
 GlicWebContentsWarmingPool::GetWarmedContainerForTesting() const {
   return warmed_container_.get();
 }

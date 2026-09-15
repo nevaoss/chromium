@@ -46,6 +46,9 @@
 #include "chrome/browser/devtools/devtools_select_file_dialog.h"
 #include "chrome/browser/devtools/features.h"
 #include "chrome/browser/devtools/url_constants.h"
+#include "chrome/browser/infobars/browser_infobar_manager.h"
+#include "chrome/browser/infobars/infobar_features.h"
+#include "chrome/browser/infobars/infobar_spec.h"
 #include "chrome/browser/lifetime/application_lifetime.h"
 #include "chrome/browser/policy/profile_policy_connector.h"
 #include "chrome/browser/profiles/profile.h"
@@ -114,6 +117,7 @@
 #include "net/traffic_annotation/network_traffic_annotation.h"
 #include "services/network/public/cpp/features.h"
 #include "services/network/public/cpp/resource_request.h"
+#include "services/network/public/cpp/shared_url_loader_factory.h"
 #include "services/network/public/cpp/simple_url_loader.h"
 #include "services/network/public/cpp/simple_url_loader_stream_consumer.h"
 #include "services/network/public/cpp/wrapper_shared_url_loader_factory.h"
@@ -124,6 +128,7 @@
 #include "ui/base/models/dialog_model.h"
 #include "ui/base/page_transition_types.h"
 #include "ui/base/resource/resource_bundle.h"
+#include "ui/base/window_open_disposition.h"
 #include "ui/shell_dialogs/select_file_dialog.h"
 
 #if !BUILDFLAG(IS_ANDROID)
@@ -2051,10 +2056,20 @@ base::DictValue DevToolsUIBindings::GetHostConfigDictionary(Profile* profile) {
                       std::move(ai_assistance_file_agent_dict));
   }
 
-  response_dict.Set("devToolsAiV2Architecture",
-                    base::DictValue().Set(
-                        "enabled", base::FeatureList::IsEnabled(
-                                       ::features::kDevToolsAiV2Architecture)));
+  if (base::FeatureList::IsEnabled(::features::kDevToolsAiV2Architecture)) {
+    base::DictValue ai_v2_architecture_dict;
+    ai_v2_architecture_dict.Set(
+        "enabled",
+        base::FeatureList::IsEnabled(::features::kDevToolsAiV2Architecture));
+    ai_v2_architecture_dict.Set(
+        "userTier", features::kDevToolsAiV2ArchitectureUserTier.GetName(
+                        features::kDevToolsAiV2ArchitectureUserTier.Get()));
+    response_dict.Set("devToolsAiV2Architecture",
+                      std::move(ai_v2_architecture_dict));
+  } else {
+    response_dict.Set("devToolsAiV2Architecture",
+                      base::DictValue().Set("enabled", false));
+  }
 
   response_dict.Set(
       "devToolsComments",
@@ -2269,12 +2284,6 @@ base::DictValue DevToolsUIBindings::GetHostConfigDictionary(Profile* profile) {
                     base::DictValue().Set(
                         "enabled", base::FeatureList::IsEnabled(
                                        ::features::kDevToolsGeminiRebranding)));
-
-  response_dict.Set(
-      "devToolsWebMCPSupport",
-      base::DictValue().Set("enabled",
-                            base::FeatureList::IsEnabled(
-                                blink::features::kDevToolsWebMCPSupport)));
 
   response_dict.Set("devToolsAdsPanel",
                     base::DictValue().Set(
@@ -2812,6 +2821,33 @@ void DevToolsUIBindings::ShowDevToolsInfoBar(
 #if BUILDFLAG(IS_ANDROID)
   NOTIMPLEMENTED();
 #else
+  if (infobars::IsInfoBarMigrated(
+          infobars::InfoBarDelegate::DEV_TOOLS_INFOBAR_DELEGATE)) {
+    auto* browser_infobar_manager =
+        infobars::BrowserInfoBarManager::From(g_browser_process);
+    CHECK(browser_infobar_manager);
+    auto split = base::SplitOnceCallback(std::move(callback));
+    infobars::InfoBarShowParams params;
+    params.message_text = message;
+    // Allow maps to kAccepted; every other terminal result is a deny.
+    params.result_callback = base::BindRepeating(
+        [](DevToolsInfoBarDelegate::Callback& callback, content::WebContents*,
+           infobars::InfoBarResult result) {
+          if (callback) {
+            std::move(callback).Run(result ==
+                                    infobars::InfoBarResult::kAccepted);
+          }
+        },
+        base::OwnedRef(std::move(split.first)));
+    if (!browser_infobar_manager->ShowGlobally(
+            infobars::InfoBarDelegate::DEV_TOOLS_INFOBAR_DELEGATE,
+            std::move(params))) {
+      // Nothing was shown (another confirmation is already up). Answer
+      // the caller with deny rather than hang.
+      std::move(split.second).Run(false);
+    }
+    return;
+  }
   if (!delegate_->GetInfoBarManager()) {
     std::move(callback).Run(false);
     return;
@@ -3181,9 +3217,13 @@ void DevToolsUIBindings::ReadyToCommitNavigation(
     if (frontend_host_) {
       return;
     }
-    if (content::RenderFrameHost* opener = web_contents_->GetOpener()) {
+    // If the window was opened by another window, ensure the root opener in
+    // the live opener chain is a DevTools WebContents with active DevTools
+    // frontend bindings. This also covers cases where `window.opener` was
+    // severed (e.g. via `window.opener = null` or `rel="noopener"`).
+    if (web_contents_->HasLiveOriginalOpenerChain()) {
       content::WebContents* opener_wc =
-          content::WebContents::FromRenderFrameHost(opener);
+          web_contents_->GetFirstWebContentsInLiveOriginalOpenerChain();
       DevToolsUIBindings* opener_bindings =
           opener_wc ? DevToolsUIBindings::ForWebContents(opener_wc) : nullptr;
       if (!opener_bindings || !opener_bindings->frontend_host_) {

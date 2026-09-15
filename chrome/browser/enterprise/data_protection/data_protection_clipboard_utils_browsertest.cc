@@ -29,6 +29,7 @@
 #include "chrome/browser/profiles/profile_test_util.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+#include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/toasts/api/toast_id.h"
 #include "chrome/browser/ui/toasts/toast_controller.h"
 #include "chrome/test/base/in_process_browser_test.h"
@@ -321,7 +322,7 @@ IN_PROC_BROWSER_TEST_P(DataControlsClipboardUtilsBrowserTest,
 
   IsClipboardCopyAllowedByPolicy(source, metadata, data, future.GetCallback());
 
-  auto* toast_controller = browser()->GetFeatures().toast_controller();
+  auto* toast_controller = ToastController::From(browser());
   ASSERT_TRUE(toast_controller);
 
   // Wait until the warning creates the Toast.
@@ -2469,7 +2470,7 @@ IN_PROC_BROWSER_TEST_P(DataControlsClipboardUtilsBrowserTest,
 
   IsClipboardCopyAllowedByPolicy(source, metadata, data, future.GetCallback());
 
-  auto* toast_controller = browser()->GetFeatures().toast_controller();
+  auto* toast_controller = ToastController::From(browser());
   ASSERT_TRUE(toast_controller);
 
   // Wait until the warning creates the Toast.
@@ -2572,7 +2573,7 @@ IN_PROC_BROWSER_TEST_P(
 
   IsClipboardCopyAllowedByPolicy(source, metadata, data, future.GetCallback());
 
-  auto* toast_controller = browser()->GetFeatures().toast_controller();
+  auto* toast_controller = ToastController::From(browser());
   ASSERT_TRUE(toast_controller);
 
   base::RunLoop().RunUntilIdle();
@@ -2725,7 +2726,7 @@ IN_PROC_BROWSER_TEST_P(
 
   IsClipboardCopyAllowedByPolicy(source, metadata, data, future.GetCallback());
 
-  auto* toast_controller = browser()->GetFeatures().toast_controller();
+  auto* toast_controller = ToastController::From(browser());
   ASSERT_TRUE(toast_controller);
 
   base::RunLoop().RunUntilIdle();

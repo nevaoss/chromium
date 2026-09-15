@@ -432,7 +432,7 @@ chromium-metrics-reviews@google.com.
 </variants>
 
 <histogram name="Enterprise.AccountStatusCheckResult"
-    enum="EnterpriseAccountStatus" expires_after="2026-12-20">
+    enum="EnterpriseAccountStatus" expires_after="2027-02-28">
   <owner>dkuzmin@google.com</owner>
   <owner>cros-oobe@google.com</owner>
   <summary>
@@ -1317,6 +1317,35 @@ chromium-metrics-reviews@google.com.
     Records where the realtime url lookup verdict was read from a scan request
     or the local cache.
   </summary>
+</histogram>
+
+<histogram name="Enterprise.DelayedReportingInterstitial.Timeout{EventType}"
+    enum="BooleanTimedOut" expires_after="2027-08-28">
+  <owner>rslan@google.com</owner>
+  <owner>cbe-cep-eng@google.com</owner>
+  <summary>
+    Records whether the delayed interstitial reporter successfully captured the
+    destination title before the 5-second hard timeout. True means it timed out.
+  </summary>
+  <token key="EventType">
+    <variant name=".SafeBrowsing" summary="SafeBrowsing events"/>
+    <variant name=".UrlFiltering" summary="URL filtering events"/>
+  </token>
+</histogram>
+
+<histogram name="Enterprise.DelayedReportingInterstitial.Time{EventType}"
+    units="ms" expires_after="2027-08-28">
+  <owner>rslan@google.com</owner>
+  <owner>cbe-cep-eng@google.com</owner>
+  <summary>
+    Records the time taken (in milliseconds) from when the reporting
+    interstitial is triggered to when the target URL finishes loading and the
+    report is actually dispatched. Timeouts are recorded separately.
+  </summary>
+  <token key="EventType">
+    <variant name=".SafeBrowsing" summary="SafeBrowsing events"/>
+    <variant name=".UrlFiltering" summary="URL filtering events"/>
+  </token>
 </histogram>
 
 <histogram name="Enterprise.DeviceLocalAccountCount" units="accounts"
@@ -3039,7 +3068,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Enterprise.ExtensibleEnterpriseSSO.Supported.Result"
-    enum="Boolean" expires_after="2026-12-27">
+    enum="Boolean" expires_after="2027-02-28">
   <owner>ydago@chromium.org</owner>
   <owner>cec-growth@google.com</owner>
   <summary>
@@ -3084,6 +3113,23 @@ chromium-metrics-reviews@google.com.
     Records the size of printed pages being scanned for a file content analysis
     request. These requests happen for CEP to scan printed pages for DLP rules.
     It is logged once per user action that would trigger this Connector.
+  </summary>
+</histogram>
+
+<histogram name="Enterprise.FileDownloadObfuscation.ReplaceRetryCount"
+    units="retries" expires_after="2027-02-19">
+  <owner>mingyil@google.com</owner>
+  <owner>haihan@google.com</owner>
+  <owner>cbe-cep-eng@google.com</owner>
+  <summary>
+    Recorded when an obfuscated downloaded file is deobfuscated and the browser
+    attempts to safely replace the original file on disk.
+
+    Records the number of retries (0 to 4) required to successfully replace a
+    deobfuscated file over the original file. Because Windows Antivirus scanners
+    can briefly lock closed files while scanning, this retries up to 4 times. If
+    all attempts fail, or if it aborts early due to a non-AV error (such as Disk
+    Full), a value of 5 is explicitly recorded to denote failure.
   </summary>
 </histogram>
 
@@ -3762,7 +3808,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Enterprise.PolicyInvalidations"
-    enum="EnterprisePolicyInvalidations" expires_after="2026-12-27">
+    enum="EnterprisePolicyInvalidations" expires_after="2027-02-28">
   <owner>asumaneev@google.com</owner>
   <owner>chromeos-commercial-remote-management@google.com</owner>
   <summary>
@@ -5362,7 +5408,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="EnterpriseCheck.IsManagedOrEnterpriseDeviceAndCBCM"
-    enum="DeviceManagementAndCBCMState" expires_after="2026-12-01">
+    enum="DeviceManagementAndCBCMState" expires_after="2027-02-28">
   <owner>zmin@chromium.org</owner>
   <owner>noahrose@google.com</owner>
   <summary>
@@ -5373,7 +5419,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="EnterpriseCheck.IsManagedOrEnterpriseDeviceAndCBCM2"
-    enum="DeviceManagementAndCBCMState" expires_after="2026-12-01">
+    enum="DeviceManagementAndCBCMState" expires_after="2027-02-28">
   <owner>zmin@chromium.org</owner>
   <owner>noahrose@google.com</owner>
   <summary>

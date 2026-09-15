@@ -57,6 +57,7 @@
 #include "components/favicon/content/content_favicon_driver.h"
 #include "components/omnibox/browser/location_bar_model.h"
 #include "components/strings/grit/components_strings.h"
+#include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/navigation_entry.h"
 #include "content/public/browser/render_widget_host_view.h"
 #include "ui/base/dragdrop/drag_drop_types.h"
@@ -578,10 +579,12 @@ void WebUILocationBar::UpdateLhsChipsState(bool icon_known) {
     }
   }
 
-  if (is_editing_or_empty &&
-      (!ShouldShowPermissionPromptEvenIfOmniboxEditedOrEmpty(
-           GetWebContents()) ||
-       omnibox_controller_->IsPopupOpen())) {
+  if (omnibox_controller_ &&
+      omnibox_controller_->edit_model()->user_input_in_progress() &&
+          (!ShouldShowPermissionPromptEvenIfOmniboxEditedOrEmpty(
+              GetWebContents()) ||
+          omnibox_controller_->IsPopupOpen())
+      ) {
     // Permission requests get cancelled if user edits the URL.
     // (And won't show up if it was already edited when they occurred).
     bool has_visible_chip = GetChipController()->chip()->GetVisible();
@@ -695,6 +698,10 @@ bool WebUILocationBar::TestContentSettingImagePressed(size_t index) {
 
 bool WebUILocationBar::IsContentSettingBubbleShowing(size_t index) {
   return content_setting_image_control_.IsBubbleShowing(index);
+}
+
+bool WebUILocationBar::IsContentSettingImageVisible(size_t index) {
+  return content_setting_image_control_.IsContentSettingImageVisible(index);
 }
 
 void WebUILocationBar::OnLhsChipMousePressed(
@@ -844,6 +851,9 @@ void WebUILocationBar::SetSuppressionThresholdForTesting(
     base::TimeDelta threshold) {
   page_info_reopen_suppressor_.SetSuppressionThresholdForTesting(  // IN-TEST
       threshold);
+  content_setting_image_control_.SetSuppressionThresholdForTesting(  // IN-TEST
+      threshold);
+  page_action_control_.SetSuppressionThresholdForTesting(threshold);  // IN-TEST
 }
 
 void WebUILocationBar::OnLhsChipPointerEntered(

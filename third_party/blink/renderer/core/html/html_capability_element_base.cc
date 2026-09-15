@@ -38,7 +38,7 @@
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
 #include "third_party/blink/renderer/core/frame/csp/content_security_policy.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
-#include "third_party/blink/renderer/core/frame/local_frame_ukm_aggregator.h"
+#include "third_party/blink/renderer/core/frame/local_frame_metrics_aggregator.h"
 #include "third_party/blink/renderer/core/frame/visual_viewport.h"
 #include "third_party/blink/renderer/core/frame/web_feature.h"
 #include "third_party/blink/renderer/core/geometry/dom_rect.h"
@@ -341,7 +341,7 @@ void HTMLCapabilityElementBase::AttachLayoutTree(AttachContext& context) {
         GetDocument(),
         BindRepeating(&HTMLCapabilityElementBase::OnIntersectionChanged,
                       WrapWeakPersistent(this)),
-        LocalFrameUkmAggregator::kPermissionElementIntersectionObserver,
+        LocalFrameMetricsAggregator::kPermissionElementIntersectionObserver,
         IntersectionObserver::Params{
             .margin = {Length::Fixed(kMarginVisibleContent)},
             .margin_target = IntersectionObserver::kApplyMarginToTarget,
@@ -389,10 +389,12 @@ void HTMLCapabilityElementBase::Focus(const FocusParams& params) {
   if (fallback_mode_) {
     return HTMLElement::Focus(params);
   }
-  // This will only apply to `focus` and `blur` JS API. Other focus types (like
+  // This will only apply to script-initiated focusing. Other focus types (like
   // accessibility focusing and manual user focus), will still be permitted as
-  // usual.
-  if (params.type == mojom::blink::FocusType::kScript &&
+  // usual. `FocusTrigger` (rather than `FocusType`) is used because internal
+  // script-driven paths such as dialog.showModal() / popover autofocus reach
+  // this with FocusType::kNone.
+  if (params.focus_trigger == FocusTrigger::kScript &&
       !LocalFrame::HasTransientUserActivation(GetDocument().GetFrame())) {
     return;
   }

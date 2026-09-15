@@ -108,6 +108,14 @@ chromium-metrics-reviews@google.com.
                kCommandLine and kUnpacked)"/>
 </variants>
 
+<variants name="NativeMessagingAndroidSendMessageStatus">
+  <variant name="Success"
+      summary="messages sent successfully to the external Android app"/>
+  <variant name="TooLarge"
+      summary="messages that failed to send due to
+               TransactionTooLargeException"/>
+</variants>
+
 <variants name="NativeMessagingSource">
   <variant name=".Extension" summary="the extension to the native app"/>
   <variant name=".NativeApp" summary="the native app to the extension"/>
@@ -758,7 +766,7 @@ This is emitted for two scenarios when a worker may be unregistered:
 </histogram>
 
 <histogram name="Extensions.CorruptExtensionDisabledReason"
-    enum="ContentVerifyJobResult" expires_after="2026-12-27">
+    enum="ContentVerifyJobResult" expires_after="2027-02-28">
   <owner>jlulejian@chromium.org</owner>
   <owner>extensions-core@chromium.org</owner>
   <summary>
@@ -1117,7 +1125,7 @@ This is emitted for two scenarios when a worker may be unregistered:
 </histogram>
 
 <histogram name="Extensions.DeclarativeNetRequest.ManifestEnabledRulesCount2"
-    units="rules" expires_after="2026-12-27">
+    units="rules" expires_after="2027-02-28">
   <owner>kelvinjiang@chromium.org</owner>
   <owner>extensions-core@chromium.org</owner>
   <summary>
@@ -3652,6 +3660,44 @@ This is emitted for two scenarios when a worker may be unregistered:
   <token key="ManifestLocation" variants="ManifestLocationGroup"/>
 </histogram>
 
+<histogram name="Extensions.NativeMessaging.Android.DisconnectionReason"
+    enum="NativeMessagingAndroidDisconnectionReason" expires_after="2027-09-01">
+  <owner>kelvinjiang@chromium.org</owner>
+  <owner>extensions-core@chromium.org</owner>
+  <summary>
+    Recorded when an Android native messaging ServiceConnection is disconnected,
+    indicating whether it was a clean unbind or an unexpected disconnection
+    (e.g. service process crash, binding death, null binding, or connection
+    timeout).
+  </summary>
+</histogram>
+
+<histogram
+    name="Extensions.NativeMessaging.Android.SentMessageSize.{SendMessageStatus}"
+    units="bytes" expires_after="2027-09-01">
+  <owner>kelvinjiang@chromium.org</owner>
+  <owner>extensions-core@chromium.org</owner>
+  <summary>
+    The size of the message in bytes sent from an extension to an external
+    Android app for native messaging ({SendMessageStatus}).
+  </summary>
+  <token key="SendMessageStatus"
+      variants="NativeMessagingAndroidSendMessageStatus"/>
+</histogram>
+
+<histogram
+    name="Extensions.NativeMessaging.Android.UnexpectedDisconnectionDuration"
+    units="ms" expires_after="2027-09-01">
+  <owner>kelvinjiang@chromium.org</owner>
+  <owner>extensions-core@chromium.org</owner>
+  <summary>
+    Recorded when an Android native messaging ServiceConnection unexpectedly
+    drops (via onServiceDisconnected or onBindingDied), measuring the duration
+    from when the service was connected from onServiceConnected to when it
+    dropped.
+  </summary>
+</histogram>
+
 <histogram name="Extensions.NativeMessaging.MessageSize{NativeMessagingSource}"
     units="bytes" expires_after="2027-01-01">
   <owner>kelvinjiang@chromium.org</owner>
@@ -4021,7 +4067,7 @@ This is emitted for two scenarios when a worker may be unregistered:
 </histogram>
 
 <histogram name="Extensions.ServiceWorkerBackground.MultiWorkerVersionIdMatch"
-    enum="Boolean" expires_after="2026-10-04">
+    enum="Boolean" expires_after="2027-10-04">
   <owner>andreaorru@chromium.org</owner>
   <owner>jlulejian@chromium.org</owner>
   <owner>extensions-core@chromium.org</owner>
@@ -4037,7 +4083,7 @@ This is emitted for two scenarios when a worker may be unregistered:
 
 <histogram
     name="Extensions.ServiceWorkerBackground.MultiWorkerVersionStatus.{WorkerType}"
-    enum="ServiceWorkerVersionStatus" expires_after="2026-09-13">
+    enum="ServiceWorkerVersionStatus" expires_after="2027-09-13">
   <owner>andreaorru@chromium.org</owner>
   <owner>jlulejian@chromium.org</owner>
   <owner>extensions-core@chromium.org</owner>
@@ -4208,7 +4254,7 @@ This is emitted for two scenarios when a worker may be unregistered:
 </histogram>
 
 <histogram name="Extensions.ServiceWorkerBackground.StartWorkerStatus"
-    enum="Boolean" expires_after="2026-12-27">
+    enum="Boolean" expires_after="2027-02-28">
   <owner>jlulejian@chromium.org</owner>
   <owner>extensions-core@chromium.org</owner>
   <summary>
@@ -4523,6 +4569,40 @@ This is emitted for two scenarios when a worker may be unregistered:
     has not acknowledged the settings bubble (ack_settings_bubble). This detects
     the impacted state associated with crbug.com/540532980.
   </summary>
+</histogram>
+
+<histogram
+    name="Extensions.SettingsOverrideV2.{OverrideType}.{TrustLevel}.{InstallMode}"
+    enum="PolicyExtensionStatus" expires_after="2027-08-31">
+  <owner>anunoy@chromium.org</owner>
+  <owner>chrome-counter-abuse-alerts@google.com</owner>
+  <summary>
+    Reports the status (Enabled or Disabled) of policy-installed extensions that
+    perform a {OverrideType} override on {TrustLevel} devices where the
+    extension is {InstallMode}.
+
+    This supersedes Extensions.{OverrideType}.{TrustLevel}.{InstallMode}, using
+    policy-loading-specific management authority trustworthiness to determine
+    the trust level. Extensions that override both DSE and NTP are recorded to
+    both Dse and Ntp histograms.
+
+    Logged once at startup during ExtensionService initialization.
+
+    Note: This is only recorded on Windows and Mac. This is only emitted for
+    regular user profiles, and is skipped for guest and incognito profiles.
+  </summary>
+  <token key="OverrideType">
+    <variant name="Dse" summary="Default Search Engine"/>
+    <variant name="Ntp" summary="New Tab Page"/>
+  </token>
+  <token key="TrustLevel">
+    <variant name="HighTrust" summary="high trust management environment"/>
+    <variant name="LowTrust" summary="low trust management environment"/>
+  </token>
+  <token key="InstallMode">
+    <variant name="Forced" summary="forced"/>
+    <variant name="Recommended" summary="recommended"/>
+  </token>
 </histogram>
 
 <histogram name="Extensions.Startup.DefaultPinnedExtensionState"
@@ -5128,6 +5208,10 @@ This is emitted for two scenarios when a worker may be unregistered:
   <owner>anunoy@chromium.org</owner>
   <owner>chrome-counter-abuse-alerts@google.com</owner>
   <summary>
+    WARNING: This histogram is pending deprecation and will be removed once
+    dashboards migrate to
+    Extensions.SettingsOverrideV2.{OverrideType}.{TrustLevel}.{InstallMode}.
+
     Reports the status (Enabled or Disabled) of policy-installed extensions that
     perform a {OverrideType} on {TrustLevel} devices where the extension is
     {InstallMode}.

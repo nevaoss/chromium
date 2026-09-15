@@ -404,17 +404,17 @@ void HlsManifestDemuxerEngine::ContinueSeekInternal(
 }
 
 void HlsManifestDemuxerEngine::Initialize(ManifestDemuxerEngineHost* host,
-                                          PipelineStatusCallback status_cb) {
+                                          HlsDemuxerStatusCallback status_cb) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(media_sequence_checker_);
 
   host_ = host;
-  ProcessAsyncAction<PipelineStatus>(
+  ProcessAsyncAction<HlsDemuxerStatus>(
       std::move(status_cb),
       base::BindOnce(&HlsManifestDemuxerEngine::InitAction,
                      weak_factory_.GetWeakPtr()));
 }
 
-void HlsManifestDemuxerEngine::InitAction(PipelineStatusCallback status_cb) {
+void HlsManifestDemuxerEngine::InitAction(HlsDemuxerStatusCallback status_cb) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(media_sequence_checker_);
   PlaylistParseInfo parse_info(root_playlist_uri_, {}, kPrimary,
                                /*allow_multivariant_playlist=*/true);
@@ -424,14 +424,14 @@ void HlsManifestDemuxerEngine::InitAction(PipelineStatusCallback status_cb) {
                      weak_factory_.GetWeakPtr(), std::move(status_cb)));
 }
 
-void HlsManifestDemuxerEngine::FinishInitialization(PipelineStatusCallback cb,
+void HlsManifestDemuxerEngine::FinishInitialization(HlsDemuxerStatusCallback cb,
                                                     HlsDemuxerStatus status) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(media_sequence_checker_);
   if (!status.is_ok()) {
     base::UmaHistogramEnumeration("Media.HLS.InitializationError",
                                   status.code());
   }
-  std::move(cb).Run(ConvertToPiplineStatus(std::move(status)));
+  std::move(cb).Run(std::move(status));
 }
 
 void HlsManifestDemuxerEngine::RecordMidStreamError(HlsDemuxerStatus::Codes c) {
@@ -560,8 +560,7 @@ void HlsManifestDemuxerEngine::UpdateMediaPlaylistForRole(
     HlsDataSourceProvider::ReadResult maybe_stream) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(media_sequence_checker_);
   if (!maybe_stream.has_value()) {
-    std::move(cb).Run(HlsDemuxerStatusTraits::FromReadStatus(
-        std::move(maybe_stream).error()));
+    std::move(cb).Run(std::move(maybe_stream).error());
     return;
   }
   auto stream = std::move(maybe_stream).value();
@@ -697,9 +696,7 @@ void HlsManifestDemuxerEngine::ParsePlaylist(
     HlsDataSourceProvider::ReadResult m_stream) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(media_sequence_checker_);
   if (!m_stream.has_value()) {
-    std::move(parse_complete_cb)
-        .Run(HlsDemuxerStatusTraits::FromReadStatus(
-            std::move(m_stream).error().AddHere()));
+    std::move(parse_complete_cb).Run(std::move(m_stream).error().AddHere());
     return;
   }
   auto stream = std::move(m_stream).value();
@@ -1075,8 +1072,7 @@ void HlsManifestDemuxerEngine::DetermineBitstreamContainer(
   DCHECK_CALLED_ON_VALID_SEQUENCE(media_sequence_checker_);
 
   if (!maybe_stream.has_value()) {
-    std::move(cb).Run(HlsDemuxerStatusTraits::FromReadStatus(
-        std::move(maybe_stream).error()));
+    std::move(cb).Run(std::move(maybe_stream).error());
     return;
   }
 

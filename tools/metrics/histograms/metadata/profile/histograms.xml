@@ -112,8 +112,31 @@ chromium-metrics-reviews@google.com.
 <histogram name="Profile.Avatar" enum="ProfileAvatar"
     expires_after="2027-01-17">
   <owner>droger@chromium.org</owner>
-  <owner>chrome-signin-team@google.com</owner>
-  <summary>The frequency of selection of each avatar.</summary>
+  <owner>chrome-signin-desktop-team@google.com</owner>
+  <summary>
+    The frequency of selection of each avatar. This histogram is recorded at
+    profile creation and when changing the avatar from settings.
+
+    At profile creation: when closing the avatar picker during profile creation
+    (even if the avatar was not changed from the default). We only count when
+    clicking &quot;Done&quot;, i.e. the final avatar. Note: The avatar picker is
+    not shown by default in profile creation. A user needs to explicitly click
+    the small pencil icon, and we expect only a few users to do it.
+
+    From settings: When changing the avatars in settings. We count each click on
+    any avatar, not only the final one. We do not record if the user does not
+    interact (if they leave the default).
+  </summary>
+</histogram>
+
+<histogram name="Profile.AvatarOnLoad" enum="ProfileAvatar"
+    expires_after="2027-01-17">
+  <owner>droger@chromium.org</owner>
+  <owner>chrome-signin-desktop-team@google.com</owner>
+  <summary>
+    The avatar used by a profile when it is loaded. Recorded for regular
+    profiles at profile initialization.
+  </summary>
 </histogram>
 
 <histogram name="Profile.BookmarksSize" units="MB" expires_after="2027-01-17">
@@ -160,7 +183,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Profile.DeleteProfileContext" enum="ProfileDeleteContext"
-    expires_after="2026-12-27">
+    expires_after="2027-02-28">
   <owner>alexilin@chromium.org</owner>
   <owner>droger@chromium.org</owner>
   <owner>msalama@chromium.org</owner>
@@ -286,7 +309,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Profile.LiveProfileCount" units="profiles"
-    expires_after="2026-12-27">
+    expires_after="2027-02-28">
   <owner>nicolaso@chromium.org</owner>
   <owner>cbe-eng@google.com</owner>
   <summary>
@@ -559,7 +582,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Profile.PercentageOfManagedProfiles{ProfileActivityThreshold}"
-    units="units" expires_after="2026-12-21">
+    units="units" expires_after="2027-02-28">
   <owner>longbowei@google.com</owner>
   <owner>zhangwenyu@google.com</owner>
   <owner>cros-families-eng@google.com</owner>
@@ -875,7 +898,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="ProfilePicker.FirstProfileTime.FirstWebContentsNonEmptyPaint.AutoLaunchByOs"
-    units="ms" expires_after="2026-12-27">
+    units="ms" expires_after="2027-02-28">
   <owner>atharvmaan@google.com</owner>
   <owner>chrome-desktop-ui-waterloo@google.com</owner>
   <summary>

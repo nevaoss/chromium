@@ -87,6 +87,7 @@
 #include "ui/base/resource/resource_bundle.h"
 #include "ui/base/themed_vector_icon.h"
 #include "ui/base/ui_base_features.h"
+#include "ui/base/window_open_disposition.h"
 #include "ui/base/window_open_disposition_utils.h"
 #include "ui/color/color_id.h"
 #include "ui/color/color_provider.h"
@@ -930,9 +931,7 @@ class AppMenu::ZoomView : public AppMenuView, public views::WidgetObserver {
   void UpdateFullScreenButton() {
     const bool is_fullscreen = menu()->browser_->GetWindow() &&
                                menu()->browser_->GetWindow()->IsFullscreen();
-    const bool can_fullscreen = menu()
-                                    ->browser_->GetFeatures()
-                                    .exclusive_access_manager()
+    const bool can_fullscreen = ExclusiveAccessManager::From(menu()->browser_)
                                     ->context()
                                     ->CanUserEnterFullscreen();
     fullscreen_button_->UpdateState(is_fullscreen, can_fullscreen);

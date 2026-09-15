@@ -40,6 +40,7 @@
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/web_contents.h"
 #include "extensions/buildflags/buildflags.h"
+#include "ui/base/page_transition_types.h"
 #include "ui/base/window_open_disposition.h"
 #include "ui/display/display.h"
 #include "ui/display/screen.h"
@@ -116,8 +117,11 @@ void GlicPageHandler::PrepareForClient(
       },
       this->weak_ptr_factory_.GetWeakPtr(), std::move(callback));
 
-  GetGlicService()->GetAuthController().CheckAuthBeforeLoad(
-      std::move(wrapped_callback));
+  if (auto* auth_controller = GetGlicService()->GetAuthController()) {
+    auth_controller->CheckAuthBeforeLoad(std::move(wrapped_callback));
+  } else {
+    std::move(wrapped_callback).Run(mojom::PrepareForClientResult::kSuccess);
+  }
 }
 
 void GlicPageHandler::WebviewCommitted(const GURL& url) {
@@ -300,7 +304,9 @@ void GlicPageHandler::OpenHelpCenterTopicAndClosePanel(
 }
 
 void GlicPageHandler::SignInAndClosePanel() {
-  GetGlicService()->GetAuthController().ShowReauthForAccount(webui_contents_);
+  if (auto* auth_controller = GetGlicService()->GetAuthController()) {
+    auth_controller->ShowReauthForAccount(webui_contents_);
+  }
 }
 
 void GlicPageHandler::ResizeWidget(const gfx::Size& size,

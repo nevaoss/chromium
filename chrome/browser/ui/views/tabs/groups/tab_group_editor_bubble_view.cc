@@ -87,8 +87,10 @@
 #include "ui/base/mojom/dialog_button.mojom.h"
 #include "ui/base/mojom/menu_source_type.mojom-forward.h"
 #include "ui/base/mojom/ui_base_types.mojom-shared.h"
+#include "ui/base/page_transition_types.h"
 #include "ui/base/pointer/touch_ui_controller.h"
 #include "ui/base/ui_base_features.h"
+#include "ui/base/window_open_disposition.h"
 #include "ui/events/types/event_type.h"
 #include "ui/gfx/geometry/insets.h"
 #include "ui/gfx/geometry/size.h"
@@ -214,24 +216,37 @@ std::unique_ptr<views::Widget> TabGroupEditorBubbleView::Show(
 
   // In ozone/wayland platforms, BubbleDialogDelegateView ignores calls to
   // `set_adjust_if_offscreen()`. Instead calculate if there is not enough room
-  // below the bubble and render the bubble above instead.
+  // below or to the right of the bubble and adjust the arrow position instead.
 #if BUILDFLAG(IS_OZONE)
   if (!ui::OzonePlatform::GetInstance()
            ->GetPlatformProperties()
            .supports_global_screen_coordinates) {
-    const int bubble_height =
-        tab_group_editor_bubble_view->GetPreferredSize().height();
+    const gfx::Size bubble_size =
+        tab_group_editor_bubble_view->GetPreferredSize();
     const BrowserView* const browser_view =
         BrowserView::GetBrowserViewForBrowser(browser);
     if (browser_view && browser_view->GetWidget()) {
       const gfx::Rect window_bounds =
           browser_view->GetWidget()->GetWindowBoundsInScreen();
-      if (window_bounds.height() > 2 * bubble_height &&
-          window_bounds.bottom() -
-                  tab_group_editor_bubble_view->GetAnchorRect().bottom() <
-              bubble_height) {
+      const gfx::Rect bubble_anchor_rect =
+          tab_group_editor_bubble_view->GetAnchorRect();
+      const bool near_bottom =
+          window_bounds.height() > 2 * bubble_size.height() &&
+          window_bounds.bottom() - bubble_anchor_rect.bottom() <
+              bubble_size.height();
+      const bool near_right =
+          window_bounds.width() > 2 * bubble_size.width() &&
+          window_bounds.right() - bubble_anchor_rect.right() <
+              bubble_size.width();
+      if (near_bottom && near_right) {
+        tab_group_editor_bubble_view->SetArrow(
+            views::BubbleBorder::Arrow::BOTTOM_RIGHT);
+      } else if (near_bottom) {
         tab_group_editor_bubble_view->SetArrow(
             views::BubbleBorder::Arrow::BOTTOM_LEFT);
+      } else if (near_right) {
+        tab_group_editor_bubble_view->SetArrow(
+            views::BubbleBorder::Arrow::TOP_RIGHT);
       }
     }
   }
@@ -1171,16 +1186,6 @@ void TabGroupEditorBubbleView::OnEmojiPickerClosed(
 tab_groups::TabGroupColorId TabGroupEditorBubbleView::InitColorSet() {
   colors_.clear();
   tab_groups::ColorLabelMap color_map = tab_groups::GetTabGroupColorLabelMap();
-
-  // In the tab group color update, the yellow and pink are better described
-  // as lime and magenta. We update the tooltip accordingly.
-  if (features::IsTabGroupColorRefreshEnabled()) {
-    color_map[tab_groups::TabGroupColorId::kYellow] =
-        l10n_util::GetStringUTF16(IDS_TAB_GROUP_COLOR_LIME);
-
-    color_map[tab_groups::TabGroupColorId::kPink] =
-        l10n_util::GetStringUTF16(IDS_TAB_GROUP_COLOR_MAGENTA);
-  }
 
   const std::vector<tab_groups::TabGroupColorId> color_ordering =
       TabGroupModel::GetColorOrdering();

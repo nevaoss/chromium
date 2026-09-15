@@ -167,6 +167,8 @@ chromium-metrics-reviews@google.com.
   <int value="1501" label="TranslateUnsupportedLanguage"/>
   <int value="1600" label="BookmarkModelNotLoaded"/>
   <int value="1700" label="FindAndHighlightTextNotFound"/>
+  <int value="1800" label="FileUploadUnauthorizedFile"/>
+  <int value="1801" label="FileUploadEmptyFileList"/>
 </enum>
 
 <!-- LINT.ThenChange(//components/actor/public/mojom/actor_types.mojom:ActionResultCode) -->
@@ -389,6 +391,11 @@ chromium-metrics-reviews@google.com.
   <int value="4" label="kAllowByContainerConfig"/>
   <int value="5" label="kBlockByContainerConfig"/>
   <int value="6" label="kBlockByDangerousMimeType"/>
+  <int value="7" label="kLookalikeUrl"/>
+  <int value="8" label="kSafeBrowsing"/>
+  <int value="9" label="kSafetyChecksDisabled"/>
+  <int value="10" label="kTabErrorDocument"/>
+  <int value="11" label="kTabSafeBrowsingObserver"/>
 </enum>
 
 <!-- LINT.ThenChange(//chrome/browser/actor/execution_engine.h:GatingDecision) -->

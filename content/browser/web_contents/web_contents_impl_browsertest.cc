@@ -2552,7 +2552,7 @@ void DownloadImageTestInternal(Shell* shell,
       .WillByDefault(
           InvokeWithoutArgs(loop_runner.get(), &MessageLoopRunner::Quit));
 
-  shell->LoadURL(GURL("about:blank"));
+  ASSERT_TRUE(NavigateToURL(shell, GURL("about:blank")));
   shell->web_contents()->DownloadImage(
       image_url, false, gfx::Size(), 1024, false,
       base::BindOnce(&DownloadImageObserver::OnFinishDownloadImage,
@@ -2622,7 +2622,7 @@ IN_PROC_BROWSER_TEST_F(WebContentsImplBrowserTest,
 IN_PROC_BROWSER_TEST_F(WebContentsImplBrowserTest, DownloadImage_NoValidImage) {
   ASSERT_TRUE(embedded_test_server()->Start());
   const GURL kImageUrl = embedded_test_server()->GetURL("/invalid.ico");
-  shell()->LoadURL(GURL("about:blank"));
+  ASSERT_TRUE(NavigateToURL(shell(), GURL("about:blank")));
   base::RunLoop run_loop;
   shell()->web_contents()->DownloadImage(
       kImageUrl, false, gfx::Size(), 2, false,
@@ -2655,7 +2655,7 @@ IN_PROC_BROWSER_TEST_F(WebContentsImplBrowserTest,
                        DownloadImage_PreferredSize) {
   ASSERT_TRUE(embedded_test_server()->Start());
   const GURL kImageUrl = embedded_test_server()->GetURL("/rgb.svg");
-  shell()->LoadURL(GURL("about:blank"));
+  ASSERT_TRUE(NavigateToURL(shell(), GURL("about:blank")));
   base::RunLoop run_loop;
   shell()->web_contents()->DownloadImage(
       kImageUrl, false, gfx::Size(30, 30), 1024, false,
@@ -2669,7 +2669,7 @@ IN_PROC_BROWSER_TEST_F(WebContentsImplBrowserTest,
                        DownloadImage_PreferredSizeZero) {
   ASSERT_TRUE(embedded_test_server()->Start());
   const GURL kImageUrl = embedded_test_server()->GetURL("/rgb.svg");
-  shell()->LoadURL(GURL("about:blank"));
+  ASSERT_TRUE(NavigateToURL(shell(), GURL("about:blank")));
   base::RunLoop run_loop;
   shell()->web_contents()->DownloadImage(
       kImageUrl, false, gfx::Size(), 1024, false,
@@ -2683,7 +2683,7 @@ IN_PROC_BROWSER_TEST_F(WebContentsImplBrowserTest,
                        DownloadImage_PreferredSizeClampedByMaxSize) {
   ASSERT_TRUE(embedded_test_server()->Start());
   const GURL kImageUrl = embedded_test_server()->GetURL("/rgb.svg");
-  shell()->LoadURL(GURL("about:blank"));
+  ASSERT_TRUE(NavigateToURL(shell(), GURL("about:blank")));
   base::RunLoop run_loop;
   shell()->web_contents()->DownloadImage(
       kImageUrl, false, gfx::Size(60, 60), 30, false,
@@ -2697,7 +2697,7 @@ IN_PROC_BROWSER_TEST_F(WebContentsImplBrowserTest,
                        DownloadImage_PreferredWidthClampedByMaxSize) {
   ASSERT_TRUE(embedded_test_server()->Start());
   const GURL kImageUrl = embedded_test_server()->GetURL("/rgb.svg");
-  shell()->LoadURL(GURL("about:blank"));
+  ASSERT_TRUE(NavigateToURL(shell(), GURL("about:blank")));
   base::RunLoop run_loop;
   shell()->web_contents()->DownloadImage(
       kImageUrl, false, gfx::Size(60, 30), 30, false,
@@ -2711,7 +2711,7 @@ IN_PROC_BROWSER_TEST_F(WebContentsImplBrowserTest,
                        DownloadImage_PreferredHeightClampedByMaxSize) {
   ASSERT_TRUE(embedded_test_server()->Start());
   const GURL kImageUrl = embedded_test_server()->GetURL("/rgb.svg");
-  shell()->LoadURL(GURL("about:blank"));
+  ASSERT_TRUE(NavigateToURL(shell(), GURL("about:blank")));
   base::RunLoop run_loop;
   shell()->web_contents()->DownloadImage(
       kImageUrl, false, gfx::Size(30, 60), 30, false,
@@ -2748,7 +2748,7 @@ IN_PROC_BROWSER_TEST_F(WebContentsImplBrowserTest,
   ASSERT_TRUE(embedded_test_server()->Start());
   const GURL kImageUrl =
       embedded_test_server()->GetURL("/icon-with-two-entries.ico");
-  shell()->LoadURL(GURL("about:blank"));
+  ASSERT_TRUE(NavigateToURL(shell(), GURL("about:blank")));
   base::RunLoop run_loop;
   std::vector<gfx::Size> expected_sizes{{16, 16}, {32, 32}};
   shell()->web_contents()->DownloadImage(
@@ -9186,7 +9186,7 @@ IN_PROC_BROWSER_TEST_F(
   RenderFrameHost* iframe_rfh =
       ChildFrameAt(web_contents->GetPrimaryMainFrame(), 0);
   ASSERT_NE(iframe_rfh, nullptr);
-  iframe_rfh->UpdateIsAdFrame(/*is_ad_frame=*/true);
+  iframe_rfh->UpdateToAdFrame();
   ASSERT_TRUE(iframe_rfh->IsAdFrame());
 
   // TODO(crbug.com/461821799): If only ad subframe remains loading,
@@ -9583,6 +9583,154 @@ IN_PROC_BROWSER_TEST_F(WebContentsImplBrowserTest,
 
   EXPECT_EQ(weak_popup, nullptr);
   EXPECT_FALSE(blocker.has_value());
+
+  if (opener_contents) {
+    opener_contents->SetDelegate(shell());
+  }
+}
+
+class DetachFrameOnFullscreenExitDelegate : public WebContentsDelegate {
+ public:
+  DetachFrameOnFullscreenExitDelegate(WebContentsDelegate* original_delegate,
+                                      WebContents* target_contents)
+      : original_delegate_(original_delegate),
+        target_contents_(target_contents) {}
+
+  void ExitFullscreenModeForTab(WebContents* web_contents) override {
+    if (target_contents_) {
+      EXPECT_TRUE(ExecJs(target_contents_,
+                         "document.querySelector('iframe').remove();"));
+      target_contents_ = nullptr;
+    }
+    if (original_delegate_) {
+      original_delegate_->ExitFullscreenModeForTab(web_contents);
+    }
+  }
+
+  FullscreenState GetFullscreenState(
+      const WebContents* web_contents) const override {
+    if (original_delegate_) {
+      return original_delegate_->GetFullscreenState(web_contents);
+    }
+    return FullscreenState();
+  }
+
+  bool IsFullscreenForTabOrPending(const WebContents* web_contents) override {
+    if (original_delegate_) {
+      return original_delegate_->IsFullscreenForTabOrPending(web_contents);
+    }
+    return false;
+  }
+
+ private:
+  raw_ptr<WebContentsDelegate> original_delegate_;
+  raw_ptr<WebContents, DisableDanglingPtrDetection> target_contents_;
+};
+
+IN_PROC_BROWSER_TEST_F(WebContentsImplBrowserTest,
+                       RunJavaScriptDialogFrameDetachOnFullscreenExit) {
+  ASSERT_TRUE(embedded_test_server()->Start());
+  GURL url(embedded_test_server()->GetURL("/title1.html"));
+  EXPECT_TRUE(NavigateToURL(shell(), url));
+
+  WebContentsImpl* opener_contents =
+      static_cast<WebContentsImpl*>(shell()->web_contents());
+
+  ShellAddedObserver new_shell_observer;
+  EXPECT_TRUE(ExecJs(opener_contents, "window.open('about:blank', 'popup')"));
+  Shell* popup_shell = new_shell_observer.GetShell();
+  WebContentsImpl* popup_contents =
+      static_cast<WebContentsImpl*>(popup_shell->web_contents());
+
+  EXPECT_EQ(opener_contents,
+            popup_contents->GetFirstWebContentsInLiveOriginalOpenerChain());
+
+  FullscreenWebContentsObserver observer(
+      opener_contents, opener_contents->GetPrimaryMainFrame());
+  EXPECT_TRUE(ExecJs(opener_contents->GetPrimaryMainFrame(),
+                     "document.body.webkitRequestFullscreen();"));
+  observer.Wait();
+  EXPECT_TRUE(opener_contents->IsFullscreen());
+
+  EXPECT_TRUE(ExecJs(popup_contents, R"(
+    new Promise(resolve => {
+      let iframe = document.createElement('iframe');
+      iframe.src = 'about:blank';
+      iframe.onload = resolve;
+      document.body.appendChild(iframe);
+    });
+  )"));
+
+  RenderFrameHostImpl* child_rfh = static_cast<RenderFrameHostImpl*>(
+      ChildFrameAt(popup_contents->GetPrimaryMainFrame(), 0));
+  ASSERT_TRUE(child_rfh);
+
+  base::WeakPtr<RenderFrameHostImpl> weak_child_rfh = child_rfh->GetWeakPtr();
+
+  DetachFrameOnFullscreenExitDelegate intercepting_delegate(
+      opener_contents->GetDelegate(), popup_contents);
+  opener_contents->SetDelegate(&intercepting_delegate);
+
+  popup_contents->RunJavaScriptDialog(
+      child_rfh, u"test message", u"default prompt",
+      JAVASCRIPT_DIALOG_TYPE_ALERT,
+      /*disable_third_party_subframe_suppresion=*/false, base::DoNothing());
+
+  EXPECT_EQ(weak_child_rfh, nullptr);
+
+  if (opener_contents) {
+    opener_contents->SetDelegate(shell());
+  }
+}
+
+IN_PROC_BROWSER_TEST_F(WebContentsImplBrowserTest,
+                       RunBeforeUnloadConfirmFrameDetachOnFullscreenExit) {
+  ASSERT_TRUE(embedded_test_server()->Start());
+  GURL url(embedded_test_server()->GetURL("/title1.html"));
+  EXPECT_TRUE(NavigateToURL(shell(), url));
+
+  WebContentsImpl* opener_contents =
+      static_cast<WebContentsImpl*>(shell()->web_contents());
+
+  ShellAddedObserver new_shell_observer;
+  EXPECT_TRUE(ExecJs(opener_contents, "window.open('about:blank', 'popup')"));
+  Shell* popup_shell = new_shell_observer.GetShell();
+  WebContentsImpl* popup_contents =
+      static_cast<WebContentsImpl*>(popup_shell->web_contents());
+
+  EXPECT_EQ(opener_contents,
+            popup_contents->GetFirstWebContentsInLiveOriginalOpenerChain());
+
+  FullscreenWebContentsObserver observer(
+      opener_contents, opener_contents->GetPrimaryMainFrame());
+  EXPECT_TRUE(ExecJs(opener_contents->GetPrimaryMainFrame(),
+                     "document.body.webkitRequestFullscreen();"));
+  observer.Wait();
+  EXPECT_TRUE(opener_contents->IsFullscreen());
+
+  EXPECT_TRUE(ExecJs(popup_contents, R"(
+    new Promise(resolve => {
+      let iframe = document.createElement('iframe');
+      iframe.src = 'about:blank';
+      iframe.onload = resolve;
+      document.body.appendChild(iframe);
+    });
+  )"));
+
+  RenderFrameHostImpl* child_rfh = static_cast<RenderFrameHostImpl*>(
+      ChildFrameAt(popup_contents->GetPrimaryMainFrame(), 0));
+  ASSERT_TRUE(child_rfh);
+
+  base::WeakPtr<RenderFrameHostImpl> weak_child_rfh = child_rfh->GetWeakPtr();
+
+  DetachFrameOnFullscreenExitDelegate intercepting_delegate(
+      opener_contents->GetDelegate(), popup_contents);
+  opener_contents->SetDelegate(&intercepting_delegate);
+
+  popup_contents->RunBeforeUnloadConfirm(child_rfh, /*is_reload=*/false,
+                                         base::DoNothing());
+
+  EXPECT_EQ(weak_child_rfh, nullptr);
 
   if (opener_contents) {
     opener_contents->SetDelegate(shell());

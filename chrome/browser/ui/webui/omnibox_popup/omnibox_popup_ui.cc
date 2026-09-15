@@ -16,6 +16,7 @@
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/location_bar/location_bar.h"
 #include "chrome/browser/ui/omnibox/chrome_omnibox_client.h"
+#include "chrome/browser/ui/omnibox/omnibox_controller.h"
 #include "chrome/browser/ui/omnibox/omnibox_next_features.h"
 #include "chrome/browser/ui/omnibox/omnibox_view.h"
 #include "chrome/browser/ui/ui_features.h"
@@ -401,6 +402,13 @@ void OmniboxPopupUI::CreatePageHandler(
   if (presenter_delegate_) {
     composebox_handler_->set_delegate(presenter_delegate_);
   }
+}
+
+ContextualSearchboxHandler* OmniboxPopupUI::GetContextualSearchboxHandler() {
+  if (composebox_handler_) {
+    return composebox_handler_.get();
+  }
+  return omnibox_handler_.get();
 }
 
 contextual_search::ContextualSearchSessionHandle*

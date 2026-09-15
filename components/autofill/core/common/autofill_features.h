@@ -283,8 +283,6 @@ BASE_DECLARE_FEATURE(kAutofillEnableAddressFieldParserNG);
 COMPONENT_EXPORT(AUTOFILL)
 BASE_DECLARE_FEATURE(kAutofillEnableAutofillSettingsEnterprisePolicy);
 COMPONENT_EXPORT(AUTOFILL)
-BASE_DECLARE_FEATURE(kAutofillEnableDeduplicationOnBackgroundThread);
-COMPONENT_EXPORT(AUTOFILL)
 BASE_DECLARE_FEATURE(kAutofillEnableEntryLimitInPopup);
 COMPONENT_EXPORT(AUTOFILL)
 BASE_DECLARE_FEATURE(kAutofillEnableExpandIbanRegexPattern);
@@ -310,6 +308,8 @@ COMPONENT_EXPORT(AUTOFILL)
 BASE_DECLARE_FEATURE(kAutofillEnableSkippingUnrecognizedAttribute);
 COMPONENT_EXPORT(AUTOFILL)
 BASE_DECLARE_FEATURE(kAutofillEnableStreetAddressMergeModes);
+COMPONENT_EXPORT(AUTOFILL)
+BASE_DECLARE_FEATURE(kAutofillEnableWalletDisclosureNoticePublicPass);
 COMPONENT_EXPORT(AUTOFILL)
 BASE_DECLARE_FEATURE(kAutofillEnableWalletReminderNoticePublicPass);
 COMPONENT_EXPORT(AUTOFILL)

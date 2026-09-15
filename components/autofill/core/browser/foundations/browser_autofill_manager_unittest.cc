@@ -1042,7 +1042,7 @@ class BrowserAutofillManagerTest
                           size_t field_index = 0,
                           SuggestionType type = SuggestionType::kAddressEntry) {
     autofill_manager().DidShowSuggestions(
-        {Suggestion(type)}, std::nullopt, form.global_id(),
+        {Suggestion(type)}, /*metadata=*/{}, form.global_id(),
         form.fields()[field_index].global_id(), {});
   }
 
@@ -4771,7 +4771,7 @@ TEST_F(BrowserAutofillManagerTest,
 
   base::HistogramTester histogram_tester;
   autofill_manager().DidShowSuggestions(
-      {Suggestion(SuggestionType::kAutocompleteEntry)}, std::nullopt,
+      {Suggestion(SuggestionType::kAutocompleteEntry)}, /*metadata=*/{},
       form.global_id(), form.fields().back().global_id(), {});
   // No Autofill logs.
   const std::string histograms = histogram_tester.GetAllHistogramsRecorded();
@@ -4852,11 +4852,11 @@ TEST_F(BrowserAutofillManagerTest,
 
   base::HistogramTester histogram_tester;
   autofill_manager().DidShowSuggestions(
-      {Suggestion(SuggestionType::kIbanEntry)}, std::nullopt, form.global_id(),
-      form.fields().back().global_id(), {});
+      {Suggestion(SuggestionType::kIbanEntry)}, /*metadata=*/{},
+      form.global_id(), form.fields().back().global_id(), {});
   autofill_manager().DidShowSuggestions(
-      {Suggestion(SuggestionType::kIbanEntry)}, std::nullopt, form.global_id(),
-      form.fields().back().global_id(), {});
+      {Suggestion(SuggestionType::kIbanEntry)}, /*metadata=*/{},
+      form.global_id(), form.fields().back().global_id(), {});
 
   EXPECT_THAT(
       histogram_tester.GetAllSamples("Autofill.Iban.Suggestions"),
@@ -5369,7 +5369,7 @@ TEST_F(BrowserAutofillManagerTest,
   EXPECT_CALL(cc_access_manager(), PrepareToFetchCreditCard)
       .Times(IsCreditCardFidoAuthenticationEnabled() ? 1 : 0);
   autofill_manager().DidShowSuggestions(
-      {Suggestion(SuggestionType::kCreditCardEntry)}, std::nullopt,
+      {Suggestion(SuggestionType::kCreditCardEntry)}, /*metadata=*/{},
       form.global_id(), form.fields()[0].global_id(), {});
 }
 
@@ -5380,7 +5380,7 @@ TEST_F(BrowserAutofillManagerTest,
 
   EXPECT_CALL(cc_access_manager(), PrepareToFetchCreditCard).Times(0);
   autofill_manager().DidShowSuggestions(
-      {Suggestion(SuggestionType::kAddressEntry)}, std::nullopt,
+      {Suggestion(SuggestionType::kAddressEntry)}, /*metadata=*/{},
       form.global_id(), form.fields()[0].global_id(), {});
 }
 
@@ -5418,7 +5418,7 @@ TEST_F(BrowserAutofillManagerTest, DidShowSuggestions_FormNonSecureContext) {
         updated_suggestions = std::move(suggestions);
       });
   autofill_manager().DidShowSuggestions(
-      {Suggestion(SuggestionType::kAddressEntry)}, std::nullopt,
+      {Suggestion(SuggestionType::kAddressEntry)}, /*metadata=*/{},
       insecure_form.global_id(), test::MakeFieldGlobalId(), update_callback,
       AutofillSuggestionTriggerSource::kAtMemoryTriggerString);
 
@@ -6143,41 +6143,6 @@ TEST_F(BrowserAutofillManagerTest_MockAutofillAi,
       passport_form(), passport_form().fields().front(),
       AutofillSuggestionTriggerSource::kFormControlElementClicked);
   EXPECT_THAT(external_delegate()->suggestions(), IsEmpty());
-}
-
-// Tests that the Autofill AI IPH is attempted to be shown if there are no
-// Autofill suggestions and the delegate returns that IPH should show.
-TEST_F(BrowserAutofillManagerTest_MockAutofillAi, AutofillAiIph) {
-  FormData form = CreateTestAddressFormData();
-  FormsSeen({form});
-  ON_CALL(mock_ai_manager(), ShouldDisplayIph).WillByDefault(Return(true));
-  personal_data().test_address_data_manager().ClearProfiles();
-
-  EXPECT_CALL(autofill_client(),
-              ShowAutofillFieldIphForFeature(
-                  _, AutofillClient::IphFeature::kAutofillAi));
-  OnAskForValuesToFill(
-      form, form.fields().front(),
-      AutofillSuggestionTriggerSource::kFormControlElementClicked);
-}
-
-// Tests that the Autofill AI IPH is not shown if there are Autofill
-// suggestions.
-TEST_F(BrowserAutofillManagerTest_MockAutofillAi,
-       NoAutofillAiIphWhenThereAreAutofillSuggestions) {
-  FormData form = CreateTestAddressFormData();
-  FormsSeen({form});
-  ON_CALL(mock_ai_manager(), ShouldDisplayIph).WillByDefault(Return(false));
-  ASSERT_THAT(personal_data().test_address_data_manager().GetProfiles(),
-              Not(IsEmpty()));
-
-  EXPECT_CALL(autofill_client(),
-              ShowAutofillFieldIphForFeature(
-                  _, AutofillClient::IphFeature::kAutofillAi))
-      .Times(0);
-  OnAskForValuesToFill(
-      form, form.fields().front(),
-      AutofillSuggestionTriggerSource::kFormControlElementClicked);
 }
 
 // Tests that an Autofill profile is not imported into the address data manager

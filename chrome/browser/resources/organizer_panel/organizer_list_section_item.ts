@@ -22,15 +22,18 @@ export interface OrganizerListSectionItemIcon {
 }
 
 // Model for a single item in an organizer list section.
-export interface OrganizerListSectionItem {
+export interface OrganizerListSectionItem<T> {
   // Title (main line) of the item.
   title: string;
 
   // Description (secondary line) of the item.
-  description?: string;
+  description?: string[];
 
   // Icon displayed at the beginning of the item.
   prefixIcon?: OrganizerListSectionItemIcon;
+
+  // The actual data held by the item.
+  data?: T;
 }
 
 export interface OrganizerListSectionItemElement {
@@ -58,9 +61,13 @@ export class OrganizerListSectionItemElement extends CrLitElement {
     };
   }
 
-  accessor item: OrganizerListSectionItem = {
+  accessor item: OrganizerListSectionItem<unknown> = {
     title: '',
   };
+
+  protected getDescription_(): string {
+    return this.item.description?.join(' · ') || '';
+  }
 
   protected getUrl_(): string|undefined {
     // TODO(b/549786784): Support multiple URLs for stacked favicons.

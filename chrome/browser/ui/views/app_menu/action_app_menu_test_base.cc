@@ -77,6 +77,17 @@ void ActionAppMenuTestBase::SetUp() {
   add_action(kActionBookmarksSubmenu, u"Bookmarks and Lists");
   add_action(kActionBookmarkThisTab, u"Bookmark This Tab");
   add_action(kActionBookmarkAllTabs, u"Bookmark All Tabs");
+  add_action(kActionBookmarkBarSubmenu, u"Bookmark Bar");
+  add_action(kActionBookmarkBarSubmenuAlwaysHide, u"Always Hide");
+  add_action(kActionBookmarkBarSubmenuAlwaysShow, u"Always Show");
+  add_action(kActionBookmarkBarSubmenuOnlyOnNtp, u"Only on NTP");
+  add_action(kActionShowBookmarkBar, u"Show Bookmark Bar");
+  add_action(kActionSidePanelShowBookmarks, u"Bookmarks Side Panel");
+  add_action(kActionShowBookmarkManager, u"Bookmark Manager");
+  add_action(kActionImportSettings, u"Import Bookmarks and Settings");
+  add_action(kActionReadingListSubmenu, u"Reading List");
+  add_action(kActionReadingListMenuAddTab, u"Add Tab to Reading List");
+  add_action(kActionSidePanelShowReadingList, u"Show Reading List");
   add_action(kActionExtensionsSubmenu, u"Extensions");
   add_action(kActionExtensionsSubmenuManageExtensions, u"Manage Extensions");
   add_action(kActionExtensionsSubmenuVisitChromeWebStore,
@@ -100,12 +111,16 @@ void ActionAppMenuTestBase::SetUp() {
   add_action(kActionSaveAndShareSubmenu, u"Save and share");
   add_action(kActionRouteMedia, u"Cast");
   add_action(kActionSavePage, u"Save page");
+  add_action(kActionInstallPwa, u"Install App");
+  add_action(kActionOpenInPwaWindow, u"Open in App Window");
   add_action(kActionCreateShortcut, u"Create shortcut");
   add_action(kActionCopyUrl, u"Copy link");
   add_action(kActionSendTabToSelf, u"Send to your devices");
   add_action(kActionQrCodeGenerator, u"Create QR Code");
   add_action(kActionSharingHubScreenshot, u"Screenshot");
+  add_action(kActionToggleRequestTabletSite, u"Request mobile site");
   add_action(kActionDeveloperSubmenu, u"More tools");
+  add_action(kActionTakeScreenshot, u"Take screenshot");
   add_action(kActionTabSearch, u"Search tabs");
   add_action(kActionNameWindow, u"Name window");
   add_action(kActionToggleVerticalTabs, u"Toggle vertical tabs");

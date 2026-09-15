@@ -30,8 +30,6 @@
 #include "chrome/browser/devtools/devtools_ui_controller.h"
 #include "chrome/browser/enterprise/data_protection/data_protection_ui_controller.h"
 #include "chrome/browser/extensions/browser_extension_window_controller.h"
-#include "chrome/browser/geic/geic_enabling.h"
-#include "chrome/browser/geic/geic_side_panel_coordinator.h"
 #include "chrome/browser/glic/browser_ui/glic_iph_controller.h"
 #include "chrome/browser/glic/browser_ui/glic_nudge_controller.h"
 #include "chrome/browser/glic/browser_ui/glic_split_button_controller.h"
@@ -91,7 +89,6 @@
 #include "chrome/browser/ui/sessions/session_service_browser_helper.h"
 #include "chrome/browser/ui/sharing_hub/sharing_hub_window_controller.h"
 #include "chrome/browser/ui/side_panel/side_panel_registry.h"
-#include "chrome/browser/ui/side_panel/side_panel_ui.h"
 #include "chrome/browser/ui/signin/signin_view_controller.h"
 #include "chrome/browser/ui/sync/browser_synced_window_delegate.h"
 #include "chrome/browser/ui/tabs/organizer/organizer_panel_state_controller.h"
@@ -412,12 +409,6 @@ void BrowserWindowFeatures::Init(BrowserWindowInterface* browser) {
   extension_installed_watcher_ =
       std::make_unique<ExtensionInstalledWatcher>(profile);
 
-  if (geic::IsGeicEnabled(profile)) {
-    geic_side_panel_coordinator_ =
-        GetUserDataFactory().CreateInstance<geic::GeicSidePanelCoordinator>(
-            *browser, *browser);
-  }
-
   history_clusters_side_panel_coordinator_ =
       GetUserDataFactory().CreateInstance<HistoryClustersSidePanelCoordinator>(
           *browser, browser, browser->GetProfile());
@@ -529,8 +520,9 @@ void BrowserWindowFeatures::Init(BrowserWindowInterface* browser) {
   tab_list_bridge_ = std::make_unique<TabListBridge>(
       *tab_strip_model_, browser->GetUnownedUserDataHost());
 
-  signin_view_controller_ = std::make_unique<SigninViewController>(
-      browser, profile, tab_strip_model_);
+  signin_view_controller_ =
+      GetUserDataFactory().CreateInstance<SigninViewController>(
+          *browser, browser, profile, tab_strip_model_);
 
   {
     auto adapter = std::make_unique<TabDragWindowAdapterImpl>(browser);
@@ -678,7 +670,8 @@ void BrowserWindowFeatures::Init(BrowserWindowInterface* browser) {
   embedder_browser_window_features_->Init(browser);
 }
 
-void BrowserWindowFeatures::InitPostWindowConstruction(Browser* browser) {
+void BrowserWindowFeatures::InitPostWindowConstruction(
+    BrowserWindowInterface* browser) {
   // Foundational state used throughout this function. Computed/assigned early
   // so the alphabetical sections below can rely on them.
   Profile* const profile = browser_->GetProfile();
@@ -922,9 +915,10 @@ void BrowserWindowFeatures::InitPostWindowConstruction(Browser* browser) {
         std::make_unique<skills::SkillsUiWindowController>(browser_);
   }
 
-  synced_window_delegate_ = std::make_unique<BrowserSyncedWindowDelegate>(
-      browser, browser->GetTabStripModel(), browser->GetSessionID(),
-      browser->GetType());
+  synced_window_delegate_ =
+      GetUserDataFactory().CreateInstance<BrowserSyncedWindowDelegate>(
+          *browser, browser, browser->GetTabStripModel(),
+          browser->GetSessionID(), browser->GetType());
 
   if (browser->GetType() == BrowserWindowInterface::Type::TYPE_NORMAL ||
       browser->GetType() == BrowserWindowInterface::Type::TYPE_APP) {
@@ -1275,22 +1269,12 @@ glic::GlicNudgeController* BrowserWindowFeatures::glic_nudge_controller() {
              : nullptr;
 }
 
-SidePanelUI* BrowserWindowFeatures::side_panel_ui() {
-  // TODO(crbug.com/428946261): Remove this and replace all clients with
-  // `SidePanelUI::From()`.
-  return browser_ ? SidePanelUI::From(browser_) : nullptr;
-}
-
 actions::ActionItem* BrowserWindowFeatures::GetRootActionItem() {
   return browser_actions_ ? browser_actions_->root_action_item() : nullptr;
 }
 
 ToastController* BrowserWindowFeatures::toast_controller() {
   return browser_ ? ToastController::From(browser_) : nullptr;
-}
-
-sessions::LiveTabContext* BrowserWindowFeatures::live_tab_context() {
-  return live_tab_context_.get();
 }
 
 LocationBar* BrowserWindowFeatures::location_bar() {

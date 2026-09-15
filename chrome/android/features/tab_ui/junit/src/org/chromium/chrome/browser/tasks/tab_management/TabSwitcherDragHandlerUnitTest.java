@@ -36,6 +36,8 @@ import org.mockito.junit.MockitoRule;
 import org.chromium.base.ContextUtils;
 import org.chromium.base.Token;
 import org.chromium.base.UserDataHost;
+import org.chromium.base.supplier.ObservableSuppliers;
+import org.chromium.base.supplier.SettableMonotonicObservableSupplier;
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.chrome.browser.dragdrop.ChromeDropDataAndroid;
 import org.chromium.chrome.browser.dragdrop.ChromeTabDropDataAndroid;
@@ -51,6 +53,8 @@ import org.chromium.ui.base.MimeTypeUtils;
 import org.chromium.ui.dragdrop.DragAndDropDelegate;
 import org.chromium.ui.dragdrop.DragDropGlobalState;
 import org.chromium.ui.dragdrop.DropDataAndroid;
+
+import java.util.Collections;
 
 /** Unit tests for {@link TabSwitcherDragHandler} and {@link AnimatedDragShadowBuilder}. */
 @RunWith(BaseRobolectricTestRunner.class)
@@ -68,16 +72,23 @@ public class TabSwitcherDragHandlerUnitTest {
     @Mock private TabModel mTabModel;
 
     private TabSwitcherDragHandler mDragHandler;
+    private final SettableMonotonicObservableSupplier<TabModel> mCurrentTabModelSupplier =
+            ObservableSuppliers.createMonotonic();
 
     @Before
     public void setUp() {
         MultiInstanceOrchestratorFactory.setInstanceForTesting(mMultiInstanceOrchestrator);
+        when(mTabModelSelector.getCurrentTabModelSupplier()).thenReturn(mCurrentTabModelSupplier);
+        when(mTabModelSelector.getModels()).thenReturn(Collections.singletonList(mTabModel));
+        mCurrentTabModelSupplier.set(mTabModel);
+
         mDragHandler =
                 new TabSwitcherDragHandler(
                         () -> mActivity,
                         mMultiInstanceManager,
                         mDragAndDropDelegate,
-                        mDragHandlerManager);
+                        mDragHandlerManager,
+                        /* fadeDragShadow= */ true);
         mDragHandler.setDragHandlerDelegate(mDragHandlerDelegate);
     }
 
@@ -137,7 +148,12 @@ public class TabSwitcherDragHandlerUnitTest {
         shadowView.layout(0, 0, 100, 200);
 
         AnimatedDragShadowBuilder builder =
-                new AnimatedDragShadowBuilder(originalView, shadowView, new PointF(10f, 20f), 0L);
+                new AnimatedDragShadowBuilder(
+                        originalView,
+                        shadowView,
+                        new PointF(10f, 20f),
+                        0L,
+                        /* fadeDragShadow= */ true);
 
         // Visible by default
         Point shadowSize = new Point();
@@ -169,6 +185,26 @@ public class TabSwitcherDragHandlerUnitTest {
     }
 
     @Test
+    public void testAnimatedDragShadowBuilder_FadeDragShadowDisabled() {
+        View originalView = spy(new View(ContextUtils.getApplicationContext()));
+        View shadowView = spy(new View(ContextUtils.getApplicationContext()));
+        shadowView.layout(0, 0, 100, 200);
+
+        AnimatedDragShadowBuilder builder =
+                new AnimatedDragShadowBuilder(
+                        originalView,
+                        shadowView,
+                        new PointF(10f, 20f),
+                        0L,
+                        /* fadeDragShadow= */ false);
+
+        // When fading is disabled, animate() is not posted and the view is drawn directly.
+        verify(shadowView, never()).post(any());
+        builder.onDrawShadow(mCanvas);
+        verify(shadowView).draw(mCanvas);
+    }
+
+    @Test
     public void testAnimatedDragShadowBuilder_ViewResolutionChain() {
         View attachedView = spy(new View(ContextUtils.getApplicationContext()));
         doReturn(true).when(attachedView).isAttachedToWindow();
@@ -180,7 +216,12 @@ public class TabSwitcherDragHandlerUnitTest {
         doReturn(false).when(shadowView).isAttachedToWindow();
 
         AnimatedDragShadowBuilder builder =
-                new AnimatedDragShadowBuilder(originalView, shadowView, new PointF(0f, 0f), 0L);
+                new AnimatedDragShadowBuilder(
+                        originalView,
+                        shadowView,
+                        new PointF(0f, 0f),
+                        0L,
+                        /* fadeDragShadow= */ true);
 
         // 1. Attached view provided explicitly
         builder.update(attachedView, /* show= */ false);
@@ -222,7 +263,12 @@ public class TabSwitcherDragHandlerUnitTest {
         View shadowView = spy(new View(ContextUtils.getApplicationContext()));
 
         AnimatedDragShadowBuilder builder =
-                new AnimatedDragShadowBuilder(originalView, shadowView, new PointF(0f, 0f), 0L);
+                new AnimatedDragShadowBuilder(
+                        originalView,
+                        shadowView,
+                        new PointF(0f, 0f),
+                        0L,
+                        /* fadeDragShadow= */ true);
         DropDataAndroid dropData = mock(DropDataAndroid.class);
         Token token = DragDropGlobalState.store(1, dropData, builder);
 

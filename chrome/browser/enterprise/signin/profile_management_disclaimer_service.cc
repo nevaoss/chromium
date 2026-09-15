@@ -60,6 +60,7 @@
 #include "components/signin/public/identity_manager/account_info.h"
 #include "components/signin/public/identity_manager/primary_account_change_event.h"
 #include "components/signin/public/identity_manager/tribool.h"
+#include "ui/base/page_transition_types.h"
 #include "url/gurl.h"
 
 namespace {
@@ -120,7 +121,7 @@ ProfileManagementDisclaimerService::ProfileManagementDisclaimerService(
       FROM_HERE, base::BindOnce(&ProfileManagementDisclaimerService::
                                     MaybeShowEnterpriseManagementDisclaimer,
                                 weak_ptr_factory_.GetWeakPtr(),
-                                GetPrimaryAccountInfo().account_id,
+                                GetPrimaryAccountInfo().GetAccountId(),
                                 signin_metrics::AccessPoint::
                                     kEnterpriseManagementDisclaimerAtStartup));
 }
@@ -301,7 +302,7 @@ void ProfileManagementDisclaimerService::
   // between failures, we can reset the state and wait for another attempt.
   if (!CanTryPolicyRegistration(
           signin_prefs_.GetPolicyDisclaimerLastRegistrationFailureTime(
-              info.gaia))) {
+              info.GetGaiaId()))) {
     OnRegisteredForPolicy(/*is_from_cached_registration_result=*/true,
                           /*is_managed_account=*/false);
     return;
@@ -394,7 +395,7 @@ void ProfileManagementDisclaimerService::MaybeShowDeviceSignalsDisclaimerDialog(
   }
 
   // The management notice dialog or another modal dialog is already open.
-  if (browser->GetFeatures().signin_view_controller()->ShowsModalDialog()) {
+  if (SigninViewController::From(browser)->ShowsModalDialog()) {
     base::UmaHistogramEnumeration(
         kEnterpriseSignalsDisclaimerNotShownReason,
         EnterpriseSignalsDisclaimerNotShownReason::kOtherModalDialogShown);
@@ -403,17 +404,15 @@ void ProfileManagementDisclaimerService::MaybeShowDeviceSignalsDisclaimerDialog(
 
   base::UmaHistogramBoolean(kEnterpriseSignalsDisclaimerModalShown, true);
 
-  browser->GetFeatures()
-      .signin_view_controller()
-      ->ShowModalManagedUserNoticeDialog(
-          signin::EnterpriseProfileCreationDialogParams::
-              CreateForDeviceSignalsDisclaimer(
-                  GetPrimaryAccountInfo(),
-                  base::BindOnce(&ProfileManagementDisclaimerService::
-                                     HandleDeviceSignalsDisclaimerChoice,
-                                 weak_ptr_factory_.GetWeakPtr(),
-                                 browser->GetWeakPtr()),
-                  /*is_modal_dialog=*/true));
+  SigninViewController::From(browser)->ShowModalManagedUserNoticeDialog(
+      signin::EnterpriseProfileCreationDialogParams::
+          CreateForDeviceSignalsDisclaimer(
+              GetPrimaryAccountInfo(),
+              base::BindOnce(&ProfileManagementDisclaimerService::
+                                 HandleDeviceSignalsDisclaimerChoice,
+                             weak_ptr_factory_.GetWeakPtr(),
+                             browser->GetWeakPtr()),
+              /*is_modal_dialog=*/true));
   opened_device_signals_disclaimers_.push_back(browser->GetWeakPtr());
 }
 
@@ -434,7 +433,7 @@ void ProfileManagementDisclaimerService::HandleDeviceSignalsDisclaimerChoice(
         if (browser) {
           // This will trigger `HandleDeviceSignalsDisclaimerChoice` with
           // `kDismissed` for any other dialogs.
-          browser->GetFeatures().signin_view_controller()->CloseModalSignin();
+          SigninViewController::From(browser.get())->CloseModalSignin();
         }
       }
 
@@ -486,7 +485,7 @@ void ProfileManagementDisclaimerService::OnRegisteredForPolicy(
     Reset();
     return;
   }
-  GaiaId gaia_id = GetExtendedAccountInfo(state_->account_id).gaia;
+  GaiaId gaia_id = GetExtendedAccountInfo(state_->account_id).GetGaiaId();
   // If the account has been removed in the meantime, reset the state.
   if (gaia_id.empty()) {
     state_->profile_to_continue_in = nullptr;
@@ -565,7 +564,7 @@ void ProfileManagementDisclaimerService::OnPrimaryAccountChanged(
     const signin::PrimaryAccountChangeEvent& event) {
   if (event.GetEventTypeFor(signin::ConsentLevel::kSignin) ==
           signin::PrimaryAccountChangeEvent::Type::kCleared &&
-      state_->account_id == GetPrimaryAccountInfo().account_id) {
+      state_->account_id == GetPrimaryAccountInfo().GetAccountId()) {
     state_->profile_to_continue_in = nullptr;
     Reset();
     return;
@@ -595,7 +594,7 @@ void ProfileManagementDisclaimerService::OnPrimaryAccountChanged(
 
 void ProfileManagementDisclaimerService::OnExtendedAccountInfoUpdated(
     const AccountInfo& info) {
-  if (info.account_id != state_->account_id) {
+  if (info.GetAccountId() != state_->account_id) {
     return;
   }
   // Management status is not yet available, wait for extended account info.
@@ -613,7 +612,7 @@ void ProfileManagementDisclaimerService::OnRefreshTokenUpdatedForAccount(
   // This would most likely happen at startup after all refresh tokens are
   // loaded.
   if (state_->account_id.empty() &&
-      GetPrimaryAccountInfo().account_id != account_info.account_id) {
+      GetPrimaryAccountInfo().GetAccountId() != account_info.account_id) {
     return;
   }
   if (!state_->account_id.empty() &&
@@ -633,7 +632,7 @@ void ProfileManagementDisclaimerService::OnBrowserActivated(
   MaybeShowDeviceSignalsDisclaimerDialog(browser);
 
   CoreAccountId account_id = state_->account_id.empty()
-                                 ? GetPrimaryAccountInfo().account_id
+                                 ? GetPrimaryAccountInfo().GetAccountId()
                                  : state_->account_id;
   signin_metrics::AccessPoint access_point = state_->access_point.value_or(
       signin_metrics::AccessPoint::

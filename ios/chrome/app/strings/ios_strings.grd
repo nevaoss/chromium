@@ -317,6 +317,21 @@
       <message name="IDS_IOS_ACCOUNT_VIEW_ACCESSIBILITY_LABEL_NAME_MANAGED_STATUS_AI_TIER" desc="The accessibility label for the cell containing user’s name, email, managed status and AI tier. [iOS only]">
         <ph name="USER_NAME">$1<ex>Jessica</ex></ph>, <ph name="EMAIL">$2<ex>jessica@gmail.com</ex></ph>. <ph name="MANAGED_STATUS">$3<ex>Your account is managed</ex></ph>. <ph name="AI_TIER">$4<ex>Google AI Foo membership</ex></ph>.
       </message>
+      <message name="IDS_IOS_ACTOR_WORKLOG_CHIP_CLICKING" desc="Worklog chip label indicating the actor is clicking an element on the page. [iOS only]">
+        Clicking
+      </message>
+      <message name="IDS_IOS_ACTOR_WORKLOG_CHIP_FILLING_PASSWORD" desc="Worklog chip label indicating the actor is filling a password on the page. [iOS only]">
+        Filling password
+      </message>
+      <message name="IDS_IOS_ACTOR_WORKLOG_CHIP_SCROLLING" desc="Worklog chip label indicating the actor is scrolling the page. [iOS only]">
+        Scrolling
+      </message>
+      <message name="IDS_IOS_ACTOR_WORKLOG_CHIP_TYPING" desc="Worklog chip label indicating the actor is typing text on the page. [iOS only]">
+        Typing
+      </message>
+      <message name="IDS_IOS_ACTOR_WORKLOG_CHIP_WAITING" desc="Worklog chip label indicating the actor is waiting. [iOS only]">
+        Waiting
+      </message>
       <message name="IDS_IOS_ADDRESSES_NOT_ENCRYPTED_DIALOG_TEXT" desc="Text of a dialog shown to users when they turn on the ability to use and save addresses in their Google Account. This is shown to users who encrypt their data with their own passphrase in order to explain that addresses they will save in the future will not be encrypted. [iOS only]">
         Addresses aren't encrypted with your passphrase. This lets you use them in other Google services.
       </message>
@@ -694,10 +709,6 @@
       <message name="IDS_IOS_AUTOFILL_AI_PREVIOUSLY_FILLED_SECTION_TITLE" desc="Title for the previously filled section in the Autofill AI suggestions popup. [iOS only]">
         Previously filled
       </message>
-      <!-- TODO(crbug.com/551864564): Make string translateable once finalized. -->
-      <message name="IDS_IOS_AUTOFILL_AI_REMOVE_ACTION" desc="Context menu option to remove an Autofill AI suggestion from personal context. [iOS only]" translateable="false">
-        Remove
-      </message>
       <message name="IDS_IOS_AUTOFILL_AI_PRIVATE_INFERENCE_NOTICE_GOT_IT" desc="Primary button label for the Private Inference notice bottom sheet. [iOS only]">
         Got it
       </message>
@@ -709,6 +720,18 @@
       </message>
       <message name="IDS_IOS_AUTOFILL_AI_PRIVATE_INFERENCE_NOTICE_TITLE" desc="Title of the bottom sheet notice for Autofill AI Private Inference. [iOS only]">
         Smarter autofill, kept private
+      </message>
+      <message name="IDS_IOS_AUTOFILL_AI_REMOVE_ACTION" desc="Context menu option to remove an Autofill AI suggestion from personal context. [iOS only]" translateable="false">
+        <!-- TODO(crbug.com/551864564): Make string translateable once finalized. -->
+        Remove
+      </message>
+      <message name="IDS_IOS_AUTOFILL_AI_REMOVE_CONFIRMATION_MESSAGE" desc="Message of the confirmation alert dialog shown when the user chooses to remove an Autofill AI suggestion from personal context. [iOS only]" translateable="false">
+        <!-- TODO(crbug.com/551864564): Make string translateable once finalized. -->
+        Chrome will stop suggesting this info. Your original source won't be deleted. You can change this in settings.
+      </message>
+      <message name="IDS_IOS_AUTOFILL_AI_REMOVE_CONFIRMATION_TITLE" desc="Title of the confirmation alert dialog shown when the user chooses to remove an Autofill AI suggestion from personal context. [iOS only]" translateable="false">
+        <!-- TODO(crbug.com/551864564): Make string translateable once finalized. -->
+        Remove from Chrome?
       </message>
       <message name="IDS_IOS_AUTOFILL_AI_SAVED_LOCALLY_FOOTER" desc="The notice text displayed in the footer when the Autofill AI entity (ex. Passport, Vehicle info etc.) is saved locally. [iOS only]">
           Your info is saved to your device
@@ -770,8 +793,8 @@
       <message name="IDS_IOS_AUTOFILL_AI_VEHICLE_VIN_NAME" desc="The display name for the vehicle identification number (VIN) in Autofill AI. [iOS only]">
         VIN
       </message>
-      <!-- TODO(crbug.com/551864564): Make string translateable once finalized. -->
       <message name="IDS_IOS_AUTOFILL_AI_VIEW_SOURCES" desc="Context menu option to view the source documents or origins (such as Gmail or Google Photos) of an Autofill AI suggestion. [iOS only]" translateable="false">
+        <!-- TODO(crbug.com/551864564): Make string translateable once finalized. -->
         View sources
       </message>
       <message name="IDS_IOS_AUTOFILL_AI_WALLET_CONNECTION_FAILURE" desc="Instructions for the user displayed in the error dialog if they attempt to access or autofill information but the request fails due to network connectivity issues.">
@@ -3499,6 +3522,12 @@ To continue from your computer, switch to <ph name="OTHER_EMAIL">$2<ex>john.doe@
       <message name="IDS_IOS_GEMINI_CONSENT_STRICT_DATA_GOVERNANCE_TITLE" desc="Title text for the strict data governance row.">
         Your data improves Google AI
       </message>
+      <message name="IDS_IOS_GEMINI_FIRST_ACTUATION_STEP_SUBTITLE" desc="Subtitle disclaimer shown in the initial step of the actuation worklog explaining Gemini usage responsibility. [iOS only]">
+        Use Gemini carefully and take control if needed. You are responsible for Gemini's actions during tasks.
+      </message>
+      <message name="IDS_IOS_GEMINI_FIRST_ACTUATION_STEP_TITLE" desc="Title of the initial step shown in the actuation worklog when an actor task starts. [iOS only]">
+        Task started
+      </message>
       <message name="IDS_IOS_GEMINI_IMAGE_CONTEXT_MENU_ENTRY_POINT" desc="The entry point for Gemini when the user long-presses an image. Invites the user to create an image using Gemini in Chrome.">
         Edit Image with Gemini
       </message>
@@ -4734,6 +4763,11 @@ To continue from your computer, switch to <ph name="OTHER_EMAIL">$2<ex>john.doe@
       <message name="IDS_IOS_LEVEL_UP_TASK_COMPLETED_TAB_GROUPS" desc="Completion snackbar message for the Tab Groups task. [iOS only]">
         Tab Groups completed!
       </message>
+      <message name="IDS_IOS_LEVEL_UP_TURN_OFF_CONFIRMATION_SUBTITLE" desc="Subtitle message in the confirmation alert dialog when turning off Level Up. [iOS only]">
+        This will permanently delete your Level Up progress and feature usage data for Level Up will no longer be sent to Google for your profile.
+
+You can restart anytime.
+      </message>
       <message name="IDS_IOS_LEVEL_UP_TURN_OFF_LEVEL_UP" desc="The context menu item to turn off Level Up. [iOS only]">
         Turn off Level Up
       </message>
@@ -5492,9 +5526,6 @@ Handoff must also be enabled in the General section of Settings, and your device
       <message name="IDS_IOS_OVERFLOW_MENU_HIDE_ACTION_FIND_IN_PAGE" desc="The title for the context menu item to hide Find in Page. This should match the title of the Find in Page action in the menu." meaning="[iOS only] [Length: Unlimited]">
         Hide Find in Page
       </message>
-      <message name="IDS_IOS_OVERFLOW_MENU_HIDE_ACTION_HIDE_TOOLBARS" desc="The title for the context menu item to hide Hide Toolbar. This should match the title of the Hide Toolbar action in the menu." meaning="[iOS only] [Length: Unlimited]">
-        Hide Hide Toolbar
-      </message>
       <message name="IDS_IOS_OVERFLOW_MENU_HIDE_ACTION_LENS_OVERLAY" desc="The title for the context menu item to hide Search screen with Google Lens. This should match the title of the Search screen with Google Lens action in the menu." meaning="[iOS only] [Length: Unlimited]">
         Hide Search screen with Google Lens
       </message>
@@ -5545,9 +5576,6 @@ Handoff must also be enabled in the General section of Settings, and your device
       </message>
       <message name="IDS_IOS_OVERFLOW_MENU_HIDE_ITEM_ACCESSIBILITY_HINT" desc="Accessibility hint telling users what will happen if they take action on a shown item." meaning="[iOS only]">
         Hides this item
-      </message>
-      <message name="IDS_IOS_OVERFLOW_MENU_HIDE_TOOLBARS" desc="The text for the 'Hide Toolbars' button in the overflow menu to enter in fullscreen mode.">
-        Hide Toolbar
       </message>
       <message name="IDS_IOS_OVERFLOW_MENU_SHOW_ITEM_ACCESSIBILITY_HINT" desc="Accessibility hint telling users what will happen if they take action on a hidden item." meaning="[iOS only]">
         Shows this item
@@ -6081,8 +6109,17 @@ Handoff must also be enabled in the General section of Settings, and your device
       <message name="IDS_IOS_PAYMENT_BOTTOM_SHEET_USE_KEYBOARD" desc="The action button to dismiss the payment bottom sheet and revert to using the keyboard to fill in payment fields on the webpage.">
         Use keyboard
       </message>
+      <message name="IDS_IOS_PERMISSIONS_ALERT_DIALOG_BUTTON_TEXT_ALLOW_THIS_TIME" desc="Button text to allow access to permissions for the current visit only. [iOS only]">
+        Allow This Time
+      </message>
+      <message name="IDS_IOS_PERMISSIONS_ALERT_DIALOG_BUTTON_TEXT_ALWAYS_ALLOW" desc="Button text to always allow access to permissions for a website. [iOS only]">
+        Always Allow
+      </message>
       <message name="IDS_IOS_PERMISSIONS_ALERT_DIALOG_BUTTON_TEXT_DENY" desc="Button text to deny access to permissions. This should match the iOS built-in alert for permissions access.">
         Don't Allow
+      </message>
+      <message name="IDS_IOS_PERMISSIONS_ALERT_DIALOG_BUTTON_TEXT_NEVER_ALLOW" desc="Button text to never allow access to permissions for the current visit only. [iOS only]">
+        Never Allow
       </message>
       <message name="IDS_IOS_PERMISSIONS_ALERT_DIALOG_BUTTON_TEXT_GRANT" desc="Button text to allow access to permissions. This should match the iOS built-in alert for permissions access.">
         Allow
@@ -8767,6 +8804,9 @@ Handoff must also be enabled in the General section of Settings, and your device
       </message>
       <message name="IDS_IOS_TOOLBAR_MENU_BOTTOM_OMNIBOX" desc="The iOS menu item for moving the address bar to the bottom of the screen [iOS only].">
         Move address bar to bottom
+      </message>
+      <message name="IDS_IOS_TOOLBAR_MENU_HIDE_TOOLBAR" desc="The text for the 'Hide Toolbar' button in the long press omnibox menu to enter in fullscreen mode.">
+        Hide Toolbar
       </message>
       <message name="IDS_IOS_TOOLBAR_MENU_TOP_OMNIBOX" desc="The iOS menu item for moving the address bar to the top of the screen [iOS only].">
         Move address bar to top

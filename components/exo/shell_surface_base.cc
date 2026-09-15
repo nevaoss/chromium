@@ -555,6 +555,17 @@ void ShellSurfaceBase::SetSystemModal(bool system_modal) {
   if (system_modal == system_modal_)
     return;
 
+  if (system_modal) {
+    SecurityDelegate* security = GetSecurityDelegate();
+    if (!security || !security->CanSetSystemModal()) {
+      return;
+    }
+  }
+
+  // TODO(b/516545207): The system modal widget has to be created as a
+  // system modal and can only be changed to non system modal after that.
+  // It should fail if a client attemps to change from normal to system
+  // modal.
   bool non_system_modal_window_was_active =
       !system_modal_ && widget_ && widget_->IsActive();
 
@@ -2216,7 +2227,7 @@ void ShellSurfaceBase::UpdateShadowRoundedCorners() {
   }
 
   // TODO(crbug.com/40256581): Support shadow with variable radius corners.
-  shadow->SetRoundedCornerRadius(shadow_radii.upper_left());
+  shadow->SetRoundedCorners(gfx::RoundedCornersF(shadow_radii.upper_left()));
 }
 
 void ShellSurfaceBase::UpdateFrameType() {

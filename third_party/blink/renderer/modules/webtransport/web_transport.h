@@ -24,6 +24,7 @@
 #include "third_party/blink/renderer/bindings/modules/v8/v8_web_transport_congestion_control.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_web_transport_connection_stats.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_web_transport_datagram_stats.h"
+#include "third_party/blink/renderer/bindings/modules/v8/v8_web_transport_reliability_mode.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context_lifecycle_state_observer.h"
 #include "third_party/blink/renderer/core/fetch/headers.h"
 #include "third_party/blink/renderer/modules/modules_export.h"
@@ -106,6 +107,7 @@ class MODULES_EXPORT WebTransport final
   ScriptPromise<WebTransportConnectionStats> getStats(ScriptState*);
   const String& protocol();
   WebTransportSendGroup* createSendGroup(ExceptionState&);
+  V8WebTransportReliabilityMode reliability() const;
   V8WebTransportCongestionControl congestionControl() const;
   std::optional<uint16_t> anticipatedConcurrentIncomingUnidirectionalStreams()
       const;
@@ -116,6 +118,7 @@ class MODULES_EXPORT WebTransport final
   void setAnticipatedConcurrentIncomingBidirectionalStreams(
       std::optional<uint16_t> value);
   Headers* responseHeaders() const;
+  static bool supportsReliableOnly();
 
   void SetNextSendGroupIdForTesting(uint32_t id) { next_send_group_id_ = id; }
   wtf_size_t DatagramSinksWithPendingWritesSizeForTesting() const;
@@ -131,15 +134,19 @@ class MODULES_EXPORT WebTransport final
       mojo::PendingReceiver<network::mojom::blink::WebTransportClient>,
       const scoped_refptr<net::HttpResponseHeaders>& response_headers,
       const String& selected_application_protocol,
-      network::mojom::blink::WebTransportStatsPtr initial_stats) override;
+      network::mojom::blink::WebTransportStatsPtr initial_stats,
+      std::optional<uint32_t> max_datagram_size) override;
   void OnHandshakeFailed(network::mojom::blink::WebTransportErrorPtr) override;
 
   // WebTransportClient implementation
   void OnDatagramReceived(base::span<const uint8_t> data) override;
-  void OnIncomingStreamClosed(uint32_t stream_id, bool fin_received) override;
+  void OnIncomingStreamClosed(uint32_t stream_id,
+                              bool fin_received,
+                              uint64_t bytes_received) override;
   void OnOutgoingStreamClosed(uint32_t stream_id) override;
   void OnReceivedResetStream(uint32_t stream_id,
-                             uint32_t stream_error_code) override;
+                             uint32_t stream_error_code,
+                             uint64_t bytes_received) override;
   void OnReceivedStopSending(uint32_t stream_id,
                              uint32_t stream_error_code) override;
   void OnClosed(
@@ -301,6 +308,8 @@ class MODULES_EXPORT WebTransport final
 
   V8WebTransportCongestionControl congestion_control_{
       V8WebTransportCongestionControl::Enum::kDefault};
+  V8WebTransportReliabilityMode reliability_{
+      V8WebTransportReliabilityMode::Enum::kPending};
 
   std::optional<uint16_t>
       anticipated_concurrent_incoming_unidirectional_streams_;

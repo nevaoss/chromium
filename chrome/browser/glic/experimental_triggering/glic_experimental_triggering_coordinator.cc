@@ -222,7 +222,12 @@ class ExperimentalTriggeringUpdatesHandler
     if (!request.task_metadata.has_value()) {
       result_logger.set_result(GlicExperimentalTriggeringIncomingMessageResult::
                                    kMissingTaskMetadata);
-      return std::nullopt;
+      return CreateResponseMessage(
+          context_id_, TaskUpdate::State::kFailed,
+          TaskUpdate::DataType::kErrorMessage,
+          "Received GlicExperimentalTriggering message with missing task "
+          "metadata.",
+          /*request_task_metadata=*/nullptr, sequence_generator_.GetNext());
     }
 
     if (request.task_metadata->sender_sequence_number.has_value()) {
@@ -877,6 +882,10 @@ GlicExperimentalTriggeringCoordinator::OnProtoMessage(
       actor::ActorKeyedService::Get(profile_);
   LogGlicExperimentalTriggeringProto(
       actor_service, "GlicExperimentalTriggering", context_id, proto);
+
+  if (!HasUpdatesHandler(context_id)) {
+    MaybeRecordInitialSharingMessageDeliveryLatency(proto);
+  }
 
   auto request_metadata = ProtoToTaskMetadata(proto);
   const TaskMetadata* request_metadata_ptr =

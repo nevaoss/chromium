@@ -130,6 +130,7 @@
 #include "content/public/browser/frame_eviction_opt_out_client.h"
 #include "content/public/browser/global_routing_id.h"
 #include "content/public/browser/javascript_dialog_manager.h"
+#include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/navigation_entry.h"
 #include "content/public/browser/navigation_handle.h"
 #include "content/public/browser/render_process_host.h"
@@ -163,9 +164,11 @@
 #include "ui/actions/actions.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/models/dialog_model.h"
+#include "ui/base/page_transition_types.h"
 #include "ui/base/pointer/touch_ui_controller.h"
 #include "ui/base/ui_base_features.h"
 #include "ui/base/ui_base_switches.h"
+#include "ui/base/window_open_disposition.h"
 #include "ui/compositor/compositor.h"
 #include "ui/gfx/geometry/rect_conversions.h"
 #include "ui/gfx/geometry/rect_f.h"
@@ -6281,6 +6284,12 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarFullyEnabledBrowserTest,
 
   CheckResponsiveControlOrder(
       all_controls_info, {"location-bar", "split-tabs", "forward", "home"});
+  // Check that TrackedElements reach a consistent state.
+  EXPECT_TRUE(WaitForTrackedElements(
+      /*visible=*/{kToolbarBackButtonElementId, kToolbarForwardButtonElementId,
+                   kToolbarHomeButtonElementId,
+                   kToolbarSplitTabsToolbarButtonElementId},
+      /*hidden=*/{kToolbarOverflowButtonElementId}));
 
   // Start by increasing spacer width by locationBarExtraWidth so that all
   // controls, including location bar, are at their preferred size.
@@ -6291,6 +6300,12 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarFullyEnabledBrowserTest,
   spacer_width += all_controls_info.location_bar_extra_width;
   ASSERT_EQ(SetSpacerWidth(spacer_width), true);
   CheckControlSizes(expected_sizes);
+  // Check that TrackedElements reach a consistent state.
+  EXPECT_TRUE(WaitForTrackedElements(
+      /*visible=*/{kToolbarBackButtonElementId, kToolbarForwardButtonElementId,
+                   kToolbarHomeButtonElementId,
+                   kToolbarSplitTabsToolbarButtonElementId},
+      /*hidden=*/{kToolbarOverflowButtonElementId}));
 
   // Increasing spacer width to overflow the home button will cause the overflow
   // button to be shown, taking up space and causing the forward button to
@@ -6306,6 +6321,13 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarFullyEnabledBrowserTest,
   expected_sizes.Set(forward_info.id, forward_info.min_width);
   expected_sizes.Set("overflow", all_controls_info.overflow_button_width);
   CheckControlSizes(expected_sizes);
+  // Check that TrackedElements reach a consistent state.
+  EXPECT_TRUE(WaitForTrackedElements(
+      /*visible=*/{kToolbarBackButtonElementId,
+                   kToolbarSplitTabsToolbarButtonElementId,
+                   kToolbarOverflowButtonElementId},
+      /*hidden=*/{kToolbarForwardButtonElementId,
+                  kToolbarHomeButtonElementId}));
 
   // Increase spacer width to overflow the split-tabs button.
   const ResponsiveControlInfo& split_tabs_info = all_controls_info.controls[1];
@@ -6314,6 +6336,12 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarFullyEnabledBrowserTest,
 
   expected_sizes.Set(split_tabs_info.id, split_tabs_info.min_width);
   CheckControlSizes(expected_sizes);
+  // Check that TrackedElements reach a consistent state.
+  EXPECT_TRUE(WaitForTrackedElements(
+      /*visible=*/{kToolbarBackButtonElementId,
+                   kToolbarOverflowButtonElementId},
+      /*hidden=*/{kToolbarForwardButtonElementId, kToolbarHomeButtonElementId,
+                  kToolbarSplitTabsToolbarButtonElementId}));
 
   // Increase spacer width to shrink the location bar to its minimum size.
   const ResponsiveControlInfo& location_bar_info =
@@ -6323,6 +6351,12 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarFullyEnabledBrowserTest,
 
   expected_sizes.Set(location_bar_info.id, location_bar_info.min_width);
   CheckControlSizes(expected_sizes);
+  // Check that TrackedElements reach a consistent state.
+  EXPECT_TRUE(WaitForTrackedElements(
+      /*visible=*/{kToolbarBackButtonElementId,
+                   kToolbarOverflowButtonElementId},
+      /*hidden=*/{kToolbarForwardButtonElementId, kToolbarHomeButtonElementId,
+                  kToolbarSplitTabsToolbarButtonElementId}));
 }
 
 // Tests expanding responsive navigation controls in priority order (from
@@ -6380,6 +6414,12 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarFullyEnabledBrowserTest,
   expected_sizes.Set("overflow", all_controls_info.overflow_button_width);
   ASSERT_EQ(SetSpacerWidth(spacer_width), true);
   CheckControlSizes(expected_sizes);
+  // Check that TrackedElements reach a consistent state.
+  EXPECT_TRUE(WaitForTrackedElements(
+      /*visible=*/{kToolbarBackButtonElementId,
+                   kToolbarOverflowButtonElementId},
+      /*hidden=*/{kToolbarForwardButtonElementId, kToolbarHomeButtonElementId,
+                  kToolbarSplitTabsToolbarButtonElementId}));
 
   // Shrink the spacer enough to let the location bar, the next highest priority
   // control, expand to its preferred size + 4px.
@@ -6391,6 +6431,12 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarFullyEnabledBrowserTest,
   expected_sizes.Set(location_bar_info.id,
                      location_bar_info.preferred_width + 4);
   CheckControlSizes(expected_sizes);
+  // Check that TrackedElements reach a consistent state.
+  EXPECT_TRUE(WaitForTrackedElements(
+      /*visible=*/{kToolbarBackButtonElementId,
+                   kToolbarOverflowButtonElementId},
+      /*hidden=*/{kToolbarForwardButtonElementId, kToolbarHomeButtonElementId,
+                  kToolbarSplitTabsToolbarButtonElementId}));
 
   // Shrink the spacer enough to show the split-tabs button, the next highest
   // priority control.
@@ -6402,6 +6448,13 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarFullyEnabledBrowserTest,
   expected_sizes.Set(location_bar_info.id,
                      location_bar_info.preferred_width + 8);
   CheckControlSizes(expected_sizes);
+  // Check that TrackedElements reach a consistent state.
+  EXPECT_TRUE(WaitForTrackedElements(
+      /*visible=*/{kToolbarBackButtonElementId,
+                   kToolbarSplitTabsToolbarButtonElementId,
+                   kToolbarOverflowButtonElementId},
+      /*hidden=*/{kToolbarForwardButtonElementId,
+                  kToolbarHomeButtonElementId}));
 
   // Shrink the spacer enough to show the forward button. This should result in
   // swapping the overflow button for the home button as well, since the home
@@ -6419,6 +6472,12 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarFullyEnabledBrowserTest,
   expected_sizes.Set(location_bar_info.id,
                      location_bar_info.preferred_width + 12);
   CheckControlSizes(expected_sizes);
+  // Check that TrackedElements reach a consistent state.
+  EXPECT_TRUE(WaitForTrackedElements(
+      /*visible=*/{kToolbarBackButtonElementId, kToolbarForwardButtonElementId,
+                   kToolbarHomeButtonElementId,
+                   kToolbarSplitTabsToolbarButtonElementId},
+      /*hidden=*/{kToolbarOverflowButtonElementId}));
 }
 
 // Tests that pinning a new button via preferences triggers a layout update that
@@ -6449,6 +6508,12 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarFullyEnabledBrowserTest,
 
   CheckResponsiveControlOrder(all_controls_info,
                               {"location-bar", "forward", "home"});
+  // Check that TrackedElements reach a consistent state.
+  EXPECT_TRUE(WaitForTrackedElements(
+      /*visible=*/{kToolbarBackButtonElementId, kToolbarForwardButtonElementId,
+                   kToolbarHomeButtonElementId},
+      /*hidden=*/{kToolbarSplitTabsToolbarButtonElementId,
+                  kToolbarOverflowButtonElementId}));
 
   // Size spacer so that all currently enabled controls are at their preferred
   // size, but no extra space is available.
@@ -6466,6 +6531,12 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarFullyEnabledBrowserTest,
   expected_sizes.Set(all_controls_info.controls[2].id,
                      all_controls_info.controls[2].preferred_width);
   CheckControlSizes(expected_sizes);
+  // Check that TrackedElements reach a consistent state.
+  EXPECT_TRUE(WaitForTrackedElements(
+      /*visible=*/{kToolbarBackButtonElementId, kToolbarForwardButtonElementId,
+                   kToolbarHomeButtonElementId},
+      /*hidden=*/{kToolbarSplitTabsToolbarButtonElementId,
+                  kToolbarOverflowButtonElementId}));
 
   // Pin the split-tabs button in prefs. Since the split-tabs button has higher
   // priority than the home button, showing the split-tabs button causes the
@@ -6485,12 +6556,25 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarFullyEnabledBrowserTest,
   // home
   expected_sizes2.Set(all_controls_info.controls[2].id, 0);
   CheckControlSizes(expected_sizes2);
+  // Check that TrackedElements reach a consistent state.
+  EXPECT_TRUE(WaitForTrackedElements(
+      /*visible=*/{kToolbarBackButtonElementId,
+                   kToolbarSplitTabsToolbarButtonElementId,
+                   kToolbarOverflowButtonElementId},
+      /*hidden=*/{kToolbarHomeButtonElementId,
+                  kToolbarForwardButtonElementId}));
 
   // Unpin split-tabs button, returning it to its original state. This should
   // restore us to the state before we enabled the button.
   browser()->GetProfile()->GetPrefs()->SetBoolean(prefs::kPinSplitTabButton,
                                                   false);
   CheckControlSizes(expected_sizes);
+  // Check that TrackedElements reach a consistent state.
+  EXPECT_TRUE(WaitForTrackedElements(
+      /*visible=*/{kToolbarBackButtonElementId, kToolbarForwardButtonElementId,
+                   kToolbarHomeButtonElementId},
+      /*hidden=*/{kToolbarSplitTabsToolbarButtonElementId,
+                  kToolbarOverflowButtonElementId}));
 }
 
 // Tests that changing pin state of buttons triggers a full priority-based

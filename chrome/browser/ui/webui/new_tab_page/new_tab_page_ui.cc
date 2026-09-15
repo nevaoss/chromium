@@ -117,6 +117,7 @@
 #include "components/sync/service/sync_service.h"
 #include "components/user_education/common/ntp_promo/ntp_promo_controller.h"
 #include "components/user_education/common/user_education_features.h"
+#include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/navigation_handle.h"
 #include "content/public/browser/url_data_source.h"
 #include "content/public/browser/web_ui_data_source.h"
@@ -670,6 +671,9 @@ content::WebUIDataSource* CreateAndAddNewTabPageUiHtmlSource(
   source->AddString("composeboxImageFileTypes", image_mime_types);
   source->AddBoolean("lensSendRawFileMediaTypesEnabled",
                      lens::features::IsLensSendRawFileMediaTypesEnabled());
+  source->AddBoolean("lensBypassCompressionForC2pa",
+                     base::FeatureList::IsEnabled(
+                         lens::features::kLensBypassCompressionForC2pa));
   const std::string attachment_mime_types =
       composebox_config.attachment_upload().mime_types_allowed();
   source->AddString("composeboxAttachmentFileTypes", attachment_mime_types);
@@ -1028,7 +1032,6 @@ bool NewTabPageUI::IsNewTabPageOrigin(const GURL& url) {
 // static
 void NewTabPageUI::RegisterProfilePrefs(PrefRegistrySimple* registry) {
   registry->RegisterTimePref(kPrevNavigationTimePrefName, base::Time());
-  registry->RegisterBooleanPref(prefs::kNtpPromoVisible, true);
   registry->RegisterTimePref(ntp_prefs::kNtpLastModuleStalenessUpdate,
                              base::Time());
   registry->RegisterDictionaryPref(ntp_prefs::kNtpModuleStalenessCountDict);

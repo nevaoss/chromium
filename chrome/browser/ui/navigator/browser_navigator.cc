@@ -42,6 +42,7 @@
 #include "chrome/browser/ui/status_bubble.h"
 #include "chrome/browser/ui/tab_helpers.h"
 #include "chrome/browser/ui/tabs/split_tab_metrics.h"
+#include "chrome/browser/ui/tabs/tab_enums.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/tabs/tab_strip_user_gesture_details.h"
 #include "chrome/browser/ui/web_applications/app_browser_controller.h"
@@ -61,9 +62,11 @@
 #include "components/prefs/pref_service.h"
 #include "components/split_tabs/split_tab_id.h"
 #include "components/split_tabs/split_tab_visual_data.h"
+#include "components/tab_groups/tab_group_id.h"
 #include "components/tabs/public/split_tab_data.h"
 #include "components/tabs/public/tab_interface.h"
 #include "content/public/browser/browser_url_handler.h"
+#include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/navigation_entry.h"
 #include "content/public/browser/picture_in_picture_window_controller.h"
 #include "content/public/browser/render_frame_host.h"
@@ -72,6 +75,7 @@
 #include "content/public/browser/site_isolation_policy.h"
 #include "content/public/browser/web_contents.h"
 #include "extensions/buildflags/buildflags.h"
+#include "ui/base/page_transition_types.h"
 #include "ui/base/window_open_disposition.h"
 #include "ui/display/display.h"
 #include "ui/display/screen.h"
@@ -978,13 +982,16 @@ base::WeakPtr<content::NavigationHandle> NavigateImpl(
         params->tabstrip_add_types, group);
 
     // For NEW_SPLIT_VIEW, pair the new tab with the active tab. The
-    // "already split" case is handled in Browser::OpenURLFromTab().
+    // "already split" case is handled in
+    // BrowserWebContentsDelegate::OpenURLFromTab().
     if (params->disposition == WindowOpenDisposition::NEW_SPLIT_VIEW &&
         contents_to_navigate_or_insert) {
       TabStripModel* const tab_strip_model =
           params->browser->GetTabStripModel();
-      const int new_tab_index = tab_strip_model->GetIndexOfWebContents(
-          contents_to_navigate_or_insert);
+      tabs::TabInterface* const new_tab =
+          tabs::TabInterface::MaybeGetFromContents(
+              contents_to_navigate_or_insert);
+      const int new_tab_index = tab_strip_model->GetIndexOfTab(new_tab);
       tabs::TabInterface* const source_tab =
           params->source_contents ? tabs::TabInterface::MaybeGetFromContents(
                                         params->source_contents)
@@ -994,12 +1001,15 @@ base::WeakPtr<content::NavigationHandle> NavigateImpl(
         tab_strip_model->AddToNewSplit(
             {new_tab_index}, split_tabs::SplitTabVisualData(),
             split_tabs::SplitTabCreatedSource::kLinkClick);
-        // Re-query the index after adding to split, as `AddToNewSplit()` may
-        // have moved the tab to a different position.
-        const int inserted_tab_index = tab_strip_model->GetIndexOfWebContents(
-            contents_to_navigate_or_insert);
-        CHECK_NE(inserted_tab_index, TabStripModel::kNoTab);
-        tab_strip_model->ActivateTabAt(inserted_tab_index);
+        // AddToNewSplit() makes the split contiguous and gives the new tab the
+        // active tab's pinned state and group, moving the new tab next to the
+        // active tab if it is not already there. In particular, when the
+        // active tab is pinned, the new (unpinned) tab was inserted after the
+        // pinned tabs, so after the move `new_tab_index` refers to whichever
+        // tab was shifted into its old slot, e.g. the pinned tab to the right
+        // of the split. Activate by tab rather than by index so that tab can
+        // never be focused instead of the new split tab.
+        tab_strip_model->ActivateTab(new_tab);
       }
     }
   }

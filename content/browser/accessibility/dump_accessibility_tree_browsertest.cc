@@ -2199,7 +2199,10 @@ IN_PROC_BROWSER_TEST_P(DumpAccessibilityTreeTest,
 }
 
 // TODO(crbug.com/40943250): Fix failure on android
-#if BUILDFLAG(IS_ANDROID)
+// TODO(crbug.com/372910798): Flaky on Linux with ASan and LSan.
+#if BUILDFLAG(IS_ANDROID) || \
+    (BUILDFLAG(IS_LINUX) &&  \
+     (defined(ADDRESS_SANITIZER) || defined(LEAK_SANITIZER)))
 #define MAYBE_AccessibilityAudio DISABLED_AccessibilityAudio
 #else
 #define MAYBE_AccessibilityAudio AccessibilityAudio
@@ -2521,6 +2524,11 @@ IN_PROC_BROWSER_TEST_P(DumpAccessibilityTreeTest,
 
 IN_PROC_BROWSER_TEST_P(DumpAccessibilityTreeTest, AccessibilityGraphicsRoles) {
   RunAriaTest(FILE_PATH_LITERAL("graphics-roles.html"));
+}
+
+IN_PROC_BROWSER_TEST_P(DumpAccessibilityTreeTest,
+                       AccessibilityHeadingWithAriaLabel) {
+  RunAriaTest(FILE_PATH_LITERAL("heading-with-aria-label.html"));
 }
 
 IN_PROC_BROWSER_TEST_P(DumpAccessibilityTreeTest,
@@ -5114,9 +5122,8 @@ IN_PROC_BROWSER_TEST_P(DumpAccessibilityTreeTest,
   RunApgPatternThirdPartyTest(FILE_PATH_LITERAL("alert/examples/alert.html"));
 }
 
-// TODO(crbug.com/545647752): disabled due to flakiness
 IN_PROC_BROWSER_TEST_P(DumpAccessibilityTreeTest,
-                       DISABLED_AccessibilityApgPatternThirdPartyAlertdialog) {
+                       AccessibilityApgPatternThirdPartyAlertdialog) {
   RunApgPatternThirdPartyTest(
       FILE_PATH_LITERAL("alertdialog/examples/alertdialog.html"));
 }

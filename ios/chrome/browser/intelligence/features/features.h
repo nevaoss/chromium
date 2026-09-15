@@ -229,7 +229,6 @@ double GetGeminiResponseReadyInterval();
 base::TimeDelta GetGeminiSessionValidityDuration();
 extern const char kGeminiSessionValidityDuration[];
 
-
 // Feature flag for Actor tools.
 BASE_DECLARE_FEATURE(kActorTools);
 bool IsActorEnabled();
@@ -286,10 +285,6 @@ enum class PageActionMenuIconVariations {
 
 PageActionMenuIconVariations GetPageActionMenuIcon();
 
-// Feature flag for enabling Gemini backend migration.
-BASE_DECLARE_FEATURE(kGeminiBackendMigration);
-bool IsGeminiBackendMigrationEnabled();
-
 // Feature flag for enabling Project Aureus (quota enforcement and usage
 // limits).
 BASE_DECLARE_FEATURE(kGeminiAureus);
@@ -299,9 +294,14 @@ bool IsGeminiAureusEnabled();
 BASE_DECLARE_FEATURE(kGeminiActor);
 bool IsGeminiActorEnabled();
 
-// Feature flag for enabling rich APC (v2) extraction for Gemini.
-BASE_DECLARE_FEATURE(kGeminiRichAPCExtraction);
-bool IsGeminiRichAPCExtractionEnabled();
+// Parameter to enable or disable backgrounding in Gemini Actor.
+extern const char kGeminiActorBackgroundingParam[];
+
+// Returns true if backgrounding for Gemini Actor is enabled. This requires:
+// 1. Compile flag `IOS_BACKGROUND_CONTINUED_PROCESSING_ENABLED` is enabled.
+// 2. `IsGeminiActorEnabled()` and `kGeminiActorBackgroundingParam` (default
+// true) are both true.
+bool IsGeminiActorBackgroundingEnabled();
 
 // Enables the GeminiUnaryMigration feature.
 BASE_DECLARE_FEATURE(kGeminiUnaryMigration);

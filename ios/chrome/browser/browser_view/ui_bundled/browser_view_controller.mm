@@ -293,8 +293,6 @@ bool IsFullscreenNextIAEnabled() {
 // Browser content view controller.
 @property(nonatomic, strong)
     BrowserContentViewController* browserContentViewController;
-// Invisible button used to dismiss the keyboard.
-@property(nonatomic, strong) UIButton* typingShield;
 // The visibility state of the browser view. Value will be set to `kVisible` on
 // viewDidAppear and to `kNotInViewHierarchy` on viewWillDisappear.
 @property(nonatomic, assign) BrowserViewVisibilityState visibilityState;
@@ -705,10 +703,6 @@ bool IsFullscreenNextIAEnabled() {
 
 #pragma mark - Public methods
 
-- (void)shieldWasTapped:(id)sender {
-  [_browserCoordinatorHandler hideComposebox];
-}
-
 - (void)openNewTabFromOriginPoint:(CGPoint)originPoint
                      focusOmnibox:(BOOL)focusOmnibox
                     inheritOpener:(BOOL)inheritOpener {
@@ -968,22 +962,6 @@ bool IsFullscreenNextIAEnabled() {
 
   self.contentArea.frame = initialViewsRect;
 
-  // Create the typing shield.  It is initially hidden, and is made visible when
-  // the keyboard appears.
-  if (!IsComposeboxIpadEnabled()) {
-    self.typingShield = [[UIButton alloc] initWithFrame:initialViewsRect];
-    self.typingShield.hidden = YES;
-    self.typingShield.autoresizingMask = initialViewAutoresizing;
-    self.typingShield.accessibilityIdentifier = @"Typing Shield";
-    self.typingShield.accessibilityLabel = l10n_util::GetNSString(IDS_CANCEL);
-    if (ui::GetDeviceFormFactor() == ui::DEVICE_FORM_FACTOR_TABLET) {
-      self.typingShield.backgroundColor =
-          [UIColor colorNamed:kOmniboxPopoutOverlayColor];
-    }
-    [self.typingShield addTarget:self
-                          action:@selector(shieldWasTapped:)
-                forControlEvents:UIControlEventTouchUpInside];
-  }
   self.view.autoresizingMask = initialViewAutoresizing;
 
   [self addChildViewController:self.browserContentViewController];
@@ -995,9 +973,6 @@ bool IsFullscreenNextIAEnabled() {
     [self.view addSubview:self.contentArea];
   }
   [self.browserContentViewController didMoveToParentViewController:self];
-  if (!IsComposeboxIpadEnabled()) {
-    [self.view addSubview:self.typingShield];
-  }
   [super viewDidLoad];
 
   [self buildToolbarAndTabStrip];
@@ -1166,7 +1141,6 @@ bool IsFullscreenNextIAEnabled() {
   [super didReceiveMemoryWarning];
 
   if (![self isViewLoaded]) {
-    self.typingShield = nil;
     [self.toolbarCoordinator stop];
     self.toolbarCoordinator = nil;
     [self cleanUpToolbarConstraints];
@@ -1598,12 +1572,6 @@ bool IsFullscreenNextIAEnabled() {
     AddSameConstraintsToSides(self.view, contentAreaGuide, contentSides);
   }
 
-  // Resize the typing shield to cover the entire browser view and bring it to
-  // the front.
-  self.typingShield.frame = self.contentArea.frame;
-  if (initialLayout) {
-    [self.view bringSubviewToFront:self.typingShield];
-  }
 }
 
 // Displays the current webState view.
@@ -1683,41 +1651,6 @@ bool IsFullscreenNextIAEnabled() {
 // Invoked when voice search hides.
 - (void)voiceSearchWillHide {
   self.visibilityState = BrowserViewVisibilityState::kVisible;
-}
-
-// Animates hiding and showing the typing shield.
-- (void)animateTypingShieldHidden:(BOOL)hidden {
-  if (self.typingShield.hidden == hidden) {
-    return;
-  }
-
-  CGFloat finalAlpha = hidden ? 0.0 : 1.0;
-
-  if (!hidden) {
-    [self.typingShield setAlpha:0.0];
-    [self.typingShield setHidden:NO];
-  }
-
-  [UIView animateWithDuration:0.3
-      animations:^{
-        [self.typingShield setAlpha:finalAlpha];
-      }
-      completion:^(BOOL finished) {
-        if (!hidden) {
-          // Already revealed before the animation started.
-          return;
-        }
-
-        // This can happen if one quickly resigns the omnibox and then taps
-        // on the omnibox again during this animation. If the animation is
-        // interrupted and the toolbar controller is first responder, it's safe
-        // to assume `self.typingShield` shouldn't be hidden here.
-        if (!finished && [self.toolbarCoordinator isOmniboxFirstResponder]) {
-          return;
-        }
-
-        [self.typingShield setHidden:YES];
-      }];
 }
 
 // Calls `callback` for each edge that has a safe area inset.
@@ -2107,17 +2040,6 @@ bool IsFullscreenNextIAEnabled() {
   self.visibilityState = BrowserViewVisibilityState::kCoveredByOmniboxPopup;
   self.toolbarCoordinator.secondaryToolbarViewController.view
       .accessibilityElementsHidden = YES;
-
-  if (_lensOverlayVisible) {
-    // The typing shield has to be inserted right below the presented popup
-    // omnibox to avoid being obstructed by the Lens Overlay.
-    self.typingShield.frame = UIEdgeInsetsInsetRect(
-        self.contentArea.bounds,
-        UIEdgeInsetsMake([self expandedTopToolbarHeight], 0, 0, 0));
-    [self.view insertSubview:self.typingShield
-                belowSubview:presenter.popupContainerView];
-    [self animateTypingShieldHidden:NO];
-  }
 }
 
 - (void)popupDidCloseForPresenter:(OmniboxPopupPresenter*)presenter {
@@ -2490,17 +2412,6 @@ bool IsFullscreenNextIAEnabled() {
   }
   [_sideSwipeCoordinator setEnabled:NO];
 
-  if (!IsVisibleURLNewTabPage(self.currentWebState) ||
-      ui::GetDeviceFormFactor() == ui::DEVICE_FORM_FACTOR_TABLET) {
-    // Tapping on web content area should dismiss the keyboard. Tapping on NTP
-    // gesture should propagate to NTP view.
-
-    if (self.typingShield.hidden) {
-      [self.view insertSubview:self.typingShield aboveSubview:self.contentArea];
-      [self animateTypingShieldHidden:NO];
-    }
-  }
-
   [self.toolbarCoordinator transitionToLocationBarFocusedState:YES
                                                     completion:nil];
 }
@@ -2514,8 +2425,6 @@ bool IsFullscreenNextIAEnabled() {
   [_sideSwipeCoordinator setEnabled:YES];
 
   [self.ntpCoordinator locationBarWillResignFirstResponder];
-
-  [self animateTypingShieldHidden:YES];
 
   ProceduralBlock completion = ^{
     // Show the NTP's fake toolbar after the defocus animation completes.

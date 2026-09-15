@@ -17,6 +17,7 @@
 #include "chrome/browser/ui/accelerator_utils.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+#include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/views/frame/toolbar_button_provider.h"
 #include "chrome/browser/ui/views/omnibox/omnibox_popup_aim_presenter.h"
@@ -52,6 +53,7 @@
 #include "ui/base/ime/mock_input_method.h"
 #include "ui/base/interaction/element_identifier.h"
 #include "ui/base/interaction/element_tracker.h"
+#include "ui/base/page_transition_types.h"
 #include "ui/display/screen.h"
 #include "ui/gfx/range/range.h"
 #include "ui/views/mouse_constants.h"
@@ -855,7 +857,8 @@ class WebUILocationBarInteractiveUiTest
   static bool HandleRequest(
       content::URLLoaderInterceptor::RequestParams* params) {
     if (params->url_request.url.host() == "www.google.com" &&
-        params->url_request.url.path() == "/complete/search") {
+        (params->url_request.url.path() == "/complete/s" ||
+         params->url_request.url.path() == "/complete/search")) {
       constexpr std::string_view headers =
           "HTTP/1.1 200 OK\nContent-Type: application/json\n\n";
       constexpr std::string_view body =

@@ -151,6 +151,11 @@ BASE_FEATURE(kAudioWorkletThreadPool, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kAutofillKeydownEditableElement,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
+#if BUILDFLAG(IS_ANDROID)
+BASE_FEATURE(kAutoResizeMinimumPageScaleFactor,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+#endif
+
 // https://crbug.com/1472970
 BASE_FEATURE(kAutoSpeculationRules, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE_PARAM(bool,
@@ -556,18 +561,9 @@ BASE_FEATURE(kDetectJSFrameworksOnWorker, base::FEATURE_ENABLED_BY_DEFAULT);
 // See http://crbug.com/124534.
 BASE_FEATURE(kDevToolsImprovedNetworkError, base::FEATURE_DISABLED_BY_DEFAULT);
 
-BASE_FEATURE(kDevToolsWebMCPSupport, base::FEATURE_ENABLED_BY_DEFAULT);
-
 BASE_FEATURE(kDevToolsAdsPanel, base::FEATURE_ENABLED_BY_DEFAULT);
 
-BASE_FEATURE(kDirectCompositorThreadIpc,
-#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || \
-    BUILDFLAG(IS_WIN)
-             base::FEATURE_ENABLED_BY_DEFAULT
-#else
-             base::FEATURE_DISABLED_BY_DEFAULT
-#endif
-);
+BASE_FEATURE(kDirectCompositorThreadIpc, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kDisableArrayBufferSizeLimitsForTesting,
              base::FEATURE_DISABLED_BY_DEFAULT);
@@ -876,7 +872,7 @@ BASE_FEATURE_ENUM_PARAM(IsolateSandboxedIframesGrouping,
                         &isolated_sandboxed_iframes_grouping_types);
 
 #if BUILDFLAG(ENABLE_JXL_DECODER)
-BASE_FEATURE(kJXLImageFormat, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kJXLImageFormat, base::FEATURE_ENABLED_BY_DEFAULT);
 #endif
 
 BASE_FEATURE(kKeepAliveInBrowserMigration, base::FEATURE_ENABLED_BY_DEFAULT);

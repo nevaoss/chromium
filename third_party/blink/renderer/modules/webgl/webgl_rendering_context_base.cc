@@ -69,6 +69,7 @@
 #include "third_party/blink/public/platform/platform.h"
 #include "third_party/blink/public/platform/task_type.h"
 #include "third_party/blink/renderer/bindings/core/v8/to_v8_traits.h"
+#include "third_party/blink/renderer/bindings/core/v8/v8_canvas_tone_mapping.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_union_element_elementimage.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_union_htmlcanvaselement_offscreencanvas.h"
 #include "third_party/blink/renderer/bindings/modules/v8/v8_webgl_copy_element_image_config.h"
@@ -960,7 +961,7 @@ scoped_refptr<StaticBitmapImage> WebGLRenderingContextBase::GetImage() {
     // Create an accelerated CRP in order to produce an accelerated snapshot.
     resource_provider = CanvasNon2DResourceProvider::Create(
         size, GetSharedImageFormat(), GetAlphaType(), GetColorSpace(),
-        GetDrawingBuffer()->GetHdrMetadata(),
+        drawing_buffer_tone_mapping_hdr_metadata_,
         SharedGpuContext::ContextProviderWrapper(), shared_image_usages);
 
     if (!resource_provider || !resource_provider->IsValid()) {
@@ -1428,7 +1429,8 @@ scoped_refptr<DrawingBuffer> WebGLRenderingContextBase::CreateDrawingBuffer(
       std::move(context_provider), context_info, this, ClampedCanvasSize(),
       premultiplied_alpha, want_alpha_channel, want_depth_buffer,
       want_stencil_buffer, want_antialiasing, desynchronized, preserve,
-      context_type_, drawing_buffer_color_space_, gpu_preference);
+      context_type_, drawing_buffer_color_space_,
+      drawing_buffer_tone_mapping_hdr_metadata_, gpu_preference);
 }
 
 void WebGLRenderingContextBase::InitializeNewContext() {
@@ -2195,7 +2197,8 @@ WebGLRenderingContextBase::GetSharedImageResourceProvider() {
   const SkAlphaType alpha_type = GetAlphaType();
   const viz::SharedImageFormat format = GetSharedImageFormat();
   const gfx::ColorSpace color_space = GetColorSpace();
-  const gfx::HDRMetadata hdr_metadata = GetDrawingBuffer()->GetHdrMetadata();
+  const gfx::HDRMetadata& hdr_metadata =
+      drawing_buffer_tone_mapping_hdr_metadata_;
   const gfx::Size size = GetDrawingBuffer()->Size();
   // Note: We must not initialize the CRP using Skia. The CRP can have bottom
   // left origin in which case Skia Graphite won't be able to render into it,
@@ -2504,6 +2507,19 @@ void WebGLRenderingContextBase::setDrawingBufferColorSpace(
   drawing_buffer_color_space_ = color_space;
   if (GetDrawingBuffer())
     GetDrawingBuffer()->SetColorSpace(drawing_buffer_color_space_);
+}
+
+CanvasToneMapping* WebGLRenderingContextBase::drawingBufferToneMapping(
+    const CanvasToneMapping* tone_mapping) {
+  if (tone_mapping) {
+    ParseCanvasToneMapping(tone_mapping,
+                           drawing_buffer_tone_mapping_hdr_metadata_);
+    if (!isContextLost() && GetDrawingBuffer()) {
+      GetDrawingBuffer()->SetHdrMetadata(
+          drawing_buffer_tone_mapping_hdr_metadata_);
+    }
+  }
+  return CanvasToneMappingToV8(drawing_buffer_tone_mapping_hdr_metadata_);
 }
 
 V8PredefinedColorSpace WebGLRenderingContextBase::unpackColorSpace(
@@ -4627,8 +4643,8 @@ ScriptValue WebGLRenderingContextBase::getUniform(
         name_builder.Append(']');
       }
       // Now need to look this up by name again to find its location
-      GLint loc = ContextGL()->GetUniformLocation(
-          ObjectOrZero(program), name_builder.ToString().Utf8().c_str());
+      GLint loc = ContextGL()->GetUniformLocation(ObjectOrZero(program),
+                                                  name_builder.Utf8().c_str());
       if (loc == location) {
         // Found it. Use the type in the ActiveInfo to determine the return
         // type.
@@ -7793,6 +7809,7 @@ cc::Layer* WebGLRenderingContextBase::CcLayer() const {
 
 void WebGLRenderingContextBase::SetHdrMetadata(
     const gfx::HDRMetadata& hdr_metadata) {
+  drawing_buffer_tone_mapping_hdr_metadata_ = hdr_metadata;
   if (!isContextLost() && GetDrawingBuffer()) {
     GetDrawingBuffer()->SetHdrMetadata(hdr_metadata);
   }
@@ -8165,7 +8182,7 @@ bool WebGLRenderingContextBase::ValidateLocationLength(
   if (string.length() > max_web_gl_location_length) {
     StringBuilder builder;
     builder.Append("location length > ");
-    builder.Append(String::Format("%d", max_web_gl_location_length));
+    builder.AppendNumber(max_web_gl_location_length);
     SynthesizeGLError(GL_INVALID_VALUE, function_name,
                       builder.ToString().Ascii().c_str());
     return false;

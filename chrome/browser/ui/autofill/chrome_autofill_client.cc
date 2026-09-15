@@ -264,7 +264,7 @@ std::string GetStringRepresentatioOfSavedEntitiesTypes(
 const base::Feature& GetFeature(AutofillClient::IphFeature iph_feature) {
   switch (iph_feature) {
     case AutofillClient::IphFeature::kAutofillAi:
-      return feature_engagement::kIPHAutofillAiOptInFeature;
+      return feature_engagement::kIPHAutofillAiValuablesFeature;
     case AutofillClient::IphFeature::kWalletDirectOffers:
       return feature_engagement::kIPHAutofillWalletDirectOffersFeature;
   }
@@ -274,13 +274,12 @@ const base::Feature& GetFeature(AutofillClient::IphFeature iph_feature) {
 ui::ElementIdentifier GetElementId(AutofillClient::IphFeature iph_feature) {
   switch (iph_feature) {
     case AutofillClient::IphFeature::kAutofillAi:
-      return PopupViewViews::kAutofillAiOptInIphElementId;
+      return PopupViewViews::kAutofillAiValuablesElementId;
     case AutofillClient::IphFeature::kWalletDirectOffers:
       return PopupViewViews::kAutofillWalletDirectOffersIphElementId;
   }
   NOTREACHED();
 }
-
 #endif  // !BUILDFLAG(IS_ANDROID)
 
 }  // namespace
@@ -1670,8 +1669,7 @@ ToastController* ChromeAutofillClient::GetToastController() {
   }
   BrowserWindowInterface* window_interface =
       tab_interface->GetBrowserWindowInterface();
-  return window_interface ? window_interface->GetFeatures().toast_controller()
-                          : nullptr;
+  return window_interface ? ToastController::From(window_interface) : nullptr;
 #endif  // BUILDFLAG(IS_ANDROID)
 }
 

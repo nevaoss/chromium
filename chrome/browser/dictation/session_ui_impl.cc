@@ -60,15 +60,17 @@ ToastId GetToastId(StreamErrorReason reason) {
 
 }  // namespace
 
-SessionUiImpl::SessionUiImpl(tabs::TabInterface& tab,
-                             SessionUiDelegate& delegate)
-    : tab_(tab), controller_(delegate) {
-  BrowserWindowInterface* window = tab.GetBrowserWindowInterface();
-  CHECK(window);
+void SessionUiImpl::CreateBubbleUi() {
+  BrowserWindowInterface* window = tab_->GetBrowserWindowInterface();
+  if (!window) {
+    return;
+  }
 
   // TODO(b/529143806): This should be anchoring to a Tab/WebContents View.
+  auto* browser_elements = BrowserElementsViews::From(window);
   views::View* anchor_view =
-      BrowserElementsViews::From(window)->GetView(kTopContainerElementId);
+      browser_elements ? browser_elements->GetView(kTopContainerElementId)
+                       : nullptr;
   if (!anchor_view) {
     return;
   }
@@ -79,10 +81,7 @@ SessionUiImpl::SessionUiImpl(tabs::TabInterface& tab,
                           base::Unretained(this)),
       base::BindRepeating(&SessionUiImpl::OnToggleActiveStreamClicked,
                           base::Unretained(this)));
-
-  session_state_changed_subscription_ =
-      delegate.AddSessionStateChangedCallback(base::BindRepeating(
-          &SessionUiImpl::OnSessionStateChanged, base::Unretained(this)));
+  bubble_ui_->SetState(ToUiState(controller_->GetState()));
 
   // TODO(b/510778034): Determine what we need to make this accessibility
   // friendly.
@@ -93,12 +92,21 @@ SessionUiImpl::SessionUiImpl(tabs::TabInterface& tab,
   auto params = std::make_unique<tabs::TabDialogManager::Params>();
   params->disable_input = false;
   params->block_new_modal = false;
-  params->close_on_detach = false;
   params->get_dialog_bounds = base::BindRepeating(
       &DictationBubbleUi::GetBubbleBounds, base::Unretained(bubble_ui_.get()));
 
-  tab.GetTabFeatures()->tab_dialog_manager()->ShowDialog(
+  tab_->GetTabFeatures()->tab_dialog_manager()->ShowDialog(
       bubble_ui_->GetWidget(), std::move(params));
+}
+
+SessionUiImpl::SessionUiImpl(tabs::TabInterface& tab,
+                             SessionUiDelegate& delegate)
+    : tab_(tab), controller_(delegate) {
+  CreateBubbleUi();
+
+  session_state_changed_subscription_ =
+      delegate.AddSessionStateChangedCallback(base::BindRepeating(
+          &SessionUiImpl::OnSessionStateChanged, base::Unretained(this)));
 
   tab_detach_subscription_ = tab.RegisterWillDetach(base::BindRepeating(
       &SessionUiImpl::OnTabWillDetach, base::Unretained(this)));
@@ -116,8 +124,7 @@ SessionUiImpl::~SessionUiImpl() = default;
 void SessionUiImpl::OnError(StreamType stream_type, StreamErrorReason reason) {
   BrowserWindowInterface* const window = tab_->GetBrowserWindowInterface();
   if (window) {
-    ToastController* const toast_controller =
-        window->GetFeatures().toast_controller();
+    ToastController* const toast_controller = ToastController::From(window);
     if (toast_controller) {
       toast_controller->MaybeShowToast(ToastParams(GetToastId(reason)));
     }
@@ -133,8 +140,7 @@ void SessionUiImpl::OnError(StreamType stream_type, StreamErrorReason reason) {
 void SessionUiImpl::OnStopped() {
   BrowserWindowInterface* const window = tab_->GetBrowserWindowInterface();
   if (window) {
-    ToastController* const toast_controller =
-        window->GetFeatures().toast_controller();
+    ToastController* const toast_controller = ToastController::From(window);
     if (toast_controller) {
       toast_controller->MaybeShowToast(ToastParams(ToastId::kDictationStopped));
     }
@@ -209,7 +215,18 @@ void SessionUiImpl::OnTabWillDetach(tabs::TabInterface* tab,
   if (reason == tabs::TabInterface::DetachReason::kDelete) {
     controller_->HostTabDidClose();
     // WARNING: Do not add code below, `this` is deleted.
+    return;
   }
+
+  // Close the UI elements (toast and overlay) without ending the session.
+  tab->GetTabFeatures()->tab_dialog_manager()->CloseDialog();
+  bubble_ui_.reset();
+  overlay_view_.reset();
+}
+
+void SessionUiImpl::OnTabInserted(tabs::TabInterface* tab) {
+  // Recreate the UI elements for the ongoing session in the new window.
+  CreateBubbleUi();
 }
 
 void SessionUiImpl::OnTabWillDeactivate(tabs::TabInterface* tab) {
@@ -231,27 +248,13 @@ void SessionUiImpl::OnTabWillDeactivate(tabs::TabInterface* tab) {
                   tab_weak->GetBrowserWindowInterface();
               CHECK(window);
               ToastController* const toast_controller =
-                  window->GetFeatures().toast_controller();
+                  ToastController::From(window);
               CHECK(toast_controller);
               toast_controller->MaybeShowToast(
                   ToastParams(ToastId::kDictationStopped));
             }
           },
           weak_ptr_factory_.GetWeakPtr(), tab->GetWeakPtr()));
-}
-
-void SessionUiImpl::OnTabInserted(tabs::TabInterface* tab) {
-  BrowserWindowInterface* window = tab->GetBrowserWindowInterface();
-  if (!window) {
-    return;
-  }
-  // TODO(b/529143806): This would likely be unneeded if the anchor was based on
-  // the Tab/WebContents View.
-  views::View* new_anchor_view =
-      BrowserElementsViews::From(window)->GetView(kTopContainerElementId);
-  if (new_anchor_view) {
-    bubble_ui_->SetAnchorView(new_anchor_view);
-  }
 }
 
 }  // namespace dictation

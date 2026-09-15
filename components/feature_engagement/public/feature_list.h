@@ -56,6 +56,8 @@ DEFINE_VARIATION_PARAM(kIPHAndroidBottomBarNewTab,
 DEFINE_VARIATION_PARAM(kIPHAndroidBottomBarPromoDialog,
                        "IPH_AndroidBottomBarPromoDialog");
 DEFINE_VARIATION_PARAM(kIPHAndroidTabDeclutter, "IPH_AndroidTabDeclutter");
+DEFINE_VARIATION_PARAM(kIPHAndroidVerticalTabsNewLabel,
+                       "IPH_AndroidVerticalTabsNewLabel");
 DEFINE_VARIATION_PARAM(kIPHAndroidVerticalTabsPromoFeature,
                        "IPH_AndroidVerticalTabsPromo");
 DEFINE_VARIATION_PARAM(kIPHAdaptiveButtonInTopToolbarCustomizationNewTabFeature,
@@ -572,7 +574,6 @@ DEFINE_VARIATION_PARAM(kIPHTabGroupsSharedTabFeedbackFeature,
     BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_FUCHSIA)
 DEFINE_VARIATION_PARAM(kIPHAutofillAccountNameEmailSuggestionFeature,
                        "IPH_AutofillAccountNameEmailSuggestion");
-DEFINE_VARIATION_PARAM(kIPHAutofillAiOptInFeature, "IPH_AutofillAiOptIn");
 DEFINE_VARIATION_PARAM(kIPHAutofillAiValuablesFeature,
                        "IPH_AutofillAiValuables");
 DEFINE_VARIATION_PARAM(kIPHAutofillAtMemoryFeature, "IPH_AutofillAtMemory");
@@ -687,6 +688,7 @@ inline constexpr flags_ui::FeatureEntry::FeatureVariation
         VARIATION_ENTRY(kIPHAndroidBottomBarNewTab),
         VARIATION_ENTRY(kIPHAndroidBottomBarPromoDialog),
         VARIATION_ENTRY(kIPHAndroidTabDeclutter),
+        VARIATION_ENTRY(kIPHAndroidVerticalTabsNewLabel),
         VARIATION_ENTRY(kIPHAndroidVerticalTabsPromoFeature),
         VARIATION_ENTRY(kIPHAppRatingPromptFeature),
         VARIATION_ENTRY(kIPHAppSpecificHistory),
@@ -957,7 +959,6 @@ inline constexpr flags_ui::FeatureEntry::FeatureVariation
     BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_FUCHSIA)
 // keep-sorted start case=no
         VARIATION_ENTRY(kIPHAutofillAccountNameEmailSuggestionFeature),
-        VARIATION_ENTRY(kIPHAutofillAiOptInFeature),
         VARIATION_ENTRY(kIPHAutofillAiValuablesFeature),
         VARIATION_ENTRY(kIPHAutofillAtMemoryFeature),
         VARIATION_ENTRY(kIPHAutofillCardInfoRetrievalSuggestionFeature),

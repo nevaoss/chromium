@@ -18,6 +18,7 @@
 #include "chrome/browser/context_hub/context_hub_service_factory.h"
 #include "chrome/browser/context_hub/memory_bank/memory_bank_entry.h"
 #include "chrome/browser/profiles/profile.h"
+#include "components/sessions/core/session_id.h"
 #include "content/public/browser/web_contents.h"
 #include "url/gurl.h"
 
@@ -325,6 +326,23 @@ void ContextHubPageHandler::GetAllMemoryBankCollections(
   }
 
   service->GetAllMemoryBankCollections(std::move(callback));
+}
+
+void ContextHubPageHandler::UpdateMemoryBankEntryAnnotations(
+    int64_t id,
+    browser::context_hub::mojom::MemoryBankEntryAnnotationsPtr annotations,
+    UpdateMemoryBankEntryAnnotationsCallback callback) {
+  auto* service = ContextHubServiceFactory::GetForProfile(profile_);
+  if (!service || !annotations) {
+    std::move(callback).Run(/*success=*/false);
+    return;
+  }
+
+  std::vector<std::string> tags =
+      std::move(annotations->tags).value_or(std::vector<std::string>{});
+  service->UpdateMemoryBankEntryAnnotations(
+      id, std::move(tags), std::move(annotations->note),
+      std::move(annotations->collection), std::move(callback));
 }
 
 namespace {

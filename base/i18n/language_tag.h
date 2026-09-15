@@ -97,9 +97,10 @@ class COMPONENT_EXPORT(LANGUAGE_TAG) LanguageTag {
   // Notice that this does not necessarily represent the language itself as some
   // of them need their region, script and variant to be properly represented.
   constexpr std::string_view language_subtag() const LIFETIME_BOUND {
-    return i18n_internal::ParseBcp47Tag(tag_string())
-        .value_or(i18n_internal::ParsedBcp47Tag())
-        .language;
+    std::string_view tag = tag_string();
+    size_t hyphen_pos = tag.find('-');
+    return hyphen_pos == std::string_view::npos ? tag
+                                                : tag.substr(0, hyphen_pos);
   }
   // Creates a new `LanguageTag` containing only the language subtag.
   LanguageTag WithLanguageSubtagOnly() const;
@@ -184,12 +185,13 @@ class COMPONENT_EXPORT(LANGUAGE_TAG) LanguageTag {
     requires(extid != 'u' && extid != 'x')
   std::optional<Extension> GetExtension(
       bcp47_extensions::Traits<extid> traits) const {
-    std::string_view extension = GetExtensionStringInternal(extid);
-    if (extension.empty()) {
+    std::vector<std::string_view> extension_subtags =
+        GetExtensionSubtagsInternal(extid);
+    if (extension_subtags.empty()) {
       return std::nullopt;
     }
 
-    return traits.Factory(base::PassKey<LanguageTag>(), extension);
+    return traits.Factory(base::PassKey<LanguageTag>(), extension_subtags);
   }
 
   // Returns a new `LanguageTag` with the given `extension` set (language tags
@@ -230,7 +232,7 @@ class COMPONENT_EXPORT(LANGUAGE_TAG) LanguageTag {
   // dependencies.
   LanguageTag();
 
-  std::string_view GetExtensionStringInternal(char key) const;
+  std::vector<std::string_view> GetExtensionSubtagsInternal(char key) const;
   LanguageTag WithExtensionStringInternal(char key,
                                           std::string_view subtags) const;
 

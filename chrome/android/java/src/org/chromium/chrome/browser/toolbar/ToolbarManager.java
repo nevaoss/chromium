@@ -113,10 +113,12 @@ import org.chromium.chrome.browser.keyboard_accessory.ManualFillingComponentSupp
 import org.chromium.chrome.browser.layouts.LayoutStateProvider;
 import org.chromium.chrome.browser.layouts.LayoutType;
 import org.chromium.chrome.browser.lifecycle.ActivityLifecycleDispatcher;
+import org.chromium.chrome.browser.media.PictureInPictureWindowManagerBridge;
 import org.chromium.chrome.browser.merchant_viewer.MerchantTrustSignalsCoordinator;
 import org.chromium.chrome.browser.merchant_viewer.PageInfoStoreInfoController.StoreInfoActionHandler;
 import org.chromium.chrome.browser.metrics.UmaActivityObserver;
 import org.chromium.chrome.browser.multiwindow.MultiInstanceManager.PersistedInstanceType;
+import org.chromium.chrome.browser.multiwindow.MultiWindowModeStateDispatcher;
 import org.chromium.chrome.browser.multiwindow.MultiWindowUtils;
 import org.chromium.chrome.browser.ntp.IncognitoNewTabPage;
 import org.chromium.chrome.browser.ntp.NewTabPage;
@@ -277,7 +279,6 @@ import org.chromium.ui.base.BackGestureEventSwipeEdge;
 import org.chromium.ui.base.DeviceFormFactor;
 import org.chromium.ui.base.DeviceInput;
 import org.chromium.ui.base.WindowAndroid;
-import org.chromium.ui.display.DisplayUtil;
 import org.chromium.ui.modaldialog.ModalDialogManager;
 import org.chromium.ui.modelutil.PropertyModel;
 import org.chromium.ui.resources.Resource;
@@ -760,6 +761,7 @@ public class ToolbarManager
      * @param statusBarColorController The {@link StatusBarColorController} for the app.
      * @param appMenuDelegate Allows interacting with the app menu.
      * @param activityLifecycleDispatcher Allows monitoring the activity lifecycle.
+     * @param multiWindowModeStateDispatcher Allows monitoring the multi-window mode state.
      * @param bottomSheetController Controls the state of the bottom sheet.
      * @param dataSharingTabManager The {@link} DataSharingTabManager managing communication between
      *     UI and DataSharing services.
@@ -822,6 +824,7 @@ public class ToolbarManager
             StatusBarColorController statusBarColorController,
             AppMenuDelegate appMenuDelegate,
             ActivityLifecycleDispatcher activityLifecycleDispatcher,
+            MultiWindowModeStateDispatcher multiWindowModeStateDispatcher,
             BottomSheetController bottomSheetController,
             @Nullable DataSharingTabManager dataSharingTabManager,
             TabContentManager tabContentManager,
@@ -964,15 +967,12 @@ public class ToolbarManager
             mAdjustedToolbarThemeColorProvider.addThemeColorObserver(this);
         }
 
-        final boolean isDefaultDisplay = DisplayUtil.isContextInDefaultDisplay(mActivity);
         mAppThemeColorProvider =
                 new AppThemeColorProvider(
                         /* context= */ mActivity,
-                        ToolbarFeatures.isAppHeaderCustomizationSupported(
-                                        mIsTablet, isDefaultDisplay)
-                                ? mActivityLifecycleDispatcher
-                                : null,
-                        mDesktopWindowStateManager);
+                        mActivityLifecycleDispatcher,
+                        multiWindowModeStateDispatcher);
+
         // Observe tint changes to update sub-components that rely on the tint (crbug.com/40688818).
         mAppThemeColorProvider.addTintObserver(this);
         mCustomTabThemeColorProvider = new SettableThemeColorProvider(/* context= */ mActivity);
@@ -2063,6 +2063,7 @@ public class ToolbarManager
                         mOmniboxFocusStateSupplier,
                         mFormFieldFocusedSupplier.getObservable(),
                         mFindInPageShowingSupplier,
+                        PictureInPictureWindowManagerBridge.getIsPictureInPictureShowingSupplier(),
                         keyboardAccessoryStateSupplier.getInsetSupplier(),
                         mWindowAndroid.getKeyboardDelegate(),
                         mControlContainer,
@@ -2866,6 +2867,8 @@ public class ToolbarManager
                 && !currentTab.getUrl().isEmpty()) {
             mControlContainer.setReadyForBitmapCapture(true);
         }
+
+        PictureInPictureWindowManagerBridge.initializeWithNative();
 
         TraceEvent.end("ToolbarManager.initializeWithNative");
     }

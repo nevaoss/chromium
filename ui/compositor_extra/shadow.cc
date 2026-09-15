@@ -10,9 +10,9 @@
 #include "ui/compositor/layer_nine_patch.h"
 #include "ui/compositor/layer_not_drawn.h"
 #include "ui/compositor/scoped_layer_animation_settings.h"
+#include "ui/compositor_extra/decoration_util.h"
 #include "ui/gfx/geometry/insets.h"
 #include "ui/gfx/geometry/rounded_corners_f.h"
-#include "ui/gfx/shadow_util.h"
 
 namespace ui {
 
@@ -21,6 +21,29 @@ namespace {
 // Duration for opacity animation in milliseconds.
 constexpr int kShadowAnimationDurationMs = 100;
 
+constexpr Shadow::ElevationColors kDefaultMdShadowColors = {
+    SkColorSetA(SK_ColorBLACK, 0x3d),
+    SkColorSetA(SK_ColorBLACK, 0x1f),
+};
+#if BUILDFLAG(IS_CHROMEOS)
+constexpr Shadow::ElevationColors kDefaultChromeOSSystemUIShadowColors = {
+    SkColorSetA(SK_ColorBLACK, 0x3d),
+    SkColorSetA(SK_ColorBLACK, 0x1a),
+};
+#endif
+
+constexpr Shadow::ElevationColors GetDefaultElevationColors(
+    Shadow::Style style) {
+  switch (style) {
+    case Shadow::Style::kMaterialDesign:
+      return kDefaultMdShadowColors;
+#if BUILDFLAG(IS_CHROMEOS)
+    case Shadow::Style::kChromeOSSystemUI:
+      return kDefaultChromeOSSystemUIShadowColors;
+#endif
+  }
+}
+
 bool IsValidRoundedCorners(const gfx::RoundedCornersF& radii) {
   return radii.upper_left() >= 0.0f && radii.upper_right() >= 0.0f &&
          radii.lower_right() >= 0.0f && radii.lower_left() >= 0.0f;
@@ -28,13 +51,36 @@ bool IsValidRoundedCorners(const gfx::RoundedCornersF& radii) {
 
 }  // namespace
 
+// static
+gfx::ShadowValues Shadow::MakeShadowValues(
+    int elevation,
+    Style style,
+    std::optional<ElevationColors> colors,
+    bool is_pill_shaped) {
+  const ElevationColors shadow_colors =
+      colors.value_or(GetDefaultElevationColors(style));
+
+  switch (style) {
+    case Style::kMaterialDesign:
+      return gfx::ShadowValue::MakeMdShadowValues(
+          elevation, shadow_colors.key_color, shadow_colors.ambient_color,
+          is_pill_shaped);
+#if BUILDFLAG(IS_CHROMEOS)
+    case Style::kChromeOSSystemUI:
+      return gfx::ShadowValue::MakeChromeOSSystemUIShadowValues(
+          elevation, shadow_colors.key_color, shadow_colors.ambient_color,
+          is_pill_shaped);
+#endif
+  }
+}
+
 Shadow::Shadow() : shadow_layer_owner_(this) {}
 
 Shadow::~Shadow() = default;
 
 void Shadow::Init(int elevation) {
   DCHECK_GE(elevation, 0);
-  desired_elevation_ = elevation;
+  elevation_ = elevation;
   SetLayer(std::make_unique<ui::LayerNotDrawn>());
   layer()->SetName("Shadow Parent Container");
   RecreateShadowLayer();
@@ -46,20 +92,26 @@ void Shadow::SetContentBounds(const gfx::Rect& content_bounds) {
   // content bounds were last set. When the window moves but doesn't change
   // size, this is a no-op. (The origin stays the same in this case.)
   if (content_bounds == content_bounds_ &&
-      layer()->bounds() == last_layer_bounds_) {
+      (!layer() || layer()->bounds() == last_layer_bounds_)) {
     return;
   }
 
   content_bounds_ = content_bounds;
-  UpdateShadowAppearance();
+  if (layer()) {
+    UpdateShadowAppearance();
+  }
 }
 
 void Shadow::SetElevation(int elevation) {
   DCHECK_GE(elevation, 0);
-  if (desired_elevation_ == elevation)
+  if (elevation_ == elevation) {
     return;
+  }
 
-  desired_elevation_ = elevation;
+  elevation_ = elevation;
+  if (!layer()) {
+    return;
+  }
 
   // Stop waiting for any as yet unfinished implicit animations.
   StopObservingImplicitAnimations();
@@ -88,10 +140,6 @@ void Shadow::SetElevation(int elevation) {
   }
 }
 
-void Shadow::SetRoundedCornerRadius(int rounded_corner_radius) {
-  SetRoundedCorners(gfx::RoundedCornersF(rounded_corner_radius));
-}
-
 void Shadow::SetRoundedCorners(const gfx::RoundedCornersF& radii) {
   CHECK(IsValidRoundedCorners(radii));
   if (rounded_corners_ == radii) {
@@ -99,20 +147,27 @@ void Shadow::SetRoundedCorners(const gfx::RoundedCornersF& radii) {
   }
 
   rounded_corners_ = radii;
-  UpdateShadowAppearance();
+  if (layer()) {
+    UpdateShadowAppearance();
+  }
 }
 
-void Shadow::SetShadowStyle(gfx::ShadowStyle style) {
-  if (style_ == style)
+void Shadow::SetStyle(Style style) {
+  if (style_ == style) {
     return;
+  }
 
   style_ = style;
-  UpdateShadowAppearance();
+  if (layer()) {
+    UpdateShadowAppearance();
+  }
 }
 
-void Shadow::SetElevationToColorsMap(const ElevationToColorsMap& color_map) {
+void Shadow::SetColorMap(const ElevationToColorsMap& color_map) {
   color_map_ = color_map;
-  UpdateShadowAppearance();
+  if (layer()) {
+    UpdateShadowAppearance();
+  }
 }
 
 void Shadow::OnImplicitAnimationsCompleted() {
@@ -187,20 +242,17 @@ void Shadow::UpdateShadowAppearance() {
                            size_adjusted_rounded_corners.lower_right(),
                            size_adjusted_rounded_corners.lower_left()})) /
                 4;
-  const int size_adjusted_elevation =
-      std::min(max_safe_elevation, static_cast<int>(desired_elevation_));
+  const int size_adjusted_elevation = std::min(max_safe_elevation, elevation_);
   CHECK_GE(size_adjusted_elevation, 0);
 
-  auto iter = color_map_.find(desired_elevation_);
+  auto iter = color_map_.find(elevation_);
+  const gfx::ShadowValues values = MakeShadowValues(
+      size_adjusted_elevation, style_,
+      iter != color_map_.end() ? std::make_optional(iter->second)
+                               : std::nullopt,
+      is_pill_shaped);
   const auto& details =
-      (iter == color_map_.end())
-          ? gfx::ShadowDetails::Get(size_adjusted_elevation,
-                                    size_adjusted_rounded_corners,
-                                    is_pill_shaped, style_)
-          : gfx::ShadowDetails::Get(
-                size_adjusted_elevation, size_adjusted_rounded_corners,
-                /*key_color=*/iter->second.first,
-                /*ambient_color=*/iter->second.second, is_pill_shaped, style_);
+      gfx::ShadowDetails::Get(size_adjusted_rounded_corners, values);
 
   const gfx::Insets aperture_insets =
       gfx::ShadowDetails::GetNineboxApertureInsets(

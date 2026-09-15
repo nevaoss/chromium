@@ -58,16 +58,6 @@ SignInFunctions::SignInFunctions(
         add_tab_function)
     : browser_(browser), add_tab_function_(add_tab_function) {}
 
-SignInFunctions::SignInFunctions(
-    const base::RepeatingCallback<Browser*()> browser,
-    const base::RepeatingCallback<bool(int, const GURL&, ui::PageTransition)>
-        add_tab_function)
-    : browser_(base::BindRepeating(
-          [](base::RepeatingCallback<Browser*()> cb)
-              -> BrowserWindowInterface* { return cb.Run(); },
-          browser)),
-      add_tab_function_(add_tab_function) {}
-
 SignInFunctions::~SignInFunctions() = default;
 
 void SignInFunctions::SignInFromWeb(
@@ -209,8 +199,7 @@ void SignInFunctions::SignOut() {
 
   SignInTestObserver clear_observer(
       id_manager, account_reconcilor(browser_.Run()), ConsentLevel::kSignin);
-  auto* signin_view_controller =
-      browser_.Run()->GetFeatures().signin_view_controller();
+  auto* signin_view_controller = SigninViewController::From(browser_.Run());
   signin_view_controller->SignoutOrReauthWithPrompt(
       signin_metrics::AccessPoint::kProfileMenuSignoutConfirmationPrompt,
       signin_metrics::ProfileSignout::kUserClickedSignoutProfileMenu,

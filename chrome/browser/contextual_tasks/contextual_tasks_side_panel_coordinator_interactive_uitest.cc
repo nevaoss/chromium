@@ -35,8 +35,10 @@
 #include "components/contextual_tasks/public/contextual_tasks_service.h"
 #include "components/contextual_tasks/public/features.h"
 #include "components/sessions/content/session_tab_helper.h"
+#include "components/sessions/core/session_id.h"
 #include "components/tabs/public/tab_interface.h"
 #include "components/web_modal/web_contents_modal_dialog_manager.h"
+#include "content/public/browser/navigation_controller.h"
 #include "content/public/common/content_features.h"
 #include "content/public/test/browser_test.h"
 #include "content/public/test/browser_test_utils.h"
@@ -45,6 +47,7 @@
 #include "net/dns/mock_host_resolver.h"
 #include "ui/actions/actions.h"
 #include "ui/base/models/dialog_model.h"
+#include "ui/base/page_transition_types.h"
 #include "ui/base/window_open_disposition.h"
 #include "ui/views/widget/widget_deletion_observer.h"
 
@@ -104,6 +107,7 @@ class ContextualTasksSidePanelCoordinatorInteractiveUiTest
   ContextualTasksSidePanelCoordinatorInteractiveUiTest() {
     scoped_feature_list_.InitWithFeaturesAndParameters(
         {{kContextualTasks, {}},
+         {kContextualTasksForceEntryPointEligibility, {}},
          {kContextualTasksEphemeralBrandedEntryPoint,
           {{"ContextualTasksEntryPoint", "toolbar-ephemeral-branded"}}}},
         {});
@@ -162,11 +166,12 @@ class ContextualTasksSidePanelCoordinatorInteractiveUiTest
     coordinator->CreateCachedWebContentsForTesting(task_id1_, /*is_open=*/true);
     coordinator->CreateCachedWebContentsForTesting(task_id2_, /*is_open=*/true);
 
-    browser()->GetFeatures().side_panel_ui()->DisableAnimationsForTesting();
+    SidePanelUI::From(browser())->DisableAnimationsForTesting();
   }
 
   void SetUpOnMainThread() override {
     InteractiveBrowserTest::SetUpOnMainThread();
+    SidePanelUI::From(browser())->DisableAnimationsForTesting();
     host_resolver()->AddRule("*", "127.0.0.1");
     ASSERT_TRUE(embedded_test_server()->Start());
     url_loader_interceptor_ = std::make_unique<content::URLLoaderInterceptor>(
@@ -700,9 +705,8 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksSidePanelCoordinatorInteractiveUiTest,
       }));
 }
 
-// TODO(crbug.com/470086449): Disabled due to flakiness.
 IN_PROC_BROWSER_TEST_F(ContextualTasksSidePanelCoordinatorInteractiveUiTest,
-                       DISABLED_UpdateActiveTabContextStatusOnTabSwitch) {
+                       UpdateActiveTabContextStatusOnTabSwitch) {
   SetUpTasks();
   ContextualTasksSidePanelCoordinator* coordinator = GetCoordinator();
   GURL foo("https://foo.com");
@@ -744,11 +748,15 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksSidePanelCoordinatorInteractiveUiTest,
   // Define expectations on the mock handler.
   using SuggestedTabInfo = contextual_tasks::SuggestedTabInfo;
 
-  // Expectations are set before running the sequence.
-  // This should trigger UpdateSuggestedTabContext with valid tab info.
+  base::RunLoop initial_run_loop;
   EXPECT_CALL(*mock_handler, UpdateSuggestedTabContext(
                                  Pointee(Field(&SuggestedTabInfo::url, foo))))
-      .Times(1);
+      .WillRepeatedly(
+          [&](const SuggestedTabInfo* tab_info) { initial_run_loop.Quit(); });
+
+  base::RunLoop tab_switch_run_loop;
+  EXPECT_CALL(*mock_handler, UpdateSuggestedTabContext(testing::IsNull()))
+      .WillOnce([&]() { tab_switch_run_loop.Quit(); });
 
   RunTestSequence(
       // 1. Open side panel.
@@ -757,19 +765,22 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksSidePanelCoordinatorInteractiveUiTest,
             false, omnibox::ChromeAimEntryPoint::UNKNOWN_AIM_ENTRY_POINT);
       }),
       WaitForShow(kContextualTasksSidePanelWebViewElementId),
-      // Verify that `OnActiveTabContextStatusChanged` is called on the UI.
-      Check([&]() {
-        Mock::VerifyAndClearExpectations(mock_handler);
-        // Set next expectation. Because the other tab has a chrome:// URL,
-        // `UpdateSuggestedTabContext` will be called with a nullptr.
-        EXPECT_CALL(*mock_handler, UpdateSuggestedTabContext(testing::IsNull()))
-            .Times(1);
-        return true;
-      }),
+      // Trigger update on open now that panel is showing.
+      Do([&]() { ui->OnActiveTabContextStatusChanged(); }),
+      // Wait for UpdateSuggestedTabContext to be called with foo.
+      Do([&]() { initial_run_loop.Run(); }),
+      // Verify that active tab context suggestion is showing.
+      Check([&]() { return ui->IsActiveTabContextSuggestionShowing(); }),
       // 2. Switch tabs to another tab.
       Do([&]() {
         TabListInterface* tab_list = TabListInterface::From(browser());
         tab_list->ActivateTab(tab_list->GetTab(2)->GetHandle());
+      }),
+      // 3. Wait for UpdateSuggestedTabContext(nullptr) before resetting
+      // handler.
+      Do([&]() {
+        tab_switch_run_loop.Run();
+        EXPECT_FALSE(ui->IsActiveTabContextSuggestionShowing());
         ui->SetComposeboxHandlerForTesting(nullptr);
       }));
 }

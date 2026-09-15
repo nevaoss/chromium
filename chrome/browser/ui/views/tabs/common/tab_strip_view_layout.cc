@@ -10,8 +10,11 @@
 #include "chrome/browser/ui/layout_constants.h"
 #include "chrome/browser/ui/tabs/tab_style.h"
 #include "chrome/browser/ui/views/tabs/common/pinned_tab_container_view.h"
+#include "chrome/browser/ui/views/tabs/common/tab_collection_node.h"
+#include "chrome/browser/ui/views/tabs/common/tab_strip_collection_controller.h"
 #include "chrome/browser/ui/views/tabs/common/tab_strip_view.h"
 #include "chrome/browser/ui/views/tabs/common/unpinned_tab_container_view.h"
+#include "chrome/browser/ui/views/tabs/horizontal/horizontal_tab_closing_helper.h"
 #include "chrome/browser/ui/views/tabs/horizontal/tab_scroll_button_container.h"
 #include "ui/views/controls/scroll_view.h"
 #include "ui/views/controls/separator.h"
@@ -88,9 +91,14 @@ views::ProposedLayout TabStripViewLayout::CalculateHorizontalLayout(
   // Use unconstrained preferred size so the layout accounts for the total
   // desired width of unpinned tabs and groups. The unpinned container may not
   // be set yet so fallback to 0 if it doesn't exist.
-  const int unpinned_preferred_width =
+  int unpinned_preferred_width =
       unpinned_container ? unpinned_container->GetUnconstrainedPreferredWidth()
                          : 0;
+  if (const auto override_width =
+          GetClosingModeUnpinnedContainerOverrideWidth(tab_strip_view)) {
+    unpinned_preferred_width =
+        std::min(unpinned_preferred_width, *override_width);
+  }
 
   const views::SizeBound available_width = size_bounds.width();
 
@@ -143,8 +151,11 @@ views::ProposedLayout TabStripViewLayout::CalculateHorizontalLayout(
       show_scroll_buttons = true;
     }
 
-    tab_strip_view->SetAvailableUnpinnedSpace(
-        views::SizeBound(available_unpinned_width));
+    // Do not overwrite available space during zero-size measurement queries.
+    if (available_width.value() > 0) {
+      tab_strip_view->SetAvailableUnpinnedSpace(
+          views::SizeBound(available_unpinned_width));
+    }
     unpinned_width = std::min(unpinned_width, available_unpinned_width);
   }
   gfx::Rect unpinned_bounds(x, 0, unpinned_width, container_height);
@@ -291,4 +302,18 @@ views::ProposedLayout TabStripViewLayout::CalculateVerticalLayout(
   layouts.host_size = gfx::Size(size_bounds.width().value(),
                                 unpinned_container_bounds.bottom());
   return layouts;
+}
+
+std::optional<int>
+TabStripViewLayout::GetClosingModeUnpinnedContainerOverrideWidth(
+    const TabStripView* tab_strip_view) const {
+  const TabStripCollectionController* controller =
+      tab_strip_view && tab_strip_view->collection_node_
+          ? tab_strip_view->collection_node_->GetController()
+          : nullptr;
+  if (controller && controller->tab_closing_helper()) {
+    return controller->tab_closing_helper()
+        ->override_available_width_for_tabs();
+  }
+  return std::nullopt;
 }

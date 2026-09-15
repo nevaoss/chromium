@@ -22,7 +22,6 @@ import static org.mockito.Mockito.when;
 import android.app.Activity;
 import android.content.res.Resources;
 import android.graphics.Point;
-import android.util.Pair;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
@@ -86,12 +85,12 @@ import org.chromium.url.JUnitTestGURLs;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.Supplier;
 
 @RunWith(BaseRobolectricTestRunner.class)
 @DisableFeatures({
     ChromeFeatureList.BOOKMARKS_BAR_NTP,
-    ChromeFeatureList.ANDROID_DESKTOP_BOOKMARK_LAYOUT
+    ChromeFeatureList.ANDROID_DESKTOP_BOOKMARK_LAYOUT,
+    ChromeFeatureList.ANDROID_DESKTOP_BOOKMARK_DIALOG
 })
 public class BookmarkBarMediatorTest {
     @Rule
@@ -135,7 +134,6 @@ public class BookmarkBarMediatorTest {
 
         mBookmarkModel = FakeBookmarkModel.createModel();
         BookmarkModel.setInstanceForTesting(mBookmarkModel);
-        Supplier<Pair<Integer, Integer>> controlsHeightSupplier = () -> new Pair<>(0, 0);
         when(mLayoutManager.getItemsOverflowSupplier()).thenReturn(mItemsOverflowSupplier);
 
         when(mProfile.getOriginalProfile()).thenReturn(mProfile);
@@ -457,8 +455,8 @@ public class BookmarkBarMediatorTest {
     public void testPopupMenuItemClickListener_CtrlClick_Folder() {
         BookmarkId desktopFolderId = mBookmarkModel.getDesktopFolderId();
         BookmarkId folderId = mBookmarkModel.addFolder(desktopFolderId, 0, "Test Folder");
-        BookmarkId urlId1 = mBookmarkModel.addBookmark(folderId, 0, "B1", JUnitTestGURLs.URL_1);
-        BookmarkId urlId2 = mBookmarkModel.addBookmark(folderId, 0, "B2", JUnitTestGURLs.URL_2);
+        mBookmarkModel.addBookmark(folderId, 0, "B1", JUnitTestGURLs.URL_1);
+        mBookmarkModel.addBookmark(folderId, 0, "B2", JUnitTestGURLs.URL_2);
 
         ModelList modelList =
                 mMediator.buildMenuModelListForFolder(mBookmarkModel, desktopFolderId);

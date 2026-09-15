@@ -2,6 +2,7 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+import("//build/config/features.gni")
 import("//chrome/common/features.gni")
 
 source_set("termination_notification") {
@@ -212,6 +213,7 @@ if (!is_android) {
       "//content/test:test_support",
       "//testing/gmock",
       "//testing/gtest",
+      "//ui/base/idle:test_support",
     ]
 
     if (is_chromeos) {
@@ -231,6 +233,26 @@ if (!is_android) {
 
     if (is_win || is_mac || is_linux) {
       sources += [ "scheduled_restart_manager_unittest.cc" ]
+      deps += [
+        ":test_support",
+        "//build/config/linux/dbus:buildflags",
+      ]
+    }
+    if (is_linux && use_dbus) {
+      deps += [ "//components/dbus" ]
+    }
+  }
+
+  if (is_win || is_mac || is_linux) {
+    source_set("test_support") {
+      testonly = true
+      public = [ "scheduled_restart_test_utils.h" ]
+      sources = [ "scheduled_restart_test_utils.cc" ]
+      public_deps = [
+        "//base",
+        "//chrome/browser/upgrade_detector",
+      ]
+      deps = [ ":lifetime" ]
     }
   }
 
@@ -280,6 +302,7 @@ if (!is_android) {
 
     if (is_win || is_mac || is_linux) {
       sources += [ "scheduled_restart_manager_browsertest.cc" ]
+      deps += [ ":test_support" ]
     }
 
     if (is_chromeos) {

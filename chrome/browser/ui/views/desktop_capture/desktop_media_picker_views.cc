@@ -77,7 +77,6 @@
 #include "ui/aura/window_tree_host.h"
 #endif
 
-
 using ::blink::mojom::MediaStreamRequestResult;
 using ::content::DesktopMediaID;
 using ::content::RenderFrameHost;
@@ -465,7 +464,8 @@ DesktopMediaPickerDialogView::DesktopMediaPickerDialogView(
               ? params.web_contents->GetPrimaryMainFrame()->GetGlobalId()
               : content::GlobalRenderFrameHostId()),
       parent_(parent),
-      dialog_open_time_(base::TimeTicks::Now()) {
+      dialog_open_time_(base::TimeTicks::Now()),
+      on_picker_destroying_(std::move(params.on_picker_destroying)) {
   CHECK(!params.force_audio_checkboxes_to_default_checked ||
         !params.exclude_system_audio);
   RecordAction(base::UserMetricsAction("GetDisplayMedia.ShowDialog"));
@@ -737,6 +737,9 @@ DesktopMediaPickerDialogView::DesktopMediaPickerDialogView(
 }
 
 DesktopMediaPickerDialogView::~DesktopMediaPickerDialogView() {
+  if (on_picker_destroying_) {
+    std::move(on_picker_destroying_).Run();
+  }
 #if BUILDFLAG(IS_WIN)
   if (!pip_exclusion_session_id_) {
     return;
@@ -1431,8 +1434,6 @@ void DesktopMediaPickerDialogView::OnPermissionUpdate(bool has_permission) {
     category.pane->OnScreenCapturePermissionUpdate(has_permission);
   }
 }
-
-
 
 void DesktopMediaPickerDialogView::OnAudioSharingApprovedByUserUpdate() {
   UpdateAudioPermissionsWarningState(GetSelectedTabIndex());

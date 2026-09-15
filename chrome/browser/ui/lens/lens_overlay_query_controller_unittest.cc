@@ -532,6 +532,10 @@ TEST_F(LensOverlayQueryControllerTest, FetchInitialQuery_ReturnsResponse) {
   auto sent_object_request = query_controller.sent_full_image_objects_request();
   ASSERT_EQ(sent_object_request.request_context().request_id().sequence_id(),
             1);
+  ASSERT_TRUE(
+      sent_object_request.request_context().request_id().has_chrome_tab_data());
+  ASSERT_TRUE(
+      sent_object_request.request_context().request_id().is_implicit_upload());
   ASSERT_EQ(sent_object_request.image_data().image_metadata().width(), 100);
   ASSERT_EQ(sent_object_request.image_data().image_metadata().height(), 100);
   ASSERT_EQ(sent_object_request.request_context()
@@ -2245,11 +2249,23 @@ TEST_F(LensOverlayQueryControllerTest,
 
   // The full image and page content requests should have the same request id.
   ASSERT_EQ(query_controller.sent_full_image_request_id().sequence_id(), 1);
+  ASSERT_TRUE(
+      query_controller.sent_full_image_request_id().has_chrome_tab_data());
+  ASSERT_TRUE(
+      query_controller.sent_full_image_request_id().is_implicit_upload());
   ASSERT_EQ(query_controller.sent_page_content_objects_request()
                 .request_context()
                 .request_id()
                 .sequence_id(),
             1);
+  ASSERT_TRUE(query_controller.sent_page_content_objects_request()
+                  .request_context()
+                  .request_id()
+                  .has_chrome_tab_data());
+  ASSERT_TRUE(query_controller.sent_page_content_objects_request()
+                  .request_context()
+                  .request_id()
+                  .is_implicit_upload());
 
   // Send a new page content update request.
   query_controller.SendUpdatedPageContent(
@@ -3127,6 +3143,12 @@ TEST_F(LensOverlayQueryControllerTest,
   ASSERT_EQ(
       initial_sent_object_request.request_context().request_id().sequence_id(),
       1);
+  ASSERT_TRUE(initial_sent_object_request.request_context()
+                  .request_id()
+                  .has_chrome_tab_data());
+  ASSERT_TRUE(initial_sent_object_request.request_context()
+                  .request_id()
+                  .is_implicit_upload());
   ASSERT_EQ(query_controller.latency_gen_204_counter(
                 LatencyType::kFullPageObjectsRequestFetchLatency),
             1);
@@ -3147,6 +3169,12 @@ TEST_F(LensOverlayQueryControllerTest,
                 .request_id()
                 .sequence_id(),
             2);
+  ASSERT_TRUE(initial_sent_interaction_request.request_context()
+                  .request_id()
+                  .has_chrome_tab_data());
+  ASSERT_TRUE(initial_sent_interaction_request.request_context()
+                  .request_id()
+                  .is_implicit_upload());
   std::string interaction_analytics_id =
       GetAnalyticsIdFromUrl(url_response_future.Get().url());
   ASSERT_NE(interaction_analytics_id,
@@ -3301,6 +3329,10 @@ TEST_F(LensOverlayQueryControllerTest, GetVsridForNewTab) {
   ASSERT_EQ(request_id.image_sequence_id(),
             new_tab_request_id.image_sequence_id());
   ASSERT_NE(request_id.analytics_id(), new_tab_request_id.analytics_id());
+  ASSERT_TRUE(request_id.has_chrome_tab_data());
+  ASSERT_TRUE(request_id.is_implicit_upload());
+  ASSERT_TRUE(new_tab_request_id.has_chrome_tab_data());
+  ASSERT_TRUE(new_tab_request_id.is_implicit_upload());
 
   // Check that sending a new task completion event still has the original
   // analytics id.
@@ -4633,10 +4665,12 @@ TEST_F(LensOverlayQueryControllerMockTimeTest,
       url_response_future;
   base::test::TestFuture<const std::string&, const SkBitmap&>
       thumbnail_created_future;
+  base::test::TestFuture<uint64_t, uint64_t> upload_progress_future;
   TestLensOverlayQueryController query_controller(
       full_image_response_future.GetRepeatingCallback(),
       url_response_future.GetRepeatingCallback(), base::NullCallback(),
-      thumbnail_created_future.GetRepeatingCallback(), base::NullCallback(),
+      thumbnail_created_future.GetRepeatingCallback(),
+      upload_progress_future.GetRepeatingCallback(),
       fake_variations_client_.get(),
       IdentityManagerFactory::GetForProfile(profile()), profile(),
       lens::LensOverlayInvocationSource::kAppMenu,
@@ -4670,12 +4704,15 @@ TEST_F(LensOverlayQueryControllerMockTimeTest,
   CheckClusterInfoRequestMatchesDefaultClientContentRequest(
       *query_controller.last_cluster_info_request());
   full_image_response_future.Clear();
+  ASSERT_TRUE(upload_progress_future.Wait());
+  upload_progress_future.Clear();
 
   task_environment_->FastForwardBy(base::TimeDelta(base::Minutes(60)));
   query_controller.SendRegionSearch(
       kTestTime, std::move(region), lens::REGION_SEARCH,
       additional_search_query_params, std::nullopt);
   ASSERT_TRUE(url_response_future.Wait());
+  ASSERT_TRUE(upload_progress_future.Wait());
   query_controller.EndQuery();
 
   // The full image response having another value, after it was already

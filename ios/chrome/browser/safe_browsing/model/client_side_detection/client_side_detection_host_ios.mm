@@ -9,6 +9,7 @@
 #import <algorithm>
 
 #import "base/check.h"
+#import "base/command_line.h"
 #import "base/functional/bind.h"
 #import "base/functional/callback_helpers.h"
 #import "base/metrics/histogram_functions.h"
@@ -25,6 +26,7 @@
 #import "components/safe_browsing/core/common/phishing_classifier/phishing_image_embedder.h"
 #import "components/safe_browsing/core/common/phishing_classifier/scorer.h"
 #import "components/safe_browsing/core/common/safe_browsing_prefs.h"
+#import "components/safe_browsing/core/common/safebrowsing_switches.h"
 #import "components/safe_browsing/core/common/threat_enums.h"
 #import "components/safe_browsing/core/common/visual_utils.h"
 #import "components/safe_browsing/ios/browser/client_side_detection_feature_cache.h"
@@ -55,6 +57,9 @@ namespace safe_browsing {
 namespace {
 // Delay before initiating snapshot and classification to allow page to settle.
 constexpr base::TimeDelta kStabilizationDelay = base::Milliseconds(750);
+
+// Whether local resource / localhost checks should be bypassed for testing.
+bool g_bypass_local_resource_check_for_testing = false;
 
 // Matches enum in tools/metrics/histograms/metadata/sb_client/enums.xml.
 enum class ClientSideAllowlistMatchResult {
@@ -99,6 +104,19 @@ PhishingDetectorResult GetPhishingDetectorResult(
     case PhishingClassifier::Result::kVisualExtractionFailed:
       return PhishingDetectorResult::VISUAL_EXTRACTION_FAILED;
   }
+}
+
+// Returns true if the CSD allowlist check should be bypassed based on for
+// `request_type` or command-line switch state.
+bool ShouldSkipCSDAllowlist(ClientSideDetectionType request_type) {
+  // If we get a suspicious verdict from RTLookupResponse, we should get a
+  // second opinion on CSD side, so we skip the allowlist. If we get an
+  // explicit request to send a report from the user, we skip the allowlist.
+  // We also check the command line flag if the allowlist should be skipped.
+  return request_type == ClientSideDetectionType::FORCE_REQUEST ||
+         request_type == ClientSideDetectionType::USER_REPORT ||
+         base::CommandLine::ForCurrentProcess()->HasSwitch(
+             switches::kSkipCSDAllowlistOnPreclassification);
 }
 
 }  // namespace
@@ -529,6 +547,13 @@ void ClientSideDetectionHostIOS::
                        verdict, PhishingClassifier::Result::kSuccess);
 }
 
+// static
+void ClientSideDetectionHostIOS::
+    SetBypassLocalResourceCheckForTesting(  // IN-TEST
+        bool bypass) {
+  g_bypass_local_resource_check_for_testing = bypass;
+}
+
 #pragma mark - WebPerformanceMetricsTabHelper::Observer
 
 void ClientSideDetectionHostIOS::OnFirstContentfulPaint(
@@ -614,26 +639,29 @@ void ClientSideDetectionHostIOS::MaybeStartClassification(const GURL& url) {
 
   // 2. Local Resource / Localhost Guard.
   std::string_view host = url.host();
-  if (base::FeatureList::IsEnabled(kClientSideDetectionLocalResourceCheckFix)) {
-    if (url.SchemeIsFile() || net::IsLocalhost(url)) {
-      RecordPreClassificationCheckResult(
-          url, PreClassificationCheckResult::NO_CLASSIFY_LOCAL_RESOURCE);
-      return;
-    }
-  } else {
-    if (url.HostIsIPAddress()) {
-      net::IPAddress address;
-      if (address.AssignFromIPLiteral(host) && !address.IsValid()) {
+  if (!g_bypass_local_resource_check_for_testing) {
+    if (base::FeatureList::IsEnabled(
+            kClientSideDetectionLocalResourceCheckFix)) {
+      if (url.SchemeIsFile() || net::IsLocalhost(url)) {
         RecordPreClassificationCheckResult(
             url, PreClassificationCheckResult::NO_CLASSIFY_LOCAL_RESOURCE);
         return;
       }
-    } else if (host == "localhost" ||
-               host.find('.') == std::string_view::npos) {
-      // Intranet hostnames have no dots.
-      RecordPreClassificationCheckResult(
-          url, PreClassificationCheckResult::NO_CLASSIFY_LOCAL_RESOURCE);
-      return;
+    } else {
+      if (url.HostIsIPAddress()) {
+        net::IPAddress address;
+        if (address.AssignFromIPLiteral(host) && !address.IsValid()) {
+          RecordPreClassificationCheckResult(
+              url, PreClassificationCheckResult::NO_CLASSIFY_LOCAL_RESOURCE);
+          return;
+        }
+      } else if (host == "localhost" ||
+                 host.find('.') == std::string_view::npos) {
+        // Intranet hostnames have no dots.
+        RecordPreClassificationCheckResult(
+            url, PreClassificationCheckResult::NO_CLASSIFY_LOCAL_RESOURCE);
+        return;
+      }
     }
   }
 
@@ -661,7 +689,7 @@ void ClientSideDetectionHostIOS::MaybeStartClassification(const GURL& url) {
   }
 
   // 5. Private IP Address.
-  if (url.HostIsIPAddress()) {
+  if (!g_bypass_local_resource_check_for_testing && url.HostIsIPAddress()) {
     net::IPAddress address;
     if (address.AssignFromIPLiteral(host) &&
         service_->IsPrivateIPAddress(address)) {
@@ -692,7 +720,7 @@ void ClientSideDetectionHostIOS::MaybeStartClassification(const GURL& url) {
     return;
   }
 
-  // 9. Query CSD Allowlist (Asynchronous Database Check).
+  // 9. Safe Browsing database manager not available.
   scoped_refptr<safe_browsing::SafeBrowsingDatabaseManager> database_manager =
       GetApplicationContext()->GetSafeBrowsingService()
           ? GetApplicationContext()
@@ -702,6 +730,12 @@ void ClientSideDetectionHostIOS::MaybeStartClassification(const GURL& url) {
   if (!database_manager) {
     RecordPreClassificationCheckResult(
         url, PreClassificationCheckResult::NO_CLASSIFY_NO_DATABASE_MANAGER);
+    return;
+  }
+
+  // 10. Query CSD Allowlist (Asynchronous Database Check).
+  if (ShouldSkipCSDAllowlist(last_request_type())) {
+    OnAllowlistCheckDone(url, /*match_allowlist=*/false);
     return;
   }
 

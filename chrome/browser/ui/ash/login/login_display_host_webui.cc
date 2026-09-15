@@ -77,7 +77,6 @@
 #include "chrome/browser/ui/webui/ash/login/os_install_screen_handler.h"
 #include "chrome/browser/ui/webui/ash/login/welcome_screen_handler.h"
 #include "chrome/common/chrome_constants.h"
-#include "chrome/common/chrome_switches.h"
 #include "chromeos/ash/components/audio/sounds.h"
 #include "chromeos/ash/components/dbus/session_manager/session_manager_client.h"
 #include "chromeos/ash/components/install_attributes/install_attributes.h"
@@ -654,6 +653,8 @@ void LoginDisplayHostWebUI::StartWizard(OobeScreenId first_screen) {
         &application_locale_storage_.get(), shared_url_loader_factory_.get(),
         &browser_policy_connector_ash_.get(),
         g_browser_process->platform_part()->component_manager_ash(),
+        g_browser_process->platform_part()
+            ->device_restriction_schedule_controller(),
         GetWizardContext());
     NotifyWizardCreated();
     wizard_controller_->Init(first_screen);
@@ -727,6 +728,8 @@ void LoginDisplayHostWebUI::OnStartAppLaunch() {
         &application_locale_storage_.get(), shared_url_loader_factory_.get(),
         &browser_policy_connector_ash_.get(),
         g_browser_process->platform_part()->component_manager_ash(),
+        g_browser_process->platform_part()
+            ->device_restriction_schedule_controller(),
         GetWizardContext());
     NotifyWizardCreated();
   }
