@@ -207,10 +207,11 @@ int AppRuntimeBrowserMainParts::PreCreateThreads() {
   return content::RESULT_CODE_NORMAL_EXIT;
 }
 
-void AppRuntimeBrowserMainParts::PostCreateThreads() {
+int AppRuntimeBrowserMainParts::PostCreateThreads() {
   for (auto* extra_part : app_runtime_extra_parts_) {
     extra_part->PostCreateThreads();
   }
+  return 0;
 }
 
 void AppRuntimeBrowserMainParts::PostMainMessageLoopRun() {

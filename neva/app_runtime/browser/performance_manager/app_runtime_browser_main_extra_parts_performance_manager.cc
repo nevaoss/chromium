@@ -107,7 +107,7 @@ AppRuntimeBrowserMainExtraPartsPerformanceManager::GetFeatureObserverClient() {
   return feature_observer_client_.get();
 }
 
-void AppRuntimeBrowserMainExtraPartsPerformanceManager::PostCreateThreads() {
+int AppRuntimeBrowserMainExtraPartsPerformanceManager::PostCreateThreads() {
   performance_manager_lifetime_ =
       std::make_unique<performance_manager::PerformanceManagerLifetime>(
           performance_manager::GraphFeatures::WithMinimal(),
@@ -116,6 +116,7 @@ void AppRuntimeBrowserMainExtraPartsPerformanceManager::PostCreateThreads() {
 
   page_load_tracker_decorator_helper_ =
       std::make_unique<performance_manager::PageLoadTrackerDecoratorHelper>();
+  return 0;
 }
 
 void AppRuntimeBrowserMainExtraPartsPerformanceManager::
