@@ -10,6 +10,11 @@ on:
   issue_comment:
     types:
       - created
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
 
 permissions:
   contents: read
@@ -26,6 +31,7 @@ jobs:
 
     if: >-
       github.event_name == 'workflow_dispatch' ||
+      github.event_name == 'pull_request' ||
       (
         github.event_name == 'issue_comment' &&
         github.event.issue.pull_request != null &&
@@ -64,6 +70,16 @@ jobs:
         run: |
           echo "number=${PR_NUMBER}" >> "${GITHUB_OUTPUT}"
 
+      - name: Prepare PR number for pull request test
+        if: github.event_name == 'pull_request'
+        id: test_pr
+        shell: bash
+        env:
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          echo "number=${PR_NUMBER}" >> "${GITHUB_OUTPUT}"
+
       - name: Prepare parameters
         id: prepare_params
         shell: bash
@@ -71,13 +87,14 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           PR_NUMBER: >-
             ${{ steps.manual_pr.outputs.number ||
-              steps.comment_pr.outputs.number }}
+              steps.comment_pr.outputs.number ||
+              steps.test_pr.outputs.number }}
         run: |
           set -euo pipefail
 
-          read PR_HEAD_SHA CURRENT_BASE_SHA < <(
+          read PR_HEAD_SHA CURRENT_BASE_SHA PR_HEAD_REF < <(
             gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}" | \
-              jq -r '[.head.sha, .base.sha] | @tsv'
+              jq -r '[.head.sha, .base.sha, .head.ref] | @tsv'
           )
 
           COMPARE_JSON=$(
@@ -93,6 +110,7 @@ jobs:
             echo "number=${PR_NUMBER}"
             echo "base_sha=${PR_BASE_SHA}"
             echo "head_sha=${PR_HEAD_SHA}"
+            echo "head_ref=${PR_HEAD_REF}"
           } >> "${GITHUB_OUTPUT}"
 
       - name: Checkout CI repository
@@ -109,9 +127,11 @@ jobs:
           CI_TOKEN: ${{ secrets.CI_TOKEN }}
           GITHUB_PR_BASE_SHA: ${{ steps.prepare_params.outputs.base_sha }}
           GITHUB_PR_HEAD_SHA: ${{ steps.prepare_params.outputs.head_sha }}
+          GITHUB_PR_HEAD_REF: ${{ steps.prepare_params.outputs.head_ref }}
           GITHUB_PR_NUMBER: >-
             ${{ steps.manual_pr.outputs.number ||
-              steps.comment_pr.outputs.number }}
+              steps.comment_pr.outputs.number ||
+              steps.test_pr.outputs.number }}
         run: |
           set -euo pipefail
           
