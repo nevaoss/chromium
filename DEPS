@@ -4708,6 +4708,13 @@ hooks = [
     'action': ['git', '-C', 'src/v8', 'am',
               '../neva/patches/0010-Set-using-local-dynamic-for-webOS.patch']
   },
+  # Apply V8 metagen fallback for missing .gn marker
+  {
+    'name': 'Apply_v8_metagen_gn_marker_fallback',
+    'pattern': '.',
+    'action': ['git', '-C', 'src/v8', 'am',
+              '../neva/patches/0015-v8-metagen-use-v8-root-as-fallback-when-gn-marker-not-found.patch']
+  },
   # Apply 'Refactor neva content decryption module' patch
   {
     'name': 'Apply_refactor_neva_content_decryption_module',

@@ -1,0 +1,88 @@
+From 0000000000000000000000000000000000000000 Mon Sep 17 00:00:00 2001
+From: Neva Build System <build@webos>
+Date: Wed, 1 Jan 2025 00:00:00 +0000
+Subject: [PATCH] [build][webos] V8 metagen: use --v8-root as fallback when .gn marker not found
+
+:Release Notes:
+Fix V8 metagen build failure in Yocto/WebOS environments where .gn
+marker is not present in the build directory hierarchy.
+
+:Detailed Notes:
+In Yocto/WebOS builds, the .gn source-root marker does not exist in the
+build directory tree, causing `get_compile_args_from_gn_desc` to fail with:
+  RuntimeError: [metagen] no .gn source-root marker found above <build_dir>.
+
+The --v8-root argument was already being parsed but not used for source
+root discovery. This patch makes _gn_source_root fall back to v8_root
+when walking up from build_dir fails to find a .gn marker, and passes
+v8_root through get_compile_args_from_gn_desc.
+
+diff --git a/tools/metagen/compile_flags.py b/tools/metagen/compile_flags.py
+index 200dec80617..991e7db8b3a 100644
+--- a/tools/metagen/compile_flags.py
++++ b/tools/metagen/compile_flags.py
+@@ -120,20 +120,30 @@ def _find_gn(source_root: str) -> str | None:
+   return shutil.which("gn")
+ 
+ 
+-def _gn_source_root(build_dir: str) -> str | None:
++def _gn_source_root(build_dir: str, v8_root: str | None = None) -> str | None:
+   """Return GN's source root: the nearest ancestor of build_dir holding
+   a `.gn` marker (GN's canonical root definition). This differs between
+   layouts -- the V8 checkout standalone, the Chromium `src/` root under
+-  Chromium -- and is what `//` in gn desc output resolves against."""
++  Chromium -- and is what `//` in gn desc output resolves against.
++
++  If no `.gn` marker is found walking up from build_dir, fall back to
++  `v8_root` (when provided), since that is the known V8 source root.
++  """
+   d = os.path.abspath(build_dir)
+   while True:
+     if os.path.isfile(os.path.join(d, ".gn")):
+       return d
+     parent = os.path.dirname(d)
+     if parent == d:
+-      return None
++      break
+     d = parent
+ 
++  # Fallback: use v8_root as source root when .gn marker is not found.
++  if v8_root is not None:
++    return os.path.abspath(v8_root)
++
++  return None
++
+ 
+ def _is_clang_cl(arg0: str) -> bool:
+   """Detect clang-cl driver by argv[0]'s basename."""
+@@ -175,7 +185,7 @@ def _filter(args: list[str], input_path: str) -> list[str]:
+ 
+ 
+ def get_compile_args_from_gn_desc(
+-    build_dir: str, target_label: str) -> tuple[list[str], str, bool]:
++    build_dir: str, target_label: str, v8_root: str | None = None) -> tuple[list[str], str, bool]:
+   """GN path: reconstruct one target's compile flags via `gn desc`.
+ 
+   Returns (flags, cwd, cl_mode):
+@@ -189,7 +199,7 @@ def get_compile_args_from_gn_desc(
+   cflags/cflags_cc are passed through verbatim; include_dirs are
+   source-absolute `//...` and rebased to absolute here.
+   """
+-  source_root = _gn_source_root(build_dir)
++  source_root = _gn_source_root(build_dir, v8_root)
+   if source_root is None:
+     raise RuntimeError(
+         f"[metagen] no .gn source-root marker found above {build_dir}.")
+diff --git a/tools/metagen/metagen.py b/tools/metagen/metagen.py
+index f7308d4c8a8..28d10f70d01 100644
+--- a/tools/metagen/metagen.py
++++ b/tools/metagen/metagen.py
+@@ -229,7 +229,7 @@ def main() -> int:
+       return 1
+     build_dir = os.path.abspath(args.build_dir)
+     raw_flags, parse_cwd, cl_mode = compile_flags.get_compile_args_from_gn_desc(
+-        build_dir, args.flags_from_target)
++        build_dir, args.flags_from_target, v8_root)
+     flags_source = f"build_dir={build_dir} (gn desc {args.flags_from_target})"
+     # Windows: the SDK/UCRT include dirs reach the real compile via the
+     # INCLUDE env var, not flags, so gn desc omits them and
