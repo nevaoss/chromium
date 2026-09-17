@@ -21,7 +21,8 @@
 #include "base/run_loop.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/task/single_thread_task_runner.h"
-#include "components/heap_profiling/multi_process/supervisor.h"
+// Heap profiling supervisor API removed from upstream Chromium.
+// TODO(neva): Re-implement heap profiling support if needed.
 #include "components/services/heap_profiling/public/cpp/settings.h"
 #include "content/public/browser/browser_task_traits.h"
 #include "content/public/common/result_codes.h"
@@ -210,9 +211,13 @@ int AppRuntimeBrowserMainParts::PreCreateThreads() {
 }
 
 void AppRuntimeBrowserMainParts::PostCreateThreads() {
+#if 0
+  // Heap profiling supervisor API removed from upstream Chromium.
+  // TODO(neva): Re-implement heap profiling support if needed.
   heap_profiling::Mode mode = heap_profiling::GetModeForStartup();
   if (mode != heap_profiling::Mode::kNone)
     heap_profiling::Supervisor::GetInstance()->Start(base::NullCallback());
+#endif
 
   for (auto* extra_part : app_runtime_extra_parts_) {
     extra_part->PostCreateThreads();
