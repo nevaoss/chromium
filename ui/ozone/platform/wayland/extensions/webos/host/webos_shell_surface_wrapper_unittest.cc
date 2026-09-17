@@ -18,6 +18,7 @@
 
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "ui/display/types/display_constants.h"
 #include "ui/ozone/platform/wayland/extensions/webos/host/wayland_shell_surface_wrapper.h"
 #include "ui/ozone/platform/wayland/extensions/webos/test/mock_shell_surface.h"
 #include "ui/ozone/platform/wayland/extensions/webos/test/mock_webos_extension_surface.h"
