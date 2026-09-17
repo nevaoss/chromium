@@ -48,7 +48,7 @@ TestWebosExtensionServerThread::TestWebosExtensionServerThread()
                    base::WaitableEvent::InitialState::NOT_SIGNALED),
       resume_event_(base::WaitableEvent::ResetPolicy::AUTOMATIC,
                     base::WaitableEvent::InitialState::NOT_SIGNALED),
-      output_(this),
+      output_(),
       controller_(FROM_HERE) {}
 
 TestWebosExtensionServerThread::~TestWebosExtensionServerThread() {
@@ -118,16 +118,6 @@ void TestWebosExtensionServerThread::Resume() {
   resume_event_.Signal();
 }
 
-void TestWebosExtensionServerThread::OnTestOutputFlush(
-    TestOutput* test_output,
-    const TestOutputMetrics& metrics) {
-  // Do nothing at the moment.
-}
-
-void TestWebosExtensionServerThread::OnTestOutputGlobalDestroy(
-    TestOutput* test_output) {
-  // Do nothing at the moment.
-}
 
 
 void TestWebosExtensionServerThread::DoPause() {
@@ -138,9 +128,9 @@ void TestWebosExtensionServerThread::DoPause() {
 
 std::unique_ptr<base::MessagePump>
 TestWebosExtensionServerThread::CreateMessagePump() {
-  auto pump = std::make_unique<base::MessagePumpLibevent>();
+  auto pump = std::make_unique<base::MessagePumpEpoll>();
   pump->WatchFileDescriptor(wl_event_loop_get_fd(event_loop_), true,
-                            base::MessagePumpLibevent::WATCH_READ, &controller_,
+                            base::WatchableIOMessagePumpPosix::WATCH_READ, &controller_,
                             this);
   return std::move(pump);
 }
