@@ -4827,6 +4827,13 @@ hooks = [
     'action': ['git', '-C', 'src/third_party/dawn', 'am',
               '../../neva/patches/0001-build-152.0.7950.0-1-Dawn-Disable-warning-suppressio.patch']
   },
+  # Apply 'V8: Explicitly set the source root for V8 metagen tool'
+  {
+    'name': 'V8-Explicitly-set-the-source-root-for-V8-metagen-tool',
+    'pattern': '.',
+    'action': ['git', '-C', 'src/v8', 'am',
+              '../../neva/patches/0001-build-webos-148.0.7750.0-1-V8-Explicitly-set-the-sou.patch']
+  },
   #@}
   {
     'name': 'apache_win32',

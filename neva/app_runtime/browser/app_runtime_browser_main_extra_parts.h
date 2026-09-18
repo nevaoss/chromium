@@ -40,12 +40,16 @@ class AppRuntimeBrowserMainExtraParts {
  public:
   virtual ~AppRuntimeBrowserMainExtraParts() {}
 
-  virtual void PostCreateThreads() {}
+  virtual int PostCreateThreads();
   virtual void PreMainMessageLoopRun() {}
   virtual void PostMainMessageLoopRun() {}
   virtual void WillRunMainMessageLoop(
       std::unique_ptr<base::RunLoop>& run_loop) {}
 };
+
+inline int AppRuntimeBrowserMainExtraParts::PostCreateThreads() {
+  return 0;
+}
 
 }  // namespace neva_app_runtime
 

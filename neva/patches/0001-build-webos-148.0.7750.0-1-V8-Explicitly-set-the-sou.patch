@@ -1,0 +1,40 @@
+From 60e1b0cb33a1aba4ec13ad30dee3225bc0b930e6 Mon Sep 17 00:00:00 2001
+From: "denis.bechin" <denis.bechin@lge.com>
+Date: Fri, 18 Sep 2026 18:06:40 +0300
+Subject: [PATCH] [build][webos] 155.0.8041.0~1: V8: Explicitly set the source
+ root for V8 metagen tool
+
+In the upstream CL https://crrev.com/c/7864481 was introduced the
+"metagen" tool which cheks gn markers. webOS output directory is
+placed outside of Chromium source dir.
+
+This led to an error:
+RuntimeError: [metagen] no .gn source-root marker found above
+
+So source_root var set explicitly to avoid this error.
+
+Issue: NEVA-11447
+---
+ tools/metagen/compile_flags.py | 6 ++++++
+ 1 file changed, 6 insertions(+)
+
+diff --git a/tools/metagen/compile_flags.py b/tools/metagen/compile_flags.py
+index 200dec80617..41da7a816a8 100644
+--- a/tools/metagen/compile_flags.py
++++ b/tools/metagen/compile_flags.py
+@@ -190,6 +190,12 @@ def get_compile_args_from_gn_desc(
+   source-absolute `//...` and rebased to absolute here.
+   """
+   source_root = _gn_source_root(build_dir)
++  # TODO(neva): It's needed to aviod below config errors because of
++  # outside output directory (Bitbake).
++  # Revise after the upstream CL https://crrev.com/c/8372543
++  # current_file_path = os.path.realpath(__file__)
++  # source_root = current_file_path.split('src')[0] + 'src'
++
+   if source_root is None:
+     raise RuntimeError(
+         f"[metagen] no .gn source-root marker found above {build_dir}.")
+-- 
+2.55.0
+
