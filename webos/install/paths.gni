@@ -40,6 +40,7 @@ declare_args() {
   chromedriver_exe = "$chromedriver_dir/chromedriver"
 
   unittests_dir = "/usr/bin/neva_unittests"
+  unittests_data_dir= "/usr/media"
 
   webos_sysbus_manifestsdir = "/usr/share/luna-service2/manifests.d/"
   webos_sysbus_permissionsdir = "/usr/share/luna-service2/client-permissions.d"
