@@ -345,7 +345,10 @@ vars = {
   # Three lines of non-changing comments so that
   # the commit queue can handle CLs rolling V8
   # and whatever else without interference from each other.
-  'v8_revision': '2a5d4fdb405dc8ed112af1a0dee40e287f22fe18',
+  # TODO(neva): Build error fix! This should be changed if
+  # the revision newer than current (that after comment).
+  # 'v8_revision': '2a5d4fdb405dc8ed112af1a0dee40e287f22fe18',
+  'v8_revision': '42f91abd5e765bd4e006853c84b055c0f5f864e6',
   # Three lines of non-changing comments so that
   # the commit queue can handle CLs rolling ANGLE
   # and whatever else without interference from each other.
