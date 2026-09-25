@@ -19,6 +19,8 @@
 
 #include <memory>
 
+#include "content/public/common/result_codes.h"
+
 namespace base {
 class RunLoop;
 }
@@ -40,12 +42,16 @@ class AppRuntimeBrowserMainExtraParts {
  public:
   virtual ~AppRuntimeBrowserMainExtraParts() {}
 
-  virtual void PostCreateThreads() {}
+  virtual int PostCreateThreads();
   virtual void PreMainMessageLoopRun() {}
   virtual void PostMainMessageLoopRun() {}
   virtual void WillRunMainMessageLoop(
       std::unique_ptr<base::RunLoop>& run_loop) {}
 };
+
+inline int AppRuntimeBrowserMainExtraParts::PostCreateThreads() {
+  return content::RESULT_CODE_NORMAL_EXIT;
+}
 
 }  // namespace neva_app_runtime
 
