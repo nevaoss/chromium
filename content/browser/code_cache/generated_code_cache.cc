@@ -68,26 +68,20 @@ void CheckValidResource(const GURL& resource_url,
   bool resource_url_is_chrome_or_chrome_untrusted =
       resource_url.SchemeIs(content::kChromeUIScheme) ||
       resource_url.SchemeIs(content::kChromeUIUntrustedScheme);
-<<<<<<< HEAD
 #if !defined(USE_FILESCHEME_CODECACHE)
-  DCHECK(
-      resource_url.SchemeIsHTTPOrHTTPS() ||
-      resource_url_is_chrome_or_chrome_untrusted ||
-      blink::CommonSchemeRegistry::IsExtensionScheme(resource_url.GetScheme()));
-#else
-  DCHECK(resource_url.SchemeIsHTTPOrHTTPS() ||
-         resource_url_is_chrome_or_chrome_untrusted ||
-         blink::CommonSchemeRegistry::IsExtensionScheme(
-             resource_url.GetScheme()) ||
-         content::neva::IsFileSchemeSupportedForCodeCache(resource_url));
-#endif
-=======
   CHECK(resource_url.SchemeIsHTTPOrHTTPS() ||
             resource_url_is_chrome_or_chrome_untrusted ||
             blink::CommonSchemeRegistry::IsExtensionScheme(
                 resource_url.GetScheme()),
         base::NotFatalUntil::M159);
->>>>>>> 155.0.8046.0~1
+#else
+  CHECK(resource_url.SchemeIsHTTPOrHTTPS() ||
+            resource_url_is_chrome_or_chrome_untrusted ||
+            blink::CommonSchemeRegistry::IsExtensionScheme(
+                resource_url.GetScheme()) ||
+            content::neva::IsFileSchemeSupportedForCodeCache(resource_url),
+        base::NotFatalUntil::M159);
+#endif
 
   if (!blink::features::IsPersistentCacheForCodeCacheEnabled()) {
     // The chrome and chrome-untrusted schemes are only used with the WebUI code
@@ -110,24 +104,7 @@ void CheckValidContext(const GURL& origin_lock,
   bool origin_lock_is_chrome_or_chrome_untrusted =
       origin_lock.SchemeIs(content::kChromeUIScheme) ||
       origin_lock.SchemeIs(content::kChromeUIUntrustedScheme);
-<<<<<<< HEAD
 #if !defined(USE_FILESCHEME_CODECACHE)
-  DCHECK(origin_lock.is_empty() ||
-         ((origin_lock.SchemeIsHTTPOrHTTPS() ||
-           origin_lock_is_chrome_or_chrome_untrusted ||
-           blink::CommonSchemeRegistry::IsExtensionScheme(
-               origin_lock.GetScheme())) &&
-          !url::Origin::Create(origin_lock).opaque()));
-#else
-  DCHECK(origin_lock.is_empty() ||
-         ((origin_lock.SchemeIsHTTPOrHTTPS() ||
-           origin_lock_is_chrome_or_chrome_untrusted ||
-           blink::CommonSchemeRegistry::IsExtensionScheme(
-               origin_lock.GetScheme())) &&
-          content::neva::IsFileSchemeSupportedForCodeCache(origin_lock) &&
-          !url::Origin::Create(origin_lock).opaque()));
-#endif
-=======
   CHECK(origin_lock.is_empty() ||
             ((origin_lock.SchemeIsHTTPOrHTTPS() ||
               origin_lock_is_chrome_or_chrome_untrusted ||
@@ -135,7 +112,16 @@ void CheckValidContext(const GURL& origin_lock,
                   origin_lock.GetScheme())) &&
              !url::Origin::Create(origin_lock).opaque()),
         base::NotFatalUntil::M159);
->>>>>>> 155.0.8046.0~1
+#else
+  CHECK(origin_lock.is_empty() ||
+            ((origin_lock.SchemeIsHTTPOrHTTPS() ||
+              origin_lock_is_chrome_or_chrome_untrusted ||
+              blink::CommonSchemeRegistry::IsExtensionScheme(
+                  origin_lock.GetScheme())) &&
+             content::neva::IsFileSchemeSupportedForCodeCache(origin_lock) &&
+             !url::Origin::Create(origin_lock).opaque()),
+        base::NotFatalUntil::M159);
+#endif
 
   if (!blink::features::IsPersistentCacheForCodeCacheEnabled()) {
     // The chrome and chrome-untrusted schemes are only used with the WebUI code
