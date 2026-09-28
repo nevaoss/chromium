@@ -48,8 +48,6 @@ extern __typeof (FcConfigBuildFonts) IA__FcConfigBuildFonts FC_ATTRIBUTE_VISIBIL
 #define FcConfigBuildFonts IA__FcConfigBuildFonts
 extern __typeof (FcConfigGetFontDirs) IA__FcConfigGetFontDirs FC_ATTRIBUTE_VISIBILITY_HIDDEN;
 #define FcConfigGetFontDirs IA__FcConfigGetFontDirs
-extern __typeof (FcConfigGetAppFonts) IA__FcConfigGetAppFonts FC_ATTRIBUTE_VISIBILITY_HIDDEN;
-#define FcConfigGetAppFonts IA__FcConfigGetAppFonts
 extern __typeof (FcConfigGetConfigDirs) IA__FcConfigGetConfigDirs FC_ATTRIBUTE_VISIBILITY_HIDDEN;
 #define FcConfigGetConfigDirs IA__FcConfigGetConfigDirs
 extern __typeof (FcConfigGetConfigFiles) IA__FcConfigGetConfigFiles FC_ATTRIBUTE_VISIBILITY_HIDDEN;

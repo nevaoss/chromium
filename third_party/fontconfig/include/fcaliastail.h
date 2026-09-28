@@ -54,8 +54,6 @@ extern __typeof (FcConfigUptoDate) FcConfigUptoDate __attribute((alias("IA__FcCo
 extern __typeof (FcConfigBuildFonts) FcConfigBuildFonts __attribute((alias("IA__FcConfigBuildFonts"))) FC_ATTRIBUTE_VISIBILITY_EXPORT;
 # undef FcConfigGetFontDirs
 extern __typeof (FcConfigGetFontDirs) FcConfigGetFontDirs __attribute((alias("IA__FcConfigGetFontDirs"))) FC_ATTRIBUTE_VISIBILITY_EXPORT;
-# undef FcConfigGetAppFonts
-extern __typeof (FcConfigGetAppFonts) FcConfigGetAppFonts __attribute((alias("IA__FcConfigGetAppFonts"))) FC_ATTRIBUTE_VISIBILITY_EXPORT;
 # undef FcConfigGetConfigDirs
 extern __typeof (FcConfigGetConfigDirs) FcConfigGetConfigDirs __attribute((alias("IA__FcConfigGetConfigDirs"))) FC_ATTRIBUTE_VISIBILITY_EXPORT;
 # undef FcConfigGetConfigFiles
