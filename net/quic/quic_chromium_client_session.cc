@@ -3409,23 +3409,10 @@ void QuicChromiumClientSession::FinishCreateContextForMultiPortPath(
 
 void QuicChromiumClientSession::MigrateToMultiPortPath(
     std::unique_ptr<quic::QuicPathValidationContext> context) {
-  // TODO(neva): Workaround for GCC v.9.3.0/9.4.0
-#if defined(__clang__)
   DCHECK_NE(nullptr, context);
-<<<<<<< HEAD
-#else
-  DCHECK_NE(nullptr, context.get());
-#endif
-
-  auto* chrome_context =
-      static_cast<QuicChromiumPathValidationContext*>(context.get());
-  std::unique_ptr<QuicChromiumPacketWriter> owned_writer =
-      chrome_context->ReleaseWriter();
-=======
   auto migration_context =
       QuicChromiumPathValidationContext::ReleaseMigrationContext(
           std::move(context));
->>>>>>> 155.0.8046.0~1
   // Remove |this| as the old packet writer's delegate. Write error on old
   // writers will be ignored.
   // Set |this| to listen on socket write events on the packet writer
