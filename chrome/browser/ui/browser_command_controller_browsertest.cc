@@ -41,7 +41,6 @@
 #include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_commands.h"
 #include "chrome/browser/ui/browser_window.h"
-#include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/browser_window/public/create_browser_window.h"
 #include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
 #include "chrome/browser/ui/fullscreen/browser_window_fullscreen_controller.h"
@@ -70,6 +69,7 @@
 #include "components/bookmarks/common/bookmark_bar_visibility_state.h"
 #include "components/bookmarks/common/bookmark_pref_names.h"
 #include "components/bookmarks/test/bookmark_test_helpers.h"
+#include "components/enterprise/isolated_mode/isolated_mode_features.h"
 #include "components/input/native_web_keyboard_event.h"
 #include "components/optimization_guide/core/feature_registry/feature_registration.h"
 #include "components/policy/core/common/policy_pref_names.h"
@@ -1042,7 +1042,7 @@ IN_PROC_BROWSER_TEST_F(BrowserCommandControllerBrowserTest,
   BrowserWindowInterface* app_browser = CreateBrowserWindow(std::move(params));
 
   chrome::BrowserCommandController* commandController =
-      app_browser->GetFeatures().browser_command_controller();
+      BrowserCommandController::From(app_browser);
   EXPECT_TRUE(commandController->IsCommandEnabled(IDC_NEW_TAB));
 }
 
@@ -1752,5 +1752,41 @@ IN_PROC_BROWSER_TEST_F(BrowserCommandControllerBrowserTestChromeOSGuest,
   EXPECT_TRUE(chrome::IsCommandEnabled(browser(), IDC_OPTIONS));
 }
 #endif  // BUILDFLAG(IS_CHROMEOS)
+
+IN_PROC_BROWSER_TEST_F(BrowserCommandControllerBrowserTest,
+                       RecentTabsDisabledInIncognito) {
+  BrowserWindowInterface* incognito_browser = CreateIncognitoBrowser();
+  EXPECT_FALSE(
+      chrome::IsCommandEnabled(incognito_browser, IDC_RECENT_TABS_MENU));
+  EXPECT_FALSE(chrome::IsCommandEnabled(incognito_browser,
+                                        IDC_RECENT_TABS_LOGIN_FOR_DEVICE_TABS));
+  EXPECT_FALSE(chrome::IsCommandEnabled(incognito_browser,
+                                        IDC_RECENT_TABS_SEE_DEVICE_TABS));
+}
+
+class BrowserCommandControllerBrowserTestIsolatedTest
+    : public BrowserCommandControllerBrowserTest {
+ public:
+  void SetUpCommandLine(base::CommandLine* command_line) override {
+    BrowserCommandControllerBrowserTest::SetUpCommandLine(command_line);
+    command_line->AppendSwitch(
+        enterprise_isolated_mode::switches::
+            kForceEnterpriseIsolatedModeReplacesIncognito);
+  }
+};
+
+IN_PROC_BROWSER_TEST_F(BrowserCommandControllerBrowserTestIsolatedTest,
+                       RecentTabsDisabledInIsolatedMode) {
+  BrowserWindowInterface* isolated_browser = CreateIncognitoBrowser();
+  EXPECT_TRUE(
+      isolated_browser->GetProfile()->IsEnterpriseIsolatedModeProfile());
+
+  EXPECT_FALSE(
+      chrome::IsCommandEnabled(isolated_browser, IDC_RECENT_TABS_MENU));
+  EXPECT_FALSE(chrome::IsCommandEnabled(isolated_browser,
+                                        IDC_RECENT_TABS_LOGIN_FOR_DEVICE_TABS));
+  EXPECT_FALSE(chrome::IsCommandEnabled(isolated_browser,
+                                        IDC_RECENT_TABS_SEE_DEVICE_TABS));
+}
 
 }  // namespace chrome

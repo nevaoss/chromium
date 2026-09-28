@@ -93,6 +93,7 @@
 #include "content/browser/devtools/devtools_instrumentation.h"
 #include "content/browser/digital_credentials/digital_identity_request_impl.h"
 #include "content/browser/dom_storage/dom_storage_context_wrapper.h"
+#include "content/browser/dom_storage/session_storage_namespace_handle_impl.h"
 #include "content/browser/download/data_url_blob_reader.h"
 #include "content/browser/feature_observer.h"
 #include "content/browser/fenced_frame/automatic_beacon_info.h"
@@ -268,6 +269,7 @@
 #include "net/cookies/cookie_setting_override.h"
 #include "net/http/http_util.h"
 #include "net/net_buildflags.h"
+#include "net/storage_access_api/status.h"
 #include "services/metrics/public/cpp/ukm_builders.h"
 #include "services/metrics/public/cpp/ukm_source_id.h"
 #include "services/network/public/cpp/connection_allowlist.h"
@@ -2598,7 +2600,7 @@ RenderFrameHostImpl::GetInitiatorNavigationStateFromFrameToken(
   RenderFrameHostImpl* initiator_rfh =
       RenderFrameHostImpl::FromFrameToken(initiator_process_id, *frame_token);
   if (initiator_rfh) {
-    return initiator_rfh->CreateInitiatorStateFromCurrentFrame();
+    return initiator_rfh->GetCurrentInitiatorNavigationState();
   }
 
   // Otherwise get it from the NavigationStateKeepAlive stored in
@@ -2625,7 +2627,7 @@ RenderFrameHostImpl::RenderFrameHostImpl(
     const blink::LocalFrameToken& frame_token,
     const blink::DocumentToken& document_token,
     base::UnguessableToken devtools_frame_token,
-    const base::UnguessableToken& initiator_state_token,
+    const blink::InitiatorStateToken& initiator_state_token,
     bool renderer_initiated_creation_of_main_frame,
     LifecycleStateImpl lifecycle_state,
     scoped_refptr<BrowsingContextState> browsing_context_state,
@@ -4477,7 +4479,7 @@ void RenderFrameHostImpl::InitializePolicyContainerHost(
 
 void RenderFrameHostImpl::SetPolicyContainerHost(
     scoped_refptr<PolicyContainerHost> policy_container_host,
-    const base::UnguessableToken& new_initiator_state_token) {
+    const blink::InitiatorStateToken& new_initiator_state_token) {
   // Reset an existing PolicyContainerHost::Client now that it will no longer be
   // associated with this RenderFrameHost.
   if (policy_container_host_) {
@@ -4509,7 +4511,7 @@ void RenderFrameHostImpl::DidChangeReferrerPolicy(
 }
 
 void RenderFrameHostImpl::DidUpdateInitiatorStateToken(
-    const base::UnguessableToken& new_initiator_state_token) {
+    const blink::InitiatorStateToken& new_initiator_state_token) {
   // TODO(crbug.com/510258191): We should create a new InitiatorNavigationState
   // and associate it with the updated token, while validating that the updated
   // token is valid and is not already in use.
@@ -5258,7 +5260,7 @@ void RenderFrameHostImpl::OnCreateChildFrame(
     const blink::LocalFrameToken& frame_token,
     const base::UnguessableToken& devtools_frame_token,
     const blink::DocumentToken& document_token,
-    const base::UnguessableToken& initiator_state_token,
+    const blink::InitiatorStateToken& initiator_state_token,
     const blink::FramePolicy& frame_policy,
     const blink::mojom::FrameOwnerProperties& frame_owner_properties,
     blink::FrameOwnerElementType owner_type,
@@ -5324,7 +5326,7 @@ void RenderFrameHostImpl::OnPreloadingHeuristicsModelDone(const GURL& url,
 
 void RenderFrameHostImpl::CreateChildFrame(
     const blink::LocalFrameToken& frame_token,
-    const base::UnguessableToken& initiator_state_token,
+    const blink::InitiatorStateToken& initiator_state_token,
     mojo::PendingAssociatedRemote<mojom::Frame> frame_remote,
     mojo::PendingReceiver<blink::mojom::BrowserInterfaceBroker>
         browser_interface_broker_receiver,
@@ -5365,14 +5367,6 @@ void RenderFrameHostImpl::CreateChildFrame(
       (frame_policy.sandbox_flags | active_sandbox_flags())) {
     bad_message::ReceivedBadMessage(
         GetProcess(), bad_message::RFH_CREATE_CHILD_FRAME_SANDBOX_FLAGS);
-    return;
-  }
-
-  // The renderer should never send an empty initiator state token.
-  if (initiator_state_token.is_empty()) {
-    bad_message::ReceivedBadMessage(
-        GetProcess(),
-        bad_message::RFH_CREATE_CHILD_FRAME_INVALID_INITIATOR_TOKEN);
     return;
   }
 
@@ -6010,7 +6004,7 @@ FrameTreeNode* RenderFrameHostImpl::AddChild(
     const blink::LocalFrameToken& frame_token,
     const blink::DocumentToken& document_token,
     base::UnguessableToken devtools_frame_token,
-    const base::UnguessableToken& initiator_state_token,
+    const blink::InitiatorStateToken& initiator_state_token,
     const blink::FramePolicy& frame_policy,
     std::string frame_name,
     std::string frame_unique_name,
@@ -6023,7 +6017,7 @@ FrameTreeNode* RenderFrameHostImpl::AddChild(
   // a different one if they navigate away.
   child->render_manager()->InitChild(
       GetSiteInstance(), frame_routing_id, std::move(frame_remote), frame_token,
-      document_token, initiator_state_token, devtools_frame_token, frame_policy,
+      document_token, devtools_frame_token, initiator_state_token, frame_policy,
       frame_name, frame_unique_name);
 
   // Other renderer processes in this BrowsingInstance may need to find out
@@ -8760,6 +8754,16 @@ void RenderFrameHostImpl::SetStorageAccessApiStatus(
   NOTREACHED();
 }
 
+net::StorageAccessApiStatus RenderFrameHostImpl::GetStorageAccessApiStatus() {
+  if (IsStorageAccessRestricted() || !IsFullCookieAccessAllowed()) {
+    return net::StorageAccessApiStatus::kNone;
+  }
+  return GetCookieSettingOverrides().Has(
+             net::CookieSettingOverride::kStorageAccessGrantEligible)
+             ? net::StorageAccessApiStatus::kAccessViaAPI
+             : net::StorageAccessApiStatus::kNone;
+}
+
 std::unique_ptr<download::DownloadUrlParameters>
 RenderFrameHostImpl::CreateDownloadUrlParameters(
     const GURL& url,
@@ -10707,13 +10711,13 @@ void RenderFrameHostImpl::CreateNewWindow(
       static_cast<DOMStorageContextWrapper*>(
           storage_partition->GetDOMStorageContext());
 
-  scoped_refptr<SessionStorageNamespaceImpl> cloned_namespace;
+  scoped_refptr<SessionStorageNamespaceHandleImpl> cloned_namespace;
   if (!params->clone_from_session_storage_namespace_id.empty()) {
-    cloned_namespace = SessionStorageNamespaceImpl::CloneFrom(
+    cloned_namespace = SessionStorageNamespaceHandleImpl::CloneFrom(
         dom_storage_context, params->session_storage_namespace_id,
         params->clone_from_session_storage_namespace_id);
   } else {
-    cloned_namespace = SessionStorageNamespaceImpl::Create(
+    cloned_namespace = SessionStorageNamespaceHandleImpl::Create(
         dom_storage_context, params->session_storage_namespace_id);
   }
 
@@ -11405,17 +11409,27 @@ void RenderFrameHostImpl::StartDragging(
 
 void RenderFrameHostImpl::IssueKeepAliveHandle(
     mojo::PendingReceiver<blink::mojom::NavigationStateKeepAliveHandle>
-        receiver) {
+        receiver,
+    const blink::InitiatorStateToken& initiator_state_token) {
+  // A well-behaving renderer process should only request a keep-alive for the
+  // current initiator state. Terminate those that attempt to extend the
+  // lifetime of other initiator states.
+  if (initiator_state_token != current_initiator_state_token_) {
+    bad_message::ReceivedBadMessage(
+        GetProcess(),
+        bad_message::RFH_ISSUE_KEEP_ALIVE_HANDLE_INVALID_INITIATOR_TOKEN);
+    return;
+  }
   BrowserContextImpl* browser_context =
       BrowserContextImpl::From(GetBrowserContext());
   browser_context->RegisterKeepAliveHandle(
       std::move(receiver),
       base::WrapUnique(new NavigationStateKeepAlive(
-          CreateInitiatorStateFromCurrentFrame(), browser_context)));
+          GetCurrentInitiatorNavigationState(), browser_context)));
 }
 
 scoped_refptr<InitiatorNavigationState>
-RenderFrameHostImpl::CreateInitiatorStateFromCurrentFrame() {
+RenderFrameHostImpl::GetCurrentInitiatorNavigationState() {
   return base::WrapRefCounted(new InitiatorNavigationStateImpl(
       GetFrameToken(), GetProcess()->GetID(), policy_container_host(),
       site_instance_));
@@ -11524,7 +11538,8 @@ RenderFrameHostImpl::GetUnboundedElementAuth() const {
   if (!base::FeatureList::IsEnabled(blink::features::kUnboundedElement)) {
     return UnboundedElementAuth::kDenied;
   }
-  if (web_ui() != nullptr || HasWebUIOrigin(GetLastCommittedOrigin())) {
+  if (GetLastCommittedOrigin().scheme() != kChromeUIUntrustedScheme &&
+      (web_ui() != nullptr || HasWebUIOrigin(GetLastCommittedOrigin()))) {
     return UnboundedElementAuth::kAllowedPrivileged;
   }
   if (base::FeatureList::IsEnabled(
@@ -13879,7 +13894,9 @@ void RenderFrameHostImpl::BindBlobUrlStoreReceiver(
 }
 
 bool RenderFrameHostImpl::IsFocused() {
-  if (!GetMainFrame()->GetRenderWidgetHost()->is_focused()) {
+  const bool focus_emulated =
+      render_view_host_->GetWidget()->IsFocusEmulationEnabled();
+  if (!focus_emulated && !GetMainFrame()->GetRenderWidgetHost()->is_focused()) {
     return false;
   }
 
@@ -13887,7 +13904,8 @@ bool RenderFrameHostImpl::IsFocused() {
   // focused subframe, treat the main frame as focused by default.
   FrameTreeNode* focused_frame = frame_tree_->GetFocusedFrame();
   if (!focused_frame) {
-    if (base::FeatureList::IsEnabled(
+    if (focus_emulated ||
+        base::FeatureList::IsEnabled(
             features::kDefaultToMainFrameFocusWhenNoSubframeFocused)) {
       return this == GetMainFrame();
     }
@@ -15211,11 +15229,14 @@ void RenderFrameHostImpl::CreateWebSocketConnector(
     mojo::ReportBadMessage("WebSockets are not allowed in MHTML documents.");
     return;
   }
+  net::StorageAccessApiStatus storage_access_api_status =
+      GetStorageAccessApiStatus();
   mojo::MakeSelfOwnedReceiver(
       std::make_unique<WebSocketConnectorImpl>(
           GlobalRenderFrameHostId(GetProcess()->GetID(), routing_id_),
           GetWeakDocumentPtr(), last_committed_origin_, isolation_info_,
-          BuildClientSecurityState(), GetNetworkRestrictionsID(),
+          BuildClientSecurityState(), storage_access_api_status,
+          GetNetworkRestrictionsID(),
           /*devtools_worker_token=*/std::nullopt),
       std::move(receiver));
 }
@@ -17421,6 +17442,16 @@ void RenderFrameHostImpl::MaybeGenerateCrashReport(
   }
   CHECK(is_local_root());
 
+  // All frames in the same renderer process share the main thread and V8
+  // isolate. If one frame hangs, the entire process is blocked and killed.
+  // Therefore, unresponsiveness is attributed to all local root frames in this
+  // process (individual documents are differentiated later by stack capture).
+  const bool is_unresponsive =
+      exit_code == RESULT_CODE_HUNG ||
+      (GetRenderWidgetHost() &&
+       GetRenderWidgetHost()->IsCurrentlyUnresponsive()) ||
+      !GetProcess()->GetUnresponsiveDocumentJavascriptCallStack().empty();
+
   // Check the termination status to see if a crash occurred (and potentially
   // determine the |reason| for the crash).
   std::string reason;
@@ -17428,12 +17459,12 @@ void RenderFrameHostImpl::MaybeGenerateCrashReport(
     case base::TERMINATION_STATUS_ABNORMAL_TERMINATION:
       break;
     case base::TERMINATION_STATUS_PROCESS_CRASHED:
-      if (exit_code == RESULT_CODE_HUNG) {
+      if (is_unresponsive) {
         reason = "unresponsive";
       }
       break;
     case base::TERMINATION_STATUS_PROCESS_WAS_KILLED:
-      if (exit_code == RESULT_CODE_HUNG) {
+      if (is_unresponsive) {
         reason = "unresponsive";
       } else {
         return;
@@ -17477,12 +17508,10 @@ void RenderFrameHostImpl::MaybeGenerateCrashReport(
   if (reason == "unresponsive" &&
       base::FeatureList::IsEnabled(
           blink::features::kDocumentPolicyIncludeJSCallStacksInCrashReports)) {
-    RenderProcessHostImpl* rph =
-        static_cast<RenderProcessHostImpl*>(GetProcess());
     const std::string& unresponsive_document_javascript_call_stack =
-        rph->GetUnresponsiveDocumentJavascriptCallStack();
+        GetProcess()->GetUnresponsiveDocumentJavascriptCallStack();
     const blink::LocalFrameToken& unresponsive_document_token =
-        rph->GetUnresponsiveDocumentToken();
+        GetProcess()->GetUnresponsiveDocumentToken();
 
     if (!unresponsive_document_javascript_call_stack.empty()) {
       if (unresponsive_document_token == GetFrameToken()) {
@@ -19604,7 +19633,7 @@ void RenderFrameHostImpl::ReinitializeInitiatorStateTokenAfterCrash(
     base::PassKey<RenderFrameHostManager>) {
   CHECK(is_main_frame());
   CHECK_EQ(RenderFrameState::kDeleted, render_frame_state_);
-  current_initiator_state_token_ = base::UnguessableToken::Create();
+  current_initiator_state_token_ = blink::InitiatorStateToken();
 }
 
 void RenderFrameHostImpl::ReinitializeDocumentAssociatedDataForTesting() {

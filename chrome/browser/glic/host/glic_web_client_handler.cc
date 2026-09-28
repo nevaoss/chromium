@@ -105,6 +105,7 @@
 #include "chrome/browser/feedback/system_logs/chrome_system_logs_fetcher.h"
 #include "chrome/browser/glic/glic_hotkey.h"
 #include "chrome/browser/glic/host/context/glic_focused_browser_manager.h"
+#include "chrome/browser/glic/host/glic_tools_desktop.h"
 #include "chrome/browser/glic/selection/selection_overlay_controller.h"
 #include "chrome/browser/media/audio_ducker.h"
 #include "chrome/browser/ui/tabs/tab_model.h"
@@ -488,6 +489,7 @@ class GlicWebClientHandler
   void WebClientCreated(
       ::mojo::PendingRemote<glic::mojom::WebClient> web_client,
       WebClientCreatedCallback callback) override {
+    LogApiRequestCount(GlicHostApiRequestId::kWebClientCreated);
     VLOG(1) << "Glic [WebClientHandler] WebClientCreated";
     web_client_.Bind(std::move(web_client));
     web_client_.set_disconnect_handler(base::BindOnce(
@@ -623,6 +625,7 @@ class GlicWebClientHandler
   }
 
   void WebClientInitialized() override {
+    LogApiRequestCount(GlicHostApiRequestId::kWebClientInitialized);
     VLOG(1) << "Glic [WebClientHandler] WebClientInitialized";
     host().WebClientInitialized();
     SetState(mojom::WebClientState::kResponsive);
@@ -731,6 +734,7 @@ class GlicWebClientHandler
   }
 
   void OpenGlicSettingsPage(mojom::OpenSettingsOptionsPtr options) override {
+    LogApiRequestCount(GlicHostApiRequestId::kOpenGlicSettingsPage);
     std::string_view metric_suffix;
     switch (options->highlightField) {
       case mojom::SettingsPageField::kOsHotkey:
@@ -755,6 +759,7 @@ class GlicWebClientHandler
   }
 
   void OpenPasswordManagerSettingsPage() override {
+    LogApiRequestCount(GlicHostApiRequestId::kOpenPasswordManagerSettingsPage);
     if (!base::FeatureList::IsEnabled(
             features::kGlicOpenPasswordManagerSettingsPageApi)) {
       return;
@@ -762,15 +767,37 @@ class GlicWebClientHandler
     ::glic::OpenPasswordManagerSettingsPage(profile_);
   }
 
-  void ClosePanel() override { host().ClosePanel(); }
+  void OpenContactInfoSettingsPage() override {
+    LogApiRequestCount(GlicHostApiRequestId::kOpenContactInfoSettingsPage);
+    if (!base::FeatureList::IsEnabled(
+            features::kGlicOpenContactInfoSettingsPageApi)) {
+      return;
+    }
+    ::glic::OpenContactInfoSettingsPage(profile_);
+  }
 
-  void ClosePanelAndShutdown() override { ClosePanel(); }
+  void ClosePanel() override {
+    LogApiRequestCount(GlicHostApiRequestId::kClosePanel);
+    host().ClosePanel();
+  }
 
-  void AttachPanel() override { host().AttachPanel(); }
+  void ClosePanelAndShutdown() override {
+    LogApiRequestCount(GlicHostApiRequestId::kClosePanelAndShutdown);
+    host().ClosePanel();
+  }
 
-  void DetachPanel() override { host().DetachPanel(); }
+  void AttachPanel() override {
+    LogApiRequestCount(GlicHostApiRequestId::kAttachPanel);
+    host().AttachPanel();
+  }
+
+  void DetachPanel() override {
+    LogApiRequestCount(GlicHostApiRequestId::kDetachPanel);
+    host().DetachPanel();
+  }
 
   void ShowProfilePicker() override {
+    LogApiRequestCount(GlicHostApiRequestId::kShowProfilePicker);
     glic::GlicProfileManager::GetInstance()->ShowProfilePicker();
   }
 
@@ -980,6 +1007,15 @@ class GlicWebClientHandler
       override {
     host().instance_delegate().CreateZeroStateSuggestionsHandler(
         std::move(receiver));
+  }
+
+  void CreateAiOverlayTools(
+      mojo::PendingReceiver<ai_overlay_dialog::mojom::AiOverlayTools> receiver)
+      override {
+#if !BUILDFLAG(IS_ANDROID)
+    ai_overlay_tools_ =
+        CreateAiOverlayToolsForGlic(profile_, std::move(receiver));
+#endif
   }
 
   void ActivateTab(int32_t tab_id) override {
@@ -1416,6 +1452,7 @@ class GlicWebClientHandler
   }
 
   void OpenOsPermissionSettingsMenu(ContentSettingsType type) override {
+    LogApiRequestCount(GlicHostApiRequestId::kOpenOsPermissionSettingsMenu);
     if (type != ContentSettingsType::MEDIASTREAM_MIC &&
         type != ContentSettingsType::GEOLOCATION) {
       // This will terminate the render process.
@@ -1846,6 +1883,9 @@ class GlicWebClientHandler
   std::unique_ptr<DebouncerDeduper> debouncer_deduper_;
   std::unique_ptr<PageMetadataManager> page_metadata_manager_;
   bool floating_panel_can_attach_ = false;
+#if !BUILDFLAG(IS_ANDROID)
+  std::unique_ptr<GlicToolsHolder> ai_overlay_tools_;
+#endif
 };
 
 std::unique_ptr<GlicWebClientAccess> MakeGlicWebClient(

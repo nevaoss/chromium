@@ -20,7 +20,6 @@
 #include "chrome/browser/ui/toolbar/back_forward_menu_model.h"
 #include "chrome/browser/ui/views/frame/browser_root_view.h"
 #include "chrome/browser/ui/views/frame/toolbar_button_provider.h"
-#include "chrome/browser/ui/views/intent_picker_bubble_view.h"
 #include "chrome/browser/ui/views/location_bar/custom_tab_bar_view.h"
 #include "chrome/browser/ui/views/location_bar/location_bar_view.h"
 #include "chrome/browser/ui/views/toolbar/avatar_toolbar_button_interface.h"
@@ -28,6 +27,7 @@
 #include "chrome/browser/ui/views/toolbar/pinned_action_toolbar_button.h"
 #include "chrome/browser/ui/views/toolbar/pinned_toolbar_actions.h"
 #include "chrome/browser/ui/views/toolbar/split_tabs_button.h"
+#include "components/apps/link_capturing/intent_picker_info.h"
 #include "components/prefs/pref_member.h"
 #include "ui/base/accelerators/accelerator.h"
 #include "ui/base/interaction/element_identifier.h"
@@ -149,10 +149,10 @@ class ToolbarView : public views::AccessiblePaneView,
   OverflowButton* overflow_button() { return overflow_button_; }
 
   void ShowIntentPickerBubble(
-      std::vector<IntentPickerBubbleView::AppInfo> app_info,
+      std::vector<apps::IntentPickerAppInfo> app_info,
       bool show_stay_in_chrome,
       bool show_remember_selection,
-      IntentPickerBubbleView::BubbleType bubble_type,
+      apps::IntentPickerBubbleType bubble_type,
       const std::optional<url::Origin>& initiating_origin,
       IntentPickerResponse callback);
 
@@ -177,6 +177,9 @@ class ToolbarView : public views::AccessiblePaneView,
   views::Button* GetChromeLabsButton() const;
   ExtensionsToolbarDesktop* extensions_container() const {
     return extensions_container_;
+  }
+  ToolbarButton* contextual_tasks_button() const {
+    return contextual_tasks_button_;
   }
   ToolbarButton* forward_button() const { return forward_; }
   ExtensionsToolbarButton* GetExtensionsButton() const;
@@ -375,6 +378,7 @@ class ToolbarView : public views::AccessiblePaneView,
   // Controls. Most of these can be null, e.g. in popup windows. Only
   // |location_bar_| is guaranteed to exist. These pointers are owned by the
   // view hierarchy.
+  raw_ptr<ToolbarButton> contextual_tasks_button_ = nullptr;
   raw_ptr<ToolbarButton> back_ = nullptr;
   raw_ptr<ToolbarButton> forward_ = nullptr;
   raw_ptr<ReloadButton> reload_ = nullptr;

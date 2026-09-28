@@ -10,7 +10,6 @@ import android.graphics.PorterDuff;
 import android.graphics.drawable.Drawable;
 
 import androidx.preference.Preference;
-import androidx.preference.PreferenceCategory;
 import androidx.preference.PreferenceScreen;
 
 import org.chromium.base.ApiCompatibilityUtils;
@@ -49,6 +48,7 @@ import org.chromium.components.autofill.autofill_ai.EntityTypeName;
 import org.chromium.components.autofill.autofill_ai.RecordType;
 import org.chromium.components.browser_ui.settings.CardWithButtonPreference;
 import org.chromium.components.browser_ui.settings.ChromeBasePreference;
+import org.chromium.components.browser_ui.settings.ChromeBasePreferenceCategory;
 import org.chromium.components.browser_ui.settings.ChromeSwitchPreference;
 import org.chromium.components.browser_ui.settings.SettingsNavigation;
 import org.chromium.components.browser_ui.settings.search.SettingsIndexData;
@@ -518,13 +518,13 @@ public class AutofillAiDelegate {
                 continue;
             }
 
-            PreferenceCategory category = new PreferenceCategory(getStyledContext());
+            var category = new ChromeBasePreferenceCategory(getStyledContext());
             category.setTitle(type.getTypeNameSectionTitleString());
             category.setKey(type.getTypeNameAsString());
             screen.addPreference(category);
 
             for (EntityInstanceWithLabels entity : entities) {
-                Preference pref = new Preference(getStyledContext());
+                Preference pref = new ChromeBasePreference(getStyledContext());
                 pref.setTitle(entity.getEntityInstanceLabel());
                 pref.setSummary(entity.getEntityInstanceSubLabel());
                 pref.setKey(entity.getGuid());
@@ -572,7 +572,7 @@ public class AutofillAiDelegate {
             EntityDataManager entityDataManager, EntityType entityType) {
         boolean buttonEnabled = isAddButtonEnabled(entityDataManager, entityType);
 
-        Preference pref = new Preference(getStyledContext());
+        Preference pref = new ChromeBasePreference(getStyledContext());
         Drawable plusIcon =
                 ApiCompatibilityUtils.getDrawable(mFragment.getResources(), R.drawable.plus);
         plusIcon.mutate();

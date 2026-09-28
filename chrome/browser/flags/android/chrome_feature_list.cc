@@ -304,6 +304,7 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &kBookmarkPaneAndroid,
     &kBookmarksBarContextMenu,
     &kBookmarksBarNTP,
+    &kBottomControlsJankImprovement,
     &kBottomSheetAsBrowserControls,
     &kBottomSheetOnDesktopWindowing,
     &kBrowserControlsDebugging,
@@ -368,6 +369,7 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &kDefaultBrowserPromoEntryPoint,
     &kDefaultBrowserPromoFre,
     &kDeferNavigationStateChanged,
+    &kDesktopAndroidFilePickerForMedia,
     &kDesktopAndroidLinkCapturing,
     &kDesktopAndroidTWADeleteBrowserData,
     &kDesktopAndroidTWADisclosures,
@@ -403,6 +405,7 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &kGestureUserEducationBackSwipe,
     &kGmsCoreBindServiceOptimization,
     &kGridTabSwitcherSurfaceColorUpdate,
+    &kHighPrioritySiteNotifications,
     &kHistoryPaneAndroid,
     &kHomeButtonRemoval,
     &kInAppUpdateFlow,
@@ -474,6 +477,7 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &kSearchInCCTIfEnabledByEmbedder,
     &kSessionRestoreAfterCrash,
     &kSettingsInTab,
+    &kSettingsInTabDesktop,
     &kSettingsInTabUrlNav,
     &kSettingsMultiColumn,
     &kSettingsSingleActivity,
@@ -524,11 +528,13 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &kTweakApplicationPreloadSkipWarmUp,
     &kUmaBackgroundSessions,
     &kUmaSessionCorrectnessFixes,
+    &kUndoableTabClosureRework,
     &kUniversalKeyboardHandling,
     &kUnparcelIntentFileDescriptors,
     &kUseActivityManagerForTabActivation,
     &kUseAppTaskForCustomTabActivation,
     &kUseLibunwindstackNativeUnwinderAndroid,
+    &kUseWebUiNtp3PDSE,
     &kUseWebUiNtpAndroid,
     &kVerifyStartupSigninState,
     &kVirtualKeyboardResizesContentTransientOvershootFix,
@@ -608,7 +614,6 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &syncer::kSyncEnableNewSyncDashboardUrl,
     &syncer::kSyncEnablePasswordsSyncErrorMessageAlternative,
     &syncer::kSyncTrustedVaultErrorMessageDuration,
-    &syncer::kWebApkBackupAndRestoreBackend,
     &tab_groups::kUpdateTabGroupColors,
     &tab_groups::kUseAlternateHistorySyncIllustration,
     &themes::kCrossDeviceThemeTracker,
@@ -675,7 +680,7 @@ BASE_FEATURE(kAndroidOmniboxFocusedNewTabPage, base::FEATURE_DISABLED_BY_DEFAULT
 BASE_FEATURE(kAndroidOpenIncognitoAsWindowRestrictions, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidPageInfoAsAppMenuItem, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidProgressBarVisualUpdate, base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kAndroidSaveCardNonBlockingDialog, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kAndroidSaveCardNonBlockingDialog, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidSettingsContainment, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidSettingsUrl, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidSetupList, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -717,6 +722,7 @@ BASE_FEATURE(kBlockIntentsWhileLocked, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kBookmarkPaneAndroid, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kBookmarksBarContextMenu, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kBookmarksBarNTP, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kBottomControlsJankImprovement, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kBottomSheetAsBrowserControls, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kBottomSheetOnDesktopWindowing, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kBrowserControlsDebugging, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -784,6 +790,7 @@ BASE_FEATURE(kDefaultBrowserPromoEntryPoint, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kDefaultBrowserPromoFre, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kDeferNavigationStateChanged, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kDesktopAndroidBackgroundTabLoading, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kDesktopAndroidFilePickerForMedia, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kDesktopAndroidLinkCapturing, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kDesktopAndroidTWADeleteBrowserData, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kDesktopAndroidTWADisclosures, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -820,6 +827,7 @@ BASE_FEATURE(kFullscreenInsetsApiMigrationOnAutomotive, base::FEATURE_ENABLED_BY
 BASE_FEATURE(kGestureUserEducationBackSwipe, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kGmsCoreBindServiceOptimization, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kGridTabSwitcherSurfaceColorUpdate, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kHighPrioritySiteNotifications, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kHistoryPaneAndroid, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kHomeButtonRemoval, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kInAppUpdateFlow, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -894,7 +902,9 @@ BASE_FEATURE(kSearchInCCTAlternateTapHandling, base::FEATURE_DISABLED_BY_DEFAULT
 BASE_FEATURE(kSearchInCCTAlternateTapHandlingIfEnabledByEmbedder, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kSearchInCCTIfEnabledByEmbedder, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kSessionRestoreAfterCrash, base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kSettingsInTab, base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kSettingsInTab, base::FEATURE_DISABLED_BY_DEFAULT);
+// SettingsInTab kill switch for desktop Android. https://crbug.com/556881398
+BASE_FEATURE(kSettingsInTabDesktop, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kSettingsInTabUrlNav, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kSettingsMultiColumn, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kSettingsSingleActivity, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -947,6 +957,7 @@ BASE_FEATURE(kTweakApplicationPreloadSkipWarmUp, base::FEATURE_DISABLED_BY_DEFAU
 BASE_FEATURE(kUmaBackgroundSessions,"UMABackgroundSessions", base::FEATURE_ENABLED_BY_DEFAULT);
 // Correctness fixes to Activity tagging for UMA sessions.
 BASE_FEATURE(kUmaSessionCorrectnessFixes, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kUndoableTabClosureRework, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kUniversalKeyboardHandling, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kUnparcelIntentFileDescriptors, base::FEATURE_ENABLED_BY_DEFAULT);
 // Activate tab with moveTaskToFront() which works in multi-window mode.
@@ -956,6 +967,7 @@ BASE_FEATURE(kUseAppTaskForCustomTabActivation, base::FEATURE_ENABLED_BY_DEFAULT
 // Use the LibunwindstackNativeUnwinderAndroid for only browser main thread, and
 // only on Android.
 BASE_FEATURE(kUseLibunwindstackNativeUnwinderAndroid, base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kUseWebUiNtp3PDSE, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kUseWebUiNtpAndroid, base::FEATURE_DISABLED_BY_DEFAULT);
 // Verify sign-in state on startup.
 BASE_FEATURE(kVerifyStartupSigninState, base::FEATURE_ENABLED_BY_DEFAULT);

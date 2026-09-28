@@ -42,6 +42,8 @@ android_library("chrome_test_java_helper") {
     "src/org/chromium/chrome/browser/permissions/PermissionTestRule.java",
     "src/org/chromium/chrome/browser/permissions/RuntimePermissionTestUtils.java",
     "src/org/chromium/chrome/browser/search_engines/DefaultSearchEngineDialogHelperUtils.java",
+    "src/org/chromium/chrome/browser/settings/SearchIndexValidator.java",
+    "src/org/chromium/chrome/browser/settings/SettingsSearchTestUtils.java",
     "src/org/chromium/chrome/browser/site_settings/SiteSettingsTestHelper.java",
     "src/org/chromium/chrome/browser/site_settings/SiteSettingsTestUtils.java",
     "src/org/chromium/chrome/browser/sync/SyncTestRule.java",
@@ -232,7 +234,6 @@ android_library("chrome_test_java_helper") {
     "//chrome/test/android:chrome_java_test_pagecontroller",
     "//chrome/test/android:chrome_java_transit",
     "//chrome/test/android/test_trusted_web_activity:test_trusted_web_activity_java",
-    "//components/android_autofill/browser:features_java",
     "//components/android_autofill/browser/test_support:java",
     "//components/autofill/android:autofill_ai_test_utils_java",
     "//components/autofill/android:autofill_features_java",
@@ -649,6 +650,7 @@ android_library(
     "src/org/chromium/chrome/browser/browserservices/TrustedWebActivityOrientationTest.java",
     "src/org/chromium/chrome/browser/browserservices/TrustedWebActivityShareTargetTest.java",
     "src/org/chromium/chrome/browser/browserservices/TrustedWebActivityTest.java",
+    "src/org/chromium/chrome/browser/browserservices/TwaValidatorTest.java",
     "src/org/chromium/chrome/browser/browserservices/digitalgoods/DigitalGoodsTest.java",
     "src/org/chromium/chrome/browser/browserservices/digitalgoods/FakeDigitalGoods.java",
     "src/org/chromium/chrome/browser/browserservices/permissiondelegation/TrustedWebActivityLocationDelegationTest.java",
@@ -1294,6 +1296,7 @@ android_library("chrome_test_java_org.chromium.chrome.browser.settings") {
     "src/org/chromium/chrome/browser/settings/SettingsPageTest.java",
     "src/org/chromium/chrome/browser/settings/search/SearchIndexProviderRegistryTest.java",
     "src/org/chromium/chrome/browser/settings/search/SettingsSearchCoordinatorTest.java",
+    "src/org/chromium/chrome/browser/settings/search/SettingsSearchOrphanTest.java",
   ]
 
   deps = [
@@ -1650,7 +1653,6 @@ android_library("chrome_test_java_org.chromium.chrome.browser.webapps") {
     "src/org/chromium/chrome/browser/webapps/AddToHomescreenCurrentPageVerifierTest.java",
     "src/org/chromium/chrome/browser/webapps/AddToHomescreenInstallTest.java",
     "src/org/chromium/chrome/browser/webapps/PwaInstallBottomSheetIntegrationTest.java",
-    "src/org/chromium/chrome/browser/webapps/PwaRestoreBottomSheetIntegrationTest.java",
     "src/org/chromium/chrome/browser/webapps/PwaUniversalInstallBottomSheetIntegrationTest.java",
     "src/org/chromium/chrome/browser/webapps/WebApkActivityTest.java",
     "src/org/chromium/chrome/browser/webapps/WebApkCurrentPageVerifierTest.java",

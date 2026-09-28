@@ -1457,6 +1457,7 @@ Da biste sakrili opcije plaćanja kasnije, otvorite <ph name="BEGIN_LINK" />post
 <translation id="3495081129428749620">Traži na stranici
     <ph name="PAGE_TITLE" /></translation>
 <translation id="3495818359064790343">Plaća</translation>
+<translation id="3496531230994554300">Obavijest Walleta otvorena je u punoj visini.</translation>
 <translation id="3497627066518778351">Pregledajte popis podataka web-lokacije na uređaju u novom prozoru</translation>
 <translation id="3498215018399854026">Nismo uspjeli stupiti u kontakt s tvojim roditeljem. Pokušaj ponovo.</translation>
 <translation id="350069200438440499">Naziv:</translation>
@@ -1546,6 +1547,7 @@ Da biste sakrili opcije plaćanja kasnije, otvorite <ph name="BEGIN_LINK" />post
 <translation id="3634530185120165534">Ladica 5</translation>
 <translation id="3634567936866541746">Upravo ste unijeli zaporku na obmanjujućoj web-lokaciji. Da bi zaštitio vaše račune, Chrome preporučuje da provjerite spremljene zaporke.</translation>
 <translation id="3638102297696182302">Nastavite s pomoći pri pisanju. Pritisnite Tab i Enter da biste otvorili</translation>
+<translation id="3639626391482300575">IBAN je spremljen u Google Wallet kako biste ga mogli upotrebljavati u Googleovim proizvodima.</translation>
 <translation id="3642196846309122856">Pokušajte ponovno preuzeti datoteke</translation>
 <translation id="3642638418806704195">Aplikacija:</translation>
 <translation id="3647286794400715637">Unos svakog niza URL-ova mora sadržavati od jednog do dva URL-a.</translation>
@@ -1558,7 +1560,6 @@ Da biste sakrili opcije plaćanja kasnije, otvorite <ph name="BEGIN_LINK" />post
 <translation id="3655670868607891010">Ako se to često događa, pokušajte <ph name="HELP_LINK" />.</translation>
 <translation id="3658742229777143148">Izmjena</translation>
 <translation id="3659521826520353662">Koje se web-lokacije koje je definirao administrator posjećuju i kada: <ph name="ALLOWLISTED_WEBSITES" /></translation>
-<translation id="3662040827609932717">IBAN je spremljen u Google Wallet kako biste ga mogli upotrebljavati na Googleovim uslugama.</translation>
 <translation id="3664479564786885722">Potražite više opcija za kupnju u drugim trgovinama koje prodaju taj proizvod.</translation>
 <translation id="3664782872746246217">Ključne riječi:</translation>
 <translation id="3670030362669914947">Broj</translation>
@@ -2612,7 +2613,6 @@ Da biste sakrili opcije plaćanja kasnije, otvorite <ph name="BEGIN_LINK" />post
 <translation id="5414306071315087019">Opcija kupite sada, platite kasnije dostupna je uz Google Pay</translation>
 <translation id="5414446060143308245">Prije prijenosa potreban je pregled</translation>
 <translation id="5414511064953050917">Ipak premjesti</translation>
-<translation id="5418700249417444482">URL-ovi stranica koje posjećujete šalju se Google Cloudu ili trećim stranama na analizu i mogu biti vidljivi vašem administratoru. Na primjer, mogu se pregledavati radi otkrivanja nesigurnih web-lokacija ili filtriranja web-lokacija na temelju pravila koja je postavio administrator.</translation>
 <translation id="5419311651396341287">Administrator će možda moći vidjeti:</translation>
 <translation id="5423269318075950257">Praćenje cijene</translation>
 <translation id="5426179911063097041"><ph name="SITE" /> želi vam slati obavijesti</translation>
@@ -2633,7 +2633,6 @@ Da biste sakrili opcije plaćanja kasnije, otvorite <ph name="BEGIN_LINK" />post
 <translation id="5447103258548475868">Spremite putovnicu u Google Wallet</translation>
 <translation id="5447235695608032700">Dopustite da web-lokacija <ph name="SITE" /> upotrebljava podatke koje je spremila o vama</translation>
 <translation id="5447973833955560753">Zaporka za oporavak</translation>
-<translation id="5451331376824595378">Kad Chrome označi sigurnosne događaje, vašem administratoru šalju se relevantni podaci o tim događajima. To može uključivati URL-ove stranica koje posjetite u Chromeu, URL-ove stranica s kojih ste kopirali podatke, nazive ili metapodatke datoteka, IP adrese, rušenja preglednika ili kartica te korisničko ime koje upotrebljavate za prijavu u aplikacije temeljene na webu, uređaj i Chrome.</translation>
 <translation id="5452270690849572955">Tu stranicu na <ph name="HOST_NAME" /> nije moguće pronaći</translation>
 <translation id="5452923259299906094">Plaćajte putem e-novčanika i Pixa</translation>
 <translation id="5455374756549232013">Vremenska oznaka pravila koje nije valjano</translation>
@@ -2668,6 +2667,7 @@ Da biste sakrili opcije plaćanja kasnije, otvorite <ph name="BEGIN_LINK" />post
 <translation id="5499229993630251170">Želite li nastaviti ovu nit?</translation>
 <translation id="5506286895894263601">Popis ne sadrži važeće prečace.</translation>
 <translation id="5507756662695126555">Neosporavanje</translation>
+<translation id="5508515366054931524">Upit za potvrdu e-adrese otvoren je u punoj visini</translation>
 <translation id="5509762909502811065">B0</translation>
 <translation id="5509780412636533143">Upravljane oznake</translation>
 <translation id="5510766032865166053">Datoteka je možda premještena ili izbrisana.</translation>
@@ -3179,7 +3179,6 @@ Da biste sakrili opcije plaćanja kasnije, otvorite <ph name="BEGIN_LINK" />post
 <translation id="6361757823711327522">B7</translation>
 <translation id="6363786367719063276">Prikaz zapisnika</translation>
 <translation id="6364095313648930329"><ph name="BEGIN_LINK" />provjeriti proxy, vatrozid i konfiguraciju sigurnog DNS-a<ph name="END_LINK" /></translation>
-<translation id="6365513578140103119">Automatski potvrdite e-adrese</translation>
 <translation id="6366710531182496394">Dvostruko spajanje s lijeve strane</translation>
 <translation id="6367196786591004737">Izbrišite unos</translation>
 <translation id="6370022303958842211">Radnje pristupa uređaju kao što su prijave (uključujući razloge neuspjelih prijava), odjave, zaključavanja i otključavanja</translation>
@@ -3304,6 +3303,7 @@ Da biste sakrili opcije plaćanja kasnije, otvorite <ph name="BEGIN_LINK" />post
 <translation id="6578434528542148658">Nevažeći ID proširenja.</translation>
 <translation id="658230438113661756">Napadači na web-lokaciji koju ste pokušali posjetiti mogu instalirati štetan softver koji krade ili briše stavke kao što su vaše zaporke, fotografije, poruke ili brojevi kreditnih kartica. Chrome preporučuje da se vratite na sigurno. <ph name="BEGIN_LEARN_MORE_LINK" />Saznajte više o tom upozorenju<ph name="END_LEARN_MORE_LINK" /></translation>
 <translation id="6583309742916093092">Pohranjeno u Google Walletu</translation>
+<translation id="6585589684832019248">Kartica je spremljena u Google Wallet kako biste je mogli upotrebljavati u Googleovim proizvodima</translation>
 <translation id="6587893660316489419">Omotnica B5</translation>
 <translation id="6587923378399804057">Veza koju ste kopirali</translation>
 <translation id="6591833882275308647">Uređaj <ph name="DEVICE_TYPE" /> nije upravljani uređaj</translation>
@@ -3450,6 +3450,7 @@ Da biste sakrili opcije plaćanja kasnije, otvorite <ph name="BEGIN_LINK" />post
 <translation id="6860888819347870819">Može tražiti dopuštenje za unos slike u slici</translation>
 <translation id="6864189428899665393">267 x 389 mm</translation>
 <translation id="6865412394715372076">Trenutačno nije moguće potvrditi karticu</translation>
+<translation id="6871073333584947219">Obavijest Walleta je zatvorena.</translation>
 <translation id="6871813064737840684">Povijest cijena na webu za tu opciju</translation>
 <translation id="6873456682041376666">Gornja ladica</translation>
 <translation id="6874604403660855544">&amp;Ponovi dodavanje</translation>
@@ -3905,7 +3906,6 @@ Dodatne pojedinosti:
 <translation id="7615932826417658001">Dodajte osobnu iskaznicu</translation>
 <translation id="7616390733770379387">Tražilice se prikazuju nasumičnim redoslijedom.</translation>
 <translation id="7616645509853975347">Vaš administrator uključio je poveznike za Chrome za poduzeća u vašem pregledniku. Ti poveznici imaju pristup nekim vašim podacima.</translation>
-<translation id="7616747402308801775">Kartica je spremljena u Google Wallet kako biste ga mogli upotrebljavati na Googleovim uslugama.</translation>
 <translation id="7617825962482469577">Omotnica C7/C6</translation>
 <translation id="7619838219691048931">Zadnji list</translation>
 <translation id="7621546470643449009">Napravi vodič za početnike u promatranju zvijezda koji će mi pomoći naučiti što tražiti na noćnom nebu, uključujući tri lako prepoznatljiva zviježđa</translation>
@@ -3970,6 +3970,7 @@ Dodatne pojedinosti:
 <translation id="7705085181312584869">Pomoć pri pisanju</translation>
 <translation id="7705992072972338699">Optički disk (visoki sjaj)</translation>
 <translation id="7706689436519265630">Datoteke koje kopirate ili premjestite šalju se Google Cloudu ili trećim stranama na analizu. Na primjer, mogu se pregledavati radi otkrivanja osjetljivih podataka ili zlonamjernog softvera i mogu se pohranjivati na temelju pravila tvrtke.</translation>
+<translation id="7709934467582922028">Zatvoren je upit za potvrdu e-adrese</translation>
 <translation id="7714351089363296478">Upravo ste posjetili</translation>
 <translation id="7714404809393719981">Fotografija (polusjajno)</translation>
 <translation id="7714464543167945231">Certifikat</translation>
@@ -4657,7 +4658,6 @@ Dodatne pojedinosti:
 <translation id="8963117664422609631">Otvorite postavke web-lokacije</translation>
 <translation id="8963213021028234748"><ph name="MARKUP_1" />Prijedlozi:<ph name="MARKUP_2" />Provjerite imate li podatkovnu vezu.<ph name="MARKUP_3" />Ponovo učitajte web-stranicu kasnije.<ph name="MARKUP_4" />Provjerite adresu koju ste unijeli.<ph name="MARKUP_5" /></translation>
 <translation id="8963969435440878110">Vaše lokalne datoteke izbrisat će se za <ph name="HOURS" /> h</translation>
-<translation id="8964904785315870349">Potvrđena e-adresa</translation>
 <translation id="8968766641738584599">Spremanje kartice</translation>
 <translation id="8970887620466824814">Nešto nije u redu.</translation>
 <translation id="8971063699422889582">Istekao je certifikat poslužitelja.</translation>
@@ -4868,6 +4868,7 @@ i netočne vjerodajnice. To može značiti da se neki napadač pokušava predsta
 <translation id="988159990683914416">Sastavak razvojnog programera</translation>
 <translation id="989988560359834682">Uređivanje adrese</translation>
 <translation id="990164307229195234"><ph name="DEVICE_NAME" /> (<ph name="DISAMBIGUATION_LABEL" />)</translation>
+<translation id="990812705189376036">Dokaz Merkleova stabla</translation>
 <translation id="992110854164447044">Virtualna kartica skriva vašu stvarnu karticu kako bi vas bolje zaštitila od potencijalne prijevare. <ph name="IDS_AUTOFILL_VIRTUAL_CARD_ENROLLMENT_LEARN_MORE_LINK_LABEL" /></translation>
 <translation id="992115559265932548"><ph name="MICROSOFT_ACTIVE_DIRECTORY" /></translation>
 <translation id="992256792861109788">Ružičasta</translation>

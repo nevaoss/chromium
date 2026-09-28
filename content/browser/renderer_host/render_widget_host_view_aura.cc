@@ -2881,7 +2881,11 @@ void RenderWidgetHostViewAura::OnWindowFocused(aura::Window* gained_focus,
   UpdateActiveState(false);
   host()->LostFocus();
 
+  auto weak_this = weak_ptr_factory_.GetWeakPtr();
   DetachFromInputMethod(false);
+  if (!weak_this) {
+    return;
+  }
 
   // TODO(wjmaclean): Do we need to let TouchSelectionControllerClientAura
   // handle this, just in case it stomps on a new highlight in another view
@@ -3119,7 +3123,7 @@ void RenderWidgetHostViewAura::OnDidUpdateVisualPropertiesComplete(
 
   if (host()->delegate()) {
     host()->delegate()->SetTopControlsShownRatio(
-        host(), metadata.top_controls_shown_ratio);
+        host(), metadata.browser_controls_metadata.top_controls_shown_ratio);
   }
 
   if (host()->IsHidden()) {

@@ -104,6 +104,7 @@
 #include "chrome/browser/ui/global_error/global_error_service.h"
 #include "chrome/browser/ui/global_error/global_error_service_factory.h"
 #include "chrome/browser/ui/layout_constants.h"
+#include "chrome/browser/ui/location_bar/location_bar.h"
 #include "chrome/browser/ui/navigator/browser_navigator.h"
 #include "chrome/browser/ui/omnibox/omnibox_next_features.h"
 #include "chrome/browser/ui/omnibox/omnibox_popup_view.h"
@@ -4163,9 +4164,8 @@ void BrowserView::OnWidgetActivationChanged(views::Widget* widget,
     }
   }
 
-  browser_->GetFeatures()
-      .extension_keybinding_registry()
-      ->OnHostActivationChanged(active);
+  ExtensionKeybindingRegistryViews::From(browser_)->OnHostActivationChanged(
+      active);
 }
 
 void BrowserView::OnWidgetBoundsChanged(views::Widget* widget,
@@ -5285,7 +5285,8 @@ void BrowserView::CreateJumpList() {
 #endif
 
 bool BrowserView::ShouldShowAvatarToolbarIPH() {
-  if (GetGuestSession() || GetIncognito()) {
+  if (GetGuestSession() || GetIncognito() ||
+      GetProfile()->IsEnterpriseIsolatedModeProfile()) {
     return false;
   }
   AvatarToolbarButtonInterface* avatar_button =
@@ -5457,10 +5458,10 @@ void BrowserView::PrepareFullscreen(bool fullscreen) {
   //     |in_process_fullscreen_|).
   if (fullscreen) {
     // Move focus out of the location bar if necessary.
-    views::FocusManager* focus_manager = GetFocusManager();
-    DCHECK(focus_manager);
-    // Look for focus in the location bar itself or any child view.
-    if (GetLocationBarView()->Contains(focus_manager->GetFocusedView())) {
+    LocationBar* location_bar = GetLocationBar();
+    if (location_bar && location_bar->IsFocusWithin()) {
+      views::FocusManager* focus_manager = GetFocusManager();
+      DCHECK(focus_manager);
       focus_manager->ClearFocus();
     }
 

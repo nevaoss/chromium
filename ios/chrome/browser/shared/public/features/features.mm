@@ -64,8 +64,6 @@ BASE_FEATURE(kLensOverlayNavigationHistory, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kLensOverlayCustomBottomSheet, base::FEATURE_DISABLED_BY_DEFAULT);
 
-BASE_FEATURE(kLensSearchHeadersCheckEnabled, base::FEATURE_ENABLED_BY_DEFAULT);
-
 BASE_FEATURE(kEnableTraitCollectionWorkAround,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
@@ -137,6 +135,7 @@ bool IsNewSyncOptInIllustration() {
 }
 
 BASE_FEATURE(kDisableLensCamera, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kEnableLensOnIPad, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kDownloadAutoDeletionClearFilesOnEveryStartup,
              base::FEATURE_DISABLED_BY_DEFAULT);
@@ -348,13 +347,8 @@ bool IsAppBackgroundRefreshEnabled() {
 BASE_FEATURE(kEnableTraitCollectionRegistration,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-BASE_FEATURE(kSeparateProfilesForManagedAccounts,
-             base::FEATURE_ENABLED_BY_DEFAULT);
-
 BASE_FEATURE(kAuthenticationFlowReauthFirstKillswitch,
              base::FEATURE_DISABLED_BY_DEFAULT);
-
-BASE_FEATURE(kOmahaResyncTimerOnForeground, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kIOSReactivationNotifications, base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -394,20 +388,6 @@ bool IsIOSExpandedTipsEnabled() {
 
 BASE_FEATURE(kIOSOneTimeDefaultBrowserNotification,
              base::FEATURE_DISABLED_BY_DEFAULT);
-
-constexpr base::FeatureParam<std::string> kFRESignInHeaderTextUpdateParam{
-    &kFRESignInHeaderTextUpdate,
-    /*name=*/"FRESignInHeaderTextUpdateParam",
-    /*default_value=*/"Arm1"};
-
-const std::string_view kFRESignInHeaderTextUpdateParamArm0 = "Arm0";
-const std::string_view kFRESignInHeaderTextUpdateParamArm1 = "Arm1";
-
-BASE_FEATURE(kFRESignInHeaderTextUpdate, base::FEATURE_ENABLED_BY_DEFAULT);
-
-bool FRESignInHeaderTextUpdate() {
-  return base::FeatureList::IsEnabled(kFRESignInHeaderTextUpdate);
-}
 
 BASE_FEATURE(kIOSPushNotificationMultiProfile,
              base::FEATURE_ENABLED_BY_DEFAULT);
@@ -579,12 +559,6 @@ BASE_FEATURE(kNotificationCollisionManagement,
 BASE_FEATURE(kIOSProvidesAppNotificationSettings,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-BASE_FEATURE(kNTPBackgroundColorSlider, base::FEATURE_ENABLED_BY_DEFAULT);
-
-bool IsNTPBackgroundColorSliderEnabled() {
-  return base::FeatureList::IsEnabled(kNTPBackgroundColorSlider);
-}
-
 BASE_FEATURE(kNTPBackgroundDownsampleImage, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kRunDefaultStatusCheck, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -727,57 +701,27 @@ const char kEnableFuseboxKeyboardAccessoryBoth[] =
     "kEnableFuseboxKeyboardAccessoryBoth";
 
 bool ShouldShowKeyboardAccessory() {
-  if (!IsComposeboxIOSEnabled()) {
-    // Keyboard accessory is enabled by default.
-    if (!base::FeatureList::IsEnabled(kDisableKeyboardAccessory)) {
-      return true;
-    }
-    std::string feature_param = base::GetFieldTrialParamValueByFeature(
-        kDisableKeyboardAccessory, kDisableKeyboardAccessoryParam);
-    return feature_param != kDisableKeyboardAccessoryCompletely;
-  }
-
   // Fusebox:
   // Keyboard accessory is disabled by default but can be forced with a flag.
   return base::FeatureList::IsEnabled(kEnableFuseboxKeyboardAccessory);
 }
 
 bool ShouldShowKeyboardAccessorySymbols() {
-  if (IsComposeboxIOSEnabled()) {
-    if (base::FeatureList::IsEnabled(kEnableFuseboxKeyboardAccessory)) {
-      std::string feature_param = base::GetFieldTrialParamValueByFeature(
-          kEnableFuseboxKeyboardAccessory,
-          kEnableFuseboxKeyboardAccessoryParam);
-      return feature_param != kEnableFuseboxKeyboardAccessoryOnlyFeatures;
-    }
-    return false;
+  if (base::FeatureList::IsEnabled(kEnableFuseboxKeyboardAccessory)) {
+    std::string feature_param = base::GetFieldTrialParamValueByFeature(
+        kEnableFuseboxKeyboardAccessory, kEnableFuseboxKeyboardAccessoryParam);
+    return feature_param != kEnableFuseboxKeyboardAccessoryOnlyFeatures;
   }
-
-  if (!base::FeatureList::IsEnabled(kDisableKeyboardAccessory)) {
-    return true;
-  }
-  std::string feature_param = base::GetFieldTrialParamValueByFeature(
-      kDisableKeyboardAccessory, kDisableKeyboardAccessoryParam);
-  return feature_param == kDisableKeyboardAccessoryOnlySymbols;
+  return false;
 }
 
 bool ShouldShowKeyboardAccessoryFeatures() {
-  if (IsComposeboxIOSEnabled()) {
-    if (base::FeatureList::IsEnabled(kEnableFuseboxKeyboardAccessory)) {
-      std::string feature_param = base::GetFieldTrialParamValueByFeature(
-          kEnableFuseboxKeyboardAccessory,
-          kEnableFuseboxKeyboardAccessoryParam);
-      return feature_param != kEnableFuseboxKeyboardAccessoryOnlySymbols;
-    }
-    return false;
+  if (base::FeatureList::IsEnabled(kEnableFuseboxKeyboardAccessory)) {
+    std::string feature_param = base::GetFieldTrialParamValueByFeature(
+        kEnableFuseboxKeyboardAccessory, kEnableFuseboxKeyboardAccessoryParam);
+    return feature_param != kEnableFuseboxKeyboardAccessoryOnlySymbols;
   }
-
-  if (!base::FeatureList::IsEnabled(kDisableKeyboardAccessory)) {
-    return true;
-  }
-  std::string feature_param = base::GetFieldTrialParamValueByFeature(
-      kDisableKeyboardAccessory, kDisableKeyboardAccessoryParam);
-  return feature_param == kDisableKeyboardAccessoryOnlyFeatures;
+  return false;
 }
 
 BASE_FEATURE(kLocationBarBadgeMigration, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -882,9 +826,6 @@ constexpr base::FeatureParam<bool> kChromeNextIaShareIconVisible{
     &kChromeNextIa, "chrome_next_ia_share_icon_visible", false};
 
 bool IsChromeNextIaEnabled() {
-  if (!IsComposeboxIOSEnabled()) {
-    return false;
-  }
   return base::FeatureList::IsEnabled(kChromeNextIa);
 }
 
@@ -1090,10 +1031,6 @@ BASE_FEATURE(kPlusButtonInFakebox, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Returns true if the plus button in NTP fakebox is enabled.
 bool IsPlusButtonInFakeboxEnabled() {
-  if (!IsComposeboxIOSEnabled()) {
-    return false;
-  }
-
   return base::FeatureList::IsEnabled(kPlusButtonInFakebox);
 }
 

@@ -174,6 +174,10 @@ TEST_F(ChromeFacilitatedPaymentsClientTest, RegisterAllowlists_EWalletExpOff) {
       .Times(1);
   EXPECT_CALL(optimization_guide_decider_,
               RegisterOptimizationTypes(testing::ElementsAre(
+                  optimization_guide::proto::PIX_PSP_ALLOWLIST)))
+      .Times(1);
+  EXPECT_CALL(optimization_guide_decider_,
+              RegisterOptimizationTypes(testing::ElementsAre(
                   optimization_guide::proto::EWALLET_MERCHANT_ALLOWLIST)))
       .Times(0);
 
@@ -362,6 +366,7 @@ TEST_F(ChromeFacilitatedPaymentsClientTest,
   auto client = std::make_unique<ChromeFacilitatedPaymentsClient>(
       web_contents(), &optimization_guide_decider_);
 
-  EXPECT_NO_FATAL_FAILURE(static_cast<payments::facilitated::FacilitatedPaymentsClient&>(*client)
-      .InitPixAccountLinkingFlow(kPageOrigin));
+  EXPECT_NO_FATAL_FAILURE(
+      static_cast<payments::facilitated::FacilitatedPaymentsClient&>(*client)
+          .InitPixAccountLinkingFlow(kPageOrigin));
 }

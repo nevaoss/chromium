@@ -2,7 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import {html} from '//resources/lit/v3_0/lit.rollup.js';
+import {html, nothing} from '//resources/lit/v3_0/lit.rollup.js';
 
 import type {IwaDevUpdateOptionsDialogElement} from './update_options_dialog.js';
 
@@ -21,6 +21,9 @@ export function getHtml(this: IwaDevUpdateOptionsDialogElement) {
       <input id="channelInput"
           list="channelList"
           class="dropdown-select"
+          aria-invalid="${this.channelError_ ? 'true' : 'false'}"
+          aria-errormessage="${
+              this.channelError_ ? 'channelError' : nothing}"
           .value="${this.selectedChannel_}"
           @input="${this.onChannelInput_}"
           placeholder="Select or enter channel">
@@ -31,6 +34,11 @@ export function getHtml(this: IwaDevUpdateOptionsDialogElement) {
           </option>
         `)}
       </datalist>
+      ${this.channelError_ ? html`
+        <div id="channelError" class="error-message" aria-live="polite">
+          ${this.channelError_}
+        </div>
+      ` : ''}
     </div>
     <div class="dropdown-container">
       <label for="pinnedVersionInput">
@@ -40,6 +48,9 @@ export function getHtml(this: IwaDevUpdateOptionsDialogElement) {
         <input id="pinnedVersionInput"
             list="pinnedVersionList"
             class="dropdown-select"
+            aria-invalid="${this.pinnedVersionError_ ? 'true' : 'false'}"
+            aria-errormessage="${
+                this.pinnedVersionError_ ? 'pinnedVersionError' : nothing}"
             .value="${this.selectedPinnedVersion_}"
             @input="${this.onPinnedVersionInput_}"
             placeholder="Select or enter version">
@@ -48,7 +59,7 @@ export function getHtml(this: IwaDevUpdateOptionsDialogElement) {
               iron-icon="cr:close"
               title="Clear pinned version"
               aria-label="Clear pinned version"
-                  @click="${this.onClearPinnedVersionClick_}">
+              @click="${this.onClearPinnedVersionClick_}">
           </cr-icon-button>
         ` : ''}
       </div>
@@ -59,6 +70,11 @@ export function getHtml(this: IwaDevUpdateOptionsDialogElement) {
           </option>
         `)}
       </datalist>
+      ${this.pinnedVersionError_ ? html`
+        <div id="pinnedVersionError" class="error-message" aria-live="polite">
+          ${this.pinnedVersionError_}
+        </div>
+      ` : ''}
     </div>
     <div class="toggle-container">
       <span id="allowDowngradesLabel">Allow Downgrades</span>

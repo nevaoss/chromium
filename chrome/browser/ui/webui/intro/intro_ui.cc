@@ -73,7 +73,8 @@ bool ShouldShowDefaultBrowserToggle() {
 }
 
 bool ShouldShowMetricsOptIn() {
-#if BUILDFLAG(GOOGLE_CHROME_BRANDING)
+#if BUILDFLAG(GOOGLE_CHROME_BRANDING) && \
+    (BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX))
   return !metrics::IsMetricsReportingPolicyManaged();
 #else
   return false;
@@ -228,6 +229,8 @@ IntroUI::IntroUI(content::WebUI* web_ui)
   source->AddBoolean("isDeviceManaged", is_device_managed);
   source->AddBoolean("isFirstRunDesktopRevampEnabled",
                      is_first_run_desktop_revamp_enabled);
+  source->AddBoolean("isPreFirstRunDesktopRefreshEnabled",
+                     switches::IsPreFirstRunDesktopRefreshEnabled());
   source->AddBoolean("showDefaultBrowserToggle",
                      ShouldShowDefaultBrowserToggle());
   source->AddBoolean("showMetricsOptIn", ShouldShowMetricsOptIn());

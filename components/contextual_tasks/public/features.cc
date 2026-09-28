@@ -58,6 +58,11 @@ BASE_FEATURE(kContextualTasksDriveOAuthScope, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kEnableContextualTasksPinButtonInToolbar,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
+// Keeps the ephemeral contextual tasks button visible even when the permanent
+// button is pinned in the toolbar.
+BASE_FEATURE(kEphemeralPinningVisibleWhenPermanentlyPinned,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 
 // Enables relevant context determination for contextual tasks.
 BASE_FEATURE(kContextualTasksContext, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -193,6 +198,9 @@ BASE_FEATURE(kContextualTasksSidePanelRearchitecture,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kContextualTasksEnableStickyConversation,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
+BASE_FEATURE(kContextualTasksClobberActiveTab,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kContextualTasksNonBlockingUrlNavigation,
@@ -877,6 +885,10 @@ bool IsContextualTasksSidePanelRearchitectureEnabled() {
   return base::FeatureList::IsEnabled(kContextualTasksSidePanelRearchitecture);
 }
 
+bool IsContextualTasksClobberActiveTabEnabled() {
+  return base::FeatureList::IsEnabled(kContextualTasksClobberActiveTab);
+}
+
 const base::FeatureParam<std::string> kContextualTasksSearchCapabilitiesVersion{
     &kContextualTasksRearchitecture,
     "contextual-tasks-search-capabilities-version",
@@ -984,12 +996,24 @@ const char kContextualTasksSidePanelRearchitectureName[] =
 const char kContextualTasksSidePanelRearchitectureDescription[] =
     "Enables the side panel rearchitecture for contextual tasks.";
 
+const char kContextualTasksClobberActiveTabName[] =
+    "Contextual Tasks Clobber Active Tab";
+const char kContextualTasksClobberActiveTabDescription[] =
+    "Enables clicking links in the contextual tasks side panel to clobber the "
+    "active tab instead of opening in a new tab.";
+
 const char kContextualTasksBypassDismissedCapName[] =
     "Contextual Tasks Bypass Dismissed Cap";
 const char kContextualTasksBypassDismissedCapDescription[] =
     "Debugging flag that bypasses the dismissal count limit for contextual "
     "tasks tooltips, allowing them to be shown even after the user has "
     "dismissed them.";
+
+const char kEphemeralPinningVisibleWhenPermanentlyPinnedName[] =
+    "Contextual Tasks Ephemeral Pinning Visible When Permanently Pinned";
+const char kEphemeralPinningVisibleWhenPermanentlyPinnedDescription[] =
+    "Keeps the ephemeral contextual tasks button visible even when the "
+    "permanent button is pinned in the toolbar.";
 
 }  // namespace flag_descriptions
 

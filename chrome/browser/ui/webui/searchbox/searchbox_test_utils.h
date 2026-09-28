@@ -96,6 +96,7 @@ class MockSearchboxPage : public searchbox::mojom::Page {
                const std::string&,
                const GURL&));
   MOCK_METHOD(void, SetInputText, (const std::string& input_text));
+  MOCK_METHOD(void, SetKeywordSpaceTriggeringEnabled, (bool));
   MOCK_METHOD(void,
               SetThumbnail,
               (const std::string& thumbnail_url, bool is_deletable));
@@ -162,6 +163,7 @@ class MockOmniboxPopupPage : public omnibox_popup::mojom::Page {
   MOCK_METHOD(void, SetFocus, (bool is_focused, bool query_zps), (override));
   MOCK_METHOD(void, ClearAutocompleteMatches, (), (override));
   MOCK_METHOD(void, ClearPopup, (ClearPopupCallback callback), (override));
+  MOCK_METHOD(void, SetDefaultSearchProvider, (const std::string&), (override));
 };
 #endif
 

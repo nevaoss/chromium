@@ -2,13 +2,12 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
-import type {WebClientInitialState} from '../glic.mojom-webui.js';
-import type {AdditionalContext, AdditionalContextPart, AnnotatedPageData, CaptureRegionErrorReason, CaptureRegionParams, CaptureRegionResult, ChromeVersion, ClientCapabilities, ClientErrorDialogType, ConversationInfo, CounterAbuseVerdict, ErrorReasonTypes, ErrorWithReason, ExperimentalTriggeringUpdate, FileUploadPolicyState, FocusedTabDataHasFocus, FocusedTabDataHasNoFocus, FormFactor, GeminiEnterpriseSettings, HostCapability, InvokeOptions, MetricUserInputReactionType, MicrophoneStatus, OnResponseStoppedDetails, OpenPanelInfo, OpenPinnedTabPickerOptions, OpenSettingsOptions, PageMetadata, PanelOpeningData, PanelState, PdfDocumentData, PinTabsOptions, Platform, PromptType, ResumeActorTaskResult, Screenshot, TabContextOptions, TabContextResult, TabData, UnpinTabsOptions, UserProfileInfo, WebClientMode, ZeroStateSuggestions} from '../glic_api/glic_api.js';
+import type {AdditionalContext, AdditionalContextPart, AnnotatedPageData, CaptureRegionErrorReason, CaptureRegionParams, CaptureRegionResult, ClientErrorDialogType, ConversationInfo, CounterAbuseVerdict, ErrorReasonTypes, ErrorWithReason, ExperimentalTriggeringUpdate, FocusedTabDataHasFocus, FocusedTabDataHasNoFocus, InvokeOptions, MetricUserInputReactionType, MicrophoneStatus, OnResponseStoppedDetails, OpenPinnedTabPickerOptions, PageMetadata, PdfDocumentData, PinTabsOptions, PromptType, ResumeActorTaskResult, Screenshot, TabContextOptions, TabContextResult, TabData, UnpinTabsOptions, UserProfileInfo, WebClientMode, ZeroStateSuggestions} from '../glic_api/glic_api.js';
 
 import type {ActorClient, ActorHost} from './actor/actor_types.js';
 import type {AnnotationClient, AnnotationHost} from './annotation/annotation_types.js';
 import type {ExperimentalTriggeringClient} from './experimental_triggering/experimental_triggering_types.js';
-import type {InterfaceDef, InterfaceDefMethods, ReplaceProperties} from './transport/messaging.js';
+import type {InterfaceDef, InterfaceDefMethods} from './transport/messaging.js';
 import {defInterface, defMessage} from './transport/messaging.js';
 import type {ErrorCodec, PendingReceiver, PendingRemote, TransferableException} from './transport/post_message_transport.js';
 import type {ZeroStateSuggestionsClient, ZeroStateSuggestionsHost} from './zero_state_suggestions/zero_state_suggestions_types.js';
@@ -36,21 +35,6 @@ export const WebClientHostDef = defInterface({
   name: 'WebClientHost',
   methods: [
     {
-      name: 'webClientCreated',
-      request: defMessage<{
-        clientCapabilities: ClientCapabilities[],
-      }>(),
-      response: defMessage<{
-        initialState: WebClientInitialStatePrivate,
-        actorRemote?: PendingRemote<ActorHost>,
-        actorReceiver?: PendingReceiver<ActorClient>,
-        experimentalTriggeringReceiver?: PendingReceiver<
-                                          ExperimentalTriggeringClient>,
-        zeroStateSuggestionsRemote?: PendingRemote<ZeroStateSuggestionsHost>,
-      }>(),
-      histogram: {name: 'WebClientCreated', id: 1},
-    },
-    {
       name: 'webClientInitialized',
       request: defMessage<{
         success: boolean,
@@ -58,7 +42,6 @@ export const WebClientHostDef = defInterface({
         // (success is false).
         exception?: GlicException,
       }>(),
-      histogram: {id: 2},
     },
     {
       name: 'onExperimentalTriggeringUpdate',
@@ -68,27 +51,6 @@ export const WebClientHostDef = defInterface({
               observation: SubscriberObservationType,
       }>(),
       histogram: {id: 98},
-    },
-    {
-      name: 'openGlicSettingsPage',
-      request: defMessage<{options?: OpenSettingsOptions}>(),
-      histogram: {id: 4},
-    },
-    {
-      name: 'openPasswordManagerSettingsPage',
-      histogram: {id: 78},
-    },
-    {
-      name: 'closePanel',
-      histogram: {id: 5},
-    },
-    {
-      name: 'closePanelAndShutdown',
-      histogram: {id: 6},
-    },
-    {
-      name: 'showProfilePicker',
-      histogram: {id: 7},
     },
     {
       name: 'getModelQualityClientId',
@@ -257,14 +219,6 @@ export const WebClientHostDef = defInterface({
       histogram: {id: 26},
     },
     {
-      name: 'attachPanel',
-      histogram: {id: 27},
-    },
-    {
-      name: 'detachPanel',
-      histogram: {id: 28},
-    },
-    {
       name: 'setAudioDucking',
       request: defMessage<{
         enabled: boolean,
@@ -344,11 +298,6 @@ export const WebClientHostDef = defInterface({
         groupName: string,
       }>(),
       histogram: {id: 46},
-    },
-    {
-      name: 'openOsPermissionSettingsMenu',
-      request: defMessage<{permission: string}>(),
-      histogram: {id: 47},
     },
     {
       name: 'getOsMicrophonePermissionStatus',
@@ -496,14 +445,6 @@ export const WebClientHostDef = defInterface({
       histogram: {id: 100},
     },
     {
-      name: 'subscribeToZoomLevel',
-      histogram: {id: 96},
-    },
-    {
-      name: 'unsubscribeFromZoomLevel',
-      histogram: {id: 97},
-    },
-    {
       name: 'createAnnotationHandler',
       request: defMessage<{
         annotationReceiver: PendingReceiver<AnnotationHost>,
@@ -518,179 +459,7 @@ export type WebClientHost = typeof WebClientHostDef;
 // Types of requests to the GlicWebClient.
 export const WebClientDef = defInterface({
   name: 'WebClient',
-  methods: [
-    {
-      name: 'notifyPanelWillOpen',
-      request: defMessage<{
-        panelOpeningData: PanelOpeningData,
-      }>(),
-      response: defMessage<{
-        openPanelInfo?: OpenPanelInfo,
-      }>(),
-    },
-    {
-      name: 'notifyPanelWasClosed',
-    },
-    {
-      name: 'stopMicrophone',
-    },
-    {
-      name: 'panelStateChanged',
-      request: defMessage<{
-        panelState: PanelState,
-      }>(),
-    },
-    {
-      name: 'canAttachStateChanged',
-      request: defMessage<{
-        canAttach: boolean,
-      }>(),
-    },
-    {
-      name: 'notifyGeminiEnterpriseSettingsChanged',
-      request: defMessage<{
-        settings: GeminiEnterpriseSettings | undefined,
-      }>(),
-    },
-    {
-      name: 'notifyMicrophonePermissionStateChanged',
-      request: defMessage<{
-        enabled: boolean,
-      }>(),
-    },
-    {
-      name: 'notifyLocationPermissionStateChanged',
-      request: defMessage<{
-        enabled: boolean,
-      }>(),
-    },
-    {
-      name: 'notifyTabContextPermissionStateChanged',
-      request: defMessage<{
-        enabled: boolean,
-      }>(),
-    },
-    {
-      name: 'notifyDefaultTabContextPermissionStateChanged',
-      request: defMessage<{
-        enabled: boolean,
-      }>(),
-    },
-    {
-      name: 'notifyOsLocationPermissionStateChanged',
-      request: defMessage<{
-        enabled: boolean,
-      }>(),
-    },
-    {
-      name: 'notifyClosedCaptioningSettingChanged',
-      request: defMessage<{
-        enabled: boolean,
-      }>(),
-    },
-    {
-      name: 'notifyActuationOnWebSettingChanged',
-      request: defMessage<{
-        enabled: boolean,
-      }>(),
-    },
-    {
-      name: 'notifyFileUploadStateChanged',
-      request: defMessage<{
-        state: FileUploadPolicyState,
-      }>(),
-    },
-    {
-      name: 'notifyFocusedTabChanged',
-      request: defMessage<{
-        focusedTabDataPrivate: FocusedTabDataPrivate,
-      }>(),
-    },
-    {
-      name: 'notifyPanelActiveChanged',
-      request: defMessage<{
-        panelActive: boolean,
-      }>(),
-    },
-    {
-      name: 'checkResponsive',
-    },
-    {
-      name: 'notifyManualResizeChanged',
-      request: defMessage<{
-        resizing: boolean,
-      }>(),
-    },
-    {
-      name: 'browserIsOpenChanged',
-      request: defMessage<{
-        browserIsOpen: boolean,
-      }>(),
-    },
-    {
-      name: 'notifyOsHotkeyStateChanged',
-      request: defMessage<{
-        hotkey: string,
-      }>(),
-    },
-    {
-      name: 'notifyPinnedTabsChanged',
-      request: defMessage<{
-        tabData: TabDataPrivate[],
-      }>(),
-    },
-    {
-      name: 'notifyPinnedTabDataChanged',
-      request: defMessage<{
-        tabData: TabDataPrivate,
-      }>(),
-    },
-
-    {
-      name: 'pageMetadataChanged',
-      request: defMessage<{
-        tabId: string,
-        pageMetadata: PageMetadata | null,
-      }>(),
-    },
-    {
-      name: 'notifyAdditionalContext',
-      request: defMessage<{
-        context: AdditionalContextPrivate,
-      }>(),
-    },
-
-    {
-      name: 'notifyActOnWebCapabilityChanged',
-      request: defMessage<{
-        canActOnWeb: boolean,
-      }>(),
-    },
-    {
-      name: 'onboardingCompletedChanged',
-      request: defMessage<{
-        completed: boolean,
-      }>(),
-    },
-    {
-      name: 'notifyActorTaskListRowClicked',
-      request: defMessage<{
-        taskId: number,
-      }>(),
-    },
-    {
-      name: 'invoke',
-      request: defMessage<{
-        options: InvokeOptionsPrivate,
-      }>(),
-    },
-    {
-      name: 'notifyZoomLevelChanged',
-      request: defMessage<{
-        zoomFactor: number,
-      }>(),
-    },
-  ],
+  methods: [],
 });
 
 export type WebClient = typeof WebClientDef;
@@ -756,13 +525,13 @@ type InterfaceHistogramIds<I extends InterfaceDef> = {
 // trimmed down and fully deleted eventually.
 // See chrome/browser/glic/public/glic_api_metrics.h.
 export const RECORDED_REQUEST_IDS = {
-  WebClientCreated: 1,
-  WebClientInitialized: 2,
+  // Do not reuse deleted request ID: 1,
+  // Do not reuse deleted request ID: 2,
   // Do not reuse deleted request ID: 3,
-  OpenGlicSettingsPage: 4,
-  ClosePanel: 5,
-  ClosePanelAndShutdown: 6,
-  ShowProfilePicker: 7,
+  // Do not reuse deleted request ID: 4,
+  // Do not reuse deleted request ID: 5,
+  // Do not reuse deleted request ID: 6,
+  // Do not reuse deleted request ID: 7,
   GetModelQualityClientId: 8,
   GetContextFromFocusedTab: 9,
   GetContextFromTab: 10,
@@ -782,8 +551,8 @@ export const RECORDED_REQUEST_IDS = {
   SetContextAccessIndicator: 24,
   GetUserProfileInfo: 25,
   RefreshSignInCookies: 26,
-  AttachPanel: 27,
-  DetachPanel: 28,
+  // Do not reuse deleted request ID: 27,
+  // Do not reuse deleted request ID: 28,
   SetAudioDucking: 29,
   LogBeginAsyncEvent: 30,
   LogEndAsyncEvent: 31,
@@ -802,7 +571,7 @@ export const RECORDED_REQUEST_IDS = {
   // Do not reuse deleted request ID: 44,
   ScrollTo: 45,
   SetSyntheticExperimentState: 46,
-  OpenOsPermissionSettingsMenu: 47,
+  // Do not reuse deleted request ID: 47,
   GetOsMicrophonePermissionStatus: 48,
   PinTabs: 49,
   UnpinTabs: 50,
@@ -833,7 +602,7 @@ export const RECORDED_REQUEST_IDS = {
   UninterruptActorTask: 75,
   ActivateTab: 76,
   CreateActorTab: 77,
-  OpenPasswordManagerSettingsPage: 78,
+  // Do not reuse deleted request ID: 78,
   SetOnboardingCompleted: 80,
   SubscribeToTabData: 81,
   // Do not reuse deleted request ID: 82,
@@ -850,8 +619,8 @@ export const RECORDED_REQUEST_IDS = {
   OnActionSubmitted: 93,
   SubscribeToTabFavicon: 94,
   // Do not reuse deleted request ID: 95,
-  SubscribeToZoomLevel: 96,
-  UnsubscribeFromZoomLevel: 97,
+  // Do not reuse deleted request ID: 96,
+  // Do not reuse deleted request ID: 97,
   OnExperimentalTriggeringUpdate: 98,
   OnOptinImpression: 99,
   ProcessCounterAbuseVerdict: 100,
@@ -859,6 +628,7 @@ export const RECORDED_REQUEST_IDS = {
   // Do not reuse deleted request ID: 102,
   UpdateActorTaskStepProgress: 103,
   OpenPinnedTabPicker: 104,
+  // Do not reuse deleted request ID: 105,
 } as const satisfies
 InterfaceHistogramIds<WebClientHost>&InterfaceHistogramIds<ActorHost>&
     InterfaceHistogramIds<AnnotationHost>;
@@ -901,21 +671,6 @@ export function getHostRequestHistogramInfo(
 // have the same name, but different type. This ensures that we don't
 // accidentally leave the private data on the returned object.
 //
-
-export type WebClientInitialStatePrivate =
-    ReplaceProperties<WebClientInitialState, {
-      panelState: PanelState,
-      chromeVersion: ChromeVersion,
-      platform: Platform,
-      formFactor: FormFactor,
-      focusedTabData: FocusedTabDataPrivate,
-      loggingEnabled: boolean,
-      maxInFlightRequests: number,
-      sendResponsesForAllRequests: boolean,
-      enableZeroStateSuggestions: boolean,
-      enableCachedGetUserProfileInfo: boolean,
-      hostCapabilities: HostCapability[],
-    }>;
 
 // TabData format for postMessage transport.
 export declare interface TabDataPrivate extends Omit<TabData, 'favicon'> {

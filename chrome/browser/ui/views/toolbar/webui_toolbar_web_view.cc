@@ -93,6 +93,7 @@
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/public/common/page/page_zoom.h"
 #include "ui/accessibility/ax_enums.mojom-shared.h"
+#include "ui/base/interaction/element_tracker.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/base/mojom/menu_source_type.mojom.h"
@@ -105,8 +106,10 @@
 #include "ui/gfx/geometry/size.h"
 #include "ui/views/accessibility/view_accessibility.h"
 #include "ui/views/controls/webview/unhandled_keyboard_event_handler.h"
+#include "ui/views/controls/webview/web_contents_set_background_color.h"
 #include "ui/views/controls/webview/webview.h"
 #include "ui/views/focus/focus_manager.h"
+#include "ui/views/interaction/element_tracker_views.h"
 #include "ui/views/layout/fill_layout.h"
 #include "ui/views/layout/flex_layout.h"
 #include "ui/views/layout/flex_layout_types.h"
@@ -170,9 +173,11 @@ class WebUIToolbarEventForwarder : public ui::EventHandler {
       // We purposefully don't forward wheel events. They need special phase
       // handling and it doesn't seem like we actually do anything with them.
       return;
-    } else {
-      target->ForwardMouseEvent(ui::MakeWebMouseEvent(*event));
     }
+    if (event->type() == ui::EventType::kMousePressed) {
+      web_view_->RequestFocus();
+    }
+    target->ForwardMouseEvent(ui::MakeWebMouseEvent(*event));
   }
 
   bool HaveOpenOmniboxPopup() {
@@ -204,6 +209,7 @@ class WebUIToolbarInternalWebView : public views::WebView {
                               WebUIToolbarWebView* webui_toolbar_web_view)
       : views::WebView(browser_context),
         webui_toolbar_web_view_(webui_toolbar_web_view) {
+    SetBackground(nullptr);
 #if BUILDFLAG(IS_MAC)
     forwarder_ = std::make_unique<WebUIToolbarEventForwarder>(
         *webui_toolbar_web_view, *this);
@@ -455,6 +461,8 @@ WebUIToolbarWebView::WebUIToolbarWebView(
 
   content::WebContents* web_contents = web_view->GetWebContents();
   if (web_contents) {
+    views::WebContentsSetBackgroundColor::CreateForWebContentsWithColor(
+        web_contents, SK_ColorTRANSPARENT);
     WebUIToolbarUIDependencyProviderUserData::CreateForWebContents(web_contents,
                                                                    this);
     scoped_accessibility_mode_ =
@@ -593,7 +601,8 @@ void WebUIToolbarWebView::OnBlur() {
 void WebUIToolbarWebView::HandleContextMenu(
     toolbar_ui_api::mojom::ContextMenuType menu_type,
     const gfx::RectF& bounds_in_css_pixels,
-    ui::mojom::MenuSourceType source) {
+    ui::mojom::MenuSourceType source,
+    std::optional<uint32_t> show_menu_token) {
   gfx::Rect screen_rect =
       ConvertBoundsFromCssPixelsToScreenCoords(bounds_in_css_pixels);
 
@@ -609,7 +618,8 @@ void WebUIToolbarWebView::HandleContextMenu(
       break;
     case toolbar_ui_api::mojom::ContextMenuType::kSplitTabsAction:
     case toolbar_ui_api::mojom::ContextMenuType::kSplitTabsContext:
-      split_tabs_control_.HandleContextMenu(menu_type, screen_rect, source);
+      split_tabs_control_.HandleContextMenu(menu_type, screen_rect, source,
+                                            show_menu_token);
       break;
     case toolbar_ui_api::mojom::ContextMenuType::kHome:
       home_control_.HandleContextMenu(screen_rect, source);
@@ -994,6 +1004,11 @@ WebUIToolbarWebView::GetIconTableFetcher() {
 }
 
 CommandUpdater* WebUIToolbarWebView::GetCommandUpdater() {
+  // TODO(crbug.com/428946261): Convert to BrowserCommandController::From().
+  // Doing so makes WebUIToolbarUI::Init() see a null command updater and bail
+  // out, which hangs the WebUIToolbarLifecycle* browser tests. Those only run
+  // with the WebUI toolbar feature enabled, so the divergence between this
+  // accessor and From() is not yet understood.
   return browser_->GetFeatures().browser_command_controller();
 }
 
@@ -1100,6 +1115,11 @@ void WebUIToolbarWebView::PrimaryMainFrameRenderProcessGone(
     return;
   }
 
+  if (auto* metrics_manager =
+          InitialWebUIWindowMetricsManager::From(browser_)) {
+    metrics_manager->OnReloadButtonRenderProcessGone();
+  }
+
   // Reset the crash count if when the reset interval is reached.
   if (clock_->NowTicks() - last_crash_time_ >=
       features::kWebUIReloadButtonCrashRecoverResetInterval.Get()) {
@@ -1200,9 +1220,7 @@ void WebUIToolbarWebView::OverflowButtonClicked(
     browser_controls_adapter_->NavigateHome(WindowOpenDisposition::CURRENT_TAB);
     return;
   } else if (identifier == kToolbarSplitTabsToolbarButtonElementId) {
-    // TODO(crbug.com/491791965): Implement this. The main complexity is that if
-    // the current tab is already split, rather than trying to split the current
-    // tab, we should show the split tab menu.
+    split_tabs_control_.HandleContextMenuOverflowClick();
     return;
   }
   NOTREACHED();
@@ -1635,7 +1653,6 @@ void WebUIToolbarWebView::OnTouchUiChanged() {
   last_queued_state_.touch_ui = ui::TouchUiController::Get()->touch_ui();
   PostPushNavigationState();
 }
-
 
 void WebUIToolbarWebView::PostPushNavigationState() {
   // The toolbar is implemented by many individual elements that all update

@@ -66,6 +66,7 @@
 #include "chrome/browser/ash/boot_times_recorder/boot_times_recorder.h"
 #include "chrome/browser/ash/browser_delegate/browser_controller_impl.h"
 #include "chrome/browser/ash/browser_delegate/keyed_service_provider/desk_sync_service_provider_impl.h"
+#include "chrome/browser/ash/browser_delegate/keyed_service_provider/favicon_service_provider_impl.h"
 #include "chrome/browser/ash/browser_delegate/keyed_service_provider/identity_manager_provider_impl.h"
 #include "chrome/browser/ash/browser_delegate/keyed_service_provider/sync_service_provider_impl.h"
 #include "chrome/browser/ash/browser_delegate/keyed_service_provider/template_url_service_provider_impl.h"
@@ -296,6 +297,7 @@
 #include "net/base/network_change_notifier_passive.h"
 #include "printing/backend/print_backend.h"
 #include "services/audio/public/cpp/sounds/global_sounds_manager.h"
+#include "services/network/public/cpp/shared_url_loader_factory.h"
 #include "third_party/cros_system_api/dbus/service_constants.h"
 #include "third_party/cros_system_api/dbus/vm_launch/dbus-constants.h"
 #include "third_party/cros_system_api/dbus/vm_wl/dbus-constants.h"
@@ -960,6 +962,7 @@ void ChromeBrowserMainPartsAsh::PreProfileInit() {
   // List of instances providing KeyedService related services.
   app_service_registry_ = std::make_unique<apps::AppServiceRegistry>();
   desk_sync_service_provider_ = std::make_unique<DeskSyncServiceProviderImpl>();
+  favicon_service_provider_ = std::make_unique<FaviconServiceProviderImpl>();
   identity_manager_provider_ = std::make_unique<IdentityManagerProviderImpl>();
   sync_service_provider_ = std::make_unique<SyncServiceProviderImpl>();
   template_url_service_provider_ =
@@ -1232,7 +1235,9 @@ void ChromeBrowserMainPartsAsh::PreProfileInit() {
       g_browser_process->GetFeatures()->application_locale_storage());
 #endif
 
-  ash_web_ui_config_manager_ = std::make_unique<AshWebUIConfigManager>();
+  ash_web_ui_config_manager_ = std::make_unique<AshWebUIConfigManager>(
+      g_browser_process->local_state(),
+      g_browser_process->GetFeatures()->application_locale_storage());
 }
 
 class GuestLanguageSetCallbackData {
@@ -1892,6 +1897,7 @@ void ChromeBrowserMainPartsAsh::PostMainMessageLoopRun() {
   template_url_service_provider_.reset();
   sync_service_provider_.reset();
   identity_manager_provider_.reset();
+  favicon_service_provider_.reset();
   desk_sync_service_provider_.reset();
   app_service_registry_.reset();
   services_customization_document_.reset();

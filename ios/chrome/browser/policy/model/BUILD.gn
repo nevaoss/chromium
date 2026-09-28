@@ -134,7 +134,10 @@ source_set("model") {
     "//url",
   ]
 
-  public_deps = [ "//components/policy/core/browser" ]
+  public_deps = [
+    "//components/policy/core/browser",
+    "//components/policy/resources/webui/mojom:mojo_bindings",
+  ]
 }
 
 source_set("cloud_profile_reporting") {
@@ -150,6 +153,7 @@ source_set("cloud_profile_reporting") {
     "//base",
     "//components/enterprise",
     "//components/enterprise/browser/identifiers",
+    "//components/enterprise/device_attestation",
     "//components/keyed_service/core",
     "//components/policy/core/common",
     "//ios/chrome/browser/enterprise/identifiers:profile_id_service_factory",
@@ -157,6 +161,7 @@ source_set("cloud_profile_reporting") {
     "//ios/chrome/browser/shared/model/application_context",
     "//ios/chrome/browser/shared/model/profile",
     "//ios/chrome/browser/shared/model/profile:profile_keyed_service_factory",
+    "//ios/public/provider/chrome/browser/device_attestation:device_attestation_api",
     "//services/network/public/cpp",
   ]
 }
@@ -302,6 +307,7 @@ source_set("unit_tests") {
     "//components/policy/core/browser:test_support",
     "//components/policy/core/common",
     "//components/policy/proto",
+    "//components/policy/resources/webui/mojom:mojo_bindings",
     "//components/pref_registry",
     "//components/prefs",
     "//components/prefs:test_support",

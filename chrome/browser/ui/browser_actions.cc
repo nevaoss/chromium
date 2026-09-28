@@ -104,7 +104,6 @@
 #include "chrome/browser/ui/browser_element_identifiers.h"
 #include "chrome/browser/ui/browser_select_file_dialog_controller.h"
 #include "chrome/browser/ui/browser_window.h"
-#include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface_iterator.h"
 #include "chrome/browser/ui/bubble_anchor_util.h"
@@ -661,9 +660,8 @@ void BrowserActions::InitializeSidePanelActions() {
                 static_cast<
                     std::underlying_type_t<actions::ActionPinnableState>>(
                     actions::ActionPinnableState::kPinnable))
-            .SetVisible(
-                contextual_tasks::EntryPointEligibilityManager::
-                    IsPinningEligible(profile))
+            .SetVisible(contextual_tasks::EntryPointEligibilityManager::
+                            IsPinningEligible(profile))
             .Build());
   }
 
@@ -2047,8 +2045,7 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
           base::BindRepeating(
               [](BrowserWindowInterface* bwi, actions::ActionItem* item,
                  actions::ActionInvocationContext context) {
-                bwi->GetFeatures()
-                    .browser_command_controller()
+                chrome::BrowserCommandController::From(bwi)
                     ->ShowCustomizeChromeSidePanel(
                         SidePanelOpenTrigger::kAppMenu,
                         CustomizeChromeSection::kToolbar);
@@ -2172,8 +2169,7 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
           base::BindRepeating(
               [](BrowserWindowInterface* bwi, actions::ActionItem* item,
                  actions::ActionInvocationContext context) {
-                bwi->GetFeatures()
-                    .browser_command_controller()
+                chrome::BrowserCommandController::From(bwi)
                     ->ShowCustomizeChromeSidePanel(
                         SidePanelOpenTrigger::kNewTabFooter,
                         CustomizeChromeSection::kFooter);
@@ -3975,16 +3971,13 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
                 Profile* profile = bwi->GetProfile();
                 signin::IdentityManager* identity_manager =
                     IdentityManagerFactory::GetForProfileIfExists(profile);
-                AccountInfo account_info;
+                CoreAccountInfo account;
                 if (identity_manager) {
-                  CoreAccountInfo account =
-                      identity_manager->GetPrimaryAccountInfo(
-                          signin::ConsentLevel::kSignin);
-                  account_info =
-                      identity_manager->FindExtendedAccountInfo(account);
+                  account = identity_manager->GetPrimaryAccountInfo(
+                      signin::ConsentLevel::kSignin);
                 }
                 signin_ui_util::EnableSyncFromSingleAccountPromo(
-                    profile, account_info, signin_metrics::AccessPoint::kMenu);
+                    profile, account, signin_metrics::AccessPoint::kMenu);
               },
               bwi))
           .SetActionId(kActionTurnOnSync)
@@ -3998,16 +3991,13 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
                 Profile* profile = bwi->GetProfile();
                 signin::IdentityManager* identity_manager =
                     IdentityManagerFactory::GetForProfileIfExists(profile);
-                AccountInfo account_info;
+                CoreAccountInfo account;
                 if (identity_manager) {
-                  CoreAccountInfo account =
-                      identity_manager->GetPrimaryAccountInfo(
-                          signin::ConsentLevel::kSignin);
-                  account_info =
-                      identity_manager->FindExtendedAccountInfo(account);
+                  account = identity_manager->GetPrimaryAccountInfo(
+                      signin::ConsentLevel::kSignin);
                 }
                 signin_ui_util::SignInFromSingleAccountPromo(
-                    profile, account_info, signin_metrics::AccessPoint::kMenu);
+                    profile, account, signin_metrics::AccessPoint::kMenu);
               },
               bwi))
           .SetActionId(kActionShowSignin)
@@ -4122,7 +4112,7 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
               [](BrowserWindowInterface* bwi, actions::ActionItem* item,
                  actions::ActionInvocationContext context) {
                 Profile* profile = bwi->GetProfile();
-                if (profile->IsIncognitoProfile()) {
+                if (profile->IsPrimaryOTRProfileWithRegularParent()) {
                   chrome::CloseAllBrowsersWithIncognitoProfile(profile);
                 } else {
                   profiles::CloseProfileWindows(profile);

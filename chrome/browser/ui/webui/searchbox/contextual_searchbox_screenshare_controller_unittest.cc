@@ -179,11 +179,26 @@ class ContextualSearchboxScreenshareControllerTest
  public:
   void SetUp() override {
     ChromeRenderViewHostTestHarness::SetUp();
+#if BUILDFLAG(IS_MAC)
+    scoped_feature_list_.InitAndDisableFeature(
+        kOmniboxEverywhereNativeScreenPicker);
+    default_picker_test_flags_.expect_screens = true;
+    default_picker_test_flags_.expect_windows = false;
+    default_picker_test_flags_.picker_result =
+        content::DesktopMediaID(content::DesktopMediaID::TYPE_SCREEN, 42);
+    default_picker_factory_.SetTestFlags(
+        base::span_from_ref(default_picker_test_flags_));
+    CreateController(&default_picker_factory_);
+#else
     CreateController();
+#endif
   }
 
   void TearDown() override {
     controller_.reset();
+#if BUILDFLAG(IS_MAC)
+    scoped_feature_list_.Reset();
+#endif
     ChromeRenderViewHostTestHarness::TearDown();
   }
 
@@ -197,6 +212,14 @@ class ContextualSearchboxScreenshareControllerTest
   ContextualSearchboxScreenshareController& controller() {
     return *controller_;
   }
+#if BUILDFLAG(IS_MAC)
+  FakeDesktopMediaPickerFactory& default_picker_factory() {
+    return default_picker_factory_;
+  }
+  FakeDesktopMediaPickerFactory::TestFlags& default_picker_test_flags() {
+    return default_picker_test_flags_;
+  }
+#endif
 
   void SetupScreenshotUploadConfig() {
     scoped_config_.Get().config.mutable_composebox()->set_max_num_files(5);
@@ -227,6 +250,11 @@ class ContextualSearchboxScreenshareControllerTest
   testing::NiceMock<MockScreenshareDelegate> mock_delegate_;
   std::unique_ptr<ContextualSearchboxScreenshareController> controller_;
   ntp_composebox::ScopedFeatureConfigForTesting scoped_config_;
+#if BUILDFLAG(IS_MAC)
+  base::test::ScopedFeatureList scoped_feature_list_;
+  FakeDesktopMediaPickerFactory default_picker_factory_;
+  FakeDesktopMediaPickerFactory::TestFlags default_picker_test_flags_;
+#endif
 };
 
 TEST_F(ContextualSearchboxScreenshareControllerTest,
@@ -527,8 +555,14 @@ TEST_F(ContextualSearchboxScreenshareControllerTest,
                        RegionCaptureSource& source,
                    ContextualSearchboxScreenshareController::Delegate::
                        RegionSelectedCallback callback) {
+#if BUILDFLAG(IS_MAC)
+        EXPECT_EQ(source.type, ContextualSearchboxScreenshareController::
+                                   RegionCaptureSource::Type::kSpecificDisplay);
+        EXPECT_EQ(source.display_id, 42);
+#else
         EXPECT_EQ(source.type, ContextualSearchboxScreenshareController::
                                    RegionCaptureSource::Type::kAllDisplays);
+#endif
         std::move(callback).Run(screenshot);
       });
 
@@ -658,12 +692,13 @@ using content::desktop_capture::ScopedNativePickerForTesting;
 
 TEST_F(ContextualSearchboxScreenshareControllerTest,
        StartScreenshare_NativePicker_Success) {
-  if (base::mac::MacOSMajorVersion() < 14) {
-    GTEST_SKIP() << "Native picker only supported on macOS 14+";
+  if (base::mac::MacOSVersion() < 26'04'00) {
+    GTEST_SKIP() << "Native picker only supported on macOS 26.4+";
   }
 
   base::test::ScopedFeatureList scoped_feature_list;
-  scoped_feature_list.InitAndEnableFeature(media::kUseSCContentSharingPicker);
+  scoped_feature_list.InitAndEnableFeature(
+      kOmniboxEverywhereNativeScreenPicker);
   SetupScreenshotUploadConfig();
 
   EXPECT_CALL(delegate(), OnScreensharePickerOpened());
@@ -708,12 +743,13 @@ TEST_F(ContextualSearchboxScreenshareControllerTest,
 
 TEST_F(ContextualSearchboxScreenshareControllerTest,
        StartScreenshare_NativePicker_Cancelled) {
-  if (base::mac::MacOSMajorVersion() < 14) {
-    GTEST_SKIP() << "Native picker only supported on macOS 14+";
+  if (base::mac::MacOSVersion() < 26'04'00) {
+    GTEST_SKIP() << "Native picker only supported on macOS 26.4+";
   }
 
   base::test::ScopedFeatureList scoped_feature_list;
-  scoped_feature_list.InitAndEnableFeature(media::kUseSCContentSharingPicker);
+  scoped_feature_list.InitAndEnableFeature(
+      kOmniboxEverywhereNativeScreenPicker);
 
   EXPECT_CALL(delegate(), OnScreensharePickerOpened());
   EXPECT_CALL(delegate(), OnScreensharePickerClosed());
@@ -730,12 +766,13 @@ TEST_F(ContextualSearchboxScreenshareControllerTest,
 
 TEST_F(ContextualSearchboxScreenshareControllerTest,
        StartScreenshare_NativePicker_Error_FallsBackToDefaultPicker) {
-  if (base::mac::MacOSMajorVersion() < 14) {
-    GTEST_SKIP() << "Native picker only supported on macOS 14+";
+  if (base::mac::MacOSVersion() < 26'04'00) {
+    GTEST_SKIP() << "Native picker only supported on macOS 26.4+";
   }
 
   base::test::ScopedFeatureList scoped_feature_list;
-  scoped_feature_list.InitAndEnableFeature(media::kUseSCContentSharingPicker);
+  scoped_feature_list.InitAndEnableFeature(
+      kOmniboxEverywhereNativeScreenPicker);
   SetupScreenshotUploadConfig();
 
   EXPECT_CALL(delegate(), OnScreensharePickerOpened());
@@ -786,5 +823,103 @@ TEST_F(ContextualSearchboxScreenshareControllerTest,
 
   EXPECT_TRUE(future.Get().has_value());
   EXPECT_EQ(*future.Get(), expected_token);
+}
+TEST_F(ContextualSearchboxScreenshareControllerTest,
+       CaptureRegionScreenshot_NativePicker_Success) {
+  if (base::mac::MacOSVersion() < 26'04'00) {
+    GTEST_SKIP()
+        << "Native picker for region capture only supported on macOS 26.4+";
+  }
+
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitAndEnableFeature(
+      kOmniboxEverywhereNativeScreenPicker);
+  SetupScreenshotUploadConfig();
+
+  EXPECT_CALL(delegate(), OnScreensharePickerOpened());
+  EXPECT_CALL(delegate(), OnScreensharePickerClosed());
+  EXPECT_CALL(delegate(), ShowRegionSelectOverlay)
+      .WillOnce([](const SkBitmap& screenshot,
+                   const ContextualSearchboxScreenshareController::
+                       RegionCaptureSource& source,
+                   ContextualSearchboxScreenshareController::Delegate::
+                       RegionSelectedCallback callback) {
+        EXPECT_EQ(source.type, ContextualSearchboxScreenshareController::
+                                   RegionCaptureSource::Type::kSpecificDisplay);
+        EXPECT_EQ(source.display_id, 42);
+        std::move(callback).Run(screenshot);
+      });
+
+  content::desktop_capture::ScopedDesktopCapturerForTesting scoped_capturer(
+      std::make_unique<FakeDesktopCapturer>());
+  ScopedNativePickerForTesting scoped_picker(
+      ScopedNativePickerForTesting::Action::kSelectSource, /*session_id=*/1,
+      webrtc::DesktopCapturer::Source{1, "Mock Screen", 42});
+
+  base::UnguessableToken expected_token = base::UnguessableToken::Create();
+  EXPECT_CALL(host(), UploadScreenshot)
+      .WillOnce([&](std::string file_name, std::string mime_type,
+                    mojo_base::BigBuffer file_bytes,
+                    std::optional<lens::ImageEncodingOptions> image_options,
+                    MockScreenshareHost::AddFileContextCallback callback) {
+        EXPECT_EQ(file_name, "Screenshot.png");
+        EXPECT_EQ(mime_type, "image/png");
+        EXPECT_TRUE(image_options.has_value());
+        std::move(callback).Run(expected_token);
+      });
+
+  EXPECT_CALL(host(), AddFileContextToPage(expected_token, testing::_))
+      .WillOnce([&](const base::UnguessableToken& token,
+                    searchbox::mojom::SelectedFileInfoPtr file_info) {
+        EXPECT_EQ(file_info->file_name, "Screenshot.png");
+        EXPECT_EQ(file_info->mime_type, "image/png");
+        EXPECT_TRUE(file_info->image_data_url.has_value());
+      });
+
+  base::test::TestFuture<const std::optional<base::UnguessableToken>&> future;
+  controller().CaptureRegionScreenshot(future.GetCallback());
+
+  EXPECT_TRUE(future.Get().has_value());
+  EXPECT_EQ(*future.Get(), expected_token);
+}
+
+TEST_F(ContextualSearchboxScreenshareControllerTest,
+       CaptureRegionScreenshot_NativePicker_Cancelled) {
+  if (base::mac::MacOSVersion() < 26'04'00) {
+    GTEST_SKIP()
+        << "Native picker for region capture only supported on macOS 26.4+";
+  }
+
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitAndEnableFeature(
+      kOmniboxEverywhereNativeScreenPicker);
+
+  EXPECT_CALL(delegate(), OnScreensharePickerOpened());
+  EXPECT_CALL(delegate(), OnScreensharePickerClosed());
+
+  ScopedNativePickerForTesting scoped_picker(
+      ScopedNativePickerForTesting::Action::kCancel);
+
+  base::test::TestFuture<const std::optional<base::UnguessableToken>&> future;
+  controller().CaptureRegionScreenshot(future.GetCallback());
+
+  EXPECT_FALSE(future.Get().has_value());
+}
+
+TEST_F(ContextualSearchboxScreenshareControllerTest,
+       CaptureRegionScreenshot_DefaultPicker_Cancelled) {
+  EXPECT_CALL(delegate(), OnScreensharePickerOpened());
+  EXPECT_CALL(delegate(), OnScreensharePickerClosed());
+
+  default_picker_test_flags().expect_screens = true;
+  default_picker_test_flags().expect_windows = false;
+  default_picker_test_flags().picker_result = content::DesktopMediaID();
+  default_picker_factory().SetTestFlags(
+      base::span_from_ref(default_picker_test_flags()));
+
+  base::test::TestFuture<const std::optional<base::UnguessableToken>&> future;
+  controller().CaptureRegionScreenshot(future.GetCallback());
+
+  EXPECT_FALSE(future.Get().has_value());
 }
 #endif

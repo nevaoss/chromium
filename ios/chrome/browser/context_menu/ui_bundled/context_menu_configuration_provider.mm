@@ -58,6 +58,7 @@
 #import "ios/chrome/browser/shared/public/commands/activity_service_commands.h"
 #import "ios/chrome/browser/shared/public/commands/activity_service_share_url_command.h"
 #import "ios/chrome/browser/shared/public/commands/command_dispatcher.h"
+#import "ios/chrome/browser/shared/public/commands/country_code_picker_commands.h"
 #import "ios/chrome/browser/shared/public/commands/enhanced_calendar_commands.h"
 #import "ios/chrome/browser/shared/public/commands/gemini_commands.h"
 #import "ios/chrome/browser/shared/public/commands/lens_commands.h"
@@ -290,6 +291,8 @@ NSString* const kAlertAccessibilityIdentifier = @"AlertAccessibilityIdentifier";
         HandlerForProtocol(dispatcher, UnitConversionCommands);
     contextMenuHandlers.enhancedCalendarHandler =
         HandlerForProtocol(dispatcher, EnhancedCalendarCommands);
+    contextMenuHandlers.countryCodeHandler =
+        HandlerForProtocol(dispatcher, CountryCodePickerCommands);
     // Insert any provided menu items. Do after Link and/or Image to allow
     // inserting at beginning or adding to end.
     ElementsToAddToContextMenu* result =
@@ -588,11 +591,12 @@ NSString* const kAlertAccessibilityIdentifier = @"AlertAccessibilityIdentifier";
   // - Profile-level (`IsProfileEligibleForGemini`): Checks account-wide
   //   eligibility such as enterprise policies, workspace restrictions, and
   //   login state.
-  BOOL canShowGeminiElement =
+  // - Quota exhaustion: Disables the element while keeping it visible with a
+  //   refill reset subtitle.
+  gemini::GeminiAvailabilityResult geminiAvailability =
       gemini::IsGeminiAvailable(gemini::EntryPoint::ImageContextMenu,
-                                self.browser->GetProfile(), webState)
-          .enabled;
-  if (canShowGeminiElement) {
+                                self.browser->GetProfile(), webState);
+  if (geminiAvailability.visible) {
     RecordImageRemixContextMenuEntryPointShown();
 
     ProceduralBlock geminiElementCallback = ^{
@@ -600,8 +604,18 @@ NSString* const kAlertAccessibilityIdentifier = @"AlertAccessibilityIdentifier";
                               referrer:referrer
                                 params:params];
     };
-    geminiElement = [actionFactory
+    UIAction* geminiAction = [actionFactory
         actionToOpenImageInGeminiWithBlock:geminiElementCallback];
+    if (!geminiAvailability.enabled) {
+      geminiAction.attributes = UIMenuElementAttributesDisabled;
+      // Add a quota specific subtitle when the entry point is disabled due to
+      // quota exhaustion.
+      if (geminiAvailability.disabled_reason ==
+          gemini::EntryPointDisabledReason::kQuotaExhausted) {
+        geminiAction.subtitle = geminiAvailability.disabled_reason_subtitle;
+      }
+    }
+    geminiElement = geminiAction;
     [imageMenuElements addObject:geminiElement];
   }
 

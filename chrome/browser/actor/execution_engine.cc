@@ -119,7 +119,6 @@ namespace actor {
 enum class ActorCustomPredicate {
   kSafetyList,
   kSensitiveUrl,
-  kSensitiveUrlPromptsDisabled,
   kLookalikeUrl,
   kSafeBrowsing,
   kSafetyChecksDisabled,
@@ -144,8 +143,6 @@ constexpr std::string_view ActorCustomPredicateToString(
       return "actor_safety_list_check";
     case ActorCustomPredicate::kSensitiveUrl:
       return "actor_sensitive_url_check";
-    case ActorCustomPredicate::kSensitiveUrlPromptsDisabled:
-      return "actor_sensitive_url_prompts_disabled_check";
     case ActorCustomPredicate::kLookalikeUrl:
       return "actor_lookalike_url_check";
     case ActorCustomPredicate::kSafeBrowsing:
@@ -424,20 +421,6 @@ void BlockSensitiveUrlWhenNavigationGatingDisabled(
   BlockSensitiveUrl(profile, context, source, destination, std::move(callback));
 }
 
-void BlockSensitiveUrlWhenPromptsDisabled(
-    Profile* profile,
-    origin_gating::GatingDecisionContext* context,
-    const GURL& source,
-    const GURL& destination,
-    base::OnceCallback<void(origin_gating::Decision)> callback) {
-  if (kGlicPromptUserForSensitiveNavigations.Get()) {
-    std::move(callback).Run(origin_gating::Decision::kNoDecision);
-    return;
-  }
-
-  BlockSensitiveUrl(profile, context, source, destination, std::move(callback));
-}
-
 origin_gating::Decision BlockLookalikeUrl(
     Profile* profile,
     origin_gating::GatingDecisionContext* context,
@@ -555,8 +538,6 @@ ExecutionEngine::GatingDecision MapGatingDecisionToEngineDecision(
           return decision.is_allowed
                      ? ExecutionEngine::GatingDecision::kAllowByStaticList
                      : ExecutionEngine::GatingDecision::kBlockByStaticList;
-        case ActorCustomPredicate::kSensitiveUrlPromptsDisabled:
-          return ExecutionEngine::GatingDecision::kNeedsAsyncCheck;
         case ActorCustomPredicate::kDangerousMimeType:
           return ExecutionEngine::GatingDecision::kBlockByDangerousMimeType;
         case ActorCustomPredicate::kSensitiveUrl:
@@ -618,7 +599,6 @@ MayActOnUrlBlockReason MapGatingDecisionToBlockReason(
         case ActorCustomPredicate::kDangerousMimeType:
           return MayActOnUrlBlockReason::kDangerousMimeType;
         case ActorCustomPredicate::kSensitiveUrl:
-        case ActorCustomPredicate::kSensitiveUrlPromptsDisabled:
           return MayActOnUrlBlockReason::kOptimizationGuideBlock;
         case ActorCustomPredicate::kLookalikeUrl:
           return MayActOnUrlBlockReason::kLookalikeDomain;
@@ -707,22 +687,12 @@ ExecutionEngine::GetFactoryFunctionForTesting() {
   return *callback;
 }
 
-ExecutionEngine::ExecutionEngine(base::PassKey<ExecutionEngine> pass_key,
-                                 ActorTask& owner_task)
-    : ExecutionEngine(
-          pass_key,
-          owner_task,
-          ui::NewUiEventDispatcher(
-              owner_task.actor_keyed_service().GetActorUiStateManager())) {}
-
 // Protected constructor without pass key to allow subclassing.
 ExecutionEngine::ExecutionEngine(ActorTask& owner_task)
     : ExecutionEngine(base::PassKey<ExecutionEngine>(), owner_task) {}
 
-ExecutionEngine::ExecutionEngine(
-    base::PassKey<ExecutionEngine>,
-    ActorTask& owner_task,
-    std::unique_ptr<ui::UiEventDispatcher> ui_event_dispatcher)
+ExecutionEngine::ExecutionEngine(base::PassKey<ExecutionEngine>,
+                                 ActorTask& owner_task)
     : task_(owner_task),
       journal_(task_->actor_keyed_service().GetJournal().GetSafeRef()),
       tool_controller_(std::make_unique<ToolController>(*task_, *this)),
@@ -736,7 +706,6 @@ ExecutionEngine::ExecutionEngine(
               task_->GetProfile(),
               journal_,
               task_->id())),
-      ui_event_dispatcher_(std::move(ui_event_dispatcher)),
       origin_gating_checker_(
           *this,
           origin_gating::OriginGatingConfiguration(
@@ -803,13 +772,6 @@ ExecutionEngine::ExecutionEngine(
                    {GateableEvent::kNavigationRequest}},
                   {DecisionSource::kCacheWithoutUserConfirmation,
                    {GateableEvent::kNavigationResponse}},
-                  {CustomPredicate(
-                       base::BindRepeating(
-                           &BlockSensitiveUrlWhenPromptsDisabled,
-                           task_->GetProfile()),
-                       ActorCustomPredicate::kSensitiveUrlPromptsDisabled),
-                   {GateableEvent::kNavigationResponse,
-                    GateableEvent::kPageAction}},
               },
               kGlicNavigationGatingUseSiteNotOrigin.Get())),
       dark_launch_origin_gating_cache_(
@@ -826,14 +788,6 @@ std::unique_ptr<ExecutionEngine> ExecutionEngine::Create(
 
   return std::make_unique<ExecutionEngine>(base::PassKey<ExecutionEngine>(),
                                            owner_task);
-}
-
-std::unique_ptr<ExecutionEngine> ExecutionEngine::CreateForTesting(
-    ActorTask& owner_task,
-    std::unique_ptr<ui::UiEventDispatcher> ui_event_dispatcher) {
-  return std::make_unique<ExecutionEngine>(base::PassKey<ExecutionEngine>(),
-                                           owner_task,
-                                           std::move(ui_event_dispatcher));
 }
 
 ExecutionEngine::~ExecutionEngine() {
@@ -1538,7 +1492,7 @@ void ExecutionEngine::PostToolCreate(mojom::ActionResultPtr result) {
     return;
   }
   SetState(State::kUiPreInvoke);
-  ui_event_dispatcher_->OnPreTool(
+  GetUiEventDispatcher().OnPreTool(
       GetInProgressAction(),
       base::BindOnce(&ExecutionEngine::FinishedUiPreInvoke,
                      GetActionSequenceWeakPtr()));
@@ -1640,7 +1594,7 @@ void ExecutionEngine::FinishedToolInvoke(mojom::ActionResultPtr result) {
   }
 
   SetState(State::kUiPostInvoke);
-  ui_event_dispatcher_->OnPostTool(
+  GetUiEventDispatcher().OnPostTool(
       GetInProgressAction(),
       base::BindOnce(&ExecutionEngine::FinishedUiPostInvoke,
                      GetActionSequenceWeakPtr()));
@@ -2007,6 +1961,10 @@ size_t ExecutionEngine::GetResultIndexForAction(size_t action_index) const {
   CHECK_GT(original_count, 0ul);
 
   return original_count - 1;
+}
+
+ui::UiEventDispatcher& ExecutionEngine::GetUiEventDispatcher() {
+  return task_->ui_event_dispatcher();
 }
 
 std::ostream& operator<<(std::ostream& o, const ExecutionEngine::State& s) {

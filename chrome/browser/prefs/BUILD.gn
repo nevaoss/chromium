@@ -74,7 +74,6 @@ source_set("impl") {
     "//chrome/browser/devtools",
     "//chrome/browser/engagement",
     "//chrome/browser/external_protocol",
-    "//chrome/browser/finds/core",
     "//chrome/browser/first_run",
     "//chrome/browser/gcm",
     "//chrome/browser/glic",
@@ -154,7 +153,6 @@ source_set("impl") {
     "//components/feature_engagement/public:prefs",
     "//components/history_clusters/core",
     "//components/image_fetcher/core/cache",
-    "//components/invalidation:legacy_topics_cleanup",
     "//components/language/content/browser",
     "//components/language/content/browser/ulp_language_code_locator",
     "//components/language/core/browser",
@@ -358,6 +356,7 @@ source_set("impl") {
     deps += [
       "//chrome/browser:font_prewarmer_tab_helper",
       "//chrome/browser/os_crypt",
+      "//chrome/browser/ui:network_profile_bubble",
       "//chrome/browser/webnn",
       "//chrome/browser/win",
       "//components/os_crypt/browser",
@@ -368,6 +367,7 @@ source_set("impl") {
   if (is_android) {
     deps += [
       "//chrome/browser/auxiliary_search",
+      "//chrome/browser/finds/core",
       "//chrome/browser/lens",
       "//chrome/browser/notifications",
       "//chrome/browser/notifications:notifications_java_enum_srcjar",
@@ -376,6 +376,7 @@ source_set("impl") {
       "//chrome/browser/password_manager/android:utils",
       "//chrome/browser/readaloud/android:native",
       "//chrome/browser/search_engines",
+      "//chrome/browser/ui/android/enterprise_signals_disclaimer",
       "//components/feed/core/common:feed_core_common",
       "//components/feed/core/shared_prefs:feed_shared_prefs",
       "//components/feed/core/v2:ios_shared",

@@ -4111,15 +4111,6 @@ Called by update_autofill_enums.py.-->
   <int value="1" label="POST"/>
 </enum>
 
-<enum name="AutofillQueryResult">
-  <int value="0" label="Sent"/>
-  <int value="1" label="Received"/>
-  <int value="2" label="Parsed"/>
-  <int value="3" label="Response matches local"/>
-  <int value="4" label="Response improves local (nonempty)"/>
-  <int value="5" label="Response improves local (empty)"/>
-</enum>
-
 <enum name="AutofillRationalizationQualityMetric">
   <int value="0" label="Good Rationalization"/>
   <int value="1" label="Ok Rationalization"/>
@@ -4184,6 +4175,12 @@ Called by update_autofill_enums.py.-->
   <int value="2" label="Some other item selected"/>
 </enum>
 
+<enum name="AutofillScanCreditCardPromptEntryPoint">
+  <int value="0" label="Keyboard accessory"/>
+  <int value="1" label="Bottom sheet"/>
+  <int value="2" label="Settings page"/>
+</enum>
+
 <enum name="AutofillScanCreditCardResult">
   <int value="0" label="Unknown result"/>
   <int value="1"
@@ -4202,6 +4199,12 @@ Called by update_autofill_enums.py.-->
   <int value="5" label="Credit card scanner was started but cancelled"/>
   <int value="6"
       label="Credit card scanner option was shown to the user but not used"/>
+</enum>
+
+<enum name="AutofillScanCreditCardScreenType">
+  <int value="0" label="Unknown"/>
+  <int value="1" label="OCR"/>
+  <int value="2" label="NFC"/>
 </enum>
 
 <enum name="AutofillServerCardUnmaskResult">
@@ -5714,6 +5717,23 @@ Called by update_autofill_enums.py.-->
 </enum>
 
 <!-- LINT.ThenChange(//components/one_time_tokens/core/browser/one_time_token_service_constants.h:TickleArrival) -->
+
+<!-- LINT.IfChange(OneTimeTokensTickleFormOutcome) -->
+
+<enum name="OneTimeTokensTickleFormOutcome">
+  <summary>
+    The outcome of an OTP web form relative to push notification delivery and
+    user interaction.
+  </summary>
+  <int value="0"
+      label="Tickle before user interaction (active and unedited field)"/>
+  <int value="1"
+      label="Tickle after user interaction (typed, pasted, submitted, or
+             navigated)"/>
+  <int value="2" label="No tickle received (3 minutes elapsed)"/>
+</enum>
+
+<!-- LINT.ThenChange(//components/one_time_tokens/core/browser/one_time_token_service_constants.h:TickleFormOutcome) -->
 
 <!-- LINT.IfChange(OtpFillingSafeBrowsingCheckResult) -->
 

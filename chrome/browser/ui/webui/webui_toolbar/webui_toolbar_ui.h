@@ -115,6 +115,7 @@ class WebUIToolbarUI : public TopChromeWebUIController,
   virtual void OnNavigationControlsStateChanged(
       const toolbar_ui_api::mojom::NavigationControlsState& state);
   void OnFocusRequested(toolbar_ui_api::mojom::FocusRequestTarget target);
+  void ShowSplitTabsContextMenu();
 
   // The |depdency_provider| is expected to outlive this class.
   void Init(DependencyProvider* dependency_provider);
@@ -146,6 +147,11 @@ class WebUIToolbarUI : public TopChromeWebUIController,
       mojo::PendingRemote<help_bubble::mojom::HelpBubbleClient> client,
       mojo::PendingReceiver<help_bubble::mojom::HelpBubbleHandler> handler)
       override;
+
+  void FinishCreateHelpBubbleHandler(
+      mojo::PendingRemote<help_bubble::mojom::HelpBubbleClient> client,
+      mojo::PendingReceiver<help_bubble::mojom::HelpBubbleHandler> handler,
+      base::WeakPtr<ui::TrackedElementHandler> tracked_element_handler);
 
   // searchbox::mojom::PageHandlerFactory:
   void CreatePageHandler(
@@ -223,6 +229,8 @@ class WebUIToolbarUI : public TopChromeWebUIController,
 
   mojo::Receiver<searchbox::mojom::PageHandlerFactory>
       searchbox_page_factory_receiver_{this};
+
+  base::WeakPtrFactory<WebUIToolbarUI> weak_ptr_factory_{this};
 
   /////////////////////////////////////////////////////////////////////////////
 

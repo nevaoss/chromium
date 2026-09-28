@@ -7,8 +7,10 @@
 
 import {assert} from '//resources/js/assert.js';
 
+import {enumToClient} from '../../enum_conversions.js';
 import {ActorClientReceiver, ActorHandlerRemote, AnnotationHandlerRemote, ExperimentalTriggeringClientReceiver, GlicRequestEvent as MojomGlicRequestEvent, WebClientHandlerRemote, ZeroStateSuggestionsHandlerRemote} from '../../glic.mojom-webui.js';
 import type {ExperimentalTriggeringUpdatesHandlerRemote, WebClientInitialState} from '../../glic.mojom-webui.js';
+import {ClientCapabilities} from '../../glic_api/glic_api.js';
 import {ObservableValue} from '../../observable.js';
 import type {ObservableValueReadOnly} from '../../observable.js';
 import {TaskQueue} from '../../task_queue.js';
@@ -28,7 +30,7 @@ import type {InterfaceDef, PendingReceiver, PendingRemote, PostMessageLifecycleO
 import {ZeroStateSuggestionsHostMessageHandler} from '../zero_state_suggestions/zero_state_suggestions_host.js';
 import {ZeroStateSuggestionsHostDef} from '../zero_state_suggestions/zero_state_suggestions_types.js';
 
-import {urlFromClient} from './conversions.js';
+import {conversionSettings, urlFromClient} from './conversions.js';
 import {HostMessageHandler} from './host_from_client.js';
 import type {CaptureRegionObserverImpl} from './host_from_client.js';
 import {PanelOpenState} from './types.js';
@@ -40,25 +42,6 @@ export enum WebClientState {
   RESPONSIVE,
   UNRESPONSIVE,
   ERROR,  // Final state
-}
-
-
-// These values are persisted to logs. Entries should not be renumbered and
-// numeric values should never be reused.
-export enum DetailedWebClientState {
-  BOOTSTRAP_PENDING = 0,
-  WEB_CLIENT_NOT_CREATED = 1,
-  WEB_CLIENT_INITIALIZE_FAILED = 2,
-  WEB_CLIENT_NOT_INITIALIZED = 3,
-  // OBSOLETE: TEMPORARY_UNRESPONSIVE = 4,
-  // OBSOLETE: PERMANENT_UNRESPONSIVE = 5,
-  RESPONSIVE = 6,
-  // OBSOLETE: RESPONSIVE_INACTIVE = 7,
-  // OBSOLETE: UNRESPONSIVE_INACTIVE = 8,
-  // OBSOLETE: MOJO_PIPE_CLOSED_UNEXPECTEDLY = 9,
-  MOJO_PIPE_CLOSED_UNEXPECTEDLY_BEFORE_INITIALIZE = 10,
-  MOJO_PIPE_CLOSED_UNEXPECTEDLY_AFTER_INITIALIZE = 11,
-  MAX_VALUE = MOJO_PIPE_CLOSED_UNEXPECTEDLY_AFTER_INITIALIZE,
 }
 
 type HandlerFunction = (payload: unknown, extras: ResponseExtras) =>
@@ -91,7 +74,6 @@ export class GlicApiHost implements PostMessageLifecycleObserver {
   // processing is async.
   private panelOpenState = PanelOpenState.CLOSED;
   private instanceIsActive = true;
-  detailedWebClientState = DetailedWebClientState.BOOTSTRAP_PENDING;
   captureRegionObserver?: CaptureRegionObserverImpl;
 
   actorHandler?: ActorHandlerRemote;
@@ -100,8 +82,6 @@ export class GlicApiHost implements PostMessageLifecycleObserver {
 
   zeroStateSuggestionsHandler?: ZeroStateSuggestionsHandlerRemote;
   private isDestroyed = false;
-  private isSubscribedToZoomLevel = false;
-  private zoomFactor?: number;
 
   private experimentalTriggeringUpdatesHandler =
       new Map<number, ExperimentalTriggeringUpdatesHandlerRemote>();
@@ -121,11 +101,6 @@ export class GlicApiHost implements PostMessageLifecycleObserver {
         return;
       }
       console.warn(`Mojo connection error in glic host`);
-      this.detailedWebClientState = this.detailedWebClientState ===
-              DetailedWebClientState.BOOTSTRAP_PENDING ?
-          DetailedWebClientState
-              .MOJO_PIPE_CLOSED_UNEXPECTEDLY_BEFORE_INITIALIZE :
-          DetailedWebClientState.MOJO_PIPE_CLOSED_UNEXPECTEDLY_AFTER_INITIALIZE;
       this.webClientState.assignAndSignal(WebClientState.ERROR);
     });
     const receiver = this.handler.$.bindNewPipeAndPassReceiver();
@@ -158,7 +133,9 @@ export class GlicApiHost implements PostMessageLifecycleObserver {
     this.experimentalTriggeringUpdatesHandler.clear();
   }
 
-  setInitialState(initialState: WebClientInitialState): {
+  setInitialState(
+      initialState: WebClientInitialState,
+      clientCapabilities: Set<ClientCapabilities>): {
     actorRemote?: PendingRemote<ActorHost>,
     actorReceiver?: PendingReceiver<ActorClient>,
     experimentalTriggeringReceiver?: PendingReceiver<
@@ -166,7 +143,10 @@ export class GlicApiHost implements PostMessageLifecycleObserver {
     zeroStateSuggestionsRemote?: PendingRemote<ZeroStateSuggestionsHost>,
   } {
     this.panelIsActive = initialState.panelIsActive;
-    this.zoomFactor = initialState.zoomFactor;
+    this.instanceIsActive = initialState.instanceIsActive;
+    conversionSettings.platform = enumToClient(initialState.platform);
+    conversionSettings.omitFaviconInTabData =
+        clientCapabilities.has(ClientCapabilities.IGNORES_TAB_DATA_FAVICONS);
 
     let actorRemote: PendingRemote<ActorHost>|undefined;
     let actorReceiver: PendingReceiver<ActorClient>|undefined;
@@ -235,25 +215,6 @@ export class GlicApiHost implements PostMessageLifecycleObserver {
         receiver, annotationHostMessageHandler, AnnotationHostDef);
   }
 
-  subscribeToZoomLevel() {
-    this.isSubscribedToZoomLevel = true;
-    if (this.zoomFactor !== undefined) {
-      this.sender.requestNoResponse(
-          'notifyZoomLevelChanged', {zoomFactor: this.zoomFactor});
-    }
-  }
-
-  unsubscribeFromZoomLevel() {
-    this.isSubscribedToZoomLevel = false;
-  }
-
-  onZoomLevelChanged(zoomFactor: number) {
-    this.zoomFactor = zoomFactor;
-    if (this.isSubscribedToZoomLevel) {
-      this.sender.requestNoResponse('notifyZoomLevelChanged', {zoomFactor});
-    }
-  }
-
   waitingOnPanelWillOpen() {
     return this.waitingOnPanelWillOpenValue;
   }
@@ -291,14 +252,11 @@ export class GlicApiHost implements PostMessageLifecycleObserver {
 
   // Called when the web client is initialized.
   webClientInitialized() {
-    this.detailedWebClientState = DetailedWebClientState.RESPONSIVE;
     this.setWebClientState(WebClientState.RESPONSIVE);
   }
 
   webClientInitializeFailed() {
     console.warn('GlicApiHost: web client initialize failed');
-    this.detailedWebClientState =
-        DetailedWebClientState.WEB_CLIENT_INITIALIZE_FAILED;
     this.setWebClientState(WebClientState.ERROR);
   }
 
@@ -308,10 +266,6 @@ export class GlicApiHost implements PostMessageLifecycleObserver {
 
   getWebClientState(): ObservableValueReadOnly<WebClientState> {
     return this.webClientState;
-  }
-
-  getDetailedWebClientState(): DetailedWebClientState {
-    return this.detailedWebClientState;
   }
 
   openLinkInPopup(url: string, initialWidth: number, initialHeight: number) {
@@ -330,12 +284,6 @@ export class GlicApiHost implements PostMessageLifecycleObserver {
       type: string, interfaceDef: InterfaceDef|undefined, payload: unknown,
       extras: ResponseExtras,
       handlerFunction: HandlerFunction): Promise<unknown> {
-    if (this.detailedWebClientState ===
-        DetailedWebClientState.BOOTSTRAP_PENDING) {
-      this.detailedWebClientState =
-          DetailedWebClientState.WEB_CLIENT_NOT_CREATED;
-    }
-
     const startTime = performance.now();
     const response = await handlerFunction(payload, extras);
     if (response) {

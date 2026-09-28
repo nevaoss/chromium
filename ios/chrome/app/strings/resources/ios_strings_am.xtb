@@ -19,6 +19,7 @@
 <translation id="1049743911850919806">ማንነት የማያሳውቅ</translation>
 <translation id="1053651653201045802">ዘግተው ወጥተዋል። በመለያዎ ውስጥ ዕልባቶችን፣ የይለፍ ቃላትን እና ሌሎችንም ለመጠቀም በመለያ መልሰው ይግቡ።</translation>
 <translation id="1054745118061919935">በመቀጠል፣ በ<ph name="BEGIN_LINK" />የአገልግሎት ውል<ph name="END_LINK" /> ይስማማሉ።</translation>
+<translation id="1056818261333183659">የትኛውን መግዛት አለብኝ?</translation>
 <translation id="10614374240317010">በጭራሽ አልተቀመጠም</translation>
 <translation id="1062138828266376352">የእርስዎ ፒን አልተለወጠም። የበይነመረብ ግንኙነትዎን ይፈትሹ እና እንደገና ይሞክሩ</translation>
 <translation id="1063070031224282617">«<ph name="BEGIN_BOLD" /><ph name="FILENAME" /><ph name="END_BOLD" />» (<ph name="FILE_SIZE" />) የት እንደሚቀመጥ ይምረጡ</translation>
@@ -739,7 +740,6 @@
 <translation id="3409785640040772790">ካርታዎች</translation>
 <translation id="3416023309465857378">ኦክቶበር 25 2023</translation>
 <translation id="3419787211763835342">የተሻሻለ ራስ-ሙላን ለማሻሻል ያግዙ</translation>
-<translation id="3426715535827854458">የመሣሪያ አሞሌን ደብቅ ደብቅ</translation>
 <translation id="3435738964857648380">የደህንነት ጥበቃ</translation>
 <translation id="3441673211568148613">የእርስዎን አሰሳ ግላዊ አድርገው ይቆዩ</translation>
 <translation id="3443810440409579745">ትር ደርሷል።</translation>
@@ -1172,6 +1172,7 @@
 <translation id="484280513275854557">እርስዎ ዘግተው ወጥተዋል፤ የአሰሳ ውሂብ ተሰርዟል</translation>
 <translation id="484462545196658690">ራስ-ሰር</translation>
 <translation id="4846662396507502151">በአዲሱ የመሣሪያ አሞሌ በበለጠ ፍጥነት ያስሱ</translation>
+<translation id="4850669014075537160">ሽብለላ</translation>
 <translation id="4850886885716139402">አሳይ</translation>
 <translation id="4854068532375923088">«Gemini» ካሜራዎን እንዲጠቀም ይፍቀዱ</translation>
 <translation id="4860895144060829044">ደውል</translation>
@@ -1505,6 +1506,7 @@ Handoff እንዲሁም በSettings ውስጥ ባለው የGeneral ክፍል ላ
 <translation id="5898848375214731122">ክብደት</translation>
 <translation id="5899314093904173337">በአቅራቢያ ካሉ ሰዎች ጋር ለማጋራት ይህን የQR ኮድ በእነሱ ካሜራ ወይም የQR ቃኚ መተግበሪያ እንዲቃኙ ይፍቀዱላቸው</translation>
 <translation id="5902752768726620872">{count,plural, =1{{count} አዲስ ትር}one{{count} አዲስ ትር}other{{count} አዲስ ትሮች}}</translation>
+<translation id="5906163261248594192">የዳን የልደት ቀን</translation>
 <translation id="5911030830365207728">Google ትርጉም</translation>
 <translation id="5912796581727968237">Google Walletን ይክፈቱ</translation>
 <translation id="5922999516621365983">ትርን ለመሰካት ወደዚህ ይጎትቱት።</translation>
@@ -1924,6 +1926,7 @@ Handoff እንዲሁም በSettings ውስጥ ባለው የGeneral ክፍል ላ
 <translation id="720399613139435155">ትርጉም አልተሳካም</translation>
 <translation id="7204922488054642675">ግላዊነት የተላበሰ ዜና</translation>
 <translation id="7206979415662233817">የአገልግሎት ውል</translation>
+<translation id="721218676460477064">ይህን ጽሑፍ አጠቃልል</translation>
 <translation id="7215621211572884440">ብቅ-ባዮች ተፈቅደዋል</translation>
 <translation id="7218491361283758048">ዚፕ ኮድ</translation>
 <translation id="7221173315674413369">ምን አዲስ ነገር አለ ውስጥ አዳዲስ ባህሪያት እና ጠቃሚ ምክሮችን ያስሱ</translation>
@@ -1944,6 +1947,9 @@ Handoff እንዲሁም በSettings ውስጥ ባለው የGeneral ክፍል ላ
 <translation id="7280980607183752256">ይህ ፋይል ሊመጣ አይችልም</translation>
 <translation id="7282197670900591579">ፈዛዛ ቢጫ ገጽታ</translation>
 <translation id="7293429513719260019">ቋንቋ ይምረጡ</translation>
+<translation id="72961285530871072">ይህ የእርስዎን ደረጃ ከፍ ያድርጉ ግስጋሴን በቋሚነት ይሰርዛል እና ለደረጃ ከፍ ያድርጉ የባህሪ አጠቃቀም ውሂብ ከእንግዲህ ለመገለጫዎ ወደ Google አይላክም።
+
+በማንኛውም ጊዜ እንደገና መጀመር ይችላሉ።</translation>
 <translation id="7300448350764260141">ከመስመር ላይ ዛቻዎች ለመጠበቅ ተጨማሪ የጥበቃ ንብርብር ያክሉ።</translation>
 <translation id="7311244614769792472">ምንም ውጤቶች አልተገኙም</translation>
 <translation id="7312823817809783355">የእርስዎ ተግባሮች</translation>
@@ -2185,6 +2191,7 @@ Handoff እንዲሁም በSettings ውስጥ ባለው የGeneral ክፍል ላ
 <translation id="8035133914807600019">አዲስ አቃፊ…</translation>
 <translation id="8035412398498507358">ፎቶዎች</translation>
 <translation id="8037713009824540257">ጣቢያ አክል</translation>
+<translation id="8038078082340255234">የገበያ ሪፖርት</translation>
 <translation id="8040407350301524547">ለአቅጣጫ አማራጮች «አቅጣጫዎችን ያግኙ» ላይ መታ ያድርጉ።</translation>
 <translation id="804427445359061970">የእርስዎን ትሮች ከሌሎች መሣሪያዎች እዚህ ያገኛሉ</translation>
 <translation id="8058655154417507695">ጊዜው የሚያበቃበት ዓመት</translation>
@@ -2242,6 +2249,7 @@ Handoff እንዲሁም በSettings ውስጥ ባለው የGeneral ክፍል ላ
 <translation id="8232956427053453090">ውሂብን አቆይ</translation>
 <translation id="8233237502828137700">የሰንደቅ ማስተዋወቂያን ዝጋ</translation>
 <translation id="823339794112333264">ማይክሮፎን አብራ</translation>
+<translation id="8240217649914883113">ይህን ወደ ቀን መቁጠሪያዬ አክል</translation>
 <translation id="8250920743982581267">ሰነዶች</translation>
 <translation id="8252980988000695656">Google ሌንስ ተጠናቅቋል!</translation>
 <translation id="8258734532103758067">ውሂቤን ወደ ውጭ ልኬያለሁ</translation>
@@ -2286,6 +2294,7 @@ Handoff እንዲሁም በSettings ውስጥ ባለው የGeneral ክፍል ላ
 <translation id="8368198938968349418">ራስ-ሙላን አብራ</translation>
 <translation id="8370406443343902172">ወደ ቅንብሮች ሂድ…</translation>
 <translation id="8370929854657845191">ወደ መካከለኛ ዘርጋ</translation>
+<translation id="8371494817541821097">የይለፍ ቁልፍ <ph name="DATE" /> ላይ ተፈጥሯል</translation>
 <translation id="8372471489238799313">{count,plural, =1{አድራሻን ሰርዝ}one{አድራሻን ሰርዝ}other{አድራሻዎችን ሰርዝ}}</translation>
 <translation id="8378714024927312812">በእርስዎ ድርጅት የሚተዳደር</translation>
 <translation id="8385363453480067273">በGoogle ሌንስ የሚያዩትን ይፈልጉ</translation>

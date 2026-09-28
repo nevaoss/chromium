@@ -890,8 +890,6 @@ public class VerticalTabListCoordinator {
 
     /** Requests keyboard focus on the first tab in the rail. */
     public void requestKeyboardFocus() {
-        // TODO(crbug.com/509226293): Check with UX if we want to match desktop behavior by
-        // focusing the currently active tab instead of the first tab.
         if (!mPinnedTabsModelList.isEmpty()) {
             if (KeyboardFocusUtil.setFocusOnFirstFocusableDescendant(mPinnedTabsRecyclerView)) {
                 return;
@@ -1221,13 +1219,12 @@ public class VerticalTabListCoordinator {
     }
 
     private boolean isIncognitoButtonVisible() {
-        if (!VerticalTabUtils.isIncognitoButtonEnabled()
-                || IncognitoUtils.shouldOpenIncognitoAsWindow()) {
+        if (mProfile.shutdownStarted() || IncognitoUtils.shouldOpenIncognitoAsWindow()) {
             return false;
         }
         TabModel incognitoModel = mTabModelSelector.getModel(/* incognito= */ true);
         boolean hasIncognitoTabs = incognitoModel != null && incognitoModel.getCount() > 0;
-        return IncognitoUtils.isIncognitoModeEnabled(mProfile) && hasIncognitoTabs;
+        return hasIncognitoTabs && IncognitoUtils.isIncognitoModeEnabled(mProfile);
     }
 
     private void updateIncognitoButtonVisibility() {

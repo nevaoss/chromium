@@ -1783,8 +1783,7 @@ class CORE_EXPORT LayoutObject : public GarbageCollected<LayoutObject>,
 
   bool IsColumnSpanAll() const {
     NOT_DESTROYED();
-    // May be called before style is set.
-    return Style() && Style()->GetColumnSpan() == EColumnSpan::kAll &&
+    return StyleRef().GetColumnSpan() == EColumnSpan::kAll &&
            IsValidColumnSpannerInTree();
   }
 
@@ -2518,11 +2517,13 @@ class CORE_EXPORT LayoutObject : public GarbageCollected<LayoutObject>,
       IncludeDescendants include_descendants =
           IncludeDescendants(true)) const = 0;
 
+#if DCHECK_IS_ON()
   // Returns true if this LayoutObject has been assigned a ComputedStyle.
   bool HasStyle() const {
     NOT_DESTROYED();
     return static_cast<bool>(style_);
   }
+#endif
 
   const ComputedStyle* Style() const {
     NOT_DESTROYED();
@@ -3758,6 +3759,10 @@ class CORE_EXPORT LayoutObject : public GarbageCollected<LayoutObject>,
 
   void SetShouldDoFullPaintInvalidationWithoutLayoutChangeInternal(
       PaintInvalidationReason);
+
+  bool MapCoordinatesFastPath(const LayoutBoxModelObject* ancestor,
+                              TransformState&,
+                              MapCoordinatesFlags) const;
 
   // This is set by Set[Subtree]ShouldDoFullPaintInvalidation() or
   // SetShouldInvalidatePaintForHitTest(), and cleared during PrePaint in this

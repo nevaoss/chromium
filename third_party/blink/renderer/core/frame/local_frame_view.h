@@ -242,10 +242,8 @@ class CORE_EXPORT LocalFrameView final
   enum IntersectionObservationState {
     // The next painting frame does not need an intersection observation.
     kNotNeeded = 0,
-    // The next painting frame needs to update
-    // - intersection observations whose MinScrollDeltaToUpdate is exceeded by
-    //   the accumulated scroll delta in the frame.
-    // - intersection observers that trackVisibility.
+    // The next painting frame needs to update intersection observers for
+    // scroll and intersection observers that trackVisibility.
     kScrollAndVisibilityOnly = 1,
     // The next painting frame needs to update all intersection observations.
     kDesired = 2,
@@ -257,7 +255,6 @@ class CORE_EXPORT LocalFrameView final
   // Sets the internal IntersectionObservationState to the max of the
   // current value and the provided one.
   void SetIntersectionObservationState(IntersectionObservationState);
-  void UpdateIntersectionObservationStateOnScroll(gfx::Vector2dF scroll_delta);
   IntersectionObservationState GetIntersectionObservationStateForTesting()
       const {
     return intersection_observation_state_;
@@ -265,7 +262,8 @@ class CORE_EXPORT LocalFrameView final
 
   // Get the InstersectionObservation::ComputeFlags for target elements in this
   // view.
-  unsigned GetIntersectionObservationFlags(unsigned parent_flags) const;
+  IntersectionObservation::ComputeFlags GetIntersectionObservationFlags(
+      IntersectionObservation::ComputeFlags parent_flags) const;
 
   void ForceUpdateViewportIntersections();
 
@@ -1103,7 +1101,7 @@ class CORE_EXPORT LocalFrameView final
   bool HasActiveIntersectionObservations() const override;
   bool NeedsOcclusionTracking() const override;
   void UpdateViewportIntersectionsForSubtree(
-      unsigned parent_flags,
+      IntersectionObservation::ComputeFlags parent_flags,
       ComputeIntersectionsContext&) override;
   void DeliverSynchronousIntersectionObservations();
 
@@ -1132,8 +1130,9 @@ class CORE_EXPORT LocalFrameView final
   // This is a recursive helper for determining intersection observations which
   // need to happen in post-layout. Returns true if there are any active
   // post-layout observations.
-  void ComputePostLayoutIntersections(unsigned parent_flags,
-                                      ComputeIntersectionsContext&);
+  void ComputePostLayoutIntersections(
+      IntersectionObservation::ComputeFlags parent_flags,
+      ComputeIntersectionsContext&);
 
   // Returns true if the root object was laid out. Returns false if the layout
   // was prevented (e.g. by ancestor display-lock) or not needed.
@@ -1271,7 +1270,6 @@ class CORE_EXPORT LocalFrameView final
   // True if this FrameView or any descendant FrameView has active
   // IntersectionObservers for which observer->trackVisibility() is true.
   bool needs_occlusion_tracking_ = false;
-  gfx::Vector2dF accumulated_scroll_delta_since_last_intersection_update_;
   // Used only if the frame is the local root.
   HeapTaskRunnerTimer<LocalFrameView> delayed_intersection_timer_;
   // Set on the local root when the above timer is fired. Will force update

@@ -13,6 +13,7 @@ import static org.chromium.chrome.browser.url_constants.UrlOverrideUtils.isNtpOv
 
 import android.app.Activity;
 import android.content.Context;
+import android.text.TextUtils;
 import android.util.Pair;
 import android.view.View;
 
@@ -31,10 +32,15 @@ import org.chromium.chrome.R;
 import org.chromium.chrome.browser.RecentlyClosedEntriesManager;
 import org.chromium.chrome.browser.app.download.home.DownloadPage;
 import org.chromium.chrome.browser.back_press.BackPressManager;
+import org.chromium.chrome.browser.bookmarks.BookmarkManagerOpenerImpl;
+import org.chromium.chrome.browser.bookmarks.BookmarkModel;
+import org.chromium.chrome.browser.bookmarks.BookmarkOpenerImpl;
 import org.chromium.chrome.browser.bookmarks.BookmarkPage;
 import org.chromium.chrome.browser.bricks.BricksPage;
 import org.chromium.chrome.browser.browser_controls.BrowserControlsMarginAdapter;
 import org.chromium.chrome.browser.browser_controls.BrowserControlsStateProvider;
+import org.chromium.chrome.browser.device_lock.DeviceLockActivityLauncherImpl;
+import org.chromium.chrome.browser.download.DownloadController;
 import org.chromium.chrome.browser.fullscreen.BrowserControlsManager;
 import org.chromium.chrome.browser.history.HistoryManagerUtils;
 import org.chromium.chrome.browser.history.HistoryPage;
@@ -50,12 +56,14 @@ import org.chromium.chrome.browser.ntp.RecentTabsPage;
 import org.chromium.chrome.browser.pdf.PdfFragmentViewTrackerImpl;
 import org.chromium.chrome.browser.pdf.PdfInfo;
 import org.chromium.chrome.browser.pdf.PdfPage;
+import org.chromium.chrome.browser.price_tracking.PriceDropNotificationManagerFactory;
 import org.chromium.chrome.browser.printing.PrintHelper;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.settings.SettingsInTab;
 import org.chromium.chrome.browser.settings.SettingsPage;
 import org.chromium.chrome.browser.settings.SettingsPageFragmentDelegateImpl;
 import org.chromium.chrome.browser.share.ShareDelegate;
+import org.chromium.chrome.browser.signin.SigninAndHistorySyncActivityLauncherImpl;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tab.TabLaunchType;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
@@ -312,19 +320,28 @@ public class NativePageFactory {
         }
 
         protected NativePage buildBookmarksPage(Tab tab) {
+            Profile profile = tab.getProfile();
             return new BookmarkPage(
                     mWindowAndroid,
                     mActivity,
                     mSnackbarManagerSupplier.get(),
                     () -> mBottomSheetController,
                     mActivityResultTracker,
-                    tab.getProfile(),
+                    profile,
                     new TabShim(
                             tab,
                             mBrowserControlsManager,
                             mTabModelSelector,
                             mEdgeToEdgeControllerSupplier),
-                    mActivity.getComponentName(),
+                    new BookmarkOpenerImpl(
+                            () -> BookmarkModel.getForProfile(profile),
+                            mActivity,
+                            mActivity.getComponentName(),
+                            /* multiInstanceManager= */ null),
+                    new BookmarkManagerOpenerImpl(),
+                    PriceDropNotificationManagerFactory.create(profile),
+                    SigninAndHistorySyncActivityLauncherImpl.get(),
+                    DeviceLockActivityLauncherImpl.get(),
                     mBackPressManager);
         }
 
@@ -707,6 +724,14 @@ public class NativePageFactory {
         @Override
         public void print() {
             PrintHelper.printTab(mTab);
+        }
+
+        @Override
+        public void downloadUrl(String url) {
+            if (mTab.isDestroyed() || mTab.getWebContents() == null || TextUtils.isEmpty(url)) {
+                return;
+            }
+            DownloadController.downloadUrl(url, mTab);
         }
     }
 

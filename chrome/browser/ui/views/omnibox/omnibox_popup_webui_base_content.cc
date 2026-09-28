@@ -296,8 +296,11 @@ void OmniboxPopupWebUIBaseContent::SetContentURL(std::string_view url) {
 }
 
 void OmniboxPopupWebUIBaseContent::LoadContent() {
-  TRACE_EVENT1("omnibox", "OmniboxPopupWebUIBaseContent::LoadContent", "url",
-               content_url_.spec());
+  TRACE_EVENT1("omnibox",
+               perfetto::DynamicString(base::StrCat(
+                   {"OmniboxPopupWebUIBaseContent::LoadContent:",
+                    GetMetricPrefix()})),
+               "url", content_url_.spec());
   DCHECK(!content_url_.is_empty());
   contents_wrapper_ = std::make_unique<WebUIContentsWrapperT<OmniboxPopupUI>>(
       content_url_, location_bar_->GetProfile(), IDS_TASK_MANAGER_OMNIBOX,
@@ -494,6 +497,11 @@ void OmniboxPopupWebUIBaseContent::OnFileChooserClosed() {
 
 bool OmniboxPopupWebUIBaseContent::ShouldApplyHeightWorkarounds() const {
   return !popup_presenter_ || popup_presenter_->ShouldApplyHeightWorkarounds();
+}
+
+bool OmniboxPopupWebUIBaseContent::ShouldSizeWebViewToPreferredHeight() const {
+  return popup_presenter_ &&
+         popup_presenter_->ShouldSizeWebViewToPreferredHeight();
 }
 
 BEGIN_METADATA(OmniboxPopupWebUIBaseContent)

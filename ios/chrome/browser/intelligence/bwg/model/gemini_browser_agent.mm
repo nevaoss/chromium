@@ -126,8 +126,8 @@ const CGFloat kFloatingBottomMargin = 10;
 // TODO(crbug.com/512576285): Confirm offset value with UI.
 // TODO(crbug.com/513881624): Get the actual floaty height separately, if
 // possible, so these constants can just represent the offset.
-const CGFloat kDormantSnackbarOffsetFromFloatyLegacy = 135.0;
-const CGFloat kDormantSnackbarOffsetFromFloatyNext = 117.0;
+const CGFloat kDormantSnackbarOffsetFromFloatyLegacy = 105.0;
+const CGFloat kDormantSnackbarOffsetFromFloatyNext = 97.0;
 
 // Used for forcing fullscreen progress value.
 const CGFloat kFullscreenEnabled = 0.0;
@@ -574,9 +574,7 @@ void GeminiBrowserAgent::RemoveObserver(Observer* observer) {
 }
 
 bool GeminiBrowserAgent::IsGeminiAvailableForActiveWebState() const {
-  web::WebState* active_web_state =
-      browser_->GetWebStateList()->GetActiveWebState();
-  GeminiTabHelper* tab_helper = GetActiveTabHelper(active_web_state);
+  GeminiTabHelper* tab_helper = GetActiveTabHelper();
   return tab_helper && tab_helper->IsGeminiAvailableForWebState();
 }
 
@@ -800,8 +798,7 @@ void GeminiBrowserAgent::StartGeminiFlow(UIViewController* base_view_controller,
   RecordInvocationPageType();
 
   // TODO(crbug.com/507509815): Link to Gemini sign in flow.
-  if (IsAppStoreInAppEventsEnabled() &&
-      entry_point == gemini::EntryPoint::ExternalAppStoreEvent) {
+  if (entry_point == gemini::EntryPoint::ExternalAppStoreEvent) {
     AuthenticationService* auth_service =
         AuthenticationServiceFactory::GetForProfile(browser_->GetProfile());
     if (!auth_service || !auth_service->HasPrimaryIdentity()) {
@@ -1070,8 +1067,7 @@ void GeminiBrowserAgent::UpdateActiveTabHelperWithPresentedSource(
   if (ShouldIgnoreUpdateForDormantSnackbar(source)) {
     return;
   }
-  web::WebState* web_state = browser_->GetWebStateList()->GetActiveWebState();
-  GeminiTabHelper* gemini_tab_helper = GetActiveTabHelper(web_state);
+  GeminiTabHelper* gemini_tab_helper = GetActiveTabHelper();
   if (!gemini_tab_helper) {
     return;
   }
@@ -1100,7 +1096,7 @@ void GeminiBrowserAgent::PresentFloaty(UIViewController* base_view_controller,
 
   UpdateAttachedTabsForActiveWebState(web_state);
 
-  GeminiTabHelper* gemini_tab_helper = GetActiveTabHelper(web_state);
+  GeminiTabHelper* gemini_tab_helper = GetActiveTabHelper();
   if (!gemini_tab_helper) {
     return;
   }
@@ -1109,11 +1105,6 @@ void GeminiBrowserAgent::PresentFloaty(UIViewController* base_view_controller,
   if (IsZeroStateSuggestionsEnabled()) {
     gemini_tab_helper->FetchZeroStateSuggestions(base::DoNothing());
   }
-
-  // Get partial page context, which is synchronously available to allow for the
-  // floaty to be presented immediately.
-  GeminiPageContext* initial_page_context =
-      gemini_tab_helper->GetPartialPageContext();
 
   // Set up the presentation, depending on whether the floaty is already
   // invoked.
@@ -1125,7 +1116,9 @@ void GeminiBrowserAgent::PresentFloaty(UIViewController* base_view_controller,
     if (image_attachment) {
       ios::provider::AttachImage(image_attachment);
     }
-    PropagatePageContextToProvider(initial_page_context);
+
+    UpdateFloatyWithPartialPageContext();
+
     if (prepopulated_prompt) {
       ios::provider::UpdatePromptAction(entry_point, prepopulated_prompt);
     }
@@ -1484,9 +1477,7 @@ void GeminiBrowserAgent::DismissFloaty() {
     }
   }
 
-  web::WebState* active_web_state =
-      browser_->GetWebStateList()->GetActiveWebState();
-  GeminiTabHelper* tab_helper = GetActiveTabHelper(active_web_state);
+  GeminiTabHelper* tab_helper = GetActiveTabHelper();
   if (tab_helper) {
     tab_helper->CancelPageContextGeneration();
   }
@@ -1623,9 +1614,7 @@ void GeminiBrowserAgent::UpdateAttachedTabContexts(
 void GeminiBrowserAgent::SwitchToChatModeOrDismiss(
     bool animated,
     ios::provider::GeminiViewState target_state) {
-  web::WebState* active_web_state =
-      browser_->GetWebStateList()->GetActiveWebState();
-  GeminiTabHelper* tab_helper = GetActiveTabHelper(active_web_state);
+  GeminiTabHelper* tab_helper = GetActiveTabHelper();
   if (tab_helper && !tab_helper->IsGeminiChatAvailableForWebState()) {
     DismissFloaty();
   } else {
@@ -1719,8 +1708,7 @@ void GeminiBrowserAgent::ShowFloatyIfInvoked(
   bool is_web_navigation = source == gemini::FloatyUpdateSource::WebNavigation;
   bool is_context_menu = source == gemini::FloatyUpdateSource::ContextMenu;
 
-  web::WebState* web_state = browser_->GetWebStateList()->GetActiveWebState();
-  GeminiTabHelper* gemini_tab_helper = GetActiveTabHelper(web_state);
+  GeminiTabHelper* gemini_tab_helper = GetActiveTabHelper();
   bool should_block =
       gemini_tab_helper && gemini_tab_helper->ShouldBlockFloatyFromShowing();
   if ((!is_web_navigation && !is_context_menu && triggered_during_transition) ||
@@ -1810,7 +1798,7 @@ void GeminiBrowserAgent::OnActiveWebStateChanged(web::WebState* old_active,
     if (is_floaty_invoked_) {
       UpdateAttachedTabsForActiveWebState(new_active);
     }
-    GeminiTabHelper* new_tab_helper = GetActiveTabHelper(new_active);
+    GeminiTabHelper* new_tab_helper = GeminiTabHelper::FromWebState(new_active);
     if (new_tab_helper) {
       new_tab_helper->AddObserver(this);
       // Propagate the context of the new active tab.
@@ -1868,13 +1856,18 @@ void GeminiBrowserAgent::OnPageContextUpdated(web::WebState* web_state) {
     }
   }
 
-  GeminiTabHelper* tab_helper = GetActiveTabHelper(web_state);
-  if (!tab_helper || !is_floaty_invoked_) {
+  if (!is_floaty_invoked_) {
     return;
   }
 
-  GeminiPageContext* gemini_page_context = tab_helper->GetPartialPageContext();
-  PropagatePageContextToProvider(gemini_page_context);
+  // Make sure the given web_state is the active web state.
+  web::WebState* active_web_state =
+      browser_->GetWebStateList()->GetActiveWebState();
+  if (!active_web_state || active_web_state != web_state) {
+    return;
+  }
+
+  UpdateFloatyWithPartialPageContext();
 }
 
 void GeminiBrowserAgent::OnGeminiTabHelperDestroyed(
@@ -1945,9 +1938,7 @@ void GeminiBrowserAgent::UpdateLiveModeUI() {
   if (!IsInGeminiLiveMode()) {
     return;
   }
-  web::WebState* active_web_state =
-      browser_->GetWebStateList()->GetActiveWebState();
-  GeminiTabHelper* tab_helper = GetActiveTabHelper(active_web_state);
+  GeminiTabHelper* tab_helper = GetActiveTabHelper();
   bool is_eligible =
       tab_helper && tab_helper->IsGeminiChatAvailableForWebState();
   ios::provider::SetLiveStopButtonHidden(!is_eligible);
@@ -1955,9 +1946,7 @@ void GeminiBrowserAgent::UpdateLiveModeUI() {
 
 bool GeminiBrowserAgent::UpdateLiveModeUIAndMaybeContext() {
   UpdateLiveModeUI();
-  web::WebState* active_web_state =
-      browser_->GetWebStateList()->GetActiveWebState();
-  GeminiTabHelper* tab_helper = GetActiveTabHelper(active_web_state);
+  GeminiTabHelper* tab_helper = GetActiveTabHelper();
   if (tab_helper && tab_helper->IsGeminiChatAvailableForWebState()) {
     // If the user is speaking (i.e., transcribing), we block page context
     // updates, to maintain the full context of the page that the user was on
@@ -1966,7 +1955,6 @@ bool GeminiBrowserAgent::UpdateLiveModeUIAndMaybeContext() {
       return true;
     }
     UpdateFloatyWithPartialPageContext();
-    RequestPageContextGeneration();
     return true;
   }
   return false;
@@ -2038,10 +2026,7 @@ void GeminiBrowserAgent::WillExitTabGrid() {
 #pragma mark - Private
 
 void GeminiBrowserAgent::RequestPageContextGeneration() {
-  web::WebState* active_web_state =
-      browser_->GetWebStateList()->GetActiveWebState();
-  GeminiTabHelper* tab_helper = GetActiveTabHelper(active_web_state);
-
+  GeminiTabHelper* tab_helper = GetActiveTabHelper();
   if (tab_helper) {
     tab_helper->GeneratePageContext(
         base::BindRepeating(&GeminiBrowserAgent::OnPageContextGenerated,
@@ -2079,9 +2064,7 @@ void GeminiBrowserAgent::PropagatePageContextToProvider(
     return;
   }
 
-  web::WebState* active_web_state =
-      browser_->GetWebStateList()->GetActiveWebState();
-  GeminiTabHelper* tab_helper = GetActiveTabHelper(active_web_state);
+  GeminiTabHelper* tab_helper = GetActiveTabHelper();
   bool is_eligible =
       tab_helper && tab_helper->IsGeminiChatAvailableForWebState();
 
@@ -2112,6 +2095,8 @@ void GeminiBrowserAgent::PropagatePageContextToProvider(
   // grid, the active page context will be saved as `kBlocked` unless we have
   // other tabs attached. This prevents the current tab from being erroneously
   // showed as `kBlocked` when we open the Floaty on a different attached tab.
+  web::WebState* active_web_state =
+      browser_->GetWebStateList()->GetActiveWebState();
   bool should_save_active_context = !IsTabGridVisible() || !HasSharedTabs();
   if (IsGeminiMultiTabContextEnabled() && active_web_state &&
       should_save_active_context) {
@@ -2143,9 +2128,7 @@ bool GeminiBrowserAgent::HasSharedTabs() const {
 }
 
 void GeminiBrowserAgent::UpdateFloatyWithPartialPageContext() {
-  web::WebState* active_web_state =
-      browser_->GetWebStateList()->GetActiveWebState();
-  GeminiTabHelper* tab_helper = GetActiveTabHelper(active_web_state);
+  GeminiTabHelper* tab_helper = GetActiveTabHelper();
   if (tab_helper) {
     GeminiPageContext* gemini_page_context =
         tab_helper->GetPartialPageContext();
@@ -2235,15 +2218,7 @@ void GeminiBrowserAgent::OnPageContentPrefChanged() {
     return;
   }
 
-  web::WebState* active_web_state =
-      browser_->GetWebStateList()->GetActiveWebState();
-  GeminiTabHelper* tab_helper = GetActiveTabHelper(active_web_state);
-  if (!tab_helper) {
-    return;
-  }
-
-  GeminiPageContext* gemini_page_context = tab_helper->GetPartialPageContext();
-  PropagatePageContextToProvider(gemini_page_context);
+  UpdateFloatyWithPartialPageContext();
 
   // Trigger UI update for the attachment chip.
   ios::provider::RequestUIChange(
@@ -2279,24 +2254,17 @@ web::WebStateID GeminiBrowserAgent::GetActiveWebStateID() const {
                           : web::WebStateID();
 }
 
-GeminiTabHelper* GeminiBrowserAgent::GetActiveTabHelper(
-    web::WebState* web_state) const {
+GeminiTabHelper* GeminiBrowserAgent::GetActiveTabHelper() const {
   web::WebState* active_web_state =
       browser_->GetWebStateList()->GetActiveWebState();
-  if (active_web_state && active_web_state == web_state) {
-    GeminiTabHelper* tab_helper = GeminiTabHelper::FromWebState(web_state);
-    if (tab_helper) {
-      return tab_helper;
-    }
-  }
-  return nullptr;
+  return active_web_state ? GeminiTabHelper::FromWebState(active_web_state)
+                          : nullptr;
 }
 
 void GeminiBrowserAgent::RecordInvocationPageType() {
-  web::WebState* web_state = browser_->GetWebStateList()->GetActiveWebState();
   IOSGeminiInvocationPageType page_type =
       IOSGeminiInvocationPageType::kNoWebState;
-  GeminiTabHelper* tab_helper = GetActiveTabHelper(web_state);
+  GeminiTabHelper* tab_helper = GetActiveTabHelper();
   if (tab_helper) {
     page_type = tab_helper->GetCurrentPageType();
   }

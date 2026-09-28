@@ -41,7 +41,6 @@ import org.chromium.chrome.browser.tab.utilities.TabLoadingService.LoadIfNeededC
 import org.chromium.chrome.browser.tab.utilities.TabLoadingService.LoadResult;
 import org.chromium.chrome.browser.tab_ui.RecyclerViewPosition;
 import org.chromium.chrome.browser.tab_ui.TabContentManager;
-import org.chromium.chrome.browser.tab_ui.TabListMode;
 import org.chromium.chrome.browser.tabmodel.IncognitoTabModel;
 import org.chromium.chrome.browser.tabmodel.IncognitoTabModelObserver;
 import org.chromium.chrome.browser.tabmodel.TabModel;
@@ -56,6 +55,7 @@ import org.chromium.chrome.browser.tasks.tab_management.TabListEditorCoordinator
 import org.chromium.chrome.browser.tasks.tab_management.TabListEditorCoordinator.ItemPickerSelectionHandler;
 import org.chromium.chrome.browser.tasks.tab_management.TabListEditorCoordinator.TabListEditorController;
 import org.chromium.chrome.browser.tasks.tab_management.TabListEditorItemSelectionId;
+import org.chromium.chrome.browser.tasks.tab_management.TabListMediator.TabListLayoutType;
 import org.chromium.chrome.browser.tasks.tab_management.TabProperties;
 import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager;
 import org.chromium.components.browser_ui.modaldialog.AppModalPresenter;
@@ -623,7 +623,6 @@ public class TabItemPickerCoordinator {
             }
         }
 
-        @VisibleForTesting
         public TabItemPickerOffscreenRenderer getOffscreenRendererForTesting() {
             return mOffscreenRenderer;
         }
@@ -710,8 +709,7 @@ public class TabItemPickerCoordinator {
                         tabModelSupplier,
                         tabContentManager,
                         CallbackUtils.emptyCallback(),
-                        TabListMode.GRID,
-                        /* displayGroups= */ false,
+                        TabListLayoutType.FLAT,
                         mSnackbarManager,
                         /* bottomSheetController= */ null,
                         TabProperties.TabActionState.SELECTABLE,

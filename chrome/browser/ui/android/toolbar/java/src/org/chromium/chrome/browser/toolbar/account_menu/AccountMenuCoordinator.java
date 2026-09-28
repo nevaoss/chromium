@@ -10,16 +10,24 @@ import android.graphics.drawable.ColorDrawable;
 import android.view.LayoutInflater;
 import android.view.View;
 
+import androidx.recyclerview.widget.LinearLayoutManager;
+import androidx.recyclerview.widget.RecyclerView;
+
 import org.chromium.base.TimeUtils;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
+import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.toolbar.MenuBuilderHelper;
 import org.chromium.chrome.browser.toolbar.R;
+import org.chromium.chrome.browser.toolbar.account_menu.AccountMenuProperties.ItemType;
 import org.chromium.ui.UiUtils;
-import org.chromium.ui.modelutil.PropertyKey;
-import org.chromium.ui.modelutil.PropertyModel;
-import org.chromium.ui.modelutil.PropertyModelChangeProcessor;
+import org.chromium.ui.base.WindowAndroid;
+import org.chromium.ui.modelutil.LayoutViewBuilder;
+import org.chromium.ui.modelutil.MVCListAdapter.ModelList;
+import org.chromium.ui.modelutil.SimpleRecyclerViewAdapter;
 import org.chromium.ui.widget.AnchoredPopupWindow;
+
+import java.util.function.Supplier;
 
 /** Coordinator for the Account Menu toolbar popup on desktop Android. */
 @NullMarked
@@ -30,21 +38,36 @@ public class AccountMenuCoordinator {
     private final Context mContext;
     private final View mContentView;
     private final AccountMenuMediator mMediator;
-    private final PropertyModelChangeProcessor<PropertyModel, View, PropertyKey> mChangeProcessor;
+    private final SimpleRecyclerViewAdapter mAdapter;
 
     private @Nullable AnchoredPopupWindow mPopupWindow;
     private long mLastDismissTimeMs;
 
-    public AccountMenuCoordinator(Context context) {
+    public AccountMenuCoordinator(
+            Context context,
+            WindowAndroid windowAndroid,
+            Supplier<@Nullable Profile> profileSupplier) {
         mContext = context;
         mContentView = LayoutInflater.from(context).inflate(R.layout.account_menu, null);
 
-        PropertyModel model = new PropertyModel(AccountMenuProperties.ALL_KEYS);
-        mChangeProcessor =
-                PropertyModelChangeProcessor.create(
-                        model, mContentView, AccountMenuViewBinder::bind);
+        RecyclerView recyclerView = (RecyclerView) mContentView;
+        recyclerView.setLayoutManager(new LinearLayoutManager(context));
 
-        mMediator = new AccountMenuMediator(context, model, this::dismiss);
+        ModelList modelList = new ModelList();
+        mAdapter = new SimpleRecyclerViewAdapter(modelList);
+        mAdapter.registerType(
+                ItemType.MENU_ITEM,
+                new LayoutViewBuilder<>(R.layout.account_menu_item),
+                AccountMenuViewBinder::bind);
+        mAdapter.registerType(
+                ItemType.DIVIDER,
+                new LayoutViewBuilder<>(R.layout.account_menu_divider),
+                (model, view, key) -> {});
+        recyclerView.setAdapter(mAdapter);
+
+        mMediator =
+                new AccountMenuMediator(
+                        context, modelList, windowAndroid, profileSupplier, this::dismiss);
     }
 
     /** Shows the account menu popup anchored to the provided signin button view. */
@@ -77,7 +100,7 @@ public class AccountMenuCoordinator {
     /** Destroys and cleans up the account menu coordinator. */
     public void destroy() {
         dismiss();
-        mChangeProcessor.destroy();
+        mAdapter.destroy();
     }
 
     private AnchoredPopupWindow createPopupWindow(View anchorView) {

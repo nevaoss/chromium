@@ -97,6 +97,7 @@
 #include "google_apis/gaia/core_account_id.h"
 #include "google_apis/gaia/gaia_auth_util.h"
 #include "google_apis/gaia/gaia_id.h"
+#include "services/network/public/cpp/shared_url_loader_factory.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/mojom/themes.mojom.h"
 
@@ -1683,8 +1684,9 @@ void DiceWebSigninInterceptor::OnEnterpriseProfileCreationResult(
   } else {
     DCHECK_EQ(SigninInterceptionResult::kDeclined, create)
         << "The user can only accept or decline";
-    if (account_info == identity_manager_->GetPrimaryAccountInfo(
-                            signin::ConsentLevel::kSignin)) {
+    if (account_info.GetCoreAccountInfo() ==
+        identity_manager_->GetPrimaryAccountInfo(
+            signin::ConsentLevel::kSignin)) {
       auto* primary_account_mutator =
           IdentityManagerFactory::GetForProfile(profile_)
               ->GetPrimaryAccountMutator();

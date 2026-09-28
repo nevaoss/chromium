@@ -36,10 +36,81 @@ mod ffi {
 
         /// Records the integer `sample` to sparse histogram `name`.
         fn record_sparse(name: &str, sample: i32);
+
+        /// Records the integer `sample` to count histogram `name` using custom
+        /// bucket parameters. `min` should be 1 or greater.
+        fn record_custom_counts(
+            name: &str,
+            sample: i32,
+            min: i32,
+            exclusive_max: i32,
+            buckets: usize,
+        );
+
+        /// Records the integer `sample` to count histogram `name` with a
+        /// maximum value of 100 (50 buckets).
+        fn record_counts_100(name: &str, sample: i32);
+
+        /// Records the integer `sample` to count histogram `name` with a
+        /// maximum value of 1,000 (50 buckets).
+        fn record_counts_1000(name: &str, sample: i32);
+
+        /// Records the integer `sample` to count histogram `name` with a
+        /// maximum value of 10,000 (50 buckets).
+        fn record_counts_10000(name: &str, sample: i32);
+
+        /// Records the integer `sample` to count histogram `name` with a
+        /// maximum value of 100,000 (50 buckets).
+        fn record_counts_100000(name: &str, sample: i32);
+
+        /// Records the integer `sample` to count histogram `name` with a
+        /// maximum value of 1,000,000 (50 buckets).
+        fn record_counts_1m(name: &str, sample: i32);
+
+        /// Records the integer `sample` to count histogram `name` with a
+        /// maximum value of 10,000,000 (50 buckets).
+        fn record_counts_10m(name: &str, sample: i32);
+
+        /// Records the memory size `sample_kb` (in kilobytes) to memory
+        /// histogram `name`. The valid range is 1,000kb to 500mb (50
+        /// buckets).
+        fn record_memory_kb(name: &str, sample_kb: i32);
+
+        /// Records the memory size `sample_mb` (in megabytes) to memory
+        /// histogram `name`. The valid range is 1mb to 1,000mb (50 buckets).
+        fn record_memory_mb(name: &str, sample_mb: i32);
+
+        /// Records the memory size `sample_mb` (in megabytes) to memory
+        /// histogram `name`. The valid range is 1mb to 64,000MB (100 buckets).
+        fn record_memory_large_mb(name: &str, sample_mb: i32);
+
+        fn record_custom_times(
+            name: &str,
+            sample_us: i64,
+            min_us: i64,
+            max_us: i64,
+            buckets: usize,
+        );
+        fn record_times(name: &str, sample_us: i64);
+        fn record_medium_times(name: &str, sample_us: i64);
+        fn record_long_times(name: &str, sample_us: i64);
+        fn record_long_times_100(name: &str, sample_us: i64);
+        fn record_custom_microseconds_times(
+            name: &str,
+            sample_us: i64,
+            min_us: i64,
+            max_us: i64,
+            buckets: usize,
+        );
+        fn record_microseconds_times(name: &str, sample_us: i64);
     }
 }
 
-pub use ffi::{record_bool, record_exact_linear, record_percentage, record_sparse};
+pub use ffi::{
+    record_bool, record_counts_100, record_counts_1000, record_counts_10000, record_counts_100000,
+    record_counts_10m, record_counts_1m, record_custom_counts, record_exact_linear,
+    record_memory_kb, record_memory_large_mb, record_memory_mb, record_percentage, record_sparse,
+};
 
 chromium::import! {
     "//base:histogram_enum_macro";
@@ -92,4 +163,74 @@ pub fn record_enum<T: UmaEnum>(name: &str, sample: T) {
     );
     // Enumerated histograms are exact linear histograms "under the hood".
     ffi::record_exact_linear(name, sample_val, T::MAX_VALUE + 1);
+}
+
+fn duration_to_us(duration: core::time::Duration) -> i64 {
+    i64::try_from(duration.as_micros()).unwrap_or(i64::MAX)
+}
+
+/// Records the elapsed time `sample` to time histogram `name` using custom
+/// bucket parameters (millisecond resolution).
+pub fn record_custom_times(
+    name: &str,
+    sample: core::time::Duration,
+    min: core::time::Duration,
+    max: core::time::Duration,
+    buckets: usize,
+) {
+    ffi::record_custom_times(
+        name,
+        duration_to_us(sample),
+        duration_to_us(min),
+        duration_to_us(max),
+        buckets,
+    );
+}
+
+/// Records the elapsed time `sample` to time histogram `name` for short
+/// timings up to 10 seconds (50 buckets, millisecond resolution).
+pub fn record_times(name: &str, sample: core::time::Duration) {
+    ffi::record_times(name, duration_to_us(sample));
+}
+
+/// Records the elapsed time `sample` to time histogram `name` for medium
+/// timings up to 3 minutes (50 buckets, millisecond resolution).
+pub fn record_medium_times(name: &str, sample: core::time::Duration) {
+    ffi::record_medium_times(name, duration_to_us(sample));
+}
+
+/// Records the elapsed time `sample` to time histogram `name` for long
+/// timings up to 1 hour (50 buckets, millisecond resolution).
+pub fn record_long_times(name: &str, sample: core::time::Duration) {
+    ffi::record_long_times(name, duration_to_us(sample));
+}
+
+/// Records the elapsed time `sample` to time histogram `name` for long
+/// timings up to 1 hour (100 buckets, millisecond resolution).
+pub fn record_long_times_100(name: &str, sample: core::time::Duration) {
+    ffi::record_long_times_100(name, duration_to_us(sample));
+}
+
+/// Records the elapsed time `sample` to time histogram `name` using custom
+/// bucket parameters (microsecond resolution).
+pub fn record_custom_microseconds_times(
+    name: &str,
+    sample: core::time::Duration,
+    min: core::time::Duration,
+    max: core::time::Duration,
+    buckets: usize,
+) {
+    ffi::record_custom_microseconds_times(
+        name,
+        duration_to_us(sample),
+        duration_to_us(min),
+        duration_to_us(max),
+        buckets,
+    );
+}
+
+/// Records the elapsed time `sample` to high-resolution time histogram `name`
+/// from 1 microsecond up to 10 seconds (50 buckets, microsecond resolution).
+pub fn record_microseconds_times(name: &str, sample: core::time::Duration) {
+    ffi::record_microseconds_times(name, duration_to_us(sample));
 }

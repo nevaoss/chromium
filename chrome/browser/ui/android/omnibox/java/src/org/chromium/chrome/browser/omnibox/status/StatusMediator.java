@@ -30,6 +30,7 @@ import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.omnibox.FuseboxSessionState;
 import org.chromium.chrome.browser.omnibox.LocationBarDataProvider;
+import org.chromium.chrome.browser.omnibox.OmniboxUrlUtils;
 import org.chromium.chrome.browser.omnibox.R;
 import org.chromium.chrome.browser.omnibox.SearchEngineService;
 import org.chromium.chrome.browser.omnibox.SearchEngineService.SearchEngineIconObserver;
@@ -86,8 +87,6 @@ public class StatusMediator
                 CookieControlsObserver,
                 SearchEngineIconObserver,
                 PermissionStatusHandler.Delegate {
-
-    static final String COOKIE_CONTROLS_ICON = "COOKIE_CONTROLS_ICON";
 
     private final PropertyModel mModel;
     private final OneshotSupplier<TemplateUrlService> mTemplateUrlServiceSupplier;
@@ -426,9 +425,7 @@ public class StatusMediator
         // underway, making the onUrlChanged fail to detect the user is navigating out of the NTP.
         var url = mLocationBarDataProvider.getCurrentGurl();
         boolean isRegularNtpUrl =
-                url != null
-                        && UrlUtilities.isNtpUrl(url)
-                        && !mLocationBarDataProvider.isIncognitoBranded();
+                OmniboxUrlUtils.isNtpUrl(url) && !mLocationBarDataProvider.isIncognitoBranded();
 
         @PageClassification
         int pageClassification =
@@ -539,8 +536,10 @@ public class StatusMediator
      * no longer pointing to NTP, but the navigation not yet completed).
      */
     private boolean isNtpVisible() {
-        return mLocationBarDataProvider.getNewTabPageDelegate() != null
-                && mLocationBarDataProvider.getNewTabPageDelegate().isCurrentlyVisible();
+        return (mLocationBarDataProvider.getNewTabPageDelegate() != null
+                        && mLocationBarDataProvider.getNewTabPageDelegate().isCurrentlyVisible())
+                || (!mLocationBarDataProvider.isIncognitoBranded()
+                        && OmniboxUrlUtils.isNtpUrl(mLocationBarDataProvider.getCurrentGurl()));
     }
 
     private boolean shouldShowNtpPlusButton() {
@@ -565,10 +564,12 @@ public class StatusMediator
      * no longer pointing to NTP, but the navigation not yet completed).
      */
     private boolean isIncognitoNtpVisible() {
-        return mLocationBarDataProvider.getNewTabPageDelegate() != null
-                && mLocationBarDataProvider
-                        .getNewTabPageDelegate()
-                        .isIncognitoNewTabPageCurrentlyVisible();
+        return (mLocationBarDataProvider.getNewTabPageDelegate() != null
+                        && mLocationBarDataProvider
+                                .getNewTabPageDelegate()
+                                .isIncognitoNewTabPageCurrentlyVisible())
+                || (mLocationBarDataProvider.isIncognitoBranded()
+                        && OmniboxUrlUtils.isNtpUrl(mLocationBarDataProvider.getCurrentGurl()));
     }
 
     @Override
@@ -811,7 +812,7 @@ public class StatusMediator
 
     private boolean hasPendingNonNtpNavigation() {
         GURL url = getPendingUrl();
-        return url != null && !UrlUtilities.isNtpUrl(url);
+        return url != null && !OmniboxUrlUtils.isNtpUrl(url);
     }
 
     private boolean hasPendingHttpOrHttpsNavigation() {
@@ -886,15 +887,19 @@ public class StatusMediator
 
     private void onPreviewMatchUrlChanged(@Nullable GURL url) {
         if (!OmniboxFeatures.sPreviewMatchFavicons.isEnabled()) {
-            if ((mPreviewMatchFetchedUrl == null) != (url == null)) {
-                mPreviewMatchFetchedUrl = url;
+            boolean wasUrl =
+                    mPreviewMatchFetchedUrl != null
+                            && !OmniboxUrlUtils.isNtpUrl(mPreviewMatchFetchedUrl);
+            boolean isUrl = url != null && !OmniboxUrlUtils.isNtpUrl(url);
+            mPreviewMatchFetchedUrl = url;
+            if (wasUrl != isUrl) {
                 updateLocationBarIcon(IconTransitionType.CROSSFADE);
             }
             return;
         }
 
         mPreviewMatchFetchedUrl = url;
-        if (url == null) {
+        if (url == null || OmniboxUrlUtils.isNtpUrl(url)) {
             mPreviewMatchFavicon = null;
             mShowPreviewMatchGlobe = false;
             updateLocationBarIcon(IconTransitionType.CROSSFADE);
@@ -999,14 +1004,6 @@ public class StatusMediator
                         updateLocationBarIcon(IconTransitionType.CROSSFADE);
                     }
                 });
-    }
-
-    void setTranslationX(float translationX) {
-        mModel.set(StatusProperties.TRANSLATION_X, translationX);
-    }
-
-    void setTooltipText(@StringRes int tooltipTextResId) {
-        applyBackgroundAndTooltipProperties();
     }
 
     void setBackground() {
@@ -1135,14 +1132,15 @@ public class StatusMediator
             return;
         }
 
-        if (UrlUtilities.isNtpUrl(mLocationBarDataProvider.getCurrentGurl())) return;
+        if (OmniboxUrlUtils.isNtpUrl(mLocationBarDataProvider.getCurrentGurl())) return;
 
         openPageInfo(mLocationBarDataProvider.getTab());
     }
 
     private boolean isUrlBarTextSearch() {
-        return (mInputSessionState == null
-                || mInputSessionState.getAutocompleteInput().getPreviewMatchUrl() == null);
+        if (mInputSessionState == null) return true;
+        GURL previewMatchUrl = mInputSessionState.getAutocompleteInput().getPreviewMatchUrl();
+        return previewMatchUrl == null || OmniboxUrlUtils.isNtpUrl(previewMatchUrl);
     }
 
     private boolean isPageInfoMovedToAppMenu() {

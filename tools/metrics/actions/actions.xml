@@ -790,6 +790,8 @@ should be able to be added at any place in this file.
       summary="For ReadingListMessages feature."/>
   <variant name="_ReadingModeKeyboardShortcut"
       summary="For reading mode keyboard shortcut feature."/>
+  <variant name="_ReadingModeLineFocus"
+      summary="For reading mode line focus feature."/>
   <variant name="_ReadingModePageActionLabel"
       summary="For reading mode omnibox entrypoint."/>
   <variant name="_ReadingModePresentationMode"
@@ -1056,6 +1058,7 @@ should be able to be added at any place in this file.
   <variant name=".GenerativeTheming" summary="Generative Theming"/>
   <variant name=".GoogleLens" summary="Google Lens"/>
   <variant name=".Googlepayreauth" summary="Google Pay Re-auth"/>
+  <variant name=".HeadlessLiveCaption" summary="Headless Live Caption"/>
   <variant name=".HelpMeWrite" summary="Help Me Write"/>
   <variant name=".HistoryEmbeddings" summary="History Embeddings Search"/>
   <variant name=".iOSLensSWYS" summary="iOS Lens Search What You See"/>
@@ -3643,6 +3646,17 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action name="Android.CrossDeviceSettingImport.NonNtp.ObservationOnly"
+    not_user_triggered="true">
+  <owner>clank-app-team@google.com</owner>
+  <owner>jhimawan@google.com</owner>
+  <description>
+    Recorded when the user is eligible for cross-device setting import on a
+    non-NTP page based on a theme change, but the snackbar was not shown because
+    the XplatSyncedSetupThemes feature is in observation-only mode.
+  </description>
+</action>
+
 <action name="Android.CrossDeviceSettingImport.NonNtp.Redo">
   <owner>clank-app-team@google.com</owner>
   <owner>jhimawan@google.com</owner>
@@ -3660,6 +3674,17 @@ should be able to be added at any place in this file.
     Recorded when the user taps on the &quot;Undo&quot; button in the
     cross-device settings import snackbar, to undo applying settings that affect
     non-NTP pages (e.g. omnibox position and theme).
+  </description>
+</action>
+
+<action name="Android.CrossDeviceSettingImport.ObservationOnly"
+    not_user_triggered="true">
+  <owner>clank-app-team@google.com</owner>
+  <owner>jhimawan@google.com</owner>
+  <description>
+    Recorded when the user is eligible for cross-device setting import based on
+    a theme change, but the snackbar was not shown because the
+    XplatSyncedSetupThemes feature is in observation-only mode.
   </description>
 </action>
 
@@ -14652,6 +14677,16 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action name="HistoryPage_EntryMenuGoToGeminiChat">
+  <owner>heychirag@google.com</owner>
+  <owner>polonium@google.com</owner>
+  <description>
+    Triggered when the user clicks 'Go to Gemini chat' in a context menu on
+    chrome://history. This option is shown for actor (agent-initiated) visits
+    with critical action entries when critical action linkouts are enabled.
+  </description>
+</action>
+
 <action name="HistoryPage_EntryMenuRemoveFromHistory">
   <owner>Please list the metric's owners. Add more owner tags as needed.</owner>
   <description>Please enter the description of this user action.</description>
@@ -21073,8 +21108,11 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="MobileLanguageSettingsBack">
-  <owner>eugenebut@chromium.org</owner>
-  <description>TODO(crbug.com/483962380): Write the description.</description>
+  <owner>noemies@google.com</owner>
+  <description>
+    Reported when user goes back from Language Settings UI to root Settings
+    screen. iOS only.
+  </description>
 </action>
 
 <action name="MobileLocationBarTapped">
@@ -31854,8 +31892,10 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="Settings.Language">
-  <owner>eugenebut@chromium.org</owner>
-  <description>TODO(crbug.com/483964250): Write the description.</description>
+  <owner>gambard@chromium.org</owner>
+  <description>
+    Reported when user navigates to Language Settings. iOS only.
+  </description>
 </action>
 
 <action name="Settings.ManageOptionOnSettingsSelected">

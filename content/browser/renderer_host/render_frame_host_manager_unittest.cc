@@ -575,7 +575,7 @@ class RenderFrameHostManagerTest
 
     frame_host->SetPolicyContainerHost(
         base::MakeRefCounted<PolicyContainerHost>(),
-        base::UnguessableToken::Create());
+        blink::InitiatorStateToken());
     return frame_host;
   }
 
@@ -597,13 +597,12 @@ class RenderFrameHostManagerTest
   }
 
   // Exposes RenderFrameHostManager::CanUseSourceSiteInstance for testing.
-  bool CanUseSourceSiteInstance(
-      RenderFrameHostManager* render_manager,
-      const UrlInfo& dest_url_info,
-      SiteInstanceImpl* source_instance,
-      bool was_server_redirect,
-      NavigationRequest::ErrorPageProcess error_page_process,
-      std::string* reason) {
+  bool CanUseSourceSiteInstance(RenderFrameHostManager* render_manager,
+                                const UrlInfo& dest_url_info,
+                                SiteInstanceImpl* source_instance,
+                                bool was_server_redirect,
+                                ErrorPageProcess error_page_process,
+                                std::string* reason) {
     return render_manager->CanUseSourceSiteInstance(
         dest_url_info, source_instance, was_server_redirect, error_page_process,
         reason);
@@ -2275,7 +2274,7 @@ TEST_P(RenderFrameHostManagerTestWithSiteIsolation, DetachPendingChild) {
       TestRenderFrameHost::CreateStubAssociatedInterfaceProviderReceiver(),
       blink::mojom::TreeScopeType::kDocument, "frame_name", "uniqueName1",
       false, blink::LocalFrameToken(), base::UnguessableToken::Create(),
-      blink::DocumentToken(), base::UnguessableToken::Create(),
+      blink::DocumentToken(), blink::InitiatorStateToken(),
       blink::FramePolicy(), blink::mojom::FrameOwnerProperties(), kOwnerType,
       ukm::kInvalidSourceId);
   contents()->GetPrimaryMainFrame()->OnCreateChildFrame(
@@ -2286,7 +2285,7 @@ TEST_P(RenderFrameHostManagerTestWithSiteIsolation, DetachPendingChild) {
       TestRenderFrameHost::CreateStubAssociatedInterfaceProviderReceiver(),
       blink::mojom::TreeScopeType::kDocument, "frame_name", "uniqueName2",
       false, blink::LocalFrameToken(), base::UnguessableToken::Create(),
-      blink::DocumentToken(), base::UnguessableToken::Create(),
+      blink::DocumentToken(), blink::InitiatorStateToken(),
       blink::FramePolicy(), blink::mojom::FrameOwnerProperties(), kOwnerType,
       ukm::kInvalidSourceId);
   RenderFrameHostManager* root_manager =
@@ -2459,7 +2458,7 @@ TEST_P(RenderFrameHostManagerTestWithSiteIsolation,
       TestRenderFrameHost::CreateStubAssociatedInterfaceProviderReceiver(),
       blink::mojom::TreeScopeType::kDocument, "frame_name", "uniqueName1",
       false, blink::LocalFrameToken(), base::UnguessableToken::Create(),
-      blink::DocumentToken(), base::UnguessableToken::Create(),
+      blink::DocumentToken(), blink::InitiatorStateToken(),
       blink::FramePolicy(), blink::mojom::FrameOwnerProperties(),
       blink::FrameOwnerElementType::kIframe, ukm::kInvalidSourceId);
   RenderFrameHostManager* iframe =
@@ -2620,7 +2619,7 @@ TEST_P(RenderFrameHostManagerTestWithSiteIsolation,
       TestRenderFrameHost::CreateStubAssociatedInterfaceProviderReceiver(),
       blink::mojom::TreeScopeType::kDocument, std::string(), "uniqueName1",
       false, blink::LocalFrameToken(), base::UnguessableToken::Create(),
-      blink::DocumentToken(), base::UnguessableToken::Create(),
+      blink::DocumentToken(), blink::InitiatorStateToken(),
       blink::FramePolicy(), blink::mojom::FrameOwnerProperties(),
       blink::FrameOwnerElementType::kIframe, ukm::kInvalidSourceId);
   RenderFrameHostManager* subframe_rfhm =
@@ -2846,7 +2845,7 @@ TEST_P(RenderFrameHostManagerTest, TraverseComplexOpenerChain) {
       TestRenderFrameHost::CreateStubAssociatedInterfaceProviderReceiver(),
       blink::mojom::TreeScopeType::kDocument, std::string(), "uniqueName0",
       false, blink::LocalFrameToken(), base::UnguessableToken::Create(),
-      blink::DocumentToken(), base::UnguessableToken::Create(),
+      blink::DocumentToken(), blink::InitiatorStateToken(),
       blink::FramePolicy(), blink::mojom::FrameOwnerProperties(), false,
       kOwnerType, is_dummy_frame_for_inner_tree);
   tree1->AddFrame(
@@ -2857,7 +2856,7 @@ TEST_P(RenderFrameHostManagerTest, TraverseComplexOpenerChain) {
       TestRenderFrameHost::CreateStubAssociatedInterfaceProviderReceiver(),
       blink::mojom::TreeScopeType::kDocument, std::string(), "uniqueName1",
       false, blink::LocalFrameToken(), base::UnguessableToken::Create(),
-      blink::DocumentToken(), base::UnguessableToken::Create(),
+      blink::DocumentToken(), blink::InitiatorStateToken(),
       blink::FramePolicy(), blink::mojom::FrameOwnerProperties(), false,
       kOwnerType, is_dummy_frame_for_inner_tree);
 
@@ -2875,7 +2874,7 @@ TEST_P(RenderFrameHostManagerTest, TraverseComplexOpenerChain) {
       TestRenderFrameHost::CreateStubAssociatedInterfaceProviderReceiver(),
       blink::mojom::TreeScopeType::kDocument, std::string(), "uniqueName2",
       false, blink::LocalFrameToken(), base::UnguessableToken::Create(),
-      blink::DocumentToken(), base::UnguessableToken::Create(),
+      blink::DocumentToken(), blink::InitiatorStateToken(),
       blink::FramePolicy(), blink::mojom::FrameOwnerProperties(), false,
       kOwnerType, is_dummy_frame_for_inner_tree);
   tree2->AddFrame(
@@ -2886,7 +2885,7 @@ TEST_P(RenderFrameHostManagerTest, TraverseComplexOpenerChain) {
       TestRenderFrameHost::CreateStubAssociatedInterfaceProviderReceiver(),
       blink::mojom::TreeScopeType::kDocument, std::string(), "uniqueName3",
       false, blink::LocalFrameToken(), base::UnguessableToken::Create(),
-      blink::DocumentToken(), base::UnguessableToken::Create(),
+      blink::DocumentToken(), blink::InitiatorStateToken(),
       blink::FramePolicy(), blink::mojom::FrameOwnerProperties(), false,
       kOwnerType, is_dummy_frame_for_inner_tree);
 
@@ -2909,7 +2908,7 @@ TEST_P(RenderFrameHostManagerTest, TraverseComplexOpenerChain) {
       TestRenderFrameHost::CreateStubAssociatedInterfaceProviderReceiver(),
       blink::mojom::TreeScopeType::kDocument, std::string(), "uniqueName4",
       false, blink::LocalFrameToken(), base::UnguessableToken::Create(),
-      blink::DocumentToken(), base::UnguessableToken::Create(),
+      blink::DocumentToken(), blink::InitiatorStateToken(),
       blink::FramePolicy(), blink::mojom::FrameOwnerProperties(), false,
       kOwnerType, is_dummy_frame_for_inner_tree);
 
@@ -3009,7 +3008,7 @@ TEST_P(RenderFrameHostManagerTest, PageFocusPropagatesToSubframeProcesses) {
       TestRenderFrameHost::CreateStubAssociatedInterfaceProviderReceiver(),
       blink::mojom::TreeScopeType::kDocument, "frame1", "uniqueName1", false,
       blink::LocalFrameToken(), base::UnguessableToken::Create(),
-      blink::DocumentToken(), base::UnguessableToken::Create(),
+      blink::DocumentToken(), blink::InitiatorStateToken(),
       blink::FramePolicy(), blink::mojom::FrameOwnerProperties(), kOwnerType,
       ukm::kInvalidSourceId);
   main_test_rfh()->OnCreateChildFrame(
@@ -3020,7 +3019,7 @@ TEST_P(RenderFrameHostManagerTest, PageFocusPropagatesToSubframeProcesses) {
       TestRenderFrameHost::CreateStubAssociatedInterfaceProviderReceiver(),
       blink::mojom::TreeScopeType::kDocument, "frame2", "uniqueName2", false,
       blink::LocalFrameToken(), base::UnguessableToken::Create(),
-      blink::DocumentToken(), base::UnguessableToken::Create(),
+      blink::DocumentToken(), blink::InitiatorStateToken(),
       blink::FramePolicy(), blink::mojom::FrameOwnerProperties(), kOwnerType,
       ukm::kInvalidSourceId);
   main_test_rfh()->OnCreateChildFrame(
@@ -3031,7 +3030,7 @@ TEST_P(RenderFrameHostManagerTest, PageFocusPropagatesToSubframeProcesses) {
       TestRenderFrameHost::CreateStubAssociatedInterfaceProviderReceiver(),
       blink::mojom::TreeScopeType::kDocument, "frame3", "uniqueName3", false,
       blink::LocalFrameToken(), base::UnguessableToken::Create(),
-      blink::DocumentToken(), base::UnguessableToken::Create(),
+      blink::DocumentToken(), blink::InitiatorStateToken(),
       blink::FramePolicy(), blink::mojom::FrameOwnerProperties(), kOwnerType,
       ukm::kInvalidSourceId);
 
@@ -3141,7 +3140,7 @@ TEST_P(RenderFrameHostManagerTest,
       TestRenderFrameHost::CreateStubAssociatedInterfaceProviderReceiver(),
       blink::mojom::TreeScopeType::kDocument, "frame1", "uniqueName1", false,
       blink::LocalFrameToken(), base::UnguessableToken::Create(),
-      blink::DocumentToken(), base::UnguessableToken::Create(),
+      blink::DocumentToken(), blink::InitiatorStateToken(),
       blink::FramePolicy(), blink::mojom::FrameOwnerProperties(), kOwnerType,
       ukm::kInvalidSourceId);
 
@@ -3739,7 +3738,7 @@ TEST_P(RenderFrameHostManagerTest,
       TestRenderFrameHost::CreateStubAssociatedInterfaceProviderReceiver(),
       blink::mojom::TreeScopeType::kDocument, "frame", "uniqueName", false,
       blink::LocalFrameToken(), base::UnguessableToken::Create(),
-      blink::DocumentToken(), base::UnguessableToken::Create(),
+      blink::DocumentToken(), blink::InitiatorStateToken(),
       blink::FramePolicy(), blink::mojom::FrameOwnerProperties(),
       blink::FrameOwnerElementType::kIframe, ukm::kInvalidSourceId);
 
@@ -3819,7 +3818,7 @@ TEST_P(RenderFrameHostManagerTestWithSiteIsolation,
       TestRenderFrameHost::CreateStubAssociatedInterfaceProviderReceiver(),
       blink::mojom::TreeScopeType::kDocument, "frame1", "uniqueName1", false,
       blink::LocalFrameToken(), base::UnguessableToken::Create(),
-      blink::DocumentToken(), base::UnguessableToken::Create(),
+      blink::DocumentToken(), blink::InitiatorStateToken(),
       blink::FramePolicy(), blink::mojom::FrameOwnerProperties(),
       blink::FrameOwnerElementType::kIframe, ukm::kInvalidSourceId);
 
@@ -4056,7 +4055,7 @@ TEST_P(RenderFrameHostManagerTestWithSiteIsolation,
       TestRenderFrameHost::CreateStubAssociatedInterfaceProviderReceiver(),
       blink::mojom::TreeScopeType::kDocument, "child_frame", "uniqueName1",
       false, blink::LocalFrameToken(), base::UnguessableToken::Create(),
-      blink::DocumentToken(), base::UnguessableToken::Create(),
+      blink::DocumentToken(), blink::InitiatorStateToken(),
       blink::FramePolicy(), blink::mojom::FrameOwnerProperties(), kOwnerType,
       ukm::kInvalidSourceId);
 
@@ -4253,8 +4252,7 @@ TEST_P(RenderFrameHostManagerTest,
   std::string reason;
   EXPECT_FALSE(CanUseSourceSiteInstance(
       render_manager, dest_url_info, source_instance.get(),
-      /*was_server_redirect=*/false,
-      NavigationRequest::ErrorPageProcess::kNotErrorPage, &reason));
+      /*was_server_redirect=*/false, ErrorPageProcess::kNotErrorPage, &reason));
   EXPECT_NE(std::string::npos,
             reason.find("(mime-handler-isolation-id-mismatched)"))
       << "actual reason: " << reason;
@@ -4300,8 +4298,7 @@ TEST_P(RenderFrameHostManagerTest,
   std::string reason;
   EXPECT_FALSE(CanUseSourceSiteInstance(
       render_manager, dest_url_info, source_instance.get(),
-      /*was_server_redirect=*/false,
-      NavigationRequest::ErrorPageProcess::kNotErrorPage, &reason));
+      /*was_server_redirect=*/false, ErrorPageProcess::kNotErrorPage, &reason));
   EXPECT_NE(std::string::npos,
             reason.find("(mime-handler-isolation-id-mismatched)"))
       << "actual reason: " << reason;

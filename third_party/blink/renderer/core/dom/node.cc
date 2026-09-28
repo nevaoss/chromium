@@ -1223,8 +1223,8 @@ WritableStream* Node::streamBeforeHTMLUnsafe(
     ExceptionState& exception_state) {
   std::optional<FragmentParserOptions> resolved_options =
       TrustedTypesCheckForStreaming(
-          FragmentParserOptions::From(options),
-          ExecutionContext::From(script_state), trusted_types_names::kNode,
+          FragmentParserOptions::From(options), GetExecutionContext(),
+          trusted_types_names::kNode,
           trusted_types_names::kStreamBeforeHTMLUnsafe, exception_state);
   if (!resolved_options) {
     return nullptr;
@@ -1248,8 +1248,8 @@ WritableStream* Node::streamAfterHTMLUnsafe(
     ExceptionState& exception_state) {
   std::optional<FragmentParserOptions> resolved_options =
       TrustedTypesCheckForStreaming(
-          FragmentParserOptions::From(options),
-          ExecutionContext::From(script_state), trusted_types_names::kNode,
+          FragmentParserOptions::From(options), GetExecutionContext(),
+          trusted_types_names::kNode,
           trusted_types_names::kStreamAfterHTMLUnsafe, exception_state);
   if (!resolved_options) {
     return nullptr;
@@ -1273,8 +1273,8 @@ WritableStream* Node::streamReplaceWithHTMLUnsafe(
     ExceptionState& exception_state) {
   std::optional<FragmentParserOptions> resolved_options =
       TrustedTypesCheckForStreaming(
-          FragmentParserOptions::From(options),
-          ExecutionContext::From(script_state), trusted_types_names::kNode,
+          FragmentParserOptions::From(options), GetExecutionContext(),
+          trusted_types_names::kNode,
           trusted_types_names::kStreamReplaceWithHTMLUnsafe, exception_state);
   if (!resolved_options) {
     return nullptr;
@@ -1946,10 +1946,12 @@ void Node::AttachLayoutTree(AttachContext& context) {
   DCHECK(!context.performing_reattach ||
          GetDocument().GetStyleEngine().InRebuildLayoutTree());
 
-  LayoutObject* layout_object = GetLayoutObject();
+#if DCHECK_IS_ON()
+  const LayoutObject* layout_object = GetLayoutObject();
   DCHECK(!layout_object ||
          (layout_object->HasStyle() &&
           (layout_object->Parent() || IsA<LayoutView>(layout_object))));
+#endif
 
   ClearNeedsReattachLayoutTree();
 
@@ -3052,7 +3054,7 @@ void Node::WillMoveToNewDocument(Document& new_document) {
   if (old_document.FocusedElement() == this) {
     FocusParams params(SelectionBehaviorOnFocus::kNone,
                        mojom::blink::FocusType::kNone, nullptr);
-    params.omit_blur_events = true;
+    params.blur_event_behavior = BlurEventBehavior::kDropWhenRemoving;
     old_document.SetFocusedElement(nullptr, params);
   }
 

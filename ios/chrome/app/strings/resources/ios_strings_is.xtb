@@ -740,7 +740,6 @@
 <translation id="3409785640040772790">Kort</translation>
 <translation id="3416023309465857378">25. okt. 2023</translation>
 <translation id="3419787211763835342">Hjálpaðu til við að bæta ítarlega sjálfvirka útfyllingu</translation>
-<translation id="3426715535827854458">Fela „Fela tækjastiku“</translation>
 <translation id="3435738964857648380">Öryggi</translation>
 <translation id="3441673211568148613">Haltu þinni vefskoðun leyndri</translation>
 <translation id="3443810440409579745">Flipi móttekinn.</translation>
@@ -1173,6 +1172,7 @@
 <translation id="484280513275854557">Þú skráðist út; vefskoðunargögnum var eytt</translation>
 <translation id="484462545196658690">Sjálfvirkt</translation>
 <translation id="4846662396507502151">Vafraðu hraðar með nýju tækjastikunni</translation>
+<translation id="4850669014075537160">Fletting</translation>
 <translation id="4850886885716139402">Yfirlit</translation>
 <translation id="4854068532375923088">Leyfa „Gemini“ að nota myndavélina</translation>
 <translation id="4860895144060829044">Hringja</translation>
@@ -1947,6 +1947,9 @@ Til að halda áfram í tölvunni skaltu skipta í <ph name="OTHER_EMAIL" />. Þ
 <translation id="7280980607183752256">Ekki er hægt að flytja þessa skrá inn</translation>
 <translation id="7282197670900591579">Sítrónugult þema</translation>
 <translation id="7293429513719260019">Velja tungumál</translation>
+<translation id="72961285530871072">Þetta eyðir framvindu þinni í Level Up varanlega og gögn um notkun þína á eiginleikum í Level Up verða ekki lengur send til Google fyrir prófílinn þinn.
+
+Þú getur byrjað aftur hvenær sem er.</translation>
 <translation id="7300448350764260141">Auktu vörn gegn netógnum.</translation>
 <translation id="7311244614769792472">Engar niðurstöður fundust</translation>
 <translation id="7312823817809783355">Verkefnin þín</translation>

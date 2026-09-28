@@ -52,8 +52,8 @@ const base::FeatureParam<bool> kGlicSelectionPromptInlineFulfillment{
     &kGlicSelectionPrompt, "inline_fulfillment", false};
 const base::FeatureParam<std::string> kGlicSelectionPromptInlinePromptTemplate{
     &kGlicSelectionPrompt, "inline_prompt_template", ""};
-const base::FeatureParam<bool> kGlicSelectionPromptSkills{
-    &kGlicSelectionPrompt, "skills", true};
+const base::FeatureParam<bool> kGlicSelectionPromptSkills{&kGlicSelectionPrompt,
+                                                          "skills", true};
 const base::FeatureParam<std::string> kGlicSelectionDefaultBlockedSites{
     &kGlicSelectionPrompt, "GlicSelectionDefaultBlockedSites", ""};
 
@@ -63,6 +63,10 @@ base::flat_set<std::string> GetGlicSelectionDefaultBlockedSites() {
       sites_str, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
   return base::flat_set<std::string>(std::move(sites));
 }
+
+BASE_FEATURE(kGlicSelectionSmallChip, base::FEATURE_DISABLED_BY_DEFAULT);
+const base::FeatureParam<bool> kGlicSelectionSmallChipOnTop{
+    &kGlicSelectionSmallChip, "on_top", true};
 
 BASE_FEATURE(kGlicClearTurnIdOnPanelWillOpen,
              base::FEATURE_DISABLED_BY_DEFAULT);
@@ -119,6 +123,8 @@ const base::FeatureParam<bool> kGlicContextMenuWithOnboarding{
     &kGlicContextMenu, "WithOnboarding", false};
 
 BASE_FEATURE(kGlicContextMenuBelowSearch, base::FEATURE_DISABLED_BY_DEFAULT);
+
+BASE_FEATURE(kGlicDynamicChromeTools, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kGlicTextSelectionContextMenu, base::FEATURE_DISABLED_BY_DEFAULT);
 const base::FeatureParam<bool> kGlicTextSelectionContextMenuMessageFirstFre{
@@ -274,6 +280,8 @@ BASE_FEATURE(kGlicDisconnectedWebview, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kGlicShakeTrigger,
              "GlicShakeTrigger",
              base::FEATURE_DISABLED_BY_DEFAULT);
+const base::FeatureParam<bool> kGlicShakeTriggerOnlyOnSidePanel{
+    &kGlicShakeTrigger, "only_on_side_panel", true};
 
 BASE_FEATURE(kGlicAndroidTablet, base::FEATURE_DISABLED_BY_DEFAULT);
 

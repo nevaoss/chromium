@@ -112,7 +112,6 @@ class TabMenuModelDelegate;
 class TabStripModel;
 class TabStripServiceFeature;
 class TabsFromOtherDevicesSidePanelCoordinator;
-class ToastController;
 class ToastService;
 class TranslateBubbleController;
 class UIControllerFactory;
@@ -192,7 +191,6 @@ class ExtensionSidePanelManager;
 
 namespace glic {
 class GlicIphController;
-class GlicNudgeController;
 class GlicSplitButtonController;
 }  // namespace glic
 
@@ -320,33 +318,11 @@ class BrowserWindowFeatures {
     return browser_command_controller_.get();
   }
 
-  content_settings::CookieControlsController* cookie_controls_controller() {
-    return cookie_controls_controller_.get();
-  }
-
-  ExclusiveAccessManager* exclusive_access_manager() {
-    return exclusive_access_manager_.get();
-  }
-
-  ExtensionInstalledWatcher* extension_installed_watcher() {
-    return extension_installed_watcher_.get();
-  }
-
-  ExtensionKeybindingRegistryViews* extension_keybinding_registry() {
-    return extension_keybinding_registry_.get();
-  }
-
-  extensions::ExtensionSidePanelManager* extension_side_panel_manager() {
-    return extension_side_panel_manager_.get();
-  }
-
   // Get the FindBarController for this browser window, creating it if it does
   // not yet exist.
   FindBarController* GetFindBarController();
 
   actions::ActionItem* GetRootActionItem();
-
-  glic::GlicNudgeController* glic_nudge_controller();
 
   // Returns true if a FindBarController exists for this browser window.
   bool HasFindBarController() const;
@@ -372,16 +348,7 @@ class BrowserWindowFeatures {
     return pinned_toolbar_actions_;
   }
 
-  SigninViewController* signin_view_controller() {
-    return signin_view_controller_.get();
-  }
-
   TabStripModel* tab_strip_model() { return tab_strip_model_; }
-
-  // Returns a pointer to the ToastController for the browser window. This can
-  // return nullptr for non-normal browser windows because toasts are not
-  // supported for those cases.
-  ToastController* toast_controller();
 
   static ui::UserDataFactoryWithOwner<BrowserWindowInterface>&
   GetUserDataFactoryForTesting();

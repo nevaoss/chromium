@@ -252,10 +252,6 @@ const base::FeatureParam<int> kAutofillEnableResurrectingPaymentsUsersTreatment{
     &kAutofillEnableResurrectingPaymentsUsers,
     "autofill_enable_resurrecting_payments_churned_users_treatment", 1};
 
-// When enabled, the 'Save and Fill' suggestion will be offered in the credit
-// card dropdown menu for users who don't have any cards saved in Autofill.
-BASE_FEATURE(kAutofillEnableSaveAndFill, base::FEATURE_ENABLED_BY_DEFAULT);
-
 // When enabled, the 'Scan new card' option will be offered even if the user
 // does not have any credit cards saved in Autofill.
 BASE_FEATURE(kAutofillEnableScanCardOptionWhenNoCardsSaved,
@@ -312,6 +308,11 @@ BASE_FEATURE(kAutofillEnableWalletBrandingV2,
 // When enabled, direct offers synced via Google Wallet will be available for
 // autofill into merchant promo code fields during checkout.
 BASE_FEATURE(kAutofillEnableWalletDirectOffers,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
+// When enabled, an offer notification bubble will be shown for wallet
+// direct offers if any are available for the current merchant page.
+BASE_FEATURE(kAutofillEnableWalletDirectOffersNotificationBubble,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 // When enabled, shows the Wallet Reminder Notice for credit cards after payment

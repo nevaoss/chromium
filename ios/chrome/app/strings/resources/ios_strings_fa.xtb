@@ -19,6 +19,7 @@
 <translation id="1049743911850919806">ناشناس</translation>
 <translation id="1053651653201045802">از سیستم خارج شده‌اید. برای استفاده از نشانک‌ها، گذرواژه‌ها، و دیگر اطلاعات ذخیره‌شده در حسابتان، دوباره به سیستم وارد شوید.</translation>
 <translation id="1054745118061919935">درصورت ادامه دادن، با <ph name="BEGIN_LINK" />شرایط خدمات<ph name="END_LINK" /> موافقت می‌کنید.</translation>
+<translation id="1056818261333183659">کدام را بخرم؟</translation>
 <translation id="10614374240317010">هرگز ذخیره نمی‌شود</translation>
 <translation id="1062138828266376352">پین شما تغییر نکرد. اتصال اینترنت را بررسی کنید و دوباره امتحان کنید</translation>
 <translation id="1063070031224282617">محل ذخیره کردن «<ph name="BEGIN_BOLD" /><ph name="FILENAME" /><ph name="END_BOLD" />» (<ph name="FILE_SIZE" />) را انتخاب کنید</translation>
@@ -739,7 +740,6 @@
 <translation id="3409785640040772790">Maps</translation>
 <translation id="3416023309465857378">۲۵ اکتبر ۲۰۲۳</translation>
 <translation id="3419787211763835342">کمک به بهبود تکمیل خودکار بهبودیافته</translation>
-<translation id="3426715535827854458">پنهان کردن «پنهان کردن نوارابزار»</translation>
 <translation id="3435738964857648380">امنیت</translation>
 <translation id="3441673211568148613">مرورتان را خصوصی نگه دارید</translation>
 <translation id="3443810440409579745">برگه دریافت شد.</translation>
@@ -1172,6 +1172,7 @@
 <translation id="484280513275854557">از سیستم خارج شدید؛ داده‌های مرور حذف شد</translation>
 <translation id="484462545196658690">خودکار</translation>
 <translation id="4846662396507502151">با نوارابزار جدید سریع‌تر مرور کنید</translation>
+<translation id="4850669014075537160">پیمایش</translation>
 <translation id="4850886885716139402">نما</translation>
 <translation id="4854068532375923088">‏به «Gemini» اجازه دهید از دوربینتان استفاده کند.</translation>
 <translation id="4860895144060829044">تماس</translation>
@@ -1505,6 +1506,7 @@ Handoff باید در بخش عمومی تنظیمات نیز فعال شود و
 <translation id="5898848375214731122">جرم</translation>
 <translation id="5899314093904173337">‏برای هم‌رسانی کردن با افراد حاضر در اطراف، به‌آن‌ها اجازه دهید این رمزینه پاسخ‌سریع را با دوربین خود یا برنامه اسکنر QR اسکن کنند</translation>
 <translation id="5902752768726620872">{count,plural, =1{‫{count} زبانه جدید}one{‫{count} زبانه جدید}other{‫{count} زبانه جدید}}</translation>
+<translation id="5906163261248594192">تولد دانیال</translation>
 <translation id="5911030830365207728">‏ترجمه Google</translation>
 <translation id="5912796581727968237">‏باز کردن «کیف پول Google»</translation>
 <translation id="5922999516621365983">برای سنجاق کردن زبانه، آن را اینجا بکشید.</translation>
@@ -1692,7 +1694,7 @@ Handoff باید در بخش عمومی تنظیمات نیز فعال شود و
 <translation id="6454311990702999318">داده‌های نامعتبر</translation>
 <translation id="6459411599807878608">جزئیات پنهان شدند</translation>
 <translation id="646394917185284261">Files</translation>
-<translation id="6470721056280836221">‏‫Google برای پیشنهاد دادن کارها و به‌روزرسانی میزان پیشرفت، از داده‌های استفاده شما از ویژگی‌ها استفاده می‌کند. هرزمان بخواهید می‌توانید «ارتقا سطح» را خاموش کنید.</translation>
+<translation id="6470721056280836221">‏‫Google برای پیشنهاد دادن کارها و به‌روزرسانی میزان پیشرفت، از داده‌های استفاده شما از ویژگی‌ها استفاده می‌کند. در هر زمان می‌توانید «ارتقا سطح» را خاموش کنید.</translation>
 <translation id="6472069383518492189">بارگیری‌هایتان را اینجا خواهید دید</translation>
 <translation id="6476253015009698798">پیگیری قیمت برای این صفحه دردسترس نیست.</translation>
 <translation id="6476284679642588870">مدیریت کردن روش‌های پرداخت</translation>
@@ -1924,6 +1926,7 @@ Handoff باید در بخش عمومی تنظیمات نیز فعال شود و
 <translation id="720399613139435155">ترجمه نشد</translation>
 <translation id="7204922488054642675">خبرهای شخصی‌سازی‌شده</translation>
 <translation id="7206979415662233817">شرایط خدمات</translation>
+<translation id="721218676460477064">این مقاله را خلاصه کن</translation>
 <translation id="7215621211572884440">بالاپر مجاز است</translation>
 <translation id="7218491361283758048">کد پستی</translation>
 <translation id="7221173315674413369">ویژگی‌ها و نکات جدید را در «تازه‌ها» کاوش کنید</translation>
@@ -1944,6 +1947,9 @@ Handoff باید در بخش عمومی تنظیمات نیز فعال شود و
 <translation id="7280980607183752256">امکان وارد کردن این فایل وجود ندارد</translation>
 <translation id="7282197670900591579">زمینه لیمویی</translation>
 <translation id="7293429513719260019">انتخاب زبان</translation>
+<translation id="72961285530871072">‏با این کار، پیشرفت شما در Level Up برای همیشه حذف خواهد شد و داده‌های استفاده از ویژگی برای Level Up دیگر برای نمایه شما به Google ارسال نخواهد شد.
+
+هرزمان بخواهید می‌توانید آن را بازراه‌اندازی کنید.</translation>
 <translation id="7300448350764260141">لایه محافظتی بیشتری دربرابر تهدیدهای آنلاین اضافه کنید.</translation>
 <translation id="7311244614769792472">نتیجه‌ای پیدا نشد</translation>
 <translation id="7312823817809783355">تکالیف شما</translation>
@@ -2185,6 +2191,7 @@ Handoff باید در بخش عمومی تنظیمات نیز فعال شود و
 <translation id="8035133914807600019">پوشه جدید…</translation>
 <translation id="8035412398498507358">Photos</translation>
 <translation id="8037713009824540257">افزودن سایت</translation>
+<translation id="8038078082340255234">گزارش بازار</translation>
 <translation id="8040407350301524547">برای گزینه‌های مسیر، روی «دریافت مسیر» تک‌ضرب بزنید.</translation>
 <translation id="804427445359061970">زبانه‌های مربوط به دستگاه‌های دیگر را اینجا خواهید دید</translation>
 <translation id="8058655154417507695">سال انقضا</translation>
@@ -2242,6 +2249,7 @@ Handoff باید در بخش عمومی تنظیمات نیز فعال شود و
 <translation id="8232956427053453090">نگه‌داشتن داده</translation>
 <translation id="8233237502828137700">بستن تبلیغات برنما</translation>
 <translation id="823339794112333264">روشن کردن میکروفن</translation>
+<translation id="8240217649914883113">این را به تقویمم اضافه کن</translation>
 <translation id="8250920743982581267">اسناد</translation>
 <translation id="8252980988000695656">‏«لنز Google» تکمیل شد!</translation>
 <translation id="8258734532103758067">داده‌هایم را صادر کرده‌ام</translation>
@@ -2286,6 +2294,7 @@ Handoff باید در بخش عمومی تنظیمات نیز فعال شود و
 <translation id="8368198938968349418">روشن کردن «تکمیل خودکار»…</translation>
 <translation id="8370406443343902172">رفتن به «تنظیمات»…</translation>
 <translation id="8370929854657845191">گستردن تا ارتفاع «متوسط»</translation>
+<translation id="8371494817541821097">گذرکلید در <ph name="DATE" /> ایجاد شد</translation>
 <translation id="8372471489238799313">{count,plural, =1{حذف کردن نشانی}one{حذف کردن نشانی}other{حذف کردن نشانی‌ها}}</translation>
 <translation id="8378714024927312812">توسط سازمانتان مدیریت می‌شود</translation>
 <translation id="8385363453480067273">‏آنچه را می‌بینید با «لنز Google» جستجو کنید</translation>

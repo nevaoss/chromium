@@ -5,7 +5,14 @@
 import("//third_party/protobuf/proto_library.gni")
 
 proto_library("proto") {
-  visibility = [ "//components/browser_actuator/*" ]
+  visibility = [
+    "//chrome/browser/sharing/browser_actuator/*",
+    "//components/browser_actuator/*",
+  ]
   sources = [ "transport_messages.proto" ]
-  deps = [ "//third_party/protobuf:any_proto" ]
+  deps = [
+    "//components/browser_actuator/proto",
+    "//third_party/protobuf:any_proto",
+  ]
+  proto_in_dir = "//"
 }

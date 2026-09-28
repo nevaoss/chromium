@@ -20,6 +20,7 @@
 #include "base/test/scoped_feature_list.h"
 #include "base/test/task_environment.h"
 #include "chrome/common/readaloud/read_aloud.mojom.h"
+#include "components/optimization_guide/proto/features/read_aloud_synthesize.pb.h"
 #include "media/base/audio_parameters.h"
 #include "mojo/public/cpp/base/big_buffer.h"
 #include "mojo/public/cpp/bindings/pending_receiver.h"
@@ -28,9 +29,9 @@
 #include "mojo/public/cpp/bindings/remote.h"
 #include "mojo/public/cpp/platform/platform_handle.h"
 #include "mojo/public/cpp/test_support/test_utils.h"
-#include "mojo/public/mojom/base/work_in_progress.mojom.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "ui/accessibility/ax_features.mojom-features.h"
 
 namespace readaloud {
 
@@ -69,11 +70,29 @@ class MockReadAloudPlaybackControllerClient
     // No-op for testing.
   }
 
+  using SpeechSynthesisHandler = base::RepeatingCallback<void(
+      const std::u16string&, uint64_t, RequestSpeechSynthesisCallback)>;
+
+  void set_synthesis_handler(SpeechSynthesisHandler handler) {
+    synthesis_handler_ = std::move(handler);
+  }
+
   void RequestSpeechSynthesis(
-      const std::u16string& /*text_chunk*/,
-      uint64_t /*sequence_id*/,
+      const std::u16string& text_chunk,
+      uint64_t sequence_id,
       RequestSpeechSynthesisCallback callback) override {
+    if (synthesis_handler_) {
+      synthesis_handler_.Run(text_chunk, sequence_id, std::move(callback));
+      return;
+    }
     std::move(callback).Run(mojo_base::BigBuffer(), true);
+  }
+
+  void OnTextChunked(const std::vector<std::u16string>& chunks) override {
+    last_chunks_ = chunks;
+    if (chunks_closure_) {
+      std::move(chunks_closure_).Run();
+    }
   }
 
   void ClearLastState() { last_state_.reset(); }
@@ -91,6 +110,15 @@ class MockReadAloudPlaybackControllerClient
     EXPECT_EQ(last_state_.value(), expected_state);
   }
 
+  void WaitForChunks() {
+    if (last_chunks_.has_value()) {
+      return;
+    }
+    base::RunLoop run_loop;
+    chunks_closure_ = run_loop.QuitClosure();
+    run_loop.Run();
+  }
+
   void WaitForDisconnect() {
     if (!receiver_.is_bound())
       return;
@@ -104,12 +132,19 @@ class MockReadAloudPlaybackControllerClient
     return last_state_;
   }
 
+  const std::optional<std::vector<std::u16string>>& last_chunks() const {
+    return last_chunks_;
+  }
+
  private:
   mojo::Receiver<read_aloud::mojom::ReadAloudPlaybackControllerClient>
       receiver_{this};
   std::optional<read_aloud::mojom::PlaybackState> last_state_;
   std::optional<read_aloud::mojom::PlaybackState> expected_state_to_wait_for_;
   base::OnceClosure state_changed_closure_;
+  std::optional<std::vector<std::u16string>> last_chunks_;
+  base::OnceClosure chunks_closure_;
+  SpeechSynthesisHandler synthesis_handler_;
 };
 
 }  // namespace
@@ -119,7 +154,7 @@ class ReadAloudPlaybackControllerTest : public testing::Test {
   ReadAloudPlaybackControllerTest()
       : task_environment_(base::test::TaskEnvironment::TimeSource::MOCK_TIME) {
     scoped_feature_list_.InitAndEnableFeature(
-        mojo_base::mojom::kMojomWorkInProgress);
+        ax::mojom::features::kReadAloudNative);
   }
 
   void SetUp() override {
@@ -152,6 +187,17 @@ class ReadAloudPlaybackControllerTest : public testing::Test {
         controller_remote_.BindNewPipeAndPassReceiver(),
         mock_client_->BindAndGetRemote());
     factory_remote_.FlushForTesting();
+  }
+
+  void SetMockSynthesisResponse(const std::string& response_bytes) {
+    mock_client_->set_synthesis_handler(base::BindRepeating(
+        [](const std::string& bytes, const std::u16string&, uint64_t,
+           read_aloud::mojom::ReadAloudPlaybackControllerClient::
+               RequestSpeechSynthesisCallback callback) {
+          std::move(callback).Run(
+              mojo_base::BigBuffer(base::as_byte_span(bytes)), true);
+        },
+        response_bytes));
   }
 
   media::mojom::ReadWriteAudioDataPipePtr CreateValidDataPipe(
@@ -250,6 +296,24 @@ TEST_F(ReadAloudPlaybackControllerTest, SetTextContentNotifiesClientPaused) {
 
   controller_remote_->SetTextContent(std::move(segments));
   mock_client_->WaitForStateChange(read_aloud::mojom::PlaybackState::kPaused);
+}
+
+TEST_F(ReadAloudPlaybackControllerTest, SetTextContentRoutesOnTextChunkedIPC) {
+  CreateSession();
+  std::vector<read_aloud::mojom::TextSegmentPtr> segments;
+  auto seg = read_aloud::mojom::TextSegment::New();
+  seg->segment_index = 0;
+  seg->text = u"First sentence. Second sentence!";
+  segments.push_back(std::move(seg));
+
+  controller_remote_->SetTextContent(std::move(segments));
+  mock_client_->WaitForChunks();
+
+  ASSERT_TRUE(mock_client_->last_chunks().has_value());
+  const std::vector<std::u16string>& chunks =
+      mock_client_->last_chunks().value();
+  EXPECT_THAT(chunks,
+              testing::ElementsAre(u"First sentence.", u"Second sentence!"));
 }
 
 TEST_F(ReadAloudPlaybackControllerTest, SetTextContentNotMonotonicallyIncreasingReportsBadMessage) {
@@ -778,6 +842,110 @@ TEST_F(ReadAloudPlaybackControllerTest,
       bad_message.find(
           "ReadAloudPlaybackController: Shared memory size is too small") !=
           std::string::npos);
+}
+
+TEST_F(ReadAloudPlaybackControllerTest, OnSpeechSynthesisResponseValidProtobufDecodesAndTriggersWordBoundaries) {
+  CreateSession();
+
+  std::vector<read_aloud::mojom::TextSegmentPtr> segments;
+  auto seg = read_aloud::mojom::TextSegment::New();
+  seg->segment_index = 0;
+  seg->text = u"First sentence. Second sentence.";
+  segments.push_back(std::move(seg));
+
+  controller_remote_->SetTextContent(std::move(segments));
+  controller_remote_.FlushForTesting();
+
+  optimization_guide::proto::ReadAloudSynthesizeResponse response;
+  response.set_audio_bytes("fake_opus_audio_data");
+  auto* timing1 = response.add_timings();
+  timing1->set_start_offset(0);
+  timing1->set_end_offset(14);
+  timing1->set_time_offset_ms(0);
+
+  std::string serialized;
+  ASSERT_TRUE(response.SerializeToString(&serialized));
+
+  SetMockSynthesisResponse(serialized);
+
+  controller_remote_->Play();
+  controller_remote_.FlushForTesting();
+
+  EXPECT_TRUE(controller_remote_.is_connected());
+}
+
+TEST_F(ReadAloudPlaybackControllerTest, OnSpeechSynthesisResponseMalformedProtobufRecoversWithoutStalling) {
+  CreateSession();
+
+  std::vector<read_aloud::mojom::TextSegmentPtr> segments;
+  auto seg = read_aloud::mojom::TextSegment::New();
+  seg->segment_index = 0;
+  seg->text = u"Test sentence.";
+  segments.push_back(std::move(seg));
+
+  controller_remote_->SetTextContent(std::move(segments));
+  controller_remote_.FlushForTesting();
+
+  SetMockSynthesisResponse("not_a_valid_protobuf_payload");
+
+  controller_remote_->Play();
+  controller_remote_.FlushForTesting();
+
+  // Engine should recover smoothly without disconnecting channel or stalling.
+  EXPECT_TRUE(controller_remote_.is_connected());
+}
+
+TEST_F(ReadAloudPlaybackControllerTest, OnSpeechSynthesisResponseOutOfOrderResponsesDeliveredInOrder) {
+  CreateSession();
+
+  std::vector<read_aloud::mojom::TextSegmentPtr> segments;
+  auto seg1 = read_aloud::mojom::TextSegment::New();
+  seg1->segment_index = 0;
+  seg1->text = u"First sentence.";
+  segments.push_back(std::move(seg1));
+
+  auto seg2 = read_aloud::mojom::TextSegment::New();
+  seg2->segment_index = 1;
+  seg2->text = u"Second sentence.";
+  segments.push_back(std::move(seg2));
+
+  controller_remote_->SetTextContent(std::move(segments));
+  controller_remote_.FlushForTesting();
+
+  optimization_guide::proto::ReadAloudSynthesizeResponse response;
+  response.set_audio_bytes("audio_data");
+  std::string serialized;
+  response.SerializeToString(&serialized);
+
+  SetMockSynthesisResponse(serialized);
+
+  controller_remote_->Play();
+  controller_remote_.FlushForTesting();
+
+  EXPECT_TRUE(controller_remote_.is_connected());
+}
+
+TEST_F(ReadAloudPlaybackControllerTest, SetTextContentEmptySegmentsValidateSequenceCorrectly) {
+  CreateSession();
+
+  std::vector<read_aloud::mojom::TextSegmentPtr> segments;
+  auto seg1 = read_aloud::mojom::TextSegment::New();
+  seg1->segment_index = 5;
+  seg1->text = u"Valid segment.";
+  segments.push_back(std::move(seg1));
+
+  // Empty segment with out-of-order index 2 (must trigger BadMessage)
+  auto seg2 = read_aloud::mojom::TextSegment::New();
+  seg2->segment_index = 2;
+  seg2->text = u"";
+  segments.push_back(std::move(seg2));
+
+  mojo::test::BadMessageObserver bad_message_observer;
+  controller_remote_->SetTextContent(std::move(segments));
+  controller_remote_.FlushForTesting();
+
+  EXPECT_EQ(bad_message_observer.WaitForBadMessage(),
+            "ReadAloudPlaybackController: segment_index must be monotonically increasing in SetTextContent");
 }
 
 }  // namespace readaloud

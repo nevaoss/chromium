@@ -51,6 +51,7 @@ import org.mockito.stubbing.Answer;
 import org.chromium.base.Callback;
 import org.chromium.base.DeviceInfo;
 import org.chromium.base.ThreadUtils;
+import org.chromium.base.TriState;
 import org.chromium.base.supplier.SupplierUtils;
 import org.chromium.base.test.util.Batch;
 import org.chromium.base.test.util.CallbackHelper;
@@ -211,7 +212,7 @@ public class ContextMenuTest {
         CriteriaHelper.pollUiThread(() -> tab.isUserInteractable() && !tab.isLoading());
         mActivityTestRule.assertWaitForPageScaleFactorMatch(PAGE_SCALE_FACTOR);
 
-        DownloadUtils.setIsDownloadRestrictedByPolicyForTesting(false);
+        DownloadUtils.setIsDownloadRestrictedByPolicyForTesting(TriState.FALSE);
         DataProtectionBridge.setInstanceForTesting(mDataProtectionBridgeMock);
         when(mMenuModelBridge.populateModelList()).thenReturn(new MVCListAdapter.ModelList());
     }
@@ -226,7 +227,7 @@ public class ContextMenuTest {
                         mMenuCoordinator = null;
                     }
                 });
-        DownloadUtils.setIsDownloadRestrictedByPolicyForTesting(null);
+        DownloadUtils.setIsDownloadRestrictedByPolicyForTesting(TriState.NOT_SET);
     }
 
     @Test
@@ -561,6 +562,7 @@ public class ContextMenuTest {
     @Test
     @LargeTest
     @Restriction(DeviceFormFactor.TABLET_OR_DESKTOP)
+    @DisabledTest(message = "https://crbug.com/553228809")
     @DisableFeatures({UiAndroidFeatures.ANDROID_WINDOW_OCCLUSION})
     public void testSavePageLongPress() throws TimeoutException {
         DeviceInput.setSupportsPrecisionPointerForTesting(true);
@@ -646,7 +648,7 @@ public class ContextMenuTest {
     @MediumTest
     public void testSaveImageBlockedByPolicy()
             throws TimeoutException, SecurityException, IOException {
-        DownloadUtils.setIsDownloadRestrictedByPolicyForTesting(true);
+        DownloadUtils.setIsDownloadRestrictedByPolicyForTesting(TriState.TRUE);
         int downloadCount = mDownloadTestRule.getAllDownloads().size();
         Tab tab = mActivityTestRule.getActivityTab();
         mMenuCoordinator = ContextMenuUtils.openContextMenu(tab, "testImage");
@@ -1192,6 +1194,7 @@ public class ContextMenuTest {
     @Test
     @SmallTest
     @Restriction(DeviceFormFactor.TABLET_OR_DESKTOP)
+    @DisabledTest(message = "https://crbug.com/553228809")
     @DisableFeatures({UiAndroidFeatures.ANDROID_WINDOW_OCCLUSION})
     public void testSharePageLongPress() throws Exception {
         DeviceInput.setSupportsPrecisionPointerForTesting(true);
@@ -1232,6 +1235,7 @@ public class ContextMenuTest {
     @Test
     @SmallTest
     @Restriction(DeviceFormFactor.DESKTOP)
+    @DisabledTest(message = "https://crbug.com/553228809")
     @DisableFeatures({UiAndroidFeatures.ANDROID_WINDOW_OCCLUSION})
     public void testSharePageRightClick() throws Exception {
         DeviceInput.setSupportsPrecisionPointerForTesting(true);
@@ -1271,6 +1275,7 @@ public class ContextMenuTest {
     @Test
     @MediumTest
     @Restriction(DeviceFormFactor.TABLET_OR_DESKTOP)
+    @DisabledTest(message = "https://crbug.com/553228809")
     @DisableFeatures({UiAndroidFeatures.ANDROID_WINDOW_OCCLUSION})
     public void testPrintPageLongPress() throws Exception {
         DeviceInput.setSupportsPrecisionPointerForTesting(true);

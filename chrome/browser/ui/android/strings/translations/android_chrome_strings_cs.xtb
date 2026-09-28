@@ -57,6 +57,7 @@
 <translation id="1181037720776840403">Odebrat</translation>
 <translation id="1183189057400844278">Pokud chcete mít vždy možnost použít hesla ve svém účtu Google, ověřte svou totožnost</translation>
 <translation id="1187810343066461819">Také z tohoto auta vymazat záložky, historii a další položky</translation>
+<translation id="1191987227666124897">Žádost o odhlášení</translation>
 <translation id="1193729455103054076">Použít silné heslo?</translation>
 <translation id="11947597112837849">e‑mailová adresa</translation>
 <translation id="1197267115302279827">Přesunutí záložek</translation>
@@ -105,6 +106,7 @@
 <translation id="138181280295369883">Přihlaste se a používejte uložené informace a další obsah na všech svých zařízeních</translation>
 <translation id="1381838868249179644">Kvůli ochraně vaší bezpečnosti byla některým webům odebrána oprávnění</translation>
 <translation id="1383876407941801731">Vyhledávání</translation>
+<translation id="1384568202352682721">Uložit jako…</translation>
 <translation id="1384704387250346179">Přeložit obrázek pomocí Google Lens <ph name="BEGIN_NEW" />Nové<ph name="END_NEW" /></translation>
 <translation id="1390418506739274310">Můžete vidět historii z jiných aplikací, které otevírají odkazy v Chromu. Na stránce <ph name="BEGIN_LINK" />myactivity.google.com<ph name="END_LINK" /> mohou být k dispozici další druhy historie prohlížení zaznamenané ve vašem účtu Google.</translation>
 <translation id="139752016751285248">Spodní panel s informacemi o ceně otevřený přes celou výšku obrazovky</translation>
@@ -133,6 +135,7 @@ Další nastavení využití dat ke zlepšení prostředí v prohlížeči Chro
 <translation id="147982357559798527">Změněno</translation>
 <translation id="1480287803138246127">Je možné, že se zde nezobrazuje část vaší historie. Pokud chcete vidět celou svou historii Chromu, otevřete ji.</translation>
 <translation id="1483493594462132177">Odeslat</translation>
+<translation id="1485343711570311792">Otevřít v aplikaci <ph name="NATIVE_APP_NAME" /> • Ze zařízení <ph name="DEVICE_NAME" /></translation>
 <translation id="1495677929897281669">Zpět na kartu</translation>
 <translation id="1496514951988037011">uživatelské jméno</translation>
 <translation id="1501480321619201731">Smazat skupinu</translation>
@@ -210,6 +213,7 @@ Vaše šifrovaná data mohou číst pouze uživatelé, kteří mají vaši heslo
 <translation id="1832459821645506983">Ano, souhlasím</translation>
 <translation id="1845958458910716240">Povolit Chromu odebírat za účelem ochrany vašich dat oprávnění webům, které jste v poslední době nenavštívili</translation>
 <translation id="1851551847729706116">Sdílení webu <ph name="TAB_NAME" /> s touto kartou</translation>
+<translation id="1855268219431673036">Strana <ph name="CURRENT_PAGE" /> z <ph name="TOTAL_PAGE_COUNT" /></translation>
 <translation id="1869691326892615940">Bezpečnější hesla, rychlejší přihlašování</translation>
 <translation id="1871098866036088250">Otevřít v prohlížeči Chrome</translation>
 <translation id="1877026089748256423">Chrome je zastaralý</translation>
@@ -327,6 +331,7 @@ Vaše šifrovaná data mohou číst pouze uživatelé, kteří mají vaši heslo
 <translation id="232137538351753795">Přejetím prstem z levého okraje se vrátíte</translation>
 <translation id="2323763861024343754">Úložiště webů</translation>
 <translation id="2327445548174191329">Ze zařízení <ph name="DEVICE_NAME" /></translation>
+<translation id="232757965409810352">Uložit stránku jako…</translation>
 <translation id="2328474416100889417">Ke skupině karet <ph name="GROUP_NAME" /> všichni okamžitě ztratí přístup a všechny odkazy s pozvánkou se vypnou</translation>
 <translation id="2329500425421091035">Představujeme režim AI v Chromu</translation>
 <translation id="2330186936255788117">Další záložky</translation>
@@ -1338,6 +1343,7 @@ Některé weby mohou například na tento požadavek reagovat tak, že vám zobr
 <translation id="634208815998129842">Správce úloh</translation>
 <translation id="6343495912647200061">{SHIPPING_ADDRESS,plural, =1{<ph name="SHIPPING_ADDRESS_PREVIEW" /> a <ph name="NUMBER_OF_ADDITIONAL_ADDRESSES" /> další}few{<ph name="SHIPPING_ADDRESS_PREVIEW" /> a <ph name="NUMBER_OF_ADDITIONAL_ADDRESSES" /> další}many{<ph name="SHIPPING_ADDRESS_PREVIEW" /> a <ph name="NUMBER_OF_ADDITIONAL_ADDRESSES" /> další}other{<ph name="SHIPPING_ADDRESS_PREVIEW" /> a <ph name="NUMBER_OF_ADDITIONAL_ADDRESSES" /> dalších}}</translation>
 <translation id="6345878117466430440">Označit jako přečtené</translation>
+<translation id="63490081267265251">Weby, které navštívíte, včetně Googlu, se mohou rozhodnout, jak na tento požadavek zareagují. V závislosti na právních předpisech ve vaší oblasti mohou weby reagovat omezením prodeje a sdílení vašich dat nebo jejich používání k personalizaci reklam. <ph name="BEGIN_LINK" />Další informace<ph name="END_LINK" /></translation>
 <translation id="6350745006329795504">Spravovat zařízení</translation>
 <translation id="6356893102071098867">Zkontrolujte, zda jste vybrali správný účet</translation>
 <translation id="6364438453358674297">Odstranit návrh z historie?</translation>
@@ -1662,6 +1668,7 @@ Pokud toto nastavení chcete změnit, <ph name="BEGIN_LINK" />vymažte data proh
 <translation id="7493994139787901920"><ph name="VERSION" /> (aktualizováno <ph name="TIME_SINCE_UPDATE" />)</translation>
 <translation id="7498271377022651285">Čekejte prosím…</translation>
 <translation id="7499065150275272675"><ph name="TAB_TITLE" />, připnutá ztlumená karta</translation>
+<translation id="7500851014030446046">Stahování PDF</translation>
 <translation id="7501135638693251872">Všechny záložky</translation>
 <translation id="7507207699631365376">Zobrazit <ph name="BEGIN_LINK" />zásady ochrany soukromí<ph name="END_LINK" /> tohoto poskytovatele</translation>
 <translation id="750886945254958667">Skupinu můžete zachovat, abyste do ní mohli přidat karty později, nebo ji můžete opustit, pokud k ní už nechcete mít přístup.</translation>
@@ -1729,6 +1736,7 @@ Pokud toto nastavení chcete změnit, <ph name="BEGIN_LINK" />vymažte data proh
 <translation id="7774809984919390718">{PAYMENT_METHOD,plural, =1{<ph name="PAYMENT_METHOD_PREVIEW" /> a <ph name="NUMBER_OF_ADDITIONAL_PAYMENT_METHODS" /> další}few{<ph name="PAYMENT_METHOD_PREVIEW" /> a <ph name="NUMBER_OF_ADDITIONAL_PAYMENT_METHODS" /> další}many{<ph name="PAYMENT_METHOD_PREVIEW" /> a <ph name="NUMBER_OF_ADDITIONAL_PAYMENT_METHODS" /> další}other{<ph name="PAYMENT_METHOD_PREVIEW" /> a <ph name="NUMBER_OF_ADDITIONAL_PAYMENT_METHODS" /> dalších}}</translation>
 <translation id="777637629667389858">Když jste přihlášeni, chrání vás ve službách Google.</translation>
 <translation id="7778840695157240389">Brzy tu najdete nové příběhy</translation>
+<translation id="7780992949171378848">Odeslat webům žádost o odhlášení z používání vašich dat</translation>
 <translation id="7791543448312431591">Přidat</translation>
 <translation id="7792388396321542707">Ukončit sdílení</translation>
 <translation id="780287761701992588">Mějte své záložky, hesla a další obsah na všech svých zařízeních</translation>
@@ -1874,6 +1882,7 @@ Pokud toto nastavení chcete změnit, <ph name="BEGIN_LINK" />vymažte data proh
 <translation id="8313599942510782709">Úkol stále probíhá</translation>
 <translation id="8317318757008452355">Otevřít možnosti tisku</translation>
 <translation id="8320212361750431956">Nedávná aktivita</translation>
+<translation id="8322452989119079156">Otevřít v aplikaci <ph name="NATIVE_APP_NAME" /> – odesláno ze zařízení <ph name="DEVICE_NAME" /></translation>
 <translation id="832514020744584629"><ph name="PREF_TITLE" />  <ph name="BEGIN_NEW" />Nové<ph name="END_NEW" /></translation>
 <translation id="8333026248928723981">Záložky a seznamy</translation>
 <translation id="8342727528718219152">Chrome vás bude informovat o webech, které odesílají příliš mnoho oznámení</translation>

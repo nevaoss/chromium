@@ -7,15 +7,12 @@
 #include <memory>
 
 #include "base/functional/bind.h"
-#include "base/functional/callback_helpers.h"
 #include "base/metrics/field_trial_params.h"
 #include "base/test/scoped_feature_list.h"
 #include "base/test/task_environment.h"
 #include "components/assist_ranker/fake_ranker_model_loader.h"
 #include "components/assist_ranker/predictor_config.h"
-#include "components/assist_ranker/proto/ranker_example.pb.h"
 #include "components/assist_ranker/ranker_model.h"
-#include "components/ukm/test_ukm_recorder.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "url/gurl.h"
 
@@ -27,15 +24,9 @@ namespace {
 
 // Predictor config for testing.
 const char kTestModelName[] = "test_model";
-// This name needs to be an entry in ukm.xml
-const char kTestLoggingName[] = "ContextualSearch";
 const char kTestUmaPrefixName[] = "Test.Ranker";
 const char kTestUrlParamName[] = "ranker-model-url";
 const char kTestDefaultModelUrl[] = "https://foo.bar/model.bin";
-
-const char kTestNavigationUrl[] = "https://foo.com";
-
-const base::flat_set<std::string> kFeatureAllowlist;
 
 BASE_FEATURE(kTestRankerQuery,
              base::FEATURE_ENABLED_BY_DEFAULT);
@@ -44,10 +35,8 @@ const base::FeatureParam<std::string> kTestRankerUrl{
     &kTestRankerQuery, kTestUrlParamName, kTestDefaultModelUrl};
 
 const PredictorConfig kTestPredictorConfig =
-    PredictorConfig{kTestModelName,     kTestLoggingName,
-                    kTestUmaPrefixName, LOG_UKM,
-                    &kFeatureAllowlist, &kTestRankerQuery,
-                    &kTestRankerUrl,    kNoPredictThresholdReplacement};
+    PredictorConfig{kTestModelName, kTestUmaPrefixName, &kTestRankerQuery,
+                    &kTestRankerUrl, kNoPredictThresholdReplacement};
 
 // Class that implements virtual functions of the base class.
 class FakePredictor : public BasePredictor {
@@ -103,16 +92,9 @@ class BasePredictorTest : public ::testing::Test {
 
   void SetUp() override;
 
-  ukm::SourceId GetSourceId();
-
-  ukm::TestUkmRecorder* GetTestUkmRecorder() { return &test_ukm_recorder_; }
-
  private:
   // Sets up the task scheduling/task-runner environment for each test.
   base::test::TaskEnvironment task_environment_;
-
-  // Sets itself as the global UkmRecorder on construction.
-  ukm::TestAutoSetUkmRecorder test_ukm_recorder_;
 
   // Manages the enabling/disabling of features within the scope of a test.
   base::test::ScopedFeatureList scoped_feature_list_;
@@ -121,12 +103,6 @@ class BasePredictorTest : public ::testing::Test {
 void BasePredictorTest::SetUp() {
   ::testing::Test::SetUp();
   scoped_feature_list_.Init();
-}
-
-ukm::SourceId BasePredictorTest::GetSourceId() {
-  ukm::SourceId source_id = ukm::UkmRecorder::GetNewSourceID();
-  test_ukm_recorder_.UpdateSourceURL(source_id, GURL(kTestNavigationUrl));
-  return source_id;
 }
 
 TEST_F(BasePredictorTest, BaseTest) {
@@ -150,9 +126,8 @@ TEST_F(BasePredictorTest, QueryDisabled) {
 TEST_F(BasePredictorTest, GetPredictThresholdReplacement) {
   float altered_threshold = 0.78f;  // Arbitrary value.
   const PredictorConfig altered_threshold_config{
-      kTestModelName,  kTestLoggingName,   kTestUmaPrefixName,
-      LOG_UKM,         &kFeatureAllowlist, &kTestRankerQuery,
-      &kTestRankerUrl, altered_threshold};
+      kTestModelName, kTestUmaPrefixName, &kTestRankerQuery, &kTestRankerUrl,
+      altered_threshold};
   auto predictor = FakePredictor::Create(altered_threshold_config);
   EXPECT_EQ(altered_threshold, predictor->GetPredictThresholdReplacement());
 }

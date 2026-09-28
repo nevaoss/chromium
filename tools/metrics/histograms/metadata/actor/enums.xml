@@ -70,6 +70,7 @@ chromium-metrics-reviews@google.com.
   <int value="49" label="UnrecoverableError"/>
   <int value="50" label="UserNavigatedAway"/>
   <int value="51" label="ActionBlockedByEnterpriseContentScan"/>
+  <int value="52" label="ActionTargetCrossProfile"/>
   <int value="100" label="NavigateInvalidUrl"/>
   <int value="101" label="NavigateFailedToStart"/>
   <int value="102" label="NavigateCommittedErrorPage"/>
@@ -256,7 +257,7 @@ chromium-metrics-reviews@google.com.
   <int value="3" label="FailedAfterRetry"/>
 </enum>
 
-<!-- LINT.ThenChange(//chrome/browser/actor/actor_metrics.cc:ActorObservationOutcome) -->
+<!-- LINT.ThenChange(//chrome/browser/actor/actor_metrics.h:ActorObservationOutcome) -->
 
 <!-- LINT.IfChange(ActorPipExitReason) -->
 
@@ -266,7 +267,7 @@ chromium-metrics-reviews@google.com.
   <int value="2" label="Completed"/>
 </enum>
 
-<!-- LINT.ThenChange(//chrome/browser/actor/actor_metrics.cc:ActorPipExitReason) -->
+<!-- LINT.ThenChange(//chrome/browser/actor/android/java/src/org/chromium/chrome/browser/actor/ActorMetrics.java:ActorPipExitReason) -->
 
 <!-- LINT.IfChange(ActorPipStatus) -->
 
@@ -275,7 +276,7 @@ chromium-metrics-reviews@google.com.
   <int value="1" label="Exited"/>
 </enum>
 
-<!-- LINT.ThenChange(//chrome/browser/actor/actor_metrics.cc:ActorPipStatus) -->
+<!-- LINT.ThenChange(//chrome/browser/actor/android/java/src/org/chromium/chrome/browser/actor/ActorMetrics.java:ActorPipStatus) -->
 
 <!-- LINT.IfChange(ActorPipUserInteraction) -->
 
@@ -285,7 +286,7 @@ chromium-metrics-reviews@google.com.
   <int value="2" label="Expand"/>
 </enum>
 
-<!-- LINT.ThenChange(//chrome/browser/actor/actor_metrics.cc:ActorPipUserInteraction) -->
+<!-- LINT.ThenChange(//chrome/browser/actor/android/java/src/org/chromium/chrome/browser/actor/ActorMetrics.java:ActorPipUserInteraction) -->
 
 <!-- LINT.IfChange(ActorServerConfirmationResult) -->
 
@@ -313,7 +314,7 @@ chromium-metrics-reviews@google.com.
   <int value="10" label="Both APC and Screenshot not OK"/>
 </enum>
 
-<!-- LINT.ThenChange(//chrome/browser/actor/actor_metrics.cc:ActorTabObservationResult) -->
+<!-- LINT.ThenChange(//chrome/browser/actor/actor_metrics.h:ActorTabObservationResult) -->
 
 <!-- LINT.IfChange(ActorTaskCreateFailedReason) -->
 
@@ -334,7 +335,7 @@ chromium-metrics-reviews@google.com.
   </int>
 </enum>
 
-<!-- LINT.ThenChange(//chrome/browser/glic/actor/glic_actor_policy_checker.h:CannotActReason) -->
+<!-- LINT.ThenChange(//chrome/browser/glic/glic_enums.h:CannotActReason) -->
 
 <!-- LINT.IfChange(ActorTaskState) -->
 
@@ -460,7 +461,7 @@ chromium-metrics-reviews@google.com.
   <int value="7" label="kInvalidFromUrlPattern"/>
 </enum>
 
-<!-- LINT.ThenChange(//chrome/browser/actor/safety_list_manager.h:SafetyListParseResult) -->
+<!-- LINT.ThenChange(//components/actor/core/safety_list_manager.h:ParseResult) -->
 
 <!-- LINT.IfChange(SplitModeTimeOfUseFrameStatus) -->
 

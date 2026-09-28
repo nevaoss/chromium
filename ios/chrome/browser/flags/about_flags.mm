@@ -158,6 +158,7 @@ const FeatureEntry::Choice kSendTabToSelfEnhancedHandoffChoices[] = {
      "SyncUseServerDeterminedDeviceName,"
      "SyncSessionsUsePreferredDisplayName"},
     {"Enabled with fast-follows", switches::kEnableFeatures,
+     "IPH_SendTabToSelfOmnibox,"
      "SendTabToSelfAutoOpen,"
      "SendTabToSelfExtraEntryPoints,"
      "SendTabToSelfImprovedLastActiveLabels,"
@@ -165,12 +166,15 @@ const FeatureEntry::Choice kSendTabToSelfEnhancedHandoffChoices[] = {
      "SendTabToSelfPropagateScrollPosition,"
      "SendTabToSelfPostSendToast,"
      "SendTabToSelfEnhancedBottomsheet,"
+     "SendTabToSelfSupportAutoOpenInTabGrid,"
      "SyncSimplifyDeviceNaming,"
+     "SyncDisambiguateDeviceNamesWithChannel,"
      "SyncUseServerDeterminedDeviceName,"
      "SyncSessionsUsePreferredDisplayName,"
      "SendTabToSelfIOSShareSheetDeviceList,"
      "SendTabToSelfMultiTabShare"},
     {flags_ui::kGenericExperimentChoiceDisabled, switches::kDisableFeatures,
+     "IPH_SendTabToSelfOmnibox,"
      "SendTabToSelfAutoOpen,"
      "SendTabToSelfExtraEntryPoints,"
      "SendTabToSelfImprovedLastActiveLabels,"
@@ -178,7 +182,9 @@ const FeatureEntry::Choice kSendTabToSelfEnhancedHandoffChoices[] = {
      "SendTabToSelfPropagateScrollPosition,"
      "SendTabToSelfPostSendToast,"
      "SendTabToSelfEnhancedBottomsheet,"
+     "SendTabToSelfSupportAutoOpenInTabGrid,"
      "SyncSimplifyDeviceNaming,"
+     "SyncDisambiguateDeviceNamesWithChannel,"
      "SyncUseServerDeterminedDeviceName,"
      "SyncSessionsUsePreferredDisplayName,"
      "SendTabToSelfIOSShareSheetDeviceList,"
@@ -486,6 +492,17 @@ const FeatureEntry::FeatureVariation kLensTranslateToggleModeVariations[] = {
     {"(Post Capture)", kLensTranslateToggleModePostCapture, nullptr},
     {"(LVF)", kLensTranslateToggleModeLVF, nullptr},
     {"(Always)", kLensTranslateToggleModeAlways, nullptr}};
+
+const FeatureEntry::FeatureParam kEnableLensOnIPadSidePanel[] = {
+    {kEnableLensOnIPadPresentationStyleParam,
+     kEnableLensOnIPadPresentationStyleSidePanel}};
+const FeatureEntry::FeatureParam kEnableLensOnIPadBottomSheet[] = {
+    {kEnableLensOnIPadPresentationStyleParam,
+     kEnableLensOnIPadPresentationStyleBottomSheet}};
+
+const FeatureEntry::FeatureVariation kEnableLensOnIPadVariations[] = {
+    {"(Side Panel)", kEnableLensOnIPadSidePanel, nullptr},
+    {"(Bottom Sheet)", kEnableLensOnIPadBottomSheet, nullptr}};
 
 const FeatureEntry::FeatureParam
     kMlUrlPiecewiseMappedSearchBlendingAdjustedBy0[] = {
@@ -1019,18 +1036,6 @@ const FeatureEntry::FeatureVariation
     kWalletApiPrivatePassesEnabledVariations[] = {
         {"1P URL", kWalletApiPrivatePassesUrl, nullptr}};
 
-const char kFRESignInHeaderTextUpdateParamName[] =
-    "FRESignInHeaderTextUpdateParam";
-const FeatureEntry::FeatureParam kFRESignInHeaderTextUpdateArm0[] = {
-    {kFRESignInHeaderTextUpdateParamName, "Arm0"}};
-const FeatureEntry::FeatureParam kFRESignInHeaderTextUpdateArm1[] = {
-    {kFRESignInHeaderTextUpdateParamName, "Arm1"}};
-
-const FeatureEntry::FeatureVariation kFRESignInHeaderTextUpdateVariations[] = {
-    {"Header variation #1", kFRESignInHeaderTextUpdateArm0, nullptr},
-    {"Header variation #2", kFRESignInHeaderTextUpdateArm1, nullptr},
-};
-
 const FeatureEntry::FeatureParam
     kPersistTabContextFileSystem_WasHidden_FullContext[] = {
         {kPersistTabContextStorageParam, "0"},
@@ -1342,10 +1347,6 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kNTPHeaderUseTransformsForAnimationsDescription,
      flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kNTPHeaderUseTransformsForAnimations)},
-    {"ntp-background-color-slider",
-     flag_descriptions::kNTPBackgroundColorSliderName,
-     flag_descriptions::kNTPBackgroundColorSliderDescription, flags_ui::kOsIos,
-     FEATURE_VALUE_TYPE(kNTPBackgroundColorSlider)},
     {"ntp-background-downsample-image",
      flag_descriptions::kNTPBackgroundDownsampleImageName,
      flag_descriptions::kNTPBackgroundDownsampleImageDescription,
@@ -1600,6 +1601,11 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
     {"disable-lens-camera", flag_descriptions::kDisableLensCameraName,
      flag_descriptions::kDisableLensCameraDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kDisableLensCamera)},
+    {"enable-lens-on-ipad", flag_descriptions::kEnableLensOnIPadName,
+     flag_descriptions::kEnableLensOnIPadDescription, flags_ui::kOsIos,
+     FEATURE_WITH_PARAMS_VALUE_TYPE(kEnableLensOnIPad,
+                                    kEnableLensOnIPadVariations,
+                                    "EnableLensOnIPad")},
     {"autofill-enable-prefetching-risk-data-for-retrieval",
      flag_descriptions::kAutofillEnablePrefetchingRiskDataForRetrievalName,
      flag_descriptions::
@@ -2047,10 +2053,6 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      FEATURE_WITH_PARAMS_VALUE_TYPE(kMobilePromoOnDesktopWithReminder,
                                     kMobilePromoOnDesktopVariations,
                                     "MobilePromoOnDesktopWithReminder")},
-    {"lens-search-headers-check-enabled",
-     flag_descriptions::kLensSearchHeadersCheckEnabledName,
-     flag_descriptions::kLensSearchHeadersCheckEnabledDescription,
-     flags_ui::kOsIos, FEATURE_VALUE_TYPE(kLensSearchHeadersCheckEnabled)},
     {"autofill-bottom-sheet-new-blur",
      flag_descriptions::kAutofillBottomSheetNewBlurName,
      flag_descriptions::kAutofillBottomSheetNewBlurDescription,
@@ -2079,10 +2081,6 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kComposeboxVerbatimSuggestionInAIMName,
      flag_descriptions::kComposeboxVerbatimSuggestionInAIMDescription,
      flags_ui::kOsIos, FEATURE_VALUE_TYPE(kComposeboxVerbatimSuggestionInAIM)},
-    {"cache-identity-list-in-chrome",
-     flag_descriptions::kCacheIdentityListInChromeName,
-     flag_descriptions::kCacheIdentityListInChromeDescription, flags_ui::kOsIos,
-     FEATURE_VALUE_TYPE(switches::kCacheIdentityListInChrome)},
     {"enable-ac-prefetch", flag_descriptions::kEnableACPrefetchName,
      flag_descriptions::kEnableACPrefetchDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(switches::kEnableACPrefetch)},
@@ -2156,12 +2154,6 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      FEATURE_WITH_PARAMS_VALUE_TYPE(kComposeboxConditionalPlusButton,
                                     kComposeboxConditionalPlusButtonVariations,
                                     "ComposeboxConditionalPlusButton")},
-    {"composebox-compact-mode", flag_descriptions::kComposeboxCompactModeName,
-     flag_descriptions::kComposeboxCompactModeDescription, flags_ui::kOsIos,
-     FEATURE_VALUE_TYPE(kComposeboxCompactMode)},
-    {"composebox-force-top", flag_descriptions::kComposeboxForceTopName,
-     flag_descriptions::kComposeboxForceTopDescription, flags_ui::kOsIos,
-     FEATURE_VALUE_TYPE(kComposeboxForceTop)},
     {"composebox-aim-nudge", flag_descriptions::kComposeboxAIMNudgeName,
      flag_descriptions::kComposeboxAIMNudgeDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kComposeboxAIMNudge)},
@@ -2172,12 +2164,6 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
     {"gemini-navigation-promo", flag_descriptions::kGeminiNavigationPromoName,
      flag_descriptions::kGeminiNavigationPromoDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kGeminiNavigationPromo)},
-    {"fre-sign-in-header-text-update",
-     flag_descriptions::kFRESignInHeaderTextUpdateName,
-     flag_descriptions::kFRESignInHeaderTextUpdateDescription, flags_ui::kOsIos,
-     FEATURE_WITH_PARAMS_VALUE_TYPE(kFRESignInHeaderTextUpdate,
-                                    kFRESignInHeaderTextUpdateVariations,
-                                    "FRESignInHeaderTextUpdate")},
     {"gemini-live", flag_descriptions::kGeminiLiveName,
      flag_descriptions::kGeminiLiveDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kGeminiLive)},

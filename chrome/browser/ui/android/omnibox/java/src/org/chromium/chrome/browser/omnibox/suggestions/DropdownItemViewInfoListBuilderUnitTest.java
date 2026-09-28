@@ -10,6 +10,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
@@ -32,6 +33,7 @@ import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
+import org.mockito.quality.Strictness;
 
 import org.chromium.base.ContextUtils;
 import org.chromium.base.supplier.ObservableSuppliers;
@@ -63,19 +65,23 @@ import java.util.List;
 public class DropdownItemViewInfoListBuilderUnitTest {
     private final Context mContext = ContextUtils.getApplicationContext();
 
-    @Rule public final MockitoRule mMockitoRule = MockitoJUnit.rule();
+    @Rule
+    public final MockitoRule mMockitoRule = MockitoJUnit.rule().strictness(Strictness.STRICT_STUBS);
 
     @Mock private SuggestionProcessor mMockSuggestionProcessor;
-    @Mock private AutocompleteInput mInput;
     @Captor private ArgumentCaptor<PropertyModel> mPropertyModelCaptor;
 
+    private final AutocompleteInput mInput = new AutocompleteInput();
     DropdownItemViewInfoListBuilder mBuilder;
 
     @Before
     public void setUp() {
-        when(mMockSuggestionProcessor.createModel())
+        lenient()
+                .when(mMockSuggestionProcessor.createModel())
                 .thenAnswer((mock) -> new PropertyModel(SuggestionCommonProperties.ALL_KEYS));
-        when(mMockSuggestionProcessor.getViewTypeId()).thenReturn(OmniboxSuggestionUiType.DEFAULT);
+        lenient()
+                .when(mMockSuggestionProcessor.getViewTypeId())
+                .thenReturn(OmniboxSuggestionUiType.DEFAULT);
 
         OmniboxResourceProvider resourceProvider =
                 new OmniboxResourceProvider(mContext, BrandedColorScheme.LIGHT_BRANDED_THEME);
@@ -339,7 +345,7 @@ public class DropdownItemViewInfoListBuilderUnitTest {
     @Test
     @EnableFeatures(OmniboxFeatureList.AIM_SUPPRESS_VERBATIM_MATCH)
     public void buildDropdownViewInfoList_aimMode_removesVerbatimMatches() {
-        when(mInput.getRequestType()).thenReturn(AutocompleteRequestType.AI_MODE);
+        mInput.setRequestType(AutocompleteRequestType.AI_MODE);
         when(mMockSuggestionProcessor.doesProcessSuggestion(any(), anyInt())).thenReturn(true);
 
         AutocompleteMatch verbatim1 =

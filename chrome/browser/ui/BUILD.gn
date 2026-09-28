@@ -648,7 +648,6 @@ static_library("ui") {
     "//chrome/browser/notifications:impl",
     "//chrome/browser/task_manager",
     "//chrome/browser/ui/dialogs",
-    "//chrome/browser/ui/webui/chrome_finds_internals",
     "//chrome/browser/ui/webui/flags",
     "//chrome/browser/ui/webui/subresource_filter",
   ]
@@ -698,7 +697,6 @@ static_library("ui") {
     "//chrome/browser/external_protocol",
     "//chrome/browser/favicon",
     "//chrome/browser/feedback:feedback_impl",
-    "//chrome/browser/finds",
     "//chrome/browser/first_run",
     "//chrome/browser/first_run:impl",
     "//chrome/browser/gcm",
@@ -765,6 +763,7 @@ static_library("ui") {
     "//chrome/browser/subresource_filter",
     "//chrome/browser/supervised_user:impl",
     "//chrome/browser/sync",
+    "//chrome/browser/sync_tab_context",
     "//chrome/browser/task_manager/common",
     "//chrome/browser/task_manager/common:impl",
     "//chrome/browser/translate:impl",
@@ -934,7 +933,10 @@ static_library("ui") {
 
   # Desktop-Android-only dependencies.
   if (is_desktop_android) {
-    deps += [ "//chrome/browser/ui/android/extensions/windowing/internal" ]
+    deps += [
+      "//chrome/browser/ui/android/extensions/side_panel/internal",
+      "//chrome/browser/ui/android/extensions/windowing/internal",
+    ]
   }
 
   if (enable_captive_portal_detection) {
@@ -1184,11 +1186,6 @@ static_library("ui") {
     "//chrome/browser/search_engine_choice:impl",
 
     # TODO(crbug.com/353332589): Remove this circular dependency when the
-    # following header gets componentized:
-    # c/b/ui/views/dotted_icon.h
-    "//chrome/browser/profiles:profile_util_impl",
-
-    # TODO(crbug.com/353332589): Remove this circular dependency when the
     # following headers get componentized:
     # c/b/ui/browser_commands.h, browser_window.h
     # c/b/ui/scoped_tabbed_browser_displayer.h
@@ -1214,11 +1211,6 @@ static_library("ui") {
     # following header gets componentized:
     # c/b/ui/browser.h
     "//chrome/browser/updates/announcement_notification:impl",
-
-    # TODO(crbug.com/353332589): Remove this circular dependency when the
-    # following header gets componentized:
-    # c/b/ui/network_profile_bubble.h
-    "//chrome/browser/prefs:impl",
 
     # TODO(crbug.com/437811373): Remove this circular dependency when the
     # following headers get componentized:
@@ -1279,8 +1271,11 @@ static_library("ui") {
       "//chrome/browser/android/webapk:webapk_sources",
       "//chrome/browser/autofill/android:jni_headers",
       "//chrome/browser/facilitated_payments",
+      "//chrome/browser/finds",
+      "//chrome/browser/finds/core",
       "//chrome/browser/keyboard_accessory/android",
       "//chrome/browser/keyboard_accessory/android:impl",
+      "//chrome/browser/ui/android/enterprise_signals_disclaimer",
       "//chrome/browser/ui/android/hats",
       "//chrome/browser/ui/android/hats:impl",
       "//chrome/browser/ui/android/tab_model",
@@ -2287,14 +2282,12 @@ static_library("ui") {
 
     if (enable_dice_support) {
       sources += [
-        "views/profiles/cross_device_signin_qr_bubble_views.cc",
         "views/profiles/first_run_flow_controller.cc",
         "views/profiles/first_run_flow_controller.h",
-        "views/profiles/profile_picker_reauth_provider.cc",
-        "views/profiles/profile_picker_sign_in_provider.cc",
       ]
       deps += [
         "webui/signin/batch_upload:mojo_bindings",
+        "//chrome/browser/ui/views/profiles:cross_device_signin_qr_bubble_views",
         "//chrome/browser/ui/views/profiles:dice_web_signin_interception_bubble_view",
         "//chrome/browser/ui/views/profiles:dice_web_signin_interception_bubble_view_impl",
         "//chrome/browser/ui/views/profiles:profile_management_flow_controller",
@@ -2304,6 +2297,7 @@ static_library("ui") {
         "//chrome/browser/ui/views/profiles:profile_picker_reauth_provider",
         "//chrome/browser/ui/views/profiles:profile_picker_sign_in_provider",
         "//chrome/browser/ui/views/profiles:profile_picker_toolbar",
+        "//chrome/browser/ui/views/profiles:profile_picker_utils",
         "//chrome/browser/ui/views/profiles/feature_showcase",
         "//chrome/browser/ui/webui/feature_showcase",
         "//chrome/browser/ui/webui/signin:batch_upload",
@@ -2315,6 +2309,7 @@ static_library("ui") {
       allow_circular_includes_from += [
         # TODO(crbug.com/353332589): dice_web_signin_interception_bubble_view.cc
         # includes browser_view.h.
+        "//chrome/browser/ui/views/profiles:cross_device_signin_qr_bubble_views",
         "//chrome/browser/ui/views/profiles:dice_web_signin_interception_bubble_view_impl",
         "//chrome/browser/ui/webui/signin:batch_upload",
       ]
@@ -2325,6 +2320,7 @@ static_library("ui") {
     deps += [
       "webui/signin:batch_upload",
       "webui/signin/batch_upload:mojo_bindings",
+      "//chrome/browser/ui/views/profiles:batch_upload_dialog_view",
     ]
 
     if (is_chromeos) {
@@ -2390,17 +2386,10 @@ static_library("ui") {
     assert(use_aura)
 
     sources += [
-      "network_profile_bubble.cc",
-      "network_profile_bubble.h",
-      "views/frame/browser_caption_button_container_win.cc",
-      "views/frame/browser_caption_button_container_win.h",
       "views/frame/browser_desktop_window_tree_host_win.cc",
       "views/frame/browser_desktop_window_tree_host_win.h",
       "views/frame/browser_frame_view_win.cc",
       "views/frame/browser_frame_view_win.h",
-      "views/frame/browser_native_widget_factory_aura.cc",
-      "views/frame/browser_window_property_manager_win.cc",
-      "views/frame/browser_window_property_manager_win.h",
       "views/frame/windows_taskbar_icon_updater.cc",
       "views/frame/windows_taskbar_icon_updater.h",
     ]
@@ -2413,10 +2402,14 @@ static_library("ui") {
 
     allow_circular_includes_from += [
       "//chrome/browser/ui/views:network_profile_bubble_view",
+      "//chrome/browser/ui/views/frame:browser_caption_button_container_win",
+      "//chrome/browser/ui/views/frame:browser_native_widget_factory_aura",
+      "//chrome/browser/ui/views/frame:browser_window_property_manager_win",
       "//chrome/browser/win:impl",
     ]
 
     deps += [
+      ":network_profile_bubble",
       "//chrome/browser:font_prewarmer_tab_helper",
       "//chrome/browser:titlebar_config",
       "//chrome/browser/taskbar",
@@ -2424,6 +2417,9 @@ static_library("ui") {
       "//chrome/browser/ui/views:critical_notification_bubble_view",
       "//chrome/browser/ui/views:network_profile_bubble_view",
       "//chrome/browser/ui/views:uninstall_browser_prompt",
+      "//chrome/browser/ui/views/frame:browser_caption_button_container_win",
+      "//chrome/browser/ui/views/frame:browser_native_widget_factory_aura",
+      "//chrome/browser/ui/views/frame:browser_window_property_manager_win",
       "//chrome/browser/ui/views/frame:minimize_button_metrics_win",
       "//chrome/browser/win:impl",
       "//components/search_engines",
@@ -2508,22 +2504,9 @@ static_library("ui") {
       "views/browser_commands_views.cc",
       "views/browser_dialogs_views.cc",
       "views/bubble_anchor_util_views.cc",
-      "views/constrained_web_dialog_delegate_views.cc",
       "views/extensions/extension_view_utils.cc",
-      "views/extensions/extensions_menu_coordinator.cc",
-      "views/extensions/extensions_menu_coordinator.h",
-      "views/extensions/extensions_menu_delegate_desktop.cc",
-      "views/extensions/extensions_menu_view.cc",
-      "views/extensions/extensions_menu_view.h",
-      "views/extensions/extensions_toolbar_coordinator.cc",
       "views/extensions/extensions_toolbar_desktop.cc",
       "views/extensions/extensions_toolbar_desktop.h",
-      "views/extensions/extensions_toolbar_desktop_view_controller.cc",
-      "views/extensions/extensions_toolbar_desktop_view_controller.h",
-      "views/find_bar_host.cc",
-      "views/find_bar_host.h",
-      "views/find_bar_view.cc",
-      "views/find_bar_view.h",
       "views/frame/app_menu_button.cc",
       "views/frame/app_menu_button.h",
       "views/frame/base_tab_strip_region_view.cc",
@@ -2577,11 +2560,6 @@ static_library("ui") {
       "views/frame/vertical_tab_strip_background_blur_backdrop.h",
       "views/frame/vertical_tab_strip_region_view.cc",
       "views/frame/vertical_tab_strip_region_view.h",
-      "views/idle_bubble.cc",
-      "views/intent_picker_bubble_view.cc",
-      "views/intent_picker_bubble_view.h",
-      "views/session_crashed_bubble_view.cc",
-      "views/session_crashed_bubble_view.h",
       "views/tab_search_bubble_host.cc",
       "views/tab_search_bubble_host.h",
       "views/web_apps/frame_toolbar/web_app_frame_toolbar_view.cc",
@@ -2614,7 +2592,6 @@ static_library("ui") {
       "//chrome/browser:resources",
       "//chrome/browser/actor/ui/task_list_bubble:controller",
       "//chrome/browser/actor/ui/task_list_bubble:ui",
-      "//chrome/browser/apps:icon_standardizer",
       "//chrome/browser/collaboration",
       "//chrome/browser/collaboration/messaging",
       "//chrome/browser/desktop_to_mobile_promos:utils",
@@ -2650,21 +2627,26 @@ static_library("ui") {
       "//chrome/browser/ui/views:chrome_web_dialog_view_impl",
       "//chrome/browser/ui/views:color_provider_browser_helper",
       "//chrome/browser/ui/views:confirm_bubble",
+      "//chrome/browser/ui/views:constrained_web_dialog_delegate_views",
       "//chrome/browser/ui/views:content_setting_bubble_contents",
       "//chrome/browser/ui/views:content_setting_site_row_view",
       "//chrome/browser/ui/views:device_chooser_content_view",
       "//chrome/browser/ui/views:dotted_icon",
       "//chrome/browser/ui/views:elevation_icon_setter",
       "//chrome/browser/ui/views:external_protocol_dialog",
+      "//chrome/browser/ui/views:find_bar_views",
       "//chrome/browser/ui/views:flying_indicator",
       "//chrome/browser/ui/views:global_error_bubble_view",
+      "//chrome/browser/ui/views:idle_bubble",
       "//chrome/browser/ui/views:incognito_clear_browsing_data_dialog",
+      "//chrome/browser/ui/views:intent_picker_bubble_view",
       "//chrome/browser/ui/views:javascript_tab_modal_dialog_view_views",
       "//chrome/browser/ui/views:layout_provider_impl",
       "//chrome/browser/ui/views:login_handler_views",
       "//chrome/browser/ui/views:login_view",
       "//chrome/browser/ui/views:media_picker_utils",
       "//chrome/browser/ui/views:message_box_dialog",
+      "//chrome/browser/ui/views:session_crashed_bubble_view",
       "//chrome/browser/ui/views:simple_web_view_dialog",
       "//chrome/browser/ui/views:ssl_client_certificate_selector",
       "//chrome/browser/ui/views:status_bubble",
@@ -2750,17 +2732,22 @@ static_library("ui") {
       "//chrome/browser/ui/views/extensions:extension_install_dialog_view_impl",
       "//chrome/browser/ui/views/extensions:extension_view_utils",
       "//chrome/browser/ui/views/extensions:extensions_container_views",
+      "//chrome/browser/ui/views/extensions:extensions_menu_coordinator",
       "//chrome/browser/ui/views/extensions:extensions_menu_delegate_desktop",
       "//chrome/browser/ui/views/extensions:extensions_menu_entry_view",
       "//chrome/browser/ui/views/extensions:extensions_menu_item_view",
       "//chrome/browser/ui/views/extensions:extensions_menu_main_page_view",
       "//chrome/browser/ui/views/extensions:extensions_menu_site_permissions_page_view",
+      "//chrome/browser/ui/views/extensions:extensions_menu_view",
       "//chrome/browser/ui/views/extensions:extensions_request_access_button",
       "//chrome/browser/ui/views/extensions:extensions_request_access_button_impl",
       "//chrome/browser/ui/views/extensions:extensions_request_access_hover_card_coordinator",
       "//chrome/browser/ui/views/extensions:extensions_toolbar_button",
       "//chrome/browser/ui/views/extensions:extensions_toolbar_button_impl",
       "//chrome/browser/ui/views/extensions:extensions_toolbar_coordinator",
+      "//chrome/browser/ui/views/extensions:extensions_toolbar_coordinator_impl",
+      "//chrome/browser/ui/views/extensions:extensions_toolbar_desktop_view_controller",
+      "//chrome/browser/ui/views/extensions:extensions_toolbar_desktop_view_controller_impl",
       "//chrome/browser/ui/views/extensions:security_dialog_tracker",
       "//chrome/browser/ui/views/extensions:windows_utils_views",
       "//chrome/browser/ui/views/frame:app_menu_button_observer",
@@ -2967,14 +2954,15 @@ static_library("ui") {
       "//chrome/browser/ui/views/frame:contents_capture_border_view_impl",
       "//chrome/browser/ui/views/frame:multi_contents_background_view_impl",
       "//chrome/browser/ui/views/frame:multi_contents_resize_area_impl",
-      "//chrome/browser/ui/views/web_apps:create_shortcut_confirmation_view_impl",
-      "//chrome/browser/ui/views/web_apps:image_carousel_view_impl",
       "//chrome/browser/ui/views/web_apps:web_app_detailed_install_dialog",
       "//chrome/browser/ui/views/web_apps:web_app_diy_install_dialog",
       "//chrome/browser/ui/views/web_apps:web_app_launch_dialog",
       "//chrome/browser/ui/views/web_apps:web_app_simple_install_dialog",
       "//chrome/browser/ui/views/web_apps:web_app_uninstall_dialog_view_impl",
       "//chrome/browser/ui/views/web_apps:web_app_update_review_dialog_impl",
+      "//chrome/browser/ui/views:find_bar_views",
+      "//chrome/browser/ui/views:idle_bubble",
+      "//chrome/browser/ui/views:session_crashed_bubble_view",
 
       # TODO(crbug.com/353332589): Remove this circular dependency when the
       # following header gets componentized:
@@ -3029,6 +3017,12 @@ static_library("ui") {
       # c/b/ui/views/extensions/extensions_toolbar_desktop.h
       "//chrome/browser/ui/views/extensions:extensions_toolbar_button_impl",
 
+      # extensions_toolbar_coordinator_impl and
+      # extensions_toolbar_desktop_view_controller_impl include
+      # extensions_toolbar_desktop.h which cannot be split out yet.
+      "//chrome/browser/ui/views/extensions:extensions_toolbar_coordinator_impl",
+      "//chrome/browser/ui/views/extensions:extensions_toolbar_desktop_view_controller_impl",
+
       # TODO(crbug.com/353332589): These targets include headers from
       # //chrome/browser/ui:ui.
       "//chrome/browser/ui/views/frame:custom_corners_background_impl",
@@ -3060,14 +3054,6 @@ static_library("ui") {
       # c/b/ui/browser.h
       # c/b/ui/views/frame/browser_view.h, contents_web_view.h
       "//chrome/browser/ui/views/omnibox:impl",
-
-      # TODO(crbug.com/353332589): Remove this circular dependency when the
-      # following header gets componentized:
-      # c/b/ui/views/intent_picker_bubble_view.h
-      # (sharing_dialog_view.cc includes it under an IS_CHROMEOS guard, but the
-      # entry is unconditional because gn check flags the guarded include on
-      # platforms where it is not compiled)
-      "//chrome/browser/ui/views/sharing:impl",
 
       # TODO(crbug.com/353332589): Remove this circular dependency when the
       # following headers get componentized:
@@ -3462,7 +3448,6 @@ static_library("ui") {
     public_deps +=
         [ "//chrome/browser/ui/views/extensions:extension_view_views" ]
     deps += [
-      "//chrome/browser/apps:icon_standardizer",
       "//chrome/browser/apps/platform_apps",
       "//chrome/browser/apps/platform_apps/api",
       "//chrome/browser/ui/views/extensions:extension_action_delegate_desktop",
@@ -3796,32 +3781,90 @@ if (!is_android) {
     testonly = true
     defines = [ "HAS_OUT_OF_PROC_TEST_RUNNER" ]
     sources = [
+      "ask_google_for_suggestions_dialog_browsertest.cc",
+      "breadcrumb_manager_browser_agent_browsertest.cc",
+      "browser_actions_browsertest.cc",
+      "browser_browsertest.cc",
+      "browser_close_browsertest.cc",
+      "browser_command_controller_browsertest.cc",
+      "browser_commands_browsertest.cc",
       "browser_commands_core_browsertest.cc",
+      "browser_finder_browsertest.cc",
+      "browser_instant_controller_browsertest.cc",
       "browser_manager_service_browsertest.cc",
+      "browser_tab_strip_model_delegate_browsertest.cc",
+      "browser_tabrestore_browsertest.cc",
+      "collected_cookies_browsertest.cc",
+      "managed_ui_browsertest.cc",
+      "native_window_tracker_browsertest.cc",
+      "renderer_event_injection_browsertest.cc",
+      "tab_modal_confirm_dialog_browsertest.cc",
+      "tab_modal_confirm_dialog_browsertest.h",
+      "tab_ui_helper_browsertest.cc",
+      "unload_controller_browsertest.cc",
+      "update_chrome_dialog_browsertest.cc",
     ]
+
+    # Some of these tests have pre-existing size_t-vs-int comparisons that
+    # only compiled in //chrome/test because it transitively depends on
+    # //third_party/fuzztest, whose public config propagates
+    # -Wno-sign-compare. Depend on it here to inherit that suppression.
+    # Remove once crbug.com/527094632 is fixed.
     deps = [
+      ":breadcrumb_manager_browser_agent",
+      ":browser_actions",
+      ":browser_instant_controller",
+      ":browser_ui_prefs",
+      ":confirm_bubble",
+      ":managed_ui",
+      ":tab_ui_helper",
       "//base",
+      "//base/test:test_support",
       "//chrome/app:command_ids",
       "//chrome/browser",
+      "//chrome/browser:chrome_content_browser_client",
+      "//chrome/browser/apps/app_service",
+      "//chrome/browser/apps/app_service:app_registry_cache_waiter",
+      "//chrome/browser/devtools:test_support",
+      "//chrome/browser/download:test_support",
+      "//chrome/browser/glic/test_support",
+      "//chrome/browser/policy:test_support",
+      "//chrome/browser/prefs",
       "//chrome/browser/profiles/keep_alive",
       "//chrome/browser/resource_coordinator",
       "//chrome/browser/resource_coordinator:utils",
+      "//chrome/browser/search:test_support",
       "//chrome/browser/tab_group_sync:factories",
       "//chrome/browser/ui",
       "//chrome/browser/ui/browser_active_state_manager",
+      "//chrome/browser/ui/browser_web_contents_delegate",
       "//chrome/browser/ui/browser_window",
       "//chrome/browser/ui/exclusive_access",
+      "//chrome/browser/ui/fullscreen",
+      "//chrome/browser/ui/performance_controls/test_support",
+      "//chrome/browser/ui/search",
+      "//chrome/browser/ui/startup",
       "//chrome/browser/ui/tabs:tab_strip",
       "//chrome/browser/ui/tabs/saved_tab_groups:test_support",
+      "//chrome/browser/ui/webui/management",
+      "//chrome/browser/ui/window_feature_controller",
+      "//chrome/browser/ui/window_metadata",
       "//chrome/browser/ui/zoom",
+      "//chrome/browser/web_applications:prevent_close_test_support",
       "//chrome/common:constants",
       "//chrome/test:test_support",
       "//chrome/test:test_support_ui",
       "//components/bookmarks/browser",
       "//components/bookmarks/test",
+      "//components/breadcrumbs/core",
+      "//components/breadcrumbs/core:status",
+      "//components/commerce/core:pref_names",
+      "//components/embedder_support",
+      "//components/javascript_dialogs",
       "//components/prefs",
       "//components/saved_tab_groups/public",
       "//components/sessions",
+      "//components/user_manager",
       "//components/zoom",
       "//content/public/browser",
       "//content/public/common",
@@ -3830,7 +3873,45 @@ if (!is_android) {
       "//testing/gmock",
       "//testing/gtest",
       "//third_party/blink/public/common:headers",
+      "//third_party/fuzztest",
+      "//ui/native_window_tracker",
     ]
+
+    if (use_aura) {
+      sources += [ "overscroll_pref_manager_browsertest.cc" ]
+    }
+
+    if (is_chromeos) {
+      sources += [
+        "browser_finder_chromeos_browsertest.cc",
+        "browser_tabstrip_browsertest_chromeos.cc",
+        "settings_window_manager_browsertest_chromeos.cc",
+      ]
+      deps += [
+        ":chrome_pages",
+        "//chrome/browser/ash/boca/on_task",
+        "//chrome/browser/ash/policy/core:test_support",
+        "//chrome/browser/ui/ash/session",
+        "//chrome/browser/ui/ash/system_web_apps",
+        "//chrome/browser/ui/chromeos/locked_state",
+        "//components/account_id:test_support",
+        "//ui/chromeos",
+      ]
+    }
+
+    if (is_mac) {
+      sources += [ "fullscreen_util_mac_browsertest.cc" ]
+      deps += [
+        ":fullscreen_util_mac",
+        "//chrome/browser/ui/cocoa/test:test_support",
+        "//ui/accelerated_widget_mac",
+        "//ui/base:test_support",
+      ]
+    }
+
+    if (toolkit_views && !is_chromeos) {
+      sources += [ "screen_capture_notification_ui_browsertest.cc" ]
+    }
   }
 
   source_set("uma_browsing_activity_observer") {
@@ -3858,7 +3939,7 @@ if (!is_android) {
 static_library("test_support") {
   testonly = true
 
-  sources = []
+  sources = [ "chooser_bubble_testapi.h" ]
 
   public_deps = [
     ":ui",
@@ -3906,10 +3987,12 @@ static_library("test_support") {
       "//chrome/browser/ui/views/controls",
       "//chrome/browser/ui/views/extensions:extension_popup",
       "//chrome/browser/ui/views/extensions:extensions_menu_button",
+      "//chrome/browser/ui/views/extensions:extensions_menu_coordinator",
       "//chrome/browser/ui/views/extensions:extensions_menu_delegate_desktop",
       "//chrome/browser/ui/views/extensions:extensions_menu_entry_view",
       "//chrome/browser/ui/views/extensions:extensions_menu_item_view",
       "//chrome/browser/ui/views/extensions:extensions_menu_main_page_view",
+      "//chrome/browser/ui/views/extensions:extensions_menu_view",
       "//chrome/browser/ui/views/extensions:extensions_toolbar_button",
       "//chrome/browser/ui/views/extensions:extensions_toolbar_coordinator",
       "//chrome/browser/ui/views/web_apps/isolated_web_apps:installer_base",
@@ -3959,6 +4042,112 @@ static_library("test_support") {
       "//services/metrics/public/mojom",
     ]
     public_deps += [ "//chrome/browser/ui/exclusive_access" ]
+  }
+}
+
+source_set("unit_tests") {
+  testonly = true
+
+  # TODO(crbug.com/40031409): Fix code that adds exit-time destructors and
+  # enable the diagnostic by removing this line.
+  configs += [ "//build/config/compiler:no_exit_time_destructors" ]
+
+  sources = [
+    "incognito_allowed_url_unittest.cc",
+    "recently_audible_helper_unittest.cc",
+    "url_identity_unittest.cc",
+  ]
+
+  deps = [
+    ":incognito_allowed_url",
+    ":recently_audible_helper",
+    ":test_support",
+    ":ui",
+    ":url_identity",
+    "//base",
+    "//base/test:test_support",
+    "//chrome/browser",
+    "//chrome/browser/prefs",
+    "//chrome/test:test_support",
+    "//components/tabs:test_support",
+    "//components/web_package",
+    "//testing/gtest",
+  ]
+
+  if (!is_android) {
+    sources += [
+      "accelerator_table_unittest.cc",
+      "browser_manager_service_factory_unittest.cc",
+      "browser_unittest.cc",
+      "browser_window_state_unittest.cc",
+      "intent_picker_tab_helper_unittest.cc",
+    ]
+    deps += [
+      ":accelerator_table",
+      ":browser_window_state",
+      "//chrome/browser/apps/intent_helper:intent_chip_display_prefs",
+      "//chrome/browser/apps/link_capturing:test_support",
+      "//components/apps/link_capturing",
+    ]
+  }
+
+  if (is_mac) {
+    sources += [ "accelerator_table_unittest_mac.mm" ]
+    deps += [ "//chrome/browser:global_keyboard_shortcuts_mac" ]
+  }
+
+  if (is_chromeos) {
+    deps += [
+      "//chrome/browser/apps/link_capturing",
+      "//components/session_manager/core:test_support",
+    ]
+  }
+}
+
+if (!is_android && !is_chromeos_device) {
+  source_set("interactive_ui_tests") {
+    testonly = true
+    defines = [ "HAS_OUT_OF_PROC_TEST_RUNNER" ]
+
+    # TODO(crbug.com/40031409): Fix code that adds exit-time destructors and
+    # enable the diagnostic by removing this line.
+    configs += [ "//build/config/compiler:no_exit_time_destructors" ]
+
+    sources = [
+      "browser_command_controller_interactive_uitest.cc",
+      "browser_focus_interactive_uitest.cc",
+      "fullscreen_keyboard_browsertest_base.cc",
+      "fullscreen_keyboard_browsertest_base.h",
+      "keyboard_lock_interactive_uitest.cc",
+    ]
+
+    deps = [
+      ":chrome_pages",
+      ":test_support",
+      ":ui",
+      "//base",
+      "//base/test:test_support",
+      "//chrome/browser",
+      "//chrome/browser/sharing_hub",
+      "//chrome/browser/ui/frame",
+      "//chrome/browser/ui/views:find_bar_views",
+      "//chrome/browser/ui/views/frame:contents_web_view",
+      "//chrome/test:test_support",
+      "//content/test:test_support",
+      "//testing/gtest",
+    ]
+
+    if (use_ozone) {
+      deps += [ "//ui/ozone" ]
+    }
+
+    if (is_mac) {
+      deps += [ "//ui/base:test_support" ]
+    }
+
+    if (is_win) {
+      sources += [ "send_mouse_move_uitest_win.cc" ]
+    }
   }
 }
 
@@ -4132,6 +4321,25 @@ if (use_aura) {
 if (is_win) {
   source_set("accessibility_util") {
     public = [ "accessibility_util.h" ]
+  }
+
+  source_set("network_profile_bubble") {
+    public = [ "network_profile_bubble.h" ]
+    sources = [ "network_profile_bubble.cc" ]
+    public_deps = [
+      "//base",
+      "//components/pref_registry",
+    ]
+    deps = [
+      "//chrome/browser:browser_process",
+      "//chrome/browser/profiles:profile",
+      "//chrome/browser/ui/browser_window",
+      "//chrome/common:constants",
+      "//components/prefs",
+      "//content/public/browser",
+      "//third_party/abseil-cpp:absl",
+    ]
+    libs = [ "wtsapi32.lib" ]
   }
 }
 

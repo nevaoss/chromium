@@ -18,6 +18,7 @@ extensions_api_schema_files_ = [
   "management.json",
   "metrics_private.json",
   "offscreen.webidl",
+  "permissions.json",
   "power.webidl",
   "proxy.json",
   "runtime.json",
@@ -62,7 +63,7 @@ if (enable_guest_view) {
   ]
   extensions_types_only_schema_files_ += [
     "extension_options_internal.webidl",
-    "icon_variants.idl",
+    "icon_variants.webidl",
   ]
 }
 

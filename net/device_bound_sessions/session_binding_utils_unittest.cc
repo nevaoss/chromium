@@ -17,7 +17,7 @@
 #include "base/time/time.h"
 #include "base/value_iterators.h"
 #include "base/values.h"
-#include "crypto/signature_verifier.h"
+#include "crypto/sign.h"
 #include "net/device_bound_sessions/test_support.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -32,7 +32,7 @@ using ::testing::Eq;
 using ::testing::Pointee;
 
 using enum crypto::AttestationStatement::Format;
-using enum crypto::SignatureVerifier::SignatureAlgorithm;
+using enum crypto::sign::SignatureKind;
 
 constexpr auto kValidDerSignature = std::to_array<uint8_t>(
     {0x30, 0x45, 0x02, 0x20, 0x74, 0xa0, 0x6f, 0x6b, 0x2b, 0x0e, 0x82, 0x0e,
@@ -368,6 +368,30 @@ TEST(SessionBindingUtilsTest, SecFetchSiteForReferringOrigin) {
   EXPECT_EQ(SecFetchSiteForReferringOrigin(
                 referring_origin, GURL("http://www.example.com/insecure")),
             "cross-site");
+}
+
+TEST(SessionBindingUtilsTest, CreateWellKnownUrl) {
+  // 1. Standard HTTPS origin without explicit port.
+  EXPECT_EQ(
+      CreateWellKnownUrl(url::Origin::Create(GURL("https://example.com"))),
+      GURL("https://example.com/.well-known/device-bound-sessions"));
+
+  // 2. HTTPS origin with custom port.
+  EXPECT_EQ(
+      CreateWellKnownUrl(url::Origin::Create(GURL("https://example.com:8443"))),
+      GURL("https://example.com:8443/.well-known/device-bound-sessions"));
+
+  // 3. Origin created from URL with path, query, fragment, and credentials.
+  // Verify that path is replaced, and query, ref, and credentials are
+  // completely stripped.
+  GURL complex_url(
+      "https://user:pass@example.com:9443/some/"
+      "path?query=1&evil=true#fragment");
+  EXPECT_EQ(CreateWellKnownUrl(url::Origin::Create(complex_url)),
+            GURL("https://example.com:9443/.well-known/device-bound-sessions"));
+
+  // 4. Opaque origin returns empty GURL.
+  EXPECT_TRUE(CreateWellKnownUrl(url::Origin()).is_empty());
 }
 
 }  // namespace net::device_bound_sessions

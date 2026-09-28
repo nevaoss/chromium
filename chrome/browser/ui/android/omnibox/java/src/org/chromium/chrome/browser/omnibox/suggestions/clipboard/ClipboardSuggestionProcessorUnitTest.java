@@ -30,6 +30,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
+import org.mockito.quality.Strictness;
 
 import org.chromium.base.Callback;
 import org.chromium.base.ContextUtils;
@@ -71,7 +72,8 @@ import java.util.function.Supplier;
 public class ClipboardSuggestionProcessorUnitTest {
     private static final GURL TEST_URL = JUnitTestGURLs.EXAMPLE_URL;
 
-    @Rule public final MockitoRule mMockitoRule = MockitoJUnit.rule();
+    @Rule
+    public final MockitoRule mMockitoRule = MockitoJUnit.rule().strictness(Strictness.STRICT_STUBS);
 
     @Mock private SuggestionHost mSuggestionHost;
     @Mock private OmniboxImageSupplier mImageSupplier;
@@ -80,8 +82,8 @@ public class ClipboardSuggestionProcessorUnitTest {
     @Mock private Supplier<ShareDelegate> mShareDelegateSupplier;
     @Mock private BookmarkState mBookmarkState;
     @Mock private OmniboxActionDelegate mActionDelegate;
-    @Mock private AutocompleteInput mInput;
 
+    private final AutocompleteInput mInput = new AutocompleteInput();
     private Context mContext;
     private ClipboardSuggestionProcessor mProcessor;
     private AutocompleteMatch mSuggestion;

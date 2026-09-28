@@ -1860,6 +1860,9 @@ enum class IOSDefaultBrowserSettingsPassivePromoAction {
     base::debug::DumpWithoutCrashing();
   }
 
+  // Stop the coordinator before restarting it, if it exists.
+  [_contentSettingsCoordinator stop];
+
   _contentSettingsCoordinator = [[ContentSettingsCoordinator alloc]
       initWithBaseNavigationController:self.navigationController
                                browser:_browser];
@@ -3226,7 +3229,7 @@ enum class IOSDefaultBrowserSettingsPassivePromoAction {
 
 - (void)extendedAccountInfoDidUpdate:(const AccountInfo&)info {
   id<SystemIdentity> identity =
-      _accountManagerService->GetIdentityOnDeviceWithGaiaID(info.gaia);
+      _accountManagerService->GetIdentityOnDeviceWithGaiaID(info.GetGaiaId());
   if ([_identity isEqual:identity]) {
     [self reloadAccountCell];
   }

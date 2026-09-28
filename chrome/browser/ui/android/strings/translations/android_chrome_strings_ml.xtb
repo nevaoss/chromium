@@ -57,6 +57,7 @@
 <translation id="1181037720776840403">നീക്കംചെയ്യൂ</translation>
 <translation id="1183189057400844278">നിങ്ങളുടെ Google Account-ൽ പാസ്‌വേഡുകൾ എല്ലായ്‌പ്പോഴും ഉപയോഗിക്കാനാകുമെന്ന് ഉറപ്പാക്കാൻ, ഇത് നിങ്ങൾ തന്നെയാണെന്ന് പരിശോധിച്ചുറപ്പിക്കുക</translation>
 <translation id="1187810343066461819">കൂടാതെ, ഈ കാറിൽ നിന്ന് ബുക്ക്‌മാർക്കുകൾ, ചരിത്രം എന്നിവയും മറ്റും ഇല്ലാതാക്കുക</translation>
+<translation id="1191987227666124897">ഓപ്റ്റ് ഔട്ട് അഭ്യർത്ഥന</translation>
 <translation id="1193729455103054076">ശക്തമായ പാസ്‌വേഡ് ഉപയോഗിക്കണോ?</translation>
 <translation id="11947597112837849">ഇമെയിൽ വിലാസം</translation>
 <translation id="1197267115302279827">ബു‌ക്ക്‌മാർക്കുകൾ നീക്കുക</translation>
@@ -105,6 +106,7 @@
 <translation id="138181280295369883">നിങ്ങളുടെ സംരക്ഷിച്ച വിവരങ്ങളും മറ്റും എല്ലാ ഉപകരണങ്ങളിലും ലഭിക്കാൻ സൈൻ ഇൻ ചെയ്യൂ</translation>
 <translation id="1381838868249179644">നിങ്ങളെ സുരക്ഷിതരായി നിലനിർത്താൻ സഹായിക്കാൻ, ചില സൈറ്റുകളിൽ നിന്ന് അനുമതികൾ നീക്കം ചെയ്തു</translation>
 <translation id="1383876407941801731">തിരയുക</translation>
+<translation id="1384568202352682721">ഇനിപ്പറയുന്നതായി സംരക്ഷിക്കുക…</translation>
 <translation id="1384704387250346179">Google Lens-ൽ ചിത്രം വിവർത്തനം ചെയ്യൂ <ph name="BEGIN_NEW" />പുതിയത്<ph name="END_NEW" /></translation>
 <translation id="1390418506739274310">Chrome-ൽ ലിങ്കുകൾ തുറക്കുന്ന മറ്റ് ആപ്പുകളിൽ നിന്നുള്ള ചരിത്രവും നിങ്ങൾ കണ്ടേക്കാം. നിങ്ങളുടെ Google Account-ന് <ph name="BEGIN_LINK" />myactivity.google.com<ph name="END_LINK" /> എന്നതിൽ മറ്റ് തരത്തിലുള്ള ബ്രൗസിംഗ് ചരിത്രം ഉണ്ടായിരിക്കാം.</translation>
 <translation id="139752016751285248">നിരക്ക് ഉൾക്കാഴ്‌ചകളുടെ ബോട്ടം ഷീറ്റ് പൂർണ്ണമായ ഉയരത്തിൽ തുറന്നു</translation>
@@ -133,6 +135,7 @@
 <translation id="147982357559798527">മാറ്റി</translation>
 <translation id="1480287803138246127">നിങ്ങളുടെ ചരിത്രത്തിൽ ചിലത് ഇവിടെ ദൃശ്യമായേക്കില്ല. നിങ്ങളുടെ എല്ലാ Chrome ചരിത്രവും കാണാൻ, മുഴുവൻ Chrome ചരിത്രവും തുറക്കുക.</translation>
 <translation id="1483493594462132177">അയയ്‌ക്കുക</translation>
+<translation id="1485343711570311792"><ph name="NATIVE_APP_NAME" /> എന്നതിൽ തുറക്കുക • <ph name="DEVICE_NAME" /> എന്നതിൽ നിന്ന്</translation>
 <translation id="1495677929897281669">ടാബിലേക്ക് മടങ്ങുക</translation>
 <translation id="1496514951988037011">ഉപയോക്തൃനാമം</translation>
 <translation id="1501480321619201731">ഗ്രൂപ്പ് ഇല്ലാതാക്കൂ</translation>
@@ -210,6 +213,7 @@
 <translation id="1832459821645506983">ഞാൻ സമ്മതിക്കുന്നു</translation>
 <translation id="1845958458910716240">നിങ്ങളുടെ ഡാറ്റ പരിരക്ഷിക്കുന്നതിന്, അടുത്തിടെ സന്ദർശിച്ചിട്ടില്ലാത്ത സൈറ്റുകളിൽ നിന്നുള്ള അനുമതികൾ നീക്കം ചെയ്യാൻ Chrome-നെ അനുവദിക്കുക</translation>
 <translation id="1851551847729706116">ഈ ടാബിലേക്ക് <ph name="TAB_NAME" /> പങ്കിടുന്നു</translation>
+<translation id="1855268219431673036"><ph name="TOTAL_PAGE_COUNT" /> പേജുകളിൽ <ph name="CURRENT_PAGE" />-ാമത്തേത്</translation>
 <translation id="1869691326892615940">സുരക്ഷിതമായ പാസ്‌വേഡുകൾ, വേഗത്തിലുള്ള സൈൻ ഇൻ ചെയ്യൽ</translation>
 <translation id="1871098866036088250">Chrome ബ്രൗസറിൽ തുറക്കുക</translation>
 <translation id="1877026089748256423">Chrome കാലഹരണപ്പെട്ടതാണ്</translation>
@@ -327,6 +331,7 @@
 <translation id="232137538351753795">തിരികെ പോകാൻ ഇടത്തേയറ്റത്ത് നിന്ന് സ്വൈപ്പ് ചെയ്യുക</translation>
 <translation id="2323763861024343754">സൈറ്റ് സ്‌റ്റോറേജ്</translation>
 <translation id="2327445548174191329"><ph name="DEVICE_NAME" /> എന്നതിൽ നിന്ന്</translation>
+<translation id="232757965409810352">പേജ് ഇതായി സംരക്ഷിക്കുക…</translation>
 <translation id="2328474416100889417">എല്ലാവർക്കും ഉടൻ തന്നെ “<ph name="GROUP_NAME" />” ടാബ് ഗ്രൂപ്പിലേക്കുള്ള ആക്‌സസ് നഷ്‌ടമാകും, എല്ലാ ക്ഷണ ലിങ്കുകളും ഓഫാക്കുകയും ചെയ്യും</translation>
 <translation id="2329500425421091035">Chrome-ൽ AI മോഡ് അവതരിപ്പിക്കുന്നു</translation>
 <translation id="2330186936255788117">കൂടുതൽ ബുക്ക്‌മാർക്കുകൾ</translation>
@@ -1338,6 +1343,7 @@
 <translation id="634208815998129842">ടാസ്‌ക് മാനേജർ</translation>
 <translation id="6343495912647200061">{SHIPPING_ADDRESS,plural, =1{<ph name="SHIPPING_ADDRESS_PREVIEW" />\u2026 എന്നതും ‌മറ്റ് <ph name="NUMBER_OF_ADDITIONAL_ADDRESSES" /> പേയ്‌മെന്റ് രീതികളും}other{<ph name="SHIPPING_ADDRESS_PREVIEW" />\u2026 എന്നതും ‌മറ്റ് <ph name="NUMBER_OF_ADDITIONAL_ADDRESSES" /> പേയ്‌മെന്റ് രീതികളും}}</translation>
 <translation id="6345878117466430440">വായിച്ചതായി അടയാളപ്പെടുത്തുക</translation>
+<translation id="63490081267265251">Google ഉൾപ്പെടെ, നിങ്ങൾ സന്ദർശിക്കുന്ന സൈറ്റുകൾക്കാണ് ഈ അഭ്യർത്ഥനയോട് എങ്ങനെ പ്രതികരിക്കണമെന്ന് നിർണ്ണയിക്കാനുള്ള ഉത്തരവാദിത്തം. നിങ്ങളുടെ പ്രദേശത്തെ നിയമങ്ങൾ അനുസരിച്ച്, നിങ്ങളുടെ ഡാറ്റയുടെ വിൽപ്പനയും പങ്കിടലും അല്ലെങ്കിൽ വ്യക്തിപരമാക്കിയ പരസ്യങ്ങൾക്കായുള്ള അതിന്റെ ഉപയോഗം പരിമിതപ്പെടുത്തിക്കൊണ്ട് സൈറ്റുകൾ പ്രതികരിച്ചേക്കാം. <ph name="BEGIN_LINK" />കൂടുതലറിയുക<ph name="END_LINK" /></translation>
 <translation id="6350745006329795504">നിങ്ങളുടെ ഉപകരണങ്ങൾ മാനേജ് ചെയ്യുക</translation>
 <translation id="6356893102071098867">നിങ്ങൾ ശരിയായ അക്കൗണ്ടാണോ തിരഞ്ഞെടുത്തതെന്ന് പരിശോധിക്കുക</translation>
 <translation id="6364438453358674297">ചരിത്രത്തിൽ നിന്ന് നിർദ്ദേശം നീക്കംചെയ്യണോ?</translation>
@@ -1662,6 +1668,7 @@
 <translation id="7493994139787901920"><ph name="VERSION" /> (അപ്‌ഡേറ്റ് ചെയ്‌തു, <ph name="TIME_SINCE_UPDATE" />)</translation>
 <translation id="7498271377022651285">കാത്തിരിക്കുക...</translation>
 <translation id="7499065150275272675"><ph name="TAB_TITLE" />, പിൻ ചെയ്ത, മ്യൂട്ട് ചെയ്ത ടാബ്</translation>
+<translation id="7500851014030446046">PDF ഡൗൺലോഡ് ചെയ്യുന്നു</translation>
 <translation id="7501135638693251872">എല്ലാ ബുക്ക്മാർക്കുകളും</translation>
 <translation id="7507207699631365376">ഈ ദാതാവിന്റെ <ph name="BEGIN_LINK" />സ്വകാര്യതാ നയം<ph name="END_LINK" /> കാണുക</translation>
 <translation id="750886945254958667">പിന്നീട് ടാബുകൾ ചേർക്കാൻ ഈ ഗ്രൂപ്പ് നിലനിർത്തുക, അല്ലെങ്കിൽ നിങ്ങൾക്ക് അതിലേക്ക് ആക്‌സസ് വേണ്ടെങ്കിൽ അതിൽ നിന്ന് പുറത്തുകടക്കുക</translation>
@@ -1729,6 +1736,7 @@
 <translation id="7774809984919390718">{PAYMENT_METHOD,plural, =1{<ph name="PAYMENT_METHOD_PREVIEW" />\u2026 എന്നതും ‌മറ്റ് <ph name="NUMBER_OF_ADDITIONAL_PAYMENT_METHODS" /> പേയ്‌മെന്റ് രീതികളും}other{<ph name="PAYMENT_METHOD_PREVIEW" />\u2026 എന്നതും ‌മറ്റ് <ph name="NUMBER_OF_ADDITIONAL_PAYMENT_METHODS" /> പേയ്‌മെന്റ് രീതികളും}}</translation>
 <translation id="777637629667389858">സൈൻ ഇൻ ചെയ്തിരിക്കുമ്പോൾ, Google സേവനങ്ങളിലുടനീളം നിങ്ങളെ പരിരക്ഷിക്കുന്നു.</translation>
 <translation id="7778840695157240389">പുതിയ സ്‌റ്റോറികൾക്ക് പിന്നീട് വീണ്ടും പരിശോധിക്കൂ</translation>
+<translation id="7780992949171378848">നിങ്ങളുടെ ഡാറ്റ ഉപയോഗിക്കുന്നത് സംബന്ധിച്ച് സൈറ്റുകളിലേക്ക് ഓപ്റ്റ് ഔട്ട് അഭ്യർത്ഥന അയയ്ക്കുക</translation>
 <translation id="7791543448312431591">ചേര്‍ക്കൂ</translation>
 <translation id="7792388396321542707">പങ്കിടൽ നിർത്തുക</translation>
 <translation id="780287761701992588">നിങ്ങളുടെ എല്ലാ ഉപകരണങ്ങളിലും ബുക്ക്‌മാർക്കുകൾ, പാസ്‌വേഡുകൾ എന്നിവയും മറ്റും നേടുക</translation>
@@ -1874,6 +1882,7 @@
 <translation id="8313599942510782709">നിങ്ങളുടെ ടാസ്‌ക് ഇപ്പോഴും പുരോഗമിക്കുകയാണ്</translation>
 <translation id="8317318757008452355">പ്രിന്റ് ചെയ്യാനുള്ള ഓപ്ഷനുകൾ തുറക്കുക</translation>
 <translation id="8320212361750431956">സമീപകാല ആക്റ്റിവിറ്റി</translation>
+<translation id="8322452989119079156"><ph name="NATIVE_APP_NAME" /> എന്നതിൽ തുറക്കുക - <ph name="DEVICE_NAME" /> എന്നതിൽ നിന്ന് അയച്ചത്</translation>
 <translation id="832514020744584629"><ph name="PREF_TITLE" />  <ph name="BEGIN_NEW" />പുതിയത്<ph name="END_NEW" /></translation>
 <translation id="8333026248928723981">ബുക്ക്‌മാർക്കും ലിസ്റ്റും</translation>
 <translation id="8342727528718219152">നിരവധി അറിയിപ്പുകൾ അയച്ചേക്കാവുന്ന സൈറ്റുകളെക്കുറിച്ച് Chrome നിങ്ങളെ അറിയിക്കും</translation>

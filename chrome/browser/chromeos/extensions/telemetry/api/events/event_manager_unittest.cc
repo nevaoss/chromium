@@ -12,6 +12,7 @@
 #include "base/memory/scoped_refptr.h"
 #include "chrome/browser/chromeos/extensions/telemetry/api/common/app_ui_observer.h"
 #include "chrome/browser/chromeos/extensions/telemetry/api/events/event_router.h"
+#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface_iterator.h"
 #include "chrome/browser/ui/navigator/browser_navigator.h"
 #include "chrome/browser/ui/tabs/tab_enums.h"
@@ -23,6 +24,7 @@
 #include "chrome/test/base/browser_with_test_window_test.h"
 #include "chrome/test/base/ui_test_utils.h"
 #include "chromeos/ash/components/mojo_service_manager/fake_mojo_service_manager.h"
+#include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/navigation_entry.h"
 #include "content/public/browser/ssl_status.h"
 #include "content/public/browser/web_contents.h"
@@ -208,8 +210,8 @@ TEST_F(TelemetryExtensionEventManagerTest,
 
   OpenAppUiUrlAndSetCertificateWithStatus(GURL(kPwaUrl1),
                                           /*cert_status=*/net::OK);
-  auto new_browser =
-      CreateBrowser(GetProfile(), Browser::Type::TYPE_NORMAL, false);
+  auto new_browser = CreateBrowser(
+      GetProfile(), BrowserWindowInterface::Type::TYPE_NORMAL, false);
   ActivateBrowser(new_browser.get());
 
   EXPECT_EQ(
@@ -257,8 +259,8 @@ TEST_F(TelemetryExtensionEventManagerTest,
 
   OpenAppUiUrlAndSetCertificateWithStatus(GURL(kPwaUrl1),
                                           /*cert_status=*/net::OK);
-  auto new_browser =
-      CreateBrowser(GetProfile(), Browser::Type::TYPE_NORMAL, false);
+  auto new_browser = CreateBrowser(
+      GetProfile(), BrowserWindowInterface::Type::TYPE_NORMAL, false);
   ActivateBrowser(new_browser.get());
 
   EXPECT_EQ(EventManager::kAppUiNotFocused,

@@ -1482,6 +1482,8 @@ policies:
   1481: DeviceOsMigrationTargetDate
   1482: RendererAccessibilityEnabled
   1483: ExtensionReviewPromptsEnabled
+  1484: BackgroundTabFreezingEnabled
+  1485: ShowInputOptionsInShelfEnabled
 
 atomic_groups:
   1: Homepage

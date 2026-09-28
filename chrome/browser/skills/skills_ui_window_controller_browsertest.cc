@@ -36,6 +36,7 @@
 #include "content/public/test/browser_test_utils.h"
 #include "content/public/test/test_navigation_observer.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "ui/base/page_transition_types.h"
 #include "ui/events/base_event_utils.h"
 #include "ui/views/controls/button/label_button.h"
 #include "ui/views/controls/button/md_text_button.h"
@@ -491,7 +492,7 @@ IN_PROC_BROWSER_TEST_F(SkillsUiWindowControllerBrowserTest,
       IdentityManagerFactory::GetForProfile(browser()->GetProfile());
   ASSERT_TRUE(identity_manager);
 
-  CoreAccountInfo account_info = signin::MakePrimaryAccountAvailable(
+  AccountInfo account_info = signin::MakePrimaryAccountAvailable(
       identity_manager, "test@example.com", signin::ConsentLevel::kSignin);
 
   // 1. Open chrome://skills page in the active tab.
@@ -513,7 +514,7 @@ IN_PROC_BROWSER_TEST_F(SkillsUiWindowControllerBrowserTest,
   // OnErrorStateOfRefreshTokenUpdatedForAccount.
   content::TestNavigationObserver reload_observer(web_contents);
   signin::SetInvalidRefreshTokenForAccount(identity_manager,
-                                           account_info.account_id);
+                                           account_info.GetAccountId());
   reload_observer.Wait();
   EXPECT_FALSE(tab_controller()->IsShowing());
   EXPECT_TRUE(reload_observer.last_navigation_succeeded());

@@ -24,6 +24,7 @@ chrome_java_sources = [
   "java/src/org/chromium/chrome/browser/ChromeTabbedActivity.java",
   "java/src/org/chromium/chrome/browser/ChromeTabbedActivity2.java",
   "java/src/org/chromium/chrome/browser/ChromeWindow.java",
+  "java/src/org/chromium/chrome/browser/ConfirmQuitHelper.java",
   "java/src/org/chromium/chrome/browser/DefaultBrowserInfoUmaRecorder.java",
   "java/src/org/chromium/chrome/browser/DefaultBrowserMenuUtils.java",
   "java/src/org/chromium/chrome/browser/DevToolsServer.java",
@@ -269,6 +270,7 @@ chrome_java_sources = [
   "java/src/org/chromium/chrome/browser/browserservices/TrustedWebActivityClientWrappers.java",
   "java/src/org/chromium/chrome/browser/browserservices/TrustedWebActivitySettingsNavigation.java",
   "java/src/org/chromium/chrome/browser/browserservices/TwaUninstallNotificationHelper.java",
+  "java/src/org/chromium/chrome/browser/browserservices/TwaValidator.java",
   "java/src/org/chromium/chrome/browser/browserservices/digitalgoods/AcknowledgeConverter.java",
   "java/src/org/chromium/chrome/browser/browserservices/digitalgoods/ConsumeConverter.java",
   "java/src/org/chromium/chrome/browser/browserservices/digitalgoods/DigitalGoodsAdapter.java",
@@ -1360,6 +1362,7 @@ chrome_java_sources = [
   "java/src/org/chromium/chrome/browser/webapps/WebApkIntentDataProviderFactory.java",
   "java/src/org/chromium/chrome/browser/webapps/WebApkOfflineDialog.java",
   "java/src/org/chromium/chrome/browser/webapps/WebApkPostShareTargetNavigator.java",
+  "java/src/org/chromium/chrome/browser/webapps/WebApkReparentingHandler.java",
   "java/src/org/chromium/chrome/browser/webapps/WebApkServiceClient.java",
   "java/src/org/chromium/chrome/browser/webapps/WebApkShareTargetUtil.java",
   "java/src/org/chromium/chrome/browser/webapps/WebApkSplashNetworkErrorObserver.java",
@@ -1400,7 +1403,7 @@ if (enable_screen_capture) {
     "java/src/org/chromium/chrome/browser/media/TabSharingToolbarProperties.java",
     "java/src/org/chromium/chrome/browser/media/TabSharingToolbarUiCoordinator.java",
     "java/src/org/chromium/chrome/browser/media/TabSharingToolbarViewBinder.java",
-    "java/src/org/chromium/chrome/browser/media/TabSharingUIBridge.java",
-    "java/src/org/chromium/chrome/browser/media/TabSharingUIManager.java",
+    "java/src/org/chromium/chrome/browser/media/TabSharingUiBridge.java",
+    "java/src/org/chromium/chrome/browser/media/TabSharingUiManager.java",
   ]
 }

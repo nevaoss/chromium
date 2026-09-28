@@ -671,7 +671,7 @@ UrlLoadParams UpdateParamsForDinoGame(UrlLoadParams params) {
         NOTREACHED() << "Credential import is available on iOS 26+ only.";
       }
     case TRIGGER_GEMINI_PROMO:
-      if (IsAppStoreInAppEventsEnabled()) {
+      if (IsPageActionMenuEnabled()) {
         return ^{
           [weakSelf triggerGeminiFlowFromAppStoreEvent];
         };
@@ -2126,14 +2126,25 @@ UrlLoadParams UpdateParamsForDinoGame(UrlLoadParams params) {
 }
 
 // Dismisses modal dialogs via the scene handler and optionally dismisses the
-// omnibox.
+// omnibox and Gemini.
 - (void)dismissModalDialogsWithCompletion:(ProceduralBlock)completion
-                           dismissOmnibox:(BOOL)dismissOmnibox {
+                           dismissOmnibox:(BOOL)dismissOmnibox
+                            dismissGemini:(BOOL)dismissGemini {
   id<SceneCommands> sceneHandler = HandlerForProtocol(
       self.currentBrowserForURLLoading->GetCommandDispatcher(), SceneCommands);
   [sceneHandler dismissModalDialogsWithCompletion:completion
                                    dismissOmnibox:dismissOmnibox
-                                 dismissSnackbars:YES];
+                                 dismissSnackbars:YES
+                                    dismissGemini:dismissGemini];
+}
+
+// Dismisses modal dialogs via the scene handler and optionally dismisses the
+// omnibox.
+- (void)dismissModalDialogsWithCompletion:(ProceduralBlock)completion
+                           dismissOmnibox:(BOOL)dismissOmnibox {
+  [self dismissModalDialogsWithCompletion:completion
+                           dismissOmnibox:dismissOmnibox
+                            dismissGemini:YES];
 }
 
 // Begins the process of activating the given current model, switching which BVC
@@ -2451,23 +2462,32 @@ UrlLoadParams UpdateParamsForDinoGame(UrlLoadParams params) {
   // the dismissal logic must be explicitly addressed here.
   //
   // Refer to crbug.com/470968439 for additional context.
-  if (IsComposeboxIOSEnabled()) {
-    BOOL alreadyInIncognito = self.currentInterface.profile->IsOffTheRecord();
-    BOOL targetModeIncognito =
-        targetMode == ApplicationModeForTabOpening::INCOGNITO;
-    // The composebox UI and its dependencies are browser-scoped and
-    // instantiated upon creation.
-    //
-    // When the context changes (e.g., transitioning to Incognito mode), any
-    // preexisting Composebox UI must be dismissed and recreated to ensure its
-    // underlying dependencies remain synchronized with the new environment.
-    if (alreadyInIncognito != targetModeIncognito) {
-      dismissOmnibox = YES;
+  BOOL alreadyInIncognito = self.currentInterface.profile->IsOffTheRecord();
+  BOOL targetModeIncognito =
+      targetMode == ApplicationModeForTabOpening::INCOGNITO;
+  // The composebox UI and its dependencies are browser-scoped and
+  // instantiated upon creation.
+  //
+  // When the context changes (e.g., transitioning to Incognito mode), any
+  // preexisting Composebox UI must be dismissed and recreated to ensure its
+  // underlying dependencies remain synchronized with the new environment.
+  if (alreadyInIncognito != targetModeIncognito) {
+    dismissOmnibox = YES;
+  }
+
+  BOOL dismissGemini = YES;
+  if (targetMode != ApplicationModeForTabOpening::INCOGNITO) {
+    TabOpeningPostOpeningAction postOpeningAction =
+        self.startupParameters.postOpeningAction;
+    if (postOpeningAction == START_GEMINI_AI_SUMMARIZATION ||
+        postOpeningAction == TRIGGER_GEMINI_PROMO) {
+      dismissGemini = NO;
     }
   }
 
   [self dismissModalDialogsWithCompletion:dismissModalsCompletion
-                           dismissOmnibox:dismissOmnibox];
+                           dismissOmnibox:dismissOmnibox
+                            dismissGemini:dismissGemini];
 }
 
 - (void)dismissModalsAndOpenMultipleTabsWithURLs:(const std::vector<GURL>&)URLs
@@ -2477,17 +2497,15 @@ UrlLoadParams UpdateParamsForDinoGame(UrlLoadParams params) {
   __weak SceneController* weakSelf = self;
   std::vector<GURL> copyURLs = URLs;
 
-  if (IsComposeboxIOSEnabled()) {
-    BOOL alreadyInIncognito = self.currentInterface.profile->IsOffTheRecord();
-    // The composebox UI and its dependencies are browser-scoped and
-    // instantiated upon creation.
-    //
-    // When the context changes (e.g., transitioning to Incognito mode), any
-    // preexisting Composebox UI must be dismissed and recreated to ensure its
-    // underlying dependencies remain synchronized with the new environment.
-    if (alreadyInIncognito != incognitoMode) {
-      dismissOmnibox = YES;
-    }
+  BOOL alreadyInIncognito = self.currentInterface.profile->IsOffTheRecord();
+  // The composebox UI and its dependencies are browser-scoped and
+  // instantiated upon creation.
+  //
+  // When the context changes (e.g., transitioning to Incognito mode), any
+  // preexisting Composebox UI must be dismissed and recreated to ensure its
+  // underlying dependencies remain synchronized with the new environment.
+  if (alreadyInIncognito != incognitoMode) {
+    dismissOmnibox = YES;
   }
 
   [self

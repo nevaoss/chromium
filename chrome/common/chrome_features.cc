@@ -635,10 +635,6 @@ const base::FeatureParam<int> kGlicMultiInstanceFloatyWidth{
 const base::FeatureParam<int> kGlicMultiInstanceFloatyHeight{
     &kGlicMultiInstance, "glic-multi-instance-floaty-height", 400};
 
-// Controls whether the Glic feature's z order changes based on the webclient
-// mode.
-BASE_FEATURE(kGlicZOrderChanges, base::FEATURE_DISABLED_BY_DEFAULT);
-
 // Whether to sync @google.com account cookies. This is only for development and
 // testing.
 BASE_FEATURE(kGlicDevelopmentSyncGoogleCookies,
@@ -980,6 +976,9 @@ const base::FeatureParam<int> kGlicTabFocusDataMaxDebounces{
 BASE_FEATURE(kGlicGetTabByIdApi, base::FEATURE_ENABLED_BY_DEFAULT);
 // Kill switch for openPasswordManagerSettingsPage API.
 BASE_FEATURE(kGlicOpenPasswordManagerSettingsPageApi,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+// Kill switch for openContactInfoSettingsPage API.
+BASE_FEATURE(kGlicOpenContactInfoSettingsPageApi,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kGlicAssetsV2, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -1333,6 +1332,7 @@ BASE_FEATURE(kIncomingCallNotifications,
 // Experimental image replacement feature. b/482792874
 BASE_FEATURE(kIndigo, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kIndigoContextualCueingV2, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kIndigoWatermark, base::FEATURE_ENABLED_BY_DEFAULT);
 
 const base::FeatureParam<bool> kIndigoRequireGlicEnabling{
     &kIndigo, "indigo_require_glic_enabling", false};
@@ -1448,6 +1448,18 @@ BASE_FEATURE_PARAM(bool,
 // lazily.
 BASE_FEATURE_PARAM(bool,
                    kLazyKeyedServiceInstantiationOptimizationGuide,
+                   &kLazyKeyedServiceInstantiation,
+                   true);
+
+// When enabled, Safe Browsing keyed services are instantiated lazily.
+BASE_FEATURE_PARAM(bool,
+                   kLazyKeyedServiceInstantiationSafeBrowsing,
+                   &kLazyKeyedServiceInstantiation,
+                   true);
+
+// When enabled, Visited URL Ranking keyed services are instantiated lazily.
+BASE_FEATURE_PARAM(bool,
+                   kLazyKeyedServiceInstantiationVisitedUrlRanking,
                    &kLazyKeyedServiceInstantiation,
                    true);
 

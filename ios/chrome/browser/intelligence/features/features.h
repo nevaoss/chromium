@@ -350,13 +350,6 @@ BASE_DECLARE_FEATURE(kGeminiScreenContextMigration);
 // Returns true if the GeminiScreenContextMigration feature is enabled.
 bool IsGeminiScreenContextMigrationEnabled();
 
-// Feature flag to control the App Store In-App Events feature. Enables a
-// user to tap the promo within the iOS App Store and invoke the Gemini FRE
-// after navigating to a Gemini related web page through an external action.
-BASE_DECLARE_FEATURE(kAppStoreInAppEvents);
-
-// Returns true if the App Store In-App Events feature is enabled.
-bool IsAppStoreInAppEventsEnabled();
 
 // Feature flag controlling the generalized Gemini entry flow outside of the
 // Page Action Menu.
@@ -406,6 +399,14 @@ extern const char kGeminiContextualSuggestionsCuesTitleAndUrlOnlyParam[];
 // Returns true if category classification should only use Title and URL
 // instead of extracting APC and generating passages.
 bool IsGeminiContextualSuggestionsCuesTitleAndUrlOnlyEnabled();
+
+// Feature parameter for enabling server model execution in Gemini contextual
+// suggestions cues.
+extern const char kGeminiContextualSuggestionsCuesServerModelExecutionParam[];
+
+// Returns true if server model execution is enabled for Gemini contextual
+// suggestions cues.
+bool IsGeminiContextualSuggestionsCuesServerModelExecutionEnabled();
 
 #pragma mark - Debugging Features
 

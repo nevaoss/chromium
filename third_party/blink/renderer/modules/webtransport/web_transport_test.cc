@@ -2120,7 +2120,8 @@ TEST_F(WebTransportTest, IncomingMaxAgeIsObeyed) {
   test::RunPendingTasks();
 
   constexpr base::TimeDelta kMaxAge = base::Microseconds(1);
-  web_transport->datagrams()->setIncomingMaxAge(kMaxAge.InMillisecondsF());
+  web_transport->datagrams()->setIncomingMaxAge(kMaxAge.InMillisecondsF(),
+                                                ASSERT_NO_EXCEPTION);
 
   test::RunDelayedTasks(kMaxAge);
 
@@ -2208,19 +2209,118 @@ TEST_F(WebTransportTest, CreateSendStream) {
   EXPECT_TRUE(writable);
 }
 
-TEST_F(WebTransportTest, CreateSendStreamBeforeConnect) {
+TEST_F(WebTransportTest, CreateStreamsBeforeConnect) {
+  ScopedWebTransportCreateStreamsBeforeReadyForTest scoped_feature(true);
+  V8TestingScope scope;
+
+  auto* script_state = scope.GetScriptState();
+  auto* web_transport = Create(scope, "https://example.com", EmptyOptions());
+  auto send_stream_promise = web_transport->createUnidirectionalStream(
+      script_state, EmptySendStreamOptions(), ASSERT_NO_EXCEPTION);
+  auto bidirectional_stream_promise = web_transport->createBidirectionalStream(
+      script_state, EmptySendStreamOptions(), ASSERT_NO_EXCEPTION);
+  ScriptPromiseTester send_stream_tester(script_state, send_stream_promise);
+  ScriptPromiseTester bidirectional_stream_tester(script_state,
+                                                  bidirectional_stream_promise);
+
+  ConnectSuccessfullyWithoutRunningPendingTasks(web_transport);
+
+  EXPECT_CALL(*mock_web_transport_,
+              CreateStream(Truly(ValidConsumerHandle),
+                           Not(Truly(ValidProducerHandle)), _, _))
+      .WillOnce([](Unused, Unused, Unused,
+                   base::OnceCallback<void(bool, uint32_t)> callback) {
+        std::move(callback).Run(true, 0);
+      });
+  EXPECT_CALL(*mock_web_transport_,
+              CreateStream(Truly(ValidConsumerHandle),
+                           Truly(ValidProducerHandle), _, _))
+      .WillOnce([](Unused, Unused, Unused,
+                   base::OnceCallback<void(bool, uint32_t)> callback) {
+        std::move(callback).Run(true, 1);
+      });
+
+  test::RunPendingTasks();
+  send_stream_tester.WaitUntilSettled();
+  bidirectional_stream_tester.WaitUntilSettled();
+  EXPECT_TRUE(send_stream_tester.IsFulfilled());
+  EXPECT_TRUE(bidirectional_stream_tester.IsFulfilled());
+}
+
+TEST_F(WebTransportTest, CreateStreamBeforeConnectFeatureDisabled) {
+  ScopedWebTransportCreateStreamsBeforeReadyForTest scoped_feature(false);
   V8TestingScope scope;
 
   auto* script_state = scope.GetScriptState();
   auto* web_transport = WebTransport::Create(
       script_state, "https://example.com", EmptyOptions(), ASSERT_NO_EXCEPTION);
   auto& exception_state = scope.GetExceptionState();
-  auto send_stream_promise = web_transport->createUnidirectionalStream(
+  auto stream_promise = web_transport->createUnidirectionalStream(
       script_state, EmptySendStreamOptions(), exception_state);
-  EXPECT_TRUE(send_stream_promise.IsEmpty());
+
+  EXPECT_TRUE(stream_promise.IsEmpty());
   EXPECT_TRUE(exception_state.HadException());
   EXPECT_EQ(static_cast<int>(DOMExceptionCode::kNetworkError),
             exception_state.Code());
+}
+
+TEST_F(WebTransportTest, CreateStreamsBeforeFailedConnect) {
+  ScopedWebTransportCreateStreamsBeforeReadyForTest scoped_feature(true);
+  V8TestingScope scope;
+  auto* script_state = scope.GetScriptState();
+  auto* web_transport = Create(scope, "https://example.com", EmptyOptions());
+  ScriptPromiseTester ready_tester(script_state,
+                                   web_transport->ready(script_state));
+  ScriptPromiseTester closed_tester(script_state,
+                                    web_transport->closed(script_state));
+  ScriptPromiseTester send_stream_tester(
+      script_state,
+      web_transport->createUnidirectionalStream(
+          script_state, EmptySendStreamOptions(), ASSERT_NO_EXCEPTION));
+  ScriptPromiseTester bidirectional_stream_tester(
+      script_state,
+      web_transport->createBidirectionalStream(
+          script_state, EmptySendStreamOptions(), ASSERT_NO_EXCEPTION));
+
+  test::RunPendingTasks();
+  auto args = connector_.TakeConnectArgs();
+  ASSERT_EQ(1u, args.size());
+  mojo::Remote<network::mojom::blink::WebTransportHandshakeClient>
+      handshake_client(std::move(args[0].handshake_client));
+  handshake_client->OnHandshakeFailed(nullptr);
+  test::RunPendingTasks();
+
+  EXPECT_TRUE(ready_tester.IsRejected());
+  EXPECT_TRUE(closed_tester.IsRejected());
+  EXPECT_TRUE(send_stream_tester.IsRejected());
+  EXPECT_TRUE(bidirectional_stream_tester.IsRejected());
+  for (ScriptPromiseTester* tester :
+       {&send_stream_tester, &bidirectional_stream_tester}) {
+    DOMException* exception = V8DOMException::ToWrappable(
+        scope.GetIsolate(), tester->Value().V8Value());
+    ASSERT_TRUE(exception);
+    EXPECT_EQ(exception->name(), "InvalidStateError");
+  }
+
+  ScriptPromiseTester send_stream_after_failure_tester(
+      script_state,
+      web_transport->createUnidirectionalStream(
+          script_state, EmptySendStreamOptions(), ASSERT_NO_EXCEPTION));
+  ScriptPromiseTester bidirectional_stream_after_failure_tester(
+      script_state,
+      web_transport->createBidirectionalStream(
+          script_state, EmptySendStreamOptions(), ASSERT_NO_EXCEPTION));
+
+  for (ScriptPromiseTester* tester :
+       {&send_stream_after_failure_tester,
+        &bidirectional_stream_after_failure_tester}) {
+    tester->WaitUntilSettled();
+    EXPECT_TRUE(tester->IsRejected());
+    DOMException* exception = V8DOMException::ToWrappable(
+        scope.GetIsolate(), tester->Value().V8Value());
+    ASSERT_TRUE(exception);
+    EXPECT_EQ(exception->name(), "InvalidStateError");
+  }
 }
 
 TEST_F(WebTransportTest, CreateSendStreamFailure) {
@@ -2575,33 +2675,51 @@ TEST_F(WebTransportTest, ReceiveStreamGarbageCollectionRemoteCloseReverse) {
   EXPECT_FALSE(receive_stream);
 }
 
-TEST_F(WebTransportTest, CreateSendStreamAbortedByClose) {
+TEST_F(WebTransportTest, CreateStreamsAbortedByCloseUseSameError) {
   V8TestingScope scope;
 
   auto* script_state = scope.GetScriptState();
   auto* web_transport =
       CreateAndConnectSuccessfully(scope, "https://example.com");
 
-  base::OnceCallback<void(bool, uint32_t)> create_stream_callback;
+  base::OnceCallback<void(bool, uint32_t)> send_stream_callback;
+  base::OnceCallback<void(bool, uint32_t)> bidirectional_stream_callback;
   EXPECT_CALL(*mock_web_transport_, CreateStream(_, _, _, _))
       .WillOnce([&](Unused, Unused, Unused,
                     base::OnceCallback<void(bool, uint32_t)> callback) {
-        create_stream_callback = std::move(callback);
+        send_stream_callback = std::move(callback);
+      })
+      .WillOnce([&](Unused, Unused, Unused,
+                    base::OnceCallback<void(bool, uint32_t)> callback) {
+        bidirectional_stream_callback = std::move(callback);
       });
   EXPECT_CALL(*mock_web_transport_, Close());
 
   auto send_stream_promise = web_transport->createUnidirectionalStream(
       script_state, EmptySendStreamOptions(), ASSERT_NO_EXCEPTION);
-  ScriptPromiseTester tester(script_state, send_stream_promise);
+  auto bidirectional_stream_promise = web_transport->createBidirectionalStream(
+      script_state, EmptySendStreamOptions(), ASSERT_NO_EXCEPTION);
+  ScriptPromiseTester send_stream_tester(script_state, send_stream_promise);
+  ScriptPromiseTester bidirectional_stream_tester(script_state,
+                                                  bidirectional_stream_promise);
 
   test::RunPendingTasks();
 
   web_transport->close(nullptr);
-  std::move(create_stream_callback).Run(true, 0);
+  std::move(send_stream_callback).Run(true, 0);
+  std::move(bidirectional_stream_callback).Run(true, 1);
 
-  tester.WaitUntilSettled();
+  send_stream_tester.WaitUntilSettled();
+  bidirectional_stream_tester.WaitUntilSettled();
 
-  EXPECT_TRUE(tester.IsRejected());
+  EXPECT_TRUE(send_stream_tester.IsRejected());
+  EXPECT_TRUE(bidirectional_stream_tester.IsRejected());
+  EXPECT_TRUE(send_stream_tester.Value().V8Value()->StrictEquals(
+      bidirectional_stream_tester.Value().V8Value()));
+  DOMException* exception = V8DOMException::ToWrappable(
+      scope.GetIsolate(), send_stream_tester.Value().V8Value());
+  ASSERT_TRUE(exception);
+  EXPECT_EQ(exception->name(), "InvalidStateError");
 }
 
 // ReceiveStream functionality is thoroughly tested in incoming_stream_test.cc.
@@ -2776,6 +2894,22 @@ TEST_F(WebTransportTest, SetDatagramWritableQueueExpirationDuration) {
   test::RunPendingTasks();
 }
 
+TEST_F(WebTransportTest,
+       SetDatagramWritableQueueExpirationDurationConvertsInfinity) {
+  V8TestingScope scope;
+
+  auto* web_transport =
+      CreateAndConnectSuccessfully(scope, "https://example.com");
+
+  EXPECT_CALL(*mock_web_transport_,
+              SetOutgoingDatagramExpirationDuration(base::TimeDelta::Max()));
+
+  web_transport->setDatagramWritableQueueExpirationDuration(
+      std::numeric_limits<double>::infinity());
+
+  test::RunPendingTasks();
+}
+
 // Regression test for https://crbug.com/1241489.
 TEST_F(WebTransportTest, SetOutgoingMaxAgeBeforeConnectComplete) {
   V8TestingScope scope;
@@ -2785,9 +2919,20 @@ TEST_F(WebTransportTest, SetOutgoingMaxAgeBeforeConnectComplete) {
   constexpr double kDuration = 1000;
   constexpr base::TimeDelta kDurationDelta = base::Milliseconds(kDuration);
 
-  web_transport->datagrams()->setOutgoingMaxAge(kDuration);
+  web_transport->datagrams()->setOutgoingMaxAge(kDuration, ASSERT_NO_EXCEPTION);
 
   ConnectSuccessfully(web_transport, kDurationDelta);
+}
+
+TEST_F(WebTransportTest, SetOutgoingMaxAgeToZeroBeforeConnectComplete) {
+  V8TestingScope scope;
+
+  auto* web_transport = Create(scope, "https://example.com/", EmptyOptions());
+
+  web_transport->datagrams()->setOutgoingMaxAge(0, ASSERT_NO_EXCEPTION);
+  EXPECT_FALSE(web_transport->datagrams()->outgoingMaxAge().has_value());
+
+  ConnectSuccessfully(web_transport);
 }
 
 TEST_F(WebTransportTest, OnClosed) {

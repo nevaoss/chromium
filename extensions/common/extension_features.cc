@@ -79,7 +79,7 @@ const base::FeatureParam<GlicOpenNewTabDisposition>
         GlicOpenNewTabDisposition::kForegroundIfNotConsented,
         &kGlicOpenNewTabDispositionOptions};
 
-BASE_FEATURE(kApiEnterpriseWebrtc, base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kApiEnterpriseWebrtc, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kApiProxyOverrideRulesPrivate, base::FEATURE_ENABLED_BY_DEFAULT);
 
@@ -263,6 +263,8 @@ BASE_FEATURE_PARAM(bool,
 
 BASE_FEATURE(kSearchEngineUnconditionalDialog,
              base::FEATURE_DISABLED_BY_DEFAULT);
+
+BASE_FEATURE(kShareEventArgsOnDispatch, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kOptimizeWebRequestProxy, base::FEATURE_ENABLED_BY_DEFAULT);
 

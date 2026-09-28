@@ -305,10 +305,6 @@ public final class ProductionSupportedFlagList {
                     + " hashes of form and field metadata, and evaluate the accuracy of returned"
                     + " experimental predictions."),
         Flag.baseFeature(
-                AutofillFeatures.AUTOFILL_SERVER_QUERY_PREDICTIONS_EARLY,
-                "When enabled, Autofill enables querying the server for predictions before the form"
-                        + " has been parsed locally."),
-        Flag.baseFeature(
                 AutofillFeatures.AUTOFILL_SUPPORT_SPLIT_ZIP_CODE,
                 "When enabled, two-part zip codes are splitted into two fields while filling and"
                         + " imported from two adjacent fields."),
@@ -1490,6 +1486,9 @@ public final class ProductionSupportedFlagList {
                 "DomStorageSqliteNewDatabases",
                 "Controls the on-disk rollout of the SQLite backend for DomStorage on new"
                         + " databases."),
+        Flag.baseFeature(
+                PaymentFeatureList.THREE_D_SECURE_TELEMETRY,
+                "When enabled, collect telemetry for 3D Secure challenge flow."),
         // Add new commandline switches and features above. The final entry should have a
         // trailing comma for cleaner diffs.
     };

@@ -5,17 +5,32 @@
 #ifndef CHROME_BROWSER_UI_VIEWS_PAYMENTS_PAYMENT_HANDLER_WEB_FLOW_VIEW_CONTROLLER_H_
 #define CHROME_BROWSER_UI_VIEWS_PAYMENTS_PAYMENT_HANDLER_WEB_FLOW_VIEW_CONTROLLER_H_
 
-#include "base/memory/weak_ptr.h"
+#include <memory>
+#include <string>
+
 #include "base/memory/raw_ptr.h"
+#include "base/memory/weak_ptr.h"
+#include "base/scoped_observation.h"
+#include "chrome/browser/media/webrtc/media_stream_capture_indicator.h"
+#include "chrome/browser/ui/toolbar/chrome_location_bar_model_delegate.h"
+#include "chrome/browser/ui/views/location_bar/icon_label_bubble_view.h"
+#include "chrome/browser/ui/views/location_bar/location_icon_view.h"
 #include "chrome/browser/ui/views/payments/payment_handler_modal_dialog_manager_delegate.h"
 #include "chrome/browser/ui/views/payments/payment_request_sheet_controller.h"
 #include "components/payments/content/payment_request_display_manager.h"
 #include "content/public/browser/web_contents_delegate.h"
 #include "content/public/browser/web_contents_observer.h"
+#include "third_party/skia/include/core/SkColor.h"
+#include "ui/base/interaction/element_identifier.h"
+#include "ui/base/models/image_model.h"
 #include "ui/base/window_open_disposition.h"
 #include "ui/views/controls/webview/unhandled_keyboard_event_handler.h"
+#include "ui/views/view_tracker.h"
+#include "ui/views/widget/widget.h"
 #include "url/gurl.h"
 
+class LocationBarModel;
+class PermissionDashboardView;
 class Profile;
 
 namespace blink {
@@ -40,8 +55,13 @@ class PaymentRequestState;
 class PaymentHandlerWebFlowViewController
     : public PaymentRequestSheetController,
       public content::WebContentsDelegate,
-      public content::WebContentsObserver {
+      public content::WebContentsObserver,
+      public ChromeLocationBarModelDelegate,
+      public IconLabelBubbleView::Delegate,
+      public LocationIconView::Delegate,
+      public MediaStreamCaptureIndicator::Observer {
  public:
+  DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(kAppIconElementId);
   // This ctor forwards its first 3 args to PaymentRequestSheetController's
   // ctor.
   // |payment_request_web_contents| is the page that initiated the
@@ -67,9 +87,11 @@ class PaymentHandlerWebFlowViewController
   static PaymentHandlerWebFlowViewController* FromWebContents(
       content::WebContents* web_contents);
 
-  views::View* GetLocationIconView();
+  views::View* GetPageInfoIconView();
 
  private:
+  friend class PaymentHandlerWebFlowViewTestApi;
+
   class RoundedCornerViewClipper;
 
   // PaymentRequestSheetController:
@@ -86,6 +108,10 @@ class PaymentHandlerWebFlowViewController
 
   // content::WebContentsDelegate:
   void VisibleSecurityStateChanged(content::WebContents* source) override;
+  content::WebContents* OpenURLFromTab(
+      content::WebContents* source,
+      const content::OpenURLParams& params,
+      base::OnceCallback<void(content::NavigationHandle&)> callback) override;
   content::WebContents* AddNewContents(
       content::WebContents* source,
       std::unique_ptr<content::WebContents> new_contents,
@@ -114,11 +140,42 @@ class PaymentHandlerWebFlowViewController
   void DidStopLoading() override;
   void DidChangeThemeColor() override;
 
+  // ChromeLocationBarModelDelegate:
+  content::WebContents* GetActiveWebContents() const override;
+
+  // IconLabelBubbleView::Delegate:
+  SkColor GetIconLabelBubbleSurroundingForegroundColor() const override;
+  SkColor GetIconLabelBubbleBackgroundColor() const override;
+
+  // LocationIconView::Delegate:
+  content::WebContents* GetWebContents() override;
+  bool IsEditingOrEmpty() const override;
+  SkColor GetSecurityChipColor(
+      security_state::SecurityLevel security_level) const override;
+  bool ShowPageInfoDialog() override;
+  const LocationBarModel* GetLocationBarModel() const override;
+  ui::ImageModel GetLocationIcon(
+      LocationIconView::Delegate::IconFetchedCallback on_icon_fetched) override;
+
+  // MediaStreamCaptureIndicator::Observer:
+  void OnIsCapturingVideoChanged(content::WebContents* contents,
+                                 bool is_capturing_video) override;
+
+  void OnPageInfoBubbleClosed(views::Widget::ClosedReason closed_reason,
+                              bool reload_prompt);
   void AbortPayment();
   void SetHeaderColorsAndOriginLabelText();
 
+  LocationIconView* location_icon_view();
+  PermissionDashboardView* permission_dashboard_view();
   raw_ptr<Profile> profile_;
   GURL target_;
+  std::unique_ptr<LocationBarModel> location_bar_model_;
+  views::ViewTracker location_icon_view_tracker_;
+  views::ViewTracker permission_dashboard_view_tracker_;
+  base::ScopedObservation<MediaStreamCaptureIndicator,
+                          MediaStreamCaptureIndicator::Observer>
+      indicator_observation_{this};
   base::WeakPtr<PaymentHandlerProgressBar> progress_bar_;
   base::WeakPtr<PaymentHandlerOriginLabel> origin_label_;
   base::WeakPtr<PaymentHandlerCloseButton> close_button_;

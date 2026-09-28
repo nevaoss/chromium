@@ -723,13 +723,6 @@ bool IsGeminiScreenContextMigrationEnabled() {
   return base::FeatureList::IsEnabled(kGeminiScreenContextMigration);
 }
 
-BASE_FEATURE(kAppStoreInAppEvents, base::FEATURE_ENABLED_BY_DEFAULT);
-
-bool IsAppStoreInAppEventsEnabled() {
-  return IsPageActionMenuEnabled() &&
-         base::FeatureList::IsEnabled(kAppStoreInAppEvents);
-}
-
 BASE_FEATURE(kGeneralizedGeminiEntryFlow, base::FEATURE_ENABLED_BY_DEFAULT);
 
 bool IsGeneralizedGeminiEntryFlowEnabled() {
@@ -787,6 +780,15 @@ BASE_FEATURE_PARAM(bool,
                    kGeminiContextualSuggestionsCuesTitleAndUrlOnlyParam,
                    true);
 
+const char kGeminiContextualSuggestionsCuesServerModelExecutionParam[] =
+    "enable_server_model_execution";
+
+BASE_FEATURE_PARAM(bool,
+                   kGeminiContextualSuggestionsCuesServerModelExecution,
+                   &kGeminiContextualSuggestionsCues,
+                   kGeminiContextualSuggestionsCuesServerModelExecutionParam,
+                   false);
+
 bool IsGeminiContextualSuggestionsCuesEnabled() {
   if (!IsPageActionMenuEnabled()) {
     return false;
@@ -806,6 +808,11 @@ bool IsGeminiContextualSuggestionsCuesAllowGpuExecutionEnabled() {
 
 bool IsGeminiContextualSuggestionsCuesTitleAndUrlOnlyEnabled() {
   return kGeminiContextualSuggestionsCuesTitleAndUrlOnly.Get();
+}
+
+bool IsGeminiContextualSuggestionsCuesServerModelExecutionEnabled() {
+  return IsGeminiContextualSuggestionsCuesEnabled() &&
+         kGeminiContextualSuggestionsCuesServerModelExecution.Get();
 }
 
 #pragma mark - Debugging Features

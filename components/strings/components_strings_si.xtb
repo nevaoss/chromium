@@ -1548,6 +1548,7 @@
 <translation id="3634530185120165534">බඳුන 5</translation>
 <translation id="3634567936866541746">ඔබ මේ දැන් වංචනික අඩවියකට ඔබගේ මුරපදය ඇතුළු කළේය. ඔබගේ ගිණුම් ආරක්ෂා කිරීමට, Chrome ඔබගේ සුරැකි මුරපද පරීක්ෂා කිරීම නිර්දේශ කරයි.</translation>
 <translation id="3638102297696182302">මට ලිවීමට උදවු කිරීම නැවත පටන් ගන්න. විවෘත කිරීමට පටිත්ත සහ Enter ඔබන්න</translation>
+<translation id="3639626391482300575">ඔබට ඕනෑම Google නිෂ්පාදනයක් හරහා භාවිත කළ හැකි වන පරිදි මෙම IBAN අංකය Google Wallet හි සුරැකේ.</translation>
 <translation id="3642196846309122856">ඔබේ ගොනු නැවත බාගැනීමට උත්සාහ කරන්න</translation>
 <translation id="3642638418806704195">යෙදුම:</translation>
 <translation id="3647286794400715637">සෑම url තන්තු ප්‍රවේශයකම URL 1ක් 2ක් අඩංගු විය යුතුය.</translation>
@@ -1560,7 +1561,6 @@
 <translation id="3655670868607891010">ඔබ නිතර මෙය දකී නම්, මෙය උත්සහ කරන්න <ph name="HELP_LINK" />.</translation>
 <translation id="3658742229777143148">පුනරීක්ශණය</translation>
 <translation id="3659521826520353662">කුමන පරිපාලක විසින් නිර්වචනය කරන ලද වෙබ් අඩවි වෙත පිවිසෙන්නේ ද සහ කෙවිට ද: <ph name="ALLOWLISTED_WEBSITES" /></translation>
-<translation id="3662040827609932717">මෙම IBAN Google Wallet හි සුරකින බැවින් ඔබට එය Google සේවා හරහා භාවිත කළ හැක.</translation>
 <translation id="3664479564786885722">මෙම නිෂ්පාදනය විකුණන වෙනත් වෙළඳසැල් වලින් තවත් මිල දී ගැනීමේ විකල්ප සොයන්න.</translation>
 <translation id="3664782872746246217">මූලපද:</translation>
 <translation id="3670030362669914947">අංකය</translation>
@@ -2614,7 +2614,6 @@
 <translation id="5414306071315087019">දැන් මිල දී ගන්න, පසුව ගෙවන්න Google Pay සමගින් ලබා ගත හැක</translation>
 <translation id="5414446060143308245">මාරු කිරීමට පෙර සමාලෝචනය අවශ්‍යයි</translation>
 <translation id="5414511064953050917">කෙසේ වෙතත් ගෙන යන්න</translation>
-<translation id="5418700249417444482">ඔබ පිවිසෙන පිටුවල URL විශ්ලේෂණය සඳහා Google Cloud හෝ තෙවන පාර්ශ්ව වෙත යවන අතර, ඔබේ පරිපාලකයාට දෘශ්‍යමාන විය හැක. උදාහරණයක් ලෙස, පරිපාලක විසින් සකසන ලද නීති මත පදනම්ව අනාරක්ෂිත වෙබ් අඩවි හෝ පෙරහන් වෙබ් අඩවි හඳුනා ගැනීමට ඒවා ස්කෑන් කළ හැක.</translation>
 <translation id="5419311651396341287">ඔබේ පරිපාලකයාට බැලීමට හැකි වනු ඇත:</translation>
 <translation id="5423269318075950257">මිල හඹා යන්න</translation>
 <translation id="5426179911063097041"><ph name="SITE" /> හට ඔබට දැනුම්දීම් එවීමට අවශ්‍යයි</translation>
@@ -2635,7 +2634,6 @@
 <translation id="5447103258548475868">විදේශ ගමන් බලපත්‍රය Google Wallet තුළ සුරකින්න</translation>
 <translation id="5447235695608032700"><ph name="SITE" /> හට ඔවුන් ඔබ ගැන සුරකින ලද තතු භාවිතා කිරීමට ඉඩ දෙන්න</translation>
 <translation id="5447973833955560753">ප්‍රතිසාධන මුරපදය</translation>
-<translation id="5451331376824595378">Chrome විසින් ආරක්ෂක සිදුවීම් සලකුණු කළ විට, සිදුවීම් පිළිබඳ අදාළ දත්ත ඔබේ පරිපාලකයා වෙත යවනු ලැබේ. මෙයට ඔබ Chrome තුළ පැමිණෙන පිටුවල URL, ඔබ දත්ත පිටපත් කළ පිටුවල URL, ගොනු නාම හෝ පාරදත්ත, IP ලිපිනය, බ්‍රවුසර හෝ පටිති බිඳ වැටීම්, සහ ඔබ වෙබ් පාදක යෙදුම්, ඔබ ඔබේ උපාංගය සහ Chrome වෙත පුරනය වීමට භාවිත කරන පරිශීලක නාමය ඇතුළත් විය හැක.</translation>
 <translation id="5452270690849572955"><ph name="HOST_NAME" /> පිටුව සොයා ගත නොහැකිය</translation>
 <translation id="5452923259299906094">ඉ-පසුම්බිය සහ Pix සමග ගෙවන්න</translation>
 <translation id="5455374756549232013">දූශිත ප්‍රතිපත්ති කාල මුද්‍රා</translation>
@@ -3182,7 +3180,6 @@
 <translation id="6361757823711327522">B7</translation>
 <translation id="6363786367719063276">ලොග බලන්න</translation>
 <translation id="6364095313648930329"><ph name="BEGIN_LINK" />ප්‍රොක්සි, සුරැකුම් පවුර සහ සුරක්‍ෂිත DNS වින්‍යාස කිරීම පරීක්‍ෂා කිරීම<ph name="END_LINK" /></translation>
-<translation id="6365513578140103119">ඔබේ ඉ-තැපැල් ස්වයංක්‍රීයව තහවුරු කරන්න</translation>
 <translation id="6366710531182496394">වමට දෙවරක් ස්ටේපල් කරන්න</translation>
 <translation id="6367196786591004737">ඇතුළත් කිරීම මකන්න</translation>
 <translation id="6370022303958842211">පිවිසුම් (අසාර්ථක පිවිසුම් හේතු ඇතුළුව), පිටවීම්, අගුළු දැමීම්, සහ අගුළු හැරීම් වැනි උපාංග ප්‍රවේශ ක්‍රියා</translation>
@@ -3307,6 +3304,7 @@
 <translation id="6578434528542148658">අවලංගු දිගු හැඳුනුම.</translation>
 <translation id="658230438113661756">ඔබ පිවිසීමට උත්සාහ කළ වෙබ් අඩවියේ ප්‍රහාරකයින් ඔබේ මුරපද, ඡායාරූප, පණිවිඩ, හෝ ණය කාඩ්පත් අංක වැනි දේවල් සොරකම් කරන හෝ මකා දමන හානිකර මෘදුකාංග ස්ථාපනය කළ හැක. සුරක්ෂිතව ආපසු යාමට Chrome දැඩි ලෙස නිර්දේශ කරයි. <ph name="BEGIN_LEARN_MORE_LINK" />මෙම අනතුරු ඇඟවීම ගැන තව දැන ගන්න<ph name="END_LEARN_MORE_LINK" /></translation>
 <translation id="6583309742916093092">Google Wallet හි ගබඩා කර ඇත</translation>
+<translation id="6585589684832019248">ඔබට ඕනෑම Google නිෂ්පාදනයක් හරහා භාවිත කළ හැකි වන පරිදි මෙම කාඩ්පත Google Wallet හි සුරැකේ</translation>
 <translation id="6587893660316489419">ලියුම් කවරය B5</translation>
 <translation id="6587923378399804057">ඔබ පිටපත් කළ සබැඳිය</translation>
 <translation id="6591833882275308647">ඔබේ <ph name="DEVICE_TYPE" /> කළමනා නොකෙරේ</translation>
@@ -3908,7 +3906,6 @@
 <translation id="7615932826417658001">හැඳුනුම්පත එක් කරන්න</translation>
 <translation id="7616390733770379387">මේවා අහඹු අනුපිළිවෙලින් පෙන්වයි.</translation>
 <translation id="7616645509853975347">ඔබේ පරිපාලක ඔබේ බ්‍රව්සරයේ Chrome Enterprise Connectors ක්‍රියාත්මක කර ඇත. මෙම සම්බන්ධකවලට ඔබේ දත්ත සමහරක් වෙත ප්‍රවේශය තිබේ.</translation>
-<translation id="7616747402308801775">මෙම කාඩ්පත Google Wallet හි සුරකින බැවින් ඔබට එය Google සේවා හරහා භාවිත කළ හැක</translation>
 <translation id="7617825962482469577">ලියුම් කවරය C7/C6</translation>
 <translation id="7619838219691048931">අවසන් පත්‍රය</translation>
 <translation id="7621546470643449009">පහසුවෙන් හඳුනාගත හැකි තාරකා මණ්ඩල 3ක් ඇතුළුව රාත්‍රී අහසේ බැලිය යුතු දේ ඉගෙන ගැනීමට මට උදවු කිරීමට තරු බැලීම සඳහා ආරම්භක මාර්ගෝපදේශයක් සාදන්න</translation>
@@ -4660,7 +4657,6 @@
 <translation id="8963117664422609631">අඩවි සැකසීම් වෙත යන්න</translation>
 <translation id="8963213021028234748"><ph name="MARKUP_1" />යෝජනා:<ph name="MARKUP_2" />ඔබට දත්ත සබැඳුමක් ඇති බව සහතික කර ගන්න<ph name="MARKUP_3" />මෙම වෙබ් පිටුව පසුව පූරණය කරන්න<ph name="MARKUP_4" />ඔබ ඇතුළත් කළ ලිපිනය පරීක්ෂා කරන්න<ph name="MARKUP_5" /></translation>
 <translation id="8963969435440878110">ඔබගේ දේශීය ගොනු පැය <ph name="HOURS" /> කින් මකා දැමෙනු ඇත</translation>
-<translation id="8964904785315870349">සත්‍යාපිත ඉ-තැපෑල</translation>
 <translation id="8968766641738584599">කාඩ්පත සුරකින්න</translation>
 <translation id="8970887620466824814">යම් දෙයක් වැරදිණි</translation>
 <translation id="8971063699422889582">සේවාදායකයේ සහතිකය කල් ඉකුත්වී ඇත.</translation>
@@ -4870,6 +4866,7 @@
 <translation id="988159990683914416">සංවර්ධක නිකුතුව</translation>
 <translation id="989988560359834682">ලිපිනය සංස්කරණය කරන්න</translation>
 <translation id="990164307229195234"><ph name="DEVICE_NAME" /> (<ph name="DISAMBIGUATION_LABEL" />)</translation>
+<translation id="990812705189376036">මර්කල් ගස් සාධකය</translation>
 <translation id="992110854164447044">විය හැකි වංචාවෙන් ඔබව ආරක්ෂා කිරීමට උදවු කිරීමට අතථ්‍ය කාඩ්පතක් ඔබගේ සැබෑ කාඩ්පත සඟවයි. <ph name="IDS_AUTOFILL_VIRTUAL_CARD_ENROLLMENT_LEARN_MORE_LINK_LABEL" /></translation>
 <translation id="992115559265932548"><ph name="MICROSOFT_ACTIVE_DIRECTORY" /></translation>
 <translation id="992256792861109788">රෝස</translation>

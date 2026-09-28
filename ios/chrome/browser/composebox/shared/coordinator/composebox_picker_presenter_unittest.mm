@@ -18,8 +18,12 @@
 #import "ios/chrome/browser/shared/model/application_context/application_context.h"
 #import "ios/chrome/browser/shared/model/browser/test/test_browser.h"
 #import "ios/chrome/browser/shared/model/profile/test/test_profile_ios.h"
+#import "ios/chrome/browser/shared/model/profile/test/test_profile_manager_ios.h"
+#import "ios/chrome/browser/shared/public/commands/browser_coordinator_commands.h"
 #import "ios/chrome/browser/shared/public/commands/command_dispatcher.h"
 #import "ios/chrome/browser/shared/public/commands/drive_file_picker_commands.h"
+#import "ios/chrome/browser/shared/public/commands/open_new_tab_command.h"
+#import "ios/chrome/browser/shared/public/commands/scene_commands.h"
 #import "ios/chrome/browser/signin/model/authentication_service.h"
 #import "ios/chrome/browser/signin/model/authentication_service_factory.h"
 #import "ios/chrome/browser/signin/model/fake_authentication_service_delegate.h"
@@ -28,10 +32,40 @@
 #import "ios/chrome/browser/sync/model/sync_service_factory.h"
 #import "ios/chrome/browser/sync/model/test_sync_service_utils.h"
 #import "ios/chrome/test/ios_chrome_scoped_testing_local_state.h"
+#import "ios/chrome/test/providers/privacy_primitive/test_privacy_primitive.h"
+#import "ios/public/provider/chrome/browser/privacy_primitive/privacy_primitive_configuration.h"
 #import "ios/web/public/test/web_task_environment.h"
 #import "testing/gtest/include/gtest/gtest.h"
 #import "testing/platform_test.h"
 #import "third_party/ocmock/OCMock/OCMock.h"
+#import "third_party/ocmock/gtest_support.h"
+#import "url/gurl.h"
+
+#pragma mark - FakePrivacyPrimitiveServiceWithCallback
+
+@interface FakePrivacyPrimitiveServiceWithCallback
+    : NSObject <PrivacyPrimitiveServiceFactory, PrivacyPrimitiveService>
+
+@property(nonatomic, copy) void (^openURLCallback)(NSURL* URL);
+@property(nonatomic, assign) BOOL showFlowCalled;
+
+@end
+
+@implementation FakePrivacyPrimitiveServiceWithCallback
+
+- (id<PrivacyPrimitiveService>)createPrivacyPrimitiveService:
+    (PrivacyPrimitiveConfiguration*)configuration {
+  self.openURLCallback = configuration.openURLCallback;
+  return self;
+}
+
+- (void)showFlowWithPresentingViewController:(UIViewController*)viewController
+                           completionHandler:
+                               (void (^)(BOOL success))completionHandler {
+  self.showFlowCalled = YES;
+}
+
+@end
 
 #pragma mark - FakePresenterDriveFilePickerHandler
 
@@ -39,6 +73,7 @@
     : NSObject <DriveFilePickerCommands>
 
 @property(nonatomic, assign) BOOL drivePickerShown;
+@property(nonatomic, weak) id<DriveFilePickerResponseCommands> responseHandler;
 @property(nonatomic, assign) NSUInteger maxAttachmentCount;
 @property(nonatomic, weak) ComposeboxSnackbarPresenter* snackbarPresenter;
 
@@ -56,14 +91,15 @@
     (id<SystemIdentity>)selectedIdentity {
 }
 
-- (void)showDriveFilePickerWithComposeboxDelegate:
-            (id<ComposeboxPickerPresenterDelegate>)composeboxDelegate
-                               baseViewController:
-                                   (UIViewController*)baseViewController
-                               maxAttachmentCount:(NSUInteger)maxAttachmentCount
-                                snackbarPresenter:(ComposeboxSnackbarPresenter*)
-                                                      snackbarPresenter {
+- (void)
+    showDriveFilePickerWithResponseHandler:
+        (id<DriveFilePickerResponseCommands>)responseHandler
+                        baseViewController:(UIViewController*)baseViewController
+                        maxAttachmentCount:(NSUInteger)maxAttachmentCount
+                         snackbarPresenter:
+                             (ComposeboxSnackbarPresenter*)snackbarPresenter {
   self.drivePickerShown = YES;
+  self.responseHandler = responseHandler;
   self.maxAttachmentCount = maxAttachmentCount;
   self.snackbarPresenter = snackbarPresenter;
 }
@@ -119,8 +155,8 @@ class ComposeboxPickerPresenterTest : public PlatformTest {
             std::make_unique<FakeAuthenticationServiceDelegate>()));
     builder.AddTestingFactory(SyncServiceFactory::GetInstance(),
                               base::BindRepeating(&CreateTestSyncService));
-    profile_ = std::move(builder).Build();
-    browser_ = std::make_unique<TestBrowser>(profile_.get());
+    profile_ = profile_manager_.AddProfileWithBuilder(std::move(builder));
+    browser_ = std::make_unique<TestBrowser>(profile_);
 
     handler_ = [[FakePresenterDriveFilePickerHandler alloc] init];
     CommandDispatcher* dispatcher = browser_->GetCommandDispatcher();
@@ -139,6 +175,18 @@ class ComposeboxPickerPresenterTest : public PlatformTest {
     presenter_.metricsRecorder = metrics_recorder_;
   }
 
+  void TearDown() override {
+    ios::provider::test::SetPrivacyPrimitiveServiceFactory(nil);
+    presenter_ = nil;
+    metrics_recorder_ = nil;
+    data_source_ = nil;
+    handler_ = nil;
+    browser_.reset();
+    base_view_controller_ = nil;
+    profile_ = nullptr;
+    PlatformTest::TearDown();
+  }
+
   void SignIn() {
     FakeSystemIdentity* fake_identity = [FakeSystemIdentity fakeIdentity1];
     FakeSystemIdentityManager* system_identity_manager =
@@ -147,7 +195,7 @@ class ComposeboxPickerPresenterTest : public PlatformTest {
     system_identity_manager->AddIdentity(fake_identity);
 
     AuthenticationService* auth_service =
-        AuthenticationServiceFactory::GetForProfile(profile_.get());
+        AuthenticationServiceFactory::GetForProfile(profile_);
     auth_service->SignIn(fake_identity,
                          signin_metrics::AccessPoint::kStartPage);
   }
@@ -155,8 +203,9 @@ class ComposeboxPickerPresenterTest : public PlatformTest {
   web::WebTaskEnvironment task_environment_;
   IOSChromeScopedTestingLocalState scoped_testing_local_state_;
   base::test::ScopedFeatureList scoped_feature_list_;
+  TestProfileManagerIOS profile_manager_;
+  raw_ptr<TestProfileIOS> profile_ = nullptr;
   UIViewController* base_view_controller_ = nil;
-  std::unique_ptr<TestProfileIOS> profile_;
   std::unique_ptr<TestBrowser> browser_;
   FakePresenterDriveFilePickerHandler* handler_ = nil;
   FakePresenterDataSource* data_source_ = nil;
@@ -251,6 +300,178 @@ TEST_F(ComposeboxPickerPresenterTest,
   [presenter_ presentDriveFilePicker];
 
   EXPECT_FALSE(handler_.drivePickerShown);
+}
+
+// Tests that when ConsentKit triggers a delegated action to open a URL, the
+// composebox is hidden and the URL is opened in a new tab.
+TEST_F(ComposeboxPickerPresenterTest,
+       TestPresentDriveFilePicker_DelegatedActionOpensURLInNewTab) {
+  FakePrivacyPrimitiveServiceWithCallback* fake_service =
+      [[FakePrivacyPrimitiveServiceWithCallback alloc] init];
+  ios::provider::test::SetPrivacyPrimitiveServiceFactory(fake_service);
+
+  scoped_feature_list_.InitAndEnableFeature(
+      omnibox::kComposeboxDriveContextMenuOptionDisclaimer);
+
+  profile_->GetPrefs()->SetInteger(
+      contextual_search::kDriveConsentState,
+      static_cast<int>(contextual_search::DriveConsentState::kNotConsent));
+
+  SignIn();
+
+  id mock_browser_coordinator_commands =
+      OCMStrictProtocolMock(@protocol(BrowserCoordinatorCommands));
+  OCMExpect([mock_browser_coordinator_commands hideComposebox]);
+  [browser_->GetCommandDispatcher()
+      startDispatchingToTarget:mock_browser_coordinator_commands
+                   forProtocol:@protocol(BrowserCoordinatorCommands)];
+
+  id mock_scene_commands = OCMStrictProtocolMock(@protocol(SceneCommands));
+  OCMExpect([mock_scene_commands
+      openURLInNewTab:[OCMArg checkWithBlock:^BOOL(OpenNewTabCommand* command) {
+        return command.URL == GURL("https://example.com/privacy");
+      }]]);
+  [browser_->GetCommandDispatcher()
+      startDispatchingToTarget:mock_scene_commands
+                   forProtocol:@protocol(SceneCommands)];
+
+  base::HistogramTester histogram_tester;
+
+  [presenter_ presentDriveFilePicker];
+
+  EXPECT_TRUE(fake_service.showFlowCalled);
+  ASSERT_NE(fake_service.openURLCallback, nil);
+
+  fake_service.openURLCallback(
+      [NSURL URLWithString:@"https://example.com/privacy"]);
+
+  EXPECT_OCMOCK_VERIFY(mock_browser_coordinator_commands);
+  EXPECT_OCMOCK_VERIFY(mock_scene_commands);
+
+  histogram_tester.ExpectUniqueSample(
+      "Omnibox.MobileFusebox.PickerOutcome.Drive",
+      static_cast<int>(MobileFuseboxPickerOutcome::kManualUserExit), 1);
+  histogram_tester.ExpectUniqueSample(
+      "Omnibox.MobileFusebox.PickerOutcome",
+      static_cast<int>(MobileFuseboxPickerOutcome::kManualUserExit), 1);
+}
+
+// Tests that when a modal view controller is presented by the privacy
+// primitive, the delegated action dismisses the modal before hiding the
+// composebox and opening the URL.
+TEST_F(ComposeboxPickerPresenterTest,
+       TestPresentDriveFilePicker_DelegatedActionDismissesPresentedModal) {
+  id mock_base_view_controller = OCMClassMock([UIViewController class]);
+  id mock_modal = OCMClassMock([UIViewController class]);
+  OCMStub([mock_base_view_controller presentedViewController])
+      .andReturn(mock_modal);
+
+  __block void (^dismissalCompletion)(void) = nil;
+  OCMExpect([mock_modal dismissViewControllerAnimated:YES
+                                           completion:[OCMArg any]])
+      .andDo(^(NSInvocation* invocation) {
+        void (^completion)(void);
+        [invocation getArgument:&completion atIndex:3];
+        dismissalCompletion = [completion copy];
+      });
+
+  ComposeboxPickerPresenter* presenter = [[ComposeboxPickerPresenter alloc]
+      initWithBaseViewController:mock_base_view_controller
+                         browser:browser_.get()];
+  presenter.dataSource = data_source_;
+  presenter.metricsRecorder = metrics_recorder_;
+
+  FakePrivacyPrimitiveServiceWithCallback* fake_service =
+      [[FakePrivacyPrimitiveServiceWithCallback alloc] init];
+  ios::provider::test::SetPrivacyPrimitiveServiceFactory(fake_service);
+
+  scoped_feature_list_.InitAndEnableFeature(
+      omnibox::kComposeboxDriveContextMenuOptionDisclaimer);
+
+  profile_->GetPrefs()->SetInteger(
+      contextual_search::kDriveConsentState,
+      static_cast<int>(contextual_search::DriveConsentState::kNotConsent));
+
+  SignIn();
+
+  id mock_browser_coordinator_commands =
+      OCMStrictProtocolMock(@protocol(BrowserCoordinatorCommands));
+  OCMExpect([mock_browser_coordinator_commands hideComposebox]);
+  [browser_->GetCommandDispatcher()
+      startDispatchingToTarget:mock_browser_coordinator_commands
+                   forProtocol:@protocol(BrowserCoordinatorCommands)];
+
+  id mock_scene_commands = OCMStrictProtocolMock(@protocol(SceneCommands));
+  OCMExpect([mock_scene_commands
+      openURLInNewTab:[OCMArg checkWithBlock:^BOOL(OpenNewTabCommand* command) {
+        return command.URL == GURL("https://example.com/privacy");
+      }]]);
+  [browser_->GetCommandDispatcher()
+      startDispatchingToTarget:mock_scene_commands
+                   forProtocol:@protocol(SceneCommands)];
+
+  [presenter presentDriveFilePicker];
+
+  EXPECT_TRUE(fake_service.showFlowCalled);
+  ASSERT_NE(fake_service.openURLCallback, nil);
+
+  fake_service.openURLCallback(
+      [NSURL URLWithString:@"https://example.com/privacy"]);
+
+  EXPECT_OCMOCK_VERIFY(mock_modal);
+  ASSERT_NE(dismissalCompletion, nil);
+
+  dismissalCompletion();
+
+  EXPECT_OCMOCK_VERIFY(mock_browser_coordinator_commands);
+  EXPECT_OCMOCK_VERIFY(mock_scene_commands);
+}
+
+// Tests that a delegated action with an invalid or non-HTTP(S) URL is ignored
+// without hiding the composebox or opening a tab.
+TEST_F(ComposeboxPickerPresenterTest,
+       TestPresentDriveFilePicker_DelegatedActionRejectsInvalidURL) {
+  FakePrivacyPrimitiveServiceWithCallback* fake_service =
+      [[FakePrivacyPrimitiveServiceWithCallback alloc] init];
+  ios::provider::test::SetPrivacyPrimitiveServiceFactory(fake_service);
+
+  scoped_feature_list_.InitAndEnableFeature(
+      omnibox::kComposeboxDriveContextMenuOptionDisclaimer);
+
+  profile_->GetPrefs()->SetInteger(
+      contextual_search::kDriveConsentState,
+      static_cast<int>(contextual_search::DriveConsentState::kNotConsent));
+
+  SignIn();
+
+  id mock_browser_coordinator_commands =
+      OCMStrictProtocolMock(@protocol(BrowserCoordinatorCommands));
+  [browser_->GetCommandDispatcher()
+      startDispatchingToTarget:mock_browser_coordinator_commands
+                   forProtocol:@protocol(BrowserCoordinatorCommands)];
+
+  id mock_scene_commands = OCMStrictProtocolMock(@protocol(SceneCommands));
+  [browser_->GetCommandDispatcher()
+      startDispatchingToTarget:mock_scene_commands
+                   forProtocol:@protocol(SceneCommands)];
+
+  base::HistogramTester histogram_tester;
+
+  [presenter_ presentDriveFilePicker];
+
+  EXPECT_TRUE(fake_service.showFlowCalled);
+  ASSERT_NE(fake_service.openURLCallback, nil);
+
+  // Invoke callback with non-HTTP(S) scheme.
+  fake_service.openURLCallback([NSURL URLWithString:@"javascript:void(0)"]);
+
+  // No commands should be dispatched to hide composebox or open tab.
+  EXPECT_OCMOCK_VERIFY(mock_browser_coordinator_commands);
+  EXPECT_OCMOCK_VERIFY(mock_scene_commands);
+
+  histogram_tester.ExpectTotalCount("Omnibox.MobileFusebox.PickerOutcome.Drive",
+                                    0);
+  histogram_tester.ExpectTotalCount("Omnibox.MobileFusebox.PickerOutcome", 0);
 }
 
 // Tests that picking an image records kAttachmentAdded for Camera.

@@ -16,7 +16,6 @@ import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.browser_controls.BrowserControlsStateProvider;
 import org.chromium.chrome.browser.tab_ui.TabContentManager;
-import org.chromium.chrome.browser.tab_ui.TabListMode;
 import org.chromium.chrome.browser.tab_ui.TabSwitcher;
 import org.chromium.chrome.browser.tabmodel.TabModel;
 import org.chromium.chrome.browser.tasks.tab_management.TabListEditorAction.ButtonType;
@@ -24,6 +23,7 @@ import org.chromium.chrome.browser.tasks.tab_management.TabListEditorAction.Icon
 import org.chromium.chrome.browser.tasks.tab_management.TabListEditorAction.ShowMode;
 import org.chromium.chrome.browser.tasks.tab_management.TabListEditorCoordinator.CreationMode;
 import org.chromium.chrome.browser.tasks.tab_management.TabListEditorCoordinator.TabListEditorController;
+import org.chromium.chrome.browser.tasks.tab_management.TabListMediator.TabListLayoutType;
 import org.chromium.chrome.browser.tasks.tab_management.TabUiMetricsHelper.TabListEditorOpenMetricGroups;
 import org.chromium.chrome.browser.ui.edge_to_edge.EdgeToEdgeController;
 import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager;
@@ -49,7 +49,6 @@ public class TabListEditorManager {
     private final MonotonicObservableSupplier<TabModel> mCurrentTabModelSupplier;
     private final TabContentManager mTabContentManager;
     private final TabListCoordinator mTabListCoordinator;
-    private final @TabListMode int mMode;
     private final SettableMonotonicObservableSupplier<TabListEditorController> mControllerSupplier =
             ObservableSuppliers.createMonotonic();
     private final TabGroupCreationDialogManager mTabGroupCreationDialogManager;
@@ -68,7 +67,6 @@ public class TabListEditorManager {
      * @param currentTabModelSupplier The supplier of the current {@link TabModel}.
      * @param tabContentManager The {@link TabContentManager} for thumbnails.
      * @param tabListCoordinator The parent {@link TabListCoordinator}.
-     * @param mode The {@link TabListMode} of the tab list (grid, list, etc.).
      * @param onTabGroupCreation Should be run when the UI is used to create a tab group.
      * @param edgeToEdgeSupplier Supplier to the {@link EdgeToEdgeController} instance.
      */
@@ -82,7 +80,6 @@ public class TabListEditorManager {
             TabContentManager tabContentManager,
             TabListCoordinator tabListCoordinator,
             BottomSheetController bottomSheetController,
-            @TabListMode int mode,
             @Nullable Runnable onTabGroupCreation,
             @Nullable DesktopWindowStateManager desktopWindowStateManager,
             MonotonicObservableSupplier<EdgeToEdgeController> edgeToEdgeSupplier) {
@@ -94,7 +91,6 @@ public class TabListEditorManager {
         mTabContentManager = tabContentManager;
         mTabListCoordinator = tabListCoordinator;
         mBottomSheetController = bottomSheetController;
-        mMode = mode;
         mTabGroupCreationDialogManager =
                 new TabGroupCreationDialogManager(activity, modalDialogManager, onTabGroupCreation);
         mDesktopWindowStateManager = desktopWindowStateManager;
@@ -138,8 +134,7 @@ public class TabListEditorManager {
                             mCurrentTabModelSupplier,
                             mTabContentManager,
                             mTabListCoordinator::setRecyclerViewPosition,
-                            mMode,
-                            /* displayGroups= */ true,
+                            TabListLayoutType.GROUPED,
                             mSnackbarManager,
                             mBottomSheetController,
                             TabProperties.TabActionState.SELECTABLE,

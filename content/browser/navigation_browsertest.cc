@@ -212,7 +212,7 @@ class RenderFrameHostFactoryForHistoryBackInterceptor
       const blink::LocalFrameToken& frame_token,
       const blink::DocumentToken& document_token,
       base::UnguessableToken devtools_frame_token,
-      const base::UnguessableToken& initiator_state_token,
+      const blink::InitiatorStateToken& initiator_state_token,
       bool renderer_initiated_creation,
       RenderFrameHostImpl::LifecycleStateImpl lifecycle_state,
       scoped_refptr<BrowsingContextState> browsing_context_state) override {
@@ -4091,14 +4091,14 @@ IN_PROC_BROWSER_TEST_F(NavigationBrowserTest,
     })
   )"));
 
-  RenderFrameHost* openee_rfh =
+  RenderFrameHostImpl* openee_rfh = static_cast<RenderFrameHostImpl*>(
       static_cast<WebContentsImpl*>(openee_shell->web_contents())
-          ->GetPrimaryMainFrame();
+          ->GetPrimaryMainFrame());
   // Issue a KeepAlive for the navigation state so that the PolicyContainerHost
   // will still exist after the initiator RenderFrameHost is gone.
   mojo::PendingRemote<blink::mojom::NavigationStateKeepAliveHandle> keep_alive;
-  static_cast<RenderFrameHostImpl*>(openee_rfh)
-      ->IssueKeepAliveHandle(keep_alive.InitWithNewPipeAndPassReceiver());
+  openee_rfh->IssueKeepAliveHandle(keep_alive.InitWithNewPipeAndPassReceiver(),
+                                   openee_rfh->current_initiator_state_token());
 
   auto initiator_global_token = openee_rfh->GetGlobalFrameToken();
   base::RunLoop loop;

@@ -764,7 +764,7 @@ targets.mixin(
             "device_os": "CD1A.260714.001.A9",
             "device_type": "kodiak",
             "os": "Android",
-            "pool": "chromium.tests.gpu",
+            "pool": "chromium.tests.gpu.experimental",
         },
     ),
 )
@@ -1774,9 +1774,9 @@ targets.mixin(
 )
 
 targets.mixin(
-    name = "no_xvfb",
+    name = "no_xvfb_for_real_hardware",
     linux_args = [
-        "--no-xvfb",
+        targets.magic_args.GPU_NO_XVFB_FOR_REAL_HARDWARE,
     ],
 )
 

@@ -9,6 +9,7 @@
 #include "base/feature_list.h"
 #include "build/build_config.h"
 #include "ui/accessibility/ax_base_export.h"
+#include "ui/accessibility/ax_features.mojom-features.h"
 
 // This file declares base::Features related to the ui/accessibility code.
 //
@@ -205,10 +206,6 @@ AX_BASE_EXPORT bool IsAccessibilityGroupLocationChangeByCommonAncestorEnabled();
 // TODO(accessibility): Should this be moved to ash_features.cc?
 AX_BASE_EXPORT bool IsDictationOfflineAvailable();
 
-// Adds option to enable Accessibility accelerator.
-AX_BASE_EXPORT BASE_DECLARE_FEATURE(kAccessibilityAccelerator);
-AX_BASE_EXPORT bool IsAccessibilityAcceleratorEnabled();
-
 // Adds option to limit the movement on the screen.
 AX_BASE_EXPORT BASE_DECLARE_FEATURE(kAccessibilityReducedAnimations);
 AX_BASE_EXPORT bool IsAccessibilityReducedAnimationsEnabled();
@@ -240,9 +237,6 @@ AX_BASE_EXPORT bool IsAccessibilityInvertedMouseCursorEnabled();
 
 AX_BASE_EXPORT BASE_DECLARE_FEATURE(kAccessibilityManifestV3ChromeVox);
 AX_BASE_EXPORT bool IsAccessibilityManifestV3EnabledForChromeVox();
-
-AX_BASE_EXPORT BASE_DECLARE_FEATURE(kAccessibilityManifestV3EspeakNGTts);
-AX_BASE_EXPORT bool IsAccessibilityManifestV3EnabledForEspeakNGTts();
 
 AX_BASE_EXPORT BASE_DECLARE_FEATURE(kAccessibilityManifestV3GoogleTts);
 AX_BASE_EXPORT bool IsAccessibilityManifestV3EnabledForGoogleTts();
@@ -280,12 +274,12 @@ AX_BASE_EXPORT BASE_DECLARE_FEATURE(
 AX_BASE_EXPORT BASE_DECLARE_FEATURE(kAccessibilityAndroidMath);
 AX_BASE_EXPORT bool IsAccessibilityAndroidMathEnabled();
 
-// Controls the new native C++ implementation for Read Aloud on Android,
-// replacing the previous Speakr service integration.
-AX_BASE_EXPORT BASE_DECLARE_FEATURE(kReadAloudNative);
-AX_BASE_EXPORT bool IsReadAloudNativeEnabled();
-
 #endif  // BUILDFLAG(IS_ANDROID)
+
+// Controls the new native C++ implementation for Read Aloud,
+// replacing the previous Speakr service integration.
+using ax::mojom::features::kReadAloudNative;
+AX_BASE_EXPORT bool IsReadAloudNativeEnabled();
 
 #if !BUILDFLAG(IS_ANDROID)
 // Use the AXTree fixing code, which may be an assortment of different

@@ -8,7 +8,8 @@ import type {AiTaskboxElement} from './ai_taskbox.js';
 import {TodoItemVariant} from './todo_item.js';
 
 export function getHtml(this: AiTaskboxElement) {
-  return this.showingReadingList_ ? html`
+  return html`
+${this.showingReadingList_ ? html`
     <main id="reading-list-view" @feedback-changed="${this.onFeedbackChanged_}">
       <section class="header-section">
         <div class="header-title-container">
@@ -49,7 +50,7 @@ export function getHtml(this: AiTaskboxElement) {
     <main id="dashboard-view" @feedback-changed="${this.onFeedbackChanged_}">
         <section class="header-section">
             <!-- TODO(crbug.com/519576944): Replace with the dynamic greeting title. -->
-            <h1>AI Taskbox</h1>
+            <h1>LaunchPad</h1>
             <div class="header-buttons">
               <cr-button
                   ?disabled="${(this.readingListTodos?.length || 0) === 0}"
@@ -351,5 +352,5 @@ export function getHtml(this: AiTaskboxElement) {
           </button>
         </cr-action-menu>
     </main>
-  `;
+  `}`;
 }

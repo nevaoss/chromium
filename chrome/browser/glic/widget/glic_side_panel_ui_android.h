@@ -16,6 +16,7 @@
 #include "chrome/browser/glic/host/host.h"
 #include "chrome/browser/glic/public/glic_side_panel_coordinator.h"
 #include "chrome/browser/glic/service/glic_ui_embedder.h"
+#include "chrome/browser/pwc/privileged_web_contents.h"
 #include "chrome/browser/ui/browser_window/public/browser_collection_observer.h"
 #include "components/embedder_support/android/delegate/web_contents_delegate_android.h"
 #include "content/public/browser/keyboard_event_processing_result.h"
@@ -54,9 +55,11 @@ class PanelFocusDependentHotkeyManager;
 class GlicSidePanelUi
     : public GlicUiEmbedder,
       public Host::EmbedderDelegate,
+      public Host::Observer,
       public LocalHotkeyManager::Panel,
       public BrowserCollectionObserver,
-      public web_contents_delegate_android::WebContentsDelegateAndroid {
+      public web_contents_delegate_android::WebContentsDelegateAndroid,
+      public pwc::PrivilegedWebContents::EmbedderDelegate {
  public:
   GlicSidePanelUi(Profile* profile,
                   base::WeakPtr<tabs::TabInterface> tab,
@@ -92,7 +95,12 @@ class GlicSidePanelUi
   void OnReload() override;
   void OnMicrophoneStatusChanged(mojom::MicrophoneStatus status) override {}
 
-  // web_contents_delegate_android::WebContentsDelegateAndroid:
+  // Host::Observer:
+  void ActiveWebContentsChanged(content::WebContents* new_contents) override;
+
+  // web_contents_delegate_android::WebContentsDelegateAndroid and
+  // pwc::PrivilegedWebContents::EmbedderDelegate:
+  void ContentsZoomChange(bool zoom_in) override;
   content::KeyboardEventProcessingResult PreHandleKeyboardEvent(
       content::WebContents* source,
       const input::NativeWebKeyboardEvent& event) override;
@@ -155,6 +163,8 @@ class GlicSidePanelUi
   raw_ptr<Profile> profile_;
 
   std::unique_ptr<GlicScreenshotCapturer> screenshot_capturer_;
+
+  base::ScopedObservation<Host, Host::Observer> host_observation_{this};
 
   base::WeakPtrFactory<GlicSidePanelUi> weak_ptr_factory_{this};
 };

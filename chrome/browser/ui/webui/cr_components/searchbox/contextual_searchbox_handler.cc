@@ -524,6 +524,14 @@ ContextualSearchboxHandler::ContextualSearchboxHandler(
               web_contents,
               this,
               screenshare_delegate)) {
+  if (auto* aim_eligibility_service =
+          AimEligibilityServiceFactory::GetForProfile(profile)) {
+    aim_eligibility_subscription_ =
+        aim_eligibility_service->RegisterEligibilityChangedCallback(
+            base::BindRepeating(
+                &ContextualSearchboxHandler::OnAimEligibilityChanged,
+                weak_ptr_factory_.GetWeakPtr()));
+  }
   InitializeInputStateModel();
   tab_favicon_helper_ = std::make_unique<ContextualSearchboxTabFaviconHelper>();
 
@@ -711,6 +719,21 @@ void ContextualSearchboxHandler::ResetInputStateModel() {
   input_state_model_.reset();
   smart_tab_sharing_active_for_thread_.reset();
   last_sent_smart_tab_sharing_active_.reset();
+}
+
+void ContextualSearchboxHandler::OnAimEligibilityChanged() {
+  if (!input_state_model_) {
+    InitializeInputStateModel();
+    return;
+  }
+  auto* aim_eligibility_service =
+      AimEligibilityServiceFactory::GetForProfile(profile_);
+  const omnibox::SearchboxConfig* config =
+      aim_eligibility_service ? aim_eligibility_service->GetSearchboxConfig()
+                              : nullptr;
+  if (config) {
+    input_state_model_->UpdateConfig(*config);
+  }
 }
 
 contextual_search::ContextualSearchMetricsRecorder*
@@ -1619,8 +1642,16 @@ void ContextualSearchboxHandler::RecordTabAddedMetric(
 bool ContextualSearchboxHandler::ShouldOpenInLensSidePanel(
     content::WebContents* active_web_contents,
     contextual_search::ContextualSearchSessionHandle* session_handle) {
-  if (!active_web_contents ||
-      session_handle->GetSubmittedContextTokens().size() != 1 ||
+  if (!active_web_contents || !session_handle) {
+    return false;
+  }
+
+  // Only queries with a single context token matching the active tab are
+  // eligible to route to the Lens/Contextual Tasks side panel directly.
+  // Multi-tab queries or queries where the active tab is not in context
+  // must route through OpenURL to be intercepted by
+  // ContextualTasksNavigationThrottle with full session handoff.
+  if (session_handle->GetSubmittedContextTokens().size() != 1 ||
       !session_handle->IsTabInContext(
           sessions::SessionTabHelper::IdForTab(active_web_contents))) {
     return false;
@@ -1640,14 +1671,13 @@ bool ContextualSearchboxHandler::ShouldOpenInLensSidePanel(
     return true;
   }
 
-  // Otherwise, fallback to the Lens side panel if Lens Overlay and AIM M3 are
-  // enabled and there is only a single context token.
-  if (session_handle->GetSubmittedContextTokens().size() != 1) {
-    return false;
-  }
-
+  // Fallback to the Lens side panel if Lens Overlay and AIM M3 are enabled and
+  // there is only a single context token.
   auto* browser_window_interface =
       webui::GetBrowserWindowInterface(web_contents_);
+  if (!browser_window_interface) {
+    return false;
+  }
   auto* entry_point_controller =
       lens::LensOverlayEntryPointController::From(browser_window_interface);
   return entry_point_controller && entry_point_controller->IsEnabled() &&
@@ -2452,7 +2482,7 @@ void ContextualSearchboxHandler::UploadScreenshot(
 void ContextualSearchboxHandler::AddFileContextToPage(
     const base::UnguessableToken& token,
     searchbox::mojom::SelectedFileInfoPtr file_info) {
-  SearchboxHandler::AddFileContextFromBrowser(token, std::move(file_info));
+  AddFileContextFromBrowser(token, std::move(file_info));
 }
 
 void ContextualSearchboxHandler::OnScreenshotMenuClosed() {

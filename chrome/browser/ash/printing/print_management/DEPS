@@ -14,7 +14,6 @@ include_rules = [
   # Files residing in certain directories (e.g., //chrome/browser) are listed
   # individually. Other dependencies within //chrome are listed on a per-
   # directory basis. See //tools/chromeos/gen_deps.sh for details.
-  "+chrome/browser/ash/browser_delegate/browser_delegate.h",
   "+chrome/browser/ash/printing",
   "+chrome/browser/ash/system_web_apps/test_support",
   "+chrome/browser/chromeos/printing",
@@ -23,7 +22,6 @@ include_rules = [
   "+chrome/browser/profiles",
   "+chrome/browser/ui/ash/system_web_apps",
   "+chrome/browser/ui/browser_window/public",
-  "+chrome/browser/ui/chrome_pages.h",
   "+chrome/browser/web_applications/test",
   "+chrome/test/base",
 ]

@@ -57,6 +57,7 @@
 <translation id="1181037720776840403">برداشتن</translation>
 <translation id="1183189057400844278">‏برای اطمینان از اینکه همیشه می‌توانید از گذرواژه‌های ذخیره‌شده در «حساب Google» خود استفاده کنید، هویتتان را درستی‌سنجی کنید</translation>
 <translation id="1187810343066461819">نشانک‌ها، سابقه، و موارد دیگر نیز از این خودرو حذف شود</translation>
+<translation id="1191987227666124897">درخواست انصراف دادن</translation>
 <translation id="1193729455103054076">از گذرواژه قوی استفاده شود؟</translation>
 <translation id="11947597112837849">نشانی ایمیل</translation>
 <translation id="1197267115302279827">انتقال نشانک‌ها</translation>
@@ -105,6 +106,7 @@
 <translation id="138181280295369883">به سیستم وارد شوید تا اطلاعات ذخیره‌شده و موارد دیگر را در همه دستگاه‌های خود دریافت کنید</translation>
 <translation id="1381838868249179644">برای کمک به حفظ امنیت شما، اجازه‌های چند سایت برداشته شد</translation>
 <translation id="1383876407941801731">جستجو</translation>
+<translation id="1384568202352682721">ذخیره کردن به‌عنوان…</translation>
 <translation id="1384704387250346179">‏ترجمه تصویر با «لنز Google» <ph name="BEGIN_NEW" />جدید<ph name="END_NEW" /></translation>
 <translation id="1390418506739274310">‏ممکن است سابقه را از برنامه‌های دیگری که پیوندها را در Chrome باز می‌کنند مشاهده کنید. ممکن است «حساب Google» شما انواع دیگری از سابقه مرور در <ph name="BEGIN_LINK" />myactivity.google.com<ph name="END_LINK" /> داشته باشد.</translation>
 <translation id="139752016751285248">برگ زیرین اطلاعات آماری قیمت به‌صورت کامل باز شده است</translation>
@@ -133,6 +135,7 @@
 <translation id="147982357559798527">تغییر کرده است</translation>
 <translation id="1480287803138246127">‏ممکن است بخشی از سابقه شما اینجا نمایش داده نشود. برای دیدن کل سابقه Chrome، آن را به‌صورت کامل باز کنید.</translation>
 <translation id="1483493594462132177">ارسال</translation>
+<translation id="1485343711570311792">باز کردن در <ph name="NATIVE_APP_NAME" /> • از <ph name="DEVICE_NAME" /></translation>
 <translation id="1495677929897281669">برگشتن به برگه</translation>
 <translation id="1496514951988037011">نام کاربری</translation>
 <translation id="1501480321619201731">حذف گروه</translation>
@@ -160,7 +163,7 @@
 <translation id="1598163867407640634">استفاده از <ph name="SITE_ETLD_PLUS_ONE" /> با <ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /></translation>
 <translation id="1598770407402123677">‫<ph name="TAB_TITLE" />، زبانه ضبط سنجاق‌شده</translation>
 <translation id="1600756129506222718">‫<ph name="TAB_TITLE" />، زبانه هم‌رسانی</translation>
-<translation id="1601378265092360672">داده‌های مرور شامل سابقه مرور، کوکی‌ها و دیگر داده‌های سایت، تصاویر و فایل‌های ذخیره‌شده در حافظه نهان، و زبانه های باز است</translation>
+<translation id="1601378265092360672">داده‌های مرور شامل سابقه مرور، کوکی‌ها و سایر داده‌های سایت، تصاویر و فایل‌های ذخیره‌شده در حافظه نهان، و زبانه‌های باز است</translation>
 <translation id="160275202205869636">‏وقتی روشن باشد، از داده‌های «حساب Google» شما استفاده می‌شود و داده‌ها در آن ذخیره می‌شود. وقتی خاموش باشد، داده‌ها فقط در این دستگاه ذخیره می‌شود.</translation>
 <translation id="1628019612362412531">{NUM_SELECTED,plural, =1{حذف ۱ مورد انتخاب‌شده}one{حذف # مورد انتخاب‌شده}other{حذف # مورد انتخاب‌شده}}</translation>
 <translation id="1639239467298939599">در حال بارگیری</translation>
@@ -210,6 +213,7 @@
 <translation id="1832459821645506983">بله، موافقم</translation>
 <translation id="1845958458910716240">‏برای محافظت از داده‌هایتان، به Chrome اجازه داده می‌شود اجازه‌های سایت‌هایی را که اخیراً از آن‌ها بازدید نکرده‌اید بردارد</translation>
 <translation id="1851551847729706116">درحال هم‌رسانی <ph name="TAB_NAME" /> در این زبانه</translation>
+<translation id="1855268219431673036">صفحه <ph name="CURRENT_PAGE" /> از <ph name="TOTAL_PAGE_COUNT" /></translation>
 <translation id="1869691326892615940">گذرواژه‌های ایمن‌تر، ورود به سیستم سریع‌تر</translation>
 <translation id="1871098866036088250">‏باز کردن در مرورگر Chrome</translation>
 <translation id="1877026089748256423">‏نسخه Chrome قدیمی است</translation>
@@ -327,6 +331,7 @@
 <translation id="232137538351753795">برای برگشتن، از لبه راست تند بکشید</translation>
 <translation id="2323763861024343754">فضای ذخیره‌سازی سایت</translation>
 <translation id="2327445548174191329">از <ph name="DEVICE_NAME" /></translation>
+<translation id="232757965409810352">ذخیره کردن صفحه به‌عنوان…</translation>
 <translation id="2328474416100889417">همه دسترسی به گروه زبانه «<ph name="GROUP_NAME" />» را فوراً ازدست می‌دهند و همه پیوندهای دعوت غیرفعال می‌شود</translation>
 <translation id="2329500425421091035">‏معرفی «حالت هوشواره‌ای» در Chrome</translation>
 <translation id="2330186936255788117">نشانک‌های بیشتر</translation>
@@ -842,7 +847,7 @@
 <translation id="4358630185957185589">‏باز کردن برنامه «لنز Google»</translation>
 <translation id="435863252455918214">‏مدیریت افزونه‌ها در منو اصلی Chrome</translation>
 <translation id="4359809482106103048">ایمنی در یک نگاه</translation>
-<translation id="4374192654218566997">‏‫\n\nهمچنین می‌توانید این داده‌ها را از این دستگاه بردارید:</translation>
+<translation id="4374192654218566997">‏\n\nهمچنین می‌توانید این داده‌ها را از این دستگاه بردارید:</translation>
 <translation id="4378154925671717803">تلفن</translation>
 <translation id="4380055775103003110">اگر این مشکل باز هم اتفاق افتاد، می‌توانید روش‌های دیگر را برای ادامه دادن در <ph name="SITE_ETLD_PLUS_ONE" /> امتحان کنید.</translation>
 <translation id="4384468725000734951">‏استفاده از Sogou برای جستجو</translation>
@@ -1118,7 +1123,7 @@
 <translation id="5465437530117042974">تغییرات «برگ زیرین» بسته شد.</translation>
 <translation id="5469852975082458401">‏با نشانگر نوشتار می‌توانید صفحه‌ها را پیمایش کنید. برای خاموش شدن، F7 را فشار دهید.</translation>
 <translation id="5471273988133666918">زبانه <ph name="TAB_TITLE" /> را نمی‌توان منتقل کرد</translation>
-<translation id="5478718673237429220">لزوم «دسترسی به دستگاه» میانای انسانی</translation>
+<translation id="5478718673237429220">دسترسی به دستگاه میانای انسانی لازم است</translation>
 <translation id="548278423535722844">‏باز کردن در برنامه Maps</translation>
 <translation id="5489222148748465285">‏Chrome به جستجو ادامه دهد؟</translation>
 <translation id="5490848366863949315">‫<ph name="TAB_TITLE" />، زبانه تصویردرتصویر چندانتخابی</translation>
@@ -1338,6 +1343,7 @@
 <translation id="634208815998129842">مدیر وظایف</translation>
 <translation id="6343495912647200061">{SHIPPING_ADDRESS,plural, =1{‏<ph name="SHIPPING_ADDRESS_PREVIEW" />\u2026 و <ph name="NUMBER_OF_ADDITIONAL_ADDRESSES" /> نشانی دیگر}one{‏<ph name="SHIPPING_ADDRESS_PREVIEW" />\u2026 و <ph name="NUMBER_OF_ADDITIONAL_ADDRESSES" /> نشانی دیگر}other{‏<ph name="SHIPPING_ADDRESS_PREVIEW" />\u2026 و <ph name="NUMBER_OF_ADDITIONAL_ADDRESSES" /> نشانی دیگر}}</translation>
 <translation id="6345878117466430440">علامت‌گذاری به‌عنوان خوانده‌شده</translation>
+<translation id="63490081267265251">‏سایت‌هایی که بازدید می‌کنید، ازجمله Google، مسئول تعیین نحوه پاسخ به این درخواست هستند. بسته به قوانین منطقه‌تان، سایت‌ها ممکن است با محدود کردن فروش و هم‌رسانی داده‌هایتان یا استفاده از آن‌ها برای آگهی‌های شخصی‌سازی‌شده پاسخ دهند. <ph name="BEGIN_LINK" />بیشتر بدانید<ph name="END_LINK" /></translation>
 <translation id="6350745006329795504">مدیریت دستگاه‌ها</translation>
 <translation id="6356893102071098867">بررسی کنید حساب درست را انتخاب کرده باشید</translation>
 <translation id="6364438453358674297">پیشنهاد از سابقه حذف شود؟</translation>
@@ -1662,6 +1668,7 @@
 <translation id="7493994139787901920"><ph name="VERSION" /> (زمان به‌روزرسانی <ph name="TIME_SINCE_UPDATE" />)</translation>
 <translation id="7498271377022651285">لطفاً صبر کنید...</translation>
 <translation id="7499065150275272675">‫<ph name="TAB_TITLE" />، زبانه بی‌صدای سنجاق‌شده</translation>
+<translation id="7500851014030446046">‏درحال بارگیری PDF</translation>
 <translation id="7501135638693251872">همه نشانک‌ها</translation>
 <translation id="7507207699631365376">به <ph name="BEGIN_LINK" />خط‌مشی رازداری<ph name="END_LINK" /> این ارائه‌دهنده بروید</translation>
 <translation id="750886945254958667">این گروه را نگه دارید تا بعداً به آن برگه اضافه کنید یا اگر دیگر نمی‌خواهید به آن دسترسی داشته باشید، آن را ترک کنید</translation>
@@ -1729,6 +1736,7 @@
 <translation id="7774809984919390718">{PAYMENT_METHOD,plural, =1{‏<ph name="PAYMENT_METHOD_PREVIEW" />\u2026 و <ph name="NUMBER_OF_ADDITIONAL_PAYMENT_METHODS" /> روش پرداخت دیگر}one{‏<ph name="PAYMENT_METHOD_PREVIEW" />\u2026 و <ph name="NUMBER_OF_ADDITIONAL_PAYMENT_METHODS" /> روش پرداخت دیگر}other{‏<ph name="PAYMENT_METHOD_PREVIEW" />\u2026 و <ph name="NUMBER_OF_ADDITIONAL_PAYMENT_METHODS" /> روش پرداخت دیگر}}</translation>
 <translation id="777637629667389858">‏وقتی به سیستم وارد شده باشید، در سراسر سرویس‌های Google از شما محافظت می‌کند.</translation>
 <translation id="7778840695157240389">برای خواندن داستان‌های جدید، بعداً دوباره سربزنید</translation>
+<translation id="7780992949171378848">ارسال کردن درخواست انصراف به سایت‌ها درباره استفاده از داده‌های شما</translation>
 <translation id="7791543448312431591">افزودن</translation>
 <translation id="7792388396321542707">توقف هم‌رسانی</translation>
 <translation id="780287761701992588">نشانک‌ها، گذرواژه‌ها، و موارد دیگر را در همه دستگاه‌هایتان دریافت کنید</translation>
@@ -1874,6 +1882,7 @@
 <translation id="8313599942510782709">تکلیفتان هنوز درحال انجام است</translation>
 <translation id="8317318757008452355">باز کردن گزینه‌های چاپ</translation>
 <translation id="8320212361750431956">فعالیت اخیر</translation>
+<translation id="8322452989119079156">باز کردن در <ph name="NATIVE_APP_NAME" /> - ارسال‌شده از <ph name="DEVICE_NAME" /></translation>
 <translation id="832514020744584629"><ph name="PREF_TITLE" />  <ph name="BEGIN_NEW" />جدید<ph name="END_NEW" /></translation>
 <translation id="8333026248928723981">نشانک‌ها و فهرست‌ها</translation>
 <translation id="8342727528718219152">‏‫Chrome درباره سایت‌هایی که ممکن است اعلان‌های زیادی ارسال کنند به شما اطلاع می‌دهد</translation>
@@ -1966,7 +1975,7 @@
 <translation id="867914734596684889">نشان دادن یا پنهان کردن نوار نشانک‌ها</translation>
 <translation id="8683039184091909753">تصویر</translation>
 <translation id="8688183792442786085">‫<ph name="TAB_TITLE" />، زبانه انتخاب‌شده</translation>
-<translation id="8694622119922491927">‏‫<ph name="APP_NAME" /> برای این سایت باید اجازه «دسترسی به دستگاه‌های میانای انسانی» (HID) داشته باشد. می‌توانید این تنظیم را بعداً در «تنظیمات &gt; برنامه‌ها &gt; دسترسی ویژه برنامه» تغییر دهید.</translation>
+<translation id="8694622119922491927">‏‫<ph name="APP_NAME" /> برای دست‌یابی به دستگاه‌های میانای انسانی (HID) برای این سایت به اجازه نیاز دارد. می‌توانید این تنظیم را بعداً در «تنظیمات &gt; برنامه‌ها &gt; دسترسی ویژه برنامه» تغییر دهید.</translation>
 <translation id="8696297579102085705">ارسال کردن به دستگاه شما</translation>
 <translation id="8699120352855309748">ترجمه این زبان‌ها پیشنهاد نشود</translation>
 <translation id="8700565880437506364">‏معرفی «Gemini در Chrome»</translation>

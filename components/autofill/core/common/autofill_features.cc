@@ -564,10 +564,15 @@ BASE_FEATURE_PARAM(base::TimeDelta,
 BASE_FEATURE(kAutofillAtMemoryInactivityNudge,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
+// Kill switch: If enabled, AtMemory fills by simulating a paste. If disabled,
+// AtMemory uses ExtendSelectionAndReplace().
+// TODO(crbug.com/553143213): Clean up when PasteText() has proved robust.
+BASE_FEATURE(kAutofillAtMemoryPasteText, base::FEATURE_ENABLED_BY_DEFAULT);
+
 // Controls whether the previously filled suggestions from AtMemory are shown.
 // Takes no effect when `kAutofillAtMemorySearchStatefulness` is disabled.
 BASE_FEATURE(kAutofillAtMemoryPreviouslyFilled,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // When enabled, preserves the active AtMemory search query and fetched
 // suggestions when the popup is dismissed, restoring them if the user reopens
@@ -853,6 +858,12 @@ BASE_FEATURE(kAutofillGreekRegexes, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kAutofillIgnoreUnchangedFrameResizes,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
+// When enabled, corrects missclassification of NAME_LAST as NAME_LAST_SECOND in
+// an absence of NAME_LAST_FIRST.
+// TODO(crbug.com/400995432): Clean-up when launched.
+BASE_FEATURE(kAutofillImproveClassificationForTwoWordLastNames,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 // If enabled, global rules are applied to rewrite empty string values like
 // "null" to an empty string. These rules are applied for all types during
 // address normalization.
@@ -984,12 +995,6 @@ BASE_FEATURE(kAutofillRestrictOtpToSameTldPlusOne,
 // TODO(crbug.com/435646513) - Clean-up after feature lands at 100% Stable.
 // Enables the new experimental server-side signatures for evaluation purposes.
 BASE_FEATURE(kAutofillServerExperimentalSignatures,
-             base::FEATURE_ENABLED_BY_DEFAULT);
-
-// TODO(crbug.com/470949499) - Clean-up after feature lands at 100% Stable.
-// Enables querying the server for predictions before the form has been parsed
-// locally.
-BASE_FEATURE(kAutofillServerQueryPredictionsEarly,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enables uploading of more data to the Autofill server to use for computing

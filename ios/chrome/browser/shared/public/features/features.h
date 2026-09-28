@@ -71,9 +71,6 @@ BASE_DECLARE_FEATURE(kLensOverlayNavigationHistory);
 // Feature flag to add a custom bottom sheet presentation Lens results.
 BASE_DECLARE_FEATURE(kLensOverlayCustomBottomSheet);
 
-// Feature flag to check headers for lens searches.
-BASE_DECLARE_FEATURE(kLensSearchHeadersCheckEnabled);
-
 // Variations of Composebox.
 extern const char kComposeboxParam[];
 extern const char kComposeboxParamAllOmniboxEntrypoints[];
@@ -165,6 +162,17 @@ bool IsNewSyncOptInIllustration();
 
 // Feature flag to disable Lens LVF features.
 BASE_DECLARE_FEATURE(kDisableLensCamera);
+
+// Feature flag to enable Lens on iPad.
+BASE_DECLARE_FEATURE(kEnableLensOnIPad);
+
+// Feature param for kEnableLensOnIPad presentation style.
+inline constexpr char kEnableLensOnIPadPresentationStyleParam[] =
+    "presentation-style";
+inline constexpr char kEnableLensOnIPadPresentationStyleSidePanel[] =
+    "side-panel";
+inline constexpr char kEnableLensOnIPadPresentationStyleBottomSheet[] =
+    "bottom-sheet";
 
 // Feature flag that allows the Auto-deletion feature to clear all downloaded
 // files scheduled for deletion on every application startup, regardless of when
@@ -336,15 +344,8 @@ BASE_DECLARE_FEATURE(kBlueDotOnToolsMenuButton);
 // Returns whether `kBlueDotOnToolsMenuButton` is enabled.
 bool IsBlueDotOnToolsMenuButtoneEnabled();
 
-// Feature flag to assign each managed account to its own separate profile.
-// DO NOT CHECK DIRECTLY, use AreSeparateProfilesForManagedAccountsEnabled()!
-BASE_DECLARE_FEATURE(kSeparateProfilesForManagedAccounts);
-
 // Killswitch for the reauth-first step in AuthenticationFlowInProfile.
 BASE_DECLARE_FEATURE(kAuthenticationFlowReauthFirstKillswitch);
-
-// Feature to control resyncing the omaha ping timer on foregrounding.
-BASE_DECLARE_FEATURE(kOmahaResyncTimerOnForeground);
 
 // Feature flag to enable Reactivation Notifications.
 BASE_DECLARE_FEATURE(kIOSReactivationNotifications);
@@ -389,16 +390,6 @@ BASE_DECLARE_FEATURE(kIOSOneTimeDefaultBrowserNotification);
 // are allowed.
 
 // Returns whether `kIOSReactivationNotifications` is enabled.
-
-// Feature to enable different text for the main header text on FRE sign-in
-// promo.
-BASE_DECLARE_FEATURE(kFRESignInHeaderTextUpdate);
-extern const base::FeatureParam<std::string> kFRESignInHeaderTextUpdateParam;
-extern const std::string_view kFRESignInHeaderTextUpdateParamArm0;
-extern const std::string_view kFRESignInHeaderTextUpdateParamArm1;
-
-// Returns whether 'kFRESignInHeaderTextUpdate' is enabled.
-bool FRESignInHeaderTextUpdate();
 
 // Enables Profile-specific push notification handling logic. When enabled, this
 // routes incoming notifications to the PushNotificationClientManager associated
@@ -508,12 +499,6 @@ BASE_DECLARE_FEATURE(kIOSProvidesAppNotificationSettings);
 // Feature flag to control whether default status API check and reporting are
 // enabled.
 BASE_DECLARE_FEATURE(kRunDefaultStatusCheck);
-
-// Feature flag to enable the custom color slider on the NTP.
-BASE_DECLARE_FEATURE(kNTPBackgroundColorSlider);
-
-// Checks if the custom color slider is enabled on the NTP.
-bool IsNTPBackgroundColorSliderEnabled();
 
 // Feature flag to enable downsampling user-uploaded NTP background images to
 // screen size. When disabled (default), images are loaded at full resolution.

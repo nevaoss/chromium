@@ -5,6 +5,7 @@
 module glic.mojom;
 
 import "chrome/browser/glic/host/glic_features.mojom";
+import "chrome/browser/ui/webui/ai_overlay_dialog/tools/tools.mojom";
 import "chrome/common/actor_webui.mojom";
 import "chrome/common/glic_enums.mojom";
 import "components/content_settings/core/common/content_settings_types.mojom";
@@ -305,6 +306,8 @@ struct WebClientInitialState {
   bool enable_get_tab_by_id;
   // Whether kGlicOpenPasswordManagerSettingsPageApi is enabled.
   bool enable_open_password_manager_settings_page;
+  // Whether kGlicOpenContactInfoSettingsPageApi is enabled.
+  bool enable_open_contact_info_settings_page;
   // Whether kGlicTrustFirstOnboarding is enabled.
   bool enable_trust_first_onboarding;
   // Whether the user has completed the onboarding flow.
@@ -1168,6 +1171,12 @@ interface WebClientHandler {
   CreateZeroStateSuggestionsHandler(
       pending_receiver<ZeroStateSuggestionsHandler> receiver);
 
+  // Creates the AI overlay tools handler. Only one handler can be bound at a
+  // time; calling this again replaces and terminates any previously bound
+  // handler.
+  CreateAiOverlayTools(
+      pending_receiver<ai_overlay_dialog.mojom.AiOverlayTools> receiver);
+
   // Creates a new tab. `url` must have a http or https protocol.
   // `tab_data` is null if the tab could not be created, which may happen if the
   // url or window_id is invalid.
@@ -1188,6 +1197,9 @@ interface WebClientHandler {
 
   // Opens the password manager settings page.
   OpenPasswordManagerSettingsPage();
+
+  // Opens the contact info settings page.
+  OpenContactInfoSettingsPage();
 
   // Set whether the panel can be manually resized.
   EnableDragResize(bool enabled);
@@ -2380,6 +2392,8 @@ enum HostCapability {
   kEnforcesPasteEligibility = 14,
   // Indicates that the host supports autofilling OTPs.
   kAttemptOtpFilling = 15,
+  // Indicates that the host supports exposing Chrome-defined tools.
+  kChromeTools = 16,
 };
 
 // @generate glic_api

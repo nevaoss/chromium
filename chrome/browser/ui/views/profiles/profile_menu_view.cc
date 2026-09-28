@@ -217,8 +217,6 @@ void ProfileMenuView::BuildMenu() {
         l10n_util::GetStringUTF16(IDS_PROFILE_MENU_PROFILES_LIST_TITLE));
   }
   BuildOtherProfilesSection(available_profiles);
-  base::UmaHistogramBoolean("ProfileChooser.HasProfilesShown",
-                            !available_profiles.empty());
 
   // Users should not be able to manage profiles from WebApps.
   if (!is_web_app) {
@@ -800,7 +798,8 @@ ProfileMenuView::GetIdentitySectionParams(const ProfileAttributesEntry& entry) {
         break;
       }
       // "Continue as" signin button.
-      account_info_for_signin_action = account_info_for_promos;
+      account_info_for_signin_action =
+          account_info_for_promos.GetCoreAccountInfo();
       if (account_preview_data_service) {
         if (std::optional<
                 signin::AccountPreviewDataService::AccountPreviewPreference>

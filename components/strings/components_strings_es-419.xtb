@@ -1458,6 +1458,7 @@ Para ocultar las opciones de pago más tarde, ve a la <ph name="BEGIN_LINK" />co
 <translation id="3495081129428749620">Buscar en la página
     <ph name="PAGE_TITLE" /></translation>
 <translation id="3495818359064790343">Salario</translation>
+<translation id="3496531230994554300">El aviso de la Billetera está totalmente abierto.</translation>
 <translation id="3497627066518778351">Revisar una lista de datos de sitios en el dispositivo en una ventana nueva</translation>
 <translation id="3498215018399854026">No pudimos comunicarnos con ninguno de tus padres. Vuelve a intentarlo.</translation>
 <translation id="350069200438440499">Nombre de archivo:</translation>
@@ -1548,6 +1549,7 @@ Para ocultar las opciones de pago más tarde, ve a la <ph name="BEGIN_LINK" />co
 <translation id="3634530185120165534">Bandeja 5</translation>
 <translation id="3634567936866541746">Ingresaste tu contraseña en un sitio engañoso. Para proteger tus cuentas, Chrome te recomienda revisar las contraseñas que tengas guardadas.</translation>
 <translation id="3638102297696182302">Reanudar Ayúdame a escribir. Presionar Tab y presionar Intro para abrir</translation>
+<translation id="3639626391482300575">Este IBAN se guardó en la Billetera de Google para que puedas usarlo en todos los productos de Google.</translation>
 <translation id="3642196846309122856">Intenta volver a descargar tus archivos</translation>
 <translation id="3642638418806704195">Aplicación:</translation>
 <translation id="3647286794400715637">Cada entrada de string de URL debe contener entre 1 y 2 URLs.</translation>
@@ -1560,7 +1562,6 @@ Para ocultar las opciones de pago más tarde, ve a la <ph name="BEGIN_LINK" />co
 <translation id="3655670868607891010">Si este mensaje aparece con frecuencia, haz clic aquí: <ph name="HELP_LINK" />.</translation>
 <translation id="3658742229777143148">Revisión</translation>
 <translation id="3659521826520353662">Qué sitios web definidos por el administrador se visitan y cuándo: <ph name="ALLOWLISTED_WEBSITES" /></translation>
-<translation id="3662040827609932717">Este IBAN se guardó en la Billetera de Google para que puedas usarlo en todos los servicios de Google.</translation>
 <translation id="3664479564786885722">Busca más opciones de compra en otras tiendas que vendan este producto.</translation>
 <translation id="3664782872746246217">Palabras clave:</translation>
 <translation id="3670030362669914947">Número</translation>
@@ -2614,7 +2615,6 @@ Para ocultar las opciones de pago más tarde, ve a la <ph name="BEGIN_LINK" />co
 <translation id="5414306071315087019">Compra ahora y paga después está disponible con Google Pay</translation>
 <translation id="5414446060143308245">Se debe revisar antes de transferir los archivos</translation>
 <translation id="5414511064953050917">Mover de todos modos</translation>
-<translation id="5418700249417444482">Las URLs de las páginas que visitas se envían a Google Cloud o a terceros para su análisis, y es posible que el administrador pueda verlas. Por ejemplo, es posible que se analicen para detectar sitios web no seguros o filtrarlos en función de las reglas establecidas por el administrador.</translation>
 <translation id="5419311651396341287">Es posible que el administrador pueda ver lo siguiente:</translation>
 <translation id="5423269318075950257">Seguimiento de precios</translation>
 <translation id="5426179911063097041"><ph name="SITE" /> quiere enviarte notificaciones</translation>
@@ -2635,7 +2635,6 @@ Para ocultar las opciones de pago más tarde, ve a la <ph name="BEGIN_LINK" />co
 <translation id="5447103258548475868">Guardar el pasaporte en la Billetera de Google</translation>
 <translation id="5447235695608032700">Permitir que <ph name="SITE" /> use la información que guardó sobre ti</translation>
 <translation id="5447973833955560753">Contraseña de recuperación</translation>
-<translation id="5451331376824595378">Cuando Chrome marca eventos de seguridad, se envían datos relacionados con los eventos a tu administrador. Esta información puede incluir URLs de las páginas que visitas en Chrome, URLs de páginas de las que copiaste datos, nombres de archivos o metadatos, direcciones IP, fallas en el navegador o las pestañas, y el nombre de usuario con el que accedes a aplicaciones basadas en la Web, a tu dispositivo y a Chrome.</translation>
 <translation id="5452270690849572955">No se encuentra esta página <ph name="HOST_NAME" /></translation>
 <translation id="5452923259299906094">Paga con la billetera electrónica y Pix</translation>
 <translation id="5455374756549232013">Marca de tiempo de política incorrecta</translation>
@@ -2670,6 +2669,7 @@ Para ocultar las opciones de pago más tarde, ve a la <ph name="BEGIN_LINK" />co
 <translation id="5499229993630251170">¿Quieres continuar esta conversación?</translation>
 <translation id="5506286895894263601">La lista no contiene accesos directos válidos.</translation>
 <translation id="5507756662695126555">No rechazo</translation>
+<translation id="5508515366054931524">El mensaje para verificar el correo electrónico está totalmente abierto</translation>
 <translation id="5509762909502811065">B0</translation>
 <translation id="5509780412636533143">Favoritos administrados</translation>
 <translation id="5510766032865166053">Es posible que lo hayan movido o borrado.</translation>
@@ -3181,7 +3181,6 @@ Para ocultar las opciones de pago más tarde, ve a la <ph name="BEGIN_LINK" />co
 <translation id="6361757823711327522">B7</translation>
 <translation id="6363786367719063276">Ver registros</translation>
 <translation id="6364095313648930329"><ph name="BEGIN_LINK" />Comprobar la configuración del proxy, firewall o DNS seguro<ph name="END_LINK" /></translation>
-<translation id="6365513578140103119">Confirmar automáticamente tus correos electrónicos</translation>
 <translation id="6366710531182496394">Grapas dobles a la izquierda</translation>
 <translation id="6367196786591004737">Borrar entrada</translation>
 <translation id="6370022303958842211">Las acciones de acceso a dispositivos, como los accesos a la cuenta (incluidos los motivos fallidos), cierres de sesión, bloqueos y desbloqueos</translation>
@@ -3306,6 +3305,7 @@ Para ocultar las opciones de pago más tarde, ve a la <ph name="BEGIN_LINK" />co
 <translation id="6578434528542148658">El ID de la extensión no es válido.</translation>
 <translation id="658230438113661756">Los atacantes del sitio que intentaste visitar podrían instalar software dañino que roba o borra elementos como tus contraseñas, fotos, mensajes o números de tarjeta de crédito. Chrome recomienda que regreses a un sitio seguro. <ph name="BEGIN_LEARN_MORE_LINK" />Más información sobre esta advertencia<ph name="END_LEARN_MORE_LINK" /></translation>
 <translation id="6583309742916093092">Almacenadas en la Billetera de Google</translation>
+<translation id="6585589684832019248">Esta tarjeta se guardó en la Billetera de Google para que puedas usarla en todos los productos de Google</translation>
 <translation id="6587893660316489419">Sobre B5</translation>
 <translation id="6587923378399804057">Vínculo que copiaste</translation>
 <translation id="6591833882275308647">Tu <ph name="DEVICE_TYPE" /> no está administrado.</translation>
@@ -3452,6 +3452,7 @@ Para ocultar las opciones de pago más tarde, ve a la <ph name="BEGIN_LINK" />co
 <translation id="6860888819347870819">Puede solicitar permiso para ingresar al modo de pantalla en pantalla</translation>
 <translation id="6864189428899665393">267 × 389 mm</translation>
 <translation id="6865412394715372076">No se puede verificar la tarjeta en este momento</translation>
+<translation id="6871073333584947219">Se cerró el aviso de la Billetera.</translation>
 <translation id="6871813064737840684">Historial de precios en la Web para esta opción</translation>
 <translation id="6873456682041376666">Bandeja superior</translation>
 <translation id="6874604403660855544">&amp;Rehacer Agregar</translation>
@@ -3907,7 +3908,6 @@ Detalles adicionales:
 <translation id="7615932826417658001">Agregar un documento de identificación</translation>
 <translation id="7616390733770379387">Las opciones se muestran en orden aleatorio.</translation>
 <translation id="7616645509853975347">Tu administrador activó Chrome Enterprise Connectors en tu navegador. Estos conectores tienen acceso a algunos de tus datos.</translation>
-<translation id="7616747402308801775">Esta tarjeta se guardó en la Billetera de Google para que puedas usarla en todos los servicios de Google</translation>
 <translation id="7617825962482469577">Sobre C7/C6</translation>
 <translation id="7619838219691048931">Final de la hoja</translation>
 <translation id="7621546470643449009">Crea una guía de observación de estrellas para principiantes que me ayude a aprender qué buscar en el cielo nocturno, incluidas 3 constelaciones fáciles de identificar</translation>
@@ -3972,6 +3972,7 @@ Detalles adicionales:
 <translation id="7705085181312584869">Ayúdame a escribir</translation>
 <translation id="7705992072972338699">Disco óptico (brillo intenso)</translation>
 <translation id="7706689436519265630">Los archivos que copias o mueves se envían a Google Cloud o a terceros para su análisis. Por ejemplo, es posible que se analicen en busca de datos sensibles o software malicioso y que se almacenen según las políticas de la empresa.</translation>
+<translation id="7709934467582922028">Se cerró el mensaje para verificar el correo electrónico</translation>
 <translation id="7714351089363296478">Acabas de visitarlo</translation>
 <translation id="7714404809393719981">Foto (semibrillante)</translation>
 <translation id="7714464543167945231">Certificado</translation>
@@ -4659,7 +4660,6 @@ Detalles adicionales:
 <translation id="8963117664422609631">Ir a la configuración del sitio</translation>
 <translation id="8963213021028234748"><ph name="MARKUP_1" />Sugerencias:<ph name="MARKUP_2" />Asegúrate de tener una conexión de datos.<ph name="MARKUP_3" />Vuelve a cargar esta pagina web más adelante.<ph name="MARKUP_4" />Comprueba la dirección que ingresaste.<ph name="MARKUP_5" /></translation>
 <translation id="8963969435440878110">Se borrarán tus archivos locales dentro de <ph name="HOURS" /> horas</translation>
-<translation id="8964904785315870349">Correo electrónico verificado</translation>
 <translation id="8968766641738584599">Guardar la tarjeta</translation>
 <translation id="8970887620466824814">Se produjo un error</translation>
 <translation id="8971063699422889582">El certificado del servidor ha caducado.</translation>
@@ -4870,6 +4870,7 @@ Detalles adicionales:
 <translation id="988159990683914416">Build para desarrolladores</translation>
 <translation id="989988560359834682">Modificar dirección</translation>
 <translation id="990164307229195234"><ph name="DEVICE_NAME" /> (<ph name="DISAMBIGUATION_LABEL" />)</translation>
+<translation id="990812705189376036">Prueba de árbol de Merkle</translation>
 <translation id="992110854164447044">La tarjeta virtual oculta tu tarjeta real para protegerte contra posibles fraudes. <ph name="IDS_AUTOFILL_VIRTUAL_CARD_ENROLLMENT_LEARN_MORE_LINK_LABEL" /></translation>
 <translation id="992115559265932548"><ph name="MICROSOFT_ACTIVE_DIRECTORY" /></translation>
 <translation id="992256792861109788">Rosa</translation>

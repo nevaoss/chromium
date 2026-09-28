@@ -63,6 +63,7 @@
 #include "components/omnibox/browser/omnibox_field_trial.h"
 #include "components/omnibox/browser/omnibox_metrics_constants.h"
 #include "components/omnibox/browser/omnibox_popup_selection.h"
+#include "components/omnibox/browser/omnibox_pref_names.h"
 #include "components/omnibox/browser/omnibox_prefs.h"
 #include "components/omnibox/browser/searchbox_utils.h"
 #include "components/omnibox/browser/vector_icons.h"
@@ -86,6 +87,7 @@
 #include "third_party/omnibox_proto/rich_answer_template.pb.h"
 #include "third_party/omnibox_proto/rule_set.pb.h"
 #include "third_party/omnibox_proto/searchbox_config.pb.h"
+#include "third_party/omnibox_proto/suggest_template_info.pb.h"
 #include "third_party/skia/include/core/SkBitmap.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/ui_base_features.h"
@@ -352,6 +354,11 @@ base::DictValue SearchboxHandler::GetWebUIDataSourceDict(
   dict.Set("forceHideEllipsis", false);
   dict.Set("enableThumbnailSizingTweaks", false);
   dict.Set("enableCsbMotionTweaks", false);
+  dict.Set("keywordSpaceTriggeringEnabled",
+           profile && profile->GetPrefs()
+               ? profile->GetPrefs()->GetBoolean(
+                     omnibox::kKeywordSpaceTriggeringEnabled)
+               : true);
 
   // Returns if ALL composeboxe surfaces' voice coherence is not gated. Includes
   // new metrics, new animation, new submit/stop buttons, no live transcription.
@@ -560,8 +567,8 @@ base::DictValue SearchboxHandler::GetWebUIDataSourceDict(
   dict.Set("composeboxContextDragAndDropEnabled",
            options.session_allows_drag_and_drop);
 
-  auto composebox_config = ntp_composebox::FeatureConfig::Get().config;
 #if !BUILDFLAG(IS_ANDROID)
+  auto composebox_config = ntp_composebox::FeatureConfig::Get().config;
   dict.Set("searchboxShowComposeAnimation",
            profile->GetPrefs()->GetInteger(
                prefs::kNtpComposeButtonShownCountPrefName) <
@@ -994,6 +1001,15 @@ SearchboxHandler::CreateAutocompleteMatch(
       match.type == AutocompleteMatchType::CALCULATOR ||
       match.enterprise_search_aggregator_type ==
           AutocompleteMatch::EnterpriseSearchAggregatorType::PEOPLE;
+  if (match.suggest_template) {
+    if (match.suggest_template->secondary_text_placement() ==
+        omnibox::SuggestTemplateInfo::BELOW_PRIMARY_TEXT) {
+      mojom_match->is_two_row_suggestion = true;
+    } else if (match.suggest_template->secondary_text_placement() ==
+               omnibox::SuggestTemplateInfo::IN_FRONT_OF_PRIMARY_TEXT) {
+      mojom_match->is_two_row_suggestion = false;
+    }
+  }
   if (!match.from_keyword) {
     for (const auto& action : match.actions) {
 // TODO(b/544764632): Implement Pedals for Android.
@@ -1040,6 +1056,11 @@ SearchboxHandler::CreateAutocompleteMatch(
   if (match.suggest_template && match.suggest_template->has_fusebox_action()) {
     mojom_match->fusebox_action = fusebox_action::SyncFuseboxActionProtoToMojo(
         match.suggest_template->fusebox_action());
+  }
+
+  if (match.suggest_template && match.suggest_template->has_style()) {
+    mojom_match->suggest_style = static_cast<searchbox::mojom::SuggestStyle>(
+        match.suggest_template->style());
   }
 
   if (SupportsKeywordMode()) {
@@ -1138,6 +1159,16 @@ SearchboxHandler::SearchboxHandler(
     PermissionPromptObserver::CreateForWebContents(web_contents_);
     PermissionPromptObserver::FromWebContents(web_contents_)->AddObserver(this);
   }
+
+  if (profile_ && profile_->GetPrefs()) {
+    pref_change_registrar_.Init(profile_->GetPrefs());
+    pref_change_registrar_.Add(
+        omnibox::kKeywordSpaceTriggeringEnabled,
+        base::BindRepeating(
+            &SearchboxHandler::OnKeywordSpaceTriggeringPrefChanged,
+            base::Unretained(this)));
+    OnKeywordSpaceTriggeringPrefChanged();
+  }
 }
 
 SearchboxHandler::~SearchboxHandler() {
@@ -1147,6 +1178,13 @@ SearchboxHandler::~SearchboxHandler() {
             PermissionPromptObserver::FromWebContents(web_contents_)) {
       observer->RemoveObserver(this);
     }
+  }
+}
+
+void SearchboxHandler::OnKeywordSpaceTriggeringPrefChanged() {
+  if (page_) {
+    page_->SetKeywordSpaceTriggeringEnabled(profile_->GetPrefs()->GetBoolean(
+        omnibox::kKeywordSpaceTriggeringEnabled));
   }
 }
 
@@ -1456,8 +1494,13 @@ void SearchboxHandler::SetPopupSelection(
     searchbox::mojom::OmniboxPopupSelectionPtr selection) {
   if (!base::FeatureList::IsEnabled(
           omnibox::kWebUISearchboxWithoutModelController)) {
-    edit_model()->SetPopupSelection(ConvertSelection(std::move(selection)),
-                                    false, false, false);
+    OmniboxPopupSelection popup_selection =
+        ConvertSelection(std::move(selection));
+    if (popup_selection.line != OmniboxPopupSelection::kNoMatch &&
+        popup_selection.line >= autocomplete_controller()->result().size()) {
+      return;
+    }
+    edit_model()->SetPopupSelection(popup_selection, false, false, false);
   }
 }
 
@@ -1728,6 +1771,13 @@ void SearchboxHandler::OnResultChanged(AutocompleteController* controller,
             web_contents_, autocomplete_controller()->result());
       }
     }
+  }
+}
+
+void SearchboxHandler::OnControllerDestroying(
+    AutocompleteController* controller) {
+  if (autocomplete_controller_observation_.IsObservingSource(controller)) {
+    autocomplete_controller_observation_.Reset();
   }
 }
 

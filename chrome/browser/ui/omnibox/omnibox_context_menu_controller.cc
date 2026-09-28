@@ -56,6 +56,7 @@
 #include "chrome/grit/generated_resources.h"
 #include "chrome/grit/omnibox_popup_resources.h"
 #include "components/contextual_search/contextual_search_session_handle.h"
+#include "components/contextual_search/contextual_search_types.h"
 #include "components/contextual_search/input_state_model.h"
 #include "components/contextual_tasks/public/features.h"
 #include "components/favicon/core/favicon_service.h"
@@ -182,6 +183,67 @@ bool IsThinkingModel(omnibox::ModelMode model) {
          model == omnibox::ModelMode::MODEL_MODE_GEMINI_PRO_NO_GEN_UI;
 }
 
+// Helper to resolve an IconResourceIds to its corresponding ImageModel.
+// LINT.IfChange(SearchboxConfigIcons)
+std::optional<ui::ImageModel> GetImageModelForIconResourceId(
+    omnibox::IconResourceIds icon_id) {
+  switch (icon_id) {
+    case omnibox::IconResourceIds::BOLT:
+      return ui::ImageModel::FromVectorIcon(
+          features::IsRoundedIconsEnabled() ? kBoltIcon : kBoltOldIcon,
+          ui::kColorMenuIcon, ui::SimpleMenuModel::kDefaultIconSize);
+    case omnibox::IconResourceIds::AUTORENEW:
+      return ui::ImageModel::FromVectorIcon(
+          features::IsRoundedIconsEnabled() ? kAutorenewIcon
+                                            : kAutorenewOldIcon,
+          ui::kColorMenuIcon, ui::SimpleMenuModel::kDefaultIconSize);
+    case omnibox::IconResourceIds::ACUTE:
+      return ui::ImageModel::FromVectorIcon(
+          kAcuteIcon, ui::kColorMenuIcon,
+          ui::SimpleMenuModel::kDefaultIconSize);
+    case omnibox::IconResourceIds::TIMER:
+      return ui::ImageModel::FromVectorIcon(
+          features::IsRoundedIconsEnabled() ? kTimerIcon : kTimerOldIcon,
+          ui::kColorMenuIcon, ui::SimpleMenuModel::kDefaultIconSize);
+    case omnibox::IconResourceIds::BANANA:
+      return ui::ImageModel::FromResourceId(
+          IDR_OMNIBOX_POPUP_IMAGES_CREATE_IMAGES_PNG);
+    case omnibox::IconResourceIds::DRAFT_SPARK:
+      return ui::ImageModel::FromVectorIcon(
+          features::IsRoundedIconsEnabled() ? kDraftSparkIcon
+                                            : kDraftSparkOldIcon,
+          ui::kColorMenuIcon, ui::SimpleMenuModel::kDefaultIconSize);
+    case omnibox::IconResourceIds::TRAVEL_EXPLORE:
+      return ui::ImageModel::FromVectorIcon(
+          features::IsRoundedIconsEnabled() ? kTravelExploreIcon
+                                            : kTravelExploreOldIcon,
+          ui::kColorMenuIcon, ui::SimpleMenuModel::kDefaultIconSize);
+    case omnibox::IconResourceIds::ATTACH_FILE:
+      return ui::ImageModel::FromVectorIcon(
+          features::IsRoundedIconsEnabled() ? kAttachFileIcon
+                                            : kAttachFileOldIcon,
+          ui::kColorMenuIcon, ui::SimpleMenuModel::kDefaultIconSize);
+    case omnibox::IconResourceIds::ADD_PHOTO_ALTERNATE:
+      return ui::ImageModel::FromVectorIcon(
+          features::IsRoundedIconsEnabled() ? kAddPhotoAlternateIcon
+                                            : kAddPhotoAlternateOldIcon,
+          ui::kColorMenuIcon, ui::SimpleMenuModel::kDefaultIconSize);
+    case omnibox::IconResourceIds::DRIVE:
+#if BUILDFLAG(GOOGLE_CHROME_BRANDING)
+      return ui::ImageModel::FromVectorIcon(
+          vector_icons::kGoogleDriveMonochromeIcon, ui::kColorMenuIcon,
+          ui::SimpleMenuModel::kDefaultIconSize);
+#else
+      return ui::ImageModel();
+#endif
+    case omnibox::IconResourceIds::PHOTO_PRINTS:
+      return ui::ImageModel();
+    default:
+      return std::nullopt;
+  }
+}
+// LINT.ThenChange(//ui/webui/resources/cr_components/composebox/searchbox_config_icons.html.ts:SearchboxConfigIcons)
+
 }  // namespace
 
 DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(OmniboxContextMenuController,
@@ -209,6 +271,11 @@ OmniboxContextMenuController::OmniboxContextMenuController(
     if (contextual_searchbox_handler->input_state_model()) {
       input_state_ =
           contextual_searchbox_handler->input_state_model()->GetInputState();
+      input_state_subscription_ =
+          contextual_searchbox_handler->input_state_model()->subscribe(
+              base::BindRepeating(
+                  &OmniboxContextMenuController::OnInputStateChanged,
+                  weak_ptr_factory_.GetWeakPtr()));
     }
     contextual_searchbox_handler->GetInputState(
         base::BindOnce(&OmniboxContextMenuController::OnGetInputState,
@@ -755,8 +822,42 @@ void OmniboxContextMenuController::OnFaviconDataAvailable(
 
 void OmniboxContextMenuController::OnGetInputState(
     const std::optional<omnibox::InputState>& input_state) {
+  if (!input_state_subscription_) {
+    auto* contextual_searchbox_handler = GetContextualSearchboxHandler();
+    if (contextual_searchbox_handler &&
+        contextual_searchbox_handler->input_state_model()) {
+      input_state_subscription_ =
+          contextual_searchbox_handler->input_state_model()->subscribe(
+              base::BindRepeating(
+                  &OmniboxContextMenuController::OnInputStateChanged,
+                  weak_ptr_factory_.GetWeakPtr()));
+    }
+  }
   if (input_state) {
-    input_state_ = *input_state;
+    OnInputStateChanged(*input_state);
+  }
+}
+
+void OmniboxContextMenuController::OnInputStateChanged(
+    const omnibox::InputState& new_state) {
+  input_state_ = new_state;
+  input_type_info_.clear();
+  input_type_for_command_id_.clear();
+  tool_info_.clear();
+  tool_for_command_id_.clear();
+  model_info_.clear();
+  model_for_command_id_.clear();
+  InitializeMenuItemInfo();
+  menu_model_->Clear();
+  shared_tabs_menu_model_.reset();
+  next_command_id_ = kMinOmniboxContextMenuRecentTabsCommandId;
+  std::optional<size_t> max_suggestions = GetMaxTabSuggestions();
+  min_tools_and_models_command_id_ =
+      kMinOmniboxContextMenuRecentTabsCommandId +
+      static_cast<int>(max_suggestions.value_or(0));
+  BuildMenu();
+  if (menu_model_->menu_model_delegate()) {
+    menu_model_->menu_model_delegate()->OnMenuStructureChanged();
   }
 }
 
@@ -776,6 +877,23 @@ void OmniboxContextMenuController::UpdateSearchboxContext(
     std::optional<TabInfo> tab_info,
     std::optional<omnibox::ToolMode> tool_mode,
     std::vector<searchbox::mojom::SearchContextAttachmentPtr> attachments) {
+  if (auto* omnibox_everywhere_ui = GetOmniboxEverywhereUI(web_contents)) {
+    auto initial_state =
+        omnibox_everywhere::mojom::ComposeboxInitialState::New();
+    if (tab_info) {
+      auto mojo_tab = searchbox::mojom::TabInfo::New();
+      mojo_tab->tab_id = tab_info->tab_id;
+      mojo_tab->title = base::UTF16ToUTF8(tab_info->title);
+      mojo_tab->url = tab_info->url;
+      initial_state->tab = std::move(mojo_tab);
+    }
+    if (tool_mode) {
+      initial_state->tool = *tool_mode;
+    }
+    omnibox_everywhere_ui->OpenComposebox(std::move(initial_state));
+    return;
+  }
+
   auto* browser_window_interface =
       webui::GetBrowserWindowInterface(web_contents);
   if (!browser_window_interface) {
@@ -822,6 +940,62 @@ void OmniboxContextMenuController::UpdateSearchboxContext(
   } else if (searchbox_context_data) {
     searchbox_context_data->SetPendingContext(std::move(context));
   }
+}
+
+// static
+void OmniboxContextMenuController::AddFileContext(
+    content::WebContents* web_contents,
+    lens::MimeType mime_type,
+    const std::string& image_data_url,
+    const std::string& file_name,
+    const std::string& mime_string,
+    base::expected<base::UnguessableToken,
+                   contextual_search::ContextUploadErrorType> result) {
+  if (!web_contents) {
+    return;
+  }
+
+  if (auto* omnibox_everywhere_ui = GetOmniboxEverywhereUI(web_contents)) {
+    auto file_info_mojom = searchbox::mojom::SelectedFileInfo::New();
+    file_info_mojom->file_name = file_name;
+    file_info_mojom->mime_type = mime_string;
+    file_info_mojom->is_deletable = true;
+    file_info_mojom->selection_time = base::Time::Now();
+    if (mime_type == lens::MimeType::kImage) {
+      file_info_mojom->image_data_url = image_data_url;
+    }
+    if (!result.has_value()) {
+      base::UnguessableToken error_token = base::UnguessableToken::Create();
+      omnibox_everywhere_ui->AddFileContext(error_token,
+                                            std::move(file_info_mojom));
+      omnibox_everywhere_ui->OnContextualInputStatusChanged(
+          error_token,
+          contextual_search::ContextUploadStatus::kValidationFailed,
+          result.error());
+    } else {
+      omnibox_everywhere_ui->AddFileContext(result.value(),
+                                            std::move(file_info_mojom));
+    }
+    return;
+  }
+
+  auto file_attachment = searchbox::mojom::FileAttachment::New();
+  file_attachment->uuid =
+      result.has_value() ? result.value() : base::UnguessableToken::Create();
+  file_attachment->name = file_name;
+  file_attachment->mime_type = mime_string;
+  if (!result.has_value()) {
+    file_attachment->error_type = result.error();
+  }
+  if (mime_type == lens::MimeType::kImage) {
+    file_attachment->image_data_url = image_data_url;
+  }
+  std::vector<searchbox::mojom::SearchContextAttachmentPtr> attachments;
+  attachments.push_back(
+      searchbox::mojom::SearchContextAttachment::NewFileAttachment(
+          std::move(file_attachment)));
+  UpdateSearchboxContext(web_contents, /*tab_info=*/std::nullopt,
+                         /*tool_mode=*/std::nullopt, std::move(attachments));
 }
 
 void OmniboxContextMenuController::HandleDriveUploadResponse(
@@ -1142,6 +1316,18 @@ std::u16string OmniboxContextMenuController::GetMenuLabelForTool(
 
 ui::ImageModel OmniboxContextMenuController::GetIconForTool(
     omnibox::ToolMode tool) const {
+  if (base::FeatureList::IsEnabled(omnibox::kAimUseSearchboxConfigIconIds)) {
+    const auto* tool_config = GetToolConfig(tool);
+    if (tool_config && tool_config->has_icon() &&
+        tool_config->icon().has_icon_id()) {
+      auto icon = GetImageModelForIconResourceId(tool_config->icon().icon_id());
+      if (icon.has_value()) {
+        return *icon;
+      }
+    }
+    return ui::ImageModel();
+  }
+
   switch (tool) {
     case omnibox::ToolMode::TOOL_MODE_IMAGE_GEN:
       return ui::ImageModel::FromResourceId(
@@ -1207,66 +1393,15 @@ ui::ImageModel OmniboxContextMenuController::GetIconForModel(
     omnibox::ModelMode model) const {
   if (base::FeatureList::IsEnabled(omnibox::kAimUseSearchboxConfigIconIds)) {
     const auto* model_config = GetModelConfig(model);
-    // LINT.IfChange(SearchboxConfigIcons)
     if (model_config && model_config->has_icon() &&
         model_config->icon().has_icon_id()) {
-      switch (model_config->icon().icon_id()) {
-        case omnibox::IconResourceIds::BOLT:
-          return ui::ImageModel::FromVectorIcon(
-              features::IsRoundedIconsEnabled() ? kBoltIcon : kBoltOldIcon,
-              ui::kColorMenuIcon, ui::SimpleMenuModel::kDefaultIconSize);
-        case omnibox::IconResourceIds::AUTORENEW:
-          return ui::ImageModel::FromVectorIcon(
-              features::IsRoundedIconsEnabled() ? kAutorenewIcon
-                                                : kAutorenewOldIcon,
-              ui::kColorMenuIcon, ui::SimpleMenuModel::kDefaultIconSize);
-        case omnibox::IconResourceIds::ACUTE:
-          return ui::ImageModel::FromVectorIcon(
-              kAcuteIcon, ui::kColorMenuIcon,
-              ui::SimpleMenuModel::kDefaultIconSize);
-        case omnibox::IconResourceIds::TIMER:
-          return ui::ImageModel::FromVectorIcon(
-              features::IsRoundedIconsEnabled() ? kTimerIcon : kTimerOldIcon,
-              ui::kColorMenuIcon, ui::SimpleMenuModel::kDefaultIconSize);
-        case omnibox::IconResourceIds::BANANA:
-          return ui::ImageModel::FromResourceId(
-              IDR_OMNIBOX_POPUP_IMAGES_CREATE_IMAGES_PNG);
-        case omnibox::IconResourceIds::DRAFT_SPARK:
-          return ui::ImageModel::FromVectorIcon(
-              features::IsRoundedIconsEnabled() ? kDraftSparkIcon
-                                                : kDraftSparkOldIcon,
-              ui::kColorMenuIcon, ui::SimpleMenuModel::kDefaultIconSize);
-        case omnibox::IconResourceIds::TRAVEL_EXPLORE:
-          return ui::ImageModel::FromVectorIcon(
-              features::IsRoundedIconsEnabled() ? kTravelExploreIcon
-                                                : kTravelExploreOldIcon,
-              ui::kColorMenuIcon, ui::SimpleMenuModel::kDefaultIconSize);
-        case omnibox::IconResourceIds::ATTACH_FILE:
-          return ui::ImageModel::FromVectorIcon(
-              features::IsRoundedIconsEnabled() ? kAttachFileIcon
-                                                : kAttachFileOldIcon,
-              ui::kColorMenuIcon, ui::SimpleMenuModel::kDefaultIconSize);
-        case omnibox::IconResourceIds::ADD_PHOTO_ALTERNATE:
-          return ui::ImageModel::FromVectorIcon(
-              features::IsRoundedIconsEnabled() ? kAddPhotoAlternateIcon
-                                                : kAddPhotoAlternateOldIcon,
-              ui::kColorMenuIcon, ui::SimpleMenuModel::kDefaultIconSize);
-        case omnibox::IconResourceIds::DRIVE:
-#if BUILDFLAG(GOOGLE_CHROME_BRANDING)
-          return ui::ImageModel::FromVectorIcon(
-              vector_icons::kGoogleDriveMonochromeIcon, ui::kColorMenuIcon,
-              ui::SimpleMenuModel::kDefaultIconSize);
-#else
-          return ui::ImageModel();
-#endif
-        case omnibox::IconResourceIds::PHOTO_PRINTS:
-          return ui::ImageModel();
-        default:
-          break;
+      auto icon =
+          GetImageModelForIconResourceId(model_config->icon().icon_id());
+      if (icon.has_value()) {
+        return *icon;
       }
     }
   }
-  // LINT.ThenChange(//ui/webui/resources/cr_components/composebox/searchbox_config_icons.html.ts:SearchboxConfigIcons)
 
   // Fallback to legacy hardcoded model mapping if flag is disabled or no icon
   // is specified in config.
@@ -1482,7 +1617,8 @@ void OmniboxContextMenuController::ExecuteCommand(int id, int event_flags) {
     if (use_input_state_model) {
       if (auto it = input_type_for_command_id_.find(id);
           it != input_type_for_command_id_.end()) {
-        if (it->second == omnibox::InputType::INPUT_TYPE_DRIVE) {
+        const omnibox::InputType input_type = it->second;
+        if (input_type == omnibox::InputType::INPUT_TYPE_DRIVE) {
           if (contextual_searchbox_handler) {
             contextual_searchbox_handler->GetDriveDisclaimerStatus(
                 base::BindOnce(
@@ -1513,7 +1649,7 @@ void OmniboxContextMenuController::ExecuteCommand(int id, int event_flags) {
         }
         file_selector_->OpenFileUploadDialog(
             web_contents_.get(),
-            /*is_image=*/it->second ==
+            /*is_image=*/input_type ==
                 omnibox::InputType::INPUT_TYPE_LENS_IMAGE,
             GetEditModel(),
             OmniboxPopupFileSelector::CreateImageEncodingOptions(),
@@ -1523,25 +1659,36 @@ void OmniboxContextMenuController::ExecuteCommand(int id, int event_flags) {
 
       if (auto it = tool_for_command_id_.find(id);
           it != tool_for_command_id_.end()) {
+        const omnibox::ToolMode tool_mode = it->second;
+        RecordContextMenuItemSelection(sliced_prefix, id);
         if (contextual_searchbox_handler) {
           contextual_searchbox_handler->SetActiveToolMode(
-              it->second,
+              tool_mode,
               /*is_set_by_aim=*/false);
-          contextual_searchbox_handler->RecordToolSelectionAction(it->second);
+          contextual_searchbox_handler->RecordToolSelectionAction(tool_mode);
         }
 
-        RecordContextMenuItemSelection(sliced_prefix, id);
-        OpenAiMode(OmniboxEditModel::AimActivation::kContextMenu);
+        if (auto* omnibox_everywhere_ui =
+                GetOmniboxEverywhereUI(web_contents_.get())) {
+          auto initial_state =
+              omnibox_everywhere::mojom::ComposeboxInitialState::New();
+          initial_state->tool = it->second;
+          omnibox_everywhere_ui->OpenComposebox(std::move(initial_state));
+        } else {
+          OpenAiMode(OmniboxEditModel::AimActivation::kContextMenu);
+        }
         return;
       }
 
       if (auto it = model_for_command_id_.find(id);
           it != model_for_command_id_.end()) {
+        const omnibox::ModelMode model_mode = it->second;
+        RecordContextMenuItemSelection(sliced_prefix, id);
         if (contextual_searchbox_handler) {
           contextual_searchbox_handler->SetActiveModelMode(
-              it->second,
+              model_mode,
               /*is_set_by_aim=*/false);
-          contextual_searchbox_handler->RecordModelSelectionAction(it->second);
+          contextual_searchbox_handler->RecordModelSelectionAction(model_mode);
         }
         if (is_aim_popup_open) {
           if (auto* omnibox_popup_ui = GetOmniboxPopupUI()) {
@@ -1551,8 +1698,15 @@ void OmniboxContextMenuController::ExecuteCommand(int id, int event_flags) {
           }
         }
 
-        RecordContextMenuItemSelection(sliced_prefix, id);
-        OpenAiMode(OmniboxEditModel::AimActivation::kContextMenu);
+        if (auto* omnibox_everywhere_ui =
+                GetOmniboxEverywhereUI(web_contents_.get())) {
+          auto initial_state =
+              omnibox_everywhere::mojom::ComposeboxInitialState::New();
+          initial_state->model = it->second;
+          omnibox_everywhere_ui->OpenComposebox(std::move(initial_state));
+        } else {
+          OpenAiMode(OmniboxEditModel::AimActivation::kContextMenu);
+        }
         return;
       }
     }
@@ -1975,6 +2129,13 @@ void OmniboxContextMenuController::OpenAiMode(
     OmniboxEditModel::AimActivation activation) {
   if (OmniboxEditModel* edit_model = GetEditModel()) {
     edit_model->OpenAiMode(activation);
+  } else if (web_contents_) {
+    // Omnibox Everywhere does not utilize OmniboxEditModel; expand the WebUI
+    // composebox view directly upon context item / tool selection.
+    if (auto* omnibox_everywhere_ui =
+            GetOmniboxEverywhereUI(web_contents_.get())) {
+      omnibox_everywhere_ui->OpenComposebox(/*initial_state=*/nullptr);
+    }
   } else {
     DLOG(WARNING) << "OpenAiMode called but no edit model present.";
   }

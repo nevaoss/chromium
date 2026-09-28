@@ -31,7 +31,6 @@
 #include "chrome/browser/enterprise/data_protection/data_protection_ui_controller.h"
 #include "chrome/browser/extensions/browser_extension_window_controller.h"
 #include "chrome/browser/glic/browser_ui/glic_iph_controller.h"
-#include "chrome/browser/glic/browser_ui/glic_nudge_controller.h"
 #include "chrome/browser/glic/browser_ui/glic_split_button_controller.h"
 #include "chrome/browser/glic/public/glic_enabling.h"
 #include "chrome/browser/glic/public/glic_keyed_service.h"
@@ -109,7 +108,6 @@
 #include "chrome/browser/ui/tabs/tab_strip_prefs.h"
 #include "chrome/browser/ui/tabs/vertical_tab_iph_controller.h"
 #include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h"
-#include "chrome/browser/ui/toasts/toast_controller.h"
 #include "chrome/browser/ui/toasts/toast_features.h"
 #include "chrome/browser/ui/toasts/toast_service.h"
 #include "chrome/browser/ui/toolbar/chrome_labs/chrome_labs_utils.h"
@@ -389,6 +387,7 @@ void BrowserWindowFeatures::Init(BrowserWindowInterface* browser) {
 
   cookie_controls_controller_ =
       std::make_unique<content_settings::CookieControlsController>(
+          browser->GetUnownedUserDataHost(),
           CookieSettingsFactory::GetForProfile(profile),
           profile->IsOffTheRecord() ? CookieSettingsFactory::GetForProfile(
                                           profile->GetOriginalProfile())
@@ -407,7 +406,7 @@ void BrowserWindowFeatures::Init(BrowserWindowInterface* browser) {
 #endif
 
   extension_installed_watcher_ =
-      std::make_unique<ExtensionInstalledWatcher>(profile);
+      std::make_unique<ExtensionInstalledWatcher>(browser);
 
   history_clusters_side_panel_coordinator_ =
       GetUserDataFactory().CreateInstance<HistoryClustersSidePanelCoordinator>(
@@ -827,8 +826,7 @@ void BrowserWindowFeatures::InitPostWindowConstruction(
   if (focus_manager) {
     extension_keybinding_registry_ =
         std::make_unique<ExtensionKeybindingRegistryViews>(
-            profile, TabListInterface::From(browser),
-            extensions::ExtensionKeybindingRegistry::ALL_EXTENSIONS,
+            browser, extensions::ExtensionKeybindingRegistry::ALL_EXTENSIONS,
             focus_manager);
   }
 
@@ -1263,18 +1261,8 @@ void BrowserWindowFeatures::TearDownPreBrowserWindowDestruction() {
   actor_border_view_controller_.reset();
 }
 
-glic::GlicNudgeController* BrowserWindowFeatures::glic_nudge_controller() {
-  return glic_split_button_controller_
-             ? glic_split_button_controller_->nudge_controller()
-             : nullptr;
-}
-
 actions::ActionItem* BrowserWindowFeatures::GetRootActionItem() {
   return browser_actions_ ? browser_actions_->root_action_item() : nullptr;
-}
-
-ToastController* BrowserWindowFeatures::toast_controller() {
-  return browser_ ? ToastController::From(browser_) : nullptr;
 }
 
 LocationBar* BrowserWindowFeatures::location_bar() {

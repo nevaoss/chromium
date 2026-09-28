@@ -48,6 +48,11 @@ BASE_FEATURE_PARAM(size_t,
                    "max_memory_bank_entries",
                    100);
 
+BASE_FEATURE_PARAM(size_t,
+                   kMaxMemoryBankChatHistoryTurns,
+                   &kMemoryBanks,
+                   20);
+
 BASE_FEATURE_PARAM(int,
                    kMaxTabGroups,
                    &browser::context_hub::mojom::kAutoTabGroups,
@@ -64,5 +69,11 @@ BASE_FEATURE(kContextHubDatabaseStorage, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kContextHubTabContextSyncStorage,
              base::FEATURE_DISABLED_BY_DEFAULT);
+
+BASE_FEATURE_PARAM(base::TimeDelta,
+                   kSmartSearchTimeout,
+                   &browser::context_hub::mojom::kSmartSearch,
+                   "smart_search_timeout",
+                   base::Seconds(15));
 
 }  // namespace context_hub::features

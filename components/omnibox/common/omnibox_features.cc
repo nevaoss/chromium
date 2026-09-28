@@ -173,6 +173,8 @@ BASE_FEATURE(kRichAutocompletion, "OmniboxRichAutocompletion", ENABLED);
 
 // Enables the AIM eligibility diagnostic component extension.
 BASE_FEATURE(kAimEligibilityComponentExtension, DISABLED);
+const base::FeatureParam<bool> kAimEligibilityUseComponentUpdater{
+    &kAimEligibilityComponentExtension, "use_component_updater", true};
 
 // Whether the aim button should dynamically change to portray the submission
 // type.
@@ -263,6 +265,25 @@ BASE_FEATURE(kOmniboxAimEvictOnHide, DISABLED);
 // frame when hidden.
 BASE_FEATURE(kOmniboxFullWebUIEvictOnHide, DISABLED);
 
+// When enabled, sizes the AIM popup child WebView bounds directly to its
+// preferred height in RoundedOmniboxResultsFrame and eliminates transient
+// height resets on hide.
+BASE_FEATURE(kOmniboxAimSizeWebViewToPreferredHeight, DISABLED);
+
+// When enabled, sizes the Classic WebUI popup child WebView bounds directly to
+// its preferred height in RoundedOmniboxResultsFrame and eliminates transient
+// height resets on hide.
+BASE_FEATURE(kOmniboxWebUISizeWebViewToPreferredHeight, DISABLED);
+
+// When enabled, sizes the Full WebUI popup child WebView bounds directly to its
+// preferred height in RoundedOmniboxResultsFrame and eliminates transient
+// height resets on hide/tab switch.
+BASE_FEATURE(kOmniboxFullWebUISizeWebViewToPreferredHeight, DISABLED);
+
+// When enabled, the Omnibox WebUI popup presenter will explicitly hide the
+// widget upon creation, preventing pre-warmed child widgets from inheriting
+// parent window visibility and locking compositor frames.
+BASE_FEATURE(kOmniboxWebUIPopupHideOnCreation, DISABLED);
 // When enabled, the WebUI searchbox will bypass OmniboxController and
 // OmniboxEditModel.
 BASE_FEATURE(kWebUISearchboxWithoutModelController, DISABLED);
@@ -360,7 +381,7 @@ BASE_FEATURE(kReportApplicationLanguageInSearchRequest, ENABLED);
 BASE_FEATURE(kOmniboxAppendInvocationSource, DISABLED);
 
 // Enable asynchronous Omnibox/Suggest view inflation.
-BASE_FEATURE(kOmniboxAsyncViewInflation, DISABLED);
+BASE_FEATURE(kOmniboxAsyncViewInflation, ENABLED);
 
 // Enable asynchronous Fusebox view inflation.
 BASE_FEATURE(kOmniboxFuseboxAsyncInflation, DISABLED);
@@ -438,16 +459,27 @@ const base::FeatureParam<bool> kComposeboxDriveIdentityFallback{
 BASE_FEATURE(kComposeboxDriveContextMenuOptionDisclaimer, DISABLED);
 
 // For Workspace AIM, the Flow ID is the ConsentKit frontend identifier
-// (e.g. CHOICEFLOW_PCONTEXT_WORKSPACE_AIM) and the Product ID is the
-// Footprints ConsentVariant ID (e.g.
-// CHOICEFLOW_VARIANT_PCONTEXT_WORKSPACE_AIM_DEFAULT)
+// (CHOICEFLOW_PCONTEXT_WORKSPACE_AIM = 76).
 const base::FeatureParam<int> kComposeboxDriveConsentFlowId{
     &kComposeboxDriveContextMenuOptionDisclaimer, "flow_id", 76};
 
+#if BUILDFLAG(IS_IOS)
+// For Chrome on iOS:
+// - Product ID: Chrome iOS (71720513)
+// - Product Surface: SEARCH_AIM (29)
 const base::FeatureParam<int> kComposeboxDriveConsentProductId{
-    &kComposeboxDriveContextMenuOptionDisclaimer, "product_id", 89978449};
+    &kComposeboxDriveContextMenuOptionDisclaimer, "product_id", 71720513};
 const base::FeatureParam<int> kComposeboxDriveConsentProductSurface{
     &kComposeboxDriveContextMenuOptionDisclaimer, "product_surface", 29};
+#else
+// For Chrome on Desktop:
+// - Product ID: Chrome Desktop (67911908)
+// - Product Surface: CHROME_DESKTOP_NEW_TAB_PAGE (76)
+const base::FeatureParam<int> kComposeboxDriveConsentProductId{
+    &kComposeboxDriveContextMenuOptionDisclaimer, "product_id", 67911908};
+const base::FeatureParam<int> kComposeboxDriveConsentProductSurface{
+    &kComposeboxDriveContextMenuOptionDisclaimer, "product_surface", 76};
+#endif
 const base::FeatureParam<std::string> kComposeboxDriveConsentEntrypointId{
     &kComposeboxDriveContextMenuOptionDisclaimer, "entrypoint_id", "aim-drive"};
 

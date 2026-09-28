@@ -103,7 +103,6 @@
 #include "chrome/browser/feed/feed_service_factory.h"
 #include "chrome/browser/feedback/feedback_uploader_factory_chrome.h"
 #include "chrome/browser/file_system_access/file_system_access_permission_context_factory.h"
-#include "chrome/browser/finds/finds_service_factory.h"
 #include "chrome/browser/first_party_sets/first_party_sets_policy_service_factory.h"
 #include "chrome/browser/font_pref_change_notifier_factory.h"
 #include "chrome/browser/glic/browser_ui/glic_actor_task_icon_manager_factory.h"
@@ -317,7 +316,6 @@
 #include "components/site_engagement/content/site_engagement_service.h"
 #include "components/site_token_provider/features.h"
 #include "components/spellcheck/spellcheck_buildflags.h"
-#include "components/sync/base/features.h"
 #include "content/public/common/buildflags.h"
 #include "crypto/crypto_buildflags.h"
 #include "extensions/buildflags/buildflags.h"
@@ -347,11 +345,11 @@
 #include "chrome/browser/android/tab_state_storage_service_factory.h"
 #include "chrome/browser/android/thin_webview/chrome_thin_webview_initializer.h"
 #include "chrome/browser/android/webapk/webapk_install_service_factory.h"
-#include "chrome/browser/android/webapk/webapk_sync_service_factory.h"
 #include "chrome/browser/autofill/android/android_sms_otp_backend_factory.h"
 #include "chrome/browser/auxiliary_search/auxiliary_search_donation_service_factory.h"
 #include "chrome/browser/auxiliary_search/auxiliary_search_provider.h"
 #include "chrome/browser/commerce/merchant_viewer/merchant_viewer_data_manager_factory.h"
+#include "chrome/browser/finds/finds_service_factory.h"
 #include "chrome/browser/flags/android/chrome_feature_list.h"
 #include "chrome/browser/media/android/cdm/media_drm_origin_id_manager_factory.h"
 #include "chrome/browser/ntp_customization/ntp_android_background_service_factory.h"
@@ -1069,7 +1067,9 @@ void ChromeBrowserMainExtraPartsProfiles::
   FieldInfoManagerFactory::GetInstance();
   FileSystemAccessPermissionContextFactory::GetInstance();
   FindBarStateFactory::GetInstance();
+#if BUILDFLAG(IS_ANDROID)
   finds::FindsServiceFactory::GetInstance();
+#endif  // BUILDFLAG(IS_ANDROID)
   first_party_sets::FirstPartySetsPolicyServiceFactory::GetInstance();
 #if !BUILDFLAG(IS_CHROMEOS) && !BUILDFLAG(IS_ANDROID)
   FirstRunServiceFactory::GetInstance();
@@ -1607,9 +1607,6 @@ void ChromeBrowserMainExtraPartsProfiles::
 #endif
 #if BUILDFLAG(IS_ANDROID)
   WebApkInstallServiceFactory::GetInstance();
-  if (base::FeatureList::IsEnabled(syncer::kWebApkBackupAndRestoreBackend)) {
-    webapk::WebApkSyncServiceFactory::GetInstance();
-  }
 #endif
 
   WebDataServiceFactory::GetInstance();

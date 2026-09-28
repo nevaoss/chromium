@@ -229,7 +229,8 @@ std::vector<CoreAccountInfo> IdentityManager::GetAccountsWithRefreshTokens()
   accounts.reserve(account_ids_with_tokens.size());
 
   for (const CoreAccountId& account_id : account_ids_with_tokens) {
-    accounts.push_back(GetAccountInfoForAccountWithRefreshToken(account_id));
+    accounts.push_back(GetAccountInfoForAccountWithRefreshToken(account_id)
+                           .GetCoreAccountInfo());
   }
 
   return accounts;
@@ -278,8 +279,7 @@ bool IdentityManager::HasAccountWithRefreshTokenInPersistentErrorState(
 
 #if BUILDFLAG(ENABLE_DICE_SUPPORT)
 bool IdentityManager::GenerateBindingKeyRegistrationToken(
-    base::span<const crypto::SignatureVerifier::SignatureAlgorithm>
-        supported_algorithms,
+    base::span<const crypto::sign::SignatureKind> supported_algorithms,
     std::string_view auth_code,
     base::OnceCallback<void(
         std::optional<signin::BindingKeyRegistrationTokenResult>)> callback) {
@@ -662,7 +662,7 @@ void IdentityManager::OnPrimaryAccountChanged(
 
 void IdentityManager::OnRefreshTokenAvailable(const CoreAccountId& account_id) {
   CoreAccountInfo account_info =
-      GetAccountInfoForAccountWithRefreshToken(account_id);
+      GetAccountInfoForAccountWithRefreshToken(account_id).GetCoreAccountInfo();
 
   for (auto& observer : observer_list_) {
     observer.OnRefreshTokenUpdatedForAccount(account_info);
@@ -714,7 +714,7 @@ void IdentityManager::OnAuthErrorChanged(
     const GoogleServiceAuthError& auth_error,
     signin_metrics::SourceForRefreshTokenOperation token_operation_source) {
   CoreAccountInfo account_info =
-      GetAccountInfoForAccountWithRefreshToken(account_id);
+      GetAccountInfoForAccountWithRefreshToken(account_id).GetCoreAccountInfo();
 
   for (auto& observer : observer_list_) {
     observer.OnErrorStateOfRefreshTokenUpdatedForAccount(

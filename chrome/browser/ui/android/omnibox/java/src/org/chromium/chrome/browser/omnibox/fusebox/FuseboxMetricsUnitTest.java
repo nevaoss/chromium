@@ -13,6 +13,7 @@ import org.junit.runner.RunWith;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
+import org.mockito.quality.Strictness;
 
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.base.test.util.HistogramWatcher;
@@ -31,7 +32,8 @@ import java.util.Arrays;
 
 @RunWith(BaseRobolectricTestRunner.class)
 public class FuseboxMetricsUnitTest {
-    @Rule public final MockitoRule mMockitoRule = MockitoJUnit.rule();
+    @Rule
+    public final MockitoRule mMockitoRule = MockitoJUnit.rule().strictness(Strictness.STRICT_STUBS);
 
     private final PropertyModel mPropertyModel = new PropertyModel(FuseboxProperties.ALL_KEYS);
     @Mock private Tracker mTracker;
@@ -194,7 +196,7 @@ public class FuseboxMetricsUnitTest {
                                 ModelMode.MODEL_MODE_GEMINI_PRO_AUTOROUTE_VALUE)
                         .build();
 
-        mMetrics.notifyAttachmentsPopupToggled(true, mPropertyModel, mTracker);
+        mMetrics.notifyAttachmentsPopupToggled(/* toShowPopup= */ true, mPropertyModel, mTracker);
 
         histogramWatcher.assertExpected();
     }
@@ -227,7 +229,7 @@ public class FuseboxMetricsUnitTest {
                                 FuseboxMetrics.FuseboxAttachmentButtonType.FILES)
                         .build();
 
-        mMetrics.notifyAttachmentsPopupToggled(true, mPropertyModel, mTracker);
+        mMetrics.notifyAttachmentsPopupToggled(/* toShowPopup= */ true, mPropertyModel, mTracker);
 
         histogramWatcher.assertExpected();
     }
@@ -282,7 +284,7 @@ public class FuseboxMetricsUnitTest {
                                 ToolMode.TOOL_MODE_DEEP_SEARCH_VALUE)
                         .build();
 
-        mMetrics.notifyAttachmentsPopupToggled(true, mPropertyModel, mTracker);
+        mMetrics.notifyAttachmentsPopupToggled(/* toShowPopup= */ true, mPropertyModel, mTracker);
 
         histogramWatcher.assertExpected();
     }
@@ -294,7 +296,7 @@ public class FuseboxMetricsUnitTest {
                         "Omnibox.MobileFusebox.AttachmentsPopupToggled", false);
 
         // When hiding the popup, no other metrics should be recorded.
-        mMetrics.notifyAttachmentsPopupToggled(false, mPropertyModel, mTracker);
+        mMetrics.notifyAttachmentsPopupToggled(/* toShowPopup= */ false, mPropertyModel, mTracker);
 
         histogramWatcher.assertExpected();
     }
@@ -412,7 +414,7 @@ public class FuseboxMetricsUnitTest {
                                 ModelMode.MODEL_MODE_GEMINI_PRO_VALUE)
                         .build();
 
-        mMetrics.notifyAttachmentsPopupToggled(true, mPropertyModel, mTracker);
+        mMetrics.notifyAttachmentsPopupToggled(/* toShowPopup= */ true, mPropertyModel, mTracker);
 
         mMetrics.notifyAttachmentButtonUsed(FuseboxMetrics.FuseboxAttachmentButtonType.CAMERA);
         mMetrics.notifyAttachmentButtonUsed(FuseboxMetrics.FuseboxAttachmentButtonType.TAB_PICKER);
@@ -498,8 +500,8 @@ public class FuseboxMetricsUnitTest {
                                 false)
                         .build();
 
-        FuseboxMetrics.recordAttachmentLoadOom(true, MimeTypeUtils.Type.IMAGE);
-        FuseboxMetrics.recordAttachmentLoadOom(false, MimeTypeUtils.Type.TEXT);
+        FuseboxMetrics.recordAttachmentLoadOom(/* oomOccurred= */ true, MimeTypeUtils.Type.IMAGE);
+        FuseboxMetrics.recordAttachmentLoadOom(/* oomOccurred= */ false, MimeTypeUtils.Type.TEXT);
 
         histogramWatcher.assertExpected();
     }

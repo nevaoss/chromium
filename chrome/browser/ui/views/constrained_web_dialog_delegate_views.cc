@@ -9,7 +9,6 @@
 #include "chrome/browser/renderer_preferences_util.h"
 #include "chrome/browser/ui/blocked_content/popunder_preventer.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
-#include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/webui/chrome_web_contents_handler.h"
 #include "chrome/browser/ui/webui/constrained_web_dialog_ui.h"
 #include "components/constrained_window/constrained_window_views.h"
@@ -497,15 +496,16 @@ gfx::Size ConstrainedDialogWebView::CalculatePreferredSize(
 }
 
 gfx::Size ConstrainedDialogWebView::GetMinimumSize() const {
-  return min_size();
+  return AutoResizeMinSize();
 }
 
 gfx::Size ConstrainedDialogWebView::GetMaximumSize() const {
-  return !max_size().IsEmpty() ? max_size() : WebView::GetMaximumSize();
+  return !AutoResizeMaxSize().IsEmpty() ? AutoResizeMaxSize()
+                                        : WebView::GetMaximumSize();
 }
 
 void ConstrainedDialogWebView::DocumentOnLoadCompletedInPrimaryMainFrame() {
-  if (!max_size().IsEmpty() && initiator_web_contents_) {
+  if (!AutoResizeMaxSize().IsEmpty() && initiator_web_contents_) {
     content::WebContents* top_level_web_contents =
         constrained_window::GetTopLevelWebContents(
             initiator_web_contents_.get());

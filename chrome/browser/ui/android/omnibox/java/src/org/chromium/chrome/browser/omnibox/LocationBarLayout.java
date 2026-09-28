@@ -42,7 +42,6 @@ import org.chromium.chrome.browser.ui.theme.BrandedColorScheme;
 import org.chromium.chrome.browser.util.BrowserUiUtils;
 import org.chromium.components.browser_ui.widget.CompositeTouchDelegate;
 import org.chromium.components.browser_ui.widget.chips.ChipView;
-import org.chromium.components.embedder_support.util.UrlUtilities;
 import org.chromium.ui.base.DeviceFormFactor;
 import org.chromium.ui.base.WindowAndroid;
 
@@ -274,10 +273,6 @@ public class LocationBarLayout extends ConstraintLayout {
 
     protected void onNtpStartedLoading() {}
 
-    public View getSecurityIconView() {
-        return mStatusCoordinator.getSecurityIconView();
-    }
-
     /**
      * Apply the X translation to the LocationBar buttons to match the NTP fakebox -> omnibox
      * transition.
@@ -475,7 +470,7 @@ public class LocationBarLayout extends ConstraintLayout {
 
         boolean isNtpOnPhone =
                 mStatusCoordinator.isSearchEngineStatusIconVisible()
-                        && UrlUtilities.isNtpUrl(mLocationBarDataProvider.getCurrentGurl())
+                        && OmniboxUrlUtils.isNtpUrl(mLocationBarDataProvider.getCurrentGurl())
                         && !isOnTablet;
         boolean isScrollingOnNtpOnPhone = !mUrlBar.hasFocus() && isNtpOnPhone;
 
@@ -525,11 +520,6 @@ public class LocationBarLayout extends ConstraintLayout {
     /** Returns the entrypoint used to launch Lens. */
     public int getLensEntryPoint() {
         return LensEntryPoint.OMNIBOX;
-    }
-
-    /** Returns whether the Omnibox text should be cleared on focus. */
-    public boolean shouldClearTextOnFocus() {
-        return true;
     }
 
     /**

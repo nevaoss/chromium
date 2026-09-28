@@ -116,6 +116,7 @@
 #include "content/browser/site_instance_impl.h"
 #include "content/browser/storage_partition_impl.h"
 #include "content/browser/url_loader_factory_params_helper.h"
+#include "content/browser/web_exposed_isolation_info.h"
 #include "content/browser/web_package/prefetched_signed_exchange_cache.h"
 #include "content/common/content_constants_internal.h"
 #include "content/common/content_navigation_policy.h"
@@ -146,6 +147,7 @@
 #include "content/public/browser/security_principal.h"
 #include "content/public/browser/site_isolation_policy.h"
 #include "content/public/browser/storage_partition.h"
+#include "content/public/browser/storage_partition_config.h"
 #include "content/public/browser/tracing_support.h"
 #include "content/public/browser/weak_document_ptr.h"
 #include "content/public/common/content_client.h"
@@ -165,6 +167,7 @@
 #include "net/base/url_util.h"
 #include "net/cookies/cookie_access_result.h"
 #include "net/cookies/cookie_setting_override.h"
+#include "net/disk_cache/buildflags.h"
 #include "net/filter/source_stream_type.h"
 #include "net/http/http_request_headers.h"
 #include "net/http/http_status_code.h"
@@ -1743,8 +1746,7 @@ NavigationRequest::NavigationRequest(
           GetPrerenderHostRegistry().GetPrerenderHostIdForNavigation(this)),
       initiator_navigation_state_(initiator_navigation_state),
       should_ignore_initiator_policies_for_inheritance_(
-          should_ignore_initiator_policies_for_inheritance),
-      initiator_state_token_to_commit_(base::UnguessableToken::Create()) {
+          should_ignore_initiator_policies_for_inheritance) {
   TRACE_EVENT("navigation", "NavigationRequest::NavigationRequest",
               perfetto::Flow::FromPointer(this),
               perfetto::protos::pbzero::ChromeTrackEvent::kNavigation, this);
@@ -1890,6 +1892,7 @@ NavigationRequest::NavigationRequest(
     origin_related_state_.emplace(OriginRelatedState{
         .item_sequence_number = frame_entry->item_sequence_number(),
         .document_sequence_number = frame_entry->document_sequence_number(),
+        .committed_origin = frame_entry->committed_origin(),
     });
   }
 
@@ -3560,10 +3563,21 @@ void NavigationRequest::ResetStateForSiteInstanceChange() {
   origin_related_state_.reset();
 
   // If this was not a redirect that preserves POST submissions (e.g., 307), or
-  // if this will be an error page that may end up in another process, then
-  // clear the post_data as well to prevent leaking file references to a
-  // different SiteInstance.
-  if (!IsPost() || DidEncounterError()) {
+  // if this will be a blocked error page or otherwise ends up in the current
+  // process, then clear the post_data as well to prevent leaking file
+  // references to a different SiteInstance.
+  //
+  // It is not necessary to reset POST data for error pages in the isolated
+  // error page process, and it is important not to reset it for failed cases
+  // that end up in kDestinationProcess (e.g. "Confirm Form Resubmission"
+  // pages with ERR_CACHE_MISS), when it might later be used successfully.
+  //
+  // TODO(crbug.com/40134629): Remove the error page exception if subframe error
+  // page isolation is enabled.
+  if (!IsPost() ||
+      (DidEncounterError() &&
+       (ComputeErrorPageProcess() == ErrorPageProcess::kCurrentProcess ||
+        net::IsRequestBlockedError(net_error_)))) {
     common_params_->post_data.reset();
   }
 }
@@ -4776,10 +4790,12 @@ UrlInfo NavigationRequest::GetUrlInfo() {
   //
   // If PolicyContainer::ComputePoliciesToCommit() has run
   // `policy_container_builder_` will be valid, but even if it hasn't, we can
-  // speculatively take `commit_params_->frame_policy.sandbox_flags` if we
-  // haven't received the response yet and don't have the final
-  // `policy_container_builder_`, and if the state of the kOrigin flag changes,
-  // we'll detect the change and recompute the target SiteInstance elsewhere.
+  // speculatively take `commit_params_->frame_policy.sandbox_flags` (or
+  // `dest_site_instance_` for history navigations) if we haven't received the
+  // response yet and don't have the final `policy_container_builder_`, to
+  // reduce the chance that recomputing will be needed. If the state of the
+  // kOrigin flag changes, we'll detect the change and recompute the target
+  // SiteInstance elsewhere.
   //
   // In general, about:blank documents should stay in their initiator's process.
   // If neither the initiator or about:blank is sandboxed, or if both are, then
@@ -4809,12 +4825,15 @@ UrlInfo NavigationRequest::GetUrlInfo() {
       // Note: We'll end up here if this function is called before
       // ComputePoliciesToCommit(), such as when computing a speculative
       // RenderFrameHost's SiteInstance before receiving a response. In that
-      // event we use the sandbox flags in commit_params_ as a current "best
+      // event we use the sandbox flags in commit_params_ (or the destination
+      // SiteInstance, if this is a history navigation) as a current "best
       // estimate".
       has_origin_restricted_sandbox_flag =
-          (commit_params_->frame_policy.sandbox_flags &
-           network::mojom::WebSandboxFlags::kOrigin) ==
-          network::mojom::WebSandboxFlags::kOrigin;
+          ((commit_params_->frame_policy.sandbox_flags &
+            network::mojom::WebSandboxFlags::kOrigin) ==
+           network::mojom::WebSandboxFlags::kOrigin) ||
+          (dest_site_instance_ &&
+           dest_site_instance_->GetSiteInfo().IsSandboxed());
     }
 
     // It's possible that a sandbox attribute can disappear from a frame that
@@ -5621,6 +5640,11 @@ NavigationRequest::CreateNavigationEarlyHintsManagerParams(
   CHECK(IsInMainFrame());
   CHECK(!IsPageActivation());
 
+  // Early Hints are only valid for HTTP/HTTPS navigations.
+  if (!GetURL().SchemeIsHTTPOrHTTPS()) {
+    return std::nullopt;
+  }
+
   // Getting a RenderProcessHost from a tentative RenderFrameHost during
   // navigation is generally discouraged because it has potential performance
   // impact (the RenderProcessHost could be discarded without actually being
@@ -5916,8 +5940,7 @@ void NavigationRequest::SelectFrameHostForOnRequestFailedInternal(
   }
 }
 
-NavigationRequest::ErrorPageProcess
-NavigationRequest::ComputeErrorPageProcess() {
+ErrorPageProcess NavigationRequest::ComputeErrorPageProcess() {
   if (net_error_ == net::OK) {
     return ErrorPageProcess::kNotErrorPage;
   }
@@ -6492,6 +6515,55 @@ void NavigationRequest::OnRedirectChecksComplete(
   }
 
   loader_->FollowRedirect(std::move(headers_update_params));
+}
+
+std::optional<net::NetworkIsolationKey>
+NavigationRequest::GetNetworkIsolationKeyForRendererAccessibleHttpCache() {
+#if BUILDFLAG(ENABLE_DISK_CACHE_SQL_BACKEND)
+  if (!static_cast<StoragePartitionImpl*>(
+           GetStoragePartitionWithCurrentSiteInfo())
+           ->SupportsRendererAccessibleHttpCache()) {
+    return std::nullopt;
+  }
+  if (site_info_.GetStoragePartitionConfig().in_memory()) {
+    return std::nullopt;
+  }
+  if (site_info_.IsSandboxed()) {
+    return std::nullopt;
+  }
+  if (site_info_.web_exposed_isolation_info().is_isolated()) {
+    return std::nullopt;
+  }
+  if (site_info_.IsGuest()) {
+    return std::nullopt;
+  }
+  if (site_info_.is_jit_disabled()) {
+    return std::nullopt;
+  }
+  if (site_info_.are_v8_optimizations_disabled()) {
+    return std::nullopt;
+  }
+  if (site_info_.is_pdf()) {
+    return std::nullopt;
+  }
+  if (site_info_.is_fenced()) {
+    return std::nullopt;
+  }
+  if (!site_info_.GetStoragePartitionConfig().is_default()) {
+    return std::nullopt;
+  }
+  if (site_info_.agent_cluster_key().IsOriginKeyed() ||
+      site_info_.agent_cluster_key().IsCrossOriginIsolated()) {
+    return std::nullopt;
+  }
+  auto network_isolation_key = GetIsolationInfo().network_isolation_key();
+  if (network_isolation_key.IsTransient()) {
+    return std::nullopt;
+  }
+  return network_isolation_key;
+#else   // ENABLE_DISK_CACHE_SQL_BACKEND
+  return std::nullopt;
+#endif  // ENABLE_DISK_CACHE_SQL_BACKEND
 }
 
 void NavigationRequest::OnFailureChecksComplete(
@@ -11630,7 +11702,7 @@ void NavigationRequest::ComputePoliciesToCommitForError() {
 }
 
 void NavigationRequest::DidUpdateInitiatorStateToken(
-    const base::UnguessableToken& new_initiator_state_token) {
+    const blink::InitiatorStateToken& new_initiator_state_token) {
   initiator_state_token_to_commit_ = new_initiator_state_token;
 }
 void NavigationRequest::CheckStateTransition(NavigationState state) const {
@@ -12074,13 +12146,19 @@ void NavigationRequest::MaybeDispatchNavigateEventForCrossDocumentTraversal() {
       blink::mojom::NavigationType::HISTORY_DIFFERENT_DOCUMENT) {
     return;
   }
-  // Only fire the navigate event if the destination is same-origin. Because
-  // this check is performed at navigation start time, `destination_origin` is
+  // Only fire the navigate event if the destination is same-origin. Prefer
+  // the origin recorded when the destination entry previously committed, since
+  // the URL alone does not reflect opaque origins resulting from CSP sandbox.
+  // See also PopulateSingleNavigationApiHistoryEntryVector(). Because this
+  // check is performed at navigation start time, the URL-derived fallback is
   // based on the pre-redirect URL, which is consistent with the renderer
   // process logic for firing the navigate event for non-history navigations.
-  url::Origin destination_origin = url::Origin::Resolve(
-      common_params_->url,
-      common_params_->initiator_origin.value_or(url::Origin()));
+  url::Origin destination_origin =
+      origin_related_state_ && origin_related_state_->committed_origin
+          ? *origin_related_state_->committed_origin
+          : url::Origin::Resolve(
+                common_params_->url,
+                common_params_->initiator_origin.value_or(url::Origin()));
   if (!frame_tree_node_->current_origin().IsSameOriginWith(
           destination_origin)) {
     return;

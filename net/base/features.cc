@@ -128,6 +128,10 @@ BASE_FEATURE(kHappyEyeballsV2,
 BASE_FEATURE(kHappyEyeballsV3, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kEnableIntermediateDnsResults, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE_PARAM(bool,
+                   kEnableIntermediateDnsResultsSortTransactionsIndividually,
+                   &kEnableIntermediateDnsResults,
+                   true);
 
 BASE_FEATURE(kAdjustIPv6FallbackTime, base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -326,8 +330,15 @@ BASE_FEATURE(kDeferConnectionTypeAtStartup, base::FEATURE_DISABLED_BY_DEFAULT);
 
 #if BUILDFLAG(IS_MAC)
 BASE_FEATURE(kTcpPortRandomizationMac, base::FEATURE_DISABLED_BY_DEFAULT);
-const base::FeatureParam<int> kTcpPortRandomizationReuseDelaySec{
-    &kTcpPortRandomizationMac, "reuse_delay_sec", 120};
+BASE_FEATURE_PARAM(int,
+                   kTcpPortRandomizationReuseDelaySec,
+                   &kTcpPortRandomizationMac,
+                   "reuse_delay_sec",
+                   120);
+BASE_FEATURE_PARAM(bool,
+                   kTcpPortRandomizationMacForLoopback,
+                   &kTcpPortRandomizationMac,
+                   false);
 #endif
 
 BASE_FEATURE(kAvoidEntryCreationForNoStore, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -348,6 +359,10 @@ BASE_FEATURE(kAsyncQuicSession,
 BASE_FEATURE(kAsyncDnsQuicJob, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE_PARAM(bool, kAsyncDnsQuicJobFastFail, &kAsyncDnsQuicJob, false);
+BASE_FEATURE_PARAM(bool,
+                   kAsyncDnsQuicJobSortTransactionsIndividually,
+                   &kAsyncDnsQuicJob,
+                   true);
 
 BASE_FEATURE(kAdjustQuicSlowTimerDelay, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE_PARAM(base::TimeDelta,

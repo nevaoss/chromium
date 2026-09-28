@@ -35,6 +35,9 @@ BASE_DECLARE_FEATURE(kMemoryBanks);
 // The maximum number of entries to keep in Memory Banks storage.
 BASE_DECLARE_FEATURE_PARAM(size_t, kMaxMemoryBankEntries);
 
+// The maximum number of turns stored in the memory bank chat history cache.
+BASE_DECLARE_FEATURE_PARAM(size_t, kMaxMemoryBankChatHistoryTurns);
+
 // The maximum number of tab groups stored in the in-memory tab group store.
 BASE_DECLARE_FEATURE_PARAM(int, kMaxTabGroups);
 
@@ -51,6 +54,10 @@ BASE_DECLARE_FEATURE(kContextHubDatabaseStorage);
 // TabContextSyncMemoryBank. If Memory Banks is enabled but this flag is false,
 // the impl will proceed to check the kContextHubDatabaseStorage flag above.
 BASE_DECLARE_FEATURE(kContextHubTabContextSyncStorage);
+
+// Overrides the timeout of the Context Memory Service FetchContext call for
+// smart search.
+BASE_DECLARE_FEATURE_PARAM(base::TimeDelta, kSmartSearchTimeout);
 
 }  // namespace context_hub::features
 

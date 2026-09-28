@@ -1457,6 +1457,7 @@
 <translation id="3495081129428749620"><ph name="PAGE_TITLE" />
     ページ内を検索</translation>
 <translation id="3495818359064790343">給与</translation>
+<translation id="3496531230994554300">ウォレットの通知が画面全体に表示されています。</translation>
 <translation id="3497627066518778351">デバイス上のサイトデータの一覧が新しいウィンドウに表示されます</translation>
 <translation id="3498215018399854026">現在、保護者にたずねることができません。もう一度お試しください。</translation>
 <translation id="350069200438440499">ファイル名:</translation>
@@ -1547,6 +1548,7 @@
 <translation id="3634530185120165534">トレイ 5</translation>
 <translation id="3634567936866541746">偽のサイトでパスワードを入力しました。アカウントを保護するため、保存したパスワードをすぐに確認することをおすすめします。</translation>
 <translation id="3638102297696182302">文書作成サポートを再開します。開くには、Tab キーと Enter キーを押します</translation>
+<translation id="3639626391482300575">この IBAN は Google ウォレットに保存され、Google サービス全体で使用できるようになります。</translation>
 <translation id="3642196846309122856">ファイルをもう一度ダウンロードしてみてください</translation>
 <translation id="3642638418806704195">アプリケーション:</translation>
 <translation id="3647286794400715637">各 urls 文字列エントリには 1 つまたは 2 つの URL を含める必要があります。</translation>
@@ -1559,7 +1561,6 @@
 <translation id="3655670868607891010">このエラーが頻繁に表示される場合は、こちらの<ph name="HELP_LINK" />をお試しください。</translation>
 <translation id="3658742229777143148">変更履歴</translation>
 <translation id="3659521826520353662">管理者が定義したウェブサイトとアクセスした日時: <ph name="ALLOWLISTED_WEBSITES" /></translation>
-<translation id="3662040827609932717">この IBAN は Google ウォレットに保存され、Google サービス全体で使用できるようになります。</translation>
 <translation id="3664479564786885722">この商品を販売している他のショップの購入オプションを検索します。</translation>
 <translation id="3664782872746246217">キーワード:</translation>
 <translation id="3670030362669914947">番号</translation>
@@ -2613,7 +2614,6 @@
 <translation id="5414306071315087019">Google Pay で後払い決済を利用できます</translation>
 <translation id="5414446060143308245">移行する前に確認が必要です</translation>
 <translation id="5414511064953050917">このまま移動</translation>
-<translation id="5418700249417444482">アクセスしたページの URL は分析のため Google Cloud または第三者に送信されます。これらの URL は管理者に公開される可能性があります。管理者はこれらの URL をスキャンして、安全でないウェブサイトを検出したり、設定したルールに基づきウェブサイトをフィルタリングしたりする可能性があります。</translation>
 <translation id="5419311651396341287">管理者は次の情報を確認できる場合があります。</translation>
 <translation id="5423269318075950257">価格のトラッキング</translation>
 <translation id="5426179911063097041"><ph name="SITE" /> が通知を送信しようとしています。</translation>
@@ -2634,7 +2634,6 @@
 <translation id="5447103258548475868">Google ウォレットにパスポートを保存</translation>
 <translation id="5447235695608032700"><ph name="SITE" /> があなたに関する保存済みの情報を使用することを許可する</translation>
 <translation id="5447973833955560753">再設定用のパスワード</translation>
-<translation id="5451331376824595378">セキュリティ イベントが Chrome によって報告されると、そのイベントに関するデータが管理者に送信されます。送信されるデータには、Chrome でアクセスしたページの URL、データをコピーしたページの URL、ファイルの名前やメタデータ、IP アドレス、ブラウザやタブの障害のほか、ウェブベースのアプリケーションやデバイス、Chrome へのログインに使用したユーザー名が含まれる可能性があります。</translation>
 <translation id="5452270690849572955">この <ph name="HOST_NAME" /> ページが見つかりません</translation>
 <translation id="5452923259299906094">電子ウォレットと Pix で支払う</translation>
 <translation id="5455374756549232013">ポリシーのタイムスタンプが不適切です</translation>
@@ -2669,6 +2668,7 @@
 <translation id="5499229993630251170">このスレッドを続行しますか？</translation>
 <translation id="5506286895894263601">このリストには有効なショートカットが含まれていません。</translation>
 <translation id="5507756662695126555">否認防止</translation>
+<translation id="5508515366054931524">メールアドレスの確認を求めるメッセージが画面全体に表示されています</translation>
 <translation id="5509762909502811065">B0</translation>
 <translation id="5509780412636533143">管理対象のブックマーク</translation>
 <translation id="5510766032865166053">移動または削除された可能性があります。</translation>
@@ -3180,7 +3180,6 @@
 <translation id="6361757823711327522">B7</translation>
 <translation id="6363786367719063276">ログを表示</translation>
 <translation id="6364095313648930329"><ph name="BEGIN_LINK" />プロキシ、ファイアウォール、セキュア DNS の設定を確認する<ph name="END_LINK" /></translation>
-<translation id="6365513578140103119">メールを自動的に確認する</translation>
 <translation id="6366710531182496394">2 か所のステープル（左）</translation>
 <translation id="6367196786591004737">エントリを削除</translation>
 <translation id="6370022303958842211">ログイン（失敗したログインの理由を含む）、ログアウト、ロック、ロック解除などのデバイス アクセス アクション</translation>
@@ -3305,6 +3304,7 @@
 <translation id="6578434528542148658">拡張機能 ID が無効です。</translation>
 <translation id="658230438113661756">アクセスしようとしたサイトでは、攻撃者がパスワード、写真、メッセージ、クレジット カード番号などを盗んだり削除したりする有害なソフトウェアをインストールする可能性があります。安全なページに戻ることを強くおすすめします。<ph name="BEGIN_LEARN_MORE_LINK" />この警告の詳細<ph name="END_LEARN_MORE_LINK" /></translation>
 <translation id="6583309742916093092">Google ウォレットに保存済み</translation>
+<translation id="6585589684832019248">このカードは Google ウォレットに保存され、Google サービス全体で使用できるようになります</translation>
 <translation id="6587893660316489419">B5 封筒</translation>
 <translation id="6587923378399804057">コピーしたリンク</translation>
 <translation id="6591833882275308647">ご使用の <ph name="DEVICE_TYPE" /> は管理されていません</translation>
@@ -3451,6 +3451,7 @@
 <translation id="6860888819347870819">ピクチャー イン ピクチャーの開始を要求できます</translation>
 <translation id="6864189428899665393">267x389 mm</translation>
 <translation id="6865412394715372076">現在、このカードを確認できません</translation>
+<translation id="6871073333584947219">ウォレットの通知を閉じました。</translation>
 <translation id="6871813064737840684">このオプションのウェブ全体での価格の推移</translation>
 <translation id="6873456682041376666">上トレイ</translation>
 <translation id="6874604403660855544">追加のやり直し（&amp;R）</translation>
@@ -3906,7 +3907,6 @@
 <translation id="7615932826417658001">ID カードを追加</translation>
 <translation id="7616390733770379387">表示は順不同です。</translation>
 <translation id="7616645509853975347">管理者により、お使いのブラウザで Chrome Enterprise Connectors が有効化されています。これらのコネクタには、一部のユーザーデータへのアクセスが許可されます。</translation>
-<translation id="7616747402308801775">このカードは Google ウォレットに保存され、Google サービス全体で使用できるようになります</translation>
 <translation id="7617825962482469577">C7/C6 封筒</translation>
 <translation id="7619838219691048931">最終シート</translation>
 <translation id="7621546470643449009">初心者向けの星空観察ガイドを作成して。夜空の楽しみ方がわかるように、見つけやすい星座を 3 つ教えて</translation>
@@ -3971,6 +3971,7 @@
 <translation id="7705085181312584869">文書作成サポート</translation>
 <translation id="7705992072972338699">光ディスク（高光沢）</translation>
 <translation id="7706689436519265630">コピーまたは移動したファイルは分析のため Google Cloud または第三者に送信されます。たとえば、機密データやマルウェアがないかスキャンされ、会社のポリシーに基づいて保存される場合があります。</translation>
+<translation id="7709934467582922028">メールアドレスの確認を求めるメッセージを閉じました</translation>
 <translation id="7714351089363296478">たった今訪問</translation>
 <translation id="7714404809393719981">写真（半光沢）</translation>
 <translation id="7714464543167945231">証明書</translation>
@@ -4658,7 +4659,6 @@
 <translation id="8963117664422609631">サイトの設定に移動</translation>
 <translation id="8963213021028234748"><ph name="MARKUP_1" />アドバイス:<ph name="MARKUP_2" />データ接続があることを確認します<ph name="MARKUP_3" />このウェブページを後で再読み込みします<ph name="MARKUP_4" />入力したアドレスを確認します<ph name="MARKUP_5" /></translation>
 <translation id="8963969435440878110">ローカル ファイルは <ph name="HOURS" /> 時間後に削除されます</translation>
-<translation id="8964904785315870349">メールの確認</translation>
 <translation id="8968766641738584599">カードを保存</translation>
 <translation id="8970887620466824814">エラーが発生しました。</translation>
 <translation id="8971063699422889582">サーバーの証明書の有効期限が切れています。</translation>
@@ -4868,6 +4868,7 @@
 <translation id="988159990683914416">Developer Build</translation>
 <translation id="989988560359834682">住所の編集</translation>
 <translation id="990164307229195234"><ph name="DEVICE_NAME" />（<ph name="DISAMBIGUATION_LABEL" />）</translation>
+<translation id="990812705189376036">マークルツリー証明</translation>
 <translation id="992110854164447044">仮想カードを使用すると、実際のカードを非表示にして、不正行為から保護できます。<ph name="IDS_AUTOFILL_VIRTUAL_CARD_ENROLLMENT_LEARN_MORE_LINK_LABEL" /></translation>
 <translation id="992115559265932548"><ph name="MICROSOFT_ACTIVE_DIRECTORY" /></translation>
 <translation id="992256792861109788">ピンク</translation>

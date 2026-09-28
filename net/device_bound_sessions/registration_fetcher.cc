@@ -28,6 +28,7 @@
 #include "components/unexportable_keys/service_error.h"
 #include "components/unexportable_keys/unexportable_key_id.h"
 #include "components/unexportable_keys/unexportable_key_service.h"
+#include "crypto/sign.h"
 #include "crypto/unexportable_key.h"
 #include "net/base/features.h"
 #include "net/base/net_errors.h"
@@ -101,7 +102,7 @@ void RunSessionCallback(
 // Holds the signature algorithm and SubjectPublicKeyInfo (SPKI) bytes of an
 // unexportable key.
 struct KeyInfo {
-  crypto::SignatureVerifier::SignatureAlgorithm algorithm;
+  crypto::sign::SignatureKind algorithm;
   std::vector<uint8_t> pubkey;
 };
 
@@ -480,8 +481,7 @@ class RegistrationFetcherImpl : public RegistrationFetcher {
 
   void StartCreateTokenAndFetch(
       RegistrationRequestParam& registration_params,
-      base::span<const crypto::SignatureVerifier::SignatureAlgorithm>
-          supported_algos,
+      base::span<const crypto::sign::SignatureKind> supported_algos,
       RegistrationCompleteCallback callback) override {
     // Using mock fetcher for testing.
     if (g_mock_fetcher) {
@@ -545,9 +545,8 @@ class RegistrationFetcherImpl : public RegistrationFetcher {
       return;
     }
 
-    GURL::Replacements replacements;
-    replacements.SetPathStr("/.well-known/device-bound-sessions");
-    GURL well_known_url = provider_url_.ReplaceComponents(replacements);
+    GURL well_known_url =
+        CreateWellKnownUrl(url::Origin::Create(provider_url_));
     // TODO(crbug.com/495096658): Assert that `IsForRefreshRequest()` is false
     // once the tests are fixed.
     url_fetcher_ = std::make_unique<URLFetcher>(
@@ -638,9 +637,8 @@ class RegistrationFetcherImpl : public RegistrationFetcher {
       return;
     }
 
-    GURL::Replacements replacements;
-    replacements.SetPathStr("/.well-known/device-bound-sessions");
-    GURL well_known_url = fetcher_endpoint_.ReplaceComponents(replacements);
+    GURL well_known_url =
+        CreateWellKnownUrl(url::Origin::Create(fetcher_endpoint_));
     url_fetcher_ = std::make_unique<URLFetcher>(
         context_, well_known_url, referring_origin_, net_log_source_,
         IsForRefreshRequest());
@@ -1019,11 +1017,7 @@ class RegistrationFetcherImpl : public RegistrationFetcher {
         // rather the top-level site (which matches the origin when including
         // the site).
         final_registration_url.host() != session->origin().host()) {
-      GURL::Replacements replacements;
-      replacements.SetPathStr("/.well-known/device-bound-sessions");
-      replacements.SetHostStr(session->origin().host());
-      GURL well_known_url =
-          fetcher_endpoint_.ReplaceComponents(std::move(replacements));
+      GURL well_known_url = CreateWellKnownUrl(session->origin());
       url_fetcher_ = std::make_unique<URLFetcher>(
           context_, well_known_url, referring_origin_, net_log_source_,
           /*is_refresh=*/false);
@@ -1214,9 +1208,8 @@ void RegistrationFetcher::CreateRegistrationTokenAsyncForTesting(
     std::optional<std::string> authorization,
     base::OnceCallback<void(
         SessionErrorOr<RegistrationFetcher::RegistrationToken>)> callback) {
-  static constexpr crypto::SignatureVerifier::SignatureAlgorithm
-      kSupportedAlgos[] = {crypto::SignatureVerifier::ECDSA_SHA256,
-                           crypto::SignatureVerifier::RSA_PKCS1_SHA256};
+  static constexpr crypto::sign::SignatureKind kSupportedAlgos[] = {
+      crypto::sign::ECDSA_SHA256, crypto::sign::RSA_PKCS1_SHA256};
   unexportable_key_service.GenerateSigningKeySlowlyAsync(
       kSupportedAlgos, unexportable_keys::BackgroundTaskPriority::kBestEffort,
       base::BindOnce(

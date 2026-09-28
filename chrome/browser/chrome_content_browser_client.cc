@@ -339,6 +339,7 @@
 #include "components/site_isolation/site_isolation_policy.h"
 #include "components/site_token_provider/features.h"
 #include "components/supervised_user/core/common/features.h"
+#include "components/sync_tab_context/http_rpc_constants.h"
 #include "components/translate/core/common/translate_switches.h"
 #include "components/user_prefs/user_prefs.h"
 #include "components/variations/variations_associated_data.h"
@@ -478,6 +479,7 @@
 #include "content/public/browser/tracing_service.h"
 #include "sandbox/win/src/sandbox_policy.h"
 #elif BUILDFLAG(IS_MAC)
+#include "base/apple/foundation_util.h"
 #include "chrome/browser/browser_process_platform_part_mac.h"
 #include "chrome/browser/enterprise/platform_auth/platform_auth_proxying_url_loader_factory.h"
 #include "chrome/common/chrome_version.h"
@@ -671,6 +673,8 @@
 #include "chrome/browser/extensions/chrome_extension_cookies.h"
 #include "chrome/browser/extensions/extension_util.h"
 #include "extensions/browser/api/web_request/web_request_api.h"
+#include "extensions/browser/extension_mojo_binder_registry.h"
+#include "extensions/browser/extension_mojo_binder_registry_factory.h"
 #include "extensions/browser/extension_protocols.h"
 #include "extensions/browser/extension_registry.h"
 #include "extensions/browser/extension_util.h"
@@ -2300,8 +2304,13 @@ bool ChromeContentBrowserClient::ShouldAllowMojoJsBindingsForFrame(
         extensions::ExtensionRegistry::Get(browser_context)
             ->enabled_extensions()
             .GetByID(site_url.GetHost());
-    return extensions::util::IsMojoJsEnabledForExtension(extension,
-                                                         browser_context);
+    if (!extension) {
+      return false;
+    }
+    const auto* registry =
+        extensions::ExtensionMojoBinderRegistryFactory::GetForBrowserContext(
+            browser_context);
+    return registry && registry->IsMojoJsEnabledForFrame(*extension);
   }
 #endif
   return false;
@@ -3187,6 +3196,7 @@ void ChromeContentBrowserClient::AppendExtraCommandLineSwitches(
         embedder_support::kOriginTrialDisabledFeatures,
         embedder_support::kOriginTrialPublicKey,
         switches::kReaderModeHeuristics,
+        sync_tab_context::kTabContextAllowedOriginSwitch,
         translate::switches::kTranslateSecurityOrigin,
     };
 
@@ -4008,9 +4018,11 @@ GetPreferredColorScheme(const WebPreferences& web_prefs,
     preferred_root_scrollbar_color_scheme = preferred_color_scheme;
   }
 #else  // !BUILDFLAG(IS_ANDROID)
-  if (Profile::FromBrowserContext(web_contents->GetBrowserContext())
-          ->IsIncognitoProfile() &&
-      !security_principal.IsWebUI()) {
+  Profile* profile =
+      Profile::FromBrowserContext(web_contents->GetBrowserContext());
+  if (profile->IsEnterpriseIsolatedModeProfile() && !security_principal.IsWebUI()) {
+    preferred_color_scheme = blink::mojom::PreferredColorScheme::kLight;
+  } else if (profile->IsIncognitoProfile() && !security_principal.IsWebUI()) {
     // Incognito contents follow the device color mode.
     preferred_color_scheme = ToBlinkPreferredColorScheme(
         ui::NativeTheme::GetInstanceForWeb()->preferred_color_scheme());
@@ -8765,21 +8777,32 @@ base::FilePath ChromeContentBrowserClient::GetChildProcessPath(int flags) {
   }
 #endif
 
+#if BUILDFLAG(IS_MAC)
+  if (flags ==
+      std::to_underlying(ChildProcessHostFlags::kChildProcessHelperAlerts)) {
+    if (!base::apple::AmIBundled()) {
+      return base::FilePath();
+    }
+    std::string_view child_suffix =
+        base::FeatureList::IsEnabled(features::kAperitifHelpers)
+            ? " (Aperitif Alerts)"
+            : chrome::kMacHelperSuffixAlerts;
+    std::string child_base_name =
+        base::StrCat({chrome::kHelperProcessExecutableName, child_suffix});
+    // Parallel to SetUpBundleOverrides(), helper executables reside in the
+    // "Helpers" directory within the versioned framework bundle as
+    // `<child_base_name>.app/Contents/MacOS/<child_base_name>`.
+    return chrome::GetFrameworkBundlePath()
+        .Append(FILE_PATH_LITERAL("Helpers"))
+        .Append(base::StrCat({child_base_name, FILE_PATH_LITERAL(".app")}))
+        .Append(FILE_PATH_LITERAL("Contents"))
+        .Append(FILE_PATH_LITERAL("MacOS"))
+        .Append(child_base_name);
+  }
+#endif
+
   return base::FilePath();
 }
-
-#if BUILDFLAG(IS_MAC)
-std::string ChromeContentBrowserClient::GetChildProcessSuffix(int child_flags) {
-  if (child_flags ==
-      std::to_underlying(ChildProcessHostFlags::kChildProcessHelperAlerts)) {
-    if (base::FeatureList::IsEnabled(features::kAperitifHelpers)) {
-      return " (Aperitif Alerts)";
-    }
-    return chrome::kMacHelperSuffixAlerts;
-  }
-  NOTREACHED() << "Unsupported child process flags!";
-}
-#endif  // BUILDFLAG(IS_MAC)
 
 bool ChromeContentBrowserClient::ShouldUseFirstPartyStorageKey(
     const url::Origin& origin) {

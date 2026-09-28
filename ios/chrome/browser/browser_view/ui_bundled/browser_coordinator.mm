@@ -91,9 +91,6 @@
 #import "ios/chrome/browser/context_menu/ui_bundled/context_menu_configuration_provider.h"
 #import "ios/chrome/browser/contextual_panel/model/contextual_panel_tab_helper.h"
 #import "ios/chrome/browser/credential_provider_promo/ui_bundled/credential_provider_promo_coordinator.h"
-#import "ios/chrome/browser/default_browser/model/utils.h"
-#import "ios/chrome/browser/default_browser/promo/generic/coordinator/default_browser_generic_promo_coordinator.h"
-#import "ios/chrome/browser/default_browser/promo/generic/public/default_browser_generic_promo_commands.h"
 #import "ios/chrome/browser/default_browser/promo/non_modal/coordinator/default_browser_promo_non_modal_coordinator.h"
 #import "ios/chrome/browser/default_browser/promo/non_modal/coordinator/default_promo_non_modal_presentation_delegate.h"
 #import "ios/chrome/browser/default_browser/promo/non_modal/public/default_browser_promo_non_modal_commands.h"
@@ -145,8 +142,7 @@
 #import "ios/chrome/browser/presenters/ui_bundled/vertical_animation_container.h"
 #import "ios/chrome/browser/print/coordinator/print_coordinator.h"
 #import "ios/chrome/browser/print/coordinator/print_coordinator_impl.h"
-#import "ios/chrome/browser/promos_manager/coordinator/promos_manager_coordinator.h"
-#import "ios/chrome/browser/promos_manager/model/app_store_review_swift.h"
+#import "ios/chrome/browser/promos_manager/coordinator/promos_manager_ui_handler.h"
 #import "ios/chrome/browser/push_notification/coordinator/notifications_opt_in_coordinator.h"
 #import "ios/chrome/browser/push_notification/coordinator/notifications_opt_in_coordinator_delegate.h"
 #import "ios/chrome/browser/push_notification/model/constants.h"
@@ -172,8 +168,6 @@
 #import "ios/chrome/browser/settings/autofill/payments/coordinator/autofill_add_credit_card_coordinator.h"
 #import "ios/chrome/browser/settings/autofill/payments/coordinator/autofill_add_credit_card_coordinator_delegate.h"
 #import "ios/chrome/browser/settings/clear_browsing_data/coordinator/quick_delete_coordinator.h"
-#import "ios/chrome/browser/settings/ui_bundled/password/password_settings/password_settings_coordinator.h"
-#import "ios/chrome/browser/settings/ui_bundled/password/password_settings/password_settings_coordinator_delegate.h"
 #import "ios/chrome/browser/shared/coordinator/alert/repost_form_coordinator.h"
 #import "ios/chrome/browser/shared/coordinator/alert/repost_form_coordinator_delegate.h"
 #import "ios/chrome/browser/shared/coordinator/default_browser_promo/non_modal_default_browser_promo_scheduler_scene_agent.h"
@@ -206,7 +200,6 @@
 #import "ios/chrome/browser/shared/public/commands/omnibox_commands.h"
 #import "ios/chrome/browser/shared/public/commands/open_new_tab_command.h"
 #import "ios/chrome/browser/shared/public/commands/popup_menu_commands.h"
-#import "ios/chrome/browser/shared/public/commands/promos_manager_commands.h"
 #import "ios/chrome/browser/shared/public/commands/qr_generation_commands.h"
 #import "ios/chrome/browser/shared/public/commands/quick_delete_commands.h"
 #import "ios/chrome/browser/shared/public/commands/reader_mode_chip_commands.h"
@@ -307,7 +300,6 @@
     AutofillSettingsNavigator,
     BrowserCoordinatorCommands,
     BubblePresenterDelegate,
-    DefaultBrowserGenericPromoCommands,
     DefaultBrowserPromoNonModalCommands,
     DefaultPromoNonModalPresentationDelegate,
     EditMenuBuilder,
@@ -317,10 +309,7 @@
     NotificationsOptInCoordinatorDelegate,
     OverscrollActionsControllerDelegate,
     PasswordControllerDelegate,
-    PasswordSettingsCoordinatorDelegate,
     PrerenderBrowserAgentDelegate,
-    PromosManagerCommands,
-    QuickDeleteCommands,
     ReSigninPresenter,
     ReaderModeBrowserAgentDelegate,
     ReaderModeCommands,
@@ -409,18 +398,11 @@
 // Coordinator for new tab pages.
 @property(nonatomic, strong) NewTabPageCoordinator* NTPCoordinator;
 
-// Coordinator for the password settings UI presentation.
-@property(nonatomic, strong)
-    PasswordSettingsCoordinator* passwordSettingsCoordinator;
-
 // Coordinator for the popup menu.
 @property(nonatomic, strong) PopupMenuCoordinator* popupMenuCoordinator;
 
 // Used to display the Print UI. Nil if not visible.
 @property(nonatomic, strong) PrintCoordinator* printCoordinator;
-
-// Coordinator for app-wide promos.
-@property(nonatomic, strong) PromosManagerCoordinator* promosManagerCoordinator;
 
 // Coordinator for the QR scanner.
 @property(nonatomic, strong) QRScannerLegacyCoordinator* qrScannerCoordinator;
@@ -456,10 +438,6 @@
 
 // Opens downloaded Vcard.
 @property(nonatomic, strong) VcardCoordinator* vcardCoordinator;
-
-// The manager used to display a default browser promo.
-@property(nonatomic, strong) DefaultBrowserGenericPromoCoordinator*
-    defaultBrowserGenericPromoCoordinator;
 
 // The webState of the active tab.
 @property(nonatomic, readonly) web::WebState* activeWebState;
@@ -512,10 +490,6 @@
   // Callback to remove the activity overlay started by the browser coordinator
   // itself.
   base::ScopedClosureRunner _activityOverlayCallback;
-
-  // The coordinator for the new Delete Browsing Data screen, also called Quick
-  // Delete.
-  QuickDeleteCoordinator* _quickDeleteCoordinator;
 
   LensPromoCoordinator* _lensPromoCoordinator;
   EnhancedSafeBrowsingPromoCoordinator* _enhancedSafeBrowsingPromoCoordinator;
@@ -869,13 +843,6 @@
   self.recentTabsCoordinator = nil;
 }
 
-// Stops the coordinator for password manager settings.
-- (void)stopPasswordSettingsCoordinator {
-  [self.passwordSettingsCoordinator stop];
-  self.passwordSettingsCoordinator.delegate = nil;
-  self.passwordSettingsCoordinator = nil;
-}
-
 - (void)setWebUsageEnabled:(BOOL)webUsageEnabled {
   if (!self.profile || !self.started) {
     return;
@@ -968,14 +935,11 @@
     @protocol(AutoDeletionCommands),
     @protocol(BrowserCoordinatorCommands),
     @protocol(DefaultBrowserPromoNonModalCommands),
-    @protocol(PromosManagerCommands),
     @protocol(FindInPageCommands),
     @protocol(ReaderModeCommands),
     @protocol(NewTabPageCommands),
-    @protocol(QuickDeleteCommands),
     @protocol(SyncPresenterCommands),
     @protocol(TextZoomCommands),
-    @protocol(DefaultBrowserGenericPromoCommands),
   ];
 
   for (Protocol* protocol in protocols) {
@@ -1318,8 +1282,6 @@
 
   /* NetExportCoordinator is created and started by a delegate method */
 
-  /* passwordSettingsCoordinator is created and started by a delegate method */
-
   /* paymentsScanCoordinator is created and started by a BrowserCommand */
 
   /* paymentsSuggestionBottomSheetCoordinator is created and started by a
@@ -1373,8 +1335,6 @@
       [[CredentialProviderPromoCoordinator alloc]
           initWithBaseViewController:self.viewController
                              browser:self.browser];
-  _credentialProviderPromoCoordinator.promosUIHandler =
-      _promosManagerCoordinator;
   [_credentialProviderPromoCoordinator start];
 
   _lensOverlayCoordinator = [[LensOverlayCoordinator alloc]
@@ -1400,9 +1360,6 @@
 
   [self.printCoordinator stop];
   self.printCoordinator = nil;
-
-  [self.promosManagerCoordinator stop];
-  self.promosManagerCoordinator = nil;
 
   [self.readingListCoordinator stop];
   self.readingListCoordinator.delegate = nil;
@@ -1430,21 +1387,11 @@
   [self.netExportCoordinator stop];
   self.netExportCoordinator = nil;
 
-  [self.passwordSettingsCoordinator stop];
-  self.passwordSettingsCoordinator.delegate = nil;
-  self.passwordSettingsCoordinator = nil;
-
   [_credentialProviderPromoCoordinator stop];
   _credentialProviderPromoCoordinator = nil;
 
-  [self.defaultBrowserGenericPromoCoordinator stop];
-  self.defaultBrowserGenericPromoCoordinator = nil;
-
   [self.choiceCoordinator stop];
   self.choiceCoordinator = nil;
-
-  [_quickDeleteCoordinator stop];
-  _quickDeleteCoordinator = nil;
 
   [self dismissLensPromo];
   [self dismissEnhancedSafeBrowsingPromo];
@@ -2019,13 +1966,8 @@
 
 - (void)showComposebox {
   [self exitFullscreen];
-
-  if (IsComposeboxIOSEnabled()) {
-    [self showComposeboxFromEntrypoint:ComposeboxEntrypoint::kOther
-                             withQuery:nil];
-  } else {
-    [_omniboxCommandsHandler focusOmnibox];
-  }
+  [self showComposeboxFromEntrypoint:ComposeboxEntrypoint::kOther
+                           withQuery:nil];
 }
 
 - (void)showComposeboxFromEntrypoint:(ComposeboxEntrypoint)entrypoint
@@ -2037,13 +1979,6 @@
 }
 
 - (void)showComposeboxWithParams:(ComposeboxFocusParams*)params {
-  if (!IsComposeboxIOSEnabled()) {
-    [_omniboxCommandsHandler focusOmnibox];
-    [_omniboxCommandsHandler insertTextToOmnibox:params.query];
-    return;
-  }
-
-  CHECK(IsComposeboxIOSEnabled());
   if (_composeboxCoordinator) {
     return;
   }
@@ -2057,19 +1992,11 @@
 }
 
 - (void)hideComposebox {
-  if (IsComposeboxIOSEnabled()) {
-    [self hideComposeboxImmediately:NO completion:nil];
-  } else {
-    [_omniboxCommandsHandler cancelOmniboxEdit];
-  }
+  [self hideComposeboxImmediately:NO completion:nil];
 }
 
 - (void)hideComposeboxWithCompletion:(ProceduralBlock)completion {
-  if (IsComposeboxIOSEnabled()) {
-    [self hideComposeboxImmediately:NO completion:completion];
-  } else {
-    [_omniboxCommandsHandler cancelOmniboxEditWithCompletion:completion];
-  }
+  [self hideComposeboxImmediately:NO completion:completion];
 }
 
 - (void)clearPresentedStateWithCompletion:(ProceduralBlock)completion
@@ -2084,16 +2011,9 @@
 
   [self hideReaderModeBlurOverlay];
 
-  [self.passwordSettingsCoordinator stop];
-  self.passwordSettingsCoordinator.delegate = nil;
-  self.passwordSettingsCoordinator = nil;
-
   [self stopRepostFormCoordinator];
 
   [_formInputAccessoryCoordinator clearPresentedState];
-
-  [_quickDeleteCoordinator stop];
-  _quickDeleteCoordinator = nil;
 
   [self updateLensUIForBackground];
 
@@ -2113,23 +2033,13 @@
     [self hideComposebox];
   }
 
-  BOOL dismissPresentedViewController = YES;
-  if (IsComposeboxIOSEnabled()) {
-    dismissPresentedViewController =
-        dismissOmnibox || !_composeboxCoordinator.presented;
-  }
+  BOOL dismissPresentedViewController =
+      dismissOmnibox || !_composeboxCoordinator.presented;
 
   [self.viewController
       clearPresentedStateWithCompletion:completion
                          dismissOmnibox:dismissOmnibox
          dismissPresentedViewController:dismissPresentedViewController];
-}
-
-#pragma mark - DefaultBrowserPromoCommands
-
-- (void)hidePromo {
-  [self.defaultBrowserGenericPromoCoordinator stop];
-  self.defaultBrowserGenericPromoCoordinator = nil;
 }
 
 #pragma mark - ReaderModeCommands
@@ -2309,130 +2219,6 @@
   helper->StartFinding(@"");
 }
 
-#pragma mark - PromosManagerCommands
-
-- (void)showPromo {
-  if (!self.promosManagerCoordinator) {
-    id<SceneCommands> sceneHandler =
-        HandlerForProtocol(self.browser->GetCommandDispatcher(), SceneCommands);
-    id<CredentialProviderPromoCommands> credentialProviderPromoHandler =
-        HandlerForProtocol(self.browser->GetCommandDispatcher(),
-                           CredentialProviderPromoCommands);
-
-    self.promosManagerCoordinator = [[PromosManagerCoordinator alloc]
-            initWithBaseViewController:self.viewController
-                               browser:self.browser
-                          sceneHandler:sceneHandler
-        credentialProviderPromoHandler:credentialProviderPromoHandler];
-
-    // CredentialProviderPromoCoordinator is initialized earlier than this, so
-    // make sure to set its UI handler.
-    _credentialProviderPromoCoordinator.promosUIHandler =
-        self.promosManagerCoordinator;
-
-    [self.promosManagerCoordinator start];
-  } else {
-    [self.promosManagerCoordinator displayPromoIfAvailable];
-  }
-}
-
-- (void)showAppStoreReviewPrompt {
-  if (IsAppStoreRatingEnabled()) {
-    [AppStoreReviewAdapter requestReviewInScene:self.sceneState.scene];
-
-    // Apple doesn't tell whether the app store review window will show or
-    // provide a callback for when it is dismissed, so alert the coordinator
-    // here so it can do any necessary cleanup.
-    [self.promosManagerCoordinator promoWasDismissed];
-  }
-}
-
-- (void)dismissCurrentPromo {
-  [self.promosManagerCoordinator stop];
-  self.promosManagerCoordinator = nil;
-}
-
-- (void)showWhatsNewPromo {
-  id<WhatsNewCommands> whatsNewHandler = HandlerForProtocol(
-      self.browser->GetCommandDispatcher(), WhatsNewCommands);
-  [whatsNewHandler
-      showWhatsNewWithPromosUIHandler:self.promosManagerCoordinator];
-}
-
-- (void)showDefaultBrowserPromo {
-  if (self.defaultBrowserGenericPromoCoordinator) {
-    // The default browser promo manager is already being displayed. Early
-    // return as this is expected if a default browser promo was open and the
-    // app was backgrounded.
-    return;
-  }
-
-  self.defaultBrowserGenericPromoCoordinator =
-      [[DefaultBrowserGenericPromoCoordinator alloc]
-          initWithBaseViewController:self.viewController
-                             browser:self.browser];
-  self.defaultBrowserGenericPromoCoordinator.promosUIHandler =
-      self.promosManagerCoordinator;
-  self.defaultBrowserGenericPromoCoordinator.handler = self;
-
-  if (IsDefaultBrowserOffCyclePromoEnabled()) {
-    self.defaultBrowserGenericPromoCoordinator.promoWasFromOffCycleTrigger =
-        YES;
-  }
-
-  [self.defaultBrowserGenericPromoCoordinator start];
-}
-
-- (void)showDefaultBrowserPromoAfterRemindMeLater {
-  if (self.defaultBrowserGenericPromoCoordinator) {
-    // Stop the existing default browser promo coordinator before starting a
-    // new one to ensure the promo is displayed with the correct configuration.
-    [self.defaultBrowserGenericPromoCoordinator stop];
-    self.defaultBrowserGenericPromoCoordinator = nil;
-  }
-
-  self.defaultBrowserGenericPromoCoordinator =
-      [[DefaultBrowserGenericPromoCoordinator alloc]
-          initWithBaseViewController:self.viewController
-                             browser:self.browser];
-  self.defaultBrowserGenericPromoCoordinator.promosUIHandler =
-      self.promosManagerCoordinator;
-  self.defaultBrowserGenericPromoCoordinator.handler = self;
-  self.defaultBrowserGenericPromoCoordinator.promoWasFromRemindMeLater = YES;
-  [self.defaultBrowserGenericPromoCoordinator start];
-}
-
-- (void)showFullscreenSigninPromo {
-  [HandlerForProtocol(self.dispatcher, SceneCommands)
-      showFullscreenSigninPromoWithCompletion:^(SigninCoordinator* coordinator,
-                                                SigninCoordinatorResult result,
-                                                id<SystemIdentity>) {
-        [self.promosManagerCoordinator promoWasDismissed];
-      }];
-}
-
-- (void)showWelcomeBackPromo {
-  [HandlerForProtocol(self.dispatcher, WelcomeBackPromoCommands)
-      showWelcomeBackPromoWithPromosUIHandler:self.promosManagerCoordinator];
-}
-
-- (void)showHomeBackgroundCustomizationPromo {
-  // The promos manager tries to check if the current page is an NTP before
-  // showing the promo, but asynchronous navigation can cause that to be
-  // incorrect.
-  if (!_NTPCoordinator.isNTPActiveForCurrentWebState) {
-    [_promosManagerCoordinator promoWasDismissed];
-    return;
-  }
-  [_NTPCoordinator showHomeBackgroundCustomizationPromoWithUIHandler:
-                       _promosManagerCoordinator];
-}
-
-- (void)showDockingPromo {
-  [HandlerForProtocol(self.dispatcher, DockingPromoCommands)
-      showDockingPromoWithPromosUIHandler:self.promosManagerCoordinator];
-}
-
 #pragma mark - AutofillSettingsNavigator
 
 - (void)openSettingsForPage:(AutofillSettingsPage)page {
@@ -2441,21 +2227,10 @@
       [HandlerForProtocol(self.dispatcher, SettingsCommands)
           showSavedPasswordsSettingsFromViewController:self.viewController];
       break;
-    case AutofillSettingsPage::kPasswordSettings: {
-      // Not an invariant due to possible race conditions. DCHECKing for
-      // debugging purposes. See crbug.com/40067451.
-      DCHECK(!self.passwordSettingsCoordinator);
-
-      // Use main browser to open the password settings.
-      SceneState* sceneState = self.sceneState;
-      self.passwordSettingsCoordinator = [[PasswordSettingsCoordinator alloc]
-          initWithBaseViewController:self.viewController
-                             browser:sceneState.browserProviderInterface
-                                         .mainBrowserProvider.browser];
-      self.passwordSettingsCoordinator.delegate = self;
-      [self.passwordSettingsCoordinator start];
+    case AutofillSettingsPage::kPasswordSettings:
+      [HandlerForProtocol(self.dispatcher, SettingsCommands)
+          showPasswordSettingsFromViewController:self.viewController];
       break;
-    }
     case AutofillSettingsPage::kAddresses:
       [HandlerForProtocol(self.dispatcher, SettingsCommands)
           showProfileSettingsFromViewController:self.viewController];
@@ -3135,6 +2910,19 @@
   [_NTPCoordinator setBlueDotVisible:visible];
 }
 
+- (void)showHomeBackgroundCustomizationPromoWithUIHandler:
+    (id<PromosManagerUIHandler>)promosUIHandler {
+  // The promos manager tries to check if the current page is an NTP before
+  // showing the promo, but asynchronous navigation can cause that to be
+  // incorrect.
+  if (!_NTPCoordinator.isNTPActiveForCurrentWebState) {
+    [promosUIHandler promoWasDismissed];
+    return;
+  }
+  [_NTPCoordinator
+      showHomeBackgroundCustomizationPromoWithUIHandler:promosUIHandler];
+}
+
 #pragma mark - WebNavigationNTPDelegate
 
 - (BOOL)isNTPActiveForCurrentWebState {
@@ -3143,21 +2931,6 @@
 
 - (void)reloadNTPForWebState:(web::WebState*)webState {
   [_NTPCoordinator reload];
-}
-
-#pragma mark - PasswordSettingsCoordinatorDelegate
-
-- (void)passwordSettingsCoordinatorDidRemove:
-    (PasswordSettingsCoordinator*)coordinator {
-  DCHECK_EQ(self.passwordSettingsCoordinator, coordinator);
-
-  [self stopPasswordSettingsCoordinator];
-}
-
-#pragma mark - PasswordManagerReauthenticationDelegate
-
-- (void)dismissPasswordManagerAfterFailedReauthentication {
-  [self stopPasswordSettingsCoordinator];
 }
 
 #pragma mark - ReadingListCoordinatorDelegate
@@ -3375,81 +3148,6 @@
                     ->IsWebUsageEnabled();
 }
 
-#pragma mark - QuickDeleteCommands
-
-- (void)showQuickDeleteAndCanPerformRadialWipeAnimation:
-    (BOOL)canPerformRadialWipeAnimation {
-  CHECK(!self.isOffTheRecord);
-
-  [_quickDeleteCoordinator stop];
-
-  _quickDeleteCoordinator = [[QuickDeleteCoordinator alloc]
-         initWithBaseViewController:
-             top_view_controller::TopPresentedViewControllerFrom(
-                 self.sceneState.window.rootViewController)
-                            browser:self.browser
-      canPerformRadialWipeAnimation:canPerformRadialWipeAnimation];
-  [_quickDeleteCoordinator start];
-}
-
-- (void)stopQuickDelete {
-  [_quickDeleteCoordinator stop];
-  _quickDeleteCoordinator = nil;
-}
-
-- (void)stopQuickDeleteAndOpenPasswordSettingsPage {
-  __weak __typeof(self) weakSelf = self;
-  ProceduralBlock dismissalCompletion = ^{
-    [weakSelf stopQuickDeleteAndOpenPasswordSettingsPageAfterVCDismissed];
-  };
-  [self.viewController dismissViewControllerAnimated:YES
-                                          completion:dismissalCompletion];
-}
-
-// Stop quick delete and open the password settings after all the
-// VC on top of BrowserViewController have been dismissed.
-- (void)stopQuickDeleteAndOpenPasswordSettingsPageAfterVCDismissed {
-  [self stopQuickDelete];
-  [self openSettingsForPage:AutofillSettingsPage::kPasswordSettings];
-}
-
-- (void)stopQuickDeleteForAnimationWithCompletion:(ProceduralBlock)completion {
-  // If BrowserViewController has not presented any view controller (i.e. QD has
-  // been dismissed) and the tab grid is also not visible, then just trigger
-  // `completion` immediately.
-  if (!self.viewController.presentedViewController &&
-      !self.sceneState.controller.isTabGridVisible) {
-    if (completion) {
-      completion();
-    }
-    [self stopQuickDelete];
-    return;
-  }
-
-  // If BrowserViewController has presented a view controller, then dismiss
-  // every VC on top of it.
-  __weak __typeof(self) weakSelf = self;
-  __weak __typeof(self.dispatcher) weakDispatcher = self.dispatcher;
-  ProceduralBlock dismissalCompletion = ^{
-    if (completion) {
-      completion();
-    }
-
-    // Properly shutdown all coordinators started either by this coordinator or
-    // by the scene controller. This should include Quick Delete, History and
-    // the Privacy Settings.
-    [weakSelf clearPresentedStateWithCompletion:nil dismissOmnibox:YES];
-    // The protocol might not have a valid target when the shutdown of Quick
-    // Delete is happening at the same time the UI is being shutdown.
-    if ([weakDispatcher dispatchingForProtocol:@protocol(SceneCommands)]) {
-      id<SceneCommands> sceneHandler =
-          HandlerForProtocol(weakDispatcher, SceneCommands);
-      [sceneHandler dismissModalDialogsWithCompletion:nil];
-    }
-  };
-  [self.viewController dismissViewControllerAnimated:YES
-                                          completion:dismissalCompletion];
-}
 
 #pragma mark - NotificationsOptInCoordinatorDelegate
 

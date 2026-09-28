@@ -72,8 +72,7 @@ const base::FeatureParam<std::string> kTestRankerUrl{
     &kTestRankerQuery, "url-param-name", "https://default.model.url"};
 
 PredictorConfig ClassifierPredictorTest::GetConfig() {
-  return PredictorConfig("model_name", "logging_name", "uma_prefix", LOG_NONE,
-                         GetEmptyAllowlist(), &kTestRankerQuery,
+  return PredictorConfig("model_name", "uma_prefix", &kTestRankerQuery,
                          &kTestRankerUrl, 0);
 }
 
@@ -142,7 +141,6 @@ TEST_F(ClassifierPredictorTest, PredictRankerExampleNoPreprocessor) {
 
   // Prediction of RankerExample without preprocessor config should fail.
   std::vector<float> response;
-  RankerExample example;
   EXPECT_FALSE(predictor->Predict(RankerExample(), &response));
 }
 

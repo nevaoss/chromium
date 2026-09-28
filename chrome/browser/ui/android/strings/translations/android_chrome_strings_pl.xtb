@@ -57,6 +57,7 @@
 <translation id="1181037720776840403">Usuń</translation>
 <translation id="1183189057400844278">Potwierdź swoją tożsamość, aby móc zawsze używać haseł na koncie Google</translation>
 <translation id="1187810343066461819">Usuń też zakładki, historię i inne dane z tego samochodu</translation>
+<translation id="1191987227666124897">Żądanie rezygnacji</translation>
 <translation id="1193729455103054076">Użyć silnego hasła?</translation>
 <translation id="11947597112837849">adres e-mail</translation>
 <translation id="1197267115302279827">Przenieś zakładki</translation>
@@ -105,6 +106,7 @@
 <translation id="138181280295369883">Zaloguj się, aby mieć dostęp do zapisanych informacji oraz innych danych na wszystkich swoich urządzeniach</translation>
 <translation id="1381838868249179644">Aby zwiększyć Twoje bezpieczeństwo, usunęliśmy uprawnienia niektórych witryn</translation>
 <translation id="1383876407941801731">Szukaj</translation>
+<translation id="1384568202352682721">Zapisz jako…</translation>
 <translation id="1384704387250346179">Przetłumacz obraz za pomocą Obiektywu Google <ph name="BEGIN_NEW" />Nowość<ph name="END_NEW" /></translation>
 <translation id="1390418506739274310">Możesz zobaczyć historię z innych aplikacji, które otwierają linki w Chrome. Inne rodzaje historii przeglądania mogą być nadal dostępne na Twoim koncie Google na <ph name="BEGIN_LINK" />myactivity.google.com<ph name="END_LINK" />.</translation>
 <translation id="139752016751285248">Plansza dolna ze statystykami cen jest otwarta na całą wysokość</translation>
@@ -133,6 +135,7 @@ W <ph name="BEGIN_LINK2" />usługach Google<ph name="END_LINK2" /> znajdziesz w
 <translation id="147982357559798527">Zmieniono</translation>
 <translation id="1480287803138246127">Niektóre elementy Twojej historii mogą się tutaj nie wyświetlać. Możesz otworzyć całą historię Chrome.</translation>
 <translation id="1483493594462132177">Wyślij</translation>
+<translation id="1485343711570311792">Otwórz w: <ph name="NATIVE_APP_NAME" /> • Od: <ph name="DEVICE_NAME" /></translation>
 <translation id="1495677929897281669">Wróć do karty</translation>
 <translation id="1496514951988037011">nazwa użytkownika</translation>
 <translation id="1501480321619201731">Usuń grupę</translation>
@@ -210,6 +213,7 @@ Twoje zaszyfrowane dane może odczytać tylko osoba znająca hasło wielowyrazow
 <translation id="1832459821645506983">Tak, zgadzam się</translation>
 <translation id="1845958458910716240">Aby chronić swoje dane, zezwól Chrome na usunięcie uprawnień witryn, których ostatnio nie odwiedzasz</translation>
 <translation id="1851551847729706116">Udostępniam <ph name="TAB_NAME" /> tej karcie</translation>
+<translation id="1855268219431673036">Strona <ph name="CURRENT_PAGE" /> z <ph name="TOTAL_PAGE_COUNT" /></translation>
 <translation id="1869691326892615940">Bezpieczniejsze hasła, szybsze logowanie</translation>
 <translation id="1871098866036088250">Otwórz w przeglądarce Chrome</translation>
 <translation id="1877026089748256423">Chrome jest nieaktualny</translation>
@@ -327,6 +331,7 @@ Twoje zaszyfrowane dane może odczytać tylko osoba znająca hasło wielowyrazow
 <translation id="232137538351753795">Aby wrócić, przesuń palcem od lewej krawędzi</translation>
 <translation id="2323763861024343754">Dane witryn:</translation>
 <translation id="2327445548174191329">Z urządzenia <ph name="DEVICE_NAME" /></translation>
+<translation id="232757965409810352">Zapisz stronę jako…</translation>
 <translation id="2328474416100889417">Wszyscy natychmiast utracą dostęp do grupy kart „<ph name="GROUP_NAME" />”, a wszystkie linki z zaproszeniami zostaną wyłączone</translation>
 <translation id="2329500425421091035">Przedstawiamy Tryb AI w Chrome</translation>
 <translation id="2330186936255788117">Więcej zakładek</translation>
@@ -1338,6 +1343,7 @@ Na przykład niektóre strony mogą na nie zareagować, wyświetlając reklamy b
 <translation id="634208815998129842">Menedżer zadań</translation>
 <translation id="6343495912647200061">{SHIPPING_ADDRESS,plural, =1{<ph name="SHIPPING_ADDRESS_PREVIEW" />\u2026 i jeszcze <ph name="NUMBER_OF_ADDITIONAL_ADDRESSES" />}few{<ph name="SHIPPING_ADDRESS_PREVIEW" />\u2026 i jeszcze <ph name="NUMBER_OF_ADDITIONAL_ADDRESSES" />}many{<ph name="SHIPPING_ADDRESS_PREVIEW" />\u2026 i jeszcze <ph name="NUMBER_OF_ADDITIONAL_ADDRESSES" />}other{<ph name="SHIPPING_ADDRESS_PREVIEW" />\u2026 i jeszcze <ph name="NUMBER_OF_ADDITIONAL_ADDRESSES" />}}</translation>
 <translation id="6345878117466430440">Oznacz jako przeczytane</translation>
+<translation id="63490081267265251">Witryny, które odwiedzasz, w tym Google, odpowiadają na to żądanie według własnego uznania. W zależności od przepisów obowiązujących w Twoim regionie witryny mogą reagować na żądanie ograniczeniem sprzedaży i udostępniania Twoich danych lub ich wykorzystania do wyświetlania reklam spersonalizowanych. <ph name="BEGIN_LINK" />Więcej informacji<ph name="END_LINK" /></translation>
 <translation id="6350745006329795504">Zarządzaj urządzeniami</translation>
 <translation id="6356893102071098867">Sprawdź, czy zostało wybrane właściwe konto</translation>
 <translation id="6364438453358674297">Usunąć sugestię z historii?</translation>
@@ -1662,6 +1668,7 @@ Aby zmienić to ustawienie, <ph name="BEGIN_LINK" />wyczyść dane Chrome na swo
 <translation id="7493994139787901920"><ph name="VERSION" /> (zaktualizowana <ph name="TIME_SINCE_UPDATE" />)</translation>
 <translation id="7498271377022651285">Czekaj…</translation>
 <translation id="7499065150275272675"><ph name="TAB_TITLE" />, przypięta wyciszona karta</translation>
+<translation id="7500851014030446046">Pobieram plik PDF</translation>
 <translation id="7501135638693251872">Wszystkie zakładki</translation>
 <translation id="7507207699631365376">Zapoznaj się z <ph name="BEGIN_LINK" />polityką prywatności<ph name="END_LINK" /> tego dostawcy</translation>
 <translation id="750886945254958667">Zachowaj tę grupę, aby później dodać karty, lub opuść ją, jeśli nie chcesz już mieć do niej dostępu</translation>
@@ -1729,6 +1736,7 @@ Aby zmienić to ustawienie, <ph name="BEGIN_LINK" />wyczyść dane Chrome na swo
 <translation id="7774809984919390718">{PAYMENT_METHOD,plural, =1{<ph name="PAYMENT_METHOD_PREVIEW" />\u2026 i jeszcze <ph name="NUMBER_OF_ADDITIONAL_PAYMENT_METHODS" />}few{<ph name="PAYMENT_METHOD_PREVIEW" />\u2026 i jeszcze <ph name="NUMBER_OF_ADDITIONAL_PAYMENT_METHODS" />}many{<ph name="PAYMENT_METHOD_PREVIEW" />\u2026 i jeszcze <ph name="NUMBER_OF_ADDITIONAL_PAYMENT_METHODS" />}other{<ph name="PAYMENT_METHOD_PREVIEW" />\u2026 i jeszcze <ph name="NUMBER_OF_ADDITIONAL_PAYMENT_METHODS" />}}</translation>
 <translation id="777637629667389858">Gdy się zalogujesz, chroni Cię we wszystkich usługach Google.</translation>
 <translation id="7778840695157240389">Sprawdź później, czy pojawiły się nowe</translation>
+<translation id="7780992949171378848">Wysyłaj do witryn żądanie rezygnacji dotyczące wykorzystywania Twoich danych</translation>
 <translation id="7791543448312431591">Dodaj</translation>
 <translation id="7792388396321542707">Zatrzymaj udostępnianie</translation>
 <translation id="780287761701992588">Korzystaj z zakładek, haseł i innych ustawień na wszystkich urządzeniach</translation>
@@ -1874,6 +1882,7 @@ Aby zmienić to ustawienie, <ph name="BEGIN_LINK" />wyczyść dane Chrome na swo
 <translation id="8313599942510782709">Zadanie jest nadal w toku</translation>
 <translation id="8317318757008452355">Otwórz opcje drukowania</translation>
 <translation id="8320212361750431956">Ostatnia aktywność</translation>
+<translation id="8322452989119079156">Otwórz w: <ph name="NATIVE_APP_NAME" /> - Wysłano z: <ph name="DEVICE_NAME" /></translation>
 <translation id="832514020744584629"><ph name="PREF_TITLE" />  <ph name="BEGIN_NEW" />Nowość<ph name="END_NEW" /></translation>
 <translation id="8333026248928723981">Zakładki i listy</translation>
 <translation id="8342727528718219152">Chrome powiadomi Cię o witrynach, które mogą wysyłać zbyt wiele powiadomień</translation>

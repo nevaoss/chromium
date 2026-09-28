@@ -1329,10 +1329,12 @@ ChromeAutofillClient::ChromeAutofillClient(content::WebContents* web_contents)
   // This information is injected through the client because the device
   // authenticator is tied to UI, even though the availability of device re-auth
   // is independent of it.
-  if (EntityDataManager* edm =
-          base::FeatureList::IsEnabled(features::kAutofillAiWalletPrivatePasses)
-              ? GetEntityDataManager()
-              : nullptr) {
+  if (EntityDataManager* edm = base::FeatureList::IsEnabled(
+                                   features::kAutofillAiWalletPrivatePasses) ||
+                                       base::FeatureList::IsEnabled(
+                                           features::kAutofillAmbientAutofill)
+                                   ? GetEntityDataManager()
+                                   : nullptr) {
     edm->SetReauthAvailability(SupportsDeviceReauth());
   }
 }
@@ -1540,8 +1542,10 @@ void ChromeAutofillClient::ShowEntityImportBubble(
 #else
   if (auto* controller = AutofillAiImportDataController::GetOrCreate(
           web_contents(), GetAppLocale())) {
+    // TODO(crbug.com/553442816): Add the legal message lines.
     controller->ShowPrompt(std::move(new_entity), std::move(old_entity),
                            /*close_on_accept=*/save_is_synchronous,
+                           /*legal_message_lines=*/{},
                            std::move(prompt_result_callback));
   } else {
     std::move(prompt_result_callback)

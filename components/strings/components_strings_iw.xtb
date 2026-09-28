@@ -1457,6 +1457,7 @@
 <translation id="3495081129428749620">חיפוש בדף
 <ph name="PAGE_TITLE" /></translation>
 <translation id="3495818359064790343">שכר</translation>
+<translation id="3496531230994554300">‏ההודעה של Wallet נפתחה בגובה מלא.</translation>
 <translation id="3497627066518778351">הצגת רשימה של הנתונים מאתרים ששמורים במכשיר בחלון חדש</translation>
 <translation id="3498215018399854026">לא הצלחנו ליצור קשר עם ההורה שלך. נסה שוב מאוחר יותר.</translation>
 <translation id="350069200438440499">שם הקובץ:</translation>
@@ -1559,7 +1560,6 @@
 <translation id="3655670868607891010">אם נתקלת בזה לעתים קרובות, כדאי לנסות את ה<ph name="HELP_LINK" /> האלה.</translation>
 <translation id="3658742229777143148">גרסה קודמת</translation>
 <translation id="3659521826520353662">אתרים בהגדרת האדמין שבהם מבקרים, וזמני הביקורים: <ph name="ALLOWLISTED_WEBSITES" /></translation>
-<translation id="3662040827609932717">‏מספר ה-IBAN הזה נשמר ב-Google Wallet, כך שאפשר להשתמש בו בכל שירותי Google.</translation>
 <translation id="3664479564786885722">חיפוש של אפשרויות קנייה נוספות בחנויות אחרות שמוכרות את המוצר הזה.</translation>
 <translation id="3664782872746246217">מילות מפתח:</translation>
 <translation id="3670030362669914947">מספר</translation>
@@ -2617,7 +2617,6 @@ Del</translation>
 <translation id="5414306071315087019">‏אפשר לשלם בשיטת "קונים עכשיו, משלמים אחר כך (BNPL)" דרך Google Pay</translation>
 <translation id="5414446060143308245">נדרשת בדיקה לפני ההעברה</translation>
 <translation id="5414511064953050917">אעביר בכל זאת</translation>
-<translation id="5418700249417444482">‏כתובות URL של דפים שנכנסת אליהם יישלחו אל Google Cloud או לצדדים שלישיים לצורך ניתוח, ויכול להיות שיהיו גלויים לאדמין שלך. לדוגמה, יכול להיות שהדפים יעברו סריקה לזיהוי אתרים לא בטוחים או לסינון אתרים לפי כללים שהוגדרו על ידי האדמין.</translation>
 <translation id="5419311651396341287">יכול להיות שהאדמין יוכל לראות את הפרטים הבאים:</translation>
 <translation id="5423269318075950257">מעקב אחר המחיר</translation>
 <translation id="5426179911063097041"><ph name="SITE" /> רוצה לשלוח לך הודעות</translation>
@@ -2638,7 +2637,6 @@ Del</translation>
 <translation id="5447103258548475868">‏שמירת פרטי הדרכון ב-Google Wallet</translation>
 <translation id="5447235695608032700">מתן הרשאה לאתר <ph name="SITE" /> להשתמש במידע עליך שנשמר בו</translation>
 <translation id="5447973833955560753">סיסמה לשחזור</translation>
-<translation id="5451331376824595378">‏כשאירועי אבטחה מדווחים על ידי Chrome, נתונים רלוונטיים לגבי האירועים האלה נשלחים לאדמין. הנתונים האלה יכולים לכלול את כתובות ה-URL של הדפים שבהם ביקרת ב-Chrome, כתובות URL של דפים שמהם העתקת נתונים, שמות קבצים או מטא-נתונים, כתובות IP, קריסות של כרטיסיות או הדפדפן ואת שם המשתמש שבאמצעותו נכנסת לאפליקציות מבוססות-אינטרנט, למכשיר שלך ול-Chrome.</translation>
 <translation id="5452270690849572955">לא ניתן למצוא את הדף של <ph name="HOST_NAME" /></translation>
 <translation id="5452923259299906094">‏תשלום באמצעות ארנק אלקטרוני ו-Pix</translation>
 <translation id="5455374756549232013">חותמת הזמן של המדיניות שגויה</translation>
@@ -2674,6 +2672,7 @@ Del</translation>
 <translation id="5499229993630251170">להמשיך את השרשור הזה?</translation>
 <translation id="5506286895894263601">אין קיצורי דרך תקינים ברשימה.</translation>
 <translation id="5507756662695126555">אי התכחשות</translation>
+<translation id="5508515366054931524">ההודעה לאימות כתובת האימייל נפתחה בגובה מלא</translation>
 <translation id="5509762909502811065">B0</translation>
 <translation id="5509780412636533143">סימניות מנוהלות</translation>
 <translation id="5510766032865166053">ייתכן שהוא הועבר או נמחק.</translation>
@@ -3185,7 +3184,6 @@ Del</translation>
 <translation id="6361757823711327522">B7</translation>
 <translation id="6363786367719063276">הצגת היומנים</translation>
 <translation id="6364095313648930329">‏<ph name="BEGIN_LINK" />לבדוק את שרת ה-Proxy, תצורת ה-DNS המאובטח וחומת האש.<ph name="END_LINK" /></translation>
-<translation id="6365513578140103119">אישור אוטומטי של כתובות האימייל</translation>
 <translation id="6366710531182496394">שתי סיכות הידוק בצד שמאל</translation>
 <translation id="6367196786591004737">מחיקת הרשומה</translation>
 <translation id="6370022303958842211">פעולות של גישה למכשירים כמו התחברות (כולל סיבות לכישלון של ניסיונות התחברות), התנתקות, נעילה וביטול נעילה</translation>
@@ -3456,6 +3454,7 @@ Del</translation>
 <translation id="6860888819347870819">קבלת בקשות להפעלת תמונה בתוך תמונה</translation>
 <translation id="6864189428899665393">‏267x389 מ"מ</translation>
 <translation id="6865412394715372076">אי אפשר לאמת כרגע את הכרטיס</translation>
+<translation id="6871073333584947219">‏ההודעה של Wallet נסגרה.</translation>
 <translation id="6871813064737840684">היסטוריית המחירים של האפשרות הזו באינטרנט</translation>
 <translation id="6873456682041376666">המגש העליון</translation>
 <translation id="6874604403660855544">&amp;ביצוע מחדש של הוספה</translation>
@@ -3911,7 +3910,6 @@ Del</translation>
 <translation id="7615932826417658001">הוספת תעודה מזהה</translation>
 <translation id="7616390733770379387">מנועי החיפוש מוצגים בסדר אקראי.</translation>
 <translation id="7616645509853975347">‏מנהל המערכת הפעיל את Chrome Enterprise Connectors בדפדפן שלך. למחברים האלה יש גישה אל חלק מהנתונים שלך.</translation>
-<translation id="7616747402308801775">‏הכרטיס הזה נשמר ב-Google Wallet, כך שאפשר להשתמש בו בכל שירותי Google</translation>
 <translation id="7617825962482469577">‏מעטפה – C7/C6</translation>
 <translation id="7619838219691048931">גיליון סיום</translation>
 <translation id="7621546470643449009">תיצור מדריך למתחילים לצפייה בכוכבים שיעזור לי ללמוד מה לחפש בשמי הלילה, כולל 3 קבוצות כוכבים שקל לזהות</translation>
@@ -3976,6 +3974,7 @@ Del</translation>
 <translation id="7705085181312584869">עזרה בכתיבה</translation>
 <translation id="7705992072972338699">Optical Disc (High-Gloss)</translation>
 <translation id="7706689436519265630">‏קבצים שמעתיקים או שמעבירים יישלחו אל Google Cloud או אל צדדים שלישיים לצורך ניתוח. לדוגמה, יכול להיות שהקבצים יעברו סריקה כדי לאתר מידע אישי רגיש או תוכנות זדוניות, ויישמרו בהתאם למדיניות החברה.</translation>
+<translation id="7709934467582922028">ההנחיה לאימות כתובת האימייל נסגרה</translation>
 <translation id="7714351089363296478">בדיוק ביקרת כאן</translation>
 <translation id="7714404809393719981">Photo (Semi-Gloss)</translation>
 <translation id="7714464543167945231">אישור</translation>
@@ -4662,7 +4661,6 @@ Del</translation>
 <translation id="8963117664422609631">כניסה להגדרות האתר</translation>
 <translation id="8963213021028234748"><ph name="MARKUP_1" />הצעות:<ph name="MARKUP_2" />לוודא שקיים חיבור נתונים<ph name="MARKUP_3" />לטעון מחדש את דף האינטרנט הזה מאוחר יותר<ph name="MARKUP_4" />לבדוק את הכתובת שהזנת<ph name="MARKUP_5" /></translation>
 <translation id="8963969435440878110">הקבצים המקומיים שלך יימחקו בעוד <ph name="HOURS" /> שעות</translation>
-<translation id="8964904785315870349">כתובת אימייל מאומתת</translation>
 <translation id="8968766641738584599">שמירת הכרטיס</translation>
 <translation id="8970887620466824814">משהו השתבש.</translation>
 <translation id="8971063699422889582">פג תוקפו של אישור השרת.</translation>
@@ -4873,6 +4871,7 @@ Del</translation>
 <translation id="988159990683914416">גרסת מפתחים</translation>
 <translation id="989988560359834682">עריכת כתובת</translation>
 <translation id="990164307229195234"><ph name="DEVICE_NAME" /> ‏(<ph name="DISAMBIGUATION_LABEL" />)</translation>
+<translation id="990812705189376036">הוכחה שזהו עץ מרקל</translation>
 <translation id="992110854164447044">כרטיס וירטואלי מסתיר את הכרטיס בפועל כדי להגן עליך מפני תרמיות פוטנציאליות. <ph name="IDS_AUTOFILL_VIRTUAL_CARD_ENROLLMENT_LEARN_MORE_LINK_LABEL" /></translation>
 <translation id="992115559265932548"><ph name="MICROSOFT_ACTIVE_DIRECTORY" /></translation>
 <translation id="992256792861109788">ורוד</translation>

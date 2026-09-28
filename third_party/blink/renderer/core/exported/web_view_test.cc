@@ -137,6 +137,7 @@
 #include "third_party/blink/renderer/core/page/drag_state.h"
 #include "third_party/blink/renderer/core/page/focus_controller.h"
 #include "third_party/blink/renderer/core/page/page.h"
+#include "third_party/blink/renderer/core/page/page_animator.h"
 #include "third_party/blink/renderer/core/page/page_hidden_state.h"
 #include "third_party/blink/renderer/core/page/page_popup_client.h"
 #include "third_party/blink/renderer/core/page/print_context.h"
@@ -559,8 +560,7 @@ TEST_F(WebViewTest, SetBaseBackgroundColorBeforeMainFrame) {
   frame_test_helpers::TestWebFrameClient web_frame_client;
   WebLocalFrame* frame = WebLocalFrame::CreateMainFrame(
       web_view, &web_frame_client, nullptr, mojo::NullRemote(),
-      LocalFrameToken(), DocumentToken(), base::UnguessableToken::Create(),
-      nullptr);
+      LocalFrameToken(), DocumentToken(), InitiatorStateToken(), nullptr);
   web_frame_client.Bind(frame);
 
   frame_test_helpers::TestWebFrameWidget* widget =
@@ -1195,6 +1195,148 @@ TEST_F(WebViewTest, AutoResizeDoesNotResetWithoutLayout) {
 
   EXPECT_EQ(200, client.GetTestData().Width());
   EXPECT_EQ(resize_count, client.ResizeCount());
+
+  web_view_helper_.Reset();
+}
+
+TEST_F(WebViewTest, AutoResizeReportsOnlyStableSize) {
+  ScopedAutoSizeUsesScrollWidthForOverflowForTest scoped_feature(true);
+  AutoResizeWebViewClient client;
+  WebLocalFrameImpl* frame = InitializeAutoResizeWebView(
+      R"HTML(
+        <!DOCTYPE html>
+        <style>
+          body {
+            box-sizing: border-box;
+            width: 400px;
+            height: 600px;
+            margin: 0;
+            padding: 12px;
+          }
+          #overlay {
+            position: fixed;
+            left: 12px;
+            top: 130px;
+            min-width: 160px;
+            padding: 8px;
+            opacity: 0;
+            transform: translateY(-4px);
+            pointer-events: none;
+          }
+          #overlay.open {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto;
+          }
+          #log { margin-top: 120px; white-space: pre-wrap; }
+        </style>
+        <div id="overlay"></div>
+        <div id="log"></div>
+        <script>
+          window.resizeCount = 0;
+          window.visualViewportResizeCount = 0;
+          window.resizeEventOrder = [];
+          window.echoResizeEvents = false;
+          window.addEventListener('resize', () => {
+            ++resizeCount;
+            resizeEventOrder.push('window');
+            document.documentElement.dataset.resizeCount = resizeCount;
+            document.documentElement.dataset.resizeEventOrder =
+                resizeEventOrder.join(',');
+            document.documentElement.dataset.lastResizeSize =
+                `${innerWidth}x${innerHeight}`;
+            if (echoResizeEvents) {
+              log.textContent += `resize ${resizeCount}\n`;
+            }
+          });
+          visualViewport.addEventListener('resize', () => {
+            resizeEventOrder.push('visualViewport');
+            document.documentElement.dataset.visualViewportResizeCount =
+                ++visualViewportResizeCount;
+            document.documentElement.dataset.resizeEventOrder =
+                resizeEventOrder.join(',');
+          });
+        </script>
+      )HTML",
+      client);
+  Document* document = frame->GetFrame()->GetDocument();
+  Element* document_element = document->documentElement();
+  ASSERT_EQ(400, client.GetTestData().Width());
+  ASSERT_EQ(600, client.GetTestData().Height());
+
+  document->GetPage()->Animator().ServiceScriptedAnimations(
+      base::TimeTicks::Now());
+
+  EXPECT_EQ(1, client.ResizeCount());
+  EXPECT_EQ("1",
+            document_element->getAttribute(AtomicString("data-resize-count")));
+  EXPECT_EQ("1", document_element->getAttribute(
+                     AtomicString("data-visual-viewport-resize-count")));
+  EXPECT_EQ(
+      "window,visualViewport",
+      document_element->getAttribute(AtomicString("data-resize-event-order")));
+  EXPECT_EQ("400x600", document_element->getAttribute(
+                           AtomicString("data-last-resize-size")));
+
+  frame->ExecuteScript(WebScriptSource(
+      "resizeCount = 0; visualViewportResizeCount = 0; resizeEventOrder = []; "
+      "document.documentElement.dataset.resizeCount = 0; "
+      "document.documentElement.dataset.visualViewportResizeCount = 0; "
+      "document.documentElement.dataset.resizeEventOrder = '';"));
+  const int resize_count = client.ResizeCount();
+  frame->ExecuteScript(WebScriptSource(
+      "overlay.replaceChildren(...['Option A', 'Option B', 'Option C'].map("
+      "    label => Object.assign(document.createElement('div'), "
+      "                           {textContent: label}))); "
+      "overlay.classList.add('open');"));
+  UpdateAllLifecyclePhases();
+  document->GetPage()->Animator().ServiceScriptedAnimations(
+      base::TimeTicks::Now());
+
+  EXPECT_EQ(400, client.GetTestData().Width());
+  EXPECT_EQ(600, client.GetTestData().Height());
+  EXPECT_EQ(resize_count, client.ResizeCount());
+  EXPECT_EQ("0",
+            document_element->getAttribute(AtomicString("data-resize-count")));
+  EXPECT_EQ("0", document_element->getAttribute(
+                     AtomicString("data-visual-viewport-resize-count")));
+  EXPECT_EQ("", document_element->getAttribute(
+                    AtomicString("data-resize-event-order")));
+
+  // A stable size change is reported once, even when its handler modifies the
+  // DOM.
+  frame->ExecuteScript(WebScriptSource(
+      "echoResizeEvents = true; document.body.style.width = '300px';"));
+  UpdateAllLifecyclePhases();
+  document->GetPage()->Animator().ServiceScriptedAnimations(
+      base::TimeTicks::Now());
+
+  EXPECT_EQ(300, client.GetTestData().Width());
+  EXPECT_EQ(600, client.GetTestData().Height());
+  EXPECT_EQ(resize_count + 1, client.ResizeCount());
+  EXPECT_EQ("1",
+            document_element->getAttribute(AtomicString("data-resize-count")));
+  EXPECT_EQ("1", document_element->getAttribute(
+                     AtomicString("data-visual-viewport-resize-count")));
+  EXPECT_EQ(
+      "window,visualViewport",
+      document_element->getAttribute(AtomicString("data-resize-event-order")));
+  EXPECT_EQ("300x600", document_element->getAttribute(
+                           AtomicString("data-last-resize-size")));
+
+  for (int i = 0; i < 3; ++i) {
+    UpdateAllLifecyclePhases();
+    document->GetPage()->Animator().ServiceScriptedAnimations(
+        base::TimeTicks::Now());
+  }
+  EXPECT_EQ(resize_count + 1, client.ResizeCount());
+  EXPECT_EQ("1",
+            document_element->getAttribute(AtomicString("data-resize-count")));
+  EXPECT_EQ("1", document_element->getAttribute(
+                     AtomicString("data-visual-viewport-resize-count")));
+  EXPECT_EQ(
+      "window,visualViewport",
+      document_element->getAttribute(AtomicString("data-resize-event-order")));
 
   web_view_helper_.Reset();
 }
@@ -3786,8 +3928,7 @@ TEST_F(WebViewTest, ClientTapHandlingNullWebViewClient) {
   frame_test_helpers::TestWebFrameClient web_frame_client;
   WebLocalFrame* local_frame = WebLocalFrame::CreateMainFrame(
       web_view, &web_frame_client, nullptr, mojo::NullRemote(),
-      LocalFrameToken(), DocumentToken(), base::UnguessableToken::Create(),
-      nullptr);
+      LocalFrameToken(), DocumentToken(), InitiatorStateToken(), nullptr);
   web_frame_client.Bind(local_frame);
   WebNonCompositedWidgetClient widget_client;
   frame_test_helpers::TestWebFrameWidget* widget =
@@ -5353,7 +5494,7 @@ class CreateChildCounterFrameClient
       base::FunctionRef<void(
           WebLocalFrame*,
           const DocumentToken&,
-          const base::UnguessableToken& initiator_state_token,
+          const InitiatorStateToken& initiator_state_token,
           CrossVariantMojoRemote<mojom::BrowserInterfaceBrokerInterfaceBase>,
           std::unique_ptr<base::UnguessableToken> sandbox_origin_token)>
           complete_initialization) override;
@@ -5376,7 +5517,7 @@ WebLocalFrame* CreateChildCounterFrameClient::CreateChildFrame(
     base::FunctionRef<
         void(WebLocalFrame*,
              const DocumentToken&,
-             const base::UnguessableToken& initiator_state_token,
+             const InitiatorStateToken& initiator_state_token,
              CrossVariantMojoRemote<mojom::BrowserInterfaceBrokerInterfaceBase>,
              std::unique_ptr<base::UnguessableToken> sandbox_origin_token)>
         complete_initialization) {

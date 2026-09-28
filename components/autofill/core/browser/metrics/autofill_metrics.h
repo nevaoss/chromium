@@ -216,29 +216,6 @@ class AutofillMetrics {
     kMaxValue = kDismissedByUserAcceptanceNoServerRequestNeeded,
   };
 
-  // Each of these is logged at most once per query to the server, which in turn
-  // occurs at most once per page load.
-  // These values are persisted to logs. Entries should not be renumbered and
-  // numeric values should never be reused.
-  enum ServerQueryMetric {
-    QUERY_SENT = 0,               // Sent a query to the server.
-    QUERY_RESPONSE_RECEIVED = 1,  // Received a response.
-    QUERY_RESPONSE_PARSED = 2,    // Successfully parsed the server response.
-
-    // The response was parseable, but provided no improvements relative to our
-    // heuristics.
-    QUERY_RESPONSE_MATCHED_LOCAL_HEURISTICS = 3,
-
-    // Our heuristics detected at least one auto-fillable field, and the server
-    // response overrode the type of at least one field.
-    QUERY_RESPONSE_OVERRODE_LOCAL_HEURISTICS = 4,
-
-    // Our heuristics did not detect any auto-fillable fields, but the server
-    // response did detect at least one.
-    QUERY_RESPONSE_WITH_NO_LOCAL_HEURISTICS = 5,
-    NUM_SERVER_QUERY_METRICS,
-  };
-
   // Logs usage of "Scan card" control item.
   // These values are persisted to logs. Entries should not be renumbered and
   // numeric values should never be reused.
@@ -250,6 +227,26 @@ class AutofillMetrics {
     // The user selected something in the dropdown besides "scan card".
     SCAN_CARD_OTHER_ITEM_SELECTED = 2,
     NUM_SCAN_CREDIT_CARD_PROMPT_METRICS,
+  };
+
+  // Entry points for the scan credit card prompt.
+  // These values are persisted to logs. Entries should not be renumbered and
+  // numeric values should never be reused.
+  enum class ScanCreditCardPromptEntryPoint {
+    kKeyboardAccessory = 0,
+    kBottomsheet = 1,
+    kSettingsPage = 2,
+    kMaxValue = kSettingsPage,
+  };
+
+  // Screen types for credit card scanner completion.
+  // These values are persisted to logs. Entries should not be renumbered and
+  // numeric values should never be reused.
+  enum class ScanCreditCardScreenType {
+    kUnknown = 0,
+    kOcr = 1,
+    kNfc = 2,
+    kMaxValue = kNfc,
   };
 
   // Cardholder name fix flow prompt metrics.
@@ -605,6 +602,12 @@ class AutofillMetrics {
       bool is_uploading,
       payments::PaymentsAutofillClient::SaveCreditCardOptions options);
   static void LogScanCreditCardPromptMetric(ScanCreditCardPromptMetric metric);
+  static void LogScanCreditCardPromptShown(
+      ScanCreditCardPromptEntryPoint entry_point,
+      bool is_new_user);
+  static void LogScanCreditCardPromptSelected(
+      ScanCreditCardPromptEntryPoint entry_point,
+      bool is_new_user);
   static void LogProgressDialogResultMetric(
       bool is_canceled_by_user,
       AutofillProgressUiType autofill_progress_dialog_type);
@@ -622,8 +625,8 @@ class AutofillMetrics {
   // if the scan was cancelled.
   static void LogScanCreditCardCompleted(base::TimeDelta duration,
                                          bool completed);
-
-  static void LogServerQueryMetric(ServerQueryMetric metric);
+  static void LogScanCreditCardScreenType(ScanCreditCardScreenType screen_type);
+  static void LogScanCreditCardCompletedNewUser(bool is_new_user);
 
   // Logs |event| to the unmask prompt events histogram.
   static void LogUnmaskPromptEvent(UnmaskPromptEvent event,

@@ -638,7 +638,11 @@ void LocalFrameView::SetLifecycleUpdatesThrottledForTesting(bool throttled) {
 void LocalFrameView::FrameRectsChanged(const gfx::Rect& old_rect) {
   if (RuntimeEnabledFeatures::AvoidEmbeddedContentViewLocationEnabled() &&
       LayoutSizeFixedToFrameSize() && Size() != old_rect.size()) {
-    SetLayoutSizeInternal(Size());
+    SetLayoutSizeInternal(
+        Size(), {.should_suppress_events =
+                     is_being_auto_sized_ &&
+                     RuntimeEnabledFeatures::
+                         AutoSizeUsesScrollWidthForOverflowEnabled()});
   }
 
   FrameView::FrameRectsChanged(old_rect);
@@ -1121,38 +1125,49 @@ void LocalFrameView::RunCanvasOnpaintSteps() {
     return;
   }
 
-  ForAllNonThrottledLocalFrameViews([](LocalFrameView& frame_view) {
-    if (frame_view.canvas_elements_needing_onpaint_.empty()) {
-      return;
-    }
-    CanvasOnpaintMap canvas_elements_needing_onpaint;
-    canvas_elements_needing_onpaint.swap(
-        frame_view.canvas_elements_needing_onpaint_);
+  // Collect canvases needing onpaint in reverse document order and in reverse
+  // tree order within each document.
+  using CanvasOnpaintEntry =
+      std::pair<Member<HTMLCanvasElement>,
+                Member<GCedHeapLinkedHashSet<Member<Element>>>>;
+  HeapVector<CanvasOnpaintEntry> all_canvases_needing_onpaint;
+  ForAllNonThrottledLocalFrameViews(
+      [&all_canvases_needing_onpaint](LocalFrameView& frame_view) {
+        if (frame_view.canvas_elements_needing_onpaint_.empty()) {
+          return;
+        }
+        const wtf_size_t start_index = all_canvases_needing_onpaint.size();
+        all_canvases_needing_onpaint.reserve(
+            start_index + frame_view.canvas_elements_needing_onpaint_.size());
+        for (auto& entry : frame_view.canvas_elements_needing_onpaint_) {
+          all_canvases_needing_onpaint.emplace_back(entry.key,
+                                                    std::move(entry.value));
+        }
+        frame_view.canvas_elements_needing_onpaint_.clear();
 
-    // Sort canvases in reverse shadow-including tree order so that descendant
-    // <canvas> elements fire `paint` events before their ancestors.
-    HeapVector<Member<HTMLCanvasElement>> sorted_canvases;
-    sorted_canvases.reserve(canvas_elements_needing_onpaint.size());
-    for (const auto& entry : canvas_elements_needing_onpaint) {
-      sorted_canvases.push_back(entry.key);
-    }
-    std::sort(sorted_canvases.begin(), sorted_canvases.end(),
-              [](const Member<HTMLCanvasElement>& a,
-                 const Member<HTMLCanvasElement>& b) {
-                return b->compareDocumentPosition(
-                           a, Node::kTreatShadowTreesAsComposed) &
-                       Node::kDocumentPositionFollowing;
-              });
+        // Sort canvases in reverse shadow-including tree order so that
+        // descendant <canvas> elements fire `paint` events before their
+        // ancestors.
+        std::ranges::sort(
+            base::span(all_canvases_needing_onpaint).subspan(start_index),
+            [](const CanvasOnpaintEntry& a, const CanvasOnpaintEntry& b) {
+              return b.first->compareDocumentPosition(
+                         a.first, Node::kTreatShadowTreesAsComposed) &
+                     Node::kDocumentPositionFollowing;
+            });
+      },
+      kPostOrder);
 
-    for (const auto& canvas : sorted_canvases) {
-      auto* value = canvas_elements_needing_onpaint.at(canvas);
-      const HeapVector<Member<Element>> children(*value);
-      CanvasPaintEventInit* init = CanvasPaintEventInit::Create();
-      init->setChangedElements(std::move(children));
-      canvas->DispatchEvent(
-          *CanvasPaintEvent::Create(event_type_names::kPaint, init));
+  for (const auto& [canvas, changed_elements] : all_canvases_needing_onpaint) {
+    if (!canvas->InActiveDocument()) {
+      continue;
     }
-  });
+    const HeapVector<Member<Element>> children(*changed_elements);
+    CanvasPaintEventInit* init = CanvasPaintEventInit::Create();
+    init->setChangedElements(std::move(children));
+    canvas->DispatchEvent(
+        *CanvasPaintEvent::Create(event_type_names::kPaint, init));
+  }
 }
 
 void LocalFrameView::RunIntersectionObserverSteps() {
@@ -1189,9 +1204,7 @@ void LocalFrameView::RunIntersectionObserverSteps() {
 
   ComputeIntersectionsContext context;
   UpdateViewportIntersectionsForSubtree(
-      IntersectionObservation::kConsumeScrollDelta |
-          IntersectionObservation::kUpdateTracking,
-      context);
+      {IntersectionObservation::kUpdateTracking}, context);
 
 #if DCHECK_IS_ON()
   DCHECK(was_dirty || !NeedsLayout());
@@ -1208,8 +1221,8 @@ void LocalFrameView::ForceUpdateViewportIntersections() {
       DocumentUpdateReason::kIntersectionObservation);
   ComputeIntersectionsContext context;
   UpdateViewportIntersectionsForSubtree(
-      IntersectionObservation::kImplicitRootObserversNeedUpdate |
-          IntersectionObservation::kIgnoreDelay,
+      {IntersectionObservation::kImplicitRootObserversNeedUpdate,
+       IntersectionObservation::kIgnoreDelay},
       context);
 }
 
@@ -1637,7 +1650,7 @@ bool LocalFrameView::RunPostLayoutIntersectionObserverSteps() {
   DCHECK(Lifecycle().GetState() >= DocumentLifecycle::kPrePaintClean);
 
   ComputeIntersectionsContext context;
-  ComputePostLayoutIntersections(0, context);
+  ComputePostLayoutIntersections({}, context);
 
   bool needs_more_lifecycle_steps = false;
   ForAllNonThrottledLocalFrameViews(
@@ -1659,19 +1672,17 @@ bool LocalFrameView::RunPostLayoutIntersectionObserverSteps() {
 }
 
 void LocalFrameView::ComputePostLayoutIntersections(
-    unsigned parent_flags,
+    IntersectionObservation::ComputeFlags parent_flags,
     ComputeIntersectionsContext& context) {
   if (ShouldThrottleRendering())
     return;
 
-  unsigned flags = GetIntersectionObservationFlags(parent_flags) |
-                   IntersectionObservation::kPostLayoutDeliveryOnly;
+  auto flags = GetIntersectionObservationFlags(parent_flags);
+  flags.Put(IntersectionObservation::kPostLayoutDeliveryOnly);
 
   if (auto* controller =
           GetFrame().GetDocument()->GetIntersectionObserverController()) {
-    controller->ComputeIntersections(
-        flags, *this, accumulated_scroll_delta_since_last_intersection_update_,
-        context);
+    controller->ComputeIntersections(flags, *this, context);
   }
 
   for (Frame* child = frame_->Tree().FirstChild(); child;
@@ -3580,10 +3591,20 @@ void LocalFrameView::UpdateStyleAndLayout() {
   // Second pass: run autosize until it stabilizes.
   if (auto_size_info_) {
     bool should_reset_for_layout = did_layout;
-    while (auto_size_info_->AutoSizeIfNeeded(should_reset_for_layout)) {
-      should_reset_for_layout = false;
+    bool did_run_autosize_layout = false;
+    {
       base::AutoReset<bool> reset(&is_being_auto_sized_, true);
-      did_layout |= UpdateStyleAndLayoutInternal();
+      while (auto_size_info_->AutoSizeIfNeeded(should_reset_for_layout)) {
+        should_reset_for_layout = false;
+        did_layout |= UpdateStyleAndLayoutInternal();
+        did_run_autosize_layout = true;
+      }
+    }
+    // Suppress notifications during scroll-width autosizing, then report any
+    // stable size change.
+    if (did_run_autosize_layout && frame_->IsMainFrame() &&
+        RuntimeEnabledFeatures::AutoSizeUsesScrollWidthForOverflowEnabled()) {
+      frame_->GetChromeClient().ResizeAfterLayout();
     }
     // We may have a mismatch as we impose an additional min-content constraint
     // while auto-sizing, set the view as needing layout which will then fall
@@ -4160,7 +4181,11 @@ void LocalFrameView::PropagateFrameRectsInternal() {
 
   if (!RuntimeEnabledFeatures::AvoidEmbeddedContentViewLocationEnabled()) {
     if (LayoutSizeFixedToFrameSize()) {
-      SetLayoutSizeInternal(Size());
+      SetLayoutSizeInternal(
+          Size(), {.should_suppress_events =
+                       is_being_auto_sized_ &&
+                       RuntimeEnabledFeatures::
+                           AutoSizeUsesScrollWidthForOverflowEnabled()});
     }
 
     ForAllChildViewsAndPlugins([](EmbeddedContentView& view) {
@@ -4754,7 +4779,7 @@ bool LocalFrameView::NeedsOcclusionTracking() const {
 }
 
 void LocalFrameView::UpdateViewportIntersectionsForSubtree(
-    unsigned parent_flags,
+    IntersectionObservation::ComputeFlags parent_flags,
     ComputeIntersectionsContext& context) {
   // TODO(dcheng): Since LocalFrameView tree updates are deferred, FrameViews
   // might still be in the LocalFrameView hierarchy even though the associated
@@ -4765,7 +4790,7 @@ void LocalFrameView::UpdateViewportIntersectionsForSubtree(
     return;
   }
 
-  unsigned flags = GetIntersectionObservationFlags(parent_flags);
+  auto flags = GetIntersectionObservationFlags(parent_flags);
   IntersectionObserverController* controller =
       GetFrame().GetDocument()->GetIntersectionObserverController();
   // Update anyway, even if the frame is display locked or throttled. If the
@@ -4773,13 +4798,7 @@ void LocalFrameView::UpdateViewportIntersectionsForSubtree(
   // degenerate "not intersecting" notification or schedule a delayed update
   // if needed.
   if (controller) {
-    controller->ComputeIntersections(
-        flags, *this, accumulated_scroll_delta_since_last_intersection_update_,
-        context);
-    if (flags & IntersectionObservation::kConsumeScrollDelta) {
-      accumulated_scroll_delta_since_last_intersection_update_ =
-          gfx::Vector2dF();
-    }
+    controller->ComputeIntersections(flags, *this, context);
   }
   intersection_observation_state_ = kNotNeeded;
 
@@ -4952,13 +4971,6 @@ void LocalFrameView::SetIntersectionObservationState(
   }
 }
 
-void LocalFrameView::UpdateIntersectionObservationStateOnScroll(
-    gfx::Vector2dF scroll_delta) {
-  accumulated_scroll_delta_since_last_intersection_update_ +=
-      gfx::Vector2dF(std::abs(scroll_delta.x()), std::abs(scroll_delta.y()));
-  SetIntersectionObservationState(kScrollAndVisibilityOnly);
-}
-
 void LocalFrameView::SetVisualViewportOrOverlayNeedsRepaint() {
   if (LocalFrameView* root = GetFrame().LocalFrameRoot().View())
     root->visual_viewport_or_overlay_needs_repaint_ = true;
@@ -4980,42 +4992,41 @@ PaintArtifactCompositor* LocalFrameView::GetPaintArtifactCompositor() const {
   return root ? root->paint_artifact_compositor_.Get() : nullptr;
 }
 
-unsigned LocalFrameView::GetIntersectionObservationFlags(
-    unsigned parent_flags) const {
-  unsigned flags =
-      parent_flags & (IntersectionObservation::kConsumeScrollDelta |
-                      IntersectionObservation::kUpdateTracking);
+IntersectionObservation::ComputeFlags
+LocalFrameView::GetIntersectionObservationFlags(
+    IntersectionObservation::ComputeFlags parent_flags) const {
+  constexpr IntersectionObservation::ComputeFlags kInheritedFlags = {
+      IntersectionObservation::kUpdateTracking,
+      // For observers with implicit roots, we need to check state on the
+      // whole local frame tree, as passed down from the parent.
+      IntersectionObservation::kImplicitRootObserversNeedUpdate,
+      // The kIgnoreDelay parameter is used to force computation in an OOPIF
+      // which is hidden in the parent document, thus not running lifecycle
+      // updates. It applies to the entire frame tree.
+      IntersectionObservation::kIgnoreDelay,
+  };
+  auto flags = base::Intersection(parent_flags, kInheritedFlags);
 
   const LocalFrame& target_frame = GetFrame();
   const Frame& root_frame = target_frame.Tree().Top();
   if (&root_frame == &target_frame ||
       target_frame.GetSecurityContext()->GetSecurityOrigin()->CanAccess(
           root_frame.GetSecurityContext()->GetSecurityOrigin())) {
-    flags |= IntersectionObservation::kReportImplicitRootBounds;
+    flags.Put(IntersectionObservation::kReportImplicitRootBounds);
   }
 
   if (!target_frame.IsLocalRoot() && !target_frame.OwnerLayoutObject())
-    flags |= IntersectionObservation::kAncestorFrameIsDetachedFromLayout;
+    flags.Put(IntersectionObservation::kAncestorFrameIsDetachedFromLayout);
 
   // Observers with explicit roots only need to be checked on the same frame,
   // since in this case target and root must be in the same document.
   if (intersection_observation_state_ != kNotNeeded) {
-    flags |= (IntersectionObservation::kExplicitRootObserversNeedUpdate |
-              IntersectionObservation::kImplicitRootObserversNeedUpdate);
+    flags.Put(IntersectionObservation::kExplicitRootObserversNeedUpdate);
+    flags.Put(IntersectionObservation::kImplicitRootObserversNeedUpdate);
     if (intersection_observation_state_ == kScrollAndVisibilityOnly) {
-      flags |= IntersectionObservation::kScrollAndVisibilityOnly;
+      flags.Put(IntersectionObservation::kScrollAndVisibilityOnly);
     }
   }
-
-  // For observers with implicit roots, we need to check state on the whole
-  // local frame tree, as passed down from the parent.
-  flags |= (parent_flags &
-            IntersectionObservation::kImplicitRootObserversNeedUpdate);
-
-  // The kIgnoreDelay parameter is used to force computation in an OOPIF which
-  // is hidden in the parent document, thus not running lifecycle updates. It
-  // applies to the entire frame tree.
-  flags |= (parent_flags & IntersectionObservation::kIgnoreDelay);
 
   return flags;
 }

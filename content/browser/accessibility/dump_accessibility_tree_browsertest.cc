@@ -1634,6 +1634,11 @@ IN_PROC_BROWSER_TEST_P(DumpAccessibilityTreeTest,
 }
 
 IN_PROC_BROWSER_TEST_P(DumpAccessibilityTreeTest,
+                       AccessibilityMenuListDialogModeSetsize) {
+  RunHtmlTest(FILE_PATH_LITERAL("menulist-dialog-mode-setsize.html"));
+}
+
+IN_PROC_BROWSER_TEST_P(DumpAccessibilityTreeTest,
                        AccessibilityAriaMismatchedTableAttr) {
   RunAriaTest(FILE_PATH_LITERAL("aria-mismatched-table-attr.html"));
 }
@@ -2199,10 +2204,11 @@ IN_PROC_BROWSER_TEST_P(DumpAccessibilityTreeTest,
 }
 
 // TODO(crbug.com/40943250): Fix failure on android
-// TODO(crbug.com/372910798): Flaky on Linux with ASan and LSan.
+// TODO(crbug.com/372910798): Flaky on Linux with ASan and LSan and Debug
+// builds.
 #if BUILDFLAG(IS_ANDROID) || \
-    (BUILDFLAG(IS_LINUX) &&  \
-     (defined(ADDRESS_SANITIZER) || defined(LEAK_SANITIZER)))
+(BUILDFLAG(IS_LINUX) && \
+ (defined(ADDRESS_SANITIZER) || defined(LEAK_SANITIZER) || !defined(NDEBUG)))
 #define MAYBE_AccessibilityAudio DISABLED_AccessibilityAudio
 #else
 #define MAYBE_AccessibilityAudio AccessibilityAudio

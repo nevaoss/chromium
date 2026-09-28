@@ -45,7 +45,9 @@
 #include "ui/views/controls/menu/menu_runner_handler.h"
 #include "ui/views/test/menu_runner_test_api.h"
 #include "ui/views/test/widget_activation_waiter.h"
+#include "ui/views/test/widget_test.h"
 #include "ui/views/widget/widget.h"
+#include "ui/views/window/dialog_delegate.h"
 #include "url/gurl.h"
 
 #if BUILDFLAG(IS_WIN)
@@ -768,6 +770,7 @@ TEST_F(OmniboxEverywhereUIManagerTest, ShutdownSynchronouslyDestroysResources) {
   EXPECT_FALSE(ui_manager->contents_wrapper_for_testing());
   EXPECT_EQ(ui_manager->profile(), nullptr);
   EXPECT_FALSE(ui_manager->is_file_chooser_open_for_testing());
+  EXPECT_FALSE(ui_manager->is_permission_prompt_open_for_testing());
 }
 
 #if BUILDFLAG(IS_CHROMEOS)
@@ -1411,6 +1414,65 @@ TEST_F(OmniboxEverywhereUIManagerTest, ContextMenuShowShortcutsToggle) {
   }
 }
 
+TEST_F(OmniboxEverywhereUIManagerTest,
+       ContextMenuShowShortcutsHiddenWhenNoShortcutsAvailable) {
+  auto ui_manager = CreateUIManager();
+  ui_manager->ShowForProfile(&profile_, GetContext());
+  ASSERT_TRUE(ui_manager->widget());
+
+  auto* rfh = ui_manager->contents_wrapper_for_testing()
+                  ->web_contents()
+                  ->GetPrimaryMainFrame();
+  content::ContextMenuParams params;
+  params.is_editable = false;
+
+  // By default, personal shortcuts are enabled, so the option should be
+  // present.
+  EXPECT_TRUE(ui_manager->HandleContextMenu(*rfh, params));
+  const ui::SimpleMenuModel* model =
+      ui_manager->context_menu_model_for_testing();
+  ASSERT_TRUE(model);
+  EXPECT_TRUE(
+      model
+          ->GetIndexOfCommandId(
+              omnibox_everywhere::OmniboxEverywhereUIManager::kShowShortcuts)
+          .has_value());
+
+  // Without enterprise policy shortcuts, the option is always present.
+  profile_.GetPrefs()->SetBoolean(ntp_prefs::kNtpPersonalShortcutsVisible,
+                                  false);
+  EXPECT_TRUE(ui_manager->HandleContextMenu(*rfh, params));
+  model = ui_manager->context_menu_model_for_testing();
+  ASSERT_TRUE(model);
+  EXPECT_TRUE(
+      model
+          ->GetIndexOfCommandId(
+              omnibox_everywhere::OmniboxEverywhereUIManager::kShowShortcuts)
+          .has_value());
+
+  // Add enterprise shortcuts policy so both checkboxes exist.
+  {
+    ScopedListPrefUpdate update(
+        profile_.GetPrefs(), ntp_tiles::prefs::kEnterpriseShortcutsPolicyList);
+    update->Append("https://corp.example.com");
+  }
+
+  // When both checkboxes are unchecked, no shortcuts can be shown at all.
+  profile_.GetPrefs()->SetBoolean(ntp_prefs::kNtpEnterpriseShortcutsVisible,
+                                  false);
+  profile_.GetPrefs()->SetBoolean(ntp_prefs::kNtpPersonalShortcutsVisible,
+                                  false);
+
+  EXPECT_TRUE(ui_manager->HandleContextMenu(*rfh, params));
+  model = ui_manager->context_menu_model_for_testing();
+  ASSERT_TRUE(model);
+  EXPECT_FALSE(
+      model
+          ->GetIndexOfCommandId(
+              omnibox_everywhere::OmniboxEverywhereUIManager::kShowShortcuts)
+          .has_value());
+}
+
 // TODO(crbug.com/546710681): Re-enable test on linux
 #if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_LINUX)
 #define MAYBE_ResizeDueToAutoResizeUpdatesWidgetBounds \
@@ -1700,6 +1762,124 @@ TEST_F(OmniboxEverywhereUIManagerTest, DismissBypassedDuringScreensharePicker) {
 }
 
 TEST_F(OmniboxEverywhereUIManagerTest,
+       DismissBypassedDuringScreenshareDisclosure) {
+  if (g_browser_process && g_browser_process->local_state()) {
+    g_browser_process->local_state()->SetBoolean(
+        omnibox_everywhere::prefs::kOmniboxEverywhereEphemeralModel, true);
+  }
+  auto ui_manager = CreateUIManager();
+
+  ui_manager->ShowForProfile(&profile_, GetContext());
+  views::Widget* widget = ui_manager->widget();
+  ASSERT_TRUE(widget);
+  EXPECT_TRUE(widget->IsVisible());
+
+  // Show screenshare disclosure dialog.
+  ui_manager->ShowScreenshotDisclosureDialog(base::DoNothing());
+  EXPECT_TRUE(ui_manager->is_screenshare_disclosure_open_for_testing());
+  EXPECT_TRUE(ui_manager->HasOpenModalDialog());
+  views::Widget* disclosure_widget =
+      ui_manager->disclosure_dialog_widget_for_testing();
+  ASSERT_TRUE(disclosure_widget);
+
+  // Simulating deactivation while screenshare disclosure dialog is open
+  // should NOT destroy or hide the widget.
+  ui_manager->OnWidgetActivationChanged(widget, /*active=*/false);
+  EXPECT_TRUE(ui_manager->widget());
+  EXPECT_TRUE(widget->IsVisible());
+
+  // Closing screenshare disclosure restores active state.
+  views::test::WidgetDestroyedWaiter waiter(disclosure_widget);
+  disclosure_widget->Close();
+  waiter.Wait();
+  EXPECT_TRUE(ui_manager->widget());
+  EXPECT_TRUE(widget->IsVisible());
+}
+
+TEST_F(OmniboxEverywhereUIManagerTest, ScreenshareDisclosure_AcceptFlow) {
+  auto ui_manager = CreateUIManager();
+  ui_manager->ShowForProfile(&profile_, GetContext());
+  views::Widget* widget = ui_manager->widget();
+  ASSERT_TRUE(widget);
+
+  bool accepted = false;
+  bool cancelled = false;
+  ui_manager->ShowScreenshotDisclosureDialog(
+      base::BindOnce([](bool* a) { *a = true; }, &accepted),
+      base::BindOnce([](bool* c) { *c = true; }, &cancelled));
+
+  views::Widget* disclosure_widget =
+      ui_manager->disclosure_dialog_widget_for_testing();
+  ASSERT_TRUE(disclosure_widget);
+  views::DialogDelegate* delegate =
+      disclosure_widget->widget_delegate()->AsDialogDelegate();
+  ASSERT_TRUE(delegate);
+
+  views::test::WidgetDestroyedWaiter waiter(disclosure_widget);
+  delegate->AcceptDialog();
+  waiter.Wait();
+
+  EXPECT_TRUE(accepted);
+  EXPECT_FALSE(cancelled);
+  EXPECT_FALSE(ui_manager->is_screenshare_disclosure_open_for_testing());
+  EXPECT_FALSE(ui_manager->HasOpenModalDialog());
+}
+
+TEST_F(OmniboxEverywhereUIManagerTest, ScreenshareDisclosure_CancelFlow) {
+  auto ui_manager = CreateUIManager();
+  ui_manager->ShowForProfile(&profile_, GetContext());
+  views::Widget* widget = ui_manager->widget();
+  ASSERT_TRUE(widget);
+
+  bool accepted = false;
+  bool cancelled = false;
+  ui_manager->ShowScreenshotDisclosureDialog(
+      base::BindOnce([](bool* a) { *a = true; }, &accepted),
+      base::BindOnce([](bool* c) { *c = true; }, &cancelled));
+
+  views::Widget* disclosure_widget =
+      ui_manager->disclosure_dialog_widget_for_testing();
+  ASSERT_TRUE(disclosure_widget);
+  EXPECT_TRUE(ui_manager->is_screenshare_disclosure_open_for_testing());
+  EXPECT_TRUE(ui_manager->HasOpenModalDialog());
+  EXPECT_EQ(disclosure_widget->GetZOrderLevel(), widget->GetZOrderLevel());
+  views::DialogDelegate* delegate =
+      disclosure_widget->widget_delegate()->AsDialogDelegate();
+  ASSERT_TRUE(delegate);
+
+  views::test::WidgetDestroyedWaiter waiter(disclosure_widget);
+  delegate->CancelDialog();
+  waiter.Wait();
+
+  EXPECT_FALSE(accepted);
+  EXPECT_TRUE(cancelled);
+  EXPECT_FALSE(ui_manager->is_screenshare_disclosure_open_for_testing());
+  EXPECT_FALSE(ui_manager->HasOpenModalDialog());
+}
+
+TEST_F(OmniboxEverywhereUIManagerTest,
+       ScreenshareDisclosure_ShutdownWhileOpen) {
+  auto ui_manager = CreateUIManager();
+  ui_manager->ShowForProfile(&profile_, GetContext());
+
+  bool accepted = false;
+  bool cancelled = false;
+  ui_manager->ShowScreenshotDisclosureDialog(
+      base::BindOnce([](bool* a) { *a = true; }, &accepted),
+      base::BindOnce([](bool* c) { *c = true; }, &cancelled));
+
+  EXPECT_TRUE(ui_manager->disclosure_dialog_widget_for_testing());
+
+  ui_manager->Shutdown();
+
+  EXPECT_FALSE(accepted);
+  EXPECT_FALSE(cancelled);
+  EXPECT_FALSE(ui_manager->widget());
+  EXPECT_FALSE(ui_manager->disclosure_dialog_widget_for_testing());
+  EXPECT_FALSE(ui_manager->is_screenshare_disclosure_open_for_testing());
+}
+
+TEST_F(OmniboxEverywhereUIManagerTest,
        AcquiresAndReleasesKeepAliveOnWidgetLifecycle) {
   if (g_browser_process && g_browser_process->local_state()) {
     g_browser_process->local_state()->SetBoolean(
@@ -1934,6 +2114,70 @@ TEST_F(OmniboxEverywhereUIManagerTest,
   ui_manager->region_select_overlay_for_testing()->widget()->CloseWithReason(
       views::Widget::ClosedReason::kEscKeyPressed);
   EXPECT_TRUE(future.IsReady());
+  EXPECT_FALSE(ui_manager->HasOpenModalDialog());
+
+  task_environment()->FastForwardBy(
+      omnibox_everywhere::OmniboxEverywhereUIManager::kActivationGracePeriod +
+      base::Milliseconds(1));
+  ui_manager->OnWidgetActivationChanged(widget, /*active=*/false);
+  EXPECT_TRUE(base::test::RunUntil([&]() { return !widget->IsVisible(); }));
+
+  ui_manager->Shutdown();
+}
+
+TEST_F(OmniboxEverywhereUIManagerTest, PermissionPromptStateTracking) {
+  auto ui_manager = CreateUIManager();
+  EXPECT_FALSE(ui_manager->is_permission_prompt_open_for_testing());
+
+  ui_manager->OnPermissionPromptChanged(/*is_showing=*/true,
+                                        gfx::Size(100, 100));
+  EXPECT_TRUE(ui_manager->is_permission_prompt_open_for_testing());
+
+  ui_manager->OnPermissionPromptChanged(/*is_showing=*/false, gfx::Size());
+  EXPECT_FALSE(ui_manager->is_permission_prompt_open_for_testing());
+}
+
+TEST_F(OmniboxEverywhereUIManagerTest,
+       HasOpenModalDialogUpdatesCorrectly_PermissionPrompt) {
+  auto ui_manager = CreateUIManager();
+  EXPECT_FALSE(ui_manager->HasOpenModalDialog());
+
+  ui_manager->OnPermissionPromptChanged(/*is_showing=*/true,
+                                        gfx::Size(100, 100));
+  EXPECT_TRUE(ui_manager->HasOpenModalDialog());
+
+  ui_manager->OnPermissionPromptChanged(/*is_showing=*/false, gfx::Size());
+  EXPECT_FALSE(ui_manager->HasOpenModalDialog());
+}
+
+TEST_F(OmniboxEverywhereUIManagerTest, DismissBypassedDuringPermissionPrompt) {
+  if (g_browser_process && g_browser_process->local_state()) {
+    g_browser_process->local_state()->SetBoolean(
+        omnibox_everywhere::prefs::kOmniboxEverywhereEphemeralModel, true);
+  }
+  auto ui_manager = CreateUIManager();
+
+  ui_manager->ShowForProfile(&profile_, GetContext());
+  views::Widget* widget = ui_manager->widget();
+  ASSERT_TRUE(widget);
+  EXPECT_TRUE(widget->IsVisible());
+
+  // Mark permission prompt as showing.
+  ui_manager->OnPermissionPromptChanged(/*is_showing=*/true,
+                                        gfx::Size(100, 100));
+  EXPECT_TRUE(ui_manager->is_permission_prompt_open_for_testing());
+  EXPECT_TRUE(ui_manager->HasOpenModalDialog());
+
+  // Simulating deactivation while permission prompt is open should NOT close
+  // the widget.
+  ui_manager->OnWidgetActivationChanged(widget, /*active=*/false);
+  EXPECT_TRUE(ui_manager->widget());
+  EXPECT_TRUE(widget->IsVisible());
+
+  // Mark permission prompt as closed and simulate deactivation after grace
+  // period.
+  ui_manager->OnPermissionPromptChanged(/*is_showing=*/false, gfx::Size());
+  EXPECT_FALSE(ui_manager->is_permission_prompt_open_for_testing());
   EXPECT_FALSE(ui_manager->HasOpenModalDialog());
 
   task_environment()->FastForwardBy(

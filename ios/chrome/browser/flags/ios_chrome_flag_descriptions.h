@@ -394,12 +394,6 @@ inline constexpr char kBuildExternalPrivacyContextDescription[] =
     "capability to be fetched (controlled by "
     "kEnforceCanSignInToChromeCapability flag).";
 
-inline constexpr char kCacheIdentityListInChromeName[] =
-    "Cache identity list in chrome.";
-inline constexpr char kCacheIdentityListInChromeDescription[] =
-    "Changes the implementation of the cache of the list of identities on "
-    "device.";
-
 inline constexpr char kChromeNextIaName[] = "ChromeNextIa";
 inline constexpr char kChromeNextIaDescription[] =
     "Enables the chrome_next_ia feature.";
@@ -438,11 +432,6 @@ inline constexpr char kComposeboxCloseButtonTopAlignDescription[] =
     "If the user preference is set to top, enabling this feature aligns the "
     "compose box close button with the top edge of the input plate instead of "
     "centering.";
-
-inline constexpr char kComposeboxCompactModeName[] = "ComposeboxCompactMode";
-inline constexpr char kComposeboxCompactModeDescription[] =
-    "Enables the compact composebox, adding attachment or enabling AIM will "
-    "expand it to the regular size.";
 
 inline constexpr char kComposeboxConditionalPlusButtonName[] =
     "Composebox Conditional Plus Button";
@@ -485,10 +474,6 @@ inline constexpr char
 inline constexpr char
     kComposeboxFetchContextualSuggestionsForMultipleAttachmentsDescription[] =
         "Enables showing suggestions for multiple attachments";
-
-inline constexpr char kComposeboxForceTopName[] = "ComposeboxForceTop";
-inline constexpr char kComposeboxForceTopDescription[] =
-    "Forces the composebox to be at the top.";
 
 inline constexpr char kComposeboxPlusButtonBottomSheetName[] =
     "Enable the bottom sheet for plus button in Composebox";
@@ -783,6 +768,10 @@ inline constexpr char kEnableLensInOmniboxCopiedImageDescription[] =
     "when Google is the selected search engine, accessible from the omnibox or "
     "popup menu.";
 
+inline constexpr char kEnableLensOnIPadName[] = "Enable Lens on iPad";
+inline constexpr char kEnableLensOnIPadDescription[] =
+    "When enabled, enables Lens Viewfinder entry points on iPad.";
+
 inline constexpr char kEnableNewStartupFlowName[] = "EnableNewStartupFlow";
 inline constexpr char kEnableNewStartupFlowDescription[] =
     "Enables the EnableNewStartupFlow feature.";
@@ -819,11 +808,6 @@ inline constexpr char kExplainGeminiEditMenuName[] =
 inline constexpr char kExplainGeminiEditMenuDescription[] =
     "When enabled, the explain Gemini edit menu will be available to eligible "
     "users when highlighting any text on a web page.";
-
-inline constexpr char kFRESignInHeaderTextUpdateName[] =
-    "Enable header text variations on the FRE sign-in page.";
-inline constexpr char kFRESignInHeaderTextUpdateDescription[] =
-    "When enabled, the FRE sign-in page displays a different header text.";
 
 inline constexpr char kFeedBackgroundRefreshName[] =
     "Enable feed background refresh";
@@ -1337,11 +1321,6 @@ inline constexpr char kLensOverlayNavigationHistoryDescription[] =
     "When enabled, web navigation in the Lens overlay are recorded in browser "
     "history.";
 
-inline constexpr char kLensSearchHeadersCheckEnabledName[] =
-    "Lens search headers check";
-inline constexpr char kLensSearchHeadersCheckEnabledDescription[] =
-    "When enabled, ensures headers are attached to Lens search requests.";
-
 inline constexpr char kLensStreamServiceWebChannelTransportEnabledName[] =
     "Lens stream service web channel transport";
 inline constexpr char
@@ -1427,13 +1406,6 @@ inline constexpr char kMostVisitedTilesHorizontalRenderGroupName[] =
     "MVTiles Horizontal Render Group";
 inline constexpr char kMostVisitedTilesHorizontalRenderGroupDescription[] =
     "When enabled, the MV tiles are represented as individual matches";
-
-inline constexpr char kNTPBackgroundColorSliderName[] =
-    "Enable the background color slider in the background customization color "
-    "picker";
-inline constexpr char kNTPBackgroundColorSliderDescription[] =
-    "When enabled, the color slider is available in the background "
-    "customization color picker.";
 
 inline constexpr char kNTPBackgroundDownsampleImageName[] =
     "NTP Background Downsample Image";

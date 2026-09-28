@@ -26,6 +26,7 @@
 #include "components/omnibox/browser/searchbox.mojom.h"
 #include "components/omnibox/browser/searchbox_utils.h"
 #include "components/omnibox/common/input_state.h"
+#include "components/prefs/pref_change_registrar.h"
 #include "mojo/public/cpp/bindings/pending_receiver.h"
 #include "mojo/public/cpp/bindings/receiver.h"
 #include "mojo/public/cpp/bindings/remote.h"
@@ -98,19 +99,24 @@ class SearchboxHandler : public searchbox::mojom::PageHandler,
       const gfx::VectorIcon& icon) const;
 
   // Adds file context to the searchbox from the browser.
-  void AddFileContextFromBrowser(
+  virtual void AddFileContextFromBrowser(
       base::UnguessableToken token,
       searchbox::mojom::SelectedFileInfoPtr file_info);
 
   // Notifies the WebUI that the contextual input status has changed.
-  void OnContextualInputStatusChanged(
+  virtual void OnContextualInputStatusChanged(
       base::UnguessableToken token,
       contextual_search::ContextUploadStatus status,
       std::optional<contextual_search::ContextUploadErrorType> error_type);
 
+  void set_disconnect_handler(base::OnceClosure callback) {
+    page_handler_.set_disconnect_handler(std::move(callback));
+  }
+
   // AutocompleteController::Observer:
   void OnResultChanged(AutocompleteController* controller,
                        bool default_match_changed) override;
+  void OnControllerDestroying(AutocompleteController* controller) override;
 
   // PermissionPromptObserver::Observer:
   void OnPermissionPromptChanged(bool is_showing,
@@ -263,7 +269,10 @@ class SearchboxHandler : public searchbox::mojom::PageHandler,
 
   mojo::Receiver<searchbox::mojom::PageHandler> page_handler_;
   mojo::Remote<searchbox::mojom::Page> page_;
+  PrefChangeRegistrar pref_change_registrar_;
   base::WeakPtrFactory<SearchboxHandler> weak_ptr_factory_{this};
+
+  void OnKeywordSpaceTriggeringPrefChanged();
 
   void OpenMatch(OmniboxPopupSelection selection,
                  AutocompleteMatch match,

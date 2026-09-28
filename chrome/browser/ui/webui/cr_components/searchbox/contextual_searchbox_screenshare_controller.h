@@ -10,6 +10,7 @@
 #include <string>
 #include <vector>
 
+#include "base/feature_list.h"
 #include "base/functional/callback.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
@@ -38,6 +39,10 @@ class ScreenshotCaptureRequest;
 
 class DesktopMediaPickerController;
 class DesktopMediaPickerFactory;
+
+#if BUILDFLAG(IS_MAC)
+BASE_DECLARE_FEATURE(kOmniboxEverywhereNativeScreenPicker);
+#endif
 
 // Dedicated controller managing screenshare picker dialogs, native
 // ScreenCaptureKit picker negotiation, screenshot frame captures, and
@@ -131,17 +136,25 @@ class ContextualSearchboxScreenshareController {
 
  private:
 #if !BUILDFLAG(IS_ANDROID)
+  void StartScreenshareInternal(bool prefer_entire_screen,
+                                bool is_region_capture,
+                                StartScreenshareCallback callback);
   void FallbackToChromeDefaultPicker(bool prefer_entire_screen,
+                                     bool is_region_capture,
                                      StartScreenshareCallback callback);
   void OnChromeDefaultPickerResults(StartScreenshareCallback callback,
+                                    bool is_region_capture,
                                     const std::string& err,
                                     content::DesktopMediaID source);
   void OnChromeDefaultPickerDestroyed();
   void OnNativePickerCreated(content::DesktopMediaID::Id id);
   void OnNativePickerSourceSelected(content::DesktopMediaID::Type type,
+                                    bool is_region_capture,
                                     StartScreenshareCallback callback,
                                     webrtc::DesktopCapturer::Source source);
   void OnNativePickerCancelled(StartScreenshareCallback callback);
+  void CaptureFullDesktopRegionScreenshot(
+      CaptureRegionScreenshotCallback callback);
   void CaptureAndUploadScreenshot(
       content::DesktopMediaID source,
       StartScreenshareCallback callback,
@@ -183,6 +196,7 @@ class ContextualSearchboxScreenshareController {
   // destroyed before `OnChromeDefaultPickerResults()` was invoked.
   std::optional<content::DesktopMediaID> pending_screenshare_source_;
   StartScreenshareCallback pending_screenshare_callback_;
+  std::optional<RegionCaptureSource> pending_region_capture_source_;
   bool chrome_default_picker_destroyed_ = false;
 #endif
 

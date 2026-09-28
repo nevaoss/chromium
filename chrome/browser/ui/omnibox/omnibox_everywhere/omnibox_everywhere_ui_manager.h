@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "base/cancelable_callback.h"
+#include "base/functional/callback_helpers.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/scoped_observation.h"
@@ -17,6 +18,7 @@
 #include "chrome/browser/ui/browser_window/public/browser_collection_observer.h"
 #include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"
 #include "chrome/browser/ui/omnibox/omnibox_everywhere_service.h"
+#include "chrome/browser/ui/views/permissions/permission_prompt_observer.h"
 #include "chrome/browser/ui/webui/top_chrome/webui_contents_wrapper.h"
 #include "components/prefs/pref_change_registrar.h"
 #include "content/public/browser/context_menu_params.h"
@@ -55,7 +57,8 @@ class OmniboxEverywhereUIManager : public views::WidgetObserver,
                                    public WebUIContentsWrapper::Host,
                                    public BrowserCollectionObserver,
                                    public ui::SimpleMenuModel::Delegate,
-                                   public views::ContextMenuController {
+                                   public views::ContextMenuController,
+                                   public PermissionPromptObserver::Observer {
  public:
   DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(kOmniboxEverywhereElementId);
 
@@ -159,6 +162,10 @@ class OmniboxEverywhereUIManager : public views::WidgetObserver,
       const gfx::Point& point,
       ui::mojom::MenuSourceType source_type) override;
 
+  // PermissionPromptObserver::Observer:
+  void OnPermissionPromptChanged(bool is_showing,
+                                 const gfx::Size& prompt_size) override;
+
   void OnFileChooserOpened();
   void OnFileChooserClosed();
 
@@ -169,6 +176,10 @@ class OmniboxEverywhereUIManager : public views::WidgetObserver,
 
   void OnScreensharePickerOpened();
   void OnScreensharePickerClosed();
+
+  void ShowScreenshotDisclosureDialog(
+      base::OnceClosure on_accepted,
+      base::OnceClosure on_cancelled = base::DoNothing());
   using RegionSelectedCallback =
       base::OnceCallback<void(const SkBitmap& result_bitmap)>;
   void ShowRegionSelectOverlay(const SkBitmap& screenshot,
@@ -208,6 +219,15 @@ class OmniboxEverywhereUIManager : public views::WidgetObserver,
   }
   bool is_screenshare_picker_open_for_testing() const {
     return is_screenshare_picker_open_;
+  }
+  bool is_screenshare_disclosure_open_for_testing() const {
+    return is_screenshare_disclosure_open_;
+  }
+  views::Widget* disclosure_dialog_widget_for_testing() {
+    return disclosure_dialog_widget_.get();
+  }
+  bool is_permission_prompt_open_for_testing() const {
+    return is_permission_prompt_open_;
   }
   OmniboxEverywhereRegionSelectOverlay* region_select_overlay_for_testing() {
     return region_select_overlay_.get();
@@ -256,6 +276,8 @@ class OmniboxEverywhereUIManager : public views::WidgetObserver,
   void OnWidgetClosed(views::Widget::ClosedReason reason);
   void OnContextMenuClosed();
   void HandleWidgetDeactivated();
+  void OnScreenshotDisclosureClosed(base::OnceClosure on_cancelled,
+                                    views::Widget::ClosedReason reason);
 
 #if defined(USE_AURA)
   std::unique_ptr<OmniboxEverywhereEventHandlerAura> event_handler_;
@@ -272,11 +294,15 @@ class OmniboxEverywhereUIManager : public views::WidgetObserver,
   std::unique_ptr<ScopedKeepAlive> keep_alive_;
   std::unique_ptr<OmniboxEverywhereRegionSelectOverlay> region_select_overlay_;
 
+  std::unique_ptr<views::Widget> disclosure_dialog_widget_;
+
   bool is_file_chooser_open_ = false;
   bool is_drive_picker_open_ = false;
   bool is_context_menu_open_ = false;
   bool is_demoted_ = false;
   bool is_screenshare_picker_open_ = false;
+  bool is_screenshare_disclosure_open_ = false;
+  bool is_permission_prompt_open_ = false;
   bool is_dragging_ = false;
   std::optional<gfx::Size> pending_auto_resize_size_;
   std::optional<SkRegion> draggable_region_;
@@ -298,6 +324,9 @@ class OmniboxEverywhereUIManager : public views::WidgetObserver,
       widget_observation_{this};
   base::ScopedObservation<ProfileBrowserCollection, BrowserCollectionObserver>
       browser_collection_observation_{this};
+  base::ScopedObservation<PermissionPromptObserver,
+                          PermissionPromptObserver::Observer>
+      permission_prompt_observation_{this};
 
   base::WeakPtrFactory<OmniboxEverywhereUIManager> weak_factory_{this};
 };

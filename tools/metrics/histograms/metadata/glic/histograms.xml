@@ -77,6 +77,7 @@ chromium-metrics-reviews@google.com.
   <variant name="OnSessionTerminated"/>
   <variant name="OnTurnCompleted"/>
   <variant name="OnUserInputSubmitted"/>
+  <variant name="OpenContactInfoSettingsPage"/>
   <variant name="OpenGlicSettingsPage"/>
   <variant name="OpenOsPermissionSettingsMenu"/>
   <variant name="OpenPasswordManagerSettingsPage"/>
@@ -1992,6 +1993,17 @@ chromium-metrics-reviews@google.com.
   <summary>
     Records the boolean result of calling MaybeReplaceNavigation. This is used
     to determine if a navigation was replaced with a media viewer.
+  </summary>
+</histogram>
+
+<histogram name="Glic.Media.SharedContextLength" units="bytes"
+    expires_after="2027-01-03">
+  <owner>ahmedmoussa@google.com</owner>
+  <owner>chrome-bluefin@google.com</owner>
+  <summary>
+    Records the total media context length (in bytes) when it is shared with
+    glic for inclusion in the page context. Only recorded when a transcript
+    actually exists.
   </summary>
 </histogram>
 

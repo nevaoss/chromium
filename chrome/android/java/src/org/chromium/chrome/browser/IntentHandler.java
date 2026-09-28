@@ -41,6 +41,7 @@ import org.chromium.build.annotations.Contract;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.actor.ActorBackgroundActuationManager;
+import org.chromium.chrome.browser.actor.ActorForegroundServiceController;
 import org.chromium.chrome.browser.actor.ActorNotificationFactory;
 import org.chromium.chrome.browser.app.tabmodel.AsyncTabParamsManagerSingleton;
 import org.chromium.chrome.browser.app.tabwindow.TabWindowManagerSingleton;
@@ -55,6 +56,7 @@ import org.chromium.chrome.browser.externalnav.IntentWithRequestMetadataHandler;
 import org.chromium.chrome.browser.externalnav.IntentWithRequestMetadataHandler.RequestMetadata;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.gsa.GSAUtils;
+import org.chromium.chrome.browser.intents.BrowserIntentUtils;
 import org.chromium.chrome.browser.notifications.NotificationConstants;
 import org.chromium.chrome.browser.omnibox.suggestions.AutocompleteCoordinator;
 import org.chromium.chrome.browser.pdf.PdfUtils;
@@ -63,6 +65,7 @@ import org.chromium.chrome.browser.profiles.ProfileManager;
 import org.chromium.chrome.browser.renderer_host.ChromeNavigationUiData;
 import org.chromium.chrome.browser.search_engines.TemplateUrlServiceFactory;
 import org.chromium.chrome.browser.tab.Tab;
+import org.chromium.chrome.browser.tab.TabId;
 import org.chromium.chrome.browser.tab.TabIdManager;
 import org.chromium.chrome.browser.tab.TabLaunchType;
 import org.chromium.chrome.browser.tabmodel.AsyncTabCreationParams;
@@ -337,7 +340,7 @@ public class IntentHandler {
 
     /** An extra to disable initialization of the renderer when creating a new tab context. */
     public static final String EXTRA_DISABLE_INITIALIZE_RENDERER =
-            "org.chromium.chrome.browser.disable_initialize_renderer";
+            BrowserIntentUtils.EXTRA_DISABLE_INITIALIZE_RENDERER;
 
     public static final String EXTRA_CCT_EARLY_NAV = "org.chromium.chrome.browser.cct_early_nav";
 
@@ -387,7 +390,7 @@ public class IntentHandler {
     private static final String NEWS_LINK_PREFIX = "http://news.google.com/news/url?";
     private static final String YOUTUBE_LINK_PREFIX_HTTPS = "https://www.youtube.com/redirect?";
     private static final String YOUTUBE_LINK_PREFIX_HTTP = "http://www.youtube.com/redirect?";
-    private static final String BRING_TAB_TO_FRONT_EXTRA = "BRING_TAB_TO_FRONT";
+    public static final String BRING_TAB_TO_FRONT_EXTRA = "BRING_TAB_TO_FRONT";
     private static final String BRING_TAB_GROUP_TO_FRONT_EXTRA = "BRING_TAB_GROUP_TO_FRONT";
     public static final String BRING_TAB_TO_FRONT_SOURCE_EXTRA = "BRING_TAB_TO_FRONT_SOURCE";
     public static final String BRING_TAB_GROUP_TO_FRONT_SOURCE_EXTRA =
@@ -823,7 +826,7 @@ public class IntentHandler {
         // The logic in this method should be moved to ChromeTabbedActivity eventually. We should
         // support async handling of voice search when native finishes initializing.
         if (results == null
-                || results.size() == 0
+                || results.isEmpty()
                 || !BrowserStartupController.getInstance().isFullBrowserStarted()) {
             return null;
         }
@@ -959,7 +962,7 @@ public class IntentHandler {
             String value = bundleExtraHeaders.getString(key);
 
             if (!HttpUtil.isAllowedHeader(key, value)) {
-                Log.w(TAG, "Ignoring forbidden header " + key + " in EXTRA_HEADERS.");
+                Log.w(TAG, "Ignoring forbidden header %s in EXTRA_HEADERS.", key);
                 continue;
             }
 
@@ -968,13 +971,13 @@ public class IntentHandler {
 
             if (!fromChrome) {
                 if (key.toLowerCase(Locale.US).startsWith("x-chrome-")) {
-                    Log.w(TAG, "Ignoring x-chrome header " + key + " in EXTRA_HEADERS.");
+                    Log.w(TAG, "Ignoring x-chrome header %s in EXTRA_HEADERS.", key);
                     continue;
                 }
 
                 if (!shouldAllowNonSafelistedHeaders
                         && !IntentHandlerJni.get().isCorsSafelistedHeader(key, value)) {
-                    Log.w(TAG, "Ignoring non-CORS-safelisted header " + key + " in EXTRA_HEADERS.");
+                    Log.w(TAG, "Ignoring non-CORS-safelisted header %s in EXTRA_HEADERS.", key);
                     continue;
                 }
             }
@@ -1066,7 +1069,7 @@ public class IntentHandler {
                 }
                 setTabGroupMetadata(intent, tabGroupMetadata);
 
-                return tabIdsToUrls.size() == 0;
+                return tabIdsToUrls.isEmpty();
             } else {
                 return shouldIgnoreIntentUrl(
                         intent, context, getUrlFromIntent(intent), isCustomTab);
@@ -1677,7 +1680,7 @@ public class IntentHandler {
         if (tab == null) return null;
 
         Context tabContext = tab.getContext();
-        return (tabContext instanceof Activity) ? (Activity) tabContext : null;
+        return (tabContext instanceof Activity activity) ? activity : null;
     }
 
     /**
@@ -1762,7 +1765,7 @@ public class IntentHandler {
      * @return Created Intent or null if this operation isn't possible.
      */
     public static Intent createTrustedBringTabToFrontIntent(
-            int tabId, @BringToFrontSource int bringToFrontSource) {
+            @TabId int tabId, @BringToFrontSource int bringToFrontSource) {
         Context context = ContextUtils.getApplicationContext();
         Intent intent = new Intent(context, ChromeLauncherActivity.class);
         intent.putExtra(Browser.EXTRA_APPLICATION_ID, context.getPackageName());
@@ -1792,19 +1795,32 @@ public class IntentHandler {
         return intent;
     }
 
-    public static int getBringTabToFrontId(Intent intent) {
+    public static @TabId int getBringTabToFrontId(Intent intent) {
         if (!wasIntentSenderChrome(intent)) return Tab.INVALID_TAB_ID;
-        return IntentUtils.safeGetIntExtra(intent, BRING_TAB_TO_FRONT_EXTRA, Tab.INVALID_TAB_ID);
+        final @TabId int tabId =
+                IntentUtils.safeGetIntExtra(intent, BRING_TAB_TO_FRONT_EXTRA, Tab.INVALID_TAB_ID);
+        if (tabId != Tab.INVALID_TAB_ID) return tabId;
+        return ActorForegroundServiceController.resolveActorIntentTabId(intent);
     }
 
     /** Sets the Bring Tab to Front ID extra for a given intent. */
-    public static void setBringTabToFrontId(Intent intent, int tabId) {
+    public static void setBringTabToFrontId(Intent intent, @TabId int tabId) {
         intent.putExtra(BRING_TAB_TO_FRONT_EXTRA, tabId);
     }
 
     public static @Nullable String getBringTabGroupToFrontId(Intent intent) {
         if (!wasIntentSenderChrome(intent)) return null;
         return IntentUtils.safeGetStringExtra(intent, BRING_TAB_GROUP_TO_FRONT_EXTRA);
+    }
+
+    /**
+     * @return The Glic conversation ID extra from an intent, or null if not present or if the
+     *     intent is not trusted from Chrome.
+     */
+    public static @Nullable String getGlicConversationId(@Nullable Intent intent) {
+        if (!wasIntentSenderChrome(intent)) return null;
+        return IntentUtils.safeGetStringExtra(
+                intent, NotificationConstants.EXTRA_GLIC_CONVERSATION_ID);
     }
 
     /** Sets the Tab Id extra for a given intent. Will only be usable by trusted Chrome intents. */

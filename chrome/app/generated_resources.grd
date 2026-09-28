@@ -4936,6 +4936,9 @@ are declared in tools/grit/grit_args.gni.
         <message name="IDS_TASK_MANAGER_JAVASCRIPT_MEMORY_ALLOCATED_COLUMN" desc="Task manager JavaScript memory allocated column.  Shows the amount of memory used by JavaScript within a process">
           JavaScript memory
         </message>
+        <message name="IDS_TASK_MANAGER_CPPGC_MEMORY_ALLOCATED_COLUMN" desc="Task manager CppGC memory allocated column.  Shows the amount of memory used by CppGC within a process">
+          CppGC memory
+        </message>
         <message name="IDS_TASK_MANAGER_KEEPALIVE_COUNT_COLUMN" desc="Task manager keepalive count column.  Specific to Chrome extension processes, and only to those which use 'lazy' event pages, this indicates how many activities are making use of the extension, and therefore causing it to be kept alive.">
           Keepalive count
         </message>
@@ -5009,6 +5012,9 @@ are declared in tools/grit/grit_args.gni.
         </message>
         <message name="IDS_TASK_MANAGER_JAVASCRIPT_MEMORY_ALLOCATED_COLUMN" desc="Task manager JavaScript memory allocated column.  Shows the amount of memory used by JavaScript within a process">
           JavaScript Memory
+        </message>
+        <message name="IDS_TASK_MANAGER_CPPGC_MEMORY_ALLOCATED_COLUMN" desc="Task manager CppGC memory allocated column.  Shows the amount of memory used by CppGC within a process">
+          CppGC Memory
         </message>
         <message name="IDS_TASK_MANAGER_KEEPALIVE_COUNT_COLUMN" desc="Task manager keepalive count column.  Specific to Chrome extension processes, and only to those which use 'lazy' event pages, this indicates how many activities are making use of the extension, and therefore causing it to be kept alive.">
           Keepalive Count
@@ -5625,6 +5631,9 @@ are declared in tools/grit/grit_args.gni.
         <message name="IDS_EXTENSION_PROMPT_WARNING_ENTERPRISE_DEVICE_ATTRIBUTES" desc="Permission string for enterprise device attributes permission.">
           See device information, such as its serial number or asset ID
         </message>
+        <message name="IDS_EXTENSION_PROMPT_WARNING_ENTERPRISE_WEBRTC" desc="Permission string for the enterprise WebRTC diagnostics permission.">
+          See which sites you call from and when your camera or microphone is used
+        </message>
         <message name="IDS_EXTENSION_PROMPT_WARNING_ENTERPRISE_KIOSK_INPUT" desc="Permission string for enterprise kiosk input permission.">
           Change the system keyboard layout
         </message>
@@ -6036,12 +6045,6 @@ are declared in tools/grit/grit_args.gni.
           <message name="IDS_EXTENSIONS_PINNED_BY_ADMIN_ACCESSIBLE_NAME" desc="The accessible name indicating that an extension has been 'pinned' to the toolbar by the controlling administrator (sentence case).">
             <ph name="EXTENSION_NAME">$1<ex>Gmail Checker</ex></ph> is pinned by your administrator
           </message>
-          <message name="IDS_EXTENSIONS_SUBMENU_OPEN_SIDE_PANEL_ITEM" desc="The text for the link in the extensions menu to open the side panel corresponding to the extension (sentence case).">
-            Open side panel
-          </message>
-          <message name="IDS_EXTENSIONS_SUBMENU_CLOSE_SIDE_PANEL_ITEM" desc="The text for the link in the extensions menu to close the side panel corresponding to the extension (sentence case).">
-            Close side panel
-          </message>
         </if>
         <if expr="use_titlecase">
           <message name="IDS_EXTENSIONS_DISABLE" desc="The link for disabling an extension (title case).">
@@ -6065,6 +6068,19 @@ are declared in tools/grit/grit_args.gni.
           <message name="IDS_EXTENSIONS_PINNED_BY_ADMIN_ACCESSIBLE_NAME" desc="The accessible name indicating that an extension has been 'pinned' to the toolbar by the controlling administrator (sentence case).">
             <ph name="EXTENSION_NAME">$1<ex>Gmail Checker</ex></ph> is pinned by your Administrator
           </message>
+        </if>
+      </if>
+
+      <if expr="enable_extensions_core">
+        <if expr="not use_titlecase">
+          <message name="IDS_EXTENSIONS_SUBMENU_OPEN_SIDE_PANEL_ITEM" desc="The text for the link in the extensions menu to open the side panel corresponding to the extension (sentence case).">
+            Open side panel
+          </message>
+          <message name="IDS_EXTENSIONS_SUBMENU_CLOSE_SIDE_PANEL_ITEM" desc="The text for the link in the extensions menu to close the side panel corresponding to the extension (sentence case).">
+            Close side panel
+          </message>
+        </if>
+        <if expr="use_titlecase">
           <message name="IDS_EXTENSIONS_SUBMENU_OPEN_SIDE_PANEL_ITEM" desc="The text for the link in the extensions menu to open the side panel corresponding to the extension (title case).">
             Open Side Panel
           </message>
@@ -10179,6 +10195,25 @@ Keep your key file in a safe place. You will need it to create new versions of y
       <message name="IDS_READING_MODE_PRESENTATION_MODE_IPH_SCREENREADER" is_accessibility_with_no_ui="true" desc="Text for the help bubble describing how to toggle reading mode from immersive mode to side panel mode.">
         Switch back to the side-by-side view by opening Settings, then View, and select Side Panel.
       </message>
+      <message name="IDS_READING_MODE_LINE_FOCUS_IPH_TITLE" desc="Title for the help bubble describing the line focus feature in Reading Mode.">
+        Try line focus
+      </message>
+      <if expr="is_macosx">
+        <message name="IDS_READING_MODE_LINE_FOCUS_IPH_BODY" desc="Text for the help bubble describing how to turn on line focus.">
+          Apply a reading line or window to help with focus. Press ⌥L or go to Settings.
+        </message>
+        <message name="IDS_READING_MODE_LINE_FOCUS_IPH_SCREENREADER" is_accessibility_with_no_ui="true" desc="Accessible text for the help bubble describing how to turn on line focus.">
+          Apply a reading line or window to help with focus. Press ⌥L or go to Settings.
+        </message>
+      </if>
+      <if expr="not is_macosx">
+        <message name="IDS_READING_MODE_LINE_FOCUS_IPH_BODY" desc="Text for the help bubble describing how to turn on line focus.">
+          Apply a reading line or window to help with focus. Press Alt+L or go to Settings.
+        </message>
+        <message name="IDS_READING_MODE_LINE_FOCUS_IPH_SCREENREADER" is_accessibility_with_no_ui="true" desc="Accessible text for the help bubble describing how to turn on line focus.">
+          Apply a reading line or window to help with focus. Press Alt+L or go to Settings.
+        </message>
+      </if>
 
       <!-- Google Lens side panel -->
       <message name="IDS_GOOGLE_LENS_TITLE" desc="Title of the Google Lens side panel">
@@ -10194,7 +10229,7 @@ Keep your key file in a safe place. You will need it to create new versions of y
         Use Google Lens to learn more about specific images or text on a page.
       </message>
       <message name="IDS_LENS_COBROWSE_CURRENT_TAB_IPH_DESCRIPTION" desc="Informs user that the content and URL of their current tab is shared with Google to get more relevant answers.">
-        The content and the URL of your current tab is shared with Google to give you more relevant answers. You can add or remove tabs as you browse.
+        The page title, URL, and content of your current tab is shared with Google to give you more relevant answers. You can add or remove tabs as you browse.
       </message>
 
       <!--Tooltip strings -->
@@ -10643,6 +10678,9 @@ Keep your key file in a safe place. You will need it to create new versions of y
       </if>
       <message name="IDS_ORGANIZER_PANEL" desc="The name of the organizer panel announced by screenreaders." is_accessibility_with_no_ui="true">
         Organizer
+      </message>
+      <message name="IDS_ORGANIZER_PANEL_TAB_GROUPS" desc="The label on the organizer panel list section corresponding to tab groups.">
+        Tab Groups
       </message>
       <if expr="use_titlecase">
         <message name="IDS_TAB_STRIP_UNPIN_TAB_SEARCH" desc="In Title Case: Name of the tab strip system menu item for unpinning tab search.">
@@ -13908,6 +13946,22 @@ Check your passwords anytime in <ph name="GOOGLE_PASSWORD_MANAGER">$1<ex>Google 
       <message name="IDS_MENU_SEND_TAB_TO_SELF" desc="The label of a menu entry to share the current tab to another device">
         Send to your &amp;device
       </message>
+      <if expr="not use_titlecase">
+        <message name="IDS_CONTEXT_MENU_SEND_TAB_TO_SELF" desc="The label of a menu entry to share the current tab to another device in context menus">
+          Send to your &amp;device
+        </message>
+        <message name="IDS_CONTEXT_MENU_SEND_TAB_TO_SELF_MANAGE_DEVICES" desc="The label for a menu item to manage the devices that can receive tabs in context menus">
+          Manage your devices
+        </message>
+      </if>
+      <if expr="use_titlecase">
+        <message name="IDS_CONTEXT_MENU_SEND_TAB_TO_SELF" desc="In Title Case: The label of a menu entry to share the current tab to another device in context menus">
+          Send to Your &amp;Device
+        </message>
+        <message name="IDS_CONTEXT_MENU_SEND_TAB_TO_SELF_MANAGE_DEVICES" desc="In Title Case: The label for a menu item to manage the devices that can receive tabs in context menus">
+          Manage Your Devices
+        </message>
+      </if>
       <message name="IDS_SEND_TAB_TO_SELF_DEVICE_LABEL" desc="The label for a target device in the Send Tab to Self context menu, which includes the device name and its last active time.">
         <ph name="DEVICE_NAME">$1<ex>Pixel 9 Pro</ex></ph> (<ph name="LAST_ACTIVE_TIME">$2<ex>Active 5 mins ago</ex></ph>)
       </message>

@@ -56,6 +56,8 @@
 #include "components/sync/base/features.h"
 #include "components/sync/service/sync_service.h"
 #include "third_party/re2/src/re2/re2.h"
+#include "ui/base/page_transition_types.h"
+#include "ui/base/window_open_disposition.h"
 #include "ui/gfx/font_list.h"
 #include "ui/gfx/text_elider.h"
 
@@ -408,13 +410,14 @@ std::vector<AccountInfo> GetOrderedAccountsForDisplay(
   std::vector<AccountInfo> accounts =
       signin::GetOrderedAccountsForDisplay(identity_manager, prefs);
 
-  if (account_preview_data_service) {
+  if (account_preview_data_service &&
+      !identity_manager->HasPrimaryAccount(signin::ConsentLevel::kSignin)) {
     std::optional<signin::AccountPreviewDataService::AccountPreviewPreference>
         preferred_preference =
             account_preview_data_service->GetPreferredAccountForPromo();
     if (preferred_preference.has_value()) {
       auto it = std::ranges::find(accounts, preferred_preference->gaia_id,
-                                  &AccountInfo::gaia);
+                                  &AccountInfo::GetGaiaId);
       if (it != accounts.end()) {
         // Rotate the subrange [begin, it + 1) so the preferred account at `it`
         // moves to the front while preserving the relative order of all other
@@ -567,8 +570,8 @@ void SignInAndEnableHistorySync(BrowserWindowInterface* browser,
       signin_ui_util::GetSingleAccountForPromos(
           IdentityManagerFactory::GetForProfile(profile),
           AccountPreviewDataServiceFactory::GetForProfile(profile));
-  signin_ui_util::SignInFromSingleAccountPromo(profile, account_for_promos,
-                                               access_point);
+  signin_ui_util::SignInFromSingleAccountPromo(
+      profile, account_for_promos.GetCoreAccountInfo(), access_point);
 
   // It is safe to pass a pointer to the sync service here because the callback
   // is then owned by a tab helper, which is guaranteed to be destroyed before

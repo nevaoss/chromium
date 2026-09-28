@@ -253,6 +253,10 @@ class COMPONENT_EXPORT(URL) GURL {
   bool SchemeIs(std::string_view lower_ascii_scheme) const;
 
   // Returns true if the scheme is "http" or "https".
+  //
+  // TODO(crbug.com/515625270): Once the Finch experiment completes, inline
+  // this method directly as `return is_http_or_https_;` (see url/gurl.cc for
+  // the Finch scaffolding and compile-size rationale).
   bool SchemeIsHTTPOrHTTPS() const;
 
   // Returns true is the scheme is "ws" or "wss".
@@ -485,6 +489,8 @@ class COMPONENT_EXPORT(URL) GURL {
 
   void ProcessFileSystemURLAfterReplaceComponents();
 
+  bool SchemeIsHTTPOrHTTPSInternal() const;
+
   // The actual text of the URL, in canonical ASCII form.
   std::string spec_;
 
@@ -493,8 +499,8 @@ class COMPONENT_EXPORT(URL) GURL {
   // invalid port number, invalid characters in the scheme, etc.).
   bool is_valid_;
 
-  // Cached result of SchemeIsHTTPOrHTTPS().
-  std::optional<bool> is_http_or_https_cache_;
+  // Precomputed result of SchemeIsHTTPOrHTTPS().
+  bool is_http_or_https_ = false;
 
   // Identified components of the canonical spec.
   url::Parsed parsed_;

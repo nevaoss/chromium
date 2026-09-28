@@ -83,8 +83,14 @@ class PreloadServingMetricsPageLoadMetricsObserver
 
   void MaybeRecord();
 
+  // Holds data for a single navigation (or BFCache restore) needed to record
+  // metrics.
+  //
+  // Created on commit (or BFCache restore) and reset when entering BFCache or
+  // after metrics are recorded.
   struct NavigationData {
-    NavigationData();
+    NavigationData(content::NavigationHandle& navigation_handle,
+                   bool used_bfcache);
     ~NavigationData();
     NavigationData(NavigationData&&);
     NavigationData& operator=(NavigationData&&);
@@ -96,10 +102,6 @@ class PreloadServingMetricsPageLoadMetricsObserver
     bool is_url_srp;
     bool is_served_by_legacy_search_prefetch;
   };
-
-  static NavigationData CreateNavigationData(
-      content::NavigationHandle* navigation_handle,
-      bool used_bfcache);
 
   std::optional<NavigationData> navigation_data_;
 };

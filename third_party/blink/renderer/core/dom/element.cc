@@ -2027,7 +2027,7 @@ bool Element::InterestGained(Element* target, InterestState state) {
                                 /*exception_state=*/nullptr,
                                 /*include_event_handler_text=*/true,
                                 &GetDocument())) {
-      popover->InvokePopover(*this);
+      popover->InvokePopover(*this, PopoverInvokedVia::kInterest);
     }
   }
   return true;
@@ -2072,11 +2072,13 @@ bool Element::InterestLost(Element* target,
     ChangeInterestState(target, InterestState::kNoInterest);
   }
 
-  // If the target is a popover, hide it.
+  // If the target is a popover, and it was invoked via interest, hide it.
   if (behavior == InterestLostPopoverBehavior::kClosePopovers) {
     if (auto* popover = DynamicTo<HTMLElement>(target);
         popover && popover->PopoverType() != PopoverValueType::kNone) {
-      if (popover->IsPopoverReady(PopoverTriggerAction::kHide,
+      if (popover->GetPopoverData()->invokedVia() ==
+              PopoverInvokedVia::kInterest &&
+          popover->IsPopoverReady(PopoverTriggerAction::kHide,
                                   /*exception_state=*/nullptr,
                                   /*include_event_handler_text=*/true,
                                   &GetDocument())) {
@@ -2154,6 +2156,15 @@ void Element::DefaultEventHandler(Event& event) {
     }
   }
   ContainerNode::DefaultEventHandler(event);
+}
+
+String Element::FilterBeforeTextInserted(const String& text) {
+  CHECK(RuntimeEnabledFeatures::CleanUpActivationBehaviorEnabled());
+  return text;
+}
+
+void Element::NotifyEditableContentChanged() {
+  CHECK(RuntimeEnabledFeatures::CleanUpActivationBehaviorEnabled());
 }
 
 inline void Element::SynchronizeAttribute(const QualifiedName& name) const {
@@ -2701,15 +2712,6 @@ double Element::scrollTop() {
       return GetDocument().domWindow()->scrollY();
     }
     return 0;
-  }
-
-  // Don't disclose scroll position in preview state. See crbug.com/1261689.
-  if (!RuntimeEnabledFeatures::SelectAutofillPopoverPreviewEnabled()) {
-    auto* select_element = DynamicTo<HTMLSelectElement>(this);
-    if (select_element && !select_element->UsesMenuList() &&
-        select_element->IsPreviewed()) {
-      return 0;
-    }
   }
 
   LayoutBox* box = GetLayoutBoxForScrolling();
@@ -8596,7 +8598,9 @@ void Element::Focus(const FocusParams& params) {
   }
 }
 
-void Element::SetFocused(bool now_focused, mojom::blink::FocusType focus_type) {
+void Element::SetFocused(bool now_focused,
+                         mojom::blink::FocusType focus_type,
+                         BlurEventBehavior blur_event_behavior) {
   // FocusType::kPage represents a page-level focus change (e.g. switching
   // tabs) rather than focusing a different element, so preserve the existing
   // value in that case.
@@ -8610,7 +8614,8 @@ void Element::SetFocused(bool now_focused, mojom::blink::FocusType focus_type) {
   // as <input type="date"> the same way as author shadow.
   if (ShadowRoot* root = ContainingShadowRoot()) {
     if (!root->IsUserAgent()) {
-      OwnerShadowHost()->SetFocused(now_focused, focus_type);
+      OwnerShadowHost()->SetFocused(now_focused, focus_type,
+                                    blur_event_behavior);
     }
   }
 

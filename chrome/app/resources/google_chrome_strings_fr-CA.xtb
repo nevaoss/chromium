@@ -31,6 +31,7 @@ Certaines fonctionnalités ne seront peut-être pas disponibles et les modificat
 <translation id="1197860368385086056">La prochaine fois que vous ouvrirez Chrome sur votre <ph name="DEVICE_TYPE" />, une invite vous proposera d'activer les alertes de suivi des prix.</translation>
 <translation id="1203500561924088507">Merci pour l'installation. Vous devez redémarrer votre navigateur avant d'utiliser <ph name="BUNDLE_NAME" />.</translation>
 <translation id="1278833599417554002">Relancer &amp;Chrome pour le mettre à jour</translation>
+<translation id="1289911795790071537">Ouvrir la recherche avec Chrome</translation>
 <translation id="1290883685122687410">Erreur de configuration : <ph name="METAINSTALLER_EXIT_CODE" /> <ph name="WINDOWS_ERROR" /></translation>
 <translation id="1302523850133262269">Veuillez patienter pendant que Chrome installe les dernières mises à jour système.</translation>
 <translation id="1330562121671411446">Détecter la langue</translation>
@@ -75,6 +76,7 @@ Les signets, l'historique et les mots de passe enregistrés ne seront pas touch�
 <translation id="1640672724030957280">Téléchargement en cours…</translation>
 <translation id="1651617469580841801">Lorsque vous utilisez Lentille Google, le titre de la page, l'URL et le contenu, y compris les fichiers PDF, sont envoyés à Google. <ph name="LEARN_MORE" /></translation>
 <translation id="1662146548738125461">À propos de ChromeOS Flex</translation>
+<translation id="1664094661346151467">Effectuez des recherches et posez des questions de n'importe où, même si Chrome est réduit</translation>
 <translation id="1674870198290878346">Ouvrir le lien dans une fenêtre de navi&amp;gation privée Chrome</translation>
 <translation id="1682634494516646069">Google Chrome ne peut pas lire et écrire dans son répertoire de données :
 
@@ -112,6 +114,7 @@ Les signets, l'historique et les mots de passe enregistrés ne seront pas touch�
 <translation id="2034233344106846793">Chrome met automatiquement à niveau les connexions non sécurisées vers HTTPS lorsque cela est possible</translation>
 <translation id="2039417478970545937">Paramètres.</translation>
 <translation id="2040220733769034247">Balayez le code QR avec votre téléphone pour télécharger Chrome et vous connecter à votre compte Google.</translation>
+<translation id="2044908892530830113">Afficher la recherche avec Chrome dans la barre de menu Mac et activer le raccourci-clavier</translation>
 <translation id="2050189601866423230">Vous pouvez épingler le mode IA de Recherche Google pour poser des questions pendant que vous naviguez</translation>
 <translation id="2091012649849228750">Pour recevoir les futures mises à jour de Google Chrome, vous devrez disposer de Windows 10 ou d'une version ultérieure. Cet ordinateur fonctionne sous Windows 8.</translation>
 <translation id="2094648590148273905">Conditions de Chrome OS Flex</translation>
@@ -139,6 +142,7 @@ Les signets, l'historique et les mots de passe enregistrés ne seront pas touch�
 <translation id="2284380654876659752">Lorsque vous visitez un site, Chrome envoie une partie brouillée de l'URL à la <ph name="BEGIN_LINK" />navigation sécurisée Google<ph name="END_LINK" /> au moyen d'un serveur confidentiel qui masque votre adresse IP. Si un site présente un comportement suspect, les URL complètes ainsi que des extraits du contenu des pages sont aussi envoyés.</translation>
 <translation id="2290014774651636340">Les clés d'API Google sont manquantes. Certaines fonctionnalités de Google Chrome seront désactivées.</translation>
 <translation id="2290095356545025170">Voulez-vous vraiment désinstaller Google Chrome?</translation>
+<translation id="2295218613066132598">Afficher les raccourcis de sites Chrome</translation>
 <translation id="2301513536169703857">Pour obtenir vos mots de passe, vos favoris et plus encore sur tous vos appareils, connectez-vous à Chrome</translation>
 <translation id="2307973900865360088">Garder dans le Dock</translation>
 <translation id="2309047409763057870">Cette installation de Google Chrome est secondaire. Celui-ci ne peut donc pas servir de navigateur par défaut.</translation>
@@ -350,6 +354,7 @@ Si cette page ne fonctionne pas comme prévu, essayez d'autoriser l'optimisation
 <translation id="436060642166082913">Chrome a bloqué ce téléchargement, car le fichier peut endommager vos comptes personnels et de réseaux sociaux</translation>
 <translation id="4367027658822022112">Vous pouvez épingler Lentille Google pour un accès facile; cliquez sur le bouton Épingler en haut du panneau latéral</translation>
 <translation id="4372389195695053189">Chrome est désormais votre navigateur par défaut</translation>
+<translation id="4381814455597163081">Vous contribuez à améliorer Chrome en envoyant des statistiques d'utilisation et des rapports de plantage à Google. <ph name="BEGIN_LINK" />Gérer<ph name="END_LINK" /></translation>
 <translation id="4389991535395284064">Lors de la navigation en mode Navigation privée, Chrome vous avertira avant de charger un site en utilisant une connexion non sécurisée</translation>
 <translation id="4400772909124543403">Aucune mise à jour n'est proposée</translation>
 <translation id="4427306783828095590">La protection renforcée en fait plus pour bloquer l'hameçonnage et les logiciels nuisibles</translation>
@@ -525,6 +530,7 @@ Google Chrome ne peut pas récupérer vos paramètres.</translation>
 <translation id="6180522807229584611">Cet onglet utilise des ressources supplémentaires. Pour améliorer vos performances, permettez à Chrome de le rendre inactif.</translation>
 <translation id="6182736845697986886">Échec de l'installation en raison d'une erreur interne du serveur de mise à jour.</translation>
 <translation id="6192058120268468905">Votre compte dans Chrome</translation>
+<translation id="6195202018542972563">Afficher la recherche avec Chrome dans la barre d'état système et activer le raccourci-clavier</translation>
 <translation id="6235018212288296708">Règle de trafic entrant pour Google Chrome autorisant le trafic mDNS.</translation>
 <translation id="624230925347970731">Chrome se fermera bientôt</translation>
 <translation id="6247557882553405851">Gestionnaire de mots de passe Google</translation>
@@ -566,8 +572,10 @@ Google Chrome ne peut pas récupérer vos paramètres.</translation>
 <translation id="652948702951888897">Historique de Google Chrome</translation>
 <translation id="6532945796722480006">Ouvrir Gemini dans Chrome Canary</translation>
 <translation id="6539493053177300926">Accédez facilement à Gemini dans Chrome sur votre appareil, même si Chrome est réduit.</translation>
+<translation id="6556755379298048869">Effectuez des recherches avec un raccourci-clavier.</translation>
 <translation id="6585124893636629274">Fermer Gemini dans Chrome</translation>
 <translation id="659498884637196217">Dans le gestionnaire de mots de passe Google sur cet appareil</translation>
+<translation id="6612152958212564387">Vous n'envoyez pas de statistiques d'utilisation ni de rapports de plantage à Google. <ph name="BEGIN_LINK" />Gérer<ph name="END_LINK" /></translation>
 <translation id="6613949864921837107">Gardez vos mots de passe, vos favoris et votre historique parfaitement synchronisés sur tous vos appareils en définissant Chrome comme navigateur par défaut.</translation>
 <translation id="6631524303639368205">Reprenez là où vous en étiez : Chrome restaure les onglets de votre dernière session. Vous pouvez désactiver cette option dans</translation>
 <translation id="6632473616050862500">Chrome OS Flex fonctionne grâce à d'autres <ph name="BEGIN_LINK_CROS_OSS" />logiciels libres<ph name="END_LINK_CROS_OSS" />.</translation>
@@ -592,7 +600,9 @@ Google Chrome ne peut pas récupérer vos paramètres.</translation>
 <translation id="683440813066116847">Règle de trafic entrant pour Google Chrome Canary autorisant le trafic mDNS.</translation>
 <translation id="684888714667046800">Impossible de se connecter à Internet. Si vous utilisez un pare-feu, assurez-vous que <ph name="PRODUCT_EXE_NAME" /> figure dans la liste verte.</translation>
 <translation id="6859580922007887573">Onglet pour continuer</translation>
+<translation id="6869568587896659271">Accès facile aux sites Web sous la barre d'adresse</translation>
 <translation id="6877155553248388166">Coin inférieur droit de la zone de recherche : droite <ph name="RIGHT" /> %, bas <ph name="BOTTOM" /> %</translation>
+<translation id="6879791154455204815">Ouvrir la recherche avec Chrome</translation>
 <translation id="6881299373831449287">Mise à jour de Chrome</translation>
 <translation id="6885412569789873916">Applications Chrome bêta</translation>
 <translation id="6893363893008038481">Retirer le compte de Chrome</translation>
@@ -651,6 +661,7 @@ Google Chrome ne peut pas récupérer vos paramètres.</translation>
 <translation id="7449333426561673451">{COUNT,plural, =1{Votre organisation ferme automatiquement Chrome lorsqu'il n'est pas utilisé pendant 1 minute.}one{Votre organisation ferme automatiquement Chrome lorsqu'il n'est pas utilisé pendant # minutes.}other{Votre organisation ferme automatiquement Chrome lorsqu'il n'est pas utilisé pendant # minutes.}}</translation>
 <translation id="7450541714075000668">Texte copié</translation>
 <translation id="7452987490177144319">{COUNT,plural, =1{Votre organisation supprime automatiquement les données de navigation lorsque Chrome n'est pas utilisé pendant 1 minute. Cela peut inclure l'historique, le remplissage automatique et les téléchargements. Vos onglets resteront ouverts.}one{Votre organisation supprime automatiquement les données de navigation lorsque Chrome n'est pas utilisé pendant # minute. Cela peut inclure l'historique, le remplissage automatique et les téléchargements. Vos onglets resteront ouverts.}other{Votre organisation supprime automatiquement les données de navigation lorsque Chrome n'est pas utilisé pendant # minutes. Cela peut inclure l'historique, le remplissage automatique et les téléchargements. Vos onglets resteront ouverts.}}</translation>
+<translation id="7466577301922356468">L'envoi automatique de ces données à Google permet d'améliorer Chrome. Vous pouvez modifier ce paramètre à tout moment.</translation>
 <translation id="7477130805345743099">Chrome vous avertira avant de charger un site en utilisant une connexion non sécurisée</translation>
 <translation id="7481213027396403996">Profitez de la sécurité la plus robuste de Chrome</translation>
 <translation id="749228101751499733">Pendant que vous êtes connecté, vous pouvez utiliser vos mots de passe et bien plus encore à partir de votre compte Google dans Chrome. <ph name="SHORTCUT" /> peut modifier les paramètres de vos services Google.</translation>
@@ -684,6 +695,7 @@ Google Chrome ne peut pas récupérer vos paramètres.</translation>
 <translation id="7736869414036750079">Votre organisation vous demande de vous connecter à Chrome</translation>
 <translation id="7747138024166251722">Le programme d'installation n'a pas pu créer de répertoire temporaire. Vérifiez que le disque a suffisamment d'espace libre et que vous disposez des autorisations nécessaires pour installer le logiciel.</translation>
 <translation id="7748969056734910029">Vous n'avez pas effectué de visite récemment. Chrome a retiré <ph name="PERMISSION_1" /> et <ph name="PERMISSION_2" />.</translation>
+<translation id="7759944311003584891">Effectuer des recherches avec Chrome</translation>
 <translation id="7761834446675418963">Cliquez sur votre nom pour ouvrir Chrome et commencer à naviguer.</translation>
 <translation id="7777080907402804672">Si une image n'est pas accompagnée d'une description utile, Chrome essaiera de vous en proposer une. Pour créer des descriptions, les images sont envoyées à Google. Vous pouvez désactiver cette option dans les paramètres à tout moment.</translation>
 <translation id="778331955594035129">Chrome requiert l'autorisation de localisation pour ce site</translation>
@@ -800,6 +812,7 @@ Vous ne pouvez pas enregistrer de nouveaux favoris dans votre compte tant que vo
 <translation id="8747073452963259673">Coin inférieur gauche de la zone de recherche : gauche <ph name="LEFT" /> %, bas <ph name="BOTTOM" /> %</translation>
 <translation id="8748735421235723888">Chrome libère de la mémoire à partir des onglets inactifs. Cela donne aux onglets actifs et aux autres applis plus de ressources informatiques et assure la rapidité de Chrome. Vos onglets inactifs redeviennent automatiquement actifs lorsque vous y revenez. <ph name="BEGIN_LINK" />En savoir plus sur l'Économiseur de mémoire<ph name="END_LINK" /></translation>
 <translation id="8765470054473112089">Lorsque vous saisissez du texte dans la barre d'adresse ou le champ de recherche, Chrome achemine la requête saisie à votre moteur de recherche par défaut pour obtenir de meilleures suggestions. Ce paramètre est désactivé en mode de navigation privée.</translation>
+<translation id="8771516687880083607">Choisir ce que vous partagez avec Chrome</translation>
 <translation id="8781673607513845160">Pour utiliser votre caméra, accordez l'accès à Chrome dans les <ph name="BEGIN_LINK" />paramètres système<ph name="END_LINK" /></translation>
 <translation id="878572486461146056">Erreur d'installation : votre administrateur réseau a appliqué une politique de groupe qui empêche l'installation : <ph name="INSTALL_ERROR" /></translation>
 <translation id="8796919761992612392">&amp;Personnaliser votre Chrome</translation>

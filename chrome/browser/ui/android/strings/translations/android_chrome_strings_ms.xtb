@@ -57,6 +57,7 @@
 <translation id="1181037720776840403">Alih keluar</translation>
 <translation id="1183189057400844278">Untuk memastikan anda dapat menggunakan kata laluan pada bila-bila masa dalam Google Account anda, sahkan identiti anda</translation>
 <translation id="1187810343066461819">Padamkan juga penanda halaman, sejarah dan pelbagai lagi daripada kereta ini</translation>
+<translation id="1191987227666124897">Permintaan tarik diri</translation>
 <translation id="1193729455103054076">Gunakan kata laluan kukuh?</translation>
 <translation id="11947597112837849">alamat e-mel</translation>
 <translation id="1197267115302279827">Alihkan penanda halaman</translation>
@@ -212,6 +213,7 @@ Orang yang mengetahui ungkapan laluan anda sahaja yang dapat membaca data anda y
 <translation id="1832459821645506983">Ya, saya setuju</translation>
 <translation id="1845958458910716240">Untuk melindungi data anda, benarkan Chrome mengalih keluar kebenaran daripada laman yang belum anda lawati baru-baru ini</translation>
 <translation id="1851551847729706116">Berkongsi <ph name="TAB_NAME" /> pada tab ini</translation>
+<translation id="1855268219431673036">Halaman <ph name="CURRENT_PAGE" /> daripada <ph name="TOTAL_PAGE_COUNT" /></translation>
 <translation id="1869691326892615940">Kata laluan yang lebih selamat, log masuk yang lebih pantas</translation>
 <translation id="1871098866036088250">Buka dalam penyemak imbas Chrome</translation>
 <translation id="1877026089748256423">Chrome sudah usang</translation>
@@ -250,6 +252,7 @@ Orang yang mengetahui ungkapan laluan anda sahaja yang dapat membaca data anda y
 <translation id="1984087999855033707">nombor telefon</translation>
 <translation id="1984417487208496350">Tiada perlindungan (tidak disyorkan)</translation>
 <translation id="1986685561493779662">Nama sudah wujud</translation>
+<translation id="1992244793717364584">Apl telah dinyahpasang</translation>
 <translation id="200114059308480249">Sertakan teks sekitar dalam carian Google?</translation>
 <translation id="2004096469149679223"><ph name="TAB_TITLE" />, Tab Inkognito Tersemat Yang Diredamkan</translation>
 <translation id="2021896219286479412">Kawalan tapak skrin penuh</translation>
@@ -736,6 +739,7 @@ Orang yang mengetahui ungkapan laluan anda sahaja yang dapat membaca data anda y
 <translation id="3950820424414687140">Log masuk</translation>
 <translation id="395377504920307820">Gunakan tanpa akaun</translation>
 <translation id="3955353672249727801">Halaman ditambahkan pada senarai bacaan</translation>
+<translation id="3958283758104508528"><ph name="APP_NAME" /> telah dinyahpasang</translation>
 <translation id="396192773038029076">{NUM_IN_PROGRESS,plural, =1{Chrome akan memuatkan halaman anda apabila sudah sedia}other{Chrome akan memuatkan halaman anda apabila sudah sedia}}</translation>
 <translation id="3969142555815019568">Chrome tidak dapat menyemak kata laluan anda</translation>
 <translation id="3969863827134279083">Alihkan ke Atas</translation>
@@ -906,6 +910,7 @@ Google Account anda mungkin mempunyai sejarah penyemakan imbas dalam bentuk lain
 <translation id="4595805675102978678">Ralat Google Account</translation>
 <translation id="4599585406846903742">Paparan halaman tunggal</translation>
 <translation id="4601095002996233687">Imbasan secara mendalam untuk muat turun yang mencurigakan.</translation>
+<translation id="4604434672720336227">Keluar daripada Chrome</translation>
 <translation id="4606559747793337066">Apabila laman atau apl meminta pramuat pautan secara peribadi pada halaman mereka, Chrome menyulitkan dan mempramuatkan halaman melalui pelayan Google tanpa kuki. Tindakan ini akan menyembunyikan identiti anda daripada laman yang dipramuatkan.</translation>
 <translation id="4619615317237390068">Tab daripada peranti lain</translation>
 <translation id="4624065194742029982">Inkognito Chrome</translation>
@@ -1341,6 +1346,7 @@ Sebagai contoh, sesetengah laman web mungkin memberi respons kepada permintaan i
 <translation id="634208815998129842">Pengurus tugas</translation>
 <translation id="6343495912647200061">{SHIPPING_ADDRESS,plural, =1{<ph name="SHIPPING_ADDRESS_PREVIEW" />\u2026 dan <ph name="NUMBER_OF_ADDITIONAL_ADDRESSES" /> lagi}other{<ph name="SHIPPING_ADDRESS_PREVIEW" />\u2026 dan <ph name="NUMBER_OF_ADDITIONAL_ADDRESSES" /> lagi}}</translation>
 <translation id="6345878117466430440">Tandai sebagai dibaca</translation>
+<translation id="63490081267265251">Laman yang anda lawati, termasuk Google, bertanggungjawab untuk menentukan cara laman tersebut memberikan balasan kepada permintaan ini. Bergantung pada undang-undang di rantau anda, laman mungkin memberikan respons dengan mengehadkan penjualan dan perkongsian data anda atau penggunaan data tersebut untuk iklan diperibadikan. <ph name="BEGIN_LINK" />Ketahui lebih lanjut<ph name="END_LINK" /></translation>
 <translation id="6350745006329795504">Urus peranti anda</translation>
 <translation id="6356893102071098867">Pastikan anda memilih akaun yang betul</translation>
 <translation id="6364438453358674297">Alih keluar cadangan daripada sejarah?</translation>
@@ -1427,6 +1433,7 @@ Sebagai contoh, sesetengah laman web mungkin memberi respons kepada permintaan i
 <translation id="6669390930482049506">Beritahu saya</translation>
 <translation id="6671495933530132209">Salin imej</translation>
 <translation id="6672697278890207089">Masukkan ungkapan laluan anda</translation>
+<translation id="6675622031235530028">Tahan Ctrl+Q untuk keluar</translation>
 <translation id="6676927815633975364">Log masuk ke laman ini dan Chrome</translation>
 <translation id="6684262542644248484">Log masuk ke laman web</translation>
 <translation id="6684809838922667136">Jadikan Chrome lebih baik</translation>
@@ -1733,6 +1740,7 @@ Untuk menukar tetapan ini, <ph name="BEGIN_LINK" />padamkan data Chrome dalam ak
 <translation id="7774809984919390718">{PAYMENT_METHOD,plural, =1{<ph name="PAYMENT_METHOD_PREVIEW" />\u2026 dan <ph name="NUMBER_OF_ADDITIONAL_PAYMENT_METHODS" /> lagi}other{<ph name="PAYMENT_METHOD_PREVIEW" />\u2026 dan <ph name="NUMBER_OF_ADDITIONAL_PAYMENT_METHODS" /> lagi}}</translation>
 <translation id="777637629667389858">Apabila anda log masuk, melindungi anda merentas perkhidmatan Google.</translation>
 <translation id="7778840695157240389">Semak kembali nanti untuk mendapatkan cerita baharu</translation>
+<translation id="7780992949171378848">Hantar permintaan tarik diri kepada laman berkenaan dengan penggunaan data anda</translation>
 <translation id="7791543448312431591">Tambah</translation>
 <translation id="7792388396321542707">Berhenti berkongsi</translation>
 <translation id="780287761701992588">Dapatkan penanda halaman, kata laluan dan pelbagai lagi pada semua peranti anda</translation>
@@ -1951,6 +1959,7 @@ Untuk menukar tetapan ini, <ph name="BEGIN_LINK" />padamkan data Chrome dalam ak
 <translation id="8580435650274205305">Tarikh tamat tempoh, diperlukan</translation>
 <translation id="8582529315803410153">Anda dapat menemukan tab anda daripada peranti lain di sini</translation>
 <translation id="8585103689515290060">Perkhidmatan autolengkap</translation>
+<translation id="8586116786993312006">Ketik untuk memadamkan data semakan imbas dalam Chrome</translation>
 <translation id="859046281437143747">Jejaki harga daripada butang Lagi pilihan</translation>
 <translation id="859064343657890103"><ph name="TAB_GROUP_TITLE" /> kumpulan tab dipadamkan</translation>
 <translation id="860043288473659153">Nama pemegang kad</translation>

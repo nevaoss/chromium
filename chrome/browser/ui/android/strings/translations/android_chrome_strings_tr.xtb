@@ -57,6 +57,7 @@
 <translation id="1181037720776840403">Kaldır</translation>
 <translation id="1183189057400844278">Google Hesabınızdaki şifreleri her zaman kullanabildiğinizden emin olmak için kimliğinizi doğrulayın</translation>
 <translation id="1187810343066461819">Bu arabadaki yer işaretleri, geçmiş ve diğer öğeleri de silin</translation>
+<translation id="1191987227666124897">Kapsam dışında kalma isteği</translation>
 <translation id="1193729455103054076">Güçlü şifre kullanılsın mı?</translation>
 <translation id="11947597112837849">e-posta adresi</translation>
 <translation id="1197267115302279827">Yer işaretlerini taşı</translation>
@@ -105,6 +106,7 @@
 <translation id="138181280295369883">Kayıtlı bilgilerinize ve daha fazlasına tüm cihazlarınızdan ulaşmak için oturum açın</translation>
 <translation id="1381838868249179644">Güvenliğinizi sağlamak için bazı sitelerin izinleri kaldırıldı</translation>
 <translation id="1383876407941801731">Ara</translation>
+<translation id="1384568202352682721">Farklı kaydet…</translation>
 <translation id="1384704387250346179">Resmi Google Lens ile çevir <ph name="BEGIN_NEW" />Yeni<ph name="END_NEW" /></translation>
 <translation id="1390418506739274310">Chrome'da bağlantı açan diğer uygulamalardaki geçmişi görebilirsiniz. Google Hesabınızın <ph name="BEGIN_LINK" />myactivity.google.com<ph name="END_LINK" /> adresinde başka biçimlerde tarama geçmişi olabilir.</translation>
 <translation id="139752016751285248">Fiyat analizleri alt sayfası tam ekranda açıldı</translation>
@@ -133,6 +135,7 @@ Veri kullanarak Chrome deneyiminizi iyileştiren daha fazla ayar görmek için <
 <translation id="147982357559798527">Değiştirildi</translation>
 <translation id="1480287803138246127">Geçmişinizin bir kısmı burada görünmeyebilir. Tüm Chrome geçmişinizi görmek için Chrome geçmişinin tamamını açın.</translation>
 <translation id="1483493594462132177">Gönder</translation>
+<translation id="1485343711570311792"><ph name="NATIVE_APP_NAME" /> uygulamasında aç • <ph name="DEVICE_NAME" /> cihazından gönderildi</translation>
 <translation id="1495677929897281669">Sekmeye dön</translation>
 <translation id="1496514951988037011">kullanıcı adı</translation>
 <translation id="1501480321619201731">Grubu sil</translation>
@@ -210,6 +213,7 @@ Sadece parolanıza sahip olan kişiler şifrelenmiş verilerinizi okuyabilir. Pa
 <translation id="1832459821645506983">Evet, etkinleştir</translation>
 <translation id="1845958458910716240">Verilerinizin korunması için Chrome'un, yakın zamanda ziyaret etmediğiniz sitelerin izinlerini kaldırmasına izin verin</translation>
 <translation id="1851551847729706116"><ph name="TAB_NAME" /> bu sekmeyle paylaşılıyor</translation>
+<translation id="1855268219431673036">Sayfa <ph name="CURRENT_PAGE" />/<ph name="TOTAL_PAGE_COUNT" /></translation>
 <translation id="1869691326892615940">Daha güvenli şifreler, daha hızlı oturum açma</translation>
 <translation id="1871098866036088250">Chrome tarayıcıda aç</translation>
 <translation id="1877026089748256423">Chrome sürümü eski</translation>
@@ -327,6 +331,7 @@ Sadece parolanıza sahip olan kişiler şifrelenmiş verilerinizi okuyabilir. Pa
 <translation id="232137538351753795">Geri gitmek için sol kenardan kaydırın</translation>
 <translation id="2323763861024343754">Site depolama alanı</translation>
 <translation id="2327445548174191329"><ph name="DEVICE_NAME" /> ile başlayan fiyatlarla</translation>
+<translation id="232757965409810352">Sayfayı farklı kaydet…</translation>
 <translation id="2328474416100889417">Herkes "<ph name="GROUP_NAME" />" sekme grubuna erişimini anında kaybeder ve tüm davet bağlantıları devre dışı bırakılır</translation>
 <translation id="2329500425421091035">Chrome'da AI Modu ile Tanışın</translation>
 <translation id="2330186936255788117">Daha fazla yer işareti</translation>
@@ -1338,6 +1343,7 @@ Diğer Google hizmetlerinden yapılan aramalar ve etkinlikler gibi Google hesab�
 <translation id="634208815998129842">Görev yöneticisi</translation>
 <translation id="6343495912647200061">{SHIPPING_ADDRESS,plural, =1{<ph name="SHIPPING_ADDRESS_PREVIEW" />\u2026 ve <ph name="NUMBER_OF_ADDITIONAL_ADDRESSES" /> adres daha}other{<ph name="SHIPPING_ADDRESS_PREVIEW" />\u2026 ve <ph name="NUMBER_OF_ADDITIONAL_ADDRESSES" /> adres daha}}</translation>
 <translation id="6345878117466430440">Okundu olarak işaretle</translation>
+<translation id="63490081267265251">Bu isteğe nasıl yanıt vereceklerini belirlemekten Google dahil olmak üzere ziyaret ettiğiniz siteler sorumludur. Bölgenizdeki yasalara bağlı olarak siteler, verilerinizin satışını ve paylaşımını ya da kişiselleştirilmiş reklamlar için kullanımını sınırlayarak yanıt verebilir. <ph name="BEGIN_LINK" />Daha fazla bilgi edinin<ph name="END_LINK" />.</translation>
 <translation id="6350745006329795504">Cihazlarınızı yönetin</translation>
 <translation id="6356893102071098867">Doğru hesabı seçtiğinizden emin olun</translation>
 <translation id="6364438453358674297">Öneri geçmişten kaldırılsın mı?</translation>
@@ -1662,6 +1668,7 @@ Bu ayarı değiştirmek için <ph name="BEGIN_LINK" />hesabınızdaki Chrome ver
 <translation id="7493994139787901920"><ph name="VERSION" /> (<ph name="TIME_SINCE_UPDATE" /> güncellendi)</translation>
 <translation id="7498271377022651285">Lütfen bekleyin…</translation>
 <translation id="7499065150275272675"><ph name="TAB_TITLE" />, Sesi Kapalı Sabit Sekme</translation>
+<translation id="7500851014030446046">PDF indiriliyor</translation>
 <translation id="7501135638693251872">Tüm yer işaretleri</translation>
 <translation id="7507207699631365376">Bu sağlayıcının <ph name="BEGIN_LINK" />gizlilik politikasına<ph name="END_LINK" /> bakın</translation>
 <translation id="750886945254958667">Daha sonra sekme eklemek için bu grubu tutun veya artık erişmek istemiyorsanız gruptan ayrılın</translation>
@@ -1729,6 +1736,7 @@ Bu ayarı değiştirmek için <ph name="BEGIN_LINK" />hesabınızdaki Chrome ver
 <translation id="7774809984919390718">{PAYMENT_METHOD,plural, =1{<ph name="PAYMENT_METHOD_PREVIEW" />\u2026 ve <ph name="NUMBER_OF_ADDITIONAL_PAYMENT_METHODS" /> ödeme yöntemi daha}other{<ph name="PAYMENT_METHOD_PREVIEW" />\u2026 ve <ph name="NUMBER_OF_ADDITIONAL_PAYMENT_METHODS" /> ödeme yöntemi daha}}</translation>
 <translation id="777637629667389858">Oturum açtığınızda Google hizmetlerinde korunmanızı sağlar.</translation>
 <translation id="7778840695157240389">Yeni haberler için sonra yine gelin</translation>
+<translation id="7780992949171378848">Sitelere, verilerinizin kullanımıyla ilgili kapsam dışında kalma isteği gönderin</translation>
 <translation id="7791543448312431591">Ekle</translation>
 <translation id="7792388396321542707">Paylaşmayı durdur</translation>
 <translation id="780287761701992588">Yer işaretleri, şifreler ve diğer öğelerinizi tüm cihazlarınızda alın</translation>
@@ -1874,6 +1882,7 @@ Bu ayarı değiştirmek için <ph name="BEGIN_LINK" />hesabınızdaki Chrome ver
 <translation id="8313599942510782709">Göreviniz hâlâ devam ediyor</translation>
 <translation id="8317318757008452355">Yazdırma seçeneklerini aç</translation>
 <translation id="8320212361750431956">Son Etkinlik</translation>
+<translation id="8322452989119079156"><ph name="NATIVE_APP_NAME" /> uygulamasında aç - <ph name="DEVICE_NAME" /> cihazından gönderildi</translation>
 <translation id="832514020744584629"><ph name="PREF_TITLE" />  <ph name="BEGIN_NEW" />Yeni<ph name="END_NEW" /></translation>
 <translation id="8333026248928723981">Yer işaretleri ve listeler</translation>
 <translation id="8342727528718219152">Chrome, çok fazla bildirim gönderen siteleri size bildirir</translation>

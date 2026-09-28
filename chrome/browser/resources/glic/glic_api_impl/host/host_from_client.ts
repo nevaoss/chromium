@@ -8,24 +8,20 @@
 import {assertNotReached} from '//resources/js/assert.js';
 import type {BitmapN32} from '//resources/mojo/skia/public/mojom/bitmap.mojom-webui.js';
 
-import {ContentSettingsType} from '../../content_settings_types.mojom-webui.js';
 import {enumFromClient, enumToClient} from '../../enum_conversions.js';
-import {CaptureRegionObserverReceiver, PromptType as PromptTypeMojo, ResponseStopCause as ResponseStopCauseMojo, SettingsPageField as SettingsPageFieldMojo, TabDataHandlerReceiver, TabFaviconHandlerReceiver, WebClientReceiver} from '../../glic.mojom-webui.js';
-import type {CaptureRegionErrorReason as CaptureRegionErrorReasonMojo, CaptureRegionObserver, CaptureRegionResult as CaptureRegionResultMojo, OpenSettingsOptions as OpenSettingsOptionsMojo, TabDataHandlerInterface, TabDataMojoType, TabFaviconHandlerInterface, WebClientHandlerInterface} from '../../glic.mojom-webui.js';
-import {CaptureScreenshotErrorReason, ClientCapabilities, ResponseStopCause} from '../../glic_api/glic_api.js';
-import type {CaptureRegionParams, ClientErrorDialogType, ConversationInfo, CounterAbuseVerdict, ExperimentalTriggeringUpdate, MicrophoneStatus, OnResponseStoppedDetails, OpenPinnedTabPickerOptions, OpenSettingsOptions, PinTabsOptions, PromptType, Screenshot, TabContextOptions, UnpinTabsOptions, WebClientMode, ZeroStateSuggestions} from '../../glic_api/glic_api.js';
+import {CaptureRegionObserverReceiver, PromptType as PromptTypeMojo, ResponseStopCause as ResponseStopCauseMojo, TabDataHandlerReceiver, TabFaviconHandlerReceiver} from '../../glic.mojom-webui.js';
+import type {CaptureRegionErrorReason as CaptureRegionErrorReasonMojo, CaptureRegionObserver, CaptureRegionResult as CaptureRegionResultMojo, TabDataHandlerInterface, TabDataMojoType, TabFaviconHandlerInterface, WebClientHandlerInterface} from '../../glic.mojom-webui.js';
+import {CaptureScreenshotErrorReason, ResponseStopCause} from '../../glic_api/glic_api.js';
+import type {CaptureRegionParams, ClientErrorDialogType, ConversationInfo, CounterAbuseVerdict, ExperimentalTriggeringUpdate, MicrophoneStatus, OnResponseStoppedDetails, OpenPinnedTabPickerOptions, PinTabsOptions, PromptType, Screenshot, TabContextOptions, UnpinTabsOptions, WebClientMode, ZeroStateSuggestions} from '../../glic_api/glic_api.js';
 import {replaceProperties} from '../conversions.js';
-import type {ExperimentalTriggeringClient} from '../experimental_triggering/experimental_triggering_types.js';
 import {getGuestLoadTimeData} from '../guest_load_time_data.js';
-import type {ActorClient, ActorHost, AnnotationHost, GlicException, ImageBytesResultPrivate, RgbaImage, TabContextResultPrivate, WebClientHost, WebClientInitialStatePrivate, WebClientRegionCapture, WebClientTabDataObserver, WebClientTabFaviconObserver, ZeroStateSuggestionsHost} from '../request_types.js';
+import type {AnnotationHost, GlicException, ImageBytesResultPrivate, RgbaImage, TabContextResultPrivate, WebClientHost, WebClientRegionCapture, WebClientTabDataObserver, WebClientTabFaviconObserver} from '../request_types.js';
 import {ErrorWithReasonImpl, exceptionFromTransferable, SubscriberObservationType} from '../request_types.js';
 import {ResponseExtras} from '../transport/messaging.js';
 import type {PendingReceiver, PendingRemote, PostMessageHandler, PostMessageRemote, PostMessageRouter} from '../transport/post_message_transport.js';
 
-import {bitmapN32ToRGBAImage, captureRegionResultToClient, conversationInfoFromClient, conversionSettings, counterAbuseVerdictFromClient, focusedTabDataToClient, hostCapabilitiesToClient, idFromClient, idToClient, imageBytesResultToClient, microphoneStatusToMojo, openPinnedTabPickerOptionsToMojo, optionalFromClient, panelStateToClient, pinTabsOptionsToMojo, subscriberObservationTypeFromClient, tabContextOptionsFromClient, tabContextToClient, tabDataToPrivate, timeDeltaFromClient, unpinTabsOptionsToMojo, urlToClient, webClientModeToMojo} from './conversions.js';
+import {bitmapN32ToRGBAImage, captureRegionResultToClient, conversationInfoFromClient, counterAbuseVerdictFromClient, idFromClient, idToClient, imageBytesResultToClient, microphoneStatusToMojo, openPinnedTabPickerOptionsToMojo, optionalFromClient, pinTabsOptionsToMojo, subscriberObservationTypeFromClient, tabContextOptionsFromClient, tabContextToClient, tabDataToPrivate, timeDeltaFromClient, unpinTabsOptionsToMojo, urlToClient, webClientModeToMojo} from './conversions.js';
 import type {GlicApiHost} from './glic_api_host.js';
-import {DetailedWebClientState} from './glic_api_host.js';
-import {WebClientImpl} from './host_to_client.js';
 import {linkPipeClosure} from './host_utils.js';
 
 /**
@@ -38,84 +34,13 @@ import {linkPipeClosure} from './host_utils.js';
  * `GlicApiHost`.
  */
 export class HostMessageHandler implements PostMessageHandler<WebClientHost> {
-  // Undefined until the web client is initialized.
-  private receiver: WebClientReceiver|undefined;
   private enableStructuredYieldMetadata: boolean|null = null;
 
   // Reminder: Don't add more state here! See `HostMessageHandler`'s comment.
   constructor(
       private handler: WebClientHandlerInterface, private host: GlicApiHost) {}
 
-  destroy() {
-    if (this.receiver) {
-      this.receiver.$.close();
-      this.receiver = undefined;
-    }
-  }
-
-  async webClientCreated(
-      request: {clientCapabilities: ClientCapabilities[]},
-      extras: ResponseExtras): Promise<{
-    initialState: WebClientInitialStatePrivate,
-    actorRemote?: PendingRemote<ActorHost>,
-    actorReceiver?: PendingReceiver<ActorClient>,
-    experimentalTriggeringReceiver?: PendingReceiver<
-                                      ExperimentalTriggeringClient>,
-    zeroStateSuggestionsRemote?: PendingRemote<ZeroStateSuggestionsHost>,
-  }> {
-    if (this.receiver) {
-      throw new Error('web client already created');
-    }
-    // Note: Ideally we would avoid computing favicons in c++ entirely, but that
-    // change is more difficult as some parts of the system can be shared by
-    // multiple clients. Instead, we just avoid sending favicons from the WebUI,
-    // which avoids most of the cost.
-    conversionSettings.omitFaviconInTabData =
-        request.clientCapabilities.includes(
-            ClientCapabilities.IGNORES_TAB_DATA_FAVICONS);
-    this.host.detailedWebClientState =
-        DetailedWebClientState.WEB_CLIENT_NOT_INITIALIZED;
-
-    const webClientImpl = new WebClientImpl(this.host);
-    this.receiver = new WebClientReceiver(webClientImpl);
-    const {initialState} = await this.handler.webClientCreated(
-        this.receiver.$.bindNewPipeAndPassRemote());
-    webClientImpl.markCreated();
-
-    conversionSettings.platform = enumToClient(initialState.platform);
-    const initialPipes = this.host.setInitialState(initialState);
-    const chromeVersion = initialState.chromeVersion.components;
-    const hostCapabilities = initialState.hostCapabilities;
-    this.host.setInstanceIsActive(initialState.instanceIsActive);
-    const platform = initialState.platform;
-
-
-    return {
-      initialState: replaceProperties(initialState, {
-        panelState: panelStateToClient(initialState.panelState),
-        focusedTabData:
-            focusedTabDataToClient(initialState.focusedTabData, extras),
-        chromeVersion: {
-          major: chromeVersion[0] || 0,
-          minor: chromeVersion[1] || 0,
-          build: chromeVersion[2] || 0,
-          patch: chromeVersion[3] || 0,
-        },
-        platform: enumToClient(platform),
-        formFactor: enumToClient(initialState.formFactor),
-        loggingEnabled: getGuestLoadTimeData().loggingEnabled ?? false,
-        maxInFlightRequests: getGuestLoadTimeData().maxInFlightRequests ?? 200,
-        sendResponsesForAllRequests:
-            getGuestLoadTimeData().sendResponsesForAllRequests ?? false,
-        hostCapabilities: hostCapabilitiesToClient(hostCapabilities),
-      }),
-      actorRemote: initialPipes.actorRemote,
-      actorReceiver: initialPipes.actorReceiver,
-      experimentalTriggeringReceiver:
-          initialPipes.experimentalTriggeringReceiver,
-      zeroStateSuggestionsRemote: initialPipes.zeroStateSuggestionsRemote,
-    };
-  }
+  destroy() {}
 
   createAnnotationHandler(
       request: {annotationReceiver: PendingReceiver<AnnotationHost>},
@@ -132,10 +57,8 @@ export class HostMessageHandler implements PostMessageHandler<WebClientHost> {
     }
 
     if (request.success) {
-      this.handler.webClientInitialized();
       this.host.webClientInitialized();
     } else {
-      this.handler.webClientInitializeFailed();
       this.host.webClientInitializeFailed();
     }
   }
@@ -171,21 +94,6 @@ export class HostMessageHandler implements PostMessageHandler<WebClientHost> {
     }
   }
 
-  openGlicSettingsPage(request: {options?: OpenSettingsOptions}): void {
-    const optionsMojo: OpenSettingsOptionsMojo = {
-      highlightField: SettingsPageFieldMojo.kNone,
-    };
-    if (request.options?.highlightField) {
-      optionsMojo.highlightField =
-          enumFromClient(request.options?.highlightField);
-    }
-    this.handler.openGlicSettingsPage(optionsMojo);
-  }
-
-  openPasswordManagerSettingsPage(): void {
-    this.handler.openPasswordManagerSettingsPage();
-  }
-
   reportClientTransientError(request: {abslStatus: number}): void {
     this.handler.reportClientTransientError(request.abslStatus);
   }
@@ -199,25 +107,6 @@ export class HostMessageHandler implements PostMessageHandler<WebClientHost> {
         idFromClient(request.tabId), mojoVerdict);
   }
 
-  closePanel(): void {
-    return this.handler.closePanel();
-  }
-
-  closePanelAndShutdown(): void {
-    this.handler.closePanelAndShutdown();
-  }
-
-  attachPanel(): void {
-    this.handler.attachPanel();
-  }
-
-  detachPanel(): void {
-    this.handler.detachPanel();
-  }
-
-  showProfilePicker(): void {
-    this.handler.showProfilePicker();
-  }
 
   getModelQualityClientId(): Promise<{modelQualityClientId: string}> {
     return this.handler.getModelQualityClientId();
@@ -337,14 +226,6 @@ export class HostMessageHandler implements PostMessageHandler<WebClientHost> {
       }
     });
     this.host.captureRegionObserver = observer;
-  }
-
-  subscribeToZoomLevel(): void {
-    this.host.subscribeToZoomLevel();
-  }
-
-  unsubscribeFromZoomLevel(): void {
-    this.host.unsubscribeFromZoomLevel();
   }
 
   deleteCapturedRegion(request: {tabId: string, regionId: string}) {
@@ -510,23 +391,6 @@ export class HostMessageHandler implements PostMessageHandler<WebClientHost> {
         request.trialName, request.groupName);
   }
 
-  openOsPermissionSettingsMenu(request: {permission: string}) {
-    // Warning: calling openOsPermissionSettingsMenu with unsupported content
-    // setting type will terminate the render process (bad mojo message).
-    // Update GlicWebClientHandler:OpenOsPermissionSettingsMenu with any new
-    // types.
-    switch (request.permission) {
-      case 'media':
-        return this.handler.openOsPermissionSettingsMenu(
-            ContentSettingsType.MEDIASTREAM_MIC);
-      case 'geolocation':
-        return this.handler.openOsPermissionSettingsMenu(
-            ContentSettingsType.GEOLOCATION);
-      default:
-        return this.handler.openOsPermissionSettingsMenu(
-            ContentSettingsType.COOKIES);
-    }
-  }
 
   getOsMicrophonePermissionStatus(): Promise<{enabled: boolean}> {
     return this.handler.getOsMicrophonePermissionStatus();

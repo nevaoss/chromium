@@ -235,6 +235,9 @@ BASE_FEATURE(kIPHReadingListInSidePanelFeature,
 BASE_FEATURE(kIPHReadingModeKeyboardShortcutFeature,
              "IPH_ReadingModeKeyboardShortcut",
              base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kIPHReadingModeLineFocusFeature,
+             "IPH_ReadingModeLineFocus",
+             base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHReadingModePageActionLabelFeature,
              "IPH_ReadingModePageActionLabel",
              base::FEATURE_ENABLED_BY_DEFAULT);
@@ -926,8 +929,6 @@ BASE_FEATURE(kIPHiOSSafariImportFeature,
 BASE_FEATURE(kIPHiOSSettingsInOverflowMenuBubbleFeature,
              "IPH_iOSSettingsInOverflowMenuBubbleFeature",
              base::FEATURE_ENABLED_BY_DEFAULT);
-// Note: This IPH will only be triggered if
-// `kSeparateProfilesForManagedAccounts` is enabled.
 BASE_FEATURE(kIPHiOSSwitchAccountsWithNTPAccountParticleDiscFeature,
              "IPH_iOSSwitchAccountsWithNTPAccountParticleDiscFeature",
              base::FEATURE_ENABLED_BY_DEFAULT);
@@ -1150,18 +1151,8 @@ constinit const base::FeatureParam<SearchPromotionAction>
                            SearchPromotionAction::kDisabled,
                            &kSearchPromotionActionOptions};
 
-constexpr base::FeatureParam<SearchPromotionCohort>::Option
-    kSearchPromotionCohortOptions[] = {
-        {SearchPromotionCohort::kAll, kSearchPromotionCohortAll},
-        {SearchPromotionCohort::kLow, kSearchPromotionCohortLow},
-        {SearchPromotionCohort::kMedium, kSearchPromotionCohortMedium},
-        {SearchPromotionCohort::kPower, kSearchPromotionCohortPower},
-};
-
-constinit const base::FeatureParam<SearchPromotionCohort>
-    kSearchPromotionCohort{&kIPHSearchPromotionFeature, "cohort",
-                           SearchPromotionCohort::kAll,
-                           &kSearchPromotionCohortOptions};
+constinit const base::FeatureParam<std::string> kSearchPromotionCohort{
+    &kIPHSearchPromotionFeature, "cohort", kSearchPromotionCohortAll};
 constinit const base::FeatureParam<std::string> kSearchPromotionStoreUrl{
     &kIPHSearchPromotionFeature, "store_url",
     "https://microsoftedge.microsoft.com/addons/detail/google-search-for-edge/"

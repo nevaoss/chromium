@@ -61,8 +61,11 @@ specific_include_rules = {
     "+chrome/browser/extensions/extension_service_test_base.h",
     "+chrome/test",
   ],
+  "kiosk_app_level_logs_browsertest\\.cc": [
+    "+chrome/browser/ui/tabs/tab_strip_model.h",
+  ],
   "kiosk_browser_logs_collector_unittest\\.cc": [
-    "+chrome/browser/ui/browser.h",
+    "+chrome/browser/ui/tabs/tab_strip_model.h",
   ],
   "kiosk_browser_session_unittest\\.cc": [
     "+ash/accelerators/accelerator_controller_impl.h",

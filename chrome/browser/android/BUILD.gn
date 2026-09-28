@@ -29,6 +29,7 @@ source_set("tabs_public") {
     "//components/split_tabs",
     "//components/tab_groups",
     "//components/tabs:public",
+    "//extensions/buildflags",
     "//skia",
     "//ui/base/unowned_user_data",
     "//ui/webui:buildflags",
@@ -69,9 +70,13 @@ source_set("tabs_impl") {
     "//components/search",
     "//components/tabs:public",
     "//content/public/browser",
+    "//extensions/buildflags",
   ]
   if (enable_webui_ntp) {
     deps += [ "//chrome/browser/ui/customize_chrome:customize_chrome_base" ]
+  }
+  if (enable_extensions_core) {
+    deps += [ "//chrome/browser/ui/extensions" ]
   }
 }
 
@@ -315,6 +320,8 @@ if (is_android) {
       "omnibox/composebox_query_controller_bridge.h",
       "omnibox/omnibox_prerender.cc",
       "omnibox/omnibox_prerender.h",
+      "omnibox/suggestions_omt_input_anchor.cc",
+      "omnibox/suggestions_omt_input_anchor.h",
       "omnibox/tab_context_capture_request.cc",
       "omnibox/tab_context_capture_request.h",
       "oom_intervention/near_oom_reduction_message_delegate.cc",
@@ -599,6 +606,7 @@ if (is_android) {
       "//chrome/browser/ui/android/lens",
       "//chrome/browser/ui/android/logo",
       "//chrome/browser/ui/android/night_mode:jni_headers",
+      "//chrome/browser/ui/android/omnibox:jni_headers",
       "//chrome/browser/ui/android/pdf:pdf_jni_headers",
       "//chrome/browser/ui/android/webid",
       "//chrome/browser/ui/browser_window:create_browser_window",
@@ -971,16 +979,43 @@ if (is_android) {
 
 source_set("unit_tests") {
   testonly = true
-  sources = [ "webapps/twa_launch_queue_tab_helper_unittest.cc" ]
+  sources = [
+    "recently_closed_tabs_bridge_unittest.cc",
+    "tab_android_unittest.cc",
+    "tab_web_contents_destroyer_unittest.cc",
+    "webapps/twa_launch_queue_tab_helper_unittest.cc",
+  ]
   deps = [
     ":android",
+    ":tabs_public",
+    "//cc/slim",
+    "//chrome/android:chrome_jni_headers",
     "//chrome/browser:chrome_content_browser_client",
+    "//chrome/browser/actor",
+    "//chrome/browser/actor:test_support",
+    "//chrome/browser/actor/ui:test_support",
     "//chrome/browser/renderer_host",
+    "//chrome/browser/sessions",
+    "//chrome/browser/ui/android/tab_model",
+    "//chrome/browser/ui/javascript_dialogs",
     "//chrome/browser/ui/tabs:page_context_eligibility_helper_unit_tests",
+    "//chrome/browser/ui/webui:webui_util",
     "//chrome/test:test_support",
+    "//components/actor/core",
+    "//components/javascript_dialogs",
+    "//components/os_crypt/async/browser",
+    "//components/os_crypt/async/browser:test_support",
+    "//components/sessions",
+    "//components/sessions:session_id",
+    "//components/tab_groups",
+    "//components/tabs:public",
     "//components/webapps/browser",
     "//content/test:test_support",
+    "//net",
+    "//services/network/public/mojom",
     "//testing/gtest",
+    "//ui/android",
+    "//ui/base",
     "//url",
   ]
 }

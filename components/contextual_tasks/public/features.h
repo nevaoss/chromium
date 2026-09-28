@@ -22,6 +22,7 @@ BASE_DECLARE_FEATURE(kContextualTasksEphemeralBrandedEntryPoint);
 BASE_DECLARE_FEATURE(kContextualTasksExtraOauthScopes);
 BASE_DECLARE_FEATURE(kContextualTasksDriveOAuthScope);
 BASE_DECLARE_FEATURE(kEnableContextualTasksPinButtonInToolbar);
+BASE_DECLARE_FEATURE(kEphemeralPinningVisibleWhenPermanentlyPinned);
 BASE_DECLARE_FEATURE(kContextualTasksContext);
 BASE_DECLARE_FEATURE(kContextualTasksSearchQuery);
 BASE_DECLARE_FEATURE(kContextualTasksContextMultiTurnTabRelevance);
@@ -139,6 +140,10 @@ BASE_DECLARE_FEATURE(kContextualTasksSidePanelRearchitecture);
 
 // Enables sticky conversation UI that follows the user around.
 BASE_DECLARE_FEATURE(kContextualTasksEnableStickyConversation);
+
+// Enables clicking links in contextual tasks side panel to clobber the active
+// tab next to the side panel instead of opening a new tab.
+BASE_DECLARE_FEATURE(kContextualTasksClobberActiveTab);
 
 // When enabled, allows AIM search URLs to be created and navigated immediately
 // upon starting contextual input uploads without waiting for background
@@ -489,6 +494,7 @@ extern bool GetIsWebpageApcComparisonEnabled();
 
 extern bool IsContextualTasksRearchitectureEnabled();
 extern bool IsContextualTasksSidePanelRearchitectureEnabled();
+extern bool IsContextualTasksClobberActiveTabEnabled();
 extern bool IsContextualTasksUnboundedMenuEnabled();
 
 inline constexpr char kContextualTasksSearchCapabilitiesHeaderName[] =
@@ -536,8 +542,12 @@ extern const char kContextualTasksEphemeralBrandedEntryPointName[];
 extern const char kContextualTasksEphemeralBrandedEntryPointDescription[];
 extern const char kContextualTasksSidePanelRearchitectureName[];
 extern const char kContextualTasksSidePanelRearchitectureDescription[];
+extern const char kContextualTasksClobberActiveTabName[];
+extern const char kContextualTasksClobberActiveTabDescription[];
 extern const char kContextualTasksBypassDismissedCapName[];
 extern const char kContextualTasksBypassDismissedCapDescription[];
+extern const char kEphemeralPinningVisibleWhenPermanentlyPinnedName[];
+extern const char kEphemeralPinningVisibleWhenPermanentlyPinnedDescription[];
 
 }  // namespace flag_descriptions
 

@@ -43,6 +43,7 @@
 #include "third_party/blink/renderer/bindings/modules/v8/v8_draw_element_image_options.h"
 #include "third_party/blink/renderer/core/css/properties/computed_style_utils.h"
 #include "third_party/blink/renderer/core/css/style_change_reason.h"
+#include "third_party/blink/renderer/core/dom/dom_node_ids.h"
 #include "third_party/blink/renderer/core/dom/element.h"
 #include "third_party/blink/renderer/core/dom/events/event.h"
 #include "third_party/blink/renderer/core/dom/node.h"
@@ -1473,6 +1474,7 @@ V8UnionDOMMatrixOrUndefined::Ret BaseRenderingContext2D::DrawElementInternal(
   float dpr = child_paint_record->paint_state.effective_zoom;
   gfx::RectF src_rect(child_paint_record->paint_state.box_size);
   if (sx && sy && swidth && sheight) {
+    Canvas2DRecorderContext::AdjustRectForCanvas(*sx, *sy, *swidth, *sheight);
     src_rect = gfx::RectF(*sx * dpr, *sy * dpr, *swidth * dpr, *sheight * dpr);
   }
 
@@ -1493,13 +1495,14 @@ V8UnionDOMMatrixOrUndefined::Ret BaseRenderingContext2D::DrawElementInternal(
       GetCanvasGridScaleFactor(child_paint_record->paint_state, Host()->Size());
   ideal_dst_size.Scale(scale_factor.x(), scale_factor.y());
 
-  gfx::RectF dst_rect(x, y, 0, 0);
+  double dw = ideal_dst_size.width();
+  double dh = ideal_dst_size.height();
   if (dwidth && dheight) {
-    dst_rect.set_size(gfx::SizeF(*dwidth, *dheight));
-  } else {
-    // If no explicit destination size is given, default to the ideal size.
-    dst_rect.set_size(ideal_dst_size);
+    dw = *dwidth;
+    dh = *dheight;
+    Canvas2DRecorderContext::AdjustRectForCanvas(x, y, dw, dh);
   }
+  gfx::RectF dst_rect(x, y, dw, dh);
 
   if (dst_rect.IsEmpty()) {
     return degenerate_return_value();
@@ -1594,7 +1597,7 @@ V8UnionDOMMatrixOrUndefined::Ret BaseRenderingContext2D::DrawElementInternal(
   // We start from the context's CTM, then offset by x,y, and finally apply any
   // dest scaling.
   gfx::Transform draw_transform = GetState().GetTransform().ToTransform();
-  draw_transform.Translate(x, y);
+  draw_transform.Translate(dst_rect.x(), dst_rect.y());
   // The drawing commands above scale by `dst_rect.size() / src_rect.size()`,
   // which does two things: 1) scales the drawing commands of `paint_record` (in
   // physical pixels) to canvas grid coordinates, and 2) applies any additional

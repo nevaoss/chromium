@@ -155,6 +155,7 @@ source_set("glic") {
     public_deps += [
       "//chrome/browser/glic/resources:browser_resources",
       "//chrome/browser/optimization_guide",
+      "//chrome/browser/pwc",
       "//chrome/browser/themes",
       "//chrome/browser/ui/tabs:tab_strip_model_observer",
       "//chrome/browser/ui/tabs:tabs_public",
@@ -211,6 +212,7 @@ if (is_android) {
       "public/android/java/src/org/chromium/chrome/browser/glic/GlicUiHelper.java",
     ]
     deps = [
+      "//base:callback_java",
       "//base:log_java",
       "//base:resetters_java",
       "//base:supplier_java",
@@ -219,6 +221,7 @@ if (is_android) {
       "//chrome/browser/glic/android:jni_headers_java",
       "//chrome/browser/profiles/android:java",
       "//chrome/browser/tab:java",
+      "//chrome/browser/tabmodel:java",
       "//chrome/browser/ui/browser_window/public/android:java",
       "//components/cached_flags:java",
       "//third_party/android_deps:com_airbnb_android_lottie_java",
@@ -406,6 +409,8 @@ source_set("impl") {
     "host/glic_internals_ui.cc",
     "host/glic_local_storage_migration.cc",
     "host/glic_local_storage_migration.h",
+    "host/glic_no_webview_contents_manager.cc",
+    "host/glic_no_webview_contents_manager.h",
     "host/glic_overlay_ui.cc",
     "host/glic_page_handler.cc",
     "host/glic_skills_manager_impl.cc",
@@ -414,6 +419,7 @@ source_set("impl") {
     "host/glic_synthetic_trial_manager.h",
     "host/glic_theme_util.cc",
     "host/glic_theme_util.h",
+    "host/glic_tools_desktop.h",
     "host/glic_ui.cc",
     "host/glic_web_client_handler.cc",
     "host/glic_web_client_handler.h",
@@ -467,6 +473,7 @@ source_set("impl") {
     "widget/glic_inactive_tab_ui.h",
     "widget/glic_tab_ui.cc",
     "widget/glic_tab_ui.h",
+    "widget/web_contents_delegate_util.h",
   ]
 
   public_deps = [
@@ -502,6 +509,7 @@ source_set("impl") {
     "//chrome/browser/profiles:profile_manager",
     "//chrome/browser/profiles:profile_util",
     "//chrome/browser/profiles/keep_alive",
+    "//chrome/browser/pwc",
     "//chrome/browser/resources/glic:resources",
     "//chrome/browser/resources/glic/experimental_opt_in:resources",
     "//chrome/browser/safe_browsing",
@@ -588,6 +596,7 @@ source_set("impl") {
       "host/context/glic_focused_tab_manager.h",
       "host/context/glic_screenshot_capturer_impl.cc",
       "host/context/glic_screenshot_capturer_impl.h",
+      "host/glic_tools_desktop.cc",
       "widget/glic_floating_ui.cc",
       "widget/glic_floating_ui.h",
       "widget/glic_inactive_side_panel_ui.cc",
@@ -626,6 +635,7 @@ source_set("impl") {
       "//chrome/browser/ui/views/interaction",
       "//chrome/browser/ui/views/side_panel",
       "//chrome/browser/ui/views/tabs/glic",
+      "//chrome/browser/ui/webui/ai_overlay_dialog",
       "//components/password_manager/core/browser/actor_login:common",
       "//components/web_modal",
       "//extensions/browser",
@@ -717,6 +727,7 @@ mojom("mojo_bindings") {
   webui_module_path = "/"
 
   public_deps = [
+    "//chrome/browser/ui/webui/ai_overlay_dialog/tools:mojo_bindings",
     "//chrome/common:actor_webui_mojom",
     "//chrome/common:glic_enums_mojom",
     "//components/content_settings/core/common:content_settings_types",
@@ -789,6 +800,7 @@ source_set("unit_tests") {
     "//chrome/browser/glic/test_support",
     "//chrome/browser/sync",
     "//chrome/browser/ui:ui_features",
+    "//chrome/test/base:chrome_test_scoped_utils",
     "//components/content_settings/core/browser",
     "//components/content_settings/core/common",
     "//components/prefs",
@@ -835,7 +847,7 @@ source_set("unit_tests") {
       "//chrome/browser/prefs",
       "//chrome/browser/status_icons",
       "//chrome/common:chrome_features",
-      "//chrome/test:test_support",
+      "//chrome/test/base:scoped_metrics_service",
       "//components/live_caption",
       "//components/live_caption:constants",
       "//components/skills:features",
@@ -876,6 +888,11 @@ source_set("browser_tests") {
     "host/context/glic_delegating_sharing_manager_browsertest.cc",
     "host/context/glic_pinned_tab_manager_browsertest.cc",
     "host/glic_api_browsertest.cc",
+    "host/glic_api_skills_browsertest.cc",
+    "host/glic_api_zss_browsertest.cc",
+    "host/glic_chrome_tools_browsertest.cc",
+    "host/glic_internals_browsertest.cc",
+    "host/glic_no_webview_contents_manager_browsertest.cc",
     "host/glic_overlay_browsertest.cc",
     "host/glic_permission_enforcement_browsertest.cc",
     "host/glic_web_contents_warming_pool_browsertest.cc",
@@ -906,6 +923,7 @@ source_set("browser_tests") {
     "//chrome/browser/permissions:test_support",
     "//chrome/browser/preloading",
     "//chrome/browser/profiles:profile",
+    "//chrome/browser/pwc:features",
     "//chrome/browser/skills",
     "//chrome/browser/skills:public",
     "//chrome/browser/tab_list",

@@ -19,9 +19,12 @@ suite('OrganizerPanelAppTest', () => {
     document.body.innerHTML = window.trustedTypes!.emptyHTML;
     loadTimeData.resetForTesting({
       clearSearch: 'Clear search',
+      closeTab: 'Close tab',
+      openTabs: 'Open Tabs',
       recentlyClosed: 'Recently Closed',
       searchTabs: 'Search Tabs',
       shortcutText: 'Ctrl+Shift+A',
+      tabGroups: 'Tab Groups',
     });
     mockPageHandler = TestMock.fromClass(PageHandlerRemote);
     const {instance} = browserProxyFactory.createForTest(mockPageHandler);
@@ -53,7 +56,7 @@ suite('OrganizerPanelAppTest', () => {
   });
 
   test('renders organizer list with expected sections', () => {
-    assertEquals(2, app.$.list.sectionDelegates.length);
+    assertEquals(3, app.$.list.sectionDelegates.length);
   });
 
   test('updates list searchQuery when search field changes', async () => {

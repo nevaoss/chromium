@@ -41,6 +41,8 @@ chromium-metrics-reviews@google.com.
   <variant name=".APP_SETTING" summary="APP_SETTING"/>
   <variant name=".ARC_PACKAGE" summary="ARC_PACKAGE"/>
   <variant name=".AUTOFILL" summary="AUTOFILL"/>
+  <variant name=".AUTOFILL_ENTITY_SUPPRESSION"
+      summary="AUTOFILL_ENTITY_SUPPRESSION"/>
   <variant name=".AUTOFILL_OFFER" summary="AUTOFILL_OFFER"/>
   <variant name=".AUTOFILL_PROFILE" summary="AUTOFILL_PROFILE"/>
   <variant name=".AUTOFILL_VALUABLE" summary="AUTOFILL_VALUABLE"/>
@@ -3134,9 +3136,7 @@ chromium-metrics-reviews@google.com.
   <summary>
     Records the unsynced data types, when the user switches from one account to
     another within the same profile, but some data has not been synced yet. Only
-    PASSWORDS, BOOKMARKS, READING_LIST and CONTACT_INFO are considered. This
-    metric is only recorded when kSeparateProfilesForManagedAccounts feature is
-    enabled.
+    PASSWORDS, BOOKMARKS, READING_LIST and CONTACT_INFO are considered.
 
     Note: iOS only.
   </summary>

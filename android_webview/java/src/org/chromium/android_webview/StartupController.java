@@ -55,9 +55,6 @@ public class StartupController {
         /** Returns the function table pointer for software drawing. */
         long getDrawSWFunctionTable();
 
-        /** Initializes thread-unsafe singletons in the glue layer. */
-        void initThreadUnsafeSingletons();
-
         // TODO: Inline SelectionActionMenuClient call once aconfig flag is cleaned up.
         /** Returns the framework-level selection action menu client, if available. */
         @Nullable SelectionActionMenuClientWrapper getSelectionActionMenuClient();
@@ -87,14 +84,46 @@ public class StartupController {
     private final StartupDiagnostics mStartupDiagnostics = new StartupDiagnostics();
     private final AtomicInteger mChromiumFirstStartupRequestMode =
             new AtomicInteger(StartupTasksRunner.StartupRequestMode.UNSET);
+    private final WebViewChromiumRunQueue mRunQueue = new WebViewChromiumRunQueue();
+    private final WebViewChromiumRunQueue mStartupCallbackQueue = new WebViewChromiumRunQueue();
 
     private @Nullable RuntimeException mStartupException;
     private @Nullable Error mStartupError;
+
+    private static @Nullable StartupController sInstance;
+
+    public static StartupController getInstance() {
+        if (sInstance == null) {
+            throw new IllegalStateException("StartupController is not initialized");
+        }
+        return sInstance;
+    }
+
+    public static StartupController initialize(Delegate delegate) {
+        if (sInstance != null) {
+            throw new IllegalStateException("StartupController is already initialized");
+        }
+        sInstance = new StartupController(delegate);
+        return sInstance;
+    }
 
     private @Nullable StartupTasksRunner mStartupTasksRunner;
 
     public StartupController(Delegate delegate) {
         mDelegate = delegate;
+    }
+
+    public WebViewChromiumRunQueue getRunQueue() {
+        return mRunQueue;
+    }
+
+    /**
+     * Requests asynchronous Chromium startup and registers a callback to receive diagnostics when
+     * startup is finished.
+     */
+    public void requestAsyncStartup(StartupDiagnostics.Callback callback) {
+        mStartupCallbackQueue.addTask(() -> callback.onSuccess(getStartupDiagnostics()));
+        postChromiumStartupIfNeeded(StartupCallSite.ASYNC_WEBVIEW_STARTUP);
     }
 
     public void maybeSetChromiumUiThread(Looper looper) {
@@ -304,6 +333,7 @@ public class StartupController {
                             public void onStartupComplete(
                                     StartupTasksRunner.StartupTimings timings) {
                                 mStartupDiagnostics.setStartupTimings(timings);
+                                mStartupCallbackQueue.notifyChromiumStarted();
                                 mDelegate.onStartupDiagnosticsReady(mStartupDiagnostics);
                             }
 
@@ -396,8 +426,6 @@ public class StartupController {
                 ContextUtils.getApplicationContext().getApplicationInfo().targetSdkVersion;
         RecordHistogram.recordSparseHistogram("Android.WebView.TargetSdkVersion", targetSdkVersion);
 
-        mDelegate.initThreadUnsafeSingletons();
-
         if (ApkInfo.isDebugAndroidOrApp()) {
             AwDevToolsServer.setRemoteDebuggingEnabled(true);
         }
@@ -410,6 +438,7 @@ public class StartupController {
         AwBrowserProcess.setupSupervisedUser();
         AwBrowserProcess.handleMinidumpsAndSetMetricsConsent(/* updateMetricsConsent= */ true);
         AwBrowserProcess.startObservingOsAccessibilitySettingChanges();
+        AwTracingController.getInstance();
 
         AwBrowserProcess.postBackgroundTasks();
 
@@ -421,6 +450,7 @@ public class StartupController {
         mStartupFinished.countDown();
 
         mDelegate.onStartupComplete();
+        mRunQueue.notifyChromiumStarted();
 
         PostTask.disablePreNativeUiTasks(false);
         AwBrowserProcess.onStartupComplete();

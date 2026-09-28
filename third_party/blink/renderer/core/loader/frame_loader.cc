@@ -255,7 +255,7 @@ void FrameLoader::Trace(Visitor* visitor) const {
 
 void FrameLoader::Init(
     const DocumentToken& document_token,
-    const base::UnguessableToken& initiator_state_token,
+    const InitiatorStateToken& initiator_state_token,
     std::unique_ptr<PolicyContainer> policy_container,
     const StorageKey& storage_key,
     ukm::SourceId document_ukm_source_id,
@@ -1007,15 +1007,6 @@ void FrameLoader::StartNavigation(FrameLoadRequest& request,
           ? CSPDisposition::DO_NOT_CHECK
           : CSPDisposition::CHECK;
 
-  // Mark this frame as initiator if the request has not specified an initiator.
-  base::UnguessableToken initiator_state_token =
-      request.GetInitiatorStateToken().is_empty()
-          ? frame_->GetInitiatorStateToken()
-          : request.GetInitiatorStateToken();
-  CHECK(!initiator_state_token.is_empty());
-  DocumentToken initiator_document_token =
-      request.GetInitiatorDocumentToken().value_or(
-          frame_->GetDocument()->Token());
   Client()->BeginNavigation(
       resource_request, request.GetRequestorBaseURL(), request.GetFrameType(),
       origin_window, nullptr /* document_loader */, navigation_type,
@@ -1028,7 +1019,7 @@ void FrameLoader::StartNavigation(FrameLoadRequest& request,
       request.Form(), should_check_main_world_csp, request.GetBlobURLToken(),
       request.GetInputStartTime(), request.GetCreationTime(),
       request.HrefTranslate().GetString(), request.GetInitiatorFrameToken(),
-      initiator_state_token, initiator_document_token,
+      request.GetInitiatorStateToken(), request.GetInitiatorDocumentToken(),
       request.GetSourceLocation(),
       request.TakeInitiatorNavigationStateKeepAliveHandle(),
       request.IsContainerInitiated(),

@@ -82,6 +82,7 @@
 #include "chrome/browser/ui/views/global_media_controls/media_toolbar_button.h"
 #include "chrome/browser/ui/views/global_media_controls/media_toolbar_button_contextual_menu.h"
 #include "chrome/browser/ui/views/global_media_controls/media_toolbar_button_view.h"
+#include "chrome/browser/ui/views/intent_picker_bubble_view.h"
 #include "chrome/browser/ui/views/location_bar/webui_location_bar.h"
 #include "chrome/browser/ui/views/page_action/page_action_container_view.h"
 #include "chrome/browser/ui/views/page_action/page_action_view.h"
@@ -459,7 +460,7 @@ void ToolbarView::Init() {
     if (!vts_controller || !vts_controller->ShouldDisplayVerticalTabs()) {
       button->SetProperty(views::kMarginsKey, gfx::Insets());
     }
-    AddChildViewAt(std::move(button), 0);
+    contextual_tasks_button_ = AddChildViewAt(std::move(button), 0);
   }
 
   if (location_bar_view) {
@@ -732,6 +733,7 @@ ToolbarView::CreateGlicActorTaskIcon() {
     glic_actor_task_icon->SetProperty(
         views::kFlexBehaviorKey,
         views::FlexSpecification(
+            views::LayoutOrientation::kHorizontal,
             views::MinimumFlexSizeRule::kPreferredSnapToMinimum,
             views::MaximumFlexSizeRule::kPreferred));
   }
@@ -1243,10 +1245,10 @@ bool ToolbarView::GetAppMenuFocused() const {
 }
 
 void ToolbarView::ShowIntentPickerBubble(
-    std::vector<IntentPickerBubbleView::AppInfo> app_info,
+    std::vector<apps::IntentPickerAppInfo> app_info,
     bool show_stay_in_chrome,
     bool show_remember_selection,
-    IntentPickerBubbleView::BubbleType bubble_type,
+    apps::IntentPickerBubbleType bubble_type,
     const std::optional<url::Origin>& initiating_origin,
     IntentPickerResponse callback) {
   std::optional<ui::ElementIdentifier> higlighted_element;
@@ -1537,7 +1539,8 @@ void ToolbarView::InitLayout() {
   constexpr int kExtensionsFlexOrder = kOrderOffset + 3;
 
   const views::FlexSpecification location_bar_flex_rule =
-      views::FlexSpecification(views::MinimumFlexSizeRule::kScaleToMinimum,
+      views::FlexSpecification(views::LayoutOrientation::kHorizontal,
+                               views::MinimumFlexSizeRule::kScaleToMinimum,
                                views::MaximumFlexSizeRule::kUnbounded)
           .WithOrder(location_bar_flex_order);
 
@@ -1588,6 +1591,7 @@ void ToolbarView::InitLayout() {
     glic_button_->SetProperty(
         views::kFlexBehaviorKey,
         views::FlexSpecification(
+            views::LayoutOrientation::kHorizontal,
             views::MinimumFlexSizeRule::kPreferredSnapToMinimum,
             views::MaximumFlexSizeRule::kPreferred));
   }
@@ -1596,7 +1600,8 @@ void ToolbarView::InitLayout() {
       base::FeatureList::IsEnabled(features::kToolbarAppMenuLabelResizing)) {
     app_menu_button_->SetProperty(
         views::kFlexBehaviorKey,
-        views::FlexSpecification(views::MinimumFlexSizeRule::kScaleToMinimum,
+        views::FlexSpecification(views::LayoutOrientation::kHorizontal,
+                                 views::MinimumFlexSizeRule::kScaleToMinimum,
                                  views::MaximumFlexSizeRule::kPreferred));
   }
 
@@ -1607,6 +1612,7 @@ void ToolbarView::InitLayout() {
     avatar_->SetProperty(
         views::kFlexBehaviorKey,
         views::FlexSpecification(
+            views::LayoutOrientation::kHorizontal,
             views::MinimumFlexSizeRule::kScaleToMinimumSnapToZero,
             views::MaximumFlexSizeRule::kPreferred));
   }
@@ -1648,7 +1654,8 @@ void ToolbarView::InitLayout() {
       // and may want to get rid of the FlexLayout entirely.
       toolbar_webview_->SetProperty(
           views::kFlexBehaviorKey,
-          views::FlexSpecification(views::MinimumFlexSizeRule::kScaleToMinimum,
+          views::FlexSpecification(views::LayoutOrientation::kHorizontal,
+                                   views::MinimumFlexSizeRule::kScaleToMinimum,
                                    views::MaximumFlexSizeRule::kUnbounded));
     }
   }
@@ -1662,11 +1669,14 @@ void ToolbarView::LayoutCommon() {
   gfx::Insets interior_margin =
       GetLayoutInsets(LayoutInset::TOOLBAR_INTERIOR_MARGIN);
 
-  auto* vts_controller = tabs::VerticalTabStripStateController::From(browser_);
-  if (contextual_tasks::IsContextualTasksUIEnabled() &&
-      (contextual_tasks::kShowEntryPoint.Get() ==
-       contextual_tasks::EntryPointOption::kToolbarEphemeralBranded) &&
-      (!vts_controller || !vts_controller->ShouldDisplayVerticalTabs())) {
+  // Only zero out the leading interior margin if the contextual tasks button
+  // is actually visible and not in vertical tabs mode (where the button does
+  // not sit flush at the window edge). When the button is hidden, we must
+  // retain the default interior margin so that the Back button is not
+  // incorrectly shifted to the toolbar's edge. Layout is in logical /
+  // RTL-relative DIPs where `left()` is the leading edge.
+  if (contextual_tasks_button_ && contextual_tasks_button_->GetVisible() &&
+      !should_display_vertical_tabs_) {
     interior_margin.set_left(0);
   }
 
@@ -1685,6 +1695,13 @@ void ToolbarView::LayoutCommon() {
   if (avatar_) {
     SetRefreshMargins(avatar_, avatar_->IsLabelPresentAndVisible());
   }
+
+  // Record whether there is leading interior margin available before zeroing it
+  // out for WebUI toolbar below. If a leading button (such as the ephemeral
+  // contextual tasks button) sits flush at the container edge, the leading
+  // interior margin is zero and subsequent buttons (like the Back button) must
+  // not extend their hit target for Fitts' law.
+  const int leading_interior_margin = interior_margin.left();
 
   const bool is_rtl = base::i18n::IsRTL();
 
@@ -1723,11 +1740,23 @@ void ToolbarView::LayoutCommon() {
       browser_->GetWindow() && (browser_->GetWindow()->IsMaximized() ||
                                 browser_->GetWindow()->IsFullscreen());
 
+  const int margin = is_maximized_or_fullscreen ? leading_interior_margin : 0;
+
   if (features::IsWebUIBackForwardButtonEnabled()) {
-    toolbar_webview_->SetIsMaximizedOrFullscreen(is_maximized_or_fullscreen);
+    if (toolbar_webview_) {
+      // `SetIsMaximizedOrFullscreen` signals the WebUI back/forward buttons
+      // whether to apply Fitts' law edge padding. When a leading button
+      // (e.g. contextual tasks) sits flush against the window edge, the
+      // available margin is 0, so Fitts' law padding must be suppressed even
+      // if the window itself is maximized or fullscreen.
+      const bool should_apply_webui_fitts_law = margin > 0;
+      toolbar_webview_->SetIsMaximizedOrFullscreen(
+          should_apply_webui_fitts_law);
+    }
   } else {
-    const int margin = is_maximized_or_fullscreen ? interior_margin.left() : 0;
-    back_->SetLeadingMargin(margin);
+    if (back_) {
+      back_->SetLeadingMargin(margin);
+    }
   }
 
   GetAppMenuControl()->SetIsMaximizedOrFullscreen(is_maximized_or_fullscreen);

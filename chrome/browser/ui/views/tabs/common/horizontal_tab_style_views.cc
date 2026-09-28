@@ -588,13 +588,22 @@ float HorizontalTabStyleViews::GetSeparatorOpacity(bool for_layout,
   if (base::FeatureList::IsEnabled(tabs::kTabStripUnification)) {
     // When unification is enabled, tabs render trailing separators by default
     // to avoid double separators between tabs. Leading separators are only
-    // rendered between the pinned and unpinned tab containers when new pinned
-    // tab styling is disabled.
+    // rendered in certain scenarios.
     if (leading) {
+      // Between the pinned and unpinned tab containers when new pinned
+      // tab styling is disabled should show leading
       if (!tabs::IsNewHorizontalPinnedTabStylingEnabled() && adjacent_tab &&
           adjacent_tab->IsPinned() && !has_visible_background(adjacent_tab)) {
         return shown_separator_opacity;
       }
+
+      // When the preceding item is a group header, show a leading separator.
+      if (adjacent_tab && adjacent_tab->IsGroupCollapsed() &&
+          adjacent_tab->GetGroup() != delegate_->GetGroup() &&
+          !has_visible_background(adjacent_tab)) {
+        return shown_separator_opacity;
+      }
+
       return 0.0f;
     }
   } else {
@@ -748,9 +757,13 @@ void HorizontalTabStyleViews::PaintTabBackground(
 
   const auto* widget = delegate_->GetView()->GetWidget();
   DCHECK(widget);
-  const SkColor tab_stroke_color = widget->GetColorProvider()->GetColor(
-      widget->ShouldPaintAsActive() ? kColorTabStrokeFrameActive
-                                    : kColorTabStrokeFrameInactive);
+  const SkColor tab_stroke_color =
+      (delegate_->IsPinned() && !delegate_->IsActive() &&
+       tabs::IsNewHorizontalPinnedTabStylingEnabled())
+          ? GetTabSeparatorColor()
+          : widget->GetColorProvider()->GetColor(
+                widget->ShouldPaintAsActive() ? kColorTabStrokeFrameActive
+                                              : kColorTabStrokeFrameInactive);
 
   PaintBackgroundStroke(canvas, group_color.value_or(tab_stroke_color));
   PaintSeparators(canvas);

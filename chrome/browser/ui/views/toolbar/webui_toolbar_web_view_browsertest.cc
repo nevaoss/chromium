@@ -84,6 +84,7 @@
 #include "chrome/browser/ui/views/page_action/webui_page_action_control.h"
 #include "chrome/browser/ui/views/page_info/page_info_bubble_view_base.h"
 #include "chrome/browser/ui/views/performance_controls/battery_saver_bubble_view.h"
+#include "chrome/browser/ui/views/toolbar/avatar_toolbar_button_interface.h"
 #include "chrome/browser/ui/views/toolbar/home_button.h"
 #include "chrome/browser/ui/views/toolbar/reload_button.h"
 #include "chrome/browser/ui/views/toolbar/toolbar_view.h"
@@ -162,6 +163,7 @@
 #include "ui/accessibility/platform/ax_platform_node_delegate.h"
 #include "ui/accessibility/platform/inspect/ax_event_recorder.h"
 #include "ui/actions/actions.h"
+#include "ui/base/interaction/element_tracker.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/models/dialog_model.h"
 #include "ui/base/page_transition_types.h"
@@ -642,7 +644,7 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewPixelBrowserTest,
   webui_toolbar_view->GetReloadControl()->SetDevToolsStatus(true);
   webui_toolbar_view->HandleContextMenu(
       toolbar_ui_api::mojom::ContextMenuType::kReload, gfx::RectF(control_rect),
-      ui::mojom::MenuSourceType::kMouse);
+      ui::mojom::MenuSourceType::kMouse, /*show_menu_token=*/std::nullopt);
 
   // Verify reload button state updates.
   EXPECT_TRUE(base::test::RunUntil([&]() {
@@ -701,7 +703,7 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewPixelBrowserTest,
   // Show back button context menu.
   webui_toolbar_view->HandleContextMenu(
       toolbar_ui_api::mojom::ContextMenuType::kBack, gfx::RectF(control_rect),
-      ui::mojom::MenuSourceType::kMouse);
+      ui::mojom::MenuSourceType::kMouse, /*show_menu_token=*/std::nullopt);
 
   // Verify back button state updates.
   EXPECT_TRUE(base::test::RunUntil([&]() {
@@ -763,7 +765,8 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewPixelBrowserTest,
   // Show forward button context menu.
   webui_toolbar_view->HandleContextMenu(
       toolbar_ui_api::mojom::ContextMenuType::kForward,
-      gfx::RectF(control_rect), ui::mojom::MenuSourceType::kMouse);
+      gfx::RectF(control_rect), ui::mojom::MenuSourceType::kMouse,
+      /*show_menu_token=*/std::nullopt);
 
   // Verify forward button state updates.
   EXPECT_TRUE(base::test::RunUntil([&]() {
@@ -828,7 +831,7 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewPixelBrowserTest,
   // Show context menu.
   webui_toolbar_view->HandleContextMenu(
       toolbar_ui_api::mojom::ContextMenuType::kHome, gfx::RectF(control_rect),
-      ui::mojom::MenuSourceType::kMouse);
+      ui::mojom::MenuSourceType::kMouse, /*show_menu_token=*/std::nullopt);
 
   // Verify background is highlighted (NOT transparent).
   EXPECT_TRUE(base::test::RunUntil([&]() {
@@ -887,7 +890,8 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewPixelBrowserTest,
   // Show context menu.
   webui_toolbar_view->HandleContextMenu(
       toolbar_ui_api::mojom::ContextMenuType::kSplitTabsContext,
-      gfx::RectF(control_rect), ui::mojom::MenuSourceType::kMouse);
+      gfx::RectF(control_rect), ui::mojom::MenuSourceType::kMouse,
+      /*show_menu_token=*/std::nullopt);
 
   // Verify split tabs button state updates.
   EXPECT_TRUE(base::test::RunUntil([&]() {
@@ -1683,12 +1687,26 @@ class WebUIToolbarLifecycleBrowserTest : public InProcessBrowserTest {
         if (!reload_button || !reload_button->is_initialized()) {
           return false;
         }
+        // Make sure that the button is available with ElementTracker API.
+        if (!ui::ElementTracker::GetElementTracker()->GetElementInAnyContext(
+                kReloadButtonElementId)) {
+          return false;
+        }
       }
       if (features::IsWebUIAvatarButtonEnabled()) {
         auto* avatar_button = static_cast<WebUIAvatarToolbarButton*>(
             webui_toolbar->GetAvatarToolbarButtonInterface());
         if (!avatar_button || !avatar_button->is_initialized()) {
           return false;
+        }
+        // Make sure that the button is available with ElementTracker API...
+        // ... if we're on a platform that's showing it.
+        if (AvatarToolbarButtonInterface::CanShowForProfile(
+                browser()->GetProfile())) {
+          if (!ui::ElementTracker::GetElementTracker()->GetElementInAnyContext(
+                  kToolbarAvatarButtonElementId)) {
+            return false;
+          }
         }
       }
       return true;

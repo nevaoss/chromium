@@ -1457,6 +1457,7 @@ V nasprotnem primeru bodo to blokirale nastavitve zasebnosti. S tem bo vsebina, 
 <translation id="3495081129428749620">Iskanje na strani
     <ph name="PAGE_TITLE" /></translation>
 <translation id="3495818359064790343">Plača</translation>
+<translation id="3496531230994554300">Obvestilo Denarnice je odprto pri polni višini.</translation>
 <translation id="3497627066518778351">Pregled seznama podatkov spletnih mest v napravi v novem oknu</translation>
 <translation id="3498215018399854026">Trenutno ni mogoče vzpostaviti stika s staršem. Poskusi znova pozneje.</translation>
 <translation id="350069200438440499">Ime datoteke:</translation>
@@ -1547,6 +1548,7 @@ V nasprotnem primeru bodo to blokirale nastavitve zasebnosti. S tem bo vsebina, 
 <translation id="3634530185120165534">Pladenj 5</translation>
 <translation id="3634567936866541746">Pravkar ste vnesli geslo na zavajajočem spletnem mestu. Chrome zaradi zaščite računov priporoča, da preverite shranjena gesla.</translation>
 <translation id="3638102297696182302">Nadaljujte funkcijo Pomagaj mi pisati. Pritisnite tabulatorko in tipko Enter, če želite odpreti.</translation>
+<translation id="3639626391482300575">Ta številka IBAN je shranjena v Google Denarnici in jo lahko uporabljate v Googlovih izdelkih.</translation>
 <translation id="3642196846309122856">Poskusite znova prenesti datoteke</translation>
 <translation id="3642638418806704195">Program:</translation>
 <translation id="3647286794400715637">Vsak vnos z nizom URL-jev mora vsebovati od 1 do 2 URL-ja.</translation>
@@ -1559,7 +1561,6 @@ V nasprotnem primeru bodo to blokirale nastavitve zasebnosti. S tem bo vsebina, 
 <translation id="3655670868607891010">Če se to pogosto zgodi, poskusite <ph name="HELP_LINK" />.</translation>
 <translation id="3658742229777143148">Različica</translation>
 <translation id="3659521826520353662">Katera spletna mesta, ki jih je določil skrbnik, so obiskana in kdaj: <ph name="ALLOWLISTED_WEBSITES" /></translation>
-<translation id="3662040827609932717">Ta številka IBAN je shranjena v Google Denarnici in jo lahko uporabljate v Googlovih storitvah.</translation>
 <translation id="3664479564786885722">Poiščite več možnosti nakupa v drugih trgovinah, ki prodajajo ta izdelek.</translation>
 <translation id="3664782872746246217">Ključne besede:</translation>
 <translation id="3670030362669914947">Številka</translation>
@@ -2613,7 +2614,6 @@ V nasprotnem primeru bodo to blokirale nastavitve zasebnosti. S tem bo vsebina, 
 <translation id="5414306071315087019">Kupi zdaj, plačaj pozneje je na voljo z Googlom Pay</translation>
 <translation id="5414446060143308245">Pred prenosom je zahtevan pregled</translation>
 <translation id="5414511064953050917">Vseeno premakni</translation>
-<translation id="5418700249417444482">URL-ji obiskanih strani so poslani v oblak Google Cloud ali drugim ponudnikom v analizo in so morda vidni skrbniku. Morda so na primer pregledani zaradi zaznavanja spletnih mest, ki niso varna, ali filtriranje spletnih mest na podlagi pravil, ki jih določi skrbnik.</translation>
 <translation id="5419311651396341287">Skrbnik si bo morda lahko ogledal:</translation>
 <translation id="5423269318075950257">Spremljanje cene</translation>
 <translation id="5426179911063097041"><ph name="SITE" /> vam želi pošiljati obvestila</translation>
@@ -2634,7 +2634,6 @@ V nasprotnem primeru bodo to blokirale nastavitve zasebnosti. S tem bo vsebina, 
 <translation id="5447103258548475868">Shranite potni list v Google Denarnico</translation>
 <translation id="5447235695608032700">Spletnemu mestu <ph name="SITE" /> dovolite uporabo podatkov, ki jih je shranil o vas</translation>
 <translation id="5447973833955560753">Obnovitveno geslo</translation>
-<translation id="5451331376824595378">Ko Chrome opozori na varnostne dogodke, se ustrezni podatki glede dogodkov pošljejo skrbniku. To lahko vključuje URL-je strani, ki jih obiščete v Chromu, URL-je strani, s katerih ste kopirali podatke, imena ali metapodatke datotek, naslov IP, sesutja brskalnika ali zavihkov in uporabniško ime, s katerim se prijavite v spletne aplikacije, napravo in Chrome.</translation>
 <translation id="5452270690849572955">Te strani spletnega mesta <ph name="HOST_NAME" /> ni mogoče najti</translation>
 <translation id="5452923259299906094">Plačevanje z e-denarnico in storitvijo Pix</translation>
 <translation id="5455374756549232013">Napačen časovni žig pravilnika</translation>
@@ -2669,6 +2668,7 @@ V nasprotnem primeru bodo to blokirale nastavitve zasebnosti. S tem bo vsebina, 
 <translation id="5499229993630251170">Želite nadaljevati to nit?</translation>
 <translation id="5506286895894263601">Na seznamu ni veljavnih bližnjic.</translation>
 <translation id="5507756662695126555">Brez zavračanja</translation>
+<translation id="5508515366054931524">Poziv za preverjanje e-poštnega naslova je odprt pri polni višini</translation>
 <translation id="5509762909502811065">B0</translation>
 <translation id="5509780412636533143">Upravljani zaznamki</translation>
 <translation id="5510766032865166053">Morda je premaknjena ali izbrisana.</translation>
@@ -3180,7 +3180,6 @@ V nasprotnem primeru bodo to blokirale nastavitve zasebnosti. S tem bo vsebina, 
 <translation id="6361757823711327522">B7</translation>
 <translation id="6363786367719063276">Ogled dnevnikov</translation>
 <translation id="6364095313648930329"><ph name="BEGIN_LINK" />Preveriti strežnik proxy, požarni zid in konfiguracijo varnega strežnika DNS<ph name="END_LINK" /></translation>
-<translation id="6365513578140103119">Samodejno potrjevanje e-poštnih naslovov</translation>
 <translation id="6366710531182496394">Dvojno spenjanje na levi</translation>
 <translation id="6367196786591004737">Izbriši vnos</translation>
 <translation id="6370022303958842211">Dejanja dostopa do naprave, kot so prijave (vključno z neuspešnimi razlogi za prijavo), odjave, zaklepanja in odklepanja.</translation>
@@ -3305,6 +3304,7 @@ V nasprotnem primeru bodo to blokirale nastavitve zasebnosti. S tem bo vsebina, 
 <translation id="6578434528542148658">Neveljaven ID razširitve.</translation>
 <translation id="658230438113661756">Napadalci lahko na spletnem mestu, ki ste ga poskušali obiskati, namestijo škodljivo programsko opremo, ki ukrade ali izbriše stvari, kot so gesla, fotografije, sporočila ali številke kreditnih kartic. Chrome močno priporoča, da se vrnete na varno. <ph name="BEGIN_LEARN_MORE_LINK" />Več o tem opozorilu<ph name="END_LEARN_MORE_LINK" /></translation>
 <translation id="6583309742916093092">Shranjeno v Google Denarnici</translation>
+<translation id="6585589684832019248">Ta kartica je shranjena v Google Denarnici in jo lahko uporabljate v Googlovih izdelkih.</translation>
 <translation id="6587893660316489419">Kuverta B5</translation>
 <translation id="6587923378399804057">Povezava, ki ste jo kopirali</translation>
 <translation id="6591833882275308647">Naprava <ph name="DEVICE_TYPE" /> ni upravljana</translation>
@@ -3451,6 +3451,7 @@ V nasprotnem primeru bodo to blokirale nastavitve zasebnosti. S tem bo vsebina, 
 <translation id="6860888819347870819">Lahko zahteva odpiranje načina slike v sliki</translation>
 <translation id="6864189428899665393">267 x 389 mm</translation>
 <translation id="6865412394715372076">Te kartice trenutno ni mogoče preveriti</translation>
+<translation id="6871073333584947219">Obvestilo Denarnice je zaprto.</translation>
 <translation id="6871813064737840684">Zgodovina cen v spletu za to možnost</translation>
 <translation id="6873456682041376666">Zgornji pladenj</translation>
 <translation id="6874604403660855544">&amp;Uveljavi dodajanje</translation>
@@ -3906,7 +3907,6 @@ Dodatne podrobnosti:
 <translation id="7615932826417658001">Dodajanje osebne izkaznice</translation>
 <translation id="7616390733770379387">Ti so prikazani naključno.</translation>
 <translation id="7616645509853975347">Skrbnik je v brskalniku vklopil priključke Chrome Enterprise Connectors. Ti priključki imajo dostop do nekaterih vaših podatkov.</translation>
-<translation id="7616747402308801775">Ta kartica je shranjena v Google Denarnici in jo lahko uporabljate v Googlovih storitvah.</translation>
 <translation id="7617825962482469577">Kuverta C7/C6</translation>
 <translation id="7619838219691048931">Končni list</translation>
 <translation id="7621546470643449009">Ustvari vodnik za začetnike za opazovanje zvezd, ki mi bo pomagal spoznati, kaj opazovati na nočnem nebu, vključno s tremi lahko prepoznavnimi ozvezdji</translation>
@@ -3971,6 +3971,7 @@ Dodatne podrobnosti:
 <translation id="7705085181312584869">Pomoč pri pisanju</translation>
 <translation id="7705992072972338699">Optical Disc (High-Gloss)</translation>
 <translation id="7706689436519265630">Datoteke, ki jih kopirate ali premaknete, so poslane storitvi Google Cloud ali tretjim osebam v analizo. Lahko so na primer pregledane glede tega, ali vsebujejo občutljive podatke ali zlonamerno programsko opremo, pri čemer so morda shranjene na podlagi pravilnikov podjetja.</translation>
+<translation id="7709934467582922028">Poziv za preverjanje e-poštnega naslova je zaprt</translation>
 <translation id="7714351089363296478">Pravkar ste obiskali</translation>
 <translation id="7714404809393719981">Photo (Semi-Gloss)</translation>
 <translation id="7714464543167945231">Potrdilo</translation>
@@ -4657,7 +4658,6 @@ Dodatne podrobnosti:
 <translation id="8963117664422609631">Na nastavitve spletnega mesta</translation>
 <translation id="8963213021028234748"><ph name="MARKUP_1" />Predlogi:<ph name="MARKUP_2" />Poskrbite, da imate podatkovno povezavo<ph name="MARKUP_3" />Znova naložite to spletno stran pozneje<ph name="MARKUP_4" />Preverite naslov, ki ste ga vnesli<ph name="MARKUP_5" /></translation>
 <translation id="8963969435440878110">Lokalne datoteke bodo izbrisane čez <ph name="HOURS" /> h</translation>
-<translation id="8964904785315870349">Preverjen e-poštni naslov</translation>
 <translation id="8968766641738584599">Shrani kartico</translation>
 <translation id="8970887620466824814">Prišlo je do napake.</translation>
 <translation id="8971063699422889582">Potrdilo strežnika je poteklo.</translation>
@@ -4868,6 +4868,7 @@ Dodatne podrobnosti:
 <translation id="988159990683914416">Različica za razvijalce</translation>
 <translation id="989988560359834682">Uredi naslov</translation>
 <translation id="990164307229195234"><ph name="DEVICE_NAME" /> (<ph name="DISAMBIGUATION_LABEL" />)</translation>
+<translation id="990812705189376036">Dokazilo potrdila Merkle Tree</translation>
 <translation id="992110854164447044">Navidezna kartica zakrije dejansko kartico in ste tako zaščiteni pred morebitno prevaro. <ph name="IDS_AUTOFILL_VIRTUAL_CARD_ENROLLMENT_LEARN_MORE_LINK_LABEL" /></translation>
 <translation id="992115559265932548"><ph name="MICROSOFT_ACTIVE_DIRECTORY" /></translation>
 <translation id="992256792861109788">Rožnata</translation>

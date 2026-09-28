@@ -11,6 +11,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/command_line.h"
 #include "base/feature_list.h"
 #include "base/functional/bind.h"
 #include "base/memory/weak_ptr.h"
@@ -40,7 +41,7 @@
 #include "components/one_time_tokens/core/browser/one_time_token_service.h"
 #include "components/one_time_tokens/core/browser/one_time_token_type.h"
 #include "components/one_time_tokens/core/browser/util/expiring_subscription.h"
-#include "components/password_manager/core/browser/features/password_features.h"
+#include "components/one_time_tokens/core/common/one_time_token_switches.h"
 
 using one_time_tokens::ExpiringSubscriptionHandle;
 using one_time_tokens::OneTimeToken;
@@ -52,17 +53,29 @@ using one_time_tokens::OneTimeTokenType;
 namespace autofill {
 
 namespace {
-constexpr base::TimeDelta kSubscriptionDuration = base::Minutes(1);
+
+std::string GetMockOtpValue() {
+  return base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII(
+      one_time_tokens::switches::kMockOtpValue);
+}
 }  // namespace
 
 OtpManagerImpl::OtpManagerImpl(BrowserAutofillManager& owner,
                                OneTimeTokenService* one_time_token_service)
-    : owner_(owner), one_time_token_services_(one_time_token_service) {
+    : owner_(owner), one_time_token_service_(one_time_token_service) {
   autofill_manager_observation_.Observe(&owner);
-  if (one_time_token_services_ && one_time_token_services_->log_sink()) {
-    log_subscription_ =
-        one_time_token_services_->log_sink()->AddLogHandler(base::BindRepeating(
-            &OtpManagerImpl::OnLogMessage, weak_ptr_factory_.GetWeakPtr()));
+  if (one_time_token_service_) {
+    if (one_time_token_service_->log_sink()) {
+      log_subscription_ = one_time_token_service_->log_sink()->AddLogHandler(
+          base::BindRepeating(&OtpManagerImpl::OnLogMessage,
+                              weak_ptr_factory_.GetWeakPtr()));
+    }
+    gmail_otp_tickle_subscription_ =
+        one_time_token_service_->SubscribeToTickles(
+            OneTimeTokenSource::kGmail,
+            base::Time::Now() + kGmailOtpTickleSubscriptionDuration,
+            base::BindRepeating(&OtpManagerImpl::OnTickleReceived,
+                                weak_ptr_factory_.GetWeakPtr()));
   }
 }
 
@@ -77,14 +90,15 @@ void OtpManagerImpl::GetOtpSuggestions(
     return;
   }
 
-  // TODO(crbug.com/415273270) This is just a hack to prepopulate the OTPs in
-  // case no real backend is triggered. The feature definition should migrate to
-  // autofill.
-  if (base::FeatureList::IsEnabled(
-          password_manager::features::kDebugUiForOtps)) {
-    std::move(callback).Run({"Identified OTP field."});
+  std::string mock_otp = GetMockOtpValue();
+  if (!mock_otp.empty()) {
+    LOG_AF(owner_->client().GetCurrentLogManager())
+        << LoggingScope::kOneTimeTokens
+        << "Using mock OTP value from command line switch.";
+    std::move(callback).Run({std::move(mock_otp)});
     return;
   }
+
 
   // TODO(crbug.com/415273270): Do not fill OTP suggestions into opaque origin
   // iframes.
@@ -97,24 +111,36 @@ void OtpManagerImpl::GetOtpSuggestions(
 }
 
 void OtpManagerImpl::GetRecentOtpsAndRenewSubscription() {
-  if (!one_time_token_services_) {
+  if (!one_time_token_service_ || !GetMockOtpValue().empty()) {
     return;
   }
 
-  one_time_token_services_->GetRecentOneTimeTokens(base::BindRepeating(
+  one_time_token_service_->GetRecentOneTimeTokens(base::BindRepeating(
       &OtpManagerImpl::OnOneTimeTokenReceived, weak_ptr_factory_.GetWeakPtr()));
 
-  if (subscription_.IsAlive()) {
-    subscription_.SetExpirationTime(base::Time::Now() + kSubscriptionDuration);
-    return;
+  if (sms_otp_subscription_.IsAlive()) {
+    sms_otp_subscription_.SetExpirationTime(base::Time::Now() +
+                                            kSmsOtpSubscriptionDuration);
+  } else {
+    sms_otp_subscription_ = one_time_token_service_->Subscribe(
+        OneTimeTokenSource::kOnDeviceSms,
+        base::Time::Now() + kSmsOtpSubscriptionDuration,
+        base::BindRepeating(&OtpManagerImpl::OnOneTimeTokenReceived,
+                            weak_ptr_factory_.GetWeakPtr()),
+        /*expiration_callback=*/base::DoNothing());
   }
 
-  subscription_ = one_time_token_services_->Subscribe(
-      OneTimeTokenSource::kOnDeviceSms,
-      base::Time::Now() + kSubscriptionDuration,
-      base::BindRepeating(&OtpManagerImpl::OnOneTimeTokenReceived,
-                          weak_ptr_factory_.GetWeakPtr()),
-      /*expiration_callback=*/base::DoNothing());
+  if (gmail_otp_tickle_subscription_.IsAlive()) {
+    gmail_otp_tickle_subscription_.SetExpirationTime(
+        base::Time::Now() + kGmailOtpTickleSubscriptionDuration);
+  } else {
+    gmail_otp_tickle_subscription_ =
+        one_time_token_service_->SubscribeToTickles(
+            OneTimeTokenSource::kGmail,
+            base::Time::Now() + kGmailOtpTickleSubscriptionDuration,
+            base::BindRepeating(&OtpManagerImpl::OnTickleReceived,
+                                weak_ptr_factory_.GetWeakPtr()));
+  }
 }
 
 void OtpManagerImpl::OnFieldTypesDetermined(
@@ -123,11 +149,11 @@ void OtpManagerImpl::OnFieldTypesDetermined(
     AutofillManager::Observer::FieldTypeSource source,
     bool small_forms_were_parsed) {
   // On non-android platforms and in tests the backend may be not initialized.
-  if (!one_time_token_services_) {
+  if (!one_time_token_service_) {
     return;
   }
 
-  const FormStructure* form = manager.FindCachedFormById(form_id);
+  const FormStructure* form = owner_->FindCachedFormById(form_id);
   if (!form) {
     return;
   }
@@ -136,12 +162,19 @@ void OtpManagerImpl::OnFieldTypesDetermined(
     return;
   }
 
+  std::vector<FieldGlobalId> otp_field_ids;
+  for (const auto& field : form->fields()) {
+    if (field->Type().GetTypes().contains(ONE_TIME_CODE)) {
+      otp_field_ids.push_back(field->global_id());
+    }
+  }
+
   LOG_AF(owner_->client().GetCurrentLogManager())
       << LoggingScope::kOneTimeTokens << "OTP field detected in web form."
       << Br{} << "Form ID: " << form_id;
 
   if (OtpMetricsTracker* tracker = owner_->client().GetOtpMetricsTracker()) {
-    tracker->OnOtpFieldDetected();
+    tracker->OnOtpFieldDetected(form_id, std::move(otp_field_ids), *owner_);
   }
 
   GetRecentOtpsAndRenewSubscription();
@@ -179,6 +212,14 @@ void OtpManagerImpl::OnBeforeFocusOnNonFormField(AutofillManager& manager) {
         base::BindOnce(std::move(last_pending_get_suggestions_callback_),
                        std::vector<std::string>{}));
   }
+}
+
+void OtpManagerImpl::OnTickleReceived(OneTimeTokenSource source) {
+  LOG_AF(owner_->client().GetCurrentLogManager())
+      << LoggingScope::kOneTimeTokens
+      << "Tickle received for source: " << static_cast<int>(source);
+  // TODO(b/556170395): Handle incoming tickle and fetch OTP via
+  // GmailOtpRetriever.
 }
 
 void OtpManagerImpl::OnOneTimeTokenReceived(

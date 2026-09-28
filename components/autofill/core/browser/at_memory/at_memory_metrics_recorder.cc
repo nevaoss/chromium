@@ -232,13 +232,19 @@ AtMemoryMetricsRecorder::~AtMemoryMetricsRecorder() {
   }
   base::UmaHistogramEnumeration("Autofill.AtMemory.UiSessionOutcome",
                                 session_outcome);
+  if (session_outcome == AtMemoryUiSessionOutcome::kDismissedBeforeResults &&
+      query_to_suggestions_shown_timer_) {
+    base::UmaHistogramMediumTimes(
+        "Autofill.AtMemory.Latency.DismissedBeforeResults",
+        query_to_suggestions_shown_timer_->Elapsed());
+  }
 
   base::UmaHistogramBoolean("Autofill.AtMemory.QuerySubmitted",
                             query_count_ > 0);
   MaybeLogSuggestionAccepted();
   base::UmaHistogramBoolean("Autofill.AtMemory.SuggestionAcceptedInSession",
                             suggestion_accepted_in_session_);
-  if (suggestion_acceptance_.accepted_data_type.has_value()) {
+  if (suggestion_accepted_in_session_) {
     base::UmaHistogramBoolean("Autofill.AtMemory.SuggestionFilled",
                               suggestion_filled_in_session_);
     if (fetch_pii_.duration && fetch_pii_.source) {

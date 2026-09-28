@@ -12,7 +12,6 @@
 #include "base/check_deref.h"
 #include "base/notimplemented.h"
 #include "base/notreached.h"
-#include "components/autofill/core/browser/autofill_browser_util.h"
 #include "components/autofill/core/browser/autofill_field.h"
 #include "components/autofill/core/browser/autofill_trigger_source.h"
 #include "components/autofill/core/browser/data_manager/payments/payments_data_manager.h"

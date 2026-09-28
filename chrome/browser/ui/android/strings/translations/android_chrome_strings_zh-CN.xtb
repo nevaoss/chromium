@@ -57,6 +57,7 @@
 <translation id="1181037720776840403">移除</translation>
 <translation id="1183189057400844278">为了确保您可以一直使用 Google 账号中的密码，请验证是您本人在操作</translation>
 <translation id="1187810343066461819">同时从此车载系统中删除书签、历史记录等信息</translation>
+<translation id="1191987227666124897">选择拒绝请求</translation>
 <translation id="1193729455103054076">使用安全系数高的密码？</translation>
 <translation id="11947597112837849">邮箱</translation>
 <translation id="1197267115302279827">移动书签</translation>
@@ -105,6 +106,7 @@
 <translation id="138181280295369883">登录即可在自己的所有设备上获取保存的信息等内容</translation>
 <translation id="1381838868249179644">为保护您的安全，Chrome 已移除某些网站的权限</translation>
 <translation id="1383876407941801731">搜索</translation>
+<translation id="1384568202352682721">另存为…</translation>
 <translation id="1384704387250346179">使用 Google 智能镜头翻译图片<ph name="BEGIN_NEW" />新<ph name="END_NEW" /></translation>
 <translation id="1390418506739274310">您可能会看到在 Chrome 中打开了链接的其他应用的历史记录。您的 Google 账号在 <ph name="BEGIN_LINK" />myactivity.google.com<ph name="END_LINK" /> 上可能有其他形式的浏览记录。</translation>
 <translation id="139752016751285248">显示价格分析的底部动作条已全屏打开</translation>
@@ -133,6 +135,7 @@
 <translation id="147982357559798527">已更改</translation>
 <translation id="1480287803138246127">您的部分历史记录可能不会在此处显示。如需查看您的所有 Chrome 历史记录，请打开完整的 Chrome 历史记录。</translation>
 <translation id="1483493594462132177">发送</translation>
+<translation id="1485343711570311792">在<ph name="NATIVE_APP_NAME" />中打开 • 来自“<ph name="DEVICE_NAME" />”</translation>
 <translation id="1495677929897281669">返回到标签页</translation>
 <translation id="1496514951988037011">用户名</translation>
 <translation id="1501480321619201731">删除群组</translation>
@@ -210,6 +213,7 @@
 <translation id="1832459821645506983">立即开启</translation>
 <translation id="1845958458910716240">为保护您的数据，对于您近期未访问的网站，请允许 Chrome 撤消网站权限</translation>
 <translation id="1851551847729706116">正在将“<ph name="TAB_NAME" />”共享到此标签页</translation>
+<translation id="1855268219431673036">第 <ph name="CURRENT_PAGE" /> 页，共 <ph name="TOTAL_PAGE_COUNT" /> 页</translation>
 <translation id="1869691326892615940">密码更安全，登录更快捷</translation>
 <translation id="1871098866036088250">在 Chrome 浏览器中打开</translation>
 <translation id="1877026089748256423">Chrome 版本太旧</translation>
@@ -327,6 +331,7 @@
 <translation id="232137538351753795">从左侧边缘滑动即可返回</translation>
 <translation id="2323763861024343754">网站存储数据</translation>
 <translation id="2327445548174191329">来自<ph name="DEVICE_NAME" /></translation>
+<translation id="232757965409810352">将页面另存为…</translation>
 <translation id="2328474416100889417">所有人将立即失去对标签页分组“<ph name="GROUP_NAME" />”的访问权限，并且所有邀请链接都将失效</translation>
 <translation id="2329500425421091035">Chrome 迎来 AI 模式</translation>
 <translation id="2330186936255788117">更多书签</translation>
@@ -1338,6 +1343,7 @@
 <translation id="634208815998129842">任务管理器</translation>
 <translation id="6343495912647200061">{SHIPPING_ADDRESS,plural, =1{<ph name="SHIPPING_ADDRESS_PREVIEW" />\u2026以及另外 <ph name="NUMBER_OF_ADDITIONAL_ADDRESSES" /> 个地址}other{<ph name="SHIPPING_ADDRESS_PREVIEW" />\u2026以及另外 <ph name="NUMBER_OF_ADDITIONAL_ADDRESSES" /> 个地址}}</translation>
 <translation id="6345878117466430440">标记为已读</translation>
+<translation id="63490081267265251">您访问的网站（包括 Google）负责确定如何响应此请求。根据您所在地区的法律，网站可能会通过限制出售和分享您的数据或限制将您的数据用于投放个性化广告来做出响应。<ph name="BEGIN_LINK" />了解详情<ph name="END_LINK" /></translation>
 <translation id="6350745006329795504">管理设备</translation>
 <translation id="6356893102071098867">确保您选择的是正确的账号</translation>
 <translation id="6364438453358674297">要从历史记录中移除建议吗？</translation>
@@ -1660,6 +1666,7 @@
 <translation id="7493994139787901920"><ph name="VERSION" />（上次更新时间：<ph name="TIME_SINCE_UPDATE" />）</translation>
 <translation id="7498271377022651285">请稍候…</translation>
 <translation id="7499065150275272675"><ph name="TAB_TITLE" />，已设为静音的固定标签页</translation>
+<translation id="7500851014030446046">正在下载 PDF</translation>
 <translation id="7501135638693251872">所有书签</translation>
 <translation id="7507207699631365376">请参阅此提供商的<ph name="BEGIN_LINK" />隐私权政策<ph name="END_LINK" /></translation>
 <translation id="750886945254958667">您可以保留此分组，以便日后添加标签页；如果不再想访问它，也可以退出分组</translation>
@@ -1727,6 +1734,7 @@
 <translation id="7774809984919390718">{PAYMENT_METHOD,plural, =1{<ph name="PAYMENT_METHOD_PREVIEW" />\u2026以及另外 <ph name="NUMBER_OF_ADDITIONAL_PAYMENT_METHODS" /> 种付款方式}other{<ph name="PAYMENT_METHOD_PREVIEW" />\u2026以及另外 <ph name="NUMBER_OF_ADDITIONAL_PAYMENT_METHODS" /> 种付款方式}}</translation>
 <translation id="777637629667389858">当您登录后，在各种 Google 服务中保护您。</translation>
 <translation id="7778840695157240389">请稍后再回来查看是否有新报道</translation>
+<translation id="7780992949171378848">向网站发送选择拒绝请求，以限制其使用您的数据</translation>
 <translation id="7791543448312431591">添加</translation>
 <translation id="7792388396321542707">停止分享</translation>
 <translation id="780287761701992588">在所有设备上获取保存的书签、密码等信息</translation>
@@ -1872,6 +1880,7 @@
 <translation id="8313599942510782709">您的任务仍在进行中</translation>
 <translation id="8317318757008452355">打开打印网页的选项</translation>
 <translation id="8320212361750431956">近期活动</translation>
+<translation id="8322452989119079156">在<ph name="NATIVE_APP_NAME" />中打开 - 发送自“<ph name="DEVICE_NAME" />”</translation>
 <translation id="832514020744584629"><ph name="PREF_TITLE" />  <ph name="BEGIN_NEW" />新<ph name="END_NEW" /></translation>
 <translation id="8333026248928723981">书签和清单</translation>
 <translation id="8342727528718219152">Chrome 会通知您哪些网站可能发送了过多通知</translation>

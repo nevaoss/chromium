@@ -2239,7 +2239,7 @@ IN_PROC_BROWSER_TEST_F(GetAuthTokenFunctionTest,
   // Pre-populate the cache with a token.
   IdentityTokenCacheValue token =
       CreateToken(kAccessToken, base::Seconds(3600));
-  SetCachedTokenForAccount(account_info, token);
+  SetCachedTokenForAccount(account_info.GetCoreAccountInfo(), token);
 
   std::string access_token;
   std::set<std::string> granted_scopes;
@@ -2605,7 +2605,9 @@ IN_PROC_BROWSER_TEST_F(GetAuthTokenFunctionTest,
                        MultiSecondaryUserManuallyIssueToken) {
   SignIn("primary@example.com");
   CoreAccountInfo secondary_account =
-      identity_test_env()->MakeAccountAvailable("secondary@example.com");
+      identity_test_env()
+          ->MakeAccountAvailable("secondary@example.com")
+          .GetCoreAccountInfo();
 
   scoped_refptr<FakeGetAuthTokenFunction> func(new FakeGetAuthTokenFunction());
   scoped_refptr<const Extension> extension(CreateExtension(CLIENT_ID | SCOPES));
@@ -2808,7 +2810,7 @@ IN_PROC_BROWSER_TEST_F(GetAuthTokenFunctionTest,
     EXPECT_EQ(func->GetExtensionTokenKeyForTest()->scopes, granted_scopes);
 
     EXPECT_EQ(IdentityTokenCacheValue::CACHE_STATUS_TOKEN,
-              GetCachedToken(secondary_account).status());
+              GetCachedToken(secondary_account.GetCoreAccountInfo()).status());
     EXPECT_EQ(secondary_account.GetGaiaId(),
               id_api()->GetGaiaIdForExtension(extension->id()));
     EXPECT_THAT(func->login_access_tokens(),
@@ -4364,12 +4366,12 @@ class OnSignInChangedEventTest : public IdentityTestWithSignin {
 
     // Search for |event| in the set of expected events.
     bool found_event = false;
-    const auto& event_args = event->event_args;
+    const auto& event_args = event->args();
     for (const auto& expected_event : expected_events_) {
       EXPECT_EQ(expected_event->histogram_value, event->histogram_value);
       EXPECT_EQ(expected_event->event_name, event->event_name);
 
-      const auto& expected_event_args = expected_event->event_args;
+      const auto& expected_event_args = expected_event->args();
       if (event_args != expected_event_args) {
         continue;
       }
@@ -4385,7 +4387,7 @@ class OnSignInChangedEventTest : public IdentityTestWithSignin {
       LOG(INFO) << "Was expecting events with these args:";
 
       for (const auto& expected_event : expected_events_) {
-        LOG(INFO) << expected_event->event_args;
+        LOG(INFO) << expected_event->args();
       }
 
       LOG(INFO) << "But received event with different args:";

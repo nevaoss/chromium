@@ -57,6 +57,7 @@
 <translation id="1181037720776840403">Κατάργηση</translation>
 <translation id="1183189057400844278">Για να βεβαιωθείτε ότι θα μπορείτε να χρησιμοποιείτε πάντα τους κωδικούς πρόσβασης στον Λογαριασμό σας Google, επαληθεύστε την ταυτότητά σας</translation>
 <translation id="1187810343066461819">Να διαγραφούν επίσης οι σελιδοδείκτες, το ιστορικό και άλλα στοιχεία από αυτό το αυτοκίνητο</translation>
+<translation id="1191987227666124897">Αίτημα εξαίρεσης</translation>
 <translation id="1193729455103054076">Χρήση ισχυρού κωδικού πρόσβασης;</translation>
 <translation id="11947597112837849">διεύθυνση ηλεκτρονικού ταχυδρομείου</translation>
 <translation id="1197267115302279827">Μετακίνηση σελιδοδεικτών</translation>
@@ -105,6 +106,7 @@
 <translation id="138181280295369883">Συνδεθείτε, για να έχετε στη διάθεσή σας τις αποθηκευμένες πληροφορίες σας και πολλά ακόμη σε όλες τις συσκευές σας</translation>
 <translation id="1381838868249179644">Για την ασφάλειά σας, καταργήθηκαν άδειες από ορισμένους ιστοτόπους</translation>
 <translation id="1383876407941801731">Αναζήτηση</translation>
+<translation id="1384568202352682721">Αποθήκευση ως…</translation>
 <translation id="1384704387250346179">Μετάφραση εικόνας με Google Lens <ph name="BEGIN_NEW" />Νέο<ph name="END_NEW" /></translation>
 <translation id="1390418506739274310">Μπορεί να δείτε το ιστορικό από άλλες εφαρμογές που ανοίγουν συνδέσμους στο Chrome. Ο Λογαριασμός Google ενδέχεται να διαθέτει άλλες μορφές ιστορικού περιήγησης στη διεύθυνση <ph name="BEGIN_LINK" />myactivity.google.com<ph name="END_LINK" />.</translation>
 <translation id="139752016751285248">Το φύλλο κάτω μέρους insight τιμών άνοιξε σε πλήρες ύψος</translation>
@@ -133,6 +135,7 @@
 <translation id="147982357559798527">Τροποποιήθηκε</translation>
 <translation id="1480287803138246127">Ένα μέρος του ιστορικού μπορεί να μην εμφανίζεται εδώ. Για να δείτε όλο το ιστορικό σας στο Chrome, ανοίξτε το πλήρες Ιστορικό Chrome.</translation>
 <translation id="1483493594462132177">Αποστολή</translation>
+<translation id="1485343711570311792">Άνοιγμα στην εφαρμογή <ph name="NATIVE_APP_NAME" /> • Από <ph name="DEVICE_NAME" /></translation>
 <translation id="1495677929897281669">Επιστροφή στην καρτέλα</translation>
 <translation id="1496514951988037011">όνομα χρήστη</translation>
 <translation id="1501480321619201731">Διαγραφή ομάδας</translation>
@@ -210,6 +213,7 @@
 <translation id="1832459821645506983">Ναι, συμφωνώ</translation>
 <translation id="1845958458910716240">Για την προστασία των δεδομένων σας, επιτρέψτε στο Chrome να καταργεί τις άδειες από ιστοτόπους που δεν έχετε επισκεφτεί πρόσφατα</translation>
 <translation id="1851551847729706116">Κοινή χρήση <ph name="TAB_NAME" /> σε αυτή την καρτέλα</translation>
+<translation id="1855268219431673036">Σελίδα <ph name="CURRENT_PAGE" /> από <ph name="TOTAL_PAGE_COUNT" /></translation>
 <translation id="1869691326892615940">Ασφαλέστεροι κωδικοί πρόσβασης, ταχύτερη σύνδεση</translation>
 <translation id="1871098866036088250">Άνοιγμα στο πρόγραμμα περιήγησης Chrome</translation>
 <translation id="1877026089748256423">Το Chrome δεν είναι ενημερωμένο</translation>
@@ -327,6 +331,7 @@
 <translation id="232137538351753795">Για να επιστρέψετε, σύρετε από την αριστερή άκρη</translation>
 <translation id="2323763861024343754">Αποθηκ. χώρος ιστοσελίδας</translation>
 <translation id="2327445548174191329">Από <ph name="DEVICE_NAME" /></translation>
+<translation id="232757965409810352">Αποθήκευση σελίδας ως…</translation>
 <translation id="2328474416100889417">Όλοι θα χάσουν αμέσως την πρόσβαση στην ομάδα καρτελών <ph name="GROUP_NAME" /> και όλοι οι σύνδεσμοι πρόσκλησης θα απενεργοποιηθούν</translation>
 <translation id="2329500425421091035">Παρουσιάζουμε τη Λειτουργία AI στο Chrome</translation>
 <translation id="2330186936255788117">Περισσότεροι σελιδοδείκτες</translation>
@@ -1338,6 +1343,7 @@
 <translation id="634208815998129842">Διαχείριση εργασιών</translation>
 <translation id="6343495912647200061">{SHIPPING_ADDRESS,plural, =1{<ph name="SHIPPING_ADDRESS_PREVIEW" />\u2026 και <ph name="NUMBER_OF_ADDITIONAL_ADDRESSES" /> ακόμη}other{<ph name="SHIPPING_ADDRESS_PREVIEW" />\u2026 και <ph name="NUMBER_OF_ADDITIONAL_ADDRESSES" /> ακόμη}}</translation>
 <translation id="6345878117466430440">Επισήμανση ως αναγνωσμένο</translation>
+<translation id="63490081267265251">Οι ιστότοποι που επισκέπτεστε, συμπεριλαμβανομένων των ιστοτόπων της Google, είναι υπεύθυνοι για τον καθορισμό του τρόπου με τον οποίο ανταποκρίνονται σε αυτό το αίτημα. Ανάλογα με τη νομοθεσία που ισχύει στην περιοχή σας, οι ιστότοποι ενδέχεται να ανταποκριθούν περιορίζοντας την πώληση και την κοινοποίηση των δεδομένων σας ή τη χρήση τους για εξατομικευμένες διαφημίσεις. <ph name="BEGIN_LINK" />Μάθετε περισσότερα<ph name="END_LINK" /></translation>
 <translation id="6350745006329795504">Διαχειριστείτε τις συσκευές σας</translation>
 <translation id="6356893102071098867">Ελέγξτε ότι έχετε επιλέξει τον σωστό λογαριασμό</translation>
 <translation id="6364438453358674297">Κατάργηση πρότασης από το ιστορικό;</translation>
@@ -1662,6 +1668,7 @@
 <translation id="7493994139787901920"><ph name="VERSION" /> (Ενημέρωση στις <ph name="TIME_SINCE_UPDATE" />)</translation>
 <translation id="7498271377022651285">Περιμένετε…</translation>
 <translation id="7499065150275272675"><ph name="TAB_TITLE" />, Καρφιτσωμένη καρτέλα που είναι σε σίγαση</translation>
+<translation id="7500851014030446046">Λήψη PDF σε εξέλιξη</translation>
 <translation id="7501135638693251872">Όλοι οι σελιδοδείκτες</translation>
 <translation id="7507207699631365376">Δείτε την <ph name="BEGIN_LINK" />πολιτική απορρήτου<ph name="END_LINK" /> του παρόχου</translation>
 <translation id="750886945254958667">Διατηρήστε αυτή την ομάδα, για να προσθέσετε καρτέλες αργότερα, ή αποχωρήστε, αν δεν θέλετε πλέον να έχετε πρόσβαση σε αυτή</translation>
@@ -1729,6 +1736,7 @@
 <translation id="7774809984919390718">{PAYMENT_METHOD,plural, =1{<ph name="PAYMENT_METHOD_PREVIEW" />\u2026 και <ph name="NUMBER_OF_ADDITIONAL_PAYMENT_METHODS" /> ακόμη}other{<ph name="PAYMENT_METHOD_PREVIEW" />\u2026 και <ph name="NUMBER_OF_ADDITIONAL_PAYMENT_METHODS" /> ακόμη}}</translation>
 <translation id="777637629667389858">Όταν είστε συνδεδεμένοι, σας προστατεύει σε όλες τις υπηρεσίες Google.</translation>
 <translation id="7778840695157240389">Ελέγξτε πάλι αργότερα για νέες ιστορίες</translation>
+<translation id="7780992949171378848">Αποστολή αιτήματος εξαίρεσης σε ιστοτόπους σχετικά με τη χρήση των δεδομένων σας</translation>
 <translation id="7791543448312431591">Προσθήκη</translation>
 <translation id="7792388396321542707">Διακοπή κοινής χρήσης</translation>
 <translation id="780287761701992588">Μεταφορά σελιδοδεικτών, κωδικών πρόσβασης και άλλων δεδομένων σε όλες τις συσκευές σας</translation>
@@ -1874,6 +1882,7 @@
 <translation id="8313599942510782709">Η εργασία σας βρίσκεται ακόμη σε εξέλιξη</translation>
 <translation id="8317318757008452355">Άνοιγμα επιλογών για εκτύπωση</translation>
 <translation id="8320212361750431956">Πρόσφατη δραστηριότητα</translation>
+<translation id="8322452989119079156">Άνοιγμα στην εφαρμογή <ph name="NATIVE_APP_NAME" /> - Στάλθηκε από <ph name="DEVICE_NAME" /></translation>
 <translation id="832514020744584629"><ph name="PREF_TITLE" />  <ph name="BEGIN_NEW" />Νέο<ph name="END_NEW" /></translation>
 <translation id="8333026248928723981">Σελιδοδείκτες και λίστες</translation>
 <translation id="8342727528718219152">Το Chrome θα σας ενημερώνει σχετικά με τους ιστοτόπους που μπορεί να στέλνουν πάρα πολλές ειδοποιήσεις</translation>

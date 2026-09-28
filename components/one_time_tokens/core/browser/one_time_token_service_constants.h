@@ -33,6 +33,9 @@ inline GURL GetOneTimeTokenServiceUrl(const std::string& path) {
   return GURL(url_str + path);
 }
 
+inline constexpr char kEmailSavedToTickleLatencyHistogram[] =
+    "Autofill.OneTimeTokens.EmailSavedToTickleLatency";
+
 inline constexpr char kTickleArrivalHistogram[] =
     "Autofill.OneTimeTokens.Tickle.Arrival";
 
@@ -50,6 +53,23 @@ enum class TickleArrival {
   kMaxValue = kExpiredOnArrival,
 };
 // LINT.ThenChange(//tools/metrics/histograms/metadata/autofill/enums.xml:OneTimeTokensTickleArrival)
+
+inline constexpr char kTickleFormOutcomeHistogram[] =
+    "Autofill.OneTimeTokens.Tickle.FormOutcome";
+
+// Represents the outcome of every detected OTP form on a web page relative to
+// push notification delivery and user interaction.
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
+//
+// LINT.IfChange(OneTimeTokensTickleFormOutcome)
+enum class TickleFormOutcome {
+  kTickleBeforeUserInteraction = 0,
+  kTickleAfterUserInteraction = 1,
+  kNoTickleReceived = 2,
+  kMaxValue = kNoTickleReceived,
+};
+// LINT.ThenChange(//tools/metrics/histograms/metadata/autofill/enums.xml:OneTimeTokensTickleFormOutcome)
 
 }  // namespace one_time_tokens
 

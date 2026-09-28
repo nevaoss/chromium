@@ -15,6 +15,8 @@
 #include "base/memory/weak_ptr.h"
 #include "base/task/cancelable_task_tracker.h"
 #include "base/time/time.h"
+#include "base/types/expected.h"
+#include "base/unguessable_token.h"
 #include "chrome/browser/ui/omnibox/omnibox_edit_model.h"
 #include "components/contextual_search/input_state_model.h"
 #include "components/omnibox/browser/searchbox.mojom.h"
@@ -48,6 +50,10 @@ namespace ui {
 class ImageModel;
 }  // namespace ui
 
+namespace lens {
+enum class MimeType;
+}  // namespace lens
+
 namespace omnibox {
 enum ToolMode : int;
 }  // namespace omnibox
@@ -59,6 +65,7 @@ class WebContents;
 namespace contextual_search {
 class ContextualSearchSessionHandle;
 struct FileInfo;
+enum class ContextUploadErrorType;
 }  // namespace contextual_search
 
 class OmniboxContextMenuController;
@@ -125,6 +132,16 @@ class OmniboxContextMenuController : public ui::SimpleMenuModel::Delegate {
       std::optional<omnibox::ToolMode> tool_mode,
       std::vector<searchbox::mojom::SearchContextAttachmentPtr> attachments =
           {});
+  // Handles adding file context selected from the file picker to either
+  // OmniboxEverywhereUI or SearchboxContextData / popup AIM handler.
+  static void AddFileContext(
+      content::WebContents* web_contents,
+      lens::MimeType mime_type,
+      const std::string& image_data_url,
+      const std::string& file_name,
+      const std::string& mime_string,
+      base::expected<base::UnguessableToken,
+                     contextual_search::ContextUploadErrorType> result);
   // Handles the response from the Drive picker upload flow. Updates the
   // searchbox context with files/errors. Ignores cancellations to preserve
   // existing contexts.
@@ -229,6 +246,7 @@ class OmniboxContextMenuController : public ui::SimpleMenuModel::Delegate {
       int command_id,
       const favicon_base::FaviconImageResult& image_result);
   void OnGetInputState(const std::optional<omnibox::InputState>& input_state);
+  void OnInputStateChanged(const omnibox::InputState& new_state);
 
   void UpdateSearchboxContextToolMode(omnibox::ToolMode tool_mode);
 
@@ -297,6 +315,8 @@ class OmniboxContextMenuController : public ui::SimpleMenuModel::Delegate {
 
   mutable std::optional<std::vector<OmniboxContextMenuController::TabInfo>>
       cached_recent_tabs_;
+
+  base::CallbackListSubscription input_state_subscription_;
 
   base::WeakPtrFactory<OmniboxContextMenuController> weak_ptr_factory_{this};
 };

@@ -11,6 +11,7 @@
 #import "base/test/ios/wait_util.h"
 #import "components/omnibox/browser/omnibox_pref_names.h"
 #import "components/translate/core/browser/translate_pref_names.h"
+#import "ios/chrome/browser/fullscreen/public/fullscreen_metrics.h"
 #import "ios/chrome/browser/fullscreen/ui_bundled/test/fullscreen_app_interface.h"
 #import "ios/chrome/browser/metrics/model/metrics_app_interface.h"
 #import "ios/chrome/browser/popup_menu/public/popup_menu_constants.h"
@@ -295,6 +296,9 @@ std::unique_ptr<net::test_server::HttpResponse> NotFoundResponse() {
 
 // Tests hiding and showing of the header with a user scroll on a long page.
 - (void)testHideHeaderUserScrollLongPage {
+  GREYAssertNil([MetricsAppInterface setupHistogramTester],
+                @"Failed to set up histogram tester.");
+
   _responses["/tallpage"] =
       base::StringPrintf("<p style='height:%dem'>a</p><p>b</p>", kPageHeightEM);
 
@@ -309,6 +313,33 @@ std::unique_ptr<net::test_server::HttpResponse> NotFoundResponse() {
   [[EarlGrey selectElementWithMatcher:WebStateScrollViewMatcher()]
       performAction:grey_swipeFastInDirection(kGREYDirectionDown)];
   [ChromeEarlGreyUI waitForToolbarVisible:YES];
+
+  // User scrolling logs kUserControlled.
+  NSError* enterError = [MetricsAppInterface
+       expectCount:1
+         forBucket:static_cast<int>(
+                       FullscreenModeTransitionTrigger::kUserControlled)
+      forHistogram:@"IOS.Fullscreen.TransitionTrigger.Enter"];
+  GREYAssertNil(enterError, @"Histogram error: %@", enterError);
+
+  // Exit has kUserControlled and kForcedByCode from page
+  // load.
+  NSError* exitError0 = [MetricsAppInterface
+       expectCount:1
+         forBucket:static_cast<int>(
+                       FullscreenModeTransitionTrigger::kUserControlled)
+      forHistogram:@"IOS.Fullscreen.TransitionTrigger.Exit"];
+  GREYAssertNil(exitError0, @"Histogram error: %@", exitError0);
+
+  NSError* exitError1 = [MetricsAppInterface
+       expectCount:1
+         forBucket:static_cast<int>(
+                       FullscreenModeTransitionTrigger::kForcedByCode)
+      forHistogram:@"IOS.Fullscreen.TransitionTrigger.Exit"];
+  GREYAssertNil(exitError1, @"Histogram error: %@", exitError1);
+
+  GREYAssertNil([MetricsAppInterface releaseHistogramTester],
+                @"Failed to release histogram tester.");
 }
 
 // Tests that reloading of a page shows the header even if it was not shown
@@ -531,6 +562,8 @@ std::unique_ptr<net::test_server::HttpResponse> NotFoundResponse() {
 - (void)testTapOnCollapsedToolbarExitsForceFullscreenMode {
   GREYAssertNil([MetricsAppInterface setupUserActionTester],
                 @"Failed to set up user action tester.");
+  GREYAssertNil([MetricsAppInterface setupHistogramTester],
+                @"Failed to set up histogram tester.");
 
   _responses["/tallpage"] =
       base::StringPrintf("<p style='height:%dem'>a</p><p>b</p>", kPageHeightEM);
@@ -562,6 +595,14 @@ std::unique_ptr<net::test_server::HttpResponse> NotFoundResponse() {
                     forUserAction:@"Mobile.OmniboxContextMenu.HideToolbar"],
                 @"Mobile.OmniboxContextMenu.HideToolbar was not recorded");
 
+  // Verify kForcedByUser was recorded for Enter.
+  NSError* enterError = [MetricsAppInterface
+       expectCount:1
+         forBucket:static_cast<int>(
+                       FullscreenModeTransitionTrigger::kForcedByUser)
+      forHistogram:@"IOS.Fullscreen.TransitionTrigger.Enter"];
+  GREYAssertNil(enterError, @"Histogram error for Enter: %@", enterError);
+
   // Scroll down and up to ensure we are in forced fullscreen mode and the
   // toolbars stay hidden.
   [[EarlGrey selectElementWithMatcher:WebStateScrollViewMatcher()]
@@ -578,8 +619,18 @@ std::unique_ptr<net::test_server::HttpResponse> NotFoundResponse() {
   // Verify that it exits force fullscreen mode and the toolbar is visible.
   [ChromeEarlGreyUI waitForToolbarVisible:YES];
 
+  // Verify kForcedByUser was recorded for Exit.
+  NSError* exitError = [MetricsAppInterface
+       expectCount:1
+         forBucket:static_cast<int>(
+                       FullscreenModeTransitionTrigger::kForcedByUser)
+      forHistogram:@"IOS.Fullscreen.TransitionTrigger.Exit"];
+  GREYAssertNil(exitError, @"Histogram error for Exit: %@", exitError);
+
   GREYAssertNil([MetricsAppInterface releaseUserActionTester],
                 @"Failed to release user action tester.");
+  GREYAssertNil([MetricsAppInterface releaseHistogramTester],
+                @"Failed to release histogram tester.");
 }
 
 // Tests that viewport-fit=cover works as intended in landscape mode.

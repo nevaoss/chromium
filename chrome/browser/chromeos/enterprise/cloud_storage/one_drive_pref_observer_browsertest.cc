@@ -20,7 +20,6 @@
 #include "chrome/browser/policy/policy_test_utils.h"
 #include "chrome/browser/policy/profile_policy_connector.h"
 #include "chrome/browser/profiles/profile.h"
-#include "chrome/browser/ui/browser.h"
 #include "chrome/browser/web_applications/test/web_app_install_test_utils.h"
 #include "chrome/browser/web_applications/web_app_install_info.h"
 #include "chrome/common/extensions/api/odfs_config_private.h"
@@ -114,8 +113,8 @@ class OneDrivePrefObserverBrowserTest
                               const std::string& expected_mode) {
     EXPECT_EQ(event.event_name,
               extensions::api::odfs_config_private::OnMountChanged::kEventName);
-    ASSERT_EQ(1u, event.event_args.size());
-    const base::DictValue* event_dict = event.event_args.front().GetIfDict();
+    ASSERT_EQ(1u, event.args().size());
+    const base::DictValue* event_dict = event.args().front().GetIfDict();
     ASSERT_TRUE(event_dict);
     const std::string* mode = event_dict->FindString("mode");
     ASSERT_TRUE(mode);
@@ -127,8 +126,8 @@ class OneDrivePrefObserverBrowserTest
       const std::vector<std::string>& expected_restrictions) {
     EXPECT_EQ(event.event_name, extensions::api::odfs_config_private::
                                     OnAccountRestrictionsChanged::kEventName);
-    ASSERT_EQ(1u, event.event_args.size());
-    const base::DictValue* event_dict = event.event_args.front().GetIfDict();
+    ASSERT_EQ(1u, event.args().size());
+    const base::DictValue* event_dict = event.args().front().GetIfDict();
     ASSERT_TRUE(event_dict);
     const base::ListValue* restrictions = event_dict->FindList("restrictions");
     ASSERT_TRUE(restrictions);

@@ -14,8 +14,6 @@ include_rules = [
   # b/332804822. Whenever possible, avoid adding new //chrome dependencies to
   # this list.
   "+chrome/browser/apps/platform_apps",
-  "+chrome/browser/ash/browser_delegate/browser_controller.h",
-  "+chrome/browser/ash/browser_delegate/browser_delegate.h",
   "+chrome/browser/ash/policy/dlp",
   "+chrome/browser/ash/profiles",
   "+chrome/browser/browser_process.h",
@@ -38,11 +36,12 @@ include_rules = [
 specific_include_rules = {
   ".*_(browser|ui|unit)test\\.cc": [
     "+chrome/browser/extensions/extension_browsertest.h",
-    "+chrome/browser/ui/browser.h",
     "+chrome/browser/ui/browser_commands.h",
     "+chrome/browser/ui/browser_window.h",
+    "+chrome/browser/ui/browser_window/public/browser_window_interface.h",
     "+chrome/browser/ui/browser_window/public/create_browser_window.h",
     "+chrome/browser/ui/navigator/browser_navigator.h",
+    "+chrome/browser/ui/navigator/browser_navigator_params.h",
     "+chrome/browser/ui/tabs/tab_activity_simulator.h",
     "+chrome/browser/ui/views/frame/browser_view.h",
     "+chrome/test",

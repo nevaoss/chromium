@@ -1290,7 +1290,7 @@ std::string SetupSyncModeAsString(SyncTest::SetupSyncMode sync_test_mode) {
 // enabled by default, e.g. HISTORY requires a dedicated opt-in via
 // SyncUserSettings::SetSelectedTypes().
 syncer::DataTypeSet AllowedTypesInStandaloneTransportMode() {
-  static_assert(65 == syncer::GetNumDataTypes(),
+  static_assert(66 == syncer::GetNumDataTypes(),
                 "Add new types below if they can run in transport mode");
 
 #if BUILDFLAG(IS_ANDROID)
@@ -1426,6 +1426,10 @@ syncer::DataTypeSet AllowedTypesInStandaloneTransportMode() {
     allowed_types.Put(syncer::JOURNEY);
   }
 
+  if (base::FeatureList::IsEnabled(syncer::kSyncAutofillEntitySuppression)) {
+    allowed_types.Put(syncer::AUTOFILL_ENTITY_SUPPRESSION);
+  }
+
   if (base::FeatureList::IsEnabled(syncer::kSyncAccountSettings)) {
     allowed_types.Put(syncer::ACCOUNT_SETTING);
   }
@@ -1450,11 +1454,7 @@ syncer::DataTypeSet AllowedTypesInStandaloneTransportMode() {
     allowed_types.Put(syncer::SEARCH_ENGINES);
   }
 
-#if BUILDFLAG(IS_ANDROID)
-  if (base::FeatureList::IsEnabled(syncer::kWebApkBackupAndRestoreBackend)) {
-    allowed_types.Put(syncer::WEB_APKS);
-  }
-#else   // BUILDFLAG(IS_ANDROID)
+#if !BUILDFLAG(IS_ANDROID)
   if (base::FeatureList::IsEnabled(syncer::kSeparateLocalAndAccountThemes)) {
     allowed_types.Put(syncer::THEMES);
   }
@@ -1463,7 +1463,7 @@ syncer::DataTypeSet AllowedTypesInStandaloneTransportMode() {
   allowed_types.Put(syncer::INCOMING_PASSWORD_SHARING_INVITATION);
   allowed_types.Put(syncer::OUTGOING_PASSWORD_SHARING_INVITATION);
   allowed_types.Put(syncer::WEBAUTHN_CREDENTIAL);
-#endif  // BUILDFLAG(IS_ANDROID)
+#endif  // !BUILDFLAG(IS_ANDROID)
 
 #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_WIN)
   if (base::FeatureList::IsEnabled(

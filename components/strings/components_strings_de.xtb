@@ -860,7 +860,7 @@ Du wirst sonst gemäß deinen Datenschutzeinstellungen blockiert. Wenn Cookies u
 <translation id="243815215670139125">Diese Karte konnte nicht in deinem Google-Konto gespeichert werden. Sie wurde stattdessen in Chrome auf diesem Gerät gespeichert.</translation>
 <translation id="2438874542388153331">Vierfache Lochung rechts</translation>
 <translation id="2441854154602066476">Zahlungsmethoden, die bei Berührung ausgefüllt werden. Tastatur ausgeblendet.</translation>
-<translation id="2442865686365739754">Chrome speichert folgende Daten <ph name="BEGIN_EMPHASIS" />nicht<ph name="END_EMPHASIS" />:
+<translation id="2442865686365739754">Folgende Daten werden <ph name="BEGIN_EMPHASIS" />nicht<ph name="END_EMPHASIS" /> von Chrome gespeichert:
           <ph name="BEGIN_LIST" />
             <ph name="LIST_ITEM" />Den Browserverlauf
             <ph name="LIST_ITEM" />Cookies und Websitedaten
@@ -1456,6 +1456,7 @@ Wenn du die Optionen für „Später bezahlen“ ausblenden möchtest, rufe die 
 <translation id="3493881266323043047">Gültigkeit</translation>
 <translation id="3495081129428749620">Auf Seite "<ph name="PAGE_TITLE" />" suchen</translation>
 <translation id="3495818359064790343">Gehalt</translation>
+<translation id="3496531230994554300">Wallet-Benachrichtigung vollständig geöffnet.</translation>
 <translation id="3497627066518778351">Liste der Websitedaten auf dem Gerät in einem neuen Fenster öffnen</translation>
 <translation id="3498215018399854026">Wir können deinen Vater bzw. deine Mutter momentan nicht erreichen. Bitte versuche es später noch einmal.</translation>
 <translation id="350069200438440499">Dateiname:</translation>
@@ -1557,7 +1558,6 @@ Wenn du die Optionen für „Später bezahlen“ ausblenden möchtest, rufe die 
 <translation id="3655670868607891010">Sollte dir diese Meldung häufiger angezeigt werden, sieh dir unsere <ph name="HELP_LINK" /> an.</translation>
 <translation id="3658742229777143148">Überarbeitung</translation>
 <translation id="3659521826520353662">Welche vom Administrator festgelegten Websites zu welchem Zeitpunkt besucht werden: <ph name="ALLOWLISTED_WEBSITES" /></translation>
-<translation id="3662040827609932717">Diese IBAN wurde in Google Wallet gespeichert, damit du sie auch in anderen Google-Diensten verwenden kannst.</translation>
 <translation id="3664479564786885722">Weitere Kaufoptionen in anderen Geschäften suchen, die dieses Produkt verkaufen.</translation>
 <translation id="3664782872746246217">Suchbegriffe:</translation>
 <translation id="3670030362669914947">Nummer</translation>
@@ -2611,7 +2611,6 @@ Wenn du die Optionen für „Später bezahlen“ ausblenden möchtest, rufe die 
 <translation id="5414306071315087019">„Jetzt kaufen, später bezahlen“ ist mit Google Pay verfügbar</translation>
 <translation id="5414446060143308245">Vor der Übertragung ist eine Überprüfung erforderlich</translation>
 <translation id="5414511064953050917">Trotzdem verschieben</translation>
-<translation id="5418700249417444482">URLs von Seiten, die du besuchst, werden zur Analyse an Google Cloud oder Dritte gesendet und können für deinen Administrator sichtbar sein. Sie werden beispielsweise gescannt, um unsichere Websites zu identifizieren oder Websites auf Grundlage von Regeln zu filtern, die vom Administrator eingerichtet wurden.</translation>
 <translation id="5419311651396341287">Dein Administrator kann möglicherweise Folgendes sehen:</translation>
 <translation id="5423269318075950257">Preis beobachten</translation>
 <translation id="5426179911063097041"><ph name="SITE" /> möchte dir Benachrichtigungen senden</translation>
@@ -2632,7 +2631,6 @@ Wenn du die Optionen für „Später bezahlen“ ausblenden möchtest, rufe die 
 <translation id="5447103258548475868">Reisepass in Google Wallet speichern</translation>
 <translation id="5447235695608032700"><ph name="SITE" /> erlauben, Informationen, die zu deiner Person gespeichert wurden, zu verwenden</translation>
 <translation id="5447973833955560753">Wiederherstellungspasswort</translation>
-<translation id="5451331376824595378">Wenn Chrome Sicherheitshinweise meldet, werden relevante Informationen an deinen Administrator gesendet. Dazu gehören z. B. URLs der von dir in Chrome besuchten Seiten, URLs von Seiten, von denen du Daten kopiert hast, Dateinamen oder Metadaten, IP-Adressen, Browser- oder Tab-Abstürze sowie der Nutzername, den du zum Anmelden in Webanwendungen, auf deinem Gerät und in Chrome verwendest.</translation>
 <translation id="5452270690849572955">Diese <ph name="HOST_NAME" />-Seite wurde nicht gefunden</translation>
 <translation id="5452923259299906094">Mit E‑Wallet und Pix bezahlen</translation>
 <translation id="5455374756549232013">Zeitstempel der Richtlinie ist fehlerhaft.</translation>
@@ -2667,6 +2665,7 @@ Wenn du die Optionen für „Später bezahlen“ ausblenden möchtest, rufe die 
 <translation id="5499229993630251170">Diese Unterhaltung fortsetzen?</translation>
 <translation id="5506286895894263601">Die Liste enthält keine gültigen Verknüpfungen.</translation>
 <translation id="5507756662695126555">Zugelassen</translation>
+<translation id="5508515366054931524">Aufforderung zur Bestätigung der E‑Mail-Adresse vollständig geöffnet</translation>
 <translation id="5509762909502811065">B0</translation>
 <translation id="5509780412636533143">Verwaltete Lesezeichen</translation>
 <translation id="5510766032865166053">Eventuell wurde sie verschoben oder gelöscht.</translation>
@@ -3178,7 +3177,6 @@ Wenn du die Optionen für „Später bezahlen“ ausblenden möchtest, rufe die 
 <translation id="6361757823711327522">B7</translation>
 <translation id="6363786367719063276">Protokolle ansehen</translation>
 <translation id="6364095313648930329"><ph name="BEGIN_LINK" />Proxy- und Firewallkonfiguration sowie Konfiguration sicherer DNS-Abfragen überprüfen<ph name="END_LINK" /></translation>
-<translation id="6365513578140103119">E-Mail-Adressen automatisch bestätigen</translation>
 <translation id="6366710531182496394">Zwei Heftklammern links</translation>
 <translation id="6367196786591004737">Eintrag löschen</translation>
 <translation id="6370022303958842211">Aktionen für den Gerätezugriff wie Anmeldungen (einschließlich fehlgeschlagener Anmeldeversuche), Abmeldungen, Sperrungen und Entsperrungen</translation>
@@ -3449,6 +3447,7 @@ Wenn du die Optionen für „Später bezahlen“ ausblenden möchtest, rufe die 
 <translation id="6860888819347870819">Darf nachfragen, ob der Bild-im-Bild-Modus aktiviert werden soll</translation>
 <translation id="6864189428899665393">267 x 389 mm</translation>
 <translation id="6865412394715372076">Diese Karte kann momentan nicht geprüft werden</translation>
+<translation id="6871073333584947219">Wallet-Benachrichtigung geschlossen.</translation>
 <translation id="6871813064737840684">Preisentwicklung für diese Option im Web</translation>
 <translation id="6873456682041376666">Oberes Fach</translation>
 <translation id="6874604403660855544">&amp;Hinzufügen wiederholen</translation>
@@ -3904,7 +3903,6 @@ Weitere Details:
 <translation id="7615932826417658001">Amtlichen Ausweis hinzufügen</translation>
 <translation id="7616390733770379387">Die Suchmaschinen werden in zufälliger Reihenfolge angezeigt.</translation>
 <translation id="7616645509853975347">Dein Administrator hat Chrome Enterprise Connectors für deinen Browser aktiviert. Diese Connectors haben Zugriff auf einen Teil deiner Daten.</translation>
-<translation id="7616747402308801775">Diese Karte wurde in Google Wallet gespeichert, damit du sie auch in anderen Google-Diensten verwenden kannst</translation>
 <translation id="7617825962482469577">Umschlag C7/C6</translation>
 <translation id="7619838219691048931">Endblatt</translation>
 <translation id="7621546470643449009">Erstelle eine Anfängeranleitung für die Sternbeobachtung, damit ich lerne, wonach ich am Nachthimmel suchen muss, einschließlich 3 leicht identifizierbarer Sternbilder</translation>
@@ -3969,6 +3967,7 @@ Weitere Details:
 <translation id="7705085181312584869">Formuliere für mich</translation>
 <translation id="7705992072972338699">Optische Disk (hochglanz)</translation>
 <translation id="7706689436519265630">Dateien, die du kopierst oder verschiebst, werden zur Analyse an Google Cloud oder Dritte gesendet. Sie können beispielsweise auf sensible Daten oder Malware geprüft und gemäß den Unternehmensrichtlinien gespeichert werden.</translation>
+<translation id="7709934467582922028">Aufforderung zur Bestätigung der E‑Mail-Adresse geschlossen</translation>
 <translation id="7714351089363296478">Du warst gerade hier</translation>
 <translation id="7714404809393719981">Foto (halbglanz)</translation>
 <translation id="7714464543167945231">Zertifikat</translation>
@@ -4656,7 +4655,6 @@ Weitere Details:
 <translation id="8963117664422609631">Website-Einstellungen aufrufen</translation>
 <translation id="8963213021028234748"><ph name="MARKUP_1" />Vorschläge:<ph name="MARKUP_2" />Vergewissere dich, dass du über eine Datenverbindung verfügst.<ph name="MARKUP_3" />Lade diese Webseite später neu.<ph name="MARKUP_4" />Überprüfe die von dir eingegebene Adresse.<ph name="MARKUP_5" /></translation>
 <translation id="8963969435440878110">Deine lokalen Dateien werden in <ph name="HOURS" /> Stunden gelöscht</translation>
-<translation id="8964904785315870349">Bestätigte E-Mail-Adresse</translation>
 <translation id="8968766641738584599">Karte speichern</translation>
 <translation id="8970887620466824814">Es gab ein Problem.</translation>
 <translation id="8971063699422889582">Das Serverzertifikat ist abgelaufen.</translation>
@@ -4867,6 +4865,7 @@ Weitere Details:
 <translation id="988159990683914416">Entwickler-Build</translation>
 <translation id="989988560359834682">Adresse bearbeiten</translation>
 <translation id="990164307229195234"><ph name="DEVICE_NAME" /> (<ph name="DISAMBIGUATION_LABEL" />)</translation>
+<translation id="990812705189376036">Merkle-Baum-Nachweis</translation>
 <translation id="992110854164447044">Wenn du eine virtuelle Karte verwendest, werden deine tatsächlichen Kartendetails nicht preisgegeben – dadurch bist du besser vor Betrugsversuchen geschützt. <ph name="IDS_AUTOFILL_VIRTUAL_CARD_ENROLLMENT_LEARN_MORE_LINK_LABEL" /></translation>
 <translation id="992115559265932548"><ph name="MICROSOFT_ACTIVE_DIRECTORY" /></translation>
 <translation id="992256792861109788">Rosa</translation>

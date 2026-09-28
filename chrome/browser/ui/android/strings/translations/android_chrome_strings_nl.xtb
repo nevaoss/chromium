@@ -57,6 +57,7 @@
 <translation id="1181037720776840403">Verwijderen</translation>
 <translation id="1183189057400844278">Bevestig dat jij het bent zodat je de wachtwoorden in je Google-account altijd kunt gebruiken</translation>
 <translation id="1187810343066461819">Ook bookmarks, geschiedenis en meer verwijderen uit deze auto</translation>
+<translation id="1191987227666124897">Afmeldingsverzoek</translation>
 <translation id="1193729455103054076">Sterk wachtwoord gebruiken?</translation>
 <translation id="11947597112837849">e-mailadres</translation>
 <translation id="1197267115302279827">Bookmarks verplaatsen</translation>
@@ -105,6 +106,7 @@
 <translation id="138181280295369883">Log in om onder andere je opgeslagen informatie op al je apparaten te gebruiken</translation>
 <translation id="1381838868249179644">De rechten voor sommige sites zijn verwijderd om jou te beschermen</translation>
 <translation id="1383876407941801731">Zoeken</translation>
+<translation id="1384568202352682721">Opslaan als…</translation>
 <translation id="1384704387250346179">Afbeelding vertalen met Google Lens <ph name="BEGIN_NEW" />Nieuw<ph name="END_NEW" /></translation>
 <translation id="1390418506739274310">Je kunt de geschiedenis zien van andere apps die links openen in Chrome. Er kunnen andere vormen van browsegeschiedenis zijn opgeslagen voor je Google-account op <ph name="BEGIN_LINK" />myactivity.google.com<ph name="END_LINK" />.</translation>
 <translation id="139752016751285248">Blad onderaan met prijsinzichten is op volledige hoogte geopend</translation>
@@ -133,6 +135,7 @@ Ga naar <ph name="BEGIN_LINK2" />Google-services<ph name="END_LINK2" /> voor mee
 <translation id="147982357559798527">Gewijzigd</translation>
 <translation id="1480287803138246127">Een deel van je geschiedenis wordt hier misschien niet getoond. Open de volledige Chrome-geschiedenis om al je Chrome-geschiedenis te bekijken.</translation>
 <translation id="1483493594462132177">Verzenden</translation>
+<translation id="1485343711570311792">Openen in <ph name="NATIVE_APP_NAME" /> • Van <ph name="DEVICE_NAME" /></translation>
 <translation id="1495677929897281669">Terug naar tabblad</translation>
 <translation id="1496514951988037011">gebruikersnaam</translation>
 <translation id="1501480321619201731">Groep verwijderen</translation>
@@ -210,6 +213,7 @@ Alleen iemand met je wachtwoordzin kan je versleutelde gegevens lezen. De wachtw
 <translation id="1832459821645506983">Ja, is goed</translation>
 <translation id="1845958458910716240">Ter bescherming van je gegevens kun je Chrome de rechten laten verwijderen voor sites die je niet recent hebt bezocht.</translation>
 <translation id="1851551847729706116"><ph name="TAB_NAME" /> wordt gedeeld met dit tabblad</translation>
+<translation id="1855268219431673036">Pagina <ph name="CURRENT_PAGE" /> van <ph name="TOTAL_PAGE_COUNT" /></translation>
 <translation id="1869691326892615940">Veiligere wachtwoorden, sneller inloggen</translation>
 <translation id="1871098866036088250">Openen in de Chrome-browser</translation>
 <translation id="1877026089748256423">Chrome is verouderd</translation>
@@ -327,6 +331,7 @@ Alleen iemand met je wachtwoordzin kan je versleutelde gegevens lezen. De wachtw
 <translation id="232137538351753795">Swipe vanaf de linkerrand om terug te gaan</translation>
 <translation id="2323763861024343754">Site-opslag</translation>
 <translation id="2327445548174191329">Van <ph name="DEVICE_NAME" /></translation>
+<translation id="232757965409810352">Pagina opslaan als…</translation>
 <translation id="2328474416100889417">Iedereen raakt meteen de toegang tot de tabbladgroep <ph name="GROUP_NAME" /> kwijt en alle uitnodigingslinks worden uitgezet</translation>
 <translation id="2329500425421091035">Maak kennis met de AI-modus in Chrome</translation>
 <translation id="2330186936255788117">Meer bookmarks</translation>
@@ -1338,6 +1343,7 @@ Zo kunnen sommige websites op dit verzoek reageren door advertenties te bekijken
 <translation id="634208815998129842">Taakbeheer</translation>
 <translation id="6343495912647200061">{SHIPPING_ADDRESS,plural, =1{<ph name="SHIPPING_ADDRESS_PREVIEW" />\u2026 en nog <ph name="NUMBER_OF_ADDITIONAL_ADDRESSES" /> andere}other{<ph name="SHIPPING_ADDRESS_PREVIEW" />\u2026 en nog <ph name="NUMBER_OF_ADDITIONAL_ADDRESSES" /> andere}}</translation>
 <translation id="6345878117466430440">Markeren als gelezen</translation>
+<translation id="63490081267265251">De sites die je bezoekt, waaronder Google, zijn verantwoordelijk voor het bepalen hoe ze op dit verzoek reageren. Afhankelijk van de wetgeving in je regio kunnen sites reageren door de verkoop en het delen van je gegevens of het gebruik ervan voor gepersonaliseerde advertenties te beperken. <ph name="BEGIN_LINK" />Meer informatie<ph name="END_LINK" /></translation>
 <translation id="6350745006329795504">Je apparaten beheren</translation>
 <translation id="6356893102071098867">Check of je het juiste account hebt gekozen</translation>
 <translation id="6364438453358674297">Suggestie verwijderen uit geschiedenis?</translation>
@@ -1662,6 +1668,7 @@ Als je deze instelling wilt wijzigen, <ph name="BEGIN_LINK" />verwijder je de Ch
 <translation id="7493994139787901920"><ph name="VERSION" /> (geüpdatet: <ph name="TIME_SINCE_UPDATE" />)</translation>
 <translation id="7498271377022651285">Een ogenblik geduld…</translation>
 <translation id="7499065150275272675"><ph name="TAB_TITLE" />, vastgezet tabblad met geluid uit</translation>
+<translation id="7500851014030446046">Pdf downloaden</translation>
 <translation id="7501135638693251872">Alle bookmarks</translation>
 <translation id="7507207699631365376">Het <ph name="BEGIN_LINK" />privacybeleid<ph name="END_LINK" /> van deze provider bekijken</translation>
 <translation id="750886945254958667">Behoud deze groep om later tabbladen toe te voegen of verlaat de groep als je er geen toegang meer toe wilt</translation>
@@ -1729,6 +1736,7 @@ Als je deze instelling wilt wijzigen, <ph name="BEGIN_LINK" />verwijder je de Ch
 <translation id="7774809984919390718">{PAYMENT_METHOD,plural, =1{<ph name="PAYMENT_METHOD_PREVIEW" />\u2026 en nog <ph name="NUMBER_OF_ADDITIONAL_PAYMENT_METHODS" /> andere}other{<ph name="PAYMENT_METHOD_PREVIEW" />\u2026 en nog <ph name="NUMBER_OF_ADDITIONAL_PAYMENT_METHODS" /> andere}}</translation>
 <translation id="777637629667389858">Als je bent ingelogd, word je beschermd in Google-services.</translation>
 <translation id="7778840695157240389">Kom later terug voor nieuwe artikelen</translation>
+<translation id="7780992949171378848">Een afmeldingsverzoek naar sites sturen over het gebruik van je gegevens</translation>
 <translation id="7791543448312431591">Toevoegen</translation>
 <translation id="7792388396321542707">Delen stoppen</translation>
 <translation id="780287761701992588">Gebruik je bookmarks, wachtwoorden en meer op al je apparaten</translation>
@@ -1874,6 +1882,7 @@ Als je deze instelling wilt wijzigen, <ph name="BEGIN_LINK" />verwijder je de Ch
 <translation id="8313599942510782709">Je taak is nog in behandeling</translation>
 <translation id="8317318757008452355">Opties openen om af te drukken</translation>
 <translation id="8320212361750431956">Recente activiteit</translation>
+<translation id="8322452989119079156">Openen in <ph name="NATIVE_APP_NAME" />: gestuurd vanaf <ph name="DEVICE_NAME" /></translation>
 <translation id="832514020744584629"><ph name="PREF_TITLE" />  <ph name="BEGIN_NEW" />Nieuw<ph name="END_NEW" /></translation>
 <translation id="8333026248928723981">Bookmarks en lijsten</translation>
 <translation id="8342727528718219152">Chrome laat je weten of sites misschien te veel meldingen sturen</translation>

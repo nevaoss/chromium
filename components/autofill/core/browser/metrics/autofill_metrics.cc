@@ -299,12 +299,47 @@ void AutofillMetrics::LogScanCreditCardPromptMetric(
 }
 
 // static
+void AutofillMetrics::LogScanCreditCardPromptShown(
+    ScanCreditCardPromptEntryPoint entry_point,
+    bool is_new_user) {
+  base::UmaHistogramEnumeration(
+      base::StrCat({"Autofill.ScanCreditCardPrompt.",
+                    is_new_user ? "NewUser" : "ExistingUser",
+                    ".Shown.EntryPoint"}),
+      entry_point);
+}
+
+// static
+void AutofillMetrics::LogScanCreditCardPromptSelected(
+    ScanCreditCardPromptEntryPoint entry_point,
+    bool is_new_user) {
+  base::UmaHistogramEnumeration(
+      base::StrCat({"Autofill.ScanCreditCardPrompt.",
+                    is_new_user ? "NewUser" : "ExistingUser",
+                    ".Selected.EntryPoint"}),
+      entry_point);
+}
+
+// static
 void AutofillMetrics::LogScanCreditCardCompleted(base::TimeDelta duration,
                                                  bool completed) {
   std::string suffix = completed ? "Completed" : "Cancelled";
   base::UmaHistogramLongTimes("Autofill.ScanCreditCard.Duration_" + suffix,
                               duration);
   UMA_HISTOGRAM_BOOLEAN("Autofill.ScanCreditCard.Completed", completed);
+}
+
+// static
+void AutofillMetrics::LogScanCreditCardScreenType(
+    ScanCreditCardScreenType screen_type) {
+  base::UmaHistogramEnumeration("Autofill.ScanCreditCard.Completed.ScreenType",
+                                screen_type);
+}
+
+// static
+void AutofillMetrics::LogScanCreditCardCompletedNewUser(bool is_new_user) {
+  base::UmaHistogramBoolean("Autofill.ScanCreditCard.Completed.NewUser",
+                            is_new_user);
 }
 
 // static
@@ -637,13 +672,6 @@ void AutofillMetrics::LogEditedAutofilledFieldAtSubmission(
     form_interactions_ukm_logger.LogEditedAutofilledFieldAtSubmission(
         source_id, form, field);
   }
-}
-
-// static
-void AutofillMetrics::LogServerQueryMetric(ServerQueryMetric metric) {
-  DCHECK_LT(metric, NUM_SERVER_QUERY_METRICS);
-  UMA_HISTOGRAM_ENUMERATION("Autofill.ServerQueryResponse", metric,
-                            NUM_SERVER_QUERY_METRICS);
 }
 
 // static

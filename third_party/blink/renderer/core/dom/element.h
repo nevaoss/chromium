@@ -232,6 +232,11 @@ enum class SelectionBehaviorOnFocus {
   kNone,
 };
 
+enum class BlurEventBehavior {
+  kFire,
+  kDropWhenRemoving,
+};
+
 enum class FocusableState {
   kNotFocusable,
   kFocusable,
@@ -1251,7 +1256,12 @@ class CORE_EXPORT Element : public ContainerNode {
   void Focus();
   void Focus(const FocusOptions*);
 
-  virtual void SetFocused(bool received, mojom::blink::FocusType);
+  void SetFocused(bool received, mojom::blink::FocusType focus_type) {
+    SetFocused(received, focus_type, BlurEventBehavior::kFire);
+  }
+  virtual void SetFocused(bool received,
+                          mojom::blink::FocusType,
+                          BlurEventBehavior);
   virtual void SetHasFocusWithinUpToAncestor(bool has_focus_within,
                                              Element* ancestor,
                                              bool need_snap_container_search);
@@ -2035,6 +2045,9 @@ class CORE_EXPORT Element : public ContainerNode {
   void HandleFocusEventsForInterestFor(FocusEvent* focus_event);
 
   void DefaultEventHandler(Event&) override;
+
+  virtual String FilterBeforeTextInserted(const String& text);
+  virtual void NotifyEditableContentChanged();
 
   // Set on elements with scroll-target-group property to
   // collect HTMLAnchorElement scroll markers.

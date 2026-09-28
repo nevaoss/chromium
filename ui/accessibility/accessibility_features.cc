@@ -237,11 +237,6 @@ bool IsDictationOfflineAvailable() {
       ash::features::kOnDeviceSpeechRecognition);
 }
 
-BASE_FEATURE(kAccessibilityAccelerator, base::FEATURE_ENABLED_BY_DEFAULT);
-bool IsAccessibilityAcceleratorEnabled() {
-  return base::FeatureList::IsEnabled(::features::kAccessibilityAccelerator);
-}
-
 BASE_FEATURE(kAccessibilityReducedAnimations, base::FEATURE_ENABLED_BY_DEFAULT);
 bool IsAccessibilityReducedAnimationsEnabled() {
   return base::FeatureList::IsEnabled(
@@ -288,13 +283,6 @@ bool IsAccessibilityManifestV3EnabledForChromeVox() {
       ::features::kAccessibilityManifestV3ChromeVox);
 }
 
-BASE_FEATURE(kAccessibilityManifestV3EspeakNGTts,
-             base::FEATURE_ENABLED_BY_DEFAULT);
-bool IsAccessibilityManifestV3EnabledForEspeakNGTts() {
-  return base::FeatureList::IsEnabled(
-      ::features::kAccessibilityManifestV3EspeakNGTts);
-}
-
 BASE_FEATURE(kAccessibilityManifestV3GoogleTts,
              base::FEATURE_ENABLED_BY_DEFAULT);
 bool IsAccessibilityManifestV3EnabledForGoogleTts() {
@@ -338,12 +326,11 @@ bool IsAccessibilityAndroidMathEnabled() {
   return base::FeatureList::IsEnabled(::features::kAccessibilityAndroidMath);
 }
 
-BASE_FEATURE(kReadAloudNative, base::FEATURE_DISABLED_BY_DEFAULT);
-bool IsReadAloudNativeEnabled() {
-  return base::FeatureList::IsEnabled(::features::kReadAloudNative);
-}
-
 #endif  // BUILDFLAG(IS_ANDROID)
+
+bool IsReadAloudNativeEnabled() {
+  return base::FeatureList::IsEnabled(ax::mojom::features::kReadAloudNative);
+}
 
 #if !BUILDFLAG(IS_ANDROID)
 BASE_FEATURE(kAXTreeFixing, base::FEATURE_DISABLED_BY_DEFAULT);

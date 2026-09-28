@@ -16,7 +16,6 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyFloat;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
@@ -63,6 +62,7 @@ import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
+import org.mockito.quality.Strictness;
 import org.robolectric.Robolectric;
 import org.robolectric.android.controller.ActivityController;
 import org.robolectric.annotation.Config;
@@ -132,7 +132,9 @@ public class UrlBarUnitTest {
             "www.a.com/"
                     + TextUtils.join("", Collections.nCopies(MAX_DISPLAYABLE_LENGTH + 100, "a"));
 
-    @Rule public final MockitoRule mMockitoRule = MockitoJUnit.rule();
+    @Rule
+    public final MockitoRule mMockitoRule = MockitoJUnit.rule().strictness(Strictness.STRICT_STUBS);
+
     @Rule public final TestName mTestName = new TestName();
 
     @Mock private UrlBarDelegate mUrlBarDelegate;
@@ -172,7 +174,7 @@ public class UrlBarUnitTest {
 
         mUrlBar =
                 LayoutInflater.from(mActivity)
-                        .inflate(R.layout.url_bar, layout, true)
+                        .inflate(R.layout.url_bar, layout, /* attachToRoot= */ true)
                         .findViewById(R.id.url_bar);
 
         mUrlBar.setDelegate(mUrlBarDelegate);
@@ -185,10 +187,12 @@ public class UrlBarUnitTest {
         mLastTextDirection = -1;
         mLastTextAlignment = -1;
 
-        doAnswer(i -> mLastTextDirection = i.getArgument(0))
+        lenient()
+                .doAnswer(i -> mLastTextDirection = i.getArgument(0))
                 .when(mUrlBar)
                 .setTextDirection(anyInt());
-        doAnswer(i -> mLastTextAlignment = i.getArgument(0))
+        lenient()
+                .doAnswer(i -> mLastTextAlignment = i.getArgument(0))
                 .when(mUrlBar)
                 .setTextAlignment(anyInt());
 
@@ -1019,7 +1023,6 @@ public class UrlBarUnitTest {
     @EnableFeatures(ChromeFeatureList.ANDROID_NO_VISIBLE_HINT_FOR_DIFFERENT_TLD)
     public void scrollToTLD_differentTLD_noVisibleHintCalculation() {
         doReturn(mLayout).when(mUrlBar).getLayout();
-        doReturn(mPaint).when(mLayout).getPaint();
 
         measureAndLayoutUrlBar();
         // Url needs to be long enough to fill the entire url bar.
@@ -1412,7 +1415,10 @@ public class UrlBarUnitTest {
         mUrlBar.setAllowMultilineInput(true);
         // Mark current input as wrapping eligible.
         mUrlBar.setInputIsMultilineEligible(true);
-        mUrlBar.onFocusChanged(true, View.LAYOUT_DIRECTION_LTR, new Rect());
+        mUrlBar.onFocusChanged(
+                /* focused= */ true,
+                /* direction= */ View.LAYOUT_DIRECTION_LTR,
+                /* previouslyFocusedRect= */ new Rect());
         assertFalse(mUrlBar.isHorizontallyScrollable());
 
         // Mark current input as wrapping ineligible.
@@ -1420,12 +1426,18 @@ public class UrlBarUnitTest {
         assertTrue(mUrlBar.isHorizontallyScrollable());
 
         // Defocused omnibox - never multiline
-        mUrlBar.onFocusChanged(false, View.LAYOUT_DIRECTION_LTR, new Rect());
+        mUrlBar.onFocusChanged(
+                /* focused= */ false,
+                /* direction= */ View.LAYOUT_DIRECTION_LTR,
+                /* previouslyFocusedRect= */ new Rect());
         mUrlBar.setInputIsMultilineEligible(true);
         assertTrue(mUrlBar.isHorizontallyScrollable());
 
         // Disallow multiline input - never multiline
-        mUrlBar.onFocusChanged(true, View.LAYOUT_DIRECTION_LTR, new Rect());
+        mUrlBar.onFocusChanged(
+                /* focused= */ true,
+                /* direction= */ View.LAYOUT_DIRECTION_LTR,
+                /* previouslyFocusedRect= */ new Rect());
         mUrlBar.setAllowMultilineInput(false);
         assertTrue(mUrlBar.isHorizontallyScrollable());
 
@@ -1903,11 +1915,27 @@ public class UrlBarUnitTest {
 
         // 1. Verify that setting a selection before the autocomplete clears it.
         verifySelectionState(
-                "test", "ing is fun", "foo.com", 1, 1, false, "test", "test", "foo.com");
+                "test",
+                "ing is fun",
+                "foo.com",
+                /* selectionStart= */ 1,
+                /* selectionEnd= */ 1,
+                /* expectedHasAutocomplete= */ false,
+                "test",
+                "test",
+                "foo.com");
 
         // 2. Verify that setting a selection range before the autocomplete clears it.
         verifySelectionState(
-                "test", "ing is fun", "foo.com", 0, 4, false, "test", "test", "foo.com");
+                "test",
+                "ing is fun",
+                "foo.com",
+                /* selectionStart= */ 0,
+                /* selectionEnd= */ 4,
+                /* expectedHasAutocomplete= */ false,
+                "test",
+                "test",
+                "foo.com");
 
         // 3. Verify that setting a selection range that covers a portion of the non-autocomplete
         // and autocomplete text does not delete the autocomplete text.
@@ -1915,9 +1943,9 @@ public class UrlBarUnitTest {
                 "test",
                 "ing_is_fun",
                 "foo.com",
-                2,
-                5,
-                false,
+                /* selectionStart= */ 2,
+                /* selectionEnd= */ 5,
+                /* expectedHasAutocomplete= */ false,
                 "testing_is_fun",
                 "testing_is_fun",
                 "foo.com");
@@ -1928,9 +1956,9 @@ public class UrlBarUnitTest {
                 "test",
                 "ing_is_fun",
                 "foo.com",
-                0,
-                14,
-                false,
+                /* selectionStart= */ 0,
+                /* selectionEnd= */ 14,
+                /* expectedHasAutocomplete= */ false,
                 "testing_is_fun",
                 "testing_is_fun",
                 "foo.com");
@@ -1941,9 +1969,9 @@ public class UrlBarUnitTest {
                 "test",
                 "ing_is_fun",
                 "foo.com",
-                14,
-                14,
-                false,
+                /* selectionStart= */ 14,
+                /* selectionEnd= */ 14,
+                /* expectedHasAutocomplete= */ false,
                 "testing_is_fun",
                 "testing_is_fun",
                 "foo.com");
@@ -2117,22 +2145,61 @@ public class UrlBarUnitTest {
 
         Editable textAfter = mUrlBar.getText();
         assertEquals(
-                0,
-                textAfter
-                        .getSpans(0, textAfter.length(), UrlEmphasisColorSpan.class)
-                        .length);
+                0, textAfter.getSpans(0, textAfter.length(), UrlEmphasisColorSpan.class).length);
     }
 
     @Test
-    public void testFocusSearch_touchMode_returnsSelfInTouchMode() {
-        View target = new View(mActivity);
-        doReturn(target).when(mUrlBarDelegate).getViewForUrlBackFocus();
+    public void testBringPointIntoView_unfocused_suppressedByDefault() {
+        mUrlBar.onFocusChanged(false, 0, null);
+        mUrlBar.setText("https://example.com");
 
-        doReturn(true).when(mUrlBar).isInTouchMode();
-        assertSame(mUrlBar, mUrlBar.focusSearch(View.FOCUS_FORWARD));
-        assertSame(mUrlBar, mUrlBar.focusSearch(View.FOCUS_BACKWARD));
+        assertFalse(mUrlBar.bringPointIntoView(5));
+    }
 
-        doReturn(false).when(mUrlBar).isInTouchMode();
-        assertSame(target, mUrlBar.focusSearch(View.FOCUS_BACKWARD));
+    @Test
+    public void testBringPointIntoView_unfocused_pointerDragWithoutSelection_suppressed() {
+        OmniboxCapabilities.setHasDesktopExperienceForTesting(true);
+        mUrlBar.onFocusChanged(false, 0, null);
+        mUrlBar.setText("https://example.com");
+
+        // Touch down activates pointer drag.
+        mUrlBar.onTouchEvent(MotionEvent.obtain(0, 0, MotionEvent.ACTION_DOWN, 0, 0, 0));
+        mUrlBar.setSelection(5, 5);
+
+        assertFalse(mUrlBar.bringPointIntoView(5));
+    }
+
+    @Test
+    public void testBringPointIntoView_unfocused_pointerDragWithSelection_allowed() {
+        OmniboxCapabilities.setHasDesktopExperienceForTesting(true);
+        mUrlBar.onFocusChanged(false, 0, null);
+        mUrlBar.setText("https://example.com");
+
+        // Touch down activates pointer drag, and non-empty selection allows drag-scrolling.
+        mUrlBar.onTouchEvent(MotionEvent.obtain(0, 0, MotionEvent.ACTION_DOWN, 0, 0, 0));
+        mUrlBar.setSelection(0, 5);
+
+        mUrlBar.bringPointIntoView(5);
+        verify(mUrlBar).bringPointIntoView(5);
+    }
+
+    @Test
+    public void testBringPointIntoView_focused_selectAll_suppressed() {
+        String text = "https://example.com";
+        mUrlBar.onFocusChanged(true, 0, null);
+        mUrlBar.setText(text);
+        mUrlBar.setSelection(0, text.length());
+
+        assertFalse(mUrlBar.bringPointIntoView(5));
+    }
+
+    @Test
+    public void testBringPointIntoView_focused_partialSelection_allowed() {
+        mUrlBar.onFocusChanged(true, 0, null);
+        mUrlBar.setText("https://example.com");
+        mUrlBar.setSelection(0, 5);
+
+        mUrlBar.bringPointIntoView(5);
+        verify(mUrlBar).bringPointIntoView(5);
     }
 }

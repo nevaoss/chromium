@@ -4213,43 +4213,6 @@ auto GraphBuilderTflite::InsertTransposeOperation(
   return output_tensor_index;
 }
 
-auto GraphBuilderTflite::SerializeSubGraphPowMul(
-    base::span<const int32_t> input_dimensions,
-    ::tflite::TensorType input_tensor_type,
-    TensorIndex input_tensor_index,
-    int pow_exponent,
-    float mul_alpha) -> base::expected<TensorIndex, std::string> {
-  // TFLite has a special optimization for broadcasting the POW operator with
-  // an integer exponent to any dimension, but the MUL operator only broadcasts
-  // to 6D.
-  CHECK_LE(input_dimensions.size(), 6u);
-
-  ASSIGN_OR_RETURN(const TensorIndex output_tensor_index_of_pow,
-                   SerializeTemporaryTensorWithByteSizeCheck(
-                       input_dimensions, input_tensor_type));
-  ASSIGN_OR_RETURN(
-      const TensorIndex pow_exponent_tensor_index,
-      SerializeTensorWithBuffer<float>(
-          /*buffer=*/std::array<float, 1>{static_cast<float>(pow_exponent)},
-          /*dimensions=*/{}));
-  operators_.emplace_back(SerializeBinaryOperation(
-      ::tflite::BuiltinOperator_POW, input_tensor_index,
-      pow_exponent_tensor_index, output_tensor_index_of_pow));
-
-  ASSIGN_OR_RETURN(const TensorIndex output_tensor_index_of_mul,
-                   SerializeTemporaryTensorWithByteSizeCheck(
-                       input_dimensions, input_tensor_type));
-  ASSIGN_OR_RETURN(const TensorIndex mul_alpha_tensor_index,
-                   SerializeTensorWithBuffer<float>(
-                       /*buffer=*/std::array<float, 1>{mul_alpha},
-                       /*dimensions=*/{}));
-  operators_.emplace_back(SerializeBinaryOperation(
-      ::tflite::BuiltinOperator_MUL, output_tensor_index_of_pow,
-      mul_alpha_tensor_index, output_tensor_index_of_mul));
-
-  return output_tensor_index_of_mul;
-}
-
 auto GraphBuilderTflite::SerializeArgMinMax(const mojom::ArgMinMax& arg_min_max)
     -> base::expected<OperatorOffset, std::string> {
   CHECK(context_properties_.data_type_limits.arg_min_max_input.Supports(
@@ -5597,9 +5560,10 @@ auto GraphBuilderTflite::SerializeErf(const TensorInfo& input_tensor_info,
                                       const TensorInfo& output_tensor_info)
     -> base::expected<OperatorOffset, std::string> {
   // Emulate the erf operation with the expression `erf(x) = sign(x) * (1 - (a1
-  // * t + a2 * pow(t, 2) + ... + a5 * pow(t, 5)) * exp(-pow(x, 2)))`, the `t`
-  // is the subexpression `1 / (1 + p * |x|)` as documented here:
-  // https://en.wikipedia.org/wiki/Error_function
+  // * t + a2 * t^2 + ... + a5 * t^5) * exp(-pow(x, 2)))`, the `t` is the
+  // subexpression `1 / (1 + p * |x|)` as documented here:
+  // https://en.wikipedia.org/wiki/Error_function. The polynomial is evaluated
+  // with Horner's method so no POW operator is emitted for it.
   const std::array<float, 5> constants = {/*a1*/ 0.254829592,
                                           /*a2*/ -0.284496736,
                                           /*a3*/ 1.421413741,
@@ -5638,28 +5602,50 @@ auto GraphBuilderTflite::SerializeErf(const TensorInfo& input_tensor_info,
       ::tflite::BuiltinOperator_DIV, constant_one_tensor_index,
       output_tensor_index_of_line, t_expression_tensor_index));
 
-  // Compute subexpression `(a1 * t + a2 * pow(t, 2) + ... + a5 * pow(t, 5))`.
-  std::optional<TensorIndex> sum_pow_mul_tensor_index;
-  for (size_t i = 0; i < constants.size(); ++i) {
-    ASSIGN_OR_RETURN(const TensorIndex output_tensor_index_of_pow_mul,
-                     SerializeSubGraphPowMul(input_tensor_info.dimensions,
-                                             input_tensor_info.data_type,
-                                             t_expression_tensor_index,
-                                             /*pow_exponent=*/i + 1,
-                                             /*mul_alpha=*/constants[i]));
-    if (sum_pow_mul_tensor_index) {
-      ASSIGN_OR_RETURN(
-          const TensorIndex output_tensor_index_of_add,
-          SerializeTemporaryTensorWithByteSizeCheck(
-              input_tensor_info.dimensions, input_tensor_info.data_type));
-      operators_.emplace_back(SerializeBinaryOperation(
-          ::tflite::BuiltinOperator_ADD, output_tensor_index_of_pow_mul,
-          *sum_pow_mul_tensor_index, output_tensor_index_of_add));
-      sum_pow_mul_tensor_index = output_tensor_index_of_add;
-    } else {
-      sum_pow_mul_tensor_index = output_tensor_index_of_pow_mul;
-    }
+  // Compute subexpression `(a1 * t + a2 * t^2 + ... + a5 * t^5)` with Horner's
+  // method: ((((a5 * t + a4) * t + a3) * t + a2) * t + a1) * t. This uses only
+  // MUL and ADD (9 ops) instead of POW/MUL/ADD (14 ops), and keeps the model
+  // free of POW so it stays portable to GPU delegates whose pow(x, y) is
+  // undefined for x < 0 (see also the SQUARE folding for pow(x, 2) in
+  // SerializeElementWiseBinary).
+  // acc = a5. A scalar constant needs no operator; it broadcasts against
+  // `t` in the first loop iteration below.
+  ASSIGN_OR_RETURN(const TensorIndex initial_acc_tensor_index,
+                   SerializeTensorWithBuffer<float>(
+                       /*buffer=*/std::array<float, 1>{constants.back()},
+                       /*dimensions=*/{}));
+  // acc = acc * t + a_i for i = 4, 3, 2, 1. Every linear op writes a fresh
+  // tensor.
+  TensorIndex acc = initial_acc_tensor_index;
+  for (size_t i = constants.size() - 1; i-- > 0;) {
+    ASSIGN_OR_RETURN(
+        const TensorIndex output_tensor_index_of_mul,
+        SerializeTemporaryTensorWithByteSizeCheck(input_tensor_info.dimensions,
+                                                  input_tensor_info.data_type));
+    operators_.emplace_back(SerializeBinaryOperation(
+        ::tflite::BuiltinOperator_MUL, acc, t_expression_tensor_index,
+        output_tensor_index_of_mul));
+    ASSIGN_OR_RETURN(const TensorIndex constant_tensor_index,
+                     SerializeTensorWithBuffer<float>(
+                         /*buffer=*/std::array<float, 1>{constants[i]},
+                         /*dimensions=*/{}));
+    ASSIGN_OR_RETURN(
+        const TensorIndex next_acc,
+        SerializeTemporaryTensorWithByteSizeCheck(input_tensor_info.dimensions,
+                                                  input_tensor_info.data_type));
+    operators_.emplace_back(SerializeBinaryOperation(
+        ::tflite::BuiltinOperator_ADD, output_tensor_index_of_mul,
+        constant_tensor_index, next_acc));
+    acc = next_acc;
   }
+  // Final multiplication by `t`, completing Horner's method.
+  ASSIGN_OR_RETURN(
+      const TensorIndex sum_pow_mul_tensor_index,
+      SerializeTemporaryTensorWithByteSizeCheck(input_tensor_info.dimensions,
+                                                input_tensor_info.data_type));
+  operators_.emplace_back(SerializeBinaryOperation(
+      ::tflite::BuiltinOperator_MUL, acc, t_expression_tensor_index,
+      sum_pow_mul_tensor_index));
 
   // Compute the subexpression `exp(-square(x))`.
   ASSIGN_OR_RETURN(
@@ -5692,7 +5678,7 @@ auto GraphBuilderTflite::SerializeErf(const TensorInfo& input_tensor_info,
                                                 input_tensor_info.data_type));
   operators_.emplace_back(SerializeBinaryOperation(
       ::tflite::BuiltinOperator_MUL, output_tensor_index_of_exp,
-      *sum_pow_mul_tensor_index, output_tensor_index_of_mul));
+      sum_pow_mul_tensor_index, output_tensor_index_of_mul));
   ASSIGN_OR_RETURN(
       const TensorIndex output_tensor_index_of_sub,
       SerializeTemporaryTensorWithByteSizeCheck(input_tensor_info.dimensions,
@@ -5800,16 +5786,15 @@ auto GraphBuilderTflite::SerializeGather(const mojom::Gather& gather)
                    SerializeInputTensorInfo(gather.input_operand_id,
                                             /*quantize_params=*/0,
                                             supports_float16, fuse_dequantize));
-  TensorIndex output_tensor_index;
+  TensorInfo output_tensor_info;
   if (fuse_dequantize) {
-    output_tensor_index = quantized_output->index;
+    output_tensor_info = *quantized_output;
   } else {
     ASSIGN_OR_RETURN(
-        const TensorInfo output_tensor_info,
+        output_tensor_info,
         SerializeOutputTensorInfo(gather.output_operand_id,
                                   /*quantize_params=*/0, supports_float16,
                                   input_tensor_info.data_type));
-    output_tensor_index = output_tensor_info.index;
   }
 
   ASSIGN_OR_RETURN(const TensorInfo& indices_tensor_info,
@@ -5827,16 +5812,62 @@ auto GraphBuilderTflite::SerializeGather(const mojom::Gather& gather)
                          indices_tensor_info, input_tensor_info, gather.axis));
   }
 
+  // The ML Drift accelerator only supports 1-D INT32 indices. Reshape the
+  // indices to 1-D here and reshape the gathered result back; the
+  // empty dimension list of a scalar has product 1, so it becomes [1]
+  // and needs no special case.
+  const bool requires_1d_int32_indices =
+      context_device_ == mojom::Device::kGpu &&
+      indices_tensor_info.data_type == ::tflite::TensorType_INT32;
+  const std::vector<int32_t>& indices_dims = indices_tensor_info.dimensions;
+  const bool flatten_indices =
+      requires_1d_int32_indices && indices_dims.size() != 1 && !fuse_dequantize;
+  TensorIndex gather_output_index = output_tensor_info.index;
+  if (flatten_indices) {
+    base::CheckedNumeric<int32_t> checked_count = 1;
+    for (int32_t dim : indices_dims) {
+      checked_count *= dim;
+    }
+    int32_t indices_count;
+    if (!checked_count.AssignIfValid(&indices_count)) {
+      return base::unexpected("The gather indices are too large.");
+    }
+    const std::array<int32_t, 1> flat_dims = {indices_count};
+    CHECK_EQ(indices_tensor_info.data_type, ::tflite::TensorType_INT32);
+    ASSIGN_OR_RETURN(const TensorIndex flat_indices_index,
+                     SerializeTemporaryTensorWithByteSizeCheck(
+                         flat_dims, indices_tensor_info.data_type));
+    operators_.emplace_back(SerializeReshapeOperation(
+        indices_tensor_index, flat_indices_index, flat_dims));
+    indices_tensor_index = flat_indices_index;
+
+    // The gathered result before the reshape: the input dimensions with `axis`
+    // replaced by the number of indices.
+    std::vector<int32_t> gathered_dims = input_tensor_info.dimensions;
+    gathered_dims[gather.axis] = indices_count;
+    ASSIGN_OR_RETURN(gather_output_index,
+                     SerializeTemporaryTensorWithByteSizeCheck(
+                         gathered_dims, input_tensor_info.data_type));
+  }
+
   const OperatorCodeIndex operator_code_index =
       GetOperatorCodeIndex(::tflite::BuiltinOperator_GATHER);
   const std::array<TensorIndex, 2> op_inputs = {input_tensor_info.index,
                                                 indices_tensor_index};
-  const std::array<TensorIndex, 1> op_outputs = {output_tensor_index};
-  return ::tflite::CreateOperator(
+  const std::array<TensorIndex, 1> op_outputs = {gather_output_index};
+  OperatorOffset gather_offset = ::tflite::CreateOperator(
       builder_, operator_code_index,
       builder_.CreateVector<TensorIndex>(op_inputs),
       builder_.CreateVector<TensorIndex>(op_outputs),
       ::tflite::BuiltinOptions_GatherOptions, gather_options.Union());
+  if (!flatten_indices) {
+    return gather_offset;
+  }
+  operators_.emplace_back(gather_offset);
+
+  return SerializeReshapeOperation(gather_output_index,
+                                   output_tensor_info.index,
+                                   output_tensor_info.dimensions);
 }
 
 template <typename DataType>

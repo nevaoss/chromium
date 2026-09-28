@@ -2,16 +2,19 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
-# A list of targets for which strict_deps is not yet supported.
-STRICT_DEPS_EXCLUDE = [
-  # keep-sorted: start
-  "//*",
-  # keep-sorted: end
-]
+# To add strict deps support to a new directory:
+# 1) Add the entry to CHECK_INCLUDES_STRICT_ALLOWLIST.
+# 2) Run `gn check <out_dir> --fix`
+# 3) Any targets that are still failing should be marked as temporarily failing
+#    (`gn edit "set check_includes_strict:expr CHECK_INCLUDES_STRICT_KNOWN_FAILURE" $TARGET1 $TARGET2 ...`)
 
-# A list of directories for which strict_deps is explicitly supported.
-# Overrides STRICT_DEPS_EXCLUDE.
-STRICT_DEPS_INCLUDE = [
+# TODO(crbug.com/555455099): Remove this once we've finished the migration and
+# have no remaining usages.
+CHECK_INCLUDES_STRICT_UNTRIAGED = false
+
+# A list of directories for which strict_deps is enabled.
+CHECK_INCLUDES_STRICT_ALLOWLIST = [
   # keep-sorted: start
+  "//pdf/*",
   # keep-sorted: end
 ]

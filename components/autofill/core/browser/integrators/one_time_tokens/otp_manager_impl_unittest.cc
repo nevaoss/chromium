@@ -6,6 +6,7 @@
 
 #include "base/test/gmock_callback_support.h"
 #include "base/test/metrics/histogram_tester.h"
+#include "base/test/scoped_command_line.h"
 #include "base/test/scoped_feature_list.h"
 #include "base/test/task_environment.h"
 #include "base/test/test_future.h"
@@ -28,6 +29,7 @@
 #include "components/one_time_tokens/core/browser/one_time_token_service_impl.h"
 #include "components/one_time_tokens/core/browser/sms_otp_backend.h"
 #include "components/one_time_tokens/core/browser/util/expiring_subscription_manager.h"
+#include "components/one_time_tokens/core/common/one_time_token_switches.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
@@ -80,8 +82,7 @@ void SetUpTickleSubscription(
     one_time_tokens::ExpiringSubscriptionManager<
         void(one_time_tokens::OneTimeTokenSource)>& sub_manager) {
   ON_CALL(mock_ott_service,
-          SubscribeToTickles(one_time_tokens::OneTimeTokenSource::kGmail,
-                             base::Time::Max(), _))
+          SubscribeToTickles(one_time_tokens::OneTimeTokenSource::kGmail, _, _))
       .WillByDefault(
           [&sub_manager](
               one_time_tokens::OneTimeTokenSource, base::Time exp,
@@ -958,6 +959,153 @@ TEST_F(OtpManagerImplTest, GetOtpSuggestionsUnfocusableOtpFieldReturnsEmpty) {
 
   EXPECT_TRUE(future.IsReady());
   EXPECT_TRUE(future.Get().empty());
+}
+
+// Tests that `GetOtpSuggestions` immediately returns the mock OTP value
+// when `kMockOtpValue` is specified on the command line, short-circuiting
+// backend retrieval and PhishGuard checks.
+TEST_F(OtpManagerImplTest, GetOtpSuggestions_ReturnsMockOtpWhenSwitchIsSet) {
+  base::test::ScopedCommandLine scoped_command_line;
+  scoped_command_line.GetProcessCommandLine()->AppendSwitchASCII(
+      one_time_tokens::switches::kMockOtpValue, "987654");
+
+  // When mock OTP is set, no SMS backend retrieval should occur.
+  EXPECT_CALL(sms_otp_backend_, RetrieveSmsOtp).Times(0);
+
+  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+
+  const FormStructure* form = AddFormWithOtpField();
+  ASSERT_TRUE(form);
+
+  // When GetOtpSuggestions is called, the mock OTP switch takes precedence and
+  // is returned immediately without triggering PhishGuard checks.
+  EXPECT_CALL(otp_phish_guard_delegate(), StartOtpPhishGuardCheck).Times(0);
+
+  base::test::TestFuture<const std::vector<std::string>> future;
+  otp_manager.GetOtpSuggestions(*form, test_field_.origin(),
+                                future.GetCallback());
+
+  EXPECT_TRUE(future.IsReady());
+  EXPECT_THAT(future.Get(), testing::ElementsAre("987654"));
+}
+
+// Tests that `GetOtpSuggestions` returns empty suggestions when the form is not
+// an OTP form, even if `kMockOtpValue` is specified.
+TEST_F(OtpManagerImplTest, GetOtpSuggestions_MockOtpIgnoredForNonOtpForm) {
+  base::test::ScopedCommandLine scoped_command_line;
+  scoped_command_line.GetProcessCommandLine()->AppendSwitchASCII(
+      one_time_tokens::switches::kMockOtpValue, "987654");
+
+  OtpManagerImpl otp_manager(autofill_manager(), &one_time_token_service_);
+
+  EXPECT_CALL(sms_otp_backend_, RetrieveSmsOtp).Times(0);
+  EXPECT_CALL(otp_phish_guard_delegate(), StartOtpPhishGuardCheck).Times(0);
+
+  FormData form_data;
+  form_data.set_fields({autofill::test::CreateTestFormField(
+      "Username", "username", "john_doe", FormControlType::kInputText)});
+  auto form = std::make_unique<FormStructure>(form_data);
+
+  base::test::TestFuture<const std::vector<std::string>> future;
+  otp_manager.GetOtpSuggestions(*form, test_field_.origin(),
+                                future.GetCallback());
+
+  EXPECT_TRUE(future.IsReady());
+  EXPECT_TRUE(future.Get().empty());
+}
+
+// Tests that a tickle subscription is created upon OtpManagerImpl construction.
+TEST_F(OtpManagerImplTest, TickleSubscriptionCreatedInConstructor) {
+  NiceMock<one_time_tokens::MockOneTimeTokenService> mock_ott_service;
+  one_time_tokens::ExpiringSubscriptionManager<void(
+      one_time_tokens::OneTimeTokenSource)>
+      sub_manager;
+  SetUpTickleSubscription(mock_ott_service, sub_manager);
+
+  EXPECT_CALL(mock_ott_service,
+              SubscribeToTickles(
+                  one_time_tokens::OneTimeTokenSource::kGmail,
+                  base::Time::Now() +
+                      OtpManagerImpl::kGmailOtpTickleSubscriptionDuration,
+                  _));
+
+  OtpManagerImpl otp_manager(autofill_manager(), &mock_ott_service);
+  EXPECT_TRUE(test_api(otp_manager).gmail_otp_tickle_subscription().IsAlive());
+  EXPECT_EQ(
+      test_api(otp_manager).gmail_otp_tickle_subscription().GetExpirationTime(),
+      base::Time::Now() + OtpManagerImpl::kGmailOtpTickleSubscriptionDuration);
+}
+
+// Tests that an existing tickle subscription's expiration is renewed when an
+// OTP form is parsed (OnFieldTypesDetermined).
+TEST_F(OtpManagerImplTest, TickleSubscriptionRenewedOnOtpFormParsed) {
+  NiceMock<one_time_tokens::MockOneTimeTokenService> mock_ott_service;
+  one_time_tokens::ExpiringSubscriptionManager<void(
+      one_time_tokens::OneTimeTokenSource)>
+      sub_manager;
+  SetUpTickleSubscription(mock_ott_service, sub_manager);
+
+  OtpManagerImpl otp_manager(autofill_manager(), &mock_ott_service);
+  ASSERT_TRUE(test_api(otp_manager).gmail_otp_tickle_subscription().IsAlive());
+  base::Time initial_expiration =
+      test_api(otp_manager).gmail_otp_tickle_subscription().GetExpirationTime();
+
+  // Advance clock by 30 seconds.
+  task_environment_.FastForwardBy(base::Seconds(30));
+
+  // Parsing an OTP form should renew the subscription expiration to 5 minutes
+  // from now.
+  AddFormWithOtpField();
+  EXPECT_TRUE(test_api(otp_manager).gmail_otp_tickle_subscription().IsAlive());
+  EXPECT_GT(
+      test_api(otp_manager).gmail_otp_tickle_subscription().GetExpirationTime(),
+      initial_expiration);
+  EXPECT_EQ(
+      test_api(otp_manager).gmail_otp_tickle_subscription().GetExpirationTime(),
+      base::Time::Now() + OtpManagerImpl::kGmailOtpTickleSubscriptionDuration);
+}
+
+// Tests that a tickle subscription is recreated when an OTP form is parsed if
+// the previous subscription expired.
+TEST_F(OtpManagerImplTest,
+       TickleSubscriptionRecreatedOnOtpFormParsedIfExpired) {
+  NiceMock<one_time_tokens::MockOneTimeTokenService> mock_ott_service;
+  one_time_tokens::ExpiringSubscriptionManager<void(
+      one_time_tokens::OneTimeTokenSource)>
+      sub_manager;
+  SetUpTickleSubscription(mock_ott_service, sub_manager);
+
+  OtpManagerImpl otp_manager(autofill_manager(), &mock_ott_service);
+  ASSERT_TRUE(test_api(otp_manager).gmail_otp_tickle_subscription().IsAlive());
+
+  // Fast-forward past expiration so the subscription expires.
+  task_environment_.FastForwardBy(
+      OtpManagerImpl::kGmailOtpTickleSubscriptionDuration + base::Minutes(1));
+  EXPECT_FALSE(test_api(otp_manager).gmail_otp_tickle_subscription().IsAlive());
+
+  // Parsing an OTP form should recreate the subscription with a new 5-minute
+  // expiration.
+  AddFormWithOtpField();
+  EXPECT_TRUE(test_api(otp_manager).gmail_otp_tickle_subscription().IsAlive());
+  EXPECT_EQ(
+      test_api(otp_manager).gmail_otp_tickle_subscription().GetExpirationTime(),
+      base::Time::Now() + OtpManagerImpl::kGmailOtpTickleSubscriptionDuration);
+}
+
+// Tests that receiving a push notification tickle triggers OnTickleReceived
+// without crashing when subscribed.
+TEST_F(OtpManagerImplTest, TickleReceivedTriggersOnTickleReceived) {
+  NiceMock<one_time_tokens::MockOneTimeTokenService> mock_ott_service;
+  one_time_tokens::ExpiringSubscriptionManager<void(
+      one_time_tokens::OneTimeTokenSource)>
+      sub_manager;
+  SetUpTickleSubscription(mock_ott_service, sub_manager);
+
+  OtpManagerImpl otp_manager(autofill_manager(), &mock_ott_service);
+  ASSERT_TRUE(test_api(otp_manager).gmail_otp_tickle_subscription().IsAlive());
+
+  // Notify tickle to trigger OnTickleReceived.
+  sub_manager.Notify(one_time_tokens::OneTimeTokenSource::kGmail);
 }
 
 }  // namespace autofill

@@ -1280,9 +1280,10 @@ void CacheStorageCache::QueryCacheDidReadMetadata(
                                   ? metadata->response().side_data_padding()
                                   : 0;
 
-  CHECK(!ShouldPadResourceSize(&metadata->response()) ||
-            (padding + side_data_padding),
-        base::NotFatalUntil::M158);
+  // TODO(crbug.com/558086469): CHECK-exclusion: Convert to a CHECK once we are
+  // confident it won't be triggered.
+  DCHECK(!ShouldPadResourceSize(&metadata->response()) ||
+         (padding + side_data_padding));
 
   query_cache_context->matches->push_back(QueryCacheResult(
       base::Time::FromInternalValue(entry_time), padding, side_data_padding));
@@ -1771,8 +1772,9 @@ void CacheStorageCache::Put(blink::mojom::FetchAPIRequestPtr request,
                             blink::mojom::FetchAPIResponsePtr response,
                             int64_t trace_id,
                             ErrorCallback callback) {
-  CHECK(BACKEND_OPEN == backend_state_ || initializing_,
-        base::NotFatalUntil::M158);
+  // TODO(crbug.com/557615001): CHECK-exclusion: Convert to a CHECK once we are
+  // confident it won't be triggered.
+  DCHECK(BACKEND_OPEN == backend_state_ || initializing_);
 
   auto put_context = cache_entry_handler_->CreatePutContext(
       std::move(request), std::move(response), trace_id);
@@ -1942,9 +1944,10 @@ void CacheStorageCache::PutDidCreateEntry(
   for (const auto& header : put_context->response->cors_exposed_header_names)
     response_metadata->add_cors_exposed_header_names(header);
 
-  CHECK(!ShouldPadResourceSize(*put_context->response) ||
-            put_context->response->padding,
-        base::NotFatalUntil::M158);
+  // TODO(crbug.com/558074405): CHECK-exclusion: Convert to a CHECK once we are
+  // confident it won't be triggered.
+  DCHECK(!ShouldPadResourceSize(*put_context->response) ||
+         put_context->response->padding);
   response_metadata->set_padding(put_context->response->padding);
 
   int64_t side_data_padding = 0;
@@ -1985,9 +1988,10 @@ void CacheStorageCache::PutDidWriteHeaders(
     return;
   }
 
-  CHECK(!ShouldPadResourceSize(*put_context->response) ||
-            (padding + side_data_padding),
-        base::NotFatalUntil::M158);
+  // TODO(crbug.com/558086387): CHECK-exclusion: Convert to a CHECK once we are
+  // confident it won't be triggered.
+  DCHECK(!ShouldPadResourceSize(*put_context->response) ||
+         (padding + side_data_padding));
   cache_padding_ += padding + side_data_padding;
 
   PutWriteBlobToCache(std::move(put_context), INDEX_RESPONSE_BODY);
@@ -2382,9 +2386,10 @@ void CacheStorageCache::DeleteDidQueryCache(
   for (auto& result : *query_cache_results) {
     disk_cache::ScopedEntryPtr entry = std::move(result.entry);
     if (ShouldPadResourceSize(*result.response)) {
-      CHECK(!ShouldPadResourceSize(*result.response) ||
-                (result.padding + result.side_data_padding),
-            base::NotFatalUntil::M158);
+      // TODO(crbug.com/558119972): CHECK-exclusion: Convert to a CHECK once we
+      // are confident it won't be triggered.
+      DCHECK(!ShouldPadResourceSize(*result.response) ||
+             (result.padding + result.side_data_padding));
       cache_padding_ -= (result.padding + result.side_data_padding);
     }
     entry->Doom();

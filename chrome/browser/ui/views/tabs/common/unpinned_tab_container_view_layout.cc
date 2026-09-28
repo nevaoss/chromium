@@ -68,8 +68,7 @@ int UnpinnedTabContainerViewLayout::GetUnconstrainedPreferredWidth(
   }
   std::optional<tab_groups::TabGroupId> focused_group_id =
       GetFocusedGroupId(host);
-  const std::vector<views::View*> children =
-      host->collection_node_->GetDirectChildren();
+  const auto children = host->collection_node_->GetDirectChildren();
   if (children.empty()) {
     return 0;
   }
@@ -79,7 +78,16 @@ int UnpinnedTabContainerViewLayout::GetUnconstrainedPreferredWidth(
       base::BindRepeating(
           &UnpinnedTabContainerViewLayout::IsChildVisibleInContainer,
           base::Unretained(this), host, focused_group_id));
-  return collection.total_preferred_width - collection.overlap_total;
+  int unconstrained_width =
+      collection.total_preferred_width - collection.overlap_total;
+  // If a tab is being dragged, expand the unconstrained preferred width to
+  // accommodate the dragged tab's position. This allows TabStripView and parent
+  // layouts to allocate space for the drag.
+  if (host->IsHandlingDrag()) {
+    unconstrained_width =
+        std::max(unconstrained_width, host->GetDraggingViewsBounds().right());
+  }
+  return unconstrained_width;
 }
 
 views::ProposedLayout UnpinnedTabContainerViewLayout::CalculateHorizontalLayout(
@@ -93,7 +101,7 @@ views::ProposedLayout UnpinnedTabContainerViewLayout::CalculateHorizontalLayout(
   std::optional<tab_groups::TabGroupId> focused_group_id =
       GetFocusedGroupId(tab_container_view);
 
-  const std::vector<views::View*> children =
+  const auto children =
       tab_container_view->collection_node_->GetDirectChildren();
   if (children.empty()) {
     return layouts;
@@ -181,7 +189,19 @@ views::ProposedLayout UnpinnedTabContainerViewLayout::CalculateHorizontalLayout(
     visible_index++;
   }
 
-  layouts.host_size = gfx::Size(x, container_height);
+  // If a tab is being dragged, expand the host size to accommodate the dragged
+  // tab's position, clamped to the available bounded width.
+  int dragged_view_right = 0;
+  if (tab_container_view->IsHandlingDrag()) {
+    dragged_view_right = tab_container_view->GetDraggingViewsBounds().right();
+    if (size_bounds.width().is_bounded()) {
+      dragged_view_right =
+          std::min(dragged_view_right, size_bounds.width().value());
+    }
+  }
+
+  layouts.host_size =
+      gfx::Size(std::max(x, dragged_view_right), container_height);
   return layouts;
 }
 
@@ -196,7 +216,7 @@ views::ProposedLayout UnpinnedTabContainerViewLayout::CalculateVerticalLayout(
   std::optional<tab_groups::TabGroupId> focused_group_id =
       GetFocusedGroupId(tab_container_view);
 
-  const std::vector<views::View*> children =
+  const auto children =
       tab_container_view->collection_node_->GetDirectChildren();
 
   int width = 0;

@@ -893,7 +893,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="Android.BackgroundRestrictions.StandbyBucket.WithUserRestriction"
-    enum="StandbyBucket" expires_after="2023-04-30">
+    enum="StandbyBucket" expires_after="2027-09-03">
   <owner>shaktisahu@chromium.org</owner>
   <owner>chrome-segmentation-platform@google.com</owner>
   <summary>
@@ -905,7 +905,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.BackgroundTaskScheduler.TaskCanceled"
-    enum="BackgroundTaskId" expires_after="2025-06-08">
+    enum="BackgroundTaskId" expires_after="2027-09-03">
   <owner>nyquist@chromium.org</owner>
   <owner>shaktisahu@chromium.org</owner>
   <summary>
@@ -916,36 +916,8 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="Android.BackgroundTaskScheduler.TaskCreated.WithExpiration"
-    enum="BackgroundTaskId" expires_after="2024-10-05">
-  <owner>nator@chromium.org</owner>
-  <owner>knollr@chromium.org</owner>
-  <owner>shaktisahu@chromium.org</owner>
-  <summary>
-    Records that a specific task has been created with an expiration deadline.
-    Cached when the task is scheduled.
-
-    Cached to SharedPreferences to be recorded in the next ChromeActivity start
-    instead of recorded immediately on background.
-  </summary>
-</histogram>
-
-<histogram name="Android.BackgroundTaskScheduler.TaskCreated.WithoutExpiration"
-    enum="BackgroundTaskId" expires_after="2024-10-05">
-  <owner>nator@chromium.org</owner>
-  <owner>knollr@chromium.org</owner>
-  <owner>shaktisahu@chromium.org</owner>
-  <summary>
-    Records that a specific task has been created without the expiration feature
-    activated. Cached when the task is scheduled.
-
-    Cached to SharedPreferences to be recorded in the next ChromeActivity start
-    instead of recorded immediately on background.
-  </summary>
-</histogram>
-
 <histogram name="Android.BackgroundTaskScheduler.TaskFinished.{TaskType}"
-    units="ms" expires_after="2027-02-07">
+    units="ms" expires_after="2027-09-03">
   <owner>nyquist@chromium.org</owner>
   <owner>shaktisahu@chromium.org</owner>
   <summary>
@@ -959,7 +931,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.BackgroundTaskScheduler.TaskFinished2"
-    enum="BackgroundTaskId" expires_after="2025-07-06">
+    enum="BackgroundTaskId" expires_after="2027-09-03">
   <owner>hnakashima@chromium.org</owner>
   <owner>smaier@chromium.org</owner>
   <summary>
@@ -976,7 +948,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.BackgroundTaskScheduler.TaskLoadedNative"
-    enum="BackgroundTaskId" expires_after="2025-06-22">
+    enum="BackgroundTaskId" expires_after="2027-09-03">
   <owner>nyquist@chromium.org</owner>
   <owner>shaktisahu@chromium.org</owner>
   <summary>
@@ -989,7 +961,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.BackgroundTaskScheduler.TaskScheduled.Failure"
-    enum="BackgroundTaskId" expires_after="2025-06-08">
+    enum="BackgroundTaskId" expires_after="2027-09-03">
   <owner>nyquist@chromium.org</owner>
   <owner>shaktisahu@chromium.org</owner>
   <summary>
@@ -1001,7 +973,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.BackgroundTaskScheduler.TaskScheduled.Success"
-    enum="BackgroundTaskId" expires_after="2024-10-05">
+    enum="BackgroundTaskId" expires_after="2027-09-03">
   <owner>nyquist@chromium.org</owner>
   <owner>shaktisahu@chromium.org</owner>
   <summary>
@@ -1013,7 +985,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.BackgroundTaskScheduler.TaskStarted"
-    enum="BackgroundTaskId" expires_after="2025-06-22">
+    enum="BackgroundTaskId" expires_after="2027-09-03">
   <owner>nyquist@chromium.org</owner>
   <owner>shaktisahu@chromium.org</owner>
   <summary>
@@ -1025,7 +997,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.BackgroundTaskScheduler.TaskStopped"
-    enum="BackgroundTaskId" expires_after="2025-06-08">
+    enum="BackgroundTaskId" expires_after="2027-09-03">
   <owner>nyquist@chromium.org</owner>
   <owner>shaktisahu@chromium.org</owner>
   <summary>
@@ -1786,6 +1758,19 @@ chromium-metrics-reviews@google.com.
   <summary>
     Records the duration of CompositorView::UpdateLayerTreeHost on Android,
     which updates the layer tree when a frame is requested. Subsampled to 1/100.
+  </summary>
+</histogram>
+
+<histogram name="Android.ConfirmQuit.Result" enum="AndroidConfirmQuitResult"
+    expires_after="2027-09-01">
+  <owner>aishwaryarj@google.com</owner>
+  <owner>clank-app-team@google.com</owner>
+  <summary>
+    Records the outcome of a Ctrl+Q hold-to-quit confirmation shortcut attempt
+    on Android. Recorded when Chrome is quit via holding the shortcut for the
+    duration threshold, when Chrome is quit via double-tapping the shortcut, or
+    when the quit attempt is canceled before completion (e.g. by releasing the
+    shortcut key or backgrounding the activity).
   </summary>
 </histogram>
 
@@ -4207,6 +4192,34 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="Android.Omnibox.OMTPrefetch.TouchDownDelay" units="ms"
+    expires_after="2027-01-01">
+  <owner>thesalsa@google.com</owner>
+  <owner>chrome-mobile-search@google.com</owner>
+  <summary>
+    Measures the delay from physical touch down (AMotionEvent_getEventTime) to
+    the execution of the native OnMotionEvent callback in
+    suggestions_omt_input_anchor.cc on the background input thread.
+
+    Emitted on every ACTION_DOWN motion event intercepted by the OMT overlay's
+    AInputReceiver on the background input thread.
+  </summary>
+</histogram>
+
+<histogram name="Android.Omnibox.OMTPrefetch.TouchTransferSuccess"
+    enum="BooleanSuccess" expires_after="2027-01-01">
+  <owner>thesalsa@google.com</owner>
+  <owner>chrome-mobile-search@google.com</owner>
+  <summary>
+    Records whether transferring the active touch gesture focus from the OMT
+    overlay SurfaceControl to the main Chrome window via
+    WindowManager.transferTouchGesture() succeeded.
+
+    Emitted each time SuggestionsOmtInputAnchor.transferTouch() is invoked
+    following an intercepted touch-down event.
+  </summary>
+</histogram>
+
 <histogram name="Android.Omnibox.RefineActionUsage" enum="RefineActionUsage"
     expires_after="2027-10-01">
   <owner>ender@google.com</owner>
@@ -5231,7 +5244,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.PasswordEcho.SettingReadTime.{SettingType}"
-    units="microseconds" expires_after="2026-09-30">
+    units="microseconds" expires_after="2027-03-01">
   <owner>shahinmd@google.com</owner>
   <owner>ashleynewson@chromium.org</owner>
   <summary>
@@ -5253,7 +5266,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.PasswordEcho.SettingStateInitializationTime"
-    units="microseconds" expires_after="2026-09-30">
+    units="microseconds" expires_after="2027-03-01">
   <owner>shahinmd@google.com</owner>
   <owner>ashleynewson@chromium.org</owner>
   <summary>
@@ -8740,7 +8753,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.WebView.ProfileWasCreatedByAsyncStartup"
-    enum="Boolean" expires_after="2026-09-14">
+    enum="Boolean" expires_after="2027-04-14">
   <owner>elabadysayed@chromium.org</owner>
   <owner>src/android_webview/OWNERS</owner>
   <summary>
@@ -9113,39 +9126,6 @@ chromium-metrics-reviews@google.com.
     WebViewChromiumFactoryProvider.initialize().
 
     Only measured in Android WebView.
-  </summary>
-</histogram>
-
-<histogram name="Android.WebView.Startup.CheckNeedsPost.CalledOnUiThread"
-    enum="Boolean" expires_after="2027-05-01">
-  <owner>abhijithnair@chromium.org</owner>
-  <owner>src/android_webview/OWNERS</owner>
-  <summary>
-    Reports whether or not `checkNeedsPost`
-    (https://source.chromium.org/chromium/chromium/src/+/main:android_webview/glue/java/src/com/android/webview/chromium/SharedWebViewChromium.java;l=208;drc=6712edb4e0491c96b69c7346ac278e5c093b6584)
-    is called on the Chromium UI thread.
-
-    Conditions for recording this metric: Chromium is initialized and AwContents
-    is not null.
-
-    `checkNeedsPost` is called by various WebView APIs.
-
-    Only recorded on Android WebView.
-  </summary>
-</histogram>
-
-<histogram name="Android.WebView.Startup.CheckNeedsPost.IsChromiumInitialized"
-    enum="Boolean" expires_after="2027-05-01">
-  <owner>abhijithnair@chromium.org</owner>
-  <owner>src/android_webview/OWNERS</owner>
-  <summary>
-    Reports whether or not `checkNeedsPost`
-    (https://source.chromium.org/chromium/chromium/src/+/main:android_webview/glue/java/src/com/android/webview/chromium/SharedWebViewChromium.java;l=208;drc=6712edb4e0491c96b69c7346ac278e5c093b6584)
-    is called before Chromium is initialized or not.
-
-    `checkNeedsPost` is called by various WebView APIs.
-
-    Only recorded on Android WebView.
   </summary>
 </histogram>
 

@@ -57,6 +57,7 @@
 <translation id="1181037720776840403">Отстрани</translation>
 <translation id="1183189057400844278">За да се погрижите секогаш да може да ги користите лозинките во вашата сметка на Google, потврдете го вашиот идентитет</translation>
 <translation id="1187810343066461819">Избришете ги и обележувачите, историјата и друго од автомобилов</translation>
+<translation id="1191987227666124897">Барање за откажување</translation>
 <translation id="1193729455103054076">Да се користи силна лозинка?</translation>
 <translation id="11947597112837849">адреса на е-пошта</translation>
 <translation id="1197267115302279827">Премести обележувачи</translation>
@@ -105,6 +106,7 @@
 <translation id="138181280295369883">Најавете се за да ги добиете зачуваните податоци и друго на сите ваши уреди</translation>
 <translation id="1381838868249179644">За да ви помогнеме да се заштитите, ги отстранивме дозволите за некои сајтови</translation>
 <translation id="1383876407941801731">Барај</translation>
+<translation id="1384568202352682721">Зачувајте како…</translation>
 <translation id="1384704387250346179">Преведете слика со Google Lens <ph name="BEGIN_NEW" />Ново<ph name="END_NEW" /></translation>
 <translation id="1390418506739274310">Можеби ќе ја гледате историјата од други апликации што отвораат линкови во Chrome. Вашата сметка на Google можеби има други форми на историја на прелистување на <ph name="BEGIN_LINK" />myactivity.google.com<ph name="END_LINK" />.</translation>
 <translation id="139752016751285248">Долниот лист со увиди во цените е отворен на цел екран</translation>
@@ -133,6 +135,7 @@
 <translation id="147982357559798527">Променето</translation>
 <translation id="1480287803138246127">Дел од вашата историја можеби нема да се појави тука. За да ја видите сета ваша историја на Chrome, отворете ја целата историја на Chrome.</translation>
 <translation id="1483493594462132177">Испрати</translation>
+<translation id="1485343711570311792">Отворете во <ph name="NATIVE_APP_NAME" /> • Од <ph name="DEVICE_NAME" /></translation>
 <translation id="1495677929897281669">Назад на картичката</translation>
 <translation id="1496514951988037011">корисничко име</translation>
 <translation id="1501480321619201731">Избриши ја групата</translation>
@@ -210,6 +213,7 @@
 <translation id="1832459821645506983">Да, може</translation>
 <translation id="1845958458910716240">За да ги заштитите вашите податоци, дозволете Chrome да ги отстрани дозволите од сајтовите што не сте ги отвориле неодамна</translation>
 <translation id="1851551847729706116">Се споделува <ph name="TAB_NAME" /> со картичкава</translation>
+<translation id="1855268219431673036">Страница <ph name="CURRENT_PAGE" /> од <ph name="TOTAL_PAGE_COUNT" /></translation>
 <translation id="1869691326892615940">Побезбедни лозинки, побрзо најавување</translation>
 <translation id="1871098866036088250">Отворај во прелистувачот Chrome</translation>
 <translation id="1877026089748256423">Chrome е застарен</translation>
@@ -327,6 +331,7 @@
 <translation id="232137538351753795">Повлечете од левиот раб за да се вратите назад</translation>
 <translation id="2323763861024343754">Достапен простор на сајтот</translation>
 <translation id="2327445548174191329">Од <ph name="DEVICE_NAME" /></translation>
+<translation id="232757965409810352">Зачувајте ја страницата како…</translation>
 <translation id="2328474416100889417">Сите веднаш ќе го изгубат пристапот до групата картички „<ph name="GROUP_NAME" />“ и сите линкови за покана ќе се исклучат</translation>
 <translation id="2329500425421091035">Ви го претставуваме „AI-режимот“ во Chrome</translation>
 <translation id="2330186936255788117">Повеќе обележувачи</translation>
@@ -1338,6 +1343,7 @@
 <translation id="634208815998129842">Управник со задачи</translation>
 <translation id="6343495912647200061">{SHIPPING_ADDRESS,plural, =1{<ph name="SHIPPING_ADDRESS_PREVIEW" />… и уште <ph name="NUMBER_OF_ADDITIONAL_ADDRESSES" />}one{<ph name="SHIPPING_ADDRESS_PREVIEW" />… и уште <ph name="NUMBER_OF_ADDITIONAL_ADDRESSES" />}other{<ph name="SHIPPING_ADDRESS_PREVIEW" />… и уште <ph name="NUMBER_OF_ADDITIONAL_ADDRESSES" />}}</translation>
 <translation id="6345878117466430440">Означи како прочитано</translation>
+<translation id="63490081267265251">Сајтовите што ги посетувате, вклучително и Google, се одговорни за одредување на начинот на кој ќе одговорат на барањево. Зависно од законите во вашиот регион, сајтовите може да одговорат со ограничување на продажбата и споделување на вашите податоци или нивно користење за персонализирани реклами. <ph name="BEGIN_LINK" />Дознајте повеќе<ph name="END_LINK" /></translation>
 <translation id="6350745006329795504">Управувајте со уредите</translation>
 <translation id="6356893102071098867">Погрижете се да ја изберете точната сметка</translation>
 <translation id="6364438453358674297">Да се отстрани предлогот од историјата?</translation>
@@ -1662,6 +1668,7 @@
 <translation id="7493994139787901920"><ph name="VERSION" /> (Ажурирано <ph name="TIME_SINCE_UPDATE" />)</translation>
 <translation id="7498271377022651285">Почекајте…</translation>
 <translation id="7499065150275272675"><ph name="TAB_TITLE" />, прикачена картичка со исклучен звук</translation>
+<translation id="7500851014030446046">Се презема PDF-датотека</translation>
 <translation id="7501135638693251872">Сите обележувачи</translation>
 <translation id="7507207699631365376">Погледнете ја <ph name="BEGIN_LINK" />Политиката за приватност<ph name="END_LINK" /> на операторов</translation>
 <translation id="750886945254958667">Задржете ја групава за да додавате картички подоцна или напуштете ја ако веќе не сакате да пристапувате до неа</translation>
@@ -1729,6 +1736,7 @@
 <translation id="7774809984919390718">{PAYMENT_METHOD,plural, =1{<ph name="PAYMENT_METHOD_PREVIEW" />… и уште <ph name="NUMBER_OF_ADDITIONAL_PAYMENT_METHODS" />}one{<ph name="PAYMENT_METHOD_PREVIEW" />… и уште <ph name="NUMBER_OF_ADDITIONAL_PAYMENT_METHODS" />}other{<ph name="PAYMENT_METHOD_PREVIEW" />… и уште <ph name="NUMBER_OF_ADDITIONAL_PAYMENT_METHODS" />}}</translation>
 <translation id="777637629667389858">Кога сте најавени, ве штити на услугите на Google.</translation>
 <translation id="7778840695157240389">Проверете подоцна дали има нови статии</translation>
+<translation id="7780992949171378848">Испрати барање за откажување до сајтовите за користењето на вашите податоци</translation>
 <translation id="7791543448312431591">Додај</translation>
 <translation id="7792388396321542707">Запри споделување</translation>
 <translation id="780287761701992588">Добијте ги обележувачите, лозинките и друго на сите ваши уреди</translation>
@@ -1874,6 +1882,7 @@
 <translation id="8313599942510782709">Вашата задача сѐ уште е во тек</translation>
 <translation id="8317318757008452355">Отвори ги опциите за печатење</translation>
 <translation id="8320212361750431956">Последна активност</translation>
+<translation id="8322452989119079156">Отворете во <ph name="NATIVE_APP_NAME" /> – испратено од <ph name="DEVICE_NAME" /></translation>
 <translation id="832514020744584629"><ph name="PREF_TITLE" />  <ph name="BEGIN_NEW" />Ново<ph name="END_NEW" /></translation>
 <translation id="8333026248928723981">Обележувачи и списоци</translation>
 <translation id="8342727528718219152">Chrome ќе ве извести за сајтови што можеби испраќаат премногу известувања</translation>

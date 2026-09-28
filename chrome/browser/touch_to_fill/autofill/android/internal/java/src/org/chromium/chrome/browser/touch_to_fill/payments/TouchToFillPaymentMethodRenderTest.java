@@ -741,6 +741,7 @@ public class TouchToFillPaymentMethodRenderTest {
     @Test
     @MediumTest
     @Feature({"RenderTest"})
+    @DisableFeatures({ChromeFeatureList.AUTOFILL_ENABLE_PAY_NOW_PAY_LATER_TABS})
     public void testShowsBnplSuggestion() throws IOException {
         runOnUiThreadBlocking(
                 () -> {
@@ -759,6 +760,7 @@ public class TouchToFillPaymentMethodRenderTest {
     @Test
     @MediumTest
     @Feature({"RenderTest"})
+    @DisableFeatures({ChromeFeatureList.AUTOFILL_ENABLE_PAY_NOW_PAY_LATER_TABS})
     public void testShowsDeactivatedBnplSuggestion() throws IOException {
         runOnUiThreadBlocking(
                 () -> {
@@ -1029,6 +1031,27 @@ public class TouchToFillPaymentMethodRenderTest {
                         mActivityTestRule.getActivity().findViewById(R.id.bottom_sheet).getParent();
         mRenderTestRule.render(
                 bottomSheetParentView, "touch_to_fill_loyalty_card_sheet_one_loyalty_card");
+    }
+
+    @Test
+    @MediumTest
+    @Feature({"RenderTest"})
+    public void testShowsOneLoyaltyCardWithFirstTimeUse() throws IOException {
+        runOnUiThreadBlocking(
+                () -> {
+                    mCoordinator.showAffiliatedLoyaltyCards(
+                            List.of(CVS_LOYALTY_CARD),
+                            List.of(CVS_LOYALTY_CARD, DB_LOYALTY_CARD),
+                            /* firstTimeUsage= */ true);
+                });
+        BottomSheetTestSupport.waitForOpen(mBottomSheetController);
+
+        ViewGroup bottomSheetParentView =
+                (ViewGroup)
+                        mActivityTestRule.getActivity().findViewById(R.id.bottom_sheet).getParent();
+        mRenderTestRule.render(
+                bottomSheetParentView,
+                "touch_to_fill_loyalty_card_sheet_one_loyalty_card_first_time_use");
     }
 
     @Test

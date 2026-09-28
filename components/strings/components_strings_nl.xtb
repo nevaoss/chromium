@@ -1453,6 +1453,7 @@ Het kan langer dan normaal duren voordat je app wordt gestart.</translation>
 <translation id="3493881266323043047">Geldigheid</translation>
 <translation id="3495081129428749620">Zoeken op pagina <ph name="PAGE_TITLE" /></translation>
 <translation id="3495818359064790343">Salaris</translation>
+<translation id="3496531230994554300">Wallet-melding is op volledige hoogte geopend.</translation>
 <translation id="3497627066518778351">Check in een nieuw venster een lijst met sitegegevens op het apparaat</translation>
 <translation id="3498215018399854026">We kunnen je ouder momenteel niet bereiken. Probeer het opnieuw.</translation>
 <translation id="350069200438440499">Bestandsnaam:</translation>
@@ -1542,6 +1543,7 @@ Het kan langer dan normaal duren voordat je app wordt gestart.</translation>
 <translation id="3634530185120165534">Lade 5</translation>
 <translation id="3634567936866541746">Je hebt zojuist je wachtwoord opgegeven op een misleidende site. Chrome raadt je aan je opgeslagen wachtwoorden te checken om je accounts te beveiligen.</translation>
 <translation id="3638102297696182302">Ga verder met Help me met schrijven. Druk op Tab en dan op Enter om te openen.</translation>
+<translation id="3639626391482300575">Dit IBAN is opgeslagen in Google Wallet, zodat je het in Google-producten kunt gebruiken.</translation>
 <translation id="3642196846309122856">Probeer je bestanden opnieuw te downloaden</translation>
 <translation id="3642638418806704195">App:</translation>
 <translation id="3647286794400715637">Elke URL-tekenreeks moet 1 of 2 URL's bevatten.</translation>
@@ -1554,7 +1556,6 @@ Het kan langer dan normaal duren voordat je app wordt gestart.</translation>
 <translation id="3655670868607891010">Als je deze melding vaker ziet, probeer je deze <ph name="HELP_LINK" />.</translation>
 <translation id="3658742229777143148">Revisie</translation>
 <translation id="3659521826520353662">Welke door de beheerder gedefinieerde websites worden bezocht en wanneer: <ph name="ALLOWLISTED_WEBSITES" /></translation>
-<translation id="3662040827609932717">Dit IBAN is opgeslagen in Google Wallet, zodat je het in Google-services kunt gebruiken.</translation>
 <translation id="3664479564786885722">Zoek meer koopopties van andere winkels die dit product verkopen.</translation>
 <translation id="3664782872746246217">Zoekwoorden:</translation>
 <translation id="3670030362669914947">Nummer</translation>
@@ -2607,7 +2608,6 @@ Je kunt ook contact opnemen met de site-eigenaar en voorstellen dat die upgradet
 <translation id="5414306071315087019">Koop nu, betaal later is beschikbaar met Google Pay</translation>
 <translation id="5414446060143308245">Check bestanden voordat je ze overzet</translation>
 <translation id="5414511064953050917">Toch verplaatsen</translation>
-<translation id="5418700249417444482">URL's van pagina's die je bezoekt, worden voor analyse naar Google Cloud of derden gestuurd en zijn misschien zichtbaar voor je beheerder. Ze kunnen bijvoorbeeld worden gescand om onveilige websites op te sporen of websites te filteren op basis van regels die zijn ingesteld door de beheerder.</translation>
 <translation id="5419311651396341287">Je beheerder kan misschien het volgende bekijken:</translation>
 <translation id="5423269318075950257">Prijs volgen</translation>
 <translation id="5426179911063097041"><ph name="SITE" /> wil meldingen sturen</translation>
@@ -2628,7 +2628,6 @@ Je kunt ook contact opnemen met de site-eigenaar en voorstellen dat die upgradet
 <translation id="5447103258548475868">Paspoort opslaan in Google Wallet</translation>
 <translation id="5447235695608032700">Toestaan dat <ph name="SITE" /> informatie gebruikt die over jou is opgeslagen</translation>
 <translation id="5447973833955560753">Herstelwachtwoord</translation>
-<translation id="5451331376824595378">Als Chrome beveiligingsgebeurtenissen markeert, worden relevante gegevens over de gebeurtenissen naar je beheerder gestuurd. Dit kunnen URL's zijn van pagina's die je bezoekt in Chrome, URL's van pagina's waarvan je gegevens hebt gekopieerd, bestandsnamen of metadata, IP-adressen, browser- of tabbladcrashes en de gebruikersnaam die je gebruikt om in te loggen bij webgebaseerde apps, je apparaat en Chrome.</translation>
 <translation id="5452270690849572955">Deze pagina op <ph name="HOST_NAME" /> kan niet worden gevonden</translation>
 <translation id="5452923259299906094">Betalen met eWallet en Pix</translation>
 <translation id="5455374756549232013">Onjuist tijdstempel van beleid</translation>
@@ -2663,6 +2662,7 @@ Je kunt ook contact opnemen met de site-eigenaar en voorstellen dat die upgradet
 <translation id="5499229993630251170">Wil je hiermee doorgaan?</translation>
 <translation id="5506286895894263601">De lijst bevat geen geldige snelkoppelingen.</translation>
 <translation id="5507756662695126555">Onweerlegbaarheid</translation>
+<translation id="5508515366054931524">Prompt voor e-mailverificatie is op volledige hoogte geopend</translation>
 <translation id="5509762909502811065">B0</translation>
 <translation id="5509780412636533143">Beheerde bookmarks</translation>
 <translation id="5510766032865166053">Het bestand is mogelijk verplaatst of verwijderd.</translation>
@@ -3173,7 +3173,6 @@ Je kunt ook contact opnemen met de site-eigenaar en voorstellen dat die upgradet
 <translation id="6361757823711327522">B7</translation>
 <translation id="6363786367719063276">Logboeken bekijken</translation>
 <translation id="6364095313648930329"><ph name="BEGIN_LINK" />Controleer de proxy, firewall en configuratie voor beveiligde DNS<ph name="END_LINK" /></translation>
-<translation id="6365513578140103119">Je e-mails automatisch bevestigen</translation>
 <translation id="6366710531182496394">Twee nietjes links</translation>
 <translation id="6367196786591004737">Item verwijderen</translation>
 <translation id="6370022303958842211">Acties voor apparaattoegang, zoals inloggen (waaronder redenen voor mislukte logins), uitloggen, vergrendelen en ontgrendelen</translation>
@@ -3298,6 +3297,7 @@ Je kunt ook contact opnemen met de site-eigenaar en voorstellen dat die upgradet
 <translation id="6578434528542148658">Ongeldige extensie-ID.</translation>
 <translation id="658230438113661756">Aanvallers op de site die je probeerde te bezoeken, kunnen schadelijke software installeren waarmee items zoals je wachtwoorden, foto's, berichten of creditcardnummers kunnen worden gestolen of verwijderd. Chrome raadt je sterk aan terug te gaan naar een beveiligde website. <ph name="BEGIN_LEARN_MORE_LINK" />Meer informatie over deze waarschuwing<ph name="END_LEARN_MORE_LINK" /></translation>
 <translation id="6583309742916093092">Opgeslagen in Google Wallet</translation>
+<translation id="6585589684832019248">Deze kaart is opgeslagen in Google Wallet, zodat je deze in Google-producten kunt gebruiken</translation>
 <translation id="6587893660316489419">Envelop B5</translation>
 <translation id="6587923378399804057">Link die je hebt gekopieerd</translation>
 <translation id="6591833882275308647">Je <ph name="DEVICE_TYPE" /> wordt niet beheerd</translation>
@@ -3444,6 +3444,7 @@ Je kunt ook contact opnemen met de site-eigenaar en voorstellen dat die upgradet
 <translation id="6860888819347870819">Kan vragen om scherm-in-scherm te openen</translation>
 <translation id="6864189428899665393">267 x 389 mm</translation>
 <translation id="6865412394715372076">Deze pas kan momenteel niet worden geverifieerd</translation>
+<translation id="6871073333584947219">Wallet-melding gesloten.</translation>
 <translation id="6871813064737840684">Prijsgeschiedenis op internet voor deze optie</translation>
 <translation id="6873456682041376666">Bovenste lade</translation>
 <translation id="6874604403660855544">&amp;Opnieuw toevoegen</translation>
@@ -3899,7 +3900,6 @@ Aanvullende informatie:
 <translation id="7615932826417658001">Identiteitskaart toevoegen</translation>
 <translation id="7616390733770379387">Deze worden in willekeurige volgorde getoond.</translation>
 <translation id="7616645509853975347">Je beheerder heeft Chrome Enterprise Connectors voor je browser ingesteld. Deze connectors hebben toegang tot sommige van je gegevens.</translation>
-<translation id="7616747402308801775">Deze kaart is opgeslagen in Google Wallet, zodat je deze in Google-services kunt gebruiken.</translation>
 <translation id="7617825962482469577">Envelop C7/C6</translation>
 <translation id="7619838219691048931">Eindblad</translation>
 <translation id="7621546470643449009">Maak een beginnershandleiding voor sterrenkijken om me te helpen leren waar ik op moet letten in de nachtelijke hemel, inclusief 3 makkelijk herkenbare sterrenbeelden</translation>
@@ -3964,6 +3964,7 @@ Aanvullende informatie:
 <translation id="7705085181312584869">Help me met schrijven</translation>
 <translation id="7705992072972338699">Optische schijf (hoogglans)</translation>
 <translation id="7706689436519265630">Bestanden die je kopieert of verplaatst, worden naar Google Cloud of derden gestuurd voor analyse. Ze kunnen bijvoorbeeld worden gescand op gevoelige gegevens of malware en worden opgeslagen volgens het bedrijfsbeleid.</translation>
+<translation id="7709934467582922028">Prompt voor e-mailverificatie gesloten</translation>
 <translation id="7714351089363296478">Je hebt deze site net bezocht</translation>
 <translation id="7714404809393719981">Foto (zijdeglans)</translation>
 <translation id="7714464543167945231">Certificaat</translation>
@@ -4650,7 +4651,6 @@ Aanvullende informatie:
 <translation id="8963117664422609631">Naar de site-instellingen</translation>
 <translation id="8963213021028234748"><ph name="MARKUP_1" />Suggesties:<ph name="MARKUP_2" />Controleer of er een gegevensverbinding beschikbaar is<ph name="MARKUP_3" />Laad deze pagina later opnieuw<ph name="MARKUP_4" />Controleer het adres dat je hebt opgegeven<ph name="MARKUP_5" /></translation>
 <translation id="8963969435440878110">Je lokale bestanden worden over <ph name="HOURS" /> uur verwijderd</translation>
-<translation id="8964904785315870349">Geverifieerd e-mailadres</translation>
 <translation id="8968766641738584599">Pas opslaan</translation>
 <translation id="8970887620466824814">Er is iets misgegaan.</translation>
 <translation id="8971063699422889582">Het servercertificaat is verlopen.</translation>
@@ -4860,6 +4860,7 @@ Aanvullende informatie:
 <translation id="988159990683914416">Ontwikkelaarsbuild</translation>
 <translation id="989988560359834682">Adres bewerken</translation>
 <translation id="990164307229195234"><ph name="DEVICE_NAME" /> (<ph name="DISAMBIGUATION_LABEL" />)</translation>
+<translation id="990812705189376036">Merkle Tree-bewijs</translation>
 <translation id="992110854164447044">Een virtuele kaart verbergt je werkelijke kaart om je te beschermen tegen potentiële fraude. <ph name="IDS_AUTOFILL_VIRTUAL_CARD_ENROLLMENT_LEARN_MORE_LINK_LABEL" /></translation>
 <translation id="992115559265932548"><ph name="MICROSOFT_ACTIVE_DIRECTORY" /></translation>
 <translation id="992256792861109788">Roze</translation>

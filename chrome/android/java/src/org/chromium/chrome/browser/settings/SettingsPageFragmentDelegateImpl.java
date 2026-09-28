@@ -106,7 +106,7 @@ public class SettingsPageFragmentDelegateImpl
             BottomSheetController bottomSheetController,
             ModalDialogManager modalDialogManager,
             Tab tab) {
-        assert ChromeFeatureList.sSettingsInTab.isEnabled()
+        assert SettingsInTab.isEnabled()
                 : "SettingsInTab feature must be enabled to use this class.";
         mActivity = activity;
         mProfile = profile;
@@ -511,11 +511,11 @@ public class SettingsPageFragmentDelegateImpl
                 new MultiColumnTitleUpdater(
                         savedInstanceState,
                         multiColumnSettings,
-                        mActivity,
                         titleContainer,
                         mToolbar::setTitle,
                         this::onTitleTapped,
-                        mInitialBreadcrumbPath);
+                        mInitialBreadcrumbPath,
+                        this::updateBackPressState);
         multiColumnSettings.addObserver(mMultiColumnTitleUpdater);
     }
 
@@ -550,6 +550,11 @@ public class SettingsPageFragmentDelegateImpl
 
     void setSearchCoordinatorForTesting(@Nullable SettingsSearchCoordinator searchCoordinator) {
         mSearchCoordinator = searchCoordinator;
+    }
+
+    void setMultiColumnTitleUpdaterForTesting(
+            @Nullable MultiColumnTitleUpdater multiColumnTitleUpdater) {
+        mMultiColumnTitleUpdater = multiColumnTitleUpdater;
     }
 
     @Override
@@ -642,7 +647,9 @@ public class SettingsPageFragmentDelegateImpl
     }
 
     private void updateFirstVisibleTitle(int index) {
-        assumeNonNull(mMultiColumnTitleUpdater).setFirstVisibleTitleIndex(index);
+        MultiColumnTitleUpdater updater = assumeNonNull(mMultiColumnTitleUpdater);
+        updater.closeSearch();
+        updater.setFirstVisibleTitleIndex(index);
     }
 
     @Override
@@ -718,6 +725,9 @@ public class SettingsPageFragmentDelegateImpl
         if (mSearchCoordinator != null && mSearchCoordinator.handleBackAction()) {
             return BackPressResult.SUCCESS;
         }
+        if (mMultiColumnTitleUpdater != null && mMultiColumnTitleUpdater.handleBackAction()) {
+            return BackPressResult.SUCCESS;
+        }
         MultiColumnSettings multiColumnSettings = getMultiColumnSettings();
         if (multiColumnSettings != null) {
             if (multiColumnSettings.getBackStackEntryCount() > 0) {
@@ -747,20 +757,25 @@ public class SettingsPageFragmentDelegateImpl
 
     private void updateBackPressState() {
         boolean canHandle = false;
-        MultiColumnSettings multiColumnSettings = getMultiColumnSettings();
-        if (multiColumnSettings != null) {
-            if (multiColumnSettings.getBackStackEntryCount() > 0) {
-                canHandle = true;
-            } else if (!ChromeFeatureList.sSettingsInTabUrlNav.isEnabled()) {
-                // A back press should route through the Chrome navigation stack instead of
-                // handling the slidingPaneLayout to keep the contents in-sync with the Url.
-                var slidingPane = multiColumnSettings.getSlidingPaneLayoutOrNull();
-                if (slidingPane != null && slidingPane.isSlideable() && slidingPane.isOpen()) {
+        if (mMultiColumnTitleUpdater != null && mMultiColumnTitleUpdater.isSearchOpen()) {
+            canHandle = true;
+        } else {
+            MultiColumnSettings multiColumnSettings = getMultiColumnSettings();
+            if (multiColumnSettings != null) {
+                if (multiColumnSettings.getBackStackEntryCount() > 0) {
                     canHandle = true;
+                } else if (!ChromeFeatureList.sSettingsInTabUrlNav.isEnabled()) {
+                    // A back press should route through the Chrome navigation stack instead of
+                    // handling the slidingPaneLayout to keep the contents in-sync with the Url.
+                    var slidingPane = multiColumnSettings.getSlidingPaneLayoutOrNull();
+                    if (slidingPane != null && slidingPane.isSlideable() && slidingPane.isOpen()) {
+                        canHandle = true;
+                    }
                 }
+            } else if (mSettingsHostFragment != null
+                    && mSettingsHostFragment.isAttachedToActivity()) {
+                canHandle = mSettingsHostFragment.getBackStackEntryCount() > 0;
             }
-        } else if (mSettingsHostFragment != null && mSettingsHostFragment.isAttachedToActivity()) {
-            canHandle = mSettingsHostFragment.getBackStackEntryCount() > 0;
         }
         mBackPressStateSupplier.set(canHandle);
     }
