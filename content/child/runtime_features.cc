@@ -138,15 +138,11 @@ void SetRuntimeFeaturesFromChromiumFeatures() {
            features::kUseAXPositionForDocumentMarkers},
           {wf::EnableBackgroundFetch, features::kBackgroundFetch},
           {wf::EnableBoundaryEventDispatchTracksNodeRemoval,
-<<<<<<< HEAD
-           raw_ref(blink::features::kBoundaryEventDispatchTracksNodeRemoval)},
+           blink::features::kBoundaryEventDispatchTracksNodeRemoval},
 #if defined(USE_FILESCHEME_CODECACHE)
           {wf::EnableLocalResourceCodeCache,
-           raw_ref(blink::features::kLocalResourceCodeCache)},
+           blink::features::kLocalResourceCodeCache},
 #endif
-=======
-           blink::features::kBoundaryEventDispatchTracksNodeRemoval},
->>>>>>> 155.0.8046.0~1
           {wf::EnableCompositeBGColorAnimation,
            features::kCompositeBGColorAnimation},
           {wf::EnableDigitalGoods, features::kDigitalGoodsApi,
