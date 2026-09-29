@@ -1079,7 +1079,7 @@ std::unique_ptr<content::WebContents> PageContents::CreateWebContents(
 // static
 std::unique_ptr<content::WebContents> PageContents::ReCreateWebContents(
     content::BrowserContext* browser_context,
-    const content::SessionStorageNamespaceMap& session_storage_namespace_map,
+    const content::SessionStorageNamespaceHandleMap& session_storage_namespace_map,
     scoped_refptr<content::SiteInstance> site_instance) {
   NEVA_DCHECK(browser_context != nullptr);
   content::WebContents::CreateParams contents_params(browser_context, nullptr);

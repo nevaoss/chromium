@@ -277,7 +277,7 @@ class PageContents : public AppRuntimeWebContentsDelegate,
       const PageContents::CreateParams& params);
   static std::unique_ptr<content::WebContents> ReCreateWebContents(
       content::BrowserContext* browser_context,
-      const content::SessionStorageNamespaceMap& session_storage_namespace,
+      const content::SessionStorageNamespaceHandleMap& session_storage_namespace,
       scoped_refptr<content::SiteInstance> site_instance);
 
   PageContents(std::unique_ptr<content::WebContents> new_contents,
@@ -326,7 +326,7 @@ class PageContents : public AppRuntimeWebContentsDelegate,
   double zoom_factor_;
 
   // data for backup session
-  content::SessionStorageNamespaceMap session_storage_namespace_map_;
+  content::SessionStorageNamespaceHandleMap session_storage_namespace_map_;
   std::vector<sessions::SerializedNavigationEntry> navigations_;
   int current_navigation_entry_index_;
   raw_ptr<content::BrowserContext> last_browser_context_ = nullptr;
