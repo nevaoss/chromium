@@ -260,6 +260,11 @@ if (!is_android) {
           "//chrome/browser/printing:test_support",
         ]
 
+      # NOTE(neva): enable_print_preview is disabled for webOS/OSE.
+      if (!enable_print_preview) {
+          deps -= [ "//chrome/browser/printing:test_support" ]
+      }
+
         if (is_chromeos) {
           deps += [ "//chrome/browser/ash/printing:test_support" ]
         }
