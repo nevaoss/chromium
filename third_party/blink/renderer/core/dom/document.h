@@ -274,6 +274,7 @@ class Text;
 class TransformSource;
 class TreeWalker;
 class TrustedHTML;
+class TrustedHTMLParserOptions;
 class V8DocumentReadyState;
 class V8NodeFilter;
 class V8UnionCSSPseudoElementOrDocumentOrElementOrText;
@@ -1294,10 +1295,12 @@ class CORE_EXPORT Document : public ContainerNode,
   void DidRemoveEventListeners(uint32_t count);
   bool HasAnyNodeWithEventListeners() const { return event_listener_counts_; }
 
-  bool HasMutationObserversOfType(MutationType type) const {
+  // Only ever OR'd in, never cleared, so this can stay true after the
+  // last observer disconnects.
+  bool MayHaveMutationObserversOfType(MutationType type) const {
     return mutation_observer_types_ & type;
   }
-  bool HasMutationObservers() const { return mutation_observer_types_; }
+  bool MayHaveMutationObservers() const { return mutation_observer_types_; }
   void AddMutationObserverTypes(MutationType types) {
     mutation_observer_types_ |= types;
   }
@@ -2268,7 +2271,7 @@ class CORE_EXPORT Document : public ContainerNode,
                                    ExceptionState& exception_state);
   static Document* parseHTMLUnsafe(ExecutionContext* context,
                                    const V8UnionStringOrTrustedHTML* html,
-                                   TrustedParserOptions* options,
+                                   TrustedHTMLParserOptions* options,
                                    ExceptionState& exception_state);
   static Document* parseHTML(ExecutionContext* context,
                              const String& html,

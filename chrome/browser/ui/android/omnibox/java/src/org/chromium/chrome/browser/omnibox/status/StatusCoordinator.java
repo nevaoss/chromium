@@ -101,7 +101,10 @@ public class StatusCoordinator implements LocationBarDataProvider.Observer {
         mStatusView = statusView;
         mLocationBarDataProvider = locationBarDataProvider;
 
-        mModel = new PropertyModel(StatusProperties.ALL_KEYS);
+        mModel =
+                new PropertyModel.Builder(StatusProperties.ALL_KEYS)
+                        .with(StatusProperties.RESOURCE_PROVIDER, resourceProvider)
+                        .build();
 
         PropertyModelChangeProcessor.create(mModel, mStatusView, new StatusViewBinder());
 
@@ -132,9 +135,10 @@ public class StatusCoordinator implements LocationBarDataProvider.Observer {
                         onPlusButtonClicked);
 
         Resources res = mStatusView.getResources();
+        int statusIconWidth = resourceProvider.getStatusIconSize();
         mMediator.setUrlMinWidth(
                 res.getDimensionPixelSize(R.dimen.location_bar_min_url_width)
-                        + res.getDimensionPixelSize(R.dimen.location_bar_status_icon_width)
+                        + statusIconWidth
                         + res.getDimensionPixelSize(R.dimen.location_bar_start_padding)
                         + res.getDimensionPixelSize(R.dimen.location_bar_end_padding));
 
@@ -272,13 +276,6 @@ public class StatusCoordinator implements LocationBarDataProvider.Observer {
         return mStatusView.isSearchEngineStatusIconVisible();
     }
 
-    /** Returns the ID of the drawable currently shown in the security icon. */
-    public @DrawableRes int getSecurityIconResourceIdForTesting() {
-        return mModel.get(StatusProperties.STATUS_ICON_RESOURCE) == null
-                ? 0
-                : mModel.get(StatusProperties.STATUS_ICON_RESOURCE).getIconRes();
-    }
-
     /**
      * Update visibility of the verbose status based on the button type and focus state of the
      * omnibox.
@@ -322,11 +319,6 @@ public class StatusCoordinator implements LocationBarDataProvider.Observer {
     }
 
     @SuppressWarnings("NullAway")
-    public StatusMediator getMediatorForTesting() {
-        return mMediator;
-    }
-
-    @SuppressWarnings("NullAway")
     public void destroy() {
         mMediator.destroy();
         mLocationBarDataProvider.removeObserver(this);
@@ -340,5 +332,17 @@ public class StatusCoordinator implements LocationBarDataProvider.Observer {
 
     public long getAnimationStartTimeMs() {
         return mStatusView.getAnimationStartTimeMs();
+    }
+
+    /** Returns the ID of the drawable currently shown in the security icon. */
+    public @DrawableRes int getSecurityIconResourceIdForTesting() {
+        return mModel.get(StatusProperties.STATUS_ICON_RESOURCE) == null
+                ? 0
+                : mModel.get(StatusProperties.STATUS_ICON_RESOURCE).getIconRes();
+    }
+
+    @SuppressWarnings("NullAway")
+    public StatusMediator getMediatorForTesting() {
+        return mMediator;
     }
 }

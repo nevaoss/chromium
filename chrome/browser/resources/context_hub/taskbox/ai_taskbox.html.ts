@@ -24,9 +24,8 @@ ${this.showingReadingList_ ? html`
       </section>
 
       <div class="todo-list">
-        ${
-      this.readingListTodos ?
-          repeat(
+        ${this.readingListTodos ? html`
+          ${repeat(
               this.readingListTodos, todo => todo.id,
               todo => html`
                     <todo-item
@@ -42,8 +41,8 @@ ${this.showingReadingList_ ? html`
                         .liked="${this.feedbacks_.get(todo.id) ?? null}"
                         .disable_state_mgmt="${this.isGeneratingTabTodos_}">
                     </todo-item>
-                  `) :
-          ''}
+          `)}
+        ` : ''}
       </div>
     </main>
   ` : html`
@@ -73,7 +72,9 @@ ${this.showingReadingList_ ? html`
                         ${
           this.isGeneratingGmailTodos_ ?
               'Generating...' :
-              this.getFormattedTimeAgo_(this.lastGmailGenerationTime_)}
+              this.hasGmailGenerationError_ ?
+                  'Failed to generate' :
+                  this.getFormattedTimeAgo_(this.lastGmailGenerationTime_)}
                       </span>
                       <cr-icon-button
                           iron-icon="cr:sync"
@@ -96,11 +97,8 @@ ${this.showingReadingList_ ? html`
                 </div>
 
                 <div class="todo-list">
-                    ${
-      this.todos && this.todos.length > 0 ?
-          repeat(
-              this.todos, todo => todo.id,
-              todo => html`
+                  ${this.todos && this.todos.length > 0 ? html`
+                    ${repeat(this.todos, todo => todo.id, todo => html`
                       <todo-item
                           .id="${todo.id}"
                           .heading="${todo.title}"
@@ -114,22 +112,24 @@ ${this.showingReadingList_ ? html`
                           .liked="${this.feedbacks_.get(todo.id) ?? null}"
                           .disable_state_mgmt="${this.isGeneratingGmailTodos_}">
                       </todo-item>
-                    `) :
-          this.hasGmailGenerationError_ ? html`
+                    `)}
+                  ` : html`
+                    ${this.hasGmailGenerationError_ ? html`
                       <div class="placeholder-card">
                         <p class="placeholder-text error-text">Failed to generate. Please try again.</p>
                       </div>
-                    ` :
-          this.hasGeneratedGmail_       ? html`
-                      <div class="placeholder-card">
-                        <p class="placeholder-text">You're all caught up!</p>
-                      </div>
-                    ` :
-                                          html`
-                      <div class="placeholder-card">
-                        <p class="placeholder-text">No Workspace Todos yet.</p>
-                      </div>
+                    ` : html`
+                      ${this.hasGeneratedGmail_ ? html`
+                        <div class="placeholder-card">
+                          <p class="placeholder-text">You're all caught up!</p>
+                        </div>
+                      ` : html`
+                        <div class="placeholder-card">
+                          <p class="placeholder-text">No Workspace Todos yet.</p>
+                        </div>
+                      `}
                     `}
+                  `}
                 </div>
 
                 <!-- Completed Workspace Todos Section -->
@@ -145,9 +145,44 @@ ${this.showingReadingList_ ? html`
 
                     <cr-collapse ?opened="${this.isCompletedExpanded_ && (this.completedTodos?.length || 0) > 0}">
                         <div class="todo-list completed-todo-list">
+                          ${this.completedTodos &&
+                                  this.completedTodos.length > 0 ? html`
+                            ${repeat(this.completedTodos, todo => todo.id, todo => html`
+                              <todo-item
+                                  .id="${todo.id}"
+                                  .heading="${todo.title}"
+                                  .description="${todo.description}"
+                                  .status="${todo.status}"
+                                  .actionableUrl="${
+                          todo.data.firstParty?.actionableUrl || ''}"
+                                  .sourceReferences="${
+                          todo.data.firstParty?.sourceReferences || []}"
+                                  .score="${todo.score}"
+                                  .liked="${this.feedbacks_.get(todo.id) ?? null}"
+                                  .disable_state_mgmt="${this.isGeneratingGmailTodos_}">
+                              </todo-item>
+                            `)}
+                          ` : ''}
+                        </div>
+                    </cr-collapse>
+                </div>
+
+                <!-- Dismissed Workspace Todos Section -->
+                <div class="dismissed-section">
+                    <cr-expand-button
+                        class="dismissed-expand-button"
+                        ?disabled="${(this.dismissedTodos?.length || 0) === 0}"
+                        ?expanded="${this.isDismissedExpanded_ && (this.dismissedTodos?.length || 0) > 0}"
+                        @expanded-changed="${this.onDismissedExpandedChanged_}"
+                        no-hover>
+                        <h2>Dismissed Workspace Todos (${this.dismissedTodos?.length || 0})</h2>
+                    </cr-expand-button>
+
+                    <cr-collapse ?opened="${this.isDismissedExpanded_ && (this.dismissedTodos?.length || 0) > 0}">
+                        <div class="todo-list dismissed-todo-list">
                             ${
-      this.completedTodos &&
-      this.completedTodos.length > 0 ? repeat(this.completedTodos, todo => todo.id, todo => html`
+      this.dismissedTodos &&
+      this.dismissedTodos.length > 0 ? repeat(this.dismissedTodos, todo => todo.id, todo => html`
                               <todo-item
                                   .id="${todo.id}"
                                   .heading="${todo.title}"
@@ -176,7 +211,9 @@ ${this.showingReadingList_ ? html`
                         ${
           this.isGeneratingTabTodos_ ?
               'Generating...' :
-              this.getFormattedTimeAgo_(this.lastTabGenerationTime_)}
+              this.hasTabGenerationError_ ?
+                  'Failed to generate' :
+                  this.getFormattedTimeAgo_(this.lastTabGenerationTime_)}
                       </span>
                       <cr-icon-button
                           iron-icon="cr:sync"
@@ -286,16 +323,16 @@ ${this.showingReadingList_ ? html`
                       <div class="placeholder-card">
                         <p class="placeholder-text error-text">Failed to generate. Please try again.</p>
                       </div>
-                    ` :
-          this.hasGeneratedTab_       ? html`
-                      <div class="placeholder-card">
-                        <p class="placeholder-text">You're all caught up!</p>
-                      </div>
-                    ` :
-                                        html`
-                      <div class="placeholder-card">
-                        <p class="placeholder-text">No Browser Todos yet.</p>
-                      </div>
+                    ` : html`
+                      ${this.hasGeneratedTab_ ? html`
+                        <div class="placeholder-card">
+                          <p class="placeholder-text">You're all caught up!</p>
+                        </div>
+                      ` : html`
+                        <div class="placeholder-card">
+                          <p class="placeholder-text">No Browser Todos yet.</p>
+                        </div>
+                      `}
                     `}
                   </div>
                 `}
@@ -313,9 +350,43 @@ ${this.showingReadingList_ ? html`
 
                     <cr-collapse ?opened="${this.isCompletedTabExpanded_ && (this.completedTabTodos?.length || 0) > 0}">
                         <div class="todo-list completed-todo-list">
+                          ${this.completedTabTodos && this.completedTabTodos.length > 0 ? html`
+                            ${repeat(this.completedTabTodos, todo => todo.id, todo => html`
+                              <todo-item
+                                  .id="${todo.id}"
+                                  .heading="${todo.title}"
+                                  .description="${todo.description}"
+                                  .tabId="${todo.data.thirdParty!.tabId}"
+                                  .lastActiveTimestamp="${
+                          todo.data.thirdParty!.lastActiveTimestamp}"
+                                  .groupType="${todo.data.thirdParty!.groupType}"
+                                  .status="${todo.status}"
+                                  .variant="${TodoItemVariant.TAB}"
+                                  .liked="${this.feedbacks_.get(todo.id) ?? null}"
+                                  .disable_state_mgmt="${this.isGeneratingTabTodos_}">
+                              </todo-item>
+                            `)}
+                          ` : ''}
+                        </div>
+                    </cr-collapse>
+                </div>
+
+                <!-- Dismissed Browser Todos Section -->
+                <div class="dismissed-section">
+                    <cr-expand-button
+                        class="dismissed-expand-button"
+                        ?disabled="${(this.dismissedTabTodos?.length || 0) === 0}"
+                        ?expanded="${this.isDismissedTabExpanded_ && (this.dismissedTabTodos?.length || 0) > 0}"
+                        @expanded-changed="${this.onDismissedTabExpandedChanged_}"
+                        no-hover>
+                        <h2>Dismissed Browser Todos (${this.dismissedTabTodos?.length || 0})</h2>
+                    </cr-expand-button>
+
+                    <cr-collapse ?opened="${this.isDismissedTabExpanded_ && (this.dismissedTabTodos?.length || 0) > 0}">
+                        <div class="todo-list dismissed-todo-list">
                             ${
-      this.completedTabTodos &&
-      this.completedTabTodos.length > 0 ? repeat(this.completedTabTodos, todo => todo.id, todo => html`
+      this.dismissedTabTodos &&
+      this.dismissedTabTodos.length > 0 ? repeat(this.dismissedTabTodos, todo => todo.id, todo => html`
                               <todo-item
                                   .id="${todo.id}"
                                   .heading="${todo.title}"

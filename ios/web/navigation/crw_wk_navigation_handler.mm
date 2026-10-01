@@ -177,6 +177,14 @@ void LogPresentingErrorPageFailedWithError(NSError* error) {
   // Stores navigation policy state of download task to indicate if a download
   // should be performed.
   BOOL _shouldPerformDownload;
+
+  // The URL of the failed navigation for which the browser last displayed an
+  // error page in the web view, recorded by `displayErrorPageWithError:`. The
+  // document URL taking the shape of an error page file URL is not sufficient
+  // on its own to establish that the browser presented an error page, as the
+  // web view URL is also updated from URL changes reported by the web content
+  // process outside of any policy-checked navigation.
+  GURL _displayedErrorPageFailedNavigationURL;
 }
 
 @property(nonatomic, weak) id<CRWWKNavigationHandlerDelegate> delegate;
@@ -345,17 +353,44 @@ void LogPresentingErrorPageFailedWithError(NSError* error) {
   // If this is an error navigation, pass through only if initiated by the
   // browser, or if it is a back/forward or reload of an already committed page.
   if ([CRWErrorPageHelper isErrorPageFileURL:requestURL]) {
-    BOOL isHistoryOrReloadOrRestore =
-        action.navigationType == WKNavigationTypeBackForward ||
-        action.navigationType == WKNavigationTypeReload ||
-        self.navigationManagerImpl->IsRestoreSessionInProgress();
+    // Error pages must never load in subframes.
+    if (!action.targetFrame.mainFrame) {
+      decisionHandler(WKNavigationActionPolicyCancel);
+      return;
+    }
+    // Browser-initiated error page load (one-shot token).
     BOOL isExpectedErrorPage =
         allowedErrorPageFileURL &&
         requestURL == net::GURLWithNSURL(allowedErrorPageFileURL);
-    if ((isExpectedErrorPage && action.targetFrame.mainFrame) ||
-        isHistoryOrReloadOrRestore) {
+    if (isExpectedErrorPage) {
       decisionHandler(WKNavigationActionPolicyAllow);
       return;
+    }
+    // Tab/Session restore in progress.
+    if (self.navigationManagerImpl->IsRestoreSessionInProgress()) {
+      decisionHandler(WKNavigationActionPolicyAllow);
+      return;
+    }
+    // Reload or Back/Forward is only valid if this exact error-page URL is
+    // currently active in the session history, i.e. it was previously committed
+    // via a browser-initiated loadFileURL:. Note that for back/forward
+    // navigations, WebKit updates `currentItem` to the destination item before
+    // calling this delegate method.
+    // Check against NavigationItem in case history.replaceState altered
+    // currentItem.
+    WKBackForwardListItem* currentItem = webView.backForwardList.currentItem;
+    if (currentItem && (action.navigationType == WKNavigationTypeReload ||
+                        action.navigationType == WKNavigationTypeBackForward)) {
+      if (requestURL == net::GURLWithNSURL(currentItem.URL)) {
+        web::NavigationItem* item = [[CRWNavigationItemHolder
+            holderForBackForwardListItem:currentItem] navigationItem];
+        GURL failedURL = [CRWErrorPageHelper
+            failedNavigationURLFromErrorPageFileURL:requestURL];
+        if (item && item->GetVirtualURL() == failedURL) {
+          decisionHandler(WKNavigationActionPolicyAllow);
+          return;
+        }
+      }
     }
     decisionHandler(WKNavigationActionPolicyCancel);
     return;
@@ -1506,10 +1541,14 @@ void LogPresentingErrorPageFailedWithError(NSError* error) {
 
   // Allow navigation from an error page to the failed URL it represents so
   // that error pages for app-specific URLs can retry the original navigation.
+  // Only honor the retry if the browser displayed an error page for that URL,
+  // as the document URL alone can take the shape of an error page file URL
+  // without any error page having been presented by the browser.
   if ([CRWErrorPageHelper isErrorPageFileURL:self.documentURL]) {
-    return requestURL ==
-           [CRWErrorPageHelper
-               failedNavigationURLFromErrorPageFileURL:self.documentURL];
+    const GURL failedNavigationURL = [CRWErrorPageHelper
+        failedNavigationURLFromErrorPageFileURL:self.documentURL];
+    return requestURL == failedNavigationURL &&
+           failedNavigationURL == _displayedErrorPageFailedNavigationURL;
   }
 
   if (!action.sourceFrame.mainFrame) {
@@ -2143,12 +2182,14 @@ void LogPresentingErrorPageFailedWithError(NSError* error) {
                          isProvisionalLoad:(BOOL)provisionalLoad {
   CRWErrorPageHelper* errorPage =
       [[CRWErrorPageHelper alloc] initWithError:error];
+  _displayedErrorPageFailedNavigationURL =
+      net::GURLWithNSURL(errorPage.failedNavigationURL);
   WKBackForwardListItem* backForwardItem = webView.backForwardList.currentItem;
   GURL backForwardGURL = net::GURLWithNSURL(backForwardItem.URL);
   GURL failedURL = [CRWErrorPageHelper
       failedNavigationURLFromErrorPageFileURL:backForwardGURL];
   bool isSameURLFromWebClient = web::GetWebClient()->IsPointingToSameDocument(
-      failedURL, net::GURLWithNSURL(errorPage.failedNavigationURL));
+      failedURL, _displayedErrorPageFailedNavigationURL);
   // There are 3 possible scenarios here:
   //   1. Current nav item is an error page for failed URL;
   //   2. Current nav item has a failed URL. This may happen when

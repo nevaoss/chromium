@@ -52,10 +52,6 @@ public final class ChromePreferenceKeys {
     public static final String ADAPTIVE_TOOLBAR_CUSTOMIZATION_SETTINGS =
             "Chrome.AdaptiveToolbarCustomization.Settings";
 
-    public static final String ADDRESS_BAR_SETTINGS_CLICKED = "Chrome.AddressBar.SettingsClicked";
-    public static final String ADDRESS_BAR_SETTINGS_VIEW_COUNT =
-            "Chrome.AddressBar.SettingsViewCount";
-
     /** Timestamp of last time ai feature availability was checked. */
     public static final String AI_ASSISTANT_ANALYZE_ATTACHMENT_AVAILABILITY =
             "Chrome.AiAssistant.AnalyzeAttachmentAvailability";
@@ -311,6 +307,9 @@ public final class ChromePreferenceKeys {
 
     public static final KeyPrefix CUSTOM_TABS_DEX_LAST_UPDATE_TIME_PREF_PREFIX =
             new KeyPrefix("pref_local_custom_tabs_module_dex_last_update_time_*");
+
+    public static final String CUSTOM_TABS_ALWAYS_OPEN_IN_BROWSER =
+            "Chrome.CustomTabs.AlwaysOpenInBrowser";
 
     /** Package name of the client app that uses CCT service of the last launched CCT. */
     public static final String CUSTOM_TABS_LAST_CLIENT_PACKAGE =
@@ -1182,8 +1181,6 @@ public final class ChromePreferenceKeys {
         return Arrays.asList(
                 ADAPTIVE_TOOLBAR_CUSTOMIZATION_ENABLED,
                 ADAPTIVE_TOOLBAR_CUSTOMIZATION_SETTINGS,
-                ADDRESS_BAR_SETTINGS_CLICKED,
-                ADDRESS_BAR_SETTINGS_VIEW_COUNT,
                 AI_ASSISTANT_ANALYZE_ATTACHMENT_AVAILABILITY,
                 AI_ASSISTANT_AVAILABILITY_CHECK_TIMESTAMP_MS,
                 AI_ASSISTANT_WEB_SUMMARIZATION_AVAILABILITY,
@@ -1234,6 +1231,7 @@ public final class ChromePreferenceKeys {
                 NTP_BACKGROUND_IMAGE_PORTRAIT_INFO_FOR_DAILY_REFRESH,
                 NTP_BACKGROUND_IMAGE_LANDSCAPE_INFO_FOR_DAILY_REFRESH,
                 NTP_CUSTOMIZATION_BACKGROUND_INFO_FOR_DAILY_REFRESH,
+                CUSTOM_TABS_ALWAYS_OPEN_IN_BROWSER,
                 CUSTOM_TABS_LAST_CLIENT_PACKAGE,
                 CUSTOM_TABS_LAST_CLOSE_TAB_INTERACTION,
                 CUSTOM_TABS_LAST_CLOSE_TIMESTAMP,

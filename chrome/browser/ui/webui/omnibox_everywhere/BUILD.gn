@@ -11,7 +11,9 @@ if (is_win || is_mac) {
     deps = [
       ":omnibox_everywhere",
       "//base/test:test_support",
+      "//chrome/browser/autocomplete:aim_eligibility_service",
       "//chrome/browser/bookmarks",
+      "//chrome/browser/contextual_search",
       "//chrome/browser/ui/omnibox/omnibox_everywhere",
       "//chrome/browser/ui/webui/searchbox:searchbox_test_utils",
       "//components/bookmarks/browser",
@@ -50,6 +52,7 @@ source_set("omnibox_everywhere") {
   deps = [
     "debug",
     "//base",
+    "//chrome/app:branded_strings",
     "//chrome/browser/autocomplete:aim_eligibility_service",
     "//chrome/browser/contextual_search",
     "//chrome/browser/contextual_tasks",

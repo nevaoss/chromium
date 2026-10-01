@@ -15,9 +15,25 @@ source_set("prefs") {
     "//chrome/browser/new_tab_page/prefs",
     "//chrome/browser/profiles:profile",
     "//components/ntp_tiles:pref_names",
+    "//components/omnibox/browser",
     "//components/pref_registry",
     "//components/prefs",
     "//ui/base",
+    "//ui/strings:ui_strings",
+  ]
+}
+
+source_set("icon") {
+  sources = [ "omnibox_everywhere_icon.cc" ]
+  public = [ "omnibox_everywhere_icon.h" ]
+  public_deps = [
+    "//ui/base",
+    "//ui/gfx",
+  ]
+  deps = [
+    "//build:branding_buildflags",
+    "//chrome/app/theme:theme_resources",
+    "//components/vector_icons",
   ]
 }
 
@@ -26,10 +42,12 @@ source_set("omnibox_everywhere") {
   public = [
     "omnibox_everywhere_controller.h",
     "omnibox_everywhere_feature_promo_controller.h",
+    "omnibox_everywhere_icon.h",
     "omnibox_everywhere_region_select_overlay.h",
     "omnibox_everywhere_ui_manager.h",
   ]
   public_deps = [
+    ":icon",
     ":prefs",
     "//base",
     "//chrome/browser/profiles:profile_manager",
@@ -66,8 +84,10 @@ source_set("impl") {
     "//build:branding_buildflags",
     "//chrome/app:branded_strings",
     "//chrome/app:generated_resources",
+    "//chrome/app/theme:theme_resources",
     "//chrome/browser:file_select_helper",
     "//chrome/browser/autocomplete",
+    "//chrome/browser/autocomplete:aim_eligibility_service",
     "//chrome/browser/background/omnibox_everywhere",
     "//chrome/browser/feature_engagement",
     "//chrome/browser/media/webrtc",
@@ -145,6 +165,7 @@ if (is_mac || is_win) {
       "//base/test:test_support",
       "//chrome/app:branded_strings",
       "//chrome/browser",
+      "//chrome/browser/autocomplete:aim_eligibility_service",
       "//chrome/browser/background/omnibox_everywhere",
       "//chrome/browser/new_tab_page/prefs",
       "//chrome/browser/ui/omnibox",

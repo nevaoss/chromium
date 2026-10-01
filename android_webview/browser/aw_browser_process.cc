@@ -364,21 +364,9 @@ void AwBrowserProcess::FetchHostAppCacheQuota() {
 }
 
 // static
-void AwBrowserProcess::TriggerMinidumpUploading() {
-  Java_AwBrowserProcess_triggerMinidumpUploading(
-      base::android::AttachCurrentThread());
-}
-
-// static
 ApkType AwBrowserProcess::GetApkType() {
   return static_cast<ApkType>(
       Java_AwBrowserProcess_getApkType(base::android::AttachCurrentThread()));
-}
-
-// static
-bool AwBrowserProcess::IsAppVisibleToUser() {
-  return Java_AwBrowserProcess_isAppVisibleToUser(
-      base::android::AttachCurrentThread());
 }
 
 static void JNI_AwBrowserProcess_OnStartupComplete(JNIEnv* env) {

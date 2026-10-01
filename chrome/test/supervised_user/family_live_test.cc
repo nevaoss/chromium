@@ -38,6 +38,7 @@
 #include "google_apis/gaia/google_service_auth_error.h"
 #include "net/dns/mock_host_resolver.h"
 #include "ui/base/interaction/interactive_test_internal.h"
+#include "ui/base/page_transition_types.h"
 #include "ui/gfx/scoped_animation_duration_scale_mode.h"
 #include "url/gurl.h"
 
@@ -191,7 +192,6 @@ void FamilyLiveTest::SigninToBrowserFor(BrowserUser& browser_user) {
     syncer::SyncServiceImpl* service =
         SyncServiceFactory::GetAsSyncServiceImplForProfileForTesting(
             &browser_user.profile());
-    service->SetInvalidationsForSessionsEnabled(true);
     bool is_supervised_user = (&browser_user == child_.get());
 
     CHECK(SyncSetupChecker(service, is_supervised_user).Wait())

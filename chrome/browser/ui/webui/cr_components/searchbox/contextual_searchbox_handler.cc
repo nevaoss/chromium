@@ -512,7 +512,7 @@ ContextualSearchboxHandler::ContextualSearchboxHandler(
     content::WebContents* web_contents,
     std::unique_ptr<OmniboxClient> client,
     GetSessionHandleCallback get_session_callback,
-    ScreenshareDelegate* screenshare_delegate)
+    ContextualSearchboxScreenshareController::Delegate* screenshare_delegate)
     : SearchboxHandler(std::move(pending_searchbox_handler),
                        std::move(pending_page),
                        profile,
@@ -671,14 +671,8 @@ ContextualSearchboxHandler::~ContextualSearchboxHandler() {
   }
 }
 
-ContextualSearchboxHandler::ScreenshareDelegate*
-ContextualSearchboxHandler::screenshare_delegate() const {
-  return screenshare_controller_ ? screenshare_controller_->delegate()
-                                 : nullptr;
-}
-
-void ContextualSearchboxHandler::set_screenshare_delegate(
-    ScreenshareDelegate* screenshare_delegate) {
+void ContextualSearchboxHandler::set_screenshare_delegate_for_testing(
+    ContextualSearchboxScreenshareController::Delegate* screenshare_delegate) {
   if (screenshare_controller_) {
     screenshare_controller_->set_delegate(screenshare_delegate);
   }
@@ -834,7 +828,8 @@ void ContextualSearchboxHandler::SetSmartTabSharingActive(bool active) {
   contextual_tasks::LogMenuOptionClicked(
       active ? contextual_tasks::SmartTabSharingToggleState::kToggledOn
              : contextual_tasks::SmartTabSharingToggleState::kToggledOff);
-  if (!active && IsSmartTabSharingActive()) {
+  if (!active && IsSmartTabSharingActive() &&
+      !contextual_tasks::ShouldToggleOffAfterSubmit()) {
     auto* session_handle = GetContextualSessionHandle();
     if (session_handle && !session_handle->previous_turns().empty()) {
       contextual_tasks::LogOptOutMidThread(true);
@@ -2033,7 +2028,8 @@ void ContextualSearchboxHandler::ContextualizeQueryAndOpenUrl(
     std::map<std::string, std::string> additional_params,
     bool is_voice_search) {
   contextual_tasks::LogThreadWithTabsSubmitted(IsSmartTabSharingActive());
-  if (IsSmartTabSharingActive()) {
+  if (IsSmartTabSharingActive() &&
+      !contextual_tasks::ShouldToggleOffAfterSubmit()) {
     auto* session_handle = GetContextualSessionHandle();
     if (session_handle && !session_handle->previous_turns().empty()) {
       contextual_tasks::LogOptOutMidThread(false);

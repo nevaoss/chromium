@@ -211,6 +211,7 @@ test("ios_chrome_unittests") {
     "//ios/chrome/app:unit_tests",
     "//ios/chrome/app/application_delegate:unit_tests",
     "//ios/chrome/app/background_refresh:unit_tests",
+    "//ios/chrome/app/background_task:features_unit_tests",
     "//ios/chrome/app/profile:unit_tests",
     "//ios/chrome/app/spotlight:unit_tests",
     "//ios/chrome/app/startup:unit_tests",
@@ -563,6 +564,8 @@ test("ios_chrome_unittests") {
     "//ios/chrome/browser/settings/manage_sync/coordinator:unit_tests",
     "//ios/chrome/browser/settings/model/sync/utils:unit_tests",
     "//ios/chrome/browser/settings/personalize_google_services/ui:unit_tests",
+    "//ios/chrome/browser/settings/site_settings/coordinator:unit_tests",
+    "//ios/chrome/browser/settings/site_settings/ui:unit_tests",
     "//ios/chrome/browser/settings/ui_bundled:unit_tests",
     "//ios/chrome/browser/settings/ui_bundled/autofill:unit_tests",
     "//ios/chrome/browser/settings/ui_bundled/autofill/cells:unit_tests",
@@ -727,6 +730,10 @@ test("ios_chrome_unittests") {
 
   if (ios_enable_credential_provider_extension) {
     deps += [ "//ios/chrome/browser/credential_provider/model:unit_tests" ]
+  }
+
+  if (ios_enable_background_continued_processing) {
+    deps += [ "//ios/chrome/app/background_task:unit_tests" ]
   }
 
   assert_no_deps = ios_assert_no_deps

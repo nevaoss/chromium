@@ -26,6 +26,7 @@
 #include "base/win/scoped_gdi_object.h"
 #include "base/win/scoped_hdc.h"
 #include "base/win/scoped_select_object.h"
+#include "remoting/base/email_utils.h"
 #include "remoting/host/client_session_control.h"
 #include "remoting/host/host_window.h"
 #include "remoting/host/input_monitor/local_input_monitor.h"
@@ -38,10 +39,6 @@ namespace remoting {
 namespace {
 
 constexpr int DISCONNECT_HOTKEY_ID = 1000;
-
-// Maximum length of "Your desktop is shared with ..." message in UTF-16
-// characters.
-constexpr size_t kMaxSharingWithTextLength = 100;
 
 constexpr wchar_t kShellTrayWindowName[] = L"Shell_TrayWnd";
 constexpr int kWindowBorderRadius = 14;
@@ -144,8 +141,8 @@ class DisconnectWindowWin : public HostWindow {
   // Used to watch for local input which will trigger the dialog to be reshown.
   std::unique_ptr<LocalInputMonitor> local_input_monitor_;
 
-  // Specifies the remote user name.
-  std::string username_;
+  // Specifies the remote user's email address.
+  std::string email_;
 
   bool was_auto_hidden_ = false;
   base::OneShotTimer auto_hide_timer_;
@@ -212,7 +209,7 @@ void DisconnectWindowWin::Start(
   client_session_control_ = client_session_control;
 
   std::string client_jid = client_session_control_->client_jid();
-  username_ = client_jid.substr(0, client_jid.find('/'));
+  email_ = client_jid.substr(0, client_jid.find('/'));
   if (!BeginDialog()) {
     EndDialog();
     return;
@@ -297,6 +294,21 @@ BOOL DisconnectWindowWin::OnDialogMessage(HWND hwnd,
       SetDialogPosition();
       return TRUE;
 
+    // Ensure the dialog stays visible if the taskbar is moved or resized.
+    // Windows broadcasts WM_SETTINGCHANGE with SPI_SETWORKAREA when the desktop
+    // work area changes (e.g. when the taskbar is moved to another edge,
+    // resized, or toggled to auto-hide). Without handling this, moving the
+    // taskbar to the edge where the dialog is docked (such as the top after
+    // clicking the alignment toggle) would allow the taskbar to overlay and
+    // obscure the disconnect indicator and "Stop Sharing" button.
+    // See crbug.com/556249179.
+    case WM_SETTINGCHANGE:
+      if (wparam == SPI_SETWORKAREA) {
+        SetDialogPosition();
+        return TRUE;
+      }
+      return FALSE;
+
     // Handle the disconnect hot-key.
     case WM_HOTKEY:
       EndDialog();
@@ -332,6 +344,14 @@ bool DisconnectWindowWin::BeginDialog() {
   if (!hwnd_) {
     return false;
   }
+
+  // IDD_DISCONNECT must have WS_EX_TOOLWINDOW and must NOT have
+  // WS_EX_APPWINDOW. Unowned WS_EX_TOOLWINDOW popups are excluded from Windows
+  // Shell Virtual Desktop management, ensuring Desktop Window Manager (DWM)
+  // never cloaks the disconnect window when switching virtual desktops
+  // (Win+Ctrl+D). See crbug.com/556259957.
+  DCHECK(GetWindowLong(hwnd_, GWL_EXSTYLE) & WS_EX_TOOLWINDOW);
+  DCHECK(!(GetWindowLong(hwnd_, GWL_EXSTYLE) & WS_EX_APPWINDOW));
 
   // Set up handler for Ctrl-Alt-Esc shortcut.
   if (!has_hotkey_ && RegisterHotKey(hwnd_, DISCONNECT_HOTKEY_ID,
@@ -567,7 +587,10 @@ void DisconnectWindowWin::SetDialogPosition() {
   int left =
       (monitor_info.rcWork.right + monitor_info.rcWork.left - window_width) / 2;
 
-  SetWindowPos(hwnd_, nullptr, left, top, 0, 0, SWP_NOSIZE | SWP_NOZORDER);
+  // Use HWND_TOPMOST to ensure the dialog stays above shell surfaces (such as
+  // a relocated taskbar) without stealing keyboard focus (SWP_NOACTIVATE).
+  SetWindowPos(hwnd_, HWND_TOPMOST, left, top, 0, 0,
+               SWP_NOSIZE | SWP_NOACTIVATE);
 }
 
 bool DisconnectWindowWin::SetStrings() {
@@ -605,12 +628,9 @@ bool DisconnectWindowWin::SetStrings() {
     return false;
   }
 
-  // Format and truncate "Your desktop is shared with ..." message.
+  // Format "Your desktop is shared with ..." message.
   message_text = base::AsWString(base::ReplaceStringPlaceholders(
-      base::AsString16(message_text), base::UTF8ToUTF16(username_), nullptr));
-  if (message_text.length() > kMaxSharingWithTextLength) {
-    message_text.erase(kMaxSharingWithTextLength);
-  }
+      base::AsString16(message_text), FormatEmailForDisplay(email_), nullptr));
 
   if (!SetWindowText(hwnd_message, message_text.c_str())) {
     return false;

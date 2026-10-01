@@ -18,8 +18,8 @@
 #include "base/test/task_environment.h"
 #include "base/time/time.h"
 #include "base/types/expected.h"
+#include "components/safe_browsing/core/browser/db/sb_test_util.h"
 #include "components/safe_browsing/core/browser/db/util.h"
-#include "components/safe_browsing/core/browser/db/v4_test_util.h"
 #include "components/safe_browsing/core/browser/db/v5_rice.h"
 #include "components/safe_browsing/core/common/safebrowsing_switches.h"
 #include "net/base/load_flags.h"
@@ -195,7 +195,7 @@ TEST_F(V5UpdateProtocolManagerTest, TestDisableAutoUpdates) {
 
   pm->ScheduleNextUpdate(std::move(store_state_map_));
   EXPECT_FALSE(IsUpdateScheduled(pm.get()));
-  DCHECK(!HasPendingRequest(pm.get()));
+  CHECK(!HasPendingRequest(pm.get()));
 }
 
 TEST_F(V5UpdateProtocolManagerTest, TestEnableAutoUpdates) {
@@ -205,7 +205,7 @@ TEST_F(V5UpdateProtocolManagerTest, TestEnableAutoUpdates) {
 
   pm->ScheduleNextUpdate(std::move(store_state_map_));
   EXPECT_TRUE(IsUpdateScheduled(pm.get()));
-  DCHECK(!HasPendingRequest(pm.get()));
+  CHECK(!HasPendingRequest(pm.get()));
 }
 
 TEST_F(V5UpdateProtocolManagerTest, TestGetUpdatesErrorHandlingNetwork) {

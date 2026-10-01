@@ -255,6 +255,10 @@ SkColor BrowserFrameView::GetFrameColor(
 
 std::optional<int> BrowserFrameView::GetCustomBackgroundId(
     BrowserFrameActiveState active_state) const {
+  if (GetBrowserView()->GetEnterpriseIsolatedMode()) {
+    return std::nullopt;
+  }
+
   const ui::ThemeProvider* tp = GetThemeProvider();
   const bool incognito = GetBrowserView()->GetIncognito();
   const bool active = ShouldPaintAsActiveForState(active_state);
@@ -338,6 +342,7 @@ gfx::ImageSkia BrowserFrameView::GetFrameImage(
 gfx::ImageSkia BrowserFrameView::GetFrameOverlayImage(
     BrowserFrameActiveState active_state) const {
   if (GetBrowserView()->GetIncognito() ||
+      GetBrowserView()->GetEnterpriseIsolatedMode() ||
       !GetBrowserView()->GetIsNormalType()) {
     return gfx::ImageSkia();
   }

@@ -25,6 +25,7 @@
 #include "chrome/browser/ui/omnibox/chrome_omnibox_client.h"
 #include "chrome/browser/ui/omnibox/omnibox_controller.h"
 #include "chrome/browser/ui/omnibox/omnibox_edit_model.h"
+#include "chrome/browser/ui/omnibox/omnibox_next_features.h"
 #include "chrome/browser/ui/omnibox/omnibox_view.h"
 #include "chrome/browser/ui/page_info/page_info_dialog.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
@@ -470,7 +471,13 @@ bool WebUILocationBar::IsMouseHovered() const {
 }
 
 bool WebUILocationBar::IsFocusWithin() const {
-  return focus_within_;
+  // If `using_full_popup_` is `true`, focus resides inside the WebUI popup's
+  // `WebContents` / `RenderWidgetHost` rather than a native child View of
+  // `WebUILocationBar`.
+  const bool full_popup_has_focus =
+      using_full_popup_ && omnibox_controller_ &&
+      omnibox_controller_->edit_model()->has_focus();
+  return full_popup_has_focus || focus_within_;
 }
 
 void WebUILocationBar::InvalidateLayout() {

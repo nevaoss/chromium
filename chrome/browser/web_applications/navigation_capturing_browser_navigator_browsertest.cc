@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "base/strings/strcat.h"
+#include "base/test/bind.h"
 #include "base/test/metrics/histogram_tester.h"
 #include "base/test/scoped_feature_list.h"
 #include "base/test/test_future.h"
@@ -16,6 +17,7 @@
 #include "chrome/browser/ui/navigator/browser_navigator.h"
 #include "chrome/browser/ui/navigator/browser_navigator_params.h"
 #include "chrome/browser/ui/navigator/browser_navigator_params_utils.h"
+#include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/web_applications/navigation_capturing_process.h"
 #include "chrome/browser/ui/web_applications/test/web_app_browsertest_util.h"
@@ -38,7 +40,10 @@
 #include "content/public/test/browser_test_utils.h"
 #include "third_party/blink/public/common/features_generated.h"
 #include "third_party/blink/public/mojom/manifest/manifest_launch_handler.mojom-shared.h"
+#include "ui/base/page_transition_types.h"
 #include "ui/base/window_open_disposition.h"
+#include "ui/views/widget/any_widget_observer.h"
+#include "ui/views/widget/widget.h"
 
 namespace web_app {
 
@@ -1111,6 +1116,41 @@ IN_PROC_BROWSER_TEST_F(NavigationCapturingWithRedirectionBrowserNavigatorTest,
   // Make sure that web contents is a tab in `browser()` and not `new_browser`.
   EXPECT_NE(browser()->tab_strip_model()->GetIndexOfWebContents(new_tab),
             TabStripModel::kNoTab);
+}
+
+IN_PROC_BROWSER_TEST_F(NavigationCapturingWithRedirectionBrowserNavigatorTest,
+                       RedirectReparentWindowClosedOnShow) {
+  // Test that if an app window is closed during presentation following a
+  // redirect reparenting, the browser gracefully handles the window closure
+  // without crashing.
+  InstallTestWebApp(GetLandingPage(), mojom::UserDisplayMode::kStandalone);
+
+  base::RunLoop run_loop;
+  views::AnyWidgetObserver observer(views::test::AnyWidgetTestPasskey{});
+  bool closed_app_widget = false;
+  observer.set_shown_callback(
+      base::BindLambdaForTesting([&](views::Widget* widget) {
+        if (!closed_app_widget) {
+          BrowserView* browser_view =
+              BrowserView::GetBrowserViewForNativeWindow(
+                  widget->GetNativeWindow());
+          if (browser_view && browser_view->browser()->GetType() ==
+                                  BrowserWindowInterface::Type::TYPE_APP) {
+            closed_app_widget = true;
+            widget->CloseNow();
+            run_loop.Quit();
+          }
+        }
+      }));
+
+  NavigateParams params(browser(), GetRedirectFromPage(),
+                        ui::PAGE_TRANSITION_LINK);
+  params.disposition = WindowOpenDisposition::NEW_FOREGROUND_TAB;
+  Navigate(&params);
+  run_loop.Run();
+
+  EXPECT_TRUE(closed_app_widget);
+  EXPECT_TRUE(browser());
 }
 
 }  // namespace

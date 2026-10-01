@@ -14,7 +14,7 @@ import type {SearchboxInputElement} from '//resources/cr_components/searchbox/se
 import {kDefaultSelection} from '//resources/cr_components/searchbox/searchbox_match.js';
 import type {SearchboxMixinInterface} from '//resources/cr_components/searchbox/searchbox_mixin.js';
 import {SearchboxMixin} from '//resources/cr_components/searchbox/searchbox_mixin.js';
-import {selectionIsNativelySupported} from '//resources/cr_components/searchbox/searchbox_selection_mixin.js';
+import {selectionIsNativelySupported, selectionsEqual} from '//resources/cr_components/searchbox/searchbox_selection_mixin.js';
 import {markOnce, sanitizeTextForPaste} from '//resources/cr_components/searchbox/utils.js';
 import {I18nMixinLit} from '//resources/cr_elements/i18n_mixin_lit.js';
 import {WebUiListenerMixinLit} from '//resources/cr_elements/web_ui_listener_mixin_lit.js';
@@ -515,6 +515,10 @@ export class OmniboxPopupSearchboxElement extends
     return this.searchboxPageHandler_;
   }
 
+  override openContextMenu(): void {
+    this.getContextualEntrypointButton()?.showContextMenu();
+  }
+
   /**
    * Clears frontend autocomplete matches and reverts C++ `OmniboxEditModel`.
    * Kept separate from `clearAutocompleteMatches()`, which is called internally
@@ -835,7 +839,6 @@ export class OmniboxPopupSearchboxElement extends
    */
   private onSetInputState_(state: OmniboxInputState) {
     markOnce('OmniboxPopupSearchboxElement::onSetInputState_');
-    const isTabSwitch = this.tabId_ !== state.tabId;
     this.$.input.setInputText(state.text);
     this.userInputInProgress_ = state.userInputInProgress;
     this.hasUserInput_ = state.userInputInProgress && !!state.text.trim();
@@ -845,20 +848,25 @@ export class OmniboxPopupSearchboxElement extends
     this.lastQueriedInput = state.text;
     this.permanentDisplayText_ = state.permanentDisplayText;
     this.isComposing_ = false;
+    const keywordChanged =
+        this.inputKeywordModel?.keyword !== state.keywordModel?.keyword ||
+        this.inputKeywordModel?.type !== state.keywordModel?.type;
     this.inputKeywordModel = state.keywordModel;
     this.lastInputText_ = state.text;
     this.lastInputSelection_ = state.selection;
     // Clear edit history and set baseline text on hard state resets (e.g. tab
     // switch, revert), but preserve active edit history if an IPC arrives
     // while the user is actively typing in the same tab.
-    if (isTabSwitch || !state.userInputInProgress) {
+    if (state.isTabSwitch || !state.userInputInProgress) {
       this.textfieldModel_.setInitialText(state.text, state.selection);
     }
     this.updateEditHistoryState_();
 
-    // Clear any stale results and close the dropdown on a hard state reset.
-    // Clear results here since focusout event may not fire.
-    this.clearAutocompleteMatches();
+    // Prevent stale matches from a different context from lingering.
+    if (state.isTabSwitch || !state.isFocused || keywordChanged ||
+        (!state.userInputInProgress && !state.queryZps)) {
+      this.clearAutocompleteMatches();
+    }
 
     this.isLogicallyFocused_ = state.isFocused;
 
@@ -916,20 +924,28 @@ export class OmniboxPopupSearchboxElement extends
   /**
    * Called by C++ via `SetFocus` Mojo IPC when the browser refocuses the
    * Omnibox while the popup is already open (or during tab restoration). If the
-   * document is visible, focuses and selects all input text immediately.
-   * If hidden, defers the action until `visibilitychange`.
+   * document is visible, focuses the input element while preserving the
+   * active selection range. If hidden, defers the focus action until
+   * `visibilitychange`.
    */
-  private onSetFocus_(isFocused: boolean, queryZps: boolean = false) {
+  private onSetFocus_(
+      isFocused: boolean, queryZps: boolean = false,
+      selectAll: boolean = false) {
     this.isLogicallyFocused_ = isFocused;
     if (isFocused) {
       if (document.visibilityState === 'visible') {
         this.deferredFocusAction_ = null;
         this.$.input.focus();
-        this.getInputElement().select();
+        if (selectAll) {
+          this.getInputElement().select();
+        }
       } else {
-        // Defer focusing and selecting text if the document is currently
-        // hidden, as DOM focus calls on hidden documents may be ignored.
-        this.deferredFocusAction_ = DeferredFocusAction.FOCUS_AND_SELECT;
+        // Defer focusing (and selecting text if selectAll is true) if the
+        // document is currently hidden, as DOM focus calls on hidden documents
+        // may be ignored.
+        this.deferredFocusAction_ = selectAll ?
+            DeferredFocusAction.FOCUS_AND_SELECT :
+            DeferredFocusAction.FOCUS;
       }
       if (queryZps && !this.userInputInProgress_ && !this.dropdownIsVisible) {
         this.queryAutocomplete(
@@ -1238,6 +1254,19 @@ export class OmniboxPopupSearchboxElement extends
         this.textfieldModel_.canUndo(), this.textfieldModel_.canRedo());
   }
 
+  /**
+   * Returns true if any popup element or match row is currently selected,
+   * bridging the legacy DOM focus model and the Virtual Focus model (gated by
+   * `realboxVirtualFocusNavigation`). When legacy focus is eventually
+   * deprecated and removed along with `selectedMatchIndex`, this can be
+   * simplified to just `!selectionsEqual(this.selection, kDefaultSelection)`.
+   */
+  private get hasSelection_(): boolean {
+    return this.virtualFocusEnabled ?
+        !selectionsEqual(this.selection, kDefaultSelection) :
+        this.selectedMatchIndex !== -1;
+  }
+
   override handleKeyNavigation(e: KeyboardEvent) {
     // Ignore key navigation (including ESC) during active IME text composition
     // (e.g. Japanese/Chinese/Korean) so the OS IME engine handles the key
@@ -1252,7 +1281,7 @@ export class OmniboxPopupSearchboxElement extends
       return;
     }
 
-    if (e.key === 'Enter' && this.selectedMatchIndex === -1) {
+    if (e.key === 'Enter' && !this.hasSelection_) {
       // On an open page where no suggestion match is highlighted, submit the
       // verbatim input text (or reload the permanent URL).
       e.preventDefault();

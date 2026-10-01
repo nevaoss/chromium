@@ -39,6 +39,7 @@ function createDefaultOmniboxInputState(overrides?: Partial<OmniboxInputState>):
     showFullUrl: false,
     queryZps: false,
     keywordModel: null,
+    isTabSwitch: false,
     ...overrides,
   };
 }
@@ -91,6 +92,19 @@ suite('OmniboxPopupSearchboxTest', function() {
     assertEquals(-1, searchbox.selectedMatchIndex);
     assertFalse(searchbox.dropdownIsVisible);
     assertEquals(1, testProxy.handler.getCallCount('stopAutocomplete'));
+    assertEquals(0, testProxy.handler.getCallCount('queryAutocomplete'));
+
+    // Verify queryZps = true initiates autocomplete query on focus.
+    callbackRouter.setInputState(createDefaultOmniboxInputState({
+      text: 'zps query',
+      queryZps: true,
+    }));
+    await microtasksFinished();
+    assertEquals(1, testProxy.handler.getCallCount('queryAutocomplete'));
+    const [, , queryText, , , , isOnFocus] =
+        testProxy.handler.getArgs('queryAutocomplete')[0];
+    assertEquals('zps query', queryText);
+    assertTrue(isOnFocus);
   });
 
   test('ResetsEditHistoryOnTabSwitch', async () => {
@@ -123,6 +137,7 @@ suite('OmniboxPopupSearchboxTest', function() {
       tabId: 2,
       text: 'tab 2 draft',
       userInputInProgress: true,
+      isTabSwitch: true,
     }));
     await microtasksFinished();
 
@@ -134,30 +149,43 @@ suite('OmniboxPopupSearchboxTest', function() {
   });
 
   test('EnterKeySubmitsVerbatimMatchWhenNoMatchSelected', async () => {
-    callbackRouter.setInputState(createDefaultOmniboxInputState({
-      text: 'chrome://version',
-    }));
-    await microtasksFinished();
+    for (const virtualFocus of [false, true]) {
+      loadTimeData.overrideValues(
+          {realboxVirtualFocusNavigation: virtualFocus});
+      searchbox.virtualFocusEnabled = virtualFocus;
+      testProxy.handler.resetResolver('openAutocompleteMatch');
 
-    assertEquals(-1, searchbox.selectedMatchIndex);
+      callbackRouter.setInputState(createDefaultOmniboxInputState({
+        text: 'chrome://version',
+      }));
+      await microtasksFinished();
 
-    await searchbox.handleKeyNavigation(new KeyboardEvent('keydown', {
-      key: 'Enter',
-      cancelable: true,
-    }));
-    await microtasksFinished();
+      assertEquals(-1, searchbox.selectedMatchIndex);
 
-    const [line, url, areMatchesShowing, mouseButton, modifiers, viaKeyboard] =
-        await testProxy.handler.whenCalled('openAutocompleteMatch');
-    assertEquals(-1, line);
-    assertEquals('', url);
-    assertFalse(areMatchesShowing);
-    assertEquals(0, mouseButton);
-    assertFalse(modifiers.altKey);
-    assertFalse(modifiers.ctrlKey);
-    assertFalse(modifiers.metaKey);
-    assertFalse(modifiers.shiftKey);
-    assertTrue(viaKeyboard);
+      await searchbox.handleKeyNavigation(new KeyboardEvent('keydown', {
+        key: 'Enter',
+        cancelable: true,
+      }));
+      await microtasksFinished();
+
+      const [
+        line,
+        url,
+        areMatchesShowing,
+        mouseButton,
+        modifiers,
+        viaKeyboard,
+      ] = await testProxy.handler.whenCalled('openAutocompleteMatch');
+      assertEquals(-1, line);
+      assertEquals('', url);
+      assertFalse(areMatchesShowing);
+      assertEquals(0, mouseButton);
+      assertFalse(modifiers.altKey);
+      assertFalse(modifiers.ctrlKey);
+      assertFalse(modifiers.metaKey);
+      assertFalse(modifiers.shiftKey);
+      assertTrue(viaKeyboard);
+    }
   });
 
   test('HandlesSelectionChange', async () => {
@@ -453,7 +481,7 @@ suite('OmniboxPopupSearchboxTest', function() {
     assertEquals(5, handler.getArgs('onInputCleared')[0]);
   });
 
-  test('ExecutesDeferredFocusOnVisibilityChange', async () => {
+  test('SetInputState_ExecutesDeferredFocusOnVisibilityChange', async () => {
     Object.defineProperty(
         document, 'visibilityState', {value: 'hidden', configurable: true});
 
@@ -477,17 +505,16 @@ suite('OmniboxPopupSearchboxTest', function() {
   });
 
   // Verifies that when `setFocus(true)` IPC is received while
-  // `document.visibilityState` is hidden, focus and select-all are deferred
-  // until `visibilitychange` occurs (`DeferredFocusAction.FOCUS_AND_SELECT`).
-  test('ExecutesDeferredFocusAndSelectOnVisibilityChange', async () => {
+  // `document.visibilityState` is hidden, focus is deferred
+  // until `visibilitychange` occurs.
+  test('SetFocus_ExecutesDeferredFocusOnVisibilityChange', async () => {
     Object.defineProperty(
         document, 'visibilityState', {value: 'hidden', configurable: true});
 
     // Trigger dedicated `setFocus` IPC while document is hidden.
-    callbackRouter.setFocus(true, false);
+    callbackRouter.setFocus(true, false, false);
     await microtasksFinished();
 
-    const input = searchbox.$.input.inputElement;
     assertFalse(searchbox.shadowRoot.activeElement === searchbox.$.input);
 
     // Make visible and dispatch `visibilitychange` event.
@@ -496,17 +523,67 @@ suite('OmniboxPopupSearchboxTest', function() {
     document.dispatchEvent(new Event('visibilitychange'));
     await microtasksFinished();
 
-    // Verify both focus AND select occurred
-    // (`DeferredFocusAction.FOCUS_AND_SELECT`).
+    // Verify focus occurred.
+    assertEquals(searchbox.$.input, searchbox.shadowRoot.activeElement);
+  });
+
+  test('SetFocus_PreservesSelectionRange', async () => {
+    const testUrl = 'https://example.com';
+    callbackRouter.setInputState(createDefaultOmniboxInputState({
+      text: testUrl,
+      selection: {start: 8, end: 15},
+      userInputInProgress: false,
+      isFocused: true,
+      queryZps: false,
+    }));
+    await microtasksFinished();
+
+    const input = searchbox.getInputElement().inputElement;
+    assertEquals(8, input.selectionStart);
+    assertEquals(15, input.selectionEnd);
+
+    // Trigger dedicated `setFocus` IPC (e.g. refocusing or clicking top
+    // chrome).
+    callbackRouter.setFocus(true, /*queryZps=*/ false, /*selectAll=*/ false);
+    await microtasksFinished();
+
+    // Verify existing sub-selection range is preserved and not clobbered to
+    // select-all.
+    assertEquals(searchbox.$.input, searchbox.shadowRoot.activeElement);
+    assertEquals(8, input.selectionStart);
+    assertEquals(15, input.selectionEnd);
+  });
+
+  test('SetFocus_SelectAllWhenRequested', async () => {
+    const testUrl = 'https://example.com';
+    callbackRouter.setInputState(createDefaultOmniboxInputState({
+      text: testUrl,
+      selection: {start: 8, end: 15},
+      userInputInProgress: false,
+      isFocused: true,
+      queryZps: false,
+    }));
+    await microtasksFinished();
+
+    const input = searchbox.getInputElement().inputElement;
+    assertEquals(8, input.selectionStart);
+    assertEquals(15, input.selectionEnd);
+
+    // Trigger dedicated `setFocus` IPC with selectAll = true.
+    callbackRouter.setFocus(true, /*queryZps=*/ false, /*selectAll=*/ true);
+    await microtasksFinished();
+
+    // Verify all text is selected.
     assertEquals(searchbox.$.input, searchbox.shadowRoot.activeElement);
     assertEquals(0, input.selectionStart);
-    assertEquals(input.value.length, input.selectionEnd);
+    assertEquals(testUrl.length, input.selectionEnd);
   });
 
   test('SetFocus_RequeriesZpsWhenSteadyStateAndDropdownClosed', async () => {
     const testUrl = 'https://example.com';
     callbackRouter.setInputState(createDefaultOmniboxInputState({
       text: testUrl,
+      selection: {start: 0, end: testUrl.length},
       userInputInProgress: false,
       isFocused: true,
       queryZps: false,
@@ -517,7 +594,7 @@ suite('OmniboxPopupSearchboxTest', function() {
     assertFalse(searchbox.dropdownIsVisible);
     testProxy.handler.resetResolver('queryAutocomplete');
 
-    callbackRouter.setFocus(true, /*queryZps=*/ true);
+    callbackRouter.setFocus(true, /*queryZps=*/ true, /*selectAll=*/ false);
     await microtasksFinished();
 
     const input = searchbox.getInputElement().inputElement;
@@ -535,6 +612,7 @@ suite('OmniboxPopupSearchboxTest', function() {
     const draftQuery = 'chrome';
     callbackRouter.setInputState(createDefaultOmniboxInputState({
       text: draftQuery,
+      selection: {start: 0, end: draftQuery.length},
       userInputInProgress: true,
       isFocused: true,
       queryZps: false,
@@ -544,7 +622,7 @@ suite('OmniboxPopupSearchboxTest', function() {
     searchbox.dropdownIsVisible = true;
     testProxy.handler.resetResolver('queryAutocomplete');
 
-    callbackRouter.setFocus(true, /*queryZps=*/ true);
+    callbackRouter.setFocus(true, /*queryZps=*/ true, /*selectAll=*/ false);
     await microtasksFinished();
 
     const input = searchbox.getInputElement().inputElement;
@@ -558,6 +636,7 @@ suite('OmniboxPopupSearchboxTest', function() {
     const testUrl = 'https://example.com';
     callbackRouter.setInputState(createDefaultOmniboxInputState({
       text: testUrl,
+      selection: {start: 0, end: testUrl.length},
       userInputInProgress: false,
       isFocused: true,
       queryZps: false,
@@ -567,7 +646,7 @@ suite('OmniboxPopupSearchboxTest', function() {
     searchbox.dropdownIsVisible = true;
     testProxy.handler.resetResolver('queryAutocomplete');
 
-    callbackRouter.setFocus(true, /*queryZps=*/ true);
+    callbackRouter.setFocus(true, /*queryZps=*/ true, /*selectAll=*/ false);
     await microtasksFinished();
 
     const input = searchbox.getInputElement().inputElement;
@@ -581,6 +660,7 @@ suite('OmniboxPopupSearchboxTest', function() {
     const testUrl = 'https://example.com';
     callbackRouter.setInputState(createDefaultOmniboxInputState({
       text: testUrl,
+      selection: {start: 0, end: testUrl.length},
       userInputInProgress: false,
       isFocused: true,
       queryZps: false,
@@ -591,7 +671,7 @@ suite('OmniboxPopupSearchboxTest', function() {
     assertFalse(searchbox.dropdownIsVisible);
     testProxy.handler.resetResolver('queryAutocomplete');
 
-    callbackRouter.setFocus(true, /*queryZps=*/ false);
+    callbackRouter.setFocus(true, /*queryZps=*/ false, /*selectAll=*/ false);
     await microtasksFinished();
 
     const input = searchbox.getInputElement().inputElement;
@@ -1155,7 +1235,7 @@ suite('OmniboxPopupSearchboxTest', function() {
    assertTrue(searchbox.dropdownIsVisible);
 
    // Receiving `setFocus(false)` via Mojo IPC triggers focus-loss cleanup.
-   callbackRouter.setFocus(false, false);
+   callbackRouter.setFocus(false, /*queryZps=*/ false, /*selectAll=*/ false);
    await microtasksFinished();
    assertFalse(searchbox.dropdownIsVisible);
  });
@@ -2164,6 +2244,14 @@ suite('OmniboxPopupSearchboxTest', function() {
  });
 
  test('ClearsAutocompleteMatchesOnSetInputState', async () => {
+   // Initial state on Tab 1.
+   callbackRouter.setInputState(createDefaultOmniboxInputState({
+     tabId: 1,
+     text: 'tab 1',
+     isFocused: true,
+   }));
+   await microtasksFinished();
+
    // Populate autocomplete result to show dropdown.
    searchbox.onAutocompleteResultChanged(createAutocompleteResultForTesting({
      queryId: searchbox.activeQueryId,
@@ -2174,14 +2262,43 @@ suite('OmniboxPopupSearchboxTest', function() {
    await microtasksFinished();
    assertTrue(searchbox.dropdownIsVisible);
 
-   // Update input state via Mojo (simulating tab switch / state reset).
+   // Update input state via Mojo (simulating tab switch to Tab 2).
    callbackRouter.setInputState(createDefaultOmniboxInputState({
+     tabId: 2,
      text: 'new tab input',
      isFocused: true,
+     isTabSwitch: true,
    }));
    await microtasksFinished();
 
    // Ensure matches and dropdown are cleared for the new input state.
+   assertFalse(searchbox.dropdownIsVisible);
+   assertFalse(!!searchbox.result);
+
+   // Populate autocomplete result again on Tab 2.
+   searchbox.onAutocompleteResultChanged(createAutocompleteResultForTesting({
+     queryId: searchbox.activeQueryId,
+     sequenceId: 124,
+     input: 'test2',
+     matches: [createSearchMatchForTesting()],
+   }));
+   await microtasksFinished();
+   assertTrue(searchbox.dropdownIsVisible);
+
+   // Update input state to enter keyword mode.
+   callbackRouter.setInputState(createDefaultOmniboxInputState({
+     tabId: 2,
+     text: 'test2',
+     isFocused: true,
+     keywordModel: {
+       type: KeywordType.kInKeyword,
+       keyword: 'google.com',
+       displayText: 'Search Google',
+     },
+   }));
+   await microtasksFinished();
+
+   // Ensure matches are cleared on keyword change.
    assertFalse(searchbox.dropdownIsVisible);
    assertFalse(!!searchbox.result);
  });
@@ -2416,7 +2533,7 @@ suite('OmniboxPopupSearchboxTest', function() {
 
  test('FocusLostHidesAimButton', async () => {
    // Explicitly set focus and enable AIM button visibility.
-   callbackRouter.setFocus(true, /*queryZps=*/ false);
+   callbackRouter.setFocus(true, /*queryZps=*/ false, /*selectAll=*/ false);
    testProxy.page.setAimButtonVisible(true);
    await microtasksFinished();
 
@@ -2425,13 +2542,13 @@ suite('OmniboxPopupSearchboxTest', function() {
    assertTrue(isVisible(composeButton));
 
    // When focus is lost, AIM button should be hidden.
-   callbackRouter.setFocus(false, /*queryZps=*/ false);
+   callbackRouter.setFocus(false, /*queryZps=*/ false, /*selectAll=*/ false);
    await microtasksFinished();
 
    assertFalse(isVisible(composeButton));
 
    // Refocus, then type text into the Omnibox.
-   callbackRouter.setFocus(true, /*queryZps=*/ true);
+   callbackRouter.setFocus(true, /*queryZps=*/ true, /*selectAll=*/ false);
    searchbox.getInputElement().setInputText('temporary text');
    testProxy.page.setAimButtonVisible(true);
    await microtasksFinished();
@@ -2440,7 +2557,7 @@ suite('OmniboxPopupSearchboxTest', function() {
 
    // If focus is lost with temporary text in the Omnibox, then AIM button
    // should be hidden.
-   callbackRouter.setFocus(false, /*queryZps=*/ false);
+   callbackRouter.setFocus(false, /*queryZps=*/ false, /*selectAll=*/ false);
    await microtasksFinished();
 
    assertFalse(isVisible(composeButton));
@@ -2506,4 +2623,64 @@ suite('OmniboxPopupSearchboxTest', function() {
    await microtasksFinished();
    assertTrue(composeButton.hasAttribute('has-user-input'));
  });
+
+ test('EnterKeyWithVirtualFocusOnRemoveSuggestionDeletesMatch', async () => {
+   loadTimeData.overrideValues({realboxVirtualFocusNavigation: true});
+   searchbox.virtualFocusEnabled = true;
+
+   const match = createSearchMatchForTesting({
+     destinationUrl: 'https://example.com/delete',
+     supportsDeletion: true,
+   });
+   searchbox.activeQueryId = 0;
+   searchbox.onAutocompleteResultChanged(createAutocompleteResultForTesting({
+     queryId: 0,
+     input: 'delete query',
+     matches: [match],
+   }));
+   await microtasksFinished();
+
+   searchbox.setSelection({
+     line: 0,
+     state: SelectionLineState.kFocusedButtonRemoveSuggestion,
+     actionIndex: 0,
+   });
+   await microtasksFinished();
+
+   const enterEvent =
+       new KeyboardEvent('keydown', {key: 'Enter', cancelable: true});
+   await searchbox.handleKeyNavigation(enterEvent);
+   await microtasksFinished();
+
+   assertTrue(enterEvent.defaultPrevented);
+   assertEquals(1, testProxy.handler.getCallCount('deleteAutocompleteMatch'));
+   const [line, url] =
+       await testProxy.handler.whenCalled('deleteAutocompleteMatch');
+   assertEquals(0, line);
+   assertEquals('https://example.com/delete', url);
+   assertEquals(0, testProxy.handler.getCallCount('openAutocompleteMatch'));
+ });
+
+ test(
+     'EnterKeyWithVirtualFocusOnContextualEntrypointOpensContextMenu',
+     async () => {
+       loadTimeData.overrideValues({realboxVirtualFocusNavigation: true});
+       searchbox.virtualFocusEnabled = true;
+       searchbox.dropdownIsVisible = true;
+       testProxy.initVisibilityPrefs();
+       testProxy.page.updateAimPopupEligibility(true);
+       searchbox.setSelection({
+         line: -1,
+         state: SelectionLineState.kFocusedButtonContextEntrypoint,
+         actionIndex: 0,
+       });
+       await microtasksFinished();
+
+       await searchbox.handleKeyNavigation(
+           new KeyboardEvent('keydown', {key: 'Enter', cancelable: true}));
+       await microtasksFinished();
+
+       assertEquals(1, handler.getCallCount('showContextMenu'));
+       assertEquals(0, testProxy.handler.getCallCount('openAutocompleteMatch'));
+     });
 });

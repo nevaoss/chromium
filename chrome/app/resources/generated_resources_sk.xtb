@@ -1313,6 +1313,7 @@ Heslá si môžete kedykoľvek skontrolovať v službe <ph name="GOOGLE_PASSWOR
 <translation id="2006638907958895361">Otvoriť odkaz v aplikácii <ph name="APP" /></translation>
 <translation id="2007404777272201486">Nahlásiť problém...</translation>
 <translation id="200781997903833896">Ak chcete používať predčítanie, uvoľnite priestor v zariadení</translation>
+<translation id="2009047848105043829">Spravovať zariadenia</translation>
 <translation id="2010501376126504057">Kompatibilné zariadenia</translation>
 <translation id="2010636492623189611">Vybrané.</translation>
 <translation id="2012935757369720523">Odstrániť súbor</translation>
@@ -6091,6 +6092,7 @@ Tejto akcii môžete prideliť viacero prepínačov.</translation>
 <translation id="5678955352098267522">Čítať vaše údaje na: <ph name="WEBSITE_1" /></translation>
 <translation id="5680050361008726776">Chcete odstrániť profil <ph name="ESIM_PROFILE_NAME" />?</translation>
 <translation id="5681586175480958839">Súbor sa už otvára</translation>
+<translation id="5682120590308014005">Prihláste sa, aby ste mohli jednoducho pridávať súbory z Disku do vlákien v režime AI. Navyše budete mať k dispozícii heslá a ďalší obsah vo všetkých svojich zariadeniach.</translation>
 <translation id="5684110242705861346">Rozšírenie <ph name="NAME" /> bolo pridané na základe pravidiel vašej organizácie a ovláda toto nastavenie. <ph name="BEGIN_LINK" />Zobraziť podrobnosti<ph name="END_LINK" /></translation>
 <translation id="5684181005476681636">Podrobnosti o sieti Wi‑Fi</translation>
 <translation id="5687340364605915800">Pri reagovaní na túto žiadosť postupujú weby podľa svojho uváženia</translation>
@@ -6646,6 +6648,7 @@ Tejto akcii môžete prideliť viacero prepínačov.</translation>
 <translation id="6126601353087978360">Tu zadajte spätnú väzbu:</translation>
 <translation id="6127292407256937949">Zvuk je zapnutý. Vypnite ho.</translation>
 <translation id="6127598727646973981">Zabezpečené pripojenia</translation>
+<translation id="6129686474468159207">Zistite, z ktorých webov voláte a kedy sa používa vaša kamera alebo mikrofón</translation>
 <translation id="6129691635767514872">Vybrané dáta boli odstránené z Chromu a synchronizovaných zariadení. Váš účet Google môže mať ďalšie formy histórie prehliadania na adrese <ph name="BEGIN_LINK" />myactivity.google.com<ph name="END_LINK" /> (napríklad vyhľadávania a aktivity v iných službách Googlu).</translation>
 <translation id="6129938384427316298">Netscape – komentár certifikátu</translation>
 <translation id="6129953537138746214">Medzerník</translation>
@@ -8173,6 +8176,7 @@ Máte ešte # ďalších. Správca hesiel Google odporúča okamžite dané hes
 <translation id="7299588179200441056"><ph name="URL" /> – <ph name="FOLDER" /></translation>
 <translation id="730068416968462308">Animované</translation>
 <translation id="7301812050652048720">Prístupový kľúč bol odstránený</translation>
+<translation id="7303246449496241344">Ak chcete jednoducho pridávať súbory z Disku do vlákien režimu AI, absolvujte overenie totožnosti. Navyše budete mať k dispozícii heslá a ďalší obsah vo všetkých svojich zariadeniach.</translation>
 <translation id="7303485269821975179">Nastaviť heslo pre zariadenie <ph name="DEVICE_TYPE" /></translation>
 <translation id="7303900363563182677">Tomuto webu bolo zablokované zobrazenie textu a obrázkov skopírovaných do schránky</translation>
 <translation id="7304030187361489308">Vysoký</translation>

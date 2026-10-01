@@ -7,6 +7,7 @@
 #include <climits>
 
 #include "base/auto_reset.h"
+#include "base/check_op.h"
 #include "base/debug/dump_without_crashing.h"
 #include "base/feature_list.h"
 #include "base/functional/bind.h"
@@ -39,6 +40,7 @@ void NtpAndroidCustomBackgroundService::RegisterProfilePrefs(
       NtpCustomBackgroundServiceBase::NtpCustomBackgroundDefaults());
   registry->RegisterBooleanPref(prefs::kNtpAndroidCustomBackgroundLocalToDevice,
                                 false);
+  registry->RegisterDictionaryPref(prefs::kNtpAndroidChromeColorDict);
 }
 
 NtpAndroidCustomBackgroundService::NtpAndroidCustomBackgroundService(
@@ -84,9 +86,9 @@ void NtpAndroidCustomBackgroundService::SelectLocalBackgroundImage(
     const base::FilePath& path) {
   processing_sync_update_ = false;
   active_custom_background_ = std::nullopt;
+  pref_service_->ClearPref(prefs::kNtpAndroidChromeColorDict);
   pref_service_->SetBoolean(prefs::kNtpAndroidCustomBackgroundLocalToDevice,
                             true);
-  NotifySyncBridge();
 }
 
 std::optional<int> NtpAndroidCustomBackgroundService::GetNextRefreshTimestamp()
@@ -145,6 +147,7 @@ void NtpAndroidCustomBackgroundService::SetCustomBackgroundInfo(
     const GURL& action_url,
     const std::string& collection_id) {
   processing_sync_update_ = false;
+  pref_service_->ClearPref(prefs::kNtpAndroidChromeColorDict);
   if (!background_url.is_valid() && !collection_id.empty()) {
     // Daily refresh setup.
     CustomBackground active;
@@ -175,7 +178,11 @@ void NtpAndroidCustomBackgroundService::SetCustomBackgroundInfo(
 
 void NtpAndroidCustomBackgroundService::ResetCustomBackgroundInfo() {
   processing_sync_update_ = false;
-  NtpCustomBackgroundServiceBase::ResetCustomBackgroundInfo();
+  active_custom_background_ = std::nullopt;
+  pref_service_->ClearPref(prefs::kNtpAndroidCustomBackgroundDict);
+  pref_service_->ClearPref(prefs::kNtpAndroidChromeColorDict);
+  pref_service_->SetBoolean(prefs::kNtpAndroidCustomBackgroundLocalToDevice,
+                            false);
   NotifySyncBridge();
 }
 
@@ -281,17 +288,41 @@ void NtpAndroidCustomBackgroundService::OnThemeChangedFromSync(
   return;
 #else
   processing_sync_update_ = true;
-  if (specifics.has_ntp_background()) {
+  if (specifics.has_chrome_color_info()) {
+    int color_id = specifics.chrome_color_info().has_theme_color_id()
+                       ? specifics.chrome_color_info().theme_color_id()
+                       : -1;
+    if (color_id > 0) {
+      ApplyChromeColorFromSync(color_id);
+      return;
+    }
+  } else if (specifics.has_ntp_background()) {
     base::DictValue dict =
         themes::GetBackgroundDictFromProto(specifics.ntp_background());
     if (!dict.empty()) {
-      pref_service_->SetDict(prefs::kNtpAndroidCustomBackgroundDict,
-                             std::move(dict));
+      ApplyThemeCollectionFromSync(std::move(dict));
       return;
     }
   }
-  pref_service_->ClearPref(prefs::kNtpAndroidCustomBackgroundDict);
+
+  // Fallthrough for invalid color ID (<= 0), empty theme collection dict,
+  // or empty specifics (default theme).
+  ApplyDefaultThemeFromSync();
 #endif
+}
+
+void NtpAndroidCustomBackgroundService::SetChromeColor(int color_id) {
+  CHECK_GT(color_id, 0);
+
+  processing_sync_update_ = false;
+  active_custom_background_ = std::nullopt;
+  pref_service_->ClearPref(prefs::kNtpAndroidCustomBackgroundDict);
+  pref_service_->SetBoolean(prefs::kNtpAndroidCustomBackgroundLocalToDevice,
+                            false);
+  base::DictValue dict;
+  dict.Set(kNtpAndroidThemeColorIdKey, color_id);
+  pref_service_->SetDict(prefs::kNtpAndroidChromeColorDict, std::move(dict));
+  NotifySyncBridge();
 }
 
 void NtpAndroidCustomBackgroundService::NotifySyncBridge() {
@@ -303,9 +334,21 @@ void NtpAndroidCustomBackgroundService::NotifySyncBridge() {
   if (!theme_sync_bridge_) {
     return;
   }
-  sync_pb::ThemeAndroidSpecifics specifics;
-  if (!pref_service_->GetBoolean(
+
+  // Local device images are not synced across devices.
+  if (pref_service_->GetBoolean(
           prefs::kNtpAndroidCustomBackgroundLocalToDevice)) {
+    return;
+  }
+
+  sync_pb::ThemeAndroidSpecifics specifics;
+
+  const base::DictValue& color_dict =
+      pref_service_->GetDict(prefs::kNtpAndroidChromeColorDict);
+  std::optional<int> color_id = color_dict.FindInt(kNtpAndroidThemeColorIdKey);
+  if (color_id.has_value() && *color_id > 0) {
+    specifics.mutable_chrome_color_info()->set_theme_color_id(*color_id);
+  } else {
     const base::Value* pref =
         pref_service_->GetUserPrefValue(prefs::kNtpAndroidCustomBackgroundDict);
     if (pref && pref->is_dict() && !pref->GetDict().empty()) {
@@ -324,4 +367,38 @@ void NtpAndroidCustomBackgroundService::NotifySyncBridge() {
   }
   theme_sync_bridge_->UpdateTheme(specifics);
 #endif
+}
+
+void NtpAndroidCustomBackgroundService::ApplyChromeColorFromSync(int color_id) {
+  active_custom_background_ = std::nullopt;
+  pref_service_->ClearPref(prefs::kNtpAndroidCustomBackgroundDict);
+  pref_service_->SetBoolean(prefs::kNtpAndroidCustomBackgroundLocalToDevice,
+                            false);
+  base::DictValue dict;
+  dict.Set(kNtpAndroidThemeColorIdKey, color_id);
+  pref_service_->SetDict(prefs::kNtpAndroidChromeColorDict, std::move(dict));
+  if (synced_theme_bridge_) {
+    synced_theme_bridge_->OnChromeColorSynced(color_id);
+  }
+}
+
+void NtpAndroidCustomBackgroundService::ApplyThemeCollectionFromSync(
+    base::DictValue dict) {
+  active_custom_background_ = std::nullopt;
+  pref_service_->ClearPref(prefs::kNtpAndroidChromeColorDict);
+  pref_service_->SetBoolean(prefs::kNtpAndroidCustomBackgroundLocalToDevice,
+                            false);
+  pref_service_->SetDict(prefs::kNtpAndroidCustomBackgroundDict,
+                         std::move(dict));
+}
+
+void NtpAndroidCustomBackgroundService::ApplyDefaultThemeFromSync() {
+  active_custom_background_ = std::nullopt;
+  pref_service_->ClearPref(prefs::kNtpAndroidCustomBackgroundDict);
+  pref_service_->ClearPref(prefs::kNtpAndroidChromeColorDict);
+  pref_service_->SetBoolean(prefs::kNtpAndroidCustomBackgroundLocalToDevice,
+                            false);
+  if (synced_theme_bridge_) {
+    synced_theme_bridge_->OnDefaultThemeSynced();
+  }
 }

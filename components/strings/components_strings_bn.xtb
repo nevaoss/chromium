@@ -935,6 +935,7 @@
 <translation id="2544644783021658368">একক ডকুমেন্ট</translation>
 <translation id="254524874071906077">Chrome-কে ডিফল্ট ব্রাউজার সেট করুন</translation>
 <translation id="2546283357679194313">কুকিজ ও সাইট ডেটা</translation>
+<translation id="254672217349157196">আপনার ইমেল অটোমেটিক যাচাই করুন</translation>
 <translation id="254947805923345898">নীতির মান সঠিক নয়।</translation>
 <translation id="255002559098805027"><ph name="HOST_NAME" /> একটি ভুল প্রতিক্রিয়া পাঠিয়েছে।</translation>
 <translation id="2551608178605132291">ঠিকানা: <ph name="ADDRESS" />।</translation>
@@ -1181,6 +1182,7 @@
 <translation id="3008410317623852235">এখন আপনি Gmail ও আরও অনেক অ্যাপ থেকে তথ্য খুঁজে পেতে এবং পূরণ করতে পারবেন।</translation>
 <translation id="3009036448238594149"><ph name="ACTION_IN_SUGGEST_FOCUSED_FRIENDLY_MATCH_TEXT" />, উপলভ্য অ্যাকশন ব্রাউজ করতে ট্যাব প্রেস করুন, তারপরে বেছে নেওয়া অ্যাকশন এডিট করতে এন্টার প্রেস করুন।</translation>
 <translation id="3010991137650052245">এই সাইটে আপনার <ph name="PERMISSION" /> ব্যবহার করতে, <ph name="SHORT_PRODUCT_NAME" />-কে অ্যাক্সেস দিন</translation>
+<translation id="3013536714390403689">যাচাই করা ইমেল</translation>
 <translation id="3014726756341138577">উন্নত প্রিন্টারের ফিচার</translation>
 <translation id="301521992641321250">স্বয়ংক্রিয়ভাবে ব্লক করা হয়েছে</translation>
 <translation id="3016780570757425217">আপনার লোকেশন জানুন</translation>
@@ -2017,7 +2019,6 @@
 <translation id="4377869186417956230">এই মেনু আইটেমের সব লয়ালটি কার্ডে পরিবর্তন করুন।</translation>
 <translation id="4378154925671717803">ফোন</translation>
 <translation id="4378221908737133050">আমার বাড়ির জন্য ডিপ-ক্লিন চেকলিস্ট তৈরি করো</translation>
-<translation id="4379357028567121852"><ph name="APP_NAME" /> থেকে</translation>
 <translation id="4381997246130185847">আপনি যেখানে শেষ করেছিলেন সেখান থেকেই শুরু করতে পারবেন অথবা যখন খুশি যেখানে খুশি নতুন ট্যাব গ্রুপ তৈরি করতে পারবেন</translation>
 <translation id="4382484599443659549">পিডিএফ</translation>
 <translation id="4382833368532556056">এখন থেকে আপনার ফাইল ক্লাউড স্টোরেজে সেভ করুন</translation>

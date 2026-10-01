@@ -1324,6 +1324,7 @@ Du kan til enhver tid tjekke dine adgangskoder i <ph name="GOOGLE_PASSWORD_MANAG
 <translation id="2006638907958895361">Åbn linket i <ph name="APP" /></translation>
 <translation id="2007404777272201486">Rapportér et problem...</translation>
 <translation id="200781997903833896">Hvis du vil bruge Oplæsning, skal du frigøre plads på din enhed</translation>
+<translation id="2009047848105043829">Administrer dine enheder</translation>
 <translation id="2010501376126504057">Kompatible enheder</translation>
 <translation id="2010636492623189611">Valgt.</translation>
 <translation id="2012935757369720523">Slet fil</translation>
@@ -6107,6 +6108,7 @@ Flere kontakter kan tildeles denne handling.</translation>
 <translation id="5678955352098267522">Læs dine data på <ph name="WEBSITE_1" /></translation>
 <translation id="5680050361008726776">Vil du fjerne "<ph name="ESIM_PROFILE_NAME" />"?</translation>
 <translation id="5681586175480958839">Filen er allerede ved at blive åbnet</translation>
+<translation id="5682120590308014005">Log ind for nemt at føje filer fra Drev til dine tråde i AI-tilstand. Du kan også se dine adgangskoder og meget på alle dine enheder.</translation>
 <translation id="5684110242705861346">Udvidelsen "<ph name="NAME" />" blev tilføjet af din organisations politik og styrer denne indstilling. <ph name="BEGIN_LINK" />Få flere oplysninger<ph name="END_LINK" /></translation>
 <translation id="5684181005476681636">Info om Wi-Fi</translation>
 <translation id="5687340364605915800">Websites vurderer selv, om de vil besvare denne anmodning</translation>
@@ -6662,6 +6664,7 @@ Flere kontakter kan tildeles denne handling.</translation>
 <translation id="6126601353087978360">Angiv din feedback her:</translation>
 <translation id="6127292407256937949">Lyden er slået til. Slå lyden fra.</translation>
 <translation id="6127598727646973981">Sikre forbindelser</translation>
+<translation id="6129686474468159207">Se, hvilke websites du ringer fra, og hvornår dit kamera eller din mikrofon bruges</translation>
 <translation id="6129691635767514872">De valgte data er blevet fjernet fra Chrome og synkroniserede enheder. Din Google-konto kan indeholde andre former for browserhistorik, f.eks. søgninger og aktivitet i andre Google-tjenester, på <ph name="BEGIN_LINK" />myactivity.google.com<ph name="END_LINK" /></translation>
 <translation id="6129938384427316298">Kommentar til Netscape-certifikat</translation>
 <translation id="6129953537138746214">Mellemrum</translation>
@@ -8187,6 +8190,7 @@ Du har # andre kompromitterede adgangskoder. Google Adgangs­kode­admin­istrat
 <translation id="7299588179200441056"><ph name="URL" /> – <ph name="FOLDER" /></translation>
 <translation id="730068416968462308">Animeret</translation>
 <translation id="7301812050652048720">Adgangsnøglen blev slettet</translation>
+<translation id="7303246449496241344">Hvis du nemt vil føje filer fra Drev til dine tråde i AI-tilstand, skal du verificere din identitet. Du kan også se dine adgangskoder og meget på alle dine enheder.</translation>
 <translation id="7303485269821975179">Konfigurer en adgangskode til <ph name="DEVICE_TYPE" /></translation>
 <translation id="7303900363563182677">Dette website er blokeret fra at se tekst og billeder, der er kopieret til udklipsholderen</translation>
 <translation id="7304030187361489308">Højt</translation>

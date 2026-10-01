@@ -9,6 +9,7 @@
 #include "base/strings/string_split.h"
 #include "build/android_buildflags.h"
 #include "build/build_config.h"
+#include "chrome/browser/pwc/pwc_features.mojom-features.h"
 
 namespace features {
 
@@ -63,6 +64,8 @@ base::flat_set<std::string> GetGlicSelectionDefaultBlockedSites() {
       sites_str, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
   return base::flat_set<std::string>(std::move(sites));
 }
+
+BASE_FEATURE(kGlicSelectionOverlayPrompt, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kGlicSelectionSmallChip, base::FEATURE_DISABLED_BY_DEFAULT);
 const base::FeatureParam<bool> kGlicSelectionSmallChipOnTop{
@@ -272,6 +275,11 @@ BASE_FEATURE(kGlicStructuredYieldMetadata, base::FEATURE_ENABLED_BY_DEFAULT);
 // Runs the glic client in a PrivilegedWebContents instead of a webview.
 // This is a work in progress. See b/534807813.
 BASE_FEATURE(kGlicNoWebview, base::FEATURE_DISABLED_BY_DEFAULT);
+bool IsGlicNoWebviewEnabled() {
+  return base::FeatureList::IsEnabled(kGlicNoWebview) &&
+         base::FeatureList::IsEnabled(
+             pwc::mojom::features::kPrivilegedWebContents);
+}
 // Whether to disallow webview communication directly with the glic host
 // (chrome/browser/resources/glic/glic_api_impl/host). When enabled, some
 // functionality implemented by glic's webview.ts is implemented instead by c++

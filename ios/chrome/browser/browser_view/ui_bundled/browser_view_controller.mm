@@ -1089,7 +1089,8 @@ bool IsFullscreenNextIAEnabled() {
 }
 
 - (void)viewWillAppear:(BOOL)animated {
-  if (IsFullscreenRefactoringEnabled()) {
+  if (IsFullscreenRefactoringEnabled() &&
+      CGRectIsEmpty(self.contentArea.bounds)) {
     [self.view.superview layoutIfNeeded];
   }
   [super viewWillAppear:animated];
@@ -1507,7 +1508,6 @@ bool IsFullscreenNextIAEnabled() {
 - (void)addConstraintsToToolbar {
   [self addConstraintsToPrimaryToolbar];
   [self addConstraintsToSecondaryToolbar];
-  [[self view] layoutIfNeeded];
 }
 
 // Sets the correct frame and hierarchy for subviews and helper views.  Only
@@ -2255,8 +2255,8 @@ bool IsFullscreenNextIAEnabled() {
 // secondary toolbar.
 - (CGFloat)secondaryToolbarHeightDelta {
   if (IsFullscreenRefactoringEnabled()) {
-    return std::max(0.0, _fullscreenBrowserAgent->max_insets().bottom -
-                             _fullscreenBrowserAgent->min_insets().bottom);
+    return std::max(0.0, [self secondaryToolbarHeightWithInset] -
+                             [self collapsedBottomToolbarHeight]);
   }
   CGFloat fullyExpandedHeight =
       self.fullscreenController->GetMaxViewportInsets().bottom;
@@ -2288,8 +2288,7 @@ bool IsFullscreenNextIAEnabled() {
   }
 
   CGFloat height = expandedHeight;
-  if (IsAppBarHiddenInFullscreen() &&
-      self.layoutState.appBarPosition == AppBarPosition::kBottom) {
+  if (self.layoutState.appBarPosition == AppBarPosition::kBottom) {
     CGFloat collapsedHeightWithSafeArea = [self collapsedBottomToolbarHeight];
     CGFloat targetHeight =
         collapsedHeightWithSafeArea +
@@ -2316,6 +2315,11 @@ bool IsFullscreenNextIAEnabled() {
     return;
   }
 
+  // Early return if the toolbar is currently managed by keyboard avoidance.
+  if (_isSecondaryToolbarAboveKeyboard) {
+    return;
+  }
+
   // Don't update the height of the secondary toolbar if it is hidden.
   if (!IsSplitToolbarMode(self)) {
     return;
@@ -2323,7 +2327,7 @@ bool IsFullscreenNextIAEnabled() {
 
   CGFloat expandedToolbarHeight;
   if (IsFullscreenRefactoringEnabled()) {
-    expandedToolbarHeight = _fullscreenBrowserAgent->max_insets().bottom;
+    expandedToolbarHeight = [self secondaryToolbarHeightWithInset];
   } else {
     expandedToolbarHeight =
         self.fullscreenController->GetMaxViewportInsets().bottom;
@@ -3056,16 +3060,6 @@ bool IsFullscreenNextIAEnabled() {
   CGFloat keyboardAttachedOffset =
       keyboardHeight +
       self.toolbarCoordinator.keyboardAttachedBottomOmniboxHeight;
-  if (IsChromeNextIaEnabled()) {
-    // When the App Bar is at the bottom (Portrait), the secondary toolbar is
-    // already taller by the height of the App Bar, so we subtract the App Bar
-    // height.
-    if (self.layoutState.appBarPosition == AppBarPosition::kBottom) {
-      CGFloat minHeight =
-          IsAppBarHiddenInFullscreen() ? 0 : kAppBarHeightFullscreen;
-      keyboardAttachedOffset -= minHeight;
-    }
-  }
   CGFloat baseHeight = [self secondaryToolbarHeightWithInset];
   CGFloat offsetRequired = isCollapsed
                                ? keyboardAttachedOffset

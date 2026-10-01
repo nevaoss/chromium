@@ -65,6 +65,9 @@
 
 namespace {
 const gfx::VectorIcon& GetTaskInProgressIcon() {
+  if (base::FeatureList::IsEnabled(features::kGlicActorUiNewIcon)) {
+    return kCursorSparkIcon;
+  }
   return glic::GlicVectorIconManager::GetVectorIcon(IDR_ACTOR_AUTO_BROWSE_ICON);
 }
 }  // namespace
@@ -148,6 +151,17 @@ void ToastService::RegisterToasts(
                                       : kTrashCanRefreshOldIcon,
                                   IDS_CLEAR_BROWSING_DATA_TOAST_BODY)
           .Build());
+
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
+  toast_registry_->RegisterToast(
+      ToastId::kScheduledRestartOnIdle,
+      ToastSpecification::Builder(features::IsRoundedIconsEnabled()
+                                      ? kChromeProductIcon
+                                      : kBrowserLogoOldIcon,
+                                  IDS_RELAUNCH_RECOMMENDED_SCHEDULED_IDLE_TOAST)
+          .AddGlobalScoped()
+          .Build());
+#endif
 
   // TODO(crbug.com/357930023): This registration only partially implements the
   // non-milestone update toast for testing purposes and will need to be

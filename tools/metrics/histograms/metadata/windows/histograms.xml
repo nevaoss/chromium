@@ -163,7 +163,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="Windows.Experimental.Pdh.ProcessV2.{Counter}.{ProcessType}{StartupState}"
-    units="counter value" expires_after="2027-01-03">
+    units="counter value" expires_after="2027-03-07">
   <owner>spvm@chromium.org</owner>
   <owner>catan-team@chromium.org</owner>
   <summary>
@@ -221,6 +221,16 @@ chromium-metrics-reviews@google.com.
   <summary>
     Reported when the user toggles the feature notifications setting in Chrome's
     System settings. Its value represents what the setting was changed to.
+  </summary>
+</histogram>
+
+<histogram name="Windows.FilePathWatcher.ReadDirectoryChangesError"
+    enum="WinGetLastError" expires_after="2027-09-07">
+  <owner>grt@chromium.org</owner>
+  <owner>memmott@chromium.org</owner>
+  <summary>
+    Records the error from an asynchronous or synchronous ReadDirectoryChangesW
+    failure while a FilePathWatcher is active.
   </summary>
 </histogram>
 
@@ -378,6 +388,17 @@ chromium-metrics-reviews@google.com.
   <summary>
     Indicates whether Chrome is pinned to the Windows taskbar for the current
     user. Recorded shortly after startup.
+  </summary>
+</histogram>
+
+<histogram name="Windows.IsPinnedToTaskbar3" enum="IsPinnedToTaskbarResult"
+    expires_after="2027-02-24">
+  <owner>songhaoli@chromium.org</owner>
+  <owner>davidbienvenu@chromium.org</owner>
+  <summary>
+    Indicates whether Chrome (chrome.exe) is pinned to the Windows taskbar for
+    the current user, queried using IPinnedList3. Recorded 45s after startup on
+    a background sequence when the WindowsIsPinnedToTaskbar3 feature is enabled.
   </summary>
 </histogram>
 
@@ -647,7 +668,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Windows.Win11HardwareRequirements2.{Type}Check"
-    enum="BooleanEnabled" expires_after="2027-01-03">
+    enum="BooleanEnabled" expires_after="2027-03-07">
   <owner>estalin@chromium.org</owner>
   <owner>davidbienvenu@chromium.org</owner>
   <summary>

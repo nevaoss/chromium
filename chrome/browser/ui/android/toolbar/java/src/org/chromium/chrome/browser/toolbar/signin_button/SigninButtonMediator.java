@@ -66,6 +66,7 @@ import org.chromium.components.sync.UserActionableError;
 import org.chromium.google_apis.gaia.CoreAccountId;
 import org.chromium.ui.base.ActivityResultTracker;
 import org.chromium.ui.base.WindowAndroid;
+import org.chromium.ui.listmenu.ListMenuButton;
 import org.chromium.ui.modaldialog.ModalDialogManager;
 import org.chromium.ui.modelutil.PropertyModel;
 
@@ -398,22 +399,34 @@ final class SigninButtonMediator
                 && SigninFeatureMap.isEnabled(SigninFeatures.SIGNIN_BUTTON_PROFILE_MENU)) {
             if (mAccountMenuCoordinator == null) {
                 mAccountMenuCoordinator =
-                        new AccountMenuCoordinator(mContext, mWindowAndroid, mProfileSupplier);
+                        new AccountMenuCoordinator(
+                                mContext,
+                                mWindowAndroid,
+                                mProfileSupplier,
+                                () -> mSigninCoordinator,
+                                mSigninAndHistorySyncActivityLauncher);
             }
-            mAccountMenuCoordinator.show(view);
+            mAccountMenuCoordinator.show((ListMenuButton) view);
+            return;
+        }
+
+        startSigninFlow();
+    }
+
+    private void startSigninFlow() {
+        if (mProfile == null || mProfile.isOffTheRecord()) {
             return;
         }
 
         Profile originalProfile = mProfile.getOriginalProfile();
         if (assumeNonNull(mSigninManager).isSigninAllowed()) {
+            String title = mContext.getString(R.string.signin_account_picker_bottom_sheet_title);
+            String subtitle =
+                    mContext.getString(
+                            R.string.signin_account_picker_bottom_sheet_benefits_subtitle);
             AccountPickerBottomSheetStrings bottomSheetStrings =
-                    new AccountPickerBottomSheetStrings.Builder(
-                                    mContext.getString(
-                                            R.string.signin_account_picker_bottom_sheet_title))
-                            .setSubtitleString(
-                                    mContext.getString(
-                                            R.string
-                                                    .signin_account_picker_bottom_sheet_benefits_subtitle))
+                    new AccountPickerBottomSheetStrings.Builder(title)
+                            .setSubtitleString(subtitle)
                             .build();
             BottomSheetSigninAndHistorySyncConfig config =
                     new BottomSheetSigninAndHistorySyncConfig.Builder(

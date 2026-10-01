@@ -44,6 +44,10 @@ class GoogleGroupsManager;
 class GURL;
 class PrefService;
 
+namespace affiliations {
+class AffiliationService;
+}
+
 namespace consent_auditor {
 class ConsentAuditor;
 }
@@ -195,6 +199,7 @@ class AutofillClient {
     kTravel,
     // Autofill AI shopping details (e.g. orders, shipments).
     kShopping,
+    kMaxValue = kShopping,
   };
   // LINT.ThenChange(//components/autofill/core/browser/permissions/autofill_policy_service.cc:AutofillPolicyDataCategory,//components/autofill/core/browser/permissions/autofill_policy_service_unittest.cc:AutofillPolicyDataCategory)
 
@@ -448,6 +453,10 @@ class AutofillClient {
   // machine learning predictions associated with the client.
   virtual FieldClassificationModelHandler*
   GetPasswordManagerFieldClassificationModelHandler();
+
+  // Gets the AffiliationService instance associated with the client, if there
+  // is one.
+  virtual affiliations::AffiliationService* GetAffiliationService();
 
   // Handles routing single-field form filling requests, such as for
   // Autocomplete and merchant promo codes.

@@ -52,6 +52,7 @@ import org.chromium.chrome.browser.settings.search.ChromeBaseSearchIndexProvider
 import org.chromium.chrome.browser.signin.services.IdentityServicesProvider;
 import org.chromium.chrome.browser.signin.services.ProfileDataCache;
 import org.chromium.chrome.browser.sync.SyncServiceFactory;
+import org.chromium.chrome.browser.sync.SyncSettingsUtils;
 import org.chromium.chrome.browser.sync.ui.PassphraseCreationDialogFragment;
 import org.chromium.chrome.browser.sync.ui.PassphraseDialogFragment;
 import org.chromium.chrome.browser.sync.ui.PassphraseTypeDialogFragment;
@@ -113,15 +114,13 @@ public class ManageSyncSettings extends ChromeBaseSettingsFragment
                 BatchUploadCardPreference.Listener {
     @VisibleForTesting public static final String FRAGMENT_ENTER_PASSPHRASE = "enter_password";
     @VisibleForTesting public static final String FRAGMENT_CUSTOM_PASSPHRASE = "custom_password";
-    @VisibleForTesting public static final String FRAGMENT_PASSPHRASE_TYPE = "password_type";
+    private static final String FRAGMENT_PASSPHRASE_TYPE = "password_type";
 
-    @VisibleForTesting
     private static final String PREF_CENTRAL_ACCOUNT_CARD_PREFERENCE = "central_account_card";
 
     @VisibleForTesting
     public static final String PREF_IDENTITY_ERROR_CARD_PREFERENCE = "identity_error_card";
 
-    @VisibleForTesting
     private static final String PREF_SETTINGS_SYNC_DISABLED_BY_ADMINISTRATOR =
             "settings_sync_disabled_by_administrator";
 
@@ -444,7 +443,10 @@ public class ManageSyncSettings extends ChromeBaseSettingsFragment
         Preference reviewSyncData = findPreference(preference);
         reviewSyncData.setOnPreferenceClickListener(
                 SyncSettingsUtils.toOnClickListener(
-                        this, () -> SyncSettingsUtils.openSyncDashboard(getActivity())));
+                        this,
+                        () ->
+                                SyncSettingsUtils.openSyncDashboard(
+                                        getContext(), getCustomTabLauncher())));
     }
 
     private void setupAccountManagementPreferences() {
@@ -453,7 +455,8 @@ public class ManageSyncSettings extends ChromeBaseSettingsFragment
                 SyncSettingsUtils.toOnClickListener(
                         this,
                         () -> {
-                            SyncSettingsUtils.openGoogleMyAccount(getActivity());
+                            SyncSettingsUtils.openGoogleMyAccount(
+                                    getContext(), getCustomTabLauncher());
                         }));
         Preference manageAccountsOnThisDevice =
                 findPreference(PREF_ACCOUNT_ANDROID_DEVICE_ACCOUNTS);
@@ -906,9 +909,10 @@ public class ManageSyncSettings extends ChromeBaseSettingsFragment
                 return;
             case UserActionableError.BOOKMARKS_LIMIT_EXCEEDED:
                 SyncSettingsUtils.openBookmarkLimitHelpPage(
-                        getActivity(),
+                        getContext(),
                         mSyncService,
-                        BookmarksLimitExceededHelpClickedSource.SETTINGS);
+                        BookmarksLimitExceededHelpClickedSource.SETTINGS,
+                        getCustomTabLauncher());
                 return;
             case UserActionableError.NONE:
             default:
@@ -987,6 +991,12 @@ public class ManageSyncSettings extends ChromeBaseSettingsFragment
                 public void updateDynamicPreferences(
                         Context context, SettingsIndexData indexData, Profile profile) {
                     var frag = ManageSyncSettings.class.getName();
+
+                    // These preferences should not be searchable - transient or informational UI.
+                    indexData.removeEntryForKey(frag, PREF_IDENTITY_ERROR_CARD_PREFERENCE);
+                    indexData.removeEntryForKey(frag, PREF_BATCH_UPLOAD_CARD_PREFERENCE);
+                    indexData.removeEntryForKey(frag, PREF_SETTINGS_SYNC_DISABLED_BY_ADMINISTRATOR);
+
                     if (!shouldShowExtensionsItem(profile)) {
                         indexData.removeEntryForKey(frag, PREF_ACCOUNT_SECTION_EXTENSIONS_TOGGLE);
                     }

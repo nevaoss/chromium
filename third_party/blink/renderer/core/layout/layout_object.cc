@@ -238,7 +238,8 @@ bool HasNativeBackgroundPainter(Node* node) {
          ElementAnimations::CompositedPaintStatus::kComposited;
 }
 
-bool NeedsForcedUpdateForBackgroundPainter(Node* node) {
+bool NeedsForcedUpdateForBackgroundPainter(Node* node,
+                                           bool background_color_changed) {
   Element* element = To<Element>(node);
   ElementAnimations* element_animations = element->GetElementAnimations();
   CHECK(element_animations);
@@ -247,6 +248,16 @@ bool NeedsForcedUpdateForBackgroundPainter(Node* node) {
   CHECK(npw_data);
   if (npw_data->NeedsKeyframeSnapshotUpdate()) {
     return true;
+  }
+
+  if (background_color_changed) {
+    const Animation* animation = npw_data->GetAnimation();
+    CHECK(animation);
+    if (!animation->effect()->Progress().has_value()) {
+      // Color change due to a style update while the animation is not in
+      // effect.
+      return true;
+    }
   }
 
   return false;
@@ -277,7 +288,8 @@ StyleDifference AdjustForCompositableAnimationPaint(
 
   bool skip_background_color_paint_invalidation =
       HasNativeBackgroundPainter(node)
-          ? !NeedsForcedUpdateForBackgroundPainter(node)
+          ? !NeedsForcedUpdateForBackgroundPainter(
+                node, diff.background_color_changed)
           : !diff.background_color_changed;
   if (!skip_background_color_paint_invalidation)
     diff.SetNeedsNormalPaintInvalidation();
@@ -391,7 +403,7 @@ LayoutObject* LayoutObject::CreateObject(Element* element,
     // image but we don't want to trigger a style change now as the node is
     // not fully attached. Moving this code to style change doesn't make sense
     // as it should be run once at layoutObject creation.
-    image->SetStyleInternal(const_cast<ComputedStyle*>(&style));
+    image->SetStyleInternal(style);
     if (const StyleImage* style_image =
             To<ImageContentData>(content_data)->GetImage()) {
       image->SetImageResource(
@@ -743,7 +755,7 @@ void LayoutObject::AddChild(LayoutObject* new_child,
     children->InsertChildNode(this, new_child, before_child);
   } else if (IsA<LayoutTextCombine>(*this)) {
     DCHECK(LayoutTextCombine::ShouldBeParentOf(*new_child)) << new_child;
-    new_child->SetStyle(&StyleRef());
+    new_child->SetStyle(StyleRef());
     children->InsertChildNode(this, new_child, before_child);
   } else if (!IsHorizontalTypographicMode() &&
              LayoutTextCombine::ShouldBeParentOf(*new_child)) {
@@ -2987,17 +2999,15 @@ void LayoutObject::SetPseudoElementStyle(const LayoutObject& owner,
       builder.SetWidth(Length::Percent(100));
       builder.SetHeight(Length::Percent(100));
     }
-    SetStyle(builder.TakeStyle());
+    SetStyle(*builder.TakeStyle());
     return;
   }
 
   if (IsText() && Parent() && Parent()->IsInitialLetterBox()) [[unlikely]] {
     // Note: `Parent()` can be null for text for generated contents.
     // See "accessibility/css-generated-content.html"
-    const ComputedStyle* initial_letter_text_style =
-        GetDocument().GetStyleResolver().StyleForInitialLetterText(
-            pseudo_style, Parent()->ContainingBlock()->StyleRef());
-    SetStyle(std::move(initial_letter_text_style));
+    SetStyle(*GetDocument().GetStyleResolver().StyleForInitialLetterText(
+        pseudo_style, Parent()->ContainingBlock()->StyleRef()));
     return;
   }
 
@@ -3008,65 +3018,65 @@ void LayoutObject::SetPseudoElementStyle(const LayoutObject& owner,
             .GetStyleResolver()
             .CreateComputedStyleBuilderInheritingFrom(pseudo_style);
     StyleAdjuster::AdjustStyleForCombinedText(combined_text_style_builder);
-    SetStyle(combined_text_style_builder.TakeStyle());
+    SetStyle(*combined_text_style_builder.TakeStyle());
     return;
   }
 
-  SetStyle(&pseudo_style);
+  SetStyle(pseudo_style);
 }
 
 DISABLE_CFI_PERF
-void LayoutObject::SetStyle(const ComputedStyle* style,
+void LayoutObject::SetStyle(const ComputedStyle& new_style,
                             ApplyStyleChanges apply_changes) {
   NOT_DESTROYED();
-  if (style_ == style)
+
+  const ComputedStyle* old_style = style_.Get();
+  if (old_style == &new_style) {
     return;
+  }
 
   if (apply_changes == ApplyStyleChanges::kNo) {
-    const ComputedStyle* old_style = style_;
-    SetStyleInternal(style);
+    SetStyleInternal(new_style);
     // Ideally we shouldn't have to do this, but new CSSImageGeneratorValues are
     // generated on recalc for custom properties, which means we need to call
     // UpdateImageObservers to keep CSSImageGeneratorValue::clients_ up-to-date.
     if (!IsText()) {
-      UpdateImageObservers(old_style, style_.Get());
+      UpdateImageObservers(old_style, &new_style);
       // Ditto for CSSURIValues.
       if (HasLayer()) {
         PaintLayer* layer = To<LayoutBoxModelObject>(*this).Layer();
-        layer->UpdateFilters({}, old_style, *style_);
-        layer->UpdateBackdropFilters(old_style, *style_);
-        layer->UpdateClipPath(old_style, *style_);
+        layer->UpdateFilters({}, old_style, new_style);
+        layer->UpdateBackdropFilters(old_style, new_style);
+        layer->UpdateClipPath(old_style, new_style);
       }
     }
     return;
   }
 
-  DCHECK(style);
-
   StyleDifference diff;
-  if (style_) {
-    diff = style_->VisualInvalidationDiff(GetDocument(), *style);
+  if (old_style) {
+    diff = old_style->VisualInvalidationDiff(GetDocument(), new_style);
     if (const auto* cached_inherited_first_line_style =
-            style_->GetCachedPseudoElementStyle(kPseudoIdFirstLineInherited)) {
+            old_style->GetCachedPseudoElementStyle(
+                kPseudoIdFirstLineInherited)) {
       // Merge the difference to the first line style because even if the new
       // style is the same as the old style, the new style may have some higher
       // priority properties overriding first line style.
       // See external/wpt/css/css-pseudo/first-line-change-inline-color*.html.
       diff.Merge(cached_inherited_first_line_style->VisualInvalidationDiff(
-          GetDocument(), *style));
+          GetDocument(), new_style));
     }
 
     auto HighlightPseudoUpdateDiff =
-        [this, style, &diff](const PseudoId pseudo,
-                             const ComputedStyle* pseudo_old_style,
-                             const ComputedStyle* pseudo_new_style) {
+        [&](const PseudoId pseudo, const ComputedStyle* pseudo_old_style,
+            const ComputedStyle* pseudo_new_style) {
           DCHECK(pseudo == kPseudoIdSearchText ||
                  pseudo == kPseudoIdTargetText ||
                  pseudo == kPseudoIdSpellingError ||
                  pseudo == kPseudoIdGrammarError);
 
-          if (style_->HasPseudoElementStyle(pseudo) ||
-              style->HasPseudoElementStyle(pseudo)) {
+          if (old_style->HasPseudoElementStyle(pseudo) ||
+              new_style.HasPseudoElementStyle(pseudo)) {
             if (pseudo_old_style && pseudo_new_style) {
               diff.Merge(pseudo_old_style->VisualInvalidationDiff(
                   GetDocument(), *pseudo_new_style));
@@ -3082,43 +3092,44 @@ void LayoutObject::SetStyle(const ComputedStyle* style,
     // LayoutObject::InvalidateSelectionOnStyleChange()).
     if (RuntimeEnabledFeatures::SearchTextHighlightPseudoEnabled()) {
       HighlightPseudoUpdateDiff(kPseudoIdSearchText,
-                                style_->HighlightData().SearchTextCurrent(),
-                                style->HighlightData().SearchTextCurrent());
-      HighlightPseudoUpdateDiff(kPseudoIdSearchText,
-                                style_->HighlightData().SearchTextNotCurrent(),
-                                style->HighlightData().SearchTextNotCurrent());
+                                old_style->HighlightData().SearchTextCurrent(),
+                                new_style.HighlightData().SearchTextCurrent());
+      HighlightPseudoUpdateDiff(
+          kPseudoIdSearchText,
+          old_style->HighlightData().SearchTextNotCurrent(),
+          new_style.HighlightData().SearchTextNotCurrent());
     }
     HighlightPseudoUpdateDiff(kPseudoIdTargetText,
-                              style_->HighlightData().TargetText(),
-                              style->HighlightData().TargetText());
+                              old_style->HighlightData().TargetText(),
+                              new_style.HighlightData().TargetText());
     HighlightPseudoUpdateDiff(kPseudoIdSpellingError,
-                              style_->HighlightData().SpellingError(),
-                              style->HighlightData().SpellingError());
+                              old_style->HighlightData().SpellingError(),
+                              new_style.HighlightData().SpellingError());
     HighlightPseudoUpdateDiff(kPseudoIdGrammarError,
-                              style_->HighlightData().GrammarError(),
-                              style->HighlightData().GrammarError());
+                              old_style->HighlightData().GrammarError(),
+                              new_style.HighlightData().GrammarError());
   }
 
   diff = AdjustStyleDifference(diff);
 
   // A change to a property that can be animated on the compositor or an
   // animation affecting that property may require paint invalidation.
-  diff = AdjustForCompositableAnimationPaint(style_, style, GetNode(), diff);
+  diff = AdjustForCompositableAnimationPaint(old_style, &new_style, GetNode(),
+                                             diff);
 
   StyleChangeContext style_change_context;
 
-  const ComputedStyle* old_style = style_.Get();
-  StyleWillChange(diff, old_style, *style, style_change_context);
+  StyleWillChange(diff, old_style, new_style, style_change_context);
 
-  SetStyleInternal(std::move(style));
+  SetStyleInternal(new_style);
 
   if (!IsText()) {
-    UpdateImageObservers(old_style, style_.Get());
+    UpdateImageObservers(old_style, &new_style);
   }
 
   bool does_not_need_layout_or_paint_invalidation = !parent_;
 
-  StyleDidChange(diff, old_style, *style_, style_change_context);
+  StyleDidChange(diff, old_style, new_style, style_change_context);
 
   // FIXME: |this| might be destroyed here. This can currently happen for a
   // LayoutTextFragment when its first-letter block gets an update in
@@ -5605,7 +5616,7 @@ Vector<PhysicalRect> LayoutObject::OutlineRects(
 }
 
 void LayoutObject::SetModifiedStyleOutsideStyleRecalc(
-    const ComputedStyle* style,
+    const ComputedStyle& style,
     ApplyStyleChanges apply_changes) {
   NOT_DESTROYED();
   SetStyle(style, apply_changes);
@@ -5613,7 +5624,7 @@ void LayoutObject::SetModifiedStyleOutsideStyleRecalc(
     return;
   }
   if (auto* element = DynamicTo<Element>(GetNode())) {
-    element->SetComputedStyle(style);
+    element->SetComputedStyle(&style);
   }
 }
 

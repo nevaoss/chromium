@@ -297,10 +297,7 @@ bool IsGeminiActorEnabled();
 // Parameter to enable or disable backgrounding in Gemini Actor.
 extern const char kGeminiActorBackgroundingParam[];
 
-// Returns true if backgrounding for Gemini Actor is enabled. This requires:
-// 1. Compile flag `IOS_BACKGROUND_CONTINUED_PROCESSING_ENABLED` is enabled.
-// 2. `IsGeminiActorEnabled()` and `kGeminiActorBackgroundingParam` (default
-// true) are both true.
+// Returns true if backgrounding for Gemini Actor is enabled.
 bool IsGeminiActorBackgroundingEnabled();
 
 // Enables the GeminiUnaryMigration feature.
@@ -321,9 +318,11 @@ BASE_DECLARE_FEATURE(kPageContextIPCOptimization);
 // Returns true if the PageContextIPCOptimization feature is enabled.
 bool IsPageContextIPCOptimizationEnabled();
 
-// Returns true if the actionable optimization is enabled within the IPC
-// optimization.
-bool IsPageContextIPCOptimizationActionableEnabled();
+// Enables the PageContextActionableOptimization feature.
+BASE_DECLARE_FEATURE(kPageContextActionableOptimization);
+
+// Returns true if the PageContextActionableOptimization feature is enabled.
+bool IsPageContextActionableOptimizationEnabled();
 
 // Enables the PageContextPdf feature. This allows PDFs to be used as context
 // for prompts for Gemini only. Other providers would have separate flags.

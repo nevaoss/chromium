@@ -162,6 +162,7 @@ import org.chromium.chrome.browser.ntp.NewTabPageLocationPolicyManager;
 import org.chromium.chrome.browser.ntp_customization.NtpCustomizationUtils;
 import org.chromium.chrome.browser.ntp_customization.policy.NtpCustomizationPolicyManager;
 import org.chromium.chrome.browser.ntp_customization.theme.NtpSyncedThemeManager;
+import org.chromium.chrome.browser.ntp_customization.theme_sync.NtpBackgroundDataSyncController;
 import org.chromium.chrome.browser.offlinepages.indicator.OfflineIndicatorControllerV2;
 import org.chromium.chrome.browser.offlinepages.indicator.OfflineIndicatorInProductHelpController;
 import org.chromium.chrome.browser.omnibox.LocationBarEmbedder;
@@ -196,6 +197,7 @@ import org.chromium.chrome.browser.tab.RequestDesktopUtils;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tab.TabAssociatedApp;
 import org.chromium.chrome.browser.tab.TabFavicon;
+import org.chromium.chrome.browser.tab.TabSelectionType;
 import org.chromium.chrome.browser.tab_bottom_sheet.CoBrowseViewFactory;
 import org.chromium.chrome.browser.tab_bottom_sheet.TabBottomSheetManager;
 import org.chromium.chrome.browser.tab_bottom_sheet.TabBottomSheetManagerImpl;
@@ -1343,6 +1345,10 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                         },
                         compositorViewHolder,
                         mFullscreenManager);
+        SideUiStateProvider sideUiStateProvider = mSideUiStateProviderSupplier.get();
+        if (sideUiStateProvider != null) {
+            mHistoryNavigationCoordinator.setSideUiStateProvider(sideUiStateProvider);
+        }
         mRootUiTabObserver.swapToTab(mActivityTabProvider.get());
 
         // TODO(crbug.com/40946488): Consider register this drag listener to other views besides
@@ -1449,12 +1455,6 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                             mSideUiStateProviderSupplier.get());
         }
 
-        mForcedSigninController =
-                new ForcedSigninController(
-                        mActivity,
-                        mProfileSupplier.asNonNull().get().getOriginalProfile(),
-                        SigninAndHistorySyncActivityLauncherImpl.get());
-
         if (ChromeFeatureList.isEnabled(ChromeFeatureList.ANDROID_DEVICE_SIGNALS_DISCLAIMER)) {
             mEnterpriseSignalsDisclaimerController =
                     EnterpriseSignalsDisclaimerController.maybeCreateForProfile(
@@ -1539,6 +1539,10 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
             mNtpSyncedThemeManager = new NtpSyncedThemeManager(mActivity, originalProfile);
             NtpCustomizationPolicyManager.getInstance()
                     .onFinishNativeInitialization(currentlySelectedProfile);
+            if (NtpCustomizationUtils.isNTPCustomizationSyncEnabled()) {
+                NtpBackgroundDataSyncController.getInstance()
+                        .onFinishNativeInitialization(originalProfile);
+            }
         }
         NewTabPageLocationPolicyManager.getInstance().onFinishNativeInitialization(originalProfile);
 
@@ -1806,7 +1810,7 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                     mMessageDispatcher);
         }
 
-        if (!didTriggerPromo && PageZoomUtils.shouldShowZoomMenuItem()) {
+        if (!didTriggerPromo && PageZoomUtils.shouldShowZoomMenuItem(mActivity)) {
             // Page Zoom IPH should only show if the menu item is visible, and not on NTP or CCT.
             if (!BuildConfig.IS_FOR_TEST
                     && tab != null
@@ -2264,12 +2268,19 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                     return;
                 }
 
+                int tabId = tabModel.getGroupLastShownTabId(tabGroupId);
+                if (TabSwitcherUtils.isGridTabSwitcherDisabled()) {
+                    Tab tab = tabModel.getTabById(tabId);
+                    if (tab != null) {
+                        tabModel.setIndex(tabModel.indexOf(tab), TabSelectionType.FROM_USER);
+                    }
+                    return;
+                }
                 // Due to crbug.com/396159718 (see also crbug.com/395847973) it was possible to
                 // reach this method without the tab switcher being open. For now this will
-                // remain as a safegaurd against bugs as internally it will noop if the tab switcher
+                // remain as a safeguard against bugs as internally it will noop if the tab switcher
                 // is already opened. It could be removed in the future with some care taken to add
                 // an assert and verify no callers are using it in an unexpected flow.
-                int tabId = tabModel.getGroupLastShownTabId(tabGroupId);
                 assert mLayoutManager != null;
                 TabSwitcherUtils.navigateToTabSwitcher(
                         mLayoutManager,
@@ -2407,7 +2418,8 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                 SidePanelContainerCoordinatorFactory.create(
                         mWindowAndroid,
                         mSideUiCoordinator,
-                        mTabModelSelectorSupplier.asNonNull().get());
+                        mTabModelSelectorSupplier.asNonNull().get(),
+                        mTopControlsStacker);
         if (mSidePanelContainerCoordinator != null) {
             mSidePanelContainerCoordinator.init();
 
@@ -2469,9 +2481,12 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
         mSideUiStateProviderSupplier.onAvailable(
                 provider -> maybeInitializeVerticalTabs(currentlySelectedProfile));
         mSideUiStateProviderSupplier.onAvailable(
-                provider ->
-                        assumeNonNull(mHistoryNavigationCoordinator)
-                                .setSideUiStateProvider(provider));
+                mCallbackController.makeCancelable(
+                        provider -> {
+                            if (mHistoryNavigationCoordinator != null) {
+                                mHistoryNavigationCoordinator.setSideUiStateProvider(provider);
+                            }
+                        }));
         mSideUiStateProviderSupplier.onAvailable(
                 provider -> assumeNonNull(mFindToolbarManager).setSideUiStateProvider(provider));
         mSideUiStateProviderSupplier.onAvailable(
@@ -2537,6 +2552,9 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
                             if (mPendingUnsuppressTabStripObserver != null) {
                                 maybeClearPendingTabStripUnsuppression();
                                 showVerticalTabs(true);
+                            }
+                            if (mControlContainer != null) {
+                                mControlContainer.updateToolbarRightOffset();
                             }
                             var transitionCoord =
                                     assumeNonNull(mToolbarManager)
@@ -2916,8 +2934,14 @@ public class TabbedRootUiCoordinator extends RootUiCoordinator {
         // Any promo that has a force-show feature flag should be added to this list (and of course
         // any promo that you want to trigger at every startup (temporarily for debugging and/or
         // development).
-        if (FullscreenSigninPromoLauncher.launchPromoIfForced(
-                mActivity, profile, SigninAndHistorySyncActivityLauncherImpl.get())) {
+
+        mForcedSigninController =
+                new ForcedSigninController(
+                        mActivity,
+                        mProfileSupplier.asNonNull().get().getOriginalProfile(),
+                        SigninAndHistorySyncActivityLauncherImpl.get(),
+                        mActivityLifecycleDispatcher);
+        if (mForcedSigninController.showFullscreenSigninPromptIfForced()) {
             return true;
         }
         if (PwaRestorePromoUtils.maybeForceShowPromo(profile, mWindowAndroid)) {

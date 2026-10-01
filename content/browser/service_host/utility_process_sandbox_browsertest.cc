@@ -43,7 +43,7 @@ std::vector<Sandbox> GetSandboxTypesToTest() {
     return types;
   }
 
-  for (Sandbox t = Sandbox::kNoSandbox; t <= Sandbox::kMaxValue;
+  for (Sandbox t = Sandbox::kMinValue; t <= Sandbox::kMaxValue;
        t = static_cast<Sandbox>(static_cast<int>(t) + 1)) {
     // These sandbox types can't be spawned in a utility process.
     if (t == Sandbox::kRenderer || t == Sandbox::kGpu ||
@@ -103,7 +103,6 @@ class UtilityProcessSandboxBrowserTest
         break;
 
       case Sandbox::kCdm:
-      case Sandbox::kOnDeviceModelExecution:
       case Sandbox::kPrintCompositor:
       case Sandbox::kService:
       case Sandbox::kServiceWithJit:
@@ -120,9 +119,9 @@ class UtilityProcessSandboxBrowserTest
 #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
       case Sandbox::kShapeDetection:
       case Sandbox::kOnDeviceTranslation:
-#if BUILDFLAG(ALLOW_OOP_VIDEO_DECODER)
+#if BUILDFLAG(ENABLE_OOP_VIDEO_DECODER)
       case Sandbox::kHardwareVideoDecoding:
-#endif  // BUILDFLAG(ALLOW_OOP_VIDEO_DECODER)
+#endif  // BUILDFLAG(ENABLE_OOP_VIDEO_DECODER)
 #if BUILDFLAG(USE_LINUX_VIDEO_ACCELERATION)
       case Sandbox::kHardwareVideoEncoding:
 #endif  // BUILDFLAG(USE_LINUX_VIDEO_ACCELERATION)
@@ -133,6 +132,11 @@ class UtilityProcessSandboxBrowserTest
       case Sandbox::kNearby:
 #endif  // BUILDFLAG(IS_CHROMEOS)
       case Sandbox::kNetwork:
+      // kOnDeviceModelExecution launches from the unsandboxed zygote without
+      // Layer-1 user or PID namespaces, but is protected by Layer-2 Seccomp-BPF
+      // with syscall brokering. Therefore, only partial sandbox flags are
+      // expected.
+      case Sandbox::kOnDeviceModelExecution:
       case Sandbox::kPrintBackend:
       case Sandbox::kScreenAI:
       case Sandbox::kSpeechRecognition: {
@@ -163,8 +167,7 @@ class UtilityProcessSandboxBrowserTest
 };
 
 IN_PROC_BROWSER_TEST_P(UtilityProcessSandboxBrowserTest, VerifySandboxType) {
-#if BUILDFLAG(IS_LINUX) && (BUILDFLAG(USE_LINUX_VIDEO_ACCELERATION) || \
-                            BUILDFLAG(ALLOW_OOP_VIDEO_DECODER))
+#if BUILDFLAG(ENABLE_OOP_VIDEO_DECODER)
   if (GetParam() == Sandbox::kHardwareVideoDecoding) {
     // TODO(b/195769334): On Linux, this test fails with
     // Sandbox::kHardwareVideoDecoding because the pre-sandbox hook needs Ozone
@@ -173,7 +176,9 @@ IN_PROC_BROWSER_TEST_P(UtilityProcessSandboxBrowserTest, VerifySandboxType) {
     //
     GTEST_SKIP();
   }
+#endif  // BUILDFLAG(ENABLE_OOP_VIDEO_DECODER)
 
+#if BUILDFLAG(USE_LINUX_VIDEO_ACCELERATION)
   if (GetParam() == Sandbox::kHardwareVideoEncoding) {
     // TODO(b/248540499): On Linux, this test fails with
     // Sandbox::kHardwareVideoEncoding because the pre-sandbox hook needs Ozone
@@ -181,8 +186,7 @@ IN_PROC_BROWSER_TEST_P(UtilityProcessSandboxBrowserTest, VerifySandboxType) {
     // need to remove the Ozone dependency and re-enable this test.
     GTEST_SKIP();
   }
-#endif  // BUILDFLAG(IS_LINUX) && (BUILDFLAG(USE_LINUX_VIDEO_ACCELERATION) ||
-        // BUILDFLAG(ALLOW_OOP_VIDEO_DECODER))
+#endif  // BUILDFLAG(USE_LINUX_VIDEO_ACCELERATION)
   RunUtilityProcess();
 }
 

@@ -118,12 +118,25 @@ void GmailOtpBackendImpl::OnIncomingOneTimeTokenBackendNotification(
     }
   }
 
+  if (!notification.notification_sent_timestamp.is_null()) {
+    base::TimeDelta latency = notification.notification_received_timestamp -
+                              notification.notification_sent_timestamp;
+    if (!latency.is_negative()) {
+      base::UmaHistogramCustomTimes(kTickleTransmissionLatencyHistogram,
+                                    latency, base::Milliseconds(10),
+                                    kNotificationExpirationDuration, 50);
+    }
+  }
+
   if (base::TimeTicks::Now() - notification.notification_received_timeticks >
       kNotificationExpirationDuration) {
     LOG_OTT(log_sink_) << "Incoming tickle ignored: expired";
     if (base::FeatureList::IsEnabled(features::kGmailOtpRetrievalService)) {
       base::UmaHistogramEnumeration(kTickleArrivalHistogram,
                                     TickleArrival::kExpiredOnArrival);
+      // UKM metric cannot be recorded for `kExpiredOnArrival` because the push
+      // message was delivered outside the context of a page, so we cannot
+      // reliably establish the URL.
     }
     return;
   }

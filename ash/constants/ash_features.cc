@@ -77,9 +77,6 @@ BASE_FEATURE(kAshSessionRestoreDeferOccludedActiveTabLoad,
 // Controls whether to enable assistive multi word suggestions.
 BASE_FEATURE(kAssistMultiWord, base::FEATURE_ENABLED_BY_DEFAULT);
 
-// Enables audio I/O selection improvement algorithm. http://launch/4301655.
-BASE_FEATURE(kAudioSelectionImprovement, base::FEATURE_DISABLED_BY_DEFAULT);
-
 // Controls whether to enable the audio focus enforcement toggle in settings.
 BASE_FEATURE(kAudioFocusSetting, base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -591,10 +588,6 @@ BASE_FEATURE(kEcheSWADisableStunServer, base::FEATURE_DISABLED_BY_DEFAULT);
 // network information to provide more context on connection errors.
 BASE_FEATURE(kEcheSWACheckAndroidNetworkInfo, base::FEATURE_ENABLED_BY_DEFAULT);
 
-// Enables settings to control internal display brightness and auto-brightness.
-BASE_FEATURE(kEnableBrightnessControlInSettings,
-             base::FEATURE_ENABLED_BY_DEFAULT);
-
 // Enables external keyboard testers in the diagnostics app.
 BASE_FEATURE(kEnableExternalKeyboardsInDiagnostics,
              "EnableExternalKeyboardsInDiagnosticsApp",
@@ -757,9 +750,6 @@ BASE_FEATURE(kFilesLocalImageSearch, base::FEATURE_DISABLED_BY_DEFAULT);
 // Enables materialized views in Files App.
 BASE_FEATURE(kFilesMaterializedViews, base::FEATURE_DISABLED_BY_DEFAULT);
 
-// Enables partitioning of removable disks in file manager.
-BASE_FEATURE(kFilesSinglePartitionFormat, base::FEATURE_DISABLED_BY_DEFAULT);
-
 // Enable background cleanup for old files in Trash.
 BASE_FEATURE(kFilesTrashAutoCleanup, base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -848,11 +838,6 @@ BASE_FEATURE(kGameDashboardUtilities, base::FEATURE_DISABLED_BY_DEFAULT);
 // Enables the Game Dashboard's Record Game feature. This flag is to be enabled
 // by the feature management module.
 BASE_FEATURE(kFeatureManagementGameDashboardRecordGame,
-             base::FEATURE_DISABLED_BY_DEFAULT);
-
-// Controls gamepad vibration in Exo.
-BASE_FEATURE(kGamepadVibration,
-             "ExoGamepadVibration",
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enable a D-Bus service for accessing gesture properties.
@@ -1218,9 +1203,6 @@ BASE_FEATURE(kMacAddressRandomization, base::FEATURE_DISABLED_BY_DEFAULT);
 // Enabling this flag allows the managed local pin and password related changes
 // to be applied.
 BASE_FEATURE(kManagedLocalPinAndPassword, base::FEATURE_ENABLED_BY_DEFAULT);
-
-// Enables policy management for USB printers.
-BASE_FEATURE(kManagedUsbPrinters, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enables Mantis on image contents in the Media App
 BASE_FEATURE(kMediaAppImageMantis, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -2195,10 +2177,6 @@ bool ForceOnDeviceAppControlsForAllRegions() {
   return base::FeatureList::IsEnabled(kForceOnDeviceAppControlsForAllRegions);
 }
 
-bool IsAudioSelectionImprovementEnabled() {
-  return base::FeatureList::IsEnabled(kAudioSelectionImprovement);
-}
-
 bool Is16DesksEnabled() {
   return base::FeatureList::IsEnabled(kFeatureManagement16Desks);
 }
@@ -2385,10 +2363,6 @@ bool IsBocaReceiverCustomPollingEnabled() {
 
 bool IsOnTaskStatusCheckEnabled() {
   return base::FeatureList::IsEnabled(kOnTaskStatusCheck);
-}
-
-bool IsBrightnessControlInSettingsEnabled() {
-  return base::FeatureList::IsEnabled(kEnableBrightnessControlInSettings);
 }
 
 bool IsCaptureModeEducationEnabled() {

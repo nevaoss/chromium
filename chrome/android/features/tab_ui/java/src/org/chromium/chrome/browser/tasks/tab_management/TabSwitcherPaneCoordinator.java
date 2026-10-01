@@ -67,7 +67,9 @@ import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.profiles.ProfileProvider;
 import org.chromium.chrome.browser.share.ShareDelegate;
 import org.chromium.chrome.browser.tab.Tab;
+import org.chromium.chrome.browser.tab.TabFavicon;
 import org.chromium.chrome.browser.tab.TabId;
+import org.chromium.chrome.browser.tab_ui.MultiThumbnailCardProvider;
 import org.chromium.chrome.browser.tab_ui.RecyclerViewPosition;
 import org.chromium.chrome.browser.tab_ui.TabContentManager;
 import org.chromium.chrome.browser.tab_ui.TabListMode;
@@ -86,8 +88,9 @@ import org.chromium.chrome.browser.tasks.tab_management.TabListEditorCoordinator
 import org.chromium.chrome.browser.tasks.tab_management.TabListMediator.TabListItemOnClickListenerProvider;
 import org.chromium.chrome.browser.tasks.tab_management.TabListMediator.TabListLayoutType;
 import org.chromium.chrome.browser.tasks.tab_management.TabSwitcherMessageManager.MessageUpdateObserver;
-import org.chromium.chrome.browser.tasks.tab_management.pinned_tabs_strip.PinnedTabStripCoordinator;
+import org.chromium.chrome.browser.tasks.tab_management.pinned_tabs.PinnedTabStripCoordinator;
 import org.chromium.chrome.browser.ui.edge_to_edge.EdgeToEdgeController;
+import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager;
 import org.chromium.chrome.browser.undo_tab_close_snackbar.UndoBarThrottle;
 import org.chromium.chrome.tab_ui.R;
 import org.chromium.components.browser_ui.bottomsheet.BottomSheetController;
@@ -259,6 +262,7 @@ public class TabSwitcherPaneCoordinator implements BackPressHandler {
      * @param tabContentManager For management of thumbnails.
      * @param browserControlsStateProvider For determining thumbnail size.
      * @param scrimManager The scrim component to use for the tab grid dialog.
+     * @param snackbarManager The activity-level {@link SnackbarManager}.
      * @param modalDialogManager The modal dialog manager for the activity.
      * @param bottomSheetController The {@link BottomSheetController} for the current activity.
      * @param dataSharingTabManager The {@link} DataSharingTabManager managing communication between
@@ -290,6 +294,7 @@ public class TabSwitcherPaneCoordinator implements BackPressHandler {
             TabContentManager tabContentManager,
             BrowserControlsStateProvider browserControlsStateProvider,
             ScrimManager scrimManager,
+            SnackbarManager snackbarManager,
             ModalDialogManager modalDialogManager,
             BottomSheetController bottomSheetController,
             DataSharingTabManager dataSharingTabManager,
@@ -411,7 +416,8 @@ public class TabSwitcherPaneCoordinator implements BackPressHandler {
                             activity,
                             browserControlsStateProvider,
                             tabContentManager,
-                            tabModelSupplier);
+                            tabModelSupplier,
+                            TabFavicon::getBitmap);
 
             var recyclerViewTimer = new UptimeMillisTimer();
 
@@ -581,7 +587,7 @@ public class TabSwitcherPaneCoordinator implements BackPressHandler {
                             activity,
                             mModalDialogManager,
                             coordinatorView,
-                            /* rootView= */ parentView,
+                            snackbarManager,
                             browserControlsStateProvider,
                             tabModelSupplier,
                             tabContentManager,
@@ -1105,6 +1111,11 @@ public class TabSwitcherPaneCoordinator implements BackPressHandler {
         if (newController != null && mEdgeToEdgePadAdjuster != null) {
             newController.registerAdjuster(mEdgeToEdgePadAdjuster);
         }
+    }
+
+    /** Prepares the tab switcher for hiding by detaching observers before exit animation. */
+    void prepareHiding() {
+        mTabListCoordinator.prepareHiding();
     }
 
     void showQuickDeleteAnimation(Runnable onAnimationEnd, List<Tab> tabs) {

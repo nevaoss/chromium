@@ -6,6 +6,7 @@
 
 #include <memory>
 
+#include "base/test/metrics/user_action_tester.h"
 #include "base/test/scoped_feature_list.h"
 #include "build/build_config.h"
 #include "chrome/app/chrome_command_ids.h"
@@ -91,6 +92,7 @@ class OmniboxEverywhereBackgroundModeManagerTest : public ChromeViewsTestBase {
         std::make_unique<MockStatusTray>());
     if (PrefService* local_state =
             TestingBrowserProcess::GetGlobal()->local_state()) {
+      local_state->SetBoolean(prefs::kOmniboxEverywhereEnabled, true);
       local_state->SetBoolean(prefs::kOmniboxEverywhereBackgroundMode, true);
     }
   }
@@ -139,7 +141,7 @@ TEST_F(OmniboxEverywhereBackgroundModeManagerTest, InitializationDoesNotCrash) {
       [](bool* called) { *called = true; }, &callback_called));
 }
 
-TEST_F(OmniboxEverywhereBackgroundModeManagerTest, BackgroundModePrefToggle) {
+TEST_F(OmniboxEverywhereBackgroundModeManagerTest, EnabledPrefToggle) {
   PrefService* local_state = TestingBrowserProcess::GetGlobal()->local_state();
 
   bool callback_called = false;
@@ -147,35 +149,58 @@ TEST_F(OmniboxEverywhereBackgroundModeManagerTest, BackgroundModePrefToggle) {
       [](bool* called) { *called = true; }, &callback_called));
   manager.SetProfile(profile());
 
-  // Toggle background mode pref off and on.
+  // Initially enabled pref is true, status icon should exist.
+  EXPECT_NE(manager.status_icon_for_testing(), nullptr);
+
+  // Toggle enabled pref off and on.
+  if (local_state) {
+    local_state->SetBoolean(prefs::kOmniboxEverywhereEnabled, false);
+    EXPECT_EQ(manager.status_icon_for_testing(), nullptr);
+    local_state->SetBoolean(prefs::kOmniboxEverywhereEnabled, true);
+    EXPECT_NE(manager.status_icon_for_testing(), nullptr);
+  }
+}
+
+TEST_F(OmniboxEverywhereBackgroundModeManagerTest,
+       BackgroundModePrefDoesNotAffectStatusIcon) {
+  PrefService* local_state = TestingBrowserProcess::GetGlobal()->local_state();
+
+  bool callback_called = false;
+  OmniboxEverywhereBackgroundModeManager manager(base::BindRepeating(
+      [](bool* called) { *called = true; }, &callback_called));
+  manager.SetProfile(profile());
+
+  EXPECT_NE(manager.status_icon_for_testing(), nullptr);
+
+  // Toggle background mode pref off and on. Status icon should remain
+  // unaffected.
   if (local_state) {
     local_state->SetBoolean(prefs::kOmniboxEverywhereBackgroundMode, false);
-    EXPECT_EQ(manager.status_icon_for_testing(), nullptr);
+    EXPECT_NE(manager.status_icon_for_testing(), nullptr);
     local_state->SetBoolean(prefs::kOmniboxEverywhereBackgroundMode, true);
     EXPECT_NE(manager.status_icon_for_testing(), nullptr);
   }
 }
 
 TEST_F(OmniboxEverywhereBackgroundModeManagerTest,
-       RequiresProfileToEnableBackgroundMode) {
+       RequiresProfileToShowStatusIcon) {
   bool callback_called = false;
   OmniboxEverywhereBackgroundModeManager manager(base::BindRepeating(
       [](bool* called) { *called = true; }, &callback_called));
 
-  // Background mode is not entered without a profile even if the pref is
-  // enabled.
+  // Status icon is not shown without a profile even if the enabled pref is
+  // true.
   EXPECT_EQ(manager.status_icon_for_testing(), nullptr);
 
-  // Background mode is entered and creates a status icon once a profile is set.
+  // Status icon is shown once a profile is set.
   manager.SetProfile(profile());
   EXPECT_NE(manager.status_icon_for_testing(), nullptr);
 
-  // Clearing the profile resets background mode and removes the status icon.
+  // Clearing the profile removes the status icon.
   manager.SetProfile(nullptr);
   EXPECT_EQ(manager.status_icon_for_testing(), nullptr);
 
-  // Setting the profile again re-enters background mode and restores the status
-  // icon.
+  // Setting the profile again restores the status icon.
   manager.SetProfile(profile());
   EXPECT_NE(manager.status_icon_for_testing(), nullptr);
 }
@@ -202,7 +227,18 @@ TEST_F(OmniboxEverywhereBackgroundModeManagerTest, ContextMenuStructure) {
 
   StatusIconMenuModel* menu = status_icon->GetContextMenuForTesting();
   ASSERT_NE(menu, nullptr);
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_LINUX)
+  // Initially no browsers are open in this test, so the exit item and separator
+  // are visible.
+  ASSERT_EQ(menu->GetItemCount(), 5u);
+  EXPECT_EQ(menu->GetTypeAt(3), ui::MenuModel::TYPE_SEPARATOR);
+  EXPECT_EQ(menu->GetCommandIdAt(4),
+            IDC_OMNIBOX_EVERYWHERE_STATUS_ICON_MENU_EXIT);
+  EXPECT_TRUE(
+      menu->IsCommandIdVisible(IDC_OMNIBOX_EVERYWHERE_STATUS_ICON_MENU_EXIT));
+#else
   ASSERT_EQ(menu->GetItemCount(), 3u);
+#endif
 
   EXPECT_EQ(menu->GetCommandIdAt(0),
             IDC_OMNIBOX_EVERYWHERE_STATUS_ICON_MENU_TOGGLE);
@@ -259,6 +295,20 @@ TEST_F(OmniboxEverywhereBackgroundModeManagerTest, ExecuteToggleCommand) {
   delegate->ExecuteCommand(IDC_OMNIBOX_EVERYWHERE_STATUS_ICON_MENU_TOGGLE, 0);
   EXPECT_TRUE(callback_called);
 }
+
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_LINUX)
+TEST_F(OmniboxEverywhereBackgroundModeManagerTest, ExecuteExitCommand) {
+  base::UserActionTester user_action_tester;
+  bool callback_called = false;
+  OmniboxEverywhereBackgroundModeManager manager(base::BindRepeating(
+      [](bool* called) { *called = true; }, &callback_called));
+
+  StatusIconMenuModel::Delegate* delegate =
+      static_cast<StatusIconMenuModel::Delegate*>(&manager);
+  delegate->ExecuteCommand(IDC_OMNIBOX_EVERYWHERE_STATUS_ICON_MENU_EXIT, 0);
+  EXPECT_EQ(1, user_action_tester.GetActionCount("Exit"));
+}
+#endif
 
 TEST_F(OmniboxEverywhereBackgroundModeManagerTest,
        LaunchOnStartupPrefToggleWithoutStartupLaunchManagerDoesNotCrash) {
@@ -331,6 +381,22 @@ TEST_F(OmniboxEverywhereBackgroundModeManagerTest,
   // launch_on_startup pref is true.
   ExpectStartupRegistration(/*launch_enabled=*/false);
   local_state->SetBoolean(prefs::kOmniboxEverywhereBackgroundMode, false);
+  VerifyAndClearStartupRegistrationExpectations();
+
+  // 5. Re-enabling background mode registers background launch again.
+  ExpectStartupRegistration(/*launch_enabled=*/true);
+  local_state->SetBoolean(prefs::kOmniboxEverywhereBackgroundMode, true);
+  VerifyAndClearStartupRegistrationExpectations();
+
+  // 6. Disabling enabled pref unregisters startup launch even if
+  // launch_on_startup and background_mode prefs are true.
+  ExpectStartupRegistration(/*launch_enabled=*/false);
+  local_state->SetBoolean(prefs::kOmniboxEverywhereEnabled, false);
+  VerifyAndClearStartupRegistrationExpectations();
+
+  // 7. Re-enabling enabled pref restores background launch registration.
+  ExpectStartupRegistration(/*launch_enabled=*/true);
+  local_state->SetBoolean(prefs::kOmniboxEverywhereEnabled, true);
   VerifyAndClearStartupRegistrationExpectations();
 
   profile_.reset();

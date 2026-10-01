@@ -642,48 +642,6 @@
           }
         ]
       },
-      "Centipede High End Upload Linux ASan": {
-        "contact_team_email": "chrome-fuzzing-core@google.com",
-        "problem_specs": [
-          {
-            "name": "Unhealthy",
-            "period_days": 7,
-            "score": 5,
-            "thresholds": {
-              "_default": "_default"
-            }
-          },
-          {
-            "name": "Low Value",
-            "period_days": 90,
-            "score": 1,
-            "thresholds": {
-              "_default": "_default"
-            }
-          }
-        ]
-      },
-      "Centipede High End Upload Linux ASan DCheck": {
-        "contact_team_email": "chrome-fuzzing-core@google.com",
-        "problem_specs": [
-          {
-            "name": "Unhealthy",
-            "period_days": 7,
-            "score": 5,
-            "thresholds": {
-              "_default": "_default"
-            }
-          },
-          {
-            "name": "Low Value",
-            "period_days": 90,
-            "score": 1,
-            "thresholds": {
-              "_default": "_default"
-            }
-          }
-        ]
-      },
       "Centipede Upload Linux ASan": {
         "contact_team_email": "chrome-fuzzing-core@google.com",
         "problem_specs": [
@@ -2644,48 +2602,6 @@
         ]
       },
       "Leak Detection Linux": {
-        "problem_specs": [
-          {
-            "name": "Unhealthy",
-            "period_days": 7,
-            "score": 5,
-            "thresholds": {
-              "_default": "_default"
-            }
-          },
-          {
-            "name": "Low Value",
-            "period_days": 90,
-            "score": 1,
-            "thresholds": {
-              "_default": "_default"
-            }
-          }
-        ]
-      },
-      "Libfuzzer High End Upload Linux ASan": {
-        "contact_team_email": "chrome-fuzzing-core@google.com",
-        "problem_specs": [
-          {
-            "name": "Unhealthy",
-            "period_days": 7,
-            "score": 5,
-            "thresholds": {
-              "_default": "_default"
-            }
-          },
-          {
-            "name": "Low Value",
-            "period_days": 90,
-            "score": 1,
-            "thresholds": {
-              "_default": "_default"
-            }
-          }
-        ]
-      },
-      "Libfuzzer High End Upload Linux ASan Debug": {
-        "contact_team_email": "chrome-fuzzing-core@google.com",
         "problem_specs": [
           {
             "name": "Unhealthy",
@@ -11291,6 +11207,27 @@
           }
         ]
       },
+      "mac-arm64-libfuzzer-asan-rel": {
+        "contact_team_email": "chrome-fuzzing-core@google.com",
+        "problem_specs": [
+          {
+            "name": "Unhealthy",
+            "period_days": 7,
+            "score": 5,
+            "thresholds": {
+              "_default": "_default"
+            }
+          },
+          {
+            "name": "Low Value",
+            "period_days": 90,
+            "score": 1,
+            "thresholds": {
+              "_default": "_default"
+            }
+          }
+        ]
+      },
       "mac-arm64-libfuzzer-asan-rel-tests": {
         "contact_team_email": "chrome-fuzzing-core@google.com",
         "problem_specs": [
@@ -11851,6 +11788,27 @@
       },
       "mac-vm": {
         "contact_team_email": "bling-engprod@google.com",
+        "problem_specs": [
+          {
+            "name": "Unhealthy",
+            "period_days": 7,
+            "score": 5,
+            "thresholds": {
+              "_default": "_default"
+            }
+          },
+          {
+            "name": "Low Value",
+            "period_days": 90,
+            "score": 1,
+            "thresholds": {
+              "_default": "_default"
+            }
+          }
+        ]
+      },
+      "mac-webdriver-bidi-rel": {
+        "contact_team_email": "chrome-devtools@google.com",
         "problem_specs": [
           {
             "name": "Unhealthy",
@@ -13043,6 +13001,27 @@
         ]
       },
       "win-upload-perfetto": {
+        "problem_specs": [
+          {
+            "name": "Unhealthy",
+            "period_days": 7,
+            "score": 5,
+            "thresholds": {
+              "_default": "_default"
+            }
+          },
+          {
+            "name": "Low Value",
+            "period_days": 90,
+            "score": 1,
+            "thresholds": {
+              "_default": "_default"
+            }
+          }
+        ]
+      },
+      "win-webdriver-bidi-rel": {
+        "contact_team_email": "chrome-devtools@google.com",
         "problem_specs": [
           {
             "name": "Unhealthy",

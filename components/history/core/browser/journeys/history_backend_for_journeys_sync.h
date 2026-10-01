@@ -5,9 +5,11 @@
 #ifndef COMPONENTS_HISTORY_CORE_BROWSER_JOURNEYS_HISTORY_BACKEND_FOR_JOURNEYS_SYNC_H_
 #define COMPONENTS_HISTORY_CORE_BROWSER_JOURNEYS_HISTORY_BACKEND_FOR_JOURNEYS_SYNC_H_
 
+#include <optional>
 #include <string>
 #include <vector>
 
+#include "components/history/core/browser/journeys/journey.h"
 #include "components/history/core/browser/journeys/journey_row.h"
 
 namespace history {
@@ -29,14 +31,19 @@ class HistoryBackendForJourneysSync {
 
   // Persists or updates the given `journeys` in the local database.
   // Returns true on success, or false on database failure.
-  virtual bool AddOrUpdateJourneys(const std::vector<JourneyRow>& journeys) = 0;
+  virtual bool AddOrUpdateJourneyRows(
+      const std::vector<JourneyRow>& journeys) = 0;
 
   // Deletes journeys matching the given `journey_ids` from the local database.
   // Returns true on success, or false on database failure.
   virtual bool DeleteJourneys(const std::vector<std::string>& journey_ids) = 0;
 
-  // Retrieves all persisted journeys from the local database.
-  virtual std::vector<JourneyRow> GetAllJourneys() = 0;
+  // Retrieves all persisted journey rows from the local database.
+  virtual std::vector<JourneyRow> GetAllJourneyRows() = 0;
+
+  // Retrieves all stored journeys with history entries resolved to URLs and
+  // titles. Excludes journeys with unresolved visits.
+  virtual std::vector<Journey> GetAllJourneysWithVisits() = 0;
 
   // Deletes all journeys from the local database (called when sync is stopped
   // and local sync data is cleared). Returns true on success, or false on

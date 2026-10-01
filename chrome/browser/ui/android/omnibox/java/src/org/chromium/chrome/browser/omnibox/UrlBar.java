@@ -1597,7 +1597,7 @@ public class UrlBar extends AutocompleteEditText {
             }
             // Suppress framework driven auto-scrolling if we're focused and currently selecting all
             // text so that the beginning of the url remains visible.
-        } else if (getText() != null
+        } else if (!TextUtils.isEmpty(getText())
                 && getSelectionStart() == 0
                 && getSelectionEnd() == getText().length()) {
             return false;
@@ -1820,14 +1820,6 @@ public class UrlBar extends AutocompleteEditText {
         public static final BoundsEllipsisSpan INSTANCE = new BoundsEllipsisSpan();
     }
 
-    /* package */ boolean hasPendingDisplayTextScrollForTesting() {
-        return mPendingScroll;
-    }
-
-    /* package */ void setVisibleTextPrefixHintForTesting(CharSequence hintForTesting) {
-        mVisibleTextPrefixHint = hintForTesting;
-    }
-
     /* package */ @Nullable Runnable getManageSearchEnginesCallback() {
         return mManageSearchEnginesCallback;
     }
@@ -1846,6 +1838,14 @@ public class UrlBar extends AutocompleteEditText {
             mContextMenuHelper.clearTouchCoordinates();
         }
         return super.showContextMenu();
+    }
+
+    /* package */ boolean hasPendingDisplayTextScrollForTesting() {
+        return mPendingScroll;
+    }
+
+    /* package */ void setVisibleTextPrefixHintForTesting(CharSequence hintForTesting) {
+        mVisibleTextPrefixHint = hintForTesting;
     }
 
     @Nullable UrlBarContextMenuHelper getContextMenuHelperForTesting() {

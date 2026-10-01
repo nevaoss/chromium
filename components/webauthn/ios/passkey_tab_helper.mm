@@ -500,6 +500,9 @@ void PasskeyTabHelper::HandleCreateRequestedEvent(
 bool PasskeyTabHelper::CanPerformAutomaticPasskeyUpgrade(
     const RegistrationRequestParams& params,
     const std::vector<password_manager::StoredCredential>& logins) const {
+  if (!client_->IsAutomaticPasskeyUpgradeEnabled()) {
+    return false;
+  }
   std::string username = params.UserEntity().name;
   std::string domain_rp_id = GetDomainAndRegistryOrHost(params.RpId());
 
@@ -534,7 +537,8 @@ void PasskeyTabHelper::HandleRegistration(RegistrationRequestParams params) {
   bool is_conditional =
       request_type == PasskeyRequestParams::RequestType::kConditionalCreate;
 
-  if (is_conditional && !password_store_) {
+  if (is_conditional &&
+      (!password_store_ || !client_->IsAutomaticPasskeyUpgradeEnabled())) {
     // Automatic passkey upgrade is not allowed, defer to renderer.
     DeferToRenderer(std::move(request_info), request_type);
     return;
@@ -1118,7 +1122,9 @@ void PasskeyTabHelper::OnConditionalCreateInterstitialDecision(
 
 void PasskeyTabHelper::OnGetPasswordStoreResultsOrErrorFrom(
     password_manager::PasswordStoreInterface* store,
-    password_manager::LoginsResultOrError results_or_error) {
+    base::expected<std::vector<password_manager::StoredCredential>,
+                   password_manager::PasswordStoreBackendError>
+        results_or_error) {
   is_querying_password_store_ = false;
 
   if (!web_state_) {
@@ -1134,9 +1140,8 @@ void PasskeyTabHelper::OnGetPasswordStoreResultsOrErrorFrom(
   }
 
   const std::vector<password_manager::StoredCredential>* results = nullptr;
-  if (std::holds_alternative<password_manager::LoginsResult>(
-          results_or_error)) {
-    results = &std::get<password_manager::LoginsResult>(results_or_error);
+  if (results_or_error) {
+    results = &*results_or_error;
   }
 
   for (const std::string& request_id : request_ids_to_process) {

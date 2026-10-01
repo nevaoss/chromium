@@ -157,13 +157,11 @@ void ContextualTasksEphemeralButtonController::OnEntryWillHide(
       GetContextualTasksService()->GetContextualTaskForTab(
           GetCurrentTabSessionId().value());
 
-  if (current_task && current_task->GetThread().has_value()) {
+  if (current_task) {
     if (!std::ranges::contains(ephemeral_button_eligible_tasks_,
                                current_task->GetTaskId())) {
       ephemeral_button_eligible_tasks_.emplace_back(current_task->GetTaskId());
     }
-  } else if (current_task) {
-    std::erase(ephemeral_button_eligible_tasks_, current_task->GetTaskId());
   }
   MaybeNotifyVisibilityShouldChange();
 }
@@ -229,11 +227,11 @@ bool ContextualTasksEphemeralButtonController::ShouldShowEphemeralButton() {
       GetContextualTasksService()->GetContextualTaskForTab(
           current_tab_session_id.value());
 
-  if (!current_task.has_value() || !current_task->GetThread().has_value()) {
+  if (!current_task.has_value()) {
     return false;
   }
 
-  if (aim_eligibility_service_ && !aim_eligibility_service_->IsAimEligible()) {
+  if (!contextual_tasks::IsContextualTasksUIEnabled()) {
     return false;
   }
 

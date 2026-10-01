@@ -648,7 +648,9 @@ IN_PROC_BROWSER_TEST_P(MemorySaverChipInteractiveTest,
       WaitForHide(MemorySaverBubbleView::kMemorySaverDialogBodyElementId),
       // Second tab's cancel button should allow users to exclude the site
       // since this tab's site wasn't excluded yet
-      SelectTab(kTabStripElementId, 1), PressPageActionButton(),
+      SelectTab(kTabStripElementId, 1), WaitForShow(kSecondTabContents),
+      Do([=, this]() { content::WaitForLoadStop(GetWebContentsAt(1)); }),
+      WaitForPageActionChipVisible(), PressPageActionButton(),
       WaitForShow(MemorySaverBubbleView::kMemorySaverDialogBodyElementId),
       CheckViewProperty(
           MemorySaverBubbleView::kMemorySaverDialogCancelButton,

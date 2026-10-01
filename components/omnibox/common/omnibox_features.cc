@@ -196,8 +196,6 @@ BASE_FEATURE(kHideAimEntrypointForUrlSuggestions, ENABLED);
 // When enabled, the multimodal input button is shown in the Omnibox.
 BASE_FEATURE(kOmniboxMultimodalInput, ENABLED);
 
-// An additional gate to the behavior of OmniboxMultimodalInput on desktop.
-BASE_FEATURE(kAndroidDesktopAimGate, ENABLED);
 
 // Disables tab attachments for Canvas requests and disables Canvas if tabs are
 // attached.
@@ -471,6 +469,14 @@ const base::FeatureParam<int> kComposeboxDriveConsentProductId{
     &kComposeboxDriveContextMenuOptionDisclaimer, "product_id", 71720513};
 const base::FeatureParam<int> kComposeboxDriveConsentProductSurface{
     &kComposeboxDriveContextMenuOptionDisclaimer, "product_surface", 29};
+#elif BUILDFLAG(IS_ANDROID)
+// For Chrome on Android:
+// - Product ID: Chrome Android (111611457)
+// - Product Surface: SEARCH_AIM (29)
+const base::FeatureParam<int> kComposeboxDriveConsentProductId{
+    &kComposeboxDriveContextMenuOptionDisclaimer, "product_id", 111611457};
+const base::FeatureParam<int> kComposeboxDriveConsentProductSurface{
+    &kComposeboxDriveContextMenuOptionDisclaimer, "product_surface", 29};
 #else
 // For Chrome on Desktop:
 // - Product ID: Chrome Desktop (67911908)
@@ -581,6 +587,9 @@ namespace android {
 static int64_t JNI_OmniboxFeatureMap_GetNativeMap(JNIEnv* env) {
   static const base::Feature* const kFeaturesExposedToJava[] = {
       &kDiagnostics,
+      &kComposeboxDriveContextMenuOption,
+      &kComposeboxDriveContextMenuOptionDisclaimer,
+      &kForceDriveDisclaimerAccepted,
       &kForceAndroidRealbox,
       &kOmniboxTouchDownTriggerForPrefetch,
       &kOmniboxPrefetchSelectedSuggestionsOmtAndroid,
@@ -597,7 +606,6 @@ static int64_t JNI_OmniboxFeatureMap_GetNativeMap(JNIEnv* env) {
       &kInlineLocationSignaling,
       &kOmniboxSiteSearch,
       &kOmniboxMultimodalInput,
-      &kAndroidDesktopAimGate,
       &kServeJavaCachedZeroSuggest,
       &kAIMSuppressVerbatimMatch,
       &kResetSuggestionsScroll,

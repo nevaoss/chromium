@@ -8,6 +8,7 @@ import android.graphics.RectF;
 import android.view.View;
 import android.view.ViewGroup;
 
+import androidx.annotation.IntDef;
 import androidx.annotation.Px;
 
 import org.chromium.base.supplier.MonotonicObservableSupplier;
@@ -27,6 +28,8 @@ import org.chromium.ui.AsyncViewStub;
 import org.chromium.ui.base.WindowAndroid;
 import org.chromium.ui.insets.InsetObserver;
 
+import java.lang.annotation.Retention;
+import java.lang.annotation.RetentionPolicy;
 import java.util.List;
 import java.util.function.BooleanSupplier;
 import java.util.function.Supplier;
@@ -185,6 +188,14 @@ public interface ManualFillingComponent extends BackPressHandler {
      */
     void setSuggestions(List<AutofillSuggestion> suggestions, AutofillDelegate delegate);
 
+    /** Direction for navigating suggestions in the keyboard accessory bar. */
+    @IntDef({NavigationDirection.FORWARD, NavigationDirection.BACKWARD})
+    @Retention(RetentionPolicy.SOURCE)
+    @interface NavigationDirection {
+        int FORWARD = 0;
+        int BACKWARD = 1;
+    }
+
     /**
      * Signals that the accessory has permission to show.
      *
@@ -266,6 +277,26 @@ public interface ManualFillingComponent extends BackPressHandler {
             String title,
             CharSequence message,
             String confirmButtonText,
+            Runnable confirmedCallback,
+            Runnable declinedCallback);
+
+    /**
+     * Show an Autofill AI suggestion details dialog with suppression action.
+     *
+     * @param title A title of the suggestion details dialog.
+     * @param body The body of the suggestion details dialog.
+     * @param confirmButtonText The text on the negative/secondary suppression button (e.g. "Remove
+     *     from Chrome").
+     * @param primaryButtonText The text on the positive/primary acknowledgment button (e.g. "Got
+     *     it").
+     * @param confirmedCallback A {@link Runnable} to trigger upon confirming suppression.
+     * @param declinedCallback A {@link Runnable} to trigger upon dismissing/acknowledging.
+     */
+    void showAutofillAiSuggestionDetails(
+            String title,
+            String body,
+            String confirmButtonText,
+            String primaryButtonText,
             Runnable confirmedCallback,
             Runnable declinedCallback);
 

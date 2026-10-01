@@ -115,7 +115,8 @@ MATCHER_P(HasModelErrorType, expected_type, "") {
 
 class FakeHistoryBackendForJourneysSync : public HistoryBackendForJourneysSync {
  public:
-  bool AddOrUpdateJourneys(const std::vector<JourneyRow>& journeys) override {
+  bool AddOrUpdateJourneyRows(
+      const std::vector<JourneyRow>& journeys) override {
     if (fail_operations_) {
       return false;
     }
@@ -135,13 +136,15 @@ class FakeHistoryBackendForJourneysSync : public HistoryBackendForJourneysSync {
     return true;
   }
 
-  std::vector<JourneyRow> GetAllJourneys() override {
+  std::vector<JourneyRow> GetAllJourneyRows() override {
     std::vector<JourneyRow> result;
     for (const auto& [journey_id, journey] : journeys_) {
       result.push_back(journey);
     }
     return result;
   }
+
+  std::vector<Journey> GetAllJourneysWithVisits() override { return {}; }
 
   bool DeleteAllJourneys() override {
     if (fail_operations_) {
@@ -322,7 +325,7 @@ TEST_F(JourneysSyncBridgeTest, ApplyIncrementalSyncChangesAdd) {
 TEST_F(JourneysSyncBridgeTest, ApplyIncrementalSyncChangesUpdate) {
   JourneysSyncBridge bridge = CreateBridge();
 
-  fake_backend_.AddOrUpdateJourneys(
+  fake_backend_.AddOrUpdateJourneyRows(
       {CreateTestJourneyRow("guid_1", "Title 1"),
        CreateTestJourneyRow("guid_2", "Title 2")});
   ASSERT_EQ(fake_backend_.journeys().size(), 2u);
@@ -372,7 +375,7 @@ TEST_F(JourneysSyncBridgeTest,
        ApplyIncrementalSyncChangesDeletionsBeforeAdditions) {
   JourneysSyncBridge bridge = CreateBridge();
 
-  fake_backend_.AddOrUpdateJourneys(
+  fake_backend_.AddOrUpdateJourneyRows(
       {CreateTestJourneyRow("guid_1", "Old Title")});
   ASSERT_EQ(fake_backend_.journeys().size(), 1u);
 
@@ -459,7 +462,7 @@ TEST_F(JourneysSyncBridgeTest,
 TEST_F(JourneysSyncBridgeTest, GetAllDataForDebugging) {
   JourneysSyncBridge bridge = CreateBridge();
 
-  fake_backend_.AddOrUpdateJourneys(
+  fake_backend_.AddOrUpdateJourneyRows(
       {CreateTestJourneyRow("guid_1", "Title 1"),
        CreateTestJourneyRow("guid_2", "Title 2")});
 
@@ -485,7 +488,7 @@ TEST_F(JourneysSyncBridgeTest,
        ApplyDisableSyncChangesDeletesMetadataAndJourneys) {
   JourneysSyncBridge bridge = CreateBridge();
 
-  fake_backend_.AddOrUpdateJourneys({CreateTestJourneyRow(kTestJourneyId)});
+  fake_backend_.AddOrUpdateJourneyRows({CreateTestJourneyRow(kTestJourneyId)});
   EXPECT_EQ(fake_backend_.journeys().size(), 1u);
 
   EntityMetadata metadata;

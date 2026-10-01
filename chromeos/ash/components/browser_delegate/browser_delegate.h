@@ -5,6 +5,7 @@
 #ifndef CHROMEOS_ASH_COMPONENTS_BROWSER_DELEGATE_BROWSER_DELEGATE_H_
 #define CHROMEOS_ASH_COMPONENTS_BROWSER_DELEGATE_BROWSER_DELEGATE_H_
 
+#include <optional>
 #include <vector>
 
 #include "chromeos/ash/components/browser_delegate/browser_type.h"
@@ -82,6 +83,15 @@ class BrowserDelegate {
   // be nullptr even if index is in bounds, just like GetActiveWebContents().
   virtual content::WebContents* GetWebContentsAt(size_t index) const = 0;
 
+  // Returns the index of the given `contents` in the tab strip, or std::nullopt
+  // if not found.
+  virtual std::optional<size_t> GetIndexOfWebContents(
+      const content::WebContents* contents) const = 0;
+
+  // Returns the opener WebContents for the tab at the given index, or nullptr
+  // if there is none.
+  virtual content::WebContents* GetOpenerOfTabAt(size_t index) const = 0;
+
   // Returns a range wrapper to iterate over all tabs in the browser.
   virtual tabs::TabIteratorRange GetTabIterator() const = 0;
 
@@ -152,6 +162,19 @@ class BrowserDelegate {
   // Closes the browser as soon as possible.
   virtual void Close() = 0;
 
+  // Closes all tabs in the browser at once, causing the window to close once
+  // all tabs are gone.
+  //
+  // Unlike Close(), which closes the window as a whole (immediately hiding
+  // it and keeping all tabs intact if closing is cancelled, e.g. due to
+  // in-progress downloads), this closes the tabs first while the window
+  // remains visible.
+  //
+  // Unlike closing tabs iteratively, this avoids activating intermediate tabs
+  // (preventing visible tab switching) and records the tabs together so the
+  // window can be restored as a unit.
+  virtual void CloseAllTabs() = 0;
+
   // Sets whether the browser should skip warning the user (e.g. beforeunload or
   // download warnings) when closing.
   virtual void SetSkipWarningUserOnClose(bool skip) = 0;
@@ -166,10 +189,20 @@ class BrowserDelegate {
                       TabDisposition disposition) = 0;
 
   // Closes the contents at the given index, triggering its destruction.
+  // Runs any beforeunload/unload handlers, which may prompt the user and can
+  // cancel or delay the close. Does not create a tab restore record (the tab
+  // cannot be reopened with "Reopen closed tab" / Ctrl+Shift+T).
   // If UserGesture::kYes is given, the contents will first be marked as closed
   // by user gesture.
   enum class UserGesture { kYes, kNo };
   virtual void CloseWebContentsAt(size_t index, UserGesture user_gesture) = 0;
+
+  // Immediately detaches the contents at the given index and deletes it
+  // synchronously. Unlike CloseWebContentsAt(), this bypasses
+  // beforeunload/unload handlers, ignores closability checks, and cannot be
+  // cancelled or delayed. Like CloseWebContentsAt(), this does not create a
+  // tab restore record.
+  virtual void ForceCloseWebContentsAt(size_t index) = 0;
 
   // Navigates the browser to the given URL, and enqueues the launch params
   // passed as an input if they are available once the navigation commits

@@ -31,6 +31,7 @@
 #include "components/autofill/core/browser/logging/log_manager.h"
 #include "components/autofill/core/common/autofill_internals/log_message.h"
 #include "components/autofill/core/common/autofill_internals/logging_scope.h"
+#include "components/autofill/core/common/autofill_prefs.h"
 #include "components/autofill/core/common/form_field_data.h"
 #include "components/autofill/core/common/logging/log_buffer.h"
 #include "components/autofill/core/common/logging/log_macros.h"
@@ -83,9 +84,9 @@ OtpManagerImpl::~OtpManagerImpl() = default;
 
 void OtpManagerImpl::GetOtpSuggestions(
     const FormStructure& form,
-    const url::Origin& origin,
+    const FormFieldData& field,
     OtpManagerImpl::GetOtpSuggestionsCallback callback) {
-  if (!OtpFieldDetector::IsOtpForm(form)) {
+  if (field.origin().opaque() || !OtpFieldDetector::IsOtpForm(form)) {
     std::move(callback).Run({});
     return;
   }
@@ -99,10 +100,7 @@ void OtpManagerImpl::GetOtpSuggestions(
     return;
   }
 
-
-  // TODO(crbug.com/415273270): Do not fill OTP suggestions into opaque origin
-  // iframes.
-  last_pending_field_origin_ = origin;
+  last_pending_frame_token_ = field.host_frame();
   last_pending_get_suggestions_callback_ = std::move(callback);
 
   // This queries OTPs from the backend and calls `OnOneTimeTokenReceived` to
@@ -218,8 +216,27 @@ void OtpManagerImpl::OnTickleReceived(OneTimeTokenSource source) {
   LOG_AF(owner_->client().GetCurrentLogManager())
       << LoggingScope::kOneTimeTokens
       << "Tickle received for source: " << static_cast<int>(source);
-  // TODO(b/556170395): Handle incoming tickle and fetch OTP via
-  // GmailOtpRetriever.
+  if (!IsOtpFieldDetected()) {
+    LOG_AF(owner_->client().GetCurrentLogManager())
+        << LoggingScope::kOneTimeTokens
+        << "OTP tickle received but no OTP field detected on page. Skipping "
+           "payload fetch.";
+    return;
+  }
+  if (AnyOtpFieldContainsTypedInput()) {
+    LOG_AF(owner_->client().GetCurrentLogManager())
+        << LoggingScope::kOneTimeTokens
+        << "OTP tickle received but OTP field already contains user typed "
+           "input. Skipping payload fetch.";
+    return;
+  }
+  if (!UserOptedIntoGmailOtpFilling()) {
+    LOG_AF(owner_->client().GetCurrentLogManager())
+        << LoggingScope::kOneTimeTokens
+        << "OTP tickle received but user consent preference is disabled. "
+           "Skipping payload fetch.";
+    return;
+  }
 }
 
 void OtpManagerImpl::OnOneTimeTokenReceived(
@@ -255,8 +272,7 @@ void OtpManagerImpl::OnOneTimeTokenReceived(
         << LoggingScope::kOneTimeTokens
         << "PhishGuard check initiated for OTP token delivery.";
     delegate->StartOtpPhishGuardCheck(
-        owner_->client().GetLastCommittedPrimaryMainFrameURL(),
-        last_pending_field_origin_.GetURL(),
+        last_pending_frame_token_,
         base::BindOnce(
             [](base::WeakPtr<OtpManagerImpl> self, OneTimeToken token,
                bool is_phishing_site) {
@@ -326,6 +342,30 @@ void OtpManagerImpl::MaybeShowOtpSuggestions(
 
 bool OtpManagerImpl::IsOtpDeliveryBlocked() {
   return owner_->client().DocumentUsedWebOTP();
+}
+
+bool OtpManagerImpl::IsOtpFieldDetected() const {
+  OtpFieldDetector* detector = owner_->client().GetOtpFieldDetector();
+  return detector && detector->IsOtpFieldPresent();
+}
+
+bool OtpManagerImpl::AnyOtpFieldContainsTypedInput() const {
+  bool has_typed_input = false;
+  owner_->ForEachCachedForm([&has_typed_input](const FormStructure& form) {
+    if (has_typed_input) {
+      return;
+    }
+    has_typed_input = std::ranges::any_of(form.fields(), [](const auto& field) {
+      return field->Type().GetTypes().contains(ONE_TIME_CODE) &&
+             field->all_modifiers().contains(FieldModifier::kUser);
+    });
+  });
+  return has_typed_input;
+}
+
+bool OtpManagerImpl::UserOptedIntoGmailOtpFilling() const {
+  PrefService* prefs = owner_->client().GetPrefs();
+  return prefs && prefs::IsAutofillGmailOtpFillingEnabled(prefs);
 }
 
 std::optional<one_time_tokens::OneTimeToken>

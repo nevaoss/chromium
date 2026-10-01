@@ -32,16 +32,16 @@ def __step_config(ctx, step_config):
         "third_party/devtools-frontend/src/scripts/build/generate_css_js_files.js": [
             "third_party/devtools-frontend/src/node_modules:node_modules",
         ],
+        "third_party/devtools-frontend/src/scripts/build/optimize_images.js": [
+            "third_party/devtools-frontend/src/node_modules:node_modules",
+        ],
     })
 
     step_config["rules"].extend([
-        # TODO(http://b/547522497): Enable remote execution once all DevTools modules
-        # are migrated to split compilation. Legacy ts_library fails in strict remote
-        # mode because transitive .d.ts inputs are not declared in GN.
         {
             "name": "devtools-frontend/esbuild",
             "command_prefix": platform.python_bin + " ../../third_party/node/node.py ../../third_party/devtools-frontend/src/scripts/build/esbuild.js",
-            "remote": False,
+            "remote": config.get(ctx, "default-remote"),
             "timeout": "2m",
             "platform_ref": "large",
             "remote_command": platform.remote_python_bin,
@@ -49,6 +49,14 @@ def __step_config(ctx, step_config):
         {
             "name": "devtools-frontend/build/generate_css_js_files",
             "command_prefix": platform.python_bin + " ../../third_party/node/node.py ../../third_party/devtools-frontend/src/scripts/build/generate_css_js_files.js",
+            "remote": config.get(ctx, "default-remote"),
+            "output_local": True,
+            "timeout": "2m",
+            "remote_command": platform.remote_python_bin,
+        },
+        {
+            "name": "devtools-frontend/build/optimize_images",
+            "command_prefix": platform.python_bin + " ../../third_party/node/node.py ../../third_party/devtools-frontend/src/scripts/build/optimize_images.js",
             "remote": config.get(ctx, "default-remote"),
             "output_local": True,
             "timeout": "2m",

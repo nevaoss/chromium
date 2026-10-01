@@ -1313,6 +1313,7 @@ Hesla můžete kdykoli zobrazit v nástroji <ph name="GOOGLE_PASSWORD_MANAGER" 
 <translation id="2006638907958895361">Otevřít odkaz v aplikaci <ph name="APP" /></translation>
 <translation id="2007404777272201486">Nahlásit problém...</translation>
 <translation id="200781997903833896">Pokud chcete použít Předčítání, uvolněte v zařízení místo</translation>
+<translation id="2009047848105043829">Spravovat zařízení</translation>
 <translation id="2010501376126504057">Kompatibilní zařízení</translation>
 <translation id="2010636492623189611">Vybráno.</translation>
 <translation id="2012935757369720523">Smazat soubor</translation>
@@ -6086,6 +6087,7 @@ K této akci lze přiřadit několik přepínačů.</translation>
 <translation id="5678955352098267522">Čtení vašich dat na webu <ph name="WEBSITE_1" /></translation>
 <translation id="5680050361008726776">Odstranit profil „<ph name="ESIM_PROFILE_NAME" />“?</translation>
 <translation id="5681586175480958839">Soubor se už otevírá</translation>
+<translation id="5682120590308014005">Přihlaste se, ať můžete snadno přidávat soubory z Disku do vláken v režimu AI. Na všech svých zařízeních budete mít také k dispozici svá hesla a další informace.</translation>
 <translation id="5684110242705861346">Tohle nastavení je spravováno rozšířením <ph name="NAME" />, které bylo přidáno zásadami vaší organizace. <ph name="BEGIN_LINK" />Zobrazit podrobnosti<ph name="END_LINK" /></translation>
 <translation id="5684181005476681636">Podrobnosti o Wi-Fi</translation>
 <translation id="5687340364605915800">Weby při odpovědi na tento požadavek postupují podle vlastního uvážení</translation>
@@ -6640,6 +6642,7 @@ K této akci lze přiřadit několik přepínačů.</translation>
 <translation id="6126601353087978360">Sem zadejte svoji zpětnou vazbu:</translation>
 <translation id="6127292407256937949">Zvuk je zapnutý. Vypnout zvuk.</translation>
 <translation id="6127598727646973981">Zabezpečená připojení</translation>
+<translation id="6129686474468159207">Podívejte se, ze kterých webů voláte a kdy se používá kamera nebo mikrofon</translation>
 <translation id="6129691635767514872">Vybraná data byla z Chromu a synchronizovaných zařízení odstraněna. Na stránce <ph name="BEGIN_LINK" />myactivity.google.com<ph name="END_LINK" /> mohou být k dispozici další druhy historie prohlížení zaznamenané ve vašem účtu Google, například vyhledávací dotazy a aktivita z ostatních služeb Google.</translation>
 <translation id="6129938384427316298">Komentář certifikátu Netscape</translation>
 <translation id="6129953537138746214">Mezerník</translation>
@@ -7712,7 +7715,7 @@ Máte # dalších prolomených hesel. Správce hesel Google doporučuje ihned ta
 <translation id="693459579445775904">Hlasové soubory se kvůli úspoře místa na disku sdílí mezi uživateli.</translation>
 <translation id="6934597021412437058">Teď můžete používat rozdělené zobrazení k porovnávání, dělání několika věcí současně a dalším účelům</translation>
 <translation id="6938386202199793006">Máte 1 uloženou tiskárnu.</translation>
-<translation id="6938606182859551396">Chcete-li do zařízení <ph name="DEVICE_TYPE" /> dostávat oznámení z telefonu, podle pokynů v telefonu udělte službám Google Play přístup k oznámením.</translation>
+<translation id="6938606182859551396">Pokud chcete do zařízení <ph name="DEVICE_TYPE" /> dostávat oznámení z telefonu, podle pokynů v telefonu udělte službám Google Play přístup k oznámením.</translation>
 <translation id="6941514251635934269">Zeptejte se na tenhle dokument</translation>
 <translation id="694168622559714949">Váš administrátor nastavil výchozí jazyk, který nelze změnit.</translation>
 <translation id="6943060957016121200">Aktivovat dynamický tethering</translation>
@@ -8167,6 +8170,7 @@ Máte # dalších prolomených hesel. Správce hesel Google doporučuje ihned ta
 <translation id="7299588179200441056"><ph name="URL" /> – <ph name="FOLDER" /></translation>
 <translation id="730068416968462308">Animace</translation>
 <translation id="7301812050652048720">Přístupový klíč byl smazán</translation>
+<translation id="7303246449496241344">Pokud chcete snadno přidávat soubory z Disku do vláken v režimu AI, ověřte svou totožnost. Na všech svých zařízeních budete mít také k dispozici svá hesla a další informace.</translation>
 <translation id="7303485269821975179">Nastavit heslo pro zařízení <ph name="DEVICE_TYPE" /></translation>
 <translation id="7303900363563182677">Tomuto webu byl zablokován přístup k textu a obrázkům zkopírovaným do schránky</translation>
 <translation id="7304030187361489308">Vysoký</translation>

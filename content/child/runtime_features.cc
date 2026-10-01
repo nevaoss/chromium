@@ -47,7 +47,6 @@
 #include "ui/base/ui_base_features.h"
 #include "ui/events/blink/blink_features.h"
 #include "ui/gfx/switches.h"
-#include "ui/gl/gl_switches.h"
 #include "ui/native_theme/features/native_theme_features.h"
 #include "ui/native_theme/native_theme.h"
 
@@ -177,8 +176,6 @@ void SetRuntimeFeaturesFromChromiumFeatures() {
            kSetOnlyIfOverridden},
           {wf::EnableFencedFrames, features::kPrivacySandboxAdsAPIsM1Override},
           {wf::EnableForcedColors, features::kForcedColors},
-          {wf::EnableFractionalScrollOffsets,
-           features::kFractionalScrollOffsets},
           {wf::EnableSensorExtraClasses, features::kGenericSensorExtraClasses},
 #if BUILDFLAG(IS_ANDROID)
           {wf::EnableGetDisplayMedia, features::kUserMediaScreenCapturing},

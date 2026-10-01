@@ -1199,8 +1199,7 @@
       "http/tests/inspector-protocol/fenced-frame"
     ],
     "args": [
-      "--enable-features=PrivacySandboxAdsAPIsOverride,FencedFramesEnforceFocus,FencedFramesLocalUnpartitionedDataAccess,FencedFramesCrossOriginEventReportingAllTraffic,FencedFramesReportEventHeaderChanges,FencedFramesSrcPermissionsPolicy,FencedFramesCrossOriginAutomaticBeaconData",
-      "--enable-blink-features=FencedFramesDefaultMode"
+      "--enable-features=PrivacySandboxAdsAPIsOverride,FencedFramesEnforceFocus,FencedFramesLocalUnpartitionedDataAccess,FencedFramesCrossOriginEventReportingAllTraffic,FencedFramesReportEventHeaderChanges,FencedFramesSrcPermissionsPolicy,FencedFramesCrossOriginAutomaticBeaconData"
     ],
     "expires": "Jan 9, 2027"
   },
@@ -1227,28 +1226,9 @@
       "wpt_internal/fenced_frame"
     ],
     "args": [
-      "--enable-features=PrivacySandboxAdsAPIsOverride,FencedFramesEnforceFocus,FencedFramesLocalUnpartitionedDataAccess,FencedFramesCrossOriginEventReportingAllTraffic,FencedFramesReportEventHeaderChanges,FencedFramesDefaultMode"
+      "--enable-features=PrivacySandboxAdsAPIsOverride,FencedFramesEnforceFocus,FencedFramesLocalUnpartitionedDataAccess,FencedFramesCrossOriginEventReportingAllTraffic,FencedFramesReportEventHeaderChanges"
     ],
     "expires": "Jan 9, 2027"
-  },
-  {
-    "prefix": "first-party-sets",
-    "platforms": [
-      "Linux",
-      "Mac",
-      "Win"
-    ],
-    "bases": [
-      "http/tests/inspector-protocol/issues/third-party-cookie-blocking-first-party-set-enabled.js"
-    ],
-    "args": [
-      "--test-third-party-cookie-phaseout",
-      "--use-related-website-set={\"primary\":\"https://firstparty.test\",\"associatedSites\":[\"https://cookie.test\"]}"
-    ],
-    "expires": "Jan 1, 2027",
-    "owners": [
-      "chrome-first-party-sets@chromium.org"
-    ]
   },
  "RasterInducingScroll disabled due to crbug.com/349939555",
   "TODO(crbug.com/398193016): Merge this suite into virtual/overlay-scrollbar",
@@ -1377,6 +1357,10 @@
       "Win"
     ],
     "bases": [
+      "external/wpt/css/css-anchor-position/scroll-to-anchored-fixed-003.html",
+      "external/wpt/css/css-anchor-position/scroll-to-anchored-fixed-004.html",
+      "external/wpt/css/css-anchor-position/scroll-to-anchored-fixed-005.html",
+      "external/wpt/css/css-anchor-position/scroll-to-anchored-fixed-006.html",
       "external/wpt/css/cssom-view/scrollTo-zoom.html",
       "external/wpt/css/css-position/sticky/",
       "external/wpt/css/css-viewport/zoom/scroll-top-test-with-zoom.html",

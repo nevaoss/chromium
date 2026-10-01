@@ -55,7 +55,6 @@
 #include "chrome/browser/ui/actions/chrome_action_id.h"
 #include "chrome/browser/ui/actions/chrome_action_properties.h"
 #include "chrome/browser/ui/actions/command_action_updater.h"
-#include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_actions.h"
 #include "chrome/browser/ui/browser_commands.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
@@ -120,11 +119,13 @@
 #include "components/policy/core/common/policy_pref_names.h"
 #include "components/prefs/pref_service.h"
 #include "components/sessions/content/session_tab_helper.h"
+#include "components/sessions/core/session_id.h"
 #include "components/sessions/core/tab_restore_service.h"
 #include "components/signin/public/base/signin_buildflags.h"
 #include "components/signin/public/base/signin_metrics.h"
 #include "components/signin/public/base/signin_pref_names.h"
 #include "components/signin/public/identity_manager/identity_manager.h"
+#include "components/tab_groups/tab_group_id.h"
 #include "components/tabs/public/tab_interface.h"
 #include "components/translate/core/browser/translate_manager.h"
 #include "content/public/browser/navigation_controller.h"
@@ -136,6 +137,7 @@
 #include "content/public/common/url_constants.h"
 #include "extensions/browser/extension_registrar.h"
 #include "extensions/browser/extension_registry.h"
+#include "extensions/buildflags/buildflags.h"
 #include "extensions/common/extension_urls.h"
 #include "printing/buildflags/buildflags.h"
 #include "ui/accessibility/accessibility_features.h"
@@ -1013,9 +1015,6 @@ void BrowserCommandController::HandleCommandWithDisposition(
     case IDC_SHOW_PAYMENT_METHODS:
       ShowPaymentMethods(browser_);
       break;
-    case IDC_SHOW_ADDRESSES:
-      ShowAddresses(browser_);
-      break;
     case IDC_SHOW_CONTACT_INFO:
       ShowContactInfo(browser_);
       break;
@@ -1888,7 +1887,6 @@ void BrowserCommandController::InitCommandState() {
   command_updater_->UpdateCommandEnabled(IDC_TURN_ON_SYNC, true);
   command_updater_->UpdateCommandEnabled(IDC_SHOW_SIGNIN_WHEN_PAUSED, true);
   command_updater_->UpdateCommandEnabled(IDC_SHOW_SIGNIN, true);
-  command_updater_->UpdateCommandEnabled(IDC_SHOW_ADDRESSES, !guest_session);
   command_updater_->UpdateCommandEnabled(IDC_SHOW_CONTACT_INFO, !guest_session);
   command_updater_->UpdateCommandEnabled(IDC_SHOW_IDENTITY_DOCS,
                                          !guest_session);
@@ -2113,6 +2111,11 @@ void BrowserCommandController::UpdateCommandsForIncognitoAvailability() {
           FindAction(kActionNewIncognitoWindow, browser_)) {
     incognito_action->SetEnabled(
         IncognitoModePrefs::IsIncognitoAllowed(profile()));
+  }
+  if (auto* const isolated_action =
+          FindAction(kActionNewIsolatedWindow, browser_)) {
+    isolated_action->SetEnabled(
+        enterprise_isolated_mode::IsolatedModeReplacesIncognito(profile()));
   }
 
   if (!IsShowingMainUI()) {
@@ -2785,7 +2788,7 @@ void BrowserCommandController::UpdateCommandAndActionEnabled(
     actions::ActionId action_id,
     bool enabled) {
   command_updater_->UpdateCommandEnabled(command_id, enabled);
-  if (!base::FeatureList::IsEnabled(features::kUseActionsForBrowserCommands)) {
+  if (!features::ShouldUseActionsForBrowserCommands()) {
     if (auto* const action = FindAction(action_id, browser_)) {
       action->SetEnabled(enabled);
     }
@@ -2794,7 +2797,7 @@ void BrowserCommandController::UpdateCommandAndActionEnabled(
 
 std::unique_ptr<CommandUpdater>
 BrowserCommandController::CreateCommandUpdater() {
-  if (base::FeatureList::IsEnabled(features::kUseActionsForBrowserCommands)) {
+  if (features::ShouldUseActionsForBrowserCommands()) {
     return std::make_unique<CommandActionUpdater>(
         BrowserActions::From(browser_)->root_action_item());
   }

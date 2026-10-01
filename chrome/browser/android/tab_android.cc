@@ -213,8 +213,16 @@ std::unique_ptr<WebContentsStateByteBuffer>
 TabAndroid::GetWebContentsByteBuffer() const {
   JNIEnv* env = AttachCurrentThread();
   auto tab = GetJavaObject(env);
+  if (!tab) {
+    return nullptr;
+  }
+
   ScopedJavaLocalRef<jobject> state =
       Java_TabImpl_getWebContentsStateByteBuffer(env, tab);
+  if (!state) {
+    return nullptr;
+  }
+
   int version = Java_TabImpl_getWebContentsStateSavedStateVersion(env, tab);
 
   // If the web contents is null (denoted by saved_state_version being -1),
@@ -576,6 +584,16 @@ void WillRemoveWebContentsFromTab(content::WebContents* contents,
 
 }  // namespace
 
+void TabAndroid::ResetTabAlertController() {
+  glic_tab_indicator_helper_.reset();
+  alert_to_show_subscription_ = {};
+  if (tab_alert_controller_ &&
+      tab_alert_controller_->GetAlertToShow().has_value()) {
+    OnAlertStateChanged(std::nullopt);
+  }
+  tab_alert_controller_.reset();
+}
+
 tabs::TabDestroyStatus TabAndroid::DestroyWebContents() {
   WillRemoveWebContentsFromTab(web_contents(), /*clear_delegate=*/false);
 
@@ -591,9 +609,7 @@ tabs::TabDestroyStatus TabAndroid::DestroyWebContents() {
     return DestroyWebContentsSlowShutdown();
   }
 
-  glic_tab_indicator_helper_.reset();
-  alert_to_show_subscription_ = {};
-  tab_alert_controller_.reset();
+  ResetTabAlertController();
   tab_features_.reset();
   web_contents_.reset();
   if (synced_tab_delegate_) {
@@ -629,9 +645,7 @@ std::unique_ptr<content::WebContents> TabAndroid::ReleaseWebContentsInternal(
     bool clear_delegate) {
   WillRemoveWebContentsFromTab(web_contents(), clear_delegate);
 
-  glic_tab_indicator_helper_.reset();
-  alert_to_show_subscription_ = {};
-  tab_alert_controller_.reset();
+  ResetTabAlertController();
   tab_features_.reset();
   std::unique_ptr<content::WebContents> released_contents =
       std::move(web_contents_);

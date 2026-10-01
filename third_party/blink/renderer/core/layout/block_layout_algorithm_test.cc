@@ -53,7 +53,8 @@ class BlockLayoutAlgorithmTest : public BaseLayoutAlgorithmTest {
         space, node, /* break_token */ nullptr, /* is_intrinsic */ true);
 
     BlockLayoutAlgorithm algorithm({node, fragment_geometry, space});
-    return algorithm.ComputeMinMaxSizes(MinMaxSizesFloatInput()).sizes;
+    return algorithm.ComputeMinMaxSizes(MinMaxSizesInput::Unconstrained())
+        .sizes;
   }
 
   const LayoutResult* RunCachedLayoutResult(const ConstraintSpace& space,
@@ -79,7 +80,7 @@ class BlockLayoutAlgorithmTest : public BaseLayoutAlgorithmTest {
     auto* layout_object = element->GetLayoutObject();
     ComputedStyleBuilder builder(layout_object->StyleRef());
     update(builder);
-    layout_object->SetStyle(builder.TakeStyle(),
+    layout_object->SetStyle(*builder.TakeStyle(),
                             LayoutObject::ApplyStyleChanges::kNo);
     layout_object->SetNeedsLayout("");
     UpdateAllLifecyclePhasesForTest();

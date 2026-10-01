@@ -227,7 +227,8 @@ OpenscreenSessionHost::OpenscreenSessionHost(
   // Use of `Unretained` is safe here since we own the update timer.
   bandwidth_update_timer_.Start(
       FROM_HERE, kBandwidthUpdateInterval,
-      base::BindRepeating(&OpenscreenSessionHost::UpdateBandwidthEstimate,
+      base::BindRepeating(static_cast<void (OpenscreenSessionHost::*)()>(
+                              &OpenscreenSessionHost::UpdateBandwidthEstimate),
                           base::Unretained(this)));
 }
 
@@ -412,6 +413,7 @@ void OpenscreenSessionHost::OnNegotiated(
         base::BindRepeating(&OpenscreenSessionHost::GetVideoNetworkBandwidth,
                             base::Unretained(this)));
     video_sender_ = std::move(video_sender);
+    num_video_frames_dropped_ = 0;
     refresh_interval_ = mirror_settings_.refresh_interval();
     expecting_a_refresh_frame_ = false;
     if (refresh_interval_.is_positive()) {
@@ -566,7 +568,7 @@ void OpenscreenSessionHost::InsertVideoFrame(
   expecting_a_refresh_frame_ = false;
   base::TimeTicks reference_time = *video_frame->metadata().reference_time;
   video_sender_->InsertRawVideoFrame(std::move(video_frame), reference_time);
-  if (refresh_timer_.IsRunning()) {
+  if (refresh_interval_.is_positive()) {
     refresh_timer_.Reset();
   }
 }
@@ -1021,10 +1023,12 @@ uint32_t OpenscreenSessionHost::GetVideoNetworkBandwidth() const {
 
 void OpenscreenSessionHost::UpdateBandwidthEstimate() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  const int bandwidth_estimate = forced_bandwidth_estimate_for_testing_ > 0
-                                     ? forced_bandwidth_estimate_for_testing_
-                                     : session_->GetEstimatedNetworkBandwidth();
+  UpdateBandwidthEstimate(session_->GetEstimatedNetworkBandwidth());
+}
 
+void OpenscreenSessionHost::UpdateBandwidthEstimate(
+    const int bandwidth_estimate) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   // Nothing to do yet.
   if (bandwidth_estimate <= 0) {
     return;
@@ -1040,8 +1044,22 @@ void OpenscreenSessionHost::UpdateBandwidthEstimate() {
     constexpr double kConservativeIncrease = 1.1;
     usable_bandwidth_ = std::min<uint32_t>(
         usable_bandwidth_ * kConservativeIncrease, usable_bandwidth);
-  } else {
-    usable_bandwidth_ = usable_bandwidth;
+    if (video_sender_) {
+      num_video_frames_dropped_ = video_sender_->GetFramesDropped();
+    }
+  } else if (usable_bandwidth < usable_bandwidth_) {
+    bool should_decrease_bandwidth = true;
+    if (video_sender_) {
+      const int current_frames_dropped = video_sender_->GetFramesDropped();
+      should_decrease_bandwidth =
+          current_frames_dropped > num_video_frames_dropped_;
+      if (should_decrease_bandwidth) {
+        num_video_frames_dropped_ = current_frames_dropped;
+      }
+    }
+    if (should_decrease_bandwidth) {
+      usable_bandwidth_ = usable_bandwidth;
+    }
   }
 
   VLOG(2) << ": updated available bandwidth to " << usable_bandwidth_ << "/"

@@ -31,6 +31,7 @@
 #include "chrome/browser/ui/omnibox/omnibox_everywhere_service.h"
 #include "chrome/browser/ui/omnibox/omnibox_everywhere_service_factory.h"
 #include "chrome/browser/ui/omnibox/omnibox_next_features.h"
+#include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/common/chrome_switches.h"
 #include "chrome/common/webui_url_constants.h"
 #include "chrome/test/base/in_process_browser_test.h"
@@ -701,18 +702,23 @@ IN_PROC_BROWSER_TEST_F(OmniboxEverywhereBrowserTest,
     GTEST_SKIP() << "StatusTray is not supported on this platform.";
   }
 
-  // Initially background mode pref is false, status icon should not exist.
-  EXPECT_FALSE(status_tray->HasStatusIconOfTypeForTesting(
-      StatusTray::OMNIBOX_EVERYWHERE_ICON));
-
-  // Enable background mode pref.
-  local_state->SetBoolean(prefs::kOmniboxEverywhereBackgroundMode, true);
+  // Initially enabled pref is true, status icon should exist.
   EXPECT_TRUE(status_tray->HasStatusIconOfTypeForTesting(
       StatusTray::OMNIBOX_EVERYWHERE_ICON));
 
-  // Disable background mode pref.
-  local_state->SetBoolean(prefs::kOmniboxEverywhereBackgroundMode, false);
+  // Disable enabled pref.
+  local_state->SetBoolean(prefs::kOmniboxEverywhereEnabled, false);
   EXPECT_FALSE(status_tray->HasStatusIconOfTypeForTesting(
+      StatusTray::OMNIBOX_EVERYWHERE_ICON));
+
+  // Re-enable enabled pref.
+  local_state->SetBoolean(prefs::kOmniboxEverywhereEnabled, true);
+  EXPECT_TRUE(status_tray->HasStatusIconOfTypeForTesting(
+      StatusTray::OMNIBOX_EVERYWHERE_ICON));
+
+  // Background mode pref should not affect the status icon.
+  local_state->SetBoolean(prefs::kOmniboxEverywhereBackgroundMode, false);
+  EXPECT_TRUE(status_tray->HasStatusIconOfTypeForTesting(
       StatusTray::OMNIBOX_EVERYWHERE_ICON));
 }
 
@@ -747,6 +753,22 @@ IN_PROC_BROWSER_TEST_F(OmniboxEverywhereBrowserTest, BackgroundModeKeepAlive) {
     return !profile_manager->HasKeepAliveForTesting(
         profile, ProfileKeepAliveOrigin::kOmniboxEverywhere);
   }));
+
+  // Re-enable background mode pref.
+  local_state->SetBoolean(prefs::kOmniboxEverywhereBackgroundMode, true);
+  EXPECT_TRUE(profile_manager->HasKeepAliveForTesting(
+      profile, ProfileKeepAliveOrigin::kOmniboxEverywhere));
+
+  // Disabling the main enabled pref resets everything, including keep-alives.
+  local_state->SetBoolean(prefs::kOmniboxEverywhereEnabled, false);
+  EXPECT_TRUE(base::test::RunUntil([&]() {
+    return !profile_manager->HasKeepAliveForTesting(
+        profile, ProfileKeepAliveOrigin::kOmniboxEverywhere);
+  }));
+
+  // Clean up prefs.
+  local_state->SetBoolean(prefs::kOmniboxEverywhereEnabled, true);
+  local_state->SetBoolean(prefs::kOmniboxEverywhereBackgroundMode, false);
 }
 
 #if BUILDFLAG(IS_CHROMEOS)

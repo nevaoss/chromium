@@ -88,6 +88,7 @@ namespace viz {
 class AsyncReadResultHelper;
 class AsyncReadResultLock;
 class ImageContextImpl;
+class ReadbackContextTexture;
 class SkiaOutputSurfaceDependency;
 
 namespace copy_output {
@@ -258,18 +259,7 @@ class SkiaOutputSurfaceImplOnGpu
   void AddAsyncReadResultHelperWithLock(AsyncReadResultHelper* helper);
   void RemoveAsyncReadResultHelperWithLock(AsyncReadResultHelper* helper);
 
-  void CreateSharedImage(gpu::Mailbox mailbox,
-                         SharedImageFormat format,
-                         const gfx::Size& size,
-                         const gfx::ColorSpace& color_space,
-                         SkAlphaType alpha_type,
-                         gpu::SharedImageUsageSet usage,
-                         std::string debug_label,
-                         gpu::SurfaceHandle surface_handle);
-  void CreateSolidColorSharedImage(gpu::Mailbox mailbox,
-                                   const SkColor4f& color,
-                                   const gfx::ColorSpace& color_space);
-  void DestroySharedImage(gpu::Mailbox mailbox);
+  void OnDestroySharedImage(gpu::Mailbox mailbox);
   void SetSharedImagePurgeable(const gpu::Mailbox& mailbox, bool purgeable);
 
 #if BUILDFLAG(IS_ANDROID)
@@ -428,6 +418,17 @@ class SkiaOutputSurfaceImplOnGpu
       GrGpuFinishedProc ganesh_finished_proc = nullptr,
       skgpu::graphite::GpuFinishedProc graphite_finished_proc = nullptr,
       void* finished_context = nullptr);
+
+  // Flushes and submits copy output writes, then marks `representation`
+  // cleared. If `readback_context` is provided, it sends the notification when
+  // readback completes.
+  bool FlushAndSubmitCopyOutput(
+      std::string_view copy_output_type,
+      SkSurface* surface,
+      std::vector<GrBackendSemaphore>& end_semaphores,
+      gpu::SkiaImageRepresentation* representation,
+      gpu::SkiaImageRepresentation::ScopedWriteAccess* scoped_write_access,
+      std::unique_ptr<ReadbackContextTexture> readback_context = nullptr);
 
   // Begins access to the CopyOutputRequest destination shared image. If request
   // has `BlitRequest` then specified mailbox will be accessed. Otherwise a new
@@ -607,10 +608,6 @@ class SkiaOutputSurfaceImplOnGpu
   base::circular_deque<std::pair<GrBackendSemaphore,
                                  base::OnceCallback<void(gfx::GpuFenceHandle)>>>
       pending_release_fence_cbs_;
-
-  // A cache of solid color image mailboxes so we can destroy them in the
-  // destructor.
-  base::flat_set<gpu::Mailbox> solid_color_images_;
 
   THREAD_CHECKER(thread_checker_);
 

@@ -17,6 +17,7 @@
 #include "chrome/browser/glic/host/glic_overlay_ui.h"
 #include "chrome/browser/glic/host/glic_web_client_manager.h"
 #include "chrome/browser/glic/host/glic_web_contents_manager.h"
+#include "chrome/browser/glic/host/glic_zoom_controller.h"
 #include "chrome/browser/glic/host/host.h"
 #include "content/public/browser/web_contents_observer.h"
 #include "ui/gfx/geometry/size.h"
@@ -121,6 +122,7 @@ class GlicNoWebviewContentsManager : public GlicWebContentsManager,
       WebContentsChangedCallback callback) override;
   GlicWebClientManager& web_client_manager() override;
   bool ShouldReloadOnShow() const override;
+  void Zoom(mojom::ZoomAction zoom_action, ZoomSource source) override;
 
   // GlicWebClientManager::Delegate implementation:
   void OnGuestNavigationStarted() override;
@@ -195,9 +197,13 @@ class GlicNoWebviewContentsManager : public GlicWebContentsManager,
   // Cancels the in-guest bootstrap ping interval.
   void StopGuestBootstrap();
 
-  // Swaps the active WebContents presented to the host view to the guest once
-  // the client is connected and ready.
-  void MaybeSwapToGuest();
+  // Evaluates current visibility, guest readiness, and error state to determine
+  // the desired display state.
+  DisplayState CalculateDesiredState() const;
+
+  // Re-evaluates and applies the desired display state, coordinating
+  // transitions and cleaning up overlay resources.
+  void UpdateDisplayState();
 
   // Applies the cached viewport size from the overlay/host to the guest view.
   void ApplySizeToGuest();
@@ -209,12 +215,15 @@ class GlicNoWebviewContentsManager : public GlicWebContentsManager,
   // Updates the performance traits tracker with actuation state changes.
   void UpdateActuationTracker();
 
+  void OnZoomLevelChange();
+
   raw_ptr<Profile> profile_;
   raw_ptr<Host> host_ = nullptr;
 
   GlicWebClientManager web_client_manager_;
   OverlayContentsManager overlay_manager_;
   std::unique_ptr<pwc::PrivilegedWebContents> privileged_guest_contents_;
+  GlicZoomController zoom_controller_;
 
   // Current display lifecycle state.
   DisplayState state_ = DisplayState::kWarming;

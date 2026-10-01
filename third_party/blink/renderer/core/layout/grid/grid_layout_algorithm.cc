@@ -254,7 +254,7 @@ const LayoutResult* GridLayoutAlgorithm::LayoutInternal() {
 }
 
 MinMaxSizesResult GridLayoutAlgorithm::ComputeMinMaxSizes(
-    const MinMaxSizesFloatInput&) {
+    const MinMaxSizesInput&) {
   const auto& node = Node();
   const LayoutUnit override_intrinsic_inline_size =
       node.OverrideIntrinsicContentInlineSize();
@@ -511,6 +511,9 @@ const GridLayoutSubtree* GridLayoutAlgorithm::ComputeGridGeometry(
   CompleteFinalBaselineAlignment(&grid_sizing_tree);
 
   *grid_items = &grid_sizing_tree.GetGridItems();
+
+  grid_sizing_tree.ReleaseTrackSizingData();
+
   return MakeGarbageCollected<GridLayoutSubtree>(
       grid_sizing_tree.FinalizeTree());
 }
@@ -616,7 +619,8 @@ LayoutUnit GridLayoutAlgorithm::ContributionSizeForGridItem(
       return To<GridNode>(node).ComputeSubgridMinMaxSizes(
           sizing_subtree.SubgridSizingSubtree(*grid_item), space);
     }
-    return node.ComputeMinMaxSizes(item_style.GetWritingMode(), type, space);
+    return node.ComputeMinMaxSizes(item_style.GetWritingMode(), type, space,
+                                   MinMaxSizesInput::UnconstrainedUntriaged());
   };
 
   auto MinOrMaxContentSize = [&](bool is_min_content) -> LayoutUnit {
@@ -2376,6 +2380,14 @@ void GridLayoutAlgorithm::PlaceGridItemsForFragmentation(
           layout_data.Rows().GetSetOffset(row_set_idx_for_gap + 1) +
           (*row_offset_adjustments)[row_set_idx_for_gap + 1] +
           *cumulative_gap_offset_adjustment;
+
+      // A clamped offset makes the spillover below a made-up number. It is
+      // used in `cumulative_gap_offset_adjustment`, which persists across
+      // fragmentainers, so bail out instead of corrupting later fragments.
+      if (last_gap_end_offset.MightBeSaturated() ||
+          next_row_offset.MightBeSaturated()) {
+        return;
+      }
       // Make gap offset relative to this fragmentainer.
       next_row_offset -= *offset_in_stitched_container;
 

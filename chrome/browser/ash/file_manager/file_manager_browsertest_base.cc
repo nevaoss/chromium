@@ -1085,7 +1085,6 @@ std::ostream& operator<<(std::ostream& out,
   PRINT_IF_NOT_DEFAULT(native_smb)
   PRINT_IF_NOT_DEFAULT(offline)
   PRINT_IF_NOT_DEFAULT(photos_documents_provider)
-  PRINT_IF_NOT_DEFAULT(single_partition_format)
   PRINT_IF_NOT_DEFAULT(tablet_mode)
   PRINT_IF_NOT_DEFAULT(enable_arc_vm)
 
@@ -2365,10 +2364,6 @@ void FileManagerBrowserTestBase::SetUpCommandLine(
     arc::SetArcAvailableCommandLineForTesting(command_line);
   }
 
-  if (options.single_partition_format) {
-    enabled_features.push_back(ash::features::kFilesSinglePartitionFormat);
-  }
-
   if (options.enable_drive_trash) {
     enabled_features.push_back(ash::features::kFilesTrashDrive);
   } else {
@@ -2393,12 +2388,6 @@ void FileManagerBrowserTestBase::SetUpCommandLine(
     enabled_features.push_back(ash::features::kDriveFsMirroring);
   } else {
     disabled_features.push_back(ash::features::kDriveFsMirroring);
-  }
-
-  if (options.enable_upload_office_to_cloud) {
-    enabled_features.push_back(chromeos::features::kUploadOfficeToCloud);
-  } else {
-    disabled_features.push_back(chromeos::features::kUploadOfficeToCloud);
   }
 
   if (command_line->HasSwitch(switches::kDevtoolsCodeCoverage) &&

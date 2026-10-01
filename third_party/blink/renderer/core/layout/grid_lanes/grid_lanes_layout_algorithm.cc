@@ -89,7 +89,7 @@ GridLineResolver GridLanesLayoutAlgorithm::BuildGridLineResolver(
 }
 
 MinMaxSizesResult GridLanesLayoutAlgorithm::ComputeMinMaxSizes(
-    const MinMaxSizesFloatInput&) {
+    const MinMaxSizesInput&) {
   // If the intrinsic inline size has been overridden, use the provided value.
   const auto& node = Node();
   LayoutUnit override_intrinsic_inline_size =
@@ -419,6 +419,10 @@ const LayoutResult* GridLanesLayoutAlgorithm::Layout() {
 
   container_builder_.SetGridLayoutData(layout_data);
 
+  if (sizing_tree) {
+    sizing_tree->ReleaseTrackSizingData();
+  }
+
   if (has_block_fragmentation) {
     container_builder_.SetBreakTokenData(
         MakeGarbageCollected<GridLanesBreakTokenData>(
@@ -480,6 +484,7 @@ LayoutUnit AlignContentOffset(
     case ContentPosition::kLeft:
     case ContentPosition::kStart:
     case ContentPosition::kFlexStart:
+    case ContentPosition::kFlowStart:
     case ContentPosition::kNormal:
       adjusted_offset = LayoutUnit();
       break;
@@ -489,6 +494,7 @@ LayoutUnit AlignContentOffset(
     case ContentPosition::kRight:
     case ContentPosition::kEnd:
     case ContentPosition::kFlexEnd:
+    case ContentPosition::kFlowEnd:
       adjusted_offset = free_space;
       break;
     case ContentPosition::kBaseline:
@@ -609,8 +615,9 @@ LayoutUnit GridLanesLayoutAlgorithm::CalculateItemInlineContribution(
       }
       return MinMaxSizesResult();
     }
-    return item_node.ComputeMinMaxSizes(item_node.Style().GetWritingMode(),
-                                        type, space_for_measure);
+    return item_node.ComputeMinMaxSizes(
+        item_node.Style().GetWritingMode(), type, space_for_measure,
+        MinMaxSizesInput::UnconstrainedUntriaged());
   };
 
   const MinMaxSizes sizes = ComputeMinAndMaxContentContributionForSelf(
@@ -899,7 +906,6 @@ void GridLanesLayoutAlgorithm::PlaceGridLanesItemsForFragmentation(
     const GridSpan& lane_span = item.Span(grid_axis_direction);
 
     const bool is_first_item_in_lane = grid_lane_idx != previous_grid_lane_idx;
-    previous_grid_lane_idx = grid_lane_idx;
 
     // The iterator skips non-start spanner wrappers, so the last item it
     // returns may appear before the physical end of `item_data`.
@@ -1009,13 +1015,13 @@ void GridLanesLayoutAlgorithm::PlaceGridLanesItemsForFragmentation(
 
       if (fragmentainer_space != kIndefiniteSize &&
           row_block_offset >= fragmentainer_space) {
-        // If the previous row completed, process this row and let row-break
-        // handling decide whether to break before it. Only stop here when an
-        // unfinished previous row already provides continuation state for the
-        // next fragment.
+        // If the previously processed row has a continuation, it will provide
+        // the break token needed to resume this row in the next fragmentainer.
         GridLaneData* previous_lane =
-            grid_lane_idx > 0 ? grid_lanes[grid_lane_idx - 1].Get() : nullptr;
-        if (previous_lane && !previous_lane->has_seen_all_children) {
+            previous_grid_lane_idx != kNotFound
+                ? grid_lanes[previous_grid_lane_idx].Get()
+                : nullptr;
+        if (previous_lane && previous_lane->has_unfinished_items) {
           break;
         }
       }
@@ -1048,8 +1054,8 @@ void GridLanesLayoutAlgorithm::PlaceGridLanesItemsForFragmentation(
       MarkBreakInsideInSpannedLanes(lane_span,
                                     has_inflow_child_break_inside_lane);
     } else {
-      // TODO(almaher): Determine how a break inside a row spanner affects the
-      // remaining rows when row fragmentation and expansion are implemented.
+      // A row spanner is owned by its first lane. Later lanes can still start
+      // independent items while the spanner resumes in another fragmentainer.
       has_inflow_child_break_inside_lane[grid_lane_idx] = true;
     }
 
@@ -1062,6 +1068,7 @@ void GridLanesLayoutAlgorithm::PlaceGridLanesItemsForFragmentation(
     }
 
     container_builder_.AddResult(*layout_result, offset);
+    previous_grid_lane_idx = grid_lane_idx;
 
     // TODO(almaher): Break after tracking for columns needed similar to flex.
 
@@ -1075,7 +1082,7 @@ void GridLanesLayoutAlgorithm::PlaceGridLanesItemsForFragmentation(
     if (is_last_item_in_lane ||
         (!is_columns && !item_iterator.HasNextItemInLane(grid_lane_idx))) {
       if (!has_inflow_child_break_inside_lane[grid_lane_idx]) {
-        lane_data->has_seen_all_children = true;
+        lane_data->has_unfinished_items = false;
       }
 
       // TODO(almaher): Additional tracking needed for offset adjustments and
@@ -1449,9 +1456,11 @@ void GridLanesLayoutAlgorithm::RunGridLanesPlacementPhase(
           CreateConstraintSpaceForMeasure(SubgriddedItemData(
               grid_lanes_item, &layout_data, container_writing_mode));
       if (space_for_measure.AvailableSize().inline_size == kIndefiniteSize) {
-        const MinMaxSizes sizes = ComputeMinAndMaxContentContributionForSelf(
-                                      grid_lanes_item.node, space_for_measure)
-                                      .sizes;
+        const MinMaxSizes sizes =
+            ComputeMinAndMaxContentContributionForSelf(
+                grid_lanes_item.node, space_for_measure,
+                MinMaxSizesInput::UnconstrainedUntriaged())
+                .sizes;
         opt_fixed_inline_size = sizes.max_size;
       }
     }
@@ -2217,8 +2226,9 @@ void GridLanesLayoutAlgorithm::MeasureVirtualGridLanesItems(
             }
             return MinMaxSizesResult();
           }
-          return item_node.ComputeMinMaxSizes(item_style.GetWritingMode(), type,
-                                              space);
+          return item_node.ComputeMinMaxSizes(
+              item_style.GetWritingMode(), type, space,
+              MinMaxSizesInput::UnconstrainedUntriaged());
         };
         const MinMaxSizesResult result =
             ComputeMinAndMaxContentContributionForSelf(item_node, space,
@@ -2483,8 +2493,9 @@ const LayoutResult* GridLanesLayoutAlgorithm::LayoutItemForMeasureWithFallback(
     // If we are orthogonal virtual item, resolving against an indefinite
     // size, set our inline size to our max-content contribution.
     const MinMaxSizesResult min_max_sizes_result =
-        ComputeMinAndMaxContentContributionForSelf(grid_lanes_item->node,
-                                                   space_for_measure);
+        ComputeMinAndMaxContentContributionForSelf(
+            grid_lanes_item->node, space_for_measure,
+            MinMaxSizesInput::UnconstrainedUntriaged());
     // The min/max contribution may depend on the block-size of the
     // grid-area: <div id="target" style="height: 200px; width: 600px;">
     //   <div style="display: inline-grid-lanes; width: min-content;

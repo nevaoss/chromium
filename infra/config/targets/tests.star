@@ -2662,8 +2662,12 @@ targets.tests.gpu_telemetry_test(
     name = "vulkan_pixel_skia_gold_test",
     telemetry_test_name = "pixel",
     mixins = [
-        "skia_gold_test",
+        "ci_only",
+        "gpu_integration_test_common_args",
+        "gpu_integration_test_pixel_args",
         "has_native_resultdb_integration",
+        "legacy_gpu_vulkan_pixel_skia_gold_test_args",
+        "skia_gold_test",
     ],
     module_scheme = "flat",
 )
@@ -2855,6 +2859,7 @@ targets.tests.gpu_telemetry_test(
         "gpu_force_high_performance_gpu",
         "gpu_integration_test_webgl2_args",
         "gpu_integration_test_common_args",
+        "legacy_gpu_webgl2_conformance_shards",
     ],
     module_scheme = "flat",
 )
@@ -3045,6 +3050,7 @@ targets.tests.gpu_telemetry_test(
         "gpu_force_high_performance_gpu",
         "gpu_integration_test_webgl1_args",
         "gpu_integration_test_common_args",
+        "legacy_gpu_webgl_conformance_shards",
     ],
     module_scheme = "flat",
 )

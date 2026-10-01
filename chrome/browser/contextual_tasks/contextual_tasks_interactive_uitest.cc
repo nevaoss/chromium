@@ -392,8 +392,14 @@ class ContextualTasksInteractiveUiTest : public InteractiveBrowserTest {
           GURL cluster_info_url{
               lens::features::GetLensOverlayClusterInfoEndpointUrl()};
           GURL upload_url{lens::features::GetLensOverlayEndpointURL()};
-          if (url.host() == cluster_info_url.host() &&
-              url.path() == cluster_info_url.path()) {
+          GURL composebox_cluster_info_url{
+              lens::features::GetLensComposeboxClusterInfoEndpointUrl()};
+          GURL composebox_upload_url{
+              lens::features::GetLensComposeboxEndpointUrl()};
+          if ((url.host() == cluster_info_url.host() &&
+               url.path() == cluster_info_url.path()) ||
+              (url.host() == composebox_cluster_info_url.host() &&
+               url.path() == composebox_cluster_info_url.path())) {
             lens::LensOverlayServerClusterInfoResponse response;
             response.set_search_session_id("test_search_session_id");
             std::string response_string;
@@ -403,8 +409,10 @@ class ContextualTasksInteractiveUiTest : public InteractiveBrowserTest {
                 response_string, params->client.get());
             return true;
           }
-          if (url.host() == upload_url.host() &&
-              url.path() == upload_url.path()) {
+          if ((url.host() == upload_url.host() &&
+               url.path() == upload_url.path()) ||
+              (url.host() == composebox_upload_url.host() &&
+               url.path() == composebox_upload_url.path())) {
             lens::LensOverlayServerResponse response;
             std::string response_string;
             CHECK(response.SerializeToString(&response_string));
@@ -1175,16 +1183,9 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
                   WaitForComposeboxFilesCount(0));
 }
 
-// TODO(crbug.com/524797987): Re-enable this test on ChromeOS.
-#if BUILDFLAG(IS_CHROMEOS)
-#define MAYBE_AddAndRemoveImageChipFromComposebox \
-  DISABLED_AddAndRemoveImageChipFromComposebox
-#else
-#define MAYBE_AddAndRemoveImageChipFromComposebox \
-  AddAndRemoveImageChipFromComposebox
-#endif
+// TODO(crbug.com/524797987): Re-enable this test.
 IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
-                       MAYBE_AddAndRemoveImageChipFromComposebox) {
+                       DISABLED_AddAndRemoveImageChipFromComposebox) {
   const GURL kInterceptionUrl("https://www.google.com/search?udm=50");
 
   base::FilePath test_data_dir;
@@ -1473,16 +1474,8 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
       WaitForInputCleared(kPrimaryTab));
 }
 
-// TODO(crbug.com/516333831): Re-enable this test on Windows.
-#if BUILDFLAG(IS_WIN)
-#define MAYBE_AddAndSubmitMultipleContextsWithTextFromComposebox \
-  DISABLED_AddAndSubmitMultipleContextsWithTextFromComposebox
-#else
-#define MAYBE_AddAndSubmitMultipleContextsWithTextFromComposebox \
-  AddAndSubmitMultipleContextsWithTextFromComposebox
-#endif
 IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
-                       MAYBE_AddAndSubmitMultipleContextsWithTextFromComposebox) {
+                       AddAndSubmitMultipleContextsWithTextFromComposebox) {
   const GURL kInterceptionUrl("https://www.google.com/search?udm=50");
   const GURL kGenericPageUrl1 = embedded_test_server()->GetURL("/title1.html");
   const GURL kGenericPageUrl2 = embedded_test_server()->GetURL("/title2.html");
@@ -1553,6 +1546,7 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksInteractiveUiTest,
       InputText(kPrimaryTab, "Query with multiple attachments"),
 
       // 6. Submit
+      WaitForSubmitButtonEnabled(kPrimaryTab),
       ClickButton(kPrimaryTab, kSubmitButton),
 
       // 7. Verify multiple inputs + query text in the final message

@@ -13,7 +13,6 @@ constexpr bool IS_IOS = !!BUILDFLAG(IS_IOS);
 }  // namespace
 
 BASE_FEATURE(kContextManagementInComposebox, base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kContextMenuToolTips, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kTabFaviconChipsToCoins, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kContextManagementInOmnibox, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kContextMenuAnimationLimiting, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -24,6 +23,9 @@ BASE_FEATURE(kComposeboxSkillsOmniboxEverywhere,
              base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kComposeboxSkillsOmniboxPopup, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kComposeboxRichImageSuggestions,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kComposeboxPersistentAimButton, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kComposeboxPersistentAimButtonWithX,
              base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kSuggestRequestSendsMultifileCgiParam,
              base::FEATURE_ENABLED_BY_DEFAULT);
@@ -56,6 +58,11 @@ const base::FeatureParam<int> kContextMenuAnimationLifetimeLimit(
 bool IsTabDeselectionInComposeboxEnabled() {
   return base::FeatureList::IsEnabled(kContextManagementInComposebox) &&
          kContextManagementInComposeboxEnableTabDeselection.Get();
+}
+
+bool IsContextMenuTooltipsInComposeboxEnabled() {
+  return base::FeatureList::IsEnabled(kContextManagementInComposebox) &&
+         kContextManagementInComposeboxTooltips.Get();
 }
 
 }  // namespace omnibox

@@ -1323,6 +1323,7 @@
 <translation id="2006638907958895361">Відкрити посилання в додатку <ph name="APP" /></translation>
 <translation id="2007404777272201486">Повідомити про проблему...</translation>
 <translation id="200781997903833896">Щоб використовувати функцію "Читати вголос", звільніть місце на пристрої</translation>
+<translation id="2009047848105043829">Керувати пристроями</translation>
 <translation id="2010501376126504057">Сумісні пристрої</translation>
 <translation id="2010636492623189611">Вибрано.</translation>
 <translation id="2012935757369720523">Видалити файл</translation>
@@ -6102,6 +6103,7 @@
 <translation id="5678955352098267522">Переглядати ваші дані на веб-сайті <ph name="WEBSITE_1" /></translation>
 <translation id="5680050361008726776">Видалити "<ph name="ESIM_PROFILE_NAME" />"?</translation>
 <translation id="5681586175480958839">Файл уже відкривається</translation>
+<translation id="5682120590308014005">Увійдіть, щоб легко додавати файли з Диска в ланцюжки чатів у режимі ШІ. Ви також отримаєте доступ до паролів і інших даних на всіх своїх пристроях.</translation>
 <translation id="5684110242705861346">Розширення <ph name="NAME" /> додано згідно з правилами вашої організації, і воно керує цим налаштуванням. <ph name="BEGIN_LINK" />Докладніше<ph name="END_LINK" /></translation>
 <translation id="5684181005476681636">Дані про Wi-Fi</translation>
 <translation id="5687340364605915800">Сайти відповідають на цей запит на власний розсуд</translation>
@@ -6656,6 +6658,7 @@
 <translation id="6126601353087978360">Введіть свій відгук тут:</translation>
 <translation id="6127292407256937949">Звук увімкнено. Вимкнути його.</translation>
 <translation id="6127598727646973981">Захищені підключення</translation>
+<translation id="6129686474468159207">Переглядати інформацію про те, з яких сайтів ви телефонуєте й коли використовується камера або мікрофон</translation>
 <translation id="6129691635767514872">Вибрані дані видалено з Chrome і синхронізованих пристроїв. Історія веб-перегляду, а також ваші дії в інших сервісах Google можуть також зберігатися у вашому обліковому записі Google на сторінці <ph name="BEGIN_LINK" />myactivity.google.com<ph name="END_LINK" />.</translation>
 <translation id="6129938384427316298">Коментар сертифіката Netscape</translation>
 <translation id="6129953537138746214">Пробіл</translation>
@@ -8185,6 +8188,7 @@
 <translation id="7299588179200441056"><ph name="URL" /> – <ph name="FOLDER" /></translation>
 <translation id="730068416968462308">Анімація</translation>
 <translation id="7301812050652048720">Ключ доступу видалено</translation>
+<translation id="7303246449496241344">Підтвердьте свою особу, щоб легко додавати файли з Диска в ланцюжки чатів у режимі ШІ. Ви також отримаєте доступ до паролів і інших даних на всіх своїх пристроях.</translation>
 <translation id="7303485269821975179">Установіть пароль для пристрою <ph name="DEVICE_TYPE" /></translation>
 <translation id="7303900363563182677">Цьому сайту заборонено переглядати тексти й зображення в буфері обміну</translation>
 <translation id="7304030187361489308">Високий</translation>

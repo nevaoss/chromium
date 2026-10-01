@@ -1314,6 +1314,7 @@ Paroole saate alati kontrollida menüüs <ph name="GOOGLE_PASSWORD_MANAGER" />.<
 <translation id="2006638907958895361">Ava link rakenduses <ph name="APP" /></translation>
 <translation id="2007404777272201486">Anna probleemist teada ...</translation>
 <translation id="200781997903833896">Funktsiooni Ettelugemine kasutamiseks vabastage oma seadmes ruumi</translation>
+<translation id="2009047848105043829">Seadmete haldamine</translation>
 <translation id="2010501376126504057">Ühilduvad seadmed</translation>
 <translation id="2010636492623189611">Valitud.</translation>
 <translation id="2012935757369720523">Kustuta fail</translation>
@@ -6097,6 +6098,7 @@ Saate sellele toimingule määrata mitu lülitit.</translation>
 <translation id="5678955352098267522">Lugege oma andmeid veebisaidil <ph name="WEBSITE_1" /></translation>
 <translation id="5680050361008726776">Kas eemaldada „<ph name="ESIM_PROFILE_NAME" />”?</translation>
 <translation id="5681586175480958839">Faili avamine on juba pooleli</translation>
+<translation id="5682120590308014005">Logige sisse, et lisada Drive'ist hõlpsalt faile oma AI-režiimi lõimedesse. Lisaks saate kõigis oma seadmetes oma paroole ja muud kasutada.</translation>
 <translation id="5684110242705861346">Seda seadet juhib laiendus „<ph name="NAME" />“, mille lisas teie organisatsiooni reegel. <ph name="BEGIN_LINK" />Kuva üksikasjad<ph name="END_LINK" /></translation>
 <translation id="5684181005476681636">WiFi üksikasjad</translation>
 <translation id="5687340364605915800">Saidid kasutavad sellele päringule vastamisel oma äranägemist</translation>
@@ -6652,6 +6654,7 @@ Saate sellele toimingule määrata mitu lülitit.</translation>
 <translation id="6126601353087978360">Sisestage tagasiside siia:</translation>
 <translation id="6127292407256937949">Heli on sisse lülitatud. Lülitage heli välja.</translation>
 <translation id="6127598727646973981">Turvalised ühendused</translation>
+<translation id="6129686474468159207">Vaadata, millistelt saitidelt te helistate ja millal teie kaamerat või mikrofoni kasutatakse.</translation>
 <translation id="6129691635767514872">Valitud andmed eemaldati Chrome'ist ja sünkroonitud seadmetest. Aadressil <ph name="BEGIN_LINK" />myactivity.google.com<ph name="END_LINK" /> võib teie Google'i kontol olla muus vormis sirvimisajalugu, nt otsingud ja muudes Google'i teenustes toimunud tegevused.</translation>
 <translation id="6129938384427316298">Netscape'i sertifikaadi kommentaar</translation>
 <translation id="6129953537138746214">Tühikuklahv</translation>
@@ -8175,6 +8178,7 @@ Teil on veel # ohustatud parooli. Google'i paroolihaldur soovitab kohe neid paro
 <translation id="7299588179200441056"><ph name="URL" /> – <ph name="FOLDER" /></translation>
 <translation id="730068416968462308">Animatsioon</translation>
 <translation id="7301812050652048720">Pääsuvõti kustutati</translation>
+<translation id="7303246449496241344">Kinnitage oma isik, et lisada Drive'ist hõlpsalt faile oma AI-režiimi lõimedesse. Lisaks saate kõigis oma seadmetes oma paroole ja muud kasutada.</translation>
 <translation id="7303485269821975179">Seadme <ph name="DEVICE_TYPE" /> parooli seadistamine</translation>
 <translation id="7303900363563182677">Selle saidi jaoks blokeeriti lõikelauale kopeeritud teksti ja kujutiste nägemine</translation>
 <translation id="7304030187361489308">Kõrge</translation>

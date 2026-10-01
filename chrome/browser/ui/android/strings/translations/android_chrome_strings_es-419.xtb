@@ -252,6 +252,7 @@ Solo alguien con tu frase de contraseña puede leer los datos encriptados. Googl
 <translation id="1984087999855033707">número de teléfono</translation>
 <translation id="1984417487208496350">Sin protección (opción no recomendada)</translation>
 <translation id="1986685561493779662">El nombre ya existe</translation>
+<translation id="1992244793717364584">Se desinstaló la app</translation>
 <translation id="200114059308480249">¿Quieres incluir el texto adyacente en las búsquedas de Google?</translation>
 <translation id="2004096469149679223"><ph name="TAB_TITLE" />, pestaña de incógnito fijada y silenciada</translation>
 <translation id="2021896219286479412">Controles en pantalla completa</translation>
@@ -590,7 +591,6 @@ Solo alguien con tu frase de contraseña puede leer los datos encriptados. Googl
 <translation id="331080746368555063">Los sitios privados pueden incluir, por ejemplo, la intranet de tu empresa</translation>
 <translation id="3311330810461485557">Busca por app, fecha y más.</translation>
 <translation id="3312300514034250578">Navegación segura mejorada</translation>
-<translation id="3331974543021145906">Info. de la aplicación</translation>
 <translation id="3334729583274622784">¿Quieres cambiar la extensión del archivo?</translation>
 <translation id="333863344734218290">Te advierte sobre sitios públicos y privados no seguros</translation>
 <translation id="3339788961947270565">Finalizando el apagado</translation>
@@ -738,6 +738,7 @@ Solo alguien con tu frase de contraseña puede leer los datos encriptados. Googl
 <translation id="3950820424414687140">Acceder</translation>
 <translation id="395377504920307820">Usar sin una cuenta</translation>
 <translation id="3955353672249727801">Se agregaron las páginas a la lista de lectura</translation>
+<translation id="3958283758104508528">Se desinstaló <ph name="APP_NAME" /></translation>
 <translation id="396192773038029076">{NUM_IN_PROGRESS,plural, =1{Chrome cargará la página cuando esté lista}other{Chrome cargará las páginas cuando estén listas}}</translation>
 <translation id="3969142555815019568">Chrome no puede verificar tus contraseñas</translation>
 <translation id="3969863827134279083">Subir</translation>
@@ -908,6 +909,7 @@ Es posible que tu cuenta de Google tenga otros formularios de historial de naveg
 <translation id="4595805675102978678">Error en la Cuenta de Google</translation>
 <translation id="4599585406846903742">Vista de una sola página</translation>
 <translation id="4601095002996233687">Análisis detallados de descargas sospechosas.</translation>
+<translation id="4604434672720336227">Salir de Chrome</translation>
 <translation id="4606559747793337066">Cuando un sitio o app te pregunta si quieres precargar de forma privada los vínculos de su página, Chrome encripta y precarga las páginas por medio de los servidores de Google sin cookies. De esta forma, se oculta tu identidad del sitio precargado.</translation>
 <translation id="4619615317237390068">Pestañas de otros dispositivos</translation>
 <translation id="4624065194742029982">Incógnito de Chrome</translation>
@@ -1430,6 +1432,7 @@ Por ejemplo, algunos sitios web pueden responder a la solicitud mediante anuncio
 <translation id="6669390930482049506">Notificarme</translation>
 <translation id="6671495933530132209">Copiar imagen</translation>
 <translation id="6672697278890207089">Ingresa tu frase de contraseña</translation>
+<translation id="6675622031235530028">Mantén presionado Ctrl + Q para salir</translation>
 <translation id="6676927815633975364">Accede a este sitio y a Chrome</translation>
 <translation id="6684262542644248484">Accede a un sitio web.</translation>
 <translation id="6684809838922667136">Mejora Chrome</translation>
@@ -1955,6 +1958,7 @@ Para cambiar este parámetro de configuración, <ph name="BEGIN_LINK" />borra lo
 <translation id="8580435650274205305">La fecha de vencimiento es obligatoria</translation>
 <translation id="8582529315803410153">Aquí encontrarás las pestañas que se abrieron en otros dispositivos</translation>
 <translation id="8585103689515290060">Servicios de autocompletado</translation>
+<translation id="8586116786993312006">Presiona para borrar los datos de navegación en Chrome</translation>
 <translation id="859046281437143747">Desde el botón Más opciones, realiza un seguimiento del precio</translation>
 <translation id="859064343657890103">Se borró el grupo de pestañas <ph name="TAB_GROUP_TITLE" /></translation>
 <translation id="860043288473659153">Nombre del titular de la tarjeta</translation>

@@ -23,11 +23,13 @@
 #include "components/one_time_tokens/core/browser/one_time_token_retrieval_error.h"
 #include "components/one_time_tokens/core/browser/one_time_token_service.h"
 #include "components/one_time_tokens/core/browser/util/expiring_subscription.h"
+#include "url/gurl.h"
 #include "url/origin.h"
 
 namespace autofill {
 
 class BrowserAutofillManager;
+class FormFieldData;
 class FormStructure;
 class LogBuffer;
 
@@ -73,7 +75,7 @@ class OtpManagerImpl : public OtpManager, public AutofillManager::Observer {
   // Returns any cached OTPs (if they exist) and renews a subscription so that
   // incoming OTPs can be reported.
   void GetOtpSuggestions(const FormStructure& form,
-                         const url::Origin& origin,
+                         const FormFieldData& field,
                          GetOtpSuggestionsCallback callback) override;
 
   // AutofillManager::Observer:
@@ -117,6 +119,17 @@ class OtpManagerImpl : public OtpManager, public AutofillManager::Observer {
   // context, e.g., because the page called the WebOTP API.
   bool IsOtpDeliveryBlocked();
 
+  // Checks whether an OTP field was detected in the document.
+  bool IsOtpFieldDetected() const;
+
+  // Checks whether a field which was detected as an OTP, already contains
+  // some user input. We will not fill the value in such case.
+  bool AnyOtpFieldContainsTypedInput() const;
+
+  // Checks whether the user has opted into the GMail OTP filling.
+  // The consent is stored in prefs::IsAutofillGmailOtpFillingEnabled.
+  bool UserOptedIntoGmailOtpFilling() const;
+
   // The owning BrowserAutofillManager.
   raw_ref<BrowserAutofillManager> owner_;
 
@@ -135,7 +148,7 @@ class OtpManagerImpl : public OtpManager, public AutofillManager::Observer {
   // a callback corresponds to the desire to show an autofill dropdown. A new
   // call to `GetOtpSuggestions()` invalidates the previous call.
   GetOtpSuggestionsCallback last_pending_get_suggestions_callback_;
-  url::Origin last_pending_field_origin_;
+  LocalFrameToken last_pending_frame_token_;
 
   // The time when the phish guard check was started.
   base::TimeTicks phish_guard_check_start_time_;

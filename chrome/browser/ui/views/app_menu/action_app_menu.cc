@@ -18,6 +18,7 @@
 #include "ui/actions/actions.h"
 #include "ui/base/models/image_model.h"
 #include "ui/base/models/menu_model.h"
+#include "ui/base/models/menu_separator_types.h"
 #include "ui/base/mojom/menu_source_type.mojom.h"
 #include "ui/color/color_id.h"
 #include "ui/color/color_provider.h"
@@ -26,6 +27,7 @@
 #include "ui/views/controls/button/menu_button_controller.h"
 #include "ui/views/controls/menu/menu_item_view.h"
 #include "ui/views/controls/menu/menu_runner.h"
+#include "ui/views/controls/menu/menu_separator.h"
 #include "ui/views/controls/menu/submenu_view.h"
 #include "ui/views/layout/layout_provider.h"
 #include "ui/views/style/typography.h"
@@ -49,11 +51,15 @@ ui::ImageModel StandardizeMenuIconSize(const ui::ImageModel& icon) {
 bool ShouldRoundBottomCorners(size_t index,
                               const actions::ActionListVector& items) {
   // An item rounds its bottom corners if it is the last non-divider item in
-  // its list.
+  // its list OR if its the zoom submenu.
+  if (items[index]->GetActionItem()->GetActionId() == kActionZoomSubmenu) {
+    return true;
+  }
   for (size_t i = index + 1; i < items.size(); ++i) {
-    if (items[i]->GetActionItem()->GetProperty(
-            ActionAppMenuManager::kDisplayTypeKey) !=
-        ActionAppMenuManager::DisplayType::kDivider) {
+    const auto display_type = items[i]->GetActionItem()->GetProperty(
+        ActionAppMenuManager::kDisplayTypeKey);
+    if (display_type != ActionAppMenuManager::DisplayType::kDivider &&
+        display_type != ActionAppMenuManager::DisplayType::kHeader) {
       return false;
     }
   }
@@ -66,9 +72,10 @@ bool ShouldRoundTopCorners(size_t index,
   // preceding non-divider item rounded its bottom corners.
   for (size_t i = index; i > 0; --i) {
     size_t prev_index = i - 1;
-    if (items[prev_index]->GetActionItem()->GetProperty(
-            ActionAppMenuManager::kDisplayTypeKey) ==
-        ActionAppMenuManager::DisplayType::kDivider) {
+    const auto display_type = items[prev_index]->GetActionItem()->GetProperty(
+        ActionAppMenuManager::kDisplayTypeKey);
+    if (display_type == ActionAppMenuManager::DisplayType::kDivider ||
+        display_type == ActionAppMenuManager::DisplayType::kHeader) {
       continue;
     }
     return ShouldRoundBottomCorners(prev_index, items);
@@ -142,13 +149,26 @@ void ActionAppMenu::ExecuteCommand(int id, int mouse_event_flags) {
 }
 
 void ActionAppMenu::OnMenuClosed(views::MenuItemView* menu) {
+  actions::ActionItem* action_to_execute = nullptr;
+  if (action_to_execute_on_close_) {
+    auto action_iterator =
+        command_to_action_map_.find(action_to_execute_on_close_.value());
+    CHECK(action_iterator != command_to_action_map_.end());
+    action_to_execute = action_iterator->second->GetActionItem();
+  }
+
   search_bar_ = nullptr;
+  action_to_execute_on_close_.reset();
   command_to_action_map_.clear();
-  section_header_count_ = 0;
+  header_count_ = 0;
   if (on_menu_closed_callback_) {
     on_menu_closed_callback_.Run();
   }
   menu_manager_->GetAppMenuRoot()->ResetActionList();
+
+  if (action_to_execute) {
+    action_to_execute->InvokeAction();
+  }
 }
 
 const gfx::FontList* ActionAppMenu::GetLabelFontList(int id) const {
@@ -166,6 +186,13 @@ std::optional<SkColor> ActionAppMenu::GetLabelColor(int id) const {
         ui::kColorMenuItemForeground);
   }
   return std::nullopt;
+}
+
+void ActionAppMenu::CancelAndEvaluate(actions::ActionId action_id) {
+  if (!action_to_execute_on_close_.has_value()) {
+    action_to_execute_on_close_ = action_id;
+    CloseMenu();
+  }
 }
 
 void ActionAppMenu::PopulateMenu(views::MenuItemView* view_parent,
@@ -189,12 +216,11 @@ void ActionAppMenu::PopulateMenu(views::MenuItemView* view_parent,
       PopulateBlockSection(view_parent, child_ptr);
     } else if (display_type == ActionAppMenuManager::DisplayType::kDivider) {
       PopulateDivider(view_parent, child_ptr);
+    } else if (display_type == ActionAppMenuManager::DisplayType::kHeader) {
+      PopulateHeader(view_parent, child_ptr);
     } else if (display_type == ActionAppMenuManager::DisplayType::kSection) {
-      auto* header_menu_item =
-          view_parent->AppendTitle(std::u16string(child_ptr->GetText()));
-      ConfigureSectionHeader(header_menu_item);
       // Recursively call using the same parent to keep the children in
-      // the same menu section as the header.
+      // the same menu section.
       PopulateMenu(view_parent, child_base);
     } else {
       auto* const menu_item = AppendMenuItem(child_base, view_parent);
@@ -242,20 +268,6 @@ views::MenuItemView* ActionAppMenu::AppendMenuItem(
       menu_item, action_item->GetAsWeakPtr());
   command_to_action_map_[command_id] = action_item;
   return menu_item;
-}
-
-void ActionAppMenu::ConfigureSectionHeader(
-    views::MenuItemView* header_menu_item) {
-  const int default_margin = views::LayoutProvider::Get()->GetDistanceMetric(
-      DISTANCE_ACTION_APP_MENU_HEADER_VERTICAL_MARGIN);
-  header_menu_item->set_vertical_margin(default_margin);
-  header_menu_item->SetEnabled(false);
-  if (header_menu_item->GetParentMenuItem() == root_) {
-    header_menu_item->SetBorder(views::CreateEmptyBorder(gfx::Insets()));
-    if (section_header_count_++ > 0) {
-      header_menu_item->set_top_margin(default_margin * 2);
-    }
-  }
 }
 
 void ActionAppMenu::ConfigureMenuItem(views::MenuItemView* menu_item,
@@ -347,11 +359,29 @@ void ActionAppMenu::PopulateFooter(views::MenuItemView* view_parent,
   footer_item->set_vertical_margin(0);
 
   auto footer_view = std::make_unique<ActionAppMenuFooterView>(
-      footer_action_item, &action_view_controller_, &command_to_action_map_);
+      footer_action_item, &action_view_controller_, &command_to_action_map_,
+      base::BindRepeating(&ActionAppMenu::CancelAndEvaluate,
+                          base::Unretained(this)));
   footer_view->SetProperty(views::kMarginsKey,
                            ChromeLayoutProvider::Get()->GetInsetsMetric(
                                INSETS_ACTION_APP_MENU_FOOTER_MARGIN));
   footer_item->AddChildView(std::move(footer_view));
+}
+
+void ActionAppMenu::PopulateHeader(views::MenuItemView* view_parent,
+                                   actions::ActionItem* header_action_item) {
+  auto* const header_menu_item =
+      view_parent->AppendTitle(std::u16string(header_action_item->GetText()));
+  const int default_margin = views::LayoutProvider::Get()->GetDistanceMetric(
+      DISTANCE_ACTION_APP_MENU_HEADER_VERTICAL_MARGIN);
+  header_menu_item->set_vertical_margin(default_margin);
+  header_menu_item->SetEnabled(false);
+  if (header_menu_item->GetParentMenuItem() == root_) {
+    header_menu_item->SetBorder(views::CreateEmptyBorder(gfx::Insets()));
+    if (header_count_++ > 0) {
+      header_menu_item->set_top_margin(default_margin * 2);
+    }
+  }
 }
 
 void ActionAppMenu::PopulateBlockSection(
@@ -363,7 +393,9 @@ void ActionAppMenu::PopulateBlockSection(
   block_item->set_vertical_margin(0);
 
   block_item->AddChildView(std::make_unique<ActionAppMenuBlockView>(
-      block_action_item, &action_view_controller_, &command_to_action_map_));
+      block_action_item, &action_view_controller_, &command_to_action_map_,
+      base::BindRepeating(&ActionAppMenu::CancelAndEvaluate,
+                          base::Unretained(this))));
 }
 
 void ActionAppMenu::PopulateCustomRow(views::MenuItemView* view_parent,
@@ -382,5 +414,6 @@ void ActionAppMenu::PopulateCustomRow(views::MenuItemView* view_parent,
 
 void ActionAppMenu::PopulateDivider(views::MenuItemView* view_parent,
                                     actions::ActionItem* divider_action_item) {
-  view_parent->AppendSeparator();
+  view_parent->AppendSeparator(
+      divider_action_item->GetProperty(ActionAppMenuManager::kSeparatorKey));
 }

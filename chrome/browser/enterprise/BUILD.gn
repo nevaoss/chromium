@@ -30,6 +30,7 @@ source_set("enterprise") {
     "net/enterprise_network_auth_service_factory.h",
     "net/enterprise_proxy_error_service_factory.h",
     "net/enterprise_proxy_service_factory.h",
+    "net/proxy_error_utils.h",
     "profile_management/saml_response_parser.h",
     "reporting/cloud_profile_reporting_service.h",
     "reporting/cloud_profile_reporting_service_factory.h",
@@ -232,6 +233,7 @@ source_set("enterprise") {
     public += [
       "data_controls/chrome_clipboard_context.h",
       "data_protection/data_protection_clipboard_utils.h",
+      "data_protection/data_protection_clipboard_utils_types.h",
       "data_protection/data_protection_navigation_controller.h",
       "data_protection/data_protection_navigation_observer.h",
       "data_protection/data_protection_page_user_data.h",
@@ -428,6 +430,7 @@ source_set("impl") {
     "net/enterprise_network_auth_service_factory.cc",
     "net/enterprise_proxy_error_service_factory.cc",
     "net/enterprise_proxy_service_factory.cc",
+    "net/proxy_error_utils.cc",
     "profile_management/saml_response_parser.cc",
     "remote_commands/job_profile_picker.cc",
     "reporting/cloud_profile_reporting_service.cc",
@@ -679,6 +682,7 @@ source_set("impl") {
     sources += [
       "data_controls/chrome_clipboard_context.cc",
       "data_protection/data_protection_clipboard_utils.cc",
+      "data_protection/data_protection_clipboard_utils_types.cc",
     ]
     deps += [ "//chrome/browser/enterprise/data_controls" ]
     if (!is_android) {

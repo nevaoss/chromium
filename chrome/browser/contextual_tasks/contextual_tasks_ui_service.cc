@@ -8,6 +8,7 @@
 #include <optional>
 
 #include "base/command_line.h"
+#include "base/containers/flat_set.h"
 #include "base/feature_list.h"
 #include "base/logging.h"
 #include "base/metrics/histogram_functions.h"
@@ -444,6 +445,12 @@ void ContextualTasksUiService::OnNavigationToAiPageIntercepted(
   // Map the task ID to the intercepted url. This is done so the UI knows which
   // URL to load initially in the embedded frame.
   task_id_to_creation_url_[task.GetTaskId()] = url;
+
+  // Associate all submitted context tabs present in the session handle with
+  // the new task.
+  if (session_handle) {
+    AssociateSessionTabsToTask(session_handle.get(), task.GetTaskId());
+  }
 
   GURL ui_url = GetContextualTaskUrlForTask(task.GetTaskId());
   // If the CS param is in the URL, add it to the webui, so the
@@ -1151,11 +1158,16 @@ void ContextualTasksUiService::InitializeTaskInSidePanel(
     }
   }
   if (session_handle) {
-    ContextualSearchWebContentsHelper::GetOrCreateForWebContents(web_contents)
-        ->SetTaskSession(task_id, std::move(session_handle),
-                         /*input_state_model=*/nullptr);
+    AssociateSessionTabsToTask(session_handle.get(), task_id);
+    if (web_contents) {
+      ContextualSearchWebContentsHelper::GetOrCreateForWebContents(web_contents)
+          ->SetTaskSession(task_id, std::move(session_handle),
+                           /*input_state_model=*/nullptr);
+    }
   }
-  AssociateWebContentsToTask(web_contents, task_id);
+  if (web_contents) {
+    AssociateWebContentsToTask(web_contents, task_id);
+  }
 }
 
 void ContextualTasksUiService::ReloadZeroStateInOpenSidePanel(
@@ -2824,25 +2836,36 @@ void ContextualTasksUiService::OnTaskChanged(
       final_task_id = task.GetTaskId();
     }
 
-    TabListInterface* tab_list =
-        TabListInterface::From(browser_window_interface);
-    content::WebContents* active_contents =
-        tab_list->GetActiveTab()->GetContents();
-    SessionID active_id = SessionTabHelper::IdForTab(active_contents);
+    std::vector<SessionID> tab_ids;
+    if (old_task_id.has_value() && old_task_id->is_valid()) {
+      tab_ids =
+          contextual_tasks_service_->GetTabsAssociatedWithTask(*old_task_id);
+    }
 
-    // If the current tab is associated with any task, change associations for
-    // all tabs associated with that task.
-    std::optional<ContextualTask> current_task =
-        contextual_tasks_service_->GetContextualTaskForTab(active_id);
-    if (current_task) {
-      std::vector<SessionID> tab_ids =
-          contextual_tasks_service_->GetTabsAssociatedWithTask(
-              current_task->GetTaskId());
-      for (const auto& id : tab_ids) {
-        contextual_tasks_service_->AssociateTabWithTask(final_task_id, id);
+    // If old_task_id was unset or had no associated tabs (e.g. when opening the
+    // panel for the first time without prior task affiliation), fall back to
+    // associating the currently active tab.
+    if (tab_ids.empty()) {
+      TabListInterface* tab_list =
+          TabListInterface::From(browser_window_interface);
+      content::WebContents* active_contents =
+          tab_list->GetActiveTab()->GetContents();
+      SessionID active_id = SessionTabHelper::IdForTab(active_contents);
+
+      // If the current tab is associated with any task, change associations for
+      // all tabs associated with that task.
+      std::optional<ContextualTask> current_task =
+          contextual_tasks_service_->GetContextualTaskForTab(active_id);
+      if (current_task) {
+        tab_ids = contextual_tasks_service_->GetTabsAssociatedWithTask(
+            current_task->GetTaskId());
+      } else {
+        tab_ids.push_back(active_id);
       }
-    } else {
-      contextual_tasks_service_->AssociateTabWithTask(final_task_id, active_id);
+    }
+
+    for (const auto& id : tab_ids) {
+      contextual_tasks_service_->AssociateTabWithTask(final_task_id, id);
     }
 
     controller->OnTaskChanged(web_contents, final_task_id);
@@ -3013,6 +3036,11 @@ void ContextualTasksUiService::StartTaskUiInSidePanelImpl(
   // load the URL into the already loaded contextual tasks UI.
   auto* helper = ContextualSearchWebContentsHelper::GetOrCreateForWebContents(
       panel_contents);
+  if (session_handle && helper->task_id().has_value()) {
+    AssociateSessionTabsToTask(session_handle.get(), helper->task_id().value());
+    helper->SetTaskSession(helper->task_id().value(), std::move(session_handle),
+                           /*input_state_model=*/nullptr);
+  }
   // If the task was waiting for a URL to be generated (e.g. opened early
   // with ghost loader but no URL), provide the URL now to unblock the WebUI's
   // initial pull request via GetUrlForTask.
@@ -3333,6 +3361,29 @@ void ContextualTasksUiService::AssociateWebContentsToTask(
   SessionID session_id = SessionTabHelper::IdForTab(web_contents);
   if (session_id.is_valid()) {
     contextual_tasks_service_->AssociateTabWithTask(task_id, session_id);
+  }
+}
+
+void ContextualTasksUiService::AssociateSessionTabsToTask(
+    const contextual_search::ContextualSearchSessionHandle* session_handle,
+    const base::Uuid& task_id) {
+  if (!contextual_tasks_service_ || !session_handle || !task_id.is_valid()) {
+    return;
+  }
+  base::flat_set<SessionID> tab_ids;
+  for (const auto& file : session_handle->GetSubmittedContextFileInfos()) {
+    if (file.tab_session_id.has_value() && file.tab_session_id->is_valid()) {
+      tab_ids.insert(*file.tab_session_id);
+    }
+  }
+  for (const auto& [session_id, token_and_req] :
+       session_handle->persisted_tabs()) {
+    if (session_id.is_valid()) {
+      tab_ids.insert(session_id);
+    }
+  }
+  for (SessionID tab_id : tab_ids) {
+    contextual_tasks_service_->AssociateTabWithTask(task_id, tab_id);
   }
 }
 

@@ -284,6 +284,8 @@ LensOverlayUntrustedUI::LensOverlayUntrustedUI(content::WebUI* web_ui)
       GetLensSearchController().should_route_to_contextual_tasks());
   html_source->AddBoolean("isSidePanelOpen",
                           controller.IsResultsSidePanelShowingOrWillOpen());
+  html_source->AddBoolean("isCoBrowsePanelWithLensOverlayEnabled",
+                          controller.CoBrowsePanelWithLensOverlayEnabled());
 
   // Allow FrameSrc from all Google subdomains as redirects can occur.
   GURL results_side_panel_url =
@@ -362,10 +364,6 @@ LensOverlayUntrustedUI::LensOverlayUntrustedUI(content::WebUI* web_ui)
     html_source->AddBoolean("enablePrivacyNotice", enable_privacy_notice);
     html_source->AddBoolean("hasPermissionsForSession", !enable_privacy_notice);
   }
-
-  ui::TrackedElementHandlerDocumentSingleton::Register(
-      this,
-      std::vector<ui::ElementIdentifier>{kLensOverlayTranslateButtonElementId});
 }
 
 void LensOverlayUntrustedUI::BindInterface(

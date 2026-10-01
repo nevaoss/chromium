@@ -934,6 +934,7 @@ Par défaut, ce type d'accès est bloqué par vos paramètres de confidentialit�
 <translation id="2544644783021658368">Document unique</translation>
 <translation id="254524874071906077">Définir Chrome comme navigateur par défaut</translation>
 <translation id="2546283357679194313">Cookies et données des sites</translation>
+<translation id="254672217349157196">Valider automatiquement votre adresse e-mail</translation>
 <translation id="254947805923345898">La valeur de la règle n'est pas valide.</translation>
 <translation id="255002559098805027"><ph name="HOST_NAME" /> a envoyé une réponse incorrecte.</translation>
 <translation id="2551608178605132291">Adresse : <ph name="ADDRESS" />.</translation>
@@ -1180,6 +1181,7 @@ Par défaut, ce type d'accès est bloqué par vos paramètres de confidentialit�
 <translation id="3008410317623852235">Vous pouvez désormais trouver et saisir des informations depuis Gmail et bien plus.</translation>
 <translation id="3009036448238594149"><ph name="ACTION_IN_SUGGEST_FOCUSED_FRIENDLY_MATCH_TEXT" />, appuyez sur Tabulation pour parcourir les actions disponibles, puis sur Entrée pour exécuter l'action sélectionnée.</translation>
 <translation id="3010991137650052245">Pour lui permettre d'utiliser votre <ph name="PERMISSION" /> sur ce site, autorisez <ph name="SHORT_PRODUCT_NAME" /> à y accéder</translation>
+<translation id="3013536714390403689">Adresse e-mail validée</translation>
 <translation id="3014726756341138577">Fonctionnalités avancées d'imprimante</translation>
 <translation id="301521992641321250">Bloquée automatiquement</translation>
 <translation id="3016780570757425217">Connaître votre position</translation>
@@ -2016,7 +2018,6 @@ Pour masquer les options de paiement différé, accédez aux <ph name="BEGIN_LIN
 <translation id="4377869186417956230">Accéder à toutes les cartes de fidélité dans cet élément de menu.</translation>
 <translation id="4378154925671717803">Téléphone</translation>
 <translation id="4378221908737133050">Crée une checklist pour nettoyer ma maison en profondeur</translation>
-<translation id="4379357028567121852">Depuis <ph name="APP_NAME" /></translation>
 <translation id="4381997246130185847">Vous pouvez reprendre là où vous en étiez ou créer des groupes d'onglets où que vous soyez</translation>
 <translation id="4382484599443659549">PDF</translation>
 <translation id="4382833368532556056">À partir de maintenant, enregistrez vos fichiers dans le stockage cloud</translation>

@@ -9,11 +9,12 @@ import type {OmniboxEverywhereAppElement, OmniboxEverywhereComposeboxElement, Om
 import {ComposeboxFile} from 'chrome://resources/cr_components/composebox/common.js';
 import type {ComposeboxState} from 'chrome://resources/cr_components/composebox/common.js';
 import {PageHandlerRemote} from 'chrome://resources/cr_components/composebox/composebox.mojom-webui.js';
-import {InputType, ModelMode, ToolMode} from 'chrome://resources/cr_components/composebox/composebox_query.mojom-webui.js';
+import {ContextUploadErrorType, ContextUploadStatus, InputType, ModelMode, ToolMode} from 'chrome://resources/cr_components/composebox/composebox_query.mojom-webui.js';
 import type {ContextualEntrypointButtonElement} from 'chrome://resources/cr_components/composebox/contextual_entrypoint_button.js';
 import type {SearchAnimatedGlowElement} from 'chrome://resources/cr_components/search/animated_glow.js';
 import {GlowAnimationState} from 'chrome://resources/cr_components/search/constants.js';
 import {createAutocompleteResultForTesting, createSearchMatchForTesting} from 'chrome://resources/cr_components/searchbox/searchbox_browser_proxy.js';
+import {SelectionDirection, SelectionLineState, SelectionStep} from 'chrome://resources/cr_components/searchbox/searchbox_selection_mixin.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import type {PageCallbackRouter as SearchboxPageCallbackRouter, PageHandlerRemote as SearchboxPageHandlerRemote, SelectedFileInfo} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 import type {UnguessableToken} from 'chrome://resources/mojo/mojo/public/mojom/base/unguessable_token.mojom-webui.js';
@@ -52,6 +53,7 @@ suite('OmniboxEverywhereOmniboxTest', () => {
       profileAvatarUrl: 'chrome://theme/IDR_PROFILE_AVATAR_0',
       profileName: 'Test Profile',
       profileEmail: 'test@example.com',
+      profileTooltipHeader: 'Chrome profile',
       omniboxEverywhereProfilePickerEnabled: false,
       isEnterpriseProfile: false,
       searchboxLayoutMode: 'TallBottomContext',
@@ -367,33 +369,39 @@ suite('OmniboxEverywhereOmniboxTest', () => {
       });
 
   test(
-      'updateAimPopupEligibility respects isFuseboxEnabled false capability ' +
-          'in loadTimeData',
+      'updateAimPopupEligibility updates dynamically when initially disabled',
       async () => {
         document.body.innerHTML = window.trustedTypes!.emptyHTML;
         loadTimeData.overrideValues({
           isFuseboxEnabled: false,
-          searchboxShowComposeEntrypoint: true,
+          searchboxShowComposeEntrypoint: false,
+          searchboxVoiceSearch: true,
+          searchboxLensSearch: true,
         });
         const testOmnibox =
             document.createElement('omnibox-everywhere-omnibox');
         document.body.appendChild(testOmnibox);
         await microtasksFinished();
 
-        assertTrue(!!testOmnibox.shadowRoot.querySelector('#composeButton'));
+        assertFalse(!!testOmnibox.shadowRoot.querySelector('#composeButton'));
         assertFalse(!!testOmnibox.shadowRoot.querySelector('#context'));
+        assertFalse(
+            !!testOmnibox.shadowRoot.querySelector('#lensSearchButton'));
+
+        testProxy.page.updateAimPopupEligibility(true);
+        await microtasksFinished();
+
+        assertTrue(!!testOmnibox.shadowRoot.querySelector('#composeButton'));
+        assertTrue(!!testOmnibox.shadowRoot.querySelector('#context'));
+        assertTrue(!!testOmnibox.shadowRoot.querySelector('#lensSearchButton'));
 
         testProxy.page.updateAimPopupEligibility(false);
         await microtasksFinished();
 
         assertFalse(!!testOmnibox.shadowRoot.querySelector('#composeButton'));
         assertFalse(!!testOmnibox.shadowRoot.querySelector('#context'));
-
-        testProxy.page.updateAimPopupEligibility(true);
-        await microtasksFinished();
-
-        assertTrue(!!testOmnibox.shadowRoot.querySelector('#composeButton'));
-        assertFalse(!!testOmnibox.shadowRoot.querySelector('#context'));
+        assertFalse(
+            !!testOmnibox.shadowRoot.querySelector('#lensSearchButton'));
       });
   test('dropdownIsVisible preserves bottomControls', async () => {
     const bottomControls =
@@ -469,6 +477,25 @@ suite('OmniboxEverywhereOmniboxTest', () => {
         assertFalse(omnibox.isScreenshotMenuOpen);
         assertFalse(lensContainer.classList.contains('menu-open'));
       });
+
+  test(
+      'stepCyclesSelection returns false to cycle within popup like Omnibox',
+      () => {
+        const match = createSearchMatchForTesting();
+        const result = createAutocompleteResultForTesting({matches: [match]});
+        const selection = {
+          line: 0,
+          state: SelectionLineState.kNormal,
+          actionIndex: 0,
+        };
+
+        assertFalse(omnibox.stepCyclesSelection(
+            result, selection, SelectionDirection.kForward,
+            SelectionStep.kStateOrLine));
+        assertFalse(omnibox.stepCyclesSelection(
+            result, selection, SelectionDirection.kBackward,
+            SelectionStep.kStateOrLine));
+      });
 });
 
 
@@ -508,7 +535,7 @@ suite('OmniboxEverywhereComposeboxTest', () => {
   });
 
   test('configures animated glow on composebox correctly', async () => {
-    await new Promise(r => setTimeout(r, 0));
+    await new Promise(r => requestAnimationFrame(r));
     await microtasksFinished();
     const glow = composebox.shadowRoot.querySelector<SearchAnimatedGlowElement>(
         '#animatedSearchElement');
@@ -524,8 +551,7 @@ suite('OmniboxEverywhereComposeboxTest', () => {
         composebox.playGlowAnimation(/*timeoutMs=*/ 10);
         assertEquals(GlowAnimationState.NONE, composebox.animationState);
 
-        await new Promise(r => setTimeout(r, 0));
-        await microtasksFinished();
+        await new Promise(r => requestAnimationFrame(r));
 
         // After rAF callback runs, animationState is EXPANDING.
         assertEquals(GlowAnimationState.EXPANDING, composebox.animationState);
@@ -1061,6 +1087,32 @@ suite('OmniboxEverywhereAppTest', () => {
   });
 
   test(
+      'disabling aim popup eligibility closes active composebox mode',
+      async () => {
+        const searchbox =
+            app.shadowRoot.querySelector('omnibox-everywhere-omnibox')!;
+        searchbox.dispatchEvent(new CustomEvent('open-composebox', {
+          detail: {text: 'draft text', files: [], mode: 0, model: 0},
+          bubbles: true,
+          composed: true,
+        }));
+        await microtasksFinished();
+
+        const composebox =
+            app.shadowRoot.querySelector('omnibox-everywhere-composebox')!;
+        assertTrue(!!composebox);
+
+        testProxy.page.updateAimPopupEligibility(false);
+        await microtasksFinished();
+
+        assertFalse(
+            !!app.shadowRoot.querySelector('omnibox-everywhere-composebox'));
+        const restoredSearchbox =
+            app.shadowRoot.querySelector('omnibox-everywhere-omnibox')!;
+        assertTrue(!!restoredSearchbox);
+      });
+
+  test(
       'voice search final result in composebox submits query and closes dialog',
       async () => {
         const searchbox =
@@ -1424,6 +1476,7 @@ suite('OmniboxEverywhereProfileIconTest', () => {
       profileAvatarUrl: 'chrome://theme/IDR_PROFILE_AVATAR_0',
       profileName: 'Test Profile',
       profileEmail: 'test@example.com',
+      profileTooltipHeader: 'Chrome profile',
       omniboxEverywhereProfilePickerEnabled: profilePickerEnabled,
       isEnterpriseProfile: false,
     });
@@ -1443,7 +1496,8 @@ suite('OmniboxEverywhereProfileIconTest', () => {
         assertTrue(!!container);
         assertFalse(container.classList.contains('clickable'));
         assertEquals(
-            'Test Profile\ntest@example.com', container.getAttribute('title'));
+            'Chrome profile\nTest Profile\ntest@example.com',
+            container.getAttribute('title'));
       });
 
   test('profile icon is clickable when profile picker is enabled', async () => {
@@ -1454,7 +1508,17 @@ suite('OmniboxEverywhereProfileIconTest', () => {
     assertTrue(container.classList.contains('clickable'));
     assertEquals('pointer', window.getComputedStyle(container).cursor);
     assertEquals(
-        'Test Profile\ntest@example.com', container.getAttribute('title'));
+        'Chrome profile\nTest Profile\ntest@example.com',
+        container.getAttribute('title'));
+  });
+
+  test('profile icon image has correct size', async () => {
+    await createProfileIcon(false);
+    const img =
+        profileIcon.shadowRoot.querySelector<HTMLElement>('#profileIcon');
+    assertTrue(!!img);
+    assertEquals('20px', window.getComputedStyle(img).width);
+    assertEquals('20px', window.getComputedStyle(img).height);
   });
 
   test('renders enterprise badge when profile is enterprise', async () => {
@@ -1558,6 +1622,10 @@ suite('OmniboxEverywhereContextMenuTest', () => {
         const composebox =
             app.shadowRoot.querySelector('omnibox-everywhere-composebox');
         assertTrue(!!composebox);
+        assertEquals(1, testProxy.handler.getCallCount('setActiveToolMode'));
+        assertEquals(
+            ToolMode.kDeepSearch,
+            testProxy.handler.getArgs('setActiveToolMode')[0][0]);
       });
 
   test(
@@ -1612,5 +1680,90 @@ suite('OmniboxEverywhereContextMenuTest', () => {
         assertTrue(!!attachment);
         assertEquals('test_image.png', attachment.name);
         assertEquals('image/png', attachment.type);
+      });
+
+  test(
+      'file upload validation error displays error scrim in composebox',
+      async () => {
+        const testToken = '00000000000000010000000000000002';
+        testEverywhereProxy.page.openComposebox({
+          tool: ToolMode.kUnspecified,
+          model: ModelMode.kUnspecified,
+          tab: null,
+          fileToken: testToken,
+          fileInfo: {
+            fileName: 'large_image.png',
+            mimeType: 'image/png',
+            imageDataUrl: 'data:image/png;base64,AAAA',
+            thumbnailUrl: null,
+            isDeletable: true,
+            selectionTime: new Date(),
+          },
+        });
+        await microtasksFinished();
+
+        const composebox =
+            app.shadowRoot.querySelector('omnibox-everywhere-composebox');
+        assertTrue(!!composebox);
+
+        testProxy.page.onContextualInputStatusChanged(
+            testToken, ContextUploadStatus.kValidationFailed,
+            ContextUploadErrorType.kBrowserProcessingFileTooLargeError);
+        await microtasksFinished();
+
+        const errorScrim =
+            composebox.shadowRoot.querySelector('ntp-error-scrim');
+        assertTrue(!!errorScrim);
+
+        errorScrim.dispatchEvent(new CustomEvent('dismiss-error-scrim', {
+          bubbles: true,
+          composed: true,
+        }));
+        await microtasksFinished();
+
+        assertFalse(!!composebox.shadowRoot.querySelector('ntp-error-scrim'));
+      });
+
+  test(
+      'max images exceeded error displays error scrim and button dismisses',
+      async () => {
+        const testToken = '00000000000000010000000000000003';
+        testEverywhereProxy.page.openComposebox({
+          tool: ToolMode.kUnspecified,
+          model: ModelMode.kUnspecified,
+          tab: null,
+          fileToken: testToken,
+          fileInfo: {
+            fileName: 'eleventh_image.png',
+            mimeType: 'image/png',
+            imageDataUrl: null,
+            thumbnailUrl: null,
+            isDeletable: true,
+            selectionTime: new Date(),
+          },
+        });
+        await microtasksFinished();
+
+        const composebox =
+            app.shadowRoot.querySelector('omnibox-everywhere-composebox');
+        assertTrue(!!composebox);
+
+        testProxy.page.onContextualInputStatusChanged(
+            testToken, ContextUploadStatus.kValidationFailed,
+            ContextUploadErrorType.kBrowserProcessingMaxImagesExceededError);
+        await microtasksFinished();
+
+        const errorScrim =
+            composebox.shadowRoot.querySelector('ntp-error-scrim');
+        assertTrue(!!errorScrim);
+
+        const dismissBtn = errorScrim.shadowRoot.querySelector<HTMLElement>(
+            '#dismissErrorButton');
+        assertTrue(!!dismissBtn);
+        dismissBtn.click();
+        await microtasksFinished();
+
+        assertFalse(!!composebox.shadowRoot.querySelector('ntp-error-scrim'));
+        assertEquals(0, composebox.files.size);
       });
 });

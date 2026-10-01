@@ -156,6 +156,7 @@ found in the LICENSE file.
     <style name="Theme.Chromium.ClearDataDialogActivity"
         parent="Theme.Chromium.Activity.Fullscreen.Transparent">
         <item name="android:windowBackground">@android:color/transparent</item>
+        <item name="android:windowDisablePreview">true</item>
         <item name="android:windowEnterAnimation">@null</item>
         <item name="android:windowExitAnimation">@null</item>
         <item name="android:windowAnimationStyle">@null</item>
@@ -191,6 +192,13 @@ found in the LICENSE file.
         <item name="android:navigationBarColor">@macro/sheet_bg_color</item>
         <item name="android:navigationBarDividerColor">@null</item>
         <item name="android:windowLightNavigationBar">false</item>
+    </style>
+    <!-- Clears fixed-height constraints so dialog wraps content to spec. -->
+    <style
+        name="ThemeOverlay.Chromium.DialogWhenLarge.ContentWrapping"
+        parent="">
+        <item name="windowFixedHeightMajor">@null</item>
+        <item name="windowFixedHeightMinor">@null</item>
     </style>
 
     <!-- Theme variation for low-end devices.

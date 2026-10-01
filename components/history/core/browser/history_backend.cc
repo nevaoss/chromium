@@ -56,6 +56,7 @@
 #include "components/history/core/browser/history_db_task.h"
 #include "components/history/core/browser/history_types.h"
 #include "components/history/core/browser/in_memory_history_backend.h"
+#include "components/history/core/browser/journeys/journeys_backend_util.h"
 #include "components/history/core/browser/journeys/journeys_sync_bridge.h"
 #include "components/history/core/browser/keyword_search_term.h"
 #include "components/history/core/browser/keyword_search_term_util.h"
@@ -2089,7 +2090,7 @@ void HistoryBackend::SetSyncTransportState(
   }
 }
 
-bool HistoryBackend::AddOrUpdateJourneys(
+bool HistoryBackend::AddOrUpdateJourneyRows(
     const std::vector<journeys::JourneyRow>& journeys) {
   if (!db_) {
     return false;
@@ -2107,11 +2108,18 @@ bool HistoryBackend::DeleteJourneys(
   return db_->DeleteJourneys(journey_ids);
 }
 
-std::vector<journeys::JourneyRow> HistoryBackend::GetAllJourneys() {
+std::vector<journeys::JourneyRow> HistoryBackend::GetAllJourneyRows() {
   if (!db_) {
     return {};
   }
   return db_->GetAllJourneys();
+}
+
+std::vector<journeys::Journey> HistoryBackend::GetAllJourneysWithVisits() {
+  if (!db_) {
+    return {};
+  }
+  return journeys::GetAllJourneysWithResolvedVisits(*db_);
 }
 
 bool HistoryBackend::DeleteAllJourneys() {
@@ -2971,8 +2979,13 @@ URLRows HistoryBackend::GetMatchesForHost(const std::u16string& host_name) {
   if (db_ && db_->InitURLEnumeratorForEverything(&iter)) {
     URLRow row;
     std::string host_name_utf8 = base::UTF16ToUTF8(host_name);
+    const bool improved_suffix_matching = base::FeatureList::IsEnabled(
+        kBrowsingHistoryImprovedHostnameSuffixMatching);
     while (iter.GetNextURL(&row)) {
-      if (row.url().is_valid() && row.url().GetHost() == host_name_utf8) {
+      const bool matches_host = improved_suffix_matching
+                                    ? row.url().DomainIs(host_name_utf8)
+                                    : (row.url().GetHost() == host_name_utf8);
+      if (row.url().is_valid() && matches_host) {
         results.push_back(std::move(row));
       }
     }

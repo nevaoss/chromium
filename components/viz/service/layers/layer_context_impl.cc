@@ -1891,6 +1891,8 @@ void LayerContextImpl::SetNeedsOneBeginImplFrameOnImplThread() {
   }
 }
 
+void LayerContextImpl::NotifyInputEvent() {}
+
 void LayerContextImpl::SetNeedsPrepareTilesOnImplThread() {
   NOTREACHED();
 }

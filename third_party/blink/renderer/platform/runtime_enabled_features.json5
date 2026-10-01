@@ -818,6 +818,13 @@
     {
       // Killswitch M153.
       name: "AvoidEmbeddedContentViewLocation",
+      status: "experimental",
+    },
+    {
+      // Don't use a position inside non-selectable content as a selection
+      // boundary when it has no canonical position, which collapses the whole
+      // selection. See https://crbug.com/553831659.
+      name: "AvoidNonSelectableSelectionBoundary",
       status: "stable",
     },
     {
@@ -1498,6 +1505,11 @@
       status: "stable",
     },
     {
+      // https://crbug.com/543376113
+      name: "CSSAlphaColorFunctionRequiresAlpha",
+      status: "stable",
+    },
+    {
       // Allows using counter() and counters() in alt text (after / in content property).
       name: "CSSAltCounter",
       status: "stable",
@@ -1641,6 +1653,12 @@
       // https://crbug.com/949807
       name: "CSSEnumeratedCustomProperties",
       status: "stable",
+    },
+    {
+      // The 'flow-start' and 'flow-end' box alignment keywords.
+      // https://github.com/w3c/csswg-drafts/issues/14052
+      name: "CSSFlowStartAndEnd",
+      status: "experimental",
     },
     {
       // crbug.com/483689942
@@ -1972,8 +1990,12 @@
       implied_by: ["CSSScrollSnapChangeEvent", "CSSScrollSnapChangingEvent"],
     },
     {
-      name: "CSSScrollSnapTypePair",
+      name: "CSSScrollSnapStopBefore",
       status: "test",
+    },
+    {
+      name: "CSSScrollSnapTypePair",
+      status: "experimental",
     },
     {
       // scroll-target-group property
@@ -2049,7 +2071,7 @@
     },
     {
       name: "CSSTextDecorationSkipSpaces",
-      status: "experimental",
+      status: "stable",
     },
     {
       // crbug.com/417306102
@@ -2338,14 +2360,6 @@
       // Enabled in 151, safe to remove in 153.
       name: "DisableFormControlChangeEventDuringMutation",
       status: "stable",
-    },
-    {
-      name: "DisableReduceAcceptLanguage",
-      origin_trial_feature_name: "DisableReduceAcceptLanguage",
-      origin_trial_type: "deprecation",
-      origin_trial_allows_insecure: true,
-      origin_trial_allows_third_party: true,
-      base_feature: "none",
     },
     {
       name: "DisconnectWebSocketOnBFCache",
@@ -2638,11 +2652,6 @@
       status: "stable",
     },
     {
-      // crbug.com/420857717
-      name: "EmojiMonochromeRendering",
-      status: "stable"
-    },
-    {
       // Controls whether XSLT processing is selectively re-enabled for
       // Common Alerting Protocol (CAP) alert XML documents when native XSLT
       // is otherwise disabled.
@@ -2853,12 +2862,7 @@
       base_feature_status: "enabled",
       copied_from_base_feature_if: "enabled_or_overridden",
       status: "stable",
-    },
-    {
-      name: "FencedFramesDefaultMode",
-      base_feature_status: "disabled",
-      copied_from_base_feature_if: "enabled_or_overridden",
-      public: true,
+
     },
     {
       // Allows fenced frames to access unpartioned data via Shared Storage in
@@ -3187,6 +3191,10 @@
       status: {"Android": "", "default": "stable"},
     },
     {
+      name: "FontationsPrinting",
+      status: "experimental",
+    },
+    {
       name: "FontDataServiceForCSSLocalFonts",
       base_feature: "none",
       // No status, as the web platform runtime enabled feature is controlled by
@@ -3218,6 +3226,11 @@
     },
     {
       name: "FontMatchAliasesAsLastResort",
+      status: "stable",
+    },
+    {
+      // Kill switch for https://crbug.com/489865845.
+      name: "FontPrewarmerShutdownFallback",
       status: "stable",
     },
     {
@@ -3257,8 +3270,12 @@
     },
     {
       name: "FractionalScrollOffsets",
-      base_feature: "none",
-      public: true,
+      implied_by: ["FractionalScrollOffsetsForWebAPI"],
+      status: "experimental",
+    },
+    {
+      // https://crbug.com/40384509.
+      name: "FractionalScrollOffsetsForWebAPI",
     },
     {
       // Generate layout fragments for out-of-flow positioned elements as
@@ -3494,6 +3511,13 @@
     {
       name: "HTMLAreaHreflangType",
       status: "test",
+    },
+    {
+      // Kill switch for parsing <body>, <frame> and <iframe> margin attributes
+      // as pixel lengths per the HTML rendering rules.
+      // https://crbug.com/554920796
+      name: "HTMLBodyMarginPixelLength",
+      status: "stable",
     },
     // Additional default command/commandfor actions that aren't part of v1 of
     // commands. When this flag is disabled only v1 actions (popover and dialog
@@ -4095,8 +4119,7 @@
     },
     {
       name: "MediaPlaybackWhileNotVisiblePermissionPolicy",
-      status: "test",
-      origin_trial_feature_name: "MediaPlaybackWhileNotVisiblePermissionPolicy",
+      status: "stable",
     },
     {
       name: "MediaQueryNavigationControls",
@@ -4181,6 +4204,15 @@
       name: "ModifyParagraphCrossEditingoundary",
       status: "stable",
     },
+    // Stops caching failed module fetches (network error, non-ok status, or
+    // MIME type mismatch), so a later import re-fetches instead of reusing the
+    // failure.
+    // https://html.spec.whatwg.org/C/#fetch-a-single-module-script
+    // https://crbug.com/534781954
+    {
+      name: "ModuleMapDoNotCacheFailedFetch",
+      status: "experimental",
+    },
     // ModulePreloadReferrer enables modulepreload to send proper referrer
     // headers as specified in the HTML spec.
     // https://crbug.com/441933555
@@ -4224,12 +4256,6 @@
     },
     {
       name: "NavigationEventTiming",
-    },
-    {
-      name: "NavigationId",
-      status: "experimental",
-      origin_trial_feature_name: "SoftNavigationHeuristics",
-      implied_by: ["SoftNavigationHeuristics"],
     },
     {
       // NavigationState class and the :navigation-source CSS pseudo-class.
@@ -4288,7 +4314,7 @@
       // https://chromestatus.com/feature/5054329641893888
       // streamHTML, appendHTML, etc.
       name: "NewHTMLSettingMethods",
-      status: "stable",
+      status: "experimental",
       depends_on: ["SetHTMLCanRunScripts", "StreamingSanitizer", "TrustedTypesCreateParserOptions"]
     },
     {
@@ -5453,6 +5479,11 @@
       name: "ScrollTopLeftInterop",
       status: "stable",
     },
+    // Limits the number of scroll-to-text-fragment directives parsed per URL.
+    {
+      name: "ScrollToTextFragmentDirectiveLimit",
+      status: "stable",
+    },
     // Only consider unique case-insensitive scroll-to-text fragments.
     {
       name: "ScrollToTextFragmentUniqueFragments",
@@ -5678,6 +5709,10 @@
       status: "experimental",
     },
     {
+      // V8 Code Cache for resource requests passing through Service Worker.
+      name: "ServiceWorkerCodeCache",
+    },
+    {
       // Support for Service Worker APIs in Dedicated Workers.
       // See https://chromestatus.com/feature/6497653025931264
       // See https://issues.chromium.org/issues/40364838
@@ -5845,23 +5880,6 @@
       // RunSnapshotPostLayoutStateSteps flag.
       name: "SnapshotScrollTimelinesPostLayout",
       depends_on: ["RunSnapshotPostLayoutStateSteps"],
-    },
-    {
-      // Used to enable the code for detecting soft navigations through task
-      // attribution. Set to stable as this generates an enabled-by-default
-      // base::Feature for a field-trial remote shutoff. Needs to be a runtime
-      // feature so that the Soft Navigation Heuristics Origin Trial can depend
-      // on it.
-      name: "SoftNavigationDetection",
-      status: "stable",
-    },
-    {
-      name: "SoftNavigationDetectionIncludeReplaceState",
-      status: "stable",
-    },
-    {
-      name: "SoftNavigationHeuristics",
-      status: "stable",
     },
     {
       name: "SortedLayoutShiftSourcesByImpactArea",
@@ -6504,7 +6522,7 @@
       // For example, it can enforce that any HTML setter would go through a
       // sanitizer. See https://github.com/w3c/trusted-types/issues/594
       name: "TrustedTypesCreateParserOptions",
-      status: "stable",
+      status: "experimental",
       depends_on: ["SanitizerAPI", "SetHTMLCanRunScripts"],
     },
     {
@@ -7000,6 +7018,14 @@
       status: "experimental",
       implied_by: ["WebGPUExperimentalFeatures"],
       public: true,
+    },
+    {
+      // WebGPU external image copy and import HDR headroom parameter for tone
+      // mapping.
+      // https://crbug.com/557320955
+      // https://chromestatus.com/feature/5147993689948160
+      name: "WebGPUExternalImageHDRHeadroom",
+      status: "experimental",
     },
     {
       // Enables GPUBuffer::mapSync for WebGPU.

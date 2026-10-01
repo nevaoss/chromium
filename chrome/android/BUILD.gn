@@ -4,7 +4,6 @@
 
 import("//build/config/android/config.gni")
 import("//build/config/cronet/config.gni")
-import("//build/config/gclient_args.gni")
 import("//build/toolchain/gcc_toolchain.gni")
 
 import("//chrome/android/chrome_common_shared_library.gni")
@@ -439,6 +438,7 @@ if (_is_default_toolchain) {
       "//chrome/browser/download/android:java",
       "//chrome/browser/download/android:java_resources",
       "//chrome/browser/educational_tip:java",
+      "//chrome/browser/enterprise/connectors/device_trust/attestation/android:java",
       "//chrome/browser/enterprise/util:java",
       "//chrome/browser/feature_engagement:java",
       "//chrome/browser/feed/android:java",
@@ -519,8 +519,8 @@ if (_is_default_toolchain) {
       "//chrome/browser/single_tab/android:java",
       "//chrome/browser/ssl/android:java",
       "//chrome/browser/subscription_eligibility:java",
+      "//chrome/browser/supervised_user:android_parental_controls_bridge_java",
       "//chrome/browser/supervised_user:extension_parent_approval_java",
-      "//chrome/browser/supervised_user:supervised_user_service_bridge_java",
       "//chrome/browser/supervised_user:supervised_user_service_platform_delegate_java",
       "//chrome/browser/supervised_user:website_parent_approval_java",
       "//chrome/browser/sync/android:java",
@@ -695,6 +695,7 @@ if (_is_default_toolchain) {
       "//components/externalauth/android:java",
       "//components/facilitated_payments/android/java",
       "//components/favicon/android:java",
+      "//components/fcm/android:fcm_java",
       "//components/feature_engagement:feature_engagement_java",
       "//components/feed/core/proto:proto_java_v2",
       "//components/feed/core/v2:feedv2_common_core_java",
@@ -1151,6 +1152,7 @@ if (_is_default_toolchain) {
       "junit:chrome_junit_tests_org.chromium.chrome.browser.segmentation_platform",
       "junit:chrome_junit_tests_org.chromium.chrome.browser.settings",
       "junit:chrome_junit_tests_org.chromium.chrome.browser.share",
+      "junit:chrome_junit_tests_org.chromium.chrome.browser.sharing",
       "junit:chrome_junit_tests_org.chromium.chrome.browser.signin",
       "junit:chrome_junit_tests_org.chromium.chrome.browser.suggestions",
       "junit:chrome_junit_tests_org.chromium.chrome.browser.sync",
@@ -1192,6 +1194,7 @@ if (_is_default_toolchain) {
       "//chrome/browser/download/android:junit_tests",
       "//chrome/browser/download/internal/android:junit",
       "//chrome/browser/educational_tip:junit",
+      "//chrome/browser/enterprise/connectors/device_trust/attestation/android:junit",
       "//chrome/browser/enterprise/util:junit",
       "//chrome/browser/facilitated_payments/ui/android/internal:junit",
       "//chrome/browser/feed/android:junit",
@@ -1500,6 +1503,7 @@ if (_is_default_toolchain) {
       "javatests:chrome_test_java_org.chromium.chrome.browser.incognito",
       "javatests:chrome_test_java_org.chromium.chrome.browser.media",
       "javatests:chrome_test_java_org.chromium.chrome.browser.metrics",
+      "javatests:chrome_test_java_org.chromium.chrome.browser.native_page",
       "javatests:chrome_test_java_org.chromium.chrome.browser.notifications",
       "javatests:chrome_test_java_org.chromium.chrome.browser.ntp",
       "javatests:chrome_test_java_org.chromium.chrome.browser.offlinepages",
@@ -2595,10 +2599,6 @@ if (_is_default_toolchain) {
     apk_under_test = ":chrome_public_apk"
     android_test_apk = ":chrome_smoke_test_apk"
     additional_apks = [ "//net/android:net_test_support_apk" ]
-    if (checkout_fuchsia) {
-      data_deps = [ "//build/fuchsia/starview:run_cuttlefish" ]
-    }
-
     if (!is_java_debug) {
       proguard_mapping_path = "$root_build_dir/apks/ChromePublic.apk.mapping"
     }

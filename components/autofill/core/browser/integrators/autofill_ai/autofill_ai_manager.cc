@@ -26,7 +26,6 @@
 #include "base/location.h"
 #include "base/memory/weak_ptr.h"
 #include "base/metrics/histogram_functions.h"
-#include "base/metrics/histogram_macros.h"
 #include "base/notreached.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_util.h"
@@ -506,6 +505,11 @@ bool AutofillAiManager::MaybeImportForm(const FormStructure& form,
     }
     const bool is_save_synchronous = !IsSaveAsynchronous(
         candidate_entity.type(), candidate_entity.record_type());
+    // TODO(crbug.com/553442816): If IsEligibleForWalletPassDisclosure() is
+    // true, implement the RPC backend code to fetch
+    // legal message lines, and call `client_->ShowEntityImportBubble` (which
+    // will take `legal_message_lines` as an argument as well) in
+    // `OnGetDetailsForUpsertPassResponse`.
     client_->ShowEntityImportBubble(std::move(candidate_entity),
                                     std::move(old_entity), is_save_synchronous,
                                     std::move(prompt_result_callback));
@@ -913,9 +917,6 @@ AutofillAiManager::GetMigratePromptCandidates(
     base::span<const EntityInstance> observed_entities,
     base::span<const EntityInstance> saved_entities,
     const FormStructure& form) const {
-  SCOPED_UMA_HISTOGRAM_TIMER(
-      "Autofill.Ai.Timing.GetEntityUpstreamCandidateFromSubmittedForm");
-
   std::vector<const EntityInstance*> saved_local_entities;
   std::vector<const EntityInstance*> saved_server_entities;
   for (const EntityInstance& entity : saved_entities) {

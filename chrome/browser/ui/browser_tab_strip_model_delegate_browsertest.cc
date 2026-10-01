@@ -17,9 +17,11 @@
 #include "components/enterprise/isolated_mode/isolated_mode_features.h"
 #include "components/saved_tab_groups/public/features.h"
 #include "components/saved_tab_groups/public/tab_group_sync_service.h"
+#include "components/tab_groups/tab_group_id.h"
 #include "content/public/test/browser_test.h"
 #include "net/dns/mock_host_resolver.h"
 #include "net/test/embedded_test_server/embedded_test_server.h"
+#include "ui/base/page_transition_types.h"
 
 namespace chrome {
 
@@ -202,6 +204,44 @@ IN_PROC_BROWSER_TEST_F(BrowserTabStripModelDelegateWithEmbeddedServerTest,
 
   // Site should also unmute in Incognito tab.
   VerifyMute(incognito_browser, /*isMuted=*/false);
+}
+
+class IsolatedBrowserTabStripModelDelegateWithEmbeddedServerTest
+    : public BrowserTabStripModelDelegateWithEmbeddedServerTest {
+ public:
+  void SetUpCommandLine(base::CommandLine* command_line) override {
+    BrowserTabStripModelDelegateWithEmbeddedServerTest::SetUpCommandLine(
+        command_line);
+    command_line->AppendSwitch(
+        enterprise_isolated_mode::switches::
+            kForceEnterpriseIsolatedModeReplacesIncognito);
+  }
+};
+
+IN_PROC_BROWSER_TEST_F(
+    IsolatedBrowserTabStripModelDelegateWithEmbeddedServerTest,
+    ToggleMuteInRegularAndThenToggleMuteInIsolatedMode) {
+  GURL url = embedded_test_server()->GetURL("/title1.html");
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), url));
+
+  // Mute the site in regular tab.
+  ToggleMute(browser());
+  VerifyMute(browser(), /*isMuted=*/true);
+
+  // Open Isolated Mode tab and check the site is muted there.
+  BrowserWindowInterface* isolated_browser =
+      CreateIncognitoBrowser(browser()->GetProfile());
+  EXPECT_TRUE(
+      isolated_browser->GetProfile()->IsEnterpriseIsolatedModeProfile());
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(isolated_browser, url));
+  VerifyMute(isolated_browser, /*isMuted=*/true);
+
+  // Unmute in Isolated Mode tab.
+  ToggleMute(isolated_browser);
+  VerifyMute(isolated_browser, /*isMuted=*/false);
+
+  // In regular tab the site should still be muted.
+  VerifyMute(browser(), /*isMuted=*/true);
 }
 
 IN_PROC_BROWSER_TEST_F(BrowserTabStripModelDelegateWithEmbeddedServerTest,

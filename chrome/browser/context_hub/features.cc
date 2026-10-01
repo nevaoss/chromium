@@ -23,10 +23,28 @@ BASE_FEATURE_PARAM(base::TimeDelta,
                    base::Hours(1));
 
 BASE_FEATURE_PARAM(base::TimeDelta,
+                   kTabLoadTimeout,
+                   &browser::context_hub::mojom::kAutoTodos,
+                   "tab_load_timeout",
+                   base::Seconds(7));
+
+BASE_FEATURE_PARAM(base::TimeDelta,
                    kFirstPartyAutoTodosInterval,
                    &browser::context_hub::mojom::kAutoTodos,
                    "first_party_auto_todos_interval",
                    base::Days(1));
+
+BASE_FEATURE_PARAM(int,
+                   kFirstPartyAutoTodosMaxRetries,
+                   &browser::context_hub::mojom::kAutoTodos,
+                   "first_party_auto_todos_max_retries",
+                   2);
+
+BASE_FEATURE_PARAM(base::TimeDelta,
+                   kFirstPartyAutoTodosRetryDelay,
+                   &browser::context_hub::mojom::kAutoTodos,
+                   "first_party_auto_todos_retry_delay",
+                   base::Seconds(5));
 
 BASE_FEATURE_PARAM(size_t,
                    kMaxTodoFeedbackCacheSize,

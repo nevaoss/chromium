@@ -6,6 +6,7 @@
 
 #include <memory>
 
+#include "base/files/scoped_temp_dir.h"
 #include "base/memory/raw_ptr.h"
 #include "base/test/scoped_feature_list.h"
 #include "base/test/task_environment.h"
@@ -48,6 +49,7 @@ constexpr char kTestValidUrl[] = "https://example.com/valid.png";
 constexpr char kTestValidUrl2[] = "https://example.com/2.png";
 constexpr char kTestCollectionIdA[] = "collection_A";
 constexpr char kAndroidThemeStorageKey[] = "current_android_theme";
+constexpr char kTestImageFileName[] = "test.png";
 
 class MockThemeCollectionBridge : public NtpThemeCollectionBridge {
  public:
@@ -61,6 +63,8 @@ class MockSyncedThemeBridge : public NtpSyncedThemeBridge {
   MockSyncedThemeBridge() = default;
   ~MockSyncedThemeBridge() override = default;
   MOCK_METHOD(void, OnCustomBackgroundImageUpdated, (), (override));
+  MOCK_METHOD(void, OnChromeColorSynced, (int), (override));
+  MOCK_METHOD(void, OnDefaultThemeSynced, (), (override));
 };
 
 class MockObserver : public NtpCustomBackgroundServiceObserver {
@@ -141,7 +145,46 @@ class NtpAndroidCustomBackgroundServiceTest : public testing::Test {
     return specifics;
   }
 
+  std::unique_ptr<NtpAndroidCustomBackgroundService>
+  CreateServiceWithThemeSyncEnabled() {
+    scoped_feature_list_.Reset();
+    scoped_feature_list_.InitAndEnableFeature(
+        syncer::kNewTabPageCustomizationThemeSync);
+    return std::make_unique<NtpAndroidCustomBackgroundService>(
+        profile_.get(),
+        syncer::DataTypeStoreTestUtil::FactoryForForwardingStore(store_.get()));
+  }
+
+  std::map<std::string, sync_pb::ThemeAndroidSpecifics> ReadAllSyncData() {
+    return syncer::DataTypeStoreTestUtil::ReadAllDataAsProtoAndWait<
+        sync_pb::ThemeAndroidSpecifics>(*store_);
+  }
+
+  void AssertSyncResetsToDefault(
+      const sync_pb::ThemeAndroidSpecifics& specifics) {
+    // Valid theme color ID (NtpThemeColorId.NTP_COLORS_BLUE).
+    constexpr int kTestColorId = 1;
+    service_->SetChromeColor(kTestColorId);
+
+    MockSyncedThemeBridge mock_synced_bridge;
+    service_->SetSyncedThemeBridge(&mock_synced_bridge);
+
+    EXPECT_CALL(mock_synced_bridge, OnDefaultThemeSynced()).Times(1);
+    EXPECT_CALL(mock_synced_bridge, OnChromeColorSynced).Times(0);
+
+    service_->OnThemeChangedFromSync(specifics);
+
+    EXPECT_TRUE(service_->IsProcessingSyncUpdate());
+    EXPECT_TRUE(profile_->GetPrefs()
+                    ->GetDict(prefs::kNtpAndroidChromeColorDict)
+                    .empty());
+    EXPECT_FALSE(service_->GetCustomBackground().has_value());
+
+    service_->SetSyncedThemeBridge(nullptr);
+  }
+
   content::BrowserTaskEnvironment task_environment_;
+  base::test::ScopedFeatureList scoped_feature_list_;
   MockObserver observer_;
   ApplicationLocaleStorage locale_storage_;
   network::TestURLLoaderFactory test_url_loader_factory_;
@@ -156,6 +199,10 @@ TEST_F(NtpAndroidCustomBackgroundServiceTest, RegisterAllPrefs) {
       prefs::kNtpAndroidCustomBackgroundDict));
   EXPECT_TRUE(profile_->GetPrefs()->FindPreference(
       prefs::kNtpAndroidCustomBackgroundLocalToDevice));
+  const PrefService::Preference* pref =
+      profile_->GetPrefs()->FindPreference(prefs::kNtpAndroidChromeColorDict);
+  EXPECT_TRUE(pref);
+  EXPECT_TRUE(pref->GetValue()->is_dict());
 }
 
 TEST_F(NtpAndroidCustomBackgroundServiceTest, SetCustomBackgroundInfo) {
@@ -590,12 +637,7 @@ TEST_F(NtpAndroidCustomBackgroundServiceTest,
 
 TEST_F(NtpAndroidCustomBackgroundServiceTest,
        UpdateCustomBackgroundPrefsWithColor_UpdatesPrefAndSyncBridge) {
-  base::test::ScopedFeatureList feature_list;
-  feature_list.InitAndEnableFeature(syncer::kNewTabPageCustomizationThemeSync);
-
-  auto service = std::make_unique<NtpAndroidCustomBackgroundService>(
-      profile_.get(),
-      syncer::DataTypeStoreTestUtil::FactoryForForwardingStore(store_.get()));
+  auto service = CreateServiceWithThemeSyncEnabled();
 
   service->SetCustomBackgroundInfo(GURL(kTestValidUrl), GURL(), "", "", GURL(),
                                    kTestCollectionId);
@@ -611,8 +653,7 @@ TEST_F(NtpAndroidCustomBackgroundServiceTest,
             pref->GetDict().FindInt(kNtpCustomBackgroundMainColor));
 
   std::map<std::string, sync_pb::ThemeAndroidSpecifics> specifics_map =
-      syncer::DataTypeStoreTestUtil::ReadAllDataAsProtoAndWait<
-          sync_pb::ThemeAndroidSpecifics>(*store_);
+      ReadAllSyncData();
   ASSERT_EQ(1u, specifics_map.size());
   const sync_pb::ThemeAndroidSpecifics& specifics =
       specifics_map[kAndroidThemeStorageKey];
@@ -679,6 +720,217 @@ TEST_F(NtpAndroidCustomBackgroundServiceTest,
 
   service_->RemoveObserver(&observer);
   service_->SetThemeCollectionBridge(nullptr);
+}
+
+TEST_F(NtpAndroidCustomBackgroundServiceTest,
+       SetChromeColor_StoresInSeparatePrefAndClearsBackground) {
+  // Set an image background first.
+  service_->SetCustomBackgroundInfo(GURL(kTestValidUrl), GURL(), "", "", GURL(),
+                                    kTestCollectionId);
+  EXPECT_TRUE(service_->GetCustomBackground().has_value());
+
+  constexpr int kTestColorId = 42;
+  service_->SetChromeColor(kTestColorId);
+
+  const base::DictValue& color_dict =
+      profile_->GetPrefs()->GetDict(prefs::kNtpAndroidChromeColorDict);
+  EXPECT_EQ(color_dict.FindInt(kNtpAndroidThemeColorIdKey), kTestColorId);
+  EXPECT_FALSE(service_->GetCustomBackground().has_value());
+  const base::Value* pref = profile_->GetPrefs()->GetUserPrefValue(
+      prefs::kNtpAndroidCustomBackgroundDict);
+  EXPECT_TRUE(pref == nullptr || pref->GetDict().empty());
+  EXPECT_FALSE(profile_->GetPrefs()->GetBoolean(
+      prefs::kNtpAndroidCustomBackgroundLocalToDevice));
+}
+
+TEST_F(NtpAndroidCustomBackgroundServiceTest,
+       SetCustomBackgroundInfo_ClearsChromeColorPref) {
+  service_->SetChromeColor(42);
+  EXPECT_FALSE(
+      profile_->GetPrefs()->GetDict(prefs::kNtpAndroidChromeColorDict).empty());
+
+  service_->SetCustomBackgroundInfo(GURL(kTestValidUrl), GURL(), "", "", GURL(),
+                                    kTestCollectionId);
+
+  EXPECT_TRUE(
+      profile_->GetPrefs()->GetDict(prefs::kNtpAndroidChromeColorDict).empty());
+  EXPECT_TRUE(service_->GetCustomBackground().has_value());
+}
+
+TEST_F(NtpAndroidCustomBackgroundServiceTest,
+       SelectLocalBackgroundImage_ClearsChromeColorPref) {
+  service_->SetChromeColor(42);
+  EXPECT_FALSE(
+      profile_->GetPrefs()->GetDict(prefs::kNtpAndroidChromeColorDict).empty());
+
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+  base::FilePath test_file = temp_dir.GetPath().AppendASCII(kTestImageFileName);
+  service_->SelectLocalBackgroundImage(test_file);
+
+  EXPECT_TRUE(
+      profile_->GetPrefs()->GetDict(prefs::kNtpAndroidChromeColorDict).empty());
+  EXPECT_TRUE(profile_->GetPrefs()->GetBoolean(
+      prefs::kNtpAndroidCustomBackgroundLocalToDevice));
+}
+
+TEST_F(NtpAndroidCustomBackgroundServiceTest,
+       ResetCustomBackgroundInfo_ClearsBothPrefs) {
+  constexpr int kTestColorId = 42;
+  service_->SetChromeColor(kTestColorId);
+  EXPECT_FALSE(
+      profile_->GetPrefs()->GetDict(prefs::kNtpAndroidChromeColorDict).empty());
+
+  service_->ResetCustomBackgroundInfo();
+  EXPECT_TRUE(
+      profile_->GetPrefs()->GetDict(prefs::kNtpAndroidChromeColorDict).empty());
+  EXPECT_FALSE(service_->GetCustomBackground().has_value());
+  const base::Value* pref = profile_->GetPrefs()->GetUserPrefValue(
+      prefs::kNtpAndroidCustomBackgroundDict);
+  EXPECT_TRUE(pref == nullptr || pref->GetDict().empty());
+
+  // Also test when image background was set.
+  service_->SetCustomBackgroundInfo(GURL(kTestValidUrl), GURL(), "", "", GURL(),
+                                    kTestCollectionId);
+  EXPECT_TRUE(service_->GetCustomBackground().has_value());
+  service_->ResetCustomBackgroundInfo();
+  EXPECT_TRUE(
+      profile_->GetPrefs()->GetDict(prefs::kNtpAndroidChromeColorDict).empty());
+  EXPECT_FALSE(service_->GetCustomBackground().has_value());
+}
+
+TEST_F(NtpAndroidCustomBackgroundServiceTest,
+       NotifySyncBridge_SerializesChromeColorInfo) {
+  auto service = CreateServiceWithThemeSyncEnabled();
+
+  constexpr int kTestColorId = 15;
+  service->SetChromeColor(kTestColorId);
+
+  std::map<std::string, sync_pb::ThemeAndroidSpecifics> specifics_map =
+      ReadAllSyncData();
+  ASSERT_EQ(1u, specifics_map.size());
+  const sync_pb::ThemeAndroidSpecifics& specifics =
+      specifics_map[kAndroidThemeStorageKey];
+  EXPECT_TRUE(specifics.has_chrome_color_info());
+  EXPECT_EQ(specifics.chrome_color_info().theme_color_id(), kTestColorId);
+  EXPECT_FALSE(specifics.has_ntp_background());
+}
+
+TEST_F(NtpAndroidCustomBackgroundServiceTest,
+       NotifySyncBridge_SerializesDefaultTheme) {
+  auto service = CreateServiceWithThemeSyncEnabled();
+
+  service->SetChromeColor(15);
+  service->ResetCustomBackgroundInfo();
+
+  std::map<std::string, sync_pb::ThemeAndroidSpecifics> specifics_map =
+      ReadAllSyncData();
+  ASSERT_EQ(1u, specifics_map.size());
+  const sync_pb::ThemeAndroidSpecifics& specifics =
+      specifics_map[kAndroidThemeStorageKey];
+  EXPECT_FALSE(specifics.has_chrome_color_info());
+  EXPECT_FALSE(specifics.has_ntp_background());
+}
+
+TEST_F(NtpAndroidCustomBackgroundServiceTest,
+       SelectLocalBackgroundImage_DoesNotNotifySyncBridge) {
+  auto service = CreateServiceWithThemeSyncEnabled();
+
+  service->SelectLocalBackgroundImage(base::FilePath());
+
+  std::map<std::string, sync_pb::ThemeAndroidSpecifics> specifics_map =
+      ReadAllSyncData();
+  EXPECT_TRUE(specifics_map.empty());
+}
+
+TEST_F(NtpAndroidCustomBackgroundServiceTest,
+       OnThemeChangedFromSync_WithChromeColorSpecifics) {
+  // Set an image background first.
+  service_->SetCustomBackgroundInfo(GURL(kTestValidUrl), GURL(), "", "", GURL(),
+                                    kTestCollectionId);
+  EXPECT_TRUE(service_->GetCustomBackground().has_value());
+
+  MockSyncedThemeBridge mock_synced_bridge;
+  service_->SetSyncedThemeBridge(&mock_synced_bridge);
+
+  // Valid theme color ID (NtpThemeColorId.NTP_COLORS_BLUE).
+  constexpr int kSyncedColorId = 1;
+  EXPECT_CALL(mock_synced_bridge, OnChromeColorSynced(kSyncedColorId)).Times(1);
+  EXPECT_CALL(mock_synced_bridge, OnDefaultThemeSynced()).Times(0);
+
+  sync_pb::ThemeAndroidSpecifics specifics;
+  specifics.mutable_chrome_color_info()->set_theme_color_id(kSyncedColorId);
+
+  service_->OnThemeChangedFromSync(specifics);
+
+  EXPECT_TRUE(service_->IsProcessingSyncUpdate());
+  const base::DictValue& color_dict =
+      profile_->GetPrefs()->GetDict(prefs::kNtpAndroidChromeColorDict);
+  EXPECT_EQ(color_dict.FindInt(kNtpAndroidThemeColorIdKey), kSyncedColorId);
+  EXPECT_FALSE(service_->GetCustomBackground().has_value());
+  const base::Value* pref = profile_->GetPrefs()->GetUserPrefValue(
+      prefs::kNtpAndroidCustomBackgroundDict);
+  EXPECT_TRUE(pref == nullptr || pref->GetDict().empty());
+
+  service_->SetSyncedThemeBridge(nullptr);
+}
+
+TEST_F(NtpAndroidCustomBackgroundServiceTest,
+       OnThemeChangedFromSync_WithNtpBackground_ClearsChromeColor) {
+  // Valid theme color ID (NtpThemeColorId.NTP_COLORS_BLUE).
+  constexpr int kTestColorId = 1;
+  service_->SetChromeColor(kTestColorId);
+  EXPECT_FALSE(
+      profile_->GetPrefs()->GetDict(prefs::kNtpAndroidChromeColorDict).empty());
+
+  sync_pb::ThemeAndroidSpecifics specifics;
+  sync_pb::NtpCustomBackground* bg = specifics.mutable_ntp_background();
+  bg->set_url(kTestValidUrl);
+  bg->set_collection_id(kTestCollectionId);
+
+  service_->OnThemeChangedFromSync(specifics);
+
+  EXPECT_TRUE(service_->IsProcessingSyncUpdate());
+  EXPECT_TRUE(
+      profile_->GetPrefs()->GetDict(prefs::kNtpAndroidChromeColorDict).empty());
+  EXPECT_TRUE(service_->GetCustomBackground().has_value());
+}
+
+TEST_F(NtpAndroidCustomBackgroundServiceTest,
+       OnThemeChangedFromSync_WithEmptySpecifics_ResetsToDefault) {
+  sync_pb::ThemeAndroidSpecifics empty_specifics;
+  AssertSyncResetsToDefault(empty_specifics);
+}
+
+TEST_F(NtpAndroidCustomBackgroundServiceTest,
+       OnThemeChangedFromSync_WithZeroOrMissingColorId_ResetsToDefault) {
+  sync_pb::ThemeAndroidSpecifics specifics;
+  specifics.mutable_chrome_color_info()->set_theme_color_id(0);
+  AssertSyncResetsToDefault(specifics);
+}
+
+TEST_F(NtpAndroidCustomBackgroundServiceTest,
+       OnThemeChangedFromSync_ResetsLocalToDevicePref) {
+  service_->SelectLocalBackgroundImage(base::FilePath());
+  EXPECT_TRUE(profile_->GetPrefs()->GetBoolean(
+      prefs::kNtpAndroidCustomBackgroundLocalToDevice));
+
+  sync_pb::ThemeAndroidSpecifics specifics;
+  specifics.mutable_chrome_color_info()->set_theme_color_id(10);
+  service_->OnThemeChangedFromSync(specifics);
+
+  EXPECT_FALSE(profile_->GetPrefs()->GetBoolean(
+      prefs::kNtpAndroidCustomBackgroundLocalToDevice));
+
+  service_->SelectLocalBackgroundImage(base::FilePath());
+  EXPECT_TRUE(profile_->GetPrefs()->GetBoolean(
+      prefs::kNtpAndroidCustomBackgroundLocalToDevice));
+
+  sync_pb::ThemeAndroidSpecifics empty_specifics;
+  service_->OnThemeChangedFromSync(empty_specifics);
+
+  EXPECT_FALSE(profile_->GetPrefs()->GetBoolean(
+      prefs::kNtpAndroidCustomBackgroundLocalToDevice));
 }
 
 }  // namespace

@@ -7,6 +7,7 @@ import 'chrome://new-tab-page/new_tab_page.js';
 import {SearchboxBrowserProxy} from 'chrome://new-tab-page/new_tab_page.js';
 import type {SearchboxMatchElement} from 'chrome://new-tab-page/new_tab_page.js';
 import {createAutocompleteMatch, createMatchKeywordModelForTesting} from 'chrome://resources/cr_components/searchbox/searchbox_browser_proxy.js';
+import type {AriaNotificationOptions} from 'chrome://resources/cr_components/searchbox/utils.js';
 import {NavigationPredictor} from 'chrome://resources/mojo/components/omnibox/browser/omnibox.mojom-webui.js';
 import {KeywordType, SelectionLineState} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 import {assertArrayEquals, assertDeepEquals, assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
@@ -396,6 +397,41 @@ suite('CrComponentsRealboxMatchTest', () => {
     assertEquals('Search Google, Google', matchEl.ariaLabel);
   });
 
+  test('VirtualFocusAnnouncesOnSelectionChange', async () => {
+    matchEl.virtualFocusEnabled = true;
+    const match = createAutocompleteMatch();
+    match.a11yLabel = 'Search Google';
+    matchEl.match = match;
+    matchEl.matchIndex = 0;
+    await microtasksFinished();
+
+    const notifications:
+        Array<{message: string, options?: AriaNotificationOptions}> = [];
+    matchEl.ariaNotify =
+        (message: string, options?: AriaNotificationOptions) => {
+          notifications.push({message, options});
+        };
+
+    matchEl.selection = {
+      line: 0,
+      state: SelectionLineState.kNormal,
+      actionIndex: 0,
+    };
+    await microtasksFinished();
+    assertEquals(1, notifications.length);
+    assertEquals('Search Google', notifications[0]!.message);
+    assertEquals('high', notifications[0]!.options?.priority);
+
+    // Selection on a different line does not announce on this match.
+    matchEl.selection = {
+      line: 1,
+      state: SelectionLineState.kNormal,
+      actionIndex: 0,
+    };
+    await microtasksFinished();
+    assertEquals(1, notifications.length);
+  });
+
   test('InstantKeywordMatchClickFiresKeywordClickAndRefocuses', async () => {
     matchEl.match = createAutocompleteMatch({
       destinationUrl: 'http://bookmarks',
@@ -430,5 +466,25 @@ suite('CrComponentsRealboxMatchTest', () => {
 
     assertEquals(1, testProxy.handler.getCallCount('activateKeyword'));
     assertEquals(0, testProxy.handler.getCallCount('openAutocompleteMatch'));
+  });
+
+  test('DescriptionWithClassifications', async () => {
+    matchEl.match = createAutocompleteMatch({
+      description: 'MIA Basketball',
+      descriptionClass: [
+        {offset: 0, style: 2 | 4},  // MATCH | DIM
+        {offset: 4, style: 4},      // DIM
+      ],
+    });
+    await microtasksFinished();
+
+    const spans = matchEl.$.description.querySelectorAll('span');
+    assertEquals(2, spans.length);
+    assertEquals('MIA ', spans[0]!.textContent);
+    assertTrue(spans[0]!.classList.contains('match'));
+    assertTrue(spans[0]!.classList.contains('dim'));
+    assertEquals('Basketball', spans[1]!.textContent);
+    assertFalse(spans[1]!.classList.contains('match'));
+    assertTrue(spans[1]!.classList.contains('dim'));
   });
 });

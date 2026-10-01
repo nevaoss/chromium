@@ -41,13 +41,14 @@ should be able to be added at any place in this file.
   <variant name=".kActionDevTools" summary="Developer tools action"/>
   <variant name=".kActionNewIncognitoWindow"
       summary="New incognito window action"/>
+  <variant name=".kActionNewIsolatedWindow"
+      summary="New isolated window action"/>
   <variant name=".kActionPrint" summary="Print action"/>
   <variant name=".kActionQrCodeGenerator" summary="QR code generator action"/>
   <variant name=".kActionRouteMedia" summary="Media router action"/>
   <variant name=".kActionSendSharedTabGroupFeedback"
       summary="Send shared tab group feedback action"/>
   <variant name=".kActionSendTabToSelf" summary="Send tab to self action"/>
-  <variant name=".kActionShowAddresses" summary="Show addresses action"/>
   <variant name=".kActionShowAddressesBubbleOrPage"
       summary="Show addresses action"/>
   <variant name=".kActionShowChromeLabs" summary="Show Chrome Labs action"/>
@@ -605,6 +606,8 @@ should be able to be added at any place in this file.
   <variant name="_iOSPromoAppStore" summary="For iOSPromoAppStore feature"/>
   <variant name="_iOSPromoBackgroundCustomization"
       summary="For iOSPromoBackgroundCustomization feature."/>
+  <variant name="_iOSPromoContextualDefaultBrowserGemini"
+      summary="For iOSPromoContextualDefaultBrowserGemini feature"/>
   <variant name="_iOSPromoCredentialProviderExtension"
       summary="For iOSPromoCredentialProviderExtension feature"/>
   <variant name="_iOSPromoDefaultBrowser"
@@ -692,8 +695,6 @@ should be able to be added at any place in this file.
   <variant name="_LauncherSearchHelpUi"
       summary="For launcher search IPH feature."/>
   <variant name="_LensOverlay" summary="For Lens Overlay IPH feature."/>
-  <variant name="_LensOverlayTranslateButton"
-      summary="For LensOverlay translate button feature."/>
   <variant name="_LiveCaption" summary="For LiveCaption feature. (obsolete)"/>
   <variant name="_LongPressToolbarTip" summary="For LongPressToolbar feature."/>
   <variant name="_LowUserEngagementDetector"
@@ -1062,8 +1063,6 @@ should be able to be added at any place in this file.
   <variant name=".HelpMeWrite" summary="Help Me Write"/>
   <variant name=".HistoryEmbeddings" summary="History Embeddings Search"/>
   <variant name=".iOSLensSWYS" summary="iOS Lens Search What You See"/>
-  <variant name=".LensOverlayTranslateButton"
-      summary="Lens Overlay Translate Button"/>
   <variant name=".LightningVideo" summary="Lightning Video"/>
   <variant name=".PdfInk2" summary="PDF Ink Signatures (obsolete)"/>
   <variant name=".PdfSaveToDrive" summary="PDF Save to Drive"/>
@@ -10518,6 +10517,15 @@ should be able to be added at any place in this file.
   <token key="Crow_Type" variants="Crow_Type"/>
 </action>
 
+<action name="CustomTabs.AlwaysOpenInBrowserOverride">
+  <owner>eisinger@google.com</owner>
+  <owner>jinsukkim@google.com</owner>
+  <description>
+    Emitted when a Custom Tab automatically overrides to open in Chrome browser
+    due to the always open in browser user setting.
+  </description>
+</action>
+
 <action name="CustomTabs.CloseButtonClicked">
   <owner>dfalcantara@chromium.org</owner>
   <description>
@@ -18693,6 +18701,15 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action name="Mobile.LensOverlay.WebsiteSearch.Performed">
+  <owner>rkgibson@google.com</owner>
+  <owner>pabouchard@google.com</owner>
+  <description>
+    Recorded when a search is performed via Lens Overlay on any
+    non-camera/gallery endpoint.
+  </description>
+</action>
+
 <action name="Mobile.LensViewFinder.CameraCapture">
   <owner>radunitescu@google.com</owner>
   <owner>stkhapugin@google.com</owner>
@@ -20067,6 +20084,15 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action name="MobileGeminiEntryPointDisabledByQuota" not_user_triggered="true">
+  <owner>hamzamoh@google.com</owner>
+  <owner>bling-alchemy-eng@google.com</owner>
+  <description>
+    Reported when the Gemini entry point is disabled because quota was reached.
+    iOS only.
+  </description>
+</action>
+
 <action name="MobileGeminiEntryPointImpression">
   <owner>kanouche@google.com</owner>
   <description>
@@ -20379,6 +20405,15 @@ should be able to be added at any place in this file.
   <description>
     Reported when the user sends a prompt in a Gemini session. This includes
     both the first prompt and subsequent prompts in a conversation. iOS only.
+  </description>
+</action>
+
+<action name="MobileGeminiQuotaReached" not_user_triggered="true">
+  <owner>hamzamoh@google.com</owner>
+  <owner>bling-alchemy-eng@google.com</owner>
+  <description>
+    Reported once per session when Gemini quota is reached upon receiving a
+    response, if quota is not refilled. iOS only.
   </description>
 </action>
 
@@ -24609,6 +24644,24 @@ should be able to be added at any place in this file.
     The user tapped on the Assistant button in the AppBar on an iPhone while in
     portrait mode with Fullscreen active. Logged in addition to the general
     metric.
+  </description>
+</action>
+
+<action name="MobileToolbarAssistantIncognitoSwitchModesTapped">
+  <owner>gambard@chromium.org</owner>
+  <owner>meridian@google.com</owner>
+  <description>
+    The user tapped on the 'Switch modes' snackbar action after tapping the
+    Assistant button in Incognito mode.
+  </description>
+</action>
+
+<action name="MobileToolbarAssistantIncognitoTapped">
+  <owner>gambard@chromium.org</owner>
+  <owner>meridian@google.com</owner>
+  <description>
+    The user tapped on the Assistant button in the AppBar or Toolbar while in
+    Incognito mode.
   </description>
 </action>
 
@@ -30416,6 +30469,8 @@ should be able to be added at any place in this file.
     <variant name=".PinnedGlicButton" summary="Pinned glic button"/>
     <variant name=".PinnedNewIncognitoWindowButton"
         summary="Pinned new incognito window button"/>
+    <variant name=".PinnedNewIsolatedWindowButton"
+        summary="Pinned new isolated window button"/>
     <variant name=".PinnedPrintButton" summary="Pinned print button"/>
     <variant name=".PinnedQrCodeGeneratorButton"
         summary="Pinned QR code generator button"/>
@@ -30900,6 +30955,36 @@ should be able to be added at any place in this file.
 <action name="SavePage">
   <owner>Please list the metric's owners. Add more owner tags as needed.</owner>
   <description>Please enter the description of this user action.</description>
+</action>
+
+<action name="ScheduledRestart_BubbleShown">
+  <owner>anunoy@chromium.org</owner>
+  <description>
+    Recorded when the Scheduled Restart reminder bubble is shown.
+  </description>
+</action>
+
+<action name="ScheduledRestart_Close">
+  <owner>anunoy@chromium.org</owner>
+  <description>
+    Recorded when the Scheduled Restart reminder bubble is dismissed or closed.
+  </description>
+</action>
+
+<action name="ScheduledRestart_RestartNow">
+  <owner>anunoy@chromium.org</owner>
+  <description>
+    Recorded when the user clicks the Restart Now button in the Scheduled
+    Restart reminder bubble.
+  </description>
+</action>
+
+<action name="ScheduledRestart_Scheduled">
+  <owner>anunoy@chromium.org</owner>
+  <description>
+    Recorded when the user selects a scheduled restart mode in the reminder
+    bubble.
+  </description>
 </action>
 
 <action name="ScreenLocker_OnLoginFailure">
@@ -32495,6 +32580,14 @@ should be able to be added at any place in this file.
   <description>
     Reported when user navigates to the Site Permissions Settings page. iOS
     only.
+  </description>
+</action>
+
+<action name="Settings.SiteSettings">
+  <owner>scottyoder@google.com</owner>
+  <owner>bling-pandamonium@google.com</owner>
+  <description>
+    Reported when user navigates to the Site Settings page. iOS only.
   </description>
 </action>
 
@@ -35555,6 +35648,13 @@ should be able to be added at any place in this file.
   <description>
     Recorded on sign in start from access point
     signin_metrics::AccessPoint::kSignoutUndoSnackbar. iOS only.
+  </description>
+</action>
+
+<action name="Signin_Signin_FromSkills">
+  <owner>aashnas@google.com</owner>
+  <description>
+    Recorded when a user clicks the sign-in button on the Skills error page.
   </description>
 </action>
 

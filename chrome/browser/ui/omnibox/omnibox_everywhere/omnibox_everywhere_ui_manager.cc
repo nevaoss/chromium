@@ -7,11 +7,13 @@
 #include <algorithm>
 #include <utility>
 
+#include "base/auto_reset.h"
 #include "base/feature_list.h"
 #include "base/memory/ptr_util.h"
 #include "base/task/single_thread_task_runner.h"
 #include "base/time/time.h"
 #include "build/build_config.h"
+#include "chrome/browser/autocomplete/aim_eligibility_service_factory.h"
 #include "chrome/browser/autocomplete/autocomplete_classifier_factory.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/file_select_helper.h"
@@ -39,6 +41,7 @@
 #include "components/keep_alive_registry/keep_alive_types.h"
 #include "components/keep_alive_registry/scoped_keep_alive.h"
 #include "components/ntp_tiles/pref_names.h"
+#include "components/omnibox/browser/aim_eligibility_service.h"
 #include "components/omnibox/browser/autocomplete_classifier.h"
 #include "components/omnibox/browser/autocomplete_match.h"
 #include "components/omnibox/browser/omnibox_pref_names.h"
@@ -104,6 +107,16 @@ DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(OmniboxEverywhereUIManager,
                                       kOmniboxEverywhereElementId);
 
 namespace {
+
+bool IsFuseboxEligible(Profile* profile) {
+  if (!profile) {
+    return false;
+  }
+  auto* aim_eligibility_service =
+      AimEligibilityServiceFactory::GetForProfile(profile);
+  return aim_eligibility_service &&
+         aim_eligibility_service->IsFuseboxEligible();
+}
 
 class OmniboxEverywhereFileSelectListener : public content::FileSelectListener {
  public:
@@ -193,11 +206,6 @@ OmniboxEverywhereUIManager::OmniboxEverywhereUIManager(
         base::BindRepeating(
             &OmniboxEverywhereUIManager::OnEphemeralModelPrefChanged,
             base::Unretained(this)));
-    local_state_pref_change_registrar_.Add(
-        prefs::kOmniboxEverywhereShowShortcuts,
-        base::BindRepeating(
-            &OmniboxEverywhereUIManager::OnMostVisitedPrefChanged,
-            base::Unretained(this)));
   }
 }
 
@@ -248,6 +256,11 @@ void OmniboxEverywhereUIManager::ShowForProfile(Profile* profile,
     profile_pref_change_registrar_.Reset();
     if (profile && profile->GetPrefs()) {
       profile_pref_change_registrar_.Init(profile->GetPrefs());
+      profile_pref_change_registrar_.Add(
+          prefs::kOmniboxEverywhereShowShortcuts,
+          base::BindRepeating(
+              &OmniboxEverywhereUIManager::OnMostVisitedPrefChanged,
+              base::Unretained(this)));
       profile_pref_change_registrar_.Add(
           ntp_prefs::kNtpCustomLinksVisible,
           base::BindRepeating(
@@ -452,7 +465,6 @@ void OmniboxEverywhereUIManager::CreateAndInitWidget(
   widget_->Init(std::move(params));
 #if BUILDFLAG(IS_MAC)
   widget_->SetActivationIndependence(is_ephemeral);
-  widget_->SetVisibleOnAllWorkspaces(true);
   widget_->SetCanAppearInExistingFullscreenSpaces(true);
 #endif
 #if BUILDFLAG(IS_WIN)
@@ -485,6 +497,9 @@ void OmniboxEverywhereUIManager::ActivateAndFocus() {
   }
 
   is_demoted_ = false;
+#if BUILDFLAG(IS_MAC)
+  widget_->MoveToActiveFullscreenSpace();
+#endif
   widget_->Show();
   widget_->Activate();
 
@@ -525,28 +540,27 @@ void OmniboxEverywhereUIManager::OnMostVisitedPrefChanged() {
   CleanUpWidget();
 }
 
-void OmniboxEverywhereUIManager::RecordFreImpression() {
+// TODO(crbug.com/558851707): Move impression recording to the FRE WebUI
+// component lifecycle (e.g. on render/mount) so that impressions are recorded
+// based on true visual visibility and both ephemeral and persistent window
+// models are handled consistently.
+void OmniboxEverywhereUIManager::MaybeRecordFreImpression() {
   if (!profile_ || !profile_->GetPrefs() ||
       !base::FeatureList::IsEnabled(omnibox::kOmniboxEverywhereFre)) {
     return;
   }
 
-  PrefService* prefs = profile_->GetPrefs();
-  if (prefs->GetBoolean(omnibox_everywhere::prefs::kFreDismissed)) {
-    return;
-  }
-
-  int impressions =
-      prefs->GetInteger(omnibox_everywhere::prefs::kFreImpressionCount) + 1;
-  prefs->SetInteger(omnibox_everywhere::prefs::kFreImpressionCount,
-                    impressions);
-  if (impressions >= omnibox_everywhere::prefs::kMaxFreImpressions) {
-    prefs->SetBoolean(omnibox_everywhere::prefs::kFreDismissed, true);
-  }
+  PrefService* local_state =
+      g_browser_process ? g_browser_process->local_state() : nullptr;
+  omnibox_everywhere::prefs::IncrementFreImpression(profile_, local_state);
 }
 
 void OmniboxEverywhereUIManager::Close() {
-  RecordFreImpression();
+  if (is_closing_) {
+    return;
+  }
+  base::AutoReset<bool> closing_reset(&is_closing_, true);
+  MaybeRecordFreImpression();
   last_shown_time_.reset();
   deactivation_task_.Cancel();
   if (widget_) {
@@ -686,6 +700,15 @@ void OmniboxEverywhereUIManager::OnWidgetActivationChanged(
   }
 }
 
+void OmniboxEverywhereUIManager::OnWidgetVisibilityOnScreenChanged(
+    views::Widget* widget,
+    bool visible) {
+  if (!visible && !HasOpenModalDialog() && !is_context_menu_open_ &&
+      prefs::IsEphemeralModelEnabled()) {
+    Close();
+  }
+}
+
 void OmniboxEverywhereUIManager::OnContextMenuClosed() {
   is_context_menu_open_ = false;
   if (context_menu_runner_) {
@@ -703,7 +726,8 @@ void OmniboxEverywhereUIManager::OnContextMenuClosed() {
 }
 
 void OmniboxEverywhereUIManager::HandleWidgetDeactivated() {
-  if (!widget_ || !widget_->IsVisible() || !prefs::IsEphemeralModelEnabled()) {
+  if (is_closing_ || !widget_ || !widget_->IsVisible() ||
+      !prefs::IsEphemeralModelEnabled()) {
     return;
   }
   if (last_shown_time_.has_value() &&
@@ -741,6 +765,19 @@ void OmniboxEverywhereUIManager::OnWidgetUserDragEnded(views::Widget* widget) {
     gfx::Size size = *pending_auto_resize_size_;
     pending_auto_resize_size_.reset();
     ResizeDueToAutoResize(web_contents(), size);
+  }
+  display::Screen* screen = display::Screen::Get();
+  if (widget && screen) {
+    gfx::Rect bounds = widget->GetWindowBoundsInScreen();
+    display::Display display =
+        screen->GetDisplayNearestPoint(bounds.CenterPoint());
+    gfx::Rect work_area = display.work_area();
+    if (!work_area.IsEmpty()) {
+      bounds.AdjustToFit(work_area);
+      if (bounds != widget->GetWindowBoundsInScreen()) {
+        widget->SetBounds(bounds);
+      }
+    }
   }
 }
 
@@ -1090,7 +1127,7 @@ void OmniboxEverywhereUIManager::AppendSettingsContextMenu() {
           ? IDS_MANAGE_SEARCH_ENGINES_AND_SHORTCUTS
           : IDS_MANAGE_SEARCH_ENGINES_AND_SITE_SEARCH);
 
-  if (omnibox::ShouldShowAimContextMenuOption(profile_)) {
+  if (IsFuseboxEligible(profile_)) {
     if (auto* service = AiModeButtonServiceFactory::GetForProfile(profile_)) {
       if (const AiModeButtonUiConfig* config = service->GetCurrentConfig()) {
         context_menu_model_->AddCheckItem(kAlwaysShowAiMode,
@@ -1204,11 +1241,11 @@ void OmniboxEverywhereUIManager::ExecuteCommand(int command_id,
       break;
     }
     case kShowShortcuts:
-      if (g_browser_process && g_browser_process->local_state()) {
-        PrefService* local_state = g_browser_process->local_state();
+      if (profile_ && profile_->GetPrefs()) {
+        PrefService* prefs = profile_->GetPrefs();
         const bool is_currently_visible =
-            prefs::IsOmniboxEverywhereShortcutsVisible(profile_, local_state);
-        local_state->SetInteger(
+            prefs::IsOmniboxEverywhereShortcutsVisible(profile_);
+        prefs->SetInteger(
             prefs::kOmniboxEverywhereShowShortcuts,
             static_cast<int>(is_currently_visible
                                  ? prefs::ShowShortcutsPrefValue::kDisabled
@@ -1282,7 +1319,7 @@ bool OmniboxEverywhereUIManager::IsCommandIdEnabled(int command_id) const {
       return profile_ && (OmniboxEverywhereServiceFactory::GetForProfile(
                               profile_) != nullptr);
     case kAlwaysShowAiMode:
-      return true;
+      return IsFuseboxEligible(profile_);
     case kShowShortcuts:
       return prefs::AreShortcutsAvailableForProfile(profile_);
     case kCustomizeKeyboardShortcut:
@@ -1303,10 +1340,7 @@ bool OmniboxEverywhereUIManager::IsCommandIdChecked(int command_id) const {
     return true;
   }
   if (command_id == kShowShortcuts) {
-    return g_browser_process && g_browser_process->local_state()
-               ? prefs::IsOmniboxEverywhereShortcutsVisible(
-                     profile_, g_browser_process->local_state())
-               : true;
+    return prefs::IsOmniboxEverywhereShortcutsVisible(profile_);
   }
   return false;
 }

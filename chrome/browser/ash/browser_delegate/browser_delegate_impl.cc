@@ -44,6 +44,7 @@
 #include "components/tab_groups/tab_group_id.h"
 #include "components/tab_groups/tab_group_info.h"
 #include "components/tabs/public/tab_group.h"
+#include "components/tabs/public/tab_interface.h"
 #include "ui/base/base_window.h"
 
 namespace ash {
@@ -105,6 +106,20 @@ size_t BrowserDelegateImpl::GetWebContentsCount() const {
 content::WebContents* BrowserDelegateImpl::GetWebContentsAt(
     size_t index) const {
   return browser_->tab_strip_model()->GetWebContentsAt(index);
+}
+
+std::optional<size_t> BrowserDelegateImpl::GetIndexOfWebContents(
+    const content::WebContents* contents) const {
+  int index = browser_->tab_strip_model()->GetIndexOfWebContents(contents);
+  return index == TabStripModel::kNoTab ? std::nullopt
+                                        : std::optional<size_t>(index);
+}
+
+content::WebContents* BrowserDelegateImpl::GetOpenerOfTabAt(
+    size_t index) const {
+  tabs::TabInterface* opener =
+      browser_->tab_strip_model()->GetOpenerOfTabAt(index);
+  return opener ? opener->GetContents() : nullptr;
 }
 
 tabs::TabIteratorRange BrowserDelegateImpl::GetTabIterator() const {
@@ -208,6 +223,10 @@ void BrowserDelegateImpl::Close() {
   browser_->GetWindow()->Close();
 }
 
+void BrowserDelegateImpl::CloseAllTabs() {
+  browser_->tab_strip_model()->CloseAllTabs();
+}
+
 void BrowserDelegateImpl::SetSkipWarningUserOnClose(bool skip) {
   if (auto* unload_controller = UnloadController::From(&*browser_)) {
     unload_controller->set_force_skip_warning_user_on_close(skip);
@@ -227,6 +246,10 @@ void BrowserDelegateImpl::CloseWebContentsAt(size_t index,
       index, user_gesture == UserGesture::kYes
                  ? TabCloseTypes::CLOSE_USER_GESTURE
                  : TabCloseTypes::CLOSE_NONE);
+}
+
+void BrowserDelegateImpl::ForceCloseWebContentsAt(size_t index) {
+  browser_->tab_strip_model()->DetachAndDeleteWebContentsAt(index);
 }
 
 content::WebContents* BrowserDelegateImpl::NavigateWebApp(

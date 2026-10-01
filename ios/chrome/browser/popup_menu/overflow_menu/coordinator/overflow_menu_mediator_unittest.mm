@@ -96,7 +96,6 @@
 #import "ios/chrome/browser/signin/model/authentication_service_factory.h"
 #import "ios/chrome/browser/signin/model/chrome_account_manager_service.h"
 #import "ios/chrome/browser/signin/model/chrome_account_manager_service_factory.h"
-#import "ios/chrome/browser/signin/model/fake_authentication_service_delegate.h"
 #import "ios/chrome/browser/signin/model/fake_system_identity.h"
 #import "ios/chrome/browser/signin/model/fake_system_identity_manager.h"
 #import "ios/chrome/browser/signin/model/identity_manager_factory.h"
@@ -208,8 +207,7 @@ class OverflowMenuMediatorTest : public PlatformTest {
                 ProfileIOS, password_manager::MockPasswordStoreInterface>));
     builder.AddTestingFactory(
         AuthenticationServiceFactory::GetInstance(),
-        AuthenticationServiceFactory::GetFactoryWithDelegateForTesting(
-            std::make_unique<FakeAuthenticationServiceDelegate>()));
+        AuthenticationServiceFactory::GetDefaultFactory());
     builder.AddTestingFactory(SyncServiceFactory::GetInstance(),
                               base::BindRepeating(&CreateTestSyncService));
 
@@ -782,36 +780,6 @@ TEST_F(OverflowMenuMediatorTest, TestItemsStatusOnNTP) {
 
   EXPECT_TRUE(HasItem(kToolsMenuNewTabId, /*enabled=*/YES));
   EXPECT_FALSE(HasItem(kToolsMenuSiteInformation, /*enabled=*/YES));
-}
-
-// Tests that the share action is not added to the overflow menu when the share
-// icon is visible in the omnibox.
-TEST_F(OverflowMenuMediatorTest, TestShareActionNotVisibleByDefault) {
-  base::test::ScopedFeatureList scoped_feature_list;
-  scoped_feature_list.InitWithFeaturesAndParameters(
-      {{kChromeNextIa, {{"chrome_next_ia_share_icon_visible", "true"}}}}, {});
-
-  CreateMediator(/*incognito=*/NO);
-  SetUpActiveWebState();
-  web_state_->SetCurrentURL(GURL("http://chromium.org"));
-  mediator_.webStateList = browser_->GetWebStateList();
-  mediator_.model = model_;
-  EXPECT_FALSE(HasItem(kToolsMenuShareId, /*enabled=*/YES));
-}
-
-// Tests that the share action is added to the overflow menu when ChromeNextIa
-// is enabled without the share icon being visible.
-TEST_F(OverflowMenuMediatorTest, TestShareActionVisibleWithChromeNextIa) {
-  base::test::ScopedFeatureList scoped_feature_list;
-  scoped_feature_list.InitWithFeaturesAndParameters(
-      {{kChromeNextIa, {{"chrome_next_ia_share_icon_visible", "false"}}}}, {});
-
-  CreateMediator(/*incognito=*/NO);
-  SetUpActiveWebState();
-  web_state_->SetCurrentURL(GURL("http://chromium.org"));
-  mediator_.webStateList = browser_->GetWebStateList();
-  mediator_.model = model_;
-  EXPECT_TRUE(HasItem(kToolsMenuShareId, /*enabled=*/YES));
 }
 
 // Tests that the "Add to Reading List" button is disabled while overlay UI is

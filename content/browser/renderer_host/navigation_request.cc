@@ -1240,7 +1240,8 @@ std::unique_ptr<NavigationRequest> NavigationRequest::Create(
       base::TimeTicks() /* before_unload_dialog_opened */,
       base::TimeTicks() /* before_unload_dialog_closed */,
       started_with_transient_activation, started_by_ad, is_container_initiated,
-      has_rel_opener, std::nullopt /* script_tool_invocation_id */);
+      has_rel_opener, std::nullopt /* script_tool_invocation_id */,
+      /*script_injector_host=*/"");
 
   // Shift-Reload forces bypassing caches and service workers.
   if (common_params->navigation_type ==
@@ -2078,10 +2079,7 @@ NavigationRequest::NavigationRequest(
     // Add reduced accept language header.
     if (auto reduce_accept_lang_utils =
             ReduceAcceptLanguageUtils::Create(browser_context);
-        reduce_accept_lang_utils && !devtools_accept_language_override_ &&
-        !ReduceAcceptLanguageUtils::CheckDisableReduceAcceptLanguageOriginTrial(
-            common_params_->url, frame_tree_node_,
-            browser_context->GetOriginTrialsControllerDelegate())) {
+        reduce_accept_lang_utils && !devtools_accept_language_override_) {
       // Add the Accept-Language header with the reduce accept language value.
       // Chromium network stack won't overwrite the value if Accept-Language
       // header was already added in the request header.
@@ -6494,24 +6492,15 @@ void NavigationRequest::OnRedirectChecksComplete(
   if (auto reduce_accept_lang_utils =
           ReduceAcceptLanguageUtils::Create(browser_context);
       reduce_accept_lang_utils && !devtools_accept_language_override_) {
-    if (!ReduceAcceptLanguageUtils::CheckDisableReduceAcceptLanguageOriginTrial(
-            common_params_->url, frame_tree_node_,
-            browser_context->GetOriginTrialsControllerDelegate())) {
-      net::HttpRequestHeaders accept_language_headers;
-      std::optional<std::string> reduced_accept_language =
-          reduce_accept_lang_utils.value()
-              .AddNavigationRequestAcceptLanguageHeaders(
-                  url::Origin::Create(common_params_->url), frame_tree_node_,
-                  &accept_language_headers);
-      commit_params_->reduced_accept_language =
-          reduced_accept_language.value_or("");
-      headers_update_params.modified_headers.MergeFrom(accept_language_headers);
-    } else {
-      // Remove the Accept-Language header passed from previous request, if any.
-      headers_update_params.removed_headers.push_back(
-          net::HttpRequestHeaders::kAcceptLanguage);
-      commit_params_->reduced_accept_language = "";
-    }
+    net::HttpRequestHeaders accept_language_headers;
+    std::optional<std::string> reduced_accept_language =
+        reduce_accept_lang_utils.value()
+            .AddNavigationRequestAcceptLanguageHeaders(
+                url::Origin::Create(common_params_->url), frame_tree_node_,
+                &accept_language_headers);
+    commit_params_->reduced_accept_language =
+        reduced_accept_language.value_or("");
+    headers_update_params.modified_headers.MergeFrom(accept_language_headers);
   }
 
   loader_->FollowRedirect(std::move(headers_update_params));
@@ -7169,20 +7158,6 @@ void NavigationRequest::CommitNavigation() {
 
   PersistOriginTrialsFromHeaders(origin_to_commit, partition_origin, response(),
                                  browser_context, GetNextPageUkmSourceId());
-
-  // Clean the reduced accept-language to commit if the final response have a
-  // valid deprecation origin trial token.
-  if (auto reduce_accept_lang_utils =
-          ReduceAcceptLanguageUtils::Create(browser_context);
-      reduce_accept_lang_utils && !devtools_accept_language_override_ &&
-      ReduceAcceptLanguageUtils::CheckDisableReduceAcceptLanguageOriginTrial(
-          common_params_->url, frame_tree_node_,
-          browser_context->GetOriginTrialsControllerDelegate()) &&
-      !commit_params_->reduced_accept_language.empty()) {
-    reduce_accept_lang_utils.value().RemoveReducedAcceptLanguage(
-        origin_to_commit, frame_tree_node_);
-    commit_params_->reduced_accept_language = "";
-  }
 
   // Sticky user activation should only be preserved for same-site subframe
   // navigations, and same-origin top-frame navigations behind the feature flag
@@ -10845,6 +10820,11 @@ const std::string& NavigationRequest::GetHrefTranslate() {
 const std::optional<blink::LocalFrameToken>&
 NavigationRequest::GetInitiatorFrameToken() {
   return initiator_frame_token_;
+}
+
+const std::string& NavigationRequest::GetScriptInjectorHost() const {
+  return begin_params_ ? begin_params_->script_injector_host
+                       : base::EmptyString();
 }
 
 ChildProcessId NavigationRequest::GetInitiatorProcessId() {

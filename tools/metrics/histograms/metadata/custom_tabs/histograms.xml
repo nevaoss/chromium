@@ -127,7 +127,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="CustomTabs.AndroidBrowserHelper.Version" units="versioncode"
-    expires_after="2026-09-30">
+    expires_after="2027-09-30">
   <owner>hattorij@google.com</owner>
   <owner>ishitatsuyuki@google.com</owner>
   <owner>lt-performance@google.com</owner>
@@ -912,7 +912,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="CustomTabs.Startup.TimeToFirstContentfulPaint.{suffix}"
-    units="ms" expires_after="2027-01-03">
+    units="ms" expires_after="2027-03-07">
   <owner>mthiesse@chromium.org</owner>
   <owner>chrome-connective-tissue@google.com</owner>
   <summary>
@@ -954,7 +954,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="CustomTabs.TimeSpentInEngagementEventIpc" units="ms"
-    expires_after="2027-01-03">
+    expires_after="2027-03-07">
   <owner>nafisabedin@google.com</owner>
   <summary>
     The time spent in milliseconds processing IPCs on the UI thread related to
@@ -1045,18 +1045,6 @@ chromium-metrics-reviews@google.com.
   <summary>
     Records the usage of reload button when running a web app. This is recorded
     only for minimal ui display mode in Trusted Web Activities and WebAPKs.
-  </summary>
-</histogram>
-
-<histogram name="CustomTabs.WebContentsStateOnLaunch" enum="WebContentsState"
-    expires_after="2026-08-23">
-  <owner>lizeb@chromium.org</owner>
-  <owner>mthiesse@chromium.org</owner>
-  <summary>
-    Android: When a CustomTabActivity creates its Tab, whether we use a
-    prerendered WebContents, a spare renderer or create a new WebContents.
-
-    Note: Expired from April 13-25, 2025.
   </summary>
 </histogram>
 
@@ -1158,7 +1146,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="TrustedWebActivity.Startup.TimeToFirstCommitNavigation2.{suffix}"
-    units="ms" expires_after="2026-09-30">
+    units="ms" expires_after="2027-09-30">
   <owner>hattorij@google.com</owner>
   <owner>ishitatsuyuki@google.com</owner>
   <owner>lt-performance@google.com</owner>
@@ -1174,7 +1162,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="TrustedWebActivity.Startup.TimeToFirstContentfulPaint.{suffix}"
-    units="ms" expires_after="2026-09-30">
+    units="ms" expires_after="2027-09-30">
   <owner>hattorij@google.com</owner>
   <owner>ishitatsuyuki@google.com</owner>
   <owner>lt-performance@google.com</owner>
@@ -1190,7 +1178,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="TrustedWebActivity.Startup.TimeToLargestContentfulPaint2.{suffix}"
-    units="ms" expires_after="2026-09-30">
+    units="ms" expires_after="2027-09-30">
   <owner>hattorij@google.com</owner>
   <owner>ishitatsuyuki@google.com</owner>
   <owner>lt-performance@google.com</owner>

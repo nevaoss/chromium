@@ -26,6 +26,7 @@
 #include "chrome/browser/glic/public/features.h"
 #include "chrome/browser/glic/public/glic_enabling.h"
 #include "chrome/browser/glic/public/glic_perf_traits_tracker.h"
+#include "chrome/browser/glic/service/metrics/glic_instance_metrics.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/pwc/privileged_web_contents.h"
 #include "chrome/browser/pwc/pwc_component_policy.h"
@@ -84,27 +85,30 @@ content::WebContents::CreateParams MakeOverlayCreateParams(
 
 std::u16string GetBootstrapScript() {
   static constexpr char kBootstrapScriptTemplate[] = R"js(
-    (function() {
-      if (window.__glic_bootstrap_timer) {
-        clearTimeout(window.__glic_bootstrap_timer);
-        window.__glic_bootstrap_timer = null;
-      }
-      const source = $1;
-      const ping = () => {
-        try {
-          window.dispatchEvent(new MessageEvent('message', {
-            data: { type: 'glic-bootstrap', glicApiSource: source },
-            origin: 'chrome://glic',
-            source: window
-          }));
-        } catch (e) {
-          console.error('[GlicNoWebview Bootstrap Error]', e);
-        }
-        window.__glic_bootstrap_timer = setTimeout(ping, 50);
-      };
-      ping();
-    })();
-  )js";
+(function() {
+window.__glic_bootstrap_active = true;
+const source = $1;
+const ping = () => {
+  if (!window.__glic_bootstrap_active) return;
+  try {
+    window.dispatchEvent(new MessageEvent('message', {
+      data: { type: 'glic-bootstrap', glicApiSource: source },
+      origin: 'chrome://glic',
+      source: window
+    }));
+  } catch (e) {
+    console.error('[GlicNoWebview Bootstrap Error]', e);
+  }
+  if (!window.__glic_bootstrap_active) return;
+  setTimeout(ping, 50);
+};
+
+document.addEventListener('DOMContentLoaded', ping, { once: true });
+document.addEventListener('readystatechange', ping);
+
+ping();
+})();
+)js";
 
   std::string guest_source = GetGuestAPISource();
   std::string escaped_source = base::GetQuotedJSONString(guest_source);
@@ -366,7 +370,12 @@ GlicNoWebviewContentsManager::GlicNoWebviewContentsManager(
       privileged_guest_contents_(pwc::PrivilegedWebContents::Create(
           pwc::PrivilegedComponent::kGlic,
           profile,
-          std::make_unique<GlicPwcPolicyDelegate>())) {
+          std::make_unique<GlicPwcPolicyDelegate>())),
+      zoom_controller_(
+          privileged_guest_contents_->web_contents(),
+          profile ? profile->GetPrefs() : nullptr,
+          base::BindRepeating(&GlicNoWebviewContentsManager::OnZoomLevelChange,
+                              base::Unretained(this))) {
   CHECK(privileged_guest_contents_);
   content::WebContents* guest = guest_contents();
   CHECK(guest);
@@ -443,7 +452,8 @@ void GlicNoWebviewContentsManager::AttachToHost(Host* host) {
   }
 
   web_client_manager_.AttachToHost(host);
-  TransitionTo(DisplayState::kAttachedHidden);
+  // Move from warming pool state to attached-hidden state.
+  UpdateDisplayState();
 }
 
 base::CallbackListSubscription
@@ -463,6 +473,17 @@ bool GlicNoWebviewContentsManager::ShouldReloadOnShow() const {
   return overlay_manager_.ShouldReloadOnShow();
 }
 
+void GlicNoWebviewContentsManager::Zoom(mojom::ZoomAction zoom_action,
+                                        ZoomSource source) {
+  zoom_controller_.Zoom(zoom_action, source);
+}
+
+void GlicNoWebviewContentsManager::OnZoomLevelChange() {
+  if (host_) {
+    host_->instance_metrics().OnZoomLevelChange();
+  }
+}
+
 void GlicNoWebviewContentsManager::NotifyWebContentsChanged() {
   web_contents_changed_callbacks_.Notify(active_web_contents());
 }
@@ -476,15 +497,34 @@ void GlicNoWebviewContentsManager::ApplySizeToGuest() {
   guest_contents()->UpdateWebContentsVisibility(content::Visibility::VISIBLE);
 }
 
-void GlicNoWebviewContentsManager::MaybeSwapToGuest() {
-  if (!is_guest_ready_) {
+GlicNoWebviewContentsManager::DisplayState
+GlicNoWebviewContentsManager::CalculateDesiredState() const {
+  if (!is_visible_) {
+    return host_ ? DisplayState::kAttachedHidden : DisplayState::kWarming;
+  }
+  // When an overlay error is active, keep displaying the overlay UI regardless
+  // of whether the guest client connects in the background.
+  if (overlay_manager_.error_type().has_value()) {
+    return DisplayState::kShowingOverlay;
+  }
+  if (is_guest_ready_) {
+    return DisplayState::kShowingGuest;
+  }
+  return DisplayState::kShowingOverlay;
+}
+
+void GlicNoWebviewContentsManager::UpdateDisplayState() {
+  DisplayState desired = CalculateDesiredState();
+  if (state_ == desired) {
+    // If hidden/warming and the guest becomes ready, immediately reclaim any
+    // overlay WebContents that was previously allocated.
+    if (!is_visible_ && is_guest_ready_ &&
+        !overlay_manager_.error_type().has_value()) {
+      ScheduleOverlayDeletion(base::Milliseconds(0));
+    }
     return;
   }
-  if (is_visible_) {
-    TransitionTo(DisplayState::kShowingGuest);
-  } else {
-    ScheduleOverlayDeletion(base::Milliseconds(0));
-  }
+  TransitionTo(desired);
 }
 
 void GlicNoWebviewContentsManager::OnGuestNavigationStarted() {
@@ -500,6 +540,7 @@ void GlicNoWebviewContentsManager::OnGuestNavigated(
     bool is_initial_commit) {
   StopGuestBootstrap();
   is_guest_error_ = false;
+
   switch (page_type) {
     case mojom::GuestPageType::kLogin:
       SetErrorState(mojom::ErrorPanelType::kSignIn);
@@ -516,12 +557,14 @@ void GlicNoWebviewContentsManager::OnGuestNavigated(
       is_guest_error_ = true;
       is_guest_ready_ = true;
       ApplySizeToGuest();
-      MaybeSwapToGuest();
+      // Guest navigated to /sorry/ CAPTCHA; swap to guest directly so user can
+      // solve it.
+      UpdateDisplayState();
       break;
     case mojom::GuestPageType::kRegular:
       if (!is_api_allowed) {
         SetErrorState(mojom::ErrorPanelType::kError);
-      } else {
+      } else if (!overlay_manager_.error_type().has_value()) {
         ApplySizeToGuest();
         StartGuestBootstrap();
       }
@@ -543,9 +586,7 @@ void GlicNoWebviewContentsManager::StopGuestBootstrap() {
     return;
   }
   static constexpr char16_t kStopScript[] =
-      u"if (window.__glic_bootstrap_timer) { "
-      u"clearTimeout(window.__glic_bootstrap_timer); "
-      u"window.__glic_bootstrap_timer = null; }";
+      u"window.__glic_bootstrap_active = false;";
   guest_contents()->GetPrimaryMainFrame()->ExecuteJavaScriptInIsolatedWorld(
       kStopScript, base::NullCallback(), ISOLATED_WORLD_ID_CHROME_INTERNAL);
 }
@@ -560,7 +601,8 @@ void GlicNoWebviewContentsManager::OnGuestProcessGone(
 void GlicNoWebviewContentsManager::OnWebClientCreated() {
   StopGuestBootstrap();
   is_guest_ready_ = true;
-  MaybeSwapToGuest();
+  // Client script connected; swap to guest if visible and error-free.
+  UpdateDisplayState();
 }
 
 void GlicNoWebviewContentsManager::OnWebClientStateChanged(
@@ -568,7 +610,9 @@ void GlicNoWebviewContentsManager::OnWebClientStateChanged(
   switch (state) {
     case mojom::WebClientState::kResponsive:
       is_guest_ready_ = true;
-      MaybeSwapToGuest();
+      // Client state became responsive; swap to guest if visible and
+      // error-free.
+      UpdateDisplayState();
       break;
     case mojom::WebClientState::kError:
       is_guest_ready_ = false;
@@ -622,21 +666,17 @@ void GlicNoWebviewContentsManager::SetErrorState(
   StopGuestBootstrap();
   is_guest_ready_ = false;
   overlay_manager_.SetError(error_type);
-  if (is_visible_) {
-    TransitionTo(DisplayState::kShowingOverlay);
-  }
+  // An error occurred; transition to overlay if visible, or record for when
+  // shown.
+  UpdateDisplayState();
 }
 
 void GlicNoWebviewContentsManager::SetVisibility(
     content::Visibility visibility) {
   is_visible_ = (visibility == content::Visibility::VISIBLE);
-  if (is_visible_) {
-    TransitionTo(is_guest_ready_ ? DisplayState::kShowingGuest
-                                 : DisplayState::kShowingOverlay);
-  } else {
-    TransitionTo(host_ ? DisplayState::kAttachedHidden
-                       : DisplayState::kWarming);
-  }
+  // Re-evaluate display state on visibility change (swaps to guest/overlay
+  // when visible, or tears down/debounces overlay when hidden).
+  UpdateDisplayState();
 
   overlay_manager_.SetVisibility(visibility);
   if (!is_guest_ready_ && is_visible_ && overlay_contents() &&

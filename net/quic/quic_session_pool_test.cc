@@ -7088,7 +7088,9 @@ TEST_P(QuicSessionPoolTest,
       session->connection()->peer_address(),
       std::make_unique<QuicChromiumPacketReader>(
           std::move(socket), session->connection()->clock(), session,
-          /*yield_after_packets=*/100, quic::QuicTime::Delta::Infinite(),
+          /*yield_after_packets=*/kQuicYieldAfterPacketsRead,
+          quic::QuicTime::Delta::FromMilliseconds(
+              kQuicYieldAfterDurationMilliseconds),
           session->net_log()),
       std::make_unique<QuicChromiumPacketWriter>(
           socket_ptr, base::SingleThreadTaskRunner::GetCurrentDefault().get()));
@@ -16899,11 +16901,6 @@ TEST_P(QuicSessionPoolTest, ConfigureSSLCompliancePolicy) {
 // Test for https://crbug.com/454787716.
 TEST_P(QuicSessionPoolTest,
        SuccessfullyMigratedToServerPreferredAddressBeforeHandshakeConfirmed) {
-  // Enable register connection close payload feature.
-  base::test::ScopedFeatureList scoped_feature_list;
-  scoped_feature_list.InitAndEnableFeature(
-      net::features::kQuicRegisterConnectionClosePayload);
-
   FLAGS_quic_enable_chaos_protection = false;
   quic_params_->allow_server_migration = true;
   socket_factory_ = std::make_unique<TestPortMigrationSocketFactory>();

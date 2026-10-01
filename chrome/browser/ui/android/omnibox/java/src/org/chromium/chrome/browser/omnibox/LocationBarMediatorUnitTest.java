@@ -1051,6 +1051,7 @@ public class LocationBarMediatorUnitTest {
         assertEquals(
                 PageTransition.TYPED | PageTransition.FROM_ADDRESS_BAR,
                 mLoadUrlParamsCaptor.getValue().getTransitionType());
+        assertTrue(mLoadUrlParamsCaptor.getValue().getRemoveExtraHeadersOnCrossOriginRedirect());
     }
 
     @Test
@@ -1112,6 +1113,7 @@ public class LocationBarMediatorUnitTest {
         assertEquals(
                 PageTransition.TYPED | PageTransition.FROM_ADDRESS_BAR,
                 mLoadUrlParamsCaptor.getValue().getTransitionType());
+        assertTrue(mLoadUrlParamsCaptor.getValue().getRemoveExtraHeadersOnCrossOriginRedirect());
 
         verify(mTab).addObserver(mTabObserverCaptor.capture());
         mTabObserverCaptor.getValue().onLoadUrl(mTab, mLoadUrlParams, mLoadUrlResult);
@@ -1151,6 +1153,7 @@ public class LocationBarMediatorUnitTest {
         assertEquals(
                 PageTransition.TYPED | PageTransition.FROM_ADDRESS_BAR,
                 mLoadUrlParamsCaptor.getValue().getTransitionType());
+        assertTrue(mLoadUrlParamsCaptor.getValue().getRemoveExtraHeadersOnCrossOriginRedirect());
         assertTrue(mLoadUrlParamsCaptor.getValue().getVerbatimHeaders().contains(text));
         assertEquals(data, mLoadUrlParamsCaptor.getValue().getPostData().getEncodedNativeForm());
     }
@@ -1175,6 +1178,7 @@ public class LocationBarMediatorUnitTest {
         assertEquals(
                 PageTransition.TYPED | PageTransition.FROM_ADDRESS_BAR,
                 mLoadUrlParamsCaptor.getValue().getTransitionType());
+        assertTrue(mLoadUrlParamsCaptor.getValue().getRemoveExtraHeadersOnCrossOriginRedirect());
         String verbatimHeaders = mLoadUrlParamsCaptor.getValue().getVerbatimHeaders();
         assertTrue(verbatimHeaders.contains("Authorization: Bearer token123"));
         assertTrue(verbatimHeaders.contains("Custom-Header: custom-value"));
@@ -1242,6 +1246,7 @@ public class LocationBarMediatorUnitTest {
         assertEquals(
                 PageTransition.TYPED | PageTransition.FROM_ADDRESS_BAR,
                 mLoadUrlParamsCaptor.getValue().getTransitionType());
+        assertTrue(mLoadUrlParamsCaptor.getValue().getRemoveExtraHeadersOnCrossOriginRedirect());
     }
 
     @Test
@@ -1264,6 +1269,22 @@ public class LocationBarMediatorUnitTest {
         assertEquals(
                 PageTransition.TYPED | PageTransition.FROM_ADDRESS_BAR,
                 mLoadUrlParamsCaptor.getValue().getTransitionType());
+        assertTrue(mLoadUrlParamsCaptor.getValue().getRemoveExtraHeadersOnCrossOriginRedirect());
+    }
+
+    @Test
+    public void testLoadUrl_removesExtraHeadersOnCrossOriginRedirect() {
+        mMediator.onFinishNativeInitialization();
+        mProfileSupplier.set(mProfile);
+
+        doReturn(mTab).when(mLocationBarDataProvider).getTab();
+        mMediator.loadUrl(
+                new OmniboxLoadUrlParams.Builder(TEST_URL, PageTransition.TYPED)
+                        .setOpenInNewTab(false)
+                        .build());
+
+        verify(mTab).loadUrl(mLoadUrlParamsCaptor.capture());
+        assertTrue(mLoadUrlParamsCaptor.getValue().getRemoveExtraHeadersOnCrossOriginRedirect());
     }
 
     @Test
@@ -3115,6 +3136,29 @@ public class LocationBarMediatorUnitTest {
         micButtonConsumer.updateVisibility(0);
         verify(mLocationBarTablet).setMicButtonVisibility(false);
         clearInvocations(mLocationBarTablet);
+    }
+
+    @Test
+    @EnableFeatures(ChromeFeatureList.TOOLBAR_TABLET_RESIZE_REFACTOR)
+    public void testMicButtonToolbarWidthConsumer_suggestionsPopover() {
+        int buttonWidth =
+                mContext.getResources()
+                        .getDimensionPixelSize(R.dimen.location_bar_action_icon_width);
+        mTabletMediator.setVoiceRecognitionHandlerForTesting(mVoiceRecognitionHandler);
+        mTabletMediator.onFinishNativeInitialization();
+        mTabletMediator.setShouldShowButtonsWhenUnfocusedForTablet(true);
+        doReturn(true).when(mVoiceRecognitionHandler).isVoiceSearchEnabled();
+        mTabletMediator.onUrlFocusChange(/* hasFocus= */ true);
+
+        ToolbarWidthConsumer micButtonConsumer = mTabletMediator.getMicButtonToolbarWidthConsumer();
+        mFuseboxLayoutModeSupplier.set(FuseboxLayoutMode.SUGGESTIONS_POPOVER);
+        AutocompleteInput input = mSessionState.getAutocompleteInput();
+        input.setRequestType(AutocompleteRequestType.AI_MODE);
+        clearInvocations(mLocationBarTablet);
+
+        assertTrue(micButtonConsumer.hasSpaceToShow());
+        assertEquals(buttonWidth, micButtonConsumer.updateVisibility(0));
+        verify(mLocationBarTablet).setMicButtonVisibility(true);
     }
 
     @Test
@@ -5212,8 +5256,7 @@ public class LocationBarMediatorUnitTest {
 
         assertEquals(TextSelection.SELECT_ALL, mSessionState.getAutocompleteInput().getSelection());
         verify(mUrlCoordinator)
-                .setUrlBarData(
-                        any(), eq(UrlBar.ScrollType.NO_SCROLL), eq(TextSelection.SELECT_ALL));
+                .setUrlBarData(any(), eq(ScrollType.NO_SCROLL), eq(TextSelection.SELECT_ALL));
     }
 
     @Test
@@ -5250,9 +5293,7 @@ public class LocationBarMediatorUnitTest {
         assertFalse(mSessionState.isSessionActive());
         verify(mUrlCoordinator, atLeastOnce())
                 .setUrlBarData(
-                        eq(newUrlData),
-                        eq(UrlBar.ScrollType.SCROLL_TO_TLD),
-                        eq(TextSelection.SELECT_ALL));
+                        eq(newUrlData), eq(ScrollType.SCROLL_TO_TLD), eq(TextSelection.SELECT_ALL));
     }
 
     @Test

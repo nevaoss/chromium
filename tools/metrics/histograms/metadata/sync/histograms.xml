@@ -335,7 +335,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Sync.BatchUpload.Requests3" enum="SyncDataTypes"
-    expires_after="2027-01-03">
+    expires_after="2027-03-07">
   <owner>ankushkush@google.com</owner>
   <owner>src/components/sync/OWNERS</owner>
   <summary>
@@ -349,6 +349,26 @@ chromium-metrics-reviews@google.com.
     This replaced Sync.BatchUpload.Requests2, which omitted types that issued
     requests but weren't healthy.
   </summary>
+</histogram>
+
+<histogram name="Sync.BatchUpload.{UploadOutcome}" enum="BatchUploadEntryPoint"
+    expires_after="2027-02-28">
+  <owner>rsult@google.com</owner>
+  <owner>chrome-signin-desktop-team@google.com</owner>
+  <summary>
+    Records the entry point from which the Batch Upload Dialog was opened when
+    {UploadOutcome}. Recorded when the dialog is closed.
+  </summary>
+  <token key="UploadOutcome">
+    <variant name="FullUpload"
+        summary="all available local items are uploaded"/>
+    <variant name="NoUpload"
+        summary="no local items are uploaded (e.g. cancelled, dismissed, or
+                 closed without saving)"/>
+    <variant name="PartialUpload"
+        summary="a subset of available local items are uploaded (at least
+                 one, but not all)"/>
+  </token>
 </histogram>
 
 <histogram name="Sync.BookmarkAccountStorageMoveDialog.Download.{Action}"
@@ -646,7 +666,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Sync.CommitResponse{SyncDataType}" enum="SyncerErrorValues"
-    expires_after="2027-01-03">
+    expires_after="2027-03-07">
   <owner>rushans@google.com</owner>
   <owner>treib@chromium.org</owner>
   <summary>
@@ -708,7 +728,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Sync.ConfigureDataTypes" enum="SyncDataTypes"
-    expires_after="2027-01-03">
+    expires_after="2027-03-07">
   <owner>mastiz@chromium.org</owner>
   <owner>treib@chromium.org</owner>
   <summary>
@@ -1032,7 +1052,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Sync.DataTypeNumUnsyncedEntities{Event}{SyncDataType}"
-    units="entities" expires_after="2027-01-03">
+    units="entities" expires_after="2027-03-07">
   <owner>mmoskvitin@google.com</owner>
   <owner>treib@chromium.org</owner>
   <summary>
@@ -2065,7 +2085,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Sync.PendingInvalidationStatus"
-    enum="PendingInvalidationStatus" expires_after="2027-01-03">
+    enum="PendingInvalidationStatus" expires_after="2027-03-07">
   <owner>shabdan@google.com</owner>
   <owner>rushans@google.com</owner>
   <summary>
@@ -2253,7 +2273,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Sync.SearchEngine.AddedKeywordHasAccountData" enum="Boolean"
-    expires_after="2027-01-03">
+    expires_after="2027-03-07">
   <owner>ankushkush@google.com</owner>
   <owner>mahmadi@chromium.org</owner>
   <summary>
@@ -2284,7 +2304,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Sync.SearchEngine.DuplicateIsDefaultSearchProvider"
-    enum="Boolean" expires_after="2027-01-03">
+    enum="Boolean" expires_after="2027-03-07">
   <owner>ankushkush@google.com</owner>
   <owner>mahmadi@chromium.org</owner>
   <summary>
@@ -2969,7 +2989,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Sync.TrustedVaultAddKeysSuccessfully"
-    enum="TrustedVaultUserActionTrigger" expires_after="2027-01-03">
+    enum="TrustedVaultUserActionTrigger" expires_after="2027-03-07">
   <owner>thomasth@google.com</owner>
   <owner>src/components/sync/OWNERS</owner>
   <summary>

@@ -82,15 +82,6 @@ inline constexpr char kAppBackgroundRefreshDescription[] =
     "Schedules app background refresh after some minimum period of time has "
     "passed after the last refresh.";
 
-inline constexpr char kAppBarHideInFullscreenName[] =
-    "AppBar Hide in Fullscreen";
-inline constexpr char kAppBarHideInFullscreenDescription[] =
-    "Completely hides the AppBarViewController when in fullscreen.";
-
-inline constexpr char kAppBarHideLabelsName[] = "AppBar Hide Labels";
-inline constexpr char kAppBarHideLabelsDescription[] =
-    "Hides the labels for the buttons in the App Bar.";
-
 inline constexpr char kAppSwitcherAISummarizationName[] =
     "App Switcher AI summarization";
 inline constexpr char kAppSwitcherAISummarizationDescription[] =
@@ -398,6 +389,11 @@ inline constexpr char kChromeNextIaName[] = "ChromeNextIa";
 inline constexpr char kChromeNextIaDescription[] =
     "Enables the chrome_next_ia feature.";
 
+inline constexpr char kClientSideDetectionIosName[] =
+    "Client Side Detection on iOS";
+inline constexpr char kClientSideDetectionIosDescription[] =
+    "Enables Client Side Detection (CSD) for phishing on iOS.";
+
 inline constexpr char kCollaborationMessagingName[] = "Collaboration Messaging";
 inline constexpr char kCollaborationMessagingDescription[] =
     "Enables the messaging framework within the collaboration feature, "
@@ -574,6 +570,12 @@ inline constexpr char kDefaultBottomOmniboxOnIOSName[] =
 inline constexpr char kDefaultBottomOmniboxOnIOSDescription[] =
     "When enabled, the omnibox position defaults to bottom on iOS.";
 
+inline constexpr char kDefaultBrowserNonModalPromoStringsName[] =
+    "Default Browser Non-Modal Promo Strings";
+inline constexpr char kDefaultBrowserNonModalPromoStringsDescription[] =
+    "When enabled, enables new string variations for the default browser "
+    "non-modal promo on omnibox paste.";
+
 inline constexpr char kDefaultBrowserOffCyclePromoName[] =
     "Default Browser off-cycle promo";
 inline constexpr char kDefaultBrowserOffCyclePromoDescription[] =
@@ -696,6 +698,13 @@ inline constexpr char kEditPasswordsInSettingsDescription[] =
 inline constexpr char kEnableACPrefetchName[] = "Enable AC Prefetch";
 inline constexpr char kEnableACPrefetchDescription[] =
     "Ensures that account capabilities are prefetched and cached.";
+
+inline constexpr char kEnableAccountPreviewPreferredAccountFollowupName[] =
+    "Enable Account Preview Preferred Account Followup";
+inline constexpr char
+    kEnableAccountPreviewPreferredAccountFollowupDescription[] =
+        "Controls whether followup features for preferred account preview (new "
+        "data types, promos, and updated strings) are enabled.";
 
 inline constexpr char kEnableAccountPreviewPreferredAccountName[] =
     "Enable Account Preview Preferred Account";
@@ -1046,6 +1055,11 @@ inline constexpr char kIOSDateToCalendarSignedOutDescription[] =
     "When enabled, signed-out users can long-press detected dates to access "
     "the 'Add to Google Calendar' feature.";
 
+inline constexpr char kIOSDefaultBrowserContextualPromoName[] =
+    "Contextual Default Browser Promo";
+inline constexpr char kIOSDefaultBrowserContextualPromoDescription[] =
+    "Enables the contextual default browser promo half-sheet.";
+
 inline constexpr char kIOSEnableCloudProfileReportingName[] =
     "Enable profile reporting on iOS";
 inline constexpr char kIOSEnableCloudProfileReportingDescription[] =
@@ -1073,12 +1087,6 @@ inline constexpr char kIOSGeminiBottomSheetMigrationDescription[] =
     "Enables presenting the Gemini Floaty embedded in a bottom sheet instead"
     " of a overlay view. This feature requires both 'Gemini Copresence'"
     " and 'Assistant Container' features to be enabled.";
-
-inline constexpr char kIOSKeyboardAccessoryDefaultViewName[] =
-    "Default Input Accessory View";
-inline constexpr char kIOSKeyboardAccessoryDefaultViewDescription[] =
-    "When enabled, a default Keyboard Accessory view with navigation buttons "
-    "is provided for a <select> HTML element.";
 
 inline constexpr char kIOSLevelUpName[] = "Level Up";
 inline constexpr char kIOSLevelUpDescription[] =
@@ -1220,17 +1228,6 @@ inline constexpr char kIndicateIdentityErrorInOverflowMenuDescription[] =
 inline constexpr char kInfobarBannerRevampName[] = "Infobar Banner Revamp";
 inline constexpr char kInfobarBannerRevampDescription[] =
     "Enables the revamped UI design for Infobar Banner.";
-
-inline constexpr char
-    kInvalidateSearchEngineChoiceOnDeviceRestoreDetectionName[] =
-        "Invalidate search engine choice after device restore";
-inline constexpr char
-    kInvalidateSearchEngineChoiceOnDeviceRestoreDetectionDescription[] =
-        "When enabled, search engine choices made before backup & restore will "
-        "not "
-        "be considered valid on the restored device, leading to the choice "
-        "screen "
-        "potentially retriggering.";
 
 inline constexpr char kLensBypassCompressionForC2paName[] =
     "Lens Bypass Compression for C2PA";

@@ -338,6 +338,11 @@ const base::FeatureParam<bool> kContextualTasksContextSmartTabSharing(
     "ContextualTasksContextSmartTabSharing",
     false);
 
+const base::FeatureParam<bool> kContextualTasksContextToggleOffAfterSubmit(
+    &kContextualTasksContext,
+    "ContextualTasksContextToggleOffAfterSubmit",
+    false);
+
 const base::FeatureParam<base::TimeDelta> kSmartTabSharingTabSelectionTimeout(
     &kContextualTasksContext,
     "ContextualTasksContextSmartTabSharingTabSelectionTimeout",
@@ -532,16 +537,6 @@ const base::FeatureParam<int> kContextualTasksOnboardingTooltipDismissedCap(
     "ContextualTasksOnboardingTooltipDismissedCap",
     1);
 
-const base::FeatureParam<int> kContextualTasksLensSearchTooltipDismissedCap(
-    &kContextualTasksShowOnboardingTooltip,
-    "ContextualTasksLensSearchTooltipDismissedCap", 1);
-
-const base::FeatureParam<int>
-    kContextualTasksLensSearchTooltipSessionImpressionCap(
-        &kContextualTasksShowOnboardingTooltip,
-        "ContextualTasksLensSearchTooltipSessionImpressionCap",
-        1);
-
 const base::FeatureParam<int> kContextualTasksAskGTooltipDismissedCap(
     &kContextualTasksShowOnboardingTooltip,
     "ContextualTasksAskGTooltipDismissedCap", 1);
@@ -617,23 +612,6 @@ int GetContextualTasksOnboardingTooltipDismissedCap() {
     return std::numeric_limits<int>::max();
   }
   return kContextualTasksOnboardingTooltipDismissedCap.Get();
-}
-
-int GetContextualTasksLensSearchTooltipDismissedCap() {
-  if (!base::FeatureList::IsEnabled(kContextualTasksShowOnboardingTooltip)) {
-    return 0;
-  }
-  if (base::FeatureList::IsEnabled(kContextualTasksBypassDismissedCap)) {
-    return std::numeric_limits<int>::max();
-  }
-  return kContextualTasksLensSearchTooltipDismissedCap.Get();
-}
-
-int GetContextualTasksLensSearchTooltipSessionImpressionCap() {
-  if (!base::FeatureList::IsEnabled(kContextualTasksShowOnboardingTooltip)) {
-    return 0;
-  }
-  return kContextualTasksLensSearchTooltipSessionImpressionCap.Get();
 }
 
 int GetContextualTasksAskGTooltipDismissedCap() {
@@ -781,6 +759,9 @@ base::TimeDelta GetSmartTabSharingTabSelectionTimeout() {
   return base::Milliseconds(300);
 }
 
+bool ShouldToggleOffAfterSubmit() {
+  return kContextualTasksContextToggleOffAfterSubmit.Get();
+}
 
 bool GetIsTabAutoSuggestionChipEnabled() {
   return kContextualTasksTabAutoSuggestionChipEnabled.Get();

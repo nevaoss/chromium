@@ -226,26 +226,31 @@ class WebUIToolbarInternalWebView : public views::WebView {
   // views::WebView:
   void PreHandleDragUpdate(const content::DropData& drop_data,
                            const gfx::PointF& client_pt) override {
-    if (!drop_data.filenames.empty()) {
+    bool did_originate_from_renderer = drop_data.did_originate_from_renderer;
+#if BUILDFLAG(IS_CHROMEOS)
+    // On ChromeOS, drag origin provenance cannot be reliably distinguished
+    // between OS-local and renderer sources (b/256022714). To ensure security
+    // by default, all drags are conservatively treated as renderer-originated.
+    did_originate_from_renderer = true;
+#endif
+    if (!did_originate_from_renderer && !drop_data.filenames.empty()) {
       cached_dragged_file_path_ = drop_data.filenames.front().path;
       cached_dragged_file_position_ = client_pt;
+    } else if (did_originate_from_renderer) {
+      ClearCachedDraggedFile();
     }
     webui_toolbar::WebUIToolbarDragState::GetOrCreateForWebContents(
         web_contents())
-        ->set_drag_originated_from_renderer(
-            drop_data.did_originate_from_renderer);
+        ->set_drag_originated_from_renderer(did_originate_from_renderer);
   }
+
+  void PreHandleDragExit() override { ClearCachedDraggedFile(); }
+
+  void HandleDragEnded() override { ClearCachedDraggedFile(); }
 
   bool CanDragEnter(content::WebContents* source,
                     const content::DropData& data,
                     blink::DragOperationsMask operations_allowed) override {
-    // Cache the drag origin on the WebContents. This is needed because the
-    // subsequent Mojo navigation calls (Navigate/NavigateText) do not receive
-    // did_originate_from_renderer information from the drop event directly.
-    webui_toolbar::WebUIToolbarDragState::GetOrCreateForWebContents(
-        web_contents())
-        ->set_drag_originated_from_renderer(data.did_originate_from_renderer);
-
     // TODO(xtlsheep): We ideally want to block `javascript:` text drags over
     // the general toolbar area (showing a forbidden cursor) to prevent
     // self-XSS, while still allowing them to be dropped specifically into the
@@ -327,12 +332,16 @@ class WebUIToolbarInternalWebView : public views::WebView {
         url = net::FilePathToFileURL(*cached_dragged_file_path_);
       }
     }
-    cached_dragged_file_path_.reset();
-    cached_dragged_file_position_.reset();
+    ClearCachedDraggedFile();
     return url;
   }
 
  private:
+  void ClearCachedDraggedFile() {
+    cached_dragged_file_path_.reset();
+    cached_dragged_file_position_.reset();
+  }
+
 #if BUILDFLAG(IS_MAC)
   std::unique_ptr<WebUIToolbarEventForwarder> forwarder_;
 #endif
@@ -863,8 +872,14 @@ void WebUIToolbarWebView::OnAppMenuFocusChanged(bool focused) {
 }
 
 void WebUIToolbarWebView::ExecuteExtensionAction(
+    const std::string& extension_id,
+    bool is_pointer_interaction) {
+  extensions_container_.ExecuteUserAction(extension_id, is_pointer_interaction);
+}
+
+void WebUIToolbarWebView::OnExtensionActionPointerDown(
     const std::string& extension_id) {
-  extensions_container_.ExecuteUserAction(extension_id);
+  extensions_container_.OnPointerDown(extension_id);
 }
 
 void WebUIToolbarWebView::ShowExtensionContextMenu(
@@ -1004,12 +1019,7 @@ WebUIToolbarWebView::GetIconTableFetcher() {
 }
 
 CommandUpdater* WebUIToolbarWebView::GetCommandUpdater() {
-  // TODO(crbug.com/428946261): Convert to BrowserCommandController::From().
-  // Doing so makes WebUIToolbarUI::Init() see a null command updater and bail
-  // out, which hangs the WebUIToolbarLifecycle* browser tests. Those only run
-  // with the WebUI toolbar feature enabled, so the divergence between this
-  // accessor and From() is not yet understood.
-  return browser_->GetFeatures().browser_command_controller();
+  return controller_;
 }
 
 OmniboxController* WebUIToolbarWebView::GetOmniboxController() {

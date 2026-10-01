@@ -1314,6 +1314,7 @@
 <translation id="2006638907958895361"><ph name="APP" />ରେ ଲିଙ୍କ୍ ଖୋଲନ୍ତୁ</translation>
 <translation id="2007404777272201486">ଏକ ସମସ୍ୟାର ରିପୋର୍ଟ କରନ୍ତୁ...</translation>
 <translation id="200781997903833896">ରିଡ ଆଲାଉଡକୁ ବ୍ୟବହାର କରିବା ପାଇଁ ଆପଣଙ୍କ ଡିଭାଇସରେ ସ୍ପେସ ଖାଲି କରନ୍ତୁ</translation>
+<translation id="2009047848105043829">ଆପଣଙ୍କ ଡିଭାଇସଗୁଡ଼ିକୁ ପରିଚାଳନା କରନ୍ତୁ</translation>
 <translation id="2010501376126504057">ସୁସଙ୍ଗତ ଡିଭାଇସ୍‍ଗୁଡ଼ିକ</translation>
 <translation id="2010636492623189611">ଚୟନ କରାଯାଇଛି।</translation>
 <translation id="2012935757369720523">ଫାଇଲ ଡିଲିଟ କରନ୍ତୁ</translation>
@@ -6091,6 +6092,7 @@
 <translation id="5678955352098267522"><ph name="WEBSITE_1" />ରେ ଆପଣଙ୍କର ଡାଟା ପଢ଼ନ୍ତୁ</translation>
 <translation id="5680050361008726776">"<ph name="ESIM_PROFILE_NAME" />"କୁ କାଢ଼ିବେ?</translation>
 <translation id="5681586175480958839">ଫାଇଲ ପୂର୍ବରୁ ଖୋଲା ଯାଇଛି</translation>
+<translation id="5682120590308014005">Driveରୁ ଆପଣଙ୍କ AI ମୋଡ ଥ୍ରେଡଗୁଡ଼ିକରେ ସହଜରେ ଫାଇଲଗୁଡ଼ିକ ଯୋଗ କରିବାକୁ ସାଇନ ଇନ କରନ୍ତୁ। ଆପଣ ଆପଣଙ୍କର ସମସ୍ତ ଡିଭାଇସରେ ମଧ୍ୟ ଆପଣଙ୍କ ପାସୱାର୍ଡଗୁଡ଼ିକ ଏବଂ ଆହୁରି ଅନେକ କିଛି ପାଇବେ।</translation>
 <translation id="5684110242705861346">"<ph name="NAME" />" ଏକ୍ସଟେନସନକୁ ଆପଣଙ୍କ ସଂସ୍ଥାର ନୀତି ଅନୁସାରେ ଯୋଗ କରାଯାଇଛି ଏବଂ ଏହା ଏହି ସେଟିଂକୁ ନିୟନ୍ତ୍ରଣ କରୁଛି। <ph name="BEGIN_LINK" />ବିବରଣୀ ଦେଖନ୍ତୁ<ph name="END_LINK" /></translation>
 <translation id="5684181005476681636">Wi-Fi ବିବରଣୀ</translation>
 <translation id="5687340364605915800">ଏହି ଅନୁରୋଧର ଉତ୍ତର ଦେବା ସମୟରେ ସାଇଟଗୁଡ଼ିକ ନିଜର ବିଚାର ବ୍ୟବହାର କରନ୍ତି</translation>
@@ -6645,6 +6647,7 @@
 <translation id="6126601353087978360">ଦୟାକରି ଆପଣଙ୍କ ମତାମତ ଏଠାରେ ଲେଖନ୍ତୁ:</translation>
 <translation id="6127292407256937949">ଭଲ୍ୟୁମ ଚାଲୁ ଅଛି। ଭଲ୍ୟୁମକୁ ବନ୍ଦ କରନ୍ତୁ।</translation>
 <translation id="6127598727646973981">ସୁରକ୍ଷିତ କନେକ୍ସନ</translation>
+<translation id="6129686474468159207">ଆପଣ କେଉଁ ସାଇଟରୁ କଲ କରୁଛନ୍ତି ଏବଂ ଆପଣଙ୍କ କେମେରା କିମ୍ବା ମାଇକ୍ରୋଫୋନ କେତେବେଳେ ବ୍ୟବହାର କରାଯାଏ ତାହା ଦେଖେ</translation>
 <translation id="6129691635767514872">ଚୟନିତ ଡାଟାକୁ Chrome ଏବଂ ସିଙ୍କ କରାଯାଇଥିବା ଡିଭାଇସ୍‍ଗୁଡ଼ିକରୁ କାଢ଼ି ଦିଆଯାଇଛି। ଆପଣଙ୍କ Google ଆକାଉଣ୍ଟରେ ବ୍ରାଉଜିଂ ଇତିବୃତ୍ତି ଅନ୍ୟ ରୂପରେ ଥାଇପାରେ, ଯେପରିକି <ph name="BEGIN_LINK" />myactivity.google.com<ph name="END_LINK" />ରେ ଅନ୍ୟ Google ସେବାରୁ ସନ୍ଧାନ ଏବଂ ଗତିବିଧି।</translation>
 <translation id="6129938384427316298">Netscape ସାର୍ଟିଫିକେଟ୍‌ ମନ୍ତବ୍ୟ</translation>
 <translation id="6129953537138746214">ସ୍ପେସ୍</translation>
@@ -8169,6 +8172,7 @@ Google Chrome ଆପଣଙ୍କ ମୋବାଇଲ୍ ଡାଟା ବ୍ୟବ
 <translation id="7299588179200441056"><ph name="URL" /> - <ph name="FOLDER" /></translation>
 <translation id="730068416968462308">ଆନିମେଟେଡ</translation>
 <translation id="7301812050652048720">ପାସକୀ ଡିଲିଟ କରାଯାଇଛି</translation>
+<translation id="7303246449496241344">Driveରୁ ଆପଣଙ୍କ AI ମୋଡ ଥ୍ରେଡରେ ସହଜରେ ଫାଇଲଗୁଡ଼ିକ ଯୋଗ କରିବାକୁ, ଏହା ଆପଣ ବୋଲି ଯାଞ୍ଚ କରନ୍ତୁ। ଆପଣ ଆପଣଙ୍କର ସମସ୍ତ ଡିଭାଇସରେ ମଧ୍ୟ ଆପଣଙ୍କ ପାସୱାର୍ଡଗୁଡ଼ିକ ଏବଂ ଆହୁରି ଅନେକ କିଛି ପାଇବେ।</translation>
 <translation id="7303485269821975179">ଏକ <ph name="DEVICE_TYPE" /> ପାସୱାର୍ଡ ସେଟ ଅପ କରନ୍ତୁ</translation>
 <translation id="7303900363563182677">କ୍ଲିପବୋର୍ଡ୍‌କୁ ଛବି କପି କରିବା ଏବଂ ଟେକ୍ସଟ୍ ଦେଖିବାରୁ ଏହି ସାଇଟ୍‌କୁ ଅବରୋଧ କରିଦିଆଯାଇଛି।</translation>
 <translation id="7304030187361489308">ଉଚ୍ଚ</translation>

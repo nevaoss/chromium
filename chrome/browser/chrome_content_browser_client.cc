@@ -93,7 +93,7 @@
 #include "chrome/browser/download/chrome_download_manager_delegate.h"
 #include "chrome/browser/download/download_prefs.h"
 #include "chrome/browser/enterprise/browser_management/management_service_factory.h"
-#include "chrome/browser/enterprise/net/enterprise_proxy_error_service_factory.h"
+#include "chrome/browser/enterprise/net/proxy_error_utils.h"
 #include "chrome/browser/enterprise/reporting/legacy_tech/legacy_tech_service.h"
 #include "chrome/browser/enterprise/reporting/prefs.h"
 #include "chrome/browser/enterprise/util/managed_browser_utils.h"
@@ -266,10 +266,6 @@
 #include "components/enterprise/content/clipboard_restriction_service.h"
 #include "components/enterprise/content/pref_names.h"
 #include "components/enterprise/data_controls/content/browser/last_replaced_clipboard_data.h"
-#include "components/enterprise/net/content/enterprise_proxy_navigation_error_data.h"
-#include "components/enterprise/net/core/enterprise_proxy_error_data.h"
-#include "components/enterprise/net/core/enterprise_proxy_error_service.h"
-#include "components/enterprise/net/core/features.h"
 #include "components/enterprise/network_header_injection/core/features.h"
 #include "components/enterprise/network_header_injection/core/http_header_injection_service.h"
 #include "components/error_page/common/error.h"
@@ -392,7 +388,6 @@
 #include "content/public/common/content_switches.h"
 #include "content/public/common/url_utils.h"
 #include "content/public/common/window_container_type.mojom-shared.h"
-#include "device/fido/public/features.h"
 #include "device/vr/buildflags/buildflags.h"
 #include "extensions/browser/browser_frame_context_data.h"
 #include "extensions/buildflags/buildflags.h"
@@ -478,6 +473,10 @@
 #include "chrome/services/util_win/public/mojom/util_win.mojom.h"
 #include "content/public/browser/tracing_service.h"
 #include "sandbox/win/src/sandbox_policy.h"
+#include "services/webnn/public/cpp/webnn_buildflags.h"
+#if BUILDFLAG(WEBNN_USE_WEBGPU_ACCELERATOR)
+#include "services/webnn/public/mojom/features.mojom-features.h"
+#endif
 #elif BUILDFLAG(IS_MAC)
 #include "base/apple/foundation_util.h"
 #include "chrome/browser/browser_process_platform_part_mac.h"
@@ -1378,7 +1377,6 @@ base::FilePath GetModulePath(std::wstring_view module_name) {
 #endif  // BUILDFLAG(IS_WIN) && !defined(COMPONENT_BUILD) &&
         // !defined(ADDRESS_SANITIZER)
 
-#if BUILDFLAG(SAFE_BROWSING_AVAILABLE)
 void MaybeAddCondition(
     std::unique_ptr<content::CommitDeferringCondition> maybe_condition,
     std::vector<std::unique_ptr<content::CommitDeferringCondition>>*
@@ -1387,7 +1385,6 @@ void MaybeAddCondition(
     conditions->push_back(std::move(maybe_condition));
   }
 }
-#endif
 
 #if BUILDFLAG(IS_CHROMEOS)
 void NotifyMultiCaptureStarted(const std::string& label,
@@ -1527,6 +1524,7 @@ std::optional<GURL> GetIwaCustomManifestUrl(
   return std::nullopt;
 }
 #endif  // BUILDFLAG(ENABLE_EXTENSIONS_CORE) && !BUILDFLAG(IS_ANDROID)
+
 }  // namespace
 
 // static
@@ -5418,6 +5416,23 @@ bool ChromeContentBrowserClient::PreSpawnChild(
       return false;
     }
   }
+
+  // Allow loading the WebNN WebGPU accelerator for renderers when the feature
+  // is enabled.
+#if BUILDFLAG(WEBNN_USE_WEBGPU_ACCELERATOR)
+  if (sandbox_type == sandbox::mojom::Sandbox::kRenderer &&
+      base::FeatureList::IsEnabled(
+          webnn::mojom::features::kWebNNLiteRTGpuInRenderer)) {
+    const base::FilePath accelerator_path =
+        GetModulePath(L"libLiteRtWebGpuAccelerator.dll");
+    if (base::PathExists(accelerator_path)) {
+      result = config->AllowExtraDll(accelerator_path.value());
+      if (result != sandbox::SBOX_ALL_OK) {
+        return false;
+      }
+    }
+  }
+#endif
 #endif  // !defined(COMPONENT_BUILD) && !defined(ADDRESS_SANITIZER)
   return true;
 }
@@ -6073,7 +6088,7 @@ ChromeContentBrowserClient::CreateURLLoaderThrottles(
                                     ->GetURLLoaderFactoryForBrowserProcess();
       if (auto pvt_throttle =
               PrivateVerificationTokensURLLoaderThrottle::Create(
-                  pvt_service, profile->IsOffTheRecord(),
+                  pvt_service, profile->GetWeakPtr(),
                   std::move(url_loader_factory))) {
         result.push_back(std::move(pvt_throttle));
       }
@@ -7078,8 +7093,7 @@ bool ChromeContentBrowserClient::IsSecurityLevelAcceptableForWebAuthn(
   // For IWAs, WebAuthn is only enabled together with the remote
   // desktop client override enterprise policy.
   if (IsIsolatedWebAppOrigin(caller_origin)) {
-    return base::FeatureList::IsEnabled(
-        device::kWebAuthnIWARemoteDesktopAllowedOriginsPolicy);
+    return true;
   }
 #endif  //! BUILDFLAG(IS_ANDROID)
   if (net::IsLocalhost(caller_origin.GetURL())) {
@@ -8583,31 +8597,16 @@ ChromeContentBrowserClient::GetAlternativeErrorPageOverrideInfo(
     content::BrowserContext* browser_context,
     int32_t error_code) {
   const GURL& url = navigation_handle.GetURL();
-  Profile* profile = Profile::FromBrowserContext(browser_context);
-  if (enterprise_net::IsEnterpriseProxyErrorHandlingEnabled() && profile) {
-    auto* error_service =
-        EnterpriseProxyErrorServiceFactory::GetForProfile(profile);
-    if (error_service) {
-      enterprise_net::EnterpriseProxyErrorDataDelegate delegate(
-          &navigation_handle);
-      std::string html_content = error_service->GetErrorPageHTML(&delegate);
-      if (!html_content.empty()) {
-        auto alternative_error_page_override_info =
-            content::mojom::AlternativeErrorPageOverrideInfo::New();
-        alternative_error_page_override_info->alternative_error_page_params.Set(
-            error_page::kOverrideErrorPage, base::Value(true));
-        alternative_error_page_override_info->alternative_error_page_params.Set(
-            "error_page_html", base::Value(std::move(html_content)));
-        alternative_error_page_override_info->alternative_error_page_params.Set(
-            "is_enterprise_proxy_error", base::Value(true));
-        return alternative_error_page_override_info;
-      }
-    }
+  if (auto enterprise_error_info =
+          enterprise_net::GetEnterpriseProxyErrorPageInfo(navigation_handle,
+                                                          browser_context)) {
+    return enterprise_error_info;
   }
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
     BUILDFLAG(IS_CHROMEOS)
-  if (content::AreIsolatedWebAppsEnabled(browser_context) &&
+  if (navigation_handle.IsInPrimaryMainFrame() &&
+      content::AreIsolatedWebAppsEnabled(browser_context) &&
       IsIsolatedWebAppUrl(url)) {
     content::mojom::AlternativeErrorPageOverrideInfoPtr
         alternative_error_page_override_info =
@@ -8622,7 +8621,8 @@ ChromeContentBrowserClient::GetAlternativeErrorPageOverrideInfo(
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) ||
         // BUILDFLAG(IS_CHROMEOS)
 
-  if (error_code == net::ERR_INTERNET_DISCONNECTED) {
+  if (navigation_handle.IsInPrimaryMainFrame() &&
+      error_code == net::ERR_INTERNET_DISCONNECTED) {
     content::mojom::AlternativeErrorPageOverrideInfoPtr
         alternative_error_page_override_info = web_app::GetOfflinePageInfo(
             url, render_frame_host, browser_context);

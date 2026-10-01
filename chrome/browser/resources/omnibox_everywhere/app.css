@@ -10,13 +10,36 @@
 :host {
   display: block;
   position: relative;
+  transition: opacity 150ms ease;
   width: 100%;
+}
+
+:host(:not([is-active])) {
+  -webkit-app-region: no-drag;
+  opacity: 0.7;
+}
+
+:host(:not([is-active])) #searchbox,
+:host(:not([is-active])) #composebox,
+:host(:not([is-active])) #mostVisitedContainer,
+:host(:not([is-active])) cr-most-visited {
+  -webkit-app-region: no-drag;
+}
+
+:host(:not([is-active]):hover) {
+  opacity: 1;
+  --omnibox-inactive-hover-overlay: var(
+      --color-sys-state-hover-on-subtle, rgba(0, 0, 0, 0.06));
 }
 
 omnibox-everywhere-omnibox,
 omnibox-everywhere-composebox {
   --cr-searchbox-height: 48px;
+  --cr-searchbox-icon-container-size: 32px;
   --cr-searchbox-icon-left-position: 16px;
+  --cr-searchbox-icon-right-position: 0px;
+  --cr-searchbox-match-padding-inline-start: 16px;
+  --cr-searchbox-match-text-padding-inline-start: 8px;
   --cr-searchbox-icon-top-position: 0;
   --cr-searchbox-min-width: 100%;
 
@@ -62,7 +85,7 @@ omnibox-everywhere-omnibox::part(dropdown-content) {
   --cr-composebox-submit-width: 48px;
   background: var(--color-composebox-background, #fff);
   border: none;
-  border-radius: 28px;
+  border-radius: 16px;
   bottom: auto;
   box-shadow: 0 4px 20px 2px rgba(0, 0, 0, 0.25);
   font-family: inherit;
@@ -125,8 +148,11 @@ omnibox-everywhere-omnibox::part(dropdown-content) {
   -webkit-app-region: drag;
   align-items: center;
   animation: fadeInMvt 200ms cubic-bezier(0, 0, 0.2, 1);
+  background: linear-gradient(
+          var(--omnibox-inactive-hover-overlay, transparent),
+          var(--omnibox-inactive-hover-overlay, transparent)),
+      var(--color-sys-surface-container-high, #fff);
   background-clip: padding-box;
-  background-color: var(--color-sys-surface-container-high, #fff);
   /* Preserves 2px border width parity with omnibox-everywhere-omnibox and
    * composebox. */
   border: 2px solid transparent;
@@ -143,6 +169,7 @@ omnibox-everywhere-omnibox::part(dropdown-content) {
 
 cr-most-visited {
   -webkit-app-region: drag;
+  --most-visited-focus-shadow: 0 0 0 2px var(--color-sys-primary, #1a73e8);
   --most-visited-gap: calc((644px - 7 * var(--most-visited-tile-size)) / 6);
   --most-visited-icon-margin-top: 8px;
   --most-visited-icon-size: 48px;
@@ -205,6 +232,9 @@ fre-modal.dismissing {
 }
 
 @media (prefers-reduced-motion: reduce) {
+  :host {
+    transition: none;
+  }
   fre-modal.dismissing {
     animation-duration: 0s;
   }

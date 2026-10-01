@@ -20,8 +20,11 @@ import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.toolbar.MenuBuilderHelper;
 import org.chromium.chrome.browser.toolbar.R;
 import org.chromium.chrome.browser.toolbar.account_menu.AccountMenuProperties.ItemType;
+import org.chromium.chrome.browser.ui.signin.BottomSheetSigninAndHistorySyncCoordinator;
+import org.chromium.chrome.browser.ui.signin.SigninAndHistorySyncActivityLauncher;
 import org.chromium.ui.UiUtils;
 import org.chromium.ui.base.WindowAndroid;
+import org.chromium.ui.listmenu.ListMenuButton;
 import org.chromium.ui.modelutil.LayoutViewBuilder;
 import org.chromium.ui.modelutil.MVCListAdapter.ModelList;
 import org.chromium.ui.modelutil.SimpleRecyclerViewAdapter;
@@ -46,19 +49,31 @@ public class AccountMenuCoordinator {
     public AccountMenuCoordinator(
             Context context,
             WindowAndroid windowAndroid,
-            Supplier<@Nullable Profile> profileSupplier) {
+            Supplier<@Nullable Profile> profileSupplier,
+            Supplier<@Nullable BottomSheetSigninAndHistorySyncCoordinator>
+                    signinCoordinatorSupplier,
+            SigninAndHistorySyncActivityLauncher signinLauncher) {
         mContext = context;
         mContentView = LayoutInflater.from(context).inflate(R.layout.account_menu, null);
 
         RecyclerView recyclerView = (RecyclerView) mContentView;
         recyclerView.setLayoutManager(new LinearLayoutManager(context));
+        recyclerView.setItemAnimator(null);
 
         ModelList modelList = new ModelList();
         mAdapter = new SimpleRecyclerViewAdapter(modelList);
         mAdapter.registerType(
+                ItemType.PROMO_CARD,
+                new LayoutViewBuilder<>(R.layout.account_menu_promo_card),
+                AccountMenuViewBinder::bindPromoCard);
+        mAdapter.registerType(
+                ItemType.IDENTITY_CARD,
+                new LayoutViewBuilder<>(R.layout.account_menu_identity_card),
+                AccountMenuViewBinder::bindIdentityCard);
+        mAdapter.registerType(
                 ItemType.MENU_ITEM,
                 new LayoutViewBuilder<>(R.layout.account_menu_item),
-                AccountMenuViewBinder::bind);
+                AccountMenuViewBinder::bindMenuItem);
         mAdapter.registerType(
                 ItemType.DIVIDER,
                 new LayoutViewBuilder<>(R.layout.account_menu_divider),
@@ -67,11 +82,17 @@ public class AccountMenuCoordinator {
 
         mMediator =
                 new AccountMenuMediator(
-                        context, modelList, windowAndroid, profileSupplier, this::dismiss);
+                        context,
+                        modelList,
+                        windowAndroid,
+                        profileSupplier,
+                        signinCoordinatorSupplier,
+                        signinLauncher,
+                        this::dismiss);
     }
 
     /** Shows the account menu popup anchored to the provided signin button view. */
-    public void show(View anchorView) {
+    public void show(ListMenuButton anchorView) {
         if (mPopupWindow != null && mPopupWindow.isShowing()) {
             dismiss();
             return;
@@ -87,7 +108,7 @@ public class AccountMenuCoordinator {
         mPopupWindow = createPopupWindow(anchorView);
         mPopupWindow.show();
 
-        anchorView.setSelected(true);
+        anchorView.setIsPressed(true);
     }
 
     /** Dismisses the popup window if it is currently showing. */
@@ -100,10 +121,11 @@ public class AccountMenuCoordinator {
     /** Destroys and cleans up the account menu coordinator. */
     public void destroy() {
         dismiss();
+        mMediator.destroy();
         mAdapter.destroy();
     }
 
-    private AnchoredPopupWindow createPopupWindow(View anchorView) {
+    private AnchoredPopupWindow createPopupWindow(ListMenuButton anchorView) {
         // Ensure mContentView is detached from any previous popup window parent.
         UiUtils.removeViewFromParent(mContentView);
 
@@ -125,8 +147,8 @@ public class AccountMenuCoordinator {
                 .build();
     }
 
-    private void onPopupDismissed(View anchorView) {
-        anchorView.setSelected(false);
+    private void onPopupDismissed(ListMenuButton anchorView) {
+        anchorView.setIsPressed(false);
         mLastDismissTimeMs = TimeUtils.elapsedRealtimeMillis();
         mPopupWindow = null;
     }

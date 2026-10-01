@@ -50,6 +50,7 @@
 #include "chrome/browser/search_engines/template_url_service_factory.h"
 #include "chrome/browser/search_provider_logos/logo_service_factory.h"
 #include "chrome/browser/segmentation_platform/segmentation_platform_service_factory.h"
+#include "chrome/browser/signin/chrome_signin_helper.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
 #include "chrome/browser/sync/sync_service_factory.h"
 #include "chrome/browser/themes/theme_service_factory.h"
@@ -745,6 +746,8 @@ content::WebUIDataSource* CreateAndAddNewTabPageUiHtmlSource(
           base::FeatureList::IsEnabled(omnibox::kTabFaviconChipsToCoins));
   source->AddBoolean("searchboxShowComposebox",
                      ntp_composebox::IsNtpComposeboxEnabled(profile));
+  source->AddBoolean("composeboxContextMenuTooltipsEnabled",
+                     omnibox::IsContextMenuTooltipsInComposeboxEnabled());
   source->AddBoolean("composeboxShowZps", true);
   source->AddBoolean("composeboxShowTypedSuggest",
                      ntp_composebox::kShowComposeboxTypedSuggest.Get());
@@ -798,9 +801,6 @@ content::WebUIDataSource* CreateAndAddNewTabPageUiHtmlSource(
   source->AddBoolean(
       "ntpSmallActionChipsEnabled",
       base::FeatureList::IsEnabled(ntp_features::kNtpScaledActionChipsSmall));
-  // TODO(crbug.com/548681676): Remove once TutorialId proto rolls from server.
-  source->AddBoolean("scaledActionChipsInTestMode",
-                     ntp_features::kNtpScaledActionChipsSmallInTestMode.Get());
 
   // User education browser promos.
   int browser_promo_limit = 0;
@@ -816,6 +816,13 @@ content::WebUIDataSource* CreateAndAddNewTabPageUiHtmlSource(
   source->AddInteger("browserPromoLimit", browser_promo_limit);
   source->AddInteger("browserPromoCompletedLimit",
                      browser_completed_promo_limit);
+
+  source->AddBoolean(
+      "composeboxPersistentAimButton",
+      base::FeatureList::IsEnabled(omnibox::kComposeboxPersistentAimButton));
+  source->AddBoolean("composeboxPersistentAimButtonWithX",
+                     base::FeatureList::IsEnabled(
+                         omnibox::kComposeboxPersistentAimButtonWithX));
 
   source->AddLocalizedStrings(SearchboxHandler::GetWebUIDataSourceDict(
       profile, {.enable_voice_search = true,

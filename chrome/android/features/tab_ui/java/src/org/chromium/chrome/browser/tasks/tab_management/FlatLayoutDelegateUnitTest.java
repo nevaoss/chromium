@@ -9,6 +9,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -79,7 +80,7 @@ public class FlatLayoutDelegateUnitTest {
         mDelegate = new FlatLayoutDelegate(mMediator, mModelList);
 
         when(mMediator.getCurrentTabModelChecked()).thenReturn(mTabModel);
-        when(mMediator.isShowingTabs()).thenReturn(true);
+        when(mMediator.isTrackingTabs()).thenReturn(true);
         when(mMediator.supportsTabLoadingState()).thenReturn(true);
         when(mTab1.getId()).thenReturn(TAB1_ID);
         when(mTab1.isInitialized()).thenReturn(true);
@@ -371,6 +372,45 @@ public class FlatLayoutDelegateUnitTest {
     }
 
     @Test
+    public void testTabObserverCallbacks_WhenNotTrackingTabs_NoOp() {
+        when(mMediator.isTrackingTabs()).thenReturn(false);
+        addTabsToModelList(TAB1_ID);
+        PropertyModel model = mModelList.get(0).model;
+
+        mDelegate.onDidStartNavigationInPrimaryMainFrame(mTab1, mNavigationHandle);
+        verify(mMediator, never()).getDefaultFaviconFetcher(anyBoolean());
+        assertNull(model.get(TabProperties.FAVICON_FETCHER));
+
+        mDelegate.onTitleUpdated(mTab1);
+        verify(mMediator, never()).getLatestTitleForTabOrGroup(any(), any(), anyBoolean());
+        assertNull(model.get(TabProperties.TITLE));
+
+        mDelegate.onLoadStarted(mTab1, /* toDifferentDocument= */ true);
+        assertFalse(model.get(TabProperties.IS_LOADING));
+
+        model.set(TabProperties.IS_LOADING, true);
+        mDelegate.onLoadStopped(mTab1, /* toDifferentDocument= */ true);
+        assertTrue(model.get(TabProperties.IS_LOADING));
+
+        mDelegate.onCrash(mTab1);
+        assertTrue(model.get(TabProperties.IS_LOADING));
+
+        mDelegate.onFaviconUpdated(mTab1, null, null);
+        verify(mMediator, never()).updateFaviconForTab(any(), any(), any(), any());
+
+        mDelegate.onUrlUpdated(mTab1);
+        verify(mMediator, never()).getDomainForTab(any(), any());
+        verify(mMediator, never()).updateThumbnailFetcher(any(), anyInt());
+        assertNull(model.get(TabProperties.URL_DOMAIN));
+
+        mDelegate.onAlertStateChanged(mTab1, TabAlert.AUDIO_PLAYING);
+        assertEquals(TabAlert.NONE, model.get(TabProperties.ALERT_STATE));
+
+        mDelegate.onTabPinnedStateChanged(mTab1, /* isPinned= */ true);
+        verify(mMediator, never()).updateTab(anyInt(), any(), anyBoolean(), anyBoolean());
+    }
+
+    @Test
     public void testOnTabClose() {
         addTabsToModelList(TAB1_ID, TAB2_ID);
 
@@ -467,6 +507,7 @@ public class FlatLayoutDelegateUnitTest {
         // Execute moving mTab1 out.
         mDelegate.didMoveTabOutOfGroup(mTab1, 0);
 
+        verify(mMediator).removeObserversForTab(mTab1);
         assertModelListTabIds(TAB2_ID);
     }
 
@@ -477,6 +518,7 @@ public class FlatLayoutDelegateUnitTest {
         // Execute moving mTab1 (last tab) out.
         mDelegate.didMoveTabOutOfGroup(mTab1, 0);
 
+        verify(mMediator).removeObserversForTab(mTab1);
         assertModelListTabIds();
     }
 
@@ -486,6 +528,7 @@ public class FlatLayoutDelegateUnitTest {
 
         mDelegate.didMoveTabOutOfGroup(mTab1, 0);
 
+        verify(mMediator, never()).removeObserversForTab(any());
         // Verify no-op when tab is not in model list.
         assertModelListTabIds(TAB2_ID);
     }
@@ -564,17 +607,6 @@ public class FlatLayoutDelegateUnitTest {
 
         verify(mMediator).setLastSelectedTabListModelIndex(0);
         verify(mMediator).selectTab(0, 1);
-    }
-
-    @Test
-    public void testDidSelectTab_TabDelayed() {
-        addTabsToModelList(TAB1_ID, TAB2_ID);
-        when(mMediator.isTabDelayed(mTab2)).thenReturn(true);
-
-        mDelegate.didSelectTab(mTab2, TabSelectionType.FROM_USER, TAB1_ID);
-
-        verify(mMediator).setLastSelectedTabListModelIndex(0);
-        verify(mMediator, never()).selectTab(anyInt(), anyInt());
     }
 
     @Test

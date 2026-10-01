@@ -134,8 +134,6 @@ void CanvasResource::DropRefOnOwningThread(
 bool CanvasResource::PrepareTransferableResource(
     viz::TransferableResource* out_resource,
     bool needs_verified_synctoken) {
-  DCHECK(IsValid());
-
   if (!out_resource)
     return true;
 
@@ -284,10 +282,6 @@ void CanvasResourceSharedImage::OnRefReturned(
   }
 }
 
-bool CanvasResourceSharedImage::IsValid() const {
-  return !!GetSharedImage();
-}
-
 SkImageInfo CanvasResourceSharedImage::CreateSkImageInfo() const {
   auto size = GetSharedImage()->size();
   auto format = GetSharedImage()->format();
@@ -327,10 +321,6 @@ scoped_refptr<StaticBitmapImage> CanvasResourceSharedImage::Bitmap() {
   TRACE_EVENT0("blink", "CanvasResourceSharedImage::Bitmap");
 
   if (!is_accelerated_) {
-    if (!IsValid()) {
-      return nullptr;
-    }
-
     // Construct an SkImage that references the shared memory buffer.
     auto mapping = GetSharedImage()->Map();
     if (!mapping) {
@@ -473,9 +463,6 @@ CanvasResourceSharedImage::ContextProviderWrapper() const {
 void CanvasResourceSharedImage::OnMemoryDump(
     base::trace_event::ProcessMemoryDump* pmd,
     const std::string& parent_path) const {
-  if (!IsValid())
-    return;
-
   scoped_refptr<gpu::ClientSharedImage> client_si = GetSharedImage();
 
   std::string dump_name =
@@ -614,7 +601,6 @@ ExternalCanvasResource::ExternalCanvasResource(
       release_callback_(std::move(out_callback)),
       alpha_type_(kPremul_SkAlphaType) {
   CHECK(GetSharedImage());
-  DCHECK(!release_callback_ || sync_token.HasData());
   SetReleaseSyncToken(sync_token);
 }
 

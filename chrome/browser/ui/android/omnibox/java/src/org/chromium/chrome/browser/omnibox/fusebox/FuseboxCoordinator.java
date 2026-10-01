@@ -445,22 +445,6 @@ public class FuseboxCoordinator implements TemplateUrlServiceObserver {
         }
     }
 
-    public @Nullable PropertyModel getModelForTesting() {
-        return mModel;
-    }
-
-    @Nullable FuseboxViewHolder getViewHolderForTesting() {
-        return mViewHolder;
-    }
-
-    void setMediatorForTesting(FuseboxMediator mediator) {
-        mMediator = mediator;
-    }
-
-    @Nullable FuseboxMediator getMediatorForTesting() {
-        return mMediator;
-    }
-
     @VisibleForTesting
     void onContextPopupDismissed() {
         if (mViewHolder == null || mViewHolder.plusButton == null) return;
@@ -552,9 +536,7 @@ public class FuseboxCoordinator implements TemplateUrlServiceObserver {
      * search, or the search widget) use the TOOLBAR layout mode to match mobile layouts.
      */
     private @FuseboxLayoutMode int getFuseboxLayoutMode() {
-        return !mIsForcedPhoneStyleOmnibox
-                        && OmniboxCapabilities.isDesktopPlatform()
-                        && OmniboxFeatures.sAndroidDesktopAimGate.isEnabled()
+        return !mIsForcedPhoneStyleOmnibox && OmniboxCapabilities.isDesktopPlatform()
                 ? FuseboxLayoutMode.SUGGESTIONS_POPOVER
                 : FuseboxLayoutMode.TOOLBAR;
     }
@@ -640,5 +622,21 @@ public class FuseboxCoordinator implements TemplateUrlServiceObserver {
                 mInsetObserver.removeObserver(this);
             }
         }
+    }
+
+    public @Nullable PropertyModel getModelForTesting() {
+        return mModel;
+    }
+
+    @Nullable FuseboxViewHolder getViewHolderForTesting() {
+        return mViewHolder;
+    }
+
+    void setMediatorForTesting(FuseboxMediator mediator) {
+        mMediator = mediator;
+    }
+
+    @Nullable FuseboxMediator getMediatorForTesting() {
+        return mMediator;
     }
 }

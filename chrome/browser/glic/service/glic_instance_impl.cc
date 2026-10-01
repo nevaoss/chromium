@@ -23,6 +23,7 @@
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/glic/common/future_browser_features.h"
 #include "chrome/browser/glic/experimental_triggering/glic_experimental_triggering_manager.h"
+#include "chrome/browser/glic/gemini_enterprise/glic_gemini_enterprise_manager.h"
 #include "chrome/browser/glic/glic_metrics.h"
 #include "chrome/browser/glic/glic_pref_names.h"
 #include "chrome/browser/glic/glic_zero_state_suggestions_manager.h"
@@ -786,6 +787,18 @@ void GlicInstanceImpl::CreateZeroStateSuggestionsHandler(
   }
 }
 
+void GlicInstanceImpl::CreateGeminiEnterpriseHandler(
+    mojo::PendingReceiver<mojom::GeminiEnterpriseHandler> receiver) {
+  if (!GlicEnabling::GetGeminiEnterpriseSettings(profile_).has_value()) {
+    return;
+  }
+  if (!gemini_enterprise_manager_) {
+    gemini_enterprise_manager_ =
+        std::make_unique<GlicGeminiEnterpriseManager>(profile_);
+  }
+  gemini_enterprise_manager_->Bind(std::move(receiver));
+}
+
 void GlicInstanceImpl::PrepareForOpen() {
   // TODO(crbug.com/444463509): Update this when we have per-instance
   // sharing managers set up without auto-focus.
@@ -1139,28 +1152,30 @@ void GlicInstanceImpl::DeactivateCurrentEmbedder() {
   }
 
   EmbedderKey key = active_embedder_key_.value();
-  // If SidePanel has focus when it's being closed, focus tab's webcontents.
-  if (old_embedder->HasFocus()) {
-    tabs::TabInterface* tab = GetTabFromEmbedderKey(key);
-    if (tab && tab->GetContents()) {
-      tab->GetContents()->Focus();
-    }
-  }
+  const bool had_focus = old_embedder->HasFocus();
 
-  auto it = embedders_.find(key);
-  CHECK(it != embedders_.end());
+  auto* entry = GetEmbedderEntry(key);
+  CHECK(entry);
   // Avoid Use-After-Free.
   host_.SetDelegate(&empty_embedder_delegate_);
 
-  it->second.embedder = old_embedder->CreateInactiveEmbedder();
+  entry->embedder = old_embedder->CreateInactiveEmbedder();
   ClearActiveEmbedderAndNotifyVisibilityChange();
 
-  if (it->second.embedder) {
-    it->second.embedder->InitializeAfterRegistration();
+  if (entry->embedder) {
+    entry->embedder->InitializeAfterRegistration();
   } else {
     // Special case: call back to DidCloseFor if the embedder was closed by
     // deletion (eg. floating embedder).
     DidCloseFor(key, EmbedderCloseReason::kExplicitlyClosed);
+  }
+
+  // If SidePanel had focus when it was being closed, focus tab's webcontents.
+  if (had_focus) {
+    tabs::TabInterface* tab = GetTabFromEmbedderKey(key);
+    if (tab && tab->GetContents()) {
+      tab->GetContents()->Focus();
+    }
   }
 }
 

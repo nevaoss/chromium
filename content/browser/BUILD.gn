@@ -1622,6 +1622,8 @@ source_set("browser") {
     "renderer_host/ancestor_throttle.h",
     "renderer_host/async_before_unload_commit_deferring_condition.cc",
     "renderer_host/async_before_unload_commit_deferring_condition.h",
+    "renderer_host/back_forward_cache_disabling_feature_handle.cc",
+    "renderer_host/back_forward_cache_disabling_feature_handle.h",
     "renderer_host/batched_proxy_ipc_sender.cc",
     "renderer_host/batched_proxy_ipc_sender.h",
     "renderer_host/blocked_scheme_navigation_throttle.cc",
@@ -1844,6 +1846,8 @@ source_set("browser") {
     "renderer_host/render_frame_host_impl.cc",
     "renderer_host/render_frame_host_impl.h",
     "renderer_host/render_frame_host_impl_interface_binders.cc",
+    "renderer_host/render_frame_host_lifecycle_state_impl.cc",
+    "renderer_host/render_frame_host_lifecycle_state_impl.h",
     "renderer_host/render_frame_host_manager.cc",
     "renderer_host/render_frame_host_manager.h",
     "renderer_host/render_frame_host_owner.h",
@@ -2518,7 +2522,7 @@ source_set("browser") {
     deps += [ "//components/services/font_data:lib" ]
   }
 
-  if (allow_oop_video_decoder) {
+  if (enable_oop_video_decoder) {
     sources += [ "media/oop_video_decoder_factory.cc" ]
     deps += [ "//media/mojo/mojom" ]
   }

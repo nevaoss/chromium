@@ -1161,22 +1161,6 @@ BASE_FEATURE(kVideoPipForceTrustedForMediaPlaybackForTesting,
 
 #endif  // !BUILDFLAG(IS_ANDROID)
 
-#if BUILDFLAG(ALLOW_OOP_VIDEO_DECODER)
-// Spawn utility processes to perform hardware decode acceleration on behalf of
-// renderer processes (instead of using the GPU process). The GPU process will
-// still be used as a proxy between renderers and utility processes (see
-// go/oop-vd-dd).
-BASE_FEATURE(kUseOutOfProcessVideoDecoding,
-#if BUILDFLAG(IS_CHROMEOS)
-             base::FEATURE_ENABLED_BY_DEFAULT
-#else
-             base::FEATURE_DISABLED_BY_DEFAULT
-#endif
-);
-
-
-#endif  // BUILDFLAG(ALLOW_OOP_VIDEO_DECODER)
-
 #if BUILDFLAG(CHROME_WIDE_ECHO_CANCELLATION)
 // If echo cancellation for a mic signal is requested, mix and cancel all audio
 // playback going to a specific output device in the audio service.
@@ -1418,7 +1402,7 @@ BASE_FEATURE(kVTVideoEncodeAcceleratorCalculatePSNR,
 // Enables VideoToolbox zero-copy encode of opaque SharedImage-backed
 // VideoFrames.
 BASE_FEATURE(kVTVideoEncodeAcceleratorOpaqueSharedImageEncode,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 #endif  // BUILDFLAG(IS_APPLE)
 
@@ -1985,22 +1969,6 @@ bool IsVideoCaptureAcceleratedJpegDecodingEnabled() {
   return false;
 #endif
 }
-
-#if BUILDFLAG(ALLOW_OOP_VIDEO_DECODER)
-bool IsOutOfProcessVideoDecodingEnabled() {
-#if BUILDFLAG(IS_CASTOS)
-  // The sandbox for OOP-VD was designed assuming that we're not on CastOS (see
-  // go/oop-vd-sandbox).
-  //
-  // TODO(b/210759684): revisit the sandbox to see if this restriction is
-  // necessary.
-  return false;
-#else
-  return base::FeatureList::IsEnabled(kUseOutOfProcessVideoDecoding);
-#endif
-}
-
-#endif  // BUILDFLAG(ALLOW_OOP_VIDEO_DECODER)
 
 #if BUILDFLAG(IS_ANDROID)
 bool IsAndroidZeroCopyVideoCaptureEnabled(

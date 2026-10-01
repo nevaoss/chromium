@@ -496,6 +496,7 @@ void HTMLMediaElement::Dispose() {
   // doesn't get dispatched during the object destruction.
   // See Document::isDelayingLoadEvent().
   // Also see http://crbug.com/275223 for more details.
+  is_disposing_ = true;
   ClearMediaPlayerAndAudioSourceProviderClientWithoutLocking();
 
   progress_event_timer_.Shutdown();
@@ -5334,13 +5335,9 @@ void HTMLMediaElement::RequestPlay(bool triggered_by_user) {
 }
 
 void HTMLMediaElement::RequestPause(bool triggered_by_user) {
-  if (triggered_by_user) {
-    LocalFrame* frame = GetDocument().GetFrame();
-    if (frame) {
-      LocalFrame::NotifyUserActivation(
-          frame, mojom::blink::UserActivationNotificationType::kInteraction);
-    }
-  }
+  // Never grant user activation for pause actions. Pausing media never requires
+  // user activation and should not allow websites to trigger restricted APIs
+  // like popups or clipboard writes on pause events.
   PauseInternal(triggered_by_user
                     ? WebMediaPlayer::PauseReason::kPauseRequestedByUser
                     : WebMediaPlayer::PauseReason::kPauseRequestedInternally);

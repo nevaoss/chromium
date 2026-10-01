@@ -552,16 +552,22 @@ void SkiaOutputSurfaceImpl::MakePromiseSkImage(
       static_cast<ImageContextImpl*>(image_context);
   images_in_current_paint_.push_back(image_context_impl);
 
-  const auto& sync_token = image_context->sync_token();
+  const auto& sync_tokens = image_context->sync_tokens();
 
   if (is_using_raw_draw_) {
     auto* sync_point_manager = dependency_->GetSyncPointManager();
-    if (sync_token.HasData() &&
-        !sync_point_manager->IsSyncTokenReleased(sync_token)) {
-      gpu_task_sync_tokens_.push_back(sync_token);
-      FlushGpuTasks(SyncMode::kWaitForTasksStarted);
-      image_context->mutable_sync_token()->Clear();
+
+    for (const auto& sync_token : sync_tokens) {
+      if (sync_token.HasData() &&
+          !sync_point_manager->IsSyncTokenReleased(sync_token)) {
+        gpu_task_sync_tokens_.push_back(sync_token);
+      }
     }
+    if (!gpu_task_sync_tokens_.empty()) {
+      FlushGpuTasks(SyncMode::kWaitForTasksStarted);
+    }
+    image_context->ClearSyncTokens();
+
     CHECK(representation_factory_);
     if (image_context_impl->BeginRasterAccess(representation_factory_.get())) {
       return;
@@ -580,10 +586,12 @@ void SkiaOutputSurfaceImpl::MakePromiseSkImage(
     MakePromiseSkImageMultiPlane(image_context_impl);
   }
 
-  if (sync_token.HasData()) {
-    resource_sync_tokens_.push_back(sync_token);
-    image_context->mutable_sync_token()->Clear();
+  for (const auto& sync_token : sync_tokens) {
+    if (sync_token.HasData()) {
+      resource_sync_tokens_.push_back(sync_token);
+    }
   }
+  image_context->ClearSyncTokens();
 }
 
 void SkiaOutputSurfaceImpl::MakePromiseSkImageSinglePlane(
@@ -1622,7 +1630,7 @@ void SkiaOutputSurfaceImpl::InitDelegatedInkPointRendererReceiver(
                  /*need_framebuffer=*/false);
 }
 
-gpu::Mailbox SkiaOutputSurfaceImpl::CreateSharedImage(
+scoped_refptr<gpu::ClientSharedImage> SkiaOutputSurfaceImpl::CreateSharedImage(
     SharedImageFormat format,
     const gfx::Size& size,
     const gfx::ColorSpace& color_space,
@@ -1630,37 +1638,38 @@ gpu::Mailbox SkiaOutputSurfaceImpl::CreateSharedImage(
     gpu::SharedImageUsageSet usage,
     std::string_view debug_label,
     gpu::SurfaceHandle surface_handle) {
-  gpu::Mailbox mailbox = gpu::Mailbox::Generate();
-
-  auto task =
-      base::BindOnce(&SkiaOutputSurfaceImplOnGpu::CreateSharedImage,
-                     base::Unretained(impl_on_gpu_.get()), mailbox, format,
-                     size, color_space, static_cast<SkAlphaType>(alpha_type),
-                     usage, std::string(debug_label), surface_handle);
-  EnqueueGpuTask(std::move(task), {}, /*make_current=*/true,
-                 /*need_framebuffer=*/false);
-
-  return mailbox;
+  return shared_image_interface_->CreateSharedImage(
+      gpu::SharedImageInfo(format, size, color_space, kTopLeft_GrSurfaceOrigin,
+                           static_cast<SkAlphaType>(alpha_type), usage,
+                           debug_label),
+      surface_handle);
 }
 
-gpu::Mailbox SkiaOutputSurfaceImpl::CreateSolidColorSharedImage(
+scoped_refptr<gpu::ClientSharedImage>
+SkiaOutputSurfaceImpl::CreateSolidColorSharedImage(
     const SkColor4f& color,
     const gfx::ColorSpace& color_space) {
-  gpu::Mailbox mailbox = gpu::Mailbox::Generate();
+  gfx::Size size(1, 1);
+  // Premultiply the SkColor4f to support transparent quads.
+  SkColor4f premul{color[0] * color[3], color[1] * color[3],
+                   color[2] * color[3], color[3]};
+  const uint32_t premul_rgba_bytes = premul.toBytes_RGBA();
+  uint32_t premul_bytes = premul_rgba_bytes;
+  auto pixel_span = base::byte_span_from_ref(premul_bytes);
 
-  auto task = base::BindOnce(
-      &SkiaOutputSurfaceImplOnGpu::CreateSolidColorSharedImage,
-      base::Unretained(impl_on_gpu_.get()), mailbox, color, color_space);
-  EnqueueGpuTask(std::move(task), {}, /*make_current=*/true,
-                 /*need_framebuffer=*/false);
-
-  return mailbox;
+  return shared_image_interface_->CreateSharedImage(
+      gpu::SharedImageInfo(SinglePlaneFormat::kRGBA_8888, size, color_space,
+                           kTopLeft_GrSurfaceOrigin, kPremul_SkAlphaType,
+                           gpu::SHARED_IMAGE_USAGE_SCANOUT |
+                               gpu::SHARED_IMAGE_USAGE_DISPLAY_READ,
+                           "SkiaSolidColor"),
+      pixel_span);
 }
 
-void SkiaOutputSurfaceImpl::DestroySharedImage(const gpu::Mailbox& mailbox) {
+void SkiaOutputSurfaceImpl::OnDestroySharedImage(const gpu::Mailbox& mailbox) {
   TRACE_EVENT("viz", "SkiaOutputSurfaceImpl::DestroySharedImage", "mailbox",
               mailbox.ToDebugString());
-  auto task = base::BindOnce(&SkiaOutputSurfaceImplOnGpu::DestroySharedImage,
+  auto task = base::BindOnce(&SkiaOutputSurfaceImplOnGpu::OnDestroySharedImage,
                              base::Unretained(impl_on_gpu_.get()), mailbox);
   EnqueueGpuTask(std::move(task), {}, /*make_current=*/true,
                  /*need_framebuffer=*/false);

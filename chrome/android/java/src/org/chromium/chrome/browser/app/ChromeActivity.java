@@ -93,8 +93,6 @@ import org.chromium.chrome.browser.actor.ActorUtils;
 import org.chromium.chrome.browser.app.appmenu.AppMenuPropertiesDelegateImpl;
 import org.chromium.chrome.browser.app.download.DownloadMessageUiDelegate;
 import org.chromium.chrome.browser.app.metrics.LaunchCauseMetrics;
-import org.chromium.chrome.browser.app.tab_activity_glue.PopupCreatorImpl;
-import org.chromium.chrome.browser.app.tab_activity_glue.ReparentingDelegateFactory;
 import org.chromium.chrome.browser.app.tab_activity_glue.TabReparentingController;
 import org.chromium.chrome.browser.app.tabmodel.AsyncTabParamsManagerSingleton;
 import org.chromium.chrome.browser.app.tabmodel.TabModelOrchestrator;
@@ -118,7 +116,6 @@ import org.chromium.chrome.browser.compositor.layouts.LayoutManagerImpl;
 import org.chromium.chrome.browser.compositor.layouts.SceneChangeObserver;
 import org.chromium.chrome.browser.compositor.layouts.content.TabContentManagerHandler;
 import org.chromium.chrome.browser.contextualsearch.ContextualSearchManager;
-import org.chromium.chrome.browser.customtabs.PopupCreatorFactory;
 import org.chromium.chrome.browser.desktop_site.DesktopSiteUtils;
 import org.chromium.chrome.browser.device.DeviceClassManager;
 import org.chromium.chrome.browser.devtools.DevToolsWindowAndroid;
@@ -187,6 +184,7 @@ import org.chromium.chrome.browser.screenshot_protection.ScreenshotProtectionCon
 import org.chromium.chrome.browser.selection.SelectionPopupBackPressHandler;
 import org.chromium.chrome.browser.settings.SettingsInTab;
 import org.chromium.chrome.browser.settings.SettingsNavigationFactory;
+import org.chromium.chrome.browser.settings.SettingsTabUtil;
 import org.chromium.chrome.browser.share.ShareDelegate;
 import org.chromium.chrome.browser.share.ShareDelegateImpl;
 import org.chromium.chrome.browser.share.ShareDelegateSupplier;
@@ -559,10 +557,6 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
 
     @Override
     public void performPreInflationStartup() {
-        // Initialize PopupCreator early so that it's available when WebContentsDelegateAndroid
-        // wants to create a new window.
-        PopupCreatorFactory.setInstance(new PopupCreatorImpl());
-
         mUmaActivityObserver =
                 new UmaActivityObserver(this, getLifecycleDispatcher(), getActivityType());
         setupUnownedUserDataSuppliers();
@@ -2330,9 +2324,7 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
         }
         mTabReparentingControllerSupplier.set(
                 new TabReparentingController(
-                        ReparentingDelegateFactory.createReparentingControllerDelegate(
-                                getTabModelSelector()),
-                        AsyncTabParamsManagerSingleton.getInstance()));
+                        this::getTabModelSelector, AsyncTabParamsManagerSingleton.getInstance()));
 
         // This must be initialized after initialization of tab reparenting controller.
         var windowAndroid = getWindowAndroid();
@@ -2488,7 +2480,9 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
         return mTabModelSelectorSupplier;
     }
 
-    /** Returns an {@link SettableMonotonicObservableSupplier} for {@link EphemeralTabCoordinator}. */
+    /**
+     * Returns an {@link SettableMonotonicObservableSupplier} for {@link EphemeralTabCoordinator}.
+     */
     public final SettableMonotonicObservableSupplier<EphemeralTabCoordinator>
             getEphemeralTabCoordinatorSupplier() {
         return mEphemeralTabCoordinatorSupplier;
@@ -2705,8 +2699,8 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
     }
 
     /**
-     * @return An {@link MonotonicObservableSupplier} that will supply the {@link ShareDelegate} when
-     *         it is ready.
+     * Returns an {@link MonotonicObservableSupplier} that will supply the {@link ShareDelegate}
+     * when it is ready.
      */
     public MonotonicObservableSupplier<ShareDelegate> getShareDelegateSupplier() {
         return mShareDelegateSupplier;
@@ -2774,8 +2768,9 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
 
             // Maintain tab state by re-parenting tabs when a Chrome window is moved between
             // displays.
-            if (newConfig.touchscreen != mConfig.touchscreen
-                    || newConfig.colorMode != mConfig.colorMode) {
+            if ((newConfig.touchscreen != mConfig.touchscreen
+                            || newConfig.colorMode != mConfig.colorMode)
+                    && !ChromeFeatureList.sAvoidRecreateOnTouchscreenOrColorModeChange.isEnabled()) {
                 doRecreateActivity();
                 return;
             }
@@ -2970,11 +2965,21 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
 
         if (id == R.id.preferences_id) {
             if (SettingsInTab.isEnabled()) {
-                LoadUrlParams params =
-                        new LoadUrlParams(UrlConstants.SETTINGS_URL, PageTransition.LINK);
-                // Settings are associated with the on-the-record profile, never incognito.
-                getTabCreator(/* incognito= */ false)
-                        .createNewTab(params, TabLaunchType.FROM_CHROME_UI, getActivityTab());
+                Tab settingsTab =
+                        areTabModelsInitialized()
+                                ? SettingsTabUtil.findSettingsTab(getTabModelSelector())
+                                : null;
+                if (settingsTab != null) {
+                    // Activate an existing settings tab if one exists.
+                    SettingsTabUtil.activateSettingsTab(getTabModelSelector(), settingsTab);
+                } else {
+                    // Otherwise create a new settings tab.
+                    LoadUrlParams params =
+                            new LoadUrlParams(UrlConstants.SETTINGS_URL, PageTransition.LINK);
+                    // Settings are associated with the on-the-record profile, never incognito.
+                    getTabCreator(/* incognito= */ false)
+                            .createNewTab(params, TabLaunchType.FROM_CHROME_UI, getActivityTab());
+                }
             } else {
                 SettingsNavigation settingsNavigation =
                         SettingsNavigationFactory.createSettingsNavigation();
@@ -3238,7 +3243,7 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
 
         if (id == R.id.open_webapk_id) {
             RecordUserAction.record("MobileMenuOpenWebApk");
-            return AppInstallMenuHandler.doOpenWebApk(this, currentTab);
+            return AppInstallMenuHandler.doOpenWebApp(this, currentTab);
         }
 
         if (id == R.id.request_desktop_site_id || id == R.id.request_desktop_site_check_id) {

@@ -173,6 +173,7 @@
 #include "chrome/browser/ui/views/frame/multi_contents_view_delegate.h"
 #include "chrome/browser/ui/views/frame/multi_contents_view_drop_target_controller.h"
 #include "chrome/browser/ui/views/frame/multi_contents_view_mini_toolbar.h"
+#include "chrome/browser/ui/views/frame/safe_invoke/safe_invoke.h"
 #include "chrome/browser/ui/views/frame/scrim_view.h"
 #include "chrome/browser/ui/views/frame/shadow_overlay_view.h"
 #include "chrome/browser/ui/views/frame/tab_modal_dialog_host.h"
@@ -215,6 +216,7 @@
 #include "chrome/browser/ui/views/tabs/browser_tab_strip_controller.h"
 #include "chrome/browser/ui/views/tabs/new_tab_button.h"
 #include "chrome/browser/ui/views/tabs/organizer/organizer_panel_view.h"
+#include "chrome/browser/ui/views/tabs/organizer/organizer_tray_view.h"
 #include "chrome/browser/ui/views/tabs/shared/tab_strip_combo_button.h"
 #include "chrome/browser/ui/views/tabs/shared/tab_strip_flat_edge_button.h"
 #include "chrome/browser/ui/views/tabs/tab.h"
@@ -1010,15 +1012,12 @@ BrowserView::BrowserView(BrowserWindowInterface* browser)
   auto* const organizer_panel_state_controller =
       OrganizerPanelStateController::From(browser_);
   if (organizer_panel_state_controller) {
-    auto organizer_panel_container = std::make_unique<OrganizerPanelView>(
+    auto organizer_panel = std::make_unique<OrganizerPanelView>(
         browser_.get(), BrowserActions::From(browser_)->root_action_item(),
         organizer_panel_state_controller);
-    organizer_panel_container_ =
-        AddChildView(std::move(organizer_panel_container));
-    organizer_panel_subscription_ =
-        organizer_panel_state_controller->RegisterOnStateChanged(
-            base::BindRepeating(&BrowserView::OnOrganizerPanelStateChanged,
-                                base::Unretained(this)));
+    organizer_tray_ =
+        AddChildView(std::make_unique<OrganizerTrayView>(*browser_, this));
+    organizer_tray_->SetPanelView(std::move(organizer_panel));
   }
 
   // Create do-nothing view for the sake of controlling the z-order of the find
@@ -1141,7 +1140,7 @@ BrowserView::~BrowserView() {
   vertical_tab_strip_background_blur_backdrop_ = nullptr;
   vertical_tab_strip_top_corner_ = nullptr;
   vertical_tab_strip_bottom_corner_ = nullptr;
-  organizer_panel_container_ = nullptr;
+  organizer_tray_ = nullptr;
   side_panel_ = nullptr;
 
 #if BUILDFLAG(IS_MAC)
@@ -1463,6 +1462,10 @@ bool BrowserView::GetIncognito() const {
   return browser_->GetProfile()->IsIncognitoProfile();
 }
 
+bool BrowserView::GetEnterpriseIsolatedMode() const {
+  return browser_->GetProfile()->IsEnterpriseIsolatedModeProfile();
+}
+
 bool BrowserView::GetGuestSession() const {
   return browser_->GetProfile()->IsGuestSession();
 }
@@ -1590,12 +1593,6 @@ void BrowserView::OnVerticalTabStripModeChanged(
   GetFrameView()->OnTabStripStateChanged();
 
   UpdateTabSearchBubbleHost();
-  InvalidateLayout();
-}
-
-void BrowserView::OnOrganizerPanelStateChanged(
-    OrganizerPanelStateController* controller) {
-  organizer_panel_container_->OnOrganizerPanelStateChanged(controller);
   InvalidateLayout();
 }
 
@@ -2327,6 +2324,10 @@ LocationBar* BrowserView::GetLocationBar() const {
   return toolbar_ ? toolbar_->location_bar() : nullptr;
 }
 
+ui::AcceleratorProvider* BrowserView::GetAcceleratorProvider() {
+  return this;
+}
+
 void BrowserView::SetFocusToLocationBar(bool is_user_initiated) {
   // On Windows, changing focus to the location bar causes the browser window to
   // become active. This can steal focus if the user has another window open
@@ -2563,23 +2564,19 @@ void BrowserView::UpdateWindowControlsOverlayEnabled() {
 
   // Clear the title-bar-area rect when window controls overlay is disabled.
   if (!window_controls_overlay_enabled_) {
-    content::WebContents* web_contents = GetActiveWebContents();
-    // `web_contents` can be null while the window is closing, but possibly
+    // The web contents can be null while the window is closing, but possibly
     // also at other times. See https://crbug.com/40924318.
-    if (web_contents) {
-      web_contents->UpdateWindowControlsOverlay(gfx::Rect());
-    }
+    SafeInvoke(GetActiveWebContents())
+        .Then(&content::WebContents::UpdateWindowControlsOverlay, gfx::Rect());
   }
 
   if (web_app_frame_toolbar()) {
     web_app_frame_toolbar()->OnWindowControlsOverlayEnabledChanged();
   }
 
-  if (browser_widget_) {
-    if (auto* const frame_view = GetFrameView()) {
-      frame_view->WindowControlsOverlayEnabledChanged();
-    }
-  }
+  SafeInvoke(browser_widget_.get())
+      .Then(&BrowserWidget::GetFrameView)
+      .Then(&BrowserFrameView::WindowControlsOverlayEnabledChanged);
 
   // When Window Controls Overlay is enabled or disabled, the browser window
   // needs to be re-layed out to make sure the title bar and web contents appear
@@ -4363,15 +4360,12 @@ bool BrowserView::IsTabChangeInSplitView(content::WebContents* old_contents,
 void BrowserView::UpdateTabModalDialogHost() {
   multi_contents_view_->ExecuteOnEachVisibleContentsView(
       base::BindRepeating([](ContentsWebView* contents_view) {
-        if (contents_view->web_contents()) {
-          tabs::TabFeatures* tab_features =
-              tabs::TabInterface::GetFromContents(contents_view->web_contents())
-                  ->GetTabFeatures();
-          // When the browser is closing, TabFeatures may be destroyed.
-          if (tab_features) {
-            tab_features->tab_dialog_manager()->UpdateModalDialogHost();
-          }
-        }
+        SafeInvoke(contents_view->web_contents())
+            .Then(Overload<content::WebContents*>(
+                &tabs::TabInterface::GetFromContents))
+            .Then(Overload<>(&tabs::TabInterface::GetTabFeatures))
+            .Then(&tabs::TabFeatures::tab_dialog_manager)
+            .Then(&tabs::TabDialogManager::UpdateModalDialogHost);
       }));
 }
 
@@ -4670,10 +4664,10 @@ int BrowserView::NonClientHitTest(const gfx::Point& point) {
 
   // See if the mouse pointer is within the bounds of the
   // OrganizerPanelView.
-  if (organizer_panel_container_ && organizer_panel_container_->GetVisible()) {
+  if (organizer_tray_ && organizer_tray_->GetVisible()) {
     gfx::Point test_point(point);
-    if (ConvertedHitTest(parent(), organizer_panel_container_, &test_point)) {
-      if (organizer_panel_container_->IsPositionInWindowCaption(test_point)) {
+    if (ConvertedHitTest(parent(), organizer_tray_, &test_point)) {
+      if (organizer_tray_->IsPositionInWindowCaption(test_point)) {
         return HTCAPTION;
       }
       return HTCLIENT;
@@ -4849,11 +4843,9 @@ void BrowserView::Layout(PassKey) {
     // the `LocationBarView`. We must update its layout after the
     // `BrowserView` layout to ensure it aligns correctly with the location bar.
     auto* popup_view = toolbar_->location_bar_view()->GetOmniboxPopupView();
-    if (popup_view) {
-      if (auto* embedded_view = popup_view->AsOmniboxPopupViewBrowserView()) {
-        embedded_view->UpdateLayout();
-      }
-    }
+    SafeInvoke(popup_view)
+        .Then(&OmniboxPopupView::AsOmniboxPopupViewBrowserView)
+        .Then(&OmniboxPopupViewBrowserView::UpdateLayout);
   }
 
   // Some of the situations when the BrowserView is laid out are:
@@ -4987,11 +4979,9 @@ void BrowserView::AddedToWidget() {
     // `BrowserView` to add the popup frame as a child view. We inject it here
     // after the toolbar (and location bar) have been initialized.
     auto* popup_view = toolbar_->location_bar_view()->GetOmniboxPopupView();
-    if (popup_view) {
-      if (auto* embedded_view = popup_view->AsOmniboxPopupViewBrowserView()) {
-        embedded_view->SetBrowserView(this);
-      }
-    }
+    SafeInvoke(popup_view)
+        .Then(&OmniboxPopupView::AsOmniboxPopupViewBrowserView)
+        .Then(&OmniboxPopupViewBrowserView::SetBrowserView, this);
   }
 
   UpdateTabSearchBubbleHost();
@@ -5064,7 +5054,7 @@ void BrowserView::AddedToWidget() {
   layout_views.vertical_tab_strip_bottom_corner =
       vertical_tab_strip_bottom_corner_;
   layout_views.vertical_tab_strip_top_corner = vertical_tab_strip_top_corner_;
-  layout_views.organizer_panel_container = organizer_panel_container_;
+  layout_views.organizer_tray = organizer_tray_;
   layout_views.toolbar = toolbar_;
   layout_views.infobar_container = infobar_container_;
   layout_views.multi_contents_view = multi_contents_view_;
@@ -5105,14 +5095,14 @@ void BrowserView::AddedToWidget() {
 
   // Accessible name of the tab is dependent on the visibility state of the chip
   // view, so it needs to be made aware of any changes.
-  if (toolbar_ && toolbar_->location_bar() &&
-      toolbar_->location_bar()->GetChipController()) {
-    if (PermissionChipInterface* chip =
-            toolbar_->location_bar()->GetChipController()->chip()) {
-      chip_visibility_subscription_ = chip->AddVisibilityCallback(
-          base::BindRepeating(&BrowserView::UpdateAccessibleNameForAllTabs,
-                              weak_ptr_factory_.GetWeakPtr()));
-    }
+  if (auto* chip = SafeInvoke(toolbar_.get())
+                       .Then(&ToolbarView::location_bar)
+                       .Then(&LocationBar::GetChipController)
+                       .Then(&ChipController::chip)
+                       .get()) {
+    chip_visibility_subscription_ = chip->AddVisibilityCallback(
+        base::BindRepeating(&BrowserView::UpdateAccessibleNameForAllTabs,
+                            weak_ptr_factory_.GetWeakPtr()));
   }
 
   if (auto* const vertical_tab_strip_state_controller =
@@ -5285,8 +5275,7 @@ void BrowserView::CreateJumpList() {
 #endif
 
 bool BrowserView::ShouldShowAvatarToolbarIPH() {
-  if (GetGuestSession() || GetIncognito() ||
-      GetProfile()->IsEnterpriseIsolatedModeProfile()) {
+  if (GetGuestSession() || GetIncognito() || GetEnterpriseIsolatedMode()) {
     return false;
   }
   AvatarToolbarButtonInterface* avatar_button =

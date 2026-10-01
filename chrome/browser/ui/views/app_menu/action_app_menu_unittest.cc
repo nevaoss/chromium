@@ -11,6 +11,7 @@
 #include "base/memory/raw_ptr.h"
 #include "base/test/mock_callback.h"
 #include "base/uuid.h"
+#include "build/build_config.h"
 #include "chrome/browser/bookmarks/bookmark_merged_surface_service.h"
 #include "chrome/browser/bookmarks/bookmark_merged_surface_service_factory.h"
 #include "chrome/browser/bookmarks/bookmark_model_factory.h"
@@ -59,6 +60,7 @@
 #include "ui/views/controls/menu/menu_item_view.h"
 #include "ui/views/controls/menu/submenu_view.h"
 #include "ui/views/controls/textfield/textfield.h"
+#include "ui/views/test/button_test_api.h"
 #include "ui/views/view_class_properties.h"
 #include "ui/views/view_utils.h"
 #include "ui/views/widget/widget.h"
@@ -115,6 +117,12 @@ TEST_F(ActionAppMenuTest, PopulatesSectionCardsWithStyling) {
   ASSERT_TRUE(root);
 
   // Check if the menu contains section menu items.
+#if !BUILDFLAG(IS_CHROMEOS)
+  views::MenuItemView* profile_item =
+      root->GetMenuItemByID(kActionProfileSubmenu);
+  ASSERT_TRUE(profile_item);
+#endif
+
   views::MenuItemView* password_item =
       root->GetMenuItemByID(kActionPasswordsAndAutofillSubmenu);
   ASSERT_TRUE(password_item);
@@ -134,6 +142,9 @@ TEST_F(ActionAppMenuTest, PopulatesSectionCardsWithStyling) {
   ASSERT_TRUE(zoom_item);
 
   // Check if the styling is applied to the menu items.
+#if !BUILDFLAG(IS_CHROMEOS)
+  ASSERT_TRUE(profile_item->GetMenuItemBackground().has_value());
+#endif
   ASSERT_TRUE(password_item->GetMenuItemBackground().has_value());
   ASSERT_TRUE(print_item->GetMenuItemBackground().has_value());
   ASSERT_TRUE(downloads_item->GetMenuItemBackground().has_value());
@@ -141,6 +152,9 @@ TEST_F(ActionAppMenuTest, PopulatesSectionCardsWithStyling) {
   ASSERT_TRUE(zoom_item->GetMenuItemBackground().has_value());
 
   // Check horizontal margins on card backgrounds are explicitly 0.
+#if !BUILDFLAG(IS_CHROMEOS)
+  EXPECT_EQ(profile_item->GetMenuItemBackground()->horizontal_margin, 0);
+#endif
   EXPECT_EQ(password_item->GetMenuItemBackground()->horizontal_margin, 0);
   EXPECT_EQ(print_item->GetMenuItemBackground()->horizontal_margin, 0);
   EXPECT_EQ(downloads_item->GetMenuItemBackground()->horizontal_margin, 0);
@@ -149,8 +163,15 @@ TEST_F(ActionAppMenuTest, PopulatesSectionCardsWithStyling) {
 
   // Check corner radiuses for section cards (first item has top radius, last
   // has bottom radius, middle items have neither).
+#if BUILDFLAG(IS_CHROMEOS)
   EXPECT_EQ(password_item->GetMenuItemBackground()->top_radius, 8);
   EXPECT_EQ(password_item->GetMenuItemBackground()->bottom_radius, 0);
+#else
+  EXPECT_EQ(profile_item->GetMenuItemBackground()->top_radius, 8);
+  EXPECT_EQ(profile_item->GetMenuItemBackground()->bottom_radius, 0);
+  EXPECT_EQ(password_item->GetMenuItemBackground()->top_radius, 0);
+  EXPECT_EQ(password_item->GetMenuItemBackground()->bottom_radius, 0);
+#endif
   EXPECT_EQ(downloads_item->GetMenuItemBackground()->top_radius, 0);
   EXPECT_EQ(downloads_item->GetMenuItemBackground()->bottom_radius, 0);
   EXPECT_EQ(clear_browsing_item->GetMenuItemBackground()->top_radius, 0);
@@ -158,6 +179,9 @@ TEST_F(ActionAppMenuTest, PopulatesSectionCardsWithStyling) {
 
   // Check vertical padding:
   // Standard items (32dp row height): (32 - 16) / 2 = 8dp.
+#if !BUILDFLAG(IS_CHROMEOS)
+  EXPECT_EQ(profile_item->GetTopMargin(), 8);
+#endif
   EXPECT_EQ(password_item->GetTopMargin(), 8);
   EXPECT_EQ(print_item->GetTopMargin(), 8);
   EXPECT_EQ(downloads_item->GetTopMargin(), 8);
@@ -167,6 +191,10 @@ TEST_F(ActionAppMenuTest, PopulatesSectionCardsWithStyling) {
   EXPECT_EQ(zoom_item->GetTopMargin(), 16);
 
   // Check hover selection color matching subtle state.
+#if !BUILDFLAG(IS_CHROMEOS)
+  EXPECT_EQ(profile_item->GetSelectedColorId(),
+            ui::kColorSysStateHoverOnSubtle);
+#endif
   EXPECT_EQ(password_item->GetSelectedColorId(),
             ui::kColorSysStateHoverOnSubtle);
   EXPECT_EQ(print_item->GetSelectedColorId(), ui::kColorSysStateHoverOnSubtle);
@@ -519,6 +547,84 @@ TEST_F(ActionAppMenuTest, BlockActionsInvocation) {
       .Times(1);
   incognito_action->InvokeAction();
   testing::Mock::VerifyAndClearExpectations(&mock_action_invoked_);
+}
+
+TEST_F(ActionAppMenuTest, BlockButtonClickExecutesActionAfterMenuClosed) {
+  testing::InSequence s;
+  base::MockCallback<base::RepeatingClosure> on_menu_closed;
+
+  ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
+  menu.RunMenu(button_->button_controller());
+  ASSERT_TRUE(menu.IsShowing());
+
+  views::MenuItemView* root = menu.root_menu_item_for_testing();
+  ASSERT_TRUE(root);
+
+  // The block section is in the top MenuItemView.
+  views::MenuItemView* block_item = root->GetSubmenu()->GetMenuItemAt(0);
+  ASSERT_NE(block_item, nullptr);
+  auto* block_section_view =
+      views::AsViewClass<ActionAppMenuBlockView>(block_item->children()[0]);
+  ASSERT_TRUE(block_section_view);
+
+  // The first child button in the block view is kActionNewTab.
+  auto* new_tab_button = views::AsViewClass<ActionAppMenuBlockButton>(
+      block_section_view->children()[0]);
+  ASSERT_TRUE(new_tab_button);
+
+  // Verify strict ordering:
+  // 1. Menu must close and run on_menu_closed callback FIRST.
+  // 2. Action must be executed SECOND.
+  EXPECT_CALL(on_menu_closed, Run()).Times(1);
+  EXPECT_CALL(mock_action_invoked_, Call(kActionNewTab, testing::_, testing::_))
+      .Times(1);
+
+  // Simulate button click on the block button.
+  views::test::ButtonTestApi(new_tab_button).NotifyDefaultMouseClick();
+
+  EXPECT_FALSE(menu.IsShowing());
+}
+
+TEST_F(ActionAppMenuTest, FooterButtonClickExecutesActionAfterMenuClosed) {
+  testing::InSequence s;
+  base::MockCallback<base::RepeatingClosure> on_menu_closed;
+
+  ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
+  menu.RunMenu(button_->button_controller());
+  ASSERT_TRUE(menu.IsShowing());
+
+  views::MenuItemView* root = menu.root_menu_item_for_testing();
+  ASSERT_TRUE(root);
+
+  // The footer row is the last item in the submenu.
+  views::SubmenuView* submenu = root->GetSubmenu();
+  ASSERT_TRUE(submenu);
+  views::MenuItemView* footer_item =
+      submenu->GetMenuItemAt(submenu->GetMenuItems().size() - 1);
+  ASSERT_NE(footer_item, nullptr);
+
+  auto* footer_view =
+      views::AsViewClass<ActionAppMenuFooterView>(footer_item->children()[0]);
+  ASSERT_TRUE(footer_view);
+
+  // Left container child 0 is kActionOptions (Settings).
+  views::View* left_container = footer_view->children()[0];
+  auto* settings_button = views::AsViewClass<ActionAppMenuFooterButton>(
+      left_container->children()[0]);
+  ASSERT_TRUE(settings_button);
+
+  // Verify strict ordering:
+  // 1. Menu must close and run on_menu_closed callback FIRST.
+  // 2. Action must be executed SECOND.
+  EXPECT_CALL(on_menu_closed, Run()).Times(1);
+  EXPECT_CALL(mock_action_invoked_,
+              Call(kActionOptions, testing::_, testing::_))
+      .Times(1);
+
+  // Simulate button click on the footer button.
+  views::test::ButtonTestApi(settings_button).NotifyDefaultMouseClick();
+
+  EXPECT_FALSE(menu.IsShowing());
 }
 
 // Tests that changing the enabled state of a delegate action item
@@ -923,7 +1029,7 @@ TEST_F(ActionAppMenuTest, PopupAndComponentLayoutInsets) {
   menu.CloseMenu();
 }
 
-TEST_F(ActionAppMenuTest, SectionHeaderAndMenuItemBorderLayout) {
+TEST_F(ActionAppMenuTest, HeaderAndMenuItemBorderLayout) {
   FaviconServiceFactory::GetInstance()->SetTestingFactory(
       profile_.get(), base::BindRepeating([](content::BrowserContext* context)
                                               -> std::unique_ptr<KeyedService> {
@@ -981,7 +1087,7 @@ TEST_F(ActionAppMenuTest, SectionHeaderAndMenuItemBorderLayout) {
             provider->GetInsetsMetric(INSETS_ACTION_APP_MENU_ITEM));
   EXPECT_EQ(downloads_item->GetContentStart(), 16);
 
-  // 3. Section headers directly under root.
+  // 3. Headers directly under root.
   std::vector<views::MenuItemView*> root_titles;
   for (views::MenuItemView* item : submenu->GetMenuItems()) {
     if (item->GetType() == views::MenuItemView::Type::kTitle) {
@@ -990,7 +1096,7 @@ TEST_F(ActionAppMenuTest, SectionHeaderAndMenuItemBorderLayout) {
   }
   ASSERT_GE(root_titles.size(), 2u);
 
-  // First section header ("Your Chrome"):
+  // First header ("Your Chrome"):
   // - Starts flush with the card (0dp insets, content start 0)
   // - Standard top margin (8dp).
   EXPECT_EQ(root_titles[0]->GetParentMenuItem(), root);
@@ -999,7 +1105,7 @@ TEST_F(ActionAppMenuTest, SectionHeaderAndMenuItemBorderLayout) {
   EXPECT_EQ(root_titles[0]->GetContentStart(), 0);
   EXPECT_EQ(root_titles[0]->GetTopMargin(), 8);
 
-  // Second section header ("Tools and Actions"):
+  // Second header ("Tools and Actions"):
   // - Starts flush with the card (0dp insets, content start 0)
   // - Doubled top margin (16dp).
   EXPECT_EQ(root_titles[1]->GetParentMenuItem(), root);
@@ -1008,7 +1114,7 @@ TEST_F(ActionAppMenuTest, SectionHeaderAndMenuItemBorderLayout) {
   EXPECT_EQ(root_titles[1]->GetContentStart(), 0);
   EXPECT_EQ(root_titles[1]->GetTopMargin(), 16);
 
-  // 4. Section headers in submenus (not under root).
+  // 4. Headers in submenus (not under root).
   views::MenuItemView* tab_groups_item =
       root->GetMenuItemByID(kActionSavedTabGroupsSubmenu);
   ASSERT_TRUE(tab_groups_item);
@@ -1026,20 +1132,20 @@ TEST_F(ActionAppMenuTest, SectionHeaderAndMenuItemBorderLayout) {
   views::SubmenuView* group_submenu = group_item->GetSubmenu();
   ASSERT_TRUE(group_submenu);
 
-  views::MenuItemView* submenu_section_header = nullptr;
+  views::MenuItemView* submenu_header = nullptr;
   for (views::MenuItemView* item : group_submenu->GetMenuItems()) {
     if (item->GetType() == views::MenuItemView::Type::kTitle) {
-      submenu_section_header = item;
+      submenu_header = item;
       break;
     }
   }
-  ASSERT_NE(submenu_section_header, nullptr);
-  EXPECT_NE(submenu_section_header->GetParentMenuItem(), root);
-  EXPECT_EQ(submenu_section_header->GetParentMenuItem(), group_item);
+  ASSERT_NE(submenu_header, nullptr);
+  EXPECT_NE(submenu_header->GetParentMenuItem(), root);
+  EXPECT_EQ(submenu_header->GetParentMenuItem(), group_item);
   // Submenu headers do NOT receive the empty border or doubled top margin.
-  EXPECT_EQ(submenu_section_header->GetBorder(), nullptr);
-  EXPECT_NE(submenu_section_header->GetContentStart(), 0);
-  EXPECT_EQ(submenu_section_header->GetTopMargin(), 8);
+  EXPECT_EQ(submenu_header->GetBorder(), nullptr);
+  EXPECT_NE(submenu_header->GetContentStart(), 0);
+  EXPECT_EQ(submenu_header->GetTopMargin(), 8);
 
   EXPECT_CALL(on_menu_closed, Run()).Times(1);
   menu.CloseMenu();

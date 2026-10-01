@@ -901,6 +901,7 @@ if (is_fuchsia) {
       "//tools/perf/:perf",
     ]
   }
+
   group("fuchsia_telemetry_test_data") {
     testonly = true
     data = [ "//content/test/gpu/fuchsia_util.py" ]
@@ -1554,7 +1555,6 @@ test("content_browsertests") {
     "../browser/file_system_access/file_system_access_sync_access_handle_browsertest.cc",
     "../browser/file_system_access/file_system_chooser_browsertest.cc",
     "../browser/find_request_manager_browsertest.cc",
-    "../browser/first_party_sets/first_party_sets_handler_impl_browsertest.cc",
     "../browser/first_party_sets/test/first_party_sets_initialization_browsertest.cc",
     "../browser/font_access/font_access_manager_browsertest.cc",
     "../browser/font_unique_name_lookup/font_unique_name_browsertest.cc",
@@ -1879,6 +1879,11 @@ test("content_browsertests") {
 
   if (enable_reporting) {
     sources += [ "../browser/security/coop/cross_origin_opener_policy_reporting_browsertest.cc" ]
+  }
+
+  if (enable_disk_cache_sql_backend) {
+    sources +=
+        [ "../browser/network/renderer_accessible_http_cache_browsertest.cc" ]
   }
 
   if (use_viz_debugger) {
@@ -2608,6 +2613,7 @@ test("content_unittests") {
     "../browser/devtools/devtools_frontend_host_impl_unittest.cc",
     "../browser/devtools/devtools_http_handler_unittest.cc",
     "../browser/devtools/devtools_session_unittest.cc",
+    "../browser/devtools/devtools_url_loader_interceptor_unittest.cc",
     "../browser/devtools/devtools_video_consumer_unittest.cc",
     "../browser/devtools/protocol/digital_credentials_handler_unittest.cc",
     "../browser/devtools/protocol/media_recorder_unittest.cc",
@@ -2763,6 +2769,7 @@ test("content_unittests") {
     "../browser/push_messaging/push_messaging_manager_unittest.cc",
     "../browser/reduce_accept_language/reduce_accept_language_utils_unittest.cc",
     "../browser/renderer_host/ancestor_throttle_unittest.cc",
+    "../browser/renderer_host/back_forward_cache_disabling_feature_handle_unittest.cc",
     "../browser/renderer_host/browsing_context_group_swap_unittest.cc",
     "../browser/renderer_host/clipboard_host_impl_unittest.cc",
     "../browser/renderer_host/code_cache_host_impl_unittest.cc",
@@ -3171,7 +3178,10 @@ test("content_unittests") {
   }
 
   if (is_linux || is_chromeos) {
-    sources += [ "../child/sandboxed_process_thread_type_handler_unittest.cc" ]
+    sources += [
+      "../browser/child_thread_type_switcher_linux_unittest.cc",
+      "../child/sandboxed_process_thread_type_handler_unittest.cc",
+    ]
   }
 
   if (is_linux) {
@@ -3759,6 +3769,7 @@ if (is_apple) {
     outputs =
         [ "{{bundle_resources_dir}}/gen/$_relative_path/{{source_file_part}}" ]
   }
+
   bundle_data("content_test_perfetto_chrome_bundle_data") {
     testonly = true
     _relative_path = "third_party/perfetto/protos/perfetto/config/chrome"

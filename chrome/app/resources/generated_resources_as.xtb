@@ -1323,6 +1323,7 @@
 <translation id="2006638907958895361"><ph name="APP" />ত লিংকটো খোলক</translation>
 <translation id="2007404777272201486">কোনো সমস্যাৰ অভিযোগ দিয়ক...</translation>
 <translation id="200781997903833896">ডাঙৰকৈ পঢ়ি দিয়াৰ সুবিধাটো ব্যৱহাৰ কৰিবলৈ, আপোনাৰ ডিভাইচত ঠাই খালী কৰক</translation>
+<translation id="2009047848105043829">আপোনাৰ ডিভাইচসমূহ পৰিচালনা কৰক</translation>
 <translation id="2010501376126504057">সমিল ডিভাইচসমূহ</translation>
 <translation id="2010636492623189611">বাছনি কৰা হ’ল।</translation>
 <translation id="2012935757369720523">ফাইল মচক</translation>
@@ -6105,6 +6106,7 @@
 <translation id="5678955352098267522">আপোনাৰ ডেটা <ph name="WEBSITE_1" />ত পঢ়ক</translation>
 <translation id="5680050361008726776">"<ph name="ESIM_PROFILE_NAME" />" আঁতৰাবনে?</translation>
 <translation id="5681586175480958839">ফাইলটো ইতিমধ্যে খোলা হৈছে</translation>
+<translation id="5682120590308014005">আপোনাৰ AI ম’ডৰ থ্ৰেডত Driveৰ পৰা সহজে ফাইল যোগ দিবলৈ ছাইন ইন কৰক। আপুনি লগতে আপোনাৰ আটাইবোৰ ডিভাইচত পাছৱৰ্ড আৰু অধিক লাভ কৰিব।</translation>
 <translation id="5684110242705861346">আপোনাৰ প্ৰতিষ্ঠানৰ নীতি অনুসৰি "<ph name="NAME" />" এক্সটেনশ্বনটো যোগ দিয়া হৈছে আৰু সেইটোৱে এই ছেটিংটো নিয়ন্ত্ৰণ কৰি আছে। <ph name="BEGIN_LINK" />সবিশেষ চাওক<ph name="END_LINK" /></translation>
 <translation id="5684181005476681636">ৱাই-ফাইৰ সবিশেষ</translation>
 <translation id="5687340364605915800">ছাইটসমূহে এই অনুৰোধটোৰ প্ৰতি সঁহাৰি জনোৱাৰ সময়ত নিজৰ বিবেচনা ব্যৱহাৰ কৰে</translation>
@@ -6660,6 +6662,7 @@
 <translation id="6126601353087978360">অনুগ্ৰহ কৰি ইয়াত আপোনাৰ মতামত দিয়ক:</translation>
 <translation id="6127292407256937949">ভলিউম অন কৰা আছে। ভলিউম অফ কৰক।</translation>
 <translation id="6127598727646973981">সুৰক্ষিত সংযোগ</translation>
+<translation id="6129686474468159207">আপুনি কোনবোৰ ছাইটৰ পৰা কল কৰে আৰু আপোনাৰ কেমেৰা বা মাইক্ৰ’ফ’ন কেতিয়া ব্যৱহাৰ কৰা হয় চাওক</translation>
 <translation id="6129691635767514872">বাছনি কৰা ডেটাখিনি Chrome আৰু ছিংক কৰি থোৱা ডিভাইচসমূহৰ পৰা আঁতৰোৱা হৈছে। আপোনাৰ Google একাউণ্টৰ <ph name="BEGIN_LINK" />myactivity.google.com<ph name="END_LINK" />ত Googleৰ অন্য সেৱাত কৰা সন্ধান আৰু অন্যান্য কাৰ্যকলাপৰ দৰে ব্ৰাউজিঙৰ ইতিহাস থাকিব পাৰে।</translation>
 <translation id="6129938384427316298">নেটস্কে’প চাৰ্টিফিকেট কমেণ্ট</translation>
 <translation id="6129953537138746214">স্পেচ</translation>
@@ -8184,6 +8187,7 @@
 <translation id="7299588179200441056"><ph name="URL" /> - <ph name="FOLDER" /></translation>
 <translation id="730068416968462308">এনিমে’ট কৰা</translation>
 <translation id="7301812050652048720">পাছকী মচা হ’ল</translation>
+<translation id="7303246449496241344">আপোনাৰ AI ম’ডৰ থ্ৰেডত Driveৰ পৰা সহজে ফাইল যোগ দিবলৈ, এয়া আপুনিয়েই বুলি সত্যাপন কৰক। আপুনি লগতে আপোনাৰ আটাইবোৰ ডিভাইচত পাছৱৰ্ড আৰু অধিক লাভ কৰিব।</translation>
 <translation id="7303485269821975179">এটা <ph name="DEVICE_TYPE" /> পাছৱৰ্ড ছেট আপ কৰক</translation>
 <translation id="7303900363563182677">ক্লিপব’ৰ্ডলৈ প্ৰতিলিপি হোৱা পাঠ আৰু প্ৰতিচ্ছবিসমূহ চাব নোৱাৰাকৈ এই ছাইটটোক অৱৰোধ কৰা হৈছে</translation>
 <translation id="7304030187361489308">উচ্চ</translation>

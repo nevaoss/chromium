@@ -435,6 +435,7 @@ _CONFIG = [
     },
     {
         'paths': [
+            'third_party/blink/common/input/',
             'third_party/blink/public/common/input/',
         ],
         'allowed': [
@@ -2416,6 +2417,19 @@ _CONFIG = [
             # For interoperability with non-Blink code.
             'learning::mojom::LearningTaskControllerInterfaceBase',
             'media::mojom::MediaMetricsProviderInterfaceBase',
+        ],
+    },
+    {
+        'paths': [
+            'third_party/blink/renderer/core/messaging/blink_transferable_message_mojom_traits.cc',
+            'third_party/blink/renderer/core/messaging/blink_transferable_message_mojom_traits.h',
+        ],
+        'allowed': [
+            # Allow the shared Mojo types needed to explicitly instantiate the
+            # unserialized message context in blink_core. These types have no
+            # mojom::blink equivalents.
+            'blink::mojom::internal',
+            'blink::mojom::TransferableMessageDataView',
         ],
     },
     {

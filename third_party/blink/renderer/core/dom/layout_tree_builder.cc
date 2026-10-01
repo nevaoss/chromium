@@ -87,11 +87,12 @@ LayoutObject* LayoutTreeBuilderForElement::ParentLayoutObject() const {
     return node_->GetDocument().GetLayoutView();
   }
 #if DCHECK_IS_ON()
-  // Box of ::scroll-marker-group and ::scroll-button is previous/next
-  // sibling of its originating element, so the parent should be originating
-  // element's parent. But not in case of <html> element.
+  // Box of ::scroll-marker-group, ::scroll-button, and ::interest-button is
+  // previous/next sibling of its originating element, so the parent should be
+  // originating element's parent. But not in case of <html> element.
   if ((node_->IsScrollMarkerGroupPseudoElement() ||
-       node_->IsScrollButtonPseudoElement()) &&
+       node_->IsScrollButtonPseudoElement() ||
+       node_->IsInterestButtonPseudoElement()) &&
       !node_->parentElement()->IsDocumentElement()) {
     ContainerNode* parent_element =
         LayoutTreeBuilderTraversal::LayoutParent(*node_->parentElement());
@@ -145,7 +146,7 @@ void LayoutTreeBuilderForElement::CreateLayoutObject() {
 #if DCHECK_IS_ON()
   DCHECK(!new_layout_object->HasStyle());
 #endif
-  new_layout_object->SetStyle(style_);
+  new_layout_object->SetStyle(*style_);
 
   parent_layout_object->AddChild(new_layout_object, next_layout_object);
 }
@@ -177,7 +178,7 @@ LayoutTreeBuilderForText::CreateInlineWrapperForDisplayContentsIfNeeded(
   // parent of text nodes to have the same inherited properties.
   LayoutObject* inline_wrapper =
       LayoutInline::CreateAnonymous(node_->GetDocument());
-  inline_wrapper->SetStyle(wrapper_style);
+  inline_wrapper->SetStyle(*wrapper_style);
   if (!context_.parent->IsChildAllowed(inline_wrapper, *wrapper_style)) {
     inline_wrapper->Destroy();
     return nullptr;
@@ -217,7 +218,7 @@ void LayoutTreeBuilderForText::CreateLayoutObject() {
 #if DCHECK_IS_ON()
   DCHECK(!new_layout_object->HasStyle());
 #endif
-  new_layout_object->SetStyle(style);
+  new_layout_object->SetStyle(*style);
 
   layout_object_parent->AddChild(new_layout_object, next_layout_object);
 }

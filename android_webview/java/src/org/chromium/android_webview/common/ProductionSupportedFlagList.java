@@ -467,6 +467,10 @@ public final class ProductionSupportedFlagList {
         Flag.baseFeature(
                 MetricsFeatures.METRICS_LOG_TRIMMING, "Controls trimming for metrics logs."),
         Flag.baseFeature(
+                "HistogramDenylist",
+                "Disables or overrides the denylist for UMA histogram uploads "
+                        + "(e.g. Variations.FeatureAccess)."),
+        Flag.baseFeature(
                 ContentFeatures.REDUCE_SUBRESOURCE_RESPONSE_STARTED_IPC,
                 "When enabled, reduces SubresourceResponseStarted IPC by sending"
                         + " subresource notifications only if the user has allowed"
@@ -1237,17 +1241,6 @@ public final class ProductionSupportedFlagList {
                 AwFeatures.WEBVIEW_VIZ_DIRECT_COMPOSITOR_THREAD_IPC_FRAME_SINK_MANAGER,
                 "Binds FrameSinkManager as a DirectReceiver, allowing FSM and all mojoms passed"
                         + " through it to receive IPCs directly."),
-
-        // Features for PerfCombined2025_WebView study
-        Flag.baseFeature("ReducePPMs"),
-        Flag.baseFeature("RemoveCancelledScriptedIdleTasks"),
-        Flag.baseFeature("MemoryCacheChangeStrongReferencePruneDelay"),
-        Flag.baseFeature("MemoryCacheStrongReference"),
-        Flag.baseFeature("ReleaseResourceStrongReferencesOnMemoryPressure"),
-        Flag.baseFeature("ReleaseResourceDecodedDataOnMemoryPressure"),
-        Flag.baseFeature("SuppressMemoryListeners"),
-        Flag.baseFeature("SuppressMemoryMonitor"),
-        Flag.baseFeature("CompressParkableStrings"),
         Flag.baseFeature(
                 ContentFeatures.ANDROID_MEDIA_INSERTION,
                 "When enabled, IMEs should be able to insert media content such as images, gifs and"
@@ -1293,9 +1286,6 @@ public final class ProductionSupportedFlagList {
                 BlinkFeatures.UNTHROTTLE_ASYNC_TOUCH_MOVES,
                 "When enabled, touch move events to javascript handlers are unthrottled if "
                         + "they are sent as async to Renderer."),
-        Flag.baseFeature(
-                BlinkFeatures.RUSTY_BMP_FEATURE,
-                "When enabled, uses Rust `image` crate to decode BMP images."),
         Flag.baseFeature(
                 "NoSequenceForLevelDBCleanupTasks",
                 "When enabled, LevelDB cleanup tasks are run concurrently instead of in sequence."),

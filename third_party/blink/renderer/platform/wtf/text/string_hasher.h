@@ -25,7 +25,6 @@
 
 #include <stdint.h>
 
-#include <concepts>
 #include <cstring>
 
 #include "base/containers/span.h"
@@ -50,21 +49,6 @@ class StringHasher {
         data.size() * Reader::kExpansionFactor / Reader::kCompressionFactor));
   }
 
-  // Another entry point for the string hasher. Computes the hash and returns
-  // only the lowest 24 bits, since that's what we have room for in StringImpl.
-  //
-  // NOTE: length is the number of bytes produced _by the reader_.
-  // Normally, this means that the number of bytes actually read will be
-  // equivalent to (length * Reader::kCompressionFactor /
-  // Reader::kExpansionFactor). Also note that if you are hashing something
-  // that is not 8-bit elements, and do _not_ use compression factors or
-  // similar, you'll need to multiply by sizeof(T) to get all data read.
-  template <class Reader = PlainHashReader>
-  static unsigned ComputeHashAndMaskTop8Bits(const char* data, size_t length) {
-    return MaskTop8Bits(
-        rapidhash<Reader>(reinterpret_cast<const uint8_t*>(data), length));
-  }
-
   // Hashing can be very performance-sensitive, but the hashing function is also
   // fairly big (~300 bytes on x86-64, give or take). This function is exactly
   // equivalent to ComputeHashAndMaskTop8Bits(), except that it is marked as
@@ -85,32 +69,15 @@ class StringHasher {
   // enough to inline. The same goes if you are the only user of your
   // HashReader.
   template <class Reader = PlainHashReader>
-  ALWAYS_INLINE static unsigned ComputeHashAndMaskTop8BitsInline(
+  ALWAYS_INLINE static uint32_t ComputeHashAndMaskTop8BitsInline(
       base::span<const uint8_t> data) {
-    return MaskTop8Bits(rapidhash<Reader>(data.data(), data.size()));
-  }
-
-  // TODO(crbug.com/458429790): Once clang is better able to optimize this,
-  // simplify this to a single overload that accepts a base::span<const
-  // uint8_t>.
-  template <typename T>
-    requires(std::convertible_to<T, base::span<const uint8_t>>)
-  static uint64_t HashMemory64(const T& t) {
-    base::span data = t;
-    static_assert(std::same_as<typename decltype(data)::value_type, uint8_t>);
-    return rapidhash(data.data(), data.size());
-  }
-  // TODO(crbug.com/458429790): Once clang is better able to optimize this,
-  // simplify this to a single overload that accepts a base::span<const
-  // uint8_t>.
-  template <typename T>
-    requires(std::convertible_to<T, base::span<const uint8_t>>)
-  static uint32_t HashMemory32(const T& t) {
-    return static_cast<uint32_t>(HashMemory64(t));
+    return MaskTop8Bits(rapidhash<Reader>(
+        data.data(),
+        data.size() * Reader::kExpansionFactor / Reader::kCompressionFactor));
   }
 
  private:
-  static unsigned MaskTop8Bits(uint64_t result) {
+  static uint32_t MaskTop8Bits(uint64_t result) {
     // Reserving space from the high bits for flags preserves most of the hash's
     // value, since hash lookup typically masks out the high bits anyway.
     result &= (1U << (32 - kFlagCount)) - 1;
@@ -123,7 +90,7 @@ class StringHasher {
       result = 0x80000000 >> kFlagCount;
     }
 
-    return static_cast<unsigned>(result);
+    return static_cast<uint32_t>(result);
   }
 };
 

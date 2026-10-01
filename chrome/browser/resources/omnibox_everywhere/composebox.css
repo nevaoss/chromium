@@ -17,15 +17,18 @@
   /* Preserves 2px border width parity with omnibox-everywhere-omnibox to
    * prevent layout shift when toggling between searchbox and composebox. */
   border: 2px solid transparent;
-  border-radius: 28px;
+  border-radius: 16px;
   box-sizing: border-box;
+  font-size: var(--cr-searchbox-font-size, 16px);
+  --cr-composebox-font-size: var(--cr-searchbox-font-size, 16px);
   --composebox-cancel-button-top: var(--cr-composebox-cancel-button-top, 10px);
   --cr-composebox-background-color: var(--color-searchbox-background);
   --input-bottom-spacing: 10px;
   --text-input-top-spacing: 10px;
   --text-input-inline-end-spacing: 80px;
   --text-input-inline-start-spacing: 16px;
-  --cr-searchbox-match-padding-inline-start: 16px;
+  --cr-composebox-match-icon-container-padding-inline-start: 16px;
+  --cr-searchbox-match-text-padding-inline-start: 8px;
   --text-input-max-height: 190px;
   --color-composebox-type-ahead: var(
       --color-searchbox-placeholder,
@@ -48,7 +51,7 @@
 #composebox {
   /* Transparent so search-animated-glow behind it (z-index: 1) can render
    * the background and energy glow effect via composebox-background. */
-  background-color: transparent;
+  background-color: var(--omnibox-inactive-hover-overlay, transparent);
   border-radius: inherit;
   display: flex;
   flex-direction: column;
@@ -117,6 +120,13 @@ search-animated-glow:not([animation-state='expanding'])::part(
   inset: 0;
 }
 
+#errorScrim {
+  border-radius: inherit;
+  inset: 0;
+  position: absolute;
+  z-index: 100;
+}
+
 #shadow-container {
   position: absolute;
   inset: 0;
@@ -169,7 +179,8 @@ cr-composebox-input::part(cancel-icon),
 cr-composebox-input::part(action-icon),
 cr-composebox-submit::part(submit),
 cr-composebox-submit::part(submit-icon),
-cr-composebox-dropdown::part(dropdown),
+cr-composebox-dropdown,
+#matches,
 #carousel,
 #contextEntrypoint,
 cr-composebox-contextual-entrypoint-and-menu,
@@ -178,11 +189,34 @@ cr-composebox-tool-chip,
 .searchbox-icon-button,
 #voiceSearchButton,
 #lensSearchButton,
-#screenshotMenu {
+#screenshotMenu,
+#errorScrim,
+ntp-error-scrim {
   -webkit-app-region: no-drag;
 }
 
 cr-composebox-input::part(icon-container) {
   -webkit-app-region: drag;
   -webkit-user-drag: none;
+  width: var(--cr-searchbox-icon-container-size, 32px);
+}
+
+cr-composebox-input::part(input),
+cr-composebox-input::part(mirror),
+cr-composebox-input::part(smart-compose) {
+  padding-inline-start: 10.5px;
+}
+
+cr-composebox-dropdown::part(match-icon-container) {
+  padding-inline-start: 16px;
+  width: 32px;
+}
+
+cr-composebox-dropdown::part(match-text-container) {
+  padding-inline-start: 8px;
+}
+
+:host(:not([is-active])),
+:host(:not([is-active])) cr-composebox-input::part(icon-container) {
+  -webkit-app-region: no-drag;
 }

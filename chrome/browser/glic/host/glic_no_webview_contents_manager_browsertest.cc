@@ -41,7 +41,7 @@ GlicNoWebviewContentsManager* GetNoWebviewContentsManager(
 void ClickOverlayElement(content::WebContents* overlay_contents,
                          std::string_view query_selector) {
   ASSERT_TRUE(overlay_contents);
-  EXPECT_TRUE(content::WaitForLoadStop(overlay_contents));
+  ASSERT_TRUE(content::WaitForLoadStop(overlay_contents));
   content::ExecuteScriptAsync(overlay_contents,
                               base::StringPrintf(
                                   R"(
@@ -64,6 +64,7 @@ void ClickOverlayElement(content::WebContents* overlay_contents,
 class GlicNoWebviewContentsManagerBrowserTest : public GlicBrowserTest {
  public:
   GlicNoWebviewContentsManagerBrowserTest() {
+    SetUseHttpsForGlicUrl(true);
     scoped_feature_list_.InitWithFeatures(
         /*enabled_features=*/{features::kGlicNoWebview,
                               pwc::mojom::features::kPrivilegedWebContents},
@@ -72,6 +73,21 @@ class GlicNoWebviewContentsManagerBrowserTest : public GlicBrowserTest {
 
  protected:
   base::test::ScopedFeatureList scoped_feature_list_;
+};
+
+// Test fixture specifically for tests that interact with the overlay WebUI
+// (error panels and loading panel). Uses a static page without Glic client
+// scripts so the guest does not bootstrap into a client and trigger premature
+// overlay deletion while the test interacts with the overlay.
+class GlicNoWebviewOverlayBrowserTest
+    : public GlicNoWebviewContentsManagerBrowserTest {
+ public:
+  GlicNoWebviewOverlayBrowserTest() {
+    // Setting a static HTML page prevents the guest from bootstrapping a
+    // GlicWebClient, avoiding race conditions where the guest loads quickly
+    // and prematurely dismisses the loading panel or deletes the overlay.
+    SetGlicPagePath("/title1.html");
+  }
 };
 
 IN_PROC_BROWSER_TEST_F(GlicNoWebviewContentsManagerBrowserTest,
@@ -129,14 +145,25 @@ IN_PROC_BROWSER_TEST_F(GlicNoWebviewContentsManagerBrowserTest,
                        OverlayNotCreatedOnErrorDuringWarming) {
   GlicNoWebviewContentsManager manager(GetProfile(),
                                        /*initially_hidden=*/true);
+  EXPECT_EQ(manager.state(),
+            GlicNoWebviewContentsManager::DisplayState::kWarming);
   EXPECT_FALSE(manager.ShouldReloadOnShow());
   manager.SetErrorState(mojom::ErrorPanelType::kError);
   EXPECT_TRUE(manager.ShouldReloadOnShow());
   EXPECT_EQ(manager.overlay_contents(), nullptr);
+  EXPECT_EQ(manager.state(),
+            GlicNoWebviewContentsManager::DisplayState::kWarming);
 
   // Deterministic error panels (like sign-in) should not trigger a reload.
   manager.SetErrorState(mojom::ErrorPanelType::kSignIn);
   EXPECT_FALSE(manager.ShouldReloadOnShow());
+
+  // Becoming visible transitions to kShowingOverlay and creates overlay.
+  manager.SetVisibility(content::Visibility::VISIBLE);
+  EXPECT_EQ(manager.state(),
+            GlicNoWebviewContentsManager::DisplayState::kShowingOverlay);
+  EXPECT_NE(manager.overlay_contents(), nullptr);
+  EXPECT_EQ(manager.active_web_contents(), manager.overlay_contents());
 }
 
 IN_PROC_BROWSER_TEST_F(GlicNoWebviewContentsManagerBrowserTest,
@@ -198,7 +225,7 @@ IN_PROC_BROWSER_TEST_F(GlicNoWebviewContentsManagerBrowserTest,
   EXPECT_TRUE(manager.ShouldReloadOnShow());
 }
 
-IN_PROC_BROWSER_TEST_F(GlicNoWebviewContentsManagerBrowserTest,
+IN_PROC_BROWSER_TEST_F(GlicNoWebviewOverlayBrowserTest,
                        IneligibleAccountHelpClickOpensTab) {
   ASSERT_OK_AND_ASSIGN(GlicInstanceImpl * instance, OpenGlicForActiveTab());
   auto* manager = GetNoWebviewContentsManager(instance);
@@ -218,7 +245,7 @@ IN_PROC_BROWSER_TEST_F(GlicNoWebviewContentsManagerBrowserTest,
   EXPECT_OK(WaitForGlicClose(instance));
 }
 
-IN_PROC_BROWSER_TEST_F(GlicNoWebviewContentsManagerBrowserTest,
+IN_PROC_BROWSER_TEST_F(GlicNoWebviewOverlayBrowserTest,
                        LocationMismatchHelpClickOpensTab) {
   ASSERT_OK_AND_ASSIGN(GlicInstanceImpl * instance, OpenGlicForActiveTab());
   auto* manager = GetNoWebviewContentsManager(instance);
@@ -238,7 +265,7 @@ IN_PROC_BROWSER_TEST_F(GlicNoWebviewContentsManagerBrowserTest,
   EXPECT_OK(WaitForGlicClose(instance));
 }
 
-IN_PROC_BROWSER_TEST_F(GlicNoWebviewContentsManagerBrowserTest,
+IN_PROC_BROWSER_TEST_F(GlicNoWebviewOverlayBrowserTest,
                        DisabledByAdminLinkClickOpensTabAndRecordsMetric) {
   ASSERT_OK_AND_ASSIGN(GlicInstanceImpl * instance, OpenGlicForActiveTab());
   auto* manager = GetNoWebviewContentsManager(instance);
@@ -261,7 +288,7 @@ IN_PROC_BROWSER_TEST_F(GlicNoWebviewContentsManagerBrowserTest,
   EXPECT_OK(WaitForGlicClose(instance));
 }
 
-IN_PROC_BROWSER_TEST_F(GlicNoWebviewContentsManagerBrowserTest,
+IN_PROC_BROWSER_TEST_F(GlicNoWebviewOverlayBrowserTest,
                        CloseButtonClickClosesPanel) {
   ASSERT_OK_AND_ASSIGN(GlicInstanceImpl * instance, OpenGlicForActiveTab());
   auto* manager = GetNoWebviewContentsManager(instance);
@@ -273,7 +300,7 @@ IN_PROC_BROWSER_TEST_F(GlicNoWebviewContentsManagerBrowserTest,
   EXPECT_OK(WaitForGlicClose(instance));
 }
 
-IN_PROC_BROWSER_TEST_F(GlicNoWebviewContentsManagerBrowserTest,
+IN_PROC_BROWSER_TEST_F(GlicNoWebviewOverlayBrowserTest,
                        DisabledByAdminCloseButtonClickClosesPanel) {
   ASSERT_OK_AND_ASSIGN(GlicInstanceImpl * instance, OpenGlicForActiveTab());
   auto* manager = GetNoWebviewContentsManager(instance);
@@ -287,7 +314,7 @@ IN_PROC_BROWSER_TEST_F(GlicNoWebviewContentsManagerBrowserTest,
   EXPECT_OK(WaitForGlicClose(instance));
 }
 
-IN_PROC_BROWSER_TEST_F(GlicNoWebviewContentsManagerBrowserTest,
+IN_PROC_BROWSER_TEST_F(GlicNoWebviewOverlayBrowserTest,
                        RetryButtonClickTriggersReload) {
   ASSERT_OK_AND_ASSIGN(GlicInstanceImpl * instance, OpenGlicForActiveTab());
   auto* manager = GetNoWebviewContentsManager(instance);

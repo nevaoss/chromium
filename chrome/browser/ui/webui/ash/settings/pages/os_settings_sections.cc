@@ -35,6 +35,9 @@ using ::chromeos::settings::mojom::Section;
 }
 
 OsSettingsSections::OsSettingsSections(
+    PrefService* local_state,
+    const ApplicationLocaleStorage* application_locale_storage,
+    policy::BrowserPolicyConnectorAsh* browser_policy_connector_ash,
     Profile* profile,
     SearchTagRegistry* search_tag_registry,
     multidevice_setup::MultiDeviceSetupClient* multidevice_setup_client,
@@ -83,16 +86,19 @@ OsSettingsSections::OsSettingsSections(
       mojom::Section::kPrivacyAndSecurity,
       std::make_unique<PrivacySection>(profile, search_tag_registry, prefs));
 
-  AddSection(mojom::Section::kAccessibility,
-             std::make_unique<AccessibilitySection>(
-                 profile, search_tag_registry, prefs));
+  AddSection(
+      mojom::Section::kAccessibility,
+      std::make_unique<AccessibilitySection>(
+          application_locale_storage, profile, search_tag_registry, prefs));
 
   AddSection(
       mojom::Section::kAboutChromeOs,
-      std::make_unique<AboutSection>(profile, search_tag_registry, prefs));
+      std::make_unique<AboutSection>(local_state, browser_policy_connector_ash,
+                                     profile, search_tag_registry, prefs));
 
   AddSection(mojom::Section::kKerberos,
-             std::make_unique<KerberosSection>(profile, search_tag_registry,
+             std::make_unique<KerberosSection>(local_state, profile,
+                                               search_tag_registry,
                                                kerberos_credentials_manager));
 
   AddSection(mojom::Section::kSystemPreferences,

@@ -8,6 +8,7 @@
 #include <iterator>
 #include <utility>
 
+#include "base/logging.h"
 #include "chrome/common/readaloud/read_aloud.mojom.h"
 #include "chrome/common/readaloud/read_aloud_constants.h"
 
@@ -23,8 +24,11 @@ CachedCompressedSegment::CachedCompressedSegment() = default;
 
 CachedCompressedSegment::CachedCompressedSegment(
     scoped_refptr<media::DecoderBuffer> opus_buffer,
-    std::vector<DecodedAudioSegment::WordTiming> timings)
-    : opus_buffer(std::move(opus_buffer)), timings(std::move(timings)) {}
+    std::vector<WordTiming> timings,
+    SynthesisResultStatus status)
+    : status(status),
+      opus_buffer(std::move(opus_buffer)),
+      timings(std::move(timings)) {}
 
 CachedCompressedSegment::CachedCompressedSegment(
     const CachedCompressedSegment&) = default;
@@ -47,6 +51,7 @@ void PrefetchManager::SetTextContent(
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   ResetSession();
 
+  size_t document_offset = 0;
   for (const read_aloud::mojom::TextSegmentPtr& segment : segments) {
     if (!segment || segment->text.empty()) {
       continue;
@@ -56,8 +61,9 @@ void PrefetchManager::SetTextContent(
     // are not sent as standalone network synthesis requests. In
     // ChunkingMode::kQuality, retain them within paragraph groupings for
     // natural prosody and pauses.
-    std::vector<TextChunk> sentence_chunks =
-        ChunkText(segment->text, GetChunkingMode(), locale_tag);
+    std::vector<TextChunk> sentence_chunks = ChunkText(
+        segment->text, GetChunkingMode(), locale_tag, document_offset);
+    document_offset += segment->text.size();
     timeline_.insert(timeline_.end(),
                      std::make_move_iterator(sentence_chunks.begin()),
                      std::make_move_iterator(sentence_chunks.end()));
@@ -117,7 +123,7 @@ void PrefetchManager::OnSynthesisResponse(
     uint64_t sequence_id,
     uint32_t chunk_index,
     scoped_refptr<media::DecoderBuffer> opus_buffer,
-    std::vector<DecodedAudioSegment::WordTiming> timings) {
+    std::vector<WordTiming> timings) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (sequence_id != session_sequence_id_) {
     return;
@@ -126,7 +132,17 @@ void PrefetchManager::OnSynthesisResponse(
     return;
   }
   inflight_requests_.erase(chunk_index);
-  InsertCachedSegment(chunk_index, std::move(opus_buffer), std::move(timings));
+
+  if (!opus_buffer || opus_buffer->empty()) {
+    LOG(WARNING) << "ReadAloud: Synthesis error or empty audio buffer received "
+                    "for chunk "
+                 << chunk_index;
+    InsertCachedSegment(chunk_index, nullptr, {},
+                        SynthesisResultStatus::kSynthesisError);
+  } else {
+    InsertCachedSegment(chunk_index, std::move(opus_buffer), std::move(timings),
+                        SynthesisResultStatus::kSuccess);
+  }
   MaybeIssueSynthesisRequest();
 }
 
@@ -150,8 +166,9 @@ bool PrefetchManager::HasCachedSegment(uint32_t chunk_index) const {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   std::map<uint32_t, CachedCompressedSegment>::const_iterator it =
       session_cache_.find(chunk_index);
-  return it != session_cache_.end() && it->second.opus_buffer &&
-         !it->second.opus_buffer->empty();
+  return it != session_cache_.end() &&
+         it->second.status == SynthesisResultStatus::kSuccess &&
+         it->second.opus_buffer && !it->second.opus_buffer->empty();
 }
 
 const CachedCompressedSegment* PrefetchManager::GetCachedSegment(
@@ -168,14 +185,15 @@ const CachedCompressedSegment* PrefetchManager::GetCachedSegment(
 void PrefetchManager::InsertCachedSegment(
     uint32_t chunk_index,
     scoped_refptr<media::DecoderBuffer> opus_buffer,
-    std::vector<DecodedAudioSegment::WordTiming> timings) {
+    std::vector<WordTiming> timings,
+    SynthesisResultStatus status) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   if (!timeline_.empty() && chunk_index >= GetTimelineChunkCount()) {
     return;
   }
   session_cache_.insert_or_assign(
-      chunk_index,
-      CachedCompressedSegment(std::move(opus_buffer), std::move(timings)));
+      chunk_index, CachedCompressedSegment(std::move(opus_buffer),
+                                           std::move(timings), status));
 }
 
 void PrefetchManager::ClearCache() {

@@ -326,6 +326,8 @@ class TabAndroid : public tabs::TabInterface,
       bool keep_session_id,
       bool clear_delegate);
 
+  void ResetTabAlertController();
+
   int tab_id_;
 
   // Identifier of the window the tab is in.
@@ -389,6 +391,12 @@ template <>
 inline ScopedJavaLocalRef<jobject> ToJniType<TabAndroid*>(
     JNIEnv* env,
     TabAndroid* const& tab) {
+  return tab ? tab->GetJavaObject() : nullptr;
+}
+template <>
+inline ScopedJavaLocalRef<jobject> ToJniType<const TabAndroid*>(
+    JNIEnv* env,
+    const TabAndroid* const& tab) {
   return tab ? tab->GetJavaObject() : nullptr;
 }
 }  // namespace jni_zero

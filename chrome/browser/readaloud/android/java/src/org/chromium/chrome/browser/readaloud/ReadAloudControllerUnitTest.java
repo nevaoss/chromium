@@ -476,6 +476,25 @@ public class ReadAloudControllerUnitTest {
 
     @Test
     @EnableFeatures(ReadAloudFeatures.READ_ALOUD_NATIVE)
+    public void testIsServerSynthesizerEnabled_nativeEnabled() {
+        assertTrue(ReadAloudFeatures.isServerSynthesizerEnabled());
+    }
+
+    @Test
+    @EnableFeatures(ReadAloudFeatures.READ_ALOUD_SERVER_SYNTHESIZER)
+    public void testIsServerSynthesizerEnabled_synthesizerEnabled() {
+        assertTrue(ReadAloudFeatures.isServerSynthesizerEnabled());
+    }
+
+    @Test
+    @EnableFeatures(ReadAloudFeatures.READ_ALOUD_NATIVE)
+    @DisableFeatures(ReadAloudFeatures.READ_ALOUD_SERVER_SYNTHESIZER)
+    public void testIsServerSynthesizerEnabled_explicitlyDisabled() {
+        assertFalse(ReadAloudFeatures.isServerSynthesizerEnabled());
+    }
+
+    @Test
+    @EnableFeatures(ReadAloudFeatures.READ_ALOUD_NATIVE)
     public void testCreatePlayback_nativeEnabled_createsNativePlayback() {
         when(mNativeBridgeNatives.init(any(), any())).thenReturn(12345L);
         mController.onProfileAvailable(mMockProfile);
@@ -2476,6 +2495,49 @@ public class ReadAloudControllerUnitTest {
         // Don't play, because original state was STOPPED.
         verify(mPlayback, never()).play();
         verify(mPlayback).seekToParagraph(eq(99), eq(0L));
+    }
+
+    @Test
+    @EnableFeatures(ReadAloudFeatures.READ_ALOUD_NATIVE)
+    public void testPreviewVoice_nativeEnabled() {
+        when(mNativeBridgeNatives.init(any(), any())).thenReturn(12345L);
+        mController.onProfileAvailable(mMockProfile);
+
+        var voice = new PlaybackVoice("en", "voice_ruby", "");
+        Promise<Playback> promise = mController.previewVoice(voice);
+        resolvePromises();
+
+        // Verify native bridge is used instead of legacy hooks.
+        verify(mPlaybackHooks, never()).createPlayback(any(), any());
+        verify(mNativeBridgeNatives).previewVoice(eq(12345L), eq("voice_ruby"));
+
+        assertTrue(promise.isFulfilled());
+        Playback previewPlayback = promise.getResult();
+        assertNotNull(previewPlayback);
+        assertTrue(previewPlayback instanceof NativeVoicePreviewPlayback);
+        assertEquals(
+                PlaybackListener.State.BUFFERING,
+                ((NativeVoicePreviewPlayback) previewPlayback).getState());
+
+        // Simulate native transition to PLAYING.
+        mController.onVoicePreviewPlaybackStateChanged(
+                "voice_ruby", PlaybackListener.State.PLAYING);
+        assertEquals(
+                PlaybackListener.State.PLAYING,
+                ((NativeVoicePreviewPlayback) previewPlayback).getState());
+
+        // Stale callback for another voice should be ignored.
+        mController.onVoicePreviewPlaybackStateChanged(
+                "other_voice", PlaybackListener.State.STOPPED);
+        assertEquals(
+                PlaybackListener.State.PLAYING,
+                ((NativeVoicePreviewPlayback) previewPlayback).getState());
+
+        // Simulate native transition to STOPPED (preview finished).
+        mController.onVoicePreviewPlaybackStateChanged("", PlaybackListener.State.STOPPED);
+        assertEquals(
+                PlaybackListener.State.STOPPED,
+                ((NativeVoicePreviewPlayback) previewPlayback).getState());
     }
 
     @Test

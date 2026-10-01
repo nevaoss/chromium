@@ -3970,8 +3970,12 @@ bool TabStripModel::CloseWebContentses(
     if (tab_model->IsVisible() && !closing_all_) {
       tab_model->WillBecomeHidden(base::PassKey<TabStripModel>());
     }
-    tab_model->WillDetach(base::PassKey<TabStripModel>(),
-                          tabs::TabInterface::DetachReason::kDelete);
+    // TODO(crbug.com/558720516): Remove this and always call WillDetach after
+    // unload handlers below.
+    if (!ShouldRunUnloadListenerBeforeClosing(contents)) {
+      tab_model->WillDetach(base::PassKey<TabStripModel>(),
+                            tabs::TabInterface::DetachReason::kDelete);
+    }
   }
 
   // We only try the fast shutdown path if the whole browser process is *not*
@@ -4027,6 +4031,12 @@ bool TabStripModel::CloseWebContentses(
       TabCloseTypesData::CreateForWebContents(closing_contents, close_types);
       closed_all = false;
       continue;
+    }
+
+    tabs::TabModel* tab_model = GetTabModelAtIndex(current_index);
+    if (ShouldRunUnloadListenerBeforeClosing(closing_contents)) {
+      tab_model->WillDetach(base::PassKey<TabStripModel>(),
+                            tabs::TabInterface::DetachReason::kDelete);
     }
 
     bool create_historical_tab =
@@ -5467,7 +5477,7 @@ void TabStripModel::SetSitesMuted(const std::vector<int>& indices,
       // The goal is to only add the site URL to the exception list if
       // the request behavior differs from the default value or if there is an
       // existing less specific rule (i.e. wildcards) in the exception list.
-      if (!profile->IsIncognitoProfile()) {
+      if (!profile->IsPrimaryOTRProfileWithRegularParent()) {
         // Using default setting value below clears the setting from the
         // exception list for the site URL if it exists.
         map->SetContentSettingDefaultScope(url, url, ContentSettingsType::SOUND,

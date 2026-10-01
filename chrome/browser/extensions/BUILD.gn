@@ -1759,7 +1759,7 @@ static_library("test_support") {
       "//chrome/browser/profiles:profile",
       "//chrome/browser/ui/tabs:tab_strip",
       "//components/crx_file",
-      "//components/safe_browsing/core/browser/db:v4_test_util",
+      "//components/safe_browsing/core/browser/db:sb_test_util",
       "//content/public/browser",
       "//extensions:test_support",
       "//extensions/browser",
@@ -2414,6 +2414,7 @@ source_set("browser_tests") {
     "extension_override_apitest.cc",
     "extension_secure_context_browsertest.cc",
     "extension_tab_util_browsertest.cc",
+    "extension_uninstall_dialog_browsertest.cc",
     "extension_unload_browsertest.cc",
     "extension_url_loader_throttle_browsertest.cc",
     "extension_user_activation_service_browsertest.cc",
@@ -2556,6 +2557,7 @@ source_set("browser_tests") {
     "//extensions/browser:crx_installer",
     "//extensions/browser:webstore_installer",
     "//extensions/browser/updater",
+    "//extensions/common:test_support",
     "//extensions/renderer",
     "//extensions/strings",
     "//services/network/public/cpp:ip_address_space_overrides_test_utils",
@@ -2617,6 +2619,20 @@ source_set("browser_tests") {
       "//components/feed:feature_list",
       "//components/messages/android:test_support",
     ]
+
+    if (enable_desktop_android_extensions) {
+      sources += [
+        "api/tabs/tabs_apitest_android.cc",
+        "desktop_android_extensions_browsertest.cc",
+      ]
+      deps += [
+        "//chrome/browser/ui/android/tab_model",
+        "//chrome/test/base:android_browser_test",
+        "//content/test:test_support",
+        "//extensions/browser:test_support",
+        "//net",
+      ]
+    }
   } else {
     sources += [
       "api/contextual_tasks_private/contextual_tasks_messaging_browsertest.cc",

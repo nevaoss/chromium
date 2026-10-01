@@ -13,7 +13,7 @@ import {NavigationPredictor} from '//resources/mojo/components/omnibox/browser/o
 import type {AutocompleteMatch, AutocompleteResult, InputKeywordModel, OmniboxPopupSelection, PageCallbackRouter, PageHandlerInterface} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 import {InputMethod, SelectionDirection, SelectionLineState, SelectionStep} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 
-import {KeywordModeManager} from './keyword_mode_manager.js';
+import {KeywordModeEntryMethod, KeywordModeManager} from './keyword_mode_manager.js';
 import {SearchboxBrowserProxy} from './searchbox_browser_proxy.js';
 import type {SearchboxDropdownElement} from './searchbox_dropdown.js';
 import type {SearchboxInputElement} from './searchbox_input.js';
@@ -167,6 +167,7 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
     private callbackRouter_: PageCallbackRouter =
         SearchboxBrowserProxy.getInstance().callbackRouter;
     private keywordSpaceTriggeringListenerId_: number|null = null;
+    private availableKeywordModelsListenerId_: number|null = null;
 
     override connectedCallback() {
       super.connectedCallback();
@@ -176,6 +177,12 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
               (enabled: boolean) => {
                 this.keywordModeManager_.keywordSpaceTriggeringEnabled =
                     enabled;
+              });
+
+      this.availableKeywordModelsListenerId_ =
+          this.callbackRouter_.setAvailableKeywordModels.addListener(
+              (models: InputKeywordModel[]) => {
+                this.keywordModeManager_.availableKeywordModels = models;
               });
 
       // On user interaction, freeze the current results to avoid result updates
@@ -205,6 +212,11 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
         this.callbackRouter_.removeListener(
             this.keywordSpaceTriggeringListenerId_);
         this.keywordSpaceTriggeringListenerId_ = null;
+      }
+      if (this.availableKeywordModelsListenerId_ !== null) {
+        this.callbackRouter_.removeListener(
+            this.availableKeywordModelsListenerId_);
+        this.availableKeywordModelsListenerId_ = null;
       }
     }
 
@@ -363,6 +375,11 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
       this.clearAutocompleteMatches();
     }
 
+    openContextMenu(): void {
+      // Overridden by embedders with contextual entrypoints (e.g. Full WebUI
+      // popup).
+    }
+
     isAutocompleteResultStale(result: AutocompleteResult): boolean {
       return result.queryId !== this.activeQueryId;
     }
@@ -453,9 +470,20 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
           this.getInputElement().inputElement?.selectionStart ?? null;
 
       if (this.keywordModeManager_.acceptInputTrigger(input, cursorPosition)) {
-        this.getInputElement().setInputText('');
+        const isSpaceInMiddle = this.keywordModeManager_.entryMethod ===
+            KeywordModeEntryMethod.SPACE_IN_MIDDLE;
+        const remainingText = isSpaceInMiddle ?
+            input.slice(
+                cursorPosition ??
+                (this.keywordModeManager_.activeKeyword.length + 1)) :
+            '';
+        this.getInputElement().setInputText(remainingText);
+        if (isSpaceInMiddle) {
+          this.getInputElement().setSelectionRange(0, 0);
+        }
         this.queryAutocomplete(
-            '', /*preventInlineAutocomplete=*/ false, /*isOnFocus=*/ false);
+            remainingText, /*preventInlineAutocomplete=*/ false,
+            /*isOnFocus=*/ false);
         return;
       }
 
@@ -625,6 +653,13 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
         return true;
       }
 
+      if (this.selection.state ===
+          SelectionLineState.kFocusedButtonContextEntrypoint) {
+        e.preventDefault();
+        this.openContextMenu();
+        return true;
+      }
+
       if (this.selection.state === SelectionLineState.kKeywordMode) {
         e.preventDefault();
         this.getInputElement().focus();
@@ -720,7 +755,8 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
           return;
         }
 
-        if (!this.virtualFocusEnabled || !this.isVirtualFocusEventTarget_(e)) {
+        if (!this.virtualFocusEnabled || !this.dropdownIsVisible ||
+            !this.isVirtualFocusEventTarget_(e)) {
           return;
         }
       }
@@ -751,6 +787,16 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
         }));
       }
 
+      // Do not handle the following keys if inside an IME composition session.
+      if (e.isComposing) {
+        return;
+      }
+
+      if (this.virtualFocusEnabled && e.key === 'Enter' &&
+          this.handleVirtualFocusEnter_(e)) {
+        return;
+      }
+
       // Do not handle the following keys if there are no matches available.
       if (!this.result || this.result.matches.length === 0) {
         return;
@@ -769,22 +815,13 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
         return;
       }
 
-      // Do not handle the following keys if inside an IME composition session.
-      if (e.isComposing) {
-        return;
-      }
-
       if (this.virtualFocusEnabled) {
-        if (e.key === 'Enter' && this.handleVirtualFocusEnter_(e)) {
-          return;
-        }
-
         let step = SelectionStep.kStateOrLine;
         let direction = SelectionDirection.kForward;
         let valid = false;
 
         if (!e.altKey && !e.ctrlKey && !e.metaKey) {
-          if (e.key === 'Tab') {
+          if (e.key === 'Tab' && this.dropdownIsVisible) {
             step = SelectionStep.kStateOrLine;
             direction = e.shiftKey ? SelectionDirection.kBackward :
                                      SelectionDirection.kForward;
@@ -1047,6 +1084,7 @@ export interface SearchboxMixinInterface extends
   onMatchClick(): void;
   onMatchFocusin(e: CustomEvent<number>): void;
   onKeywordClick(e: Event): void;
+  openContextMenu(): void;
   openCtrlEnterMatch(matchIndex: number): void;
   onSearchboxInputTextUpdated(
       e: CustomEvent<{value: string, isComposing: boolean}>): void;

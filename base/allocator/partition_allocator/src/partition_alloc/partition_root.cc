@@ -239,6 +239,7 @@ void BeforeForkInParent() PA_NO_THREAD_SAFETY_ANALYSIS {
       LockRoot, false,
       internal::PartitionRootEnumerator::EnumerateOrder::kNormal);
 
+  internal::PartitionTlsRegistry::GetLock().Acquire();
   internal::ThreadCacheRegistry::GetLock().Acquire();
   g_leak_size_map_lock.Acquire();
 }
@@ -247,6 +248,7 @@ void ReleaseLocks(bool in_child) PA_NO_THREAD_SAFETY_ANALYSIS {
   UnlockOrReinit(g_leak_size_map_lock, in_child);
   // In reverse order, even though there are no lock ordering dependencies.
   UnlockOrReinit(internal::ThreadCacheRegistry::GetLock(), in_child);
+  UnlockOrReinit(internal::PartitionTlsRegistry::GetLock(), in_child);
   internal::PartitionRootEnumerator::Instance().Enumerate(
       UnlockOrReinitRoot, in_child,
       internal::PartitionRootEnumerator::EnumerateOrder::kReverse);
@@ -1675,7 +1677,6 @@ void PartitionRoot::DumpStats(const char* partition_name,
   {
     ::partition_alloc::internal::ScopedGuard guard{
         internal::PartitionRootLock(this)};
-    PA_DCHECK(total_size_of_allocated_bytes_ <= max_size_of_allocated_bytes_);
 
     stats.total_mmapped_bytes =
         total_size_of_super_pages_.load(std::memory_order_relaxed) +
@@ -2101,7 +2102,8 @@ PA_NOINLINE PA_MALLOC_FN void* PartitionRoot::Alloc(size_t requested_size,
                                                     const char* type_name) {
   static_assert(!ContainsFlags(flags, AllocFlags::kAlignedAlloc));
   return AllocInternal<flags>(requested_size, internal::PartitionPageSize(),
-                              type_name);
+                              type_name)
+      .object;
 }
 
 template <AllocFlags alloc_flags, FreeFlags free_flags>

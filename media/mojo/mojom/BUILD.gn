@@ -74,7 +74,7 @@ mojom("mojom") {
     ]
   }
 
-  if (allow_oop_video_decoder) {
+  if (enable_oop_video_decoder) {
     sources += [
       "cdm_context_for_oopvd.mojom",
       "video_decoder_factory_process.mojom",
@@ -106,7 +106,7 @@ mojom("mojom") {
     "//url/mojom:url_mojom_origin",
   ]
 
-  if (allow_oop_video_decoder) {
+  if (enable_oop_video_decoder) {
     public_deps += [ "//services/viz/public/mojom" ]
   }
 
@@ -120,8 +120,8 @@ mojom("mojom") {
   if (chrome_wide_echo_cancellation_supported) {
     enabled_features += [ "chrome_wide_echo_cancellation" ]
   }
-  if (allow_oop_video_decoder) {
-    enabled_features += [ "allow_oop_video_decoder" ]
+  if (enable_oop_video_decoder) {
+    enabled_features += [ "enable_oop_video_decoder" ]
   }
 
   if (use_linux_video_acceleration) {
@@ -363,7 +363,7 @@ mojom("mojom") {
     ]
   }
 
-  if (is_chromeos && allow_oop_video_decoder) {
+  if (enable_oop_video_decoder) {
     shared_typemaps += [
       {
         types = [

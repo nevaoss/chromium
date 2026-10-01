@@ -27,6 +27,7 @@
 #include "chrome/browser/ui/exclusive_access/exclusive_access_manager.h"
 #include "chrome/browser/ui/exclusive_access/fullscreen_controller.h"
 #include "chrome/browser/ui/omnibox/omnibox_next_features.h"
+#include "chrome/browser/ui/side_panel/side_panel_ui.h"
 #include "chrome/browser/ui/tabs/tab_enums.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/webui/cr_components/searchbox/searchbox_handler.h"
@@ -35,6 +36,7 @@
 #include "chrome/browser/ui/webui/webui_embedding_context.h"
 #include "chrome/browser/ui/webui_browser/bookmark_bar.mojom.h"
 #include "chrome/browser/ui/webui_browser/bookmark_bar_page_handler.h"
+#include "chrome/browser/ui/webui_browser/webui_browser_side_panel_ui.h"
 #include "chrome/browser/ui/webui_browser/webui_browser_ui.h"
 #include "chrome/browser/ui/webui_browser/webui_browser_window.h"
 #include "chrome/common/chrome_features.h"
@@ -590,6 +592,41 @@ IN_PROC_BROWSER_TEST_F(WebUIBrowserTest,
   CloseBrowserSynchronously(new_browser);
 }
 
+IN_PROC_BROWSER_TEST_F(WebUIBrowserSurfaceEmbedPixelTest,
+                       NewActiveTabInheritsExistingTabSize) {
+  content::WebContents* old_contents =
+      browser()->tab_strip_model()->GetActiveWebContents();
+  ASSERT_TRUE(old_contents);
+  const gfx::Size old_size = old_contents->GetContainerBounds().size();
+  ASSERT_FALSE(old_size.IsEmpty());
+
+  chrome::AddTabAt(browser(), GURL(), -1, true);
+
+  content::WebContents* new_contents =
+      browser()->tab_strip_model()->GetActiveWebContents();
+  ASSERT_TRUE(new_contents);
+  EXPECT_NE(old_contents, new_contents);
+  EXPECT_EQ(old_size, new_contents->GetSize());
+}
+
+IN_PROC_BROWSER_TEST_F(WebUIBrowserSurfaceEmbedPixelTest,
+                       NewActiveTabKeepsExistingSize) {
+  chrome::AddTabAt(browser(), GURL(), -1, false);
+
+  TabStripModel* tab_strip_model = browser()->tab_strip_model();
+  const int new_tab_index = tab_strip_model->count() - 1;
+  content::WebContents* new_contents =
+      tab_strip_model->GetWebContentsAt(new_tab_index);
+  ASSERT_TRUE(new_contents);
+  const gfx::Size existing_size(320, 240);
+  new_contents->Resize(gfx::Rect(existing_size));
+  ASSERT_EQ(existing_size, new_contents->GetSize());
+
+  tab_strip_model->ActivateTabAt(new_tab_index);
+
+  EXPECT_EQ(existing_size, new_contents->GetSize());
+}
+
 IN_PROC_BROWSER_TEST_F(WebUIBrowserTest, NewTabGetsFocus) {
   auto* window = WebUIBrowserWindow::FromBrowser(browser());
   ASSERT_TRUE(window);
@@ -678,4 +715,10 @@ IN_PROC_BROWSER_TEST_F(
   CloseBrowserSynchronously(isolated_browser);
 }
 
+IN_PROC_BROWSER_TEST_F(WebUIBrowserTest,
+                       SidePanelUIReturnsWebUIBrowserSidePanelUI) {
+  auto* window = WebUIBrowserWindow::FromBrowser(browser());
+  ASSERT_TRUE(window);
 
+  EXPECT_EQ(SidePanelUI::From(browser()), window->GetWebUIBrowserSidePanelUI());
+}

@@ -87,6 +87,7 @@ import org.chromium.chrome.browser.IntentHandler.ExternalAppId;
 import org.chromium.chrome.browser.IntentHandler.TabOpenType;
 import org.chromium.chrome.browser.accessibility.settings.CaretBrowsingDialog;
 import org.chromium.chrome.browser.actor.ActorForegroundServiceController;
+import org.chromium.chrome.browser.actor.ActorNotificationService;
 import org.chromium.chrome.browser.actor.ActorTabStateHelper;
 import org.chromium.chrome.browser.app.ChromeActivity;
 import org.chromium.chrome.browser.app.appmenu.AppMenuPropertiesDelegateImpl;
@@ -779,6 +780,10 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
 
     @Override
     protected void onPreCreate() {
+        // Window features must be requested before adding content. super.onCreate() may restore
+        // fragments that install the window decor (e.g. via setHasOptionsMenu()), so request the
+        // feature early here.
+        supportRequestWindowFeature(Window.FEATURE_ACTION_MODE_OVERLAY);
         super.onPreCreate();
         mMultiInstanceManager =
                 MultiInstanceManagerFactory.create(
@@ -1226,6 +1231,7 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
                             getWindowAndroid(),
                             getToolbarManager(),
                             mRootUiCoordinator.getDesktopWindowStateManager(),
+                            getMultiWindowModeStateDispatcher(),
                             actionConfirmationManager,
                             mRootUiCoordinator.getDataSharingTabManager(),
                             assertNonNull(mRootUiCoordinator.getBottomSheetController()),
@@ -1614,7 +1620,7 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
             startUmaSession();
             // This is on the critical path so don't delay.
             setupCompositorContent();
-            if (!DeviceFormFactor.isTablet()) {
+            if (!isTablet()) {
                 PostTask.postTask(
                         TaskTraits.UI_DEFAULT,
                         mCallbackController.makeCancelable(this::initializeCompositorContent));
@@ -1954,6 +1960,10 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
     public void onNewIntentWithNative(Intent intent) {
         try {
             TraceEvent.begin("ChromeTabbedActivity.onNewIntentWithNative");
+            if (IntentHandler.isActorNotificationIntent(intent)) {
+                ActorNotificationService.maybeDismissNotificationFromIntent(
+                        intent, mTabModelProfileSupplier.get());
+            }
             super.onNewIntentWithNative(intent);
 
             if (!IntentHandler.shouldIgnoreIntent(intent, this, /* isCustomTab= */ false)) {
@@ -2076,6 +2086,10 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
                 ChromeFeatureList.sActorNotificationIntentRouting.isEnabled()
                         ? IntentHandler.getGlicConversationId(intent)
                         : null;
+        if (IntentHandler.isActorNotificationIntent(intent)) {
+            ActorNotificationService.maybeDismissNotificationFromIntent(
+                    intent, mTabModelProfileSupplier.get());
+        }
         if (url == null
                 && tabIdToBringToFront == Tab.INVALID_TAB_ID
                 && !hasTabWaitingForReparenting) {
@@ -3348,7 +3362,6 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
             StartupPaintPreviewHelper.enableShowOnRestore();
         }
 
-        supportRequestWindowFeature(Window.FEATURE_ACTION_MODE_OVERLAY);
         IncognitoTabHostRegistry.getInstance().register(mIncognitoTabHost);
         StartupPaintPreviewHelperSupplier.attach(
                 getWindowAndroid().getUnownedUserDataHost(), mStartupPaintPreviewHelperSupplier);

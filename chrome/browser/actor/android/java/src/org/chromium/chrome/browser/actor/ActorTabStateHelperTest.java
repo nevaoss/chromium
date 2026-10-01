@@ -40,6 +40,9 @@ import org.chromium.base.UserDataHost;
 import org.chromium.base.supplier.ObservableSuppliers;
 import org.chromium.base.supplier.OneshotSupplierImpl;
 import org.chromium.base.test.BaseRobolectricTestRunner;
+import org.chromium.base.test.util.Features.DisableFeatures;
+import org.chromium.base.test.util.Features.EnableFeatures;
+import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.glic.GlicKeyedService;
 import org.chromium.chrome.browser.glic.GlicKeyedServiceFactory;
 import org.chromium.chrome.browser.layouts.LayoutManager;
@@ -63,10 +66,13 @@ import org.chromium.chrome.browser.tabmodel.TabModelObserver;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
 import org.chromium.chrome.browser.tabmodel.TabModelSelectorObserver;
 import org.chromium.chrome.browser.tabmodel.TabRemover;
+import org.chromium.components.tab_group_sync.LocalTabGroupId;
+import org.chromium.components.tab_group_sync.SavedTabGroup;
+import org.chromium.components.tab_group_sync.SavedTabGroupTab;
+import org.chromium.components.tab_group_sync.TabGroupSyncService;
 import org.chromium.ui.base.WindowAndroid;
 import org.chromium.url.GURL;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -277,68 +283,6 @@ public class ActorTabStateHelperTest {
         assertEquals(Integer.valueOf(102), session.getTabDataList().get(1).getPlaceholderTabId());
         assertEquals(3, session.getTabDataList().get(1).getOriginalTabIndex());
         assertEquals(42, session.getTabDataList().get(1).getTabWindowId());
-    }
-
-    @Test
-    public void testRestoreActiveWindowBackgroundTabs_RestoresMatchingTabs() {
-        when(mTabModelSelector.getModel(false)).thenReturn(mTabModel);
-
-        WindowAndroid window = mock(WindowAndroid.class);
-        TabDelegateFactory delegateFactory = mock(TabDelegateFactory.class);
-
-        Tab tab1 = mock(Tab.class);
-        Tab tab2 = mock(Tab.class);
-
-        // Prepare background session with two tab metadatas:
-        BackgroundSession session = new BackgroundSession(tab1, 500);
-        session.addTab(tab2);
-
-        // Metadata 1 (Window 1, Placeholder 101, Index 0)
-        BackgroundSession.BackgroundTabData meta1 = session.getTabDataList().get(0);
-        meta1.setTabWindowId(1);
-        meta1.setPlaceholderTabId(101);
-        meta1.setOriginalTabIndex(0);
-
-        // Metadata 2 (Window 2, Placeholder 201, Index 1)
-        BackgroundSession.BackgroundTabData meta2 = session.getTabDataList().get(1);
-        meta2.setTabWindowId(2);
-        meta2.setPlaceholderTabId(201);
-        meta2.setOriginalTabIndex(1);
-
-        // Set up the TabModel mock to contain the placeholder for tab1, but not tab2 (since it's a
-        // different window)
-        Tab placeholder1 = mock(Tab.class);
-        when(mTabModel.getTabById(101)).thenReturn(placeholder1);
-        when(mTabModel.indexOf(placeholder1)).thenReturn(3);
-        when(mTabModel.getTabRemover()).thenReturn(mTabRemover);
-
-        // Tab 1 is currently not in mTabModel
-        when(mTabModel.indexOf(tab1)).thenReturn(TabModel.INVALID_TAB_INDEX);
-
-        List<BackgroundSession> sessions = new ArrayList<>(Collections.singletonList(session));
-
-        // Restore tabs for Window 1
-        ActorTabStateHelper.restoreActiveWindowBackgroundTabs(
-                mTabModelSelector, 1, window, sessions, delegateFactory);
-
-        // Assertions:
-        // Tab 1 (Window 1) should be restored
-        verify(tab1).updateAttachment(window, delegateFactory);
-        verify(mTabRemover).removeTab(placeholder1, false);
-        verify(mTabModel)
-                .addTab(
-                        eq(tab1),
-                        eq(3),
-                        eq(TabLaunchType.FROM_RESTORE),
-                        eq(TabCreationState.LIVE_IN_FOREGROUND));
-
-        // Tab 2 (Window 2) should NOT be restored
-        verify(tab2, never()).updateAttachment(any(), any());
-
-        // Session should still exist because Tab 2 is not restored yet
-        assertEquals(1, sessions.size());
-        assertEquals(1, sessions.get(0).getTabDataList().size());
-        assertEquals(tab2, sessions.get(0).getTabDataList().get(0).getTab());
     }
 
     @Test
@@ -738,5 +682,82 @@ public class ActorTabStateHelperTest {
                 mActivity, mTabModelSelector, supplier, mTab, "test_glic_conv_id");
 
         verify(mGlicKeyedService, never()).invokeWithConversation(any(), any(), anyInt());
+    }
+
+    @Test
+    @EnableFeatures({
+        ChromeFeatureList.GLIC_BACKGROUND_ACTUATION + ":require_notifications/false",
+        ChromeFeatureList.GLIC_BACKGROUND_ACTUATION_TAB_GROUP_SYNC
+    })
+    public void testSetTabGroupSyncPaused() {
+        TabGroupSyncService syncService = mock(TabGroupSyncService.class);
+
+        ActorTabStateHelper.setTabGroupSyncPaused(syncService, true);
+        verify(syncService).setLocalObservationMode(false);
+
+        ActorTabStateHelper.setTabGroupSyncPaused(syncService, false);
+        verify(syncService).setLocalObservationMode(true);
+
+        // Null syncService should be safely handled as a no-op
+        ActorTabStateHelper.setTabGroupSyncPaused(null, true);
+        ActorTabStateHelper.setTabGroupSyncPaused(null, false);
+    }
+
+    @Test
+    @DisableFeatures(ChromeFeatureList.GLIC_BACKGROUND_ACTUATION_TAB_GROUP_SYNC)
+    public void testTabGroupSync_flagDisabled_doesNotInteractWithSync() {
+        TabGroupSyncService syncService = mock(TabGroupSyncService.class);
+        assertNull(ActorTabStateHelper.getTabGroupSyncService(mTabModel));
+
+        ActorTabStateHelper.setTabGroupSyncPaused(syncService, true);
+        verify(syncService, never()).setLocalObservationMode(anyBoolean());
+
+        ActorTabStateHelper.updateTabGroupSyncMapping(syncService, mTabModel, mTab, 202);
+        verify(syncService, never()).updateLocalTabId(any(), any(), anyInt());
+    }
+
+    @Test
+    @EnableFeatures({
+        ChromeFeatureList.GLIC_BACKGROUND_ACTUATION + ":require_notifications/false",
+        ChromeFeatureList.GLIC_BACKGROUND_ACTUATION_TAB_GROUP_SYNC
+    })
+    public void testUpdateTabGroupSyncMapping() {
+        TabGroupSyncService syncService = mock(TabGroupSyncService.class);
+        Token tabGroupId = Token.createRandom();
+        when(mTab.getTabGroupId()).thenReturn(tabGroupId);
+        when(mTab.getId()).thenReturn(TAB_ID);
+        when(mTabModel.tabGroupExists(tabGroupId)).thenReturn(true);
+
+        LocalTabGroupId localTabGroupId = new LocalTabGroupId(tabGroupId);
+        SavedTabGroup savedGroup = new SavedTabGroup();
+        savedGroup.localId = localTabGroupId;
+
+        SavedTabGroupTab savedTab = new SavedTabGroupTab();
+        savedTab.localId = TAB_ID;
+        savedTab.syncId = "test_sync_id_123";
+        savedGroup.savedTabs.add(savedTab);
+
+        when(syncService.getGroup(localTabGroupId)).thenReturn(savedGroup);
+
+        ActorTabStateHelper.updateTabGroupSyncMapping(syncService, mTabModel, mTab, 202);
+
+        verify(syncService).updateLocalTabId(localTabGroupId, "test_sync_id_123", 202);
+    }
+
+    @Test
+    public void testRestoreSessionTabToForeground_tabAlreadyPresentInModel_skipsAddTab() {
+        WindowAndroid window = mock(WindowAndroid.class);
+        TabDelegateFactory delegateFactory = mock(TabDelegateFactory.class);
+
+        when(mTab.getId()).thenReturn(TAB_ID);
+        Tab existingTabInModel = mock(Tab.class);
+        when(existingTabInModel.getId()).thenReturn(TAB_ID);
+        when(mTabModel.getTabById(TAB_ID)).thenReturn(existingTabInModel);
+
+        ActorTabStateHelper.restoreSessionTabToForeground(
+                mTab, 999, 0, mTabModel, window, delegateFactory);
+
+        verify(mTabModel, never()).addTab(any(), anyInt(), anyInt(), anyInt());
+        verify(mTabRemover, never()).removeTab(any(), anyBoolean());
     }
 }

@@ -36,6 +36,8 @@
 #include "components/history/core/browser/history_backend_notifier.h"
 #include "components/history/core/browser/history_types.h"
 #include "components/history/core/browser/journeys/history_backend_for_journeys_sync.h"
+#include "components/history/core/browser/journeys/journey.h"
+#include "components/history/core/browser/journeys/journey_row.h"
 #include "components/history/core/browser/keyword_id.h"
 #include "components/history/core/browser/sync/history_backend_for_sync.h"
 #include "components/history/core/browser/visit_tracker.h"
@@ -767,10 +769,11 @@ class HistoryBackend : public base::RefCountedThreadSafe<HistoryBackend>,
   void SetSyncTransportState(syncer::SyncService::TransportState state);
 
   // HistoryBackendForJourneysSync:
-  bool AddOrUpdateJourneys(
+  bool AddOrUpdateJourneyRows(
       const std::vector<journeys::JourneyRow>& journeys) override;
   bool DeleteJourneys(const std::vector<std::string>& journey_ids) override;
-  std::vector<journeys::JourneyRow> GetAllJourneys() override;
+  std::vector<journeys::JourneyRow> GetAllJourneyRows() override;
+  std::vector<journeys::Journey> GetAllJourneysWithVisits() override;
   bool DeleteAllJourneys() override;
 
   // Deleting ------------------------------------------------------------------

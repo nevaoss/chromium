@@ -17,7 +17,6 @@
 #include "content/browser/first_party_sets/first_party_set_parser.h"
 #include "net/base/features.h"
 #include "net/first_party_sets/global_first_party_sets.h"
-#include "net/first_party_sets/local_set_declaration.h"
 
 namespace content {
 
@@ -37,17 +36,6 @@ FirstPartySetsLoader::FirstPartySetsLoader(
 
 FirstPartySetsLoader::~FirstPartySetsLoader() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-}
-
-void FirstPartySetsLoader::SetManuallySpecifiedSet(
-    const net::LocalSetDeclaration& local_set) {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  if (manually_specified_set_.has_value()) {
-    return;
-  }
-  manually_specified_set_ = local_set;
-
-  MaybeFinishLoading();
 }
 
 void FirstPartySetsLoader::SetComponentSets(base::Version version,
@@ -97,16 +85,6 @@ void FirstPartySetsLoader::OnReadSetsFile(base::Version version,
                                                    /*emit_errors=*/false);
 
   component_sets_parse_progress_ = Progress::kFinished;
-  MaybeFinishLoading();
-}
-
-void FirstPartySetsLoader::MaybeFinishLoading() {
-  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  if (component_sets_parse_progress_ != Progress::kFinished ||
-      !manually_specified_set_.has_value()) {
-    return;
-  }
-  sets_->ApplyManuallySpecifiedSet(manually_specified_set_.value());
   std::move(on_load_complete_).Run(std::move(sets_).value());
 }
 

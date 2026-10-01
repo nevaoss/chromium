@@ -347,6 +347,17 @@ bool IsValidTemporalSVC(
   return (num_temporal_layers <= 3);
 }
 
+void CopyColorSpaceFromNativeFrame(const webrtc::VideoFrameBuffer& from_buffer,
+                                   scoped_refptr<media::VideoFrame> to_frame) {
+  if (from_buffer.type() != webrtc::VideoFrameBuffer::Type::kNative) {
+    LOG(ERROR) << "Color space information lost because frame is not kNative";
+    return;
+  }
+  const blink::WebRtcVideoFrameAdapterInterface* frame_adapter =
+      static_cast<const blink::WebRtcVideoFrameAdapterInterface*>(&from_buffer);
+  to_frame->set_color_space(frame_adapter->getMediaVideoFrame()->ColorSpace());
+}
+
 }  // namespace
 
 namespace blink {
@@ -1200,11 +1211,20 @@ void RTCVideoEncoder::Impl::Enqueue(FrameChunk frame_chunk) {
           use_native_input_ = false;
         }
       } else if (frame->HasSharedImage()) {
-        if (!use_native_input_) {
-          use_native_input_ = true;
-          // TODO(https://issuetracker.google.com/issues/337130619): Ideally
-          // |input_buffers_| should be cleaned up here.
-        }
+        // Native input is supported if:
+        // 1. The frame is backed by a *mappable* SharedImage, or
+        // 2. The VEA supports direct encoding for this SharedImage
+        // usage/format,
+        //    or
+        // 3. The renderer can convert textures to NV12 via GPU shaders.
+        bool can_encode_natively =
+            frame->HasMappableSharedImage() ||
+            encoder_info_.DoesSupportGpuSharedImages(
+                frame->shared_image()->usage(), frame->format()) ||
+            (use_accelerated_pool_ &&
+             WebGraphicsContext3DVideoFramePool::
+                 IsGpuMemoryBufferReadbackFromTextureEnabled());
+        use_native_input_ = can_encode_natively;
       }
     }
   }
@@ -2064,6 +2084,7 @@ RTCVideoEncoder::Impl::CreateUnownedMemoryFrameByWebRTCVideoFrameBuffer(
          "Failed to convert WebRTC mapped buffer to media::VideoFrame"});
     return nullptr;
   }
+  CopyColorSpaceFromNativeFrame(frame_buffer, frame);
   return frame;
 }
 
@@ -2099,6 +2120,7 @@ RTCVideoEncoder::Impl::CreateI420SharedMemoryFrameByLibyuv(
                        "Failed to create input buffer"});
     return nullptr;
   }
+  CopyColorSpaceFromNativeFrame(frame_buffer, frame);
 
   // |frame| is STORAGE_UNOWNED_MEMORY at this point. Writing the data is
   // allowed.

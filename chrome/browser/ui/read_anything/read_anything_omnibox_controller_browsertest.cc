@@ -196,9 +196,6 @@ class ReadAnythingOmniboxControllerBrowserTest
     std::vector<base::test::FeatureRef> enabled_features = {
         features::kReadAnythingOmniboxChip,
         feature_engagement::kIPHReadingModePageActionLabelFeature,
-#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
-        features::kWasmTtsEngineAutoInstallDisabled
-#endif
     };
     scoped_feature_list_.InitWithFeatures(enabled_features, {});
   }
@@ -228,6 +225,34 @@ IN_PROC_BROWSER_TEST_F(
 
   WaitForChipShowing(false);
   ExpectPageActionStateImmediate(true);
+}
+
+IN_PROC_BROWSER_TEST_F(ReadAnythingOmniboxControllerBrowserTest,
+                       PrimaryPageChanged_CollapsesOnFourthPage) {
+  RegisterPageActionObserver();
+  // 1st page: chip is expanded.
+  NavigateToDistillablePage();
+  WaitForChipShowing(true);
+  EXPECT_EQ(GetOmniboxIgnoredCount(), 0);
+
+  // 2nd page: chip is expanded.
+  MockLongDwellTime();
+  NavigateToDistillablePage();
+  WaitForChipShowing(true);
+  EXPECT_EQ(GetOmniboxIgnoredCount(), 1);
+
+  // 3rd page: chip is expanded.
+  MockLongDwellTime();
+  NavigateToDistillablePage();
+  WaitForChipShowing(true);
+  EXPECT_EQ(GetOmniboxIgnoredCount(), 2);
+
+  // 4th page: chip should collapse (icon only, chip not showing).
+  MockLongDwellTime();
+  NavigateToDistillablePage();
+  WaitForChipShowing(false);
+  ExpectPageActionStateImmediate(true);
+  EXPECT_EQ(GetOmniboxIgnoredCount(), 3);
 }
 
 IN_PROC_BROWSER_TEST_F(ReadAnythingOmniboxControllerBrowserTest,

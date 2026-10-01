@@ -113,12 +113,16 @@
   },
   "android-desktop-arm-builder-perf": {
     "additional_compile_targets": [
-      "trichrome_google_64_32_minimal_apks"
+      "trichrome_google_64_32_minimal_apks",
+      "system_webview_apk",
+      "system_webview_google_apk"
     ]
   },
   "android-desktop-x64-builder-perf": {
     "additional_compile_targets": [
-      "trichrome_google_64_minimal_apks"
+      "trichrome_google_64_minimal_apks",
+      "system_webview_apk",
+      "system_webview_google_apk"
     ]
   },
   "android-go-processor-perf": {},
@@ -1078,6 +1082,7 @@
         "swarming": {
           "can_use_on_swarming_builders": true,
           "dimensions": {
+            "cpu": "arm64",
             "os": "Ubuntu-24.04.4",
             "pool": "chrome.tests.perf"
           },

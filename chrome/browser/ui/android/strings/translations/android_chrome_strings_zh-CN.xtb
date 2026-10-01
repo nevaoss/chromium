@@ -252,6 +252,7 @@
 <translation id="1984087999855033707">电话号码</translation>
 <translation id="1984417487208496350">不保护（不建议）</translation>
 <translation id="1986685561493779662">名称已存在</translation>
+<translation id="1992244793717364584">应用已卸载</translation>
 <translation id="200114059308480249">将上下文内容纳入到 Google 搜索查询中？</translation>
 <translation id="2004096469149679223"><ph name="TAB_TITLE" />，已固定的无痕式标签页，已设为静音</translation>
 <translation id="2021896219286479412">全屏网站控件</translation>
@@ -590,7 +591,6 @@
 <translation id="331080746368555063">私密网站可能包括公司内网等</translation>
 <translation id="3311330810461485557">按应用、日期等进行搜索。</translation>
 <translation id="3312300514034250578">增强型安全浏览</translation>
-<translation id="3331974543021145906">应用信息</translation>
 <translation id="3334729583274622784">更改文件扩展名？</translation>
 <translation id="333863344734218290">在您访问不安全的公共网站和私有网站时发出警告</translation>
 <translation id="3339788961947270565">正在关闭</translation>
@@ -738,6 +738,7 @@
 <translation id="3950820424414687140">登录</translation>
 <translation id="395377504920307820">在不登录账号的情况下使用</translation>
 <translation id="3955353672249727801">网页已添加到阅读清单</translation>
+<translation id="3958283758104508528">“<ph name="APP_NAME" />”已卸载</translation>
 <translation id="396192773038029076">{NUM_IN_PROGRESS,plural, =1{待准备就绪后，Chrome 即会加载您的网页}other{待准备就绪后，Chrome 即会加载您的网页}}</translation>
 <translation id="3969142555815019568">Chrome 无法检查您的密码</translation>
 <translation id="3969863827134279083">上移</translation>
@@ -908,6 +909,7 @@
 <translation id="4595805675102978678">Google 账号错误</translation>
 <translation id="4599585406846903742">单页视图</translation>
 <translation id="4601095002996233687">深入扫描可疑的下载内容。</translation>
+<translation id="4604434672720336227">退出 Chrome</translation>
 <translation id="4606559747793337066">当某个网站或应用请求以私密方式预加载其网页上的链接时，Chrome 会通过 Google 服务器（而不使用 Cookie）加密和预加载网页。这样一来，预加载的网站便无法得知您的身份。</translation>
 <translation id="4619615317237390068">从其他设备打开的标签页</translation>
 <translation id="4624065194742029982">Chrome 无痕模式</translation>
@@ -1430,6 +1432,7 @@
 <translation id="6669390930482049506">通知我</translation>
 <translation id="6671495933530132209">复制图片</translation>
 <translation id="6672697278890207089">请输入口令</translation>
+<translation id="6675622031235530028">按住 Ctrl+Q 即可退出</translation>
 <translation id="6676927815633975364">登录此网站和 Chrome</translation>
 <translation id="6684262542644248484">登录相应网站</translation>
 <translation id="6684809838922667136">帮助改善 Chrome</translation>
@@ -1953,6 +1956,7 @@
 <translation id="8580435650274205305">失效日期（必填）</translation>
 <translation id="8582529315803410153">您在其他设备上打开的标签页会显示在此处</translation>
 <translation id="8585103689515290060">自动填充服务</translation>
+<translation id="8586116786993312006">点按即可删除 Chrome 中的浏览数据</translation>
 <translation id="859046281437143747">通过“更多选项”按钮跟踪价格</translation>
 <translation id="859064343657890103">已删除“<ph name="TAB_GROUP_TITLE" />”标签页分组</translation>
 <translation id="860043288473659153">持卡人姓名</translation>

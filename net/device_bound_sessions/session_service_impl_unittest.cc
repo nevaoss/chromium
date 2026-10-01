@@ -45,8 +45,10 @@
 #include "net/log/test_net_log.h"
 #include "net/ssl/ssl_cert_request_info.h"
 #include "net/test/test_with_task_environment.h"
+#include "net/test/url_request/url_request_failed_job.h"
 #include "net/url_request/device_bound_session_mode.h"
 #include "net/url_request/url_request_context_builder.h"
+#include "net/url_request/url_request_filter.h"
 #include "net/url_request/url_request_test_util.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -203,6 +205,7 @@ class SessionServiceImplTest : public ::testing::Test,
   void TearDown() override {
     // Reset the `network_delegate_` to avoid a dangling pointer.
     network_delegate_ = nullptr;
+    net::URLRequestFilter::GetInstance()->ClearHandlers();
   }
 
   TestNetworkDelegate* network_delegate() { return network_delegate_; }
@@ -643,6 +646,48 @@ TEST_F(SessionServiceImplTest, EventObserverOnAddSession) {
   service().AddSession(SchemefulSite(kTestUrl), std::move(params), wrapped_key,
                        add_session_future.GetCallback());
   EXPECT_EQ(add_session_future.Take(), SessionError::kSuccess);
+}
+
+TEST_F(SessionServiceImplTest, AddSessionReplacesExistingSession) {
+  base::HistogramTester histograms;
+  net::SchemefulSite site(kTestUrl);
+  SessionKey session_key{site, Session::Id(kSessionId)};
+
+  // Initial registration of session.
+  AddSessionsForTesting({{kSessionId, kRefreshUrlString, kOrigin}});
+  ASSERT_TRUE(service().GetSession(session_key));
+
+  base::MockCallback<SessionService::OnEventCallback> event_callback;
+  base::CallbackListSubscription subscription =
+      service().AddEventObserver(event_callback.Get());
+
+  {
+    InSequence seq;
+    EXPECT_CALL(event_callback, Run).WillOnce([](const SessionEvent& event) {
+      ASSERT_TRUE(std::holds_alternative<TerminationEventDetails>(
+          event.event_type_details));
+      EXPECT_EQ(event.site, SchemefulSite(kTestUrl));
+      EXPECT_EQ(event.session_id, kSessionId);
+      EXPECT_TRUE(event.succeeded);
+      const auto& details =
+          std::get<TerminationEventDetails>(event.event_type_details);
+      EXPECT_EQ(details.deletion_reason, DeletionReason::kReplaced);
+    });
+    EXPECT_CALL(event_callback, Run).WillOnce([](const SessionEvent& event) {
+      ASSERT_TRUE(std::holds_alternative<CreationEventDetails>(
+          event.event_type_details));
+      EXPECT_EQ(event.site, SchemefulSite(kTestUrl));
+      EXPECT_EQ(event.session_id, kSessionId);
+      EXPECT_TRUE(event.succeeded);
+    });
+  }
+
+  // Registering again with same session id replaces the existing session.
+  AddSessionsForTesting({{kSessionId, kRefreshUrlString, kOrigin}});
+
+  EXPECT_TRUE(service().GetSession(session_key));
+  histograms.ExpectUniqueSample("Net.DeviceBoundSessions.DeletionReason",
+                                DeletionReason::kReplaced, 1);
 }
 
 TEST_F(SessionServiceImplTest, NoCallbackIfEventObserverRemoved) {
@@ -2776,6 +2821,65 @@ TEST_F(SessionServiceImplWithStoreTest, UsesSessionStore) {
   session->set_expiry_date(base::Time::Now() - base::Days(1));
   // Will invoke the store's delete session method.
   EXPECT_EQ(GetSiteSessionsCount(site), 0u);
+}
+
+TEST_F(SessionServiceImplWithStoreTest,
+       AddSessionReplacesExistingSessionInStore) {
+  base::HistogramTester histograms;
+  EXPECT_CALL(store(), LoadSessions)
+      .Times(1)
+      .WillOnce(
+          Invoke(this, &SessionServiceImplWithStoreTest::OnSessionsLoaded));
+  EXPECT_CALL(store(), SaveSession(SchemefulSite(kTestUrl), _,
+                                   SessionStore::SaveSessionMode::kNewSession))
+      .Times(1);
+
+  service().LoadSessionsAsync();
+
+  {
+    auto scoped_test_fetcher = ScopedTestRegistrationFetcher::CreateWithSuccess(
+        kSessionId, kRefreshUrlString, kOrigin);
+    auto fetch_param = RegistrationFetcherParam::CreateInstanceForTesting(
+        kTestUrl, {crypto::sign::ECDSA_SHA256}, "challenge",
+        /*authorization=*/std::nullopt);
+    service().RegisterBoundSession(
+        base::DoNothing(), std::move(fetch_param),
+        IsolationInfo::CreateTransient(/*nonce=*/std::nullopt),
+        SiteForCookies(), NetLogWithSource(),
+        /*original_request_initiator=*/std::nullopt);
+  }
+
+  auto site = SchemefulSite(kTestUrl);
+  SessionKey session_key{site, Session::Id(kSessionId)};
+  ASSERT_TRUE(service().GetSession(session_key));
+
+  // When registering again with the same session id, the store should be
+  // notified to delete the old session, and then save the new session.
+  {
+    InSequence seq;
+    EXPECT_CALL(store(), DeleteSession(session_key));
+    EXPECT_CALL(
+        store(),
+        SaveSession(site, _, SessionStore::SaveSessionMode::kNewSession));
+  }
+
+  {
+    auto scoped_test_fetcher2 =
+        ScopedTestRegistrationFetcher::CreateWithSuccess(
+            kSessionId, kRefreshUrlString, kOrigin);
+    auto fetch_param2 = RegistrationFetcherParam::CreateInstanceForTesting(
+        kTestUrl, {crypto::sign::ECDSA_SHA256}, "challenge",
+        /*authorization=*/std::nullopt);
+    service().RegisterBoundSession(
+        base::DoNothing(), std::move(fetch_param2),
+        IsolationInfo::CreateTransient(/*nonce=*/std::nullopt),
+        SiteForCookies(), NetLogWithSource(),
+        /*original_request_initiator=*/std::nullopt);
+  }
+
+  EXPECT_TRUE(service().GetSession(session_key));
+  histograms.ExpectUniqueSample("Net.DeviceBoundSessions.DeletionReason",
+                                DeletionReason::kReplaced, 1);
 }
 
 TEST_F(SessionServiceImplWithStoreTest, GetAllSessionsWaitsForSessionsToLoad) {
@@ -5313,4 +5417,111 @@ TEST_F(SessionServiceImplTestWithoutSingleSignOn,
       "Net.DeviceBoundSessions.RegistrationResult.SingleSignOn", 0);
 }
 
+TEST_F(SessionServiceImplTest,
+       DeferredRequestRefreshTimeout_UnblocksSingleRequestAndPreservesSession) {
+  URLRequestFailedJob::AddUrlHandlerForHostname("example.com");
+
+  GURL hanging_refresh_url = URLRequestFailedJob::GetMockHttpsUrlForHostname(
+      ERR_IO_PENDING, "example.com");
+  AddSessionsForTesting({{kSessionId, hanging_refresh_url.spec(), kOrigin}});
+
+  const SchemefulSite site(kTestUrl);
+  ASSERT_TRUE(service().GetSession({site, Session::Id(kSessionId)}));
+
+  net::TestDelegate delegate;
+  std::unique_ptr<URLRequest> request =
+      context()->CreateRequest(kTestUrl, IDLE, &delegate, kDummyAnnotation,
+                               net::handles::kInvalidNetworkHandle);
+  request->set_site_for_cookies(SiteForCookies::FromUrl(kTestUrl));
+
+  HttpRequestHeaders extra_headers;
+  DbscRequest dbsc_request(request.get());
+  std::optional<SessionService::DeferralParams> maybe_deferral =
+      service().ShouldDefer(dbsc_request, &extra_headers,
+                            FirstPartySetMetadata());
+  ASSERT_TRUE(maybe_deferral);
+
+  base::test::TestFuture<RefreshResult> future;
+  service().DeferRequestForRefresh(
+      dbsc_request, SessionService::DeferralParams(Session::Id(kSessionId)),
+      future.GetCallback());
+  EXPECT_FALSE(future.IsReady());
+
+  FastForwardBy(base::Seconds(20));
+  EXPECT_TRUE(future.IsReady());
+  EXPECT_EQ(future.Take(), RefreshResult::kUnreachable);
+
+  // Assert that the session credentials are still preserved.
+  const Session* session =
+      service().GetSession({site, Session::Id(kSessionId)});
+  ASSERT_TRUE(session);
+  EXPECT_EQ(*session->id(), kSessionId);
+}
+
+TEST_F(
+    SessionServiceImplTest,
+    DeferredRequestRefreshTimeout_UnblocksMultipleRequestsAndPreservesSession) {
+  URLRequestFailedJob::AddUrlHandlerForHostname("example.com");
+
+  GURL hanging_refresh_url = URLRequestFailedJob::GetMockHttpsUrlForHostname(
+      ERR_IO_PENDING, "example.com");
+  AddSessionsForTesting({{kSessionId, hanging_refresh_url.spec(), kOrigin}});
+
+  const SchemefulSite site(kTestUrl);
+  ASSERT_TRUE(service().GetSession({site, Session::Id(kSessionId)}));
+
+  net::TestDelegate delegate1;
+  std::unique_ptr<URLRequest> request1 =
+      context()->CreateRequest(kTestUrl, IDLE, &delegate1, kDummyAnnotation,
+                               net::handles::kInvalidNetworkHandle);
+  request1->set_site_for_cookies(SiteForCookies::FromUrl(kTestUrl));
+  DbscRequest dbsc_request1(request1.get());
+
+  net::TestDelegate delegate2;
+  std::unique_ptr<URLRequest> request2 =
+      context()->CreateRequest(kTestUrl, IDLE, &delegate2, kDummyAnnotation,
+                               net::handles::kInvalidNetworkHandle);
+  request2->set_site_for_cookies(SiteForCookies::FromUrl(kTestUrl));
+  DbscRequest dbsc_request2(request2.get());
+
+  net::TestDelegate delegate3;
+  std::unique_ptr<URLRequest> request3 =
+      context()->CreateRequest(kTestUrl, IDLE, &delegate3, kDummyAnnotation,
+                               net::handles::kInvalidNetworkHandle);
+  request3->set_site_for_cookies(SiteForCookies::FromUrl(kTestUrl));
+  DbscRequest dbsc_request3(request3.get());
+
+  base::test::TestFuture<RefreshResult> future1;
+  base::test::TestFuture<RefreshResult> future2;
+  base::test::TestFuture<RefreshResult> future3;
+
+  service().DeferRequestForRefresh(
+      dbsc_request1, SessionService::DeferralParams(Session::Id(kSessionId)),
+      future1.GetCallback());
+  service().DeferRequestForRefresh(
+      dbsc_request2, SessionService::DeferralParams(Session::Id(kSessionId)),
+      future2.GetCallback());
+  service().DeferRequestForRefresh(
+      dbsc_request3, SessionService::DeferralParams(Session::Id(kSessionId)),
+      future3.GetCallback());
+
+  EXPECT_FALSE(future1.IsReady());
+  EXPECT_FALSE(future2.IsReady());
+  EXPECT_FALSE(future3.IsReady());
+
+  FastForwardBy(base::Seconds(20));
+
+  EXPECT_TRUE(future1.IsReady());
+  EXPECT_TRUE(future2.IsReady());
+  EXPECT_TRUE(future3.IsReady());
+  EXPECT_EQ(future1.Take(), RefreshResult::kUnreachable);
+  EXPECT_EQ(future2.Take(), RefreshResult::kUnreachable);
+  EXPECT_EQ(future3.Take(), RefreshResult::kUnreachable);
+
+  // Assert that the session credentials are still preserved.
+  const Session* session =
+      service().GetSession({site, Session::Id(kSessionId)});
+  ASSERT_TRUE(session);
+  EXPECT_EQ(*session->id(), kSessionId);
+}
 }  // namespace net::device_bound_sessions

@@ -10,7 +10,7 @@
 #include "base/notreached.h"
 #include "base/test/test_future.h"
 #include "chrome/browser/ui/autofill/autofill_ai/entity_attribute_update_details.h"
-#include "chrome/browser/ui/browser.h"
+#include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/test/test_browser_dialog.h"
 #include "chrome/common/url_constants.h"
 #include "chrome/test/base/ui_test_utils.h"
@@ -255,45 +255,6 @@ IN_PROC_BROWSER_TEST_F(AutofillAiImportDataControllerImplTest,
 }
 
 IN_PROC_BROWSER_TEST_F(AutofillAiImportDataControllerImplTest,
-                       IsEligibleForWalletPassDisclosure_Eligible) {
-  SetNewVehicleOptions(
-      {.record_type = EntityInstance::RecordType::kServerWallet});
-  ShowUi("SaveNewVehicleEntity");
-  EXPECT_TRUE(controller()->IsEligibleForWalletPassDisclosure());
-}
-
-IN_PROC_BROWSER_TEST_F(AutofillAiImportDataControllerImplTest,
-                       IsEligibleForWalletPassDisclosure_PrivatePass) {
-  SetNewPassportOptions(
-      {.record_type = EntityInstance::RecordType::kServerWallet});
-  ShowUi("SaveNewPassportEntity");
-  EXPECT_FALSE(controller()->IsEligibleForWalletPassDisclosure());
-}
-
-IN_PROC_BROWSER_TEST_F(AutofillAiImportDataControllerImplTest,
-                       IsEligibleForWalletPassDisclosure_NotWalletable) {
-  SetNewVehicleOptions({.record_type = EntityInstance::RecordType::kLocal});
-  ShowUi("SaveNewVehicleEntity");
-  EXPECT_FALSE(controller()->IsEligibleForWalletPassDisclosure());
-}
-
-IN_PROC_BROWSER_TEST_F(AutofillAiImportDataControllerImplTest,
-                       IsEligibleForWalletPassDisclosure_UpdatePrompt) {
-  ShowUi("UpdateVehicleEntity");
-  EXPECT_FALSE(controller()->IsEligibleForWalletPassDisclosure());
-}
-
-IN_PROC_BROWSER_TEST_F(AutofillAiImportDataControllerImplTest,
-                       IsEligibleForWalletPassDisclosure_ReadOnly) {
-  SetNewVehicleOptions(
-      {.record_type = EntityInstance::RecordType::kServerWallet,
-       .are_attributes_read_only =
-           EntityInstance::AreAttributesReadOnly(true)});
-  ShowUi("SaveNewVehicleEntity");
-  EXPECT_FALSE(controller()->IsEligibleForWalletPassDisclosure());
-}
-
-IN_PROC_BROWSER_TEST_F(AutofillAiImportDataControllerImplTest,
                        LegalMessageLines) {
   SetLegalMessageLines({TestLegalMessageLine("Test legal message")});
   SetNewVehicleOptions(
@@ -340,26 +301,6 @@ IN_PROC_BROWSER_TEST_F(AutofillAiImportDataControllerImplTest,
   EXPECT_EQ(
       browser()->tab_strip_model()->GetActiveWebContents()->GetVisibleURL(),
       GURL(chrome::kWalletPassesPageURL));
-}
-
-class AutofillAiImportDataControllerImplFeatureDisabledTest
-    : public AutofillAiImportDataControllerImplTest {
- public:
-  AutofillAiImportDataControllerImplFeatureDisabledTest() {
-    scoped_features_disabled_.InitAndDisableFeature(
-        features::kAutofillEnableWalletDisclosureNoticePublicPass);
-  }
-
- private:
-  base::test::ScopedFeatureList scoped_features_disabled_;
-};
-
-IN_PROC_BROWSER_TEST_F(AutofillAiImportDataControllerImplFeatureDisabledTest,
-                       IsEligibleForWalletPassDisclosure_FeatureDisabled) {
-  SetNewVehicleOptions(
-      {.record_type = EntityInstance::RecordType::kServerWallet});
-  ShowUi("SaveNewVehicleEntity");
-  EXPECT_FALSE(controller()->IsEligibleForWalletPassDisclosure());
 }
 
 }  // namespace autofill

@@ -21,6 +21,7 @@ import {SearchboxBrowserProxy} from '//resources/cr_components/searchbox/searchb
 import {EventTracker} from '//resources/js/event_tracker.js';
 import {loadTimeData} from '//resources/js/load_time_data.js';
 import {CrLitElement} from '//resources/lit/v3_0/lit.rollup.js';
+import {FreStage} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 import type {PageCallbackRouter} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 import {ModelMode, ToolMode} from '//resources/mojo/components/omnibox/composebox/composebox_query.mojom-webui.js';
 
@@ -105,11 +106,17 @@ export class OmniboxEverywhereAppElement extends CrLitElement {
       mostVisitedEnabled_: {type: Boolean},
       showShortcuts_: {type: Boolean},
       showFreModal_: {type: Boolean},
+      isActive_: {
+        type: Boolean,
+        reflect: true,
+        attribute: 'is-active',
+      },
     };
   }
 
   protected accessor omniboxPopupDebugEnabled_ =
       loadTimeData.getBoolean('omniboxPopupDebugEnabled');
+  protected accessor isActive_: boolean = true;
   protected accessor isComposeboxMode_: boolean = false;
   protected accessor searchboxLayoutMode_: string =
       loadTimeData.getString('searchboxLayoutMode');
@@ -147,6 +154,26 @@ export class OmniboxEverywhereAppElement extends CrLitElement {
 
   override connectedCallback() {
     super.connectedCallback();
+    this.isActive_ = document.hasFocus();
+    let wasInactive = false;
+    this.eventTracker_.add(window, 'focus', () => {
+      this.isActive_ = true;
+    });
+    this.eventTracker_.add(window, 'blur', () => {
+      this.isActive_ = false;
+    });
+    this.eventTracker_.add(this, 'pointerdown', () => {
+      if (!this.isActive_) {
+        wasInactive = true;
+        this.isActive_ = true;
+      }
+    });
+    this.eventTracker_.add(this, 'click', () => {
+      if (wasInactive) {
+        wasInactive = false;
+        (this.searchbox ?? this.composebox)?.focusInput();
+      }
+    });
     this.eventTracker_.add(
         document.documentElement, 'visibilitychange',
         this.onVisibilitychange_.bind(this));
@@ -198,6 +225,12 @@ export class OmniboxEverywhereAppElement extends CrLitElement {
         this.callbackRouter_.setShowFre.addListener((show: boolean) => {
           this.showFreModal_ = show;
         }),
+        this.callbackRouter_.updateAimPopupEligibility.addListener(
+            (aiModePrefEnabled: boolean) => {
+              if (!aiModePrefEnabled && this.isComposeboxMode_) {
+                this.onCloseComposebox_();
+              }
+            }),
     );
 
     if (this.mostVisitedEnabled_) {
@@ -272,14 +305,25 @@ export class OmniboxEverywhereAppElement extends CrLitElement {
     // state so user queries are preserved when switching to Composebox mode
     // (e.g. when clicking a tool or attaching a tab from the '+' context menu).
     const text = this.searchbox ? this.searchbox.getInputText?.() || '' : '';
+    // Calls setActiveToolMode(initialMode) directly without passing mode down
+    // through composeboxState_. This prevents
+    // ComposeboxEmbedderMixin.updateState() from mistakenly calling
+    // handleToolClick() and toggling off the active tool mode.
+    const {mode: initialMode = ToolMode.kUnspecified, ...stateForComposebox} =
+        state ?? {};
+
     this.composeboxState_ = {
       text,
       files: [],
       mode: ToolMode.kUnspecified,
       model: ModelMode.kUnspecified,
       smartTabSharingActive: false,
-      ...state,
+      ...stateForComposebox,
     };
+    if (initialMode !== ToolMode.kUnspecified) {
+      SearchboxBrowserProxy.getInstance().handler.setActiveToolMode(
+          initialMode, false);
+    }
     this.isComposeboxMode_ = true;
     await this.updateComplete;
     if (this.composebox) {
@@ -297,23 +341,17 @@ export class OmniboxEverywhereAppElement extends CrLitElement {
     const freModal = this.shadowRoot.querySelector('fre-modal');
     if (!freModal) {
       this.showFreModal_ = false;
-      SearchboxBrowserProxy.getInstance().handler.dismissFre();
+      SearchboxBrowserProxy.getInstance().handler.dismissFre(
+          FreStage.kIntroModal);
       return;
     }
 
     freModal.classList.add('dismissing');
     freModal.addEventListener('animationend', () => {
       this.showFreModal_ = false;
-      SearchboxBrowserProxy.getInstance().handler.dismissFre();
+      SearchboxBrowserProxy.getInstance().handler.dismissFre(
+          FreStage.kIntroModal);
     }, {once: true});
-  }
-
-  protected onFreAcceptHotkey_() {
-    this.onFreClose_();
-  }
-
-  protected onFreOpenSettings_() {
-    SearchboxBrowserProxy.getInstance().handler.openHotkeySettings();
   }
 
   protected async onOpenComposebox_(e: CustomEvent<ComposeboxState>) {

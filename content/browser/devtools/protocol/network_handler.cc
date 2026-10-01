@@ -1339,7 +1339,6 @@ String NetworkHandler::NetErrorToString(int net_error) {
   }
 }
 
-
 // static
 const char* NetworkHandler::ResourceTypeToString(
     blink::mojom::ResourceType resource_type) {
@@ -2096,6 +2095,9 @@ String BuildProtocolDeviceBoundSessionDeletionReason(
     case net::device_bound_sessions::DeletionReason::kDevTools:
       return protocol::Network::TerminationEventDetails::DeletionReasonEnum::
           DevTools;
+    case net::device_bound_sessions::DeletionReason::kReplaced:
+      return protocol::Network::TerminationEventDetails::DeletionReasonEnum::
+          Replaced;
   }
 }
 
@@ -3664,7 +3666,6 @@ void NetworkHandler::OnSignedExchangeReceived(
       std::move(signed_exchange_info));
 }
 
-
 void NetworkHandler::BodyDataReceived(const String& request_id,
                                       const String& body,
                                       bool is_base64_encoded) {
@@ -3743,7 +3744,6 @@ void NetworkHandler::GetResponseBody(
   ProcessDurableMessageOrGetLocalData(request_id, std::move(callback),
                                       std::nullopt);
 }
-
 
 // static
 std::string NetworkHandler::ExtractFragment(const GURL& url,
@@ -4197,6 +4197,12 @@ void NetworkHandler::LoadNetworkResource(
       return;
     }
 
+    if (!frame->policy_container_host()) {
+      callback->sendFailure(
+          Response::ServerError("Frame does not have a policy container"));
+      return;
+    }
+
     RenderFrameHostCSPContext csp_context(frame);
 
     network::CSPCheckResult result = csp_context.IsAllowedByCsp(
@@ -4220,6 +4226,7 @@ void NetworkHandler::LoadNetworkResource(
         network::mojom::TrustTokenOperationPolicyVerdict::kForbid,
         frame->GetCookieSettingOverrides(),
         /*network_restrictions_id=*/frame->GetNetworkRestrictionsID(),
+        /*renderer_accessible_http_cache_write_enabled=*/false,
         "NetworkHandler::LoadNetworkResource");
 
     auto factory = CreateNetworkFactoryForDevTools(
@@ -4230,12 +4237,34 @@ void NetworkHandler::LoadNetworkResource(
       return;
     }
 
+    auto redirect_check = base::BindRepeating(
+        [](scoped_refptr<PolicyContainerHost> policy_container_host,
+           base::WeakPtr<RenderFrameHostImpl> frame, const GURL& initial_url,
+           const net::RedirectInfo& redirect_info) -> bool {
+          if (!frame || !policy_container_host ||
+              frame->policy_container_host() != policy_container_host.get()) {
+            return false;
+          }
+          RenderFrameHostCSPContext csp_context(frame.get());
+          network::CSPCheckResult result = csp_context.IsAllowedByCsp(
+              policy_container_host->policies().content_security_policies,
+              network::mojom::CSPDirectiveName::ConnectSrc,
+              redirect_info.new_url, initial_url,
+              /*has_followed_redirect=*/true,
+              /*source_location=*/nullptr,
+              network::CSPContext::CHECK_ENFORCED_CSP,
+              /*is_opaque_fenced_frame=*/false);
+          return result.IsAllowed();
+        },
+        base::WrapRefCounted(frame->policy_container_host()),
+        frame->GetWeakPtr(), gurl);
+
     url_loader_factory.Bind(std::move(factory));
     auto loader = DevToolsNetworkResourceLoader::Create(
         std::move(url_loader_factory), std::move(gurl),
         frame->GetLastCommittedOrigin(), frame->ComputeSiteForCookies(),
         caching, include_credentials, std::move(complete_callback),
-        frame->IsOutermostMainFrame());
+        frame->IsOutermostMainFrame(), std::move(redirect_check));
     loaders_.emplace(std::move(loader), std::move(callback));
     return;
   }

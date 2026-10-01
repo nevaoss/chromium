@@ -56,6 +56,9 @@ namespace {
 constexpr char kURLVerdictSourceHistogram[] =
     "Enterprise.DataProtection.URLVerdictSource";
 
+constexpr char kURLVerdictScreenshotHistogram[] =
+    "Enterprise.DataProtection.URLVerdictForScreenshot";
+
 // This is non-null in tests to install a fake service.
 safe_browsing::RealTimeUrlLookupServiceBase* g_lookup_service = nullptr;
 
@@ -114,10 +117,34 @@ void RunPendingNavigationCallback(
 
 #if BUILDFLAG(SAFE_BROWSING_AVAILABLE)
   if (ShouldReportSafeUrlFilteringEvents(user_data)) {
-    MaybeTriggerUrlFilteringInterstitialEvent(
-        web_contents, web_contents->GetLastCommittedURL(),
-        /*threat_type=*/"", *user_data->rt_lookup_response(),
-        /*tab_title=*/base::UTF16ToUTF8(web_contents->GetTitle()));
+    bool is_enabled = base::FeatureList::IsEnabled(
+        enterprise_data_protection::kEnterpriseTabTitleReporting);
+    base::UmaHistogramBoolean(
+        "Enterprise.DelayedReportingInterstitial.Triggered.UrlFiltering",
+        is_enabled);
+    if (is_enabled) {
+      enterprise_data_protection::DelayedInterstitialReporter::Start(
+          web_contents,
+          base::BindOnce(
+              [](base::WeakPtr<content::WebContents> web_contents, GURL url,
+                 std::string threat_type,
+                 safe_browsing::RTLookupResponse response,
+                 const std::string& tab_title) {
+                if (web_contents) {
+                  MaybeTriggerUrlFilteringInterstitialEvent(
+                      web_contents.get(), std::move(url),
+                      std::move(threat_type), std::move(response), tab_title);
+                }
+              },
+              web_contents->GetWeakPtr(), web_contents->GetLastCommittedURL(),
+              /*threat_type=*/"", *user_data->rt_lookup_response()),
+          /*is_bypassing_interstitial=*/false, "UrlFiltering");
+    } else {
+      MaybeTriggerUrlFilteringInterstitialEvent(
+          web_contents, web_contents->GetLastCommittedURL(),
+          /*threat_type=*/"", *user_data->rt_lookup_response(),
+          /*tab_title=*/base::UTF16ToUTF8(web_contents->GetTitle()));
+    }
   }
 #endif
 
@@ -203,7 +230,7 @@ std::string GetIdentifier(content::BrowserContext* browser_context) {
 
 void LogVerdictSource(
     DataProtectionNavigationObserver::URLVerdictSource verdict_source) {
-  VLOG(1) << "enterprise.watermark: verdict source: "
+  VLOG(1) << "enterprise.data_protection: verdict source: "
           << static_cast<int>(verdict_source);
   base::UmaHistogramEnumeration(kURLVerdictSourceHistogram, verdict_source);
 }
@@ -388,6 +415,11 @@ void DataProtectionNavigationObserver::OnLookupComplete(
   if (!web_contents()) {
     return;
   }
+
+  base::UmaHistogramBoolean(
+      kURLVerdictScreenshotHistogram,
+      GetUrlSettings("", rt_lookup_response.get()).allow_screenshots);
+
   if (is_navigation_finished_) {
     OnDoLookupComplete(web_contents()->GetWeakPtr(),
                        std::move(pending_navigation_callback_), identifier_,

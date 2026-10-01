@@ -7,6 +7,7 @@
 #include "base/command_line.h"
 #include "base/feature_list.h"
 #include "base/notreached.h"
+#include "base/strings/strcat.h"
 #include "components/optimization_guide/core/model_execution/feature_keys.h"
 #include "components/optimization_guide/core/optimization_guide_features.h"
 #include "components/optimization_guide/core/optimization_guide_proto_util.h"
@@ -566,6 +567,36 @@ net::NetworkTrafficAnnotationTag GetNetworkTrafficAnnotation(
             }
           }
         })");
+    case ModelBasedCapabilityKey::kTtc:
+      return net::DefineNetworkTrafficAnnotation("ttc_model_execution", R"(
+        semantics {
+          sender: "TTC"
+          description:
+            "Sends session requests and context to Google's Model Execution "
+            "Service and streams responses back."
+          trigger:
+            "User interacts with the TTC interface."
+          destination: GOOGLE_OWNED_SERVICE
+          data:
+            "User query and session interaction context."
+          internal {
+            contacts {
+              email: "gklassen@chromium.org"
+            }
+          }
+          user_data {
+            type: ACCESS_TOKEN
+            type: USER_CONTENT
+          }
+          last_reviewed: "2026-08-28"
+        }
+        policy {
+          cookies_allowed: NO
+          setting:
+            "There is no dedicated setting for this feature. Users can "
+            "choose whether to interact with the feature when presented."
+          chrome_policy {}
+        })");
   }
 }
 
@@ -598,6 +629,7 @@ bool IsAccessTokenRequiredForFeature(ModelBasedCapabilityKey feature) {
     case ModelBasedCapabilityKey::kUpdaterChat:
     case ModelBasedCapabilityKey::kContextHub:
     case ModelBasedCapabilityKey::kReadAloudSynthesize:
+    case ModelBasedCapabilityKey::kTtc:
       return true;
     case ModelBasedCapabilityKey::kFormsClassifications:
       return !base::FeatureList::IsEnabled(
@@ -612,6 +644,22 @@ bool IsAccessTokenRequiredForFeature(ModelBasedCapabilityKey feature) {
       return !base::FeatureList::IsEnabled(
           features::kOptimizationGuideBypassPasswordChangeAuth);
   }
+}
+
+GURL GetModelExecutionServiceBaseURL() {
+  base::CommandLine* command_line = base::CommandLine::ForCurrentProcess();
+  if (command_line->HasSwitch(
+          kOptimizationGuideServiceModelExecutionURLSwitch)) {
+    return GURL(command_line->GetSwitchValueASCII(
+        kOptimizationGuideServiceModelExecutionURLSwitch));
+  }
+  return GURL(kOptimizationGuideServiceModelExecutionDefaultBaseURL);
+}
+
+GURL GetModelExecutionServiceFullURL(std::string_view rpc_name) {
+  GURL base_url = GetModelExecutionServiceBaseURL();
+  CHECK(base_url.spec().ends_with('/'));
+  return GURL(base::StrCat({base_url.spec(), rpc_name}));
 }
 
 }  // namespace optimization_guide

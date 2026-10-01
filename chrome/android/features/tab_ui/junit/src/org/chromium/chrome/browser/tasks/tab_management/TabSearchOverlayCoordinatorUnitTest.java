@@ -363,7 +363,7 @@ public class TabSearchOverlayCoordinatorUnitTest {
                         "Android.TabSearch.DismissalReason", TabSearchDismissalReason.SCRIM);
         mScrim.performClick();
         watcher.assertExpected();
-        verify(mLocationBarCoordinator, never()).clearOmniboxFocus();
+        verify(mLocationBarCoordinator).clearOmniboxFocus();
         assertOverlayHidden();
     }
 
@@ -377,7 +377,7 @@ public class TabSearchOverlayCoordinatorUnitTest {
         assertNotNull(closeButton);
         closeButton.performClick();
         watcher.assertExpected();
-        verify(mLocationBarCoordinator, never()).clearOmniboxFocus();
+        verify(mLocationBarCoordinator).clearOmniboxFocus();
         assertOverlayHidden();
     }
 
@@ -412,7 +412,7 @@ public class TabSearchOverlayCoordinatorUnitTest {
                         "Android.TabSearch.DismissalReason", TabSearchDismissalReason.CLOSE_BUTTON);
         mCoordinator.hide(TabSearchDismissalReason.CLOSE_BUTTON);
         watcher.assertExpected();
-        verify(mLocationBarCoordinator, never()).clearOmniboxFocus();
+        verify(mLocationBarCoordinator).clearOmniboxFocus();
         assertOverlayHidden();
     }
 
@@ -1060,6 +1060,31 @@ public class TabSearchOverlayCoordinatorUnitTest {
         params = (LinearLayout.LayoutParams) panelView.getLayoutParams();
         assertEquals(48, params.topMargin);
         assertEquals(View.VISIBLE, headerView.getVisibility());
+    }
+
+    @Test
+    public void testPanelTopMargin_VerticalTabs_ConventionalState() {
+        FrameLayout rootLayout = new FrameLayout(mActivity);
+        FrameLayout controlContainer = new FrameLayout(mActivity);
+        controlContainer.setId(R.id.control_container);
+        View toolbarContainer = new View(mActivity);
+        toolbarContainer.setId(R.id.toolbar_container);
+        toolbarContainer.setTop(48);
+        controlContainer.addView(toolbarContainer);
+        rootLayout.addView(controlContainer);
+
+        View verticalRailContainer = new View(mActivity);
+        verticalRailContainer.setId(R.id.vertical_tab_rail_container);
+        rootLayout.addView(verticalRailContainer);
+        mActivity.setContentView(rootLayout);
+
+        when(mAppHeaderState.isInDesktopWindow()).thenReturn(false);
+
+        showOverlay();
+
+        View panelView = mPanelContainer.findViewById(R.id.tab_search_overlay_panel);
+        var params = (LinearLayout.LayoutParams) panelView.getLayoutParams();
+        assertEquals(48, params.topMargin);
     }
 
     @Test

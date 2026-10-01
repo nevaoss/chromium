@@ -206,11 +206,6 @@ AX_BASE_EXPORT bool IsAccessibilityGroupLocationChangeByCommonAncestorEnabled();
 // TODO(accessibility): Should this be moved to ash_features.cc?
 AX_BASE_EXPORT bool IsDictationOfflineAvailable();
 
-// Adds option to limit the movement on the screen.
-AX_BASE_EXPORT BASE_DECLARE_FEATURE(kAccessibilityReducedAnimations);
-AX_BASE_EXPORT bool IsAccessibilityReducedAnimationsEnabled();
-
-
 // Allow context checking with the accessibility Dictation
 // feature.
 AX_BASE_EXPORT BASE_DECLARE_FEATURE(
@@ -280,6 +275,13 @@ AX_BASE_EXPORT bool IsAccessibilityAndroidMathEnabled();
 // replacing the previous Speakr service integration.
 using ax::mojom::features::kReadAloudNative;
 AX_BASE_EXPORT bool IsReadAloudNativeEnabled();
+
+// Controls the server speech synthesis broker for Read Aloud. Returns true if
+// kReadAloudServerSynthesizer is enabled or if kReadAloudNative is enabled,
+// unless kReadAloudServerSynthesizer is explicitly disabled via command line or
+// Finch field trial overrides.
+using ax::mojom::features::kReadAloudServerSynthesizer;
+AX_BASE_EXPORT bool IsReadAloudServerSynthesizerEnabled();
 
 #if !BUILDFLAG(IS_ANDROID)
 // Use the AXTree fixing code, which may be an assortment of different

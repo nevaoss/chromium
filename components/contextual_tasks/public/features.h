@@ -227,6 +227,10 @@ extern const base::FeatureParam<base::TimeDelta> kPreviousTabRecencyThreshold;
 // Whether Smart Tab Sharing is enabled for the ContextualTasksContext feature.
 extern const base::FeatureParam<bool> kContextualTasksContextSmartTabSharing;
 
+// Whether Smart Tab Sharing should toggle off after query submission.
+extern const base::FeatureParam<bool>
+    kContextualTasksContextToggleOffAfterSubmit;
+
 // Option for smart tab sharing IPH first time prompt.
 enum class SmartTabSharingIphFirstTimePromptOption {
   kIphFirstTimePromptV1,
@@ -332,14 +336,6 @@ extern int GetContextualTasksShowOnboardingTooltipSessionImpressionCap();
 // user before it no longer shows up.
 extern int GetContextualTasksOnboardingTooltipDismissedCap();
 
-// The maximum number of times the lens search tooltip can be dismissed by the
-// user before it no longer shows up.
-extern int GetContextualTasksLensSearchTooltipDismissedCap();
-
-// The maximum number of times the lens search tooltip can be shown to the user
-// in a single session before it no longer shows up.
-extern int GetContextualTasksLensSearchTooltipSessionImpressionCap();
-
 // The maximum number of times the AskG tooltip can be dismissed by the
 // user before it no longer shows up.
 extern int GetContextualTasksAskGTooltipDismissedCap();
@@ -405,6 +401,8 @@ extern bool GetIsContextualTasksSuggestionsEnabled();
 // Returns the timeout for smart tab sharing tab selection.
 extern base::TimeDelta GetSmartTabSharingTabSelectionTimeout();
 
+// Returns whether Smart Tab Sharing should toggle off after query submission.
+extern bool ShouldToggleOffAfterSubmit();
 
 // Enables tab auto-chip for contextual tasks. When disabled, no suggested
 // chips will be shown in the composebox automatically.

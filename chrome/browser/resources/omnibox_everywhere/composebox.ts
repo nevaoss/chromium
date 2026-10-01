@@ -8,6 +8,7 @@ import '//resources/cr_components/composebox/composebox_input.js';
 import '//resources/cr_components/composebox/composebox_tool_chip.js';
 import '//resources/cr_components/composebox/contextual_entrypoint_button.js';
 import '//resources/cr_components/composebox/composebox_submit.js';
+import '//resources/cr_components/composebox/error_scrim.js';
 import '//resources/cr_components/composebox/file_carousel.js';
 import '//resources/cr_components/search/animated_glow.js';
 
@@ -75,8 +76,15 @@ export class OmniboxEverywhereComposeboxElement extends
         type: Boolean,
         reflect: true,
       },
+      isActive: {
+        type: Boolean,
+        reflect: true,
+        attribute: 'is-active',
+      },
     };
   }
+
+  accessor isActive: boolean = true;
 
   /**
    * Entrypoint name used by SearchAnimatedGlowElement and
@@ -244,7 +252,6 @@ export class OmniboxEverywhereComposeboxElement extends
     // embedded WebUI menu on the entrypoint button.
   }
 
-
   override shouldShowDivider(): boolean {
     if (this.searchboxLayoutMode === 'TallBottomContext' &&
         !this.showFileCarousel) {
@@ -252,6 +259,16 @@ export class OmniboxEverywhereComposeboxElement extends
     }
 
     return super.shouldShowDivider();
+  }
+
+  /**
+   * Enables handling of Fusebox suggestion actions (e.g. contextual tool
+   * suggestions like "Turn it into a graphic novel illustration" in image mode)
+   * so clicking a suggestion chip fills the prompt into the Composebox rather
+   * than falling through to standard URL navigation.
+   */
+  override shouldHandleSuggestionFuseboxActions(): boolean {
+    return true;
   }
 
   override selectFirstMatch() {

@@ -1323,6 +1323,7 @@ Check your passwords at any time in <ph name="GOOGLE_PASSWORD_MANAGER" />.</tran
 <translation id="2006638907958895361">Open Link in <ph name="APP" /></translation>
 <translation id="2007404777272201486">Report an Issue...</translation>
 <translation id="200781997903833896">To use Read Aloud, clear space on your device</translation>
+<translation id="2009047848105043829">Manage your devices</translation>
 <translation id="2010501376126504057">Compatible devices</translation>
 <translation id="2010636492623189611">Selected.</translation>
 <translation id="2012935757369720523">Delete file</translation>
@@ -2200,7 +2201,7 @@ You can manage this account’s settings by installing the Family Link app on yo
 <translation id="2682498795777673382">Update from a parent</translation>
 <translation id="2683638487103917598">Folder sorted</translation>
 <translation id="2685193395980129388">Allowed – <ph name="PERMISSION_DETAILS" /></translation>
-<translation id="2688734475209947648">You won’t need to remember this password. It will be saved to Google Password Manager for <ph name="ACCOUNT" />.</translation>
+<translation id="2688734475209947648">You won't need to remember this password. It will be saved to Google Password Manager for <ph name="ACCOUNT" />.</translation>
 <translation id="2690024944919328218">Show language options</translation>
 <translation id="2691385045260836588">Model</translation>
 <translation id="2692503699962701720">Change pitch when speaking element types and formatted text</translation>
@@ -3968,7 +3969,7 @@ You can manage this account’s settings by installing the Family Link app on yo
 <translation id="3983769721878416534">Delay before click</translation>
 <translation id="3984135167056005094">Do not include email address</translation>
 <translation id="3984536049089846927">Next page</translation>
-<translation id="398477389655464998">Copy Link to Highlight</translation>
+<translation id="398477389655464998">Copy link to highlight</translation>
 <translation id="3984862166739904574">Quick Answers definition</translation>
 <translation id="3986813315215454677">ChromeOS Bluetooth</translation>
 <translation id="3987307536043958493">Block and leave</translation>
@@ -6076,7 +6077,7 @@ You can assign multiple switches to this action.</translation>
 <translation id="5643321261065707929">Metered network</translation>
 <translation id="5646376287012673985">Location</translation>
 <translation id="5646558797914161501">Businessman</translation>
-<translation id="564670806635578888">Search Google for “<ph name="SEARCH_TERMS" />”</translation>
+<translation id="564670806635578888">Search Google for '<ph name="SEARCH_TERMS" />'</translation>
 <translation id="5647989922796038257">Also share all audio outputs</translation>
 <translation id="5648021990716966815">Mic jack</translation>
 <translation id="5648166631817621825">Last 7 days</translation>
@@ -6106,6 +6107,7 @@ You can assign multiple switches to this action.</translation>
 <translation id="5678955352098267522">Read your data on <ph name="WEBSITE_1" /></translation>
 <translation id="5680050361008726776">Remove '<ph name="ESIM_PROFILE_NAME" />'?</translation>
 <translation id="5681586175480958839">File is already being opened</translation>
+<translation id="5682120590308014005">Sign in to easily add files from Drive to your AI Mode threads. You'll also get your passwords and more on all your devices.</translation>
 <translation id="5684110242705861346">The '<ph name="NAME" />' extension was added by your organisation's policy and is controlling this setting. <ph name="BEGIN_LINK" />See details<ph name="END_LINK" /></translation>
 <translation id="5684181005476681636">Wi-Fi details</translation>
 <translation id="5687340364605915800">Sites use their discretion when responding to this request</translation>
@@ -6661,6 +6663,7 @@ You can assign multiple switches to this action.</translation>
 <translation id="6126601353087978360">Please enter your feedback here:</translation>
 <translation id="6127292407256937949">Volume is on. Turn off volume.</translation>
 <translation id="6127598727646973981">Secure connections</translation>
+<translation id="6129686474468159207">See which sites you call from and when your camera or microphone is used</translation>
 <translation id="6129691635767514872">The selected data has been removed from Chrome and synced devices. Your Google Account may have other forms of browsing history such as searches and activity from other Google services at <ph name="BEGIN_LINK" />myactivity.google.com<ph name="END_LINK" />.</translation>
 <translation id="6129938384427316298">Netscape Certificate Comment</translation>
 <translation id="6129953537138746214">Space</translation>
@@ -8184,6 +8187,7 @@ You have # more compromised passwords. Google Password Manager recommends checki
 <translation id="7299588179200441056"><ph name="URL" />–<ph name="FOLDER" /></translation>
 <translation id="730068416968462308">Animated</translation>
 <translation id="7301812050652048720">Passkey deleted</translation>
+<translation id="7303246449496241344">To easily add files from Drive to your AI Mode threads, verify that it's you. You'll also get your passwords and more on all your devices.</translation>
 <translation id="7303485269821975179">Set up a <ph name="DEVICE_TYPE" /> password</translation>
 <translation id="7303900363563182677">This site has been blocked from seeing text and images copied to the clipboard</translation>
 <translation id="7304030187361489308">High</translation>

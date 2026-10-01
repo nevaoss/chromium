@@ -14,6 +14,7 @@
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/test/mock_callback.h"
+#include "base/test/run_until.h"
 #include "mojo/public/cpp/bindings/receiver_set.h"
 #include "net/http/http_request_headers.h"
 #include "net/http/http_response_headers.h"
@@ -162,8 +163,59 @@ class WebTransportConnector final : public mojom::blink::WebTransportConnector {
   Vector<ConnectArgs> connect_args_;
 };
 
+class MockWebTransport;
+
+// Binds one createWritable() Datagram writable and forwards its calls to the
+// MockWebTransport that created it, so that tests can keep all of their
+// expectations on a single mock object.
+class TestDatagramWritable final
+    : public network::mojom::blink::WebTransportDatagramWritable {
+ public:
+  TestDatagramWritable(
+      MockWebTransport* transport,
+      mojo::PendingReceiver<network::mojom::blink::WebTransportDatagramWritable>
+          receiver)
+      : transport_(transport), receiver_(this, std::move(receiver)) {
+    receiver_.set_disconnect_handler(
+        BindOnce(&TestDatagramWritable::OnDisconnect, base::Unretained(this)));
+  }
+
+  // Implementation of WebTransportDatagramWritable.
+  void SendDatagram(base::span<const uint8_t> data,
+                    SendDatagramCallback callback) override;
+  void SetPriority(
+      network::mojom::blink::WebTransportStreamPriorityPtr priority) override;
+
+  // True until the renderer closes the writable, which it does when the
+  // stream is closed, aborted or garbage collected.
+  bool is_connected() const { return receiver_.is_bound(); }
+
+  void CloseForSession() {
+    receiver_.ResetWithReason(
+        network::mojom::blink::WebTransportDatagramWritable::
+            kSessionClosedDisconnectReason,
+        "The WebTransport session closed.");
+  }
+
+  void RejectCreation() {
+    receiver_.ResetWithReason(
+        network::mojom::blink::WebTransportDatagramWritable::
+            kCreationRejectedDisconnectReason,
+        "The Datagram writable limit was reached.");
+  }
+
+ private:
+  void OnDisconnect() { receiver_.reset(); }
+
+  const raw_ptr<MockWebTransport> transport_;
+  mojo::Receiver<network::mojom::blink::WebTransportDatagramWritable> receiver_;
+};
+
 class MockWebTransport : public network::mojom::blink::WebTransport {
  public:
+  using SendDatagramForWritableCallback =
+      TestDatagramWritable::SendDatagramCallback;
+
   explicit MockWebTransport(
       mojo::PendingReceiver<network::mojom::blink::WebTransport>
           pending_receiver)
@@ -172,6 +224,31 @@ class MockWebTransport : public network::mojom::blink::WebTransport {
   MOCK_METHOD2(SendDatagram,
                void(base::span<const uint8_t> data,
                     base::OnceCallback<void(bool)> callback));
+
+  // Called by CreateDatagramWritable() once it has bound `writable`.
+  MOCK_METHOD2(
+      OnDatagramWritableCreated,
+      void(TestDatagramWritable* writable,
+           network::mojom::blink::WebTransportStreamPriorityPtr priority));
+  // Forwarded from TestDatagramWritable.
+  MOCK_METHOD3(SendDatagramForWritable,
+               void(TestDatagramWritable* writable,
+                    base::span<const uint8_t> data,
+                    base::OnceCallback<void(bool)> callback));
+  MOCK_METHOD2(
+      SetDatagramWritablePriority,
+      void(TestDatagramWritable* writable,
+           network::mojom::blink::WebTransportStreamPriorityPtr priority));
+
+  void CreateDatagramWritable(
+      mojo::PendingReceiver<network::mojom::blink::WebTransportDatagramWritable>
+          writable,
+      network::mojom::blink::WebTransportStreamPriorityPtr priority) override {
+    datagram_writables_.push_back(
+        std::make_unique<TestDatagramWritable>(this, std::move(writable)));
+    OnDatagramWritableCreated(datagram_writables_.back().get(),
+                              std::move(priority));
+  }
 
   MOCK_METHOD4(
       CreateStream,
@@ -214,9 +291,22 @@ class MockWebTransport : public network::mojom::blink::WebTransport {
   void AbortStream(uint32_t stream_id, uint8_t code) override {}
   void StopSending(uint32_t stream_id, uint8_t code) override {}
 
+  void ResetReceiver() { receiver_.reset(); }
+
  private:
   mojo::Receiver<network::mojom::blink::WebTransport> receiver_;
+  Vector<std::unique_ptr<TestDatagramWritable>> datagram_writables_;
 };
+
+void TestDatagramWritable::SendDatagram(base::span<const uint8_t> data,
+                                        SendDatagramCallback callback) {
+  transport_->SendDatagramForWritable(this, data, std::move(callback));
+}
+
+void TestDatagramWritable::SetPriority(
+    network::mojom::blink::WebTransportStreamPriorityPtr priority) {
+  transport_->SetDatagramWritablePriority(this, std::move(priority));
+}
 
 class WebTransportTest : public ::testing::Test {
  public:
@@ -317,6 +407,14 @@ class WebTransportTest : public ::testing::Test {
               std::move(callback));
         });
 
+    EXPECT_CALL(*mock_web_transport_, GetReceiveStreamStats(_, _))
+        .Times(testing::AnyNumber())
+        .WillRepeatedly(
+            [](uint32_t,
+               MockWebTransport::GetReceiveStreamStatsCallback callback) {
+              std::move(callback).Run(nullptr);
+            });
+
     if (expected_outgoing_datagram_expiration_duration != base::TimeDelta()) {
       EXPECT_CALL(*mock_web_transport_,
                   SetOutgoingDatagramExpirationDuration(
@@ -398,14 +496,51 @@ class WebTransportTest : public ::testing::Test {
     return readable;
   }
 
+  void ExpectReceiveStreamStats(V8TestingScope& scope,
+                                WebTransportReceiveStream* receive_stream,
+                                uint32_t stream_id,
+                                std::optional<uint64_t> network_bytes_received,
+                                uint64_t expected_bytes_received,
+                                uint64_t expected_bytes_read) {
+    EXPECT_CALL(*mock_web_transport_, GetReceiveStreamStats(stream_id, _))
+        .WillOnce(
+            [network_bytes_received](
+                uint32_t,
+                MockWebTransport::GetReceiveStreamStatsCallback callback) {
+              if (!network_bytes_received) {
+                std::move(callback).Run(nullptr);
+                return;
+              }
+              auto stats =
+                  network::mojom::blink::WebTransportReceiveStreamStats::New();
+              stats->bytes_received = *network_bytes_received;
+              std::move(callback).Run(std::move(stats));
+            });
+
+    auto* script_state = scope.GetScriptState();
+    ScriptPromiseTester stats_tester(script_state,
+                                     receive_stream->getStats(script_state));
+    stats_tester.WaitUntilSettled();
+    ASSERT_TRUE(stats_tester.IsFulfilled());
+
+    auto* stats =
+        NativeValueTraits<WebTransportReceiveStreamStats>::NativeValue(
+            scope.GetIsolate(), stats_tester.Value().V8Value(),
+            ASSERT_NO_EXCEPTION);
+    ASSERT_TRUE(stats);
+    EXPECT_EQ(stats->bytesReceived(), expected_bytes_received);
+    EXPECT_EQ(stats->bytesRead(), expected_bytes_read);
+  }
+
   void BindConnector(mojo::ScopedMessagePipeHandle handle) {
     connector_.Bind(mojo::PendingReceiver<mojom::blink::WebTransportConnector>(
         std::move(handle)));
   }
 
   void TearDown() override {
-    if (!interface_broker_)
+    if (!interface_broker_) {
       return;
+    }
     interface_broker_->SetBinderForTesting(
         mojom::blink::WebTransportConnector::Name_, {});
   }
@@ -955,6 +1090,7 @@ TEST_F(WebTransportTest, PreConnectionWriteUsesCurrentMaxDatagramSize) {
   ConnectSuccessfullyWithoutRunningPendingTasks(
       web_transport, base::TimeDelta(), /*response_headers=*/nullptr,
       kNegotiatedMaxDatagramSize);
+  EXPECT_CALL(*mock_web_transport_, OnDatagramWritableCreated(_, _));
   EXPECT_CALL(*mock_web_transport_,
               SendDatagram(SizeIs(kInitialMaxDatagramSize + 1), _))
       .Times(0);
@@ -974,12 +1110,14 @@ TEST_F(WebTransportTest, ZeroMaxDatagramSizeDropsNonEmptyDatagrams) {
 
   EXPECT_EQ(web_transport->datagrams()->maxDatagramSize(), 0u);
 
-  EXPECT_CALL(*mock_web_transport_, SendDatagram(SizeIs(0), _))
-      .WillOnce([](base::span<const uint8_t>,
+  EXPECT_CALL(*mock_web_transport_, OnDatagramWritableCreated(_, _));
+  EXPECT_CALL(*mock_web_transport_, SendDatagramForWritable(_, SizeIs(0), _))
+      .WillOnce([](TestDatagramWritable*, base::span<const uint8_t>,
                    MockWebTransport::SendDatagramCallback callback) {
         std::move(callback).Run(true);
       });
-  EXPECT_CALL(*mock_web_transport_, SendDatagram(SizeIs(1), _)).Times(0);
+  EXPECT_CALL(*mock_web_transport_, SendDatagramForWritable(_, SizeIs(1), _))
+      .Times(0);
 
   auto* script_state = scope.GetScriptState();
   auto* writable = web_transport->datagrams()->createWritable(
@@ -1019,8 +1157,10 @@ TEST_F(WebTransportTest, DatagramWritesRespectMaxDatagramSize) {
   constexpr uint32_t kMaxDatagramSize = 4;
   ConnectSuccessfully(web_transport, nullptr, kMaxDatagramSize);
 
-  EXPECT_CALL(*mock_web_transport_, SendDatagram(SizeIs(kMaxDatagramSize), _))
-      .WillOnce([](base::span<const uint8_t>,
+  EXPECT_CALL(*mock_web_transport_, OnDatagramWritableCreated(_, _));
+  EXPECT_CALL(*mock_web_transport_,
+              SendDatagramForWritable(_, SizeIs(kMaxDatagramSize), _))
+      .WillOnce([](TestDatagramWritable*, base::span<const uint8_t>,
                    MockWebTransport::SendDatagramCallback callback) {
         std::move(callback).Run(true);
       });
@@ -1104,25 +1244,29 @@ TEST_F(WebTransportTest, QueuedDatagramWritesRespectNegotiatedMaxDatagramSize) {
   Vector<MockWebTransport::SendDatagramCallback> callbacks;
   {
     testing::InSequence sequence;
-    EXPECT_CALL(*mock_web_transport_, SendDatagram(SizeIs(1), _))
+    EXPECT_CALL(*mock_web_transport_, OnDatagramWritableCreated(_, _));
+    EXPECT_CALL(*mock_web_transport_, SendDatagramForWritable(_, SizeIs(1), _))
         .WillOnce(
-            [&callbacks](base::span<const uint8_t>,
+            [&callbacks](TestDatagramWritable*, base::span<const uint8_t>,
                          MockWebTransport::SendDatagramCallback callback) {
               callbacks.push_back(std::move(callback));
             });
-    EXPECT_CALL(*mock_web_transport_,
-                SendDatagram(SizeIs(kNegotiatedMaxDatagramSize), _))
+    EXPECT_CALL(
+        *mock_web_transport_,
+        SendDatagramForWritable(_, SizeIs(kNegotiatedMaxDatagramSize), _))
         .WillOnce(
-            [&callbacks](base::span<const uint8_t>,
+            [&callbacks](TestDatagramWritable*, base::span<const uint8_t>,
                          MockWebTransport::SendDatagramCallback callback) {
               callbacks.push_back(std::move(callback));
             });
   }
-  EXPECT_CALL(*mock_web_transport_,
-              SendDatagram(SizeIs(kNegotiatedMaxDatagramSize + 1), _))
+  EXPECT_CALL(
+      *mock_web_transport_,
+      SendDatagramForWritable(_, SizeIs(kNegotiatedMaxDatagramSize + 1), _))
       .Times(0);
-  EXPECT_CALL(*mock_web_transport_,
-              SendDatagram(SizeIs(kNegotiatedMaxDatagramSize + 2), _))
+  EXPECT_CALL(
+      *mock_web_transport_,
+      SendDatagramForWritable(_, SizeIs(kNegotiatedMaxDatagramSize + 2), _))
       .Times(0);
   test::RunPendingTasks();
   EXPECT_TRUE(oversized_tail_tester.IsFulfilled());
@@ -1162,6 +1306,7 @@ TEST_F(WebTransportTest, DroppedQueuedDatagramsReleasePendingWriteRetention) {
   ConnectSuccessfullyWithoutRunningPendingTasks(
       web_transport, base::TimeDelta(), /*response_headers=*/nullptr,
       /*max_datagram_size=*/0);
+  EXPECT_CALL(*mock_web_transport_, OnDatagramWritableCreated(_, _));
   EXPECT_CALL(*mock_web_transport_, SendDatagram).Times(0);
   test::RunPendingTasks();
 
@@ -1176,10 +1321,13 @@ TEST_F(WebTransportTest, CreateDatagramsWritableDefaultsAndDistinctStreams) {
       CreateAndConnectSuccessfully(scope, "https://example.com");
   auto* script_state = scope.GetScriptState();
 
+  EXPECT_CALL(*mock_web_transport_, OnDatagramWritableCreated(_, _)).Times(2);
+
   auto* writable1 = web_transport->datagrams()->createWritable(
       script_state, EmptySendOptions(), ASSERT_NO_EXCEPTION);
   auto* writable2 = web_transport->datagrams()->createWritable(
       script_state, EmptySendOptions(), ASSERT_NO_EXCEPTION);
+  test::RunPendingTasks();
 
   ASSERT_TRUE(writable1);
   ASSERT_TRUE(writable2);
@@ -1204,6 +1352,9 @@ TEST_F(WebTransportTest, CreateDatagramsWritableUsesSendOptions) {
   options->setSendGroup(group);
   options->setSendOrder(42);
 
+  EXPECT_CALL(*mock_web_transport_, OnDatagramWritableCreated(_, _));
+  EXPECT_CALL(*mock_web_transport_, SetDatagramWritablePriority(_, _)).Times(2);
+
   auto* writable = web_transport->datagrams()->createWritable(
       scope.GetScriptState(), options, ASSERT_NO_EXCEPTION);
 
@@ -1215,6 +1366,64 @@ TEST_F(WebTransportTest, CreateDatagramsWritableUsesSendOptions) {
   writable->setSendOrder(-7);
   EXPECT_EQ(writable->sendGroup(), nullptr);
   EXPECT_EQ(writable->sendOrder(), -7);
+  test::RunPendingTasks();
+}
+
+TEST_F(WebTransportTest, DatagramWritablePriorityPropagatesToNetwork) {
+  ScopedWebTransportSendGroupForTest scoped_feature(true);
+  V8TestingScope scope;
+  auto* web_transport =
+      CreateAndConnectSuccessfully(scope, "https://example.com");
+  auto* group = web_transport->createSendGroup(ASSERT_NO_EXCEPTION);
+  auto* options = EmptySendOptions();
+  options->setSendGroup(group);
+  options->setSendOrder(42);
+
+  TestDatagramWritable* network_writable = nullptr;
+  {
+    testing::InSequence sequence;
+    EXPECT_CALL(*mock_web_transport_, OnDatagramWritableCreated(_, _))
+        .WillOnce([&network_writable, group](
+                      TestDatagramWritable* created,
+                      network::mojom::blink::WebTransportStreamPriorityPtr p) {
+          network_writable = created;
+          ASSERT_TRUE(p);
+          EXPECT_EQ(p->send_group_id, group->group_id());
+          EXPECT_EQ(p->send_order, 42);
+        });
+    EXPECT_CALL(*mock_web_transport_,
+                SendDatagramForWritable(_, ElementsAre('A'), _))
+        .WillOnce([&network_writable](
+                      TestDatagramWritable* writable, base::span<const uint8_t>,
+                      MockWebTransport::SendDatagramCallback callback) {
+          EXPECT_EQ(writable, network_writable);
+          std::move(callback).Run(true);
+        });
+  }
+
+  auto* script_state = scope.GetScriptState();
+  auto* writable = web_transport->datagrams()->createWritable(
+      script_state, options, ASSERT_NO_EXCEPTION);
+  auto* writer = writable->getWriter(script_state, ASSERT_NO_EXCEPTION);
+  auto* chunk = DOMUint8Array::Create(1);
+  *chunk->Data() = 'A';
+  ScriptPromiseTester write_tester(
+      script_state,
+      writer->write(script_state, ScriptValue::From(script_state, chunk),
+                    ASSERT_NO_EXCEPTION));
+  write_tester.WaitUntilSettled();
+  EXPECT_TRUE(write_tester.IsFulfilled());
+  ASSERT_TRUE(network_writable);
+
+  EXPECT_CALL(*mock_web_transport_,
+              SetDatagramWritablePriority(network_writable, _))
+      .WillOnce([](TestDatagramWritable*,
+                   network::mojom::blink::WebTransportStreamPriorityPtr p) {
+        ASSERT_TRUE(p);
+        EXPECT_EQ(p->send_order, 99);
+      });
+  writable->setSendOrder(99);
+  test::RunPendingTasks();
 }
 
 TEST_F(WebTransportTest, DatagramWritableRejectsForeignSendGroup) {
@@ -1234,6 +1443,7 @@ TEST_F(WebTransportTest, DatagramWritableRejectsForeignSendGroup) {
   EXPECT_EQ(create_exception_state.CodeAs<DOMExceptionCode>(),
             DOMExceptionCode::kInvalidStateError);
 
+  EXPECT_CALL(*mock_web_transport_, OnDatagramWritableCreated(_, _));
   auto* writable = web_transport->datagrams()->createWritable(
       scope.GetScriptState(), EmptySendOptions(), ASSERT_NO_EXCEPTION);
   ASSERT_TRUE(writable);
@@ -1242,6 +1452,7 @@ TEST_F(WebTransportTest, DatagramWritableRejectsForeignSendGroup) {
   EXPECT_EQ(setter_exception_state.CodeAs<DOMExceptionCode>(),
             DOMExceptionCode::kInvalidStateError);
   EXPECT_EQ(writable->sendGroup(), nullptr);
+  test::RunPendingTasks();
 }
 
 TEST_F(WebTransportTest, MultipleDatagramWritablesSendBeforeConnect) {
@@ -1264,14 +1475,17 @@ TEST_F(WebTransportTest, MultipleDatagramWritablesSendBeforeConnect) {
                  ASSERT_NO_EXCEPTION);
 
   ConnectSuccessfullyWithoutRunningPendingTasks(web_transport);
-  EXPECT_CALL(*mock_web_transport_, SendDatagram(ElementsAre('A'), _))
-      .WillOnce([](base::span<const uint8_t>,
-                   MockWebTransport::SendDatagramCallback callback) {
+  EXPECT_CALL(*mock_web_transport_, OnDatagramWritableCreated(_, _)).Times(2);
+  EXPECT_CALL(*mock_web_transport_,
+              SendDatagramForWritable(_, ElementsAre('A'), _))
+      .WillOnce([](TestDatagramWritable*, base::span<const uint8_t>,
+                   base::OnceCallback<void(bool)> callback) {
         std::move(callback).Run(true);
       });
-  EXPECT_CALL(*mock_web_transport_, SendDatagram(ElementsAre('B'), _))
-      .WillOnce([](base::span<const uint8_t>,
-                   MockWebTransport::SendDatagramCallback callback) {
+  EXPECT_CALL(*mock_web_transport_,
+              SendDatagramForWritable(_, ElementsAre('B'), _))
+      .WillOnce([](TestDatagramWritable*, base::span<const uint8_t>,
+                   base::OnceCallback<void(bool)> callback) {
         std::move(callback).Run(true);
       });
 
@@ -1300,13 +1514,27 @@ TEST_F(WebTransportTest, ClosedDatagramWritableSendsPendingDatagram) {
   ThreadState::Current()->CollectAllGarbageForTesting();
 
   ConnectSuccessfullyWithoutRunningPendingTasks(web_transport);
-  EXPECT_CALL(*mock_web_transport_, SendDatagram(ElementsAre('A'), _))
-      .WillOnce([](base::span<const uint8_t>,
-                   MockWebTransport::SendDatagramCallback callback) {
+
+  TestDatagramWritable* network_writable = nullptr;
+  EXPECT_CALL(*mock_web_transport_, OnDatagramWritableCreated(_, _))
+      .WillOnce([&network_writable](
+                    TestDatagramWritable* created,
+                    network::mojom::blink::WebTransportStreamPriorityPtr) {
+        network_writable = created;
+      });
+  EXPECT_CALL(*mock_web_transport_,
+              SendDatagramForWritable(_, ElementsAre('A'), _))
+      .WillOnce([](TestDatagramWritable*, base::span<const uint8_t>,
+                   MockWebTransport::SendDatagramForWritableCallback callback) {
         std::move(callback).Run(true);
       });
 
   test::RunPendingTasks();
+
+  // Draining takes a round trip: the writable is only dropped once the network
+  // service has acknowledged its last Datagram.
+  ASSERT_TRUE(base::test::RunUntil(
+      [&] { return network_writable && !network_writable->is_connected(); }));
 }
 
 TEST_F(WebTransportTest, PendingDatagramWritableSurvivesGarbageCollection) {
@@ -1325,9 +1553,11 @@ TEST_F(WebTransportTest, PendingDatagramWritableSurvivesGarbageCollection) {
   ThreadState::Current()->CollectAllGarbageForTesting();
 
   ConnectSuccessfullyWithoutRunningPendingTasks(web_transport);
-  EXPECT_CALL(*mock_web_transport_, SendDatagram(ElementsAre('A'), _))
-      .WillOnce([](base::span<const uint8_t>,
-                   MockWebTransport::SendDatagramCallback callback) {
+  EXPECT_CALL(*mock_web_transport_, OnDatagramWritableCreated(_, _));
+  EXPECT_CALL(*mock_web_transport_,
+              SendDatagramForWritable(_, ElementsAre('A'), _))
+      .WillOnce([](TestDatagramWritable*, base::span<const uint8_t>,
+                   MockWebTransport::SendDatagramForWritableCallback callback) {
         std::move(callback).Run(true);
       });
 
@@ -1340,12 +1570,15 @@ TEST_F(WebTransportTest,
   auto* web_transport =
       CreateAndConnectSuccessfully(scope, "https://example.com");
   web_transport->datagrams()->setOutgoingMaxBufferedDatagrams(2);
-  MockWebTransport::SendDatagramCallback callback;
-  EXPECT_CALL(*mock_web_transport_, SendDatagram(ElementsAre('A'), _))
-      .WillOnce([&callback](base::span<const uint8_t>,
-                            MockWebTransport::SendDatagramCallback cb) {
-        callback = std::move(cb);
-      });
+  MockWebTransport::SendDatagramForWritableCallback callback;
+  EXPECT_CALL(*mock_web_transport_, OnDatagramWritableCreated(_, _));
+  EXPECT_CALL(*mock_web_transport_,
+              SendDatagramForWritable(_, ElementsAre('A'), _))
+      .WillOnce(
+          [&callback](TestDatagramWritable*, base::span<const uint8_t>,
+                      MockWebTransport::SendDatagramForWritableCallback cb) {
+            callback = std::move(cb);
+          });
 
   WeakPersistent<WebTransportDatagramsWritable> writable;
   auto* script_state = scope.GetScriptState();
@@ -1379,10 +1612,11 @@ TEST_F(WebTransportTest, DatagramWritableAppliesBackpressureAtBufferLimit) {
       kMaxBufferedDatagrams);
 
   Vector<MockWebTransport::SendDatagramCallback> callbacks;
-  EXPECT_CALL(*mock_web_transport_, SendDatagram(_, _))
+  EXPECT_CALL(*mock_web_transport_, OnDatagramWritableCreated(_, _));
+  EXPECT_CALL(*mock_web_transport_, SendDatagramForWritable(_, _, _))
       .Times(kMaxBufferedDatagrams)
       .WillRepeatedly(
-          [&callbacks](base::span<const uint8_t>,
+          [&callbacks](TestDatagramWritable*, base::span<const uint8_t>,
                        MockWebTransport::SendDatagramCallback callback) {
             callbacks.push_back(std::move(callback));
           });
@@ -1430,13 +1664,24 @@ TEST_F(WebTransportTest, ConnectionErrorRejectsAllDatagramWritables) {
       CreateAndConnectSuccessfully(scope, "https://example.com");
   MockWebTransport::SendDatagramCallback callback1;
   MockWebTransport::SendDatagramCallback callback2;
-  EXPECT_CALL(*mock_web_transport_, SendDatagram(ElementsAre('A'), _))
-      .WillOnce([&callback1](base::span<const uint8_t>,
+  Vector<TestDatagramWritable*> network_writables;
+  EXPECT_CALL(*mock_web_transport_, OnDatagramWritableCreated(_, _))
+      .Times(4)
+      .WillRepeatedly(
+          [&network_writables](
+              TestDatagramWritable* writable,
+              network::mojom::blink::WebTransportStreamPriorityPtr) {
+            network_writables.push_back(writable);
+          });
+  EXPECT_CALL(*mock_web_transport_,
+              SendDatagramForWritable(_, ElementsAre('A'), _))
+      .WillOnce([&callback1](TestDatagramWritable*, base::span<const uint8_t>,
                              MockWebTransport::SendDatagramCallback callback) {
         callback1 = std::move(callback);
       });
-  EXPECT_CALL(*mock_web_transport_, SendDatagram(ElementsAre('B'), _))
-      .WillOnce([&callback2](base::span<const uint8_t>,
+  EXPECT_CALL(*mock_web_transport_,
+              SendDatagramForWritable(_, ElementsAre('B'), _))
+      .WillOnce([&callback2](TestDatagramWritable*, base::span<const uint8_t>,
                              MockWebTransport::SendDatagramCallback callback) {
         callback2 = std::move(callback);
       });
@@ -1446,8 +1691,14 @@ TEST_F(WebTransportTest, ConnectionErrorRejectsAllDatagramWritables) {
       script_state, EmptySendOptions(), ASSERT_NO_EXCEPTION);
   auto* writable2 = web_transport->datagrams()->createWritable(
       script_state, EmptySendOptions(), ASSERT_NO_EXCEPTION);
+  auto* writable3 = web_transport->datagrams()->createWritable(
+      script_state, EmptySendOptions(), ASSERT_NO_EXCEPTION);
+  auto* writable4 = web_transport->datagrams()->createWritable(
+      script_state, EmptySendOptions(), ASSERT_NO_EXCEPTION);
   auto* writer1 = writable1->getWriter(script_state, ASSERT_NO_EXCEPTION);
   auto* writer2 = writable2->getWriter(script_state, ASSERT_NO_EXCEPTION);
+  auto* writer3 = writable3->getWriter(script_state, ASSERT_NO_EXCEPTION);
+  auto* writer4 = writable4->getWriter(script_state, ASSERT_NO_EXCEPTION);
   auto* chunk1 = DOMUint8Array::Create(1);
   auto* chunk2 = DOMUint8Array::Create(1);
   *chunk1->Data() = 'A';
@@ -1462,6 +1713,22 @@ TEST_F(WebTransportTest, ConnectionErrorRejectsAllDatagramWritables) {
                      ASSERT_NO_EXCEPTION));
   test::RunPendingTasks();
 
+  ASSERT_EQ(network_writables.size(), 4u);
+  for (TestDatagramWritable* writable : network_writables) {
+    writable->CloseForSession();
+  }
+  test::RunPendingTasks();
+  ScriptPromiseTester tester3(
+      script_state,
+      writer3->write(script_state, ScriptValue::From(script_state, chunk1),
+                     ASSERT_NO_EXCEPTION));
+  auto* oversized_chunk =
+      DOMUint8Array::Create(web_transport->datagrams()->maxDatagramSize() + 1);
+  ScriptPromiseTester tester4(
+      script_state,
+      writer4->write(script_state,
+                     ScriptValue::From(script_state, oversized_chunk),
+                     ASSERT_NO_EXCEPTION));
   client_remote_.reset();
   test::RunPendingTasks();
   ASSERT_TRUE(callback1);
@@ -1471,11 +1738,65 @@ TEST_F(WebTransportTest, ConnectionErrorRejectsAllDatagramWritables) {
   mock_web_transport_.reset();
   tester1.WaitUntilSettled();
   tester2.WaitUntilSettled();
+  tester3.WaitUntilSettled();
+  tester4.WaitUntilSettled();
 
   EXPECT_TRUE(tester1.IsRejected());
   EXPECT_TRUE(tester2.IsRejected());
+  EXPECT_TRUE(tester3.IsRejected());
+  EXPECT_TRUE(tester4.IsRejected());
   EXPECT_TRUE(writable1->IsErrored());
   EXPECT_TRUE(writable2->IsErrored());
+  EXPECT_TRUE(writable3->IsErrored());
+  EXPECT_TRUE(writable4->IsErrored());
+}
+
+TEST_F(WebTransportTest, CreationRejectedDatagramWritableDiscardsWrites) {
+  V8TestingScope scope;
+  auto* web_transport =
+      CreateAndConnectSuccessfully(scope, "https://example.com");
+  TestDatagramWritable* network_writable = nullptr;
+  MockWebTransport::SendDatagramCallback callback;
+  EXPECT_CALL(*mock_web_transport_, OnDatagramWritableCreated(_, _))
+      .WillOnce([&network_writable](
+                    TestDatagramWritable* writable,
+                    network::mojom::blink::WebTransportStreamPriorityPtr) {
+        network_writable = writable;
+      });
+  EXPECT_CALL(*mock_web_transport_,
+              SendDatagramForWritable(_, ElementsAre('A'), _))
+      .WillOnce([&callback](TestDatagramWritable*, base::span<const uint8_t>,
+                            MockWebTransport::SendDatagramCallback cb) {
+        callback = std::move(cb);
+      });
+
+  auto* script_state = scope.GetScriptState();
+  auto* writable = web_transport->datagrams()->createWritable(
+      script_state, EmptySendOptions(), ASSERT_NO_EXCEPTION);
+  auto* writer = writable->getWriter(script_state, ASSERT_NO_EXCEPTION);
+  auto* chunk = DOMUint8Array::Create(1);
+  *chunk->Data() = 'A';
+  ScriptPromiseTester pending_write(
+      script_state,
+      writer->write(script_state, ScriptValue::From(script_state, chunk),
+                    ASSERT_NO_EXCEPTION));
+  test::RunPendingTasks();
+
+  ASSERT_TRUE(network_writable);
+  ASSERT_TRUE(callback);
+  network_writable->RejectCreation();
+  test::RunPendingTasks();
+  pending_write.WaitUntilSettled();
+  EXPECT_TRUE(pending_write.IsFulfilled());
+  EXPECT_FALSE(writable->IsErrored());
+
+  ScriptPromiseTester later_write(
+      script_state,
+      writer->write(script_state, ScriptValue::From(script_state, chunk),
+                    ASSERT_NO_EXCEPTION));
+  later_write.WaitUntilSettled();
+  EXPECT_TRUE(later_write.IsFulfilled());
+  EXPECT_FALSE(writable->IsErrored());
 }
 
 TEST_F(WebTransportTest, CreateDatagramsWritableAfterCloseThrows) {
@@ -1797,8 +2118,9 @@ bool IsRangeError(ScriptState* script_state,
   if (!value.V8Value()->ToObject(script_state->GetContext()).ToLocal(&object)) {
     return false;
   }
-  if (!object->IsNativeError())
+  if (!object->IsNativeError()) {
     return false;
+  }
 
   const auto& Has = [script_state, object](const String& key,
                                            const String& value) -> bool {
@@ -2534,20 +2856,23 @@ TEST_F(WebTransportTest, ReceiveStreamGarbageCollectionCancel) {
 // closed_potentially_pending_streams_ and consumed when the stream is
 // eventually created. Verifies the fix for crbug.com/358257243.
 TEST_F(WebTransportTest, PendingIncomingStreamCloseConsumedOnceStreamExists) {
+  ScopedWebTransportReceiveStreamForTest scoped_feature(true);
   V8TestingScope scope;
 
   auto* web_transport =
       CreateAndConnectSuccessfully(scope, "https://example.com");
 
   constexpr uint32_t kStreamId = 0;
+  constexpr uint64_t kBytesReceived = 4;
   EXPECT_FALSE(web_transport->HasPendingClosedStreamForTesting(kStreamId));
 
   web_transport->OnIncomingStreamClosed(kStreamId, /*fin_received=*/true,
-                                        /*bytes_received=*/0);
+                                        kBytesReceived);
   EXPECT_TRUE(web_transport->HasPendingClosedStreamForTesting(kStreamId));
 
   mojo::ScopedDataPipeProducerHandle producer = DoAcceptUnidirectionalStream();
-  ReadableStream* receive_stream = ReadReceiveStream(scope, web_transport);
+  auto* receive_stream = DynamicTo<WebTransportReceiveStream>(
+      ReadReceiveStream(scope, web_transport));
   ASSERT_TRUE(receive_stream);
 
   // Creating the ReceiveStream should consume the pending close entry.
@@ -2555,6 +2880,11 @@ TEST_F(WebTransportTest, PendingIncomingStreamCloseConsumedOnceStreamExists) {
 
   producer.reset();
   test::RunPendingTasks();
+
+  ExpectReceiveStreamStats(scope, receive_stream, kStreamId,
+                           /*network_bytes_received=*/std::nullopt,
+                           /*expected_bytes_received=*/kBytesReceived,
+                           /*expected_bytes_read=*/0);
 }
 
 // Tests that OnIncomingStreamClosed() notifications for a stream that was
@@ -4045,7 +4375,7 @@ TEST_F(WebTransportTest, IncomingUnidirectionalStreamFlagOffIsLegacyReceive) {
       /*stream_id=*/0, true, /*bytes_received=*/0);
 }
 
-TEST_F(WebTransportTest, ReceiveStreamGetStatsReturnsZeroedStub) {
+TEST_F(WebTransportTest, ReceiveStreamGetStatsDefaultReadBeforeDataArrives) {
   ScopedWebTransportReceiveStreamForTest scoped_feature(true);
   V8TestingScope scope;
   auto* script_state = scope.GetScriptState();
@@ -4053,39 +4383,251 @@ TEST_F(WebTransportTest, ReceiveStreamGetStatsReturnsZeroedStub) {
       CreateAndConnectSuccessfully(scope, "https://example.com");
 
   mojo::ScopedDataPipeProducerHandle producer = DoAcceptUnidirectionalStream();
-  ReadableStream* streams = web_transport->incomingUnidirectionalStreams();
-  v8::Local<v8::Value> v8value = ReadValueFromStream(scope, streams);
-  auto* readable = V8ReadableStream::ToWrappable(scope.GetIsolate(), v8value);
-  auto* receive_stream = DynamicTo<WebTransportReceiveStream>(readable);
+  auto* receive_stream = DynamicTo<WebTransportReceiveStream>(
+      ReadReceiveStream(scope, web_transport));
   ASSERT_TRUE(receive_stream);
 
-  auto stats_promise = receive_stream->getStats(script_state);
-  ScriptPromiseTester stats_tester(script_state, stats_promise);
-  stats_tester.WaitUntilSettled();
-  EXPECT_TRUE(stats_tester.IsFulfilled());
+  const std::string_view data = "what";
+  // Use a larger mocked network total to verify that bytesReceived includes
+  // bytes observed by the network service but not yet copied into Blink.
+  constexpr uint64_t kNetworkBytesReceived = 1024;
+  EXPECT_EQ(producer->WriteAllData(base::as_byte_span(data)), MOJO_RESULT_OK);
+  producer.reset();
+  web_transport->OnIncomingStreamClosed(
+      /*stream_id=*/0, true, /*bytes_received=*/0);
 
-  // The resolved value is a WebTransportReceiveStreamStats dictionary. Stub
-  // returns zeroed stats; TODO(crbug.com/510589920) replace with real Mojo
-  // data.
-  v8::Local<v8::Value> result = stats_tester.Value().V8Value();
-  ASSERT_TRUE(result->IsObject());
-  v8::Local<v8::Object> stats_obj = result.As<v8::Object>();
-  auto context = script_state->GetContext();
-  auto* isolate = script_state->GetIsolate();
+  auto* reader = receive_stream->GetDefaultReaderForTesting(
+      script_state, ASSERT_NO_EXCEPTION);
+  auto read_promise = reader->read(script_state, ASSERT_NO_EXCEPTION);
+  ScriptPromiseTester read_tester(script_state, read_promise);
+  read_tester.WaitUntilSettled();
+  ASSERT_TRUE(read_tester.IsFulfilled());
 
-  v8::Local<v8::Value> bytes_received;
-  ASSERT_TRUE(stats_obj->Get(context, V8AtomicString(isolate, "bytesReceived"))
-                  .ToLocal(&bytes_received));
-  EXPECT_EQ(bytes_received->IntegerValue(context).ToChecked(), 0);
+  ExpectReceiveStreamStats(scope, receive_stream, /*stream_id=*/0,
+                           /*network_bytes_received=*/kNetworkBytesReceived,
+                           /*expected_bytes_received=*/kNetworkBytesReceived,
+                           /*expected_bytes_read=*/data.size());
+}
 
-  v8::Local<v8::Value> bytes_read;
-  ASSERT_TRUE(stats_obj->Get(context, V8AtomicString(isolate, "bytesRead"))
-                  .ToLocal(&bytes_read));
-  EXPECT_EQ(bytes_read->IntegerValue(context).ToChecked(), 0);
+TEST_F(WebTransportTest, ReceiveStreamGetStatsPreservesFinalBytesAfterClose) {
+  ScopedWebTransportReceiveStreamForTest scoped_feature(true);
+  V8TestingScope scope;
+  auto* web_transport =
+      CreateAndConnectSuccessfully(scope, "https://example.com");
+
+  mojo::ScopedDataPipeProducerHandle producer = DoAcceptUnidirectionalStream();
+  auto* receive_stream = DynamicTo<WebTransportReceiveStream>(
+      ReadReceiveStream(scope, web_transport));
+  ASSERT_TRUE(receive_stream);
+
+  constexpr uint64_t kBytesReceived = 4;
+  producer.reset();
+  web_transport->OnIncomingStreamClosed(
+      /*stream_id=*/0, /*fin_received=*/true, kBytesReceived);
+
+  test::RunPendingTasks();
+
+  ExpectReceiveStreamStats(scope, receive_stream, /*stream_id=*/0,
+                           /*network_bytes_received=*/std::nullopt,
+                           /*expected_bytes_received=*/kBytesReceived,
+                           /*expected_bytes_read=*/0);
+}
+
+TEST_F(WebTransportTest, ReceiveStreamGetStatsDefaultReadAfterDataArrives) {
+  ScopedWebTransportReceiveStreamForTest scoped_feature(true);
+  V8TestingScope scope;
+  auto* script_state = scope.GetScriptState();
+  auto* web_transport =
+      CreateAndConnectSuccessfully(scope, "https://example.com");
+
+  mojo::ScopedDataPipeProducerHandle producer = DoAcceptUnidirectionalStream();
+  auto* receive_stream = DynamicTo<WebTransportReceiveStream>(
+      ReadReceiveStream(scope, web_transport));
+  ASSERT_TRUE(receive_stream);
+
+  const std::string_view data = "what";
+  constexpr uint64_t kNetworkBytesReceived = 1024;
+  EXPECT_EQ(producer->WriteAllData(base::as_byte_span(data)), MOJO_RESULT_OK);
+  producer.reset();
+  web_transport->OnIncomingStreamClosed(
+      /*stream_id=*/0, true, /*bytes_received=*/0);
+  test::RunPendingTasks();
+
+  auto* reader = receive_stream->GetDefaultReaderForTesting(
+      script_state, ASSERT_NO_EXCEPTION);
+  ScriptPromiseTester read_tester(
+      script_state, reader->read(script_state, ASSERT_NO_EXCEPTION));
+  read_tester.WaitUntilSettled();
+  ASSERT_TRUE(read_tester.IsFulfilled());
+
+  ExpectReceiveStreamStats(scope, receive_stream, /*stream_id=*/0,
+                           /*network_bytes_received=*/kNetworkBytesReceived,
+                           /*expected_bytes_received=*/kNetworkBytesReceived,
+                           /*expected_bytes_read=*/data.size());
+}
+
+TEST_F(WebTransportTest, ReceiveStreamGetStatsBYOBReadBeforeDataArrives) {
+  ScopedWebTransportReceiveStreamForTest scoped_feature(true);
+  V8TestingScope scope;
+  auto* script_state = scope.GetScriptState();
+  auto* web_transport =
+      CreateAndConnectSuccessfully(scope, "https://example.com");
+
+  mojo::ScopedDataPipeProducerHandle producer = DoAcceptUnidirectionalStream();
+  auto* receive_stream = DynamicTo<WebTransportReceiveStream>(
+      ReadReceiveStream(scope, web_transport));
+  ASSERT_TRUE(receive_stream);
+
+  auto* reader = receive_stream->GetBYOBReaderForTesting(script_state,
+                                                         ASSERT_NO_EXCEPTION);
+  NotShared<DOMArrayBufferView> view =
+      NotShared<DOMUint8Array>(DOMUint8Array::Create(4));
+  auto* read_options =
+      MakeGarbageCollected<ReadableStreamBYOBReaderReadOptions>();
+  ScriptPromiseTester read_tester(
+      script_state,
+      reader->read(script_state, view, read_options, ASSERT_NO_EXCEPTION));
+  EXPECT_FALSE(read_tester.IsFulfilled());
+
+  const std::string_view data = "what";
+  constexpr uint64_t kNetworkBytesReceived = 1024;
+  EXPECT_EQ(producer->WriteAllData(base::as_byte_span(data)), MOJO_RESULT_OK);
+  read_tester.WaitUntilSettled();
+  ASSERT_TRUE(read_tester.IsFulfilled());
+
+  ExpectReceiveStreamStats(scope, receive_stream, /*stream_id=*/0,
+                           /*network_bytes_received=*/kNetworkBytesReceived,
+                           /*expected_bytes_received=*/kNetworkBytesReceived,
+                           /*expected_bytes_read=*/data.size());
 
   producer.reset();
   web_transport->OnIncomingStreamClosed(
       /*stream_id=*/0, true, /*bytes_received=*/0);
+}
+
+TEST_F(WebTransportTest, ReceiveStreamGetStatsBYOBReadAfterDataArrives) {
+  ScopedWebTransportReceiveStreamForTest scoped_feature(true);
+  V8TestingScope scope;
+  auto* script_state = scope.GetScriptState();
+  auto* web_transport =
+      CreateAndConnectSuccessfully(scope, "https://example.com");
+
+  mojo::ScopedDataPipeProducerHandle producer = DoAcceptUnidirectionalStream();
+  auto* receive_stream = DynamicTo<WebTransportReceiveStream>(
+      ReadReceiveStream(scope, web_transport));
+  ASSERT_TRUE(receive_stream);
+
+  const std::string_view data = "what";
+  constexpr uint64_t kNetworkBytesReceived = 1024;
+  EXPECT_EQ(producer->WriteAllData(base::as_byte_span(data)), MOJO_RESULT_OK);
+  producer.reset();
+  web_transport->OnIncomingStreamClosed(
+      /*stream_id=*/0, true, /*bytes_received=*/0);
+  test::RunPendingTasks();
+
+  auto* reader = receive_stream->GetBYOBReaderForTesting(script_state,
+                                                         ASSERT_NO_EXCEPTION);
+  NotShared<DOMArrayBufferView> view =
+      NotShared<DOMUint8Array>(DOMUint8Array::Create(4));
+  auto* read_options =
+      MakeGarbageCollected<ReadableStreamBYOBReaderReadOptions>();
+  ScriptPromiseTester read_tester(
+      script_state,
+      reader->read(script_state, view, read_options, ASSERT_NO_EXCEPTION));
+  read_tester.WaitUntilSettled();
+  ASSERT_TRUE(read_tester.IsFulfilled());
+
+  ExpectReceiveStreamStats(scope, receive_stream, /*stream_id=*/0,
+                           /*network_bytes_received=*/kNetworkBytesReceived,
+                           /*expected_bytes_received=*/kNetworkBytesReceived,
+                           /*expected_bytes_read=*/data.size());
+}
+
+TEST_F(WebTransportTest, ReceiveStreamGetStatsResolvesWhenMojoDisconnects) {
+  ScopedWebTransportReceiveStreamForTest scoped_feature(true);
+  V8TestingScope scope;
+  auto* script_state = scope.GetScriptState();
+  auto* web_transport =
+      CreateAndConnectSuccessfully(scope, "https://example.com");
+
+  mojo::ScopedDataPipeProducerHandle producer = DoAcceptUnidirectionalStream();
+  auto* receive_stream = DynamicTo<WebTransportReceiveStream>(
+      ReadReceiveStream(scope, web_transport));
+  ASSERT_TRUE(receive_stream);
+
+  MockWebTransport::GetReceiveStreamStatsCallback stats_callback;
+  EXPECT_CALL(*mock_web_transport_, GetReceiveStreamStats(0, _))
+      .WillOnce([&stats_callback](
+                    uint32_t,
+                    MockWebTransport::GetReceiveStreamStatsCallback callback) {
+        stats_callback = std::move(callback);
+      });
+
+  ScriptPromiseTester stats_tester(script_state,
+                                   receive_stream->getStats(script_state));
+  test::RunPendingTasks();
+  EXPECT_TRUE(stats_callback);
+  EXPECT_FALSE(stats_tester.IsFulfilled());
+  EXPECT_FALSE(stats_tester.IsRejected());
+
+  mock_web_transport_->ResetReceiver();
+  stats_tester.WaitUntilSettled();
+  EXPECT_TRUE(stats_tester.IsFulfilled());
+}
+
+TEST_F(WebTransportTest, ReceiveStreamGetStatsPreservesBytesAfterReset) {
+  ScopedWebTransportReceiveStreamForTest scoped_feature(true);
+  V8TestingScope scope;
+  auto* web_transport =
+      CreateAndConnectSuccessfully(scope, "https://example.com");
+
+  mojo::ScopedDataPipeProducerHandle producer = DoAcceptUnidirectionalStream();
+  ASSERT_TRUE(producer);
+  auto* receive_stream = DynamicTo<WebTransportReceiveStream>(
+      ReadReceiveStream(scope, web_transport));
+  ASSERT_TRUE(receive_stream);
+
+  constexpr uint64_t kBytesReceived = 4;
+  web_transport->OnReceivedResetStream(
+      /*stream_id=*/0, /*stream_error_code=*/1, kBytesReceived);
+
+  ExpectReceiveStreamStats(scope, receive_stream, /*stream_id=*/0,
+                           /*network_bytes_received=*/std::nullopt,
+                           /*expected_bytes_received=*/kBytesReceived,
+                           /*expected_bytes_read=*/0);
+}
+
+TEST_F(WebTransportTest, ReceiveStreamGetStatsPreservesBytesAfterCancel) {
+  ScopedWebTransportReceiveStreamForTest scoped_feature(true);
+  V8TestingScope scope;
+  auto* script_state = scope.GetScriptState();
+  auto* web_transport =
+      CreateAndConnectSuccessfully(scope, "https://example.com");
+
+  mojo::ScopedDataPipeProducerHandle producer = DoAcceptUnidirectionalStream();
+  ASSERT_TRUE(producer);
+  auto* receive_stream = DynamicTo<WebTransportReceiveStream>(
+      ReadReceiveStream(scope, web_transport));
+  ASSERT_TRUE(receive_stream);
+
+  constexpr uint64_t kBytesReceived = 4;
+  EXPECT_CALL(*mock_web_transport_, GetReceiveStreamStats(0, _))
+      .WillOnce([](uint32_t,
+                   MockWebTransport::GetReceiveStreamStatsCallback callback) {
+        auto stats =
+            network::mojom::blink::WebTransportReceiveStreamStats::New();
+        stats->bytes_received = kBytesReceived;
+        std::move(callback).Run(std::move(stats));
+      });
+  ScriptPromiseTester cancel_tester(
+      script_state, receive_stream->cancel(script_state, ASSERT_NO_EXCEPTION));
+  cancel_tester.WaitUntilSettled();
+  ASSERT_TRUE(cancel_tester.IsFulfilled());
+
+  ExpectReceiveStreamStats(scope, receive_stream, /*stream_id=*/0,
+                           /*network_bytes_received=*/std::nullopt,
+                           /*expected_bytes_received=*/kBytesReceived,
+                           /*expected_bytes_read=*/0);
 }
 
 TEST_F(WebTransportTest, BidirectionalStreamReadableIsReceiveStream) {

@@ -124,7 +124,7 @@ struct WTF_EXPORT HashTableStats {
 };
 
 #if DUMP_HASHTABLE_STATS_PER_TABLE
-template <typename Allocator, bool isGCType = Allocator::kIsGarbageCollected>
+template <typename Allocator, bool kIsGcType = Allocator::kIsGarbageCollected>
 class HashTableStatsPtr;
 
 template <typename Allocator>
@@ -509,7 +509,7 @@ std::ostream& operator<<(std::ostream& stream,
 template <typename T,
           typename Allocator,
           typename Traits,
-          bool enterGCForbiddenScope>
+          bool kEnterGcForbiddenScope>
 struct Mover {
   STATIC_ONLY(Mover);
   static void Move(T&& from, T& to) {
@@ -535,7 +535,7 @@ class IdentityHashTranslator {
 
  public:
   template <typename T>
-  static unsigned GetHash(const T& key) {
+  static uint32_t GetHash(const T& key) {
     return KeyTraits::GetHash(key);
   }
   template <typename T, typename U>
@@ -590,11 +590,11 @@ struct HashTableAddResult final {
 
 template <typename HashTranslator,
           typename KeyTraits,
-          bool safeToCompareToEmptyOrDeleted>
+          bool kSafeToCompareToEmptyOrDeleted>
 struct HashTableKeyChecker {
   STATIC_ONLY(HashTableKeyChecker);
   // There's no simple generic way to make this check if
-  // safeToCompareToEmptyOrDeleted is false, so the check always passes.
+  // kSafeToCompareToEmptyOrDeleted is false, so the check always passes.
   template <typename T>
   static bool CheckKey(const T&) {
     return true;
@@ -702,14 +702,14 @@ class GC_PLUGIN_IGNORE("crbug.com/428987863") HashTable final {
   // comparing with some other type, to avoid the cost of type conversion if the
   // object is already in the table.
   // HashTranslator must have the following function members:
-  //   static unsigned GetHash(const T&);
+  //   static uint32_t GetHash(const T&);
   //   static bool Equal(const ValueType&, const T&);
   //   static void Store(T& location, KeyType&&, ValueType&&);
   template <typename HashTranslator, typename T, typename Extra>
   AddResult insert(T&& key, Extra&&);
-  // Similar to the above, but passes additional `unsigned hash_code`, which
+  // Similar to the above, but passes additional `uint32_t hash_code`, which
   // is computed from `HashTranslator::GetHash(key)`, to HashTranslator method
-  //   static Store(T&, KeyType&&, ValueType&&, unsigned hash_code);
+  //   static Store(T&, KeyType&&, ValueType&&, uint32_t hash_code);
   // to avoid recomputation of the hash code when needed in the method.
   template <typename HashTranslator, typename T, typename Extra>
   AddResult InsertPassingHashCode(T&& key, Extra&&);
@@ -725,7 +725,7 @@ class GC_PLUGIN_IGNORE("crbug.com/428987863") HashTable final {
   // A special version of find() that finds the object by hashing and
   // comparing with some other type, to avoid the cost of type conversion.
   // HashTranslator must have the following function members:
-  //   static unsigned GetHash(const T&);
+  //   static uint32_t GetHash(const T&);
   //   static bool Equal(const ValueType&, const T&);
   template <typename HashTranslator, typename T>
   iterator Find(const T&);
@@ -805,7 +805,7 @@ class GC_PLUGIN_IGNORE("crbug.com/428987863") HashTable final {
   struct LookupResult {
     ValueType* entry;
     bool found;
-    unsigned hash;
+    uint32_t hash;
   };
   template <typename HashTranslator, typename T>
   LookupResult LookupForWriting(const T&);
@@ -1023,7 +1023,7 @@ HashTable<Key, Value, Extractor, Traits, KeyTraits, Allocator>::Lookup(
     return nullptr;
 
   size_t size_mask = TableSizeMask();
-  unsigned h = HashTranslator::GetHash(key);
+  uint32_t h = HashTranslator::GetHash(key);
   size_t i = h & size_mask;
   size_t probe_count = 0;
 
@@ -1072,7 +1072,7 @@ inline typename HashTable<Key, Value, Extractor, Traits, KeyTraits, Allocator>::
 
   ValueType* table = table_;
   size_t size_mask = TableSizeMask();
-  unsigned h = HashTranslator::GetHash(key);
+  uint32_t h = HashTranslator::GetHash(key);
   size_t i = h & size_mask;
   size_t probe_count = 0;
 
@@ -1236,7 +1236,7 @@ typename HashTable<Key, Value, Extractor, Traits, KeyTraits, Allocator>::
 
   ValueType* table = table_;
   size_t size_mask = TableSizeMask();
-  unsigned h = HashTranslator::GetHash(key);
+  uint32_t h = HashTranslator::GetHash(key);
   size_t i = h & size_mask;
   size_t probe_count = 0;
 
@@ -1382,7 +1382,7 @@ Value* HashTable<Key, Value, Extractor, Traits, KeyTraits, Allocator>::Reinsert(
   ValueType* table = table_;
   size_t size_mask = TableSizeMask();
   const auto& key = Extractor::ExtractKey(entry);
-  unsigned h = KeyTraits::GetHash(key);
+  uint32_t h = KeyTraits::GetHash(key);
   size_t i = h & size_mask;
   size_t probe_count = 0;
 

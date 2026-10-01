@@ -51,10 +51,12 @@ class MojoUkmRecorder;
 
 class AXTreeDistiller;
 class DependencyParserModel;
+struct DistillationRequest;
 struct DistillationResult;
 class ReadAnythingAppControllerReadabilityTest;
 class ReadAnythingAppControllerTest;
 class ReadAnythingDistiller;
+class ReadAnythingDistillerFactory;
 
 ///////////////////////////////////////////////////////////////////////////////
 // ReadAnythingAppController
@@ -451,6 +453,17 @@ class ReadAnythingAppController
   const std::string& GetDefaultLanguageCodeForSpeech() const;
 
   void Distill();
+
+  // Ensures that `active_distiller_` is configured for the next distillation
+  // method indicated by `model_.next_distillation_method()`. If a different
+  // distiller is currently active, replacing it cancels any in-flight
+  // operations from the previous distiller before instantiating the new one.
+  void UpdateActiveDistiller();
+
+  // Initiates distillation by ensuring the active distiller matches the
+  // model's next distillation method and dispatching the `request`.
+  void ExecuteDistillation(const DistillationRequest& request);
+
   void DrawSelection();
   void DrawEmptyState();
 
@@ -587,10 +600,6 @@ class ReadAnythingAppController
   // Model that holds Read Aloud state for this controller.
   ReadAloudAppModel read_aloud_model_;
 
-  // Set of nodes that will be deleted that are also displayed. A draw will
-  // occur when the set becomes empty.
-  std::set<ui::AXNodeID> displayed_nodes_pending_deletion_;
-
   bool waiting_for_tree_id_ = false;
 
   // Tracks whether the rendered text blocks ready metric has been recorded for
@@ -612,6 +621,12 @@ class ReadAnythingAppController
                           ReadAnythingAppModel::ModelObserver>
       model_observer_{this};
 
+  // Factory used to instantiate concrete `ReadAnythingDistiller` engines based
+  // on the requested distillation method.
+  std::unique_ptr<ReadAnythingDistillerFactory> distiller_factory_;
+
+  // The active distillation engine instance (e.g. Screen2x or Readability).
+  // Dynamically instantiated and updated via `UpdateActiveDistiller()`.
   std::unique_ptr<ReadAnythingDistiller> active_distiller_;
 
   // Observers of AXTrees, which are added / removed  as the `model_` changes

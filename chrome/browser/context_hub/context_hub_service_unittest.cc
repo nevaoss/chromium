@@ -228,7 +228,8 @@ class ContextHubServiceTest : public testing::Test {
 
 TEST_F(ContextHubServiceTest, GenerateFirstPartyAutoTodos_ServiceSuccess) {
   // No previous generation time.
-  EXPECT_TRUE(service_.GetLastFirstPartyGenerationTime().is_null());
+  EXPECT_TRUE(service_.GetFirstPartyGenerationMetadata()
+                  .last_generation_time.is_null());
 
   personal_context::proto::AutoTodosResponse expected_response;
   auto* todo = expected_response.add_todos();
@@ -263,7 +264,9 @@ TEST_F(ContextHubServiceTest, GenerateFirstPartyAutoTodos_ServiceSuccess) {
   service_.GenerateFirstPartyAutoTodos(future.GetCallback());
 
   EXPECT_TRUE(future.Get());
-  EXPECT_EQ(service_.GetLastFirstPartyGenerationTime(), base::Time::Now());
+  EXPECT_EQ(service_.GetFirstPartyGenerationMetadata().last_generation_time,
+            base::Time::Now());
+  EXPECT_FALSE(service_.GetFirstPartyGenerationMetadata().has_error);
 }
 
 TEST_F(ContextHubServiceTest,
@@ -448,7 +451,8 @@ TEST_F(ContextHubServiceTest,
   base::test::TestFuture<bool> future;
   service_.GenerateFirstPartyAutoTodos(future.GetCallback());
   EXPECT_TRUE(future.Get());
-  EXPECT_EQ(service_.GetLastFirstPartyGenerationTime(), base::Time::Now());
+  EXPECT_EQ(service_.GetFirstPartyGenerationMetadata().last_generation_time,
+            base::Time::Now());
 
   // Verify the cache contains both the updated 1p todo (including the
   // updated source references) and unchanged 3p todo.
@@ -521,7 +525,8 @@ TEST_F(ContextHubServiceTest,
   base::test::TestFuture<bool> future;
   service_.GenerateFirstPartyAutoTodos(future.GetCallback());
   EXPECT_TRUE(future.Get());
-  EXPECT_EQ(service_.GetLastFirstPartyGenerationTime(), base::Time::Now());
+  EXPECT_EQ(service_.GetFirstPartyGenerationMetadata().last_generation_time,
+            base::Time::Now());
 
   // Verify that the new todo is in the cache, along with the existing todo.
   base::test::TestFuture<std::vector<AutoTodoEntry>> get_future;
@@ -530,11 +535,12 @@ TEST_F(ContextHubServiceTest,
   EXPECT_EQ(items.size(), 2u);
 }
 
-TEST_F(ContextHubServiceTest, GenerateFirstPartyAutoTodos_ServiceError) {
+TEST_F(ContextHubServiceTest,
+       GenerateFirstPartyAutoTodos_NonTransientServiceError) {
   personal_context::ContextMemoryError expected_error =
       personal_context::ContextMemoryError::FromExecutionError(
           personal_context::ContextMemoryError::ExecutionError::
-              kGenericFailure);
+              kPermissionDenied);
 
   EXPECT_CALL(
       mock_personal_context_service_,
@@ -556,7 +562,116 @@ TEST_F(ContextHubServiceTest, GenerateFirstPartyAutoTodos_ServiceError) {
   service_.GenerateFirstPartyAutoTodos(future.GetCallback());
 
   EXPECT_FALSE(future.Get());
-  EXPECT_TRUE(service_.GetLastFirstPartyGenerationTime().is_null());
+  EXPECT_TRUE(service_.GetFirstPartyGenerationMetadata()
+                  .last_generation_time.is_null());
+  EXPECT_TRUE(service_.GetFirstPartyGenerationMetadata().has_error);
+}
+
+TEST_F(ContextHubServiceTest,
+       GenerateFirstPartyAutoTodos_TransientError_RetriesAndSucceeds) {
+  personal_context::ContextMemoryError transient_error =
+      personal_context::ContextMemoryError::FromExecutionError(
+          personal_context::ContextMemoryError::ExecutionError::
+              kGenericFailure);
+
+  personal_context::proto::AutoTodosResponse expected_response;
+  auto* todo = expected_response.add_todos();
+  todo->set_title("Retried Todo");
+
+  personal_context::proto::Any any_response;
+  expected_response.SerializeToString(any_response.mutable_value());
+
+  EXPECT_CALL(
+      mock_personal_context_service_,
+      FetchContext(personal_context::proto::CONTEXT_MEMORY_FEATURE_AUTO_TODOS,
+                   _, _, _))
+      .WillOnce(RunOnceCallback<3>(personal_context::FetchContextResult(
+          base::unexpected(transient_error))))
+      .WillOnce(RunOnceCallback<3>(
+          personal_context::FetchContextResult(base::ok(any_response))));
+
+  MockServiceObserver observer;
+  base::ScopedObservation<ContextHubService, ContextHubService::Observer>
+      observation(&observer);
+  observation.Observe(&service_);
+
+  EXPECT_CALL(observer, OnFirstPartyAutoTodosGenerationStateChanged(true));
+  EXPECT_CALL(observer, OnAutoTodosChanged(_));
+  EXPECT_CALL(observer, OnFirstPartyAutoTodosGenerationStateChanged(false));
+
+  base::test::TestFuture<bool> future;
+  service_.GenerateFirstPartyAutoTodos(future.GetCallback());
+
+  // Still generating while waiting for retry timer.
+  EXPECT_TRUE(service_.IsGeneratingFirstPartyAutoTodos());
+  EXPECT_FALSE(future.IsReady());
+
+  // Fast forward past the retry delay to trigger the retry.
+  task_environment_.FastForwardBy(
+      features::kFirstPartyAutoTodosRetryDelay.Get());
+
+  EXPECT_TRUE(future.Get());
+  EXPECT_FALSE(service_.GetFirstPartyGenerationMetadata()
+                   .last_generation_time.is_null());
+  EXPECT_FALSE(service_.GetFirstPartyGenerationMetadata().has_error);
+}
+
+TEST_F(ContextHubServiceTest,
+       GenerateFirstPartyAutoTodos_TransientError_RetriesExhausted) {
+  personal_context::ContextMemoryError transient_error =
+      personal_context::ContextMemoryError::FromExecutionError(
+          personal_context::ContextMemoryError::ExecutionError::
+              kGenericFailure);
+
+  // Initial attempt + 2 retries = 3 calls total.
+  EXPECT_CALL(
+      mock_personal_context_service_,
+      FetchContext(personal_context::proto::CONTEXT_MEMORY_FEATURE_AUTO_TODOS,
+                   _, _, _))
+      .WillOnce(RunOnceCallback<3>(personal_context::FetchContextResult(
+          base::unexpected(transient_error))))
+      .WillOnce(RunOnceCallback<3>(personal_context::FetchContextResult(
+          base::unexpected(transient_error))))
+      .WillOnce(RunOnceCallback<3>(personal_context::FetchContextResult(
+          base::unexpected(transient_error))));
+
+  MockServiceObserver observer;
+  base::ScopedObservation<ContextHubService, ContextHubService::Observer>
+      observation(&observer);
+  observation.Observe(&service_);
+
+  EXPECT_CALL(observer, OnFirstPartyAutoTodosGenerationStateChanged(true));
+  EXPECT_CALL(observer, OnAutoTodosChanged(_)).Times(0);
+  EXPECT_CALL(observer, OnFirstPartyAutoTodosGenerationStateChanged(false));
+
+  base::test::TestFuture<bool> future;
+  service_.GenerateFirstPartyAutoTodos(future.GetCallback());
+
+  const base::TimeDelta initial_delay =
+      features::kFirstPartyAutoTodosRetryDelay.Get();
+
+  // Fast forward just before the first retry delay: should not have triggered.
+  task_environment_.FastForwardBy(initial_delay - base::Seconds(1));
+  EXPECT_TRUE(service_.IsGeneratingFirstPartyAutoTodos());
+  EXPECT_FALSE(future.IsReady());
+
+  // Fast forward the remaining 1s: triggers retry 1.
+  task_environment_.FastForwardBy(base::Seconds(1));
+  EXPECT_TRUE(service_.IsGeneratingFirstPartyAutoTodos());
+  EXPECT_FALSE(future.IsReady());
+
+  // Fast forward just before the second retry delay (2x initial delay):
+  // should not have triggered retry 2 yet.
+  task_environment_.FastForwardBy(initial_delay * 2 - base::Seconds(1));
+  EXPECT_TRUE(service_.IsGeneratingFirstPartyAutoTodos());
+  EXPECT_FALSE(future.IsReady());
+
+  // Fast forward the remaining 1s: triggers retry 2 (retries exhausted).
+  task_environment_.FastForwardBy(base::Seconds(1));
+  EXPECT_FALSE(future.Get());
+  EXPECT_TRUE(service_.GetFirstPartyGenerationMetadata()
+                  .last_generation_time.is_null());
+  EXPECT_TRUE(service_.GetFirstPartyGenerationMetadata().has_error);
 }
 
 TEST_F(ContextHubServiceTest, GenerateFirstPartyAutoTodos_ParseError) {
@@ -583,7 +698,9 @@ TEST_F(ContextHubServiceTest, GenerateFirstPartyAutoTodos_ParseError) {
   service_.GenerateFirstPartyAutoTodos(future.GetCallback());
 
   EXPECT_FALSE(future.Get());
-  EXPECT_TRUE(service_.GetLastFirstPartyGenerationTime().is_null());
+  EXPECT_TRUE(service_.GetFirstPartyGenerationMetadata()
+                  .last_generation_time.is_null());
+  EXPECT_TRUE(service_.GetFirstPartyGenerationMetadata().has_error);
 }
 
 TEST_F(ContextHubServiceTest, IsGeneratingStateAccessors) {
@@ -634,7 +751,9 @@ TEST_F(ContextHubServiceTest,
                                  future.GetCallback());
 
   EXPECT_TRUE(future.Get());
-  EXPECT_EQ(service_.GetLastThirdPartyGenerationTime(), base::Time::Now());
+  EXPECT_EQ(service_.GetThirdPartyGenerationMetadata().last_generation_time,
+            base::Time::Now());
+  EXPECT_FALSE(service_.GetThirdPartyGenerationMetadata().has_error);
 }
 
 TEST_F(ContextHubServiceTest, GenerateTabBasedTodos_VisibleTabNotEligible) {
@@ -678,7 +797,9 @@ TEST_F(ContextHubServiceTest, GenerateTabBasedTodos_PinnedTabNotEligible) {
                                  future.GetCallback());
 
   EXPECT_TRUE(future.Get());
-  EXPECT_EQ(service_.GetLastThirdPartyGenerationTime(), base::Time::Now());
+  EXPECT_EQ(service_.GetThirdPartyGenerationMetadata().last_generation_time,
+            base::Time::Now());
+  EXPECT_FALSE(service_.GetThirdPartyGenerationMetadata().has_error);
 }
 
 TEST_F(ContextHubServiceTest, GenerateTabBasedTodos_ReentrancyBlocked) {
@@ -760,7 +881,8 @@ TEST_F(ContextHubServiceTest, GenerateTabBasedTodos_NullWebContents) {
 
 TEST_F(ContextHubServiceTest,
        GenerateTabBasedTodos_SuccessfulGenerationSavesTodo) {
-  EXPECT_TRUE(service_.GetLastThirdPartyGenerationTime().is_null());
+  EXPECT_TRUE(service_.GetThirdPartyGenerationMetadata()
+                  .last_generation_time.is_null());
 
   auto web_contents = CreateEligibleTabWithMockExtraction(
       GURL("https://example.com/item"), "Item Details");
@@ -808,7 +930,9 @@ TEST_F(ContextHubServiceTest,
   service_.GenerateTabBasedTodos({web_contents->GetWeakPtr()},
                                  future.GetCallback());
   EXPECT_TRUE(future.Get());
-  EXPECT_EQ(service_.GetLastThirdPartyGenerationTime(), base::Time::Now());
+  EXPECT_EQ(service_.GetThirdPartyGenerationMetadata().last_generation_time,
+            base::Time::Now());
+  EXPECT_FALSE(service_.GetThirdPartyGenerationMetadata().has_error);
 }
 
 TEST_F(ContextHubServiceTest,
@@ -1859,7 +1983,9 @@ TEST_F(ContextHubServiceTest, ClearFirstPartyAutoTodos) {
   base::test::TestFuture<bool> clear_future;
   service_.ClearFirstPartyAutoTodos(clear_future.GetCallback());
   EXPECT_TRUE(clear_future.Get());
-  EXPECT_TRUE(service_.GetLastFirstPartyGenerationTime().is_null());
+  EXPECT_TRUE(service_.GetFirstPartyGenerationMetadata()
+                  .last_generation_time.is_null());
+  EXPECT_FALSE(service_.GetFirstPartyGenerationMetadata().has_error);
 
   base::test::TestFuture<std::vector<AutoTodoEntry>> get_future;
   service_.GetAutoTodos(get_future.GetCallback());
@@ -1893,7 +2019,9 @@ TEST_F(ContextHubServiceTest, ClearThirdPartyAutoTodos) {
   base::test::TestFuture<bool> clear_future;
   service_.ClearThirdPartyAutoTodos(clear_future.GetCallback());
   EXPECT_TRUE(clear_future.Get());
-  EXPECT_TRUE(service_.GetLastThirdPartyGenerationTime().is_null());
+  EXPECT_TRUE(service_.GetThirdPartyGenerationMetadata()
+                  .last_generation_time.is_null());
+  EXPECT_FALSE(service_.GetThirdPartyGenerationMetadata().has_error);
 
   base::test::TestFuture<std::vector<AutoTodoEntry>> get_future;
   service_.GetAutoTodos(get_future.GetCallback());

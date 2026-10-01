@@ -120,6 +120,11 @@ bool IsSettingsRefresh2026Enabled() {
          base::FeatureList::IsEnabled(kSettingsRefresh2026);
 }
 
+bool ShouldUseActionsForBrowserCommands() {
+  return base::FeatureList::IsEnabled(kUseActionsForBrowserCommands) ||
+         base::FeatureList::IsEnabled(kAppMenuGlowUp);
+}
+
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 BASE_FEATURE(kDseIntegrity, base::FEATURE_ENABLED_BY_DEFAULT);
 // Enables the feature to remove the last confirmation dialog when relaunching
@@ -305,12 +310,6 @@ BASE_FEATURE(kUseDefaultDeadlineWhenAnimatingBounds,
              base::FEATURE_DISABLED_BY_DEFAULT
 #endif
 );
-
-// Enables enterprise profile badging for managed profiles on the toolbar avatar
-// and in the profile menu. On managed profiles, a building icon will be used as
-// a badge in the profile menu.
-BASE_FEATURE(kEnterpriseProfileBadgingForMenu,
-             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enables the management notice in the NTP footer if the custom policies are
 // set. This acts as a kill switch for "EnterpriseCustomLabelForBrowser" and
@@ -533,6 +532,11 @@ BASE_FEATURE_PARAM(bool,
                    kAiOverlayDialogUsesActor,
                    &kAiOverlayDialog,
                    "ai_overlay_dialog_uses_actor",
+                   false);
+BASE_FEATURE_PARAM(bool,
+                   kAiOverlayDialogUseMes,
+                   &kAiOverlayDialog,
+                   "use_mes",
                    false);
 BASE_FEATURE(kAiOverlayDisableNavigationContext,
              base::FEATURE_DISABLED_BY_DEFAULT);
