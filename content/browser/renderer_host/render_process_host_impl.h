@@ -99,15 +99,11 @@
 #include "content/public/browser/android/child_process_importance.h"
 #endif
 
-<<<<<<< HEAD
 #if BUILDFLAG(IS_NEVA_APPRUNTIME)
 #include "base/memory/memory_pressure_listener.h"
 #endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
 
-#if BUILDFLAG(ALLOW_OOP_VIDEO_DECODER)
-=======
 #if BUILDFLAG(ENABLE_OOP_VIDEO_DECODER)
->>>>>>> 155.0.8052.0~1
 #include "media/mojo/mojom/interface_factory.mojom.h"
 #endif  // BUILDFLAG(ENABLE_OOP_VIDEO_DECODER)
 
@@ -908,15 +904,11 @@ class CONTENT_EXPORT RenderProcessHostImpl
       GlobalRenderFrameHostId render_frame_host_id);
 #endif  // BUILDFLAG(IS_P2P_ENABLED)
 
-<<<<<<< HEAD
 #if BUILDFLAG(IS_NEVA_APPRUNTIME)
   void SetV8SnapshotPath(const std::string& v8_snapshot_path) override;
 #endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
 
-#if BUILDFLAG(ALLOW_OOP_VIDEO_DECODER)
-=======
 #if BUILDFLAG(ENABLE_OOP_VIDEO_DECODER)
->>>>>>> 155.0.8052.0~1
   using VideoDecoderFactoryCreationCB = base::RepeatingCallback<void(
       mojo::PendingReceiver<media::mojom::InterfaceFactory>)>;
   static void SetVideoDecoderFactoryCreationCBForTesting(
