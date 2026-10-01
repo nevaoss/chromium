@@ -34,30 +34,10 @@
 #include "third_party/boringssl/src/pki/parsed_certificate.h"
 #include "third_party/boringssl/src/pki/trust_store.h"
 
-<<<<<<< HEAD
 #if BUILDFLAG(IS_NEVA_APPRUNTIME)
 #include "base/command_line.h"
 #endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
 
-#if BUILDFLAG(IS_CHROMEOS) && BUILDFLAG(IS_CHROMEOS_DEVICE)
-// TODO(crbug.com/40281745): We can remove these weak attributes in M123 or
-// later. Until then, these need to be declared with the weak attribute
-// since older platforms may not provide these symbols.
-extern "C" CERTCertList* CERT_CreateSubjectCertListForChromium(
-    CERTCertList* certList,
-    CERTCertDBHandle* handle,
-    const SECItem* name,
-    PRTime sorttime,
-    PRBool validOnly,
-    PRBool ignoreChaps) __attribute__((weak));
-extern "C" CERTCertificate* CERT_FindCertByDERCertForChromium(
-    CERTCertDBHandle* handle,
-    SECItem* derCert,
-    PRBool ignoreChaps) __attribute__((weak));
-#endif  // BUILDFLAG(IS_CHROMEOS) && BUILDFLAG(IS_CHROMEOS_DEVICE)
-
-=======
->>>>>>> 155.0.8052.0~1
 namespace net {
 
 std::array<uint8_t, crypto::obsolete::Sha1::kSize> Sha1ForNSSTrust(
