@@ -17,7 +17,7 @@
 #include "ui/views/controls/menu/menu_delegate.h"
 
 class ActionAppMenuManager;
-class ActionAppMenuSearchBarView;
+class AppMenuSearchBarView;
 class BrowserWindowInterface;
 
 namespace actions {
@@ -47,11 +47,12 @@ class ActionAppMenu : public views::MenuDelegate {
   // views::MenuDelegate:
   void ExecuteCommand(int id, int mouse_event_flags) override;
   void OnMenuClosed(views::MenuItemView* menu) override;
+  void WillShowMenu(views::MenuItemView* menu) override;
   const gfx::FontList* GetLabelFontList(int id) const override;
   std::optional<SkColor> GetLabelColor(int id) const override;
 
   views::MenuItemView* root_menu_item_for_testing() { return root_; }
-  ActionAppMenuSearchBarView* search_bar_for_testing() { return search_bar_; }
+  AppMenuSearchBarView* search_bar_for_testing() { return search_bar_; }
 
  private:
   void CancelAndEvaluate(actions::ActionId action_id);
@@ -93,8 +94,8 @@ class ActionAppMenu : public views::MenuDelegate {
   // Callback run when the menu is closed to notify the menu button.
   base::RepeatingClosure on_menu_closed_callback_;
 
-  // Maps command/menu item IDs back to their corresponding ActionItem.
-  base::flat_map<int, raw_ptr<actions::ActionItem>> command_to_action_map_;
+  // Maps command/menu item IDs back to their corresponding BaseAction.
+  base::flat_map<int, raw_ptr<actions::BaseAction>> command_to_action_map_;
 
   // Manages ActionItem and MenuItemView relationships.
   views::ActionViewController action_view_controller_;
@@ -106,7 +107,7 @@ class ActionAppMenu : public views::MenuDelegate {
   raw_ptr<views::MenuItemView> root_ = nullptr;
 
   // The search bar view in the menu, if kChroMenuSearch is enabled.
-  raw_ptr<ActionAppMenuSearchBarView> search_bar_ = nullptr;
+  raw_ptr<AppMenuSearchBarView> search_bar_ = nullptr;
 
   size_t header_count_ = 0;
 

@@ -151,9 +151,9 @@ IN_PROC_BROWSER_TEST_F(TabViewTest, IconDataChanged) {
   base::RunLoop run_loop;
   observer.SetStartLoadingCallback(run_loop.QuitClosure());
   browser()->OpenURL(
-      content::OpenURLParams(
-          embedded_test_server()->GetURL("/title1.html"), content::Referrer(),
-          WindowOpenDisposition::CURRENT_TAB, ui::PAGE_TRANSITION_LINK, false),
+      content::OpenURLParams::CreateBrowserInitiated(
+          embedded_test_server()->GetURL("/title1.html"),
+          WindowOpenDisposition::CURRENT_TAB, ui::PAGE_TRANSITION_LINK),
       base::DoNothing());
   run_loop.Run();
   EXPECT_TRUE(icon->GetShowingLoadingAnimation());
@@ -953,13 +953,7 @@ class HorizontalTabViewTest : public TabViewTest {
   }
 };
 
-// TODO(crbug.com/558877122): Fix test failure on Windows.
-#if BUILDFLAG(IS_WIN)
-#define MAYBE_TitleAnimation DISABLED_TitleAnimation
-#else
-#define MAYBE_TitleAnimation TitleAnimation
-#endif
-IN_PROC_BROWSER_TEST_F(HorizontalTabViewTest, MAYBE_TitleAnimation) {
+IN_PROC_BROWSER_TEST_F(HorizontalTabViewTest, TitleAnimation) {
   TabView* tab_view = GetTabView(0);
   tabs::TabData tab_data = tab_view->data();
   ASSERT_TRUE(tab_data.should_display_favicon);

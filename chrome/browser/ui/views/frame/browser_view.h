@@ -24,7 +24,7 @@
 #include "chrome/browser/ui/bookmarks/bookmark_bar_controller.h"
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/immersive/immersive_mode_controller.h"
-#include "chrome/browser/ui/tabs/organizer/organizer_panel_state_controller.h"
+#include "chrome/browser/ui/tabs/organizer/organizer_panel_controller.h"
 #include "chrome/browser/ui/tabs/tab_strip_model_observer.h"
 #include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h"
 #include "chrome/browser/ui/translate/partial_translate_bubble_model.h"
@@ -475,6 +475,18 @@ class BrowserView : public BrowserWindow,
 
   bool window_management_permission_granted_for_testing() const {
     return window_management_permission_granted_;
+  }
+
+  bool is_layout_deferred_for_testing() const {
+    return layout_deferred_while_invisible_;
+  }
+
+  bool is_startup_layout_deferring_for_testing() const {
+    return startup_layout_state_ == StartupLayoutState::kDeferring;
+  }
+
+  bool is_startup_layout_disabled_for_testing() const {
+    return startup_layout_state_ == StartupLayoutState::kDisabled;
   }
 
   void UpdateWebAppStatusIconsVisiblity();

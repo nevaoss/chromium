@@ -14,6 +14,7 @@
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "components/signin/public/base/signin_buildflags.h"
 #include "components/signin/public/base/signin_metrics.h"
+#include "url/gurl.h"
 
 class AccountInfo;
 struct CoreAccountInfo;
@@ -35,6 +36,7 @@ namespace signin_ui_util {
 // device.
 void ShowCrossDeviceSigninQrBubble(
     BrowserWindowInterface* browser_window_interface,
+    GURL qr_code_url,
     base::OnceClosure closing_callback);
 #endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
 
@@ -152,6 +154,11 @@ bool ShouldShowAnimatedIdentityOnOpeningWindow(Profile& profile);
 // replay zero.
 base::AutoReset<std::optional<base::TimeDelta>>
 CreateZeroOverrideDelayForCrossWindowAnimationReplayForTesting();
+
+// Creates a scoped override that makes the delay for cross window animation
+// replay infinite.
+base::AutoReset<std::optional<base::TimeDelta>>
+CreateInfiniteOverrideDelayForCrossWindowAnimationReplayForTesting();
 
 #if BUILDFLAG(ENABLE_DICE_SUPPORT)
 base::AutoReset<SigninUiDelegate*> SetSigninUiDelegateForTesting(

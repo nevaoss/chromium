@@ -961,7 +961,8 @@ const CSSValue* BackgroundAttachment::CSSValueFromComputedStyleInternal(
     CSSValuePhase value_phase) const {
   CSSValueList* list = CSSValueList::CreateCommaSeparated();
   for (const FillLayer* curr_layer = &style.BackgroundLayers(); curr_layer;
-       curr_layer = curr_layer->Next()) {
+       curr_layer =
+           curr_layer->NextForComputedValue(FillLayer::Property::kAttachment)) {
     list->Append(*CSSIdentifierValue::Create(curr_layer->Attachment()));
   }
   return list;
@@ -982,7 +983,8 @@ const CSSValue* BackgroundBlendMode::CSSValueFromComputedStyleInternal(
     CSSValuePhase value_phase) const {
   CSSValueList* list = CSSValueList::CreateCommaSeparated();
   for (const FillLayer* curr_layer = &style.BackgroundLayers(); curr_layer;
-       curr_layer = curr_layer->Next()) {
+       curr_layer =
+           curr_layer->NextForComputedValue(FillLayer::Property::kBlendMode)) {
     list->Append(*CSSIdentifierValue::Create(curr_layer->GetBlendMode()));
   }
   return list;
@@ -1008,7 +1010,8 @@ const CSSValue* BackgroundClip::CSSValueFromComputedStyleInternal(
     CSSValuePhase value_phase) const {
   CSSValueList* list = CSSValueList::CreateCommaSeparated();
   const FillLayer* curr_layer = &style.BackgroundLayers();
-  for (; curr_layer; curr_layer = curr_layer->Next()) {
+  for (; curr_layer; curr_layer = curr_layer->NextForComputedValue(
+                         FillLayer::Property::kClip)) {
     EFillBox box = curr_layer->Clip();
     if (box == EFillBox::kBorderAreaText) {
       list->Append(*MakeGarbageCollected<CSSValuePair>(
@@ -1062,6 +1065,20 @@ void BackgroundClip::ApplyValue(StyleResolverState& state,
         prev_child = curr_child;
         curr_child = curr_child->Next();
       }
+      // With the flag enabled we apply the values only once because the next
+      // iterations would make the computed value lose the author's list length.
+      // FillUnsetProperties() repeats them for the used value.
+      if (RuntimeEnabledFeatures::
+              CSSBackgroundLayerCountIndependenceEnabled()) {
+        break;
+      }
+    }
+    // Layers the author's list did not reach must not keep a clip from a
+    // previous value of the property.
+    // The template code applies the same trailing clearing.
+    while (curr_child) {
+      curr_child->ClearClip();
+      curr_child = curr_child->Next();
     }
   } else {
     while (curr_child) {
@@ -1160,7 +1177,8 @@ const CSSValue* BackgroundOrigin::CSSValueFromComputedStyleInternal(
     CSSValuePhase value_phase) const {
   CSSValueList* list = CSSValueList::CreateCommaSeparated();
   const FillLayer* curr_layer = &style.BackgroundLayers();
-  for (; curr_layer; curr_layer = curr_layer->Next()) {
+  for (; curr_layer; curr_layer = curr_layer->NextForComputedValue(
+                         FillLayer::Property::kOrigin)) {
     EFillBox box = curr_layer->Origin();
     list->Append(*CSSIdentifierValue::Create(box));
   }
@@ -5603,6 +5621,45 @@ const blink::Color InternalVisitedFill::ColorIncludingFallback(
   }
   return visited_fill_color.Resolve(style.GetInternalVisitedCurrentColor(),
                                     style.UsedColorScheme(), is_current_color);
+}
+
+const blink::Color InternalVisitedFloodColor::ColorIncludingFallback(
+    bool visited_link,
+    const ComputedStyle& style,
+    bool* is_current_color) const {
+  DCHECK(visited_link);
+  const StyleColor& flood_color = style.InternalVisitedFloodColor();
+  if (style.ShouldForceColor(flood_color)) {
+    return style.GetInternalForcedCurrentColor(is_current_color);
+  }
+  return flood_color.Resolve(style.GetInternalVisitedCurrentColor(),
+                             style.UsedColorScheme(), is_current_color);
+}
+
+const blink::Color InternalVisitedLightingColor::ColorIncludingFallback(
+    bool visited_link,
+    const ComputedStyle& style,
+    bool* is_current_color) const {
+  DCHECK(visited_link);
+  const StyleColor& lighting_color = style.InternalVisitedLightingColor();
+  if (style.ShouldForceColor(lighting_color)) {
+    return style.GetInternalForcedCurrentColor(is_current_color);
+  }
+  return lighting_color.Resolve(style.GetInternalVisitedCurrentColor(),
+                                style.UsedColorScheme(), is_current_color);
+}
+
+const blink::Color InternalVisitedStopColor::ColorIncludingFallback(
+    bool visited_link,
+    const ComputedStyle& style,
+    bool* is_current_color) const {
+  DCHECK(visited_link);
+  const StyleColor& stop_color = style.InternalVisitedStopColor();
+  if (style.ShouldForceColor(stop_color)) {
+    return style.GetInternalForcedCurrentColor(is_current_color);
+  }
+  return stop_color.Resolve(style.GetInternalVisitedCurrentColor(),
+                            style.UsedColorScheme(), is_current_color);
 }
 
 const CSSValue* ColumnRuleBreak::CSSValueFromComputedStyleInternal(

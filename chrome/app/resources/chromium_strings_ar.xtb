@@ -37,7 +37,6 @@
 <translation id="1330562121671411446">رصد اللغة</translation>
 <translation id="1342274909142618978">‏حذف البيانات من Chromium أيضًا (<ph name="URL" />)</translation>
 <translation id="1345251407431278948">تمّ تثبيت اللوحة. يمكنك الوصول إلى ميزة "البحث بالصور" مرة أخرى من خلال الزر الجديد في شريط الأدوات</translation>
-<translation id="1356661055722410047">ميزة جديدة: يمكنك ترجمة كل من النص والصور على شاشتك</translation>
 <translation id="1383876407941801731">البحث</translation>
 <translation id="1388276868779258475">‏يمكنك استخدام تطبيق Chromium لمواصلة التصفّح أثناء التنقل</translation>
 <translation id="141901961143729572">شارِك أفكارك</translation>
@@ -306,7 +305,6 @@
 <translation id="4298125729853015961">‏تصدير كلمات المرور من Chromium</translation>
 <translation id="4304713468139749426">مدير كلمات المرور</translation>
 <translation id="4334241893986177674">البحث في لقطة الشاشة هذه</translation>
-<translation id="4368547723231502008">‏يتيح لك هذا الإعداد البحث وطرح الأسئلة من أي مكان، حتى إذا كان Chromium مصغّرًا</translation>
 <translation id="4384331407722351213">‏يمكنك فتح Chromium تلقائيًا عند بدء تشغيل Windows</translation>
 <translation id="4400772909124543403">ما مِن تحديث متاح</translation>
 <translation id="4407044323746248786">‏هل تريد الخروج من Chromium على أي حال؟</translation>
@@ -736,7 +734,6 @@
 <translation id="856656450041460113">البحث في قائمة اللغات</translation>
 <translation id="8576826849825683917">‏تدير مؤسسات متعدّدة متصفِّح Chromium</translation>
 <translation id="8586442755830160949">‏حقوق الطبع والنشر لعام <ph name="YEAR" /> لصالح The Chromium Authors. جميع الحقوق محفوظة.</translation>
-<translation id="8601359445272098721">ميزة جديدة: يمكنك ترجمة النص والصور على الشاشة من خلال النقر على زر "ترجمة محتوى الشاشة"</translation>
 <translation id="8619360774459241877">‏جارٍ إطلاق Chromium...</translation>
 <translation id="8624541899164515475">الإعدادات (يفتح الرابط في علامة تبويب جديدة)</translation>
 <translation id="8648201657708811153">‏لا يمكن اختيار الإصدار Google Chrome for Test ليكون متصفِّحك التلقائي.</translation>

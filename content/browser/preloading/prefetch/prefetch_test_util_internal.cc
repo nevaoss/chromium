@@ -16,6 +16,7 @@
 #include "content/browser/preloading/prefetch/prefetch_streaming_url_loader.h"
 #include "content/browser/preloading/preloading.h"
 #include "content/browser/preloading/preloading_data_impl.h"
+#include "content/browser/renderer_host/render_frame_host_impl.h"
 #include "content/public/browser/browser_context.h"
 #include "content/public/browser/frame_accept_header.h"
 #include "content/public/common/content_client.h"

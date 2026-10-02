@@ -7176,15 +7176,19 @@ TEST_F(WebViewTest, SetZoomLevelWhilePluginFocused) {
 }
 
 // Tests that a layout update that detaches a plugin doesn't crash if the
-// plugin tries to execute script while being destroyed.
+// plugin tries to execute script while being destroyed, and that script
+// execution is forbidden during plugin disposal.
 TEST_F(WebViewTest, DetachPluginInLayout) {
   class ScriptInDestroyPlugin : public FakeWebPlugin {
    public:
-    ScriptInDestroyPlugin(WebLocalFrame* frame, const WebPluginParams& params)
-        : FakeWebPlugin(params), frame_(frame) {}
+    ScriptInDestroyPlugin(WebLocalFrame* frame,
+                          const WebPluginParams& params,
+                          bool* destroyed)
+        : FakeWebPlugin(params), frame_(frame), destroyed_(destroyed) {}
 
     // WebPlugin overrides:
     void Destroy() override {
+      *destroyed_ = true;
       frame_->ExecuteScript(WebScriptSource("console.log('done')"));
       // Deletes this.
       FakeWebPlugin::Destroy();
@@ -7193,6 +7197,7 @@ TEST_F(WebViewTest, DetachPluginInLayout) {
    private:
     raw_ptr<WebLocalFrame, UnprotectedInRelease | DanglingUntriaged>
         frame_;  // Unowned
+    raw_ptr<bool> destroyed_;
   };
 
   class PluginCreatingWebFrameClient
@@ -7200,7 +7205,7 @@ TEST_F(WebViewTest, DetachPluginInLayout) {
    public:
     // WebLocalFrameClient overrides:
     WebPlugin* CreatePlugin(const WebPluginParams& params) override {
-      return new ScriptInDestroyPlugin(Frame(), params);
+      return new ScriptInDestroyPlugin(Frame(), params, &plugin_destroyed_);
     }
 
     void DidAddMessageToConsole(const WebConsoleMessage& message,
@@ -7211,9 +7216,11 @@ TEST_F(WebViewTest, DetachPluginInLayout) {
     }
 
     const String& Message() const { return message_; }
+    bool PluginDestroyed() const { return plugin_destroyed_; }
 
    private:
     String message_;
+    bool plugin_destroyed_ = false;
   };
 
   PluginCreatingWebFrameClient frame_client;
@@ -7236,7 +7243,8 @@ TEST_F(WebViewTest, DetachPluginInLayout) {
   EXPECT_TRUE(plugin_element->OwnedPlugin());
   UpdateAllLifecyclePhases();
   EXPECT_FALSE(plugin_element->OwnedPlugin());
-  EXPECT_EQ("done", frame_client.Message());
+  EXPECT_TRUE(frame_client.PluginDestroyed());
+  EXPECT_TRUE(frame_client.Message().IsNull());
   web_view_helper_.Reset();  // Remove dependency on locally scoped client.
 }
 

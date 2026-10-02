@@ -16,10 +16,11 @@
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/send_tab_to_self/send_tab_to_self_page_handler.h"
 #include "chrome/browser/sync/send_tab_to_self_sync_service_factory.h"
+#include "chrome/browser/ui/actions/chrome_action_properties.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/send_tab_to_self/send_tab_to_self_util.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
-#include "chrome/browser/ui/views/app_menu/action_app_menu_manager.h"
+#include "chrome/browser/ui/views/app_menu/app_menu_action_item.h"
 #include "chrome/browser/user_education/user_education_service.h"
 #include "chrome/grit/generated_resources.h"
 #include "components/send_tab_to_self/entry_point_display_reason.h"
@@ -34,6 +35,7 @@
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/models/image_model.h"
 #include "ui/base/ui_base_features.h"
+#include "ui/base/window_open_disposition.h"
 #include "ui/color/color_id.h"
 #include "ui/menus/simple_menu_model.h"
 
@@ -148,9 +150,9 @@ void SendTabToSelfDynamicMenu::BuildSendTabToSelfActions(
         actions::ActionItem::Builder()
             .SetText(label)
             .SetImage(icon)
-            .SetProperty(ActionAppMenuManager::kDisplayTypeKey,
-                         ActionAppMenuManager::DisplayType::kRow)
-            .SetProperty(ActionAppMenuManager::kContainerColorKey,
+            .SetProperty(AppMenuActionItem::kDisplayTypeKey,
+                         AppMenuActionItem::DisplayType::kRow)
+            .SetProperty(AppMenuActionItem::kContainerColorKey,
                          ui::kColorMenuBackground)
             .SetInvokeActionCallback(base::BindRepeating(
                 &SendTabToSelfDynamicMenu::ExecuteDeviceSelection,
@@ -159,20 +161,19 @@ void SendTabToSelfDynamicMenu::BuildSendTabToSelfActions(
             .Build());
   }
 
-  parent_item->AddChild(ActionAppMenuManager::CreateDividerActionItem());
+  parent_item->AddChild(AppMenuActionItem::CreateDivider());
 
-  parent_item->AddChild(
-      actions::ActionItem::Builder()
-          .SetText(
-              l10n_util::GetStringUTF16(IDS_SEND_TAB_TO_SELF_MANAGE_DEVICES))
-          .SetProperty(ActionAppMenuManager::kDisplayTypeKey,
-                       ActionAppMenuManager::DisplayType::kRow)
-          .SetProperty(ActionAppMenuManager::kContainerColorKey,
-                       ui::kColorMenuBackground)
-          .SetInvokeActionCallback(base::BindRepeating(
-              &SendTabToSelfDynamicMenu::ExecuteManageDevices,
-              weak_ptr_factory_.GetWeakPtr()))
-          .Build());
+  parent_item->AddChild(actions::ActionItem::Builder()
+                            .SetText(l10n_util::GetStringUTF16(
+                                IDS_SEND_TAB_TO_SELF_MANAGE_DEVICES))
+                            .SetProperty(AppMenuActionItem::kDisplayTypeKey,
+                                         AppMenuActionItem::DisplayType::kRow)
+                            .SetProperty(AppMenuActionItem::kContainerColorKey,
+                                         ui::kColorMenuBackground)
+                            .SetInvokeActionCallback(base::BindRepeating(
+                                &SendTabToSelfDynamicMenu::ExecuteManageDevices,
+                                weak_ptr_factory_.GetWeakPtr()))
+                            .Build());
 }
 
 void SendTabToSelfDynamicMenu::ExecuteDeviceSelection(
@@ -220,6 +221,12 @@ void SendTabToSelfDynamicMenu::ExecuteManageDevices(
   }
   Profile* profile = browser_window_interface_->GetProfile();
   if (profile) {
-    send_tab_to_self::OpenManageDevicesPage(profile, /*event_flags=*/0);
+    WindowOpenDisposition disposition =
+        context.GetProperty(chrome::kDispositionKey);
+    if (disposition == WindowOpenDisposition::CURRENT_TAB ||
+        disposition == WindowOpenDisposition::UNKNOWN) {
+      disposition = WindowOpenDisposition::NEW_FOREGROUND_TAB;
+    }
+    send_tab_to_self::OpenManageDevicesPage(profile, disposition);
   }
 }

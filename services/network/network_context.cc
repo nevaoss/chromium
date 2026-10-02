@@ -13,7 +13,6 @@
 #include <vector>
 
 #include "base/barrier_closure.h"
-#include "base/base64.h"
 #include "base/build_time.h"
 #include "base/byte_size.h"
 #include "base/callback_list.h"
@@ -505,6 +504,7 @@ void TestVerifyCertCallback(
   std::move(callback).Run(result);
 }
 
+<<<<<<< HEAD
 std::string HashesToBase64String(
     const absl::flat_hash_set<net::SHA256HashValue>& hashes) {
   std::vector<std::string> strings;
@@ -559,6 +559,8 @@ class ExtraHeaderNetworkDelegate : public NetworkServiceNetworkDelegate,
 };
 #endif
 
+=======
+>>>>>>> 155.0.8059.0~1
 #if BUILDFLAG(IS_CT_SUPPORTED)
 // SCTAuditingDelegate is an implementation of the delegate interface that is
 // aware of per-NetworkContext details (to allow the cache to notify the
@@ -2502,12 +2504,9 @@ void NetworkContext::GetHSTSState(const std::string& domain,
         url_request_context()->transport_security_state();
     if (transport_security_state) {
       net::TransportSecurityState::STSState static_sts_state;
-      net::TransportSecurityState::PKPState static_pkp_state;
       bool found_sts_static = transport_security_state->GetStaticSTSState(
           domain, &static_sts_state);
-      bool found_pkp_static = transport_security_state->GetStaticPKPState(
-          domain, &static_pkp_state);
-      if (found_sts_static || found_pkp_static) {
+      if (found_sts_static) {
         result.Set("static_upgrade_mode",
                    static_cast<int>(static_sts_state.upgrade_mode));
         result.Set("static_sts_include_subdomains",
@@ -2516,25 +2515,13 @@ void NetworkContext::GetHSTSState(const std::string& domain,
                    static_sts_state.last_observed.InSecondsFSinceUnixEpoch());
         result.Set("static_sts_expiry",
                    static_sts_state.expiry.InSecondsFSinceUnixEpoch());
-        result.Set("static_pkp_include_subdomains",
-                   static_pkp_state.include_subdomains);
-        result.Set("static_pkp_observed",
-                   static_pkp_state.last_observed.InSecondsFSinceUnixEpoch());
-        result.Set("static_pkp_expiry",
-                   static_pkp_state.expiry.InSecondsFSinceUnixEpoch());
-        result.Set("static_spki_hashes",
-                   HashesToBase64String(static_pkp_state.spki_hashes));
         result.Set("static_sts_domain", static_sts_state.domain);
-        result.Set("static_pkp_domain", static_pkp_state.domain);
       }
 
       net::TransportSecurityState::STSState dynamic_sts_state;
-      net::TransportSecurityState::PKPState dynamic_pkp_state;
       bool found_sts_dynamic = transport_security_state->GetDynamicSTSState(
           domain, &dynamic_sts_state);
 
-      bool found_pkp_dynamic = transport_security_state->GetDynamicPKPState(
-          domain, &dynamic_pkp_state);
       if (found_sts_dynamic) {
         result.Set("dynamic_upgrade_mode",
                    static_cast<int>(dynamic_sts_state.upgrade_mode));
@@ -2547,20 +2534,7 @@ void NetworkContext::GetHSTSState(const std::string& domain,
         result.Set("dynamic_sts_domain", dynamic_sts_state.domain);
       }
 
-      if (found_pkp_dynamic) {
-        result.Set("dynamic_pkp_include_subdomains",
-                   dynamic_pkp_state.include_subdomains);
-        result.Set("dynamic_pkp_observed",
-                   dynamic_pkp_state.last_observed.InSecondsFSinceUnixEpoch());
-        result.Set("dynamic_pkp_expiry",
-                   dynamic_pkp_state.expiry.InSecondsFSinceUnixEpoch());
-        result.Set("dynamic_spki_hashes",
-                   HashesToBase64String(dynamic_pkp_state.spki_hashes));
-        result.Set("dynamic_pkp_domain", dynamic_pkp_state.domain);
-      }
-
-      result.Set("result", found_sts_static || found_pkp_static ||
-                               found_sts_dynamic || found_pkp_dynamic);
+      result.Set("result", found_sts_static || found_sts_dynamic);
     } else {
       result.Set("error", "no TransportSecurityState active");
     }
@@ -3740,6 +3714,34 @@ void NetworkContext::ClearSharedDictionaryCacheForIsolationKey(
   }
   shared_dictionary_manager_->ClearDataForIsolationKey(isolation_key,
                                                        std::move(callback));
+}
+
+void NetworkContext::ClearSharedDictionarySessionOnlyData(
+    ClearSharedDictionarySessionOnlyDataCallback callback) {
+  if (!shared_dictionary_manager_ || !cookie_manager_) {
+    std::move(callback).Run();
+    return;
+  }
+  DeleteCookiePredicate cookie_predicate =
+      cookie_manager_->cookie_settings().CreateDeleteCookieOnExitPredicate();
+  if (!cookie_predicate) {
+    std::move(callback).Run();
+    return;
+  }
+  auto url_matcher = base::BindRepeating(
+      [](DeleteCookiePredicate predicate, const GURL& url) {
+        if (!url.is_valid() || !url.has_host()) {
+          return false;
+        }
+        return predicate.Run(url.host(),
+                             url.SchemeIsCryptographic()
+                                 ? net::CookieSourceScheme::kSecure
+                                 : net::CookieSourceScheme::kNonSecure);
+      },
+      std::move(cookie_predicate));
+  shared_dictionary_manager_->ClearData(
+      /*start_time=*/base::Time(), /*end_time=*/base::Time::Max(),
+      std::move(url_matcher), std::move(callback));
 }
 
 void NetworkContext::GetSharedDictionaryUsageInfo(

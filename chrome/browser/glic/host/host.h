@@ -61,7 +61,7 @@ class Host : public GlicSharingManagerProvider {
     // Allows the user to manually resize the widget by dragging. If the widget
     // hasn't been created yet, apply this setting when it is created. No effect
     // if the widget doesn't exist or the feature flag is disabled.
-    virtual void EnableDragResize(bool enabled);
+    virtual void SetDragResizeEnabled(bool enabled);
 
     // Attaches glic to the last focused Chrome window.
     virtual void Attach() = 0;
@@ -262,8 +262,6 @@ class Host : public GlicSharingManagerProvider {
   void OnGuestWebClientCleared(bool had_web_client);
 
   GlicWebContentsManager* contents_manager() { return contents_.get(); }
-  std::unique_ptr<content::WebContents> ReleaseWebContents();
-  void ReclaimWebContents(std::unique_ptr<content::WebContents> web_contents);
   // Returns the WebUI web contents. May be null.
   content::WebContents* webui_contents() const;
 
@@ -375,7 +373,7 @@ class Host : public GlicSharingManagerProvider {
   // Allows the user to manually resize the widget by dragging. If the widget
   // hasn't been created yet, apply this setting when it is created. No effect
   // if the widget doesn't exist or the feature flag is disabled.
-  void EnableDragResize(bool enabled);
+  void SetDragResizeEnabled(bool enabled);
   void HibernateImpl(bool is_destroying);
   void AttachPanel();
   void DetachPanel();
@@ -461,6 +459,7 @@ class Host : public GlicSharingManagerProvider {
   mojom::WebUiState primary_webui_state_ = mojom::WebUiState::kUninitialized;
   std::optional<mojom::PanelState> pending_panel_state_;
   ClientState client_state_;
+  bool drag_resize_enabled_ = false;
 
   void OnActiveWebContentsChanged(content::WebContents* new_contents);
 
@@ -485,7 +484,7 @@ class EmptyEmbedderDelegate : public Host::EmbedderDelegate {
   void Resize(const gfx::Size& size,
               base::TimeDelta duration,
               base::OnceClosure callback) override;
-  void EnableDragResize(bool enabled) override {}
+  void SetDragResizeEnabled(bool enabled) override {}
   void Attach() override {}
   void Detach() override {}
   void ClosePanel() override {}

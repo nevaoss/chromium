@@ -22,6 +22,7 @@
 #include "chrome/browser/ui/webui/top_chrome/webui_contents_wrapper.h"
 #include "components/prefs/pref_change_registrar.h"
 #include "content/public/browser/context_menu_params.h"
+#include "content/public/browser/web_contents.h"
 #include "third_party/blink/public/mojom/page/draggable_region.mojom-forward.h"
 #include "third_party/skia/include/core/SkRegion.h"
 #include "ui/base/interaction/element_identifier.h"
@@ -174,6 +175,9 @@ class OmniboxEverywhereUIManager : public views::WidgetObserver,
   void OnDrivePickerOpened();
   void OnDrivePickerClosed();
 
+  void OnHotkeyDropdownOpened();
+  void OnHotkeyDropdownClosed();
+
   using RegionCaptureSource = OmniboxEverywhereService::RegionCaptureSource;
 
   void OnScreensharePickerOpened();
@@ -231,6 +235,15 @@ class OmniboxEverywhereUIManager : public views::WidgetObserver,
   bool is_permission_prompt_open_for_testing() const {
     return is_permission_prompt_open_;
   }
+  bool is_hotkey_dropdown_open_for_testing() const {
+    return is_hotkey_dropdown_open_;
+  }
+  bool is_hotkey_dropdown_deactivation_task_pending_for_testing() const {
+    return !hotkey_dropdown_deactivation_task_.IsCancelled();
+  }
+  void CheckDeactivationAfterHotkeyDropdownClosedForTesting() {
+    CheckDeactivationAfterHotkeyDropdownClosed();
+  }
   OmniboxEverywhereRegionSelectOverlay* region_select_overlay_for_testing() {
     return region_select_overlay_.get();
   }
@@ -241,6 +254,7 @@ class OmniboxEverywhereUIManager : public views::WidgetObserver,
     is_context_menu_open_ = open;
   }
   bool is_dragging_for_testing() const { return is_dragging_; }
+  bool is_demoted_for_testing() const { return is_demoted_; }
   void OnContextMenuClosedForTesting() { OnContextMenuClosed(); }
   const ui::SimpleMenuModel* context_menu_model_for_testing() const {
     return context_menu_model_.get();
@@ -279,8 +293,11 @@ class OmniboxEverywhereUIManager : public views::WidgetObserver,
   void OnWidgetClosed(views::Widget::ClosedReason reason);
   void OnContextMenuClosed();
   void HandleWidgetDeactivated();
-  void OnScreenshotDisclosureClosed(base::OnceClosure on_cancelled,
+  void CheckDeactivationAfterHotkeyDropdownClosed();
+  void OnScreenshotDisclosureClosed(base::OnceClosure on_accepted,
+                                    base::OnceClosure on_cancelled,
                                     views::Widget::ClosedReason reason);
+  void UpdateModalInteractionState();
 
 #if defined(USE_AURA)
   std::unique_ptr<OmniboxEverywhereEventHandlerAura> event_handler_;
@@ -298,9 +315,12 @@ class OmniboxEverywhereUIManager : public views::WidgetObserver,
   std::unique_ptr<OmniboxEverywhereRegionSelectOverlay> region_select_overlay_;
 
   std::unique_ptr<views::Widget> disclosure_dialog_widget_;
+  std::optional<content::WebContents::ScopedIgnoreInputEvents>
+      scoped_ignore_input_events_;
 
   bool is_file_chooser_open_ = false;
   bool is_drive_picker_open_ = false;
+  bool is_hotkey_dropdown_open_ = false;
   bool is_context_menu_open_ = false;
   bool is_demoted_ = false;
   bool is_screenshare_picker_open_ = false;
@@ -323,6 +343,7 @@ class OmniboxEverywhereUIManager : public views::WidgetObserver,
   // Task posted when the widget is deactivated, used to either dismiss or
   // reactivate the widget after the grace period.
   base::CancelableOnceClosure deactivation_task_;
+  base::CancelableOnceClosure hotkey_dropdown_deactivation_task_;
 
   PrefChangeRegistrar local_state_pref_change_registrar_;
   PrefChangeRegistrar profile_pref_change_registrar_;

@@ -759,7 +759,6 @@ ci.builder(
             config = "chromium",
             apply_configs = [
                 "android",
-                "enable_wpr_tests",
             ],
         ),
         chromium_config = builder_config.chromium_config(
@@ -2249,7 +2248,6 @@ ci.builder(
                 # This is necessary due to this builder running the
                 # telemetry_perf_unittests suite.
                 "chromium_with_telemetry_dependencies",
-                "enable_wpr_tests",
             ],
         ),
         chromium_config = builder_config.chromium_config(
@@ -2453,7 +2451,6 @@ ci.builder(
                 # This is necessary due to this builder running the
                 # telemetry_perf_unittests suite.
                 "chromium_with_telemetry_dependencies",
-                "enable_wpr_tests",
             ],
         ),
         chromium_config = builder_config.chromium_config(
@@ -2558,6 +2555,21 @@ ci.builder(
                     dimensions = {
                         # use 8-core to shorten runtime
                         "cores": "8",
+                    },
+                    optional_dimensions = {
+                        # TODO(crrev.com/541675870): Remove x86-64-n4 when migration is done.
+                        # Wait 30 seconds for n4 cpu with cache, wait 30 seconds for n4 cpu
+                        # wait 60 seconds for any bot with a cache.
+                        30: {
+                            "cpu": "x86-64-n4",
+                            "caches": "android_29_google_apis_x86",
+                        },
+                        60: {
+                            "cpu": "x86-64-n4",
+                        },
+                        120: {
+                            "caches": "android_29_google_apis_x86",
+                        },
                     },
                     shards = 75,
                 ),

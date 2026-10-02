@@ -595,7 +595,6 @@ component("platform") {
     "exported/url_conversion.cc",
     "exported/video_capture/web_video_capture_impl_manager.cc",
     "exported/weak_wrapper_resource_load_info_notifier.cc",
-    "exported/web_audio_bus.cc",
     "exported/web_blob_info.cc",
     "exported/web_cache.cc",
     "exported/web_content_decryption_module.cc",
@@ -1568,6 +1567,8 @@ component("platform") {
     "text/writing_mode_utils.h",
     "theme/web_theme_engine_conversions.cc",
     "theme/web_theme_engine_conversions.h",
+    "theme/web_theme_engine_default.cc",
+    "theme/web_theme_engine_default.h",
     "theme/web_theme_engine_helper.cc",
     "theme/web_theme_engine_helper.h",
     "timer.cc",
@@ -1911,11 +1912,6 @@ component("platform") {
     sources += [
       "theme/web_theme_engine_android.cc",
       "theme/web_theme_engine_android.h",
-    ]
-  } else {
-    sources += [
-      "theme/web_theme_engine_default.cc",
-      "theme/web_theme_engine_default.h",
     ]
   }
 

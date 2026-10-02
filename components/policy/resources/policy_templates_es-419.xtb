@@ -112,7 +112,6 @@ Si estableces la política con el valor "0" (Default) o no la estableces, <ph na
 Si estableces la política con el valor "1" (DisabledForBrowser), se impedirá que el proceso del navegador <ph name="PRODUCT_NAME" /> cree código dinámico.
 
 Nota: Obtén más información sobre las políticas de mitigación de procesos (https://chromium.googlesource.com/chromium/src/+/HEAD/docs/design/sandbox.md#Process-mitigation-policies).</translation>
-<translation id="1067605384506001359">Configuración de Indigo.</translation>
 <translation id="1068801725746725727">Habilitar la recepción de encuestas de Navegación segura</translation>
 <translation id="107045325503547419">Depender del proceso de lanzamiento de la función.</translation>
 <translation id="1073983258515362346">Envía información sobre la luz de fondo del dispositivo.
@@ -650,13 +649,13 @@ el cambio de contraseña, pero también puede aplicarse de manera forzosa con ci
 <translation id="1438739959477268107">Configuración predeterminada de generación de claves</translation>
 <translation id="1440408958042020947">Permitir el acceso de los usuarios que habilitaron Phone Hub a las fotos y los videos tomados recientemente del teléfono</translation>
 <translation id="1443532790824582949">Habilitar el teclado virtual táctil</translation>
-<translation id="1445955287827003066">Esta política controla si un dispositivo se segmenta para la migración de ChromeOS al siguiente SO y cuándo.
+<translation id="1445955287827003066">Esta política controla si un dispositivo está seleccionado para migrar de ChromeOS al siguiente SO y cuándo.
 
 Si estableces esta política en 0, la elegibilidad del dispositivo para la migración se determinará según la configuración predeterminada de Google, que puede depender del modelo del dispositivo, el hardware y otros factores.
 
-Si se establece esta política en 2147483647, el dispositivo se marcará como disponible y se segmentará para la migración sin una fecha límite específica.
+Si se establece esta política en 2147483647, el dispositivo se marcará como disponible y seleccionado para migración sin una fecha límite específica.
 
-Si se establece en un valor superior a 0 y menor que 2147483647, el dispositivo se marcará como disponible y se segmentará para la migración. El valor representa la fecha límite de finalización recomendada como la cantidad de segundos desde el tiempo Unix (1970-01-01 00:00:00 UTC).
+Si se establece en un valor mayor que 0 y menor que 2147483647, el dispositivo se marcará como disponible y seleccionado para migración. El valor representa la fecha límite de finalización recomendada como la cantidad de segundos desde el tiempo Unix (1970-01-01 00:00:00 UTC).
 
 Ten en cuenta que otros parámetros de configuración de actualización del dispositivo, como la fijación de versiones (<ph name="DEVICE_TARGET_VERSION_PREFIX_POLICY" />), la inhabilitación de actualizaciones (<ph name="DEVICE_AUTO_UPDATE_DISABLED_POLICY" />) o la configuración del canal de versiones (<ph name="DEVICE_RELEASE_CHANNEL_POLICY" />), pueden impedir que el dispositivo reciba las actualizaciones necesarias para iniciar la migración, incluso si se establece una fecha objetivo aquí. La política debe aplicarse siempre y el valor no establecido corresponde al valor predeterminado de Google, ya que su valor puede influir en el procesamiento de las políticas de actualización del dispositivo.</translation>
 <translation id="1447252610864877219">Permite que la app de Gemini realice acciones en las páginas web.</translation>
@@ -1367,7 +1366,6 @@ Esta opción está habilitada de forma predeterminada para todos los grupos, per
 Si inhabilitas la política o no la estableces, se ignorará la clave del manifiesto de <ph name="REQUIRED_PLATFORM_VERSION" /> y la actualización automática se realizará con normalidad.
 
 Advertencia: No delegues el control de la versión de <ph name="PRODUCT_OS_NAME" /> a una aplicación de kiosco, ya que hacerlo podría impedir que el dispositivo reciba actualizaciones de software y correcciones de seguridad importantes. La delegación del control de la versión de <ph name="PRODUCT_OS_NAME" /> podría poner en riesgo a los usuarios.</translation>
-<translation id="1865927800836673132">Inhabilitar Indigo.</translation>
 <translation id="186719019195685253">Acción a realizar si se alcanza la demora de inactividad mientras el dispositivo funciona con alimentación de corriente</translation>
 <translation id="1869688072690234823">Si estableces la política, controlarás qué factores de WebAuthn se pueden usar.
 
@@ -6957,7 +6955,7 @@ Nota: Esta función aún no está disponible de forma general, por lo que habili
 <translation id="5249006530384016395">Controlar si se habilita la sintaxis <ph name="CUSTOM_STATE_DEPRECATED_SYNTAX" /> obsoleta para el estado personalizado de CSS</translation>
 <translation id="5249271416806588789">Talk to type es una función basada en IA que permite a los usuarios ingresar y editar texto con la voz, con la tecnología de modelos de IA generativa para proporcionar transcripción y formato de alta calidad.
 
-0 = Permite que se use la función y que Google use datos pertinentes para mejorar sus modelos de IA. Los datos pertinentes pueden incluir instrucciones, entradas, resultados, materiales de referencia y comentarios escritos, según la función. Es posible que personas revisen los datos para mejorar los modelos de IA. 0 es el valor predeterminado, excepto en los siguientes casos.
+0 = Permite que se use la función y que Google use datos pertinentes para mejorar sus modelos de IA. Los datos pertinentes pueden incluir instrucciones, entradas, resultados, materiales de referencia y comentarios escritos, según la función. Es posible que los datos sean revisados por personas para mejorar los modelos de IA. 0 es el valor predeterminado, excepto en los siguientes casos.
 
 1 = Permite que se use la función, pero no permite que Google mejore los modelos con el contenido de los usuarios (lo que incluye las instrucciones, las entradas, los resultados, los materiales de referencia y los comentarios escritos). 1 es el valor predeterminado para los usuarios empresariales que administra <ph name="GOOGLE_ADMIN_CONSOLE_PRODUCT_NAME" /> y las cuentas de institución educativa que administra <ph name="GOOGLE_WORKSPACE_PRODUCT_NAME" />.
 
@@ -9706,7 +9704,6 @@ Si la estableces como falsa o no la estableces, el diseño no estará disponible
 <translation id="6883050310557769428">Controla si el SSO flotante está habilitado y la lista de entidades bloqueadas de dominios de cookies y sus excepciones.</translation>
 <translation id="6889123056995503704">El usuario elige el comportamiento del cambio a una versión inferior del canal</translation>
 <translation id="6894178810167845842">URL de la página Nueva pestaña</translation>
-<translation id="6894938636048011953">Habilitar Indigo sin la mejora del modelo.</translation>
 <translation id="6895437634974956885">El estado de la batería puede verse afectado por factores como las cargas completas frecuentes y las duraciones de carga prolongadas. Esta política proporciona tres opciones para optimizar el comportamiento de carga y mitigar estos factores, lo que prolongará la vida útil de la batería.
 
 Si no estableces la política, los usuarios podrán usar el botón de activación de la Carga adaptable.
@@ -10048,7 +10045,6 @@ la optimización de JavaScript para el sitio.</translation>
       Si se establece como obligatoria, los usuarios no podrán cambiarla ni anularla.
 
       Si no la estableces, se ubicará la biblioteca de forma predeterminada en la parte inferior de la pantalla y el usuario podrá cambiar su posición.</translation>
-<translation id="703900496796064997">Habilitar Indigo con la mejora del modelo.</translation>
 <translation id="7039815268521168329">Mostrar el flujo de Voice Match de Asistente de Google durante la configuración inicial</translation>
 <translation id="7040229947030068419">Valor de ejemplo:</translation>
 <translation id="7044883996351280650">Controlar el servicio de restablecimiento y copias de seguridad</translation>
@@ -11666,15 +11662,6 @@ Si estableces esta política, los usuarios no podrán cambiarla en <ph name="PRO
 <translation id="8006921530139404577">Si inhabilitas esta política, no se mostrará la IU relacionada con la conexión (p. ej., la ventana de desconexión) para conexiones con acceso remoto que no estén encubiertas. Esta política no afecta las sesiones con asistencia remota ni las sesiones con acceso remoto que estén encubiertas.
 
           Tampoco tiene efecto si la estableces como verdadera, la dejas vacía o no la estableces.</translation>
-<translation id="8007695731441786330">Controla si Indigo puede transformar imágenes en la Web.
-
-0 = Habilitar Indigo con la mejora del modelo.
-
-1 = Habilitar Indigo sin la mejora el modelo.
-
-2 = Inhabilitar Indigo.
-
-Si no estableces esta política, su comportamiento se determina según la política <ph name="GEN_AI_DEFAULT_SETTINGS_POLICY_NAME" />.</translation>
 <translation id="8008421342605619236">Permite configurar las políticas de mensajería nativa. A menos que se incluyan en la lista de elementos permitidos, no se permitirán los hosts bloqueados de mensajería nativa.</translation>
 <translation id="8011935490612940798">Controla la función <ph name="PRODUCT_NAME" /></translation>
 <translation id="8013646845541206453">Usar cualquier verificador de certificados</translation>
@@ -12991,11 +12978,6 @@ Esta opción es útil cuando el administrador sabe que es probable que los usuar
 <translation id="8865404058177794289">Usar la configuración predeterminada para la verificación de uso de la clave RSA</translation>
 <translation id="8866430022832109569">Informes del inventario de la aplicación</translation>
 <translation id="886645881209114007">Permite que los usuarios utilicen <ph name="PLUGIN_VM_NAME" /> en <ph name="PRODUCT_OS_NAME" /></translation>
-<translation id="8867894831390233044">Determina si los usuarios pueden usar la depuración remota.
-
-      Si habilitas esta política o no la estableces, los usuarios podrán usar la depuración remota. Para hacerlo, deberán especificar los interruptores --remote-debugging-port y --remote-debugging-pipe de la línea de comandos.
-
-      Si la inhabilitas, los usuarios no podrán usar la depuración remota.</translation>
 <translation id="8870995142109792885">Habilitar el buscador de complementos</translation>
 <translation id="8871974300055371298">Configuración de contenido</translation>
 <translation id="8872029059067980702">No mostrar la pantalla de presentación de Gemini durante el acceso</translation>

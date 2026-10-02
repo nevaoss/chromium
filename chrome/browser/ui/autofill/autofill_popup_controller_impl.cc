@@ -83,7 +83,6 @@ bool ShouldEnforcePaintChecks(AutofillSuggestionTriggerSource trigger_source) {
     case AutofillSuggestionTriggerSource::kAtMemoryDoubleCtrl:
     case AutofillSuggestionTriggerSource::kAtMemoryInactivityNudge:
     case AutofillSuggestionTriggerSource::kAtMemoryKeyboardShortcut:
-    case AutofillSuggestionTriggerSource::kAtMemoryTriggerString:
       return false;
     case AutofillSuggestionTriggerSource::kUnspecified:
     case AutofillSuggestionTriggerSource::kFormControlElementClicked:
@@ -99,6 +98,7 @@ bool ShouldEnforcePaintChecks(AutofillSuggestionTriggerSource trigger_source) {
     case AutofillSuggestionTriggerSource::kComposeDelayedProactiveNudge:
     case AutofillSuggestionTriggerSource::kPasswordManagerProcessedFocusedField:
     case AutofillSuggestionTriggerSource::kProactivePasswordRecovery:
+    case AutofillSuggestionTriggerSource::kGmailOneTimePasswordAvailable:
     case AutofillSuggestionTriggerSource::kGlic:
       return true;
   }
@@ -111,7 +111,6 @@ std::optional<AutofillPopupView::SearchBarConfig> GetSearchBarConfig(
     case AutofillSuggestionTriggerSource::kAtMemoryContextMenu:
     case AutofillSuggestionTriggerSource::kAtMemoryDoubleCtrl:
     case AutofillSuggestionTriggerSource::kAtMemoryKeyboardShortcut:
-    case AutofillSuggestionTriggerSource::kAtMemoryTriggerString:
       return AutofillPopupView::SearchBarConfig{
           .placeholder = l10n_util::GetStringUTF16(
               IDS_AUTOFILL_AT_MEMORY_POPUP_SEARCH_BAR_PLACEHOLDER),
@@ -136,6 +135,7 @@ std::optional<AutofillPopupView::SearchBarConfig> GetSearchBarConfig(
     case AutofillSuggestionTriggerSource::kComposeDelayedProactiveNudge:
     case AutofillSuggestionTriggerSource::kPasswordManagerProcessedFocusedField:
     case AutofillSuggestionTriggerSource::kProactivePasswordRecovery:
+    case AutofillSuggestionTriggerSource::kGmailOneTimePasswordAvailable:
     case AutofillSuggestionTriggerSource::kGlic:
     case AutofillSuggestionTriggerSource::kAtMemoryInactivityNudge:
     case AutofillSuggestionTriggerSource::kUnspecified:
@@ -233,7 +233,6 @@ std::optional<AutofillPopupView::SubPopupConfig> GetSubPopupConfig(
     case AutofillSuggestionTriggerSource::kAtMemoryDoubleCtrl:
     case AutofillSuggestionTriggerSource::kAtMemoryInactivityNudge:
     case AutofillSuggestionTriggerSource::kAtMemoryKeyboardShortcut:
-    case AutofillSuggestionTriggerSource::kAtMemoryTriggerString:
       return AutofillPopupView::SubPopupConfig{.no_selection_hide_delay =
                                                    base::Seconds(1)};
     case AutofillSuggestionTriggerSource::kManualFallbackPasswords:
@@ -249,6 +248,7 @@ std::optional<AutofillPopupView::SubPopupConfig> GetSubPopupConfig(
     case AutofillSuggestionTriggerSource::kComposeDelayedProactiveNudge:
     case AutofillSuggestionTriggerSource::kPasswordManagerProcessedFocusedField:
     case AutofillSuggestionTriggerSource::kProactivePasswordRecovery:
+    case AutofillSuggestionTriggerSource::kGmailOneTimePasswordAvailable:
     case AutofillSuggestionTriggerSource::kGlic:
     case AutofillSuggestionTriggerSource::kUnspecified:
       return std::nullopt;
@@ -481,6 +481,10 @@ void AutofillPopupControllerImpl::UpdateDataListValues(
   } else {
     OnSuggestionsChanged();
   }
+}
+
+const LocalFrameToken& AutofillPopupControllerImpl::GetFrameToken() const {
+  return controller_common_.frame_token;
 }
 
 bool AutofillPopupControllerImpl::IsViewVisibilityAcceptingThresholdEnabled()

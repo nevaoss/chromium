@@ -64,7 +64,6 @@
 #include "mojo/public/cpp/bindings/pending_associated_receiver.h"
 #include "mojo/public/cpp/bindings/pending_receiver.h"
 #include "mojo/public/cpp/bindings/pending_remote.h"
-#include "mojo/public/cpp/bindings/receiver.h"
 #include "mojo/public/cpp/bindings/receiver_set.h"
 #include "mojo/public/cpp/bindings/remote.h"
 #include "mojo/public/cpp/system/data_pipe.h"
@@ -1107,6 +1106,7 @@ class CONTENT_EXPORT RenderFrameImpl
       const blink::WebURL& url,
       const blink::WebString& suggested_mime_type) override;
   bool IsDomStorageDisabled() const override;
+  bool AreDedicatedWorkersDisabled() const override;
   v8::Local<v8::Object> GetScriptableObject(
       const blink::WebElement& plugin_element,
       v8::Isolate* isolate) override;

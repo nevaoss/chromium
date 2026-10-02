@@ -74,7 +74,6 @@
 #include "components/sync/protocol/unique_position.pb.h"
 #include "components/sync/protocol/user_consent_specifics.pb.h"
 #include "components/sync/protocol/user_event_specifics.pb.h"
-#include "components/sync/protocol/web_apk_specifics.pb.h"
 #include "components/sync/protocol/web_app_specifics.pb.h"
 #include "components/sync/protocol/webauthn_credential_specifics.pb.h"
 #include "components/sync/protocol/workspace_desk_specifics.pb.h"
@@ -787,7 +786,7 @@ VISIT_PROTO_FIELDS(
 }
 
 VISIT_PROTO_FIELDS(const sync_pb::EntitySpecifics& proto) {
-  static_assert(66 == GetNumDataTypes(),
+  static_assert(65 == GetNumDataTypes(),
                 "When adding a new protocol type, you will likely need to add "
                 "it here as well.");
   VISIT(encrypted);
@@ -846,7 +845,6 @@ VISIT_PROTO_FIELDS(const sync_pb::EntitySpecifics& proto) {
   VISIT(user_consent);
   VISIT(user_event);
   VISIT(wallet_metadata);
-  VISIT(web_apk);
   VISIT(web_app);
   VISIT(webauthn_credential);
   VISIT(wifi_configuration);
@@ -2046,22 +2044,6 @@ VISIT_PROTO_FIELDS(const sync_pb::WalletMaskedIban& proto) {
   VISIT(nickname);
 }
 
-VISIT_PROTO_FIELDS(const sync_pb::WebApkIconInfo& proto) {
-  VISIT(size_in_px);
-  VISIT(url);
-  VISIT_ENUM(purpose);
-}
-
-VISIT_PROTO_FIELDS(const sync_pb::WebApkSpecifics& proto) {
-  VISIT(manifest_id);
-  VISIT(start_url);
-  VISIT(name);
-  VISIT(theme_color);
-  VISIT(scope);
-  VISIT_REP(icon_infos);
-  VISIT(last_used_time_windows_epoch_micros);
-}
-
 VISIT_PROTO_FIELDS(const sync_pb::WebAppIconInfo& proto) {
   VISIT(size_in_px);
   VISIT(url);
@@ -2222,6 +2204,7 @@ VISIT_PROTO_FIELDS(const sync_pb::AutofillValuableSpecifics& proto) {
   VISIT(order);
   VISIT(shipment);
   VISIT(context_token);
+  VISIT(pass_view_url);
 }
 
 VISIT_PROTO_FIELDS(const sync_pb::Any& proto) {

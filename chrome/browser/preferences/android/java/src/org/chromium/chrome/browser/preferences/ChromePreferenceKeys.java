@@ -176,25 +176,8 @@ public final class ChromePreferenceKeys {
     public static final String CONTEXTUAL_SEARCH_TAP_TRIGGERED_PROMO_COUNT =
             "contextual_search_tap_triggered_promo_count";
 
-    /**
-     * Keys that indicates if an item in the context menu has been clicked or not.
-     * Used to hide the "new" tag for the items after they are clicked.
-     */
-    public static final String CONTEXT_MENU_OPEN_IMAGE_IN_EPHEMERAL_TAB_CLICKED =
-            "Chrome.Contextmenu.OpenImageInEphemeralTabClicked";
-
-    public static final String CONTEXT_MENU_OPEN_IN_EPHEMERAL_TAB_CLICKED =
-            "Chrome.Contextmenu.OpenInEphemeralTabClicked";
-
-    /** Note: The string value intentionally omits "Image" for backward compatibility. */
-    public static final String CONTEXT_MENU_SEARCH_IMAGE_WITH_GOOGLE_LENS_CLICKED =
-            "Chrome.ContextMenu.SearchWithGoogleLensClicked";
-
     public static final String CONTEXT_MENU_SEARCH_TAB_WITH_GOOGLE_LENS_CLICKED =
             "Chrome.ContextMenu.SearchTabWithGoogleLensClicked";
-
-    public static final String CONTEXT_MENU_SHOP_IMAGE_WITH_GOOGLE_LENS_CLICKED =
-            "Chrome.ContextMenu.ShopImageWithGoogleLensClicked";
 
     @Deprecated
     public static final String CROSS_DEVICE_IMPORTED_BOTTOM_OMNIBOX =
@@ -437,6 +420,10 @@ public final class ChromePreferenceKeys {
     /** Whether the precise location setting is enabled for Glic */
     public static final String GLIC_PRECISE_LOCATION_SETTING_ENABLED =
             "Chrome.Glic.PreciseLocationSettingEnabled";
+
+    /** Whether the microphone setting is enabled for Glic */
+    public static final String GLIC_MICROPHONE_SETTING_ENABLED =
+            "Chrome.Glic.MicrophoneSettingEnabled";
 
     /** Whether the share current tab default access is enabled for Glic */
     public static final String GLIC_SHARE_CURRENT_TAB_DEFAULT_ACCESS_ENABLED =
@@ -1203,11 +1190,7 @@ public final class ChromePreferenceKeys {
                 CLOUD_MANAGEMENT_CLIENT_ID,
                 CLOUD_MANAGEMENT_DM_TOKEN,
                 COMMERCE_SUBSCRIPTIONS_CHROME_MANAGED_TIMESTAMP,
-                CONTEXT_MENU_OPEN_IMAGE_IN_EPHEMERAL_TAB_CLICKED,
-                CONTEXT_MENU_OPEN_IN_EPHEMERAL_TAB_CLICKED,
-                CONTEXT_MENU_SEARCH_IMAGE_WITH_GOOGLE_LENS_CLICKED,
                 CONTEXT_MENU_SEARCH_TAB_WITH_GOOGLE_LENS_CLICKED,
-                CONTEXT_MENU_SHOP_IMAGE_WITH_GOOGLE_LENS_CLICKED,
                 CROSS_DEVICE_IMPORTED_BOTTOM_OMNIBOX,
                 CROSS_DEVICE_IMPORTED_NON_NTP_SETTINGS,
                 CROSS_DEVICE_IMPORTED_ALL_SETTINGS,
@@ -1260,6 +1243,7 @@ public final class ChromePreferenceKeys {
                 FIRST_CTA_START_TIMESTAMP,
                 FLAGS_LAST_CACHED_MINIMAL_BROWSER_FLAGS_TIME_MILLIS,
                 GLIC_PRECISE_LOCATION_SETTING_ENABLED,
+                GLIC_MICROPHONE_SETTING_ENABLED,
                 GLIC_SHARE_CURRENT_TAB_DEFAULT_ACCESS_ENABLED,
                 GLIC_AUTO_BROWSE_SETTING_ENABLED,
                 GLIC_PROMO_ACCEPTED,

@@ -1409,6 +1409,31 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="Media.Audio.Capture.VoiceIsolation.StartupDuration.{Status}"
+    units="ms" expires_after="2027-03-01">
+  <owner>olka@chromium.org</owner>
+  <owner>webrtc-audio-uma@google.com</owner>
+  <summary>
+    Duration of asynchronous voice isolation component startup dispatched to the
+    ThreadPool. Logged when startup completes with {Status}.
+  </summary>
+  <token key="Status">
+    <variant name="Failure" summary="failure"/>
+    <variant name="Success" summary="success"/>
+  </token>
+</histogram>
+
+<histogram name="Media.Audio.Capture.VoiceIsolation.StartupResult"
+    enum="VoiceIsolationStartupResult" expires_after="2027-03-01">
+  <owner>olka@chromium.org</owner>
+  <owner>webrtc-audio-uma@google.com</owner>
+  <summary>
+    Outcome of asynchronous voice isolation startup. Logged when startup
+    succeeds or fails, or as Aborted if VoiceIsolationHandler is destroyed while
+    startup is still in flight.
+  </summary>
+</histogram>
+
 <histogram name="Media.Audio.Capture.Win.AbsTimestampDiffMs" units="ms"
     expires_after="2027-02-01">
   <owner>henrika@chromium.org</owner>
@@ -2438,7 +2463,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Media.Audio.{Direction}DeviceEnumerationOutcome"
-    enum="AudioDeviceEnumerationOutcome" expires_after="2027-05-01">
+    enum="DeviceEnumerationOutcome" expires_after="2027-05-01">
   <owner>frederikh@google.com</owner>
   <owner>webrtc-audio-uma@google.com</owner>
   <summary>
@@ -8259,6 +8284,21 @@ chromium-metrics-reviews@google.com.
     startup and when attempting to screen capture. Requires macOS 10.15+.
     Samples will not be collected on earlier macOS versions. Warning: this
     histogram was expired from 2024-02-11 to 2024-09-16; data may be missing.
+  </summary>
+</histogram>
+
+<histogram name="Media.Video.InputDeviceEnumerationOutcome"
+    enum="DeviceEnumerationOutcome" expires_after="2027-05-01">
+  <owner>agpalak@chromium.org</owner>
+  <owner>guidou@chromium.org</owner>
+  <owner>rtc-meet-in-chrome@google.com</owner>
+  <summary>
+    Tracks the success and failure outcomes of video input (camera) device
+    enumerations, distinguishing between empty (0 devices) and non-empty
+    results. Helps detect if OS errors or capture service failures cause the
+    browser to report empty device lists versus legitimate zero-camera hardware
+    configurations. Recorded when video device enumeration results are received
+    (e.g. during enumerateDevices calls).
   </summary>
 </histogram>
 

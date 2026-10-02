@@ -57,7 +57,6 @@ source_set("browser_sources") {
     "background_sync_parameters.h",
     "background_sync_registration.cc",
     "background_sync_registration.h",
-    "background_tracing.h",
     "blob_handle.h",
     "bluetooth_chooser.cc",
     "bluetooth_chooser.h",
@@ -748,8 +747,8 @@ source_set("browser_sources") {
       "chromeos/delegate_to_browser_gpu_service_accelerator_factory.h",
       "lock_screen_storage.h",
       "smart_card_delegate.h",
-      "tts_controller_delegate.cc",
-      "tts_controller_delegate.h",
+      "tts_controller_delegate_chromeos.cc",
+      "tts_controller_delegate_chromeos.h",
     ]
   }
 

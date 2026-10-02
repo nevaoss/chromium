@@ -7,6 +7,8 @@
 #import <cmath>
 
 #import "ios/chrome/browser/content_suggestions/magic_stack/public/magic_stack_constants.h"
+#import "ios/chrome/browser/content_suggestions/magic_stack/public/magic_stack_utils.h"
+#import "ios/chrome/browser/content_suggestions/magic_stack/ui/magic_stack_collection_view.h"
 #import "ios/chrome/browser/content_suggestions/ui/content_suggestions_collection_utils.h"
 #import "ios/chrome/browser/ntp/ui_bundled/new_tab_page_constants.h"
 #import "ios/chrome/browser/ntp/ui_bundled/new_tab_page_feature.h"
@@ -49,6 +51,7 @@ constexpr CGFloat kMinimumDragVelocityToChangeState = 250.0;
   UIView* _mostVisitedView;
   UIView* _contentContainerView;
   NTPCardBackgroundView* _feedCardBackgroundView;
+  NSLayoutConstraint* _magicStackHeightConstraint;
   BottomSheetSnappingState _sheetState;
 
   CGSize _lastSize;
@@ -114,6 +117,9 @@ constexpr CGFloat kMinimumDragVelocityToChangeState = 250.0;
          selector:@selector(voiceOverStatusDidChange)
              name:UIAccessibilityVoiceOverStatusDidChangeNotification
            object:nil];
+
+  [self registerForTraitChanges:@[ UITraitPreferredContentSizeCategory.class ]
+                     withAction:@selector(updateMagicStackHeightOnTraitChange)];
 
   _sheetState = BottomSheetSnappingStateResting;
 
@@ -203,12 +209,13 @@ constexpr CGFloat kMinimumDragVelocityToChangeState = 250.0;
         constraintEqualToAnchor:_headerContainerView.leadingAnchor],
     [_magicStackContainerView.trailingAnchor
         constraintEqualToAnchor:_headerContainerView.trailingAnchor],
-    [_magicStackContainerView.heightAnchor
-        constraintEqualToConstant:kMagicStackHeight],
     [_headerContainerView.bottomAnchor
         constraintEqualToAnchor:_magicStackContainerView.bottomAnchor],
   ]];
 
+  _magicStackHeightConstraint = [_magicStackContainerView.heightAnchor
+      constraintEqualToConstant:GetMagicStackHeight(self)];
+  _magicStackHeightConstraint.active = YES;
   // Add feed card background view.
   _feedCardBackgroundView = [[NTPCardBackgroundView alloc] init];
   _feedCardBackgroundView.userInteractionEnabled = NO;
@@ -468,6 +475,8 @@ constexpr CGFloat kMinimumDragVelocityToChangeState = 250.0;
     _feedScrollView.scrollEnabled =
         (_sheetState == BottomSheetSnappingStateExpanded) ||
         [self isVoiceOverRunning];
+    _feedScrollView.scrollsToTop =
+        (_sheetState == BottomSheetSnappingStateExpanded);
     [_feedScrollView.panGestureRecognizer addTarget:self
                                              action:@selector(handleFeedPan:)];
   }
@@ -534,7 +543,7 @@ constexpr CGFloat kMinimumDragVelocityToChangeState = 250.0;
 }
 
 - (void)setMagicStackViewController:
-    (UIViewController*)magicStackViewController {
+    (MagicStackCollectionViewController*)magicStackViewController {
   if (_magicStackViewController == magicStackViewController) {
     return;
   }
@@ -653,6 +662,8 @@ constexpr CGFloat kMinimumDragVelocityToChangeState = 250.0;
     _feedScrollView.scrollEnabled =
         (_sheetState == BottomSheetSnappingStateExpanded) ||
         UIAccessibilityIsVoiceOverRunning();
+    _feedScrollView.scrollsToTop =
+        (_sheetState == BottomSheetSnappingStateExpanded);
     _feedScrollView.bounces = (_sheetState == BottomSheetSnappingStateExpanded);
     [self updateFeedInsets];
   }
@@ -692,6 +703,30 @@ constexpr CGFloat kMinimumDragVelocityToChangeState = 250.0;
                      }
                      completion:nil];
   }
+}
+
+- (void)scrollToTopAnimated:(BOOL)animated {
+  if (_sheetState == BottomSheetSnappingStateExpanded) {
+    if (_feedScrollView &&
+        _feedScrollView.contentOffset.y > -_feedScrollView.contentInset.top) {
+      [_feedScrollView
+          setContentOffset:CGPointMake(0, -_feedScrollView.contentInset.top)
+                  animated:animated];
+      return;
+    }
+  }
+  _sheetState = BottomSheetSnappingStateResting;
+  [self updateBottomSheetPositionAnimated:animated];
+}
+
+- (BOOL)isScrolledToTop {
+  if (_sheetState == BottomSheetSnappingStateExpanded) {
+    if (!_feedScrollView) {
+      return NO;
+    }
+    return _feedScrollView.contentOffset.y <= -_feedScrollView.contentInset.top;
+  }
+  return YES;
 }
 
 - (void)snapSheetWithVelocity:(CGPoint)velocity
@@ -744,6 +779,10 @@ constexpr CGFloat kMinimumDragVelocityToChangeState = 250.0;
   if (_mostVisitedContainerView) {
     _mostVisitedContainerView.alpha = 1.0;
   }
+}
+
+- (void)updateMagicStackHeightOnTraitChange {
+  _magicStackHeightConstraint.constant = GetMagicStackHeight(self);
 }
 
 - (void)handlePan:(UIPanGestureRecognizer*)gesture {

@@ -82,7 +82,10 @@ class MODULES_EXPORT BaseRenderingContext2D
  public:
   // MemoryManagedPaintRecorder::Client implementation.
   void InitializeForRecording(cc::PaintCanvas* canvas) const override;
-  void RecordingCleared() override = 0;
+  void RecordingCleared() override;
+
+  bool clear_frame() const { return clear_frame_; }
+  void set_clear_frame(bool clear_frame) { clear_frame_ = clear_frame; }
 
   static constexpr unsigned kFallbackToCPUAfterReadbacks = 2;
 
@@ -351,6 +354,7 @@ class MODULES_EXPORT BaseRenderingContext2D
 
   void WillUseCurrentFont() const;
 
+  bool clear_frame_ = true;
   int num_readbacks_performed_ = 0;
   unsigned read_count_ = 0;
   base::RepeatingClosure on_restore_failed_callback_for_testing_;

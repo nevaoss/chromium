@@ -105,7 +105,7 @@ void PaintMaskLayer(const FillLayer& layer,
   std::optional<ScopedMaskLuminanceLayer> mask_luminance_scope;
   SkBlendMode composite_op = SkBlendMode::kSrcOver;
   // Don't use the operator if this is the bottom layer.
-  if (layer.Next()) {
+  if (layer.NextForUsedValue()) {
     composite_op = ToSkBlendMode(layer.Composite(), layer.GetBlendMode());
   }
 
@@ -231,7 +231,7 @@ void IterateFillLayersReveresed(const FillLayer* layer, Callback callback) {
   if (!layer) {
     return;
   }
-  IterateFillLayersReveresed(layer->Next(), callback);
+  IterateFillLayersReveresed(layer->NextForUsedValue(), callback);
   callback(*layer);
 }
 }  // namespace
@@ -283,6 +283,10 @@ void SVGMaskPainter::PaintSVGMaskLayer(GraphicsContext& context,
   if (!masker) {
     return;
   }
+  if ((paint_flags & PaintFlag::kPrivacyPreserving) &&
+      !masker->GetElement()->IsInCanvasSubtree()) {
+    return;
+  }
   const AffineTransform content_transformation =
       MaskToContentTransform(*masker, reference_box, zoom);
   SubtreeContentTransformScope content_transform_scope(content_transformation);
@@ -321,7 +325,7 @@ gfx::RectF SVGMaskPainter::ResourceBoundsForSVGChild(
       object.IsSVGForeignObject() ? style.EffectiveZoom() : 1;
   gfx::RectF bounds;
   for (const FillLayer* layer = &style.MaskLayers(); layer;
-       layer = layer->Next()) {
+       layer = layer->NextForUsedValue()) {
     const auto* mask_source =
         DynamicTo<StyleMaskSourceImage>(layer->GetImage());
     if (!mask_source) {

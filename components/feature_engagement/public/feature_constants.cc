@@ -365,7 +365,7 @@ BASE_FEATURE(kIPHAndroidBottomBarPromoDialog,
              base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHAndroidTabDeclutter,
              "IPH_AndroidTabDeclutter",
-             base::FEATURE_ENABLED_BY_DEFAULT);
+             base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHAndroidVerticalTabsNewLabel,
              "IPH_AndroidVerticalTabsNewLabel",
              base::FEATURE_ENABLED_BY_DEFAULT);
@@ -461,7 +461,7 @@ BASE_FEATURE(kIPHDefaultBrowserPromoSettingCardFeature,
              base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHDownloadHomeFeature,
              "IPH_DownloadHome",
-             base::FEATURE_ENABLED_BY_DEFAULT);
+             base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHDownloadIndicatorFeature,
              "IPH_DownloadIndicator",
              base::FEATURE_DISABLED_BY_DEFAULT);
@@ -501,9 +501,6 @@ BASE_FEATURE(kIPHReadAloudExpandedPlayerFeature,
 BASE_FEATURE(kIPHReadAloudPlaybackModeFeature,
              "IPH_ReadAloudPlaybackModeFeature",
              base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHReadLaterContextMenuFeature,
-             "IPH_ReadLaterContextMenu",
-             base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHReadLaterAppMenuBookmarkThisPageFeature,
              "IPH_ReadLaterAppMenuBookmarkThisPage",
              base::FEATURE_ENABLED_BY_DEFAULT);
@@ -525,9 +522,6 @@ BASE_FEATURE(kIPHRequestDesktopSiteWindowSettingFeature,
 BASE_FEATURE(kIPHShoppingListSaveFlowFeature,
              "IPH_ShoppingListSaveFlow",
              base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE(kIPHEphemeralTabFeature,
-             "IPH_EphemeralTab",
-             base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kIPHFeedCardMenuFeature,
              "IPH_FeedCardMenu",
              base::FEATURE_DISABLED_BY_DEFAULT);

@@ -51,6 +51,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 
 /** Preference container implementation for SettingsActivity in multi-column mode. */
 @NullMarked
@@ -104,9 +105,10 @@ public class MultiColumnSettings extends PreferenceHeaderFragmentCompat
 
     private final ObserverList<Observer> mObservers = new ObserverList<>();
 
-    private final FragmentTracker mFragmentTracker = new FragmentTracker(mObservers);
-
     private @Nullable Profile mProfile;
+
+    private final FragmentTracker mFragmentTracker =
+            new FragmentTracker(mObservers, () -> mProfile);
 
     private @Nullable Context mThemedContext;
 
@@ -257,6 +259,9 @@ public class MultiColumnSettings extends PreferenceHeaderFragmentCompat
                             .commitAllowingStateLoss();
                 }
             }
+            // Root settings has no detail fragment, so drop any titles tracked for the detail
+            // fragments being removed above. See clearTitles(). https://crbug.com/559531378
+            mFragmentTracker.clearTitles();
             return null;
         }
 
@@ -283,8 +288,8 @@ public class MultiColumnSettings extends PreferenceHeaderFragmentCompat
      * Handles back stack becoming empty after FragmentManager finishes executing transactions. In
      * two-column mode, populates the initial detail fragment so the detail pane does not remain
      * blank. In single-column mode, removes any remaining detail fragment (if SettingsInTab is
-     * enabled and we are clearing the back stack to return to root), closes the sliding pane, and
-     * restores header focusability.
+     * enabled and we are clearing the back stack to return to root), closes the sliding pane,
+     * restores header focusability, and clears the now-stale detail pane titles.
      */
     private void onBackStackEmpty() {
         if (getView() == null) return;
@@ -294,6 +299,9 @@ public class MultiColumnSettings extends PreferenceHeaderFragmentCompat
 
         boolean clearingForRoot = mClearingBackStackForRoot;
         mClearingBackStackForRoot = false;
+
+        // Whether the detail pane is left without a fragment.
+        boolean detailPaneEmptied = false;
 
         if (isTwoColumn()) {
             ensureInitialDetailFragment();
@@ -309,12 +317,20 @@ public class MultiColumnSettings extends PreferenceHeaderFragmentCompat
             }
             getSlidingPaneLayout().closePane();
             updateHeaderPaneFocusability();
+            detailPaneEmptied = true;
         } else if (fragmentManager.findFragmentById(R.id.preferences_detail) == null) {
             // When SettingsInTab is disabled, single-column mode (e.g. portrait on a tablet)
             // retains an initial detail fragment. Only close the sliding pane and restore
             // header focusability if no detail fragment remains (e.g. after exiting search).
             getSlidingPaneLayout().closePane();
             updateHeaderPaneFocusability();
+            detailPaneEmptied = true;
+        }
+
+        // The detail pane no longer has a fragment, so the tracked titles are stale. Drop them
+        // and refresh the breadcrumb. See clearTitles(). https://crbug.com/559531378
+        if (detailPaneEmptied && mFragmentTracker.clearTitles()) {
+            for (Observer o : mObservers) o.onTitleUpdated();
         }
     }
 
@@ -722,6 +738,12 @@ public class MultiColumnSettings extends PreferenceHeaderFragmentCompat
 
     /** Returns whether the current layout is in two-column mode. */
     boolean isTwoColumn() {
+        // The fragment may already be detached from its host when this is called, for example from
+        // a pending layout pass on the old view hierarchy while the activity is being recreated by
+        // a theme change. Nothing is visible in that case, so report single-column mode instead of
+        // letting getResources() throw. https://crbug.com/561275965
+        if (getContext() == null) return false;
+
         SlidingPaneLayout slidingPane = getSlidingPaneLayoutOrNull();
         // If SlidingPaneLayout has already completed layout, use its computed slideable state.
         if (slidingPane != null
@@ -968,9 +990,16 @@ public class MultiColumnSettings extends PreferenceHeaderFragmentCompat
         private boolean mTitleInitialized;
 
         private final ObserverList<Observer> mObservers;
+        private final Supplier<@Nullable Profile> mProfileSupplier;
 
         FragmentTracker(ObserverList<Observer> observers) {
+            this(observers, () -> null);
+        }
+
+        FragmentTracker(
+                ObserverList<Observer> observers, Supplier<@Nullable Profile> profileSupplier) {
             mObservers = observers;
+            mProfileSupplier = profileSupplier;
         }
 
         private static final String TAG = "FragmentTracker";
@@ -1054,7 +1083,7 @@ public class MultiColumnSettings extends PreferenceHeaderFragmentCompat
                 if (index < 0) {
                     // Enter into more detailed page.
                     mTitles.add(
-                            new Title(uuid, titleSupplier, backStackCount, page.getMainMenuKey()));
+                            new Title(uuid, titleSupplier, backStackCount, getMainMenuKey(page)));
                     updated = true;
                 } else {
                     // Move back from the detailed page.
@@ -1080,6 +1109,24 @@ public class MultiColumnSettings extends PreferenceHeaderFragmentCompat
                 for (Observer o : mObservers) o.onTitleUpdated();
                 mTitleInitialized = true;
             }
+        }
+
+        /**
+         * Clears the tracked detail pane titles.
+         *
+         * <p>Titles are only ever added by {@link #onFragmentResumed}, so nothing removes them when
+         * the detail pane is emptied without another detail fragment taking over (e.g. returning to
+         * root settings in single-column mode under SettingsInTab). The leftover titles then
+         * describe a fragment that no longer exists, which breaks the breadcrumb and previously
+         * crashed {@code MultiColumnTitleUpdater.initTitlesList()}. See https://crbug.com/559531378
+         *
+         * @return Whether any title was removed. Callers are responsible for notifying observers.
+         */
+        boolean clearTitles() {
+            if (mTitles.isEmpty()) return false;
+
+            mTitles.clear();
+            return true;
         }
 
         void saveTitles(Bundle outState) {
@@ -1128,7 +1175,7 @@ public class MultiColumnSettings extends PreferenceHeaderFragmentCompat
                                     uuid,
                                     page.getPageTitle(),
                                     backStackCount,
-                                    page.getMainMenuKey());
+                                    getMainMenuKey(page));
                 } else {
                     unmatchedIndices.add(i);
                 }
@@ -1149,7 +1196,7 @@ public class MultiColumnSettings extends PreferenceHeaderFragmentCompat
                                     uuid,
                                     page.getPageTitle(),
                                     backStackCount,
-                                    page.getMainMenuKey());
+                                    getMainMenuKey(page));
                 }
             }
 
@@ -1158,6 +1205,39 @@ public class MultiColumnSettings extends PreferenceHeaderFragmentCompat
                     mTitles.add(title);
                 }
             }
+        }
+
+        private @Nullable String getMainMenuKey(EmbeddableSettingsPage page) {
+            String mainMenuKey = page.getMainMenuKey();
+
+            // Building the index is expensive, so only consult the breadcrumb trail when the page
+            // doesn't already declare a main menu key.
+            if (!ChromeFeatureList.sSettingsInTabUrlNav.isEnabled() || mainMenuKey != null) {
+                return mainMenuKey;
+            }
+
+            // The index needs a profile, and a context that only an attached fragment can supply.
+            Profile profile = mProfileSupplier.get();
+            if (!(page instanceof Fragment fragment) || profile == null) {
+                return mainMenuKey;
+            }
+            Context context = fragment.getContext();
+            if (context == null) {
+                return mainMenuKey;
+            }
+
+            String fragmentClassName = fragment.getClass().getName();
+            Bundle args = fragment.getArguments();
+
+            // Build the index and attempt to retrieve the main menu key from the breadcrumb trail.
+            SettingsIndexData indexData =
+                    SettingsSearchCoordinator.ensureIndexBuilt(context, profile);
+            List<SettingsIndexData.Entry> path =
+                    indexData.getBreadcrumbEntries(fragmentClassName, args);
+            if (path != null && !path.isEmpty()) {
+                return path.get(0).key;
+            }
+            return mainMenuKey;
         }
     }
 

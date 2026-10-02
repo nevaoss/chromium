@@ -20,18 +20,21 @@
 #include "services/network/public/cpp/shared_url_loader_factory.h"
 #include "services/network/public/cpp/weak_wrapper_shared_url_loader_factory.h"
 #include "services/network/test/test_url_loader_factory.h"
+#include "services/network/test/test_utils.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
 namespace webauthn {
 namespace {
 
+using ::base::test::TestFuture;
 using ::testing::SizeIs;
 
 constexpr char kTestEmail[] = "test@example.com";
 constexpr char kKeyBytes[] = "fake_device_auth_key";
 constexpr int32_t kKeyProtoVersion = 1;
 constexpr char kFakeWebFallbackUrl[] = "https://example.com/reauth";
+constexpr char kCustomRapt[] = "custom_rapt_token";
 
 sync_pb::GetDeviceAuthorizationKeyResponse CreateSuccessResponse() {
   sync_pb::GetDeviceAuthorizationKeyResponse response;
@@ -70,8 +73,20 @@ class TestDeviceAuthorizationClient : public DeviceAuthorizationClient {
     return true;
   }
 
+  void PopulatePlatformData(const GaiaId& gaia_id,
+                            sync_pb::GetDeviceAuthorizationKeyRequest request,
+                            PopulatePlatformDataCallback callback) override {
+    request.MergeFrom(request_);
+    std::move(callback).Run(std::move(request));
+  }
+
+  void set_request(sync_pb::GetDeviceAuthorizationKeyRequest request) {
+    request_ = std::move(request);
+  }
+
  private:
   std::map<GaiaId, DeviceAuthorizationKeys> storage_;
+  sync_pb::GetDeviceAuthorizationKeyRequest request_;
 };
 
 }  // namespace
@@ -134,24 +149,28 @@ TEST_F(DeviceAuthorizationServiceImplTest,
   key->set_key(kKeyBytes);
   client_->StoreKeys(gaia_id, cached_keys);
 
-  base::test::TestFuture<std::optional<DeviceAuthorizationKeys>> future;
+  TestFuture<DeviceAuthFetchResult> future;
   service_->GetOrFetchKeys(future.GetCallback());
 
   ASSERT_TRUE(future.IsReady());
-  const std::optional<DeviceAuthorizationKeys>& result = future.Get();
-  ASSERT_TRUE(result.has_value());
-  EXPECT_THAT(result->keys(), SizeIs(1));
-  EXPECT_EQ(result->keys(0).key(), kKeyBytes);
+  const DeviceAuthFetchResult& result = future.Get();
+  EXPECT_EQ(result.status(), DeviceAuthFetchResult::Status::kSuccess);
+  ASSERT_TRUE(result.keys());
+  EXPECT_THAT(result.keys()->keys(), SizeIs(1));
+  EXPECT_EQ(result.keys()->keys(0).key(), kKeyBytes);
 }
 
 // Test that getting or fetching keys fails when no primary account is signed
 // in.
 TEST_F(DeviceAuthorizationServiceImplTest, TestNotSignedInFails) {
-  base::test::TestFuture<std::optional<DeviceAuthorizationKeys>> future;
+  TestFuture<DeviceAuthFetchResult> future;
   service_->GetOrFetchKeys(future.GetCallback());
 
   ASSERT_TRUE(future.IsReady());
-  EXPECT_FALSE(future.Get().has_value());
+  const DeviceAuthFetchResult& result = future.Get();
+  EXPECT_EQ(result.status(), DeviceAuthFetchResult::Status::kError);
+  EXPECT_FALSE(result.keys());
+  EXPECT_FALSE(result.reauth_params());
 }
 
 // Test that a cache miss initiates a network request, successfully receives
@@ -161,13 +180,14 @@ TEST_F(DeviceAuthorizationServiceImplTest,
   GaiaId gaia_id = SignInPrimaryAccount();
   SetResponseForEndpoint(CreateSuccessResponse());
 
-  base::test::TestFuture<std::optional<DeviceAuthorizationKeys>> future;
+  TestFuture<DeviceAuthFetchResult> future;
   service_->GetOrFetchKeys(future.GetCallback());
 
-  const std::optional<DeviceAuthorizationKeys>& result = future.Get();
-  ASSERT_TRUE(result.has_value());
-  EXPECT_THAT(result->keys(), SizeIs(1));
-  EXPECT_EQ(result->keys(0).key(), kKeyBytes);
+  const DeviceAuthFetchResult& result = future.Get();
+  EXPECT_EQ(result.status(), DeviceAuthFetchResult::Status::kSuccess);
+  ASSERT_TRUE(result.keys());
+  EXPECT_THAT(result.keys()->keys(), SizeIs(1));
+  EXPECT_EQ(result.keys()->keys(0).key(), kKeyBytes);
 
   std::optional<DeviceAuthorizationKeys> stored =
       client_->GetCachedKeys(gaia_id);
@@ -176,44 +196,138 @@ TEST_F(DeviceAuthorizationServiceImplTest,
   EXPECT_EQ(stored->keys(0).key(), kKeyBytes);
 }
 
-// Test that a concurrent call to GetOrFetchKeys while a fetch is already in
-// progress fails immediately with std::nullopt, while the in-flight fetch
+// Test that a concurrent call to `GetOrFetchKeys` while a fetch is already in
+// progress fails immediately with `kError`, while the in-flight fetch
 // completes successfully.
 TEST_F(DeviceAuthorizationServiceImplTest,
-       TestGetOrFetchKeysConcurrentCallReturnsNullopt) {
+       TestGetOrFetchKeysConcurrentCallReturnsError) {
   SignInPrimaryAccount();
   SetResponseForEndpoint(CreateSuccessResponse());
 
-  base::test::TestFuture<std::optional<DeviceAuthorizationKeys>> future1;
-  base::test::TestFuture<std::optional<DeviceAuthorizationKeys>> future2;
+  TestFuture<DeviceAuthFetchResult> future1;
+  TestFuture<DeviceAuthFetchResult> future2;
 
   service_->GetOrFetchKeys(future1.GetCallback());
 
   // Second call fails immediately because a fetch is already in progress.
   service_->GetOrFetchKeys(future2.GetCallback());
   ASSERT_TRUE(future2.IsReady());
-  EXPECT_FALSE(future2.Get().has_value());
+  EXPECT_EQ(future2.Get().status(), DeviceAuthFetchResult::Status::kError);
 
   // First call finishes successfully when the response arrives.
-  const std::optional<DeviceAuthorizationKeys>& result1 = future1.Get();
-  ASSERT_TRUE(result1.has_value());
-  EXPECT_THAT(result1->keys(), SizeIs(1));
-  EXPECT_EQ(result1->keys(0).key(), kKeyBytes);
+  const DeviceAuthFetchResult& result1 = future1.Get();
+  EXPECT_EQ(result1.status(), DeviceAuthFetchResult::Status::kSuccess);
+  ASSERT_TRUE(result1.keys());
+  EXPECT_THAT(result1.keys()->keys(), SizeIs(1));
+  EXPECT_EQ(result1.keys()->keys(0).key(), kKeyBytes);
 }
 
-// Test that when the server returns a response without device authorization
-// keys (e.g. re_auth_params), the service reports failure and does not cache.
+// Test that if the server returns `re_auth_params`, the service reports
+// `kReAuthRequired` with the parameters populated and does not cache keys.
 TEST_F(DeviceAuthorizationServiceImplTest,
-       TestGetOrFetchKeysServerReturnsNonKeysResponseReturnsNullopt) {
+       TestGetOrFetchKeysReturnsReAuthRequired) {
   GaiaId gaia_id = SignInPrimaryAccount();
   SetResponseForEndpoint(CreateReAuthResponse());
 
-  base::test::TestFuture<std::optional<DeviceAuthorizationKeys>> future;
+  TestFuture<DeviceAuthFetchResult> future;
   service_->GetOrFetchKeys(future.GetCallback());
 
-  const std::optional<DeviceAuthorizationKeys>& result = future.Get();
-  EXPECT_FALSE(result.has_value());
+  const DeviceAuthFetchResult& result = future.Get();
+  EXPECT_EQ(result.status(), DeviceAuthFetchResult::Status::kReAuthRequired);
+  EXPECT_FALSE(result.keys());
+  ASSERT_TRUE(result.reauth_params());
+  EXPECT_EQ(result.reauth_params()->web_fallback_url(), kFakeWebFallbackUrl);
   EXPECT_FALSE(client_->GetCachedKeys(gaia_id).has_value());
+}
+
+// Test that passing `reauth_proof_token` bypasses cached keys, passes the token
+// in the request to the network fetcher, and stores the newly fetched keys.
+TEST_F(DeviceAuthorizationServiceImplTest,
+       TestFetchKeysWithReAuthTokenBypassesCache) {
+  GaiaId gaia_id = SignInPrimaryAccount();
+
+  // Cache existing keys first.
+  sync_pb::GetDeviceAuthorizationKeyResponse::DeviceAuthorizationKeys
+      cached_keys;
+  auto* key = cached_keys.add_keys();
+  key->set_version(kKeyProtoVersion);
+  key->set_key("old_cached_key");
+  client_->StoreKeys(gaia_id, cached_keys);
+
+  SetResponseForEndpoint(CreateSuccessResponse());
+
+  std::string intercepted_body;
+  test_url_loader_factory_.SetInterceptor(
+      base::BindLambdaForTesting([&](const network::ResourceRequest& req) {
+        intercepted_body = network::GetUploadData(req);
+      }));
+
+  TestFuture<DeviceAuthFetchResult> future;
+  service_->FetchKeysWithReAuthToken(kCustomRapt, future.GetCallback());
+
+  const DeviceAuthFetchResult& result = future.Get();
+  EXPECT_EQ(result.status(), DeviceAuthFetchResult::Status::kSuccess);
+  ASSERT_TRUE(result.keys());
+  EXPECT_THAT(result.keys()->keys(), SizeIs(1));
+  EXPECT_EQ(result.keys()->keys(0).key(), kKeyBytes);
+
+  ASSERT_EQ(test_url_loader_factory_.total_requests(), 1u);
+  sync_pb::GetDeviceAuthorizationKeyRequest sent_request;
+  ASSERT_TRUE(sent_request.ParseFromString(intercepted_body));
+  EXPECT_EQ(sent_request.reauth_proof_token(), kCustomRapt);
+
+  // Stored keys should be updated to newly fetched key.
+  std::optional<DeviceAuthorizationKeys> stored =
+      client_->GetCachedKeys(gaia_id);
+  ASSERT_TRUE(stored.has_value());
+  EXPECT_EQ(stored->keys(0).key(), kKeyBytes);
+}
+
+// Test that GetOrFetchKeys invokes PopulatePlatformData and forwards the
+// client-populated request to the network fetcher.
+TEST_F(DeviceAuthorizationServiceImplTest,
+       TestGetOrFetchKeysClientPopulatesPlatformData) {
+  SignInPrimaryAccount();
+  SetResponseForEndpoint(CreateSuccessResponse());
+
+  std::string intercepted_body;
+  test_url_loader_factory_.SetInterceptor(
+      base::BindLambdaForTesting([&](const network::ResourceRequest& req) {
+        intercepted_body = network::GetUploadData(req);
+      }));
+
+  sync_pb::GetDeviceAuthorizationKeyRequest platform_data;
+  auto* guard_signals = platform_data.mutable_ios_guard_signals();
+  guard_signals->set_signals("test_signals");
+  guard_signals->set_salt("test_salt");
+  client_->set_request(std::move(platform_data));
+
+  TestFuture<DeviceAuthFetchResult> future;
+  service_->GetOrFetchKeys(future.GetCallback());
+
+  const DeviceAuthFetchResult& result = future.Get();
+  EXPECT_EQ(result.status(), DeviceAuthFetchResult::Status::kSuccess);
+
+  ASSERT_EQ(test_url_loader_factory_.total_requests(), 1u);
+  sync_pb::GetDeviceAuthorizationKeyRequest sent_request;
+  ASSERT_TRUE(sent_request.ParseFromString(intercepted_body));
+  ASSERT_TRUE(sent_request.has_ios_guard_signals());
+  EXPECT_EQ(sent_request.ios_guard_signals().signals(), "test_signals");
+  EXPECT_EQ(sent_request.ios_guard_signals().salt(), "test_salt");
+}
+
+// Test that server returning an HTTP error returns Status::kError.
+TEST_F(DeviceAuthorizationServiceImplTest,
+       TestGetOrFetchKeysHttpErrorReturnsError) {
+  SignInPrimaryAccount();
+  test_url_loader_factory_.AddResponse(kDeviceAuthorizationKeyEndpointUrl, "",
+                                       net::HTTP_INTERNAL_SERVER_ERROR);
+
+  TestFuture<DeviceAuthFetchResult> future;
+  service_->GetOrFetchKeys(future.GetCallback());
+
+  const DeviceAuthFetchResult& result = future.Get();
+  EXPECT_EQ(result.status(), DeviceAuthFetchResult::Status::kError);
 }
 
 }  // namespace webauthn

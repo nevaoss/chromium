@@ -13,6 +13,7 @@ import androidx.annotation.IntDef;
 import com.google.android.gms.location.Priority;
 
 import org.chromium.base.ContextUtils;
+import org.chromium.base.ResettersForTesting;
 import org.chromium.base.SysUtils;
 import org.chromium.base.TimeUtils;
 import org.chromium.base.metrics.RecordHistogram;
@@ -138,7 +139,9 @@ public class OmniboxFeatures {
             newFlag(OmniboxFeatureList.FORCE_ANDROID_REALBOX, FeatureState.DISABLED);
 
     public static final CachedFlag sDebounceKeyboardVisibility =
-            newFlag(OmniboxFeatureList.OMNIBOX_DEBOUNCE_KEYBOARD_VISIBILITY, FeatureState.DISABLED);
+            newFlag(
+                    OmniboxFeatureList.OMNIBOX_DEBOUNCE_KEYBOARD_VISIBILITY,
+                    FeatureState.ENABLED_IN_PROD);
 
     public static final CachedFlag sPostDelayedTaskFocusTab =
             newFlag(OmniboxFeatureList.POST_DELAYED_TASK_FOCUS_TAB, FeatureState.ENABLED_IN_PROD);
@@ -171,17 +174,6 @@ public class OmniboxFeatures {
     /** A necessary but not sufficient condition to show the current tab button. */
     public static final BooleanCachedFeatureParam sAllowCurrentTab =
             newBooleanParam(sOmniboxMultimodalInput, "allow_current_tab", true);
-
-    /**
-     * If the expanded set of inputs (model picker as well as canvas tool) should be options. These
-     * new types, as well as all existing types, should be driven through PEC instead of hard coded
-     * into the client when this param is enabled.
-     */
-    public static final BooleanCachedFeatureParam sShowModelPicker =
-            newBooleanParam(sOmniboxMultimodalInput, "show_model_picker", false);
-
-    public static final BooleanCachedFeatureParam sModelPickerOptimizations =
-            newBooleanParam(sOmniboxMultimodalInput, "model_picker_optimizations", true);
 
     /**
      * Whether the bottom sheet popup should be shown. This is private to ensure that callers use
@@ -399,6 +391,7 @@ public class OmniboxFeatures {
     /** Modifies the output of {@link #isDebounceKeyboardVisibilityEnabled()} for testing. */
     public static void setDebounceKeyboardVisibilityForTesting(@Nullable Boolean value) {
         sDebounceKeyboardVisibilityForTesting = value;
+        ResettersForTesting.register(() -> sDebounceKeyboardVisibilityForTesting = null);
     }
 
     /**

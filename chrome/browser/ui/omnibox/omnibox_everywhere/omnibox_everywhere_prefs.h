@@ -125,6 +125,11 @@ inline constexpr int kMaxFreShortcutReminderImpressions = 3;
 // Legacy maximum number of impressions.
 inline constexpr int kMaxFreImpressions = 3;
 
+// Boolean preference specifying whether the user has accepted the screenshot
+// sharing disclosure dialog in Omnibox Everywhere.
+inline constexpr char kScreenshotDisclosureAccepted[] =
+    "omnibox_everywhere.screenshot_disclosure_accepted";
+
 // Registers Local State preferences for Omnibox Everywhere.
 void RegisterLocalStatePrefs(PrefRegistrySimple* registry);
 
@@ -147,19 +152,16 @@ void OnFreStageDismissed(Profile* profile,
                          FreStage stage,
                          PrefService* local_state = nullptr);
 
-// Returns the default global hotkey accelerator for Omnibox Everywhere.
-ui::Accelerator GetDefaultOmniboxEverywhereHotkey();
-
 // Returns the configured global hotkey accelerator for Omnibox Everywhere from
-// local state, falling back to the default accelerator if unset or invalid.
+// local state, or an empty accelerator if unset or invalid.
 ui::Accelerator GetOmniboxEverywhereHotkey(PrefService* local_state);
 
 // Sets the configured global hotkey accelerator in local state.
 void SetOmniboxEverywhereHotkey(PrefService* local_state,
                                 std::string_view hotkey_str);
 
-// Returns true if a global hotkey combination is available for Omnibox
-// Everywhere (either explicitly configured or default fallback) and enabled.
+// Returns true if a global hotkey combination is explicitly configured for
+// Omnibox Everywhere and enabled.
 bool HasOmniboxEverywhereHotkey(PrefService* local_state);
 
 // Returns token strings for the accelerator (e.g. ["Cmd", "Shift", "Space"]).
@@ -177,6 +179,25 @@ bool AreShortcutsAvailableForProfile(Profile* profile);
 // profile, falling back to Customize Chrome / NTP settings
 // (kNtpShortcutsVisible) if the Omnibox Everywhere preference is unset.
 bool IsOmniboxEverywhereShortcutsVisible(Profile* profile);
+
+// Returns whether the screenshot sharing disclosure dialog has been accepted
+// for the given profile or preference service. This preference is machine-local
+// and is intentionally not synced across devices.
+bool IsScreenshotDisclosureAccepted(const PrefService* prefs);
+bool IsScreenshotDisclosureAccepted(const Profile* profile);
+
+// Sets whether the screenshot sharing disclosure dialog has been accepted
+// for the given profile or preference service.
+void SetScreenshotDisclosureAccepted(PrefService* prefs, bool accepted);
+void SetScreenshotDisclosureAccepted(Profile* profile, bool accepted);
+
+// Resets all profile-scoped preferences for Omnibox Everywhere for the given
+// profile to their default state.
+void ResetProfilePrefs(Profile* profile);
+
+// Resets all device-scoped (Local State) preferences for Omnibox Everywhere to
+// their default state.
+void ResetLocalStatePrefs(PrefService* local_state);
 
 }  // namespace prefs
 }  // namespace omnibox_everywhere

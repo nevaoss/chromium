@@ -17,6 +17,7 @@
 #include <utility>
 #include <vector>
 
+#include "base/atomicops.h"
 #include "base/base_switches.h"
 #include "base/byte_size.h"
 #include "base/clang_profiling_buildflags.h"
@@ -121,7 +122,6 @@
 #include "content/browser/push_messaging/push_messaging_manager.h"
 #include "content/browser/quota/quota_context.h"
 #include "content/browser/renderer_host/embedded_frame_sink_provider_impl.h"
-#include "content/browser/renderer_host/indexed_db_client_state_checker_factory.h"
 #include "content/browser/renderer_host/media/media_stream_track_metrics_host.h"
 #include "content/browser/renderer_host/recently_destroyed_hosts.h"
 #include "content/browser/renderer_host/render_frame_host_delegate.h"
@@ -207,7 +207,9 @@
 #include "third_party/blink/public/common/page/launching_process_state.h"
 #include "third_party/blink/public/common/storage_key/storage_key.h"
 #include "third_party/blink/public/common/switches.h"
+#include "third_party/blink/public/common/tokens/tokens.h"
 #include "third_party/blink/public/mojom/blob/file_backed_blob_factory.mojom.h"
+#include "third_party/blink/public/mojom/crash/crash_memory_metrics_reporter.mojom.h"
 #include "third_party/blink/public/mojom/disk_allocator.mojom.h"
 #include "third_party/blink/public/mojom/origin_trials/origin_trials_settings.mojom.h"
 #include "third_party/blink/public/mojom/plugins/plugin_registry.mojom.h"
@@ -1440,7 +1442,7 @@ size_t GetOutermostMainFrameCountForFastShutdown(RenderProcessHost* process) {
         RenderFrameHostImpl* const outermost_rfh =
             static_cast<RenderFrameHostImpl*>(rfh)->GetOutermostMainFrame();
         if (outermost_rfh->lifecycle_state() ==
-            RenderFrameHostImpl::LifecycleStateImpl::kActive) {
+            RenderFrameHostLifecycleStateImpl::kActive) {
           outermost_main_frames.insert(outermost_rfh);
         }
       });
@@ -2018,6 +2020,7 @@ bool RenderProcessHostImpl::Init() {
   CreateMessageFilters();
   RegisterMojoInterfaces();
   CreateMetricsAllocator();
+  CreateCrashMemoryMetricsBuffer();
 
   // Calculate the CPU performance tier, allowing for overrides.
   content::cpu_performance::Tier cpu_tier;
@@ -2365,17 +2368,9 @@ void RenderProcessHostImpl::BindIndexedDB(
     return;
   }
 
-  storage::BucketClientInfo client_info = bucket_context.GetBucketClientInfo();
-  auto state_checker =
-      IndexedDBClientStateCheckerFactory::InitializePendingRemote(client_info);
-  if (!state_checker) {
-    // The client is not in a valid state to use IndexedDB.
-    return;
-  }
-
   storage_partition_impl_->BindIndexedDB(
-      storage::BucketLocator::ForDefaultBucket(storage_key), client_info,
-      std::move(state_checker), std::move(receiver));
+      storage::BucketLocator::ForDefaultBucket(storage_key),
+      bucket_context.GetBucketClientInfo(), std::move(receiver));
 }
 
 void RenderProcessHostImpl::BindBucketManagerHost(
@@ -3102,7 +3097,7 @@ void RenderProcessHostImpl::ForEachRenderFrameHost(
     // Speculative RFHs are not exposed to //content embedders, so we have to
     // explicitly check them here to avoid leaks.
     if (rfh->lifecycle_state() ==
-        RenderFrameHostImpl::LifecycleStateImpl::kSpeculative) {
+        RenderFrameHostLifecycleStateImpl::kSpeculative) {
       continue;
     }
     on_render_frame_host(rfh);
@@ -4171,6 +4166,18 @@ RenderProcessHostImpl::GetUnresponsiveDocumentJavascriptCallStack() const {
 const blink::LocalFrameToken&
 RenderProcessHostImpl::GetUnresponsiveDocumentToken() const {
   return unresponsive_document_token_;
+}
+
+std::optional<blink::OomInterventionMetrics>
+RenderProcessHostImpl::GetCrashMemoryMetrics() const {
+  if (!crash_memory_metrics_mapping_.IsValid()) {
+    return std::nullopt;
+  }
+  blink::OomInterventionMetrics memory_metrics;
+  base::subtle::RelaxedAtomicWriteMemcpy(
+      base::byte_span_from_ref(memory_metrics),
+      crash_memory_metrics_mapping_.GetMemoryAsSpan<uint8_t>());
+  return memory_metrics;
 }
 
 void RenderProcessHostImpl::SetUnresponsiveDocumentJSCallStackAndToken(
@@ -5642,6 +5649,22 @@ void RenderProcessHostImpl::CreateMetricsAllocator() {
         MakeRefCounted<base::RefCountedData<base::UnsafeSharedMemoryRegion>>(
             std::move(shared_memory->region));
     metrics_allocator_ = std::move(shared_memory->allocator);
+  }
+}
+
+void RenderProcessHostImpl::CreateCrashMemoryMetricsBuffer() {
+  base::UnsafeSharedMemoryRegion shared_metrics_buffer =
+      base::UnsafeSharedMemoryRegion::Create(
+          sizeof(blink::OomInterventionMetrics));
+  if (shared_metrics_buffer.IsValid()) {
+    crash_memory_metrics_mapping_ = shared_metrics_buffer.Map();
+    if (crash_memory_metrics_mapping_.IsValid()) {
+      std::ranges::fill(
+          crash_memory_metrics_mapping_.GetMemoryAsSpan<uint8_t>(), 0);
+      mojo::Remote<blink::mojom::CrashMemoryMetricsReporter> reporter;
+      BindReceiver(reporter.BindNewPipeAndPassReceiver());
+      reporter->SetSharedMemory(shared_metrics_buffer.Duplicate());
+    }
   }
 }
 

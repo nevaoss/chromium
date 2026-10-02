@@ -20,6 +20,7 @@
 #include "base/functional/callback.h"
 #include "base/functional/callback_helpers.h"
 #include "base/memory/ref_counted.h"
+#include "base/memory/scoped_refptr.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/metrics/histogram_macros.h"
 #include "base/not_fatal_until.h"
@@ -359,9 +360,10 @@ scoped_refptr<SBLocalDatabaseManager> SBLocalDatabaseManager::Create(
     scoped_refptr<base::SequencedTaskRunner> ui_task_runner,
     scoped_refptr<base::SequencedTaskRunner> io_task_runner,
     ExtendedReportingLevelCallback extended_reporting_level_callback) {
-  return base::WrapRefCounted(new SBLocalDatabaseManager(
-      base_path, extended_reporting_level_callback, std::move(ui_task_runner),
-      std::move(io_task_runner), nullptr));
+  return base::MakeRefCounted<SBLocalDatabaseManager>(
+      base::PassKey<SBLocalDatabaseManager>(), base_path,
+      extended_reporting_level_callback, std::move(ui_task_runner),
+      std::move(io_task_runner), nullptr);
 }
 
 void SBLocalDatabaseManager::CollectDatabaseManagerInfo(
@@ -380,6 +382,19 @@ void SBLocalDatabaseManager::CollectDatabaseManagerInfo(
         full_hash_cache_info);
   }
 }
+
+SBLocalDatabaseManager::SBLocalDatabaseManager(
+    base::PassKey<SBLocalDatabaseManager, SBLocalDatabaseManagerTest>,
+    const base::FilePath& base_path,
+    ExtendedReportingLevelCallback extended_reporting_level_callback,
+    scoped_refptr<base::SequencedTaskRunner> ui_task_runner,
+    scoped_refptr<base::SequencedTaskRunner> io_task_runner,
+    scoped_refptr<base::SequencedTaskRunner> task_runner_for_tests)
+    : SBLocalDatabaseManager(base_path,
+                             extended_reporting_level_callback,
+                             std::move(ui_task_runner),
+                             std::move(io_task_runner),
+                             std::move(task_runner_for_tests)) {}
 
 SBLocalDatabaseManager::SBLocalDatabaseManager(
     const base::FilePath& base_path,
@@ -683,7 +698,7 @@ ThreatSource SBLocalDatabaseManager::GetNonBrowseUrlThreatSource() const {
 
 void SBLocalDatabaseManager::StartOnUIThread(
     scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory,
-    const V4ProtocolConfig& config) {
+    const SBProtocolConfig& config) {
   SafeBrowsingDatabaseManager::StartOnUIThread(url_loader_factory, config);
 
   db_updated_callback_ = base::BindRepeating(
@@ -1480,7 +1495,7 @@ void SBLocalDatabaseManager::SetupDatabase() {
 
 void SBLocalDatabaseManager::SetupUpdateProtocolManager(
     scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory,
-    const V4ProtocolConfig& config) {
+    const SBProtocolConfig& config) {
   if (base::FeatureList::IsEnabled(kLocalListsUseSBv5)) {
     V5UpdateCallback update_callback =
         base::BindRepeating(&SBLocalDatabaseManager::V5UpdateRequestCompleted,
@@ -1512,17 +1527,11 @@ void SBLocalDatabaseManager::V4UpdateRequestCompleted(
 }
 
 void SBLocalDatabaseManager::V5UpdateRequestCompleted(
-    std::optional<std::map<ListIdentifier, V5::HashList>>
-        parsed_server_response) {
+    std::map<ListIdentifier, V5::HashList> parsed_server_response) {
   CHECK(ui_task_runner()->RunsTasksInCurrentSequence());
-  // TODO(crbug.com/362791941): Remove nullopt case from API since it never
-  // occurs.
-  if (!parsed_server_response.has_value()) {
-    return;
-  }
 
   auto update_map = std::make_unique<SBUpdateResponseMap>();
-  for (auto& [identifier, response] : parsed_server_response.value()) {
+  for (auto& [identifier, response] : parsed_server_response) {
     auto sb_response = std::make_unique<SBUpdateResponse>();
     sb_response->v5_response =
         std::make_unique<V5::HashList>(std::move(response));

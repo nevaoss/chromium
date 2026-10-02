@@ -415,7 +415,6 @@
 #include "sandbox/policy/features.h"
 #include "sandbox/policy/mojom/sandbox.mojom.h"
 #include "sandbox/policy/switches.h"
-#include "services/cert_verifier/public/mojom/cert_verifier_service_factory.mojom.h"
 #include "services/metrics/public/cpp/ukm_source_id.h"
 #include "services/network/public/cpp/features.h"
 #include "services/network/public/cpp/is_potentially_trustworthy.h"
@@ -426,7 +425,6 @@
 #include "services/network/public/cpp/self_deleting_url_loader_factory.h"
 #include "services/network/public/cpp/shared_url_loader_factory.h"
 #include "services/network/public/cpp/web_sandbox_flags.h"
-#include "services/network/public/mojom/cert_verifier_service.mojom.h"
 #include "services/network/public/mojom/fetch_api.mojom.h"
 #include "services/network/public/mojom/network_service.mojom.h"
 #include "services/network/public/mojom/url_loader_factory.mojom.h"
@@ -519,7 +517,7 @@
 #include "chrome/browser/media/webrtc/multi_capture/multi_capture_data_service.h"
 #include "chrome/browser/media/webrtc/multi_capture/multi_capture_data_service_factory.h"
 #include "chrome/browser/speech/tts_chromeos.h"
-#include "chrome/browser/speech/tts_controller_delegate_impl.h"
+#include "chrome/browser/speech/tts_controller_delegate_chromeos_impl.h"
 #include "chrome/browser/ui/ash/system_web_apps/system_web_app_ui_utils.h"
 #include "chrome/browser/ui/dialogs/browser_dialogs.h"
 #include "chrome/browser/ui/webui/ash/kerberos/kerberos_in_browser_dialog.h"
@@ -554,7 +552,6 @@
 #include "chrome/common/chrome_descriptors_android.h"
 #include "components/browser_ui/accessibility/android/font_size_prefs_android.h"
 #include "components/crash/content/browser/child_exit_observer_android.h"
-#include "components/crash/content/browser/crash_memory_metrics_collector_android.h"
 #include "components/viz/common/features.h"
 #include "content/public/browser/android/java_interfaces.h"
 #include "services/service_manager/public/cpp/interface_provider.h"
@@ -591,11 +588,11 @@
 #include "chrome/browser/web_applications/isolated_web_apps/chrome_content_browser_client_isolated_web_apps_part.h"
 #include "chrome/browser/web_applications/isolated_web_apps/isolated_web_app_error_page.h"
 #include "chrome/browser/web_applications/isolated_web_apps/isolated_web_app_url_info.h"
-#include "chrome/browser/web_applications/isolated_web_apps/policy/isolated_web_app_policy_manager.h"
 #include "chrome/browser/web_applications/locks/app_lock.h"
 #include "chrome/browser/web_applications/policy/web_app_policy_manager.h"
 #include "chrome/browser/web_applications/proto/web_app_install_state.pb.h"  // nogncheck
 #include "chrome/browser/web_applications/web_app.h"
+#include "chrome/browser/web_applications/web_app_command_scheduler.h"
 #include "chrome/browser/web_applications/web_app_filter.h"
 #include "chrome/browser/web_applications/web_app_helpers.h"
 #include "chrome/browser/web_applications/web_app_provider.h"
@@ -887,6 +884,11 @@ bool IsIsolatedWebAppOrigin(const url::Origin& origin) {
 #else
   return false;
 #endif
+}
+
+bool IsClipboardFocusExemptOrigin(const url::Origin& main_frame_origin) {
+  return content::HasWebUIOrigin(main_frame_origin) ||
+         IsIsolatedWebAppOrigin(main_frame_origin);
 }
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
@@ -1861,13 +1863,6 @@ void ChromeContentBrowserClient::RenderProcessWillLaunch(
       std::make_unique<base::UserDataAdapter<AudioDebugRecordingsHandler>>(
           base::MakeRefCounted<AudioDebugRecordingsHandler>(profile)));
 
-#if BUILDFLAG(IS_ANDROID)
-  // Register CrashMemoryMetricsCollector to report oom related metrics.
-  host->SetUserData(
-      CrashMemoryMetricsCollector::kCrashMemoryMetricsCollectorKey,
-      std::make_unique<CrashMemoryMetricsCollector>(host));
-#endif
-
   // The RendereUpdater might be null for some irregular profiles, e.g. the
   // System Profile.
   if (RendererUpdater* service =
@@ -2275,7 +2270,8 @@ bool ChromeContentBrowserClient::ShouldAllowMojoJsBindingsForFrame(
     content::RenderFrameHost& render_frame_host) {
   content::WebContents* web_contents =
       content::WebContents::FromRenderFrameHost(&render_frame_host);
-  if (web_contents && glic::IsGlicGuest(web_contents)) {
+  if (web_contents && glic::IsGlicGuest(web_contents) &&
+      !render_frame_host.GetParentOrOuterDocument()) {
     return true;
   }
   // TODO(crbug.com/539909218): Prototype shortcut. Enabling MojoJS for any PWC
@@ -4518,7 +4514,7 @@ ChromeContentBrowserClient::GetOnDeviceSpeechRecognitionAvailabilityStatus(
 #if BUILDFLAG(IS_CHROMEOS)
 content::TtsControllerDelegate*
 ChromeContentBrowserClient::GetTtsControllerDelegate() {
-  return TtsControllerDelegateImpl::GetInstance();
+  return TtsControllerDelegateChromeOSImpl::GetInstance();
 }
 #endif
 
@@ -4902,6 +4898,9 @@ void ChromeContentBrowserClient::OverrideWebPreferences(
   web_prefs->is_indigo_onboarding =
       indigo::IndigoOnboardingDialog::IsOnboardingWebContents(web_contents);
 #endif
+
+  web_prefs->clipboard_focus_exempt = IsClipboardFocusExemptOrigin(
+      web_contents->GetPrimaryMainFrame()->GetLastCommittedOrigin());
 }
 
 bool ChromeContentBrowserClientParts::OverrideWebPreferencesAfterNavigation(
@@ -4920,6 +4919,11 @@ bool ChromeContentBrowserClient::OverrideWebPreferencesAfterNavigation(
   const auto autoplay_policy = GetAutoplayPolicyForWebContents(web_contents);
   prefs_changed |= (web_prefs->autoplay_policy != autoplay_policy);
   web_prefs->autoplay_policy = autoplay_policy;
+
+  const bool clipboard_focus_exempt = IsClipboardFocusExemptOrigin(
+      web_contents->GetPrimaryMainFrame()->GetLastCommittedOrigin());
+  prefs_changed |= web_prefs->clipboard_focus_exempt != clipboard_focus_exempt;
+  web_prefs->clipboard_focus_exempt = clipboard_focus_exempt;
 
 #if !BUILDFLAG(IS_ANDROID)
   const bool require_transient_activation_for_get_display_media =
@@ -5719,7 +5723,13 @@ ChromeContentBrowserClient::GetSpareRendererDelayForSiteURL(
 
 std::unique_ptr<content::TracingDelegate>
 ChromeContentBrowserClient::CreateTracingDelegate() {
-  return std::make_unique<ChromeTracingDelegate>();
+  PrefService* local_state = nullptr;
+  if (g_browser_process) {
+    local_state = g_browser_process->local_state();
+  } else if (startup_data_.chrome_feature_list_creator()) {
+    local_state = startup_data_.chrome_feature_list_creator()->local_state();
+  }
+  return std::make_unique<ChromeTracingDelegate>(CHECK_DEREF(local_state));
 }
 
 bool ChromeContentBrowserClient::IsSystemWideTracingEnabled() {
@@ -7893,19 +7903,28 @@ bool ChromeContentBrowserClient::IsClipboardPasteAllowed(
     content::RenderFrameHost* render_frame_host) {
   DCHECK(render_frame_host);
 
-  // Paste requires either (1) transient user activation on the requesting
-  // frame, ...
-  // Transient user activation propagates from descendants to ancestors; see
-  // https://html.spec.whatwg.org/multipage/interaction.html#user-activation-processing-model.
-  if (render_frame_host->HasTransientUserActivation()) {
+  // Standard web pages must hold frame focus to read clipboard data,
+  // preventing background tabs and subframes from scraping the clipboard.
+  //
+  // Trusted WebUI system apps (e.g., ChromeOS Files App), Isolated Web Apps,
+  // and DevTools are exempted because they often invoke clipboard commands
+  // via context menus, background UIs, or standalone windows where the page
+  // lacks focus (including in automated browser tests).
+  const url::Origin& main_frame_origin =
+      render_frame_host->GetMainFrame()->GetLastCommittedOrigin();
+  const bool is_focused_or_is_trusted_origin =
+      IsClipboardFocusExemptOrigin(main_frame_origin) ||
+      render_frame_host->IsFocused();
+
+  // Paste requires either (1) user activation, ...
+  if (WebContents::FromRenderFrameHost(render_frame_host)
+          ->HasRecentInteraction()) {
     return true;
   }
 
   // (2) granted web permission, ...
   content::BrowserContext* browser_context =
       render_frame_host->GetBrowserContext();
-  const url::Origin& main_frame_origin =
-      render_frame_host->GetMainFrame()->GetLastCommittedOrigin();
   content::PermissionController* permission_controller =
       browser_context->GetPermissionController();
   blink::mojom::PermissionStatus status =
@@ -7914,25 +7933,9 @@ bool ChromeContentBrowserClient::IsClipboardPasteAllowed(
               CreatePermissionDescriptorForPermissionType(
                   blink::PermissionType::CLIPBOARD_READ_WRITE),
           render_frame_host);
-  if (status == blink::mojom::PermissionStatus::GRANTED) {
-    // Standard web pages must hold frame focus to read clipboard data,
-    // preventing background tabs and subframes from scraping the clipboard.
-    //
-    // Trusted WebUI system apps (e.g., ChromeOS Files App), Isolated Web Apps,
-    // and DevTools are exempted because they often invoke clipboard commands
-    // via context menus, background UIs, or standalone windows where the page
-    // lacks focus (including in automated browser tests).
-    //
-    // We check the main frame's committed origin directly (rather than
-    // GetLastCommittedURL) to preserve origin inheritance for initial empty
-    // documents (e.g., about:blank popups created by trusted system apps),
-    // while ensuring sandboxed frames with opaque origins evaluate to an empty
-    // scheme and are safely excluded (see docs/security/origin-vs-url.md).
-    if (content::HasWebUIOrigin(main_frame_origin) ||
-        IsIsolatedWebAppOrigin(main_frame_origin) ||
-        render_frame_host->IsFocused()) {
-      return true;
-    }
+  if (status == blink::mojom::PermissionStatus::GRANTED &&
+      is_focused_or_is_trusted_origin) {
+    return true;
   }
 
 #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
@@ -9257,10 +9260,10 @@ void ChromeContentBrowserClient::ShowCaptionSettings(
   if (!web_contents) {
     return;
   }
-  content::OpenURLParams params(
-      GURL(captions::GetCaptionSettingsUrl()), content::Referrer(),
-      WindowOpenDisposition::NEW_FOREGROUND_TAB, ui::PAGE_TRANSITION_LINK,
-      /*is_renderer_initiated=*/false);
+  content::OpenURLParams params =
+      content::OpenURLParams::CreateBrowserInitiated(
+          GURL(captions::GetCaptionSettingsUrl()),
+          WindowOpenDisposition::NEW_FOREGROUND_TAB, ui::PAGE_TRANSITION_LINK);
   web_contents->OpenURL(params, /*navigation_handle_callback=*/{});
 #endif
 }

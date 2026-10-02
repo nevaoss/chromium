@@ -28,7 +28,6 @@
 #include "gpu/config/gpu_mode.h"
 #include "mojo/public/cpp/bindings/generic_pending_receiver.h"
 #include "mojo/public/cpp/bindings/pending_receiver.h"
-#include "mojo/public/cpp/bindings/remote.h"
 #include "sandbox/policy/mojom/sandbox.mojom.h"
 #include "services/viz/privileged/mojom/compositing/frame_sink_manager.mojom.h"
 #include "services/viz/privileged/mojom/gl/gpu_host.mojom.h"
@@ -51,8 +50,6 @@ class BrowserChildProcessHostImpl;
 #if BUILDFLAG(IS_MAC)
 class BrowserChildProcessBackgroundedBridge;
 class CATransactionGPUCoordinator;
-
-CONTENT_EXPORT BASE_DECLARE_FEATURE(kMacGpuSandboxDarwinUserDirs);
 #endif
 
 class GpuProcessHost final : public BrowserChildProcessHostDelegate,

@@ -30,8 +30,6 @@ import org.chromium.ui.modelutil.MVCListAdapter.ModelList;
 import org.chromium.ui.modelutil.SimpleRecyclerViewAdapter;
 import org.chromium.ui.widget.AnchoredPopupWindow;
 
-import java.util.function.Supplier;
-
 /** Coordinator for the Account Menu toolbar popup on desktop Android. */
 @NullMarked
 public class AccountMenuCoordinator {
@@ -48,10 +46,9 @@ public class AccountMenuCoordinator {
 
     public AccountMenuCoordinator(
             Context context,
+            Profile profile,
             WindowAndroid windowAndroid,
-            Supplier<@Nullable Profile> profileSupplier,
-            Supplier<@Nullable BottomSheetSigninAndHistorySyncCoordinator>
-                    signinCoordinatorSupplier,
+            @Nullable BottomSheetSigninAndHistorySyncCoordinator signinCoordinator,
             SigninAndHistorySyncActivityLauncher signinLauncher) {
         mContext = context;
         mContentView = LayoutInflater.from(context).inflate(R.layout.account_menu, null);
@@ -83,10 +80,10 @@ public class AccountMenuCoordinator {
         mMediator =
                 new AccountMenuMediator(
                         context,
-                        modelList,
+                        profile,
                         windowAndroid,
-                        profileSupplier,
-                        signinCoordinatorSupplier,
+                        modelList,
+                        signinCoordinator,
                         signinLauncher,
                         this::dismiss);
     }

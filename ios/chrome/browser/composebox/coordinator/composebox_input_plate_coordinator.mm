@@ -374,6 +374,11 @@ contextual_search::ContextualSearchSource ContextualSearchSourceFromEntrypoint(
   [_mediator processContextLibraryWebpageSignalWithURL:url title:title];
 }
 
+- (void)updateTheme:(ComposeboxTheme*)theme {
+  _theme = theme;
+  [_viewController updateTheme:theme];
+}
+
 #pragma mark - ComposeboxInputPlateViewControllerDelegate
 
 - (void)composeboxViewController:
@@ -771,6 +776,8 @@ contextual_search::ContextualSearchSource ContextualSearchSourceFromEntrypoint(
 - (void)composeboxPickerPresenter:(ComposeboxPickerPresenter*)presenter
                     didPickImages:
                         (NSArray<ComposeboxPickerImageResult*>*)results {
+  [presenter dismissPicker];
+
   // Gallery picker results (PHPickerViewController) return the complete set of
   // selected gallery items. Reconcile preselected asset IDs so that any gallery
   // photo deselected by the user is removed from attachments. Camera picker

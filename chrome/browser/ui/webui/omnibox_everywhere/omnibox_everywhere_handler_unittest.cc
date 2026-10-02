@@ -8,16 +8,21 @@
 #include <string>
 
 #include "base/functional/callback_helpers.h"
+#include "base/i18n/rtl.h"
 #include "base/memory/raw_ptr.h"
 #include "base/test/bind.h"
+#include "base/test/icu_test_util.h"
 #include "base/test/scoped_feature_list.h"
 #include "chrome/browser/autocomplete/aim_eligibility_service_factory.h"
 #include "chrome/browser/autocomplete/chrome_aim_eligibility_service.h"
 #include "chrome/browser/bookmarks/bookmark_model_factory.h"
+#include "chrome/browser/browser_process.h"
 #include "chrome/browser/contextual_search/contextual_search_service_factory.h"
 #include "chrome/browser/ui/omnibox/omnibox_everywhere/omnibox_everywhere_prefs.h"
 #include "chrome/browser/ui/omnibox/omnibox_everywhere_service.h"
 #include "chrome/browser/ui/omnibox/omnibox_next_features.h"
+#include "chrome/browser/ui/webui/omnibox_everywhere/mojom/omnibox_everywhere.mojom.h"
+#include "chrome/browser/ui/webui/omnibox_everywhere/omnibox_everywhere_page_handler.h"
 #include "chrome/browser/ui/webui/omnibox_everywhere/omnibox_everywhere_ui.h"
 #include "chrome/browser/ui/webui/searchbox/contextual_searchbox_test_utils.h"
 #include "chrome/browser/ui/webui/searchbox/searchbox_test_utils.h"
@@ -95,6 +100,8 @@ class MockOmniboxEverywhereService : public OmniboxEverywhereService {
   MOCK_METHOD(void, ShowProfilePicker, (), (override));
   MOCK_METHOD(void, OnDrivePickerOpened, (), (override));
   MOCK_METHOD(void, OnDrivePickerClosed, (), (override));
+  MOCK_METHOD(void, OnHotkeyDropdownOpened, (), (override));
+  MOCK_METHOD(void, OnHotkeyDropdownClosed, (), (override));
 };
 
 class OmniboxEverywhereHandlerPublic : public OmniboxEverywhereHandler {
@@ -165,6 +172,12 @@ class OmniboxEverywhereHandlerTest
   }
 
   void TearDown() override {
+    if (g_browser_process && g_browser_process->local_state()) {
+      g_browser_process->local_state()->ClearPref(
+          omnibox_everywhere::prefs::kOmniboxEverywhereHotkey);
+      g_browser_process->local_state()->ClearPref(
+          omnibox_everywhere::prefs::kHotkeyEnabled);
+    }
     handler_.reset();
     contextual_session_handle_.reset();
     mock_service_.reset();
@@ -337,12 +350,48 @@ TEST_F(OmniboxEverywhereHandlerTest, DismissPromoUpdatesFrePreference) {
       omnibox_everywhere::prefs::kFreIntroDismissed));
 }
 
+TEST_F(OmniboxEverywhereHandlerTest,
+       DismissShortcutSetupWithoutHotkeySkipsReminder) {
+  g_browser_process->local_state()->SetBoolean(
+      omnibox_everywhere::prefs::kHotkeyEnabled, false);
+  EXPECT_FALSE(profile()->GetPrefs()->GetBoolean(
+      omnibox_everywhere::prefs::kFreShortcutSetupDismissed));
+
+  handler_->DismissFre(searchbox::mojom::FreStage::kShortcutSetupChin);
+
+  EXPECT_TRUE(profile()->GetPrefs()->GetBoolean(
+      omnibox_everywhere::prefs::kFreShortcutSetupDismissed));
+  EXPECT_TRUE(profile()->GetPrefs()->GetBoolean(
+      omnibox_everywhere::prefs::kFreShortcutReminderDismissed));
+  EXPECT_TRUE(profile()->GetPrefs()->GetBoolean(
+      omnibox_everywhere::prefs::kFreDismissed));
+}
+
+TEST_F(OmniboxEverywhereHandlerTest,
+       DismissShortcutSetupWithHotkeyAdvancesToReminder) {
+  handler_->SetHotkey("Ctrl+Shift+Space");
+  EXPECT_FALSE(profile()->GetPrefs()->GetBoolean(
+      omnibox_everywhere::prefs::kFreShortcutSetupDismissed));
+
+  handler_->DismissFre(searchbox::mojom::FreStage::kShortcutSetupChin);
+
+  EXPECT_TRUE(profile()->GetPrefs()->GetBoolean(
+      omnibox_everywhere::prefs::kFreShortcutSetupDismissed));
+  EXPECT_FALSE(profile()->GetPrefs()->GetBoolean(
+      omnibox_everywhere::prefs::kFreShortcutReminderDismissed));
+  EXPECT_FALSE(profile()->GetPrefs()->GetBoolean(
+      omnibox_everywhere::prefs::kFreDismissed));
+}
+
 TEST_F(OmniboxEverywhereHandlerTest, FrePromoStateGatedByImpressionCount) {
   base::test::ScopedFeatureList scoped_feature_list;
   scoped_feature_list.InitAndEnableFeature(omnibox::kOmniboxEverywhereFre);
 
   testing::NiceMock<MockSearchboxPage> mock_page;
-  EXPECT_CALL(mock_page, SetShowFre(true));
+  EXPECT_CALL(mock_page, SetFreState(testing::_))
+      .WillOnce([](searchbox::mojom::FreStatePtr state) {
+        EXPECT_EQ(state->stage, searchbox::mojom::FreStage::kIntroModal);
+      });
 
   mojo::Remote<searchbox::mojom::PageHandler> test_handler_remote;
   auto handler = std::make_unique<OmniboxEverywhereHandler>(
@@ -355,10 +404,35 @@ TEST_F(OmniboxEverywhereHandlerTest, FrePromoStateGatedByImpressionCount) {
           }));
   mock_page.FlushForTesting();
 
-  EXPECT_CALL(mock_page, SetShowFre(false));
+  EXPECT_CALL(mock_page, SetFreState(testing::_))
+      .WillOnce([](searchbox::mojom::FreStatePtr state) {
+        EXPECT_EQ(state->stage, searchbox::mojom::FreStage::kShortcutSetupChin);
+      });
   profile()->GetPrefs()->SetInteger(
       omnibox_everywhere::prefs::kFreIntroImpressionCount,
       omnibox_everywhere::prefs::kMaxFreIntroImpressions);
+  mock_page.FlushForTesting();
+}
+
+TEST_F(OmniboxEverywhereHandlerTest, FreDisabledFeatureFlagEmitsNoneStage) {
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitAndDisableFeature(omnibox::kOmniboxEverywhereFre);
+
+  testing::NiceMock<MockSearchboxPage> mock_page;
+  EXPECT_CALL(mock_page, SetFreState(testing::_))
+      .WillOnce([](searchbox::mojom::FreStatePtr state) {
+        EXPECT_EQ(state->stage, searchbox::mojom::FreStage::kNone);
+      });
+
+  mojo::Remote<searchbox::mojom::PageHandler> test_handler_remote;
+  auto handler = std::make_unique<OmniboxEverywhereHandler>(
+      test_handler_remote.BindNewPipeAndPassReceiver(),
+      mock_page.BindAndGetRemote(), /*metrics_reporter=*/nullptr, &web_ui_,
+      mock_service_.get(),
+      base::BindRepeating(
+          []() -> contextual_search::ContextualSearchSessionHandle* {
+            return nullptr;
+          }));
   mock_page.FlushForTesting();
 }
 
@@ -426,6 +500,36 @@ TEST_F(OmniboxEverywhereHandlerTest, ScreenshotMenuDisabledAtMaxFiles) {
 }
 
 TEST_F(OmniboxEverywhereHandlerTest,
+       SetHotkeyUpdatesLocalStateAndDispatchesState) {
+  PrefService* local_state = g_browser_process->local_state();
+  ASSERT_TRUE(local_state);
+
+  testing::NiceMock<MockSearchboxPage> mock_page;
+  EXPECT_CALL(mock_page, SetFreState(testing::_)).Times(testing::AtLeast(1));
+
+  mojo::Remote<searchbox::mojom::PageHandler> test_handler_remote;
+  auto handler = std::make_unique<OmniboxEverywhereHandler>(
+      test_handler_remote.BindNewPipeAndPassReceiver(),
+      mock_page.BindAndGetRemote(), /*metrics_reporter=*/nullptr, &web_ui_,
+      mock_service_.get(),
+      base::BindRepeating(
+          []() -> contextual_search::ContextualSearchSessionHandle* {
+            return nullptr;
+          }));
+
+  local_state->SetBoolean(omnibox_everywhere::prefs::kHotkeyEnabled, false);
+  handler->SetHotkey("Space+Alt+Shift");
+  EXPECT_EQ(local_state->GetString(
+                omnibox_everywhere::prefs::kOmniboxEverywhereHotkey),
+            "Space+Alt+Shift");
+  EXPECT_TRUE(
+      local_state->GetBoolean(omnibox_everywhere::prefs::kHotkeyEnabled));
+  EXPECT_FALSE(profile()->GetPrefs()->GetBoolean(
+      omnibox_everywhere::prefs::kFreShortcutSetupDismissed));
+  mock_page.FlushForTesting();
+}
+
+TEST_F(OmniboxEverywhereHandlerTest,
        ShowAiModePrefChangeUpdatesAimPopupEligibility) {
   SetUpAimEligibilityService(/*is_fusebox_eligible=*/true);
 
@@ -482,4 +586,54 @@ TEST_F(OmniboxEverywhereHandlerTest,
   mock_page.FlushForTesting();
 }
 
+TEST_F(OmniboxEverywhereHandlerTest,
+       SetIsComposeboxDoesNotCrashWithNullController) {
+  mojo::Remote<omnibox_everywhere::mojom::PageHandler> page_handler_remote;
+  OmniboxEverywherePageHandler page_handler(
+      page_handler_remote.BindNewPipeAndPassReceiver(), mojo::NullRemote(),
+      /*web_ui_controller=*/nullptr);
+
+  page_handler.SetIsComposebox(true);
+  page_handler.SetIsComposebox(false);
+}
+
+TEST_F(OmniboxEverywhereHandlerTest, CalculateContextMenuAnchorPoint_LTR) {
+  base::test::ScopedRestoreICUDefaultLocale locale("en_US");
+  ASSERT_FALSE(base::i18n::IsRTL());
+
+  gfx::Rect anchor_rect(10, 20, 30, 40);
+  gfx::Rect container_bounds(100, 200, 800, 600);
+
+  // In LTR, anchor point should be anchor_rect.bottom_left() + container
+  // offset. anchor_rect.bottom_left() is (10, 60), container offset is (100,
+  // 200) -> (110, 260).
+  gfx::Point expected_point =
+      anchor_rect.bottom_left() + container_bounds.OffsetFromOrigin();
+  EXPECT_EQ(OmniboxEverywhereUI::CalculateContextMenuAnchorPoint(
+                anchor_rect, container_bounds),
+            expected_point);
+  EXPECT_EQ(OmniboxEverywhereUI::CalculateContextMenuAnchorPoint(
+                anchor_rect, container_bounds),
+            gfx::Point(110, 260));
+}
+
+TEST_F(OmniboxEverywhereHandlerTest, CalculateContextMenuAnchorPoint_RTL) {
+  base::test::ScopedRestoreICUDefaultLocale locale("ar");
+  ASSERT_TRUE(base::i18n::IsRTL());
+
+  gfx::Rect anchor_rect(10, 20, 30, 40);
+  gfx::Rect container_bounds(100, 200, 800, 600);
+
+  // In RTL, anchor point should be anchor_rect.bottom_right() + container
+  // offset. anchor_rect.bottom_right() is (40, 60), container offset is (100,
+  // 200) -> (140, 260).
+  gfx::Point expected_point =
+      anchor_rect.bottom_right() + container_bounds.OffsetFromOrigin();
+  EXPECT_EQ(OmniboxEverywhereUI::CalculateContextMenuAnchorPoint(
+                anchor_rect, container_bounds),
+            expected_point);
+  EXPECT_EQ(OmniboxEverywhereUI::CalculateContextMenuAnchorPoint(
+                anchor_rect, container_bounds),
+            gfx::Point(140, 260));
+}
 }  // namespace

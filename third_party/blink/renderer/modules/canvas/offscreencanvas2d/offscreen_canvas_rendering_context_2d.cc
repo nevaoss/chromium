@@ -446,10 +446,9 @@ const MemoryManagedPaintRecorder* OffscreenCanvasRenderingContext2D::Recorder()
 }
 
 void OffscreenCanvasRenderingContext2D::RecordingCleared() {
+  BaseRenderingContext2D::RecordingCleared();
   if (shared_image_provider_) {
     shared_image_provider_->RecordingCleared();
-  } else if (bitmap_provider_) {
-    bitmap_provider_->RecordingCleared();
   }
 }
 
@@ -472,10 +471,10 @@ void OffscreenCanvasRenderingContext2D::WillDraw(
 }
 
 void OffscreenCanvasRenderingContext2D::FlushIfRecordingLimitExceeded() {
+  if (Host()->IsPrinting() && clear_frame()) {
+    return;
+  }
   if (shared_image_provider_) {
-    if (Host()->IsPrinting() && shared_image_provider_->clear_frame()) {
-      return;
-    }
     const MemoryManagedPaintRecorder* recorder = Recorder();
     CHECK(recorder);
     if (recorder->ReleasableOpBytesUsed() >
@@ -485,9 +484,6 @@ void OffscreenCanvasRenderingContext2D::FlushIfRecordingLimitExceeded() {
       FlushCanvas(FlushReason::kOther);
     }
   } else if (bitmap_provider_) {
-    if (Host()->IsPrinting() && bitmap_provider_->clear_frame()) {
-      return;
-    }
     const MemoryManagedPaintRecorder* recorder = Recorder();
     CHECK(recorder);
     if (recorder->ReleasableOpBytesUsed() >

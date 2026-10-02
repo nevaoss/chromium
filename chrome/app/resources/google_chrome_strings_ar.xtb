@@ -36,7 +36,6 @@
 <translation id="1333654552732143316">‏بدء Chrome</translation>
 <translation id="1341711321000856656">‏يمكنك التبديل للاطّلاع على كلمات المرور من ملف شخصي آخر في Chrome.</translation>
 <translation id="1343830902827845050">‏سجِّل الدخول إلى Chrome</translation>
-<translation id="1356661055722410047">ميزة جديدة: يمكنك ترجمة كل من النص والصور على شاشتك</translation>
 <translation id="1361351916482714918">‏فرصتك للتصفّح بذكاء أكبر مع "عدسة Google"</translation>
 <translation id="1363996462118479832">‏تعذّر على نظام التشغيل Chrome مزامنة البيانات بسبب حدوث خطأ في تسجيل الدخول.</translation>
 <translation id="137466361146087520">‏الإصدار التجريبي من Google Chrome</translation>
@@ -74,7 +73,6 @@
 <translation id="1640672724030957280">جارٍ التنزيل...</translation>
 <translation id="1651617469580841801">‏عند استخدام "عدسة Google"، يتم إرسال عنوان الصفحة وعنوان URL والمحتوى (بما في ذلك ملفات PDF) إلى Google. <ph name="LEARN_MORE" /></translation>
 <translation id="1662146548738125461">‏لمحة عن نظام التشغيل ChromeOS Flex</translation>
-<translation id="1664094661346151467">‏يتيح لك هذا الإعداد البحث وطرح الأسئلة من أي مكان، حتى إذا كان Chrome مصغّرًا</translation>
 <translation id="1674870198290878346">‏فتح الرابط في نافذة تصفح متخفٍ في Chrome</translation>
 <translation id="1682634494516646069">‏يتعذر على Google Chrome القراءة والكتابة في دليل البيانات الخاص به:
 
@@ -792,7 +790,6 @@
 <translation id="8575047640889685742">‏لتشفير جميع بيانات Chrome في حسابك على Google، يمكنك استخدام <ph name="BEGIN_LINK" />عبارة المرور الخاصة بك<ph name="END_LINK" />. لن يتم تشفير طُرق الدفع والعناوين من Google Pay. ولن تتم مزامنة سجلّ التصفُّح من Chrome.</translation>
 <translation id="8590782867495422699">‏إعادة فتح "وضع AI" في "بحث Google"</translation>
 <translation id="8598779894319572882">‏من خلال زر "وضع AI" في "بحث Google" على شريط الأدوات، يمكنك إعادة فتح هذا الوضع لطرح الأسئلة أثناء التصفّح</translation>
-<translation id="8601359445272098721">ميزة جديدة: يمكنك ترجمة النص والصور على الشاشة من خلال النقر على زر "ترجمة محتوى الشاشة"</translation>
 <translation id="8614913330719544658">‏لا يستجيب Google Chrome. هل تريد إعادة التشغيل الآن؟</translation>
 <translation id="8623450603356630491">‏تسجيل الدخول إلى Chrome على هاتفك</translation>
 <translation id="8624541899164515475">الإعدادات (يفتح الرابط في علامة تبويب جديدة)</translation>

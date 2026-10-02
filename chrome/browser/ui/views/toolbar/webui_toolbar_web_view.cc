@@ -71,6 +71,7 @@
 #include "chrome/common/webui_url_constants.h"
 #include "components/ukm/content/source_url_recorder.h"
 #include "components/user_education/common/user_education_class_properties.h"
+#include "components/viz/common/features.h"
 #include "components/zoom/zoom_controller.h"
 #include "content/public/browser/browser_accessibility_state.h"
 #include "content/public/browser/context_menu_params.h"
@@ -371,6 +372,7 @@ WebUIToolbarWebView::WebUIToolbarWebView(
       app_menu_control_(*this),
       battery_saver_control_(this),
       avatar_control_(this),
+      media_control_(this),
       location_bar_(std::move(location_bar)),
       extensions_container_(this),
       back_control_(this, BackForwardButton::Direction::kBack),
@@ -388,8 +390,8 @@ WebUIToolbarWebView::WebUIToolbarWebView(
       toolbar_ui_api::mojom::ReloadControlState::New();
   last_queued_state_.home_control_state =
       toolbar_ui_api::mojom::HomeControlState::New();
-  last_queued_state_.battery_saver_button_visible =
-      battery_saver_control_.IsVisible();
+  last_queued_state_.battery_saver_control_state =
+      battery_saver_control_.CreateState();
   last_queued_state_.performance_intervention_control_state =
       toolbar_ui_api::mojom::PerformanceInterventionControlState::New();
   last_queued_state_.location_bar_state =
@@ -422,6 +424,8 @@ WebUIToolbarWebView::WebUIToolbarWebView(
       toolbar_ui_api::mojom::AvatarControlState::New();
   last_queued_state_.overflow_button_control_state =
       toolbar_ui_api::mojom::OverflowButtonControlState::New();
+  last_queued_state_.media_control_state =
+      toolbar_ui_api::mojom::MediaControlState::New();
 
   if (auto* manager = InitialWebUIWindowMetricsManager::From(browser_)) {
     manager->OnReloadButtonCreated();
@@ -496,12 +500,22 @@ WebUIToolbarWebView::WebUIToolbarWebView(
 }
 
 WebUIToolbarWebView::~WebUIToolbarWebView() {
+  DestroyWebContents();
+}
+
+void WebUIToolbarWebView::DestroyWebContents() {
   if (auto* ui = GetWebUIToolbarUI()) {
     ui->DependenciesDestroying();
   }
   if (web_contents()) {
     web_contents()->RemoveUserData(
         WebUIToolbarUIDependencyProviderUserData::UserDataKey());
+  }
+  if (web_view_) {
+    // Resetting the WebContents in the child WebView immediately destroys the
+    // owned WebContents unique_ptr and terminates its renderer process before
+    // browser-side IPC services disconnect.
+    web_view_->SetWebContents(nullptr);
   }
 }
 
@@ -557,6 +571,11 @@ void WebUIToolbarWebView::AddedToWidget() {
     if (features::IsWebUIExtensionsContainerEnabled()) {
       extensions_container_.Init(web_contents());
     }
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
+    if (features::IsWebUIMediaButtonEnabled()) {
+      media_control_.Init();
+    }
+#endif
 
     // Safe-initialize page-dependent controls if the WebUI finished loading
     // early when the widget was still null during `OnPageInitialized()` due to
@@ -635,6 +654,9 @@ void WebUIToolbarWebView::HandleContextMenu(
       break;
     case toolbar_ui_api::mojom::ContextMenuType::kBatterySaver:
       battery_saver_control_.ShowBubble(screen_rect);
+      break;
+    case toolbar_ui_api::mojom::ContextMenuType::kMedia:
+      media_control_.HandleContextMenu(screen_rect, source);
       break;
     case toolbar_ui_api::mojom::ContextMenuType::
         kPinnedActionNewIncognitoWindow:
@@ -937,6 +959,14 @@ void WebUIToolbarWebView::OnPerformanceInterventionButtonMousePressed() {
   performance_intervention_control_.OnMousePressed();
 }
 
+void WebUIToolbarWebView::OnMediaButtonClicked(bool is_mouse_interaction) {
+  media_control_.OnClicked(is_mouse_interaction);
+}
+
+void WebUIToolbarWebView::OnMediaButtonMousePressed() {
+  media_control_.OnMousePressed();
+}
+
 ReloadControl* WebUIToolbarWebView::GetReloadControl() {
   return &reload_control_;
 }
@@ -947,6 +977,11 @@ WebUIToolbarWebView::GetAvatarToolbarButtonInterface() {
 }
 
 MediaToolbarButton* WebUIToolbarWebView::GetMediaToolbarButton() {
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
+  if (features::IsWebUIMediaButtonEnabled()) {
+    return &media_control_;
+  }
+#endif
   return nullptr;
 }
 
@@ -1232,6 +1267,10 @@ void WebUIToolbarWebView::OverflowButtonClicked(
   } else if (identifier == kToolbarSplitTabsToolbarButtonElementId) {
     split_tabs_control_.HandleContextMenuOverflowClick();
     return;
+  } else if (identifier == kToolbarBatterySaverButtonElementId) {
+    // TODO(crbug.com/491791965): Handle battery saver button click from
+    // overflow menu.
+    return;
   }
   NOTREACHED();
 }
@@ -1356,10 +1395,15 @@ void WebUIToolbarWebView::SetSurfaceSyncDeadline(
   if (auto* rwhv = web_view_->web_contents()->GetRenderWidgetHostView()) {
     rwhv->SetForceSpecifiedDeadline(deadline_in_frames);
   }
-  if (auto* browser_view = BrowserView::GetBrowserViewForBrowser(browser_)) {
-    if (auto* active_contents = browser_view->GetActiveWebContents()) {
-      if (auto* main_rwhv = active_contents->GetRenderWidgetHostView()) {
-        main_rwhv->SetForceSpecifiedDeadline(deadline_in_frames);
+  // When per-dependency deadlines are enabled, the toolbar and active tab
+  // surfaces have independent deadlines. We do not need to impose the
+  // toolbar's deadline on the active web contents tab.
+  if (!features::UsePerDependencyDeadlines()) {
+    if (auto* browser_view = BrowserView::GetBrowserViewForBrowser(browser_)) {
+      if (auto* active_contents = browser_view->GetActiveWebContents()) {
+        if (auto* main_rwhv = active_contents->GetRenderWidgetHostView()) {
+          main_rwhv->SetForceSpecifiedDeadline(deadline_in_frames);
+        }
       }
     }
   }
@@ -1485,9 +1529,10 @@ void WebUIToolbarWebView::OnOverflowButtonControlStateChanged(
   }
 }
 
-void WebUIToolbarWebView::OnBatterySaverControlStateChanged(bool is_showing) {
-  if (is_showing != last_queued_state_.battery_saver_button_visible) {
-    last_queued_state_.battery_saver_button_visible = is_showing;
+void WebUIToolbarWebView::OnBatterySaverControlStateChanged(
+    toolbar_ui_api::mojom::BatterySaverControlStatePtr state) {
+  if (*state != *last_queued_state_.battery_saver_control_state) {
+    last_queued_state_.battery_saver_control_state = std::move(state);
     PostPushNavigationState();
   }
 }
@@ -1631,6 +1676,14 @@ void WebUIToolbarWebView::OnAvatarControlStateChanged(
   }
 }
 
+void WebUIToolbarWebView::OnMediaControlStateChanged(
+    toolbar_ui_api::mojom::MediaControlStatePtr state) {
+  if (!mojo::Equals(state, last_queued_state_.media_control_state)) {
+    last_queued_state_.media_control_state = std::move(state);
+    PostPushNavigationState();
+  }
+}
+
 void WebUIToolbarWebView::OnFocusRequested(
     toolbar_ui_api::mojom::FocusRequestTarget target) {
   // We need to focus the WebView as well, besides the JS focus.
@@ -1722,6 +1775,10 @@ gfx::Size WebUIToolbarWebView::ComputeLayout(
   button_count += features::IsWebUIPerformanceInterventionButtonEnabled() &&
                   performance_intervention_control_.IsButtonShowing();
   button_count += features::IsWebUIAppMenuButtonEnabled();
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
+  button_count +=
+      features::IsWebUIMediaButtonEnabled() && media_control_.IsButtonShowing();
+#endif
 
   const int size = GetLayoutConstant(LayoutConstant::kToolbarButtonHeight);
   const int gap = GetLayoutConstant(LayoutConstant::kToolbarIconDefaultMargin);

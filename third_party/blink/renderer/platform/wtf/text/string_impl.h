@@ -246,11 +246,10 @@ class WTF_EXPORT StringImpl {
   // access.  So, we shift left and right when setting and getting our hash
   // code.
   void SetHash(uint32_t hash) const {
-    // Multiple clients assume that StringHasher is the canonical string
-    // hash function.
-    DCHECK_EQ(hash,
-              (Is8Bit() ? StringHasher::ComputeHashAndMaskTop8Bits(Span8())
-                        : ComputeHashForWideString(Span16())));
+    // Multiple clients assume that blink::HashString24() and
+    // ComputeHashForWideString() are the canonical string hash functions.
+    DCHECK_EQ(hash, (Is8Bit() ? HashString24(Span8())
+                              : ComputeHashForWideString(Span16())));
     DCHECK(hash);  // Verify that 0 is a valid sentinel hash value.
     SetHashRaw(hash);
   }
@@ -338,7 +337,7 @@ class WTF_EXPORT StringImpl {
   }
 
 #if DCHECK_IS_ON()
-  unsigned int RefCountChangeCountForTesting() const {
+  wtf_size_t RefCountChangeCountForTesting() const {
     return ref_count_change_count_;
   }
   void ResetRefCountChangeCountForTesting() { ref_count_change_count_ = 0; }
@@ -561,7 +560,7 @@ class WTF_EXPORT StringImpl {
   };
 
   // Hash value is 24 bits.
-  constexpr static int kHashShift = (sizeof(unsigned) * 8) - 24;
+  constexpr static int kHashShift = (sizeof(uint32_t) * 8) - 24;
 
   static inline constexpr uint32_t LengthToAsciiFlags(int length) {
     return length
@@ -641,7 +640,7 @@ class WTF_EXPORT StringImpl {
 
   // Calculates the kContainsOnlyAscii and kIsLowerAscii flags. Returns
   // a bitfield with those 2 values.
-  unsigned ComputeAsciiFlags() const;
+  uint32_t ComputeAsciiFlags() const;
 
 #if DCHECK_IS_ON()
   std::string AsciiForDebugging() const;
@@ -652,13 +651,12 @@ class WTF_EXPORT StringImpl {
 #if DCHECK_IS_ON()
   void AssertHashIsCorrect() {
     DCHECK(HasHash());
-    DCHECK_EQ(ExistingHash(),
-              StringHasher::ComputeHashAndMaskTop8Bits(Span8()));
+    DCHECK_EQ(ExistingHash(), HashString24(Span8()));
   }
 #endif
 
 #if DCHECK_IS_ON()
-  mutable std::atomic<unsigned> ref_count_change_count_{0};
+  mutable std::atomic<wtf_size_t> ref_count_change_count_{0};
 #endif
   // TODO (crbug.com/1083392): Use base::AtomicRefCount.
   mutable std::atomic_uint32_t ref_count_{1};

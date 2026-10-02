@@ -61,6 +61,8 @@ pub enum Error {
     SizeOverflow,
     #[error("Invalid ISOBMMF container")]
     InvalidBox,
+    #[error("Unexpected end of codestream box")]
+    UnexpectedCodestreamBoxEnd,
     #[error("ICC is too large")]
     IccTooLarge,
     #[error("Invalid ICC stream: unexpected end of stream")]
@@ -217,7 +219,7 @@ pub enum Error {
     MixingDifferentChannels,
     #[error("Invalid transform: squeezing meta-channels needs an in-place transform")]
     MetaSqueezeRequiresInPlace,
-    #[error("Invalid transform: too many squeezes (shift > 30)")]
+    #[error("Invalid transform: too many squeezes")]
     TooManySqueezes,
     #[error("Palette meta-channel too large: {0} samples > limit {1}")]
     PaletteTooLarge(usize, usize),

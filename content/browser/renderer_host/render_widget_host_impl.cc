@@ -81,6 +81,7 @@
 #include "content/browser/renderer_host/render_widget_host_owner_delegate.h"
 #include "content/browser/renderer_host/render_widget_host_view_base.h"
 #include "content/browser/renderer_host/render_widget_host_view_child_frame.h"
+#include "content/browser/renderer_host/text_input_manager.h"
 #include "content/browser/renderer_host/unbounded_surface_window.h"
 #include "content/browser/renderer_host/visible_time_request_trigger.h"
 #include "content/browser/scheduler/browser_task_executor.h"
@@ -2524,6 +2525,32 @@ void RenderWidgetHostImpl::PasteIntoNode(
       text, target_dom_node_id.target_element_dom_id);
 }
 
+std::optional<std::u16string_view>
+RenderWidgetHostImpl::GetTextPrecedingSelection(
+    const GlobalDOMNodeId& target_dom_node_id) {
+  TextInputManager* text_input_manager = delegate_->GetTextInputManager();
+  if (!text_input_manager) {
+    return std::nullopt;
+  }
+  const ui::mojom::TextInputState* state =
+      text_input_manager->GetTextInputState();
+  if (!state || !state->value) {
+    return std::nullopt;
+  }
+  if (!target_dom_node_id.target_element_dom_id.is_null() &&
+      state->node_id != target_dom_node_id.target_element_dom_id.value()) {
+    return std::nullopt;
+  }
+  if (!state->selection.IsValid()) {
+    return std::nullopt;
+  }
+  size_t start = state->selection.GetMin();
+  if (start > state->value->length()) {
+    return std::nullopt;
+  }
+  return std::u16string_view(*state->value).substr(0, start);
+}
+
 void RenderWidgetHostImpl::RejectPointerLockOrUnlockIfNecessary(
     blink::mojom::PointerLockResult reason) {
   CHECK(!request_pointer_lock_callback_ || !IsPointerLocked());
@@ -2605,9 +2632,9 @@ void RenderWidgetHostImpl::Destroy(bool also_delete) {
   // Tell the view to die.
   // Note that in the process of the view shutting down, it can call a ton
   // of other messages on us.  So if you do any other deinitialization here,
-  // do it after this call to view_->Destroy().
+  // do it after this call to view_->DestroyOrDefer().
   if (view_) {
-    view_->Destroy();
+    view_->DestroyOrDefer();
     view_.reset();
   }
 
@@ -2750,7 +2777,9 @@ void RenderWidgetHostImpl::SetPopupBounds(const gfx::Rect& bounds,
   // same time until it acked the changes. Otherwise, if they simultaneously
   // change bounds, browser's bounds can be clobbered.
   if (view_ && !waiting_for_screen_rects_ack_) {
-    view_->SetBounds(bounds);
+    gfx::Rect constrained_bounds =
+        delegate_ ? delegate_->ConstrainPopupBounds(bounds) : bounds;
+    view_->SetBounds(constrained_bounds);
   }
   std::move(callback).Run();
 }

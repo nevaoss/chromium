@@ -183,9 +183,8 @@ std::pair<std::string, bool> GetAvatarIconUrlAndAvatarRingStatus(
         entry->GetAvatarIcon(avatar_icon_size).AsBitmap(), scale);
     ui::ImageModel avatar_model = ui::ImageModel::FromImageSkia(avatar_skia);
 
-    avatar_skia = AddLinearGradientRingToAvatar(
-        avatar_model, *color_provider, avatar_icon_size_dip, kAvatarRingGapDip,
-        kAvatarRingThicknessDip);
+    avatar_skia = AddLinearGradientRingToAvatar(avatar_model, *color_provider,
+                                                avatar_icon_size_dip);
 
     SkBitmap bitmap = avatar_skia.GetRepresentation(scale).GetBitmap();
     return {webui::GetBitmapDataUrl(bitmap), has_gradient_ring};
@@ -256,12 +255,11 @@ void OpenLearnMoreURL(bool is_profile_list_empty,
   }
 
   browser->OpenURL(
-      content::OpenURLParams(
+      content::OpenURLParams::CreateBrowserInitiated(
           GURL(is_profile_list_empty
                    ? chrome::kSigninOnDesktopLearnMoreURL
                    : chrome::kAddNewProfileOnDesktopLearnMoreURL),
-          content::Referrer(), WindowOpenDisposition::NEW_FOREGROUND_TAB,
-          ui::PAGE_TRANSITION_LINK, false),
+          WindowOpenDisposition::NEW_FOREGROUND_TAB, ui::PAGE_TRANSITION_LINK),
       /*navigation_handle_callback=*/{});
 }
 

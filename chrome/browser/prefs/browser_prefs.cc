@@ -249,6 +249,7 @@
 #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
 #include "chrome/browser/extensions/activity_log/activity_log.h"
 #include "chrome/browser/extensions/commands/command_service.h"
+#include "chrome/browser/extensions/component_loader_prefs.h"
 #include "chrome/browser/extensions/extension_url_overrides.h"
 #include "chrome/browser/extensions/extension_util.h"
 #include "chrome/browser/extensions/low_trust_policy_install_block_manager.h"
@@ -339,6 +340,10 @@
 #include "components/live_caption/live_caption_controller.h"
 #include "components/live_caption/live_translate_controller.h"
 #endif  // !BUILDFLAG(IS_ANDROID)
+
+#if !BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_DESKTOP_ANDROID)  // nocheck
+#include "chrome/browser/ui/ai_overlay_dialog/ai_overlay_dialog_controller.h"
+#endif
 
 #if BUILDFLAG(ENABLE_DEVTOOLS_FRONTEND)
 #include "chrome/browser/devtools/devtools_window.h"
@@ -1534,6 +1539,7 @@ void RegisterLocalState(PrefRegistrySimple* registry) {
 
 #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
   extensions::ExtensionPrefs::RegisterLocalStatePrefs(registry);
+  extensions::component_loader_prefs::RegisterPrefs(registry);
 #endif
 
 #if BUILDFLAG(ENABLE_ON_DEVICE_TRANSLATION)
@@ -1744,6 +1750,9 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry,
   AccessibilityLabelsService::RegisterProfilePrefs(registry);
   registry->RegisterBooleanPref(prefs::kRendererAccessibilityEnabled, true);
   AccessibilityUIMessageHandler::RegisterProfilePrefs(registry);
+#if !BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_DESKTOP_ANDROID)  // nocheck
+  ttc::AiOverlayDialogController::RegisterProfilePrefs(registry);
+#endif
   AimEligibilityService::RegisterProfilePrefs(registry);
   AnnouncementNotificationService::RegisterProfilePrefs(registry);
   autofill::prefs::RegisterProfilePrefs(registry);

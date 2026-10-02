@@ -1384,6 +1384,11 @@ uploading your change for review.  These are checked by presubmit scripts.
   <int value="1" label="Zero"/>
 </enum>
 
+<enum name="BooleanWasDeferred">
+  <int value="0" label="Was not deferred"/>
+  <int value="1" label="Was deferred"/>
+</enum>
+
 <enum name="BooleanWasted">
   <int value="0" label="Not wasted"/>
   <int value="1" label="Wasted"/>
@@ -2601,6 +2606,8 @@ shown properly on the user-facing crash UI.
   <int value="39"
       label="RESULT_CODE_TERMINATED_BY_OTHER_PROCESS_ON_COMMIT_FAILURE"/>
   <int value="40" label="RESULT_CODE_INVALID_ISOLATED_BROWSER_PROCESS"/>
+  <int value="41" label="RESULT_CODE_NORMAL_EXIT_RELAUNCH_REQUESTED"/>
+  <int value="42" label="RESULT_CODE_NORMAL_EXIT_RELAUNCH_BACKGROUND"/>
   <int value="131" label="SIGQUIT"/>
   <int value="132" label="SIGILL"/>
   <int value="133" label="SIGTRAP"/>
@@ -8018,6 +8025,7 @@ from previous Chrome versions.
       label="UnifiedPasswordManagerLocalPasswordsAndroidAccessLossWarning:enabled"/>
   <int value="-2069193978"
       label="ExperimentalAccessibilityColorEnhancementSettings:enabled"/>
+  <int value="-2068749979" label="AutofillGmailOtpPreLaunchMetrics:enabled"/>
   <int value="-2068490665" label="PasswordChange:enabled"/>
   <int value="-2068448181" label="PageActionsElevatedToolbar:enabled"/>
   <int value="-2067596114" label="WebAuthenticationCableDisco:enabled"/>
@@ -9067,6 +9075,7 @@ from previous Chrome versions.
   <int value="-1756509749" label="ContentAnalysisClipboardCopy:enabled"/>
   <int value="-1756299290" label="WebSerialAPI:enabled"/>
   <int value="-1755714804" label="FeedCloseRefresh:enabled"/>
+  <int value="-1755664701" label="DevToolsNetworkBackendLinking:enabled"/>
   <int value="-1755301960" label="ClearOldBrowsingData:enabled"/>
   <int value="-1755143357" label="NtpCustomizeChromeAndroid:enabled"/>
   <int value="-1754813606"
@@ -9674,6 +9683,7 @@ from previous Chrome versions.
   <int value="-1573043947" label="MaliciousApkDownloadCheck:disabled"/>
   <int value="-1572374515"
       label="SafeSitesFilterBehaviorPolicyAndroid:disabled"/>
+  <int value="-1572262424" label="GlicAndroidOffscreenRendering:disabled"/>
   <int value="-1572246329" label="TabDragDropAndroid:enabled"/>
   <int value="-1572010356" label="enable-privet-v3"/>
   <int value="-1571841513" label="enable-devtools-experiments"/>
@@ -11272,6 +11282,8 @@ from previous Chrome versions.
   <int value="-1085842725" label="SysUiShouldHoldbackForest:disabled"/>
   <int value="-1085492638" label="FetchKeepaliveTimeoutSetting:enabled"/>
   <int value="-1085391277" label="EnableAIPromptAPIForWebPlatform:disabled"/>
+  <int value="-1085352533"
+      label="BrowsingHistoryImprovedHostnameSuffixMatching:disabled"/>
   <int value="-1085307349" label="DevToolsAriaLiveRecording:enabled"/>
   <int value="-1085157892" label="FeedContainment:disabled"/>
   <int value="-1084618227" label="CompositeBGColorAnimation:disabled"/>
@@ -11960,6 +11972,7 @@ from previous Chrome versions.
   <int value="-869023958" label="PasskeyUnlockManager:disabled"/>
   <int value="-868138290" label="CrostiniPortForwarding:disabled"/>
   <int value="-868041476" label="OmniboxFocusTriggersSRPZeroSuggest:enabled"/>
+  <int value="-867772168" label="DevToolsNetworkBackendLinking:disabled"/>
   <int value="-867591635" label="OktaSSO:disabled"/>
   <int value="-867571486" label="PrivateStateTokens:disabled"/>
   <int value="-867087281" label="enable-virtual-keyboard"/>
@@ -14324,6 +14337,8 @@ from previous Chrome versions.
   <int value="-144134779" label="AndroidPayIntegrationV2:disabled"/>
   <int value="-143630801" label="AllowMultipleMediaNotifications:disabled"/>
   <int value="-143382681" label="InstantTethering:enabled"/>
+  <int value="-143294317"
+      label="BrowsingHistoryImprovedHostnameSuffixMatching:enabled"/>
   <int value="-143121333" label="WebXRIncubations:enabled"/>
   <int value="-142004292" label="QuickActionShowBubbleLauncher:disabled"/>
   <int value="-141516902" label="UseModernMediaControls:enabled"/>
@@ -14331,6 +14346,7 @@ from previous Chrome versions.
   <int value="-140763100"
       label="EnableServiceWorkersForChromeUntrusted:disabled"/>
   <int value="-140665765" label="MultiCaptureReworkedUsageIndicators:enabled"/>
+  <int value="-139885421" label="DarkModeSurfaceTokens:enabled"/>
   <int value="-138983372" label="DesktopPWAWindowing:disabled"/>
   <int value="-138951938" label="GlassToolbar:disabled"/>
   <int value="-138820512" label="DesktopPWAsTabStrip:enabled"/>
@@ -14378,6 +14394,7 @@ from previous Chrome versions.
   <int value="-124405552" label="PermissionsAIP92:disabled"/>
   <int value="-124291249" label="HistoryOptInEducationalTip:disabled"/>
   <int value="-124235074" label="IOSPromoPaymentBubble:enabled"/>
+  <int value="-123989533" label="AutofillGmailOtpPreLaunchMetrics:disabled"/>
   <int value="-123682210" label="WebUIOmniboxAimPopup:disabled"/>
   <int value="-123599761" label="IncludeIpcOverheadInNavigationStart:disabled"/>
   <int value="-123103820" label="RefactorMinWidthContextOverride:enabled"/>
@@ -14439,6 +14456,8 @@ from previous Chrome versions.
   <int value="-106373261" label="PaintPreviewDemo:enabled"/>
   <int value="-106128305" label="DragDropTabTearing:disabled"/>
   <int value="-106039323" label="XplatSyncedSetup:disabled"/>
+  <int value="-105566888"
+      label="GlicExperimentalTriggeringOsNotification:disabled"/>
   <int value="-105400607" label="Glic:enabled"/>
   <int value="-105280945" label="SplitViewHorizontal:disabled"/>
   <int value="-104106119" label="WebViewJavaJsBridgeMojo:disabled"/>
@@ -16034,6 +16053,7 @@ from previous Chrome versions.
   <int value="387233614" label="HomePageButtonForceEnabled:disabled"/>
   <int value="387487896" label="AndroidWindowPopupLargeScreen:enabled"/>
   <int value="387678734" label="ShortcutCustomizationApp:disabled"/>
+  <int value="387753132" label="DarkModeSurfaceTokens:disabled"/>
   <int value="388118272" label="DynamicColorAndroid:disabled"/>
   <int value="388328387" label="WindowsMixedReality:enabled"/>
   <int value="388632022" label="JavaScriptExperimentalSharedMemory:disabled"/>
@@ -17156,6 +17176,7 @@ from previous Chrome versions.
   <int value="732081309" label="ReadAloudLanguagePackDownloading:disabled"/>
   <int value="732703958" label="enable-gesture-tap-highlight"/>
   <int value="733484229" label="PrivacyGuide3:disabled"/>
+  <int value="733651380" label="GlicAndroidOffscreenRendering:enabled"/>
   <int value="734892932" label="ToastFramework:enabled"/>
   <int value="734900932" label="RecurrentInterstitialFeature:enabled"/>
   <int value="735180038"
@@ -18082,6 +18103,8 @@ from previous Chrome versions.
   <int value="1031278117" label="FedCmDisconnect:enabled"/>
   <int value="1031281564"
       label="DisablePeripheralDataAccessProtection:disabled"/>
+  <int value="1032214050"
+      label="GlicExperimentalTriggeringOsNotification:enabled"/>
   <int value="1033148287" label="NTPShortcuts:disabled"/>
   <int value="1033412163" label="OmniboxDisplayTitleForCurrentUrl:enabled"/>
   <int value="1033597574" label="disable-layer-squashing"/>
@@ -24887,15 +24910,6 @@ Called by update_net_error_codes.py.-->
 
 <!-- LINT.ThenChange(//components/private_ai/status_code.h:StatusCode) -->
 
-<enum name="ProbeResult">
-  <int value="0" label="No internet"/>
-  <int value="1" label="Server error"/>
-  <int value="2" label="Not validated"/>
-  <int value="3" label="Validated with no content"/>
-  <int value="4" label="Validated with ok but zero content length"/>
-  <int value="5" label="Validated with ok but no content length"/>
-</enum>
-
 <enum name="ProcessType2">
   <summary>
     The value for type comes from the ProcessType enum in
@@ -27559,7 +27573,7 @@ Called by update_net_error_codes.py.-->
   <int value="1" label="Default profile not loaded (obsolete)"/>
   <int value="2" label="Crash metrics not loaded (obsolete)"/>
   <int value="3" label="Last session crashed (obsolete)"/>
-  <int value="4" label="Metrics reporting disabled (obsolete)"/>
+  <int value="4" label="Metrics reporting disabled"/>
   <int value="5" label="Recently uploaded another trace (obsolete)"/>
   <int value="6" label="Last session did not end (obsolete)"/>
 </enum>

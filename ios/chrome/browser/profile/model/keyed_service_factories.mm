@@ -81,6 +81,9 @@
 #import "ios/chrome/browser/enterprise/groups/model/enterprise_groups_profile_handler_factory.h"
 #import "ios/chrome/browser/enterprise/identifiers/profile_id_service_factory_ios.h"
 #import "ios/chrome/browser/enterprise/model/idle/idle_service_factory.h"
+#import "ios/chrome/browser/enterprise/proxy/model/enterprise_network_auth_service_factory_ios.h"
+#import "ios/chrome/browser/enterprise/proxy/model/enterprise_proxy_error_service_factory_ios.h"
+#import "ios/chrome/browser/enterprise/proxy/model/enterprise_proxy_service_factory_ios.h"
 #import "ios/chrome/browser/enterprise/proxy/model/proxy_service_controller_factory.h"
 #import "ios/chrome/browser/enterprise/signals/model/ios_signals_aggregator_factory.h"
 #import "ios/chrome/browser/external_files/model/external_file_remover_factory.h"
@@ -229,6 +232,7 @@
 #import "ios/chrome/browser/visited_url_ranking/model/visited_url_ranking_service_factory.h"
 #import "ios/chrome/browser/voice/ui_bundled/text_to_speech_playback_controller_factory.h"
 #import "ios/chrome/browser/web/model/java_script_console/java_script_console_feature_factory.h"
+#import "ios/chrome/browser/webauthn/model/ios_device_authorization_service_factory.h"
 #import "ios/chrome/browser/webauthn/model/ios_passkey_model_factory.h"
 #import "ios/chrome/browser/webdata_services/model/web_data_service_factory.h"
 #import "ios/public/provider/chrome/browser/cobalt/cobalt_api.h"
@@ -349,6 +353,9 @@ void EnsureProfileKeyedServiceFactoriesBuilt() {
   DomainDiversityReporterFactory::GetInstance();
   DownloadFileServiceFactory::GetInstance();
   DownloadRecordServiceFactory::GetInstance();
+  EnterpriseNetworkAuthServiceFactoryIOS::GetInstance();
+  EnterpriseProxyErrorServiceFactoryIOS::GetInstance();
+  EnterpriseProxyServiceFactoryIOS::GetInstance();
   ExternalFileRemoverFactory::GetInstance();
   GeminiCapabilitiesManagerFactory::GetInstance();
   GeminiServiceFactory::GetInstance();
@@ -392,6 +399,7 @@ void EnsureProfileKeyedServiceFactoriesBuilt() {
   IOSChromeSafetyCheckManagerFactory::GetInstance();
   IOSChromeTabRestoreServiceFactory::GetInstance();
   IOSContextualTasksServiceFactory::GetInstance();
+  IOSDeviceAuthorizationServiceFactory::GetInstance();
   IOSPasswordFieldClassificationModelHandlerFactory::GetInstance();
   IOSPasskeyModelFactory::GetInstance();
   IOSPasswordManagerSettingsServiceFactory::GetInstance();

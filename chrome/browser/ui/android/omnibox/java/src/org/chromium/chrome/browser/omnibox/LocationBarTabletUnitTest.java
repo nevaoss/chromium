@@ -6,10 +6,12 @@ package org.chromium.chrome.browser.omnibox;
 
 import static org.junit.Assert.assertArrayEquals;
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.spy;
 
 import android.app.Activity;
 import android.graphics.drawable.GradientDrawable;
@@ -63,6 +65,7 @@ import org.chromium.ui.base.WindowAndroid;
 import org.chromium.ui.display.DisplayAndroid;
 import org.chromium.ui.display.DisplayUtil;
 import org.chromium.ui.widget.ToastManager;
+import org.chromium.url.JUnitTestGURLs;
 
 /** Unit tests for LocationBarTablet. */
 @RunWith(BaseRobolectricTestRunner.class)
@@ -856,6 +859,96 @@ public class LocationBarTabletUnitTest {
         mLocationBarTablet.setReparentedToPopover(false);
         assertEquals(0, statusParams.getMarginStart());
         assertEquals(0, chipParams.getMarginEnd());
+    }
+
+    @Test
+    public void isTooNarrowForExpandedActivationChip_atThreshold() {
+        View container = new View(mActivity);
+        container.layout(0, 0, mLocationBarTablet.mMinWidthForExpandedActivationChip, 100);
+        mLocationBarTablet.setHolderAndContainer(mHolderView, container);
+
+        assertTrue(mLocationBarTablet.isTooNarrowForExpandedActivationChip());
+    }
+
+    @Test
+    public void isTooNarrowForExpandedActivationChip_aboveThreshold() {
+        View container = new View(mActivity);
+        container.layout(0, 0, mLocationBarTablet.mMinWidthForExpandedActivationChip + 1, 100);
+        mLocationBarTablet.setHolderAndContainer(mHolderView, container);
+
+        assertFalse(mLocationBarTablet.isTooNarrowForExpandedActivationChip());
+    }
+
+    @Test
+    public void isUrlBarTextOverflowing_overflowsWhenExpanded() {
+        LocationBarTablet spyTablet = spy(mLocationBarTablet);
+        doReturn(150).when(spyTablet).getUrlBarTextWidth();
+        doReturn(50).when(spyTablet).getActivationChipCompactWidthDelta();
+        doReturn(100).when(spyTablet).getUrlBarWidth();
+        doReturn(false).when(spyTablet).isActivationChipCompact();
+
+        assertTrue(spyTablet.isUrlBarTextOverflowing());
+    }
+
+    @Test
+    public void isUrlBarTextOverflowing_doesNotOverflowWhenTextFits() {
+        LocationBarTablet spyTablet = spy(mLocationBarTablet);
+        doReturn(50).when(spyTablet).getUrlBarTextWidth();
+        doReturn(50).when(spyTablet).getActivationChipCompactWidthDelta();
+        doReturn(150).when(spyTablet).getUrlBarWidth();
+        doReturn(false).when(spyTablet).isActivationChipCompact();
+
+        assertFalse(spyTablet.isUrlBarTextOverflowing());
+    }
+
+    @Test
+    public void isUrlBarTextOverflowing_safeAgainstOscillationWhenCompact() {
+        LocationBarTablet spyTablet = spy(mLocationBarTablet);
+        doReturn(120).when(spyTablet).getUrlBarTextWidth();
+        doReturn(50).when(spyTablet).getActivationChipCompactWidthDelta();
+
+        // When compact, url bar width grew to 150 because chip shrank by 50.
+        // Effective expanded baseline is 150 - 50 = 100 < 120 text width -> still overflowing.
+        doReturn(150).when(spyTablet).getUrlBarWidth();
+        doReturn(true).when(spyTablet).isActivationChipCompact();
+
+        assertTrue(spyTablet.isUrlBarTextOverflowing());
+    }
+
+    // The class-level @Restriction does not configure Robolectric's screen size; without a
+    // tablet qualifier DeviceFormFactor resolves this context as a phone.
+    @Config(qualifiers = "sw600dp")
+    @Test
+    public void urlBarIsNotTranslated_duringNtpFocusAnimation() {
+        // Establish the exact conditions under which a *phone* translates the URL bar to follow
+        // the NTP fake search box, leaving form factor as the only reason translation stays at 0.
+        doReturn(true).when(mStatusCoordinator).isSearchEngineStatusIconVisible();
+        doReturn(JUnitTestGURLs.NTP_URL).when(mLocationBarDataProvider).getCurrentGurl();
+        View urlBar = mLocationBarTablet.findViewById(R.id.url_bar);
+
+        assertUrlBarUntranslated(
+                urlBar,
+                /* ntpSearchBoxScrollFraction= */ 0,
+                /* urlFocusChangeFraction= */ MathUtils.EPSILON,
+                /* isUrlFocusChangeInProgress= */ true);
+        assertUrlBarUntranslated(urlBar, 0.5f, 0.5f, /* isUrlFocusChangeInProgress= */ false);
+        assertUrlBarUntranslated(urlBar, 1.0f, 1.0f, /* isUrlFocusChangeInProgress= */ false);
+    }
+
+    /**
+     * Drives the focus animation to the given progress and asserts the URL bar is neither
+     * translated nor re-margined: unlike phones, tablets widen the omnibox by relayout only.
+     */
+    private void assertUrlBarUntranslated(
+            View urlBar,
+            float ntpSearchBoxScrollFraction,
+            float urlFocusChangeFraction,
+            boolean isUrlFocusChangeInProgress) {
+        mLocationBarTablet.setUrlFocusChangePercent(
+                ntpSearchBoxScrollFraction, urlFocusChangeFraction, isUrlFocusChangeInProgress);
+
+        assertEquals(0, ((MarginLayoutParams) urlBar.getLayoutParams()).getMarginStart());
+        assertEquals(0f, urlBar.getTranslationX(), MathUtils.EPSILON);
     }
 
     private void setupContainerAndMeasure(int containerWidth, int prefocusWidth, int leftPosition) {

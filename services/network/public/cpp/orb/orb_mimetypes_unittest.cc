@@ -76,11 +76,13 @@ TEST(CrossOriginReadBlockingTest, GetCanonicalMimeType) {
       {"application/gzip", MimeType::kNeverSniffed},
       {"application/pdf", MimeType::kNeverSniffed},
       {"application/x-protobuf", MimeType::kNeverSniffed},
+      {"application/x-protobuffer", MimeType::kNeverSniffed},
       {"application/x-gzip", MimeType::kNeverSniffed},
       {"application/zip", MimeType::kNeverSniffed},
       {"multipart/byteranges", MimeType::kNeverSniffed},
       {"multipart/signed", MimeType::kNeverSniffed},
       {"text/csv", MimeType::kNeverSniffed},
+      {"text/pdf", MimeType::kNeverSniffed},
       {"text/event-stream", MimeType::kNeverSniffed},
   };
 

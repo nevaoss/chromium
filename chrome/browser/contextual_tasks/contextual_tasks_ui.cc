@@ -775,6 +775,11 @@ bool ContextualTasksUI::ShouldClearAllInputsOnSubmit(
     return false;
   }
 #endif
+  // If context management in composebox is enabled, do not wipe restored tabs
+  // on submit.
+  if (base::FeatureList::IsEnabled(omnibox::kContextManagementInComposebox)) {
+    return false;
+  }
   return true;
 }
 
@@ -1474,6 +1479,14 @@ void ContextualTasksUI::SyncAutoSuggestedTabContext() {
   if (composebox_handler_ && auto_suggestion_manager_) {
     composebox_handler_->UpdateSuggestedTabContext(
         auto_suggestion_manager_->GetCurrentSuggestion());
+  }
+}
+
+void ContextualTasksUI::ResetForNewThread(const base::Uuid& task_id,
+                                          const GURL& url) {
+  SetTaskId(task_id);
+  if (page_) {
+    page_->ResetForNewThread(task_id, url);
   }
 }
 

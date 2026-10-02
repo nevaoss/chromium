@@ -308,7 +308,6 @@ enum class CrashRepHandlingOutcome {
 constexpr auto kUpdateLoadStatesInterval = base::Milliseconds(250);
 
 using LifecycleState = RenderFrameHost::LifecycleState;
-using LifecycleStateImpl = RenderFrameHostImpl::LifecycleStateImpl;
 
 base::LazyInstance<base::RepeatingCallbackList<void(WebContents*)>>::
     DestructorAtExit g_created_callbacks = LAZY_INSTANCE_INITIALIZER;
@@ -737,9 +736,16 @@ class JavaScriptDialogDismissNotifier {
       const JavaScriptDialogDismissNotifier&) = delete;
 
   ~JavaScriptDialogDismissNotifier() {
-    for (auto& callback : callbacks_) {
-      std::move(callback).Run();
-    }
+    // Post a task to notify all clients, since callbacks could destroy an
+    // object on the stack.
+    GetUIThreadTaskRunner({})->PostTask(
+        FROM_HERE, base::BindOnce(
+                       [](std::vector<base::OnceClosure> callbacks) {
+                         for (auto& callback : callbacks) {
+                           std::move(callback).Run();
+                         }
+                       },
+                       std::move(callbacks_)));
   }
 
   void NotifyOnDismiss(base::OnceClosure callback) {
@@ -1850,7 +1856,7 @@ bool WebContentsImpl::IsPrerenderedFrame(FrameTreeNodeId frame_tree_node_id) {
   if (frame_tree_node->GetParentOrOuterDocumentOrEmbedder()) {
     return frame_tree_node->GetParentOrOuterDocumentOrEmbedder()
                ->lifecycle_state() ==
-           RenderFrameHostImpl::LifecycleStateImpl::kPrerendering;
+           RenderFrameHostLifecycleStateImpl::kPrerendering;
   }
   return frame_tree_node->GetFrameType() == FrameType::kPrerenderMainFrame;
 }
@@ -3366,7 +3372,7 @@ void WebContentsImpl::AttachInnerWebContentsImpl(
 
   // Inner WebContents aren't supported with prerendering. See
   // https://crbug.com/40191159 for details.
-  CHECK_NE(RenderFrameHostImpl::LifecycleStateImpl::kPrerendering,
+  CHECK_NE(RenderFrameHostLifecycleStateImpl::kPrerendering,
            render_frame_host_impl->lifecycle_state());
 
   RenderFrameHostManager* inner_render_manager =
@@ -3400,7 +3406,7 @@ void WebContentsImpl::AttachInnerWebContentsImpl(
     if (RenderWidgetHostViewBase* prev_rwhv =
             static_cast<RenderWidgetHostViewBase*>(rfh->GetView())) {
       if (!prev_rwhv->IsRenderWidgetHostViewChildFrame()) {
-        prev_rwhv->Destroy();
+        prev_rwhv->DestroyOrDefer();
       }
     }
 
@@ -3512,7 +3518,7 @@ void WebContentsImpl::DetachUnownedInnerWebContents(
       if (rvh->GetWidget()->GetView()->IsRenderWidgetHostViewChildFrame()) {
         list_of_rvh_with_rwhv.push_back(rvh);
       }
-      rvh->GetWidget()->GetView()->Destroy();
+      rvh->GetWidget()->GetView()->DestroyOrDefer();
     }
   }
 
@@ -3583,7 +3589,7 @@ void WebContentsImpl::SetSurfaceEmbedConnector(
     if (RenderWidgetHostViewBase* prev_rwhv =
             static_cast<RenderWidgetHostViewBase*>(rfh->GetView())) {
       if (!prev_rwhv->IsRenderWidgetHostViewChildFrame()) {
-        prev_rwhv->Destroy();
+        prev_rwhv->DestroyOrDefer();
       }
     }
   }
@@ -3643,7 +3649,7 @@ void WebContentsImpl::ClearSurfaceEmbedConnector() {
       if (rvh->GetWidget()->GetView()->IsRenderWidgetHostViewChildFrame()) {
         list_of_rvh_with_rwhv.push_back(rvh);
       }
-      rvh->GetWidget()->GetView()->Destroy();
+      rvh->GetWidget()->GetView()->DestroyOrDefer();
     }
   }
 
@@ -3709,7 +3715,7 @@ void WebContentsImpl::AttachGuestPage(
 
   // Guest pages aren't supported with prerendering. See
   // https://crbug.com/40191159 for details.
-  CHECK_NE(RenderFrameHostImpl::LifecycleStateImpl::kPrerendering,
+  CHECK_NE(RenderFrameHostLifecycleStateImpl::kPrerendering,
            outer_render_frame_host_impl->lifecycle_state());
 
   auto* guest_page_impl = static_cast<GuestPageHolderImpl*>(guest_page.get());
@@ -5476,7 +5482,9 @@ void WebContentsImpl::LostPointerLock(
     RenderWidgetHostImpl* render_widget_host) {
   OPTIONAL_TRACE_EVENT1("content", "WebContentsImpl::LostPointerLock",
                         "render_widget_host", render_widget_host);
-  CHECK(pointer_lock_widget_);
+  if (!pointer_lock_widget_) {
+    return;
+  }
 
   if (WebContentsImpl::FromRenderWidgetHostImpl(pointer_lock_widget_) != this) {
     return pointer_lock_widget_->delegate()->LostPointerLock(
@@ -6094,6 +6102,24 @@ WebContents* WebContentsImpl::ShowCreatedWindow(
                                   nullptr);
 }
 
+gfx::Rect WebContentsImpl::ConstrainPopupBounds(const gfx::Rect& bounds) {
+  if (!base::FeatureList::IsEnabled(features::kLimitPopupWidgetHostPosition)) {
+    return bounds;
+  }
+  // Constrain popup bounds so that the top of the popup is at or below the line
+  // of death (the top of the top-level main frame). See crbug.com/424995036.
+  RenderWidgetHostView* view = GetTopLevelRenderWidgetHostView();
+  if (!view) {
+    return bounds;
+  }
+  gfx::Rect constrained_bounds = bounds;
+  int line_of_death = view->GetViewBounds().y();
+  if (constrained_bounds.y() < line_of_death) {
+    constrained_bounds.set_y(line_of_death);
+  }
+  return constrained_bounds;
+}
+
 void WebContentsImpl::ShowCreatedWidget(ChildProcessId process_id,
                                         int widget_route_id,
                                         const gfx::Rect& initial_rect,
@@ -6157,6 +6183,8 @@ void WebContentsImpl::ShowCreatedWidget(ChildProcessId process_id,
         gfx::Rect(origin.x(), origin.y(), bottom_right.x() - origin.x(),
                   bottom_right.y() - origin.y());
   }
+
+  transformed_rect = ConstrainPopupBounds(transformed_rect);
 
   RenderWidgetHostImpl* render_widget_host_impl = widget_host_view->host();
 
@@ -7261,6 +7289,15 @@ void WebContentsImpl::SaveFrameWithHeaders(
     bool is_subresource) {
   DCHECK(rfh);
   auto& rfhi = *static_cast<RenderFrameHostImpl*>(rfh);
+
+  if (WebContents::FromRenderFrameHost(rfh) != this) {
+    // Note that the PDF viewer can legitimately save from the context of a RFH
+    // outside of this WebContents. The following CHECK guards against the
+    // caller possibly being tricked into providing a RFH with different storage
+    // access. See https://crbug.com/40167434 and https://crbug.com/501790682
+    CHECK_EQ(rfhi.GetStoragePartition(),
+             GetPrimaryMainFrame()->GetStoragePartition());
+  }
 
   OPTIONAL_TRACE_EVENT2("content", "WebContentsImpl::SaveFrameWithHeaders",
                         "url", url, "headers", headers);
@@ -10339,7 +10376,7 @@ WebContentsImpl::GetActiveTopLevelDocumentsInBrowsingContextGroup(
 
     // Filters out inactive documents.
     if (other_render_frame_host->lifecycle_state() !=
-        RenderFrameHostImpl::LifecycleStateImpl::kActive) {
+        RenderFrameHostLifecycleStateImpl::kActive) {
       continue;
     }
 
@@ -11375,7 +11412,7 @@ void WebContentsImpl::NotifySwappedFromRenderManager(
                "old_render_frame_host", old_frame, "new_render_frame_host",
                new_frame);
   DCHECK_NE(new_frame->lifecycle_state(),
-            RenderFrameHostImpl::LifecycleStateImpl::kSpeculative);
+            RenderFrameHostLifecycleStateImpl::kSpeculative);
 
   // Only fire RenderViewHostChanged if it is related to our FrameTree, as
   // observers can not deal with events coming from non-primary FrameTree.

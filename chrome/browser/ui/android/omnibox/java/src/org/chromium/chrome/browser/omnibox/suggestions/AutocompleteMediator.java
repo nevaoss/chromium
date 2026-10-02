@@ -641,15 +641,7 @@ class AutocompleteMediator
     }
 
     private void installAutocompleteObservers() {
-        if (mAutocomplete == null) return;
-        // Hub and Tab Search overlays can be invoked in multi-window / split-screen before the
-        // target window acquires system focus. Allow attaching observers so suggestions can
-        // populate.
-        boolean isHubOrTabSearch =
-                mAutocompleteInput != null
-                        && PageClassificationUtils.isHubOrTabSearch(
-                                mAutocompleteInput.getPageClassification());
-        if (!mActivityWindowFocused && !isHubOrTabSearch) return;
+        if (mAutocomplete == null || !mActivityWindowFocused) return;
         mAutocomplete.addOnSuggestionsReceivedListener(this);
     }
 
@@ -1706,8 +1698,8 @@ class AutocompleteMediator
     }
 
     /**
-     * Potentially adjust the given URL based on the current request type (e.g. AIM mode, Image
-     * Generation) and model picker flag, and invoke the callback with that URL.
+     * Potentially adjust the given URL based on the input state, and invoke the callback with that
+     * URL.
      *
      * @param url The base {@link GURL} to potentially be adjusted.
      * @param callback The callback to be invoked with the potentially adjusted URL.
@@ -1728,16 +1720,7 @@ class AutocompleteMediator
             return;
         }
 
-        if (OmniboxFeatures.sShowModelPicker.getValue()) {
-            bridge.getAimUrlFromInputState(url, callback);
-        } else {
-            switch (requestType) {
-                case AutocompleteRequestType.AI_MODE -> bridge.getAimUrl(url, callback);
-                case AutocompleteRequestType.IMAGE_GENERATION ->
-                        bridge.getImageGenerationUrl(url, callback);
-                default -> callback.onResult(url);
-            }
-        }
+        bridge.getAimUrlFromInputState(url, callback);
     }
 
     private void finishLoadUrlForOmniboxMatch(
@@ -2234,17 +2217,14 @@ class AutocompleteMediator
             // dropdown container persists when search activity is dismissed.
             // TODO(crbug.com/390011136): Find a better way to create a seamless animation when
             // exiting hub search that dismisses the URL bar and suggestions list together.
-            boolean isHubOrTabSearch =
+            showSuggestionsContainer |=
                     PageClassificationUtils.isHubOrTabSearch(
                             mAutocompleteInput.getPageClassification());
-            showSuggestionsContainer |= isHubOrTabSearch;
 
             if (isTopResumedActivity) {
                 installAutocompleteObservers();
                 onInputChanged();
-            } else if (!isHubOrTabSearch) {
-                // Hub and Tab Search manage their own dismissal lifecycle and retain observers
-                // and requests when inactive in multi-window mode or across window transitions.
+            } else {
                 dismissDeleteDialog(DialogDismissalCause.NAVIGATE_BACK_OR_TOUCH_OUTSIDE);
                 stopAutocomplete(AutocompleteStopReason.CLOBBERED);
                 removeAutocompleteObservers();

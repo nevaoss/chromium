@@ -157,6 +157,7 @@ android_library("chrome_test_java_helper") {
     "//chrome/browser/privacy_sandbox/android:java",
     "//chrome/browser/privacy_sandbox/android:test_support_java",
     "//chrome/browser/profiles/android:java",
+    "//chrome/browser/profiles/android:test_support_java",
     "//chrome/browser/quick_delete:java",
     "//chrome/browser/readaloud/android:java",
     "//chrome/browser/regional_capabilities/android:java",
@@ -1054,19 +1055,15 @@ android_library("chrome_test_java_org.chromium.chrome.browser.omnibox") {
   resources_package = "org.chromium.chrome"
 
   sources = [
-    "src/org/chromium/chrome/browser/omnibox/LocationBarLayoutTest.java",
     "src/org/chromium/chrome/browser/omnibox/LocationBarTest.java",
     "src/org/chromium/chrome/browser/omnibox/OmniboxDisplayStatePTTest.java",
     "src/org/chromium/chrome/browser/omnibox/OmniboxPTTest.java",
     "src/org/chromium/chrome/browser/omnibox/OmniboxTest.java",
-    "src/org/chromium/chrome/browser/omnibox/OmniboxUrlEmphasizerTest.java",
     "src/org/chromium/chrome/browser/omnibox/SiteSearchTest.java",
-    "src/org/chromium/chrome/browser/omnibox/UrlBarTest.java",
     "src/org/chromium/chrome/browser/omnibox/geo/GeolocationHeaderTest.java",
     "src/org/chromium/chrome/browser/omnibox/suggestions/OmniboxActionsTest.java",
     "src/org/chromium/chrome/browser/omnibox/suggestions/OmniboxPedalsRenderTest.java",
     "src/org/chromium/chrome/browser/omnibox/suggestions/OmniboxPedalsTest.java",
-    "src/org/chromium/chrome/browser/omnibox/suggestions/mostvisited/MostVisitedTilesTest.java",
     "src/org/chromium/chrome/browser/omnibox/voice/VoiceSearchPTTest.java",
   ]
 
@@ -1621,6 +1618,7 @@ android_library("chrome_test_java_org.chromium.chrome.browser.tasks") {
     "//chrome/browser/actor/android:java",
     "//chrome/browser/composeplate/android:java",
     "//chrome/browser/educational_tip:java",
+    "//chrome/browser/glic:public_java",
     "//chrome/browser/hub/internal:java",
     "//chrome/browser/ui/vertical_tabs:java",
     "//components/tabs/public/android:java",
@@ -1870,6 +1868,7 @@ java_group("common_unit_test_deps_java") {
     "//chrome/browser/preferences:java",
     "//chrome/browser/preferences:pref_service_java",
     "//chrome/browser/profiles/android:java",
+    "//chrome/browser/profiles/android:test_support_java",
     "//chrome/browser/regional_capabilities/android:java",
     "//chrome/browser/search_engines/android:java",
     "//chrome/browser/settings:factory_java",

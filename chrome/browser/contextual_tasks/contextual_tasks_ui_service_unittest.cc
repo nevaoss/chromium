@@ -3654,16 +3654,46 @@ TEST_F(ContextualTasksUiServiceTest,
       browser.GetUnownedUserDataHost(), mock_tab_list);
 
   GURL target_url("https://target.example.com/");
-  content::Referrer referrer;
-  content::OpenURLParams params(target_url, referrer,
-                                WindowOpenDisposition::NEW_FOREGROUND_TAB,
-                                ui::PAGE_TRANSITION_LINK,
-                                /*is_renderer_initiated=*/false);
+  content::OpenURLParams params =
+      content::OpenURLParams::CreateBrowserInitiated(
+          target_url, WindowOpenDisposition::NEW_FOREGROUND_TAB,
+          ui::PAGE_TRANSITION_LINK);
 
   real_service_->OpenUrlForTesting(params, blink::mojom::WindowFeatures(),
                                    &browser);
 
   EXPECT_EQ(web_contents->GetVisibleURL(), target_url);
+}
+
+TEST_F(ContextualTasksUiServiceTest, ResetZeroStateInOpenSidePanel) {
+  auto panel_contents = content::WebContentsTester::CreateTestWebContents(
+      profile_.get(), content::SiteInstance::Create(profile_.get()));
+  auto tab_contents = content::WebContentsTester::CreateTestWebContents(
+      profile_.get(), content::SiteInstance::Create(profile_.get()));
+  sessions::SessionTabHelper::CreateForWebContents(
+      tab_contents.get(),
+      base::BindRepeating([](content::WebContents* contents) {
+        return static_cast<sessions::SessionTabHelperDelegate*>(nullptr);
+      }));
+
+  tabs::MockTabInterface tab;
+  ON_CALL(tab, GetContents).WillByDefault(Return(tab_contents.get()));
+
+  GURL url("https://www.google.com/search?udm=50&aep=1");
+  ContextualTask task(base::Uuid::GenerateRandomV4());
+  EXPECT_CALL(*contextual_tasks_service_, CreateTaskFromUrl(url))
+      .WillOnce(Return(task));
+  EXPECT_CALL(*contextual_tasks_service_,
+              AssociateTabWithTask(
+                  task.GetTaskId(),
+                  sessions::SessionTabHelper::IdForTab(tab_contents.get())))
+      .Times(1);
+
+  real_service_->ResetZeroStateInOpenSidePanel(
+      panel_contents.get(), &tab, url, /*session_handle=*/nullptr,
+      omnibox::ChromeAimEntryPoint::DESKTOP_CHROME_COBROWSE_OMNIBOX_ACTION);
+
+  EXPECT_EQ(real_service_->GetCreationUrlForTask(task.GetTaskId()), url);
 }
 
 }  // namespace contextual_tasks

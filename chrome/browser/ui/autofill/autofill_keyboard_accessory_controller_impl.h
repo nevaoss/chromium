@@ -94,6 +94,7 @@ class AutofillKeyboardAccessoryControllerImpl
   std::optional<UiSessionId> GetUiSessionId() const override;
   void SetKeepPopupOpenForTesting(bool keep_popup_open_for_testing) override;
   void UpdateDataListValues(base::span<const SelectOption> options) override;
+  const LocalFrameToken& GetFrameToken() const override;
   bool MayRecycle(
       base::WeakPtr<AutofillSuggestionDelegate> delegate,
       content::WebContents* web_contents,
@@ -107,6 +108,7 @@ class AutofillKeyboardAccessoryControllerImpl
   bool GetRemovalConfirmationText(
       int index,
       RemovalConfirmationText* removal_text) override;
+  bool ShowAutofillAiSuggestionDetails(size_t index) override;
   void OpenSettingsForEntityType(int32_t entity_type) override;
   void SelectSuggestion(int index) override;
   void UnselectSuggestion() override;
@@ -129,6 +131,11 @@ class AutofillKeyboardAccessoryControllerImpl
   // Reacts to the result of a deletion dialog by attempting to delete
   // `suggestion` if the dialog `confirmed` deletion and by emitting metrics.
   void OnDeletionDialogClosed(const Suggestion& suggestion, bool confirmed);
+
+  // Reacts to the result of an Autofill AI suppression dialog by suppressing
+  // `suggestion` if the dialog `confirmed` suppression.
+  void OnAutofillAiSuppressionDialogClosed(const Suggestion& suggestion,
+                                           bool confirmed);
 
   // Hides the view and asynchronously deletes itself.
   void HideViewAndDie();

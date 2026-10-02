@@ -22,7 +22,6 @@ import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.components.contextual_search.ContextUploadErrorType;
 import org.chromium.components.contextual_search.ContextUploadStatus;
 import org.chromium.components.contextual_search.InputState;
-import org.chromium.components.omnibox.OmniboxFeatures;
 import org.chromium.content_public.browser.WebContents;
 import org.chromium.url.GURL;
 
@@ -141,6 +140,21 @@ public class ComposeboxQueryControllerBridge {
     }
 
     /**
+     * Add the given Drive file to the current session.
+     *
+     * @param driveId Unique ID of the Drive file.
+     * @param resourceKey Optional resource key for link-shared Drive files.
+     * @param fileName Name/title of the Drive file.
+     * @param mimeType MIME type of the Drive file.
+     * @return Unique token representing the Drive file, used to manipulate added Drive files.
+     */
+    public @Nullable String addDriveFile(
+            String driveId, @Nullable String resourceKey, String fileName, String mimeType) {
+        return ComposeboxQueryControllerBridgeJni.get()
+                .addDriveFile(mNativeInstance, driveId, resourceKey, fileName, mimeType);
+    }
+
+    /**
      * Uploads the given tab, adding it to the current session. If the upload can't be performed,
      * null is returned.
      */
@@ -159,17 +173,7 @@ public class ComposeboxQueryControllerBridge {
                 .addTabContextFromCache(mNativeInstance, tabId, isSuggestedTab);
     }
 
-    public void getAimUrl(GURL url, Callback<GURL> callback) {
-        ComposeboxQueryControllerBridgeJni.get().getAimUrl(mNativeInstance, url, callback);
-    }
-
-    public void getImageGenerationUrl(GURL url, Callback<GURL> callback) {
-        ComposeboxQueryControllerBridgeJni.get()
-                .getImageGenerationUrl(mNativeInstance, url, callback);
-    }
-
     public void getAimUrlFromInputState(GURL url, Callback<GURL> callback) {
-        assert OmniboxFeatures.sShowModelPicker.getValue();
         ComposeboxQueryControllerBridgeJni.get()
                 .getAimUrlFromInputState(mNativeInstance, url, callback);
     }
@@ -198,11 +202,6 @@ public class ComposeboxQueryControllerBridge {
     /** Returns whether the user is eligible for PDF uploads. */
     boolean isPdfUploadEligible() {
         return ComposeboxQueryControllerBridgeJni.get().isPdfUploadEligible(mNativeInstance);
-    }
-
-    /** Returns whether the user is eligible for creating images. */
-    boolean isCreateImagesEligible() {
-        return ComposeboxQueryControllerBridgeJni.get().isCreateImagesEligible(mNativeInstance);
     }
 
     /**
@@ -275,6 +274,14 @@ public class ComposeboxQueryControllerBridge {
                 ByteBuffer fileData);
 
         @JniType("std::string")
+        @Nullable String addDriveFile(
+                long nativeComposeboxQueryControllerBridge,
+                @JniType("std::string") String driveId,
+                @JniType("std::optional<std::string>") @Nullable String resourceKey,
+                @JniType("std::string") String fileName,
+                @JniType("std::string") String mimeType);
+
+        @JniType("std::string")
         @Nullable String addTabContext(
                 long nativeComposeboxQueryControllerBridge,
                 @JniType("content::WebContents*") WebContents webContents,
@@ -283,16 +290,6 @@ public class ComposeboxQueryControllerBridge {
         @JniType("std::string")
         @Nullable String addTabContextFromCache(
                 long nativeComposeboxQueryControllerBridge, long tabId, boolean isSuggestedTab);
-
-        void getAimUrl(
-                long nativeComposeboxQueryControllerBridge,
-                @JniType("GURL") GURL url,
-                @JniType("base::OnceCallback<void(GURL)>&&") Callback<GURL> callback);
-
-        void getImageGenerationUrl(
-                long nativeComposeboxQueryControllerBridge,
-                @JniType("GURL") GURL url,
-                @JniType("base::OnceCallback<void(GURL)>&&") Callback<GURL> callback);
 
         void getAimUrlFromInputState(
                 long nativeComposeboxQueryControllerBridge,
@@ -307,8 +304,6 @@ public class ComposeboxQueryControllerBridge {
         boolean isFuseboxEligibleForProfile(@JniType("Profile*") Profile profile);
 
         boolean isPdfUploadEligible(long nativeComposeboxQueryControllerBridge);
-
-        boolean isCreateImagesEligible(long nativeComposeboxQueryControllerBridge);
 
         void setActiveTool(
                 long nativeComposeboxQueryControllerBridge,

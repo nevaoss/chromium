@@ -1152,6 +1152,8 @@ TEST_F(PrivateVerificationTokensServiceEmptyDatabaseTest,
           ->GetTokenForRedemption(url::Origin::Create(GURL("https://r1.a.com")),
                                   otr_profile)
           .has_value());
+  service()->TrackerInsert(otr_profile,
+                           url::Origin::Create(GURL("https://r1.a.com")));
   histogram_tester.ExpectTotalCount(
       "PrivateVerificationTokens.RedemptionLimitHit", 0);
 
@@ -1161,6 +1163,8 @@ TEST_F(PrivateVerificationTokensServiceEmptyDatabaseTest,
           ->GetTokenForRedemption(url::Origin::Create(GURL("https://r2.b.org")),
                                   otr_profile)
           .has_value());
+  service()->TrackerInsert(otr_profile,
+                           url::Origin::Create(GURL("https://r2.b.org")));
   histogram_tester.ExpectTotalCount(
       "PrivateVerificationTokens.RedemptionLimitHit", 0);
 
@@ -1178,4 +1182,20 @@ TEST_F(PrivateVerificationTokensServiceEmptyDatabaseTest,
                    .has_value());
   histogram_tester.ExpectBucketCount(
       "PrivateVerificationTokens.RedemptionLimitHit", true, 1);
+}
+
+TEST_F(PrivateVerificationTokensServiceTest, GetAllTokens) {
+  WaitForInitialization(service());
+
+  base::test::TestFuture<std::vector<private_verification_tokens::TokenWithId>>
+      future;
+  service()->GetAllTokens(future.GetCallback());
+  auto tokens = future.Take();
+
+  ASSERT_EQ(tokens.size(), 2u);
+  EXPECT_EQ(tokens[0].token.issuer(),
+            url::Origin::Create(GURL("https://a.com")));
+  EXPECT_EQ(tokens[0].token.token(), (std::vector<uint8_t>{1, 2, 3}));
+  EXPECT_EQ(tokens[1].token.issuer(),
+            url::Origin::Create(GURL("https://b.org")));
 }

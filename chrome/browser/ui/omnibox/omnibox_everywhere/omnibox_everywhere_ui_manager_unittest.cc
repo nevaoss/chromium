@@ -325,13 +325,19 @@ TEST_F(OmniboxEverywhereUIManagerTest,
 
 TEST_F(OmniboxEverywhereUIManagerTest, FileChooserStateTracking) {
   auto ui_manager = CreateUIManager();
+  ui_manager->ShowForProfile(&profile_, GetContext());
+  ASSERT_TRUE(ui_manager->web_contents());
+
   EXPECT_FALSE(ui_manager->is_file_chooser_open_for_testing());
+  EXPECT_FALSE(ui_manager->web_contents()->ShouldIgnoreInputEventsForTesting());
 
   ui_manager->OnFileChooserOpened();
   EXPECT_TRUE(ui_manager->is_file_chooser_open_for_testing());
+  EXPECT_TRUE(ui_manager->web_contents()->ShouldIgnoreInputEventsForTesting());
 
   ui_manager->OnFileChooserClosed();
   EXPECT_FALSE(ui_manager->is_file_chooser_open_for_testing());
+  EXPECT_FALSE(ui_manager->web_contents()->ShouldIgnoreInputEventsForTesting());
 }
 
 TEST_F(OmniboxEverywhereUIManagerTest, DismissOnDeactivationInEphemeralMode) {
@@ -518,7 +524,7 @@ TEST_F(OmniboxEverywhereUIManagerTest,
 }
 
 TEST_F(OmniboxEverywhereUIManagerTest,
-       PersistentDeactivationKeepsWidgetVisible) {
+       PersistentDeactivationDemotesWidgetAndKeepsVisible) {
   if (g_browser_process && g_browser_process->local_state()) {
     g_browser_process->local_state()->SetBoolean(
         omnibox_everywhere::prefs::kOmniboxEverywhereEphemeralModel, false);
@@ -529,24 +535,38 @@ TEST_F(OmniboxEverywhereUIManagerTest,
   views::Widget* widget = ui_manager->widget();
   ASSERT_TRUE(widget);
   EXPECT_TRUE(widget->IsVisible());
+  views::test::WaitForWidgetActive(widget, true);
+  EXPECT_FALSE(ui_manager->is_demoted_for_testing());
+  EXPECT_TRUE(ui_manager->IsActive());
   EXPECT_EQ(widget->GetZOrderLevel(), ui::ZOrderLevel::kNormal);
 
-  // Simulating deactivation (active = false) in persistent mode keeps the
-  // widget visible without auto-closing.
+  // Advance time past the activation grace period.
+  task_environment()->FastForwardBy(
+      omnibox_everywhere::OmniboxEverywhereUIManager::kActivationGracePeriod +
+      base::Milliseconds(1));
+
+  // Simulating deactivation (active = false) in persistent mode demotes the
+  // widget (is_demoted_ == true) while keeping it visible on the desktop layer.
   ui_manager->OnWidgetActivationChanged(widget, /*active=*/false);
+  EXPECT_TRUE(base::test::RunUntil(
+      [&]() { return ui_manager->is_demoted_for_testing(); }));
   EXPECT_TRUE(widget->IsVisible());
+  EXPECT_FALSE(ui_manager->IsActive());
   EXPECT_EQ(widget->GetZOrderLevel(), ui::ZOrderLevel::kNormal);
 
-  // Re-invoking ShowForProfile keeps widget visible and active.
+  // Re-invoking ShowForProfile restores active state (clears demoted state).
   ui_manager->ShowForProfile(&profile_, GetContext());
   EXPECT_TRUE(widget->IsVisible());
+  views::test::WaitForWidgetActive(widget, true);
+  EXPECT_FALSE(ui_manager->is_demoted_for_testing());
+  EXPECT_TRUE(ui_manager->IsActive());
   EXPECT_EQ(widget->GetZOrderLevel(), ui::ZOrderLevel::kNormal);
 
   ui_manager->Close();
 }
 
 TEST_F(OmniboxEverywhereUIManagerTest,
-       PersistentDeactivationWithinGracePeriodDoesNotReactivate) {
+       PersistentDeactivationWithinGracePeriodReactivatesWidget) {
   if (g_browser_process && g_browser_process->local_state()) {
     g_browser_process->local_state()->SetBoolean(
         omnibox_everywhere::prefs::kOmniboxEverywhereEphemeralModel, false);
@@ -557,20 +577,73 @@ TEST_F(OmniboxEverywhereUIManagerTest,
   views::Widget* widget = ui_manager->widget();
   ASSERT_TRUE(widget);
   EXPECT_TRUE(widget->IsVisible());
+  views::test::WaitForWidgetActive(widget, true);
+  EXPECT_FALSE(ui_manager->is_demoted_for_testing());
+  EXPECT_TRUE(ui_manager->IsActive());
 
   // Advance time within the grace period (e.g. 100ms < 500ms).
   task_environment()->FastForwardBy(base::Milliseconds(100));
 
-  // Simulating deactivation in persistent mode within 500ms should NOT trigger
-  // auto-close or reactivation tasks, keeping the widget visible.
+  // Simulating deactivation (active = false) within the grace period should NOT
+  // demote the widget, but instead schedule reactivation and keep it visible.
   ui_manager->OnWidgetActivationChanged(widget, /*active=*/false);
+  EXPECT_TRUE(base::test::RunUntil([&]() { return ui_manager->IsActive(); }));
   EXPECT_TRUE(widget->IsVisible());
+  EXPECT_FALSE(ui_manager->is_demoted_for_testing());
 
-  // Advancing time past the grace period confirms the widget remains visible
-  // and no delayed close or reactivation tasks run.
+  // Advance time past the grace period.
   task_environment()->FastForwardBy(
       omnibox_everywhere::OmniboxEverywhereUIManager::kActivationGracePeriod);
+
+  // Deactivation after the grace period has elapsed should cleanly demote.
+  ui_manager->OnWidgetActivationChanged(widget, /*active=*/false);
+  EXPECT_TRUE(base::test::RunUntil(
+      [&]() { return ui_manager->is_demoted_for_testing(); }));
   EXPECT_TRUE(widget->IsVisible());
+  EXPECT_FALSE(ui_manager->IsActive());
+
+  ui_manager->Close();
+}
+
+TEST_F(OmniboxEverywhereUIManagerTest,
+       PersistentDeactivationBypassedDuringFileChooser) {
+  if (g_browser_process && g_browser_process->local_state()) {
+    g_browser_process->local_state()->SetBoolean(
+        omnibox_everywhere::prefs::kOmniboxEverywhereEphemeralModel, false);
+  }
+  auto ui_manager = CreateUIManager();
+
+  ui_manager->ShowForProfile(&profile_, GetContext());
+  views::Widget* widget = ui_manager->widget();
+  ASSERT_TRUE(widget);
+  EXPECT_TRUE(widget->IsVisible());
+  views::test::WaitForWidgetActive(widget, true);
+  EXPECT_FALSE(ui_manager->is_demoted_for_testing());
+  EXPECT_TRUE(ui_manager->IsActive());
+
+  task_environment()->FastForwardBy(
+      omnibox_everywhere::OmniboxEverywhereUIManager::kActivationGracePeriod +
+      base::Milliseconds(1));
+
+  ui_manager->OnFileChooserOpened();
+  EXPECT_TRUE(ui_manager->HasOpenModalDialog());
+
+  // Simulating deactivation while file chooser is open should NOT demote.
+  ui_manager->OnWidgetActivationChanged(widget, /*active=*/false);
+  task_environment()->FastForwardBy(base::Milliseconds(100));
+  EXPECT_FALSE(ui_manager->is_demoted_for_testing());
+  EXPECT_TRUE(ui_manager->IsActive());
+  EXPECT_TRUE(widget->IsVisible());
+
+  ui_manager->OnFileChooserClosed();
+  EXPECT_FALSE(ui_manager->HasOpenModalDialog());
+
+  // Deactivation after file chooser is closed should cleanly demote.
+  ui_manager->OnWidgetActivationChanged(widget, /*active=*/false);
+  EXPECT_TRUE(base::test::RunUntil(
+      [&]() { return ui_manager->is_demoted_for_testing(); }));
+  EXPECT_TRUE(widget->IsVisible());
+  EXPECT_FALSE(ui_manager->IsActive());
 
   ui_manager->Close();
 }
@@ -992,13 +1065,19 @@ TEST_F(OmniboxEverywhereUIManagerTest,
 
 TEST_F(OmniboxEverywhereUIManagerTest, DrivePickerStateTracking) {
   auto ui_manager = CreateUIManager();
+  ui_manager->ShowForProfile(&profile_, GetContext());
+  ASSERT_TRUE(ui_manager->web_contents());
+
   EXPECT_FALSE(ui_manager->is_drive_picker_open_for_testing());
+  EXPECT_FALSE(ui_manager->web_contents()->ShouldIgnoreInputEventsForTesting());
 
   ui_manager->OnDrivePickerOpened();
   EXPECT_TRUE(ui_manager->is_drive_picker_open_for_testing());
+  EXPECT_TRUE(ui_manager->web_contents()->ShouldIgnoreInputEventsForTesting());
 
   ui_manager->OnDrivePickerClosed();
   EXPECT_FALSE(ui_manager->is_drive_picker_open_for_testing());
+  EXPECT_FALSE(ui_manager->web_contents()->ShouldIgnoreInputEventsForTesting());
 }
 
 TEST_F(OmniboxEverywhereUIManagerTest, DismissBypassedDuringDrivePicker) {
@@ -1966,13 +2045,19 @@ TEST_F(OmniboxEverywhereUIManagerTest,
 
 TEST_F(OmniboxEverywhereUIManagerTest, ScreensharePickerStateTracking) {
   auto ui_manager = CreateUIManager();
+  ui_manager->ShowForProfile(&profile_, GetContext());
+  ASSERT_TRUE(ui_manager->web_contents());
+
   EXPECT_FALSE(ui_manager->is_screenshare_picker_open_for_testing());
+  EXPECT_FALSE(ui_manager->web_contents()->ShouldIgnoreInputEventsForTesting());
 
   ui_manager->OnScreensharePickerOpened();
   EXPECT_TRUE(ui_manager->is_screenshare_picker_open_for_testing());
+  EXPECT_TRUE(ui_manager->web_contents()->ShouldIgnoreInputEventsForTesting());
 
   ui_manager->OnScreensharePickerClosed();
   EXPECT_FALSE(ui_manager->is_screenshare_picker_open_for_testing());
+  EXPECT_FALSE(ui_manager->web_contents()->ShouldIgnoreInputEventsForTesting());
 }
 
 TEST_F(OmniboxEverywhereUIManagerTest, DismissBypassedDuringScreensharePicker) {
@@ -2055,16 +2140,18 @@ TEST_F(OmniboxEverywhereUIManagerTest, ScreenshareDisclosure_AcceptFlow) {
   ui_manager->ShowForProfile(&profile_, GetContext());
   views::Widget* widget = ui_manager->widget();
   ASSERT_TRUE(widget);
+  ASSERT_TRUE(ui_manager->web_contents());
+  EXPECT_FALSE(ui_manager->web_contents()->ShouldIgnoreInputEventsForTesting());
 
-  bool accepted = false;
-  bool cancelled = false;
-  ui_manager->ShowScreenshotDisclosureDialog(
-      base::BindOnce([](bool* a) { *a = true; }, &accepted),
-      base::BindOnce([](bool* c) { *c = true; }, &cancelled));
+  base::test::TestFuture<void> accepted_future;
+  base::test::TestFuture<void> cancelled_future;
+  ui_manager->ShowScreenshotDisclosureDialog(accepted_future.GetCallback(),
+                                             cancelled_future.GetCallback());
 
   views::Widget* disclosure_widget =
       ui_manager->disclosure_dialog_widget_for_testing();
   ASSERT_TRUE(disclosure_widget);
+  EXPECT_TRUE(ui_manager->web_contents()->ShouldIgnoreInputEventsForTesting());
   views::DialogDelegate* delegate =
       disclosure_widget->widget_delegate()->AsDialogDelegate();
   ASSERT_TRUE(delegate);
@@ -2073,10 +2160,11 @@ TEST_F(OmniboxEverywhereUIManagerTest, ScreenshareDisclosure_AcceptFlow) {
   delegate->AcceptDialog();
   waiter.Wait();
 
-  EXPECT_TRUE(accepted);
-  EXPECT_FALSE(cancelled);
+  EXPECT_TRUE(accepted_future.Wait());
+  EXPECT_FALSE(cancelled_future.IsReady());
   EXPECT_FALSE(ui_manager->is_screenshare_disclosure_open_for_testing());
   EXPECT_FALSE(ui_manager->HasOpenModalDialog());
+  EXPECT_FALSE(ui_manager->web_contents()->ShouldIgnoreInputEventsForTesting());
 }
 
 TEST_F(OmniboxEverywhereUIManagerTest, ScreenshareDisclosure_CancelFlow) {
@@ -2084,18 +2172,20 @@ TEST_F(OmniboxEverywhereUIManagerTest, ScreenshareDisclosure_CancelFlow) {
   ui_manager->ShowForProfile(&profile_, GetContext());
   views::Widget* widget = ui_manager->widget();
   ASSERT_TRUE(widget);
+  ASSERT_TRUE(ui_manager->web_contents());
+  EXPECT_FALSE(ui_manager->web_contents()->ShouldIgnoreInputEventsForTesting());
 
-  bool accepted = false;
-  bool cancelled = false;
-  ui_manager->ShowScreenshotDisclosureDialog(
-      base::BindOnce([](bool* a) { *a = true; }, &accepted),
-      base::BindOnce([](bool* c) { *c = true; }, &cancelled));
+  base::test::TestFuture<void> accepted_future;
+  base::test::TestFuture<void> cancelled_future;
+  ui_manager->ShowScreenshotDisclosureDialog(accepted_future.GetCallback(),
+                                             cancelled_future.GetCallback());
 
   views::Widget* disclosure_widget =
       ui_manager->disclosure_dialog_widget_for_testing();
   ASSERT_TRUE(disclosure_widget);
   EXPECT_TRUE(ui_manager->is_screenshare_disclosure_open_for_testing());
   EXPECT_TRUE(ui_manager->HasOpenModalDialog());
+  EXPECT_TRUE(ui_manager->web_contents()->ShouldIgnoreInputEventsForTesting());
   EXPECT_EQ(disclosure_widget->GetZOrderLevel(), widget->GetZOrderLevel());
   views::DialogDelegate* delegate =
       disclosure_widget->widget_delegate()->AsDialogDelegate();
@@ -2105,10 +2195,11 @@ TEST_F(OmniboxEverywhereUIManagerTest, ScreenshareDisclosure_CancelFlow) {
   delegate->CancelDialog();
   waiter.Wait();
 
-  EXPECT_FALSE(accepted);
-  EXPECT_TRUE(cancelled);
+  EXPECT_FALSE(accepted_future.IsReady());
+  EXPECT_TRUE(cancelled_future.Wait());
   EXPECT_FALSE(ui_manager->is_screenshare_disclosure_open_for_testing());
   EXPECT_FALSE(ui_manager->HasOpenModalDialog());
+  EXPECT_FALSE(ui_manager->web_contents()->ShouldIgnoreInputEventsForTesting());
 }
 
 TEST_F(OmniboxEverywhereUIManagerTest,
@@ -2217,8 +2308,9 @@ TEST_F(OmniboxEverywhereUIManagerTest, WindowPropertiesPersistentMode) {
   ASSERT_HRESULT_SUCCEEDED(
       pps->GetValue(PKEY_AppUserModel_ID, pv_appid.Receive()));
   EXPECT_EQ(pv_appid.get().vt, VT_LPWSTR);
-  EXPECT_NE(std::wstring(pv_appid.get().pwszVal).find(L"app_search_in_chrome"),
-            std::wstring::npos);
+  EXPECT_NE(
+      std::wstring(pv_appid.get().pwszVal).find(L"app_search_with_chrome"),
+      std::wstring::npos);
 
   // Verify RelaunchCommand.
   base::win::ScopedPropVariant pv_relaunch;
@@ -2316,7 +2408,11 @@ TEST_F(OmniboxEverywhereUIManagerTest,
 TEST_F(OmniboxEverywhereUIManagerTest, HasOpenModalDialog_RegionSelectOverlay) {
   using RegionCaptureSource = OmniboxEverywhereUIManager::RegionCaptureSource;
   auto ui_manager = CreateUIManager();
+  ui_manager->ShowForProfile(&profile_, GetContext());
+  ASSERT_TRUE(ui_manager->web_contents());
+
   EXPECT_FALSE(ui_manager->HasOpenModalDialog());
+  EXPECT_FALSE(ui_manager->web_contents()->ShouldIgnoreInputEventsForTesting());
 
   SkBitmap bitmap;
   bitmap.allocN32Pixels(100, 100);
@@ -2326,12 +2422,14 @@ TEST_F(OmniboxEverywhereUIManagerTest, HasOpenModalDialog_RegionSelectOverlay) {
   ui_manager->ShowRegionSelectOverlay(
       bitmap, RegionCaptureSource::AllDisplays(), future.GetCallback());
   EXPECT_TRUE(ui_manager->HasOpenModalDialog());
+  EXPECT_TRUE(ui_manager->web_contents()->ShouldIgnoreInputEventsForTesting());
 
   ui_manager->region_select_overlay_for_testing()
       ->GetActiveWidgetForTesting()
       ->CloseWithReason(views::Widget::ClosedReason::kEscKeyPressed);
   EXPECT_TRUE(future.IsReady());
   EXPECT_FALSE(ui_manager->HasOpenModalDialog());
+  EXPECT_FALSE(ui_manager->web_contents()->ShouldIgnoreInputEventsForTesting());
 
   ui_manager->Shutdown();
 }
@@ -2383,14 +2481,20 @@ TEST_F(OmniboxEverywhereUIManagerTest,
 
 TEST_F(OmniboxEverywhereUIManagerTest, PermissionPromptStateTracking) {
   auto ui_manager = CreateUIManager();
+  ui_manager->ShowForProfile(&profile_, GetContext());
+  ASSERT_TRUE(ui_manager->web_contents());
+
   EXPECT_FALSE(ui_manager->is_permission_prompt_open_for_testing());
+  EXPECT_FALSE(ui_manager->web_contents()->ShouldIgnoreInputEventsForTesting());
 
   ui_manager->OnPermissionPromptChanged(/*is_showing=*/true,
                                         gfx::Size(100, 100));
   EXPECT_TRUE(ui_manager->is_permission_prompt_open_for_testing());
+  EXPECT_TRUE(ui_manager->web_contents()->ShouldIgnoreInputEventsForTesting());
 
   ui_manager->OnPermissionPromptChanged(/*is_showing=*/false, gfx::Size());
   EXPECT_FALSE(ui_manager->is_permission_prompt_open_for_testing());
+  EXPECT_FALSE(ui_manager->web_contents()->ShouldIgnoreInputEventsForTesting());
 }
 
 TEST_F(OmniboxEverywhereUIManagerTest,
@@ -2436,6 +2540,74 @@ TEST_F(OmniboxEverywhereUIManagerTest, DismissBypassedDuringPermissionPrompt) {
   EXPECT_FALSE(ui_manager->is_permission_prompt_open_for_testing());
   EXPECT_FALSE(ui_manager->HasOpenModalDialog());
 
+  task_environment()->FastForwardBy(
+      omnibox_everywhere::OmniboxEverywhereUIManager::kActivationGracePeriod +
+      base::Milliseconds(1));
+  ui_manager->OnWidgetActivationChanged(widget, /*active=*/false);
+  EXPECT_TRUE(base::test::RunUntil([&]() { return !widget->IsVisible(); }));
+
+  ui_manager->Shutdown();
+}
+
+TEST_F(OmniboxEverywhereUIManagerTest, HotkeyDropdownStateTracking) {
+  auto ui_manager = CreateUIManager();
+  EXPECT_FALSE(ui_manager->is_hotkey_dropdown_open_for_testing());
+  EXPECT_FALSE(ui_manager->HasOpenModalDialog());
+
+  ui_manager->OnHotkeyDropdownOpened();
+  EXPECT_TRUE(ui_manager->is_hotkey_dropdown_open_for_testing());
+  EXPECT_TRUE(ui_manager->HasOpenModalDialog());
+
+  ui_manager->OnHotkeyDropdownClosed();
+  EXPECT_FALSE(ui_manager->is_hotkey_dropdown_open_for_testing());
+  EXPECT_FALSE(ui_manager->HasOpenModalDialog());
+}
+
+TEST_F(OmniboxEverywhereUIManagerTest, DismissBypassedDuringHotkeyDropdown) {
+  if (g_browser_process && g_browser_process->local_state()) {
+    g_browser_process->local_state()->SetBoolean(
+        omnibox_everywhere::prefs::kOmniboxEverywhereEphemeralModel, true);
+  }
+  auto ui_manager = CreateUIManager();
+
+  ui_manager->ShowForProfile(&profile_, GetContext());
+  views::Widget* widget = ui_manager->widget();
+  ASSERT_TRUE(widget);
+  EXPECT_TRUE(widget->IsVisible());
+
+  // Mark hotkey dropdown as open.
+  ui_manager->OnHotkeyDropdownOpened();
+  EXPECT_TRUE(ui_manager->is_hotkey_dropdown_open_for_testing());
+  EXPECT_TRUE(ui_manager->HasOpenModalDialog());
+
+  // Simulating deactivation while hotkey dropdown is open should NOT close
+  // the widget.
+  ui_manager->OnWidgetActivationChanged(widget, /*active=*/false);
+  EXPECT_TRUE(ui_manager->widget());
+  EXPECT_TRUE(widget->IsVisible());
+
+  // Closing hotkey dropdown posts a deactivation check.
+  ui_manager->OnHotkeyDropdownClosed();
+  EXPECT_FALSE(ui_manager->is_hotkey_dropdown_open_for_testing());
+  EXPECT_FALSE(ui_manager->HasOpenModalDialog());
+  EXPECT_TRUE(
+      ui_manager->is_hotkey_dropdown_deactivation_task_pending_for_testing());
+
+  // Reopening the hotkey dropdown should cancel the pending deactivation task.
+  ui_manager->OnHotkeyDropdownOpened();
+  EXPECT_FALSE(
+      ui_manager->is_hotkey_dropdown_deactivation_task_pending_for_testing());
+  EXPECT_TRUE(ui_manager->is_hotkey_dropdown_open_for_testing());
+
+  // Close it again, verify the pending task is scheduled, and run it.
+  ui_manager->OnHotkeyDropdownClosed();
+  EXPECT_TRUE(
+      ui_manager->is_hotkey_dropdown_deactivation_task_pending_for_testing());
+  task_environment()->FastForwardBy(base::Milliseconds(1));
+  EXPECT_FALSE(
+      ui_manager->is_hotkey_dropdown_deactivation_task_pending_for_testing());
+
+  // Advance time past the grace period and simulate deactivation.
   task_environment()->FastForwardBy(
       omnibox_everywhere::OmniboxEverywhereUIManager::kActivationGracePeriod +
       base::Milliseconds(1));

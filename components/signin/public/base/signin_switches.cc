@@ -309,7 +309,7 @@ BASE_FEATURE(kDontIncludeSIDUnsecureCookiesInGaiaAuthFetcher,
 
 // Enables fetching sync preview data from the server for accounts with refresh
 // tokens.
-BASE_FEATURE(kEnableAccountPreviewData, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kEnableAccountPreviewData, base::FEATURE_ENABLED_BY_DEFAULT);
 const base::FeatureParam<base::TimeDelta>
     kAccountPreviewDataPeriodicRefreshTiming{
         &kEnableAccountPreviewData, "AccountPreviewDataPeriodicRefreshTiming",
@@ -326,7 +326,7 @@ const base::FeatureParam<bool> kAccountPreviewDataPersistAccounts{
 // method). This flag has no effect if `kEnableAccountPreviewData` is not
 // enabled.
 BASE_FEATURE(kEnableAccountPreviewEntityPreviews,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Controls whether computing and storing the preferred account is enabled.
 // This flag has no effect if `kEnableAccountPreviewData` is not enabled.
@@ -653,11 +653,6 @@ const base::FeatureParam<base::TimeDelta> kSearchAIModePromoFrequency{
 BASE_FEATURE(kEnableWebSigninLoadingDialog, base::FEATURE_DISABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_ANDROID)
 
-#if BUILDFLAG(IS_IOS)
-BASE_FEATURE(kEnforceCanSignInToChromeCapability,
-             base::FEATURE_ENABLED_BY_DEFAULT);
-#endif
-
 #if BUILDFLAG(ENABLE_DICE_SUPPORT)
 // Enables the management disclaimer for managed signed profiles. All signed in
 // profiles that never saw the management disclaimer will be shown the
@@ -860,11 +855,6 @@ BASE_FEATURE(kProfileDiscOnAllPages, base::FEATURE_DISABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_ANDROID)
 
 BASE_FEATURE(kProfilesReordering, base::FEATURE_DISABLED_BY_DEFAULT);
-
-#if BUILDFLAG(IS_IOS)
-BASE_FEATURE(kReadContextualAccountCapabilities,
-             base::FEATURE_ENABLED_BY_DEFAULT);
-#endif
 
 #if !BUILDFLAG(IS_ANDROID)
 BASE_FEATURE(kRestrictDeviceManagementServiceOAuthScope,

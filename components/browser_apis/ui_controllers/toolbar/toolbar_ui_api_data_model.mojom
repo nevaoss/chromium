@@ -27,6 +27,7 @@ enum ContextMenuType {
   kForward,
   kHome,
   kBatterySaver,
+  kMedia,
 
   // Pinned toolbar action buttons
   kPinnedActionNewIncognitoWindow,
@@ -63,6 +64,8 @@ enum ContextMenuType {
 
 struct BackForwardButtonState {
   bool enabled;
+  // Whether the button should be shown.
+  // Corresponds to `OverflowableButtonState.shouldBeShown`.
   bool should_be_shown;
   bool is_context_menu_visible;
 };
@@ -96,7 +99,12 @@ struct OmniboxActionFocusChange {
   // `has_focus` = true.
   bool start_zero_suggest = false;
 
-  gfx.mojom.Range? selection;
+  // The version of the input on the browser side, incremented when the
+  // state is reset due to navigation or selection from completion popup.
+  // (Wraparound is OK, it looks for equality).
+  uint32 browser_version;
+
+  gfx.mojom.Range selection;
 };
 
 struct OmniboxActionTextInput {
@@ -208,6 +216,8 @@ struct ReloadControlState {
 struct SplitTabsControlState {
   bool is_current_tab_split;
   SplitTabActiveLocation location;
+  // Whether the button should be shown.
+  // Corresponds to `OverflowableButtonState.shouldBeShown`.
   bool should_be_shown;
   bool is_context_menu_visible;
 
@@ -225,17 +235,40 @@ struct BackForwardControlState {
 };
 
 struct HomeControlState {
+  // Whether the button should be shown.
+  // Corresponds to `OverflowableButtonState.shouldBeShown`.
   bool should_be_shown;
   bool is_context_menu_visible;
 };
 
 struct PerformanceInterventionControlState {
+  // Whether the button should be shown.
+  // Corresponds to `OverflowableButtonState.shouldBeShown`.
   bool should_be_shown;
   // Boolean that keeps track if the intervention button icon should be shown
   // in the active color. The intervention button should show the active color
   // when it becomes visible and stay in the active color until the user clicks
   // on the button.
   bool is_active;
+};
+
+// State of media button that shows up in toolbar when a tab is playing media.
+struct MediaControlState {
+  // If disabled, the icon is drawn grey.
+  bool enabled = true;
+  // Whether the button should be shown.
+  // Corresponds to `OverflowableButtonState.shouldBeShown`.
+  bool should_be_shown = false;
+  // Whether the context menu is currently showing.
+  bool is_context_menu_visible = false;
+};
+
+// State of the battery saver button that shows up in toolbar when battery saver
+// mode is active.
+struct BatterySaverControlState {
+  // Whether the button should be shown.
+  // Corresponds to `OverflowableButtonState.shouldBeShown`.
+  bool should_be_shown;
 };
 
 // The type of icon state for the app menu. These values drive the visual
@@ -782,7 +815,8 @@ struct NavigationControlsState {
   AppMenuControlState app_menu_control_state;
   AvatarControlState avatar_control_state;
   OverflowButtonControlState overflow_button_control_state;
-  bool battery_saver_button_visible;
+  MediaControlState media_control_state;
+  BatterySaverControlState battery_saver_control_state;
   LocationBarState location_bar_state;
   // State of extensions.
   array<extensions_bar.mojom.ExtensionActionInfo> extensions_state;
@@ -805,11 +839,6 @@ enum FocusRequestTarget {
 
   // Focus the location bar as result of user explicitly asking for it.
   kLocationBarUserInitiated,
-
-  // Focus the location bar as a result of focus restore. This should not
-  // do anything other than restoring the focus (and notifying that it
-  // happened).
-  kLocationBarFocusRestore,
 
   // Focus the location bar and activate the default search provider keyword.
   kSearch,

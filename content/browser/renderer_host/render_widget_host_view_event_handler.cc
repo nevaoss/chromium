@@ -135,6 +135,10 @@ void RenderWidgetHostViewEventHandler::SetPopupChild(
   popup_child_event_handler_ = popup_child_event_handler;
 }
 
+void RenderWidgetHostViewEventHandler::ResetHost() {
+  host_ = nullptr;
+}
+
 blink::mojom::PointerLockResult RenderWidgetHostViewEventHandler::LockPointer(
     bool request_unadjusted_movement) {
   aura::Window* root_window = window_->GetRootWindow();
@@ -592,6 +596,9 @@ void RenderWidgetHostViewEventHandler::OnGestureEvent(ui::GestureEvent* event) {
       host_->ForwardGestureEvent(fling_cancel);
     }
   }
+  if (!host_) {
+    return;
+  }
 
   if (gesture.GetType() != blink::WebInputEvent::Type::kUndefined) {
     if (event->type() == ui::EventType::kGestureScrollBegin) {
@@ -962,8 +969,9 @@ bool RenderWidgetHostViewEventHandler::ShouldMoveToCenter(
 }
 
 bool RenderWidgetHostViewEventHandler::ShouldRouteEvents() const {
-  if (!host_->delegate())
+  if (!host_->delegate()) {
     return false;
+  }
 
   // Do not route events that are currently targeted to page popups such as
   // <select> element drop-downs, since these cannot contain cross-process

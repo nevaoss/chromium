@@ -222,12 +222,6 @@ ActorKeyedService* ActorKeyedService::Get(content::BrowserContext* context) {
   return ActorKeyedServiceFactory::GetActorKeyedService(context);
 }
 
-void ActorKeyedService::SetActorUiStateManagerForTesting(
-    std::unique_ptr<ui::ActorUiStateManagerInterface> ausm) {
-  CHECK(ausm);
-  actor_ui_state_manager_ = std::move(ausm);
-}
-
 const ActorTask* ActorKeyedService::GetActingActorTaskForWebContents(
     content::WebContents* web_contents) {
   if (auto* tab_interface =
@@ -847,19 +841,6 @@ ActorTask* ActorKeyedService::GetTask(TaskId task_id) {
 
 ActorUiStateManagerInterface* ActorKeyedService::GetActorUiStateManager() {
   return actor_ui_state_manager_.get();
-}
-
-void ActorKeyedService::SetTabPendingActuation(tabs::TabHandle tab_handle) {
-  if (actor_ui_state_manager_) {
-    actor_ui_state_manager_->SetTabPendingActuation(tab_handle);
-  }
-}
-
-bool ActorKeyedService::ClearTabPendingActuation(tabs::TabHandle tab_handle) {
-  if (actor_ui_state_manager_) {
-    return actor_ui_state_manager_->ClearTabPendingActuation(tab_handle);
-  }
-  return false;
 }
 
 bool ActorKeyedService::IsActiveOnTab(const tabs::TabInterface& tab) const {

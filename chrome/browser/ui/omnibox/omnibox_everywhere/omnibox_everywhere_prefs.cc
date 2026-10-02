@@ -4,6 +4,7 @@
 
 #include "chrome/browser/ui/omnibox/omnibox_everywhere/omnibox_everywhere_prefs.h"
 
+#include <string_view>
 #include <utility>
 
 #include "base/files/file_path.h"
@@ -65,6 +66,7 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry) {
   registry->RegisterIntegerPref(kFreShortcutSetupImpressionCount, 0);
   registry->RegisterBooleanPref(kFreShortcutReminderDismissed, false);
   registry->RegisterIntegerPref(kFreShortcutReminderImpressionCount, 0);
+  registry->RegisterBooleanPref(kScreenshotDisclosureAccepted, false);
 }
 
 namespace {
@@ -126,14 +128,15 @@ FreStage GetCurrentFreStage(Profile* profile, PrefService* local_state) {
     return FreStage::kIntroModal;
   }
 
-  // Stage 2: Shortcut Setup Chin (max 3 impressions or until dismissed/set).
-  // If a hotkey is already set, skip Stage 2 setup chin and go directly to
-  // Stage 3 reminder chin.
-  if (!HasOmniboxEverywhereHotkey(resolved_local_state) &&
-      !prefs->GetBoolean(kFreShortcutSetupDismissed) &&
-      prefs->GetInteger(kFreShortcutSetupImpressionCount) <
-          kMaxFreShortcutSetupImpressions) {
-    return FreStage::kShortcutSetupChin;
+  // Stage 2: Shortcut Setup Chin.
+  // Stays active until dismissed via 'X' or until a hotkey is selected and
+  // the impression threshold is reached (on the next open).
+  if (!prefs->GetBoolean(kFreShortcutSetupDismissed)) {
+    const bool has_hotkey = HasOmniboxEverywhereHotkey(resolved_local_state);
+    if (!has_hotkey || prefs->GetInteger(kFreShortcutSetupImpressionCount) <
+                           kMaxFreShortcutSetupImpressions) {
+      return FreStage::kShortcutSetupChin;
+    }
   }
 
   // Stage 3: Shortcut Reminder Chin (max 3 impressions or until dismissed)
@@ -159,6 +162,11 @@ void IncrementFreImpression(Profile* profile, PrefService* local_state) {
     case FreStage::kIntroModal:
       prefs->SetInteger(kFreIntroImpressionCount,
                         prefs->GetInteger(kFreIntroImpressionCount) + 1);
+      if (prefs->GetInteger(kFreIntroImpressionCount) >=
+              kMaxFreIntroImpressions &&
+          HasOmniboxEverywhereHotkey(resolved_local_state)) {
+        prefs->SetBoolean(kFreShortcutSetupDismissed, true);
+      }
       break;
     case FreStage::kShortcutSetupChin: {
       // If a hotkey isn't set, impressions are not capped so the setup chin
@@ -199,6 +207,9 @@ void OnFreStageDismissed(Profile* profile,
   switch (stage) {
     case FreStage::kIntroModal:
       prefs->SetBoolean(kFreIntroDismissed, true);
+      if (HasOmniboxEverywhereHotkey(resolved_local_state)) {
+        prefs->SetBoolean(kFreShortcutSetupDismissed, true);
+      }
       break;
     case FreStage::kShortcutSetupChin: {
       prefs->SetBoolean(kFreShortcutSetupDismissed, true);
@@ -219,21 +230,15 @@ void OnFreStageDismissed(Profile* profile,
   }
 }
 
-ui::Accelerator GetDefaultOmniboxEverywhereHotkey() {
-  // TODO(crbug.com/556870238): Remove the default hotkey because
-  // shortcuts should be explicitly chosen by the user.
-  return ui::Accelerator(ui::VKEY_SPACE, ui::EF_ALT_DOWN);
-}
-
 ui::Accelerator GetOmniboxEverywhereHotkey(PrefService* local_state) {
   if (!local_state) {
-    return GetDefaultOmniboxEverywhereHotkey();
+    return ui::Accelerator();
   }
 
   const std::string hotkey_str =
       local_state->GetString(kOmniboxEverywhereHotkey);
   if (hotkey_str.empty()) {
-    return GetDefaultOmniboxEverywhereHotkey();
+    return ui::Accelerator();
   }
 
   const ui::Accelerator hotkey = ui::Command::StringToAccelerator(hotkey_str);
@@ -242,7 +247,7 @@ ui::Accelerator GetOmniboxEverywhereHotkey(PrefService* local_state) {
     return hotkey;
   }
 
-  return GetDefaultOmniboxEverywhereHotkey();
+  return ui::Accelerator();
 }
 
 void SetOmniboxEverywhereHotkey(PrefService* local_state,
@@ -251,6 +256,7 @@ void SetOmniboxEverywhereHotkey(PrefService* local_state,
     return;
   }
   local_state->SetString(kOmniboxEverywhereHotkey, hotkey_str);
+  local_state->SetBoolean(kHotkeyEnabled, true);
 }
 
 std::vector<std::string> GetOmniboxEverywhereHotkeyTokens(
@@ -351,6 +357,71 @@ bool IsOmniboxEverywhereShortcutsVisible(Profile* profile) {
   }
 
   return false;
+}
+
+bool IsScreenshotDisclosureAccepted(const PrefService* prefs) {
+  return prefs && prefs->GetBoolean(kScreenshotDisclosureAccepted);
+}
+
+bool IsScreenshotDisclosureAccepted(const Profile* profile) {
+  return profile && IsScreenshotDisclosureAccepted(profile->GetPrefs());
+}
+
+void SetScreenshotDisclosureAccepted(PrefService* prefs, bool accepted) {
+  if (prefs) {
+    prefs->SetBoolean(kScreenshotDisclosureAccepted, accepted);
+  }
+}
+
+void SetScreenshotDisclosureAccepted(Profile* profile, bool accepted) {
+  if (profile) {
+    SetScreenshotDisclosureAccepted(profile->GetPrefs(), accepted);
+  }
+}
+
+void ResetProfilePrefs(Profile* profile) {
+  if (!profile || !profile->GetPrefs()) {
+    return;
+  }
+  PrefService* prefs = profile->GetPrefs();
+  static constexpr std::string_view kProfilePrefsToClear[] = {
+      kOmniboxEverywhereShowShortcuts,
+      kOmniboxEverywhereShowAiMode,
+      kFreDismissed,
+      kFreImpressionCount,
+      kFreIntroDismissed,
+      kFreIntroImpressionCount,
+      kFreShortcutSetupDismissed,
+      kFreShortcutSetupImpressionCount,
+      kFreShortcutReminderDismissed,
+      kFreShortcutReminderImpressionCount,
+      kScreenshotDisclosureAccepted,
+  };
+  for (std::string_view pref_name : kProfilePrefsToClear) {
+    if (prefs->FindPreference(pref_name)) {
+      prefs->ClearPref(pref_name);
+    }
+  }
+}
+
+void ResetLocalStatePrefs(PrefService* local_state) {
+  if (!local_state) {
+    return;
+  }
+  static constexpr std::string_view kLocalStatePrefsToClear[] = {
+      kOmniboxEverywhereEnabled,
+      kHotkeyEnabled,
+      kOmniboxEverywhereHotkey,
+      kOmniboxEverywhereBackgroundMode,
+      kOmniboxEverywhereLaunchOnStartup,
+      kOmniboxEverywhereEphemeralModel,
+      kLastTargetProfileDir,
+  };
+  for (std::string_view pref_name : kLocalStatePrefsToClear) {
+    if (local_state->FindPreference(pref_name)) {
+      local_state->ClearPref(pref_name);
+    }
+  }
 }
 
 }  // namespace prefs

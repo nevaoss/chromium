@@ -70,6 +70,7 @@ import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.base.test.RobolectricUtil;
 import org.chromium.base.test.util.Features.DisableFeatures;
 import org.chromium.base.test.util.Features.EnableFeatures;
+import org.chromium.base.test.util.HistogramWatcher;
 import org.chromium.base.test.util.UserActionTester;
 import org.chromium.build.BuildConfig;
 import org.chromium.chrome.browser.banners.AppMenuVerbiage;
@@ -129,6 +130,7 @@ import org.chromium.chrome.test.util.browser.signin.AccountManagerTestRule;
 import org.chromium.components.browser_ui.accessibility.PageZoomIndicatorCoordinator;
 import org.chromium.components.browser_ui.styles.ChromeColors;
 import org.chromium.components.browser_ui.widget.chips.ChipView;
+import org.chromium.components.browser_ui.widget.gesture.BackPressHandler;
 import org.chromium.components.embedder_support.util.UrlConstants;
 import org.chromium.components.embedder_support.util.UrlUtilities;
 import org.chromium.components.feature_engagement.Tracker;
@@ -142,6 +144,7 @@ import org.chromium.components.omnibox.AutocompleteMatchBuilder;
 import org.chromium.components.omnibox.AutocompleteRequestType;
 import org.chromium.components.omnibox.OmniboxCapabilities;
 import org.chromium.components.omnibox.OmniboxFeatureList;
+import org.chromium.components.omnibox.OmniboxFeatures;
 import org.chromium.components.omnibox.OmniboxFocusReason;
 import org.chromium.components.omnibox.OmniboxSuggestionType;
 import org.chromium.components.omnibox.TextSelection;
@@ -448,6 +451,8 @@ public class LocationBarMediatorUnitTest {
         lenient().doReturn(mMicButton).when(mLocationBarLayout).getMicButton();
         lenient().doReturn(mNavigateButton).when(mLocationBarLayout).getNavigateButton();
         lenient().doReturn(mFocusThief).when(mLocationBarLayout).getFocusThief();
+        lenient().doReturn(false).when(mLocationBarLayout).isTooNarrowForExpandedActivationChip();
+        lenient().doReturn(false).when(mLocationBarLayout).isUrlBarTextOverflowing();
 
         mMediator =
                 new LocationBarMediator(
@@ -597,6 +602,24 @@ public class LocationBarMediatorUnitTest {
         assertEquals(text, mSessionState.getAutocompleteInput().getUserText());
     }
 
+    private void assertSelection(TextSelection selection) {
+        assertEquals(selection, mSessionState.getAutocompleteInput().getSelection());
+    }
+
+    /**
+     * Makes {@code mUrlCoordinator.requestFocus()} deliver the focus change synchronously, as the
+     * real UrlBar does.
+     */
+    private void stubSynchronousFocusOnRequest() {
+        doAnswer(
+                        invocation -> {
+                            mMediator.onUrlFocusChange(/* hasFocus= */ true);
+                            return null;
+                        })
+                .when(mUrlCoordinator)
+                .requestFocus();
+    }
+
     private void assertDraftingNoFocusProperties() {
         assertTrue(mSessionState.isSessionActive());
         assertDisplayState(DisplayState.DRAFTING_NO_FOCUS);
@@ -608,6 +631,11 @@ public class LocationBarMediatorUnitTest {
         mMediator.onFinishNativeInitialization();
         mProfileSupplier.set(mProfile);
         mMediator.beginInput(input);
+    }
+
+    /** Sets up a session in {@code displayState}, with user text that differs from the initial. */
+    private void setupSession(@DisplayState int displayState) {
+        setupSession(displayState, /* textDiffers= */ true);
     }
 
     private void setupSession(@DisplayState int displayState, boolean textDiffers) {
@@ -638,6 +666,7 @@ public class LocationBarMediatorUnitTest {
 
         mMediator.destroy();
         assertFalse(mSessionState.isSessionActive());
+        mSessionState.destroy();
         assertFalse(input.getRequestTypeSupplier().hasObservers());
     }
 
@@ -1882,6 +1911,19 @@ public class LocationBarMediatorUnitTest {
     }
 
     @Test
+    public void testBeginInput_recordsFocusReason() {
+        mMediator.onFinishNativeInitialization();
+        var watcher =
+                HistogramWatcher.newSingleRecordWatcher(
+                        "Android.OmniboxFocusReason", OmniboxFocusReason.FAKE_BOX_LONG_PRESS);
+        mMediator.beginInput(
+                new AutocompleteInput().setFocusReason(OmniboxFocusReason.FAKE_BOX_LONG_PRESS));
+        watcher.assertExpected();
+        assertTrue(mMediator.didFocusUrlFromFakebox());
+        verify(mUrlCoordinator).requestFocus();
+    }
+
+    @Test
     public void testEndInput_notFocused() {
         mMediator.endInput();
         verify(mUrlCoordinator, never()).clearFocus();
@@ -2148,6 +2190,7 @@ public class LocationBarMediatorUnitTest {
 
     @Test
     public void testSetUrlFocusChangeInProgress() {
+        OmniboxFeatures.setDebounceKeyboardVisibilityForTesting(false);
         mMediator.addUrlFocusChangeListener(mUrlCoordinator);
         mMediator.setUrlFocusChangeInProgress(/* inProgress= */ true);
         mMediator.onFinishNativeInitialization();
@@ -2176,7 +2219,34 @@ public class LocationBarMediatorUnitTest {
     }
 
     @Test
+    public void testSetUrlFocusChangeInProgress_accessibilityWorkaroundSuppressedByFlag() {
+        OmniboxFeatures.setDebounceKeyboardVisibilityForTesting(true);
+        mMediator.addUrlFocusChangeListener(mUrlCoordinator);
+        mMediator.setUrlFocusChangeInProgress(/* inProgress= */ true);
+        mMediator.onFinishNativeInitialization();
+        mProfileSupplier.set(mProfile);
+
+        AccessibilityStateTestHelper.setAccessibilityEnabledForTesting(true);
+        mMediator.beginInput(
+                new AutocompleteInput()
+                        .setUserText("text")
+                        .setFocusReason(OmniboxFocusReason.FAKE_BOX_TAP));
+        mMediator.onUrlFocusChange(/* hasFocus= */ true);
+        ShadowLooper.runUiThreadTasksIncludingDelayedTasks();
+        clearInvocations(mUrlCoordinator);
+
+        mMediator.setUrlFocusChangeInProgress(/* inProgress= */ false);
+
+        // The UrlBar must never be blurred: UrlBarCoordinator hides the keyboard on blur, and
+        // nothing re-shows it afterwards. See crbug.com/534375541.
+        verify(mUrlCoordinator, never()).clearFocus();
+        verify(mUrlCoordinator, never()).requestFocus();
+        verify(mUrlCoordinator).onUrlAnimationFinished(true);
+    }
+
+    @Test
     public void testSetUrlFocusChangeInProgress_accessibilityWorkaroundPreservesSession() {
+        OmniboxFeatures.setDebounceKeyboardVisibilityForTesting(false);
         mMediator.addUrlFocusChangeListener(mUrlCoordinator);
         mMediator.setUrlFocusChangeInProgress(/* inProgress= */ true);
         mMediator.onFinishNativeInitialization();
@@ -5125,14 +5195,7 @@ public class LocationBarMediatorUnitTest {
         mMediator.onFinishNativeInitialization();
         mProfileSupplier.set(mProfile);
 
-        // Stub requestFocus to trigger focus change synchronously.
-        doAnswer(
-                        invocation -> {
-                            mMediator.onUrlFocusChange(/* hasFocus= */ true);
-                            return null;
-                        })
-                .when(mUrlCoordinator)
-                .requestFocus();
+        stubSynchronousFocusOnRequest();
 
         // Clear invocations to start fresh.
         clearInvocations(mUrlCoordinator);
@@ -5257,6 +5320,48 @@ public class LocationBarMediatorUnitTest {
         assertEquals(TextSelection.SELECT_ALL, mSessionState.getAutocompleteInput().getSelection());
         verify(mUrlCoordinator)
                 .setUrlBarData(any(), eq(ScrollType.NO_SCROLL), eq(TextSelection.SELECT_ALL));
+    }
+
+    @Test
+    public void testFocusAndSelectAllText_fromDraftingNoFocus_refocusesWithoutRestarting() {
+        setupSession(DisplayState.DRAFTING_NO_FOCUS);
+        stubSynchronousFocusOnRequest();
+
+        mMediator.focusAndSelectAllText(OmniboxFocusReason.MENU_OR_KEYBOARD_ACTION);
+
+        assertDisplayState(DisplayState.DRAFTING);
+        assertSelection(TextSelection.SELECT_ALL);
+    }
+
+    @Test
+    public void testFocusAndSelectAllText_fromDrafting_reselectsText() {
+        setupSession(DisplayState.DRAFTING);
+
+        mMediator.focusAndSelectAllText(OmniboxFocusReason.MENU_OR_KEYBOARD_ACTION);
+
+        assertDisplayState(DisplayState.DRAFTING);
+        assertSelection(TextSelection.SELECT_ALL);
+    }
+
+    @Test
+    public void testFocusAndSelectAllText_fromSuggestions_reselectsText() {
+        setupSession(DisplayState.SUGGESTIONS);
+
+        mMediator.focusAndSelectAllText(OmniboxFocusReason.MENU_OR_KEYBOARD_ACTION);
+
+        assertDisplayState(DisplayState.SUGGESTIONS);
+        assertSelection(TextSelection.SELECT_ALL);
+    }
+
+    @Test
+    public void testFocusAndSelectAllText_withoutSession_beginsInput() {
+        mMediator.onFinishNativeInitialization();
+        mProfileSupplier.set(mProfile);
+
+        mMediator.focusAndSelectAllText(OmniboxFocusReason.MENU_OR_KEYBOARD_ACTION);
+
+        // DRAFTING rather than SUGGESTIONS: the session is still awaiting suggestions.
+        assertDisplayState(DisplayState.DRAFTING);
     }
 
     @Test
@@ -5605,106 +5710,50 @@ public class LocationBarMediatorUnitTest {
     }
 
     @Test
-    @Config(qualifiers = "w300dp")
-    public void updatesActivationChipCompact_screenWidthTriggersCompact() {
-        OmniboxCapabilities.setIsDesktopPlatformForTesting(true);
+    public void updateActivationChipCompact_narrowLocationBarTriggersCompact() {
+        OmniboxCapabilities.setIsDesktopPlatformForTesting(/* isDesktopPlatform= */ true);
+        when(mLocationBarLayout.isTooNarrowForExpandedActivationChip()).thenReturn(true);
         mMediator.updateActivationChipCompact();
         verify(mLocationBarLayout).setActivationChipCompact(true);
+    }
+
+    @Test
+    public void updateActivationChipCompact_wideLocationBarDoesNotTriggerCompact() {
+        OmniboxCapabilities.setIsDesktopPlatformForTesting(/* isDesktopPlatform= */ true);
+        when(mLocationBarLayout.isTooNarrowForExpandedActivationChip()).thenReturn(false);
+        when(mLocationBarLayout.isUrlBarTextOverflowing()).thenReturn(false);
+        mMediator.updateActivationChipCompact();
+        verify(mLocationBarLayout, never()).setActivationChipCompact(true);
     }
 
     @Test
     public void updateActivationChipCompact_textOverflowTriggersCompact() {
         OmniboxCapabilities.setIsDesktopPlatformForTesting(true);
-        when(mLocationBarLayout.getUrlBarWidth()).thenReturn(100);
-        when(mLocationBarLayout.getActivationChipCompactWidthDelta()).thenReturn(50);
-        when(mLocationBarLayout.isActivationChipCompact()).thenReturn(false);
-        when(mLocationBarLayout.getUrlBarTextWidth()).thenReturn(150);
-
-        mMediator.updateActivationChipCompact();
-
-        verify(mLocationBarLayout).setActivationChipCompact(true);
-    }
-
-    @Test
-    public void updateActivationChipCompact_safeAgainstOscillation() {
-        OmniboxCapabilities.setIsDesktopPlatformForTesting(true);
-        when(mLocationBarLayout.getUrlBarTextWidth()).thenReturn(120);
-        when(mLocationBarLayout.getActivationChipCompactWidthDelta()).thenReturn(50);
-
-        // Initial state: expanded, url bar width is 100.
-        when(mLocationBarLayout.getUrlBarWidth()).thenReturn(100);
-        when(mLocationBarLayout.isActivationChipCompact()).thenReturn(false);
+        when(mLocationBarLayout.isUrlBarTextOverflowing()).thenReturn(true);
         mMediator.updateActivationChipCompact();
         verify(mLocationBarLayout).setActivationChipCompact(true);
-
-        // Transitioned state: compact, url bar width grew to 150 because chip shrank by 50.
-        when(mLocationBarLayout.getUrlBarWidth()).thenReturn(150);
-        when(mLocationBarLayout.isActivationChipCompact()).thenReturn(true);
-        mMediator.updateActivationChipCompact();
-
-        // Should remain compact (never set to false).
-        verify(mLocationBarLayout, never()).setActivationChipCompact(false);
     }
 
     @Test
     public void updateActivationChipCompact_isTextWrappingTriggersCompact() {
         OmniboxCapabilities.setIsDesktopPlatformForTesting(true);
-        when(mLocationBarLayout.getUrlBarWidth()).thenReturn(100);
-        when(mLocationBarLayout.getUrlBarTextWidth()).thenReturn(50);
-        when(mLocationBarLayout.getActivationChipCompactWidthDelta()).thenReturn(50);
         when(mLocationBarLayout.isActivationChipCompact()).thenReturn(false);
-
         mMediator.setIsTextWrapping(true);
-
         verify(mLocationBarLayout).setActivationChipCompact(true);
     }
 
     @Test
-    public void updateActivationChipCompact_urlBarWidthIncrease() {
+    public void onLocationBarLayoutChange_triggersUpdateActivationChipCompact() {
         OmniboxCapabilities.setIsDesktopPlatformForTesting(true);
         verify(mLocationBarLayout)
                 .addOnLayoutChangeListener(mOnLayoutChangeListenerCaptor.capture());
-        when(mLocationBarLayout.getUrlBarTextWidth()).thenReturn(120);
-        when(mLocationBarLayout.getActivationChipCompactWidthDelta()).thenReturn(50);
 
-        // Initial state: overflowed with url bar width 150 (expanded baseline 100), chip is
-        // compact.
-        when(mLocationBarLayout.getUrlBarWidth()).thenReturn(150);
-        when(mLocationBarLayout.isActivationChipCompact()).thenReturn(true);
-        mMediator.updateActivationChipCompact();
+        when(mLocationBarLayout.isUrlBarTextOverflowing()).thenReturn(true);
+        when(mLocationBarLayout.isActivationChipCompact()).thenReturn(false);
 
-        // Url bar width increases to 200 (expanded baseline is now 200 - 50 = 150 > 120 text
-        // width).
-        when(mLocationBarLayout.getUrlBarWidth()).thenReturn(200);
-
-        // Simulate layout change where location bar width expands.
         mOnLayoutChangeListenerCaptor
                 .getValue()
                 .onLayoutChange(mLocationBarLayout, 0, 0, 400, 50, 0, 0, 300, 50);
-
-        verify(mLocationBarLayout).setActivationChipCompact(false);
-    }
-
-    @Test
-    public void updateActivationChipCompact_urlBarWidthDecrease() {
-        OmniboxCapabilities.setIsDesktopPlatformForTesting(true);
-        verify(mLocationBarLayout)
-                .addOnLayoutChangeListener(mOnLayoutChangeListenerCaptor.capture());
-        when(mLocationBarLayout.getUrlBarTextWidth()).thenReturn(120);
-        when(mLocationBarLayout.getActivationChipCompactWidthDelta()).thenReturn(50);
-
-        // Initial state: not overflowed with url bar width 200, chip is expanded.
-        when(mLocationBarLayout.getUrlBarWidth()).thenReturn(200);
-        when(mLocationBarLayout.isActivationChipCompact()).thenReturn(false);
-        mMediator.updateActivationChipCompact();
-
-        // Url bar width decreases to 100 (expanded baseline is 100 < 120 text width).
-        when(mLocationBarLayout.getUrlBarWidth()).thenReturn(100);
-
-        // Simulate layout change where location bar width shrinks.
-        mOnLayoutChangeListenerCaptor
-                .getValue()
-                .onLayoutChange(mLocationBarLayout, 0, 0, 200, 50, 0, 0, 300, 50);
 
         verify(mLocationBarLayout).setActivationChipCompact(true);
     }
@@ -5712,9 +5761,6 @@ public class LocationBarMediatorUnitTest {
     @Test
     public void testOnTabChanged_resetsActivationChipCompact() {
         OmniboxCapabilities.setIsDesktopPlatformForTesting(true);
-        when(mLocationBarLayout.getUrlBarWidth()).thenReturn(100);
-        when(mLocationBarLayout.getUrlBarTextWidth()).thenReturn(50);
-        when(mLocationBarLayout.getActivationChipCompactWidthDelta()).thenReturn(50);
         when(mLocationBarLayout.isActivationChipCompact()).thenReturn(false);
 
         mMediator.beginInput(mSessionState.getAutocompleteInput());
@@ -5738,5 +5784,126 @@ public class LocationBarMediatorUnitTest {
         assertTrue(mMediator.handleEscPress());
         assertEquals(DisplayState.DRAFTING, mSessionState.getAutocompleteInput().getDisplayState());
         assertAutocompleteState(AutocompleteState.STANDBY);
+    }
+
+    @Test
+    public void testSelectAllText() {
+        mMediator.beginInput(mSessionState.getAutocompleteInput());
+        clearInvocations(mUrlCoordinator);
+
+        mSessionState.getAutocompleteInput().setPreviewText("preview");
+        assertTrue(mSessionState.getAutocompleteInput().hasPreviewText());
+
+        mMediator.selectAllText();
+
+        assertFalse(mSessionState.getAutocompleteInput().hasPreviewText());
+        assertEquals("preview", mSessionState.getAutocompleteInput().getUserText());
+        assertEquals(TextSelection.SELECT_ALL, mSessionState.getAutocompleteInput().getSelection());
+        verify(mUrlCoordinator).selectAllText();
+    }
+
+    @Test
+    public void testBeginInput_searchQuery() {
+        mMediator.onFinishNativeInitialization();
+        mProfileSupplier.set(mProfile);
+
+        mMediator.beginInput(
+                new AutocompleteInput()
+                        .setUserText(TEST_USER_TEXT)
+                        .setFocusReason(OmniboxFocusReason.SEARCH_QUERY));
+        ShadowLooper.runUiThreadTasksIncludingDelayedTasks();
+
+        verify(mUrlCoordinator).requestFocus();
+        assertUserText(TEST_USER_TEXT);
+        assertEquals(
+                OmniboxFocusReason.SEARCH_QUERY,
+                mSessionState.getAutocompleteInput().getFocusReason());
+    }
+
+    @Test
+    public void testFinishUrlFocusChange_afterDestroy_isNoOp() {
+        mMediator.onFinishNativeInitialization();
+        mMediator.destroy();
+        clearInvocations(mUrlCoordinator);
+
+        mMediator.setUrlFocusChangeInProgress(false);
+        mMediator.finishUrlFocusChange(
+                /* showExpandedState= */ true, /* shouldShowKeyboard= */ true);
+
+        verify(mUrlCoordinator, never()).setKeyboardVisibility(anyBoolean(), anyBoolean());
+    }
+
+    @Test
+    public void testSetUrlFocusChangeFraction_updatesButtonVisibilityOnlyOnFocusFlip() {
+        mMediator.setVoiceRecognitionHandlerForTesting(mVoiceRecognitionHandler);
+        mMediator.onFinishNativeInitialization();
+        doReturn(true).when(mVoiceRecognitionHandler).isVoiceSearchEnabled();
+        clearInvocations(mVoiceRecognitionHandler);
+
+        // The first non-zero fraction focuses the location bar from NTP scroll...
+        mMediator.setUrlFocusChangeFraction(0.5f, 0.5f);
+        verify(mVoiceRecognitionHandler, atLeastOnce()).isVoiceSearchEnabled();
+        clearInvocations(mVoiceRecognitionHandler);
+
+        // ... subsequent fractions don't change the focus state, so buttons aren't recomputed.
+        mMediator.setUrlFocusChangeFraction(0.6f, 0.6f);
+        verify(mVoiceRecognitionHandler, never()).isVoiceSearchEnabled();
+    }
+
+    @Test
+    public void testOnIncognitoStateChanged_updatesLensButtonAndIncognitoColors() {
+        setUpFocusedOmniboxWithLens();
+
+        doReturn(false).when(mLensController).isLensEnabled(any());
+        doReturn(true).when(mLocationBarDataProvider).isIncognitoBranded();
+        mMediator.onIncognitoStateChanged();
+
+        verify(mLocationBarLayout, atLeastOnce()).setLensButtonVisibility(false);
+        verify(mUrlCoordinator).setIncognitoColorsEnabled(true);
+        clearInvocations(mLocationBarLayout, mUrlCoordinator);
+
+        doReturn(true).when(mLensController).isLensEnabled(any());
+        doReturn(false).when(mLocationBarDataProvider).isIncognitoBranded();
+        mMediator.onIncognitoStateChanged();
+
+        verify(mLocationBarLayout, atLeastOnce()).setLensButtonVisibility(true);
+        verify(mUrlCoordinator).setIncognitoColorsEnabled(false);
+    }
+
+    @Test
+    public void testOnTemplateURLServiceChanged_updatesLensButtonOnNextVisibilityUpdate() {
+        setUpFocusedOmniboxWithLens();
+
+        doReturn(true).when(mLensController).isLensEnabled(any());
+        mMediator.onTemplateURLServiceChanged();
+        // Note: the search engine change only refreshes the cached Lens eligibility; the buttons
+        // themselves are only repainted by the next visibility update.
+        verify(mLocationBarLayout, never()).setLensButtonVisibility(true);
+
+        mMediator.updateButtonVisibility();
+        verify(mLocationBarLayout, atLeastOnce()).setLensButtonVisibility(true);
+    }
+
+    @Test
+    public void testHandleBackPress_reflectedByBackPressChangedSupplier() {
+        assertFalse(mMediator.getHandleBackPressChangedSupplier().get());
+        assertEquals(BackPressHandler.BackPressResult.FAILURE, mMediator.handleBackPress());
+
+        mMediator.onUrlFocusChange(/* hasFocus= */ true);
+        assertTrue(mMediator.getHandleBackPressChangedSupplier().get());
+        assertEquals(BackPressHandler.BackPressResult.SUCCESS, mMediator.handleBackPress());
+
+        mMediator.onUrlFocusChange(/* hasFocus= */ false);
+        assertFalse(mMediator.getHandleBackPressChangedSupplier().get());
+    }
+
+    /** Focuses the phone Omnibox with an empty query and a freshly evaluated Lens eligibility. */
+    private void setUpFocusedOmniboxWithLens() {
+        mMediator.setLensControllerForTesting(mLensController);
+        mMediator.resetLastCachedIsLensOnOmniboxEnabledForTesting();
+        mMediator.onFinishNativeInitialization();
+        doReturn("").when(mUrlCoordinator).getTextWithAutocomplete();
+        mMediator.onUrlFocusChange(/* hasFocus= */ true);
+        clearInvocations(mLocationBarLayout, mUrlCoordinator);
     }
 }

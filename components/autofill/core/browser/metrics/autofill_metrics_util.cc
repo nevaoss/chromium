@@ -287,6 +287,7 @@ bool ShouldLogAutofillSuggestionShown(
     case AutofillSuggestionTriggerSource::kPasswordManagerProcessedFocusedField:
     case AutofillSuggestionTriggerSource::kManualFallbackPasswords:
     case AutofillSuggestionTriggerSource::kProactivePasswordRecovery:
+    case AutofillSuggestionTriggerSource::kGmailOneTimePasswordAvailable:
     case AutofillSuggestionTriggerSource::kAtMemoryInactivityNudge:
       return true;
     case AutofillSuggestionTriggerSource::kTextFieldValueChanged:
@@ -297,7 +298,6 @@ bool ShouldLogAutofillSuggestionShown(
     case AutofillSuggestionTriggerSource::kAtMemoryContextMenu:
     case AutofillSuggestionTriggerSource::kAtMemoryDoubleCtrl:
     case AutofillSuggestionTriggerSource::kAtMemoryKeyboardShortcut:
-    case AutofillSuggestionTriggerSource::kAtMemoryTriggerString:
       return false;
   }
 }

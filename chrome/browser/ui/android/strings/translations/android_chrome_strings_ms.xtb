@@ -664,6 +664,7 @@ Orang yang mengetahui ungkapan laluan anda sahaja yang dapat membaca data anda y
 <translation id="3649090831059057090"><ph name="WINDOW_TITLE" /> - <ph name="TAB_COUNT" /></translation>
 <translation id="3653111872753786013"><ph name="WEBSITE_TITLE" />: <ph name="WEBSITE_URL" /></translation>
 <translation id="3662363748131724714">Keluar daripada main balik benaman</translation>
+<translation id="3662595332590803433">Sentiasa buka tab tersuai dalam Chrome</translation>
 <translation id="3674208116086565128">Akses Laman Utama Apl Google</translation>
 <translation id="368329460027487650">Dilog keluar. Membuka pilihan untuk log masuk.</translation>
 <translation id="3684540848053703310">Helaian bawah cerapan harga ditutup</translation>
@@ -787,6 +788,7 @@ Orang yang mengetahui ungkapan laluan anda sahaja yang dapat membaca data anda y
 <translation id="4162867837470729563">Senarai pilihan perkongsian pada ketinggian penuh.</translation>
 <translation id="4164642020717536140">Penyemakan imbas web yang pantas dan selamat</translation>
 <translation id="4165077084524712774">Lagi alatan</translation>
+<translation id="4169156312706405526">Lampirkan fail daripada Drive</translation>
 <translation id="4170577491341606575">Mendapatkan data anda\u2026</translation>
 <translation id="4172051516777682613">Sentiasa paparkan</translation>
 <translation id="4176838562184310003">Chrome tidak dimatikan dengan betul dan boleh cuba memulihkan tetingkap dan tab anda yang hilang. Sesetengah tetingkap mungkin diminimumkan apabila dipulihkan.</translation>
@@ -1426,7 +1428,6 @@ Sebagai contoh, sesetengah laman web mungkin memberi respons kepada permintaan i
 <translation id="6642299196749785472">Lampirkan tab</translation>
 <translation id="6647441008198474441">URL yang anda lawati dihantar kepada Google untuk meramal laman yang mungkin anda lawati seterusnya</translation>
 <translation id="6648977384226967773">{CONTACT,plural, =1{<ph name="CONTACT_PREVIEW" />\u2026 dan <ph name="NUMBER_OF_ADDITIONAL_CONTACTS" /> lagi}other{<ph name="CONTACT_PREVIEW" />\u2026 dan <ph name="NUMBER_OF_ADDITIONAL_CONTACTS" /> lagi}}</translation>
-<translation id="6649642165559792194">Pratonton imej <ph name="BEGIN_NEW" />Baharu<ph name="END_NEW" /></translation>
 <translation id="6659594942844771486">Tab</translation>
 <translation id="666731172850799929">Buka dalam <ph name="APP_NAME" /></translation>
 <translation id="6669390930482049506">Beritahu saya</translation>
@@ -1517,7 +1518,6 @@ Sebagai contoh, sesetengah laman web mungkin memberi respons kepada permintaan i
 <translation id="6922812712751566567"><ph name="PERMISSION" /> <ph name="SEPARATOR" /> Chrome telah mengalih keluar kebenaran ini kerana anda belum melawati laman web ini baru-baru ini</translation>
 <translation id="6923291640965724312">Format benaman</translation>
 <translation id="6927821422725196292">{TABS_COUNT,plural, =1{1 tab}other{<ph name="NUMBER_OF_TABS" /> tab}}</translation>
-<translation id="6929224077895306814">Semua kod keselamatan yang disimpan pada peranti anda dan dalam Google Account akan dipadamkan</translation>
 <translation id="6933180670536678127"><ph name="TAB_TITLE" />, Tab Boleh Dengar Yang Tersemat Dan Dipilih</translation>
 <translation id="6937524809504266803">Pemeribadian &amp; Pemautan</translation>
 <translation id="6937876069006524083">Nama panggilan (pilihan)</translation>
@@ -1628,6 +1628,7 @@ Untuk menukar tetapan ini, <ph name="BEGIN_LINK" />padamkan data Chrome dalam ak
 <translation id="7335766481146072567">Tekan teruskan</translation>
 <translation id="7336259382292148213">Pemberitahuan nampak baik</translation>
 <translation id="7339898014177206373">Tetingkap baharu</translation>
+<translation id="7349983576451251297">Buka halaman web dalam penyemak imbas Chrome</translation>
 <translation id="7352339641508007922">Seret untuk mengambil tangkapan skrin panjang</translation>
 <translation id="7352651011704765696">Kesilapan telah berlaku</translation>
 <translation id="7353894246028566792">{NUM_SELECTED,plural, =1{Kongsi 1 item yang dipilih}other{Kongsi # item yang dipilih}}</translation>
@@ -1718,6 +1719,7 @@ Untuk menukar tetapan ini, <ph name="BEGIN_LINK" />padamkan data Chrome dalam ak
 <translation id="7690596512217303514">Peranti anda tidak dapat membuka Chrome. Untuk menyelesaikan masalah ini, muat turun kemaskinian Chrome terkini daripada gedung apl anda.</translation>
 <translation id="7692761875510935111">Buka penyemak imbas dengan pantas. Untuk mengedit pintasan ini, sentuh dan tahan butang.</translation>
 <translation id="7695270712963178084">Penemuan Chrome</translation>
+<translation id="7695610746377249436">Laman, termasuk Google, menggunakan budi bicara apabila memberikan balasan kepada permintaan ini.</translation>
 <translation id="7697383401610880082">Pemegang seret</translation>
 <translation id="7698359219371678927">Buat e-mel dalam <ph name="APP_NAME" /></translation>
 <translation id="7702420606070050505">Helaian bawah aktiviti baru-baru ini dibuka pada ketinggian penuh</translation>
@@ -1744,6 +1746,7 @@ Untuk menukar tetapan ini, <ph name="BEGIN_LINK" />padamkan data Chrome dalam ak
 <translation id="7792388396321542707">Berhenti berkongsi</translation>
 <translation id="780287761701992588">Dapatkan penanda halaman, kata laluan dan pelbagai lagi pada semua peranti anda</translation>
 <translation id="780301667611848630">Tidak, terima kasih</translation>
+<translation id="7804364787702057554">Akaun anda dalam Chrome</translation>
 <translation id="7810647596859435254">Buka dengan...</translation>
 <translation id="7814066895362068701">{FILE_COUNT,plural, =1{Semua fail, 1 fail dalam senarai}other{Semua fail, # fail dalam senarai}}</translation>
 <translation id="7815484226266492798">Tangkapan Skrin Panjang</translation>
@@ -1786,7 +1789,6 @@ Untuk menukar tetapan ini, <ph name="BEGIN_LINK" />padamkan data Chrome dalam ak
 <translation id="7968014550143838305">Ditambahkan pada senarai bacaan</translation>
 <translation id="7968982339740310781">Lihat butiran</translation>
 <translation id="7969391000881506217">Tarikh tamat tempoh*</translation>
-<translation id="7975379999046275268">Pratonton halaman <ph name="BEGIN_NEW" />Baharu<ph name="END_NEW" /></translation>
 <translation id="7977451675950311423">Memberikan amaran kepada anda jika anda menggunakan kata laluan yang telah terjejas dalam pelanggaran data.</translation>
 <translation id="7987499071758862048"><ph name="PERMISSION_1" />, <ph name="PERMISSION_2" />, <ph name="PERMISSION_3" /> <ph name="SEPARATOR" /> Chrome telah mengalih keluar kebenaran ini kerana anda belum melawati laman web ini baru-baru ini</translation>
 <translation id="799576009106109668">Anda akan menyemak imbas dengan lebih pantas kerana kandungan dimuatkan secara proaktif berdasarkan lawatan halaman web semasa anda</translation>

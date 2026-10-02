@@ -165,7 +165,12 @@ void PopulateInitialState(base::DictValue& dict,
   } else {
     dict.Set(kHomeButtonShouldBeShown, false);
   }
-  dict.Set(kBatterySaverButtonVisible, state->battery_saver_button_visible);
+  if (state->battery_saver_control_state) {
+    dict.Set(kBatterySaverButtonVisible,
+             state->battery_saver_control_state->should_be_shown);
+  } else {
+    dict.Set(kBatterySaverButtonVisible, false);
+  }
   dict.Set(kLayoutConstantsVersion, state->layout_constants_version);
   dict.Set(kTouchUi, state->touch_ui);
 }
@@ -204,6 +209,7 @@ WebUIToolbarUI::WebUIToolbarUI(content::WebUI* web_ui)
       {"homeButtonAccName", IDS_ACCNAME_HOME},
       {"homeButtonTooltip", IDS_TOOLTIP_HOME},
       {"locationAccName", IDS_ACCNAME_LOCATION},
+      {"mediaButtonTooltip", IDS_GLOBAL_MEDIA_CONTROLS_ICON_TOOLTIP_TEXT},
       {"overflowButtonTooltip", IDS_TOOLTIP_OVERFLOW_BUTTON},
       {"performanceInterventionButtonAccName",
        IDS_PERFORMANCE_INTERVENTION_BUTTON_ACCNAME},
@@ -247,10 +253,14 @@ WebUIToolbarUI::WebUIToolbarUI(content::WebUI* web_ui)
       "enableAvatarButton",
       features::IsWebUIAvatarButtonEnabled() &&
           AvatarToolbarButtonInterface::CanShowForProfile(profile));
+  source->AddBoolean("enableMediaButton",
+                     features::IsWebUIMediaButtonEnabled());
   source->AddBoolean("enableExtensionsContainer",
                      features::IsWebUIExtensionsContainerEnabled());
   source->AddBoolean("enablePerformanceInterventionButton",
                      features::IsWebUIPerformanceInterventionButtonEnabled());
+  source->AddBoolean("enablePageActionsElevatedToolbar",
+                     features::IsPageActionsElevatedToolbarEnabled());
 
   // Omnibox config:
   source->AddBoolean("reportMetrics", true);
@@ -573,7 +583,8 @@ WebUIToolbarUI::GetKnownElementIdentifiers() {
        PermissionChipView::kIndicatorChipElementId,
        kToolbarBatterySaverButtonElementId,
        kExtensionsMenuButtonElementId,
-       kToolbarActionViewElementId});
+       kToolbarActionViewElementId,
+       kToolbarMediaButtonElementId});
   auto result = webui_toolbar::GetPinnedToolbarActionElementIds();
   std::vector<ui::ElementIdentifier> content_setting_identifiers =
       ContentSettingImageModel::GetAllElementIdentifiers();

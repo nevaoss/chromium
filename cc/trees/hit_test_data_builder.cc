@@ -49,7 +49,44 @@ uint32_t GetFlagsForSurfaceLayer(const SurfaceLayerImpl* layer) {
   } else {
     flags |= viz::HitTestRegionFlags::kHitTestMine;
   }
+  if (layer->has_pointer_events_none()) {
+    flags |= viz::HitTestRegionFlags::kHitTestIgnore;
+  }
   return flags;
+}
+
+struct SurfaceHitTestGeometry {
+  // The hit test rect of the surface with the device scale factor applied.
+  gfx::RRectF hit_test_rect;
+  // True if the geometry requires async hit testing.
+  bool requires_async_hit_test;
+};
+
+// Helper function that computes hit test geometry for `surface_layer` and
+// determines whether its clip requires async hit testing.
+SurfaceHitTestGeometry ComputeSurfaceHitTestGeometry(
+    const SurfaceLayerImpl& surface_layer,
+    const EffectTree& effect_tree,
+    float device_scale_factor) {
+  // Using the enclosing rect to ensure antialiased boundary pixels cause
+  // pointer input to be routed to this layer.
+  gfx::RRectF hit_test_rect(gfx::ScaleToEnclosingRect(
+      gfx::Rect(surface_layer.bounds()), device_scale_factor));
+
+  bool layer_hit_test_region_is_masked =
+      effect_tree.HitTestMayBeAffectedByMask(surface_layer.effect_tree_index());
+  if (surface_layer.is_clipped() || layer_hit_test_region_is_masked) {
+    bool layer_hit_test_region_is_rectangle =
+        !layer_hit_test_region_is_masked &&
+        surface_layer.ScreenSpaceTransform().Preserves2dAxisAlignment() &&
+        effect_tree.ClippedHitTestRegionIsRectangle(
+            surface_layer.effect_tree_index());
+    hit_test_rect = gfx::RRectF(
+        gfx::ScaleToEnclosingRect(surface_layer.visible_layer_rect(),
+                                  device_scale_factor, device_scale_factor));
+    return {hit_test_rect, !layer_hit_test_region_is_rectangle};
+  }
+  return {hit_test_rect, false};
 }
 
 void PopulateHitTestRegion(viz::HitTestRegion* hit_test_region,
@@ -94,7 +131,8 @@ std::optional<viz::HitTestRegionList> HitTestDataBuilder::Build() && {
   hit_test_region_list->bounds = active_tree_->GetDeviceViewport();
   hit_test_region_list->transform = active_tree_->DrawTransform();
 
-  float device_scale_factor = active_tree_->device_scale_factor();
+  const float device_scale_factor = active_tree_->device_scale_factor();
+  const EffectTree& effect_tree = active_tree_->property_trees()->effect_tree();
 
   for (const auto* layer : base::Reversed(*active_tree_)) {
     const SurfaceLayerImpl* surface_layer = EvaluateLayerAndTrackOverlap(layer);
@@ -102,45 +140,23 @@ std::optional<viz::HitTestRegionList> HitTestDataBuilder::Build() && {
       continue;
     }
 
-    // Using the enclosing rect to ensure antialiased boundary pixels cause
-    // pointer input to be routed to this layer.
-    gfx::Rect content_rect(gfx::ScaleToEnclosingRect(
-        gfx::Rect(surface_layer->bounds()), device_scale_factor));
-
-    auto flag = GetFlagsForSurfaceLayer(surface_layer);
+    uint32_t flags = GetFlagsForSurfaceLayer(surface_layer);
     uint32_t async_hit_test_reasons =
         viz::AsyncHitTestReasons::kNotAsyncHitTest;
-    if (surface_layer->has_pointer_events_none()) {
-      flag |= viz::HitTestRegionFlags::kHitTestIgnore;
-    }
     if (IsSurfaceOverlapped(surface_layer)) {
-      flag |= viz::HitTestRegionFlags::kHitTestAsk;
+      flags |= viz::HitTestRegionFlags::kHitTestAsk;
       async_hit_test_reasons |= viz::AsyncHitTestReasons::kOverlappedRegion;
     }
-    bool layer_hit_test_region_is_masked =
-        active_tree_->property_trees()
-            ->effect_tree()
-            .HitTestMayBeAffectedByMask(surface_layer->effect_tree_index());
-    if (surface_layer->is_clipped() || layer_hit_test_region_is_masked) {
-      bool layer_hit_test_region_is_rectangle =
-          !layer_hit_test_region_is_masked &&
-          surface_layer->ScreenSpaceTransform().Preserves2dAxisAlignment() &&
-          active_tree_->property_trees()
-              ->effect_tree()
-              .ClippedHitTestRegionIsRectangle(
-                  surface_layer->effect_tree_index());
-      content_rect =
-          gfx::ScaleToEnclosingRect(surface_layer->visible_layer_rect(),
-                                    device_scale_factor, device_scale_factor);
-      if (!layer_hit_test_region_is_rectangle) {
-        flag |= viz::HitTestRegionFlags::kHitTestAsk;
-        async_hit_test_reasons |= viz::AsyncHitTestReasons::kIrregularClip;
-      }
+    const SurfaceHitTestGeometry geometry = ComputeSurfaceHitTestGeometry(
+        *surface_layer, effect_tree, device_scale_factor);
+    if (geometry.requires_async_hit_test) {
+      flags |= viz::HitTestRegionFlags::kHitTestAsk;
+      async_hit_test_reasons |= viz::AsyncHitTestReasons::kIrregularClip;
     }
     const auto& surface_id = surface_layer->range().end();
     hit_test_region_list->regions.emplace_back();
-    PopulateHitTestRegion(&hit_test_region_list->regions.back(), layer, flag,
-                          async_hit_test_reasons, gfx::RRectF(content_rect),
+    PopulateHitTestRegion(&hit_test_region_list->regions.back(), layer, flags,
+                          async_hit_test_reasons, geometry.hit_test_rect,
                           surface_id, device_scale_factor);
   }
 

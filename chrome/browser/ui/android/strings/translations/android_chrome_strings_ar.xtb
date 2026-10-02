@@ -665,6 +665,7 @@
 <translation id="3649090831059057090">‫<ph name="WINDOW_TITLE" /> ‏- <ph name="TAB_COUNT" /></translation>
 <translation id="3653111872753786013"><ph name="WEBSITE_TITLE" />: <ph name="WEBSITE_URL" /></translation>
 <translation id="3662363748131724714">الخروج من وضع "التشغيل الغامر"</translation>
+<translation id="3662595332590803433">‏فتح علامات التبويب المخصّصة دائمًا في Chrome</translation>
 <translation id="3674208116086565128">‏الانتقال إلى "الصفحة الرئيسية" في تطبيق Google</translation>
 <translation id="368329460027487650">تم تسجيل الخروج. سيتم فتح خيارات لتسجيل الدخول.</translation>
 <translation id="3684540848053703310">البطاقة السفلية للمعلومات المفصّلة عن الأسعار مُغلقة</translation>
@@ -1427,7 +1428,6 @@
 <translation id="6642299196749785472">إرفاق علامات تبويب</translation>
 <translation id="6647441008198474441">‏يتم إرسال عناوين URL التي تزورها إلى Google لتوقّع المواقع الإلكترونية التي ستزورها بعد ذلك.</translation>
 <translation id="6648977384226967773">{CONTACT,plural, =1{‏<ph name="CONTACT_PREVIEW" />\u2026 وجهة اتصال إضافية واحدة <ph name="NUMBER_OF_ADDITIONAL_CONTACTS" />}zero{‏<ph name="CONTACT_PREVIEW" />\u2026 و<ph name="NUMBER_OF_ADDITIONAL_CONTACTS" /> جهة اتصال إضافية}two{‏<ph name="CONTACT_PREVIEW" />\u2026 وجهتا اتصال إضافيتان (<ph name="NUMBER_OF_ADDITIONAL_CONTACTS" />)}few{‏<ph name="CONTACT_PREVIEW" />\u2026 و<ph name="NUMBER_OF_ADDITIONAL_CONTACTS" /> جهات اتصال إضافية}many{‏<ph name="CONTACT_PREVIEW" />\u2026 و<ph name="NUMBER_OF_ADDITIONAL_CONTACTS" /> جهة اتصال إضافية}other{‏<ph name="CONTACT_PREVIEW" />\u2026 و<ph name="NUMBER_OF_ADDITIONAL_CONTACTS" /> جهة اتصال إضافية}}</translation>
-<translation id="6649642165559792194">معاينة صورة <ph name="BEGIN_NEW" />ميزة جديدة<ph name="END_NEW" /></translation>
 <translation id="6659594942844771486">‏مفتاح Tab</translation>
 <translation id="666731172850799929">الفتح في <ph name="APP_NAME" /></translation>
 <translation id="6669390930482049506">تفعيل الإشعارات</translation>
@@ -1518,7 +1518,6 @@
 <translation id="6922812712751566567">‏<ph name="PERMISSION" /> <ph name="SEPARATOR" /> أزال Chrome هذا الإذن لأنك لم تزُر هذا الموقع الإلكتروني مؤخرًا</translation>
 <translation id="6923291640965724312">تنسيق غامر</translation>
 <translation id="6927821422725196292">{TABS_COUNT,plural, =1{علامة تبويب واحدة}zero{‫<ph name="NUMBER_OF_TABS" /> علامة تبويب}two{علامتا تبويب (<ph name="NUMBER_OF_TABS" />)}few{‫<ph name="NUMBER_OF_TABS" /> علامات تبويب}many{‫<ph name="NUMBER_OF_TABS" /> علامة تبويب}other{‫<ph name="NUMBER_OF_TABS" /> علامة تبويب}}</translation>
-<translation id="6929224077895306814">‏سيتم حذف كل رموز الأمان المحفوظة على جهازك وفي حسابك على Google.</translation>
 <translation id="6933180670536678127">‫"<ph name="TAB_TITLE" />"، علامة تبويب مثبَّتة تشغّل صوتًا وتم اختيارها</translation>
 <translation id="6937524809504266803">الخيارات المخصَّصة والربط</translation>
 <translation id="6937876069006524083">اللقب (اختياري)</translation>
@@ -1631,6 +1630,7 @@
 <translation id="7335766481146072567">اضغط على "متابعة"</translation>
 <translation id="7336259382292148213">ما مِن إشعارات بحاجة إلى مراجعة</translation>
 <translation id="7339898014177206373">نافذة جديدة</translation>
+<translation id="7349983576451251297">‏سيتم فتح صفحات الويب في متصفّح Chrome بدلاً من علامات التبويب المخصّصة</translation>
 <translation id="7352339641508007922">اسحب النافذة للحصول على لقطة شاشة طويلة.</translation>
 <translation id="7352651011704765696">حدث خطأ</translation>
 <translation id="7353894246028566792">{NUM_SELECTED,plural, =1{مشاركة عنصر واحد محدد}zero{مشاركة # عنصر محدد}two{مشاركة عنصرين (#) محددين}few{مشاركة # عناصر محددة}many{مشاركة # عنصرًا محددًا}other{مشاركة # عنصر محدد}}</translation>
@@ -1721,6 +1721,7 @@
 <translation id="7690596512217303514">‏لا يمكن فتح Chrome على جهازك. لحلّ هذه المشكلة، عليك تنزيل تحديث Chrome الأخير من متجر التطبيقات.</translation>
 <translation id="7692761875510935111">يفتح الاختصار الرابط بسرعة في المتصفِّح. ولتعديل هذا الاختصار، يُرجى النقر مع الاستمرار.</translation>
 <translation id="7695270712963178084">‏ميزة "البحث على Chrome"</translation>
+<translation id="7695610746377249436">‏تردّ المواقع الإلكترونية، بما في ذلك Google، على هذا الطلب وفق تقديرها الخاص.</translation>
 <translation id="7697383401610880082">مقبض السحب</translation>
 <translation id="7698359219371678927">إنشاء بريد إلكتروني في <ph name="APP_NAME" /></translation>
 <translation id="7702420606070050505">تم فتح بطاقة الأنشطة الحديثة السفلية بطول الشاشة</translation>
@@ -1747,6 +1748,7 @@
 <translation id="7792388396321542707">إيقاف المشاركة</translation>
 <translation id="780287761701992588">سترافقك إشاراتك المرجعية وكلمات مرورك وغيرها على جميع أجهزتك</translation>
 <translation id="780301667611848630">لا، شكرًا</translation>
+<translation id="7804364787702057554">‏حسابك في Chrome</translation>
 <translation id="7810647596859435254">فتح باستخدام...</translation>
 <translation id="7814066895362068701">{FILE_COUNT,plural, =1{تحتوي القائمة على ملف واحد من إجمالي الملفات.}zero{تحتوي القائمة على # ملف من إجمالي الملفات.}two{تحتوي القائمة على ملفيَن من إجمالي الملفات.}few{تحتوي القائمة على # ملفات من إجمالي الملفات.}many{تحتوي القائمة على # ملفًا من إجمالي الملفات.}other{تحتوي القائمة على # ملف من إجمالي الملفات.}}</translation>
 <translation id="7815484226266492798">لقطة شاشة طويلة</translation>
@@ -1789,7 +1791,6 @@
 <translation id="7968014550143838305">تمت الإضافة إلى قائمة القراءة.</translation>
 <translation id="7968982339740310781">عرض التفاصيل</translation>
 <translation id="7969391000881506217">تاريخ انتهاء الصلاحية*</translation>
-<translation id="7975379999046275268">معاينة صفحة <ph name="BEGIN_NEW" />ميزة جديدة<ph name="END_NEW" /></translation>
 <translation id="7977451675950311423">ستتلقّى تحذيرًا إذا كنت تستخدم كلمة مرور تم اختراقها في عملية اختراق للبيانات.</translation>
 <translation id="7987499071758862048">‏<ph name="PERMISSION_1" /> و<ph name="PERMISSION_2" /> و<ph name="PERMISSION_3" /> <ph name="SEPARATOR" /> أزال Chrome هذه الأذونات لأنك لم تزُر هذا الموقع الإلكتروني مؤخرًا</translation>
 <translation id="799576009106109668">ستتمكّن من التصفُّح بشكلٍ أسرع لأنه يتم تحميل المحتوى مسبقًا استنادًا إلى زيارتك الحالية لصفحة الويب</translation>

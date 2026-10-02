@@ -121,12 +121,13 @@ class WTF_EXPORT String {
   [[nodiscard]] static String Number(unsigned long long value);
   [[nodiscard]] static String Number(float);
 
-  [[nodiscard]] static String Number(double, unsigned precision = 6);
+  [[nodiscard]] static String Number(double, wtf_size_t precision = 6);
 
   // Number to String conversion following the ECMAScript definition.
   [[nodiscard]] static String NumberToStringEcmaScript(double);
-  [[nodiscard]] static String NumberToStringFixedWidth(double,
-                                                       unsigned decimal_places);
+  [[nodiscard]] static String NumberToStringFixedWidth(
+      double,
+      wtf_size_t decimal_places);
 
   // Serializes an unsigned 64-bit integer in hex. This adds no padding,
   // uses lowercase letters for a-f, and adds no "0x" prefix.
@@ -678,15 +679,6 @@ template <wtf_size_t kInlineCapacity>
 String::String(const Vector<UChar, kInlineCapacity>& vector)
     : impl_(vector.size() ? StringImpl::Create(vector) : StringImpl::empty_) {}
 
-inline bool String::ContainsOnlyLatin1OrEmpty() const {
-  if (empty())
-    return true;
-
-  if (Is8Bit())
-    return true;
-
-  return std::ranges::all_of(Span16(), [](UChar ch) { return ch < 0x0100; });
-}
 
 #ifdef __OBJC__
 // This is for situations in WebKit where the long standing behavior has been

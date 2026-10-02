@@ -101,8 +101,11 @@ export const ComposeboxEmbedderMixin =
             showContextMenuDescription: {type: Boolean},
             smartTabSharingActive: {type: Boolean},
             smartTabSharingVisible: {type: Boolean},
-            contextManagementInComposeboxEnabled: {type: Boolean},
             composeboxContextMenuTooltipsEnabled: {type: Boolean},
+            contextManagementInComposeboxEnabled: {
+              reflect: true,
+              type: Boolean,
+            },
             shouldShowGhostFiles: {type: Boolean},
             showMenuOnClick: {type: Boolean},
             submitButtonIconType: {type: String},
@@ -725,6 +728,12 @@ export const ComposeboxEmbedderMixin =
         // Common event handlers
         // =====================================================================
 
+        // Used in composeboxes that specifically render the voice search
+        // component internally instead of at the parent level.
+        // Example: NTP composebox, omnibox popup, contextual tasks.
+        // Examples of embedders that render voice search at the app level
+        // rather than inside composebox: Omnibox Everywhere.
+        // Receives events from the inner voice search component.
         onVoicePermissionChanged(e: CustomEvent<VoicePermissionPromptState>) {
           if (e.detail.isOpened) {
             // Only for when the permission prompt is showing, fire a resize
@@ -836,6 +845,17 @@ export const ComposeboxEmbedderMixin =
 
           const allowedTypes = this.inputState.allowedInputTypes;
           this.attachedContext.forEach((file, uuid) => {
+            // Ghost files are placeholders created from an upload status
+            // update before the frontend learned what the context actually is.
+            // Their `inputType` is a placeholder value, so they must not be
+            // evaluated against the allowed input types; doing so would delete
+            // context that is still being attached and tear down its
+            // browser-side upload. They are re-evaluated once hydrated.
+            // TODO(b/537852029): Remove once ghost files carry a real input
+            // type.
+            if (file.isGhost) {
+              return;
+            }
             if (!allowedTypes.includes(file.inputType)) {
               this.deleteFile(uuid);
             }
@@ -2695,6 +2715,7 @@ export const ComposeboxEmbedderMixin =
               isDeletable: true,
               iconName: null,
               supportsUnimodal: true,
+              isGhost: true,
             };
             // Update pending uploads in 'composebox.ts' to disable
             // submit button.

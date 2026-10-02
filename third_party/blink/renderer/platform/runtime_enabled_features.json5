@@ -563,15 +563,6 @@
       status: "experimental",
     },
     {
-      name: "AllowSameSiteNoneCookiesInSandbox",
-      base_feature: "none",
-
-      // No status because this blink runtime feature doesn't work by itself.
-      // It's controlled by the corresponding Chromium feature,
-      // net::features::kAllowSameSiteNoneCookiesInSandbox, which needs to be
-      // enabled to make the whole feature work.
-    },
-    {
       name: "AllowSvgUseToReferenceExternalDocumentRoot",
       status: "stable",
     },
@@ -1095,6 +1086,11 @@
       status: "experimental",
     },
     {
+      // Enables icon-only mode for capability elements.
+      // https://issues.chromium.org/issues/514564817
+      name: "CapabilityElementIconOnlyMode",
+    },
+    {
       name: "CaptureController",
       status: {"Android": "", "default": "stable"},
     },
@@ -1546,6 +1542,19 @@
       // Ship in M150, should be removed in M152.
       name: "CSSBackgroundClipBorderArea",
       status: "stable",
+    },
+    {
+      // Makes the computed value of the background-* longhands keep the number
+      // of comma-separated values the author specified, instead of repeating or
+      // truncating it to the background-image layer count. Repeating and
+      // truncating are used-value behaviour: "The computed values of the
+      // coordinating list properties are not affected by such truncation or
+      // repetition."
+      // https://drafts.csswg.org/css-values-4/ Appendix A
+      // https://drafts.csswg.org/css-backgrounds/#layering
+      // https://github.com/w3c/csswg-drafts/issues/7164
+      name: "CSSBackgroundLayerCountIndependence",
+      status: "test",
     },
     // https://chromestatus.com/feature/5459864205393920
     {
@@ -2256,7 +2265,10 @@
     },
     {
       name: "DesktopPWAsAdditionalWindowingControls",
-      status: "experimental",
+      status: {
+        "ChromeOS": "stable",
+        "default": "experimental",
+      },
     },
     {
       name: "DesktopPWAsAdditionalWindowingControlsOnMove",
@@ -3841,10 +3853,6 @@
     },
     {
       name: "LayoutOOFCollectInlinesFix",
-      status: "stable",
-    },
-    {
-      name: "LayoutTableCellAlignmentSafe",
       status: "stable",
     },
     {
@@ -6369,6 +6377,11 @@
       status: "stable",
     },
     {
+      // crbug.com/556432992
+      name: "TextOverflowInTextarea",
+      status: "stable",
+    },
+    {
       // https://crbug.com/41492459
       name: "TextOverflowString",
       status: "experimental",
@@ -6475,6 +6488,10 @@
       base_feature: "none",
     },
     {
+      name: "TrackAnimatedSources",
+      status: "test",
+    },
+    {
       name: "TransferableRTCDataChannel",
       status: "stable",
     },
@@ -6554,7 +6571,10 @@
       // privileged UI to depend on this feature. The flag is here as a kill
       // switch. Importantly, open web content still requires
       // UnboundedElementOnTheOpenWeb to be enabled.
+      // There is an override in SetCustomizedRuntimeFeaturesFromCombinedArgs to ensure this
+      // is only enabled for Android U+, which is the minimum version the platform supports.
       name: "UnboundedElement",
+      public: true,
       status: "stable",
       implied_by: ["UnboundedElementOnTheOpenWeb"],
     },
@@ -6562,6 +6582,7 @@
       // The Unbounded Element API. See crbug.com/508672616.
       // Enable Unbounded Element on the open web without privileged context.
       name: "UnboundedElementOnTheOpenWeb",
+      public: true,
     },
     {
       name: "UnclosedFormControlIsInvalid",
@@ -6963,7 +6984,7 @@
       //
       // https://chromestatus.com/feature/5198951632470016
       name: "WebCryptoPQC",
-      origin_trial_feature_name: "WebCryptoAdditionalAlgorithms202606",
+      status: "stable",
     },
     {
       name: "WebGLDeveloperExtensions",
@@ -7071,10 +7092,8 @@
     },
     {
       name: "WebIdentityDigitalCredentialsCreation",
-      origin_trial_feature_name: "WebIdentityDigitalCredentialsCreation",
-      origin_trial_allows_third_party: true,
       public: true,
-      status: "experimental",
+      status: "stable",
       base_feature: "none",
     },
     // Kill switch for making BigInt handling in WebIDL use ToBigInt.
@@ -7222,6 +7241,11 @@
       name: "WebTransportCustomCertificates",
       origin_trial_feature_name: "WebTransportCustomCertificates",
       status: "stable",
+      base_feature: "none",
+    },
+    {
+      name: "WebTransportDatagramsReadableType",
+      status: "experimental",
       base_feature: "none",
     },
     {
@@ -7466,7 +7490,7 @@
       // with its responseXML document.
       // https://crbug.com/466303347
       name: "XMLRustForNonXslt",
-      status: "stable",
+      status: "experimental",
     },
     {
       name: "XMLSerializerConsistentDefaultNsDeclMatching",

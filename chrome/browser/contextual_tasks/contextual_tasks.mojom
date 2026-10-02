@@ -368,6 +368,12 @@ interface Page {
   // Called by the browser process (C++) to notify the UI that a tracked window
   // was closed.
   OnWindowClosed(ContextualWindowId window_id);
+
+  // Requests the side panel UI to reset its state for an in-place fresh thread
+  // (e.g. triggered by an omnibox page action on an already-open side panel).
+  // Navigates the embedded webview in-place to `thread_url`, clears composebox
+  // inputs, and resets active tab context to get contextual suggestions.
+  ResetForNewThread(mojo_base.mojom.Uuid task_id, url.mojom.Url thread_url);
 };
 
 // Used to bootstrip bi-directional communication between the browser and webui.
@@ -387,7 +393,7 @@ interface ExtensionPageHandlerFactory {
 
 // Browser-side handler for requests from the extension frame.
 // Implemented in C++ (ContextualTasksExtensionHandler) and called from
-// HTML/TS client (input_plate.ts) in the extension context.
+// HTML/TS client in the extension context.
 // Provides APIs to bootstrap communication and send messages from the webview
 // back to the browser.
 interface ExtensionPageHandler {
@@ -419,7 +425,7 @@ interface ExtensionPageHandler {
 };
 
 // Extension-side handler for requests from the browser process.
-// Implemented in HTML/TS (input_plate.ts) and called from C++
+// Implemented in HTML/TS and called from C++
 // (ContextualTasksExtensionHandler) to control the extension UI and forward
 // messages from the browser to the webview.
 interface ExtensionPage {

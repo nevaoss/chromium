@@ -1291,7 +1291,6 @@ void AutofillAgent::TriggerSuggestions(
       case kAtMemoryContextMenu:
       case kAtMemoryDoubleCtrl:
       case kAtMemoryKeyboardShortcut:
-      case kAtMemoryTriggerString:
         return true;
       case kUnspecified:
       case kFormControlElementClicked:
@@ -1305,6 +1304,7 @@ void AutofillAgent::TriggerSuggestions(
       case kManualFallbackPasswords:
       case kPasswordManagerProcessedFocusedField:
       case kProactivePasswordRecovery:
+      case kGmailOneTimePasswordAvailable:
       case kGlic:
       case kAtMemoryInactivityNudge:
         return false;
@@ -1522,12 +1522,12 @@ bool AutofillAgent::ShouldThrottleAskForValuesToFill(
       case kAtMemoryDoubleCtrl:
       case kAtMemoryInactivityNudge:
       case kAtMemoryKeyboardShortcut:
-      case kAtMemoryTriggerString:
       case kComposeDelayedProactiveNudge:
       case kComposeDialogLostFocus:
       case kManualFallbackPasswords:
       case kGlic:
       case kProactivePasswordRecovery:
+      case kGmailOneTimePasswordAvailable:
         // These sources are used for explicit user actions or by the browser
         // process. To maximize their reliability, we do not throttle them.
         if (base::FeatureList::IsEnabled(

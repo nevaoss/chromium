@@ -918,7 +918,8 @@ public abstract class ChromeFeatureList {
                     : Map.ofEntries(
                             Map.entry(ACCOUNT_FOR_SUPPRESSED_KEYBOARD_INSETS, true),
                             Map.entry(ANDROID_THEME_MODULE, true),
-                            Map.entry(ANDROID_THEME_RESOURCE_PROVIDER, false));
+                            Map.entry(ANDROID_THEME_RESOURCE_PROVIDER, false),
+                            Map.entry(UNIVERSAL_KEYBOARD_HANDLING, true));
 
     // keep-sorted start group_prefixes=["public static final CachedFlag"]
     public static final CachedFlag sAccountPickerDialog =
@@ -1175,7 +1176,7 @@ public abstract class ChromeFeatureList {
     public static final CachedFlag sEnableAndroidSidePanel =
             newCachedFlag(
                     ENABLE_ANDROID_SIDE_PANEL,
-                    /* defaultValue= */ false,
+                    /* defaultValue= */ BuildConfig.IS_DESKTOP_ANDROID,
                     // In http://crrev.com/c/7689838, "defaultValueInTests" was set to
                     // true for testing purposes. Detailed reasons are in that CL's commit message.
                     //
@@ -1980,6 +1981,10 @@ public abstract class ChromeFeatureList {
             newBooleanCachedFeatureParam(ANDROID_BOTTOM_BAR, "show_update_badge", true);
     // go/keep-sorted end
 
+    public static final BooleanCachedFeatureParam sAndroidVerticalTabsBlockDrawOnColdStart =
+            newBooleanCachedFeatureParam(
+                    ANDROID_VERTICAL_TABS, "block_draw_on_cold_start", /* defaultValue= */ true);
+
     public static final BooleanCachedFeatureParam sAndroidVerticalTabsEnableByDefault =
             newBooleanCachedFeatureParam(
                     ANDROID_VERTICAL_TABS, "enable_by_default", /* defaultValue= */ false);
@@ -2346,6 +2351,7 @@ public abstract class ChromeFeatureList {
                     sAndroidTipsNotificationsResetFeatureTipShown,
                     sAndroidTipsNotificationsV2CooldownDays,
                     sAndroidTipsNotificationsV2MaxShowCount,
+                    sAndroidVerticalTabsBlockDrawOnColdStart,
                     sAndroidVerticalTabsEnableByDefault,
                     sBackgroundThreadPoolFieldTrialConfig,
                     sCctAdaptiveButtonContextualOnly,
@@ -2441,6 +2447,18 @@ public abstract class ChromeFeatureList {
                             "remote_group_operations", false);
     public static final MutableBooleanParamWithSafeDefault sInlinePdfV2EnableFormFilling =
             sInlinePdfV2.newBooleanParam("enable_form_filling", false);
+    public static final MutableBooleanParamWithSafeDefault
+            sOnDemandBackgroundTabContextCaptureLimitConcurrentLoadIfNeeded =
+                    sOnDemandBackgroundTabContextCaptureOptimization.newBooleanParam(
+                            "limit_concurrent_load_if_needed", true);
+    public static final MutableIntParamWithSafeDefault
+            sOnDemandBackgroundTabContextCaptureMaximumConcurrentLoadIfNeeded =
+                    sOnDemandBackgroundTabContextCaptureOptimization.newIntParam(
+                            "maximum_concurrent_load_if_needed", 4);
+    public static final MutableIntParamWithSafeDefault
+            sOnDemandBackgroundTabContextCaptureMinimumConcurrentLoadIfNeeded =
+                    sOnDemandBackgroundTabContextCaptureOptimization.newIntParam(
+                            "minimum_concurrent_load_if_needed", 1);
     public static final MutableBooleanParamWithSafeDefault sOnDemandBackgroundTabEnableFirstPaint =
             sOnDemandBackgroundTabContextCaptureOptimization.newBooleanParam(
                     "enable_first_paint", true);

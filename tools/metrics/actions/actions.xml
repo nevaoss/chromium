@@ -427,7 +427,6 @@ should be able to be added at any place in this file.
   <variant name="_DownloadSettings" summary="For DownloadSettings feature."/>
   <variant name="_DownloadToolbarButton"
       summary="For Download toolbar button feature."/>
-  <variant name="_EphemeralTab" summary="For Ephemeral Tab."/>
   <variant name="_ExperimentalAIPromo" summary="For Experimental AI feature."/>
   <variant name="_ExplicitBrowserSigninPreferenceRemembered"
       summary="For Explicit Browser Signin Preference Remembered feature."/>
@@ -805,8 +804,6 @@ should be able to be added at any place in this file.
       summary="For ReadLaterAppMenuBookmarkThisPage feature."/>
   <variant name="_ReadLaterBottomSheet"
       summary="For ReadLaterBottomSheet feature."/>
-  <variant name="_ReadLaterContextMenu"
-      summary="For ReadLaterContextMenu feature."/>
   <variant name="_RecentTabs" summary="For Recent tabs feature."/>
   <variant name="_ReopenTab" summary="For ReopenTab feature."/>
   <variant name="_RequestDesktopSiteAppMenu"
@@ -4612,6 +4609,18 @@ should be able to be added at any place in this file.
     <variant name=".ShareTab.MultiTab"
         summary="User shared multiple tabs via the tab context menu on
                  Vertical Tabs."/>
+    <variant name=".ShareTabWithGlicNewChat"
+        summary="User shared the tab(s) into a new Gemini chat via the tab
+                 context menu on Vertical Tabs."/>
+    <variant name=".ShareTabWithGlicNewChat.MultiTab"
+        summary="User shared multiple tabs into a new Gemini chat via the tab
+                 context menu on Vertical Tabs."/>
+    <variant name=".ShareTabWithGlicRecent"
+        summary="User shared the tab(s) into a recent Gemini conversation via
+                 the tab context menu on Vertical Tabs."/>
+    <variant name=".ShareTabWithGlicRecent.MultiTab"
+        summary="User shared multiple tabs into a recent Gemini conversation
+                 via the tab context menu on Vertical Tabs."/>
     <variant name=".Shown"
         summary="Tab context menu was shown on Vertical Tabs."/>
     <variant name=".Shown.MultiTab"
@@ -4632,6 +4641,12 @@ should be able to be added at any place in this file.
     <variant name=".UnpinTab.MultiTab"
         summary="User unpinned multiple tabs via the tab context menu on
                  Vertical Tabs."/>
+    <variant name=".UnshareTabWithGlic"
+        summary="User unshared the tab(s) from Gemini via the tab context
+                 menu on Vertical Tabs."/>
+    <variant name=".UnshareTabWithGlic.MultiTab"
+        summary="User unshared multiple tabs from Gemini via the tab context
+                 menu on Vertical Tabs."/>
   </token>
 </action>
 
@@ -8064,6 +8079,15 @@ should be able to be added at any place in this file.
 <action name="ClearBrowsingData_Passwords" not_user_triggered="true">
   <owner>Please list the metric's owners. Add more owner tags as needed.</owner>
   <description>Please enter the description of this user action.</description>
+</action>
+
+<action name="ClearBrowsingData_QuickDeleteFinished">
+  <owner>novakovica@google.com</owner>
+  <owner>bling-team@google.com</owner>
+  <description>
+    Recorded when the Quick Delete flow has completely finished on iOS and any
+    deletion animation or UI dismissal is done.
+  </description>
 </action>
 
 <action name="ClearBrowsingData_SameSiteNoneData" not_user_triggered="true">
@@ -19105,6 +19129,14 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action name="MobileAutofillPasswordsPromoDismissed">
+  <owner>pabouchard@google.com</owner>
+  <owner>bling-mony-pod@google.com</owner>
+  <description>
+    Reported when the Autofill Passwords tip promo is dismissed. iOS only.
+  </description>
+</action>
+
 <action name="MobileAutofillSettingsBack">
   <owner>jsobiech@google.com</owner>
   <owner>chrome-autofill-team@google.com</owner>
@@ -20068,6 +20100,16 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action name="MobileGeminiChatPromptSent">
+  <owner>tarekmakkouk@google.com</owner>
+  <owner>bling-alchemy-eng@google.com</owner>
+  <description>
+    Reported when the user sends a prompt in a Gemini Chat session. This
+    includes both the first prompt and subsequent prompts in a conversation. iOS
+    only.
+  </description>
+</action>
+
 <action name="MobileGeminiEntryPointAutomatic">
   <owner>kanouche@google.com</owner>
   <owner>bling-alchemy@google.com</owner>
@@ -20340,6 +20382,15 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action name="MobileGeminiLivePromptSent">
+  <owner>tarekmakkouk@google.com</owner>
+  <owner>bling-alchemy-eng@google.com</owner>
+  <description>
+    Reported when the user sends a prompt in a Gemini Live voice session (i.e.
+    when user speech finishes and Gemini begins thinking). iOS only.
+  </description>
+</action>
+
 <action name="MobileGeminiLiveSessionStarted">
   <owner>tarekmakkouk@google.com</owner>
   <owner>bling-alchemy-eng@google.com</owner>
@@ -20403,8 +20454,9 @@ should be able to be added at any place in this file.
   <owner>kanouche@google.com</owner>
   <owner>bling-alchemy@google.com</owner>
   <description>
-    Reported when the user sends a prompt in a Gemini session. This includes
-    both the first prompt and subsequent prompts in a conversation. iOS only.
+    Reported when the user sends a prompt in a Gemini session (Chat or Live).
+    This includes both the first prompt and subsequent prompts in a
+    conversation. iOS only.
   </description>
 </action>
 
@@ -20719,6 +20771,14 @@ should be able to be added at any place in this file.
   <description>
     The user has started biometric authentication for incognito access. iOS
     only.
+  </description>
+</action>
+
+<action name="MobileIncognitoBrowserShown">
+  <owner>pabouchard@google.com</owner>
+  <owner>bling-team@google.com</owner>
+  <description>
+    Recorded when the incognito browser is shown on iOS.
   </description>
 </action>
 
@@ -22843,6 +22903,33 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action name="MobilePrivacySafeBrowsingSettingsCloseWithEnhancedProtection">
+  <owner>pabouchard@google.com</owner>
+  <owner>bling-mony-pod@google.com</owner>
+  <description>
+    Reported when Privacy Safe Browsing Settings UI was dismissed while Enhanced
+    Protection is enabled. iOS only.
+  </description>
+</action>
+
+<action name="MobilePrivacySafeBrowsingSettingsCloseWithNoProtection">
+  <owner>pabouchard@google.com</owner>
+  <owner>bling-mony-pod@google.com</owner>
+  <description>
+    Reported when Privacy Safe Browsing Settings UI was dismissed while No
+    Protection is selected. iOS only.
+  </description>
+</action>
+
+<action name="MobilePrivacySafeBrowsingSettingsCloseWithStandardProtection">
+  <owner>pabouchard@google.com</owner>
+  <owner>bling-mony-pod@google.com</owner>
+  <description>
+    Reported when Privacy Safe Browsing Settings UI was dismissed while Standard
+    Protection is enabled. iOS only.
+  </description>
+</action>
+
 <action name="MobilePrivacySettingsBack">
   <owner>msramek@chromium.org</owner>
   <description>
@@ -23172,6 +23259,15 @@ should be able to be added at any place in this file.
   <description>
     Reported when the user opens the Password Checkup page from a Safety Check
     notification. iOS only.
+  </description>
+</action>
+
+<action name="MobileSavePasswordsPromoDismissed">
+  <owner>pabouchard@google.com</owner>
+  <owner>bling-mony-pod@google.com</owner>
+  <description>
+    Reported when the Save Passwords tip promo is dismissed or stopped. iOS
+    only.
   </description>
 </action>
 
@@ -25339,6 +25435,18 @@ should be able to be added at any place in this file.
     <variant name=".ShareTab"
         summary="User shared the URL open in a tab, via the tab context menu
                  on tab strip on Android."/>
+    <variant name=".ShareTabWithGlicNewChat"
+        summary="User shared the tab(s) into a new Gemini chat via the tab
+                 context menu on tab strip on Android."/>
+    <variant name=".ShareTabWithGlicNewChat.MultiTab"
+        summary="User shared multiple tabs into a new Gemini chat via the tab
+                 context menu on tab strip on Android."/>
+    <variant name=".ShareTabWithGlicRecent"
+        summary="User shared the tab(s) into a recent Gemini conversation via
+                 the tab context menu on tab strip on Android."/>
+    <variant name=".ShareTabWithGlicRecent.MultiTab"
+        summary="User shared multiple tabs into a recent Gemini conversation
+                 via the tab context menu on tab strip on Android."/>
     <variant name=".Shown"
         summary="Recorded when the tab context menu is shown."/>
     <variant name=".Shown.MultiTab"
@@ -25361,6 +25469,12 @@ should be able to be added at any place in this file.
     <variant name=".UnpinTab.MultiTab"
         summary="User unpinned multiple tabs via the tab context menu on tab
                  strip on Android."/>
+    <variant name=".UnshareTabWithGlic"
+        summary="User unshared the tab(s) from Gemini via the tab context
+                 menu on tab strip on Android."/>
+    <variant name=".UnshareTabWithGlic.MultiTab"
+        summary="User unshared multiple tabs from Gemini via the tab context
+                 menu on tab strip on Android."/>
   </token>
 </action>
 
@@ -37881,6 +37995,13 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action name="TabContextMenu_FocusTabGroup">
+  <owner>top-chrome-desktop-ui@google.com</owner>
+  <description>
+    User selected Focus Tab Group from the tab context menu.
+  </description>
+</action>
+
 <action name="TabContextMenu_MoveTabToNewWindow">
   <owner>lgrey@chromium.org</owner>
   <owner>top-chrome-desktop-ui@google.com</owner>
@@ -37937,6 +38058,13 @@ should be able to be added at any place in this file.
   <owner>dpenning@chromium.org</owner>
   <owner>top-chrome-desktop-ui@google.com</owner>
   <description>User selected Pin/Unpin from tab context menu.</description>
+</action>
+
+<action name="TabContextMenu_UnfocusTabGroup">
+  <owner>top-chrome-desktop-ui@google.com</owner>
+  <description>
+    User selected Unfocus Tab Group from the tab context menu.
+  </description>
 </action>
 
 <action name="TabContextMenu_UnmuteTabs">

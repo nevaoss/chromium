@@ -39,8 +39,10 @@
 namespace omnibox_everywhere {
 
 OmniboxEverywhereBackgroundModeManager::OmniboxEverywhereBackgroundModeManager(
-    ShowUICallback show_ui_callback)
-    : show_ui_callback_(std::move(show_ui_callback)) {
+    ShowUICallback show_ui_callback,
+    CloseUICallback close_ui_callback)
+    : show_ui_callback_(std::move(show_ui_callback)),
+      close_ui_callback_(std::move(close_ui_callback)) {
   CHECK(base::FeatureList::IsEnabled(omnibox::kOmniboxEverywhere));
   CHECK(g_browser_process && g_browser_process->local_state());
 
@@ -64,6 +66,11 @@ OmniboxEverywhereBackgroundModeManager::OmniboxEverywhereBackgroundModeManager(
 #endif  // BUILDFLAG(IS_WIN)
   hotkey_string_pref_member_.Init(
       prefs::kOmniboxEverywhereHotkey, g_browser_process->local_state(),
+      base::BindRepeating(
+          &OmniboxEverywhereBackgroundModeManager::UpdateStatusIconContextMenu,
+          base::Unretained(this)));
+  hotkey_enabled_pref_member_.Init(
+      prefs::kHotkeyEnabled, g_browser_process->local_state(),
       base::BindRepeating(
           &OmniboxEverywhereBackgroundModeManager::UpdateStatusIconContextMenu,
           base::Unretained(this)));
@@ -219,6 +226,12 @@ void OmniboxEverywhereBackgroundModeManager::ExecuteCommand(int command_id,
       }
       break;
     case IDC_OMNIBOX_EVERYWHERE_STATUS_ICON_MENU_EXIT:
+      // Close the Omnibox Everywhere window first if it is open. It holds its
+      // own keep-alive, which would otherwise keep the browser process running
+      // after all browsers have been closed.
+      if (close_ui_callback_) {
+        close_ui_callback_.Run();
+      }
       chrome::CloseAllBrowsers();
       base::RecordAction(base::UserMetricsAction("Exit"));
       break;
@@ -273,13 +286,16 @@ void OmniboxEverywhereBackgroundModeManager::UpdateStatusIconContextMenu() {
 
   PrefService* local_state =
       g_browser_process ? g_browser_process->local_state() : nullptr;
-  ui::Accelerator hotkey = prefs::GetOmniboxEverywhereHotkey(local_state);
   menu->AddItem(IDC_OMNIBOX_EVERYWHERE_STATUS_ICON_MENU_TOGGLE,
                 l10n_util::GetStringUTF16(
                     IDS_OMNIBOX_EVERYWHERE_STATUS_ICON_MENU_TOGGLE));
-  menu->SetAcceleratorForCommandId(
-      IDC_OMNIBOX_EVERYWHERE_STATUS_ICON_MENU_TOGGLE, &hotkey);
-  menu->SetForceShowAcceleratorForItemAt(0, true);
+  if (prefs::HasOmniboxEverywhereHotkey(local_state)) {
+    ui::Accelerator hotkey = prefs::GetOmniboxEverywhereHotkey(local_state);
+    menu->SetAcceleratorForCommandId(
+        IDC_OMNIBOX_EVERYWHERE_STATUS_ICON_MENU_TOGGLE, &hotkey);
+    menu->SetForceShowAcceleratorForItemAt(0, true);
+  }
+  menu->AddSeparator(ui::NORMAL_SEPARATOR);
 
   menu->AddItem(
       IDC_OMNIBOX_EVERYWHERE_STATUS_ICON_MENU_CUSTOMIZE_KEYBOARD_SHORTCUT,

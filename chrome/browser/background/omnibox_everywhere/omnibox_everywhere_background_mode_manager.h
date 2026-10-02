@@ -35,9 +35,11 @@ class OmniboxEverywhereBackgroundModeManager
       public BrowserCollectionObserver {
  public:
   using ShowUICallback = base::RepeatingClosure;
+  using CloseUICallback = base::RepeatingClosure;
 
   explicit OmniboxEverywhereBackgroundModeManager(
-      ShowUICallback show_ui_callback);
+      ShowUICallback show_ui_callback,
+      CloseUICallback close_ui_callback = {});
   OmniboxEverywhereBackgroundModeManager(
       const OmniboxEverywhereBackgroundModeManager&) = delete;
   OmniboxEverywhereBackgroundModeManager& operator=(
@@ -78,6 +80,7 @@ class OmniboxEverywhereBackgroundModeManager
   BooleanPrefMember enabled_pref_member_;
   BooleanPrefMember background_mode_pref_member_;
   StringPrefMember hotkey_string_pref_member_;
+  BooleanPrefMember hotkey_enabled_pref_member_;
   raw_ptr<Profile> profile_ = nullptr;
   std::unique_ptr<ScopedKeepAlive> keep_alive_;
   std::unique_ptr<ScopedProfileKeepAlive> profile_keep_alive_;
@@ -86,6 +89,7 @@ class OmniboxEverywhereBackgroundModeManager
   base::ScopedObservation<GlobalBrowserCollection, BrowserCollectionObserver>
       browser_collection_observation_{this};
   ShowUICallback show_ui_callback_;
+  CloseUICallback close_ui_callback_;
 
 #if BUILDFLAG(IS_WIN)
   // Handles interactions with StartupLaunchManager.

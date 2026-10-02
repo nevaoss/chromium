@@ -102,9 +102,13 @@ const auto& GetNeverSniffedMimeTypes() {
       // The types below (zip, protobuf, etc.) are based on most commonly used
       // content types according to HTTP Archive - see:
       // https://github.com/whatwg/fetch/issues/860#issuecomment-457330454
+      // For the canonical specification of never sniffed mime types, see
+      // "opaque-blocklisted-never-sniffed MIME types" in
+      // https://github.com/annevk/orb
       "application/gzip",
       "application/x-gzip",
       "application/x-protobuf",
+      "application/x-protobuffer",
       "application/zip",
       "text/event-stream",
       // The types listed below were initially taken from the list of types
@@ -142,6 +146,7 @@ const auto& GetNeverSniffedMimeTypes() {
       "application/vnd.spreadsheet-openxml",
       "application/vnd.wordprocessing-openxml",
       "text/csv",
+      "text/pdf",
       // Block signed documents to protect (potentially sensitive) unencrypted
       // body of the signed document.  There should be no need to block
       // encrypted documents (e.g. `multipart/encrypted` nor

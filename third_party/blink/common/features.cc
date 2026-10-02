@@ -1956,7 +1956,7 @@ BASE_FEATURE_PARAM(base::TimeDelta,
                    kScrollPredictorMaxResampleTime,
                    &kResamplingScrollEvents,
                    "max_resample_time",
-                   base::Milliseconds(20));
+                   base::Milliseconds(35));
 
 BASE_FEATURE(kResampleScrollEventsForFling, base::FEATURE_DISABLED_BY_DEFAULT);
 

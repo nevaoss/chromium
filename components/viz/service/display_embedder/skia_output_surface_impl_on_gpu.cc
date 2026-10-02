@@ -2040,11 +2040,8 @@ bool SkiaOutputSurfaceImplOnGpu::InitializeForGL() {
   if (dependency_->IsOffscreen()) {
     DCHECK(!gl_surface_);
   } else if (gl_surface_) {
-    // OnScreen GLSurfaces are never Surfaceless except on windows where a bit
-    // of work needed to make it use Presenter.
-#if !BUILDFLAG(IS_WIN)
+    // OnScreen GLSurfaces are never Surfaceless.
     DCHECK(!gl_surface_->IsSurfaceless());
-#endif
   } else {
     // If there is no gl_surface there must be presenter.
     DCHECK(presenter_);
@@ -2224,20 +2221,14 @@ bool SkiaOutputSurfaceImplOnGpu::InitializeForDawn() {
 }
 
 bool SkiaOutputSurfaceImplOnGpu::MakeCurrent(bool need_framebuffer) {
-  // Windows still uses gl_surface for DComp presentation. Once that's switched
-  // over to presenter, these DCHECKs will be actual on all platforms and code
-  // can be simplified.
-#if !BUILDFLAG(IS_WIN)
   if (gl_surface_) {
     DCHECK(context_state_->GrContextIsGL());
-    DCHECK(!gl_surface_->IsSurfaceless() || gl_surface_->IsOffscreen());
   }
-#endif
 
-  // If GL is not being used or GLSurface is not surfaceless, we can ignore
-  // making current the GLSurface for better performance.
-  bool need_fbo0 = need_framebuffer && context_state_->GrContextIsGL() &&
-                   gl_surface_ && !gl_surface_->IsSurfaceless();
+  // If GL is not being used, we can ignore making current the GLSurface for
+  // better performance.
+  bool need_fbo0 =
+      need_framebuffer && context_state_->GrContextIsGL() && gl_surface_;
 
   // need_fbo0 implies need_gl too.
   bool need_gl = need_fbo0;
@@ -2639,13 +2630,58 @@ gfx::GpuFenceHandle SkiaOutputSurfaceImplOnGpu::CreateReleaseFenceForGL() {
   return {};
 }
 
-void SkiaOutputSurfaceImplOnGpu::OnDestroySharedImage(gpu::Mailbox mailbox) {
+void SkiaOutputSurfaceImplOnGpu::CreateSharedImage(
+    gpu::Mailbox mailbox,
+    SharedImageFormat format,
+    const gfx::Size& size,
+    const gfx::ColorSpace& color_space,
+    SkAlphaType alpha_type,
+    gpu::SharedImageUsageSet usage,
+    std::string debug_label,
+    gpu::SurfaceHandle surface_handle) {
+  if (context_is_lost_) {
+    return;
+  }
+  shared_image_factory_->CreateSharedImage(
+      mailbox,
+      gpu::SharedImageInfo(format, size, color_space, kTopLeft_GrSurfaceOrigin,
+                           alpha_type, usage, std::move(debug_label)),
+      surface_handle);
+  skia_representations_.emplace(mailbox, nullptr);
+}
+
+void SkiaOutputSurfaceImplOnGpu::CreateSolidColorSharedImage(
+    gpu::Mailbox mailbox,
+    const SkColor4f& color,
+    const gfx::ColorSpace& color_space) {
+  gfx::Size size(1, 1);
+  // Premultiply the SkColor4f to support transparent quads.
+  SkColor4f premul{color[0] * color[3], color[1] * color[3],
+                   color[2] * color[3], color[3]};
+  const uint32_t premul_rgba_bytes = premul.toBytes_RGBA();
+  uint32_t premul_bytes = premul_rgba_bytes;
+  auto pixel_span = base::byte_span_from_ref(premul_bytes);
+
+  shared_image_factory_->CreateSharedImage(
+      mailbox,
+      gpu::SharedImageInfo(SinglePlaneFormat::kRGBA_8888, size, color_space,
+                           kTopLeft_GrSurfaceOrigin, kPremul_SkAlphaType,
+                           gpu::SHARED_IMAGE_USAGE_SCANOUT |
+                               gpu::SHARED_IMAGE_USAGE_DISPLAY_READ,
+                           "SkiaSolidColor"),
+      pixel_span);
+  solid_color_images_.insert(mailbox);
+}
+
+void SkiaOutputSurfaceImplOnGpu::DestroySharedImage(gpu::Mailbox mailbox) {
+  shared_image_factory_->DestroySharedImage(mailbox);
   // Under normal circumstances the write access should be destroyed already in
   // PostSubmit(), but if context was lost then SwapBuffersInternal will no-op
   // and PostSubmit() will not be called.
   DCHECK(!overlay_pass_accesses_.contains(mailbox) || context_is_lost_);
   overlay_pass_accesses_.erase(mailbox);
   skia_representations_.erase(mailbox);
+  solid_color_images_.erase(mailbox);
 }
 
 void SkiaOutputSurfaceImplOnGpu::SetSharedImagePurgeable(
@@ -2656,11 +2692,14 @@ void SkiaOutputSurfaceImplOnGpu::SetSharedImagePurgeable(
 
 gpu::SkiaImageRepresentation* SkiaOutputSurfaceImplOnGpu::GetSkiaRepresentation(
     gpu::Mailbox mailbox) {
-  if (context_is_lost_) {
+  auto it = skia_representations_.find(mailbox);
+  if (it == skia_representations_.end()) {
+    // The cache entry should already have been created in CreateSharedImage(),
+    // except if context was lost.
+    DCHECK(context_is_lost_);
     return nullptr;
   }
 
-  auto [it, inserted] = skia_representations_.try_emplace(mailbox, nullptr);
   if (!it->second) {
     it->second = shared_image_representation_factory_->ProduceSkia(
         mailbox, context_state_.get());

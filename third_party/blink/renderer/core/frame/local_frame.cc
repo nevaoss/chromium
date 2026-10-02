@@ -3657,7 +3657,7 @@ SystemClipboard* LocalFrame::GetSystemClipboard() {
   }
 
   if (!system_clipboard_) {
-    system_clipboard_ = MakeGarbageCollected<SystemClipboard>(this);
+    system_clipboard_ = MakeGarbageCollected<SystemClipboard>(DomWindow());
   }
 
   return system_clipboard_.Get();

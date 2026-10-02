@@ -61,7 +61,11 @@ export class OmniboxEverywhereOmniboxElement extends
   }
 
   override get showContextEntrypoint(): boolean {
-    return false;
+    return this.isFuseboxEnabled;
+  }
+
+  override openContextMenu(): void {
+    this.onContextMenuEntrypointClick_();
   }
 
   static get is() {
@@ -377,7 +381,27 @@ export class OmniboxEverywhereOmniboxElement extends
         new Event('open-voice-search', {bubbles: true, composed: true}));
   }
 
+  private wasScreenshotMenuOpenOnPointerDown_: boolean = false;
+
+  protected onLensSearchPointerdown_(e: PointerEvent) {
+    if (e.button !== 0) {
+      return;
+    }
+    this.wasScreenshotMenuOpenOnPointerDown_ = this.isScreenshotMenuOpen;
+  }
+
+  protected onLensSearchPointercancel_() {
+    this.wasScreenshotMenuOpenOnPointerDown_ = false;
+  }
+
   protected onLensSearchClick_(e: Event) {
+    const wasOpen =
+        this.wasScreenshotMenuOpenOnPointerDown_ || this.isScreenshotMenuOpen;
+    this.wasScreenshotMenuOpenOnPointerDown_ = false;
+    if (wasOpen) {
+      this.isScreenshotMenuOpen = false;
+      return;
+    }
     this.notifyHelpBubbleAnchorActivated(
         'kOmniboxEverywhereLensButtonElementId');
     this.isScreenshotMenuOpen = true;

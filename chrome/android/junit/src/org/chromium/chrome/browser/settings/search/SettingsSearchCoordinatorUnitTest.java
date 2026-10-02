@@ -73,6 +73,7 @@ public class SettingsSearchCoordinatorUnitTest {
 
     private SettingsSearchCoordinator mCoordinator;
     private boolean mUseMultiColumn = true;
+    private boolean mMultiColumnSettingsDetached;
 
     @Before
     public void setUp() {
@@ -116,12 +117,24 @@ public class SettingsSearchCoordinatorUnitTest {
                 new SettingsSearchCoordinator(
                         mActivity,
                         mToolbar,
-                        () -> mUseMultiColumn,
+                        this::isTwoColumnSettingsVisible,
                         mMultiColumnSettings,
                         new HashMap<>(),
                         mProfile,
                         (index) -> {},
                         modalDialogSupplier);
+    }
+
+    /**
+     * Mimics {@code SettingsActivity.isTwoColumnSettingsVisible()}, which queries the {@link
+     * MultiColumnSettings} fragment and throws if the fragment is no longer attached to a context.
+     */
+    private boolean isTwoColumnSettingsVisible() {
+        if (mMultiColumnSettingsDetached) {
+            throw new IllegalStateException(
+                    "Fragment MultiColumnSettings not attached to a context.");
+        }
+        return mUseMultiColumn;
     }
 
     @After
@@ -362,6 +375,55 @@ public class SettingsSearchCoordinatorUnitTest {
     }
 
     @Test
+    @EnableFeatures({ChromeFeatureList.SETTINGS_IN_TAB})
+    @Config(qualifiers = "sw600dp-w500dp-h1000dp")
+    public void testSingleColumnSearchUiWidth_withSettingsInTab_narrowScreen_includesItemMargin() {
+        setUpMultiColumnSettings();
+        mUseMultiColumn = false;
+
+        mToolbar.setPaddingRelative(16, 0, 16, 0);
+        mToolbar.setContentInsetsRelative(16, 16);
+
+        mCoordinator.initializeSearchUi(null);
+
+        // Simulate narrow screen/multiwindow (500dp <= 632dp threshold).
+        int rootWidth = 500;
+        int rootHeight = 100;
+        View rootView = mActivity.findViewById(R.id.settings_activity);
+        assertNotNull(rootView);
+        int widthSpec = View.MeasureSpec.makeMeasureSpec(rootWidth, View.MeasureSpec.EXACTLY);
+        int heightSpec = View.MeasureSpec.makeMeasureSpec(rootHeight, View.MeasureSpec.EXACTLY);
+        rootView.measure(widthSpec, heightSpec);
+        rootView.layout(0, 0, rootWidth, rootHeight);
+        ShadowLooper.idleMainLooper();
+
+        // Verify search box and query container are created.
+        View searchBox = mActivity.findViewById(R.id.search_box);
+        assertNotNull(searchBox);
+        View query = mActivity.findViewById(R.id.search_query_container);
+        assertNotNull(query);
+
+        // Verify search box margins include itemMargin in SettingsInTab on narrow screens.
+        int minWidePadding =
+                mActivity
+                        .getResources()
+                        .getDimensionPixelSize(R.dimen.settings_wide_display_min_padding);
+        int itemMargin =
+                mActivity.getResources().getDimensionPixelSize(R.dimen.settings_item_margin);
+        int expectedMargin = minWidePadding + itemMargin;
+
+        var searchBoxLp = (ViewGroup.MarginLayoutParams) searchBox.getLayoutParams();
+        assertEquals(expectedMargin, searchBoxLp.getMarginStart());
+        assertEquals(expectedMargin, searchBoxLp.getMarginEnd());
+
+        // Verify search query container margins account for toolbar padding and content insets.
+        int endPadding = Math.max(mToolbar.getPaddingEnd(), mToolbar.getContentInsetEnd());
+        var queryLp = (ViewGroup.MarginLayoutParams) query.getLayoutParams();
+        assertEquals(expectedMargin - mToolbar.getPaddingStart(), queryLp.getMarginStart());
+        assertEquals(expectedMargin - endPadding, queryLp.getMarginEnd());
+    }
+
+    @Test
     @DisableFeatures({ChromeFeatureList.SETTINGS_IN_TAB})
     @Config(qualifiers = "w800dp-h1280dp")
     public void testSingleColumnSearchUiWidth_withoutSettingsInTab_accountsForToolbarPadding() {
@@ -388,6 +450,7 @@ public class SettingsSearchCoordinatorUnitTest {
         rootView.layout(0, 0, rootWidth, rootHeight);
         ShadowLooper.idleMainLooper();
 
+        // Verify search box and query container are created.
         View searchBox = mActivity.findViewById(R.id.search_box);
         assertNotNull(searchBox);
         View query = mActivity.findViewById(R.id.search_query_container);
@@ -398,6 +461,7 @@ public class SettingsSearchCoordinatorUnitTest {
         assertEquals(0, toolbarLp.getMarginStart());
         assertEquals(0, toolbarLp.getMarginEnd());
 
+        // Verify search box margins match expected wide screen single-column margins.
         int itemMargin =
                 mActivity.getResources().getDimensionPixelSize(R.dimen.settings_item_margin);
         int expectedMargin =
@@ -407,6 +471,7 @@ public class SettingsSearchCoordinatorUnitTest {
         assertEquals(expectedMargin, searchBoxLp.getMarginStart());
         assertEquals(expectedMargin, searchBoxLp.getMarginEnd());
 
+        // Verify search query container margins account for toolbar padding and content insets.
         int endPadding = Math.max(mToolbar.getPaddingEnd(), mToolbar.getContentInsetEnd());
         var queryLp = (ViewGroup.MarginLayoutParams) query.getLayoutParams();
         assertEquals(expectedMargin - mToolbar.getPaddingStart(), queryLp.getMarginStart());
@@ -563,6 +628,31 @@ public class SettingsSearchCoordinatorUnitTest {
 
         // Flush the looper. The posted task should exit early without crashing on methods that
         // require views that are no longer present.
+        ShadowLooper.idleMainLooper();
+    }
+
+    /**
+     * Regression test for crbug.com/561275965: A theme change destroys the activity and detaches
+     * its fragments, but the old view hierarchy can still run a layout pass which notifies the
+     * layout listener registered by onConfigurationChanged().
+     */
+    @Test
+    public void testOnConfigurationChanged_layoutAfterDestroy_doesNotQueryDetachedFragment() {
+        setUpMultiColumnSettings();
+        mCoordinator.initializeSearchUi(null);
+
+        // The settings content view is observed for the layout pass following the config change.
+        FrameLayout contentView = new FrameLayout(mActivity);
+        contentView.setId(R.id.settings_content);
+        ((ViewGroup) mActivity.findViewById(R.id.settings_activity)).addView(contentView);
+
+        mCoordinator.onConfigurationChanged(mActivity.getResources().getConfiguration());
+
+        // The activity is destroyed and its fragments are detached before the layout pass runs.
+        mCoordinator.destroy();
+        mMultiColumnSettingsDetached = true;
+
+        contentView.getViewTreeObserver().dispatchOnGlobalLayout();
         ShadowLooper.idleMainLooper();
     }
 

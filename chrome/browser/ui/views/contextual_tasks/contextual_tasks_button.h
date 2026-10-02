@@ -14,7 +14,6 @@
 #include "chrome/browser/ui/immersive/immersive_mode_controller.h"
 #include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h"
 #include "chrome/browser/ui/views/toolbar/toolbar_button.h"
-#include "components/prefs/pref_change_registrar.h"
 #include "ui/base/interaction/element_identifier.h"
 #include "ui/base/metadata/metadata_header_macros.h"
 
@@ -22,8 +21,9 @@ class BrowserWindowInterface;
 
 namespace ui {
 class ImageModel;
+class Layer;
 class LayerOwner;
-}
+}  // namespace ui
 
 class ContextualTasksButton
     : public ToolbarButton,
@@ -32,12 +32,22 @@ class ContextualTasksButton
   METADATA_HEADER(ContextualTasksButton, ToolbarButton)
 
  public:
+  enum class Shape {
+    kCircle,
+    kFlatEdgeLeft,
+    kFlatEdgeRight,
+  };
+
   explicit ContextualTasksButton(
       BrowserWindowInterface* browser_window_interface);
   ~ContextualTasksButton() override;
 
+  static constexpr int kShadowOutset = 12;
+
+  Shape GetShape() const;
   float GetCornerRadiusFor(ToolbarButton::Edge edge) const override;
-  bool ShouldApplyCircularBackgroundShadow() const;
+  bool IsTrailing() const;
+  ui::Layer* GetDropShadowLayerForTesting() const;
   // contextual_tasks::ContextualTasksPanelController::Observer:
   void OnSurfaceStateChanged(
       contextual_tasks::ContextualTasksPanelHost::SurfaceState state,
@@ -58,7 +68,7 @@ class ContextualTasksButton
 
  private:
   void OnButtonPress();
-  void OnSidePanelAlignmentChanged();
+  void OnShouldUpdatePosition();
   void OnShouldUpdateVisibility(bool should_show);
   void OnEligibilityChange(bool is_eligible);
   void MaybeUpdateVisibility();
@@ -70,8 +80,8 @@ class ContextualTasksButton
   ui::ImageModel GetButtonImage();
   bool IsSidePanelRightAligned() const;
 
-  PrefChangeRegistrar pref_change_registrar_;
   base::CallbackListSubscription should_update_visibility_subscription_;
+  base::CallbackListSubscription should_update_position_subscription_;
   base::CallbackListSubscription eligibility_change_subscription_;
   base::CallbackListSubscription vertical_tabs_subscription_;
   raw_ptr<BrowserWindowInterface> browser_window_interface_ = nullptr;

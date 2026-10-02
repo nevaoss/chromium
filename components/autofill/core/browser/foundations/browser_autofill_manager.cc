@@ -436,12 +436,12 @@ bool IsTriggerSourceOnlyRelevantForCompose(
     case AutofillSuggestionTriggerSource::kManualFallbackPasswords:
     case AutofillSuggestionTriggerSource::kPasswordManagerProcessedFocusedField:
     case AutofillSuggestionTriggerSource::kProactivePasswordRecovery:
+    case AutofillSuggestionTriggerSource::kGmailOneTimePasswordAvailable:
     case AutofillSuggestionTriggerSource::kGlic:
     case AutofillSuggestionTriggerSource::kAtMemoryContextMenu:
     case AutofillSuggestionTriggerSource::kAtMemoryDoubleCtrl:
     case AutofillSuggestionTriggerSource::kAtMemoryInactivityNudge:
     case AutofillSuggestionTriggerSource::kAtMemoryKeyboardShortcut:
-    case AutofillSuggestionTriggerSource::kAtMemoryTriggerString:
       return false;
   }
   NOTREACHED();
@@ -466,11 +466,11 @@ bool CanReplaceCurrentSuggestions(AutofillSuggestionTriggerSource source) {
     case mojom::AutofillSuggestionTriggerSource::
         kPasswordManagerProcessedFocusedField:
     case mojom::AutofillSuggestionTriggerSource::kProactivePasswordRecovery:
+    case mojom::AutofillSuggestionTriggerSource::kGmailOneTimePasswordAvailable:
     case mojom::AutofillSuggestionTriggerSource::kGlic:
     case mojom::AutofillSuggestionTriggerSource::kAtMemoryContextMenu:
     case mojom::AutofillSuggestionTriggerSource::kAtMemoryDoubleCtrl:
     case mojom::AutofillSuggestionTriggerSource::kAtMemoryKeyboardShortcut:
-    case mojom::AutofillSuggestionTriggerSource::kAtMemoryTriggerString:
       return true;
     case mojom::AutofillSuggestionTriggerSource::kComposeDelayedProactiveNudge:
     case mojom::AutofillSuggestionTriggerSource::kAtMemoryInactivityNudge:
@@ -529,10 +529,11 @@ FillingProductSet GetFillingProductsToSuggest(
     case kAtMemoryContextMenu:
     case kAtMemoryDoubleCtrl:
     case kAtMemoryKeyboardShortcut:
-    case kAtMemoryTriggerString:
       return {FillingProduct::kAtMemory};
     case kAtMemoryInactivityNudge:
       return {FillingProduct::kNone};
+    case kGmailOneTimePasswordAvailable:
+      return {FillingProduct::kOneTimePassword};
   }
 }
 
@@ -1317,6 +1318,10 @@ bool BrowserAutofillManager::TryToShowTouchToFillSuggestions(
 
 bool BrowserAutofillManager::MaybeShowPrivateInferenceNotice(
     base::span<const Suggestion> autofill_ai_suggestions) {
+  if (!driver().CanShowAutofillUi()) {
+    return false;
+  }
+
   if (std::ranges::contains(autofill_ai_suggestions,
                             SuggestionType::kAutofillAiPrivateInferenceNotice,
                             &Suggestion::type)) {
@@ -1928,6 +1933,7 @@ void BrowserAutofillManager::FillOrPreviewCreditCardForm(
       case AutofillTriggerSource::kManualFallback:
       case AutofillTriggerSource::kNone:
       case AutofillTriggerSource::kProactivePasswordRecovery:
+      case AutofillTriggerSource::kGmailOneTimePasswordAvailable:
       case AutofillTriggerSource::kProgrammaticRefill:
         NOTREACHED();
     }
@@ -2589,7 +2595,9 @@ void BrowserAutofillManager::AddCachedAutofillAiPredictions(
       server_prediction.set_source(ServerPrediction::SOURCE_AUTOFILL_AI);
       field->MaybeAddServerPrediction(std::move(server_prediction));
     }
-    if (prediction.format_string) {
+    if (prediction.format_string &&
+        AutofillFormatString::IsValid(prediction.format_string->value,
+                                      prediction.format_string->type)) {
       field->set_format_string_unless_overruled(
           *prediction.format_string, AutofillFormatStringSource::kModelResult);
     }
@@ -3185,7 +3193,8 @@ std::vector<Suggestion> BrowserAutofillManager::GetAvailableSuggestions(
             std::vector<Suggestion> loyalty_cards_suggestions_for_merge =
                 CreateLoyaltyCardSuggestionsForMerge(
                     *valuables_manager,
-                    client().GetLastCommittedPrimaryMainFrameURL());
+                    client().GetLastCommittedPrimaryMainFrameURL(),
+                    field.origin());
             MergeLoyaltyCardsAndAddressSuggestions(
                 suggestions, std::move(loyalty_cards_suggestions_for_merge));
           }

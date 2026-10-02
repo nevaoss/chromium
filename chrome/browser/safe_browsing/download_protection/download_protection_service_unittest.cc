@@ -6125,7 +6125,7 @@ class AndroidDownloadProtectionTest
             sb_service_->GetTestURLLoaderFactory(profile()));
     sb_service_->database_manager()->StopOnUIThread(/*shutdown=*/false);
     sb_service_->database_manager()->StartOnUIThread(
-        test_shared_loader_factory_, GetTestV4ProtocolConfig());
+        test_shared_loader_factory_, GetTestSBProtocolConfig());
   }
 
   bool ShouldAndroidDownloadProtectionBeActive() const {
@@ -6599,7 +6599,7 @@ TEST_F(DownloadProtectionServiceTest,
 
   safe_browsing::V5GetHashProtocolManager v5_protocol_manager(
       /*url_loader_factory=*/nullptr,
-      safe_browsing::V4ProtocolConfig("test", false, "key", "1.0"),
+      safe_browsing::SBProtocolConfig("test", false, "key", "1.0"),
       /*cache=*/nullptr);
 
   NiceMockDownloadItem item;

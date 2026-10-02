@@ -9,9 +9,10 @@
 #include <utility>
 
 #include "base/files/file_path.h"
+#include "base/trace_event/named_trigger.h"
+#include "components/tracing/common/background_tracing_utils.h"
 #include "content/browser/tracing/background_tracing_agent_client_impl.h"
 #include "content/common/child_process.mojom.h"
-#include "content/public/browser/background_tracing.h"
 #include "content/public/browser/browser_thread.h"
 #include "content/public/browser/content_browser_client.h"
 #include "content/public/browser/tracing_delegate.h"
@@ -57,11 +58,13 @@ void BackgroundTracingManagerImpl::ActivateForProcess(
 }
 
 BackgroundTracingManagerImpl::BackgroundTracingManagerImpl(
-    TracingDelegate* delegate)
-    : delegate_(delegate), state_manager_(delegate_->CreateStateManager()) {
+    std::unique_ptr<TracingDelegate> delegate)
+    : delegate_(std::move(delegate)) {
+  CHECK(delegate_);
   g_background_tracing_manager_impl = this;
   TracingAgentObserverManager::SetInstance(this);
   preferences_ = std::make_unique<PreferenceManagerImpl>();
+  state_manager_ = delegate_->CreateStateManager();
 }
 
 BackgroundTracingManagerImpl::~BackgroundTracingManagerImpl() {
@@ -72,10 +75,10 @@ BackgroundTracingManagerImpl::~BackgroundTracingManagerImpl() {
 }
 
 bool BackgroundTracingManagerImpl::IsRecordingAllowed(
-    bool privacy_filter_enabled,
+    bool is_local_scenario,
     base::TimeTicks scenario_start_time) {
-  return delegate_->IsRecordingAllowed(privacy_filter_enabled,
-                                       scenario_start_time);
+  return delegate_->IsRecordingAllowed(
+      TracingDelegate::IsLocalScenario(is_local_scenario), scenario_start_time);
 }
 
 bool BackgroundTracingManagerImpl::ShouldSaveUnuploadedTrace() {
@@ -204,9 +207,17 @@ void BackgroundTracingManagerImpl::MaybeConstructPendingAgents() {
   pending_agents_.clear();
 }
 
-std::unique_ptr<tracing::BackgroundTracingManager>
-CreateBackgroundTracingManager(TracingDelegate* delegate) {
-  return std::make_unique<BackgroundTracingManagerImpl>(delegate);
+std::unique_ptr<BackgroundTracingManagerImpl>
+CreateBackgroundTracingManagerAndInitializeScenarios() {
+  auto manager = std::make_unique<BackgroundTracingManagerImpl>(
+      GetContentClient()->browser()->CreateTracingDelegate());
+  tracing::SetupFieldTracingFromFieldTrial();
+  tracing::SetupSystemTracingFromFieldTrial();
+  tracing::SetupBackgroundTracingFromCommandLine();
+  tracing::SetupPresetTracingFromFieldTrial();
+  base::trace_event::EmitNamedTrigger(
+      base::trace_event::kStartupTracingTriggerName);
+  return manager;
 }
 
 }  // namespace content

@@ -15,13 +15,15 @@
 #include "chrome/browser/sessions/session_restore.h"
 #include "chrome/browser/sessions/tab_restore_service_factory.h"
 #include "chrome/browser/sync/session_sync_service_factory.h"
+#include "chrome/browser/ui/actions/chrome_action_properties.h"
+#include "chrome/browser/ui/browser_actions.h"
 #include "chrome/browser/ui/browser_live_tab_context.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/color/chrome_color_id.h"
 #include "chrome/browser/ui/tabs/recent_tabs_builder.h"
 #include "chrome/browser/ui/tabs/recent_tabs_sub_menu_model.h"
-#include "chrome/browser/ui/views/app_menu/action_app_menu_manager.h"
+#include "chrome/browser/ui/views/app_menu/app_menu_action_item.h"
 #include "components/favicon/core/favicon_service.h"
 #include "components/favicon/core/history_ui_favicon_request_handler.h"
 #include "components/keyed_service/core/service_access_type.h"
@@ -55,9 +57,14 @@ void RecentTabsDynamicMenu::BuildRecentTabsActions(
 
 void RecentTabsDynamicMenu::ExecuteRecentTab(
     const RecentTabItem& recent_item,
-    WindowOpenDisposition disposition,
     actions::ActionItem* item,
     actions::ActionInvocationContext context) {
+  WindowOpenDisposition disposition =
+      context.GetProperty(chrome::kDispositionKey);
+  if (disposition == WindowOpenDisposition::CURRENT_TAB ||
+      disposition == WindowOpenDisposition::UNKNOWN) {
+    disposition = WindowOpenDisposition::NEW_FOREGROUND_TAB;
+  }
   if (recent_item.is_local()) {
     ExecuteRestoreEntry(recent_item.session_id(), disposition);
   } else {
@@ -99,37 +106,38 @@ void RecentTabsDynamicMenu::ExecuteRestoreEntry(
 
 void RecentTabsDynamicMenu::ExecuteRecentSplit(
     const RecentTabItem& recent_item,
-    WindowOpenDisposition disposition,
     actions::ActionItem* item,
     actions::ActionInvocationContext context) {
+  WindowOpenDisposition disposition =
+      context.GetProperty(chrome::kDispositionKey);
+  if (disposition == WindowOpenDisposition::CURRENT_TAB ||
+      disposition == WindowOpenDisposition::UNKNOWN) {
+    disposition = WindowOpenDisposition::NEW_FOREGROUND_TAB;
+  }
   ExecuteRestoreEntry(recent_item.session_id(), disposition);
 }
 
 actions::ActionItem::InvokeActionCallback
-RecentTabsDynamicMenu::GetInvokeCallback(RecentTabItem recent_item,
-                                         WindowOpenDisposition disposition) {
+RecentTabsDynamicMenu::GetInvokeCallback(RecentTabItem recent_item) {
   switch (recent_item.type()) {
     case RecentTabItem::Type::kCommand: {
       if (recent_item.session_id().is_valid()) {
         return base::BindRepeating(&RecentTabsDynamicMenu::ExecuteRecentSplit,
-                                   base::Unretained(this), recent_item,
-                                   disposition);
+                                   base::Unretained(this), recent_item);
       }
       break;
     }
 
     case RecentTabItem::Type::kTab: {
       return base::BindRepeating(&RecentTabsDynamicMenu::ExecuteRecentTab,
-                                 base::Unretained(this), recent_item,
-                                 disposition);
+                                 base::Unretained(this), recent_item);
     }
 
     case RecentTabItem::Type::kWindow:
     case RecentTabItem::Type::kGroup:
     case RecentTabItem::Type::kSplit: {
       return base::BindRepeating(&RecentTabsDynamicMenu::ExecuteRecentSplit,
-                                 base::Unretained(this), recent_item,
-                                 disposition);
+                                 base::Unretained(this), recent_item);
     }
 
     case RecentTabItem::Type::kHeader:
@@ -147,28 +155,26 @@ void RecentTabsDynamicMenu::CreateRecentTabsAction(
     return;
   }
 
-  WindowOpenDisposition disposition = WindowOpenDisposition::NEW_FOREGROUND_TAB;
-
   for (const auto& recent_tab : recent_tabs) {
     if (recent_tab.type() == RecentTabItem::Type::kDivider) {
-      parent_item->AddChild(ActionAppMenuManager::CreateDividerActionItem());
+      parent_item->AddChild(AppMenuActionItem::CreateDivider());
       continue;
     }
 
     std::unique_ptr<actions::BaseAction> action_item;
     if (recent_tab.type() == RecentTabItem::Type::kHeader) {
-      action_item =
-          ActionAppMenuManager::CreateHeaderActionItem(recent_tab.title());
+      action_item = AppMenuActionItem::CreateHeader(recent_tab.title());
     } else {
       if (recent_tab.action_id().has_value()) {
-        action_item = ActionAppMenuManager::CreateIndirectActionItem(
+        action_item = AppMenuActionItem::CreateIndirect(
             recent_tab.action_id().value(),
-            ActionAppMenuManager::DisplayType::kRow);
+            BrowserActions::From(browser_window_interface_)->root_action_item(),
+            AppMenuActionItem::DisplayType::kRow);
 
         action_item.get()->GetActionItem()->SetText(recent_tab.title());
         action_item.get()->GetActionItem()->SetImage(recent_tab.icon());
         action_item.get()->GetActionItem()->SetProperty(
-            ActionAppMenuManager::kContainerColorKey, ui::kColorMenuBackground);
+            AppMenuActionItem::kContainerColorKey, ui::kColorMenuBackground);
         if (recent_tab.accelerator().has_value()) {
           action_item.get()->GetActionItem()->SetAccelerator(
               recent_tab.accelerator().value());
@@ -178,8 +184,8 @@ void RecentTabsDynamicMenu::CreateRecentTabsAction(
         builder.SetText(recent_tab.title())
             .SetImage(recent_tab.icon())
             .SetEnabled(recent_tab.enabled())
-            .SetInvokeActionCallback(GetInvokeCallback(recent_tab, disposition))
-            .SetProperty(ActionAppMenuManager::kContainerColorKey,
+            .SetInvokeActionCallback(GetInvokeCallback(recent_tab))
+            .SetProperty(AppMenuActionItem::kContainerColorKey,
                          ui::kColorMenuBackground);
         if (recent_tab.accelerator().has_value()) {
           builder.SetAccelerator(recent_tab.accelerator().value());

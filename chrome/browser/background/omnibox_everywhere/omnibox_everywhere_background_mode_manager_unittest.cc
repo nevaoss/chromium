@@ -230,28 +230,28 @@ TEST_F(OmniboxEverywhereBackgroundModeManagerTest, ContextMenuStructure) {
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_LINUX)
   // Initially no browsers are open in this test, so the exit item and separator
   // are visible.
-  ASSERT_EQ(menu->GetItemCount(), 5u);
-  EXPECT_EQ(menu->GetTypeAt(3), ui::MenuModel::TYPE_SEPARATOR);
-  EXPECT_EQ(menu->GetCommandIdAt(4),
+  ASSERT_EQ(menu->GetItemCount(), 6u);
+  EXPECT_EQ(menu->GetTypeAt(4), ui::MenuModel::TYPE_SEPARATOR);
+  EXPECT_EQ(menu->GetCommandIdAt(5),
             IDC_OMNIBOX_EVERYWHERE_STATUS_ICON_MENU_EXIT);
   EXPECT_TRUE(
       menu->IsCommandIdVisible(IDC_OMNIBOX_EVERYWHERE_STATUS_ICON_MENU_EXIT));
 #else
-  ASSERT_EQ(menu->GetItemCount(), 3u);
+  ASSERT_EQ(menu->GetItemCount(), 4u);
 #endif
 
   EXPECT_EQ(menu->GetCommandIdAt(0),
             IDC_OMNIBOX_EVERYWHERE_STATUS_ICON_MENU_TOGGLE);
+  EXPECT_EQ(menu->GetTypeAt(1), ui::MenuModel::TYPE_SEPARATOR);
   EXPECT_EQ(
-      menu->GetCommandIdAt(1),
+      menu->GetCommandIdAt(2),
       IDC_OMNIBOX_EVERYWHERE_STATUS_ICON_MENU_CUSTOMIZE_KEYBOARD_SHORTCUT);
-  EXPECT_EQ(menu->GetCommandIdAt(2),
+  EXPECT_EQ(menu->GetCommandIdAt(3),
             IDC_OMNIBOX_EVERYWHERE_STATUS_ICON_MENU_SETTINGS);
 
   ui::Accelerator accelerator;
-  EXPECT_TRUE(menu->GetAcceleratorForCommandId(
+  EXPECT_FALSE(menu->GetAcceleratorForCommandId(
       IDC_OMNIBOX_EVERYWHERE_STATUS_ICON_MENU_TOGGLE, &accelerator));
-  EXPECT_EQ(accelerator, prefs::GetDefaultOmniboxEverywhereHotkey());
 }
 
 TEST_F(OmniboxEverywhereBackgroundModeManagerTest,
@@ -268,9 +268,8 @@ TEST_F(OmniboxEverywhereBackgroundModeManagerTest,
   ASSERT_NE(menu, nullptr);
 
   ui::Accelerator accelerator;
-  EXPECT_TRUE(menu->GetAcceleratorForCommandId(
+  EXPECT_FALSE(menu->GetAcceleratorForCommandId(
       IDC_OMNIBOX_EVERYWHERE_STATUS_ICON_MENU_TOGGLE, &accelerator));
-  EXPECT_EQ(accelerator, prefs::GetDefaultOmniboxEverywhereHotkey());
 
   // Update custom hotkey pref and verify the status icon context menu updates.
   TestingBrowserProcess::GetGlobal()->GetTestingLocalState()->SetString(
@@ -283,6 +282,32 @@ TEST_F(OmniboxEverywhereBackgroundModeManagerTest,
   EXPECT_EQ(
       accelerator,
       ui::Accelerator(ui::VKEY_SPACE, ui::EF_SHIFT_DOWN | ui::EF_CONTROL_DOWN));
+
+  // Clear hotkey and verify accelerator is removed from context menu.
+  TestingBrowserProcess::GetGlobal()->GetTestingLocalState()->SetString(
+      prefs::kOmniboxEverywhereHotkey, "");
+
+  menu = status_icon->GetContextMenuForTesting();
+  ASSERT_NE(menu, nullptr);
+  EXPECT_FALSE(menu->GetAcceleratorForCommandId(
+      IDC_OMNIBOX_EVERYWHERE_STATUS_ICON_MENU_TOGGLE, &accelerator));
+
+  // Re-set hotkey, then disable hotkey and verify accelerator is removed.
+  TestingBrowserProcess::GetGlobal()->GetTestingLocalState()->SetString(
+      prefs::kOmniboxEverywhereHotkey, "Ctrl+Shift+Space");
+
+  menu = status_icon->GetContextMenuForTesting();
+  ASSERT_NE(menu, nullptr);
+  EXPECT_TRUE(menu->GetAcceleratorForCommandId(
+      IDC_OMNIBOX_EVERYWHERE_STATUS_ICON_MENU_TOGGLE, &accelerator));
+
+  TestingBrowserProcess::GetGlobal()->GetTestingLocalState()->SetBoolean(
+      prefs::kHotkeyEnabled, false);
+
+  menu = status_icon->GetContextMenuForTesting();
+  ASSERT_NE(menu, nullptr);
+  EXPECT_FALSE(menu->GetAcceleratorForCommandId(
+      IDC_OMNIBOX_EVERYWHERE_STATUS_ICON_MENU_TOGGLE, &accelerator));
 }
 
 TEST_F(OmniboxEverywhereBackgroundModeManagerTest, ExecuteToggleCommand) {
@@ -299,13 +324,22 @@ TEST_F(OmniboxEverywhereBackgroundModeManagerTest, ExecuteToggleCommand) {
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_LINUX)
 TEST_F(OmniboxEverywhereBackgroundModeManagerTest, ExecuteExitCommand) {
   base::UserActionTester user_action_tester;
-  bool callback_called = false;
-  OmniboxEverywhereBackgroundModeManager manager(base::BindRepeating(
-      [](bool* called) { *called = true; }, &callback_called));
+  bool show_callback_called = false;
+  bool close_callback_called = false;
+  OmniboxEverywhereBackgroundModeManager manager(
+      base::BindRepeating([](bool* called) { *called = true; },
+                          &show_callback_called),
+      base::BindRepeating([](bool* called) { *called = true; },
+                          &close_callback_called));
 
   StatusIconMenuModel::Delegate* delegate =
       static_cast<StatusIconMenuModel::Delegate*>(&manager);
   delegate->ExecuteCommand(IDC_OMNIBOX_EVERYWHERE_STATUS_ICON_MENU_EXIT, 0);
+
+  // The Omnibox Everywhere window is closed along with the browsers, as it
+  // holds a keep-alive that would otherwise prevent shutdown.
+  EXPECT_TRUE(close_callback_called);
+  EXPECT_FALSE(show_callback_called);
   EXPECT_EQ(1, user_action_tester.GetActionCount("Exit"));
 }
 #endif

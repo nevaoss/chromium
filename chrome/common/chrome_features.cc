@@ -282,6 +282,8 @@ BASE_FEATURE(kGlicExperimentalTriggeringOptInBypass,
              base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kGlicExperimentalTriggeringOpenWindowIfNone,
              base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kGlicExperimentalTriggeringOsNotification,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kGlicBackgroundTriggering, base::FEATURE_DISABLED_BY_DEFAULT);
 
 const base::FeatureParam<std::string> kGlicExperimentalTriggeringOptInURL{
@@ -291,19 +293,21 @@ const base::FeatureParam<std::string> kGlicExperimentalTriggeringOptInURL{
 const base::FeatureParam<std::string> kGlicExperimentalTriggeringTabFocusHosts{
     &kGlicExperimentalTriggeringOptInTabFocus,
     "glic-experimental-triggering-tab-focus-hosts",
-    "gemini.google.com,gemini-autopush.corp.google.com"};
+    "gemini.google.com,"
+    "gemini-autopush.corp.google.com,"
+    "gemini-preprod.corp.google.com"};
 
 const base::FeatureParam<std::string>
     kGlicExperimentalTriggeringTabFocusPathSubstring{
         &kGlicExperimentalTriggeringOptInTabFocus,
         "glic-experimental-triggering-tab-focus-path-substring",
-        "/spark,/corp/spark"};
+        "/spark,/corp/spark,/app,/corp/app"};
 
 const base::FeatureParam<std::string>
     kGlicExperimentalTriggeringTabFocusFallbackURL{
         &kGlicExperimentalTriggeringOptInTabFocus,
         "glic-experimental-triggering-tab-focus-fallback-url",
-        "https://gemini.google.com/spark"};
+        "https://gemini.google.com/app"};
 
 const base::FeatureParam<base::TimeDelta> kGlicActorPageToolTimeout{
     &kGlicActor, "glic-actor-page-tool-timeout", base::Seconds(30)};
@@ -1420,6 +1424,10 @@ BASE_FEATURE(kIsolatedWebAppBundleCache, base::FEATURE_ENABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
 #if BUILDFLAG(IS_LINUX) && !BUILDFLAG(IS_CHROMEOS)
+// Controls whether Chromium requests a delay shutdown inhibitor and listens
+// for session end events via D-Bus on Linux to allow flushing state cleanly.
+BASE_FEATURE(kLinuxLogindShutdownInhibitor, base::FEATURE_ENABLED_BY_DEFAULT);
+
 BASE_FEATURE(kLinuxLowMemoryMonitor, base::FEATURE_DISABLED_BY_DEFAULT);
 // Values taken from the low-memory-monitor documentation and also apply to the
 // portal API:

@@ -81,14 +81,15 @@ export type {BuildVoiceDropdownGroupsParams, BuildVoiceDropdownGroupsResult, Voi
 export {computeDownloadingMessages, computeErrorMessages, computeVoiceDropdown, getVoiceTitle, isVoicePreviewSpinning, stringToHtmlTestId, voiceQualityRankComparator} from './read_aloud/voice_menu_display.js';
 export type {VoiceNotificationListener} from './read_aloud/voice_notification_manager.js';
 export {VoiceNotificationManager} from './read_aloud/voice_notification_manager.js';
+export {VoiceSelectionDialogElement} from './read_aloud/voice_selection_dialog.js';
 export type {VoiceSelectionMenuElement} from './read_aloud/voice_selection_menu.js';
 export {WebSpeechTtsClient} from './read_aloud/webspeech_tts_client.js';
 export type {WordBoundaryState} from './read_aloud/word_boundaries.js';
 export {WordBoundaries} from './read_aloud/word_boundaries.js';
 export {getWordCount, LOG_EMPTY_DELAY_MS, playFromSelectionTimeout, spinnerDebounceTimeout} from './shared/common.js';
-export {getNearestTextBoundaryPoint, getRectIndexAtY, getRectsForSegments, getTextNodeOffsets} from './shared/dom_queries.js';
+export {getNearestTextBoundaryPoint, getRectsForSegments, getTextNodeOffsets} from './shared/dom_queries.js';
 export {getNewIndex, isActivationKey, isArrow, isBackwardArrow, isForwardArrow, isHorizontalArrow, isLineFocusShortcut, isPlayPauseShortcut, isVerticalArrow} from './shared/keyboard_util.js';
 export type {MetricsBrowserProxy} from './shared/metrics_browser_proxy.js';
 export {MetricsBrowserProxyImpl, ReadAloudSettingsChange, ReadAnythingNewPage, ReadAnythingSettingsAction, ReadAnythingSettingsChange, ReadAnythingSpeechError, ReadAnythingVoiceType} from './shared/metrics_browser_proxy.js';
 export {LinkStatus, PageType, ReadAnythingLogger, SpeechControls, TimeFrom, ViewMode} from './shared/read_anything_logger.js';
-export {calculateTextBounds, getMostCommonPitch, isRectMostlyVisible, isRectVisible, MOSTLY_VISIBLE_PERCENT} from './shared/rect_calculations.js';
+export {calculateTextBounds, getLineForRect, getMostCommonPitch, getRectIndexAtY, isRectMostlyVisible, isRectVisible, MOSTLY_VISIBLE_PERCENT} from './shared/rect_calculations.js';
