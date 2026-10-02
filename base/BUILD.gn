@@ -3194,7 +3194,7 @@ static_library("base_static") {
   }
 
   if (use_neva_appruntime) {
-    public_deps = [ "//base/neva" ]
+    public_deps += [ "//base/neva" ]
   }
 }
 
