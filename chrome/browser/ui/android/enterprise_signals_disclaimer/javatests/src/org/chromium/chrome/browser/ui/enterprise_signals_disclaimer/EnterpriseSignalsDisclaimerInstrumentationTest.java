@@ -16,6 +16,7 @@ import static androidx.test.espresso.matcher.ViewMatchers.withId;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.doReturn;
 
+import static org.chromium.chrome.browser.ui.enterprise_signals_disclaimer.EnterpriseSignalsDisclaimerCoordinator.shouldUseModalDialogInsteadOfBottomSheet;
 import static org.chromium.ui.test.util.ViewUtils.VIEW_GONE;
 import static org.chromium.ui.test.util.ViewUtils.VIEW_NULL;
 import static org.chromium.ui.test.util.ViewUtils.waitForVisibleView;
@@ -39,6 +40,7 @@ import org.mockito.Mock;
 import org.mockito.Mockito;
 
 import org.chromium.base.ThreadUtils;
+import org.chromium.base.test.util.ApplicationTestUtils;
 import org.chromium.base.test.util.CommandLineFlags;
 import org.chromium.base.test.util.CriteriaHelper;
 import org.chromium.base.test.util.DoNotBatch;
@@ -73,6 +75,7 @@ import org.chromium.ui.modaldialog.DialogDismissalCause;
 import org.chromium.ui.modaldialog.ModalDialogManager;
 import org.chromium.ui.modaldialog.ModalDialogProperties;
 import org.chromium.ui.modelutil.PropertyModel;
+import org.chromium.ui.test.util.DeviceRestriction;
 
 /** Instrumentation tests for {@link EnterpriseSignalsDisclaimerController}. */
 @RunWith(ChromeJUnit4ClassRunner.class)
@@ -252,8 +255,7 @@ public class EnterpriseSignalsDisclaimerInstrumentationTest {
     }
 
     private FakeDialog showFakeDialog() {
-        final boolean isTablet = DeviceFormFactor.isNonMultiDisplayContextOnTablet(activity());
-        if (isTablet) {
+        if (shouldUseModalDialogInsteadOfBottomSheet(activity())) {
             final PropertyModel model = showTestModalDialog();
             return new FakeDialog() {
                 @Override
@@ -291,8 +293,7 @@ public class EnterpriseSignalsDisclaimerInstrumentationTest {
     }
 
     private View getDialogView() {
-        final boolean isTablet = DeviceFormFactor.isNonMultiDisplayContextOnTablet(activity());
-        if (isTablet) {
+        if (shouldUseModalDialogInsteadOfBottomSheet(activity())) {
             AppModalPresenter presenter =
                     (AppModalPresenter) modalDialogManager().getCurrentPresenterForTest();
             assert presenter != null;
@@ -311,17 +312,24 @@ public class EnterpriseSignalsDisclaimerInstrumentationTest {
                                 account.getGaiaId()));
     }
 
+    private void acceptDisclaimerForAccount(CoreAccountInfo account) {
+        waitForDisclaimerVisible();
+        onView(withId(R.id.disclaimer_accept_button)).perform(scrollTo(), click());
+        waitForDisclaimerNotShowing();
+        Assert.assertTrue(hasAccountAcknowledgedSignalsDisclaimer(account));
+    }
+
     @Test
     @LargeTest
     public void disclaimerShowsOnStartup() {
         waitForDisclaimerVisible();
-        final boolean isTablet = DeviceFormFactor.isNonMultiDisplayContextOnTablet(activity());
+        boolean expectModal = shouldUseModalDialogInsteadOfBottomSheet(activity());
         // Verify that on phones the bottom sheet is used, while on large form factor the modal
         // dialog is used.
         ThreadUtils.runOnUiThreadBlocking(
                 () -> {
-                    Assert.assertEquals(!isTablet, bottomSheetController().isSheetOpen());
-                    Assert.assertEquals(isTablet, modalDialogManager().isShowing());
+                    Assert.assertEquals(!expectModal, bottomSheetController().isSheetOpen());
+                    Assert.assertEquals(expectModal, modalDialogManager().isShowing());
                 });
     }
 
@@ -465,7 +473,10 @@ public class EnterpriseSignalsDisclaimerInstrumentationTest {
 
     @Test
     @LargeTest
-    @Restriction(DeviceFormFactor.TABLET_OR_DESKTOP)
+    @Restriction({
+        DeviceFormFactor.TABLET_OR_DESKTOP,
+        DeviceRestriction.RESTRICTION_TYPE_NON_FOLDABLE
+    })
     @CommandLineFlags.Add(ChromeSwitches.DISABLE_FIRST_RUN_EXPERIENCE)
     public void clickingOutsideModalDialogSignsOutAndHidesDialog() {
         final EnterpriseSignalsDisclaimerController controller =
@@ -586,15 +597,12 @@ public class EnterpriseSignalsDisclaimerInstrumentationTest {
     @Test
     @LargeTest
     public void acknowledgmentPersistsAcrossSignouts() {
-        waitForDisclaimerVisible();
-
-        onView(withId(R.id.disclaimer_accept_button)).perform(scrollTo(), click());
-        waitForDisclaimerNotShowing();
+        acceptDisclaimerForAccount(TestAccounts.MANAGED_ACCOUNT);
 
         mSigninTestRule.signOut();
         waitForSignout();
-
         mSigninTestRule.addAccountThenSignin(TestAccounts.MANAGED_ACCOUNT);
+
         Assert.assertTrue(hasAccountAcknowledgedSignalsDisclaimer(TestAccounts.MANAGED_ACCOUNT));
         waitForDisclaimerNotShowing();
     }
@@ -602,11 +610,7 @@ public class EnterpriseSignalsDisclaimerInstrumentationTest {
     @Test
     @LargeTest
     public void acknowledgmentIsPerAccount() {
-        waitForDisclaimerVisible();
-
-        onView(withId(R.id.disclaimer_accept_button)).perform(scrollTo(), click());
-        waitForDisclaimerNotShowing();
-        Assert.assertTrue(hasAccountAcknowledgedSignalsDisclaimer(TestAccounts.MANAGED_ACCOUNT));
+        acceptDisclaimerForAccount(TestAccounts.MANAGED_ACCOUNT);
 
         mSigninTestRule.signOut();
         waitForSignout();
@@ -620,5 +624,58 @@ public class EnterpriseSignalsDisclaimerInstrumentationTest {
         mSigninTestRule.forceSignOut();
         waitForSignout();
         mSigninTestRule.removeAccount(MANAGED_ACCOUNT_2.getId());
+    }
+
+    @Test
+    @LargeTest
+    public void syncAcknowledgmentSetAfterRestart() {
+        // Accept the disclaimer for the first account.
+        acceptDisclaimerForAccount(TestAccounts.MANAGED_ACCOUNT);
+
+        // Switch to the second account.
+        mSigninTestRule.signOut();
+        waitForDisclaimerNotShowing();
+        mSigninTestRule.addAccountThenSignin(MANAGED_ACCOUNT_2);
+
+        // Accept the disclaimer for the second account.
+        acceptDisclaimerForAccount(MANAGED_ACCOUNT_2);
+
+        // Simulate a restart, the account is removed before the restart.
+        ThreadUtils.runOnUiThreadBlocking(EnterpriseSignalsDisclaimerAckSyncer::resetForTesting);
+        ApplicationTestUtils.finishActivity(activity());
+
+        mSigninTestRule.removeAccount(MANAGED_ACCOUNT_2.getId());
+
+        mActivityTestRule.startOnBlankPage();
+        ThreadUtils.runOnUiThreadBlocking(
+                () ->
+                        EnterpriseSignalsDisclaimerAckSyncer.initialize(
+                                ProfileManager.getLastUsedRegularProfile()));
+
+        // Verify that the second account is not acknowledged.
+        Assert.assertTrue(hasAccountAcknowledgedSignalsDisclaimer(TestAccounts.MANAGED_ACCOUNT));
+        Assert.assertFalse(hasAccountAcknowledgedSignalsDisclaimer(MANAGED_ACCOUNT_2));
+    }
+
+    @Test
+    @LargeTest
+    public void syncsAcksWhenAccountIsRemoved() {
+        // Accept the disclaimer shown on startup.
+        acceptDisclaimerForAccount(TestAccounts.MANAGED_ACCOUNT);
+
+        // Remove the account. The acknowledgment should be removed in result.
+        mSigninTestRule.removeAccount(TestAccounts.MANAGED_ACCOUNT.getId());
+
+        CriteriaHelper.pollUiThread(
+                () ->
+                        Assert.assertFalse(
+                                hasAccountAcknowledgedSignalsDisclaimer(
+                                        TestAccounts.MANAGED_ACCOUNT)));
+
+        // Add the account again and verify that the disclaimer is shown.
+        // forceSignOut still needs to be called, otherwise the next signin will fail.
+        mSigninTestRule.forceSignOut();
+        mSigninTestRule.addAccountThenSignin(TestAccounts.MANAGED_ACCOUNT);
+        waitForDisclaimerVisible();
     }
 }

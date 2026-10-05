@@ -18,7 +18,6 @@
 #include "media/mojo/mojom/remoting_common.mojom.h"
 #include "mojo/public/cpp/bindings/pending_receiver.h"
 #include "mojo/public/cpp/bindings/pending_remote.h"
-#include "mojo/public/cpp/bindings/remote.h"
 
 class RedirectionRemotingSourceBridge;
 
@@ -78,9 +77,6 @@ class RedirectionConnector final : public RemotingBridge::Client {
                     bool is_initiated_by_source) final;
   void SendMessageToSink(RemotingBridge* bridge,
                          const std::vector<uint8_t>& message) final;
-  void EstimateTransmissionCapacity(
-      media::mojom::Remoter::EstimateTransmissionCapacityCallback callback)
-      final;
   void OnClientActivated(RemotingBridge* bridge) final;
   void OnClientDeactivated(RemotingBridge* bridge) final;
 

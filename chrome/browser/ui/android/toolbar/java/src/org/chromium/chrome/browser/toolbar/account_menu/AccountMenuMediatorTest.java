@@ -5,6 +5,7 @@
 package org.chromium.chrome.browser.toolbar.account_menu;
 
 import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -41,6 +42,7 @@ import org.chromium.chrome.browser.settings.SettingsNavigationFactory;
 import org.chromium.chrome.browser.signin.services.DisplayableProfileData;
 import org.chromium.chrome.browser.signin.services.IdentityServicesProvider;
 import org.chromium.chrome.browser.signin.services.SigninManager;
+import org.chromium.chrome.browser.sync.SyncServiceFactory;
 import org.chromium.chrome.browser.tab.TabLaunchType;
 import org.chromium.chrome.browser.tabmodel.TabCreator;
 import org.chromium.chrome.browser.tabmodel.TabCreatorManager;
@@ -60,6 +62,8 @@ import org.chromium.components.signin.SigninFeatures;
 import org.chromium.components.signin.base.AccountInfo;
 import org.chromium.components.signin.metrics.SigninAccessPoint;
 import org.chromium.components.signin.test.util.TestAccounts;
+import org.chromium.components.sync.SyncService;
+import org.chromium.components.sync.UserActionableError;
 import org.chromium.ui.base.WindowAndroid;
 import org.chromium.ui.modelutil.MVCListAdapter.ListItem;
 import org.chromium.ui.modelutil.MVCListAdapter.ModelList;
@@ -87,6 +91,7 @@ public class AccountMenuMediatorTest {
     @Mock private Runnable mDismissCallback;
     @Mock private IdentityServicesProvider mIdentityServicesProvider;
     @Mock private SigninManager mSigninManager;
+    @Mock private SyncService mSyncService;
     @Mock private BottomSheetSigninAndHistorySyncCoordinator mSigninCoordinator;
     @Mock private SigninAndHistorySyncActivityLauncher mSigninLauncher;
 
@@ -99,11 +104,13 @@ public class AccountMenuMediatorTest {
         mContext = ApplicationProvider.getApplicationContext();
         SettingsNavigationFactory.setInstanceForTesting(mSettingsNavigation);
         IdentityServicesProvider.setInstanceForTests(mIdentityServicesProvider);
+        SyncServiceFactory.setInstanceForTesting(mSyncService);
         doReturn(mProfile).when(mProfile).getOriginalProfile();
         doReturn(mSigninManager).when(mIdentityServicesProvider).getSigninManager(mProfile);
         doReturn(mAccountManagerTestRule.getIdentityManager())
                 .when(mIdentityServicesProvider)
                 .getIdentityManager(mProfile);
+        doReturn(UserActionableError.NONE).when(mSyncService).getUserActionableError();
         doReturn(true).when(mSigninManager).isSigninAllowed();
         MultiInstanceOrchestratorFactory.setInstanceForTesting(mOrchestrator);
         TabModelSelectorSupplier.setInstanceForTesting(mTabModelSelector);
@@ -116,10 +123,10 @@ public class AccountMenuMediatorTest {
         mMediator =
                 new AccountMenuMediator(
                         mContext,
-                        mModelList,
+                        mProfile,
                         mWindowAndroid,
-                        () -> mProfile,
-                        () -> mSigninCoordinator,
+                        mModelList,
+                        mSigninCoordinator,
                         mSigninLauncher,
                         mDismissCallback);
     }
@@ -215,6 +222,32 @@ public class AccountMenuMediatorTest {
 
     @Test
     @SmallTest
+    public void testAccountSettingsItemClick_dismissesAndOpensAccountSettings() {
+        mAccountManagerTestRule.addAccount(TestAccounts.ACCOUNT1);
+        mAccountManagerTestRule.getIdentityManager().setPrimaryAccount(TestAccounts.ACCOUNT1);
+        mMediator.updateMenuItems();
+
+        assertEquals(6, mModelList.size());
+        ListItem item = mModelList.get(3);
+        assertEquals(ItemType.MENU_ITEM, item.type);
+
+        PropertyModel model = item.model;
+        assertEquals(
+                R.string.profile_menu_account_settings_button,
+                model.get(MenuItemProperties.TITLE_ID));
+        assertEquals(R.drawable.settings_cog, model.get(MenuItemProperties.START_ICON_ID));
+
+        OnClickListener clickListener = model.get(MenuItemProperties.CLICK_LISTENER);
+        assertNotNull(clickListener);
+
+        clickListener.onClick(null);
+
+        verify(mDismissCallback).run();
+        verify(mSettingsNavigation).startSettings(mContext, SettingsFragment.MAIN);
+    }
+
+    @Test
+    @SmallTest
     public void testOpenIncognitoItemClick_dismissesAndOpensNewIncognitoWindow() {
         IncognitoUtils.setShouldOpenIncognitoAsWindowForTesting(true);
         mMediator.updateMenuItems();
@@ -285,7 +318,7 @@ public class AccountMenuMediatorTest {
 
         mMediator.updateMenuItems();
 
-        assertEquals(4, mModelList.size());
+        assertEquals(6, mModelList.size());
         ListItem item = mModelList.get(0);
         assertEquals(ItemType.IDENTITY_CARD, item.type);
         DisplayableProfileData profileData = item.model.get(IdentityCardProperties.PROFILE_DATA);
@@ -325,5 +358,90 @@ public class AccountMenuMediatorTest {
         assertNotNull(updatedProfileData);
         assertEquals("Updated Name", updatedProfileData.getFullName());
         assertEquals(TestAccounts.ACCOUNT1.getEmail(), updatedProfileData.getAccountEmail());
+    }
+
+    @Test
+    @SmallTest
+    public void testObserverRegistrationAndTeardown() {
+        verify(mSigninManager).addSignInStateObserver(mMediator);
+
+        mMediator.destroy();
+        verify(mSigninManager).removeSignInStateObserver(mMediator);
+    }
+
+    @Test
+    @SmallTest
+    public void testSignInStateObservers_updateMenuItems() {
+        mAccountManagerTestRule.addAccount(TestAccounts.ACCOUNT1);
+        mAccountManagerTestRule.getIdentityManager().setPrimaryAccount(TestAccounts.ACCOUNT1);
+        mMediator.onSignedIn();
+        // Identity card, autofill, account settings, manage Google account, divider and incognito
+        // items.
+        assertEquals(6, mModelList.size());
+        assertEquals(ItemType.IDENTITY_CARD, mModelList.get(0).type);
+
+        mAccountManagerTestRule.getIdentityManager().setPrimaryAccount(null);
+        mMediator.onSignedOut();
+        assertEquals(4, mModelList.size());
+        assertEquals(ItemType.PROMO_CARD, mModelList.get(0).type);
+
+        doReturn(false).when(mSigninManager).isSigninAllowed();
+        mMediator.onSignInAllowedChanged();
+        assertEquals(3, mModelList.size());
+        assertEquals(ItemType.MENU_ITEM, mModelList.get(0).type);
+    }
+
+    @Test
+    @SmallTest
+    public void testManageGoogleAccountItemClick_opensMyAccount() {
+        mAccountManagerTestRule.addAccount(TestAccounts.ACCOUNT1);
+        mAccountManagerTestRule.getIdentityManager().setPrimaryAccount(TestAccounts.ACCOUNT1);
+
+        mMediator.updateMenuItems();
+
+        assertEquals(6, mModelList.size());
+        ListItem item = mModelList.get(2);
+        assertEquals(ItemType.MENU_ITEM, item.type);
+        assertNotNull(item);
+        assertEquals(
+                R.string.manage_your_google_account, item.model.get(MenuItemProperties.TITLE_ID));
+        OnClickListener clickListener = item.model.get(MenuItemProperties.CLICK_LISTENER);
+        assertNotNull(clickListener);
+
+        clickListener.onClick(null);
+
+        verify(mDismissCallback).run();
+        verify(mSigninLauncher).openManageGoogleAccount(eq(mContext));
+    }
+
+    @Test
+    @SmallTest
+    public void testSignedOut_doesNotDisplayManageGoogleAccountItem() {
+        // The FakeIdentityManager from `mAccountManagerTestRule` has no primary account by default.
+        mMediator.updateMenuItems();
+
+        for (ListItem item : mModelList) {
+            if (item.type == ItemType.MENU_ITEM) {
+                assertNotEquals(
+                        R.string.manage_your_google_account,
+                        item.model.get(MenuItemProperties.TITLE_ID));
+            }
+        }
+    }
+
+    @Test
+    @SmallTest
+    public void testIncognitoProfile_doesNotDisplayManageGoogleAccountItem() {
+        doReturn(true).when(mProfile).isOffTheRecord();
+
+        mMediator.updateMenuItems();
+
+        for (ListItem item : mModelList) {
+            if (item.type == ItemType.MENU_ITEM) {
+                assertNotEquals(
+                        R.string.manage_your_google_account,
+                        item.model.get(MenuItemProperties.TITLE_ID));
+            }
+        }
     }
 }

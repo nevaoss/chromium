@@ -170,7 +170,6 @@ static_library("test_support") {
     "//chrome/browser/signin:identity_test_support",
     "//chrome/test/base:browser_test_waiters",
     "//chrome/test/base:chrome_render_view_host_test_harness",
-    "//chrome/test/base:chrome_render_view_test",
     "//chrome/test/base:chrome_test_utils",
     "//chrome/test/base:profile_lifecycle_test_utils",
     "//chrome/test/base:testing_browser_process_impl",
@@ -883,6 +882,7 @@ source_set("platform_browser_tests") {
     "//chrome/common:constants",
     "//chrome/common:non_code_constants",
     "//chrome/test:test_support",
+    "//chrome/test/base:chrome_render_view_test",
     "//components/browsing_data/content:test_support",
     "//components/content_settings/core/browser",
     "//components/content_settings/core/browser:cookie_settings",
@@ -1264,6 +1264,7 @@ if (is_android) {
       "//chrome/browser/webid",
       "//chrome/browser/webid:android_browsertests",
       "//chrome/test/base:browser_tests_runner",
+      "//chrome/test/base:chrome_render_view_test",
       "//chrome/test/base:chrome_test_launcher",
       "//chrome/test/data/webui:browser_tests",
       "//chrome/test/data/webui:interactive_ui_tests",
@@ -2061,6 +2062,7 @@ if (!is_android) {
       "//chrome/browser/ui/toolbar/pinned_toolbar:browser_tests",
       "//chrome/browser/ui/user_education",
       "//chrome/browser/ui/user_education:browser_tests",
+      "//chrome/browser/ui/views:browser_tests",
       "//chrome/browser/ui/views:chrome_views_delegate",
       "//chrome/browser/ui/views:confirm_bubble",
       "//chrome/browser/ui/views:external_protocol_dialog",
@@ -2085,6 +2087,7 @@ if (!is_android) {
       "//chrome/browser/ui/views/file_system_access:browser_tests",
       "//chrome/browser/ui/views/frame",
       "//chrome/browser/ui/views/frame:app_menu_button_observer",
+      "//chrome/browser/ui/views/frame:browser_tests",
       "//chrome/browser/ui/views/frame:contents_container_outline",
       "//chrome/browser/ui/views/frame:immersive_mode_controller_stub",
       "//chrome/browser/ui/views/frame:multi_contents_drop_target_view",
@@ -2588,7 +2591,10 @@ if (!is_android) {
     deps += [ "//chrome/browser/ui/performance_controls/test_support" ]
 
     if (is_mac) {
-      deps += [ "//chrome/updater:browser_sources" ]
+      deps += [
+        "//chrome/browser/ui:browser_commands_mac",
+        "//chrome/updater:browser_sources",
+      ]
     }
 
     if (enable_guest_view) {
@@ -3290,6 +3296,7 @@ if (!is_android) {
           "../browser/ui/views/profiles/first_run_sign_in_celebration_ui_browsertest.cc",
         ]
         deps += [
+          "//chrome/browser/ui/views/profiles:first_run_flow_controller",
           "//chrome/browser/ui/views/profiles/feature_showcase",
           "//chrome/browser/ui/webui/intro",
         ]
@@ -3465,6 +3472,7 @@ if (!is_android) {
         "../browser/ui/views/frame/widget_accessibility_browsertest.cc",
         "../browser/ui/views/hung_renderer_view_browsertest.cc",
         "../browser/ui/views/javascript_tab_modal_dialog_view_views_browsertest.cc",
+        "../browser/ui/views/media_picker_utils_browsertest.cc",
         "../browser/ui/views/page_action/zoom_view_browsertest.cc",
         "../browser/ui/views/profiles/profile_menu_view_browsertest.cc",
         "../browser/ui/views/search_engines/dse_reset_dialog_view_browsertest.cc",
@@ -3529,13 +3537,8 @@ if (!is_android) {
           "../browser/ui/views/status_bubble_views_browsertest_mac.mm",
         ]
       } else {
-        sources += [
-          # Depends on Aura which is not supported on Mac.
-          "../browser/ui/views/media_picker_utils_browsertest.cc",
-
-          # TaskManagerView is not used or built on Mac.
-          "../browser/ui/views/task_manager_view_browsertest.cc",
-        ]
+        # TaskManagerView is not used or built on Mac.
+        sources += [ "../browser/ui/views/task_manager_view_browsertest.cc" ]
         deps += [ "//chrome/browser/ui/views:task_manager_view" ]
       }
       if (is_win || is_mac || is_linux) {
@@ -3690,13 +3693,6 @@ if (!is_android) {
     if (is_chromeos) {
       sources += [
         "../browser/file_system_access/cloud_identifier/cloud_identifier_util_ash_browsertest.cc",
-        "../browser/ui/views/frame/browser_frame_ash_browsertest.cc",
-        "../browser/ui/views/frame/browser_frame_view_chromeos_browsertest.cc",
-        "../browser/ui/views/frame/immersive_mode_browser_view_browsertest.cc",
-        "../browser/ui/views/frame/immersive_mode_controller_chromeos_browsertest.cc",
-        "../browser/ui/views/frame/system_menu_model_builder_browsertest_chromeos.cc",
-        "../browser/ui/views/frame/top_controls_slide_controller_chromeos_browsertest.cc",
-        "../browser/ui/views/intent_picker_bubble_view_browsertest_chromeos.cc",
         "../browser/ui/views/mahi/mahi_menu_pixeltest.cc",
         "../browser/ui/views/web_apps/protocol_handler_picker_interactve_uitest.cc",
         "../browser/ui/views/web_apps/web_app_ash_interactive_ui_test.cc",
@@ -4323,6 +4319,7 @@ if (!is_android) {
       sources += [
         "//chrome/browser/enterprise/data_protection/data_protection_clipboard_utils_browsertest.cc",
         "//chrome/browser/enterprise/data_protection/data_protection_navigation_controller_browsertest.cc",
+        "//chrome/browser/enterprise/data_protection/data_protection_telemetry_browsertest.cc",
       ]
       deps += [ "//components/enterprise/connectors/core:test_support" ]
     }
@@ -4722,7 +4719,6 @@ test("unit_tests") {
     "../app/llvm_profile_util.cc",
     "../app/llvm_profile_util.h",
     "../app/llvm_profile_util_unittest.cc",
-    "../browser/chrome_content_browser_client_unittest.cc",
     "../common/chrome_content_client_unittest.cc",
     "../common/chrome_paths_unittest.cc",
     "../common/crash_keys_unittest.cc",
@@ -6513,6 +6509,10 @@ test("unit_tests") {
       "//chrome/browser/ui/download",
       "//chrome/browser/ui/download:unit_tests",
     ]
+
+    if (is_win) {
+      deps += [ "//chrome/browser/default_browser/win:unit_tests" ]
+    }
   }
 
   if (!is_android) {
@@ -7689,6 +7689,7 @@ if (!is_android) {
       "//chrome/browser/ui/web_applications/test:test_support_ui",
       "//chrome/browser/web_applications:web_applications_test_support",
       "//chrome/test/base:browser_test_waiters",
+      "//chrome/test/base:chrome_render_view_test",
       "//chrome/test/base:chrome_test_scoped_utils",
       "//chrome/test/base:chrome_test_utils",
       "//chrome/test/base:devtools_coverage",
@@ -7969,10 +7970,7 @@ if (!is_android) {
     # These tests are only meant to run on an FYI bot because they
     # test against live sites, as a way to catch potential regressions.
     test("accessibility_live_site_tests") {
-      sources = [
-        "../browser/ash/accessibility/accessibility_live_site_browsertest.cc",
-        "base/interactive_ui_tests_main.cc",
-      ]
+      sources = [ "base/interactive_ui_tests_main.cc" ]
       configs += [ "//build/config:precompiled_headers" ]
 
       defines = [ "HAS_OUT_OF_PROC_TEST_RUNNER" ]
@@ -7985,8 +7983,7 @@ if (!is_android) {
         "//chrome:resources",
         "//chrome:strings",
         "//chrome/browser",
-        "//chrome/browser/ash/accessibility",
-        "//chrome/browser/ash/accessibility:test_support",
+        "//chrome/browser/ash/accessibility:live_site_tests",
         "//chrome/browser/devtools",
         "//chrome/renderer",
         "//chrome/test/base:chrome_test_launcher",
@@ -8264,6 +8261,7 @@ if (!is_android && !is_chromeos_device) {
       "//chrome/browser/ui/views/bubble",
       "//chrome/browser/ui/views/contextual_tasks:interactive_ui_tests",
       "//chrome/browser/ui/views/download",
+      "//chrome/browser/ui/views/extensions:extensions_toolbar_desktop",
       "//chrome/browser/ui/views/extensions:interactive_ui_tests",
       "//chrome/browser/ui/views/extensions:security_dialog_tracker",
       "//chrome/browser/ui/views/file_system_access:interactive_ui_tests",
@@ -8272,6 +8270,7 @@ if (!is_android && !is_chromeos_device) {
       "//chrome/browser/ui/views/frame:glass_frame_service",
       "//chrome/browser/ui/views/frame:multi_contents_background_view",
       "//chrome/browser/ui/views/frame:multi_contents_resize_area",
+      "//chrome/browser/ui/views/frame:multi_contents_view_mini_toolbar",
       "//chrome/browser/ui/views/infobars",
       "//chrome/browser/ui/views/location_bar",
       "//chrome/browser/ui/views/new_tab_footer",
@@ -8543,6 +8542,7 @@ if (!is_android && !is_chromeos_device) {
         "//chrome/browser:app_controller_mac",
         "//chrome/browser:chrome_browser_application_mac",
         "//chrome/browser:global_keyboard_shortcuts_mac",
+        "//chrome/browser/ui:browser_commands_mac",
         "//chrome/browser/ui/cocoa",
         "//chrome/installer/mac:install_test_util",
       ]
@@ -8704,10 +8704,10 @@ if (!is_android && !is_chromeos_device) {
         "//chrome/browser/ui/views/tab_sharing:interactive_ui_tests",
         "//chrome/browser/ui/views/tabs:interactive_ui_tests",
         "//chrome/browser/ui/views/tabs:new_tab_button",
-        "//chrome/browser/ui/views/tabs:new_tab_button_menu_model",
         "//chrome/browser/ui/views/tabs:tab",
         "//chrome/browser/ui/views/tabs:tab_group",
         "//chrome/browser/ui/views/tabs:tab_strip",
+        "//chrome/browser/ui/views/tabs/shared",
         "//chrome/browser/ui/views/tabs/tab",
         "//chrome/browser/ui/views/tabs/vertical:impl",
         "//chrome/browser/ui/views/translate",
@@ -9021,6 +9021,7 @@ if (!is_android && !is_chromeos_device) {
         "//chrome/browser/enterprise/idle:interactive_ui_tests",
         "//chrome/browser/ui/startup:test_support_ui",
         "//chrome/browser/ui/views/profiles:dice_web_signin_interception_bubble_view",
+        "//chrome/browser/ui/views/profiles:first_run_flow_controller",
         "//chrome/browser/ui/views/profiles:profile_picker_toolbar",
         "//chrome/browser/ui/views/profiles/feature_showcase:metrics",
         "//chrome/browser/ui/webui/feature_showcase",

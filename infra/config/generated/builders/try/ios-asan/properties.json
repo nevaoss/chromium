@@ -17,8 +17,7 @@
               "clusterfuzz_archive": {
                 "archive_path": "mac-release-ios-asan/ios-asan-mac-release",
                 "gs_acl": "public-read",
-                "gs_bucket": "chromium-browser-asan",
-                "use_archive_path": true
+                "gs_bucket": "chromium-browser-asan"
               },
               "execution_mode": "COMPILE_AND_TEST",
               "legacy_chromium_config": {
@@ -68,5 +67,5 @@
   },
   "builder_group": "tryserver.chromium.mac",
   "recipe": "chromium_trybot",
-  "xcode_build_version": "27a5252f"
+  "xcode_build_version": "27a266a"
 }

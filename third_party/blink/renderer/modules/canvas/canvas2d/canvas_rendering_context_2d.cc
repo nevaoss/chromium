@@ -379,9 +379,6 @@ bool CanvasRenderingContext2D::WritePixels(const SkImageInfo& orig_info,
     }
   }
 
-  // WritePixels content is not saved in the recording. Calling WritePixels
-  // therefore invalidates the last recording because it's now
-  // missing that information.
   bool result = false;
   if (shared_image_provider_) {
     result =
@@ -390,7 +387,12 @@ bool CanvasRenderingContext2D::WritePixels(const SkImageInfo& orig_info,
     result = bitmap_provider_->WritePixels(orig_info, pixels, row_bytes, x, y);
   }
   if (result) {
+    // WritePixels content is not saved in the recording. Thus, WritePixels()
+    // must invalidate the last recording and ensure that any subsequent
+    // recording is not treated as a full-frame recording, as it would be
+    // missing this pixel data.
     last_recording_ = std::nullopt;
+    set_clear_frame(false);
   }
   return result;
 }
@@ -546,10 +548,9 @@ void CanvasRenderingContext2D::SetRecorder(
 }
 
 void CanvasRenderingContext2D::RecordingCleared() {
+  BaseRenderingContext2D::RecordingCleared();
   if (shared_image_provider_) {
     shared_image_provider_->RecordingCleared();
-  } else if (bitmap_provider_) {
-    bitmap_provider_->RecordingCleared();
   }
 }
 
@@ -577,10 +578,10 @@ void CanvasRenderingContext2D::WillDraw(
 }
 
 void CanvasRenderingContext2D::FlushIfRecordingLimitExceeded() {
+  if (Host()->IsPrinting() && clear_frame()) {
+    return;
+  }
   if (shared_image_provider_) {
-    if (Host()->IsPrinting() && shared_image_provider_->clear_frame()) {
-      return;
-    }
     const MemoryManagedPaintRecorder* recorder = Recorder();
     CHECK(recorder);
     if (recorder->ReleasableOpBytesUsed() >
@@ -590,9 +591,6 @@ void CanvasRenderingContext2D::FlushIfRecordingLimitExceeded() {
       FlushCanvas(FlushReason::kOther);
     }
   } else if (bitmap_provider_) {
-    if (Host()->IsPrinting() && bitmap_provider_->clear_frame()) {
-      return;
-    }
     const MemoryManagedPaintRecorder* recorder = Recorder();
     CHECK(recorder);
     if (recorder->ReleasableOpBytesUsed() >

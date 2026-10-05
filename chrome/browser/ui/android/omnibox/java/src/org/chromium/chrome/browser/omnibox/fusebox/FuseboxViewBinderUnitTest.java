@@ -49,10 +49,10 @@ import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.omnibox.R;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator.FuseboxLayoutMode;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator.FuseboxState;
+import org.chromium.chrome.browser.omnibox.fusebox.FuseboxProperties.AnchoringMode;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxProperties.BackgroundStyle;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxProperties.PopupButtonData;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxProperties.PopupButtonType;
-import org.chromium.chrome.browser.omnibox.fusebox.FuseboxViewHolder.AnchoringMode;
 import org.chromium.chrome.browser.omnibox.styles.OmniboxResourceProvider;
 import org.chromium.chrome.browser.ui.theme.BrandedColorScheme;
 import org.chromium.components.omnibox.AutocompleteRequestType;
@@ -122,7 +122,8 @@ public class FuseboxViewBinderUnitTest {
                         mPopupWindow,
                         popupView,
                         mDynamicRectProvider,
-                        /* isBottomSheet= */ false);
+                        /* isBottomSheet= */ false,
+                        /* useCarousel= */ false);
         mViewHolder = new FuseboxViewHolder(parent, mPopup);
 
         // Initialize workable defaults.
@@ -133,6 +134,7 @@ public class FuseboxViewBinderUnitTest {
         mModel.set(FuseboxProperties.REQUEST_TYPE_BUTTON_VISIBLE, false);
         mModel.set(FuseboxProperties.COLOR_SCHEME, BrandedColorScheme.APP_DEFAULT);
         mModel.set(FuseboxProperties.FUSEBOX_LAYOUT_MODE, FuseboxLayoutMode.TOOLBAR);
+        mModel.set(FuseboxProperties.ANCHORING_MODE, AnchoringMode.TOOLBAR_MULTI_LINE);
         mModel.set(
                 FuseboxProperties.PLUS_BUTTON_BACKGROUND_STYLE,
                 BackgroundStyle.INTERACT_ONLY_SMALL);
@@ -149,7 +151,7 @@ public class FuseboxViewBinderUnitTest {
     }
 
     private View getDynamicButton(FuseboxPopup popup, int index) {
-        ViewGroup group = popup.mViewGroup;
+        ViewGroup group = popup.mAccordionContainer;
         int headerIndex = group.indexOfChild(popup.mModelsHeader);
         return group.getChildAt(headerIndex + 1 + index);
     }
@@ -159,7 +161,7 @@ public class FuseboxViewBinderUnitTest {
     }
 
     private View getDynamicToolButton(int index) {
-        ViewGroup group = mPopup.mViewGroup;
+        ViewGroup group = mPopup.mAccordionContainer;
         int headerIndex = group.indexOfChild(mPopup.mToolsHeader);
         return group.getChildAt(headerIndex + 1 + index);
     }
@@ -177,7 +179,8 @@ public class FuseboxViewBinderUnitTest {
                         mPopupWindow,
                         popupView,
                         mDynamicRectProvider,
-                        /* isBottomSheet= */ true);
+                        /* isBottomSheet= */ true,
+                        /* useCarousel= */ true);
         return new FuseboxViewHolder(mViewHolder.parentView, popup);
     }
 
@@ -191,6 +194,7 @@ public class FuseboxViewBinderUnitTest {
                 .with(FuseboxProperties.REQUEST_TYPE_BUTTON_VISIBLE, false)
                 .with(FuseboxProperties.COLOR_SCHEME, BrandedColorScheme.APP_DEFAULT)
                 .with(FuseboxProperties.FUSEBOX_LAYOUT_MODE, FuseboxLayoutMode.TOOLBAR)
+                .with(FuseboxProperties.ANCHORING_MODE, AnchoringMode.TOOLBAR_MULTI_LINE)
                 .with(
                         FuseboxProperties.PLUS_BUTTON_BACKGROUND_STYLE,
                         BackgroundStyle.INTERACT_ONLY_SMALL)
@@ -219,6 +223,11 @@ public class FuseboxViewBinderUnitTest {
         mModel.set(
                 FuseboxProperties.FUSEBOX_STATE,
                 testCase == Variant.COMPACT ? FuseboxState.COMPACT : FuseboxState.EXPANDED);
+        mModel.set(
+                FuseboxProperties.ANCHORING_MODE,
+                testCase == Variant.COMPACT
+                        ? AnchoringMode.TOOLBAR_SINGLE_LINE
+                        : AnchoringMode.TOOLBAR_MULTI_LINE);
         mModel.set(FuseboxProperties.REQUEST_TYPE, requestType);
         mModel.set(FuseboxProperties.REQUEST_TYPE_BUTTON_TEXT, "test label");
         mModel.set(FuseboxProperties.REQUEST_TYPE_BUTTON_VISIBLE, false);
@@ -347,9 +356,9 @@ public class FuseboxViewBinderUnitTest {
         HistogramWatcher histogramWatcher =
                 HistogramWatcher.newSingleRecordWatcher(
                         FuseboxMetrics.REANCHOR_VIEWS_DURATION_HISTOGRAM);
-        mModel.set(FuseboxProperties.FUSEBOX_LAYOUT_MODE, FuseboxLayoutMode.SUGGESTIONS_POPOVER);
+        mModel.set(FuseboxProperties.ANCHORING_MODE, AnchoringMode.POPOVER);
 
-        assertEquals(AnchoringMode.POPOVER, mViewHolder.currentAnchoringMode);
+        assertEquals(AnchoringMode.POPOVER, mModel.get(FuseboxProperties.ANCHORING_MODE));
         var lp = (ConstraintLayout.LayoutParams) mViewHolder.plusButton.getLayoutParams();
         assertEquals(ConstraintSet.UNSET, lp.topToTop);
         assertEquals(R.id.omnibox_suggestions_dropdown, lp.topToBottom);
@@ -358,38 +367,41 @@ public class FuseboxViewBinderUnitTest {
     }
 
     @Test
-    public void reanchorViewsForCompactFusebox_deduplicatesWhenOptimizationsEnabled() {
-        OmniboxFeatures.sModelPickerOptimizations.setForTesting(true);
+    public void reanchorViewsForCompactFusebox_deduplicates() {
         HistogramWatcher histogramWatcher =
                 HistogramWatcher.newSingleRecordWatcher(
                         FuseboxMetrics.REANCHOR_VIEWS_DURATION_HISTOGRAM);
         configureFusebox(Variant.COMPACT, AutocompleteRequestType.SEARCH);
 
-        assertEquals(AnchoringMode.TOOLBAR_SINGLE_LINE, mViewHolder.currentAnchoringMode);
+        assertEquals(
+                AnchoringMode.TOOLBAR_SINGLE_LINE, mModel.get(FuseboxProperties.ANCHORING_MODE));
         var lp = (ConstraintLayout.LayoutParams) mViewHolder.plusButton.getLayoutParams();
         assertEquals(R.id.url_bar, lp.topToTop);
         assertEquals(ConstraintSet.UNSET, lp.topToBottom);
         assertEquals(ConstraintSet.UNSET, lp.bottomToBottom);
         histogramWatcher.assertExpected();
 
-        // Transitioning between DISABLED and COMPACT maintains singleLine without re-anchoring.
+        // Setting the same anchoring mode maintains singleLine without re-anchoring.
         histogramWatcher =
-                HistogramWatcher.newSingleRecordWatcher(
-                        FuseboxMetrics.REANCHOR_VIEWS_DURATION_HISTOGRAM);
-        mModel.set(FuseboxProperties.FUSEBOX_STATE, FuseboxState.DISABLED);
-        assertEquals(AnchoringMode.TOOLBAR_SINGLE_LINE, mViewHolder.currentAnchoringMode);
+                HistogramWatcher.newBuilder()
+                        .expectNoRecords(FuseboxMetrics.REANCHOR_VIEWS_DURATION_HISTOGRAM)
+                        .build();
+        mModel.set(FuseboxProperties.ANCHORING_MODE, AnchoringMode.TOOLBAR_SINGLE_LINE);
+        assertEquals(
+                AnchoringMode.TOOLBAR_SINGLE_LINE, mModel.get(FuseboxProperties.ANCHORING_MODE));
         var lpDisabled = (ConstraintLayout.LayoutParams) mViewHolder.plusButton.getLayoutParams();
         assertEquals(R.id.url_bar, lpDisabled.topToTop);
         assertEquals(ConstraintSet.UNSET, lpDisabled.topToBottom);
         assertEquals(ConstraintSet.UNSET, lpDisabled.bottomToBottom);
         histogramWatcher.assertExpected();
 
-        // Transitioning to EXPANDED updates anchoring mode to TOOLBAR_MULTI_LINE.
+        // Transitioning to TOOLBAR_MULTI_LINE updates anchoring mode.
         histogramWatcher =
                 HistogramWatcher.newSingleRecordWatcher(
                         FuseboxMetrics.REANCHOR_VIEWS_DURATION_HISTOGRAM);
-        mModel.set(FuseboxProperties.FUSEBOX_STATE, FuseboxState.EXPANDED);
-        assertEquals(AnchoringMode.TOOLBAR_MULTI_LINE, mViewHolder.currentAnchoringMode);
+        mModel.set(FuseboxProperties.ANCHORING_MODE, AnchoringMode.TOOLBAR_MULTI_LINE);
+        assertEquals(
+                AnchoringMode.TOOLBAR_MULTI_LINE, mModel.get(FuseboxProperties.ANCHORING_MODE));
         histogramWatcher.assertExpected();
     }
 
@@ -664,13 +676,14 @@ public class FuseboxViewBinderUnitTest {
         PopupButtonData data2 = new PopupButtonDataBuilder().withText("button 2").build();
 
         mModel.set(FuseboxProperties.POPUP_MODEL_BUTTON_DATA_LIST, List.of(data1, data2));
-        int headerIndex = mPopup.mViewGroup.indexOfChild(mPopup.mModelsHeader);
-        assertEquals(2, mPopup.mViewGroup.getChildCount() - (headerIndex + 1));
+        ViewGroup group = mPopup.mAccordionContainer;
+        int headerIndex = group.indexOfChild(mPopup.mModelsHeader);
+        assertEquals(2, group.getChildCount() - (headerIndex + 1));
         assertEquals(6, mPopup.mAttachmentButtons.size());
         assertEquals(2, mPopup.mDynamicThemedButtons.size());
 
         mModel.set(FuseboxProperties.POPUP_MODEL_BUTTON_DATA_LIST, List.of(data1));
-        assertEquals(1, mPopup.mViewGroup.getChildCount() - (headerIndex + 1));
+        assertEquals(1, group.getChildCount() - (headerIndex + 1));
         assertEquals(6, mPopup.mAttachmentButtons.size());
         assertEquals(1, mPopup.mDynamicThemedButtons.size());
     }
@@ -689,12 +702,13 @@ public class FuseboxViewBinderUnitTest {
                         .build();
 
         mModel.set(FuseboxProperties.POPUP_TOOL_BUTTON_DATA_LIST, List.of(data1, data2));
-        int headerIndex = mPopup.mViewGroup.indexOfChild(mPopup.mToolsHeader);
-        int dividerIndex = mPopup.mViewGroup.indexOfChild(mPopup.mModelsDivider);
+        ViewGroup group = mPopup.mAccordionContainer;
+        int headerIndex = group.indexOfChild(mPopup.mToolsHeader);
+        int dividerIndex = group.indexOfChild(mPopup.mModelsDivider);
         assertEquals(2, dividerIndex - (headerIndex + 1));
 
         mModel.set(FuseboxProperties.POPUP_TOOL_BUTTON_DATA_LIST, List.of(data1));
-        dividerIndex = mPopup.mViewGroup.indexOfChild(mPopup.mModelsDivider);
+        dividerIndex = group.indexOfChild(mPopup.mModelsDivider);
         assertEquals(1, dividerIndex - (headerIndex + 1));
     }
 
@@ -1045,5 +1059,75 @@ public class FuseboxViewBinderUnitTest {
         ViewGroup.LayoutParams dynamicLayoutParams = dynamicIcon.getLayoutParams();
         assertEquals(expectedBottomSheetIconSize, dynamicLayoutParams.width);
         assertEquals(expectedBottomSheetIconSize, dynamicLayoutParams.height);
+    }
+
+    @Test
+    public void bind_popupMoreOptionsClicked() {
+        FuseboxViewHolder viewHolder = createBottomSheetViewHolder();
+        PropertyModel model = createBottomSheetModel();
+        model.set(FuseboxProperties.POPUP_MORE_OPTIONS_CLICKED, mRunnable);
+        mBinder.bind(model, viewHolder, FuseboxProperties.POPUP_MORE_OPTIONS_CLICKED);
+
+        assertNotNull(viewHolder.popup.mMoreOptionsButton);
+        viewHolder.popup.mMoreOptionsButton.performClick();
+        verify(mRunnable).run();
+    }
+
+    @Test
+    public void bind_popupMoreOptionsVisible() {
+        FuseboxViewHolder viewHolder = createBottomSheetViewHolder();
+        PropertyModel model = createBottomSheetModel();
+
+        model.set(FuseboxProperties.POPUP_MORE_OPTIONS_VISIBLE, true);
+        mBinder.bind(model, viewHolder, FuseboxProperties.POPUP_MORE_OPTIONS_VISIBLE);
+        assertNotNull(viewHolder.popup.mMoreOptionsButton);
+        assertEquals(View.VISIBLE, viewHolder.popup.mMoreOptionsButton.getVisibility());
+        assertEquals(View.GONE, viewHolder.popup.mAccordionContainer.getVisibility());
+
+        model.set(FuseboxProperties.POPUP_MORE_OPTIONS_VISIBLE, false);
+        mBinder.bind(model, viewHolder, FuseboxProperties.POPUP_MORE_OPTIONS_VISIBLE);
+        assertEquals(View.GONE, viewHolder.popup.mMoreOptionsButton.getVisibility());
+        assertEquals(View.VISIBLE, viewHolder.popup.mAccordionContainer.getVisibility());
+    }
+
+    @Test
+    public void bind_popupToolButtons_withAccordion() {
+        OmniboxFeatures.setUseAccordionForTesting(true);
+
+        PopupButtonData data1 =
+                new PopupButtonDataBuilder()
+                        .withText("tool 1")
+                        .withType(PopupButtonType.TOOL)
+                        .build();
+        PopupButtonData data2 =
+                new PopupButtonDataBuilder()
+                        .withText("tool 2")
+                        .withType(PopupButtonType.TOOL)
+                        .build();
+
+        mModel.set(FuseboxProperties.POPUP_TOOL_BUTTON_DATA_LIST, List.of(data1, data2));
+
+        assertEquals(8, mPopup.mAccordionContainer.getChildCount());
+        TextView text1 = getDynamicToolButton(0).findViewById(R.id.action_text);
+        assertEquals("tool 1", text1.getText());
+        TextView text2 = getDynamicToolButton(1).findViewById(R.id.action_text);
+        assertEquals("tool 2", text2.getText());
+    }
+
+    @Test
+    public void bind_popupAccordionExpanded() {
+        FuseboxViewHolder viewHolder = createBottomSheetViewHolder();
+        PropertyModel model = createBottomSheetModel();
+
+        model.set(FuseboxProperties.POPUP_MORE_OPTIONS_VISIBLE, true);
+        mBinder.bind(model, viewHolder, FuseboxProperties.POPUP_MORE_OPTIONS_VISIBLE);
+
+        model.set(FuseboxProperties.POPUP_ACCORDION_EXPANDED, true);
+        mBinder.bind(model, viewHolder, FuseboxProperties.POPUP_ACCORDION_EXPANDED);
+        assertEquals(View.VISIBLE, viewHolder.popup.mAccordionContainer.getVisibility());
+
+        model.set(FuseboxProperties.POPUP_ACCORDION_EXPANDED, false);
+        mBinder.bind(model, viewHolder, FuseboxProperties.POPUP_ACCORDION_EXPANDED);
+        assertEquals(View.GONE, viewHolder.popup.mAccordionContainer.getVisibility());
     }
 }

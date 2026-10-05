@@ -123,10 +123,6 @@ class PLATFORM_EXPORT CanvasResource : public gpu::ClientImage {
     return viz::TransferableResource::ResourceSource::kCanvas;
   }
 
-  gpu::InterfaceBase* InterfaceBase() const;
-  gpu::gles2::GLES2Interface* ContextGL() const;
-  gpu::raster::RasterInterface* RasterInterface() const;
-  gpu::webgpu::WebGPUInterface* WebGPUInterface() const;
   virtual base::WeakPtr<WebGraphicsContext3DProviderWrapper>
   ContextProviderWrapper() const = 0;
 
@@ -235,6 +231,7 @@ class PLATFORM_EXPORT CanvasResourceSharedImage final : public CanvasResource {
   ~CanvasResourceSharedImage() override;
 
   SkAlphaType GetAlphaType() const { return alpha_type_; }
+  gpu::raster::RasterInterface* RasterInterface() const;
 
   // These members are either only accessed on the owning thread, or are only
   // updated on the owning thread and then are read on a different thread.
@@ -268,7 +265,6 @@ class PLATFORM_EXPORT ExternalCanvasResource final : public CanvasResource {
       viz::ReleaseCallback release_callback,
       base::WeakPtr<WebGraphicsContext3DProviderWrapper>);
 
-  bool IsValid() const;
   bool CreatesAcceleratedTransferableResources() const override { return true; }
   void NotifyResourceLost() override { resource_is_lost_ = true; }
   void WaitSyncToken(const gpu::SyncToken&) override;
@@ -287,6 +283,7 @@ class PLATFORM_EXPORT ExternalCanvasResource final : public CanvasResource {
   base::WeakPtr<WebGraphicsContext3DProviderWrapper> ContextProviderWrapper()
       const override;
   void VerifySyncToken() override;
+  gpu::InterfaceBase* InterfaceBase() const;
 
   ExternalCanvasResource(
       scoped_refptr<gpu::ClientSharedImage> client_si,

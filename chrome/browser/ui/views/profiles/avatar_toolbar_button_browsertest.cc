@@ -271,7 +271,7 @@ class MockSigninUiDelegate : public signin_ui_util::SigninUiDelegate {
 #if BUILDFLAG(ENABLE_DICE_SUPPORT)
   MOCK_METHOD(void,
               ShowCrossDeviceSigninQrBubble,
-              (BrowserWindowInterface*, base::OnceClosure),
+              (BrowserWindowInterface*, GURL, base::OnceClosure),
               (override));
 #endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
 };
@@ -362,6 +362,18 @@ class AvatarToolbarButtonInterfaceBaseBrowserTest {
     delay_resets_.push_back(
         AvatarToolbarButtonInterface::
             CreateScopedInfiniteDelayOverrideForTesting(delay_type));
+  }
+
+  void SetInfiniteDelayForCrossWindowAnimationReplay() {
+    delay_resets_.push_back(
+        signin_ui_util::
+            CreateInfiniteOverrideDelayForCrossWindowAnimationReplayForTesting());
+  }
+
+  void SetZeroDelayForCrossWindowAnimationReplay() {
+    delay_resets_.push_back(
+        signin_ui_util::
+            CreateZeroOverrideDelayForCrossWindowAnimationReplayForTesting());
   }
 
 #if BUILDFLAG(ENABLE_DICE_SUPPORT)
@@ -561,9 +573,7 @@ class AvatarToolbarButtonInterfaceBaseBrowserTest {
     }
     // Make sure the cross window animation replay is not triggered. This is
     // needed to clear the animation in all windows.
-    delay_resets_.push_back(
-        signin_ui_util::
-            CreateZeroOverrideDelayForCrossWindowAnimationReplayForTesting());
+    SetZeroDelayForCrossWindowAnimationReplay();
 
     // Clears the sync optin promo if it is enabled. This is a no-op if the
     // promo is disabled. When `syncer::kReplaceSyncPromosWithSignInPromos` is
@@ -662,9 +672,7 @@ class AvatarToolbarButtonInterfaceBaseBrowserTest {
               .WaitForText(std::u16string()));
     // Make sure the cross window animation replay is not triggered. This is
     // needed to clear the animation in all windows.
-    delay_resets_.push_back(
-        signin_ui_util::
-            CreateZeroOverrideDelayForCrossWindowAnimationReplayForTesting());
+    SetZeroDelayForCrossWindowAnimationReplay();
     return account_info;
   }
 
@@ -877,7 +885,7 @@ class AvatarToolbarButtonInterfaceBaseBrowserTest {
     mock_batch_upload_delegate_ = mock_batch_upload_delegate.get();
 
     batch_upload_test_helper_.SetupBatchUploadTestingFactoryInProfile(
-        Profile::FromBrowserContext(context), /*identity_manager=*/nullptr,
+        Profile::FromBrowserContext(context),
         std::move(mock_batch_upload_delegate));
 #endif
   }
@@ -1242,6 +1250,10 @@ TEST_WITH_SIGNED_IN_FROM_PRE(
     OpenNewBrowserWhileNameIsShown) {
   ASSERT_TRUE(
       GetIdentityManager()->HasPrimaryAccount(signin::ConsentLevel::kSignin));
+
+  // Ensure the cross-window animation replay delay does not expire if the test
+  // execution or setup takes longer than the default 5 seconds.
+  SetInfiniteDelayForCrossWindowAnimationReplay();
 
   AvatarToolbarButtonTestAccessor avatar_accessor(browser());
   EXPECT_EQ(avatar_accessor.GetText(),

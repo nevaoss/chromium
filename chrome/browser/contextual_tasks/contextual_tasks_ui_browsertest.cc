@@ -136,6 +136,10 @@ class MockContextualTasksPage : public contextual_tasks::mojom::Page {
               InjectInput,
               (contextual_tasks::mojom::InjectedInputPtr input),
               (override));
+  MOCK_METHOD(void,
+              ResetForNewThread,
+              (const base::Uuid&, const GURL&),
+              (override));
 
   mojo::PendingRemote<contextual_tasks::mojom::Page> BindAndGetRemote() {
     return receiver_.BindNewPipeAndPassRemote();
@@ -380,9 +384,9 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksUIBrowserTest,
   });
 
   GURL url("https://www.google.com/search?q=test");
-  content::OpenURLParams params(
-      url, content::Referrer(), WindowOpenDisposition::CURRENT_TAB,
-      ui::PAGE_TRANSITION_LINK, /*is_renderer_initiated=*/false);
+  content::OpenURLParams params =
+      content::OpenURLParams::CreateBrowserInitiated(
+          url, WindowOpenDisposition::CURRENT_TAB, ui::PAGE_TRANSITION_LINK);
   controller_->TransferNavigationToEmbeddedPage(params);
   run_loop.Run();
   browser()->tab_strip_model()->GetActiveWebContents()->Stop();

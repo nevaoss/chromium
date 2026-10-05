@@ -21,7 +21,6 @@
 #include "chrome/browser/glic/test_support/glic_browser_test.h"
 #include "chrome/browser/glic/test_support/glic_histogram_tester.h"
 #include "chrome/browser/glic/test_support/glic_test_util.h"
-#include "chrome/browser/preloading/preloading_features.h"
 #include "chrome/browser/tab_list/tab_list_interface.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/create_browser_window.h"
@@ -66,12 +65,8 @@ mojom::AdditionalContextPtr CreateMockAdditionalContext(
 class GlicInvokeBrowserTest : public GlicBrowserTestMixin<PlatformBrowserTest> {
  public:
   GlicInvokeBrowserTest() {
-    // TODO(crbug.com/539786691): Re-enable kPrewarm once the feature is
-    // compatible with the test.
-    feature_list_.InitWithFeatures(
-        /*enabled_features=*/{},
-        /*disabled_features=*/{features::kGlicDefaultToLastActiveConversation,
-                               features::kPrewarm});
+    feature_list_.InitAndDisableFeature(
+        features::kGlicDefaultToLastActiveConversation);
   }
   ~GlicInvokeBrowserTest() override = default;
 
@@ -1233,6 +1228,54 @@ IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest,
   CloseBrowserSynchronously(app_browser);
 }
 
+IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest, ResolveTargetSurfaceDetachedTab) {
+  // Open a new background tab and detach it to simulate a detached background
+  // tab.
+  tabs::TabInterface* tab = GetTabListInterface()->OpenTab(
+      GURL("about:blank"), -1, /*foreground=*/false);
+  ASSERT_TRUE(tab);
+  BrowserWindowInterface* browser = tab->GetBrowserWindowInterface();
+  ASSERT_TRUE(browser);
+  int tab_index = browser->GetTabStripModel()->GetIndexOfTab(tab);
+  ASSERT_GE(tab_index, 0);
+
+  std::unique_ptr<tabs::TabModel> detached_tab =
+      browser->GetTabStripModel()->DetachTabAtForInsertion(tab_index);
+  ASSERT_TRUE(detached_tab);
+  EXPECT_EQ(detached_tab->GetBrowserWindowInterface(), nullptr);
+
+  // 1. Without background actuation target, detached tab is rejected.
+  {
+    Target target;
+    target.surface = detached_tab->GetHandle();
+    target.actuation_target = mojom::ActuationTarget::kAgentDecides;
+    auto resolved =
+        GlicInvokeHandler::ResolveTargetSurface(GetProfile(), target);
+    ASSERT_TRUE(
+        std::holds_alternative<GlicInvokeHandler::TabSurface>(resolved));
+    auto tab_surface = std::get<GlicInvokeHandler::TabSurface>(resolved);
+    EXPECT_EQ(tab_surface.tab, nullptr);
+  }
+
+  // 2. With background actuation target (kTargetSurface), detached tab is
+  // allowed.
+  {
+    Target target;
+    target.surface = detached_tab->GetHandle();
+    target.actuation_target = mojom::ActuationTarget::kTargetSurface;
+    auto resolved =
+        GlicInvokeHandler::ResolveTargetSurface(GetProfile(), target);
+    ASSERT_TRUE(
+        std::holds_alternative<GlicInvokeHandler::TabSurface>(resolved));
+    auto tab_surface = std::get<GlicInvokeHandler::TabSurface>(resolved);
+    EXPECT_EQ(tab_surface.tab, detached_tab.get());
+  }
+
+  // Reattach the detached tab before test ends.
+  browser->GetTabStripModel()->InsertDetachedTabAt(
+      tab_index, std::move(detached_tab), AddTabTypes::ADD_NONE);
+}
+
 IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest, ResolveTargetSurfaceFloating) {
   ASSERT_OK_AND_ASSIGN(GlicInstanceImpl * instance,
                        OpenGlicForActiveTabAndDetach());
@@ -1406,12 +1449,59 @@ IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest,
 }
 
 IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest,
-                       InvokeWaitsForFreCompletion_Override) {
+                       InvokeWaitsForFreCompletion_AlwaysWaitMode) {
   tabs::TabInterface* tab = GetTabListInterface()->GetActiveTab();
   SetFRECompletion(GetProfile(), prefs::FreStatus::kNotStarted);
 
   base::test::TestFuture<void> success_future;
   GlicInvokeOptions options(Target(*tab), mojom::InvocationSource::kOsButton);
+  options.fre_override = mojom::FreOverride::kTrustFirstClick;
+  options.fre_completion_wait_mode = FreCompletionWaitMode::kAlways;
+  options.on_success = success_future.GetCallback();
+
+  coordinator().Invoke(std::move(options));
+
+  // The success callback should NOT be called yet because FRE is not completed.
+  EXPECT_FALSE(success_future.IsReady());
+
+  // Complete FRE.
+  SetFRECompletion(GetProfile(), prefs::FreStatus::kCompleted);
+
+  // Now the success callback should be called.
+  EXPECT_TRUE(success_future.Wait());
+}
+
+IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest,
+                       InvokeDoesNotWaitForFreCompletion_DefaultWaitMode) {
+  tabs::TabInterface* tab = GetTabListInterface()->GetActiveTab();
+  SetFRECompletion(GetProfile(), prefs::FreStatus::kNotStarted);
+
+  base::test::TestFuture<void> success_future;
+  // With kDefault and an invocation source that doesn't mandate a client invoke
+  // (like kOsButton), we skip waiting for FRE completion.
+  GlicInvokeOptions options(Target(*tab), mojom::InvocationSource::kOsButton);
+  options.fre_override = mojom::FreOverride::kTrustFirstClick;
+  options.fre_completion_wait_mode = FreCompletionWaitMode::kDefault;
+  options.on_success = success_future.GetCallback();
+
+  coordinator().Invoke(std::move(options));
+
+  // The success callback SHOULD be called immediately because FRE wait is
+  // skipped.
+  EXPECT_TRUE(success_future.Wait());
+}
+
+IN_PROC_BROWSER_TEST_F(
+    GlicInvokeBrowserTest,
+    InvokeWaitsForFreCompletion_DefaultWaitModeWithClientInvoke) {
+  tabs::TabInterface* tab = GetTabListInterface()->GetActiveTab();
+  SetFRECompletion(GetProfile(), prefs::FreStatus::kNotStarted);
+
+  base::test::TestFuture<void> success_future;
+  // With kDefault and an invocation source that mandates a client invoke
+  // (like kCaptureRegionHotkey), we should block on FRE completion.
+  GlicInvokeOptions options(Target(*tab),
+                            mojom::InvocationSource::kCaptureRegionHotkey);
   options.fre_override = mojom::FreOverride::kTrustFirstClick;
   options.fre_completion_wait_mode = FreCompletionWaitMode::kDefault;
   options.on_success = success_future.GetCallback();

@@ -179,7 +179,7 @@ export {AutofillManagerImpl} from './autofill_page/autofill_manager_proxy.js';
 export type {AutofillManagerProxy, PersonalDataChangedListener} from './autofill_page/autofill_manager_proxy.js';
 export {SettingsAddressEditDialogElement} from './autofill_page/contact_info/address_edit_dialog.js';
 export {SettingsAddressRemoveConfirmationDialogElement} from './autofill_page/contact_info/address_remove_confirmation_dialog.js';
-export {AutofillAddressOptInChange, SettingsContactInfoPageElement} from './autofill_page/contact_info/contact_info_page.js';
+export {AUTOFILL_GMAIL_OTP_FILLING_ENABLED_PREF, AUTOFILL_GMAIL_OTP_OPT_IN_SETTINGS_CHANGE_METRIC, AutofillAddressOptInChange, SettingsContactInfoPageElement} from './autofill_page/contact_info/contact_info_page.js';
 export {SettingsGmailOtpDisclaimerDialogElement} from './autofill_page/contact_info/gmail_otp_disclaimer_dialog.js';
 export {CountryDetailManagerProxyImpl} from './autofill_page/country_detail_manager_proxy.js';
 export type {CountryDetailManagerProxy} from './autofill_page/country_detail_manager_proxy.js';
@@ -203,6 +203,7 @@ export {SettingsPaymentsPageElement} from './autofill_page/payments/payments_pag
 export {SettingsVirtualCardUnenrollDialogElement} from './autofill_page/payments/virtual_card_unenroll_dialog.js';
 export {SettingsShoppingPageElement} from './autofill_page/shopping/shopping_page.js';
 export {SettingsSuggestionsFromGeminiPageElement} from './autofill_page/suggestions_from_gemini/suggestions_from_gemini_page.js';
+export type {AtMemoryTriggerPrefValue} from './autofill_page/suggestions_from_gemini/suggestions_from_gemini_page.js';
 export {SettingsTravelPageElement} from './autofill_page/travel/travel_page.js';
 export {SettingsWalletablePassDetectionToggleElement} from './autofill_page/walletable_pass_detection_toggle.js';
 // <if expr="not is_chromeos">

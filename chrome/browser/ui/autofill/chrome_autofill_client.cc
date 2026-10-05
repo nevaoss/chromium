@@ -908,8 +908,10 @@ ChromeAutofillClient::ShowAutofillSuggestions(
 }
 
 void ChromeAutofillClient::UpdateAutofillDataListValues(
+    const LocalFrameToken& frame_token,
     base::span<const SelectOption> options) {
-  if (suggestion_controller_) {
+  if (suggestion_controller_ &&
+      suggestion_controller_->GetFrameToken() == frame_token) {
     suggestion_controller_->UpdateDataListValues(options);
   }
 }
@@ -1547,12 +1549,15 @@ void ChromeAutofillClient::ShowEntityImportBubble(
 #if BUILDFLAG(IS_ANDROID)
   if (autofill_ai_save_update_entity_flow_manager_) {
     autofill_ai_save_update_entity_flow_manager_->OfferSave(
-        new_entity, std::move(old_entity), std::move(prompt_result_callback));
+        new_entity, std::move(old_entity), std::move(prompt_result_callback),
+        /*public_passes_notice=*/{});
   }
 #else
   if (auto* controller = AutofillAiImportDataController::GetOrCreate(
           web_contents(), GetAppLocale())) {
     // TODO(crbug.com/553442816): Add the legal message lines.
+    // TODO(crbug.com/556588522): Rename legal_message_lines to
+    // public_passes_notice.
     controller->ShowPrompt(std::move(new_entity), std::move(old_entity),
                            /*close_on_accept=*/save_is_synchronous,
                            /*legal_message_lines=*/{},

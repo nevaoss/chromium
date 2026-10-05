@@ -881,6 +881,12 @@ const FeatureEntry::FeatureParam kGeminiActorBackgroundingDisabled[] = {
 const FeatureEntry::FeatureVariation kGeminiActorVariations[] = {
     {"Backgrounding Disabled", kGeminiActorBackgroundingDisabled, nullptr}};
 
+const FeatureEntry::FeatureParam kGeminiAureusForegroundQuotaRefreshEnabled[] =
+    {{kGeminiAureusForegroundQuotaRefreshParam, "true"}};
+const FeatureEntry::FeatureVariation kGeminiAureusVariations[] = {
+    {"Foreground Quota Refresh Enabled",
+     kGeminiAureusForegroundQuotaRefreshEnabled, nullptr}};
+
 const FeatureEntry::FeatureParam kGeminiFREExperimentVisualRich[] = {
     {kGeminiFREExperimentParam, kGeminiFREExperimentParamVisualRich}};
 const FeatureEntry::FeatureParam kGeminiFREExperimentLightweightConvenience[] =
@@ -1292,11 +1298,6 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kBuildExternalPrivacyContextDescription,
      flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(switches::kBuildExternalPrivacyContext)},
-    {"enforce-can-sign-in-to-chrome-capability",
-     flag_descriptions::kEnforceCanSignInToChromeCapabilityName,
-     flag_descriptions::kEnforceCanSignInToChromeCapabilityDescription,
-     flags_ui::kOsIos,
-     FEATURE_VALUE_TYPE(switches::kEnforceCanSignInToChromeCapability)},
     {"in-product-help-demo-mode-choice",
      flag_descriptions::kInProductHelpDemoModeName,
      flag_descriptions::kInProductHelpDemoModeDescription, flags_ui::kOsIos,
@@ -1840,7 +1841,9 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flags_ui::kOsIos, FEATURE_VALUE_TYPE(kGeneralizedGeminiEntryFlow)},
     {"gemini-aureus", flag_descriptions::kGeminiAureusName,
      flag_descriptions::kGeminiAureusDescription, flags_ui::kOsIos,
-     FEATURE_VALUE_TYPE(kGeminiAureus)},
+     FEATURE_WITH_PARAMS_VALUE_TYPE(kGeminiAureus,
+                                    kGeminiAureusVariations,
+                                    "GeminiAureus")},
     {"gemini-luminous", flag_descriptions::kGeminiLuminousName,
      flag_descriptions::kGeminiLuminousDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kGeminiLuminous)},
@@ -1933,10 +1936,6 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      FEATURE_WITH_PARAMS_VALUE_TYPE(kDefaultBrowserPromoOverflowMenu,
                                     kDefaultBrowserPromoOverflowMenuVariations,
                                     "DefaultBrowserPromoOverflowMenu")},
-    {"shopping-alternate-server",
-     commerce::flag_descriptions::kShoppingAlternateServerName,
-     commerce::flag_descriptions::kShoppingAlternateServerDescription,
-     flags_ui::kOsIos, FEATURE_VALUE_TYPE(commerce::kShoppingAlternateServer)},
     {"taiyaki-all-surfaces", flag_descriptions::kTaiyakiAllSurfacesName,
      flag_descriptions::kTaiyakiAllSurfacesDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(switches::kTaiyakiAllSurfaces)},

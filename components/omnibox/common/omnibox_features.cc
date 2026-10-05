@@ -286,8 +286,11 @@ BASE_FEATURE(kOmniboxWebUIPopupHideOnCreation, DISABLED);
 // OmniboxEditModel.
 BASE_FEATURE(kWebUISearchboxWithoutModelController, DISABLED);
 
-// If enabled, debounces soft keyboard show/hide transitions in the Omnibox.
-BASE_FEATURE(kOmniboxDebounceKeyboardVisibility, DISABLED);
+// If enabled, debounces soft keyboard show/hide transitions in the Omnibox and
+// suppresses the legacy NTP fakebox accessibility focus reset that hides the
+// keyboard right after showing it. See crbug.com/534375541.
+// Enabled by default; retained as a kill switch.
+BASE_FEATURE(kOmniboxDebounceKeyboardVisibility, ENABLED);
 
 // Feature used to default typed navigations to use HTTPS instead of HTTP.
 // This only applies to navigations that don't have a scheme such as
@@ -543,6 +546,18 @@ const base::FeatureParam<bool>
     kVoiceSearchCoherenceSearchboxWithLiveTranscription{
         &kVoiceSearchCoherenceSearchbox,
         "VoiceSearchCoherenceSearchboxWithLiveTranscription", false};
+
+// Enables 3-second auto-endpointing for NTP Realbox voice search.
+// When enabled, voice search automatically submits after 3 seconds of trailing
+// silence.
+const base::FeatureParam<bool> kVoiceSearchCoherenceRealboxAutoEndpoint{
+    &kVoiceSearchCoherenceSearchbox, "VoiceSearchCoherenceRealboxAutoEndpoint",
+    false};
+
+// Enables helper text (e.g. "Listening...") in NTP Realbox voice search.
+const base::FeatureParam<bool> kVoiceSearchCoherenceRealboxHelperText{
+    &kVoiceSearchCoherenceSearchbox, "VoiceSearchCoherenceRealboxHelperText",
+    false};
 
 #if BUILDFLAG(IS_ANDROID)
 // Accelerates time from cold start to focused Omnibox on low-end devices,

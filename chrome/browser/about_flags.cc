@@ -1044,52 +1044,16 @@ const FeatureEntry::FeatureParam kOmniboxDynamicAimSubmitRhsHint[] = {
 const FeatureEntry::FeatureVariation kOmniboxDynamicSubmitVariations[] = {
     {"- \"Input has hint", kOmniboxDynamicAimSubmitRhsHint, nullptr}};
 
-const FeatureEntry::FeatureParam kPedalRowWithPlusButtonOnly[] = {
-    {"Omnibox_AddContextButtonVariant", "below_results"},
-    {"Omnibox_HideClassicContextButton", "false"},
-    {"Omnibox_ShowLensSearchChip", "false"},
-    {"Omnibox_ContextButtonShapeIsOblong", "true"},
-    {"Omnibox_ContextButtonHasBackground", "false"},
-    {"Omnibox_ContextButtonShowSuggestionLabel", "false"},
-};
-const FeatureEntry::FeatureParam kPedalRowWithPlusButtonWithBackground[] = {
-    {"Omnibox_AddContextButtonVariant", "below_results"},
-    {"Omnibox_HideClassicContextButton", "false"},
-    {"Omnibox_ShowLensSearchChip", "false"},
-    {"Omnibox_ContextButtonShapeIsOblong", "true"},
-    {"Omnibox_ContextButtonHasBackground", "true"},
-    {"Omnibox_ContextButtonShowSuggestionLabel", "false"},
-};
-const FeatureEntry::FeatureParam kPedalRowWithSuggestionLikeButton[] = {
-    {"Omnibox_AddContextButtonVariant", "below_results"},
-    {"Omnibox_HideClassicContextButton", "false"},
-    {"Omnibox_ShowLensSearchChip", "false"},
-    {"Omnibox_ContextButtonShapeIsOblong", "true"},
-    {"Omnibox_ContextButtonHasBackground", "false"},
-    {"Omnibox_ContextButtonShowSuggestionLabel", "true"},
-};
-const FeatureEntry::FeatureParam kChipWithPlusButtonWithBackground[] = {
-    {"Omnibox_AddContextButtonVariant", "below_results"},
-    {"Omnibox_HideClassicContextButton", "false"},
-    {"Omnibox_ShowLensSearchChip", "true"},
-    {"Omnibox_ContextButtonShapeIsOblong", "true"},
-    {"Omnibox_ContextButtonHasBackground", "true"},
-    {"Omnibox_ContextButtonShowSuggestionLabel", "false"},
-};
-const FeatureEntry::FeatureVariation kWebUIOmniboxSimplificationVariations[] = {
-    {"- Pedal row with plus button only", kPedalRowWithPlusButtonOnly, nullptr},
-    {"- Pedal row with plus button and background",
-     kPedalRowWithPlusButtonWithBackground, nullptr},
-    {"- Pedal row with suggestion label", kPedalRowWithSuggestionLikeButton,
-     nullptr},
-    {"- Chip with plus button and background",
-     kChipWithPlusButtonWithBackground, nullptr}};
 
-const FeatureEntry::FeatureParam kOmniboxEverywhereProfilePicker[] = {
-    {"ProfilePicker", "true"}};
-
-const FeatureEntry::FeatureVariation kOmniboxEverywhereVariations[] = {
-    {"with Profile Picker", kOmniboxEverywhereProfilePicker, nullptr}};
+const FeatureEntry::Choice kOmniboxLoomChoices[] = {
+    {flags_ui::kGenericExperimentChoiceDefault, "", ""},
+    {flags_ui::kGenericExperimentChoiceEnabled, switches::kEnableFeatures,
+     "OmniboxEverywhere,IPH_OmniboxEverywhereLensPromo"},
+    {"Enabled with Profile Picker", switches::kEnableFeatures,
+     "OmniboxEverywhere:ProfilePicker/true,IPH_OmniboxEverywhereLensPromo"},
+    {flags_ui::kGenericExperimentChoiceDisabled, switches::kDisableFeatures,
+     "OmniboxEverywhere,IPH_OmniboxEverywhereLensPromo"},
+};
 
 const FeatureEntry::FeatureParam
     kWebUiOmniboxAskGAboutThisPageCobrowseAndLensEntrypoint[] = {
@@ -1411,13 +1375,41 @@ const FeatureEntry::FeatureParam
     kVoiceSearchCoherenceLiveTranscriptionParams[] = {
         {"VoiceSearchCoherenceSearchboxWithLiveTranscription", "true"}};
 
+const FeatureEntry::FeatureParam kVoiceSearchCoherenceRealboxArm1Params[] = {
+    {"VoiceSearchCoherenceSearchboxWithLiveTranscription", "false"},
+    {"VoiceSearchCoherenceRealboxAutoEndpoint", "false"},
+    {"VoiceSearchCoherenceRealboxHelperText", "true"}};
+
+const FeatureEntry::FeatureParam kVoiceSearchCoherenceRealboxArm2Params[] = {
+    {"VoiceSearchCoherenceSearchboxWithLiveTranscription", "false"},
+    {"VoiceSearchCoherenceRealboxAutoEndpoint", "true"},
+    {"VoiceSearchCoherenceRealboxHelperText", "true"}};
+
+const FeatureEntry::FeatureParam kVoiceSearchCoherenceRealboxArm3Params[] = {
+    {"VoiceSearchCoherenceSearchboxWithLiveTranscription", "true"},
+    {"VoiceSearchCoherenceRealboxAutoEndpoint", "false"},
+    {"VoiceSearchCoherenceRealboxHelperText", "true"}};
+
+const FeatureEntry::FeatureParam kVoiceSearchCoherenceRealboxArm4Params[] = {
+    {"VoiceSearchCoherenceSearchboxWithLiveTranscription", "true"},
+    {"VoiceSearchCoherenceRealboxAutoEndpoint", "true"},
+    {"VoiceSearchCoherenceRealboxHelperText", "true"}};
+
 // Normal 'Enabled' option is just 'No Live Transcription'. 'Disabled' option
 // disables live transcription and the experiment.
 const FeatureEntry::FeatureVariation
     kVoiceSearchCoherenceSearchboxVariations[] = {
         {"(No Live Transcription)", {}, nullptr},
         {"(With Live Transcription)",
-         kVoiceSearchCoherenceLiveTranscriptionParams, nullptr}};
+         kVoiceSearchCoherenceLiveTranscriptionParams, nullptr},
+        {"Arm 1: Wave only, manual submit + Listening",
+         kVoiceSearchCoherenceRealboxArm1Params, nullptr},
+        {"Arm 2: Wave only, 3s auto endpoint + Listening",
+         kVoiceSearchCoherenceRealboxArm2Params, nullptr},
+        {"Arm 3: Wave + Transcript, manual submit + Listening",
+         kVoiceSearchCoherenceRealboxArm3Params, nullptr},
+        {"Arm 4: Wave + Transcript, 3s auto endpoint + Listening",
+         kVoiceSearchCoherenceRealboxArm4Params, nullptr}};
 
 const FeatureEntry::FeatureParam
     kVoiceSearchCoherenceComposeboxCobrowsingParams[] = {
@@ -1448,7 +1440,8 @@ const FeatureEntry::FeatureParam
 
 const FeatureEntry::FeatureParam
     kContextManagementEnableContextMenuTooltipsParams[] = {
-        {"enable_context_menu_tooltips", "true"}};
+        {"enable_context_menu_tooltips", "true"},
+        {"enable_tab_deselection", "true"}};
 
 // Normal 'Enabled' option is just the flag enabled with param 'realbox closes
 // menu on tab select' enabled by default. 'Disabled' option disables the flag,
@@ -1465,7 +1458,7 @@ const FeatureEntry::FeatureVariation
         {"Context Management in composebox (keeps menu open, with tab "
          "deselection)",
          kContextManagementKeepMenuOpenAndTabDeselectionParams, nullptr},
-        {"Context Management in composebox (with tooltips)",
+        {"Context Management in composebox (with tooltips and tab deselection)",
          kContextManagementEnableContextMenuTooltipsParams, nullptr}};
 
 #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_MAC) || \
@@ -2061,20 +2054,14 @@ constexpr FeatureEntry::FeatureVariation kOmniboxDiagnosticsAndroidVaiants[] = {
 
 const FeatureEntry::FeatureParam kOmniboxAimRedirectComposeplate[] = {
     {"redirect_composeplate_button", "true"}};
-const FeatureEntry::FeatureParam kOmniboxAimModelPickerAndCanvas[] = {
-    {"show_model_picker", "true"}};
-const FeatureEntry::FeatureParam kOmniboxAimModelPickerBottomSheet_1[] = {
-    {"show_model_picker", "true"},
-    {"show_bottom_sheet_popup", "true"},
+const FeatureEntry::FeatureParam kOmniboxAimNtpPlusMenuPopup[] = {
+    {"show_ntp_plus_button", "true"}};
+const FeatureEntry::FeatureParam kOmniboxAimNtpPlusMenuPopupWithFocus[] = {
     {"show_ntp_plus_button", "true"},
-    {"use_ask_hint_for_ntp", "true"}};
-const FeatureEntry::FeatureParam kOmniboxAimModelPickerBottomSheet_2[] = {
-    {"show_model_picker", "true"},
+    {"focus_fusebox_from_ntp_plus_button", "true"}};
+const FeatureEntry::FeatureParam kOmniboxAimNtpPlusMenuBottomSheet[] = {
     {"show_bottom_sheet_popup", "true"},
     {"show_ntp_plus_button", "true"}};
-const FeatureEntry::FeatureParam kOmniboxAimModelPickerBottomSheet_3[] = {
-    {"show_model_picker", "true"},
-    {"show_bottom_sheet_popup", "true"}};
 const FeatureEntry::FeatureParam kOmniboxAimContextMenuNoAccordion[] = {
     {"show_bottom_sheet_popup", "false"},
     {"fusebox_popup_carousel_ui", "false"},
@@ -2095,16 +2082,15 @@ const FeatureEntry::FeatureParam kOmniboxAimBottomSheetCarouselNoAccordion[] = {
     {"show_bottom_sheet_popup", "true"},
     {"fusebox_popup_carousel_ui", "true"},
     {"fusebox_popup_use_accordion_ui", "false"}};
-const FeatureEntry::FeatureParam kOmniboxAimModelPickerHint[] = {
-    {"show_model_picker", "true"},
+const FeatureEntry::FeatureParam kOmniboxAimHint[] = {
     {"use_ask_hint_for_ntp", "true"}};
 
 const FeatureEntry::FeatureVariation kOmniboxMultimodalInputVariants[] = {
     {"Redirect Composeplate", kOmniboxAimRedirectComposeplate, nullptr},
-    {"Model Picker & Tools", kOmniboxAimModelPickerAndCanvas, nullptr},
-    {"^ + Bottom Sheet (1)", kOmniboxAimModelPickerBottomSheet_1, nullptr},
-    {"^ + Bottom Sheet (2)", kOmniboxAimModelPickerBottomSheet_2, nullptr},
-    {"^ + Bottom Sheet (3)", kOmniboxAimModelPickerBottomSheet_3, nullptr},
+    {"NTP Plus Menu: Popup", kOmniboxAimNtpPlusMenuPopup, nullptr},
+    {"NTP Plus Menu: Popup with Focus", kOmniboxAimNtpPlusMenuPopupWithFocus,
+     nullptr},
+    {"NTP Plus Menu: Bottom Sheet", kOmniboxAimNtpPlusMenuBottomSheet, nullptr},
     {"Context Menu: No Accordion", kOmniboxAimContextMenuNoAccordion, nullptr},
     {"Context Menu: With Accordion", kOmniboxAimContextMenuAccordion, nullptr},
     {"Bottom Sheet: Carousel + Accordion",
@@ -2113,7 +2099,7 @@ const FeatureEntry::FeatureVariation kOmniboxMultimodalInputVariants[] = {
      nullptr},
     {"Bottom Sheet: Carousel, No Accordion",
      kOmniboxAimBottomSheetCarouselNoAccordion, nullptr},
-    {"Model Picker Hint", kOmniboxAimModelPickerHint, nullptr},
+    {"Ask Hint", kOmniboxAimHint, nullptr},
 };
 
 #endif  // BUILDFLAG(IS_ANDROID)
@@ -2593,6 +2579,7 @@ const FeatureEntry::FeatureVariation kEphemeralCardRankerCardOverrideOptions[] =
 };
 
 const FeatureEntry::FeatureParam kAndroidVerticalTabs_All[] = {
+    {"block_draw_on_cold_start", "true"},
     {"group_hover_card", "true"}};
 const FeatureEntry::FeatureParam kAndroidVerticalTabs_EnableByDefault[] = {
     {"enable_by_default", "true"}};
@@ -2821,13 +2808,20 @@ const FeatureEntry::FeatureParam
     kOnDemandBackgroundTabContextCaptureOptimization_1000MsDelay[] = {
         {"enable_first_paint", "true"},
         {"first_paint_delay_ms", "1000"}};
+const FeatureEntry::FeatureParam
+    kOnDemandBackgroundTabContextCaptureOptimization_LimitConcurrentLoads[] = {
+        {"limit_concurrent_load_if_needed", "true"},
+        {"minimum_concurrent_load_if_needed", "1"},
+        {"maximum_concurrent_load_if_needed", "4"}};
 
 const FeatureEntry::FeatureVariation
     kOnDemandBackgroundTabContextCaptureOptimizationVariations[] = {
         {"EnableFirstPaintWithZeroDelay",
          kOnDemandBackgroundTabContextCaptureOptimization_ZeroDelay, nullptr},
         {"EnableFirstPaintWith1000MsDelay",
-         kOnDemandBackgroundTabContextCaptureOptimization_1000MsDelay,
+         kOnDemandBackgroundTabContextCaptureOptimization_1000MsDelay, nullptr},
+        {"LimitConcurrentLoads1To4Tabs",
+         kOnDemandBackgroundTabContextCaptureOptimization_LimitConcurrentLoads,
          nullptr}};
 
 #endif  // BUILDFLAG(IS_ANDROID)
@@ -3882,12 +3876,6 @@ const FeatureEntry::FeatureParam kAiOverlayDialog_Mes[] = {{"use_mes", "true"}};
 const FeatureEntry::FeatureVariation kAiOverlayDialogVariations[] = {
     {"with MES", kAiOverlayDialog_Mes, nullptr}};
 
-const FeatureEntry::FeatureParam kGlicTabGroups_FullTabEmbedder[] = {
-    {"use_full_tab_embedder", "true"}};
-
-const FeatureEntry::FeatureVariation kGlicTabGroupsVariations[] = {
-    {"with full tab embedder", kGlicTabGroups_FullTabEmbedder, nullptr}};
-
 const FeatureEntry::Choice kGlicSelectionPromptChoices[] = {
     {flags_ui::kGenericExperimentChoiceDefault, "", ""},
     {"Enabled", switches::kEnableFeatures,
@@ -4336,9 +4324,6 @@ const FeatureEntry::FeatureVariation
 
 #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN) || \
     BUILDFLAG(IS_CHROMEOS)
-const FeatureEntry::FeatureParam kNtpCustomizeChromeAutoOpenOnEveryNTP[] = {
-    {"max_customize_chrome_auto_shown_count", "5"},
-    {"max_customize_chrome_auto_shown_session_count", "5"}};
 const FeatureEntry::FeatureParam kNtpCustomizeChromeAutoOpenOnFirstNTPOnly[] = {
     {"max_customize_chrome_auto_shown_count", "5"},
     {"max_customize_chrome_auto_shown_session_count", "1"}};
@@ -4346,7 +4331,6 @@ const FeatureEntry::FeatureParam kNtpCustomizeChromeAutoOpenIPHOnly[] = {
     {"max_customize_chrome_auto_shown_count", "0"},
     {"max_customize_chrome_auto_shown_session_count", "0"}};
 const FeatureEntry::FeatureVariation kNtpCustomizeChromeAutoOpenVariations[] = {
-    {"- On every NTP", kNtpCustomizeChromeAutoOpenOnEveryNTP, nullptr},
     {"- First NTP only", kNtpCustomizeChromeAutoOpenOnFirstNTPOnly, nullptr},
     {"- IPH only", kNtpCustomizeChromeAutoOpenIPHOnly, nullptr},
 };
@@ -4584,10 +4568,15 @@ const FeatureEntry::FeatureVariation kContextualTaskContextVariations[] = {
 
 const FeatureEntry::FeatureParam kEphemeralBrandedEntryPointEnabled[] = {
     {"ContextualTasksEntryPoint", "toolbar-ephemeral-branded"}};
+const FeatureEntry::FeatureParam kEphemeralBrandedEntryPointWithRightDock[] = {
+    {"ContextualTasksEntryPoint", "toolbar-ephemeral-branded"},
+    {"enable-right-hand-contextual-tasks-ephemeral-button", "true"}};
 
 const FeatureEntry::FeatureVariation kEphemeralBrandedEntryPointVariations[] = {
     {"Enabled with branded entry point", kEphemeralBrandedEntryPointEnabled,
-     nullptr}};
+     nullptr},
+    {"Enabled with right dock button",
+     kEphemeralBrandedEntryPointWithRightDock, nullptr}};
 
 #if BUILDFLAG(IS_ANDROID)
 const FeatureEntry::FeatureParam kAnimatedProgressBar30FpsCap[] = {
@@ -4943,6 +4932,8 @@ const FeatureEntry::FeatureParam
     kDictationWebSpeechApiBackendWithPartialsParam[] = {
         {"web_speech_api_backend", "true"},
         {"show_partials", "true"}};
+const FeatureEntry::FeatureParam kDictationConnectorSmoketestParam[] = {
+    {"connector_tag", "smoketest"}};
 const FeatureEntry::FeatureVariation kDictationVariations[] = {
     {"with close UI after output", kDictationSessionEndsOnStreamEndParam,
      nullptr},
@@ -4951,7 +4942,9 @@ const FeatureEntry::FeatureVariation kDictationVariations[] = {
     {"with Web Speech API backend", kDictationWebSpeechApiBackendParam,
      nullptr},
     {"with Web Speech API backend and partials",
-     kDictationWebSpeechApiBackendWithPartialsParam, nullptr}};
+     kDictationWebSpeechApiBackendWithPartialsParam, nullptr},
+    {"with smoketest connector tag", kDictationConnectorSmoketestParam,
+     nullptr}};
 #endif  // !BUILDFLAG(IS_ANDROID)
 
 const FeatureEntry::FeatureParam
@@ -6397,11 +6390,6 @@ const FeatureEntry kFeatureEntries[] = {
      kOsCrOS,
      FEATURE_VALUE_TYPE(
          features::kExperimentalAccessibilityDictationContextChecking)},
-    {"enable-experimental-accessibility-manifest-v3",
-     flag_descriptions::kExperimentalAccessibilityManifestV3Name,
-     flag_descriptions::kExperimentalAccessibilityManifestV3Description,
-     kOsCrOS,
-     SINGLE_VALUE_TYPE(::switches::kEnableExperimentalAccessibilityManifestV3)},
     {"enable-experimental-accessibility-switch-access-text",
      flag_descriptions::kExperimentalAccessibilitySwitchAccessTextName,
      flag_descriptions::kExperimentalAccessibilitySwitchAccessTextDescription,
@@ -7282,12 +7270,6 @@ const FeatureEntry kFeatureEntries[] = {
      commerce::flag_descriptions::kShoppingListDescription,
      kOsAndroid | kOsDesktop, FEATURE_VALUE_TYPE(commerce::kShoppingList)},
 
-    {"shopping-alternate-server",
-     commerce::flag_descriptions::kShoppingAlternateServerName,
-     commerce::flag_descriptions::kShoppingAlternateServerDescription,
-     kOsAndroid | kOsDesktop,
-     FEATURE_VALUE_TYPE(commerce::kShoppingAlternateServer)},
-
     {"price-tracking-subscription-service-locale-key",
      commerce::flag_descriptions::
          kPriceTrackingSubscriptionServiceLocaleKeyName,
@@ -7421,6 +7403,10 @@ const FeatureEntry kFeatureEntries[] = {
     {"chrome-dark-neutrals-26", flag_descriptions::kChromeDarkNeutrals26Name,
      flag_descriptions::kChromeDarkNeutrals26Description, kOsDesktop,
      FEATURE_VALUE_TYPE(features::kChromeDarkNeutrals26)},
+
+    {"dark-mode-surface-tokens", flag_descriptions::kDarkModeSurfaceTokensName,
+     flag_descriptions::kDarkModeSurfaceTokensDescription, kOsDesktop,
+     FEATURE_VALUE_TYPE(features::kDarkModeSurfaceTokens)},
 
     {"ntp-alpha-background-collections",
      flag_descriptions::kNtpAlphaBackgroundCollectionsName,
@@ -8382,12 +8368,6 @@ const FeatureEntry kFeatureEntries[] = {
      flag_descriptions::kAccessibilityShakeToLocateName,
      flag_descriptions::kAccessibilityShakeToLocateDescription, kOsCrOS,
      FEATURE_VALUE_TYPE(features::kAccessibilityShakeToLocate)},
-
-    {"enable-accessibility-magnifier-follows-chromevox",
-     flag_descriptions::kAccessibilityMagnifierFollowsChromeVoxName,
-     flag_descriptions::kAccessibilityMagnifierFollowsChromeVoxDescription,
-     kOsCrOS,
-     FEATURE_VALUE_TYPE(features::kAccessibilityMagnifierFollowsChromeVox)},
 
     {"enable-accessibility-manifest-v3-chromevox",
      flag_descriptions::kAccessibilityManifestV3ChromeVoxName,
@@ -9716,9 +9696,7 @@ const FeatureEntry kFeatureEntries[] = {
                                     "OmniboxDynamicSubmitVariations")},
     {"omnibox-loom", flag_descriptions::kOmniboxLoomName,
      flag_descriptions::kOmniboxLoomDescription, kOsDesktop,
-     FEATURE_WITH_PARAMS_VALUE_TYPE(omnibox::kOmniboxEverywhere,
-                                    kOmniboxEverywhereVariations,
-                                    "OmniboxEverywhere")},
+     MULTI_VALUE_TYPE(kOmniboxLoomChoices)},
 
     {"webui-omnibox-aim-popup-disable-animation",
      flag_descriptions::kWebUIOmniboxAimPopupDisableAnimationName,
@@ -9740,10 +9718,7 @@ const FeatureEntry kFeatureEntries[] = {
     {"webui-omnibox-simplification",
      flag_descriptions::kWebUIOmniboxSimplificationName,
      flag_descriptions::kWebUIOmniboxSimplificationDescription, kOsDesktop,
-     FEATURE_WITH_PARAMS_VALUE_TYPE(
-         omnibox::internal::kWebUIOmniboxSimplification,
-         kWebUIOmniboxSimplificationVariations,
-         "WebUIOmniboxSimplificationVariations")},
+     FEATURE_VALUE_TYPE(omnibox::internal::kWebUIOmniboxSimplification)},
 
     {"webui-omnibox-ask-g-about-this-page",
      flag_descriptions::kWebUiOmniboxAskGAboutThisPageName,
@@ -11002,15 +10977,17 @@ const FeatureEntry kFeatureEntries[] = {
      FEATURE_VALUE_TYPE(features::kGlicHotkeyLocalScope)},
     {"glic-tab-groups", flag_descriptions::kGlicTabGroupsName,
      flag_descriptions::kGlicTabGroupsDescription, kOsDesktop | kOsAndroid,
-     FEATURE_WITH_PARAMS_VALUE_TYPE(features::kGlicTabGroups,
-                                    kGlicTabGroupsVariations,
-                                    "GlicTabGroups")},
+     FEATURE_VALUE_TYPE(features::kGlicTabGroups)},
     {"glic-android-side-panel", flag_descriptions::kGlicAndroidSidePanelName,
      flag_descriptions::kGlicAndroidSidePanelDescription, kOsAndroid,
      FEATURE_VALUE_TYPE(features::kGlicAndroidSidePanel)},
     {"glic-android-tablet", flag_descriptions::kGlicAndroidTabletName,
      flag_descriptions::kGlicAndroidTabletDescription, kOsAndroid,
      FEATURE_VALUE_TYPE(features::kGlicAndroidTablet)},
+    {"glic-android-offscreen-rendering",
+     flag_descriptions::kGlicAndroidOffscreenRenderingName,
+     flag_descriptions::kGlicAndroidOffscreenRenderingDescription, kOsAndroid,
+     FEATURE_VALUE_TYPE(features::kGlicAndroidOffscreenRendering)},
     {"glic-actor", flag_descriptions::kGlicActorName,
      flag_descriptions::kGlicActorDescription, kOsDesktop | kOsAndroid,
      ENABLE_DISABLE_VALUE_TYPE_AND_VALUE(switches::kEnableFeatures,
@@ -11056,6 +11033,11 @@ const FeatureEntry kFeatureEntries[] = {
      flag_descriptions::kGlicOptInDialogA11yFixName,
      flag_descriptions::kGlicOptInDialogA11yFixDescription, kOsDesktop,
      FEATURE_VALUE_TYPE(features::kGlicOptInDialogA11yFix)},
+    {"glic-experimental-triggering-os-notification",
+     flag_descriptions::kGlicExperimentalTriggeringOsNotificationName,
+     flag_descriptions::kGlicExperimentalTriggeringOsNotificationDescription,
+     kOsDesktop,
+     FEATURE_VALUE_TYPE(features::kGlicExperimentalTriggeringOsNotification)},
     {"glic-experimental-triggering-screenshot",
      flag_descriptions::kGlicExperimentalTriggeringScreenshotName,
      flag_descriptions::kGlicExperimentalTriggeringScreenshotDescription,
@@ -13079,6 +13061,11 @@ const FeatureEntry kFeatureEntries[] = {
      flag_descriptions::kDevToolsMobileSafeAreaEmulationDescription, kOsAll,
      FEATURE_VALUE_TYPE(features::kDevToolsMobileSafeAreaEmulation)},
 
+    {"devtools-network-backend-linking",
+     flag_descriptions::kDevToolsNetworkBackendLinkingName,
+     flag_descriptions::kDevToolsNetworkBackendLinkingDescription, kOsAll,
+     FEATURE_VALUE_TYPE(features::kDevToolsNetworkBackendLinking)},
+
     {"unthrottle-async-touch-moves",
      flag_descriptions::kUnthrottleAsyncTouchMovesName,
      flag_descriptions::kUnthrottleAsyncTouchMovesDescription, kOsAll,
@@ -13990,9 +13977,12 @@ const FeatureEntry kFeatureEntries[] = {
      flag_descriptions::kRemoteActorCredentialSharingDescription, kOsDesktop,
      FEATURE_VALUE_TYPE(features::kRemoteActorCredentialSharing)},
 
-    {"autofill-gmail-otp", flag_descriptions::kAutofillGmailOtpName,
-     flag_descriptions::kAutofillGmailOtpDescription, kOsDesktop,
-     FEATURE_VALUE_TYPE(autofill::features::kAutofillGmailOtp)},
+    {"autofill-gmail-otp",
+     flag_descriptions::kAutofillGmailOtpPreLaunchMetricsName,
+     flag_descriptions::kAutofillGmailOtpPreLaunchMetricsDescription,
+     kOsDesktop,
+     FEATURE_VALUE_TYPE(
+         autofill::features::kAutofillGmailOtpPreLaunchMetrics)},
 #endif
 
 #if BUILDFLAG(IS_ANDROID)
@@ -14091,6 +14081,14 @@ const FeatureEntry kFeatureEntries[] = {
      flag_descriptions::kUnifyWaitForCookiesDescription, kOsAndroid,
      FEATURE_VALUE_TYPE(switches::kUnifyWaitForCookies)},
 #endif  // BUILDFLAG(ENABLE_DESKTOP_ANDROID_EXTENSIONS)
+
+    {"browsing-history-improved-hostname-suffix-matching",
+     flag_descriptions::kBrowsingHistoryImprovedHostnameSuffixMatchingName,
+     flag_descriptions::
+         kBrowsingHistoryImprovedHostnameSuffixMatchingDescription,
+     kOsDesktop,
+     FEATURE_VALUE_TYPE(
+         history::kBrowsingHistoryImprovedHostnameSuffixMatching)},
 
     // Add new entries above this line.
     // NOTE: Adding a new flag requires adding a corresponding entry to enum

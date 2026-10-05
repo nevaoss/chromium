@@ -266,9 +266,6 @@ bool RegisterTransformers() {
   pref_mapping->RegisterPrefTransformer(
       prefs::kPrivacySandboxM1AdMeasurementEnabled,
       std::make_unique<PrivacySandboxTransformer>());
-  pref_mapping->RegisterPrefTransformer(
-      prefs::kPrivacySandboxRelatedWebsiteSetsEnabled,
-      std::make_unique<PrivacySandboxTransformer>());
 
   return true;
 }
@@ -1041,12 +1038,12 @@ ChromeExtensionsBrowserClient::GetSafeBrowsingDatabaseManager() const {
 #endif
 }
 
-std::optional<safe_browsing::V4ProtocolConfig>
-ChromeExtensionsBrowserClient::GetV4ProtocolConfig() const {
+std::optional<safe_browsing::SBProtocolConfig>
+ChromeExtensionsBrowserClient::GetSBProtocolConfig() const {
 #if BUILDFLAG(SAFE_BROWSING_AVAILABLE)
   return g_browser_process && g_browser_process->safe_browsing_service()
              ? std::optional(g_browser_process->safe_browsing_service()
-                                 ->GetV4ProtocolConfig())
+                                 ->GetSBProtocolConfig())
              : std::nullopt;
 #else
   return std::nullopt;

@@ -205,6 +205,7 @@ if (is_android) {
   android_library("public_java") {
     resources_package = "org.chromium.chrome.browser.glic"
     sources = [
+      "public/android/java/src/org/chromium/chrome/browser/glic/ConversationInfo.java",
       "public/android/java/src/org/chromium/chrome/browser/glic/GlicEnabling.java",
       "public/android/java/src/org/chromium/chrome/browser/glic/GlicKeyedService.java",
       "public/android/java/src/org/chromium/chrome/browser/glic/GlicKeyedServiceFactory.java",
@@ -288,8 +289,6 @@ source_set("glic_metrics") {
     "service/metrics/glic_instance_helper_metrics.h",
     "service/metrics/glic_instance_metrics.cc",
     "service/metrics/glic_instance_metrics.h",
-    "service/metrics/glic_invoke_metrics.cc",
-    "service/metrics/glic_invoke_metrics.h",
     "service/metrics/glic_metrics_session_manager.cc",
     "service/metrics/glic_metrics_session_manager.h",
   ]
@@ -459,24 +458,20 @@ source_set("impl") {
     "service/glic_onboarding_status.h",
     "service/glic_onboarding_tracker.cc",
     "service/glic_onboarding_tracker.h",
-    "service/glic_tab_contents_swapper.cc",
-    "service/glic_tab_contents_swapper.h",
     "service/glic_tab_group_utils.cc",
     "service/glic_tab_group_utils.h",
     "service/glic_ui_embedder.h",
     "service/glic_ui_types.cc",
     "service/metrics/glic_instance_coordinator_metrics.cc",
     "service/metrics/glic_instance_coordinator_metrics.h",
+    "service/metrics/glic_invoke_metrics.cc",
+    "service/metrics/glic_invoke_metrics.h",
     "suggestions/caching_zero_state_suggestions_manager.cc",
     "suggestions/caching_zero_state_suggestions_manager.h",
     "widget/browser_conditions.cc",
     "widget/browser_conditions.h",
     "widget/conversions.cc",
     "widget/conversions.h",
-    "widget/glic_inactive_tab_ui.cc",
-    "widget/glic_inactive_tab_ui.h",
-    "widget/glic_tab_ui.cc",
-    "widget/glic_tab_ui.h",
     "widget/web_contents_delegate_util.h",
   ]
 
@@ -554,6 +549,7 @@ source_set("impl") {
     "//components/guest_view/buildflags",
     "//components/language/core/common",
     "//components/metrics",
+    "//components/metrics/structured:structured_events",
     "//components/metrics_services_manager",
     "//components/origin_matcher",
     "//components/pdf/common:constants",
@@ -670,6 +666,7 @@ source_set("impl") {
 
     deps += [
       ":actor_types_for_migration",
+      "//chrome/browser/actor/android",
       "//chrome/browser/context_sharing/tab_bottom_sheet/android",
       "//chrome/browser/glic/android",
       "//chrome/browser/glic/browser_ui:impl",
@@ -721,8 +718,6 @@ source_set("impl") {
 }
 
 mojom("mojo_bindings") {
-  disable_variants = true
-
   sources = [
     "experimental_opt_in/glic_experimental_opt_in.mojom",
     "gemini_enterprise/gemini_enterprise.mojom",
@@ -787,6 +782,7 @@ source_set("unit_tests") {
     "glic_settings_util_unittest.cc",
     "host/auth_controller_unittest.cc",
     "host/context/glic_sharing_utils_unittest.cc",
+    "host/glic_guest_observer_unittest.cc",
     "host/glic_local_storage_migration_unittest.cc",
     "host/glic_web_client_responsiveness_monitor_unittest.cc",
     "host/glic_web_contents_warming_pool_unittest.cc",
@@ -909,6 +905,7 @@ source_set("browser_tests") {
     "host/glic_no_webview_contents_manager_browsertest.cc",
     "host/glic_overlay_browsertest.cc",
     "host/glic_permission_enforcement_browsertest.cc",
+    "host/glic_start_benchmark_browsertest.cc",
     "host/glic_web_contents_warming_pool_browsertest.cc",
     "service/glic_instance_coordinator_browsertest.cc",
     "service/glic_instance_helper_browsertest.cc",

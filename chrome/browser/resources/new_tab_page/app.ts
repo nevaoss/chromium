@@ -129,7 +129,8 @@ const CUSTOMIZE_URL_PARAM: string = 'customize';
 const OGB_IFRAME_ORIGIN = 'chrome-untrusted://new-tab-page';
 const MSAL_IFRAME_ORIGIN = 'chrome-untrusted://ntp-microsoft-auth';
 const VOICE_QUERY_LENGTH_LIMIT = 120;
-const VOICE_IDLE_TIMEOUT_MS = 8000;
+const VOICE_AUTO_SUBMIT_IDLE_TIMEOUT_MS = 3000;
+const VOICE_MANUAL_SUBMIT_IDLE_TIMEOUT_MS = 10000;
 const COMPOSEBOX_INERT_ALLOWLIST = [
   '#logo',
   '#searchboxContainer',
@@ -248,12 +249,15 @@ export class AppElement extends AppElementBase {
       voiceSearchCoherenceAnySearchboxExperimentEnabled_: {type: Boolean},
       voiceSearchCoherenceSearchboxWithLiveTranscriptionEnabled_:
           {type: Boolean},
+      voiceSearchCoherenceRealboxAutoEndpointEnabled_: {type: Boolean},
+      voiceSearchCoherenceRealboxHelperTextEnabled_: {type: Boolean},
 
       voiceSearchTranscript_: {type: String},
       voiceSearchReceivedSpeech_: {type: Boolean},
       voiceSearchListening_: {type: Boolean},
       voiceQueryLengthLimit_: {type: Number},
-      voiceIdleTimeoutMs_: {type: Number},
+      voiceAutoSubmitIdleTimeoutMs_: {type: Number},
+      voiceManualSubmitIdleTimeoutMs_: {type: Number},
       searchboxCallbackRouter_: {type: Object},
 
       showBackgroundImage_: {
@@ -403,12 +407,19 @@ export class AppElement extends AppElementBase {
   protected accessor voiceSearchCoherenceSearchboxWithLiveTranscriptionEnabled_:
       boolean = loadTimeData.getBoolean(
           'voiceSearchCoherenceSearchboxWithLiveTranscriptionEnabled');
+  protected accessor voiceSearchCoherenceRealboxAutoEndpointEnabled_: boolean =
+      loadTimeData.getBoolean('voiceSearchCoherenceRealboxAutoEndpointEnabled');
+  protected accessor voiceSearchCoherenceRealboxHelperTextEnabled_: boolean =
+      loadTimeData.getBoolean('voiceSearchCoherenceRealboxHelperTextEnabled');
 
   protected accessor voiceSearchTranscript_: string = '';
   protected accessor voiceSearchReceivedSpeech_: boolean = false;
   protected accessor voiceSearchListening_: boolean = false;
   protected accessor voiceQueryLengthLimit_: number = VOICE_QUERY_LENGTH_LIMIT;
-  protected accessor voiceIdleTimeoutMs_: number = VOICE_IDLE_TIMEOUT_MS;
+  protected accessor voiceAutoSubmitIdleTimeoutMs_: number =
+      VOICE_AUTO_SUBMIT_IDLE_TIMEOUT_MS;
+  protected accessor voiceManualSubmitIdleTimeoutMs_: number =
+      VOICE_MANUAL_SUBMIT_IDLE_TIMEOUT_MS;
   protected accessor showBackgroundImage_: boolean = false;
   protected accessor backgroundImageAttribution1_: string = '';
   protected accessor backgroundImageAttribution2_: string = '';
@@ -1231,6 +1242,16 @@ export class AppElement extends AppElementBase {
 
   protected onVoiceSearchSpeechReceived_() {
     this.voiceSearchReceivedSpeech_ = true;
+  }
+
+  protected showVoiceSearchGlow_(): boolean {
+    if (this.hasVoiceSearchError) {
+      return false;
+    }
+    // Audio wave is rendered for all 4 Realbox experiment arms (which have
+    // helper text enabled) and the legacy 'No Live Transcription' arm.
+    return !this.voiceSearchCoherenceSearchboxWithLiveTranscriptionEnabled_ ||
+        this.voiceSearchCoherenceRealboxHelperTextEnabled_;
   }
 
   protected onVoiceSearchDialogClick_(e: MouseEvent) {

@@ -85,6 +85,24 @@ TEST_F(WKWebViewConfigurationProviderTest, OffTheRecordConfiguration) {
   EXPECT_FALSE(config.websiteDataStore.persistent);
 }
 
+// Tests that SetUniversalOptOutEnabled updates defaultWebpagePreferences for
+// iOS 27+.
+#if defined(__IPHONE_27_0) && __IPHONE_OS_VERSION_MAX_ALLOWED >= __IPHONE_27_0
+TEST_F(WKWebViewConfigurationProviderTest, UniversalOptOutConfiguration)
+API_AVAILABLE(ios(27)) {
+  if (@available(iOS 27, *)) {
+    WKWebViewConfigurationProvider& provider = GetProvider();
+    provider.SetUniversalOptOutEnabled(false);
+    EXPECT_FALSE(provider.GetWebViewConfiguration()
+                     .defaultWebpagePreferences.globalPrivacyControlEnabled);
+
+    provider.SetUniversalOptOutEnabled(true);
+    EXPECT_TRUE(provider.GetWebViewConfiguration()
+                    .defaultWebpagePreferences.globalPrivacyControlEnabled);
+  }
+}
+#endif
+
 // Tests that internal configuration object can not be changed by clients.
 TEST_F(WKWebViewConfigurationProviderTest, ConfigurationProtection) {
   WKWebViewConfigurationProvider& provider = GetProvider();

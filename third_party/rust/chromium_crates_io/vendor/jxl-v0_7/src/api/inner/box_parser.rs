@@ -238,7 +238,7 @@ impl BoxParser {
 
     pub(super) fn total_bytes_consumed(&self, codestream_bytes_consumed: u64) -> u64 {
         let (start, b) = self.codestream_pos_to_box.last_key_value().unwrap();
-        b.file_position + (codestream_bytes_consumed - *start)
+        b.file_position + codestream_bytes_consumed.saturating_sub(*start)
     }
 
     pub(super) fn aux_boxes(&self, box_type: JxlAuxBoxType) -> &[JxlAuxBox] {
@@ -255,6 +255,18 @@ impl BoxParser {
         }
 
         self.aux.box_buffer.as_ref()
+    }
+
+    pub(super) fn is_codestream_complete(&self) -> bool {
+        if !self.latest_codestream_box.is_last() {
+            return false;
+        }
+
+        match self.state {
+            ParseState::Codestream(Some(0)) => true,
+            ParseState::Codestream(_) => false,
+            _ => true,
+        }
     }
 
     fn add_checkpoint(&mut self) {
@@ -289,6 +301,16 @@ impl BoxParser {
     }
 
     fn injected_jxlp(&mut self) -> Option<&mut OOOJxlpBox> {
+        // Skip 0-sized jxlp boxes.
+        while matches!(self.state, ParseState::BoxNeeded(_) | ParseState::Complete)
+            && let CodestreamBoxType::Jxlp(j, _) = self.latest_codestream_box
+            && self
+                .ooo_jxlp_buffer
+                .get(&j)
+                .is_some_and(|b| b.consumed == b.data.len())
+        {
+            self.check_ooo_jxlp_done();
+        }
         if matches!(self.state, ParseState::BoxNeeded(_) | ParseState::Complete)
             && let CodestreamBoxType::Jxlp(j, _) = self.latest_codestream_box
             && let Some(b) = self.ooo_jxlp_buffer.get_mut(&j)
@@ -513,7 +535,7 @@ impl BoxParser {
                     }
                     self.state = ParseState::BoxNeeded(8);
                 }
-                ParseState::Skip(count) => {
+                ParseState::Codestream(count) | ParseState::Skip(count) => {
                     if count == Some(0) {
                         self.state = ParseState::Complete;
                         continue;

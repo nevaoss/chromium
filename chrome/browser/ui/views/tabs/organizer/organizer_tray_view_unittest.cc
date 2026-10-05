@@ -9,14 +9,17 @@
 #include "base/test/bind.h"
 #include "base/test/scoped_run_loop_timeout.h"
 #include "chrome/browser/ui/actions/chrome_action_id.h"
+#include "chrome/browser/ui/animation/browser_animation_controller.h"
 #include "chrome/browser/ui/browser_actions.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/test/mock_browser_window_interface.h"
-#include "chrome/browser/ui/tabs/organizer/organizer_panel_state_controller.h"
+#include "chrome/browser/ui/tabs/organizer/organizer_panel_controller.h"
+#include "chrome/browser/ui/views/animations/organizer_panel_animations.h"
 #include "chrome/browser/ui/views/interaction/browser_elements_views.h"
 #include "chrome/browser/ui/views/interaction/browser_elements_views_impl.h"
 #include "chrome/browser/ui/views/tabs/organizer/layout_constants.h"
+#include "chrome/browser/ui/views/tabs/organizer/organizer_panel_host.h"
 #include "chrome/test/base/testing_profile.h"
 #include "chrome/test/views/chrome_views_test_base.h"
 #include "testing/gmock/include/gmock/gmock.h"
@@ -48,15 +51,22 @@ class FakeBrowserView : public views::View, public views::LayoutDelegate {
 
   OrganizerTrayView* tray_view() const { return tray_view_; }
 
+  void SetAnimationValue(double animation_value) {
+    animation_value_ = animation_value;
+    if (tray_view_) {
+      tray_view_->InvalidateLayout();
+    }
+  }
+
   views::ProposedLayout CalculateProposedLayout(
       const views::SizeBounds& size_bounds) const override {
     views::ProposedLayout layout;
-    if (tray_view_ && tray_view_->GetVisible()) {
-      const int width = base::ClampCeil(tray_view_->target_width() *
-                                        tray_view_->GetAnimationValue());
+    if (tray_view_) {
+      const int width =
+          base::ClampCeil(tray_view_->target_width() * animation_value_);
       layout.child_layouts.push_back({
           .child_view = tray_view_.get(),
-          .visible = true,
+          .visible = animation_value_ > 0.0,
           .bounds = gfx::Rect(0, 0, width, size_bounds.height().value_or(0)),
       });
     }
@@ -65,6 +75,7 @@ class FakeBrowserView : public views::View, public views::LayoutDelegate {
 
  private:
   raw_ptr<OrganizerTrayView> tray_view_ = nullptr;
+  double animation_value_ = 0.0;
 };
 
 BEGIN_METADATA(FakeBrowserView)
@@ -109,20 +120,28 @@ class OrganizerTrayViewTest
     browser_actions_ = std::make_unique<BrowserActions>(&browser_);
     browser_actions_->set_root_action_item_for_testing(root_action_);
 
-    state_controller_ = std::make_unique<OrganizerPanelStateController>(
-        &browser_, root_action_);
+    animation_controller_ =
+        std::make_unique<BrowserAnimationController>(browser_);
+    animation_controller_->AddAnimationProvider(
+        std::make_unique<OrganizerPanelAnimations>());
+
+    state_controller_ =
+        std::make_unique<OrganizerPanelController>(browser_, root_action_);
 
     widget_ = CreateTestWidget(views::Widget::InitParams::CLIENT_OWNS_WIDGET);
     browser_view_ =
         widget_->SetContentsView(std::make_unique<FakeBrowserView>(browser_));
     browser_elements_->Init(browser_view_);
+    widget_->SetBounds(gfx::Rect(0, 0, 800, 600));
+    widget_->Show();
+
+    // Correct approach is to set this through the controller. It does not need
+    // to be reset later as it will be torn down with its parent view.
     auto panel = std::make_unique<views::View>();
     panel_ = panel.get();
     panel_->SetProperty(views::kElementIdentifierKey,
                         kOrganizerPanelViewElementId);
-    browser_view_->tray_view()->SetPanelView(std::move(panel));
-    widget_->SetBounds(gfx::Rect(0, 0, 800, 600));
-    widget_->Show();
+    state_controller_->SetPanelViewForTesting(std::move(panel));
 
     SetContextWidget(widget_.get());
   }
@@ -139,6 +158,7 @@ class OrganizerTrayViewTest
 
     // Release services.
     state_controller_.reset();
+    animation_controller_.reset();
     browser_actions_.reset();
     browser_elements_.reset();
 
@@ -166,43 +186,35 @@ class OrganizerTrayViewTest
         .SetDescription("FastForward()");
   }
 
+  auto SetAnimationValue(double value) {
+    return WithView(kBrowserViewElementId,
+                    [value](FakeBrowserView* browser_view) {
+                      browser_view->SetAnimationValue(value);
+                      browser_view->GetWidget()->LayoutRootViewIfNecessary();
+                    })
+        .SetDescription("SetAnimationValue()");
+  }
+
   auto ShowPanel() {
     auto steps = Steps(
         EnsureNotPresent(OrganizerTrayView::kTrayElementId), TogglePanel(),
-        InParallel(RunSubsequence(FastForward(
-                       OrganizerTrayView::kPanelShowAnimationDuration +
-                       base::Seconds(1))),
-                   RunSubsequence(
-                       WaitForShow(OrganizerTrayView::kTrayElementId),
-                       WaitForEvent(OrganizerTrayView::kTrayElementId,
-                                    OrganizerTrayView::kOpenAnimationComplete),
-                       WaitForShow(kOrganizerPanelViewElementId))));
+        InParallel(
+            RunSubsequence(SetAnimationValue(1.0)),
+            RunSubsequence(WaitForShow(OrganizerTrayView::kTrayElementId),
+                           WaitForShow(kOrganizerPanelViewElementId))));
     AddDescriptionPrefix(steps, "ShowPanel()");
     return steps;
   }
 
   auto HidePanel() {
-    auto steps = Steps(
-        TogglePanel(),
-        InParallel(RunSubsequence(FastForward(
-                       OrganizerTrayView::kPanelHideAnimationDuration +
-                       base::Seconds(1))),
-                   RunSubsequence(
-                       WaitForEvent(OrganizerTrayView::kTrayElementId,
-                                    OrganizerTrayView::kCloseAnimationComplete),
-                       WaitForHide(OrganizerTrayView::kTrayElementId),
-                       WaitForHide(kOrganizerPanelViewElementId))));
+    auto steps =
+        Steps(TogglePanel(),
+              InParallel(
+                  RunSubsequence(SetAnimationValue(0.0)),
+                  RunSubsequence(WaitForHide(OrganizerTrayView::kTrayElementId),
+                                 WaitForHide(kOrganizerPanelViewElementId))));
     AddDescriptionPrefix(steps, "HidePanel()");
     return steps;
-  }
-
-  auto SetAnimationValue(double value) {
-    return WithView(OrganizerTrayView::kTrayElementId,
-                    [value](OrganizerTrayView* tray) {
-                      tray->SetAnimationValueForTesting(value);
-                      tray->GetWidget()->LayoutRootViewIfNecessary();
-                    })
-        .SetDescription("SetAnimationValue()");
   }
 
   auto SetExclusion(int width, int height) {
@@ -216,12 +228,13 @@ class OrganizerTrayViewTest
 
   OrganizerTrayView* tray_view() { return browser_view_->tray_view(); }
 
- private:
+ protected:
   std::unique_ptr<TestingProfile> profile_;
   testing::NiceMock<MockBrowserWindowInterface> browser_;
   std::unique_ptr<BrowserElementsViewsImpl> browser_elements_;
   std::unique_ptr<BrowserActions> browser_actions_;
-  std::unique_ptr<OrganizerPanelStateController> state_controller_;
+  std::unique_ptr<BrowserAnimationController> animation_controller_;
+  std::unique_ptr<OrganizerPanelController> state_controller_;
   std::unique_ptr<views::Widget> widget_;
   raw_ptr<FakeBrowserView> browser_view_;
   raw_ptr<views::View> panel_;
@@ -340,4 +353,26 @@ TEST_F(OrganizerTrayViewTest, SizeControlsToExclusionHeight) {
           },
           0)
           .SetDescription("Panel should start beneath controls."));
+}
+
+TEST_F(OrganizerTrayViewTest, ClearingPanelHandledGracefully) {
+  RunTestSequence(
+      ShowPanel(),
+      CheckView(
+          OrganizerTrayView::kTrayElementId,
+          [](OrganizerTrayView* tray) {
+            return OrganizerPanelHost::FromView(tray)->HasPanelView();
+          },
+          true),
+      Do([this]() {
+        panel_ = nullptr;
+        state_controller_->SetPanelViewForTesting(nullptr);
+      }),
+      WaitForHide(kOrganizerPanelViewElementId),
+      CheckView(
+          OrganizerTrayView::kTrayElementId,
+          [](OrganizerTrayView* tray) {
+            return OrganizerPanelHost::FromView(tray)->HasPanelView();
+          },
+          false));
 }

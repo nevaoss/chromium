@@ -574,6 +574,17 @@ Called by update_bad_message_reasons.py.-->
   <int value="390" label="RFHI_BEGIN_NAVIGATION_INVALID_INITIATOR_TOKENS"/>
   <int value="391" label="RFHI_BEGIN_NAVIGATION_INVALID_INITIATOR_PROCESS"/>
   <int value="392" label="RFHI_INVALID_INITIATOR_STATE_TOKEN_UPDATE"/>
+  <int value="393" label="RFHI_WEBMCP_INVALID_TOOL_NAME"/>
+  <int value="394" label="MSDH_REQUEST_ALL_SCREENS_WITH_INVALID_STREAM_TYPE"/>
+  <int value="395"
+      label="RFPH_SET_INHERITED_EFFECTIVE_TOUCH_ACTION_WITHOUT_CPFC"/>
+  <int value="396" label="RFPH_UPDATE_RENDER_THROTTLING_STATUS_WITHOUT_CPFC"/>
+  <int value="397" label="RFPH_VISIBILITY_CHANGED_WITHOUT_CPFC"/>
+  <int value="398" label="RFPH_SET_IS_INERT_WITHOUT_CPFC"/>
+  <int value="399" label="RFPH_SYNCHRONIZE_VISUAL_PROPERTIES_WITHOUT_CPFC"/>
+  <int value="400" label="RFPH_UPDATE_VIEWPORT_INTERSECTION_WITHOUT_CPFC"/>
+  <int value="401"
+      label="RFH_DEDICATED_WORKER_HOST_FACTORY_PDF_PROCESS_BLOCKED"/>
 </enum>
 
 <enum name="BadMessageReasonExtensions">
@@ -1434,6 +1445,11 @@ Called by update_debug_scenarios.py.-->
       label="chrome::RESULT_CODE_NORMAL_EXIT_PACK_EXTENSION_SUCCESS"/>
   <int value="37" label="chrome::RESULT_CODE_SYSTEM_RESOURCE_EXHAUSTED"/>
   <int value="38" label="chrome::RESULT_CODE_NORMAL_EXIT_AUTO_DE_ELEVATED"/>
+  <int value="39"
+      label="chrome::RESULT_CODE_TERMINATED_BY_OTHER_PROCESS_ON_COMMIT_FAILURE"/>
+  <int value="40" label="chrome::RESULT_CODE_INVALID_ISOLATED_BROWSER_PROCESS"/>
+  <int value="41" label="chrome::RESULT_CODE_NORMAL_EXIT_RELAUNCH_REQUESTED"/>
+  <int value="42" label="chrome::RESULT_CODE_NORMAL_EXIT_RELAUNCH_BACKGROUND"/>
   <int value="259" label="0x103 - STILL_ACTIVE."/>
   <int value="1285" label="ERROR_DELAY_LOAD_FAILED"/>
   <int value="1717" label="RPC_S_UNKNOWN_IF"/>

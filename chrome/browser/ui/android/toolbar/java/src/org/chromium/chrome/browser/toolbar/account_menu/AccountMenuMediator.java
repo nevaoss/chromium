@@ -4,6 +4,8 @@
 
 package org.chromium.chrome.browser.toolbar.account_menu;
 
+import static org.chromium.build.NullUtil.assumeNonNull;
+
 import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
@@ -19,6 +21,7 @@ import org.chromium.chrome.browser.signin.services.DisplayableProfileData;
 import org.chromium.chrome.browser.signin.services.IdentityServicesProvider;
 import org.chromium.chrome.browser.signin.services.ProfileDataCache;
 import org.chromium.chrome.browser.signin.services.SigninManager;
+import org.chromium.chrome.browser.sync.SyncServiceFactory;
 import org.chromium.chrome.browser.tabmodel.TabCreator;
 import org.chromium.chrome.browser.tabmodel.TabCreatorUtil;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
@@ -42,43 +45,66 @@ import org.chromium.components.signin.SigninFeatureMap;
 import org.chromium.components.signin.base.AccountInfo;
 import org.chromium.components.signin.identitymanager.IdentityManager;
 import org.chromium.components.signin.metrics.SigninAccessPoint;
+import org.chromium.components.sync.SyncService;
+import org.chromium.components.sync.UserActionableError;
 import org.chromium.ui.base.WindowAndroid;
 import org.chromium.ui.modelutil.MVCListAdapter.ListItem;
 import org.chromium.ui.modelutil.MVCListAdapter.ModelList;
 import org.chromium.ui.modelutil.PropertyModel;
 
-import java.util.function.Supplier;
-
 /** Mediator managing business logic and menu items for the Account Menu popup. */
 @NullMarked
-public class AccountMenuMediator implements ProfileDataCache.Observer {
+public class AccountMenuMediator
+        implements SigninManager.SignInStateObserver, ProfileDataCache.Observer {
     private final Context mContext;
-    private final ModelList mModelList;
+    private final Profile mProfile;
     private final WindowAndroid mWindowAndroid;
-    private final Supplier<@Nullable Profile> mProfileSupplier;
-    private final Supplier<@Nullable BottomSheetSigninAndHistorySyncCoordinator>
-            mSigninCoordinatorSupplier;
+    private final ModelList mModelList;
+    private final @Nullable BottomSheetSigninAndHistorySyncCoordinator mSigninCoordinator;
     private final SigninAndHistorySyncActivityLauncher mSigninLauncher;
     private final Runnable mDismissCallback;
     private @Nullable ProfileDataCache mProfileDataCache;
+    private @Nullable SigninManager mSigninManager;
 
     public AccountMenuMediator(
             Context context,
-            ModelList modelList,
+            Profile profile,
             WindowAndroid windowAndroid,
-            Supplier<@Nullable Profile> profileSupplier,
-            Supplier<@Nullable BottomSheetSigninAndHistorySyncCoordinator>
-                    signinCoordinatorSupplier,
+            ModelList modelList,
+            @Nullable BottomSheetSigninAndHistorySyncCoordinator signinCoordinator,
             SigninAndHistorySyncActivityLauncher signinLauncher,
             Runnable dismissCallback) {
         mContext = context;
-        mModelList = modelList;
+        mProfile = profile;
         mWindowAndroid = windowAndroid;
-        mProfileSupplier = profileSupplier;
-        mSigninCoordinatorSupplier = signinCoordinatorSupplier;
+        mModelList = modelList;
+        mSigninCoordinator = signinCoordinator;
         mSigninLauncher = signinLauncher;
         mDismissCallback = dismissCallback;
 
+        if (!mProfile.isOffTheRecord()) {
+            mSigninManager = IdentityServicesProvider.get().getSigninManager(mProfile);
+            if (mSigninManager != null) {
+                mSigninManager.addSignInStateObserver(this);
+            }
+        }
+
+        updateMenuItems();
+    }
+
+    // SigninManager.SignInStateObserver implementation.
+    @Override
+    public void onSignInAllowedChanged() {
+        updateMenuItems();
+    }
+
+    @Override
+    public void onSignedIn() {
+        updateMenuItems();
+    }
+
+    @Override
+    public void onSignedOut() {
         updateMenuItems();
     }
 
@@ -99,8 +125,28 @@ public class AccountMenuMediator implements ProfileDataCache.Observer {
                                     openAutofillSettings();
                                 })));
 
-        Profile profile = mProfileSupplier.get();
-        if (profile != null && IncognitoUtils.isIncognitoModeEnabled(profile)) {
+        maybeAddManageGoogleAccount();
+
+        IdentityManager identityManager =
+                assumeNonNull(IdentityServicesProvider.get().getIdentityManager(mProfile));
+        if (identityManager.hasPrimaryAccount()) {
+            SyncService syncService = assumeNonNull(SyncServiceFactory.getForProfile(mProfile));
+            boolean showIconBadge =
+                    syncService.getUserActionableError() != UserActionableError.NONE;
+            mModelList.add(
+                    new ListItem(
+                            ItemType.MENU_ITEM,
+                            MenuItemProperties.createModel(
+                                    R.string.profile_menu_account_settings_button,
+                                    R.drawable.settings_cog,
+                                    v -> {
+                                        mDismissCallback.run();
+                                        openAccountSettings();
+                                    },
+                                    showIconBadge)));
+        }
+
+        if (IncognitoUtils.isIncognitoModeEnabled(mProfile)) {
             mModelList.add(new ListItem(ItemType.DIVIDER, new PropertyModel()));
             int titleRes =
                     IncognitoUtils.shouldOpenIncognitoAsWindow()
@@ -121,6 +167,10 @@ public class AccountMenuMediator implements ProfileDataCache.Observer {
 
     /** Cleans up observers and resources. */
     public void destroy() {
+        if (mSigninManager != null) {
+            mSigninManager.removeSignInStateObserver(this);
+            mSigninManager = null;
+        }
         if (mProfileDataCache != null) {
             mProfileDataCache.removeObserver(this);
             mProfileDataCache = null;
@@ -129,12 +179,8 @@ public class AccountMenuMediator implements ProfileDataCache.Observer {
 
     @Override
     public void onProfileDataUpdated(DisplayableProfileData profileData) {
-        Profile profile = mProfileSupplier.get();
-        if (profile == null || profile.isOffTheRecord()) {
-            return;
-        }
         IdentityManager identityManager =
-                IdentityServicesProvider.get().getIdentityManager(profile);
+                IdentityServicesProvider.get().getIdentityManager(mProfile);
         AccountInfo primaryAccount =
                 identityManager != null ? identityManager.getPrimaryAccountInfo() : null;
         if (primaryAccount == null || !primaryAccount.getId().equals(profileData.getAccountId())) {
@@ -150,13 +196,8 @@ public class AccountMenuMediator implements ProfileDataCache.Observer {
     }
 
     private void maybeAddHeader() {
-        Profile profile = mProfileSupplier.get();
-        if (profile == null || profile.isOffTheRecord()) {
-            return;
-        }
-
         IdentityManager identityManager =
-                IdentityServicesProvider.get().getIdentityManager(profile);
+                IdentityServicesProvider.get().getIdentityManager(mProfile);
         if (identityManager != null) {
             AccountInfo accountInfo = identityManager.getPrimaryAccountInfo();
             if (accountInfo != null) {
@@ -164,9 +205,7 @@ public class AccountMenuMediator implements ProfileDataCache.Observer {
                 return;
             }
         }
-
-        SigninManager signinManager = IdentityServicesProvider.get().getSigninManager(profile);
-        if (signinManager != null && signinManager.isSigninAllowed()) {
+        if (mSigninManager != null && mSigninManager.isSigninAllowed()) {
             addPromoCard();
         }
     }
@@ -196,17 +235,11 @@ public class AccountMenuMediator implements ProfileDataCache.Observer {
     }
 
     private void startSigninFlow() {
-        Profile profile = mProfileSupplier.get();
-        if (profile == null || profile.isOffTheRecord()) {
+        if (mSigninManager == null || !mSigninManager.isSigninAllowed()) {
             return;
         }
 
-        SigninManager signinManager = IdentityServicesProvider.get().getSigninManager(profile);
-        if (signinManager == null || !signinManager.isSigninAllowed()) {
-            return;
-        }
-
-        Profile originalProfile = profile.getOriginalProfile();
+        Profile originalProfile = mProfile.getOriginalProfile();
         String title = mContext.getString(R.string.signin_account_picker_bottom_sheet_title);
         String subtitle =
                 mContext.getString(R.string.signin_account_picker_bottom_sheet_benefits_subtitle);
@@ -226,11 +259,7 @@ public class AccountMenuMediator implements ProfileDataCache.Observer {
                         .build();
 
         if (SigninFeatureMap.getInstance().isActivitylessSigninAllEntryPointEnabled()) {
-            BottomSheetSigninAndHistorySyncCoordinator signinCoordinator =
-                    mSigninCoordinatorSupplier.get();
-            if (signinCoordinator != null) {
-                signinCoordinator.startSigninFlow(config);
-            }
+            assumeNonNull(mSigninCoordinator).startSigninFlow(config);
         } else {
             @Nullable Intent intent =
                     mSigninLauncher.createBottomSheetSigninIntentOrShowError(
@@ -248,6 +277,12 @@ public class AccountMenuMediator implements ProfileDataCache.Observer {
         SettingsNavigation settingsNavigation =
                 SettingsNavigationFactory.createSettingsNavigation();
         settingsNavigation.startSettings(mContext, SettingsFragment.AUTOFILL_AND_PASSWORDS);
+    }
+
+    private void openAccountSettings() {
+        SettingsNavigation settingsNavigation =
+                SettingsNavigationFactory.createSettingsNavigation();
+        settingsNavigation.startSettings(mContext, SettingsFragment.MAIN);
     }
 
     /** Opens a new Incognito window if supported, or a new Incognito tab otherwise. */
@@ -270,6 +305,26 @@ public class AccountMenuMediator implements ProfileDataCache.Observer {
                         selector.getTabCreatorManager().getTabCreator(/* incognito= */ true);
                 TabCreatorUtil.launchNtp(incognitoTabCreator);
             }
+        }
+    }
+
+    private void maybeAddManageGoogleAccount() {
+        if (mProfile.isOffTheRecord()) {
+            return;
+        }
+        IdentityManager identityManager =
+                IdentityServicesProvider.get().getIdentityManager(mProfile);
+        if (identityManager != null && identityManager.hasPrimaryAccount()) {
+            mModelList.add(
+                    new ListItem(
+                            ItemType.MENU_ITEM,
+                            MenuItemProperties.createModel(
+                                    R.string.manage_your_google_account,
+                                    R.drawable.ic_google_services_24dp,
+                                    v -> {
+                                        mDismissCallback.run();
+                                        mSigninLauncher.openManageGoogleAccount(mContext);
+                                    })));
         }
     }
 }

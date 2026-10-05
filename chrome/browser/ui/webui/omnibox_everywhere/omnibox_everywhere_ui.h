@@ -83,6 +83,19 @@ class OmniboxEverywhereUI
     kScreenshotWindow,
     kScreenshotRegion,
   };
+
+  // These values are persisted to logs. Entries should not be renumbered and
+  // numeric values should never be reused.
+  //
+  // LINT.IfChange(OmniboxEverywhereScreenshareOption)
+  enum class ScreenshareOption {
+    kEntireScreen = 0,
+    kWindow = 1,
+    kRegion = 2,
+    kMaxValue = kRegion,
+  };
+  // LINT.ThenChange(//tools/metrics/histograms/metadata/omnibox/enums.xml:OmniboxEverywhereScreenshareOption)
+
   ~OmniboxEverywhereUI() override;
 
   static constexpr std::string_view GetWebUIName() {
@@ -128,6 +141,13 @@ class OmniboxEverywhereUI
   // Shows the native Views context menu anchored below the WebUI entrypoint
   // button. `anchor_rect` is in WebUI viewport coordinates (CSS DIPs).
   void ShowContextActionMenu(const gfx::Rect& anchor_rect);
+
+  // Computes the screen point for anchoring the native context menu given the
+  // entrypoint bounding box in WebUI viewport coordinates and container bounds.
+  // Handles both LTR and RTL anchor_rect bounds.
+  static gfx::Point CalculateContextMenuAnchorPoint(
+      const gfx::Rect& anchor_rect,
+      const gfx::Rect& container_bounds);
 
   // omnibox_everywhere_debug::mojom::PageHandlerFactory:
   void BindInterface(
@@ -189,7 +209,7 @@ class OmniboxEverywhereUI
   void OnContextMenuClosed();
 
   bool is_composebox_mode() const { return is_composebox_mode_; }
-  void set_is_composebox_mode(bool mode);
+  void SetIsComposebox(bool is_composebox);
 
   void AddFileContext(const base::UnguessableToken& token,
                       searchbox::mojom::SelectedFileInfoPtr file_info);
@@ -203,6 +223,11 @@ class OmniboxEverywhereUI
 
  private:
   void OnComposeboxHandlerDisconnected();
+  void ExecuteScreenshotCommand(
+      int command_id,
+      base::WeakPtr<ContextualSearchboxScreenshareController> controller);
+  void ResetScreenshotMenu();
+
   // Buffers upload status notifications that arrive while the WebUI is
   // transitioning to composebox mode before `composebox_handler_` is bound.
   // Flushed once `CreatePageHandler` instantiates `composebox_handler_`.

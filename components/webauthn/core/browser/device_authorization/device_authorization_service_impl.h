@@ -28,6 +28,10 @@ namespace signin {
 class IdentityManager;
 }  // namespace signin
 
+namespace sync_pb {
+class GetDeviceAuthorizationKeyRequest;
+}  // namespace sync_pb
+
 namespace webauthn {
 
 // Coordinates the process of retrieving the device authorization keys,
@@ -51,8 +55,18 @@ class DeviceAuthorizationServiceImpl : public DeviceAuthorizationService {
 
   // DeviceAuthorizationService:
   void GetOrFetchKeys(FetchDeviceAuthKeysCallback callback) override;
+  void FetchKeysWithReAuthToken(std::string reauth_proof_token,
+                                FetchDeviceAuthKeysCallback callback) override;
 
  private:
+  void FetchKeysImpl(std::optional<std::string> reauth_proof_token,
+                     FetchDeviceAuthKeysCallback callback);
+
+  // Callback invoked when the client finishes populating platform data.
+  void OnPlatformDataPopulated(
+      const GaiaId& gaia_id,
+      sync_pb::GetDeviceAuthorizationKeyRequest request);
+
   // Callback invoked when the network fetch completes.
   void OnFetchCompleted(
       const GaiaId& gaia_id,

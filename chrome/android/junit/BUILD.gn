@@ -167,6 +167,7 @@ if (is_android) {
       "//chrome/browser/privacy_guide/android:java",
       "//chrome/browser/privacy_sandbox/android:java",
       "//chrome/browser/profiles/android:java",
+      "//chrome/browser/profiles/android:test_support_java",
       "//chrome/browser/quick_delete:java",
       "//chrome/browser/readaloud/android:java",
       "//chrome/browser/recent_tabs:java",
@@ -641,6 +642,7 @@ if (is_android) {
     deps = [
       ":chrome_junit_tests_helper",
       "//components/permissions/android:core_java",
+      "//url/mojom:url_mojom_origin_java",
     ]
   }
 
@@ -1266,6 +1268,7 @@ if (is_android) {
     deps = [
       ":chrome_junit_tests_helper",
       "//chrome/browser/ntp_customization:java",
+      "//chrome/browser/ntp_customization:public_java",
       "//chrome/browser/prefs/android:java",
       "//chrome/browser/sync/synced_set_up/android:java",
       "//components/sync_preferences/cross_device_pref_tracker/android:java",
@@ -1532,6 +1535,7 @@ if (is_android) {
       "//chrome/browser/ui/android/bars_common:java",
       "//chrome/browser/ui/vertical_tabs:java",
       "//chrome/test/android:chrome_java_transit",
+      "//components/saved_tab_groups/public:java",
       "//components/sensitive_content:sensitive_content_features_java",
     ]
   }
@@ -1611,6 +1615,7 @@ if (is_android) {
       "//chrome/android/java/src/org/chromium/chrome/browser/settings/SettingsMenuHelperUnitTest.java",
       "src/org/chromium/chrome/browser/settings/ActivityUtilUnitTest.java",
       "src/org/chromium/chrome/browser/settings/FragmentDependencyProviderTest.java",
+      "src/org/chromium/chrome/browser/settings/MultiColumnSettingsRobolectricTest.java",
       "src/org/chromium/chrome/browser/settings/SelectionDecorationTest.java",
       "src/org/chromium/chrome/browser/settings/SettingsActivityUnitTest.java",
       "src/org/chromium/chrome/browser/settings/SettingsBreadcrumbUtilTest.java",
@@ -1707,6 +1712,7 @@ if (is_android) {
       "src/org/chromium/chrome/browser/messages/ChromeMessageAutodismissDurationProviderTest.java",
       "src/org/chromium/chrome/browser/messages/ChromeMessageQueueMediatorTest.java",
       "src/org/chromium/chrome/browser/messages/MessageContainerCoordinatorTest.java",
+      "src/org/chromium/chrome/browser/metrics/UmaSessionStatsUnitTest.java",
       "src/org/chromium/chrome/browser/metrics/UmaUtilsTest.java",
       "src/org/chromium/chrome/browser/metrics/VariationsSessionTest.java",
       "src/org/chromium/chrome/browser/modaldialog/ChromeTabModalPresenterUnitTest.java",

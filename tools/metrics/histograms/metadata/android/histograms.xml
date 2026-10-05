@@ -137,8 +137,8 @@ chromium-metrics-reviews@google.com.
 </variants>
 
 <variants name="HubSwipeDirection">
-  <variant name=".Left" summary="left"/>
-  <variant name=".Right" summary="right"/>
+  <variant name="Left" summary="left"/>
+  <variant name="Right" summary="right"/>
 </variants>
 
 <!-- LINT.IfChange(MessageIdentifier) -->
@@ -1739,17 +1739,6 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="Android.Compositor.IsRequestingOpaqueSurface" enum="Boolean"
-    expires_after="2025-04-13">
-  <owner>wenyufu@chromium.org</owner>
-  <owner>clank-app-team@google.com</owner>
-  <summary>
-    Records whether CopmositorSurfaceManager.requestSurface a surface with
-    PixelFormat.OPAQUE when the method is called. Used to idicate how often an
-    opaque SurfaceView is used.
-  </summary>
-</histogram>
-
 <histogram name="Android.Compositor.UpdateLayerTree.Duration.Subsampled"
     units="microseconds" expires_after="2027-01-17">
   <owner>acondor@chromium.org</owner>
@@ -2042,7 +2031,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.Download.OpenTarget" enum="AndroidDownloadOpenTarget"
-    expires_after="2026-10-28">
+    expires_after="2027-10-28">
   <owner>jhimawan@google.com</owner>
   <owner>clank-downloads@google.com</owner>
   <summary>
@@ -2061,16 +2050,6 @@ chromium-metrics-reviews@google.com.
   <summary>
     Records instances where the foreground undergoes a lifecycle change (when
     the foreground starts, changes pinned notification, or stops).
-  </summary>
-</histogram>
-
-<histogram name="Android.DownloadManager.NotificationInteraction"
-    enum="DownloadNotificationInteractions" expires_after="2023-01-01">
-  <owner>qinmin@chromium.org</owner>
-  <owner>clank-downloads@google.com</owner>
-  <summary>
-    Records instances where a user interacts with a download notification (ie.
-    clicks on, pauses, resumes, cancels).
   </summary>
 </histogram>
 
@@ -2509,6 +2488,19 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="Android.Foldable.PageLoadedInTabletMode" enum="Boolean"
+    expires_after="2027-09-10">
+  <owner>lizeb@chromium.org</owner>
+  <owner>clank-large-form-factors@google.com</owner>
+  <summary>
+    Records true if a page load occurred on the inner screen (tablet mode), and
+    false if on the outer screen (phone mode). Note that corner cases such as
+    multi-window / split-screen on the inner screen (e.g. CCT opened
+    side-by-side) are not handled and will still be recorded as true. Recorded
+    when a page load completes on foldable Android devices.
+  </summary>
+</histogram>
+
 <histogram name="Android.FontLookup.GmsFontRequest.Time" units="ms"
     expires_after="2023-08-08">
   <owner>twellington@chromium.org</owner>
@@ -2631,9 +2623,10 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.Hub.PaneSwiped.{Direction}" enum="HubPaneId"
-    expires_after="2026-10-25">
+    expires_after="2027-09-26">
   <owner>madhavpruthi@google.com</owner>
   <owner>ckitagawa@chromium.org</owner>
+  <owner>clank-hub-dev@google.com</owner>
   <summary>
     The pane ID of the current pane when the user swipes {Direction} to navigate
     to the next pane.
@@ -6657,16 +6650,6 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="Android.TabSwitcher.IncognitoClickedIsEmpty" enum="Boolean"
-    expires_after="2024-03-17">
-  <owner>roagarwal@chromium.org</owner>
-  <owner>chrome-incognito@google.com</owner>
-  <summary>
-    Emitted every time a user uses Incognito button on Tab Switcher. Records
-    whether or not there is any Incognito tab when Incognito button is clicked.
-  </summary>
-</histogram>
-
 <histogram name="Android.TabSwitcher.NullContextMenuCoordinatorIsIncognito"
     enum="Boolean" expires_after="2026-11-15">
   <owner>shuyng@google.com</owner>
@@ -6955,6 +6938,19 @@ chromium-metrics-reviews@google.com.
     Recorded when the user clicks on the tab group header to collapse or expand
     it in Vertical Tabs. True if the user is collapsing a group and false if a
     user is expanding it.
+  </summary>
+</histogram>
+
+<histogram name="Android.VerticalTabs.TabLayoutAvailable" units="ms"
+    expires_after="2027-07-22">
+  <owner>spdonghao@google.com</owner>
+  <owner>agazal@google.com</owner>
+  <owner>jinsukkim@chromium.org</owner>
+  <summary>
+    Records the time from ChromeTabbedActivity creation until the Vertical Tabs
+    layout UI becomes available, at which point the app launch pre-draw block is
+    released. Recorded at most once per activity launch, and only when that
+    pre-draw block was installed.
   </summary>
 </histogram>
 
@@ -8713,18 +8709,45 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="Android.WebView.Preconnect.SessionCreationTime.{Protocol}"
+<histogram name="Android.WebView.Preconnect.SessionCreationTime{Protocol}"
     units="ms" expires_after="2027-01-01">
   <owner>peconn@chromium.org</owner>
   <owner>src/android_webview/OWNERS</owner>
   <summary>
-    Records the setup latency of a {Protocol} preconnected session in WebView.
-    Logged when the connection is established.
+    Records the transport session creation latency (TCP/TLS handshake or QUIC
+    handshake) of a {Protocol} preconnected session in WebView. Timed from when
+    connection initialization begins in the network service to when the
+    connection is established. Excludes DNS resolution, proxy lookup, internal
+    queuing, and IPC overhead. Compare with
+    Android.WebView.Preconnect.SetupTime{Protocol} for the total end-to-end
+    latency. Logged when the connection is established.
   </summary>
   <token key="Protocol">
-    <variant name="HTTP2" summary="HTTP/2"/>
-    <variant name="Other" summary="Other protocol"/>
-    <variant name="QUIC" summary="QUIC"/>
+    <variant name="" summary="all"/>
+    <variant name=".HTTP2" summary="HTTP/2"/>
+    <variant name=".Other" summary="Other protocol"/>
+    <variant name=".QUIC" summary="QUIC"/>
+  </token>
+</histogram>
+
+<histogram name="Android.WebView.Preconnect.SetupTime{Protocol}" units="ms"
+    expires_after="2027-01-01">
+  <owner>peconn@chromium.org</owner>
+  <owner>src/android_webview/OWNERS</owner>
+  <summary>
+    Records the total end-to-end time taken between WebView Profile#preconnect
+    being called and the connection being established for a {Protocol}
+    preconnected session. Includes PreconnectManager queuing, proxy lookup, DNS
+    host resolution, IPC overhead between the browser and network service, and
+    transport/TLS handshake latency. Compare with
+    Android.WebView.Preconnect.SessionCreationTime{Protocol} which isolates the
+    transport handshake duration. Logged when the connection is established.
+  </summary>
+  <token key="Protocol">
+    <variant name="" summary="all"/>
+    <variant name=".HTTP2" summary="HTTP/2"/>
+    <variant name=".Other" summary="Other protocol"/>
+    <variant name=".QUIC" summary="QUIC"/>
   </token>
 </histogram>
 

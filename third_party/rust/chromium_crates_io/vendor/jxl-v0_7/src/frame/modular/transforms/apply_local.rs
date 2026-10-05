@@ -72,6 +72,7 @@ pub fn meta_apply_local_transforms<'a, 'b>(
     buffer_storage: &'b mut Vec<LocalTransformBuffer<'a>>,
     header: &GroupHeader,
     storage: ModularStorage,
+    force_level5: bool,
 ) -> Result<(Vec<&'b mut ModularChannel>, Vec<TransformStep>)> {
     let mut transform_steps = vec![];
 
@@ -82,7 +83,10 @@ pub fn meta_apply_local_transforms<'a, 'b>(
         .enumerate()
         .collect();
 
-    let max_channels = max_channels(channels.iter().map(|x| &x.1));
+    let max_channels = max_channels(force_level5);
+    if channels.len() > max_channels {
+        return Err(Error::TooManyModularChannels(channels.len(), max_channels));
+    }
 
     debug!(?channels, "initial channels");
 
@@ -122,7 +126,7 @@ pub fn meta_apply_local_transforms<'a, 'b>(
     // if necessary.
     if !channels.iter().map(|x| x.0).is_sorted() {
         let mut buf_new_position: Vec<_> = channels.iter().map(|x| x.0).collect();
-        buf_new_position.sort();
+        buf_new_position.sort_unstable();
         let buf_tmp: Vec<_> = channels
             .iter()
             .map(|x| {
@@ -337,6 +341,7 @@ impl TransformStep {
                         None,
                         &mut bufs,
                         storage,
+                        &mut scratch_space.hsqueeze_i16_scratch,
                     );
                 }
                 buffers[*buf_out] = out_buf;

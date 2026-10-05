@@ -22,6 +22,7 @@ import static org.hamcrest.Matchers.allOf;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 import static org.chromium.base.test.util.Batch.PER_CLASS;
 import static org.chromium.ui.test.util.ViewUtils.onViewWaiting;
@@ -34,6 +35,7 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.TextView;
 
+import androidx.recyclerview.widget.RecyclerView;
 import androidx.test.espresso.Espresso;
 import androidx.test.espresso.matcher.BoundedMatcher;
 import androidx.test.filters.MediumTest;
@@ -101,6 +103,19 @@ public class SettingsPageTest {
     public void tearDown() {
         LocalizationUtils.setRtlForTesting(false);
         ActivityTestUtils.clearActivityOrientation(mActivityTestRule.getActivity());
+    }
+
+    /**
+     * Returns the index of the currently selected tab in the current tab model.
+     *
+     * <p>Tests in this class are batched, so they share one activity and tab model, and {@link
+     * ChromeTabbedActivityTestRule#startMainActivityOnBlankPage()} opens an additional tab for each
+     * test. Tests that switch tabs must therefore remember the index of the tab they loaded rather
+     * than assuming it is index 0.
+     */
+    private int getCurrentTabIndex() {
+        return ThreadUtils.runOnUiThreadBlocking(
+                () -> mActivityTestRule.getActivity().getCurrentTabModel().index());
     }
 
     @Test
@@ -181,7 +196,7 @@ public class SettingsPageTest {
                     int expectedNarrowMargin =
                             Math.max(minPadding, (appBar.getWidth() - wideMinWidthPx) / 2);
                     boolean isOnWideScreen = expectedNarrowMargin > minPadding;
-                    if (isOnWideScreen) {
+                    if (isOnWideScreen || SettingsInTab.isEnabled()) {
                         int itemMargin =
                                 activity.getResources()
                                         .getDimensionPixelSize(R.dimen.settings_item_margin);
@@ -235,7 +250,7 @@ public class SettingsPageTest {
                     int expectedExpandedMargin =
                             Math.max(minPadding, (appBar.getWidth() - wideMinWidthPx) / 2);
                     boolean isOnWideScreen = expectedExpandedMargin > minPadding;
-                    if (isOnWideScreen) {
+                    if (isOnWideScreen || SettingsInTab.isEnabled()) {
                         int itemMargin =
                                 activity.getResources()
                                         .getDimensionPixelSize(R.dimen.settings_item_margin);
@@ -286,8 +301,11 @@ public class SettingsPageTest {
     @Test
     @MediumTest
     public void testTwoSettingsTabsThemeSwitchRestoresDetailFragment() {
-        // Tab 0: Open settings and navigate to Search engine detail fragment.
+        // Open settings in the current tab and navigate to the Search engine detail fragment.
+        // Tests in this class are batched, so the current tab is not necessarily index 0. Remember
+        // where settings was loaded so we can switch back to it below.
         mActivityTestRule.loadUrl("chrome-native://settings/");
+        int firstSettingsTab = getCurrentTabIndex();
         onViewWaiting(withText(R.string.search_engine_settings)).check(matches(isDisplayed()));
 
         var matcher =
@@ -299,7 +317,7 @@ public class SettingsPageTest {
         onViewWaiting(withText(R.string.search_engine_settings)).perform(click());
         onViewWaiting(withText("Microsoft Bing")).check(matches(isDisplayed()));
 
-        // Tab 1: Open a second settings tab at root MainSettings.
+        // Open a second settings tab at root MainSettings.
         mActivityTestRule.loadUrlInNewTab("chrome-native://settings/");
         onViewWaiting(allOf(withText(R.string.prefs_privacy_security), isDisplayed()))
                 .check(matches(isDisplayed()));
@@ -307,28 +325,20 @@ public class SettingsPageTest {
         // Simulate theme switch / activity recreation.
         mActivityTestRule.recreateActivity();
 
-        // Verify Tab 1 (active tab): Action bar and MainSettings header pane are restored.
+        // Verify the second tab (active tab): Action bar and MainSettings header pane are restored.
         onViewWaiting(allOf(withId(R.id.action_bar), isDisplayed())).check(matches(isDisplayed()));
         onViewWaiting(allOf(withText(R.string.prefs_privacy_security), isDisplayed()))
                 .check(matches(isDisplayed()));
 
-        // Switch to Tab 0.
-        ChromeTabUtils.switchTabInCurrentTabModel(mActivityTestRule.getActivity(), 0);
+        // Switch back to the first settings tab.
+        ChromeTabUtils.switchTabInCurrentTabModel(
+                mActivityTestRule.getActivity(), firstSettingsTab);
 
-        // Verify Tab 0 (previously navigated tab): Action bar and SearchEngineSettings detail
-        // fragment are restored.
-        CriteriaHelper.pollInstrumentationThread(
-                () -> {
-                    try {
-                        onView(allOf(withId(R.id.action_bar), isDisplayed()))
-                                .check(matches(isDisplayed()));
-                        onView(allOf(withText("Microsoft Bing"), isDisplayed()))
-                                .check(matches(isDisplayed()));
-                        return true;
-                    } catch (AssertionError | Exception e) {
-                        return false;
-                    }
-                });
+        // Verify the first settings tab: Action bar and SearchEngineSettings detail fragment are
+        // restored.
+        onViewWaiting(allOf(withId(R.id.action_bar), isDisplayed())).check(matches(isDisplayed()));
+        onViewWaiting(allOf(withText("Microsoft Bing"), isDisplayed()))
+                .check(matches(isDisplayed()));
     }
 
     @Test
@@ -421,16 +431,17 @@ public class SettingsPageTest {
     @Test
     @MediumTest
     public void testAutoFocusOnSettingsPageByTabSwitching() {
-        // Load Settings in Tab 0.
+        // Load Settings. See getCurrentTabIndex() for why the index is captured.
         mActivityTestRule.loadUrl("chrome-native://settings/");
+        int settingsTab = getCurrentTabIndex();
         onViewWaiting(withId(R.id.search_box)).check(matches(isDisplayed()));
         onViewWaiting(withId(R.id.search_box)).check(matches(isFocused()));
 
         // Open a second tab (about:blank).
         mActivityTestRule.loadUrlInNewTab("about:blank");
 
-        // Switch back to Tab 0 (Settings).
-        ChromeTabUtils.switchTabInCurrentTabModel(mActivityTestRule.getActivity(), 0);
+        // Switch back to the Settings tab.
+        ChromeTabUtils.switchTabInCurrentTabModel(mActivityTestRule.getActivity(), settingsTab);
 
         // Verify the search box is automatically focused on tab switch.
         onViewWaiting(withId(R.id.search_box)).check(matches(isDisplayed()));
@@ -477,21 +488,23 @@ public class SettingsPageTest {
     @Test
     @MediumTest
     public void testTwoSettingsTabs_themeChange_searchBoxRemainsVisibleOnFirstTab() {
-        // Open Tab 0 with Settings.
+        // Open the first tab with Settings. See getCurrentTabIndex() for why the index is captured.
         mActivityTestRule.loadUrl("chrome-native://settings/");
+        int firstSettingsTab = getCurrentTabIndex();
         onViewWaiting(withId(R.id.search_box)).check(matches(isDisplayed()));
 
-        // Open Tab 1 with Settings.
+        // Open a second tab with Settings.
         mActivityTestRule.loadUrlInNewTab("chrome-native://settings/");
         onViewWaiting(withId(R.id.search_box)).check(matches(isDisplayed()));
 
         // Recreate activity (simulating theme change or OS configuration change).
         mActivityTestRule.recreateActivity();
 
-        // Switch back to Tab 0.
-        ChromeTabUtils.switchTabInCurrentTabModel(mActivityTestRule.getActivity(), 0);
+        // Switch back to the first Settings tab.
+        ChromeTabUtils.switchTabInCurrentTabModel(
+                mActivityTestRule.getActivity(), firstSettingsTab);
 
-        // Verify the search box is displayed on Tab 0.
+        // Verify the search box is displayed on the first Settings tab.
         onViewWaiting(withId(R.id.search_box)).check(matches(isDisplayed()));
     }
 
@@ -809,6 +822,112 @@ public class SettingsPageTest {
 
         // Verify Toolbar/Action Bar is restored and displayed without crashing.
         onViewWaiting(withId(R.id.action_bar)).check(matches(isDisplayed()));
+    }
+
+    /**
+     * Regression test for https://crbug.com/559529471. Verifies that the search box and query
+     * container align horizontally with preference items in single-column mode on narrow screens
+     * when SettingsInTab is enabled.
+     */
+    @Test
+    @MediumTest
+    public void testSearchBoxAlignmentInSingleColumn_narrowScreen() {
+        mActivityTestRule.loadUrl("chrome-native://settings/");
+        onViewWaiting(withText(R.string.search_engine_settings)).check(matches(isDisplayed()));
+
+        // Resize container to narrow width (500px <= 632dp threshold) to force single-column mode.
+        int narrowWidth = 500;
+        ThreadUtils.runOnUiThreadBlocking(
+                () -> {
+                    var activity = mActivityTestRule.getActivity();
+                    View settingsActivity = activity.findViewById(R.id.settings_activity);
+                    assertNotNull(settingsActivity);
+                    View parent = (View) settingsActivity.getParent();
+                    var lp = parent.getLayoutParams();
+                    lp.width = narrowWidth;
+                    parent.setLayoutParams(lp);
+                    ViewUtils.requestLayout(
+                            parent,
+                            "SettingsPageTest.testSearchBoxAlignmentInSingleColumn_narrowScreen");
+                });
+
+        // Poll until single-column mode is established and search_box and preference items
+        // are laid out inside the resized container.
+        CriteriaHelper.pollUiThread(
+                () -> {
+                    var activity = mActivityTestRule.getActivity();
+                    View appBar = activity.findViewById(R.id.app_bar_layout);
+                    View searchBox = activity.findViewById(R.id.search_box);
+                    RecyclerView rv = activity.findViewById(R.id.recycler_view);
+                    return appBar != null
+                            && appBar.getWidth() == narrowWidth
+                            && searchBox != null
+                            && searchBox.getParent() == appBar
+                            && searchBox.getWidth() > 0
+                            && searchBox.getWidth() < narrowWidth
+                            && rv != null
+                            && rv.getChildCount() > 0
+                            && rv.getChildAt(0).getWidth() > 0;
+                });
+
+        // Get the horizontal screen bounds of the first preference item in the list.
+        Rect firstItemBounds = new Rect();
+        ThreadUtils.runOnUiThreadBlocking(
+                () -> {
+                    var activity = mActivityTestRule.getActivity();
+                    RecyclerView rv = activity.findViewById(R.id.recycler_view);
+                    assertNotNull(rv);
+                    assertTrue(rv.getChildCount() > 0);
+                    View firstItem = rv.getChildAt(0);
+                    int[] loc = new int[2];
+                    firstItem.getLocationOnScreen(loc);
+                    firstItemBounds.set(
+                            loc[0],
+                            loc[1],
+                            loc[0] + firstItem.getWidth(),
+                            loc[1] + firstItem.getHeight());
+                });
+
+        // Capture search_box screen bounds and verify they align with the preference items.
+        Rect searchBoxBounds = getViewScreenBounds(R.id.search_box);
+        assertEquals(
+                "Search box left edge should align with preference items",
+                firstItemBounds.left,
+                searchBoxBounds.left);
+        assertEquals(
+                "Search box right edge should align with preference items",
+                firstItemBounds.right,
+                searchBoxBounds.right);
+
+        // Tap search box to enter search state.
+        onViewWaiting(withId(R.id.search_box)).perform(click());
+        onViewWaiting(withId(R.id.search_query_container)).check(matches(isDisplayed()));
+
+        // Verify search_query_container matches search_box and preference items horizontal bounds.
+        Rect queryBounds = getViewScreenBounds(R.id.search_query_container);
+        assertEquals(
+                "Search query container left edge should align with preference items",
+                firstItemBounds.left,
+                queryBounds.left);
+        assertEquals(
+                "Search query container right edge should align with preference items",
+                firstItemBounds.right,
+                queryBounds.right);
+
+        // Tap on back arrow to exit search state.
+        onViewWaiting(withId(R.id.back_arrow_icon)).perform(click());
+        onViewWaiting(withId(R.id.search_box)).check(matches(isDisplayed()));
+
+        // Verify search_box still aligns with preference items after exiting search.
+        Rect searchBoxBoundsAfterExit = getViewScreenBounds(R.id.search_box);
+        assertEquals(
+                "Search box left edge should align after exiting search",
+                firstItemBounds.left,
+                searchBoxBoundsAfterExit.left);
+        assertEquals(
+                "Search box right edge should align after exiting search",
+                firstItemBounds.right,
+                searchBoxBoundsAfterExit.right);
     }
 
     private void ensureTwoColumnMode() {

@@ -526,14 +526,6 @@ targets.mixin(
     ],
 )
 
-# TODO(fxbug.dev/370067428): Remove once Netstack2 no longer exists.
-targets.mixin(
-    name = "fuchsia-netstack2-x64",
-    args = [
-        "--product=terminal_with_netstack2.x64",
-    ],
-)
-
 # TODO(b/300509814): Large device spec should be the default choice.
 # Choose virtual_device_large spec for more ram. This mixin works on emulators
 # only.
@@ -2354,12 +2346,12 @@ targets.mixin(
     name = "xcode_27_main",
     args = [
         "--xcode-build-version",
-        "27a5252f",
+        "27a266a",
     ],
     swarming = targets.swarming(
         named_caches = [
             swarming.cache(
-                name = "xcode_ios_27a5252f",
+                name = "xcode_ios_27a266a",
                 path = "Xcode.app",
             ),
         ],

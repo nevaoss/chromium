@@ -286,10 +286,12 @@ LayoutUnit WebkitTextAlignAndJustifySelfOffset(
     case ItemPosition::kRight:
       return is_rtl ? LayoutUnit() : FreeSpace();
     case ItemPosition::kFlexStart:
+    case ItemPosition::kFlowStart:
     case ItemPosition::kStart:
       return LayoutUnit();
-    case ItemPosition::kFlexEnd:
     case ItemPosition::kEnd:
+    case ItemPosition::kFlexEnd:
+    case ItemPosition::kFlowEnd:
       return FreeSpace();
     case ItemPosition::kSelfStart:
       return self_start_end_converter().InlineStart();
@@ -4162,7 +4164,7 @@ LayoutUnit BlockLayoutAlgorithm::ComputeInitialBlockStartAnnotationSpace()
                         Style().HasMarginBlockStartQuirk());
     LayoutUnit annotation_space = margin_strut.Sum() + padding_start;
     annotation_space += space.PreviousSiblingBlockEndAnnotationSpace();
-    return annotation_space;
+    return std::max(padding_start, annotation_space);
   }
   return padding_start;
 }

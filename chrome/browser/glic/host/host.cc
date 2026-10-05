@@ -58,7 +58,7 @@ void Host::EmbedderDelegate::Resize(const gfx::Size& size,
   std::move(callback).Run();
 }
 
-void Host::EmbedderDelegate::EnableDragResize(bool enabled) {}
+void Host::EmbedderDelegate::SetDragResizeEnabled(bool enabled) {}
 
 void Host::EmbedderDelegate::SetMinimumWidgetSize(const gfx::Size& size) {}
 
@@ -103,6 +103,7 @@ Host::~Host() {
 void Host::SetDelegate(EmbedderDelegate* new_delegate) {
   CHECK(new_delegate);
   delegate_ = new_delegate;
+  delegate_->SetDragResizeEnabled(drag_resize_enabled_);
 }
 
 void Host::HibernateImpl(bool is_destroying) {
@@ -461,17 +462,6 @@ InstanceId Host::GetInstanceId() const {
   return glic_instance_ ? glic_instance_->id() : InstanceId::CreateNullId();
 }
 
-std::unique_ptr<content::WebContents> Host::ReleaseWebContents() {
-  CHECK(contents_);
-  return contents_->ReleaseWebContents();
-}
-
-void Host::ReclaimWebContents(
-    std::unique_ptr<content::WebContents> web_contents) {
-  CHECK(contents_);
-  contents_->ReclaimWebContents(std::move(web_contents));
-}
-
 content::WebContents* Host::webui_contents() const {
   return contents_ ? contents_->active_web_contents() : nullptr;
 }
@@ -586,6 +576,7 @@ void Host::PanelWillOpenComplete(GlicWebClientAccess* client,
     if (panel_open_) {
       client_state_.open_complete = true;
     }
+    SetDragResizeEnabled(open_info->can_user_resize);
     // Notify observers that the client is ready even if `panel_open_` is false
     // (e.g. if the user backgrounded or closed the panel during load) so that
     // metrics can record load completion and clear any pending timers.
@@ -660,8 +651,9 @@ void Host::ResizePanel(const gfx::Size& size,
   delegate_->Resize(size, duration, std::move(callback));
 }
 
-void Host::EnableDragResize(bool enabled) {
-  delegate_->EnableDragResize(enabled);
+void Host::SetDragResizeEnabled(bool enabled) {
+  drag_resize_enabled_ = enabled;
+  delegate_->SetDragResizeEnabled(enabled);
 }
 
 void Host::AttachPanel() {

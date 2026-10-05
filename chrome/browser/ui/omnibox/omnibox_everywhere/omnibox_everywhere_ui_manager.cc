@@ -78,6 +78,7 @@
 #include "ui/views/view_class_properties.h"
 #include "ui/views/view_utils.h"
 #include "ui/views/widget/widget.h"
+#include "ui/views/window/dialog_client_view.h"
 #include "ui/views/window/dialog_delegate.h"
 
 #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
@@ -238,6 +239,7 @@ content::WebContents* OmniboxEverywhereUIManager::web_contents() const {
 void OmniboxEverywhereUIManager::ShowForProfile(Profile* profile,
                                                 gfx::NativeWindow context) {
   deactivation_task_.Cancel();
+  hotkey_dropdown_deactivation_task_.Cancel();
   last_shown_time_ = base::TimeTicks::Now();
   if (widget_ && profile_ == profile) {
     ActivateAndFocus();
@@ -485,6 +487,7 @@ void OmniboxEverywhereUIManager::CreateAndInitWidget(
                                              wm::ANIMATE_NONE);
   widget_->GetNativeView()->AddPreTargetHandler(event_handler_.get());
 #endif
+  UpdateModalInteractionState();
 }
 
 void OmniboxEverywhereUIManager::ActivateAndFocus() {
@@ -563,6 +566,7 @@ void OmniboxEverywhereUIManager::Close() {
   MaybeRecordFreImpression();
   last_shown_time_.reset();
   deactivation_task_.Cancel();
+  hotkey_dropdown_deactivation_task_.Cancel();
   if (widget_) {
     if (HasOpenModalDialog()) {
       CleanUpWidget();
@@ -580,6 +584,7 @@ void OmniboxEverywhereUIManager::Close() {
 void OmniboxEverywhereUIManager::Demote() {
   last_shown_time_.reset();
   deactivation_task_.Cancel();
+  hotkey_dropdown_deactivation_task_.Cancel();
   if (!widget_ || !widget_->IsVisible() || is_demoted_ ||
       HasOpenModalDialog()) {
     return;
@@ -600,19 +605,22 @@ void OmniboxEverywhereUIManager::Demote() {
 #if BUILDFLAG(IS_WIN)
   HWND hwnd = views::HWNDForWidget(widget_.get());
   if (hwnd) {
-    ::SetWindowPos(hwnd, HWND_BOTTOM, 0, 0, 0, 0,
-                   SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE);
+    ::SetWindowPos(
+        hwnd, HWND_BOTTOM, 0, 0, 0, 0,
+        SWP_NOMOVE | SWP_NOSIZE | SWP_NOACTIVATE | SWP_NOOWNERZORDER);
   }
 #endif
 }
 
 void OmniboxEverywhereUIManager::CleanUpWidget() {
   deactivation_task_.Cancel();
+  hotkey_dropdown_deactivation_task_.Cancel();
   if (disclosure_dialog_widget_) {
     base::SingleThreadTaskRunner::GetCurrentDefault()->DeleteSoon(
         FROM_HERE, std::move(disclosure_dialog_widget_));
   }
   is_screenshare_disclosure_open_ = false;
+  scoped_ignore_input_events_.reset();
   if (widget_) {
     widget_observation_.Reset();
 #if defined(USE_AURA)
@@ -649,6 +657,7 @@ void OmniboxEverywhereUIManager::CleanUpWidget() {
   last_context_menu_params_ = content::ContextMenuParams();
   is_file_chooser_open_ = false;
   is_drive_picker_open_ = false;
+  is_hotkey_dropdown_open_ = false;
   is_context_menu_open_ = false;
   is_demoted_ = false;
   is_screenshare_picker_open_ = false;
@@ -665,6 +674,7 @@ void OmniboxEverywhereUIManager::CleanUpWidget() {
 
 void OmniboxEverywhereUIManager::Shutdown() {
   deactivation_task_.Cancel();
+  hotkey_dropdown_deactivation_task_.Cancel();
   last_shown_time_.reset();
   permission_prompt_observation_.Reset();
   browser_collection_observation_.Reset();
@@ -684,18 +694,20 @@ bool OmniboxEverywhereUIManager::IsActive() const {
 bool OmniboxEverywhereUIManager::HasOpenModalDialog() const {
   return is_file_chooser_open_ || is_drive_picker_open_ ||
          is_screenshare_picker_open_ || is_screenshare_disclosure_open_ ||
-         is_permission_prompt_open_ || region_select_overlay_ != nullptr;
+         is_permission_prompt_open_ || region_select_overlay_ != nullptr ||
+         is_hotkey_dropdown_open_;
 }
 
 void OmniboxEverywhereUIManager::OnWidgetActivationChanged(
     views::Widget* widget,
     bool active) {
   if (active) {
+    deactivation_task_.Cancel();
+    hotkey_dropdown_deactivation_task_.Cancel();
     is_demoted_ = false;
     return;
   }
-  if (!active && !HasOpenModalDialog() && !is_context_menu_open_ &&
-      prefs::IsEphemeralModelEnabled()) {
+  if (!HasOpenModalDialog() && !is_context_menu_open_) {
     HandleWidgetDeactivated();
   }
 }
@@ -719,15 +731,13 @@ void OmniboxEverywhereUIManager::OnContextMenuClosed() {
     base::SingleThreadTaskRunner::GetCurrentDefault()->DeleteSoon(
         FROM_HERE, std::move(context_menu_model_));
   }
-  if (widget_ && !widget_->IsActive() && !HasOpenModalDialog() &&
-      prefs::IsEphemeralModelEnabled()) {
+  if (widget_ && !widget_->IsActive() && !HasOpenModalDialog()) {
     HandleWidgetDeactivated();
   }
 }
 
 void OmniboxEverywhereUIManager::HandleWidgetDeactivated() {
-  if (is_closing_ || !widget_ || !widget_->IsVisible() ||
-      !prefs::IsEphemeralModelEnabled()) {
+  if (is_closing_ || !widget_ || !widget_->IsVisible() || is_demoted_) {
     return;
   }
   if (last_shown_time_.has_value() &&
@@ -739,7 +749,7 @@ void OmniboxEverywhereUIManager::HandleWidgetDeactivated() {
         FROM_HERE, deactivation_task_.callback());
     return;
   }
-  deactivation_task_.Reset(base::BindOnce(&OmniboxEverywhereUIManager::Close,
+  deactivation_task_.Reset(base::BindOnce(&OmniboxEverywhereUIManager::CloseUI,
                                           weak_factory_.GetWeakPtr()));
   base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
       FROM_HERE, deactivation_task_.callback());
@@ -823,26 +833,55 @@ void OmniboxEverywhereUIManager::OnPermissionPromptChanged(
     bool is_showing,
     const gfx::Size& prompt_size) {
   is_permission_prompt_open_ = is_showing;
+  UpdateModalInteractionState();
 }
 
 void OmniboxEverywhereUIManager::OnFileChooserOpened() {
   is_file_chooser_open_ = true;
+  UpdateModalInteractionState();
 }
 
 void OmniboxEverywhereUIManager::OnFileChooserClosed() {
   is_file_chooser_open_ = false;
+  UpdateModalInteractionState();
 }
 
 void OmniboxEverywhereUIManager::OnDrivePickerOpened() {
   is_drive_picker_open_ = true;
+  UpdateModalInteractionState();
 }
 
 void OmniboxEverywhereUIManager::OnDrivePickerClosed() {
   is_drive_picker_open_ = false;
+  UpdateModalInteractionState();
+}
+
+void OmniboxEverywhereUIManager::OnHotkeyDropdownOpened() {
+  hotkey_dropdown_deactivation_task_.Cancel();
+  is_hotkey_dropdown_open_ = true;
+}
+
+void OmniboxEverywhereUIManager::OnHotkeyDropdownClosed() {
+  is_hotkey_dropdown_open_ = false;
+  // Delay check by a tick to allow native window activation to settle if widget
+  // was reactivated.
+  hotkey_dropdown_deactivation_task_.Reset(base::BindOnce(
+      &OmniboxEverywhereUIManager::CheckDeactivationAfterHotkeyDropdownClosed,
+      weak_factory_.GetWeakPtr()));
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+      FROM_HERE, hotkey_dropdown_deactivation_task_.callback());
+}
+
+void OmniboxEverywhereUIManager::CheckDeactivationAfterHotkeyDropdownClosed() {
+  if (widget_ && !widget_->IsActive() && !HasOpenModalDialog() &&
+      !is_context_menu_open_ && prefs::IsEphemeralModelEnabled()) {
+    HandleWidgetDeactivated();
+  }
 }
 
 void OmniboxEverywhereUIManager::OnScreensharePickerOpened() {
   is_screenshare_picker_open_ = true;
+  UpdateModalInteractionState();
   if (widget_) {
     widget_->Hide();
   }
@@ -850,6 +889,7 @@ void OmniboxEverywhereUIManager::OnScreensharePickerOpened() {
 
 void OmniboxEverywhereUIManager::OnScreensharePickerClosed() {
   is_screenshare_picker_open_ = false;
+  UpdateModalInteractionState();
   if (widget_) {
     ActivateAndFocus();
   }
@@ -874,6 +914,7 @@ void OmniboxEverywhereUIManager::ShowScreenshotDisclosureDialog(
   }
 
   is_screenshare_disclosure_open_ = true;
+  UpdateModalInteractionState();
 
   auto dialog_model =
       ui::DialogModel::Builder()
@@ -883,17 +924,19 @@ void OmniboxEverywhereUIManager::ShowScreenshotDisclosureDialog(
           .AddParagraph(ui::DialogModelLabel(l10n_util::GetStringUTF16(
               IDS_OMNIBOX_EVERYWHERE_SCREENSHOT_DISCLOSURE_BODY)))
           .AddOkButton(
-              std::move(on_accepted),
+              base::DoNothing(),
               ui::DialogModel::Button::Params()
+                  .SetId(views::DialogClientView::kOkButtonElementId)
                   .SetLabel(l10n_util::GetStringUTF16(IDS_APP_CONTINUE))
                   .SetStyle(ui::ButtonStyle::kProminent))
-          .AddCancelButton(base::DoNothing())
+          .AddCancelButton(base::DoNothing(),
+                           ui::DialogModel::Button::Params().SetId(
+                               views::DialogClientView::kCancelButtonElementId))
           .Build();
 
   auto bubble = views::BubbleDialogModelHost::CreateModal(
       std::move(dialog_model), ui::mojom::ModalType::kWindow);
   bubble->set_fixed_width(600);
-  bubble->set_margins(gfx::Insets::VH(16, 20));
   bubble->set_corner_radius(16);
   bubble->SetAnchorView(widget_->GetContentsView());
   bubble->SetArrow(views::BubbleBorder::FLOAT);
@@ -907,18 +950,51 @@ void OmniboxEverywhereUIManager::ShowScreenshotDisclosureDialog(
   disclosure_dialog_widget_->SetZOrderLevel(widget_->GetZOrderLevel());
   disclosure_dialog_widget_->MakeCloseSynchronous(
       base::BindOnce(&OmniboxEverywhereUIManager::OnScreenshotDisclosureClosed,
-                     weak_factory_.GetWeakPtr(), std::move(on_cancelled)));
+                     weak_factory_.GetWeakPtr(), std::move(on_accepted),
+                     std::move(on_cancelled)));
   disclosure_dialog_widget_->Show();
 }
 
 void OmniboxEverywhereUIManager::OnScreenshotDisclosureClosed(
+    base::OnceClosure on_accepted,
     base::OnceClosure on_cancelled,
     views::Widget::ClosedReason reason) {
+  deactivation_task_.Cancel();
+  hotkey_dropdown_deactivation_task_.Cancel();
+  if (disclosure_dialog_widget_) {
+    disclosure_dialog_widget_->Hide();
+  }
   base::SingleThreadTaskRunner::GetCurrentDefault()->DeleteSoon(
       FROM_HERE, std::move(disclosure_dialog_widget_));
   is_screenshare_disclosure_open_ = false;
+  UpdateModalInteractionState();
 
-  if (reason != views::Widget::ClosedReason::kAcceptButtonClicked) {
+  if (reason == views::Widget::ClosedReason::kAcceptButtonClicked) {
+    if (on_accepted) {
+      // Defer dispatching on_accepted to ensure the disclosure dialog window
+      // is completely closed and removed from display before any screenshot
+      // capture begins. Keep `is_screenshare_disclosure_open_` true until
+      // `on_accepted` runs to prevent ephemeral deactivation while the dialog
+      // hides and before the screenshare picker opens.
+      base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+          FROM_HERE, base::BindOnce(
+                         [](base::WeakPtr<OmniboxEverywhereUIManager> self,
+                            base::OnceClosure on_accepted) {
+                           if (!self) {
+                             return;
+                           }
+                           self->is_screenshare_disclosure_open_ = false;
+                           if (!self->widget_) {
+                             return;
+                           }
+                           std::move(on_accepted).Run();
+                         },
+                         weak_factory_.GetWeakPtr(), std::move(on_accepted)));
+    } else {
+      is_screenshare_disclosure_open_ = false;
+    }
+  } else {
+    is_screenshare_disclosure_open_ = false;
     if (on_cancelled) {
       std::move(on_cancelled).Run();
     }
@@ -944,6 +1020,7 @@ void OmniboxEverywhereUIManager::ShowRegionSelectOverlay(
       base::BindOnce(&OmniboxEverywhereUIManager::OnRegionSelectOverlayClosed,
                      weak_factory_.GetWeakPtr(), std::move(callback)),
       context);
+  UpdateModalInteractionState();
 }
 
 void OmniboxEverywhereUIManager::OnRegionSelectOverlayClosed(
@@ -953,7 +1030,19 @@ void OmniboxEverywhereUIManager::OnRegionSelectOverlayClosed(
     base::SingleThreadTaskRunner::GetCurrentDefault()->DeleteSoon(
         FROM_HERE, std::move(region_select_overlay_));
   }
+  UpdateModalInteractionState();
   std::move(callback).Run(result_bitmap);
+}
+
+void OmniboxEverywhereUIManager::UpdateModalInteractionState() {
+  if (HasOpenModalDialog()) {
+    if (!scoped_ignore_input_events_ && web_contents()) {
+      scoped_ignore_input_events_ =
+          web_contents()->IgnoreInputEvents(std::nullopt);
+    }
+  } else {
+    scoped_ignore_input_events_.reset();
+  }
 }
 
 void OmniboxEverywhereUIManager::OnBrowserActivated(

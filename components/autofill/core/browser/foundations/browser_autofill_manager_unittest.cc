@@ -788,6 +788,7 @@ class MockAutofillDriver : public TestAutofillDriver {
               SendTypePredictionsToRenderer,
               ((const FormStructure&)),
               (override));
+  MOCK_METHOD(bool, CanShowAutofillUi, (), (const override));
 };
 
 class MockAmountExtractionManager : public payments::AmountExtractionManager {
@@ -1007,6 +1008,7 @@ class BrowserAutofillManagerTest
     payments_autofill_client()
         .SetUpDeviceBiometricAuthenticatorSuccessOnAutomotive();
 #endif
+    ON_CALL(autofill_driver(), CanShowAutofillUi).WillByDefault(Return(true));
   }
 
   void TearDown() override { DestroyAutofillClient(); }
@@ -1440,7 +1442,7 @@ TEST_F(BrowserAutofillManagerAtMemoryTest, TriggerDroppedWhenNotEligible) {
       personal_context::PersonalContextEligibilityState::kDisabledNotEligible);
 
   OnAskForValuesToFill(form, form.fields()[0],
-                       AutofillSuggestionTriggerSource::kAtMemoryTriggerString);
+                       AutofillSuggestionTriggerSource::kAtMemoryDoubleCtrl);
 
   // No suggestions should be returned, not even empty ones.
   EXPECT_FALSE(external_delegate()->on_suggestions_returned_seen());
@@ -1458,7 +1460,7 @@ TEST_F(BrowserAutofillManagerAtMemoryTest, TriggerDroppedWhenToggleOff) {
       false);
 
   OnAskForValuesToFill(form, form.fields()[0],
-                       AutofillSuggestionTriggerSource::kAtMemoryTriggerString);
+                       AutofillSuggestionTriggerSource::kAtMemoryDoubleCtrl);
 
   // No suggestions should be returned, not even empty ones.
   EXPECT_FALSE(external_delegate()->on_suggestions_returned_seen());
@@ -1471,12 +1473,12 @@ TEST_F(BrowserAutofillManagerAtMemoryTest,
 
   // Trigger suggestions with AtMemory.
   OnAskForValuesToFill(form, form.fields()[0],
-                       AutofillSuggestionTriggerSource::kAtMemoryTriggerString);
+                       AutofillSuggestionTriggerSource::kAtMemoryDoubleCtrl);
 
   // Verify that suggestions were shown (empty suggestions for AtMemory).
   EXPECT_TRUE(autofill_client().IsShowingAutofillPopup());
   EXPECT_EQ(external_delegate()->trigger_source(),
-            AutofillSuggestionTriggerSource::kAtMemoryTriggerString);
+            AutofillSuggestionTriggerSource::kAtMemoryDoubleCtrl);
 
   // Trigger suggestions with ComposeDelayedProactiveNudge.
   // This should be ignored because AtMemory suggestions are already showing.
@@ -1488,7 +1490,7 @@ TEST_F(BrowserAutofillManagerAtMemoryTest,
   // or replaced by the nudge).
   EXPECT_TRUE(autofill_client().IsShowingAutofillPopup());
   EXPECT_EQ(external_delegate()->trigger_source(),
-            AutofillSuggestionTriggerSource::kAtMemoryTriggerString);
+            AutofillSuggestionTriggerSource::kAtMemoryDoubleCtrl);
 }
 
 // Tests that if the main frame URL is blocked, AtMemory is blocked.
@@ -1511,7 +1513,7 @@ TEST_F(BrowserAutofillManagerAtMemoryTest,
       .WillByDefault(Return(false));
 
   OnAskForValuesToFill(form, form.fields()[0],
-                       AutofillSuggestionTriggerSource::kAtMemoryTriggerString);
+                       AutofillSuggestionTriggerSource::kAtMemoryDoubleCtrl);
 
   // Trigger should be dropped, no suggestions returned.
   EXPECT_FALSE(external_delegate()->on_suggestions_returned_seen());
@@ -1535,7 +1537,7 @@ TEST_F(BrowserAutofillManagerAtMemoryTest, TriggerDroppedWhenFieldUrlBlocked) {
   ON_CALL(*decider, ShouldBlockAtMemory(field_url)).WillByDefault(Return(true));
 
   OnAskForValuesToFill(form, form.fields()[0],
-                       AutofillSuggestionTriggerSource::kAtMemoryTriggerString);
+                       AutofillSuggestionTriggerSource::kAtMemoryDoubleCtrl);
 
   // Trigger should be dropped, no suggestions returned.
   EXPECT_FALSE(external_delegate()->on_suggestions_returned_seen());
@@ -5409,7 +5411,7 @@ TEST_F(BrowserAutofillManagerTest, DidShowSuggestions_FormNonSecureContext) {
   autofill_manager().DidShowSuggestions(
       {Suggestion(SuggestionType::kAddressEntry)}, /*metadata=*/{},
       insecure_form.global_id(), test::MakeFieldGlobalId(), update_callback,
-      AutofillSuggestionTriggerSource::kAtMemoryTriggerString);
+      AutofillSuggestionTriggerSource::kAtMemoryDoubleCtrl);
 
   // Submit search query. This should invoke Query on mock query service.
   base::RepeatingCallback<void(MemorySearchResults)> search_callback;
@@ -6205,6 +6207,32 @@ TEST_F(BrowserAutofillManagerTest_MockAutofillAi,
 // Tests that Autofill suggestions are shown if TouchToFillAutofill is not
 // eligible.
 TEST_F(BrowserAutofillManagerTest_MockAutofillAi,
+       PrivateInferenceNotice_DoesNotShowIfAutofillUiCantBeShown) {
+  EXPECT_CALL(autofill_driver(), CanShowAutofillUi)
+      .WillRepeatedly(Return(false));
+  SeeForm(/*may_run_model=*/false);
+
+  std::vector<Suggestion> suggestions = {
+      Suggestion(SuggestionType::kAutofillAiPrivateInferenceNotice)};
+  EXPECT_CALL(mock_ai_manager(), GetSuggestions).WillOnce(Return(suggestions));
+
+  EXPECT_CALL(touch_to_fill_autofill_delegate(), TryToShowTouchToFill)
+      .WillOnce(testing::Return(false));
+  // The private inference notice should be shown when touch to fill bottom
+  // sheet is shown.
+  EXPECT_CALL(autofill_client(), ShowAutofillAiPrivateInferenceNotice).Times(0);
+  TryToShowTouchToFill(passport_form(), passport_form().fields().front(),
+                       /*form_element_was_clicked=*/true);
+  EXPECT_THAT(external_delegate()->suggestions(),
+              ElementsAre(Field(
+                  &Suggestion::type,
+                  Eq(SuggestionType::kAutofillAiPrivateInferenceNotice))));
+  EXPECT_TRUE(external_delegate()->on_suggestions_returned_seen());
+}
+
+// Tests that Autofill suggestions are shown if TouchToFillAutofill is not
+// eligible.
+TEST_F(BrowserAutofillManagerTest_MockAutofillAi,
        TouchToFillAutofillSuggestion_DoesNotShowIfNotEligible) {
   SeeForm(/*may_run_model=*/false);
 
@@ -6358,6 +6386,48 @@ TEST_F(BrowserAutofillManagerTest_MockAutofillAi_WithModel, CacheResultUsed) {
   EXPECT_EQ(fs->field(3)->format_string()->value, u"D.M.YYYY");
   EXPECT_EQ(fs->field(3)->format_string_source(),
             AutofillFormatStringSource::kModelResult);
+}
+
+// Tests that invalid format strings from cache results are not applied to
+// fields.
+TEST_F(BrowserAutofillManagerTest_MockAutofillAi_WithModel,
+       CacheResultInvalidFormatStringIgnored) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeatureWithParameters(
+      features::kAutofillAiServerModel,
+      {{"autofill_ai_model_use_cache_results", "true"}});
+
+  const FormData form = passport_form();
+  const FieldSignature field_signature =
+      CalculateFieldSignatureForField(form.fields()[3]);
+  const FormSignature form_signature = CalculateFormSignature(form);
+
+  AutofillFormatString invalid_format_string;
+  invalid_format_string.value = u"invalid_format";
+  invalid_format_string.type = FormatString_Type_DATE;
+
+  using FieldIdentifier = AutofillAiModelCache::FieldIdentifier;
+  using ModelFieldPrediction = AutofillAiModelCache::FieldPrediction;
+  auto predictions =
+      base::flat_map<FieldIdentifier, ModelFieldPrediction>({std::pair{
+          FieldIdentifier{.signature = field_signature},
+          ModelFieldPrediction({PASSPORT_ISSUE_DATE}, invalid_format_string)}});
+
+  EXPECT_CALL(cache(), Contains(form_signature)).WillOnce(Return(true));
+  EXPECT_CALL(cache(), GetFieldPredictions(form_signature))
+      .WillOnce(Return(predictions));
+  EXPECT_CALL(executor(), GetPredictions).Times(0);
+  const FormGlobalId form_id =
+      SeeForm(/*may_run_model=*/true, /*add_autofill_ai_predictions=*/false);
+
+  const FormStructure* const fs =
+      autofill_manager().FindCachedFormById(form_id);
+  ASSERT_TRUE(fs);
+  EXPECT_THAT(fs->field(3)->Type().GetAutofillAiTypes(),
+              ElementsAre(PASSPORT_ISSUE_DATE));
+  EXPECT_FALSE(fs->field(3)->format_string().has_value());
+  EXPECT_EQ(fs->field(3)->format_string_source(),
+            AutofillFormatStringSource::kUnset);
 }
 
 // Tests that if the form has at least one existing AutofillAI prediction, then

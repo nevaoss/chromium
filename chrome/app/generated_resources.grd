@@ -4815,6 +4815,15 @@ are declared in tools/grit/grit_args.gni.
       <message name="IDS_TAB_SHARING_INFOBAR_SHARING_ANOTHER_TAB_TO_THIS_TAB_LABEL" desc="Text displayed on an infobar when another (non-current) tab is being shared.">
        Sharing <ph name="TAB_NAME">$1<ex>youtube.com</ex></ph> to this tab
       </message>
+      <message name="IDS_TAB_SHARING_INFOBAR_BLOCKED_CURRENT_TAB_LABEL" desc="Text displayed on an infobar when sharing of the current tab is blocked by enterprise policy.">
+       Your organization blocks the screen sharing of this tab
+      </message>
+      <message name="IDS_TAB_SHARING_INFOBAR_BLOCKED_ANOTHER_TAB_LABEL" desc="Text displayed on an infobar when sharing of another (non-current) tab is blocked by enterprise policy.">
+       Your organization blocks the screen sharing of <ph name="TAB_NAME">$1<ex>youtube.com</ex></ph>
+      </message>
+      <message name="IDS_TAB_SHARING_INFOBAR_BLOCKED_ANOTHER_UNTITLED_TAB_LABEL" desc="Text displayed on an infobar when sharing of another (non-current) untitled tab is blocked by enterprise policy.">
+       Your organization blocks the screen sharing of a tab
+      </message>
       <message name="IDS_TAB_SHARING_INFOBAR_SHARE_BUTTON" desc="Text displayed on the button to share current tab.">
        Share this tab instead
       </message>
@@ -7540,6 +7549,12 @@ Keep your key file in a safe place. You will need it to create new versions of y
       <message name="IDS_OMNIBOX_EVERYWHERE_LENS_PROMO_ACCESSIBLE_TEXT" desc="Accessible text for the promo highlighting screen sharing and Google Lens search in Omnibox Everywhere." translateable="false">
         Ask anything about what's on your screen by sharing your screen.
       </message>
+      <message name="IDS_OMNIBOX_EVERYWHERE_CONTEXT_MENU_CLOSE" desc="Label for the close option in the Loomnibox (Omnibox Everywhere) right-click context menu. Closes Loomnibox and removes the taskbar icon while keeping it invokable via hotkeys and notification area.">
+        Close
+      </message>
+      <message name="IDS_OMNIBOX_EVERYWHERE_CONTEXT_MENU_MINIMIZE" desc="Label for the minimize option in the Loomnibox (Omnibox Everywhere) right-click context menu. Minimizes Loomnibox while keeping the taskbar icon visible.">
+        Minimize
+      </message>
 
       <!-- Contextual Search -->
       <if expr="use_titlecase">
@@ -7695,6 +7710,15 @@ Keep your key file in a safe place. You will need it to create new versions of y
       </if>
       <message name="IDS_LOOMNIBOX_FRE_CLOSE_BUTTON_ARIA" desc="Accessibility label for the Close button on the FRE modal.">
         Close
+      </message>
+      <message name="IDS_LOOMNIBOX_FRE_SELECT_KEYBOARD_SHORTCUT" desc="Accessibility label for the keyboard shortcut selection dropdown in the FRE chin.">
+        Select keyboard shortcut
+      </message>
+      <message name="IDS_LOOMNIBOX_FRE_SELECT_SHORTCUT" desc="Placeholder text inside the shortcut selection dropdown trigger in the FRE chin.">
+        Select shortcut
+      </message>
+      <message name="IDS_LOOMNIBOX_FRE_CHANGE_SHORTCUT_IN" desc="Text in the Stage 3 reminder FRE chin with a link to open settings to change the shortcut.">
+        Change shortcut in <ph name="BEGIN_LINK">&lt;a href="#" class="settings-link"&gt;</ph>Settings<ph name="END_LINK">&lt;/a&gt;</ph>
       </message>
       <message name="IDS_NTP_SEARCH_BOX_PLACEHOLDER_ASK_OR_TYPE" desc="A steady state placeholder text for the NTP searchbox">
         Ask Google or type a URL
@@ -12224,6 +12248,12 @@ Check your passwords anytime in <ph name="GOOGLE_PASSWORD_MANAGER">$1<ex>Google 
         <message name="IDS_TAB_CXMENU_REMOVE_TAB_FROM_GROUP" desc="The label of the tab context menu item for removing one or more tabs from the groups that contain them.">
           Remove from group
         </message>
+        <message name="IDS_TAB_CXMENU_FOCUS_TAB_GROUP" desc="The label of the tab context menu item for focusing the tab group containing the tab.">
+          Focus tab group
+        </message>
+        <message name="IDS_TAB_CXMENU_UNFOCUS_TAB_GROUP" desc="The label of the tab context menu item for unfocusing the tab group containing the tab.">
+          Unfocus tab group
+        </message>
         <message name="IDS_TAB_CXMENU_PLACEHOLDER_GROUP_TITLE" desc="The descriptive placeholder title of a group used when the user has not explicitly named a group. The plural value refers to the number of tabs in the group other than the one explicitly named. [ICU Syntax]">
           {NUM_OTHER_TABS, plural, =0 {"<ph name="TAB_TITLE">$1<ex>Google News</ex></ph>"} =1 {"<ph name="TAB_TITLE">$1<ex>Google News</ex></ph>" and 1 other tab} other {"<ph name="TAB_TITLE">$1<ex>Google News</ex></ph>" and # other tabs}}
         </message>
@@ -12339,6 +12369,12 @@ Check your passwords anytime in <ph name="GOOGLE_PASSWORD_MANAGER">$1<ex>Google 
         </message>
         <message name="IDS_TAB_CXMENU_REMOVE_TAB_FROM_GROUP" desc="In Title Case: The label of the tab context menu item for removing one or more tabs from the groups that contain them.">
           Remove From Group
+        </message>
+        <message name="IDS_TAB_CXMENU_FOCUS_TAB_GROUP" desc="In Title Case: The label of the tab context menu item for focusing the tab group containing the tab.">
+          Focus Tab Group
+        </message>
+        <message name="IDS_TAB_CXMENU_UNFOCUS_TAB_GROUP" desc="In Title Case: The label of the tab context menu item for unfocusing the tab group containing the tab.">
+          Unfocus Tab Group
         </message>
         <message name="IDS_TAB_CXMENU_PLACEHOLDER_GROUP_TITLE" desc="In Title Case: The descriptive placeholder title of a group used when the user has not explicitly named a group. The plural value refers to the number of tabs in the group other than the one explicitly named. [ICU Syntax]">
           {NUM_OTHER_TABS, plural, =0 {"<ph name="TAB_TITLE">$1<ex>Google News</ex></ph>"} =1 {"<ph name="TAB_TITLE">$1<ex>Google News</ex></ph>" and 1 Other Tab} other {"<ph name="TAB_TITLE">$1<ex>Google News</ex></ph>" and # Other Tabs}}
@@ -13633,11 +13669,9 @@ Check your passwords anytime in <ph name="GOOGLE_PASSWORD_MANAGER">$1<ex>Google 
       </message>
 
       <!-- Menus -->
-      <if expr="is_macosx">
-        <message name="IDS_MENU_EMPTY_SUBMENU" desc="Used when a submenu has no entries">
-          (empty)
-        </message>
-      </if>
+      <message name="IDS_MENU_EMPTY_SUBMENU" desc="Used when a submenu has no entries">
+        (empty)
+      </message>
 
       <!-- First-run dialog -->
       <message name="IDS_FR_ENABLE_LOGGING" desc="The label of the checkbox to enable/disable crash and user metrics logging">

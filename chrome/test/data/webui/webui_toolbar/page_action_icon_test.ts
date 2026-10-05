@@ -7,131 +7,14 @@ import 'chrome://webui-toolbar.top-chrome/app.js';
 import type {HelpBubbleOptions} from '//resources/cr_components/help_bubble/help_bubble_controller.js';
 import {hexColorToSkColor} from '//resources/js/color_utils.js';
 import type {CrIconElement} from 'chrome://resources/cr_elements/cr_icon/cr_icon.js';
+import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
-import {TestBrowserProxy} from 'chrome://webui-test/test_browser_proxy.js';
 import {microtasksFinished} from 'chrome://webui-test/test_util.js';
 import {BrowserProxyImpl, IconTable, IconType, PageActionId, PageActionTrigger, TrackedElementManager} from 'chrome://webui-toolbar.top-chrome/app.js';
-import type {LhsChipIdentifier, PageActionIconElement, PageActionState} from 'chrome://webui-toolbar.top-chrome/app.js';
-import type {BrowserProxy} from 'chrome://webui-toolbar.top-chrome/browser_proxy.js';
-import type {ToolbarUIServiceInterface} from 'chrome://webui-toolbar.top-chrome/shared/toolbar_ui_api.mojom-webui.js';
+import type {PageActionIconElement, PageActionState} from 'chrome://webui-toolbar.top-chrome/app.js';
 
-class TestToolbarUiHandler extends TestBrowserProxy implements
-    ToolbarUIServiceInterface {
-  constructor() {
-    super([
-      'onPageActionClick',
-      'onPageActionPointerDown',
-    ]);
-  }
-
-  bind() {
-    return new Promise<never>(() => {});
-  }
-  showContextMenu() {}
-  showOverflowMenu() {
-    return Promise.resolve({result: {}});
-  }
-  onOmniboxAction() {
-    return new Promise<never>(() => {});
-  }
-  onPageInitialized() {}
-  onContentSettingImagePointerDown() {}
-  onPageActionPointerDown(actionId: PageActionId) {
-    this.methodCalled('onPageActionPointerDown', actionId);
-  }
-  showContentSettingsBubble() {
-    return new Promise<never>(() => {});
-  }
-  onContentSettingImageAnimationEnded() {}
-  invokePinnedToolbarAction() {}
-  onHomeButtonDropUrl() {}
-  onHomeButtonDropFile() {}
-  onToolbarDropFile() {}
-  showAvatarMenu() {
-    return new Promise<never>(() => {});
-  }
-  setAvatarButtonHovered(_hovered: boolean) {
-    return Promise.resolve({result: {}});
-  }
-  setAvatarButtonFocused(_focused: boolean) {
-    return Promise.resolve({result: {}});
-  }
-  setAvatarButtonIphPromoShowing(_showing: boolean) {
-    return Promise.resolve({result: {}});
-  }
-  onAppMenuFocusChanged(_focused: boolean) {}
-  onLocationBarFocusWithinChanged(_focusInside: boolean) {}
-  onLhsChipMousePressed(_id: LhsChipIdentifier, _isMiddleClick: boolean) {}
-  onLhsChipClicked() {}
-  onLhsChipCollapseAnimationEnded() {}
-  onLhsChipExpandAnimationEnded() {}
-  onLhsChipPointerEntered() {}
-  onLhsChipPointerExited() {}
-  onLhsChipDrag() {}
-  movePinnedToolbarAction(_actionId: any, _targetIndex: any) {}
-  movePinnedToolbarActionBy(_actionId: any, _delta: any) {}
-  moveExtensionAction(_extensionId: string, _targetIndex: number) {}
-  moveExtensionActionBy(_extensionId: string, _delta: number) {}
-
-  onPageActionClick(actionId: PageActionId, trigger: PageActionTrigger) {
-    this.methodCalled('onPageActionClick', [actionId, trigger]);
-    return Promise.resolve({result: {}});
-  }
-
-  onPageActionChipShowingChanged(_actionId: PageActionId) {
-    return Promise.resolve({result: {}});
-  }
-
-  executeExtensionAction(_extensionId: string, _isPointerInteraction: boolean) {
-  }
-
-  onExtensionActionPointerDown(_extensionId: string) {}
-
-  showExtensionContextMenu(_extensionId: string, _source: any) {}
-
-  adjustOmniboxTextForCopy(text: string, _selectionStart: number) {
-    return Promise.resolve({
-      adjustedText: text,
-      adjustedUrl: null,
-      pageTitle: null,
-    });
-  }
-
-  onPerformanceInterventionButtonClicked(_isMouseInteraction: boolean) {}
-
-  onPerformanceInterventionButtonMousePressed() {}
-}
-
-class TestToolbarBrowserProxy extends TestBrowserProxy implements BrowserProxy {
-  toolbarUIHandler: TestToolbarUiHandler;
-  browserControlsHandler: any;  // Not used in this test
-
-  constructor() {
-    super([]);
-    this.toolbarUIHandler = new TestToolbarUiHandler();
-  }
-
-  recordInHistogram() {}
-  addNavigationStateListener() {
-    return 0;
-  }
-  addFocusRequestListener() {
-    return 0;
-  }
-  addShowSplitTabsContextMenuListener() {
-    return 0;
-  }
-  removeNavigationStateListener() {}
-  removeFocusRequestListener() {}
-  removeShowSplitTabsContextMenuListener() {}
-
-  onChipClicked(_chip: LhsChipIdentifier, _isPointerClick: boolean) {}
-  onChipPointerEntered(_chip: LhsChipIdentifier) {}
-  onChipPointerExited(_chip: LhsChipIdentifier) {}
-  onChipMousePressed(_chip: LhsChipIdentifier) {}
-  onChipExpandAnimationEnded(_chip: LhsChipIdentifier) {}
-  onChipCollapseAnimationEnded(_chip: LhsChipIdentifier) {}
-}
+import {TestToolbarBrowserProxy} from './test_toolbar_browser_proxy.js';
+import type {TestToolbarUiHandler} from './test_toolbar_browser_proxy.js';
 
 interface StartTrackingCall {
   element: HTMLElement;
@@ -789,5 +672,71 @@ suite('PageActionIconTest', function() {
         // Verify it remains on static icon and no animated icon is rendered
         assertTrue(!!icon.shadowRoot.querySelector('icon-from-table'));
         assertTrue(!icon.shadowRoot.querySelector('#animatedIcon'));
+      });
+});
+
+suite('PageActionIconsTest', function() {
+  function createState(id: PageActionId): PageActionState {
+    return {
+      pageActionId: id,
+      accessibleName: 'Action',
+      tooltipText: 'Tooltip',
+      icon: {handleId: 0n},
+      text: '',
+      shouldShowChip: false,
+      shouldAnimateChipIn: false,
+      shouldAnimateChipOut: false,
+      backgroundColorOverride: null,
+      identifier: {
+        nativeIdentifier: '',
+        secondaryIdentifier: '',
+      },
+      isActive: false,
+      iconAnimationToken: 0,
+    };
+  }
+
+  test(
+      'is-capsule attribute reflects when pageActionStates has more than 1 ' +
+          'item and elevated toolbar is enabled',
+      async () => {
+        loadTimeData.overrideValues({enablePageActionsElevatedToolbar: false});
+        const container = document.createElement('page-action-icons');
+        document.body.appendChild(container);
+
+        assertEquals(0, container.pageActionStates.length);
+        assertFalse(container.isCapsule);
+        assertFalse(container.hasAttribute('is-capsule'));
+
+        // Flag is disabled, so isCapsule remains false even with > 1 items.
+        container.pageActionStates = [
+          createState(PageActionId.kActionAiMode),
+          createState(PageActionId.kActionShowTranslate),
+        ];
+        await microtasksFinished();
+        assertFalse(container.isCapsule);
+        assertFalse(container.hasAttribute('is-capsule'));
+
+        // When flag is enabled, isCapsule reflects when > 1 items.
+        loadTimeData.overrideValues({enablePageActionsElevatedToolbar: true});
+        container.pageActionStates = [createState(PageActionId.kActionAiMode)];
+        await microtasksFinished();
+        assertFalse(container.isCapsule);
+        assertFalse(container.hasAttribute('is-capsule'));
+
+        container.pageActionStates = [
+          createState(PageActionId.kActionAiMode),
+          createState(PageActionId.kActionShowTranslate),
+        ];
+        await microtasksFinished();
+        assertTrue(container.isCapsule);
+        assertTrue(container.hasAttribute('is-capsule'));
+
+        container.pageActionStates = [createState(PageActionId.kActionAiMode)];
+        await microtasksFinished();
+        assertFalse(container.isCapsule);
+        assertFalse(container.hasAttribute('is-capsule'));
+
+        container.remove();
       });
 });

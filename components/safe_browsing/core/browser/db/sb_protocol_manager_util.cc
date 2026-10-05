@@ -15,13 +15,14 @@
 #include "base/not_fatal_until.h"
 #include "base/rand_util.h"
 #include "base/strings/escape.h"
+#include "base/strings/strcat.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_util.h"
 #include "base/strings/string_view_util.h"
 #include "base/strings/stringprintf.h"
 #include "base/time/time.h"
 #include "build/build_config.h"
-#include "components/safe_browsing/core/browser/db/v4_protocol_config.h"
+#include "components/safe_browsing/core/browser/db/sb_protocol_config.h"
 #include "components/safe_browsing/core/common/features.h"
 #include "crypto/hash.h"
 #include "google_apis/google_api_keys.h"
@@ -179,7 +180,7 @@ const char* GetSbV5UrlPrefix() {
                                        : kSbV5UrlPrefix;
 }
 
-std::string GetReportUrl(const V4ProtocolConfig& config,
+std::string GetReportUrl(const SBProtocolConfig& config,
                          const std::string& method,
                          const ExtendedReportingLevel* reporting_level,
                          const bool is_enhanced_protection) {
@@ -383,17 +384,35 @@ std::string GetV5ListName(const ListIdentifier& list_identifier) {
     case SBThreatType::SB_THREAT_TYPE_HIGH_CONFIDENCE_ALLOWLIST:
       return "gc-32b";
     case SBThreatType::SB_THREAT_TYPE_URL_MALWARE:
+#if BUILDFLAG(IS_IOS)
+      // iOS uses the Android/mobile malware list ("pha-4b", Potentially Harmful
+      // Applications) to match the v4 server-side behavior.
+      return "pha-4b";
+#else
       return "mw-4b";
+#endif
     case SBThreatType::SB_THREAT_TYPE_URL_BINARY_MALWARE:
       return "mwb-4b";
     case SBThreatType::SB_THREAT_TYPE_URL_PHISHING:
+#if BUILDFLAG(IS_IOS)
+      // iOS uses the Android/mobile social engineering list ("sea-4b") to match
+      // the v4 server-side behavior.
+      return "sea-4b";
+#else
       return "se-4b";
+#endif
     case SBThreatType::SB_THREAT_TYPE_SUBRESOURCE_FILTER:
       return "srf-4b";
     case SBThreatType::SB_THREAT_TYPE_SUSPICIOUS_SITE:
       return "sus-4b";
     case SBThreatType::SB_THREAT_TYPE_URL_UNWANTED:
+#if BUILDFLAG(IS_IOS)
+      // iOS uses the Android/mobile unwanted software list ("uwsa-4b") to
+      // match the v4 server-side behavior.
+      return "uwsa-4b";
+#else
       return "uws-4b";
+#endif
     case SBThreatType::SB_THREAT_TYPE_UNUSED:
     case SBThreatType::SB_THREAT_TYPE_SAFE:
     case SBThreatType::SB_THREAT_TYPE_URL_CLIENT_SIDE_PHISHING:
@@ -563,7 +582,7 @@ base::TimeDelta SBProtocolManagerUtil::GetNextBackOffInterval(
 void SBProtocolManagerUtil::GetRequestUrlAndHeaders(
     const std::string& request_base64,
     const std::string& method_name,
-    const V4ProtocolConfig& config,
+    const SBProtocolConfig& config,
     GURL* gurl,
     net::HttpRequestHeaders* headers) {
   const char* url_prefix = g_sbv4_url_prefix_for_testing
@@ -863,10 +882,19 @@ void SBProtocolManagerUtil::GeneratePathVariantsToCheck(
 // static
 void SBProtocolManagerUtil::SetClientInfoFromConfig(
     ClientInfo* client_info,
-    const V4ProtocolConfig& config) {
+    const SBProtocolConfig& config) {
   CHECK(client_info, base::NotFatalUntil::M162);
   client_info->set_client_id(config.client_name);
   client_info->set_client_version(config.version);
+}
+
+// static
+void SBProtocolManagerUtil::SetV5UserAgentHeader(
+    net::HttpRequestHeaders* headers,
+    const SBProtocolConfig& config) {
+  CHECK(headers);
+  headers->SetHeader(net::HttpRequestHeaders::kUserAgent,
+                     base::StrCat({config.client_name, " ", config.version}));
 }
 
 // static

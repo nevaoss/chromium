@@ -172,6 +172,8 @@ static_library("test_support") {
     "../public/test/background_color_change_waiter.h",
     "../public/test/background_sync_test_util.cc",
     "../public/test/background_sync_test_util.h",
+    "../public/test/background_tracing.cc",
+    "../public/test/background_tracing.h",
     "../public/test/blink_test_environment.cc",
     "../public/test/blink_test_environment.h",
     "../public/test/bluetooth_test_utils.cc",
@@ -2615,6 +2617,7 @@ test("content_unittests") {
     "../browser/devtools/devtools_session_unittest.cc",
     "../browser/devtools/devtools_url_loader_interceptor_unittest.cc",
     "../browser/devtools/devtools_video_consumer_unittest.cc",
+    "../browser/devtools/protocol/devtools_download_manager_delegate_unittest.cc",
     "../browser/devtools/protocol/digital_credentials_handler_unittest.cc",
     "../browser/devtools/protocol/media_recorder_unittest.cc",
     "../browser/devtools/protocol/tracing_handler_unittest.cc",
@@ -2782,6 +2785,7 @@ test("content_unittests") {
     "../browser/renderer_host/frame_token_message_queue_unittest.cc",
     "../browser/renderer_host/frame_tree_unittest.cc",
     "../browser/renderer_host/global_routing_id_unittest.cc",
+    "../browser/renderer_host/holding_blocking_idb_lock_handle_unittest.cc",
     "../browser/renderer_host/indexed_db_client_state_checker_factory_unittest.cc",
     "../browser/renderer_host/input/fling_scheduler_unittest.cc",
     "../browser/renderer_host/input/input_router_impl_unittest.cc",
@@ -2851,6 +2855,7 @@ test("content_unittests") {
     "../browser/renderer_host/text_input_manager_unittest.cc",
     "../browser/renderer_host/transient_allow_popup_unittest.cc",
     "../browser/renderer_host/visible_time_request_trigger_unittest.cc",
+    "../browser/resource_broker/resource_broker_features_unittest.cc",
     "../browser/sandboxed_opaque_origin_creator_unittest.cc",
     "../browser/scheduler/browser_io_thread_delegate_unittest.cc",
     "../browser/scheduler/browser_task_executor_unittest.cc",
@@ -3433,7 +3438,11 @@ test("content_unittests") {
   }
 
   if (is_linux || is_chromeos) {
-    deps += [ "//components/crash/content/browser/error_reporting" ]
+    deps += [
+      "//components/crash/content/browser/error_reporting",
+      "//sandbox/linux:sandbox_services",
+      "//sandbox/linux:sandbox_services_headers",
+    ]
   }
 
   if (is_fuchsia) {
@@ -3518,6 +3527,8 @@ test("content_unittests") {
     sources += [
       "../browser/child_process_sandbox_support_win_unittest.cc",
       "../browser/device_posture/device_posture_registry_watcher_win_unittest.cc",
+      "../browser/haptics/haptics_manager_impl_win_unittest.cc",
+      "../browser/media/media_interface_proxy_unittest.cc",
       "../browser/renderer_host/direct_manipulation_test_helper_win.cc",
       "../browser/renderer_host/direct_manipulation_test_helper_win.h",
       "../browser/renderer_host/direct_manipulation_win_unittest.cc",

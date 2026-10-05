@@ -21,6 +21,7 @@
 #include "base/memory/weak_ptr.h"
 #include "base/task/sequenced_task_runner.h"
 #include "base/time/time.h"
+#include "base/types/pass_key.h"
 #include "components/safe_browsing/core/browser/db/database_manager.h"
 #include "components/safe_browsing/core/browser/db/sb_database.h"
 #include "components/safe_browsing/core/browser/db/sb_update_protocol_manager.h"
@@ -37,6 +38,8 @@ namespace V5 {
 class HashList;
 }
 
+class SBLocalDatabaseManagerTest;
+
 typedef unsigned ThreatSeverity;
 
 // Manages the local, on-disk database of updates downloaded from the
@@ -51,6 +54,13 @@ class SBLocalDatabaseManager : public SafeBrowsingDatabaseManager {
       scoped_refptr<base::SequencedTaskRunner> io_task_runner,
       ExtendedReportingLevelCallback extended_reporting_level_callback);
 
+  SBLocalDatabaseManager(
+      base::PassKey<SBLocalDatabaseManager, SBLocalDatabaseManagerTest>,
+      const base::FilePath& base_path,
+      ExtendedReportingLevelCallback extended_reporting_level_callback,
+      scoped_refptr<base::SequencedTaskRunner> ui_task_runner,
+      scoped_refptr<base::SequencedTaskRunner> io_task_runner,
+      scoped_refptr<base::SequencedTaskRunner> task_runner_for_tests);
   SBLocalDatabaseManager(const SBLocalDatabaseManager&) = delete;
   SBLocalDatabaseManager& operator=(const SBLocalDatabaseManager&) = delete;
 
@@ -124,7 +134,7 @@ class SBLocalDatabaseManager : public SafeBrowsingDatabaseManager {
 
   void StartOnUIThread(
       scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory,
-      const V4ProtocolConfig& config) override;
+      const SBProtocolConfig& config) override;
   void StopOnUIThread(bool shutdown) override;
   bool IsDatabaseReady() const override;
 
@@ -421,7 +431,7 @@ class SBLocalDatabaseManager : public SafeBrowsingDatabaseManager {
   // `config` is the Safe Browsing protocol configuration.
   void SetupUpdateProtocolManager(
       scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory,
-      const V4ProtocolConfig& config);
+      const SBProtocolConfig& config);
 
   // Updates the `list_client_states_` with the state information in
   // `store_state_map`.
@@ -439,8 +449,7 @@ class SBLocalDatabaseManager : public SafeBrowsingDatabaseManager {
   // `parsed_server_response` is the map from list identifiers to their V5
   // hash list updates from the server.
   void V5UpdateRequestCompleted(
-      std::optional<std::map<ListIdentifier, V5::HashList>>
-          parsed_server_response);
+      std::map<ListIdentifier, V5::HashList> parsed_server_response);
 
   // Return true if we're enabled and have loaded real data for all of
   // these stores.

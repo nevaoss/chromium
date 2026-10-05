@@ -7,6 +7,7 @@
 
 #include <optional>
 
+#include "base/functional/callback.h"
 #include "components/webauthn/core/browser/device_authorization/device_authorization_types.h"
 
 class GaiaId;
@@ -29,6 +30,13 @@ class DeviceAuthorizationClient {
   // on success.
   virtual bool StoreKeys(const GaiaId& gaia_id,
                          const DeviceAuthorizationKeys& keys) = 0;
+
+  // Asynchronously populates embedder-specific platform data (e.g. device
+  // integrity signals) for the given `gaia_id` into `request`.
+  virtual void PopulatePlatformData(
+      const GaiaId& gaia_id,
+      sync_pb::GetDeviceAuthorizationKeyRequest request,
+      PopulatePlatformDataCallback callback) = 0;
 };
 
 }  // namespace webauthn

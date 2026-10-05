@@ -36,11 +36,7 @@ import org.chromium.chrome.browser.download.settings.DownloadSettings;
 import org.chromium.chrome.browser.glic.GlicSettings;
 import org.chromium.chrome.browser.homepage.settings.HomepageSettings;
 import org.chromium.chrome.browser.image_descriptions.ImageDescriptionsSettings;
-import org.chromium.chrome.browser.language.settings.AlwaysTranslateListFragment;
 import org.chromium.chrome.browser.language.settings.LanguageSettings;
-import org.chromium.chrome.browser.language.settings.LanguagesManager.LanguageListType;
-import org.chromium.chrome.browser.language.settings.NeverTranslateListFragment;
-import org.chromium.chrome.browser.language.settings.SelectLanguageFragment;
 import org.chromium.chrome.browser.night_mode.NightModeMetrics;
 import org.chromium.chrome.browser.night_mode.settings.ThemeSettingsFragment;
 import org.chromium.chrome.browser.prefetch.settings.ExtendedPreloadingSettingsFragment;
@@ -53,14 +49,16 @@ import org.chromium.chrome.browser.privacy_guide.PrivacyGuideFragment;
 import org.chromium.chrome.browser.safe_browsing.settings.EnhancedProtectionSettingsFragment;
 import org.chromium.chrome.browser.safe_browsing.settings.SafeBrowsingSettingsFragment;
 import org.chromium.chrome.browser.safe_browsing.settings.StandardProtectionSettingsFragment;
-import org.chromium.chrome.browser.safety_check.SafetyCheckSettingsFragment;
 import org.chromium.chrome.browser.safety_hub.SafetyHubFragment;
+import org.chromium.chrome.browser.safety_hub.SafetyHubNotificationsFragment;
+import org.chromium.chrome.browser.safety_hub.SafetyHubPermissionsFragment;
 import org.chromium.chrome.browser.search_engines.settings.SearchEngineSettings;
 import org.chromium.chrome.browser.search_engines.settings.SiteSearchSettings;
 import org.chromium.chrome.browser.settings.search.SearchResultsPreferenceFragment;
 import org.chromium.chrome.browser.ssl.HttpsFirstModeSettingsFragment;
 import org.chromium.chrome.browser.sync.settings.GoogleServicesSettings;
 import org.chromium.chrome.browser.sync.settings.ManageSyncSettings;
+import org.chromium.chrome.browser.sync.settings.PersonalizeGoogleServicesSettings;
 import org.chromium.chrome.browser.tasks.tab_management.TabArchiveSettingsFragment;
 import org.chromium.chrome.browser.tasks.tab_management.TabsSettings;
 import org.chromium.chrome.browser.toolbar.adaptive.settings.AdaptiveToolbarSettingsFragment;
@@ -133,6 +131,7 @@ public class SettingsFragmentRegistry {
         // TODO(crbug.com/542745585): Handle /account differently based on local state
         // since it's not a static page which is always available.
         registerMapping("/account", ManageSyncSettings.class);
+        registerMapping("/account/personalize", PersonalizeGoogleServicesSettings.class);
         registerMapping("/googleServices", GoogleServicesSettings.class);
 
         // Basics
@@ -158,7 +157,8 @@ public class SettingsFragmentRegistry {
 
         // Safety Check / Safety Hub
         registerMapping("/safetyCheck", SafetyHubFragment.class);
-        registerMapping("/notifications", SafetyCheckSettingsFragment.class);
+        registerMapping("/safetyCheck/permissions", SafetyHubPermissionsFragment.class);
+        registerMapping("/safetyCheck/notifications", SafetyHubNotificationsFragment.class);
 
         // Autofill & Passwords
         registerMapping("/autofill", AutofillAndPasswordsFragment.class);
@@ -202,10 +202,14 @@ public class SettingsFragmentRegistry {
         registerMapping("/chosenObject", ChosenObjectSettings.class);
 
         // Languages, Downloads, Tabs, Homepage
+        //
+        // Only the top-level languages page is URL routed. The subpages (language picker, always
+        // and never translate lists) exchange the selected language using the androidx Fragment
+        // Result API, which requires the calling fragment to remain on the fragment back stack.
+        // URL navigation replaces detail fragments with addToBackStack=false, which breaks that
+        // contract. See crbug.com/555347875; these routes are restored once the subpages no longer
+        // depend on the fragment back stack.
         registerMapping("/languages", LanguageSettings.class);
-        registerMapping("/languages/select", SelectLanguageFragment.class);
-        registerMapping("/languages/alwaysTranslate", AlwaysTranslateListFragment.class);
-        registerMapping("/languages/neverTranslate", NeverTranslateListFragment.class);
         registerMapping("/downloads", DownloadSettings.class);
 
         // About & Developer
@@ -224,10 +228,6 @@ public class SettingsFragmentRegistry {
         registerParameterMapping("category", SingleCategorySettings.EXTRA_CATEGORY);
         registerParameterMapping("title", SingleCategorySettings.EXTRA_TITLE);
         registerParameterMapping("group", GroupedWebsitesSettings.EXTRA_GROUP);
-        registerShortParameterMapping(
-                "potentialLanguages",
-                SelectLanguageFragment.KEY_POTENTIAL_LANGUAGES,
-                /* defaultValue= */ (short) LanguageListType.ACCEPT_LANGUAGES);
         registerIntParameterMapping(
                 "referrer",
                 AutofillAndPasswordsFragment.EXTRA_REFERRER,
@@ -308,6 +308,9 @@ public class SettingsFragmentRegistry {
                 });
     }
 
+    // Currently unused: its only caller was the "potentialLanguages" mapping, removed along with
+    // the languages subpage routes. Retained for when those routes are re-landed.
+    @SuppressWarnings("unused")
     private static void registerShortParameterMapping(
             String queryParam, String argKey, short defaultValue) {
         registerParameterMapping(

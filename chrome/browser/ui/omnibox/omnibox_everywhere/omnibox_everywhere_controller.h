@@ -35,16 +35,22 @@ namespace omnibox_everywhere {
 class OmniboxEverywhereBackgroundModeManager;
 
 // The source of the Omnibox Everywhere invocation.
+// These values are persisted to logs. Entries should not be renumbered and
+// numeric values should never be reused.
+//
+// LINT.IfChange(OmniboxEverywhereInvocationSource)
 enum class InvocationSource {
   // Triggered by a global system hotkey registration.
-  kGlobalHotkey,
-  // Triggered by the profile picker.
-  kProfilePicker,
+  kGlobalHotkey = 0,
   // Triggered from the status tray/menu bar icon.
-  kStatusTrayIcon,
+  kStatusTrayIcon = 1,
+  // Triggered by the profile picker.
+  kProfilePicker = 2,
   // Triggered by command-line switch or OS shortcut.
-  kCommandLine,
+  kCommandLine = 3,
+  kMaxValue = kCommandLine,
 };
+// LINT.ThenChange(//tools/metrics/histograms/metadata/omnibox/enums.xml:OmniboxEverywhereInvocationSource)
 
 // Coordinator class that manages the Omnibox Everywhere desktop feature.
 // Exists as a process-global singleton owned by GlobalFeatures.
@@ -170,6 +176,17 @@ class OmniboxEverywhereController
   // Registers or unregisters the global hotkey accelerator according to feature
   // flag and preference settings.
   void UpdateHotkeyRegistration();
+
+  // Asynchronously loads the profile at `profile_path` and runs `on_loaded` on
+  // success while holding a startup ScopedKeepAlive. `on_loaded` is always
+  // invoked asynchronously.
+  // Returns true if profile exists and loading/invocation was initiated.
+  bool LoadProfileAsync(const base::FilePath& profile_path,
+                        base::OnceCallback<void(Profile*)> on_loaded);
+
+  // Asynchronously loads the persisted target profile when in background mode
+  // and no target profile is currently loaded.
+  void MaybeLoadPersistedTargetProfile();
 
   BooleanPrefMember enabled_pref_member_;
   BooleanPrefMember hotkey_pref_member_;

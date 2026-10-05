@@ -141,11 +141,16 @@ GlicInvokeHandler::ResolvedTarget GlicInvokeHandler::ResolveTargetSurface(
     tabs::TabInterface* tab = tab_handle->Get();
     if (tab) {
       BrowserWindowInterface* browser = tab->GetBrowserWindowInterface();
-      if (!browser ||
-          browser->GetType() != BrowserWindowInterface::Type::TYPE_NORMAL) {
-        return {TabSurface{/*tab=*/nullptr, /*is_new=*/false}};
+      // Allow detached / background tabs for actuation, reject non-normal browser windows.
+      bool is_background_actuation =
+        !browser && target.actuation_target == mojom::ActuationTarget::kTargetSurface;
+      bool is_normal_browser =
+        browser && browser->GetType() == BrowserWindowInterface::Type::TYPE_NORMAL;
+
+      if (is_background_actuation || is_normal_browser) {
+        return {TabSurface{tab, /*is_new=*/false}};
       }
-      return {TabSurface{tab, /*is_new=*/false}};
+      return {TabSurface{/*tab=*/nullptr, /*is_new=*/false}};
     }
   }
 
@@ -334,14 +339,18 @@ void GlicInvokeHandler::Invoke() {
                        weak_ptr_factory_.GetWeakPtr())));
   }
 
-  if (options_.fre_completion_wait_mode == FreCompletionWaitMode::kDefault) {
+  mojom::InvokeOptionsPtr mojo_options = CreateMojoOptions();
+  bool requires_client_invoke =
+      RequiresClientInvoke(mojo_options, auto_submit_passkey_.has_value());
+
+  if (options_.fre_completion_wait_mode == FreCompletionWaitMode::kAlways ||
+      (options_.fre_completion_wait_mode == FreCompletionWaitMode::kDefault &&
+       requires_client_invoke)) {
     tasks.push_back(std::make_unique<WaitForFreCompletionTask>(
         instance_->profile(), options_.fre_override));
   }
 
-  mojom::InvokeOptionsPtr mojo_options = CreateMojoOptions();
-
-  if (RequiresClientInvoke(mojo_options, auto_submit_passkey_.has_value())) {
+  if (requires_client_invoke) {
     tasks.push_back(std::make_unique<SendToClientTask>(
         &*instance_, std::move(mojo_options), auto_submit_passkey_));
   }

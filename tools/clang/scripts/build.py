@@ -649,7 +649,7 @@ def BuildZStd(cc, cxx, cmake_sysroot, mac_deployment_target):
 
 
 def DownloadPinnedClang():
-  PINNED_CLANG_VERSION = 'llvmorg-21-init-5118-g52cd27e6-4'
+  PINNED_CLANG_VERSION = 'llvmorg-24-init-7747-g62397f8b-27'
   DownloadAndUnpackPackage(
     'clang', PINNED_CLANG_DIR, GetDefaultHostOs(), PINNED_CLANG_VERSION
   )
@@ -1068,6 +1068,8 @@ def main():
       )
       # TODO(crbug.com/549080734): remove once we roll past this revision
       GitCherryPick(LLVM_DIR, '061865f32607cd064ab944407cc863186702d6f1')
+      # TODO(crbug.com/559560868): remove once we roll past this revision
+      GitCherryPick(LLVM_DIR, 'b8007a8e4020b8bca2b12e941660e10bf5bf6716')
 
   if args.llvm_force_head_revision:
     CLANG_REVISION = GetCommitDescription(checkout_revision)

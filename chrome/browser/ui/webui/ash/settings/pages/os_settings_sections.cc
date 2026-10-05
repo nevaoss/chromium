@@ -11,7 +11,6 @@
 #include "chrome/browser/ui/webui/ash/settings/pages/apps/apps_section.h"
 #include "chrome/browser/ui/webui/ash/settings/pages/bluetooth/bluetooth_section.h"
 #include "chrome/browser/ui/webui/ash/settings/pages/crostini/crostini_section.h"
-#include "chrome/browser/ui/webui/ash/settings/pages/date_time/date_time_section.h"
 #include "chrome/browser/ui/webui/ash/settings/pages/device/device_section.h"
 #include "chrome/browser/ui/webui/ash/settings/pages/files/files_section.h"
 #include "chrome/browser/ui/webui/ash/settings/pages/internet/internet_section.h"
@@ -51,8 +50,8 @@ OsSettingsSections::OsSettingsSections(
   auto* prefs = profile->GetPrefs();
 
   // Special case: Main section does not have an associated enum value.
-  sections_.push_back(
-      std::make_unique<MainSection>(profile, search_tag_registry));
+  sections_.push_back(std::make_unique<MainSection>(
+      browser_policy_connector_ash, profile, search_tag_registry));
 
   AddSection(mojom::Section::kNetwork,
              std::make_unique<InternetSection>(profile, search_tag_registry));
@@ -84,7 +83,8 @@ OsSettingsSections::OsSettingsSections(
 
   AddSection(
       mojom::Section::kPrivacyAndSecurity,
-      std::make_unique<PrivacySection>(profile, search_tag_registry, prefs));
+      std::make_unique<PrivacySection>(local_state, application_locale_storage,
+                                       profile, search_tag_registry, prefs));
 
   AddSection(
       mojom::Section::kAccessibility,
@@ -103,7 +103,8 @@ OsSettingsSections::OsSettingsSections(
 
   AddSection(mojom::Section::kSystemPreferences,
              std::make_unique<SystemPreferencesSection>(
-                 profile, search_tag_registry, prefs));
+                 local_state, application_locale_storage, profile,
+                 search_tag_registry, prefs));
 }
 
 OsSettingsSections::OsSettingsSections() = default;

@@ -438,7 +438,8 @@ void AutofillExternalDelegate::OnQuery(
                  .field_datalist_options = field.datalist_options()};
   caret_bounds_ = caret_bounds;
   trigger_source_ = trigger_source;
-  manager_->client().UpdateAutofillDataListValues(field.datalist_options());
+  manager_->client().UpdateAutofillDataListValues(field.global_id().frame_token,
+                                                  field.datalist_options());
 }
 
 const AutofillField* AutofillExternalDelegate::GetQueriedField() const {
@@ -1155,10 +1156,10 @@ void AutofillExternalDelegate::DidAcceptSuggestion(
     }
     case SuggestionType::kAtMemoryInactivityNudge:
     case SuggestionType::kAutocompleteAtMemoryButton:
-      // TODO(crbug.com/527392582): kAtMemoryTriggerString is the wrong source.
+      // TODO(crbug.com/527392582): kAtMemoryContextMenu is the wrong source.
       manager_->driver().RendererShouldTriggerSuggestions(
           last_query_.field_id,
-          AutofillSuggestionTriggerSource::kAtMemoryTriggerString);
+          AutofillSuggestionTriggerSource::kAtMemoryContextMenu);
       break;
     case SuggestionType::kAtMemorySearchResult: {
       const IsAsync is_async =

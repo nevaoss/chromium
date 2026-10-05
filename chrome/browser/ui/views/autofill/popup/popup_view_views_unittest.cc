@@ -232,7 +232,7 @@ class PopupViewViewsTest : public ChromeViewsTestBase {
     ON_CALL(autofill_popup_controller_, GetMainFillingProduct)
         .WillByDefault([&controller = autofill_popup_controller_]() {
           if (controller.GetAutofillSuggestionTriggerSource() ==
-              AutofillSuggestionTriggerSource::kAtMemoryTriggerString) {
+              AutofillSuggestionTriggerSource::kAtMemoryDoubleCtrl) {
             return FillingProduct::kAtMemory;
           }
           return controller.GetLineCount() > 0
@@ -3443,6 +3443,53 @@ TEST_F(PopupViewViewsTest, OnSuggestionsChanged_A11yAnnouncesLoadingState) {
   static_cast<AutofillPopupView&>(view()).OnSuggestionsChanged(false);
 }
 
+// Tests that showing the popup triggers an announcement when
+// `a11y_announcement` is set.
+TEST_F(PopupViewViewsTest, Show_A11yAnnouncesWhenSet) {
+  Suggestion suggestion(u"Title", SuggestionType::kAddressEntry);
+  suggestion.a11y_announcement = u"announcement text";
+  controller().set_suggestions({std::move(suggestion)});
+  CreateView();
+  base::MockCallback<base::RepeatingCallback<void(const std::u16string&, bool)>>
+      announcement;
+  test_api(view()).SetA11yAnnouncer(announcement.Get());
+
+  EXPECT_CALL(announcement, Run(Eq(u"announcement text"), true));
+  ShowView(&view(), widget());
+}
+
+// Tests that updating suggestions triggers an announcement when
+// `a11y_announcement` is set.
+TEST_F(PopupViewViewsTest, OnSuggestionsChanged_A11yAnnouncesWhenSet) {
+  controller().set_suggestions({SuggestionType::kAddressEntry});
+  CreateAndShowView();
+  base::MockCallback<base::RepeatingCallback<void(const std::u16string&, bool)>>
+      announcement;
+  test_api(view()).SetA11yAnnouncer(announcement.Get());
+
+  EXPECT_CALL(announcement, Run(Eq(u"announcement text"), true));
+
+  Suggestion suggestion(u"Title", SuggestionType::kAddressEntry);
+  suggestion.a11y_announcement = u"announcement text";
+  controller().set_suggestions({std::move(suggestion)});
+  static_cast<AutofillPopupView&>(view()).OnSuggestionsChanged(false);
+}
+
+// Tests that updating suggestions does not trigger an announcement when
+// `a11y_announcement` is not set.
+TEST_F(PopupViewViewsTest, OnSuggestionsChanged_A11yDoesNotAnnounceWhenUnset) {
+  controller().set_suggestions({SuggestionType::kAddressEntry});
+  CreateAndShowView();
+  base::MockCallback<base::RepeatingCallback<void(const std::u16string&, bool)>>
+      announcement;
+  test_api(view()).SetA11yAnnouncer(announcement.Get());
+
+  EXPECT_CALL(announcement, Run).Times(0);
+
+  controller().set_suggestions({SuggestionType::kAddressEntry});
+  static_cast<AutofillPopupView&>(view()).OnSuggestionsChanged(false);
+}
+
 // TODO(crbug.com/477689220): Remove fixture when cleaning up feature flag and
 // use `PopupViewViewsTest` instead.
 class PopupViewViewsPayNowPayLaterTabsTest : public PopupViewViewsTest {
@@ -3494,7 +3541,7 @@ TEST_F(PopupViewViewsPayNowPayLaterTabsTest,
 TEST_F(PopupViewViewsTest, SearchBar_RemainVisibleEvenWithNoSuggestions) {
   ON_CALL(controller(), GetAutofillSuggestionTriggerSource)
       .WillByDefault(
-          Return(AutofillSuggestionTriggerSource::kAtMemoryTriggerString));
+          Return(AutofillSuggestionTriggerSource::kAtMemoryDoubleCtrl));
   CreateAndShowView(
       /*ids=*/{}, CreateParamsForTestWidget(),
       AutofillPopupView::SearchBarConfig{.placeholder = u"Recall from memory",
@@ -3516,7 +3563,7 @@ TEST_F(PopupViewViewsTest, SearchBar_RemainVisibleEvenWithNoSuggestions) {
 TEST_F(PopupViewViewsTest, AtMemory_KeyboardNavigation) {
   ON_CALL(controller(), GetAutofillSuggestionTriggerSource)
       .WillByDefault(
-          Return(AutofillSuggestionTriggerSource::kAtMemoryTriggerString));
+          Return(AutofillSuggestionTriggerSource::kAtMemoryDoubleCtrl));
   input::NativeWebKeyboardEvent event(
       blink::WebKeyboardEvent::Type::kRawKeyDown,
       blink::WebInputEvent::kNoModifiers, ui::EventTimeForNow());
@@ -3573,7 +3620,7 @@ TEST_F(PopupViewViewsTest, AtMemory_KeyboardNavigation) {
 TEST_F(PopupViewViewsTest, AtMemory_KeyboardArrowsNavigationBetweenPopups) {
   ON_CALL(controller(), GetAutofillSuggestionTriggerSource)
       .WillByDefault(
-          Return(AutofillSuggestionTriggerSource::kAtMemoryTriggerString));
+          Return(AutofillSuggestionTriggerSource::kAtMemoryDoubleCtrl));
 
   controller().set_suggestions({
       CreateSuggestionWithChildren(

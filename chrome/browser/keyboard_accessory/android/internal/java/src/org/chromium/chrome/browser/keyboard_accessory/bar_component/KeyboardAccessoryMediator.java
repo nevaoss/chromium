@@ -20,6 +20,7 @@ import static org.chromium.chrome.browser.keyboard_accessory.bar_component.Keybo
 import static org.chromium.chrome.browser.keyboard_accessory.bar_component.KeyboardAccessoryProperties.SKIP_CLOSING_ANIMATION;
 import static org.chromium.chrome.browser.keyboard_accessory.bar_component.KeyboardAccessoryProperties.STYLE;
 import static org.chromium.chrome.browser.keyboard_accessory.bar_component.KeyboardAccessoryProperties.VISIBLE;
+import static org.chromium.ui.base.LocalizationUtils.isLayoutRtl;
 
 import android.content.Context;
 
@@ -37,7 +38,7 @@ import org.chromium.chrome.browser.autofill.autofill_ai.EntityDataManagerFactory
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.keyboard_accessory.AccessoryAction;
 import org.chromium.chrome.browser.keyboard_accessory.KeyboardAccessoryVisualStateProvider;
-import org.chromium.chrome.browser.keyboard_accessory.ManualFillingComponent.NavigationDirection;
+import org.chromium.chrome.browser.keyboard_accessory.NavigationDirection;
 import org.chromium.chrome.browser.keyboard_accessory.R;
 import org.chromium.chrome.browser.keyboard_accessory.bar_component.KeyboardAccessoryCoordinator.BarVisibilityDelegate;
 import org.chromium.chrome.browser.keyboard_accessory.bar_component.KeyboardAccessoryCoordinator.TabSwitchingDelegate;
@@ -264,6 +265,9 @@ class KeyboardAccessoryMediator
             targetIndex = 0;
         } else {
             int step = (direction == NavigationDirection.FORWARD) ? 1 : -1;
+            if (isLayoutRtl()) {
+                step = -step;
+            }
             targetIndex = Math.floorMod(currentIndex + step, items.size());
         }
 

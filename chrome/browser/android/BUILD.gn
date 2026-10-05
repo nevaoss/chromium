@@ -431,8 +431,6 @@ if (is_android) {
       "web_contents_theme_client.h",
       "webapk/pwa_restore_bottom_sheet_mediator.cc",
       "webapk/pwa_restore_bottom_sheet_mediator.h",
-      "webapk/webapk_database.cc",
-      "webapk/webapk_database.h",
       "webapk/webapk_install_service.cc",
       "webapk/webapk_install_service_factory.cc",
       "webapk/webapk_install_service_factory.h",
@@ -443,14 +441,6 @@ if (is_android) {
       "webapk/webapk_restore_task.h",
       "webapk/webapk_restore_web_contents_manager.cc",
       "webapk/webapk_restore_web_contents_manager.h",
-      "webapk/webapk_specifics_fetcher.cc",
-      "webapk/webapk_specifics_fetcher.h",
-      "webapk/webapk_sync_bridge.cc",
-      "webapk/webapk_sync_bridge.h",
-      "webapk/webapk_sync_service.cc",
-      "webapk/webapk_sync_service.h",
-      "webapk/webapk_sync_service_factory.cc",
-      "webapk/webapk_sync_service_factory.h",
       "webapk/webapk_sync_service_jni.cc",
       "webapk/webapk_update_manager.cc",
       "webapps/twa_launch_navigation_handle_user_data.cc",
@@ -475,6 +465,7 @@ if (is_android) {
     deps = [
       ":delta_file_proto",
       ":language_data_proto",
+      ":profile_key_startup_accessor",
       ":profile_token",
       ":sensitivity_data_proto",
       ":shortcut_helper",
@@ -484,7 +475,6 @@ if (is_android) {
       "//cc/slim",
       "//chrome/android:jni_headers",
       "//chrome/app:command_ids",
-      "//chrome/browser:profile_key_startup_accessor",
       "//chrome/browser/accessibility/settings",
       "//chrome/browser/android/content:jni_headers",
       "//chrome/browser/android/extensions:android",
@@ -974,6 +964,14 @@ if (is_android) {
       }
     }
   }
+}
+
+# Header-only target so downstream targets can include
+# profile_key_startup_accessor.h without depending on :android.
+# The .cc file remains in :android.
+source_set("profile_key_startup_accessor") {
+  public = [ "profile_key_startup_accessor.h" ]
+  deps = [ "//base" ]
 }
 
 source_set("unit_tests") {

@@ -246,13 +246,13 @@
   <message name="IDS_SETTINGS_GLIC_PERMISSIONS_LOCATION_TOGGLE_SUBLABEL_DATA_PROTECTED" desc="Sublabel describing that this setting will share location data with Gemini for location-aware answers, but the user's data is not used to improve the model" formatter_data="android_java">
     When you share your precise location, Gemini can answer your questions more accurately. Your data is not used to improve generative AI models.
   </message>
-  <message name="IDS_SETTINGS_GLIC_PERMISSIONS_MICROPHONE_TOGGLE" desc="Name of the microphone setting.">
+  <message name="IDS_SETTINGS_GLIC_PERMISSIONS_MICROPHONE_TOGGLE" desc="Name of the microphone setting." formatter_data="android_java">
     Microphone
   </message>
   <message name="IDS_SETTINGS_GLIC_PERMISSIONS_MICROPHONE_TOGGLE_SUBLABEL" desc="Sublabel describing that this setting will enable using the microphone to have a voice chat with Gemini">
     Use your microphone to chat with Gemini. When you speak to Gemini, audio is stored in Gemini Apps Activity (if it’s on).
   </message>
-  <message name="IDS_SETTINGS_GLIC_PERMISSIONS_MICROPHONE_TOGGLE_SUBLABEL_DATA_PROTECTED" desc="Sublabel describing that this setting will enable using the microphone to have a voice chat with Gemini, but the user's data is not used to improve the model">
+  <message name="IDS_SETTINGS_GLIC_PERMISSIONS_MICROPHONE_TOGGLE_SUBLABEL_DATA_PROTECTED" desc="Sublabel describing that this setting will enable using the microphone to have a voice chat with Gemini, but the user's data is not used to improve the model" formatter_data="android_java">
     Use your microphone to chat with Gemini. When you speak to Gemini, audio is stored in Gemini Apps Activity (if it’s on). Your data is not used to improve generative AI models.
   </message>
   <message name="IDS_SETTINGS_GLIC_PERMISSIONS_TAB_ACCESS_TOGGLE" desc="Name of the enable current tab access setting.">
@@ -477,27 +477,27 @@
 
   <!-- Multi-Page -->
   <if expr="not use_titlecase">
-  <message name="IDS_TAB_CXMENU_GLIC_START_SHARE" desc="The label of the tab context menu submenu for starting sharing the given tab or tabs with Gemini. [ICU syntax]">
+  <message name="IDS_TAB_CXMENU_GLIC_START_SHARE" desc="The label of the tab context menu submenu for starting sharing the given tab or tabs with Gemini. [ICU syntax]" formatter_data="android_java">
     {NUM_TABS, plural,
       =1 {Share tab with Gemini}
     other {Share # tabs with Gemini}}
   </message>
-  <message name="IDS_TAB_CXMENU_GLIC_CREATE_NEW_CHAT" desc="The label of the 'Start new chat' item in the Glic submenu.">
+  <message name="IDS_TAB_CXMENU_GLIC_CREATE_NEW_CHAT" desc="The label of the 'Start new chat' item in the Glic submenu." formatter_data="android_java">
     Start new chat with Gemini
   </message>
   </if>
   <if expr="use_titlecase">
-  <message name="IDS_TAB_CXMENU_GLIC_START_SHARE" desc="The label of the tab context menu submenu for starting sharing the given tab or tabs with Gemini. [ICU syntax]">
+  <message name="IDS_TAB_CXMENU_GLIC_START_SHARE" desc="The label of the tab context menu submenu for starting sharing the given tab or tabs with Gemini. [ICU syntax]" formatter_data="android_java">
     {NUM_TABS, plural,
       =1 {Share Tab with Gemini}
     other {Share # Tabs with Gemini}}
   </message>
-  <message name="IDS_TAB_CXMENU_GLIC_CREATE_NEW_CHAT" desc="The label of the 'Start new chat' item in the Glic submenu.">
+  <message name="IDS_TAB_CXMENU_GLIC_CREATE_NEW_CHAT" desc="The label of the 'Start new chat' item in the Glic submenu." formatter_data="android_java">
     Start New Chat with Gemini
   </message>
   </if>
 
-  <message name="IDS_TAB_CXMENU_GLIC_UNSHARE" desc="The label of the tab context menu item for stopping sharing the selected tab or tabs with Gemini.">
+  <message name="IDS_TAB_CXMENU_GLIC_UNSHARE" desc="The label of the tab context menu item for stopping sharing the selected tab or tabs with Gemini." formatter_data="android_java">
     Unshare with Gemini
   </message>
 

@@ -1246,14 +1246,6 @@ chromium-metrics-reviews@google.com.
   <int value="2" label="STOP"/>
 </enum>
 
-<enum name="DownloadNotificationInteractions">
-  <int value="0" label="CLICKED"/>
-  <int value="1" label="OPEN"/>
-  <int value="2" label="CANCEL"/>
-  <int value="3" label="PAUSE"/>
-  <int value="4" label="RESUME"/>
-</enum>
-
 <enum name="DownloadNotificationServiceStopped">
   <int value="0" label="STOPPED"/>
   <int value="1" label="DESTROYED"/>
@@ -3143,6 +3135,10 @@ chromium-metrics-reviews@google.com.
   <int value="142" label="profileGetHttpCacheManager"/>
   <int value="143" label="profileSetCrossOriginIsolatedAllowList"/>
   <int value="144" label="profileGetCrossOriginIsolatedAllowList"/>
+  <int value="145" label="webViewInstanceAddDocumentStartJavaScript"/>
+  <int value="146" label="webViewInstanceAddJavaScriptOnEvent"/>
+  <int value="147" label="webViewInstanceGetJavaScriptWorld"/>
+  <int value="148" label="webViewInstanceGetProfile"/>
 </enum>
 
 <!-- LINT.ThenChange(//base/tracing/protos/chrome_track_event.proto:WebViewStartup,//android_webview/java/src/org/chromium/android_webview/StartupCallSite.java:StartupCallSite) -->

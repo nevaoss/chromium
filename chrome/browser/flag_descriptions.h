@@ -330,6 +330,14 @@ inline constexpr char kBrowsingHistoryActorIntegrationM3Name[] =
 inline constexpr char kBrowsingHistoryActorIntegrationM3Description[] =
     "Enables the browsing history glic actor integration M3.";
 
+inline constexpr char kBrowsingHistoryImprovedHostnameSuffixMatchingName[] =
+    "Browsing History Improved Hostname Suffix Matching";
+inline constexpr char
+    kBrowsingHistoryImprovedHostnameSuffixMatchingDescription[] =
+        "Improves hostname suffix matching for browsing history, so that "
+        "example.com matches example.com as well as subdomains like "
+        "www.example.com.";
+
 inline constexpr char kBrowsingHistorySimilarVisitsGroupingName[] =
     "Browsing History Grouping Improvements";
 inline constexpr char kBrowsingHistorySimilarVisitsGroupingDescription[] =
@@ -1101,9 +1109,10 @@ inline constexpr char kAutofillEnableGradientGoogleLogosName[] =
 inline constexpr char kAutofillEnableGradientGoogleLogosDescription[] =
     "When enabled, gradient-style GPay and Wallet branding logos will be used.";
 
-inline constexpr char kAutofillGmailOtpName[] = "Enable Gmail OTP Autofill";
-inline constexpr char kAutofillGmailOtpDescription[] =
-    "Enables retrieval and filling of one-time passwords (OTPs) received in "
+inline constexpr char kAutofillGmailOtpPreLaunchMetricsName[] =
+    "Enable Gmail OTP Pre-launch Metrics";
+inline constexpr char kAutofillGmailOtpPreLaunchMetricsDescription[] =
+    "Enables pre-launch metrics for one-time passwords (OTPs) received in "
     "Gmail.";
 
 inline constexpr char kAutofillEnableNewAmexNetworkArtName[] =
@@ -1709,6 +1718,11 @@ inline constexpr char kGlicHandoffButtonHideWhenModalUIShownName[] =
     "Glic handoff button hide when modal UI shown";
 inline constexpr char kGlicHandoffButtonHideWhenModalUIShownDescription[] =
     "Hides the Glic handoff button when a tab-modal UI is active.";
+inline constexpr char kGlicExperimentalTriggeringOsNotificationName[] =
+    "Glic Experimental Triggering OS Notification";
+inline constexpr char kGlicExperimentalTriggeringOsNotificationDescription[] =
+    "Enables OS-level system notifications for Glic experimental triggering "
+    "task starts when no browser window is active.";
 inline constexpr char kGlicExperimentalTriggeringScreenshotName[] =
     "Glic experimental triggering screenshot";
 inline constexpr char kGlicExperimentalTriggeringScreenshotDescription[] =
@@ -1982,6 +1996,10 @@ inline constexpr char kForceColorProfileDescription[] =
     "Forces Chrome to use a specific color profile instead of the color "
     "of the window's current monitor, as specified by the operating system.";
 
+inline constexpr char kDarkModeSurfaceTokensName[] = "Dark Mode Surface Tokens";
+inline constexpr char kDarkModeSurfaceTokensDescription[] =
+    "When enabled, updates the surface tokens for dark mode.";
+
 inline constexpr char kDarkenWebsitesCheckboxInThemesSettingName[] =
     "Darken websites checkbox in themes setting";
 inline constexpr char kDarkenWebsitesCheckboxInThemesSettingDescription[] =
@@ -2175,6 +2193,11 @@ inline constexpr char kDevToolsMobileSafeAreaEmulationName[] =
 inline constexpr char kDevToolsMobileSafeAreaEmulationDescription[] =
     "Enables mobile safe area emulation in DevTools.";
 
+inline constexpr char kDevToolsNetworkBackendLinkingName[] =
+    "Network backend linking in DevTools";
+inline constexpr char kDevToolsNetworkBackendLinkingDescription[] =
+    "Enables backend linking for network requests in DevTools.";
+
 inline constexpr char kDevToolsPlusButtonName[] =
     "Enable the Plus Button in DevTools";
 inline constexpr char kDevToolsPlusButtonDescription[] =
@@ -2227,11 +2250,6 @@ inline constexpr char kAccessibilityShakeToLocateName[] =
 inline constexpr char kAccessibilityShakeToLocateDescription[] =
     "This option enables the experimental Accessibility feature to make the "
     "mouse cursor more visible when a shake is detected.";
-
-inline constexpr char kAccessibilityMagnifierFollowsChromeVoxName[] =
-    "Magnifier follows ChromeVox focus";
-inline constexpr char kAccessibilityMagnifierFollowsChromeVoxDescription[] =
-    "This option enables the fullscreen magnifier to follow ChromeVox's focus.";
 
 inline constexpr char kAccessibilityMouseKeysName[] = "Mouse Keys";
 inline constexpr char kAccessibilityMouseKeysDescription[] =
@@ -7885,12 +7903,6 @@ inline constexpr char
     kExperimentalAccessibilityDictationContextCheckingDescription[] =
         "Enables experimental dictation context checking.";
 
-inline constexpr char kExperimentalAccessibilityManifestV3Name[] =
-    "Changes accessibility features from extension manifest v2 to v3.";
-inline constexpr char kExperimentalAccessibilityManifestV3Description[] =
-    "Experimental migration of accessibility features from extension manifest "
-    "v2 to v3. Likely to break accessibility access while experimental.";
-
 inline constexpr char kAccessibilityManifestV3ChromeVoxName[] =
     "Changes accessibility extension ChromeVox manifest v2 to v3.";
 inline constexpr char kAccessibilityManifestV3ChromeVoxDescription[] =
@@ -8763,6 +8775,13 @@ inline constexpr char kGlicAndroidSidePanelDescription[] =
 inline constexpr char kGlicAndroidTabletName[] = "Glic Android Tablet";
 inline constexpr char kGlicAndroidTabletDescription[] =
     "Enables testing of the Glic feature on Android tablet devices.";
+
+inline constexpr char kGlicAndroidOffscreenRenderingName[] =
+    "Glic Android Offscreen Rendering";
+inline constexpr char kGlicAndroidOffscreenRenderingDescription[] =
+    "Attaches the Glic WebUI WebContents to the offscreen rendering manager on "
+    "Android so that it keeps executing JavaScript, servicing Mojo IPC and "
+    "scheduling frames while Chrome is not in the foreground.";
 
 inline constexpr char kGlicSelectionPromptName[] = "Glic Selection Prompt";
 inline constexpr char kGlicSelectionPromptDescription[] =

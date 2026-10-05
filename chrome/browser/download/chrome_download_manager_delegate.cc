@@ -1193,9 +1193,8 @@ bool ChromeDownloadManagerDelegate::ShouldObfuscateDownload(
     return false;
   }
 
-  // Skip obfuscation for chrome-initiated, save package or parallel downloads.
-  if (!item || !item->RequireSafetyChecks() || item->IsSavePackageDownload() ||
-      item->IsParallelDownload()) {
+  // Skip obfuscation for chrome-initiated and save package downloads.
+  if (!item || !item->RequireSafetyChecks() || item->IsSavePackageDownload()) {
     return false;
   }
 
@@ -1431,10 +1430,10 @@ void ChromeDownloadManagerDelegate::OpenDownload(DownloadItem* download) {
   CHECK(browser &&
         WindowFeatureController::From(browser)->CanSupportWindowFeature(
             WindowFeatureController::WindowFeature::kFeatureTabStrip));
-  content::OpenURLParams params(
-      net::FilePathToFileURL(download->GetTargetFilePath()),
-      content::Referrer(), WindowOpenDisposition::NEW_FOREGROUND_TAB,
-      ui::PAGE_TRANSITION_LINK, false);
+  content::OpenURLParams params =
+      content::OpenURLParams::CreateBrowserInitiated(
+          net::FilePathToFileURL(download->GetTargetFilePath()),
+          WindowOpenDisposition::NEW_FOREGROUND_TAB, ui::PAGE_TRANSITION_LINK);
 
   if (download->GetMimeType() == "application/x-x509-user-cert") {
     chrome::ShowSettingsSubPage(browser, "certificates");

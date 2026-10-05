@@ -5,6 +5,7 @@ import("//build/config/ui.gni")
 import("//mojo/public/tools/bindings/mojom.gni")
 
 mojom("mojom") {
+  generate_blink = true
   generate_java = true
   sources = [
     "compositing/animation.mojom",
@@ -138,6 +139,16 @@ mojom("mojom") {
       ]
       traits_headers =
           [ "//services/viz/public/cpp/compositing/selection_mojom_traits.h" ]
+    },
+    {
+      types = [
+        {
+          mojom = "viz.mojom.SurfaceIdAndDeadline"
+          cpp = "::viz::SurfaceIdAndDeadline"
+        },
+      ]
+      traits_headers = [ "//services/viz/public/cpp/compositing/compositor_frame_metadata_mojom_traits.h" ]
+      traits_public_deps = [ "//components/viz/common" ]
     },
     {
       types = [
@@ -651,6 +662,7 @@ mojom("mojom") {
 }
 
 mojom("surfaces") {
+  generate_blink = true
   generate_java = true
   sources = [
     "compositing/frame_sink_id.mojom",

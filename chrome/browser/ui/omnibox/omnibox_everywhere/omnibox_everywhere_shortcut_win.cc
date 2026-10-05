@@ -26,7 +26,7 @@ namespace omnibox_everywhere {
 
 namespace {
 
-constexpr wchar_t kAppName[] = L"app_search_in_chrome";
+constexpr wchar_t kAppName[] = L"app_search_with_chrome";
 
 base::FilePath GetChromeExePath() {
   base::FilePath chrome_dir;
@@ -46,7 +46,7 @@ base::FilePath GetChromeProxyPath() {
 
 std::wstring GetDisplayName() {
   return base::UTF16ToWide(
-      l10n_util::GetStringUTF16(IDS_SETTINGS_OMNIBOX_EVERYWHERE_TITLE));
+      l10n_util::GetStringUTF16(IDS_OMNIBOX_EVERYWHERE_NAME));
 }
 
 std::wstring GetShortcutName() {

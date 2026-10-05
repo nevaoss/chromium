@@ -1136,7 +1136,6 @@
 <translation id="2931453528659195355">ຈັດການຂໍ້ມູນການຊື້ເຄື່ອງ</translation>
 <translation id="2933624813161016821">ຟອຍລ໌ລາຍນູນ</translation>
 <translation id="2935726091208500473">ກຳລັງແບ່ງປັນແຖບຂອງທ່ານ</translation>
-<translation id="2936698630976431647">ເລືອກຊ່ອງຂໍ້ມູນລະຫັດໂປຣໂມຊັນເພື່ອຕື່ມຂໍ້ມູນຂໍ້ສະເໜີຈາກ Google Wallet ໂດຍອັດຕະໂນມັດ</translation>
 <translation id="293796669683825859">ຄຳເຫັນ</translation>
 <translation id="2938225289965773019">ເປີດ​ລິ້ງ <ph name="PROTOCOL" /></translation>
 <translation id="2938370569652058706"><ph name="ORIGIN" /> – ເພື່ອສະແດງເຄີເຊີຂອງທ່ານ, ໃຫ້ສະຫຼັບແອັບ, ໂຫຼດໜ້າເວັບໃໝ່ ຫຼື ກັບຄືນ</translation>
@@ -1517,6 +1516,7 @@
 <translation id="3577473026931028326">ມີບາງຢ່າງຜິດພາດເກີດຂຶ້ນ. ກະລຸນາລອງໃໝ່.</translation>
 <translation id="3580550219062570293"><ph name="TOS_TITLE" /> <ph name="LOGO_DESCRIPTION" /></translation>
 <translation id="3581089476000296252">Chrome ຈະແຈ້ງໃຫ້ທ່ານຮູ້ເມື່ອໜ້ານີ້ພ້ອມແລ້ວ. &lt;a&gt;ຍົກເລີກ&lt;/a&gt;</translation>
+<translation id="3581499772329034229">ເພີ່ມແຖບໂດຍອັດຕະໂນມັດ</translation>
 <translation id="3582930987043644930">ເພີ່ມ​ຊື່</translation>
 <translation id="3583757800736429874">ເຮັດຄືນຄໍາສັ່ງຍ້າຍ</translation>
 <translation id="3584299510153766161">ເຈາະຮູຢູ່ລຸ່ມສຸດສອງຮູ</translation>
@@ -1592,11 +1592,13 @@
 <translation id="3705189812819839667"><ph name="RESULT_OWNER" /> - <ph name="RESULT_PRODUCT_SOURCE" /></translation>
 <translation id="370665806235115550">ກໍາລັງໂຫຼດ ...</translation>
 <translation id="3709599264800900598">ຂໍ້ຄວາມທີ່ທ່ານສຳເນົາ</translation>
+<translation id="3711223220609269738">ແຖບແຍກໃໝ່</translation>
 <translation id="3711430313228789376">ໂປຣແກຣມທ່ອງເວັບ Chrome ກຳລັງພະຍາຍາມສະແດງລະຫັດຜ່ານ</translation>
 <translation id="3711895659073496551">ໂຈະ</translation>
 <translation id="3712004750972384495">ກໍາລັງບັນທຶກການບັນທຶກໜ້າຈໍ</translation>
 <translation id="3712006010833051684">Envelope #10</translation>
 <translation id="3712624925041724820">ການອະ​ນຸ​ຍາດ​ໃຊ້ໝົດແລ້ວ</translation>
+<translation id="371302509916403935">ຂີດກ້ອງ</translation>
 <translation id="3713277100229669269">ຕອນນີ້ທ່ານສາມາດເບິ່ງສິດທິປະໂຫຍດຂອງບັດກ່ອນທີ່ທ່ານຈະຈ່າຍເງິນໄດ້ແລ້ວ</translation>
 <translation id="3714633008798122362">ປະ​ຕິ​ທິນ​ເວັບ​</translation>
 <translation id="3714780639079136834">ກຳລັງເປີດຂໍ້ມູນເຄືອຂ່າຍມືຖື ຫຼື Wi-Fi</translation>
@@ -1609,6 +1611,7 @@
 <translation id="3727309136762649052">Namespace</translation>
 <translation id="3727850735097852673">ເພື່ອໃຊ້ຕົວຈັດການລະຫັດຜ່ານ Google ດ້ວຍ Keychain ຂອງ macOS, ໃຫ້ເລີ່ມເປີດໃຊ້ Chrome ຄືນໃໝ່ ແລະ ອະນຸຍາດໃຫ້ມີການເຂົ້າເຖິງ Keychain. ແຖບຂອງທ່ານຈະເປີດຄືນໃໝ່ຫຼັງຈາກທີ່ເລີ່ມເປີດໃຊ້ໃໝ່.</translation>
 <translation id="3728173127485570463">ໂປຣແກຣມທ່ອງເວັບ Chrome ຈະບໍ່ຕ້ອງໃຊ້ລາຍນິ້ວມືຂອງທ່ານໃນການຕື່ມຂໍ້ມູນລະຫັດຜ່ານອັດຕະໂນມັດອີກຕໍ່ໄປ</translation>
+<translation id="3729811201279509483">ເພີ່ມແຖບດ້ວຍຕົນເອງ</translation>
 <translation id="3736564442532774454">ໂປຣແກຣມທ່ອງເວັບ Chrome ກຳລັງພະຍາຍາມຕື່ມຂໍ້ມູນລະອຽດອ່ອນຂອງທ່ານໃສ່ <ph name="APP_NAME" />.</translation>
 <translation id="3738166223076830879">ໂປຣແກຣມທ່ອງເວັບຂອງທ່ານຖືກຈັດການໂດຍຜູ້ເບິ່ງແຍງລະບົບຂອງທ່ານ.</translation>
 <translation id="3739842843727261045">ປຸ່ມຍົກໂປ້ຈະສົ່ງຄຳຕິຊົມວ່າທ່ານຖືກໃຈຜົນການຊອກຫາເຫຼົ່ານີ້</translation>
@@ -2771,6 +2774,7 @@
 <translation id="5649053991847567735">ດາວ​ໂຫຼດ​ອັດ​ຕະ​ໂນ​ມັດ</translation>
 <translation id="5651323159439184939">ຖາດປ້ອນເຈ້ຍດ້ວຍເຟືອງດັນທາງຫຼັງ</translation>
 <translation id="5653681867130739344">ອັບເດດບັດປະຈຳຕົວໃນ Google Wallet ຢ່າງປອດໄພ</translation>
+<translation id="5653744563415531641">ບັນທຶກຂໍ້ມູນຂອງທ່ານ ແລະ ເຮັດສິ່ງຕ່າງໆໃຫ້ສຳເລັດໄວຂຶ້ນ ເຊັ່ນ: ການຕື່ມຂໍ້ມູນໃສ່ແບບຟອມໃນຜະລິດຕະພັນຕ່າງໆຂອງ Google. ທ່ານສາມາດ <ph name="MANAGE_WALLET_SETTINGS_LINK" /> ໃນລາຄາ <ph name="ACCOUNT" /> ໄດ້.</translation>
 <translation id="5654927323611874862">ID ລາຍງານການຂັດຂ້ອງທີ່ອັບໂຫຼດແລ້ວ:</translation>
 <translation id="5654965123204121933">URL ບໍ່ມີສະຕຣິງການປ່ຽນແທນ <ph name="SEARCH_TERMS_REPLACEMENT" />: <ph name="SEARCH_URL" /></translation>
 <translation id="5659593005791499971">ອີເມວ</translation>
@@ -3215,6 +3219,7 @@
 <translation id="6410264514553301377">ປ້ອນວັນທີໝົດອາຍຸ ແລະ CVC ສຳລັບ <ph name="CREDIT_CARD" /></translation>
 <translation id="6411107829285739505">A4x8</translation>
 <translation id="6412543105195503444">ກ່ອງໂຕ້ຕອບການອະນຸມັດຂອງພໍ່ແມ່</translation>
+<translation id="6413532517183895572">ຈັດການການຕັ້ງຄ່າ Wallet ຂອງທ່ານ</translation>
 <translation id="6415778972515849510">Chromium ສາມາດຊ່ວຍທ່ານປົກປ້ອງບັນຊີ Google ຂອງທ່ານ ແລະ ປ່ຽນລະຫັດຜ່າຂອງທ່ານໄດ້.</translation>
 <translation id="6416877227920300343">EDP</translation>
 <translation id="6418199314628742460">ໃຫ້ແນ່ໃຈວ່າຂໍ້ມູນທຸລະກິດ ຫຼື ຂໍ້ມູນສ່ວນຕົວທີ່ສຳຄັນໃດໆໄດ້ຖືກຈັດເກັບໄວ້ພາຍນອກແລ້ວ.</translation>
@@ -4214,7 +4219,6 @@
 <translation id="815036624016370447">ຂໍ້ມູນຈາກບັນຊີ Google <ph name="ACCOUNT" /> ຂອງທ່ານສາມາດຊ່ວຍໃຫ້ທ່ານຕື່ມຂໍ້ມູນແບບຟອມໃນ Chrome ໄດ້ໄວຂຶ້ນ</translation>
 <translation id="8150722005171944719">ໄຟລ໌ຢູ່ທີ່ <ph name="URL" /> ບໍ່ສາມາດອ່ານໄດ້. ມັນອາດຈະຖືກເອົາອອກໄປ, ຍ້າຍໜີ,​ຫຼື ການອະນຸຍາດໄຟລ໌ອາດຈະກໍາລັງ​ປ້ອງ​ກັນການການເຂົ້າຫາ.</translation>
 <translation id="8151185429379586178">ເຄື່ອງ​ມື​ຜູ້ພັດ​ທະ​ນາ</translation>
-<translation id="8152194419479742504">ພິມ @@ ໃນແບບຟອມໃດກໍໄດ້ເພື່ອຊອກຫາ ແລະ ຕື່ມຂໍ້ມູນໂດຍບໍ່ຕ້ອງສະຫຼັບແຖບ</translation>
 <translation id="8153865548451212769">{0,plural, =1{ນະໂຍບາຍຜູ້ເບິ່ງແຍງລະບົບບໍ່ແນະນຳໃຫ້ດາວໂຫຼດໄຟລ໌ນີ້ໃສ່ໃນ <ph name="DESTINATION_NAME" />}other{ນະໂຍບາຍຜູ້ເບິ່ງແຍງລະບົບບໍ່ແນະນຳໃຫ້ດາວໂຫຼດໄຟລ໌ເຫຼົ່ານີ້ໃສ່ໃນ <ph name="DESTINATION_NAME" />}}</translation>
 <translation id="8155253549374198915">ແຖບທີ່ເປີດຫຼ້າສຸດ</translation>
 <translation id="815805690561372740">Chrome ມີຄຸນສົມບັດຄວາມປອດໄພໃນຕົວເພື່ອປົກປ້ອງທ່ານໃນລະຫວ່າງທີ່ທ່ານທ່ອງເວັບ — ເຊັ່ນ: Google Safe Browsing, ເຊິ່ງ <ph name="BEGIN_LINK" />ພົບເມົາແວເມື່ອບໍ່ດົນມານີ້<ph name="END_LINK" /> ຢູ່ເວັບໄຊທີ່ທ່ານພະຍາຍາມເຂົ້າເບິ່ງ.</translation>
@@ -4278,6 +4282,7 @@
 <translation id="8269242089528251720">ເອກະສານແຍກກັນ/ຈັດຊຸດສຳເນົາ</translation>
 <translation id="8269703227894255363">{0,plural, =1{ໄຟລ໌ຖືກບລັອກບໍ່ໃຫ້ເປີດ}other{<ph name="FILE_COUNT" /> ໄຟລ໌ຖືກບລັອກບໍ່ໃຫ້ເປີດ}}</translation>
 <translation id="8270242299912238708">ເອກະສານ PDF</translation>
+<translation id="8270320981823560179">Drive</translation>
 <translation id="8277900682056760511">ແຜ່ນວຽກຂອງເຄື່ອງຈັດການການຈ່າຍເງິນເປີດຢູ່</translation>
 <translation id="827820107214076967">ໂຫຼດບັນທຶກຄືນໃໝ່</translation>
 <translation id="8279611986089885641">ຕ້ອງເປີດການແຈ້ງເຕືອນ Chrome. ທ່ານສາມາດເປີດໃຊ້ພວກມັນໄດ້ໃນ <ph name="BEGIN_LINK" /><ph name="NOTIFICATION_SETTINGS" /><ph name="END_LINK" />.</translation>

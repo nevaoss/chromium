@@ -395,6 +395,8 @@ chromium-metrics-reviews@google.com.
   <int value="121" label="DriveConsentState"/>
   <int value="122" label="AutofillAiPrivateInferenceOptInStatus"/>
   <int value="123" label="AutofillWalletReminderNoticeShown"/>
+  <int value="124" label="AutofillAtMemoryDoubleCtrlTriggerEnabled"/>
+  <int value="125" label="AutofillAtMemoryShortcut"/>
 <!-- LINT.ThenChange(/components/sync_preferences/common_syncable_prefs_database.cc:CommonSyncablePref)-->
 
 <!-- LINT.IfChange(ChromeSyncablePref) -->
@@ -1040,7 +1042,7 @@ chromium-metrics-reviews@google.com.
   <int value="59" label="Incoming Password Sharing Invitations"/>
   <int value="60" label="Outgoing Password Sharing Invitations"/>
   <int value="61" label="Autofill Wallet Credential"/>
-  <int value="62" label="WebAPKs"/>
+  <int value="62" label="(Obsolete) WebAPKs"/>
   <int value="63" label="Shared Tab Group Data"/>
   <int value="64" label="Collaboration Groups"/>
   <int value="65" label="(Obsolete) Plus Address"/>

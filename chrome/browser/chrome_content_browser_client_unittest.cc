@@ -110,6 +110,11 @@
 #include "google_apis/gaia/gaia_id.h"
 #include "media/media_buildflags.h"
 #include "net/base/url_util.h"
+#include "net/log/net_log.h"
+#include "net/log/net_log_event_type.h"
+#include "net/log/net_log_source_type.h"
+#include "net/log/net_log_with_source.h"
+#include "net/log/test_net_log.h"
 #include "net/ssl/ssl_info.h"
 #include "net/test/cert_test_util.h"
 #include "net/test/test_data_directory.h"
@@ -613,19 +618,37 @@ TEST_F(ChromeContentBrowserClientTest,
       navigation_handle, /*render_frame_host=*/nullptr, profile(),
       net::ERR_PROXY_AUTH_REQUESTED));
 
+  net::RecordingNetLogObserver observer;
+  net::NetLogWithSource net_log = net::NetLogWithSource::Make(
+      net::NetLog::Get(), net::NetLogSourceType::ENTERPRISE_PROXY_SERVICE);
+
   // Record disguised error.
   error_service->RecordDisguisedError(
       navigation_handle.GetNavigationId(),
       enterprise_net::EnterpriseProxyErrorData(
           GURL("https://target.example.com/test"),
-          GURL("https://proxy.example.com:443"), 403));
+          GURL("https://proxy.example.com:443"), 403),
+      net_log);
+
+  auto saved_entries = observer.GetEntriesWithType(
+      net::NetLogEventType::ENTERPRISE_PROXY_DISGUISED_ERROR_SAVED);
+  ASSERT_EQ(1u, saved_entries.size());
+  EXPECT_EQ(net_log.source().id, saved_entries[0].source.id);
+  EXPECT_EQ(base::NumberToString(navigation_handle.GetNavigationId()),
+            *saved_entries[0].params.FindString("navigation_id"));
+  EXPECT_EQ("https://target.example.com/test",
+            *saved_entries[0].params.FindString("destination_url"));
+  EXPECT_EQ("https://proxy.example.com/",
+            *saved_entries[0].params.FindString("proxy_url"));
+  EXPECT_EQ(403, saved_entries[0].params.FindInt("error_code"));
 
   auto info = client.GetAlternativeErrorPageOverrideInfo(
       navigation_handle, /*render_frame_host=*/nullptr, profile(),
       net::ERR_PROXY_AUTH_REQUESTED);
 
   ASSERT_TRUE(info);
-  EXPECT_EQ(info->resource_id, IDR_ENTERPRISE_PROXY_ERROR_PAGE_HTML);
+  EXPECT_EQ(info->resource_id,
+            static_cast<uint32_t>(IDR_ENTERPRISE_PROXY_ERROR_PAGE_HTML));
   auto override_param = info->alternative_error_page_params.FindBool(
       error_page::kOverrideErrorPage);
   ASSERT_TRUE(override_param.has_value());
@@ -682,11 +705,23 @@ TEST_F(
   content::MockNavigationHandle navigation_handle(
       GURL("https://target.example.com/test"), /*render_frame_host=*/nullptr);
 
+  net::RecordingNetLogObserver observer;
+  net::NetLogWithSource net_log = net::NetLogWithSource::Make(
+      net::NetLog::Get(), net::NetLogSourceType::ENTERPRISE_PROXY_SERVICE);
+
   error_service->RecordDisguisedError(
       navigation_handle.GetNavigationId(),
       enterprise_net::EnterpriseProxyErrorData(
           GURL("https://target.example.com/test"),
-          GURL("https://proxy.example.com:443"), 403));
+          GURL("https://proxy.example.com:443"), 403),
+      net_log);
+
+  auto saved_entries = observer.GetEntriesWithType(
+      net::NetLogEventType::ENTERPRISE_PROXY_DISGUISED_ERROR_SAVED);
+  ASSERT_EQ(1u, saved_entries.size());
+  EXPECT_EQ(net_log.source().id, saved_entries[0].source.id);
+  EXPECT_EQ(base::NumberToString(navigation_handle.GetNavigationId()),
+            *saved_entries[0].params.FindString("navigation_id"));
 
   EXPECT_FALSE(client.GetAlternativeErrorPageOverrideInfo(
       navigation_handle, /*render_frame_host=*/nullptr, profile(),

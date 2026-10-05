@@ -17,6 +17,8 @@ BASE_FEATURE(kGlicAndroidSidePanel, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kGlicDragAndDropFileUploadAndroid,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
+BASE_FEATURE(kGlicAndroidOffscreenRendering, base::FEATURE_DISABLED_BY_DEFAULT);
+
 BASE_FEATURE(kGlicChromeStatusIcon, base::FEATURE_ENABLED_BY_DEFAULT);
 const base::FeatureParam<int> kGlicChromeStatusIconSizePx{
     &kGlicChromeStatusIcon, "glic-chrome-status-icon-size-px", 20};
@@ -264,8 +266,6 @@ BASE_FEATURE(kGlicWebPasteEligibilityCheck,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kGlicTabGroups, base::FEATURE_DISABLED_BY_DEFAULT);
-const base::FeatureParam<bool> kGlicTabGroupsUseFullTabEmbedder{
-    &kGlicTabGroups, "use_full_tab_embedder", false};
 BASE_FEATURE(kGlicSparkSettingsAccessibleLabels,
              base::FEATURE_ENABLED_BY_DEFAULT);
 

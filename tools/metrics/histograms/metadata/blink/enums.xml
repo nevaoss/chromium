@@ -4258,9 +4258,9 @@ Called by update_use_counter_feature_enum.py.-->
   <int value="3743" label="ReadableStreamWithByteSource"/>
   <int value="3744" label="ReadableStreamBYOBReader"/>
   <int value="3745" label="EmbedElementWithoutTypeSrcChanged_Deleted"/>
-  <int value="3746" label="SamePartyCookieAttribute"/>
-  <int value="3747" label="SamePartyCookieExclusionOverruledSameSite"/>
-  <int value="3748" label="SamePartyCookieInclusionOverruledSameSite"/>
+  <int value="3746" label="OBSOLETE_SamePartyCookieAttribute"/>
+  <int value="3747" label="OBSOLETE_SamePartyCookieExclusionOverruledSameSite"/>
+  <int value="3748" label="OBSOLETE_SamePartyCookieInclusionOverruledSameSite"/>
   <int value="3749" label="EmbedElementWithoutTypeSrcChanged"/>
   <int value="3750" label="PaymentHandlerStandardizedPaymentMethodIdentifier"/>
   <int value="3751" label="WebCodecsAudioEncoder"/>
@@ -6753,6 +6753,8 @@ Called by update_use_counter_feature_enum.py.-->
   <int value="6015" label="VideoAdDetected"/>
   <int value="6016" label="ElementTimingEntryEmitted"/>
   <int value="6017" label="ContainerTimingEntryEmitted"/>
+  <int value="6018" label="BeforeUnloadShowedDialog"/>
+  <int value="6019" label="BeforeUnloadDialogBlockedUnload"/>
 </enum>
 
 <!-- LINT.ThenChange(//third_party/blink/public/mojom/use_counter/metrics/web_feature.mojom:WebFeature) -->

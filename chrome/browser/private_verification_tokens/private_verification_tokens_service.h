@@ -61,6 +61,11 @@ class PrivateVerificationTokensService : public KeyedService {
   void GetTokenIssuers(
       base::OnceCallback<void(std::vector<url::Origin>)> callback);
 
+  // Retrieve all stored tokens across all issuers asynchronously.
+  void GetAllTokens(
+      base::OnceCallback<void(
+          std::vector<private_verification_tokens::TokenWithId>)> callback);
+
   // Delete tokens within a time range [delete_begin, delete_end) and/or
   // matching specific origins.
   // If `issuers` is std::nullopt, no filtering is performed on origins.
@@ -117,6 +122,8 @@ class PrivateVerificationTokensService : public KeyedService {
   issuer_config() const {
     return issuer_config_;
   }
+
+  void TrackerInsert(Profile* profile, const url::Origin& redeemer_origin);
 
  private:
   explicit PrivateVerificationTokensService(

@@ -14,6 +14,7 @@
 #include "base/functional/bind.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/ref_counted.h"
+#include "base/memory/scoped_refptr.h"
 #include "base/notreached.h"
 #include "base/run_loop.h"
 #include "base/strings/string_tokenizer.h"
@@ -25,6 +26,7 @@
 #include "base/test/task_environment.h"
 #include "base/test/test_future.h"
 #include "base/test/test_simple_task_runner.h"
+#include "base/types/pass_key.h"
 #include "build/branding_buildflags.h"
 #include "build/build_config.h"
 #include "components/safe_browsing/core/browser/db/database_manager.h"
@@ -71,7 +73,7 @@ class FakeGetHashProtocolManager : public V4GetHashProtocolManager {
   FakeGetHashProtocolManager(
       scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory,
       const StoresToCheck& stores_to_check,
-      const V4ProtocolConfig& config,
+      const SBProtocolConfig& config,
       const FullHashInfos& full_hash_infos)
       : V4GetHashProtocolManager(url_loader_factory, stores_to_check, config),
         full_hash_infos_(full_hash_infos) {}
@@ -98,7 +100,7 @@ class FakeGetHashProtocolManagerFactory
   std::unique_ptr<V4GetHashProtocolManager> CreateProtocolManager(
       scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory,
       const StoresToCheck& stores_to_check,
-      const V4ProtocolConfig& config) override {
+      const SBProtocolConfig& config) override {
     return std::make_unique<FakeGetHashProtocolManager>(
         url_loader_factory, stores_to_check, config, full_hash_infos_);
   }
@@ -126,7 +128,7 @@ class FakeV5GetHashProtocolManager : public V5GetHashProtocolManager {
  public:
   FakeV5GetHashProtocolManager(
       scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory,
-      const V4ProtocolConfig& config,
+      const SBProtocolConfig& config,
       V5SearchHashesCache* cache,
       SBThreatType threat_type,
       ThreatMetadata metadata)
@@ -192,7 +194,7 @@ class GetHashProtocolManagerFactoryWithTestUrlLoader
   std::unique_ptr<V4GetHashProtocolManager> CreateProtocolManager(
       scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory,
       const StoresToCheck& stores_to_check,
-      const V4ProtocolConfig& config) override {
+      const SBProtocolConfig& config) override {
     return base::WrapUnique(new V4GetHashProtocolManager(
         test_shared_loader_factory_, stores_to_check, config));
   }
@@ -542,11 +544,10 @@ class SBLocalDatabaseManagerTest : public PlatformTest {
         &SBLocalDatabaseManagerTest::GetExtendedReportingLevel,
         base::Unretained(this));
 
-    sb_local_database_manager_ =
-        base::WrapRefCounted(new SBLocalDatabaseManager(
-            base_dir_.GetPath(), erl_callback_,
-            base::SequencedTaskRunner::GetCurrentDefault(),
-            base::SequencedTaskRunner::GetCurrentDefault(), task_runner_));
+    sb_local_database_manager_ = base::MakeRefCounted<SBLocalDatabaseManager>(
+        base::PassKey<SBLocalDatabaseManagerTest>(), base_dir_.GetPath(),
+        erl_callback_, base::SequencedTaskRunner::GetCurrentDefault(),
+        base::SequencedTaskRunner::GetCurrentDefault(), task_runner_);
 
     const testing::TestInfo* const test_info =
         testing::UnitTest::GetInstance()->current_test_info();
@@ -586,8 +587,7 @@ class SBLocalDatabaseManagerTest : public PlatformTest {
   }
 
   void V5UpdateRequestCompleted(
-      std::optional<std::map<ListIdentifier, V5::HashList>>
-          parsed_server_response) {
+      std::map<ListIdentifier, V5::HashList> parsed_server_response) {
     sb_local_database_manager_->V5UpdateRequestCompleted(
         std::move(parsed_server_response));
   }
@@ -638,11 +638,10 @@ class SBLocalDatabaseManagerTest : public PlatformTest {
 
   void ResetLocalDatabaseManager() {
     StopLocalDatabaseManager();
-    sb_local_database_manager_ =
-        base::WrapRefCounted(new SBLocalDatabaseManager(
-            base_dir_.GetPath(), erl_callback_,
-            base::SequencedTaskRunner::GetCurrentDefault(),
-            base::SequencedTaskRunner::GetCurrentDefault(), task_runner_));
+    sb_local_database_manager_ = base::MakeRefCounted<SBLocalDatabaseManager>(
+        base::PassKey<SBLocalDatabaseManagerTest>(), base_dir_.GetPath(),
+        erl_callback_, base::SequencedTaskRunner::GetCurrentDefault(),
+        base::SequencedTaskRunner::GetCurrentDefault(), task_runner_);
     StartLocalDatabaseManager();
   }
 
@@ -650,7 +649,7 @@ class SBLocalDatabaseManagerTest : public PlatformTest {
 
   void StartLocalDatabaseManager() {
     sb_local_database_manager_->StartOnUIThread(test_shared_loader_factory_,
-                                                GetTestV4ProtocolConfig());
+                                                GetTestSBProtocolConfig());
   }
 
   void StopLocalDatabaseManager() {
@@ -685,8 +684,8 @@ class SBLocalDatabaseManagerTest : public PlatformTest {
     // ~SBLocalDatabaseManager expects.
     StopLocalDatabaseManager();
     sb_local_database_manager_ =
-        base::WrapRefCounted(new FakeSBLocalDatabaseManager(
-            base_dir_.GetPath(), erl_callback_, task_runner_));
+        base::MakeRefCounted<FakeSBLocalDatabaseManager>(
+            base_dir_.GetPath(), erl_callback_, task_runner_);
     StartLocalDatabaseManager();
     WaitForTasksOnTaskRunner();
   }
@@ -713,7 +712,7 @@ class SBLocalDatabaseManagerTest : public PlatformTest {
       v5_cache_ =
           std::make_unique<V5SearchHashesCache>(/*history_service=*/nullptr);
       v5_fake_manager_ = std::make_unique<FakeV5GetHashProtocolManager>(
-          test_shared_loader_factory_, GetTestV4ProtocolConfig(),
+          test_shared_loader_factory_, GetTestSBProtocolConfig(),
           v5_cache_.get(), threat_type, metadata);
     }
     client.SetV5GetHashProtocolManager(v5_fake_manager_->GetWeakPtr());

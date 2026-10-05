@@ -69,11 +69,6 @@ class ActorKeyedService : public KeyedService,
   // Convenience method, may return nullptr.
   static ActorKeyedService* Get(content::BrowserContext* context);
 
-  // TODO(crbug.com/428014205): Create a mock ActorKeyedService for testing so
-  // we can remove this function.
-  void SetActorUiStateManagerForTesting(
-      std::unique_ptr<ui::ActorUiStateManagerInterface> ausm);
-
   const std::map<TaskId, const ActorTask*> GetActiveTasks() const;
 
   size_t GetActiveTasksCount() const;
@@ -130,11 +125,6 @@ class ActorKeyedService : public KeyedService,
 
   // The associated ActorUiStateManager for the associated profile.
   ui::ActorUiStateManagerInterface* GetActorUiStateManager();
-
-  // Sets/clears pending actuation indicator on a tab prior to an ActorTask
-  // starting.
-  void SetTabPendingActuation(tabs::TabHandle tab_handle);
-  bool ClearTabPendingActuation(tabs::TabHandle tab_handle);
 
   // Returns true if there is a task that is actively (i.e. not paused) acting
   // in the given `tab`.

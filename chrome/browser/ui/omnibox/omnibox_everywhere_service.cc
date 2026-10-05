@@ -22,12 +22,14 @@
 #include "chrome/browser/ui/navigator/browser_navigator_params.h"
 #include "chrome/browser/ui/omnibox/omnibox_everywhere/omnibox_everywhere_controller.h"
 #include "chrome/browser/ui/omnibox/omnibox_everywhere/omnibox_everywhere_feature_promo_controller.h"
+#include "chrome/browser/ui/omnibox/omnibox_everywhere/omnibox_everywhere_prefs.h"
 #include "chrome/browser/ui/omnibox/omnibox_everywhere/omnibox_everywhere_ui_manager.h"
 #include "chrome/browser/ui/omnibox/omnibox_everywhere_service_factory.h"
 #include "chrome/browser/ui/omnibox/omnibox_next_features.h"
 #include "chrome/browser/user_education/user_education_service.h"
 #include "chrome/browser/user_education/user_education_service_factory.h"
 #include "components/feature_engagement/public/feature_constants.h"
+#include "components/prefs/pref_service.h"
 #include "components/user_education/common/feature_promo/feature_promo_controller.h"
 #include "content/public/browser/navigation_handle.h"
 #include "third_party/skia/include/core/SkBitmap.h"
@@ -163,6 +165,30 @@ void OmniboxEverywhereService::OnScreensharePickerClosed() {
   }
 }
 
+void OmniboxEverywhereService::ShowScreenshotDisclosureDialog(
+    base::OnceClosure on_accepted,
+    base::OnceClosure on_cancelled) {
+  if (ui_manager()) {
+    ui_manager()->ShowScreenshotDisclosureDialog(
+        base::BindOnce(
+            &OmniboxEverywhereService::OnScreenshotDisclosureAccepted,
+            weak_factory_.GetWeakPtr(), std::move(on_accepted)),
+        std::move(on_cancelled));
+    return;
+  }
+  if (on_cancelled) {
+    std::move(on_cancelled).Run();
+  }
+}
+
+void OmniboxEverywhereService::OnScreenshotDisclosureAccepted(
+    base::OnceClosure on_accepted) {
+  omnibox_everywhere::prefs::SetScreenshotDisclosureAccepted(profile_, true);
+  if (on_accepted) {
+    std::move(on_accepted).Run();
+  }
+}
+
 void OmniboxEverywhereService::ShowRegionSelectOverlay(
     const SkBitmap& screenshot,
     const RegionCaptureSource& source,
@@ -184,6 +210,18 @@ void OmniboxEverywhereService::OnFileChooserOpened() {
 void OmniboxEverywhereService::OnFileChooserClosed() {
   if (ui_manager()) {
     ui_manager()->OnFileChooserClosed();
+  }
+}
+
+void OmniboxEverywhereService::OnHotkeyDropdownOpened() {
+  if (ui_manager()) {
+    ui_manager()->OnHotkeyDropdownOpened();
+  }
+}
+
+void OmniboxEverywhereService::OnHotkeyDropdownClosed() {
+  if (ui_manager()) {
+    ui_manager()->OnHotkeyDropdownClosed();
   }
 }
 

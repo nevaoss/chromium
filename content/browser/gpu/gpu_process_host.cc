@@ -129,6 +129,7 @@
 #endif
 
 #if BUILDFLAG(IS_MAC)
+#include "base/process/process_info.h"
 #include "content/browser/gpu/browser_child_process_backgrounded_bridge.h"
 #include "content/browser/gpu/ca_transaction_gpu_coordinator.h"
 #endif
@@ -138,13 +139,6 @@
 #endif
 
 namespace content {
-
-#if BUILDFLAG(IS_MAC)
-// If enabled, the macOS sandbox for the GPU process will use process-type-
-// specific subdirectories of the darwin user directories instead of the
-// non-process-isolated directories themselves.
-BASE_FEATURE(kMacGpuSandboxDarwinUserDirs, base::FEATURE_ENABLED_BY_DEFAULT);
-#endif
 
 base::subtle::Atomic32 GpuProcessHost::gpu_crash_count_ = 0;
 bool GpuProcessHost::crashed_before_ = false;
@@ -156,6 +150,13 @@ static_assert(RESULT_CODE_HUNG == static_cast<int>(gpu::RESULT_CODE_HUNG),
               "Please use the same enum value in both header files.");
 
 namespace {
+
+#if BUILDFLAG(IS_MAC)
+// If enabled, the GPU process will not inherit the browser process's TCC
+// responsibilities (https://crbug.com/507596239).
+BASE_FEATURE(kMacDisclaimGpuTccResponsibility,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+#endif
 
 // UMA histogram names.
 constexpr char kFallbackEventCause[] = "GPU.FallbackEventCause";
@@ -474,6 +475,15 @@ class GpuSandboxedProcessLauncherDelegate
   }
 #endif  // BUILDFLAG(USE_ZYGOTE)
 
+#if BUILDFLAG(IS_MAC)
+  bool DisclaimResponsibility() override {
+    // Disclaim the GPU process if we've inherited TCC responsibilities from a
+    // different (possibly privileged) process.
+    return base::FeatureList::IsEnabled(kMacDisclaimGpuTccResponsibility) &&
+           !base::IsCurrentProcessSelfResponsible();
+  }
+#endif
+
   sandbox::mojom::Sandbox GetSandboxType() override {
     if (cmd_line_.HasSwitch(sandbox::policy::switches::kDisableGpuSandbox)) {
       DVLOG(1) << "GPU sandbox is disabled";
@@ -481,12 +491,6 @@ class GpuSandboxedProcessLauncherDelegate
     }
     return sandbox::mojom::Sandbox::kGpu;
   }
-
-#if BUILDFLAG(IS_MAC)
-  bool NeedsIsolatedDarwinUserDirs() override {
-    return base::FeatureList::IsEnabled(kMacGpuSandboxDarwinUserDirs);
-  }
-#endif
 
  private:
 #if BUILDFLAG(IS_WIN)
