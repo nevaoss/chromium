@@ -504,18 +504,6 @@ void TestVerifyCertCallback(
   std::move(callback).Run(result);
 }
 
-<<<<<<< HEAD
-std::string HashesToBase64String(
-    const absl::flat_hash_set<net::SHA256HashValue>& hashes) {
-  std::vector<std::string> strings;
-  strings.reserve(hashes.size());
-  for (const auto& hash : hashes) {
-    strings.push_back(
-        net::HashValue(net::HashValueTag::HASH_VALUE_SHA256, hash).ToString());
-  }
-  return base::JoinString(strings, ",");
-}
-
 #if BUILDFLAG(IS_NEVA_APPRUNTIME)
 class ExtraHeaderNetworkDelegate : public NetworkServiceNetworkDelegate,
                                    public mojom::ExtraHeaderNetworkDelegate {
@@ -559,8 +547,6 @@ class ExtraHeaderNetworkDelegate : public NetworkServiceNetworkDelegate,
 };
 #endif
 
-=======
->>>>>>> 155.0.8059.0~1
 #if BUILDFLAG(IS_CT_SUPPORTED)
 // SCTAuditingDelegate is an implementation of the delegate interface that is
 // aware of per-NetworkContext details (to allow the cache to notify the
