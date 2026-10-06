@@ -45,7 +45,7 @@ size_t ImageDecodeCacheUtils::GetWorkingSetBytesForImageDecode(
       if (base::StringToUint64(cmd.GetSwitchValueASCII(
                                 ::switches::kDecodedImageWorkingSetBudgetMB),
                             &budget_bytes_mb)) {
-        base::ByteSize budget_bytes = base::MiBU(budget_bytes_mb);
+        base::ByteSize budget_bytes = base::MiB(budget_bytes_mb);
         if (!using_low_memory_policy ||
             budget_bytes < decoded_image_working_set_budget) {
           decoded_image_working_set_budget = budget_bytes;
