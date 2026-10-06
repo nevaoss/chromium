@@ -29,6 +29,7 @@
 #include "cc/paint/record_paint_canvas.h"
 #include "components/viz/common/resources/shared_image_format_utils.h"
 #include "third_party/abseil-cpp/absl/cleanup/cleanup.h"
+#include "third_party/blink/public/common/features.h"
 #include "third_party/blink/public/common/metrics/document_update_reason.h"
 #include "third_party/blink/public/mojom/devtools/console_message.mojom-blink-forward.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_canvas_text_align.h"
@@ -152,7 +153,66 @@ BaseRenderingContext2D::BaseRenderingContext2D(
       color_params_(attrs.color_space,
                     attrs.hdr_metadata,
                     attrs.pixel_format,
-                    attrs.alpha) {}
+                    attrs.alpha),
+      max_pinned_image_bytes_(
+          static_cast<size_t>(features::kMaxPinnedImageKB.Get()) * 1024) {
+  UpdateRecordingLimits(/*is_graphite=*/false);
+}
+
+const MemoryManagedPaintRecorder* BaseRenderingContext2D::Recorder() const {
+  return recorder_.get();
+}
+
+const MemoryManagedPaintCanvas* BaseRenderingContext2D::GetPaintCanvas() const {
+  if (isContextLost() || !IsPaintable()) [[unlikely]] {
+    return nullptr;
+  }
+  const MemoryManagedPaintRecorder* recorder = Recorder();
+  if (!recorder) [[unlikely]] {
+    return nullptr;
+  }
+  return &recorder->getRecordingCanvas();
+}
+
+void BaseRenderingContext2D::CreateRecorder(const gfx::Size& size,
+                                            bool is_graphite) {
+  recorder_ = std::make_unique<MemoryManagedPaintRecorder>(size, this);
+  if (is_graphite) {
+    recorder_->DisableLineDrawingAsPaths();
+  }
+  UpdateRecordingLimits(is_graphite);
+}
+
+void BaseRenderingContext2D::ResetRecorder() {
+  recorder_.reset();
+}
+
+std::unique_ptr<MemoryManagedPaintRecorder>
+BaseRenderingContext2D::ReleaseRecorder() {
+  if (recorder_) {
+    recorder_->SetClient(nullptr);
+  }
+  return std::move(recorder_);
+}
+
+void BaseRenderingContext2D::SetRecorder(
+    std::unique_ptr<MemoryManagedPaintRecorder> recorder,
+    bool is_graphite) {
+  if (recorder) {
+    recorder->SetClient(this);
+  }
+  recorder_ = std::move(recorder);
+  if (recorder_ && is_graphite) {
+    recorder_->DisableLineDrawingAsPaths();
+  }
+}
+
+void BaseRenderingContext2D::UpdateRecordingLimits(bool is_graphite) {
+  max_recorded_op_bytes_ =
+      static_cast<size_t>(is_graphite ? features::kMaxRecordedOpGraphiteKB.Get()
+                                      : features::kMaxRecordedOpKB.Get()) *
+      1024;
+}
 
 void BaseRenderingContext2D::ResetInternal() {
   Canvas2DRecorderContext::ResetInternal();
@@ -767,6 +827,21 @@ std::optional<cc::PaintRecord> BaseRenderingContext2D::FlushCanvasInternal(
   return recording;
 }
 
+void BaseRenderingContext2D::FlushIfRecordingLimitExceeded() {
+  if (Host()->IsPrinting() && clear_frame()) {
+    return;
+  }
+  const MemoryManagedPaintRecorder* recorder = Recorder();
+  if (!recorder) {
+    return;
+  }
+  if (recorder->ReleasableOpBytesUsed() > max_recorded_op_bytes() ||
+      recorder->ReleasableImageBytesUsed() > max_pinned_image_bytes())
+      [[unlikely]] {
+    FlushCanvas(FlushReason::kOther);
+  }
+}
+
 void BaseRenderingContext2D::WillUseCurrentFont() const {
   if (HTMLCanvasElement* canvas = HostAsHTMLCanvasElement();
       canvas != nullptr) {
@@ -860,10 +935,14 @@ V8CanvasDirection BaseRenderingContext2D::direction() const {
     UseCounter::Count(GetTopExecutionContext(),
                       WebFeature::kCanvasTextDirectionGetInherit);
   }
-  return ToTextDirection(state.GetDirection(),
-                         GetCanvasRenderingContextHost()) == TextDirection::kRtl
-             ? V8CanvasDirection(V8CanvasDirection::Enum::kRtl)
-             : V8CanvasDirection(V8CanvasDirection::Enum::kLtr);
+  if (!RuntimeEnabledFeatures::CanvasTextDirectionReflectEnabled()) {
+    return ToTextDirection(state.GetDirection(),
+                           GetCanvasRenderingContextHost()) ==
+                   TextDirection::kRtl
+               ? V8CanvasDirection(V8CanvasDirection::Enum::kRtl)
+               : V8CanvasDirection(V8CanvasDirection::Enum::kLtr);
+  }
+  return V8CanvasDirection(state.GetDirection());
 }
 
 void BaseRenderingContext2D::setDirection(const V8CanvasDirection direction) {

@@ -323,6 +323,12 @@
       <message name="IDS_IOS_ACTOR_WORKLOG_CHIP_FILLING_PASSWORD" desc="Worklog chip label indicating the actor is filling a password on the page. [iOS only]">
         Filling password
       </message>
+      <message name="IDS_IOS_ACTOR_WORKLOG_CHIP_NAVIGATING" desc="Worklog chip label indicating the actor is navigating to a page. [iOS only]">
+        Navigating
+      </message>
+      <message name="IDS_IOS_ACTOR_WORKLOG_CHIP_PROCESSING" desc="Worklog chip label indicating the actor is performing a general task. [iOS only]">
+        Processing
+      </message>
       <message name="IDS_IOS_ACTOR_WORKLOG_CHIP_SCROLLING" desc="Worklog chip label indicating the actor is scrolling the page. [iOS only]">
         Scrolling
       </message>
@@ -694,6 +700,9 @@
       <message name="IDS_IOS_AUTOFILL_ADMIN_LEVEL2" desc="Title of the field of a profile address representing the administrative area level 2. A sub-division of a state, e.g. a Municipio in Brazil or Mexico. [Length: 15em] [iOS only]">
         Municipality
       </message>
+      <message name="IDS_IOS_AUTOFILL_AI_CLOSE_FIND_AND_FILL_ACCESSIBILITY_LABEL" desc="Accessibility label for the button that closes find and fill. [iOS only]">
+        Close find and fill
+      </message>
       <message name="IDS_IOS_AUTOFILL_AI_CONTEXT_MENU_PERSONAL_CONTEXT_DESCRIPTION" desc="Description text displayed at the top of the context menu for Autofill AI suggestions that are from personal context. [iOS only]">
         Suggested by Gemini. Manage enhanced autofill in settings.
       </message>
@@ -787,6 +796,26 @@
       <message name="IDS_IOS_AUTOFILL_AI_SAVE_VEHICLE_ENTITY_DIALOG_TITLE" desc="The title of a dialog that prompts the user to save information they just filled in on a form. For example, the user has filled in details related to their car. When they click Submit, we offer to save the data in Chrome. Depending on the form and what Chrome recognizes, there might be just one or several pieces of data saved at this moment. This is a similar moment to saving a password or credit card with Chrome.">
       Save vehicle
       </message>
+      <message name="IDS_IOS_AUTOFILL_AI_SOURCES_FALLBACK_GMAIL_MESSAGE" desc="Fallback label for a Gmail source in the Autofill AI sources bottom sheet when the email subject is unavailable. [iOS only]" translateable="false">
+        <!-- TODO(crbug.com/551864564): Make string translateable once finalized. -->
+        TEST - Gmail message <ph name="INDEX">$1<ex>1</ex></ph>
+      </message>
+      <message name="IDS_IOS_AUTOFILL_AI_SOURCES_FALLBACK_SAVED_PHOTO" desc="Fallback label for a Google Photos source in the Autofill AI sources bottom sheet when the photo title is unavailable. [iOS only]" translateable="false">
+        <!-- TODO(crbug.com/551864564): Make string translateable once finalized. -->
+        TEST - Saved photo <ph name="INDEX">$1<ex>1</ex></ph>
+      </message>
+      <message name="IDS_IOS_AUTOFILL_AI_SOURCES_GMAIL_SECTION_TITLE" desc="Section title for Gmail sources in the Autofill AI sources bottom sheet. [iOS only]" translateable="false">
+        <!-- TODO(crbug.com/551864564): Make string translateable once finalized. -->
+        TEST - Gmail
+      </message>
+      <message name="IDS_IOS_AUTOFILL_AI_SOURCES_PHOTOS_SECTION_TITLE" desc="Section title for Google Photos sources in the Autofill AI sources bottom sheet. [iOS only]" translateable="false">
+        <!-- TODO(crbug.com/551864564): Make string translateable once finalized. -->
+        TEST - Photos
+      </message>
+      <message name="IDS_IOS_AUTOFILL_AI_SOURCES_TITLE" desc="Title of the bottom sheet displaying the sources (such as Gmail or Google Photos) of an Autofill AI suggestion. [iOS only]" translateable="false">
+        <!-- TODO(crbug.com/551864564): Make string translateable once finalized. -->
+        TEST - Sources
+      </message>
       <message name="IDS_IOS_AUTOFILL_AI_UPDATE_DRIVERS_LICENSE_ENTITY_DIALOG_TITLE" desc="The title of a dialog that prompts the user to update information associated with something they have previously saved. For example, the user previously saved information related to their driver’s license. Now, the user is filling out a new form either with additional details associated with the driver’s license or with different values than what was previously saved. The interface shows new or modified values at the top with blue dots to indicate they’re new. Existing information associated with the driver’s license that isn’t changing appears at the bottom without blue dots. Depending on the form and what Chrome recognizes, there might be just one or several pieces of data updated at this moment. This is a similar moment to updating a password or credit card with Chrome.">
       Update driver's license
       </message>
@@ -820,6 +849,11 @@
       </message>
       <message name="IDS_IOS_AUTOFILL_AI_WALLET_FETCH_FAILURE_TITLE" desc="Title of the error the user sees if they attempt to autofill information but the request fails due to network connectivity issues.">
         Trouble filling your info
+      </message>
+      <message name="IDS_IOS_AUTOFILL_AT_MEMORY_SEARCH_RESULTS_AVAILABLE_ACCESSIBILITY_ANNOUNCEMENT" is_accessibility_with_no_ui="true" desc="The accessibility announcement read by VoiceOver once the AtMemory search completed and its results are presented to the user. According to the number of available results, the string goes from singular to plural. [iOS only]">
+        {count, plural,
+           =1 {{count} result available.}
+           other {{count} results available.}}
       </message>
       <message name="IDS_IOS_AUTOFILL_AUTOCOMPLETE_OPTIONS_AVAILABLE_ACCESSIBILITY_ANNOUNCEMENT" is_accessibility_with_no_ui="true" desc="The accessibility announcement to indicate the number of options available to the user above the keyboard in relation to autocomplete. This announcement is triggered when the user enters edit mode in an autocomplete-related form field and has options available in the keyboard accessory for autofill purposes. According to the number of available options, the string goes from singular to plural. [iOS only]">
         {count, plural,
@@ -2498,6 +2532,15 @@ To continue from your computer, switch to <ph name="OTHER_EMAIL">$2<ex>john.doe@
       <message name="IDS_IOS_DEEPLINK_SIGNIN_TITLE" desc="Title of the screen asking user confirmation for signing-in with the selected account. The user may see this after scanning the QR code in desktop Chrome to continue sign-in in iOS.">
         Sign in as <ph name="FIRST_NAME">$1<ex>john</ex></ph>?
       </message>
+      <message name="IDS_IOS_DEFAULT_BROWSER_CONTEXTUAL_GEMINI_TITLE" desc="Title for the contextual default browser promo for Gemini [iOS only].">
+        Bring Gemini intelligence to every link
+      </message>
+      <message name="IDS_IOS_DEFAULT_BROWSER_CONTEXTUAL_PRIMARY_BUTTON_TEXT" desc="Primary button text for the contextual default browser promo [iOS only].">
+        Set as default
+      </message>
+      <message name="IDS_IOS_DEFAULT_BROWSER_CONTEXTUAL_SECONDARY_BUTTON_TEXT" desc="Secondary button text for the contextual default browser promo [iOS only].">
+        No thanks
+      </message>
       <message name="IDS_IOS_DEFAULT_BROWSER_NON_MODAL_1P_APP_TITLE" desc="Title for the non-modal default browser promotion banner when Chrome is opened from a first-party app.">
         Better browsing by default
       </message>
@@ -3699,8 +3742,26 @@ To continue from your computer, switch to <ph name="OTHER_EMAIL">$2<ex>john.doe@
       <message name="IDS_IOS_GEMINI_SETTINGS_PREFERENCES_HEADER" desc="Header text for the Preferences section in Gemini settings.">
         Preferences
       </message>
+      <message name="IDS_IOS_GEMINI_SETTINGS_SHOW_SUGGESTIONS_TITLE" desc="Title for the switch item in the Gemini suggestions settings page.">
+        Show suggestions
+      </message>
+      <message name="IDS_IOS_GEMINI_SETTINGS_SUGGESTIONS_FOOTER_TEXT" desc="The footer text of the Gemini suggestions row in the Gemini settings pages.">
+        Get real-time suggestions that can help you find new ways to browse with AI. <ph name="BEGIN_LINK">BEGIN_LINK</ph>Learn more<ph name="END_LINK">END_LINK</ph>
+      </message>
+      <message name="IDS_IOS_GEMINI_SETTINGS_SUGGESTIONS_TITLE" desc="Title for settings within Gemini related to suggestions. Used as a page title and a settings row title.">
+        Gemini suggestions
+      </message>
       <message name="IDS_IOS_GEMINI_SIGN_IN_REQUIRED_SNACKBAR" desc="Snackbar message shown when the user tries to use Gemini but is not signed in.">
         You need to sign in to use Gemini
+      </message>
+      <message name="IDS_IOS_GEMINI_SUGGESTIONS_PAGE_TITLES_AND_URLS_DESCRIPTION" desc="Description explaining that page titles and URLs of open tabs are used to give relevant suggestions.">
+        Page titles and URLs of your open tabs are used to give you relevant suggestions.
+      </message>
+      <message name="IDS_IOS_GEMINI_SUGGESTIONS_THINGS_TO_CONSIDER_HEADER" desc="Header for the 'Things to consider' section in the Gemini suggestions settings page.">
+        Things to consider
+      </message>
+      <message name="IDS_IOS_GEMINI_SUGGESTIONS_WHEN_USED_HEADER" desc="Header for the 'When used' section in the Gemini suggestions settings page.">
+        When used
       </message>
       <message name="IDS_IOS_GEMINI_SUMMARIZE_PAGE_PROMPT" desc="The prepopulated prompt text when initiating Gemini summarization from the App Switcher.">
         Give me a short summary of this page
@@ -4690,6 +4751,12 @@ To continue from your computer, switch to <ph name="OTHER_EMAIL">$2<ex>john.doe@
       <message name="IDS_IOS_LEVEL_UP_PRODUCTIVITY_TITLE" desc="Title for the Level Up productivity category card in the Magic Stack. [iOS only]">
         Explore more ways to get organized and save time
       </message>
+      <message name="IDS_IOS_LEVEL_UP_PROGRESS_UPDATES_DISABLED_SNACKBAR" desc="Snackbar message displayed when the user turns off Level Up progress updates. [iOS only]">
+        You won't receive updates when you progress in Level Up
+      </message>
+      <message name="IDS_IOS_LEVEL_UP_PROGRESS_UPDATES_ENABLED_SNACKBAR" desc="Snackbar message displayed when the user turns on Level Up progress updates. [iOS only]">
+        You'll receive updates when you progress in Level Up
+      </message>
       <message name="IDS_IOS_LEVEL_UP_PROMO_CONTENT_1" desc="Text for the Level Up promo content checklist item 1. [iOS only]">
         Get organized and save time
       </message>
@@ -4729,6 +4796,11 @@ To continue from your computer, switch to <ph name="OTHER_EMAIL">$2<ex>john.doe@
       <message name="IDS_IOS_LEVEL_UP_SNACKBAR_ACTION" desc="The snackbar action link button to go to the Level Up feature screen. [iOS only]">
         Go to Level Up
       </message>
+      <message name="IDS_IOS_LEVEL_UP_STAT_PASSWORDS_AUTOFILLED" desc="Title for the passwords autofilled statistic card. [iOS only]">
+        {count, plural,
+          =1 {1 password autofilled}
+          other {# passwords autofilled}}
+      </message>
       <message name="IDS_IOS_LEVEL_UP_STAT_PASSWORDS_VERIFIED" desc="Title for the passwords verified statistic card. [iOS only]">
         {count, plural,
           =1 {You checked 1 password}
@@ -4739,6 +4811,9 @@ To continue from your computer, switch to <ph name="OTHER_EMAIL">$2<ex>john.doe@
           =1 {You used 1 photo to search}
           other {You used # photos to search}}
       </message>
+      <message name="IDS_IOS_LEVEL_UP_STAT_SUBTITLE_PASSWORDS_AUTOFILLED" desc="Statistic card subtitle displaying the source task for passwords autofilled. [iOS only]">
+        since using Passwords and Autofill
+      </message>
       <message name="IDS_IOS_LEVEL_UP_STAT_SUBTITLE_PASSWORDS_VERIFIED" desc="Statistic card subtitle displaying the source task for passwords verified. [iOS only]">
         since completing "Check your passwords"
       </message>
@@ -4748,18 +4823,10 @@ To continue from your computer, switch to <ph name="OTHER_EMAIL">$2<ex>john.doe@
       <message name="IDS_IOS_LEVEL_UP_STAT_SUBTITLE_TABS_DECLUTTERED" desc="Statistic card subtitle displaying the source task for tabs decluttered. [iOS only]">
         since learning about Tab Groups
       </message>
-      <message name="IDS_IOS_LEVEL_UP_STAT_SUBTITLE_TYPING_SAVED" desc="Statistic card subtitle displaying the source task for typing time saved. [iOS only]">
-        since using Passwords and Autofill
-      </message>
       <message name="IDS_IOS_LEVEL_UP_STAT_TABS_DECLUTTERED" desc="Title for the tabs decluttered statistic card. [iOS only]">
         {count, plural,
           =1 {1 tab decluttered}
           other {# tabs decluttered}}
-      </message>
-      <message name="IDS_IOS_LEVEL_UP_STAT_TYPING_SAVED" desc="Title for the typing time saved statistic card. [iOS only]">
-        {count, plural,
-          =1 {1 minute of typing saved}
-          other {# minutes of typing saved}}
       </message>
       <message name="IDS_IOS_LEVEL_UP_TASKS_REMAINING" desc="Progress message explaining how many tasks remain to level up. [iOS only]">
         {count, plural,
@@ -6155,10 +6222,10 @@ Handoff must also be enabled in the General section of Settings, and your device
         Use keyboard
       </message>
       <message name="IDS_IOS_PERMISSIONS_ALERT_DIALOG_BUTTON_TEXT_ALLOW_THIS_TIME" desc="Button text to allow access to permissions for the current visit only. [iOS only]">
-        Allow This Time
+        Allow Once
       </message>
       <message name="IDS_IOS_PERMISSIONS_ALERT_DIALOG_BUTTON_TEXT_ALWAYS_ALLOW" desc="Button text to always allow access to permissions for a website. [iOS only]">
-        Always Allow
+        Allow While Visiting
       </message>
       <message name="IDS_IOS_PERMISSIONS_ALERT_DIALOG_BUTTON_TEXT_DENY" desc="Button text to deny access to permissions. This should match the iOS built-in alert for permissions access.">
         Don't Allow

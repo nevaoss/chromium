@@ -71,7 +71,6 @@
 <translation id="1201402288615127009">Další</translation>
 <translation id="1204075260022434100">{count,plural, =1{Záložka byla uložena do složky „{title}“ ve vašem účtu {email}}few{Do složky „{title}“ ve vašem účtu {email} byly uloženy {count} záložky}many{Do složky „{title}“ ve vašem účtu {email} bylo uloženo {count} záložky}other{Do složky „{title}“ ve vašem účtu {email} bylo uloženo {count} záložek}}</translation>
 <translation id="1207493287814084192">17:30</translation>
-<translation id="1215414310909588335">{count,plural, =1{Ušetřena 1 minuta psaní}few{Ušetřeny # minuty psaní}many{Ušetřeno # minuty psaní}other{Ušetřeno # minut psaní}}</translation>
 <translation id="1217294226280635614">Rozdělené zobrazení</translation>
 <translation id="1218730690561976633">Přepnutí ověření uživatele pro vylepšené automatické vyplňování</translation>
 <translation id="1219674500290482172">Nelze se připojit k internetu.</translation>
@@ -2113,6 +2112,7 @@ Kdykoli můžete začít znovu.</translation>
 <translation id="7772948288262733182">Vítejte zpět</translation>
 <translation id="777637629667389858">Když jste přihlášeni, chrání vás ve službách Google.</translation>
 <translation id="7776604279034196531">Přístup k režimu čtení z adresního řádku, když je k dispozici</translation>
+<translation id="7780992949171378848">Odeslat webům žádost o odhlášení z používání vašich dat</translation>
 <translation id="7781829728241885113">Včera</translation>
 <translation id="7788474973847076315">Pořídit fotku</translation>
 <translation id="7788868432173225918">Zavřít rozbalené zobrazení</translation>

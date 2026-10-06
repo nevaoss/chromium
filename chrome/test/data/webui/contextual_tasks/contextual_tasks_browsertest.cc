@@ -56,8 +56,6 @@ class ContextualTasksBrowserTest : public WebUIMochaBrowserTest {
         .WillByDefault(testing::Return(true));
     ON_CALL(*aim_eligibility_service, IsCobrowseEligible())
         .WillByDefault(testing::Return(true));
-    ON_CALL(*aim_eligibility_service, IsAimUrl(testing::_, testing::_))
-        .WillByDefault(testing::Return(true));
     return aim_eligibility_service;
   }
 
@@ -334,6 +332,10 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksBrowserTest,
 
 IN_PROC_BROWSER_TEST_F(ContextualTasksBrowserTest, LensButton) {
   RunTest("contextual_tasks/lens_button_test.js", "mocha.run();");
+}
+
+IN_PROC_BROWSER_TEST_F(ContextualTasksBrowserTest, TabPicker) {
+  RunTest("contextual_tasks/tab_picker_test.js", "mocha.run();");
 }
 #endif
 

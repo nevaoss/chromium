@@ -358,7 +358,6 @@ class GlicInteractiveContextMenuTestBase
 
   void SetUpOnMainThread() override {
     glic::test::InteractiveGlicTest::SetUpOnMainThread();
-    ASSERT_TRUE(embedded_https_test_server().Start());
     host_resolver()->AddRule("*", "127.0.0.1");
     signin::IdentityManager* identity_manager =
         IdentityManagerFactory::GetForProfile(browser()->GetProfile());
@@ -387,6 +386,26 @@ class GlicInteractiveContextMenuTestBase
   }
 
   auto PollForAndInstrumentGlic() {
+    if (features::IsGlicNoWebviewEnabled()) {
+      return Steps(UninstrumentWebContents(glic::kGlicContentsElementId, false),
+                   UninstrumentWebContents(glic::kGlicHostElementId, false),
+                   InAnyContext(Steps(
+                       InstrumentNonTabWebView(glic::kGlicContentsElementId,
+                                               kGlicViewElementId),
+                       InstrumentNonTabWebView(glic::kGlicHostElementId,
+                                               kGlicViewElementId),
+                       WaitForWebContentsReady(glic::kGlicContentsElementId),
+                       // TODO(b:448604727): State observation is currently
+                       // unsupported with multi- instance, so we will poll.
+                       PollUntil(
+                           [this]() {
+                             if (auto* instance = GetGlicInstanceImpl()) {
+                               return instance->host().IsWebClientConnected();
+                             }
+                             return false;
+                           },
+                           "polling until web client is ready"))));
+    }
     return Steps(UninstrumentWebContents(glic::kGlicContentsElementId, false),
                  UninstrumentWebContents(glic::kGlicHostElementId, false),
                  InAnyContext(Steps(

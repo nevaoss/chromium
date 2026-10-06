@@ -639,6 +639,9 @@ bool IsNaN(PixelsAndPercent value, bool allows_negative_percentage_reference) {
 std::optional<PixelsAndPercent> EvaluateValueIfNaNorInfinity(
     const blink::CalculationExpressionNode* value,
     bool allows_negative_percentage_reference) {
+  if (!RuntimeEnabledFeatures::CSSCalcEarlyNaNAndInfFoldingEnabled()) {
+    return std::nullopt;
+  }
   if (value->HasColorChannelKeyword()) {
     // We cannot correctly evaluate for NaN or infinity until we know the
     // color channel values to substitute in.
@@ -884,8 +887,8 @@ CSSMathExpressionNodeWithOperator MaybeReplaceNodeWithCombined(
       value *= multiplicative_factor;
       multiplicative_factor = 1.0;
     } else {
-      new_op =
-          value < 0.0f ? CSSMathOperator::kSubtract : CSSMathOperator::kAdd;
+      new_op = std::signbit(value) ? CSSMathOperator::kSubtract
+                                   : CSSMathOperator::kAdd;
       value = std::abs(value);
     }
     CSSMathExpressionNode* new_node =

@@ -71,7 +71,6 @@
 <translation id="1201402288615127009">Weiter</translation>
 <translation id="1204075260022434100">{count,plural, =1{Lesezeichen unter „{title}“ in deinem Konto {email} gespeichert}other{{count} Lesezeichen unter „{title}“ in deinem Konto {email} gespeichert}}</translation>
 <translation id="1207493287814084192">17:30 Uhr</translation>
-<translation id="1215414310909588335">{count,plural, =1{1 Minute Tipparbeit gespart}other{# Minuten Tipparbeit gespart}}</translation>
 <translation id="1217294226280635614">Geteilte Ansicht</translation>
 <translation id="1218730690561976633">Erweiterte Autofill-Nutzerbestätigung ein-/ausschalten</translation>
 <translation id="1219674500290482172">Internetverbindung kann nicht hergestellt werden.</translation>
@@ -2113,6 +2112,7 @@ Du kannst es jederzeit wieder aktivieren.</translation>
 <translation id="7772948288262733182">Willkommen zurück</translation>
 <translation id="777637629667389858">Wenn du angemeldet bist, bist du in allen Google-Diensten besser geschützt.</translation>
 <translation id="7776604279034196531">Über die Adressleiste auf den Lesemodus zugreifen, wenn verfügbar</translation>
+<translation id="7780992949171378848">Anfrage zur Ablehnung der Datennutzung an Websites senden</translation>
 <translation id="7781829728241885113">Gestern</translation>
 <translation id="7788474973847076315">Foto aufnehmen</translation>
 <translation id="7788868432173225918">Erweiterte Ansicht schließen</translation>

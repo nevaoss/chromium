@@ -324,7 +324,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="SafeBrowsing.AndroidTelemetry.ApkDownload.IncompleteReason"
-    enum="ApkDownloadTelemetryIncompleteReason" expires_after="2027-01-10">
+    enum="ApkDownloadTelemetryIncompleteReason" expires_after="2027-03-14">
   <owner>xinghuilu@chromium.org</owner>
   <owner>chrome-counter-abuse-alerts@google.com</owner>
   <summary>
@@ -712,8 +712,6 @@ useful for Chirp alerts (go/crca-alerts). -->
   <token key="ReportType">
     <variant name="AdSample" summary="AdSample"/>
     <variant name="APKDownload" summary="APKDownload"/>
-    <variant name="BlockedAdPopup" summary="BlockedAdPopup"/>
-    <variant name="BlockedAdRedirect" summary="BlockedAdRedirect"/>
     <variant name="DangerousDownloadAutoDeleted"
         summary="DangerousDownloadAutoDeleted"/>
     <variant name="DangerousDownloadByAPI" summary="DangerousDownloadByAPI"/>
@@ -829,7 +827,7 @@ useful for Chirp alerts (go/crca-alerts). -->
 </histogram>
 
 <histogram name="SafeBrowsing.ClientSafeBrowsingReport.RequestHasToken"
-    enum="BooleanSent" expires_after="2026-10-26">
+    enum="BooleanSent" expires_after="2027-04-26">
   <owner>thefrog@chromium.org</owner>
   <owner>chrome-counter-abuse-alerts@google.com</owner>
   <summary>
@@ -1765,7 +1763,7 @@ useful for Chirp alerts (go/crca-alerts). -->
 </histogram>
 
 <histogram name="SafeBrowsing.GmsSafeBrowsingApi.ResponseStatus{Protocol}"
-    enum="SafeBrowsingApiResponseStatus" expires_after="2027-01-10">
+    enum="SafeBrowsingApiResponseStatus" expires_after="2027-03-14">
   <owner>xinghuilu@chromium.org</owner>
   <owner>chrome-counter-abuse-alerts@google.com</owner>
   <summary>
@@ -3325,7 +3323,7 @@ useful for Chirp alerts (go/crca-alerts). -->
 
 <histogram
     name="SafeBrowsing.SiteFamiliarity.DeferNavigationToComputeSiteFamiliarity.DeferDuration"
-    units="ms" expires_after="2027-01-10">
+    units="ms" expires_after="2027-03-14">
   <owner>jacastro@chromium.org</owner>
   <owner>tiffanysong@google.com</owner>
   <owner>chrome-counter-abuse-alerts@google.com</owner>

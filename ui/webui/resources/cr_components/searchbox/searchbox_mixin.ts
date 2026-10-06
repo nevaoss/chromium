@@ -386,6 +386,13 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
 
     updateDropdownVisibility(): void {
       this.dropdownIsVisible = this.hasMatches();
+
+      if (this.multiLineEnabled && this.dropdownIsVisible) {
+        const isUserTyping = (this.result?.input.length ?? 0) > 0;
+        if (isUserTyping && this.getInputElement()?.isMultiline()) {
+          this.dropdownIsVisible = false;
+        }
+      }
     }
 
     async onAutocompleteResultChanged(result: AutocompleteResult) {
@@ -604,8 +611,10 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
       if (path.length === 0) {
         return true;
       }
-      return path.includes(this.getInputElement()) ||
-          path.includes(this.getDropdownElement()) || path.some(el => {
+      const inputEl = this.getInputElement()?.inputElement;
+      const isInput = inputEl ? path.includes(inputEl) : false;
+      return isInput || path.includes(this.getDropdownElement()) ||
+          path.some(el => {
             const node = el as HTMLElement;
             return node.tagName === 'CR-SEARCHBOX-COMPOSE-BUTTON';
           });
@@ -658,8 +667,7 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
         return true;
       }
 
-      if (this.selection.state ===
-          SelectionLineState.kFocusedButtonContextEntrypoint) {
+      if (this.isContextEntrypointVirtualFocused()) {
         e.preventDefault();
         this.openContextMenu();
         return true;
@@ -770,6 +778,9 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
       // visible.
       if (!this.dropdownIsVisible) {
         if (e.key === 'ArrowUp' || e.key === 'ArrowDown') {
+          if (this.multiLineEnabled && this.getInputElement()?.isMultiline()) {
+            return;
+          }
           const inputValue = this.getInputElement().inputElement.value;
           if (inputValue.trim() || !inputValue) {
             this.queryAutocomplete(

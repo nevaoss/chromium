@@ -168,7 +168,7 @@ class BrowsingHistoryHandlerTest : public ChromeRenderViewHostTestHarness {
                 /*duplicate_policy=*/
                 history::QueryOptions::REMOVE_DUPLICATES_PER_DAY,
                 /*matching_algorithm=*/options.matching_algorithm,
-                /*host_only=*/options.host_only,
+                /*hostname_suffix=*/options.hostname_suffix,
                 /*visit_order=*/options.visit_order,
                 /*app_id=*/options.app_id,
                 /*include_actor_visits=*/true,
@@ -242,29 +242,29 @@ class BrowsingHistoryHandlerTest : public ChromeRenderViewHostTestHarness {
   std::unique_ptr<MockHistoryPage> mock_page_;
 };
 
-TEST_F(BrowsingHistoryHandlerTest, HostPrefixParameter) {
-  std::u16string query = u"www.chromium.org";
+TEST_F(BrowsingHistoryHandlerTest, HostnameSuffixParameter) {
+  std::u16string query = u"";
   QueryOptions options;
-  options.host_only = true;
+  options.hostname_suffix = "www.chromium.org";
   MockHistoryServiceCall(query, options);
 
-  RunQueryHistory("host:www.chromium.org");
+  auto results_mojom = RunQueryHistory("host:www.chromium.org");
+  EXPECT_EQ("www.chromium.org", results_mojom->info->term);
 }
 
-TEST_F(BrowsingHistoryHandlerTest, WithoutHostPrefixParameter) {
+TEST_F(BrowsingHistoryHandlerTest, WithoutHostnameSuffixParameter) {
   std::u16string query = u"www.chromium.org";
   QueryOptions options;
-  options.host_only = false;
   MockHistoryServiceCall(query, options);
 
-  RunQueryHistory("www.chromium.org");
+  auto results_mojom = RunQueryHistory("www.chromium.org");
+  EXPECT_EQ("www.chromium.org", results_mojom->info->term);
 }
 
-TEST_F(BrowsingHistoryHandlerTest, MisplacedHostPrefixParameter) {
+TEST_F(BrowsingHistoryHandlerTest, MisplacedHostnameSuffixParameter) {
   {
     std::u16string query = u"whost:ww.chromium.org";
     QueryOptions options;
-    options.host_only = false;
     MockHistoryServiceCall(query, options);
 
     RunQueryHistory("whost:ww.chromium.org");
@@ -273,10 +273,64 @@ TEST_F(BrowsingHistoryHandlerTest, MisplacedHostPrefixParameter) {
   {
     std::u16string query = u"www.chromium.orghost:";
     QueryOptions options;
-    options.host_only = false;
     MockHistoryServiceCall(query, options);
 
     RunQueryHistory("www.chromium.orghost:");
+  }
+}
+
+TEST_F(BrowsingHistoryHandlerTest, HostnameSuffixParameterAndTextQuery) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeature(
+      history::kBrowsingHistoryImprovedHostnameSuffixMatching);
+
+  {
+    std::u16string query = u"some-text";
+    QueryOptions options;
+    options.hostname_suffix = "example.com";
+    MockHistoryServiceCall(query, options);
+
+    auto results_mojom = RunQueryHistory("host:example.com some-text");
+    EXPECT_EQ("some-text", results_mojom->info->term);
+  }
+
+  {
+    std::u16string query = u"some-text some-other-text";
+    QueryOptions options;
+    options.hostname_suffix = "example.com";
+    MockHistoryServiceCall(query, options);
+
+    auto results_mojom =
+        RunQueryHistory("some-text host:example.com some-other-text");
+    EXPECT_EQ("some-text some-other-text", results_mojom->info->term);
+  }
+}
+
+TEST_F(BrowsingHistoryHandlerTest,
+       HostnameSuffixParameterAndTextQueryImprovedMatchingDisabled) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndDisableFeature(
+      history::kBrowsingHistoryImprovedHostnameSuffixMatching);
+
+  {
+    // Legacy logic treats the entire rest of the string as the host.
+    std::u16string query = u"";
+    QueryOptions options;
+    options.hostname_suffix = "example.com some-text";
+    MockHistoryServiceCall(query, options);
+
+    auto results_mojom = RunQueryHistory("host:example.com some-text");
+    EXPECT_EQ("example.com some-text", results_mojom->info->term);
+  }
+
+  {
+    // If "host:" is not at index 0, legacy logic does not recognize it.
+    std::u16string query = u"some-text host:example.com";
+    QueryOptions options;
+    MockHistoryServiceCall(query, options);
+
+    auto results_mojom = RunQueryHistory("some-text host:example.com");
+    EXPECT_EQ("some-text host:example.com", results_mojom->info->term);
   }
 }
 
@@ -293,7 +347,6 @@ TEST_F(BrowsingHistoryHandlerTest, BeginTimestamp) {
   {
     std::u16string query = u"www.chromium.orghost:";
     QueryOptions options;
-    options.host_only = false;
     MockHistoryServiceCall(query, options);
     RunQueryHistory("www.chromium.orghost:");
   }
@@ -684,6 +737,45 @@ TEST_F(BrowsingHistoryHandlerCriticalActionsTest,
       "HistoryPage.QueryHistoryTotalTime.WithoutCriticalActions", 0);
   histogram_tester.ExpectUniqueSample(
       "HistoryPage.CriticalActionsPerVisitCount", 1, 1);
+}
+
+// An action's own URL and the URL of the history visit it is linked to can
+// refer to different pages: the actor caches the navigation ID *before*
+// invoking a tool, while the action's URL is resolved *after* the tool has run
+// and can therefore describe the post-navigation page. The linkout must follow
+// the visit, i.e. the page the action was actually performed on.
+// See b/561854104.
+TEST_F(BrowsingHistoryHandlerCriticalActionsTest,
+       LinkoutFollowsVisitUrlNotActionUrl) {
+  base::Time visit_time = base::Time::Now();
+
+  critical_actions::CriticalActionEntry action =
+      CreateAction("test-action-id-1", visit_time, 42,
+                   critical_actions::ActionType::kFederatedLogin);
+  // The page the tool navigated to after the credential was used.
+  action.url = GURL("https://app-example.com/dashboard");
+  service()->AddCriticalAction(action);
+  FlushDatabaseTasks();
+
+  // The page the credential was actually used on.
+  BrowsingHistoryService::HistoryEntry actor_entry(
+      BrowsingHistoryService::HistoryEntry::LOCAL_ENTRY,
+      GURL("https://accounts.idp-example.com/signin"), u"Actor Visit",
+      visit_time, std::string(), false, std::u16string(), false, GURL(),
+      /*visit_count=*/1, 0,
+      /*is_actor_visit=*/true, history::kNoAppIdFilter, 42);
+
+  QueryOptions options;
+  MockHistoryServiceCall(u"idp-example", options, {actor_entry});
+
+  mojom::QueryResultPtr results = RunQueryHistory("idp-example");
+  ASSERT_TRUE(results);
+  ASSERT_EQ(results->value.size(), 1u);
+  ASSERT_EQ(results->value[0]->critical_actions.size(), 1u);
+  EXPECT_EQ(results->value[0]->critical_actions[0]->linkout_url,
+            "chrome://password-manager/passwords/idp-example.com");
+  EXPECT_NE(results->value[0]->critical_actions[0]->linkout_url,
+            "chrome://password-manager/passwords/app-example.com");
 }
 
 TEST_F(BrowsingHistoryHandlerTest,

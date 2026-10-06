@@ -702,7 +702,7 @@ void RenderWidgetHostViewAura::ShowImpl(PageVisibilityState page_visibility) {
   // OnShowWithPageVisibility will not call NotifyHostAndDelegateOnWasShown,
   // which updates `visibility_`, unless the host is hidden. Make sure no update
   // is needed.
-  CHECK(host_->IsHidden() || visibility_ == Visibility::VISIBLE);
+  CHECK(host()->IsHidden() || visibility_ == Visibility::VISIBLE);
   OnShowWithPageVisibility(page_visibility);
 }
 
@@ -721,7 +721,7 @@ void RenderWidgetHostViewAura::NotifyHostAndDelegateOnWasShown(
     std::optional<blink::RecordContentToVisibleTimeRequest>
         tab_switch_start_state) {
   CHECK(delegated_frame_host_) << "Cannot be invoked during destruction.";
-  CHECK(host_->IsHidden());
+  CHECK(host()->IsHidden());
   CHECK_NE(visibility_, Visibility::VISIBLE);
 
   visibility_ = Visibility::VISIBLE;
@@ -810,7 +810,7 @@ void RenderWidgetHostViewAura::
     RequestSuccessfulPresentationTimeFromHostOrDelegate(
         blink::RecordContentToVisibleTimeRequest visible_time_request) {
   CHECK(delegated_frame_host_) << "Cannot be invoked during destruction.";
-  CHECK(!host_->IsHidden());
+  CHECK(!host()->IsHidden());
   CHECK_EQ(visibility_, Visibility::VISIBLE);
 
   // If the frame for the renderer is already available, then the tab-switching
@@ -831,7 +831,7 @@ void RenderWidgetHostViewAura::
 void RenderWidgetHostViewAura::
     CancelSuccessfulPresentationTimeRequestForHostAndDelegate() {
   CHECK(delegated_frame_host_) << "Cannot be invoked during destruction.";
-  CHECK(!host_->IsHidden());
+  CHECK(!host()->IsHidden());
   CHECK_EQ(visibility_, Visibility::VISIBLE);
 
   host()->CancelSuccessfulPresentationTimeRequest();
@@ -880,7 +880,7 @@ void RenderWidgetHostViewAura::UpdateBackgroundColor() {
 
   SkColor4f background_color =
       SkColor4f::FromColor(GetBackgroundColor().value());
-  window_->layer()->SetFillsBoundsOpaquely(background_color.isOpaque());
+  window_->SetTransparent(!background_color.isOpaque());
   window_->layer()->AsSurface()->SetFallbackBackgroundColor(background_color);
 }
 
@@ -3118,7 +3118,7 @@ void RenderWidgetHostViewAura::CreateAuraWindow(aura::client::WindowType type) {
   window_->Init(ui::LAYER_SURFACE);
   SkColor4f background_color = SkColor4f::FromColor(
       GetBackgroundColor() ? *GetBackgroundColor() : SK_ColorWHITE);
-  window_->layer()->SetFillsBoundsOpaquely(background_color.isOpaque());
+  window_->SetTransparent(!background_color.isOpaque());
   window_->layer()->AsSurface()->SetFallbackBackgroundColor(background_color);
   UpdateFrameSinkIdRegistration();
 }

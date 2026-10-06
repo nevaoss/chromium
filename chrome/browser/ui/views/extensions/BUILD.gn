@@ -284,7 +284,7 @@ source_set("browser_tests") {
   testonly = true
   defines = [ "HAS_OUT_OF_PROC_TEST_RUNNER" ]
   sources = []
-  deps = []
+  deps = [ "//chrome/browser/ui:browser_window_header" ]
 
   if (!is_android) {
     sources += [
@@ -418,6 +418,7 @@ source_set("interactive_ui_tests") {
     "//chrome/browser/metrics/critical_user_journeys",
     "//chrome/browser/profiles:profile",
     "//chrome/browser/ui",
+    "//chrome/browser/ui:browser_window_header",
     "//chrome/browser/ui:ui_features",
     "//chrome/browser/ui/browser_ui_controller",
     "//chrome/browser/ui/extensions",
@@ -744,6 +745,7 @@ source_set("extension_install_dialog_view_impl") {
     "//chrome/app/theme:theme_resources",
     "//chrome/browser/picture_in_picture",
     "//chrome/browser/profiles:profile",
+    "//chrome/browser/ui:scoped_tabbed_browser_displayer",
     "//chrome/browser/ui/browser_web_contents_delegate",
     "//chrome/browser/ui/browser_window",
     "//chrome/browser/ui/tabs:tab_strip",

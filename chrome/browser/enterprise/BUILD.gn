@@ -541,6 +541,7 @@ source_set("impl") {
     deps += [
       "//chrome/android:chrome_jni_headers",
       "//chrome/browser/android:tabs_public",
+      "//chrome/browser/enterprise/connectors/device_trust/key_management/android",
       "//chrome/browser/enterprise/util:jni_headers",
       "//chrome/browser/ui/android/tab_model",
       "//components/enterprise/browser/reporting/android:jni_headers",
@@ -573,6 +574,7 @@ source_set("impl") {
       "//chrome/browser/search_engine_choice",
       "//chrome/browser/sync",
       "//chrome/browser/themes",
+      "//chrome/browser/ui:browser_manager_service",
       "//chrome/browser/ui/signin",
       "//chrome/browser/ui/tabs:tab_strip",
       "//chrome/browser/ui/tabs:tabs_public",
@@ -814,6 +816,8 @@ source_set("impl") {
     deps += [
       "//chrome/browser/enterprise/connectors/device_trust/key_management/browser",
       "//chrome/browser/enterprise/connectors/device_trust/key_management/core",
+      "//chrome/browser/ui:browser_window_header",
+      "//chrome/browser/ui:singleton_tabs",
       "//chrome/browser/ui/browser_window:create_browser_window",
       "//chrome/services/system_signals/public/cpp/browser",
     ]

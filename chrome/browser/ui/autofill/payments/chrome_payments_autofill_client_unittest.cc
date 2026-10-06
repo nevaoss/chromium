@@ -29,6 +29,7 @@
 #include "components/autofill/core/browser/ui/payments/bnpl_ui_delegate.h"
 #include "components/autofill/core/browser/ui/payments/bubble_show_options.h"
 #include "components/autofill/core/browser/ui/payments/card_unmask_prompt_options.h"
+#include "components/autofill/core/browser/ui/payments/payments_churned_users_ui_delegate.h"
 #include "components/autofill/core/common/autofill_features.h"
 #include "components/autofill/core/common/autofill_payments_features.h"
 #include "components/autofill/core/common/autofill_prefs.h"
@@ -209,10 +210,6 @@ class MockPaymentsChurnedUsersBubbleController
 class ChromePaymentsAutofillClientTest
     : public ChromeRenderViewHostTestHarness {
  public:
-  ChromePaymentsAutofillClientTest() {
-    feature_list_.InitAndEnableFeature(
-        features::kAutofillEnablePrefetchingRiskDataForRetrieval);
-  }
 
   void SetUp() override {
     ChromeRenderViewHostTestHarness::SetUp();
@@ -323,7 +320,6 @@ class ChromePaymentsAutofillClientTest
 #endif
 
  private:
-  base::test::ScopedFeatureList feature_list_;
 #if BUILDFLAG(IS_ANDROID)
   base::MockCallback<AccessoryController::FillingSourceObserver>
       mock_filling_source_observer_;
@@ -859,19 +855,6 @@ TEST_F(ChromePaymentsAutofillClientTest, GetPaymentsWindowManager) {
     EXPECT_NE(chrome_payments_client()->GetPaymentsWindowManager(), nullptr);
 }
 
-TEST_F(ChromePaymentsAutofillClientTest, RiskDataCaching_DataCached) {
-  base::MockCallback<base::OnceCallback<void(const std::string&)>> callback1;
-  base::MockCallback<base::OnceCallback<void(const std::string&)>> callback2;
-  chrome_payments_client()->SetCachedRiskDataLoadedCallbackForTesting(
-      callback1.Get());
-  chrome_payments_client()->SetRiskDataForTesting("risk_data");
-
-  EXPECT_CALL(callback1, Run("risk_data")).Times(1);
-  EXPECT_CALL(callback2, Run).Times(0);
-
-  chrome_payments_client()->LoadRiskData(callback2.Get());
-}
-
 // Test that BNPL strategy is created and returned correctly.
 TEST_F(ChromePaymentsAutofillClientTest, GetBnplStrategy) {
   payments::BnplStrategy* strategy =
@@ -913,6 +896,18 @@ TEST_F(ChromePaymentsAutofillClientTest, GetWalletReminderNoticeManager) {
   // Test that the same instance is returned on subsequent calls.
   EXPECT_EQ(manager,
             chrome_payments_client()->GetWalletReminderNoticeManager());
+}
+
+// Test that Payments Churned Users UI delegate is created and returned
+// correctly.
+TEST_F(ChromePaymentsAutofillClientTest, GetPaymentsChurnedUsersUiDelegate) {
+  payments::PaymentsChurnedUsersUiDelegate* ui_delegate =
+      chrome_payments_client()->GetPaymentsChurnedUsersUiDelegate();
+  ASSERT_NE(ui_delegate, nullptr);
+
+  // Test that the same instance is returned on subsequent calls.
+  EXPECT_EQ(ui_delegate,
+            chrome_payments_client()->GetPaymentsChurnedUsersUiDelegate());
 }
 
 // Test that `DisablePaymentsAutofill` correctly disables the client's support
@@ -1037,16 +1032,7 @@ TEST_P(ChromePaymentsAutofillClientWalletBrandingTest,
 
 #if !BUILDFLAG(IS_ANDROID)
 class ChromePaymentsAutofillIOSPromoClientTest
-    : public ChromePaymentsAutofillClientTest {
- public:
-  ChromePaymentsAutofillIOSPromoClientTest() {
-    feature_list_.InitAndEnableFeature(
-        features::kAutofillEnablePrefetchingRiskDataForRetrieval);
-  }
-
- private:
-  base::test::ScopedFeatureList feature_list_;
-};
+    : public ChromePaymentsAutofillClientTest {};
 
 // Test that calling `CreditCardUploadCompleted` still calls
 // SaveCardBubbleControllerImpl::ShowConfirmationBubbleView on card upload

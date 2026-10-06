@@ -2348,14 +2348,19 @@ public class ReadAloudController
         mActivePlaybackTabSupplier.set(tab);
     }
 
-    private static class TabLanguageStatus {
-      final String mLanguage;
-      final boolean mSupported;
+    @VisibleForTesting(otherwise = VisibleForTesting.PACKAGE_PRIVATE)
+    public void setPlayback(@Nullable Playback playback) {
+        mPlayback = playback;
+    }
 
-      TabLanguageStatus(String language, boolean supported) {
-        this.mLanguage = language;
-        this.mSupported = supported;
-      }
+    private static class TabLanguageStatus {
+        final String mLanguage;
+        final boolean mSupported;
+
+        TabLanguageStatus(String language, boolean supported) {
+            this.mLanguage = language;
+            this.mSupported = supported;
+        }
     }
 
     // ============================================================================
@@ -2380,6 +2385,17 @@ public class ReadAloudController
     void onPlaybackStateChanged(int playbackState) {
         if (mPlayback instanceof NativePlayback nativePlayback) {
             nativePlayback.notifyPlaybackStateChanged(playbackState);
+        }
+    }
+
+    // Called when the active article text is chunked into paragraphs by ReadAloudService.
+    void onTextChunked(@Nullable String @Nullable [] chunks) {
+        if (mPlayback instanceof NativePlayback nativePlayback) {
+            nativePlayback.onTextChunked(chunks);
+            Playback.Metadata metadata = mPlayback.getMetadata();
+            if (metadata != null && mActivePlaybackTabSupplier.get() != null) {
+                maybeSetUpHighlighter(metadata);
+            }
         }
     }
 
@@ -2419,8 +2435,11 @@ public class ReadAloudController
 
     // Called when an unrecoverable playback error occurs.
     void onPlaybackError(String errorMessage) {
-        // TODO: Handle playback error.
-        Log.d(TAG, "onPlaybackError: errorMessage = %s", errorMessage);
+        Log.e(TAG, "onPlaybackError: errorMessage = %s", errorMessage);
+        resetCurrentPlayback(ReasonForStoppingPlayback.UNKNOWN_REASON);
+        if (mPlayerCoordinator != null) {
+            mPlayerCoordinator.playbackFailed();
+        }
     }
 
     // Called when the playback state of a voice preview changes in settings.

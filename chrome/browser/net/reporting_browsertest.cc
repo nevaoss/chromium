@@ -6,6 +6,7 @@
 #include <string>
 
 #include "base/base_switches.h"
+#include "base/process/kill.h"
 #include "base/strings/escape.h"
 #include "base/strings/stringprintf.h"
 #include "base/test/metrics/histogram_tester.h"
@@ -751,6 +752,57 @@ IN_PROC_BROWSER_TEST_P(CrashReportingBrowserTest,
   EXPECT_EQ("oom", *reason);
 }
 
+// This test is Windows-only because Windows is the only platform that has the
+// relevant exit code (`base::win::kStatusInvalidImageHashExitCode`).
+#if BUILDFLAG(IS_WIN)
+IN_PROC_BROWSER_TEST_P(CrashReportingBrowserTest,
+                       DISABLED_ON_ASAN(CrashReportIntegrityFailure)) {
+  content::WebContents* contents =
+      browser()->tab_strip_model()->GetActiveWebContents();
+
+  GURL main_url = server()->GetURL(
+      kReportingHost, "/set-header?" + GetAppropriateReportingHeader());
+  EXPECT_TRUE(NavigateToURL(contents, main_url));
+
+  content::RenderFrameHost* frame = contents->GetPrimaryMainFrame();
+  ASSERT_TRUE(frame);
+
+  content::RenderProcessHost* rph = frame->GetProcess();
+  content::RenderProcessHostWatcher watcher(
+      rph, content::RenderProcessHostWatcher::WATCH_FOR_PROCESS_EXIT);
+
+  content::ScopedAllowRendererCrashes allow_renderer_crashes(contents);
+  EXPECT_TRUE(rph->Shutdown(base::win::kStatusInvalidImageHashExitCode));
+  watcher.Wait();
+  EXPECT_FALSE(watcher.did_exit_normally());
+  EXPECT_TRUE(contents->IsCrashed());
+
+  upload_response()->WaitForRequest();
+  base::ListValue response =
+      ParseReportUpload(upload_response()->http_request()->content);
+  ASSERT_FALSE(response.empty());
+  upload_response()->Send("HTTP/1.1 200 OK\r\n");
+  upload_response()->Send("\r\n");
+  upload_response()->Done();
+
+  // Verify that the crash report was generated with no reason.
+  const base::DictValue& report = response.begin()->GetDict();
+  const std::string* type = report.FindString("type");
+  const std::string* url = report.FindString("url");
+  const base::DictValue* body = report.FindDict("body");
+  ASSERT_NE(body, nullptr);
+  const std::string* reason = body->FindString("reason");
+
+  ASSERT_NE(type, nullptr);
+  EXPECT_EQ("crash", *type);
+
+  ASSERT_NE(url, nullptr);
+  EXPECT_EQ(*url, main_url.spec());
+
+  EXPECT_EQ(reason, nullptr);
+}
+#endif  // BUILDFLAG(IS_WIN)
+
 IN_PROC_BROWSER_TEST_P(
     CrashReportingBrowserTest,
     DISABLED_ON_ASAN(CrashReportOOMTakesPriorityOverUnresponsive)) {
@@ -797,17 +849,11 @@ IN_PROC_BROWSER_TEST_P(
   EXPECT_EQ("oom", *reason);
 }
 
-// This test deliberately exhausts memory, which is too slow/flaky under MSan
-// and on debug ChromeOS builds.
-// TODO(crbug.com/402535088): Re-enable on these configurations.
-#if defined(ADDRESS_SANITIZER) || defined(MEMORY_SANITIZER) || \
-    (BUILDFLAG(IS_CHROMEOS) && !defined(NDEBUG))
-#define MAYBE_CrashReportMemoryExhaust DISABLED_CrashReportMemoryExhaust
-#else
-#define MAYBE_CrashReportMemoryExhaust CrashReportMemoryExhaust
-#endif
+// This timeouts on all platforms. We need to find a way to simulate OOM instead
+// of actually exhausting memory which puts too much stress on the bots.
+// TODO(crbug.com/407473725): Re-enable when done.
 IN_PROC_BROWSER_TEST_P(CrashReportingBrowserTest,
-                       MAYBE_CrashReportMemoryExhaust) {
+                       DISABLED_CrashReportMemoryExhaust) {
   content::WebContents* contents =
       browser()->tab_strip_model()->GetActiveWebContents();
 
@@ -836,6 +882,106 @@ IN_PROC_BROWSER_TEST_P(CrashReportingBrowserTest,
 
   // Verify that the crash report was generated with reason: "oom" from Blink's
   // OOM callback.
+  const base::DictValue& report = response.begin()->GetDict();
+  const std::string* type = report.FindString("type");
+  const std::string* url = report.FindString("url");
+  const base::DictValue* body = report.FindDict("body");
+  ASSERT_NE(body, nullptr);
+  const std::string* reason = body->FindString("reason");
+
+  ASSERT_NE(type, nullptr);
+  EXPECT_EQ("crash", *type);
+
+  ASSERT_NE(url, nullptr);
+  EXPECT_EQ(*url, main_url.spec());
+
+  ASSERT_NE(reason, nullptr);
+  EXPECT_EQ("oom", *reason);
+}
+
+// This timeouts on all platforms. We need to find a way to simulate OOM instead
+// of actually exhausting memory which puts too much stress on the bots.
+// TODO(crbug.com/407473725): Re-enable when done.
+IN_PROC_BROWSER_TEST_P(CrashReportingBrowserTest,
+                       DISABLED_CrashReportWorkerMemoryExhaust) {
+  content::WebContents* contents =
+      browser()->tab_strip_model()->GetActiveWebContents();
+
+  GURL main_url = server()->GetURL(
+      kReportingHost, "/set-header?" + GetAppropriateReportingHeader());
+  EXPECT_TRUE(NavigateToURL(contents, main_url));
+
+  content::RenderFrameHost* frame = contents->GetPrimaryMainFrame();
+  ASSERT_TRUE(frame);
+
+  content::ScopedAllowRendererCrashes allow_renderer_crashes(contents);
+  content::RenderProcessHostWatcher crash_observer(
+      contents, content::RenderProcessHostWatcher::WATCH_FOR_PROCESS_EXIT);
+  content::ExecuteScriptAsync(frame,
+                              "const blob = new Blob(["
+                              "  'const a = []; while (true) a.push(new "
+                              "Array(16 * 1024 * 1024).fill(1));'"
+                              "], { type: 'text/javascript' });"
+                              "new Worker(URL.createObjectURL(blob));");
+  crash_observer.Wait();
+
+  upload_response()->WaitForRequest();
+  base::ListValue response =
+      ParseReportUpload(upload_response()->http_request()->content);
+  ASSERT_FALSE(response.empty());
+  upload_response()->Send("HTTP/1.1 200 OK\r\n");
+  upload_response()->Send("\r\n");
+  upload_response()->Done();
+
+  // Verify that the crash report was generated with reason: "oom" from Blink's
+  // OOM callback on the worker thread.
+  const base::DictValue& report = response.begin()->GetDict();
+  const std::string* type = report.FindString("type");
+  const std::string* url = report.FindString("url");
+  const base::DictValue* body = report.FindDict("body");
+  ASSERT_NE(body, nullptr);
+  const std::string* reason = body->FindString("reason");
+
+  ASSERT_NE(type, nullptr);
+  EXPECT_EQ("crash", *type);
+
+  ASSERT_NE(url, nullptr);
+  EXPECT_EQ(*url, main_url.spec());
+
+  ASSERT_NE(reason, nullptr);
+  EXPECT_EQ("oom", *reason);
+}
+
+IN_PROC_BROWSER_TEST_P(CrashReportingBrowserTest,
+                       DISABLED_ON_ASAN(CrashReportV8OOM)) {
+  content::WebContents* contents =
+      browser()->tab_strip_model()->GetActiveWebContents();
+
+  GURL main_url = server()->GetURL(
+      kReportingHost, "/set-header?" + GetAppropriateReportingHeader());
+  EXPECT_TRUE(NavigateToURL(contents, main_url));
+
+  content::RenderFrameHost* frame = contents->GetPrimaryMainFrame();
+  ASSERT_TRUE(frame);
+
+  content::ScopedAllowRendererCrashes allow_renderer_crashes(contents);
+  content::RenderProcessHostWatcher crash_observer(
+      contents, content::RenderProcessHostWatcher::WATCH_FOR_PROCESS_EXIT);
+  contents->GetController().LoadURL(GURL(blink::kChromeUIV8OOMURL),
+                                    content::Referrer(),
+                                    ui::PAGE_TRANSITION_TYPED, std::string());
+  crash_observer.Wait();
+
+  upload_response()->WaitForRequest();
+  base::ListValue response =
+      ParseReportUpload(upload_response()->http_request()->content);
+  ASSERT_FALSE(response.empty());
+  upload_response()->Send("HTTP/1.1 200 OK\r\n");
+  upload_response()->Send("\r\n");
+  upload_response()->Done();
+
+  // Verify that the crash report was generated with reason: "oom" from Blink's
+  // OOM callback when V8 triggers FatalProcessOutOfMemory.
   const base::DictValue& report = response.begin()->GetDict();
   const std::string* type = report.FindString("type");
   const std::string* url = report.FindString("url");

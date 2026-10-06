@@ -66,6 +66,7 @@ try_.builder(
     #         "build/fuchsia/sdk_override.txt",
     #     ],
     # ),
+    execution_timeout = 6 * time.hour,
     experiments = {
         "luci.buildbucket.run_in_turboci": 100,
     },
@@ -255,6 +256,7 @@ try_.compilator_builder(
     branch_selector = branches.selector.FUCHSIA_BRANCHES,
     cores = "8|16",
     ssd = True,
+    contact_team_email = "chrome-fuchsia-engprod@google.com",
     main_list_view = "try",
 )
 

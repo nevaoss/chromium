@@ -42,8 +42,8 @@ const char* GetPrefNameForStatType(LevelUpTaskStatType stat_type) {
   switch (stat_type) {
     case LevelUpTaskStatType::kTabsDecluttered:
       return prefs::kLevelUpTabsDeclutteredStat;
-    case LevelUpTaskStatType::kTypingSaved:
-      return prefs::kLevelUpTypingSavedStat;
+    case LevelUpTaskStatType::kPasswordsAutofilled:
+      return prefs::kLevelUpPasswordsAutofilledStat;
     case LevelUpTaskStatType::kPasswordsVerified:
       return prefs::kLevelUpPasswordsVerifiedStat;
     case LevelUpTaskStatType::kPhotoSearchesPerformed:
@@ -322,9 +322,10 @@ void LevelUpService::ResetAllTasksStatus() {
   pref_service_->ClearPref(prefs::kLevelUpCompletedTasks);
   pref_service_->SetInteger(prefs::kLevelUpHighestLevel, 1);
   pref_service_->SetInteger(prefs::kLevelUpTabsDeclutteredStat, 0);
-  pref_service_->SetInteger(prefs::kLevelUpTypingSavedStat, 0);
+  pref_service_->SetInteger(prefs::kLevelUpPasswordsAutofilledStat, 0);
   pref_service_->SetInteger(prefs::kLevelUpPasswordsVerifiedStat, 0);
   pref_service_->SetInteger(prefs::kLevelUpPhotoSearchesPerformedStat, 0);
+  pref_service_->SetBoolean(prefs::kLevelUpNewTasksNotificationEnabled, true);
   pref_service_->SetInteger(
       prefs::kIosMagicStackSegmentationLevelUpImpressionsSinceFreshness, 0);
 }
@@ -564,11 +565,14 @@ void LevelUpService::RegisterProfilePrefs(
   registry->RegisterBooleanPref(
       prefs::kLevelUpOptIn, false,
       user_prefs::PrefRegistrySyncable::SYNCABLE_PREF);
+  registry->RegisterBooleanPref(
+      prefs::kLevelUpNewTasksNotificationEnabled, true,
+      user_prefs::PrefRegistrySyncable::SYNCABLE_PREF);
   registry->RegisterIntegerPref(
       prefs::kLevelUpTabsDeclutteredStat, 0,
       user_prefs::PrefRegistrySyncable::SYNCABLE_PREF);
   registry->RegisterIntegerPref(
-      prefs::kLevelUpTypingSavedStat, 0,
+      prefs::kLevelUpPasswordsAutofilledStat, 0,
       user_prefs::PrefRegistrySyncable::SYNCABLE_PREF);
   registry->RegisterIntegerPref(
       prefs::kLevelUpPasswordsVerifiedStat, 0,

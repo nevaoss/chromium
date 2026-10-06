@@ -470,7 +470,9 @@ InputController::MaybeCreateVoiceIsolationHandler(
 
   return VoiceIsolationHandler::MaybeCreate(
       *ml_model_manager, processing_output_params,
-      std::move(deliver_processed_audio_callback));
+      std::move(deliver_processed_audio_callback),
+      base::BindRepeating(&EventHandler::OnLog,
+                          base::Unretained(event_handler_)));
 }
 
 #endif
@@ -1036,6 +1038,8 @@ void InputController::DeliverProcessedAudio(
     const media::AudioBus& audio_bus,
     base::TimeTicks audio_capture_time,
     const media::AudioGlitchInfo& glitch_info) {
+  TRACE_EVENT("audio", "InputController::DeliverProcessedAudio", "frames",
+              audio_bus.frames(), "channels", audio_bus.channels());
   stats_reporter_->ReportDelayAndGlitches(audio_capture_time, glitch_info);
   // When processing is performed in the audio service, the consumer is not
   // expected to use the input volume and keypress information.

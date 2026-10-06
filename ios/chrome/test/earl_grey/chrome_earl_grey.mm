@@ -1131,6 +1131,17 @@ id<GREYAction> grey_longPressWithDuration(base::TimeDelta duration) {
                  @"Send Tab To Self entry did not sync to the client.");
 }
 
+- (void)waitForSendTabToSelfTargetDevice:(NSString*)deviceName {
+  BOOL deviceSynced = [[GREYCondition
+      conditionWithName:@"Wait for STTS target device to sync to the client"
+                  block:^BOOL {
+                    return [ChromeEarlGreyAppInterface
+                        hasSendTabToSelfTargetDevice:deviceName];
+                  }] waitWithTimeout:10.0];
+  GREYAssertTrue(deviceSynced,
+                 @"Send Tab To Self target device did not sync to the client.");
+}
+
 - (NSString*)textFragmentForSendTabToSelfEntryWithURL:(NSString*)URL {
   return
       [ChromeEarlGreyAppInterface textFragmentForSendTabToSelfEntryWithURL:URL];
@@ -1197,10 +1208,6 @@ id<GREYAction> grey_longPressWithDuration(base::TimeDelta duration) {
 - (void)waitForSyncInvalidationFields {
   EG_TEST_HELPER_ASSERT_NO_ERROR(
       [ChromeEarlGreyAppInterface waitForSyncInvalidationFields]);
-}
-
-- (void)triggerSyncCycleForType:(syncer::DataType)type {
-  [ChromeEarlGreyAppInterface triggerSyncCycleForType:type];
 }
 
 - (void)deleteAutofillProfileFromFakeSyncServerWithGUID:

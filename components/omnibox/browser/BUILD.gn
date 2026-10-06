@@ -483,13 +483,15 @@ static_library("browser") {
     public_deps += [
       "//components/keyed_service/content",
       "//components/permissions",
-      "//content/public/browser",
       "//services/device/public/mojom",
     ]
     sources += [
       "geolocation_header_service.cc",
       "geolocation_header_service.h",
     ]
+  }
+  if (use_blink) {
+    public_deps += [ "//content/public/browser" ]
   }
 
   if ((!is_android || enable_vr) && !is_ios) {
@@ -623,12 +625,12 @@ if (is_android) {
       "android/java/res/drawable/action_directions.xml",
       "android/java/res/drawable/action_reviews.xml",
       "android/java/res/drawable/enterprise_management.xml",
+      "android/java/res/drawable/gpp_maybe.xml",
       "android/java/res/drawable/ic_settings_tune_20dp.xml",
       "android/java/res/drawable/ic_settings_tune_24dp.xml",
       "android/java/res/drawable/omnibox_dangerous.xml",
       "android/java/res/drawable/omnibox_no_encryption.xml",
       "android/java/res/drawable/omnibox_not_secure_warning.xml",
-      "android/java/res/drawable/shield_question.xml",
       "android/java/res/values-sw600dp/dimens.xml",
       "android/java/res/values/colors.xml",
       "android/java/res/values/dimens.xml",
@@ -1059,9 +1061,13 @@ source_set("unit_tests") {
       ":fusebox_action_mojo_test_utils",
       ":fusebox_action_mojo_utils",
       "//components/permissions:test_support",
-      "//content/test:test_support",
       "//services/device/public/cpp:test_support",
       "//services/device/public/mojom",
+    ]
+  }
+  if (use_blink) {
+    deps += [
+      "//content/test:test_support",
       "//ui/base/clipboard:clipboard_test_support",
     ]
   }

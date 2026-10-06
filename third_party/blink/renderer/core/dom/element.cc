@@ -67,6 +67,7 @@
 #include "third_party/blink/renderer/bindings/core/v8/v8_union_stringlegacynulltoemptystring_trustedhtml.h"
 #include "third_party/blink/renderer/core/accessibility/ax_context.h"
 #include "third_party/blink/renderer/core/accessibility/ax_object_cache.h"
+#include "third_party/blink/renderer/core/ad_tracker/display_ad_element_monitor.h"
 #include "third_party/blink/renderer/core/animation/animation.h"
 #include "third_party/blink/renderer/core/animation/css/css_animations.h"
 #include "third_party/blink/renderer/core/animation/document_animations.h"
@@ -195,7 +196,6 @@
 #include "third_party/blink/renderer/core/html/custom/custom_element.h"
 #include "third_party/blink/renderer/core/html/custom/custom_element_registry.h"
 #include "third_party/blink/renderer/core/html/custom/element_internals.h"
-#include "third_party/blink/renderer/core/html/display_ad_element_monitor.h"
 #include "third_party/blink/renderer/core/html/forms/html_button_element.h"
 #include "third_party/blink/renderer/core/html/forms/html_data_list_element.h"
 #include "third_party/blink/renderer/core/html/forms/html_field_set_element.h"
@@ -4861,8 +4861,6 @@ void Element::AttachLayoutTree(AttachContext& context) {
 }
 
 void Element::DetachLayoutTree(bool performing_reattach) {
-  HTMLFrameOwnerElement::PluginDisposeSuspendScope suspend_plugin_dispose;
-
   // Pseudo-elements that may have child pseudo-elements (such as ::column) must
   // be cleared before clearing the rare data vector below.
   ClearColumnPseudoElements();
@@ -6737,7 +6735,6 @@ ShadowRoot& Element::CreateAndAttachShadowRoot(ShadowRootMode type,
   NestingLevelIncrementer slot_assignment_recalc_forbidden_scope(
       GetDocument().SlotAssignmentRecalcForbiddenRecursionDepth());
 #endif
-  HTMLFrameOwnerElement::PluginDisposeSuspendScope suspend_plugin_dispose;
   EventDispatchForbiddenScope assert_no_event_dispatch;
   ScriptForbiddenScope forbid_script;
 
@@ -10618,7 +10615,7 @@ HTMLCanvasElement* Element::CanvasForDrawing() const {
   // immediate children as well.
   Element* ancestor = FlatTreeTraversal::ParentElementSkippingSlots(*this);
   if (auto* ancestor_canvas = DynamicTo<HTMLCanvasElement>(ancestor)) {
-    return ancestor_canvas->layoutSubtree() ? ancestor_canvas : nullptr;
+    return ancestor_canvas->IsContentDrawable() ? ancestor_canvas : nullptr;
   }
   if (!FastHasAttribute(html_names::kDrawableAttr)) {
     return nullptr;
@@ -10626,7 +10623,7 @@ HTMLCanvasElement* Element::CanvasForDrawing() const {
   while (ancestor) {
     ancestor = FlatTreeTraversal::ParentElementSkippingSlots(*ancestor);
     if (auto* ancestor_canvas = DynamicTo<HTMLCanvasElement>(ancestor)) {
-      return ancestor_canvas->layoutSubtree() ? ancestor_canvas : nullptr;
+      return ancestor_canvas->IsContentDrawable() ? ancestor_canvas : nullptr;
     }
   }
   return nullptr;
@@ -11983,7 +11980,7 @@ inline void Element::UpdateId(const AtomicString& old_id,
 inline void Element::UpdateId(TreeScope& scope,
                               const AtomicString& old_id,
                               const AtomicString& new_id) {
-  DCHECK(IsInTreeScope());
+  DCHECK(IsInTreeScope() || scope.RootNode().IsInShadowTree());
   DCHECK_NE(old_id, new_id);
 
   if (!old_id.empty()) {

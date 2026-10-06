@@ -71,7 +71,6 @@
 <translation id="1201402288615127009">Volgende</translation>
 <translation id="1204075260022434100">{count,plural, =1{Bookmark opgeslagen in {title} in je account {email}}other{{count} bookmarks opgeslagen in {title} in je account {email}}}</translation>
 <translation id="1207493287814084192">17:30</translation>
-<translation id="1215414310909588335">{count,plural, =1{1 minuut typen bespaard}other{# minuten typen bespaard}}</translation>
 <translation id="1217294226280635614">Gesplitste weergave</translation>
 <translation id="1218730690561976633">Gebruikersverificatie voor verbeterd automatisch invullen aan-/uitzetten</translation>
 <translation id="1219674500290482172">Kan geen verbinding maken met internet.</translation>
@@ -2113,6 +2112,7 @@ Je kunt op elk moment opnieuw beginnen.</translation>
 <translation id="7772948288262733182">Welkom terug</translation>
 <translation id="777637629667389858">Als je bent ingelogd, word je beschermd in Google-services.</translation>
 <translation id="7776604279034196531">Toegang tot de leesmodus vanuit de adresbalk als deze beschikbaar is</translation>
+<translation id="7780992949171378848">Een afmeldingsverzoek naar sites sturen over het gebruik van je gegevens</translation>
 <translation id="7781829728241885113">Gisteren</translation>
 <translation id="7788474973847076315">Foto maken</translation>
 <translation id="7788868432173225918">Uitgevouwen weergave sluiten</translation>

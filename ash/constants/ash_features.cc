@@ -544,9 +544,6 @@ BASE_FEATURE(kDiacriticsOnPhysicalKeyboardLongpressDefaultOn,
 BASE_FEATURE(kDisableBruschettaInstallChecks,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-// Disconnect WiFi when the device get connected to Ethernet.
-BASE_FEATURE(kDisconnectWiFiOnEthernetConnected,
-             base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables indicators to hint where displays are connected.
 BASE_FEATURE(kDisplayAlignAssist, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -619,17 +616,6 @@ BASE_FEATURE(kEnableTouchscreenCalibration, base::FEATURE_ENABLED_BY_DEFAULT);
 // will continue to exist in NSS DB.
 BASE_FEATURE(kEnableNssDbClientCertsRollback,
              base::FEATURE_DISABLED_BY_DEFAULT);
-
-// Enables WiFi QoS to detect and prioritize selected egress network traffic
-// using WiFi QoS/WMM in congested WiFi environments.
-BASE_FEATURE(kEnableWifiQos, base::FEATURE_ENABLED_BY_DEFAULT);
-
-// Enables WiFi QoS to detect and prioritize selected egress network traffic
-// using WiFi QoS/WMM in congested WiFi environments. For an Enterprise enrolled
-// device:
-// - If this flag is enabled, the feature will be controlled by EnableWifiQos;
-// - If this flag is disabled, the feature will be disabled.
-BASE_FEATURE(kEnableWifiQosEnterprise, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables entering overview mode by clicking the wallpaper with the mouse.
 BASE_FEATURE(kEnterOverviewFromWallpaper, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -1192,10 +1178,6 @@ BASE_FEATURE(kLocalFactorsPasswordComplexity, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enables local authentication controller with PIN support.
 BASE_FEATURE(kLocalAuthenticationWithPin, base::FEATURE_ENABLED_BY_DEFAULT);
-
-// Enables nearby-internals logs to be automatically saved to disk and attached
-// to feedback reports.
-BASE_FEATURE(kLinkCrossDeviceInternals, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Feature to allow MAC address randomization to be enabled for WiFi networks.
 BASE_FEATURE(kMacAddressRandomization, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -2119,16 +2101,6 @@ BASE_FEATURE(kHappinessTrackingOsSettingsSearch,
 BASE_FEATURE(kHappinessTrackingBorealisGames,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-// Enables the Happiness Tracking System for ChromeOS Launcher survey. This
-// survey is enabled to 25% of users.
-BASE_FEATURE(kHappinessTrackingLauncherAppsFinding,
-             base::FEATURE_DISABLED_BY_DEFAULT);
-
-// Enables the Happiness Tracking System for ChromeOS Launcher survey. This
-// survey is enabled to 75% of users.
-BASE_FEATURE(kHappinessTrackingLauncherAppsNeeding,
-             base::FEATURE_DISABLED_BY_DEFAULT);
-
 // Enables the Happiness Tracking System for the Office integration.
 BASE_FEATURE(kHappinessTrackingOffice, base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -2755,10 +2727,6 @@ bool IsLauncherContinueSectionWithRecentsEnabled() {
   return base::FeatureList::IsEnabled(kLauncherContinueSectionWithRecents) ||
          base::FeatureList::IsEnabled(
              kLauncherContinueSectionWithRecentsRollout);
-}
-
-bool IsLinkCrossDeviceInternalsEnabled() {
-  return base::FeatureList::IsEnabled(kLinkCrossDeviceInternals);
 }
 
 bool IsLobsterEnabled() {

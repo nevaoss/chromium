@@ -117,7 +117,6 @@
 #include "chrome/browser/ui/webui/ash/lock_screen_reauth/lock_screen_start_reauth_ui.h"
 #include "chrome/browser/ui/webui/ash/login/oobe_ui.h"
 #include "chrome/browser/ui/webui/ash/mako/mako_ui.h"
-#include "chrome/browser/ui/webui/ash/manage_mirrorsync/manage_mirrorsync_ui.h"
 #include "chrome/browser/ui/webui/ash/multidevice_internals/multidevice_internals_ui.h"
 #include "chrome/browser/ui/webui/ash/multidevice_setup/multidevice_setup_dialog.h"
 #include "chrome/browser/ui/webui/ash/network_ui/network_ui.h"
@@ -144,6 +143,7 @@
 #include "components/application_locale_storage/application_locale_storage.h"
 #include "content/public/browser/webui_config.h"
 #include "content/public/browser/webui_config_map.h"
+#include "services/network/public/cpp/shared_url_loader_factory.h"
 #include "ui/webui/webui_util.h"
 #include "url/gurl.h"
 #include "url/url_constants.h"
@@ -348,11 +348,16 @@ AshWebUIConfigManager* AshWebUIConfigManager::GetInstance() {
 AshWebUIConfigManager::AshWebUIConfigManager(
     PrefService* local_state,
     const ApplicationLocaleStorage* application_locale_storage,
-    const policy::BrowserPolicyConnectorAsh* browser_policy_connector_ash)
+    policy::BrowserPolicyConnectorAsh* browser_policy_connector_ash,
+    scoped_refptr<network::SharedURLLoaderFactory> shared_url_loader_factory)
     : local_state_(CHECK_DEREF(local_state)),
       application_locale_storage_(CHECK_DEREF(application_locale_storage)),
-      browser_policy_connector_ash_(browser_policy_connector_ash) {
+      browser_policy_connector_ash_(browser_policy_connector_ash),
+      shared_url_loader_factory_(std::move(shared_url_loader_factory)) {
   if (!browser_policy_connector_ash_) {
+    CHECK_IS_TEST();
+  }
+  if (!shared_url_loader_factory_) {
     CHECK_IS_TEST();
   }
   CHECK_EQ(g_instance, nullptr);
@@ -369,6 +374,7 @@ AshWebUIConfigManager::~AshWebUIConfigManager() {
 void AshWebUIConfigManager::RegisterWebUIConfigs() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   CHECK(browser_policy_connector_ash_);
+  CHECK(shared_url_loader_factory_);
   // Add trusted `WebUIConfig`s (chrome://) for Ash ChromeOS to the list here.
   //
   // All `WebUIConfig`s should be registered here, irrespective of whether their
@@ -403,7 +409,8 @@ void AshWebUIConfigManager::RegisterWebUIConfigs() {
   AddWebUIConfig(MakeEcheAppUIConfig());
   AddWebUIConfig(std::make_unique<SensorInfoUIConfig>());
   AddWebUIConfig(std::make_unique<EmojiUIConfig>());
-  AddWebUIConfig(std::make_unique<extended_updates::ExtendedUpdatesUIConfig>());
+  AddWebUIConfig(std::make_unique<extended_updates::ExtendedUpdatesUIConfig>(
+      &local_state_.get()));
   AddWebUIConfig(
       MakeComponentConfigWithDelegate<FilesInternalsUIConfig, FilesInternalsUI,
                                       ChromeFilesInternalsUIDelegate>());
@@ -426,7 +433,6 @@ void AshWebUIConfigManager::RegisterWebUIConfigs() {
       browser_policy_connector_ash_.get()));
   AddWebUIConfig(MakeComponentConfigWithDelegate<MallUIConfig, MallUI,
                                                  ChromeMallUIDelegate>());
-  AddWebUIConfig(std::make_unique<ManageMirrorSyncUIConfig>());
   AddWebUIConfig(MakeComponentConfigWithDelegate<MediaAppUIConfig, MediaAppUI,
                                                  ChromeMediaAppUIDelegate>());
   AddWebUIConfig(std::make_unique<MultideviceInternalsUIConfig>());
@@ -437,7 +443,9 @@ void AshWebUIConfigManager::RegisterWebUIConfigs() {
   AddWebUIConfig(std::make_unique<NetworkUIConfig>(&local_state_.get()));
   AddWebUIConfig(std::make_unique<NotificationTesterUIConfig>());
   AddWebUIConfig(std::make_unique<office_fallback::OfficeFallbackUIConfig>());
-  AddWebUIConfig(std::make_unique<OobeUIConfig>());
+  AddWebUIConfig(std::make_unique<OobeUIConfig>(
+      &local_state_.get(), &application_locale_storage_.get(),
+      browser_policy_connector_ash_.get(), shared_url_loader_factory_));
   AddWebUIConfig(std::make_unique<OSCreditsUI>());
   AddWebUIConfig(MakeOSFeedbackUIConfig(&application_locale_storage_.get()));
   AddWebUIConfig(
@@ -459,7 +467,8 @@ void AshWebUIConfigManager::RegisterWebUIConfigs() {
                   CreatePrintManagementUIController)));
   AddWebUIConfig(std::make_unique<multidevice::ProximityAuthUIConfig>());
   AddWebUIConfig(MakeRecorderAppUIConfig());
-  AddWebUIConfig(std::make_unique<RemoteMaintenanceCurtainUIConfig>());
+  AddWebUIConfig(
+      std::make_unique<RemoteMaintenanceCurtainUIConfig>(&local_state_.get()));
   AddWebUIConfig(
       MakeComponentConfigWithDelegate<SanitizeDialogUIConfig, SanitizeDialogUI,
                                       ChromeSanitizeUIDelegate>());
@@ -481,7 +490,8 @@ void AshWebUIConfigManager::RegisterWebUIConfigs() {
   AddWebUIConfig(std::make_unique<vc_background_ui::VcBackgroundUIConfig>(
       base::BindRepeating(vc_background_ui::CreateVcBackgroundUI)));
   AddWebUIConfig(std::make_unique<GrowthInternalsUIConfig>());
-  AddWebUIConfig(std::make_unique<FloatingWorkspaceUIConfig>());
+  AddWebUIConfig(
+      std::make_unique<FloatingWorkspaceUIConfig>(&local_state_.get()));
 #if !defined(OFFICIAL_BUILD)
   AddWebUIConfig(std::make_unique<SampleSystemWebAppUIConfig>());
   AddWebUIConfig(std::make_unique<StatusAreaInternalsUIConfig>());

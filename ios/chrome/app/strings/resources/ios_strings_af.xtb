@@ -71,7 +71,6 @@
 <translation id="1201402288615127009">Volgende</translation>
 <translation id="1204075260022434100">{count,plural, =1{Boekmerk is gestoor na “{title}” in jou rekening, {email}}other{{count} boekmerke is gestoor na “{title}” in jou rekening, {email}}}</translation>
 <translation id="1207493287814084192">17:30</translation>
-<translation id="1215414310909588335">{count,plural, =1{1 minuut se tikwerk bespaar}other{# minute se tikwerk bespaar}}</translation>
 <translation id="1217294226280635614">Verdeelde aansig</translation>
 <translation id="1218730690561976633">Wissel verbeterde outovulgebruikerverifikasie</translation>
 <translation id="1219674500290482172">Kon nie aan die internet koppel nie.</translation>
@@ -2113,6 +2112,7 @@ Jy kan enige tyd herbegin.</translation>
 <translation id="7772948288262733182">Welkom terug</translation>
 <translation id="777637629667389858">Wanneer jy aangemeld is, beskerm dit jou oral in Google-dienste.</translation>
 <translation id="7776604279034196531">Kry toegang tot leesmodus vanaf die adresbalk wanneer dit beskikbaar is</translation>
+<translation id="7780992949171378848">Stuur ’n onttrekkingversoek na werwe oor die gebruik van jou data</translation>
 <translation id="7781829728241885113">Gister</translation>
 <translation id="7788474973847076315">Neem foto</translation>
 <translation id="7788868432173225918">Maak uitgevoude aansig toe</translation>

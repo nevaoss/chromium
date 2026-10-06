@@ -88,6 +88,8 @@ import org.chromium.chrome.browser.tasks.tab_management.TabListEditorCoordinator
 import org.chromium.chrome.browser.tasks.tab_management.TabListMediator.TabListItemOnClickListenerProvider;
 import org.chromium.chrome.browser.tasks.tab_management.TabListMediator.TabListLayoutType;
 import org.chromium.chrome.browser.tasks.tab_management.TabSwitcherMessageManager.MessageUpdateObserver;
+import org.chromium.chrome.browser.tasks.tab_management.labels.SendTabToSelfTabLabeller;
+import org.chromium.chrome.browser.tasks.tab_management.labels.TabGroupLabeller;
 import org.chromium.chrome.browser.tasks.tab_management.pinned_tabs.PinnedTabStripCoordinator;
 import org.chromium.chrome.browser.ui.edge_to_edge.EdgeToEdgeController;
 import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager;
@@ -241,6 +243,7 @@ public class TabSwitcherPaneCoordinator implements BackPressHandler {
     private final SettableNonNullObservableSupplier<Float> mSearchBoxVisibilityFractionSupplier =
             ObservableSuppliers.createNonNull(0.0f);
     private final @Nullable ImageView mPaneHairline;
+    private final @Nullable DataSharingTabManager mDataSharingTabManager;
     private final PinnedTabStripCoordinator mPinnedTabsCoordinator;
     private @Nullable TabGridContextMenuCoordinator mContextMenuCoordinator;
     private @Nullable TabGroupListBottomSheetCoordinator mTabGroupListBottomSheetCoordinator;
@@ -323,6 +326,7 @@ public class TabSwitcherPaneCoordinator implements BackPressHandler {
             mActivity = activity;
             mModalDialogManager = modalDialogManager;
             mBottomSheetController = bottomSheetController;
+            mDataSharingTabManager = dataSharingTabManager;
             mParentView = parentView;
             mOnDestroyed = onDestroyed;
             mEdgeToEdgeSupplier = edgeToEdgeSupplier;
@@ -1176,7 +1180,10 @@ public class TabSwitcherPaneCoordinator implements BackPressHandler {
                         mBottomSheetController,
                         /* supportsShowNewGroup= */ true,
                         /* destroyOnHide= */ false,
-                        /* windowAndroid= */ null);
+                        /* windowAndroid= */ null,
+                        mDataSharingTabManager != null
+                                ? mDataSharingTabManager.getTabGroupUiActionHandler()
+                                : null);
 
         ShowTabListEditor showTabListEditor =
                 tabId -> {

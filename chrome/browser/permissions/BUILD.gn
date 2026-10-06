@@ -22,6 +22,8 @@ source_set("permissions") {
     "notifications_engagement_service_factory.h",
     "notifications_permission_revocation_config.cc",
     "notifications_permission_revocation_config.h",
+    "one_time_permissions_condition_tracker.cc",
+    "one_time_permissions_condition_tracker.h",
     "one_time_permissions_tracker.cc",
     "one_time_permissions_tracker.h",
     "one_time_permissions_tracker_factory.cc",
@@ -91,6 +93,7 @@ source_set("permissions") {
     "//chrome/browser/passage_embeddings",
     "//chrome/browser/profiles",
     "//chrome/browser/profiles:profile",
+    "//chrome/browser/pwc",
     "//chrome/browser/resource_coordinator",
     "//chrome/browser/safe_browsing",
     "//chrome/browser/search_engines",
@@ -262,6 +265,7 @@ source_set("unit_tests") {
     "crowd_deny_preload_data_unittest.cc",
     "crowd_deny_safe_browsing_request_unittest.cc",
     "notifications_engagement_service_unittest.cc",
+    "one_time_permissions_condition_tracker_unittest.cc",
     "permission_context_base_permissions_policy_unittest.cc",
     "permission_manager_unittest.cc",
     "permission_request_manager_unittest.cc",
@@ -286,6 +290,7 @@ source_set("unit_tests") {
     "//chrome/browser/history",
     "//chrome/browser/optimization_guide:test_support",
     "//chrome/browser/permissions/system",
+    "//chrome/browser/pwc/test_support",
     "//chrome/browser/search_engines",
     "//chrome/browser/ui/safety_hub",
     "//chrome/browser/ui/safety_hub:test_support",
@@ -431,6 +436,7 @@ if (!is_android && !is_chromeos_device) {
     ]
 
     if (is_mac || is_win) {
+      deps += [ "//chrome/browser/ui:browser_window_header" ]
       sources += [ "system/system_permission_settings_interactive_uitest.cc" ]
     }
   }

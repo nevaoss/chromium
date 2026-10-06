@@ -18,6 +18,7 @@
 #include "chrome/browser/browser_features.h"
 #include "chrome/browser/finds/core/finds_features.h"
 #include "chrome/browser/flags/android/chrome_session_state.h"
+#include "chrome/browser/glic/public/features.h"
 #include "chrome/browser/notifications/chime/android/features.h"
 #include "chrome/browser/predictors/predictors_features.h"
 #include "chrome/browser/task_manager/common/task_manager_features.h"
@@ -130,6 +131,7 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &autofill::features::kAutofillAiWalletShopping,
     &autofill::features::kAutofillAiWithDataSchema,
     &autofill::features::kAutofillAmbientAutofill,
+    &autofill::features::kAutofillAmbientAutofillSuppressionUI,
     &autofill::features::kAutofillAndroidDesktopKeyboardAccessoryRevamp,
     &autofill::features::kAutofillAndroidDesktopSuppressAccessoryOnEmpty,
     &autofill::features::kAutofillAndroidKeyboardAccessoryDynamicPositioning,
@@ -202,6 +204,7 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &features::kFluidResize,
     &features::kGenericSensorExtraClasses,
     &features::kGlic,
+    &features::kGlicAndroidTablet,
     &features::kGlicBackgroundActuation,
     &features::kGlicBackgroundTriggering,
     &features::kHttpsFirstBalancedMode,
@@ -243,6 +246,7 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &kAndroidAppIntegrationMultiDataSource,
     &kAndroidAppRatingPrompt,
     &kAndroidAutofillPrefObserver,
+    &kAndroidBeforeUnloadSupport,
     &kAndroidBottomBar,
     &kAndroidBottomBarAim,
     &kAndroidBricksNativePage,
@@ -271,6 +275,7 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &kAndroidTabDeclutterArchiveOnDesktop,
     &kAndroidTabDeclutterDedupeTabIdsKillSwitch,
     &kAndroidTabSkipSaveTabsKillswitch,
+    &kAndroidTabUiRefactor,
     &kAndroidTabstripStartupCaptureBugFix,
     &kAndroidThemeModule,
     &kAndroidThemeResourceProvider,
@@ -321,6 +326,7 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &kCCTContextualMenuItems,
     &kCCTDestroyTabWhenModelIsEmpty,
     &kCCTDontOverrideIntentMimeType,
+    &kCCTEarlyInitPowerManager,
     &kCCTExtendTrustedCdnPublisher,
     &kCCTFreInSameTask,
     &kCCTGoogleBottomBar,
@@ -391,6 +397,7 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &kEnableAndroidSidePanel,
     &kEnableAndroidSidePanelDevFeature,
     &kEnableAndroidSidePanelLogs,
+    &kEnableAndroidSidePanelManualResizing,
     &kEnableBrowserWindowInterfaceForCustomTabActivity,
     &kEnableEscapeHandlingForSecondaryActivities,
     &kEnableSwipeToSwitchPane,
@@ -459,6 +466,7 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &kPowerSavingModeBroadcastReceiverInBackground,
     &kPreconnectOnTabCreation,
     &kPriceChangeModule,
+    &kPrintFallbackToPrimaryMainFrame,
     &kPrintSelectionMenu,
     &kProtectRecentlyVisibleTab,
     &kPwaRestoreUi,
@@ -537,6 +545,7 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &kUseActivityManagerForTabActivation,
     &kUseAppTaskForCustomTabActivation,
     &kUseLibunwindstackNativeUnwinderAndroid,
+    &kUsePLinkInHelp,
     &kUseWebUiNtp3PDSE,
     &kUseWebUiNtpAndroid,
     &kVerifyStartupSigninState,
@@ -555,7 +564,6 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &lens::features::kLensBypassCompressionForC2pa,
     &lens::features::kLensOverlayAndroid,
     &lens::features::kLensSendRawFileMediaTypes,
-    &media::kAutoDocPiPPermissionPromptAndroid,
     &media::kAutoPictureInPictureAndroid,
     &media::kContextMenuCopyVideoFrame,
     &media::kContextMenuPictureInPictureAndroid,
@@ -606,6 +614,7 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &send_tab_to_self::kSendTabToSelfPropagateScrollPosition,
     &send_tab_to_self::kSendTabToSelfRecordSnackbarActivation,
     &send_tab_to_self::kSendTabToSelfSupportAutoOpenInTabGrid,
+    &send_tab_to_self::kSendTabToSelfSwitchToParentOnBack,
     &sensitive_content::features::kSensitiveContent,
     &sensitive_content::features::kSensitiveContentWhileSwitchingTabs,
     &site_isolation::features::kSiteIsolationEnableMemoryThresholdAndroid,
@@ -663,6 +672,7 @@ BASE_FEATURE(kAndroidAppIntegrationMultiDataSource, base::FEATURE_ENABLED_BY_DEF
 BASE_FEATURE(kAndroidAppRatingPrompt, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidAtomsLogging, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidAutofillPrefObserver, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kAndroidBeforeUnloadSupport, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidBottomBar, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidBottomBarAim, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidBricksNativePage, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -693,6 +703,7 @@ BASE_FEATURE(kAndroidSurfaceColorUpdate, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidTabDeclutterArchiveOnDesktop, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidTabDeclutterDedupeTabIdsKillSwitch, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidTabSkipSaveTabsKillswitch,"AndroidTabSkipSaveTabsTaskKillswitch", base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kAndroidTabUiRefactor, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidTabstripStartupCaptureBugFix, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidThemeModule, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidThemeResourceProvider, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -743,6 +754,7 @@ BASE_FEATURE(kCCTClientDataHeader, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kCCTContextualMenuItems, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kCCTDestroyTabWhenModelIsEmpty, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kCCTDontOverrideIntentMimeType, base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kCCTEarlyInitPowerManager, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kCCTExtendTrustedCdnPublisher, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kCCTFreInSameTask, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kCCTGoogleBottomBar, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -816,6 +828,7 @@ BASE_FEATURE(kEdgelessTopInset, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kEnableAndroidSidePanel, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kEnableAndroidSidePanelDevFeature, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kEnableAndroidSidePanelLogs, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kEnableAndroidSidePanelManualResizing, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kEnableBrowserWindowInterfaceForCustomTabActivity, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kEnableEscapeHandlingForSecondaryActivities, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kEnableSwipeToSwitchPane, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -887,6 +900,7 @@ BASE_FEATURE(kPictureInPictureMovesToolbarAndroid, base::FEATURE_DISABLED_BY_DEF
 BASE_FEATURE(kPowerSavingModeBroadcastReceiverInBackground, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kPreconnectOnTabCreation, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kPriceChangeModule, base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kPrintFallbackToPrimaryMainFrame, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kPrintSelectionMenu, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kProtectRecentlyVisibleTab, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kPwaRestoreUi, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -922,7 +936,7 @@ BASE_FEATURE(kSmallerTabStripTitleLimit, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kStartSurfaceReturnTime, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kSubmenusInAppMenu, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kSubmenusInAppMenuLff, base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kSyncRestoreOnStartupPref, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kSyncRestoreOnStartupPref, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kTabAndroidGracefulShutdown, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kTabBottomSheet, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kTabBottomSheetFullHeight, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -973,6 +987,7 @@ BASE_FEATURE(kUseAppTaskForCustomTabActivation, base::FEATURE_ENABLED_BY_DEFAULT
 // Use the LibunwindstackNativeUnwinderAndroid for only browser main thread, and
 // only on Android.
 BASE_FEATURE(kUseLibunwindstackNativeUnwinderAndroid, base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kUsePLinkInHelp, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kUseWebUiNtp3PDSE, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kUseWebUiNtpAndroid, BUILDFLAG(IS_DESKTOP_ANDROID) ? base::FEATURE_ENABLED_BY_DEFAULT : base::FEATURE_DISABLED_BY_DEFAULT);
 // Verify sign-in state on startup.

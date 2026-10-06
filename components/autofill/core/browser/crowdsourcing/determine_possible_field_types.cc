@@ -340,6 +340,10 @@ void AddPossibleAutofillAiTypesForMaskedValue(
     std::u16string_view masked_value_on_file,
     FieldType field_type,
     PossibleTypes& pt) {
+  // Single digit values are too likely to cause collisions.
+  if (masked_value_on_file.size() == 1) {
+    return;
+  }
   // Since the full value is not available on file, look for a suffix match.
   if (value_in_field.ends_with(masked_value_on_file)) {
     pt.types.insert(field_type);
@@ -380,6 +384,9 @@ void AddPossibleAutofillAiTypes(base::span<const EntityInstance> entities,
         const std::u16string& value_on_file =
             normalization::NormalizeForComparison(
                 attribute.GetInfo(field_type, app_locale, std::nullopt));
+        if (value_on_file.empty()) {
+          continue;
+        }
         if (attribute.masked()) {
           AddPossibleAutofillAiTypesForMaskedValue(
               value_in_field, value_on_file, field_type, pt);
@@ -538,9 +545,8 @@ std::set<FieldGlobalId> PreProcessStateMatchingTypes(
       continue;
     }
 
-    const std::u16string& country_code = profile->GetInfo(
-        AutofillType(ADDRESS_HOME_COUNTRY, /*is_country_code=*/true),
-        app_locale);
+    const std::string country_code =
+        base::UTF16ToUTF8(profile->GetRawInfo(ADDRESS_HOME_COUNTRY));
 
     for (auto& field : fields) {
       if (fields_that_match_state.contains(field->global_id())) {
@@ -550,7 +556,7 @@ std::set<FieldGlobalId> PreProcessStateMatchingTypes(
       std::optional<AlternativeStateNameMap::CanonicalStateName>
           canonical_state_name_from_text =
               AlternativeStateNameMap::GetCanonicalStateName(
-                  base::UTF16ToUTF8(country_code), field->value_for_import());
+                  country_code, field->value_for_import());
 
       if (canonical_state_name_from_text &&
           canonical_state_name_from_text.value() ==

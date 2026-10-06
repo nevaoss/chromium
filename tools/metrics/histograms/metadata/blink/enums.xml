@@ -6755,6 +6755,8 @@ Called by update_use_counter_feature_enum.py.-->
   <int value="6017" label="ContainerTimingEntryEmitted"/>
   <int value="6018" label="BeforeUnloadShowedDialog"/>
   <int value="6019" label="BeforeUnloadDialogBlockedUnload"/>
+  <int value="6020" label="SRIModuleMapIntegrityMismatch"/>
+  <int value="6021" label="EventTimingCreationTimeInFuture"/>
 </enum>
 
 <!-- LINT.ThenChange(//third_party/blink/public/mojom/use_counter/metrics/web_feature.mojom:WebFeature) -->
@@ -6951,6 +6953,7 @@ Called by update_permissions_policy_enum.py.-->
   <int value="3" label="Account is not dict"/>
   <int value="4" label="Account misses required field"/>
   <int value="5" label="Accounts share the same id"/>
+  <int value="6" label="Use native UI delegation"/>
 </enum>
 
 <!-- LINT.ThenChange(//content/browser/webid/idp_network_request_manager.h:AccountsResponseInvalidReason) -->
@@ -8658,6 +8661,7 @@ Called by update_use_counter_css.py.-->
   <int value="963" label="max-content-sizing"/>
   <int value="964" label="text-decoration-inset"/>
   <int value="965" label="overscroll-container-type"/>
+  <int value="966" label="link-parameters"/>
 </enum>
 
 <!-- LINT.ThenChange(//third_party/blink/public/mojom/use_counter/metrics/css_property_id.mojom:CSSSampleId) -->
@@ -9255,6 +9259,8 @@ Called by update_use_counter_feature_enum.py.-->
   <int value="452" label="InteractionContentfulPaint"/>
   <int value="453" label="ElementTiming"/>
   <int value="454" label="ContainerTiming"/>
+  <int value="455"
+      label="SameSiteCookieInclusionChangedByCrossSiteRedirectNoInitiator"/>
 </enum>
 
 <!-- LINT.ThenChange(//third_party/blink/public/mojom/use_counter/metrics/webdx_feature.mojom:WebDXFeature) -->

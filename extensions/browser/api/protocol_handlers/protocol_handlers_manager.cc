@@ -4,7 +4,6 @@
 
 #include "extensions/browser/api/protocol_handlers/protocol_handlers_manager.h"
 
-#include "base/check_is_test.h"
 #include "base/lazy_instance.h"
 #include "base/one_shot_event.h"
 #include "components/custom_handlers/protocol_handler.h"
@@ -93,9 +92,8 @@ void ProtocolHandlersManager::OnExtensionLoaded(content::BrowserContext*,
   // update its own profile's ProtocolHandlerRegistry.
   auto* registry = ExtensionsBrowserClient::Get()->GetProtocolHandlerRegistry(
       browser_context_);
-  // Can be null for tests using dummy profiles.
+  // Null when the embedder does not provide one.
   if (!registry) {
-    CHECK_IS_TEST();
     return;
   }
 
@@ -112,9 +110,8 @@ void ProtocolHandlersManager::OnExtensionUnloaded(
   // Use browser_context_ for the same reason as OnExtensionLoaded.
   auto* registry = ExtensionsBrowserClient::Get()->GetProtocolHandlerRegistry(
       browser_context_);
-  // Can be null for tests using dummy profiles.
+  // Null when the embedder does not provide one.
   if (!registry) {
-    CHECK_IS_TEST();
     return;
   }
 
@@ -133,14 +130,17 @@ void ProtocolHandlersManager::ProtocolHandlersSanityCheck() {
   auto* ph_registry =
       ExtensionsBrowserClient::Get()->GetProtocolHandlerRegistry(
           browser_context_);
-  // Can be null for tests using dummy profiles.
+  // Null when the embedder does not provide one.
   if (!ph_registry) {
+<<<<<<< HEAD
     // TODO(neva): ExtensionsBrowserClient::GetProtocolHandlerRegistry()
     // returns nullptr causing DCHECK and runtime crash, so guard it. Need to
     // revise later.
 #if !defined(USE_NEVA_CHROME_EXTENSIONS)
     CHECK_IS_TEST();
 #endif  // !defined(USE_NEVA_CHROME_EXTENSIONS)
+=======
+>>>>>>> 156.0.8064.0~1
     return;
   }
   for (const auto& handler : ph_registry->GetExtensionProtocolHandlers()) {

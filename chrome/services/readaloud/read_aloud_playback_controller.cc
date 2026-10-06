@@ -146,6 +146,8 @@ void ReadAloudPlaybackController::InitializeAudio(
 
   audio_resources_ = std::move(resources);
   decoder_sequencer_.SetAudioQueue(audio_resources_->audio_segment_queue.get());
+
+  MaybePlayOnReady();
 }
 
 void ReadAloudPlaybackController::SetTextContent(
@@ -198,7 +200,7 @@ void ReadAloudPlaybackController::SetTextContent(
   // Setting new text content invalidates pending audio synthesis buffers from
   // the previous document segment, so FlushBuffers() resets internal queues.
   FlushBuffers();
-  if (client_.is_bound()) {
+  if (!MaybePlayOnReady() && client_.is_bound()) {
     // When new text content is loaded, playback defaults to paused until the
     // user explicitly triggers Play(). Notify client to synchronize UI state.
     client_->OnPlaybackStateChanged(read_aloud::mojom::PlaybackState::kPaused);
@@ -207,14 +209,50 @@ void ReadAloudPlaybackController::SetTextContent(
 
 void ReadAloudPlaybackController::Play() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  if (!PlayIfReady()) {
+    play_on_ready_ = true;
+  }
+}
+
+bool ReadAloudPlaybackController::IsReadyToPlay() const {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  return IsTextSet() && IsAudioInitialized();
+}
+
+bool ReadAloudPlaybackController::IsTextSet() const {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  return !segments_.empty();
+}
+
+bool ReadAloudPlaybackController::IsAudioInitialized() const {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  return audio_resources_ && audio_resources_->audio_output_stream.is_bound();
+}
+
+bool ReadAloudPlaybackController::PlayIfReady() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  if (!IsReadyToPlay()) {
+    return false;
+  }
+  play_on_ready_ = false;
   if (audio_resources_ && audio_resources_->audio_output_stream.is_bound()) {
     audio_resources_->audio_output_stream->Play();
   }
   decoder_sequencer_.StartPumping();
+  return true;
+}
+
+bool ReadAloudPlaybackController::MaybePlayOnReady() {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  if (play_on_ready_) {
+    return PlayIfReady();
+  }
+  return false;
 }
 
 void ReadAloudPlaybackController::Pause() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  play_on_ready_ = false;
   if (audio_resources_ && audio_resources_->audio_output_stream.is_bound()) {
     audio_resources_->audio_output_stream->Pause();
   }
@@ -311,6 +349,7 @@ void ReadAloudPlaybackController::ResetSession() {
   audio_resources_.reset();
   segments_.clear();
   playback_rate_ = 1.0f;
+  play_on_ready_ = false;
   session_weak_factory_.InvalidateWeakPtrs();
 }
 

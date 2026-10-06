@@ -35,12 +35,19 @@
 #include "build/build_config.h"
 #include "components/file_access/scoped_file_access.h"
 #include "components/file_access/test/mock_scoped_file_access_delegate.h"
+#include "content/browser/process_lock.h"
+#include "content/browser/renderer_host/render_frame_host_impl.h"
+#include "content/browser/security/cpsp/child_process_security_policy_impl.h"
+#include "content/browser/site_instance_impl.h"
+#include "content/browser/url_info.h"
 #include "content/browser/web_contents/web_contents_impl.h"
 #include "content/public/browser/browser_task_traits.h"
 #include "content/public/browser/browser_thread.h"
+#include "content/public/browser/navigation_controller.h"
 #include "content/public/test/browser_test.h"
 #include "content/public/test/browser_test_utils.h"
 #include "content/public/test/content_browser_test.h"
+#include "content/public/test/content_browser_test_utils.h"
 #include "content/public/test/test_utils.h"
 #include "content/shell/browser/shell.h"
 #include "mojo/public/cpp/bindings/remote.h"
@@ -177,6 +184,20 @@ bool IsDirectoryListingTitle(const std::string& line) {
   return line.find("<script>start(\"") == 0;
 }
 
+// Commits `url` in `web_contents` as PDF content, so that the resulting
+// document runs in a process whose SiteInfo has `is_pdf` set.
+RenderFrameHostImpl* NavigateToURLAsPdf(WebContents* web_contents,
+                                        const GURL& url) {
+  NavigationController::LoadURLParams params(url);
+  params.transition_type = ui::PageTransitionFromInt(
+      ui::PAGE_TRANSITION_TYPED | ui::PAGE_TRANSITION_FROM_ADDRESS_BAR);
+  params.is_pdf = true;
+  NavigateToURLBlockUntilNavigationsComplete(
+      web_contents, params, 1,
+      /*ignore_uncommitted_navigations=*/false);
+  return static_cast<RenderFrameHostImpl*>(web_contents->GetPrimaryMainFrame());
+}
+
 }  // namespace
 
 class FileSystemURLLoaderFactoryTest
@@ -231,6 +252,20 @@ class FileSystemURLLoaderFactoryTest
             base::BindOnce(&FileSystemURLLoaderFactoryTest::OnOpenFileSystem,
                            loop.QuitClosure())));
     loop.Run();
+
+    ChildProcessSecurityPolicyImpl::GetInstance()->AddCommittedOrigin(
+        render_frame_host()->GetProcess()->GetID().GetUnsafeValue(),
+        url::Origin::Create(GURL("http://remote/")));
+    ChildProcessSecurityPolicyImpl::GetInstance()->AddCommittedOrigin(
+        render_frame_host()->GetProcess()->GetID().GetUnsafeValue(),
+        url::Origin::Create(GURL("http://automount/")));
+    ChildProcessSecurityPolicyImpl::GetInstance()->AddCommittedOrigin(
+        render_frame_host()->GetProcess()->GetID().GetUnsafeValue(),
+        url::Origin::Create(GURL("http://noauto/")));
+    // Mark the process as used so that subsequent cross-origin navigations
+    // (e.g., in CrossOriginFileBlocked) do not reuse this process while
+    // retaining the committed origins added above.
+    render_frame_host()->GetProcess()->SetIsUsed();
   }
 
   void TearDownOnMainThread() override {
@@ -499,10 +534,12 @@ class FileSystemURLLoaderFactoryTest
     return context;
   }
 
+ protected:
   RenderFrameHost* render_frame_host() const {
     return shell()->web_contents()->GetPrimaryMainFrame();
   }
 
+ private:
   std::unique_ptr<network::TestURLLoaderClient> TestLoadHelper(
       const GURL& url,
       const std::optional<url::Origin>& origin,
@@ -792,6 +829,45 @@ IN_PROC_BROWSER_TEST_P(FileSystemURLLoaderFactoryTest, CrossOriginFileBlocked) {
   EXPECT_EQ(net::ERR_INVALID_URL, client->completion_status().error_code);
 }
 
+// Verify that a PDF renderer process is denied access to filesystem: URLs even
+// for an origin that it has committed.
+IN_PROC_BROWSER_TEST_P(FileSystemURLLoaderFactoryTest, PdfProcessFileBlocked) {
+  base::ScopedAllowBlockingForTesting allow_blocking;
+  WriteFile(
+      "file1.dat",
+      base::as_byte_span(kTestFileData).first(std::size(kTestFileData) - 1));
+
+  ChildProcessSecurityPolicyImpl* policy =
+      ChildProcessSecurityPolicyImpl::GetInstance();
+  ChildProcessId process_id = render_frame_host()->GetProcess()->GetID();
+
+  UrlInfo pdf_url_info(
+      UrlInfoInit(GURL("http://remote/"))
+          .WithEmbedderIsolationInfo(EmbedderIsolationInfo::CreateForPdf()));
+  scoped_refptr<SiteInstanceImpl> pdf_instance =
+      SiteInstanceImpl::CreateForUrlInfo(
+          shell()->web_contents()->GetBrowserContext(), pdf_url_info,
+          /*is_guest=*/false,
+          /*is_fenced=*/false,
+          /*is_fixed_storage_partition=*/false);
+  policy->LockProcess(pdf_instance->GetIsolationContext(), process_id,
+                      /*is_process_used=*/false,
+                      ProcessLock::FromSiteInfo(pdf_instance->GetSiteInfo()));
+
+  // Although the PDF process can commit the http://remote/ origin, it must not
+  // be allowed to access its filesystem data.
+  EXPECT_TRUE(policy->CanCommitURL(process_id.GetUnsafeValue(),
+                                   CreateFileSystemURL("file1.dat")));
+  EXPECT_FALSE(policy->CanAccessDataForOrigin(
+      process_id.GetUnsafeValue(),
+      url::Origin::Create(GURL("http://remote/"))));
+
+  auto client = TestLoad(CreateFileSystemURL("file1.dat"));
+  EXPECT_FALSE(client->has_received_response());
+  ASSERT_TRUE(client->has_received_completion());
+  EXPECT_EQ(net::ERR_INVALID_URL, client->completion_status().error_code);
+}
+
 IN_PROC_BROWSER_TEST_P(FileSystemURLLoaderFactoryTest,
                        FileTestFullSpecifiedRange) {
   base::ScopedAllowBlockingForTesting allow_blocking;
@@ -1038,6 +1114,65 @@ IN_PROC_BROWSER_TEST_P(FileSystemURLLoaderFactoryTest, FileAutoMountNoHandler) {
   ASSERT_FALSE(
       storage::ExternalMountPoints::GetSystemInstance()->RevokeFileSystem(
           kValidExternalMountPoint));
+}
+
+// Exercises filesystem: subresource loads through the loader factory that
+// documents actually receive at commit time, rather than through a factory
+// created directly by the test.
+class FileSystemURLSubresourceBrowserTest : public ContentBrowserTest {
+ protected:
+  void SetUpOnMainThread() override {
+    ContentBrowserTest::SetUpOnMainThread();
+    ASSERT_TRUE(embedded_test_server()->Start());
+  }
+};
+
+// Verify that a document committed as PDF content cannot fetch filesystem:
+// subresources for its origin, while an ordinary document at the same origin
+// can.
+IN_PROC_BROWSER_TEST_F(FileSystemURLSubresourceBrowserTest,
+                       SubresourceLoadBlockedInPdfDocument) {
+  const GURL page_url = embedded_test_server()->GetURL("/title1.html");
+  EXPECT_TRUE(NavigateToURL(shell(), page_url));
+
+  // Create a temporary file from an ordinary document.
+  static constexpr char kWriteScript[] = R"(
+      new Promise((resolve, reject) => {
+        webkitRequestFileSystem(TEMPORARY, 1024, fs => {
+          fs.root.getFile('subresource.txt', {create: true}, entry => {
+            entry.createWriter(writer => {
+              writer.onwriteend = () => resolve('written');
+              writer.onerror = () => reject(writer.error);
+              writer.write(new Blob(['fs-data']));
+            }, reject);
+          }, reject);
+        }, reject);
+      });)";
+  ASSERT_EQ("written", EvalJs(shell(), kWriteScript));
+
+  static constexpr char kReadScript[] = R"(
+      new Promise(resolve => {
+        const request = new XMLHttpRequest();
+        request.open('GET', 'filesystem:' + location.origin +
+                                '/temporary/subresource.txt');
+        request.onload = () => resolve(request.responseText);
+        request.onerror = () => resolve('load-error');
+        request.send();
+      });)";
+
+  // The ordinary document can read the file back through its filesystem: URL.
+  ASSERT_EQ("fs-data", EvalJs(shell(), kReadScript));
+
+  // Commit a same-origin document as PDF content, so that it runs in a
+  // process whose SiteInfo has `is_pdf` set.
+  const GURL pdf_url = embedded_test_server()->GetURL("/title2.html");
+  RenderFrameHostImpl* frame =
+      NavigateToURLAsPdf(shell()->web_contents(), pdf_url);
+  ASSERT_EQ(pdf_url, shell()->web_contents()->GetLastCommittedURL());
+  ASSERT_TRUE(frame->GetSiteInstance()->GetSiteInfo().is_pdf());
+
+  // The PDF document must not receive the file's contents.
+  EXPECT_EQ("load-error", EvalJs(frame, kReadScript));
 }
 
 }  // namespace content

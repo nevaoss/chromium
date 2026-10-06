@@ -294,6 +294,7 @@ component("raw_ptr") {
   configs -= partition_alloc_remove_configs
   configs += partition_alloc_add_configs
   configs += [ ":dependants_extra_warnings" ]
+  check_includes_strict = CHECK_INCLUDES_STRICT_PUBLIC_INCLUDES_PRIVATE
 }
 
 if (is_clang_or_gcc) {
@@ -426,6 +427,7 @@ if (is_clang_or_gcc) {
       "internal/partition_page_internal.h",
       "internal/partition_root_exports.h",
       "internal/partition_root_internal.h",
+      "internal/partition_root_internal_forward.h",
       "internal/partition_superpage_extent_entry_internal.h",
       "internal/reservation_offset_table_internal.h",
       "internal/thread_cache_internal.h",
@@ -519,7 +521,6 @@ if (is_clang_or_gcc) {
       "partition_stats.cc",
       "partition_stats.h",
       "partition_superpage_extent_entry.h",
-      "partition_tls.cc",
       "partition_tls.h",
       "random.cc",
       "random.h",
@@ -561,13 +562,9 @@ if (is_clang_or_gcc) {
       sources += [
         "page_allocator_internals_posix.cc",
         "page_allocator_internals_posix.h",
-        "partition_tls_posix.cc",
       ]
     } else if (is_fuchsia) {
-      sources += [
-        "page_allocator_internals_fuchsia.h",
-        "partition_tls_posix.cc",
-      ]
+      sources += [ "page_allocator_internals_fuchsia.h" ]
     }
     if (is_android) {
       # The Android NDK supports PR_MTE_* macros as of NDK r23.

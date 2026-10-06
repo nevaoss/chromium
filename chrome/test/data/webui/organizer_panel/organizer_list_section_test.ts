@@ -254,4 +254,42 @@ suite('OrganizerListSectionTest', () => {
         listSection.shadowRoot.querySelectorAll('organizer-list-section-item');
     assertEquals(2, listItems.length);
   });
+
+  test('highlights matching text when searching', async () => {
+    const delegateItems = [
+      {
+        title: ['Google Search'],
+        description: [{text: 'google.com'}],
+      },
+      {
+        title: ['YouTube Music'],
+        description: [{text: 'music.youtube.com'}],
+      },
+    ];
+    listSection.delegate = new TestSectionDelegate('Open Tabs', delegateItems);
+    await microtasksFinished();
+
+    listSection.searchQuery = 'Music';
+    await microtasksFinished();
+
+    const listItems =
+        listSection.shadowRoot.querySelectorAll('organizer-list-section-item');
+    assertEquals(1, listItems.length);
+    assertDeepEquals(
+        [[{start: 8, length: 5}]], listItems[0]!.$.title.highlightRanges);
+
+    assertDeepEquals(
+        [[{start: 0, length: 5}]], listItems[0]!.$.description.highlightRanges);
+
+    listSection.searchQuery = '';
+    await microtasksFinished();
+
+    const clearedItems =
+        listSection.shadowRoot.querySelectorAll('organizer-list-section-item');
+    assertEquals(2, clearedItems.length);
+    assertDeepEquals([[]], clearedItems[0]!.$.title.highlightRanges);
+    assertDeepEquals([[]], clearedItems[1]!.$.title.highlightRanges);
+    assertDeepEquals([[]], clearedItems[0]!.$.description.highlightRanges);
+    assertDeepEquals([[]], clearedItems[1]!.$.description.highlightRanges);
+  });
 });

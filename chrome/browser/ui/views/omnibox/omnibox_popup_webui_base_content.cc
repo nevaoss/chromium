@@ -166,6 +166,9 @@ void OmniboxPopupWebUIBaseContent::ShowUI() {
   // the content URL and create a new renderer.
   if (contents_wrapper_->web_contents() &&
       contents_wrapper_->web_contents()->IsCrashed()) {
+    TRACE_EVENT1("omnibox",
+                 "OmniboxPopupWebUIBaseContent::ShowUI:RecoverFromCrash",
+                 "prefix", GetMetricPrefix());
     base::UmaHistogramBoolean(
         base::StrCat({GetMetricPrefix(), ".CrashRecovery"}), true);
     LoadContent();
@@ -412,6 +415,16 @@ void OmniboxPopupWebUIBaseContent::Detach() {
     return;
   }
 
+  // Avoid color mode flicking.
+  // When kOmniboxFullWebUIDestroyWidgetOnHide is enabled the widget is
+  // destroyed on hide, then the Webcontents will fall back to use system's
+  // color mode, which can be different from the browser's color mode.
+  views::Widget* location_bar_widget =
+      popup_presenter_->delegate().GetLocationBarWidget();
+  if (GetWebContents() && location_bar_widget) {
+    GetWebContents()->SetColorProviderSource(location_bar_widget);
+  }
+
   // This removes the content from being considered for rendering by the
   // compositor while the popup is closed. The content is re-inserted right
   // before the view is displayed. This has the effect of tossing out old,
@@ -453,6 +466,12 @@ void OmniboxPopupWebUIBaseContent::PrimaryMainFrameRenderProcessGone(
   if (browser_shutdown::HasShutdownStarted()) {
     return;
   }
+
+  TRACE_EVENT_INSTANT2(
+      "omnibox",
+      "OmniboxPopupWebUIBaseContent::PrimaryMainFrameRenderProcessGone",
+      TRACE_EVENT_SCOPE_GLOBAL, "status", static_cast<int>(status),
+      "was_shown", is_shown_);
 
   base::UmaHistogramEnumeration(
       base::StrCat({GetMetricPrefix(), ".RendererProcessGoneStatus"}), status,

@@ -2156,18 +2156,28 @@ bool ChromeContentBrowserClient::ShouldTreatAsFirstPartyWhenTopLevel(
 bool ChromeContentBrowserClient::
     ShouldIgnoreSameSiteCookieRestrictionsWhenTopLevel(
         const url::Origin& top_frame_origin,
-        bool is_embedded_origin_secure) {
+        const GURL& current_url_chain_entry) {
+  if (!current_url_chain_entry.SchemeIsCryptographic()) {
+    return false;
+  }
+
+  if (top_frame_origin.scheme() == content::kChromeUIScheme) {
+    return true;
+  }
+
+#if !BUILDFLAG(IS_ANDROID)
   // TODO(crbug.com/483614998): Granting Lens side panel is a temporary
   // exception to use SameSite cookies while it migrates to a <webview>
   // approach. This should not be done for other untrusted WebUI.
-  return is_embedded_origin_secure &&
-         (top_frame_origin.scheme() == content::kChromeUIScheme
-#if !BUILDFLAG(IS_ANDROID)
-          ||
-          (top_frame_origin == url::Origin::Create(GURL(
-                                   chrome::kChromeUILensUntrustedSidePanelURL)))
+  if (top_frame_origin == url::Origin::Create(GURL(
+                              chrome::kChromeUILensUntrustedSidePanelURL)) &&
+      net::SchemefulSite::IsSameSite(current_url_chain_entry,
+                                     GURL("https://google.com"))) {
+    return true;
+  }
 #endif
-         );
+
+  return false;
 }
 
 // TODO(crbug.com/40694933): This is based on SubframeTask::GetTitle()
@@ -5860,7 +5870,8 @@ ChromeContentBrowserClient::MaybeCreateSafeBrowsingURLLoaderThrottle(
   bool is_enterprise_lookup_enabled =
       safe_browsing::RealTimePolicyEngine::CanPerformEnterpriseFullURLLookup(
           profile->GetPrefs(), has_valid_dm_token, profile->IsOffTheRecord(),
-          profile->IsGuestSession());
+          profile->IsGuestSession(),
+          profile->IsEnterpriseIsolatedModeProfile());
   bool is_consumer_lookup_enabled =
       safe_browsing::RealTimePolicyEngine::CanPerformFullURLLookup(
           profile->GetPrefs(), profile->IsOffTheRecord(),
@@ -7980,7 +7991,7 @@ void ChromeContentBrowserClient::IsClipboardPasteAllowedByPolicy(
       glic::IsGlicGuest(destination.web_contents())) {
     glic::LogPasteAttempt(source, metadata);
     if (!glic::IsClipboardPasteAllowed(source, destination, metadata)) {
-      std::move(callback).Run(ClipboardPasteData());
+      std::move(callback).Run(std::nullopt);
       return;
     }
   }

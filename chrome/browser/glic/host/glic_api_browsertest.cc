@@ -56,8 +56,6 @@
 #include "chrome/browser/glic/test_support/glic_browser_test.h"
 #include "chrome/browser/glic/test_support/glic_histogram_tester.h"
 #include "chrome/browser/interstitials/security_interstitial_page_test_utils.h"
-#include "chrome/browser/optimization_guide/optimization_guide_keyed_service.h"
-#include "chrome/browser/optimization_guide/optimization_guide_keyed_service_factory.h"
 #include "chrome/browser/permissions/system/mock_platform_handle.h"
 #include "chrome/browser/permissions/system/system_permission_settings.h"
 #include "chrome/browser/policy/chrome_browser_policy_connector.h"
@@ -87,6 +85,7 @@
 #include "components/optimization_guide/content/browser/page_content_test_utils.h"
 #include "components/optimization_guide/proto/features/common_quality_data.pb.h"
 #include "components/optimization_guide/proto/hints.pb.h"
+#include "components/page_content_annotations/content/page_context_fetcher.h"
 #include "components/policy/core/common/management/scoped_management_service_override_for_testing.h"
 #include "components/policy/core/common/mock_configuration_policy_provider.h"
 #include "components/policy/core/common/policy_map.h"
@@ -97,6 +96,7 @@
 #include "components/signin/public/identity_manager/account_capabilities_test_mutator.h"
 #include "components/signin/public/identity_manager/account_info.h"
 #include "components/signin/public/identity_manager/identity_test_utils.h"
+#include "components/skills/features.h"
 #include "components/subscription_eligibility/subscription_eligibility_prefs.h"
 #include "components/tab_groups/tab_group_id.h"
 #include "components/tabs/public/tab_interface.h"
@@ -115,6 +115,7 @@
 #include "google_apis/gaia/gaia_auth_util.h"
 #include "mojo/public/cpp/base/big_buffer.h"
 #include "net/base/net_errors.h"
+#include "pdf/buildflags.h"
 #include "services/network/test/test_url_loader_factory.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "third_party/blink/public/common/features.h"
@@ -216,6 +217,8 @@ struct TestParams {
   bool auto_open_pdf = false;
   bool enable_no_web_ui_loader = false;
   bool no_webview = false;
+  bool skills_v2 = false;
+  bool enable_embedded_pdf_bytes_extraction = false;
 };
 
 class WithTestParams : public testing::WithParamInterface<TestParams> {
@@ -226,11 +229,10 @@ class WithTestParams : public testing::WithParamInterface<TestParams> {
     if (GetParam().no_webview) {
       enabled_features.push_back(features::kGlicNoWebview);
       enabled_features.push_back(pwc::mojom::features::kPrivilegedWebContents);
+    } else {
+      disabled_features.push_back(features::kGlicNoWebview);
     }
-    if (!enabled_features.empty() || !disabled_features.empty()) {
-      test_param_features_.InitWithFeatures(enabled_features,
-                                            disabled_features);
-    }
+    test_param_features_.InitWithFeatures(enabled_features, disabled_features);
   }
 
   static std::string PrintTestVariant(
@@ -253,6 +255,12 @@ class WithTestParams : public testing::WithParamInterface<TestParams> {
     }
     if (info.param.no_webview) {
       result.push_back("NoWebview");
+    }
+    if (info.param.skills_v2) {
+      result.push_back("SkillsV2");
+    }
+    if (info.param.enable_embedded_pdf_bytes_extraction) {
+      result.push_back("EnableEmbeddedPdfBytesExtraction");
     }
     if (result.empty()) {
       return "Default";
@@ -3108,6 +3116,20 @@ class GlicGetHostCapabilityApiTest : public GlicApiBrowserTest,
            {{"AutoOpenGlicForPdfWithOnboarding", "true"}}});
     }
 
+    if (GetParam().skills_v2) {
+      enabled_features.push_back({features::kSkillsWebViewV2Enabled, {}});
+    } else {
+      disabled_features.push_back(features::kSkillsWebViewV2Enabled);
+    }
+
+    if (GetParam().enable_embedded_pdf_bytes_extraction) {
+      enabled_features.push_back(
+          {page_content_annotations::kGlicEmbeddedPdfBytesExtraction, {}});
+    } else {
+      disabled_features.push_back(
+          page_content_annotations::kGlicEmbeddedPdfBytesExtraction);
+    }
+
     features_.InitWithFeaturesAndParameters(enabled_features,
                                             disabled_features);
   }
@@ -3122,12 +3144,16 @@ IN_PROC_BROWSER_TEST_P(GlicGetHostCapabilityApiTest, testGetHostCapabilities) {
   NavigateTab(*tab0, GetTestUrl("page.html"));
 
   base::ListValue expected_capabilities;
-  if (GetParam().enable_scroll_to_pdf) {
 #if BUILDFLAG(ENABLE_PDF)
+  if (GetParam().enable_scroll_to_pdf) {
     expected_capabilities.Append(
         std::to_underlying(mojom::HostCapability::kScrollToPdf));
-#endif
   }
+  if (GetParam().enable_embedded_pdf_bytes_extraction) {
+    expected_capabilities.Append(
+        std::to_underlying(mojom::HostCapability::kEmbeddedPdfBytesExtraction));
+  }
+#endif
   if (GetParam().trust_first_onboarding_arm2) {
     expected_capabilities.Append(
         std::to_underlying(mojom::HostCapability::kTrustFirstOnboardingArm2));
@@ -3136,6 +3162,10 @@ IN_PROC_BROWSER_TEST_P(GlicGetHostCapabilityApiTest, testGetHostCapabilities) {
   if (GetParam().auto_open_pdf) {
     expected_capabilities.Append(
         std::to_underlying(mojom::HostCapability::kPdfZeroState));
+  }
+  if (GetParam().skills_v2) {
+    expected_capabilities.Append(
+        std::to_underlying(mojom::HostCapability::kSkillsV2));
   }
   expected_capabilities.Append(
       std::to_underlying(mojom::HostCapability::kInvoke));
@@ -4592,6 +4622,15 @@ IN_PROC_BROWSER_TEST_P(GlicApiTest, testSetAudioDucking) {
   ExecuteJsTest();
 }
 
+IN_PROC_BROWSER_TEST_P(GlicApiTest, testCaptureRegionError) {
+  base::HistogramTester histogram_tester;
+  ASSERT_OK(OpenGlicForActiveTab());
+  ExecuteJsTest();
+  histogram_tester.ExpectBucketCount(
+      "Glic.Api.StatusCounts.Received",
+      glic::GlicHostApiRequestId::kSubscribeToCaptureRegion, 1);
+}
+
 IN_PROC_BROWSER_TEST_P(GlicApiTest, testGetDisplayMedia) {
   // getDisplayMedia() (tab capture) is not supported on standard mobile
   // Android.
@@ -4877,12 +4916,6 @@ IN_PROC_BROWSER_TEST_P(GlicApiTest, testUserInputSubmittedPromptType) {
       "Glic.Turn.PromptType", mojom::PromptType::kTypedText, 1));
 }
 
-// TODO(crbug.com/454083080): Fix this, it hangs.
-IN_PROC_BROWSER_TEST_P(GlicApiTest, DISABLED_testCaptureScreenshot) {
-  ASSERT_OK(OpenGlicForActiveTab());
-  ExecuteJsTest();
-}
-
 // TODO(crbug.com/441588906): Flaky on multiple platforms.
 IN_PROC_BROWSER_TEST_P(GlicApiTest, DISABLED_testFetchInactiveTabScreenshot) {
   tabs::TabInterface* tab0 = GetTabListInterface()->GetActiveTab();
@@ -5000,7 +5033,9 @@ INSTANTIATE_TEST_SUITE_P(
                     TestParams{.enable_scroll_to_pdf = true},
                     TestParams{.trust_first_onboarding_arm2 = true},
                     TestParams{.trust_first_onboarding_arm2 = true,
-                               .auto_open_pdf = true}),
+                               .auto_open_pdf = true},
+                    TestParams{.skills_v2 = true},
+                    TestParams{.enable_embedded_pdf_bytes_extraction = true}),
     &WithTestParams::PrintTestVariant);
 
 INSTANTIATE_TEST_SUITE_P(,

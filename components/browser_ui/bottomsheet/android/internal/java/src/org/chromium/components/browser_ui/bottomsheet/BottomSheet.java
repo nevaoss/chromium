@@ -79,22 +79,6 @@ class BottomSheet extends BottomSheetView
         implements BottomSheetSwipeDetector.SwipeableBottomSheet, View.OnLayoutChangeListener {
     private static final String TAG = "BottomSheet";
 
-    /** Duration for transition to {@link SheetState#FULL}. */
-    private static final int ANIMATION_DURATION_EXPAND_MS = 350;
-
-    /** Duration for transition from {@link SheetState#FULL}. */
-    private static final int ANIMATION_DURATION_SHRINK_MS = 250;
-
-    /**
-     * The fraction of the way to the next state the sheet must be swiped to animate there when
-     * released. This is the value used when there are 3 active states. A smaller value here means
-     * a smaller swipe is needed to move the sheet around.
-     */
-    private static final float THRESHOLD_TO_NEXT_STATE_3 = 0.4f;
-
-    /** This is similar to {@link #THRESHOLD_TO_NEXT_STATE_3} but for 2 states instead of 3. */
-    private static final float THRESHOLD_TO_NEXT_STATE_2 = 0.3f;
-
     private static final GlowSpec DEFAULT_GLOW_SPEC = new GlowSpec(0, GlowSpec.ShadowSize.DEFAULT);
 
     /** The height ratio for the sheet in the SheetState.HALF state. */
@@ -139,11 +123,17 @@ class BottomSheet extends BottomSheetView
     /** The default peek height of the sheet. */
     private final @Px int mDefaultPeekHeight;
 
-    /** The view that contains the sheet. */
-    private ViewGroup mSheetContainer;
-
     /** TokenHolder for tracking keyboard visibility. */
     private final TokenHolder mKeyboardTokenHolder = new TokenHolder(CallbackUtils.emptyRunnable());
+
+    /** For detecting scroll and fling events on the bottom sheet. */
+    private final BottomSheetSwipeDetector mGestureDetector;
+
+    /** The model managing presentation properties of the bottom sheet. */
+    private final PropertyModel mModel;
+
+    /** The view that contains the sheet. */
+    private ViewGroup mSheetContainer;
 
     /** The token for the keyboard visibility. */
     private int mKeyboardToken = TokenHolder.INVALID_TOKEN;
@@ -153,12 +143,6 @@ class BottomSheet extends BottomSheetView
 
     /** The height of the screen in the previous layout pass. */
     private int mPreviousScreenHeight;
-
-    /** For detecting scroll and fling events on the bottom sheet. */
-    private final BottomSheetSwipeDetector mGestureDetector;
-
-    /** The model managing presentation properties of the bottom sheet. */
-    private final PropertyModel mModel;
 
     /** The animator used to move the sheet to a fixed state when released by the user. */
     private @Nullable ValueAnimator mSettleAnimator;
@@ -179,17 +163,6 @@ class BottomSheet extends BottomSheetView
      */
     private float mCurrentOffsetPx;
 
-    /** The current state that the sheet is in. */
-    @SheetState private int mCurrentState = SheetState.HIDDEN;
-
-    /** The target sheet state. This is the state that the sheet is currently moving to. */
-    @SheetState private int mTargetState = SheetState.NONE;
-
-    /** While scrolling, this holds the state the scrolling started in. Otherwise, it's NONE. */
-    @SheetState int mScrollingStartState = SheetState.NONE;
-
-    /** A handle to the content being shown by the sheet. */
-    protected @Nullable BottomSheetContent mSheetContent;
 
     /** A handle to the FrameLayout that holds the snackbar of the bottom sheet. */
     private @Nullable FrameLayout mSnackbarContainer;
@@ -202,9 +175,6 @@ class BottomSheet extends BottomSheetView
 
     /** Whether the {@link BottomSheet} and its children should react to touch events. */
     private boolean mIsTouchEnabled;
-
-    /** Whether the sheet is currently open. */
-    private boolean mIsSheetOpen;
 
     /** Whether {@link #destroy()} has been called. */
     private boolean mIsDestroyed;
@@ -280,12 +250,22 @@ class BottomSheet extends BottomSheetView
         mIsTouchEnabled = true;
         setImportantForAccessibility(IMPORTANT_FOR_ACCESSIBILITY_YES);
 
-        mModel = new PropertyModel.Builder(BottomSheetProperties.ALL_KEYS).build();
+        mModel = buildModel();
         mMediator = new BottomSheetMediator(mModel);
         PropertyModelChangeProcessor.create(mModel, this, BottomSheetViewBinder::bind);
     }
 
-    /** @param reporter A means of reporting an exception without crashing. */
+    private PropertyModel buildModel() {
+        return new PropertyModel.Builder(BottomSheetProperties.ALL_KEYS)
+                .with(
+                        BottomSheetProperties.CLOSE_BUTTON_CLICK_LISTENER,
+                        v -> setSheetState(SheetState.HIDDEN, true, StateChangeReason.CLOSE_BUTTON))
+                .build();
+    }
+
+    /**
+     * @param reporter A means of reporting an exception without crashing.
+     */
     static void setExceptionReporter(Callback<Throwable> reporter) {
         sExceptionReporter = reporter;
     }
@@ -306,7 +286,7 @@ class BottomSheet extends BottomSheetView
 
     /** @return Whether the sheet is in the process of hiding. */
     boolean isHiding() {
-        return mSettleAnimator != null && mTargetState == SheetState.HIDDEN;
+        return mSettleAnimator != null && getTargetSheetState() == SheetState.HIDDEN;
     }
 
     @Override
@@ -454,12 +434,13 @@ class BottomSheet extends BottomSheetView
                         if (previousWidth != mContainerWidth
                                 || previousHeight != mContainerHeight) {
                             if (!isHalfStateEnabled()) {
-                                if (mCurrentState == SheetState.HALF) {
+                                @SheetState int currentState = getSheetState();
+                                if (currentState == SheetState.HALF) {
                                     setSheetState(SheetState.FULL, false);
-                                } else if (mCurrentState == SheetState.SCROLLING
-                                        && mTargetState == SheetState.HALF) {
+                                } else if (currentState == SheetState.SCROLLING
+                                        && getTargetSheetState() == SheetState.HALF) {
                                     // Let the animation resume to the full height.
-                                    mTargetState = SheetState.FULL;
+                                    mMediator.setTargetSheetState(SheetState.FULL);
                                 }
                             }
                             invalidateContentDesiredHeight();
@@ -479,12 +460,13 @@ class BottomSheet extends BottomSheetView
                             if (mGestureDetector.isScrolling() && keyboardDelegate != null) {
                                 keyboardDelegate.hideKeyboard(BottomSheet.this);
                             } else {
-                                if (mTargetState != SheetState.NONE) {
+                                @SheetState int targetState = getTargetSheetState();
+                                if (targetState != SheetState.NONE) {
                                     cancelAnimation();
-                                    createSettleAnimation(mTargetState, StateChangeReason.NONE);
+                                    createSettleAnimation(targetState, StateChangeReason.NONE);
                                 } else {
                                     endAnimations();
-                                    setSheetState(mCurrentState, false);
+                                    setSheetState(getSheetState(), false);
                                 }
                             }
                         }
@@ -532,7 +514,7 @@ class BottomSheet extends BottomSheetView
 
                     if (!mGestureDetector.isScrolling() && isRunningSettleAnimation()) return;
 
-                    setSheetState(mCurrentState, false);
+                    setSheetState(getSheetState(), false);
                 });
 
         mSheetContainer.removeView(this);
@@ -605,7 +587,7 @@ class BottomSheet extends BottomSheetView
 
         // The bottom sheet state will not have been updated yet at this point, so
         // store for later use.
-        mStateBeforeKeyboardShown = mCurrentState;
+        mStateBeforeKeyboardShown = getSheetState();
         mKeyboardToken = mKeyboardTokenHolder.acquireToken();
     }
 
@@ -637,7 +619,8 @@ class BottomSheet extends BottomSheetView
 
     @Override
     public boolean isContentScrolledToTop() {
-        return mSheetContent == null || mSheetContent.getVerticalScrollOffset() <= 0;
+        BottomSheetContent content = getCurrentSheetContent();
+        return content == null || content.getVerticalScrollOffset() <= 0;
     }
 
     @Override
@@ -657,7 +640,7 @@ class BottomSheet extends BottomSheetView
      * @return Whether the event is considered to be in the usable area of the sheet.
      */
     public boolean isTouchEventInUsableArea(MotionEvent event) {
-        return event.getY() > 0;
+        return mMediator.isTouchEventInUsableArea(event.getY());
     }
 
     @Override
@@ -670,14 +653,12 @@ class BottomSheet extends BottomSheetView
         return mCachedLocation[1] + mToolbarHolder.getHeight() > event.getRawY();
     }
 
-    /** @return Whether flinging down hard enough will close the sheet. */
+    /**
+     * @return Whether flinging down hard enough will close the sheet.
+     */
     private boolean swipeToDismissEnabled() {
-        return mSheetContent != null ? mSheetContent.swipeToDismissEnabled() : true;
-    }
-
-    /** @return Whether the half state should be skipped when moving the sheet down. */
-    private boolean shouldSkipHalfStateOnScrollingDown() {
-        return mSheetContent == null || mSheetContent.skipHalfStateOnScrollingDown();
+        BottomSheetContent content = getCurrentSheetContent();
+        return content != null ? content.swipeToDismissEnabled() : true;
     }
 
     /**
@@ -693,11 +674,13 @@ class BottomSheet extends BottomSheetView
 
     /**
      * Get the state that the bottom sheet should open to with the provided content.
+     *
      * @return The minimum opened state for the current content.
      */
     @SheetState
     int getOpeningState() {
-        if (mSheetContent == null) {
+        BottomSheetContent content = getCurrentSheetContent();
+        if (content == null) {
             return SheetState.HIDDEN;
         } else if (isPeekStateEnabled()) {
             return SheetState.PEEK;
@@ -719,11 +702,12 @@ class BottomSheet extends BottomSheetView
      */
     void showContent(final @Nullable BottomSheetContent content) {
         // If the desired content is already showing, do nothing.
-        if (mSheetContent == content) return;
+        BottomSheetContent currentContent = getCurrentSheetContent();
+        if (currentContent == content) return;
 
         // Remove this as listener from previous content layout and size changes.
-        if (mSheetContent != null) {
-            mSheetContent.getContentView().removeOnLayoutChangeListener(this);
+        if (currentContent != null) {
+            currentContent.getContentView().removeOnLayoutChangeListener(this);
         }
 
         if (content != null && getParent() == null) {
@@ -736,13 +720,6 @@ class BottomSheet extends BottomSheetView
             mSheetContainer.removeView(this);
         }
 
-        mModel.set(
-                BottomSheetProperties.CONTENT_VIEW,
-                content != null ? content.getContentView() : null);
-        mModel.set(
-                BottomSheetProperties.TOOLBAR_VIEW,
-                content != null ? content.getToolbarView() : null);
-
         onSheetContentChanged(content);
     }
 
@@ -752,11 +729,7 @@ class BottomSheet extends BottomSheetView
      * @param reason The reason the sheet was opened, if any.
      */
     private void onSheetOpened(@StateChangeReason int reason) {
-        if (mIsSheetOpen) return;
-
-        mIsSheetOpen = true;
-
-        mMediator.notifySheetOpened(reason);
+        if (!mMediator.onSheetOpened(reason)) return;
         setFocusable(true);
         setFocusableInTouchMode(true);
     }
@@ -767,14 +740,10 @@ class BottomSheet extends BottomSheetView
      *         if any.
      */
     private void onSheetClosed(@StateChangeReason int reason) {
-        if (!mIsSheetOpen) return;
-        mIsSheetOpen = false;
-
-        mMediator.notifySheetClosed(reason);
-
-        clearFocus();
+        if (!mMediator.onSheetClosed(reason)) return;
         setFocusable(false);
         setFocusableInTouchMode(false);
+        clearFocus();
         setContentDescription(null);
     }
 
@@ -793,11 +762,10 @@ class BottomSheet extends BottomSheetView
      */
     private void createSettleAnimation(
             @SheetState final int targetState, @StateChangeReason final int reason) {
-        mTargetState = targetState;
+        mMediator.setTargetSheetState(targetState);
         mSettleAnimator =
                 ValueAnimator.ofFloat(getCurrentOffsetPx(), getSheetHeightForState(targetState));
-        boolean isExpand = targetState == SheetState.FULL;
-        long duration = isExpand ? ANIMATION_DURATION_EXPAND_MS : ANIMATION_DURATION_SHRINK_MS;
+        long duration = mMediator.getSettleDuration(targetState);
         mSettleAnimator.setDuration(duration);
         mSettleAnimator.setInterpolator(Interpolators.EMPHASIZED);
 
@@ -812,7 +780,7 @@ class BottomSheet extends BottomSheetView
                         setInternalCurrentState(targetState, reason);
                         if (isLargeFormFactorUiEnabled()
                                 && !mIsDestroyed
-                                && mCurrentState == targetState) {
+                                && getSheetState() == targetState) {
                             // Re-synchronize sheet offset after observers run in
                             // setInternalCurrentState, ensuring any layout or measurement
                             // adjustments made by observers (e.g. BottomSheetListViewBase or
@@ -820,7 +788,7 @@ class BottomSheet extends BottomSheetView
                             // mCurrentOffsetPx and view translation.
                             setSheetOffsetFromBottom(getSheetHeightForState(targetState), reason);
                         }
-                        mTargetState = SheetState.NONE;
+                        mMediator.setTargetSheetState(SheetState.NONE);
                     }
                 });
 
@@ -840,18 +808,20 @@ class BottomSheet extends BottomSheetView
      * @return Get the height in px that the sheet is offset due to the browser controls.
      */
     float getOffsetFromBrowserControls() {
-        if (mSheetContent == null || !mSheetContent.hideOnScroll()) return 0;
+        BottomSheetContent content = getCurrentSheetContent();
+        if (content == null || !content.hideOnScroll()) return 0;
 
         // We only care about peek/half state.
         int state = getSheetState();
 
         // Returns non-zero offset for the opening animation. This keeps the animation running
         // below the bottom of the screen.
+        @SheetState int targetState = getTargetSheetState();
         if (mAlwaysFullWidth
                 && state == SheetState.SCROLLING
-                && mTargetState == SheetState.PEEK
+                && targetState == SheetState.PEEK
                 && mBrowserControlsHiddenRatio == MAX_HEIGHT_RATIO) {
-            state = mTargetState;
+            state = targetState;
         }
         if (state != SheetState.PEEK && state != SheetState.HALF) return 0;
         return getSheetHeightForState(state) * mBrowserControlsHiddenRatio;
@@ -879,13 +849,15 @@ class BottomSheet extends BottomSheetView
 
         assert mEdgeToEdgeBottomInsetSupplier.get() != null;
         int bottomInset = getEdgeToEdgeBottomInset();
+        @SheetState int targetState = getTargetSheetState();
+        boolean isSheetOpen = isSheetOpen();
 
         // The browser controls offset is added here so that the sheet's toolbar behaves like the
         // browser controls do.
         float translationY =
                 (mContainerHeight - mCurrentOffsetPx)
                         + getOffsetFromBrowserControls()
-                        - (mTargetState == SheetState.HIDDEN ? 0 : bottomInset);
+                        - (targetState == SheetState.HIDDEN ? 0 : bottomInset);
 
         // Ensure we don't over translate the bottom container.
         translationY = Math.max(0, translationY);
@@ -901,7 +873,7 @@ class BottomSheet extends BottomSheetView
             }
         }
 
-        if (isSheetOpen() && !translationChanged && !heightNeedsUpdate) return;
+        if (isSheetOpen && !translationChanged && !heightNeedsUpdate) return;
 
         setTranslationY(translationY);
 
@@ -918,7 +890,7 @@ class BottomSheet extends BottomSheetView
             // Note that when transitioning from hidden to peek, even dismissable sheets may want
             // to have a peek state.
             @SheetState int minSwipableState = getMinSwipableSheetState();
-            if (isPeekStateEnabled() && (!isSheetOpen() || mTargetState == SheetState.PEEK)) {
+            if (isPeekStateEnabled() && (!isSheetOpen || targetState == SheetState.PEEK)) {
                 minSwipableState = SheetState.PEEK;
             }
 
@@ -927,10 +899,10 @@ class BottomSheet extends BottomSheetView
                     MathUtils.areFloatsEqual(getCurrentOffsetPx(), minScrollableHeight);
             boolean heightLessThanPeek = getCurrentOffsetPx() < minScrollableHeight;
 
-            if (isSheetOpen() && (heightLessThanPeek || isAtMinHeight)) {
+            if (isSheetOpen && (heightLessThanPeek || isAtMinHeight)) {
                 onSheetClosed(reason);
-            } else if (!isSheetOpen()
-                    && mTargetState != SheetState.HIDDEN
+            } else if (!isSheetOpen
+                    && targetState != SheetState.HIDDEN
                     && getCurrentOffsetPx() > minScrollableHeight) {
                 onSheetOpened(reason);
             }
@@ -942,7 +914,7 @@ class BottomSheet extends BottomSheetView
     @Override
     public void setSheetOffset(float offset, boolean shouldAnimate) {
         cancelAnimation();
-        if (mSheetContent == null) return;
+        if (getCurrentSheetContent() == null) return;
 
         if (shouldAnimate) {
             float velocityY = getCurrentOffsetPx() - offset;
@@ -964,39 +936,42 @@ class BottomSheet extends BottomSheetView
 
     /** Return whether the peeking state for the sheet's content is enabled. */
     boolean isPeekStateEnabled() {
-        return mSheetContent != null && mSheetContent.getPeekHeight() != HeightMode.DISABLED;
+        BottomSheetContent content = getCurrentSheetContent();
+        return content != null && content.getPeekHeight() != HeightMode.DISABLED;
     }
 
     /** Return whether the half-height of the sheet is enabled. */
     private boolean isHalfStateEnabled() {
-        if (mSheetContent == null) return false;
+        BottomSheetContent content = getCurrentSheetContent();
+        if (content == null) return false;
 
         // Half state is invalid on small screens, when wrapping content at full height, and when
         // explicitly disabled.
         return !isSmallScreen()
-                && mSheetContent.getHalfHeightRatio() != HeightMode.DISABLED
-                && mSheetContent.getFullHeightRatio() != HeightMode.WRAP_CONTENT;
+                && content.getHalfHeightRatio() != HeightMode.DISABLED
+                && content.getFullHeightRatio() != HeightMode.WRAP_CONTENT;
     }
 
     /** Return whether the height mode for the full state is WRAP_CONTENT. */
     private boolean isFullHeightWrapContent() {
-        return mSheetContent != null
-                && mSheetContent.getFullHeightRatio() == HeightMode.WRAP_CONTENT;
+        BottomSheetContent content = getCurrentSheetContent();
+        return content != null && content.getFullHeightRatio() == HeightMode.WRAP_CONTENT;
     }
 
     /** Return whether the height mode for the full state is RESIZE_CONTENT. */
     private boolean isFullHeightResizeContent() {
-        return mSheetContent != null
+        BottomSheetContent content = getCurrentSheetContent();
+        return content != null
                 && isHalfStateEnabled()
-                && mSheetContent.getFullHeightRatio() == HeightMode.RESIZE_CONTENT;
+                && content.getFullHeightRatio() == HeightMode.RESIZE_CONTENT;
     }
 
     private @Px int getResizingContentContainerHeight() {
-        float minContentHeight = getSheetHeightForState(SheetState.HALF);
-        float maxContentHeight = getSheetHeightForState(SheetState.FULL);
-        @Px
-        int newHeight = (int) MathUtils.clamp(mCurrentOffsetPx, minContentHeight, maxContentHeight);
-        return Math.min(mVisibleViewportRect.height(), newHeight);
+        return mMediator.calculateContentContainerHeight(
+                getSheetHeightForState(SheetState.HALF),
+                getSheetHeightForState(SheetState.FULL),
+                mCurrentOffsetPx,
+                mVisibleViewportRect);
     }
 
     /** Returns the resolved PEEK height in pixels for the current content. */
@@ -1004,29 +979,34 @@ class BottomSheet extends BottomSheetView
         if (mContainerHeight <= 0 || !isPeekStateEnabled()) return 0;
 
         // If the content has a custom peek ratio set, use that instead of computing one.
-        if (mSheetContent != null && mSheetContent.getPeekHeight() != HeightMode.DEFAULT) {
-            assert mSheetContent.getPeekHeight() != HeightMode.WRAP_CONTENT
-                    : "The peek mode can't wrap content.";
-            int peekHeight = mSheetContent.getPeekHeight();
-            assert peekHeight > 0 : "Custom peek height must be positive.";
-            if (mSheetContent.showHandlebar()) {
-                peekHeight += getHandlebarHeight();
+        BottomSheetContent content = getCurrentSheetContent();
+        if (content != null) {
+            int peekHeight = content.getPeekHeight();
+            if (peekHeight != HeightMode.DEFAULT) {
+                assert peekHeight != HeightMode.WRAP_CONTENT : "The peek mode can't wrap content.";
+                assert peekHeight > 0 : "Custom peek height must be positive.";
+                if (content.showHandlebar()) {
+                    peekHeight += getHandlebarHeight();
+                }
+                // If the max sheet height is smaller than the custom peek height (e.g. when
+                // entering
+                // Picture-in-Picture mode where the window shrinks dynamically, or LFF desktop
+                // modes
+                // where top gaps exist), we cap the peek height to the max sheet height instead of
+                // throwing an AssertionError. This gracefully allows the bottom sheet to occupy the
+                // max allowed size rather than crashing the app.
+                int maxSheetHeight = getMaxSheetHeight();
+                if (peekHeight > maxSheetHeight) {
+                    Log.w(
+                            TAG,
+                            "Custom peek height (%d) exceeds max sheet height (%d), capping to"
+                                    + " max sheet height.",
+                            peekHeight,
+                            maxSheetHeight);
+                    peekHeight = maxSheetHeight;
+                }
+                return peekHeight;
             }
-            // If the max sheet height is smaller than the custom peek height (e.g. when entering
-            // Picture-in-Picture mode where the window shrinks dynamically, or LFF desktop modes
-            // where top gaps exist), we cap the peek height to the max sheet height instead of
-            // throwing an AssertionError. This gracefully allows the bottom sheet to occupy the
-            // max allowed size rather than crashing the app.
-            if (peekHeight > getMaxSheetHeight()) {
-                Log.w(
-                        TAG,
-                        "Custom peek height (%d) exceeds max sheet height (%d), capping to"
-                                + " max sheet height.",
-                        peekHeight,
-                        getMaxSheetHeight());
-                peekHeight = getMaxSheetHeight();
-            }
-            return peekHeight;
         }
 
         View toolbarView = getToolbarView();
@@ -1054,7 +1034,7 @@ class BottomSheet extends BottomSheetView
                 }
             }
         }
-        if (mSheetContent != null && mSheetContent.showHandlebar()) {
+        if (content != null && content.showHandlebar()) {
             toolbarHeight += getHandlebarHeight();
         }
         return toolbarHeight;
@@ -1067,7 +1047,8 @@ class BottomSheet extends BottomSheetView
     }
 
     private @Nullable View getToolbarView() {
-        return mSheetContent != null ? mSheetContent.getToolbarView() : null;
+        BottomSheetContent content = getCurrentSheetContent();
+        return content != null ? content.getToolbarView() : null;
     }
 
     /** @return The ratio of the height of the screen that the half expanded state is. */
@@ -1075,26 +1056,30 @@ class BottomSheet extends BottomSheetView
     float getHalfRatio() {
         if (mContainerHeight <= 0 || !isHalfStateEnabled()) return 0;
 
-        float customHalfRatio = assumeNonNull(mSheetContent).getHalfHeightRatio();
+        float customHalfRatio = assumeNonNull(getCurrentSheetContent()).getHalfHeightRatio();
         assert customHalfRatio != HeightMode.WRAP_CONTENT
                 : "Half-height cannot be WRAP_CONTENT. This is only supported for full-height.";
 
         return customHalfRatio == HeightMode.DEFAULT ? HALF_HEIGHT_RATIO : customHalfRatio;
     }
 
-    /** @return The ratio of the height of the screen that the fully expanded state is. */
+    /**
+     * @return The ratio of the height of the screen that the fully expanded state is.
+     */
     @VisibleForTesting
     float getFullRatio() {
-        if (mContainerHeight <= 0 || mSheetContent == null) return 0;
+        BottomSheetContent content = getCurrentSheetContent();
+        if (mContainerHeight <= 0 || content == null) return 0;
 
-        float customFullRatio = mSheetContent.getFullHeightRatio();
+        float customFullRatio = content.getFullHeightRatio();
         assert customFullRatio != HeightMode.DISABLED : "The full height cannot be DISABLED.";
 
         if (isFullHeightWrapContent()) {
             ensureContentDesiredHeightIsComputed();
-            return Math.min(getMaxSheetHeight(), mContentDesiredHeight) / getMaxSheetHeight();
+            int maxSheetHeight = getMaxSheetHeight();
+            return Math.min(maxSheetHeight, mContentDesiredHeight) / maxSheetHeight;
         } else if (isFullHeightResizeContent()) {
-            float maxRatioCap = mSheetContent.getMaxResizeContentHeightRatio();
+            float maxRatioCap = content.getMaxResizeContentHeightRatio();
             if (maxRatioCap <= 0.0f || maxRatioCap > MAX_HEIGHT_RATIO) {
                 return MAX_HEIGHT_RATIO;
             }
@@ -1182,43 +1167,46 @@ class BottomSheet extends BottomSheetView
 
         // Setting state to SCROLLING is not a valid operation. This can happen only when
         // we're already in the scrolling state. Make it no-op.
+        @SheetState int currentState = getSheetState();
         if (state == SheetState.SCROLLING) {
             // TODO(mdjones): The isRunningSettleAnimation should hold but currently doesn't.
-            assert mCurrentState == SheetState.SCROLLING; // && isRunningSettleAnimation();
+            assert currentState == SheetState.SCROLLING; // && isRunningSettleAnimation();
             return;
         }
 
         if (state == SheetState.HALF && !isHalfStateEnabled()) state = SheetState.FULL;
 
         cancelAnimation();
-        mTargetState = state;
+        mMediator.setTargetSheetState(state);
         if (getCurrentSheetContent() != null) {
             @StringRes int resId = getAccessibilityStringIdForState(state);
             updateA11yPaneTitle(getResources().getString(resId));
         }
 
+        @SheetState int targetState = getTargetSheetState();
         if (animate
-                && (state != mCurrentState
-                        || mCurrentOffsetPx != getSheetHeightForState(mTargetState))) {
+                && (state != currentState
+                        || mCurrentOffsetPx != getSheetHeightForState(targetState))) {
             createSettleAnimation(state, reason);
         } else {
             setSheetOffsetFromBottom(getSheetHeightForState(state), reason);
-            setInternalCurrentState(mTargetState, reason);
-            mTargetState = SheetState.NONE;
+            setInternalCurrentState(getTargetSheetState(), reason);
+            mMediator.setTargetSheetState(SheetState.NONE);
         }
     }
 
     private @StringRes int getAccessibilityStringIdForState(@SheetState int state) {
-        assert getCurrentSheetContent() != null : "Sheet content cannot be null";
+        BottomSheetContent content = getCurrentSheetContent();
+        assert content != null : "Sheet content cannot be null";
         switch (state) {
             case SheetState.PEEK:
-                return getCurrentSheetContent().getSheetClosedAccessibilityStringId();
+                return content.getSheetClosedAccessibilityStringId();
             case SheetState.HALF:
-                return getCurrentSheetContent().getSheetHalfHeightAccessibilityStringId();
+                return content.getSheetHalfHeightAccessibilityStringId();
             case SheetState.FULL:
-                return getCurrentSheetContent().getSheetFullHeightAccessibilityStringId();
+                return content.getSheetFullHeightAccessibilityStringId();
             case SheetState.HIDDEN:
-                return getCurrentSheetContent().getSheetHiddenAccessibilityStringId();
+                return content.getSheetHiddenAccessibilityStringId();
             default:
                 assert false : "Invalid sheet state: " + state;
                 return Resources.ID_NULL;
@@ -1230,7 +1218,7 @@ class BottomSheet extends BottomSheetView
      *     stationary or a target state has not been determined, SheetState.NONE will be returned.
      */
     int getTargetSheetState() {
-        return mTargetState;
+        return mMediator.getTargetSheetState();
     }
 
     /**
@@ -1239,17 +1227,18 @@ class BottomSheet extends BottomSheetView
      */
     @SheetState
     int getSheetState() {
-        return mCurrentState;
+        return mMediator.getSheetState();
     }
 
     /** @return Whether the sheet is currently open. */
     boolean isSheetOpen() {
-        return mIsSheetOpen;
+        return mMediator.isSheetOpen();
     }
 
     protected GlowSpec getGlowSpecOrDefault() {
-        if (mSheetContent == null) return DEFAULT_GLOW_SPEC;
-        GlowSpec spec = mSheetContent.getSheetBackgroundGlowSpecOverride();
+        BottomSheetContent content = getCurrentSheetContent();
+        if (content == null) return DEFAULT_GLOW_SPEC;
+        GlowSpec spec = content.getSheetBackgroundGlowSpecOverride();
         return spec != null ? spec : DEFAULT_GLOW_SPEC;
     }
 
@@ -1272,20 +1261,8 @@ class BottomSheet extends BottomSheetView
         if (isPopup) {
             setBottomMargin(0);
         }
-        updateCloseButton(isPopup, mSheetContent);
+        mMediator.updateCloseButton(isPopup, getCurrentSheetContent());
         updateContainerClipping(isPopup);
-    }
-
-    private void updateCloseButton(boolean isPopup, @Nullable BottomSheetContent content) {
-        boolean showCloseButton = isPopup && BottomSheetUtils.isSheetNonModal(content);
-        mModel.set(BottomSheetProperties.CLOSE_BUTTON_VISIBILITY, showCloseButton);
-        if (showCloseButton) {
-            mModel.set(
-                    BottomSheetProperties.CLOSE_BUTTON_CLICK_LISTENER,
-                    v -> setSheetState(SheetState.HIDDEN, true, StateChangeReason.CLOSE_BUTTON));
-        } else {
-            mModel.set(BottomSheetProperties.CLOSE_BUTTON_CLICK_LISTENER, null);
-        }
     }
 
     private boolean isLargeFormFactorFallbackUiEnabled() {
@@ -1301,11 +1278,13 @@ class BottomSheet extends BottomSheetView
      */
     @VisibleForTesting
     void setInternalCurrentState(@SheetState int state, @StateChangeReason int reason) {
-        if (state == mCurrentState) return;
+        @SheetState int currentState = getSheetState();
+        if (state == currentState) return;
 
+        BottomSheetContent content = getCurrentSheetContent();
         // If we somehow got here with null content, force the sheet to close without animation.
         // See https://crbug.com/1126872 for more information.
-        if (getCurrentSheetContent() == null && state != SheetState.HIDDEN) {
+        if (content == null && state != SheetState.HIDDEN) {
             Throwable throwable =
                     new Throwable(
                             "This is not a crash. See https://crbug.com/1126872 for details.");
@@ -1324,19 +1303,13 @@ class BottomSheet extends BottomSheetView
             return;
         }
 
-        // Remember which state precedes the scrolling.
-        mScrollingStartState =
-                state == SheetState.SCROLLING
-                        ? mCurrentState != SheetState.SCROLLING ? mCurrentState : SheetState.NONE
-                        : SheetState.NONE; // Not scrolling anymore.
-        mModel.set(BottomSheetProperties.CONTAINER_TOUCH_ENABLED, state != SheetState.SCROLLING);
-        mCurrentState = state;
+        mMediator.setInternalCurrentState(state);
 
-        if (mCurrentState == SheetState.HALF || mCurrentState == SheetState.FULL) {
+        if (state == SheetState.HALF || state == SheetState.FULL) {
             if (isLargeFormFactorUiEnabled() || isFullHeightResizeContent()) {
                 updateContentContainerHeight();
             }
-            assumeNonNull(getCurrentSheetContent());
+            assumeNonNull(content);
 
             // TalkBack will announce the pane title via sendPaneChangeAccessibilityEvent and
             // shift focus when the state settles. We set the focusability here so it is ready
@@ -1348,9 +1321,9 @@ class BottomSheet extends BottomSheetView
             if (getFocusedChild() == null) requestFocus();
         }
 
-        sendPaneChangeAccessibilityEvent(mCurrentState != SheetState.HIDDEN);
+        sendPaneChangeAccessibilityEvent(state != SheetState.HIDDEN);
 
-        mMediator.notifySheetStateChanged(mCurrentState, reason);
+        mMediator.notifySheetStateChanged(state, reason);
     }
 
     /**
@@ -1361,9 +1334,11 @@ class BottomSheet extends BottomSheetView
         return mSettleAnimator != null;
     }
 
-    /** @return The current sheet content, or null if there is no content. */
+    /**
+     * @return The content currently being displayed in the sheet.
+     */
     @Nullable BottomSheetContent getCurrentSheetContent() {
-        return mSheetContent;
+        return mMediator.getCurrentSheetContent();
     }
 
     /**
@@ -1398,27 +1373,28 @@ class BottomSheet extends BottomSheetView
     @Override
     @VisibleForTesting
     public boolean isLargeFormFactorUiEnabled() {
-        return mIsLargeFormFactor
-                && mSheetContent != null
-                && mSheetContent.supportsLargeFormFactor();
+        BottomSheetContent content = getCurrentSheetContent();
+        return mIsLargeFormFactor && content != null && content.supportsLargeFormFactor();
     }
 
     public void toggleSheetState() {
+        boolean isHalfStateEnabled = isHalfStateEnabled();
         // Early exit if the sheet only supports one open state (FULL).
-        if (!isHalfStateEnabled() && !isPeekStateEnabled()) return;
+        if (!isHalfStateEnabled && !isPeekStateEnabled()) return;
 
-        if (mCurrentState == SheetState.FULL) {
+        @SheetState int currentState = getSheetState();
+        if (currentState == SheetState.FULL) {
             // We know at least one other state is enabled here.
             // Go to HALF if enabled, otherwise it must be PEEK.
             setSheetState(
-                    isHalfStateEnabled() ? SheetState.HALF : SheetState.PEEK,
+                    isHalfStateEnabled ? SheetState.HALF : SheetState.PEEK,
                     /* animate= */ true,
                     StateChangeReason.NONE);
-        } else if (mCurrentState == SheetState.HALF) {
+        } else if (currentState == SheetState.HALF) {
             setSheetState(SheetState.FULL, /* animate= */ true, StateChangeReason.NONE);
-        } else if (mCurrentState == SheetState.PEEK) {
+        } else if (currentState == SheetState.PEEK) {
             setSheetState(
-                    isHalfStateEnabled() ? SheetState.HALF : SheetState.FULL,
+                    isHalfStateEnabled ? SheetState.HALF : SheetState.FULL,
                     /* animate= */ true,
                     StateChangeReason.NONE);
         }
@@ -1467,19 +1443,20 @@ class BottomSheet extends BottomSheetView
         if (mContentDesiredHeight != HEIGHT_UNSPECIFIED) {
             return;
         }
-        assumeNonNull(mSheetContent)
-                .getContentView()
-                .measure(
-                        MeasureSpec.makeMeasureSpec(getMaxSheetWidth(), MeasureSpec.EXACTLY),
-                        MeasureSpec.makeMeasureSpec(getMaxSheetHeight(), MeasureSpec.AT_MOST));
-        mContentDesiredHeight = mSheetContent.getContentView().getMeasuredHeight();
-        if (mSheetContent.showHandlebar() && mHandlebar != null) {
+        BottomSheetContent content = getCurrentSheetContent();
+        View contentView = assumeNonNull(content).getContentView();
+        contentView.measure(
+                MeasureSpec.makeMeasureSpec(getMaxSheetWidth(), MeasureSpec.EXACTLY),
+                MeasureSpec.makeMeasureSpec(getMaxSheetHeight(), MeasureSpec.AT_MOST));
+        mContentDesiredHeight = contentView.getMeasuredHeight();
+        if (content.showHandlebar() && mHandlebar != null) {
             mContentDesiredHeight += getHandlebarHeight();
         }
     }
 
     private int getHandlebarHeight() {
-        if (mHandlebar == null || mSheetContent == null || !mSheetContent.showHandlebar()) {
+        BottomSheetContent content = getCurrentSheetContent();
+        if (mHandlebar == null || content == null || !content.showHandlebar()) {
             return 0;
         }
         if (mHandlebar.getMeasuredHeight() == 0) {
@@ -1536,115 +1513,15 @@ class BottomSheet extends BottomSheetView
      */
     @SheetState
     private int getTargetSheetState(float sheetHeight, float yVelocity) {
-        if (sheetHeight <= getMinOffsetPx()) return getMinSwipableSheetState();
-        if (sheetHeight >= getMaxOffsetPx()) return SheetState.FULL;
-
-        boolean isMovingDownward = yVelocity < 0;
-
-        // If velocity shouldn't affect dismissing the sheet, reverse effect on the sheet height.
-        if (isMovingDownward && !swipeToDismissEnabled()) sheetHeight -= yVelocity;
-
-        // Find the two states that the sheet height is between.
-        @SheetState int prevState = mScrollingStartState;
-        @SheetState
-        int nextState =
-                isMovingDownward
-                        ? getLargestCollapsingState(isMovingDownward, sheetHeight)
-                        : getSmallestExpandingState(isMovingDownward, sheetHeight);
-
-        // Go into the next state only if the threshold for minimal change has been cleared.
-        return hasCrossedThresholdToNextState(prevState, nextState, sheetHeight, isMovingDownward)
-                ? nextState
-                : prevState;
-    }
-
-    /**
-     * Returns whether the sheet was scrolled far enough to transition into the next state.
-     * @param prev The state before the scrolling transition happened.
-     * @param next The state before the scrolling transitions into.
-     * @param sheetMovesDown True if the sheet moves down.
-     * @param sheetHeight The current sheet height in flux.
-     * @return True, iff the sheet was scrolled far enough to transition from |prev| to |next|.
-     */
-    private boolean hasCrossedThresholdToNextState(
-            @SheetState int prev, @SheetState int next, float sheetHeight, boolean sheetMovesDown) {
-        if (next == prev) return false;
-        // Moving from an internal/temporary state always works:
-        if (prev == SheetState.NONE || prev == SheetState.SCROLLING) return true;
-        float lowerBound = getSheetHeightForState(prev);
-        float distance = getSheetHeightForState(next) - lowerBound;
-        return Math.abs((sheetHeight - lowerBound) / distance)
-                > getThresholdToNextState(prev, next, sheetMovesDown);
-    }
-
-    /**
-     * The threshold to enter a state depends on whether a transition skips the half state. The more
-     * states to cross, the smaller the (percentual) threshold. A small threshold is used iff:
-     *   * It doesn't move into the HALF state,
-     *   * Skipping the HALF state is allowed, and
-     *   * The is large enough to skip the HALF state
-     * @param prev The state before the scrolling transition happened.
-     * @param next The state before the scrolling transitions into.
-     * @param sheetMovesDown True if the sheet is being moved down.
-     * @return a threshold (as percentage of the scroll distance covered).
-     */
-    private float getThresholdToNextState(
-            @SheetState int prev, @SheetState int next, boolean sheetMovesDown) {
-        if (next == SheetState.HALF) return THRESHOLD_TO_NEXT_STATE_3;
-        boolean crossesHalf =
-                (sheetMovesDown && prev > SheetState.HALF && next < SheetState.HALF)
-                        || (!sheetMovesDown && prev < SheetState.HALF && next > SheetState.HALF);
-        if (!crossesHalf) return THRESHOLD_TO_NEXT_STATE_3;
-        if (!shouldSkipHalfStateOnScrollingDown()) return THRESHOLD_TO_NEXT_STATE_3;
-        return THRESHOLD_TO_NEXT_STATE_2;
-    }
-
-    /**
-     * Returns the largest, acceptable state whose height is smaller than the given sheet height.
-     * E.g. if a sheet is between FULL and HALF, collapsing states are PEEK and HALF. Although HALF
-     * is closer to the sheet's height, it might have to be skipped. Then, PEEK is returned instead.
-     * @param sheetMovesDown If the sheet moves down, some smaller states might be skipped.
-     * @param sheetHeight The current sheet height in flux.
-     * @return The largest, acceptable, collapsing state.
-     */
-    private @SheetState int getLargestCollapsingState(boolean sheetMovesDown, float sheetHeight) {
-        @SheetState int largestCollapsingState = getMinSwipableSheetState();
-        boolean skipHalfState = !isHalfStateEnabled() || shouldSkipHalfStateOnScrollingDown();
-        for (@SheetState int i = largestCollapsingState + 1; i < SheetState.FULL; i++) {
-            if (i == SheetState.PEEK && !isPeekStateEnabled()) continue;
-            if (i == SheetState.HALF && skipHalfState) continue;
-
-            if (sheetHeight > getSheetHeightForState(i)
-                    || (sheetHeight == getSheetHeightForState(i) && !sheetMovesDown)) {
-                largestCollapsingState = i;
-            }
-        }
-        return largestCollapsingState;
-    }
-
-    /**
-     * Returns the smallest, acceptable state whose height is larger than the given sheet height.
-     * E.g. if the sheet is between PEEK and HALF, expanding states are HALF and FULL. Although HALF
-     * is closer to the sheet's height, it might not be enabled. Then, FULL is returned instead.
-     * @param sheetMovesDown If the sheet moves down, some collapsing states might be skipped. This
-     *                       affects the smallest possible expanding state as well.
-     * @param sheetHeight The current sheet height in flux.
-     * @return The smallest, acceptable, expanding state.
-     */
-    private @SheetState int getSmallestExpandingState(boolean sheetMovesDown, float sheetHeight) {
-        @SheetState
-        int largestCollapsingState = getLargestCollapsingState(sheetMovesDown, sheetHeight);
-        @SheetState int smallestExpandingState = SheetState.FULL;
-        for (@SheetState int i = smallestExpandingState - 1; i > largestCollapsingState; i--) {
-            if (i == SheetState.HALF && !isHalfStateEnabled()) continue;
-            if (i == SheetState.PEEK && !isPeekStateEnabled()) continue;
-
-            if (sheetHeight <= getSheetHeightForState(i)) {
-                smallestExpandingState = i;
-            }
-        }
-
-        return smallestExpandingState;
+        return mMediator.getTargetSheetState(
+                sheetHeight,
+                yVelocity,
+                isHalfStateEnabled(),
+                isPeekStateEnabled(),
+                swipeToDismissEnabled(),
+                getSheetHeightForState(SheetState.PEEK),
+                getSheetHeightForState(SheetState.HALF),
+                getSheetHeightForState(SheetState.FULL));
     }
 
     public static void setSmallScreenForTesting(boolean isSmallScreen) {
@@ -1656,8 +1533,9 @@ class BottomSheet extends BottomSheetView
         if (sIsSmallScreenForTesting != null) return sIsSmallScreenForTesting;
 
         float halfRatio = HALF_HEIGHT_RATIO;
-        if (mSheetContent != null) {
-            float customHalf = mSheetContent.getHalfHeightRatio();
+        BottomSheetContent content = getCurrentSheetContent();
+        if (content != null) {
+            float customHalf = content.getHalfHeightRatio();
             if (customHalf > 0 && customHalf < HALF_HEIGHT_RATIO) {
                 halfRatio = customHalf;
             }
@@ -1674,7 +1552,7 @@ class BottomSheet extends BottomSheetView
      * @param content The new sheet content, or null if the sheet has no content.
      */
     protected void onSheetContentChanged(final @Nullable BottomSheetContent content) {
-        mSheetContent = content;
+        mMediator.setSheetContent(content);
         resetCachedKeyboardState();
 
         boolean shouldLongPressMoveSheet =
@@ -1691,13 +1569,14 @@ class BottomSheet extends BottomSheetView
             ensureContentIsWrapped(/* animate= */ true);
 
             // HALF state is forbidden when wrapping the content.
-            if (mCurrentState == SheetState.HALF) {
+            if (getSheetState() == SheetState.HALF) {
                 setSheetState(SheetState.FULL, /* animate= */ true);
             }
         }
         // Update the color before notify the observers, as some might read the sheet bg color.
+        boolean isLargeFormFactorUiEnabled = isLargeFormFactorUiEnabled();
         @SheetLayoutMode int mode = SheetLayoutMode.STANDARD;
-        if (isLargeFormFactorUiEnabled()) {
+        if (isLargeFormFactorUiEnabled) {
             mode = SheetLayoutMode.DESKTOP_POPUP;
         } else if (isLargeFormFactorFallbackUiEnabled()) {
             mode = SheetLayoutMode.DESKTOP_FALLBACK;
@@ -1705,25 +1584,26 @@ class BottomSheet extends BottomSheetView
 
         boolean showHandlebar = content != null && content.showHandlebar();
         mHandlebar.setVisibility(showHandlebar ? View.VISIBLE : View.GONE);
-        if (isLargeFormFactorUiEnabled()) {
+        if (isLargeFormFactorUiEnabled) {
             mHandlebar.setPointerIcon(
                     PointerIcon.getSystemIcon(getContext(), PointerIcon.TYPE_HAND));
         }
         updateContentContainerHeight();
         updateBackgroundColor();
         mModel.set(BottomSheetProperties.SHEET_LAYOUT_MODE, mode);
-        updateCloseButton(mode == SheetLayoutMode.DESKTOP_POPUP, content);
-        mModel.set(BottomSheetProperties.GLOW_SPEC, getGlowSpecOrDefault());
+        mMediator.updateCloseButton(mode == SheetLayoutMode.DESKTOP_POPUP, content);
         mMediator.notifySheetContentChanged(content);
         mToolbarHolder.setBackgroundColor(Color.TRANSPARENT);
     }
 
     private @SheetState int getTargetOrCurrentState() {
-        if (mTargetState != SheetState.NONE && mTargetState != SheetState.SCROLLING) {
-            return mTargetState;
+        @SheetState int targetState = getTargetSheetState();
+        if (targetState != SheetState.NONE && targetState != SheetState.SCROLLING) {
+            return targetState;
         }
-        if (mCurrentState != SheetState.NONE && mCurrentState != SheetState.SCROLLING) {
-            return mCurrentState;
+        @SheetState int currentState = getSheetState();
+        if (currentState != SheetState.NONE && currentState != SheetState.SCROLLING) {
+            return currentState;
         }
         return SheetState.FULL;
     }
@@ -1750,8 +1630,7 @@ class BottomSheet extends BottomSheetView
         }
 
         if (isFullHeightResizeContent()) {
-            @Px int newHeight = getResizingContentContainerHeight();
-            mModel.set(BottomSheetProperties.CONTAINER_HEIGHT, newHeight);
+            mMediator.setContainerHeight(getResizingContentContainerHeight());
         } else {
             int targetHeight;
             if (isLargeFormFactorUiEnabled()) {
@@ -1764,7 +1643,7 @@ class BottomSheet extends BottomSheetView
             } else {
                 targetHeight = ViewGroup.LayoutParams.MATCH_PARENT;
             }
-            mModel.set(BottomSheetProperties.CONTAINER_HEIGHT, targetHeight);
+            mMediator.setContainerHeight(targetHeight);
 
             @Px
             int viewportBottomInset = isLargeFormFactorUiEnabled() ? 0 : getViewportBottomInset();
@@ -1979,18 +1858,20 @@ class BottomSheet extends BottomSheetView
 
     @VisibleForTesting
     void updateBackgroundColor() {
-        if (mSheetContent == null) return;
+        BottomSheetContent content = getCurrentSheetContent();
+        if (content == null) return;
 
-        if (mSheetContent.hasSolidBackgroundColor()) {
-            int overrideColor = mSheetContent.getSheetBackgroundColorOverride();
+        if (content.hasSolidBackgroundColor()) {
+            int overrideColor = content.getSheetBackgroundColorOverride();
             if (overrideColor != Color.TRANSPARENT) {
                 updateSheetBgColorTint(overrideColor);
                 return;
             }
         }
 
-        int colorNonModal = getNonModalBottomSheetBgColor(getContext());
-        int colorModal = getModalBottomSheetBgColor(getContext());
+        Context context = getContext();
+        int colorNonModal = getNonModalBottomSheetBgColor(context);
+        int colorModal = getModalBottomSheetBgColor(context);
 
         // Calculate the color based on the ratio between PEEK / FULL state.
         float maxOffset = getMaxOffsetPx();
@@ -1998,8 +1879,7 @@ class BottomSheet extends BottomSheetView
 
         boolean isResizableSheet = isHalfStateEnabled() || isPeekStateEnabled();
         if (!isResizableSheet || maxOffset <= minOffset || colorModal == colorNonModal) {
-            int newColor =
-                    BottomSheetUtils.isSheetNonModal(mSheetContent) ? colorNonModal : colorModal;
+            int newColor = BottomSheetUtils.isSheetNonModal(content) ? colorNonModal : colorModal;
             updateSheetBgColorTint(newColor);
             return;
         }
@@ -2024,12 +1904,13 @@ class BottomSheet extends BottomSheetView
     }
 
     private void ensureContentIsWrapped(boolean animate) {
-        if (mCurrentState == SheetState.HIDDEN || mCurrentState == SheetState.PEEK) return;
+        @SheetState int currentState = getSheetState();
+        if (currentState == SheetState.HIDDEN || currentState == SheetState.PEEK) return;
 
         // The SCROLLING state is used when animating the sheet height or when the user is swiping
         // the sheet. If it is the latter, we should not change the sheet height.
-        if (!isRunningSettleAnimation() && mCurrentState == SheetState.SCROLLING) return;
-        setSheetState(mCurrentState, animate);
+        if (!isRunningSettleAnimation() && currentState == SheetState.SCROLLING) return;
+        setSheetState(currentState, animate);
     }
 
     private void invalidateContentDesiredHeight() {
@@ -2088,8 +1969,8 @@ class BottomSheet extends BottomSheetView
      */
     @SheetState
     int forceScrollingStateForTesting(float sheetHeightInPx, float yUpwardsVelocity) {
-        mScrollingStartState = mCurrentState;
-        mCurrentState = SheetState.SCROLLING;
+        mMediator.setScrollingStartState(getSheetState());
+        mMediator.setSheetStateForTesting(SheetState.SCROLLING);
         return getTargetSheetState(sheetHeightInPx, yUpwardsVelocity);
     }
 

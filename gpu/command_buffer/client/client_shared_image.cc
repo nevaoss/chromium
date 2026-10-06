@@ -89,9 +89,24 @@ bool GMBIsNative(gfx::GpuMemoryBufferType gmb_type) {
 uint32_t ComputeTextureTargetForSharedImage(
     SharedImageMetadata metadata,
     gfx::GpuMemoryBufferType client_gmb_type) {
+  CHECK_GE(metadata.array_layers, 1u);
+#if !BUILDFLAG(IS_ANDROID)
+  CHECK_EQ(metadata.array_layers, 1u);
+#endif
 #if !BUILDFLAG(IS_OZONE) && !BUILDFLAG(IS_ANDROID)
   return GL_TEXTURE_2D;
 #else  // Ozone or Android
+#if BUILDFLAG(IS_ANDROID)
+  if (metadata.array_layers > 1) {
+    CHECK(GMBIsNative(client_gmb_type));
+    constexpr gpu::SharedImageUsageSet kSupportedUsages =
+        gpu::SHARED_IMAGE_USAGE_GLES2_READ |
+        gpu::SHARED_IMAGE_USAGE_GLES2_WRITE;
+    CHECK(kSupportedUsages.HasAll(metadata.usage));
+    CHECK(metadata.format.is_single_plane());
+    return GL_TEXTURE_2D_ARRAY;
+  }
+#endif
   // Check for external sampling being used.
   if (!metadata.format.PrefersExternalSampler()) {
     return GL_TEXTURE_2D;
@@ -105,7 +120,7 @@ uint32_t ComputeTextureTargetForSharedImage(
 #else
   return GL_TEXTURE_EXTERNAL_OES;
 #endif  // BUILDFLAG(IS_FUCHSIA)
-#endif  // !BUILDFLAG(IS_MAC) && !BUILDFLAG(IS_OZONE) && !BUILDFLAG(IS_ANDROID)
+#endif  // !BUILDFLAG(IS_OZONE) && !BUILDFLAG(IS_ANDROID)
 }
 
 }  // namespace
@@ -525,30 +540,22 @@ uint64_t ClientSharedImage::SignalLatestSyncToken(
     std::vector<SyncToken> sync_tokens,
     base::OnceClosure callback,
     SharedImageInterface* sii,
+    ContextSupport* context_support,
     uint64_t pending_callback_id) {
   CHECK(sii);
   gpu::SyncToken latest_sync_token;
   if (base::FeatureList::IsEnabled(
           features::kUseAutomaticSyncTokenManagement)) {
+    SyncPointClientId client_id = context_support->GetSyncPointClientId();
     for (const auto& shared_image : shared_images) {
       if (!shared_image) {
         continue;
       }
       base::AutoLock auto_lock(shared_image->lock_);
-      unsigned int effective_sync_token_count = 0;
-      for (const auto& [_, sync_token] : shared_image->sync_token_map_) {
-        if (sync_token.GetClientId() ==
-            shared_image->creation_sync_token().GetClientId()) {
-          continue;
-        }
-        if (sync_token.HasData()) {
-          if (sync_token.release_count() > latest_sync_token.release_count()) {
-            latest_sync_token = sync_token;
-          }
-          effective_sync_token_count++;
-        }
+      auto it = shared_image->sync_token_map_.find(client_id);
+      if (it != shared_image->sync_token_map_.end() && it->second.HasData()) {
+        latest_sync_token = it->second;
       }
-      CHECK_LE(effective_sync_token_count, 1u);
     }
   } else {
     for (const auto& sync_token : sync_tokens) {
@@ -624,24 +631,20 @@ bool ClientSharedImage::IsSyncTokenSignaled(
   if (base::FeatureList::IsEnabled(
           features::kUseAutomaticSyncTokenManagement)) {
     base::AutoLock auto_lock(lock_);
-    for (const auto& [_, sync_token] : sync_token_map_) {
-      if (sync_token == creation_sync_token_) {
-        continue;
-      }
-      if (sync_token.HasData() &&
-          !context_support->IsSyncTokenSignaled(sync_token)) {
-        return false;
-      }
+    SyncPointClientId client_id = context_support->GetSyncPointClientId();
+    auto it = sync_token_map_.find(client_id);
+    if (it != sync_token_map_.end() && it->second.HasData()) {
+      return context_support->IsSyncTokenSignaled(it->second);
     }
-  } else {
-    // This SyncToken should have been set by calling OrderingBarrier() before
-    // calling this.
-    DCHECK(resource_sync_token.HasData());
-
-    // IsSyncTokenSignaled is thread-safe, no need for worker context lock.
-    return context_support->IsSyncTokenSignaled(resource_sync_token);
+    return true;
   }
-  return true;
+
+  // This SyncToken should have been set by calling OrderingBarrier() before
+  // calling this.
+  DCHECK(resource_sync_token.HasData());
+
+  // IsSyncTokenSignaled is thread-safe, no need for worker context lock.
+  return context_support->IsSyncTokenSignaled(resource_sync_token);
 }
 
 std::vector<SyncToken> ClientSharedImage::GetSyncTokensForDisplayCompositor(

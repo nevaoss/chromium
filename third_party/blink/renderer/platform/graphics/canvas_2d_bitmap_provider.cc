@@ -51,8 +51,6 @@ Canvas2DBitmapProvider::Canvas2DBitmapProvider(
       hdr_metadata_(hdr_metadata),
       delegate_(delegate),
       snapshot_paint_image_id_(cc::PaintImage::GetNextId()) {
-  max_recorded_op_bytes_ = static_cast<size_t>(kMaxRecordedOpKB.Get()) * 1024;
-  max_pinned_image_bytes_ = static_cast<size_t>(kMaxPinnedImageKB.Get()) * 1024;
   CanvasMemoryDumpProvider::Instance()->RegisterClient(this);
 }
 

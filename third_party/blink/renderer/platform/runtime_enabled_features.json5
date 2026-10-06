@@ -205,12 +205,34 @@
       value_type: "bool",
     },
 
-    // is_protected_feature indicates whether the feature enablement state should
-    // be tracked using a base::ProtectedMemory<bool> value or just a regular bool
-    // value.
-    is_protected_feature: {
-      default: false,
-      value_type: "bool",
+    // `custom_enable_check` declares a method on `RuntimeEnabledFeaturesBase`;
+    // authors must provide a corresponding definition of the method in
+    // runtime_enabled_feature_checks.cc. Typically used to guard powerful or
+    // security-sensitive features; failing the check may, but is not required,
+    // be fatal.
+    //
+    // Some caveats:
+    // Whatever state a check consults is outside the standard feature flags
+    // that RuntimeEnabledFeatures::Backup saves and restores, so a guarded
+    // feature should also typically provide a scoper for tests that need to
+    // manipulate it.
+    //
+    // This option is mutually exclusive with:
+    // - `browser_process_read_access`
+    // - `browser_process_read_write_access`
+    // - `origin_trial_feature_name`
+    // - `public`
+    // - `settable_from_internals`
+    // as these provide a way of reading or writing the feature state that would
+    // likely bypass the coordination required with a custom enable check.
+    //
+    // It is also mutually exclusive with:
+    // - `depends_on`
+    // - `implied_by`
+    // as these make the feature depend on the state of other features.
+    custom_enable_check: {
+      default: "",
+      valid_type: "str",
     }
   },
 
@@ -809,7 +831,7 @@
     {
       // Killswitch M153.
       name: "AvoidEmbeddedContentViewLocation",
-      status: "experimental",
+      status: "test",
     },
     {
       // Don't use a position inside non-selectable content as a selection
@@ -1060,6 +1082,13 @@
       status: "experimental",
     },
     {
+      // Kill switch for https://crbug.com/385194416. Makes the canvas 2D
+      // context's `direction` getter reflect the stored keyword (including
+      // "inherit") instead of always resolving it to "ltr"/"rtl".
+      name: "CanvasTextDirectionReflect",
+      status: "stable",
+    },
+    {
       // https://crbug.com/479240778
       name: "CanvasTextMetricsPreciseBounds",
       status: "experimental",
@@ -1089,6 +1118,13 @@
       // Enables icon-only mode for capability elements.
       // https://issues.chromium.org/issues/514564817
       name: "CapabilityElementIconOnlyMode",
+    },
+    {
+      // Considers the full previous code point (not one UTF-16 code unit) for
+      // text-transform: capitalize word boundaries. Kill switch for
+      // crbug.com/501115609.
+      name: "CapitalizeAfterSupplementaryCharacterFix",
+      status: "stable",
     },
     {
       name: "CaptureController",
@@ -1262,12 +1298,6 @@
       status: "experimental",
     },
     {
-      // @container allowing multiple comma separated container queries.
-      // Also introduces the 'conditions' attribute on CSSContainerRule.
-      name: "CommaSeparatedContainerQueries",
-      status: "stable",
-    },
-    {
       // Return the current target from composedPath() while
       // dispatching.
       // This was added in M142 and can be removed after M144.
@@ -1374,10 +1404,6 @@
     {
       name: "ContactsManagerExtraProperties",
       status:  {"Android": "stable", "default": "test"},
-    },
-    {
-      name: "ContainerNameOnly",
-      status: "stable",
     },
     {
       name: "ContainerTiming",
@@ -1563,6 +1589,12 @@
       status: "stable",
     },
     {
+      // Attempts to "fold" a calc() value to NaN or +/-Infinity when producing
+      // a CalculationValue. Can produce incorrect results if the expression
+      // contains percentages.
+      name: "CSSCalcEarlyNaNAndInfFolding",
+    },
+    {
       // Support CSS Values Level 4 calc simplification and serialization
       // as specified in the specs below.
       // https://drafts.csswg.org/css-values-4/#calc-simplification
@@ -1615,11 +1647,6 @@
     {
       // https://drafts.csswg.org/css-conditional-5/#typedef-style-range
       name: "CSSContainerStyleQueriesRange",
-      status: "stable",
-    },
-    {
-      // https://drafts.csswg.org/css-color-5/#contrast-color
-      name: "CSSContrastColor",
       status: "stable",
     },
     {
@@ -1752,10 +1779,6 @@
       status: "experimental",
     },
     {
-      name: "CSSLetterAndWordSpacingPercentage",
-      status: "stable",
-    },
-    {
       // light-dark() for image values (background-image, etc.)
       // Ship in M150, should be removed in M152.
       // https://drafts.csswg.org/css-color-5/#light-dark
@@ -1775,6 +1798,11 @@
     {
       name: "CSSLineClampLineBreakingEllipsis",
       depends_on: ["CSSLineClamp"],
+      status: "experimental",
+    },
+    {
+      // https://chromestatus.com/feature/5095153430822912
+      name: "CSSLinkParametersProperty",
       status: "experimental",
     },
     {
@@ -1909,7 +1937,7 @@
     },
     {
       name: "CSSRandomFunction",
-      status: "experimental",
+      status: "stable",
     },
     {
       name: "CSSRandomFunctionTypedOM",
@@ -2748,7 +2776,7 @@
     {
       name: "ExtensionScriptTagging",
       public: true,
-      status: "test",
+      status: "stable",
       base_feature: "ExtensionScriptTagging",
     },
     {
@@ -3041,6 +3069,11 @@
       status: "stable",
     },
     {
+      // Fix for https://crbug.com/558819236
+      name: "FindBufferSkipIgnoredSubtrees",
+      status: "stable",
+    },
+    {
       name: "FindFirstMisspellingEndWhenNonEditable",
       status: "stable",
     },
@@ -3204,17 +3237,13 @@
     },
     {
       name: "FontationsPrinting",
-      status: "experimental",
+      status: "stable",
     },
     {
       name: "FontDataServiceForCSSLocalFonts",
       base_feature: "none",
       // No status, as the web platform runtime enabled feature is controlled by
       // a Chromium level feature (kFontDataServiceForCSSLocalFonts).
-    },
-    {
-      name: "FontFallbackForTabSize",
-      status: "stable",
     },
     {
       name: "FontFamilyPostscriptMatchingCTMigration",
@@ -3248,6 +3277,11 @@
     {
       // crbug.com/393391746
       name: "FontStyleObliqueZeroDegreeAsNormal",
+      status: "stable",
+    },
+    {
+      // crbug.com/325826179
+      name: "FontUniqueNameTypefaceCache",
       status: "stable",
     },
     {
@@ -3911,10 +3945,6 @@
       status: "stable",
     },
     {
-      name: "ListOwnerMustHaveCSSBox",
-      status: "stable",
-    },
-    {
       // Reverse origin trial allowing sites to opt out of Local Network Access
       // restrictions for WebRTC.
       name: "LocalNetworkAccessForWebRTCOptOut",
@@ -4236,7 +4266,7 @@
     {
       name: "MojoJS",
       status: "test",
-      is_protected_feature: true,
+      custom_enable_check: "CanEnableMojoJS",
     },
     // MojoJSTest is used exclusively in testing environments, whereas MojoJS
     // may also be used elsewhere.
@@ -4244,7 +4274,7 @@
       name: "MojoJSTest",
       status: "test",
       base_feature: "none",
-      is_protected_feature: true,
+      custom_enable_check: "CanEnableMojoJSTest",
     },
     // Move the selection to the last position in the list item. See
     // https://crbug.com/331841851
@@ -4268,7 +4298,7 @@
     {
       // NavigationState class and the :navigation-source CSS pseudo-class.
       name: "NavigationSourcePseudoClass",
-      status: "experimental",
+      status: "stable",
       implied_by: ["RouteMatching"],
     },
     {
@@ -4954,34 +4984,6 @@
       name: "PropagateOverscrollBehaviorFromRoot",
       status: "stable"
     },
-    // Protected memory varariant of the sample API for testing integration with
-    // the Origin Trials Framework. This is used only in unit tests.
-    // Do not change this flag to stable, as it exists
-    // solely to generate code used by the sample API implementation.
-    {
-      name: "ProtectedOriginTrialsSampleAPI",
-      base_feature: "none",
-      origin_trial_feature_name: "Frobulate",
-      is_protected_feature: "true",
-    },
-    // As above. Do not change this flag to stable, as it exists solely to
-    // generate code used by the origin trials sample API implementation.
-    // TODO(yashard): Add tests for this feature.
-    {
-      name: "ProtectedOriginTrialsSampleAPIDependent",
-      depends_on: ["ProtectedOriginTrialsSampleAPI"],
-      base_feature: "none",
-      is_protected_feature: "true",
-    },
-    // As above. Do not change this flag to stable, as it exists solely to
-    // generate code used by the origin trials sample API implementation.
-    {
-      name: "ProtectedOriginTrialsSampleAPIImplied",
-      base_feature: "none",
-      origin_trial_feature_name: "FrobulateImplied",
-      implied_by: ["ProtectedOriginTrialsSampleAPI"],
-      is_protected_feature: "true",
-    },
     {
       // Allowing pseudo-elements to have focus.
       name: "PseudoElementsFocusable",
@@ -5031,11 +5033,7 @@
     },
     {
       name: "RasterInducingScroll",
-      status: {
-        "Linux": "stable",
-        "Win": "stable",
-        "default": "test",
-      }
+      status: "stable",
     },
     {
       // Used as a kill switch in case the rate limiting causes issues.
@@ -5495,6 +5493,10 @@
     // Only consider unique case-insensitive scroll-to-text fragments.
     {
       name: "ScrollToTextFragmentUniqueFragments",
+      status: "stable",
+    },
+    {
+      name: "ScrollVisibilityHiddenScrollers",
       status: "stable",
     },
     // Allows CSS styling of browser search results.
@@ -6259,6 +6261,12 @@
     },
     // For unit tests.
     {
+      name: "TestFeatureCustomEnableCheck",
+      base_feature: "none",
+      custom_enable_check: "CanEnableTestFeature",
+    },
+    // For unit tests.
+    {
       name: "TestFeatureDependent",
       depends_on: ["TestFeatureImplied"],
       base_feature: "none",
@@ -6277,26 +6285,6 @@
       name: "TestFeatureImplied",
       implied_by: ["TestFeature"],
       base_feature: "none",
-    },
-    // For unit tests.
-    {
-      name: "TestFeatureProtected",
-      base_feature: "none",
-      is_protected_feature: true,
-    },
-    // For unit tests.
-    {
-      name: "TestFeatureProtectedDependent",
-      depends_on: ["TestFeatureProtectedImplied"],
-      base_feature: "none",
-      is_protected_feature: true,
-    },
-    // For unit tests.
-    {
-      name: "TestFeatureProtectedImplied",
-      implied_by: ["TestFeatureProtected"],
-      base_feature: "none",
-      is_protected_feature: true,
     },
     // For unit tests.
     {
@@ -6327,23 +6315,9 @@
       status: "experimental",
     },
     {
-      // crbug.com/40812040
-      name: "TextEmphasisLetterSpacing",
-      status: "stable",
-    },
-    {
       // crbug.com/368657256
       name: "TextEmphasisPositionAuto",
       status: "experimental",
-    },
-    {
-      name: "TextEmphasisPunctuationExceptions",
-      status: "stable"
-    },
-    {
-      // crbug.com/442481227
-      name: "TextEmphasisWithRuby",
-      status: "stable",
     },
     {
       name: "TextFragmentAPI",

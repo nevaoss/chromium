@@ -20,6 +20,7 @@ import static org.mockito.Mockito.when;
 import static org.chromium.chrome.browser.tasks.tab_management.TabListModel.CardProperties.CARD_TYPE;
 import static org.chromium.chrome.browser.tasks.tab_management.TabListModel.CardProperties.ModelType.ARCHIVED_TAB_GROUP;
 import static org.chromium.chrome.browser.tasks.tab_management.TabListModel.CardProperties.ModelType.TAB;
+import static org.chromium.chrome.browser.tasks.tab_management.TabListModel.CardProperties.ModelType.TAB_GROUP;
 
 import android.util.Pair;
 import android.view.View;
@@ -45,6 +46,7 @@ import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tab.TabLaunchType;
 import org.chromium.chrome.browser.tab.TabSelectionType;
 import org.chromium.chrome.browser.tab_ui.ThumbnailProvider;
+import org.chromium.chrome.browser.tabmodel.TabGroupObserver.DidRemoveTabGroupReason;
 import org.chromium.chrome.browser.tabmodel.TabList;
 import org.chromium.chrome.browser.tabmodel.TabModel;
 import org.chromium.chrome.browser.tasks.tab_management.TabListMediator.TabGridAccessibilityHelper;
@@ -779,6 +781,51 @@ public class GroupedLayoutDelegateUnitTest {
     }
 
     @Test
+    public void testGetIndexesForMergeToGroup_DestinationMovedTab() {
+        setupTabsInModel(mTab1, mTab2);
+        createAndAddPropertyModel(TAB1_ID);
+        createAndAddPropertyModel(TAB2_ID);
+
+        Pair<Integer, Integer> result =
+                mDelegate.getIndexesForMergeToGroup(
+                        mTabModel, mTab1, /* isDestinationTab= */ true, List.of(mTab1, mTab2));
+        assertEquals(new Pair<>(0, 1), result);
+    }
+
+    @Test
+    public void testGetIndexesForMergeToGroup_SourceMovedTab() {
+        setupTabsInModel(mTab1, mTab2);
+        createAndAddPropertyModel(TAB1_ID);
+        createAndAddPropertyModel(TAB2_ID);
+
+        Pair<Integer, Integer> result =
+                mDelegate.getIndexesForMergeToGroup(
+                        mTabModel, mTab2, /* isDestinationTab= */ false, List.of(mTab1, mTab2));
+        assertEquals(new Pair<>(0, 1), result);
+    }
+
+    @Test
+    public void testGetIndexesForMergeToGroup_MovedTabOnlyInModel() {
+        setupTabsInModel(mTab1, mTab2);
+        createAndAddPropertyModel(TAB1_ID);
+
+        Pair<Integer, Integer> result =
+                mDelegate.getIndexesForMergeToGroup(
+                        mTabModel, mTab1, /* isDestinationTab= */ false, List.of(mTab1, mTab2));
+        assertEquals(new Pair<>(0, TabModel.INVALID_TAB_INDEX), result);
+    }
+
+    @Test
+    public void testGetIndexesForMergeToGroup_NeitherInModel() {
+        setupTabsInModel(mTab1, mTab2);
+
+        Pair<Integer, Integer> result =
+                mDelegate.getIndexesForMergeToGroup(
+                        mTabModel, mTab1, /* isDestinationTab= */ false, List.of(mTab1, mTab2));
+        assertEquals(new Pair<>(TabModel.INVALID_TAB_INDEX, TabModel.INVALID_TAB_INDEX), result);
+    }
+
+    @Test
     public void testDidMoveTabGroup() {
         // Setup mModelList: [TAB2_ID, TAB1_ID].
         createAndAddPropertyModel(TAB2_ID);
@@ -893,9 +940,85 @@ public class GroupedLayoutDelegateUnitTest {
     }
 
     @Test
+    public void testGetIndexFromTabId_UngroupedTabResolvesToOwnCard() {
+        createAndAddPropertyModel(TAB1_ID);
+        createAndAddGroupCardModel(TAB_GROUP_ID, TAB2_ID);
+
+        when(mTabModel.getTabById(TAB1_ID)).thenReturn(mTab1);
+        when(mTab1.getTabGroupId()).thenReturn(null);
+
+        assertEquals(0, mDelegate.getIndexFromTabId(TAB1_ID));
+    }
+
+    @Test
+    public void testGetIndexFromTabId_GroupedTabResolvesToGroupCard() {
+        createAndAddPropertyModel(TAB1_ID);
+        createAndAddGroupCardModel(TAB_GROUP_ID, TAB2_ID);
+
+        when(mTabModel.getTabById(TAB2_ID)).thenReturn(mTab2);
+        when(mTab2.getTabGroupId()).thenReturn(TAB_GROUP_ID);
+        when(mTabModel.getTabById(TAB3_ID)).thenReturn(mTab3);
+        when(mTab3.getTabGroupId()).thenReturn(TAB_GROUP_ID);
+
+        // The representative tab resolves to the group card.
+        assertEquals(1, mDelegate.getIndexFromTabId(TAB2_ID));
+
+        // Non-representative tab in the group also resolves to the group card.
+        assertEquals(1, mDelegate.getIndexFromTabId(TAB3_ID));
+        assertEquals(TabModel.INVALID_TAB_INDEX, mModelList.indexFromTabId(TAB3_ID));
+    }
+
+    @Test
+    public void testGetIndexFromTabId_NoGroupCardFallsBackToTabId() {
+        // When the tab is grouped, but its card in the model is still a plain TAB card (flag OFF),
+        // the token lookup misses and the tab id lookup finds the card.
+        createAndAddPropertyModel(TAB1_ID);
+
+        when(mTabModel.getTabById(TAB1_ID)).thenReturn(mTab1);
+        when(mTab1.getTabGroupId()).thenReturn(TAB_GROUP_ID);
+
+        assertEquals(0, mDelegate.getIndexFromTabId(TAB1_ID));
+    }
+
+    @Test
+    public void testGetModelFromTabId() {
+        PropertyModel tabModel = createAndAddPropertyModel(TAB1_ID);
+        PropertyModel groupModel = createAndAddGroupCardModel(TAB_GROUP_ID, TAB2_ID);
+
+        when(mTabModel.getTabById(TAB1_ID)).thenReturn(mTab1);
+        when(mTab1.getTabGroupId()).thenReturn(null);
+        when(mTabModel.getTabById(TAB2_ID)).thenReturn(mTab2);
+        when(mTab2.getTabGroupId()).thenReturn(TAB_GROUP_ID);
+
+        assertEquals(tabModel, mDelegate.getModelFromTabId(TAB1_ID));
+        assertEquals(groupModel, mDelegate.getModelFromTabId(TAB2_ID));
+        assertNull(mDelegate.getModelFromTabId(99999));
+    }
+
+    @Test
     public void testGetGroupCardTypeAndIsGroupCollapsed() {
         assertEquals(TAB, mDelegate.getGroupCardType());
         assertTrue(mDelegate.isGroupCollapsed(TAB_GROUP_ID));
+    }
+
+    @Test
+    public void testDidRemoveTabGroup() {
+        createAndAddPropertyModel(TAB1_ID);
+        createAndAddGroupCardModel(TAB_GROUP_ID, TAB2_ID);
+        assertEquals(2, mModelList.size());
+
+        mDelegate.didRemoveTabGroup(TAB2_ID, TAB_GROUP_ID, DidRemoveTabGroupReason.CLOSE);
+        assertEquals(1, mModelList.size());
+        assertEquals(TAB1_ID, mModelList.get(0).model.get(TabProperties.TAB_ID));
+    }
+
+    @Test
+    public void testDidRemoveTabGroup_NullGroupId_NoOp() {
+        createAndAddGroupCardModel(TAB_GROUP_ID, TAB1_ID);
+        assertEquals(1, mModelList.size());
+
+        mDelegate.didRemoveTabGroup(TAB1_ID, null, DidRemoveTabGroupReason.CLOSE);
+        assertEquals(1, mModelList.size());
     }
 
     @Test
@@ -922,21 +1045,22 @@ public class GroupedLayoutDelegateUnitTest {
 
     @Test
     public void testAreTabsInSameGroup() {
+        PropertyModel model = createAndAddPropertyModel(TAB1_ID);
         when(mTabModel.getTabById(TAB1_ID)).thenReturn(mTab1);
         when(mTab1.getTabGroupId()).thenReturn(TAB_GROUP_ID);
         when(mTab2.getTabGroupId()).thenReturn(TAB_GROUP_ID);
-        assertTrue(mDelegate.areTabsInSameGroup(TAB1_ID, mTab2));
+        assertTrue(mDelegate.areTabsInSameGroup(model, mTab2));
 
         Token otherGroupId = new Token(3L, 4L);
         when(mTab2.getTabGroupId()).thenReturn(otherGroupId);
-        assertFalse(mDelegate.areTabsInSameGroup(TAB1_ID, mTab2));
+        assertFalse(mDelegate.areTabsInSameGroup(model, mTab2));
 
         when(mTab1.getTabGroupId()).thenReturn(null);
         when(mTab2.getTabGroupId()).thenReturn(null);
-        assertFalse(mDelegate.areTabsInSameGroup(TAB1_ID, mTab2));
+        assertFalse(mDelegate.areTabsInSameGroup(model, mTab2));
 
         when(mTabModel.getTabById(TAB1_ID)).thenReturn(null);
-        assertFalse(mDelegate.areTabsInSameGroup(TAB1_ID, mTab2));
+        assertFalse(mDelegate.areTabsInSameGroup(model, mTab2));
     }
 
     @Test
@@ -1043,6 +1167,19 @@ public class GroupedLayoutDelegateUnitTest {
                 new PropertyModel.Builder(TabProperties.ALL_KEYS_TAB_GRID)
                         .with(CARD_TYPE, TAB)
                         .with(TabProperties.TAB_ID, tabId)
+                        .build();
+        mModelList.add(new ListItem(TabProperties.UiType.TAB, model));
+        return model;
+    }
+
+    private PropertyModel createAndAddGroupCardModel(Token tabGroupId, int representativeTabId) {
+        PropertyModel model =
+                new PropertyModel.Builder(TabProperties.ALL_KEYS_TAB_GRID)
+                        .with(CARD_TYPE, TAB_GROUP)
+                        .with(TabProperties.TAB_ID, representativeTabId)
+                        .with(TabProperties.TAB_GROUP_HEADER_ID, tabGroupId)
+                        .with(TabProperties.TAB_GROUP_ID, null)
+                        .with(TabProperties.IS_COLLAPSED, true)
                         .build();
         mModelList.add(new ListItem(TabProperties.UiType.TAB, model));
         return model;

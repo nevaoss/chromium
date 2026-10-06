@@ -39,7 +39,9 @@ source_set("sync_integration_tests_impl") {
     "//chrome/browser/ui:ui_features",
     "//chrome/browser/ui/navigator",
     "//chrome/test:test_support",
+    "//chrome/test/base:browser_test_waiters",
     "//chrome/test/base:browser_tests_runner",
+    "//chrome/test/base:chrome_test_utils",
     "//components/account_settings",
     "//components/autofill/core/browser",
     "//components/autofill/core/browser:test_support",
@@ -265,6 +267,7 @@ source_set("sync_integration_tests_impl") {
       "//chrome/browser/sharing",
       "//chrome/browser/skills",
       "//chrome/browser/themes",
+      "//chrome/browser/ui:browser_window_header",
       "//chrome/browser/ui:ui_features",
       "//chrome/browser/ui/browser_window",
       "//chrome/browser/ui/send_tab_to_self",
@@ -569,6 +572,7 @@ source_set("sync_integration_test_support") {
     deps += [
       "//chrome/browser/apps/app_service",
       "//chrome/browser/themes",
+      "//chrome/browser/ui:singleton_tabs",
       "//chrome/browser/ui/webui/signin:login_ui_service",
       "//chrome/browser/ui/webui/signin:test_support_ui",
       "//chrome/browser/web_applications:web_applications_test_support",
@@ -637,5 +641,8 @@ source_set("sync_integration_test_support") {
     ]
 
     deps += [ "//chrome/browser/extensions" ]
+  }
+  if (!is_android) {
+    deps += [ "//chrome/browser/ui:browser_window_header" ]
   }
 }

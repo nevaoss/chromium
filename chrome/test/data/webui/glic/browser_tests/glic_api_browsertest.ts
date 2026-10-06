@@ -2366,6 +2366,18 @@ class ApiTests extends ApiTestFixtureBase {
     await this.host.setAudioDucking(true);
   }
 
+  async testCaptureRegionError() {
+    assertDefined(this.host.captureRegion);
+    const observable = this.host.captureRegion({
+      tabId: '999999',
+      options: {},
+    });
+    assertDefined(observable);
+    const sequence = observeSequence(observable);
+    const err = await assertRejects(sequence.next());
+    assertDefined(err);
+  }
+
   async testGeminiEnterpriseSettings() {
     assertDefined(this.host.getGeminiEnterpriseSettings);
     const settingsObservable = this.host.getGeminiEnterpriseSettings();
@@ -2667,17 +2679,6 @@ class ApiTests extends ApiTestFixtureBase {
     assertDefined(metrics);
     assertDefined(metrics.onUserInputSubmitted);
     metrics.onUserInputSubmitted(WebClientMode.TEXT, PromptType.TYPED_TEXT);
-  }
-
-  // TODO(crbug.com/454083080): Fix this, it hangs.
-  async testCaptureScreenshot() {
-    assertDefined(this.host.captureScreenshot);
-    const screenshot = await this.host.captureScreenshot?.();
-    assertDefined(screenshot);
-    assertTrue(screenshot.widthPixels > 0);
-    assertTrue(screenshot.heightPixels > 0);
-    assertTrue(screenshot.data.byteLength > 0);
-    assertEquals(screenshot.mimeType, 'image/jpeg');
   }
 
   async fetchInactiveTabScreenshot(expectNoFocus: boolean = false) {

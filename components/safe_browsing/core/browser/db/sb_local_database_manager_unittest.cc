@@ -31,9 +31,9 @@
 #include "build/build_config.h"
 #include "components/safe_browsing/core/browser/db/database_manager.h"
 #include "components/safe_browsing/core/browser/db/sb_database.h"
+#include "components/safe_browsing/core/browser/db/sb_protocol_manager_util.h"
 #include "components/safe_browsing/core/browser/db/sb_store.h"
 #include "components/safe_browsing/core/browser/db/sb_test_util.h"
-#include "components/safe_browsing/core/browser/db/v4_protocol_manager_util.h"
 #include "components/safe_browsing/core/browser/db/v5_get_hash_protocol_manager.h"
 #include "components/safe_browsing/core/browser/db/v5_search_hashes_cache.h"
 #include "components/safe_browsing/core/common/features.h"
@@ -45,7 +45,6 @@
 #include "services/network/test/test_url_loader_factory.h"
 #include "testing/platform_test.h"
 
-// TODO(crbug.com/362791941): Handle v4 references
 namespace safe_browsing {
 
 using enum ExtendedReportingLevel;
@@ -76,7 +75,11 @@ class FakeGetHashProtocolManager : public V4GetHashProtocolManager {
       const SBProtocolConfig& config,
       const FullHashInfos& full_hash_infos)
       : V4GetHashProtocolManager(url_loader_factory, stores_to_check, config),
-        full_hash_infos_(full_hash_infos) {}
+        full_hash_infos_(full_hash_infos) {
+    // FakeGetHashProtocolManager should not be instantiated when V5 local
+    // lists are enabled; V5 uses its own protocol manager.
+    CHECK(!base::FeatureList::IsEnabled(kLocalListsUseSBv5));
+  }
 
   void GetFullHashes(const FullHashToStoreAndHashPrefixesMap,
                      const std::vector<std::string>&,
@@ -142,10 +145,10 @@ class FakeV5GetHashProtocolManager : public V5GetHashProtocolManager {
 
   ~FakeV5GetHashProtocolManager() override = default;
 
-  void GetFullHashes(const std::map<FullHashStr, std::vector<SBThreatType>>&
+  void GetFullHashes(std::map<FullHashStr, std::vector<SBThreatType>>
                          full_hash_to_threat_types,
                      FullHashCallback callback) override {
-    last_full_hash_to_threat_types_ = full_hash_to_threat_types;
+    last_full_hash_to_threat_types_ = std::move(full_hash_to_threat_types);
     if (hold_callback_) {
       held_callback_ = std::move(callback);
       return;

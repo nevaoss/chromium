@@ -4,6 +4,7 @@
 
 #include "chrome/browser/glic/selection/selection_overlay_controller.h"
 
+#include "base/feature_list.h"
 #include "base/strings/to_string.h"
 #include "chrome/browser/actor/actor_keyed_service.h"
 #include "chrome/browser/glic/host/context/glic_tab_data.h"
@@ -25,10 +26,12 @@
 #include "chrome/common/webui_url_constants.h"
 #include "chrome/grit/generated_resources.h"
 #include "components/input/native_web_keyboard_event.h"
+#include "components/page_content_annotations/content/page_context_fetcher_options.h"
 #include "components/tabs/public/tab_interface.h"
 #include "components/vector_icons/vector_icons.h"
 #include "components/viz/common/frame_sinks/copy_output_result.h"
 #include "content/public/browser/render_view_host.h"
+#include "content/public/browser/render_widget_host_view.h"
 #include "content/public/browser/web_contents.h"
 #include "third_party/blink/public/mojom/content_extraction/ai_page_content.mojom.h"
 #include "third_party/skia/include/core/SkPaint.h"
@@ -37,6 +40,7 @@
 #include "ui/gfx/codec/jpeg_codec.h"
 #include "ui/gfx/geometry/insets.h"
 #include "ui/gfx/geometry/rect_conversions.h"
+#include "ui/gfx/geometry/size_conversions.h"
 #include "ui/gfx/geometry/skia_conversions.h"
 #include "ui/views/controls/webview/webview.h"
 
@@ -68,8 +72,12 @@ std::ostream& operator<<(std::ostream& os, OverlayBaseController::State value) {
 }
 
 namespace glic {
-
 namespace {
+
+// Kill switch for dropping the caller's screenshot size cap when capturing for
+// the selection overlay. https://crbug.com/512915349
+BASE_FEATURE(kGlicSelectionOverlayFullSizeScreenshot,
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 gfx::RectF GetRectForRegion(const SkBitmap& image, const gfx::RectF& region) {
   double x_scale = image.width();
@@ -163,6 +171,29 @@ class SelectionOverlayFetchPageProgressListener
   ScreenshotCallback screenshot_redacted_callback_;
 };
 
+// Mirrors the size math in `PageContextFetcher::GetScreenshotSize()`.
+bool WouldCapDownscaleCapture(
+    tabs::TabInterface* tab,
+    const page_content_annotations::ScreenshotOptions::
+        ScreenshotCollectionOptions& options) {
+  int max_width = options.max_width.value_or(0);
+  int max_height = options.max_height.value_or(0);
+  if (max_width == 0 || max_height == 0) {
+    return false;
+  }
+
+  content::RenderWidgetHostView* view =
+      tab->GetContents()->GetRenderWidgetHostView();
+  if (!view) {
+    return false;
+  }
+
+  gfx::Size view_size_pixels = gfx::ScaleToRoundedSize(
+      view->GetViewBounds().size(), view->GetDeviceScaleFactor());
+  return view_size_pixels.width() > max_width ||
+         view_size_pixels.height() > max_height;
+}
+
 }  // namespace
 
 DEFINE_USER_DATA(SelectionOverlayController);
@@ -253,6 +284,13 @@ void SelectionOverlayController::BindOverlay(
   receiver_.set_disconnect_handler(base::BindOnce(
       &SelectionOverlayController::Reset, weak_factory_.GetWeakPtr()));
   page_.Bind(std::move(page));
+
+  if (overlay_web_view_) {
+    overlay_web_view_focus_subscription_ =
+        overlay_web_view_->AddWebContentsFocusedCallback(base::BindRepeating(
+            &SelectionOverlayController::OnOverlayWebViewFocused,
+            weak_factory_.GetWeakPtr()));
+  }
 
   InitializeOverlay();
 }
@@ -366,6 +404,17 @@ void SelectionOverlayController::OnFocusedTabChanged(
   }
 }
 
+void SelectionOverlayController::OnOverlayWebViewFocused(
+    views::WebView* web_view) {
+  CHECK(tab_);
+  if (!tab_->IsVisible() || tab_->IsActivated()) {
+    return;
+  }
+  TabStripModel* tab_strip_model =
+      tab_->GetBrowserWindowInterface()->GetTabStripModel();
+  tab_strip_model->ActivateTabAt(tab_strip_model->GetIndexOfTab(tab_));
+}
+
 void SelectionOverlayController::OnSplitTabChanged(
     const SplitTabChange& change) {
   if (IsOverlayShowing()) {
@@ -443,11 +492,22 @@ bool SelectionOverlayController::HandleKeyboardEvent(
 }
 
 void SelectionOverlayController::StartScreenshotFlow() {
-  auto fallback_options = mojom::TabContextOptions::New();
-  fallback_options->viewport_screenshot = true;
-  fallback_options->annotated_page_content = true;
+  mojom::TabContextOptionsPtr options;
+  if (options_) {
+    options = options_->Clone();
+  } else {
+    options = mojom::TabContextOptions::New();
+    options->viewport_screenshot = true;
+    options->annotated_page_content = true;
+  }
 
-  const auto& options = options_ ? *options_ : *fallback_options;
+  // For region selection overlay, skip the screenshot size cap. See
+  // https://crbug.com/512915349
+  if (base::FeatureList::IsEnabled(kGlicSelectionOverlayFullSizeScreenshot) &&
+      WouldCapDownscaleCapture(tab_, options->screenshot_collection_options)) {
+    options->screenshot_collection_options.max_width = 0;
+    options->screenshot_collection_options.max_height = 0;
+  }
 
   auto progress_listener =
       std::make_unique<SelectionOverlayFetchPageProgressListener>(
@@ -455,7 +515,7 @@ void SelectionOverlayController::StartScreenshotFlow() {
                          weak_factory_.GetWeakPtr()),
           base::BindOnce(&SelectionOverlayController::OnScreenshotRedacted,
                          weak_factory_.GetWeakPtr()));
-  FetchPageContext(tab_, options,
+  FetchPageContext(tab_, *options,
                    base::BindOnce(&SelectionOverlayController::PageContextReady,
                                   weak_factory_.GetWeakPtr()),
                    std::move(progress_listener),
@@ -701,6 +761,7 @@ void SelectionOverlayController::Reset() {
   tab_context_.reset();
   capture_region_observer_.reset();
   options_.reset();
+  overlay_web_view_focus_subscription_ = {};
 }
 
 void SelectionOverlayController::RenderRegions(bool should_focus_panel) {

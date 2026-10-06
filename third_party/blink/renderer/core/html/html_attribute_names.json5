@@ -155,6 +155,7 @@
     "lang",
     "language",
     "latencyhint",
+    // TODO(crbug.com/561849343): Remove support for layoutsubtree.
     "layoutsubtree",
     "leftmargin",
     "link",

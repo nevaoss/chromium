@@ -71,7 +71,6 @@
 <translation id="1201402288615127009">下一步</translation>
 <translation id="1204075260022434100">{count,plural, =1{书签已保存到账号 {email} 中的“{title}”}other{{count} 个书签已保存到账号 {email} 中的“{title}”}}</translation>
 <translation id="1207493287814084192">下午 5:30</translation>
-<translation id="1215414310909588335">{count,plural, =1{已节省 1 分钟的输入时间}other{已节省 # 分钟的输入时间}}</translation>
 <translation id="1217294226280635614">拆分视图</translation>
 <translation id="1218730690561976633">开启/关闭增强型自动填充功能的用户验证</translation>
 <translation id="1219674500290482172">无法连接到互联网。</translation>
@@ -2113,6 +2112,7 @@
 <translation id="7772948288262733182">欢迎回来</translation>
 <translation id="777637629667389858">当您登录后，在各种 Google 服务中保护您。</translation>
 <translation id="7776604279034196531">在地址栏中访问阅读模式（如果可用）</translation>
+<translation id="7780992949171378848">向网站发送选择拒绝请求，以限制其使用您的数据</translation>
 <translation id="7781829728241885113">昨天</translation>
 <translation id="7788474973847076315">拍摄照片</translation>
 <translation id="7788868432173225918">关闭展开的视图</translation>

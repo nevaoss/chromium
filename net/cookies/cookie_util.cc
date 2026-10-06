@@ -17,7 +17,6 @@
 #include "base/functional/bind.h"
 #include "base/functional/callback.h"
 #include "base/logging.h"
-#include "base/metrics/histogram_functions.h"
 #include "base/metrics/histogram_macros.h"
 #include "base/notreached.h"
 #include "base/strings/strcat.h"
@@ -40,7 +39,6 @@
 #include "net/cookies/cookie_monster.h"
 #include "net/cookies/cookie_options.h"
 #include "net/cookies/cookie_partition_key.h"
-#include "net/cookies/cookie_setting_override.h"
 #include "net/cookies/parsed_cookie.h"
 #include "net/first_party_sets/first_party_set_metadata.h"
 #include "net/first_party_sets/first_party_sets_cache_filter.h"
@@ -223,6 +221,8 @@ ComputeSameSiteContextResult ComputeSameSiteContext(
       !initiator ||
       SiteForCookies::FromOrigin(initiator.value())
           .IsFirstPartyWithSchemefulMode(request_url, compute_schemefully);
+  // Record when the request had a null initiator.
+  result.metadata.has_null_initiator = !initiator;
 
   // Check that the URLs in the redirect chain are all same-site with the
   // site_for_cookies and hence (by transitivity) same-site with the request
@@ -347,13 +347,6 @@ constexpr CookiePrefixData kPrefixes[] = {
 };
 
 }  // namespace
-
-void FireStorageAccessHistogram(StorageAccessResult result) {
-  if (base::ShouldRecordSubsampledMetric(0.01)) {
-    UMA_HISTOGRAM_ENUMERATION("API.StorageAccess.AllowedRequests4.Subsampled",
-                              result);
-  }
-}
 
 bool DomainIsHostOnly(std::string_view domain_string) {
   return (domain_string.empty() || domain_string[0] != '.');
@@ -1030,6 +1023,7 @@ CookieOptions::SameSiteCookieContext ComputeSameSiteContextForResponse(
       CookieOptions::SameSiteCookieContext::ContextMetadata& result_metadata =
           compute_schemefully ? result.schemeful_metadata() : result.metadata();
 
+      result_metadata.has_null_initiator = !initiator;
       result_metadata.redirect_type_bug_1221316 =
           ComputeContextRedirectTypeBug1221316(
               url_chain.size() == 1u, same_site_initiator,

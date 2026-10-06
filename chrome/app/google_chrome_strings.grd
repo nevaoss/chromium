@@ -3276,8 +3276,8 @@ Google Chrome is unable to recover your settings.
           Open search with Chrome
         </message>
       </if>
-      <message name="IDS_OMNIBOX_EVERYWHERE_STATUS_ICON_TOOLTIP" desc="Tooltip text for the Search in Chrome status tray icon.">
-        Search in Chrome
+      <message name="IDS_OMNIBOX_EVERYWHERE_STATUS_ICON_TOOLTIP" desc="Tooltip text for the Search with Chrome status tray icon.">
+        Search with Chrome
       </message>
       <message name="IDS_OMNIBOX_EVERYWHERE_PROFILE_TOOLTIP" desc="Tooltip header for the profile icon in Omnibox Everywhere.">
         Chrome profile
@@ -3285,6 +3285,17 @@ Google Chrome is unable to recover your settings.
       <message name="IDS_OMNIBOX_EVERYWHERE_NAME" desc="Name of the desktop search feature (Omnibox Everywhere) used for window titles and shortcuts.">
         Search with Chrome
       </message>
+      <if expr="is_win">
+        <message name="IDS_OMNIBOX_EVERYWHERE_NAME_BETA" desc="Name of the desktop search feature (Omnibox Everywhere) used for window titles and shortcuts in Chrome Beta.">
+          Search with Chrome Beta
+        </message>
+        <message name="IDS_OMNIBOX_EVERYWHERE_NAME_DEV" desc="Name of the desktop search feature (Omnibox Everywhere) used for window titles and shortcuts in Chrome Dev.">
+          Search with Chrome Dev
+        </message>
+        <message name="IDS_OMNIBOX_EVERYWHERE_NAME_CANARY" desc="Name of the desktop search feature (Omnibox Everywhere) used for window titles and shortcuts in Chrome Canary.">
+          Search with Chrome Canary
+        </message>
+      </if>
       <message name="IDS_SETTINGS_OMNIBOX_EVERYWHERE_TITLE" desc="Title of the Omnibox Everywhere section on the search settings page.">
         Search from desktop
       </message>
@@ -3314,7 +3325,7 @@ Google Chrome is unable to recover your settings.
         Search with Chrome from anywhere
       </message>
       <message name="IDS_LOOMNIBOX_FRE_LENS_SECONDARY" desc="Secondary description detailing Google Lens functionality in Loomnibox.">
-        Ask about content outside of Chrome, like another app or file you have open
+        Ask about content outside of Chrome, like other apps or files
       </message>
       <message name="IDS_LOOMNIBOX_FRE_TO_SEARCH_OR_CUSTOMIZE" desc="Text in the Stage 2 FRE chin following the shortcut dropdown indicating it searches with Chrome or customizes in settings.">
         to search with Chrome or customize in <ph name="BEGIN_LINK">&lt;a href="#" class="settings-link"&gt;</ph>Settings<ph name="END_LINK">&lt;/a&gt;</ph>

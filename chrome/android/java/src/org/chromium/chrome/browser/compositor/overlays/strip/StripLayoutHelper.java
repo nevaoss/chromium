@@ -118,8 +118,6 @@ import org.chromium.chrome.browser.tabmodel.TabModelObserver;
 import org.chromium.chrome.browser.tabmodel.TabModelUtils;
 import org.chromium.chrome.browser.tabmodel.TabRemover;
 import org.chromium.chrome.browser.tasks.tab_management.GroupSharedState;
-import org.chromium.chrome.browser.tasks.tab_management.TabBubbler;
-import org.chromium.chrome.browser.tasks.tab_management.TabCardLabelData;
 import org.chromium.chrome.browser.tasks.tab_management.TabGroupListBottomSheetCoordinator;
 import org.chromium.chrome.browser.tasks.tab_management.TabGroupListBottomSheetCoordinatorFactory;
 import org.chromium.chrome.browser.tasks.tab_management.TabHoverCardView;
@@ -127,6 +125,8 @@ import org.chromium.chrome.browser.tasks.tab_management.TabListNotificationHandl
 import org.chromium.chrome.browser.tasks.tab_management.TabMultiSelectHelper;
 import org.chromium.chrome.browser.tasks.tab_management.TabShareUtils;
 import org.chromium.chrome.browser.tasks.tab_management.TabUiUtils;
+import org.chromium.chrome.browser.tasks.tab_management.labels.TabBubbler;
+import org.chromium.chrome.browser.tasks.tab_management.labels.TabCardLabelData;
 import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager;
 import org.chromium.chrome.browser.ui.vertical_tabs.VerticalTabUtils;
 import org.chromium.chrome.browser.user_education.UserEducationHelper;
@@ -2713,7 +2713,8 @@ public class StripLayoutHelper
                                 mBottomSheetController,
                                 /* supportsShowNewGroup= */ true,
                                 /* destroyOnHide= */ false,
-                                mWindowAndroid);
+                                mWindowAndroid,
+                                /* tabGroupUiActionHandler= */ null);
             }
             mTabContextMenuCoordinator =
                     TabContextMenuCoordinator.createContextMenuCoordinator(
@@ -2742,7 +2743,8 @@ public class StripLayoutHelper
                             mWindowAndroid.getModalDialogManager(),
                             TabClosingSource.TABLET_TAB_STRIP,
                             mCanActivateTabLayoutToggleMenuSupplier,
-                            TabStripLayoutType.HORIZONTAL);
+                            TabStripLayoutType.HORIZONTAL,
+                            /* tabGroupUiActionHandler= */ null);
         }
         RectProvider anchorRectProvider = new RectProvider();
         anchorTab.getAnchorRect(anchorRectProvider.getRect());
@@ -3594,7 +3596,7 @@ public class StripLayoutHelper
         }
 
         boolean allowUndo = TabClosureParamsUtils.shouldAllowUndo(motionEventButtonState);
-        TabClosureParams.CloseTabBuilder paramsBuilder =
+        TabClosureParams.Builder paramsBuilder =
                 TabClosureParams.closeTab(realTab)
                         .allowUndo(allowUndo)
                         .tabClosingSource(TabClosingSource.TABLET_TAB_STRIP);

@@ -30,16 +30,21 @@
 #include "chrome/browser/ui/view_ids.h"
 #include "chrome/browser/ui/webui/side_panel/read_anything/read_anything_untrusted_ui.h"
 #include "chrome/browser/ui/webui/top_chrome/webui_contents_wrapper.h"
+#include "chrome/browser/ui/webui/webui_embedding_context.h"
 #include "chrome/common/webui_url_constants.h"
 #include "chrome/grit/generated_resources.h"
 #include "components/feature_engagement/public/feature_constants.h"
 #include "components/find_in_page/find_tab_helper.h"
 #include "components/prefs/pref_service.h"
+#include "content/public/browser/global_routing_id.h"
 #include "content/public/browser/navigation_handle.h"
 #include "content/public/browser/page.h"
+#include "content/public/browser/page_navigator.h"
+#include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/render_widget_host_view.h"
 #include "content/public/browser/web_contents.h"
 #include "ui/accessibility/accessibility_features.h"
+#include "ui/base/window_open_disposition.h"
 #include "ui/views/accessibility/view_accessibility.h"
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -324,6 +329,16 @@ ReadAnythingContentsWrapper ReadAnythingController::GetOrCreateWebUIWrapper(
 
     ReadAnythingControllerGlue::CreateForWebContents(
         web_ui_wrapper_->web_contents(), this);
+    // A single WebUIContentsWrapper is reused across both presentations, so
+    // the embedding context is set once here, at the point of creation,
+    // rather than in each host view. `ReadAnythingImmersiveWebView` never set
+    // it, while `ReadAnythingSidePanelWebView` inherits the call from
+    // `SidePanelWebUIView`, so the context depended on which presentation
+    // happened to create the wrapper first. `SidePanelWebUIView` still makes
+    // the same call when Reading Mode is shown in the side panel; because the
+    // tab is unchanged, that call is an early-return no-op (see
+    // `EmbeddingTabTracker::SetTabInterface`).
+    webui::SetTabInterface(web_ui_wrapper_->web_contents(), tab_);
     find_in_page::FindTabHelper::CreateForWebContents(
         web_ui_wrapper_->web_contents());
   }
@@ -661,7 +676,62 @@ void ReadAnythingController::ReleaseMainContentsCapture() {
   main_contents_capturer_handle_.RunAndReset();
 }
 
+content::WebContents* ReadAnythingController::OpenURLFromTab(
+    content::WebContents* source,
+    const content::OpenURLParams& params,
+    base::OnceCallback<void(content::NavigationHandle&)>
+        navigation_handle_callback) {
+  // Reading Mode only renders links from distilled web content, so restrict
+  // forwarded navigations to web schemes.
+  if (!params.url.SchemeIsHTTPOrHTTPS()) {
+    return nullptr;
+  }
+  if (tab_ && tab_->GetBrowserWindowInterface()) {
+    content::OpenURLParams modified_params = params;
+    content::RenderFrameHost* source_rfh = nullptr;
+    if (params.initiator_frame_token.has_value()) {
+      source_rfh = content::RenderFrameHost::FromFrameToken(
+          content::GlobalRenderFrameHostToken(
+              params.initiator_process_id,
+              params.initiator_frame_token.value()));
+    }
 
+    // Check that user_gesture is really true, by confirming that there was a
+    // recent activation in the RM rfh
+    if (modified_params.user_gesture &&
+        (!source_rfh || !source_rfh->HasTransientUserActivation())) {
+      modified_params.user_gesture = false;
+    }
+
+    // If a compromised renderer requests a CURRENT_TAB navigation, it
+    // bypasses the popup blocker, and also has other security risks like
+    // spoofing the original webpage. Set to NEW_FOREGROUND_TAB to make sure
+    // the popup blocker runs on links opened from the untrusted webui. We
+    // strictly allow-list dispositions that open new windows/tabs, and demote
+    // all others.
+    switch (modified_params.disposition) {
+      case WindowOpenDisposition::NEW_FOREGROUND_TAB:
+      case WindowOpenDisposition::NEW_BACKGROUND_TAB:
+      case WindowOpenDisposition::NEW_POPUP:
+      case WindowOpenDisposition::NEW_WINDOW:
+      case WindowOpenDisposition::SAVE_TO_DISK:
+      case WindowOpenDisposition::OFF_THE_RECORD:
+        break;
+      default:
+        modified_params.disposition = WindowOpenDisposition::NEW_FOREGROUND_TAB;
+        break;
+    }
+
+    // Pass the main tab's WebContents as the source so the navigation pipeline
+    // has the correct context to evaluate disposition and blocking rules.
+    content::WebContents* tab_contents = tab_->GetContents();
+    if (tab_contents && tab_contents->GetDelegate()) {
+      return tab_contents->GetDelegate()->OpenURLFromTab(
+          tab_contents, modified_params, std::move(navigation_handle_callback));
+    }
+  }
+  return nullptr;
+}
 
 void ReadAnythingController::OnDistillationStateChanged(
     DistillationState new_state) {

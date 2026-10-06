@@ -416,14 +416,19 @@ void GPUQueue::copyExternalImageToTexture(
     // Use display size which is based on natural size but considering
     // transformation metadata.
     wgpu::Extent2D video_frame_display_size = {source->width, source->height};
-    CopyFromVideoElement(
-        source->external_texture_source, video_frame_display_size,
-        origin_in_external_image, dawn_copy_size, dawn_destination,
-        destination->premultipliedAlpha(), color_space, copyImage->flipY());
+    if (!CopyFromVideoElement(
+            source->external_texture_source, video_frame_display_size,
+            origin_in_external_image, dawn_copy_size, dawn_destination,
+            destination->premultipliedAlpha(), color_space,
+            copyImage->flipY())) {
+      exception_state.ThrowDOMException(
+          DOMExceptionCode::kOperationError,
+          "Failed to copy content from video element.");
+    }
     return;
   }
 
-  if (!CopyStaticImagBitmapToWGPUTexture(
+  if (!CopyStaticImageBitmapToWGPUTexture(
           GetDawnControlClient(), device_->GetHandle(), source->image.get(),
           origin_in_external_image, dawn_copy_size, dawn_destination,
           destination->premultipliedAlpha(), color_space, copyImage->flipY())) {
@@ -634,7 +639,7 @@ void GPUQueue::DrawElementImageToTextureInternal(
   dawn_copy_size.height = std::min(
       dawn_destination.texture.GetHeight(),
       base::ClampedNumeric(image->Size().height()).Cast<uint32_t>().RawValue());
-  if (!CopyStaticImagBitmapToWGPUTexture(
+  if (!CopyStaticImageBitmapToWGPUTexture(
           GetDawnControlClient(), device_->GetHandle(), image.get(),
           wgpu::Origin2D(), dawn_copy_size, dawn_destination,
           destination->premultipliedAlpha(), color_space,
@@ -645,7 +650,7 @@ void GPUQueue::DrawElementImageToTextureInternal(
   }
 }
 
-void GPUQueue::CopyFromVideoElement(
+bool GPUQueue::CopyFromVideoElement(
     const ExternalTextureSource source,
     const wgpu::Extent2D& video_frame_natural_size,
     const wgpu::Origin2D& origin,
@@ -658,8 +663,11 @@ void GPUQueue::CopyFromVideoElement(
 
   // Create External Texture with dst color space. No color space conversion
   // happens during copy step.
-  ExternalTexture external_texture =
+  std::optional<ExternalTexture> external_texture =
       CreateExternalTexture(device_, dst_color_space, source.media_video_frame);
+  if (!external_texture) {
+    return false;
+  }
 
   wgpu::CopyTextureForBrowserOptions options = {
       // Extracting contents from HTMLVideoElement (e.g.
@@ -675,17 +683,19 @@ void GPUQueue::CopyFromVideoElement(
   options.flipY = flipY;
 
   wgpu::ImageCopyExternalTexture src = {
-      .externalTexture = external_texture.wgpu_external_texture,
+      .externalTexture = external_texture->wgpu_external_texture,
       .origin = {origin.x, origin.y},
       .naturalSize = video_frame_natural_size,
   };
   GetHandle().CopyExternalTextureForBrowser(&src, &destination, &copy_size,
                                             &options);
 
-  if (external_texture.is_zero_copy &&
+  if (external_texture->is_zero_copy &&
       source.media_video_frame->metadata().read_lock_fences_enabled) {
-    ReferenceUntilGPUIsFinished(std::move(external_texture.mailbox_texture));
+    ReferenceUntilGPUIsFinished(std::move(external_texture->mailbox_texture));
   }
+
+  return true;
 }
 
 void GPUQueue::ReferenceUntilGPUIsFinished(

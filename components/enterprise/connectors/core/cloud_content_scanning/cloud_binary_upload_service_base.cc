@@ -748,7 +748,7 @@ CloudBinaryUploadServiceBase::CreateUploadRequest(
     net::NetworkTrafficAnnotationTag traffic_annotation,
     BinaryUploadRequest::Data data,
     ScanRequestUploadResult result,
-    ResumableUploadRequestBase::OnceRegisterOnGotHashCallback
+    ResumableUploadRequest::OnceRegisterOnGotHashCallback
         register_on_got_hash_callback) {
   auto callback =
       base::BindOnce(&CloudBinaryUploadServiceBase::OnUploadComplete,
@@ -770,7 +770,7 @@ CloudBinaryUploadServiceBase::CreateUploadRequest(
     upload_request =
         (IsResumableUpload(*request) &&
          base::FeatureList::IsEnabled(kDlpScanPastedImages))
-            ? safe_browsing::ResumableUploadRequest::CreateStringRequest(
+            ? ResumableUploadRequest::CreateStringRequest(
                   url_loader_factory_, url, metadata, data.contents,
                   request->image_paste() ? ConnectorUploadRequest::IMAGE
                                          : ConnectorUploadRequest::STRING,
@@ -785,7 +785,7 @@ CloudBinaryUploadServiceBase::CreateUploadRequest(
   } else if (!data.path.empty()) {
     upload_request =
         IsResumableUpload(*request)
-            ? safe_browsing::ResumableUploadRequest::CreateFileRequest(
+            ? ResumableUploadRequest::CreateFileRequest(
                   url_loader_factory_, url, metadata, result, data.path,
                   data.size, data.is_obfuscated, histogram_suffix,
                   std::move(traffic_annotation),
@@ -801,7 +801,7 @@ CloudBinaryUploadServiceBase::CreateUploadRequest(
   } else if (data.page.IsValid()) {
     upload_request =
         IsResumableUpload(*request)
-            ? safe_browsing::ResumableUploadRequest::CreatePageRequest(
+            ? ResumableUploadRequest::CreatePageRequest(
                   url_loader_factory_, url, metadata, result,
                   std::move(data.page), histogram_suffix,
                   std::move(traffic_annotation),
@@ -966,7 +966,7 @@ void CloudBinaryUploadServiceBase::OnGetRequestData(
   request->set_should_skip_malware_scan(
       data.size > BinaryUploadService::kMaxUploadSizeBytes);
 
-  ResumableUploadRequestBase::OnceRegisterOnGotHashCallback
+  ResumableUploadRequest::OnceRegisterOnGotHashCallback
       register_on_got_hash_callback = base::NullCallback();
   if (request->digest().empty() && request->register_on_got_hash_callback_) {
     // The hash is being computed. Let the server know the hash will be

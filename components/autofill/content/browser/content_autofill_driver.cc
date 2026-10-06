@@ -34,6 +34,8 @@
 #include "third_party/abseil-cpp/absl/functional/overload.h"
 #include "third_party/blink/public/common/associated_interfaces/associated_interface_provider.h"
 #include "third_party/blink/public/common/tokens/tokens.h"
+#include "ui/gfx/geometry/quad_f.h"
+#include "ui/gfx/geometry/rect_conversions.h"
 #include "url/origin.h"
 
 namespace autofill {
@@ -78,20 +80,29 @@ T&& Lift(ContentAutofillDriver& source, T&& x) {
   return std::forward<T>(x);
 }
 
-gfx::Rect Lift(ContentAutofillDriver& source, gfx::Rect r) {
-  if (content::RenderWidgetHostView* view =
-          source.render_frame_host()->GetView()) {
-    r.set_origin(view->TransformPointToRootCoordSpace(r.origin()));
+gfx::RectF Lift(ContentAutofillDriver& source, gfx::RectF r) {
+  content::RenderWidgetHostView* view = source.render_frame_host()->GetView();
+  if (!view) {
+    return r;
   }
-  return r;
+
+  // Intersect the coordinates with the view's bounds. This is to make it hard
+  // for a malicious frame to position an Autofill popup over a field from
+  // different frame (provided the attacker's and the victim's frames do not
+  // share the same local root).
+  r.InclusiveIntersect(gfx::RectF(view->GetViewBounds().size()));
+
+  // We transform all corners to handle CSS `transform: scale(...)` correctly
+  // (crbug.com/562177779).
+  return gfx::QuadF(view->TransformPointToRootCoordSpaceF(r.origin()),
+                    view->TransformPointToRootCoordSpaceF(r.top_right()),
+                    view->TransformPointToRootCoordSpaceF(r.bottom_right()),
+                    view->TransformPointToRootCoordSpaceF(r.bottom_left()))
+      .BoundingBox();
 }
 
-gfx::RectF Lift(ContentAutofillDriver& source, gfx::RectF r) {
-  if (content::RenderWidgetHostView* view =
-          source.render_frame_host()->GetView()) {
-    r.set_origin(view->TransformPointToRootCoordSpaceF(r.origin()));
-  }
-  return r;
+gfx::Rect Lift(ContentAutofillDriver& source, gfx::Rect r) {
+  return gfx::ToRoundedRect(Lift(source, gfx::RectF(r)));
 }
 
 FormData Lift(ContentAutofillDriver& source, FormData form) {

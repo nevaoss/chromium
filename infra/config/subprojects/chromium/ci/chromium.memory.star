@@ -361,6 +361,10 @@ linux_memory_builder(
                 "linux_nvidia_gtx_1660_stable",
             ],
             "interactive_ui_tests": targets.mixin(
+                args = [
+                    # TODO(crbug.com/542347163): Re-enable when the runtime regression is fixed.
+                    "--disable-features=WebUIOmniboxPopup,WebUIOmniboxAimPopup",
+                ],
                 # Slow on certain debug builders, see crbug.com/1513713.
                 swarming = targets.swarming(
                     shards = 15,
@@ -766,6 +770,10 @@ linux_memory_builder(
                 reason = "Can't run on MSAN because gl_unittests uses the hardware driver, which isn't instrumented.",
             ),
             "interactive_ui_tests": targets.mixin(
+                args = [
+                    # TODO(crbug.com/542347163): Re-enable when the runtime regression is fixed.
+                    "--disable-features=WebUIOmniboxPopup,WebUIOmniboxAimPopup",
+                ],
                 swarming = targets.swarming(
                     shards = 25,
                 ),
@@ -821,10 +829,10 @@ ci.builder(
             "x64",
         ],
     ),
-    builderless = False,
+    builderless = True,
     cores = None,  # Swapping between 8 and 24
-    # TODO(crbug.com/543006750): Revert to MAC_DEFAULT after arm migration.
-    os = os.MAC_15,
+    os = os.MAC_DEFAULT,
+    cpu = cpu.ARM64,
     console_view_entry = consoles.console_view_entry(
         category = "mac",
         short_name = "bld",

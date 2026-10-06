@@ -71,7 +71,6 @@
 <translation id="1201402288615127009">ପରବର୍ତ୍ତୀ</translation>
 <translation id="1204075260022434100">{count,plural, =1{ଆପଣଙ୍କ ଆକାଉଣ୍ଟ, {email}ରେ ଥିବା "{title}"ରେ ବୁକମାର୍କ ସେଭ କରାଯାଇଛି}other{ଆପଣଙ୍କ ଆକାଉଣ୍ଟ, {email}ରେ ଥିବା "{title}"ରେ {count} ବୁକମାର୍କ ସେଭ କରାଯାଇଛି}}</translation>
 <translation id="1207493287814084192">5:30 PM</translation>
-<translation id="1215414310909588335">{count,plural, =1{1 ମିନିଟର ଟାଇପିଂ ସେଭ କରାଯାଇଛି}other{# ମିନିଟର ଟାଇପିଂ ସେଭ କରାଯାଇଛି}}</translation>
 <translation id="1217294226280635614">ସ୍ପ୍ଲିଟ ଭ୍ୟୁ</translation>
 <translation id="1218730690561976633">ଉନ୍ନତ ଅଟୋଫିଲ ୟୁଜର ଯାଞ୍ଚକରଣକୁ ଟୋଗଲ କରନ୍ତୁ</translation>
 <translation id="1219674500290482172">ଇଣ୍ଟର୍ନେଟ୍ ସହିତ ସଂଯୋଗ ହୋଇପାରୁ ନାହିଁ।</translation>
@@ -2113,6 +2112,7 @@ Handoff, ନିଶ୍ଚିତ ରୂପେ ସେଟିଂସ୍‍ର ସା�
 <translation id="7772948288262733182">ଆପଣଙ୍କୁ ପୁଣି ସ୍ୱାଗତ</translation>
 <translation id="777637629667389858">ଆପଣ ସାଇନ ଇନ ଥିବା ବେଳେ Google ସେବାଗୁଡ଼ିକରେ ଆପଣଙ୍କୁ ସୁରକ୍ଷା ଦେଇଥାଏ।</translation>
 <translation id="7776604279034196531">ଉପଲବ୍ଧ ଥିବା ସମୟରେ ଠିକଣା ବାରରୁ ରିଡିଂ ମୋଡକୁ ଆକ୍ସେସ କରନ୍ତୁ</translation>
+<translation id="7780992949171378848">ଆପଣଙ୍କ ଡାଟାର ବ୍ୟବହାର ସମ୍ବନ୍ଧରେ ସାଇଟଗୁଡ଼ିକୁ ଏକ ଅପ୍ଟ-ଆଉଟ ଅନୁରୋଧ ପଠାନ୍ତୁ</translation>
 <translation id="7781829728241885113">ଗତକଲି</translation>
 <translation id="7788474973847076315">ଫଟୋ ନିଅନ୍ତୁ</translation>
 <translation id="7788868432173225918">ବିସ୍ତାରିତ ଭ୍ୟୁକୁ ଖାରଜ କରନ୍ତୁ</translation>
