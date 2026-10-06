@@ -4741,13 +4741,6 @@ hooks = [
     'action': ['git', '-C', 'src/third_party/skia', 'am',
               '../../neva/patches/0001-Add-work-around-code-for-invalidating-glBufferData.patch']
   },
-  # Apply 'Disable Neon DotProduct and I8MM instructions in libyuv' patch
-  {
-    'name': 'Apply_Disable-Neon-DotProduct-and-I8MM-extensions-in-libyuv',
-    'pattern': '.',
-    'action': ['git', '-C', 'src/third_party/libyuv', 'am',
-              '../../neva/patches/0009-build-webos-Disable-Neon-DotProduct-and-I8MM-extensions-in-libyuv.patch']
-  },
   # Apply 'Disable SME instructions in libyuv' patch
   {
     'name': 'Apply_Disable-SME-instructions-in-libyuv',
