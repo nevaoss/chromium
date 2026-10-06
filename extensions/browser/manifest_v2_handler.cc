@@ -114,7 +114,12 @@ bool ShouldDisableLegacyExtensions() {
     return false;
   }
 
+// NOTE(neva): Preserve MV2 extensions support for Neva.
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  return false;
+#else
   return true;
+#endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
 }
 
 }  // namespace
