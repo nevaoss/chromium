@@ -69,18 +69,43 @@ void CheckValidResource(const GURL& resource_url,
       resource_url.SchemeIs(content::kChromeUIScheme) ||
       resource_url.SchemeIs(content::kChromeUIUntrustedScheme);
 #if !defined(USE_FILESCHEME_CODECACHE)
+// TODO(neva): Neva is not official Chromium build. In this case failed CHECK is
+// always FATAL regardless of base::NotFatalUntil (see
+// GetNotFatalUntilSeverity() and GetDumpSeverity() in //base/check.cc).
+// For unknown reason this check fails and FATAL occurs. Temporary
+// replace with DCHECK until this issue is investigated.
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  DCHECK(
+      resource_url.SchemeIsHTTPOrHTTPS() ||
+      resource_url_is_chrome_or_chrome_untrusted ||
+      blink::CommonSchemeRegistry::IsExtensionScheme(resource_url.GetScheme()));
+#else   // !BUILDFLAG(IS_NEVA_APPRUNTIME)
   CHECK(resource_url.SchemeIsHTTPOrHTTPS() ||
             resource_url_is_chrome_or_chrome_untrusted ||
             blink::CommonSchemeRegistry::IsExtensionScheme(
                 resource_url.GetScheme()),
         base::NotFatalUntil::M159);
+#endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
 #else
+// TODO(neva): Neva is not official Chromium build. In this case failed CHECK is
+// always FATAL regardless of base::NotFatalUntil (see
+// GetNotFatalUntilSeverity() and GetDumpSeverity() in //base/check.cc).
+// For unknown reason this check fails and FATAL occurs. Temporary
+// replace with DCHECK until this issue is investigated.
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  DCHECK(resource_url.SchemeIsHTTPOrHTTPS() ||
+         resource_url_is_chrome_or_chrome_untrusted ||
+         blink::CommonSchemeRegistry::IsExtensionScheme(
+             resource_url.GetScheme()) ||
+         content::neva::IsFileSchemeSupportedForCodeCache(resource_url));
+#else   // !BUILDFLAG(IS_NEVA_APPRUNTIME)
   CHECK(resource_url.SchemeIsHTTPOrHTTPS() ||
             resource_url_is_chrome_or_chrome_untrusted ||
             blink::CommonSchemeRegistry::IsExtensionScheme(
                 resource_url.GetScheme()) ||
             content::neva::IsFileSchemeSupportedForCodeCache(resource_url),
         base::NotFatalUntil::M159);
+#endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
 #endif
 
   if (!blink::features::IsPersistentCacheForCodeCacheEnabled()) {
@@ -105,6 +130,19 @@ void CheckValidContext(const GURL& origin_lock,
       origin_lock.SchemeIs(content::kChromeUIScheme) ||
       origin_lock.SchemeIs(content::kChromeUIUntrustedScheme);
 #if !defined(USE_FILESCHEME_CODECACHE)
+// TODO(neva): Neva is not official Chromium build. In this case failed CHECK is
+// always FATAL regardless of base::NotFatalUntil (see
+// GetNotFatalUntilSeverity() and GetDumpSeverity() in //base/check.cc).
+// For unknown reason this check fails and FATAL occurs. Temporary
+// replace with DCHECK until this issue is investigated.
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  DCHECK(origin_lock.is_empty() ||
+             ((origin_lock.SchemeIsHTTPOrHTTPS() ||
+               origin_lock_is_chrome_or_chrome_untrusted ||
+               blink::CommonSchemeRegistry::IsExtensionScheme(
+                   origin_lock.GetScheme())) &&
+              !url::Origin::Create(origin_lock).opaque()));
+#else   // !BUILDFLAG(IS_NEVA_APPRUNTIME)
   CHECK(origin_lock.is_empty() ||
             ((origin_lock.SchemeIsHTTPOrHTTPS() ||
               origin_lock_is_chrome_or_chrome_untrusted ||
@@ -112,7 +150,22 @@ void CheckValidContext(const GURL& origin_lock,
                   origin_lock.GetScheme())) &&
              !url::Origin::Create(origin_lock).opaque()),
         base::NotFatalUntil::M159);
+#endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
 #else
+// TODO(neva): Neva is not official Chromium build. In this case failed CHECK is
+// always FATAL regardless of base::NotFatalUntil (see
+// GetNotFatalUntilSeverity() and GetDumpSeverity() in //base/check.cc).
+// For unknown reason this check fails and FATAL occurs. Temporary
+// replace with DCHECK until this issue is investigated.
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  DCHECK(origin_lock.is_empty() ||
+             ((origin_lock.SchemeIsHTTPOrHTTPS() ||
+               origin_lock_is_chrome_or_chrome_untrusted ||
+               blink::CommonSchemeRegistry::IsExtensionScheme(
+                   origin_lock.GetScheme())) &&
+              content::neva::IsFileSchemeSupportedForCodeCache(origin_lock) &&
+              !url::Origin::Create(origin_lock).opaque()));
+#else   // !BUILDFLAG(IS_NEVA_APPRUNTIME)
   CHECK(origin_lock.is_empty() ||
             ((origin_lock.SchemeIsHTTPOrHTTPS() ||
               origin_lock_is_chrome_or_chrome_untrusted ||
@@ -121,6 +174,7 @@ void CheckValidContext(const GURL& origin_lock,
              content::neva::IsFileSchemeSupportedForCodeCache(origin_lock) &&
              !url::Origin::Create(origin_lock).opaque()),
         base::NotFatalUntil::M159);
+#endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
 #endif
 
   if (!blink::features::IsPersistentCacheForCodeCacheEnabled()) {
