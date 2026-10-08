@@ -132,15 +132,6 @@ void ProtocolHandlersManager::ProtocolHandlersSanityCheck() {
           browser_context_);
   // Null when the embedder does not provide one.
   if (!ph_registry) {
-<<<<<<< HEAD
-    // TODO(neva): ExtensionsBrowserClient::GetProtocolHandlerRegistry()
-    // returns nullptr causing DCHECK and runtime crash, so guard it. Need to
-    // revise later.
-#if !defined(USE_NEVA_CHROME_EXTENSIONS)
-    CHECK_IS_TEST();
-#endif  // !defined(USE_NEVA_CHROME_EXTENSIONS)
-=======
->>>>>>> 156.0.8064.0~1
     return;
   }
   for (const auto& handler : ph_registry->GetExtensionProtocolHandlers()) {
