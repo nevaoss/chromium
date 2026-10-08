@@ -11,9 +11,11 @@
 #include "base/memory/raw_ptr.h"
 #include "base/test/bind.h"
 #include "base/test/mock_callback.h"
+#include "base/test/scoped_feature_list.h"
 #include "base/uuid.h"
 #include "base/values.h"
 #include "build/build_config.h"
+#include "chrome/app/vector_icons/vector_icons.h"
 #include "chrome/browser/bookmarks/bookmark_merged_surface_service.h"
 #include "chrome/browser/bookmarks/bookmark_merged_surface_service_factory.h"
 #include "chrome/browser/bookmarks/bookmark_model_factory.h"
@@ -30,17 +32,20 @@
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/views/app_menu/action_app_menu_manager.h"
 #include "chrome/browser/ui/views/app_menu/action_app_menu_test_base.h"
+#include "chrome/browser/ui/views/app_menu/app_menu_action_item.h"
 #include "chrome/browser/ui/views/app_menu/app_menu_block_button.h"
 #include "chrome/browser/ui/views/app_menu/app_menu_block_view.h"
 #include "chrome/browser/ui/views/app_menu/app_menu_footer_button.h"
 #include "chrome/browser/ui/views/app_menu/app_menu_footer_view.h"
 #include "chrome/browser/ui/views/app_menu/app_menu_search_bar_view.h"
 #include "chrome/browser/ui/views/app_menu/app_menu_zoom_view.h"
+#include "chrome/browser/ui/views/app_menu/recent_tabs_dynamic_menu.h"
 #include "chrome/browser/ui/views/chrome_layout_provider.h"
 #include "chrome/grit/generated_resources.h"
 #include "chrome/test/base/testing_profile.h"
 #include "components/bookmarks/browser/bookmark_model.h"
 #include "components/bookmarks/browser/bookmark_node.h"
+#include "components/bookmarks/common/bookmark_bar_visibility_state.h"
 #include "components/bookmarks/common/bookmark_pref_names.h"
 #include "components/favicon/core/test/mock_favicon_service.h"
 #include "components/prefs/pref_service.h"
@@ -48,6 +53,7 @@
 #include "components/saved_tab_groups/public/saved_tab_group_tab.h"
 #include "components/saved_tab_groups/public/types.h"
 #include "components/saved_tab_groups/test_support/fake_tab_group_sync_service.h"
+#include "components/search/ntp_features.h"
 #include "components/tabs/public/mock_tab_interface.h"
 #include "components/zoom/zoom_controller.h"
 #include "content/public/test/test_renderer_host.h"
@@ -63,6 +69,11 @@
 #include "ui/views/controls/button/menu_button.h"
 #include "ui/views/controls/button/menu_button_controller.h"
 #include "ui/views/controls/image_view.h"
+#include "ui/views/controls/separator.h"
+#if !BUILDFLAG(IS_CHROMEOS)
+#include "chrome/browser/enterprise/browser_management/management_service_factory.h"
+#include "components/policy/core/common/management/scoped_management_service_override_for_testing.h"
+#endif
 #include "ui/views/controls/label.h"
 #include "ui/views/controls/menu/menu_item_view.h"
 #include "ui/views/controls/menu/submenu_view.h"
@@ -488,6 +499,61 @@ TEST_F(ActionAppMenuTest, PopulatesBookmarksSubmenuWithManagedFolder) {
   menu.CloseMenu();
 }
 
+TEST_F(ActionAppMenuTest, BookmarkBarSubmenuCheckItems) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeature(
+      ntp_features::kNtpSimplificationBookmarkBar);
+
+  actions::ActionItem* always_show_action =
+      actions::ActionManager::Get().FindAction(
+          kActionBookmarkBarSubmenuAlwaysShow,
+          browser_actions_->root_action_item());
+  ASSERT_NE(always_show_action, nullptr);
+  always_show_action->SetChecked(true);
+
+  base::MockCallback<base::RepeatingClosure> on_menu_closed;
+  ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
+
+  menu.RunMenu(button_->button_controller());
+  EXPECT_TRUE(menu.IsShowing());
+
+  views::MenuItemView* root = menu.root_menu_item_for_testing();
+  ASSERT_TRUE(root);
+
+  views::MenuItemView* bookmarks_item =
+      root->GetMenuItemByID(kActionBookmarksSubmenu);
+  ASSERT_TRUE(bookmarks_item);
+  EXPECT_TRUE(bookmarks_item->HasSubmenu());
+
+  // Trigger lazy loading of the dynamic bookmarks submenu.
+  menu.WillShowMenu(bookmarks_item);
+
+  views::MenuItemView* always_hide =
+      root->GetMenuItemByID(kActionBookmarkBarSubmenuAlwaysHide);
+  ASSERT_NE(always_hide, nullptr);
+  EXPECT_EQ(always_hide->GetType(), views::MenuItemView::Type::kCheckbox);
+  EXPECT_FALSE(menu.IsItemChecked(kActionBookmarkBarSubmenuAlwaysHide));
+
+  views::MenuItemView* always_show =
+      root->GetMenuItemByID(kActionBookmarkBarSubmenuAlwaysShow);
+  ASSERT_NE(always_show, nullptr);
+  EXPECT_EQ(always_show->GetType(), views::MenuItemView::Type::kCheckbox);
+  EXPECT_TRUE(menu.IsItemChecked(kActionBookmarkBarSubmenuAlwaysShow));
+
+  views::MenuItemView* only_on_ntp =
+      root->GetMenuItemByID(kActionBookmarkBarSubmenuOnlyOnNtp);
+  ASSERT_NE(only_on_ntp, nullptr);
+  EXPECT_EQ(only_on_ntp->GetType(), views::MenuItemView::Type::kCheckbox);
+  EXPECT_FALSE(menu.IsItemChecked(kActionBookmarkBarSubmenuOnlyOnNtp));
+
+  // Dynamically update checked state and verify:
+  always_show_action->SetChecked(false);
+  EXPECT_FALSE(menu.IsItemChecked(kActionBookmarkBarSubmenuAlwaysShow));
+
+  EXPECT_CALL(on_menu_closed, Run()).Times(1);
+  menu.CloseMenu();
+}
+
 TEST_F(ActionAppMenuTest, PopulatesTabGroupsSubmenu) {
   FaviconServiceFactory::GetInstance()->SetTestingFactory(
       profile_.get(), base::BindRepeating([](content::BrowserContext* context)
@@ -511,6 +577,16 @@ TEST_F(ActionAppMenuTest, PopulatesTabGroupsSubmenu) {
       u"My Test Tab Group", tab_groups::TabGroupColorId::kBlue, {tab1, tab2},
       /*position=*/std::nullopt, group_guid);
   sync_service->AddGroup(std::move(group));
+
+  base::Uuid shared_group_guid = base::Uuid::GenerateRandomV4();
+  tab_groups::SavedTabGroupTab shared_tab(GURL("https://example.com/3"),
+                                          u"Shared Tab", shared_group_guid,
+                                          /*position=*/0);
+  tab_groups::SavedTabGroup shared_group(
+      u"My Shared Tab Group", tab_groups::TabGroupColorId::kRed, {shared_tab},
+      /*position=*/std::nullopt, shared_group_guid);
+  shared_group.SetCollaborationId(syncer::CollaborationId("collab"));
+  sync_service->AddGroup(std::move(shared_group));
 
   base::MockCallback<base::RepeatingClosure> on_menu_closed;
   ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
@@ -539,14 +615,22 @@ TEST_F(ActionAppMenuTest, PopulatesTabGroupsSubmenu) {
   ASSERT_TRUE(tab_groups_submenu);
 
   views::MenuItemView* group_item = nullptr;
+  views::MenuItemView* shared_group_item = nullptr;
   for (views::MenuItemView* item : tab_groups_submenu->GetMenuItems()) {
     if (item->title() == u"My Test Tab Group") {
       group_item = item;
-      break;
+    } else if (item->title() == u"My Shared Tab Group") {
+      shared_group_item = item;
     }
   }
   ASSERT_NE(group_item, nullptr);
   EXPECT_TRUE(group_item->HasSubmenu());
+  ASSERT_NE(shared_group_item, nullptr);
+  EXPECT_TRUE(shared_group_item->HasSubmenu());
+
+  // Verify minor icon on shared tab group vs regular tab group.
+  EXPECT_TRUE(group_item->GetMinorIcon().IsEmpty());
+  EXPECT_FALSE(shared_group_item->GetMinorIcon().IsEmpty());
 
   // Verify group commands inside the group submenu.
   views::SubmenuView* group_submenu = group_item->GetSubmenu();
@@ -572,6 +656,34 @@ TEST_F(ActionAppMenuTest, PopulatesTabGroupsSubmenu) {
 
   EXPECT_CALL(on_menu_closed, Run()).Times(1);
   menu.CloseMenu();
+}
+
+TEST_F(ActionAppMenuTest, RecentTabsMinorIcon) {
+  RecentTabsDynamicMenu dynamic_menu(&mock_window_interface_);
+  auto parent = actions::ActionItem::Builder().Build();
+
+  RecentTabItem tab_with_group(RecentTabItem::Type::kTab, u"Grouped Tab");
+  tab_with_group.set_minor_icon(ui::ImageModel::FromVectorIcon(
+      kCircleFilledIcon, ui::kColorMenuIcon, 12));
+
+  RecentTabItem tab_without_group(RecentTabItem::Type::kTab, u"Regular Tab");
+
+  dynamic_menu.CreateRecentTabsActionForTesting(
+      parent.get(), {tab_with_group, tab_without_group});
+
+  ASSERT_EQ(parent->GetChildren().children().size(), 2u);
+
+  actions::ActionItem* grouped_action =
+      parent->GetChildren().children()[0]->GetActionItem();
+  ASSERT_TRUE(grouped_action);
+  EXPECT_NE(grouped_action->GetProperty(AppMenuActionItem::kMinorIconKey),
+            nullptr);
+
+  actions::ActionItem* regular_action =
+      parent->GetChildren().children()[1]->GetActionItem();
+  ASSERT_TRUE(regular_action);
+  EXPECT_EQ(regular_action->GetProperty(AppMenuActionItem::kMinorIconKey),
+            nullptr);
 }
 
 TEST_F(ActionAppMenuTest, PopulatesStaticSubmenus) {
@@ -760,7 +872,8 @@ TEST_F(ActionAppMenuTest, FooterButtonClickExecutesActionAfterMenuClosed) {
   ASSERT_TRUE(footer_view);
 
   // Left container child 0 is kActionOptions (Settings).
-  views::View* left_container = footer_view->children()[0];
+  views::View* left_container = footer_view->left_container_for_testing();
+  ASSERT_TRUE(left_container);
   auto* settings_button =
       views::AsViewClass<AppMenuFooterButton>(left_container->children()[0]);
   ASSERT_TRUE(settings_button);
@@ -927,20 +1040,27 @@ TEST_F(ActionAppMenuTest, PopulatesFooterElements) {
   ASSERT_NE(footer_item, nullptr);
 
   // Check that the footer container is an AppMenuFooterView containing
-  // left container, spacer, and right container.
+  // only the top container when unmanaged.
   ASSERT_EQ(footer_item->children().size(), 1u);
-  views::View* footer_container = footer_item->children()[0];
-  EXPECT_TRUE(views::IsViewClass<AppMenuFooterView>(footer_container));
-  ASSERT_EQ(footer_container->children().size(), 3u);
+  auto* footer_view =
+      views::AsViewClass<AppMenuFooterView>(footer_item->children()[0]);
+  ASSERT_TRUE(footer_view);
+  ASSERT_EQ(footer_view->children().size(), 1u);
 
-  views::View* left_container = footer_container->children()[0];
+  views::View* top_container = footer_view->top_container_for_testing();
+  ASSERT_TRUE(top_container);
+  ASSERT_EQ(top_container->children().size(), 3u);
+
+  views::View* left_container = footer_view->left_container_for_testing();
+  ASSERT_TRUE(left_container);
   ASSERT_EQ(left_container->children().size(), 2u);  // Settings, Help
   EXPECT_TRUE(
       views::IsViewClass<AppMenuFooterButton>(left_container->children()[0]));
   EXPECT_TRUE(
       views::IsViewClass<AppMenuFooterButton>(left_container->children()[1]));
 
-  views::View* right_container = footer_container->children()[2];
+  views::View* right_container = footer_view->right_container_for_testing();
+  ASSERT_TRUE(right_container);
   if (browser_defaults::kShowExitMenuItem) {
     ASSERT_EQ(right_container->children().size(), 1u);  // Exit
     EXPECT_TRUE(views::IsViewClass<AppMenuFooterButton>(
@@ -949,9 +1069,55 @@ TEST_F(ActionAppMenuTest, PopulatesFooterElements) {
     EXPECT_EQ(right_container->children().size(), 0u);
   }
 
+  // Without managed UI, separator and bottom container should not be added.
+  EXPECT_EQ(footer_view->separator_for_testing(), nullptr);
+  EXPECT_EQ(footer_view->bottom_container_for_testing(), nullptr);
+
   EXPECT_CALL(on_menu_closed, Run()).Times(1);
   menu.CloseMenu();
 }
+
+#if !BUILDFLAG(IS_CHROMEOS)
+TEST_F(ActionAppMenuTest, PopulatesFooterElementsWithManagedAction) {
+  policy::ScopedManagementServiceOverrideForTesting profile_management(
+      policy::ManagementServiceFactory::GetForProfile(profile_.get()),
+      policy::EnterpriseManagementAuthority::DOMAIN_LOCAL);
+
+  base::MockCallback<base::RepeatingClosure> on_menu_closed;
+
+  ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
+  menu.RunMenu(button_->button_controller());
+  EXPECT_TRUE(menu.IsShowing());
+
+  views::MenuItemView* root = menu.root_menu_item_for_testing();
+  ASSERT_TRUE(root);
+
+  views::SubmenuView* submenu = root->GetSubmenu();
+  ASSERT_TRUE(submenu);
+  views::MenuItemView* footer_item =
+      submenu->GetMenuItemAt(submenu->GetMenuItems().size() - 1);
+  ASSERT_NE(footer_item, nullptr);
+
+  auto* footer_view =
+      views::AsViewClass<AppMenuFooterView>(footer_item->children()[0]);
+  ASSERT_TRUE(footer_view);
+  ASSERT_EQ(footer_view->children().size(), 3u);
+
+  // When managed, separator and bottom container are added inside the footer.
+  ASSERT_NE(footer_view->separator_for_testing(), nullptr);
+  EXPECT_TRUE(footer_view->separator_for_testing()->GetVisible());
+  EXPECT_EQ(footer_view->separator_for_testing()->GetColorId(),
+            ui::kColorMenuSeparator);
+  ASSERT_NE(footer_view->bottom_container_for_testing(), nullptr);
+  EXPECT_TRUE(footer_view->bottom_container_for_testing()->GetVisible());
+  ASSERT_EQ(footer_view->bottom_container_for_testing()->children().size(), 1u);
+  EXPECT_TRUE(views::IsViewClass<AppMenuFooterButton>(
+      footer_view->bottom_container_for_testing()->children()[0]));
+
+  EXPECT_CALL(on_menu_closed, Run()).Times(1);
+  menu.CloseMenu();
+}
+#endif  // !BUILDFLAG(IS_CHROMEOS)
 
 TEST_F(ActionAppMenuTest, ZoomLabelUpdatesOnZoomChange) {
   content::RenderViewHostTestEnabler rvh_test_enabler;
@@ -1176,12 +1342,14 @@ TEST_F(ActionAppMenuTest, PopupAndComponentLayoutInsets) {
       views::AsViewClass<AppMenuFooterView>(footer_item->children()[0]);
   ASSERT_TRUE(footer_view);
   EXPECT_EQ(footer_view->GetInsets(), gfx::Insets());
-  const gfx::Insets* footer_margins =
-      footer_view->GetProperty(views::kMarginsKey);
-  ASSERT_TRUE(footer_margins);
-  EXPECT_EQ(*footer_margins,
+  EXPECT_EQ(footer_view->GetProperty(views::kMarginsKey), nullptr);
+  views::BoxLayoutView* top_container =
+      footer_view->top_container_for_testing();
+  ASSERT_TRUE(top_container);
+  EXPECT_EQ(top_container->GetInsideBorderInsets(),
             provider->GetInsetsMetric(INSETS_ACTION_APP_MENU_FOOTER_MARGIN));
-  EXPECT_EQ(*footer_margins, gfx::Insets::TLBR(8, 16, 0, 16));
+  EXPECT_EQ(top_container->GetInsideBorderInsets(),
+            gfx::Insets::TLBR(8, 16, 0, 16));
 
   EXPECT_CALL(on_menu_closed, Run()).Times(1);
   menu.CloseMenu();
@@ -1330,33 +1498,33 @@ TEST_F(ActionAppMenuTest, BlockSectionAndMenuHostWidth) {
   ASSERT_TRUE(submenu);
 
   // 1. Verify SubmenuView (the menu host content) preferred width and laid-out
-  // width is 366dp.
-  EXPECT_EQ(submenu->GetPreferredSize({}).width(), 366);
-  EXPECT_EQ(submenu->width(), 366);
+  // width is 330dp.
+  EXPECT_EQ(submenu->GetPreferredSize({}).width(), 330);
+  EXPECT_EQ(submenu->width(), 330);
 
-  // 2. Verify block container row MenuItemView width is 366dp.
+  // 2. Verify block container row MenuItemView width is 330dp.
   views::MenuItemView* block_item = submenu->GetMenuItemAt(0);
   ASSERT_NE(block_item, nullptr);
-  EXPECT_EQ(block_item->GetDimensions().children_width, 366);
-  EXPECT_EQ(block_item->width(), 366);
+  EXPECT_EQ(block_item->GetDimensions().children_width, 330);
+  EXPECT_EQ(block_item->width(), 330);
 
-  // 3. Verify AppMenuBlockView preferred width (334dp = 3 * 106dp + 2 *
-  // 8dp) and laid-out width (366dp - 32dp margins = 334dp).
+  // 3. Verify AppMenuBlockView preferred width (298dp = 3 * 94dp + 2 *
+  // 8dp) and laid-out width (330dp - 32dp margins = 298dp).
   ASSERT_EQ(block_item->children().size(), 1u);
   auto* block_view =
       views::AsViewClass<AppMenuBlockView>(block_item->children()[0]);
   ASSERT_TRUE(block_view);
-  EXPECT_EQ(block_view->GetPreferredSize({}).width(), 334);
-  EXPECT_EQ(block_view->width(), 334);
+  EXPECT_EQ(block_view->GetPreferredSize({}).width(), 298);
+  EXPECT_EQ(block_view->width(), 298);
 
   // 4. Verify each of the 3 block buttons has preferred width and laid-out
-  // width of 106dp.
+  // width of 94dp.
   ASSERT_EQ(block_view->children().size(), 3u);
   for (views::View* child : block_view->children()) {
     auto* button = views::AsViewClass<AppMenuBlockButton>(child);
     ASSERT_TRUE(button);
-    EXPECT_EQ(button->GetPreferredSize({}).width(), 106);
-    EXPECT_EQ(button->width(), 106);
+    EXPECT_EQ(button->GetPreferredSize({}).width(), 94);
+    EXPECT_EQ(button->width(), 94);
   }
 
   EXPECT_CALL(on_menu_closed, Run()).Times(1);

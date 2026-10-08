@@ -915,16 +915,14 @@ int GetContentRestrictions(const BrowserWindowInterface* browser) {
 
 void NewEmptyWindow(Profile* profile, bool should_trigger_session_restore) {
   bool off_the_record = profile->IsOffTheRecord();
-  PrefService* prefs = profile->GetPrefs();
   if (off_the_record) {
-    if (IncognitoModePrefs::GetAvailability(prefs) ==
-            policy::IncognitoModeAvailability::kDisabled &&
-        !profile->IsEnterpriseIsolatedModeProfile()) {
+    if (IncognitoModePrefs::GetAvailability(profile) ==
+        policy::IncognitoModeAvailability::kDisabled) {
       off_the_record = false;
     }
   } else if (profile->IsGuestSession() ||
              IncognitoModePrefs::ShouldOpenSubsequentBrowsersInIncognito(
-                 *base::CommandLine::ForCurrentProcess(), prefs)) {
+                 *base::CommandLine::ForCurrentProcess(), profile)) {
     off_the_record = true;
   }
 

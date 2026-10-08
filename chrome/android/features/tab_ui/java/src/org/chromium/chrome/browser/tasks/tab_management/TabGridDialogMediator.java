@@ -580,7 +580,10 @@ public class TabGridDialogMediator
                             bottomSheetController,
                             /* supportsShowNewGroup= */ true,
                             /* destroyOnHide= */ false,
-                            /* windowAndroid= */ null);
+                            /* windowAndroid= */ null,
+                            mDataSharingTabManager != null
+                                    ? mDataSharingTabManager.getTabGroupUiActionHandler()
+                                    : null);
 
             CollaborationService collaborationService =
                     CollaborationServiceFactory.getForProfile(profile);

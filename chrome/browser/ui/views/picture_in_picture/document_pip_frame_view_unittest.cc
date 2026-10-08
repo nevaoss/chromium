@@ -48,6 +48,7 @@
 #include "ui/views/controls/label.h"
 #include "ui/views/controls/webview/webview.h"
 #include "ui/views/layout/flex_layout_view.h"
+#include "ui/views/test/widget_activation_waiter.h"
 #include "ui/views/view_class_properties.h"
 #include "ui/views/widget/widget.h"
 #include "ui/views/window/dialog_delegate.h"
@@ -744,13 +745,48 @@ TEST_F(DocumentPipFrameViewTest, MouseInsideKeepsRenderActive) {
                                         /*active=*/false);
   EXPECT_TRUE(GetRenderActive(frame_view));
 
-  // OnMouseEnteredOrExitedWindow reads Widget::IsActive() directly, so the
-  // following expectation only holds if the widget really is inactive at the
-  // OS level (not just that the observer was notified above). The widget is
-  // shown (and thus activated) when it is created; hiding it deactivates it
-  // (NativeWidgetMac::Deactivate() is a no-op, so Hide() is used here).
-  frame_view->GetWidget()->Hide();
-  ASSERT_FALSE(frame_view->GetWidget()->IsActive());
+  OnMouseEnteredOrExitedWindow(frame_view, /*entered=*/false);
+  EXPECT_FALSE(GetRenderActive(frame_view));
+}
+
+// TODO(crbug.com/515252142): Fails on linux wayland.
+#if BUILDFLAG(IS_LINUX)
+#define MAYBE_MouseExitDeactivatesTopBarWhileWidgetActive \
+  DISABLED_MouseExitDeactivatesTopBarWhileWidgetActive
+#else
+#define MAYBE_MouseExitDeactivatesTopBarWhileWidgetActive \
+  MouseExitDeactivatesTopBarWhileWidgetActive
+#endif
+TEST_F(DocumentPipFrameViewTest,
+       MAYBE_MouseExitDeactivatesTopBarWhileWidgetActive) {
+  auto* frame_view =
+      CreatePipAndGetFrameView(/*disallow_return_to_opener=*/false);
+  auto* widget = frame_view->GetWidget();
+  widget->Activate();
+  views::test::WaitForWidgetActive(widget, true);
+  ASSERT_TRUE(widget->IsActive());
+
+  OnMouseEnteredOrExitedWindow(frame_view, /*entered=*/true);
+  EXPECT_TRUE(GetRenderActive(frame_view));
+
+  OnMouseEnteredOrExitedWindow(frame_view, /*entered=*/false);
+  EXPECT_TRUE(widget->IsActive());
+  EXPECT_FALSE(GetRenderActive(frame_view));
+
+  OnMouseEnteredOrExitedWindow(frame_view, /*entered=*/true);
+  EXPECT_TRUE(GetRenderActive(frame_view));
+}
+
+TEST_F(DocumentPipFrameViewTest, MouseExitKeepsTopBarActiveWithOverlay) {
+  auto* frame_view =
+      CreatePipAndGetFrameView(/*disallow_return_to_opener=*/false);
+  auto* overlay = InjectAutoPipOverlay(frame_view);
+  ASSERT_TRUE(IsOverlayViewVisible(frame_view));
+
+  OnMouseEnteredOrExitedWindow(frame_view, /*entered=*/false);
+  EXPECT_TRUE(GetRenderActive(frame_view));
+
+  overlay->SetVisible(false);
   OnMouseEnteredOrExitedWindow(frame_view, /*entered=*/false);
   EXPECT_FALSE(GetRenderActive(frame_view));
 }

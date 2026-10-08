@@ -330,13 +330,13 @@ import org.chromium.chrome.browser.tasks.tab_management.TabGroupMenuActionHandle
 import org.chromium.chrome.browser.tasks.tab_management.TabGroupUi;
 import org.chromium.chrome.browser.tasks.tab_management.TabManagementDelegate;
 import org.chromium.chrome.browser.tasks.tab_management.TabManagementDelegateProvider;
-import org.chromium.chrome.browser.tasks.tab_management.TabModelNotificationDotManager;
 import org.chromium.chrome.browser.tasks.tab_management.TabSearchOverlayCoordinator.TabSearchEntryPoint;
 import org.chromium.chrome.browser.tasks.tab_management.TabSwitcherBackPressHandlerManager;
 import org.chromium.chrome.browser.tasks.tab_management.TabSwitcherPaneBase;
 import org.chromium.chrome.browser.tasks.tab_management.TabUiUtils;
 import org.chromium.chrome.browser.tasks.tab_management.TabsSettings;
 import org.chromium.chrome.browser.tasks.tab_management.archived_tabs_auto_delete_promo.ArchivedTabsAutoDeletePromoManager;
+import org.chromium.chrome.browser.tasks.tab_management.labels.TabModelNotificationDotManager;
 import org.chromium.chrome.browser.tasks.tab_management.vertical_tabs.VerticalTabsActionDelegate;
 import org.chromium.chrome.browser.tips.TipsNotificationsFeatureType;
 import org.chromium.chrome.browser.toolbar.ToolbarIntentMetadata;
@@ -2940,7 +2940,8 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
                 }
 
                 // Launch the tips promo, tied with the intent extra set in TipsAgent.java.
-                if (fromTipsNotifications != INVALID_TIPS_NOTIFICATION_FEATURE_TYPE) {
+                if (fromTipsNotifications != INVALID_TIPS_NOTIFICATION_FEATURE_TYPE
+                        && TipsUtils.isSupportedDeviceType()) {
                     mTipsPromoCoordinator =
                             new TipsPromoCoordinator(
                                     this,
@@ -5069,7 +5070,10 @@ public class ChromeTabbedActivity extends ChromeActivity implements PreAttachInt
                 || type == TabLaunchType.FROM_RECENT_TABS
                 || type == TabLaunchType.FROM_RECENT_TABS_FOREGROUND
                 || (type == TabLaunchType.FROM_CHROME_UI && tab.getParentId() != Tab.INVALID_TAB_ID)
-                || (type == TabLaunchType.FROM_RESTORE && tab.getParentId() != Tab.INVALID_TAB_ID);
+                || (type == TabLaunchType.FROM_RESTORE && tab.getParentId() != Tab.INVALID_TAB_ID)
+                || (type == TabLaunchType.FROM_SYNC_BACKGROUND
+                        && tab.getParentId() != Tab.INVALID_TAB_ID
+                        && ChromeFeatureList.sSendTabToSelfSwitchToParentOnBack.isEnabled());
     }
 
     /**

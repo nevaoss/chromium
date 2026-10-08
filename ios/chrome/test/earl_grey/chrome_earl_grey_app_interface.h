@@ -458,6 +458,10 @@ enum class TipsNotificationType;
 // GUID.
 + (BOOL)hasSendTabToSelfEntryWithGUID:(NSString*)guid;
 
+// Checks if the local Send Tab To Self model is ready and contains a target
+// device with the given `deviceName`.
++ (BOOL)hasSendTabToSelfTargetDevice:(NSString*)deviceName;
+
 // Returns the generated text fragment for the given URL, or nil if no entry
 // exists or no fragment is set.
 + (NSString*)textFragmentForSendTabToSelfEntryWithURL:(NSString*)URL;
@@ -479,9 +483,6 @@ enum class TipsNotificationType;
 // (depending on `expectPresent`), return YES. If the present status of `spec`
 // is not what is expected, or there is an error, return NO.
 + (BOOL)isURL:(NSString*)spec presentOnClient:(BOOL)expectPresent;
-
-// Triggers a sync cycle for a `type`.
-+ (void)triggerSyncCycleForType:(syncer::DataType)type;
 
 // Injects user demographics into the fake sync server. `rawBirthYear` is the
 // true birth year, pre-noise, and the gender corresponds to the proto enum

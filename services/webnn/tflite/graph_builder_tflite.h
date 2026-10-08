@@ -151,6 +151,7 @@ class GraphBuilderTflite final {
   using OperatorOffset = flatbuffers::Offset<::tflite::Operator>;
   using BufferOffset = flatbuffers::Offset<::tflite::Buffer>;
   using TensorOffset = flatbuffers::Offset<::tflite::Tensor>;
+  using SubGraphOffset = flatbuffers::Offset<::tflite::SubGraph>;
   using StringOffset = flatbuffers::Offset<flatbuffers::String>;
   using ShapeOffset = flatbuffers::Offset<flatbuffers::Vector<int32_t>>;
   using ExternalBufferOffset = flatbuffers::Offset<::tflite::ExternalBuffer>;
@@ -390,6 +391,14 @@ class GraphBuilderTflite final {
   base::expected<TensorIndex, std::string> CastGatherIndices(
       const TensorInfo& indices_tensor_info);
 
+  // Constant-folded equivalent of `SerializeGatherIndices()`: clamps
+  // `indices_operand_id` to `[-N, N - 1]` and shifts negatives by `N`, where
+  // `N` is the size of the indexed axis.
+  base::FixedArray<int32_t> ClampConstantIndices(
+      OperandId indices_operand_id,
+      base::span<const int32_t> input_dimensions,
+      std::optional<uint32_t> gather_axis);
+
   // This function is called by `SerializeGatherND` to serialize WebNN
   // gatherND or gatherElements.
   OperatorOffset SerializeGatherNDOperation(TensorIndex input_tensor_index,
@@ -532,7 +541,7 @@ class GraphBuilderTflite final {
       TensorIndex input_tensor_index,
       TensorIndex output_tensor_index,
       base::span<const int32_t> input_shape,
-      base::span<const uint32_t> permutation);
+      base::span<const int32_t> permutation);
 
   // This function is called by SerializeScatterND or SerializeScatterElements
   // to serialize WebNN scatterND or scatterElements operation.
@@ -575,7 +584,7 @@ class GraphBuilderTflite final {
   // `SerializeTransposeOperation`.
   base::expected<TensorIndex, std::string> InsertTransposeOperation(
       const TensorInfo& input_tensor_info,
-      base::span<const uint32_t> permutation);
+      base::span<const int32_t> permutation);
 
   // Serializes the rank-2 constant `operand_id` with its two axes
   // exchanged, so that no TRANSPOSE operator is emitted for it. A
@@ -816,10 +825,23 @@ class GraphBuilderTflite final {
       const mojom::InstanceNormalization& instance_normalization);
   base::expected<OperatorOffset, std::string> SerializeLayerNormalization(
       const mojom::LayerNormalization& layer_normalization);
-  // Emits a `custom_call.LayerNorm` custom op if supported by
-  // `context_device_`. Returns `std::nullopt` otherwise.
-  std::optional<OperatorOffset> SerializeLayerNormalizationAsCustomCall(
+  // Emits a `BuiltinOperator_STABLEHLO_COMPOSITE` operator named
+  // `odml.group_norm` with `sub_type = 1` (LayerNorm), which LiteRT lowers to
+  // the fused ML Drift `layer_norm` kernel. Returns `std::nullopt` if the
+  // operation doesn't meet the kernel's preconditions, in which case the
+  // caller should fall back to emulating layer normalization with primitives.
+  std::optional<OperatorOffset> SerializeLayerNormalizationAsComposite(
       const mojom::LayerNormalization& layer_normalization);
+  // Appends a decomposition subgraph for layer normalization (innermost axis,
+  // primitive operators) and returns its subgraph index, which composite
+  // operators reference as a fallback when no delegate claims them.
+  base::expected<int32_t, std::string>
+  SerializeLayerNormalizationDecompositionSubgraph(
+      base::span<const int32_t> input_dimensions,
+      ::tflite::TensorType tensor_type,
+      float epsilon,
+      bool has_scale,
+      bool has_bias);
   base::expected<OperatorOffset, std::string> SerializeLeakyRelu(
       const mojom::LeakyRelu& leaky_relu);
   base::expected<OperatorOffset, std::string> SerializeLinear(
@@ -1096,6 +1118,12 @@ class GraphBuilderTflite final {
   std::vector<BufferOffset> buffers_;
   std::vector<TensorOffset> tensors_;
   std::vector<ExternalBufferOffset> external_buffers_;
+
+  // Decomposition subgraphs referenced by StableHLO composite operators. They
+  // are appended after the main subgraph, so the subgraph index of the entry at
+  // position `i` is `i + 1`. `tensors_` and `operators_` are swapped out while
+  // one of these is being built, since tensor indices are subgraph-local.
+  std::vector<SubGraphOffset> decomposition_subgraphs_;
 
   // A temporary file created in browser process to hold all weights.
   base::File weights_file_;

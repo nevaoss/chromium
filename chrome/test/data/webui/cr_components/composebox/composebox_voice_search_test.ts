@@ -1523,4 +1523,131 @@ suite('ComposeboxVoiceSearch', () => {
     assertEquals(aimFontSize, window.getComputedStyle(input).fontSize);
     assertEquals(aimFontSize, window.getComputedStyle(errorContainer).fontSize);
   });
+
+  test(
+      'multiline transcript behavior when wave and live transcript enabled',
+      async () => {
+        await createComposeboxElement();
+        composeboxElement.style.display = 'block';
+        composeboxElement.style.position = 'relative';
+        composeboxElement.style.width = '337px';
+        const voiceSearchElement = await openVoiceSearchUI();
+        voiceSearchElement.audioWaveEnabled = true;
+        voiceSearchElement.liveTranscriptEnabled = true;
+        voiceSearchElement.submitStopButtonsEnabled = true;
+        await voiceSearchElement.updateComplete;
+
+        assertFalse(voiceSearchElement.hasMultilineTranscript);
+        assertFalse(
+            voiceSearchElement.hasAttribute('has-multiline-transcript'));
+
+        const input =
+            voiceSearchElement.shadowRoot.querySelector<HTMLElement>('#input')!;
+        // When empty, input has .empty class with max-height: 44px.
+        assertEquals('44px', window.getComputedStyle(input).maxHeight);
+
+        // When transcript is populated, max-height allows up to 7 lines
+        // (188px).
+        const speechRes = createResults(1);
+        Object.assign(
+            speechRes.results[0]![0]!,
+            {confidence: 1, transcript: 'hello world'});
+        mockSpeechRecognition.onresult!(speechRes);
+        await microtasksFinished();
+        await voiceSearchElement.updateComplete;
+        assertEquals('188px', window.getComputedStyle(input).maxHeight);
+        assertEquals('auto', window.getComputedStyle(input).overflowY);
+        assertEquals(1, voiceSearchElement.transcriptLines);
+        assertEquals('1', voiceSearchElement.getAttribute('transcript-lines'));
+
+        // When transcript is long and wraps across lines,
+        // hasMultilineTranscript becomes true and transcriptLines reflects the
+        // line count (> 1).
+        const longSpeechRes = createResults(1);
+        Object.assign(longSpeechRes.results[0]![0]!, {
+          confidence: 1,
+          transcript: 'very long speech transcript '.repeat(20),
+        });
+        mockSpeechRecognition.onresult!(longSpeechRes);
+        await microtasksFinished();
+        await voiceSearchElement.updateComplete;
+        assertTrue(voiceSearchElement.hasMultilineTranscript);
+        assertTrue(voiceSearchElement.hasAttribute('has-multiline-transcript'));
+        assertTrue(voiceSearchElement.transcriptLines > 1);
+
+        const container =
+            voiceSearchElement.shadowRoot.querySelector<HTMLElement>(
+                '#container')!;
+        assertEquals('absolute', window.getComputedStyle(container).position);
+        const bottomActions =
+            voiceSearchElement.shadowRoot.querySelector<HTMLElement>(
+                '#bottomActions')!;
+        assertEquals(
+            'absolute', window.getComputedStyle(bottomActions).position);
+
+        // When audioWaveEnabled is false, hasMultilineTranscript is false.
+        voiceSearchElement.audioWaveEnabled = false;
+        const multilineRes = createResults(1);
+        Object.assign(
+            multilineRes.results[0]![0]!,
+            {confidence: 1, transcript: 'multiple lines of transcription'});
+        mockSpeechRecognition.onresult!(multilineRes);
+        await microtasksFinished();
+        await voiceSearchElement.updateComplete;
+        assertFalse(voiceSearchElement.hasMultilineTranscript);
+        assertFalse(
+            voiceSearchElement.hasAttribute('has-multiline-transcript'));
+        assertEquals(1, voiceSearchElement.transcriptLines);
+        assertEquals('1', voiceSearchElement.getAttribute('transcript-lines'));
+
+        // When liveTranscriptEnabled is false, hasMultilineTranscript is false.
+        voiceSearchElement.audioWaveEnabled = true;
+        voiceSearchElement.liveTranscriptEnabled = false;
+        mockSpeechRecognition.onresult!(multilineRes);
+        await microtasksFinished();
+        await voiceSearchElement.updateComplete;
+        assertFalse(voiceSearchElement.hasMultilineTranscript);
+        assertFalse(
+            voiceSearchElement.hasAttribute('has-multiline-transcript'));
+        assertEquals(1, voiceSearchElement.transcriptLines);
+        assertEquals('1', voiceSearchElement.getAttribute('transcript-lines'));
+      });
+
+  test(
+      'empty transcript input has no mask-image and is not scrollable',
+      async () => {
+        await createComposeboxElement();
+        const voiceSearchElement = await openVoiceSearchUI();
+        const input =
+            voiceSearchElement.shadowRoot.querySelector<HTMLElement>('#input')!;
+
+        // Live transcript mode defaults to true; empty input has no mask-image.
+        assertTrue(input.classList.contains('empty'));
+        assertEquals('none', window.getComputedStyle(input).maskImage);
+        assertEquals('none', window.getComputedStyle(input).scrollbarWidth);
+
+        // Helper text mode without live transcript has overflow hidden.
+        voiceSearchElement.helperTextEnabled = true;
+        voiceSearchElement.liveTranscriptEnabled = false;
+        await voiceSearchElement.updateComplete;
+        assertEquals('none', window.getComputedStyle(input).maskImage);
+        assertEquals('hidden', window.getComputedStyle(input).overflowY);
+
+        // Audio-wave-enabled mode keeps mask-image: none and no scrollbar.
+        voiceSearchElement.toggleAttribute('audio-wave-enabled', true);
+        await voiceSearchElement.updateComplete;
+        assertEquals('none', window.getComputedStyle(input).maskImage);
+        assertEquals('none', window.getComputedStyle(input).scrollbarWidth);
+
+        // Non-empty transcript restores gradient mask and scrollable overflow.
+        voiceSearchElement.liveTranscriptEnabled = true;
+        (voiceSearchElement as any).transcript_ = 'hello world';
+        voiceSearchElement.requestUpdate();
+        await voiceSearchElement.updateComplete;
+
+        assertFalse(input.classList.contains('empty'));
+        assertTrue(window.getComputedStyle(input).maskImage !== 'none');
+        assertEquals('auto', window.getComputedStyle(input).overflowY);
+        assertEquals('none', window.getComputedStyle(input).scrollbarWidth);
+      });
 });

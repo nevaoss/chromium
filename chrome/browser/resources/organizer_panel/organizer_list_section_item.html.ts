@@ -17,25 +17,29 @@ export function getHtml(this: OrganizerListSectionItemElement) {
     .size="${this.item.size || nothing}">
   <div id="content" slot="content">
     <organizer-list-section-item-title id="title"
-        .titleParts="${this.item.title}">
+        .titleParts="${this.item.title}"
+        .highlightRanges="${this.titleHighlightRanges_()}">
     </organizer-list-section-item-title>
     <organizer-list-section-item-description id="description"
         ?hidden="${!this.hasDescription_()}"
-        .descriptionParts="${this.item.description || []}">
+        .descriptionParts="${this.item.description || []}"
+        .highlightRanges="${this.descriptionHighlightRanges_()}">
     </organizer-list-section-item-description>
   </div>
   ${this.item.prefixIcon?.element ? html`
     <div slot="customIcon">
       ${this.item.prefixIcon.element}
     </div>
-  ` : this.item.prefixIcon?.stackedFavicons ? html`
-    <stacked-favicons id="stackedFavicons" slot="customIcon"
-        .url="${this.item.prefixIcon.stackedFavicons.urls[0]}"
-        .secondaryUrl="${this.item.prefixIcon.stackedFavicons.urls[1]}"
-        ?stack-vertically="${
-            this.item.prefixIcon.stackedFavicons.stackVertically}">
-    </stacked-favicons>
-  ` : ''}
+  ` : html`
+    ${this.item.prefixIcon?.stackedFavicons ? html`
+      <stacked-favicons id="stackedFavicons" slot="customIcon"
+          .url="${this.item.prefixIcon.stackedFavicons.urls[0]}"
+          .secondaryUrl="${this.item.prefixIcon.stackedFavicons.urls[1]}"
+          ?stack-vertically="${
+              this.item.prefixIcon.stackedFavicons.stackVertically}">
+      </stacked-favicons>
+    ` : ''}
+  `}
   ${this.item.trailingIcon ? html`
     <cr-icon id="trailingIcon" slot="suffix" .icon="${this.item.trailingIcon}"
         class="${this.hasActionButton_() ? 'has-action-button' : ''}">

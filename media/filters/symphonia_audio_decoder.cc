@@ -43,10 +43,6 @@ namespace media {
 
 namespace {
 
-// PCM specific property for the maximum number of frames per packet. This
-// value covers up to ~85ms of audio per chunk.
-constexpr int kDefaultMaxFramesPerPcmPacket = 4096;
-
 SymphoniaAudioCodec ToSymphoniaCodec(AudioCodec codec,
                                      SampleFormat sample_format) {
   switch (codec) {
@@ -125,14 +121,6 @@ SymphoniaDecoderConfig ToSymphoniaConfig(const AudioDecoderConfig& config) {
       GetBytesPerSample(config.codec(), config.sample_format());
   out.channel_mask = ChannelLayoutToMask(config.channel_layout());
   out.sample_rate = config.samples_per_second();
-
-  // Symphonia needs to know the max frames per packet for PCM decoding, which
-  // is not something we know directly in Chrome. Set a safe limit here.
-  // If this limit is violated, Symphonia will return a DecodeError and audio
-  // decoding will fail. FFMpeg does not have this restriction because it
-  // dynamically derives the frames needed from the AVPacket size itself.
-  out.max_frames_per_packet =
-      IsPcm(config.codec()) ? kDefaultMaxFramesPerPcmPacket : 0;
   return out;
 }
 
@@ -152,6 +140,8 @@ SampleFormat ToSampleFormat(SymphoniaSampleFormat value) {
       return SampleFormat::kSampleFormatS32;
     case SymphoniaSampleFormat::F32:
       return SampleFormat::kSampleFormatF32;
+    case SymphoniaSampleFormat::PlanarF32:
+      return SampleFormat::kSampleFormatPlanarF32;
   }
   NOTREACHED();
 }
@@ -207,26 +197,16 @@ DecoderStatus ToDecoderStatus(SymphoniaDecodeResult& result) {
   }
 }
 
-// A templated ExternalMemory implementation that wraps and owns a rust::Box<T>,
-// automatically deriving the span from the box's `data` member (expected to be
-// a contiguous buffer like rust::Vec<uint8_t>).
-template <typename T>
-class BoxedMemory : public AudioBuffer::ExternalMemory {
+// An ExternalMemory implementation that wraps and owns a rust::Vec<uint8_t>.
+class RustVecMemory : public AudioBuffer::ExternalMemory {
  public:
-  explicit BoxedMemory(rust::Box<T> box)
-      : ExternalMemory(box->data), box_(std::move(box)) {}
-  ~BoxedMemory() override = default;
+  explicit RustVecMemory(rust::Vec<uint8_t> vec)
+      : ExternalMemory(vec), vec_(std::move(vec)) {}
+  ~RustVecMemory() override = default;
 
  private:
-  rust::Box<T> box_;
+  rust::Vec<uint8_t> vec_;
 };
-
-// Helper function to automatically deduce the template argument T from
-// rust::Box<T>.
-template <typename T>
-std::unique_ptr<BoxedMemory<T>> WrapBoxedMemory(rust::Box<T> box) {
-  return std::make_unique<BoxedMemory<T>>(std::move(box));
-}
 
 }  // namespace
 
@@ -364,25 +344,6 @@ void SymphoniaAudioDecoder::DecodeBuffer(scoped_refptr<DecoderBuffer> buffer,
     return;
   }
 
-  // Symphonia's PCM decoder requires a pre-configured max frames per packet.
-  // If an incoming packet yields more frames than the capacity, the decode
-  // will fail out of bounds. Since we don't know the max chunk bounds in
-  // advance, we lazily grow it here by tearing down and recreating the wrapper
-  // handle if necessary.
-  if (!is_eos && IsPcm(config_.codec())) {
-    const int bytes_per_frame =
-        config_.channels() *
-        GetBytesPerSample(config_.codec(), config_.sample_format());
-    const int frames_in_buffer = buffer->size() / bytes_per_frame;
-
-    if (frames_in_buffer > kDefaultMaxFramesPerPcmPacket) {
-      base::UmaHistogramCounts100000("Media.Audio.Symphonia.OversizedPcmPacket",
-                                     frames_in_buffer);
-      std::move(decode_cb_bound).Run(DecoderStatus::Codes::kFailed);
-      return;
-    }
-  }
-
   // Pass the buffer to the Symphonia decoder.
   const DecoderStatus status = SymphoniaDecode(*buffer);
   if (!status.is_ok()) {
@@ -406,6 +367,7 @@ void SymphoniaAudioDecoder::Reset(base::OnceClosure closure) {
   ConfigureDecoder(config_);  // Re-create the decoder instance.
 
   state_ = DecoderState::kNormal;
+  consecutive_error_count_ = 0;
   ResetTimestampState(config_);
 
   if (mode_ == ExecutionMode::kAsynchronous) {
@@ -457,26 +419,43 @@ DecoderStatus SymphoniaAudioDecoder::SymphoniaDecode(
   SymphoniaDecodeResult result = symphonia_decoder_.value()->decode(
       ToSymphoniaPacket(buffer, first_frame_timestamp_));
 
-  // Record status for every decode attempt.
   if (result.status != SymphoniaDecodeStatus::Ok) {
     base::UmaHistogramEnumeration("Media.Audio.Symphonia.DecodeError",
                                   result.status);
+    switch (result.status) {
+      case SymphoniaDecodeStatus::DecodeError:
+      case SymphoniaDecodeStatus::UnexpectedEndOfStream:
+        // Forbid back-to-back decode errors to prevent runaway packet drops and
+        // excessive A/V desync.
+        if (++consecutive_error_count_ > 1) {
+          MEDIA_LOG(ERROR, media_log_)
+              << "Stopping playback due to consecutive audio buffer decoding "
+                 "failures: "
+              << result.error_str.c_str() << ", at "
+              << buffer.AsHumanReadableString();
+          return ToDecoderStatus(result);
+        }
+        LIMITED_MEDIA_LOG(DEBUG, media_log_, num_decode_errors_, 5)
+            << "Dropping audio buffer which failed decoding: "
+            << result.error_str.c_str() << ", at "
+            << buffer.AsHumanReadableString();
+        break;
+      default:
+        MEDIA_LOG(ERROR, media_log_)
+            << "Symphonia error occurred: " << result.error_str.c_str();
+        return ToDecoderStatus(result);
+    }
+  } else {
+    consecutive_error_count_ = 0;
   }
 
-  if (result.status != SymphoniaDecodeStatus::Ok) {
-    MEDIA_LOG(ERROR, media_log_)
-        << "Symphonia error occurred: " << result.error_str.c_str();
-    return ToDecoderStatus(result);
-  }
-
-  // The Symphonia glue will return an empty buffer if 0 frames were decoded.
-  if (result.buffer->data.empty()) {
-    // Even if we didn't decode a frame, we should still send the packet
-    // to the discard helper for caching.
+  // If 0 frames were decoded (either due to a non-fatal decode error or an
+  // empty frame), forward the buffer metadata to the discard helper for
+  // caching.
+  if (result.buffer.data.empty()) {
     const bool processed = discard_helper_->ProcessBuffers(
         AudioDiscardHelper::TimeInfo::FromBuffer(buffer), nullptr);
     DCHECK(!processed);
-
     return DecoderStatus::Codes::kOk;
   }
   // Sanity check: if Symphonia thinks things are OK and returned a valid
@@ -509,22 +488,23 @@ DecoderStatus SymphoniaAudioDecoder::SymphoniaDecode(
 }
 
 scoped_refptr<AudioBuffer> SymphoniaAudioDecoder::ToMediaAudioBuffer(
-    rust::Box<SymphoniaAudioBuffer> symphonia_buffer,
+    SymphoniaAudioBuffer&& symphonia_buffer,
     base::TimeDelta timestamp) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   const SampleFormat sample_format =
-      ToSampleFormat(symphonia_buffer->sample_format);
-  const int channel_count = symphonia_buffer->channel_count;
-  const int sample_rate = symphonia_buffer->sample_rate;
-  const int num_frames = symphonia_buffer->num_frames;
+      ToSampleFormat(symphonia_buffer.sample_format);
+  const int channel_count = symphonia_buffer.channel_count;
+  const int sample_rate = symphonia_buffer.sample_rate;
+  const int num_frames = symphonia_buffer.num_frames;
 
   const bool count_changed = channel_count != config_.channels();
   const auto layout = count_changed
-                          ? ChannelMaskToLayout(symphonia_buffer->channel_mask)
+                          ? ChannelMaskToLayout(symphonia_buffer.channel_mask)
                           : config_.channel_layout();
 
-  auto external_memory = WrapBoxedMemory(std::move(symphonia_buffer));
+  auto external_memory =
+      std::make_unique<RustVecMemory>(std::move(symphonia_buffer.data));
 
   return AudioBuffer::CreateFromExternalMemory(
       sample_format, layout, channel_count, sample_rate, num_frames, timestamp,

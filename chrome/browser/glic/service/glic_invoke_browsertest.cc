@@ -9,6 +9,7 @@
 #include "base/test/test_future.h"
 #include "base/timer/elapsed_timer.h"
 #include "build/build_config.h"
+#include "chrome/browser/glic/glic_pref_names.h"
 #include "chrome/browser/glic/host/glic.mojom-shared.h"
 #include "chrome/browser/glic/host/glic.mojom.h"
 #include "chrome/browser/glic/public/glic_context_menu_invocation_helper.h"
@@ -16,6 +17,7 @@
 #include "chrome/browser/glic/service/glic_instance_coordinator_impl.h"
 #include "chrome/browser/glic/service/glic_instance_impl.h"
 #include "chrome/browser/glic/service/glic_invoke_handler.h"
+#include "chrome/browser/glic/service/glic_ui_types.h"
 #include "chrome/browser/glic/service/metrics/glic_instance_helper_metrics.h"
 #include "chrome/browser/glic/service/metrics/glic_invoke_metrics.h"
 #include "chrome/browser/glic/test_support/glic_browser_test.h"
@@ -449,17 +451,21 @@ IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest, InvokeWithOnPanelOpened) {
   EXPECT_TRUE(success_future.Wait());
 }
 
-IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest, InvokeWhileInvokeInProgress) {
+// Two invocations that both require a client invoke (here, because they carry
+// prompts) cannot run simultaneously on the same instance.
+IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest,
+                       ClientInvokeWhileClientInvokeInProgress) {
   tabs::TabInterface* tab = GetTabListInterface()->GetActiveTab();
-  base::test::TestFuture<GlicInvokeError> error_future1;
   GlicInvokeOptions options1(glic::Target(*tab),
                              mojom::InvocationSource::kOsButton);
+  options1.prompts = {"first prompt"};
 
   coordinator().Invoke(std::move(options1));
 
   base::test::TestFuture<GlicInvokeError> error_future2;
   GlicInvokeOptions options2(glic::Target(*tab),
                              mojom::InvocationSource::kOsButton);
+  options2.prompts = {"second prompt"};
   options2.on_error = error_future2.GetCallback();
 
   // Try to invoke again while the first one is still in progress for the same
@@ -470,12 +476,147 @@ IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest, InvokeWhileInvokeInProgress) {
   EXPECT_EQ(error_future2.Get(), GlicInvokeError::kInvokeInProgress);
 }
 
+// Invocations that only show the UI don't send anything to the web client, so
+// several of them may be in progress at once on the same instance.
+IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest,
+                       SimultaneousInvokesWithoutClientInvoke) {
+  tabs::TabInterface* tab = GetTabListInterface()->GetActiveTab();
+
+  base::test::TestFuture<GlicInvokeError> error_future1;
+  base::test::TestFuture<void> success_future1;
+  GlicInvokeOptions options1(glic::Target(*tab),
+                             mojom::InvocationSource::kOsButton);
+  options1.on_error = error_future1.GetCallback();
+  options1.on_success = success_future1.GetCallback();
+
+  coordinator().Invoke(std::move(options1));
+
+  GlicInstanceImpl* instance = GetInstanceForTab(tab);
+  ASSERT_TRUE(instance);
+
+  base::test::TestFuture<GlicInvokeError> error_future2;
+  base::test::TestFuture<void> success_future2;
+  GlicInvokeOptions options2(glic::Target(*tab),
+                             mojom::InvocationSource::kOsButton);
+  options2.on_error = error_future2.GetCallback();
+  options2.on_success = success_future2.GetCallback();
+
+  // Invoke again, targeting the same instance, while the first invocation is
+  // still in progress.
+  coordinator().Invoke(std::move(options2));
+  EXPECT_EQ(GetInstanceForTab(tab), instance);
+
+  EXPECT_TRUE(success_future1.Wait());
+  EXPECT_TRUE(success_future2.Wait());
+  EXPECT_FALSE(error_future1.IsReady());
+  EXPECT_FALSE(error_future2.IsReady());
+}
+
+// An invocation that requires a client invoke isn't blocked by an in-progress
+// invocation that only shows the UI.
+IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest,
+                       ClientInvokeWhileShowOnlyInvokeInProgress) {
+  tabs::TabInterface* tab = GetTabListInterface()->GetActiveTab();
+
+  base::test::TestFuture<GlicInvokeError> error_future1;
+  base::test::TestFuture<void> success_future1;
+  GlicInvokeOptions options1(glic::Target(*tab),
+                             mojom::InvocationSource::kOsButton);
+  options1.on_error = error_future1.GetCallback();
+  options1.on_success = success_future1.GetCallback();
+
+  coordinator().Invoke(std::move(options1));
+
+  GlicInstanceImpl* instance = GetInstanceForTab(tab);
+  ASSERT_TRUE(instance);
+
+  base::test::TestFuture<GlicInvokeError> error_future2;
+  base::test::TestFuture<void> success_future2;
+  GlicInvokeOptions options2(glic::Target(*tab),
+                             mojom::InvocationSource::kOsButton);
+  options2.prompts = {"a prompt"};
+  options2.on_error = error_future2.GetCallback();
+  options2.on_success = success_future2.GetCallback();
+
+  coordinator().Invoke(std::move(options2));
+  EXPECT_EQ(GetInstanceForTab(tab), instance);
+
+  EXPECT_TRUE(success_future1.Wait());
+  EXPECT_TRUE(success_future2.Wait());
+  EXPECT_FALSE(error_future1.IsReady());
+  EXPECT_FALSE(error_future2.IsReady());
+}
+
+// An invocation that only shows the UI isn't blocked by an in-progress
+// invocation that requires a client invoke.
+IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest,
+                       ShowOnlyInvokeWhileClientInvokeInProgress) {
+  tabs::TabInterface* tab = GetTabListInterface()->GetActiveTab();
+
+  base::test::TestFuture<GlicInvokeError> error_future1;
+  base::test::TestFuture<void> success_future1;
+  GlicInvokeOptions options1(glic::Target(*tab),
+                             mojom::InvocationSource::kOsButton);
+  options1.prompts = {"a prompt"};
+  options1.on_error = error_future1.GetCallback();
+  options1.on_success = success_future1.GetCallback();
+
+  coordinator().Invoke(std::move(options1));
+
+  GlicInstanceImpl* instance = GetInstanceForTab(tab);
+  ASSERT_TRUE(instance);
+
+  base::test::TestFuture<GlicInvokeError> error_future2;
+  base::test::TestFuture<void> success_future2;
+  GlicInvokeOptions options2(glic::Target(*tab),
+                             mojom::InvocationSource::kOsButton);
+  options2.on_error = error_future2.GetCallback();
+  options2.on_success = success_future2.GetCallback();
+
+  coordinator().Invoke(std::move(options2));
+  EXPECT_EQ(GetInstanceForTab(tab), instance);
+
+  EXPECT_TRUE(success_future1.Wait());
+  EXPECT_TRUE(success_future2.Wait());
+  EXPECT_FALSE(error_future1.IsReady());
+  EXPECT_FALSE(error_future2.IsReady());
+}
+
+// Once the first client invoke has completed, a second one can proceed.
+IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest,
+                       ClientInvokeAfterClientInvokeCompletes) {
+  tabs::TabInterface* tab = GetTabListInterface()->GetActiveTab();
+
+  base::test::TestFuture<void> success_future1;
+  GlicInvokeOptions options1(glic::Target(*tab),
+                             mojom::InvocationSource::kOsButton);
+  options1.prompts = {"first prompt"};
+  options1.on_success = success_future1.GetCallback();
+
+  coordinator().Invoke(std::move(options1));
+  EXPECT_TRUE(success_future1.Wait());
+
+  base::test::TestFuture<GlicInvokeError> error_future2;
+  base::test::TestFuture<void> success_future2;
+  GlicInvokeOptions options2(glic::Target(*tab),
+                             mojom::InvocationSource::kOsButton);
+  options2.prompts = {"second prompt"};
+  options2.on_error = error_future2.GetCallback();
+  options2.on_success = success_future2.GetCallback();
+
+  coordinator().Invoke(std::move(options2));
+
+  EXPECT_TRUE(success_future2.Wait());
+  EXPECT_FALSE(error_future2.IsReady());
+}
+
 IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest, InvokeSupersedesInProgress) {
   tabs::TabInterface* tab = GetTabListInterface()->GetActiveTab();
 
   base::test::TestFuture<GlicInvokeError> error_future1;
   GlicInvokeOptions options1(glic::Target(*tab),
                              mojom::InvocationSource::kOsButton);
+  options1.prompts = {"first prompt"};
   options1.on_error = error_future1.GetCallback();
 
   coordinator().Invoke(std::move(options1));
@@ -483,6 +624,7 @@ IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest, InvokeSupersedesInProgress) {
   base::test::TestFuture<void> success_future2;
   GlicInvokeOptions options2(glic::Target(*tab),
                              mojom::InvocationSource::kOsButton);
+  options2.prompts = {"second prompt"};
   options2.supersede_if_in_progress = true;
   options2.on_success = success_future2.GetCallback();
 
@@ -495,6 +637,35 @@ IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest, InvokeSupersedesInProgress) {
 
   // The second invoke should succeed.
   EXPECT_TRUE(success_future2.Wait());
+}
+
+// An invocation that only shows the UI never conflicts, so it has nothing to
+// supersede: an in-progress client invoke is left alone.
+IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest,
+                       ShowOnlyInvokeDoesNotSupersedeClientInvoke) {
+  tabs::TabInterface* tab = GetTabListInterface()->GetActiveTab();
+
+  base::test::TestFuture<GlicInvokeError> error_future1;
+  base::test::TestFuture<void> success_future1;
+  GlicInvokeOptions options1(glic::Target(*tab),
+                             mojom::InvocationSource::kOsButton);
+  options1.prompts = {"a prompt"};
+  options1.on_error = error_future1.GetCallback();
+  options1.on_success = success_future1.GetCallback();
+
+  coordinator().Invoke(std::move(options1));
+
+  base::test::TestFuture<void> success_future2;
+  GlicInvokeOptions options2(glic::Target(*tab),
+                             mojom::InvocationSource::kOsButton);
+  options2.supersede_if_in_progress = true;
+  options2.on_success = success_future2.GetCallback();
+
+  coordinator().Invoke(std::move(options2));
+
+  EXPECT_TRUE(success_future1.Wait());
+  EXPECT_TRUE(success_future2.Wait());
+  EXPECT_FALSE(error_future1.IsReady());
 }
 
 IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest, InvokeTimeoutBehaviors) {
@@ -1307,6 +1478,57 @@ IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest, InvokeWithFloatingTarget) {
   EXPECT_TRUE(success_future.Wait());
   EXPECT_TRUE(instance->IsDetached());
 }
+
+// An instance can be bound to several tabs at once, but only one of its side
+// panels is active at a time. An invocation that targets a specific tab must
+// show on that tab, rather than following the instance to wherever it happens
+// to be active. The two tabs live in separate windows so that both remain
+// activated (an invocation on a non-activated tab would only create an
+// inactive side panel). Desktop only: Android has a single active embedder and
+// peeks the background window's tab instead of activating it.
+IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest,
+                       InvokeTargetsRequestedTabWhenActiveInAnotherTab) {
+  // Keep the instance from binding to newly created tabs on its own, so that
+  // the bindings under test are only the ones this test sets up.
+  GetProfile()->GetPrefs()->SetBoolean(
+      glic::prefs::kGlicKeepSidepanelOpenOnNewTabsEnabled, false);
+
+  tabs::TabInterface* tab_a = GetTabListInterface()->GetActiveTab();
+  ASSERT_OK_AND_ASSIGN(GlicInstanceImpl * instance, OpenGlicForActiveTab());
+  ASSERT_OK(WaitForActiveEmbedderToMatchTab(instance, tab_a));
+
+  // Bind the instance to tab B, in a second window, and leave it active there.
+  // This goes through Show() rather than Invoke() so that the setup does not
+  // depend on the invocation routing that this test is exercising.
+  BrowserWindowInterface* browser_b = CreateAdditionalBrowserWindow();
+  tabs::TabInterface* tab_b =
+      CreateAndActivateTab(browser_b, GURL("about:blank"));
+  ASSERT_TRUE(tab_b);
+  instance->Show(ShowOptions::ForSidePanel(*tab_b));
+  ASSERT_OK(WaitForGlicInstanceBoundToTab(tab_b));
+  ASSERT_OK(WaitForActiveEmbedderToMatchTab(instance, tab_b));
+
+  // The instance is now bound to both tabs, and active on tab B.
+  ASSERT_EQ(GetInstanceForTab(tab_a), instance);
+  ASSERT_EQ(GetInstanceForTab(tab_b), instance);
+  ASSERT_TRUE(tab_a->IsActivated());
+
+  // Invoke against tab A while the instance is still active on tab B.
+  base::test::TestFuture<void> success_future;
+  GlicInvokeOptions options(glic::Target(*tab_a),
+                            mojom::InvocationSource::kOsButton);
+  options.on_success = success_future.GetCallback();
+  coordinator().Invoke(std::move(options));
+  ASSERT_TRUE(success_future.Wait());
+
+  // The invocation must move to the targeted tab, not stay on tab B.
+  ASSERT_OK(WaitForActiveEmbedderToMatchTab(instance, tab_a));
+
+  // The invocation should have reused the existing instance.
+  EXPECT_EQ(GetInstanceForTab(tab_a), instance);
+  EXPECT_EQ(coordinator().GetInstances().size(), 1u);
+}
+
 #endif  // !BUILDFLAG(IS_ANDROID)
 
 // TODO(crbug.com/504753617): Re-enable the test.

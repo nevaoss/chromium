@@ -83,11 +83,13 @@ if (!is_android) {
 
     deps = [
       ":find_bar",
+      "//chrome/browser/ui:browser_window_header",
       "//chrome/browser/ui:chrome_pages",
       "//chrome/browser/ui:ui_features",
       "//chrome/browser/ui/browser_window",
       "//chrome/browser/ui/views:find_bar_views",
       "//chrome/test:test_support",
+      "//chrome/test/base:browser_test_waiters",
     ]
 
     if (is_mac) {
@@ -109,6 +111,7 @@ if (!is_android && !is_chromeos_device) {
       "//chrome/browser/ui:view_ids",
       "//chrome/browser/ui/browser_window",
       "//chrome/test:test_support",
+      "//chrome/test/base:browser_test_waiters",
     ]
 
     if (is_mac) {

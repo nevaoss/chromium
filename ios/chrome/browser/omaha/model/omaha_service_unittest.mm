@@ -390,13 +390,9 @@ TEST_F(OmahaServiceTest, OneOffSuccess) {
                         base::BindRepeating(&OmahaServiceTest::OnNeedUpdate,
                                             base::Unretained(this)));
 
-  service.one_off_check_callback_ =
-      base::BindOnce(^(UpgradeRecommendedDetails details) {
-        OmahaServiceTest::OneOffCheck(details);
-      });
   CleanService(&service, std::string(version_info::GetVersionNumber()));
-
-  service.SendPing();
+  service.CheckNowOnIOThread(
+      base::BindOnce(&OmahaServiceTest::OneOffCheck, base::Unretained(this)));
 
   EXPECT_EQ(1, service.number_of_tries_);
   EXPECT_TRUE(service.current_ping_time_.is_null());
@@ -434,10 +430,8 @@ TEST_F(OmahaServiceTest, OngoingPingOneOffCallbackUsed) {
 
   // One off callback set during ongoing ping, it should now be used for
   // response.
-  service.one_off_check_callback_ =
-      base::BindOnce(^(UpgradeRecommendedDetails details) {
-        OmahaServiceTest::OneOffCheck(details);
-      });
+  service.CheckNowOnIOThread(
+      base::BindOnce(&OmahaServiceTest::OneOffCheck, base::Unretained(this)));
 
   auto* pending_request = test_url_loader_factory_.GetPendingRequest(0);
   test_url_loader_factory_.SimulateResponseForPendingRequest(
@@ -459,13 +453,9 @@ TEST_F(OmahaServiceTest, OneOffCallbackUsedOnlyOnce) {
                         base::BindRepeating(&OmahaServiceTest::OnNeedUpdate,
                                             base::Unretained(this)));
 
-  service.one_off_check_callback_ =
-      base::BindOnce(^(UpgradeRecommendedDetails details) {
-        OmahaServiceTest::OneOffCheck(details);
-      });
   CleanService(&service, std::string(version_info::GetVersionNumber()));
-
-  service.SendPing();
+  service.CheckNowOnIOThread(
+      base::BindOnce(&OmahaServiceTest::OneOffCheck, base::Unretained(this)));
 
   EXPECT_EQ(1, service.number_of_tries_);
   EXPECT_TRUE(service.current_ping_time_.is_null());
@@ -501,13 +491,9 @@ TEST_F(OmahaServiceTest, ScheduledPingDuringOneOffDropped) {
                         base::BindRepeating(&OmahaServiceTest::OnNeedUpdate,
                                             base::Unretained(this)));
 
-  service.one_off_check_callback_ =
-      base::BindOnce(^(UpgradeRecommendedDetails details) {
-        OmahaServiceTest::OneOffCheck(details);
-      });
   CleanService(&service, std::string(version_info::GetVersionNumber()));
-
-  service.SendPing();
+  service.CheckNowOnIOThread(
+      base::BindOnce(&OmahaServiceTest::OneOffCheck, base::Unretained(this)));
 
   EXPECT_EQ(1, service.number_of_tries_);
   EXPECT_TRUE(service.current_ping_time_.is_null());

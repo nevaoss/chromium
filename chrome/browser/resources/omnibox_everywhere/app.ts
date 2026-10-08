@@ -107,7 +107,12 @@ export class OmniboxEverywhereAppElement extends CrLitElement {
       callbackRouter_: {type: Object},
       hasMostVisitedTiles_: {type: Boolean},
       mostVisitedEnabled_: {type: Boolean},
-      showShortcuts_: {type: Boolean},
+      smallLoomnibox_: {
+        type: Boolean,
+        reflect: true,
+        attribute: 'small-loomnibox',
+      },
+      hideTitle_: {type: Boolean},
       freStage_: {type: Number},
       hotkeyTokens_: {type: Array},
       isActive_: {
@@ -146,8 +151,10 @@ export class OmniboxEverywhereAppElement extends CrLitElement {
       SearchboxBrowserProxy.getInstance().callbackRouter;
   protected accessor mostVisitedEnabled_: boolean =
       loadTimeData.getBoolean('omniboxEverywhereMostVisitedEnabled');
-  protected accessor showShortcuts_: boolean =
-      loadTimeData.getBoolean('omniboxEverywhereShowShortcuts');
+  protected accessor smallLoomnibox_: boolean =
+      loadTimeData.getBoolean('smallLoomnibox');
+  protected accessor hideTitle_: boolean =
+      loadTimeData.getBoolean('omniboxEverywhereMostVisitedHideTitle');
   protected accessor hasMostVisitedTiles_: boolean = false;
   protected accessor freStage_: FreStage =
       (loadTimeData.valueExists('initialFreStage') ?
@@ -173,7 +180,10 @@ export class OmniboxEverywhereAppElement extends CrLitElement {
       this.isActive_ = false;
     });
     this.eventTracker_.add(
-        document, 'visibilitychange', this.onVisibilitychange_.bind(this));
+        document.documentElement, 'visibilitychange',
+        this.onVisibilitychange_.bind(this));
+    this.eventTracker_.add(
+        window, 'keydown', (e: KeyboardEvent) => this.onKeyDown_(e));
     this.setupListeners_();
     this.onVisibilitychange_();
   }
@@ -345,6 +355,11 @@ export class OmniboxEverywhereAppElement extends CrLitElement {
         !this.isComposeboxMode_;
   }
 
+  protected isMostVisitedHidden_(): boolean {
+    return !this.hasMostVisitedTiles_ || this.isFreIntroModal_() ||
+        this.isFreChin_();
+  }
+
   protected isFreShortcutSetupChin_(): boolean {
     return this.freStage_ === FreStage.kShortcutSetupChin &&
         !this.isComposeboxMode_;
@@ -433,6 +448,43 @@ export class OmniboxEverywhereAppElement extends CrLitElement {
     this.setIsComposebox_(false);
     await this.updateComplete;
     this.focusActiveInput_();
+  }
+
+  private onKeyDown_(e: KeyboardEvent) {
+    if (e.key !== 'Escape' || e.defaultPrevented) {
+      return;
+    }
+    if (this.showVoiceSearchOverlay_) {
+      return;
+    }
+
+    if (this.isComposeboxMode_) {
+      const composebox =
+          this.shadowRoot?.querySelector<OmniboxEverywhereComposeboxElement>(
+              'omnibox-everywhere-composebox');
+      if (composebox) {
+        composebox.handleEscapeKeyLogic();
+        e.preventDefault();
+        return;
+      }
+    } else {
+      const searchbox =
+          this.shadowRoot?.querySelector<OmniboxEverywhereOmniboxElement>(
+              'omnibox-everywhere-omnibox');
+      if (searchbox) {
+        const inputElement = searchbox.getInputElement();
+        if (inputElement && inputElement.getInputValue()) {
+          inputElement.setInputText('');
+          searchbox.clearAutocompleteMatches();
+          searchbox.focusInput();
+          e.preventDefault();
+          return;
+        }
+      }
+    }
+
+    SearchboxBrowserProxy.getInstance().handler.onEscapePressed();
+    e.preventDefault();
   }
 
   protected async onComposeboxSubmit_() {

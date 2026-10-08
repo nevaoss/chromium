@@ -66,6 +66,9 @@ source_set("omnibox_everywhere") {
   if (is_win) {
     public += [ "omnibox_everywhere_shortcut_win.h" ]
   }
+  if (is_mac) {
+    public += [ "mac_window_util.h" ]
+  }
 }
 
 # Omnibox Everywhere desktop implementation.
@@ -78,6 +81,9 @@ source_set("impl") {
     "omnibox_everywhere_widget_delegate.cc",
     "omnibox_everywhere_widget_delegate.h",
   ]
+  if (is_mac) {
+    sources += [ "mac_window_util.mm" ]
+  }
   public_deps = [ ":omnibox_everywhere" ]
   deps = [
     ":prefs",
@@ -137,6 +143,7 @@ source_set("impl") {
       "//chrome/browser:shell_integration",
       "//chrome/browser/win",
       "//chrome/common:constants",
+      "//chrome/install_static:install_static_util",
     ]
   }
 }
@@ -178,6 +185,12 @@ if (is_mac || is_win) {
       "//ui/views",
       "//ui/views:test_support",
     ]
+    if (is_win) {
+      deps += [
+        "//chrome/install_static:install_static_util",
+        "//chrome/install_static/test:test_support",
+      ]
+    }
   }
 
   source_set("interactive_ui_tests") {
@@ -191,6 +204,7 @@ if (is_mac || is_win) {
       "//base/test:test_support",
       "//chrome/browser/background/omnibox_everywhere",
       "//chrome/browser/status_icons",
+      "//chrome/browser/ui:browser_window_header",
       "//chrome/browser/ui:chrome_pages",
       "//chrome/browser/ui/browser_window",
       "//chrome/browser/ui/webui/cr_components/searchbox",

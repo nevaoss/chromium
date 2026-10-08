@@ -8,10 +8,14 @@
 #import <UIKit/UIKit.h>
 
 #import "ios/chrome/browser/assistant/ui/assistant_container_delegate.h"
-#import "ios/chrome/browser/assistant/ui/assistant_container_detent.h"
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_view_state_delegate.h"
 #import "ios/chrome/browser/intelligence/bwg/ui/gemini_container_consumer.h"
+#import "ios/chrome/browser/intelligence/bwg/ui/gemini_container_mutator.h"
 #import "ios/chrome/browser/intelligence/zero_state_suggestions/ui/gemini_zero_state_mutator.h"
+
+namespace actor {
+class ActorService;
+}  // namespace actor
 
 namespace gemini {
 enum class EntryPoint;
@@ -19,7 +23,6 @@ enum class EntryPoint;
 
 class Browser;
 class GeminiContainerMediatorEventHandler;
-class WebStateList;
 @class GeminiConfiguration;
 @class GeminiGatewayManager;
 @class GeminiPageContext;
@@ -27,12 +30,17 @@ class WebStateList;
 @protocol AssistantContainerCommands;
 @protocol BWGGatewayProtocol;
 @protocol GeminiCommands;
+@protocol GeminiSharedTabsDelegate;
 @protocol GeminiZeroStateConsumer;
 
 // Mediator for the Gemini container.
 @interface GeminiContainerMediator : NSObject <AssistantContainerDelegate,
+                                               GeminiContainerMutator,
                                                GeminiViewStateDelegate,
                                                GeminiZeroStateMutator>
+
+// Delegate for shared tabs in a Gemini session.
+@property(nonatomic, weak) id<GeminiSharedTabsDelegate> sharedTabsDelegate;
 
 // Delegate for handling events from the mediator. Temporarily used by
 // `GeminiBrowserAgent` to support pre-migration logic.
@@ -62,6 +70,7 @@ class WebStateList;
 // TODO(crbug.com/537719170): Mediator should be the target directly.
 // Initializes the mediator with the given dependencies.
 - (instancetype)initWithBrowser:(Browser*)browser
+                   actorService:(actor::ActorService*)actorService
                    eventHandler:
                        (GeminiContainerMediatorEventHandler*)eventHandler
     NS_DESIGNATED_INITIALIZER;
@@ -95,6 +104,10 @@ class WebStateList;
 - (BOOL)shouldShowPageLoadingSnackbarOnOpeningInvocationForEntryPoint:
     (gemini::EntryPoint)entryPoint;
 
+// Handles initial setup for UI state and page context generation when the
+// container session starts.
+- (void)connect;
+
 // Currently, `GeminiBrowserAgent` does some of the state cleanup after each
 // floaty dismissal, but some of the cleanup such as releasing the handlers
 // happens on GeminiBrowserAgent destruction.
@@ -111,9 +124,24 @@ class WebStateList;
 // Fetches zero-state suggestions for the active web state.
 - (void)fetchZeroStateSuggestions:(GeminiStartupState*)startupState;
 
+// Handles initial setup for UI state, page context generation, and connecting
+// observed services (e.g. actor service) when the container session starts.
+- (void)connect;
+
 // Disconnects raw pointers owned by the mediator and dismisses handlers.
 // Handles all the cleanup that needs to happen before mediator dealloc.
 - (void)disconnect;
+
+// Propagates active page context and shared tabs from `sharedTabsDelegate` to
+// the provider.
+- (void)propagatePageContext:(GeminiPageContext*)pageContext;
+
+// Requests full page context generation for the active web state and propagates
+// it to the provider upon completion.
+- (void)requestActivePageContextGeneration;
+
+// Updates the provider with partial page context for the active web state.
+- (void)updateFloatyWithPartialPageContext;
 
 @end
 

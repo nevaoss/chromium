@@ -602,6 +602,14 @@ void LayoutObject::MarkMayContainAnchor() {
   }
 }
 
+void LayoutObject::MarkMayContainDraggableRegion() {
+  for (LayoutObject* runner = this;
+       runner && !runner->MayContainDraggableRegion();
+       runner = runner->Parent()) {
+    runner->SetMayContainDraggableRegion(true);
+  }
+}
+
 void LayoutObject::SetIsInsideMulticolIncludingDescendants(
     bool inside_multicol) {
   NOT_DESTROYED();
@@ -3006,7 +3014,7 @@ void LayoutObject::SetPseudoElementStyle(const LayoutObject& owner,
   if (IsText() && Parent() && Parent()->IsInitialLetterBox()) [[unlikely]] {
     // Note: `Parent()` can be null for text for generated contents.
     // See "accessibility/css-generated-content.html"
-    SetStyle(*GetDocument().GetStyleResolver().StyleForInitialLetterText(
+    SetStyle(GetDocument().GetStyleResolver().StyleForInitialLetterText(
         pseudo_style, Parent()->ContainingBlock()->StyleRef()));
     return;
   }
@@ -3496,6 +3504,10 @@ void LayoutObject::StyleDidChange(
 
   if (new_style.AnchorName()) {
     MarkMayContainAnchor();
+  }
+
+  if (new_style.DraggableRegionMode() != EDraggableRegionMode::kNone) {
+    MarkMayContainDraggableRegion();
   }
 
   if (MayContainAnchor() && old_style) {
@@ -4320,6 +4332,9 @@ void LayoutObject::InsertedIntoTree() {
     MarkMayContainAnchor();
   } else if (MayContainAnchor()) {
     Parent()->MarkMayContainAnchor();
+  }
+  if (MayContainDraggableRegion()) {
+    Parent()->MarkMayContainDraggableRegion();
   }
 }
 

@@ -99,25 +99,26 @@ fn test_no_bit_depth_adjusting_f32() {
         SAMPLES,
         SAMPLE_RATE,
         BYTES_PER_SAMPLE,
-        ffi::SymphoniaSampleFormat::F32,
+        ffi::SymphoniaSampleFormat::PlanarF32,
         SAMPLES,
         |b| GenericAudioBufferRef::F32(b),
         ffi::SymphoniaAudioCodec::Unknown,
     );
 }
 
-// Verify that we clip F32 values outside [-1.0, 1.0] for MP3 only.
+// Verify that we clip F32 values outside [-1.0, 1.0] and silence NaNs for MP3
+// only.
 #[gtest(SymphoniaDecoderBridgeTest, F32Clamping)]
 fn test_f32_clamping() {
-    const SAMPLES: &[f32] = &[2.0, -2.0, 1.0, -1.0];
-    const EXPECTED: &[f32] = &[1.0, -1.0, 1.0, -1.0];
+    const SAMPLES: &[f32] = &[2.0, -2.0, 1.0, -1.0, f32::NAN, f32::INFINITY, f32::NEG_INFINITY];
+    const EXPECTED: &[f32] = &[1.0, -1.0, 1.0, -1.0, 0.0, 1.0, -1.0];
     const SAMPLE_RATE: u32 = 48000;
     const BYTES_PER_SAMPLE: u8 = 4;
     test_conversion(
         SAMPLES,
         SAMPLE_RATE,
         BYTES_PER_SAMPLE,
-        ffi::SymphoniaSampleFormat::F32,
+        ffi::SymphoniaSampleFormat::PlanarF32,
         EXPECTED,
         |b| GenericAudioBufferRef::F32(b),
         ffi::SymphoniaAudioCodec::Mp3,
@@ -127,14 +128,14 @@ fn test_f32_clamping() {
 // Verify that we do not clip F32 values outside [-1.0, 1.0] for non-MP3 codecs.
 #[gtest(SymphoniaDecoderBridgeTest, NoF32ClampingForNonMp3)]
 fn test_no_f32_clamping_for_non_mp3() {
-    const SAMPLES: &[f32] = &[2.0, -2.0, 1.0, -1.0];
+    const SAMPLES: &[f32] = &[2.0, -2.0, 1.0, -1.0, f32::INFINITY, f32::NEG_INFINITY];
     const SAMPLE_RATE: u32 = 48000;
     const BYTES_PER_SAMPLE: u8 = 4;
     test_conversion(
         SAMPLES,
         SAMPLE_RATE,
         BYTES_PER_SAMPLE,
-        ffi::SymphoniaSampleFormat::F32,
+        ffi::SymphoniaSampleFormat::PlanarF32,
         SAMPLES,
         |b| GenericAudioBufferRef::F32(b),
         ffi::SymphoniaAudioCodec::Unknown,
@@ -224,7 +225,6 @@ fn test_decoder_init_failure() {
         extra_data: &[], // Empty extra data might be enough to fail some decoders.
         bytes_per_sample: 2,
         channel_mask: 0,
-        max_frames_per_packet: 0,
         sample_rate: 44100,
     };
     let result = init_symphonia_decoder(&config);
@@ -261,7 +261,6 @@ fn test_flac_init_with_marker() {
         extra_data: &extra_data,
         bytes_per_sample: 2,
         channel_mask: 1, // Mono
-        max_frames_per_packet: 0,
         sample_rate: 48000,
     };
 
@@ -275,7 +274,6 @@ fn test_flac_init_with_marker() {
         extra_data: &extra_data,
         bytes_per_sample: 2,
         channel_mask: 1, // Mono
-        max_frames_per_packet: 0,
         sample_rate: 48000,
     };
     let result_trailing = init_symphonia_decoder(&config_trailing);
@@ -298,7 +296,6 @@ fn test_flac_init_with_header_only() {
         extra_data: &extra_data,
         bytes_per_sample: 2,
         channel_mask: 1, // Mono
-        max_frames_per_packet: 0,
         sample_rate: 48000,
     };
 
@@ -321,7 +318,6 @@ fn test_flac_init_with_marker_only() {
         extra_data: &extra_data,
         bytes_per_sample: 2,
         channel_mask: 1, // Mono
-        max_frames_per_packet: 0,
         sample_rate: 48000,
     };
 
@@ -347,7 +343,6 @@ fn test_flac_init_with_other_block() {
         extra_data: &extra_data,
         bytes_per_sample: 2,
         channel_mask: 1, // Mono
-        max_frames_per_packet: 0,
         sample_rate: 48000,
     };
 
@@ -357,9 +352,9 @@ fn test_flac_init_with_other_block() {
     expect_ne!(result.status, ffi::SymphoniaInitStatus::Ok);
 }
 
-// Verify that stereo data is correctly interleaved.
-#[gtest(SymphoniaDecoderBridgeTest, StereoInterleaving)]
-fn test_stereo_interleaving() {
+// Verify that stereo F32 data is output in planar layout (channel planes).
+#[gtest(SymphoniaDecoderBridgeTest, StereoPlanarF32)]
+fn test_stereo_planar_f32() {
     const SAMPLE_RATE: u32 = 44100;
     let spec = AudioSpec::new(SAMPLE_RATE, layouts::CHANNEL_LAYOUT_STEREO);
     let mut audio_buf = AudioBuffer::<f32>::new(spec, 2);
@@ -375,8 +370,74 @@ fn test_stereo_interleaving() {
             .unwrap();
     let result = create_audio_buffer(buffer_ref, sample_buffer).unwrap();
 
-    // Expected interleaved: [0.5, -0.5, 0.1, -0.1]
-    let expected: &[f32] = &[0.5, -0.5, 0.1, -0.1];
+    expect_eq!(result.sample_format, ffi::SymphoniaSampleFormat::PlanarF32);
+    expect_eq!(result.channel_count, 2);
+    expect_eq!(result.num_frames, 2);
+
+    // Expected planar: [L0, L1, R0, R1]
+    let expected: &[f32] = &[0.5, 0.1, -0.5, -0.1];
+    let actual_f32: Vec<f32> =
+        result.data.chunks_exact(4).map(|c| f32::from_ne_bytes(c.try_into().unwrap())).collect();
+
+    expect_eq!(actual_f32, expected);
+}
+
+// Verify that stereo F32 clamping for MP3 operates in planar layout and
+// silences NaNs to 0.0 while clamping +/- Inf to +/- 1.0.
+#[gtest(SymphoniaDecoderBridgeTest, StereoPlanarF32Clamping)]
+fn test_stereo_planar_f32_clamping() {
+    const SAMPLE_RATE: u32 = 44100;
+    let spec = AudioSpec::new(SAMPLE_RATE, layouts::CHANNEL_LAYOUT_STEREO);
+    let mut audio_buf = AudioBuffer::<f32>::new(spec, 4);
+    audio_buf.render_uninit(Some(4));
+
+    // Planar data: L[2.0, 0.5, NaN, -Inf], R[-2.0, -0.5, +Inf, 1.5]
+    audio_buf.plane_mut(0).unwrap().copy_from_slice(&[2.0, 0.5, f32::NAN, f32::NEG_INFINITY]);
+    audio_buf.plane_mut(1).unwrap().copy_from_slice(&[-2.0, -0.5, f32::INFINITY, 1.5]);
+
+    let buffer_ref = GenericAudioBufferRef::F32(&audio_buf);
+    let sample_buffer =
+        SymphoniaRawSampleBuffer::new_buffer_for(&buffer_ref, ffi::SymphoniaAudioCodec::Mp3, 4)
+            .unwrap();
+    let result = create_audio_buffer(buffer_ref, sample_buffer).unwrap();
+
+    expect_eq!(result.sample_format, ffi::SymphoniaSampleFormat::PlanarF32);
+    expect_eq!(result.channel_count, 2);
+    expect_eq!(result.num_frames, 4);
+
+    // Expected planar clamped: [1.0, 0.5, 0.0, -1.0, -1.0, -0.5, 1.0, 1.0]
+    let expected: &[f32] = &[1.0, 0.5, 0.0, -1.0, -1.0, -0.5, 1.0, 1.0];
+    let actual_f32: Vec<f32> =
+        result.data.chunks_exact(4).map(|c| f32::from_ne_bytes(c.try_into().unwrap())).collect();
+
+    expect_eq!(actual_f32, expected);
+}
+
+// Verify that odd frame counts of stereo F32 (where channel plane size is not
+// a multiple of 32 bytes) are tightly packed in planar layout.
+#[gtest(SymphoniaDecoderBridgeTest, StereoPlanarF32OddFrames)]
+fn test_stereo_planar_f32_odd_frames() {
+    const SAMPLE_RATE: u32 = 44100;
+    let spec = AudioSpec::new(SAMPLE_RATE, layouts::CHANNEL_LAYOUT_STEREO);
+    let mut audio_buf = AudioBuffer::<f32>::new(spec, 3);
+    audio_buf.render_uninit(Some(3));
+
+    // 3 frames = 12 bytes per channel plane.
+    audio_buf.plane_mut(0).unwrap().copy_from_slice(&[0.1, 0.2, 0.3]);
+    audio_buf.plane_mut(1).unwrap().copy_from_slice(&[-0.1, -0.2, -0.3]);
+
+    let buffer_ref = GenericAudioBufferRef::F32(&audio_buf);
+    let sample_buffer =
+        SymphoniaRawSampleBuffer::new_buffer_for(&buffer_ref, ffi::SymphoniaAudioCodec::Flac, 4)
+            .unwrap();
+    let result = create_audio_buffer(buffer_ref, sample_buffer).unwrap();
+
+    expect_eq!(result.sample_format, ffi::SymphoniaSampleFormat::PlanarF32);
+    expect_eq!(result.channel_count, 2);
+    expect_eq!(result.num_frames, 3);
+    expect_eq!(result.data.len(), 24);
+
+    let expected: &[f32] = &[0.1, 0.2, 0.3, -0.1, -0.2, -0.3];
     let actual_f32: Vec<f32> =
         result.data.chunks_exact(4).map(|c| f32::from_ne_bytes(c.try_into().unwrap())).collect();
 
@@ -535,27 +596,134 @@ fn test_detect_mpeg_audio_codec_id() {
 }
 
 // Verify that an MP3-configured decoder dynamically updates to MP2 when
-// an MP2 packet is encountered.
+// an MP2 packet is encountered and successfully decodes the frame.
 #[gtest(SymphoniaDecoderBridgeTest, Mp2LayerSwitching)]
 fn test_mp2_layer_switching() {
+    use symphonia::core::codecs::audio::well_known::*;
+
     let config = ffi::SymphoniaDecoderConfig {
         codec: ffi::SymphoniaAudioCodec::Mp3,
         extra_data: &[],
         bytes_per_sample: 4,
+        channel_mask: 1, // Mono
+        sample_rate: 48000,
+    };
+    let mut result = init_symphonia_decoder(&config);
+    expect_eq!(result.status, ffi::SymphoniaInitStatus::Ok);
+    expect_eq!(result.decoder.current_codec_id(), Some(CODEC_ID_MP3));
+
+    // MPEG-1 Layer 2 frame header: 96 kbps, 48000 Hz, mono (frame size = 288
+    // bytes). Remaining zero bytes indicate bit allocation 0 (silence) for
+    // all sub-bands.
+    let mut mp2_packet_data = vec![0u8; 288];
+    mp2_packet_data[..4].copy_from_slice(&[0xFF, 0xFD, 0x64, 0xD0]);
+    let packet =
+        ffi::SymphoniaPacket { timestamp_us: 0, duration_us: 24000, data: &mp2_packet_data };
+
+    // Calling decode should trigger maybe_update_mpeg_decoder, update to MP2,
+    // and decode 1152 PCM frames.
+    let decode_result = result.decoder.decode(&packet);
+    expect_eq!(decode_result.status, ffi::SymphoniaDecodeStatus::Ok);
+    expect_eq!(decode_result.buffer.num_frames, 1152);
+    expect_eq!(result.decoder.current_codec_id(), Some(CODEC_ID_MP2));
+}
+
+// Verify that an MP3-configured decoder dynamically updates to MP1 when
+// an MP1 packet is encountered and successfully decodes the frame.
+#[gtest(SymphoniaDecoderBridgeTest, Mp1LayerSwitching)]
+fn test_mp1_layer_switching() {
+    use symphonia::core::codecs::audio::well_known::*;
+
+    let config = ffi::SymphoniaDecoderConfig {
+        codec: ffi::SymphoniaAudioCodec::Mp3,
+        extra_data: &[],
+        bytes_per_sample: 4,
+        channel_mask: 1, // Mono
+        sample_rate: 48000,
+    };
+    let mut result = init_symphonia_decoder(&config);
+    expect_eq!(result.status, ffi::SymphoniaInitStatus::Ok);
+    expect_eq!(result.decoder.current_codec_id(), Some(CODEC_ID_MP3));
+
+    // MPEG-1 Layer 1 frame header: 192 kbps, 48000 Hz, mono (frame size = 192
+    // bytes). Remaining zero bytes indicate bit allocation 0 (silence) for
+    // all sub-bands.
+    let mut mp1_packet_data = vec![0u8; 192];
+    mp1_packet_data[..4].copy_from_slice(&[0xFF, 0xFE, 0x64, 0xD0]);
+    let packet =
+        ffi::SymphoniaPacket { timestamp_us: 0, duration_us: 8000, data: &mp1_packet_data };
+
+    // Calling decode should trigger maybe_update_mpeg_decoder, update to MP1,
+    // and decode 384 PCM frames.
+    let decode_result = result.decoder.decode(&packet);
+    expect_eq!(decode_result.status, ffi::SymphoniaDecodeStatus::Ok);
+    expect_eq!(decode_result.buffer.num_frames, 384);
+    expect_eq!(result.decoder.current_codec_id(), Some(CODEC_ID_MP1));
+}
+
+// Verify that an MP3-configured decoder dynamically updates when switching
+// between layers mid-stream (e.g., MP2 to MP1 and back to MP2).
+#[gtest(SymphoniaDecoderBridgeTest, MpMidstreamLayerSwitching)]
+fn test_mp_midstream_layer_switching() {
+    use symphonia::core::codecs::audio::well_known::*;
+
+    let config = ffi::SymphoniaDecoderConfig {
+        codec: ffi::SymphoniaAudioCodec::Mp3,
+        extra_data: &[],
+        bytes_per_sample: 4,
+        channel_mask: 1, // Mono
+        sample_rate: 48000,
+    };
+    let mut result = init_symphonia_decoder(&config);
+    expect_eq!(result.status, ffi::SymphoniaInitStatus::Ok);
+    expect_eq!(result.decoder.current_codec_id(), Some(CODEC_ID_MP3));
+
+    // Decode MP2 frame.
+    let mut mp2_packet_data = vec![0u8; 288];
+    mp2_packet_data[..4].copy_from_slice(&[0xFF, 0xFD, 0x64, 0xD0]);
+    let mp2_packet =
+        ffi::SymphoniaPacket { timestamp_us: 0, duration_us: 24000, data: &mp2_packet_data };
+    let decode_result = result.decoder.decode(&mp2_packet);
+    expect_eq!(decode_result.status, ffi::SymphoniaDecodeStatus::Ok);
+    expect_eq!(decode_result.buffer.num_frames, 1152);
+    expect_eq!(result.decoder.current_codec_id(), Some(CODEC_ID_MP2));
+
+    // Decode MP1 frame mid-stream.
+    let mut mp1_packet_data = vec![0u8; 192];
+    mp1_packet_data[..4].copy_from_slice(&[0xFF, 0xFE, 0x64, 0xD0]);
+    let mp1_packet =
+        ffi::SymphoniaPacket { timestamp_us: 24000, duration_us: 8000, data: &mp1_packet_data };
+    let decode_result = result.decoder.decode(&mp1_packet);
+    expect_eq!(decode_result.status, ffi::SymphoniaDecodeStatus::Ok);
+    expect_eq!(decode_result.buffer.num_frames, 384);
+    expect_eq!(result.decoder.current_codec_id(), Some(CODEC_ID_MP1));
+
+    // Decode MP2 frame again mid-stream.
+    let decode_result = result.decoder.decode(&mp2_packet);
+    expect_eq!(decode_result.status, ffi::SymphoniaDecodeStatus::Ok);
+    expect_eq!(decode_result.buffer.num_frames, 1152);
+    expect_eq!(result.decoder.current_codec_id(), Some(CODEC_ID_MP2));
+}
+
+// Verify that PCM decoder dynamically grows its buffer for large packets
+// without requiring a pre-configured max_frames_per_packet limit.
+#[gtest(SymphoniaDecoderBridgeTest, PcmLargePacket)]
+fn test_pcm_large_packet() {
+    let config = ffi::SymphoniaDecoderConfig {
+        codec: ffi::SymphoniaAudioCodec::PcmS16,
+        extra_data: &[],
+        bytes_per_sample: 2,
         channel_mask: 3, // Stereo
-        max_frames_per_packet: 0,
-        sample_rate: 44100,
+        sample_rate: 48000,
     };
     let mut result = init_symphonia_decoder(&config);
     expect_eq!(result.status, ffi::SymphoniaInitStatus::Ok);
 
-    // MPEG-1 Layer 2 frame header (0xFF, 0xFD, 0xBF, 0x0F, ...).
-    let mp2_packet_data = [0xFF, 0xFD, 0xBF, 0x0F, 0xD7, 0x3F, 0xFC, 0xE3, 0xD9, 0x79, 0x00, 0x00];
-    let packet =
-        ffi::SymphoniaPacket { timestamp_us: 0, duration_us: 26122, data: &mp2_packet_data };
-
-    // Calling decode should trigger maybe_update_mpeg_decoder and
-    // update to MP2.
+    // 8192 stereo 16-bit frames = 32768 bytes (exceeding old 4096 frame limit).
+    let pcm_data = vec![0x12u8; 8192 * 2 * 2];
+    let packet = ffi::SymphoniaPacket { timestamp_us: 0, duration_us: 170666, data: &pcm_data };
     let decode_result = result.decoder.decode(&packet);
-    expect_ne!(decode_result.status, ffi::SymphoniaDecodeStatus::InvalidDecoderState);
+    expect_eq!(decode_result.status, ffi::SymphoniaDecodeStatus::Ok);
+    expect_eq!(decode_result.buffer.num_frames, 8192);
+    expect_eq!(decode_result.buffer.data.len(), pcm_data.len());
 }

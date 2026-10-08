@@ -4511,7 +4511,7 @@ void WebContentsImpl::Init(const WebContents::CreateParams& params,
 #endif
 
   SchedulerLoopQuarantineWebContentsObserver::MaybeCreateForWebContents(this);
-  RedirectChainDetector::CreateForWebContents(this);
+  RedirectChainDetector::MaybeCreateForWebContents(this);
   BtmWebContentsObserver::MaybeCreateForWebContents(this);
   DeclarativePerformanceObserverCoordinator::CreateForWebContents(this);
 
@@ -4888,6 +4888,10 @@ void WebContentsImpl::GetRenderWidgetHostAtPointAsynchronously(
     const gfx::PointF& point,
     base::OnceCallback<void(base::WeakPtr<RenderWidgetHostViewBase>,
                             std::optional<gfx::PointF>)> callback) {
+  if (!root_view) {
+    std::move(callback).Run(nullptr, std::nullopt);
+    return;
+  }
   GetInputEventRouter()->GetRenderWidgetHostAtPointAsynchronously(
       root_view, point, base::BindOnce(&RunCallback, std::move(callback)));
 }
@@ -6759,6 +6763,12 @@ const std::optional<gfx::Rect> WebContentsImpl::GetTextSelectionBounds(
       const auto* region = text_input_manager_->GetSelectionRegion(view);
       if (region) {
         gfx::Rect bounds = region->bounding_box;
+        // `bounding_box` is renderer-supplied and is deliberately stored
+        // unclamped, because consumers such as ClipboardHistory rely on it to
+        // describe the full extent of the selection even when that extent is
+        // larger than the viewport. Callers of this method instead use the
+        // result to position UI, so clamp it to the outermost view here.
+        bounds.AdjustToFit(gfx::Rect(root_view->GetVisibleViewportSize()));
         if (!bounds.IsEmpty()) {
           gfx::Point origin = bounds.origin();
           origin += root_view->GetViewBounds().OffsetFromOrigin();
@@ -7205,12 +7215,35 @@ DropData* WebContentsImpl::GetDropData() {
 
 void WebContentsImpl::Focus() {
   OPTIONAL_TRACE_EVENT0("content", "WebContentsImpl::Focus");
+  UpdateVisibilityPreFocus();
   view_->Focus();
 }
 
 void WebContentsImpl::SetInitialFocus() {
   OPTIONAL_TRACE_EVENT0("content", "WebContentsImpl::SetInitialFocus");
+  UpdateVisibilityPreFocus();
   view_->SetInitialFocus();
+}
+
+void WebContentsImpl::UpdateVisibilityPreFocus() {
+  // Typically the view becomes visible when a navigation commits. However, if a
+  // view is focused before navigation commits, it must be made visible or on
+  // some platforms (i.e. Mac) Focus will be rejected.
+  //
+  // If we're in the middle of swapping frames, the timing of making the new
+  // frame visible is very sensitive and managed by the RenderFrameHostManager.
+  // Some clients Focus the new frame upon swapping, so we need to make sure we
+  // don't have that Focus call also set visibility.
+  //
+  // TODO(https://crbug.com/526983047): We should decouple the notions of
+  // rendering and window visibility so that a window can be focused and visible
+  // before navigation commits and the RFH is still hidden.
+  if (base::FeatureList::IsEnabled(
+          features::kRemoveEnsureRFHVisibilityConsistent) &&
+      !is_swapping_render_frame_hosts_ &&
+      GetVisibility() == Visibility::VISIBLE) {
+    SetPrimaryMainFrameViewVisibility(Visibility::VISIBLE);
+  }
 }
 
 void WebContentsImpl::StoreFocus() {
@@ -11405,6 +11438,10 @@ void WebContentsImpl::NotifyPrimaryPageWillBeDeactivated(PageImpl& page) {
                              page);
 }
 
+void WebContentsImpl::PrepareToSwapRenderFrameHosts() {
+  is_swapping_render_frame_hosts_ = true;
+}
+
 void WebContentsImpl::NotifySwappedFromRenderManager(
     RenderFrameHostImpl* old_frame,
     RenderFrameHostImpl* new_frame) {
@@ -11452,6 +11489,8 @@ void WebContentsImpl::NotifySwappedFromRenderManager(
   }
 
   NotifyFrameSwapped(old_frame, new_frame);
+
+  is_swapping_render_frame_hosts_ = false;
 }
 
 void WebContentsImpl::PrimaryMainFrameCommitted(
@@ -12518,7 +12557,9 @@ void WebContentsImpl::BindScreenOrientation(
   screen_orientation_provider_->BindScreenOrientation(rfh, std::move(receiver));
 }
 
-bool WebContentsImpl::IsTransientActivationRequiredForHtmlFullscreen() {
+bool WebContentsImpl::IsTransientActivationRequiredForHtmlFullscreen(
+    RenderFrameHostImpl* requesting_frame,
+    bool is_xr_overlay) {
   // Allow fullscreen if the screen orientation changed in the last 1 second.
   static constexpr base::TimeDelta kMaxInterval = base::Seconds(1);
   const base::TimeDelta delta =
@@ -12528,9 +12569,12 @@ bool WebContentsImpl::IsTransientActivationRequiredForHtmlFullscreen() {
   }
 
   // Require transient activation shortly after a same-origin WebContents exit.
-  RenderFrameHostImpl* host = GetPrimaryMainFrame();
+  RenderFrameHostImpl* primary_main_frame = GetPrimaryMainFrame();
+  RenderFrameHostImpl* host =
+      requesting_frame ? requesting_frame : primary_main_frame;
   auto* last_exits = GetFullscreenUserData(GetBrowserContext())->last_exits();
-  auto last_exit = last_exits->find(host->GetLastCommittedOrigin());
+  auto last_exit =
+      last_exits->find(primary_main_frame->GetLastCommittedOrigin());
   constexpr base::TimeDelta kCooldown = base::Seconds(5);
   if (last_exit != last_exits->end() &&
       base::TimeTicks::Now() < last_exit->second + kCooldown) {
@@ -12539,6 +12583,11 @@ bool WebContentsImpl::IsTransientActivationRequiredForHtmlFullscreen() {
 
   // Waive transient activation requirements if Automatic Fullscreen is granted.
   if (IsAutomaticFullscreenGranted(host)) {
+    return false;
+  }
+
+  // Waive transient activation requirements for verified WebXR DOM overlay.
+  if (is_xr_overlay && host->HasSeenRecentXrOverlaySetup()) {
     return false;
   }
 

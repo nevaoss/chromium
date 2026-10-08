@@ -306,6 +306,7 @@ if (!is_android) {
       "//chrome/browser/commerce",
       "//chrome/browser/feedback",
       "//chrome/browser/profiles:profile",
+      "//chrome/browser/ui:tab_helpers",
       "//chrome/browser/ui:tab_ui_helper",
       "//chrome/browser/ui:ui_features",
       "//chrome/browser/ui/browser_window",
@@ -322,7 +323,10 @@ if (!is_android) {
     if (is_chromeos) {
       sources += [ "existing_window_sub_menu_model_chromeos.cc" ]
 
-      deps += [ "//chromeos/ui/wm" ]
+      deps += [
+        "//chrome/browser/ui:browser_window_header",
+        "//chromeos/ui/wm",
+      ]
     }
   }
 
@@ -381,6 +385,7 @@ if (!is_android) {
       "//chrome/browser/resource_coordinator",
       "//chrome/browser/ui:browser_tab_strip",
       "//chrome/browser/ui:browser_tab_strip_tracker",
+      "//chrome/browser/ui:browser_window_header",
       "//chrome/browser/ui:tab_ui_helper",
       "//chrome/browser/ui:ui_features",
       "//chrome/browser/ui/browser_window",
@@ -432,6 +437,7 @@ if (!is_android) {
       "vertical_tab_strip_metrics.h",
       "vertical_tab_strip_state.h",
       "vertical_tab_strip_state_controller.h",
+      "vertical_tab_strip_state_controller_impl.h",
     ]
 
     if (is_win || is_mac || is_linux || is_chromeos) {
@@ -505,6 +511,7 @@ if (!is_android) {
       "vertical_tab_iph_controller.cc",
       "vertical_tab_strip_metrics.cc",
       "vertical_tab_strip_state_controller.cc",
+      "vertical_tab_strip_state_controller_impl.cc",
     ]
 
     if (is_win || is_mac || is_linux || is_chromeos) {
@@ -562,7 +569,9 @@ if (!is_android) {
       "//chrome/browser/ui:accelerator_table",
       "//chrome/browser/ui:browser_actions",
       "//chrome/browser/ui:browser_live_tab_context",
+      "//chrome/browser/ui:browser_window_header",
       "//chrome/browser/ui:focus_tab_after_navigation_helper",
+      "//chrome/browser/ui:intent_picker_tab_helper",
       "//chrome/browser/ui:layout_constants",
       "//chrome/browser/ui:sad_tab",
       "//chrome/browser/ui:tab_ui_helper",
@@ -596,6 +605,7 @@ if (!is_android) {
       "//chrome/browser/ui/views/commerce",
       "//chrome/browser/ui/views/contextual_tasks",
       "//chrome/browser/ui/views/file_system_access",
+      "//chrome/browser/ui/views/frame",
       "//chrome/browser/ui/views/intent_picker:intent_picker_page_action",
       "//chrome/browser/ui/views/interaction",
       "//chrome/browser/ui/views/location_bar",
@@ -705,6 +715,8 @@ if (!is_android) {
     testonly = true
 
     sources = [
+      "mock_vertical_tab_strip_state_controller.cc",
+      "mock_vertical_tab_strip_state_controller.h",
       "pinned_tab_test_utils.cc",
       "pinned_tab_test_utils.h",
       "tab_activity_simulator.cc",
@@ -784,6 +796,7 @@ if (!is_android) {
       "//chrome/browser/profiles/keep_alive",
       "//chrome/browser/sync",
       "//chrome/browser/ui",
+      "//chrome/browser/ui:browser_window_header",
       "//chrome/browser/ui:tab_ui_helper",
       "//chrome/browser/ui:ui_features",
       "//chrome/browser/ui/browser_window",

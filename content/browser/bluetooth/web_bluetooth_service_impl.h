@@ -139,6 +139,8 @@ class CONTENT_EXPORT WebBluetoothServiceImpl
   FRIEND_TEST_ALL_PREFIXES(WebBluetoothServiceImplTest,
                            DestroyedDuringRequestDevice);
   FRIEND_TEST_ALL_PREFIXES(WebBluetoothServiceImplTest,
+                           DestroyedDuringRequestDeviceReset);
+  FRIEND_TEST_ALL_PREFIXES(WebBluetoothServiceImplTest,
                            DestroyedDuringRequestScanningStart);
   FRIEND_TEST_ALL_PREFIXES(WebBluetoothServiceImplTest, PermissionAllowed);
   FRIEND_TEST_ALL_PREFIXES(WebBluetoothServiceImplTest,
@@ -343,11 +345,6 @@ class CONTENT_EXPORT WebBluetoothServiceImpl
           blink::mojom::WebBluetoothAdvertisementClient> client_remote,
       WatchAdvertisementsForDeviceCallback callback,
       scoped_refptr<device::BluetoothAdapter> adapter);
-  // Returns true if the device identified by |device_id| has permission to be
-  // watched for advertisements. Checks either the new permissions backend
-  // (BluetoothDelegate) or the legacy allowed_devices list.
-  bool HasWatchAdvertisementsPermission(
-      const blink::WebBluetoothDeviceId& device_id);
   void OnStartDiscoverySessionForWatchAdvertisements(
       std::unique_ptr<device::BluetoothDiscoverySession> session);
   void OnDiscoverySessionErrorForWatchAdvertisements();
@@ -402,10 +399,9 @@ class CONTENT_EXPORT WebBluetoothServiceImpl
 
   // Callbacks for BluetoothRemoteGattCharacteristic::StartNotifySession.
   void OnStartNotifySessionSuccess(
-      RemoteCharacteristicStartNotificationsCallback callback,
+      const std::string& characteristic_instance_id,
       std::unique_ptr<device::BluetoothGattNotifySession> notify_session);
   void OnStartNotifySessionFailed(
-      RemoteCharacteristicStartNotificationsCallback callback,
       const std::string& characteristic_instance_id,
       device::BluetoothGattService::GattErrorCode error_code);
 
@@ -476,6 +472,10 @@ class CONTENT_EXPORT WebBluetoothServiceImpl
   // Clears state associated with Bluetooth LE Scanning.
   void ClearAdvertisementClients();
 
+  // Returns true if the device identified by |device_id| has permission to be
+  // accessed. Checks either the new permissions backend (BluetoothDelegate) or
+  // the legacy allowed_devices list.
+  bool HasDevicePermission(const blink::WebBluetoothDeviceId& device_id);
   bool IsAllowedToAccessAtLeastOneService(
       const blink::WebBluetoothDeviceId& device_id);
   bool IsAllowedToAccessService(const blink::WebBluetoothDeviceId& device_id,

@@ -1463,10 +1463,6 @@ gin::ObjectTemplateBuilder ReadAnythingAppController::GetObjectTemplateBuilder(
                  &ReadAnythingAppController::GetHighlightForCurrentSegmentIndex)
       .SetMethod("getValidatedFontName",
                  &ReadAnythingAppController::GetValidatedFontName)
-      .SetMethod("onScrolledToBottom",
-                 &ReadAnythingAppController::OnScrolledToBottom)
-      .SetProperty("isDocsLoadMoreButtonVisible",
-                   &ReadAnythingAppController::IsDocsLoadMoreButtonVisible)
       .SetMethod("sendGetPresentationStateRequest",
                  &ReadAnythingAppController::SendGetPresentationStateRequest)
       .SetMethod("togglePresentation",
@@ -2639,9 +2635,6 @@ void ReadAnythingAppController::OnReadingModeShown(
     read_anything::mojom::ReadAnythingOpenTrigger open_trigger) {
   model_.set_will_hide(false);
 
-  // TODO (crbug.com/494307454): Add test to verify that duplicate calls of
-  // OnReadingModeShown() won't affect Read Aloud's audio playback state (other
-  // than the playOnOpen state).
   if (open_trigger == read_anything::mojom::ReadAnythingOpenTrigger::
                           kListenToThisPageContextMenu) {
     ExecuteJavaScript("chrome.readingMode.setPlayOnOpen(true);");
@@ -2939,20 +2932,6 @@ void ReadAnythingAppController::OnUrlInformationSet() {
   read_aloud_model_.LogSpeechStop(
       model_.IsReload() ? ReadAloudAppModel::ReadAloudStopSource::kReloadPage
                         : ReadAloudAppModel::ReadAloudStopSource::kChangePage);
-}
-
-void ReadAnythingAppController::OnScrolledToBottom() {
-  if (IsGoogleDocs()) {
-    // Scroll to the last display node shown on the Reading Mode side panel
-    // TODO (b/356935604): Investigate optimal scroll position
-    page_handler_->ScrollToTargetNode(
-        model_.active_tree_id(), *model_.GetCurrentlyVisibleNodes()->rbegin());
-  }
-}
-
-bool ReadAnythingAppController::IsDocsLoadMoreButtonVisible() const {
-  return (features::IsReadAnythingDocsLoadMoreButtonEnabled() &&
-          IsGoogleDocs());
 }
 
 void ReadAnythingAppController::UpdateDependencyParserModel(

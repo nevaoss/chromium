@@ -219,9 +219,11 @@ class GPU_COMMAND_BUFFER_CLIENT_EXPORT ClientSharedImage
   const Mailbox& mailbox() const { return mailbox_; }
   viz::SharedImageFormat format() const { return metadata_.format; }
   base::ByteSize EstimatedSizeInBytes() const {
-    return base::ByteSize(format().EstimatedSizeInBytes(size()));
+    return base::ByteSize(format().EstimatedSizeInBytes(size()) *
+                          metadata_.array_layers);
   }
   gfx::Size size() const { return metadata_.size; }
+  uint32_t array_layers() const { return metadata_.array_layers; }
   const gfx::ColorSpace& color_space() const { return metadata_.color_space; }
   GrSurfaceOrigin surface_origin() const { return metadata_.surface_origin; }
   SkAlphaType alpha_type() const { return metadata_.alpha_type; }
@@ -296,6 +298,7 @@ class GPU_COMMAND_BUFFER_CLIENT_EXPORT ClientSharedImage
       std::vector<SyncToken> sync_tokens,
       base::OnceClosure callback,
       SharedImageInterface* sii,
+      ContextSupport* context_support,
       uint64_t pending_callback_id);
 
   static void SignalLatestSyncToken(

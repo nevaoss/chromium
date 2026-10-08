@@ -448,11 +448,6 @@ BASE_FEATURE_PARAM(std::string,
                    &kAutofillAmbientAutofill,
                    "ambient_autofill_supported_entity_types",
                    "");
-BASE_FEATURE_PARAM(std::string,
-                   kAutofillAmbientAutofillEnabledDevices,
-                   &kAutofillAmbientAutofill,
-                   "ambient_autofill_enabled_devices",
-                   "");
 // The TTL for prefetched (masked/non-SPII) entities and presence signals.
 BASE_FEATURE_PARAM(base::TimeDelta,
                    kAutofillAmbientAutofillPrefetchedEntitiesAndSignalsCacheTTL,
@@ -534,6 +529,14 @@ BASE_FEATURE(kAutofillAtMemory, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // If enabled, AtMemory can be triggered by pressing Ctrl twice.
 BASE_FEATURE(kAutofillAtMemoryDoubleCtrl, base::FEATURE_DISABLED_BY_DEFAULT);
+
+// The default state for the `kAutofillAtMemoryDoubleCtrlTriggerEnabled`
+// preference.
+BASE_FEATURE_PARAM(bool,
+                   kAutofillAtMemoryDoubleCtrlDefaultPref,
+                   &kAutofillAtMemoryDoubleCtrl,
+                   "default_pref",
+                   true);
 
 // The subscription tiers for which AtMemory is eligible. Comma-separated list
 // of subscription tier integers. If empty/not defined, no tier restrictions
@@ -637,6 +640,11 @@ BASE_FEATURE(kAutofillDisableAddressImport, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Kill switch for Autofill filling.
 BASE_FEATURE(kAutofillDisableFilling, base::FEATURE_DISABLED_BY_DEFAULT);
+
+// When enabled, always use the country name and never fill country codes. When
+// disabled, fill country codes on `autocomplete="country"`.
+BASE_FEATURE(kAutofillDisallowCountryCodeFilling,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 // LINT.IfChange(autofill_disallow_more_hyphen_like_labels)
 // When enabled, the list of characters a label cannot exclusively consist of
@@ -988,6 +996,13 @@ BASE_FEATURE(kAutofillPopupUseDeleteSoon, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kAutofillReplaceFormElementObserver,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
+// If enabled, AutofillPopupControllerImpl and
+// AutofillKeyboardAccessoryControllerImpl require that the frame to which the
+// suggestions are anchored has focus.
+// TODO(crbug.com/536607604): Clean up when launched.
+BASE_FEATURE(kAutofillRequireFocusInFrameForSuggestions,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 // Restricts OTP fields detection and fetching to forms that are in a frame
 // with the same TLD+1 as the main frame.
 BASE_FEATURE(kAutofillRestrictOtpToSameTldPlusOne,
@@ -1001,11 +1016,6 @@ BASE_FEATURE(kAutofillServerExperimentalSignatures,
 // Enables uploading of more data to the Autofill server to use for computing
 // signatures: go/autofill-signatures-more-data.
 BASE_FEATURE(kAutofillServerUploadMoreData, base::FEATURE_ENABLED_BY_DEFAULT);
-
-// Kill switch: If enabled, the focus check in AutofillPopupControllerImpl and
-// AutofillKeyboardAccessoryControllerImpl is simplified.
-// TODO(crbug.com/530190112): Clean up after September 1, 2026.
-BASE_FEATURE(kAutofillSimplifyFocusCheck, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // If enabled, fetch sms otp from gmscore and upload votes for sms otp.
 // TODO(crbug.com/453999673): Clean up when launched.

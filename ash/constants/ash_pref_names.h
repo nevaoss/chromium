@@ -2918,6 +2918,11 @@ inline constexpr char kUptimeLimit[] = "automatic_reboot.uptime_limit";
 // Kiosk related Prefs
 //-----------------------------------------------------------------------------
 
+// A boolean pref which determines whether admin-installed Chrome Apps are
+// allowed to run despite deprecation.
+inline constexpr char kAdminInstalledChromeAppsForceAllowed[] =
+    "admin_installed_chrome_apps_force_allowed";
+
 // A boolean pref to change the kiosk active WiFi credentials scope from in
 // session level to the device level.
 inline constexpr char kKioskActiveWiFiCredentialsScopeChangeEnabled[] =
@@ -3655,16 +3660,6 @@ inline constexpr char kHatsGeneralCameraPrioritizedLastInteractionTimestamp[] =
 // recent time the profile took or dismissed HaTS (happiness-tracking) survey.
 inline constexpr char kHatsLastInteractionTimestamp[] =
     "hats_last_interaction_timestamp";
-
-// An int64 pref. This is the timestamp, microseconds after epoch, that
-// indicates the end of the OS Launcher Apps satisfaction survey cycle.
-inline constexpr char kHatsLauncherAppsSurveyCycleEndTs[] =
-    "hats_launcher_apps_cycle_end_timestamp";
-
-// A boolean pref. Indicates if the device is selected for the OS Launcher
-// Apps satisfaction survey.
-inline constexpr char kHatsLauncherAppsSurveyIsSelected[] =
-    "hats_launcher_apps_is_selected";
 
 // An int64 pref. This is the timestamp, microseconds after epoch, that
 // indicates the end of the most recent Media App PDF survey cycle.

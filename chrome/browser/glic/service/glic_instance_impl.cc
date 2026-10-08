@@ -27,6 +27,7 @@
 #include "chrome/browser/glic/glic_metrics.h"
 #include "chrome/browser/glic/glic_pref_names.h"
 #include "chrome/browser/glic/glic_zero_state_suggestions_manager.h"
+#include "chrome/browser/glic/host/auth_controller.h"
 #include "chrome/browser/glic/host/context/glic_active_pinned_focused_tab_manager.h"
 #include "chrome/browser/glic/host/context/glic_empty_focused_browser_manager.h"
 #include "chrome/browser/glic/host/context/glic_empty_focused_tab_manager.h"
@@ -301,6 +302,10 @@ GlicInstanceImpl::GlicInstanceImpl(
   if (coordinator_delegate_) {
     instance_metrics_.SetOptInShownCallback(base::BindRepeating(
         &InstanceCoordinatorDelegate::OnFreOptInShown, coordinator_delegate_));
+  }
+  auto* auth_controller = service_->GetAuthController();
+  if (auth_controller) {
+    auth_controller->OnInstanceCreated();
   }
   if (auto* actor_keyed_service =
           actor::ActorKeyedServiceFactory::GetActorKeyedService(profile_)) {
@@ -691,6 +696,13 @@ void GlicInstanceImpl::RegisterConversation(
   NotifyInstanceChanged();
   conversation_info_changed_callback_list_.Notify(*conversation_info_);
 
+  // TODO(b/561944228): CriticalActionService needs conversation_id, this is a
+  // temporary solution while b/494212836 is in place; remove once fixed.
+  if (actor_task_manager_) {
+    actor_task_manager_->OnConversationRegistered(
+        conversation_info_->conversation_id);
+  }
+
   std::move(callback).Run(std::nullopt);
 }
 
@@ -764,9 +776,6 @@ void GlicInstanceImpl::CreateZeroStateSuggestionsHandler(
 
 void GlicInstanceImpl::CreateGeminiEnterpriseHandler(
     mojo::PendingReceiver<mojom::GeminiEnterpriseHandler> receiver) {
-  if (!GlicEnabling::GetGeminiEnterpriseSettings(profile_).has_value()) {
-    return;
-  }
   if (!gemini_enterprise_manager_) {
     gemini_enterprise_manager_ =
         std::make_unique<GlicGeminiEnterpriseManager>(profile_);

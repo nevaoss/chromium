@@ -22,8 +22,6 @@
 #include "ui/gfx/color_space.h"
 #include "ui/gfx/geometry/size.h"
 
-class SkPixmap;
-
 namespace cc {
 class PaintCanvas;
 }  // namespace cc
@@ -160,19 +158,13 @@ class PLATFORM_EXPORT WebGpuSharedImageLease final
   scoped_refptr<gpu::ClientSharedImage> GetSharedImage() const;
   gpu::SyncToken GetSyncToken() const;
 
-  bool UploadToBackingSharedImage(const SkPixmap& pixmap,
-                                  uint32_t src_x,
-                                  uint32_t src_y);
+  void SetSyncToken(const gpu::SyncToken& sync_token) {
+    resource_.sync_token_ = sync_token;
+  }
+  void SetCleared() { resource_.is_cleared_ = true; }
 
   void DrawToBackingSharedImage(
       base::FunctionRef<void(cc::PaintCanvas&)> draw_callback);
-
-
-  std::optional<gpu::SyncToken> CopyToBackingSharedImage(
-      const scoped_refptr<gpu::ClientSharedImage>& shared_image,
-      uint32_t src_x,
-      uint32_t src_y,
-      const gpu::SyncToken& ready_sync_token);
 
   void WaitSyncToken(const gpu::SyncToken& sync_token);
 

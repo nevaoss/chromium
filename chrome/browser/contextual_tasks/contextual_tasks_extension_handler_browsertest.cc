@@ -10,20 +10,26 @@
 #include "base/run_loop.h"
 #include "base/test/bind.h"
 #include "base/test/gmock_callback_support.h"
+#include "base/test/metrics/user_action_tester.h"
 #include "base/test/scoped_feature_list.h"
 #include "base/values.h"
 #include "chrome/browser/contextual_search/contextual_search_web_contents_helper.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui.h"
 #include "chrome/browser/contextual_tasks/mock_contextual_tasks_page.h"
-#include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/ui/lens/lens_search_controller.h"
+#include "chrome/browser/ui/tabs/public/tab_features.h"
+#include "chrome/browser/ui/webui/cr_components/searchbox/contextual_searchbox_handler.h"
 #include "chrome/browser/ui/webui/searchbox/searchbox_test_utils.h"
 #include "chrome/common/webui_url_constants.h"
 #include "chrome/test/base/in_process_browser_test.h"
 #include "chrome/test/base/ui_test_utils.h"
 #include "chrome/test/permissions/permission_request_manager_test_api.h"
+#include "components/contextual_search/contextual_search_types.h"
 #include "components/contextual_search/mock_contextual_search_context_controller.h"
 #include "components/contextual_search/mock_contextual_search_session_handle.h"
 #include "components/contextual_tasks/public/features.h"
+#include "components/lens/lens_overlay_dismissal_source.h"
+#include "components/lens/lens_overlay_invocation_source.h"
 #include "components/permissions/request_type.h"
 #include "components/sessions/content/session_tab_helper.h"
 #include "components/sessions/core/session_id.h"
@@ -33,15 +39,48 @@
 #include "content/public/test/browser_test.h"
 #include "content/public/test/browser_test_utils.h"
 #include "content/public/test/test_navigation_observer.h"
+#include "mojo/public/cpp/bindings/remote.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/omnibox_proto/chrome_aim_entry_point.pb.h"
+#include "ui/base/unowned_user_data/user_data_factory.h"
 
 namespace contextual_tasks {
 
 using testing::_;
 using testing::NiceMock;
 using testing::Return;
+
+class MockLensSearchController : public LensSearchController {
+ public:
+  explicit MockLensSearchController(tabs::TabInterface* tab)
+      : LensSearchController(tab) {}
+  ~MockLensSearchController() override = default;
+
+  MOCK_METHOD(void,
+              OpenLensOverlay,
+              (lens::LensOverlayInvocationSource invocation_source,
+               bool should_show_csb),
+              (override));
+  MOCK_METHOD(void,
+              CloseLensSync,
+              (lens::LensOverlayDismissalSource dismissal_source),
+              (override));
+  MOCK_METHOD(void,
+              CloseLensAsync,
+              (lens::LensOverlayDismissalSource dismissal_source),
+              (override));
+  MOCK_METHOD(bool, IsShowingUI, (), (override));
+  MOCK_METHOD(std::optional<lens::LensOverlayInvocationSource>,
+              invocation_source,
+              (),
+              (override));
+  MOCK_METHOD(void,
+              CloseLensAsync,
+              (lens::LensOverlayDismissalSource dismissal_source,
+               bool side_panel_already_closing),
+              (override));
+};
 
 class ContextualTasksExtensionHandlerBrowserTestBase
     : public InProcessBrowserTest {
@@ -50,6 +89,16 @@ class ContextualTasksExtensionHandlerBrowserTestBase
       const std::vector<base::test::FeatureRef>& enabled_features,
       const std::vector<base::test::FeatureRef>& disabled_features) {
     feature_list_.InitWithFeatures(enabled_features, disabled_features);
+    lens_controller_override_ =
+        tabs::TabFeatures::GetUserDataFactoryForTesting().AddOverrideForTesting(
+            base::BindLambdaForTesting(
+                [this](tabs::TabInterface& tab)
+                    -> std::unique_ptr<LensSearchController> {
+                  auto mock = std::make_unique<
+                      testing::NiceMock<MockLensSearchController>>(&tab);
+                  this->mock_lens_controller_ = mock.get();
+                  return mock;
+                }));
   }
   ~ContextualTasksExtensionHandlerBrowserTestBase() override = default;
 
@@ -68,13 +117,13 @@ class ContextualTasksExtensionHandlerBrowserTestBase
     handler_->CreateExtensionPageHandler(mock_page_.BindAndGetRemote(),
                                          std::move(page_handler_receiver));
 
-    // Bind the mock searchbox page to the handler.
-    mojo::PendingReceiver<composebox::mojom::PageHandler> composebox_receiver;
+    // Bind the mock searchbox page and composebox page handler to the handler.
     mojo::PendingReceiver<searchbox::mojom::PageHandler> searchbox_receiver;
     static_cast<composebox::mojom::PageHandlerFactory*>(handler_)
-        ->CreatePageHandler(std::move(composebox_receiver),
-                            mock_searchbox_page_.BindAndGetRemote(),
-                            std::move(searchbox_receiver));
+        ->CreatePageHandler(
+            composebox_handler_remote_.BindNewPipeAndPassReceiver(),
+            mock_searchbox_page_.BindAndGetRemote(),
+            std::move(searchbox_receiver));
 
     // Set up mock session handle and controller.
     auto session_handle = std::make_unique<
@@ -111,6 +160,11 @@ class ContextualTasksExtensionHandlerBrowserTestBase
   }
 
   void TearDownOnMainThread() override {
+    if (mock_lens_controller_) {
+      testing::Mock::VerifyAndClearExpectations(mock_lens_controller_);
+      mock_lens_controller_ = nullptr;
+    }
+    composebox_handler_remote_.reset();
     handler_ = nullptr;
     mock_session_handle_ = nullptr;
     mock_controller_.reset();
@@ -119,6 +173,8 @@ class ContextualTasksExtensionHandlerBrowserTestBase
   }
 
  protected:
+  ui::UserDataFactory::ScopedOverride lens_controller_override_;
+  raw_ptr<MockLensSearchController> mock_lens_controller_ = nullptr;
   base::test::ScopedFeatureList feature_list_;
   raw_ptr<content::WebContents> web_contents_ = nullptr;
   raw_ptr<ContextualTasksExtensionHandler> handler_ = nullptr;
@@ -128,6 +184,7 @@ class ContextualTasksExtensionHandlerBrowserTestBase
       mock_session_handle_ = nullptr;
   std::unique_ptr<contextual_search::MockContextualSearchContextController>
       mock_controller_;
+  mojo::Remote<composebox::mojom::PageHandler> composebox_handler_remote_;
 };
 
 class ContextualTasksExtensionHandlerBrowserTest
@@ -192,6 +249,191 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksExtensionHandlerBrowserTest,
 
   test_api.manager()->Dismiss(/*prompt_options=*/std::monostate());
   dismiss_run_loop.Run();
+}
+
+IN_PROC_BROWSER_TEST_F(ContextualTasksExtensionHandlerBrowserTest,
+                       HandleLensButtonClick) {
+  base::UserActionTester user_action_tester;
+
+  ASSERT_TRUE(mock_lens_controller_);
+  ASSERT_TRUE(composebox_handler_remote_.is_bound());
+
+  EXPECT_CALL(*mock_lens_controller_, IsShowingUI())
+      .WillRepeatedly(Return(false));
+
+  base::RunLoop run_loop;
+  EXPECT_CALL(
+      *mock_lens_controller_,
+      OpenLensOverlay(
+          lens::LensOverlayInvocationSource::kContextualTasksComposebox, true))
+      .WillOnce(base::test::RunClosure(run_loop.QuitClosure()));
+
+  composebox_handler_remote_->HandleLensButtonClick();
+  run_loop.Run();
+
+  EXPECT_EQ(1, user_action_tester.GetActionCount(
+                   "ContextualTasks.Composebox.UserAction.LensButtonClicked"));
+}
+
+IN_PROC_BROWSER_TEST_F(
+    ContextualTasksExtensionHandlerBrowserTest,
+    HandleLensButtonClick_OverlayOpenFromComposebox_ClosesOverlay) {
+  base::UserActionTester user_action_tester;
+
+  ASSERT_TRUE(mock_lens_controller_);
+  ASSERT_TRUE(composebox_handler_remote_.is_bound());
+
+  EXPECT_CALL(*mock_lens_controller_, IsShowingUI())
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*mock_lens_controller_, invocation_source())
+      .WillRepeatedly(Return(
+          lens::LensOverlayInvocationSource::kContextualTasksComposebox));
+
+  base::RunLoop run_loop;
+  EXPECT_CALL(*mock_lens_controller_,
+              CloseLensAsync(lens::LensOverlayDismissalSource::
+                                 kContextualTasksComposeboxLensButtonClick))
+      .WillOnce(base::test::RunClosure(run_loop.QuitClosure()));
+
+  composebox_handler_remote_->HandleLensButtonClick();
+  run_loop.Run();
+
+  EXPECT_EQ(1, user_action_tester.GetActionCount(
+                   "ContextualTasks.Composebox.UserAction.LensButtonClicked"));
+}
+
+IN_PROC_BROWSER_TEST_F(
+    ContextualTasksExtensionHandlerBrowserTest,
+    HandleLensButtonClick_OverlayOpenFromOtherSource_UpdatesInvocationSourceAndOpens) {
+  base::UserActionTester user_action_tester;
+
+  ASSERT_TRUE(mock_lens_controller_);
+  ASSERT_TRUE(composebox_handler_remote_.is_bound());
+
+  EXPECT_CALL(*mock_lens_controller_, IsShowingUI())
+      .WillRepeatedly(Return(true));
+  EXPECT_CALL(*mock_lens_controller_, invocation_source())
+      .WillRepeatedly(Return(lens::LensOverlayInvocationSource::kAppMenu));
+
+  base::RunLoop run_loop;
+  EXPECT_CALL(
+      *mock_lens_controller_,
+      OpenLensOverlay(
+          lens::LensOverlayInvocationSource::kContextualTasksComposebox, true))
+      .WillOnce(base::test::RunClosure(run_loop.QuitClosure()));
+
+  composebox_handler_remote_->HandleLensButtonClick();
+  run_loop.Run();
+
+  EXPECT_EQ(1, user_action_tester.GetActionCount(
+                   "ContextualTasks.Composebox.UserAction.LensButtonClicked"));
+}
+
+IN_PROC_BROWSER_TEST_F(ContextualTasksExtensionHandlerBrowserTest,
+                       OnLensOverlayStateChangedPropagated) {
+  base::RunLoop show_run_loop;
+  EXPECT_CALL(mock_page_, OnLensOverlayStateChanged(true))
+      .WillOnce(base::test::RunClosure(show_run_loop.QuitClosure()));
+
+  handler_->OnLensOverlayStateChanged(true);
+  show_run_loop.Run();
+
+  base::RunLoop hide_run_loop;
+  EXPECT_CALL(mock_page_, OnLensOverlayStateChanged(false))
+      .WillOnce(base::test::RunClosure(hide_run_loop.QuitClosure()));
+
+  handler_->OnLensOverlayStateChanged(false);
+  hide_run_loop.Run();
+}
+
+IN_PROC_BROWSER_TEST_F(ContextualTasksExtensionHandlerBrowserTest,
+                       GetRecentTabs) {
+  ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
+      browser(), GURL("https://www.google.com/test"),
+      WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
+
+  base::RunLoop run_loop;
+  static_cast<searchbox::mojom::PageHandler*>(handler_)->GetRecentTabs(
+      base::BindLambdaForTesting(
+          [&](std::vector<searchbox::mojom::TabInfoPtr> tabs) {
+            EXPECT_FALSE(tabs.empty());
+            EXPECT_EQ(tabs[0]->url, GURL("https://www.google.com/test"));
+            run_loop.Quit();
+          }));
+
+  run_loop.Run();
+}
+
+IN_PROC_BROWSER_TEST_F(ContextualTasksExtensionHandlerBrowserTest,
+                       GetRecentTabs_MultipleTabs) {
+  ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
+      browser(), GURL("https://www.google.com/test1"),
+      WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
+
+  ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
+      browser(), GURL("https://www.google.com/test2"),
+      WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
+
+  base::RunLoop run_loop;
+  static_cast<searchbox::mojom::PageHandler*>(handler_)->GetRecentTabs(
+      base::BindLambdaForTesting(
+          [&](std::vector<searchbox::mojom::TabInfoPtr> tabs) {
+            EXPECT_GE(tabs.size(), 2u);
+            EXPECT_EQ(tabs[0]->url, GURL("https://www.google.com/test2"));
+            EXPECT_EQ(tabs[1]->url, GURL("https://www.google.com/test1"));
+            run_loop.Quit();
+          }));
+
+  run_loop.Run();
+}
+
+IN_PROC_BROWSER_TEST_F(ContextualTasksExtensionHandlerBrowserTest,
+                       GetRecentTabs_NullWindowReturnsEmpty) {
+  EXPECT_TRUE(ContextualSearchboxHandler::GetRecentTabInfos(nullptr).empty());
+}
+
+class ContextualTasksExtensionHandlerNoTabsBrowserTest
+    : public ContextualTasksExtensionHandlerBrowserTest {
+ public:
+  void SetUpOnMainThread() override {
+    ASSERT_TRUE(ui_test_utils::NavigateToURL(
+        browser(), GURL(chrome::kChromeUIChromeURLsURL)));
+    ContextualTasksExtensionHandlerBrowserTest::SetUpOnMainThread();
+  }
+};
+
+IN_PROC_BROWSER_TEST_F(ContextualTasksExtensionHandlerNoTabsBrowserTest,
+                       GetRecentTabs_NoEligibleTabs) {
+  base::RunLoop run_loop;
+  static_cast<searchbox::mojom::PageHandler*>(handler_)->GetRecentTabs(
+      base::BindLambdaForTesting(
+          [&](std::vector<searchbox::mojom::TabInfoPtr> tabs) {
+            EXPECT_TRUE(tabs.empty());
+            run_loop.Quit();
+          }));
+
+  run_loop.Run();
+}
+
+IN_PROC_BROWSER_TEST_F(ContextualTasksExtensionHandlerBrowserTest,
+                       AddAndDeleteTabContext) {
+  base::RunLoop run_loop;
+  static_cast<searchbox::mojom::PageHandler*>(handler_)->AddTabContext(
+      1, /*delay_upload=*/false,
+      searchbox::mojom::TabAttachmentSource::kContextMenu,
+      base::BindLambdaForTesting(
+          [&](base::expected<base::UnguessableToken,
+                             contextual_search::ContextUploadErrorType>
+                  result) {
+            EXPECT_TRUE(result.has_value());
+            run_loop.Quit();
+          }));
+  run_loop.Run();
+
+  static_cast<searchbox::mojom::PageHandler*>(handler_)->DeleteTabContext(1);
 }
 
 }  // namespace contextual_tasks

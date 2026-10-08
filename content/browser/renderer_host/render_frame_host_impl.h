@@ -334,10 +334,6 @@ typedef base::RepeatingCallback<
     void(RenderFrameHostImpl*, ax::mojom::Event, int)>
     AccessibilityCallbackForTesting;
 
-using CachedPermissionMap =
-    std::optional<base::flat_map<blink::mojom::PermissionName,
-                                 blink::mojom::PermissionStatus>>;
-
 class CONTENT_EXPORT RenderFrameHostImpl
     : public RenderFrameHost,
       public base::SupportsUserData,
@@ -610,6 +606,7 @@ class CONTENT_EXPORT RenderFrameHostImpl
   void UpdateToAdFrame() override;
   bool IsAdFrame() const override;
   void SetIsXrOverlaySetup() override;
+  bool HasSeenRecentXrOverlaySetup();
   ukm::SourceId GetPageUkmSourceId() override;
   StoragePartitionImpl* GetStoragePartition() override;
   BrowserContext* GetBrowserContext() override;
@@ -3147,15 +3144,8 @@ class CONTENT_EXPORT RenderFrameHostImpl
   // this instance's AXNodeIdDelegate implementation.
   size_t GetAxUniqueIdCountForTesting() const { return ax_unique_ids_.size(); }
 
-  // Query necessary permission statues in order to propagate to the renderer.
-  // Right now, we're only caring about permissions for Geolocation, Camera, and
-  // Microphone. The permission statuses already take into account the device's
-  // status.
-  CachedPermissionMap GetCachedPermissionStatuses();
-
   // Returns the Storage Access API status for this instance.
   net::StorageAccessApiStatus GetStorageAccessApiStatus();
-
   // Allows tests to disable the unload event timer to simulate bugs that
   // happen before it fires (to avoid flakiness).
   void DisableUnloadTimerForTesting();
@@ -4110,9 +4100,6 @@ class CONTENT_EXPORT RenderFrameHostImpl
   void JavaScriptDialogClosed(JavaScriptDialogCallback response_callback,
                               bool success,
                               const std::u16string& user_input);
-
-  // See |SetIsXrOverlaySetup()|
-  bool HasSeenRecentXrOverlaySetup();
 
   bool has_unload_handlers() const {
     return has_unload_handler_ || has_pagehide_handler_ ||

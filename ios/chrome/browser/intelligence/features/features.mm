@@ -491,7 +491,7 @@ BASE_FEATURE_PARAM(base::TimeDelta,
                    kActorPageStabilityAutofillPredictionsTimeout,
                    &kActorTools,
                    base::Seconds(1));
-// LINT.ThenChange(//chrome/common/chrome_features.cc:kActorObservationDelayAutofillPredictionsTimeout)
+// LINT.ThenChange(//components/actor/core/actor_features.cc:kActorObservationDelayAutofillPredictionsTimeout)
 
 bool IsActorEnabled() {
   return base::FeatureList::IsEnabled(kActorTools);
@@ -681,12 +681,6 @@ bool IsGeminiBinaryMigrationEnabled() {
     return false;
   }
   return base::FeatureList::IsEnabled(kGeminiBinaryMigration);
-}
-
-BASE_FEATURE(kPageContextIPCOptimization, base::FEATURE_ENABLED_BY_DEFAULT);
-
-bool IsPageContextIPCOptimizationEnabled() {
-  return base::FeatureList::IsEnabled(kPageContextIPCOptimization);
 }
 
 BASE_FEATURE(kPageContextActionableOptimization,

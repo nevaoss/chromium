@@ -99,6 +99,7 @@ BASE_DECLARE_FEATURE(kOmniboxAimSizeWebViewToPreferredHeight);
 BASE_DECLARE_FEATURE(kOmniboxWebUISizeWebViewToPreferredHeight);
 BASE_DECLARE_FEATURE(kOmniboxFullWebUISizeWebViewToPreferredHeight);
 BASE_DECLARE_FEATURE(kOmniboxWebUIPopupHideOnCreation);
+BASE_DECLARE_FEATURE(kOmniboxFullWebUIDestroyWidgetOnHide);
 BASE_DECLARE_FEATURE(kWebUISearchboxWithoutModelController);
 
 // Omnibox UI - these affect the UI or function of the location bar (not the
@@ -114,6 +115,9 @@ BASE_DECLARE_FEATURE(kOmniboxDebounceKeyboardVisibility);
 BASE_DECLARE_FEATURE(kOmniboxDisableTabsForCanvas);
 BASE_DECLARE_FEATURE(kAim3pEntrypoint);
 extern const base::FeatureParam<bool> kAim3pEntrypointDebug;
+
+// Enables popup variations (e.g. accordion menu) for mobile Fusebox.
+BASE_DECLARE_FEATURE(kOmniboxFuseboxPopupVariations);
 
 // Navigation experiments.
 BASE_DECLARE_FEATURE(kDefaultTypedNavigationsToHttps);

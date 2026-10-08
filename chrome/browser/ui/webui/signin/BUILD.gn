@@ -253,6 +253,7 @@ source_set("signin_impl") {
     ]
     deps += [
       "//chrome/browser/resources/signin/history_sync_optin:resources_grit",
+      "//chrome/browser/ui/views/profiles:profile_picker_view",
     ]
   }
 }
@@ -440,6 +441,7 @@ if (!is_chromeos) {
       "//chrome/browser/search/background",
       "//chrome/browser/themes",
       "//chrome/browser/ui:browser_element_identifiers",
+      "//chrome/browser/ui:browser_window_header",
       "//chrome/browser/ui:managed_ui",
       "//chrome/browser/ui:ui_features",
       "//chrome/browser/ui/color:color_headers",
@@ -549,6 +551,7 @@ source_set("unit_tests") {
     "//chrome/browser/sync",
     "//chrome/common",
     "//chrome/test:test_support",
+    "//chrome/test/base:profile_lifecycle_test_utils",
     "//components/consent_auditor:test_support",
     "//components/signin/public/base",
     "//components/signin/public/identity_manager:test_support",

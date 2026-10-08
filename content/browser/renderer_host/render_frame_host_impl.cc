@@ -7997,6 +7997,15 @@ void RenderFrameHostImpl::DownloadURL(
     return;
   }
 
+  // Don't start a download if it's triggered on a non-active RenderFrameHost
+  // or is contained in a fenced frame, regardless of any renderer-supplied
+  // parameters such as `is_context_menu_save`.
+  if (IsInactiveAndDisallowActivation(
+          DisallowActivationReasonId::kDownloadUrl) ||
+      IsNestedWithinFencedFrame()) {
+    return;
+  }
+
   if (!VerifyDownloadUrlParams(GetProcess(), *blink_parameters)) {
     return;
   }
@@ -9462,9 +9471,12 @@ bool RenderFrameHostImpl::HasSeenRecentXrOverlaySetup() {
   // behalf of a child OOPIF will check its own RenderFrameHostImpl, but the XR
   // overlay setup timestamp was recorded on the child OOPIF's RenderFrameHost.
   ForEachRenderFrameHostImpl([&found_recent_setup](RenderFrameHostImpl* rfh) {
+    if (rfh->last_xr_overlay_setup_time_.is_null()) {
+      return;
+    }
     base::TimeDelta delta =
         base::TimeTicks::Now() - rfh->last_xr_overlay_setup_time_;
-    if (delta <= kMaxInterval) {
+    if (delta >= base::TimeDelta() && delta <= kMaxInterval) {
       found_recent_setup = true;
     }
   });
@@ -9512,8 +9524,8 @@ void RenderFrameHostImpl::EnterFullscreen(
 
   // Entering fullscreen generally requires a transient user activation signal,
   // or another feature-specific transient allowance.
-  if (delegate_->IsTransientActivationRequiredForHtmlFullscreen() &&
-      !HasSeenRecentXrOverlaySetup()) {
+  if (delegate_->IsTransientActivationRequiredForHtmlFullscreen(
+          this, options->is_xr_overlay)) {
     // Reject requests made without transient user activation or a token.
     // TODO(lanwei): Investigate whether we can terminate the renderer when
     // transient user activation and the delegated token are both inactive.
@@ -10336,6 +10348,17 @@ void RenderFrameHostImpl::OpenURL(blink::mojom::OpenURLParamsPtr params) {
     return;
   }
 
+  // Only active and prerendered documents are allowed to start navigation in
+  // their frame.
+  if (lifecycle_state() != LifecycleStateImpl::kPrerendering) {
+    // If this is reached in case the RenderFrameHost is in BackForwardCache
+    // evict the document from BackForwardCache.
+    if (IsInactiveAndDisallowActivation(
+            DisallowActivationReasonId::kBeginNavigation)) {
+      return;
+    }
+  }
+
   // If the flag `is_unfenced_top_navigation` is set, this is a special code
   // path for MPArch fenced frames. The target frame doesn't have a handle
   // inside the MPArch renderer process, so we need to set it here.
@@ -10436,16 +10459,10 @@ void RenderFrameHostImpl::OpenURL(blink::mojom::OpenURLParamsPtr params) {
     }
   }
 
-  RenderFrameHostOwner* owner = owner_;
-  // Inactive documents are not allowed to initiate navigations.
-  // Also, see a similar check in RenderFrameHostImpl::BeginNavigation at
-  // https://source.chromium.org/chromium/chromium/src/+/main:content/browser/renderer_host/render_frame_host_impl.cc;l=7761-7769;drc=6dc39d60fea45c003424272efdb4c366119a9d7f
-  if (!owner) {
-    return;
-  }
   // TODO(crbug.com/385170155): Consider whether to pass actual_navigation_start
   // through this path as well, which may involve a lot of plumbing.
-  owner->GetCurrentNavigator().RequestOpenURL(
+  CHECK(owner_);
+  owner_->GetCurrentNavigator().RequestOpenURL(
       this, validated_url, base::OptionalToPtr(params->initiator_frame_token),
       GetProcess()->GetDeprecatedID(), params->initiator_origin,
       params->initiator_base_url, initiator_navigation_state, params->post_body,
@@ -13344,13 +13361,18 @@ void RenderFrameHostImpl::CommitNavigation(
     }
 #endif
 
-    auto* partition = GetStoragePartition();
-    non_network_factories.emplace(
-        url::kFileSystemScheme,
-        CreateFileSystemURLLoaderFactory(
-            GetProcess()->GetDeprecatedID(), GetFrameTreeNodeId(),
-            partition->GetFileSystemContext(), partition->GetPartitionDomain(),
-            commit_params->storage_key));
+    // Only non-PDF documents can load filesystem: subresources.  PDF
+    // documents may commit an origin, but their processes are not allowed to
+    // access stored data for it.
+    if (!navigation_request->GetUrlInfo().embedder_isolation_info.is_pdf()) {
+      auto* partition = GetStoragePartition();
+      non_network_factories.emplace(
+          url::kFileSystemScheme,
+          CreateFileSystemURLLoaderFactory(
+              GetProcess()->GetID().GetUnsafeValue(), GetFrameTreeNodeId(),
+              partition->GetFileSystemContext(),
+              partition->GetPartitionDomain(), commit_params->storage_key));
+    }
 
     non_network_factories.emplace(url::kDataScheme,
                                   DataURLLoaderFactory::Create());
@@ -13824,6 +13846,18 @@ bool RenderFrameHostImpl::IsStorageAccessRestricted() {
 void RenderFrameHostImpl::BindBlobUrlStoreAssociatedReceiver(
     mojo::PendingAssociatedReceiver<blink::mojom::BlobURLStore> receiver) {
   CHECK_CURRENTLY_ON(BrowserThread::UI);
+  // Do not allow PDF renderers to access blob URLs, since they should never
+  // need them. Note that is_sandboxed() processes are legitimately allowed to
+  // create blob URLs with null origins, so CanAccessDataForOrigin() can't be
+  // used here. See also BindBlobUrlStoreReceiver.
+  if (base::FeatureList::IsEnabled(
+          blink::features::kEnforcePdfBlobRestrictions) &&
+      GetSiteInstance()->GetSiteInfo().is_pdf()) {
+    bad_message::ReceivedBadMessage(
+        GetProcess(),
+        bad_message::RFH_BLOB_URL_STORE_ASSOCIATED_PDF_PROCESS_BLOCKED);
+    return;
+  }
 
   auto* storage_partition_impl =
       static_cast<StoragePartitionImpl*>(GetStoragePartition());
@@ -13867,6 +13901,16 @@ void RenderFrameHostImpl::BindBlobUrlStoreAssociatedReceiver(
 void RenderFrameHostImpl::BindBlobUrlStoreReceiver(
     mojo::PendingReceiver<blink::mojom::BlobURLStore> receiver) {
   CHECK_CURRENTLY_ON(BrowserThread::UI);
+  // Do not bind blink.mojom.BlobURLStore for PDF renderers (see comment in
+  // BindBlobUrlStoreAssociatedReceiver).
+  if (base::FeatureList::IsEnabled(
+          blink::features::kEnforcePdfBlobRestrictions) &&
+      GetSiteInstance()->GetSiteInfo().is_pdf()) {
+    bad_message::ReceivedBadMessage(
+        GetProcess(),
+        bad_message::RFH_BLOB_URL_STORE_RECEIVER_PDF_PROCESS_BLOCKED);
+    return;
+  }
 
   auto* storage_partition_impl =
       static_cast<StoragePartitionImpl*>(GetStoragePartition());
@@ -16340,8 +16384,16 @@ bool RenderFrameHostImpl::ValidateURLAndOrigin(
       navigation_request
           ? navigation_request->GetUrlInfo().embedder_isolation_info
           : EmbedderIsolationInfo::CreateNone();
+  // Use `is_sandboxed` from `navigation_request` (if provided) to represent the
+  // newly committing document's sandbox state (which can differ from this
+  // RFH's active document sandbox state prior to commit, e.g. due to CSP
+  // sandbox response headers). When there is no `navigation_request` (e.g.,
+  // synchronous about:blank commits), fall back to the frame's active sandbox
+  // flags.
   bool is_sandboxed =
-      navigation_request && navigation_request->GetUrlInfo().is_sandboxed;
+      navigation_request
+          ? navigation_request->GetUrlInfo().is_sandboxed
+          : IsSandboxed(network::mojom::WebSandboxFlags::kOrigin);
 
   // Attempts to commit certain off-limits URL should be caught more strictly
   // than our FilterURL checks.  If a renderer violates this policy, it
@@ -16733,12 +16785,38 @@ bool RenderFrameHostImpl::DidCommitNavigationInternal(
     if (is_synchronous_about_blank_commit &&
         params->origin.scheme() != url::kFileScheme &&
         (!frame_tree_->is_guest() ||
-         !base::FeatureList::IsEnabled(features::kGuestViewMPArch)) &&
-        !params->origin.opaque() &&
-        !params->origin.CanBeDerivedFrom(last_committed_origin_.GetURL())) {
-      bad_message::ReceivedBadMessage(
-          GetProcess(), bad_message::RFHI_SYNCHONOUS_COMMIT_ORIGIN_MISMATCH);
-      return false;
+         !base::FeatureList::IsEnabled(features::kGuestViewMPArch))) {
+      bool origin_matches = false;
+      if (last_committed_origin_.opaque()) {
+        // When the browser-derived origin is opaque, the renderer-reported
+        // origin must also be opaque with a matching precursor.
+        // TODO(crbug.com/486082219): Compare origin nonces as well once nonces
+        // are synchronized for popups opened from CSP-sandboxed documents with
+        // allow-popups-to-escape-sandbox.
+        origin_matches =
+            params->origin.opaque() &&
+            params->origin.GetTupleOrPrecursorTupleIfOpaque() ==
+                last_committed_origin_.GetTupleOrPrecursorTupleIfOpaque();
+      } else if (params->origin.opaque()) {
+        // The browser-derived origin is not opaque but the renderer-reported
+        // one is. This can legitimately (but incorrectly) happen for popups
+        // opened from CSP-sandboxed documents with
+        // allow-popups-to-escape-sandbox, where the browser sees no sandbox
+        // flags on the frame but the renderer still inherits CSP sandbox flags
+        // for the document.
+        // TODO(crbug.com/486082219): Remove this handling once the incorrect
+        // case above can no longer happen and browser & renderer origins are
+        // always consistent.
+        origin_matches = true;
+      } else {
+        origin_matches =
+            params->origin.CanBeDerivedFrom(last_committed_origin_.GetURL());
+      }
+      if (!origin_matches) {
+        bad_message::ReceivedBadMessage(
+            GetProcess(), bad_message::RFHI_SYNCHRONOUS_COMMIT_ORIGIN_MISMATCH);
+        return false;
+      }
     }
 
     // Fill the redirect chain for the NavigationRequest. Since this is only for
@@ -17475,6 +17553,9 @@ void RenderFrameHostImpl::MaybeGenerateCrashReport(
   switch (status) {
     case base::TERMINATION_STATUS_ABNORMAL_TERMINATION:
     case base::TERMINATION_STATUS_PROCESS_CRASHED:
+#if BUILDFLAG(IS_WIN)
+    case base::TERMINATION_STATUS_INTEGRITY_FAILURE:
+#endif
       if (is_oom) {
         reason = "oom";
       } else if (is_unresponsive) {
@@ -20749,51 +20830,6 @@ void RenderFrameHostImpl::GetBoundInterfacesForTesting(
     std::vector<std::string>& out) {
   broker_holder_->broker().GetBinderMapInterfacesForTesting(  // IN-TEST
       out);
-}
-
-std::optional<base::flat_map<blink::mojom::PermissionName,
-                             blink::mojom::PermissionStatus>>
-RenderFrameHostImpl::GetCachedPermissionStatuses() {
-  using blink::PermissionType;
-  using blink::mojom::PermissionName;
-  static constexpr auto kPermissions =
-      std::to_array<std::pair<PermissionName, PermissionType>>(
-          {{PermissionName::VIDEO_CAPTURE, PermissionType::VIDEO_CAPTURE},
-           {PermissionName::AUDIO_CAPTURE, PermissionType::AUDIO_CAPTURE},
-#if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
-           // `WEB_APP_INSTALLATION` is only registered for desktop platforms
-           // via `WebsiteSettingsRegistry::DESKTOP`.
-           {PermissionName::WEB_APP_INSTALLATION,
-            PermissionType::WEB_APP_INSTALLATION},
-#endif
-           {PermissionName::GEOLOCATION, PermissionType::GEOLOCATION}});
-
-  base::flat_map<PermissionName, PermissionStatus> permission_map;
-  for (const auto& permission : kPermissions) {
-    PermissionStatus status = GetCombinedPermissionStatus(permission.second);
-    // Default value is ASK, we don't need add the permission status in this
-    // case.
-    if (status != PermissionStatus::ASK) {
-      permission_map.emplace(permission.first, status);
-    }
-  }
-
-  return permission_map;
-}
-
-blink::mojom::PermissionStatus RenderFrameHostImpl::GetCombinedPermissionStatus(
-    blink::PermissionType permission_type) {
-  auto descriptor = content::PermissionDescriptorUtil::
-      CreatePermissionDescriptorForPermissionType(permission_type);
-  if (PermissionUtil::IsDevicePermission(descriptor)) {
-    return GetBrowserContext()
-        ->GetPermissionController()
-        ->GetCombinedPermissionAndDeviceStatus(descriptor, this);
-  }
-  return GetBrowserContext()
-      ->GetPermissionController()
-      ->GetPermissionResultForCurrentDocument(descriptor, this)
-      .status;
 }
 
 media::PictureInPictureEventsInfo::AutoPipReasonCallback

@@ -1313,7 +1313,7 @@ bool AXNodeObject::ComputeIsIgnoredAsInsideInactiveScrollMarkerTab() const {
   return ParentObject() && ParentObject()->InsideInactiveScrollMarkerTab();
 }
 
-static bool ShouldIgnoreTextUnderLayoutSubtreeCanvas(const Text& text) {
+static bool ShouldIgnoreTextUnderContentDrawableCanvas(const Text& text) {
   if (!text.ContainsOnlyWhitespaceOrEmpty()) {
     return false;
   }
@@ -1324,7 +1324,7 @@ static bool ShouldIgnoreTextUnderLayoutSubtreeCanvas(const Text& text) {
   for (const Node* curr = element; curr;
        curr = AXObject::GetParentNodeAcrossFrames(curr)) {
     if (auto* canvas = DynamicTo<HTMLCanvasElement>(curr)) {
-      return canvas->layoutSubtree();
+      return canvas->IsContentDrawable();
     }
   }
   return false;
@@ -1386,7 +1386,7 @@ bool AXNodeObject::ComputeIsIgnored(IgnoredReasons* ignored_reasons) const {
     // Text without a layout object that has reached this point is not
     // explicitly hidden, e.g. is in a <canvas> fallback or is display locked.
     if (auto* text = DynamicTo<Text>(node)) {
-      if (ShouldIgnoreTextUnderLayoutSubtreeCanvas(*text)) {
+      if (ShouldIgnoreTextUnderContentDrawableCanvas(*text)) {
         if (ignored_reasons) {
           ignored_reasons->push_back(IgnoredReason(kAXUninteresting));
         }
@@ -2578,14 +2578,18 @@ ax::mojom::blink::Role AXNodeObject::NativeRoleIgnoringAria() const {
 
   if (auto* menu_bar = DynamicTo<HTMLMenuBarElement>(GetNode())) {
     if (menu_bar->IsInDialogMode()) {
-      return ax::mojom::blink::Role::kDialog;
+      return menu_bar->IsTopLevelOwnerForContentModelViolation()
+                 ? ax::mojom::blink::Role::kDialog
+                 : ax::mojom::blink::Role::kList;
     }
     return ax::mojom::blink::Role::kMenuBar;
   }
 
   if (auto* menu_list = DynamicTo<HTMLMenuListElement>(GetNode())) {
     if (menu_list->IsInDialogMode()) {
-      return ax::mojom::blink::Role::kDialog;
+      return menu_list->IsTopLevelOwnerForContentModelViolation()
+                 ? ax::mojom::blink::Role::kDialog
+                 : ax::mojom::blink::Role::kList;
     }
     return ax::mojom::blink::Role::kMenu;
   }

@@ -6,10 +6,12 @@
 
 #include "base/check.h"
 #include "base/check_deref.h"
+#include "base/command_line.h"
 #include "base/feature_list.h"
 #include "base/functional/bind.h"
 #include "base/functional/function_ref.h"
 #include "base/json/values_util.h"
+#include "base/metrics/field_trial_params.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/strings/string_split.h"
 #include "base/strings/string_util.h"
@@ -30,6 +32,7 @@
 #include "components/autofill/core/browser/strike_databases/evp/email_verification_not_signed_in_strike_database.h"
 #include "components/autofill/core/browser/strike_databases/evp/email_verification_strike_database.h"
 #include "components/autofill/core/common/autofill_prefs.h"
+#include "components/autofill/core/common/autofill_switches.h"
 #include "components/page_load_metrics/browser/metrics_web_contents_observer.h"
 #include "components/prefs/pref_service.h"
 #include "components/prefs/scoped_user_pref_update.h"
@@ -119,14 +122,14 @@ content::webid::EmailVerifier* GetOrCreateEmailVerifier(
 void EmailVerifierDelegate::Verify(
     base::WeakPtr<AutofillManager> manager,
     FieldGlobalId email_field_id,
-    std::string display_email,
+    std::string email,
     const std::string& nonce,
     const content::webid::EmailVerifier::Result& result) {
   content::RenderFrameHost* rfh = FindRenderFrameHostByToken(
       *static_cast<ContentAutofillClient&>(manager->client()).web_contents(),
       email_field_id.frame_token);
   content::webid::EmailVerifier* verifier = GetOrCreateEmailVerifier(
-      manager->client(), rfh, GetOriginFromEmail(display_email));
+      manager->client(), rfh, GetOriginFromEmail(email));
   if (!verifier) {
     NotifyFlowCompleted(manager.get(), email_field_id,
                         EvpAutofillFlowResult::kVerifierUnavailable);
@@ -140,13 +143,13 @@ void EmailVerifierDelegate::Verify(
       result, nonce,
       base::BindOnce(&EmailVerifierDelegate::OnVerificationResponseReceived,
                      weak_ptr_factory_.GetWeakPtr(), manager, email_field_id,
-                     display_email, result.issuer_site));
+                     email, result.issuer_site));
 }
 
 void EmailVerifierDelegate::OnVerificationResponseReceived(
     base::WeakPtr<AutofillManager> manager,
     FieldGlobalId email_field_id,
-    std::string display_email,
+    std::string email,
     net::SchemefulSite issuer_site,
     std::optional<std::string> token,
     blink::mojom::EmailVerificationRequestResult status,
@@ -178,8 +181,7 @@ void EmailVerifierDelegate::OnVerificationResponseReceived(
     return;
   }
   issuers_[email_field_id] = issuer_site.GetURL();
-  manager->driver().SendEmailVerificationToken(email_field_id, display_email,
-                                               *token);
+  manager->driver().SendEmailVerificationToken(email_field_id, email, *token);
   NotifyFlowCompleted(manager.get(), email_field_id,
                       EvpAutofillFlowResult::kTokenSentToRenderer);
 }
@@ -187,7 +189,7 @@ void EmailVerifierDelegate::OnVerificationResponseReceived(
 void EmailVerifierDelegate::OnEmailVerificationDecision(
     base::WeakPtr<AutofillManager> manager,
     FieldGlobalId email_field_id,
-    std::string display_email,
+    std::string email,
     std::string nonce,
     content::webid::EmailVerifier::Result result,
     AutofillClient::EmailVerificationPermissionUiStatus ui_status) {
@@ -212,6 +214,7 @@ void EmailVerifierDelegate::OnEmailVerificationDecision(
     return;
   }
 
+  const std::string normalized_email = base::ToLowerASCII(email);
   PrefService* prefs = manager->client().GetPrefs();
   switch (ui_status) {
     case AutofillClient::EmailVerificationPermissionUiStatus::kAllowed: {
@@ -222,19 +225,19 @@ void EmailVerifierDelegate::OnEmailVerificationDecision(
         base::DictValue email_dict;
         if (const base::DictValue* existing =
                 prefs->GetDict(prefs::kAutofillEmailVerificationState)
-                    .FindDict(display_email)) {
+                    .FindDict(normalized_email)) {
           email_dict = existing->Clone();
         }
         email_dict.Set("allowed", true);
         email_dict.Set("issuer_site", result.issuer_site.Serialize());
         email_dict.Set("timestamp", base::TimeToValue(base::Time::Now()));
-        update->Set(display_email, std::move(email_dict));
+        update->Set(normalized_email, std::move(email_dict));
       }
 
-      Verify(manager, email_field_id, display_email, nonce, result);
+      Verify(manager, email_field_id, email, nonce, result);
 
       const std::string strike_id =
-          GetEmailVerificationStrikeDatabaseId(display_email);
+          GetEmailVerificationStrikeDatabaseId(normalized_email);
       // User acceptance clears any accumulated strikes across both prompt
       // decline and not-signed-in strike databases for this email address.
       if (EmailVerificationStrikeDatabase* strike_db =
@@ -251,7 +254,7 @@ void EmailVerifierDelegate::OnEmailVerificationDecision(
       if (EmailVerificationStrikeDatabase* strike_db =
               GetEmailVerificationStrikeDatabase()) {
         strike_db->AddStrike(
-            GetEmailVerificationStrikeDatabaseId(display_email));
+            GetEmailVerificationStrikeDatabaseId(normalized_email));
       }
       NotifyFlowCompleted(manager.get(), email_field_id,
                           EvpAutofillFlowResult::kUserDeclinedPermissionPrompt);
@@ -309,6 +312,9 @@ void EmailVerifierDelegate::OnIsVerifiable(
     return;
   }
 
+  const std::string email_utf8 = base::UTF16ToUTF8(email);
+  const std::string normalized_email = base::ToLowerASCII(email_utf8);
+
   if (!result) {
     if (status ==
             blink::mojom::EmailVerificationRequestResult::kUserLoggedOut &&
@@ -316,25 +322,23 @@ void EmailVerifierDelegate::OnIsVerifiable(
       // Record a strike when the email verification check determines that
       // the user is not signed in with the given email address. This enforces
       // the 3-strike rate-limiting mechanism for unauthenticated emails.
-      std::string display_email = base::ToLowerASCII(base::UTF16ToUTF8(email));
       GetEmailVerificationNotSignedInStrikeDatabase()->AddStrike(
-          GetEmailVerificationStrikeDatabaseId(display_email));
+          GetEmailVerificationStrikeDatabaseId(normalized_email));
     }
     NotifyFlowCompleted(manager.get(), email_field_id,
                         EvpAutofillFlowResult::kNotVerifiable);
     return;
   }
 
-  std::string display_email = base::ToLowerASCII(base::UTF16ToUTF8(email));
   if (already_allowed) {
     if (EmailVerificationNotSignedInStrikeDatabase* not_signed_in_strike_db =
             GetEmailVerificationNotSignedInStrikeDatabase()) {
       // Clear past not-signed-in strikes since the email is already permitted
       // and now successfully verified as verifiable.
       not_signed_in_strike_db->ClearStrikes(
-          GetEmailVerificationStrikeDatabaseId(display_email));
+          GetEmailVerificationStrikeDatabaseId(normalized_email));
     }
-    Verify(manager, email_field_id, display_email, nonce, *result);
+    Verify(manager, email_field_id, email_utf8, nonce, *result);
     return;
   }
 
@@ -345,10 +349,10 @@ void EmailVerifierDelegate::OnIsVerifiable(
 
   net::SchemefulSite issuer_site = result->issuer_site;
   manager->client().ShowEmailVerificationPopup(
-      email_field_bounds, issuer_site, base::UTF8ToUTF16(display_email),
+      email_field_bounds, issuer_site, base::UTF8ToUTF16(normalized_email),
       base::BindOnce(&EmailVerifierDelegate::OnEmailVerificationDecision,
                      weak_ptr_factory_.GetWeakPtr(), manager, email_field_id,
-                     display_email, nonce, std::move(*result)));
+                     email_utf8, nonce, std::move(*result)));
 }
 
 void EmailVerifierDelegate::OnDnsCheckPassed(
@@ -758,11 +762,11 @@ void EmailVerifierDelegate::TriggerVerification(AutofillManager& manager,
     return;
   }
 
-  const std::string display_email =
-      base::ToLowerASCII(base::UTF16ToUTF8(email_value));
+  const std::string email = base::UTF16ToUTF8(email_value);
+  const std::string normalized_email = base::ToLowerASCII(email);
 
   content::webid::EmailVerifier* verifier = GetOrCreateEmailVerifier(
-      manager.client(), rfh, GetOriginFromEmail(display_email));
+      manager.client(), rfh, GetOriginFromEmail(email));
   if (!verifier) {
     NotifyFlowCompleted(&manager, email_field_id,
                         EvpAutofillFlowResult::kVerifierUnavailable);
@@ -778,7 +782,7 @@ void EmailVerifierDelegate::TriggerVerification(AutofillManager& manager,
       rfh, blink::mojom::WebFeature::kEmailVerificationProtocol);
 
   const std::string strike_id =
-      GetEmailVerificationStrikeDatabaseId(display_email);
+      GetEmailVerificationStrikeDatabaseId(normalized_email);
   EmailVerificationStrikeDatabase* strike_db =
       GetEmailVerificationStrikeDatabase();
   if (strike_db && strike_db->ShouldBlockFeature(strike_id)) {
@@ -801,12 +805,19 @@ void EmailVerifierDelegate::TriggerVerification(AutofillManager& manager,
 
   const base::DictValue& state =
       prefs->GetDict(prefs::kAutofillEmailVerificationState);
-  const base::DictValue* email_data = state.FindDict(display_email);
+  const base::DictValue* email_data = state.FindDict(normalized_email);
+  const bool auto_grant =
+      base::CommandLine::ForCurrentProcess()->HasSwitch(
+          switches::kAutoGrantEmailVerificationPermission) ||
+      base::GetFieldTrialParamByFeatureAsBool(
+          ::features::kEmailVerificationProtocol, "auto_grant_permission",
+          false);
   const bool already_allowed =
-      email_data && email_data->FindBool("allowed").value_or(false);
+      auto_grant ||
+      (email_data && email_data->FindBool("allowed").value_or(false));
 
   verifier->CheckIfVerifiable(
-      display_email,
+      email,
       base::BindOnce(&EmailVerifierDelegate::OnDnsCheckPassed,
                      weak_ptr_factory_.GetWeakPtr(), manager.GetWeakPtr(),
                      email_field_id),

@@ -168,8 +168,8 @@ void RecentTabsDynamicMenu::CreateRecentTabsAction(
       if (recent_tab.action_id().has_value()) {
         action_item = AppMenuActionItem::CreateIndirect(
             recent_tab.action_id().value(),
-            BrowserActions::From(browser_window_interface_)->root_action_item(),
-            AppMenuActionItem::DisplayType::kRow);
+            BrowserActions::From(browser_window_interface_)
+                ->root_action_item());
 
         action_item.get()->GetActionItem()->SetText(recent_tab.title());
         action_item.get()->GetActionItem()->SetImage(recent_tab.icon());
@@ -192,6 +192,12 @@ void RecentTabsDynamicMenu::CreateRecentTabsAction(
         }
 
         action_item = std::move(builder).Build();
+      }
+
+      if (!recent_tab.minor_icon().IsEmpty()) {
+        action_item->SetProperty(
+            AppMenuActionItem::kMinorIconKey,
+            std::make_unique<ui::ImageModel>(recent_tab.minor_icon()));
       }
 
       if (recent_tab.type() == RecentTabItem::Type::kTab &&

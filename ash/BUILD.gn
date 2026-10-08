@@ -2562,8 +2562,6 @@ component("ash") {
     "system/tray/view_click_listener.h",
     "system/tray/zero_state_view.cc",
     "system/tray/zero_state_view.h",
-    "system/unified/collapse_button.cc",
-    "system/unified/collapse_button.h",
     "system/unified/current_locale_view.cc",
     "system/unified/current_locale_view.h",
     "system/unified/custom_shape_button.cc",
@@ -4551,6 +4549,7 @@ test("ash_unittests") {
     "//ash/webui/personalization_app/proto",
     "//ash/webui/projector_app/public/cpp",
     "//base",
+    "//base/i18n:test_support",
     "//base/test:test_support",
     "//build:branding_buildflags",
     "//cc:test_support",
@@ -5467,8 +5466,4 @@ static_library("test_support") {
     "//ui/wm",
     "//ui/wm/public",
   ]
-
-  # TODO(crbug.com/40031409): Fix code that adds exit-time destructors and
-  # enable the diagnostic by removing this line.
-  configs += [ "//build/config/compiler:no_exit_time_destructors" ]
 }

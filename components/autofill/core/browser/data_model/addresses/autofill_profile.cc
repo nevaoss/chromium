@@ -686,11 +686,8 @@ void AutofillProfile::OverwriteDataFromForLegacySync(
 
   // Structured names should not be simply overwritten but it should be
   // attempted to merge the names.
-  bool is_structured_name_mergeable = false;
   NameInfo name_info = GetNameInfo();
-  is_structured_name_mergeable =
-      name_info.IsStructuredNameMergeable(profile.GetNameInfo());
-  name_info.MergeStructuredName(
+  const bool merge_succeeded = name_info.MergeStructuredName(
       profile.GetNameInfo(),
       usage_history().use_date() < profile.usage_history().use_date());
 
@@ -711,7 +708,7 @@ void AutofillProfile::OverwriteDataFromForLegacySync(
   // structure. Note, this should only happen if the complete name is empty. For
   // the legacy implementation, set the full name if |profile| does not contain
   // a full name.
-  if (is_structured_name_mergeable || !HasRawInfo(NAME_FULL)) {
+  if (merge_succeeded || !HasRawInfo(NAME_FULL)) {
     name_ = std::move(name_info);
   }
 
@@ -958,19 +955,12 @@ std::u16string AutofillProfile::ConstructInferredLabel(
   std::u16string separator =
       l10n_util::GetStringUTF16(IDS_AUTOFILL_ADDRESS_SUMMARY_SEPARATOR);
 
-  const std::u16string& profile_region_code = GetInfo(
-      AutofillType(ADDRESS_HOME_COUNTRY, /*is_country_code=*/true), app_locale);
-  std::string address_region_code = base::UTF16ToUTF8(profile_region_code);
-
   // A copy of |this| pruned down to contain only data for the address fields in
   // |included_fields|.
   AutofillProfile trimmed_profile(guid(), RecordType::kLocalOrSyncable,
                                   GetAddressCountryCode());
-  trimmed_profile.SetInfo(
-      AutofillType(ADDRESS_HOME_COUNTRY, /*is_country_code=*/true),
-      profile_region_code, app_locale);
   trimmed_profile.set_language_code(language_code());
-  AutofillCountry country(address_region_code);
+  AutofillCountry country(GetRawInfo(ADDRESS_HOME_COUNTRY));
 
   std::vector<FieldType> remaining_fields;
   for (size_t i = 0; i < included_fields.size() && num_fields_to_use > 0; ++i) {

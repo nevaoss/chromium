@@ -91,9 +91,12 @@ BASE_DECLARE_FEATURE(kBoundSessionCredentialsKillSwitch);
 
 #if BUILDFLAG(IS_IOS)
 // Feature flag to build the External Privacy Context, which is used to provide
-// the capability service with device signals.
+// the capability service with device signals. The feature is fully launched and
+// is no longer checked: it is only kept as the owner of the
+// `AgeMismatchLearnMoreUrl` param below.
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
 BASE_DECLARE_FEATURE(kBuildExternalPrivacyContext);
+// URL of the help page opened from the age mismatch sign-out prompt.
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
 extern const base::FeatureParam<std::string>
     kBuildExternalPrivacyContextAgeMismatchLearnMoreUrl;
@@ -339,20 +342,6 @@ BASE_DECLARE_FEATURE_PARAM(size_t, kAutofillWalletMetadataMedianThreshold);
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
 BASE_DECLARE_FEATURE_PARAM(size_t, kAutofillWalletMetadataQ3Threshold);
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
-BASE_DECLARE_FEATURE_PARAM(
-    base::TimeDelta,
-    kAccountPreviewPreferredAccountSingleAccountPromoFetchTimeout);
-
-// Controls followup features for preferred account preview (additional data
-// types, new promos, and updated strings).
-// This flag has no effect if `kEnableAccountPreviewPreferredAccount` is not
-// enabled.
-COMPONENT_EXPORT(SIGNIN_SWITCHES)
-BASE_DECLARE_FEATURE(kEnableAccountPreviewPreferredAccountFollowup);
-// Feature parameters for quartile classification thresholds of sync data
-// counts used in preferred data types extraction. Used with
-// `kEnableAccountPreviewPreferredAccountFollowup`.
-COMPONENT_EXPORT(SIGNIN_SWITCHES)
 BASE_DECLARE_FEATURE_PARAM(size_t, kReadingListQ1Threshold);
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
 BASE_DECLARE_FEATURE_PARAM(size_t, kReadingListMedianThreshold);
@@ -366,6 +355,16 @@ BASE_DECLARE_FEATURE_PARAM(size_t, kExtensionsMedianThreshold);
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
 BASE_DECLARE_FEATURE_PARAM(size_t, kExtensionsQ3Threshold);
 #endif
+COMPONENT_EXPORT(SIGNIN_SWITCHES)
+BASE_DECLARE_FEATURE_PARAM(
+    base::TimeDelta,
+    kAccountPreviewPreferredAccountSingleAccountPromoFetchTimeout);
+
+// Controls followup features for preferred account preview (new promos, and
+// updated strings). This flag has no effect if
+// `kEnableAccountPreviewPreferredAccount` is not enabled.
+COMPONENT_EXPORT(SIGNIN_SWITCHES)
+BASE_DECLARE_FEATURE(kEnableAccountPreviewPreferredAccountFollowup);
 
 #if BUILDFLAG(IS_ANDROID)
 // Enables the use of 1P app account information on Android in preferred account
@@ -830,6 +829,10 @@ BASE_DECLARE_FEATURE(kSearchAIModeSignInPromoSelfDismissal);
 // Android.
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
 BASE_DECLARE_FEATURE(kSigninButtonProfileMenu);
+
+// Shows an error card in the profile menu on Desktop Android.
+COMPONENT_EXPORT(SIGNIN_SWITCHES)
+BASE_DECLARE_FEATURE(kSigninButtonProfileMenuErrorCard);
 #endif  // BUILDFLAG(IS_ANDROID)
 
 // Enables the new visual design for the profile switch interception bubble,

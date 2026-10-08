@@ -162,7 +162,11 @@ source_set("impl") {
   public_deps = [ "//chrome/browser:browser_public_dependencies" ]
 
   if (!is_android) {
-    deps += [ "//chrome/browser/ui:browser_tab_strip_tracker" ]
+    deps += [
+      "//chrome/browser/ui:browser_tab_strip_tracker",
+      "//chrome/browser/ui:browser_window_header",
+      "//chrome/browser/ui:scoped_tabbed_browser_displayer",
+    ]
   }
 }
 
@@ -302,6 +306,7 @@ source_set("platform_browser_tests") {
     "//chrome/browser/content_settings:content_settings_factory",
     "//chrome/browser/ui/navigator",
     "//chrome/test:test_support",
+    "//chrome/test/base:chrome_test_utils",
   ]
   if (!is_android) {
     deps += [

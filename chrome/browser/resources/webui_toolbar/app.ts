@@ -53,6 +53,7 @@ import {
   LhsChipIdentifier,
   SecurityChipRole,
   OmniboxTextColor,
+  PageActionAnimationStyle,
   PageActionId,
   PageActionTrigger,
   PermissionAction,
@@ -130,6 +131,7 @@ export {
   LocationBarElement,
   LocationIconElement,
   OmniboxTextColor,
+  PageActionAnimationStyle,
   PageActionIconElement,
   PageActionIconsElement,
   PageActionId,
@@ -515,6 +517,7 @@ export class ToolbarAppElement extends AppElementBase {
   private iconTable_: IconTable;
   private isPageInitialized_: boolean = false;
   private hasReadState_ = false;
+  private hasReceivedNavigationState_ = false;
   private initializeSessionId_: number = 0;
   private resizeObserver_?: ResizeObserver;
 
@@ -642,6 +645,20 @@ export class ToolbarAppElement extends AppElementBase {
                     MARK_LOAD_TIME_DATA_READ);
               }
 
+              const isFirstNavigationState = !this.hasReceivedNavigationState_;
+              if (isFirstNavigationState) {
+                this.hasReceivedNavigationState_ = true;
+                this.updateComplete.then(() => {
+                  const avatar =
+                      this.shadowRoot.querySelector<HTMLElement>('#avatar');
+                  if (avatar) {
+                    requestAnimationFrame(() => {
+                      avatar.classList.remove('initial-load');
+                    });
+                  }
+                });
+              }
+
               // Defer notifying the browser that the page is ready until after
               // the first Mojo-populated update has completed its render cycle.
               if (!this.isInitialized_) {
@@ -741,6 +758,7 @@ export class ToolbarAppElement extends AppElementBase {
     this.isInitialized_ =
         !getTypedBoolean(ToolbarStateKey.INITIAL_WEBUI_SURFACE_SYNC_ENABLED) ||
         hasInitialStateKey(ToolbarStateKey.IS_NAVIGATION_LOADING);
+    this.hasReceivedNavigationState_ = false;
     this.initializeSessionId_++;
 
     if (this.isPageInitialized_) {
@@ -1004,6 +1022,7 @@ export class ToolbarAppElement extends AppElementBase {
         this.shadowRoot.querySelector<LocationBarElement>('#location-bar')!;
 
     const buttons = [
+      this.shadowRoot.querySelector<ResponsiveControl&HTMLElement>('#avatar'),
       this.shadowRoot.querySelector<ResponsiveControl&HTMLElement>(
           '#split-tabs'),
       this.shadowRoot.querySelector<ResponsiveControl&HTMLElement>('#forward'),

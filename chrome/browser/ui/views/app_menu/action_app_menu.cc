@@ -9,6 +9,7 @@
 #include "chrome/browser/ui/browser_actions.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/color/chrome_color_id.h"
+#include "chrome/browser/ui/managed_ui.h"
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/views/app_menu/action_app_menu_manager.h"
 #include "chrome/browser/ui/views/app_menu/app_menu_action_item.h"
@@ -189,6 +190,17 @@ void ActionAppMenu::WillShowMenu(views::MenuItemView* menu) {
   }
 }
 
+bool ActionAppMenu::IsItemChecked(int id) const {
+  auto action_iterator = command_to_action_map_.find(id);
+  if (action_iterator == command_to_action_map_.end()) {
+    return false;
+  }
+
+  actions::ActionItem* action_ptr = action_iterator->second->GetActionItem();
+  CHECK(action_ptr);
+  return action_ptr->GetChecked();
+}
+
 const gfx::FontList* ActionAppMenu::GetLabelFontList(int id) const {
   if (id == ui::MenuModel::kTitleId) {
     return &views::TypographyProvider::Get().GetFont(
@@ -279,13 +291,25 @@ views::MenuItemView* ActionAppMenu::AppendMenuItem(
       display_type != AppMenuActionItem::DisplayType::kCustom &&
       !base_action_item->GetChildren().children().empty();
 
+  command_to_action_map_[command_id] = base_action_item;
+
+  const bool is_checkable =
+      action_item->GetProperty(AppMenuActionItem::kIsCheckableKey);
+
+  views::MenuItemView::Type menu_item_type =
+      is_checkable ? views::MenuItemView::Type::kCheckbox
+                   : views::MenuItemView::Type::kNormal;
+
   views::MenuItemView* menu_item =
       has_submenu ? parent_menu_item->AppendSubMenu(
                         command_id, std::u16string(action_item->GetText()))
-                  : parent_menu_item->AppendMenuItem(command_id);
+                  : parent_menu_item->AppendMenuItemImpl(
+                        command_id, /*label=*/std::u16string(),
+                        /*icon=*/ui::ImageModel(), menu_item_type);
 
   action_view_controller_.CreateActionViewRelationship(
       menu_item, action_item->GetAsWeakPtr());
+
   command_to_action_map_[command_id] = base_action_item;
   return menu_item;
 }
@@ -313,6 +337,11 @@ void ActionAppMenu::ConfigureMenuItem(views::MenuItemView* menu_item,
     menu_item->SetIcon(StandardizeMenuIconSize(*icon_override));
   } else if (!action_item->GetImage().IsEmpty()) {
     menu_item->SetIcon(StandardizeMenuIconSize(action_item->GetImage()));
+  }
+
+  if (ui::ImageModel* minor_icon =
+          child_base->GetProperty(AppMenuActionItem::kMinorIconKey)) {
+    menu_item->SetMinorIcon(*minor_icon);
   }
 
   // Display shortcut text if the ActionItem has one.
@@ -389,14 +418,10 @@ void ActionAppMenu::PopulateFooter(views::MenuItemView* view_parent,
   footer_item->set_children_use_full_width(true);
   footer_item->set_vertical_margin(0);
 
-  auto footer_view = std::make_unique<AppMenuFooterView>(
+  footer_item->AddChildView(std::make_unique<AppMenuFooterView>(
       footer_action_item, &action_view_controller_, &command_to_action_map_,
       base::BindRepeating(&ActionAppMenu::CancelAndEvaluate,
-                          base::Unretained(this)));
-  footer_view->SetProperty(views::kMarginsKey,
-                           ChromeLayoutProvider::Get()->GetInsetsMetric(
-                               INSETS_ACTION_APP_MENU_FOOTER_MARGIN));
-  footer_item->AddChildView(std::move(footer_view));
+                          base::Unretained(this))));
 }
 
 void ActionAppMenu::PopulateHeader(views::MenuItemView* view_parent,

@@ -199,15 +199,18 @@ OmniboxPopupUI::OmniboxPopupUI(content::WebUI* web_ui)
                      omnibox::kShowContextMenuTabPreviews.Get());
   source->AddBoolean("composeboxShowImageSuggest",
                      omnibox::kShowComposeboxImageSuggestions.Get());
-  // The popup chip UI entrypoint is enabled by the AskG experiment (kAskGShowChip).
+  source->AddBoolean(
+      "composeboxRichImageSuggestionsEnabled",
+      base::FeatureList::IsEnabled(omnibox::kComposeboxRichImageSuggestions));
+  // The popup chip UI entrypoint is enabled by the AskG experiment
+  // (kAskGShowChip).
   source->AddBoolean(
       "composeboxShowChip",
-      omnibox::IsAimPopupEnabled(profile_) &&
-          omnibox::kAskGShowChip.Get());
+      omnibox::IsAimPopupEnabled(profile_) && omnibox::kAskGShowChip.Get());
   source->AddBoolean("composeboxShowCurrentTabChip",
-                     omnibox::kAskGCurrentTabChip.Get());
-  source->AddBoolean("composeboxShowLensIcon",
-                     omnibox::kAskGLensIcon.Get());
+                     omnibox::kAskGCurrentTabChip.Get() &&
+                         omnibox::AreContextualTasksEligible(profile_));
+  source->AddBoolean("composeboxShowLensIcon", omnibox::kAskGLensIcon.Get());
   source->AddBoolean("askGComposeboxLensChipEnabled",
                      omnibox::kAskGComposeboxLensChip.Get());
   source->AddBoolean("askGBlockAutoTabZeroStateSuggestions",
@@ -240,6 +243,12 @@ OmniboxPopupUI::OmniboxPopupUI(content::WebUI* web_ui)
           base::FeatureList::IsEnabled(omnibox::kTabFaviconChipsToCoins));
   source->AddBoolean("composeboxContextMenuTooltipsEnabled",
                      omnibox::IsContextMenuTooltipsInComposeboxEnabled());
+  source->AddBoolean("composeboxPersistentAimButton",
+                     base::FeatureList::IsEnabled(
+                         omnibox::kComposeboxPersistentAimButtonOmnibox));
+  source->AddBoolean("composeboxPersistentAimButtonWithX",
+                     base::FeatureList::IsEnabled(
+                         omnibox::kComposeboxPersistentAimButtonWithX));
   auto searchbox_layout_mode = AddContextButtonVariantToSearchboxLayoutMode(
       omnibox::kWebUIOmniboxAimPopupAddContextButtonVariantParam.Get());
   source->AddString("searchboxLayoutMode", searchbox_layout_mode);

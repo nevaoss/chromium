@@ -4,14 +4,14 @@
 
 #include "chrome/browser/ui/views/send_tab_to_self/send_tab_to_self_bubble_controller.h"
 
-#include <ostream>
 #include <tuple>
 
-#include "base/run_loop.h"
+#include "base/notreached.h"
 #include "base/scoped_observation.h"
 #include "base/strings/stringprintf.h"
 #include "base/test/metrics/histogram_tester.h"
 #include "base/test/scoped_feature_list.h"
+#include "base/test/test_future.h"
 #include "base/time/time.h"
 #include "chrome/app/chrome_command_ids.h"
 #include "chrome/app/vector_icons/vector_icons.h"
@@ -20,11 +20,7 @@
 #include "chrome/browser/renderer_context_menu/render_view_context_menu_test_util.h"
 #include "chrome/browser/signin/signin_browser_test_base.h"
 #include "chrome/browser/sync/send_tab_to_self_sync_service_factory.h"
-#include "chrome/browser/ui/browser_window.h"
-#include "chrome/browser/ui/browser_window/public/browser_window_features.h"
-#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/send_tab_to_self/send_tab_to_self_context_menu_delegate.h"
-#include "chrome/browser/ui/signin/promos/bubble_signin_promo_view.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/toasts/api/toast_id.h"
 #include "chrome/browser/ui/toasts/toast_controller.h"
@@ -44,9 +40,7 @@
 #include "components/send_tab_to_self/stub_send_tab_to_self_sync_service.h"
 #include "components/signin/public/base/signin_buildflags.h"
 #include "components/strings/grit/components_strings.h"
-#include "components/tabs/public/tab_interface.h"
 #include "components/vector_icons/vector_icons.h"
-#include "content/public/browser/render_frame_host.h"
 #include "content/public/test/browser_test.h"
 #include "content/public/test/browser_test_utils.h"
 #include "testing/gmock/include/gmock/gmock.h"
@@ -64,7 +58,26 @@ using FormFactor = syncer::DeviceInfo::FormFactor;
 using OsType = syncer::DeviceInfo::OsType;
 
 using testing::AnyOf;
+using testing::Bool;
+using testing::Combine;
 using testing::HasSubstr;
+using testing::TestParamInfo;
+using testing::Values;
+using testing::WithParamInterface;
+
+const char* DisplayReasonToString(EntryPointDisplayReason reason) {
+  switch (reason) {
+    case EntryPointDisplayReason::kOfferFeature:
+      return "OfferFeature";
+    case EntryPointDisplayReason::kOfferSignIn:
+      return "OfferSignIn";
+    case EntryPointDisplayReason::kOfferReauth:
+      return "OfferReauth";
+    case EntryPointDisplayReason::kInformNoTargetDevice:
+      return "InformNoTargetDevice";
+  }
+  NOTREACHED();
+}
 
 class TestSendTabToSelfModelObserver : public SendTabToSelfModelObserver {
  public:
@@ -74,28 +87,13 @@ class TestSendTabToSelfModelObserver : public SendTabToSelfModelObserver {
   ~TestSendTabToSelfModelObserver() override = default;
 
   void OnEntryAddedLocally(const SendTabToSelfEntry* entry) override {
-    last_added_entry_ = std::make_unique<SendTabToSelfEntry>(*entry);
-    if (entry_added_callback_) {
-      std::move(entry_added_callback_).Run();
-    }
+    future_.SetValue(*entry);
   }
 
-  const SendTabToSelfEntry* last_added_entry() const {
-    return last_added_entry_.get();
-  }
-
-  void WaitForEntryAdded() {
-    if (last_added_entry_) {
-      return;
-    }
-    base::RunLoop run_loop;
-    entry_added_callback_ = run_loop.QuitClosure();
-    run_loop.Run();
-  }
+  SendTabToSelfEntry WaitForNextEntry() { return future_.Take(); }
 
  private:
-  std::unique_ptr<SendTabToSelfEntry> last_added_entry_;
-  base::OnceClosure entry_added_callback_;
+  base::test::TestFuture<SendTabToSelfEntry> future_;
   base::ScopedObservation<SendTabToSelfModel, SendTabToSelfModelObserver>
       observation_{this};
 };
@@ -204,7 +202,7 @@ IN_PROC_BROWSER_TEST_F(SendTabToSelfPostSendToastBrowserTest,
                         OsType::kLinux, base::Time::Now())});
 
   controller->OnDeviceSelected("device_1", "device_name_1");
-  observer.WaitForEntryAdded();
+  observer.WaitForNextEntry();
 
   const gfx::VectorIcon& expected_icon = features::IsRoundedIconsEnabled()
                                              ? kComputerCustomIcon
@@ -236,7 +234,7 @@ IN_PROC_BROWSER_TEST_F(SendTabToSelfPostSendToastBrowserTest,
                         OsType::kAndroid, base::Time::Now())});
 
   controller->OnDeviceSelected("device_1", "device_name_1");
-  observer.WaitForEntryAdded();
+  observer.WaitForNextEntry();
 
   const gfx::VectorIcon& expected_icon = features::IsRoundedIconsEnabled()
                                              ? kMobileIcon
@@ -268,7 +266,7 @@ IN_PROC_BROWSER_TEST_F(SendTabToSelfPostSendToastBrowserTest,
                         OsType::kAndroid, base::Time::Now())});
 
   controller->OnDeviceSelected("device_1", "device_name_1");
-  observer.WaitForEntryAdded();
+  observer.WaitForNextEntry();
 
   const gfx::VectorIcon& expected_icon =
       features::IsRoundedIconsEnabled() ? kTabletFilledIcon : kTabletOldIcon;
@@ -304,7 +302,7 @@ IN_PROC_BROWSER_TEST_F(SendTabToSelfPostSendToastBrowserTest,
       SendTabToSelfResult::kSuccessThrottled);
 
   controller->OnDeviceSelected("device_1", "device_name_1");
-  observer.WaitForEntryAdded();
+  observer.WaitForNextEntry();
 
   const gfx::VectorIcon& expected_icon = features::IsRoundedIconsEnabled()
                                              ? kComputerCustomIcon
@@ -336,7 +334,7 @@ IN_PROC_BROWSER_TEST_F(SendTabToSelfPostSendToastBrowserTest,
                                             ShareEntryPoint::kContentMenu);
   delegate.ExecuteCommand(IDC_CONTENT_CONTEXT_SEND_TAB_TO_SELF_DEVICE1, 0);
 
-  observer.WaitForEntryAdded();
+  observer.WaitForNextEntry();
 
   const gfx::VectorIcon& expected_icon = features::IsRoundedIconsEnabled()
                                              ? kComputerCustomIcon
@@ -453,11 +451,10 @@ IN_PROC_BROWSER_TEST_F(SendTabToSelfScrollPositionBrowserTest,
 
   base::HistogramTester histogram_tester;
   controller->OnDeviceSelected("device_1", "device_name_1");
-  observer.WaitForEntryAdded();
+  SendTabToSelfEntry entry = observer.WaitForNextEntry();
 
   // Test that the entry was added with the correct URL.
-  EXPECT_EQ(web_contents->GetLastCommittedURL(),
-            observer.last_added_entry()->GetURL());
+  EXPECT_EQ(web_contents->GetLastCommittedURL(), entry.GetURL());
 
   histogram_tester.ExpectUniqueSample(
       "Sharing.SendTabToSelf.ScrollPosition.GenerationOutcome",
@@ -468,8 +465,7 @@ IN_PROC_BROWSER_TEST_F(SendTabToSelfScrollPositionBrowserTest,
       "Sharing.SendTabToSelf.ScrollPosition.SelectorLength", 1);
 
   // The scroll position should be populated from the successful extraction.
-  EXPECT_FALSE(
-      observer.last_added_entry()->GetPageContext().scroll_position.IsEmpty());
+  EXPECT_FALSE(entry.GetPageContext().scroll_position.IsEmpty());
 }
 
 IN_PROC_BROWSER_TEST_F(SendTabToSelfScrollPositionBrowserTest,
@@ -493,11 +489,10 @@ IN_PROC_BROWSER_TEST_F(SendTabToSelfScrollPositionBrowserTest,
 
   base::HistogramTester histogram_tester;
   controller->OnDeviceSelected("device_1", "device_name_1");
-  observer.WaitForEntryAdded();
+  SendTabToSelfEntry entry = observer.WaitForNextEntry();
 
   // Test that the entry was added with the correct URL.
-  EXPECT_EQ(web_contents->GetLastCommittedURL(),
-            observer.last_added_entry()->GetURL());
+  EXPECT_EQ(web_contents->GetLastCommittedURL(), entry.GetURL());
 
   histogram_tester.ExpectUniqueSample(
       "Sharing.SendTabToSelf.ScrollPosition.GenerationOutcome",
@@ -506,8 +501,7 @@ IN_PROC_BROWSER_TEST_F(SendTabToSelfScrollPositionBrowserTest,
       "Sharing.SendTabToSelf.ScrollPosition.GenerationTime", 1);
 
   // The scroll position should be empty because the page has no content.
-  EXPECT_TRUE(
-      observer.last_added_entry()->GetPageContext().scroll_position.IsEmpty());
+  EXPECT_TRUE(entry.GetPageContext().scroll_position.IsEmpty());
 }
 
 IN_PROC_BROWSER_TEST_F(SendTabToSelfScrollPositionBrowserTest,
@@ -545,11 +539,10 @@ IN_PROC_BROWSER_TEST_F(SendTabToSelfScrollPositionBrowserTest,
 
   base::HistogramTester histogram_tester;
   controller->OnDeviceSelected("device_1", "device_name_1");
-  observer.WaitForEntryAdded();
+  SendTabToSelfEntry entry = observer.WaitForNextEntry();
 
   // Test that the entry was added with the correct URL.
-  EXPECT_EQ(web_contents->GetLastCommittedURL(),
-            observer.last_added_entry()->GetURL());
+  EXPECT_EQ(web_contents->GetLastCommittedURL(), entry.GetURL());
 
   histogram_tester.ExpectUniqueSample(
       "Sharing.SendTabToSelf.ScrollPosition.GenerationOutcome",
@@ -561,13 +554,10 @@ IN_PROC_BROWSER_TEST_F(SendTabToSelfScrollPositionBrowserTest,
 
   // The scroll position should be populated since the text is now in the
   // viewport.
-  EXPECT_FALSE(
-      observer.last_added_entry()->GetPageContext().scroll_position.IsEmpty());
+  EXPECT_FALSE(entry.GetPageContext().scroll_position.IsEmpty());
   // Verify that the generated selector matches the middle words from the
   // target paragraph.
-  EXPECT_THAT(observer.last_added_entry()
-                  ->GetPageContext()
-                  .scroll_position.text_fragment.text_start,
+  EXPECT_THAT(entry.GetPageContext().scroll_position.text_fragment.text_start,
               AnyOf(HasSubstr("fox"), HasSubstr("jumps"), HasSubstr("dog")));
 }
 
@@ -681,28 +671,9 @@ IN_PROC_BROWSER_TEST_F(SendTabToSelfBubbleControllerBrowserTest,
 }
 #endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
 
-const char* DisplayReasonToString(EntryPointDisplayReason reason) {
-  switch (reason) {
-    case EntryPointDisplayReason::kOfferFeature:
-      return "OfferFeature";
-    case EntryPointDisplayReason::kOfferSignIn:
-      return "OfferSignIn";
-    case EntryPointDisplayReason::kOfferReauth:
-      return "OfferReauth";
-    case EntryPointDisplayReason::kInformNoTargetDevice:
-      return "InformNoTargetDevice";
-  }
-}
-
-[[maybe_unused]] std::ostream& operator<<(std::ostream& os,
-                                          EntryPointDisplayReason reason) {
-  return os << DisplayReasonToString(reason);
-}
-
 class SendTabToSelfContextMenuParamsTest
     : public SendTabToSelfBubbleControllerBrowserTest,
-      public ::testing::WithParamInterface<
-          std::tuple<bool, EntryPointDisplayReason>> {
+      public WithParamInterface<std::tuple<bool, EntryPointDisplayReason>> {
  public:
   SendTabToSelfContextMenuParamsTest() {
     const bool enhanced_ui_enabled = std::get<0>(GetParam());
@@ -765,15 +736,14 @@ IN_PROC_BROWSER_TEST_P(SendTabToSelfContextMenuParamsTest, VerifyMenuType) {
 }
 
 INSTANTIATE_TEST_SUITE_P(
-    All,
+    ,
     SendTabToSelfContextMenuParamsTest,
-    ::testing::Combine(
-        ::testing::Bool(),  // enhanced_ui_enabled
-        ::testing::Values(EntryPointDisplayReason::kOfferFeature,
-                          EntryPointDisplayReason::kOfferSignIn,
-                          EntryPointDisplayReason::kInformNoTargetDevice)),
-    [](const ::testing::TestParamInfo<
-        SendTabToSelfContextMenuParamsTest::ParamType>& info) {
+    Combine(Bool(),  // enhanced_ui_enabled
+            Values(EntryPointDisplayReason::kOfferFeature,
+                   EntryPointDisplayReason::kOfferSignIn,
+                   EntryPointDisplayReason::kInformNoTargetDevice)),
+    [](const TestParamInfo<SendTabToSelfContextMenuParamsTest::ParamType>&
+           info) {
       const bool enhanced_ui_enabled = std::get<0>(info.param);
       const EntryPointDisplayReason display_reason = std::get<1>(info.param);
       return base::StringPrintf(

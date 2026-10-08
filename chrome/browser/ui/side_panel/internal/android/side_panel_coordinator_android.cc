@@ -240,11 +240,60 @@ void SidePanelCoordinatorAndroid::Close(SidePanelEntryHideReason hide_reason,
   StartClosingPanel(hide_reason, suppress_animations);
 }
 
+void SidePanelCoordinatorAndroid::OnAllTabsWillClose() {
+  SPLOG("OnAllTabsWillClose");
+
+  // When the user closes all tabs, such as via the three-dot menu in the Grid
+  // Tab Switcher (GTS), we need to
+  //
+  // (a) add all active SidePanelEntries to DeferredEntryTracker so the
+  // panel can be restored if the closure is undone, and
+  // (b) explicitly close the side panel.
+  //
+  // When not all tabs are closed, OnTabSelected() will be called for the new
+  // active tab and update the side panel states, including closing the panel
+  // if the new active tab doesn't need it.
+  //
+  // When the user closes all tabs, OnTabSelected() won't be called, but we also
+  // need to close the panel if it's shown. Otherwise, when the user creates a
+  // new tab, the panel for a destroyed tab will remain.
+  //
+  // A common question might be: When the user creates a new tab after closing
+  // all tabs, shouldn't OnTabSelected() fix the side panel states?
+  //
+  // The answer:
+  //
+  // First of all, Chrome on Android has a stable 0-tab UI state, such as when
+  // the user has closed all tabs in GTS, but hasn't created any new tab.
+  // Side panel should reflect this state because GTS is an overlay of the
+  // main browser UI.
+  //
+  // Secondly, OnTabSelected() only closes the side panel if
+  // (1) the side panel is currently shown,
+  // (2) the new active tab doesn't have an active SidePanelEntry, and
+  // (3) the old tab hasn't been deleted.
+  //
+  // Relying on OnTabSelected() won't meet condition (3), and we shouldn't
+  // change (3) as it prevents holding/dereferencing an _invalid_ pointer to
+  // the SidePanelRegistry of the deleted tab.
+  //
+  // TODO(crbug.com/561677370): Create a new SidePanelEntryHideReason for more
+  // clarity. `kBackgrounded` can make side panel features work, but it's for
+  // when the user switches tabs.
+  deferred_entry_tracker_.AddActiveEntries();
+  Close(SidePanelEntryHideReason::kBackgrounded,
+        /*suppress_animations=*/true);
+}
+
+void SidePanelCoordinatorAndroid::OnAllTabsWillBeDestroyed() {
+  SPLOG("OnAllTabsWillBeDestroyed");
+
+  deferred_entry_tracker_.ClearAllEntries();
+}
+
 void SidePanelCoordinatorAndroid::OnTabClosed(TabAndroid* tab) {
   SPLOG("OnTabClosed - tab: " << tab);
   CHECK(tab);
-
-  deferred_entry_tracker_.ClearTabScopedEntry(tab->GetHandle());
 
   // During a tab switch (tab_1 -> tab_2), if tab_2's side panel View
   // contains a ThinWebView, the Java side will delay removing tab_1's side
@@ -348,6 +397,25 @@ void SidePanelCoordinatorAndroid::OnTabReparented(TabAndroid* tab) {
   }
 }
 
+void SidePanelCoordinatorAndroid::OnTabSelected(TabAndroid* old_tab,
+                                                TabAndroid* new_tab) {
+  SPLOG("OnTabSelected - old_tab: " << old_tab << ", new_tab: " << new_tab);
+  CHECK(new_tab);
+
+  SidePanelRegistry* old_contextual_registry =
+      old_tab ? SidePanelRegistry::From(old_tab) : nullptr;
+  SidePanelRegistry* new_contextual_registry = SidePanelRegistry::From(new_tab);
+  MaybeShowEntryOnTabStripModelChanged(old_contextual_registry,
+                                       new_contextual_registry);
+}
+
+void SidePanelCoordinatorAndroid::OnTabWillBeDestroyed(TabAndroid* tab) {
+  SPLOG("OnTabWillBeDestroyed - tab: " << tab);
+  CHECK(tab);
+
+  deferred_entry_tracker_.ClearTabScopedEntry(tab->GetHandle());
+}
+
 void SidePanelCoordinatorAndroid::OnWillAutoClose() {
   SPLOG("OnWillAutoClose");
 
@@ -411,8 +479,8 @@ void SidePanelCoordinatorAndroid::Init() {
   // initialization to restore the side panel state for the active tab.
   if (tabs::TabInterface* active_tab =
           TabListInterface::From(browser())->GetActiveTab()) {
-    OnActiveTabChanged(/*old_contents=*/nullptr, active_tab->GetContents(),
-                       /*tab_removed_for_deletion=*/false);
+    OnTabSelected(/*old_tab=*/nullptr,
+                  TabAndroid::FromTabInterface(active_tab));
   }
 }
 
@@ -441,6 +509,14 @@ void SidePanelCoordinatorAndroid::Toggle(SidePanelEntryKey key,
   if (unique_key.has_value()) {
     Show(unique_key.value(), open_trigger, /*suppress_animations=*/false);
   }
+}
+
+void SidePanelCoordinatorAndroid::OnActiveTabChanged(
+    content::WebContents* old_contents,
+    content::WebContents* new_contents,
+    bool tab_removed_for_deletion) {
+  NOTREACHED()
+      << "On Android, active tab changes are handled via OnTabSelected().";
 }
 
 content::WebContents*

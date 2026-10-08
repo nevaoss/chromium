@@ -10,7 +10,8 @@
   },
   "permissions": [
     "contextualTasksPrivate",
-    "metricsPrivate"
+    "metricsPrivate",
+    "favicon"
   ],
   "host_permissions": [
     "chrome://resources/*"
@@ -19,6 +20,7 @@
     "extension_pages": "script-src 'self' chrome://resources; object-src 'self';"
   },
   "externally_connectable": {
+    // LINT.IfChange(AllowedOrigins)
     "matches": [
       "https://google.com/search*",
       "https://www.google.com/search*",
@@ -26,13 +28,17 @@
       "https://*.corp.google.com/search*",
       "https://*.prod.google.com/search*"
     ]
+    // LINT.ThenChange(post_message_handler.ts:AllowedOrigins)
   },
   "web_accessible_resources": [
     {
       "resources": [
         "chip.html",
-        "lens_button.html"
+        "favicons.html",
+        "lens_button.html",
+        "tab_picker.html"
       ],
+      // LINT.IfChange(WebAccessibleMatches)
       "matches": [
         "https://*.google.com/*",
         "https://*.corp.google.com/*",
@@ -43,6 +49,7 @@
         "file:///*"
 // </if>
       ]
+      // LINT.ThenChange(post_message_handler.ts:AllowedOrigins)
     }
   ]
 }

@@ -18,6 +18,7 @@
 #include "base/test/test_future.h"
 #include "base/threading/thread_restrictions.h"
 #include "chrome/browser/ash/app_list/search/test/test_ranker_manager.h"
+#include "chrome/browser/ash/browser_delegate/keyed_service_provider/history_service_provider_impl.h"
 #include "chrome/browser/ash/browser_delegate/keyed_service_provider/template_url_service_provider_impl.h"
 #include "chrome/browser/ash/drive/drive_integration_service.h"
 #include "chrome/browser/ash/drive/drive_integration_service_factory.h"
@@ -32,7 +33,6 @@
 #include "chrome/browser/signin/identity_manager_factory.h"
 #include "chrome/browser/ui/ash/quick_insert/quick_insert_file_suggester.h"
 #include "chrome/browser/ui/webui/ash/mako/mako_bubble_coordinator.h"
-#include "chrome/common/extensions/api/file_manager_private.h"
 #include "chrome/test/base/browser_with_test_window_test.h"
 #include "chrome/test/base/testing_browser_process.h"
 #include "chrome/test/base/testing_profile.h"
@@ -40,6 +40,7 @@
 #include "chromeos/ash/components/disks/disk_mount_manager.h"
 #include "chromeos/ash/components/disks/fake_disk_mount_manager.h"
 #include "chromeos/ash/components/drivefs/fake_drivefs.h"
+#include "chromeos/ash/experiences/extensions/api/file_manager_private.h"
 #include "chromeos/constants/chromeos_features.h"
 #include "components/bookmarks/browser/bookmark_model.h"
 #include "components/bookmarks/test/bookmark_test_helpers.h"
@@ -233,6 +234,7 @@ class QuickInsertClientImplTest : public BrowserWithTestWindowTest {
   }
 
  private:
+  ash::HistoryServiceProviderImpl history_service_provider_;
   ash::TemplateURLServiceProviderImpl template_url_service_provider_;
   scoped_refptr<network::SharedURLLoaderFactory>
       test_shared_url_loader_factory_;

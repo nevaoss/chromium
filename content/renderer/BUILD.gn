@@ -324,12 +324,15 @@ target(link_target_type, "renderer") {
     "//url",
     "//v8",
   ]
+<<<<<<< HEAD
 
   if (use_neva_suspend_media_capture) {
     deps += [ "//content/renderer/media/audio/neva" ]
   }
 
   allow_circular_includes_from = []
+=======
+>>>>>>> 156.0.8064.0~1
 
   if (is_android) {
     deps += [

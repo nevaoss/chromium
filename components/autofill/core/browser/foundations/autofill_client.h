@@ -7,7 +7,6 @@
 
 #include <stdint.h>
 
-#include <map>
 #include <memory>
 #include <optional>
 #include <string>
@@ -28,6 +27,7 @@
 #include "components/autofill/core/browser/data_model/autofill_ai/entity_type.h"
 #include "components/autofill/core/browser/data_model/autofill_ai/entity_type_names.h"
 #include "components/autofill/core/browser/field_types.h"
+#include "components/autofill/core/browser/studies/hats_surveys_util.h"
 #include "components/autofill/core/browser/ui/popup_open_enums.h"
 #include "components/autofill/core/common/aliases.h"
 #include "components/autofill/core/common/unique_ids.h"
@@ -172,6 +172,7 @@ class FormInteractionsUkmLogger;
 
 namespace payments {
 class PaymentsAutofillClient;
+class WalletReminderNoticeManager;
 }
 
 // A client interface that needs to be supplied to the Autofill component by the
@@ -287,7 +288,7 @@ class AutofillClient {
   // Required arguments to create a dropdown showing autofill suggestions.
   struct PopupOpenArgs {
     PopupOpenArgs();
-    PopupOpenArgs(LocalFrameToken frame_token,
+    PopupOpenArgs(LocalFrameToken anchor_frame_token,
                   const gfx::RectF& element_bounds,
                   base::i18n::TextDirection text_direction,
                   std::vector<Suggestion> suggestions,
@@ -302,9 +303,9 @@ class AutofillClient {
     PopupOpenArgs& operator=(const PopupOpenArgs&);
     PopupOpenArgs& operator=(PopupOpenArgs&&);
     ~PopupOpenArgs();
-    // The frame in which the popup is anchored. Typically this is the frame of
+    // The frame which the popup is anchored to. Typically this is the frame of
     // the field on which the user triggered Autofill.
-    LocalFrameToken frame_token;
+    LocalFrameToken anchor_frame_token;
     // TODO(crbug.com/340817507): Update this member name since bounds can now
     // refer to the caret bounds and elements gives the idea of HTML elements
     // only.
@@ -576,6 +577,13 @@ class AutofillClient {
   virtual payments::PaymentsAutofillClient* GetPaymentsAutofillClient();
   const payments::PaymentsAutofillClient* GetPaymentsAutofillClient() const;
 
+  // Returns the WalletReminderNoticeManager for showing the legal reminder
+  // notice when required.
+  virtual payments::WalletReminderNoticeManager*
+  GetWalletReminderNoticeManager();
+  const payments::WalletReminderNoticeManager*
+  GetWalletReminderNoticeManager() const;
+
   // Gets the StrikeDatabase associated with the client. Note: Nullptr may be
   // returned so check before use.
   // TODO(crbug.com/40926442): Make sure all strike database usages check for
@@ -702,7 +710,7 @@ class AutofillClient {
   // displayed.
   virtual void TriggerUserPerceptionOfAutofillSurvey(
       FillingProduct filling_product,
-      const std::map<std::string, std::string>& field_filling_stats_data);
+      const HatsSurveyStringData& field_filling_stats_data);
 
   // Triggers a survey to ask the user why they declined saving an address.
   virtual void TriggerDeclinedSaveAddressReasonSurvey();

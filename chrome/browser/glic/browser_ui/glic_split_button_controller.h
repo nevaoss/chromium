@@ -6,11 +6,15 @@
 #define CHROME_BROWSER_GLIC_BROWSER_UI_GLIC_SPLIT_BUTTON_CONTROLLER_H_
 
 #include <memory>
+#include <vector>
 
+#include "base/callback_list.h"
 #include "base/functional/callback.h"
 #include "base/memory/raw_ptr.h"
+#include "base/memory/weak_ptr.h"
 #include "build/build_config.h"
 #include "chrome/browser/glic/host/glic.mojom.h"
+#include "components/prefs/pref_change_registrar.h"
 #include "ui/base/unowned_user_data/scoped_unowned_user_data.h"
 
 class ActorTaskListBubbleController;
@@ -19,10 +23,9 @@ class BrowserWindowInterface;
 namespace glic {
 
 class GlicActorNudgeController;
-class GlicButtonController;
-class GlicKeyedService;
 class GlicNudgeController;
-class GlicSplitButtonDelegate;
+class GeminiSplitButtonDelegate;
+class GlicSplitButtonViewDelegate;
 
 class GlicSplitButtonController {
  public:
@@ -30,8 +33,9 @@ class GlicSplitButtonController {
 
   static GlicSplitButtonController* From(BrowserWindowInterface* browser);
 
-  GlicSplitButtonController(BrowserWindowInterface* browser,
-                            GlicKeyedService* glic_service);
+  GlicSplitButtonController(
+      BrowserWindowInterface* browser,
+      std::unique_ptr<GeminiSplitButtonDelegate> split_button_delegate);
 
   GlicSplitButtonController(const GlicSplitButtonController&) = delete;
   GlicSplitButtonController& operator=(const GlicSplitButtonController&) =
@@ -41,14 +45,20 @@ class GlicSplitButtonController {
 
   // TODO(crbug.com/511309088): Rename these to toolbar and tab strip delegate
   // since they no longer necessarily correspond to vertical tab mode.
-  void SetHorizontalTabsDelegate(GlicSplitButtonDelegate* delegate);
-  void SetVerticalTabsDelegate(GlicSplitButtonDelegate* delegate);
+  void SetHorizontalTabsDelegate(GlicSplitButtonViewDelegate* delegate);
+  void SetVerticalTabsDelegate(GlicSplitButtonViewDelegate* delegate);
   base::WeakPtr<GlicSplitButtonController> GetWeakPtr();
 
   void OnGlicButtonClicked();
+  void UpdateButton();
 
-  virtual GlicSplitButtonDelegate* GetActiveDelegate();
-  void CallOnBoth(base::RepeatingCallback<void(GlicSplitButtonDelegate&)> fn);
+  virtual GlicSplitButtonViewDelegate* GetActiveViewDelegate();
+  void CallOnBoth(
+      base::RepeatingCallback<void(GlicSplitButtonViewDelegate&)> fn);
+
+  GeminiSplitButtonDelegate* split_button_delegate() {
+    return split_button_delegate_.get();
+  }
 
   GlicNudgeController* nudge_controller() {
     return glic_nudge_controller_.get();
@@ -62,18 +72,19 @@ class GlicSplitButtonController {
  private:
   bool IsToolbarButton() const;
   mojom::InvocationSource GetInvocationSource(
-      GlicSplitButtonDelegate& delegate) const;
+      GlicSplitButtonViewDelegate& delegate) const;
 
   const raw_ptr<BrowserWindowInterface> browser_;
-  raw_ptr<GlicSplitButtonDelegate> horizontal_tabs_delegate_ = nullptr;
-  raw_ptr<GlicSplitButtonDelegate> vertical_tabs_delegate_ = nullptr;
-  raw_ptr<GlicKeyedService> glic_service_ = nullptr;
+  raw_ptr<GlicSplitButtonViewDelegate> horizontal_tabs_delegate_ = nullptr;
+  raw_ptr<GlicSplitButtonViewDelegate> vertical_tabs_delegate_ = nullptr;
 
+  std::unique_ptr<GeminiSplitButtonDelegate> split_button_delegate_;
   std::unique_ptr<GlicNudgeController> glic_nudge_controller_;
-  std::unique_ptr<GlicButtonController> glic_button_controller_;
   std::unique_ptr<ActorTaskListBubbleController>
       actor_task_list_bubble_controller_;
   std::unique_ptr<GlicActorNudgeController> glic_actor_nudge_controller_;
+  PrefChangeRegistrar pref_registrar_;
+  std::vector<base::CallbackListSubscription> subscriptions_;
 
   ui::ScopedUnownedUserData<GlicSplitButtonController>
       scoped_unowned_user_data_;

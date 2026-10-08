@@ -6,14 +6,17 @@
 #define CHROME_BROWSER_UI_VIEWS_PAYMENTS_PAYMENT_HANDLER_WEB_FLOW_VIEW_CONTROLLER_H_
 
 #include <memory>
+#include <optional>
 #include <string>
 
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/scoped_observation.h"
+#include "base/time/time.h"
 #include "base/timer/timer.h"
 #include "chrome/browser/media/webrtc/media_stream_capture_indicator.h"
 #include "chrome/browser/ui/toolbar/chrome_location_bar_model_delegate.h"
+#include "chrome/browser/ui/views/bubble/webui_bubble_reopen_suppressor.h"
 #include "chrome/browser/ui/views/location_bar/icon_label_bubble_view.h"
 #include "chrome/browser/ui/views/location_bar/location_icon_view.h"
 #include "chrome/browser/ui/views/payments/payment_handler_modal_dialog_manager_delegate.h"
@@ -72,6 +75,8 @@ class PaymentHandlerWebFlowViewController
       public permissions::PermissionRequestManager::Observer {
  public:
   DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(kAppIconElementId);
+  DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(kCameraIndicatorChipElementId);
+  DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(kPermissionRequestChipElementId);
 
   // Semantic activity type represented by the permission indicator chip.
   enum class IndicatorType {
@@ -200,6 +205,7 @@ class PaymentHandlerWebFlowViewController
   // PermissionChipInterface::Observer:
   void OnExpandAnimationEnded() override;
   void OnCollapseAnimationEnded() override;
+  void OnMousePressed() override;
 
   // permissions::PermissionRequestManager::Observer:
   void OnPromptAdded() override;
@@ -212,12 +218,21 @@ class PaymentHandlerWebFlowViewController
   bool CollapseActiveIndicatorIfNeeded();
   void HideIndicatorChip();
   void ShowBlockedCameraIndicator();
+  void ShowInUseCameraIndicator();
+  void HideInUseCameraIndicator();
+  void OnIndicatorChipPressed(bool is_pointer_interaction);
   void AnimateExpandRequestChip();
   void ResetRequestChip();
   void OnRequestChipPressed();
   void OnPageInfoBubbleClosed(views::Widget::ClosedReason closed_reason,
                               bool reload_prompt);
   void AbortPayment();
+  static void OnMediaAccessResponse(
+      base::WeakPtr<PaymentHandlerWebFlowViewController> controller,
+      content::MediaResponseCallback original_callback,
+      const blink::mojom::StreamDevicesSet& stream_devices_set,
+      blink::mojom::MediaStreamRequestResult result,
+      std::unique_ptr<content::MediaStreamUI> ui);
   void SetHeaderColorsAndOriginLabelText();
 
   LocationIconView* location_icon_view();
@@ -228,6 +243,7 @@ class PaymentHandlerWebFlowViewController
   views::ViewTracker location_icon_view_tracker_;
   views::ViewTracker permission_dashboard_view_tracker_;
   views::ViewTracker page_info_view_tracker_;
+  WebUIBubbleReopenSuppressor page_info_bubble_suppressor_;
   base::ScopedObservation<MediaStreamCaptureIndicator,
                           MediaStreamCaptureIndicator::Observer>
       indicator_observation_{this};
@@ -239,6 +255,8 @@ class PaymentHandlerWebFlowViewController
       permission_request_manager_observation_{this};
   IndicatorType indicator_type_ = IndicatorType::kNone;
   IndicatorDisplayPhase indicator_phase_ = IndicatorDisplayPhase::kHidden;
+  base::TimeTicks media_indicator_show_start_time_;
+  base::TimeTicks media_capture_stop_time_;
   base::OneShotTimer indicator_chip_collapse_timer_;
   base::OneShotTimer indicator_dismiss_timer_;
   base::OneShotTimer delay_prompt_timer_;

@@ -818,7 +818,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="Media.Audio.Android.AAudio.CallbackSizeDistribution.{Direction}"
-    units="frames" expires_after="2027-01-10">
+    units="frames" expires_after="2027-03-14">
   <owner>tguilbert@chromium.org</owner>
   <owner>media-dev-uma@chromium.org</owner>
   <summary>
@@ -831,7 +831,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="Media.Audio.Android.AAudio.CallbackTransitionsPer1000.{Direction}"
-    units="transitions" expires_after="2027-01-10">
+    units="transitions" expires_after="2027-03-14">
   <owner>tguilbert@chromium.org</owner>
   <owner>media-dev-uma@chromium.org</owner>
   <summary>
@@ -842,7 +842,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Media.Audio.Android.AAudio.InputTimestampDiscontinuitySize"
-    units="ms" expires_after="2027-01-10">
+    units="ms" expires_after="2027-03-14">
   <owner>tguilbert@chromium.org</owner>
   <owner>media-dev-uma@chromium.org</owner>
   <summary>
@@ -854,7 +854,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Media.Audio.Android.AAudio.InputTimestampDiscontinuitySizeV2"
-    units="ms" expires_after="2027-01-10">
+    units="ms" expires_after="2027-03-14">
   <owner>tguilbert@chromium.org</owner>
   <owner>media-dev-uma@chromium.org</owner>
   <summary>
@@ -960,7 +960,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Media.Audio.Android.AAudioSetDeviceId.{Direction}.{Result}"
-    enum="AndroidAudioDeviceType" expires_after="M155">
+    enum="AndroidAudioDeviceType" expires_after="2027-03-14">
   <owner>mjel@google.com</owner>
   <owner>tguilbert@chromium.org</owner>
   <owner>media-dev-uma@chromium.org</owner>
@@ -1406,6 +1406,33 @@ chromium-metrics-reviews@google.com.
     When AudioInputDevice is stopped, this stat is recorded with whether an
     error callback was ever received over IPC, and in that case whether the
     error occurred during or after stream creation.
+  </summary>
+</histogram>
+
+<histogram
+    name="Media.Audio.Capture.VoiceIsolation.ProcessingAudioFifo.MaxUsage"
+    units="buffers" expires_after="2027-01-17">
+  <owner>olka@chromium.org</owner>
+  <owner>webrtc-audio-uma@google.com</owner>
+  <summary>
+    Maximum size (in buffers) of the Voice Isolation unprocessed data queue,
+    reached over a sampling interval (1000 callbacks). Logged when audio is
+    pushed into ProcessingAudioFifo (every 1000 callbacks). Not logged for
+    streams running for less than 1000 callbacks.
+  </summary>
+</histogram>
+
+<histogram
+    name="Media.Audio.Capture.VoiceIsolation.ProcessingAudioFifo.Overruns"
+    units="count" expires_after="2027-01-17">
+  <owner>olka@chromium.org</owner>
+  <owner>webrtc-audio-uma@google.com</owner>
+  <summary>
+    Number of times over a sampling interval (1000 callbacks) a Voice Isolation
+    ProcessingAudioFifo has overflowed and dropped buffers. Capped at 100 (1/10
+    of all callbacks). Logged when audio is pushed into ProcessingAudioFifo
+    (every 1000 callbacks). Not logged for streams running for less than 1000
+    callbacks.
   </summary>
 </histogram>
 
@@ -2362,17 +2389,6 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="Media.Audio.Symphonia.OversizedPcmPacket" units="frames"
-    expires_after="2027-08-01">
-  <owner>jophba@chromium.org</owner>
-  <owner>dalecurtis@chromium.org</owner>
-  <owner>media-dev-uma@chromium.org</owner>
-  <summary>
-    Reports the number of frames in a PCM packet that was larger than the static
-    buffer used for decoding.
-  </summary>
-</histogram>
-
 <histogram name="Media.Audio.TabAudioMuted" enum="Boolean"
     expires_after="2027-06-01">
   <owner>evliu@google.com</owner>
@@ -2446,7 +2462,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Media.Audio.Win.CoreAudioUtil.SharedModeInitializeTime"
-    units="ms" expires_after="2027-01-10">
+    units="ms" expires_after="2027-03-14">
   <owner>henrika@chromium.org</owner>
   <owner>olka@chromium.org</owner>
   <owner>media-audio@chromium.org</owner>
@@ -3075,7 +3091,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="Media.AutoPictureInPicture.EnterPictureInPicture.AutomaticReason.{AutomaticReason}.PromptResultV2"
-    enum="MediaAutoPictureInPicturePromptResult" expires_after="2027-01-10">
+    enum="MediaAutoPictureInPicturePromptResult" expires_after="2027-03-14">
   <owner>bkeen@google.com</owner>
   <owner>media-dev-uma@chromium.org</owner>
   <summary>
@@ -3116,7 +3132,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="Media.AutoPictureInPicture.EnterPictureInPicture.AutomaticReason.{AutomaticReason}.TotalTimeForSession"
-    units="ms" expires_after="2026-10-25">
+    units="ms" expires_after="2027-10-25">
   <owner>bkeen@google.com</owner>
   <owner>media-dev-uma@chromium.org</owner>
   <summary>
@@ -8940,7 +8956,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Media.VideoEncoder.{Usage}.{Impl}.Status" enum="EncoderStatus"
-    expires_after="2027-01-10">
+    expires_after="2027-03-14">
   <owner>hiroh@chromium.org</owner>
   <owner>media-dev-uma@chromium.org</owner>
   <summary>

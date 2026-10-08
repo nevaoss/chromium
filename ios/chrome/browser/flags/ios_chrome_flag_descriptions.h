@@ -246,13 +246,6 @@ inline constexpr char kAutofillEnableGradientGoogleLogosName[] =
 inline constexpr char kAutofillEnableGradientGoogleLogosDescription[] =
     "When enabled, gradient-style GPay and Wallet branding logos will be used.";
 
-inline constexpr char kAutofillEnablePrefetchingRiskDataForRetrievalName[] =
-    "Enable prefetching of risk data during payments autofill retrieval";
-inline constexpr char
-    kAutofillEnablePrefetchingRiskDataForRetrievalDescription[] =
-        "When enabled, risk data is prefetched during payments autofill flows "
-        "to reduce user-perceived latency.";
-
 inline constexpr char kAutofillEnableWalletBrandingName[] =
     "Update Google Pay branding to Wallet where applicable";
 inline constexpr char kAutofillEnableWalletBrandingDescription[] =
@@ -377,12 +370,15 @@ inline constexpr char kBreakpadNoDelayInitialUploadDescription[] =
     "disabled, initial upload is delayed until deferred initialization. This "
     "does not affect recovery mode.";
 
-inline constexpr char kBuildExternalPrivacyContextName[] =
-    "Build external privacy context";
-inline constexpr char kBuildExternalPrivacyContextDescription[] =
-    "When enabled, checks if the account can be signed in on the device "
-    "according to the capabilities. This needs `can_sign_in_to_chrome` "
-    "capability to be fetched.";
+inline constexpr char kBrowsingHistoryFilterByDeviceName[] =
+    "Filter Browsing History By Device";
+inline constexpr char kBrowsingHistoryFilterByDeviceDescription[] =
+    "Enables browser history filtering by device.";
+
+inline constexpr char kBrowsingHistorySimilarVisitsGroupingName[] =
+    "Browsing History Grouping Improvements";
+inline constexpr char kBrowsingHistorySimilarVisitsGroupingDescription[] =
+    "Enables improvements to grouping of similar browsing history.";
 
 inline constexpr char kChromeNextIaName[] = "ChromeNextIa";
 inline constexpr char kChromeNextIaDescription[] =
@@ -702,8 +698,8 @@ inline constexpr char kEnableAccountPreviewPreferredAccountFollowupName[] =
     "Enable Account Preview Preferred Account Followup";
 inline constexpr char
     kEnableAccountPreviewPreferredAccountFollowupDescription[] =
-        "Controls whether followup features for preferred account preview (new "
-        "data types, promos, and updated strings) are enabled.";
+        "Controls whether followup features for preferred account preview "
+        "(promos, and updated strings) are enabled.";
 
 inline constexpr char kEnableAccountPreviewPreferredAccountName[] =
     "Enable Account Preview Preferred Account";
@@ -1641,11 +1637,6 @@ inline constexpr char kPageActionMenuDescription[] =
     "When enabled, the entry point for the Page Action Menu becomes available "
     "for actions relating to the web page.";
 
-inline constexpr char kPageContextIPCOptimizationName[] =
-    "PageContextIPCOptimization";
-inline constexpr char kPageContextIPCOptimizationDescription[] =
-    "Enables the PageContextIPCOptimization feature.";
-
 inline constexpr char kPageContextPdfName[] = "Page Context PDF";
 inline constexpr char kPageContextPdfDescription[] =
     "Enables PDF support for Page Context in Gemini.";
@@ -1893,6 +1884,10 @@ inline constexpr char kSyncWalletVehicleRegistrationsName[] =
     "Sync wallet vehicle registrations";
 inline constexpr char kSyncWalletVehicleRegistrationsDescription[] =
     "Enables syncing vehicle registrations in the wallet to the server.";
+
+inline constexpr char kTTCEnabledName[] = "TTCEnabled";
+inline constexpr char kTTCEnabledDescription[] =
+    "Enables TalkToChrome prototype.";
 
 inline constexpr char kTabGroupInOverflowMenuName[] =
     "Enable the Tab Group button in the overflow menu";

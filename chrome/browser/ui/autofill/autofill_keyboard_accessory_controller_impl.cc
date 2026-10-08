@@ -725,29 +725,17 @@ void AutofillKeyboardAccessoryControllerImpl::Show(
     return;
   }
 
-  content::RenderFrameHost* rfh = nullptr;
-  if (base::FeatureList::IsEnabled(features::kAutofillSimplifyFocusCheck)) {
-    rfh = FindRenderFrameHostByToken(*web_contents_,
-                                     controller_common_.frame_token);
-  } else {
-    // The focused frame may be different from the one one the controller is
-    // anchored to. This happens in two scenarios:
-    // - With frame-transcending forms: the focused frame is subframe, whose
-    //   form has been flattened into an ancestor form.
-    // - With race conditions: while Autofill parsed the form, the focused may
-    //   have moved to another frame.
-    // We support the case where the focused frame is a descendant of the
-    // `delegate_`'s frame. We observe the focused frame's RenderFrameDeleted()
-    // event.
-    rfh = web_contents_->GetFocusedFrame();
-    content::RenderFrameHost* anchor_rfh = FindRenderFrameHostByToken(
-        *web_contents_, controller_common_.frame_token);
-    if (!rfh || !delegate_ || !IsAncestorOf(anchor_rfh, rfh)) {
-      rfh = nullptr;
-    }
-  }
-
+  content::RenderFrameHost* rfh = FindRenderFrameHostByToken(
+      *web_contents_, controller_common_.anchor_frame_token);
   if (!rfh) {
+    Hide(SuggestionHidingReason::kNoFrameHasFocus);
+    return;
+  }
+  if (rfh != web_contents_->GetFocusedFrame() &&
+      base::FeatureList::IsEnabled(
+          features::kAutofillRequireFocusInFrameForSuggestions)) {
+    base::UmaHistogramEnumeration("Autofill.SuggestionSuppressionDueToNoFocus",
+                                  trigger_source);
     Hide(SuggestionHidingReason::kNoFrameHasFocus);
     return;
   }
@@ -836,9 +824,9 @@ void AutofillKeyboardAccessoryControllerImpl::UpdateDataListValues(
   }
 }
 
-const LocalFrameToken& AutofillKeyboardAccessoryControllerImpl::GetFrameToken()
-    const {
-  return controller_common_.frame_token;
+const LocalFrameToken&
+AutofillKeyboardAccessoryControllerImpl::GetAnchorFrameToken() const {
+  return controller_common_.anchor_frame_token;
 }
 
 bool AutofillKeyboardAccessoryControllerImpl::HasSuggestions() const {
@@ -923,17 +911,20 @@ void AutofillKeyboardAccessoryControllerImpl::
   }
   CHECK_EQ(suggestions_.size(), labels_.size());
 
-  // TODO(crbug.com/556058028): Call the suppression code.
+  // Suppress suggestion in data model & clear if already previewing.
+  if (!delegate_ || !delegate_->RemoveSuggestion(suggestion)) {
+    return;
+  }
+  delegate_->ClearPreviewedForm();
 
-  // Remove the suppressed element.
+  // Remove the suppressed element visually.
   const size_t index = std::distance(suggestions_.begin(), it);
   suggestions_.erase(it);
   labels_.erase(labels_.begin() + index);
 
+  // Update the accessory to remove the item from the view or hide it if nothing
+  // worth showing is left.
   if (HasSuggestions()) {
-    if (delegate_) {
-      delegate_->ClearPreviewedForm();
-    }
     OnSuggestionsChanged();
   } else {
     Hide(SuggestionHidingReason::kNoSuggestions);

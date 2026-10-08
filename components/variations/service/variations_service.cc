@@ -957,15 +957,22 @@ void VariationsService::SimulateAndApplyRuntimeMutableChanges(
   auto* runtime_field_trial_overrides =
       base::RuntimeFieldTrialOverrides::GetInstance();
   for (auto& changes : prepared_changes) {
-    bool trial_override_result =
-        runtime_field_trial_overrides->ApplyRuntimeOverride(
-            base::PassKey<VariationsService>(), changes.study_name,
-            changes.group_name, changes.trial_to_override,
-            changes.previous_override_to_replace);
-    DCHECK(trial_override_result);
+    // Update the feature states before applying the field trial override, so
+    // that `RuntimeFieldTrialOverrides::Observer`s, which are notified
+    // synchronously by `ApplyRuntimeOverride()`, observe the new feature state
+    // (e.g. via `FeatureList::IsEnabled()`).
     for (auto& update : changes.feature_updates) {
       update.UpdateState();
     }
+    // This must succeed: the feature states above have already been updated to
+    // point at `changes.study_name`, so a failure here would permanently
+    // desynchronize `FeatureList` and `RuntimeFieldTrialOverrides`. Crashing is
+    // preferable to running the rest of the session in a corrupted state, and
+    // gradual seed rollout will catch any seed-triggered crash.
+    CHECK(runtime_field_trial_overrides->ApplyRuntimeOverride(
+        base::PassKey<VariationsService>(), changes.study_name,
+        changes.group_name, changes.trial_to_override,
+        changes.previous_override_to_replace));
     // TODO(crbug.com/482450632): Clean up overridden trial's variation IDs, and
     // register any new ones from the new trial.
   }
@@ -1144,10 +1151,12 @@ void VariationsService::OnSimpleLoaderComplete(
   DCHECK(headers);
   DCHECK(response_body);
 
-  std::optional<base::Time> response_date = headers->GetDateValue();
+  // Ignore the Date header value from HTTP as it cannot be trusted.
+  const std::optional<base::Time> response_date =
+      last_request_was_http_retry_ ? std::nullopt : headers->GetDateValue();
   // If the seed was fetched securely, opportunistically update the network time
   // tracker with the headers time.
-  if (response_date && !last_request_was_http_retry_) {
+  if (response_date) {
     DCHECK(!response_date->is_null());
 
     const base::TimeDelta latency = now - last_request_started_time_;
@@ -1158,7 +1167,7 @@ void VariationsService::OnSimpleLoaderComplete(
 
   if (response_code == net::HTTP_NOT_MODIFIED) {
     // TODO(crbug.com/420652919): Reject responses without a date.
-    RecordSuccessfulFetchSeedNotModified(response_date.value_or(base::Time()));
+    RecordSuccessfulFetchSeedNotModified(response_date);
     return;
   }
 
@@ -1459,7 +1468,7 @@ VariationsService::PrepareRuntimeMutableChanges(
   const base::FieldTrial* trial_to_override;
   std::string previous_override_to_replace;
   if (controlling_trial_is_runtime_override) {
-    DCHECK(!controlling_trial_name.empty());
+    CHECK(!controlling_trial_name.empty());
     const auto& runtime_override_info =
         runtime_field_trial_overrides->GetRuntimeOverride(
             controlling_trial_name);
@@ -1469,7 +1478,7 @@ VariationsService::PrepareRuntimeMutableChanges(
     }
     trial_to_override = runtime_override_info->overridden_trial.get();
     previous_override_to_replace = runtime_override_info->trial_name;
-    DCHECK_EQ(previous_override_to_replace, controlling_trial_name);
+    CHECK_EQ(previous_override_to_replace, controlling_trial_name);
   } else if (!controlling_trial_name.empty()) {
     trial_to_override = base::FieldTrialList::Find(controlling_trial_name);
     if (!trial_to_override) {
@@ -1506,11 +1515,7 @@ VariationsService::PrepareRuntimeMutableChanges(
     auto update = feature_list->PrepareRuntimeMutableFeatureStateUpdate(
         base::PassKey<VariationsService>(), study.name(), group_name,
         feature_name, base::FeatureList::OVERRIDE_DISABLE_FEATURE);
-    DCHECK(update.has_value());
-    if (!update.has_value()) {
-      // This should never happen.
-      return base::unexpected(kPrepareFeatureStateUpdateFailed);
-    }
+    CHECK(update.has_value());
     changes.feature_updates.push_back(std::move(*update));
   }
 
@@ -1526,18 +1531,19 @@ void VariationsService::RecordSuccessfulFetchNewSeed() {
 }
 
 void VariationsService::RecordSuccessfulFetchSeedNotModified(
-    base::Time response_date) {
+    std::optional<base::Time> response_date) {
   // Update the client-side fetch time to the current time.
   field_trial_creator_.seed_store()->RecordLastFetchTime(base::Time::Now());
   safe_seed_manager_.RecordSuccessfulFetch(field_trial_creator_.seed_store());
 
-  // Update the seed date value in local state (used for expiry check on
-  // next start up), since 304 is a successful response. Note that the
-  // serial number included in the request is always that of the latest
-  // seed, even when running in safe mode, so it's appropriate to always
-  // modify the latest seed's date.
-  field_trial_creator_.seed_store()->UpdateSeedDateAndLogDayChange(
-      response_date);
+  // Only treat a 304 as confirmation that the stored seed is current when it
+  // was received over HTTPS. Callers set `response_date` to std::nullopt for
+  // insecure HTTP retries because unauthenticated Date headers cannot be
+  // trusted.
+  if (response_date) {
+    field_trial_creator_.seed_store()->UpdateSeedDateAndLogDayChange(
+        response_date.value());
+  }
 }
 
 VariationsSeedStore* VariationsService::GetSeedStoreForTesting() {

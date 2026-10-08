@@ -717,6 +717,10 @@ source_set("extensions") {
     deps += [
       "//chrome/browser/indigo",
       "//chrome/browser/ui:browser_init_state",
+      "//chrome/browser/ui:browser_window_header",
+      "//chrome/browser/ui:scoped_tabbed_browser_displayer",
+      "//chrome/browser/ui:singleton_tabs",
+      "//chrome/browser/ui:ui_features",
       "//chrome/browser/ui/interaction",
       "//chrome/browser/ui/user_education",
       "//chrome/browser/ui/web_applications:launch_utils",
@@ -1367,6 +1371,7 @@ source_set("extensions") {
       "//chrome/browser/chromeos/extensions/login_screen/login/cleanup",
       "//chrome/browser/chromeos/extensions/login_screen/login_state",
       "//chrome/browser/chromeos/extensions/smart_card_provider_private",
+      "//chrome/browser/ui:settings_window_manager_chromeos",
 
       # TODO(crbug.com/40230380): Find an appropriate spot for vpn_provider.
       "//chrome/browser/chromeos/extensions/vpn_provider",
@@ -2434,6 +2439,7 @@ source_set("browser_tests") {
     "mutation_observers_apitest.cc",
     "navigation_extension_enabler_browsertest.cc",
     "offscreen_document_browsertest.cc",
+    "omnibox_navigation_browsertest.cc",
     "options_page_apitest.cc",
     "pack_extension_browsertest.cc",
     "permissions/permissions_manager_browsertest.cc",
@@ -2532,8 +2538,11 @@ source_set("browser_tests") {
     "//chrome/browser/ui/zoom",
     "//chrome/browser/web_applications/proto",
     "//chrome/test:platform_browser_tests",
+    "//chrome/test/base:browser_test_waiters",
+    "//chrome/test/base:profile_lifecycle_test_utils",
     "//chrome/test/base:test_launcher_utils",
     "//chrome/test/base:tracing",
+    "//chrome/test/base:web_ui_test_support",
     "//components/back_forward_cache",
     "//components/bookmarks/managed",
     "//components/contextual_tasks/public:feature_list",
@@ -2618,6 +2627,7 @@ source_set("browser_tests") {
       "//chrome/browser/extensions/extension_keybinding_interactive_apitest.cc",
     ]
     deps += [
+      "//chrome/browser/ui/android/tab_model",
       "//chrome/test:test_support_jni_headers",
       "//components/feed:feature_list",
       "//components/messages/android:test_support",
@@ -2645,6 +2655,7 @@ source_set("browser_tests") {
     deps += [
       "//chrome/browser/contextual_tasks:test_support",
       "//chrome/browser/contextual_tasks:ui",
+      "//chrome/browser/ui:browser_window_header",
       "//chrome/browser/ui/search:test_support_ui",
       "//chrome/browser/ui/tabs/saved_tab_groups",
       "//chrome/browser/ui/views/location_bar",
@@ -3194,7 +3205,10 @@ source_set("interactive_ui_tests") {
   deps = []
 
   if (!is_android) {
-    deps += [ "//chrome/browser/ui/window_feature_controller" ]
+    deps += [
+      "//chrome/browser/ui:browser_window_header",
+      "//chrome/browser/ui/window_feature_controller",
+    ]
   }
 
   if (enable_extensions) {
@@ -3237,6 +3251,7 @@ source_set("interactive_ui_tests") {
       "//chrome/browser/ui/extensions:test_support",
       "//chrome/browser/ui/views/extensions:extensions_toolbar_desktop",
       "//chrome/test:test_support_ui",
+      "//chrome/test/base:browser_test_waiters",
       "//components/feed:feature_list",
       "//content/public/browser",
       "//content/test:test_support",

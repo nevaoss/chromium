@@ -333,13 +333,15 @@ const char MockPeerConnectionImpl::kDummyAnswer[] = "dummy answer";
 
 MockPeerConnectionImpl::MockPeerConnectionImpl(
     MockPeerConnectionDependencyFactory* factory,
-    webrtc::PeerConnectionObserver* observer)
+    webrtc::PeerConnectionObserver* observer,
+    std::unique_ptr<webrtc::PeerConnectionTracerInterface> tracer)
     : remote_streams_(new webrtc::RefCountedObject<MockStreamCollection>),
       hint_audio_(false),
       hint_video_(false),
       getstats_result_(true),
       sdp_mline_index_(-1),
-      observer_(observer) {
+      observer_(observer),
+      tracer_(std::move(tracer)) {
   // TODO(hbos): Remove once no longer mandatory to implement.
   ON_CALL(*this, SetLocalDescription(_, _))
       .WillByDefault(testing::Invoke(
@@ -534,6 +536,9 @@ void MockPeerConnectionImpl::CreateOffer(
     const RTCOfferAnswerOptions& options) {
   DCHECK(observer);
   created_session_description_ = true;
+  if (fail_session_description_synchronously_) {
+    observer->OnFailure(webrtc::RTCError(webrtc::RTCErrorType::INVALID_STATE));
+  }
 }
 
 void MockPeerConnectionImpl::CreateAnswer(
@@ -541,6 +546,9 @@ void MockPeerConnectionImpl::CreateAnswer(
     const RTCOfferAnswerOptions& options) {
   DCHECK(observer);
   created_session_description_ = true;
+  if (fail_session_description_synchronously_) {
+    observer->OnFailure(webrtc::RTCError(webrtc::RTCErrorType::INVALID_STATE));
+  }
 }
 
 void MockPeerConnectionImpl::SetLocalDescriptionWorker(

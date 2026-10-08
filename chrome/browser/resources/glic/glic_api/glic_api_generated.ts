@@ -126,19 +126,6 @@ export enum ActorTaskInterruptReason {
   WAITING_FOR_EXPERIMENTAL_TRIGGERING_CONSENT = 8,
 }
 
-// Reason why capturing desktop screenshot failed. NOTE: This may be extended in
-// the future so avoid using complete switches on the currently used enum
-// values.
-export enum CaptureScreenshotErrorReason {
-  // Screen capture or frame encoding failure.
-  UNKNOWN = 0,
-  // Screen capture requested but already in progress of serving another
-  // request.
-  SCREEN_CAPTURE_REQUEST_THROTTLED = 1,
-  // User declined screen capture dialog before taking a screenshot.
-  USER_CANCELLED_SCREEN_PICKER_DIALOG = 2,
-}
-
 // Safe Browsing Threat Type.
 export enum SbThreatType {
   // Default value.
@@ -483,6 +470,11 @@ export enum HostCapability {
   ATTEMPT_OTP_FILLING = 15,
   // Indicates that the host supports exposing Chrome-defined tools.
   CHROME_TOOLS = 16,
+  // Indicates that skills V2 are supported.
+  SKILLS_V2 = 17,
+  // Indicates that the host supports bytes extraction of embedded PDF rendered
+  // in the Chrome PDF viewer.
+  EMBEDDED_PDF_BYTES_EXTRACTION = 18,
 }
 
 // Lists capabilities that the glic web client may support.
@@ -727,6 +719,9 @@ export declare interface UserProfileInfo {
   email: string;
   // Whether the profile's signed-in account is a managed account.
   isManaged?: boolean;
+  // Whether the user has an AI subscription and should show the avatar gradient
+  // ring.
+  hasAvatarRing?: boolean;
 }
 
 // The result from checking a page with Safe Browsing.
@@ -783,8 +778,10 @@ export declare interface TabContextOptions {
   // Maximum number of meta tags (per Document/Frame) to include in the
   // response. Defaults to 0 if not provided.
   maxMetaTags?: number;
-  // If true, and the focused tab contains a PDF as the top level document,
-  // returns PdfDocumentData.
+  // If true, returns PdfDocumentData when:
+  // - the focused tab contains a PDF as the top level document or,
+  // - the focused tab contains an embedded PDF and the host has embedded PDF
+  // bytes extraction capability.
   pdfData?: boolean;
   // Maximum size in bytes for returned PDF data. If this size is exceeded,
   // PdfDocumentData is still returned, but it will not contain PDF bytes.

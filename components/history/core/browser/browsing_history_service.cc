@@ -18,6 +18,7 @@
 #include "base/metrics/histogram_functions.h"
 #include "base/notreached.h"
 #include "base/strings/string_number_conversions.h"
+#include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/time/default_clock.h"
 #include "base/time/time.h"
@@ -323,8 +324,14 @@ void BrowsingHistoryService::QueryHistoryInternal(
       // If no remote results were needed, ShouldQueryRemote() should have
       // returned false and control flow wouldn't reach here.
       CHECK(options.max_count > 0);
+      // TODO(b:549736398): Update this to support remote history matching using
+      // both hostname_suffix and text_query at the same time.
+      const std::u16string remote_query =
+          !state->search_text.empty()
+              ? state->search_text
+              : base::UTF8ToUTF16(state->original_options.hostname_suffix);
       web_history_request_ = web_history->QueryHistory(
-          state->search_text, options,
+          remote_query, options,
           base::BindOnce(&BrowsingHistoryService::WebHistoryQueryComplete,
                          weak_factory_.GetWeakPtr(), state, clock_->Now()),
           partial_traffic_annotation);
@@ -837,11 +844,8 @@ void BrowsingHistoryService::ReturnResultsToDriver(
     scoped_refptr<QueryHistoryState> state) {
   std::vector<HistoryEntry> results;
   bool has_remote_results = !state->remote_results.empty();
-  bool group_visits = false;
-#if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
-  group_visits =
+  bool group_visits =
       base::FeatureList::IsEnabled(kBrowsingHistorySimilarVisitsGrouping);
-#endif  // !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
 
   if (group_visits) {
     results = GroupSimilarVisits(state.get());
@@ -962,13 +966,21 @@ void BrowsingHistoryService::WebHistoryQueryComplete(
 
     state->remote_results.reserve(state->remote_results.size() +
                                   query_history_result->visits.size());
-    std::string host_name_utf8 = base::UTF16ToUTF8(state->search_text);
+    const bool improved_suffix_matching = base::FeatureList::IsEnabled(
+        kBrowsingHistoryImprovedHostnameSuffixMatching);
+    std::string hostname_suffix = state->original_options.hostname_suffix;
+    if (improved_suffix_matching) {
+      hostname_suffix = base::ToLowerASCII(hostname_suffix);
+    }
     for (const WebHistoryService::QueryHistoryResult::Visit& visit :
          query_history_result->visits) {
-      if (state->original_options.host_only) {
+      if (!hostname_suffix.empty()) {
         // Do post filtering to skip entries that do not have the correct
         // hostname.
-        if (visit.url.GetHost() != host_name_utf8) {
+        const bool matches_host =
+            improved_suffix_matching ? visit.url.DomainIs(hostname_suffix)
+                                     : (visit.url.GetHost() == hostname_suffix);
+        if (!matches_host) {
           continue;
         }
       }
