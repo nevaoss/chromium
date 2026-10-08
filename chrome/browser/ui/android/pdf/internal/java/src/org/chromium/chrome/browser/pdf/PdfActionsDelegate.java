@@ -21,9 +21,8 @@ public interface PdfActionsDelegate {
      * Called when a link in the PDF is clicked.
      *
      * @param uri The uri of the link that was clicked.
-     * @return True if the link was handled, false otherwise.
      */
-    boolean onLinkClicked(Uri uri);
+    void onLinkClicked(Uri uri);
 
     /**
      * Called when the PDF document is successfully loaded.

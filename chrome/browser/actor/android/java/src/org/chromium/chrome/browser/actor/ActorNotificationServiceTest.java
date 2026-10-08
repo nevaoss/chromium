@@ -10,6 +10,12 @@ import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyInt;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import android.app.Notification;
@@ -21,6 +27,7 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
@@ -31,9 +38,13 @@ import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.base.test.util.Features.EnableFeatures;
 import org.chromium.chrome.browser.actor.ui.R;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
+import org.chromium.chrome.browser.notifications.NotificationConstants;
+import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.components.browser_ui.notifications.BaseNotificationManagerProxyFactory;
 import org.chromium.components.browser_ui.notifications.MockNotificationManagerProxy;
 import org.chromium.components.browser_ui.notifications.NotificationWrapper;
+
+import java.util.concurrent.TimeUnit;
 
 /** Unit tests for {@link ActorNotificationService}. */
 @RunWith(BaseRobolectricTestRunner.class)
@@ -56,11 +67,23 @@ public class ActorNotificationServiceTest {
         BaseNotificationManagerProxyFactory.setInstanceForTesting(mMockNotificationManager);
         ActorForegroundServiceController.setInstanceForTesting(mServiceController);
         mNotificationService = new ActorNotificationService(mKeyedService);
+
+        ActorForegroundServiceManager fgsManager = mock(ActorForegroundServiceManager.class);
+        doAnswer(
+                        invocation -> {
+                            int taskId = invocation.getArgument(0);
+                            mNotificationService.clearTaskData(taskId);
+                            return null;
+                        })
+                .when(fgsManager)
+                .onNotificationDismissed(anyInt());
+        ActorForegroundServiceManager.setInstanceForTesting(fgsManager);
     }
 
     @After
     public void tearDown() {
         mNotificationService.clearAll();
+        ActorForegroundServiceManager.resetInstanceForTesting();
     }
 
     @Test
@@ -759,5 +782,299 @@ public class ActorNotificationServiceTest {
                         "Test Task",
                         "Step 2"),
                 wrapper.getNotification().extras.getString(Notification.EXTRA_TEXT));
+    }
+
+    @Test
+    public void testResendWorkingNotificationLoudly_RunningTask_PostsLoudNotification() {
+        int taskId = 1;
+        when(mTask.getId()).thenReturn(taskId);
+        when(mTask.getTitle()).thenReturn("Test Task");
+        when(mTask.getState()).thenReturn(ActorTaskState.ACTING);
+        when(mKeyedService.getTask(taskId)).thenReturn(mTask);
+
+        // Initial silent notification while in foreground.
+        mNotificationService.updateNotificationForTask(
+                taskId, ActorTaskState.ACTING, /* isSilent= */ true, /* isWarning= */ false);
+        assertEquals(1, mMockNotificationManager.getMutationCountAndDecrement());
+        NotificationWrapper silentWrapper =
+                mNotificationService.getCachedNotificationWrapperForTesting(taskId);
+        assertNotNull(silentWrapper);
+        assertTrue(silentWrapper.isSilent());
+
+        // Resend notification loudly (e.g. user leaves Chrome to background or enters PiP).
+        mNotificationService.resendWorkingNotificationLoudly(taskId);
+        assertEquals(1, mMockNotificationManager.getMutationCountAndDecrement());
+        NotificationWrapper loudWrapper =
+                mNotificationService.getCachedNotificationWrapperForTesting(taskId);
+        assertNotNull(loudWrapper);
+        assertFalse(loudWrapper.isSilent());
+    }
+
+    @Test
+    public void testResendWorkingNotificationLoudly_PausedTask_DoesNotNotify() {
+        int taskId = 1;
+        when(mTask.getId()).thenReturn(taskId);
+        when(mTask.getTitle()).thenReturn("Test Task");
+        when(mTask.getState()).thenReturn(ActorTaskState.PAUSED_BY_USER);
+        when(mKeyedService.getTask(taskId)).thenReturn(mTask);
+
+        // Initial silent notification while in foreground for paused task.
+        mNotificationService.updateNotificationForTask(
+                taskId,
+                ActorTaskState.PAUSED_BY_USER,
+                /* isSilent= */ true,
+                /* isWarning= */ false);
+        assertEquals(1, mMockNotificationManager.getMutationCountAndDecrement());
+
+        // Attempting to resend working notification loudly for paused task does not notify.
+        mNotificationService.resendWorkingNotificationLoudly(taskId);
+        assertEquals(0, mMockNotificationManager.getMutationCountAndDecrement());
+    }
+
+    @Test
+    public void testMaybeDismissNotificationFromIntent_CompletedTask_DismissesNotification() {
+        int taskId = 101;
+        int state = ActorTaskState.FINISHED;
+
+        ActorTask mockTask = mock(ActorTask.class);
+        when(mockTask.getState()).thenReturn(state);
+        when(mKeyedService.getTask(taskId)).thenReturn(mockTask);
+
+        Profile mockProfile = mock(Profile.class);
+        Profile mockOriginalProfile = mock(Profile.class);
+        when(mockProfile.getOriginalProfile()).thenReturn(mockOriginalProfile);
+        ActorKeyedServiceFactory.setForTesting(mKeyedService);
+
+        Intent intent = new Intent();
+        intent.putExtra(NotificationConstants.EXTRA_ACTOR_TASK_ID, taskId);
+        intent.putExtra(NotificationConstants.EXTRA_ACTOR_TASK_STATE, state);
+
+        mMockNotificationManager.notify(taskId, new Notification());
+        assertEquals(1, mMockNotificationManager.getNotifications().size());
+
+        ActorNotificationService.maybeDismissNotificationFromIntent(intent, mockProfile);
+
+        assertTrue(
+                "Completed task notification should be cancelled on intent receipt",
+                mMockNotificationManager.getNotifications().isEmpty());
+    }
+
+    @Test
+    public void testMaybeDismissNotificationFromIntent_FallbackToIntentState() {
+        int taskId = 102;
+        int state = ActorTaskState.FAILED;
+
+        // Service does not have the task in memory, uses intent state.
+        when(mKeyedService.getTask(taskId)).thenReturn(null);
+
+        Intent intent = new Intent();
+        intent.putExtra(NotificationConstants.EXTRA_ACTOR_TASK_ID, taskId);
+        intent.putExtra(NotificationConstants.EXTRA_ACTOR_TASK_STATE, state);
+
+        mMockNotificationManager.notify(taskId, new Notification());
+        assertEquals(1, mMockNotificationManager.getNotifications().size());
+
+        ActorNotificationService.maybeDismissNotificationFromIntent(intent, null);
+
+        assertTrue(
+                "Stopped task notification should be cancelled on intent receipt",
+                mMockNotificationManager.getNotifications().isEmpty());
+    }
+
+    @Test
+    public void testMaybeDismissNotificationFromIntent_ActiveTask_DoesNotDismissNotification() {
+        int taskId = 103;
+        int state = ActorTaskState.ACTING;
+
+        ActorTask mockTask = mock(ActorTask.class);
+        when(mockTask.getState()).thenReturn(state);
+        when(mKeyedService.getTask(taskId)).thenReturn(mockTask);
+
+        Profile mockProfile = mock(Profile.class);
+        Profile mockOriginalProfile = mock(Profile.class);
+        when(mockProfile.getOriginalProfile()).thenReturn(mockOriginalProfile);
+        ActorKeyedServiceFactory.setForTesting(mKeyedService);
+
+        Intent intent = new Intent();
+        intent.putExtra(NotificationConstants.EXTRA_ACTOR_TASK_ID, taskId);
+        intent.putExtra(NotificationConstants.EXTRA_ACTOR_TASK_STATE, state);
+
+        mMockNotificationManager.notify(taskId, new Notification());
+        assertEquals(1, mMockNotificationManager.getNotifications().size());
+
+        ActorNotificationService.maybeDismissNotificationFromIntent(intent, mockProfile);
+
+        assertEquals(
+                "Active task notification should not be cancelled on intent receipt",
+                1,
+                mMockNotificationManager.getNotifications().size());
+    }
+
+    @Test
+    public void testMaybeDismissNotificationFromIntent_CancelsPendingDemoteRunnable() {
+        int taskId = 104;
+        when(mTask.getId()).thenReturn(taskId);
+        when(mTask.getTitle()).thenReturn("Finished Task");
+        when(mTask.getState()).thenReturn(ActorTaskState.FINISHED);
+        when(mKeyedService.getTask(taskId)).thenReturn(mTask);
+
+        mNotificationService.updateNotificationForTask(
+                taskId, ActorTaskState.FINISHED, /* isSilent= */ false, /* isWarning= */ false);
+
+        assertTrue(mNotificationService.hasPendingDemotionForTesting(taskId));
+        assertEquals(1, mMockNotificationManager.getNotifications().size());
+
+        Intent intent = new Intent();
+        intent.putExtra(NotificationConstants.EXTRA_ACTOR_TASK_ID, taskId);
+        intent.putExtra(NotificationConstants.EXTRA_ACTOR_TASK_STATE, ActorTaskState.FINISHED);
+
+        ActorNotificationService.maybeDismissNotificationFromIntent(intent, null);
+
+        assertTrue(mMockNotificationManager.getNotifications().isEmpty());
+        assertFalse(mNotificationService.hasPendingDemotionForTesting(taskId));
+
+        // Run delayed tasks; demoteRunnable was cancelled so it should not execute or re-post.
+        ShadowLooper.runUiThreadTasksIncludingDelayedTasks();
+
+        assertTrue(
+                "Demotion runnable should not re-post notification after dismissal",
+                mMockNotificationManager.getNotifications().isEmpty());
+    }
+
+    @Test
+    public void testIndividualTaskDemotion_DemotesBasedOnPerNotificationTimer() {
+        int taskId1 = 1;
+        int taskId2 = 2;
+        ActorTask task1 = mock(ActorTask.class);
+        when(task1.getId()).thenReturn(taskId1);
+        when(task1.getTitle()).thenReturn("Task 1");
+        when(task1.getState()).thenReturn(ActorTaskState.FINISHED);
+        when(mKeyedService.getTask(taskId1)).thenReturn(task1);
+
+        ActorTask task2 = mock(ActorTask.class);
+        when(task2.getId()).thenReturn(taskId2);
+        when(task2.getTitle()).thenReturn("Task 2");
+        when(task2.getState()).thenReturn(ActorTaskState.FAILED);
+        when(mKeyedService.getTask(taskId2)).thenReturn(task2);
+
+        // Task 1 finishes at t=0.
+        mNotificationService.updateNotificationForTask(
+                taskId1, ActorTaskState.FINISHED, /* isSilent= */ false, /* isWarning= */ false);
+
+        // Advance by 20s.
+        ShadowLooper.idleMainLooper(20, TimeUnit.SECONDS);
+
+        // Task 2 finishes at t=20.
+        mNotificationService.updateNotificationForTask(
+                taskId2, ActorTaskState.FAILED, /* isSilent= */ false, /* isWarning= */ false);
+
+        assertTrue(mNotificationService.hasPendingDemotions());
+        assertTrue(mNotificationService.hasPendingDemotionForTesting(taskId1));
+        assertTrue(mNotificationService.hasPendingDemotionForTesting(taskId2));
+
+        // Advance by 10s (now t=30s from task 1, 10s from task 2).
+        ShadowLooper.idleMainLooper(10, TimeUnit.SECONDS);
+
+        // Task 1 should be demoted, Task 2 should still be pending demotion.
+        assertFalse(mNotificationService.hasPendingDemotionForTesting(taskId1));
+        assertTrue(mNotificationService.hasPendingDemotionForTesting(taskId2));
+        assertTrue(mNotificationService.hasPendingDemotions());
+
+        Notification demoted1 =
+                mNotificationService.getCachedNotification(
+                        taskId1, /* isSilent= */ false, /* isWarning= */ false);
+        assertNotNull(demoted1);
+        assertFalse((demoted1.flags & Notification.FLAG_ONGOING_EVENT) != 0);
+
+        Notification stillLive2 =
+                mNotificationService.getCachedNotification(
+                        taskId2, /* isSilent= */ false, /* isWarning= */ false);
+        assertNotNull(stillLive2);
+        assertTrue((stillLive2.flags & Notification.FLAG_ONGOING_EVENT) != 0);
+
+        // Advance by another 20s (now t=50s from task 1, 30s from task 2).
+        ShadowLooper.idleMainLooper(20, TimeUnit.SECONDS);
+
+        // Now Task 2 should also be demoted.
+        assertFalse(mNotificationService.hasPendingDemotionForTesting(taskId2));
+        assertFalse(mNotificationService.hasPendingDemotions());
+
+        Notification demoted2 =
+                mNotificationService.getCachedNotification(
+                        taskId2, /* isSilent= */ false, /* isWarning= */ false);
+        assertNotNull(demoted2);
+        assertFalse((demoted2.flags & Notification.FLAG_ONGOING_EVENT) != 0);
+    }
+
+    @Test
+    public void testDemoteToNonLiveNotification_CallsMaybeStopServiceNowBeforeNotify() {
+        int taskId = 1;
+        when(mTask.getId()).thenReturn(taskId);
+        when(mTask.getTitle()).thenReturn("Test Task");
+        when(mTask.getState()).thenReturn(ActorTaskState.FINISHED);
+        when(mKeyedService.getTask(taskId)).thenReturn(mTask);
+
+        ActorForegroundServiceManager fgsManager = mock(ActorForegroundServiceManager.class);
+        ActorForegroundServiceManager.setInstanceForTesting(fgsManager);
+
+        mNotificationService.updateNotificationForTask(
+                taskId, ActorTaskState.FINISHED, /* isSilent= */ false, /* isWarning= */ false);
+        assertEquals(1, mMockNotificationManager.getMutationCountAndDecrement());
+
+        java.util.concurrent.atomic.AtomicBoolean notifiedDuringMaybeStop =
+                new java.util.concurrent.atomic.AtomicBoolean(false);
+        doAnswer(
+                        invocation -> {
+                            // At the moment maybeStopServiceNow is called, nonLiveWrapper
+                            // should NOT yet be notified.
+                            notifiedDuringMaybeStop.set(
+                                    mMockNotificationManager
+                                            .getNotifications()
+                                            .get(0)
+                                            .notification
+                                            .extras
+                                            .getBoolean(
+                                                    ActorNotificationFactory
+                                                            .EXTRA_REQUEST_PROMOTED_ONGOING,
+                                                    false));
+                            return null;
+                        })
+                .when(fgsManager)
+                .maybeStopServiceNow();
+
+        ShadowLooper.runUiThreadTasksIncludingDelayedTasks();
+
+        verify(fgsManager).maybeStopServiceNow();
+        assertTrue(
+                "When maybeStopServiceNow was called, previous ongoing notification should"
+                        + " still be in manager",
+                notifiedDuringMaybeStop.get());
+        Notification demoted =
+                mNotificationService.getCachedNotification(
+                        taskId, /* isSilent= */ false, /* isWarning= */ false);
+        assertNotNull(demoted);
+        assertFalse(
+                "After demotion, notification should not request promoted ongoing",
+                demoted.extras.getBoolean(ActorNotificationFactory.EXTRA_REQUEST_PROMOTED_ONGOING));
+    }
+
+    @Test
+    public void testMaybeDismissNotificationFromIntent_CallsServiceBeforeCancel() {
+        int taskId = 105;
+        ActorForegroundServiceManager mockManager = mock(ActorForegroundServiceManager.class);
+        ActorForegroundServiceManager.setInstanceForTesting(mockManager);
+
+        MockNotificationManagerProxy spyNotificationManager = spy(mMockNotificationManager);
+        BaseNotificationManagerProxyFactory.setInstanceForTesting(spyNotificationManager);
+
+        Intent intent = new Intent();
+        intent.putExtra(NotificationConstants.EXTRA_ACTOR_TASK_ID, taskId);
+        intent.putExtra(NotificationConstants.EXTRA_ACTOR_TASK_STATE, ActorTaskState.FINISHED);
+
+        ActorNotificationService.maybeDismissNotificationFromIntent(intent, null);
+
+        InOrder inOrder = inOrder(mockManager, spyNotificationManager);
+        inOrder.verify(mockManager).onNotificationDismissed(taskId);
+        inOrder.verify(spyNotificationManager).cancel(taskId);
     }
 }

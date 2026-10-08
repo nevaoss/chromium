@@ -74,9 +74,6 @@ class GLTextureImageBackingFactoryTestBase : public SharedImageTestBase {
     supports_rgba_f16_ =
         feature_info->validators()->pixel_type.IsValid(GL_HALF_FLOAT_OES) ||
         feature_info->gl_version_info().IsAtLeastGLES(3, 0);
-    supports_etc1_ =
-        feature_info->validators()->compressed_texture_format.IsValid(
-            GL_ETC1_RGB8_OES);
     supports_ar30_ = feature_info->feature_flags().chromium_image_ar30;
     supports_ab30_ = feature_info->feature_flags().chromium_image_ab30;
 
@@ -117,9 +114,6 @@ class GLTextureImageBackingFactoryTestBase : public SharedImageTestBase {
         format == viz::SinglePlaneFormat::kRGBA_1010102) {
       return supports_ar30_ || supports_ab30_;
     }
-    if (format == viz::SinglePlaneFormat::kETC1) {
-      return supports_etc1_;
-    }
     if (format == viz::SinglePlaneFormat::kBGRA_8888) {
       return supports_bgra_;
     }
@@ -132,7 +126,6 @@ class GLTextureImageBackingFactoryTestBase : public SharedImageTestBase {
   bool supports_r_rg_ = false;
   bool supports_rg16_ = false;
   bool supports_rgba_f16_ = false;
-  bool supports_etc1_ = false;
   bool supports_ar30_ = false;
   bool supports_ab30_ = false;
   bool supports_bgra_ = false;
@@ -352,6 +345,7 @@ TEST_F(GLTextureImageBackingFactoryTest, ProduceVideo) {
   ASSERT_TRUE(backing);
   std::unique_ptr<SharedImageRepresentationFactoryRef> shared_image =
       shared_image_manager_.Register(std::move(backing), &memory_type_tracker_);
+  shared_image->SetCleared();
 
   Microsoft::WRL::ComPtr<ID3D11Device> d3d11_device;
   UINT creation_flags = D3D11_CREATE_DEVICE_BGRA_SUPPORT;
@@ -778,8 +772,7 @@ std::string TestParamToString(
 }
 
 const auto kInitialDataFormats =
-    ::testing::Values(viz::SinglePlaneFormat::kETC1,
-                      viz::SinglePlaneFormat::kRGBA_8888,
+    ::testing::Values(viz::SinglePlaneFormat::kRGBA_8888,
                       viz::SinglePlaneFormat::kBGRA_8888,
                       viz::SinglePlaneFormat::kRGBA_4444,
                       viz::SinglePlaneFormat::kR_8,

@@ -12,7 +12,7 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoMoreInteractions;
 
@@ -25,8 +25,6 @@ import android.graphics.drawable.Drawable;
 import android.graphics.drawable.VectorDrawable;
 import android.view.ContextThemeWrapper;
 
-import androidx.test.filters.SmallTest;
-
 import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
@@ -35,6 +33,7 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
+import org.mockito.quality.Strictness;
 
 import org.chromium.base.BaseSwitches;
 import org.chromium.base.Callback;
@@ -75,18 +74,19 @@ public class EntitySuggestionProcessorUnitTest {
     private static final GURL WEB_URL = JUnitTestGURLs.URL_1;
     private static final GURL SEARCH_URL = JUnitTestGURLs.SEARCH_URL;
 
-    @Rule public final MockitoRule mMockitoRule = MockitoJUnit.rule();
+    @Rule
+    public final MockitoRule mMockitoRule = MockitoJUnit.rule().strictness(Strictness.STRICT_STUBS);
 
     @Mock private SuggestionHost mSuggestionHost;
     @Mock private OmniboxImageSupplier mImageSupplier;
     @Mock private Bitmap mBitmap;
     @Mock private BookmarkState mBookmarkState;
     @Mock private UrlBarEditingTextStateProvider mTextProvider;
-    @Mock private AutocompleteInput mInput;
     @Mock private Supplier<Tab> mTabSupplier;
     @Mock private Supplier<ShareDelegate> mShareDelegateSupplier;
     @Mock private OmniboxActionDelegate mActionDelegate;
 
+    private final AutocompleteInput mInput = new AutocompleteInput();
     private Context mContext;
     private EntitySuggestionProcessor mProcessor;
 
@@ -148,11 +148,10 @@ public class EntitySuggestionProcessorUnitTest {
                         ObservableSuppliers.createNonNull(ControlsPosition.TOP),
                         mActionDelegate);
         mProcessor = new EntitySuggestionProcessor(uiContext);
-        doReturn("").when(mTextProvider).getTextWithoutAutocomplete();
+        lenient().doReturn("").when(mTextProvider).getTextWithoutAutocomplete();
     }
 
     @Test
-    @SmallTest
     public void contentTest_basicContent() {
         SuggestionTestHelper suggHelper = createSuggestion("subject", "details", null, SEARCH_URL);
         processSuggestion(suggHelper);
@@ -165,7 +164,6 @@ public class EntitySuggestionProcessorUnitTest {
     }
 
     @Test
-    @SmallTest
     public void decorationTest_noColorOrImage() {
         SuggestionTestHelper suggHelper = createSuggestion("", "", null, SEARCH_URL);
         processSuggestion(suggHelper);
@@ -175,7 +173,6 @@ public class EntitySuggestionProcessorUnitTest {
     }
 
     @Test
-    @SmallTest
     public void decorationTest_validHexColor_lowMemoryDevice() {
         OmniboxCapabilities.setIsLowMemoryDeviceForTesting(true);
         SuggestionTestHelper suggHelper = createSuggestion("", "", "#fedcba", SEARCH_URL);
@@ -185,7 +182,6 @@ public class EntitySuggestionProcessorUnitTest {
     }
 
     @Test
-    @SmallTest
     public void decorationTest_desktopDevice() {
         OmniboxCapabilities.setIsDesktopPlatformForTesting(true);
         SuggestionTestHelper suggHelper = createSuggestion("", "", "#fedcba", SEARCH_URL);
@@ -195,7 +191,6 @@ public class EntitySuggestionProcessorUnitTest {
     }
 
     @Test
-    @SmallTest
     public void decorationTest_validNamedColor() {
         SuggestionTestHelper suggHelper = createSuggestion("", "", "red", SEARCH_URL);
         processSuggestion(suggHelper);
@@ -206,7 +201,6 @@ public class EntitySuggestionProcessorUnitTest {
     }
 
     @Test
-    @SmallTest
     public void decorationTest_invalidColor() {
         // Note, fallback is the bitmap drawable representing a search loupe.
         SuggestionTestHelper suggHelper = createSuggestion("", "", "", SEARCH_URL);
@@ -223,7 +217,6 @@ public class EntitySuggestionProcessorUnitTest {
     }
 
     @Test
-    @SmallTest
     public void fetchImage_withSupplier() {
         SuggestionTestHelper suggHelper = createSuggestion("", "", "red", WEB_URL);
         processSuggestion(suggHelper);
@@ -241,7 +234,6 @@ public class EntitySuggestionProcessorUnitTest {
     }
 
     @Test
-    @SmallTest
     public void fetchImage_withoutSupplier() {
         AutocompleteUIContext uiContext =
                 new AutocompleteUIContext(

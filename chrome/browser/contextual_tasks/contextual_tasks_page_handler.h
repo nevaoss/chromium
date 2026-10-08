@@ -19,7 +19,6 @@
 #include "components/contextual_tasks/public/contextual_tasks_service.h"
 #include "mojo/public/cpp/bindings/pending_receiver.h"
 #include "mojo/public/cpp/bindings/receiver.h"
-#include "mojo/public/cpp/bindings/remote.h"
 #include "ui/base/interaction/element_tracker.h"
 
 namespace base {
@@ -92,7 +91,6 @@ class ContextualTasksPageHandler
                              bool is_side_panel,
                              GetCommonSearchParamsCallback callback) override;
   void OnboardingTooltipDismissed() override;
-  void LensSearchTooltipDismissed() override;
   void AskGTooltipDismissed() override;
   void ReopenTabs() override;
   void PinSidePanel() override;

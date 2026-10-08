@@ -3,6 +3,7 @@ ci/ASAN Release
 ci/ASAN Release Media
 ci/ASan Release (32-bit x86 with V8-ARM)
 ci/ASan Release Media (32-bit x86 with V8-ARM)
+ci/Android FYI Experimental Release (Pixel 11)
 ci/Android FYI Experimental Release (Pixel 6)
 ci/Android FYI Release (Pixel 10)
 ci/Android FYI Release (Pixel 2)
@@ -20,7 +21,6 @@ ci/Android x64 Builder All Targets (dbg)
 ci/Android x86 Builder (dbg)
 ci/CFI Linux CF
 ci/CFI Linux ToT
-ci/Centipede High End Upload Linux ASan
 ci/Centipede Upload Linux ASan
 ci/ChromeOS FYI Release (amd64-generic)
 ci/ChromiumOS ASAN Release
@@ -328,12 +328,13 @@ ci/fuchsia-angle-builder
 ci/fuchsia-fyi-arm64-dbg
 ci/fuchsia-fyi-x64-asan
 ci/fuchsia-fyi-x64-dbg-persistent-emulator
-ci/fuchsia-netstack2-x64-cast-receiver-rel
 ci/fuchsia-x64-cast-receiver-dbg
 ci/fuchsia-x64-cast-receiver-rel
 ci/fuchsia-x64-perf-cast-receiver-rel
+ci/ios-angle-arm64-builder
 ci/ios-angle-builder
 ci/ios-angle-intel
+ci/ios-angle-m2
 ci/ios-asan
 ci/ios-catalyst
 ci/ios-device
@@ -513,7 +514,6 @@ try/fuchsia-binary-size
 try/fuchsia-fyi-arm64-dbg
 try/fuchsia-fyi-x64-asan
 try/fuchsia-fyi-x64-dbg-persistent-emulator
-try/fuchsia-netstack2-x64-cast-receiver-rel
 try/fuchsia-x64-accessibility-rel
 try/fuchsia-x64-cast-receiver-dbg
 try/fuchsia-x64-cast-receiver-dbg-compile
@@ -522,6 +522,7 @@ try/fuchsia-x64-perf-cast-receiver-rel
 try/gn-args-verifier
 try/gpu-fyi-try-android-a13-32
 try/gpu-fyi-try-android-a23-32
+try/gpu-fyi-try-android-arm64-pixel-11-exp
 try/gpu-fyi-try-android-pixel-10-64
 try/gpu-fyi-try-android-pixel-6-64
 try/gpu-fyi-try-android-pixel-6-64-exp
@@ -582,6 +583,7 @@ try/gpu-try-mac-amd-retina-dbg
 try/gpu-try-mac-intel-dbg
 try/gpu-try-win-nvidia-dbg
 try/ios-angle-try-intel
+try/ios-angle-try-m2
 try/ios-asan
 try/ios-catalyst
 try/ios-device
@@ -688,6 +690,7 @@ try/mac-separate-renderer-rel
 try/mac-swangle-chromium-try-x64
 try/mac-updater-try-builder-dbg
 try/mac-updater-try-builder-rel
+try/mac-webdriver-bidi-rel
 try/mac-x64-compile-dbg
 try/mac13-arm64-rel
 try/mac13-tests
@@ -736,6 +739,7 @@ try/win-swangle-try-x86
 try/win-updater-try-builder-dbg
 try/win-updater-try-builder-rel
 try/win-utr-tester
+try/win-webdriver-bidi-rel
 try/win-x64-libfuzzer-asan-rel-tests
 try/win10-dbg
 try/win11-rel

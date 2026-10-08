@@ -103,11 +103,7 @@ bool SoftNavigationContext::AddPaintedArea(PaintTimingRecord* record) {
   uint64_t painted_area = rect.size().GetArea();
 
   Node* node = record->GetNode();
-  // TODO(crbug.com/441914208): `node` can be null here, which is unexpected.
-  // Change this back to a CHECK when the root cause is understood and fixed.
-  if (!node) {
-    return false;
-  }
+  CHECK(node);
 
   painted_area_ += painted_area;
   TRACE_EVENT_INSTANT(
@@ -271,10 +267,6 @@ void SoftNavigationContext::EmitSoftNavigation() {
                         soft_navigation_slicing_time_, "context", *this);
   }
 
-  if (!RuntimeEnabledFeatures::SoftNavigationHeuristicsEnabled(window_)) {
-    return;
-  }
-
   WindowPerformance* performance = DOMWindowPerformance::performance(*window_);
   CHECK(performance);
   performance->AddSoftNavigation(TimeOrigin(), FirstContentfulPaintTimingInfo(),
@@ -302,9 +294,6 @@ void SoftNavigationContext::EmitLcpPerformanceEntry(
     const AtomicString& id,
     const String& url,
     Element* element) {
-  if (!RuntimeEnabledFeatures::SoftNavigationHeuristicsEnabled(window_)) {
-    return;
-  }
   // This should not be called after we've been shut down.
   CHECK(!HasBeenShutdown());
 

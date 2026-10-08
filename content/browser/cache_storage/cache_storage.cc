@@ -628,9 +628,6 @@ class CacheStorage::SimpleCacheLoader : public CacheStorage::CacheLoader {
     }
 
     if (!index.has_storage_key()) {
-      CHECK(
-          bucket_locator.storage_key.origin().GetURL().spec() == index.origin(),
-          base::NotFatalUntil::M158);
       index.set_storage_key(bucket_locator.storage_key.Serialize());
       index_modified = true;
     }

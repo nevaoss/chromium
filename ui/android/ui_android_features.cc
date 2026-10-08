@@ -44,8 +44,12 @@ BASE_FEATURE(kDeprecatedExternalPickerFunction,
 BASE_FEATURE(kDisablePhotoPickerForVideoCapture,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
+BASE_FEATURE(kHasContentUri, base::FEATURE_ENABLED_BY_DEFAULT);
+
 BASE_FEATURE(kMaximumWindowForGestureNavDetection,
              base::FEATURE_ENABLED_BY_DEFAULT);
+
+BASE_FEATURE(kPointerLockMouseScaling, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kRefactorMinWidthContextOverride,
              base::FEATURE_ENABLED_BY_DEFAULT);

@@ -101,10 +101,6 @@ export class ContextualTasksComposeboxElement extends I18nMixinLit
         type: Boolean,
         reflect: true,
       },
-      isLensSearchTooltipShowing: {
-        type: Boolean,
-        reflect: true,
-      },
       isLensOverlayShowing: {
         type: Boolean,
         reflect: true,
@@ -158,6 +154,7 @@ export class ContextualTasksComposeboxElement extends I18nMixinLit
       useFork_: {type: Boolean},
       smartTabSharingVisible_: {type: Boolean},
       contextManagementInComposeboxEnabled_: {type: Boolean},
+      clearAllInputsWhenSubmittingQuery_: {type: Boolean},
       energyEffectEnabled_: {type: Boolean, reflect: true},
       energyEffectAnimationEnabled_: {type: Boolean, reflect: true},
       glifAnimationState_: {type: String},
@@ -168,7 +165,6 @@ export class ContextualTasksComposeboxElement extends I18nMixinLit
   accessor inToolMode_: boolean = false;
   accessor isZeroState: boolean = false;
   accessor isSidePanel: boolean = false;
-  accessor isLensSearchTooltipShowing: boolean = false;
   accessor isLensOverlayShowing: boolean = false;
   accessor isOverlayOpenForAimVisualSearch: boolean = false;
   accessor inputEnabled: boolean = true;
@@ -228,6 +224,8 @@ export class ContextualTasksComposeboxElement extends I18nMixinLit
       loadTimeData.getBoolean('composeboxSmartTabSharingVisible');
   protected accessor contextManagementInComposeboxEnabled_: boolean =
       loadTimeData.getBoolean('contextManagementInComposeboxEnabled');
+  protected accessor clearAllInputsWhenSubmittingQuery_: boolean =
+      loadTimeData.getBoolean('clearAllInputsWhenSubmittingQuery');
   protected accessor energyEffectEnabled_: boolean =
       loadTimeData.getBoolean('energyEffectEnabled');
   // The use of energyEffectEnabled to set energyEffectAnimationEnabled_ is

@@ -32,9 +32,6 @@ BASE_DECLARE_FEATURE(kGlicActorLocalhostIsSensitive);
 BASE_DECLARE_FEATURE(kGlicCrossOriginNavigationGating);
 // Feature params to kGlicCrossOriginNavigationGating to enable individual
 // checks for debugging.
-// Toggles if we prompt users for navigation to sensitive sites (true) or we
-// just fail the navigation (false).
-BASE_DECLARE_FEATURE_PARAM(bool, kGlicPromptUserForSensitiveNavigations);
 // Toggles confirming actor navigations to new origins.
 BASE_DECLARE_FEATURE_PARAM(bool, kGlicConfirmNavigationToNewOrigins);
 // Toggles displaying a user confirmation to confirm the navigation instead of
@@ -108,6 +105,10 @@ BASE_DECLARE_FEATURE(kActorRestartObservationDelayControllerOnNavigate);
 BASE_DECLARE_FEATURE(kActorLoginObservationStartDelay);
 extern const base::FeatureParam<base::TimeDelta>
     kActorLoginObservationStartDelayDuration;
+
+BASE_DECLARE_FEATURE(kActorTypeToolObservationStartDelay);
+extern const base::FeatureParam<base::TimeDelta>
+    kActorTypeToolObservationStartDelayDuration;
 
 // Kill switch to disable sending a browser signal (which is used for user
 // interaction) before sending action to renderer.

@@ -45,6 +45,12 @@
           "project": "chromium"
         }
       ],
+      "mirroring_builder_group_and_names": [
+        {
+          "builder": "android-annotator-rel",
+          "group": "tryserver.chromium.android"
+        }
+      ],
       "targets_spec_directory": "infra/config/generated/builders/ci/android-annotator-rel/targets"
     }
   },

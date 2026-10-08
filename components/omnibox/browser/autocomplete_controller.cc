@@ -601,6 +601,9 @@ AutocompleteController::AutocompleteController(
 }
 
 AutocompleteController::~AutocompleteController() {
+  for (Observer& obs : observers_) {
+    obs.OnControllerDestroying(this);
+  }
   base::trace_event::MemoryDumpManager::GetInstance()->UnregisterDumpProvider(
       this);
   // Must stop providers because they may have unowned tasks that continue to
@@ -690,6 +693,7 @@ void AutocompleteController::Start(const AutocompleteInput& input) {
     // Starter Pack engines in keyword mode only run a subset of the providers,
     // so call `ShouldRunProvider()` to determine which ones should run.
     if (!ShouldRunProvider(provider.get())) {
+      provider->Stop(AutocompleteStopReason::kClobbered);
       continue;
     }
 
@@ -796,9 +800,6 @@ void AutocompleteController::Stop(AutocompleteStopReason stop_reason) {
   metrics_.OnStop();
 
   for (const auto& provider : providers_) {
-    if (!ShouldRunProvider(provider.get())) {
-      continue;
-    }
     provider->Stop(stop_reason);
   }
 
@@ -866,6 +867,13 @@ void AutocompleteController::OnProviderUpdate(
   // the provider took.
   if (provider) {
     metrics_.OnProviderUpdate(*provider);
+  }
+
+  // Ignore updates from providers that shouldn't run for the current input.
+  // This can happen if a provider was started for a previous input and an async
+  // update arrived after a new input began (e.g. entering keyword mode).
+  if (provider && !ShouldRunProvider(provider)) {
+    return;
   }
 
   // Providers should only call this method during the asynchronous pass.
@@ -1093,8 +1101,7 @@ std::u16string AutocompleteController::GetSuggestionGroupHeaderText(
         contextual_search_provider()->HasToolbeltLensAction();
     const auto* client = autocomplete_provider_client();
     bool has_contextual_chip =
-        (client->IsOmniboxNextLensSearchChipEnabled() ||
-         client->IsAskGShowChipEnabled()) &&
+        client->IsAskGShowChipEnabled() &&
         ContextualSearchProvider::LensEntrypointEligible(input_, client);
 
     if (suggestion_group_id.value() == omnibox::GROUP_CONTEXTUAL_SEARCH &&
@@ -1114,7 +1121,7 @@ std::u16string AutocompleteController::GetSuggestionGroupHeaderText(
 }
 
 bool AutocompleteController::ShouldRunProvider(
-    AutocompleteProvider* provider) const {
+    const AutocompleteProvider* provider) const {
   if (!provider) {
     return false;
   }
@@ -1591,12 +1598,13 @@ void AutocompleteController::UpdateResult(UpdateType update_type,
   }
 
   PostProcessMatches();
-
-  const bool is_lens_enabled = autocomplete_provider_client()->IsLensEnabled();
-
+  // TODO (crbug.com/555355466): Refactor or remove this logic when we remove
+  // OB simplification code paths.
+  const auto* client = autocomplete_provider_client();
   internal_result_.set_has_contextual_chips(
-      autocomplete_provider_client()->IsOmniboxNextAimPopupEnabled() &&
-      (is_lens_enabled || can_show_contextual_suggestions));
+      client->IsOmniboxNextAimPopupEnabled() &&
+      (client->IsLensEnabled() || client->IsAskGShowChipEnabled() ||
+       can_show_contextual_suggestions));
 
   bool default_match_changed = CheckWhetherDefaultMatchChanged(
       old_result.last_default_match,

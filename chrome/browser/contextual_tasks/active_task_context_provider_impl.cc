@@ -22,6 +22,7 @@
 #include "components/contextual_tasks/public/features.h"
 #include "components/omnibox/common/composebox_features.h"
 #include "components/sessions/content/session_tab_helper.h"
+#include "components/sessions/core/session_id.h"
 #include "components/tabs/public/tab_interface.h"
 #include "content/public/browser/page.h"
 #include "content/public/common/url_constants.h"
@@ -213,7 +214,7 @@ void ActiveTaskContextProviderImpl::PrimaryPageChanged(content::Page& page) {
 
     auto* helper =
         ContextualSearchWebContentsHelper::FromWebContents(web_contents());
-    if (helper && helper->task_id()) {
+    if (helper && helper->task_id() && helper->session_handle()) {
       SessionID tab_id = sessions::SessionTabHelper::IdForTab(web_contents());
       contextual_tasks_service_->DisassociateTabFromTask(*helper->task_id(),
                                                          tab_id);

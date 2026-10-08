@@ -13,6 +13,7 @@ import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.tab.Tab;
+import org.chromium.chrome.browser.tab.TabId;
 
 import java.lang.ref.WeakReference;
 import java.util.HashSet;
@@ -22,18 +23,26 @@ import java.util.Set;
 @JNINamespace("actor")
 @NullMarked
 public class ActorTask {
+    public static final int INVALID_TASK_ID = -1;
+
     private long mNativeTask;
     private final int mId;
     private final String mTitle;
     private final WeakReference<Profile> mProfile;
+    private final @Nullable String mGlicConversationId;
 
     @CalledByNative
     private ActorTask(
-            long nativeTask, int id, @JniType("std::string") String title, Profile profile) {
+            long nativeTask,
+            int id,
+            @JniType("std::string") String title,
+            Profile profile,
+            @Nullable @JniType("std::optional<std::string>") String glicConversationId) {
         mNativeTask = nativeTask;
         mId = id;
         mTitle = title;
         mProfile = new WeakReference<>(profile);
+        mGlicConversationId = glicConversationId;
     }
 
     /**
@@ -41,6 +50,13 @@ public class ActorTask {
      */
     public int getId() {
         return mId;
+    }
+
+    /**
+     * @return The conversation ID associated with this task, if any.
+     */
+    public @Nullable String getGlicConversationId() {
+        return mGlicConversationId;
     }
 
     /**
@@ -128,6 +144,23 @@ public class ActorTask {
     public int getLastActuatedTabId() {
         if (mNativeTask == 0) return Tab.INVALID_TAB_ID;
         return ActorTaskJni.get().getLastActuatedTabId(mNativeTask);
+    }
+
+    /**
+     * Returns the target tab ID for bringing to the front, preferring the most recently actuated
+     * tab, or falling back to any tab associated with the task. Returns {@link Tab#INVALID_TAB_ID}
+     * if none exists.
+     */
+    public @TabId int getTargetTabId() {
+        @TabId int lastActuatedTabId = getLastActuatedTabId();
+        if (lastActuatedTabId != Tab.INVALID_TAB_ID) {
+            return lastActuatedTabId;
+        }
+        Set<Integer> tabs = getTabs();
+        if (!tabs.isEmpty()) {
+            return tabs.iterator().next();
+        }
+        return Tab.INVALID_TAB_ID;
     }
 
     /**

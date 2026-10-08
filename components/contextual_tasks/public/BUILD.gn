@@ -11,6 +11,7 @@ source_set("feature_list") {
   ]
   deps = [
     "//base",
+    "//net",
     "//ui/base",
     "//url",
   ]
@@ -112,6 +113,7 @@ source_set("unit_tests") {
     "gemini_thread_data_type_controller_unittest.cc",
     "host_override_unittest.cc",
     "prefs_unittest.cc",
+    "utils_unittest.cc",
   ]
 
   deps = [
@@ -127,6 +129,7 @@ source_set("unit_tests") {
     "//components/sync_preferences:test_support",
     "//components/url_deduplication",
     "//components/visited_url_ranking/public",
+    "//net",
     "//testing/gtest",
     "//url",
   ]

@@ -59,6 +59,7 @@
 #include "content/public/renderer/render_frame_visitor.h"
 #include "content/public/renderer/render_thread.h"
 #include "content/public/renderer/window_features_converter.h"
+#include "extensions/buildflags/buildflags.h"
 #include "printing/buildflags/buildflags.h"
 #include "services/service_manager/public/cpp/binder_registry.h"
 #include "skia/ext/image_operations.h"
@@ -77,11 +78,13 @@
 #include "third_party/blink/public/web/web_view.h"
 #include "third_party/libwebp/src/src/webp/decode.h"
 #include "third_party/skia/include/core/SkBitmap.h"
+#include "ui/base/page_transition_types.h"
 #include "ui/gfx/codec/jpeg_codec.h"
 #include "ui/gfx/codec/png_codec.h"
 #include "ui/gfx/codec/webp_codec.h"
 #include "ui/gfx/geometry/size_f.h"
 #include "url/gurl.h"
+#include "url/url_constants.h"
 
 #if !BUILDFLAG(IS_ANDROID)
 #include "chrome/renderer/accessibility/read_anything/read_anything_app_controller.h"
@@ -200,6 +203,12 @@ bool ShouldForceTranslateAgentCreation(const GURL& url) {
   return false;
 #endif
 }
+
+#if BUILDFLAG(ENABLE_PDF)
+bool IsLocalPage(const GURL& url) {
+  return url.SchemeIs(url::kFileScheme) || url.SchemeIs(url::kContentScheme);
+}
+#endif  // BUILDFLAG(ENABLE_PDF)
 
 }  // namespace
 
@@ -756,7 +765,7 @@ void ChromeRenderFrameObserver::SetClientSidePhishingDetection() {
 void ChromeRenderFrameObserver::PdfPageCaptured(const std::u16string& contents,
                                                 const std::string& pdf_lang,
                                                 const GURL& page_url) {
-  if (translate_agent_) {
+  if (translate_agent_ && !IsLocalPage(page_url)) {
     translate_agent_->PdfPageCaptured(contents, pdf_lang, page_url);
   }
 }

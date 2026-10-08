@@ -7,15 +7,15 @@
 #include <atomic>
 #include <string_view>
 
-#include "base/feature_list.h"
-#include "base/strings/string_number_conversions.h"
 #include "chrome/browser/autocomplete/aim_eligibility_service_factory.h"
 #include "chrome/browser/contextual_search/contextual_search_service_factory.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/search_engines/ai_mode_button_service_factory.h"
+#include "chrome/browser/search_engines/template_url_service_factory.h"
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/location_bar/location_bar.h"
 #include "chrome/browser/ui/omnibox/chrome_omnibox_client.h"
+#include "chrome/browser/ui/omnibox/omnibox_controller.h"
 #include "chrome/browser/ui/omnibox/omnibox_next_features.h"
 #include "chrome/browser/ui/omnibox/omnibox_view.h"
 #include "chrome/browser/ui/ui_features.h"
@@ -139,6 +139,9 @@ OmniboxPopupUI::OmniboxPopupUI(content::WebUI* web_ui)
 
   source->AddBoolean("isTopChromeSearchbox", true);
   source->AddBoolean("isTouchUi", ui::TouchUiController::Get()->touch_ui());
+  source->AddString("searchboxDefaultIcon",
+                    GetDefaultSearchProviderIcon(
+                        TemplateURLServiceFactory::GetForProfile(profile_)));
   source->AddBoolean("omniboxAimPopupEnabled",
                      omnibox::IsAimPopupFeatureEnabled());
   // TODO(b/504670497): Replace this NTP-specific flag with a generic flag.
@@ -148,8 +151,6 @@ OmniboxPopupUI::OmniboxPopupUI(content::WebUI* web_ui)
                      omnibox::kWebUIOmniboxDynamicColorScheme.Get());
   source->AddBoolean("searchboxDynamicAnimation",
                      omnibox::kWebUIOmniboxDynamicAnimation.Get());
-  source->AddBoolean("omniboxShowContextButtonSuggestionLabel",
-                     omnibox::kContextButtonShowSuggestionLabel.Get());
   source->AddBoolean(
       "omniboxPopupDebugEnabled",
       base::FeatureList::IsEnabled(omnibox::kWebUIOmniboxPopupDebug));
@@ -198,15 +199,11 @@ OmniboxPopupUI::OmniboxPopupUI(content::WebUI* web_ui)
                      omnibox::kShowContextMenuTabPreviews.Get());
   source->AddBoolean("composeboxShowImageSuggest",
                      omnibox::kShowComposeboxImageSuggestions.Get());
-  // The popup chip UI entrypoint is shared between the Omnibox Simplification
-  // experiment (kShowLensSearchChip) and the AskG experiment (kAskGShowChip).
-  // TODO(crbug.com/498556249): Consolidate once the Simplification experiment
-  // concludes.
+  // The popup chip UI entrypoint is enabled by the AskG experiment (kAskGShowChip).
   source->AddBoolean(
       "composeboxShowChip",
       omnibox::IsAimPopupEnabled(profile_) &&
-          (omnibox::kShowLensSearchChip.Get() ||
-           omnibox::kAskGShowChip.Get()));
+          omnibox::kAskGShowChip.Get());
   source->AddBoolean("composeboxShowCurrentTabChip",
                      omnibox::kAskGCurrentTabChip.Get());
   source->AddBoolean("composeboxShowLensIcon",
@@ -241,6 +238,8 @@ OmniboxPopupUI::OmniboxPopupUI(content::WebUI* web_ui)
       base::FeatureList::IsEnabled(omnibox::kContextManagementInComposebox) &&
           base::FeatureList::IsEnabled(omnibox::kContextManagementInOmnibox) &&
           base::FeatureList::IsEnabled(omnibox::kTabFaviconChipsToCoins));
+  source->AddBoolean("composeboxContextMenuTooltipsEnabled",
+                     omnibox::IsContextMenuTooltipsInComposeboxEnabled());
   auto searchbox_layout_mode = AddContextButtonVariantToSearchboxLayoutMode(
       omnibox::kWebUIOmniboxAimPopupAddContextButtonVariantParam.Get());
   source->AddString("searchboxLayoutMode", searchbox_layout_mode);
@@ -401,6 +400,13 @@ void OmniboxPopupUI::CreatePageHandler(
   if (presenter_delegate_) {
     composebox_handler_->set_delegate(presenter_delegate_);
   }
+}
+
+ContextualSearchboxHandler* OmniboxPopupUI::GetContextualSearchboxHandler() {
+  if (composebox_handler_) {
+    return composebox_handler_.get();
+  }
+  return omnibox_handler_.get();
 }
 
 contextual_search::ContextualSearchSessionHandle*

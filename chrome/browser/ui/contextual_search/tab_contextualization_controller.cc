@@ -24,11 +24,16 @@
 #include "pdf/buildflags.h"
 #include "third_party/blink/public/mojom/content_extraction/ai_page_content.mojom.h"
 #include "ui/base/unowned_user_data/scoped_unowned_user_data.h"
+#include "url/origin.h"
 
 #if BUILDFLAG(ENABLE_PDF)
 #include "components/pdf/browser/pdf_document_helper.h"
 #include "pdf/mojom/pdf.mojom.h"
 #endif  // BUILDFLAG(ENABLE_PDF)
+
+#if BUILDFLAG(IS_ANDROID)
+#include "chrome/browser/flags/android/chrome_feature_list.h"
+#endif  // BUILDFLAG(IS_ANDROID)
 
 namespace lens {
 
@@ -39,8 +44,11 @@ TabContextualizationController::TabContextualizationController(
     : content::WebContentsObserver(tab->GetContents()),
       scoped_unowned_user_data_(tab->GetUnownedUserDataHost(), *this),
       tab_(tab) {
-  tab_subscription_ = tab->RegisterWillDiscardContents(
+  will_discard_contents_subscription_ = tab->RegisterWillDiscardContents(
       base::BindRepeating(&TabContextualizationController::WillDiscardContents,
+                          weak_ptr_factory_.GetWeakPtr()));
+  will_detach_subscription_ = tab->RegisterWillDetach(
+      base::BindRepeating(&TabContextualizationController::WillDetach,
                           weak_ptr_factory_.GetWeakPtr()));
   screenshot_task_runner_ = base::ThreadPool::CreateTaskRunner(
       {base::TaskPriority::USER_VISIBLE,
@@ -48,12 +56,20 @@ TabContextualizationController::TabContextualizationController(
   CreatePageContextEligibilityAPI();
 }
 
-TabContextualizationController::~TabContextualizationController() = default;
+TabContextualizationController::~TabContextualizationController() {
+  in_flight_weak_ptr_factory_.InvalidateWeakPtrs();
+  for (auto& callback : pending_page_context_callbacks_) {
+    std::move(callback).Run(nullptr);
+  }
+}
 
 void TabContextualizationController::WillDiscardContents(
     tabs::TabInterface* tab,
     content::WebContents* old_contents,
     content::WebContents* new_contents) {
+  is_page_context_eligible_ = false;
+  pending_page_context_timer_.Stop();
+  in_flight_weak_ptr_factory_.InvalidateWeakPtrs();
   Observe(new_contents);
 }
 
@@ -78,6 +94,22 @@ void TabContextualizationController::OnPageContextEligibilityAPILoaded(
 
 void TabContextualizationController::PrimaryPageChanged(content::Page& page) {
   is_page_context_eligible_ = false;
+  pending_page_context_timer_.Stop();
+  in_flight_weak_ptr_factory_.InvalidateWeakPtrs();
+}
+
+void TabContextualizationController::WillDetach(
+    tabs::TabInterface* tab,
+    tabs::TabInterface::DetachReason reason) {
+  is_page_context_eligible_ = false;
+  pending_page_context_timer_.Stop();
+  in_flight_weak_ptr_factory_.InvalidateWeakPtrs();
+  std::vector<GetPageContextCallback> callbacks =
+      std::move(pending_page_context_callbacks_);
+  pending_page_context_callbacks_.clear();
+  for (auto& callback : callbacks) {
+    std::move(callback).Run(nullptr);
+  }
 }
 
 void TabContextualizationController::DidFinishLoad(
@@ -89,6 +121,7 @@ void TabContextualizationController::DidFinishLoad(
 }
 
 void TabContextualizationController::FlushPendingPageContextCallbacks() {
+  pending_page_context_timer_.Stop();
   std::vector<GetPageContextCallback> callbacks =
       std::move(pending_page_context_callbacks_);
   pending_page_context_callbacks_.clear();
@@ -113,7 +146,7 @@ void TabContextualizationController::UpdatePageContextEligibility(
 
   GetAnnotatedPageContent(base::BindOnce(
       &TabContextualizationController::OnAnnotatedPageContentReceived,
-      weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
+      in_flight_weak_ptr_factory_.GetWeakPtr(), std::move(callback)));
 }
 
 void TabContextualizationController::GetAnnotatedPageContent(
@@ -156,6 +189,14 @@ void TabContextualizationController::
         std::unique_ptr<lens::ContextualInputData> data,
         bool page_context_eligible,
         optimization_guide::AIPageContentResultOrError result) {
+  content::WebContents* web_contents = tab_->GetContents();
+  if (!web_contents || !data->page_url.has_value() ||
+      web_contents->GetPrimaryMainFrame()->GetLastCommittedOrigin() !=
+          url::Origin::Create(data->page_url.value())) {
+    std::move(callback).Run(nullptr);
+    return;
+  }
+
   data->is_page_context_eligible = page_context_eligible;
   data->primary_content_type = lens::MimeType::kAnnotatedPageContent;
   data->context_input = std::vector<lens::ContextualInput>();
@@ -177,8 +218,8 @@ void TabContextualizationController::
       /*image_options=*/std::nullopt,
       base::BindOnce(&TabContextualizationController::
                          AddScreenshotToContextDataAndContinue,
-                     weak_ptr_factory_.GetWeakPtr(), std::move(callback),
-                     std::move(data)));
+                     in_flight_weak_ptr_factory_.GetWeakPtr(),
+                     std::move(callback), std::move(data)));
 }
 
 bool TabContextualizationController::GetInitialPageContextEligibility() {
@@ -222,6 +263,23 @@ void TabContextualizationController::GetPageContext(
 
   if (web_contents->IsLoading()) {
     pending_page_context_callbacks_.push_back(std::move(callback));
+#if BUILDFLAG(IS_ANDROID)
+    if (base::FeatureList::IsEnabled(
+            chrome::android::
+                kOnDemandBackgroundTabContextCaptureOptimization)) {
+      int timeout_sec =
+          chrome::android::
+              kOnDemandBackgroundTabContextCaptureOverallFlushTimeoutSeconds
+                  .Get();
+      if (timeout_sec > 0 && !pending_page_context_timer_.IsRunning()) {
+        pending_page_context_timer_.Start(
+            FROM_HERE, base::Seconds(timeout_sec),
+            base::BindOnce(&TabContextualizationController::
+                               FlushPendingPageContextCallbacks,
+                           in_flight_weak_ptr_factory_.GetWeakPtr()));
+      }
+    }
+#endif  // BUILDFLAG(IS_ANDROID)
     return;
   }
 
@@ -257,7 +315,7 @@ void TabContextualizationController::FetchPageContextInternal(
     pdf_helper->GetPdfBytes(
         /*size_limit=*/lens::features::GetLensOverlayFileUploadLimitBytes(),
         base::BindOnce(&TabContextualizationController::OnPdfBytesReceived,
-                       weak_ptr_factory_.GetWeakPtr(),
+                       in_flight_weak_ptr_factory_.GetWeakPtr(),
                        std::move(contextual_input_data), std::move(callback)));
     return;
   }
@@ -266,11 +324,11 @@ void TabContextualizationController::FetchPageContextInternal(
   // If the page is not a PDF, get the annotated page content.
   GetAnnotatedPageContent(base::BindOnce(
       &TabContextualizationController::OnAnnotatedPageContentReceived,
-      weak_ptr_factory_.GetWeakPtr(),
+      in_flight_weak_ptr_factory_.GetWeakPtr(),
       base::BindOnce(&TabContextualizationController::
                          OnApcAndEligibilityReceivedForGetPageContext,
-                     weak_ptr_factory_.GetWeakPtr(), std::move(callback),
-                     std::move(contextual_input_data))));
+                     in_flight_weak_ptr_factory_.GetWeakPtr(),
+                     std::move(callback), std::move(contextual_input_data))));
 }
 
 #if BUILDFLAG(ENABLE_PDF)
@@ -281,7 +339,9 @@ void TabContextualizationController::OnPdfBytesReceived(
     const std::vector<uint8_t>& bytes,
     uint32_t page_count) {
   content::WebContents* web_contents = tab_->GetContents();
-  if (!web_contents) {
+  if (!web_contents || !data->page_url.has_value() ||
+      web_contents->GetPrimaryMainFrame()->GetLastCommittedOrigin() !=
+          url::Origin::Create(data->page_url.value())) {
     std::move(callback).Run(nullptr);
     return;
   }
@@ -317,9 +377,10 @@ void TabContextualizationController::OnPdfBytesReceived(
   if (pdf_helper) {
     // TODO(crbug.com/443743308): Parallelize the PDF page index fetch with the
     // PDF bytes fetch.
-    pdf_helper->GetMostVisiblePageIndex(base::BindOnce(
-        &TabContextualizationController::OnPdfPageIndexReceived,
-        weak_ptr_factory_.GetWeakPtr(), std::move(data), std::move(callback)));
+    pdf_helper->GetMostVisiblePageIndex(
+        base::BindOnce(&TabContextualizationController::OnPdfPageIndexReceived,
+                       in_flight_weak_ptr_factory_.GetWeakPtr(),
+                       std::move(data), std::move(callback)));
     return;
   }
 
@@ -332,6 +393,14 @@ void TabContextualizationController::OnPdfPageIndexReceived(
     std::unique_ptr<lens::ContextualInputData> data,
     GetPageContextCallback callback,
     std::optional<uint32_t> page_index) {
+  content::WebContents* web_contents = tab_->GetContents();
+  if (!web_contents || !data->page_url.has_value() ||
+      web_contents->GetPrimaryMainFrame()->GetLastCommittedOrigin() !=
+          url::Origin::Create(data->page_url.value())) {
+    std::move(callback).Run(nullptr);
+    return;
+  }
+
   if (page_index.has_value()) {
     data->pdf_current_page = page_index.value();
   }
@@ -342,8 +411,8 @@ void TabContextualizationController::OnPdfPageIndexReceived(
       /*image_options=*/std::nullopt,
       base::BindOnce(&TabContextualizationController::
                          AddScreenshotToContextDataAndContinue,
-                     weak_ptr_factory_.GetWeakPtr(), std::move(callback),
-                     std::move(data)));
+                     in_flight_weak_ptr_factory_.GetWeakPtr(),
+                     std::move(callback), std::move(data)));
 }
 #endif  // BUILDFLAG(ENABLE_PDF)
 
@@ -375,7 +444,7 @@ void TabContextualizationController::CaptureScreenshot(
 
   auto callback_wrapper = base::BindOnce(
       &TabContextualizationController::DownscaleScreenshotAndContinue,
-      weak_ptr_factory_.GetWeakPtr(),
+      in_flight_weak_ptr_factory_.GetWeakPtr(),
       std::move(decrement_capturer_count_runner), std::move(image_options),
       std::move(callback));
 
@@ -415,6 +484,14 @@ void TabContextualizationController::AddScreenshotToContextDataAndContinue(
     GetPageContextCallback callback,
     std::unique_ptr<lens::ContextualInputData> data,
     const SkBitmap& screenshot) {
+  content::WebContents* web_contents = tab_->GetContents();
+  if (!web_contents || !data->page_url.has_value() ||
+      web_contents->GetPrimaryMainFrame()->GetLastCommittedOrigin() !=
+          url::Origin::Create(data->page_url.value())) {
+    std::move(callback).Run(nullptr);
+    return;
+  }
+
   if (!screenshot.drawsNothing()) {
     data->viewport_screenshot = screenshot;
   }

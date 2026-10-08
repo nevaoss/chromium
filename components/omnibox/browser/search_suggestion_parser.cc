@@ -225,21 +225,12 @@ bool DecodeProtoFromBase64(const std::string* encoded_data, T& result_proto) {
   return true;
 }
 
-// Format template image URLs that do not contain a scheme.
-// The call to GetFormattedURL() will return the URL with a scheme added or
-// return the same URL if no formatting is necessary.
-
 std::u16string GetAnnotation(
-    const omnibox::EntityInfo& entity_info,
     base::optional_ref<const omnibox::SuggestTemplateInfo>
         suggest_template_info) {
   if (suggest_template_info.has_value() &&
       !suggest_template_info->secondary_text().text().empty()) {
     return base::UTF8ToUTF16(suggest_template_info->secondary_text().text());
-  }
-
-  if (!entity_info.annotation().empty()) {
-    return base::UTF8ToUTF16(entity_info.annotation());
   }
   return u"";
 }
@@ -252,20 +243,22 @@ bool SuggestTemplateInfoHasPrimaryText(
          !suggest_template_info->primary_text().text().empty();
 }
 
+bool SuggestTemplateInfoHasSecondaryText(
+    base::optional_ref<const omnibox::SuggestTemplateInfo>
+        suggest_template_info) {
+  return suggest_template_info.has_value() &&
+         suggest_template_info->has_secondary_text() &&
+         !suggest_template_info->secondary_text().text().empty();
+}
+
 // Update `match_contents` if there is any input that has a higher precedence.
 void MaybeUpdateMatchContents(
-    const omnibox::EntityInfo& entity_info,
     base::optional_ref<const omnibox::SuggestTemplateInfo>
         suggest_template_info,
     std::u16string& match_contents) {
   if (SuggestTemplateInfoHasPrimaryText(suggest_template_info)) {
     match_contents =
         base::UTF8ToUTF16(suggest_template_info->primary_text().text());
-    return;
-  }
-
-  if (!entity_info.name().empty()) {
-    match_contents = base::UTF8ToUTF16(entity_info.name());
     return;
   }
 }
@@ -442,6 +435,56 @@ SuggestResponseMetadata ParseSuggestResponseMetadata(
 
   return metadata;
 }
+
+void PopulateSuggestTemplateInfoFromEntityInfo(
+    const omnibox::EntityInfo& entity_info,
+    omnibox::SuggestTemplateInfo* suggest_template_info) {
+  suggest_template_info->set_style(omnibox::SuggestTemplateInfo::ENRICHED);
+  if (entity_info.has_name()) {
+    suggest_template_info->mutable_primary_text()->set_text(entity_info.name());
+  }
+
+  if (entity_info.has_annotation()) {
+    suggest_template_info->mutable_secondary_text()->set_text(
+        entity_info.annotation());
+  }
+
+  if (entity_info.has_image_url()) {
+    suggest_template_info->mutable_image()->set_url(entity_info.image_url());
+    if (entity_info.has_dominant_color()) {
+      suggest_template_info->mutable_image()->set_dominant_color(
+          entity_info.dominant_color());
+    }
+  }
+
+  if (entity_info.has_entity_id()) {
+    suggest_template_info->set_entity_id(entity_info.entity_id());
+  }
+
+  if (entity_info.has_website_uri()) {
+    suggest_template_info->set_website_uri(entity_info.website_uri());
+  }
+
+  if (entity_info.has_suggest_search_parameters()) {
+    base::StringPairs kv_pairs;
+    base::SplitStringIntoKeyValuePairs(entity_info.suggest_search_parameters(),
+                                       '=', '&', &kv_pairs);
+    for (const auto& pair : kv_pairs) {
+      (*suggest_template_info
+            ->mutable_default_search_parameters())[pair.first] = pair.second;
+    }
+  }
+
+  for (const auto& action : entity_info.action_suggestions()) {
+    auto* template_action = suggest_template_info->add_action_suggestions();
+    template_action->set_action_uri(action.action_uri());
+    template_action->set_logs_action_type(action.logs_action_type());
+    template_action->set_action_type(
+        static_cast<omnibox::SuggestTemplateInfo::TemplateAction::ActionType>(
+            action.action_type()));
+    *template_action->mutable_search_parameters() = action.search_parameters();
+  }
+}
 }  // namespace
 
 omnibox::SuggestSubtype SuggestSubtypeForNumber(int value) {
@@ -506,7 +549,6 @@ SearchSuggestionParser::SuggestResult::SuggestResult(
                     suggestion,
                     /*match_contents_prefix=*/std::u16string(),
                     /*annotation=*/std::u16string(),
-                    /*entity_info=*/omnibox::EntityInfo(),
                     /*deletion_url=*/"",
                     from_keyword,
                     navigational_intent,
@@ -524,7 +566,6 @@ SearchSuggestionParser::SuggestResult::SuggestResult(
     const std::u16string& match_contents,
     const std::u16string& match_contents_prefix,
     const std::u16string& annotation,
-    omnibox::EntityInfo entity_info,
     const std::string& deletion_url,
     bool from_keyword,
     omnibox::NavigationalIntent navigational_intent,
@@ -540,7 +581,6 @@ SearchSuggestionParser::SuggestResult::SuggestResult(
                     match_contents,
                     match_contents_prefix,
                     annotation,
-                    std::move(entity_info),
                     deletion_url,
                     from_keyword,
                     navigational_intent,
@@ -559,7 +599,6 @@ SearchSuggestionParser::SuggestResult::SuggestResult(
     const std::u16string& match_contents,
     const std::u16string& match_contents_prefix,
     const std::u16string& annotation,
-    omnibox::EntityInfo entity_info,
     const std::string& deletion_url,
     bool from_keyword,
     omnibox::NavigationalIntent navigational_intent,
@@ -579,7 +618,6 @@ SearchSuggestionParser::SuggestResult::SuggestResult(
              navigational_intent),
       suggestion_(suggestion),
       match_contents_prefix_(match_contents_prefix),
-      entity_info_(std::move(entity_info)),
       suggest_template_info_(std::move(suggest_template_info)),
       should_prefetch_(should_prefetch),
       should_prerender_(should_prerender) {
@@ -594,6 +632,7 @@ SearchSuggestionParser::SuggestResult::SuggestResult(
   }
   DCHECK(!match_contents_.empty());
   ClassifyMatchContents(true, input_text);
+  ClassifyAnnotation();
 }
 
 SearchSuggestionParser::SuggestResult::SuggestResult(
@@ -660,19 +699,38 @@ void SearchSuggestionParser::SuggestResult::ClassifyMatchContents(
       ClassifyAllMatchesInString(input_text, match_contents_, true);
 }
 
+void SearchSuggestionParser::SuggestResult::ClassifyAnnotation() {
+  // Only use the server-provided `suggest_template_info` formatting if the
+  // template's secondary text is non-empty, has fragments, and matches
+  // `annotation_`.
+  if (SuggestTemplateInfoHasSecondaryText(suggest_template_info_) &&
+      suggest_template_info_->secondary_text().fragments_size() > 0 &&
+      annotation_ ==
+          base::UTF8ToUTF16(suggest_template_info_->secondary_text().text())) {
+    auto classifications = ClassifyFormattedString(
+        suggest_template_info_->secondary_text(), ACMatchClassification::DIM);
+    if (!classifications.empty()) {
+      annotation_class_ = std::move(classifications);
+      return;
+    }
+  }
+
+  if (!annotation_.empty()) {
+    annotation_class_ = {ACMatchClassification(0, ACMatchClassification::DIM)};
+  } else {
+    annotation_class_.clear();
+  }
+}
+
 void SearchSuggestionParser::SuggestResult::SetRichAnswerTemplate(
     const omnibox::RichAnswerTemplate& answer_template) {
   answer_template_ = answer_template;
 }
 
-void SearchSuggestionParser::SuggestResult::SetEntityInfo(
-    const omnibox::EntityInfo& entity_info) {
-  entity_info_ = entity_info;
-}
-
 void SearchSuggestionParser::SuggestResult::SetSuggestTemplateInfo(
     const omnibox::SuggestTemplateInfo& suggest_template_info) {
   suggest_template_info_ = suggest_template_info;
+  ClassifyAnnotation();
 }
 
 void SearchSuggestionParser::SuggestResult::SetMatchContents(
@@ -683,6 +741,7 @@ void SearchSuggestionParser::SuggestResult::SetMatchContents(
 void SearchSuggestionParser::SuggestResult::SetAnnotation(
     const std::u16string& annotation) {
   annotation_ = annotation;
+  ClassifyAnnotation();
 }
 
 int SearchSuggestionParser::SuggestResult::CalculateRelevance(
@@ -1094,8 +1153,8 @@ bool SearchSuggestionParser::ParseSuggestResults(
         // Entity.
         const auto* entity_info_string =
             suggestion_detail.FindString("google:entityinfo");
-        DecodeProtoFromBase64<omnibox::EntityInfo>(entity_info_string,
-                                                   entity_info);
+        bool has_entity_info = DecodeProtoFromBase64<omnibox::EntityInfo>(
+            entity_info_string, entity_info);
 
         // Suggest Template Info.
         const auto* suggest_info_string =
@@ -1121,6 +1180,15 @@ bool SearchSuggestionParser::ParseSuggestResults(
           answer_template = suggest_template.rich_answer_template();
           answer_parsed_successfully = true;
         }
+
+        // Entity to SUIT Fallback Translation Layer.
+        // If the server sends legacy EntityInfo without SuggestTemplateInfo,
+        // we synthesize a SuggestTemplateInfo on the client.
+        if (!has_suggest_template && has_entity_info) {
+          has_suggest_template = true;
+          PopulateSuggestTemplateInfoFromEntityInfo(entity_info,
+                                                    &suggest_template_info);
+        }
       }
 
       int int_index = static_cast<int>(index);
@@ -1129,19 +1197,17 @@ bool SearchSuggestionParser::ParseSuggestResults(
       const base::optional_ref<const omnibox::SuggestTemplateInfo>
           maybe_suggest_template_info =
               has_suggest_template ? &suggest_template_info : nullptr;
-      MaybeUpdateMatchContents(entity_info, maybe_suggest_template_info,
-                               match_contents);
+      MaybeUpdateMatchContents(maybe_suggest_template_info, match_contents);
       const std::u16string annotation =
-          GetAnnotation(entity_info, maybe_suggest_template_info);
-      results->suggest_results.push_back(SuggestResult(
+          GetAnnotation(maybe_suggest_template_info);
+      results->suggest_results.emplace_back(
           suggestion, match_type, suggest_type, subtypes[index], match_contents,
-          match_contents_prefix, annotation, std::move(entity_info),
-          deletion_url, is_keyword_result, nav_intent, relevance,
-          response_metadata.relevances != nullptr, should_prefetch,
-          should_prerender, trimmed_input,
+          match_contents_prefix, annotation, deletion_url, is_keyword_result,
+          nav_intent, relevance, response_metadata.relevances != nullptr,
+          should_prefetch, should_prerender, trimmed_input,
           has_suggest_template
               ? std::make_optional(std::move(suggest_template_info))
-              : std::nullopt));
+              : std::nullopt);
 
       if (answer_parsed_successfully) {
         results->suggest_results.back().SetRichAnswerTemplate(answer_template);

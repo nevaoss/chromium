@@ -71,9 +71,6 @@ BASE_DECLARE_FEATURE(kFeedSwipeInProductHelp);
 // eligibility service instead of the new tab page mediator.
 BASE_DECLARE_FEATURE(kUseFeedEligibilityService);
 
-// Feature flag to enable the NTP background image cache.
-BASE_DECLARE_FEATURE(kEnableNTPBackgroundImageCache);
-
 // Feature flag to make the height of the NTP Logo and Doodle consistent.
 BASE_DECLARE_FEATURE(kConsistentLogoDoodleHeight);
 
@@ -135,9 +132,6 @@ bool UseFeedEligibilityService();
 // Whether the AIM button is allowed in NTP.
 bool IsAimEnabledInNtp();
 
-// Whether the NTP background image cache is enabled.
-bool IsNTPBackgroundImageCacheEnabled();
-
 // Whether the NTP Logo and Doodle should have a consistent height.
 bool IsConsistentLogoDoodleHeightEnabled();
 
@@ -151,11 +145,20 @@ bool IsNTPRedesignEnabled();
 // all color, sizing, and padding updates.
 bool IsNewTabPageUICleanupEnabled();
 
-// Whether only the fakebox background color and shadow updates are enabled.
-bool IsNewTabPageUICleanupFakeboxOnlyEnabled();
+// Returns whether the updated fakebox background color and shadow should be
+// applied.
+bool ShouldApplyFakeboxBackgroundAndShadow();
 
 // Returns the enabled variation of feature kNewTabPageUICleanup.
 NTPUICleanupVariation GetNewTabPageUICleanupVariation();
+
+// Returns the enabled padding variation of feature kNewTabPageUICleanup.
+// On iPad, returns NTPUICleanupVariation::kDisabled.
+NTPUICleanupVariation GetNewTabPageUICleanupPaddingVariation();
+
+// Whether padding and spacing changes for New Tab Page UI cleanup are enabled.
+// Returns false on iPad.
+bool IsNewTabPageUICleanupPaddingEnabled();
 
 // Returns the active arm for the AimButtonRefactor feature.
 AimButtonRefactorArm GetAimButtonRefactorArm();

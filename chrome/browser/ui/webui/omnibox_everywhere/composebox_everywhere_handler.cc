@@ -9,11 +9,14 @@
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"
+#include "chrome/browser/ui/omnibox/omnibox_everywhere/omnibox_everywhere_prefs.h"
 #include "chrome/browser/ui/omnibox/omnibox_everywhere_service.h"
 #include "chrome/browser/ui/omnibox/omnibox_everywhere_service_factory.h"
 #include "chrome/browser/ui/webui/webui_embedding_context.h"
 #include "content/public/browser/web_contents.h"
 #include "third_party/metrics_proto/omnibox_event.pb.h"
+#include "ui/base/page_transition_types.h"
+#include "ui/base/window_open_disposition.h"
 
 namespace {
 
@@ -43,7 +46,7 @@ ComposeboxEverywhereHandler::ComposeboxEverywhereHandler(
     content::WebContents* web_contents,
     GetSessionHandleCallback get_session_callback,
     ClearSessionHandleCallback clear_session_callback,
-    ScreenshareDelegate* screenshare_delegate)
+    ContextualSearchboxScreenshareController::Delegate* screenshare_delegate)
     : ComposeboxHandler(
           std::move(pending_handler),
           std::move(pending_searchbox_handler),
@@ -54,10 +57,9 @@ ComposeboxEverywhereHandler::ComposeboxEverywhereHandler(
                                                        web_contents,
                                                        this),
           std::move(get_session_callback),
-          std::move(clear_session_callback)),
-      service_(OmniboxEverywhereServiceFactory::GetForProfile(profile)) {
-  set_screenshare_delegate(screenshare_delegate);
-}
+          std::move(clear_session_callback),
+          screenshare_delegate),
+      service_(OmniboxEverywhereServiceFactory::GetForProfile(profile)) {}
 
 ComposeboxEverywhereHandler::~ComposeboxEverywhereHandler() = default;
 
@@ -83,6 +85,28 @@ void ComposeboxEverywhereHandler::OnDriveUploadClicked(
   webui::SetBrowserWindowInterface(web_contents_, active_bwi);
 
   ComposeboxHandler::OnDriveUploadClicked(std::move(callback));
+}
+
+void ComposeboxEverywhereHandler::StartScreenshare(
+    bool prefer_entire_screen,
+    StartScreenshareCallback callback) {
+  if (!service_ ||
+      !omnibox_everywhere::prefs::IsScreenshotDisclosureAccepted(profile_)) {
+    std::move(callback).Run(std::nullopt);
+    return;
+  }
+  ComposeboxHandler::StartScreenshare(prefer_entire_screen,
+                                      std::move(callback));
+}
+
+void ComposeboxEverywhereHandler::CaptureRegionScreenshot(
+    CaptureRegionScreenshotCallback callback) {
+  if (!service_ ||
+      !omnibox_everywhere::prefs::IsScreenshotDisclosureAccepted(profile_)) {
+    std::move(callback).Run(std::nullopt);
+    return;
+  }
+  ComposeboxHandler::CaptureRegionScreenshot(std::move(callback));
 }
 
 void ComposeboxEverywhereHandler::CleanupDrivePicker() {

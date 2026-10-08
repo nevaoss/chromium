@@ -12,6 +12,7 @@
 #include "base/check_op.h"
 #include "base/command_line.h"
 #include "base/compiler_specific.h"
+#include "base/feature_list.h"
 #include "base/functional/bind.h"
 #include "base/json/string_escape.h"
 #include "base/location.h"
@@ -28,6 +29,8 @@
 #include "components/language_detection/core/constants.h"
 #include "components/language_detection/core/language_detection_provider.h"
 #include "components/translate/content/renderer/isolated_world_util.h"
+#include "components/translate/core/common/translate_constants.h"
+#include "components/translate/core/common/translate_features.h"
 #include "components/translate/core/common/translate_metrics.h"
 #include "components/translate/core/common/translate_util.h"
 #include "components/translate/core/language_detection/language_detection_model.h"
@@ -156,10 +159,10 @@ void TranslateAgent::PageCaptured(
     return;
 
   blink::WebDocumentLoader* doc_loader = main_frame->GetDocumentLoader();
-  if (doc_loader &&
-      doc_loader->GetWebResponse().MimeType() == "application/pdf") {
-    // If the page is a PDF, we should only register it when
-    // PdfPageCaptured is called.
+  if (base::FeatureList::IsEnabled(translate::kEnableTranslatePdf) &&
+      doc_loader && doc_loader->GetWebResponse().MimeType() == kPdfMimeType) {
+    // If the page is a PDF and PDF translation is enabled, we should only
+    // register it when PdfPageCaptured is called.
     return;
   }
 
@@ -576,7 +579,7 @@ void TranslateAgent::CheckTranslateStatus() {
       return;
     }
     std::string actual_source_lang;
-    // Translation was successfull, if it was auto, retrieve the source
+    // Translation was successful, if it was auto, retrieve the source
     // language the Translate Element detected.
     if (source_lang_ == kAutoDetectionLanguage) {
       actual_source_lang = GetPageSourceLanguage();

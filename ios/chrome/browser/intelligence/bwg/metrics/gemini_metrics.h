@@ -65,6 +65,9 @@ extern const char kSignInRequiredSnackbarShownHistogram[];
 // UMA histogram key for IOS.Gemini.EntryPoint.Available.
 extern const char kEntryPointAvailableHistogram[];
 
+// UMA histogram key for IOS.Gemini.EntryPoint.DisabledByQuota.
+extern const char kEntryPointDisabledByQuotaHistogram[];
+
 // UMA histogram key for IOS.Gemini.FRE.EntryPoint.
 extern const char kFirstRunEntryPointHistogram[];
 
@@ -317,6 +320,12 @@ extern const char kPromptLongPressImageIncludedHistogram[];
 // UMA histogram key for IOS.Gemini.Prompt.ContextAttachment.
 extern const char kPromptContextAttachmentHistogram[];
 
+// UMA histogram key for IOS.Gemini.Prompt.Chat.ContextAttachment.
+extern const char kPromptChatContextAttachmentHistogram[];
+
+// UMA histogram key for IOS.Gemini.Prompt.Live.ContextAttachment.
+extern const char kPromptLiveContextAttachmentHistogram[];
+
 // UMA histogram key for IOS.Gemini.Prompt.TabsAttachedCount.
 extern const char kPromptTabsAttachedCountHistogram[];
 
@@ -539,6 +548,12 @@ void RecordSignInRequiredSnackbarShown(gemini::EntryPoint entry_point);
 // selected some text, and is eligible to use the feature.
 void RecordGeminiEntryPointAvailable(gemini::EntryPoint entry_point);
 
+// Records when the Gemini entry point is disabled because quota was reached.
+void RecordGeminiEntryPointDisabledByQuota(gemini::EntryPoint entry_point);
+
+// Records when Gemini quota has been reached.
+void RecordGeminiQuotaReached();
+
 // Records that the Gemini FRE was shown.
 void RecordFirstRunShown();
 
@@ -748,6 +763,9 @@ void RecordGeminiLiveTurnCount(int turn_count);
 // Records the accumulated duration of Gemini Live mode segments within
 // a single Gemini interaction.
 void RecordGeminiLiveAccumulatedDuration(base::TimeDelta duration);
+
+// Records that the user sent a prompt in a Gemini Live session.
+void RecordGeminiLivePromptSent(bool has_page_context);
 
 // Records whether query submission is blocked while page context is loading.
 void RecordBlockQuerySubmissionWhileLoading(bool block_submission);

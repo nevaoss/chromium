@@ -126,7 +126,7 @@ BtmDatabase::BtmDatabase(const std::optional<base::FilePath>& db_path)
   }
 
   if (Init() != sql::INIT_OK) {
-    LOG(WARNING) << "Failed to initialize the DIPS SQLite database.";
+    LOG(WARNING) << "Failed to initialize the BTM SQLite database.";
   }
 }
 
@@ -591,7 +591,9 @@ std::vector<std::string> BtmDatabase::GetSitesThatBounced(
       "AND last_web_authn_assertion_time IS NULL "
     "ORDER BY site";
   // clang-format on
-  CHECK(db_->IsSQLValid(kBounceSql), base::NotFatalUntil::M158);
+  // TODO(crbug.com/559371151): CHECK-exclusion: Convert to a CHECK once we are
+  // confident it won't be triggered.
+  DCHECK(db_->IsSQLValid(kBounceSql));
   sql::Statement statement(db_->GetCachedStatement(SQL_FROM_HERE, kBounceSql));
   statement.BindTime(0, clock_->Now() - grace_period);
 

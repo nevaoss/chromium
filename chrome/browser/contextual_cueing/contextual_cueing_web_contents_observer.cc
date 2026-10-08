@@ -12,6 +12,7 @@
 #include "components/tabs/public/tab_interface.h"
 #include "content/public/browser/navigation_handle.h"
 #include "content/public/browser/web_contents.h"
+#include "ui/base/page_transition_types.h"
 
 namespace contextual_cueing {
 
@@ -76,9 +77,10 @@ void ContextualCueingWebContentsObserver::DidFinishNavigation(
     if (tab->IsActivated()) {
       controller->OnUrlChanged(navigation_handle->GetURL());
     }
-    if (navigation_handle->IsServedFromBackForwardCache()) {
+    if (navigation_handle->IsServedFromBackForwardCache() ||
+        navigation_handle->IsSameDocument()) {
       controller->EvaluateCues();
-    } else if (!navigation_handle->IsSameDocument()) {
+    } else {
       should_evaluate_cues_on_load_ = true;
     }
   }

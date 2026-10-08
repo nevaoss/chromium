@@ -187,9 +187,14 @@ source_set("aim_eligibility_service") {
     "//components/search_engines",
     "//components/variations/service",
     "//content/public/browser",
+    "//extensions/buildflags",
     "//services/network/public/cpp",
     "//third_party/blink/public/common:headers",
   ]
+
+  if (enable_extensions_core) {
+    deps += [ "//extensions/common" ]
+  }
 
   if (is_android) {
     sources += [ "aim_eligibility_service_factory_android.cc" ]
@@ -216,6 +221,7 @@ if (!is_android) {
       "//chrome/browser",
       "//chrome/browser:browser_process",
       "//chrome/browser/contextual_tasks",
+      "//chrome/browser/contextual_tasks:ui",
       "//chrome/browser/extensions",
       "//chrome/browser/history",
       "//chrome/browser/profiles:profile",
@@ -232,6 +238,8 @@ if (!is_android) {
       "//chrome/common:constants",
       "//chrome/test:test_support",
       "//chrome/test:test_support_ui",
+      "//chrome/test/base:chrome_test_scoped_utils",
+      "//components/embedder_support:user_agent",
       "//components/history/core/browser",
       "//components/lens",
       "//components/omnibox/browser",

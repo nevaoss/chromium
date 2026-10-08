@@ -22,7 +22,6 @@
 #include "base/strings/string_number_conversions.h"
 #include "base/task/single_thread_task_runner.h"
 #include "content/public/browser/browser_task_traits.h"
-#include "content/public/common/result_codes.h"
 #include "device/bluetooth/dbus/dbus_bluez_manager_wrapper_linux.h"
 #include "net/base/network_change_notifier_factory.h"
 #include "neva/app_runtime/browser/app_runtime_browser_context.h"
@@ -207,10 +206,11 @@ int AppRuntimeBrowserMainParts::PreCreateThreads() {
   return content::RESULT_CODE_NORMAL_EXIT;
 }
 
-void AppRuntimeBrowserMainParts::PostCreateThreads() {
+int AppRuntimeBrowserMainParts::PostCreateThreads() {
   for (auto* extra_part : app_runtime_extra_parts_) {
     extra_part->PostCreateThreads();
   }
+  return content::RESULT_CODE_NORMAL_EXIT;
 }
 
 void AppRuntimeBrowserMainParts::PostMainMessageLoopRun() {

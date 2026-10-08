@@ -1,0 +1,45 @@
+From debaada5d9cd0306a7e66a937ed52f256db2c5fe Mon Sep 17 00:00:00 2001
+From: "denis.bechin" <denis.bechin@lge.com>
+Date: Thu, 24 Sep 2026 18:52:09 +0300
+Subject: [PATCH] 155.0.8041.0~1: V8: Change gn desc call for metagen tool
+
+In the upstream CL https://crrev.com/c/7864481 was introduced the
+"metagen" tool which cheks gn markers. In Neva build configuration
+"gn gen" cmd for mksnapshot is called with additional flags:
+--root="..." and --dotfile="...". So these arguments are passed to
+"gn desc" call to avoid V8 configuration error:
+
+RuntimeError: [metagen] no .gn source-root marker found above
+
+Issue: NEVA-11447
+---
+ tools/metagen/compile_flags.py | 12 +++++++++++-
+ 1 file changed, 11 insertions(+), 1 deletion(-)
+
+diff --git a/tools/metagen/compile_flags.py b/tools/metagen/compile_flags.py
+index d791d9fbdb5..2515aae0f53 100644
+--- a/tools/metagen/compile_flags.py
++++ b/tools/metagen/compile_flags.py
+@@ -189,8 +189,18 @@ def get_compile_args_from_gn_desc(
+     # Without it gn prepends any build-file warning to the document -- an
+     # arm_float_abi that no declare_args() claims on the arm64 bots, say --
+     # and the parse below fails. A gn that actually fails still reports.
++
++    # NOTE(neva): It's needed for mksnapshot build.
++    gn_cmd = [gn]
++    mksnapshot_dotfile = os.path.join(source_root, "neva", "mksnapshot.gn")
++    if "mksnapshot" in build_dir and os.path.exists(mksnapshot_dotfile):
++        gn_cmd.append(f"--root={source_root}")
++        gn_cmd.append(f"--dotfile={mksnapshot_dotfile}")
++    gn_cmd.extend(["desc", "-q", out_rel, target_label, "--format=json"])
++
+     proc = subprocess.run(
+-        [gn, "desc", "-q", out_rel, target_label, "--format=json"],
++      # [gn, "desc", "-q", out_rel, target_label, "--format=json"],
++        gn_cmd,
+         cwd=source_root,
+         capture_output=True,
+         text=True,
+-- 
+2.55.0
+

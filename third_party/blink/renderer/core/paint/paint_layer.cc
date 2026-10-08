@@ -304,7 +304,12 @@ void PaintLayer::UpdateTransform() {
   const auto& box_model = To<LayoutBoxModelObject>(GetLayoutObject());
   if (const auto* element = DynamicTo<Element>(box_model.GetNode())) {
     if (const auto* canvas_transform = element->GetUsedCanvasTransform()) {
-      transform_->PreConcat(*canvas_transform);
+      gfx::Transform transform = *canvas_transform;
+      float zoom = GetLayoutObject().StyleRef().EffectiveZoom();
+      if (zoom != 1.f) {
+        transform.Zoom(zoom);
+      }
+      transform_->PreConcat(transform);
     }
   }
   if (const auto* box = DynamicTo<LayoutBox>(&box_model)) {
@@ -2548,9 +2553,7 @@ FilterOperations PaintLayer::FilterOperationsIncludingReflection() const {
   if (GetLayoutObject().HasReflection() && GetLayoutObject().IsBox()) {
     BoxReflection reflection = BoxReflectionForPaintLayer(*this, style);
 
-    if (RuntimeEnabledFeatures::CanvasDrawElementEnabled(
-            GetLayoutObject().GetDocument().GetExecutionContext()) &&
-        GetLayoutObject().IsInCanvasSubtree()) {
+    if (GetLayoutObject().IsInCanvasSubtree()) {
       if (const auto* reflect_style = style.BoxReflect()) {
         if (auto* style_image = reflect_style->Mask().GetImage()) {
           // Strip the mask image if it is being rendered into a canvas and it

@@ -10,6 +10,7 @@ import android.graphics.drawable.Drawable;
 
 import androidx.appcompat.content.res.AppCompatResources;
 
+import org.chromium.base.metrics.RecordUserAction;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.bookmarks.BookmarkUiState.BookmarkUiMode;
@@ -137,26 +138,11 @@ class BookmarkDesktopNavigationMediator extends BookmarkModelObserver
     }
 
     private void sortFolders(List<BookmarkId> folders) {
-        folders.sort(Comparator.comparingInt(this::getFolderWeight));
-    }
-
-    private int getFolderWeight(BookmarkId id) {
-        // Check both local and account folder IDs. We can use the same weight logic if we match
-        // either the local or account version of the folder.
-        if (Objects.equals(id, mBookmarkModel.getDesktopFolderId())
-                || Objects.equals(id, mBookmarkModel.getAccountDesktopFolderId())) {
-            return 0;
-        } else if (Objects.equals(id, mBookmarkModel.getOtherFolderId())
-                || Objects.equals(id, mBookmarkModel.getAccountOtherFolderId())) {
-            return 1;
-        } else if (Objects.equals(id, mBookmarkModel.getLocalOrSyncableReadingListFolder())
-                || Objects.equals(id, mBookmarkModel.getAccountReadingListFolder())) {
-            return 2;
-        } else if (Objects.equals(id, mBookmarkModel.getMobileFolderId())
-                || Objects.equals(id, mBookmarkModel.getAccountMobileFolderId())) {
-            return 3;
-        }
-        return 4;
+        folders.sort(
+                Comparator.comparingInt(
+                        id ->
+                                BookmarkUtils.getTopLevelFolderDisplayOrderIndex(
+                                        mBookmarkModel, id)));
     }
 
     private ListItem createFolderItem(BookmarkId id) {
@@ -170,9 +156,14 @@ class BookmarkDesktopNavigationMediator extends BookmarkModelObserver
                                 Objects.equals(id, mCurrentFolderId))
                         .with(
                                 NavigationPaneProperties.ON_CLICK_HANDLER,
-                                () -> mBookmarkDelegate.openFolder(id))
+                                () -> onFolderItemClicked(id))
                         .build();
         return new ListItem(NavigationPaneProperties.ITEM_TYPE_NAVIGATION_ITEM, model);
+    }
+
+    private void onFolderItemClicked(BookmarkId id) {
+        RecordUserAction.record("MobileBookmarkManagerSidePanelFolderOpened");
+        mBookmarkDelegate.openFolder(id);
     }
 
     private ListItem createHeaderItem(String title) {

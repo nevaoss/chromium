@@ -30,10 +30,7 @@
 #include "components/page_load_metrics/google/browser/gws_abandoned_page_load_metrics_observer.h"
 #include "components/page_load_metrics/google/browser/gws_session_state.h"
 #include "components/page_load_metrics/google/browser/histogram_suffixes.h"
-#include "components/page_load_metrics/google/browser/prerender_prewarm_navigation_data.h"
 #include "content/public/browser/navigation_handle.h"
-#include "content/public/browser/render_process_host.h"
-#include "content/public/browser/site_instance.h"
 #include "content/public/browser/web_contents.h"
 #include "net/dns/public/resolution_details.h"
 #include "net/http/http_connection_info.h"
@@ -122,6 +119,10 @@ const char kHistogramGWSFastFetchOpportunityTimeLoaderStart[] =
     HISTOGRAM_PREFIX "NavigationTiming.FastFetch.OpportunityTime.LoaderStart";
 const char kHistogramGWSFastFetchOpportunityTimeFetchStart[] =
     HISTOGRAM_PREFIX "NavigationTiming.FastFetch.OpportunityTime.FetchStart";
+const char kHistogramGWSQuicSessionEstablishmentReason[] =
+    HISTOGRAM_PREFIX "QuicSessionEstablishmentReason";
+const char kHistogramGWSQuicSessionNonReuseReason[] =
+    HISTOGRAM_PREFIX "QuicSessionNonReuseReason";
 const char kHistogramGWSAcceptCHFrameReceived[] =
     HISTOGRAM_PREFIX "AcceptCHFrameReceived";
 const char kHistogramGWSOnConnectedCalled[] =
@@ -189,12 +190,6 @@ const char kHistogramGWSTimeBetweenHCTAndSCT[] =
 
 const char kHistogramGWSNavigationSourceType[] =
     HISTOGRAM_PREFIX "NavigationSourceType";
-const char kHistogramGWSNavigationSourceTypeReuse[] =
-    HISTOGRAM_PREFIX "NavigationSourceType.ConnectionReuse";
-const char kHistogramGWSNavigationSourceTypeDNSReuse[] =
-    HISTOGRAM_PREFIX "NavigationSourceType.DNSReuse";
-const char kHistogramGWSNavigationSourceTypeNonReuse[] =
-    HISTOGRAM_PREFIX "NavigationSourceType.NonConnectionReuse";
 
 const char kHistogramGWSBeforeUnloadExecutionMode[] =
     HISTOGRAM_PREFIX "Navigation.BeforeUnloadExecutionMode";
@@ -209,10 +204,16 @@ const char kHistogramSyntheticResponseSuffix[] = ".SyntheticResponse";
 const char kHistogramDuplicateIgnoredSuffix[] = ".IgnoredDuplicateNavigation";
 
 const char kHistogramGWSSessionSource[] = HISTOGRAM_PREFIX "SessionSource";
+const char kHistogramGWSSessionCreationInitiator[] =
+    HISTOGRAM_PREFIX "SessionCreationInitiator";
 const char kHistogramGWSAdvertisedAltSvcState[] =
     HISTOGRAM_PREFIX "AdvertisedAltSvcState";
 const char kHistogramGWSHttpNetworkSessionQuicEnabled[] =
     HISTOGRAM_PREFIX "HttpNetworkSessionQuicEnabled";
+
+const char kConnectionReuseSuffix[] = ".ConnectionReuse";
+const char kDNSReuseSuffix[] = ".DNSReuse";
+const char kNonConnectionReuseSuffix[] = ".NonConnectionReuse";
 
 // Suffix for navigation.activationType variants.
 const char kTraverseNavigation[] = ".TraverseNavigation";
@@ -225,23 +226,12 @@ const char kStartedFromContextMenu[] = ".ContextMenu";
 // Prerender related histograms.
 const char kHistogramPrerenderHostReused[] =
     HISTOGRAM_PREFIX "Prerender.HostReused";
-const char kHistogramPrerenderPrewarmNavigationStatus2[] =
-    HISTOGRAM_PREFIX "Prerender.PrewarmNavigationStatus2";
 const char kHistogramGWSPrerenderNavigationToActivation[] =
     HISTOGRAM_PREFIX "Prerender.NavigationToActivation";
 const char kHistogramGWSActivationToFirstContentfulPaint[] =
     HISTOGRAM_PREFIX "Prerender.ActivationToFirstContentfulPaint";
 const char kHistogramGWSActivationToLargestContentfulPaint[] =
     HISTOGRAM_PREFIX "Prerender.ActivationToLargestContentfulPaint";
-
-const char kHistogramGWSHadPriorPrewarmCommitStatus2[] =
-    HISTOGRAM_PREFIX "HadPriorPrewarmCommitStatus2";
-const char kHistogramSiteInstanceProcessAssignment2[] =
-    HISTOGRAM_PREFIX "SiteInstanceProcessAssignment2";
-
-const char kHistogramBrowserInitiatedSuffix[] = ".BrowserInitiated";
-const char kHistogramRendererInitiatedSuffix[] = ".RendererInitiated";
-
 const char kHistogramGWSWarmUpType[] = HISTOGRAM_PREFIX "WarmUpType";
 
 const char kHistogramPrerenderSuffix[] = ".Prerender";
@@ -517,6 +507,33 @@ void RecordFontMetrics(
   }
 }
 
+std::optional<GWSPageLoadMetricsObserver::ConnectionReuseStatus>
+GetConnectionReuseStatus(bool was_cached,
+                         const content::NavigationHandleTiming& timing) {
+  if (was_cached) {
+    return std::nullopt;
+  }
+  if (!timing.first_request_domain_lookup_delay.is_zero()) {
+    return GWSPageLoadMetricsObserver::ConnectionReuseStatus::kNonReuse;
+  }
+  return timing.first_request_connect_delay.is_zero()
+             ? GWSPageLoadMetricsObserver::ConnectionReuseStatus::kReused
+             : GWSPageLoadMetricsObserver::ConnectionReuseStatus::kDNSReused;
+}
+
+std::string_view GetConnectionReuseSuffix(
+    GWSPageLoadMetricsObserver::ConnectionReuseStatus connection_reuse_status) {
+  switch (connection_reuse_status) {
+    case GWSPageLoadMetricsObserver::ConnectionReuseStatus::kReused:
+      return internal::kConnectionReuseSuffix;
+    case GWSPageLoadMetricsObserver::ConnectionReuseStatus::kNonReuse:
+      return internal::kNonConnectionReuseSuffix;
+    case GWSPageLoadMetricsObserver::ConnectionReuseStatus::kDNSReused:
+      return internal::kDNSReuseSuffix;
+  }
+  NOTREACHED();
+}
+
 }  // namespace
 
 GWSPageLoadMetricsObserver::GWSPageLoadMetricsObserver() {
@@ -585,16 +602,6 @@ GWSPageLoadMetricsObserver::OnCommit(
                               is_gws_url);
   }
 
-  // If the navigation has a prewarm user data, we add it to the
-  // RenderProcessHost so that we can track whether the prewarm existed
-  // in the process on subsequent navigations.
-  auto* prewarm_data =
-      page_load_metrics::PrerenderPrewarmNavigationData::Get(navigation_handle);
-  content::RenderFrameHost* rfh = navigation_handle->GetRenderFrameHost();
-  if (prewarm_data && prewarm_data->prewarm_committed()) {
-    page_load_metrics::PrerenderPrewarmNavigationData::GetOrCreate(
-        rfh->GetProcess(), prewarm_data->prewarm_committed());
-  }
   if (auto* response_headers = navigation_handle->GetResponseHeaders()) {
     RecordHttpStatusCode(response_headers->response_code(),
                          navigation_handle->GetURL(), IsIncognitoProfile());
@@ -653,55 +660,11 @@ GWSPageLoadMetricsObserver::OnCommit(
   network_accessed_ = navigation_handle->NetworkAccessed();
   http_connection_info_ =
       net::HttpConnectionInfoToCoarse(navigation_handle->GetConnectionInfo());
+  connection_reuse_status_ =
+      GetConnectionReuseStatus(was_cached_, navigation_handle_timing_);
   if (!is_prerendered_) {
     RecordPreCommitHistograms();
   }
-
-  auto render_process_assignment =
-      rfh->GetSiteInstance()->GetLastProcessAssignmentOutcome();
-  const auto* initiator_suffix =
-      navigation_handle->IsRendererInitiated()
-          ? internal::kHistogramRendererInitiatedSuffix
-          : internal::kHistogramBrowserInitiatedSuffix;
-  const auto* prerender_suffix = is_prerendered_
-                                     ? internal::kHistogramPrerenderSuffix
-                                     : internal::kHistogramNonPrerenderSuffix;
-  // We determine the impact of the Prewarm-Prerender optimization.
-  if (auto* navigation_data =
-          page_load_metrics::PrerenderPrewarmNavigationData::Get(
-              rfh->GetProcess())) {
-    base::UmaHistogramEnumeration(
-        base::StrCat({internal::kHistogramPrerenderPrewarmNavigationStatus2,
-                      initiator_suffix}),
-        navigation_data->GetNavigationStatus(
-            render_process_assignment ==
-            content::SiteInstanceProcessAssignment::REUSED_EXISTING_PROCESS));
-    base::UmaHistogramEnumeration(
-        base::StrCat({internal::kHistogramPrerenderPrewarmNavigationStatus2,
-                      initiator_suffix, prerender_suffix}),
-        navigation_data->GetNavigationStatus(
-            render_process_assignment ==
-            content::SiteInstanceProcessAssignment::REUSED_EXISTING_PROCESS));
-  }
-
-  base::UmaHistogramEnumeration(
-      base::StrCat({internal::kHistogramGWSHadPriorPrewarmCommitStatus2,
-                    initiator_suffix}),
-      page_load_metrics::PrerenderPrewarmNavigationData::
-          GetPriorPrewarmCommitStatus(rfh->GetProcess()));
-  base::UmaHistogramEnumeration(
-      base::StrCat({internal::kHistogramGWSHadPriorPrewarmCommitStatus2,
-                    initiator_suffix, prerender_suffix}),
-      page_load_metrics::PrerenderPrewarmNavigationData::
-          GetPriorPrewarmCommitStatus(rfh->GetProcess()));
-  base::UmaHistogramEnumeration(
-      base::StrCat({internal::kHistogramSiteInstanceProcessAssignment2,
-                    initiator_suffix}),
-      render_process_assignment);
-  base::UmaHistogramEnumeration(
-      base::StrCat({internal::kHistogramSiteInstanceProcessAssignment2,
-                    initiator_suffix, prerender_suffix}),
-      render_process_assignment);
 
   if (!navigation_handle->IsSameDocument() &&
       navigation_handle->IsInOutermostMainFrame() &&
@@ -1547,50 +1510,34 @@ void GWSPageLoadMetricsObserver::RecordPreCommitHistograms() {
 void GWSPageLoadMetricsObserver::RecordConnectionReuseHistograms() {
   DCHECK(!was_cached_);
   CHECK(!is_prerendered_);
+  CHECK(connection_reuse_status_.has_value());
 
-  const content::NavigationHandleTiming& timing = navigation_handle_timing_;
-  ConnectionReuseStatus status = ConnectionReuseStatus::kNonReuse;
-  // If domain lookup duration is zero and connect duration is also zero,
-  // this is most-likely a connection reuse.
-  if (timing.first_request_domain_lookup_delay.is_zero()) {
-    status = ConnectionReuseStatus::kDNSReused;
-    if (timing.first_request_connect_delay.is_zero()) {
-      status = ConnectionReuseStatus::kReused;
-    }
-  }
   base::UmaHistogramEnumeration(internal::kHistogramGWSConnectionReuseStatus,
-                                status);
+                                *connection_reuse_status_);
 
   auto protocol = GetProtocolSuffix(http_connection_info_);
   auto total_histogram_name =
       base::StrCat({internal::kHistogramGWSConnectionReuseStatus, protocol});
-  base::UmaHistogramEnumeration(total_histogram_name, status);
+  base::UmaHistogramEnumeration(total_histogram_name,
+                                *connection_reuse_status_);
 
   if (IsIncognitoProfile()) {
-    auto histogram_name_with_incognito_suffix =
+    base::UmaHistogramEnumeration(
         base::StrCat({internal::kHistogramGWSConnectionReuseStatus,
-                      internal::kHistogramIncognitoSuffix});
-    base::UmaHistogramEnumeration(histogram_name_with_incognito_suffix, status);
+                      internal::kHistogramIncognitoSuffix}),
+        *connection_reuse_status_);
 
     // Record the total histogram with protocol suffix as well.
-    total_histogram_name = base::StrCat({total_histogram_name, protocol});
-    base::UmaHistogramEnumeration(total_histogram_name, status);
+    base::UmaHistogramEnumeration(
+        base::StrCat(
+            {total_histogram_name, internal::kHistogramIncognitoSuffix}),
+        *connection_reuse_status_);
   }
 
-  switch (status) {
-    case ConnectionReuseStatus::kNonReuse:
-      base::UmaHistogramEnumeration(
-          internal::kHistogramGWSNavigationSourceTypeNonReuse, source_type_);
-      break;
-    case ConnectionReuseStatus::kDNSReused:
-      base::UmaHistogramEnumeration(
-          internal::kHistogramGWSNavigationSourceTypeDNSReuse, source_type_);
-      break;
-    case ConnectionReuseStatus::kReused:
-      base::UmaHistogramEnumeration(
-          internal::kHistogramGWSNavigationSourceTypeReuse, source_type_);
-      break;
-  }
+  base::UmaHistogramEnumeration(
+      base::StrCat({internal::kHistogramGWSNavigationSourceType,
+                    GetConnectionReuseSuffix(*connection_reuse_status_)}),
+      source_type_);
 }
 
 std::string GWSPageLoadMetricsObserver::AddHistogramSuffix(
@@ -1702,6 +1649,39 @@ void GWSPageLoadMetricsObserver::RecordSessionDetails(
           base::StrCat(
               {internal::kHistogramGWSMaxStreamLimitPendingDelay, protocol}),
           *session_details.max_stream_limit_pending_delay);
+    }
+
+    auto record_with_connection_reuse_suffix =
+        [this](std::string_view histogram_name, auto enum_value) {
+          base::UmaHistogramEnumeration(histogram_name, enum_value);
+          if (connection_reuse_status_.has_value()) {
+            base::UmaHistogramEnumeration(
+                base::StrCat({histogram_name, GetConnectionReuseSuffix(
+                                                  *connection_reuse_status_)}),
+                enum_value);
+          }
+        };
+
+    if (http_connection_info_ == net::HttpConnectionInfoCoarse::kQUIC &&
+        session_details.quic_connection_reuse_details.has_value()) {
+      const auto& quic_details = *session_details.quic_connection_reuse_details;
+      if (quic_details.establishment_reason.has_value()) {
+        record_with_connection_reuse_suffix(
+            internal::kHistogramGWSQuicSessionEstablishmentReason,
+            *quic_details.establishment_reason);
+      }
+      if (quic_details.non_reuse_reason.has_value()) {
+        record_with_connection_reuse_suffix(
+            internal::kHistogramGWSQuicSessionNonReuseReason,
+            *quic_details.non_reuse_reason);
+      }
+    }
+
+    if (session_details.session_creation_initiator.has_value()) {
+      record_with_connection_reuse_suffix(
+          base::StrCat(
+              {internal::kHistogramGWSSessionCreationInitiator, protocol}),
+          *session_details.session_creation_initiator);
     }
   }
 

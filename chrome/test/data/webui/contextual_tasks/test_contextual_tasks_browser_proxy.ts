@@ -47,6 +47,7 @@ class MockPage extends TestBrowserProxy implements PageInterface {
       'showSmartTabSharingTryItIph',
       'showSmartTabSharingDefaultOnIph',
       'onWindowClosed',
+      'resetForNewThread',
     ]);
   }
 
@@ -183,6 +184,10 @@ class MockPage extends TestBrowserProxy implements PageInterface {
   onWindowClosed(windowId: ContextualWindowId) {
     this.methodCalled('onWindowClosed', windowId);
   }
+
+  resetForNewThread(taskId: Uuid, threadUrl: Url) {
+    this.methodCalled('resetForNewThread', taskId, threadUrl);
+  }
 }
 
 /**
@@ -215,7 +220,6 @@ class TestContextualTasksPageHandler extends TestBrowserProxy implements
       'isZeroState',
       'moveTaskUiToNewTab',
       'onboardingTooltipDismissed',
-      'lensSearchTooltipDismissed',
       'askGTooltipDismissed',
       'onContextMenuOpened',
       'onFileClickedFromSourcesMenu',
@@ -345,10 +349,6 @@ class TestContextualTasksPageHandler extends TestBrowserProxy implements
 
   onboardingTooltipDismissed() {
     this.methodCalled('onboardingTooltipDismissed');
-  }
-
-  lensSearchTooltipDismissed() {
-    this.methodCalled('lensSearchTooltipDismissed');
   }
 
   // eslint-disable-next-line @typescript-eslint/naming-convention

@@ -4,11 +4,11 @@
 
 #include "chrome/browser/ui/web_modal/browser_window_modal_dialog_delegate.h"
 
+#include "base/functional/bind.h"
 #include "base/types/to_address.h"
 #include "chrome/browser/content_settings/host_content_settings_map_factory.h"
 #include "chrome/browser/devtools/devtools_ui_controller.h"
 #include "chrome/browser/devtools/devtools_window.h"
-#include "chrome/browser/ui/browser.h"         // nogncheck
 #include "chrome/browser/ui/browser_window.h"  // nogncheck
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
@@ -20,7 +20,11 @@
 #include "components/content_settings/core/common/content_settings.h"
 #include "components/content_settings/core/common/content_settings_types.h"
 #include "components/web_modal/web_contents_modal_dialog_host.h"
+#include "content/public/browser/browser_task_traits.h"
+#include "content/public/browser/browser_thread.h"
+#include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/web_contents.h"
+#include "url/origin.h"
 
 DEFINE_USER_DATA(BrowserWindowModalDialogDelegate);
 
@@ -59,21 +63,32 @@ void BrowserWindowModalDialogDelegate::SetWebContentsBlocked(
   // Skip browser-fullscreen, which is more expressly user-initiated.
   // Skip fullscreen-within-tab, which shows the browser frame.
   if (blocked) {
+    FullscreenController* const fullscreen_controller =
+        ExclusiveAccessManager::From(browser_)->fullscreen_controller();
     content::FullscreenState fullscreen_state =
-        browser_->GetFeatures()
-            .exclusive_access_manager()
-            ->fullscreen_controller()
-            ->GetFullscreenState(web_contents);
+        fullscreen_controller->GetFullscreenState(web_contents);
     if (fullscreen_state.target_mode == content::FullscreenMode::kContent) {
-      // Skip URLs with the automatic fullscreen content setting granted.
-      const GURL& url = web_contents->GetLastCommittedURL();
+      // Skip origins with the automatic fullscreen content setting granted.
+      const url::Origin& requesting_origin =
+          fullscreen_controller->requesting_origin();
+      const GURL url = requesting_origin.GetURL();
       const HostContentSettingsMap* const content_settings =
           HostContentSettingsMapFactory::GetForProfile(
               web_contents->GetBrowserContext());
-      if (content_settings->GetContentSetting(
+      if (requesting_origin.opaque() ||
+          requesting_origin !=
+              web_contents->GetPrimaryMainFrame()->GetLastCommittedOrigin() ||
+          content_settings->GetContentSetting(
               url, url, ContentSettingsType::AUTOMATIC_FULLSCREEN) !=
-          CONTENT_SETTING_ALLOW) {
-        web_contents->ExitFullscreen(true);
+              CONTENT_SETTING_ALLOW) {
+        // Defer exiting fullscreen to prevent synchronous window management
+        // messages (e.g. direct WndProc calls on Windows) from destroying the
+        // WebContents or callers while modal dialog presentation is on the
+        // stack.
+        content::GetUIThreadTaskRunner({})->PostTask(
+            FROM_HERE, base::BindOnce(&content::WebContents::ExitFullscreen,
+                                      web_contents->GetWeakPtr(),
+                                      /*will_cause_resize=*/true));
       }
     }
   }

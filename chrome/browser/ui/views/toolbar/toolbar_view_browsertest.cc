@@ -4,24 +4,35 @@
 
 #include "chrome/browser/ui/views/toolbar/toolbar_view.h"
 
+#include "base/i18n/base_i18n_switches.h"
+#include "base/i18n/rtl.h"
 #include "base/test/run_until.h"
+#include "base/test/scoped_feature_list.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
 #include "chrome/browser/ui/interaction/browser_elements.h"
+#include "chrome/browser/ui/layout_constants.h"
+#include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h"
 #include "chrome/browser/ui/toolbar_controller_util.h"
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
+#include "chrome/browser/ui/views/frame/toolbar_button_provider.h"
 #include "chrome/browser/ui/views/frame/top_container_view.h"
+#include "chrome/browser/ui/views/profiles/avatar_toolbar_button.h"
 #include "chrome/browser/ui/views/toolbar/home_button.h"
 #include "chrome/browser/ui/views/toolbar/toolbar_button.h"
+#include "chrome/browser/ui/views/toolbar/webui_toolbar_web_view.h"
+#include "chrome/common/chrome_features.h"
 #include "chrome/common/pref_names.h"
 #include "chrome/test/base/in_process_browser_test.h"
 #include "chrome/test/base/testing_profile.h"
+#include "components/contextual_tasks/public/features.h"
 #include "components/prefs/pref_service.h"
 #include "content/public/test/browser_test.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "ui/base/interaction/element_tracker.h"
 #include "ui/views/accessibility/view_accessibility.h"
 #include "ui/views/controls/separator.h"
+#include "ui/views/layout/flex_layout.h"
 #include "ui/views/view.h"
 
 using ToolbarViewUnitTest = InProcessBrowserTest;
@@ -222,14 +233,39 @@ IN_PROC_BROWSER_TEST_F(ToolbarViewResponsiveTest,
   ToolbarView* toolbar =
       BrowserView::GetBrowserViewForBrowser(browser())->toolbar();
   ASSERT_TRUE(toolbar);
-  views::View* location_bar = toolbar->location_bar_view();
+  LocationBar* location_bar = toolbar->location_bar();
   views::View* forward = toolbar->forward_button();
   views::View* home = toolbar->home_button();
   ASSERT_TRUE(location_bar);
-  ASSERT_TRUE(forward);
-  ASSERT_TRUE(home);
-  const int preferred_width = location_bar->GetPreferredSize().width();
-  const int min_width = location_bar->GetMinimumSize().width();
+  if (!features::IsWebUIBackForwardButtonEnabled()) {
+    ASSERT_TRUE(forward);
+  }
+  if (!features::IsWebUIHomeButtonEnabled()) {
+    ASSERT_TRUE(home);
+  }
+  auto is_forward_visible = [&]() {
+    if (forward) {
+      return forward->GetVisible() && !forward->bounds().IsEmpty();
+    }
+    return !toolbar->toolbar_controller()->IsElementOverflowedForTesting(
+        kToolbarForwardButtonElementId);
+  };
+  auto is_home_visible = [&]() {
+    if (home) {
+      return home->GetVisible() && !home->bounds().IsEmpty();
+    }
+    return !toolbar->toolbar_controller()->IsElementOverflowedForTesting(
+        kToolbarHomeButtonElementId);
+  };
+  auto get_location_bar_width = [&]() {
+    if (toolbar->location_bar_view()) {
+      return toolbar->location_bar_view()->bounds().width();
+    }
+    return toolbar->GetWebUIToolbarViewForTesting()
+        ->GetLocationBarWidthForTesting();
+  };
+  const int preferred_width = location_bar->PreferredSize().width();
+  const int min_width = location_bar->MinimumSize().width();
   const int toolbar_height = toolbar->GetPreferredSize().height();
   EXPECT_GT(preferred_width, min_width);
   EXPECT_GT(toolbar_height, 0);
@@ -243,57 +279,325 @@ IN_PROC_BROWSER_TEST_F(ToolbarViewResponsiveTest,
   // preferred width, and all responsive buttons remain visible.
   toolbar->SetSize(gfx::Size(super_wide_width, toolbar_height));
   toolbar->DeprecatedLayoutImmediately();
-  EXPECT_TRUE(forward->GetVisible());
-  EXPECT_FALSE(forward->bounds().IsEmpty());
-  EXPECT_TRUE(home->GetVisible());
-  EXPECT_FALSE(home->bounds().IsEmpty());
-  EXPECT_GT(location_bar->bounds().width(), preferred_width);
+  EXPECT_TRUE(is_forward_visible());
+  EXPECT_TRUE(is_home_visible());
+  EXPECT_GT(get_location_bar_width(), preferred_width);
 
   // When resized down to a moderate width where all elements fit, the omnibox
   // shrinks down towards its preferred width while buttons remain visible.
   toolbar->SetSize(gfx::Size(all_fit_width, toolbar_height));
   toolbar->DeprecatedLayoutImmediately();
-  EXPECT_TRUE(forward->GetVisible());
-  EXPECT_FALSE(forward->bounds().IsEmpty());
-  EXPECT_TRUE(home->GetVisible());
-  EXPECT_FALSE(home->bounds().IsEmpty());
-  EXPECT_GE(location_bar->bounds().width(), preferred_width);
+  EXPECT_TRUE(is_forward_visible());
+  EXPECT_TRUE(is_home_visible());
+  EXPECT_GE(get_location_bar_width(), preferred_width);
 
   // Under narrow widths where responsive buttons have dropped out, buttons are
   // hidden and the omnibox shrinks down from its preferred width towards its
   // minimum width.
   toolbar->SetSize(gfx::Size(omnibox_resizing_width, toolbar_height));
   toolbar->DeprecatedLayoutImmediately();
-  EXPECT_FALSE(forward->GetVisible());
-  EXPECT_FALSE(home->GetVisible());
-  EXPECT_LT(location_bar->bounds().width(), preferred_width);
-  EXPECT_GT(location_bar->bounds().width(), min_width);
+  EXPECT_FALSE(is_forward_visible());
+  EXPECT_FALSE(is_home_visible());
+  EXPECT_LT(get_location_bar_width(), preferred_width);
+  EXPECT_GT(get_location_bar_width(), min_width);
 
   // At absolute minimum width, all responsive buttons remain hidden and the
   // omnibox reaches its minimum width.
   toolbar->SetSize(gfx::Size(min_width_bound, toolbar_height));
   toolbar->DeprecatedLayoutImmediately();
-  EXPECT_FALSE(forward->GetVisible());
-  EXPECT_FALSE(home->GetVisible());
-  EXPECT_EQ(location_bar->bounds().width(), min_width);
+  EXPECT_FALSE(is_forward_visible());
+  EXPECT_FALSE(is_home_visible());
+  EXPECT_EQ(get_location_bar_width(), min_width);
 
   // When expanding to moderate width, responsive buttons reappear with
   // non-empty bounds and the omnibox recovers its preferred width.
   toolbar->SetSize(gfx::Size(all_fit_width, toolbar_height));
   toolbar->DeprecatedLayoutImmediately();
-  EXPECT_TRUE(forward->GetVisible());
-  EXPECT_FALSE(forward->bounds().IsEmpty());
-  EXPECT_TRUE(home->GetVisible());
-  EXPECT_FALSE(home->bounds().IsEmpty());
-  EXPECT_GE(location_bar->bounds().width(), preferred_width);
+  EXPECT_TRUE(is_forward_visible());
+  EXPECT_TRUE(is_home_visible());
+  EXPECT_GE(get_location_bar_width(), preferred_width);
 
   // Expanding back to a super wide width allows the omnibox to expand into
   // excess space again.
   toolbar->SetSize(gfx::Size(super_wide_width, toolbar_height));
   toolbar->DeprecatedLayoutImmediately();
-  EXPECT_TRUE(forward->GetVisible());
-  EXPECT_FALSE(forward->bounds().IsEmpty());
-  EXPECT_TRUE(home->GetVisible());
-  EXPECT_FALSE(home->bounds().IsEmpty());
-  EXPECT_GT(location_bar->bounds().width(), preferred_width);
+  EXPECT_TRUE(is_forward_visible());
+  EXPECT_TRUE(is_home_visible());
+  EXPECT_GT(get_location_bar_width(), preferred_width);
 }
+
+IN_PROC_BROWSER_TEST_F(ToolbarViewResponsiveTest,
+                       ButtonsDoNotCollapseCrossAxisHeight) {
+  browser()->GetProfile()->GetPrefs()->SetBoolean(prefs::kShowHomeButton, true);
+  browser()->GetProfile()->GetPrefs()->SetBoolean(prefs::kShowForwardButton,
+                                                  true);
+  ToolbarView* toolbar =
+      BrowserView::GetBrowserViewForBrowser(browser())->toolbar();
+  ASSERT_TRUE(toolbar);
+  views::View* forward = toolbar->forward_button();
+  views::View* home = toolbar->home_button();
+  views::View* avatar = toolbar->avatar_toolbar_button();
+  views::View* webui_toolbar = toolbar->GetWebUIToolbarViewForTesting();
+  if (!features::IsWebUIBackForwardButtonEnabled()) {
+    ASSERT_TRUE(forward);
+  }
+  if (!features::IsWebUIHomeButtonEnabled()) {
+    ASSERT_TRUE(home);
+  }
+  if (features::IsWebUIToolbarEnabled()) {
+    ASSERT_TRUE(webui_toolbar);
+  }
+
+  const int all_fit_width = toolbar->GetPreferredSize().width();
+  // Constrain toolbar height so that the available cross-axis height is smaller
+  // than the buttons' preferred height (simulating custom frame mode with
+  // vertical tabs).
+  const int constrained_height = toolbar->GetPreferredSize().height() - 4;
+
+  toolbar->SetSize(gfx::Size(all_fit_width, constrained_height));
+  toolbar->DeprecatedLayoutImmediately();
+
+  if (forward) {
+    EXPECT_TRUE(forward->GetVisible());
+    EXPECT_GT(forward->bounds().height(), 0);
+  }
+
+  if (home) {
+    EXPECT_TRUE(home->GetVisible());
+    EXPECT_GT(home->bounds().height(), 0);
+  }
+
+  if (webui_toolbar) {
+    EXPECT_TRUE(webui_toolbar->GetVisible());
+    EXPECT_GT(webui_toolbar->bounds().height(), 0);
+  }
+
+  if (avatar && avatar->GetVisible()) {
+    EXPECT_GT(avatar->bounds().height(), 0);
+  }
+}
+
+class ToolbarViewInteriorMarginBrowserTestBase
+    : public InProcessBrowserTest,
+      public testing::WithParamInterface<bool> {
+ public:
+  void SetUpCommandLine(base::CommandLine* command_line) override {
+    InProcessBrowserTest::SetUpCommandLine(command_line);
+    if (GetParam()) {
+      command_line->AppendSwitchASCII(switches::kForceUIDirection,
+                                      switches::kForceDirectionRTL);
+      command_line->AppendSwitchASCII(switches::kForceTextDirection,
+                                      switches::kForceDirectionRTL);
+    }
+  }
+
+  ToolbarView* toolbar() {
+    return BrowserView::GetBrowserViewForBrowser(browser())->toolbar();
+  }
+
+  ToolbarButtonProvider* toolbar_button_provider() {
+    return BrowserView::GetBrowserViewForBrowser(browser())
+        ->toolbar_button_provider();
+  }
+
+  views::FlexLayout* flex_layout() {
+    return static_cast<views::FlexLayout*>(toolbar()->GetLayoutManager());
+  }
+
+  gfx::Insets default_margin() const {
+    return GetLayoutInsets(LayoutInset::TOOLBAR_INTERIOR_MARGIN);
+  }
+
+  void ExpectDefaultMargins() {
+    EXPECT_EQ(flex_layout()->interior_margin(), default_margin());
+  }
+
+  void ExpectLeadingMarginZeroed() {
+    gfx::Insets expected = default_margin();
+    expected.set_left(0);
+    EXPECT_EQ(flex_layout()->interior_margin(), expected);
+  }
+
+  void ExpectTrailingMarginZeroed() {
+    gfx::Insets expected = default_margin();
+    expected.set_right(0);
+    EXPECT_EQ(flex_layout()->interior_margin(), expected);
+  }
+};
+
+class ToolbarViewContextualTasksInteriorMarginBrowserTest
+    : public ToolbarViewInteriorMarginBrowserTestBase {
+ public:
+  ToolbarViewContextualTasksInteriorMarginBrowserTest() {
+    feature_list_.InitWithFeaturesAndParameters(
+        /*enabled_features=*/{{contextual_tasks::kContextualTasks, {}},
+                              {contextual_tasks::
+                                   kContextualTasksEphemeralBrandedEntryPoint,
+                               {{contextual_tasks::kShowEntryPoint.name,
+                                 "toolbar-ephemeral-branded"}}}},
+        /*disabled_features=*/{features::kWebUIBackForwardButton});
+  }
+
+ private:
+  base::test::ScopedFeatureList feature_list_;
+};
+
+IN_PROC_BROWSER_TEST_P(ToolbarViewContextualTasksInteriorMarginBrowserTest,
+                       InteriorMarginRespectsVisibilityAndDirection) {
+  const bool is_rtl = GetParam();
+  EXPECT_EQ(base::i18n::IsRTL(), is_rtl);
+
+  ToolbarButton* button = toolbar()->contextual_tasks_button();
+  ASSERT_TRUE(button);
+
+  // 1. By default, the contextual tasks button is not visible. Neither margin
+  // should be zeroed out (fixing the 4px Back button gap in both LTR and RTL).
+  EXPECT_FALSE(button->GetVisible());
+  ExpectDefaultMargins();
+
+  // 2. When the contextual tasks button becomes visible, only the leading
+  // margin is zeroed out (left in logical DIPs for both LTR and RTL). The
+  // trailing margin remains untouched.
+  button->SetVisible(true);
+  toolbar()->DeprecatedLayoutImmediately();
+  ExpectLeadingMarginZeroed();
+
+  // 3. When the button is hidden again, the margin is restored to the default.
+  button->SetVisible(false);
+  toolbar()->DeprecatedLayoutImmediately();
+  ExpectDefaultMargins();
+}
+
+IN_PROC_BROWSER_TEST_P(ToolbarViewContextualTasksInteriorMarginBrowserTest,
+                       InteriorMarginWithVerticalTabsEnabled) {
+  ToolbarButton* button = toolbar()->contextual_tasks_button();
+  ASSERT_TRUE(button);
+
+  auto* vts_controller = tabs::VerticalTabStripStateController::From(browser());
+  if (vts_controller) {
+    vts_controller->SetVerticalTabsEnabled(true);
+    button->SetVisible(true);
+    toolbar()->DeprecatedLayoutImmediately();
+
+    // In vertical tab strip mode, the tab strip is positioned vertically along
+    // the side, so the contextual tasks button does not sit flush at the window
+    // edge. The default interior margin must remain untouched even if visible.
+    ExpectDefaultMargins();
+  }
+}
+
+IN_PROC_BROWSER_TEST_P(ToolbarViewContextualTasksInteriorMarginBrowserTest,
+                       BackButtonLeadingMarginInMaximizedWindow) {
+  const bool is_rtl = GetParam();
+  EXPECT_EQ(base::i18n::IsRTL(), is_rtl);
+
+  ToolbarButton* contextual_tasks_btn = toolbar()->contextual_tasks_button();
+  ASSERT_TRUE(contextual_tasks_btn);
+  ToolbarButton* back_button = toolbar_button_provider()->GetBackButton();
+  ASSERT_TRUE(back_button);
+
+  const gfx::Insets* insets =
+      back_button->GetProperty(views::kInternalPaddingKey);
+  ASSERT_TRUE(insets);
+
+  // In windowed mode, leading and trailing margins are always 0.
+  EXPECT_EQ(insets->left(), 0);
+  EXPECT_EQ(insets->right(), 0);
+
+  // Maximize the browser window to test Fitts' law leading margin.
+  browser()->GetWindow()->Maximize();
+  toolbar()->DeprecatedLayoutImmediately();
+
+  if (browser()->GetWindow()->IsMaximized()) {
+    const int expected_leading_margin = default_margin().left();
+
+    // 1. When contextual tasks is hidden, Back button is the leading button and
+    // extends to the screen edge with the leading interior margin (left in
+    // logical coordinates). The trailing side padding must remain 0.
+    EXPECT_FALSE(contextual_tasks_btn->GetVisible());
+    EXPECT_EQ(insets->left(), expected_leading_margin);
+    EXPECT_EQ(insets->right(), 0);
+
+    // 2. When contextual tasks becomes visible, Back button is no longer the
+    // leading button, so Fitts' law is suppressed (leading margin reset to 0).
+    contextual_tasks_btn->SetVisible(true);
+    toolbar()->DeprecatedLayoutImmediately();
+    EXPECT_EQ(insets->left(), 0);
+    EXPECT_EQ(insets->right(), 0);
+
+    // 3. When contextual tasks is hidden again, Back button's leading margin is
+    // restored.
+    contextual_tasks_btn->SetVisible(false);
+    toolbar()->DeprecatedLayoutImmediately();
+    EXPECT_EQ(insets->left(), expected_leading_margin);
+    EXPECT_EQ(insets->right(), 0);
+  }
+}
+
+IN_PROC_BROWSER_TEST_P(ToolbarViewContextualTasksInteriorMarginBrowserTest,
+                       TrailingButtonInteriorMargin) {
+  const bool is_rtl = GetParam();
+  EXPECT_EQ(base::i18n::IsRTL(), is_rtl);
+
+  ToolbarButton* contextual_tasks_btn =
+      toolbar()->contextual_tasks_button();
+  ASSERT_TRUE(contextual_tasks_btn);
+
+  // Move the button to the trailing position.
+  toolbar()->ReorderChildView(contextual_tasks_btn,
+                              toolbar()->children().size());
+
+  // 1. By default, the trailing button is not visible. Neither margin should be
+  // zeroed out.
+  EXPECT_FALSE(contextual_tasks_btn->GetVisible());
+  ExpectDefaultMargins();
+
+  // 2. When the trailing button becomes visible, only the trailing margin is
+  // zeroed out (right in logical DIPs).
+  contextual_tasks_btn->SetVisible(true);
+  toolbar()->DeprecatedLayoutImmediately();
+  ExpectTrailingMarginZeroed();
+
+  // 3. When hidden again, default margin is restored.
+  contextual_tasks_btn->SetVisible(false);
+  toolbar()->DeprecatedLayoutImmediately();
+  ExpectDefaultMargins();
+}
+
+INSTANTIATE_TEST_SUITE_P(All,
+                         ToolbarViewContextualTasksInteriorMarginBrowserTest,
+                         testing::Bool());
+
+// Tests the baseline scenario without the ContextualTasks feature enabled in
+// both LTR and RTL modes.
+class ToolbarViewDefaultInteriorMarginBrowserTest
+    : public ToolbarViewInteriorMarginBrowserTestBase {
+ public:
+  ToolbarViewDefaultInteriorMarginBrowserTest() {
+    feature_list_.InitWithFeatures(
+        /*enabled_features=*/{},
+        /*disabled_features=*/{
+            contextual_tasks::kContextualTasks,
+            contextual_tasks::kContextualTasksSidePanel,
+            contextual_tasks::kContextualTasksRearchitecture,
+            contextual_tasks::kContextualTasksEphemeralBrandedEntryPoint,
+            features::kWebUIBackForwardButton});
+  }
+
+ private:
+  base::test::ScopedFeatureList feature_list_;
+};
+
+IN_PROC_BROWSER_TEST_P(ToolbarViewDefaultInteriorMarginBrowserTest,
+                       DefaultInteriorMarginWithoutFeature) {
+  const bool is_rtl = GetParam();
+  EXPECT_EQ(base::i18n::IsRTL(), is_rtl);
+
+  // Without ContextualTasks, the button does not exist.
+  EXPECT_EQ(toolbar()->contextual_tasks_button(), nullptr);
+  ExpectDefaultMargins();
+}
+
+INSTANTIATE_TEST_SUITE_P(All,
+                         ToolbarViewDefaultInteriorMarginBrowserTest,
+                         testing::Bool());

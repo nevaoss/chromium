@@ -12,6 +12,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <string_view>
 #include <utility>
 #include <vector>
 
@@ -258,6 +259,8 @@ class CONTENT_EXPORT RenderWidgetHostImpl
       base::OnceClosure on_complete) override;
   void PasteIntoNode(const std::u16string& text,
                      const GlobalDOMNodeId& target_dom_node_id) override;
+  std::optional<std::u16string_view> GetTextPrecedingSelection(
+      const GlobalDOMNodeId& target_dom_node_id) override;
   void Focus() override;
   void Blur() override;
   void FlushForTesting() override;
@@ -551,6 +554,12 @@ class CONTENT_EXPORT RenderWidgetHostImpl
   // it is possible in some edge cases that a view was requested to be focused
   // but it failed, thus HasFocus() returns false.
   bool is_focused() const { return is_focused_; }
+
+  // Sets and returns whether DevTools emulates focus for the renderer page.
+  void SetFocusEmulationEnabled(bool enabled) {
+    focus_emulation_enabled_ = enabled;
+  }
+  bool IsFocusEmulationEnabled() const { return focus_emulation_enabled_; }
 
   // Support for focus tracking on multi-FrameTree cases. This will notify all
   // descendants (including nested FrameTrees) to distribute a "page focus"
@@ -1566,6 +1575,8 @@ class CONTENT_EXPORT RenderWidgetHostImpl
   // RenderWidgetHostView::HasFocus in that in that the focus request may fail,
   // causing HasFocus to return false when is_focused_ is true.
   bool is_focused_ = false;
+
+  bool focus_emulation_enabled_ = false;
 
   // Indicates whether what the last focus active state that was sent to the
   // renderer.

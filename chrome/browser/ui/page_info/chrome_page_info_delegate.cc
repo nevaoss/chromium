@@ -31,8 +31,12 @@
 #include "chrome/browser/ssl/https_upgrades_util.h"
 #include "chrome/browser/ssl/stateful_ssl_host_state_delegate_factory.h"
 #include "chrome/browser/subresource_filter/subresource_filter_profile_context_factory.h"
+#include "ui/base/page_transition_types.h"
+#include "ui/base/window_open_disposition.h"
 #if BUILDFLAG(IS_ANDROID)
 #include "chrome/browser/safe_browsing/android/suspicious_site_controller_android.h"
+#else
+#include "chrome/browser/safe_browsing/suspicious_site_warnings/suspicious_site_controller_desktop.h"
 #endif
 #include "chrome/browser/ui/url_identity.h"
 #include "chrome/browser/usb/usb_chooser_context.h"
@@ -77,7 +81,6 @@
 #include "chrome/browser/certificate_viewer.h"
 #include "chrome/browser/infobars/infobar_spec.h"
 #include "chrome/browser/lookalikes/safety_tip_ui_helper.h"
-#include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_web_contents_delegate/browser_web_contents_delegate.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
@@ -311,7 +314,7 @@ ChromePageInfoDelegate::CreateCookieControlsController() {
           ? CookieSettingsFactory::GetForProfile(profile->GetOriginalProfile())
           : nullptr,
       HostContentSettingsMapFactory::GetForProfile(profile),
-      profile->IsIncognitoProfile());
+      profile->IsPrimaryOTRProfileWithRegularParent());
 }
 
 bool ChromePageInfoDelegate::IsIsolatedWebApp() {
@@ -401,11 +404,11 @@ void ChromePageInfoDelegate::OpenCertificateDialog(
 void ChromePageInfoDelegate::OpenConnectionHelpCenterPage(
     const ui::Event& event) {
   web_contents_->OpenURL(
-      content::OpenURLParams(
-          GURL(chrome::kPageInfoHelpCenterURL), content::Referrer(),
+      content::OpenURLParams::CreateBrowserInitiated(
+          GURL(chrome::kPageInfoHelpCenterURL),
           ui::DispositionFromEventFlags(
               event.flags(), WindowOpenDisposition::NEW_FOREGROUND_TAB),
-          ui::PAGE_TRANSITION_LINK, false),
+          ui::PAGE_TRANSITION_LINK),
       /*navigation_handle_callback=*/{});
 }
 
@@ -450,11 +453,11 @@ void ChromePageInfoDelegate::OpenSafeBrowsingHelpCenterPage(
                               ? chrome::kUnsafeSiteWarningHelpCenterURL
                               : chrome::kSafeBrowsingHelpCenterURL;
   web_contents_->OpenURL(
-      content::OpenURLParams(
-          GURL(url), content::Referrer(),
+      content::OpenURLParams::CreateBrowserInitiated(
+          GURL(url),
           ui::DispositionFromEventFlags(
               event_flags, WindowOpenDisposition::NEW_FOREGROUND_TAB),
-          ui::PAGE_TRANSITION_LINK, false),
+          ui::PAGE_TRANSITION_LINK),
       /*navigation_handle_callback=*/{});
 }
 
@@ -466,6 +469,13 @@ void ChromePageInfoDelegate::OnSuspiciousSiteBackToSafety() {
     ssc->HandleBackNavigation(
         safe_browsing::SuspiciousSiteWarningUserInteraction::
             kBackToSafetyButton);
+    return;
+  }
+#else
+  if (auto* ssc =
+          safe_browsing::SuspiciousSiteControllerDesktop::FromWebContents(
+              web_contents_)) {
+    ssc->OnBackToSafetyClicked();
     return;
   }
 #endif
@@ -502,6 +512,13 @@ void ChromePageInfoDelegate::OnSuspiciousSiteMarkAsSafe() {
     ssc->OnContinueButtonClicked();
     return;
   }
+#else
+  if (auto* ssc =
+          safe_browsing::SuspiciousSiteControllerDesktop::FromWebContents(
+              web_contents_)) {
+    ssc->OnMarkAsSafeClicked();
+    return;
+  }
 #endif
   if (!web_contents_) {
     return;
@@ -519,6 +536,7 @@ void ChromePageInfoDelegate::OnSuspiciousSiteMarkAsSafe() {
           std::string(current_url.host()));
     }
   }
+  web_contents_->DidChangeVisibleSecurityState();
 }
 
 std::u16string ChromePageInfoDelegate::GetSubjectName(const GURL& url) {
@@ -620,7 +638,7 @@ bool ChromePageInfoDelegate::IsHttpsFirstModeEnabledForUrl(const GURL& url) {
 }
 
 bool ChromePageInfoDelegate::IsIncognitoProfile() {
-  return GetProfile()->IsIncognitoProfile();
+  return GetProfile()->IsPrimaryOTRProfileWithRegularParent();
 }
 
 void ChromePageInfoDelegate::SetSecurityStateForTests(

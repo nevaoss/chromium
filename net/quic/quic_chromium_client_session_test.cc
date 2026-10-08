@@ -54,6 +54,7 @@
 #include "net/quic/quic_crypto_client_config_handle.h"
 #include "net/quic/quic_crypto_client_stream_factory.h"
 #include "net/quic/quic_http_utils.h"
+#include "net/quic/quic_migration_attempt_context.h"
 #include "net/quic/quic_server_info.h"
 #include "net/quic/quic_session_alias_key.h"
 #include "net/quic/quic_session_key.h"
@@ -2022,16 +2023,16 @@ TEST_P(QuicChromiumClientSessionTest, MigrateToSocket) {
   std::unique_ptr<QuicChromiumPacketWriter> new_writer(
       CreateQuicChromiumPacketWriter(new_reader->socket(), session_.get()));
 
-  IPEndPoint local_address;
-  new_reader->socket()->GetLocalAddress(&local_address);
   IPEndPoint peer_address;
   new_reader->socket()->GetPeerAddress(&peer_address);
   // Migrate session.
   EXPECT_CALL(*session_, UnregisterQuicConnectionClosePayload());
   EXPECT_CALL(*session_, RegisterQuicConnectionClosePayload());
-  EXPECT_TRUE(session_->MigrateToSocket(
-      ToQuicSocketAddress(local_address), ToQuicSocketAddress(peer_address),
-      std::move(new_reader), std::move(new_writer)));
+  auto migration_context = std::make_unique<QuicMigrationAttemptContext>(
+      UNKNOWN_CAUSE, session_->GetCurrentNetwork(),
+      session_->GetCurrentNetwork(), ToQuicSocketAddress(peer_address),
+      std::move(new_reader), std::move(new_writer));
+  EXPECT_TRUE(session_->CommitMigration(std::move(migration_context)));
   // Spin message loop to complete migration.
   base::RunLoop().RunUntilIdle();
 
@@ -2121,16 +2122,16 @@ TEST_P(QuicChromiumClientSessionTest, MigrateToSocketMaxReaders) {
     std::unique_ptr<QuicChromiumPacketWriter> new_writer(
         CreateQuicChromiumPacketWriter(new_reader->socket(), session_.get()));
 
-    IPEndPoint local_address;
-    new_reader->socket()->GetLocalAddress(&local_address);
     IPEndPoint peer_address;
     new_reader->socket()->GetPeerAddress(&peer_address);
     // Migrate session.
     EXPECT_CALL(*session_, UnregisterQuicConnectionClosePayload());
     EXPECT_CALL(*session_, RegisterQuicConnectionClosePayload());
-    EXPECT_TRUE(session_->MigrateToSocket(
-        ToQuicSocketAddress(local_address), ToQuicSocketAddress(peer_address),
-        std::move(new_reader), std::move(new_writer)));
+    auto migration_context = std::make_unique<QuicMigrationAttemptContext>(
+        UNKNOWN_CAUSE, session_->GetCurrentNetwork(),
+        session_->GetCurrentNetwork(), ToQuicSocketAddress(peer_address),
+        std::move(new_reader), std::move(new_writer));
+    EXPECT_TRUE(session_->CommitMigration(std::move(migration_context)));
     // Spin message loop to complete migration.
     base::RunLoop().RunUntilIdle();
     EXPECT_CALL(*session_, RegisterQuicConnectionClosePayload());
@@ -2166,13 +2167,13 @@ TEST_P(QuicChromiumClientSessionTest, MigrateToSocketMaxReaders) {
   std::unique_ptr<QuicChromiumPacketWriter> new_writer(
       CreateQuicChromiumPacketWriter(new_reader->socket(), session_.get()));
 
-  IPEndPoint local_address;
-  new_reader->socket()->GetLocalAddress(&local_address);
   IPEndPoint peer_address;
   new_reader->socket()->GetPeerAddress(&peer_address);
-  EXPECT_FALSE(session_->MigrateToSocket(
-      ToQuicSocketAddress(local_address), ToQuicSocketAddress(peer_address),
-      std::move(new_reader), std::move(new_writer)));
+  auto migration_context = std::make_unique<QuicMigrationAttemptContext>(
+      UNKNOWN_CAUSE, session_->GetCurrentNetwork(),
+      session_->GetCurrentNetwork(), ToQuicSocketAddress(peer_address),
+      std::move(new_reader), std::move(new_writer));
+  EXPECT_FALSE(session_->CommitMigration(std::move(migration_context)));
   EXPECT_TRUE(quic_data2.AllReadDataConsumed());
   EXPECT_TRUE(quic_data2.AllWriteDataConsumed());
 }
@@ -2237,16 +2238,16 @@ TEST_P(QuicChromiumClientSessionTest, MigrateToSocketReadError) {
   std::unique_ptr<QuicChromiumPacketWriter> new_writer(
       CreateQuicChromiumPacketWriter(new_reader->socket(), session_.get()));
 
-  IPEndPoint local_address;
-  new_reader->socket()->GetLocalAddress(&local_address);
   IPEndPoint peer_address;
   new_reader->socket()->GetPeerAddress(&peer_address);
   // Store old socket and migrate session.
   EXPECT_CALL(*session_, UnregisterQuicConnectionClosePayload());
   EXPECT_CALL(*session_, RegisterQuicConnectionClosePayload());
-  EXPECT_TRUE(session_->MigrateToSocket(
-      ToQuicSocketAddress(local_address), ToQuicSocketAddress(peer_address),
-      std::move(new_reader), std::move(new_writer)));
+  auto migration_context = std::make_unique<QuicMigrationAttemptContext>(
+      UNKNOWN_CAUSE, session_->GetCurrentNetwork(),
+      session_->GetCurrentNetwork(), ToQuicSocketAddress(peer_address),
+      std::move(new_reader), std::move(new_writer));
+  EXPECT_TRUE(session_->CommitMigration(std::move(migration_context)));
   // Spin message loop to complete migration.
   base::RunLoop().RunUntilIdle();
   EXPECT_TRUE(
@@ -3549,13 +3550,13 @@ TEST_P(QuicChromiumClientSessionTest, GoogleSearchSessionMetricsUnused) {
       "Net.QuicSession.GoogleSearch.SessionCreationInitiator.Unused",
       MultiplexedSessionCreationInitiator::kPreconnect, 1);
   histogram_tester.ExpectUniqueSample(
-      "Net.QuicSession.GoogleSearch.EstablishmentReason.Unused",
+      "Net.QuicSession.GoogleSearch.EstablishmentReason2.Unused",
       QuicSessionEstablishmentReason::kSessionExistedAndWasPreconnect, 1);
   histogram_tester.ExpectUniqueSample(
-      "Net.QuicSession.GoogleSearch.EstablishmentReason.Preconnect.Unused",
+      "Net.QuicSession.GoogleSearch.EstablishmentReason2.Preconnect.Unused",
       QuicSessionEstablishmentReason::kSessionExistedAndWasPreconnect, 1);
   histogram_tester.ExpectTotalCount(
-      "Net.QuicSession.GoogleSearch.EstablishmentReason.NonPreconnect.Unused",
+      "Net.QuicSession.GoogleSearch.EstablishmentReason2.NonPreconnect.Unused",
       0);
 }
 
@@ -3573,13 +3574,13 @@ TEST_P(QuicChromiumClientSessionTest, GoogleSearchSessionMetricsUsed) {
       "Net.QuicSession.GoogleSearch.SessionCreationInitiator.Used",
       MultiplexedSessionCreationInitiator::kUnknown, 1);
   histogram_tester.ExpectUniqueSample(
-      "Net.QuicSession.GoogleSearch.EstablishmentReason.Used",
+      "Net.QuicSession.GoogleSearch.EstablishmentReason2.Used",
       QuicSessionEstablishmentReason::kSessionExistedButNotPreconnect, 1);
   histogram_tester.ExpectUniqueSample(
-      "Net.QuicSession.GoogleSearch.EstablishmentReason.NonPreconnect.Used",
+      "Net.QuicSession.GoogleSearch.EstablishmentReason2.NonPreconnect.Used",
       QuicSessionEstablishmentReason::kSessionExistedButNotPreconnect, 1);
   histogram_tester.ExpectTotalCount(
-      "Net.QuicSession.GoogleSearch.EstablishmentReason.Preconnect.Used", 0);
+      "Net.QuicSession.GoogleSearch.EstablishmentReason2.Preconnect.Used", 0);
 }
 
 TEST_P(QuicChromiumClientSessionTest, GoogleSearchSessionMetricsNoSession) {
@@ -3591,13 +3592,13 @@ TEST_P(QuicChromiumClientSessionTest, GoogleSearchSessionMetricsNoSession) {
   QuicChromiumClientSessionPeer::SetHostname(session_.get(), "www.google.com");
   session_.reset();
   histogram_tester.ExpectUniqueSample(
-      "Net.QuicSession.GoogleSearch.EstablishmentReason.Unused",
+      "Net.QuicSession.GoogleSearch.EstablishmentReason2.Unused",
       QuicSessionEstablishmentReason::kNoSessionExisted, 1);
   histogram_tester.ExpectUniqueSample(
-      "Net.QuicSession.GoogleSearch.EstablishmentReason.NonPreconnect.Unused",
+      "Net.QuicSession.GoogleSearch.EstablishmentReason2.NonPreconnect.Unused",
       QuicSessionEstablishmentReason::kNoSessionExisted, 1);
   histogram_tester.ExpectTotalCount(
-      "Net.QuicSession.GoogleSearch.EstablishmentReason.Preconnect.Unused", 0);
+      "Net.QuicSession.GoogleSearch.EstablishmentReason2.Preconnect.Unused", 0);
 }
 
 TEST_P(QuicChromiumClientSessionTest,
@@ -3615,13 +3616,14 @@ TEST_P(QuicChromiumClientSessionTest,
       "Net.QuicSession.GoogleSearch.SessionCreationInitiator.Used",
       MultiplexedSessionCreationInitiator::kPreconnect, 1);
   histogram_tester.ExpectUniqueSample(
-      "Net.QuicSession.GoogleSearch.EstablishmentReason.Used",
+      "Net.QuicSession.GoogleSearch.EstablishmentReason2.Used",
       QuicSessionEstablishmentReason::kSessionExistedAndWasPreconnect, 1);
   histogram_tester.ExpectUniqueSample(
-      "Net.QuicSession.GoogleSearch.EstablishmentReason.Preconnect.Used",
+      "Net.QuicSession.GoogleSearch.EstablishmentReason2.Preconnect.Used",
       QuicSessionEstablishmentReason::kSessionExistedAndWasPreconnect, 1);
   histogram_tester.ExpectTotalCount(
-      "Net.QuicSession.GoogleSearch.EstablishmentReason.NonPreconnect.Used", 0);
+      "Net.QuicSession.GoogleSearch.EstablishmentReason2.NonPreconnect.Used",
+      0);
 }
 
 TEST_P(QuicChromiumClientSessionTest,
@@ -3644,7 +3646,7 @@ TEST_P(QuicChromiumClientSessionTest,
   histogram_tester.ExpectTotalCount(
       "Net.QuicSession.GoogleSearch.NonReuseReason.Preconnect.Unused", 0);
   histogram_tester.ExpectUniqueSample(
-      "Net.QuicSession.GoogleSearch.EstablishmentReason.Unused",
+      "Net.QuicSession.GoogleSearch.EstablishmentReason2.Unused",
       QuicSessionEstablishmentReason::kNoSessionExisted, 1);
 }
 
@@ -3670,7 +3672,7 @@ TEST_P(QuicChromiumClientSessionTest,
   histogram_tester.ExpectTotalCount(
       "Net.QuicSession.GoogleSearch.NonReuseReason.Preconnect.Unused", 0);
   histogram_tester.ExpectUniqueSample(
-      "Net.QuicSession.GoogleSearch.EstablishmentReason.Unused",
+      "Net.QuicSession.GoogleSearch.EstablishmentReason2.Unused",
       QuicSessionEstablishmentReason::kNoSessionExisted, 1);
 }
 
@@ -3694,7 +3696,7 @@ TEST_P(QuicChromiumClientSessionTest,
   histogram_tester.ExpectTotalCount(
       "Net.QuicSession.GoogleSearch.NonReuseReason.Preconnect.Unused", 0);
   histogram_tester.ExpectUniqueSample(
-      "Net.QuicSession.GoogleSearch.EstablishmentReason.Unused",
+      "Net.QuicSession.GoogleSearch.EstablishmentReason2.Unused",
       QuicSessionEstablishmentReason::kSessionExistedBoth, 1);
 }
 
@@ -3720,13 +3722,57 @@ TEST_P(QuicChromiumClientSessionTest,
   histogram_tester.ExpectTotalCount(
       "Net.QuicSession.GoogleSearch.NonReuseReason.NonPreconnect.Used", 0);
   histogram_tester.ExpectUniqueSample(
-      "Net.QuicSession.GoogleSearch.EstablishmentReason.Used",
+      "Net.QuicSession.GoogleSearch.EstablishmentReason2.Used",
       QuicSessionEstablishmentReason::kSessionExistedAndWasPreconnect, 1);
   histogram_tester.ExpectUniqueSample(
-      "Net.QuicSession.GoogleSearch.EstablishmentReason.Preconnect.Used",
+      "Net.QuicSession.GoogleSearch.EstablishmentReason2.Preconnect.Used",
       QuicSessionEstablishmentReason::kSessionExistedAndWasPreconnect, 1);
   histogram_tester.ExpectTotalCount(
-      "Net.QuicSession.GoogleSearch.EstablishmentReason.NonPreconnect.Used", 0);
+      "Net.QuicSession.GoogleSearch.EstablishmentReason2.NonPreconnect.Used",
+      0);
+}
+
+TEST_P(QuicChromiumClientSessionTest,
+       GoogleSearchSessionMetricsInflightSessionPreconnect) {
+  base::HistogramTester histogram_tester;
+  QuicConnectionReuseDetails reuse_details;
+  reuse_details.establishment_reason =
+      QuicSessionEstablishmentReason::kInflightSessionAndWasPreconnect;
+  Initialize(MultiplexedSessionCreationInitiator::kUnknown, reuse_details);
+  QuicChromiumClientSessionPeer::SetHostname(session_.get(), "www.google.com");
+  session_.reset();
+
+  histogram_tester.ExpectUniqueSample(
+      "Net.QuicSession.GoogleSearch.EstablishmentReason2.Unused",
+      QuicSessionEstablishmentReason::kInflightSessionAndWasPreconnect, 1);
+  histogram_tester.ExpectUniqueSample(
+      "Net.QuicSession.GoogleSearch.EstablishmentReason2.NonPreconnect.Unused",
+      QuicSessionEstablishmentReason::kInflightSessionAndWasPreconnect, 1);
+  histogram_tester.ExpectTotalCount(
+      "Net.QuicSession.GoogleSearch.EstablishmentReason2.Preconnect.Unused", 0);
+}
+
+TEST_P(QuicChromiumClientSessionTest,
+       GoogleSearchSessionMetricsInflightSessionNonPreconnect) {
+  base::HistogramTester histogram_tester;
+  QuicConnectionReuseDetails reuse_details;
+  reuse_details.establishment_reason =
+      QuicSessionEstablishmentReason::kInflightSessionButNotPreconnect;
+  Initialize(MultiplexedSessionCreationInitiator::kPreconnect, reuse_details);
+  QuicChromiumClientSessionPeer::SetHostname(session_.get(), "www.google.com");
+  QuicChromiumClientSessionPeer::SetNumTotalStreamsForTesting(session_.get(),
+                                                              1);
+  session_.reset();
+
+  histogram_tester.ExpectUniqueSample(
+      "Net.QuicSession.GoogleSearch.EstablishmentReason2.Used",
+      QuicSessionEstablishmentReason::kInflightSessionButNotPreconnect, 1);
+  histogram_tester.ExpectUniqueSample(
+      "Net.QuicSession.GoogleSearch.EstablishmentReason2.Preconnect.Used",
+      QuicSessionEstablishmentReason::kInflightSessionButNotPreconnect, 1);
+  histogram_tester.ExpectTotalCount(
+      "Net.QuicSession.GoogleSearch.EstablishmentReason2.NonPreconnect.Used",
+      0);
 }
 
 }  // namespace

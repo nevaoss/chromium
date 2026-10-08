@@ -20,7 +20,18 @@ TEST(FeaturesTest, ForcedEmbeddedPageHost_OverrideToGoogleHost) {
       kContextualTasks,
       {{"contextual-tasks-forced-embedded-page-host", "corp.google.com"}});
 
-  EXPECT_EQ((HostOverride{"corp.google.com"}), GetForcedEmbeddedPageHost());
+  EXPECT_EQ((HostOverride{"corp.google.com", std::nullopt}),
+            GetForcedEmbeddedPageHost());
+}
+
+TEST(FeaturesTest, ForcedEmbeddedPageHost_OverrideToGoogleHostWithPort) {
+  base::test::ScopedFeatureList scoped_features;
+  scoped_features.InitAndEnableFeatureWithParameters(
+      kContextualTasks, {{"contextual-tasks-forced-embedded-page-host",
+                          "localhost.corp.google.com:8888"}});
+
+  EXPECT_EQ((HostOverride{"localhost.corp.google.com", 8888}),
+            GetForcedEmbeddedPageHost());
 }
 
 TEST(FeaturesTest, ForcedEmbeddedPageHost_OverrideToNonGoogleHost) {
@@ -28,6 +39,15 @@ TEST(FeaturesTest, ForcedEmbeddedPageHost_OverrideToNonGoogleHost) {
   scoped_features.InitAndEnableFeatureWithParameters(
       kContextualTasks,
       {{"contextual-tasks-forced-embedded-page-host", "example.com"}});
+
+  EXPECT_EQ(std::nullopt, GetForcedEmbeddedPageHost());
+}
+
+TEST(FeaturesTest, ForcedEmbeddedPageHost_OverrideToNonGoogleHostWithPort) {
+  base::test::ScopedFeatureList scoped_features;
+  scoped_features.InitAndEnableFeatureWithParameters(
+      kContextualTasks,
+      {{"contextual-tasks-forced-embedded-page-host", "example.com:8888"}});
 
   EXPECT_EQ(std::nullopt, GetForcedEmbeddedPageHost());
 }
@@ -51,12 +71,30 @@ TEST(FeaturesTest, ForcedEmbeddedPageHost_OverrideToNonGoogleHost_Subdomain) {
 }
 
 TEST(FeaturesTest, ForcedEmbeddedPageHost_SetOverrideRuntime) {
-  SetForcedEmbeddedPageHostOverride(HostOverride{"localhost.corp.google.com"});
-  EXPECT_EQ((HostOverride{"localhost.corp.google.com"}),
+  SetForcedEmbeddedPageHostOverride(
+      HostOverride{"localhost.corp.google.com", 9090});
+  EXPECT_EQ((HostOverride{"localhost.corp.google.com", 9090}),
             GetForcedEmbeddedPageHost());
 
   SetForcedEmbeddedPageHostOverride(std::nullopt);
   EXPECT_EQ(std::nullopt, GetForcedEmbeddedPageHost());
+}
+
+TEST(FeaturesTest, IsContextualTasksUnboundedMenuEnabled_DefaultDisabled) {
+  EXPECT_FALSE(IsContextualTasksUnboundedMenuEnabled());
+}
+
+TEST(FeaturesTest, IsContextualTasksUnboundedMenuEnabled_FlagEnabled) {
+  base::test::ScopedFeatureList scoped_features;
+  scoped_features.InitAndEnableFeature(kContextualTasksUnboundedMenu);
+  EXPECT_TRUE(IsContextualTasksUnboundedMenuEnabled());
+}
+
+TEST(FeaturesTest,
+     IsContextualTasksUnboundedMenuEnabled_SidePanelRearchitectureEnabled) {
+  base::test::ScopedFeatureList scoped_features;
+  scoped_features.InitAndEnableFeature(kContextualTasksSidePanelRearchitecture);
+  EXPECT_TRUE(IsContextualTasksUnboundedMenuEnabled());
 }
 
 }  // namespace contextual_tasks

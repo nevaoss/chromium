@@ -5,6 +5,7 @@
 #import "ios/chrome/browser/ntp/ui_bundled/new_tab_page_bottom_sheet_view_controller.h"
 
 #import "base/test/scoped_feature_list.h"
+#import "ios/chrome/browser/content_suggestions/magic_stack/ui/magic_stack_collection_view.h"
 #import "ios/chrome/browser/content_suggestions/ui/content_suggestions_collection_utils.h"
 #import "ios/chrome/browser/ntp/ui_bundled/new_tab_page_color_palette.h"
 #import "ios/chrome/browser/ntp/ui_bundled/new_tab_page_constants.h"
@@ -28,6 +29,29 @@
 - (void)setupSuperviewConstraints;
 - (void)handleFeedPan:(UIPanGestureRecognizer*)gesture;
 - (void)applyBackgroundTheme;
+@end
+
+@interface LifecycleTrackingChildViewController : UIViewController
+@property(nonatomic, assign) NSInteger didMoveToParentCount;
+@property(nonatomic, assign) NSInteger willMoveToParentCount;
+@end
+
+@implementation LifecycleTrackingChildViewController
+
+- (void)didMoveToParentViewController:(UIViewController*)parent {
+  [super didMoveToParentViewController:parent];
+  if (parent) {
+    self.didMoveToParentCount++;
+  }
+}
+
+- (void)willMoveToParentViewController:(UIViewController*)parent {
+  [super willMoveToParentViewController:parent];
+  if (!parent) {
+    self.willMoveToParentCount++;
+  }
+}
+
 @end
 
 class NewTabPageBottomSheetViewControllerTest : public PlatformTest {
@@ -112,7 +136,8 @@ TEST_F(NewTabPageBottomSheetViewControllerTest, TestEmbedFeedViewController) {
 // view controller.
 TEST_F(NewTabPageBottomSheetViewControllerTest,
        TestEmbedMagicStackViewController) {
-  UIViewController* child_vc = [[UIViewController alloc] init];
+  MagicStackCollectionViewController* child_vc =
+      [[MagicStackCollectionViewController alloc] init];
   view_controller_.magicStackViewController = child_vc;
 
   [view_controller_ loadViewIfNeeded];
@@ -552,4 +577,122 @@ TEST_F(NewTabPageBottomSheetViewControllerTest,
   EXPECT_FLOAT_EQ(100.0, topConstraint.constant);
   EXPECT_TRUE(scroll_view.bounces);
   [mock_gesture verify];
+}
+
+// Tests that magic stack parentage matches feedViewController when embedded
+// inside feedScrollView, and falls back to NewTabPageBottomSheetViewController
+// when feed is absent.
+TEST_F(NewTabPageBottomSheetViewControllerTest,
+       TestMagicStackParentageWithAndWithoutFeed) {
+  MagicStackCollectionViewController* magic_stack_vc =
+      [[MagicStackCollectionViewController alloc] init];
+  view_controller_.magicStackViewController = magic_stack_vc;
+
+  // Without feed: magic stack is child of view_controller_.
+  [view_controller_ loadViewIfNeeded];
+  EXPECT_EQ(view_controller_, magic_stack_vc.parentViewController);
+
+  // With feed containing scroll view: magic stack is child of feed_vc.
+  UIViewController* feed_vc = [[UIViewController alloc] init];
+  UIScrollView* scroll_view =
+      [[UIScrollView alloc] initWithFrame:CGRectMake(0, 0, 400, 800)];
+  [feed_vc.view addSubview:scroll_view];
+  view_controller_.feedViewController = feed_vc;
+
+  EXPECT_EQ(feed_vc, magic_stack_vc.parentViewController);
+
+  // Detaching feed: magic stack falls back to view_controller_.
+  view_controller_.feedViewController = nil;
+  EXPECT_EQ(view_controller_, magic_stack_vc.parentViewController);
+}
+
+// Tests that detaching feedViewController resets feedScrollView contentInset to
+// UIEdgeInsetsZero.
+TEST_F(NewTabPageBottomSheetViewControllerTest,
+       TestFeedInsetsResetOnDetachment) {
+  UIViewController* feed_vc = [[UIViewController alloc] init];
+  UIScrollView* scroll_view =
+      [[UIScrollView alloc] initWithFrame:CGRectMake(0, 0, 400, 800)];
+  [feed_vc.view addSubview:scroll_view];
+
+  view_controller_.feedViewController = feed_vc;
+  [view_controller_ loadViewIfNeeded];
+
+  CGFloat expectedHeaderHeight = [view_controller_ headerHeight];
+  EXPECT_FLOAT_EQ(expectedHeaderHeight, scroll_view.contentInset.top);
+
+  // Detach feed view controller.
+  view_controller_.feedViewController = nil;
+  EXPECT_TRUE(UIEdgeInsetsEqualToEdgeInsets(UIEdgeInsetsZero,
+                                            scroll_view.contentInset));
+  EXPECT_TRUE(UIEdgeInsetsEqualToEdgeInsets(
+      UIEdgeInsetsZero, scroll_view.verticalScrollIndicatorInsets));
+}
+
+// Tests that children receive exactly one didMoveToParentViewController call
+// upon initial load and attachment.
+TEST_F(NewTabPageBottomSheetViewControllerTest,
+       TestZeroRedundantLifecycleCalls) {
+  LifecycleTrackingChildViewController* magic_stack_vc =
+      [[LifecycleTrackingChildViewController alloc] init];
+  LifecycleTrackingChildViewController* feed_vc =
+      [[LifecycleTrackingChildViewController alloc] init];
+  UIScrollView* scroll_view =
+      [[UIScrollView alloc] initWithFrame:CGRectMake(0, 0, 400, 800)];
+  [feed_vc.view addSubview:scroll_view];
+
+  view_controller_.magicStackViewController =
+      (MagicStackCollectionViewController*)magic_stack_vc;
+  view_controller_.feedViewController = feed_vc;
+
+  [view_controller_ loadViewIfNeeded];
+
+  EXPECT_EQ(1, magic_stack_vc.didMoveToParentCount);
+  EXPECT_EQ(1, feed_vc.didMoveToParentCount);
+}
+
+// Tests that setting feedViewController = nil or magicStackViewController = nil
+// cleanly resets parentViewController to nil and removes the view.
+TEST_F(NewTabPageBottomSheetViewControllerTest,
+       TestCleanDetachmentOnNilAssignment) {
+  UIViewController* feed_vc = [[UIViewController alloc] init];
+  MagicStackCollectionViewController* magic_stack_vc =
+      [[MagicStackCollectionViewController alloc] init];
+
+  view_controller_.feedViewController = feed_vc;
+  view_controller_.magicStackViewController = magic_stack_vc;
+  [view_controller_ loadViewIfNeeded];
+
+  EXPECT_NE(nil, feed_vc.parentViewController);
+  EXPECT_NE(nil, feed_vc.view.superview);
+  EXPECT_NE(nil, magic_stack_vc.parentViewController);
+  EXPECT_NE(nil, magic_stack_vc.view.superview);
+
+  view_controller_.feedViewController = nil;
+  EXPECT_EQ(nil, feed_vc.parentViewController);
+  EXPECT_EQ(nil, feed_vc.view.superview);
+
+  view_controller_.magicStackViewController = nil;
+  EXPECT_EQ(nil, magic_stack_vc.parentViewController);
+  EXPECT_EQ(nil, magic_stack_vc.view.superview);
+}
+
+// Tests that calling invalidate cleanly unparents all children and clears
+// references.
+TEST_F(NewTabPageBottomSheetViewControllerTest,
+       TestInvalidateCleansUpChildren) {
+  UIViewController* feed_vc = [[UIViewController alloc] init];
+  MagicStackCollectionViewController* magic_stack_vc =
+      [[MagicStackCollectionViewController alloc] init];
+
+  view_controller_.feedViewController = feed_vc;
+  view_controller_.magicStackViewController = magic_stack_vc;
+  [view_controller_ loadViewIfNeeded];
+
+  [view_controller_ invalidate];
+
+  EXPECT_EQ(nil, feed_vc.parentViewController);
+  EXPECT_EQ(nil, feed_vc.view.superview);
+  EXPECT_EQ(nil, magic_stack_vc.parentViewController);
+  EXPECT_EQ(nil, magic_stack_vc.view.superview);
 }

@@ -274,7 +274,7 @@ class AutocompleteMediator
         mDropdownViewInfoListBuilder.setShareDelegateSupplier(shareDelegateSupplier);
         mDropdownViewInfoListManager =
                 new DropdownItemViewInfoListManager(
-                        mSuggestionModels, mContext, mRoundSidesSupplier, mResourceProvider);
+                        mSuggestionModels, mContext, mRoundSidesSupplier);
         mLifecycleDispatcher = lifecycleDispatcher;
         mLifecycleDispatcher.register(this);
         Activity activity = windowAndroid.getActivity().get();
@@ -468,6 +468,11 @@ class AutocompleteMediator
     /** Notify the mediator that a item selection is pending and should be accepted. */
     void allowPendingItemSelection() {
         mIgnoreOmniboxItemSelection = false;
+    }
+
+    /** Notify the mediator that an item selection was cancelled or failed. */
+    void ignorePendingItemSelection() {
+        mIgnoreOmniboxItemSelection = true;
     }
 
     /** Signals that native initialization has completed. */
@@ -1693,8 +1698,8 @@ class AutocompleteMediator
     }
 
     /**
-     * Potentially adjust the given URL based on the current request type (e.g. AIM mode, Image
-     * Generation) and model picker flag, and invoke the callback with that URL.
+     * Potentially adjust the given URL based on the input state, and invoke the callback with that
+     * URL.
      *
      * @param url The base {@link GURL} to potentially be adjusted.
      * @param callback The callback to be invoked with the potentially adjusted URL.
@@ -1715,16 +1720,7 @@ class AutocompleteMediator
             return;
         }
 
-        if (OmniboxFeatures.sShowModelPicker.getValue()) {
-            bridge.getAimUrlFromInputState(url, callback);
-        } else {
-            switch (requestType) {
-                case AutocompleteRequestType.AI_MODE -> bridge.getAimUrl(url, callback);
-                case AutocompleteRequestType.IMAGE_GENERATION ->
-                        bridge.getImageGenerationUrl(url, callback);
-                default -> callback.onResult(url);
-            }
-        }
+        bridge.getAimUrlFromInputState(url, callback);
     }
 
     private void finishLoadUrlForOmniboxMatch(
@@ -2190,21 +2186,6 @@ class AutocompleteMediator
         }
     }
 
-    /** Returns the current AutocompleteInput instance. */
-    @Nullable AutocompleteInput getAutocompleteInputForTesting() {
-        return mAutocompleteInput;
-    }
-
-    /** Returns whether Omnibox session is active (the user is interacting with the Omnibox). */
-    boolean isOmniboxSessionActiveForTesting() {
-        return isInInputSession();
-    }
-
-    /** Returns the current Animation Driver instance. */
-    SuggestionsListAnimation getAnimationDriverForTesting() {
-        return mAnimationDriver;
-    }
-
     /**
      * @see FuseboxAttachmentChangeListener#onAttachmentListChanged()
      */
@@ -2333,5 +2314,20 @@ class AutocompleteMediator
         if (!isInInputSession()) return false;
         FuseboxAttachmentModelList attachments = mSessionState.getFuseboxAttachmentModelList();
         return attachments != null && !attachments.isEmpty();
+    }
+
+    /** Returns the current AutocompleteInput instance. */
+    @Nullable AutocompleteInput getAutocompleteInputForTesting() {
+        return mAutocompleteInput;
+    }
+
+    /** Returns whether Omnibox session is active (the user is interacting with the Omnibox). */
+    boolean isOmniboxSessionActiveForTesting() {
+        return isInInputSession();
+    }
+
+    /** Returns the current Animation Driver instance. */
+    SuggestionsListAnimation getAnimationDriverForTesting() {
+        return mAnimationDriver;
     }
 }

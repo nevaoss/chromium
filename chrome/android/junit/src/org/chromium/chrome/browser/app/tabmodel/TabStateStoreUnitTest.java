@@ -57,6 +57,7 @@ import org.chromium.chrome.browser.tabmodel.TabCreatorManager;
 import org.chromium.chrome.browser.tabmodel.TabModel;
 import org.chromium.chrome.browser.tabmodel.TabModelObserver;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
+import org.chromium.chrome.browser.tabmodel.TabOrchestratorType;
 import org.chromium.chrome.browser.tabmodel.TabPersistencePolicy;
 import org.chromium.chrome.browser.tabmodel.TabPersistentStore.TabPersistentStoreObserver;
 
@@ -64,6 +65,8 @@ import java.util.List;
 
 /** Unit tests for {@link TabStateStore}. */
 @RunWith(BaseRobolectricTestRunner.class)
+// TODO(crbug.com/557401970): Re-enable glic background actuation feature flags
+@DisableFeatures(ChromeFeatureList.GLIC_BACKGROUND_ACTUATION)
 public class TabStateStoreUnitTest {
     @Rule public MockitoRule mMockitoRule = MockitoJUnit.rule();
 
@@ -127,6 +130,7 @@ public class TabStateStoreUnitTest {
 
         mTabStateStore =
                 new TabStateStore(
+                        TabOrchestratorType.TABBED,
                         mTabModelSelector,
                         WINDOW_TAG,
                         mTabCreatorManager,
@@ -177,6 +181,7 @@ public class TabStateStoreUnitTest {
     public void testOnNativeLibraryReady_Authoritative_Raze() {
         mTabStateStore =
                 new TabStateStore(
+                        TabOrchestratorType.TABBED,
                         mTabModelSelector,
                         WINDOW_TAG,
                         mTabCreatorManager,
@@ -203,6 +208,7 @@ public class TabStateStoreUnitTest {
     public void testOnNativeLibraryReady_Authoritative_NoRaze() {
         mTabStateStore =
                 new TabStateStore(
+                        TabOrchestratorType.TABBED,
                         mTabModelSelector,
                         WINDOW_TAG,
                         mTabCreatorManager,
@@ -229,6 +235,7 @@ public class TabStateStoreUnitTest {
     public void testOnNativeLibraryReady_NonAuthoritative_Raze() {
         mTabStateStore =
                 new TabStateStore(
+                        TabOrchestratorType.TABBED,
                         mTabModelSelector,
                         WINDOW_TAG,
                         mTabCreatorManager,
@@ -255,6 +262,7 @@ public class TabStateStoreUnitTest {
     public void testOnNativeLibraryReady_NonAuthoritative_NoRaze() {
         mTabStateStore =
                 new TabStateStore(
+                        TabOrchestratorType.TABBED,
                         mTabModelSelector,
                         WINDOW_TAG,
                         mTabCreatorManager,
@@ -298,6 +306,7 @@ public class TabStateStoreUnitTest {
 
         mTabStateStore =
                 new TabStateStore(
+                        TabOrchestratorType.TABBED,
                         mTabModelSelector,
                         WINDOW_TAG,
                         mTabCreatorManager,
@@ -529,6 +538,7 @@ public class TabStateStoreUnitTest {
     public void testLoadStateFailure_NonAuthoritative() {
         mTabStateStore =
                 new TabStateStore(
+                        TabOrchestratorType.TABBED,
                         mTabModelSelector,
                         WINDOW_TAG,
                         mTabCreatorManager,
@@ -576,6 +586,7 @@ public class TabStateStoreUnitTest {
     public void testOnAuthoritativeStateLoaded() {
         mTabStateStore =
                 new TabStateStore(
+                        TabOrchestratorType.TABBED,
                         mTabModelSelector,
                         WINDOW_TAG,
                         mTabCreatorManager,
@@ -686,6 +697,7 @@ public class TabStateStoreUnitTest {
     public void testClearCurrentWindowOnRestore_NonAuthoritative() {
         mTabStateStore =
                 new TabStateStore(
+                        TabOrchestratorType.TABBED,
                         mTabModelSelector,
                         WINDOW_TAG,
                         mTabCreatorManager,
@@ -755,6 +767,7 @@ public class TabStateStoreUnitTest {
     public void testSaveCleanTabOnRegistration_NonAuthoritative() {
         mTabStateStore =
                 new TabStateStore(
+                        TabOrchestratorType.TABBED,
                         mTabModelSelector,
                         WINDOW_TAG,
                         mTabCreatorManager,
@@ -842,6 +855,7 @@ public class TabStateStoreUnitTest {
         // Create a new TabStateStore instance without a CipherFactory
         TabStateStore noCipherTabStateStore =
                 new TabStateStore(
+                        TabOrchestratorType.TABBED,
                         mTabModelSelector,
                         WINDOW_TAG,
                         mTabCreatorManager,
@@ -882,6 +896,7 @@ public class TabStateStoreUnitTest {
     public void testClearCurrentWindow_NonAuthoritative() {
         mTabStateStore =
                 new TabStateStore(
+                        TabOrchestratorType.TABBED,
                         mTabModelSelector,
                         WINDOW_TAG,
                         mTabCreatorManager,

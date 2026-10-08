@@ -52,21 +52,33 @@ void CheckGeminiEligibility(AuthenticationService* auth_service,
 
 static GeminiViewState g_current_view_state = GeminiViewState::kUnknown;
 static GeminiViewMode g_current_mode = GeminiViewMode::kUnknown;
+static GeminiPageContextAttachmentState g_current_attachment_state =
+    GeminiPageContextAttachmentState::kUnknown;
 static std::optional<gemini::EntryPoint>
     g_last_update_prompt_action_entry_point;
 static NSString* g_last_update_prompt_action_prompt = nil;
 static BOOL g_last_update_prompt_action_should_auto_submit = NO;
 
+static bool g_mock_feature_mode_disabled_by_quota = false;
+static NSDate* g_mock_refill_date = nil;
+static bool g_force_refresh_quota_info_called = false;
+
 void ResetGemini() {
   g_current_mode = GeminiViewMode::kUnknown;
   g_current_view_state = GeminiViewState::kUnknown;
+  g_current_attachment_state = GeminiPageContextAttachmentState::kUnknown;
   g_last_update_prompt_action_entry_point.reset();
   g_last_update_prompt_action_prompt = nil;
   g_last_update_prompt_action_should_auto_submit = NO;
+  g_mock_feature_mode_disabled_by_quota = false;
+  g_mock_refill_date = nil;
+  g_force_refresh_quota_info_called = false;
 }
 
 void UpdatePageAttachmentState(
-    GeminiPageContextAttachmentState gemini_attachment_state) {}
+    GeminiPageContextAttachmentState gemini_attachment_state) {
+  g_current_attachment_state = gemini_attachment_state;
+}
 
 // Mock value used by unit tests to override the return value of IsProtectedUrl.
 static bool g_mock_protected_url = false;
@@ -139,7 +151,7 @@ GeminiClientMode GetCurrentClientMode() {
 }
 
 GeminiPageContextAttachmentState GetCurrentPageContextAttachmentState() {
-  return GeminiPageContextAttachmentState::kUnknown;
+  return g_current_attachment_state;
 }
 
 void SwitchToMode(GeminiViewMode mode, bool animated) {
@@ -186,6 +198,34 @@ UIViewController* GetFloatyViewControllerWithConfiguration(
   textField.accessibilityIdentifier = @"GeminiTestTextField";
   [viewController.view addSubview:textField];
   return viewController;
+}
+
+void SetMockFeatureModeDisabledByQuota(bool disabled) {
+  g_mock_feature_mode_disabled_by_quota = disabled;
+}
+
+void SetMockRefillDateForFeatureMode(NSDate* date) {
+  g_mock_refill_date = date;
+}
+
+bool IsFeatureModeDisabledByQuota(GeminiFeatureMode feature_mode) {
+  return g_mock_feature_mode_disabled_by_quota;
+}
+
+NSDate* GetRefillDateForFeatureMode(GeminiFeatureMode feature_mode) {
+  return g_mock_refill_date;
+}
+
+void ForceRefreshQuotaInfo() {
+  g_force_refresh_quota_info_called = true;
+}
+
+bool WasForceRefreshQuotaInfoCalled() {
+  return g_force_refresh_quota_info_called;
+}
+
+void ResetForceRefreshQuotaInfoCalled() {
+  g_force_refresh_quota_info_called = false;
 }
 
 }  // namespace ios::provider

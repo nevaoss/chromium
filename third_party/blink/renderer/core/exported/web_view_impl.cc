@@ -120,7 +120,7 @@
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
 #include "third_party/blink/renderer/core/frame/local_frame_client.h"
-#include "third_party/blink/renderer/core/frame/local_frame_ukm_aggregator.h"
+#include "third_party/blink/renderer/core/frame/local_frame_metrics_aggregator.h"
 #include "third_party/blink/renderer/core/frame/local_frame_view.h"
 #include "third_party/blink/renderer/core/frame/page_scale_constraints_set.h"
 #include "third_party/blink/renderer/core/frame/remote_frame.h"
@@ -1630,6 +1630,7 @@ void WebView::ApplyWebPreferences(const web_pref::WebPreferences& prefs,
   settings->SetAllowScriptsToCloseWindows(prefs.allow_scripts_to_close_windows);
   settings->SetAllowUnrestrictedWindowFocus(
       prefs.allow_unrestricted_window_focus);
+  settings->SetClipboardFocusExempt(prefs.clipboard_focus_exempt);
   settings->SetDownloadableBinaryFontsEnabled(prefs.remote_fonts_enabled);
   settings->SetJavaScriptCanAccessClipboard(
       prefs.javascript_can_access_clipboard);
@@ -1798,6 +1799,8 @@ void WebView::ApplyWebPreferences(const web_pref::WebPreferences& prefs,
   settings->SetDontSendKeyEventsToJavascript(
       prefs.dont_send_key_events_to_javascript);
   settings->SetWebAppScope(WebString::FromAscii(prefs.web_app_scope.spec()));
+  settings->SetWebAppCustomManifestUrl(
+      WebURL(KURL(prefs.web_app_custom_manifest_url)));
   settings->SetIsInitialProfile(prefs.is_initial_profile);
 
 #if BUILDFLAG(IS_ANDROID)
@@ -2983,6 +2986,7 @@ void WebViewImpl::EnableAutoResizeMode(const gfx::Size& min_size,
 
 void WebViewImpl::DisableAutoResizeMode() {
   should_auto_resize_ = false;
+  size_before_suppressed_autosize_.reset();
   ConfigureAutoResizeMode();
 }
 
@@ -3429,6 +3433,17 @@ float WebViewImpl::DefaultMaximumPageScaleFactor() const {
 }
 
 float WebViewImpl::MinimumPageScaleFactor() const {
+#if BUILDFLAG(IS_ANDROID)
+  // We have to force this on Android because WebViewImpl::ApplyWebPreferences()
+  // sets SetIgnoreViewportTagScaleLimits(prefs.force_enable_zoom) on Android,
+  // which sometimes overrides the minimum scale that we set in
+  // WebViewImpl::ConfigureAutoResizeMode().
+  if (base::FeatureList::IsEnabled(
+          features::kAutoResizeMinimumPageScaleFactor) &&
+      should_auto_resize_) {
+    return 1.0f;
+  }
+#endif
   return GetPageScaleConstraintsSet().FinalConstraints().minimum_scale;
 }
 
@@ -4016,15 +4031,41 @@ void WebViewImpl::ResizeAfterLayout() {
   if (should_auto_resize_) {
     LocalFrameView* view = MainFrameImpl()->GetFrame()->View();
     gfx::Size frame_size = view->Size();
+    const bool should_suppress_notifications =
+        view->IsBeingAutoSized() &&
+        RuntimeEnabledFeatures::AutoSizeUsesScrollWidthForOverflowEnabled();
+    if (should_suppress_notifications && !size_before_suppressed_autosize_) {
+      size_before_suppressed_autosize_ = size_;
+    }
+    const bool had_suppressed_autosize_measurements =
+        size_before_suppressed_autosize_.has_value();
+    const gfx::Size previously_reported_size =
+        size_before_suppressed_autosize_.value_or(size_);
+    bool visual_viewport_size_changed = false;
     if (frame_size != size_) {
       size_ = frame_size;
 
-      GetPage()->GetVisualViewport().SetSize(size_);
+      GetPage()->GetVisualViewport().SetSize(size_,
+                                             should_suppress_notifications);
+      visual_viewport_size_changed = true;
       GetPageScaleConstraintsSet().DidChangeInitialContainingBlockSize(size_);
+    }
 
+    if (!should_suppress_notifications) {
+      size_before_suppressed_autosize_.reset();
+    }
+    if (!should_suppress_notifications &&
+        frame_size != previously_reported_size) {
       web_view_client_->DidAutoResize(size_);
       web_widget_->DidAutoResize(size_);
       SendResizeEventForMainFrame();
+      if (!visual_viewport_size_changed) {
+        view->GetFrame().GetDocument()->EnqueueVisualViewportResizeEvent();
+      }
+      if (had_suppressed_autosize_measurements &&
+          !view->GetFrame().GetDocument()->Printing()) {
+        probe::DidResizeMainFrame(&view->GetFrame());
+      }
     }
   }
 

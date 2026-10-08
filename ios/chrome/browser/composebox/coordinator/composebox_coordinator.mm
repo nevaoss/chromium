@@ -17,7 +17,6 @@
 #import "ios/chrome/browser/composebox/public/composebox_focus_params.h"
 #import "ios/chrome/browser/composebox/public/composebox_input_plate_position.h"
 #import "ios/chrome/browser/composebox/public/composebox_theme.h"
-#import "ios/chrome/browser/composebox/public/features.h"
 #import "ios/chrome/browser/composebox/ui/composebox_animation_context.h"
 #import "ios/chrome/browser/composebox/ui/composebox_dismiss_animator.h"
 #import "ios/chrome/browser/composebox/ui/composebox_input_plate_view_controller.h"
@@ -27,6 +26,7 @@
 #import "ios/chrome/browser/composebox/ui/presentation/composebox_ipad_presentation_controller.h"
 #import "ios/chrome/browser/lens/ui_bundled/lens_entrypoint.h"
 #import "ios/chrome/browser/ntp/model/new_tab_page_util.h"
+#import "ios/chrome/browser/omnibox/ui/popup/omnibox_popup_util.h"
 #import "ios/chrome/browser/shared/coordinator/layout_guide/layout_guide_util.h"
 #import "ios/chrome/browser/shared/model/application_context/application_context.h"
 #import "ios/chrome/browser/shared/model/browser/browser.h"
@@ -36,14 +36,12 @@
 #import "ios/chrome/browser/shared/public/commands/command_dispatcher.h"
 #import "ios/chrome/browser/shared/public/commands/lens_commands.h"
 #import "ios/chrome/browser/shared/public/commands/open_lens_input_selection_command.h"
-#import "ios/chrome/browser/shared/public/features/features.h"
 #import "ios/chrome/browser/shared/public/features/system_flags.h"
 #import "ios/chrome/browser/shared/ui/util/uikit_ui_util.h"
 #import "ios/chrome/browser/url_loading/model/url_loading_browser_agent.h"
 #import "ios/chrome/browser/url_loading/model/url_loading_util.h"
 #import "ios/chrome/common/ui/util/ui_util.h"
 #import "ios/web/public/web_state.h"
-#import "ui/base/device_form_factor.h"
 
 @interface ComposeboxCoordinator () <ComposeboxAnimationContext,
                                      ComposeboxDebuggerCoordinatorDelegate,
@@ -328,15 +326,8 @@
 }
 
 - (ComposeboxInputPlatePosition)inputPlatePositionPreference {
-  if (IsComposeboxIpadEnabled() &&
-      ui::GetDeviceFormFactor() == ui::DEVICE_FORM_FACTOR_TABLET) {
-    // TODO(crbug.com/469368394): Should only return this if regular horizontal
-    // size class.
+  if (ShouldApplyOmniboxPopoutLayout(self.baseViewController)) {
     return ComposeboxInputPlatePosition::kiPad;
-  }
-
-  if (IsComposeboxForceTopEnabled()) {
-    return ComposeboxInputPlatePosition::kTop;
   }
 
   if (IsBottomOmniboxAvailable() &&
@@ -350,18 +341,19 @@
 
 // Returns YES if the iPad popover presentation controller should be used.
 - (BOOL)shouldUseIpadPresentationController {
-  return IsComposeboxIpadEnabled() &&
-         ui::GetDeviceFormFactor() == ui::DEVICE_FORM_FACTOR_TABLET &&
-         IsRegularXRegularSizeClass(self.baseViewController.traitCollection);
+  return ShouldApplyOmniboxPopoutLayout(self.baseViewController);
 }
 
 // Represents the coordinator's view controller with no animation.
 - (void)representViewController {
+  ComposeboxTheme* theme = [self createTheme];
   _viewController.view.hidden = NO;
   _viewController.modalPresentationStyle =
       [self shouldUseIpadPresentationController]
           ? UIModalPresentationCustom
           : UIModalPresentationOverFullScreen;
+  [_viewController updateTheme:theme];
+  [_aimComposeboxCoordinator updateTheme:theme];
   [self.baseViewController presentViewController:_viewController
                                         animated:NO
                                       completion:nil];

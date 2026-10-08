@@ -16,7 +16,6 @@
 #include "extensions/browser/extension_function.h"
 #include "mojo/public/cpp/bindings/associated_receiver_set.h"
 #include "mojo/public/cpp/bindings/pending_remote.h"
-#include "mojo/public/cpp/bindings/receiver.h"
 #include "mojo/public/cpp/bindings/receiver_set.h"
 #include "mojo/public/cpp/bindings/remote_set.h"
 #include "services/device/public/mojom/smart_card.mojom.h"
@@ -310,11 +309,12 @@ class SmartCardProviderPrivateAPI
       mojo::PendingRemote<device::mojom::SmartCardConnectionWatcher>
           connection_watcher);
 
+  struct ContextData;
+
   device::mojom::SmartCardTransactionResultPtr CreateSmartCardTransaction(
       ContextId scard_context,
-      Handle handle);
-
-  struct ContextData;
+      Handle handle,
+      ContextData& context_data);
 
   ContextData& GetContextData(ContextId scard_context);
 

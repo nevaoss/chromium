@@ -99,12 +99,15 @@ export class TopToolbarElement extends TopToolbarElementBase {
       isHandshakeComplete: {type: Boolean},
       isUserSignedIn: {type: Boolean},
       onboardingTooltipShowing: {type: Boolean},
-      lensSearchTooltipShowing: {type: Boolean},
       contextualTasksEnableSpatialModelToolbarLayout_: {type: Boolean},
       contextualTasksEnableSpatialModelToolbarLayoutNewThreadInOverflow_:
           {type: Boolean},
       overflowMenuOpen_: {type: Boolean},
-      isSidePanelRearchitectureEnabled_: {type: Boolean},
+      isSidePanelRearchitectureEnabled_: {
+        type: Boolean,
+        reflect: true,
+        attribute: 'is-side-panel-rearchitecture-enabled',
+      },
       webuiRoundedIconsEnabled_: {type: Boolean},
       permissionDashboardState: {type: Object},
     };
@@ -125,12 +128,11 @@ export class TopToolbarElement extends TopToolbarElementBase {
   accessor enableOpenInNewTabButton: boolean = false;
   accessor showReopenTabs_: boolean = false;
   accessor onboardingTooltipShowing: boolean = false;
-  accessor lensSearchTooltipShowing: boolean = false;
   private browserProxy_: BrowserProxy = BrowserProxyImpl.getInstance();
   private listenerIds_: number[] = [];
   protected accessor isExpandButtonEnabled: boolean =
       loadTimeData.getBoolean('expandButtonEnabled');
-  protected accessor isPinButtonEnabled: boolean =
+  accessor isPinButtonEnabled: boolean =
       loadTimeData.getBoolean('enablePinButton');
   private hideOverflowMenuOnAiPageEnabled_: boolean =
       loadTimeData.getBoolean('hideMenuOnAiPageEnabled');
@@ -200,8 +202,7 @@ export class TopToolbarElement extends TopToolbarElementBase {
     super.updated(changedProperties);
 
     if (changedProperties.has('isAiPage') ||
-        changedProperties.has('onboardingTooltipShowing') ||
-        changedProperties.has('lensSearchTooltipShowing')) {
+        changedProperties.has('onboardingTooltipShowing')) {
       this.hideOverflowMenuButton_ =
           this.isAiPage && this.hideOverflowMenuOnAiPageEnabled_;
       if (changedProperties.has('isAiPage') && !this.isAiPage) {
@@ -209,7 +210,7 @@ export class TopToolbarElement extends TopToolbarElementBase {
       }
       // <if expr="not is_android">
       if (this.isAiPage) {
-        if (!this.onboardingTooltipShowing && !this.lensSearchTooltipShowing) {
+        if (!this.onboardingTooltipShowing) {
           this.browserProxy_.handler.maybeTriggerPinningPromo();
         }
       }

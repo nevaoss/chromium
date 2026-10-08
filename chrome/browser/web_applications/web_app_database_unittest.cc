@@ -174,10 +174,6 @@ class WebAppDatabaseTest : public WebAppTest {
       update->DeleteApp(app_id);
     }
   }
-
- private:
-  base::test::ScopedFeatureList scoped_feature_list_{
-      blink::features::kWebAppMigrationApi};
 };
 
 TEST_F(WebAppDatabaseTest, WriteAndReadRegistry) {
@@ -461,7 +457,10 @@ TEST_F(WebAppDatabaseTest, DatabaseOpenErrorPreventsSubsystemStartup) {
                    .sync_bridge_unsafe()
                    .GetDatabaseForTesting()
                    ->is_opened());
-  EXPECT_FALSE(fake_provider().on_registry_ready().is_signaled());
+  EXPECT_TRUE(fake_provider().on_registry_ready().is_signaled());
+  EXPECT_FALSE(fake_provider().is_registry_ready());
+  EXPECT_EQ(
+      fake_provider().command_manager().GetStartedCommandCountForTesting(), 0);
 }
 
 }  // namespace web_app

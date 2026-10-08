@@ -129,7 +129,8 @@ void AddElevationServiceWorkItems(const base::FilePath& elevation_service_path,
       SERVICE_DEMAND_START, base::CommandLine(elevation_service_path),
       base::CommandLine(base::CommandLine::NO_PROGRAM),
       install_static::GetClientStateKeyPath(),
-      {install_static::GetElevatorClsid()}, {install_static::GetElevatorIid()});
+      {install_static::GetElevatorClsid()}, {install_static::GetElevatorIid()},
+      install_static::GetOldElevatorIids());
   list->AddWorkItem(install_service_work_item);
 }
 
@@ -410,7 +411,8 @@ void AddTracingServiceWorkItems(const InstallationState& original_state,
       SERVICE_DEMAND_START, base::CommandLine(tracing_service_path),
       base::CommandLine(base::CommandLine::NO_PROGRAM),
       install_static::GetClientStateKeyPath(), std::vector<GUID>{clsid},
-      std::vector<GUID>{install_static::GetTracingServiceIid()});
+      std::vector<GUID>{install_static::GetTracingServiceIid()},
+      install_static::GetOldTracingServiceIids());
 
   if (install_service) {
     install_service_work_item->set_best_effort(true);
@@ -553,6 +555,37 @@ void AddPlatformExperienceHelperWorkItems(const InstallerState& installer_state,
   install_peh_cmd.AppendSwitch(installer::switches::kSystemLevel);
 
   AppCommand cmd(kCmdInstallPEH, install_peh_cmd.GetCommandLineString());
+  cmd.AddCreateAppCommandWorkItems(installer_state.root_key(), install_list);
+}
+
+// Adds work items to add the "install-component" command to Chrome's
+// version key. This method is a no-op if this is anything other than
+// system-level Chrome. The command is used to securely verify and copy a
+// component library to the system Chrome installation directory.
+//
+// The registered command line template is:
+//   "...\setup.exe" --install-component=%1 --system-level --verbose-logging
+//
+// "%1" is not manually quoted because Google Update's AppCommandRunner parses
+// the template into tokens and automatically quotes the substituted
+// parameter if it contains spaces or special characters, preventing argument
+// injection and path truncation without double-escaping.
+void AddInstallComponentWorkItems(const InstallerState& installer_state,
+                                  const base::FilePath& setup_path,
+                                  WorkItemList* install_list) {
+  if (!installer_state.system_install()) {
+    return;
+  }
+
+  base::CommandLine cmd_line(setup_path);
+  cmd_line.AppendSwitchASCII(switches::kInstallComponent, "%1");
+  cmd_line.AppendSwitch(switches::kSystemLevel);
+  cmd_line.AppendSwitch(switches::kVerboseLogging);
+  InstallUtil::AppendModeAndChannelSwitches(&cmd_line);
+
+  AppCommand cmd(kCmdInstallComponent,
+                 cmd_line.GetCommandLineStringWithUnsafeInsertSequences());
+  cmd.set_is_web_accessible(true);
   cmd.AddCreateAppCommandWorkItems(installer_state.root_key(), install_list);
 }
 #endif  // BUILDFLAG(GOOGLE_CHROME_BRANDING)
@@ -1020,7 +1053,7 @@ void AddInstallWorkItems(const InstallParams& install_params,
                                     install_list);
   AddPlatformExperienceHelperWorkItems(installer_state, new_version,
                                        install_list);
-#endif  // BUILDFLAG(GOOGLE_CHROME_BRANDING
+#endif  // BUILDFLAG(GOOGLE_CHROME_BRANDING)
   AddFirewallRulesWorkItems(installer_state, !current_version.IsValid(),
                             install_list);
 
@@ -1331,6 +1364,10 @@ void AddFinalizeUpdateWorkItems(const InstallationState& original_state,
               : client_state_key,
           KEY_WOW64_32KEY, L"experiment_labels")
       ->set_best_effort(true);
+
+#if BUILDFLAG(GOOGLE_CHROME_BRANDING)
+  AddInstallComponentWorkItems(installer_state, setup_path, list);
+#endif  // BUILDFLAG(GOOGLE_CHROME_BRANDING)
 }
 
 }  // namespace installer

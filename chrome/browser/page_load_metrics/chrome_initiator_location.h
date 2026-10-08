@@ -31,7 +31,24 @@ enum class ChromeInitiatorLocation : page_load_metrics::
       kForward = 6,
       kBackward = 7,
       kReload = 8,
-      kMaxValue = kReload
+
+      // This is search navigation triggered as follows:
+      // Android: "Web search" from the text selection context menu.
+      // Desktop: "Search [default search engine] for ..." from the right-click
+      // menu on selected text.
+      kContextMenuSearch = 9,
+
+      // This is link navigation triggered as follows:
+      // Android: "Open in new tab", "Open in Incognito tab", etc. from the long
+      // press context menu on a link.
+      // Desktop: "Open link in new tab", "Open link in new window", "Open link
+      // in Incognito window", etc. from the right-click menu on a link.
+      kContextMenuOpenLink = 10,
+
+      // This is form submission navigation triggered from the renderer with a
+      // user gesture.
+      kFormSubmission = 11,
+      kMaxValue = kFormSubmission
     };
 // LINT.ThenChange(//tools/metrics/histograms/metadata/navigation/enums.xml:NavigationInitiatorType)
 
@@ -62,6 +79,12 @@ void AttachOmniboxDefaultSearchEngineNavigationHandleUserData(
     content::NavigationHandle& navigation_handle);
 
 void AttachBookmarkBarNavigationHandleUserData(
+    content::NavigationHandle& navigation_handle);
+
+void AttachContextMenuSearchNavigationHandleUserData(
+    content::NavigationHandle& navigation_handle);
+
+void AttachContextMenuOpenLinkNavigationHandleUserData(
     content::NavigationHandle& navigation_handle);
 
 void MarkNavigationServedBySearchPrefetch(

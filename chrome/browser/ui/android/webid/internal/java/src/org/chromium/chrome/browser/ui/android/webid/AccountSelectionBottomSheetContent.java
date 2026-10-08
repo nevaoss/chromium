@@ -21,6 +21,8 @@ import org.chromium.blink.mojom.RpMode;
 import org.chromium.chrome.R;
 import org.chromium.components.browser_ui.bottomsheet.BottomSheetContent;
 import org.chromium.components.browser_ui.bottomsheet.BottomSheetController;
+import org.chromium.components.browser_ui.bottomsheet.BottomSheetType;
+import org.chromium.components.browser_ui.bottomsheet.UserCriticalFeature;
 
 import java.util.function.Supplier;
 
@@ -42,6 +44,8 @@ public class AccountSelectionBottomSheetContent implements BottomSheetContent {
     private static final float MAX_VISIBLE_ACCOUNTS_BUTTON_MODE = 3.5f;
 
     private static final int MIN_NUM_ACCOUNTS_FOR_SCROLL = 3;
+
+    private final BottomSheetType mBottomSheetType;
 
     private final View mContentView;
     private final BottomSheetController mBottomSheetController;
@@ -66,6 +70,12 @@ public class AccountSelectionBottomSheetContent implements BottomSheetContent {
         mBottomSheetController = bottomSheetController;
         mScrollOffsetSupplier = scrollOffsetSupplier;
         mRpMode = rpMode;
+        mBottomSheetType =
+                new BottomSheetType.Builder()
+                        .setUserInitiated(mRpMode != RpMode.PASSIVE)
+                        .setModal(mRpMode != RpMode.PASSIVE)
+                        .setUserCritical(UserCriticalFeature.FEDERATED_ACCOUNT_SELECTION)
+                        .build();
     }
 
     /**
@@ -218,6 +228,11 @@ public class AccountSelectionBottomSheetContent implements BottomSheetContent {
     }
 
     @Override
+    public BottomSheetType getSheetType() {
+        return mBottomSheetType;
+    }
+
+    @Override
     public int getPriority() {
         return BottomSheetContent.ContentPriority.HIGH;
     }
@@ -250,6 +265,17 @@ public class AccountSelectionBottomSheetContent implements BottomSheetContent {
         if (mRpMode == RpMode.PASSIVE && !mIsMultipleIdps) {
             computeAndUpdateAccountListHeightForPassiveSingleIdp();
         }
+
+        if (mBottomSheetController.isLargeFormFactorUiEnabled(this)) {
+            int maxHeight = mBottomSheetController.getMaxSheetHeight();
+            int availableHeight =
+                    maxHeight > 0 ? maxHeight : mBottomSheetController.getContainerHeight();
+            return availableHeight <= 0
+                    ? 0f
+                    : Math.min(getMaximumSheetHeightPx(), availableHeight)
+                            / (float) availableHeight;
+        }
+
         // WRAP_CONTENT would be the right fit but this disables the HALF state and this does not
         // work properly when we transition from a multi IDP UI to a single IDP UI, for unknown
         // reasons.
@@ -259,6 +285,24 @@ public class AccountSelectionBottomSheetContent implements BottomSheetContent {
 
     @Override
     public float getHalfHeightRatio() {
+        if (mBottomSheetController.isLargeFormFactorUiEnabled(this)) {
+            int maxHeight = mBottomSheetController.getMaxSheetHeight();
+            int availableHeight =
+                    maxHeight > 0 ? maxHeight : mBottomSheetController.getContainerHeight();
+            if (availableHeight <= 0) {
+                return HeightMode.DISABLED;
+            }
+            if (mRpMode == RpMode.PASSIVE) {
+                if (!mIsMultipleIdps || !mIsPassiveModeHalfHeightEnabled) {
+                    return HeightMode.DISABLED;
+                }
+                return Math.min(getDesiredPassiveModeMultiIdpSheetHeightPx(), availableHeight)
+                        / (float) availableHeight;
+            }
+            return Math.min(getDesiredActiveModeSheetHeightPx(), availableHeight)
+                    / (float) availableHeight;
+        }
+
         if (mRpMode == RpMode.PASSIVE) {
             if (!mIsMultipleIdps || !mIsPassiveModeHalfHeightEnabled) {
                 return HeightMode.DISABLED;

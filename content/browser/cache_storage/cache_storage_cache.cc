@@ -1280,10 +1280,6 @@ void CacheStorageCache::QueryCacheDidReadMetadata(
                                   ? metadata->response().side_data_padding()
                                   : 0;
 
-  CHECK(!ShouldPadResourceSize(&metadata->response()) ||
-            (padding + side_data_padding),
-        base::NotFatalUntil::M158);
-
   query_cache_context->matches->push_back(QueryCacheResult(
       base::Time::FromInternalValue(entry_time), padding, side_data_padding));
   QueryCacheResult* match = &query_cache_context->matches->back();
@@ -1759,8 +1755,6 @@ void CacheStorageCache::WriteSideDataComplete(
 void CacheStorageCache::Put(blink::mojom::BatchOperationPtr operation,
                             int64_t trace_id,
                             ErrorCallback callback) {
-  CHECK(BACKEND_OPEN == backend_state_ || initializing_,
-        base::NotFatalUntil::M158);
   CHECK_EQ(blink::mojom::OperationType::kPut, operation->operation_type,
            base::NotFatalUntil::M158);
   Put(std::move(operation->request), std::move(operation->response), trace_id,
@@ -1771,9 +1765,6 @@ void CacheStorageCache::Put(blink::mojom::FetchAPIRequestPtr request,
                             blink::mojom::FetchAPIResponsePtr response,
                             int64_t trace_id,
                             ErrorCallback callback) {
-  CHECK(BACKEND_OPEN == backend_state_ || initializing_,
-        base::NotFatalUntil::M158);
-
   auto put_context = cache_entry_handler_->CreatePutContext(
       std::move(request), std::move(response), trace_id);
   auto id = scheduler_->CreateId();
@@ -1942,9 +1933,6 @@ void CacheStorageCache::PutDidCreateEntry(
   for (const auto& header : put_context->response->cors_exposed_header_names)
     response_metadata->add_cors_exposed_header_names(header);
 
-  CHECK(!ShouldPadResourceSize(*put_context->response) ||
-            put_context->response->padding,
-        base::NotFatalUntil::M158);
   response_metadata->set_padding(put_context->response->padding);
 
   int64_t side_data_padding = 0;
@@ -1985,9 +1973,6 @@ void CacheStorageCache::PutDidWriteHeaders(
     return;
   }
 
-  CHECK(!ShouldPadResourceSize(*put_context->response) ||
-            (padding + side_data_padding),
-        base::NotFatalUntil::M158);
   cache_padding_ += padding + side_data_padding;
 
   PutWriteBlobToCache(std::move(put_context), INDEX_RESPONSE_BODY);
@@ -2167,9 +2152,6 @@ void CacheStorageCache::PaddingDidQueryCache(
   int64_t cache_padding = 0;
   if (error == CacheStorageError::kSuccess) {
     for (const auto& result : *query_cache_results) {
-      CHECK(!ShouldPadResourceSize(*result.response) ||
-                (result.padding + result.side_data_padding),
-            base::NotFatalUntil::M158);
       cache_padding += result.padding + result.side_data_padding;
     }
   }
@@ -2318,8 +2300,6 @@ CacheStorageCache::InitState CacheStorageCache::GetInitState() const {
 
 void CacheStorageCache::Delete(blink::mojom::BatchOperationPtr operation,
                                ErrorCallback callback) {
-  CHECK(BACKEND_OPEN == backend_state_ || initializing_,
-        base::NotFatalUntil::M158);
   CHECK_EQ(blink::mojom::OperationType::kDelete, operation->operation_type,
            base::NotFatalUntil::M158);
 
@@ -2382,9 +2362,6 @@ void CacheStorageCache::DeleteDidQueryCache(
   for (auto& result : *query_cache_results) {
     disk_cache::ScopedEntryPtr entry = std::move(result.entry);
     if (ShouldPadResourceSize(*result.response)) {
-      CHECK(!ShouldPadResourceSize(*result.response) ||
-                (result.padding + result.side_data_padding),
-            base::NotFatalUntil::M158);
       cache_padding_ -= (result.padding + result.side_data_padding);
     }
     entry->Doom();
@@ -2442,18 +2419,22 @@ void CacheStorageCache::KeysDidQueryCache(
 }
 
 void CacheStorageCache::CloseImpl(base::OnceClosure callback) {
-  // TODO(crbug.com/554523653): CHECK-exclusion: Convert to a CHECK once we are
-  // confident it won't be triggered.
-  DCHECK_EQ(BACKEND_OPEN, backend_state_);
-
   CHECK(scheduler_->IsRunningExclusiveOperation(), base::NotFatalUntil::M158);
+
+  if (backend_state_ != BACKEND_OPEN) {
+    std::move(callback).Run();
+    return;
+  }
+
   backend_.reset();
   post_backend_closed_callback_ = std::move(callback);
 }
 
 void CacheStorageCache::DeleteBackendCompletedIO() {
   if (!post_backend_closed_callback_.is_null()) {
-    CHECK_NE(BACKEND_CLOSED, backend_state_, base::NotFatalUntil::M158);
+    // TODO(crbug.com/555074520): CHECK-exclusion: Convert to a CHECK once we
+    // are confident it won't be triggered.
+    DCHECK_NE(BACKEND_CLOSED, backend_state_);
     backend_state_ = BACKEND_CLOSED;
     std::move(post_backend_closed_callback_).Run();
   }

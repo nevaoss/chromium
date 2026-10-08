@@ -26,9 +26,11 @@
 #include "components/sync/test/test_sync_service.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/test/browser_task_environment.h"
+#include "content/public/test/mock_navigation_handle.h"
 #include "content/public/test/navigation_simulator.h"
 #include "content/public/test/test_web_contents_factory.h"
 #include "content/public/test/url_loader_interceptor.h"
+#include "content/public/test/web_contents_tester.h"
 #include "google_apis/gaia/google_service_auth_error.h"
 #include "net/base/net_errors.h"
 #include "net/cookies/site_for_cookies.h"
@@ -393,6 +395,109 @@ TEST_F(DevToolsUIBindingsTest, SanitizeFrontendURL) {
   }
 }
 
+class DevToolsUIBindingsNavigationTest : public testing::Test {
+ public:
+  content::WebContents* CreateWebContents() {
+    return web_contents_factory_.CreateWebContents(&profile_);
+  }
+
+ protected:
+  content::BrowserTaskEnvironment task_environment_;
+  TestingProfile profile_;
+  content::TestWebContentsFactory web_contents_factory_;
+};
+
+TEST_F(DevToolsUIBindingsNavigationTest,
+       BrowserInitiatedNavigationCreatesFrontendHost) {
+  content::WebContents* web_contents = CreateWebContents();
+  auto bindings = std::make_unique<DevToolsUIBindings>(web_contents);
+  EXPECT_FALSE(bindings->has_frontend_host_for_testing());
+
+  content::MockNavigationHandle handle(
+      GURL("devtools://devtools/bundled/devtools_app.html"),
+      web_contents->GetPrimaryMainFrame());
+  handle.set_is_in_primary_main_frame(true);
+  handle.set_is_renderer_initiated(false);
+
+  bindings->ReadyToCommitNavigationForTesting(&handle);
+
+  EXPECT_TRUE(bindings->has_frontend_host_for_testing());
+}
+
+TEST_F(DevToolsUIBindingsNavigationTest,
+       OpenerWithoutDevToolsBindingsRejected) {
+  content::WebContents* opener_contents = CreateWebContents();
+  content::WebContents* web_contents = CreateWebContents();
+  content::WebContentsTester::For(web_contents)->SetOpener(opener_contents);
+  content::WebContentsTester::For(web_contents)
+      ->SetOriginalOpener(opener_contents);
+
+  auto bindings = std::make_unique<DevToolsUIBindings>(web_contents);
+
+  content::MockNavigationHandle handle(
+      GURL("devtools://devtools/bundled/devtools_app.html"),
+      web_contents->GetPrimaryMainFrame());
+  handle.set_is_in_primary_main_frame(true);
+  handle.set_is_renderer_initiated(false);
+
+  bindings->ReadyToCommitNavigationForTesting(&handle);
+
+  EXPECT_FALSE(bindings->has_frontend_host_for_testing());
+}
+
+TEST_F(DevToolsUIBindingsNavigationTest,
+       OriginalOpenerWithoutDevToolsBindingsRejectedEvenIfOpenerSevered) {
+  content::WebContents* original_opener_contents = CreateWebContents();
+  content::WebContents* web_contents = CreateWebContents();
+  content::WebContentsTester::For(web_contents)
+      ->SetOriginalOpener(original_opener_contents);
+  // Ensure the live opener is null (simulating `window.opener = null`).
+  EXPECT_EQ(nullptr, web_contents->GetOpener());
+  EXPECT_TRUE(web_contents->HasLiveOriginalOpenerChain());
+
+  auto bindings = std::make_unique<DevToolsUIBindings>(web_contents);
+
+  content::MockNavigationHandle handle(
+      GURL("devtools://devtools/bundled/devtools_app.html"),
+      web_contents->GetPrimaryMainFrame());
+  handle.set_is_in_primary_main_frame(true);
+  handle.set_is_renderer_initiated(false);
+
+  bindings->ReadyToCommitNavigationForTesting(&handle);
+
+  EXPECT_FALSE(bindings->has_frontend_host_for_testing());
+}
+
+TEST_F(DevToolsUIBindingsNavigationTest,
+       OpenerWithValidDevToolsBindingsAccepted) {
+  content::WebContents* opener_contents = CreateWebContents();
+  auto opener_bindings = std::make_unique<DevToolsUIBindings>(opener_contents);
+  content::MockNavigationHandle opener_handle(
+      GURL("devtools://devtools/bundled/devtools_app.html"),
+      opener_contents->GetPrimaryMainFrame());
+  opener_handle.set_is_in_primary_main_frame(true);
+  opener_handle.set_is_renderer_initiated(false);
+  opener_bindings->ReadyToCommitNavigationForTesting(&opener_handle);
+  ASSERT_TRUE(opener_bindings->has_frontend_host_for_testing());
+
+  content::WebContents* web_contents = CreateWebContents();
+  content::WebContentsTester::For(web_contents)->SetOpener(opener_contents);
+  content::WebContentsTester::For(web_contents)
+      ->SetOriginalOpener(opener_contents);
+
+  auto bindings = std::make_unique<DevToolsUIBindings>(web_contents);
+
+  content::MockNavigationHandle handle(
+      GURL("devtools://devtools/bundled/devtools_app.html"),
+      web_contents->GetPrimaryMainFrame());
+  handle.set_is_in_primary_main_frame(true);
+  handle.set_is_renderer_initiated(false);
+
+  bindings->ReadyToCommitNavigationForTesting(&handle);
+
+  EXPECT_TRUE(bindings->has_frontend_host_for_testing());
+}
+
 class DevToolsUIBindingsSyncInfoTest : public testing::Test {
  public:
   void SetUp() override {
@@ -439,7 +544,8 @@ TEST_F(DevToolsUIBindingsSyncInfoTest, PreferencesNotSynced) {
 TEST_F(DevToolsUIBindingsSyncInfoTest, ImageAlwaysProvided) {
   AccountInfo account_info = identity_test_env_.MakePrimaryAccountAvailable(
       "sync@devtools.dev", signin::ConsentLevel::kSignin);
-  sync_service_->SetSignedIn(signin::ConsentLevel::kSignin, account_info);
+  sync_service_->SetSignedIn(signin::ConsentLevel::kSignin,
+                             account_info.GetCoreAccountInfo());
 
   EXPECT_FALSE(account_info.GetAvatarImage().has_value());
 
@@ -1074,6 +1180,7 @@ TEST_F(DevToolsUIBindingsHostConfigTest, GetHostConfigWithFeatures) {
       result.FindDict("devToolsAiV2Architecture");
   ASSERT_TRUE(aiv2_arch);
   EXPECT_TRUE(aiv2_arch->FindBool("enabled").value_or(false));
+  EXPECT_EQ("PUBLIC", *aiv2_arch->FindString("userTier"));
 
   const base::DictValue* instrumentation_breakpoints =
       result.FindDict("devToolsInstrumentationBreakpoints");

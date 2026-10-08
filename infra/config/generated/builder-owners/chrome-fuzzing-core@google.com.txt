@@ -1,8 +1,4 @@
-ci/Centipede High End Upload Linux ASan
-ci/Centipede High End Upload Linux ASan DCheck
 ci/Centipede Upload Linux ASan
-ci/Libfuzzer High End Upload Linux ASan
-ci/Libfuzzer High End Upload Linux ASan Debug
 ci/Libfuzzer Upload Chrome OS ASan
 ci/Libfuzzer Upload Linux ASan
 ci/Libfuzzer Upload Linux ASan Debug
@@ -24,6 +20,7 @@ ci/linux-x64-libfuzzer-asan-rel-tests
 ci/linux-x64-libfuzzer-msan-rel-tests
 ci/linux-x64-libfuzzer-ubsan-rel-tests
 ci/linux-x86-libfuzzer-asan-rel-tests
+ci/mac-arm64-libfuzzer-asan-rel
 ci/mac-arm64-libfuzzer-asan-rel-tests
 ci/mac-libfuzzer-coverage
 ci/win-libfuzzer-coverage
@@ -33,9 +30,8 @@ try/android-desktop-x64-asan-rel
 try/android-desktop-x64-libfuzzer-asan
 try/chromeos-libfuzzer-asan-rel
 try/chromeos-x64-libfuzzer-asan-rel-tests
-try/linux-centipede-high-end-asan-dcheck
-try/linux-libfuzzer-high-end-asan-dbg
-try/linux-libfuzzer-high-end-asan-rel
+try/linux-centipede-asan-rel
+try/linux-libfuzzer-asan-rel
 try/linux-x64-centipede-asan-rel-tests
 try/linux-x64-libfuzzer-asan-dbg-tests
 try/linux-x64-libfuzzer-asan-rel-tests
@@ -44,4 +40,5 @@ try/linux-x64-libfuzzer-ubsan-rel-tests
 try/linux-x86-libfuzzer-asan-rel-tests
 try/mac-arm64-libfuzzer-asan-rel-tests
 try/mac-libfuzzer-asan-rel
+try/win-libfuzzer-asan-rel
 try/win-x64-libfuzzer-asan-rel-tests

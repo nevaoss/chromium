@@ -232,6 +232,22 @@ suite('ContextualTasksAppTest', function() {
     assertEquals(initialHistoryLength, window.history.length);
   });
 
+  test('resetForNewThread resets frame src and updates task id', async () => {
+    const {appElement, proxy} =
+        await createContextualTasksAppElement(/*url=*/ fixtureUrl);
+
+    const newTaskId = {value: 'new-task-uuid-456'};
+    const newThreadUrl = 'http://example.com/new_thread?aep=1';
+
+    proxy.callbackRouterRemote.resetForNewThread(newTaskId, newThreadUrl);
+    await proxy.callbackRouterRemote.$.flushForTesting();
+    await microtasksFinished();
+
+    assertEquals(
+        'http://example.com/new_thread?aep=1', appElement.$.threadFrame.src);
+    assertDeepEquals(newTaskId, await proxy.handler.whenCalled('setTaskId'));
+  });
+
   test('back navigation fetches previous task url', async () => {
     window.history.replaceState(
         {}, '', `?chrome_task_id=111&thread=222&turn=333&title=wrong`);
@@ -1387,8 +1403,6 @@ suite('ContextualTasksAppTest', function() {
         isAskGTooltipDismissCountBelowCap: true,
         askGTooltipSessionImpressionCap: 10,
         askGCoBrowseEnabled: true,
-        isLensSearchTooltipDismissCountBelowCap: true,
-        lensSearchTooltipSessionImpressionCap: 10,
       });
 
       const result = await createContextualTasksAppElement(
@@ -1407,6 +1421,22 @@ suite('ContextualTasksAppTest', function() {
 
     test('AskG shows when eligible', async () => {
       appElement.entryPoint_ = 'omnibox_action';
+      appElement.isShownInTab_ = false;
+
+      appElement.updateTooltipVisibilityForTesting();
+      await microtasksFinished();
+
+      assertTrue(appElement.askGTooltipTarget_ !== null);
+
+      const onboardingTooltip =
+          appElement.shadowRoot.querySelector('#onboardingTooltip');
+      if (onboardingTooltip) {
+        assertFalse(onboardingTooltip.shouldShow);
+      }
+    });
+
+    test('AskG shows when eligible for omnibox popup button', async () => {
+      appElement.entryPoint_ = 'omnibox_popup_button';
       appElement.isShownInTab_ = false;
 
       appElement.updateTooltipVisibilityForTesting();
@@ -1488,62 +1518,6 @@ suite('ContextualTasksAppTest', function() {
       assertTrue(!!onboardingTooltip);
       assertTrue(onboardingTooltip.shouldShow);
     });
-
-    test('Lens shows when AskG is dismissed', async () => {
-      loadTimeData.overrideValues({
-        isAskGTooltipDismissCountBelowCap: false,
-      });
-      const result = await createContextualTasksAppElement(/*url=*/ fixtureUrl);
-      appElement = result.appElement;
-      appElement.$.composebox.getComposebox = () => mockCrComposebox;
-      appElement.entryPoint_ = 'omnibox_action';
-      appElement.isShownInTab_ = false;
-
-      appElement.updateTooltipVisibilityForTesting();
-      await microtasksFinished();
-
-      assertTrue(appElement.lensSearchTooltipTarget_ !== null);
-      assertEquals(null, appElement.askGTooltipTarget_);
-      assertTrue(appElement.$.composebox.isLensSearchTooltipShowing);
-    });
-
-    test(
-        'Lens does not show when AskG is dismissed but wrong entry point',
-        async () => {
-          loadTimeData.overrideValues({
-            isAskGTooltipDismissCountBelowCap: false,
-          });
-          const result =
-              await createContextualTasksAppElement(/*url=*/ fixtureUrl);
-          appElement = result.appElement;
-          appElement.$.composebox.getComposebox = () => mockCrComposebox;
-          appElement.entryPoint_ = 'toolbar';  // Ineligible
-          appElement.isShownInTab_ = false;
-
-          appElement.updateTooltipVisibilityForTesting();
-          await microtasksFinished();
-
-          assertEquals(null, appElement.lensSearchTooltipTarget_);
-        });
-
-    test(
-        'Lens does not show when AskG is dismissed but shown in tab',
-        async () => {
-          loadTimeData.overrideValues({
-            isAskGTooltipDismissCountBelowCap: false,
-          });
-          const result =
-              await createContextualTasksAppElement(/*url=*/ fixtureUrl);
-          appElement = result.appElement;
-          appElement.$.composebox.getComposebox = () => mockCrComposebox;
-          appElement.entryPoint_ = 'omnibox_action';
-          appElement.isShownInTab_ = true;  // Ineligible
-
-          appElement.updateTooltipVisibilityForTesting();
-          await microtasksFinished();
-
-          assertEquals(null, appElement.lensSearchTooltipTarget_);
-        });
   });
   // </if>
 });

@@ -135,9 +135,10 @@ public class VerticalTabsSideUiCoordinatorUnitTest {
 
     @Test
     @SmallTest
-    public void testObserverRegistration() {
+    public void testRegistration() {
         // Constructor is called in setUp(), verify registration happened.
         verify(mMockSideUiCoordinator).addObserver(mCoordinator);
+        verify(mMockSideUiCoordinator).registerSideUiContainer(mCoordinator);
     }
 
     @Test
@@ -153,6 +154,7 @@ public class VerticalTabsSideUiCoordinatorUnitTest {
 
         mCoordinator.destroy();
         verify(mMockSideUiCoordinator).removeObserver(mCoordinator);
+        verify(mMockSideUiCoordinator).unregisterSideUiContainer(mCoordinator);
         verify(mMockTabListCoordinator).destroy();
         assertFalse(mIsVerticalTabsActiveSupplier.get());
     }
@@ -393,6 +395,15 @@ public class VerticalTabsSideUiCoordinatorUnitTest {
         assertEquals(2, transitionSet.getTransitionCount());
         assertTrue(transitionSet.getTransitionAt(0) instanceof ChangeBounds);
         assertTrue(transitionSet.getTransitionAt(1) instanceof Fade);
+        verify(mMockTabListCoordinator).setInTransition(true);
+    }
+
+    @Test
+    @SmallTest
+    public void testOnTransitionEnded_ResetsInTransition() {
+        SideUiSpecs newSpecs = new SideUiSpecs(mCollapsedRailWidth, 0);
+        mCoordinator.onTransitionEnded(newSpecs);
+        verify(mMockTabListCoordinator).setInTransition(false);
     }
 
     @Test
@@ -403,6 +414,7 @@ public class VerticalTabsSideUiCoordinatorUnitTest {
 
         SideUiSpecs newSpecs = new SideUiSpecs(mExpandedRailWidth, 0);
         assertNull(mCoordinator.onPreSideUiSpecsChange(newSpecs));
+        verify(mMockTabListCoordinator, never()).setInTransition(true);
     }
 
     @Test
@@ -413,6 +425,7 @@ public class VerticalTabsSideUiCoordinatorUnitTest {
 
         SideUiSpecs newSpecs = new SideUiSpecs(0, 0);
         assertNull(mCoordinator.onPreSideUiSpecsChange(newSpecs));
+        verify(mMockTabListCoordinator, never()).setInTransition(true);
     }
 
     @Test

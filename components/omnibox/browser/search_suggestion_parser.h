@@ -19,7 +19,6 @@
 #include "components/omnibox/browser/suggestion_group_util.h"
 #include "components/search_engines/search_engine_type.h"
 #include "third_party/omnibox_proto/chrome_searchbox_stats.pb.h"
-#include "third_party/omnibox_proto/entity_info.pb.h"
 #include "third_party/omnibox_proto/navigational_intent.pb.h"
 #include "third_party/omnibox_proto/rich_answer_template.pb.h"
 #include "third_party/omnibox_proto/suggest_template_info.pb.h"
@@ -162,7 +161,6 @@ class SearchSuggestionParser {
                   const std::u16string& match_contents,
                   const std::u16string& match_contents_prefix,
                   const std::u16string& annotation,
-                  omnibox::EntityInfo entity_info,
                   const std::string& deletion_url,
                   bool from_keyword,
                   omnibox::NavigationalIntent navigational_intent,
@@ -179,7 +177,6 @@ class SearchSuggestionParser {
         const std::u16string& match_contents,
         const std::u16string& match_contents_prefix,
         const std::u16string& annotation,
-        omnibox::EntityInfo entity_info,
         const std::string& deletion_url,
         bool from_keyword,
         omnibox::NavigationalIntent navigational_intent,
@@ -199,6 +196,9 @@ class SearchSuggestionParser {
       return match_contents_prefix_;
     }
     const std::u16string& annotation() const { return annotation_; }
+    const ACMatchClassifications& annotation_class() const {
+      return annotation_class_;
+    }
 
     void set_suggestion_group_id(
         std::optional<omnibox::GroupId> suggestion_group_id) {
@@ -213,10 +213,6 @@ class SearchSuggestionParser {
     const std::optional<omnibox::RichAnswerTemplate>& answer_template() const {
       return answer_template_;
     }
-
-
-    void SetEntityInfo(const omnibox::EntityInfo&);
-    const omnibox::EntityInfo& entity_info() const { return entity_info_; }
 
     void SetSuggestTemplateInfo(
         const omnibox::SuggestTemplateInfo& suggest_template_info);
@@ -237,6 +233,7 @@ class SearchSuggestionParser {
     // of |match_contents_| bolded, do nothing.
     void ClassifyMatchContents(const bool allow_bolding_all,
                                const std::u16string& input_text);
+    void ClassifyAnnotation();
 
     // Result:
     int CalculateRelevance(const AutocompleteInput& input,
@@ -256,6 +253,7 @@ class SearchSuggestionParser {
     // This may be displayed in the autocomplete match contents, but is defined
     // separately to facilitate different formatting.
     std::u16string annotation_;
+    ACMatchClassifications annotation_class_;
 
     // The optional suggestion group ID used to look up the suggestion group
     // config for the group this suggestion belongs to from the server response.
@@ -263,11 +261,6 @@ class SearchSuggestionParser {
 
     // Optional proto that contains answer info for rich answers.
     std::optional<omnibox::RichAnswerTemplate> answer_template_;
-
-    // Answer type for answer verticals, including rich answers.
-
-    // Proto containing various pieces of data related to entity suggestions.
-    omnibox::EntityInfo entity_info_;
 
     // Proto containing generalized suggestion information.
     std::optional<omnibox::SuggestTemplateInfo> suggest_template_info_;

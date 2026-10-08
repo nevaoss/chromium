@@ -8,11 +8,10 @@ import {webUIListenerCallback} from 'chrome://resources/js/cr.js';
 import {PromiseResolver} from 'chrome://resources/js/promise_resolver.js';
 import type {ClearBrowsingDataResult, SettingsCheckboxElement, SettingsClearBrowsingDataDialogElement, SettingsHistoryDeletionDialogElement} from 'chrome://settings/lazy_load.js';
 import {BrowsingDataType, ClearBrowsingDataBrowserProxyImpl, getDataTypePrefName, getTimePeriodString, TimePeriod} from 'chrome://settings/lazy_load.js';
-import type {SettingsPrefsElement} from 'chrome://settings/settings.js';
-import {CrSettingsPrefs, loadTimeData, MetricsBrowserProxyImpl, SignedInState, StatusAction, SyncBrowserProxyImpl, Router, routes, resetRouterForTesting} from 'chrome://settings/settings.js';
+import {loadTimeData, MetricsBrowserProxyImpl, PrefService, resetRouterForTesting, Router, routes, SignedInState, StatusAction, SyncBrowserProxyImpl} from 'chrome://settings/settings.js';
 import {assertArrayEquals, assertEquals, assertFalse, assertNotReached, assertTrue} from 'chrome://webui-test/chai_assert.js';
-import {flushTasks, waitAfterNextRender} from 'chrome://webui-test/polymer_test_util.js';
-import {eventToPromise, isVisible} from 'chrome://webui-test/test_util.js';
+import {flushTasks} from 'chrome://webui-test/polymer_test_util.js';
+import {eventToPromise, isVisible, microtasksFinished} from 'chrome://webui-test/test_util.js';
 
 import {TestClearBrowsingDataBrowserProxy} from './test_clear_browsing_data_browser_proxy.js';
 import {TestMetricsBrowserProxy} from './test_metrics_browser_proxy.js';
@@ -25,14 +24,14 @@ suite('DeleteBrowsingDataDialog', function() {
   let testSyncBrowserProxy: TestSyncBrowserProxy;
   let testMetricsBrowserProxy: TestMetricsBrowserProxy;
   let dialog: SettingsClearBrowsingDataDialogElement;
-  let settingsPrefs: SettingsPrefsElement;
+  let prefService: PrefService;
 
-  suiteSetup(function() {
-    settingsPrefs = document.createElement('settings-prefs');
-    return CrSettingsPrefs.initialized;
+  suiteSetup(async function() {
+    prefService = PrefService.getInstance();
+    await prefService.whenInitialized();
   });
 
-  setup(function() {
+  setup(async function() {
     testClearBrowsingDataBrowserProxy = new TestClearBrowsingDataBrowserProxy();
     ClearBrowsingDataBrowserProxyImpl.setInstance(
         testClearBrowsingDataBrowserProxy);
@@ -41,7 +40,7 @@ suite('DeleteBrowsingDataDialog', function() {
     testMetricsBrowserProxy = new TestMetricsBrowserProxy();
     MetricsBrowserProxyImpl.setInstance(testMetricsBrowserProxy);
 
-    setClearBrowsingDataPrefs(false);
+    await setClearBrowsingDataPrefs(false);
     loadTimeData.overrideValues({showGlicSettings: true});
     return createDialog();
   });
@@ -50,61 +49,54 @@ suite('DeleteBrowsingDataDialog', function() {
     resetRouterForTesting();
   });
 
-  function setClearBrowsingDataPrefs(enableCheckboxes: boolean) {
-    settingsPrefs.set(
-        `prefs.${getDataTypePrefName(BrowsingDataType.HISTORY)}.value`,
-        enableCheckboxes);
-    settingsPrefs.set(
-        `prefs.${getDataTypePrefName(BrowsingDataType.SITE_DATA)}.value`,
-        enableCheckboxes);
-    settingsPrefs.set(
-        `prefs.${getDataTypePrefName(BrowsingDataType.CACHE)}.value`,
-        enableCheckboxes);
-    settingsPrefs.set(
-        `prefs.${getDataTypePrefName(BrowsingDataType.DOWNLOADS)}.value`,
-        enableCheckboxes);
-    settingsPrefs.set(
-        `prefs.${getDataTypePrefName(BrowsingDataType.FORM_DATA)}.value`,
-        enableCheckboxes);
-    settingsPrefs.set(
-        `prefs.${getDataTypePrefName(BrowsingDataType.SITE_SETTINGS)}.value`,
-        enableCheckboxes);
-    settingsPrefs.set(
-        `prefs.${getDataTypePrefName(BrowsingDataType.HOSTED_APPS_DATA)}.value`,
+  async function setClearBrowsingDataPrefs(enableCheckboxes: boolean) {
+    await prefService.setPrefValue(
+        getDataTypePrefName(BrowsingDataType.HISTORY), enableCheckboxes);
+    await prefService.setPrefValue(
+        getDataTypePrefName(BrowsingDataType.SITE_DATA), enableCheckboxes);
+    await prefService.setPrefValue(
+        getDataTypePrefName(BrowsingDataType.CACHE), enableCheckboxes);
+    await prefService.setPrefValue(
+        getDataTypePrefName(BrowsingDataType.DOWNLOADS), enableCheckboxes);
+    await prefService.setPrefValue(
+        getDataTypePrefName(BrowsingDataType.FORM_DATA), enableCheckboxes);
+    await prefService.setPrefValue(
+        getDataTypePrefName(BrowsingDataType.SITE_SETTINGS), enableCheckboxes);
+    await prefService.setPrefValue(
+        getDataTypePrefName(BrowsingDataType.HOSTED_APPS_DATA),
         enableCheckboxes);
   }
 
   async function createDialog() {
     document.body.innerHTML = window.trustedTypes!.emptyHTML;
     dialog = document.createElement('settings-clear-browsing-data-dialog');
-    dialog.set('prefs', settingsPrefs.prefs);
     document.body.appendChild(dialog);
-    return waitAfterNextRender(dialog);
+    return microtasksFinished();
   }
 
   function verifyCheckboxesVisibleForDataTypesInOrder(
       datatypes: BrowsingDataType[]) {
     const visibleCheckboxes =
-        dialog.shadowRoot!.querySelectorAll<SettingsCheckboxElement>(
+        dialog.shadowRoot.querySelectorAll<SettingsCheckboxElement>(
             'settings-checkbox');
     assertTrue(!!visibleCheckboxes);
     assertEquals(datatypes.length, visibleCheckboxes.length);
 
     for (let i = 0; i < visibleCheckboxes.length; ++i) {
       assertEquals(
-          getDataTypePrefName(datatypes[i]!), visibleCheckboxes[i]!.pref!.key);
+          getDataTypePrefName(datatypes[i]!), visibleCheckboxes[i]!.prefKey);
     }
   }
 
   function getCheckboxForDataType(datatype: BrowsingDataType):
       SettingsCheckboxElement|undefined {
     const visibleCheckboxes =
-        dialog.shadowRoot!.querySelectorAll<SettingsCheckboxElement>(
+        dialog.shadowRoot.querySelectorAll<SettingsCheckboxElement>(
             'settings-checkbox');
     assertTrue(!!visibleCheckboxes);
 
     for (const checkbox of visibleCheckboxes) {
-      if (checkbox.pref!.key === getDataTypePrefName(datatype)) {
+      if (checkbox.prefKey === getDataTypePrefName(datatype)) {
         return checkbox;
       }
     }
@@ -113,8 +105,7 @@ suite('DeleteBrowsingDataDialog', function() {
 
   async function selectTimePeriodFromTimePicker(timePeriod: TimePeriod) {
     const visibleTimePeriodChips =
-        dialog.$.timePicker.shadowRoot!.querySelectorAll<HTMLElement>(
-            'cr-chip');
+        dialog.$.timePicker.shadowRoot.querySelectorAll<HTMLElement>('cr-chip');
     assertTrue(!!visibleTimePeriodChips);
 
     for (const chip of visibleTimePeriodChips) {
@@ -128,7 +119,7 @@ suite('DeleteBrowsingDataDialog', function() {
     dialog.$.timePicker.$.moreButton.click();
     await flushTasks();
     const menuItems =
-        dialog.$.timePicker.shadowRoot!.querySelectorAll<HTMLElement>(
+        dialog.$.timePicker.shadowRoot.querySelectorAll<HTMLElement>(
             '.dropdown-item');
     assertTrue(!!menuItems);
 
@@ -162,7 +153,7 @@ suite('DeleteBrowsingDataDialog', function() {
     assertFalse(historyCheckbox.$.checkbox.disabled);
 
     dialog.$.showMoreButton.click();
-    await waitAfterNextRender(dialog);
+    await microtasksFinished();
 
     const formDataCheckbox = getCheckboxForDataType(BrowsingDataType.FORM_DATA);
     assertTrue(!!formDataCheckbox);
@@ -269,11 +260,11 @@ suite('DeleteBrowsingDataDialog', function() {
     assertTrue(isVisible(dialog.$.showMoreButton));
 
     dialog.$.showMoreButton.click();
-    await waitAfterNextRender(dialog);
+    await microtasksFinished();
     // Verify the focus is not lost after expanding the checkboxes.
     assertEquals(
         dialog.$.moreOptionsList.firstElementChild,
-        dialog.shadowRoot!.activeElement);
+        dialog.shadowRoot.activeElement);
     assertFalse(isVisible(dialog.$.showMoreButton));
   });
 
@@ -287,7 +278,7 @@ suite('DeleteBrowsingDataDialog', function() {
     ]);
 
     dialog.$.showMoreButton.click();
-    await waitAfterNextRender(dialog);
+    await microtasksFinished();
 
     assertEquals(
         'Settings.DeleteBrowsingData.CheckboxesShowMoreClick',
@@ -306,13 +297,12 @@ suite('DeleteBrowsingDataDialog', function() {
 
     // Case 2, some checkboxes are selected, default and selected checkboxes
     // should be expanded by default.
-    settingsPrefs.set(
-        `prefs.${getDataTypePrefName(BrowsingDataType.CACHE)}.value`, true);
-    settingsPrefs.set(
-        `prefs.${getDataTypePrefName(BrowsingDataType.DOWNLOADS)}.value`, true);
-    settingsPrefs.set(
-        `prefs.${getDataTypePrefName(BrowsingDataType.HOSTED_APPS_DATA)}.value`,
-        true);
+    await prefService.setPrefValue(
+        getDataTypePrefName(BrowsingDataType.CACHE), true);
+    await prefService.setPrefValue(
+        getDataTypePrefName(BrowsingDataType.DOWNLOADS), true);
+    await prefService.setPrefValue(
+        getDataTypePrefName(BrowsingDataType.HOSTED_APPS_DATA), true);
     await createDialog();
 
     verifyCheckboxesVisibleForDataTypesInOrder([
@@ -324,7 +314,7 @@ suite('DeleteBrowsingDataDialog', function() {
     ]);
 
     dialog.$.showMoreButton.click();
-    await waitAfterNextRender(dialog);
+    await microtasksFinished();
     // On show more click, all checkboxes should be visible with the unselected
     // checkboxes at the bottom.
     verifyCheckboxesVisibleForDataTypesInOrder([
@@ -339,7 +329,7 @@ suite('DeleteBrowsingDataDialog', function() {
 
     // Case 3, All checkboxes are selected, all checkboxes should be expanded by
     // default and "Show more" button should be hidden.
-    setClearBrowsingDataPrefs(true);
+    await setClearBrowsingDataPrefs(true);
     await createDialog();
 
     verifyCheckboxesVisibleForDataTypesInOrder([
@@ -356,8 +346,8 @@ suite('DeleteBrowsingDataDialog', function() {
 
   test('CheckboxSelection', async function() {
     // Case 1, selection from expanded checkboxes.
-    settingsPrefs.set(
-        `prefs.${getDataTypePrefName(BrowsingDataType.DOWNLOADS)}.value`, true);
+    await prefService.setPrefValue(
+        getDataTypePrefName(BrowsingDataType.DOWNLOADS), true);
     await createDialog();
 
     // Only Downloads Checkbox is selected, only default and the Downloads
@@ -391,7 +381,7 @@ suite('DeleteBrowsingDataDialog', function() {
 
     // Case 2, selection from more checkboxes.
     dialog.$.showMoreButton.click();
-    await waitAfterNextRender(dialog);
+    await microtasksFinished();
 
     // All checkboxes should be visible.
     verifyCheckboxesVisibleForDataTypesInOrder([
@@ -437,11 +427,10 @@ suite('DeleteBrowsingDataDialog', function() {
       BrowsingDataType.CACHE,
     ]);
 
-    settingsPrefs.set(
-        `prefs.${getDataTypePrefName(BrowsingDataType.FORM_DATA)}.value`, true);
-    settingsPrefs.set(
-        `prefs.${getDataTypePrefName(BrowsingDataType.HOSTED_APPS_DATA)}.value`,
-        true);
+    await prefService.setPrefValue(
+        getDataTypePrefName(BrowsingDataType.FORM_DATA), true);
+    await prefService.setPrefValue(
+        getDataTypePrefName(BrowsingDataType.HOSTED_APPS_DATA), true);
     await flushTasks();
 
     // Pref changes should not change checkbox expansion state.
@@ -452,7 +441,7 @@ suite('DeleteBrowsingDataDialog', function() {
     ]);
 
     dialog.$.showMoreButton.click();
-    await waitAfterNextRender(dialog);
+    await microtasksFinished();
 
     const formDataCheckbox = getCheckboxForDataType(BrowsingDataType.FORM_DATA);
     assertTrue(!!formDataCheckbox);
@@ -548,7 +537,7 @@ suite('DeleteBrowsingDataDialog', function() {
         'site settings result');
 
     dialog.$.showMoreButton.click();
-    await waitAfterNextRender(dialog);
+    await microtasksFinished();
 
     const siteSettingsCheckbox =
         getCheckboxForDataType(BrowsingDataType.SITE_SETTINGS);
@@ -562,7 +551,7 @@ suite('DeleteBrowsingDataDialog', function() {
 
     // Select datatypes for deletion.
     dialog.$.showMoreButton.click();
-    await waitAfterNextRender(dialog);
+    await microtasksFinished();
     const historyCheckbox = getCheckboxForDataType(BrowsingDataType.HISTORY);
     assertTrue(!!historyCheckbox);
     historyCheckbox.$.checkbox.click();
@@ -587,20 +576,22 @@ suite('DeleteBrowsingDataDialog', function() {
     // Verify TimePeriod pref is updated.
     assertEquals(
         TimePeriod.LAST_DAY,
-        dialog.getPref('browser.clear_data.time_period').value);
+        prefService.getPref('browser.clear_data.time_period').value);
 
     // Verify DataType prefs are updated.
     assertEquals(
-        true, dialog.getPref('browser.clear_data.browsing_history').value);
-    assertEquals(false, dialog.getPref('browser.clear_data.cookies').value);
-    assertEquals(false, dialog.getPref('browser.clear_data.cache').value);
-    assertEquals(false, dialog.getPref('browser.clear_data.form_data').value);
+        true, prefService.getPref('browser.clear_data.browsing_history').value);
     assertEquals(
-        false, dialog.getPref('browser.clear_data.site_settings').value);
+        false, prefService.getPref('browser.clear_data.cookies').value);
+    assertEquals(false, prefService.getPref('browser.clear_data.cache').value);
     assertEquals(
-        true, dialog.getPref('browser.clear_data.download_history').value);
+        false, prefService.getPref('browser.clear_data.form_data').value);
     assertEquals(
-        true, dialog.getPref('browser.clear_data.hosted_apps_data').value);
+        false, prefService.getPref('browser.clear_data.site_settings').value);
+    assertEquals(
+        true, prefService.getPref('browser.clear_data.download_history').value);
+    assertEquals(
+        true, prefService.getPref('browser.clear_data.hosted_apps_data').value);
 
     // Verify correct TimePeriod and DataTypes are sent to the proxy.
     const args =
@@ -762,7 +753,7 @@ suite('DeleteBrowsingDataDialog', function() {
 
   test('NavigationToAndFromOtherGoogleData', async function() {
     let otherGoogleDataDialog =
-        dialog.shadowRoot!.querySelector('settings-other-google-data-dialog');
+        dialog.shadowRoot.querySelector('settings-other-google-data-dialog');
     assertFalse(!!otherGoogleDataDialog);
 
     dialog.$.manageOtherGoogleDataRow.click();
@@ -772,13 +763,13 @@ suite('DeleteBrowsingDataDialog', function() {
         await testMetricsBrowserProxy.whenCalled('recordAction'));
 
     otherGoogleDataDialog =
-        dialog.shadowRoot!.querySelector('settings-other-google-data-dialog');
+        dialog.shadowRoot.querySelector('settings-other-google-data-dialog');
     assertTrue(!!otherGoogleDataDialog);
     assertTrue(otherGoogleDataDialog.$.dialog.open);
     assertTrue(dialog.$.deleteBrowsingDataDialog.hidden);
 
     const cancelButton =
-        otherGoogleDataDialog.shadowRoot!.querySelector<HTMLElement>(
+        otherGoogleDataDialog.shadowRoot.querySelector<HTMLElement>(
             '.cancel-button');
     assertTrue(!!cancelButton);
     cancelButton.click();
@@ -789,7 +780,7 @@ suite('DeleteBrowsingDataDialog', function() {
     assertFalse(otherGoogleDataDialog.$.dialog.open);
 
     otherGoogleDataDialog =
-        dialog.shadowRoot!.querySelector('settings-other-google-data-dialog');
+        dialog.shadowRoot.querySelector('settings-other-google-data-dialog');
     assertFalse(!!otherGoogleDataDialog);
     assertTrue(dialog.$.deleteBrowsingDataDialog.open);
     assertFalse(dialog.$.deleteBrowsingDataDialog.hidden);
@@ -815,7 +806,7 @@ suite('DeleteBrowsingDataDialog', function() {
     await flushTasks();
 
     const historyNoticeDialog =
-        dialog.shadowRoot!.querySelector<SettingsHistoryDeletionDialogElement>(
+        dialog.shadowRoot.querySelector<SettingsHistoryDeletionDialogElement>(
             '#historyNotice');
     assertTrue(!!historyNoticeDialog);
 
@@ -830,7 +821,7 @@ suite('DeleteBrowsingDataDialog', function() {
 
     // Verify all dialogs should be closed after closing the history notice
     // dialog.
-    assertFalse(!!dialog.shadowRoot!.querySelector('#historyNotice'));
+    assertFalse(!!dialog.shadowRoot.querySelector('#historyNotice'));
     assertFalse(dialog.$.deleteBrowsingDataDialog.open);
   });
 

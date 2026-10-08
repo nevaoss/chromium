@@ -17,9 +17,6 @@ namespace omnibox {
 // instead of in the co-browse tool bar and RHS dropdown.
 BASE_DECLARE_FEATURE(kContextManagementInComposebox);
 
-// If enabled, this feature will show tooltips in the composebox context menu.
-BASE_DECLARE_FEATURE(kContextMenuToolTips);
-
 // If enabled, this feature will gate the functionality of removing the existing
 // tab chips from the composebox and instead add favicon coins next to the "+"
 // button.
@@ -47,6 +44,12 @@ BASE_DECLARE_FEATURE(kComposeboxSkillsOmniboxPopup);
 // Image will be shown in the Composebox.
 BASE_DECLARE_FEATURE(kComposeboxRichImageSuggestions);
 
+// If enabled, persists the AIM button in the Composebox.
+BASE_DECLARE_FEATURE(kComposeboxPersistentAimButton);
+// If enabled, shows an X icon on the persistent AIM button. Only effective if
+// persistent AIM button is also enabled.
+BASE_DECLARE_FEATURE(kComposeboxPersistentAimButtonWithX);
+
 // If enabled, suggest requests for multifile inputs will include the cinpts CGI param.
 BASE_DECLARE_FEATURE(kSuggestRequestSendsMultifileCgiParam);
 
@@ -69,6 +72,12 @@ extern const base::FeatureParam<bool>
 // feature kContextManagementInComposebox to be enabled and the param to be
 // true.
 bool IsTabDeselectionInComposeboxEnabled();
+
+// If enabled, tooltips will be shown in the composebox context menu.
+extern const base::FeatureParam<bool> kContextManagementInComposeboxTooltips;
+
+// Helper to check if context menu tooltips are enabled in the composebox.
+bool IsContextMenuTooltipsInComposeboxEnabled();
 
 }  // namespace omnibox
 

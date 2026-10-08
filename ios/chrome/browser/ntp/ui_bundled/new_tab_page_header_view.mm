@@ -4,6 +4,7 @@
 
 #import "ios/chrome/browser/ntp/ui_bundled/new_tab_page_header_view.h"
 
+#import <QuartzCore/QuartzCore.h>
 #import <UIKit/UIKit.h>
 
 #import <algorithm>
@@ -133,6 +134,10 @@ constexpr CGFloat kIconDividerHeight = 13.0;
 // new feature badge.
 constexpr CGFloat kCustomizationNewBadgeOffset = 14.0;
 
+// The distance extending below the header's bottom edge over which the blur
+// fades out to transparent.
+constexpr CGFloat kHeaderBlurBottomExtension = 30.0;
+
 // The name of the animation for the MIA button.
 NSString* const kMIACircleAnimationLightMode = @"mia_circle_animation_no_glow";
 NSString* const kMIACircleAnimationDarkMode = @"mia_glowing_circle_animation";
@@ -140,13 +145,25 @@ NSString* const kMIACircleAnimationDarkMode = @"mia_glowing_circle_animation";
 // Returns the background color for the NTP Header view. This is the color
 // that shows when the fakebox is scrolled up.
 UIColor* HeaderBackgroundColor(id<UITraitEnvironment> environment) {
+  NewTabPageColorPalette* colorPalette =
+      [environment.traitCollection objectForNewTabPageTrait];
+  if (colorPalette) {
+    return colorPalette.primaryColor;
+  }
+  if ([environment.traitCollection boolForNewTabPageImageBackgroundTrait]) {
+    return [UIColor colorNamed:kBackgroundColor];
+  }
   if (IsNewTabPageUICleanupEnabled()) {
-    NewTabPageColorPalette* colorPalette =
-        [environment.traitCollection objectForNewTabPageTrait];
-    if (!colorPalette &&
-        ![environment.traitCollection boolForNewTabPageImageBackgroundTrait]) {
-      return [UIColor colorNamed:kNewTabPageBackgroundColor];
+    return [UIColor colorNamed:kNewTabPageBackgroundColor];
+  } else if (ShouldApplyFakeboxBackgroundAndShadow()) {
+    // In light mode, matches the default light blue NTP background
+    // color so the white pinned omnibox does not blend into a white header.
+    // In dark mode, matches standard `kBackgroundColor`.
+    if (environment.traitCollection.userInterfaceStyle ==
+        UIUserInterfaceStyleDark) {
+      return [UIColor colorNamed:kBackgroundColor];
     }
+    return [UIColor colorNamed:@"ntp_background_color"];
   }
   if (IsSplitToolbarMode(environment)) {
     return [UIColor colorNamed:kBackgroundColor];
@@ -257,9 +274,14 @@ CGFloat Interpolate(CGFloat from, CGFloat to, CGFloat percent) {
 
 @property(nonatomic, assign, readwrite) CGFloat scrollProgress;
 
+// The background blur effect view when kNewTabPageUICleanup is enabled.
+@property(nonatomic, strong) UIVisualEffectView* blurBackgroundView;
+
 @end
 
 @implementation NewTabPageHeaderView {
+  // Gradient mask layer used to fade the blur background at the bottom.
+  CAGradientLayer* _blurMaskLayer;
   CGFloat _lastAnimationPercent;
   BOOL _useNewBadgeForLensButton;
   BOOL _useNewBadgeForCustomizationMenu;
@@ -314,8 +336,7 @@ CGFloat Interpolate(CGFloat from, CGFloat to, CGFloat percent) {
   if (self) {
     self.translatesAutoresizingMaskIntoConstraints = NO;
     _fakeLocationBar = [[FakeLocationBarView alloc] init];
-    if (!(IsNewTabPageUICleanupEnabled() ||
-          IsNewTabPageUICleanupFakeboxOnlyEnabled())) {
+    if (!ShouldApplyFakeboxBackgroundAndShadow()) {
       self.clipsToBounds = YES;
     }
     _useNewBadgeForLensButton = useNewBadgeForLensButton;
@@ -342,6 +363,30 @@ CGFloat Interpolate(CGFloat from, CGFloat to, CGFloat percent) {
     [self registerForTraitChanges:buttonTraits
                        withAction:@selector
                        (updateButtonsForCurrentTraitCollection)];
+
+    if (!IsChromeNextIaEnabled() && IsNewTabPageUICleanupEnabled()) {
+      UIBlurEffect* blurEffect =
+          [UIBlurEffect effectWithStyle:UIBlurEffectStyleSystemMaterial];
+      self.blurBackgroundView =
+          [[UIVisualEffectView alloc] initWithEffect:blurEffect];
+      self.blurBackgroundView.autoresizingMask =
+          UIViewAutoresizingFlexibleWidth | UIViewAutoresizingFlexibleHeight;
+      self.blurBackgroundView.frame = self.bounds;
+      self.blurBackgroundView.userInteractionEnabled = NO;
+      self.blurBackgroundView.alpha = 0.0;
+      [self insertSubview:self.blurBackgroundView atIndex:0];
+
+      _blurMaskLayer = [CAGradientLayer layer];
+      _blurMaskLayer.colors = @[
+        (id)UIColor.whiteColor.CGColor,
+        (id)UIColor.whiteColor.CGColor,
+        (id)UIColor.clearColor.CGColor,
+      ];
+      _blurMaskLayer.locations = @[ @0.0, @1.0, @1.0 ];
+      _blurMaskLayer.startPoint = CGPointMake(0.5, 0.0);
+      _blurMaskLayer.endPoint = CGPointMake(0.5, 1.0);
+      self.blurBackgroundView.layer.mask = _blurMaskLayer;
+    }
 
     // Create the identity disc button.
     _identityDiscButton = [[NTPIdentityDiscButton alloc] init];
@@ -757,6 +802,9 @@ CGFloat Interpolate(CGFloat from, CGFloat to, CGFloat percent) {
 
 - (void)addSeparatorToSearchField:(UIView*)searchField {
   DCHECK(searchField.superview == self);
+  if (!IsChromeNextIaEnabled() && IsNewTabPageUICleanupEnabled()) {
+    return;
+  }
 
   self.separator = [[UIView alloc] init];
   self.separator.backgroundColor = [UIColor colorNamed:kToolbarShadowColor];
@@ -817,7 +865,12 @@ CGFloat Interpolate(CGFloat from, CGFloat to, CGFloat percent) {
   // Update the opacity of the header background color as the user scrolls so
   // that content does not appear beneath it. Since the NTP background might be
   // a gradient, the opacity must be 0 by default.
-  if (!IsChromeNextIaEnabled()) {
+  if (!IsChromeNextIaEnabled() && IsNewTabPageUICleanupEnabled()) {
+    self.backgroundColor = UIColor.clearColor;
+    self.blurBackgroundView.alpha = progress;
+  } else if (!IsChromeNextIaEnabled() ||
+             (!CanShowTabStrip(self) &&
+              ShouldApplyFakeboxBackgroundAndShadow())) {
     self.backgroundColor =
         [HeaderBackgroundColor(self) colorWithAlphaComponent:progress];
   }
@@ -914,7 +967,9 @@ CGFloat Interpolate(CGFloat from, CGFloat to, CGFloat percent) {
   CGFloat locationBarHeight = content_suggestions::PinnedFakeOmniboxHeight();
 
   self.alpha = 1;
-  self.separator.alpha = progress;
+  if (IsChromeNextIaEnabled() || !IsNewTabPageUICleanupEnabled()) {
+    self.separator.alpha = progress;
+  }
 
   CGFloat maxWidth = self.bounds.size.width;
   widthConstraint.constant =
@@ -1235,6 +1290,18 @@ CGFloat Interpolate(CGFloat from, CGFloat to, CGFloat percent) {
   self.fakeOmniboxContainer.transform = CGAffineTransformIdentity;
 }
 
+#pragma mark - UIView
+
+- (void)layoutSubviews {
+  [super layoutSubviews];
+  if (self.blurBackgroundView) {
+    CGRect blurFrame = self.bounds;
+    blurFrame.size.height += kHeaderBlurBottomExtension;
+    self.blurBackgroundView.frame = blurFrame;
+  }
+  [self updateBlurMaskLayout];
+}
+
 #pragma mark - NewTabPageHeaderConsumer
 
 - (void)setOmniboxInBottomPosition:(BOOL)isBottomOmnibox {
@@ -1281,6 +1348,7 @@ CGFloat Interpolate(CGFloat from, CGFloat to, CGFloat percent) {
     [self addConstraintsForLogoView:_searchEngineLogoView
                         fakeOmnibox:self.fakeOmniboxContainer
                       andHeaderView:self];
+    [self updateFakeboxDisplay];
   }
 }
 
@@ -1420,6 +1488,15 @@ CGFloat Interpolate(CGFloat from, CGFloat to, CGFloat percent) {
 // palette, or defaults if neither are set.
 - (void)applyBackgroundTheme {
   // Fakebox coloring looks at image/color/default to determine correct colors.
+  if (!IsChromeNextIaEnabled() && IsNewTabPageUICleanupEnabled()) {
+    self.backgroundColor = UIColor.clearColor;
+    self.blurBackgroundView.alpha = _lastAnimationPercent;
+  } else if (!IsChromeNextIaEnabled() ||
+             (!CanShowTabStrip(self) &&
+              ShouldApplyFakeboxBackgroundAndShadow())) {
+    self.backgroundColor = [HeaderBackgroundColor(self)
+        colorWithAlphaComponent:_lastAnimationPercent];
+  }
   [self setFakeboxColorsWithProgress:_lastAnimationPercent];
 }
 
@@ -1764,6 +1841,23 @@ CGFloat Interpolate(CGFloat from, CGFloat to, CGFloat percent) {
   }
 }
 
+// Updates the frame and gradient stop locations for the blur mask layer.
+- (void)updateBlurMaskLayout {
+  if (!_blurMaskLayer || !self.blurBackgroundView) {
+    return;
+  }
+  [CATransaction begin];
+  [CATransaction setDisableActions:YES];
+  _blurMaskLayer.frame = self.blurBackgroundView.bounds;
+  CGFloat totalHeight = self.blurBackgroundView.bounds.size.height;
+  if (totalHeight > 0) {
+    CGFloat headerHeight = self.bounds.size.height;
+    CGFloat fadeStartStop =
+        std::clamp<CGFloat>(headerHeight / totalHeight, 0.0, 1.0);
+    _blurMaskLayer.locations = @[ @0.0, @(fadeStartStop), @1.0 ];
+  }
+  [CATransaction commit];
+}
 
 #pragma mark - helpers
 
@@ -2215,10 +2309,7 @@ CGFloat Interpolate(CGFloat from, CGFloat to, CGFloat percent) {
 }
 
 - (UIView*)fakeOmniboxView {
-  if (IsComposeboxIOSEnabled()) {
-    return self.fakeOmniboxContainer;
-  }
-  return self.fakeLocationBar;
+  return self.fakeOmniboxContainer;
 }
 
 - (CGFloat)pinnedOffsetY {

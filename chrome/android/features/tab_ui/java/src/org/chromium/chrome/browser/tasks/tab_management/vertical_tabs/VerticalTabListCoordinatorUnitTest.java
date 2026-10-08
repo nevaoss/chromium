@@ -75,6 +75,7 @@ import org.chromium.base.test.util.Features.EnableFeatures;
 import org.chromium.base.test.util.HistogramWatcher;
 import org.chromium.base.test.util.UserActionTester;
 import org.chromium.chrome.browser.app.tabwindow.TabWindowManagerSingleton;
+import org.chromium.chrome.browser.back_press.BackPressManager;
 import org.chromium.chrome.browser.browser_controls.BrowserControlsStateProvider;
 import org.chromium.chrome.browser.collaboration.CollaborationServiceFactory;
 import org.chromium.chrome.browser.commerce.ShoppingServiceFactory;
@@ -132,17 +133,18 @@ import org.chromium.chrome.browser.tasks.tab_management.TabListRecyclerView;
 import org.chromium.chrome.browser.tasks.tab_management.TabProperties;
 import org.chromium.chrome.browser.tasks.tab_management.TabProperties.TabActionState;
 import org.chromium.chrome.browser.tasks.tab_management.TabProperties.UiType;
+import org.chromium.chrome.browser.tasks.tab_management.TabSwitcherBackPressHandlerManager;
 import org.chromium.chrome.browser.tasks.tab_management.TabSwitcherDragHandler;
-import org.chromium.chrome.browser.tasks.tab_management.vertical_tabs.VerticalTabHoverCardController.TabHoverCardListener;
+import org.chromium.chrome.browser.tasks.tab_management.vertical_tabs.VerticalTabHoverController.TabHoverListener;
 import org.chromium.chrome.browser.tasks.tab_management.vertical_tabs.VerticalTabListProperties.RailCollapseState;
 import org.chromium.chrome.browser.ui.favicon.FaviconHelper;
 import org.chromium.chrome.browser.ui.favicon.FaviconHelperJni;
 import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager;
-import org.chromium.chrome.browser.ui.vertical_tabs.VerticalTabUtils;
 import org.chromium.chrome.browser.undo_tab_close_snackbar.UndoBarThrottle;
 import org.chromium.chrome.tab_ui.R;
 import org.chromium.components.browser_ui.desktop_windowing.AppHeaderState;
 import org.chromium.components.browser_ui.desktop_windowing.DesktopWindowStateManager;
+import org.chromium.components.browser_ui.widget.gesture.BackPressHandler;
 import org.chromium.components.collaboration.CollaborationService;
 import org.chromium.components.collaboration.ServiceStatus;
 import org.chromium.components.commerce.core.ShoppingService;
@@ -159,7 +161,6 @@ import org.chromium.ui.dragdrop.DragDropGlobalState;
 import org.chromium.ui.dragdrop.DragDropMetricUtils;
 import org.chromium.ui.dragdrop.DragDropMetricUtils.DragDropType;
 import org.chromium.ui.modelutil.MVCListAdapter;
-import org.chromium.ui.modelutil.PropertyKey;
 import org.chromium.ui.modelutil.PropertyModel;
 import org.chromium.ui.modelutil.SimpleRecyclerViewAdapter;
 import org.chromium.ui.widget.RectProvider;
@@ -183,7 +184,8 @@ import java.util.function.Supplier;
     ChromeFeatureList.DATA_SHARING_JOIN_ONLY,
     ChromeFeatureList.TASK_MANAGER_CLANK,
     TabGroupsFeatureMap.UPDATE_TAB_GROUP_COLORS,
-    ChromeFeatureList.ANIMATED_IMAGE_DRAG_SHADOW
+    ChromeFeatureList.ANIMATED_IMAGE_DRAG_SHADOW,
+    ChromeFeatureList.CLANK_GLIC_CONTEXT_MENU
 })
 public class VerticalTabListCoordinatorUnitTest {
     @Rule public MockitoRule mMockitoRule = MockitoJUnit.rule();
@@ -225,6 +227,7 @@ public class VerticalTabListCoordinatorUnitTest {
     @Mock private Supplier<TabContentManager> mTabContentManagerSupplier;
     @Mock private TabContentManager mTabContentManager;
     @Mock private BrowserControlsStateProvider mBrowserControlsStateProvider;
+    @Mock private BackPressManager mBackPressManager;
     @Mock private TabHoverCardView mTabHoverCardView;
     @Mock private TabGroupHoverCardView mTabGroupHoverCardView;
     @Mock private ServiceStatus mServiceStatus;
@@ -410,6 +413,10 @@ public class VerticalTabListCoordinatorUnitTest {
 
         assertNotNull(mSelectorObserverCaptor.getValue());
         verify(mTabModelSelector).addObserver(mSelectorObserverCaptor.getValue());
+        verify(mBackPressManager)
+                .addHandler(
+                        any(TabSwitcherBackPressHandlerManager.class),
+                        eq(BackPressHandler.Type.CANCEL_TAB_SWITCHER_DRAG));
     }
 
     @Test
@@ -484,8 +491,11 @@ public class VerticalTabListCoordinatorUnitTest {
         SimpleRecyclerViewAdapter pinnedAdapter =
                 (SimpleRecyclerViewAdapter) pinnedRecyclerView.getAdapter();
 
+        when(mBackPressManager.has(BackPressHandler.Type.CANCEL_TAB_SWITCHER_DRAG))
+                .thenReturn(true);
         mCoordinator.destroy();
 
+        verify(mBackPressManager).removeHandler(BackPressHandler.Type.CANCEL_TAB_SWITCHER_DRAG);
         verify(mTabModelSelector).removeObserver(observer);
         verify(mTabStripContextMenuCoordinator).destroy();
         assertNull(
@@ -1342,10 +1352,6 @@ public class VerticalTabListCoordinatorUnitTest {
     @Test
     @SmallTest
     public void testIncognitoButtonClick() {
-        FeatureOverrides.overrideParam(
-                ChromeFeatureList.ANDROID_VERTICAL_TABS,
-                VerticalTabUtils.INCOGNITO_BUTTON_PARAM,
-                true);
         when(mIncognitoTabModel.getCount()).thenReturn(1);
         when(mTabModelSelector.isIncognitoSelected()).thenReturn(false);
 
@@ -1363,10 +1369,6 @@ public class VerticalTabListCoordinatorUnitTest {
     @Test
     @SmallTest
     public void testIncognitoButtonVisibility_TabletUnder10Inches() {
-        FeatureOverrides.overrideParam(
-                ChromeFeatureList.ANDROID_VERTICAL_TABS,
-                VerticalTabUtils.INCOGNITO_BUTTON_PARAM,
-                true);
         when(mIncognitoTabModel.getCount()).thenReturn(1);
         IncognitoUtils.setShouldOpenIncognitoAsWindowForTesting(false);
         IncognitoUtils.setEnabledForTesting(true);
@@ -1380,10 +1382,6 @@ public class VerticalTabListCoordinatorUnitTest {
     @Test
     @SmallTest
     public void testIncognitoButtonVisibility_TabletOver10Inches() {
-        FeatureOverrides.overrideParam(
-                ChromeFeatureList.ANDROID_VERTICAL_TABS,
-                VerticalTabUtils.INCOGNITO_BUTTON_PARAM,
-                true);
         when(mIncognitoTabModel.getCount()).thenReturn(1);
         IncognitoUtils.setShouldOpenIncognitoAsWindowForTesting(true);
         IncognitoUtils.setEnabledForTesting(true);
@@ -1396,28 +1394,7 @@ public class VerticalTabListCoordinatorUnitTest {
 
     @Test
     @SmallTest
-    public void testIncognitoButtonVisibility_ParamDisabled() {
-        FeatureOverrides.overrideParam(
-                ChromeFeatureList.ANDROID_VERTICAL_TABS,
-                VerticalTabUtils.INCOGNITO_BUTTON_PARAM,
-                false);
-        when(mIncognitoTabModel.getCount()).thenReturn(1);
-        IncognitoUtils.setShouldOpenIncognitoAsWindowForTesting(false);
-        IncognitoUtils.setEnabledForTesting(true);
-        createCoordinator();
-        ImageButton incognitoButton =
-                mCoordinator.getView().findViewById(R.id.new_incognito_tab_button);
-        assertNotNull(incognitoButton);
-        assertEquals(View.GONE, incognitoButton.getVisibility());
-    }
-
-    @Test
-    @SmallTest
     public void testIncognitoButtonVisibility_NoIncognitoTabs_Gone() {
-        FeatureOverrides.overrideParam(
-                ChromeFeatureList.ANDROID_VERTICAL_TABS,
-                VerticalTabUtils.INCOGNITO_BUTTON_PARAM,
-                true);
         when(mIncognitoTabModel.getCount()).thenReturn(0);
         IncognitoUtils.setShouldOpenIncognitoAsWindowForTesting(false);
         IncognitoUtils.setEnabledForTesting(true);
@@ -1431,10 +1408,6 @@ public class VerticalTabListCoordinatorUnitTest {
     @Test
     @SmallTest
     public void testIncognitoButtonVisibility_UpdatesDynamically() {
-        FeatureOverrides.overrideParam(
-                ChromeFeatureList.ANDROID_VERTICAL_TABS,
-                VerticalTabUtils.INCOGNITO_BUTTON_PARAM,
-                true);
         when(mIncognitoTabModel.getCount()).thenReturn(0);
         IncognitoUtils.setShouldOpenIncognitoAsWindowForTesting(false);
         IncognitoUtils.setEnabledForTesting(true);
@@ -1526,7 +1499,8 @@ public class VerticalTabListCoordinatorUnitTest {
                         mTabGroupHoverCardViewStub,
                         mTabContentManagerSupplier,
                         mUndoBarThrottle,
-                        mBrowserControlsStateProvider);
+                        mBrowserControlsStateProvider,
+                        mBackPressManager);
 
         View containerView = mCoordinator.getView();
         containerView.setVisibility(View.VISIBLE);
@@ -2020,10 +1994,9 @@ public class VerticalTabListCoordinatorUnitTest {
 
         // While context menu is showing, attempting to hover a tab should not show a hover card.
         when(mTabContextMenuCoordinator.isMenuShowing()).thenReturn(true);
-        TabHoverCardListener hoverListener = mCoordinator.getTabHoverCardListenerForTesting();
+        TabHoverListener hoverListener = mCoordinator.getTabHoverListenerForTesting();
         assertNotNull(hoverListener);
-        hoverListener.onTabHoverCardStateChanged(
-                tab.getId(), mMockChildView, /* isHovered= */ true);
+        hoverListener.onTabHoverStateChanged(tab.getId(), mMockChildView, /* isHovered= */ true);
         ShadowLooper.runUiThreadTasksIncludingDelayedTasks();
 
         verify(mTabHoverCardView, never()).show(any(), anyFloat(), anyFloat());
@@ -2043,6 +2016,16 @@ public class VerticalTabListCoordinatorUnitTest {
         verify(mMainTabSwitcherDragHandler, atLeastOnce()).setDragHandlerDelegate(captor.capture());
 
         captor.getValue().handleDragStart(10f, 10f);
+
+        verify(mTabHoverCardView).hide();
+    }
+
+    @Test
+    @SmallTest
+    public void testHoverCard_RailCollapse_HidesHoverCard() {
+        prepareAndShowHoverCard(mMockTab1);
+
+        mCoordinator.setRailCollapseState(RailCollapseState.COLLAPSED);
 
         verify(mTabHoverCardView).hide();
     }
@@ -3161,6 +3144,30 @@ public class VerticalTabListCoordinatorUnitTest {
 
     @Test
     @SmallTest
+    public void testDragHandlerDelegate_HandleInternalDragEnd_No_Drag() {
+        createCoordinator();
+
+        ArgumentCaptor<TabSwitcherDragHandler.DragHandlerDelegate> mainCaptor =
+                ArgumentCaptor.forClass(TabSwitcherDragHandler.DragHandlerDelegate.class);
+        verify(mMainTabSwitcherDragHandler).setDragHandlerDelegate(mainCaptor.capture());
+        TabSwitcherDragHandler.DragHandlerDelegate mainDelegate = mainCaptor.getValue();
+        assertNotNull(mainDelegate);
+        assertFalse(mainDelegate.isDragInProcess());
+        assertEquals(
+                BackPressHandler.BackPressResult.SUCCESS, mainDelegate.handleInternalDragEnd());
+
+        ArgumentCaptor<TabSwitcherDragHandler.DragHandlerDelegate> pinnedCaptor =
+                ArgumentCaptor.forClass(TabSwitcherDragHandler.DragHandlerDelegate.class);
+        verify(mPinnedTabSwitcherDragHandler).setDragHandlerDelegate(pinnedCaptor.capture());
+        TabSwitcherDragHandler.DragHandlerDelegate pinnedDelegate = pinnedCaptor.getValue();
+        assertNotNull(pinnedDelegate);
+        assertFalse(pinnedDelegate.isDragInProcess());
+        assertEquals(
+                BackPressHandler.BackPressResult.SUCCESS, pinnedDelegate.handleInternalDragEnd());
+    }
+
+    @Test
+    @SmallTest
     public void testGroupHeaderDragOut_CollapsedGroup_PassesStripDragShadowView() {
         Token tabGroupId = new Token(1L, 2L);
         Tab tab1 = prepareMockTab(mMockTab1, TAB_ID_1);
@@ -4111,8 +4118,178 @@ public class VerticalTabListCoordinatorUnitTest {
     }
 
     // =============================================================================================
+    // Pinned Tabs Separator Visibility Tests
+    // =============================================================================================
+
+    @Test
+    @SmallTest
+    public void testPinnedTabsSeparator_InitialState_Expanded() {
+        setupMockTabModelWithPinnedAndRegularTabs(/* pinnedCount= */ 1, /* regularCount= */ 1);
+        createCoordinator();
+
+        assertEquals(
+                "Separator must be gone when rail is expanded.",
+                View.GONE,
+                getPinnedTabsSeparatorView().getVisibility());
+    }
+
+    @Test
+    @SmallTest
+    public void testPinnedTabsSeparator_Collapsed_BothTabTypesPresent_ShowsSeparator() {
+        setupMockTabModelWithPinnedAndRegularTabs(/* pinnedCount= */ 1, /* regularCount= */ 1);
+        createCoordinator();
+
+        mCoordinator.setRailCollapseState(RailCollapseState.COLLAPSED);
+        assertEquals(
+                "Separator must be visible when the rail is collapsed with pinned + regular tabs.",
+                View.VISIBLE,
+                getPinnedTabsSeparatorView().getVisibility());
+
+        mCoordinator.setRailCollapseState(RailCollapseState.EXPANDED);
+        assertEquals(
+                "Separator must be gone when the rail expands.",
+                View.GONE,
+                getPinnedTabsSeparatorView().getVisibility());
+    }
+
+    @Test
+    @SmallTest
+    public void testPinnedTabsSeparator_Collapsed_ZeroPinnedTabs_HidesSeparator() {
+        setupMockTabModelWithPinnedAndRegularTabs(/* pinnedCount= */ 0, /* regularCount= */ 1);
+        createCoordinator();
+
+        mCoordinator.setRailCollapseState(RailCollapseState.COLLAPSED);
+        assertEquals(
+                "Separator must be gone when there are no pinned tabs.",
+                View.GONE,
+                getPinnedTabsSeparatorView().getVisibility());
+    }
+
+    @Test
+    @SmallTest
+    public void testPinnedTabsSeparator_Collapsed_ZeroRegularTabs_HidesSeparator() {
+        setupMockTabModelWithPinnedAndRegularTabs(/* pinnedCount= */ 1, /* regularCount= */ 0);
+        createCoordinator();
+
+        mCoordinator.setRailCollapseState(RailCollapseState.COLLAPSED);
+        assertEquals(
+                "Separator must be gone when there are zero regular tabs.",
+                View.GONE,
+                getPinnedTabsSeparatorView().getVisibility());
+    }
+
+    @Test
+    @SmallTest
+    public void testPinnedTabsSeparator_TabModelObserver_AddAndRemoveRegularTabs() {
+        // Start off with just 1 pinned tab. Separator is gone.
+        setupMockTabModelWithPinnedAndRegularTabs(/* pinnedCount= */ 1, /* regularCount= */ 0);
+        createCoordinator();
+        mCoordinator.setRailCollapseState(RailCollapseState.COLLAPSED);
+
+        View separator = getPinnedTabsSeparatorView();
+        assertEquals(View.GONE, separator.getVisibility());
+
+        // Add regular tab -> separator becomes visible.
+        Tab regularTab = mock(Tab.class);
+        prepareMockTab(regularTab, 99);
+        when(regularTab.getIsPinned()).thenReturn(false);
+
+        when(mTabModel.getCount()).thenReturn(2);
+        when(mTabModel.getPinnedTabsCount()).thenReturn(1);
+        for (TabModelObserver observer : mTabModelObservers) {
+            observer.didAddTab(
+                    regularTab,
+                    TabLaunchType.FROM_CHROME_UI,
+                    TabCreationState.LIVE_IN_FOREGROUND,
+                    /* markedForSelection= */ true);
+        }
+        assertEquals(View.VISIBLE, separator.getVisibility());
+
+        // Remove regular tab -> separator becomes gone.
+        when(mTabModel.getCount()).thenReturn(1);
+        when(mTabModel.getPinnedTabsCount()).thenReturn(1);
+        for (TabModelObserver observer : mTabModelObservers) {
+            observer.didRemoveTabForClosure(regularTab);
+        }
+        assertEquals(View.GONE, separator.getVisibility());
+    }
+
+    @Test
+    @SmallTest
+    public void testPinnedTabsSeparator_TabModelObserver_DidChangePinState() {
+        List<Tab> tabs =
+                setupMockTabModelWithPinnedAndRegularTabs(
+                        /* pinnedCount= */ 1, /* regularCount= */ 1);
+        Tab regularTab = tabs.get(/* index= */ 1);
+
+        createCoordinator();
+        mCoordinator.setRailCollapseState(RailCollapseState.COLLAPSED);
+
+        // One pinned tab and one regular tab, collapsed rail -> separator visible.
+        View separator = getPinnedTabsSeparatorView();
+        assertEquals(View.VISIBLE, separator.getVisibility());
+
+        // Pin the last regular tab -> 2 pinned, 0 regular -> separator gone.
+        when(regularTab.getIsPinned()).thenReturn(true);
+        when(mTabModel.getPinnedTabsCount()).thenReturn(2);
+        for (TabModelObserver observer : mTabModelObservers) {
+            observer.didChangePinState(regularTab);
+        }
+        assertEquals(View.GONE, separator.getVisibility());
+
+        // Unpin -> 1 pinned, 1 regular -> separator visible.
+        when(regularTab.getIsPinned()).thenReturn(false);
+        when(mTabModel.getPinnedTabsCount()).thenReturn(1);
+        for (TabModelObserver observer : mTabModelObservers) {
+            observer.didChangePinState(regularTab);
+        }
+        assertEquals(View.VISIBLE, separator.getVisibility());
+    }
+
+    // =============================================================================================
     // Helper Methods
     // =============================================================================================
+
+    /**
+     * Configures {@link #mTabModel} tab counts and creates mock pinned and regular tabs.
+     *
+     * @param pinnedCount Number of pinned tabs.
+     * @param regularCount Number of regular tabs.
+     * @return List containing all created mock tabs.
+     */
+    private List<Tab> setupMockTabModelWithPinnedAndRegularTabs(int pinnedCount, int regularCount) {
+        List<Tab> tabs = new ArrayList<>();
+        int tabId = 1;
+
+        // Create mock pinned tabs.
+        for (int i = 0; i < pinnedCount; i++) {
+            Tab tab = mock(Tab.class);
+            prepareMockTab(tab, tabId++);
+            when(tab.getIsPinned()).thenReturn(true);
+            tabs.add(tab);
+        }
+
+        // Create mock regular tabs.
+        for (int i = 0; i < regularCount; i++) {
+            Tab tab = mock(Tab.class);
+            prepareMockTab(tab, tabId++);
+            when(tab.getIsPinned()).thenReturn(false);
+            tabs.add(tab);
+        }
+        // getCount is the combined count (pinned tabs + regular tabs).
+        when(mTabModel.getCount()).thenReturn(tabs.size());
+        when(mTabModel.getPinnedTabsCount()).thenReturn(pinnedCount);
+        when(mTabModel.getRepresentativeTabList()).thenReturn(tabs);
+        // Creates a new iterator every time the method is called.
+        when(mTabModel.iterator()).thenAnswer(inv -> tabs.iterator());
+        return tabs;
+    }
+
+    /** Returns the separator view attached to the coordinator's layout. */
+    private View getPinnedTabsSeparatorView() {
+        VerticalTabRailLayout layout = (VerticalTabRailLayout) mCoordinator.getView();
+        return layout.getPinnedTabsSeparatorView();
+    }
 
     /** Helper method to instantiate {@link VerticalTabListCoordinator} for testing. */
     private void createCoordinator() {
@@ -4152,7 +4329,8 @@ public class VerticalTabListCoordinatorUnitTest {
                         mTabGroupHoverCardViewStub,
                         mTabContentManagerSupplier,
                         mUndoBarThrottle,
-                        mBrowserControlsStateProvider);
+                        mBrowserControlsStateProvider,
+                        mBackPressManager);
 
         mCoordinator.getCollapseController().setRailCollapseListener(mMockRailCollapseListener);
     }
@@ -4178,7 +4356,8 @@ public class VerticalTabListCoordinatorUnitTest {
                         mTabGroupHoverCardViewStub,
                         mTabContentManagerSupplier,
                         mUndoBarThrottle,
-                        mBrowserControlsStateProvider);
+                        mBrowserControlsStateProvider,
+                        mBackPressManager);
 
         mCoordinator.getCollapseController().setRailCollapseListener(mMockRailCollapseListener);
     }
@@ -4345,17 +4524,9 @@ public class VerticalTabListCoordinatorUnitTest {
         downEvent.recycle();
     }
 
-    // TODO(crbug.com/509226293): Add TAB_ACTION_STATE to ALL_KEYS_VERTICAL_TAB in TabProperties
-    // instead.
     /** Creates a {@link PropertyModel} with keys needed for drag shadow binding. */
     private PropertyModel createTabPropertyModel() {
-        return new PropertyModel.Builder(
-                        PropertyModel.concatKeys(
-                                TabProperties.ALL_KEYS_VERTICAL_TAB,
-                                new PropertyKey[] {
-                                    TabProperties.TAB_ACTION_STATE,
-                                    TabProperties.TAB_GROUP_COLOR_VIEW_PROVIDER
-                                }))
+        return new PropertyModel.Builder(TabProperties.ALL_KEYS_VERTICAL_TAB)
                 .with(TabProperties.TAB_ACTION_STATE, TabActionState.CLOSABLE)
                 .build();
     }
@@ -4403,9 +4574,9 @@ public class VerticalTabListCoordinatorUnitTest {
         when(mTabModelSelector.getCurrentTabId()).thenReturn(TAB_ID_2);
         when(mTabModel.getTabById(TAB_ID_1)).thenReturn(tab);
 
-        TabHoverCardListener hoverListener = mCoordinator.getTabHoverCardListenerForTesting();
+        TabHoverListener hoverListener = mCoordinator.getTabHoverListenerForTesting();
         assertNotNull(hoverListener);
-        hoverListener.onTabHoverCardStateChanged(TAB_ID_1, mMockChildView, /* isHovered= */ true);
+        hoverListener.onTabHoverStateChanged(TAB_ID_1, mMockChildView, /* isHovered= */ true);
         ShadowLooper.runUiThreadTasksIncludingDelayedTasks();
 
         verify(mTabHoverCardView).show(anyFloat(), anyFloat());
@@ -4701,5 +4872,87 @@ public class VerticalTabListCoordinatorUnitTest {
 
         delegate.handleInternalDragEnd();
         verify(mTabModel).setIndex(0, TabSelectionType.FROM_DRAG);
+    }
+
+    @Test
+    @SmallTest
+    public void testSetInTransition_RequestsLayout() {
+        createCoordinator();
+        TabListRecyclerView pinnedRecyclerView =
+                mCoordinator.getView().findViewById(R.id.pinned_tabs_recycler_view);
+        TabListRecyclerView spyPinnedRecyclerView = spy(pinnedRecyclerView);
+        ReflectionHelpers.setField(mCoordinator, "mPinnedTabsRecyclerView", spyPinnedRecyclerView);
+
+        clearInvocations(spyPinnedRecyclerView);
+
+        // Transition start does not request layout (handled by container width change).
+        mCoordinator.setInTransition(true);
+        ReflectionHelpers.callInstanceMethod(
+                verify(spyPinnedRecyclerView, never()), "requestLayout");
+
+        clearInvocations(spyPinnedRecyclerView);
+
+        // Transition end triggers layout to recycle extra items back to viewport bounds.
+        mCoordinator.setInTransition(false);
+        ReflectionHelpers.callInstanceMethod(verify(spyPinnedRecyclerView), "requestLayout");
+    }
+
+    @Test
+    @SmallTest
+    public void testCalculatePinnedExtraLayoutSpace_NotTransitioning() {
+        createCoordinator();
+        int[] extraLayoutSpace = new int[2];
+        RecyclerView.State state = mock(RecyclerView.State.class);
+        when(state.getItemCount()).thenReturn(30);
+
+        mCoordinator.calculatePinnedExtraLayoutSpace(mActivity, state, extraLayoutSpace);
+
+        assertEquals(0, extraLayoutSpace[0]);
+        assertEquals(0, extraLayoutSpace[1]);
+    }
+
+    @Test
+    @SmallTest
+    public void testCalculatePinnedExtraLayoutSpace_InTransition() {
+        createCoordinator();
+        mCoordinator.setInTransition(true);
+        int[] extraLayoutSpace = new int[2];
+        RecyclerView.State state = mock(RecyclerView.State.class);
+
+        int itemHeight =
+                TabVerticalViewBinder.getPinnedItemHeight(mActivity)
+                        + mActivity
+                                .getResources()
+                                .getDimensionPixelSize(
+                                        R.dimen.vertical_tab_pinned_item_margin_bottom);
+        TabListRecyclerView pinnedRecyclerView =
+                mCoordinator.getView().findViewById(R.id.pinned_tabs_recycler_view);
+        int padding = pinnedRecyclerView.getPaddingTop() + pinnedRecyclerView.getPaddingBottom();
+
+        // 0 items: falls back to container/display height.
+        when(state.getItemCount()).thenReturn(0);
+        mCoordinator.calculatePinnedExtraLayoutSpace(mActivity, state, extraLayoutSpace);
+        int baseHeight = extraLayoutSpace[0];
+        assertTrue(baseHeight > 0);
+        assertEquals(baseHeight, extraLayoutSpace[1]);
+
+        // Many items: scales with total content height.
+        extraLayoutSpace[0] = 0;
+        extraLayoutSpace[1] = 0;
+        when(state.getItemCount()).thenReturn(30);
+        mCoordinator.calculatePinnedExtraLayoutSpace(mActivity, state, extraLayoutSpace);
+        int expectedHeight = 30 * itemHeight + padding;
+        assertEquals(expectedHeight, extraLayoutSpace[0]);
+        assertEquals(expectedHeight, extraLayoutSpace[1]);
+
+        // Excessive items: capped at baseHeight * MAX_SINGLE_ROW_SPAN_COUNT + padding.
+        extraLayoutSpace[0] = 0;
+        extraLayoutSpace[1] = 0;
+        when(state.getItemCount()).thenReturn(500);
+        mCoordinator.calculatePinnedExtraLayoutSpace(mActivity, state, extraLayoutSpace);
+        int expectedCap =
+                baseHeight * VerticalTabListCoordinator.MAX_SINGLE_ROW_SPAN_COUNT + padding;
+        assertEquals(expectedCap, extraLayoutSpace[0]);
+        assertEquals(expectedCap, extraLayoutSpace[1]);
     }
 }

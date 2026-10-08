@@ -65,6 +65,7 @@
 #include "components/web_modal/web_contents_modal_dialog_manager.h"
 #include "content/public/browser/browser_context.h"
 #include "content/public/browser/context_menu_params.h"
+#include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/navigation_handle.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/web_contents.h"
@@ -72,6 +73,8 @@
 #include "google_apis/gaia/gaia_id.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
+#include "ui/base/page_transition_types.h"
+#include "ui/base/window_open_disposition.h"
 #include "ui/views/controls/webview/webview.h"
 #include "ui/views/layout/fill_layout.h"
 #include "ui/views/view.h"
@@ -103,6 +106,9 @@ constexpr int kWindowTitleId = IDS_PRODUCT_NAME;
 
 constexpr int kWindowWidth = 1024;
 constexpr int kWindowHeight = 758;
+constexpr int kWindowWidthIncreased = 1600;
+constexpr int kWindowHeightIncreased = 1000;
+
 constexpr float kMaxRatioOfWorkArea = 0.9;
 
 constexpr int kSupportedAcceleratorCommands[] = {
@@ -813,7 +819,11 @@ std::u16string ProfilePickerView::GetAccessibleWindowTitle() const {
 
 gfx::Size ProfilePickerView::CalculatePreferredSize(
     const views::SizeBounds& available_size) const {
-  gfx::Size preferred_size = gfx::Size(kWindowWidth, kWindowHeight);
+  gfx::Size preferred_size = gfx::Size(
+      switches::IsPreFirstRunDesktopRefreshEnabled() ? kWindowWidthIncreased
+                                                     : kWindowWidth,
+      switches::IsPreFirstRunDesktopRefreshEnabled() ? kWindowHeightIncreased
+                                                     : kWindowHeight);
   gfx::Size work_area_size = GetWidget()->GetWorkAreaBoundsInScreen().size();
   // Keep the window smaller then |work_area_size| so that it feels more like a
   // dialog then like the actual Chrome window.

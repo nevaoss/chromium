@@ -62,7 +62,6 @@
 #import "ios/chrome/browser/default_browser/model/default_browser_interest_signals.h"
 #import "ios/chrome/browser/default_browser/model/promo_source.h"
 #import "ios/chrome/browser/default_browser/promo/public/features.h"
-#import "ios/chrome/browser/docking_promo/model/docking_promo_scene_agent.h"
 #import "ios/chrome/browser/enterprise/data_protection/coordinator/data_protection_scene_agent.h"
 #import "ios/chrome/browser/enterprise/model/idle/idle_service.h"
 #import "ios/chrome/browser/enterprise/model/idle/idle_service_factory.h"
@@ -167,6 +166,7 @@
 #import "ios/chrome/browser/whats_new/coordinator/promo/whats_new_scene_agent.h"
 #import "ios/chrome/browser/window_activities/model/window_activity_helpers.h"
 #import "ios/chrome/common/app_group/app_group_constants.h"
+#import "ios/chrome/common/app_group/app_group_utils.h"
 #import "ios/chrome/common/ui/reauthentication/reauthentication_module.h"
 #import "ios/chrome/grit/ios_strings.h"
 #import "ios/components/webui/web_ui_url_constants.h"
@@ -672,7 +672,7 @@ UrlLoadParams UpdateParamsForDinoGame(UrlLoadParams params) {
         NOTREACHED() << "Credential import is available on iOS 26+ only.";
       }
     case TRIGGER_GEMINI_PROMO:
-      if (IsAppStoreInAppEventsEnabled()) {
+      if (IsPageActionMenuEnabled()) {
         return ^{
           [weakSelf triggerGeminiFlowFromAppStoreEvent];
         };
@@ -1386,11 +1386,7 @@ UrlLoadParams UpdateParamsForDinoGame(UrlLoadParams params) {
 }
 
 - (BOOL)shareExtensionURLEligibleForAccountChange:(NSURL*)URL {
-  return [URL.path
-      isEqualToString:
-          [NSString
-              stringWithFormat:@"/%s",
-                               app_group::kChromeAppGroupXCallbackCommand]];
+  return app_group::IsShareExtensionCommandURL(URL);
 }
 
 - (URLContext*)findContextRequiringAccountChange:
@@ -1897,7 +1893,7 @@ UrlLoadParams UpdateParamsForDinoGame(UrlLoadParams params) {
   }
 
   if (IsSigninForcedByPolicy()) {
-    if (self.mainCoordinator.isSigninInProgress) {
+    if (self.sceneState.signinInProgress) {
       // Return NO because intents cannot be handled when a sign-in is in
       // progress.
       return NO;
@@ -2054,11 +2050,6 @@ UrlLoadParams UpdateParamsForDinoGame(UrlLoadParams params) {
     [sceneState addAgent:[[LevelUpSceneAgent alloc] init]];
   }
 
-  if (IsDockingPromoV2Enabled()) {
-    [sceneState addAgent:[[DockingPromoSceneAgent alloc]
-                             initWithPromosManager:promosManager]];
-  }
-
   if (IsDefaultBrowserPictureInPictureEnabled()) {
     [sceneState addAgent:[[PictureInPictureSceneAgent alloc] init]];
   }
@@ -2132,14 +2123,25 @@ UrlLoadParams UpdateParamsForDinoGame(UrlLoadParams params) {
 }
 
 // Dismisses modal dialogs via the scene handler and optionally dismisses the
-// omnibox.
+// omnibox and Gemini.
 - (void)dismissModalDialogsWithCompletion:(ProceduralBlock)completion
-                           dismissOmnibox:(BOOL)dismissOmnibox {
+                           dismissOmnibox:(BOOL)dismissOmnibox
+                            dismissGemini:(BOOL)dismissGemini {
   id<SceneCommands> sceneHandler = HandlerForProtocol(
       self.currentBrowserForURLLoading->GetCommandDispatcher(), SceneCommands);
   [sceneHandler dismissModalDialogsWithCompletion:completion
                                    dismissOmnibox:dismissOmnibox
-                                 dismissSnackbars:YES];
+                                 dismissSnackbars:YES
+                                    dismissGemini:dismissGemini];
+}
+
+// Dismisses modal dialogs via the scene handler and optionally dismisses the
+// omnibox.
+- (void)dismissModalDialogsWithCompletion:(ProceduralBlock)completion
+                           dismissOmnibox:(BOOL)dismissOmnibox {
+  [self dismissModalDialogsWithCompletion:completion
+                           dismissOmnibox:dismissOmnibox
+                            dismissGemini:YES];
 }
 
 // Begins the process of activating the given current model, switching which BVC
@@ -2457,23 +2459,32 @@ UrlLoadParams UpdateParamsForDinoGame(UrlLoadParams params) {
   // the dismissal logic must be explicitly addressed here.
   //
   // Refer to crbug.com/470968439 for additional context.
-  if (IsComposeboxIOSEnabled()) {
-    BOOL alreadyInIncognito = self.currentInterface.profile->IsOffTheRecord();
-    BOOL targetModeIncognito =
-        targetMode == ApplicationModeForTabOpening::INCOGNITO;
-    // The composebox UI and its dependencies are browser-scoped and
-    // instantiated upon creation.
-    //
-    // When the context changes (e.g., transitioning to Incognito mode), any
-    // preexisting Composebox UI must be dismissed and recreated to ensure its
-    // underlying dependencies remain synchronized with the new environment.
-    if (alreadyInIncognito != targetModeIncognito) {
-      dismissOmnibox = YES;
+  BOOL alreadyInIncognito = self.currentInterface.profile->IsOffTheRecord();
+  BOOL targetModeIncognito =
+      targetMode == ApplicationModeForTabOpening::INCOGNITO;
+  // The composebox UI and its dependencies are browser-scoped and
+  // instantiated upon creation.
+  //
+  // When the context changes (e.g., transitioning to Incognito mode), any
+  // preexisting Composebox UI must be dismissed and recreated to ensure its
+  // underlying dependencies remain synchronized with the new environment.
+  if (alreadyInIncognito != targetModeIncognito) {
+    dismissOmnibox = YES;
+  }
+
+  BOOL dismissGemini = YES;
+  if (targetMode != ApplicationModeForTabOpening::INCOGNITO) {
+    TabOpeningPostOpeningAction postOpeningAction =
+        self.startupParameters.postOpeningAction;
+    if (postOpeningAction == START_GEMINI_AI_SUMMARIZATION ||
+        postOpeningAction == TRIGGER_GEMINI_PROMO) {
+      dismissGemini = NO;
     }
   }
 
   [self dismissModalDialogsWithCompletion:dismissModalsCompletion
-                           dismissOmnibox:dismissOmnibox];
+                           dismissOmnibox:dismissOmnibox
+                            dismissGemini:dismissGemini];
 }
 
 - (void)dismissModalsAndOpenMultipleTabsWithURLs:(const std::vector<GURL>&)URLs
@@ -2483,17 +2494,15 @@ UrlLoadParams UpdateParamsForDinoGame(UrlLoadParams params) {
   __weak SceneController* weakSelf = self;
   std::vector<GURL> copyURLs = URLs;
 
-  if (IsComposeboxIOSEnabled()) {
-    BOOL alreadyInIncognito = self.currentInterface.profile->IsOffTheRecord();
-    // The composebox UI and its dependencies are browser-scoped and
-    // instantiated upon creation.
-    //
-    // When the context changes (e.g., transitioning to Incognito mode), any
-    // preexisting Composebox UI must be dismissed and recreated to ensure its
-    // underlying dependencies remain synchronized with the new environment.
-    if (alreadyInIncognito != incognitoMode) {
-      dismissOmnibox = YES;
-    }
+  BOOL alreadyInIncognito = self.currentInterface.profile->IsOffTheRecord();
+  // The composebox UI and its dependencies are browser-scoped and
+  // instantiated upon creation.
+  //
+  // When the context changes (e.g., transitioning to Incognito mode), any
+  // preexisting Composebox UI must be dismissed and recreated to ensure its
+  // underlying dependencies remain synchronized with the new environment.
+  if (alreadyInIncognito != incognitoMode) {
+    dismissOmnibox = YES;
   }
 
   [self

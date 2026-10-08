@@ -8,6 +8,7 @@
 <translation id="102763973188675173">Tinkinkite ir valdykite „Google Chrome“. Pasiekiamas naujinys.</translation>
 <translation id="1028061813283459617">Norėdami ištrinti naršymo duomenis tik iš šio įrenginio ir palikti juos „Google“ paskyroje, <ph name="BEGIN_LINK" />atsijunkite nuo „Chrome“<ph name="END_LINK" />.</translation>
 <translation id="1028770388543831319">Gaukite geriausias „Google“ saugos funkcijas keliaudami, naudodami „Chrome“ programą telefone</translation>
+<translation id="1036348656032585052">Išjungti</translation>
 <translation id="1042270987544905725">Spustelėkite, kad uždarytumėte „Chrome“ prisijungimo dialogo langą</translation>
 <translation id="1051793555070215510">Padėkite mums tobulinti inkognito režimą dalyvaudami šioje vienos minutės trukmės apklausoje.</translation>
 <translation id="1055295352198814912">Rodyti „Gemini“ naršyklėje „Chrome“ kompiuterio „Mac“ meniu juostoje ir įjungti sparčiuosius klavišus</translation>
@@ -30,13 +31,13 @@ Kai kurios funkcijos gali būti nepasiekiamos ir nuostatų pakeitimai nebus išs
 <translation id="1197860368385086056">Kitą kartą atidarius „Chrome“ įrenginyje „<ph name="DEVICE_TYPE" />“, bus pateiktas raginimas įgalinti kainų stebėjimo įspėjimus.</translation>
 <translation id="1203500561924088507">Dėkojame už diegimą. Turite iš naujo paleisti naršyklę, prieš naudodami „<ph name="BUNDLE_NAME" />“.</translation>
 <translation id="1278833599417554002">Paleisti iš naujo atnaujinant „&amp;Chrome“</translation>
+<translation id="1289911795790071537">Atidaryti paiešką naudojant „Chrome“</translation>
 <translation id="1290883685122687410">Sąrankos klaida: <ph name="METAINSTALLER_EXIT_CODE" />. <ph name="WINDOWS_ERROR" /></translation>
 <translation id="1302523850133262269">Palaukite, kol „Chrome“ įdiegs naujausius sistemos naujinius.</translation>
 <translation id="1330562121671411446">Aptikti kalbą</translation>
 <translation id="1333654552732143316">Paleisti „Chrome“</translation>
 <translation id="1341711321000856656">Galite perjungti, kad būtų rodomi slaptažodžiai iš kito „Chrome“ profilio</translation>
 <translation id="1343830902827845050">Prisijungimas prie „Chrome“</translation>
-<translation id="1356661055722410047">Naujiena! Galite versti ir tekstą, ir vaizdus ekrane</translation>
 <translation id="1361351916482714918">Naršykite išmaniau su „Google Lens“</translation>
 <translation id="1363996462118479832">„Chrome“ OS nepavyko sinchronizuoti duomenų, nes prisijungiant įvyko klaida.</translation>
 <translation id="137466361146087520">„Google Chrome“ beta</translation>
@@ -97,6 +98,7 @@ Kai kurios funkcijos gali būti nepasiekiamos ir nuostatų pakeitimai nebus išs
 <translation id="1873233029667955273">„Google Chrome“ nėra numatytoji naršyklė</translation>
 <translation id="1874309113135274312">„Google Chrome“ beta („mDNS-In“)</translation>
 <translation id="1877026089748256423">„Chrome“ versija yra pasenusi</translation>
+<translation id="1877067026701708502"><ph name="EXISTING_USER" /> jau prisijungė. Jei norite atskirti naršymą, prisijunkite prie „Chrome“ savo profilyje kaip <ph name="USER_EMAIL_ADDRESS" />. Be to, plėtinius ir kitus duomenis pasieksite visuose įrenginiuose.</translation>
 <translation id="1880677175115548835">Pasirinkti tekstą</translation>
 <translation id="1896602904211344018">Gauti „Chrome“ programą</translation>
 <translation id="1919130412786645364">Leisti „Chrome“ prisijungti</translation>
@@ -111,6 +113,7 @@ Kai kurios funkcijos gali būti nepasiekiamos ir nuostatų pakeitimai nebus išs
 <translation id="2034233344106846793">„Chrome“ automatiškai naujovina nesaugius ryšius į HTTPS, kai tai įmanoma</translation>
 <translation id="2039417478970545937">Nustatymai.</translation>
 <translation id="2040220733769034247">Nuskaitykite QR kodą telefonu, kad atsisiųstumėte „Chrome“ ir prisijungtumėte prie „Google“ paskyros.</translation>
+<translation id="2044908892530830113">Rodyti paiešką naudojant „Chrome“ kompiuterio „Mac“ meniu juostoje ir įjungti spartųjį klavišą</translation>
 <translation id="2050189601866423230">Galite prisegti „Google“ paieškos DI režimą, kad naršydami galėtumėte užduoti klausimų</translation>
 <translation id="2091012649849228750">Jei norite gauti būsimus „Google Chrome“ naujinius, jums reikės 10 ar naujesnės versijos „Windows“. Šiame kompiuteryje naudojama 8 versijos „Windows“.</translation>
 <translation id="2094648590148273905">„ChromeOS Flex“ sąlygos</translation>
@@ -138,6 +141,7 @@ Kai kurios funkcijos gali būti nepasiekiamos ir nuostatų pakeitimai nebus išs
 <translation id="2284380654876659752">Kai apsilankote svetainėje, „Chrome“ siunčia klaidinančią URL dalį <ph name="BEGIN_LINK" />„Google“ saugaus naršymo funkcijai<ph name="END_LINK" /> per privatumo serverį, slepiantį jūsų IP adresą. Jei svetainė atlieka ką nors įtartino, siunčiami ir visi URL bei puslapio turinio dalys.</translation>
 <translation id="2290014774651636340">Trūksta „Google“ API raktų. Bus išjungtos kai kurios „Google Chrome“ funkcijos.</translation>
 <translation id="2290095356545025170">Ar tikrai norite pašalinti „Google Chrome“?</translation>
+<translation id="2295218613066132598">Rodyti „Chrome“ svetainių sparčiuosius klavišus</translation>
 <translation id="2301513536169703857">Jei norite pasiekti slaptažodžius, žymes ir kitas funkcijas visuose įrenginiuose, prisijunkite prie „Chrome“</translation>
 <translation id="2307973900865360088">Palikti doke</translation>
 <translation id="2309047409763057870">Tai yra antrinis „Google Chrome“ diegimas, todėl ji negali būti nustatyta kaip numatytoji naršyklė.</translation>
@@ -246,6 +250,7 @@ Jei šis puslapis neveikia taip, kaip tikimasi, pabandykite leisti naudoti optim
 <translation id="3282568296779691940">Prisijungti prie „Chrome“</translation>
 <translation id="3286538390144397061">Paleisti iš naujo dabar</translation>
 <translation id="3292333338048274092">Tada turėsite iš naujo paleisti „Chrome“.</translation>
+<translation id="3294686910656423119">Naudojimo statistika ir strigčių ataskaitos</translation>
 <translation id="3327226547491422998">Vėliau „Chrome“ gali paklausti, ar norite naudoti išsaugotą informaciją automatiškai užpildydami formas</translation>
 <translation id="3352986031709923790">viršutinis dešinysis paieškos srities kampas: dešinė – <ph name="RIGHT" /> %, viršus – <ph name="TOP" /> %</translation>
 <translation id="3360895254066713204">„Chrome“ pagalbos priemonė</translation>
@@ -349,6 +354,7 @@ Jei šis puslapis neveikia taip, kaip tikimasi, pabandykite leisti naudoti optim
 <translation id="436060642166082913">„Chrome“ užblokavo šį atsisiuntimą, nes failas gali pakenkti asmeninėms ir socialinių tinklų paskyroms</translation>
 <translation id="4367027658822022112">Galite prisegti „Google Lens“, kad lengvai pasiektumėte; spustelėkite mygtuką „Prisegti“ šoninio skydelio viršuje</translation>
 <translation id="4372389195695053189">„Chrome“ dabar yra numatytoji naršyklė</translation>
+<translation id="4381814455597163081">Padedate tobulinti „Chrome“ siųsdami „Google“ naudojimo statistiką ir strigčių ataskaitas. <ph name="BEGIN_LINK" />Tvarkykite<ph name="END_LINK" /></translation>
 <translation id="4389991535395284064">Kai naršysite inkognito režimu, „Chrome“ perspės jus prieš įkeliant svetainę, kurioje naudojamas nesaugus ryšys</translation>
 <translation id="4400772909124543403">Naujinių nėra</translation>
 <translation id="4427306783828095590">Naudojant sustiprintą apsaugą pasitelkiama papildomų priemonių sukčiavimui ir kenkėjiškoms programoms užblokuoti</translation>
@@ -479,6 +485,7 @@ Kai kurios funkcijos gali būti nepasiekiamos. Nurodykite kitą profilio katalog
 <translation id="5824893331272123205">Nepavyko įkelti šio skydelio, bandykite dar kartą</translation>
 <translation id="5825922397106002626">Pašalinti „<ph name="EXTENSION_NAME" />“ iš „Chrome“</translation>
 <translation id="5858486459377137936">Būsite atjungti nuo daugelio svetainių, kai uždarysite visus „Chrome“ langus, išskyrus „Google“ paskyrą, jei esate prisijungę prie „Chrome“. Jei norite, kad svetainės jus prisimintų, <ph name="SETTINGS_LINK" />.</translation>
+<translation id="5860491529813859533">Įjungti</translation>
 <translation id="586971344380992563"><ph name="BEGIN_LINK" />„Chrome“ jus įspėja<ph name="END_LINK" /> apie nesaugias svetaines ir atsisiuntimus</translation>
 <translation id="5894164573378901688">Jei norite naudoti „Gemini“ naršyklėje „Chrome“, prisijunkite naudodami kitą „Google“ paskyrą</translation>
 <translation id="5895138241574237353">Paleisti iš naujo</translation>
@@ -519,9 +526,11 @@ Kai kurios funkcijos gali būti nepasiekiamos. Nurodykite kitą profilio katalog
 <translation id="6166185671393271715">Slaptažodžių importavimas į „Chrome“</translation>
 <translation id="6169866489629082767"><ph name="PAGE_TITLE" />– „Google Chrome“</translation>
 <translation id="6173637689840186878">„<ph name="PAGE_TITLE" />“ – „Google Chrome Beta“</translation>
+<translation id="6177442314419606057">Paieška naršyklėje „Chrome“</translation>
 <translation id="6180522807229584611">Šiam skirtukui naudojami papildomi šaltiniai. Kad padidintumėte našumą, leiskite „Chrome“ jį padaryti neaktyvų.</translation>
 <translation id="6182736845697986886">Įdiegti nepavyko dėl vidinės atnaujinimo serverio klaidos.</translation>
 <translation id="6192058120268468905">Jūsų paskyra naršyklėje „Chrome“</translation>
+<translation id="6195202018542972563">Rodyti paiešką naudojant „Chrome“ sistemos juostelėje ir įjungti spartųjį klavišą</translation>
 <translation id="6235018212288296708">„Google Chrome“ skirta taisyklė, pagal kurią leidžiamas mDNS srautas.</translation>
 <translation id="624230925347970731">„Chrome“ netrukus bus uždaryta</translation>
 <translation id="6247557882553405851">„Google“ slaptažodžių tvarkytuvė</translation>
@@ -540,6 +549,7 @@ Kai kurios funkcijos gali būti nepasiekiamos. Nurodykite kitą profilio katalog
 <translation id="6334815226785304306">Padaryti „Google Chrome“ numatytąja naršykle ir prisegti prie užduočių juostos</translation>
 <translation id="63540178978900677">„Chrome“ nebėra numatytoji naršyklė. Padaryti „Chrome“ numatytąja naršykle?</translation>
 <translation id="6360449101159168105">Kol šis skirtukas buvo neaktyvus, atmintis buvo atlaisvinta, kad „Chrome“ veiktų sparčiai. Galite pasirinkti visada išskirti šią svetainę, kad būtų aktyvi.</translation>
+<translation id="6362984640667950211"><ph name="EXISTING_USER" /> jau prisijungė. Jei norite atskirti naršymą, prisijunkite prie „Chrome“ savo profilyje kaip <ph name="USER_EMAIL_ADDRESS" />. Be to, skaitymo sąrašą ir kitus duomenis pasieksite visuose įrenginiuose.</translation>
 <translation id="6388799252195623474">padėkite man tai padaryti</translation>
 <translation id="6412673304250309937">Tikrinami URL pagal nesaugių svetainių sąrašą, saugomą naršyklėje „Chrome“. Jei svetainė bando pavogti slaptažodį ar atsisiuntėte žalingą failą, „Chrome“ taip pat gali siųsti URL, įskaitant puslapio turinio dalis, Saugaus naršymo funkcijai.</translation>
 <translation id="6417690341895039567">{COUNT,plural, =1{Organizacija automatiškai uždaro „Chrome“, kai nenaudojama vieną minutę. Naršymo duomenys ištrinami. Tai gali būti istorija, automatinis pildymas ir atsisiuntimai.}one{Organizacija automatiškai uždaro „Chrome“, kai nenaudojama # minutę. Naršymo duomenys ištrinami. Tai gali būti istorija, automatinis pildymas ir atsisiuntimai.}few{Organizacija automatiškai uždaro „Chrome“, kai nenaudojama # minutes. Naršymo duomenys ištrinami. Tai gali būti istorija, automatinis pildymas ir atsisiuntimai.}many{Organizacija automatiškai uždaro „Chrome“, kai nenaudojama # minutės. Naršymo duomenys ištrinami. Tai gali būti istorija, automatinis pildymas ir atsisiuntimai.}other{Organizacija automatiškai uždaro „Chrome“, kai nenaudojama # minučių. Naršymo duomenys ištrinami. Tai gali būti istorija, automatinis pildymas ir atsisiuntimai.}}</translation>
@@ -563,8 +573,10 @@ Kai kurios funkcijos gali būti nepasiekiamos. Nurodykite kitą profilio katalog
 <translation id="652948702951888897">„Chrome“ istorija</translation>
 <translation id="6532945796722480006">Atidaryti „Gemini“ naršyklėje „Chrome Canary“</translation>
 <translation id="6539493053177300926">Lengvai pasiekite ir naudokite „Gemini“ naršyklėje „Chrome“ įrenginyje, net jei „Chrome“ yra sumažinta.</translation>
+<translation id="6556755379298048869">Ieškokite naudodami spartųjį klavišą.</translation>
 <translation id="6585124893636629274">Uždaryti „Gemini“ naršyklėje „Chrome“</translation>
 <translation id="659498884637196217">„Google“ slaptažodžių tvarkytuvė šiame įrenginyje</translation>
+<translation id="6612152958212564387">Nesiunčiate naudojimo statistikos ir strigčių ataskaitų „Google“. <ph name="BEGIN_LINK" />Tvarkykite<ph name="END_LINK" /></translation>
 <translation id="6613949864921837107">Užtikrinkite, kad slaptažodžiai, žymės ir istorija būtų tobulai sinchronizuojami įrenginiuose, nustatę „Chrome“ kaip numatytąją naršyklę.</translation>
 <translation id="6631524303639368205">Tęskite ten, kur baigėte: „Chrome“ atkūrė skirtukus iš paskutinio seanso. Tai galite išjungti skiltyje</translation>
 <translation id="6632473616050862500">„ChromeOS Flex“ pasiekiama naudojant papildomą <ph name="BEGIN_LINK_CROS_OSS" />atvirojo šaltinio programinę įrangą<ph name="END_LINK_CROS_OSS" />.</translation>
@@ -589,7 +601,9 @@ Kai kurios funkcijos gali būti nepasiekiamos. Nurodykite kitą profilio katalog
 <translation id="683440813066116847">„Canary“ versijos „Google Chrome“ skirta taisyklė, pagal kurią leidžiamas gaunamas mDNS srautas.</translation>
 <translation id="684888714667046800">Nepavyksta prisijungti prie interneto. Jei naudojate užkardą, įsitikinkite, kad „<ph name="PRODUCT_EXE_NAME" />“ yra leidžiamųjų sąraše.</translation>
 <translation id="6859580922007887573">Jei norite tęsti, paspauskite tabuliavimo klavišą</translation>
+<translation id="6869568587896659271">Lengvai pasiekite svetaines po adreso juosta</translation>
 <translation id="6877155553248388166">apatinis dešinysis paieškos srities kampas: dešinė – <ph name="RIGHT" /> %, apačia – <ph name="BOTTOM" /> %</translation>
+<translation id="6879791154455204815">Atidaryti paiešką naudojant „Chrome“</translation>
 <translation id="6881299373831449287">„Chrome“ atnaujinimas</translation>
 <translation id="6885412569789873916">„Chrome“ beta versijos programos</translation>
 <translation id="6893363893008038481">Pašalinti paskyrą iš „Chrome“</translation>
@@ -648,6 +662,7 @@ Kai kurios funkcijos gali būti nepasiekiamos. Nurodykite kitą profilio katalog
 <translation id="7449333426561673451">{COUNT,plural, =1{Organizacija automatiškai uždaro „Chrome“, kai nenaudojama vieną minutę.}one{Organizacija automatiškai uždaro „Chrome“, kai nenaudojama # minutę.}few{Organizacija automatiškai uždaro „Chrome“, kai nenaudojama # minutes.}many{Organizacija automatiškai uždaro „Chrome“, kai nenaudojama # minutės.}other{Organizacija automatiškai uždaro „Chrome“, kai nenaudojama # minučių.}}</translation>
 <translation id="7450541714075000668">Tekstas nukopijuotas</translation>
 <translation id="7452987490177144319">{COUNT,plural, =1{Jūsų organizacija automatiškai ištrina naršymo duomenis, kai „Chrome“ nenaudojama vieną minutę. Tai gali būti istorija, automatinis pildymas ir atsisiuntimai. Skirtukai liks atidaryti.}one{Jūsų organizacija automatiškai ištrina naršymo duomenis, kai „Chrome“ nenaudojama # minutę. Tai gali būti istorija, automatinis pildymas ir atsisiuntimai. Skirtukai liks atidaryti.}few{Jūsų organizacija automatiškai ištrina naršymo duomenis, kai „Chrome“ nenaudojama # minutes. Tai gali būti istorija, automatinis pildymas ir atsisiuntimai. Skirtukai liks atidaryti.}many{Jūsų organizacija automatiškai ištrina naršymo duomenis, kai „Chrome“ nenaudojama # minutės. Tai gali būti istorija, automatinis pildymas ir atsisiuntimai. Skirtukai liks atidaryti.}other{Jūsų organizacija automatiškai ištrina naršymo duomenis, kai „Chrome“ nenaudojama # minučių. Tai gali būti istorija, automatinis pildymas ir atsisiuntimai. Skirtukai liks atidaryti.}}</translation>
+<translation id="7466577301922356468">Automatiškai siunčiant šiuos duomenis „Google“, padedama tobulinti „Chrome“. Galite bet kada pakeisti šį nustatymą.</translation>
 <translation id="7477130805345743099">„Chrome“ perspės jus prieš įkeliant bet kokią svetainę, kurioje naudojamas nesaugus ryšys</translation>
 <translation id="7481213027396403996">Patikimiausios „Chrome“ saugos užtikrinimas</translation>
 <translation id="749228101751499733">Kai esate prisijungę, galite naudoti slaptažodžius ir daugiau iš „Google“ paskyros „Chrome“ įrenginyje. Paspaudę <ph name="SHORTCUT" /> galite pakeisti „Google“ paslaugų nustatymus.</translation>
@@ -681,6 +696,7 @@ Kai kurios funkcijos gali būti nepasiekiamos. Nurodykite kitą profilio katalog
 <translation id="7736869414036750079">Jūsų organizacija reikalauja prisijungti prie „Chrome“</translation>
 <translation id="7747138024166251722">Diegimo programai nepavyko sukurti laikino katalogo. Patikrinkite, ar yra laisvos vietos diske ir, ar leidžiama įdiegti programinę įrangą.</translation>
 <translation id="7748969056734910029">Pastaruoju metu nesilankėte. „Chrome“ pašalino <ph name="PERMISSION_1" />, <ph name="PERMISSION_2" />.</translation>
+<translation id="7759944311003584891">Paieška naudojant „Chrome“</translation>
 <translation id="7761834446675418963">Spustelėkite savo vardą, kad atidarytumėte „Chrome“ ir pradėtumėte naršyti.</translation>
 <translation id="7777080907402804672">Jei nebus naudingo vaizdo aprašo, „Chrome“ bandys jums jį pateikti. Kad būtų galima kurti aprašus, vaizdai siunčiami į sistemą „Google“. Šią parinktį galite bet kada išjungti skiltyje „Nustatymai“.</translation>
 <translation id="778331955594035129">„Chrome“ reikalingas leidimas pasiekti vietovės duomenis šioje svetainėje</translation>
@@ -694,6 +710,7 @@ Kai kurios funkcijos gali būti nepasiekiamos. Nurodykite kitą profilio katalog
 <translation id="7845233973568007926">Dėkojame už diegimą. Turite iš naujo paleisti kompiuterį, prieš naudodami „<ph name="BUNDLE_NAME" />“.</translation>
 <translation id="7847170235260850604">Paleisti „Chrome“ paleidus „Windows“</translation>
 <translation id="7849037457735762883">Tęskite ten, kur baigėte: „Chrome“ gali atkurti skirtukus kiekvieną kartą, kai paleidžiate iš naujo. Jei norite tai įjungti, eikite į</translation>
+<translation id="7868731902994556427"><ph name="EXISTING_USER" /> jau prisijungė. Jei norite atskirti naršymą, prisijunkite prie „Chrome“ savo profilyje kaip <ph name="USER_EMAIL_ADDRESS" />. Be to, plėtinius ir kitus duomenis pasieksite <ph name="DEVICE" />.</translation>
 <translation id="7869620795354551924">Jei norite naudoti išsaugotus slaptažodžius, vadovaukitės QR kodu, atsisiųskite „iOS“ skirtą „Chrome“ ir prisijunkite prie „Google“ paskyros</translation>
 <translation id="7872446069773932638">Atsisiunčiama... Liko <ph name="SECONDS" /> sek.</translation>
 <translation id="7886087451482920026">Pasirinkite tekstą naudodami „Google Lens“</translation>
@@ -780,7 +797,6 @@ Naujų žymių negalima išsaugoti paskyroje, kol ištrinsite kai kurias žymes.
 <translation id="8575047640889685742">Naudokite <ph name="BEGIN_LINK" />savo slaptafrazę<ph name="END_LINK" />, kad užšifruotumėte visus „Chrome“ duomenis „Google“ paskyroje. „Google Pay“ mokėjimo metodai ir adresai nebus šifruojami. Naršymo istorija iš „Chrome“ nebus sinchronizuojama.</translation>
 <translation id="8590782867495422699">Iš naujo atidaryti „Google“ paieškos DI režimą</translation>
 <translation id="8598779894319572882">Naudodami įrankių juostos mygtuką „Google“ paieškos DI režimas“ galite iš naujo atidaryti „Google“ paieškos DI režimą ir užduoti klausimų, kol naršote</translation>
-<translation id="8601359445272098721">Naujiena! Galite versti tekstą ir vaizdus ekrane pasirinkę mygtuką „Išversti ekrano turinį“</translation>
 <translation id="8614913330719544658">„Google Chrome“ neatsako. Paleisti iš naujo dabar?</translation>
 <translation id="8623450603356630491">Prisijunkite prie „Chrome“ telefone</translation>
 <translation id="8624541899164515475">Nustatymai, atidaroma naujame skirtuke.</translation>
@@ -792,11 +808,13 @@ Naujų žymių negalima išsaugoti paskyroje, kol ištrinsite kai kurias žymes.
 <translation id="8679801911857917785">Ji taip pat kontroliuoja, koks puslapis rodomas, kai paleidžiate „Chrome“.</translation>
 <translation id="8712637175834984815">Supratau</translation>
 <translation id="8712767363896337380">Beveik atnaujinta! Paleiskite „Chrome“ iš naujo, kad būtų užbaigtas atnaujinimas.</translation>
+<translation id="8717554232729236539"><ph name="EXISTING_USER" /> jau prisijungė. Jei norite atskirti naršymą, prisijunkite prie „Chrome“ savo profilyje kaip <ph name="USER_EMAIL_ADDRESS" />. Be to, skaitymo sąrašą ir kitus duomenis pasieksite <ph name="DEVICE" />.</translation>
 <translation id="8718062187489036808">Atsijungti nuo „Chrome“</translation>
 <translation id="873133009373065397">„Google Chrome“ nepavyko aptikti arba nustatyti numatytosios naršyklės</translation>
 <translation id="8747073452963259673">apatinis kairysis paieškos srities kampas: kairė – <ph name="LEFT" /> %, apačia – <ph name="BOTTOM" /> %</translation>
 <translation id="8748735421235723888">„Chrome“ atlaisvina atminties iš neaktyvių skirtukų. Taip aktyviems skirtukams ir kitoms programoms suteikiama daugiau kompiuterio išteklių ir „Chrome“ veikia sparčiai. Neaktyvūs skirtukai automatiškai vėl tampa aktyvūs, kai grįžtate į juos. <ph name="BEGIN_LINK" />Sužinokite daugiau apie Atminties taupymo priemonę<ph name="END_LINK" /></translation>
 <translation id="8765470054473112089">Kai įvedate tekstą adreso juostoje ar paieškos laukelyje, „Chrome“ siunčia tai, ką įvedate, į numatytąjį paieškos variklį, kad gautų geresnių pasiūlymų. Ši funkcija inkognito režimu išjungta.</translation>
+<translation id="8771516687880083607">Pasirinkite, ką norite bendrinti su „Chrome“</translation>
 <translation id="8781673607513845160">Jei norite naudoti vaizdo kamerą, suteikite „Chrome“ prieigą <ph name="BEGIN_LINK" />sistemos nustatymuose<ph name="END_LINK" /></translation>
 <translation id="878572486461146056">Diegimo klaida: tinklo administratorius taiko grupių politiką, pagal kurią neleidžiama įdiegti: <ph name="INSTALL_ERROR" /></translation>
 <translation id="8796919761992612392">„C&amp;hrome“ tinkinimas</translation>

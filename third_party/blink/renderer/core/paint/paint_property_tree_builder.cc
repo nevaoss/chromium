@@ -211,6 +211,7 @@ void PaintPropertyTreeBuilder::SetupContextForFrame(
     context.current.paint_offset +=
         PhysicalOffset(frame_view.DeprecatedLocation());
   }
+  context.current.line_clamp_float_clip_state.reset();
   context.rendering_context_id = 0;
   context.should_flatten_inherited_transform = true;
   context.absolute_position = context.current;
@@ -326,6 +327,7 @@ class FragmentPaintPropertyTreeBuilder {
   ALWAYS_INLINE void UpdateInnerBorderRadiusClip();
   ALWAYS_INLINE void UpdateInnerBorderShapeClip();
   ALWAYS_INLINE void UpdateOverflowClip();
+  ALWAYS_INLINE void UpdateLineClampFloatClip();
   ALWAYS_INLINE void UpdatePerspective();
   ALWAYS_INLINE void UpdateReplacedContentTransform();
   ALWAYS_INLINE void UpdateScrollAndScrollTranslation();
@@ -1058,10 +1060,7 @@ void FragmentPaintPropertyTreeBuilder::UpdateAnchorPositionScrollTranslation() {
       // TODO(crbug.com/1309178): We should disable composited scrolling if the
       // snapshot's scrollers do not match the current scrollers.
 
-      DCHECK(object_.GetDocument().Printing() ||
-             (RuntimeEnabledFeatures::CanvasDrawElementEnabled(
-                  object_.GetDocument().GetExecutionContext()) &&
-              object_.IsInCanvasSubtree()) ||
+      DCHECK(object_.GetDocument().Printing() || object_.IsInCanvasSubtree() ||
              full_context_.direct_compositing_reasons.Has(
                  CompositingReason::kAnchorPosition));
       state.direct_compositing_reasons =
@@ -1116,9 +1115,15 @@ void FragmentPaintPropertyTreeBuilder::UpdateElementCanvasTransform() {
   if (NeedsPaintPropertyUpdate()) {
     if (NeedsElementCanvasTransform(object_)) {
       const auto& element = *To<Element>(object_.GetNode());
-      const auto* canvas_transform = element.GetUsedCanvasTransform();
-      TransformPaintPropertyNode::State state{
-          {canvas_transform ? *canvas_transform : gfx::Transform()}};
+      gfx::Transform transform;
+      if (const auto* canvas_transform = element.GetUsedCanvasTransform()) {
+        transform = *canvas_transform;
+        float zoom = object_.StyleRef().EffectiveZoom();
+        if (zoom != 1.f) {
+          transform.Zoom(zoom);
+        }
+      }
+      TransformPaintPropertyNode::State state{{transform}};
       state.flattens_inherited_transform =
           context_.should_flatten_inherited_transform;
       state.rendering_context_id = context_.rendering_context_id;
@@ -2636,9 +2641,7 @@ void FragmentPaintPropertyTreeBuilder::UpdateFilter() {
       UpdateFilterEffect(object_, properties_->Filter(), filter_info);
       bool is_filter_tainted = filter_info.operations.OriginTainted();
       bool is_filter_disallowed =
-          RuntimeEnabledFeatures::CanvasDrawElementEnabled(
-              object_.GetDocument().GetExecutionContext()) &&
-          object_.IsInCanvasSubtree() && is_filter_tainted;
+          state.is_in_drawable_canvas_subtree && is_filter_tainted;
       if (!(filter_info.operations.IsEmpty() || is_filter_disallowed)) {
         state.filter_info =
             std::make_unique<EffectPaintPropertyNode::FilterInfo>(
@@ -3053,6 +3056,44 @@ void FragmentPaintPropertyTreeBuilder::UpdateOverflowControlsClip() {
 
   // We don't walk into custom scrollbars in PrePaintTreeWalk because
   // LayoutObjects under custom scrollbars don't support paint properties.
+}
+
+static bool NeedsLineClampFloatClip(const LayoutObject& object,
+                                    PrePaintInfo* pre_paint_info) {
+  if (!object.IsFloating()) [[likely]] {
+    return false;
+  }
+
+  const PhysicalBoxFragment* fragment;
+  if (pre_paint_info && pre_paint_info->box_fragment) {
+    fragment = pre_paint_info->box_fragment;
+  } else {
+    fragment = To<LayoutBox>(object).GetPhysicalFragment(0);
+  }
+
+  DCHECK(fragment);
+  return !fragment->IsHiddenForPaint() && fragment->IsLineClampClippedFloat();
+}
+
+void FragmentPaintPropertyTreeBuilder::UpdateLineClampFloatClip() {
+  DCHECK(properties_);
+
+  if (NeedsPaintPropertyUpdate()) {
+    if (NeedsLineClampFloatClip(object_, pre_paint_info_)) {
+      DCHECK(context_.current.line_clamp_float_clip_state);
+      const auto& state = *context_.current.line_clamp_float_clip_state;
+      OnUpdateClip(properties_->UpdateLineClampFloatClip(
+          *context_.current.clip,
+          ClipPaintPropertyNode::State(*state.transform, gfx::RectF(state.rect),
+                                       ToSnappedClipRect(state.rect))));
+    } else {
+      OnClearClip(properties_->ClearLineClampFloatClip());
+    }
+  }
+
+  if (properties_->LineClampFloatClip()) {
+    context_.current.clip = properties_->LineClampFloatClip();
+  }
 }
 
 static bool NeedsBackgroundClip(const LayoutObject& object) {
@@ -4095,7 +4136,7 @@ void FragmentPaintPropertyTreeBuilder::SetNeedsPaintPropertyUpdateIfNeeded() {
   if (NeedsOverflowClip(box) || NeedsInnerBorderRadiusClip(box) ||
       // The used value of CSS clip may depend on size of the box, e.g. for
       // clip: rect(auto auto auto -5px).
-      NeedsCssClip(box) ||
+      NeedsCssClip(box) || NeedsLineClampFloatClip(object_, pre_paint_info_) ||
       // Relative lengths (e.g., percentage values) in transform, perspective,
       // transform-origin, and perspective-origin can depend on the size of the
       // frame rect, so force a property update if it changes. TODO(pdr): We
@@ -4297,6 +4338,7 @@ void FragmentPaintPropertyTreeBuilder::UpdateForSelf() {
     UpdateCssClip();
     UpdateFilter();
     UpdateOverflowControlsClip();
+    UpdateLineClampFloatClip();
     UpdateBackgroundClip();
   } else if (!object_.IsAnonymous()) {
     // 3D rendering contexts follow the DOM ancestor chain, so
@@ -4306,6 +4348,33 @@ void FragmentPaintPropertyTreeBuilder::UpdateForSelf() {
   }
   UpdateLocalBorderBoxContext();
   UpdateLayoutShiftRootChanged(IsLayoutShiftRoot(object_, fragment_data_));
+
+  // Update `line_clamp_float_clip_state`.
+  if (IsA<LayoutBlockFlow>(object_) &&
+      RuntimeEnabledFeatures::CSSLineClampEnabled()) {
+    if (object_.StyleRef().HasLineClamp()) {
+      // Floats inside a line-clamp container are clipped to the container's
+      // block-end content line, so we make the clip rect infinite in all other
+      // directions.
+      PhysicalRect content_rect = BoxFragment().ContentRect();
+      content_rect.offset += context_.current.paint_offset;
+      PhysicalRect clip_rect(InfiniteIntRect());
+      if (object_.StyleRef().IsHorizontalWritingMode()) {
+        clip_rect.ShiftBottomEdgeTo(content_rect.Bottom());
+      } else if (object_.StyleRef().IsFlippedBlocksWritingMode()) {
+        clip_rect.ShiftLeftEdgeTo(content_rect.X());
+      } else {
+        clip_rect.ShiftRightEdgeTo(content_rect.Right());
+      }
+      DCHECK(context_.current.transform);
+      context_.current.line_clamp_float_clip_state.emplace(
+          *context_.current.transform, clip_rect);
+      full_context_.force_subtree_update_reasons |=
+          PaintPropertyTreeBuilderContext::kSubtreeUpdateIsolationBlocked;
+    } else if (To<LayoutBlockFlow>(object_).CreatesNewFormattingContext()) {
+      context_.current.line_clamp_float_clip_state.reset();
+    }
+  }
 
   // For LayoutView, additional_offset_to_layout_shift_root_delta applies to
   // neither itself nor descendants. For other layout shift roots, we clear the
@@ -4416,9 +4485,7 @@ void FragmentPaintPropertyTreeBuilder::PopulateBackdropFilterIfNeeded(
   }
   if (!operations.IsEmpty()) {
     bool is_filter_disallowed =
-        RuntimeEnabledFeatures::CanvasDrawElementEnabled(
-            object_.GetDocument().GetExecutionContext()) &&
-        object_.IsInCanvasSubtree() && operations.OriginTainted();
+        state.is_in_drawable_canvas_subtree && operations.OriginTainted();
     if (!is_filter_disallowed) {
       state.backdrop_filter_info =
           base::WrapUnique(new EffectPaintPropertyNode::BackdropFilterInfo{
@@ -4454,7 +4521,8 @@ void PaintPropertyTreeBuilder::InitPaintProperties() {
        NeedsOverflowClip(object_) || NeedsPerspective(object_) ||
        NeedsReplacedContentTransform(object_) ||
        NeedsScrollAndScrollTranslation(object_,
-                                       context_.direct_compositing_reasons));
+                                       context_.direct_compositing_reasons) ||
+       NeedsLineClampFloatClip(object_, pre_paint_info_));
 
   // If the object is a text, none of the above function should return true.
   DCHECK(!needs_paint_properties || !object_.IsText());
@@ -4933,9 +5001,7 @@ void PaintPropertyTreeBuilder::IssueInvalidationsAfterUpdate() {
     // Elements under canvas can only be rendered with `drawElementImage` and
     // need to use regular paint invalidation to ensure js is notified of
     // invalidations.
-    if (RuntimeEnabledFeatures::CanvasDrawElementEnabled(
-            object_.GetDocument().GetExecutionContext()) &&
-        object_.IsInCanvasSubtree()) {
+    if (object_.IsInCanvasSubtree()) {
       context_.painting_layer->SetNeedsRepaint();
     }
     object_.GetFrameView()->SetPaintArtifactCompositorNeedsUpdate();
@@ -4987,9 +5053,7 @@ bool PaintPropertyTreeBuilder::CanDoDeferredTransformNodeUpdate(
   // Elements under canvas can only be rendered with `drawElementImage` and need
   // to use regular paint invalidation to ensure js is notified of
   // invalidations.
-  if (RuntimeEnabledFeatures::CanvasDrawElementEnabled(
-          object.GetDocument().GetExecutionContext()) &&
-      object.IsInCanvasSubtree()) {
+  if (object.IsInCanvasSubtree()) {
     return false;
   }
   return true;
@@ -5039,9 +5103,7 @@ bool PaintPropertyTreeBuilder::CanDoDeferredOpacityNodeUpdate(
   // Elements under canvas can only be rendered with `drawElementImage` and need
   // to use regular paint invalidation to ensure js is notified of
   // invalidations.
-  if (RuntimeEnabledFeatures::CanvasDrawElementEnabled(
-          object.GetDocument().GetExecutionContext()) &&
-      object.IsInCanvasSubtree()) {
+  if (object.IsInCanvasSubtree()) {
     return false;
   }
 

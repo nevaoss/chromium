@@ -49,6 +49,7 @@
 #include "chrome/browser/web_applications/web_app_utils.h"
 #include "components/webapps/browser/navigation_capturing_log.h"
 #include "content/public/browser/navigation_throttle.h"
+#include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/site_isolation_policy.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/common/content_features.h"
@@ -116,15 +117,14 @@ bool IsPageTransitionValidForNavigationCapturing(
   return true;
 }
 
-// Returns true if an auxiliary browsing context is getting created, so
-// navigation should be done in the same container that it was triggered in.
-bool IsAuxiliaryBrowsingContext(const NavigateParams& nav_params) {
-  if ((nav_params.contents_to_insert &&
-       nav_params.contents_to_insert->HasOpener()) ||
-      nav_params.opener) {
-    return true;
+content::RenderFrameHost* GetOpener(const NavigateParams& nav_params) {
+  if (nav_params.opener) {
+    return nav_params.opener.get();
   }
-  return false;
+  if (nav_params.contents_to_insert) {
+    return nav_params.contents_to_insert->GetOpener();
+  }
+  return nullptr;
 }
 
 BrowserWindowInterface* CreateWebAppWindowFromNavigationParams(
@@ -173,11 +173,10 @@ void ReparentToAppBrowser(content::WebContents* old_web_contents,
                            /*user_gesture=*/true));
   }
   CHECK(AppBrowserController::IsWebApp(target_browser));
-  ReparentWebContentsIntoBrowserImpl(
-      main_browser, old_web_contents, target_browser,
-      AppBrowserController::From(target_browser)
-          ->IsUrlInHomeTabScope(target_url));
-  CHECK(old_web_contents);
+  ReparentWebContentsIntoBrowserImpl(main_browser, old_web_contents,
+                                     target_browser,
+                                     AppBrowserController::From(target_browser)
+                                         ->IsUrlInHomeTabScope(target_url));
 }
 
 void ReparentWebContentsToTabbedBrowser(
@@ -295,14 +294,16 @@ bool IsCrossIwaNavigation(
     return true;
   }
 
-  // Any links: window.open(), anchor link, meta tag redirect. Cancel
+  // Any links or browser UI navigations (bookmarks, history): Cancel
   // navigations that do not originate from a browser belonging to the target
   // app's family (the app itself, its parent app, or a sibling sub-app),
   // regardless of disposition, before falling through to the
   // disposition-specific handling. With sub-apps, navigations are allowed in
   // all directions as long as both apps are in the same family.
-  if (ui::PageTransitionCoreTypeIs(params.transition,
-                                   ui::PAGE_TRANSITION_LINK) &&
+  if ((ui::PageTransitionCoreTypeIs(params.transition,
+                                    ui::PAGE_TRANSITION_LINK) ||
+       ui::PageTransitionCoreTypeIs(params.transition,
+                                    ui::PAGE_TRANSITION_AUTO_BOOKMARK)) &&
       (!source_browser_app_id ||
        registrar.GetParentAppId(*source_browser_app_id)
                .value_or(*source_browser_app_id) !=
@@ -690,17 +691,18 @@ NavigationCapturingProcess::GetInitialNavigationParamsOverride(
   // Case: Any click (user modified or non-modified) with auxiliary browsing
   // context. Only needs to be handled if it is triggered in the context of an
   // app browser.
-  if (IsAuxiliaryBrowsingContext(params)) {
+  if (content::RenderFrameHost* opener = GetOpener(params)) {
     debug_data_.Set("is_auxiliary_browsing_context", true);
+    const GURL opener_url = opener->GetLastCommittedURL();
+    debug_data_.Set("opener_url", opener_url.possibly_invalid_spec());
     if (!navigation_capturing_settings_
-             ->ShouldAuxiliaryContextsKeepSameContainer(source_browser_app_id_,
-                                                        params.url)) {
+             ->ShouldAuxiliaryContextsKeepSameContainer(
+                 source_browser_app_id_, opener_url, params.url)) {
       return CapturingDisabled();
     }
     if (source_browser_app_id_.has_value()) {
       // Isolated Web Apps have Cross-Origin Opener Policy = Same Site and they
-      // should never have opener relationship with any window. However, if
-      // opener is passed, then IsAuxiliaryBrowsingContext would be true.
+      // should never have opener relationship with any window.
       // This case won't trigger for same-origin, because navigations to
       // isolated-app:// are handled above in HandleIsolatedWebAppNavigation.
       if (registrar.AppMatches(*source_browser_app_id_,
@@ -963,7 +965,7 @@ NavigationCapturingProcess::HandleIsolatedWebAppNavigation(
 
   if (ui::PageTransitionCoreTypeIs(params.transition,
                                    ui::PAGE_TRANSITION_LINK) &&
-      IsAuxiliaryBrowsingContext(params)) {
+      GetOpener(params)) {
     debug_data_.Set("is_auxiliary_browsing_context", true);
     BrowserWindowInterface* aux_window =
         CreateWebAppWindowFromNavigationParams(iwa_id, params);
@@ -971,7 +973,7 @@ NavigationCapturingProcess::HandleIsolatedWebAppNavigation(
   }
 
   // Auxiliary browsing contexts should only be openable via link transitions.
-  CHECK(!IsAuxiliaryBrowsingContext(params));
+  CHECK(!GetOpener(params));
   debug_data_.Set("is_auxiliary_browsing_context", false);
 
   // As per https://bit.ly/pwa-navigation-capturing, user modified clicks (AKA
@@ -1095,7 +1097,13 @@ NavigationCapturingProcess::HandleRedirect() {
   const std::optional<webapps::AppId> initial_launched_app_id =
       launched_app_id_;
 
+  base::WeakPtr<NavigationCapturingProcess> self =
+      weak_ptr_factory_.GetWeakPtr();
   RedirectDecision decision = HandleRedirectImpl();
+
+  if (!self) {
+    return decision.action;
+  }
 
   // If we cancel the current navigation, that target window will manage its own
   // launch state. We exit early here to prevent recording duplicate launches on
@@ -1214,11 +1222,11 @@ NavigationCapturingProcess::HandleRedirectImpl() {
         initial_nav_handling_result_ ==
             NavigationCapturingInitialResult::kNewAppWindow) {
       debug_data_.Set("!redirection_result", "Reparent, btab");
+      redirection_result_ =
+          NavigationCapturingRedirectionResult::kReparentBrowserTabToBrowserTab;
       ReparentWebContentsToTabbedBrowser(web_contents_for_navigation,
                                          disposition_,
                                          navigation_params_browser_);
-      redirection_result_ =
-          NavigationCapturingRedirectionResult::kReparentBrowserTabToBrowserTab;
     } else {
       debug_data_.Set("!redirection_result", "Noop1");
       redirection_result_ = NavigationCapturingRedirectionResult::kSameContext;
@@ -1247,11 +1255,11 @@ NavigationCapturingProcess::HandleRedirectImpl() {
     // standalone-app -> browser-tab-app.
     if (target_display_mode == blink::mojom::DisplayMode::kBrowser) {
       debug_data_.Set("!redirection_result", "app to btab");
+      redirection_result_ =
+          NavigationCapturingRedirectionResult::kReparentAppToBrowserTab;
       ReparentWebContentsToTabbedBrowser(web_contents_for_navigation,
                                          disposition_,
                                          navigation_params_browser_);
-      redirection_result_ =
-          NavigationCapturingRedirectionResult::kReparentAppToBrowserTab;
       return {content::NavigationThrottle::PROCEED, *target_app_id};
     }
     debug_data_.Set("!redirection_result", "app to app");
@@ -1371,11 +1379,11 @@ NavigationCapturingProcess::HandleRedirectImpl() {
     if (initial_nav_handling_result_ ==
         NavigationCapturingInitialResult::kNewAppWindow) {
       debug_data_.Set("!redirection_result", "btab");
+      redirection_result_ =
+          NavigationCapturingRedirectionResult::kAppBrowserTabOpened;
       ReparentWebContentsToTabbedBrowser(web_contents_for_navigation,
                                          disposition_,
                                          navigation_params_browser_);
-      redirection_result_ =
-          NavigationCapturingRedirectionResult::kAppBrowserTabOpened;
     }
     return {content::NavigationThrottle::PROCEED, *target_app_id};
   }

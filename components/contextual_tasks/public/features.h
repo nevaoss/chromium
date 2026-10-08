@@ -20,7 +20,9 @@ BASE_DECLARE_FEATURE(kContextualTasksPrivateApiNoAnimation);
 BASE_DECLARE_FEATURE(kContextualTasksSidePanel);
 BASE_DECLARE_FEATURE(kContextualTasksEphemeralBrandedEntryPoint);
 BASE_DECLARE_FEATURE(kContextualTasksExtraOauthScopes);
+BASE_DECLARE_FEATURE(kContextualTasksDriveOAuthScope);
 BASE_DECLARE_FEATURE(kEnableContextualTasksPinButtonInToolbar);
+BASE_DECLARE_FEATURE(kEphemeralPinningVisibleWhenPermanentlyPinned);
 BASE_DECLARE_FEATURE(kContextualTasksContext);
 BASE_DECLARE_FEATURE(kContextualTasksSearchQuery);
 BASE_DECLARE_FEATURE(kContextualTasksContextMultiTurnTabRelevance);
@@ -70,8 +72,6 @@ BASE_DECLARE_FEATURE(kContextualTasksSendContextualInputUploadType);
 // contextual tasks URL and redirect to aim URL.
 BASE_DECLARE_FEATURE(kContextualTasksUrlRedirectToAimUrl);
 
-// Enables the use of Stratus dark mode colors.
-BASE_DECLARE_FEATURE(kContextualTasksUseStratusDarkModeColors);
 
 // If enabled, animates the caret.
 BASE_DECLARE_FEATURE(kContextualTasksAnimatedCaret);
@@ -140,6 +140,18 @@ BASE_DECLARE_FEATURE(kContextualTasksSidePanelRearchitecture);
 
 // Enables sticky conversation UI that follows the user around.
 BASE_DECLARE_FEATURE(kContextualTasksEnableStickyConversation);
+
+// Enables clicking links in contextual tasks side panel to clobber the active
+// tab next to the side panel instead of opening a new tab.
+BASE_DECLARE_FEATURE(kContextualTasksClobberActiveTab);
+
+// When enabled, allows AIM search URLs to be created and navigated immediately
+// upon starting contextual input uploads without waiting for background
+// network uploads to complete.
+BASE_DECLARE_FEATURE(kContextualTasksNonBlockingUrlNavigation);
+
+// Returns whether non-blocking AIM URL navigation is enabled.
+bool GetIsContextualTasksNonBlockingUrlNavigationEnabled();
 
 BASE_DECLARE_FEATURE(kContextualTasksEnableSpatialModelToolbarLayout);
 
@@ -215,6 +227,10 @@ extern const base::FeatureParam<base::TimeDelta> kPreviousTabRecencyThreshold;
 // Whether Smart Tab Sharing is enabled for the ContextualTasksContext feature.
 extern const base::FeatureParam<bool> kContextualTasksContextSmartTabSharing;
 
+// Whether Smart Tab Sharing should toggle off after query submission.
+extern const base::FeatureParam<bool>
+    kContextualTasksContextToggleOffAfterSubmit;
+
 // Option for smart tab sharing IPH first time prompt.
 enum class SmartTabSharingIphFirstTimePromptOption {
   kIphFirstTimePromptV1,
@@ -269,6 +285,10 @@ extern const base::FeatureParam<bool>
 // Controls whether the contextual task page action should show
 extern const base::FeatureParam<EntryPointOption, true> kShowEntryPoint;
 
+// Returns whether the right hand contextual tasks ephemeral button is enabled
+// when the side panel is right-aligned.
+extern bool GetEnableRightHandContextualTasksEphemeralButton();
+
 // UI Options to expand the contextual tasks side panel to tab.
 extern const base::FeatureParam<ExpandButtonOption, true> kExpandButtonOptions;
 
@@ -319,14 +339,6 @@ extern int GetContextualTasksShowOnboardingTooltipSessionImpressionCap();
 // The maximum number of times the onboarding tooltip can be dismissed by the
 // user before it no longer shows up.
 extern int GetContextualTasksOnboardingTooltipDismissedCap();
-
-// The maximum number of times the lens search tooltip can be dismissed by the
-// user before it no longer shows up.
-extern int GetContextualTasksLensSearchTooltipDismissedCap();
-
-// The maximum number of times the lens search tooltip can be shown to the user
-// in a single session before it no longer shows up.
-extern int GetContextualTasksLensSearchTooltipSessionImpressionCap();
 
 // The maximum number of times the AskG tooltip can be dismissed by the
 // user before it no longer shows up.
@@ -393,6 +405,8 @@ extern bool GetIsContextualTasksSuggestionsEnabled();
 // Returns the timeout for smart tab sharing tab selection.
 extern base::TimeDelta GetSmartTabSharingTabSelectionTimeout();
 
+// Returns whether Smart Tab Sharing should toggle off after query submission.
+extern bool ShouldToggleOffAfterSubmit();
 
 // Enables tab auto-chip for contextual tasks. When disabled, no suggested
 // chips will be shown in the composebox automatically.
@@ -457,8 +471,6 @@ extern bool ShouldEnableCookiePrefetch();
 // from AIM.
 extern bool ShouldEnableLockAndUnlockInputCapability();
 
-// Returns whether the Stratus dark mode colors should be used.
-extern bool ShouldUseStratusDarkModeColors();
 
 // Returns whether the file hint is enabled in the composebox.
 extern bool GetEnableFileHint();
@@ -484,6 +496,8 @@ extern bool GetIsWebpageApcComparisonEnabled();
 
 extern bool IsContextualTasksRearchitectureEnabled();
 extern bool IsContextualTasksSidePanelRearchitectureEnabled();
+extern bool IsContextualTasksClobberActiveTabEnabled();
+extern bool IsContextualTasksUnboundedMenuEnabled();
 
 inline constexpr char kContextualTasksSearchCapabilitiesHeaderName[] =
     "Chrome-Search-Capabilities-Version";
@@ -530,8 +544,12 @@ extern const char kContextualTasksEphemeralBrandedEntryPointName[];
 extern const char kContextualTasksEphemeralBrandedEntryPointDescription[];
 extern const char kContextualTasksSidePanelRearchitectureName[];
 extern const char kContextualTasksSidePanelRearchitectureDescription[];
+extern const char kContextualTasksClobberActiveTabName[];
+extern const char kContextualTasksClobberActiveTabDescription[];
 extern const char kContextualTasksBypassDismissedCapName[];
 extern const char kContextualTasksBypassDismissedCapDescription[];
+extern const char kEphemeralPinningVisibleWhenPermanentlyPinnedName[];
+extern const char kEphemeralPinningVisibleWhenPermanentlyPinnedDescription[];
 
 }  // namespace flag_descriptions
 

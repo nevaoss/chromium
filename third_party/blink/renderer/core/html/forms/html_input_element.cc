@@ -1141,6 +1141,7 @@ void HTMLInputElement::ResetImpl() {
   } else if (input_type_->GetValueMode() == ValueMode::kFilename) {
     SetNonDirtyValue(String());
     SetNeedsValidityCheck();
+    UpdateView();
   }
   SetChecked(FastHasAttribute(html_names::kCheckedAttr));
   dirty_checkedness_ = false;
@@ -1338,8 +1339,7 @@ void HTMLInputElement::SetSuggestedValue(const String& value) {
   needs_to_update_view_value_ = true;
   String sanitized_value = SanitizeValue(value);
 
-  if (RuntimeEnabledFeatures::CanvasDrawElementEnabled(GetExecutionContext()) &&
-      IsInCanvasSubtree()) {
+  if (IsInCanvasSubtree()) {
     // Hide suggested values when under canvas, to prevent leaking this
     // information to javascript.
     sanitized_value = String();
@@ -1367,8 +1367,7 @@ void HTMLInputElement::SetSuggestedValue(const String& value) {
 
 void HTMLInputElement::DidChangeIsInCanvasSubtree() {
   TextControlElement::DidChangeIsInCanvasSubtree();
-  if (IsInCanvasSubtree() &&
-      RuntimeEnabledFeatures::CanvasDrawElementEnabled(GetExecutionContext())) {
+  if (IsInCanvasSubtree()) {
     // Hide suggested values when under canvas, to prevent leaking this
     // information to javascript.
     SetSuggestedValue(String());
@@ -1692,9 +1691,11 @@ void HTMLInputElement::DefaultEventHandler(Event& evt) {
     return;
   }
 
-  if (evt.IsBeforeTextInsertedEvent()) {
-    input_type_view_->HandleBeforeTextInsertedEvent(
-        static_cast<BeforeTextInsertedEvent&>(evt));
+  if (!RuntimeEnabledFeatures::CleanUpActivationBehaviorEnabled()) {
+    if (evt.IsBeforeTextInsertedEvent()) {
+      input_type_view_->HandleBeforeTextInsertedEvent(
+          static_cast<BeforeTextInsertedEvent&>(evt));
+    }
   }
 
   if (mouse_event && evt.type() == event_type_names::kMousedown) {
@@ -1707,6 +1708,14 @@ void HTMLInputElement::DefaultEventHandler(Event& evt) {
 
   if (!call_base_class_early && !evt.DefaultHandled())
     TextControlElement::DefaultEventHandler(evt);
+}
+
+String HTMLInputElement::FilterBeforeTextInserted(const String& text) {
+  CHECK(RuntimeEnabledFeatures::CleanUpActivationBehaviorEnabled());
+  if (input_type_view_) {
+    return input_type_view_->FilterBeforeTextInserted(text);
+  }
+  return text;
 }
 
 ShadowRoot* HTMLInputElement::EnsureShadowSubtree() {
@@ -2752,8 +2761,9 @@ bool HTMLInputElement::HandleCommandInternal(HTMLElement& invoker,
 }
 
 void HTMLInputElement::SetFocused(bool is_focused,
-                                  mojom::blink::FocusType focus_type) {
-  TextControlElement::SetFocused(is_focused, focus_type);
+                                  mojom::blink::FocusType focus_type,
+                                  BlurEventBehavior blur_event_behavior) {
+  TextControlElement::SetFocused(is_focused, focus_type, blur_event_behavior);
   if (input_type_) {
     input_type_->UpdateWheelEventRegistration(/*is_detaching=*/false);
   }

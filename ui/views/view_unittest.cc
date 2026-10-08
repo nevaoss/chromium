@@ -14,7 +14,10 @@
 
 #include "base/command_line.h"
 #include "base/functional/bind.h"
+#include "base/i18n/language_tag.h"
 #include "base/i18n/rtl.h"
+#include "base/i18n/tag_converters.h"
+#include "base/i18n/test/scoped_icu_locale.h"
 #include "base/logging.h"
 #include "base/memory/raw_ptr.h"
 #include "base/rand_util.h"
@@ -5158,7 +5161,8 @@ TEST_F(ViewTest, AddExistingChild) {
 }
 
 TEST_F(ViewTest, UseMirroredLayoutDisableMirroring) {
-  base::i18n::SetICUDefaultLocale("ar");
+  base::i18n::ScopedDefaultIcuLocale scoped_locale(
+      base::i18n::GetKnownLanguageTag("ar"));
   ASSERT_TRUE(base::i18n::IsRTL());
 
   View parent, child1, child2;
@@ -5186,7 +5190,8 @@ TEST_F(ViewTest, UseMirroredLayoutDisableMirroring) {
 }
 
 TEST_F(ViewTest, UseMirroredLayoutEnableMirroring) {
-  base::i18n::SetICUDefaultLocale("en");
+  base::i18n::ScopedDefaultIcuLocale scoped_locale(
+      base::i18n::GetKnownLanguageTag("en"));
   ASSERT_FALSE(base::i18n::IsRTL());
 
   View parent, child1, child2;
@@ -6347,6 +6352,27 @@ TEST_F(ViewLayerTest, RemoveLayerFromRegionsWhenNoViewLayer) {
 
   // Removing layer from regions should not crash even if view has no layer.
   view->RemoveLayerFromRegions(layer.get());
+}
+
+TEST_F(ViewLayerTest, ReorderChildLayersWithUnparentedRegionLayer) {
+  View root;
+  root.SetPaintToLayer();
+
+  View* v1 = root.AddChildView(std::make_unique<View>());
+  View* v2 = root.AddChildView(std::make_unique<View>());
+  v1->SetPaintToLayer();
+  v2->SetPaintToLayer();
+
+  auto layer = std::make_unique<ui::LayerTextured>();
+  v2->AddLayerToRegion(layer.get(), LayerRegion::kBelow);
+
+  // Detach the region layer from the root layer tree while keeping it in v2's
+  // regions. Reordering views triggers layer reordering and should safely
+  // ignore unparented region layers rather than attempting to stack them
+  // relative to the root layer.
+  root.layer()->Remove(layer.get());
+
+  root.ReorderChildView(v1, 1);
 }
 
 // View::OrphanLayers() captures a bare ui::Layer* `parent` local and loops

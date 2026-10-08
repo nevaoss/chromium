@@ -8,6 +8,7 @@
 #include <array>
 #include <initializer_list>
 #include <optional>
+#include <string>
 #include <tuple>
 #include <utility>
 #include <vector>
@@ -59,6 +60,7 @@
 #include "content/browser/site_info.h"
 #include "content/browser/site_instance_impl.h"
 #include "content/browser/surface_embed/surface_embed_connector_impl.h"
+#include "content/browser/web_contents/web_contents_impl.h"
 #include "content/browser/web_contents/web_contents_view.h"
 #include "content/common/content_navigation_policy.h"
 #include "content/common/frame.mojom-test-utils.h"
@@ -73,6 +75,8 @@
 #include "content/public/browser/media_player_id.h"
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/navigation_handle.h"
+#include "content/public/browser/preloading.h"
+#include "content/public/browser/preloading_trigger_type.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/render_process_host.h"
 #include "content/public/browser/render_view_host.h"
@@ -88,6 +92,7 @@
 #include "content/public/common/content_paths.h"
 #include "content/public/common/content_switches.h"
 #include "content/public/common/isolated_world_ids.h"
+#include "content/public/common/javascript_dialog_type.h"
 #include "content/public/common/url_constants.h"
 #include "content/public/test/back_forward_cache_util.h"
 #include "content/public/test/browser_test.h"
@@ -125,6 +130,7 @@
 #include "services/network/public/cpp/features.h"
 #include "services/network/public/mojom/web_client_hints_types.mojom.h"
 #include "testing/gmock/include/gmock/gmock.h"
+#include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/blink/public/common/client_hints/client_hints.h"
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/public/common/page/page_zoom.h"
@@ -2552,7 +2558,7 @@ void DownloadImageTestInternal(Shell* shell,
       .WillByDefault(
           InvokeWithoutArgs(loop_runner.get(), &MessageLoopRunner::Quit));
 
-  shell->LoadURL(GURL("about:blank"));
+  ASSERT_TRUE(NavigateToURL(shell, GURL("about:blank")));
   shell->web_contents()->DownloadImage(
       image_url, false, gfx::Size(), 1024, false,
       base::BindOnce(&DownloadImageObserver::OnFinishDownloadImage,
@@ -2622,7 +2628,7 @@ IN_PROC_BROWSER_TEST_F(WebContentsImplBrowserTest,
 IN_PROC_BROWSER_TEST_F(WebContentsImplBrowserTest, DownloadImage_NoValidImage) {
   ASSERT_TRUE(embedded_test_server()->Start());
   const GURL kImageUrl = embedded_test_server()->GetURL("/invalid.ico");
-  shell()->LoadURL(GURL("about:blank"));
+  ASSERT_TRUE(NavigateToURL(shell(), GURL("about:blank")));
   base::RunLoop run_loop;
   shell()->web_contents()->DownloadImage(
       kImageUrl, false, gfx::Size(), 2, false,
@@ -2655,7 +2661,7 @@ IN_PROC_BROWSER_TEST_F(WebContentsImplBrowserTest,
                        DownloadImage_PreferredSize) {
   ASSERT_TRUE(embedded_test_server()->Start());
   const GURL kImageUrl = embedded_test_server()->GetURL("/rgb.svg");
-  shell()->LoadURL(GURL("about:blank"));
+  ASSERT_TRUE(NavigateToURL(shell(), GURL("about:blank")));
   base::RunLoop run_loop;
   shell()->web_contents()->DownloadImage(
       kImageUrl, false, gfx::Size(30, 30), 1024, false,
@@ -2669,7 +2675,7 @@ IN_PROC_BROWSER_TEST_F(WebContentsImplBrowserTest,
                        DownloadImage_PreferredSizeZero) {
   ASSERT_TRUE(embedded_test_server()->Start());
   const GURL kImageUrl = embedded_test_server()->GetURL("/rgb.svg");
-  shell()->LoadURL(GURL("about:blank"));
+  ASSERT_TRUE(NavigateToURL(shell(), GURL("about:blank")));
   base::RunLoop run_loop;
   shell()->web_contents()->DownloadImage(
       kImageUrl, false, gfx::Size(), 1024, false,
@@ -2683,7 +2689,7 @@ IN_PROC_BROWSER_TEST_F(WebContentsImplBrowserTest,
                        DownloadImage_PreferredSizeClampedByMaxSize) {
   ASSERT_TRUE(embedded_test_server()->Start());
   const GURL kImageUrl = embedded_test_server()->GetURL("/rgb.svg");
-  shell()->LoadURL(GURL("about:blank"));
+  ASSERT_TRUE(NavigateToURL(shell(), GURL("about:blank")));
   base::RunLoop run_loop;
   shell()->web_contents()->DownloadImage(
       kImageUrl, false, gfx::Size(60, 60), 30, false,
@@ -2697,7 +2703,7 @@ IN_PROC_BROWSER_TEST_F(WebContentsImplBrowserTest,
                        DownloadImage_PreferredWidthClampedByMaxSize) {
   ASSERT_TRUE(embedded_test_server()->Start());
   const GURL kImageUrl = embedded_test_server()->GetURL("/rgb.svg");
-  shell()->LoadURL(GURL("about:blank"));
+  ASSERT_TRUE(NavigateToURL(shell(), GURL("about:blank")));
   base::RunLoop run_loop;
   shell()->web_contents()->DownloadImage(
       kImageUrl, false, gfx::Size(60, 30), 30, false,
@@ -2711,7 +2717,7 @@ IN_PROC_BROWSER_TEST_F(WebContentsImplBrowserTest,
                        DownloadImage_PreferredHeightClampedByMaxSize) {
   ASSERT_TRUE(embedded_test_server()->Start());
   const GURL kImageUrl = embedded_test_server()->GetURL("/rgb.svg");
-  shell()->LoadURL(GURL("about:blank"));
+  ASSERT_TRUE(NavigateToURL(shell(), GURL("about:blank")));
   base::RunLoop run_loop;
   shell()->web_contents()->DownloadImage(
       kImageUrl, false, gfx::Size(30, 60), 30, false,
@@ -2748,7 +2754,7 @@ IN_PROC_BROWSER_TEST_F(WebContentsImplBrowserTest,
   ASSERT_TRUE(embedded_test_server()->Start());
   const GURL kImageUrl =
       embedded_test_server()->GetURL("/icon-with-two-entries.ico");
-  shell()->LoadURL(GURL("about:blank"));
+  ASSERT_TRUE(NavigateToURL(shell(), GURL("about:blank")));
   base::RunLoop run_loop;
   std::vector<gfx::Size> expected_sizes{{16, 16}, {32, 32}};
   shell()->web_contents()->DownloadImage(
@@ -9186,7 +9192,7 @@ IN_PROC_BROWSER_TEST_F(
   RenderFrameHost* iframe_rfh =
       ChildFrameAt(web_contents->GetPrimaryMainFrame(), 0);
   ASSERT_NE(iframe_rfh, nullptr);
-  iframe_rfh->UpdateIsAdFrame(/*is_ad_frame=*/true);
+  iframe_rfh->UpdateToAdFrame();
   ASSERT_TRUE(iframe_rfh->IsAdFrame());
 
   // TODO(crbug.com/461821799): If only ad subframe remains loading,
@@ -9383,98 +9389,254 @@ IN_PROC_BROWSER_TEST_F(WebContentsPrerenderWithDiscardBrowserTest,
   EXPECT_FALSE(registry->FindNonReservedHostById(host_id));
 }
 
-class WebContentsFencedFrameBrowserTest : public WebContentsImplBrowserTest {
- public:
-  WebContentsFencedFrameBrowserTest() = default;
-  ~WebContentsFencedFrameBrowserTest() override = default;
+namespace {
 
-  WebContentsImpl* web_contents() {
-    return static_cast<WebContentsImpl*>(shell()->web_contents());
+class TestJavaScriptDialogManager final : public JavaScriptDialogManager,
+                                          public WebContentsDelegate {
+ public:
+  TestJavaScriptDialogManager() = default;
+  ~TestJavaScriptDialogManager() final = default;
+
+  // WebContentsDelegate:
+  JavaScriptDialogManager* GetJavaScriptDialogManager(
+      WebContents* source) final {
+    return this;
   }
 
-  test::FencedFrameTestHelper& fenced_frame_test_helper() {
-    return fenced_frame_test_helper_;
+  PreloadingEligibility IsPrerender2Supported(
+      WebContents& web_contents,
+      PreloadingTriggerType trigger_type) final {
+    // Allow tests using this delegate to trigger preloading.
+    return PreloadingEligibility::kEligible;
+  }
+
+  bool IsBackForwardCacheSupported(WebContents& web_contents) final {
+    // Make sure pages using this delegate are destroyed, not cached, on unload.
+    return false;
+  }
+
+  // JavaScriptDialogManager:
+  void RunJavaScriptDialog(WebContents* web_contents,
+                           RenderFrameHost* render_frame_host,
+                           JavaScriptDialogType dialog_type,
+                           const std::u16string& message_text,
+                           const std::u16string& default_prompt_text,
+                           DialogClosedCallback callback,
+                           bool* did_suppress_message) final {
+    ASSERT_TRUE(did_suppress_message);
+    *did_suppress_message = false;
+    closed_callback_ = std::move(callback);
+  }
+
+  void RunBeforeUnloadDialog(WebContents* web_contents,
+                             RenderFrameHost* render_frame_host,
+                             bool is_reload,
+                             DialogClosedCallback callback) final {
+    closed_callback_ = std::move(callback);
+  }
+
+  bool HandleJavaScriptDialog(WebContents* web_contents,
+                              bool accept,
+                              const std::u16string* prompt_override) final {
+    if (closed_callback_) {
+      std::move(closed_callback_).Run(/*success=*/true, std::u16string());
+      return true;
+    }
+    return false;
+  }
+
+  void CancelDialogs(WebContents* web_contents, bool reset_state) final {
+    // Do nothing.
   }
 
  private:
-  content::test::FencedFrameTestHelper fenced_frame_test_helper_;
+  DialogClosedCallback closed_callback_;
 };
 
-// Tests that DidUpdateFaviconURL() works only with the primary page by checking
-// if it's not called on the fenced frame loading.
-IN_PROC_BROWSER_TEST_F(WebContentsFencedFrameBrowserTest, UpdateFavicon) {
-  ASSERT_TRUE(embedded_test_server()->Start());
-  testing::NiceMock<MockWebContentsObserver> observer(web_contents());
-  const GURL main_url =
-      embedded_test_server()->GetURL("fencedframe.test", "/title1.html");
+}  // namespace
 
-  RenderFrameHost* primary_rfh = web_contents()->GetPrimaryMainFrame();
-  EXPECT_CALL(observer,
-              DidUpdateFaviconURL(primary_rfh, testing::_, testing::_));
-  ASSERT_TRUE(NavigateToURL(shell(), main_url));
-  ASSERT_TRUE(WaitForLoadStop(web_contents()));
+class WebContentsPrerenderWithJSDialogBrowserTest
+    : public WebContentsPrerenderBrowserTest {
+ public:
+  void SetUpOnMainThread() override {
+    WebContentsPrerenderBrowserTest::SetUpOnMainThread();
+    web_contents()->SetDelegate(&dialog_manager_);
 
-  // Create fenced frame.
-  const GURL fenced_frame_url = embedded_test_server()->GetURL(
-      "fencedframe.test", "/fenced_frames/title1.html");
+    // Navigate to a page with a child frame.
+    ASSERT_TRUE(embedded_test_server()->Start());
+    initial_url_ = embedded_test_server()->GetURL("/page_with_iframe.html");
+    ASSERT_TRUE(NavigateToURL(shell(), initial_url_));
 
-  RenderFrameHost* inner_fenced_frame_rfh =
-      fenced_frame_test_helper().CreateFencedFrame(primary_rfh,
-                                                   fenced_frame_url);
-  EXPECT_CALL(observer, DidUpdateFaviconURL(inner_fenced_frame_rfh, testing::_,
-                                            testing::_))
-      .Times(0);
+    // Prerender another page.
+    prerender_url_ = embedded_test_server()->GetURL("/title1.html");
+    prerender_helper().AddPrerender(prerender_url_);
+    activation_manager_.emplace(web_contents(), prerender_url_);
+  }
+
+  void TearDownOnMainThread() override {
+    activation_manager_.reset();
+    web_contents()->SetDelegate(shell());
+    WebContentsPrerenderBrowserTest::TearDownOnMainThread();
+  }
+
+  RenderFrameHost* GetFirstChildFrame() {
+    RenderFrameHost* main_rfh = web_contents()->GetPrimaryMainFrame();
+    RenderFrameHost* child_rfh = nullptr;
+    main_rfh->ForEachRenderFrameHost([&](RenderFrameHost* rfh) {
+      if (child_rfh) {
+        ADD_FAILURE() << "Should only be 1 child frame";
+        return;
+      }
+      if (rfh != main_rfh) {
+        child_rfh = rfh;
+      }
+    });
+    return child_rfh;
+  }
+
+  void NavigateToPrerenderedPage(bool expect_deferred) {
+    ExecuteScriptAsyncWithoutUserGesture(
+        web_contents(), JsReplace("location.href = $1", prerender_url_));
+    EXPECT_TRUE(activation_manager_->WaitForBeforeChecks());
+
+    // This handle is only valid until ResumeActivation().
+    NavigationHandle* navigation_handle =
+        activation_manager_->GetNavigationHandle();
+    ASSERT_TRUE(navigation_handle);
+    EXPECT_EQ(navigation_handle->IsCommitDeferringConditionDeferredForTesting(),
+              expect_deferred);
+
+    // ResumeActivation() must be called to continue after
+    // WaitForBeforeChecks(), but nothing should happen if activation is
+    // deferred.
+    activation_manager_->ResumeActivation();
+    EXPECT_EQ(activation_manager_->was_activated(), !expect_deferred);
+    EXPECT_EQ(web_contents()->GetLastCommittedURL(),
+              expect_deferred ? initial_url_ : prerender_url_);
+  }
+
+  GURL initial_url() const { return initial_url_; }
+  GURL prerender_url() const { return prerender_url_; }
+
+  TestJavaScriptDialogManager& dialog_manager() { return dialog_manager_; }
+  TestActivationManager& activation_manager() { return *activation_manager_; }
+
+ private:
+  TestJavaScriptDialogManager dialog_manager_;
+  std::optional<TestActivationManager> activation_manager_;
+  GURL initial_url_;
+  GURL prerender_url_;
+};
+
+IN_PROC_BROWSER_TEST_F(WebContentsPrerenderWithJSDialogBrowserTest,
+                       ModalDialogDefersActivation) {
+  RenderFrameHostImplWrapper main_rfh(web_contents()->GetPrimaryMainFrame());
+  RenderFrameHostImplWrapper child_rfh(GetFirstChildFrame());
+  ASSERT_TRUE(main_rfh);
+  ASSERT_TRUE(child_rfh);
+
+  // Open a JS dialog. It should defer navigations and prerender activations.
+  main_rfh->RunModalAlertDialog(
+      u"alert", /*disable_third_party_subframe_suppresion=*/true,
+      base::DoNothing());
+  EXPECT_TRUE(web_contents_impl()->JavaScriptDialogDefersNavigations());
+  NavigateToPrerenderedPage(/*expect_deferred=*/true);
+
+  // Dismissing the dialog should asynchronously resume the activation.
+  dialog_manager().HandleJavaScriptDialog(web_contents(), /*accept=*/true,
+                                          /*prompt_override=*/nullptr);
+  EXPECT_FALSE(web_contents_impl()->JavaScriptDialogDefersNavigations());
+
+  // The prerender activation should not yet have replaced the main or child
+  // frames.
+  EXPECT_FALSE(activation_manager().was_activated());
+  EXPECT_EQ(web_contents()->GetLastCommittedURL(), initial_url());
+  EXPECT_TRUE(main_rfh);
+  EXPECT_TRUE(child_rfh);
+
+  // Wait until the activation finishes and destroys the child frame.
+  activation_manager().WaitForNavigationFinished();
+  EXPECT_TRUE(activation_manager().was_activated());
+  EXPECT_EQ(web_contents()->GetLastCommittedURL(), prerender_url());
+  EXPECT_FALSE(child_rfh);
 }
 
-// Tests that pages are still visible after a page is navigated away
-// from a page that contained a fenced frame. (crbug.com/1265615)
-IN_PROC_BROWSER_TEST_F(WebContentsFencedFrameBrowserTest, RemainsVisible) {
-  ASSERT_TRUE(embedded_test_server()->Start());
-  const GURL main_url =
-      embedded_test_server()->GetURL("fencedframe.test", "/title1.html");
+IN_PROC_BROWSER_TEST_F(WebContentsPrerenderWithJSDialogBrowserTest,
+                       BeforeUnloadDialogDefersActivation) {
+  RenderFrameHostImplWrapper main_rfh(web_contents()->GetPrimaryMainFrame());
+  RenderFrameHostImplWrapper child_rfh(GetFirstChildFrame());
+  ASSERT_TRUE(main_rfh);
+  ASSERT_TRUE(child_rfh);
 
-  RenderFrameHost* primary_rfh = web_contents()->GetPrimaryMainFrame();
-  ASSERT_TRUE(NavigateToURL(shell(), main_url));
-  ASSERT_TRUE(WaitForLoadStop(web_contents()));
-  EXPECT_EQ(Visibility::VISIBLE, web_contents()->GetVisibility());
+  // Open a before unload confirm dialog. It should defer navigations and
+  // prerender activations.
+  web_contents_impl()->RunBeforeUnloadConfirm(
+      main_rfh.get(), /*is_reload=*/false, base::DoNothing());
+  EXPECT_TRUE(web_contents_impl()->JavaScriptDialogDefersNavigations());
+  NavigateToPrerenderedPage(/*expect_deferred=*/true);
 
-  // Create fenced frame.
-  const GURL fenced_frame_url = embedded_test_server()->GetURL(
-      "fencedframe.test", "/fenced_frames/title1.html");
-  content::RenderFrameHost* fenced_frame_host =
-      fenced_frame_test_helper().CreateFencedFrame(primary_rfh,
-                                                   fenced_frame_url);
-  EXPECT_NE(nullptr, fenced_frame_host);
+  // Dismissing the dialog should asynchronously resume the activation.
+  dialog_manager().HandleJavaScriptDialog(web_contents(), /*accept=*/true,
+                                          /*prompt_override=*/nullptr);
+  EXPECT_FALSE(web_contents_impl()->JavaScriptDialogDefersNavigations());
 
-  const GURL same_origin_url =
-      embedded_test_server()->GetURL("fencedframe.test", "/title3.html");
+  // The prerender activation should not yet have replaced the main or child
+  // frames.
+  EXPECT_FALSE(activation_manager().was_activated());
+  EXPECT_EQ(web_contents()->GetLastCommittedURL(), initial_url());
+  EXPECT_TRUE(main_rfh);
+  EXPECT_TRUE(child_rfh);
 
-  ASSERT_TRUE(NavigateToURL(shell(), same_origin_url));
-  ASSERT_TRUE(WaitForLoadStop(web_contents()));
-  EXPECT_EQ(Visibility::VISIBLE, web_contents()->GetVisibility());
+  // Wait until the activation finishes and destroys the child frame.
+  activation_manager().WaitForNavigationFinished();
+  EXPECT_TRUE(activation_manager().was_activated());
+  EXPECT_EQ(web_contents()->GetLastCommittedURL(), prerender_url());
+  EXPECT_FALSE(child_rfh);
 }
 
-// Tests that AXTreeIDForMainFrameHasChanged() works only with the primary page
-// by checking if it's not called on the fenced frame loading.
-IN_PROC_BROWSER_TEST_F(WebContentsFencedFrameBrowserTest, DoNotUpdateAXTree) {
-  ASSERT_TRUE(embedded_test_server()->Start());
-  testing::NiceMock<MockWebContentsObserver> observer(web_contents());
-  const GURL main_url =
-      embedded_test_server()->GetURL("fencedframe.test", "/title1.html");
+IN_PROC_BROWSER_TEST_F(WebContentsPrerenderWithJSDialogBrowserTest,
+                       MultipleDialogsDeferActivation) {
+  RenderFrameHostImplWrapper main_rfh(web_contents()->GetPrimaryMainFrame());
+  RenderFrameHostImplWrapper child_rfh(GetFirstChildFrame());
+  ASSERT_TRUE(main_rfh);
+  ASSERT_TRUE(child_rfh);
 
-  EXPECT_CALL(observer, AXTreeIDForMainFrameHasChanged())
-      .Times(testing::AtLeast(1));
-  ASSERT_TRUE(NavigateToURL(shell(), main_url));
-  testing::Mock::VerifyAndClearExpectations(&observer);
+  // Open a JS dialog. It should defer navigations.
+  main_rfh->RunModalAlertDialog(
+      u"main alert", /*disable_third_party_subframe_suppresion=*/true,
+      base::DoNothing());
+  EXPECT_TRUE(web_contents_impl()->JavaScriptDialogDefersNavigations());
+  NavigateToPrerenderedPage(/*expect_deferred=*/true);
 
-  // Create fenced frame.
-  const GURL fenced_frame_url = embedded_test_server()->GetURL(
-      "fencedframe.test", "/fenced_frames/title1.html");
-  EXPECT_CALL(observer, AXTreeIDForMainFrameHasChanged()).Times(0);
-  RenderFrameHost* fenced_frame_rfh =
-      fenced_frame_test_helper().CreateFencedFrame(
-          web_contents()->GetPrimaryMainFrame(), fenced_frame_url);
-  EXPECT_NE(nullptr, fenced_frame_rfh);
+  // Open a JS dialog from the child frame. It will replace the existing dialog
+  // without running the close callback. Navigations and activations should NOT
+  // resume.
+  child_rfh->RunModalAlertDialog(
+      u"child alert", /*disable_third_party_subframe_suppresion=*/true,
+      base::DoNothing());
+  EXPECT_TRUE(web_contents_impl()->JavaScriptDialogDefersNavigations());
+  EXPECT_FALSE(activation_manager().was_activated());
+  EXPECT_EQ(web_contents()->GetLastCommittedURL(), initial_url());
+  EXPECT_TRUE(main_rfh);
+  EXPECT_TRUE(child_rfh);
+
+  // Dismissing the dialog should asynchronously resume the activation.
+  dialog_manager().HandleJavaScriptDialog(web_contents(), /*accept=*/true,
+                                          /*prompt_override=*/nullptr);
+  EXPECT_FALSE(web_contents_impl()->JavaScriptDialogDefersNavigations());
+
+  // The prerender activation should not yet have replaced the main or child
+  // frames.
+  EXPECT_FALSE(activation_manager().was_activated());
+  EXPECT_EQ(web_contents()->GetLastCommittedURL(), initial_url());
+  EXPECT_TRUE(main_rfh);
+  EXPECT_TRUE(child_rfh);
+
+  // Wait until the activation finishes and destroys the child frame.
+  activation_manager().WaitForNavigationFinished();
+  EXPECT_TRUE(activation_manager().was_activated());
+  EXPECT_EQ(web_contents()->GetLastCommittedURL(), prerender_url());
+  EXPECT_FALSE(child_rfh);
 }
 
 IN_PROC_BROWSER_TEST_F(WebContentsImplBrowserTest,
@@ -9583,6 +9745,154 @@ IN_PROC_BROWSER_TEST_F(WebContentsImplBrowserTest,
 
   EXPECT_EQ(weak_popup, nullptr);
   EXPECT_FALSE(blocker.has_value());
+
+  if (opener_contents) {
+    opener_contents->SetDelegate(shell());
+  }
+}
+
+class DetachFrameOnFullscreenExitDelegate : public WebContentsDelegate {
+ public:
+  DetachFrameOnFullscreenExitDelegate(WebContentsDelegate* original_delegate,
+                                      WebContents* target_contents)
+      : original_delegate_(original_delegate),
+        target_contents_(target_contents) {}
+
+  void ExitFullscreenModeForTab(WebContents* web_contents) override {
+    if (target_contents_) {
+      EXPECT_TRUE(ExecJs(target_contents_,
+                         "document.querySelector('iframe').remove();"));
+      target_contents_ = nullptr;
+    }
+    if (original_delegate_) {
+      original_delegate_->ExitFullscreenModeForTab(web_contents);
+    }
+  }
+
+  FullscreenState GetFullscreenState(
+      const WebContents* web_contents) const override {
+    if (original_delegate_) {
+      return original_delegate_->GetFullscreenState(web_contents);
+    }
+    return FullscreenState();
+  }
+
+  bool IsFullscreenForTabOrPending(const WebContents* web_contents) override {
+    if (original_delegate_) {
+      return original_delegate_->IsFullscreenForTabOrPending(web_contents);
+    }
+    return false;
+  }
+
+ private:
+  raw_ptr<WebContentsDelegate> original_delegate_;
+  raw_ptr<WebContents, DisableDanglingPtrDetection> target_contents_;
+};
+
+IN_PROC_BROWSER_TEST_F(WebContentsImplBrowserTest,
+                       RunJavaScriptDialogFrameDetachOnFullscreenExit) {
+  ASSERT_TRUE(embedded_test_server()->Start());
+  GURL url(embedded_test_server()->GetURL("/title1.html"));
+  EXPECT_TRUE(NavigateToURL(shell(), url));
+
+  WebContentsImpl* opener_contents =
+      static_cast<WebContentsImpl*>(shell()->web_contents());
+
+  ShellAddedObserver new_shell_observer;
+  EXPECT_TRUE(ExecJs(opener_contents, "window.open('about:blank', 'popup')"));
+  Shell* popup_shell = new_shell_observer.GetShell();
+  WebContentsImpl* popup_contents =
+      static_cast<WebContentsImpl*>(popup_shell->web_contents());
+
+  EXPECT_EQ(opener_contents,
+            popup_contents->GetFirstWebContentsInLiveOriginalOpenerChain());
+
+  FullscreenWebContentsObserver observer(
+      opener_contents, opener_contents->GetPrimaryMainFrame());
+  EXPECT_TRUE(ExecJs(opener_contents->GetPrimaryMainFrame(),
+                     "document.body.webkitRequestFullscreen();"));
+  observer.Wait();
+  EXPECT_TRUE(opener_contents->IsFullscreen());
+
+  EXPECT_TRUE(ExecJs(popup_contents, R"(
+    new Promise(resolve => {
+      let iframe = document.createElement('iframe');
+      iframe.src = 'about:blank';
+      iframe.onload = resolve;
+      document.body.appendChild(iframe);
+    });
+  )"));
+
+  RenderFrameHostImpl* child_rfh = static_cast<RenderFrameHostImpl*>(
+      ChildFrameAt(popup_contents->GetPrimaryMainFrame(), 0));
+  ASSERT_TRUE(child_rfh);
+
+  base::WeakPtr<RenderFrameHostImpl> weak_child_rfh = child_rfh->GetWeakPtr();
+
+  DetachFrameOnFullscreenExitDelegate intercepting_delegate(
+      opener_contents->GetDelegate(), popup_contents);
+  opener_contents->SetDelegate(&intercepting_delegate);
+
+  popup_contents->RunJavaScriptDialog(
+      child_rfh, u"test message", u"default prompt",
+      JAVASCRIPT_DIALOG_TYPE_ALERT,
+      /*disable_third_party_subframe_suppresion=*/false, base::DoNothing());
+
+  EXPECT_EQ(weak_child_rfh, nullptr);
+
+  if (opener_contents) {
+    opener_contents->SetDelegate(shell());
+  }
+}
+
+IN_PROC_BROWSER_TEST_F(WebContentsImplBrowserTest,
+                       RunBeforeUnloadConfirmFrameDetachOnFullscreenExit) {
+  ASSERT_TRUE(embedded_test_server()->Start());
+  GURL url(embedded_test_server()->GetURL("/title1.html"));
+  EXPECT_TRUE(NavigateToURL(shell(), url));
+
+  WebContentsImpl* opener_contents =
+      static_cast<WebContentsImpl*>(shell()->web_contents());
+
+  ShellAddedObserver new_shell_observer;
+  EXPECT_TRUE(ExecJs(opener_contents, "window.open('about:blank', 'popup')"));
+  Shell* popup_shell = new_shell_observer.GetShell();
+  WebContentsImpl* popup_contents =
+      static_cast<WebContentsImpl*>(popup_shell->web_contents());
+
+  EXPECT_EQ(opener_contents,
+            popup_contents->GetFirstWebContentsInLiveOriginalOpenerChain());
+
+  FullscreenWebContentsObserver observer(
+      opener_contents, opener_contents->GetPrimaryMainFrame());
+  EXPECT_TRUE(ExecJs(opener_contents->GetPrimaryMainFrame(),
+                     "document.body.webkitRequestFullscreen();"));
+  observer.Wait();
+  EXPECT_TRUE(opener_contents->IsFullscreen());
+
+  EXPECT_TRUE(ExecJs(popup_contents, R"(
+    new Promise(resolve => {
+      let iframe = document.createElement('iframe');
+      iframe.src = 'about:blank';
+      iframe.onload = resolve;
+      document.body.appendChild(iframe);
+    });
+  )"));
+
+  RenderFrameHostImpl* child_rfh = static_cast<RenderFrameHostImpl*>(
+      ChildFrameAt(popup_contents->GetPrimaryMainFrame(), 0));
+  ASSERT_TRUE(child_rfh);
+
+  base::WeakPtr<RenderFrameHostImpl> weak_child_rfh = child_rfh->GetWeakPtr();
+
+  DetachFrameOnFullscreenExitDelegate intercepting_delegate(
+      opener_contents->GetDelegate(), popup_contents);
+  opener_contents->SetDelegate(&intercepting_delegate);
+
+  popup_contents->RunBeforeUnloadConfirm(child_rfh, /*is_reload=*/false,
+                                         base::DoNothing());
+
+  EXPECT_EQ(weak_child_rfh, nullptr);
 
   if (opener_contents) {
     opener_contents->SetDelegate(shell());

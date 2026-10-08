@@ -294,6 +294,7 @@ MEDIA_EXPORT BASE_DECLARE_FEATURE(kUnifiedAutoplay);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kUseAndroidOverlayForSecureOnly);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kUseFakeDeviceForMediaStream);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kUseSequencedTaskRunnerForMediaService);
+MEDIA_EXPORT BASE_DECLARE_FEATURE(kUseSharedImageUsageForVideoFrameCopy);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kUseTaskRunnerForMojoAudioDecoderService);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kUseWindowBoundsForPip);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kVaapiEarlyPPSParsingForCENCv1);
@@ -332,13 +333,6 @@ MEDIA_EXPORT BASE_DECLARE_FEATURE(
 #if !BUILDFLAG(IS_WIN)
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kUseSequencedTaskRunnerForMojoVEAProvider);
 #endif  // !BUILDFLAG(IS_WIN)
-
-#if BUILDFLAG(ALLOW_OOP_VIDEO_DECODER)
-// Note: please use IsOutOfProcessVideoDecodingEnabled() to determine if OOP-VD
-// is enabled instead of directly checking this feature flag. The reason is that
-// that function may perform checks beyond the feature flag.
-MEDIA_EXPORT BASE_DECLARE_FEATURE(kUseOutOfProcessVideoDecoding);
-#endif  // BUILDFLAG(ALLOW_OOP_VIDEO_DECODER)
 
 #if BUILDFLAG(CHROME_WIDE_ECHO_CANCELLATION)
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kChromeWideEchoCancellation);
@@ -429,6 +423,7 @@ MEDIA_EXPORT BASE_DECLARE_FEATURE(kUseMediaFormatCodedSize);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kVTVideoEncodeAcceleratorCalculatePSNR);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(
     kVTVideoEncodeAcceleratorOpaqueSharedImageEncode);
+MEDIA_EXPORT BASE_DECLARE_FEATURE(kVideoToolboxFullRangeOutput);
 #endif  // BUILDFLAG(IS_APPLE)
 
 #if BUILDFLAG(IS_CHROMEOS)
@@ -478,7 +473,6 @@ MEDIA_EXPORT BASE_DECLARE_FEATURE(kApplicationAudioCaptureMac);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kCastMacForceBaselineProfile);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kCastStreamingMacHardwareH264);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kMacCatapLoopbackAudioForCast);
-MEDIA_EXPORT BASE_DECLARE_FEATURE(kMacCatapLoopbackAudioForScreenShare);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kUseSCContentSharingPicker);
 #endif  // BUILDFLAG(IS_MAC)
 
@@ -611,9 +605,6 @@ MEDIA_EXPORT bool IsSystemLoopbackCaptureSupported();
 
 MEDIA_EXPORT bool IsVideoCaptureAcceleratedJpegDecodingEnabled();
 
-#if BUILDFLAG(ALLOW_OOP_VIDEO_DECODER)
-MEDIA_EXPORT bool IsOutOfProcessVideoDecodingEnabled();
-#endif  // BUILDFLAG(ALLOW_OOP_VIDEO_DECODER)
 
 #if BUILDFLAG(IS_ANDROID)
 MEDIA_EXPORT bool IsAndroidZeroCopyVideoCaptureEnabled(

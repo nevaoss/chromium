@@ -15,6 +15,10 @@
 #import "ios/chrome/browser/composebox/public/composebox_entrypoint.h"
 #import "ios/chrome/browser/intents/model/intents_donation_helper.h"
 #import "ios/chrome/browser/ntp/shared/metrics/home_metrics.h"
+#import "ios/chrome/browser/ntp/ui_bundled/new_tab_page_color_palette.h"
+#import "ios/chrome/browser/ntp/ui_bundled/new_tab_page_feature.h"
+#import "ios/chrome/browser/ntp/ui_bundled/new_tab_page_image_background_trait.h"
+#import "ios/chrome/browser/ntp/ui_bundled/new_tab_page_trait.h"
 #import "ios/chrome/browser/shared/coordinator/scene/state/scene_layout_state.h"
 #import "ios/chrome/browser/shared/public/commands/activity_service_commands.h"
 #import "ios/chrome/browser/shared/public/commands/browser_coordinator_commands.h"
@@ -35,6 +39,7 @@
 #import "ios/chrome/browser/toolbar/ui/buttons/toolbar_button_factory.h"
 #import "ios/chrome/browser/toolbar/ui/buttons/toolbar_button_visibility.h"
 #import "ios/chrome/browser/toolbar/ui/buttons/toolbar_buttons_utils.h"
+#import "ios/chrome/browser/toolbar/ui/buttons/toolbar_element_with_background.h"
 #import "ios/chrome/browser/toolbar/ui/buttons/toolbar_tab_grid_badge_button.h"
 #import "ios/chrome/browser/toolbar/ui/toolbar_constants.h"
 #import "ios/chrome/browser/toolbar/ui/toolbar_height_delegate.h"
@@ -49,6 +54,9 @@
 #import "ui/base/l10n/l10n_util.h"
 
 namespace {
+
+// The name of the default NTP background color asset.
+NSString* const kNTPBackgroundColor = @"ntp_background_color";
 
 // Spacing between buttons in the toolbar's horizontal stack view.
 constexpr CGFloat kStackViewSpacing = 9;
@@ -142,6 +150,10 @@ constexpr CGFloat kGlassFullscreenScaleFactor = 0.8;
   UIMenu* _tabGridButtonMenu;
   ToolbarButton* _toolsMenuButton;
 
+  // Whether the toolbar is currently in fullscreen state. Only used during
+  // fullscreen animations.
+  BOOL _inFullscreenState;
+
   // Button taking the full size of the toolbar. Exits fullscreen mode to expand
   // the toolbar when tapped.
   UIButton* _collapsedToolbarButton;
@@ -175,7 +187,7 @@ constexpr CGFloat kGlassFullscreenScaleFactor = 0.8;
 
   // Dynamic container for the `_backButton` and `_forwardButton` Toolbar
   // navigation buttons in the `_leadingStackView`.
-  UIView* _navigationButtonsContainer;
+  UIView<ToolbarElementWithBackground>* _navigationButtonsContainer;
   // The stack views that hold the buttons on the leading side.
   UIStackView* _leadingStackView;
   // The container for the location bar, which is transparent.
@@ -185,6 +197,12 @@ constexpr CGFloat kGlassFullscreenScaleFactor = 0.8;
   // Content view for the location bar that clips subviews to the pill shape
   // without clipping the shadow on `_locationBarBackground`.
   UIView* _locationBarContentView;
+  // The location bar.
+  UIViewController* _locationBarViewController;
+  // The layout guide constrained to the steady view of the location bar.
+  UILayoutGuide* _steadyViewLayoutGuide;
+  // The text-only location bar in this toolbar (used for fullscreen animation).
+  UIViewController* _textOnlyLocationBarViewController;
   // The target for the fake omnibox, which replaces the location bar when the
   // location bar is not visible.
   UIView* _fakeOmniboxTarget;
@@ -275,6 +293,10 @@ constexpr CGFloat kGlassFullscreenScaleFactor = 0.8;
   // Constraints for the banner promo in non-split toolbar mode (where the
   // banner is below the toolbar).
   NSArray<NSLayoutConstraint*>* _bannerPromoBelowConstraints;
+
+  // Constraints for text-only location bar view.
+  NSArray<NSLayoutConstraint*>* _textOnlySteadyViewNormalConstraints;
+  NSArray<NSLayoutConstraint*>* _textOnlySteadyViewGuideConstraints;
 }
 
 - (instancetype)initInIncognito:(BOOL)incognito topPosition:(BOOL)topPosition {
@@ -364,10 +386,13 @@ constexpr CGFloat kGlassFullscreenScaleFactor = 0.8;
 #pragma mark - Properties
 
 - (void)setLocationBarViewController:
-    (UIViewController*)locationBarViewController {
-  if (_locationBarViewController == locationBarViewController) {
+            (UIViewController*)locationBarViewController
+            andSteadyViewLayoutGuide:(UILayoutGuide*)steadyViewLayoutGuide {
+  if (_locationBarViewController == locationBarViewController &&
+      _steadyViewLayoutGuide == steadyViewLayoutGuide) {
     return;
   }
+  _steadyViewLayoutGuide = steadyViewLayoutGuide;
   [self loadViewIfNeeded];
 
   if (_locationBarViewController &&
@@ -393,6 +418,40 @@ constexpr CGFloat kGlassFullscreenScaleFactor = 0.8;
     AddSameConstraints(locationBarView, _locationBarContainer);
   }
   [_locationBarViewController didMoveToParentViewController:self];
+  [self updateTextOnlyLocationBarViewConstraints];
+}
+
+- (void)setTextOnlyLocationBarViewController:
+    (UIViewController*)textOnlyLocationBarViewController {
+  if (!IsGlassToolbarEnabled()) {
+    return;
+  }
+  if (_textOnlyLocationBarViewController == textOnlyLocationBarViewController) {
+    return;
+  }
+  [self loadViewIfNeeded];
+
+  if (_textOnlyLocationBarViewController &&
+      [_textOnlyLocationBarViewController.view isDescendantOfView:self.view]) {
+    [_textOnlyLocationBarViewController willMoveToParentViewController:nil];
+    [_textOnlyLocationBarViewController.view removeFromSuperview];
+    [_textOnlyLocationBarViewController removeFromParentViewController];
+  }
+
+  _textOnlyLocationBarViewController = textOnlyLocationBarViewController;
+  if (!_textOnlyLocationBarViewController || !IsGlassToolbarEnabled()) {
+    return;
+  }
+
+  UIView* textOnlyView = _textOnlyLocationBarViewController.view;
+  textOnlyView.translatesAutoresizingMaskIntoConstraints = NO;
+  textOnlyView.alpha = 0;
+
+  [self addChildViewController:_textOnlyLocationBarViewController];
+  [_glassBackgroundView.contentView addSubview:textOnlyView];
+  [_textOnlyLocationBarViewController didMoveToParentViewController:self];
+
+  [self updateTextOnlyLocationBarViewConstraints];
 }
 
 - (void)setBannerPromoDelegate:
@@ -412,11 +471,7 @@ constexpr CGFloat kGlassFullscreenScaleFactor = 0.8;
 - (void)viewDidLoad {
   [super viewDidLoad];
   self.view.translatesAutoresizingMaskIntoConstraints = NO;
-  if (IsGlassToolbarEnabled()) {
-    self.view.backgroundColor = [UIColor clearColor];
-  } else {
-    self.view.backgroundColor = [UIColor colorNamed:kBackgroundColor];
-  }
+  self.view.backgroundColor = [self toolbarBackgroundColor];
   self.view.accessibilityIdentifier = _topPosition
                                           ? kPrimaryToolbarViewIdentifier
                                           : kSecondaryToolbarViewIdentifier;
@@ -443,7 +498,8 @@ constexpr CGFloat kGlassFullscreenScaleFactor = 0.8;
           @[ UITraitVerticalSizeClass.class, UITraitHorizontalSizeClass.class ]
                    withAction:@selector(sizeClassDidChange)];
 
-  [self registerForTraitChanges:@[ UITraitUserInterfaceStyle.class ]
+  [self registerForTraitChanges:
+            @[ UITraitUserInterfaceStyle.class, NewTabPageTrait.class ]
                      withAction:@selector(userInterfaceStyleDidChange)];
 }
 
@@ -581,6 +637,7 @@ constexpr CGFloat kGlassFullscreenScaleFactor = 0.8;
   if (loadingStateChanged || ntpVisibilityChanged) {
     if (ntpVisibilityChanged) {
       _NTPVisible = NTPVisible;
+      [self updateBackgroundColors];
       [self updateToolbarVisibility];
     }
 
@@ -786,7 +843,7 @@ constexpr CGFloat kGlassFullscreenScaleFactor = 0.8;
     locationBarExpandedHeight = kTopLocationBarIPhonePortraitHeight;
   }
   CGFloat collapsedLocationBarHeight = kLocationBarHeightFullscreen;
-  if (IsAppBarHiddenInFullscreen() && !_topPosition) {
+  if (!_topPosition) {
     collapsedLocationBarHeight = ToolbarCollapsedHeight(
         self.traitCollection.preferredContentSizeCategory);
   }
@@ -1023,6 +1080,56 @@ constexpr CGFloat kGlassFullscreenScaleFactor = 0.8;
 
 #pragma mark - Private
 
+// Updates the background colors of the toolbar view and location bar.
+- (void)updateBackgroundColors {
+  _locationBarBackground.backgroundColor = [self locationBarBackgroundColor];
+  self.view.backgroundColor = [self toolbarBackgroundColor];
+}
+
+// Returns the background color for the location bar based on current state.
+- (UIColor*)locationBarBackgroundColor {
+  // On iPhone, the location bar matches the fakebox color (white or custom
+  // palette) when `kNewTabPageUICleanup` is enabled. Otherwise, fallback to the
+  // standard location bar background color.
+  if (!CanShowTabStrip(self) && _NTPVisible &&
+      ShouldApplyFakeboxBackgroundAndShadow()) {
+    NewTabPageColorPalette* colorPalette =
+        [self.traitCollection objectForNewTabPageTrait];
+    return colorPalette ? colorPalette.omniboxColor
+                        : [UIColor colorNamed:kSolidWhiteColor];
+  }
+  return ToolbarElementBackgroundColor(_incognito);
+}
+
+// Returns the background color for the toolbar view based on current state.
+- (UIColor*)toolbarBackgroundColor {
+  if (IsGlassToolbarEnabled()) {
+    return [UIColor clearColor];
+  }
+
+  if (!CanShowTabStrip(self) && _NTPVisible) {
+    NewTabPageColorPalette* colorPalette =
+        [self.traitCollection objectForNewTabPageTrait];
+    if (colorPalette) {
+      return colorPalette.primaryColor;
+    } else if ([self.traitCollection boolForNewTabPageImageBackgroundTrait]) {
+      return [UIColor colorNamed:kBackgroundColor];
+    } else if (IsNewTabPageUICleanupEnabled()) {
+      // Matches the updated NTP UI cleanup background color.
+      return [UIColor colorNamed:kNewTabPageBackgroundColor];
+    } else if (ShouldApplyFakeboxBackgroundAndShadow()) {
+      // In light mode, matches the default light blue NTP background
+      // color to prevent the white pinned omnibox from blending into a white
+      // toolbar. In dark mode, matches standard `kBackgroundColor`.
+      if (self.traitCollection.userInterfaceStyle == UIUserInterfaceStyleDark) {
+        return [UIColor colorNamed:kBackgroundColor];
+      }
+      return [UIColor colorNamed:kNTPBackgroundColor];
+    }
+  }
+  return [UIColor colorNamed:kBackgroundColor];
+}
+
 // Creates and configures a separator line for the toolbar.
 - (UIView*)createSeparator {
   UIView* separator = [[UIView alloc] init];
@@ -1107,6 +1214,57 @@ constexpr CGFloat kGlassFullscreenScaleFactor = 0.8;
   } else {
     [NSLayoutConstraint activateConstraints:_bannerPromoAboveConstraints];
     [NSLayoutConstraint deactivateConstraints:_bannerPromoBelowConstraints];
+  }
+}
+
+// Updates the constraints for the TextOnly location bar.
+- (void)updateTextOnlyLocationBarViewConstraints {
+  if (_textOnlySteadyViewNormalConstraints) {
+    [NSLayoutConstraint
+        deactivateConstraints:_textOnlySteadyViewNormalConstraints];
+    _textOnlySteadyViewNormalConstraints = nil;
+  }
+  if (_textOnlySteadyViewGuideConstraints) {
+    [NSLayoutConstraint
+        deactivateConstraints:_textOnlySteadyViewGuideConstraints];
+    _textOnlySteadyViewGuideConstraints = nil;
+  }
+
+  if (!IsGlassToolbarEnabled() || !_textOnlyLocationBarViewController ||
+      !_steadyViewLayoutGuide) {
+    return;
+  }
+
+  UIView* textOnlyView = _textOnlyLocationBarViewController.view;
+
+  _textOnlySteadyViewNormalConstraints = @[
+    [textOnlyView.topAnchor
+        constraintEqualToAnchor:_steadyViewLayoutGuide.topAnchor],
+    [textOnlyView.bottomAnchor
+        constraintEqualToAnchor:_steadyViewLayoutGuide.bottomAnchor],
+    [textOnlyView.leadingAnchor
+        constraintEqualToAnchor:_steadyViewLayoutGuide.leadingAnchor],
+    [textOnlyView.trailingAnchor
+        constraintEqualToAnchor:_steadyViewLayoutGuide.trailingAnchor],
+  ];
+
+  _textOnlySteadyViewGuideConstraints = @[
+    [textOnlyView.topAnchor
+        constraintEqualToAnchor:_glassBackgroundView.topAnchor],
+    [textOnlyView.bottomAnchor
+        constraintEqualToAnchor:_glassBackgroundView.bottomAnchor],
+    [textOnlyView.leadingAnchor
+        constraintEqualToAnchor:_glassBackgroundView.leadingAnchor],
+    [textOnlyView.trailingAnchor
+        constraintEqualToAnchor:_glassBackgroundView.trailingAnchor],
+  ];
+
+  if (_inFullscreenState) {
+    [NSLayoutConstraint
+        activateConstraints:_textOnlySteadyViewGuideConstraints];
+  } else {
+    [NSLayoutConstraint
+        activateConstraints:_textOnlySteadyViewNormalConstraints];
   }
 }
 
@@ -1198,10 +1356,7 @@ constexpr CGFloat kGlassFullscreenScaleFactor = 0.8;
   UIView* locationBarBackground = [[UIView alloc] init];
   locationBarBackground.translatesAutoresizingMaskIntoConstraints = NO;
   locationBarBackground.layer.cornerRadius = kLocationBarHeight / 2.0;
-
-  locationBarBackground.backgroundColor =
-      ToolbarElementBackgroundColor(_incognito);
-
+  locationBarBackground.backgroundColor = [self locationBarBackgroundColor];
   ConfigureShadowForToolbarElement(locationBarBackground);
 
   return locationBarBackground;
@@ -1946,7 +2101,6 @@ constexpr CGFloat kGlassFullscreenScaleFactor = 0.8;
   if (!_progressBar) {
     return;
   }
-  [self.view layoutIfNeeded];
 
   // Cancel any pending task to hide the progress bar.
   _hideProgressBarClosure.Cancel();
@@ -1988,6 +2142,7 @@ constexpr CGFloat kGlassFullscreenScaleFactor = 0.8;
   [self updateToolbarVisibility];
   [self updateTabGroupIndicatorAvailability];
   [self updateTabSwitcherGuide];
+  [self updateBackgroundColors];
   if (_topPosition) {
     [self updateBannerConstraints];
     _bannerPromoBackgroundHeightConstraint.constant = [self
@@ -2000,6 +2155,7 @@ constexpr CGFloat kGlassFullscreenScaleFactor = 0.8;
   if (_locationBarBackground) {
     ConfigureShadowForToolbarElement(_locationBarBackground);
   }
+  [self updateBackgroundColors];
 }
 
 // Safely updates a layout guide by either referencing `view` or unreferencing

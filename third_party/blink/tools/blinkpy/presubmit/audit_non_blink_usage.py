@@ -417,6 +417,15 @@ _CONFIG = [
     },
     {
         'paths': [
+            'third_party/blink/common/web_preferences/',
+            'third_party/blink/public/common/web_preferences/',
+        ],
+        'allowed': [
+            'GURL',
+        ],
+    },
+    {
+        'paths': [
             'third_party/blink/common/context_menu_data/',
             'third_party/blink/common/input/',
         ],
@@ -426,6 +435,7 @@ _CONFIG = [
     },
     {
         'paths': [
+            'third_party/blink/common/input/',
             'third_party/blink/public/common/input/',
         ],
         'allowed': [
@@ -552,6 +562,14 @@ _CONFIG = [
         'allowed': [
             # //third_party/liburlpattern
             'liburlpattern::.+',
+        ],
+    },
+    {
+        'paths': [
+            'third_party/blink/common/script_tools/script_tool_utils.cc',
+        ],
+        'allowed': [
+            'base::IsAsciiAlphaNumeric',
         ],
     },
     {
@@ -1322,6 +1340,13 @@ _CONFIG = [
         ],
     },
     {
+        'paths':
+        ['third_party/blink/renderer/core/css/css_numeric_literal_value.cc'],
+        'allowed': [
+            'absl::StrFormat',
+        ],
+    },
+    {
         'paths': ['third_party/blink/renderer/core/css/media_values.cc'],
         'allowed': [
             'color_space_utilities::GetColorSpaceGamut',
@@ -1642,6 +1667,7 @@ _CONFIG = [
             'third_party/blink/public/platform/platform.h',
         ],
         'allowed': [
+            'media::AudioBus',
             'viz::RasterContextProvider',
         ],
     },
@@ -2400,6 +2426,19 @@ _CONFIG = [
             # For interoperability with non-Blink code.
             'learning::mojom::LearningTaskControllerInterfaceBase',
             'media::mojom::MediaMetricsProviderInterfaceBase',
+        ],
+    },
+    {
+        'paths': [
+            'third_party/blink/renderer/core/messaging/blink_transferable_message_mojom_traits.cc',
+            'third_party/blink/renderer/core/messaging/blink_transferable_message_mojom_traits.h',
+        ],
+        'allowed': [
+            # Allow the shared Mojo types needed to explicitly instantiate the
+            # unserialized message context in blink_core. These types have no
+            # mojom::blink equivalents.
+            'blink::mojom::internal',
+            'blink::mojom::TransferableMessageDataView',
         ],
     },
     {

@@ -173,6 +173,8 @@ BASE_FEATURE(kRichAutocompletion, "OmniboxRichAutocompletion", ENABLED);
 
 // Enables the AIM eligibility diagnostic component extension.
 BASE_FEATURE(kAimEligibilityComponentExtension, DISABLED);
+const base::FeatureParam<bool> kAimEligibilityUseComponentUpdater{
+    &kAimEligibilityComponentExtension, "use_component_updater", true};
 
 // Whether the aim button should dynamically change to portray the submission
 // type.
@@ -194,8 +196,6 @@ BASE_FEATURE(kHideAimEntrypointForUrlSuggestions, ENABLED);
 // When enabled, the multimodal input button is shown in the Omnibox.
 BASE_FEATURE(kOmniboxMultimodalInput, ENABLED);
 
-// An additional gate to the behavior of OmniboxMultimodalInput on desktop.
-BASE_FEATURE(kAndroidDesktopAimGate, ENABLED);
 
 // Disables tab attachments for Canvas requests and disables Canvas if tabs are
 // attached.
@@ -263,12 +263,34 @@ BASE_FEATURE(kOmniboxAimEvictOnHide, DISABLED);
 // frame when hidden.
 BASE_FEATURE(kOmniboxFullWebUIEvictOnHide, DISABLED);
 
+// When enabled, sizes the AIM popup child WebView bounds directly to its
+// preferred height in RoundedOmniboxResultsFrame and eliminates transient
+// height resets on hide.
+BASE_FEATURE(kOmniboxAimSizeWebViewToPreferredHeight, DISABLED);
+
+// When enabled, sizes the Classic WebUI popup child WebView bounds directly to
+// its preferred height in RoundedOmniboxResultsFrame and eliminates transient
+// height resets on hide.
+BASE_FEATURE(kOmniboxWebUISizeWebViewToPreferredHeight, DISABLED);
+
+// When enabled, sizes the Full WebUI popup child WebView bounds directly to its
+// preferred height in RoundedOmniboxResultsFrame and eliminates transient
+// height resets on hide/tab switch.
+BASE_FEATURE(kOmniboxFullWebUISizeWebViewToPreferredHeight, DISABLED);
+
+// When enabled, the Omnibox WebUI popup presenter will explicitly hide the
+// widget upon creation, preventing pre-warmed child widgets from inheriting
+// parent window visibility and locking compositor frames.
+BASE_FEATURE(kOmniboxWebUIPopupHideOnCreation, DISABLED);
 // When enabled, the WebUI searchbox will bypass OmniboxController and
 // OmniboxEditModel.
 BASE_FEATURE(kWebUISearchboxWithoutModelController, DISABLED);
 
-// If enabled, debounces soft keyboard show/hide transitions in the Omnibox.
-BASE_FEATURE(kOmniboxDebounceKeyboardVisibility, DISABLED);
+// If enabled, debounces soft keyboard show/hide transitions in the Omnibox and
+// suppresses the legacy NTP fakebox accessibility focus reset that hides the
+// keyboard right after showing it. See crbug.com/534375541.
+// Enabled by default; retained as a kill switch.
+BASE_FEATURE(kOmniboxDebounceKeyboardVisibility, ENABLED);
 
 // Feature used to default typed navigations to use HTTPS instead of HTTP.
 // This only applies to navigations that don't have a scheme such as
@@ -360,7 +382,7 @@ BASE_FEATURE(kReportApplicationLanguageInSearchRequest, ENABLED);
 BASE_FEATURE(kOmniboxAppendInvocationSource, DISABLED);
 
 // Enable asynchronous Omnibox/Suggest view inflation.
-BASE_FEATURE(kOmniboxAsyncViewInflation, DISABLED);
+BASE_FEATURE(kOmniboxAsyncViewInflation, ENABLED);
 
 // Enable asynchronous Fusebox view inflation.
 BASE_FEATURE(kOmniboxFuseboxAsyncInflation, DISABLED);
@@ -384,7 +406,7 @@ BASE_FEATURE(kOmniboxMobileParityUpdateV2, ENABLED);
 BASE_FEATURE(kOmniboxXGeoPermissionGranularity, ENABLED);
 
 // When the first suggestion is a url, the favicon is shown in the status view.
-BASE_FEATURE(kExactMatchFavicons, DISABLED);
+BASE_FEATURE(kExactMatchFavicons, ENABLED);
 
 // The features below allow tuning number of suggestions offered to users in
 // specific contexts. These features are default enabled and are used to control
@@ -438,16 +460,35 @@ const base::FeatureParam<bool> kComposeboxDriveIdentityFallback{
 BASE_FEATURE(kComposeboxDriveContextMenuOptionDisclaimer, DISABLED);
 
 // For Workspace AIM, the Flow ID is the ConsentKit frontend identifier
-// (e.g. CHOICEFLOW_PCONTEXT_WORKSPACE_AIM) and the Product ID is the
-// Footprints ConsentVariant ID (e.g.
-// CHOICEFLOW_VARIANT_PCONTEXT_WORKSPACE_AIM_DEFAULT)
+// (CHOICEFLOW_PCONTEXT_WORKSPACE_AIM = 76).
 const base::FeatureParam<int> kComposeboxDriveConsentFlowId{
     &kComposeboxDriveContextMenuOptionDisclaimer, "flow_id", 76};
 
+#if BUILDFLAG(IS_IOS)
+// For Chrome on iOS:
+// - Product ID: Chrome iOS (71720513)
+// - Product Surface: SEARCH_AIM (29)
 const base::FeatureParam<int> kComposeboxDriveConsentProductId{
-    &kComposeboxDriveContextMenuOptionDisclaimer, "product_id", 89978449};
+    &kComposeboxDriveContextMenuOptionDisclaimer, "product_id", 71720513};
 const base::FeatureParam<int> kComposeboxDriveConsentProductSurface{
     &kComposeboxDriveContextMenuOptionDisclaimer, "product_surface", 29};
+#elif BUILDFLAG(IS_ANDROID)
+// For Chrome on Android:
+// - Product ID: Chrome Android (111611457)
+// - Product Surface: SEARCH_AIM (29)
+const base::FeatureParam<int> kComposeboxDriveConsentProductId{
+    &kComposeboxDriveContextMenuOptionDisclaimer, "product_id", 111611457};
+const base::FeatureParam<int> kComposeboxDriveConsentProductSurface{
+    &kComposeboxDriveContextMenuOptionDisclaimer, "product_surface", 29};
+#else
+// For Chrome on Desktop:
+// - Product ID: Chrome Desktop (67911908)
+// - Product Surface: CHROME_DESKTOP_NEW_TAB_PAGE (76)
+const base::FeatureParam<int> kComposeboxDriveConsentProductId{
+    &kComposeboxDriveContextMenuOptionDisclaimer, "product_id", 67911908};
+const base::FeatureParam<int> kComposeboxDriveConsentProductSurface{
+    &kComposeboxDriveContextMenuOptionDisclaimer, "product_surface", 76};
+#endif
 const base::FeatureParam<std::string> kComposeboxDriveConsentEntrypointId{
     &kComposeboxDriveContextMenuOptionDisclaimer, "entrypoint_id", "aim-drive"};
 
@@ -506,6 +547,18 @@ const base::FeatureParam<bool>
         &kVoiceSearchCoherenceSearchbox,
         "VoiceSearchCoherenceSearchboxWithLiveTranscription", false};
 
+// Enables 3-second auto-endpointing for NTP Realbox voice search.
+// When enabled, voice search automatically submits after 3 seconds of trailing
+// silence.
+const base::FeatureParam<bool> kVoiceSearchCoherenceRealboxAutoEndpoint{
+    &kVoiceSearchCoherenceSearchbox, "VoiceSearchCoherenceRealboxAutoEndpoint",
+    false};
+
+// Enables helper text (e.g. "Listening...") in NTP Realbox voice search.
+const base::FeatureParam<bool> kVoiceSearchCoherenceRealboxHelperText{
+    &kVoiceSearchCoherenceSearchbox, "VoiceSearchCoherenceRealboxHelperText",
+    false};
+
 #if BUILDFLAG(IS_ANDROID)
 // Accelerates time from cold start to focused Omnibox on low-end devices,
 // prioritizing Omnibox focus and background initialization.
@@ -549,6 +602,9 @@ namespace android {
 static int64_t JNI_OmniboxFeatureMap_GetNativeMap(JNIEnv* env) {
   static const base::Feature* const kFeaturesExposedToJava[] = {
       &kDiagnostics,
+      &kComposeboxDriveContextMenuOption,
+      &kComposeboxDriveContextMenuOptionDisclaimer,
+      &kForceDriveDisclaimerAccepted,
       &kForceAndroidRealbox,
       &kOmniboxTouchDownTriggerForPrefetch,
       &kOmniboxPrefetchSelectedSuggestionsOmtAndroid,
@@ -565,7 +621,6 @@ static int64_t JNI_OmniboxFeatureMap_GetNativeMap(JNIEnv* env) {
       &kInlineLocationSignaling,
       &kOmniboxSiteSearch,
       &kOmniboxMultimodalInput,
-      &kAndroidDesktopAimGate,
       &kServeJavaCachedZeroSuggest,
       &kAIMSuppressVerbatimMatch,
       &kResetSuggestionsScroll,

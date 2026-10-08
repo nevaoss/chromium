@@ -57,6 +57,7 @@
 <translation id="1181037720776840403">ដកចេញ</translation>
 <translation id="1183189057400844278">ដើម្បីប្រាកដថា អ្នកអាចប្រើពាក្យ​សម្ងាត់​នៅក្នុងគណនី Google របស់អ្នកបានជានិច្ច សូមផ្ទៀងផ្ទាត់ថាជាអ្នក</translation>
 <translation id="1187810343066461819">លុប​ចំណាំ ប្រវត្តិ និងអ្វីៗជាច្រើនទៀត​ពីរថយន្តនេះ​ផងដែរ</translation>
+<translation id="1191987227666124897">សំណើសុំ​ផ្ដាច់ចេញ</translation>
 <translation id="1193729455103054076">ប្រើ​ពាក្យសម្ងាត់ខ្លាំងឬ?</translation>
 <translation id="11947597112837849">អាសយដ្ឋាន​អ៊ីមែល</translation>
 <translation id="1197267115302279827">ផ្លាស់ទីចំណាំ</translation>
@@ -105,6 +106,7 @@
 <translation id="138181280295369883">ចូលគណនី ដើម្បី​ទទួលបាន​ព័ត៌មាន​ដែលអ្នក​បានរក្សាទុក និងអ្វីៗជា​ច្រើនទៀត​នៅលើ​ឧបករណ៍​ទាំងអស់​របស់អ្នក</translation>
 <translation id="1381838868249179644">ដើម្បីជួយរក្សាសុវត្ថិភាពរបស់អ្នក ការអនុញ្ញាតត្រូវបានដកចេញពីគេហទំព័រមួយចំនួន</translation>
 <translation id="1383876407941801731">ស្វែងរក</translation>
+<translation id="1384568202352682721">រក្សាទុកជា…</translation>
 <translation id="1384704387250346179">បកប្រែរូបភាពដោយប្រើ Google Lens <ph name="BEGIN_NEW" />ថ្មី<ph name="END_NEW" /></translation>
 <translation id="1390418506739274310">អ្នកអាច​មើលឃើញ​ប្រវត្តិ​ពីកម្មវិធី​ផ្សេងទៀត​ដែលបើក​តំណ​នៅក្នុង Chrome។ គណនី Google របស់អ្នកអាចមានទម្រង់ប្រវត្តិ​រុករក​តាមអ៊ីនធឺណិតផ្សេងទៀតនៅ <ph name="BEGIN_LINK" />myactivity.google.com<ph name="END_LINK" />។</translation>
 <translation id="139752016751285248">សន្លឹក​ខាងក្រោមដែលមាន​ស្ថិតិ​តម្លៃ​ត្រូវបានបើក​ពេញ​អេក្រង់</translation>
@@ -133,6 +135,7 @@
 <translation id="147982357559798527">បានប្ដូរ</translation>
 <translation id="1480287803138246127">ប្រវត្តិខ្លះ​របស់អ្នក​ប្រហែលជា​មិនបង្ហាញ​នៅទីនេះទេ។ ដើម្បី​មើលឃើញ​ប្រវត្តិ Chrome ទាំងអស់​របស់អ្នក សូមបើក​ប្រវត្តិ Chrome ពេញលេញ។</translation>
 <translation id="1483493594462132177">ផ្ញើ</translation>
+<translation id="1485343711570311792">បើកនៅក្នុង <ph name="NATIVE_APP_NAME" /> • ពី <ph name="DEVICE_NAME" /></translation>
 <translation id="1495677929897281669">ត្រឡប់ទៅ​ផ្ទាំងវិញ</translation>
 <translation id="1496514951988037011">ឈ្មោះ​អ្នក​ប្រើប្រាស់</translation>
 <translation id="1501480321619201731">លុបក្រុម</translation>
@@ -210,6 +213,7 @@
 <translation id="1832459821645506983">បាទ/ចាស ខ្ញុំយល់ព្រម</translation>
 <translation id="1845958458910716240">ដើម្បី​ការពារ​ទិន្នន័យ​របស់អ្នក សូមឱ្យ Chrome ដក​ការអនុញ្ញាត​ចេញពី​គេហទំព័រ​ដែលអ្នក​មិនបាន​ចូលមើល​នាពេល​ថ្មីៗនេះ</translation>
 <translation id="1851551847729706116">កំពុង​ចែករំលែក <ph name="TAB_NAME" /> ជាមួយ​ផ្ទាំងនេះ</translation>
+<translation id="1855268219431673036">ទំព័រទី <ph name="CURRENT_PAGE" /> នៃ <ph name="TOTAL_PAGE_COUNT" /></translation>
 <translation id="1869691326892615940">ពាក្យសម្ងាត់កាន់តែមានសុវត្ថិភាព ការចូលគណនីកាន់តែរហ័ស</translation>
 <translation id="1871098866036088250">បើកនៅក្នុង​កម្មវិធីរុករក​តាមអ៊ីនធឺណិត Chrome</translation>
 <translation id="1877026089748256423">Chrome ហួសសម័យហើយ</translation>
@@ -248,6 +252,7 @@
 <translation id="1984087999855033707">លេខទូរសព្ទ</translation>
 <translation id="1984417487208496350">គ្មានការការពារ (មិនណែនាំ)</translation>
 <translation id="1986685561493779662">ឈ្មោះមាន​រួច​ហើយ</translation>
+<translation id="1992244793717364584">កម្មវិធីត្រូវបានលុប</translation>
 <translation id="200114059308480249">រួមបញ្ចូល​អក្សរដែលនៅជុំវិញ​នៅក្នុង​ការស្វែងរកនៅលើ Google ឬ?</translation>
 <translation id="2004096469149679223"><ph name="TAB_TITLE" />, ផ្ទាំងឯកជន​ដែលបានបិទ​សំឡេង និងបាន​ខ្ទាស់</translation>
 <translation id="2021896219286479412">ការគ្រប់គ្រងទំព័រពេញអេក្រង់</translation>
@@ -327,6 +332,7 @@
 <translation id="232137538351753795">អូសពីគែម​ខាងឆ្វេង ដើម្បី​ថយក្រោយ</translation>
 <translation id="2323763861024343754">ទំហំផ្ទុកទិន្នន័យ</translation>
 <translation id="2327445548174191329">ពី <ph name="DEVICE_NAME" /></translation>
+<translation id="232757965409810352">រក្សាទុកទំព័រជា…</translation>
 <translation id="2328474416100889417">អ្នកគ្រប់គ្នា​នឹង​បាត់បង់​សិទ្ធិចូលប្រើ​ក្រុមផ្ទាំង “<ph name="GROUP_NAME" />” ភ្លាមៗ ហើយ​តំណអញ្ជើញ​ទាំងអស់​នឹងត្រូវបាន​បិទ</translation>
 <translation id="2329500425421091035">សូមណែនាំមុខងារ AI ក្នុង Chrome</translation>
 <translation id="2330186936255788117">ចំណាំ​ច្រើនទៀត</translation>
@@ -561,6 +567,7 @@
 <translation id="3232754137068452469">កម្មវិធីបណ្តាញ</translation>
 <translation id="3236059992281584593">នៅសល់ 1 នាទីទៀត</translation>
 <translation id="3237087289225714896">ការផ្ទុក​ជាមុនស្ដង់ដារ៖</translation>
+<translation id="3243650379537999343">គូរ</translation>
 <translation id="3244271242291266297">ខែ</translation>
 <translation id="3245429137663807393">ប្រសិនបើអ្នកចែករំលែករបាយការណ៍ប្រើប្រាស់ Chrome ផងដែររបាយការណ៍ទាំងនោះរួមបញ្ចូល URL ដែលអ្នកចូលមើល</translation>
 <translation id="3250563604907490871">ការពណ៌នាអំពីរូបភាព​នឹងបន្ត នៅពេលអ្នកភ្ជាប់ Wi-Fi</translation>
@@ -584,7 +591,6 @@
 <translation id="331080746368555063">គេហទំព័រឯកជនអាចរួមបញ្ចូលអ្វីៗ ដូចជាអ៊ីនត្រាណិតរបស់ក្រុមហ៊ុនអ្នកជាដើម</translation>
 <translation id="3311330810461485557">ស្វែងរកតាមកម្មវិធី កាលបរិច្ឆេទ និងអ្វីៗជាច្រើនទៀត។</translation>
 <translation id="3312300514034250578">ការរុករក​ដោយសុវត្ថិភាពបន្ថែម</translation>
-<translation id="3331974543021145906">ព័ត៌មានកម្មវិធី</translation>
 <translation id="3334729583274622784">ប្ដូរកន្ទុយ​ឯកសារឬ?</translation>
 <translation id="333863344734218290">ប្រាប់​ឱ្យអ្នក​ប្រុងប្រយ័ត្ន​ចំពោះ​គេហទំព័រ​សាធារណៈ និងឯកជនដែលគ្មាន​សុវត្ថិភាព</translation>
 <translation id="3339788961947270565">កំពុងបញ្ចប់ការបិទ</translation>
@@ -658,6 +664,7 @@
 <translation id="3649090831059057090"><ph name="WINDOW_TITLE" /> - <ph name="TAB_COUNT" /></translation>
 <translation id="3653111872753786013"><ph name="WEBSITE_TITLE" />៖ <ph name="WEBSITE_URL" /></translation>
 <translation id="3662363748131724714">ចាកចេញពីការចាក់វីដេអូក្នុងទម្រង់ជក់ចិត្ត</translation>
+<translation id="3662595332590803433">បើកផ្ទាំងផ្ទាល់ខ្លួនក្នុង Chrome ជានិច្ច</translation>
 <translation id="3674208116086565128">ចូលទៅកាន់ទំព័រដើមនៅក្នុងកម្មវិធី Google</translation>
 <translation id="368329460027487650">បានចេញពីគណនី។ បើក​ជម្រើស​ចូលគណនី។</translation>
 <translation id="3684540848053703310">សន្លឹក​ខាងក្រោម​ដែលមានស្ថិតិ​តម្លៃ​ត្រូវបាន​បិទ</translation>
@@ -732,6 +739,7 @@
 <translation id="3950820424414687140">ចូល</translation>
 <translation id="395377504920307820">ប្រើ​ដោយមិនចាំបាច់​មានគណនី</translation>
 <translation id="3955353672249727801">បានបញ្ចូល​ទំព័រ​ទៅក្នុង​បញ្ជីអាន</translation>
+<translation id="3958283758104508528"><ph name="APP_NAME" /> ត្រូវបានលុប</translation>
 <translation id="396192773038029076">{NUM_IN_PROGRESS,plural, =1{Chrome នឹងផ្ទុកទំព័រ​របស់អ្នក នៅពេលរួចរាល់}other{Chrome នឹងផ្ទុកទំព័រ​របស់អ្នក នៅពេលរួចរាល់}}</translation>
 <translation id="3969142555815019568">Chrome មិន​អាចពិនិត្យ​ពាក្យសម្ងាត់របស់អ្នកបានទេ</translation>
 <translation id="3969863827134279083">ផ្លាស់ទីទៅលើ</translation>
@@ -902,6 +910,7 @@
 <translation id="4595805675102978678">បញ្ហាគណនី Google</translation>
 <translation id="4599585406846903742">ទិដ្ឋភាព​មួយទំព័រ</translation>
 <translation id="4601095002996233687">ការស្កេន​ស៊ីជម្រៅ ដើម្បីរក​មើលការទាញយក​គួរឱ្យសង្ស័យ។</translation>
+<translation id="4604434672720336227">ចាកចេញពី Chrome</translation>
 <translation id="4606559747793337066">នៅពេល​កម្មវិធី ឬ​គេហទំព័រ​ស្នើសុំផ្ទុកតំណជាមុន​ជាលក្ខណៈឯកជន​នៅលើទំព័ររបស់ខ្លួន Chrome អ៊ីនគ្រីប និងផ្ទុកទំព័រ​ជាមុន​តាមរយៈ​ម៉ាស៊ីនមេ Google ដោយមិនប្រើ​ខូគី។ ការធ្វើបែបនេះ​លាក់អត្តសញ្ញាណ​របស់អ្នកពីគេហទំព័រ​ដែលបានផ្ទុក​ជាមុន។</translation>
 <translation id="4619615317237390068">ផ្ទាំងបានពីឧបករណ៍ផ្សេងទៀត</translation>
 <translation id="4624065194742029982">មុខងារ​ឯកជន​របស់ Chrome</translation>
@@ -963,7 +972,6 @@
 <translation id="480990236307250886">បើកទំព័រដើម</translation>
 <translation id="4816492930507672669">សមនឹងទំព័រ</translation>
 <translation id="4822710610088666676">បានបិទ និងរក្សាទុកក្រុមផ្ទាំង <ph name="TAB_GROUP_TITLE" /></translation>
-<translation id="4834250788637067901">វិធី​បង់ប្រាក់ ការផ្ដល់ជូន និង​អាសយដ្ឋាន​ដែលប្រើ Google Pay</translation>
 <translation id="4835385943915508971">Chrome មិន​អាច​ចូល​ប្រើ​ធនធាន​ដែល​បាន​ស្នើ​នេះ​ទេ​។​</translation>
 <translation id="483742037940503070">{TAB_COUNT,plural, =1{ស្ដារ​ក្រុមផ្ទាំងដែលមាន <ph name="TAB_COUNT_ONE" /> ផ្ទាំង, ពណ៌<ph name="COLOR_NAME" />, ជា​ក្រុម​ផ្ទាំង​ផ្ទៃខាងក្រោយ​ថ្មី។}other{ស្ដារ​ក្រុមផ្ទាំង​ដែលមាន <ph name="TAB_COUNT_MANY" /> ផ្ទាំង, ពណ៌<ph name="COLOR_NAME" /> ជា​ក្រុម​ផ្ទាំង​ផ្ទៃខាងក្រោយ​ថ្មី។}}</translation>
 <translation id="4849731766219625109">ប្រើ​គណនី <ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /> របស់អ្នក</translation>
@@ -1338,6 +1346,7 @@
 <translation id="634208815998129842">កម្មវិធីគ្រប់គ្រងភារកិច្ច</translation>
 <translation id="6343495912647200061">{SHIPPING_ADDRESS,plural, =1{<ph name="SHIPPING_ADDRESS_PREVIEW" />\u2026 និង <ph name="NUMBER_OF_ADDITIONAL_ADDRESSES" /> ទៀត}other{<ph name="SHIPPING_ADDRESS_PREVIEW" />\u2026 និង <ph name="NUMBER_OF_ADDITIONAL_ADDRESSES" /> ទៀត}}</translation>
 <translation id="6345878117466430440">សម្គាល់​ថា​បានអាន​ហើយ</translation>
+<translation id="63490081267265251">គេហទំព័រដែលអ្នកចូលមើល រួមទាំង Google ទទួលខុសត្រូវក្នុងការកំណត់របៀបដែលគេហទំព័រទាំងនោះឆ្លើយតបនឹងសំណើនេះ។ អាស្រ័យលើ​ច្បាប់​នៅក្នុង​តំបន់​របស់អ្នក គេហទំព័រ​អាចឆ្លើយតប​ដោយ​ដាក់កំហិតលើ​ការលក់ និង​ការចែករំលែក​ទិន្នន័យ​របស់អ្នក ឬ​ការប្រើប្រាស់​ទិន្នន័យនោះ​សម្រាប់ការផ្សាយពាណិជ្ជកម្មដែលមានលក្ខណៈផ្ទាល់ខ្លួន។ <ph name="BEGIN_LINK" />ស្វែងយល់បន្ថែម<ph name="END_LINK" /></translation>
 <translation id="6350745006329795504">គ្រប់គ្រងឧបករណ៍របស់អ្នក</translation>
 <translation id="6356893102071098867">ពិនិត្យមើលថា​អ្នកបាន​ជ្រើសរើស​គណនី​ដែលត្រឹមត្រូវ</translation>
 <translation id="6364438453358674297">យកការផ្តល់យោបល់ចេញពីប្រវត្តិ?</translation>
@@ -1418,12 +1427,12 @@
 <translation id="6642299196749785472">ភ្ជាប់​ផ្ទាំង</translation>
 <translation id="6647441008198474441">URL ដែលអ្នក​ចូលមើលត្រូវ​បានផ្ញើទៅ Google ដើម្បីព្យាករ​គេហទំព័រដែលអ្នក​ប្រហែលជា​ចូលមើលបន្ទាប់</translation>
 <translation id="6648977384226967773">{CONTACT,plural, =1{<ph name="CONTACT_PREVIEW" />\u2026 និង <ph name="NUMBER_OF_ADDITIONAL_CONTACTS" /> ទៀត}other{<ph name="CONTACT_PREVIEW" />\u2026 និង <ph name="NUMBER_OF_ADDITIONAL_CONTACTS" /> ទៀត}}</translation>
-<translation id="6649642165559792194">មើល​រូបភាព​សាកល្បង <ph name="BEGIN_NEW" />ថ្មី<ph name="END_NEW" /></translation>
 <translation id="6659594942844771486">ផ្ទាំង</translation>
 <translation id="666731172850799929">បើកក្នុង <ph name="APP_NAME" /></translation>
 <translation id="6669390930482049506">ជូនដំណឹង​ដល់ខ្ញុំ</translation>
 <translation id="6671495933530132209">ចម្លងរូបភាព</translation>
 <translation id="6672697278890207089">បញ្ចូលឃ្លា​សម្ងាត់របស់អ្នក</translation>
+<translation id="6675622031235530028">ចុច Ctrl+Q ឱ្យជាប់​ដើម្បី​ចាកចេញ</translation>
 <translation id="6676927815633975364">ចូលគេហទំព័រនេះ និង Chrome</translation>
 <translation id="6684262542644248484">ចូលគណនី​នៅលើ​គេហទំព័រ</translation>
 <translation id="6684809838922667136">ធ្វើឱ្យ Chrome ប្រសើរឡើង</translation>
@@ -1508,7 +1517,6 @@
 <translation id="6922812712751566567"><ph name="PERMISSION" /> <ph name="SEPARATOR" /> Chrome បានដក​ការអនុញ្ញាត​ទាំងនេះ​ចេញ ដោយសារ​អ្នកមិនបាន​ចូលមើល​នាពេល​ថ្មីៗនេះ</translation>
 <translation id="6923291640965724312">ទម្រង់ជក់ចិត្ត</translation>
 <translation id="6927821422725196292">{TABS_COUNT,plural, =1{1 ផ្ទាំង}other{<ph name="NUMBER_OF_TABS" /> ផ្ទាំង}}</translation>
-<translation id="6929224077895306814">លេខកូដ​សុវត្ថិភាព​ទាំងអស់​ដែលបានរក្សាទុក​នៅលើ​ឧបករណ៍​របស់អ្នក និង​នៅក្នុង​គណនី Google របស់អ្នក​នឹងត្រូវបានលុប</translation>
 <translation id="6933180670536678127"><ph name="TAB_TITLE" />, ផ្ទាំង​ដែលឮ​សំឡេងដែលបានខ្ទាស់ និង​បាន​ជ្រើសរើស</translation>
 <translation id="6937524809504266803">ការកំណត់ឱ្យមានលក្ខណៈផ្ទាល់ខ្លួន និងការភ្ជាប់</translation>
 <translation id="6937876069006524083">ឈ្មោះ​ហៅក្រៅ (មិនតម្រូវ)</translation>
@@ -1619,6 +1627,7 @@
 <translation id="7335766481146072567">ចុច "បន្ត"</translation>
 <translation id="7336259382292148213">ការជូនដំណឹង​មើលទៅគ្មាន​បញ្ហា​ទេ</translation>
 <translation id="7339898014177206373">ផ្ទាំងថ្មី</translation>
+<translation id="7349983576451251297">បើកទំព័របណ្ដាញក្នុង Chrome ជំនួសឱ្យផ្ទាំងផ្ទាល់ខ្លួន</translation>
 <translation id="7352339641508007922">អូសដើម្បីថតរូបអេក្រង់វែង</translation>
 <translation id="7352651011704765696">មានបញ្ហាអ្វីមួយកើតឡើង</translation>
 <translation id="7353894246028566792">{NUM_SELECTED,plural, =1{ចែករំលែកធាតុដែលបានជ្រើសរើស 1}other{ចែករំលែកធាតុដែលបានជ្រើសរើស #}}</translation>
@@ -1662,6 +1671,7 @@
 <translation id="7493994139787901920"><ph name="VERSION" /> (បានធ្វើបច្ចុប្បន្នភាព <ph name="TIME_SINCE_UPDATE" />)</translation>
 <translation id="7498271377022651285">សូមរង់ចាំ...</translation>
 <translation id="7499065150275272675"><ph name="TAB_TITLE" />, ផ្ទាំង​ដែល​បានបិទ​សំឡេង និងបានខ្ទាស់</translation>
+<translation id="7500851014030446046">កំពុងទាញយក PDF</translation>
 <translation id="7501135638693251872">ចំណាំទាំងអស់</translation>
 <translation id="7507207699631365376">មើល<ph name="BEGIN_LINK" />គោលការណ៍ឯកជនភាព<ph name="END_LINK" />របស់ក្រុមហ៊ុនផ្ដល់សេវានេះ</translation>
 <translation id="750886945254958667">រក្សា​ក្រុមនេះ ដើម្បី​បញ្ចូលផ្ទាំង​នៅពេលក្រោយ ឬ​ចាកចេញ​ពីក្រុមនេះ ប្រសិនបើ​អ្នកលែងចង់​ចូលប្រើវា​ទៀតហើយ</translation>
@@ -1708,6 +1718,7 @@
 <translation id="7690596512217303514">ឧបករណ៍​របស់អ្នក​មិនអាចបើក Chrome បានទេ។ ដើម្បី​ដោះស្រាយ​បញ្ហានេះ សូមទាញយក​កំណែថ្មីបំផុត​របស់ Chrome ពី​ហាងកម្មវិធី​របស់អ្នក។</translation>
 <translation id="7692761875510935111">បើក​នៅក្នុង​កម្មវិធីរុករកតាម​អ៊ីនធឺណិត​យ៉ាងរហ័ស។ ដើម្បីកែផ្លូវកាត់នេះ សូមចុចឱ្យជាប់។</translation>
 <translation id="7695270712963178084">អ្វីដែល Chrome រកឃើញ</translation>
+<translation id="7695610746377249436">គេហទំព័រ រួមទាំង Google ប្រើ​ឆន្ទានុសិទ្ធិរបស់ខ្លួន​នៅ​ពេល​ឆ្លើយតប​នឹងសំណើ​នេះ។</translation>
 <translation id="7697383401610880082">ដង​អូស</translation>
 <translation id="7698359219371678927">បង្កើតអ៊ីមែលនៅក្នុង <ph name="APP_NAME" /></translation>
 <translation id="7702420606070050505">បានបើក​សន្លឹក​ខាងក្រោម​សកម្មភាពថ្មីៗ​ពេញអេក្រង់</translation>
@@ -1729,10 +1740,12 @@
 <translation id="7774809984919390718">{PAYMENT_METHOD,plural, =1{<ph name="PAYMENT_METHOD_PREVIEW" />\u2026 និង <ph name="NUMBER_OF_ADDITIONAL_PAYMENT_METHODS" /> ទៀត}other{<ph name="PAYMENT_METHOD_PREVIEW" />\u2026 និង <ph name="NUMBER_OF_ADDITIONAL_PAYMENT_METHODS" /> ទៀត}}</translation>
 <translation id="777637629667389858">ការពារអ្នក​នៅលើ​សេវាកម្ម Google នៅពេលអ្នក​ចូលគណនី។</translation>
 <translation id="7778840695157240389">សូមពិនិត្យមើល​ម្ដងទៀត​នៅពេលក្រោយ ដើម្បីទទួលបាន​អត្ថបទថ្មីៗ</translation>
+<translation id="7780992949171378848">ផ្ញើសំណើសុំផ្ដាច់ចេញទៅគេហទំព័រទាក់ទងនឹងការប្រើប្រាស់ទិន្នន័យរបស់អ្នក</translation>
 <translation id="7791543448312431591">បន្ថែម</translation>
 <translation id="7792388396321542707">ឈប់ចែករំលែក</translation>
 <translation id="780287761701992588">ទទួលបាន​ចំណាំ ពាក្យសម្ងាត់​របស់អ្នក និង​អ្វីៗជា​ច្រើនទៀត​នៅលើ​ឧបករណ៍​ទាំងអស់​របស់អ្នក</translation>
 <translation id="780301667611848630">ទេ អរគុណ</translation>
+<translation id="7804364787702057554">គណនី​របស់អ្នក​នៅក្នុង Chrome</translation>
 <translation id="7810647596859435254">បើក​ដោយ​ប្រើ…</translation>
 <translation id="7814066895362068701">{FILE_COUNT,plural, =1{ឯកសារ​ទាំងអស់, ឯកសារ 1 នៅក្នុង​បញ្ជី}other{ឯកសារ​ទាំងអស់, ឯកសារ # នៅក្នុង​បញ្ជី}}</translation>
 <translation id="7815484226266492798">រូបថត​អេក្រង់វែង</translation>
@@ -1775,7 +1788,6 @@
 <translation id="7968014550143838305">បានបញ្ចូល​ទៅក្នុង​បញ្ជីអាន</translation>
 <translation id="7968982339740310781">មើលព័ត៌មានលំអិត</translation>
 <translation id="7969391000881506217">កាលបរិច្ឆេទ​ផុតកំណត់*</translation>
-<translation id="7975379999046275268">មើល​ទំព័រ​សាកល្បង <ph name="BEGIN_NEW" />ថ្មី<ph name="END_NEW" /></translation>
 <translation id="7977451675950311423">ប្រាប់ឱ្យអ្នកប្រុងប្រយ័ត្ន ប្រសិនបើ​អ្នកប្រើ​ពាក្យសម្ងាត់​ដែល​រងការលុកលុយក្នុងការបែកធ្លាយ​ទិន្នន័យ។</translation>
 <translation id="7987499071758862048"><ph name="PERMISSION_1" /> <ph name="PERMISSION_2" /> <ph name="PERMISSION_3" /> <ph name="SEPARATOR" /> Chrome បានដក​ការអនុញ្ញាត​ទាំងនេះ​ចេញ ដោយសារ​អ្នកមិនបាន​ចូលមើល​នាពេល​ថ្មីៗនេះ</translation>
 <translation id="799576009106109668">អ្នកនឹងរុករកកាន់តែរហ័ស ដោយសារខ្លឹមសារត្រូវបានផ្ទុកយ៉ាងសកម្មជាមុន ដោយផ្អែកលើការចូលមើលទំព័របណ្ដាញបច្ចុប្បន្នរបស់អ្នក</translation>
@@ -1874,6 +1886,7 @@
 <translation id="8313599942510782709">កិច្ចការ​របស់អ្នក​កំពុង​ដំណើរការ​នៅឡើយ</translation>
 <translation id="8317318757008452355">បើក​ជម្រើស​បោះពុម្ព</translation>
 <translation id="8320212361750431956">សកម្មភាព​ថ្មីៗ</translation>
+<translation id="8322452989119079156">បើកនៅក្នុង <ph name="NATIVE_APP_NAME" /> - បានផ្ញើពី <ph name="DEVICE_NAME" /></translation>
 <translation id="832514020744584629"><ph name="PREF_TITLE" />  <ph name="BEGIN_NEW" />ថ្មី<ph name="END_NEW" /></translation>
 <translation id="8333026248928723981">ចំណាំ និងបញ្ជី</translation>
 <translation id="8342727528718219152">Chrome នឹង​ប្រាប់ឱ្យអ្នកដឹង​អំពី​គេហទំព័រ​ដែល​ប្រហែលជា​កំពុងផ្ញើ​ការជូនដំណឹង​ច្រើនពេក</translation>
@@ -1946,6 +1959,7 @@
 <translation id="8580435650274205305">កាលបរិច្ឆេទ​ផុតកំណត់ (តម្រូវឲ្យមាន)</translation>
 <translation id="8582529315803410153">អ្នក​នឹង​ឃើញ​ផ្ទាំង​របស់អ្នក​ពី​ឧបករណ៍​ផ្សេងទៀត​នៅទីនេះ</translation>
 <translation id="8585103689515290060">សេវាកម្មបំពេញស្វ័យប្រវត្តិ</translation>
+<translation id="8586116786993312006">ចុចដើម្បីលុប​ទិន្នន័យរុករក​នៅក្នុង Chrome</translation>
 <translation id="859046281437143747">តាមដានតម្លៃពីប៊ូតុងជម្រើសច្រើនទៀត</translation>
 <translation id="859064343657890103">បានលុបក្រុមផ្ទាំង <ph name="TAB_GROUP_TITLE" /></translation>
 <translation id="860043288473659153">ឈ្មោះ​ម្ចាស់​កាត</translation>

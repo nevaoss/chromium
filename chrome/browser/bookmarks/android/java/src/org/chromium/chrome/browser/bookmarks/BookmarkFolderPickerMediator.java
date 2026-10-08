@@ -180,8 +180,7 @@ class BookmarkFolderPickerMediator {
         BookmarkItem parentItem = mBookmarkModel.getBookmarkById(parentId);
         assert parentItem != null;
         mCurrentParentItem = parentItem;
-        mBackPressStateSupplier.set(
-                !parentId.equals(mBookmarkModel.getRootFolderId()) || mIsFromBookmarkDialog);
+        mBackPressStateSupplier.set(!parentId.equals(mBookmarkModel.getRootFolderId()));
         updateToolbarTitleForCurrentParent();
         updateButtonsForCurrentParent();
         updateNavigationIconForCurrentParent();
@@ -235,7 +234,11 @@ class BookmarkFolderPickerMediator {
     private void updateToolbarTitleForCurrentParent() {
         String title;
         if (mCurrentParentItem.getId().equals(mBookmarkModel.getRootFolderId())) {
-            title = mContext.getString(R.string.folder_picker_root);
+            title =
+                    mContext.getString(
+                            BookmarkUtils.isDesktopBookmarksDialogEnabled()
+                                    ? R.string.folder_picker_root_desktop
+                                    : R.string.folder_picker_root);
         } else {
             title = mCurrentParentItem.getTitle();
         }
@@ -272,7 +275,7 @@ class BookmarkFolderPickerMediator {
     }
 
     void updateNavigationIconForCurrentParent() {
-        if (mCurrentParentItem == null || !BookmarkUtils.isDesktopBookmarksLayoutEnabled()) {
+        if (mCurrentParentItem == null || !BookmarkUtils.isDesktopBookmarksDialogEnabled()) {
             return;
         }
 

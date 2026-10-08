@@ -114,6 +114,7 @@ class ContextualCueingController
   // Returns the CueTarget for the given CueTargetType, or nullptr if there is
   // none.
   CueTarget* GetTarget(CueTargetType type);
+  bool ShouldRecordUcbStats(CueTargetType type) const;
 
   void OnCueInteraction(
       ContextualCueingInteraction interaction_type,
@@ -245,6 +246,9 @@ class ContextualCueingController
   void OnFaviconAvailable(tabs::TabHandle handle,
                           const favicon_base::FaviconImageResult& image_result);
   void OnShowCueFailed(ContextualCueingDecision decision);
+
+  // Logs and records a contextual cueing decision for this tab to UKM.
+  void RecordContextualCueingDecision(ContextualCueingDecision decision);
 
   void OnSidePanelShown();
 

@@ -32,7 +32,7 @@
 #include "crypto/mock_unexportable_key.h"
 #include "crypto/scoped_fake_unexportable_key_provider.h"
 #include "crypto/scoped_mock_unexportable_key_provider.h"
-#include "crypto/signature_verifier.h"
+#include "crypto/sign.h"
 #include "crypto/unexportable_key.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -58,8 +58,8 @@ using ::testing::SizeIs;
 
 namespace {
 
-constexpr crypto::SignatureVerifier::SignatureAlgorithm
-    kAcceptableAlgorithms[] = {crypto::SignatureVerifier::ECDSA_SHA256};
+constexpr crypto::sign::SignatureKind kAcceptableAlgorithms[] = {
+    crypto::sign::ECDSA_SHA256};
 constexpr BackgroundTaskPriority kTaskPriority =
     BackgroundTaskPriority::kUserVisible;
 constexpr BackgroundTaskOrigin kTaskOrigin =
@@ -98,9 +98,10 @@ class UnexportableKeyServiceImplTest : public testing::Test {
     task_environment_.FastForwardBy(delta);
   }
 
-  void ResetService(crypto::UnexportableKeyProvider::Config config = {}) {
+  void ResetService(crypto::UnexportableKeyProvider::Config config = {},
+                    BackgroundTaskOrigin origin = kTaskOrigin) {
     task_manager_.emplace();
-    service_.emplace(*task_manager_, kTaskOrigin, std::move(config));
+    service_.emplace(*task_manager_, origin, std::move(config));
   }
 
   void DestroyService() { service_ = std::nullopt; }
@@ -233,7 +234,7 @@ TEST_F(UnexportableKeyServiceImplTest, GenerateKeyMultiplePendingRequests) {
 TEST_F(UnexportableKeyServiceImplTest, GenerateKeyFails) {
   // RSA_PKCS1_SHA1 is not supported by the protocol, so the key generation
   // should fail.
-  auto unsupported_algorithm = {crypto::SignatureVerifier::RSA_PKCS1_SHA1};
+  auto unsupported_algorithm = {crypto::sign::RSA_PKCS1_SHA1};
   base::test::TestFuture<ServiceErrorOr<UnexportableSigningKeyId>> future;
   service().GenerateSigningKeySlowlyAsync(unsupported_algorithm, kTaskPriority,
                                           future.GetCallback());
@@ -840,7 +841,7 @@ TEST_F(UnexportableKeyServiceImplTest, SignFailed) {
   auto key_to_generate =
       std::make_unique<NiceMock<crypto::MockUnexportableSigningKey>>();
   ON_CALL(*key_to_generate, Algorithm)
-      .WillByDefault(Return(crypto::SignatureVerifier::ECDSA_SHA256));
+      .WillByDefault(Return(crypto::sign::ECDSA_SHA256));
   ON_CALL(*key_to_generate, GetWrappedKey)
       .WillByDefault(Return(std::vector<uint8_t>{0, 0, 1}));
   std::vector<uint8_t> data = {1, 2, 3};
@@ -1107,7 +1108,7 @@ TEST_F(UnexportableKeyServiceImplTest, CertifyFailed) {
   ON_CALL(*mock_attestation_key, GetWrappedKey)
       .WillByDefault(Return(attestation_wrapped_key));
   ON_CALL(*mock_attestation_key, Algorithm)
-      .WillByDefault(Return(crypto::SignatureVerifier::ECDSA_SHA256));
+      .WillByDefault(Return(crypto::sign::ECDSA_SHA256));
 
   auto mock_signing_key =
       std::make_unique<crypto::MockUnexportableSigningKey>();
@@ -1116,7 +1117,7 @@ TEST_F(UnexportableKeyServiceImplTest, CertifyFailed) {
   ON_CALL(*mock_signing_key, GetWrappedKey)
       .WillByDefault(Return(signing_wrapped_key));
   ON_CALL(*mock_signing_key, Algorithm)
-      .WillByDefault(Return(crypto::SignatureVerifier::ECDSA_SHA256));
+      .WillByDefault(Return(crypto::sign::ECDSA_SHA256));
 
   scoped_provider.AddNextGeneratedAttestationKey(
       std::move(mock_attestation_key));
@@ -1167,7 +1168,7 @@ TEST_F(UnexportableKeyServiceImplTest, CertifyWithRetry) {
   ON_CALL(*mock_attestation_key, GetWrappedKey)
       .WillByDefault(Return(attestation_wrapped_key));
   ON_CALL(*mock_attestation_key, Algorithm)
-      .WillByDefault(Return(crypto::SignatureVerifier::ECDSA_SHA256));
+      .WillByDefault(Return(crypto::sign::ECDSA_SHA256));
 
   auto mock_signing_key =
       std::make_unique<crypto::MockUnexportableSigningKey>();
@@ -1176,7 +1177,7 @@ TEST_F(UnexportableKeyServiceImplTest, CertifyWithRetry) {
   ON_CALL(*mock_signing_key, GetWrappedKey)
       .WillByDefault(Return(signing_wrapped_key));
   ON_CALL(*mock_signing_key, Algorithm)
-      .WillByDefault(Return(crypto::SignatureVerifier::ECDSA_SHA256));
+      .WillByDefault(Return(crypto::sign::ECDSA_SHA256));
 
   scoped_provider.AddNextGeneratedAttestationKey(
       std::move(mock_attestation_key));
@@ -1616,8 +1617,8 @@ class SpareKeyPoolTest : public UnexportableKeyServiceImplTest {
 
   // Triggers a key generation request and returns a future.
   base::test::TestFuture<ServiceErrorOr<KeyIdType>> GenerateKey(
-      base::span<const crypto::SignatureVerifier::SignatureAlgorithm>
-          acceptable_algorithms = kAcceptableAlgorithms) {
+      base::span<const crypto::sign::SignatureKind> acceptable_algorithms =
+          kAcceptableAlgorithms) {
     base::test::TestFuture<ServiceErrorOr<KeyIdType>> future;
     if constexpr (std::same_as<KeyIdType, UnexportableSigningKeyId>) {
       this->service().GenerateSigningKeySlowlyAsync(
@@ -1636,14 +1637,12 @@ class SpareKeyPoolTest : public UnexportableKeyServiceImplTest {
     if constexpr (std::same_as<KeyIdType, UnexportableAttestationKeyId>) {
       EXPECT_CALL(mock_provider, GenerateAttestationKeySlowly)
           .WillRepeatedly(
-              [](base::span<const crypto::SignatureVerifier::SignatureAlgorithm>
+              [](base::span<const crypto::sign::SignatureKind>
                      acceptable_algorithms) {
                 auto key = std::make_unique<
                     NiceMock<crypto::MockUnexportableAttestationKey>>();
                 ON_CALL(*key, Algorithm)
-                    .WillByDefault(
-                        Return(crypto::SignatureVerifier::SignatureAlgorithm::
-                                   ECDSA_SHA256));
+                    .WillByDefault(Return(crypto::sign::ECDSA_SHA256));
                 static std::atomic<uint8_t> id{0};
                 ON_CALL(*key, GetWrappedKey)
                     .WillByDefault(Return(std::vector<uint8_t>{id++}));
@@ -1652,14 +1651,12 @@ class SpareKeyPoolTest : public UnexportableKeyServiceImplTest {
     } else {
       EXPECT_CALL(mock_provider, GenerateSigningKeySlowly)
           .WillRepeatedly(
-              [](base::span<const crypto::SignatureVerifier::SignatureAlgorithm>
+              [](base::span<const crypto::sign::SignatureKind>
                      acceptable_algorithms) {
                 auto key = std::make_unique<
                     NiceMock<crypto::MockUnexportableSigningKey>>();
                 ON_CALL(*key, Algorithm)
-                    .WillByDefault(
-                        Return(crypto::SignatureVerifier::SignatureAlgorithm::
-                                   ECDSA_SHA256));
+                    .WillByDefault(Return(crypto::sign::ECDSA_SHA256));
                 static std::atomic<uint8_t> id{0};
                 ON_CALL(*key, GetWrappedKey)
                     .WillByDefault(Return(std::vector<uint8_t>{id++}));
@@ -1676,8 +1673,7 @@ class SpareKeyPoolTest : public UnexportableKeyServiceImplTest {
       EXPECT_CALL(mock_provider, GenerateAttestationKeySlowly)
           .Times(kExpectedReplenishmentAttempts)
           .WillRepeatedly(
-              [](base::span<
-                  const crypto::SignatureVerifier::SignatureAlgorithm>)
+              [](base::span<const crypto::sign::SignatureKind>)
                   -> std::unique_ptr<crypto::UnexportableAttestationKey> {
                 return nullptr;
               });
@@ -1685,8 +1681,7 @@ class SpareKeyPoolTest : public UnexportableKeyServiceImplTest {
       EXPECT_CALL(mock_provider, GenerateSigningKeySlowly)
           .Times(kExpectedReplenishmentAttempts)
           .WillRepeatedly(
-              [](base::span<
-                  const crypto::SignatureVerifier::SignatureAlgorithm>)
+              [](base::span<const crypto::sign::SignatureKind>)
                   -> std::unique_ptr<crypto::UnexportableSigningKey> {
                 return nullptr;
               });
@@ -1886,8 +1881,7 @@ TYPED_TEST(SpareKeyPoolTest, SpareKeyPoolMissNoKeyForAlgorithm) {
   this->FastForwardBy(kSpareKeyPoolDelay);
   this->RunBackgroundTasks();
 
-  auto future = this->GenerateKey(
-      {crypto::SignatureVerifier::SignatureAlgorithm::RSA_PKCS1_SHA1});
+  auto future = this->GenerateKey({crypto::sign::RSA_PKCS1_SHA1});
 
   this->RunBackgroundTasks();
 
@@ -1933,8 +1927,7 @@ TYPED_TEST(SpareKeyPoolTest, SpareKeyPoolMissNoKeyForAlgorithmButPoolNotEmpty) {
   // Request an RSA key.
   // The provider supports both, so SelectAlgorithm will succeed, but the pool
   // has no RSA keys.
-  auto future = this->GenerateKey(
-      {crypto::SignatureVerifier::SignatureAlgorithm::RSA_PKCS1_SHA256});
+  auto future = this->GenerateKey({crypto::sign::RSA_PKCS1_SHA256});
 
   // Since it's a miss, it falls back to slow path.
   EXPECT_FALSE(future.IsReady());
@@ -2166,6 +2159,37 @@ TYPED_TEST(SpareKeyPoolTest,
   this->histogram_tester().ExpectTotalCount(
       GetSpareKeyPoolHistogramName(this->pool_type(),
                                    kSpareKeyPoolUmaGenerateErrorSuffix),
+      0);
+}
+
+TYPED_TEST(SpareKeyPoolTest, SpareKeyPoolBypassedForNonDbscOrigin) {
+  base::test::ScopedFeatureList feature_list(
+      kEnableUnexportableKeysSpareKeyPool);
+
+  this->ResetService(/*config=*/{},
+                     BackgroundTaskOrigin::kOrphanedKeyGarbageCollection);
+
+  auto future = this->GenerateKey();
+  EXPECT_FALSE(future.IsReady());
+
+  this->RunBackgroundTasks();
+
+  EXPECT_OK(future.Get());
+
+  // Since the origin is not DBSC, the spare pool MUST be bypassed natively.
+  // There should be NO pool replenishment, NO pool size metrics, and NO
+  // retrieval result metrics. We just fallback to native generation.
+  this->histogram_tester().ExpectTotalCount(
+      GetSpareKeyPoolHistogramName(this->pool_type(),
+                                   kSpareKeyPoolUmaRetrievalResultSuffix),
+      0);
+  this->histogram_tester().ExpectTotalCount(
+      GetSpareKeyPoolHistogramName(this->pool_type(),
+                                   kSpareKeyPoolUmaPoolSizeSuffix),
+      0);
+  this->histogram_tester().ExpectTotalCount(
+      GetSpareKeyPoolHistogramName(this->pool_type(),
+                                   kSpareKeyPoolUmaRequestLatencySuffix),
       0);
 }
 

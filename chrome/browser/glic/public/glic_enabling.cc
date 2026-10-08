@@ -76,6 +76,7 @@
 
 #if BUILDFLAG(IS_ANDROID)
 #include "base/android/android_info.h"
+#include "base/android/device_info.h"
 #endif
 
 namespace glic {
@@ -139,6 +140,21 @@ constexpr char kDefaultEnabledLocales[] =
 #endif  // BUILDFLAG(IS_CHROMEOS)
 #endif  // BUILDFLAG(IS_ANDROID)
     ;
+
+bool IsAnyEntryPointEnabled(Profile* profile) {
+  bool is_button_enabled =
+      profile->GetPrefs()->GetBoolean(glic::prefs::kGlicPinnedToTabstrip);
+  bool is_shortcut_enabled = g_browser_process->local_state()->GetBoolean(
+      glic::prefs::kGlicLauncherEnabled);
+  return is_button_enabled || is_shortcut_enabled;
+}
+
+void SetAnyEntryPointEnabledForTesting(Profile* profile, bool is_enabled) {
+  profile->GetPrefs()->SetBoolean(glic::prefs::kGlicPinnedToTabstrip,
+                                  is_enabled);
+  g_browser_process->local_state()->SetBoolean(
+      glic::prefs::kGlicLauncherEnabled, is_enabled);
+}
 
 namespace {
 
@@ -393,8 +409,10 @@ GlicEnabling::ProfileEnablement ComputeProfileEnablement(
 
   result.feature_flag_enabled = base::FeatureList::IsEnabled(features::kGlic);
   if (country_override.has_value()) {
-    result.allowed_by_country_filter = EvaluateCountryEnablement(
-        country_override->first, country_override->second);
+    result.allowed_by_country_filter =
+        GlicEnabling::IsRetailDemoModeDesktop() ||
+        EvaluateCountryEnablement(country_override->first,
+                                  country_override->second);
   } else {
     result.allowed_by_country_filter = global_enabling.IsCountryEnabled();
   }
@@ -450,7 +468,7 @@ GlicEnabling::ProfileEnablement ComputeProfileEnablement(
       result.share_image_allowed = false;
     } else {
       if (identity_manager->HasAccountWithRefreshTokenInPersistentErrorState(
-              primary_account.account_id)) {
+              primary_account.GetAccountId())) {
         result.primary_account_is_fully_signed_in = false;
       }
 
@@ -546,6 +564,16 @@ GlicEnabling::ScopedBypassEnablementChecksForTesting::
 // static
 void GlicEnabling::SetSystemRequirementMetForTesting(std::optional<bool> met) {
   g_system_requirement_met_for_testing = met;
+}
+
+// static
+bool GlicEnabling::IsRetailDemoModeDesktop() {
+#if BUILDFLAG(IS_ANDROID)
+  return ui::GetDeviceFormFactor() == ui::DEVICE_FORM_FACTOR_DESKTOP &&
+         base::android::device_info::is_retail_demo_mode();
+#else
+  return false;
+#endif
 }
 
 // static
@@ -733,10 +761,13 @@ bool GlicGlobalEnabling::IsSystemRequirementMet() const {
     return *g_system_requirement_met_for_testing;
   }
   static const bool supported_system_requirements = [] {
-    if (base::SysInfo::AmountOfTotalPhysicalMemory() <
-        base::MiB(base::saturated_cast<uint64_t>(
-            features::kGlicMinRequiredRamMb.Get()))) {
-      return false;
+    if (!base::CommandLine::ForCurrentProcess()->HasSwitch(
+            switches::kTestType)) {
+      if (base::SysInfo::AmountOfTotalPhysicalMemory() <
+          base::MiB(base::saturated_cast<uint64_t>(
+              features::kGlicMinRequiredRamMb.Get()))) {
+        return false;
+      }
     }
 
 #if BUILDFLAG(IS_ANDROID)
@@ -801,6 +832,10 @@ bool GlicEnabling::IsOsVersionSupported() {
 
 bool GlicGlobalEnabling::IsCountryEnabled() {
   if (is_country_enabled_) {
+    return true;
+  }
+  if (GlicEnabling::IsRetailDemoModeDesktop()) {
+    is_country_enabled_ = true;
     return true;
   }
   LastCheckedCountries current_countries{delegate_->GetPermanentCountryCode(),
@@ -1350,7 +1385,8 @@ bool GlicEnabling::HasConsented() const {
 // static
 prefs::FreStatus GlicEnabling::GetCompletedFre(Profile* profile) {
   if (base::FeatureList::IsEnabled(
-          features::kGlicExperimentalTriggeringOptInBypass)) {
+          features::kGlicExperimentalTriggeringOptInBypass) ||
+      IsRetailDemoModeDesktop()) {
     return prefs::FreStatus::kCompleted;
   }
   return static_cast<prefs::FreStatus>(
@@ -1391,6 +1427,19 @@ bool GlicEnabling::IsExperimentalTriggeringUserControlled() const {
   const PrefService::Preference* pref = profile_->GetPrefs()->FindPreference(
       prefs::kGlicExperimentalTriggeringEnabled);
   return pref && !pref->IsManaged();
+}
+
+bool GlicEnabling::ShouldShowExperimentalTriggeringToggle() const {
+  if (!base::FeatureList::IsEnabled(features::kGlicExperimentalTriggering)) {
+    return false;
+  }
+  if (!ShouldShowWebActuationToggle()) {
+    return false;
+  }
+  if (!IsExperimentalTriggeringUserControlled()) {
+    return false;
+  }
+  return !IsExperimentalTriggeringEnabledDefault();
 }
 
 void GlicEnabling::SetUserEnabledActuationOnWeb(bool enabled) {

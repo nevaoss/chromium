@@ -124,41 +124,9 @@ IN_PROC_BROWSER_TEST_F(NewTabPageTest, ComposeboxSubmit) {
   RunTest("new_tab_page/composebox/composebox_submit_test.js", "mocha.run()");
 }
 
-IN_PROC_BROWSER_TEST_F(NewTabPageTest, ComposeboxAutocompleteDropdown) {
-  RunTest("new_tab_page/composebox/composebox_autocomplete_test.js",
-          "runMochaSuite('NewTabPageComposeboxAutocompleteDropdownTest')");
-}
-
-IN_PROC_BROWSER_TEST_F(NewTabPageTest,
-                       ComposeboxAutocompleteKeyboardNavigation) {
-  RunTest("new_tab_page/composebox/composebox_autocomplete_test.js",
-          "runMochaSuite('"
-          "NewTabPageComposeboxAutocompleteKeyboardNavigationTest')");
-}
-
-IN_PROC_BROWSER_TEST_F(NewTabPageTest, ComposeboxAutocompleteMatchRemoval) {
-  RunTest("new_tab_page/composebox/composebox_autocomplete_test.js",
-          "runMochaSuite('NewTabPageComposeboxAutocompleteMatchRemovalTest')");
-}
-
-IN_PROC_BROWSER_TEST_F(NewTabPageTest, ComposeboxAutocompleteSmartCompose) {
-  RunTest("new_tab_page/composebox/composebox_autocomplete_test.js",
-          "runMochaSuite('NewTabPageComposeboxAutocompleteSmartComposeTest')");
-}
-
-IN_PROC_BROWSER_TEST_F(NewTabPageTest, ComposeboxAutocompleteQuerying) {
-  RunTest("new_tab_page/composebox/composebox_autocomplete_test.js",
-          "runMochaSuite('NewTabPageComposeboxAutocompleteQueryingTest')");
-}
-
 IN_PROC_BROWSER_TEST_F(NewTabPageTest, CrComposeboxAutocompleteContextTest) {
   RunTest("new_tab_page/composebox/composebox_autocomplete_test.js",
           "runMochaSuite('CrComposeboxAutocompleteContextTest')");
-}
-
-IN_PROC_BROWSER_TEST_F(NewTabPageTest, ComposeboxAutocompleteVoiceSearch) {
-  RunTest("new_tab_page/composebox/composebox_autocomplete_test.js",
-          "runMochaSuite('NewTabPageComposeboxAutocompleteVoiceSearchTest')");
 }
 
 IN_PROC_BROWSER_TEST_F(NewTabPageTest, ComposeboxContextMenu) {
@@ -392,7 +360,13 @@ IN_PROC_BROWSER_TEST_F(NewTabPageAppTest, RealboxNext) {
           "runMochaSuite('NewTabPageAppTest RealboxNext')");
 }
 
-IN_PROC_BROWSER_TEST_F(NewTabPageAppTest, ActionChips) {
+// TODO(crbug.com/554367777): Disabled by Gardener due to flakiness.
+#if BUILDFLAG(IS_LINUX) && !defined(NDEBUG)
+#define MAYBE_ActionChips DISABLED_ActionChips
+#else
+#define MAYBE_ActionChips ActionChips
+#endif
+IN_PROC_BROWSER_TEST_F(NewTabPageAppTest, MAYBE_ActionChips) {
   RunTest("new_tab_page/app_test.js",
           "runMochaSuite('NewTabPageAppTest ActionChips')");
 }

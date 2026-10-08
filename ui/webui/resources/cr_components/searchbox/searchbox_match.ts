@@ -18,7 +18,8 @@ import {createAutocompleteMatch, SearchboxBrowserProxy} from './searchbox_browse
 import type {SearchboxIconElement} from './searchbox_icon.js';
 import {getCss} from './searchbox_match.css.js';
 import {getHtml} from './searchbox_match.html.js';
-import {mojoTimeTicks} from './utils.js';
+import {selectionsEqual} from './searchbox_selection_mixin.js';
+import {announce, mojoTimeTicks} from './utils.js';
 
 
 
@@ -265,13 +266,22 @@ export class SearchboxMatchElement extends CrLitElement {
     this.addEventListener('click', (event) => this.onMatchClick_(event));
     this.addEventListener('auxclick', (event) => this.onMatchClick_(event));
     this.addEventListener('focusin', () => this.onMatchFocusin_());
-    this.addEventListener('mousedown', () => this.onMatchMouseDown_());
+    this.addEventListener(
+        'mousedown', (event) => this.onMatchMouseDown_(event));
   }
 
   override updated(changedProperties: PropertyValues<this>) {
     super.updated(changedProperties);
     if (changedProperties.has('selection') || changedProperties.has('match')) {
       this.updateAriaLabel_();
+    }
+    if (this.virtualFocusEnabled && this.selection.line === this.matchIndex &&
+        this.selection.state !== SelectionLineState.kFocusedButtonAim) {
+      const oldSelection = changedProperties.get('selection');
+      if (changedProperties.has('selection') &&
+          (!oldSelection || !selectionsEqual(oldSelection, this.selection))) {
+        announce(this, this.ariaLabel);
+      }
     }
   }
 
@@ -305,7 +315,8 @@ export class SearchboxMatchElement extends CrLitElement {
     // Keyboard activation isn't possible because when the keyword chip is
     // focused, focus is redirected to the omnibox view.
     const event = e.detail.event as PointerEvent;
-    this.fire('keyword-click', {match: this.match});
+    this.fire(
+        'keyword-click', {match: this.match, matchIndex: this.matchIndex});
     this.pageHandler_.activateKeyword(
         this.matchIndex, this.match.destinationUrl, mojoTimeTicks(Date.now()),
         // Distinguish mouse and touch or pen events for logging purposes.
@@ -333,6 +344,15 @@ export class SearchboxMatchElement extends CrLitElement {
     e.preventDefault();   // Prevents default browser action (navigation).
     e.stopPropagation();  // Prevents <iron-selector> from selecting the match.
 
+    if (this.match.keywordModel?.type === KeywordType.kInstant) {
+      this.fire(
+          'keyword-click', {match: this.match, matchIndex: this.matchIndex});
+      this.pageHandler_.activateKeyword(
+          this.matchIndex, this.match.destinationUrl, mojoTimeTicks(Date.now()),
+          e.button === 0);
+      return;
+    }
+
     this.pageHandler_.openAutocompleteMatch(
         this.matchIndex, this.match.destinationUrl,
         /*areMatchesShowing=*/ true,
@@ -357,7 +377,10 @@ export class SearchboxMatchElement extends CrLitElement {
     this.fire('match-focusin', this.matchIndex);
   }
 
-  private onMatchMouseDown_() {
+  private onMatchMouseDown_(e: MouseEvent) {
+    if (this.match.keywordModel?.type === KeywordType.kInstant) {
+      e.preventDefault();  // Prevents default browser action (focus loss).
+    }
     this.pageHandler_.onNavigationLikely(
         this.matchIndex, this.match.destinationUrl,
         NavigationPredictor.kMouseDown);

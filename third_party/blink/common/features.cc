@@ -69,6 +69,9 @@ BASE_FEATURE(kAndroidDesktopUASpoofAsChromeOS,
 
 // Gated prewarming of system fonts on Android to background threads.
 BASE_FEATURE(kAndroidSystemFontPrewarming, base::FEATURE_DISABLED_BY_DEFAULT);
+
+// Opens PDFs in iframe in standalone tabs on Android.
+BASE_FEATURE(kAndroidHandlePdfInIframe, base::FEATURE_DISABLED_BY_DEFAULT);
 #endif
 
 // Avoids copying ResourceRequest::TrustedParams when possible.
@@ -150,6 +153,11 @@ BASE_FEATURE(kAudioWorkletThreadPool, base::FEATURE_ENABLED_BY_DEFAULT);
 // WebAutofillClient may default-handle any of these events.
 BASE_FEATURE(kAutofillKeydownEditableElement,
              base::FEATURE_DISABLED_BY_DEFAULT);
+
+#if BUILDFLAG(IS_ANDROID)
+BASE_FEATURE(kAutoResizeMinimumPageScaleFactor,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+#endif
 
 // https://crbug.com/1472970
 BASE_FEATURE(kAutoSpeculationRules, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -556,18 +564,7 @@ BASE_FEATURE(kDetectJSFrameworksOnWorker, base::FEATURE_ENABLED_BY_DEFAULT);
 // See http://crbug.com/124534.
 BASE_FEATURE(kDevToolsImprovedNetworkError, base::FEATURE_DISABLED_BY_DEFAULT);
 
-BASE_FEATURE(kDevToolsWebMCPSupport, base::FEATURE_ENABLED_BY_DEFAULT);
-
 BASE_FEATURE(kDevToolsAdsPanel, base::FEATURE_ENABLED_BY_DEFAULT);
-
-BASE_FEATURE(kDirectCompositorThreadIpc,
-#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || \
-    BUILDFLAG(IS_WIN)
-             base::FEATURE_ENABLED_BY_DEFAULT
-#else
-             base::FEATURE_DISABLED_BY_DEFAULT
-#endif
-);
 
 BASE_FEATURE(kDisableArrayBufferSizeLimitsForTesting,
              base::FEATURE_DISABLED_BY_DEFAULT);
@@ -692,6 +689,7 @@ BASE_FEATURE_PARAM(std::string,
                    "filter",
                    "one_euro_filter");
 
+BASE_FEATURE(kFontAccessCheckFrameIsActive, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kBlockPartialResponseWithoutRange,
              base::FEATURE_ENABLED_BY_DEFAULT);
@@ -876,7 +874,7 @@ BASE_FEATURE_ENUM_PARAM(IsolateSandboxedIframesGrouping,
                         &isolated_sandboxed_iframes_grouping_types);
 
 #if BUILDFLAG(ENABLE_JXL_DECODER)
-BASE_FEATURE(kJXLImageFormat, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kJXLImageFormat, base::FEATURE_ENABLED_BY_DEFAULT);
 #endif
 
 BASE_FEATURE(kKeepAliveInBrowserMigration, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -1958,7 +1956,7 @@ BASE_FEATURE_PARAM(base::TimeDelta,
                    kScrollPredictorMaxResampleTime,
                    &kResamplingScrollEvents,
                    "max_resample_time",
-                   base::Milliseconds(20));
+                   base::Milliseconds(35));
 
 BASE_FEATURE(kResampleScrollEventsForFling, base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -1984,8 +1982,6 @@ BASE_FEATURE_PARAM(bool,
                    &kRestrictLinkHeaderOnSubresource,
                    "disable_resource_load",
                    false);
-
-BASE_FEATURE(kRustyBmpFeature, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kRustyIcoFeature, base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -2431,9 +2427,6 @@ BASE_FEATURE(kWebAppEnableScopeExtensionsForIsolatedWebApps,
 // Note: the lock screen API and OS integration is separately controlled by
 // the content feature `kWebLockScreenApi`.
 BASE_FEATURE(kWebAppManifestLockScreen, base::FEATURE_DISABLED_BY_DEFAULT);
-
-// Enables web apps to be migrated from one manifest id to another.
-BASE_FEATURE(kWebAppMigrationApi, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Use deferred pull status update instead of updating the status directly
 // on audio thread. See https://crbug.com/40249972.

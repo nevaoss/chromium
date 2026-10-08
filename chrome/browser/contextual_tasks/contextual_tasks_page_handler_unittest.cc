@@ -52,8 +52,10 @@
 #include "components/omnibox/common/composebox_features.h"
 #include "components/optimization_guide/proto/features/actions_data.pb.h"
 #include "components/prefs/pref_service.h"
+#include "components/sessions/core/session_id.h"
 #include "components/tab_groups/tab_group_visual_data.h"
 #include "components/variations/scoped_variations_ids_provider.h"
+#include "content/public/browser/navigation_controller.h"
 #include "content/public/test/navigation_simulator.h"
 #include "content/public/test/test_web_ui.h"
 #include "content/public/test/web_contents_tester.h"
@@ -1015,17 +1017,6 @@ TEST_F(ContextualTasksPageHandlerTest, OnboardingTooltipDismissed) {
   page_handler_->OnboardingTooltipDismissed();
   EXPECT_EQ(prefs->GetInteger(
                 contextual_tasks::kContextualTasksOnboardingTooltipDismissedCount),
-            1);
-}
-
-TEST_F(ContextualTasksPageHandlerTest, LensSearchTooltipDismissed) {
-  PrefService* prefs = profile()->GetPrefs();
-  EXPECT_EQ(prefs->GetInteger(
-                contextual_tasks::kContextualTasksLensSearchTooltipDismissedCount),
-            0);
-  page_handler_->LensSearchTooltipDismissed();
-  EXPECT_EQ(prefs->GetInteger(
-                contextual_tasks::kContextualTasksLensSearchTooltipDismissedCount),
             1);
 }
 

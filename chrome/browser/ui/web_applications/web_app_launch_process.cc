@@ -7,6 +7,7 @@
 #include "base/debug/crash_logging.h"
 #include "base/files/file_path.h"
 #include "base/memory/values_equivalent.h"
+#include "base/memory/weak_ptr.h"
 #include "base/metrics/histogram_functions.h"
 #include "build/build_config.h"
 #include "chrome/browser/apps/app_service/launch_utils.h"
@@ -35,15 +36,17 @@
 #include "components/services/app_service/public/cpp/intent_util.h"
 #include "components/webapps/browser/launch_queue/launch_queue.h"
 #include "extensions/common/constants.h"
+#include "ui/base/page_transition_types.h"
 #include "ui/base/window_open_disposition.h"
 #include "ui/display/scoped_display_for_new_windows.h"
+#include "ui/display/types/display_constants.h"
 #include "url/gurl.h"
 #include "url/origin.h"
 
 #if BUILDFLAG(IS_CHROMEOS)
-#include "chrome/browser/ash/browser_delegate/browser_delegate.h"
 #include "chrome/browser/ash/system_web_apps/system_web_app_manager.h"
 #include "chrome/browser/ui/ash/system_web_apps/system_web_app_ui_utils.h"
+#include "chromeos/ash/components/browser_delegate/browser_delegate.h"
 #endif
 
 namespace web_app {
@@ -232,12 +235,16 @@ content::WebContents* WebAppLaunchProcess::Run() {
     browser = CreateBrowserForLaunch();
     is_new_browser = true;
   }
+  base::WeakPtr<BrowserWindowInterface> browser_weak = browser->GetWeakPtr();
   browser->GetWindow()->Show();
+  if (!browser_weak) {
+    return nullptr;
+  }
 
   WindowOpenDisposition navigation_disposition =
       GetNavigationDisposition(is_new_browser);
   content::WebContents* existing_tab =
-      browser->GetFeatures().tab_strip_model()->GetActiveWebContents();
+      browser->GetTabStripModel()->GetActiveWebContents();
   bool open_in_new_window =
       !existing_tab ||
       navigation_disposition != WindowOpenDisposition::CURRENT_TAB;

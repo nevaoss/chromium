@@ -33,7 +33,7 @@ BASE_FEATURE(kStartupNonBlockingWebViewConstructor,
 // When enabled, starts observing for Android OS accessibility changes on
 // startup.
 BASE_FEATURE(kWebViewObserveAccessibilityState,
-             base::FEATURE_ENABLED_BY_DEFAULT);
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Kill switch for Profile.addQuicHints.
 BASE_FEATURE(kWebViewAddQuicHints, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -330,6 +330,11 @@ BASE_FEATURE(kWebViewPrefetchOffTheMainThread,
 
 // Prefetches the native WebView code to memory when renderer is reused.
 BASE_FEATURE(kWebViewPrefetchOnRendererReuse,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
+// When enabled, stale `AwPrefetchHandleWrapper`s in `AwPrefetchManagerData` are
+// proactively pruned when new prefetch requests are added or reserved.
+BASE_FEATURE(kWebViewPrefetchPruneStaleWrappers,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Kill switch for reporting `PreloadServingMetrics` for WebView.

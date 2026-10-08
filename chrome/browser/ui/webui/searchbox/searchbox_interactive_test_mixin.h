@@ -70,8 +70,16 @@ class SearchboxInteractiveTestMixin : public T {
             T::PollElement(
                 kGoogleSearchNavigated, tab_id,
                 [expected_params](const ui::TrackedElement* el) {
-                  const GURL url = el->AsA<TrackedElementWebContents>()
-                                       ->owner()
+                  if (!el) {
+                    return false;
+                  }
+                  const auto* const tracked_wc =
+                      el->AsA<TrackedElementWebContents>();
+                  if (!tracked_wc || !tracked_wc->owner() ||
+                      !tracked_wc->owner()->web_contents()) {
+                    return false;
+                  }
+                  const GURL url = tracked_wc->owner()
                                        ->web_contents()
                                        ->GetLastCommittedURL();
                   if (!google_util::IsGoogleSearchUrl(url)) {
@@ -197,7 +205,8 @@ class SearchboxInteractiveTestMixin : public T {
     url_loader_interceptor_ =
         std::make_unique<content::URLLoaderInterceptor>(base::BindRepeating(
             [](content::URLLoaderInterceptor::RequestParams* params) {
-              if (params->url_request.url.path() != "/complete/search") {
+              if (params->url_request.url.path() != "/complete/s" &&
+                  params->url_request.url.path() != "/complete/search") {
                 return false;
               }
 

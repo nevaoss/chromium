@@ -37,6 +37,7 @@
 #include "components/signin/public/identity_manager/identity_manager.h"
 #include "components/strings/grit/components_branded_strings.h"
 #include "components/sync/base/features.h"
+#include "content/public/browser/navigation_entry.h"
 #include "content/public/browser/web_ui_data_source.h"
 #include "services/network/public/mojom/content_security_policy.mojom.h"
 #include "ui/base/l10n/l10n_util.h"
@@ -72,7 +73,8 @@ bool ShouldShowDefaultBrowserToggle() {
 }
 
 bool ShouldShowMetricsOptIn() {
-#if BUILDFLAG(GOOGLE_CHROME_BRANDING)
+#if BUILDFLAG(GOOGLE_CHROME_BRANDING) && \
+    (BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX))
   return !metrics::IsMetricsReportingPolicyManaged();
 #else
   return false;
@@ -227,6 +229,8 @@ IntroUI::IntroUI(content::WebUI* web_ui)
   source->AddBoolean("isDeviceManaged", is_device_managed);
   source->AddBoolean("isFirstRunDesktopRevampEnabled",
                      is_first_run_desktop_revamp_enabled);
+  source->AddBoolean("isPreFirstRunDesktopRefreshEnabled",
+                     switches::IsPreFirstRunDesktopRefreshEnabled());
   source->AddBoolean("showDefaultBrowserToggle",
                      ShouldShowDefaultBrowserToggle());
   source->AddBoolean("showMetricsOptIn", ShouldShowMetricsOptIn());

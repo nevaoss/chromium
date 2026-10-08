@@ -16,14 +16,12 @@
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/scoped_observation.h"
-#include "base/task/bind_post_task.h"
 #include "base/unguessable_token.h"
 #include "build/build_config.h"
 #include "build/buildflag.h"
 #include "chrome/browser/tab_list/tab_list_interface.h"
 #include "chrome/browser/tab_list/tab_list_interface_observer.h"
-#include "chrome/browser/ui/omnibox/omnibox_controller.h"
-#include "chrome/browser/ui/omnibox/omnibox_everywhere_service.h"
+#include "chrome/browser/ui/webui/cr_components/searchbox/contextual_searchbox_screenshare_controller.h"
 #include "chrome/browser/ui/webui/cr_components/searchbox/searchbox_handler.h"
 #include "chrome/browser/ui/webui/cr_components/searchbox/searchbox_omnibox_client.h"
 #include "components/contextual_search/contextual_search_context_controller.h"
@@ -39,7 +37,6 @@
 #include "components/omnibox/composebox/composebox_query.mojom.h"
 #include "components/signin/public/base/signin_buildflags.h"
 #include "components/tabs/public/tab_interface.h"
-#include "content/public/browser/browser_thread.h"
 #include "content/public/browser/web_contents.h"
 #include "mojo/public/cpp/bindings/pending_receiver.h"
 #include "third_party/omnibox_proto/chrome_aim_entry_point.pb.h"
@@ -47,33 +44,23 @@
 #include "third_party/omnibox_proto/tool_mode.pb.h"
 #include "ui/webui/resources/cr_components/composebox/composebox.mojom.h"
 
-namespace content {
-class NavigationHandle;
-}
-
 #if !BUILDFLAG(IS_ANDROID)
 #include "chrome/browser/ui/views/drive_picker_host/drive_picker_result_handler.mojom.h"
 #include "components/contextual_search/footprints/public/drive_disclaimer_controller.h"
-#include "content/public/browser/desktop_media_id.h"
-#include "third_party/webrtc/modules/desktop_capture/desktop_capturer.h"
 #endif
-
-class DesktopMediaPickerController;
-class DesktopMediaPickerFactory;
-
-namespace content::desktop_capture {
-class ScreenshotCaptureRequest;
-}
 
 class Profile;
 class ContextualSearchboxTabFaviconHelper;
-class SkBitmap;
 class DrivePickerHostController;
 class OmniboxPopupDeactivationBlocker;
 
 #if BUILDFLAG(ENABLE_DICE_SUPPORT)
 class ComposeboxDriveSignInPromoController;
 #endif
+
+namespace content {
+class NavigationHandle;
+}
 
 namespace contextual_tasks {
 class ActiveTaskContextProvider;
@@ -145,46 +132,17 @@ class ContextualSearchboxHandler
     : public contextual_search::ContextualSearchContextController::
           ContextUploadStatusObserver,
       public SearchboxHandler,
-      public TabListInterfaceObserver
+      public TabListInterfaceObserver,
+      public ContextualSearchboxScreenshareController::Host
 #if !BUILDFLAG(IS_ANDROID)
     ,
       public drive_picker_host::mojom::DrivePickerResultHandler
 #endif
 {
  public:
-  // TODO(crbug.com/549716561): Refactor screensharing and screenshot capture
-  // logic out of ContextualSearchboxHandler into a dedicated controller
-  // (similar to DrivePickerHostController).
-  class ScreenshareDelegate {
-   public:
-    virtual ~ScreenshareDelegate() = default;
-
-    virtual void ShowScreenshotMenu(
-        const gfx::Rect& anchor_rect,
-        base::WeakPtr<ContextualSearchboxHandler> handler) {}
-
-    // Invoked when the screenshare picker is opened or closed.
-    virtual void OnScreensharePickerOpened() {}
-    virtual void OnScreensharePickerClosed() {}
-
-    using RegionCaptureSource = OmniboxEverywhereService::RegionCaptureSource;
-    using RegionSelectedCallback =
-        base::OnceCallback<void(const SkBitmap& result_bitmap)>;
-    virtual void ShowRegionSelectOverlay(const SkBitmap& screenshot,
-                                         const RegionCaptureSource& source,
-                                         RegionSelectedCallback callback) {}
-  };
-
-  using RegionCaptureSource = ScreenshareDelegate::RegionCaptureSource;
-
-  struct ProcessedScreenshot {
-    std::vector<uint8_t> png_bytes;
-    std::optional<std::string> thumbnail_data_url;
-  };
-
   using RecontextualizeTabCallback = base::OnceCallback<void(bool)>;
 
-  explicit ContextualSearchboxHandler(
+  ContextualSearchboxHandler(
       mojo::PendingReceiver<searchbox::mojom::PageHandler>
           pending_searchbox_handler,
       mojo::PendingRemote<searchbox::mojom::Page> pending_page,
@@ -192,16 +150,10 @@ class ContextualSearchboxHandler
       content::WebContents* web_contents,
       std::unique_ptr<OmniboxClient> client,
       GetSessionHandleCallback get_session_callback,
-      ScreenshareDelegate* screenshare_delegate = nullptr);
+      ContextualSearchboxScreenshareController::Delegate* screenshare_delegate =
+          nullptr);
 
   ~ContextualSearchboxHandler() override;
-
-  ScreenshareDelegate* screenshare_delegate() const {
-    return screenshare_delegate_;
-  }
-  void set_screenshare_delegate(ScreenshareDelegate* screenshare_delegate) {
-    screenshare_delegate_ = screenshare_delegate;
-  }
 
   virtual void SetAimButtonVisible(bool visible) {}
 
@@ -252,13 +204,31 @@ class ContextualSearchboxHandler
   void CaptureRegionScreenshot(
       CaptureRegionScreenshotCallback callback) override;
   void ShowScreenshotMenu(const gfx::Rect& anchor_rect) override;
+
+  // ContextualSearchboxScreenshareController::Host:
+  void UploadScreenshot(
+      std::string file_name,
+      std::string mime_type,
+      mojo_base::BigBuffer file_bytes,
+      std::optional<lens::ImageEncodingOptions> image_encoding_options,
+      AddFileContextCallback callback) override;
+  void AddFileContextToPage(
+      const base::UnguessableToken& token,
+      searchbox::mojom::SelectedFileInfoPtr file_info) override;
+  void OnScreenshotMenuClosed() override;
+
+  void SetScreenshareControllerForTesting(
+      std::unique_ptr<ContextualSearchboxScreenshareController> controller) {
+    screenshare_controller_ = std::move(controller);
+  }
+  ContextualSearchboxScreenshareController*
+  screenshare_controller_for_testing() {
+    return screenshare_controller_.get();
+  }
+
 #if !BUILDFLAG(IS_ANDROID)
   bool has_drive_picker_deactivation_blocker_for_testing() const {
     return drive_picker_deactivation_blocker_ != nullptr;
-  }
-  void set_desktop_media_picker_factory_for_testing(
-      DesktopMediaPickerFactory* factory) {
-    picker_factory_ = factory;
   }
 #endif
   void QueryAutocomplete(int32_t query_id,
@@ -305,6 +275,8 @@ class ContextualSearchboxHandler
                              base::UnguessableToken context_token,
                              AddTabContextCallback callback);
 
+  using SearchboxHandler::AddFileContextFromBrowser;
+
   // Called from browser code (e.g., Views-based file selector) to add file
   // context.
   void AddFileContextFromBrowser(
@@ -346,6 +318,7 @@ class ContextualSearchboxHandler
 
   // Resets `input_state_model_`.
   void ResetInputStateModel();
+  void OnAimEligibilityChanged();
   void SetActiveToolMode(omnibox::ToolMode tool, bool is_set_by_aim) override;
   void RecordToolSelectionAction(omnibox::ToolMode tool) override;
   void SetActiveModelMode(omnibox::ModelMode model,
@@ -357,6 +330,9 @@ class ContextualSearchboxHandler
       const contextual_search::InputState& state) {
     OnInputStateChanged(state);
   }
+
+  void set_screenshare_delegate_for_testing(
+      ContextualSearchboxScreenshareController::Delegate* screenshare_delegate);
 
 #if !BUILDFLAG(IS_ANDROID)
   bool ShouldOpenInLensSidePanelForTesting(
@@ -549,6 +525,7 @@ class ContextualSearchboxHandler
       tab_list_observation_{this};
 
   std::unique_ptr<ContextualSearchboxTabFaviconHelper> tab_favicon_helper_;
+  base::CallbackListSubscription aim_eligibility_subscription_;
 
  protected:
   std::optional<bool> smart_tab_sharing_active_for_thread_;
@@ -575,39 +552,6 @@ class ContextualSearchboxHandler
       drive_picker::DriveDisclaimerController::DisclaimerStatus status);
   drive_picker::DriveDisclaimerController* GetDriveDisclaimerController();
 
-  template <typename Method, typename... Args>
-  auto BindToUIThread(Method method, Args&&... args) {
-    return base::BindPostTask(
-        content::GetUIThreadTaskRunner({}),
-        base::BindOnce(method, weak_ptr_factory_.GetWeakPtr(),
-                       std::forward<Args>(args)...));
-  }
-
-  void FallbackToChromeDefaultPicker(bool prefer_entire_screen,
-                                     StartScreenshareCallback callback);
-  void OnChromeDefaultPickerResults(StartScreenshareCallback callback,
-                                    const std::string& err,
-                                    content::DesktopMediaID source);
-  void OnNativePickerCreated(content::DesktopMediaID::Id id);
-  void OnNativePickerSourceSelected(content::DesktopMediaID::Type type,
-                                    StartScreenshareCallback callback,
-                                    webrtc::DesktopCapturer::Source source);
-  void OnNativePickerCancelled(StartScreenshareCallback callback);
-  void CaptureAndUploadScreenshot(
-      content::DesktopMediaID source,
-      StartScreenshareCallback callback,
-      std::optional<RegionCaptureSource> region_capture_source = std::nullopt);
-  void OnScreenshotCaptured(
-      StartScreenshareCallback callback,
-      std::optional<RegionCaptureSource> region_capture_source,
-      const SkBitmap& bitmap);
-  void OnRegionSelected(StartScreenshareCallback callback,
-                        const SkBitmap& region_bitmap);
-  void OnScreenshotProcessed(StartScreenshareCallback callback,
-                             ProcessedScreenshot result);
-  void NotifyScreensharePickerOpened();
-  void NotifyScreensharePickerClosed();
-
   mojo::Receiver<drive_picker_host::mojom::DrivePickerResultHandler>
       drive_picker_result_handler_receiver_{this};
 
@@ -620,12 +564,6 @@ class ContextualSearchboxHandler
   std::unique_ptr<OmniboxPopupDeactivationBlocker>
       drive_picker_deactivation_blocker_;
 
-  std::unique_ptr<DesktopMediaPickerController> screenshare_picker_controller_;
-  raw_ptr<DesktopMediaPickerFactory> picker_factory_ = nullptr;
-  std::unique_ptr<content::desktop_capture::ScreenshotCaptureRequest>
-      active_screenshot_request_;
-  bool is_capturing_ = false;
-
 #if BUILDFLAG(ENABLE_DICE_SUPPORT)
   std::unique_ptr<ComposeboxDriveSignInPromoController>
       composebox_drive_signin_promo_controller_;
@@ -633,9 +571,8 @@ class ContextualSearchboxHandler
 
 #endif  // !BUILDFLAG(IS_ANDROID)
 
-  // The delegate must outlive this handler, typically implemented by the
-  // owning WebUIController.
-  raw_ptr<ScreenshareDelegate> screenshare_delegate_ = nullptr;
+  std::unique_ptr<ContextualSearchboxScreenshareController>
+      screenshare_controller_;
   OnDriveUploadClickedCallback drive_upload_click_callback_;
 
   base::WeakPtrFactory<ContextualSearchboxHandler> weak_ptr_factory_{this};

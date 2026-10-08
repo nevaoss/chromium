@@ -35,6 +35,7 @@
 #include "chrome/test/base/search_test_utils.h"
 #include "components/application_locale_storage/application_locale_storage.h"
 #include "components/contextual_tasks/public/features.h"
+#include "components/embedder_support/user_agent_utils.h"
 #include "components/omnibox/browser/aim_eligibility_service.h"
 #include "components/omnibox/browser/aim_eligibility_service_features.h"
 #include "components/omnibox/browser/omnibox_prefs.h"
@@ -50,10 +51,15 @@
 #include "content/public/test/browser_test.h"
 #include "content/public/test/test_utils.h"
 #include "content/public/test/url_loader_interceptor.h"
+#include "extensions/buildflags/buildflags.h"
 #include "net/base/mock_network_change_notifier.h"
 #include "services/network/public/cpp/url_loader_completion_status.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/omnibox_proto/aim_eligibility_response.pb.h"
+
+#if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+#include "extensions/common/extension_features.h"
+#endif
 
 // Helper function to provide eligibility response for intercepted requests.
 // This function can also simulate network failures by using the optional
@@ -566,10 +572,11 @@ IN_PROC_BROWSER_TEST_P(ChromeAimEligibilityServiceBrowserTest,
         identity_manager,
         signin::AccountAvailabilityOptionsBuilder(test_url_loader_factory())
             .Build("secondary@email.com"));
-    signin::SetCookieAccounts(
-        identity_manager, test_url_loader_factory(),
-        {{secondary_account_info.email, secondary_account_info.gaia},
-         {primary_account_info.email, primary_account_info.gaia}});
+    signin::SetCookieAccounts(identity_manager, test_url_loader_factory(),
+                              {{std::string(secondary_account_info.GetEmail()),
+                                secondary_account_info.GetGaiaId()},
+                               {std::string(primary_account_info.GetEmail()),
+                                primary_account_info.GetGaiaId()}});
     EXPECT_TRUE(identity_observer.WaitForAccountsInCookieUpdated());
     EXPECT_TRUE(identity_observer.WaitForPrimaryAccountChanged());
 
@@ -808,6 +815,41 @@ IN_PROC_BROWSER_TEST_F(ChromeAimEligibilityServiceStartupRequestBrowserTest,
   histogram_tester.ExpectBucketCount(
       "Omnibox.AimEligibility.EligibilityRequestStatus.Startup",
       AimEligibilityServiceFriend::EligibilityRequestStatus::kSuccess, 1);
+}
+
+IN_PROC_BROWSER_TEST_F(ChromeAimEligibilityServiceStartupRequestBrowserTest,
+                       RequestSendsFullVersionListHeader) {
+  omnibox::AimEligibilityResponse response;
+  response.set_is_eligible(true);
+  base::test::TestFuture<std::optional<std::string>> full_version_list_future;
+  auto url_loader_interceptor = std::make_unique<content::URLLoaderInterceptor>(
+      base::BindLambdaForTesting(
+          [&](content::URLLoaderInterceptor::RequestParams* params) {
+            if (params->url_request.url.path() == "/async/folae") {
+              full_version_list_future.SetValue(
+                  params->url_request.headers.GetHeader(
+                      "Sec-CH-UA-Full-Version-List"));
+            }
+            return OnRequest(params, std::make_optional(response),
+                             base::DoNothing());
+          }));
+
+  // Given the user is online at startup and contextual tasks is disabled.
+  auto* service = GetAimEligibilityService(GetProfile());
+  base::test::TestFuture<void> eligibility_changed_future;
+  auto eligibility_subscription = service->RegisterEligibilityChangedCallback(
+      eligibility_changed_future.GetRepeatingCallback());
+
+  // When the service is initialized, then an eligibility request is sent.
+  EXPECT_TRUE(eligibility_changed_future.Wait());
+
+  // The Sec-CH-UA-Full-Version-List header should be present and populated.
+  std::optional<std::string> full_version_list =
+      full_version_list_future.Take();
+  ASSERT_TRUE(full_version_list.has_value());
+  EXPECT_EQ(
+      *full_version_list,
+      embedder_support::GetUserAgentMetadata().SerializeBrandFullVersionList());
 }
 
 IN_PROC_BROWSER_TEST_F(ChromeAimEligibilityServiceStartupRequestBrowserTest,
@@ -1423,7 +1465,8 @@ IN_PROC_BROWSER_TEST_F(ChromeAimEligibilityServiceOAuthBrowserTest,
           .AsPrimary(signin::ConsentLevel::kSignin)
           .Build("a@email.com"));
   EXPECT_TRUE(identity_observer.WaitForPrimaryAccountChanged());
-  identity_test_env()->SetCookieAccounts({{account_a.email, account_a.gaia}});
+  identity_test_env()->SetCookieAccounts(
+      {{std::string(account_a.GetEmail()), account_a.GetGaiaId()}});
 
   EXPECT_TRUE(request_handled_future.Take());
   EXPECT_TRUE(eligibility_changed_future.Wait());
@@ -1507,8 +1550,9 @@ IN_PROC_BROWSER_TEST_F(ChromeAimEligibilityServiceOAuthBrowserTest,
       identity_manager,
       signin::AccountAvailabilityOptionsBuilder(test_url_loader_factory())
           .Build("fallback@email.com"));
-  signin::SetCookieAccounts(identity_manager, test_url_loader_factory(),
-                            {{account_info.email, account_info.gaia}});
+  signin::SetCookieAccounts(
+      identity_manager, test_url_loader_factory(),
+      {{std::string(account_info.GetEmail()), account_info.GetGaiaId()}});
   EXPECT_TRUE(identity_observer.WaitForAccountsInCookieUpdated());
 
   EXPECT_TRUE(request_handled_future.Take());
@@ -1559,8 +1603,9 @@ IN_PROC_BROWSER_TEST_F(ChromeAimEligibilityServiceOAuthBrowserTest,
       identity_manager,
       signin::AccountAvailabilityOptionsBuilder(test_url_loader_factory())
           .Build("a@email.com"));
-  signin::SetCookieAccounts(identity_manager, test_url_loader_factory(),
-                            {{account_a.email, account_a.gaia}});
+  signin::SetCookieAccounts(
+      identity_manager, test_url_loader_factory(),
+      {{std::string(account_a.GetEmail()), account_a.GetGaiaId()}});
   EXPECT_TRUE(identity_observer.WaitForAccountsInCookieUpdated());
 
   EXPECT_TRUE(request_handled_future.Take());
@@ -1569,7 +1614,7 @@ IN_PROC_BROWSER_TEST_F(ChromeAimEligibilityServiceOAuthBrowserTest,
   eligibility_changed_future.Clear();
 
   // 2. Sign In "A" (Primary). effective ID is "A". Should NOT trigger fetch.
-  signin::MakePrimaryAccountAvailable(identity_manager, account_a.email,
+  signin::MakePrimaryAccountAvailable(identity_manager, account_a.GetEmail(),
                                       signin::ConsentLevel::kSignin);
   EXPECT_TRUE(identity_observer.WaitForPrimaryAccountChanged());
 
@@ -1643,7 +1688,8 @@ IN_PROC_BROWSER_TEST_F(ChromeAimEligibilityServiceOAuthBrowserTest,
   // the zero index cookie account ID is different from the primary account and
   // triggers a new request.
   identity_test_env()->SetCookieAccounts(
-      {{account_b.email, account_b.gaia}, {account_a.email, account_a.gaia}});
+      {{std::string(account_b.GetEmail()), account_b.GetGaiaId()},
+       {std::string(account_a.GetEmail()), account_a.GetGaiaId()}});
 
   auto* service = GetAimEligibilityService(GetProfile());
   base::test::TestFuture<void> eligibility_changed_future;
@@ -1664,7 +1710,7 @@ IN_PROC_BROWSER_TEST_F(ChromeAimEligibilityServiceOAuthBrowserTest,
   response.set_is_eligible(!response.is_eligible());
 
   signin::UpdatePersistentErrorOfRefreshTokenForAccount(
-      identity_manager, account_a.account_id,
+      identity_manager, account_a.GetAccountId(),
       GoogleServiceAuthError::FromInvalidGaiaCredentialsReason(
           GoogleServiceAuthError::InvalidGaiaCredentialsReason::
               CREDENTIALS_REJECTED_BY_SERVER));
@@ -1675,4 +1721,133 @@ IN_PROC_BROWSER_TEST_F(ChromeAimEligibilityServiceOAuthBrowserTest,
   EXPECT_FALSE(has_auth_future.Take());
   EXPECT_EQ(credentials_mode_future.Take(),
             network::mojom::CredentialsMode::kInclude);
+}
+
+class ChromeAimEligibilityServiceSearchCapabilitiesBrowserTest
+    : public AimEligibilityTestBase {
+ public:
+  ChromeAimEligibilityServiceSearchCapabilitiesBrowserTest() = default;
+  ~ChromeAimEligibilityServiceSearchCapabilitiesBrowserTest() override =
+      default;
+
+ protected:
+  void SetUp() override {
+    std::vector<base::test::FeatureRefAndParams> enabled_features = {
+        {omnibox::kAimEnabled, {}},
+        {omnibox::kAimServerEligibilityEnabled, {}},
+        {omnibox::kAimServerRequestOnStartupEnabled, {}},
+        {omnibox::kAimServerEligibilitySendSearchCapabilitiesHeaderEnabled, {}},
+        {contextual_tasks::kContextualTasksRearchitecture, {}},
+#if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+        {extensions_features::kApiContextualTasksPrivate, {}},
+#endif
+    };
+
+    feature_list_.InitWithFeaturesAndParameters(enabled_features,
+                                                /*disabled_features=*/{});
+
+    InProcessBrowserTest::SetUp();
+  }
+
+  void SetUpOnMainThread() override {
+    SetUpDefaultSearchEngine(GetProfile(), /*is_google_dse=*/true);
+
+    AimEligibilityTestBase::SetUpOnMainThread();
+  }
+
+ private:
+  base::test::ScopedFeatureList feature_list_;
+};
+
+IN_PROC_BROWSER_TEST_F(ChromeAimEligibilityServiceSearchCapabilitiesBrowserTest,
+                       RequestIncludesSearchCapabilitiesHeader) {
+  omnibox::AimEligibilityResponse response;
+  response.set_is_eligible(true);
+  base::test::TestFuture<bool> request_handled_future;
+  base::test::TestFuture<std::optional<std::string>> capabilities_header_future;
+  base::test::TestFuture<std::optional<std::string>> user_agent_header_future;
+
+  auto url_loader_interceptor = std::make_unique<content::URLLoaderInterceptor>(
+      base::BindLambdaForTesting(
+          [&](content::URLLoaderInterceptor::RequestParams* params) {
+            if (params->url_request.url.path() != "/async/folae") {
+              return false;
+            }
+
+            capabilities_header_future.SetValue(
+                params->url_request.headers.GetHeader(
+                    contextual_tasks::
+                        kContextualTasksSearchCapabilitiesHeaderName));
+            user_agent_header_future.SetValue(
+                params->url_request.headers.GetHeader("User-Agent"));
+
+            return OnRequest(params, std::make_optional(response),
+                             request_handled_future.GetRepeatingCallback());
+          }));
+
+  // Trigger the request.
+  auto* service = GetAimEligibilityService(GetProfile());
+  base::test::TestFuture<void> eligibility_changed_future;
+  auto eligibility_subscription = service->RegisterEligibilityChangedCallback(
+      eligibility_changed_future.GetRepeatingCallback());
+
+  EXPECT_TRUE(eligibility_changed_future.Wait());
+  EXPECT_TRUE(request_handled_future.Get());
+
+  std::optional<std::string> header = capabilities_header_future.Take();
+  std::optional<std::string> user_agent = user_agent_header_future.Take();
+#if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+  EXPECT_TRUE(header.has_value());
+  EXPECT_EQ(*header,
+            contextual_tasks::kContextualTasksSearchCapabilitiesDefaultVersion);
+  EXPECT_FALSE(user_agent.has_value());
+#else
+  EXPECT_FALSE(header.has_value());
+  EXPECT_TRUE(user_agent.has_value());
+#endif
+}
+
+IN_PROC_BROWSER_TEST_F(ChromeAimEligibilityServiceSearchCapabilitiesBrowserTest,
+                       RequestIncludesSearchCapabilitiesHeader_Incognito) {
+  omnibox::AimEligibilityResponse response;
+  response.set_is_eligible(true);
+  base::test::TestFuture<bool> request_handled_future;
+  base::test::TestFuture<std::optional<std::string>> capabilities_header_future;
+
+  auto url_loader_interceptor = std::make_unique<content::URLLoaderInterceptor>(
+      base::BindLambdaForTesting(
+          [&](content::URLLoaderInterceptor::RequestParams* params) {
+            if (params->url_request.url.path() != "/async/folae") {
+              return false;
+            }
+
+            capabilities_header_future.SetValue(
+                params->url_request.headers.GetHeader(
+                    contextual_tasks::
+                        kContextualTasksSearchCapabilitiesHeaderName));
+
+            return OnRequest(params, std::make_optional(response),
+                             request_handled_future.GetRepeatingCallback());
+          }));
+
+  Profile* otr_profile =
+      GetProfile()->GetPrimaryOTRProfile(/*create_if_needed=*/true);
+  SetUpDefaultSearchEngine(otr_profile, /*is_google_dse=*/true);
+  auto* otr_service = GetAimEligibilityService(otr_profile);
+  base::test::TestFuture<void> eligibility_changed_future;
+  auto eligibility_subscription =
+      otr_service->RegisterEligibilityChangedCallback(
+          eligibility_changed_future.GetRepeatingCallback());
+
+  EXPECT_TRUE(eligibility_changed_future.Wait());
+  EXPECT_TRUE(request_handled_future.Get());
+
+  std::optional<std::string> header = capabilities_header_future.Take();
+#if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+  EXPECT_TRUE(header.has_value());
+  EXPECT_EQ(*header,
+            contextual_tasks::kContextualTasksSearchCapabilitiesDefaultVersion);
+#else
+  EXPECT_FALSE(header.has_value());
+#endif
 }

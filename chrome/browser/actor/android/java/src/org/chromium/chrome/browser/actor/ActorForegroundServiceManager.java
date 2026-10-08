@@ -27,6 +27,7 @@ import org.chromium.chrome.browser.profiles.ProfileManager;
 
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.TimeUnit;
 
 /**
  * Profile-scoped manager for the ActorForegroundService. Observes ActorKeyedService to start/stop
@@ -37,7 +38,7 @@ public class ActorForegroundServiceManager implements ActorKeyedService.Observer
     private static final String TAG = "ActorFgsMngr";
     public static final int INVALID_NOTIFICATION_ID = -1;
     // Delay to ensure start/stop foreground doesn't happen too quickly.
-    private static long sWaitTimeMs = 200;
+    private static long sWaitTimeMs = TimeUnit.SECONDS.toMillis(30);
 
     @Nullable private static ActorForegroundServiceManager sInstance;
 
@@ -50,6 +51,11 @@ public class ActorForegroundServiceManager implements ActorKeyedService.Observer
                     if (mKeyedService == null
                             || mKeyedService.getActiveTasksCount() == 0
                             || mActiveTaskIds.isEmpty()) {
+                        if (mNotificationService != null
+                                && mNotificationService.hasPendingDemotions()) {
+                            postMaybeStopServiceRunnable();
+                            return;
+                        }
                         stopAndUnbindService();
                     }
                 }
@@ -83,6 +89,11 @@ public class ActorForegroundServiceManager implements ActorKeyedService.Observer
         for (Profile profile : ProfileManager.getLoadedProfiles()) {
             sInstance.mProfileObserver.onProfileAdded(profile);
         }
+    }
+
+    /** Returns the singleton manager instance if initialized. */
+    public static @Nullable ActorForegroundServiceManager getInstance() {
+        return sInstance;
     }
 
     @VisibleForTesting
@@ -148,6 +159,17 @@ public class ActorForegroundServiceManager implements ActorKeyedService.Observer
         mHandler.removeCallbacks(mMaybeStopServiceRunnable);
         if (mIsServiceBound) {
             stopAndUnbindService();
+        }
+    }
+
+    /**
+     * Resends loud notifications for all active working tasks (e.g. when moving to background or
+     * PiP).
+     */
+    public void resendWorkingNotifications() {
+        if (mNotificationService == null) return;
+        for (int taskId : mActiveTaskIds) {
+            mNotificationService.resendWorkingNotificationLoudly(taskId);
         }
     }
 
@@ -265,7 +287,9 @@ public class ActorForegroundServiceManager implements ActorKeyedService.Observer
                 }
             }
 
-            if (!mStopServiceDelayed) {
+            if (!mStopServiceDelayed
+                    || (mNotificationService != null
+                            && mNotificationService.hasPendingDemotions())) {
                 postMaybeStopServiceRunnable();
             }
         }
@@ -306,10 +330,15 @@ public class ActorForegroundServiceManager implements ActorKeyedService.Observer
 
     @VisibleForTesting
     void stopAndUnbindService() {
+        stopAndUnbindService(ServiceCompat.STOP_FOREGROUND_DETACH);
+    }
+
+    @VisibleForTesting
+    void stopAndUnbindService(int flags) {
         if (!mIsServiceBound) return;
         mIsServiceBound = false;
 
-        getServiceController().stopActorForegroundService(ServiceCompat.STOP_FOREGROUND_DETACH);
+        getServiceController().stopActorForegroundService(flags);
         getServiceController().unbindService();
 
         mStartForegroundCalled = false;
@@ -321,6 +350,48 @@ public class ActorForegroundServiceManager implements ActorKeyedService.Observer
         }
     }
 
+    /**
+     * Handles notification dismissal when the notification click intent is handled.
+     *
+     * @param taskId The ID of the task whose notification was dismissed.
+     */
+    public void onNotificationDismissed(int taskId) {
+        boolean wasPinned = mPinnedNotificationId == taskId;
+        if (mNotificationService != null) {
+            mNotificationService.clearTaskData(taskId);
+        }
+        if (wasPinned) {
+            mPinnedNotificationId = INVALID_NOTIFICATION_ID;
+            mPinnedNotification = null;
+        }
+        maybeStopServiceNow(
+                wasPinned
+                        ? ServiceCompat.STOP_FOREGROUND_REMOVE
+                        : ServiceCompat.STOP_FOREGROUND_DETACH);
+    }
+
+    /**
+     * Stops and unbinds the foreground service if all tasks are finished and no demotions are
+     * pending.
+     */
+    public void maybeStopServiceNow() {
+        maybeStopServiceNow(ServiceCompat.STOP_FOREGROUND_DETACH);
+    }
+
+    /**
+     * Stops and unbinds the foreground service with the specified flags if all tasks are finished
+     * and no demotions are pending.
+     *
+     * @param flags ServiceCompat flags for stopping the foreground service.
+     */
+    public void maybeStopServiceNow(int flags) {
+        if (mActiveTaskIds.isEmpty()
+                && (mNotificationService == null || !mNotificationService.hasPendingDemotions())) {
+            mHandler.removeCallbacks(mMaybeStopServiceRunnable);
+            stopAndUnbindService(flags);
+        }
+    }
+
     private ActorForegroundServiceController getServiceController() {
         return ActorForegroundServiceController.get();
     }
@@ -328,7 +399,11 @@ public class ActorForegroundServiceManager implements ActorKeyedService.Observer
     @VisibleForTesting
     void postMaybeStopServiceRunnable() {
         mHandler.removeCallbacks(mMaybeStopServiceRunnable);
-        mHandler.postDelayed(mMaybeStopServiceRunnable, sWaitTimeMs);
+        long delay =
+                (mNotificationService != null && mNotificationService.hasPendingDemotions())
+                        ? ActorNotificationService.getDemotionDelayMs()
+                        : sWaitTimeMs;
+        mHandler.postDelayed(mMaybeStopServiceRunnable, delay);
         mStopServiceDelayed = true;
     }
 
@@ -409,6 +484,11 @@ public class ActorForegroundServiceManager implements ActorKeyedService.Observer
         mPinnedNotificationId = INVALID_NOTIFICATION_ID;
         mPinnedNotification = null;
         mHandler.removeCallbacks(mMaybeStopServiceRunnable);
+    }
+
+    /** Returns the {@link ActorNotificationService} managed by this instance. */
+    public @Nullable ActorNotificationService getNotificationService() {
+        return mNotificationService;
     }
 
     void setNotificationServiceForTesting(ActorNotificationService service) {

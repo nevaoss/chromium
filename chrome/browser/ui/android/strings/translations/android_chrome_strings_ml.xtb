@@ -57,6 +57,7 @@
 <translation id="1181037720776840403">നീക്കംചെയ്യൂ</translation>
 <translation id="1183189057400844278">നിങ്ങളുടെ Google Account-ൽ പാസ്‌വേഡുകൾ എല്ലായ്‌പ്പോഴും ഉപയോഗിക്കാനാകുമെന്ന് ഉറപ്പാക്കാൻ, ഇത് നിങ്ങൾ തന്നെയാണെന്ന് പരിശോധിച്ചുറപ്പിക്കുക</translation>
 <translation id="1187810343066461819">കൂടാതെ, ഈ കാറിൽ നിന്ന് ബുക്ക്‌മാർക്കുകൾ, ചരിത്രം എന്നിവയും മറ്റും ഇല്ലാതാക്കുക</translation>
+<translation id="1191987227666124897">ഓപ്റ്റ് ഔട്ട് അഭ്യർത്ഥന</translation>
 <translation id="1193729455103054076">ശക്തമായ പാസ്‌വേഡ് ഉപയോഗിക്കണോ?</translation>
 <translation id="11947597112837849">ഇമെയിൽ വിലാസം</translation>
 <translation id="1197267115302279827">ബു‌ക്ക്‌മാർക്കുകൾ നീക്കുക</translation>
@@ -105,6 +106,7 @@
 <translation id="138181280295369883">നിങ്ങളുടെ സംരക്ഷിച്ച വിവരങ്ങളും മറ്റും എല്ലാ ഉപകരണങ്ങളിലും ലഭിക്കാൻ സൈൻ ഇൻ ചെയ്യൂ</translation>
 <translation id="1381838868249179644">നിങ്ങളെ സുരക്ഷിതരായി നിലനിർത്താൻ സഹായിക്കാൻ, ചില സൈറ്റുകളിൽ നിന്ന് അനുമതികൾ നീക്കം ചെയ്തു</translation>
 <translation id="1383876407941801731">തിരയുക</translation>
+<translation id="1384568202352682721">ഇനിപ്പറയുന്നതായി സംരക്ഷിക്കുക…</translation>
 <translation id="1384704387250346179">Google Lens-ൽ ചിത്രം വിവർത്തനം ചെയ്യൂ <ph name="BEGIN_NEW" />പുതിയത്<ph name="END_NEW" /></translation>
 <translation id="1390418506739274310">Chrome-ൽ ലിങ്കുകൾ തുറക്കുന്ന മറ്റ് ആപ്പുകളിൽ നിന്നുള്ള ചരിത്രവും നിങ്ങൾ കണ്ടേക്കാം. നിങ്ങളുടെ Google Account-ന് <ph name="BEGIN_LINK" />myactivity.google.com<ph name="END_LINK" /> എന്നതിൽ മറ്റ് തരത്തിലുള്ള ബ്രൗസിംഗ് ചരിത്രം ഉണ്ടായിരിക്കാം.</translation>
 <translation id="139752016751285248">നിരക്ക് ഉൾക്കാഴ്‌ചകളുടെ ബോട്ടം ഷീറ്റ് പൂർണ്ണമായ ഉയരത്തിൽ തുറന്നു</translation>
@@ -133,6 +135,7 @@
 <translation id="147982357559798527">മാറ്റി</translation>
 <translation id="1480287803138246127">നിങ്ങളുടെ ചരിത്രത്തിൽ ചിലത് ഇവിടെ ദൃശ്യമായേക്കില്ല. നിങ്ങളുടെ എല്ലാ Chrome ചരിത്രവും കാണാൻ, മുഴുവൻ Chrome ചരിത്രവും തുറക്കുക.</translation>
 <translation id="1483493594462132177">അയയ്‌ക്കുക</translation>
+<translation id="1485343711570311792"><ph name="NATIVE_APP_NAME" /> എന്നതിൽ തുറക്കുക • <ph name="DEVICE_NAME" /> എന്നതിൽ നിന്ന്</translation>
 <translation id="1495677929897281669">ടാബിലേക്ക് മടങ്ങുക</translation>
 <translation id="1496514951988037011">ഉപയോക്തൃനാമം</translation>
 <translation id="1501480321619201731">ഗ്രൂപ്പ് ഇല്ലാതാക്കൂ</translation>
@@ -210,6 +213,7 @@
 <translation id="1832459821645506983">ഞാൻ സമ്മതിക്കുന്നു</translation>
 <translation id="1845958458910716240">നിങ്ങളുടെ ഡാറ്റ പരിരക്ഷിക്കുന്നതിന്, അടുത്തിടെ സന്ദർശിച്ചിട്ടില്ലാത്ത സൈറ്റുകളിൽ നിന്നുള്ള അനുമതികൾ നീക്കം ചെയ്യാൻ Chrome-നെ അനുവദിക്കുക</translation>
 <translation id="1851551847729706116">ഈ ടാബിലേക്ക് <ph name="TAB_NAME" /> പങ്കിടുന്നു</translation>
+<translation id="1855268219431673036"><ph name="TOTAL_PAGE_COUNT" /> പേജുകളിൽ <ph name="CURRENT_PAGE" />-ാമത്തേത്</translation>
 <translation id="1869691326892615940">സുരക്ഷിതമായ പാസ്‌വേഡുകൾ, വേഗത്തിലുള്ള സൈൻ ഇൻ ചെയ്യൽ</translation>
 <translation id="1871098866036088250">Chrome ബ്രൗസറിൽ തുറക്കുക</translation>
 <translation id="1877026089748256423">Chrome കാലഹരണപ്പെട്ടതാണ്</translation>
@@ -248,6 +252,7 @@
 <translation id="1984087999855033707">ഫോൺ നമ്പർ</translation>
 <translation id="1984417487208496350">പരിരക്ഷയില്ല (ശുപാർശ ചെയ്യുന്നില്ല)</translation>
 <translation id="1986685561493779662">പേര് ഇതിനകം നിലവിലുണ്ട്</translation>
+<translation id="1992244793717364584">ആപ്പ് അൺഇൻസ്റ്റാൾ ചെയ്തു</translation>
 <translation id="200114059308480249">Google തിരയലുകളിൽ ചുറ്റുമുള്ള ടെക്സ്റ്റ് ഉൾപ്പെടുത്തണോ?</translation>
 <translation id="2004096469149679223"><ph name="TAB_TITLE" />, പിൻ ചെയ്ത, മ്യൂട്ട് ചെയ്ത അദൃശ്യ ടാബ്</translation>
 <translation id="2021896219286479412">പൂർണ്ണ സ്ക്രീൻ സൈറ്റ് നിയന്ത്രണങ്ങൾ</translation>
@@ -327,6 +332,7 @@
 <translation id="232137538351753795">തിരികെ പോകാൻ ഇടത്തേയറ്റത്ത് നിന്ന് സ്വൈപ്പ് ചെയ്യുക</translation>
 <translation id="2323763861024343754">സൈറ്റ് സ്‌റ്റോറേജ്</translation>
 <translation id="2327445548174191329"><ph name="DEVICE_NAME" /> എന്നതിൽ നിന്ന്</translation>
+<translation id="232757965409810352">പേജ് ഇതായി സംരക്ഷിക്കുക…</translation>
 <translation id="2328474416100889417">എല്ലാവർക്കും ഉടൻ തന്നെ “<ph name="GROUP_NAME" />” ടാബ് ഗ്രൂപ്പിലേക്കുള്ള ആക്‌സസ് നഷ്‌ടമാകും, എല്ലാ ക്ഷണ ലിങ്കുകളും ഓഫാക്കുകയും ചെയ്യും</translation>
 <translation id="2329500425421091035">Chrome-ൽ AI മോഡ് അവതരിപ്പിക്കുന്നു</translation>
 <translation id="2330186936255788117">കൂടുതൽ ബുക്ക്‌മാർക്കുകൾ</translation>
@@ -561,6 +567,7 @@
 <translation id="3232754137068452469">വെബ് ആപ്പ്</translation>
 <translation id="3236059992281584593">ഒരു മിനിറ്റ് ശേഷിക്കുന്നു</translation>
 <translation id="3237087289225714896">സാധാരണ മുൻകൂട്ടി ലോഡ് ചെയ്യൽ:</translation>
+<translation id="3243650379537999343">വരയ്‌ക്കുക</translation>
 <translation id="3244271242291266297">MM</translation>
 <translation id="3245429137663807393">നിങ്ങൾ Chrome ഉപയോഗ റിപ്പോർട്ടുകളും പങ്കിടുന്നുവെങ്കിൽ ആ റിപ്പോർട്ടുകളിൽ നിങ്ങൾ സന്ദർശിക്കുന്ന URL-കളും ഉൾപ്പെടും</translation>
 <translation id="3250563604907490871">നിങ്ങൾ വൈഫൈയിലേക്ക് കണക്റ്റ് ചെയ്യുമ്പോൾ ചിത്രത്തിന്റെ വിവരണങ്ങൾ പുനരാരംഭിക്കും</translation>
@@ -584,7 +591,6 @@
 <translation id="331080746368555063">നിങ്ങളുടെ കമ്പനിയുടെ ഇൻട്രാനെറ്റ് പോലുള്ള കാര്യങ്ങൾ സ്വകാര്യ സൈറ്റുകളിൽ ഉൾപ്പെട്ടേക്കാം</translation>
 <translation id="3311330810461485557">ആപ്പ്, തീയതി എന്നിവയും മറ്റും അനുസരിച്ച് തിരയുക.</translation>
 <translation id="3312300514034250578">മെച്ചപ്പെടുത്തിയ സുരക്ഷിത ബ്രൗസിംഗ്</translation>
-<translation id="3331974543021145906">ആപ്പ് വിവരം</translation>
 <translation id="3334729583274622784">ഫയൽ എക്സ്റ്റൻഷൻ മാറ്റണോ?</translation>
 <translation id="333863344734218290">സുരക്ഷിതമല്ലാത്ത പൊതു, സ്വകാര്യ സൈറ്റുകൾ സംബന്ധിച്ച് നിങ്ങൾക്ക് മുന്നറിയിപ്പ് നൽകുന്നു</translation>
 <translation id="3339788961947270565">ഷട്ട് ഡൗൺ പൂർത്തിയാക്കുന്നു</translation>
@@ -658,6 +664,7 @@
 <translation id="3649090831059057090"><ph name="WINDOW_TITLE" /> - <ph name="TAB_COUNT" /></translation>
 <translation id="3653111872753786013"><ph name="WEBSITE_TITLE" />: <ph name="WEBSITE_URL" /></translation>
 <translation id="3662363748131724714">ഇമേഴ്‌സീവ് പ്ലേബാക്കിൽ നിന്ന് പുറത്തുകടക്കുക</translation>
+<translation id="3662595332590803433">എപ്പോഴും Chrome-ൽ കസ്റ്റം ടാബുകൾ തുറക്കൂ</translation>
 <translation id="3674208116086565128">Google ആപ്പ് ഹോമിലേക്ക് പോകുക</translation>
 <translation id="368329460027487650">സൈൻ ഔട്ട് ചെയ്‌തു. സൈൻ ഇൻ ചെയ്യാനുള്ള ഓപ്‌ഷനുകൾ തുറക്കുന്നു.</translation>
 <translation id="3684540848053703310">നിരക്ക് ഉൾക്കാഴ്‌ചകളുടെ ബോട്ടം ഷീറ്റ് അടച്ചു</translation>
@@ -732,6 +739,7 @@
 <translation id="3950820424414687140">സൈൻ ഇൻ ചെയ്യുക</translation>
 <translation id="395377504920307820">അക്കൗണ്ട് ഇല്ലാതെ ഉപയോഗിക്കുക</translation>
 <translation id="3955353672249727801">വായിക്കാനുള്ളവയുടെ ലിസ്റ്റിലേക്ക് പേജുകൾ ചേർത്തു</translation>
+<translation id="3958283758104508528"><ph name="APP_NAME" /> അൺഇൻസ്റ്റാൾ ചെയ്തു</translation>
 <translation id="396192773038029076">{NUM_IN_PROGRESS,plural, =1{നിങ്ങളുടെ പേജ് തയ്യാറാകുമ്പോൾ Chrome ലോഡ് ചെയ്യും}other{നിങ്ങളുടെ പേജുകൾ തയ്യാറാകുമ്പോൾ Chrome ലോഡ് ചെയ്യും}}</translation>
 <translation id="3969142555815019568">Chrome-ന് നിങ്ങളുടെ പാസ്‌വേഡുകൾ പരിശോധിക്കാനാകുന്നില്ല</translation>
 <translation id="3969863827134279083">മുകളിലേക്ക് നീക്കുക</translation>
@@ -902,6 +910,7 @@
 <translation id="4595805675102978678">Google Account-ൽ പിശക്</translation>
 <translation id="4599585406846903742">സിംഗിൾ-പേജ് കാഴ്ച</translation>
 <translation id="4601095002996233687">സംശയാസ്പദമായ ഡൗൺലോഡുകൾക്കായി വിശദമായ സ്കാനുകൾ.</translation>
+<translation id="4604434672720336227">Chrome-ൽ നിന്ന് പുറത്തുകടക്കുക</translation>
 <translation id="4606559747793337066">ഒരു സൈറ്റ് അല്ലെങ്കിൽ ആപ്പ് അവരുടെ പേജിലെ ലിങ്കുകൾ സ്വകാര്യമായി മുൻകൂട്ടി ലോഡ് ചെയ്യാൻ ആവശ്യപ്പെടുമ്പോൾ, കുക്കികളില്ലാതെ Google സെർവറുകൾ മുഖേന പേജുകൾ Chrome എൻക്രിപ്റ്റും മുൻകൂട്ടി ലോഡും ചെയ്യുന്നു. മുൻകൂട്ടി ലോഡ് ചെയ്ത സൈറ്റിൽ നിന്ന് ഇത് നിങ്ങളുടെ ഐഡന്റിറ്റി മറയ്ക്കുന്നു.</translation>
 <translation id="4619615317237390068">മറ്റ് ഉപകരണങ്ങളിൽ നിന്നുള്ള ടാബുകൾ</translation>
 <translation id="4624065194742029982">Chrome അദൃശ്യ മോഡ്</translation>
@@ -963,7 +972,6 @@
 <translation id="480990236307250886">ഹോംപേജ് തുറക്കുക</translation>
 <translation id="4816492930507672669">പേജിന് യുക്തമാക്കുക</translation>
 <translation id="4822710610088666676"><ph name="TAB_GROUP_TITLE" /> ഒരു ടാബ് ഗ്രൂപ്പ് അടയ്‌ക്കുകയും സംരക്ഷിക്കുകയും ചെയ്‌തു</translation>
-<translation id="4834250788637067901">Google Pay ഉപയോഗിക്കുന്ന പേയ്മെന്റ് രീതികളും ഓഫറുകളും വിലാസങ്ങളും</translation>
 <translation id="4835385943915508971">അഭ്യർത്ഥിച്ച ഉറവിടത്തിലേക്ക് Chrome-ന് ആക്‌സസ് ഇല്ല.</translation>
 <translation id="483742037940503070">{TAB_COUNT,plural, =1{<ph name="COLOR_NAME" /> നിറത്തിലുള്ള <ph name="TAB_COUNT_ONE" /> ടാബുള്ള ടാബ് ഗ്രൂപ്പ്, പശ്ചാത്തലത്തിലുള്ള പുതിയ ടാബ് ഗ്രൂപ്പായി പുനഃസ്ഥാപിക്കുക.}other{<ph name="COLOR_NAME" /> നിറത്തിലുള്ള <ph name="TAB_COUNT_MANY" /> ടാബുകളുള്ള ടാബ് ഗ്രൂപ്പ്, പശ്ചാത്തലത്തിലുള്ള പുതിയ ടാബ് ഗ്രൂപ്പായി പുനഃസ്ഥാപിക്കുക.}}</translation>
 <translation id="4849731766219625109">നിങ്ങളുടെ <ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /> അക്കൗണ്ട് ഉപയോഗിക്കുക</translation>
@@ -1338,6 +1346,7 @@
 <translation id="634208815998129842">ടാസ്‌ക് മാനേജർ</translation>
 <translation id="6343495912647200061">{SHIPPING_ADDRESS,plural, =1{<ph name="SHIPPING_ADDRESS_PREVIEW" />\u2026 എന്നതും ‌മറ്റ് <ph name="NUMBER_OF_ADDITIONAL_ADDRESSES" /> പേയ്‌മെന്റ് രീതികളും}other{<ph name="SHIPPING_ADDRESS_PREVIEW" />\u2026 എന്നതും ‌മറ്റ് <ph name="NUMBER_OF_ADDITIONAL_ADDRESSES" /> പേയ്‌മെന്റ് രീതികളും}}</translation>
 <translation id="6345878117466430440">വായിച്ചതായി അടയാളപ്പെടുത്തുക</translation>
+<translation id="63490081267265251">Google ഉൾപ്പെടെ, നിങ്ങൾ സന്ദർശിക്കുന്ന സൈറ്റുകൾക്കാണ് ഈ അഭ്യർത്ഥനയോട് എങ്ങനെ പ്രതികരിക്കണമെന്ന് നിർണ്ണയിക്കാനുള്ള ഉത്തരവാദിത്തം. നിങ്ങളുടെ പ്രദേശത്തെ നിയമങ്ങൾ അനുസരിച്ച്, നിങ്ങളുടെ ഡാറ്റയുടെ വിൽപ്പനയും പങ്കിടലും അല്ലെങ്കിൽ വ്യക്തിപരമാക്കിയ പരസ്യങ്ങൾക്കായുള്ള അതിന്റെ ഉപയോഗം പരിമിതപ്പെടുത്തിക്കൊണ്ട് സൈറ്റുകൾ പ്രതികരിച്ചേക്കാം. <ph name="BEGIN_LINK" />കൂടുതലറിയുക<ph name="END_LINK" /></translation>
 <translation id="6350745006329795504">നിങ്ങളുടെ ഉപകരണങ്ങൾ മാനേജ് ചെയ്യുക</translation>
 <translation id="6356893102071098867">നിങ്ങൾ ശരിയായ അക്കൗണ്ടാണോ തിരഞ്ഞെടുത്തതെന്ന് പരിശോധിക്കുക</translation>
 <translation id="6364438453358674297">ചരിത്രത്തിൽ നിന്ന് നിർദ്ദേശം നീക്കംചെയ്യണോ?</translation>
@@ -1418,12 +1427,12 @@
 <translation id="6642299196749785472">ടാബുകൾ അറ്റാച്ച് ചെയ്യുക</translation>
 <translation id="6647441008198474441">നിങ്ങൾ അടുത്തതായി ഏതൊക്കെ സൈറ്റുകളായിരിക്കും സന്ദർശിക്കുകയെന്ന് പ്രവചിക്കാൻ, നിങ്ങൾ സന്ദർശിക്കുന്ന URL-കൾ Google-ലേക്ക് അയയ്ക്കുന്നു</translation>
 <translation id="6648977384226967773">{CONTACT,plural, =1{<ph name="CONTACT_PREVIEW" />\u2026 എന്നതും ‌മറ്റ് <ph name="NUMBER_OF_ADDITIONAL_CONTACTS" /> പേയ്‌മെന്റ് രീതികളും}other{<ph name="CONTACT_PREVIEW" />\u2026 എന്നതും ‌മറ്റ് <ph name="NUMBER_OF_ADDITIONAL_CONTACTS" /> പേയ്‌മെന്റ് രീതികളും}}</translation>
-<translation id="6649642165559792194"><ph name="BEGIN_NEW" />പുതിയ<ph name="END_NEW" /> ചിത്രം പ്രിവ്യൂ ചെയ്യുക</translation>
 <translation id="6659594942844771486">ടാബ്</translation>
 <translation id="666731172850799929"><ph name="APP_NAME" />-ൽ തുറക്കുക</translation>
 <translation id="6669390930482049506">എന്നെ അറിയിക്കുക</translation>
 <translation id="6671495933530132209">ചിത്രം പകർത്തുക</translation>
 <translation id="6672697278890207089">നിങ്ങളുടെ പാസ്ഫ്രെയ്സ് നല്‍കുക</translation>
+<translation id="6675622031235530028">പുറത്തുകടക്കാൻ Ctrl+Q അമർത്തിപ്പിടിക്കുക</translation>
 <translation id="6676927815633975364">ഈ സൈറ്റിലും Chrome-ലും സൈൻ ഇൻ ചെയ്യുക</translation>
 <translation id="6684262542644248484">ഒരു വെബ്സൈറ്റിലേക്ക് സൈൻ ഇൻ ചെയ്യുക</translation>
 <translation id="6684809838922667136">Chrome മെച്ചപ്പെടുത്തുക</translation>
@@ -1508,7 +1517,6 @@
 <translation id="6922812712751566567"><ph name="PERMISSION" /> <ph name="SEPARATOR" /> നിങ്ങൾ അടുത്തിടെ സന്ദർശിച്ചിട്ടില്ലാത്തതിനാൽ Chrome ഈ അനുമതികൾ നീക്കം ചെയ്തു</translation>
 <translation id="6923291640965724312">ഇമേഴ്‌സീവ് ഫോർമാറ്റ്</translation>
 <translation id="6927821422725196292">{TABS_COUNT,plural, =1{ഒരു ടാബ്}other{<ph name="NUMBER_OF_TABS" /> ടാബുകൾ}}</translation>
-<translation id="6929224077895306814">നിങ്ങളുടെ ഉപകരണത്തിലും Google Account-ലും സംരക്ഷിച്ചിരിക്കുന്ന എല്ലാ സുരക്ഷാ കോഡുകളും ഇല്ലാതാക്കും</translation>
 <translation id="6933180670536678127"><ph name="TAB_TITLE" />, തിരഞ്ഞെടുത്ത, പിൻ ചെയ്ത, ഓഡിയോ പ്ലേ ചെയ്യുന്ന ടാബ്</translation>
 <translation id="6937524809504266803">വ്യക്തിപരമാക്കലും ലിങ്കിംഗും</translation>
 <translation id="6937876069006524083">വിളിപ്പേര് (ഓപ്ഷണൽ)</translation>
@@ -1619,6 +1627,7 @@
 <translation id="7335766481146072567">'തുടരുക' അമർത്തുക</translation>
 <translation id="7336259382292148213">അറിയിപ്പുകൾ നല്ല നിലയിലാണെന്ന് തോന്നുന്നു</translation>
 <translation id="7339898014177206373">പുതിയ വിന്‍ഡോ</translation>
+<translation id="7349983576451251297">കസ്റ്റം ടാബുകൾക്ക് പകരം Chrome ബ്രൗസറിൽ വെബ് പേജുകൾ തുറക്കുക</translation>
 <translation id="7352339641508007922">നീളത്തിലുള്ള സ്ക്രീന്‍ഷോട്ട് എടുക്കാൻ വലിച്ചിടുക</translation>
 <translation id="7352651011704765696">എന്തോ കുഴപ്പം സംഭവിച്ചു</translation>
 <translation id="7353894246028566792">{NUM_SELECTED,plural, =1{തിരഞ്ഞെടുത്ത ഒരു ഇനം പങ്കിടുക}other{തിരഞ്ഞെടുത്ത # ഇനങ്ങൾ പങ്കിടുക}}</translation>
@@ -1662,6 +1671,7 @@
 <translation id="7493994139787901920"><ph name="VERSION" /> (അപ്‌ഡേറ്റ് ചെയ്‌തു, <ph name="TIME_SINCE_UPDATE" />)</translation>
 <translation id="7498271377022651285">കാത്തിരിക്കുക...</translation>
 <translation id="7499065150275272675"><ph name="TAB_TITLE" />, പിൻ ചെയ്ത, മ്യൂട്ട് ചെയ്ത ടാബ്</translation>
+<translation id="7500851014030446046">PDF ഡൗൺലോഡ് ചെയ്യുന്നു</translation>
 <translation id="7501135638693251872">എല്ലാ ബുക്ക്മാർക്കുകളും</translation>
 <translation id="7507207699631365376">ഈ ദാതാവിന്റെ <ph name="BEGIN_LINK" />സ്വകാര്യതാ നയം<ph name="END_LINK" /> കാണുക</translation>
 <translation id="750886945254958667">പിന്നീട് ടാബുകൾ ചേർക്കാൻ ഈ ഗ്രൂപ്പ് നിലനിർത്തുക, അല്ലെങ്കിൽ നിങ്ങൾക്ക് അതിലേക്ക് ആക്‌സസ് വേണ്ടെങ്കിൽ അതിൽ നിന്ന് പുറത്തുകടക്കുക</translation>
@@ -1708,6 +1718,7 @@
 <translation id="7690596512217303514">നിങ്ങളുടെ ഉപകരണത്തിന് Chrome തുറക്കാനായില്ല. പ്രശ്നം പരിഹരിക്കാൻ, നിങ്ങളുടെ ആപ്പ് സ്റ്റോറിൽ നിന്ന് ഏറ്റവും പുതിയ Chrome അപ്ഡേറ്റ് ഡൗൺലോഡ് ചെയ്യുക.</translation>
 <translation id="7692761875510935111">ബ്രൗസറിൽ വേഗത്തിൽ തുറക്കുക. ഈ കുറുക്കുവഴി എഡിറ്റ് ചെയ്യാൻ, സ്‌പർശിച്ചുപിടിക്കുക.</translation>
 <translation id="7695270712963178084">Chrome നിർദ്ദേശങ്ങൾ</translation>
+<translation id="7695610746377249436">ഈ അഭ്യർത്ഥനയോട് പ്രതികരിക്കുമ്പോൾ Google ഉൾപ്പെടെയുള്ള സൈറ്റുകൾ അവയുടെ വിവേചനാധികാരം ഉപയോഗിക്കുന്നു.</translation>
 <translation id="7697383401610880082">വലിച്ചിടുന്നതിനുള്ള ഹാൻഡിൽ</translation>
 <translation id="7698359219371678927"><ph name="APP_NAME" /> ആപ്പിൽ ഇമെയിൽ സൃഷ്‌ടിക്കുക</translation>
 <translation id="7702420606070050505">'സമീപകാല ആക്റ്റിവിറ്റി' ബോട്ടം ഷീറ്റ് പൂർണ്ണ സ്ക്രീനിൽ തുറന്നു</translation>
@@ -1729,10 +1740,12 @@
 <translation id="7774809984919390718">{PAYMENT_METHOD,plural, =1{<ph name="PAYMENT_METHOD_PREVIEW" />\u2026 എന്നതും ‌മറ്റ് <ph name="NUMBER_OF_ADDITIONAL_PAYMENT_METHODS" /> പേയ്‌മെന്റ് രീതികളും}other{<ph name="PAYMENT_METHOD_PREVIEW" />\u2026 എന്നതും ‌മറ്റ് <ph name="NUMBER_OF_ADDITIONAL_PAYMENT_METHODS" /> പേയ്‌മെന്റ് രീതികളും}}</translation>
 <translation id="777637629667389858">സൈൻ ഇൻ ചെയ്തിരിക്കുമ്പോൾ, Google സേവനങ്ങളിലുടനീളം നിങ്ങളെ പരിരക്ഷിക്കുന്നു.</translation>
 <translation id="7778840695157240389">പുതിയ സ്‌റ്റോറികൾക്ക് പിന്നീട് വീണ്ടും പരിശോധിക്കൂ</translation>
+<translation id="7780992949171378848">നിങ്ങളുടെ ഡാറ്റ ഉപയോഗിക്കുന്നത് സംബന്ധിച്ച് സൈറ്റുകളിലേക്ക് ഓപ്റ്റ് ഔട്ട് അഭ്യർത്ഥന അയയ്ക്കുക</translation>
 <translation id="7791543448312431591">ചേര്‍ക്കൂ</translation>
 <translation id="7792388396321542707">പങ്കിടൽ നിർത്തുക</translation>
 <translation id="780287761701992588">നിങ്ങളുടെ എല്ലാ ഉപകരണങ്ങളിലും ബുക്ക്‌മാർക്കുകൾ, പാസ്‌വേഡുകൾ എന്നിവയും മറ്റും നേടുക</translation>
 <translation id="780301667611848630">വേണ്ട</translation>
+<translation id="7804364787702057554">Chrome-ലെ നിങ്ങളുടെ അക്കൗണ്ട്</translation>
 <translation id="7810647596859435254">ഇത് ഉപയോഗിച്ച് തുറക്കുക...</translation>
 <translation id="7814066895362068701">{FILE_COUNT,plural, =1{എല്ലാ ഫയലുകളും, ലിസ്റ്റിൽ ഒരു ഫയൽ}other{എല്ലാ ഫയലുകളും, ലിസ്റ്റിൽ # ഫയലുകൾ}}</translation>
 <translation id="7815484226266492798">നീളത്തിലുള്ള സ്ക്രീന്‍ഷോട്ട്</translation>
@@ -1775,7 +1788,6 @@
 <translation id="7968014550143838305">വായനാ ലിസ്റ്റിൽ ചേർത്തു</translation>
 <translation id="7968982339740310781">വിശദാംശങ്ങൾ കാണുക</translation>
 <translation id="7969391000881506217">കാലഹരണപ്പെടുന്ന തീയതി*</translation>
-<translation id="7975379999046275268"><ph name="BEGIN_NEW" />പുതിയ<ph name="END_NEW" /> പേജ് പ്രിവ്യൂ ചെയ്യുക</translation>
 <translation id="7977451675950311423">ഡാറ്റാ ലംഘനത്തിൽ അപഹരിക്കപ്പെട്ട ഒരു പാസ്‌വേഡ് നിങ്ങൾ ഉപയോഗിക്കുകയാണെങ്കിൽ മുന്നറിയിപ്പ് നൽകുന്നു.</translation>
 <translation id="7987499071758862048"><ph name="PERMISSION_1" />, <ph name="PERMISSION_2" />, <ph name="PERMISSION_3" /> <ph name="SEPARATOR" /> നിങ്ങൾ അടുത്തിടെ സന്ദർശിച്ചിട്ടില്ലാത്തതിനാൽ Chrome ഈ അനുമതികൾ നീക്കം ചെയ്തു</translation>
 <translation id="799576009106109668">നിങ്ങളുടെ നിലവിലെ വെബ്‌പേജ് സന്ദർശനം അടിസ്ഥാനമാക്കി സമയോചിതമായി ഉള്ളടക്കം ലോഡ് ചെയ്യുന്നതിനാൽ നിങ്ങൾക്ക് കൂടുതൽ വേഗത്തിൽ ബ്രൗസ് ചെയ്യാം</translation>
@@ -1874,6 +1886,7 @@
 <translation id="8313599942510782709">നിങ്ങളുടെ ടാസ്‌ക് ഇപ്പോഴും പുരോഗമിക്കുകയാണ്</translation>
 <translation id="8317318757008452355">പ്രിന്റ് ചെയ്യാനുള്ള ഓപ്ഷനുകൾ തുറക്കുക</translation>
 <translation id="8320212361750431956">സമീപകാല ആക്റ്റിവിറ്റി</translation>
+<translation id="8322452989119079156"><ph name="NATIVE_APP_NAME" /> എന്നതിൽ തുറക്കുക - <ph name="DEVICE_NAME" /> എന്നതിൽ നിന്ന് അയച്ചത്</translation>
 <translation id="832514020744584629"><ph name="PREF_TITLE" />  <ph name="BEGIN_NEW" />പുതിയത്<ph name="END_NEW" /></translation>
 <translation id="8333026248928723981">ബുക്ക്‌മാർക്കും ലിസ്റ്റും</translation>
 <translation id="8342727528718219152">നിരവധി അറിയിപ്പുകൾ അയച്ചേക്കാവുന്ന സൈറ്റുകളെക്കുറിച്ച് Chrome നിങ്ങളെ അറിയിക്കും</translation>
@@ -1946,6 +1959,7 @@
 <translation id="8580435650274205305">കാലഹരണപ്പെടുന്ന തീയതി, ആവശ്യമാണ്</translation>
 <translation id="8582529315803410153">മറ്റ് ഉപകരണങ്ങളിൽ നിന്നുള്ള നിങ്ങളുടെ ടാബുകൾ ഇവിടെ കാണാം</translation>
 <translation id="8585103689515290060">സ്വയമേവ പൂരിപ്പിക്കൽ സേവനങ്ങൾ</translation>
+<translation id="8586116786993312006">Chrome-ലെ ബ്രൗസിംഗ് ഡാറ്റ ഇല്ലാതാക്കാൻ ടാപ്പ് ചെയ്യുക</translation>
 <translation id="859046281437143747">കൂടുതൽ ഓപ്ഷനുകൾ ബട്ടണിൽ നിന്ന് നിരക്കുകൾ ട്രാക്ക് ചെയ്യുക</translation>
 <translation id="859064343657890103"><ph name="TAB_GROUP_TITLE" /> ടാബ് ഗ്രൂപ്പ് ഇല്ലാതാക്കി</translation>
 <translation id="860043288473659153">കാർഡിന്റെ ഉടമയുടെ പേര്</translation>

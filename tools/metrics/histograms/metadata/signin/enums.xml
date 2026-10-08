@@ -340,11 +340,6 @@ chromium-metrics-reviews@google.com.
   <int value="1" label="Continue with sign-out"/>
 </enum>
 
-<enum name="BooleanWasDeferred">
-  <int value="0" label="Was not deferred"/>
-  <int value="1" label="Was deferred"/>
-</enum>
-
 <enum name="BoundSessionCredentialsCookieRotationGenerateAssertionResult">
   <int value="0" label="Success"/>
   <int value="1" label="Failed to load the key"/>
@@ -645,6 +640,15 @@ chromium-metrics-reviews@google.com.
   <int value="5" label="Don't show, impression limit reached"/>
   <int value="6" label="Don't show, feature flag is disabled"/>
 </enum>
+
+<!-- LINT.IfChange(IdentityErrorDisplaySurface) -->
+
+<enum name="IdentityErrorDisplaySurface">
+  <int value="0" label="Displayed in the account menu error card"/>
+  <int value="1" label="Displayed in sync settings"/>
+</enum>
+
+<!-- LINT.ThenChange(//components/sync/service/sync_service_utils.h:IdentityErrorDisplaySurface) -->
 
 <!-- LINT.IfChange(IOSAccountMenuAccessPoint) -->
 
@@ -1201,6 +1205,7 @@ chromium-metrics-reviews@google.com.
   <int value="107" label="Level Up (iOS only)"/>
   <int value="108" label="Undo button from the signout snackbar (iOS only)"/>
   <int value="109" label="Composebox Drive context menu option (Desktop only)"/>
+  <int value="110" label="Skills (Desktop only)"/>
 </enum>
 
 <enum name="SigninAccountReconcilorState">

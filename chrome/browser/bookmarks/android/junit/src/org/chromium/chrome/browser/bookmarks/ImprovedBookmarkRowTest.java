@@ -42,7 +42,6 @@ import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
-import org.robolectric.annotation.Config;
 
 import org.chromium.base.Callback;
 import org.chromium.base.supplier.LazyOneshotSupplier;
@@ -67,8 +66,10 @@ import org.chromium.ui.modelutil.PropertyModelChangeProcessor;
 
 /** Unit tests for {@link ImprovedBookmarkRow}. */
 @RunWith(BaseRobolectricTestRunner.class)
-@Config(manifest = Config.NONE)
-@DisableFeatures(ChromeFeatureList.ANDROID_DESKTOP_BOOKMARK_LAYOUT)
+@DisableFeatures({
+    ChromeFeatureList.ANDROID_DESKTOP_BOOKMARK_LAYOUT,
+    ChromeFeatureList.ANDROID_DESKTOP_BOOKMARK_DIALOG,
+})
 public class ImprovedBookmarkRowTest {
     private static final String TITLE = "Test title";
     private static final String DESCRIPTION = "Test description";
@@ -590,5 +591,39 @@ public class ImprovedBookmarkRowTest {
 
         mModel.set(ImprovedBookmarkRowProperties.SELECTED, false);
         assertFalse(mImprovedBookmarkRow.getDefaultFocusHighlightEnabled());
+    }
+
+    @Test
+    public void testStartImageSizeAndCornerRadiusProperties() {
+        View startImage = mImprovedBookmarkRow.findViewById(R.id.start_image);
+        int testSize = 42;
+        int testRadius = 12;
+
+        mModel.set(ImprovedBookmarkRowProperties.START_IMAGE_SIZE, testSize);
+        assertEquals(testSize, startImage.getLayoutParams().width);
+        assertEquals(testSize, startImage.getLayoutParams().height);
+
+        mModel.set(ImprovedBookmarkRowProperties.START_IMAGE_CORNER_RADIUS, testRadius);
+    }
+
+    @Test
+    public void testBuildView_defaultStartImageDimensions() {
+        ImprovedBookmarkRow visualRow = ImprovedBookmarkRow.buildView(mActivity, true);
+        View visualStartImage = visualRow.findViewById(R.id.start_image);
+        int visualSize =
+                mActivity
+                        .getResources()
+                        .getDimensionPixelSize(R.dimen.improved_bookmark_start_image_size_visual);
+        assertEquals(visualSize, visualStartImage.getLayoutParams().width);
+        assertEquals(visualSize, visualStartImage.getLayoutParams().height);
+
+        ImprovedBookmarkRow compactRow = ImprovedBookmarkRow.buildView(mActivity, false);
+        View compactStartImage = compactRow.findViewById(R.id.start_image);
+        int compactSize =
+                mActivity
+                        .getResources()
+                        .getDimensionPixelSize(R.dimen.improved_bookmark_start_image_size_compact);
+        assertEquals(compactSize, compactStartImage.getLayoutParams().width);
+        assertEquals(compactSize, compactStartImage.getLayoutParams().height);
     }
 }

@@ -23,13 +23,13 @@ export {BrowserProxyImpl} from 'chrome://resources/js/metrics_reporter/browser_p
 export {MetricsReporterImpl} from 'chrome://resources/js/metrics_reporter/metrics_reporter.js';
 export {getTrustedHTML} from 'chrome://resources/js/static_types.js';
 export type {FuseboxAction} from 'chrome://resources/mojo/components/omnibox/browser/fusebox_action.mojom-webui.js';
-export {InputSource, QueryActionOverride, SearchboxOverride, SuggestInventory} from 'chrome://resources/mojo/components/omnibox/browser/fusebox_action.mojom-webui.js';
+export {InputSource, QueryActionOverride, SearchboxOverride, SearchboxTutorial, SuggestInventory} from 'chrome://resources/mojo/components/omnibox/browser/fusebox_action.mojom-webui.js';
 export {AppElement, CONTEXTUAL_ENTRYPOINT_ELEMENT_ID, CUSTOMIZE_CHROME_BUTTON_ELEMENT_ID, NtpCustomizeChromeEntryPoint, NtpElement} from './app.js';
 export {BackgroundManager} from './background_manager.js';
 export {CustomizeButtonsProxy} from './customize_buttons_proxy.js';
 export {CustomizeDialogPage} from './customize_dialog_types.js';
 export {DoodleShareDialogElement} from './doodle_share_dialog.js';
-export {processFile} from './image_processor.js';
+export {C2PA_MARKER, hasC2paMetadata, MAX_C2PA_PIXELS, MAX_C2PA_SEARCH_BYTES, processFile, SUPPORTED_C2PA_FILE_TYPES} from './image_processor.js';
 export type {ProcessedFile} from './image_processor.js';
 export {LogoElement} from './logo.js';
 export {recordBoolean, recordDuration, recordEnumeration, recordLinearValue, recordLoadDuration, recordLogValue, recordOccurrence, recordPerdecage, recordSmallCount, recordSparseValueWithPersistentHash} from './metrics_utils.js';

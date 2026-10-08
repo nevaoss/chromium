@@ -21,6 +21,7 @@ namespace features {
 
 #if BUILDFLAG(IS_ANDROID)
 VIZ_COMMON_EXPORT BASE_DECLARE_FEATURE(kAndroidDumpForBadCompositedUiState);
+VIZ_COMMON_EXPORT BASE_DECLARE_FEATURE(kAndroidSurfaceControlHdrOverlays);
 #endif  // BUILDFLAG(IS_ANDROID)
 VIZ_COMMON_EXPORT BASE_DECLARE_FEATURE(kBufferQueuePerRenderPass);
 
@@ -214,6 +215,9 @@ VIZ_COMMON_EXPORT bool ShouldUseAdpfForSoc(std::string_view soc_allowlist,
                                            std::string_view soc);
 
 #endif  // BUILDFLAG(IS_ANDROID)
+
+VIZ_COMMON_EXPORT BASE_DECLARE_FEATURE(kPerDependencyDeadlines);
+VIZ_COMMON_EXPORT bool UsePerDependencyDeadlines();
 
 }  // namespace features
 

@@ -37,9 +37,6 @@ namespace extensions_features {
 // NOTE(devlin): If there are consistently enough of these in flux, it might
 // make sense to have their own file.
 
-// Controls the limit for action.setBadgeText() API input.
-BASE_DECLARE_FEATURE(kApiActionSetBadgeTextByteLimit);
-
 // Controls the availability of SplitView Extension APIs.
 BASE_DECLARE_FEATURE(kApiTabsSplitView);
 
@@ -118,6 +115,10 @@ BASE_DECLARE_FEATURE(kApiRuntimeGetPlatformInfoNaClArch);
 // Controls the availability of runtime.sendNativeMessage and
 // runtime.connectNative on Desktop Android.
 BASE_DECLARE_FEATURE(kApiDesktopAndroidNativeMessaging);
+
+// If enabled, bypasses the allowlist check on Desktop Android for native
+// messaging extension IDs.
+BASE_DECLARE_FEATURE(kApiDesktopAndroidNativeMessagingBypassExtensionAllowlist);
 
 ///////////////////////////////////////////////////////////////////////////////
 // Other Features
@@ -313,6 +314,12 @@ BASE_DECLARE_FEATURE_PARAM(bool,
 // When enabled, all search extensions will unconditionally get the search
 // engine override dialog.
 BASE_DECLARE_FEATURE(kSearchEngineUnconditionalDialog);
+
+// When enabled, Event argument ref-counting is used to share arguments across
+// dispatched events instead of deep-cloning. Behind a feature to assess impact
+// (go/chrome-performance-work-should-be-finched).
+// TODO(crbug.com/424432184): Clean up when experiment is complete.
+BASE_DECLARE_FEATURE(kShareEventArgsOnDispatch);
 
 // Enables the securityInfo in chrome.webRequest API for extensions.
 // Allowing them to retrieve certificate information from web requests.

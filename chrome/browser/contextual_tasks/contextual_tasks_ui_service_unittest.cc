@@ -32,6 +32,7 @@
 #include "chrome/common/webui_url_constants.h"
 #include "chrome/test/base/testing_profile.h"
 #include "components/contextual_search/contextual_search_metrics_recorder.h"
+#include "components/contextual_search/contextual_search_service.h"
 #include "components/contextual_search/contextual_search_session_handle.h"
 #include "components/contextual_search/input_state_model.h"
 #include "components/contextual_search/mock_contextual_search_session_handle.h"
@@ -48,6 +49,7 @@
 #include "components/search_engines/template_url_data.h"
 #include "components/search_engines/template_url_service.h"
 #include "components/sessions/content/session_tab_helper.h"
+#include "components/sessions/core/session_id.h"
 #include "components/signin/public/base/consent_level.h"
 #include "components/signin/public/identity_manager/access_token_info.h"
 #include "components/signin/public/identity_manager/identity_manager.h"
@@ -66,6 +68,8 @@
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/blink/public/mojom/window_features/window_features.mojom.h"
+#include "ui/base/page_transition_types.h"
+#include "ui/base/window_open_disposition.h"
 #include "url/gurl.h"
 
 #if !BUILDFLAG(IS_ANDROID)
@@ -1714,6 +1718,91 @@ TEST_F(ContextualTasksUiServiceTest,
 }
 
 TEST_F(ContextualTasksUiServiceTest,
+       OnNavigationToAiPageIntercepted_AssociatesAllContextTabsWithTask) {
+  ContextualTasksUiService service(
+      profile_.get(), /*delegate=*/nullptr, contextual_tasks_service_.get(),
+      /*identity_manager=*/nullptr, aim_eligibility_service_.get(),
+      std::make_unique<ContextualTasksEligibilityManager>(
+          profile_->GetPrefs(), /*identity_manager=*/nullptr,
+          aim_eligibility_service_.get()),
+      /*cookie_synchronizer=*/nullptr);
+  GURL intercepted_url("https://google.com/search?udm=50&q=test+query");
+
+  auto web_contents = content::WebContentsTester::CreateTestWebContents(
+      profile_.get(), content::SiteInstance::Create(profile_.get()));
+  sessions::SessionTabHelper::CreateForWebContents(
+      web_contents.get(),
+      base::BindRepeating([](content::WebContents* contents) {
+        return static_cast<sessions::SessionTabHelperDelegate*>(nullptr);
+      }));
+  SessionID source_tab_id =
+      sessions::SessionTabHelper::IdForTab(web_contents.get());
+
+  tabs::MockTabInterface tab;
+  ON_CALL(tab, GetContents).WillByDefault(Return(web_contents.get()));
+
+  auto* helper = ContextualSearchWebContentsHelper::GetOrCreateForWebContents(
+      web_contents.get());
+  auto mock_session = std::make_unique<testing::NiceMock<
+      contextual_search::MockContextualSearchSessionHandle>>();
+  contextual_search::ContextualSearchMetricsRecorder metrics_recorder(
+      contextual_search::ContextualSearchSource::kOmnibox);
+  ON_CALL(*mock_session, GetMetricsRecorder)
+      .WillByDefault(Return(&metrics_recorder));
+
+  SessionID submitted_tab_id = SessionID::FromSerializedValue(100);
+  SessionID uploaded_tab_id = SessionID::FromSerializedValue(200);
+  SessionID persisted_tab_id = SessionID::FromSerializedValue(300);
+
+  contextual_search::FileInfo submitted_info;
+  submitted_info.tab_session_id = submitted_tab_id;
+
+  contextual_search::FileInfo uploaded_info;
+  uploaded_info.tab_session_id = uploaded_tab_id;
+
+  ON_CALL(*mock_session, GetSubmittedContextFileInfos)
+      .WillByDefault(
+          Return(std::vector<contextual_search::FileInfo>{submitted_info}));
+  ON_CALL(*mock_session, GetUploadedContextFileInfos)
+      .WillByDefault(
+          Return(std::vector<contextual_search::FileInfo>{uploaded_info}));
+
+  contextual_search::ContextualSearchSessionHandle::PersistedTabsMap
+      persisted_map;
+  lens::LensOverlayRequestId req_id;
+  persisted_map[persisted_tab_id] =
+      std::make_pair(base::UnguessableToken::Create(), req_id);
+  mock_session->set_persisted_tabs(persisted_map);
+
+  helper->SetTaskSession(std::nullopt, std::move(mock_session),
+                         /*input_state_model=*/nullptr,
+                         /*selected_tab_ids=*/{});
+
+  ContextualTask task(base::Uuid::GenerateRandomV4());
+  EXPECT_CALL(*contextual_tasks_service_, CreateTaskFromUrl(intercepted_url))
+      .WillOnce(Return(task));
+
+  // Only submitted and persisted tabs should be associated with the task.
+  // Tabs that are only uploaded should not be associated.
+  EXPECT_CALL(*contextual_tasks_service_,
+              AssociateTabWithTask(task.GetTaskId(), submitted_tab_id))
+      .Times(1);
+  EXPECT_CALL(*contextual_tasks_service_,
+              AssociateTabWithTask(task.GetTaskId(), uploaded_tab_id))
+      .Times(0);
+  EXPECT_CALL(*contextual_tasks_service_,
+              AssociateTabWithTask(task.GetTaskId(), persisted_tab_id))
+      .Times(1);
+  EXPECT_CALL(*contextual_tasks_service_,
+              AssociateTabWithTask(task.GetTaskId(), source_tab_id))
+      .Times(testing::AtLeast(1));
+
+  base::WeakPtrFactory weak_factory(&tab);
+  service.OnNavigationToAiPageIntercepted(intercepted_url,
+                                          weak_factory.GetWeakPtr(), false);
+}
+
+TEST_F(ContextualTasksUiServiceTest,
        OnNavigationToAiPageIntercepted_PreservesCsParam) {
   ContextualTasksUiService service(
       profile_.get(), /*delegate=*/nullptr, contextual_tasks_service_.get(),
@@ -2242,6 +2331,18 @@ TEST_F(ContextualTasksUiServiceTest, GetAiUrlFromWebUIUrl_HostOverride) {
 }
 
 TEST_F(ContextualTasksUiServiceTest,
+       GetAiUrlFromWebUIUrl_HostOverrideWithPort) {
+  GURL base_url("https://google.com/search");
+  GURL webui_url(
+      "chrome://"
+      "contextual-tasks?param1=1&chrome_host=localhost.corp.google.com:8888");
+
+  EXPECT_EQ(
+      GURL("https://localhost.corp.google.com:8888/search?param1=1"),
+      ContextualTasksUiService::GetAiUrlFromWebUIUrl(base_url, webui_url));
+}
+
+TEST_F(ContextualTasksUiServiceTest,
        GetAiUrlFromWebUIUrl_UntrustedHostOverride) {
   GURL base_url("https://google.com/search");
   GURL webui_url(
@@ -2282,6 +2383,15 @@ TEST_F(ContextualTasksUiServiceTest, IsTrustedHost) {
   EXPECT_TRUE(ContextualTasksUiService::IsTrustedHost("[::1]"));
   EXPECT_TRUE(ContextualTasksUiService::IsTrustedHost("::1"));
 
+  // Valid trusted hosts with port
+  EXPECT_TRUE(
+      ContextualTasksUiService::IsTrustedHost("gws-prod.corp.google.com:8080"));
+  EXPECT_TRUE(ContextualTasksUiService::IsTrustedHost(
+      "localhost.corp.google.com:8888"));
+  EXPECT_TRUE(ContextualTasksUiService::IsTrustedHost("localhost:8080"));
+  EXPECT_TRUE(ContextualTasksUiService::IsTrustedHost("127.0.0.1:8888"));
+  EXPECT_TRUE(ContextualTasksUiService::IsTrustedHost("[::1]:8888"));
+
   // Delimiter and bypass attempts
   EXPECT_FALSE(
       ContextualTasksUiService::IsTrustedHost("attacker.com/.corp.google.com"));
@@ -2296,12 +2406,12 @@ TEST_F(ContextualTasksUiServiceTest, IsTrustedHost) {
   EXPECT_FALSE(
       ContextualTasksUiService::IsTrustedHost("attacker.com:.corp.google.com"));
   EXPECT_FALSE(
-      ContextualTasksUiService::IsTrustedHost("gws-prod.corp.google.com:8080"));
-  EXPECT_FALSE(
       ContextualTasksUiService::IsTrustedHost("attacker.com .corp.google.com"));
 
   // Domain boundary and near-domain bypass attempts
   EXPECT_FALSE(ContextualTasksUiService::IsTrustedHost("evilcorp.google.com"));
+  EXPECT_FALSE(
+      ContextualTasksUiService::IsTrustedHost("evilcorp.google.com:8080"));
   EXPECT_FALSE(ContextualTasksUiService::IsTrustedHost("notcorp.google.com"));
   EXPECT_FALSE(ContextualTasksUiService::IsTrustedHost("corp0google.com"));
   EXPECT_FALSE(ContextualTasksUiService::IsTrustedHost("corp-google.com"));
@@ -2311,6 +2421,10 @@ TEST_F(ContextualTasksUiServiceTest, IsTrustedHost) {
   EXPECT_FALSE(
       ContextualTasksUiService::IsTrustedHost("malicious.example.com"));
   EXPECT_FALSE(ContextualTasksUiService::IsTrustedHost(""));
+  EXPECT_FALSE(ContextualTasksUiService::IsTrustedHost(
+      "gws-prod.corp.google.com:99999"));
+  EXPECT_FALSE(
+      ContextualTasksUiService::IsTrustedHost("gws-prod.corp.google.com:0"));
 }
 
 TEST_F(ContextualTasksUiServiceTest, GetHostFromUrl) {
@@ -2332,6 +2446,13 @@ TEST_F(ContextualTasksUiServiceTest, GetHostFromUrl) {
                              GURL("https://google.com?chrome_host=127.0.0.1")));
   EXPECT_EQ("[::1]", ContextualTasksUiService::GetHostFromUrl(
                          GURL("https://google.com?chrome_host=%5B%3A%3A1%5D")));
+  EXPECT_EQ("localhost.corp.google.com:8888",
+            ContextualTasksUiService::GetHostFromUrl(
+                GURL("https://google.com?"
+                     "chrome_host=localhost.corp.google.com:8888")));
+  EXPECT_EQ("[::1]:8888",
+            ContextualTasksUiService::GetHostFromUrl(
+                GURL("https://google.com?chrome_host=%5B%3A%3A1%5D:8888")));
 
   // Bypasses using URL encoding / delimiters
   EXPECT_EQ(std::nullopt, ContextualTasksUiService::GetHostFromUrl(GURL(
@@ -2394,8 +2515,14 @@ TEST_F(ContextualTasksUiServiceTest, ForcedEmbeddedPageHostOverride) {
 
   // Set an override and verify it's returned.
   contextual_tasks::SetForcedEmbeddedPageHostOverride(
-      contextual_tasks::HostOverride{"test.google.com"});
-  EXPECT_EQ((contextual_tasks::HostOverride{"test.google.com"}),
+      contextual_tasks::HostOverride{"test.google.com", std::nullopt});
+  EXPECT_EQ((contextual_tasks::HostOverride{"test.google.com", std::nullopt}),
+            contextual_tasks::GetForcedEmbeddedPageHost());
+
+  // Set an override with port and verify it's returned.
+  contextual_tasks::SetForcedEmbeddedPageHostOverride(
+      contextual_tasks::HostOverride{"localhost.corp.google.com", 8888});
+  EXPECT_EQ((contextual_tasks::HostOverride{"localhost.corp.google.com", 8888}),
             contextual_tasks::GetForcedEmbeddedPageHost());
 
   // Clearing the override should return to the default state.
@@ -2409,7 +2536,7 @@ TEST_F(ContextualTasksUiServiceTest,
       profile_.get(), content::SiteInstance::Create(profile_.get()));
 
   contextual_tasks::SetForcedEmbeddedPageHostOverride(
-      contextual_tasks::HostOverride{"test.google.com"});
+      contextual_tasks::HostOverride{"test.google.com", std::nullopt});
 
   GURL url("https://www.google.com/search?q=test");
   GURL new_url = ContextualTasksUiService::AddRequiredSidePanelUrlChanges(
@@ -2427,12 +2554,41 @@ TEST_F(ContextualTasksUiServiceTest,
 }
 
 TEST_F(ContextualTasksUiServiceTest,
+       AddRequiredSidePanelUrlChanges_WithHostOverrideAndPort) {
+  auto web_contents = content::WebContentsTester::CreateTestWebContents(
+      profile_.get(), content::SiteInstance::Create(profile_.get()));
+
+  contextual_tasks::SetForcedEmbeddedPageHostOverride(
+      contextual_tasks::HostOverride{"localhost.corp.google.com", 8888});
+
+  GURL url("https://www.google.com/search?q=test");
+  GURL new_url = ContextualTasksUiService::AddRequiredSidePanelUrlChanges(
+      url, web_contents.get());
+
+  EXPECT_EQ("localhost.corp.google.com", new_url.host());
+  EXPECT_EQ(8888, new_url.EffectiveIntPort());
+  std::string gsc_val;
+  EXPECT_TRUE(net::GetValueForKeyInQuery(new_url, "gsc", &gsc_val));
+  EXPECT_EQ("2", gsc_val);
+  std::string q_val;
+  EXPECT_TRUE(net::GetValueForKeyInQuery(new_url, "q", &q_val));
+  EXPECT_EQ("test", q_val);
+
+  // Navigating to already-rewritten URL does not trigger further changes (no
+  // loop).
+  EXPECT_EQ(new_url, ContextualTasksUiService::AddRequiredSidePanelUrlChanges(
+                         new_url, web_contents.get()));
+
+  contextual_tasks::SetForcedEmbeddedPageHostOverride(std::nullopt);
+}
+
+TEST_F(ContextualTasksUiServiceTest,
        AddRequiredSidePanelUrlChanges_SignInDomain_NotOverridden) {
   auto web_contents = content::WebContentsTester::CreateTestWebContents(
       profile_.get(), content::SiteInstance::Create(profile_.get()));
 
   contextual_tasks::SetForcedEmbeddedPageHostOverride(
-      contextual_tasks::HostOverride{"test.google.com"});
+      contextual_tasks::HostOverride{"test.google.com", std::nullopt});
 
   GURL signin_url("https://login.corp.google.com/signin");
   GURL new_url = ContextualTasksUiService::AddRequiredSidePanelUrlChanges(
@@ -2449,7 +2605,7 @@ TEST_F(ContextualTasksUiServiceTest,
       profile_.get(), content::SiteInstance::Create(profile_.get()));
 
   contextual_tasks::SetForcedEmbeddedPageHostOverride(
-      contextual_tasks::HostOverride{"test.google.com"});
+      contextual_tasks::HostOverride{"test.google.com", std::nullopt});
 
   GURL webui_url("chrome://contextual-tasks/?chrome_task_id=123");
   GURL new_url = ContextualTasksUiService::AddRequiredSidePanelUrlChanges(
@@ -2733,7 +2889,8 @@ TEST_F(ContextualTasksUiServiceTest, PrefetchOnEligibilityChange) {
   auto account_info = identity_test_env_->MakePrimaryAccountAvailable(
       "test@example.com", signin::ConsentLevel::kSignin);
   identity_test_env_->SetCookieAccounts(
-      {{.email = account_info.email, .gaia_id = account_info.gaia}});
+      {{.email = std::string(account_info.GetEmail()),
+        .gaia_id = account_info.GetGaiaId()}});
 
   base::RepeatingClosure captured_callback;
 
@@ -2775,7 +2932,8 @@ TEST_F(ContextualTasksUiServiceTest, PrefetchOnStartupIfAlreadyEligible) {
   auto account_info = identity_test_env_->MakePrimaryAccountAvailable(
       "test@example.com", signin::ConsentLevel::kSignin);
   identity_test_env_->SetCookieAccounts(
-      {{.email = account_info.email, .gaia_id = account_info.gaia}});
+      {{.email = std::string(account_info.GetEmail()),
+        .gaia_id = account_info.GetGaiaId()}});
 
   EXPECT_CALL(*aim_eligibility_service_, RegisterEligibilityChangedCallback(_))
       .WillOnce(Return(base::CallbackListSubscription()));
@@ -3477,6 +3635,65 @@ TEST_F(ContextualTasksUiServiceTest,
   // disabled.
   EXPECT_EQ(real_service_->GetInitialEntryPointForTask(task.GetTaskId()),
             omnibox::ChromeAimEntryPoint::UNKNOWN_AIM_ENTRY_POINT);
+}
+
+TEST_F(ContextualTasksUiServiceTest,
+       OpenUrl_ClobbersActiveTabWhenFeatureEnabled) {
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitAndEnableFeature(kContextualTasksClobberActiveTab);
+
+  auto web_contents = content::WebContentsTester::CreateTestWebContents(
+      profile_.get(), content::SiteInstance::Create(profile_.get()));
+  tabs::MockTabInterface active_tab;
+  ON_CALL(active_tab, GetContents).WillByDefault(Return(web_contents.get()));
+
+  NiceMock<MockBrowserWindowInterface> browser;
+  NiceMock<MockTabListInterface> mock_tab_list;
+  ON_CALL(mock_tab_list, GetActiveTab).WillByDefault(Return(&active_tab));
+  ui::ScopedUnownedUserData<TabListInterface> tab_list_registration(
+      browser.GetUnownedUserDataHost(), mock_tab_list);
+
+  GURL target_url("https://target.example.com/");
+  content::OpenURLParams params =
+      content::OpenURLParams::CreateBrowserInitiated(
+          target_url, WindowOpenDisposition::NEW_FOREGROUND_TAB,
+          ui::PAGE_TRANSITION_LINK);
+
+  real_service_->OpenUrlForTesting(params, blink::mojom::WindowFeatures(),
+                                   &browser);
+
+  EXPECT_EQ(web_contents->GetVisibleURL(), target_url);
+}
+
+TEST_F(ContextualTasksUiServiceTest, ResetZeroStateInOpenSidePanel) {
+  auto panel_contents = content::WebContentsTester::CreateTestWebContents(
+      profile_.get(), content::SiteInstance::Create(profile_.get()));
+  auto tab_contents = content::WebContentsTester::CreateTestWebContents(
+      profile_.get(), content::SiteInstance::Create(profile_.get()));
+  sessions::SessionTabHelper::CreateForWebContents(
+      tab_contents.get(),
+      base::BindRepeating([](content::WebContents* contents) {
+        return static_cast<sessions::SessionTabHelperDelegate*>(nullptr);
+      }));
+
+  tabs::MockTabInterface tab;
+  ON_CALL(tab, GetContents).WillByDefault(Return(tab_contents.get()));
+
+  GURL url("https://www.google.com/search?udm=50&aep=1");
+  ContextualTask task(base::Uuid::GenerateRandomV4());
+  EXPECT_CALL(*contextual_tasks_service_, CreateTaskFromUrl(url))
+      .WillOnce(Return(task));
+  EXPECT_CALL(*contextual_tasks_service_,
+              AssociateTabWithTask(
+                  task.GetTaskId(),
+                  sessions::SessionTabHelper::IdForTab(tab_contents.get())))
+      .Times(1);
+
+  real_service_->ResetZeroStateInOpenSidePanel(
+      panel_contents.get(), &tab, url, /*session_handle=*/nullptr,
+      omnibox::ChromeAimEntryPoint::DESKTOP_CHROME_COBROWSE_OMNIBOX_ACTION);
+
+  EXPECT_EQ(real_service_->GetCreationUrlForTask(task.GetTaskId()), url);
 }
 
 }  // namespace contextual_tasks

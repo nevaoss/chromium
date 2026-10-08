@@ -37,6 +37,13 @@
   --ntp-scrim-opacity_: 1;
   --threads-rail-width: 76px;
   --threads-rail-focus-outline-color: var(--color-new-tab-page-focus-ring);
+
+<if expr="is_android">
+  /* Use Google Sans Text for the NTP realbox on Android. The @font-face
+   * rules in text_defaults_md.css register the font names, and
+   * AndroidFontLookupImpl downloads them from GMSCore. */
+  font-family: 'Google Sans Text', 'Google Sans', Arial, sans-serif;
+</if>
 }
 
 /**
@@ -310,15 +317,12 @@ svg {
   position: fixed;
 }
 
-:host([energy-effect-enabled_]) #composebox {
-  --cr-composebox-expanded-border-radius: 28px;
-}
-
 #composebox {
   --color-composebox-submit-button-background: var(
     --color-new-tab-page-composebox-submit-button-background);
 
   --cr-composebox-background-color: var(--color-composebox-background);
+  --cr-composebox-expanded-border-radius: 28px;
   --cr-composebox-submit-border-radius: 100px;
   --cr-composebox-submit-height: 36px;
   --cr-composebox-submit-icon-size: 24px;
@@ -433,6 +437,11 @@ ntp-lens-upload-dialog {
   min-height: 128px;
 }
 
+#voiceSearchDialog:has(#voiceSearch[audio-wave-enabled]) {
+  height: 168px;
+  min-height: 168px;
+}
+
 /* Disable default scrim and use custom scrim instead. */
 #voiceSearchDialog::backdrop {
   display: none;
@@ -447,6 +456,11 @@ ntp-lens-upload-dialog {
 #voiceSearchDialog:has(#voiceSearch[live-transcript-enabled])
     #voiceSearchCardContainer {
   height: auto;
+}
+
+#voiceSearchDialog:has(#voiceSearch[audio-wave-enabled])
+    #voiceSearchCardContainer {
+  height: 100%;
 }
 
 #voiceSearch {
@@ -469,6 +483,14 @@ ntp-lens-upload-dialog {
   position: static;
 }
 
+#voiceSearch[audio-wave-enabled] {
+  --voice-bottom-actions-inset-inline-end: 16px;
+  --voice-search-minimum-height: 168px;
+  height: 100%;
+  inset: 0;
+  position: absolute;
+}
+
 #voiceSearch::part(voice-stop-button) {
   position: relative;
 }
@@ -483,10 +505,22 @@ ntp-lens-upload-dialog {
   position: absolute;
 }
 
-#voiceSearch:not([live-transcript-enabled])
-    ~ #voiceSearchGlow::part(full-container-overlay) {
+#voiceSearchGlow::part(full-container-overlay) {
   min-block-size: 0;
   position: absolute;
+}
+
+#voiceSearchDialog:has(#voiceSearch[audio-wave-enabled])
+    #voiceSearchGlow {
+  --recording-wave-top-padding: 4px;
+}
+
+#voiceSearchDialog:has(#voiceSearch[audio-wave-enabled])
+    #voiceSearchGlow::part(full-container-overlay) {
+  height: 48px;
+  inset-inline: 0;
+  padding: 0;
+  top: 49px;
 }
 
 :host-context([webui-rounded-icons]) {

@@ -50,6 +50,7 @@ import java.io.IOException;
 
 /** Tests logic in the {@link EventForwarder} class. */
 @RunWith(BaseRobolectricTestRunner.class)
+@EnableFeatures(UiAndroidFeatures.HAS_CONTENT_URI)
 public class EventForwarderTest {
     @Rule public final MockitoRule mMockitoRule = MockitoJUnit.rule();
 
@@ -466,8 +467,8 @@ public class EventForwarderTest {
                         downTime,
                         eventTime,
                         MotionEvent.ACTION_MOVE,
-                        /* x= */ 1,
-                        /* y= */ -1,
+                        /* x= */ 1 * PointerLockEventHelper.MOUSE_MOVEMENT_SCALE_FACTOR,
+                        /* y= */ -1 * PointerLockEventHelper.MOUSE_MOVEMENT_SCALE_FACTOR,
                         /* metaState= */ 0);
         expectedEvent1.setSource(InputDevice.SOURCE_MOUSE);
 
@@ -478,8 +479,12 @@ public class EventForwarderTest {
                         downTime,
                         eventTime,
                         MotionEvent.ACTION_MOVE,
-                        /* x= */ moveEvent.getX() * 2,
-                        /* y= */ moveEvent.getY() * 2,
+                        /* x= */ moveEvent.getX()
+                                * 2
+                                * PointerLockEventHelper.MOUSE_MOVEMENT_SCALE_FACTOR,
+                        /* y= */ moveEvent.getY()
+                                * 2
+                                * PointerLockEventHelper.MOUSE_MOVEMENT_SCALE_FACTOR,
                         /* metaState= */ 0);
         expectedEvent2.setSource(InputDevice.SOURCE_MOUSE);
 
@@ -698,7 +703,7 @@ public class EventForwarderTest {
                         eq(14.0f), // screenX
                         eq(21.0f), // screenY
                         eq(mimeTypes),
-                        eq(""), // content
+                        anyBoolean(), // hasFiles
                         argThat(
                                 (String[][] filenames) -> {
                                     if (filenames.length != expectedFilenames.length) {

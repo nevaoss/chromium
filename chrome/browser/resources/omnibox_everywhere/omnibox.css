@@ -15,9 +15,14 @@
   -webkit-app-region: drag;
   /* Embedders should define --cr-searchbox-min-width. */
   --cr-searchbox-width: var(--cr-searchbox-min-width);
-  --cr-searchbox-border-radius: calc(0.5 * var(--cr-searchbox-height));
+  --cr-searchbox-border-radius: 16px;
+  --cr-searchbox-icon-size-in-searchbox: 18px;
+  --cr-searchbox-icon-container-size: 32px;
+  --cr-searchbox-icon-left-position: 16px;
+  --cr-searchbox-icon-right-position: 0px;
   --cr-searchbox-icon-width: 26px;
-  --cr-searchbox-inner-icon-margin: 8px;
+  --cr-searchbox-match-padding-inline-start: 16px;
+  --cr-searchbox-match-text-padding-inline-start: 8px;
   --cr-searchbox-voice-icon-offset: 16px;
   --cr-searchbox-voice-search-button-width: 0px;
   --cr-compose-button-width: 104px;
@@ -92,7 +97,10 @@
 }
 
 #inputWrapper {
-  background-color: var(--color-searchbox-background);
+  background: linear-gradient(
+          var(--omnibox-inactive-hover-overlay, transparent),
+          var(--omnibox-inactive-hover-overlay, transparent)),
+      var(--color-searchbox-background);
   border-radius: var(--cr-searchbox-border-radius);
   box-shadow: 0 4px 20px 2px rgba(0, 0, 0, 0.25);
   display: flex;
@@ -128,6 +136,7 @@
 
 cr-searchbox-input::part(searchbox-input) {
   align-self: center;
+  padding-inline-start: 7px;
   padding-top: 2px;
 }
 
@@ -136,7 +145,6 @@ cr-searchbox-input::part(searchbox-input) {
 }
 
 :host([is-fusebox-enabled]) cr-searchbox-input::part(searchbox-input) {
-  padding-inline-start: 12px;
   padding-inline-end: 64px;
 }
 
@@ -169,7 +177,6 @@ cr-searchbox-input::part(searchbox-input) {
   align-self: center;
 }
 
-
 :host([compose-button-enabled][searchbox-lens-search-enabled_]) {
   --cr-searchbox-voice-icon-offset: calc(
       16px + 2 * var(--cr-searchbox-icon-spacing) +
@@ -188,7 +195,7 @@ cr-searchbox-input::part(searchbox-input):focus::placeholder {
 }
 
 :host([is-fusebox-enabled]) {
-  --cr-searchbox-border-radius: 28px;
+  --cr-searchbox-border-radius: 16px;
   --cr-searchbox-dropdown-padding-bottom: 10px;
   --cr-searchbox-dropdown-padding-top: 10px;
   --cr-searchbox-height: 48px;
@@ -205,10 +212,11 @@ cr-searchbox-input::part(searchbox-input):focus::placeholder {
 
   /* Used in search-animated-glow-element. */
   --search-animated-glow-drag-drop-placeholder-top: 16px;
+  --omnibox-everywhere-top-actions-top: 16px;
 }
 
 :host-context([energy-effect-enabled_]):host([is-fusebox-enabled]) {
-  --cr-searchbox-border-radius: 28px;
+  --cr-searchbox-border-radius: 16px;
   --cr-searchbox-border: 1px solid var(--color-searchbox-border);
 }
 
@@ -223,17 +231,10 @@ cr-searchbox-dropdown::part(dropdown-content) {
   padding-top: unset;
 }
 
-:host([is-fusebox-enabled])
-    cr-composebox-contextual-entrypoint-and-menu::part(
-        context-menu-entrypoint-icon) {
-  --cr-icon-button-icon-size: 24px;
-  --cr-icon-button-margin-start: 0;
-  --cr-icon-button-size: 36px;
-}
-
 .contextualEntrypointContainer,
 .context-menu-container,
-cr-composebox-contextual-entrypoint-and-menu {
+cr-composebox-contextual-entrypoint-and-menu,
+#context {
   position: relative;
   z-index: var(--cr-composebox-context-menu-z-index, 1001);
 }
@@ -242,17 +243,17 @@ cr-composebox-contextual-entrypoint-and-menu {
   padding-block: 0;
 }
 
-:host([is-fusebox-enabled]) cr-composebox-contextual-entrypoint-and-menu {
-  color: var(--color-searchbox-results-foreground);
-  padding-inline-end: 6px;
-  padding-inline-start: 0;
-  position: relative;
-  z-index: var(--cr-composebox-context-menu-z-index, 1001);
+:host([is-fusebox-enabled]) .contextualEntrypointContainerCompact {
+  box-shadow: none;
+  width: auto;
 }
 
 #inputContainer {
-  background-color: var(--color-searchbox-background);
-  border-radius: 26px;
+  background: linear-gradient(
+          var(--omnibox-inactive-hover-overlay, transparent),
+          var(--omnibox-inactive-hover-overlay, transparent)),
+      var(--color-searchbox-background);
+  border-radius: 16px;
   box-shadow: var(--cr-searchbox-shadow);
   display: flex;
   flex-direction: column;
@@ -271,8 +272,9 @@ cr-composebox-contextual-entrypoint-and-menu {
 }
 
 :host([is-fusebox-enabled]) cr-searchbox-input {
-  --cr-searchbox-icon-container-size: 36px;
+  --cr-searchbox-icon-container-size: 32px;
   --cr-searchbox-icon-left-position: 16px;
+  --cr-searchbox-icon-right-position: 0px;
 }
 
 :host([is-fusebox-enabled]) cr-searchbox-input::part(icon) {
@@ -309,14 +311,29 @@ cr-composebox-contextual-entrypoint-and-menu {
   opacity: 0;
 }
 
-:host([is-fusebox-enabled]) .contextualEntrypointContainerCompact {
-  box-shadow: none;
-  width: auto;
+:host([is-fusebox-enabled]) #composeButton {
+  --cr-button-height: 28px;
+  margin-inline-end: 36px;
 }
 
-:host([is-fusebox-enabled]) #composeButton {
-  top: var(--omnibox-everywhere-top-actions-top, 12px);
-  margin-inline-end: 58px;
+:host([is-fusebox-enabled]) #composeButton::part(glow-container) {
+  height: 28px;
+  top: 10px;
+}
+
+:host([is-fusebox-enabled]) #composeButton::part(compose-button) {
+  font-size: 12px;
+}
+
+:host([is-fusebox-enabled]) #composeButton::part(compose-icon) {
+  height: 16px;
+  padding-top: 0;
+  width: 16px;
+}
+
+:host([is-fusebox-enabled]):has(#profileIcon[is-enterprise-profile])
+    #composeButton {
+  margin-inline-end: 64px;
 }
 
 #bottomControls {
@@ -342,7 +359,6 @@ cr-composebox-contextual-entrypoint-and-menu {
 cr-searchbox-input::part(searchbox-input),
 cr-searchbox-dropdown::part(dropdown-content),
 cr-searchbox-compose-button::part(compose-button),
-#composeButton,
 #context,
 #contextEntrypoint,
 cr-composebox-contextual-entrypoint-and-menu,
@@ -355,8 +371,14 @@ cr-composebox-contextual-entrypoint-button,
   -webkit-app-region: no-drag;
 }
 
-cr-searchbox-input::part(icon) {
+cr-searchbox-input::part(icon),
+#composeButton {
   -webkit-app-region: drag;
   -webkit-user-drag: none;
 }
 
+:host(:not([is-active])),
+:host(:not([is-active])) cr-searchbox-input::part(icon),
+:host(:not([is-active])) #composeButton {
+  -webkit-app-region: no-drag;
+}

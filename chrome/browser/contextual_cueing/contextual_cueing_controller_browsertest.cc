@@ -39,7 +39,6 @@
 #include "chrome/browser/ui/page_action/page_action_observer.h"
 #include "chrome/browser/ui/side_panel/side_panel_entry_id.h"
 #include "chrome/browser/ui/side_panel/side_panel_ui.h"
-#include "chrome/browser/ui/side_panel/side_panel_ui_provider.h"
 #include "chrome/browser/ui/tabs/public/tab_features.h"
 #include "chrome/browser/ui/tabs/split_tab_metrics.h"
 #include "chrome/browser/ui/tabs/tab_enums.h"
@@ -63,14 +62,17 @@
 #include "components/private_insights/private_insights_features.h"
 #include "components/private_insights/private_insights_service.h"
 #include "components/sessions/content/session_tab_helper.h"
+#include "components/sessions/core/session_id.h"
 #include "components/signin/public/identity_manager/account_capabilities_test_mutator.h"
 #include "components/split_tabs/split_tab_visual_data.h"
 #include "components/sync/test/test_sync_service.h"
 #include "components/ukm/test_ukm_recorder.h"
+#include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/navigation_entry.h"
 #include "content/public/browser/storage_partition.h"
 #include "content/public/test/browser_test.h"
 #include "content/public/test/browser_test_utils.h"
+#include "content/public/test/test_navigation_observer.h"
 #include "services/metrics/public/cpp/metrics_utils.h"
 #include "services/metrics/public/cpp/ukm_builders.h"
 #include "services/network/public/cpp/shared_url_loader_factory.h"
@@ -1742,7 +1744,7 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest,
   SeedExecutionResult(MakeCompleteResponse());
 
   // Open side panel.
-  auto* side_panel_ui = SidePanelUIProvider::From(browser());
+  auto* side_panel_ui = SidePanelUI::From(browser());
   ASSERT_TRUE(side_panel_ui);
   side_panel_ui->Show(SidePanelEntryId::kBookmarks);
   ASSERT_TRUE(base::test::RunUntil([&]() {
@@ -1798,7 +1800,7 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest,
   }));
 
   // Open the side panel (we use Bookmarks here as a standard global entry).
-  auto* side_panel_ui = SidePanelUIProvider::From(browser());
+  auto* side_panel_ui = SidePanelUI::From(browser());
   ASSERT_TRUE(side_panel_ui);
   side_panel_ui->Show(SidePanelEntryId::kBookmarks);
 
@@ -2435,7 +2437,8 @@ class ContextualCueingControllerMultiSourceBrowserTest
           {{"ContextualCueingV2DiscardShoppingPdfs", "true"},
            {"ContextualCueingV2TabListVisibility", "always"},
            {"ContextualCueingV2EnablePrivateInsightsLogging", "true"}}},
-         {kContextualCueingV2MultiSource, {}}},
+         {kContextualCueingV2MultiSource, {}},
+         {kContextualCueingV2AllowOverridingUcbScoring, {}}},
         /*disabled_features=*/{kContextualCueingV2EnforceAgeRestriction});
   }
 };
@@ -2550,6 +2553,57 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerMultiSourceBrowserTest,
 
   // Total count should still be 2.
   histogram_tester.ExpectTotalCount("ContextualCueing.V2.Decision", 2);
+}
+
+IN_PROC_BROWSER_TEST_F(ContextualCueingControllerMultiSourceBrowserTest,
+                       SameDocumentNavigation_TriggersEvaluation) {
+  base::HistogramTester histogram_tester;
+  ukm::TestAutoSetUkmRecorder ukm_recorder;
+
+  // Start embedded test server to serve real pages.
+  ASSERT_TRUE(embedded_test_server()->Start());
+
+  // Disable initial eligibility so the first page load doesn't trigger a cue.
+  cue_target()->eligible = false;
+  auto test_source_target = std::make_unique<TestCueTarget>();
+  test_source_target->eligible = false;
+  test_source_target->generate_result =
+      MakeCompleteResponse().contextual_cues(0);
+  auto* test_source_target_ptr = test_source_target.get();
+  contextual_cueing_controller()->RegisterCueTarget(
+      CueTargetType::kTestSource, std::move(test_source_target));
+
+  // 1. Load initial page with ineligible target.
+  GURL url1 = embedded_test_server()->GetURL("/title1.html");
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), url1));
+
+  optimization_guide::RetryForHistogramUntilCountReached(
+      &histogram_tester, "ContextualCueing.V2.Decision", 1);
+  histogram_tester.ExpectUniqueSample(
+      "ContextualCueing.V2.Decision",
+      ContextualCueingDecision::kTargetFeatureNotEligible, 1);
+
+  // 2. Make the target eligible and perform same-document navigation.
+  test_source_target_ptr->eligible = true;
+  content::WebContents* web_contents =
+      browser()->tab_strip_model()->GetActiveWebContents();
+  content::TestNavigationObserver observer(web_contents);
+  ASSERT_TRUE(content::ExecJs(web_contents,
+                              "history.pushState({}, '', '/title2.html');"));
+  observer.Wait();
+
+  // 3. Verify cue evaluation triggers on same-document navigation.
+  optimization_guide::RetryForHistogramUntilCountReached(
+      &histogram_tester, "ContextualCueing.V2.Decision", 2);
+  histogram_tester.ExpectBucketCount("ContextualCueing.V2.Decision",
+                                     ContextualCueingDecision::kSuccess, 1);
+  auto entries = ukm_recorder.GetEntriesByName(
+      ukm::builders::ContextualCueing_CueShown::kEntryName);
+  ASSERT_EQ(2u, entries.size());
+  ukm_recorder.ExpectEntryMetric(
+      entries[1].get(),
+      ukm::builders::ContextualCueing_CueShown::kProactiveCueDecisionName,
+      static_cast<int64_t>(ContextualCueingDecision::kSuccess));
 }
 
 class TargetRegisteringObserver : public TabStripModelObserver {
@@ -2698,6 +2752,36 @@ IN_PROC_BROWSER_TEST_F(
                                      ContextualCueingDecision::kSuccess, 1);
 }
 
+IN_PROC_BROWSER_TEST_F(ContextualCueingControllerMultiSourceBrowserTest,
+                       MultiSourceOverridesUcbScoring) {
+  base::HistogramTester histogram_tester;
+
+  auto low_priority_target = std::make_unique<TestCueTarget>();
+  low_priority_target->eligible = true;
+  low_priority_target->generate_result =
+      MakeCompleteResponse().contextual_cues(0);
+
+  auto override_target = std::make_unique<TestCueTarget>();
+  override_target->eligible = true;
+  override_target->overrides_ucb_scoring = true;
+  override_target->generate_result = MakeCompleteResponse().contextual_cues(0);
+  auto* override_target_ptr = override_target.get();
+
+  contextual_cueing_controller()->RegisterCueTarget(
+      CueTargetType::kGlic, std::move(low_priority_target));
+  contextual_cueing_controller()->RegisterCueTarget(CueTargetType::kIndigo,
+                                                    std::move(override_target));
+
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(
+      browser(), GURL("https://www.activetab.com/abc")));
+
+  optimization_guide::RetryForHistogramUntilCountReached(
+      &histogram_tester, "ContextualCueing.V2.Decision", 1);
+
+  EXPECT_TRUE(override_target_ptr->chip_shown ||
+              override_target_ptr->anchored_message_shown_priority.has_value());
+}
+
 class ContextualCueingControllerMultiSourceWithAgeRestrictionBrowserTest
     : public ContextualCueingControllerBrowserTestBase {
  public:
@@ -2788,7 +2872,7 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerMultiSourceBrowserTest,
 
   // Exhaust loud caps by showing a loud cue.
   service->OnCueShown(GURL("https://example.com"), CueTargetType::kGlic,
-                      CueIntrusiveness::kLoud);
+                      /*record_ucb_stats=*/true, CueIntrusiveness::kLoud);
 
   class TestObserver : public page_actions::PageActionModelObserver {
    public:
@@ -2837,7 +2921,7 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerMultiSourceBrowserTest,
 
   // Exhaust loud caps by showing a loud cue.
   service->OnCueShown(GURL("https://example.com"), CueTargetType::kGlic,
-                      CueIntrusiveness::kLoud);
+                      /*record_ucb_stats=*/true, CueIntrusiveness::kLoud);
 
   class TestObserver : public page_actions::PageActionModelObserver {
    public:
@@ -2892,7 +2976,7 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerMultiSourceBrowserTest,
                           std::move(non_mes_target));
 
   // User dismisses a cue.
-  service->OnCueDismissed(CueTargetType::kGlic);
+  service->OnCueDismissed(CueTargetType::kGlic, /*record_ucb_stats=*/true);
 
   class TestObserver : public page_actions::PageActionModelObserver {
    public:

@@ -43,6 +43,17 @@ function simulateUserTextInput(
   return microtasksFinished();
 }
 
+async function pollUntil(
+    predicate: () => boolean, timeoutMs = 10000): Promise<void> {
+  const start = Date.now();
+  while (!predicate()) {
+    if (Date.now() - start > timeoutMs) {
+      throw new Error('pollUntil timed out');
+    }
+    await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
+  }
+}
+
 function setSelectionOffset(input: HTMLElement, offset: number) {
   if (input instanceof HTMLTextAreaElement) {
     input.setSelectionRange(offset, offset);
@@ -70,6 +81,7 @@ function createFuseboxActionRequest(
     preselectedModel: null,
     preselectedTool: null,
     searchboxOverride: null,
+    searchboxTutorial: null,
     ...overrides,
   };
   return {suggestion, files: [], fuseboxAction};
@@ -520,7 +532,7 @@ suite('ComposeboxMixinTest', () => {
               url: 'about:blank?original',
             });
 
-        element.files = new Map([[tokenTab, mockTabFile]]);
+        element.attachedContext = new Map([[tokenTab, mockTabFile]]);
         element.addedTabsIds = new Map([[selectedTabId, tokenTab]]);
 
         const freshTab = {
@@ -536,7 +548,7 @@ suite('ComposeboxMixinTest', () => {
 
         await element.refreshTabSuggestions();
 
-        assertFalse(element.files.has(tokenTab));
+        assertFalse(element.attachedContext.has(tokenTab));
         assertFalse(element.addedTabsIds.has(selectedTabId));
         assertEquals(1, searchboxHandler.getCallCount('deleteContext'));
       });
@@ -552,7 +564,7 @@ suite('ComposeboxMixinTest', () => {
         });
 
     // Add the selected tab to the active files and added tabs maps.
-    element.files = new Map([[tokenTab, mockTabFile]]);
+    element.attachedContext = new Map([[tokenTab, mockTabFile]]);
     element.addedTabsIds = new Map([[selectedTabId, tokenTab]]);
 
     await microtasksFinished();
@@ -562,7 +574,7 @@ suite('ComposeboxMixinTest', () => {
     // Verify: The selected Tab 100 must be completely removed from the
     // current active selection.
     assertFalse(element.addedTabsIds.has(selectedTabId));
-    assertFalse(element.files.has(tokenTab));
+    assertFalse(element.attachedContext.has(tokenTab));
   });
 
   test(
@@ -583,7 +595,7 @@ suite('ComposeboxMixinTest', () => {
               url: 'about:blank?2',
             });
 
-        element.files = new Map([[token1, tab1], [token2, tab2]]);
+        element.attachedContext = new Map([[token1, tab1], [token2, tab2]]);
         element.addedTabsIds = new Map([[1, token1], [2, token2]]);
         element.aimThreadRestoredTabs = [
           {
@@ -1008,22 +1020,100 @@ suite('ComposeboxMixinTest', () => {
     element.input = 'Draft text';
     element.lastQueriedInput = 'Draft text';
     element.activeQueryId = 1;
+    await microtasksFinished();
 
-    const matches = [
-      {fillIntoEdit: 'Draft text suggestion', supportsDeletion: false} as
-          AutocompleteMatch,
-    ];
-    element.result = {input: 'Draft text', matches} as AutocompleteResult;
-    element.selectedMatchIndex = 0;
-    await element.updateComplete;
+    const inputComponent = element.getInputElement();
+    const dropdown = element.getDropdownElement();
+    const originalResetHeight = inputComponent.resetHeight;
+    let resetCount = 0;
+    inputComponent.resetHeight = () => {
+      resetCount++;
+      originalResetHeight.call(inputComponent);
+    };
 
-    element.clearAutocompleteMatches();
-    await element.updateComplete;
+    try {
+      // 1. Same-text suggestion preview and draft restoration should preserve
+      // the height lock without calling resetHeight.
+      element.result = {
+        input: 'Draft text',
+        matches: [
+          {fillIntoEdit: 'Draft text', supportsDeletion: false} as
+              AutocompleteMatch,
+        ],
+      } as AutocompleteResult;
+      await microtasksFinished();
 
-    assertEquals('Draft text', element.input);
-    assertEquals(-1, element.selectedMatchIndex);
-    assertEquals(null, element.result);
-    assertEquals(-1, element.activeQueryId);
+      dropdown.selectIndex(0);
+      await microtasksFinished();
+      assertEquals(0, element.selectedMatchIndex);
+      assertEquals('Draft text', element.input);
+      assertEquals(0, resetCount);
+
+      element.clearAutocompleteMatches();
+      await microtasksFinished();
+      assertEquals('Draft text', element.input);
+      assertEquals(-1, element.selectedMatchIndex);
+      assertEquals(null, element.result);
+      assertEquals(-1, element.activeQueryId);
+      assertEquals(0, resetCount);
+
+      // 2. Different-text suggestion preview and draft restoration resets
+      // height.
+      element.result = {
+        input: 'Draft text',
+        matches: [
+          {fillIntoEdit: 'Draft text suggestion', supportsDeletion: false} as
+              AutocompleteMatch,
+        ],
+      } as AutocompleteResult;
+      await microtasksFinished();
+
+      dropdown.selectIndex(0);
+      await microtasksFinished();
+      assertEquals(0, element.selectedMatchIndex);
+      assertEquals('Draft text suggestion', element.input);
+      assertEquals(1, resetCount);
+
+      element.clearAutocompleteMatches();
+      await microtasksFinished();
+      assertEquals('Draft text', element.input);
+      assertEquals(-1, element.selectedMatchIndex);
+      assertEquals(null, element.result);
+      assertEquals(-1, element.activeQueryId);
+      assertEquals(2, resetCount);
+
+      // 3. Zero-state preview (no typed draft query): clearing after preview
+      // clears the input and releases the height lock.
+      element.input = '';
+      element.lastQueriedInput = '';
+      await microtasksFinished();
+      resetCount = 0;
+
+      element.result = {
+        input: '',
+        matches: [
+          {fillIntoEdit: 'Preview suggestion', supportsDeletion: false} as
+              AutocompleteMatch,
+        ],
+      } as AutocompleteResult;
+      await microtasksFinished();
+
+      dropdown.selectIndex(0);
+      await microtasksFinished();
+      assertEquals(0, element.selectedMatchIndex);
+      assertEquals('Preview suggestion', element.input);
+      assertEquals(1, resetCount);
+
+      element.clearAutocompleteMatches();
+      await microtasksFinished();
+      assertEquals('', element.input);
+      assertEquals(-1, element.selectedMatchIndex);
+      assertEquals(null, element.result);
+      assertEquals(-1, element.activeQueryId);
+      assertEquals(2, resetCount);
+    } finally {
+      inputComponent.resetHeight = originalResetHeight;
+    }
   });
 
   test('smartComposeInlineHint is sliced on sequential typing', async () => {
@@ -1074,7 +1164,7 @@ suite('ComposeboxMixinTest', () => {
                           name: 'Google',
                           url: 'http://google.com',
                         } as Partial<ComposeboxFile>) as ComposeboxFile;
-        freshComposebox.files = new Map([
+        freshComposebox.attachedContext = new Map([
           ['uuid-1' as unknown as UnguessableToken, regularFile],
           ['uuid-2' as unknown as UnguessableToken, tabFile],
         ]);
@@ -1104,7 +1194,7 @@ suite('ComposeboxMixinTest', () => {
                       name: 'Google',
                       url: 'http://google.com',
                     } as Partial<ComposeboxFile>) as ComposeboxFile;
-    freshComposebox.files = new Map([
+    freshComposebox.attachedContext = new Map([
       ['uuid-1' as unknown as UnguessableToken, regularFile],
       ['uuid-2' as unknown as UnguessableToken, tabFile],
     ]);
@@ -1172,8 +1262,8 @@ suite('ComposeboxMixinTest', () => {
     }]);
 
     await microtasksFinished();
-    assertTrue(element.files.has(token));
-    const file = element.files.get(token)!;
+    assertTrue(element.attachedContext.has(token));
+    const file = element.attachedContext.get(token)!;
     assertEquals('file.png', file.name);
     assertEquals('image/png', file.type);
     assertFalse(element.showDropdown);
@@ -1213,7 +1303,7 @@ suite('ComposeboxMixinTest', () => {
       // </if>
     };
     await microtasksFinished();
-    assertTrue(element.files.has(token));
+    assertTrue(element.attachedContext.has(token));
     assertEquals('hello', element.input);
   });
 
@@ -1280,7 +1370,7 @@ suite('ComposeboxMixinTest', () => {
         await element.updateComplete;
 
         assertEquals('hello world', element.input);
-        assertEquals(1, element.files.size);
+        assertEquals(1, element.attachedContext.size);
         assertEquals(1, searchboxHandler.getCallCount('setActiveToolMode'));
         assertEquals(
             ToolMode.kDeepSearch,
@@ -1292,54 +1382,184 @@ suite('ComposeboxMixinTest', () => {
         assertFalse(searchboxHandler.getArgs('setActiveModelMode')[0][1]);
       });
 
+  test(
+      'updates state from state property with browser file upload',
+      async () => {
+        const token = '00000000000000010000000000000002';
+        const fileInfo: SelectedFileInfo = {
+          fileName: 'test.png',
+          mimeType: 'image/png',
+          imageDataUrl: 'data:image/png;base64,AAAA',
+          thumbnailUrl: null,
+          isDeletable: true,
+          selectionTime: new Date(),
+        };
+        element.state = {
+          text: '',
+          files: [{token, fileInfo}],
+          mode: ToolMode.kUnspecified,
+          model: ModelMode.kUnspecified,
+          // <if expr="not is_android">
+          smartTabSharingActive: false,
+          // </if>
+        };
+        await element.updateComplete;
+        await microtasksFinished();
+
+        assertEquals(1, element.files.size);
+        const attachment = element.files.values().next().value;
+        assertTrue(!!attachment);
+        assertEquals('test.png', attachment.name);
+        assertEquals('image/png', attachment.type);
+        assertEquals(ContextUploadStatus.kUploadSuccessful, attachment.status);
+      });
+
   test('navigates matches with ArrowDown and ArrowUp', async () => {
-    const input = element.getInputElement().inputElement;
-    const matchesElement = element.getDropdownElement();
+    const originalBodyWidth = document.body.style.width;
+    const originalBodyHeight = document.body.style.height;
+    const originalElementWidth = element.style.width;
+    const inputComponent = element.getInputElement();
+    const originalResetHeight = inputComponent.resetHeight;
 
-    element.result = {input: '', matches: []} as unknown as AutocompleteResult;
-    await microtasksFinished();
+    try {
+      document.body.style.width = '800px';
+      document.body.style.height = '600px';
+      element.style.width = '100%';
 
-    input.dispatchEvent(new KeyboardEvent(
-        'keydown', {key: 'ArrowDown', bubbles: true, composed: true}));
-    await microtasksFinished();
-    assertEquals(-1, matchesElement.selectedMatchIndex);
+      const input = inputComponent.inputElement as HTMLTextAreaElement;
+      const matchesElement = element.getDropdownElement();
+      const wrapper = inputComponent.shadowRoot.querySelector<HTMLElement>(
+          '#inputWrapper')!;
 
-    const matches = [
-      {fillIntoEdit: 'test1'} as AutocompleteMatch,
-      {fillIntoEdit: 'test2'} as AutocompleteMatch,
-    ];
-    element.result = {input: 'test', matches} as AutocompleteResult;
-    await microtasksFinished();
+      element.result = {input: '', matches: []} as unknown as
+          AutocompleteResult;
+      await microtasksFinished();
 
-    input.dispatchEvent(new KeyboardEvent(
-        'keydown', {key: 'ArrowDown', bubbles: true, composed: true}));
-    await microtasksFinished();
-    assertEquals(0, matchesElement.selectedMatchIndex);
+      input.dispatchEvent(new KeyboardEvent(
+          'keydown', {key: 'ArrowDown', bubbles: true, composed: true}));
+      await microtasksFinished();
+      assertEquals(-1, matchesElement.selectedMatchIndex);
 
-    input.dispatchEvent(new KeyboardEvent(
-        'keydown', {key: 'ArrowDown', bubbles: true, composed: true}));
-    await microtasksFinished();
-    assertEquals(1, matchesElement.selectedMatchIndex);
+      // 1. Establish height lock with multiline text.
+      const initialHeight = wrapper.clientHeight;
+      input.value = 'line 1\nline 2\nline 3\nline 4\nline 5';
+      input.dispatchEvent(new Event('input', {bubbles: true}));
+      await microtasksFinished();
+      await pollUntil(
+          () => wrapper.clientHeight > initialHeight &&
+              parseFloat(wrapper.style.minHeight) === wrapper.clientHeight);
+      const initialMinHeight = wrapper.style.minHeight;
+      const tallHeight = wrapper.clientHeight;
 
-    input.dispatchEvent(new KeyboardEvent(
-        'keydown', {key: 'ArrowUp', bubbles: true, composed: true}));
-    await microtasksFinished();
-    assertEquals(0, matchesElement.selectedMatchIndex);
+      // 2. Shorten/delete text; the height lock is preserved.
+      input.value = 'test';
+      input.dispatchEvent(new Event('input', {bubbles: true}));
+      await microtasksFinished();
+      await new Promise<void>(
+          resolve => requestAnimationFrame(
+              () => requestAnimationFrame(() => resolve())));
+      assertEquals(initialMinHeight, wrapper.style.minHeight);
+      assertEquals(tallHeight, wrapper.clientHeight);
 
-    input.dispatchEvent(new KeyboardEvent('keydown', {
-      key: 'ArrowDown',
-      ctrlKey: true,
-      bubbles: true,
-      composed: true,
-    }));
-    await microtasksFinished();
-    assertEquals(0, matchesElement.selectedMatchIndex);
+      let resetCount = 0;
+      inputComponent.resetHeight = () => {
+        resetCount++;
+        originalResetHeight.call(inputComponent);
+      };
 
-    element.dropdownNeeded = false;
-    input.dispatchEvent(new KeyboardEvent(
-        'keydown', {key: 'ArrowDown', bubbles: true, composed: true}));
-    await microtasksFinished();
-    assertEquals(0, matchesElement.selectedMatchIndex);
+      const matches = [
+        {fillIntoEdit: 'test'} as AutocompleteMatch,
+        {fillIntoEdit: 'test2'} as AutocompleteMatch,
+        {fillIntoEdit: 'test3'} as AutocompleteMatch,
+      ];
+      element.result = {input: 'test', matches} as AutocompleteResult;
+      await microtasksFinished();
+
+      // 3. ArrowDown to suggestion with same text ('test') -> lock is NOT
+      // reset.
+      input.dispatchEvent(new KeyboardEvent(
+          'keydown', {key: 'ArrowDown', bubbles: true, composed: true}));
+      await microtasksFinished();
+      assertEquals(0, matchesElement.selectedMatchIndex);
+      assertEquals('test', element.input);
+      assertEquals(0, resetCount);
+      assertEquals(initialMinHeight, wrapper.style.minHeight);
+      assertEquals(tallHeight, wrapper.clientHeight);
+
+      // 4. ArrowDown to suggestion with different text ('test2') -> height lock
+      // shrinks and does not bounce back.
+      input.dispatchEvent(new KeyboardEvent(
+          'keydown', {key: 'ArrowDown', bubbles: true, composed: true}));
+      await microtasksFinished();
+      assertEquals(1, matchesElement.selectedMatchIndex);
+      assertEquals('test2', element.input);
+      assertEquals(1, resetCount);
+
+      await pollUntil(
+          () => wrapper.style.minHeight !== '' &&
+              parseFloat(wrapper.style.minHeight) <
+                  parseFloat(initialMinHeight) &&
+              wrapper.clientHeight < tallHeight);
+
+      await new Promise<void>(
+          resolve => requestAnimationFrame(
+              () => requestAnimationFrame(() => resolve())));
+      assertTrue(
+          parseFloat(wrapper.style.minHeight) < parseFloat(initialMinHeight));
+      assertTrue(wrapper.clientHeight < tallHeight);
+
+      // 5. Verify keyboard navigation behaviors (ArrowDown, ArrowUp, ctrlKey,
+      // dropdownNeeded).
+      // ArrowDown navigates forward to next suggestion ('test3', index 2).
+      input.dispatchEvent(new KeyboardEvent(
+          'keydown', {key: 'ArrowDown', bubbles: true, composed: true}));
+      await microtasksFinished();
+      assertEquals(2, matchesElement.selectedMatchIndex);
+      assertEquals('test3', element.input);
+
+      // ArrowDown on the last match (index 2) wraps around to the first visible
+      // match (index 1) in typed suggest, skipping the hidden verbatim match.
+      input.dispatchEvent(new KeyboardEvent(
+          'keydown', {key: 'ArrowDown', bubbles: true, composed: true}));
+      await microtasksFinished();
+      assertEquals(1, matchesElement.selectedMatchIndex);
+      assertEquals('test2', element.input);
+
+      // ArrowUp on the first visible match (index 1) wraps around to the last
+      // visible match (index 2) in typed suggest.
+      input.dispatchEvent(new KeyboardEvent(
+          'keydown', {key: 'ArrowUp', bubbles: true, composed: true}));
+      await microtasksFinished();
+      assertEquals(2, matchesElement.selectedMatchIndex);
+      assertEquals('test3', element.input);
+
+      // ArrowUp navigates backwards to previous suggestion ('test2', index 1).
+      input.dispatchEvent(new KeyboardEvent(
+          'keydown', {key: 'ArrowUp', bubbles: true, composed: true}));
+      await microtasksFinished();
+      assertEquals(1, matchesElement.selectedMatchIndex);
+      assertEquals('test2', element.input);
+
+      input.dispatchEvent(new KeyboardEvent('keydown', {
+        key: 'ArrowDown',
+        ctrlKey: true,
+        bubbles: true,
+        composed: true,
+      }));
+      await microtasksFinished();
+      assertEquals(1, matchesElement.selectedMatchIndex);
+
+      element.dropdownNeeded = false;
+      input.dispatchEvent(new KeyboardEvent(
+          'keydown', {key: 'ArrowDown', bubbles: true, composed: true}));
+      await microtasksFinished();
+      assertEquals(1, matchesElement.selectedMatchIndex);
+    } finally {
+      inputComponent.resetHeight = originalResetHeight;
+      element.style.width = originalElementWidth;
+      document.body.style.width = originalBodyWidth;
+      document.body.style.height = originalBodyHeight;
+    }
   });
 
   test('selects first or last match with PageUp and PageDown', async () => {
@@ -2181,7 +2401,7 @@ suite('ComposeboxMixinTest', () => {
             dummyToken2, 123, 'Tab Title',
             {url: 'about:blank'} as unknown as Url, {isDeletable: false});
 
-        element.files = new Map([
+        element.attachedContext = new Map([
           [dummyToken1, undeletableFile],
           [dummyToken2, tabFile],
         ]);
@@ -2192,8 +2412,8 @@ suite('ComposeboxMixinTest', () => {
         await microtasksFinished();
 
         // Verify: tab is deleted, but non-deletable file remains.
-        assertFalse(element.files.has(dummyToken2));
-        assertTrue(element.files.has(dummyToken1));
+        assertFalse(element.attachedContext.has(dummyToken2));
+        assertTrue(element.attachedContext.has(dummyToken1));
       });
 
   test(
@@ -2462,8 +2682,9 @@ suite('ComposeboxMixinTest', () => {
       });
 
   test(
-      'observeSmartTabSharingActive clears addedTabsIds and resets restored' +
-          ' tabs when smartTabSharingVisible is true and active becomes false',
+      'observeSmartTabSharingActive clears files, addedTabsIds and resets' +
+          ' restored tabs when smartTabSharingVisible is true and active' +
+          ' becomes false',
       async () => {
         const dummyToken = {
           high: 1n,
@@ -2477,9 +2698,13 @@ suite('ComposeboxMixinTest', () => {
           showInPreviousTabChip: false,
           lastActive: {internalValue: 0n},
         };
+        const tabFile = ComposeboxFile.createFromTab(
+            dummyToken, 10, 'Restored Tab', 'about:blank?10');
 
+        element.contextManagementInComposeboxEnabled = false;
         element.smartTabSharingVisible = true;
         element.smartTabSharingActive = true;
+        element.files = new Map([[dummyToken, tabFile]]);
         element.addedTabsIds = new Map([[10, dummyToken]]);
         element.aimThreadRestoredTabs = [tab];
 
@@ -2488,8 +2713,45 @@ suite('ComposeboxMixinTest', () => {
         await microtasksFinished();
 
         assertFalse(element.smartTabSharingActive);
+        assertEquals(0, element.files.size);
         assertEquals(0, element.addedTabsIds.size);
         assertEquals(0, element.aimThreadRestoredTabs.length);
+      });
+
+  test(
+      'observeSmartTabSharingActive clears files, addedTabsIds and preserves' +
+          ' restored tabs when smartTabSharingVisible is true and active' +
+          ' becomes true',
+      async () => {
+        const dummyToken = {
+          high: 1n,
+          low: 1n,
+        } as unknown as UnguessableToken;
+        const tab = {
+          tabId: 10,
+          title: 'Restored Tab',
+          url: 'about:blank?10',
+          showInCurrentTabChip: false,
+          showInPreviousTabChip: false,
+          lastActive: {internalValue: 0n},
+        };
+        const tabFile = ComposeboxFile.createFromTab(
+            dummyToken, 10, 'Restored Tab', 'about:blank?10');
+
+        element.smartTabSharingVisible = true;
+        element.smartTabSharingActive = false;
+        element.files = new Map([[dummyToken, tabFile]]);
+        element.addedTabsIds = new Map([[10, dummyToken]]);
+        element.aimThreadRestoredTabs = [tab];
+
+        searchboxCallbackRouterRemote.updateSmartTabSharingActive(true);
+        await searchboxCallbackRouterRemote.$.flushForTesting();
+        await microtasksFinished();
+
+        assertTrue(element.smartTabSharingActive);
+        assertEquals(0, element.files.size);
+        assertEquals(0, element.addedTabsIds.size);
+        assertEquals(1, element.aimThreadRestoredTabs.length);
       });
 
   test(
@@ -2556,6 +2818,37 @@ suite('ComposeboxMixinTest', () => {
       });
 
   test(
+      'observeSmartTabSharingActive preserves restored tabs when' +
+          ' contextManagementInComposeboxEnabled is true and composeboxSource' +
+          ' is not Omnibox',
+      async () => {
+        const dummyToken: UnguessableToken = 'dummy-token';
+        const tab = {
+          tabId: 10,
+          title: 'Restored Tab',
+          url: 'about:blank?10',
+          showInCurrentTabChip: false,
+          showInPreviousTabChip: false,
+          lastActive: {internalValue: 0n},
+        };
+
+        element.contextManagementInComposeboxEnabled = true;
+        element.composeboxSource = 'ContextualTasks';
+        element.smartTabSharingVisible = true;
+        element.smartTabSharingActive = true;
+        element.addedTabsIds = new Map([[10, dummyToken]]);
+        element.aimThreadRestoredTabs = [tab];
+
+        searchboxCallbackRouterRemote.updateSmartTabSharingActive(false);
+        await searchboxCallbackRouterRemote.$.flushForTesting();
+        await microtasksFinished();
+
+        assertFalse(element.smartTabSharingActive);
+        assertEquals(0, element.addedTabsIds.size);
+        assertEquals(1, element.aimThreadRestoredTabs.length);
+      });
+
+  test(
       'resetSession resets submitting, input, tool, and models', async () => {
         element.submitting = true;
         element.input = 'previous query';
@@ -2585,7 +2878,7 @@ suite('ComposeboxMixinTest', () => {
         element.tabFaviconChipsToCoinsEnabled = true;
         const tabFile = ComposeboxFile.createFromTab(
             'tab-uuid', 1, 'Example Tab', 'https://example.com');
-        element.files = new Map([[tabFile.uuid, tabFile]]);
+        element.attachedContext = new Map([[tabFile.uuid, tabFile]]);
         assertTrue(element.hasTabs());
       });
 
@@ -2595,14 +2888,14 @@ suite('ComposeboxMixinTest', () => {
         element.tabFaviconChipsToCoinsEnabled = false;
         const tabFile = ComposeboxFile.createFromTab(
             'tab-uuid', 1, 'Example Tab', 'https://example.com');
-        element.files = new Map([[tabFile.uuid, tabFile]]);
+        element.attachedContext = new Map([[tabFile.uuid, tabFile]]);
         assertFalse(element.hasTabs());
       });
 
   test(
       'hasTabs returns true when smartTabSharingActive is true regardless of files',
       () => {
-        element.files = new Map();
+        element.attachedContext = new Map();
         element.smartTabSharingActive = true;
         assertTrue(element.hasTabs());
       });
@@ -2610,7 +2903,7 @@ suite('ComposeboxMixinTest', () => {
   test(
       'hasTabs returns false when no tab files and smartTabSharingActive is false',
       () => {
-        element.files = new Map();
+        element.attachedContext = new Map();
         element.smartTabSharingActive = false;
         assertFalse(element.hasTabs());
       });
@@ -2638,7 +2931,7 @@ suite('ComposeboxMixinTest', () => {
         assertFalse(emptyModel.canSubmit());
 
         const tabModel = new ComposeboxInputModel({
-          files: new Map([[tabFile.uuid, tabFile]]),
+          attachedContext: new Map([[tabFile.uuid, tabFile]]),
           tabFaviconChipsToCoinsEnabled: true,
         });
         assertTrue(tabModel.hasTabs());
@@ -2650,7 +2943,7 @@ suite('ComposeboxMixinTest', () => {
         assertTrue(tabModel.canSubmit());
 
         const mixedModel = new ComposeboxInputModel({
-          files:
+          attachedContext:
               new Map([[tabFile.uuid, tabFile], [imageFile.uuid, imageFile]]),
           tabFaviconChipsToCoinsEnabled: true,
         });
@@ -2665,7 +2958,7 @@ suite('ComposeboxMixinTest', () => {
         assertTrue(stsModel.hasTabs());
 
         const unimodalModel = new ComposeboxInputModel({
-          files: new Map([[unimodalFile.uuid, unimodalFile]]),
+          attachedContext: new Map([[unimodalFile.uuid, unimodalFile]]),
         });
         assertTrue(unimodalModel.hasUnimodalFile());
         assertTrue(unimodalModel.hasValidQuery());
@@ -2687,7 +2980,7 @@ suite('ComposeboxMixinTest', () => {
         element.tabFaviconChipsToCoinsEnabled = true;
         element.smartTabSharingActive = false;
         element.input = '';
-        element.files = new Map();
+        element.attachedContext = new Map();
 
         assertFalse(element.hasTabs());
         assertFalse(element.hasNonTabFiles());
@@ -2703,7 +2996,7 @@ suite('ComposeboxMixinTest', () => {
             'tab-uuid', 10, 'Tab Title', 'https://example.com/tab');
         const imgFile = ComposeboxFile.createFromFile(
             'img-uuid', {name: 'photo.jpg', type: 'image/jpeg'});
-        element.files =
+        element.attachedContext =
             new Map([[tabFile.uuid, tabFile], [imgFile.uuid, imgFile]]);
 
         assertTrue(element.hasTabs());

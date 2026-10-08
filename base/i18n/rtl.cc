@@ -15,6 +15,8 @@
 #include "base/containers/fixed_flat_set.h"
 #include "base/files/file_path.h"
 #include "base/i18n/base_i18n_switches.h"
+#include "base/i18n/icu4c_tag_converter.h"
+#include "base/i18n/icubridge/default_icu_locale.h"
 #include "base/i18n/language_tag.h"
 #include "base/i18n/tag_converters.h"
 #include "base/logging.h"
@@ -135,11 +137,10 @@ TextDirection GetTextDirectionInternal() {
     return forced_direction;
   }
 
-  LanguageTag icu_locale = LanguageTagConverter::GetInstance().FromIcuLocale(
-      icu::Locale::getDefault());
   static constexpr auto kRtlLanguageTags =
-      std::to_array<std::string_view>({"ar", "fa", "iw", "he", "ur"});
-  if (std::ranges::contains(kRtlLanguageTags, icu_locale.language_subtag())) {
+      std::to_array<std::string_view>({"ar", "fa", "he", "ur"});
+  if (std::ranges::contains(kRtlLanguageTags,
+                            GetDefaultIcuLocale().language_subtag())) {
     return RIGHT_TO_LEFT;
   }
   return LEFT_TO_RIGHT;
@@ -170,10 +171,15 @@ void SetICUDefaultLocale(std::string_view locale_string) {
   const char* lang = locale.getLanguage();
   if (lang != nullptr && *lang != '\0') {
     icu::Locale::setDefault(locale, error_code);
+    SetDefaultIcuLocale(
+        DefaultIcuLocaleSetterKey(),
+        IcuLocaleConverter::GetInstance().ToLanguageTag(locale));
   } else {
     LOG(ERROR) << "Failed to set the ICU default locale to " << locale_string
                << ". Falling back to en-US.";
     icu::Locale::setDefault(icu::Locale::getUS(), error_code);
+    SetDefaultIcuLocale(DefaultIcuLocaleSetterKey(),
+                        GetKnownLanguageTag("en-US"));
   }
 }
 

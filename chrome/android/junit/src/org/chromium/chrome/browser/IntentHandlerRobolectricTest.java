@@ -6,9 +6,12 @@ package org.chromium.chrome.browser;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.lenient;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import static org.chromium.chrome.browser.url_constants.UrlConstantResolver.getOriginalNativeNtpUrl;
 
@@ -33,8 +36,6 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnit;
@@ -55,10 +56,17 @@ import org.chromium.base.test.util.Feature;
 import org.chromium.base.test.util.Features.DisableFeatures;
 import org.chromium.base.test.util.Features.EnableFeatures;
 import org.chromium.chrome.browser.IntentHandler.ExternalAppId;
+import org.chromium.chrome.browser.actor.ActorKeyedService;
+import org.chromium.chrome.browser.actor.ActorKeyedServiceFactory;
+import org.chromium.chrome.browser.actor.ActorNotificationFactory;
+import org.chromium.chrome.browser.actor.ActorTask;
 import org.chromium.chrome.browser.app.tabmodel.AsyncTabParamsManagerSingleton;
 import org.chromium.chrome.browser.customtabs.CustomTabsConnection;
 import org.chromium.chrome.browser.customtabs.CustomTabsIntentTestUtils;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
+import org.chromium.chrome.browser.notifications.NotificationConstants;
+import org.chromium.chrome.browser.profiles.Profile;
+import org.chromium.chrome.browser.profiles.ProfileManager;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tabmodel.AsyncTabCreationParams;
 import org.chromium.chrome.browser.tabmodel.MultiTabMetadata;
@@ -199,8 +207,6 @@ public class IntentHandlerRobolectricTest {
 
     @Mock IntentHandler.Natives mNativeMock;
     @Mock ExternalIntentUrlChecker.Natives mExternalIntentUrlCheckerNativeMock;
-
-    @Captor ArgumentCaptor<LoadUrlParams> mLoadUrlParamsCaptor;
 
     private ShadowPowerManager mShadowPowerManager;
     private ShadowKeyguardManager mShadowKeyguardManager;
@@ -608,6 +614,22 @@ public class IntentHandlerRobolectricTest {
 
     @Test
     @SmallTest
+    public void testGetAllUrlsFromShareIntent() {
+        Intent intent = new Intent(Intent.ACTION_SEND);
+        intent.setType("text/plain");
+        Assert.assertTrue(IntentHandler.getAllUrlsFromShareIntent(intent).isEmpty());
+        for (Object[] shareCase : SHARE_INTENT_CASES) {
+            intent.putExtra(Intent.EXTRA_TEXT, (String) shareCase[0]);
+            List<String> urls = IntentHandler.getAllUrlsFromShareIntent(intent);
+            Assert.assertEquals((int) shareCase[2], urls.size());
+            if ((int) shareCase[2] > 0) {
+                Assert.assertEquals((String) shareCase[1], urls.get(urls.size() - 1));
+            }
+        }
+    }
+
+    @Test
+    @SmallTest
     public void testNewIntentInitiatorFromNewTabUrl() {
         int tabId = 1;
         Intent intent = new Intent(Intent.ACTION_VIEW);
@@ -732,6 +754,10 @@ public class IntentHandlerRobolectricTest {
 
         trustedIntent.setData(Uri.parse("chrome-native://newtab"));
         Assert.assertFalse(IntentHandler.shouldIgnoreIntent(trustedIntent, null));
+
+        trustedIntent.setData(
+                Uri.parse("chrome-native://pdf/link?url=content%3A%2F%2Ftest.provider%2Ftest.pdf"));
+        Assert.assertFalse(IntentHandler.shouldIgnoreIntent(trustedIntent, null));
     }
 
     @Test
@@ -747,7 +773,32 @@ public class IntentHandlerRobolectricTest {
         untrustedIntent.setData(Uri.parse("chrome-native://newtab"));
         Assert.assertTrue(IntentHandler.shouldIgnoreIntent(untrustedIntent, null));
 
+        untrustedIntent.setData(
+                Uri.parse("chrome-native://pdf/link?url=content%3A%2F%2Ftest.provider%2Ftest.pdf"));
+        Assert.assertTrue(IntentHandler.shouldIgnoreIntent(untrustedIntent, null));
+
         untrustedIntent.addCategory("com.fake.category");
+        Assert.assertTrue(IntentHandler.shouldIgnoreIntent(untrustedIntent, null));
+    }
+
+    @Test
+    @SmallTest
+    @Feature({"Android-AppBase"})
+    public void testContentPdfUrlAllowedForExternalSources() {
+        Mockito.doReturn(true).when(mExternalIntentUrlCheckerNativeMock).validateUrl(any());
+        Intent externalIntent = new Intent(Intent.ACTION_VIEW);
+        externalIntent.setData(Uri.parse("content://test.provider/document.pdf"));
+        Assert.assertFalse(IntentHandler.shouldIgnoreIntent(externalIntent, null));
+    }
+
+    @Test
+    @SmallTest
+    @Feature({"Android-AppBase"})
+    public void testChromeFileProviderBlockedForUntrustedIntent() {
+        Intent untrustedIntent = new Intent(Intent.ACTION_VIEW);
+        String packageName = ContextUtils.getApplicationContext().getPackageName();
+        untrustedIntent.setData(
+                Uri.parse("content://" + packageName + ".FileProvider/document.pdf"));
         Assert.assertTrue(IntentHandler.shouldIgnoreIntent(untrustedIntent, null));
     }
 
@@ -888,6 +939,40 @@ public class IntentHandlerRobolectricTest {
                 IntentHandler.shouldIgnoreIntent(untrustedIntent, /* isCustomTab= */ true));
     }
 
+    @Test
+    public void testGetGlicConversationId() {
+        Context context = ContextUtils.getApplicationContext();
+
+        assertNull(IntentHandler.getGlicConversationId(null));
+        assertNull(IntentHandler.getGlicConversationId(new Intent(Intent.ACTION_VIEW)));
+
+        // Untrusted intent with EXTRA_GLIC_CONVERSATION_ID and non-Chrome appId should return null.
+        Intent untrustedIntent = new Intent(Intent.ACTION_VIEW);
+        untrustedIntent.putExtra(NotificationConstants.EXTRA_GLIC_CONVERSATION_ID, "conv_123");
+        untrustedIntent.putExtra(Browser.EXTRA_APPLICATION_ID, "com.example.otherapp");
+        assertNull(IntentHandler.getGlicConversationId(untrustedIntent));
+
+        // Untrusted intent with EXTRA_GLIC_CONVERSATION_ID and Chrome's appId
+        // (wasIntentSenderChrome
+        // is false because it lacks trusted extras) should return null.
+        Intent chromeAppIdIntent = new Intent(Intent.ACTION_VIEW);
+        chromeAppIdIntent.putExtra(NotificationConstants.EXTRA_GLIC_CONVERSATION_ID, "conv_123");
+        chromeAppIdIntent.putExtra(Browser.EXTRA_APPLICATION_ID, context.getPackageName());
+        assertNull(IntentHandler.getGlicConversationId(chromeAppIdIntent));
+
+        // Trusted intent from Chrome with EXTRA_GLIC_CONVERSATION_ID should return the conversation
+        // ID.
+        try {
+            IntentUtils.setForceIsTrustedIntentForTesting(true);
+            Intent trustedIntent = new Intent(Intent.ACTION_VIEW);
+            trustedIntent.putExtra(NotificationConstants.EXTRA_GLIC_CONVERSATION_ID, "conv_123");
+            trustedIntent.setPackage(context.getPackageName());
+            assertEquals("conv_123", IntentHandler.getGlicConversationId(trustedIntent));
+        } finally {
+            IntentUtils.setForceIsTrustedIntentForTesting(false);
+        }
+    }
+
     private Intent createTabGroupIntent(boolean isIncognito, boolean isTrusted) {
         Intent intent = new Intent(Intent.ACTION_VIEW);
         ArrayList<Map.Entry<Integer, String>> tabIdsToUrls = new ArrayList<>();
@@ -926,5 +1011,62 @@ public class IntentHandlerRobolectricTest {
             IntentUtils.addTrustedIntentExtras(intent);
         }
         return intent;
+    }
+
+    @Test
+    public void testIsActorNotificationIntent() {
+        assertFalse(IntentHandler.isActorNotificationIntent(null));
+
+        Intent intent = new Intent(Intent.ACTION_VIEW);
+        assertFalse(IntentHandler.isActorNotificationIntent(intent));
+
+        intent.putExtra(ActorNotificationFactory.EXTRA_SHOW_ACTOR_CONTROL, true);
+        assertTrue(IntentHandler.isActorNotificationIntent(intent));
+
+        intent = new Intent(Intent.ACTION_VIEW);
+        intent.putExtra(NotificationConstants.EXTRA_ACTOR_TASK_ID, 123);
+        assertTrue(IntentHandler.isActorNotificationIntent(intent));
+    }
+
+    @Test
+    public void testGetBringTabToFrontId_ActorNotification() {
+        Intent actorIntent = new Intent(Intent.ACTION_VIEW);
+        actorIntent.putExtra(ActorNotificationFactory.EXTRA_SHOW_ACTOR_CONTROL, true);
+        actorIntent.putExtra(NotificationConstants.EXTRA_ACTOR_TASK_ID, 123);
+
+        // Untrusted intent should return INVALID_TAB_ID.
+        assertEquals(
+                "Untrusted intent should return INVALID_TAB_ID.",
+                Tab.INVALID_TAB_ID,
+                IntentHandler.getBringTabToFrontId(actorIntent));
+
+        actorIntent.setPackage(ContextUtils.getApplicationContext().getPackageName());
+
+        // Trusted intent should resolve dynamically when explicit tab ID is invalid.
+        IntentUtils.addTrustedIntentExtras(actorIntent);
+
+        Profile profile = mock(Profile.class);
+        ProfileManager.setLastUsedProfileForTesting(profile);
+        ActorKeyedService actorKeyedService = mock(ActorKeyedService.class);
+        ActorKeyedServiceFactory.setForTesting(actorKeyedService);
+
+        ActorTask task = mock(ActorTask.class);
+        when(actorKeyedService.getTask(123)).thenReturn(task);
+        when(task.getTargetTabId()).thenReturn(789);
+
+        assertEquals(
+                "Should resolve tab ID dynamically for trusted actor notification intent.",
+                789,
+                IntentHandler.getBringTabToFrontId(actorIntent));
+
+        // Explicit valid tab ID should take precedence.
+        actorIntent.putExtra(IntentHandler.BRING_TAB_TO_FRONT_EXTRA, 42);
+        IntentUtils.addTrustedIntentExtras(actorIntent);
+        assertEquals(
+                "Explicit tab ID should take precedence.",
+                42,
+                IntentHandler.getBringTabToFrontId(actorIntent));
+
+        ActorKeyedServiceFactory.setForTesting(null);
     }
 }

@@ -24,8 +24,8 @@ export function getHtml(this: WelcomeAppElement) {
           ?disabled="${this.shouldDisableButtons_()}"
           @checked-changed="${this.onDefaultBrowserCheckedChanged_}">
       </cr-toggle>
-    </div>`
-  : ''}
+    </div>
+  ` : ''}
 
   <cr-button id="acceptButton" class="action-button"
       ?disabled="${this.shouldDisableButtons_()}"
@@ -36,31 +36,29 @@ export function getHtml(this: WelcomeAppElement) {
 
 ${this.showMetricsOptIn_ ? html`
   <p id="footer" class="footer">
-    <localized-link
-        .linkDisabled="${this.shouldDisableButtons_()}"
+    <localized-link .linkDisabled="${this.shouldDisableButtons_()}"
         .localizedString="${this.getMetricsLabel_()}"
         @link-clicked="${this.onManageLinkClicked_}">
     </localized-link>
   </p>
 
-  <cr-toast id="toast">
-    <div id="toast-header">
-      <div id="toast-title">$i18n{welcomeMetricsPopupTitle}</div>
-      <cr-icon-button id="toastCloseButton" iron-icon="cr:close"
+  <dialog id="dialog" closedby="any" aria-labelledby="dialog-title"
+      aria-describedby="dialog-body">
+    <div id="dialog-header">
+      <div id="dialog-title">$i18n{welcomeMetricsPopupTitle}</div>
+      <cr-icon-button id="dialogCloseButton" iron-icon="cr:close"
           aria-label="$i18n{welcomeMetricsPopupCloseButtonLabel}"
-          @click="${this.onToastCloseButtonClick_}">
+          @click="${this.onDialogCloseButtonClick_}">
       </cr-icon-button>
     </div>
-    <div id="toast-body">$i18n{welcomeMetricsPopupDescription}</div>
-    <div id="toast-buttons">
-      <cr-button id="toastActionButton" class="action-button"
-          ?disabled="${this.shouldDisableButtons_()}"
-          @click="${this.onToastActionButtonClick_}">
-        ${this.getToastActionButtonLabel_()}
-      </cr-button>
-    </div>
-  </cr-toast>`
-: ''}
+    <div id="dialog-body">$i18n{welcomeMetricsPopupDescription}</div>
+    <cr-button id="dialogActionButton" class="action-button"
+        ?disabled="${this.shouldDisableButtons_()}"
+        @click="${this.onDialogActionButtonClick_}">
+      ${this.getDialogActionButtonLabel_()}
+    </cr-button>
+  </dialog>
+` : ''}
 <!--_html_template_end_-->`;
   // clang-format on
 }

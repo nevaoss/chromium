@@ -14,6 +14,8 @@
 #include "base/strings/strcat.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/test/scoped_feature_list.h"
+#include "base/test/task_environment.h"
+#include "base/test/test_future.h"
 #include "base/values.h"
 #include "build/build_config.h"
 #include "components/omnibox/browser/autocomplete_match.h"
@@ -21,6 +23,13 @@
 #include "components/omnibox/browser/test_scheme_classifier.h"
 #include "components/omnibox/common/omnibox_feature_configs.h"
 #include "components/omnibox/common/omnibox_features.h"
+#include "net/base/net_errors.h"
+#include "net/http/http_status_code.h"
+#include "net/traffic_annotation/network_traffic_annotation_test_helper.h"
+#include "services/network/public/cpp/resource_request.h"
+#include "services/network/public/cpp/simple_url_loader.h"
+#include "services/network/test/test_url_loader_factory.h"
+#include "services/network/test/test_utils.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/omnibox_proto/entity_info.pb.h"
@@ -67,6 +76,31 @@ testing::Matcher<SearchSuggestionParser::SuggestResult> SuggestionIs(
     const std::u16string& expected) {
   return testing::Property(&SearchSuggestionParser::SuggestResult::suggestion,
                            testing::Eq(expected));
+}
+
+std::unique_ptr<network::SimpleURLLoader> CreateLoaderWithContentType(
+    network::TestURLLoaderFactory* url_loader_factory,
+    std::string_view content_type) {
+  const GURL url("https://example.com/");
+
+  auto response_head = network::CreateURLResponseHead(net::HTTP_OK);
+  response_head->headers->SetHeader("Content-Type", content_type);
+
+  url_loader_factory->AddResponse(url, std::move(response_head), /*content=*/"",
+                                  network::URLLoaderCompletionStatus(net::OK));
+
+  auto resource_request = std::make_unique<network::ResourceRequest>();
+  resource_request->url = url;
+
+  auto loader = network::SimpleURLLoader::Create(std::move(resource_request),
+                                                 TRAFFIC_ANNOTATION_FOR_TESTS);
+
+  base::test::TestFuture<std::optional<std::string>> future;
+  loader->DownloadToStringOfUnboundedSizeUntilCrashAndDie(url_loader_factory,
+                                                          future.GetCallback());
+  static_cast<void>(future.Get());
+
+  return loader;
 }
 
 }  // namespace
@@ -127,7 +161,75 @@ TEST(SearchSuggestionParserTest, DeserializeWithTrailingComma) {
 ////////////////////////////////////////////////////////////////////////////////
 // ExtractJsonData:
 
-// TODO(crbug.com/41382281): Add some ExtractJsonData tests.
+TEST(SearchSuggestionParserTest, ExtractJsonDataWithoutResponseBody) {
+  std::optional<std::string> response_body;
+
+  std::string result = SearchSuggestionParser::ExtractJsonData(
+      /*source=*/nullptr, response_body);
+
+  ASSERT_TRUE(result.empty());
+}
+
+TEST(SearchSuggestionParserTest, ExtractJsonDataWithoutSource) {
+  std::string response_body = R"(["one"])";
+
+  std::string result = SearchSuggestionParser::ExtractJsonData(
+      /*source=*/nullptr, response_body);
+
+  ASSERT_EQ(response_body, result);
+}
+
+TEST(SearchSuggestionParserTest, ExtractJsonDataWithoutCharset) {
+  base::test::SingleThreadTaskEnvironment task_environment;
+  network::TestURLLoaderFactory test_url_loader_factory;
+
+  std::string response_body = R"(["one"])";
+  auto loader =
+      CreateLoaderWithContentType(&test_url_loader_factory, "application/json");
+
+  std::string result =
+      SearchSuggestionParser::ExtractJsonData(loader.get(), response_body);
+
+  ASSERT_EQ(response_body, result);
+}
+
+TEST(SearchSuggestionParserTest, ExtractJsonDataWithInvalidEncodedData) {
+  base::test::SingleThreadTaskEnvironment task_environment;
+  network::TestURLLoaderFactory test_url_loader_factory;
+
+  // 0x22 is not a valid trail byte for the EUC-KR lead byte 0xFE.
+  std::string response_body = "\xFE\x22";
+
+  auto loader = CreateLoaderWithContentType(&test_url_loader_factory,
+                                            "application/json; charset=euc-kr");
+
+  std::string result =
+      SearchSuggestionParser::ExtractJsonData(loader.get(), response_body);
+
+  ASSERT_EQ(response_body, result);
+}
+
+TEST(SearchSuggestionParserTest, ExtractJsonDataWithNonUtf8Charset) {
+  base::test::SingleThreadTaskEnvironment task_environment;
+  network::TestURLLoaderFactory test_url_loader_factory;
+
+  // "안녕하세요" encoded as EUC-KR.
+  std::string response_body =
+      "[\""
+      "\xBE\xC8\xB3\xE7\xC7\xCF\xBC\xBC\xBF\xE4"
+      "\"]";
+
+  std::string expected =
+      base::UTF16ToUTF8(u"[\"\uC548\uB155\uD558\uC138\uC694\"]");
+
+  auto loader = CreateLoaderWithContentType(&test_url_loader_factory,
+                                            "application/json; charset=euc-kr");
+
+  std::string result =
+      SearchSuggestionParser::ExtractJsonData(loader.get(), response_body);
+
+  ASSERT_EQ(expected, result);
+}
 
 ////////////////////////////////////////////////////////////////////////////////
 // ParseSuggestResults:
@@ -229,8 +331,7 @@ TEST(SearchSuggestionParserTest, ParseSuggestResults) {
     ASSERT_EQ(u"christmas", suggestion_result.suggestion());
     ASSERT_EQ(u"", suggestion_result.annotation());
     // This entry has no entity data
-    ASSERT_TRUE(ProtosAreEqual(suggestion_result.entity_info(),
-                               omnibox::EntityInfo::default_instance()));
+    ASSERT_FALSE(suggestion_result.suggest_template_info().has_value());
     ASSERT_EQ(suggestion_result.navigational_intent(),
               omnibox::NAV_INTENT_MEDIUM);
   }
@@ -238,11 +339,23 @@ TEST(SearchSuggestionParserTest, ParseSuggestResults) {
     const auto& suggestion_result = results.suggest_results[1];
     ASSERT_EQ(u"christopher doe", suggestion_result.suggestion());
     ASSERT_EQ(u"American author", suggestion_result.annotation());
-    ASSERT_EQ("/m/065xxm", suggestion_result.entity_info().entity_id());
-    ASSERT_EQ("#424242", suggestion_result.entity_info().dominant_color());
+    ASSERT_EQ("/m/065xxm",
+              suggestion_result.suggest_template_info()->entity_id());
+    ASSERT_EQ(
+        "#424242",
+        suggestion_result.suggest_template_info()->image().dominant_color());
     ASSERT_EQ("http://example.com/a.png",
-              suggestion_result.entity_info().image_url());
+              suggestion_result.suggest_template_info()->image().url());
     ASSERT_EQ(suggestion_result.navigational_intent(), omnibox::NAV_INTENT_LOW);
+    // Verify the translation layer synthesized suggest_template_info.
+    ASSERT_TRUE(suggestion_result.suggest_template_info().has_value());
+    const auto& suit = suggestion_result.suggest_template_info().value();
+    ASSERT_EQ("Christopher Doe", suit.primary_text().text());
+    ASSERT_EQ("American author", suit.secondary_text().text());
+    ASSERT_EQ("http://example.com/a.png", suit.image().url());
+    ASSERT_EQ("#424242", suit.image().dominant_color());
+    ASSERT_TRUE(suit.default_search_parameters().contains("gs_ssp"));
+    ASSERT_EQ("abc", suit.default_search_parameters().at("gs_ssp"));
   }
   {
     const auto& navigation_result = results.navigation_results[0];
@@ -677,6 +790,10 @@ TEST(SearchSuggestionParserTest, ParseSuggestionEntityInfo) {
     first_entity_info.set_name("The Menu");
     first_entity_info.set_entity_id("/g/11qprvnvhw");
 
+    auto* action = first_entity_info.add_action_suggestions();
+    action->set_action_uri("https://example.com/action");
+    action->set_action_type(omnibox::ActionInfo::CALL);
+    (*action->mutable_search_parameters())["key"] = "value";
     omnibox::EntityInfo second_entity_info;
     second_entity_info.set_annotation("Thriller series");
     second_entity_info.set_dominant_color("#283e75");
@@ -737,19 +854,40 @@ TEST(SearchSuggestionParserTest, ParseSuggestionEntityInfo) {
     // For each suggestion, verify that the JSON fields were correctly parsed.
     ASSERT_EQ(u"the menu", results.suggest_results[0].suggestion());
     ASSERT_EQ(u"", results.suggest_results[0].annotation());
-    ASSERT_TRUE(ProtosAreEqual(results.suggest_results[0].entity_info(),
-                               omnibox::EntityInfo::default_instance()));
-    ASSERT_TRUE(results.suggest_results[0].entity_info().image_url().empty());
+    ASSERT_FALSE(
+        results.suggest_results[0].suggest_template_info().has_value());
     // Empty "t" value from server results in suggestion being used instead.
     ASSERT_EQ(u"the menu", results.suggest_results[0].match_contents());
 
     ASSERT_EQ(u"the menu", results.suggest_results[1].suggestion());
-    ASSERT_TRUE(ProtosAreEqual(results.suggest_results[1].entity_info(),
-                               first_entity_info));
+    ASSERT_TRUE(results.suggest_results[1].suggest_template_info().has_value());
+    const auto& template_info =
+        *results.suggest_results[1].suggest_template_info();
+    ASSERT_EQ(template_info.style(), omnibox::SuggestTemplateInfo::ENRICHED);
+    ASSERT_EQ(template_info.primary_text().text(), "The Menu");
+    ASSERT_EQ(template_info.image().url(),
+              "https://encrypted-tbn0.gstatic.com/images?q=the+menu");
+    ASSERT_EQ(template_info.entity_id(), "/g/11qprvnvhw");
+    ASSERT_EQ(template_info.action_suggestions_size(), 1);
+    ASSERT_EQ(template_info.action_suggestions(0).action_uri(),
+              "https://example.com/action");
+    ASSERT_EQ(template_info.action_suggestions(0).action_type(),
+              omnibox::SuggestTemplateInfo::TemplateAction::CALL);
+    ASSERT_EQ(template_info.action_suggestions(0).search_parameters().at("key"),
+              "value");
+    ASSERT_EQ(first_entity_info.suggest_search_parameters().substr(7),
+              template_info.default_search_parameters().at("gs_ssp"));
 
     ASSERT_EQ(u"the midnight club", results.suggest_results[2].suggestion());
-    ASSERT_TRUE(ProtosAreEqual(results.suggest_results[2].entity_info(),
-                               second_entity_info));
+    ASSERT_TRUE(results.suggest_results[2].suggest_template_info().has_value());
+    ASSERT_EQ(
+        second_entity_info.image_url(),
+        results.suggest_results[2].suggest_template_info()->image().url());
+    ASSERT_EQ(second_entity_info.suggest_search_parameters().substr(7),
+              results.suggest_results[2]
+                  .suggest_template_info()
+                  ->default_search_parameters()
+                  .at("gs_ssp"));
   }
 
   // Parse EntityInfo data from garbled proto field.
@@ -798,19 +936,19 @@ TEST(SearchSuggestionParserTest, ParseSuggestionEntityInfo) {
 
     // For each suggestion, verify that the JSON fields were correctly parsed.
     ASSERT_EQ(u"the menu", results.suggest_results[0].suggestion());
-    ASSERT_TRUE(ProtosAreEqual(results.suggest_results[0].entity_info(),
-                               omnibox::EntityInfo::default_instance()));
+    ASSERT_FALSE(
+        results.suggest_results[0].suggest_template_info().has_value());
     ASSERT_EQ(u"", results.suggest_results[0].annotation());
     // Empty "t" value from server results in suggestion being used instead.
     ASSERT_EQ(u"the menu", results.suggest_results[0].match_contents());
 
     ASSERT_EQ(u"the menu", results.suggest_results[1].suggestion());
-    ASSERT_TRUE(ProtosAreEqual(results.suggest_results[1].entity_info(),
-                               omnibox::EntityInfo::default_instance()));
+    ASSERT_FALSE(
+        results.suggest_results[1].suggest_template_info().has_value());
 
     ASSERT_EQ(u"the midnight club", results.suggest_results[2].suggestion());
-    ASSERT_TRUE(ProtosAreEqual(results.suggest_results[2].entity_info(),
-                               omnibox::EntityInfo::default_instance()));
+    ASSERT_FALSE(
+        results.suggest_results[2].suggest_template_info().has_value());
   }
 }
 
@@ -1439,8 +1577,7 @@ TEST(SearchSuggestionParserTest, ParseCalculatorSuggestion) {
 
   // Most fields for a verbatim suggestion should be empty.
   ASSERT_EQ(u"1 + 1", results.suggest_results[0].suggestion());
-  ASSERT_TRUE(ProtosAreEqual(results.suggest_results[0].entity_info(),
-                             omnibox::EntityInfo::default_instance()));
+  ASSERT_FALSE(results.suggest_results[0].suggest_template_info().has_value());
   ASSERT_EQ(u"", results.suggest_results[0].annotation());
   ASSERT_EQ(u"1 + 1", results.suggest_results[0].match_contents());
 
@@ -1449,30 +1586,32 @@ TEST(SearchSuggestionParserTest, ParseCalculatorSuggestion) {
 #if !BUILDFLAG(IS_IOS) && !BUILDFLAG(IS_ANDROID)
   ASSERT_EQ(u"2", results.suggest_results[1].suggestion());
   ASSERT_EQ(u"", results.suggest_results[1].annotation());
-  ASSERT_TRUE(ProtosAreEqual(results.suggest_results[1].entity_info(),
-                             omnibox::EntityInfo::default_instance()));
+  ASSERT_FALSE(results.suggest_results[1].suggest_template_info().has_value());
   ASSERT_EQ(u"1 + 1 = 2", results.suggest_results[1].match_contents());
 #else
   ASSERT_EQ(u"2", results.suggest_results[1].suggestion());
   ASSERT_EQ(u"", results.suggest_results[1].annotation());
-  ASSERT_TRUE(ProtosAreEqual(results.suggest_results[1].entity_info(),
-                             omnibox::EntityInfo::default_instance()));
+  ASSERT_FALSE(results.suggest_results[1].suggest_template_info().has_value());
   ASSERT_EQ(u"= 2", results.suggest_results[1].match_contents());
 #endif
 
   // Entity data should be correctly sourced as usual.
   ASSERT_EQ(u"1 + 1", results.suggest_results[2].suggestion());
   ASSERT_EQ(u"Song", results.suggest_results[2].annotation());
-  ASSERT_EQ("#424242",
-            results.suggest_results[2].entity_info().dominant_color());
+  ASSERT_EQ("#424242", results.suggest_results[2]
+                           .suggest_template_info()
+                           ->image()
+                           .dominant_color());
   ASSERT_EQ("https://encrypted-tbn0.gstatic.com/images?q=song",
-            results.suggest_results[2].entity_info().image_url());
-  ASSERT_EQ(
-      "gs_ssp=eJzj4tFP1zcsNjAzMykwKDZg9GI1VNBWMAQAOlEEsA",
-      results.suggest_results[2].entity_info().suggest_search_parameters());
+            results.suggest_results[2].suggest_template_info()->image().url());
+  ASSERT_EQ("eJzj4tFP1zcsNjAzMykwKDZg9GI1VNBWMAQAOlEEsA",
+            results.suggest_results[2]
+                .suggest_template_info()
+                ->default_search_parameters()
+                .at("gs_ssp"));
   ASSERT_EQ(u"1+1", results.suggest_results[2].match_contents());
   ASSERT_EQ("/g/1s0664p0s",
-            results.suggest_results[2].entity_info().entity_id());
+            results.suggest_results[2].suggest_template_info()->entity_id());
 }
 
 TEST(SearchSuggestionParserTest, ParseTailSuggestion) {
@@ -1557,7 +1696,16 @@ TEST(SearchSuggestionParserTest, ParseSuggestTemplateFromSuggestResults) {
     frag2->set_start_index(11);
     frag2->set_text("Wizards");
     frag2->set_is_bolded(false);
-    suggest_template_info.mutable_secondary_text()->set_text("MIA");
+    auto* secondary_text = suggest_template_info.mutable_secondary_text();
+    secondary_text->set_text("MIA Basketball");
+    auto* sec_frag1 = secondary_text->add_fragments();
+    sec_frag1->set_start_index(0);
+    sec_frag1->set_text("MIA ");
+    sec_frag1->set_is_bolded(true);
+    auto* sec_frag2 = secondary_text->add_fragments();
+    sec_frag2->set_start_index(4);
+    sec_frag2->set_text("Basketball");
+    sec_frag2->set_is_bolded(false);
     omnibox::SuggestTemplateInfo::Image* image =
         suggest_template_info.mutable_image();
     image->set_url("http://example.com/a.png");
@@ -1631,7 +1779,7 @@ TEST(SearchSuggestionParserTest, ParseSuggestTemplateFromSuggestResults) {
     // of the SuggestTemplateInfo.
     ASSERT_EQ(u"Washington Wizards",
               results.suggest_results[1].match_contents());
-    ASSERT_EQ(u"MIA", results.suggest_results[1].annotation());
+    ASSERT_EQ(u"MIA Basketball", results.suggest_results[1].annotation());
 
     // Verify classifications derived from suggest template fragments.
     const auto& classifications =
@@ -1641,6 +1789,25 @@ TEST(SearchSuggestionParserTest, ParseSuggestTemplateFromSuggestResults) {
     EXPECT_EQ(ACMatchClassification::MATCH, classifications[0].style);
     EXPECT_EQ(11U, classifications[1].offset);
     EXPECT_EQ(ACMatchClassification::NONE, classifications[1].style);
+
+    const auto& sec_classifications =
+        results.suggest_results[1].annotation_class();
+    ASSERT_EQ(2U, sec_classifications.size());
+    EXPECT_EQ(0U, sec_classifications[0].offset);
+    EXPECT_EQ(ACMatchClassification::MATCH | ACMatchClassification::DIM,
+              sec_classifications[0].style);
+    EXPECT_EQ(4U, sec_classifications[1].offset);
+    EXPECT_EQ(ACMatchClassification::DIM, sec_classifications[1].style);
+
+    // If SetAnnotation is called with a new string, it should not use stale
+    // template fragments and instead fall back to {0, DIM}.
+    results.suggest_results[1].SetAnnotation(u"New Annotation");
+    EXPECT_EQ(u"New Annotation", results.suggest_results[1].annotation());
+    const auto& updated_sec_class =
+        results.suggest_results[1].annotation_class();
+    ASSERT_EQ(1U, updated_sec_class.size());
+    EXPECT_EQ(0U, updated_sec_class[0].offset);
+    EXPECT_EQ(ACMatchClassification::DIM, updated_sec_class[0].style);
   }
   // Parse EntityInfo data from garbled proto field.
   {
@@ -1756,4 +1923,45 @@ TEST(SearchSuggestionParserTest,
         testing::ElementsAre(SuggestionIs(u"christmas"), SuggestionIs(u""),
                              SuggestionIs(u"christopher doe")));
   }
+}
+
+TEST(SearchSuggestionParserTest, ParseSuggestResultsWithRichImageStyle) {
+  omnibox::SuggestTemplateInfo template_info;
+  template_info.set_style(omnibox::SuggestTemplateInfo::RICH_IMAGE);
+  template_info.mutable_image()->set_url("https://example.com/image.png");
+
+  std::string base64_encoded = SerializeAndEncodeProto(template_info);
+
+  std::string json_data = base::StrCat({R"([
+      "cat",
+      ["cute cat"],
+      [""],
+      [],
+      {
+        "google:suggestdetail": [
+          {
+            "google:suggesttemplate": ")",
+                                        base64_encoded, R"("
+          }
+        ]
+      }])"});
+
+  std::optional<base::Value> root_val =
+      base::JSONReader::Read(json_data, base::JSON_PARSE_CHROMIUM_EXTENSIONS);
+  CHECK(root_val.has_value());
+  CHECK(root_val.value().is_list());
+  TestSchemeClassifier scheme_classifier;
+  AutocompleteInput input(u"cat", metrics::OmniboxEventProto::NTP,
+                          scheme_classifier);
+
+  SearchSuggestionParser::Results results;
+  ASSERT_TRUE(SearchSuggestionParser::ParseSuggestResults(
+      root_val->GetList(), input, scheme_classifier,
+      /*default_result_relevance=*/400,
+      /*is_keyword_result=*/false, {.allow_empty_suggestion = false},
+      &results));
+  ASSERT_EQ(1U, results.suggest_results.size());
+  ASSERT_TRUE(results.suggest_results[0].suggest_template_info().has_value());
+  EXPECT_EQ(omnibox::SuggestTemplateInfo::RICH_IMAGE,
+            results.suggest_results[0].suggest_template_info()->style());
 }

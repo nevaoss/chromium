@@ -67,6 +67,7 @@ import org.chromium.chrome.test.util.ChromeRenderTestRule;
 import org.chromium.chrome.test.util.browser.offlinepages.FakeOfflinePageBridge;
 import org.chromium.chrome.test.util.browser.suggestions.SuggestionsDependenciesRule;
 import org.chromium.chrome.test.util.browser.suggestions.mostvisited.FakeMostVisitedSites;
+import org.chromium.components.browser_ui.widget.displaystyle.UiConfig;
 import org.chromium.net.test.EmbeddedTestServerRule;
 import org.chromium.ui.base.DeviceFormFactor;
 import org.chromium.ui.test.util.NightModeTestUtils;
@@ -83,6 +84,8 @@ import java.util.concurrent.TimeoutException;
 @ParameterAnnotations.UseRunnerDelegate(ChromeJUnit4RunnerDelegate.class)
 @CommandLineFlags.Add(ChromeSwitches.DISABLE_FIRST_RUN_EXPERIENCE)
 @DoNotBatch(reason = "AI automated batching was unsuccessful.")
+// TODO(b/555414915): Update Android tests with WebUI NTP enabled on AL.
+@DisableFeatures(ChromeFeatureList.USE_WEB_UI_NTP_ANDROID)
 public class MostVisitedTilesLayoutTest {
 
     @Rule public final MockitoRule mMockitoRule = MockitoJUnit.rule();
@@ -372,7 +375,12 @@ public class MostVisitedTilesLayoutTest {
 
         mCoordinator =
                 new MostVisitedTilesCoordinator(
-                        activity, mActivityLifecycleDispatcher, containerLayout, null, null);
+                        activity,
+                        mActivityLifecycleDispatcher,
+                        containerLayout,
+                        new UiConfig(containerLayout),
+                        null,
+                        null);
         mCoordinator.initWithNative(profile, uiDelegate, delegate, mTouchEnabledDelegate);
     }
 }

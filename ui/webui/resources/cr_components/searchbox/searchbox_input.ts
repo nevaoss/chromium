@@ -10,12 +10,14 @@ import {assert} from '//resources/js/assert.js';
 import {loadTimeData} from '//resources/js/load_time_data.js';
 import {MetricsReporterImpl} from '//resources/js/metrics_reporter/metrics_reporter.js';
 import {CrLitElement} from '//resources/lit/v3_0/lit.rollup.js';
+import {KeywordType} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 import type {AutocompleteMatch, InputKeywordModel, PageCallbackRouter} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 
 import {SearchboxBrowserProxy} from './searchbox_browser_proxy.js';
 import type {SearchboxIconElement} from './searchbox_icon.js';
 import {getCss} from './searchbox_input.css.js';
 import {getHtml} from './searchbox_input.html.js';
+import {afterNextPaint, markOnce} from './utils.js';
 
 // Register --placeholder-opacity as type <number> so that we can animate it.
 CSS.registerProperty({
@@ -152,7 +154,15 @@ export class SearchboxInputElement extends SearchboxInputElementBase {
   }
 
   setInputText(text: string) {
+    markOnce('SearchboxInputElement::setInputText:StartupStart');
     this.onSetInputText_(text);
+    if (markOnce('SearchboxInputElement::setInputText:StartupEnd')) {
+      // Records a user timing mark after the initial startup input text has
+      // been painted and presented to the display.
+      afterNextPaint(() => {
+        markOnce('SearchboxInputElement::setInputText:StartupRendered');
+      });
+    }
   }
 
   setInput(update: InputUpdate) {
@@ -213,6 +223,7 @@ export class SearchboxInputElement extends SearchboxInputElementBase {
         this.fire('searchbox-input-text-updated', {
           value: '',
           isComposing: false,
+          event: e,
         });
       }
     }
@@ -226,9 +237,20 @@ export class SearchboxInputElement extends SearchboxInputElementBase {
     }
 
     this.updateInput_({text: inputValue, inline: ''});
+    // Record a user timing mark if the input has content.
+    if (inputValue.length > 0 &&
+        markOnce('SearchboxInputElement::onInputInput_:HasContent')) {
+      // Records a user timing mark after the user's typed character echo and
+      // trailing caret have been painted to the display.
+      afterNextPaint(() => {
+        markOnce('SearchboxInputElement::onInputInput_:ContentRendered');
+      });
+    }
+
     this.fire('searchbox-input-text-updated', {
       value: inputValue,
       isComposing: e.isComposing,
+      event: e,
     });
 
     // If a character has been typed, mark 'CharTyped'. Otherwise clear it. If
@@ -278,6 +300,7 @@ export class SearchboxInputElement extends SearchboxInputElementBase {
       this.fire('searchbox-input-text-updated', {
         value: this.lastInput_.text,
         isComposing: false,
+        event: e,
       });
 
       // If 'CharTyped' mark already exists, there's a pending typed character
@@ -372,6 +395,10 @@ export class SearchboxInputElement extends SearchboxInputElementBase {
 
   protected computePlaceholderText_(): string {
     return this.placeholderText ?? this.i18n('searchBoxHint');
+  }
+
+  protected inKeywordMode_(): boolean {
+    return this.inputKeywordModel?.type === KeywordType.kInKeyword;
   }
 }
 

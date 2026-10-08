@@ -60,6 +60,7 @@
 #include "components/viz/host/host_frame_sink_manager.h"
 #include "content/browser/accessibility/browser_accessibility_state_impl.h"
 #include "content/browser/bad_message.h"
+#include "content/browser/blob_storage/chrome_blob_storage_context.h"
 #include "content/browser/browser_main_loop.h"
 #include "content/browser/compositor/surface_utils.h"
 #include "content/browser/devtools/devtools_instrumentation.h"
@@ -80,6 +81,7 @@
 #include "content/browser/renderer_host/render_widget_host_owner_delegate.h"
 #include "content/browser/renderer_host/render_widget_host_view_base.h"
 #include "content/browser/renderer_host/render_widget_host_view_child_frame.h"
+#include "content/browser/renderer_host/text_input_manager.h"
 #include "content/browser/renderer_host/unbounded_surface_window.h"
 #include "content/browser/renderer_host/visible_time_request_trigger.h"
 #include "content/browser/scheduler/browser_task_executor.h"
@@ -87,6 +89,7 @@
 #include "content/browser/security/cpsp/child_process_security_policy_impl.h"
 #include "content/browser/storage_partition_impl.h"
 #include "content/common/content_constants_internal.h"
+#include "content/common/features.h"
 #include "content/common/frame.mojom.h"
 #include "content/common/input/synthetic_gesture.h"
 #include "content/common/input/synthetic_gesture_controller.h"
@@ -353,6 +356,28 @@ std::unique_ptr<RenderWidgetHostIteratorImpl> GetEmbeddedRenderWidgetHosts(
   }
 
   return hosts;
+}
+
+bool ShouldProcessKeyEventForListeners(
+    const input::NativeWebKeyboardEvent& event) {
+  if (event.skip_if_unhandled) {
+    return false;
+  }
+
+  if (event.GetType() == WebKeyboardEvent::Type::kRawKeyDown) {
+    return true;
+  }
+
+#if BUILDFLAG(IS_ANDROID)
+  if (event.GetType() == WebKeyboardEvent::Type::kKeyDown &&
+      event.is_confirmed_physical_keyboard_input &&
+      base::FeatureList::IsEnabled(
+          features::kAllowKeyDownInKeyPressListeners)) {
+    return true;
+  }
+#endif
+
+  return false;
 }
 
 }  // namespace
@@ -1123,8 +1148,9 @@ blink::VisualProperties RenderWidgetHostImpl::GetVisualProperties() {
   // non-frame widget.
   const bool is_topmost_widget = !view_->IsRenderWidgetHostViewChildFrame();
 
-  // This widget is for a frame, but not the main frame of its frame tree.
-  const bool is_child_frame_widget =
+  // This widget is for a subframe (e.g. an <iframe>), not the main frame of its
+  // frame tree (e.g. top-level tab, GuestView or SurfaceEmbed).
+  const bool is_subframe_widget =
       view_->IsRenderWidgetHostViewChildFrame() && !owner_delegate_;
 
   // These properties come from the main frame RenderWidget and flow down the
@@ -1199,7 +1225,7 @@ blink::VisualProperties RenderWidgetHostImpl::GetVisualProperties() {
   gfx::Size viewport_device_px;
   gfx::Size viewport_dips;
   float dip_scale = 1 / GetDeviceScaleFactor();
-  if (is_child_frame_widget) {
+  if (is_subframe_widget) {
     viewport_device_px =
         properties_from_parent_local_root_.visible_viewport_size;
     viewport_dips = gfx::ScaleToCeiledSize(viewport_device_px, dip_scale);
@@ -1209,9 +1235,9 @@ blink::VisualProperties RenderWidgetHostImpl::GetVisualProperties() {
   }
   visual_properties.visible_viewport_size_device_px = viewport_device_px;
 
-  // The root widget's viewport segments are computed here - child frames just
+  // The root widget's viewport segments are computed here - subframes just
   // use the value provided from the parent.
-  if (is_topmost_widget) {
+  if (!is_subframe_widget) {
     std::optional<DisplayFeature> display_feature = view_->GetDisplayFeature();
     if (display_feature) {
       int top_controls_height =
@@ -1793,9 +1819,7 @@ void RenderWidgetHostImpl::ForwardKeyboardEventWithCommands(
   if (KeyPressListenersHandleEvent(key_event)) {
     // Some keypresses that are accepted by the listener may be followed by Char
     // and KeyUp events, which should be ignored.
-    if (key_event.GetType() == WebKeyboardEvent::Type::kRawKeyDown) {
-      suppress_events_until_keydown_ = true;
-    }
+    suppress_events_until_keydown_ = true;
     return;
   }
 
@@ -2501,6 +2525,32 @@ void RenderWidgetHostImpl::PasteIntoNode(
       text, target_dom_node_id.target_element_dom_id);
 }
 
+std::optional<std::u16string_view>
+RenderWidgetHostImpl::GetTextPrecedingSelection(
+    const GlobalDOMNodeId& target_dom_node_id) {
+  TextInputManager* text_input_manager = delegate_->GetTextInputManager();
+  if (!text_input_manager) {
+    return std::nullopt;
+  }
+  const ui::mojom::TextInputState* state =
+      text_input_manager->GetTextInputState();
+  if (!state || !state->value) {
+    return std::nullopt;
+  }
+  if (!target_dom_node_id.target_element_dom_id.is_null() &&
+      state->node_id != target_dom_node_id.target_element_dom_id.value()) {
+    return std::nullopt;
+  }
+  if (!state->selection.IsValid()) {
+    return std::nullopt;
+  }
+  size_t start = state->selection.GetMin();
+  if (start > state->value->length()) {
+    return std::nullopt;
+  }
+  return std::u16string_view(*state->value).substr(0, start);
+}
+
 void RenderWidgetHostImpl::RejectPointerLockOrUnlockIfNecessary(
     blink::mojom::PointerLockResult reason) {
   CHECK(!request_pointer_lock_callback_ || !IsPointerLocked());
@@ -2582,9 +2632,9 @@ void RenderWidgetHostImpl::Destroy(bool also_delete) {
   // Tell the view to die.
   // Note that in the process of the view shutting down, it can call a ton
   // of other messages on us.  So if you do any other deinitialization here,
-  // do it after this call to view_->Destroy().
+  // do it after this call to view_->DestroyOrDefer().
   if (view_) {
-    view_->Destroy();
+    view_->DestroyOrDefer();
     view_.reset();
   }
 
@@ -2727,7 +2777,9 @@ void RenderWidgetHostImpl::SetPopupBounds(const gfx::Rect& bounds,
   // same time until it acked the changes. Otherwise, if they simultaneously
   // change bounds, browser's bounds can be clobbered.
   if (view_ && !waiting_for_screen_rects_ack_) {
-    view_->SetBounds(bounds);
+    gfx::Rect constrained_bounds =
+        delegate_ ? delegate_->ConstrainPopupBounds(bounds) : bounds;
+    view_->SetBounds(constrained_bounds);
   }
   std::move(callback).Run();
 }
@@ -3677,8 +3729,7 @@ void RenderWidgetHostImpl::RequestForceRedraw(int snapshot_id) {
 
 bool RenderWidgetHostImpl::KeyPressListenersHandleEvent(
     const input::NativeWebKeyboardEvent& event) {
-  if (event.skip_if_unhandled ||
-      event.GetType() != WebKeyboardEvent::Type::kRawKeyDown) {
+  if (!ShouldProcessKeyEventForListeners(event)) {
     return false;
   }
 

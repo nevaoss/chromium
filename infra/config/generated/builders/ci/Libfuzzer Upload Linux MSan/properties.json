@@ -74,6 +74,5 @@
   "sheriff_rotations": [
     "chromium"
   ],
-  "upload_bucket": "chromium-browser-libfuzzer",
-  "upload_directory": "msan"
+  "upload_bucket": "chromium-browser-libfuzzer"
 }

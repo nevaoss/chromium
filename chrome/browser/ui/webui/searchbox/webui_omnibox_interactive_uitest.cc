@@ -121,8 +121,7 @@ class OmniboxWebUiInteractiveTestBase
       base::FieldTrialParams simplification_params = {
           {omnibox::kWebUIOmniboxAimPopupAddContextButtonVariantParam.name,
            "below_results"},
-          {omnibox::kHideClassicContextButton.name, "false"},
-          {omnibox::kShowLensSearchChip.name, "true"}};
+          {omnibox::kHideClassicContextButton.name, "false"}};
       features.emplace_back(omnibox::internal::kWebUIOmniboxSimplification,
                             simplification_params);
       features.emplace_back(omnibox::kAimEnabled, base::FieldTrialParams());
@@ -134,12 +133,16 @@ class OmniboxWebUiInteractiveTestBase
   // `OmniboxPopupView` may host multiple content views, but only one is
   // visible at any given time.
   auto GetActiveClassicPopupWebView() {
-    return base::BindLambdaForTesting([&]() -> views::View* {
+    return base::BindLambdaForTesting([this]() -> views::View* {
+      auto* browser_view = BrowserView::GetBrowserViewForBrowser(browser());
+      if (!browser_view || !browser_view->GetLocationBar()) {
+        return nullptr;
+      }
       auto* popup_view = static_cast<OmniboxPopupViewWebUI*>(
-          BrowserView::GetBrowserViewForBrowser(browser())
-              ->toolbar()
-              ->location_bar()
-              ->GetOmniboxPopupView());
+          browser_view->GetLocationBar()->GetOmniboxPopupView());
+      if (!popup_view || !popup_view->presenter()) {
+        return nullptr;
+      }
       return popup_view->presenter()->GetWebUIContent();
     });
   }
@@ -335,14 +338,21 @@ class OmniboxAimWebUiInteractiveTestBase
           base::test::RunUntil([&]() { return service->IsAimEligible(); }));
     });
   }
-
   auto GetActiveAimPopupWebView() {
-    return base::BindLambdaForTesting([&]() -> views::View* {
-      auto* aim_presenter = BrowserView::GetBrowserViewForBrowser(browser())
-                                ->toolbar()
-                                ->location_bar()
-                                ->GetPresenterDelegate()
-                                ->GetOmniboxPopupAimPresenter();
+    return base::BindLambdaForTesting([this]() -> views::View* {
+      auto* browser_view = BrowserView::GetBrowserViewForBrowser(browser());
+      if (!browser_view || !browser_view->GetLocationBar()) {
+        return nullptr;
+      }
+      auto* presenter_delegate =
+          browser_view->GetLocationBar()->GetPresenterDelegate();
+      if (!presenter_delegate) {
+        return nullptr;
+      }
+      auto* aim_presenter = presenter_delegate->GetOmniboxPopupAimPresenter();
+      if (!aim_presenter) {
+        return nullptr;
+      }
       return aim_presenter->GetWebUIContent();
     });
   }
@@ -362,16 +372,7 @@ class OmniboxAimWebUiInteractiveTestBase
     return Steps(
         FocusElement(kOmniboxElementId),
         WaitForPageActionChipVisible(kActionAiMode),
-        // TODO(crbug.com/553004577): `InvokePageAction(kActionAiMode)` cannot
-        // be used here because it prefers `PressButton(element_id)` for actions
-        // with an element ID, which fails when `kWebUILocationBar` is enabled
-        // since the button is rendered in WebUI rather than as a Views View.
-        // Update `InvokePageAction` to support WebUILocationBar.
-        Do([this]() {
-          page_actions::PageActionTestAccessor(browser(), kActionAiMode)
-              .Click();
-        }),
-        WaitForAimPopupReady(),
+        InvokePageAction(kActionAiMode), WaitForAimPopupReady(),
         InAnyContext(WaitForElementToRender(kAimPopupWebView, kAimInput)),
         InAnyContext(ExecuteJsAt(
             kAimPopupWebView, {"omnibox-aim-app"},
@@ -923,8 +924,7 @@ class WebUIOmniboxSimplificationInteractiveTest
              "below_results"},
             {omnibox::kHideClassicContextButton.name, "false"},
             {"Omnibox_ContextButtonHasBackground", "true"},
-            {"Omnibox_ContextButtonShapeIsOblong", "true"},
-            {"Omnibox_ContextButtonShowSuggestionLabel", "true"}});
+            {"Omnibox_ContextButtonShapeIsOblong", "true"}});
     enabled_features.emplace_back(omnibox::kAimUsePecApi,
                                   base::FieldTrialParams());
     feature_list_.InitWithFeaturesAndParameters(
@@ -978,23 +978,3 @@ IN_PROC_BROWSER_TEST_F(WebUIOmniboxSimplificationInteractiveTest,
       InAnyContext(WaitForStateChange(kClassicPopupWebView, style_applied)));
 }
 
-IN_PROC_BROWSER_TEST_F(WebUIOmniboxSimplificationInteractiveTest,
-                       HasSuggestionLabel) {
-  const DeepQuery kSuggestionLabel = {
-      "omnibox-popup-app", "omnibox-popup-contextual-entrypoint", "#context",
-      "cr-composebox-contextual-entrypoint-button", "#description"};
-  browser()->GetWindow()->SetBounds(gfx::Rect(0, 0, 1280, 1024));
-  std::u16string expected_text =
-      l10n_util::GetStringUTF16(IDS_GOOGLE_SEARCH_BOX_EMPTY_HINT_MULTIMODAL);
-  RunTestSequence(
-      SetAimEligibleResponse(),
-      AddInstrumentedTab(kNewTab, chrome::ChromeUINewTabURLAsGURL()),
-      SeedSearchboxResult("a"), FocusElement(kOmniboxElementId),
-      EnterText(kOmniboxElementId, u"a"), WaitForClassicPopupReady(),
-      InAnyContext(WaitForOmniboxAimStateReady(kClassicPopupWebView)),
-      InAnyContext(
-          WaitForElementToRender(kClassicPopupWebView, kSuggestionLabel)),
-      InSameContext(CheckJsResultAt(kClassicPopupWebView, kSuggestionLabel,
-                                    "el => el.textContent.trim()",
-                                    base::UTF16ToUTF8(expected_text))));
-}

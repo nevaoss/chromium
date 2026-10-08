@@ -19,6 +19,7 @@
 #include "base/feature_list.h"
 #include "base/i18n/rtl.h"
 #include "base/memory/scoped_refptr.h"
+#include "base/memory/weak_ptr.h"
 #include "base/metrics/field_trial_params.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/metrics/histogram_macros.h"
@@ -70,7 +71,6 @@
 #include "chrome/browser/ui/bookmarks/bookmark_stats.h"
 #include "chrome/browser/ui/bookmarks/bookmark_utils.h"
 #include "chrome/browser/ui/bookmarks/bookmark_utils_desktop.h"
-#include "chrome/browser/ui/browser.h"
 #include "chrome/browser/ui/browser_command_controller.h"
 #include "chrome/browser/ui/browser_init_state.h"
 #include "chrome/browser/ui/browser_live_tab_context.h"
@@ -206,6 +206,7 @@
 #include "ui/base/clipboard/clipboard_buffer.h"
 #include "ui/base/clipboard/scoped_clipboard_writer.h"
 #include "ui/base/models/list_selection_model.h"
+#include "ui/base/page_transition_types.h"
 #include "ui/base/window_open_disposition.h"
 #include "ui/events/keycodes/keyboard_codes.h"
 #include "url/gurl.h"
@@ -834,19 +835,17 @@ std::vector<int> GetUngroupedTabIndices(BrowserWindowInterface* browser) {
 }  // namespace
 
 bool IsCommandEnabled(BrowserWindowInterface* browser, int command) {
-  return browser->GetFeatures().browser_command_controller()->IsCommandEnabled(
-      command);
+  return BrowserCommandController::From(browser)->IsCommandEnabled(command);
 }
 
 bool SupportsCommand(BrowserWindowInterface* browser, int command) {
-  return browser->GetFeatures().browser_command_controller()->SupportsCommand(
-      command);
+  return BrowserCommandController::From(browser)->SupportsCommand(command);
 }
 
 bool ExecuteCommand(BrowserWindowInterface* browser,
                     int command,
                     base::TimeTicks time_stamp) {
-  return browser->GetFeatures().browser_command_controller()->ExecuteCommand(
+  return BrowserCommandController::From(browser)->ExecuteCommand(
       command, std::nullopt, time_stamp);
 }
 
@@ -854,7 +853,7 @@ bool ExecuteCommandWithContext(BrowserWindowInterface* browser,
                                int command,
                                actions::ActionInvocationContext context,
                                base::TimeTicks time_stamp) {
-  return browser->GetFeatures().browser_command_controller()->ExecuteCommand(
+  return BrowserCommandController::From(browser)->ExecuteCommand(
       command, std::move(context), time_stamp);
 }
 
@@ -862,10 +861,8 @@ bool ExecuteCommandWithDisposition(BrowserWindowInterface* browser,
                                    int command,
                                    WindowOpenDisposition disposition,
                                    base::TimeTicks time_stamp) {
-  return browser->GetFeatures()
-      .browser_command_controller()
-      ->ExecuteCommandWithDisposition(command, disposition, std::nullopt,
-                                      time_stamp);
+  return BrowserCommandController::From(browser)->ExecuteCommandWithDisposition(
+      command, disposition, std::nullopt, time_stamp);
 }
 
 bool ExecuteCommandWithDispositionAndContext(
@@ -874,31 +871,29 @@ bool ExecuteCommandWithDispositionAndContext(
     WindowOpenDisposition disposition,
     actions::ActionInvocationContext context,
     base::TimeTicks time_stamp) {
-  return browser->GetFeatures()
-      .browser_command_controller()
-      ->ExecuteCommandWithDisposition(command, disposition, std::move(context),
-                                      time_stamp);
+  return BrowserCommandController::From(browser)->ExecuteCommandWithDisposition(
+      command, disposition, std::move(context), time_stamp);
 }
 
 void UpdateCommandEnabled(BrowserWindowInterface* browser,
                           int command,
                           bool enabled) {
-  browser->GetFeatures().browser_command_controller()->UpdateCommandEnabled(
-      command, enabled);
+  BrowserCommandController::From(browser)->UpdateCommandEnabled(command,
+                                                                enabled);
 }
 
 void AddCommandObserver(BrowserWindowInterface* browser,
                         int command,
                         CommandObserver* observer) {
-  browser->GetFeatures().browser_command_controller()->AddCommandObserver(
-      command, observer);
+  BrowserCommandController::From(browser)->AddCommandObserver(command,
+                                                              observer);
 }
 
 void RemoveCommandObserver(BrowserWindowInterface* browser,
                            int command,
                            CommandObserver* observer) {
-  browser->GetFeatures().browser_command_controller()->RemoveCommandObserver(
-      command, observer);
+  BrowserCommandController::From(browser)->RemoveCommandObserver(command,
+                                                                 observer);
 }
 
 int GetContentRestrictions(const BrowserWindowInterface* browser) {
@@ -967,7 +962,7 @@ void NewEmptyWindow(Profile* profile, bool should_trigger_session_restore) {
 BrowserWindowInterface* OpenEmptyWindow(Profile* profile,
                                         bool should_trigger_session_restore) {
   if (GetBrowserWindowCreationStatusForProfile(*profile) !=
-      Browser::CreationStatus::kOk) {
+      BrowserWindowInterface::CreationStatus::kOk) {
     return nullptr;
   }
 
@@ -1229,11 +1224,10 @@ void Home(BrowserWindowInterface* browser, WindowOpenDisposition disposition) {
     base::RecordAction(
         base::UserMetricsAction("Navigation.Home.NotChromeInternal"));
   }
-  OpenURLParams params(
-      url, Referrer(), disposition,
+  OpenURLParams params = OpenURLParams::CreateBrowserInitiated(
+      url, disposition,
       ui::PageTransitionFromInt(ui::PAGE_TRANSITION_AUTO_BOOKMARK |
-                                ui::PAGE_TRANSITION_HOME_PAGE),
-      false);
+                                ui::PAGE_TRANSITION_HOME_PAGE));
   params.extra_headers = extra_headers;
   browser->OpenURL(params, /*navigation_handle_callback=*/{});
 }
@@ -1490,7 +1484,7 @@ void CloseTab(BrowserWindowInterface* browser) {
   }
 #endif
 
-  ToastController* toast_controller = browser->GetFeatures().toast_controller();
+  ToastController* toast_controller = ToastController::From(browser);
   if (!toast_controller) {
     CloseSelectedTabAndRecordTabCountMetric(browser);
     return;
@@ -1810,12 +1804,13 @@ void NewSplitTab(BrowserWindowInterface* browser,
                  split_tabs::SplitTabCreatedSource source) {
   TabStripModel* const tab_strip_model = browser->GetTabStripModel();
   const int active_index = tab_strip_model->active_index();
-  // In Incognito mode, we can't show the regular Split View NTP so default to
-  // the regular NTP which renders special content when in Incognito.
-  const GURL new_tab_url = !browser->GetProfile()->IsIncognitoProfile() &&
-                                   tab_strip_model->count() > 1
-                               ? GURL(chrome::kChromeUISplitViewNewTabPageURL)
-                               : chrome::ChromeUINewTabURLAsGURL();
+  // In Incognito or Enterprise Isolated modes, we can't show the regular Split
+  // View NTP so default to the regular NTP which renders special content.
+  const GURL new_tab_url =
+      !browser->GetProfile()->IsPrimaryOTRProfileWithRegularParent() &&
+              tab_strip_model->count() > 1
+          ? GURL(chrome::kChromeUISplitViewNewTabPageURL)
+          : chrome::ChromeUINewTabURLAsGURL();
   tab_strip_model->delegate()->AddTabAt(
       new_tab_url, active_index + 1, true,
       tab_strip_model->GetTabGroupForTab(active_index),
@@ -2170,13 +2165,12 @@ void MoveTabsToReadLater(BrowserWindowInterface* browser,
 #if !BUILDFLAG(IS_ANDROID)
   if (toast_features::IsEnabled(toast_features::kReadingListToast)) {
     // Don't show the reading list toast if the side panel is visible.
-    if (browser->GetFeatures().side_panel_ui()->IsSidePanelEntryShowing(
+    if (SidePanelUI::From(browser)->IsSidePanelEntryShowing(
             SidePanelEntryKey(SidePanelEntryId::kReadingList))) {
       return;
     }
 
-    ToastController* const toast_controller =
-        browser->GetFeatures().toast_controller();
+    ToastController* const toast_controller = ToastController::From(browser);
     if (toast_controller) {
       ToastParams params = ToastParams(ToastId::kAddedToReadingList);
       params.body_string_cardinality_param = added_to_read_later;
@@ -2852,8 +2846,7 @@ void SetAndroidOsForTabletSite(content::WebContents* current_tab) {
 void ToggleFullscreenMode(BrowserWindowInterface* browser,
                           bool user_initiated) {
   DCHECK(browser);
-  browser->GetFeatures()
-      .exclusive_access_manager()
+  ExclusiveAccessManager::From(browser)
       ->fullscreen_controller()
       ->ToggleBrowserFullscreenMode(user_initiated);
 }
@@ -2880,8 +2873,7 @@ void CopyURL(BrowserWindowInterface* browser,
 
 #if !BUILDFLAG(IS_ANDROID)
   if (toast_features::IsEnabled(toast_features::kLinkCopiedToast)) {
-    ToastController* const toast_controller =
-        browser->GetFeatures().toast_controller();
+    ToastController* const toast_controller = ToastController::From(browser);
     if (toast_controller) {
       toast_controller->MaybeShowToast(ToastParams(ToastId::kLinkCopied));
     }
@@ -2910,11 +2902,13 @@ BrowserWindowInterface* OpenInChrome(
         BrowserWindowCreateParams(hosted_app_browser->GetProfile(), true));
   }
 
+  base::WeakPtr<BrowserWindowInterface> target_browser_weak =
+      target_browser->GetWeakPtr();
   web_app::ReparentWebContentsIntoBrowserImpl(
       hosted_app_browser,
       hosted_app_browser->GetTabStripModel()->GetActiveWebContents(),
       target_browser);
-  return target_browser;
+  return target_browser_weak.get();
 }
 
 bool CanViewSource(BrowserWindowInterface* browser) {

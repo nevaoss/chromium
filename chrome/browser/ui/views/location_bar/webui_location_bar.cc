@@ -25,6 +25,7 @@
 #include "chrome/browser/ui/omnibox/chrome_omnibox_client.h"
 #include "chrome/browser/ui/omnibox/omnibox_controller.h"
 #include "chrome/browser/ui/omnibox/omnibox_edit_model.h"
+#include "chrome/browser/ui/omnibox/omnibox_next_features.h"
 #include "chrome/browser/ui/omnibox/omnibox_view.h"
 #include "chrome/browser/ui/page_info/page_info_dialog.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
@@ -57,6 +58,7 @@
 #include "components/favicon/content/content_favicon_driver.h"
 #include "components/omnibox/browser/location_bar_model.h"
 #include "components/strings/grit/components_strings.h"
+#include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/navigation_entry.h"
 #include "content/public/browser/render_widget_host_view.h"
 #include "ui/base/dragdrop/drag_drop_types.h"
@@ -115,7 +117,18 @@ WebUILocationBar::WebUILocationBar(BrowserWindowInterface* browser,
           permission_dashboard_.get());
 }
 
-WebUILocationBar::~WebUILocationBar() = default;
+WebUILocationBar::~WebUILocationBar() {
+  // Disconnect from delegate to prevent any notifications (e.g.
+  // UpdateLhsChipsState() or UpdateLocationIcon()) during teardown.
+  toolbar_delegate_ = nullptr;
+
+  // Explicitly destroy the controllers and views before member destruction.
+  // Otherwise, ~ChipController() -> HideChip() -> InvalidateLayout() attempts
+  // to acquire a weak pointer from `weak_ptr_factory_`, which is declared last
+  // and destroyed first in reverse member declaration order.
+  permission_dashboard_controller_.reset();
+  permission_dashboard_.reset();
+}
 
 void WebUILocationBar::Init(WebUIToolbarControlDelegate* delegate) {
   toolbar_delegate_ = delegate;
@@ -469,7 +482,13 @@ bool WebUILocationBar::IsMouseHovered() const {
 }
 
 bool WebUILocationBar::IsFocusWithin() const {
-  return focus_within_;
+  // If `using_full_popup_` is `true`, focus resides inside the WebUI popup's
+  // `WebContents` / `RenderWidgetHost` rather than a native child View of
+  // `WebUILocationBar`.
+  const bool full_popup_has_focus =
+      using_full_popup_ && omnibox_controller_ &&
+      omnibox_controller_->edit_model()->has_focus();
+  return full_popup_has_focus || focus_within_;
 }
 
 void WebUILocationBar::InvalidateLayout() {
@@ -578,10 +597,12 @@ void WebUILocationBar::UpdateLhsChipsState(bool icon_known) {
     }
   }
 
-  if (is_editing_or_empty &&
-      (!ShouldShowPermissionPromptEvenIfOmniboxEditedOrEmpty(
-           GetWebContents()) ||
-       omnibox_controller_->IsPopupOpen())) {
+  if (omnibox_controller_ &&
+      omnibox_controller_->edit_model()->user_input_in_progress() &&
+          (!ShouldShowPermissionPromptEvenIfOmniboxEditedOrEmpty(
+              GetWebContents()) ||
+          omnibox_controller_->IsPopupOpen())
+      ) {
     // Permission requests get cancelled if user edits the URL.
     // (And won't show up if it was already edited when they occurred).
     bool has_visible_chip = GetChipController()->chip()->GetVisible();
@@ -695,6 +716,14 @@ bool WebUILocationBar::TestContentSettingImagePressed(size_t index) {
 
 bool WebUILocationBar::IsContentSettingBubbleShowing(size_t index) {
   return content_setting_image_control_.IsBubbleShowing(index);
+}
+
+bool WebUILocationBar::IsContentSettingImageVisible(size_t index) {
+  return content_setting_image_control_.IsContentSettingImageVisible(index);
+}
+
+views::Widget* WebUILocationBar::GetContentSettingBubbleWidget(size_t index) {
+  return content_setting_image_control_.GetBubbleWidget(index);
 }
 
 void WebUILocationBar::OnLhsChipMousePressed(
@@ -844,6 +873,9 @@ void WebUILocationBar::SetSuppressionThresholdForTesting(
     base::TimeDelta threshold) {
   page_info_reopen_suppressor_.SetSuppressionThresholdForTesting(  // IN-TEST
       threshold);
+  content_setting_image_control_.SetSuppressionThresholdForTesting(  // IN-TEST
+      threshold);
+  page_action_control_.SetSuppressionThresholdForTesting(threshold);  // IN-TEST
 }
 
 void WebUILocationBar::OnLhsChipPointerEntered(

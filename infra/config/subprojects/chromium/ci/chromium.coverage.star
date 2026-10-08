@@ -228,7 +228,6 @@ coverage_builder(
                 # This is necessary due to this builder running the
                 # telemetry_perf_unittests suite.
                 "chromium_with_telemetry_dependencies",
-                "enable_wpr_tests",
             ],
         ),
         chromium_config = builder_config.chromium_config(
@@ -252,7 +251,7 @@ coverage_builder(
             "x86",
             "strip_debug_info",
             "android_fastbuild",
-            "webview_trichrome",
+            "webview_debug_package_name",
             "webview_shell",
             "use_java_coverage",
         ],

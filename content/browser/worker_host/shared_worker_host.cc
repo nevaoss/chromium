@@ -49,6 +49,7 @@
 #include "content/public/common/content_client.h"
 #include "net/base/isolation_info.h"
 #include "net/cookies/site_for_cookies.h"
+#include "net/storage_access_api/status.h"
 #include "services/metrics/public/cpp/delegating_ukm_recorder.h"
 #include "services/metrics/public/cpp/ukm_builders.h"
 #include "services/metrics/public/cpp/ukm_source_id.h"
@@ -225,6 +226,10 @@ SharedWorkerHost::~SharedWorkerHost() {
     }
   }
 
+  if (auto* lock_manager = GetStoragePartitionImpl()->GetLockManager()) {
+    lock_manager->RemoveLockObserver(token().value());
+  }
+
   if (site_instance_->HasProcess()) {
     // Send any final reports and allow the reporting configuration to be
     // removed.
@@ -236,10 +241,6 @@ SharedWorkerHost::~SharedWorkerHost() {
         ->SendReportsAndRemoveSource(reporting_source_);
 
     GetProcessHost()->RemoveObserver(this);
-
-    if (auto* lock_manager = GetStoragePartitionImpl()->GetLockManager()) {
-      lock_manager->RemoveLockObserver(token().value());
-    }
 
     GetStoragePartitionImpl()->ClearNetworkRestrictionsAfterDelay({
         network_restrictions_id_,
@@ -622,7 +623,7 @@ void SharedWorkerHost::CreateLockManager(
   GetStoragePartitionImpl()->BindLockManager(
       GetWorkerStorageKey(), token().value(), std::move(receiver));
   GetStoragePartitionImpl()->GetLockManager()->AddLockObserver(token().value(),
-                                                            this);
+                                                               this);
 }
 
 bool SharedWorkerHost::OnLockContention() {
@@ -718,7 +719,8 @@ void SharedWorkerHost::CreateWebSocketConnector(
                                   IPC::mojom::kRoutingIdNone),
           WeakDocumentPtr(), storage_key.origin(),
           ComputeIsolationInfoForWebSocket(),
-          worker_client_security_state_->Clone(), network_restrictions_id_,
+          worker_client_security_state_->Clone(),
+          net::StorageAccessApiStatus::kNone, network_restrictions_id_,
           GetDevToolsToken()),
       std::move(receiver));
 }
@@ -967,8 +969,7 @@ void SharedWorkerHost::RenderProcessHostDestroyed(RenderProcessHost* host) {
 }
 
 StoragePartitionImpl* SharedWorkerHost::GetStoragePartitionImpl() {
-  return static_cast<StoragePartitionImpl*>(
-      GetProcessHost()->GetStoragePartition());
+  return service_->storage_partition();
 }
 
 std::vector<GlobalRenderFrameHostId>
@@ -1149,7 +1150,9 @@ bool SharedWorkerHost::EvictBFCachedClientsIfLastActive(
       // client.
       return false;
     }
-    bf_cached_clients.push_back(other_rfh);
+    if (other_rfh->IsInBackForwardCache()) {
+      bf_cached_clients.push_back(other_rfh);
+    }
   }
   for (RenderFrameHostImpl* rfh_to_evict : bf_cached_clients) {
     rfh_to_evict->EvictFromBackForwardCacheWithReason(

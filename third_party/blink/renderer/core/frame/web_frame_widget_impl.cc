@@ -98,6 +98,7 @@
 #include "third_party/blink/renderer/core/editing/ime/input_method_controller.h"
 #include "third_party/blink/renderer/core/editing/ime/stylus_writing_gesture.h"
 #include "third_party/blink/renderer/core/editing/position_with_affinity.h"
+#include "third_party/blink/renderer/core/editing/reveal_selection_scope.h"
 #include "third_party/blink/renderer/core/editing/selection_template.h"
 #include "third_party/blink/renderer/core/editing/visible_selection.h"
 #include "third_party/blink/renderer/core/events/clipboard_event.h"
@@ -110,7 +111,7 @@
 #include "third_party/blink/renderer/core/exported/web_settings_impl.h"
 #include "third_party/blink/renderer/core/exported/web_view_impl.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
-#include "third_party/blink/renderer/core/frame/local_frame_ukm_aggregator.h"
+#include "third_party/blink/renderer/core/frame/local_frame_metrics_aggregator.h"
 #include "third_party/blink/renderer/core/frame/local_frame_view.h"
 #include "third_party/blink/renderer/core/frame/remote_frame_client.h"
 #include "third_party/blink/renderer/core/frame/screen.h"
@@ -3057,11 +3058,15 @@ void WebFrameWidgetImpl::BeginMainFrame(const viz::BeginFrameArgs& args) {
       ->GetEventHandler()
       .RecomputeMouseHoverStateIfNeeded();
 
-  std::optional<LocalFrameUkmAggregator::ScopedUkmHierarchicalTimer> ukm_timer;
+  std::optional<LocalFrameMetricsAggregator::ScopedUkmHierarchicalTimer>
+      ukm_timer;
   if (WidgetBase::ShouldRecordBeginMainFrameMetrics()) {
     ukm_timer.emplace(
-        LocalRootImpl()->GetFrame()->View()->GetUkmAggregator()->GetScopedTimer(
-            LocalFrameUkmAggregator::kAnimate));
+        LocalRootImpl()
+            ->GetFrame()
+            ->View()
+            ->GetMetricsAggregator()
+            ->GetScopedTimer(LocalFrameMetricsAggregator::kAnimate));
   }
 
   GetPage()->Animate(last_frame_time);
@@ -3120,7 +3125,7 @@ void WebFrameWidgetImpl::EndCommitCompositorFrame(
   LocalRootImpl()
       ->GetFrame()
       ->View()
-      ->GetUkmAggregator()
+      ->GetMetricsAggregator()
       ->RecordImplCompositorSample(commit_compositor_frame_start_time_.value(),
                                    commit_start_time, commit_finish_time);
   WindowPerformance* performance = DOMWindowPerformance::performance(
@@ -3173,9 +3178,13 @@ void WebFrameWidgetImpl::RecordManipulationTypeCounts(
 void WebFrameWidgetImpl::RecordDispatchRafAlignedInputTime(
     base::TimeTicks raf_aligned_input_start_time) {
   if (LocalRootImpl()) {
-    LocalRootImpl()->GetFrame()->View()->GetUkmAggregator()->RecordTimerSample(
-        LocalFrameUkmAggregator::kHandleInputEvents,
-        raf_aligned_input_start_time, base::TimeTicks::Now());
+    LocalRootImpl()
+        ->GetFrame()
+        ->View()
+        ->GetMetricsAggregator()
+        ->RecordTimerSample(LocalFrameMetricsAggregator::kHandleInputEvents,
+                            raf_aligned_input_start_time,
+                            base::TimeTicks::Now());
   }
 }
 
@@ -3215,7 +3224,7 @@ WebFrameWidgetImpl::GetBeginMainFrameMetrics() {
   return LocalRootImpl()
       ->GetFrame()
       ->View()
-      ->GetUkmAggregator()
+      ->GetMetricsAggregator()
       ->GetBeginMainFrameMetrics();
 }
 
@@ -3228,9 +3237,13 @@ void WebFrameWidgetImpl::BeginUpdateLayers() {
 void WebFrameWidgetImpl::EndUpdateLayers() {
   if (LocalRootImpl()) {
     DCHECK(update_layers_start_time_);
-    LocalRootImpl()->GetFrame()->View()->GetUkmAggregator()->RecordTimerSample(
-        LocalFrameUkmAggregator::kUpdateLayers,
-        update_layers_start_time_.value(), base::TimeTicks::Now());
+    LocalRootImpl()
+        ->GetFrame()
+        ->View()
+        ->GetMetricsAggregator()
+        ->RecordTimerSample(LocalFrameMetricsAggregator::kUpdateLayers,
+                            update_layers_start_time_.value(),
+                            base::TimeTicks::Now());
     probe::LayerTreeDidChange(LocalRootImpl()->GetFrame());
   }
   update_layers_start_time_.reset();
@@ -3240,7 +3253,7 @@ void WebFrameWidgetImpl::RecordStartOfFrameMetrics() {
   if (!LocalRootImpl())
     return;
 
-  LocalRootImpl()->GetFrame()->View()->GetUkmAggregator()->BeginMainFrame();
+  LocalRootImpl()->GetFrame()->View()->GetMetricsAggregator()->BeginMainFrame();
 }
 
 void WebFrameWidgetImpl::RecordEndOfFrameMetrics(
@@ -3253,7 +3266,7 @@ void WebFrameWidgetImpl::RecordEndOfFrameMetrics(
   LocalRootImpl()
       ->GetFrame()
       ->View()
-      ->GetUkmAggregator()
+      ->GetMetricsAggregator()
       ->RecordEndOfFrameMetrics(frame_begin_time, base::TimeTicks::Now(),
                                 trackers, document->UkmSourceID(),
                                 document->UkmRecorder());
@@ -4398,6 +4411,14 @@ void WebFrameWidgetImpl::CommitText(
     int relative_cursor_pos,
     DOMNodeIdType target_dom_node_id) {
   TargetImeNodeFocusChangeScope focus_scope(target_dom_node_id);
+
+  std::optional<RevealSelectionScope> reveal_selection_scope;
+  if (LocalFrame* target_frame = !target_dom_node_id.is_null()
+                                     ? FocusedLocalFrameInWidget()
+                                     : nullptr) {
+    // If given a target node, keep the selection in view.
+    reveal_selection_scope.emplace(*target_frame);
+  }
 
   WebInputMethodController* controller = GetActiveWebInputMethodController();
   if (!controller) {

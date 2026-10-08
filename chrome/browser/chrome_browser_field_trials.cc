@@ -287,6 +287,13 @@ void ChromeBrowserFieldTrials::RegisterFeatureOverrides(
   feature_overrides.EnableFeature(features::kLazyBrowserInterfaceBroker);
   feature_overrides.EnableFeature(chrome::android::kLoadAllTabsAtStartup);
 
+  // Enable desktop tab restore logic, where some background tabs get
+  // reloaded. This requires kLoadAllTabsAtStartup above to be enabled as well.
+  // This is not enabled elsewhere because the desktop behavior is not desirable
+  // on mobile Android.
+  feature_overrides.EnableFeature(
+      chrome::android::kDesktopAndroidBackgroundTabLoading);
+
   // Enable the ability for extensions to override chrome pages.
   // TODO(crbug.com/404069963): Remove flag when the feature is verified to be
   // stable on desktop Android.
@@ -363,6 +370,32 @@ void ChromeBrowserFieldTrials::RegisterFeatureOverrides(
   // TODO(crbug.com/553630105): Remove when rollout is complete to all form
   // factors.
   feature_overrides.EnableFeature(chrome::android::kAccountPickerDialog);
+
+  // Disables the Grid Tab Switcher (Hub layout) on Desktop Android in favor of
+  // the desktop tab strip.
+  // TODO(crbug.com/545634112): Remove when launched to 100% on Desktop Android.
+  feature_overrides.EnableFeature(chrome::android::kDisableGridTabSwitcher);
+
+  // Enable PDF V2 features on Android Desktop.
+  // TODO(crbug.com/555758312): Remove when rollout is complete.
+  feature_overrides.EnableFeature(chrome::android::kInlinePdfV2);
+  feature_overrides.EnableFeature(chrome::android::kInlinePdfV2Incognito);
+  feature_overrides.EnableFeature(chrome::android::kPdfReuseFragment);
+  feature_overrides.EnableFeature(chrome::android::kPdfLauncherActivity);
+
+  // Enables spoofing the user agent platform as ChromeOS on desktop Android.
+  // TODO(crbug.com/556358275): Enablement on tablets is tracked by this bug.
+  feature_overrides.EnableFeature(
+      blink::features::kAndroidDesktopUASpoofAsChromeOS);
+
+  // Enable opening PDFs in iframe in standalone tabs on Android.
+  // TODO(crbug.com/556810751) Enable on non-AL form factors.
+  feature_overrides.EnableFeature(blink::features::kAndroidHandlePdfInIframe);
+
+  // Enables nested submenus in the app menu on Desktop Android.
+  // TODO(crbug.com/404074424): Remove when rollout to all form factors is
+  // complete.
+  feature_overrides.EnableFeature(chrome::android::kSubmenusInAppMenuLff);
 
 #endif  // BUILDFLAG(IS_DESKTOP_ANDROID)
   // Desktop-first features which are past incubation should either end up here,

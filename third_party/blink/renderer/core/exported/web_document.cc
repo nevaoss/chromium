@@ -211,12 +211,6 @@ net::SiteForCookies WebDocument::SiteForCookies() const {
   return ConstUnwrap<Document>()->SiteForCookies();
 }
 
-net::StorageAccessApiStatus WebDocument::StorageAccessApiStatus() const {
-  return ConstUnwrap<Document>()
-      ->GetExecutionContext()
-      ->GetStorageAccessApiStatus();
-}
-
 WebSecurityOrigin WebDocument::TopFrameOrigin() const {
   return ConstUnwrap<Document>()->TopFrameOrigin();
 }

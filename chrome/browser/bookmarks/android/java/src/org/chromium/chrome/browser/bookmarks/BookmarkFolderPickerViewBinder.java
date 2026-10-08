@@ -6,6 +6,7 @@ package org.chromium.chrome.browser.bookmarks;
 
 import android.view.MenuItem;
 import android.view.View;
+import android.widget.TextView;
 
 import androidx.appcompat.widget.Toolbar;
 
@@ -18,17 +19,24 @@ import org.chromium.ui.modelutil.PropertyModel;
 public class BookmarkFolderPickerViewBinder {
     public static void bind(PropertyModel model, View view, PropertyKey key) {
         if (key == BookmarkFolderPickerProperties.TOOLBAR_TITLE) {
-            Toolbar toolbar = view.findViewById(R.id.toolbar);
-            toolbar.setTitle(model.get(BookmarkFolderPickerProperties.TOOLBAR_TITLE));
-        } else if (key == BookmarkFolderPickerProperties.NAVIGATION_ICON_VISIBLE) {
-            if (BookmarkUtils.isDesktopBookmarksLayoutEnabled()) {
+            if (BookmarkUtils.isDesktopBookmarksDialogEnabled()) {
+                TextView title = view.findViewById(R.id.title);
+                if (title != null) {
+                    title.setText(model.get(BookmarkFolderPickerProperties.TOOLBAR_TITLE));
+                }
+            } else {
                 Toolbar toolbar = view.findViewById(R.id.toolbar);
-                boolean visible = model.get(BookmarkFolderPickerProperties.NAVIGATION_ICON_VISIBLE);
-                if (visible) {
-                    toolbar.setNavigationIcon(R.drawable.ic_arrow_back_24dp);
-                    toolbar.setNavigationContentDescription(R.string.back);
-                } else {
-                    toolbar.setNavigationIcon(null);
+                if (toolbar != null) {
+                    toolbar.setTitle(model.get(BookmarkFolderPickerProperties.TOOLBAR_TITLE));
+                }
+            }
+        } else if (key == BookmarkFolderPickerProperties.NAVIGATION_ICON_VISIBLE) {
+            if (BookmarkUtils.isDesktopBookmarksDialogEnabled()) {
+                View backButton = view.findViewById(R.id.back_button);
+                if (backButton != null) {
+                    boolean visible =
+                            model.get(BookmarkFolderPickerProperties.NAVIGATION_ICON_VISIBLE);
+                    backButton.setVisibility(visible ? View.VISIBLE : View.GONE);
                 }
             }
         } else if (key == BookmarkFolderPickerProperties.CANCEL_CLICK_LISTENER) {
@@ -58,7 +66,7 @@ public class BookmarkFolderPickerViewBinder {
         } else if (key == BookmarkFolderPickerProperties.ADD_NEW_FOLDER_BUTTON_ENABLED) {
             boolean enabled =
                     model.get(BookmarkFolderPickerProperties.ADD_NEW_FOLDER_BUTTON_ENABLED);
-            if (BookmarkUtils.isDesktopBookmarksLayoutEnabled()) {
+            if (BookmarkUtils.isDesktopBookmarksDialogEnabled()) {
                 View newFolderButton = view.findViewById(R.id.new_folder_button);
                 if (newFolderButton != null) {
                     newFolderButton.setEnabled(enabled);

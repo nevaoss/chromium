@@ -100,6 +100,7 @@ import org.chromium.components.browser_ui.widget.scrim.ScrimManager;
 import org.chromium.components.browser_ui.widget.tile.TileView;
 import org.chromium.components.embedder_support.util.UrlConstants;
 import org.chromium.components.omnibox.AutocompleteRequestType;
+import org.chromium.components.omnibox.OmniboxCapabilities;
 import org.chromium.components.omnibox.OmniboxFeatureList;
 import org.chromium.components.omnibox.OmniboxFeatures;
 import org.chromium.components.policy.test.annotations.Policies;
@@ -137,6 +138,8 @@ import java.util.concurrent.TimeUnit;
 @EnableFeatures(
         ChromeFeatureList.HOME_BUTTON_REMOVAL
                 + ":set_default_to_false_on_homepage_on_desktop/false")
+// TODO(b/555414915): Update Android tests with WebUI NTP enabled on AL.
+@DisableFeatures(ChromeFeatureList.USE_WEB_UI_NTP_ANDROID)
 public class NewTabPageTest {
     private static final int RENDER_TEST_REVISION = 9;
 
@@ -984,8 +987,20 @@ public class NewTabPageTest {
         View ntpLayout = mNtp.getLayout();
         View mvTilesContainer = ntpLayout.findViewById(R.id.mv_tiles_container);
 
-        int expectedMvtLateralMargin =
-                res.getDimensionPixelSize(R.dimen.mvt_container_lateral_margin);
+        boolean isDesktop = OmniboxCapabilities.isDesktopPlatform();
+        int expectedMvtLateralMargin;
+        if (isDesktop) {
+            int searchBoxTwoSideMargin =
+                    mNtp.getNewTabPageCoordinator().getSearchBoxTwoSideMarginForTesting();
+            int maxSearchBoxWidth = res.getDimensionPixelSize(R.dimen.ntp_search_box_max_width);
+            int searchBoxWidth =
+                    Math.min(ntpLayout.getWidth() - searchBoxTwoSideMargin, maxSearchBoxWidth);
+            expectedMvtLateralMargin = (ntpLayout.getWidth() - searchBoxWidth) / 2;
+        } else {
+            expectedMvtLateralMargin =
+                    mNtp.getNewTabPageCoordinator().getLateralMarginToMatchFeeds();
+        }
+
         Assert.assertEquals(
                 "The left margin of the most visited tiles container is wrong.",
                 expectedMvtLateralMargin,
@@ -997,20 +1012,10 @@ public class NewTabPageTest {
 
         CriteriaHelper.pollUiThread(
                 () -> {
-                    // Fetch the true layout-derived lateral margins requested by the fake search
-                    // box.
-                    int searchBoxTwoSideMargin =
-                            mNtp.getNewTabPageCoordinator().getSearchBoxTwoSideMarginForTesting();
-                    int maxSearchBoxWidth =
-                            res.getDimensionPixelSize(R.dimen.ntp_search_box_max_width);
-
-                    // The MVT container inherits the Fakebox's exact width constraint logic.
+                    // The MVT container matches the Feed/FSB's exact width constraint logic.
                     // This mathematically resolves what the container slack should be for ANY
                     // form factor or rotation state.
-                    int expectedContainerSlack =
-                            Math.max(
-                                    searchBoxTwoSideMargin,
-                                    ntpLayout.getWidth() - maxSearchBoxWidth);
+                    int expectedContainerSlack = expectedMvtLateralMargin * 2;
 
                     Criteria.checkThat(
                             "The width of the most visited tiles container is wrong.",

@@ -114,8 +114,12 @@ NavigationDirection GetDirectionFromMode(OverscrollMode mode) {
 // Records UMA histogram and also user action for the cancelled overscroll.
 void RecordGestureOverscrollCancelled(NavigationDirection direction,
                                       OverscrollSource source) {
-  CHECK_NE(direction, NavigationDirection::NONE, base::NotFatalUntil::M158);
-  CHECK_NE(source, OverscrollSource::NONE, base::NotFatalUntil::M158);
+  // TODO(crbug.com/561094257): CHECK-exclusion: Convert to a CHECK once we are
+  // confident it won't be triggered.
+  DCHECK_NE(direction, NavigationDirection::NONE);
+  // TODO(crbug.com/561094257): CHECK-exclusion: Convert to a CHECK once we are
+  // confident it won't be triggered.
+  DCHECK_NE(source, OverscrollSource::NONE);
   if (direction == NavigationDirection::BACK) {
     RecordAction(base::UserMetricsAction("Overscroll_Cancelled.Back"));
   } else if (direction == NavigationDirection::FORWARD) {
@@ -376,12 +380,15 @@ float Affordance::GetAffordanceProgress() const {
 }
 
 void Affordance::OnPaintLayer(const ui::PaintContext& context) {
-  CHECK(drag_progress_ >= 1.f || state_ != State::COMPLETING,
-        base::NotFatalUntil::M158);
-  CHECK(abort_progress_ == 0.f || state_ == State::ABORTING,
-        base::NotFatalUntil::M158);
-  CHECK(complete_progress_ == 0.f || state_ == State::COMPLETING,
-        base::NotFatalUntil::M158);
+  // TODO(crbug.com/556764901): CHECK-exclusion: Convert to a CHECK once we are
+  // confident it won't be triggered.
+  DCHECK(drag_progress_ >= 1.f || state_ != State::COMPLETING);
+  // TODO(crbug.com/556764901): CHECK-exclusion: Convert to a CHECK once we are
+  // confident it won't be triggered.
+  DCHECK(abort_progress_ == 0.f || state_ == State::ABORTING);
+  // TODO(crbug.com/556764901): CHECK-exclusion: Convert to a CHECK once we are
+  // confident it won't be triggered.
+  DCHECK(complete_progress_ == 0.f || state_ == State::COMPLETING);
 
   ui::PaintRecorder recorder(context, painted_layer_.size());
   gfx::Canvas* canvas = recorder.canvas();
@@ -486,7 +493,9 @@ void GestureNavSimple::OnOverscrollComplete(OverscrollMode overscroll_mode) {
     return;
   }
 
-  CHECK_EQ(mode_, overscroll_mode, base::NotFatalUntil::M158);
+  // TODO(crbug.com/560898605): CHECK-exclusion: Convert to a CHECK once we are
+  // confident it won't be triggered.
+  DCHECK_EQ(mode_, overscroll_mode);
 
   mode_ = OVERSCROLL_NONE;
   OverscrollSource overscroll_source = source_;
@@ -552,7 +561,9 @@ void GestureNavSimple::OnOverscrollModeChange(OverscrollMode old_mode,
     return;
   }
 
-  CHECK_EQ(mode_, old_mode, base::NotFatalUntil::M158);
+  // TODO(crbug.com/561284863): CHECK-exclusion: Convert to a CHECK once we are
+  // confident it won't be triggered.
+  DCHECK_EQ(mode_, old_mode);
   if (mode_ == new_mode) {
     return;
   }

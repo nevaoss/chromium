@@ -6,16 +6,23 @@
 
 #include <set>
 
+#include "base/command_line.h"
+#include "base/files/file_util.h"
 #include "base/files/scoped_temp_dir.h"
 #include "base/functional/callback_helpers.h"
+#include "base/test/metrics/histogram_tester.h"
+#include "base/test/run_until.h"
 #include "base/test/scoped_feature_list.h"
 #include "base/test/scoped_path_override.h"
 #include "base/test/test_future.h"
 #include "build/build_config.h"
 #include "chrome/browser/global_features.h"
+#include "chrome/browser/profiles/profile_attributes_init_params.h"
+#include "chrome/browser/profiles/profile_attributes_storage.h"
 #include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/browser/profiles/profile_window.h"
 #include "chrome/browser/profiles/profiles_state.h"
+#include "chrome/browser/search_engines/template_url_service_factory.h"
 #include "chrome/browser/search_engines/template_url_service_factory_test_util.h"
 #include "chrome/browser/ui/browser_window/test/mock_browser_window_interface.h"
 #include "chrome/browser/ui/omnibox/omnibox_everywhere/omnibox_everywhere_prefs.h"
@@ -24,6 +31,9 @@
 #include "chrome/browser/ui/webui/top_chrome/webui_contents_wrapper.h"
 #include "chrome/common/chrome_constants.h"
 #include "chrome/common/chrome_paths.h"
+#include "chrome/common/chrome_switches.h"
+#include "chrome/common/pref_names.h"
+#include "chrome/test/base/fake_profile_manager.h"
 #include "chrome/test/base/testing_browser_process.h"
 #include "chrome/test/base/testing_profile.h"
 #include "chrome/test/base/testing_profile_manager.h"
@@ -83,6 +93,42 @@ class FakeGlobalAcceleratorListener : public ui::GlobalAcceleratorListener {
  private:
   std::set<ui::Accelerator> registered_accelerators_;
 };
+
+#if BUILDFLAG(IS_WIN)
+class FakeProfileManagerWithSearchUtil : public FakeProfileManager {
+ public:
+  explicit FakeProfileManagerWithSearchUtil(const base::FilePath& user_data_dir)
+      : FakeProfileManager(user_data_dir) {}
+
+  std::unique_ptr<TestingProfile> BuildTestingProfile(
+      const base::FilePath& path,
+      Delegate* delegate,
+      Profile::CreateMode create_mode) override {
+    TestingProfile::Builder builder;
+    builder.SetPath(path);
+    builder.SetDelegate(delegate);
+    builder.SetCreateMode(create_mode);
+    builder.AddTestingFactory(
+        TemplateURLServiceFactory::GetInstance(),
+        base::BindRepeating([](content::BrowserContext* context)
+                                -> std::unique_ptr<KeyedService> {
+          auto service = TemplateURLServiceFactory::BuildInstanceFor(context);
+          auto* turl_service = static_cast<TemplateURLService*>(service.get());
+          TemplateURLData template_url_data;
+          template_url_data.SetShortName(u"Google");
+          template_url_data.SetKeyword(u"google.com");
+          template_url_data.SetURL(
+              "https://www.google.com/search?q={searchTerms}");
+          auto template_url = std::make_unique<TemplateURL>(template_url_data);
+          TemplateURL* default_turl =
+              turl_service->Add(std::move(template_url));
+          turl_service->SetUserSelectedDefaultSearchProvider(default_turl);
+          return service;
+        }));
+    return builder.Build();
+  }
+};
+#endif
 
 }  // namespace
 
@@ -317,9 +363,24 @@ TEST_F(OmniboxEverywhereControllerTest, NonGoogleDseBlocksOnInvoke) {
   EXPECT_FALSE(controller.IsVisible());
 }
 
+TEST_F(OmniboxEverywhereControllerTest, NoHotkeyByDefaultOnStartup) {
+  FakeGlobalAcceleratorListener fake_listener;
+  omnibox_everywhere::OmniboxEverywhereController controller(
+      base::BindRepeating(
+          [](Profile* profile) -> std::unique_ptr<WebUIContentsWrapper> {
+            return std::make_unique<TestWebUIContentsWrapper>(profile);
+          }),
+      &fake_listener);
+
+  ui::Accelerator hotkey(ui::VKEY_SPACE, ui::EF_ALT_DOWN);
+  EXPECT_FALSE(fake_listener.IsRegistered(hotkey));
+}
+
 TEST_F(OmniboxEverywhereControllerTest, HotkeyPrefDisablesHotkey) {
   TestingPrefServiceSimple* local_state =
       TestingBrowserProcess::GetGlobal()->GetTestingLocalState();
+  local_state->SetString(omnibox_everywhere::prefs::kOmniboxEverywhereHotkey,
+                         "Alt+Space");
 
   // Initialize with pref enabled by default.
   EXPECT_TRUE(
@@ -350,6 +411,8 @@ TEST_F(OmniboxEverywhereControllerTest, HotkeyPrefDisablesHotkey) {
 TEST_F(OmniboxEverywhereControllerTest, ControllerInitWithDisabledHotkeyPref) {
   TestingPrefServiceSimple* local_state =
       TestingBrowserProcess::GetGlobal()->GetTestingLocalState();
+  local_state->SetString(omnibox_everywhere::prefs::kOmniboxEverywhereHotkey,
+                         "Alt+Space");
   local_state->SetBoolean(omnibox_everywhere::prefs::kHotkeyEnabled, false);
 
   FakeGlobalAcceleratorListener fake_listener;
@@ -547,6 +610,8 @@ TEST_F(OmniboxEverywhereControllerTest,
 TEST_F(OmniboxEverywhereControllerTest, ControllerUpdatesCustomHotkey) {
   TestingPrefServiceSimple* local_state =
       TestingBrowserProcess::GetGlobal()->GetTestingLocalState();
+  local_state->SetString(omnibox_everywhere::prefs::kOmniboxEverywhereHotkey,
+                         "Alt+Space");
 
   FakeGlobalAcceleratorListener fake_listener;
   omnibox_everywhere::OmniboxEverywhereController controller(
@@ -556,21 +621,23 @@ TEST_F(OmniboxEverywhereControllerTest, ControllerUpdatesCustomHotkey) {
           }),
       &fake_listener);
 
-  ui::Accelerator default_hotkey(ui::VKEY_SPACE, ui::EF_ALT_DOWN);
-  EXPECT_TRUE(fake_listener.IsRegistered(default_hotkey));
+  ui::Accelerator initial_hotkey(ui::VKEY_SPACE, ui::EF_ALT_DOWN);
+  EXPECT_TRUE(fake_listener.IsRegistered(initial_hotkey));
 
   ui::Accelerator new_hotkey(ui::VKEY_SPACE,
                              ui::EF_SHIFT_DOWN | ui::EF_CONTROL_DOWN);
   local_state->SetString(omnibox_everywhere::prefs::kOmniboxEverywhereHotkey,
                          "Ctrl+Shift+Space");
 
-  EXPECT_FALSE(fake_listener.IsRegistered(default_hotkey));
+  EXPECT_FALSE(fake_listener.IsRegistered(initial_hotkey));
   EXPECT_TRUE(fake_listener.IsRegistered(new_hotkey));
 }
 TEST_F(OmniboxEverywhereControllerTest,
        ControllerUpdatesCustomHotkeyWhileSuspended) {
   TestingPrefServiceSimple* local_state =
       TestingBrowserProcess::GetGlobal()->GetTestingLocalState();
+  local_state->SetString(omnibox_everywhere::prefs::kOmniboxEverywhereHotkey,
+                         "Alt+Space");
 
   FakeGlobalAcceleratorListener fake_listener;
   omnibox_everywhere::OmniboxEverywhereController controller(
@@ -580,13 +647,13 @@ TEST_F(OmniboxEverywhereControllerTest,
           }),
       &fake_listener);
 
-  ui::Accelerator default_hotkey(ui::VKEY_SPACE, ui::EF_ALT_DOWN);
-  EXPECT_TRUE(fake_listener.IsRegistered(default_hotkey));
+  ui::Accelerator initial_hotkey(ui::VKEY_SPACE, ui::EF_ALT_DOWN);
+  EXPECT_TRUE(fake_listener.IsRegistered(initial_hotkey));
 
   // Simulate WebUI <cr-shortcut-input> setting shortcut suspension during key
   // capture so key combinations aren't intercepted globally while typing.
   fake_listener.SetShortcutHandlingSuspended(true);
-  EXPECT_FALSE(fake_listener.IsRegistered(default_hotkey));
+  EXPECT_FALSE(fake_listener.IsRegistered(initial_hotkey));
 
   ui::Accelerator new_hotkey(ui::VKEY_SPACE,
                              ui::EF_SHIFT_DOWN | ui::EF_CONTROL_DOWN);
@@ -596,13 +663,13 @@ TEST_F(OmniboxEverywhereControllerTest,
   // While suspended, the platform listener should not be actively listening for
   // any hotkeys so keyboard events are not intercepted.
   EXPECT_TRUE(fake_listener.IsShortcutHandlingSuspended());
-  EXPECT_FALSE(fake_listener.IsRegistered(default_hotkey));
+  EXPECT_FALSE(fake_listener.IsRegistered(initial_hotkey));
   EXPECT_FALSE(fake_listener.IsRegistered(new_hotkey));
 
   // When key capture finishes and suspension ends, the new hotkey should be
   // actively registered with the platform listener and the old one should not.
   fake_listener.SetShortcutHandlingSuspended(false);
-  EXPECT_FALSE(fake_listener.IsRegistered(default_hotkey));
+  EXPECT_FALSE(fake_listener.IsRegistered(initial_hotkey));
   EXPECT_TRUE(fake_listener.IsRegistered(new_hotkey));
 }
 
@@ -620,11 +687,11 @@ TEST_F(OmniboxEverywhereControllerTest, ControllerLoadsCustomHotkeyOnStartup) {
           }),
       &fake_listener);
 
-  ui::Accelerator default_hotkey(ui::VKEY_SPACE, ui::EF_ALT_DOWN);
+  ui::Accelerator alt_space(ui::VKEY_SPACE, ui::EF_ALT_DOWN);
   ui::Accelerator custom_hotkey(ui::VKEY_SPACE,
                                 ui::EF_SHIFT_DOWN | ui::EF_CONTROL_DOWN);
 
-  EXPECT_FALSE(fake_listener.IsRegistered(default_hotkey));
+  EXPECT_FALSE(fake_listener.IsRegistered(alt_space));
   EXPECT_TRUE(fake_listener.IsRegistered(custom_hotkey));
 }
 
@@ -772,6 +839,8 @@ TEST_F(OmniboxEverywhereControllerTest,
        DisabledOmniboxEverywhereBlocksHotkeyRegistration) {
   TestingPrefServiceSimple* local_state =
       TestingBrowserProcess::GetGlobal()->GetTestingLocalState();
+  local_state->SetString(omnibox_everywhere::prefs::kOmniboxEverywhereHotkey,
+                         "Alt+Space");
 
   FakeGlobalAcceleratorListener fake_listener;
   omnibox_everywhere::OmniboxEverywhereController controller(
@@ -781,16 +850,16 @@ TEST_F(OmniboxEverywhereControllerTest,
           }),
       &fake_listener);
 
-  ui::Accelerator default_hotkey(ui::VKEY_SPACE, ui::EF_ALT_DOWN);
-  EXPECT_TRUE(fake_listener.IsRegistered(default_hotkey));
+  ui::Accelerator hotkey(ui::VKEY_SPACE, ui::EF_ALT_DOWN);
+  EXPECT_TRUE(fake_listener.IsRegistered(hotkey));
 
   local_state->SetBoolean(omnibox_everywhere::prefs::kOmniboxEverywhereEnabled,
                           false);
-  EXPECT_FALSE(fake_listener.IsRegistered(default_hotkey));
+  EXPECT_FALSE(fake_listener.IsRegistered(hotkey));
 
   local_state->SetBoolean(omnibox_everywhere::prefs::kOmniboxEverywhereEnabled,
                           true);
-  EXPECT_TRUE(fake_listener.IsRegistered(default_hotkey));
+  EXPECT_TRUE(fake_listener.IsRegistered(hotkey));
 }
 
 TEST_F(OmniboxEverywhereControllerTest,
@@ -835,4 +904,212 @@ TEST_F(OmniboxEverywhereControllerTest, DisabledHotkeyBlocksHotkeyInvocation) {
   controller.OnInvoke(omnibox_everywhere::InvocationSource::kGlobalHotkey,
                       profile_.get(), GetContext());
   EXPECT_FALSE(controller.IsVisible());
+}
+
+#if BUILDFLAG(IS_WIN)
+TEST_F(OmniboxEverywhereControllerTest,
+       LoadsPersistedTargetProfileOnBackgroundModeStartup) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+
+  TestingProfileManager testing_profile_manager(
+      TestingBrowserProcess::GetGlobal());
+  ASSERT_TRUE(testing_profile_manager.SetUp(
+      temp_dir.GetPath(),
+      std::make_unique<FakeProfileManagerWithSearchUtil>(temp_dir.GetPath())));
+
+  base::FilePath test_profile_path =
+      temp_dir.GetPath().AppendASCII("AsyncTestProfile");
+  ASSERT_TRUE(base::CreateDirectory(test_profile_path));
+
+  // Add the profile to ProfileAttributesStorage without creating/loading it
+  // yet.
+  ProfileAttributesInitParams init_params;
+  init_params.profile_path = test_profile_path;
+  init_params.profile_name = u"AsyncTestProfile";
+  testing_profile_manager.profile_attributes_storage()->AddProfile(
+      std::move(init_params));
+
+  // Verify that the profile is NOT loaded yet.
+  ASSERT_EQ(nullptr,
+            testing_profile_manager.profile_manager()->GetProfileByPath(
+                test_profile_path));
+
+  TestingPrefServiceSimple* local_state =
+      TestingBrowserProcess::GetGlobal()->GetTestingLocalState();
+  local_state->SetFilePath(omnibox_everywhere::prefs::kLastTargetProfileDir,
+                           test_profile_path);
+  local_state->SetBoolean(
+      omnibox_everywhere::prefs::kOmniboxEverywhereBackgroundMode, true);
+
+  base::CommandLine::ForCurrentProcess()->AppendSwitch(
+      switches::kNoStartupWindow);
+
+  omnibox_everywhere::OmniboxEverywhereController controller(
+      base::BindRepeating(
+          [](Profile* profile) -> std::unique_ptr<WebUIContentsWrapper> {
+            return std::make_unique<TestWebUIContentsWrapper>(profile);
+          }));
+
+  // The profile was not pre-loaded; it loads asynchronously.
+  EXPECT_EQ(nullptr, controller.target_profile());
+
+  // Wait until the target profile has been asynchronously loaded and set.
+  EXPECT_TRUE(base::test::RunUntil(
+      [&]() { return controller.target_profile() != nullptr; }));
+
+  // Target profile should now be loaded and set from the persisted path.
+  EXPECT_EQ(test_profile_path, controller.target_profile()->GetPath());
+}
+
+TEST_F(OmniboxEverywhereControllerTest,
+       DisabledOmniboxEverywhereDoesNotLoadProfileOnBackgroundStartup) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+
+  TestingProfileManager testing_profile_manager(
+      TestingBrowserProcess::GetGlobal());
+  ASSERT_TRUE(testing_profile_manager.SetUp(temp_dir.GetPath()));
+
+  base::FilePath test_profile_path =
+      temp_dir.GetPath().AppendASCII("AsyncTestProfile");
+  ASSERT_TRUE(base::CreateDirectory(test_profile_path));
+
+  ProfileAttributesInitParams init_params;
+  init_params.profile_path = test_profile_path;
+  init_params.profile_name = u"AsyncTestProfile";
+  testing_profile_manager.profile_attributes_storage()->AddProfile(
+      std::move(init_params));
+
+  TestingPrefServiceSimple* local_state =
+      TestingBrowserProcess::GetGlobal()->GetTestingLocalState();
+  local_state->SetBoolean(omnibox_everywhere::prefs::kOmniboxEverywhereEnabled,
+                          false);
+  local_state->SetFilePath(omnibox_everywhere::prefs::kLastTargetProfileDir,
+                           test_profile_path);
+  local_state->SetBoolean(
+      omnibox_everywhere::prefs::kOmniboxEverywhereBackgroundMode, true);
+
+  base::CommandLine::ForCurrentProcess()->AppendSwitch(
+      switches::kNoStartupWindow);
+
+  omnibox_everywhere::OmniboxEverywhereController controller(
+      base::BindRepeating(
+          [](Profile* profile) -> std::unique_ptr<WebUIContentsWrapper> {
+            return std::make_unique<TestWebUIContentsWrapper>(profile);
+          }));
+
+  // Wait until task environment is idle without loading any profile.
+  EXPECT_TRUE(base::test::RunUntil(
+      [&]() { return controller.target_profile() == nullptr; }));
+
+  // Controller should not have loaded the profile because Omnibox Everywhere
+  // is disabled.
+  EXPECT_EQ(nullptr, controller.target_profile());
+}
+
+TEST_F(OmniboxEverywhereControllerTest,
+       FallsBackToLastUsedProfileOnBackgroundStartup) {
+  base::ScopedTempDir temp_dir;
+  ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
+
+  TestingProfileManager testing_profile_manager(
+      TestingBrowserProcess::GetGlobal());
+  ASSERT_TRUE(testing_profile_manager.SetUp(temp_dir.GetPath()));
+
+  // Create an eligible testing profile for the last-used profile.
+  TestingProfile* last_used_profile =
+      testing_profile_manager.CreateTestingProfile("LastUsedProfile");
+  ASSERT_TRUE(last_used_profile);
+
+  TemplateURLServiceFactoryTestUtil factory_util(last_used_profile);
+  factory_util.VerifyLoad();
+  TemplateURLData template_url_data;
+  template_url_data.SetShortName(u"Google");
+  template_url_data.SetKeyword(u"google.com");
+  template_url_data.SetURL("https://www.google.com/search?q={searchTerms}");
+  TemplateURL* default_turl = factory_util.model()->Add(
+      std::make_unique<TemplateURL>(template_url_data));
+  factory_util.model()->SetUserSelectedDefaultSearchProvider(default_turl);
+
+  // Set persisted target profile to an invalid / non-existent directory.
+  base::FilePath invalid_path =
+      temp_dir.GetPath().AppendASCII("NonExistentProfile");
+
+  TestingPrefServiceSimple* local_state =
+      TestingBrowserProcess::GetGlobal()->GetTestingLocalState();
+  local_state->SetFilePath(prefs::kProfileLastUsed,
+                           last_used_profile->GetBaseName());
+  local_state->SetFilePath(omnibox_everywhere::prefs::kLastTargetProfileDir,
+                           invalid_path);
+  local_state->SetBoolean(
+      omnibox_everywhere::prefs::kOmniboxEverywhereBackgroundMode, true);
+
+  base::CommandLine::ForCurrentProcess()->AppendSwitch(
+      switches::kNoStartupWindow);
+
+  omnibox_everywhere::OmniboxEverywhereController controller(
+      base::BindRepeating(
+          [](Profile* profile) -> std::unique_ptr<WebUIContentsWrapper> {
+            return std::make_unique<TestWebUIContentsWrapper>(profile);
+          }));
+
+  // Wait until fallback to the last used profile finishes asynchronously.
+  EXPECT_TRUE(base::test::RunUntil(
+      [&]() { return controller.target_profile() != nullptr; }));
+
+  // Controller should have fallen back to loading the last used profile.
+  EXPECT_EQ(last_used_profile, controller.target_profile());
+}
+#endif
+
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
+#define MAYBE_InvocationSourceMetricRecorded InvocationSourceMetricRecorded
+#else
+#define MAYBE_InvocationSourceMetricRecorded \
+  DISABLED_InvocationSourceMetricRecorded
+#endif
+TEST_F(OmniboxEverywhereControllerTest, MAYBE_InvocationSourceMetricRecorded) {
+  base::HistogramTester histogram_tester;
+
+  omnibox_everywhere::OmniboxEverywhereController controller(
+      base::BindRepeating(
+          [](Profile* profile) -> std::unique_ptr<WebUIContentsWrapper> {
+            return std::make_unique<TestWebUIContentsWrapper>(profile);
+          }));
+
+  controller.OnInvoke(omnibox_everywhere::InvocationSource::kGlobalHotkey,
+                      profile_.get(), GetContext());
+  histogram_tester.ExpectBucketCount(
+      "OmniboxEverywhere.InvocationSource",
+      omnibox_everywhere::InvocationSource::kGlobalHotkey, 1);
+
+  // Toggle dismiss via hotkey should not record an invocation metric.
+  controller.OnInvoke(omnibox_everywhere::InvocationSource::kGlobalHotkey,
+                      profile_.get(), GetContext());
+  histogram_tester.ExpectBucketCount(
+      "OmniboxEverywhere.InvocationSource",
+      omnibox_everywhere::InvocationSource::kGlobalHotkey, 1);
+
+  controller.OnInvoke(omnibox_everywhere::InvocationSource::kStatusTrayIcon,
+                      profile_.get(), GetContext());
+  histogram_tester.ExpectBucketCount(
+      "OmniboxEverywhere.InvocationSource",
+      omnibox_everywhere::InvocationSource::kStatusTrayIcon, 1);
+  controller.Hide();
+
+  controller.OnInvoke(omnibox_everywhere::InvocationSource::kProfilePicker,
+                      profile_.get(), GetContext());
+  histogram_tester.ExpectBucketCount(
+      "OmniboxEverywhere.InvocationSource",
+      omnibox_everywhere::InvocationSource::kProfilePicker, 1);
+  controller.Hide();
+
+  controller.OnInvoke(omnibox_everywhere::InvocationSource::kCommandLine,
+                      profile_.get(), GetContext());
+  histogram_tester.ExpectBucketCount(
+      "OmniboxEverywhere.InvocationSource",
+      omnibox_everywhere::InvocationSource::kCommandLine, 1);
+
+  histogram_tester.ExpectTotalCount("OmniboxEverywhere.InvocationSource", 4);
 }

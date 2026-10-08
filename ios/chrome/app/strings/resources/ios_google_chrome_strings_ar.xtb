@@ -1,7 +1,6 @@
 <?xml version="1.0" ?>
 <!DOCTYPE translationbundle>
 <translationbundle lang="ar">
-<translation id="1035560095760914532">‏يُرجى وضع Chrome في المنطقة السفلية للوصول إليه في أي وقت</translation>
 <translation id="1076643793026027628">‏يفتح Chrome تلقائيًا روابط YouTube المخصصة للتصفُّح المتخفي في وضع التصفُّح المتخفي.</translation>
 <translation id="1081114897601629648">‏لم يتم استيراد كلمات المرور التالية إلى "مدير كلمات المرور في Google" لأنّها لا تتطابق مع المتطلبات.</translation>
 <translation id="1086486568852410168">‏البحث باستخدام "عدسة Google"</translation>
@@ -41,6 +40,7 @@
 <translation id="1580570086594302477">‏يؤدي هذا الاختصار إلى فتح علامة تبويب جديدة في وضع التصفُّح المتخفي في Chrome.</translation>
 <translation id="1605168141396675642">‏يمكنك الآن تجنّب عناء النسخ وفتح الروابط مباشرةً في Chrome.</translation>
 <translation id="1646463005043273333">‏يؤدي هذا الاختصار إلى فتح إعدادات Chrome حتى يتمّ ضبطه كمتصفِّح تلقائي.</translation>
+<translation id="1668930590094369898">‏استخدام Chrome كمتصفّح تلقائي</translation>
 <translation id="1670609221633730681">‏نصيحة بشأن Chrome: اختَر مكان شريط العناوين</translation>
 <translation id="1683863426423719967">‏لتلقّي تذكيرات علامات التبويب من Chrome، عليك تفعيل الإشعارات في إعدادات iOS.</translation>
 <translation id="1759842336958782510">Chrome</translation>
@@ -57,6 +57,7 @@
 <translation id="1973910962341002002">‏في إعدادات "<ph name="TEXT_OF_THE_SETTINGS_MENU_ITEM" />"، يُرجى تفعيل Chrome</translation>
 <translation id="1984705450038014246">‏مزامنة بيانات Chrome</translation>
 <translation id="1987779152850321833">‏خطوات بسيطة لتجربة مثالية مع Chrome</translation>
+<translation id="2049569996960148258">‏إخفاء خيار "استخدام Chrome كمتصفّح تلقائي"</translation>
 <translation id="2055826352861631739">‏استخدام Chrome كمتصفّح تلقائي على جهاز iPad</translation>
 <translation id="2056123005618757196">‏يمكنك إنجاز المزيد من المهام باستخدام متصفِّح Google Chrome السهل الاستخدام والآمن والأسرع من ذي قبل.</translation>
 <translation id="2120238739383482109">‏فتح الإشارات المرجعية في Chrome.</translation>
@@ -90,7 +91,6 @@
 <translation id="288992067439702510">‏لقد بلغت الحدّ الأقصى لعدد الإشارات المرجعية (<ph name="LIMIT" />) في Google Chrome، لذا لم يتم حفظ بعض إشاراتك المرجعية في حسابك على Google بعد.
 
 ولا يمكن حفظ إشارات مرجعية جديدة في حسابك إلا بعد حذف بعض الإشارات المرجعية. وفي حال سجّلت الخروج الآن، سيتم حذف الإشارات المرجعية غير المحفوظة.</translation>
-<translation id="2901621928549457170">‏يُرجى فتح Chrome على الفور عند استخدام جهاز iPad</translation>
 <translation id="2922914028977213693">‏هنا تبدأ أفضل تجربة من Chrome على iPad.</translation>
 <translation id="292371311537977079">‏إعدادات Chrome</translation>
 <translation id="2923827943290349720">‏قفل علامات التبويب في وضع التصفّح المتخفي عند إغلاق Chrome</translation>
@@ -175,8 +175,6 @@
 <translation id="5119391094379141756">‏اختَر Chrome.</translation>
 <translation id="5123188916260706415">‏البحث باستخدام الصوت في Chrome</translation>
 <translation id="5162467219239570114">‏إصدار Chrome قديم. في حال عدم توفُّر تحديث في <ph name="BEGIN_LINK" />متجر التطبيقات<ph name="END_LINK" />، قد يعني هذا أن جهازك لم يعد متوافقًا مع الإصدارات الجديدة من Chrome.</translation>
-<translation id="5172049865623113551">‏يُرجى فتح Chrome على الفور عند استخدام هاتف iPhone</translation>
-<translation id="5179095426828744632">‏يمكنك الوصول إلى Chrome بشكل أسرع من خلال شريط التطبيقات</translation>
 <translation id="5184329579814168207">‏الفتح في Chrome</translation>
 <translation id="5190139289262548459">‏يدير نطاق مؤسستك <ph name="DOMAIN" /> الحساب الذي سجَّلت الدخول إليه وطريقة استخدامك لمتصفِّح Chrome.</translation>
 <translation id="5209238444239954363">‏تعذَّر على Chrome البحث عن تحديثات. يُرجى إعادة المحاولة لاحقًا.</translation>
@@ -240,7 +238,6 @@
 <translation id="6484712497741564393">‏تم تسجيل الدخول باستخدام حساب "<ph name="EMAIL" />".
 
 وتم تشفير بياناتك باستخدام عبارة المرور. عليك إدخال عبارة المرور لاستخدام بيانات Chrome وحفظها في حسابك على Google.</translation>
-<translation id="6511034852811155835">‏‫Chrome معك في أي مكان</translation>
 <translation id="6533470733797826516">‏يمكنك تسجيل الدخول بشكل أسرع باستخدام ميزة "الملء التلقائي" في Chrome</translation>
 <translation id="6536544321553662809">‏ننصحك بضبط Chrome كمتصفّح تلقائي لمشاركة الروابط وفتحها بسهولة</translation>
 <translation id="6545449117344801102">‏يرصد Chrome العناوين ويستخدم "خرائط Google" لإعلامك بالاتجاهات مع معلومات محلية.</translation>
@@ -262,8 +259,8 @@
 وللوصول إلى الإعدادات الإضافية التي تستخدم البيانات لتحسين تجربة استخدام Chrome، انتقِل إلى <ph name="BEGIN_LINK" />خدمات Google<ph name="END_LINK" />.</translation>
 <translation id="6922332667202044570">‏يؤدي هذا الاختصار إلى حذف بيانات التصفّح في Chrome.</translation>
 <translation id="6924922227983877439">‏فتح الروابط في Chrome تلقائيًا</translation>
+<translation id="6926395711547387358">‏ضبط Chrome كمتصفِّح تلقائي</translation>
 <translation id="6975725306479268850">‏اختيار Chrome للاستفادة من ميزة "الملء التلقائي"</translation>
-<translation id="7001031184470316752">‏ما رأيك بنقل Chrome إلى "شريط التطبيقات"؟</translation>
 <translation id="7038674195294813388">‏يُرجى فتح إعدادات "التطبيقات التلقائية" في نظام التشغيل iOS، ثم النقر على "تطبيق المتصفّح" واختيار Chrome.</translation>
 <translation id="7056826488869329999">‏يؤدي هذا الاختصار إلى فتح صفحة "التحقّق من الأمان" وإجرائه في Chrome.</translation>
 <translation id="7061455974939528301">‏اضغط مع الاستمرار على رمز Chrome وانقر على "تعديل الشاشة الرئيسية" (Edit home screen)</translation>

@@ -45,10 +45,10 @@ import org.chromium.url.GURL;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeoutException;
 
-/** Tests functionality in BookmarkEditActivity for Desktop layout. */
+/** Tests functionality in BookmarkEditActivity for Desktop dialog. */
 @RunWith(BaseJUnit4ClassRunner.class)
 @Batch(Batch.PER_CLASS)
-@EnableFeatures({ChromeFeatureList.ANDROID_DESKTOP_BOOKMARK_LAYOUT})
+@EnableFeatures({ChromeFeatureList.ANDROID_DESKTOP_BOOKMARK_DIALOG})
 public class BookmarkEditDesktopTest {
 
     @Rule
@@ -107,8 +107,7 @@ public class BookmarkEditDesktopTest {
 
         startEditActivity(mBookmarkId);
         CriteriaHelper.pollUiThread(
-                () -> mActivity.getCloseButton() != null,
-                "Close button not initialized in options menu");
+                () -> mActivity.getCloseButton() != null, "Close button not initialized in header");
 
         ThreadUtils.runOnUiThreadBlocking(
                 () -> {
@@ -158,11 +157,11 @@ public class BookmarkEditDesktopTest {
 
     @Test
     @MediumTest
-    public void testDesktopLayoutInflated() {
+    public void testDesktopDialogInflated() {
         Assert.assertNotNull("Activity should not be null", mActivity);
         Assert.assertNotNull("Save button should exist", mActivity.getSaveButton());
         Assert.assertNotNull("Remove button should exist", mActivity.getRemoveButton());
-        Assert.assertNotNull("Close button should exist in menu", mActivity.getCloseButton());
+        Assert.assertNotNull("Close button should exist", mActivity.getCloseButton());
         Assert.assertNull("Delete button should not exist in menu", mActivity.getDeleteButton());
     }
 
@@ -228,7 +227,7 @@ public class BookmarkEditDesktopTest {
 
         ThreadUtils.runOnUiThreadBlocking(
                 () -> {
-                    mActivity.onOptionsItemSelected(mActivity.getCloseButton());
+                    mActivity.getCloseButton().performClick();
                 });
 
         mDestroyedCallback.waitForCallback(0);

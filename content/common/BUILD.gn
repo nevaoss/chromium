@@ -451,13 +451,9 @@ group("for_content_tests") {
 mojom("mojo_bindings") {
   # This interface is internal to content.
   visibility = [ "//content/*" ]
-
   if (use_neva_appruntime) {
     visibility += [ "//neva/app_runtime" ]
   }
-
-  disable_variants = true
-
   sources = [
     "agent_scheduling_group.mojom",
     "associated_interfaces.mojom",

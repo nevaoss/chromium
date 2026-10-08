@@ -85,11 +85,6 @@ namespace internal {
 
 std::array<uint8_t, ThreadCache::kBucketCount> ThreadCache::global_limits_;
 
-// Start with the normal size, not the maximum one.
-uint16_t ThreadCache::largest_active_bucket_index_ =
-    BucketIndexLookup::GetIndexForNeutralBuckets(
-        ThreadCache::kDefaultSizeThreshold);
-
 // static
 ThreadCacheRegistry& ThreadCacheRegistry::Instance() {
   return g_instance;
@@ -97,6 +92,7 @@ ThreadCacheRegistry& ThreadCacheRegistry::Instance() {
 
 void ThreadCacheRegistry::RegisterThreadCache(ThreadCache* cache) {
   internal::ScopedGuard scoped_locker(GetLock());
+  cache->active_bucket_count_ = active_bucket_count_;
   cache->next_ = nullptr;
   cache->prev_ = nullptr;
 
@@ -225,9 +221,15 @@ void ThreadCacheRegistry::ForcePurgeAllThreadAfterForkUnsafe() {
   }
 }
 
-void ThreadCacheRegistry::SetLargestActiveBucketIndex(
-    uint16_t largest_active_bucket_index) {
-  largest_active_bucket_index_ = largest_active_bucket_index;
+void ThreadCacheRegistry::SetActiveBucketCount(uint16_t active_bucket_count) {
+  internal::ScopedGuard scoped_locker(GetLock());
+  active_bucket_count_ = active_bucket_count;
+  ThreadCache* tcache = list_head_;
+  while (tcache) {
+    PA_DCHECK(ThreadCache::IsValid(tcache));
+    tcache->active_bucket_count_ = active_bucket_count;
+    tcache = tcache->next_;
+  }
 }
 
 void ThreadCacheRegistry::SetThreadCacheMultiplier(float multiplier) {
@@ -391,9 +393,10 @@ void ThreadCache::RemoveTombstoneForTesting() {
 void ThreadCache::Init(PartitionRoot* root) {
   PA_CHECK(root->buckets_[kBucketCount - 1].slot_size ==
            ThreadCache::kLargeSizeThreshold);
-  PA_UNSAFE_TODO(
-      PA_CHECK(root->buckets_[largest_active_bucket_index_].slot_size ==
-               ThreadCache::kDefaultSizeThreshold));
+  // SAFETY: active_bucket_count is validated to be <= kBucketCount.
+  PA_CHECK(PA_UNSAFE_BUFFERS(
+      root->buckets_[ThreadCacheRegistry::Instance().active_bucket_count_ - 1]
+          .slot_size == ThreadCache::kDefaultSizeThreshold));
   PA_DCHECK(root->settings_.thread_cache_index <
             internal::kMaxThreadCacheIndex);
 
@@ -479,11 +482,12 @@ void ThreadCache::SetLargestCachedSize(size_t size) {
   if (size > ThreadCache::kLargeSizeThreshold) {
     size = ThreadCache::kLargeSizeThreshold;
   }
-  largest_active_bucket_index_ = PartitionRoot::SizeToBucketIndex(
-      size, PartitionRoot::BucketDistribution::kNeutral);
-  PA_CHECK(largest_active_bucket_index_ < kBucketCount);
-  ThreadCacheRegistry::Instance().SetLargestActiveBucketIndex(
-      largest_active_bucket_index_);
+  uint16_t active_bucket_count =
+      PartitionRoot::SizeToBucketIndex(
+          size, PartitionRoot::BucketDistribution::kNeutral) +
+      1;
+  PA_CHECK(active_bucket_count <= kBucketCount);
+  ThreadCacheRegistry::Instance().SetActiveBucketCount(active_bucket_count);
 }
 
 // static
@@ -521,7 +525,9 @@ ThreadCache* ThreadCache::Create(PartitionRoot* root, size_t index) {
 }
 
 ThreadCache::ThreadCache(PartitionRoot* root)
-    : should_purge_(false),
+    : active_bucket_count_(
+          ThreadCacheRegistry::Instance().active_bucket_count_),
+      should_purge_(false),
 #if PA_BUILDFLAG(HAS_64_BIT_POINTERS)
       offset_lookup_(root->GetOffsetLookup()),
 #endif  // PA_BUILDFLAG(HAS_64_BIT_POINTERS)
@@ -631,9 +637,6 @@ void ThreadCache::FillBucket(size_t bucket_index) {
   int count = std::max(
       1, bucket.limit.load(std::memory_order_relaxed) / kBatchFillRatio);
 
-  size_t usable_size;
-  bool is_already_zeroed;
-
   PA_UNSAFE_TODO(PA_DCHECK(!root_->buckets_[bucket_index].CanStoreRawSize()));
   PA_UNSAFE_TODO(PA_DCHECK(!root_->buckets_[bucket_index].is_direct_mapped()));
 
@@ -659,27 +662,26 @@ void ThreadCache::FillBucket(size_t bucket_index) {
       // |raw_size| is set to the slot size, as we don't know it. However, it is
       // only used for direct-mapped allocations and single-slot ones anyway,
       // which are not handled here.
-      size_t ret_slot_size;
-      UntaggedSlotStart slot_start =
+      std::optional<PartitionRoot::RawAllocResult> raw_alloc_result =
           root_->AllocFromBucket<AllocFlags::kFastPathOrReturnNull |
                                  AllocFlags::kReturnNull>(
               &PA_UNSAFE_TODO(root_->buckets_[bucket_index]),
               PA_UNSAFE_TODO(root_->buckets_[bucket_index])
                   .slot_size /* raw_size */,
-              internal::PartitionPageSize(), &usable_size, &ret_slot_size,
-              &is_already_zeroed);
+              internal::PartitionPageSize());
       // Either the previous allocation would require a slow path allocation, or
       // the central allocator is out of memory. If the bucket was filled with
       // some objects, then the allocation will be handled normally. Otherwise,
       // this goes to the central allocator, which will service the allocation,
       // return nullptr or crash.
-      if (!slot_start) {
+      if (!raw_alloc_result.has_value()) {
         break;
       }
-      PA_UNSAFE_TODO(
-          PA_DCHECK(ret_slot_size == root_->buckets_[bucket_index].slot_size));
+      PA_DCHECK(raw_alloc_result->slot_and_size.size ==
+                root_->buckets_[bucket_index].slot_size);
 
-      slot_starts[allocated_slots++] = slot_start;
+      slot_starts[allocated_slots++] =
+          raw_alloc_result->slot_and_size.slot_start;
     }
   }
 
@@ -841,7 +843,7 @@ void ThreadCache::PurgeInternal() {
   // frequent.
   //
   // Note: iterate over all buckets_, even the inactive ones. Since
-  // |largest_active_bucket_index_| can be lowered at runtime, there may be
+  // |active_bucket_count_| can be lowered at runtime, there may be
   // memory already cached in the inactive buckets_. They should still be
   // purged.
   for (auto& bucket : buckets_) {

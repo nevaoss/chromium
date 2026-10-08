@@ -4,16 +4,15 @@
 
 package org.chromium.chrome.browser.notifications.channels;
 
-import android.app.NotificationChannel;
 import android.app.NotificationManager;
-import android.os.Build;
 import android.text.TextUtils;
 
 import androidx.annotation.StringDef;
 
-import org.chromium.base.ContextUtils;
+import org.chromium.base.DeviceInfo;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
+import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.notifications.R;
 import org.chromium.components.browser_ui.notifications.channels.ChannelDefinitions;
 
@@ -46,7 +45,7 @@ public class ChromeChannelDefinitions extends ChannelDefinitions {
      * set of channels returned by {@link #getStartupChannelIds()} or {@link #getLegacyChannelIds()}
      * changes.
      */
-    static final int CHANNELS_VERSION = 8;
+    static final int CHANNELS_VERSION = 9;
 
     private static class LazyHolder {
         private static final ChromeChannelDefinitions sInstance = new ChromeChannelDefinitions();
@@ -60,9 +59,20 @@ public class ChromeChannelDefinitions extends ChannelDefinitions {
 
     /**
      * Keeps the value consistent with {@link
-     * org.chromium.webapk.shell_apk.WebApkServiceImplWrapper#DEFAULT_NOTIFICATION_CHANNEL_ID}.
+     * org.chromium.webapk.lib.common.WebApkConstants#DEFAULT_NOTIFICATION_CHANNEL_ID}.
      */
     public static final String CHANNEL_ID_WEBAPKS = "default_channel_id";
+
+    /**
+     * Keeps the value consistent with {@link
+     * org.chromium.webapk.lib.common.WebApkConstants#HIGH_PRIORITY_NOTIFICATION_CHANNEL_ID}.
+     */
+    public static final String CHANNEL_ID_WEBAPKS_HIGH_PRIORITY = "default_channel_id_high";
+
+    public static boolean isHighPrioritySiteNotificationsEnabled() {
+        return DeviceInfo.isDesktop()
+                && ChromeFeatureList.sHighPrioritySiteNotifications.isEnabled();
+    }
 
     /**
      * To define a new channel, add the channel ID to this StringDef and add a new entry to
@@ -99,7 +109,7 @@ public class ChromeChannelDefinitions extends ChannelDefinitions {
         ChannelId.BLUETOOTH,
         ChannelId.USB,
         ChannelId.SERIAL,
-        ChannelId.TIPS,
+        ChannelId.TIPS, // Deprecated, use TIPS_V2.
         ChannelId.TIPS_V2,
         ChannelId.CHROME_FINDS,
     })
@@ -145,7 +155,7 @@ public class ChromeChannelDefinitions extends ChannelDefinitions {
     // clang-format off
     // LINT.ThenChange(
     //   //tools/metrics/histograms/metadata/mobile/histograms.xml:NotificationChannelId,
-    //   //chrome/browser/notifications/android/java/src/org/chromium/chrome/browser/notifications/NotificationUmaTracker.java:NotificationChannelId
+    //   ../NotificationUmaTracker.java:NotificationChannelId
     // )
     // clang-format on
 
@@ -388,31 +398,6 @@ public class ChromeChannelDefinitions extends ChannelDefinitions {
                             NotificationManager.IMPORTANCE_LOW,
                             ChannelGroupId.GENERAL));
 
-            // Temporary migration logic from the old tips notification channel to the new tips
-            // notification channel. To be removed in a follow up task.
-            // TODO(crbug.com/509668849): Fully deprecate the ChannelId.TIPS channel after a few
-            // milestones from M150 when this migration code is landed to consolidate the tips
-            // notifications channel to be solely using ChannelId.TIPS_V2.
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                NotificationManager notificationManager =
-                        ContextUtils.getApplicationContext()
-                                .getSystemService(NotificationManager.class);
-                if (notificationManager != null) {
-                    NotificationChannel tipsChannel =
-                            notificationManager.getNotificationChannel(ChannelId.TIPS);
-                    if (tipsChannel != null) {
-                        NotificationChannel tipsV2Channel =
-                                new NotificationChannel(
-                                        ChannelId.TIPS_V2,
-                                        ContextUtils.getApplicationContext()
-                                                .getString(R.string.notification_category_tips),
-                                        tipsChannel.getImportance());
-                        tipsV2Channel.setGroup(ChannelGroupId.GENERAL);
-                        notificationManager.createNotificationChannel(tipsV2Channel);
-                        notificationManager.deleteNotificationChannel(ChannelId.TIPS);
-                    }
-                }
-            }
             // The tips notification channel will appear for users who opted in.
             // For new users, it will be created when they explicitly opt in.
             map.put(
@@ -503,6 +488,8 @@ public class ChromeChannelDefinitions extends ChannelDefinitions {
     @Override
     public boolean isValidNonPredefinedChannelId(String channelId) {
         return SiteChannelsManager.isValidSiteChannelId(channelId)
-                || TextUtils.equals(channelId, ChromeChannelDefinitions.CHANNEL_ID_WEBAPKS);
+                || TextUtils.equals(channelId, ChromeChannelDefinitions.CHANNEL_ID_WEBAPKS)
+                || TextUtils.equals(
+                        channelId, ChromeChannelDefinitions.CHANNEL_ID_WEBAPKS_HIGH_PRIORITY);
     }
 }

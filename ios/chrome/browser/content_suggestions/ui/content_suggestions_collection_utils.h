@@ -48,6 +48,7 @@ extern const CGFloat kReducedModuleSpacingControl;
 extern const CGFloat kQuickActionsTopPadding;
 extern const CGFloat kReducedModuleSpacing;
 extern const CGFloat kReducedModuleSpacingRegularXRegular;
+extern const CGFloat kNTPShrunkLogoSearchFieldBottomPadding;
 
 // Returns the proper height for the doodle, based on `logo_state`. The
 // SizeClass of the `trait_collection` of the view displaying the doodle is used
@@ -121,9 +122,6 @@ void ConfigureLensButtonAppearance(UIButton* lens_button,
 // Configure the `lens_button` new badge's alpha.
 void ConfigureLensButtonWithNewBadgeAlpha(UIButton* lens_button,
                                           CGFloat new_badge_alpha);
-
-// Returns the nearest ancestor of `view` that is kind of `of_class`.
-UIView* NearestAncestor(UIView* view, Class of_class);
 
 // Returns the color of the search hint label in the fakebox.
 UIColor* SearchHintLabelColor();

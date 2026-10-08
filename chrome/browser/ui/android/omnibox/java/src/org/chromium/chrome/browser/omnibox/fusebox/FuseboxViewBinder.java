@@ -35,18 +35,15 @@ import androidx.recyclerview.widget.RecyclerView.LayoutManager;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.omnibox.R;
-import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator.FuseboxLayoutMode;
-import org.chromium.chrome.browser.omnibox.fusebox.FuseboxCoordinator.FuseboxState;
+import org.chromium.chrome.browser.omnibox.fusebox.FuseboxProperties.AnchoringMode;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxProperties.BackgroundStyle;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxProperties.PopupButtonData;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxProperties.PopupButtonType;
-import org.chromium.chrome.browser.omnibox.fusebox.FuseboxViewHolder.AnchoringMode;
 import org.chromium.chrome.browser.omnibox.styles.OmniboxResourceProvider;
 import org.chromium.chrome.browser.ui.theme.BrandedColorScheme;
 import org.chromium.components.browser_ui.widget.RoundedCornerOutlineProvider;
 import org.chromium.components.omnibox.AutocompleteRequestType;
 import org.chromium.components.omnibox.IconResourceIdsProto.IconResourceIds;
-import org.chromium.components.omnibox.OmniboxFeatures;
 import org.chromium.components.omnibox.ToolModeUtils;
 import org.chromium.ui.modelutil.PropertyKey;
 import org.chromium.ui.modelutil.PropertyModel;
@@ -70,6 +67,8 @@ class FuseboxViewBinder {
     public void bind(PropertyModel model, FuseboxViewHolder view, PropertyKey propertyKey) {
         if (propertyKey == FuseboxProperties.ADAPTER) {
             view.attachmentsView.setAdapter(model.get(FuseboxProperties.ADAPTER));
+        } else if (propertyKey == FuseboxProperties.ANCHORING_MODE) {
+            reanchorViewsForCompactFusebox(model, view);
         } else if (propertyKey == FuseboxProperties.ATTACHMENTS_VISIBLE) {
             boolean visible = model.get(FuseboxProperties.ATTACHMENTS_VISIBLE);
             view.attachmentsView.setVisibility(visible ? View.VISIBLE : View.GONE);
@@ -95,10 +94,6 @@ class FuseboxViewBinder {
             }
         } else if (propertyKey == FuseboxProperties.COLOR_SCHEME) {
             updateButtonsVisibilityAndStyling(model, view);
-        } else if (propertyKey == FuseboxProperties.FUSEBOX_STATE) {
-            reanchorViewsForCompactFusebox(model, view);
-        } else if (propertyKey == FuseboxProperties.FUSEBOX_LAYOUT_MODE) {
-            reanchorViewsForCompactFusebox(model, view);
         } else if (propertyKey == FuseboxProperties.PLUS_BUTTON_BACKGROUND_STYLE) {
             updatePlusButtonVisuals(model, view);
         } else if (propertyKey == FuseboxProperties.PLUS_BUTTON_CLICKED) {
@@ -107,6 +102,8 @@ class FuseboxViewBinder {
         } else if (propertyKey == FuseboxProperties.PLUS_BUTTON_VISIBLE) {
             boolean showPlusButton = model.get(FuseboxProperties.PLUS_BUTTON_VISIBLE);
             view.plusButton.setVisibility(showPlusButton ? View.VISIBLE : View.GONE);
+        } else if (propertyKey == FuseboxProperties.POPUP_ACCORDION_EXPANDED) {
+            view.popup.setAccordionExpanded(model.get(FuseboxProperties.POPUP_ACCORDION_EXPANDED));
         } else if (propertyKey == FuseboxProperties.POPUP_ATTACH_CAMERA_CLICKED) {
             view.popup.mCameraButton.setOnClickListener(
                     v -> model.get(FuseboxProperties.POPUP_ATTACH_CAMERA_CLICKED).run());
@@ -131,6 +128,15 @@ class FuseboxViewBinder {
                     model,
                     FuseboxProperties.POPUP_ATTACH_CURRENT_TAB_VISIBLE,
                     view.popup.mAddCurrentTab);
+        } else if (propertyKey == FuseboxProperties.POPUP_ATTACH_DRIVE_CLICKED) {
+            view.popup.mDriveButton.setOnClickListener(
+                    v -> model.get(FuseboxProperties.POPUP_ATTACH_DRIVE_CLICKED).run());
+        } else if (propertyKey == FuseboxProperties.POPUP_ATTACH_DRIVE_ENABLED) {
+            view.popup.mDriveButton.setEnabled(
+                    model.get(FuseboxProperties.POPUP_ATTACH_DRIVE_ENABLED));
+        } else if (propertyKey == FuseboxProperties.POPUP_ATTACH_DRIVE_VISIBLE) {
+            updateButtonVisibility(
+                    model, FuseboxProperties.POPUP_ATTACH_DRIVE_VISIBLE, view.popup.mDriveButton);
         } else if (propertyKey == FuseboxProperties.POPUP_ATTACH_FILE_CLICKED) {
             view.popup.mFileButton.setOnClickListener(
                     v -> model.get(FuseboxProperties.POPUP_ATTACH_FILE_CLICKED).run());
@@ -176,6 +182,16 @@ class FuseboxViewBinder {
                     model.get(FuseboxProperties.POPUP_MODEL_HEADER_VISIBLE)
                             ? View.VISIBLE
                             : View.GONE);
+        } else if (propertyKey == FuseboxProperties.POPUP_MORE_OPTIONS_CLICKED) {
+            view.popup.mMoreOptionsButton.setOnClickListener(
+                    v -> model.get(FuseboxProperties.POPUP_MORE_OPTIONS_CLICKED).run());
+        } else if (propertyKey == FuseboxProperties.POPUP_MORE_OPTIONS_VISIBLE) {
+            boolean visible = model.get(FuseboxProperties.POPUP_MORE_OPTIONS_VISIBLE);
+            updateButtonVisibility(
+                    model,
+                    FuseboxProperties.POPUP_MORE_OPTIONS_VISIBLE,
+                    view.popup.mMoreOptionsButton);
+            view.popup.setAccordionEnabled(visible);
         } else if (propertyKey == FuseboxProperties.POPUP_RECENT_TABS_BUTTON_DATA_LIST) {
             updateRecentTabsButtons(model, view);
         } else if (propertyKey == FuseboxProperties.POPUP_RECENT_TABS_DIVIDER_VISIBLE) {
@@ -302,7 +318,10 @@ class FuseboxViewBinder {
             } else {
                 buttonView =
                         LayoutInflater.from(group.getContext())
-                                .inflate(R.layout.fusebox_list_item, group, false);
+                                .inflate(
+                                        R.layout.fusebox_list_item,
+                                        group,
+                                        /* attachToRoot= */ false);
                 group.addView(buttonView, startIndex + i);
             }
             bindDynamicButton(
@@ -313,7 +332,7 @@ class FuseboxViewBinder {
     private static void updateModelButtons(PropertyModel model, FuseboxViewHolder view) {
         List<PopupButtonData> buttonDataList =
                 model.get(FuseboxProperties.POPUP_MODEL_BUTTON_DATA_LIST);
-        ViewGroup group = view.popup.mViewGroup;
+        ViewGroup group = view.popup.mAccordionContainer;
         int headerIndex = group.indexOfChild(view.popup.mModelsHeader);
         assert headerIndex >= 0;
 
@@ -323,7 +342,7 @@ class FuseboxViewBinder {
     private static void updateToolButtons(PropertyModel model, FuseboxViewHolder view) {
         List<PopupButtonData> buttonDataList =
                 model.get(FuseboxProperties.POPUP_TOOL_BUTTON_DATA_LIST);
-        ViewGroup group = view.popup.mViewGroup;
+        ViewGroup group = view.popup.mAccordionContainer;
         int headerIndex = group.indexOfChild(view.popup.mToolsHeader);
         assert headerIndex >= 0;
         int dividerIndex = group.indexOfChild(view.popup.mModelsDivider);
@@ -679,24 +698,7 @@ class FuseboxViewBinder {
     private static void reanchorViewsForCompactFusebox(
             PropertyModel model, FuseboxViewHolder view) {
         long startTime = SystemClock.elapsedRealtime();
-        @AnchoringMode int targetMode;
-        if (model.get(FuseboxProperties.FUSEBOX_LAYOUT_MODE)
-                == FuseboxLayoutMode.SUGGESTIONS_POPOVER) {
-            targetMode = AnchoringMode.POPOVER;
-        } else if (model.get(FuseboxProperties.FUSEBOX_STATE) == FuseboxState.EXPANDED) {
-            targetMode = AnchoringMode.TOOLBAR_MULTI_LINE;
-        } else {
-            targetMode = AnchoringMode.TOOLBAR_SINGLE_LINE;
-        }
-
-        // TODO(crbug.com/546568339): Refactor layout anchoring mode into PropertyModel once this
-        // optimization feature is cleaned up.
-        if (OmniboxFeatures.sModelPickerOptimizations.getValue()) {
-            if (view.currentAnchoringMode == targetMode) {
-                FuseboxMetrics.recordReanchorViewsDuration(startTime);
-                return;
-            }
-        }
+        @AnchoringMode int targetMode = model.get(FuseboxProperties.ANCHORING_MODE);
 
         int topToTop = ConstraintSet.UNSET;
         int topToBottom = ConstraintSet.UNSET;
@@ -743,7 +745,6 @@ class FuseboxViewBinder {
 
         cs.applyTo(view.parentView);
 
-        view.currentAnchoringMode = targetMode;
         FuseboxMetrics.recordReanchorViewsDuration(startTime);
     }
 

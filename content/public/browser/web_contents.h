@@ -40,7 +40,7 @@
 #include "content/public/browser/preloading_trigger_type.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/save_page_type.h"
-#include "content/public/browser/session_storage_namespace.h"
+#include "content/public/browser/session_storage_namespace_handle.h"
 #include "content/public/browser/visibility.h"
 #include "content/public/browser/web_contents_capability_type.h"
 #include "content/public/common/buildflags.h"
@@ -295,7 +295,7 @@ class WebContents : public PageNavigator, public base::SupportsUserData {
     //     manipulating the freshly created WebContents prior to initializing
     //     renderer-side objects (e.g. in scenarios like
     //     WebContentsImpl::CreateNewWindow which needs to copy the
-    //     SessionStorageNamespace)
+    //     SessionStorageNamespaceHandle)
     //   - kOkayToHaveRendererProcess is the default latency-conserving mode.
     //     In this mode a spare, pre-spawned RenderProcessHost may be claimed
     //     by the newly created WebContents, but no renderer-side objects will
@@ -414,18 +414,18 @@ class WebContents : public PageNavigator, public base::SupportsUserData {
       const CreateParams& params);
 
   // Similar to Create() above but should be used when you need to prepopulate
-  // the SessionStorageNamespaceMap of the WebContents. This can happen if
+  // the SessionStorageNamespaceHandleMap of the WebContents. This can happen if
   // you duplicate a WebContents, try to reconstitute it from a saved state,
   // or when you create a new WebContents based on another one (eg., when
   // servicing a window.open() call).
   //
   // You do not want to call this. If you think you do, make sure you completely
-  // understand when SessionStorageNamespace objects should be cloned, why
+  // understand when SessionStorageNamespaceHandle objects should be cloned, why
   // they should not be shared by multiple WebContents, and what bad things
   // can happen if you share the object.
   CONTENT_EXPORT static std::unique_ptr<WebContents> CreateWithSessionStorage(
       const CreateParams& params,
-      const SessionStorageNamespaceMap& session_storage_namespace_map);
+      const SessionStorageNamespaceHandleMap& session_storage_namespace_map);
 
   // Returns the WebContents that owns the RenderViewHost.
   //
@@ -1701,8 +1701,6 @@ class WebContents : public PageNavigator, public base::SupportsUserData {
   // browser process, rather than relying on the untrustworthy renderer. This
   // should be merged with the trusted user activation states tracked at frame
   // granularity: crbug.com/40091540
-  //
-  // This is a page-wide signal and must not be used for frame-scoped actions.
   virtual bool HasRecentInteraction() = 0;
 
   // Returns the time ticks of the last user interaction.

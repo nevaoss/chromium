@@ -59,7 +59,7 @@ import java.util.Set;
 @NullMarked
 public abstract class BottomSheetListViewBase implements BottomSheetContent {
     public static final int MAX_FULLY_VISIBLE_LIST_ITEM_COUNT = 3;
-    private static final @Px int INVALID_PX_DIMENSION = -1;
+    static final @Px int INVALID_PX_DIMENSION = -1;
 
     private final BottomSheetController mBottomSheetController;
     private final View mContentView;
@@ -94,20 +94,24 @@ public abstract class BottomSheetListViewBase implements BottomSheetContent {
                     boolean isLargeFormFactor =
                             mBottomSheetController.isLargeFormFactorUiEnabled(
                                     BottomSheetListViewBase.this);
-                    BottomSheetListViewBase.this.onSheetStateChanged(newState, reason);
                     if (newState == BottomSheetController.SheetState.FULL) {
                         // The list of items should be scrollable in full state.
                         assumeNonNull(mSheetItemListView).suppressLayout(false);
-                    } else if (newState == BottomSheetController.SheetState.HALF
-                            && mScrollListener.isScrolledToTop()) {
-                        // The list of items should not be scrollable when the sheet transitions
-                        // into half state if it's scrolled to the top. If the list is currently
-                        // scrolled away from the top, it should stay scrolled in half state
-                        // until the user scrolls to the top.
-                        // On desktop/large form factor devices, keep the list scrollable via mouse
-                        // wheel in half state.
-                        if (!isLargeFormFactor) {
-                            assumeNonNull(mSheetItemListView).suppressLayout(true);
+                        BottomSheetListViewBase.this.onSheetStateChanged(newState, reason);
+                    } else {
+                        BottomSheetListViewBase.this.onSheetStateChanged(newState, reason);
+                        if (newState == BottomSheetController.SheetState.HALF
+                                && mScrollListener.isScrolledToTop()) {
+                            // The list of items should not be scrollable when the sheet transitions
+                            // into half state if it's scrolled to the top. If the list is currently
+                            // scrolled away from the top, it should stay scrolled in half state
+                            // until the user scrolls to the top.
+                            // On desktop/large form factor devices, keep the list scrollable via
+                            // mouse
+                            // wheel in half state.
+                            if (!isLargeFormFactor) {
+                                assumeNonNull(mSheetItemListView).suppressLayout(true);
+                            }
                         }
                     }
                     if (newState != BottomSheetController.SheetState.HIDDEN) {
@@ -117,6 +121,19 @@ public abstract class BottomSheetListViewBase implements BottomSheetContent {
                     assumeNonNull(mDismissHandler);
                     mDismissHandler.onResult(BottomSheetController.StateChangeReason.NONE);
                     mBottomSheetController.removeObserver(mBottomSheetObserver);
+                }
+
+                @Override
+                public void onContainerSizeChanged(@Px int width, @Px int height) {
+                    if (mBottomSheetController.getCurrentSheetContent()
+                            != BottomSheetListViewBase.this) {
+                        return;
+                    }
+                    invalidateMeasurementCache();
+                    if (mSheetItemListView != null) {
+                        remeasure();
+                    }
+                    BottomSheetListViewBase.this.onContainerSizeChanged(width, height);
                 }
             };
 
@@ -180,6 +197,10 @@ public abstract class BottomSheetListViewBase implements BottomSheetContent {
             Boolean suppressCollectionA11y) {
         mBottomSheetController = bottomSheetController;
         mContentView = contentView;
+        mContentView.setLayoutDirection(
+                LocalizationUtils.isLayoutRtl()
+                        ? View.LAYOUT_DIRECTION_RTL
+                        : View.LAYOUT_DIRECTION_LTR);
         mContentView.setOnGenericMotionListener((v, e) -> true); // Filter background interaction.
 
         mScrollListener = new BottomSheetRecyclerScrollListener(mBottomSheetController);
@@ -465,12 +486,39 @@ public abstract class BottomSheetListViewBase implements BottomSheetContent {
 
     protected void onSheetStateChanged(@SheetState int newState, @StateChangeReason int reason) {}
 
+    /**
+     * Called when the bottom sheet container size has changed (e.g. screen rotation or resizing).
+     *
+     * @param width The new container width in pixels.
+     * @param height The new container height in pixels.
+     */
+    protected void onContainerSizeChanged(@Px int width, @Px int height) {}
+
+    @Px
+    int getCachedDesiredSheetHeightPxForTesting() {
+        return mCachedDesiredSheetHeightPx;
+    }
+
+    @Px
+    int getCachedMaximumSheetHeightPxForTesting() {
+        return mCachedMaximumSheetHeightPx;
+    }
+
+    void setCachedHeightsForTesting(@Px int desiredHeight, @Px int maxHeight) {
+        mCachedDesiredSheetHeightPx = desiredHeight;
+        mCachedMaximumSheetHeightPx = maxHeight;
+    }
+
     protected boolean isFullyExtended() {
         return mBottomSheetController.getCurrentOffset()
                 == Math.min(getMaximumSheetHeightPx(), getAvailableSheetHeight());
     }
 
     private @Px int getInsetDisplayWidthPx() {
+        if (mBottomSheetController.isLargeFormFactorUiEnabled(this)) {
+            int maxSheetWidth = mBottomSheetController.getMaxSheetWidth();
+            if (maxSheetWidth > 0) return maxSheetWidth;
+        }
         return mContentView.getContext().getResources().getDisplayMetrics().widthPixels
                 - 2 * getSideMarginPx();
     }
@@ -508,6 +556,10 @@ public abstract class BottomSheetListViewBase implements BottomSheetContent {
 
     public BottomSheetRecyclerScrollListener getScrollListenerForTesting() {
         return mScrollListener;
+    }
+
+    BottomSheetObserver getBottomSheetObserverForTesting() {
+        return mBottomSheetObserver;
     }
 
     @Override

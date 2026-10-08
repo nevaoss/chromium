@@ -17,6 +17,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.clearInvocations;
@@ -35,6 +36,7 @@ import android.util.SparseArray;
 import android.view.View;
 import android.view.ViewStructure;
 import android.view.autofill.AutofillValue;
+import android.widget.FrameLayout;
 
 import androidx.annotation.Nullable;
 import androidx.test.filters.SmallTest;
@@ -43,14 +45,12 @@ import org.junit.Before;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 import org.robolectric.annotation.Config;
 
-import org.chromium.base.Callback;
+import org.chromium.base.ContextUtils;
 import org.chromium.base.Token;
 import org.chromium.base.supplier.ObservableSuppliers;
 import org.chromium.base.test.BaseRobolectricTestRunner;
@@ -58,6 +58,8 @@ import org.chromium.base.test.util.Features.DisableFeatures;
 import org.chromium.base.test.util.Features.EnableFeatures;
 import org.chromium.chrome.browser.app.ChromeActivity;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
+import org.chromium.chrome.browser.pdf.PdfInfo;
+import org.chromium.chrome.browser.pdf.PdfUtils;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.settings.SettingsInTab;
 import org.chromium.chrome.browser.settings.SettingsNavigationFactory;
@@ -120,7 +122,6 @@ public class TabUnitTest {
     @Mock private SecurityStateModel.Natives mSecurityStateModelNatives;
     @Mock private SelectionPopupControllerImpl mSelectionPopupController;
     @Mock private WebsitePreferenceBridge.Natives mWebsitePreferenceBridgeJniMock;
-    @Captor private ArgumentCaptor<Callback<Tab>> mCallbackCaptor;
 
     private final SettableLookAheadObservableSupplier<Tab> mTabSupplier =
             new SettableLookAheadObservableSupplier<>();
@@ -417,8 +418,14 @@ public class TabUnitTest {
                     }
 
                     @Override
+                    public boolean isHidden() {
+                        return false;
+                    }
+
+                    @Override
                     void pushNativePageStateToNavigationEntry() {}
                 };
+        mTab.showNativePage(mNativePage);
         mTab.updateAttachment(mWindowAndroid, mDelegateFactory);
 
         // A valid, non-null NativeFrozenPage object should be instantiated when a Tab is
@@ -426,6 +433,177 @@ public class TabUnitTest {
         assertEquals(mTab.getNativePage(), mNativePage);
         mTab.freezeNativePage();
         assertNotEquals(mTab.getNativePage(), mNativePage);
+    }
+
+    @Test
+    @SmallTest
+    @EnableFeatures({ChromeFeatureList.PDF_REUSE_FRAGMENT})
+    public void testUpdateAttachment_reattachHiddenFreezesWhenViewHasNoParent() {
+        TabImplJni.setInstanceForTesting(mNativeMock);
+
+        doReturn(mTabWebContentsDelegateAndroid)
+                .when(mDelegateFactory)
+                .createWebContentsDelegate(any(Tab.class));
+        doReturn(mNativePage)
+                .when(mDelegateFactory)
+                .createNativePage(any(String.class), any(), any(Tab.class), any());
+        doReturn(false).when(mNativePage).isFrozen();
+
+        FrameLayout parent = new FrameLayout(ContextUtils.getApplicationContext());
+        View view = new View(ContextUtils.getApplicationContext());
+        parent.addView(view);
+        doReturn(view).when(mNativePage).getView();
+
+        doReturn(mWindowAndroid).when(mWebContents).getTopLevelNativeWindow();
+        doReturn(mChromeActivity).when(mWeakReferenceContext).get();
+
+        boolean[] isHidden = new boolean[] {false};
+        mTab =
+                new TabImpl(TAB1_ID, mProfile, TabLaunchType.FROM_CHROME_UI) {
+                    @Override
+                    public WindowAndroid getWindowAndroid() {
+                        return mWindowAndroid;
+                    }
+
+                    @Override
+                    void updateWindowAndroid(WindowAndroid windowAndroid) {}
+
+                    @Override
+                    public WebContents getWebContents() {
+                        return mWebContents;
+                    }
+
+                    @Override
+                    public boolean isNativePage() {
+                        return true;
+                    }
+
+                    @Override
+                    public boolean isHidden() {
+                        return isHidden[0];
+                    }
+
+                    @Override
+                    void pushNativePageStateToNavigationEntry() {}
+                };
+        mTab.showNativePage(mNativePage);
+        mTab.updateAttachment(mWindowAndroid, mDelegateFactory);
+        assertEquals(mTab.getNativePage(), mNativePage);
+        assertEquals(view, mTab.getView());
+        assertEquals(parent, view.getParent());
+        assertEquals(1, parent.getChildCount());
+
+        // Detaching the tab should not remove getView() from its parent ViewGroup.
+        mTab.updateAttachment(/* window= */ null, /* tabDelegateFactory= */ null);
+        assertEquals(parent, view.getParent());
+        assertEquals(1, parent.getChildCount());
+
+        // Remove the view from parent before re-attaching hidden.
+        parent.removeView(view);
+
+        // Re-attaching the tab while hidden should freeze the native page.
+        isHidden[0] = true;
+        mTab.updateAttachment(mWindowAndroid, mDelegateFactory);
+        assertNotEquals(mTab.getNativePage(), mNativePage);
+        assertTrue(mTab.getNativePage().isFrozen());
+    }
+
+    @Test
+    @SmallTest
+    @EnableFeatures({ChromeFeatureList.PDF_REUSE_FRAGMENT})
+    public void testUpdateAttachment_reattachHiddenReloadsWhenViewHasParent() {
+        TabImplJni.setInstanceForTesting(mNativeMock);
+
+        NativePage newNativePage = mock(NativePage.class);
+        doReturn(false).when(newNativePage).isFrozen();
+        View newView = new View(ContextUtils.getApplicationContext());
+        doReturn(newView).when(newNativePage).getView();
+
+        doReturn(mTabWebContentsDelegateAndroid)
+                .when(mDelegateFactory)
+                .createWebContentsDelegate(any(Tab.class));
+        doReturn(mNativePage)
+                .doReturn(newNativePage)
+                .when(mDelegateFactory)
+                .createNativePage(any(String.class), any(), any(Tab.class), any());
+        doReturn(false).when(mNativePage).isFrozen();
+
+        FrameLayout parent = new FrameLayout(ContextUtils.getApplicationContext());
+        View view = new View(ContextUtils.getApplicationContext());
+        parent.addView(view);
+        doReturn(view).when(mNativePage).getView();
+
+        doReturn(mWindowAndroid).when(mWebContents).getTopLevelNativeWindow();
+        doReturn(mChromeActivity).when(mWeakReferenceContext).get();
+
+        boolean[] isHidden = new boolean[] {false};
+        boolean[] maybeShowNativePageCalledWithForceReload = new boolean[] {false};
+        mTab =
+                new TabImpl(TAB1_ID, mProfile, TabLaunchType.FROM_CHROME_UI) {
+                    @Override
+                    public WindowAndroid getWindowAndroid() {
+                        return mWindowAndroid;
+                    }
+
+                    @Override
+                    void updateWindowAndroid(WindowAndroid windowAndroid) {}
+
+                    @Override
+                    public WebContents getWebContents() {
+                        return mWebContents;
+                    }
+
+                    @Override
+                    public boolean isNativePage() {
+                        return true;
+                    }
+
+                    @Override
+                    public boolean isHidden() {
+                        return isHidden[0];
+                    }
+
+                    @Override
+                    public boolean isDetachedFromActivity() {
+                        return false;
+                    }
+
+                    @Override
+                    void pushNativePageStateToNavigationEntry() {}
+
+                    @Override
+                    boolean maybeShowNativePage(
+                            String url, boolean forceReload, @Nullable PdfInfo pdfInfo) {
+                        maybeShowNativePageCalledWithForceReload[0] = forceReload;
+                        return super.maybeShowNativePage(url, forceReload, pdfInfo);
+                    }
+                };
+        mTab.showNativePage(mNativePage);
+        mTab.updateAttachment(mWindowAndroid, mDelegateFactory);
+        assertEquals(mTab.getNativePage(), mNativePage);
+        mTab.updateAttachment(/* window= */ null, /* tabDelegateFactory= */ null);
+
+        // The view still has a parent upon re-attaching hidden.
+        assertEquals(parent, view.getParent());
+
+        clearInvocations(mDelegateFactory);
+        isHidden[0] = true;
+        mTab.updateAttachment(mWindowAndroid, mDelegateFactory);
+
+        // When a native page view has a parent ViewGroup upon hidden re-attachment, it is NOT
+        // frozen (avoiding a blank screen), and instead calls maybeShowNativePage with
+        // forceReload = true (binding to the new Activity and destroying the old one).
+        assertEquals(parent, view.getParent());
+        assertFalse(mTab.getNativePage().isFrozen());
+        assertTrue(maybeShowNativePageCalledWithForceReload[0]);
+        verify(mDelegateFactory)
+                .createNativePage(
+                        any(String.class),
+                        /* candidatePage= */ isNull(),
+                        eq(mTab),
+                        /* pdfInfo= */ isNull());
+        verify(mNativePage).destroy();
+        assertEquals(newNativePage, mTab.getNativePage());
     }
 
     @Test
@@ -1048,5 +1226,60 @@ public class TabUnitTest {
         mTab.goForward();
         verify(callback, never()).handleBeforeUnload(any(), any());
         verify(mNavigationController, never()).goForward();
+    }
+
+    @Test
+    @SmallTest
+    @EnableFeatures(ChromeFeatureList.ANDROID_HANDLE_PDF_IN_IFRAME)
+    public void testHandleDidFinishNavigation_PdfBlobUrl_RedownloadTriggered() {
+        mTab.setNativePtrForTesting(1);
+        when(mWebContents.getNavigationController()).thenReturn(mNavigationController);
+        when(mWebContents.getTopLevelNativeWindow()).thenReturn(mWindowAndroid);
+        mTab.setWebContentsForTesting(mWebContents);
+        mTab.updateAttachment(mWindowAndroid, mDelegateFactory);
+
+        String blobUrl = "blob:https://example.com/some-uuid";
+        String encodedUrl = PdfUtils.encodePdfPageUrl(blobUrl);
+        handleDidFinishNavigation(mTab, new GURL(encodedUrl));
+
+        verify(mNavigationController).loadUrl(argThat(params -> blobUrl.equals(params.getUrl())));
+    }
+
+    @Test
+    @SmallTest
+    public void testHandleDidFinishNavigation_PdfViewerPath_RedownloadTriggered() {
+        mTab.setNativePtrForTesting(1);
+        when(mWebContents.getNavigationController()).thenReturn(mNavigationController);
+        when(mWebContents.getTopLevelNativeWindow()).thenReturn(mWindowAndroid);
+        mTab.setWebContentsForTesting(mWebContents);
+        mTab.updateAttachment(mWindowAndroid, mDelegateFactory);
+
+        String httpUrl = "https://example.com/test.pdf";
+        String encodedUrl =
+                PdfUtils.encodePdfPageUrl(httpUrl)
+                        .replace("chrome-native://pdf/link", "chrome-native://pdf/pdf-viewer/link");
+        handleDidFinishNavigation(mTab, new GURL(encodedUrl));
+
+        verify(mNavigationController).loadUrl(argThat(params -> httpUrl.equals(params.getUrl())));
+    }
+
+    @Test
+    @SmallTest
+    @DisableFeatures({
+        ChromeFeatureList.ANDROID_HANDLE_PDF_IN_IFRAME,
+        ChromeFeatureList.ANDROID_SETTINGS_URL
+    })
+    public void testHandleDidFinishNavigation_PdfBlobUrl_FeatureDisabled_NoRedownload() {
+        mTab.setNativePtrForTesting(1);
+        when(mWebContents.getNavigationController()).thenReturn(mNavigationController);
+        when(mWebContents.getTopLevelNativeWindow()).thenReturn(mWindowAndroid);
+        mTab.setWebContentsForTesting(mWebContents);
+        mTab.updateAttachment(mWindowAndroid, mDelegateFactory);
+
+        String blobUrl = "blob:https://example.com/some-uuid";
+        String encodedUrl = PdfUtils.encodePdfPageUrl(blobUrl);
+        handleDidFinishNavigation(mTab, new GURL(encodedUrl));
+
+        verify(mNavigationController, never()).loadUrl(any());
     }
 }

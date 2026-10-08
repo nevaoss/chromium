@@ -17,8 +17,10 @@ import static androidx.test.espresso.matcher.ViewMatchers.withText;
 import static org.hamcrest.Matchers.allOf;
 import static org.hamcrest.Matchers.anyOf;
 import static org.hamcrest.Matchers.not;
+import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotEquals;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertTrue;
 
 import static org.chromium.chrome.browser.url_constants.UrlConstantResolver.getOriginalNativeNtpUrl;
 
@@ -33,6 +35,7 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
+import org.chromium.base.DeviceInfo;
 import org.chromium.base.ThreadUtils;
 import org.chromium.base.test.util.ApplicationTestUtils;
 import org.chromium.base.test.util.CommandLineFlags;
@@ -65,16 +68,20 @@ import org.chromium.components.user_prefs.UserPrefs;
 import org.chromium.content_public.browser.test.NativeLibraryTestUtils;
 import org.chromium.content_public.common.ContentUrlConstants;
 import org.chromium.ui.base.DeviceFormFactor;
+import org.chromium.ui.listmenu.ListMenuButton;
 import org.chromium.ui.test.util.GmsCoreVersionRestriction;
 import org.chromium.ui.test.util.ViewUtils;
-import org.chromium.ui.widget.ChromeImageButton;
 
 /** Integration tests for {@link SigninButtonCoordinator}. */
 @RunWith(ChromeJUnit4ClassRunner.class)
 @DoNotBatch(reason = "This test relies on native initialization")
 @CommandLineFlags.Add({ChromeSwitches.DISABLE_FIRST_RUN_EXPERIENCE})
 @EnableFeatures({SigninFeatures.SIGNIN_LEVEL_UP_BUTTON, SigninFeatures.PROFILE_DISC_ON_ALL_PAGES})
-@DisableFeatures(ChromeFeatureList.SETTINGS_IN_TAB) // crbug.com/521895796
+@DisableFeatures({
+    ChromeFeatureList.SETTINGS_IN_TAB, // crbug.com/521895796
+    ChromeFeatureList.SETTINGS_IN_TAB_DESKTOP, // crbug.com/556881398
+    ChromeFeatureList.USE_WEB_UI_NTP_ANDROID // crbug.com/555414915
+})
 public class SigninButtonCoordinatorTest {
 
     // Mock sign-in environment needs to be destroyed after ChromeTabbedActivity in case there are
@@ -400,6 +407,9 @@ public class SigninButtonCoordinatorTest {
     @Test
     @MediumTest
     @EnableFeatures(SigninFeatures.ENABLE_SEAMLESS_SIGNIN)
+    // TODO(crbug.com/551756560): Once SIGNIN_BUTTON_PROFILE_MENU is launched, restrict
+    // this test by form factor instead of disabling the flag.
+    @DisableFeatures(SigninFeatures.SIGNIN_BUTTON_PROFILE_MENU)
     public void testClickSigninButton_SignedOut() {
         startActivityOnNtp();
 
@@ -415,7 +425,12 @@ public class SigninButtonCoordinatorTest {
 
     @Test
     @MediumTest
-    @DisableFeatures(SigninFeatures.ENABLE_SEAMLESS_SIGNIN)
+    // TODO(crbug.com/551756560): Once SIGNIN_BUTTON_PROFILE_MENU is launched, restrict
+    // this test by form factor instead of disabling the flag.
+    @DisableFeatures({
+        SigninFeatures.ENABLE_SEAMLESS_SIGNIN,
+        SigninFeatures.SIGNIN_BUTTON_PROFILE_MENU
+    })
     public void testClickSigninButton_SignedOut_SeamlessSigninDisabled() {
         startActivityOnNtp();
 
@@ -434,6 +449,9 @@ public class SigninButtonCoordinatorTest {
 
     @Test
     @MediumTest
+    // TODO(crbug.com/551756560): Once SIGNIN_BUTTON_PROFILE_MENU is launched, restrict
+    // this test by form factor instead of disabling the flag.
+    @DisableFeatures(SigninFeatures.SIGNIN_BUTTON_PROFILE_MENU)
     public void testClickSigninButton_SignedOut_SigninDisabled() {
         startActivityOnNtp();
 
@@ -455,6 +473,9 @@ public class SigninButtonCoordinatorTest {
     // is the min version that supports split stores UPM backend, to avoid
     // UserActionableError.NEEDS_UPM_BACKEND_UPGRADE.
     @Restriction(GmsCoreVersionRestriction.RESTRICTION_TYPE_VERSION_GE_24W15)
+    // TODO(crbug.com/551756560): Once SIGNIN_BUTTON_PROFILE_MENU is launched, restrict
+    // this test by form factor instead of disabling the flag.
+    @DisableFeatures(SigninFeatures.SIGNIN_BUTTON_PROFILE_MENU)
     public void testClickSigninButton_SignedIn() {
         startActivityOnNtp();
 
@@ -555,7 +576,7 @@ public class SigninButtonCoordinatorTest {
         setSigninAllowed(false);
         ViewUtils.waitForVisibleView(withId(R.id.avatar_button));
 
-        ChromeImageButton avatarButton =
+        ListMenuButton avatarButton =
                 mActivityTestRule.getActivity().findViewById(R.id.avatar_button);
         ColorStateList focusedTint = avatarButton.getImageTintList();
         assertNotNull(focusedTint);
@@ -567,6 +588,28 @@ public class SigninButtonCoordinatorTest {
         ColorStateList unfocusedTint = avatarButton.getImageTintList();
         assertNotNull(unfocusedTint);
         assertNotEquals("Tint should change when window is inactive", focusedTint, unfocusedTint);
+    }
+
+    @Test
+    @MediumTest
+    @Restriction(DeviceFormFactor.DESKTOP)
+    @EnableFeatures(SigninFeatures.SIGNIN_BUTTON_PROFILE_MENU)
+    public void testClickSigninButton_DesktopOpensAccountMenu() {
+        DeviceInfo.setIsDesktopForTesting(true);
+        startActivityOnNtp();
+
+        AppHeaderUtils.setAppInDesktopWindowForTesting(true);
+        ViewUtils.waitForVisibleView(withId(R.id.signin_button));
+
+        ListMenuButton avatarButton =
+                mActivityTestRule.getActivity().findViewById(R.id.avatar_button);
+        assertFalse(avatarButton.isPressed());
+
+        onView(withId(R.id.signin_button)).perform(click());
+
+        // Verify that the account menu popup is displayed.
+        ViewUtils.waitForVisibleView(withId(R.id.account_menu_container));
+        assertTrue(avatarButton.isPressed());
     }
 
     private void startActivityOnNtp() {

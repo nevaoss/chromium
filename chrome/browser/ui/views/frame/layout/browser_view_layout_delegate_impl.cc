@@ -22,7 +22,6 @@
 #include "chrome/browser/ui/views/frame/browser_widget.h"
 #include "chrome/browser/ui/views/frame/glass_frame_service.h"
 #include "chrome/browser/ui/views/infobars/infobar_container_view.h"
-#include "chrome/browser/ui/views/tabs/organizer/organizer_panel_utils.h"
 #include "chrome/browser/ui/views/toolbar/toolbar_view.h"
 #include "chrome/browser/ui/views/web_apps/frame_toolbar/web_app_frame_toolbar_view.h"
 #include "chrome/common/buildflags.h"
@@ -51,21 +50,34 @@ BrowserViewLayoutDelegateImpl::BrowserViewLayoutDelegateImpl(
 }
 BrowserViewLayoutDelegateImpl::~BrowserViewLayoutDelegateImpl() = default;
 
-bool BrowserViewLayoutDelegateImpl::ShouldDrawTabStrip() const {
-  return browser_view_->ShouldDrawTabStrip();
-}
-
-bool BrowserViewLayoutDelegateImpl::ShouldDrawVerticalTabStrip() const {
-#if BUILDFLAG(IS_MAC)
-  // Do not lay out the vertical tabstrip in content-fullscreen on Mac. This
-  // check cannot be done in BrowserView because the immersive mode controller
-  // itself relies on BrowserView reporting which tab strip it *would* draw,
-  // creating a circular dependency/race condition.
-  if (fullscreen_utils::IsInContentFullscreen(browser_view_->browser())) {
-    return false;
+BrowserViewLayoutDelegate::TabStripType
+BrowserViewLayoutDelegateImpl::GetTabStripType() const {
+  // Can there be a tabstrip at all right now?
+  if (!browser_view_->ShouldDrawTabStrip()) {
+    return TabStripType::kNone;
   }
+
+  // Determine if there is a vertical tab strip.
+  if (browser_view_->browser()->GetType() ==
+      BrowserWindowInterface::Type::TYPE_NORMAL) {
+    const auto* const controller =
+        tabs::VerticalTabStripStateController::From(browser_view_->browser());
+    if (controller && controller->ShouldDisplayVerticalTabs()) {
+#if BUILDFLAG(IS_MAC)
+      // Do not lay out the vertical tabstrip in content-fullscreen on Mac. This
+      // check cannot be done in BrowserView because the immersive mode
+      // controller itself relies on BrowserView reporting which tab strip it
+      // *would* draw, creating a circular dependency/race condition.
+      if (fullscreen_utils::IsInContentFullscreen(browser_view_->browser())) {
+        return TabStripType::kNone;
+      }
 #endif
-  return browser_view_->ShouldDrawVerticalTabStrip();
+      return TabStripType::kVertical;
+    }
+  }
+
+  // Default is horizontal tab strip.
+  return TabStripType::kHorizontal;
 }
 
 bool BrowserViewLayoutDelegateImpl::IsVerticalTabStripCollapsed() const {
@@ -265,10 +277,6 @@ int BrowserViewLayoutDelegateImpl::GetExtraInfobarOffset() const {
   }
 #endif
   return 0;
-}
-
-bool BrowserViewLayoutDelegateImpl::IsOrganizerPanelVisible() const {
-  return organizer_panel::IsOrganizerPanelFeatureEnabled();
 }
 
 const BrowserFrameView* BrowserViewLayoutDelegateImpl::GetFrameView() const {

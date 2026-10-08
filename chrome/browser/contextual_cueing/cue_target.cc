@@ -21,6 +21,10 @@ bool CueTarget::SupportsEditPrompt() const {
   return false;
 }
 
+bool CueTarget::OverridesUcbScoring() const {
+  return false;
+}
+
 const char* GetName(CueTargetType type) {
   switch (type) {
     case CueTargetType::kGlic:
@@ -29,6 +33,15 @@ const char* GetName(CueTargetType type) {
       return "TestSource";
     case CueTargetType::kIndigo:
       return "Indigo";
+  }
+}
+
+const char* GetName(CueIntrusiveness intrusiveness) {
+  switch (intrusiveness) {
+    case CueIntrusiveness::kLoud:
+      return "Loud";
+    case CueIntrusiveness::kQuiet:
+      return "Quiet";
   }
 }
 

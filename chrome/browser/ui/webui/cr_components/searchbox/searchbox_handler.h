@@ -16,7 +16,6 @@
 #include "base/time/time.h"
 #include "base/values.h"
 #include "build/build_config.h"
-#include "chrome/browser/ui/omnibox/omnibox_next_features.h"
 #include "chrome/browser/ui/views/permissions/permission_prompt_observer.h"
 #include "components/contextual_search/contextual_search_types.h"
 #include "components/contextual_search/pref_names.h"
@@ -26,6 +25,8 @@
 #include "components/omnibox/browser/searchbox.mojom.h"
 #include "components/omnibox/browser/searchbox_utils.h"
 #include "components/omnibox/common/input_state.h"
+#include "components/prefs/pref_change_registrar.h"
+#include "components/search_engines/template_url_service_observer.h"
 #include "mojo/public/cpp/bindings/pending_receiver.h"
 #include "mojo/public/cpp/bindings/receiver.h"
 #include "mojo/public/cpp/bindings/remote.h"
@@ -40,6 +41,7 @@ class OmniboxController;
 class OmniboxClient;
 class Profile;
 class OmniboxEditModel;
+class TemplateURLService;
 
 namespace content {
 class WebContents;
@@ -64,7 +66,8 @@ class Size;
 
 class SearchboxHandler : public searchbox::mojom::PageHandler,
                          public AutocompleteController::Observer,
-                         public PermissionPromptObserver::Observer {
+                         public PermissionPromptObserver::Observer,
+                         public TemplateURLServiceObserver {
  public:
   class Delegate {
    public:
@@ -98,23 +101,32 @@ class SearchboxHandler : public searchbox::mojom::PageHandler,
       const gfx::VectorIcon& icon) const;
 
   // Adds file context to the searchbox from the browser.
-  void AddFileContextFromBrowser(
+  virtual void AddFileContextFromBrowser(
       base::UnguessableToken token,
       searchbox::mojom::SelectedFileInfoPtr file_info);
 
   // Notifies the WebUI that the contextual input status has changed.
-  void OnContextualInputStatusChanged(
+  virtual void OnContextualInputStatusChanged(
       base::UnguessableToken token,
       contextual_search::ContextUploadStatus status,
       std::optional<contextual_search::ContextUploadErrorType> error_type);
 
+  void set_disconnect_handler(base::OnceClosure callback) {
+    page_handler_.set_disconnect_handler(std::move(callback));
+  }
+
   // AutocompleteController::Observer:
   void OnResultChanged(AutocompleteController* controller,
                        bool default_match_changed) override;
+  void OnControllerDestroying(AutocompleteController* controller) override;
 
   // PermissionPromptObserver::Observer:
   void OnPermissionPromptChanged(bool is_showing,
                                  const gfx::Size& prompt_size) override;
+
+  // TemplateURLServiceObserver:
+  void OnTemplateURLServiceChanged() override;
+  void OnTemplateURLServiceShuttingDown() override;
 
   // searchbox::mojom::PageHandler:
   void OnFocusChanged(bool focused) override;
@@ -210,7 +222,8 @@ class SearchboxHandler : public searchbox::mojom::PageHandler,
   void GetSmartTabSharingActive(
       GetSmartTabSharingActiveCallback callback) override;
 #endif
-  void DismissFre() override {}
+  void DismissFre(searchbox::mojom::FreStage stage) override {}
+  void ShowHotkeyDropdown(const gfx::Rect& anchor_bounds) override {}
   void OpenHotkeySettings() override {}
   void set_delegate(Delegate* delegate) { omnibox_delegate_ = delegate; }
 
@@ -260,10 +273,17 @@ class SearchboxHandler : public searchbox::mojom::PageHandler,
   base::ScopedObservation<AutocompleteController,
                           AutocompleteController::Observer>
       autocomplete_controller_observation_{this};
+  base::ScopedObservation<TemplateURLService, TemplateURLServiceObserver>
+      template_url_service_observation_{this};
 
   mojo::Receiver<searchbox::mojom::PageHandler> page_handler_;
   mojo::Remote<searchbox::mojom::Page> page_;
+  PrefChangeRegistrar pref_change_registrar_;
   base::WeakPtrFactory<SearchboxHandler> weak_ptr_factory_{this};
+
+  TemplateURLService* GetTemplateURLService() const;
+  void SendAvailableKeywordModels();
+  void OnKeywordSpaceTriggeringPrefChanged();
 
   void OpenMatch(OmniboxPopupSelection selection,
                  AutocompleteMatch match,

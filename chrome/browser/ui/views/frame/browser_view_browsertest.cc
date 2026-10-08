@@ -99,11 +99,13 @@
 #include "components/prefs/pref_service.h"
 #include "components/safe_browsing/core/browser/realtime/fake_url_lookup_service.h"
 #include "components/search/ntp_features.h"
+#include "components/sessions/core/session_id.h"
 #include "components/split_tabs/split_tab_visual_data.h"
 #include "components/tabs/public/split_tab_collection.h"
 #include "components/vector_icons/vector_icons.h"
 #include "content/public/browser/desktop_capture_pip_utils.h"
 #include "content/public/browser/invalidate_type.h"
+#include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/browser/web_contents_observer.h"
 #include "content/public/common/drop_data.h"
@@ -131,6 +133,7 @@
 #include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/base/models/dialog_model.h"
 #include "ui/base/ozone_buildflags.h"
+#include "ui/base/page_transition_types.h"
 #include "ui/base/ui_base_features.h"
 #include "ui/events/base_event_utils.h"
 #include "ui/events/event.h"
@@ -700,6 +703,9 @@ IN_PROC_BROWSER_TEST_F(BrowserViewTest, FindBarBoundingBoxNoLocationBar) {
 
 // Browser widget must be visible for ui::ElementIdentifiers to resolve.
 IN_PROC_BROWSER_TEST_F(BrowserViewTest, RotatePaneFocusFromView) {
+  if (features::IsWebUILocationBarEnabled()) {
+    GTEST_SKIP() << "Not applicable when WebUILocationBar is enabled.";
+  }
   BrowserView* browser_view = BrowserView::GetBrowserViewForBrowser(browser());
   browser_view->GetWidget()->Activate();
   // Native NSWindow widget activation events are not reliably dispatched on
@@ -1732,9 +1738,7 @@ IN_PROC_BROWSER_TEST_F(BrowserViewTest, ScrimForTabModalInSplitView) {
       active_contents_container_view()->contents_scrim_view()->GetVisible());
 }
 
-// TODO(crbug.com/543094230): Test is flaky.
-// Tests that GetAccessibleTabLabel correctly labels each tab in a split.
-IN_PROC_BROWSER_TEST_F(BrowserViewTest, DISABLED_AccessibleTabLabel) {
+IN_PROC_BROWSER_TEST_F(BrowserViewTest, AccessibleTabLabel) {
   auto* controller = WindowMetadataController::From(browser());
 
   // Create a pinned split.
@@ -2207,4 +2211,57 @@ IN_PROC_BROWSER_TEST_F(BrowserViewTest, CloseWidgetWithTabsNoCrash) {
   // Synchronously close the associated widget and ensure the browser does not
   // crash due to operations on detached layers.
   BrowserView::GetBrowserViewForBrowser(browser2)->GetWidget()->CloseNow();
+}
+
+class BrowserViewDeferLayoutTest : public InProcessBrowserTest {
+ public:
+  BrowserViewDeferLayoutTest() {
+    scoped_feature_list_.InitAndEnableFeature(
+        features::kDeferLayoutDuringBrowserStartup);
+  }
+  ~BrowserViewDeferLayoutTest() override = default;
+
+ private:
+  base::test::ScopedFeatureList scoped_feature_list_;
+};
+
+IN_PROC_BROWSER_TEST_F(BrowserViewDeferLayoutTest, DeferLayoutWhileInvisible) {
+  // Create a new browser window without showing it.
+  BrowserWindowInterface* browser2 = CreateBrowserWindow(
+      BrowserWindowCreateParams(browser()->GetProfile(),
+                                /*from_user_gesture=*/true));
+  BrowserView* browser_view2 = BrowserView::GetBrowserViewForBrowser(browser2);
+  views::Widget* widget2 = browser_view2->GetWidget();
+  ASSERT_FALSE(widget2->IsVisible());
+
+  // Trigger an initial layout pass so the window establishes starting bounds.
+  widget2->LayoutRootViewIfNecessary();
+  EXPECT_TRUE(browser_view2->is_startup_layout_deferring_for_testing());
+
+  // Add a tab while still invisible. Since the contents container initially
+  // has empty bounds, layout must proceed to properly size the web contents
+  // container.
+  chrome::AddTabAt(browser2, GURL("about:blank"), -1, true);
+  widget2->LayoutRootViewIfNecessary();
+  EXPECT_FALSE(browser_view2->GetContentsSize().IsEmpty());
+
+  // Now that the contents container has non-empty bounds, subsequent layout
+  // requests while the window is invisible should be deferred.
+  browser_view2->InvalidateLayout();
+  widget2->LayoutRootViewIfNecessary();
+  EXPECT_TRUE(browser_view2->is_layout_deferred_for_testing());
+  EXPECT_TRUE(browser_view2->is_startup_layout_deferring_for_testing());
+
+  // Showing the window should flush any deferred layout and disable deferral.
+  browser2->GetWindow()->Show();
+  EXPECT_TRUE(widget2->IsVisible());
+  EXPECT_FALSE(browser_view2->is_layout_deferred_for_testing());
+  EXPECT_TRUE(browser_view2->is_startup_layout_disabled_for_testing());
+
+  // Once shown, subsequent layout requests are never deferred.
+  browser_view2->InvalidateLayout();
+  widget2->LayoutRootViewIfNecessary();
+  EXPECT_FALSE(browser_view2->is_layout_deferred_for_testing());
+
+  widget2->CloseNow();
 }

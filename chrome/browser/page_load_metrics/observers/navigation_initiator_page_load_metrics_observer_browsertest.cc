@@ -5,9 +5,11 @@
 #include "base/test/metrics/histogram_tester.h"
 #include "base/test/scoped_feature_list.h"
 #include "build/build_config.h"
+#include "chrome/app/chrome_command_ids.h"
 #include "chrome/browser/page_load_metrics/chrome_initiator_location.h"
 #include "chrome/browser/preloading/chrome_preloading.h"
 #include "chrome/browser/preloading/prerender/prerender_manager.h"
+#include "chrome/browser/renderer_context_menu/render_view_context_menu_browsertest_util.h"
 #include "chrome/browser/search_engines/template_url_service_factory.h"
 #include "chrome/browser/ui/browser_commands.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
@@ -17,7 +19,9 @@
 #include "chrome/test/base/search_test_utils.h"
 #include "chrome/test/base/ui_test_utils.h"
 #include "components/google/core/common/google_switches.h"
+#include "components/lens/lens_features.h"
 #include "components/page_load_metrics/browser/navigation_handle_user_data.h"
+#include "components/page_load_metrics/google/browser/google_url_util.h"
 #include "components/search_engines/template_url_service.h"
 #include "content/public/browser/navigation_handle.h"
 #include "content/public/common/content_features.h"
@@ -29,6 +33,8 @@
 #include "net/dns/mock_host_resolver.h"
 #include "net/test/embedded_test_server/embedded_test_server.h"
 #include "net/test/embedded_test_server/request_handler_util.h"
+#include "ui/base/page_transition_types.h"
+#include "ui/base/window_open_disposition.h"
 
 namespace {
 
@@ -70,7 +76,8 @@ class NavigationInitiatorPageLoadMetricsBrowserTest
         // TODO(crbug.com/452061489): Fix tests that fail when the WebUI Omnibox
         // is enabled and then remove these two Features.
         {omnibox::internal::kWebUIOmniboxPopup,
-         omnibox::internal::kWebUIOmniboxAimPopup});
+         omnibox::internal::kWebUIOmniboxAimPopup,
+         lens::features::kLensOverlay});
   }
 
   void SetUp() override {
@@ -101,6 +108,43 @@ class NavigationInitiatorPageLoadMetricsBrowserTest
     return prerender_helper_;
   }
 
+  void SubmitForm(const GURL& action_url,
+                  const std::string& method,
+                  bool has_user_gesture,
+                  const std::string& query_key = "",
+                  const std::string& query_value = "") {
+    GURL target_url =
+        query_key.empty()
+            ? action_url
+            : GURL(action_url.spec() + "?" + query_key + "=" + query_value);
+    content::TestNavigationManager navigation_manager(GetActiveWebContents(),
+                                                      target_url);
+    std::string script =
+        query_key.empty()
+            ? content::JsReplace(
+                  R"(let form = document.createElement('form');
+                     form.action = $1;
+                     form.method = $2;
+                     document.body.appendChild(form);
+                     form.submit();)",
+                  action_url.spec(), method)
+            : content::JsReplace(
+                  R"(let form = document.createElement('form');
+                     form.action = $1;
+                     form.method = $2;
+                     let input = document.createElement('input');
+                     input.name = $3;
+                     input.value = $4;
+                     form.appendChild(input);
+                     document.body.appendChild(form);
+                     form.submit();)",
+                  action_url.spec(), method, query_key, query_value);
+    int options = has_user_gesture ? content::EXECUTE_SCRIPT_DEFAULT_OPTIONS
+                                   : content::EXECUTE_SCRIPT_NO_USER_GESTURE;
+    EXPECT_TRUE(content::ExecJs(GetActiveWebContents(), script, options));
+    ASSERT_TRUE(navigation_manager.WaitForNavigationFinished());
+  }
+
  private:
   content::test::PrerenderTestHelper prerender_helper_;
   base::test::ScopedFeatureList scoped_feature_list_;
@@ -117,9 +161,8 @@ IN_PROC_BROWSER_TEST_F(NavigationInitiatorPageLoadMetricsBrowserTest,
 
   GURL url = embedded_test_server()->GetURL("/empty.html");
   GetActiveWebContents()->OpenURL(
-      content::OpenURLParams(url, content::Referrer(),
-                             WindowOpenDisposition::CURRENT_TAB,
-                             ui::PAGE_TRANSITION_TYPED, false),
+      content::OpenURLParams::CreateBrowserInitiated(
+          url, WindowOpenDisposition::CURRENT_TAB, ui::PAGE_TRANSITION_TYPED),
       std::move(navigation_handle_callback));
 
   // Wait for the navigation to finish.
@@ -310,6 +353,258 @@ IN_PROC_BROWSER_TEST_F(NavigationInitiatorPageLoadMetricsBrowserTest,
 
   histogram_tester.ExpectTotalCount("PreloadServingMetrics.LinkClick.All", 0);
   histogram_tester.ExpectTotalCount("PreloadServingMetrics.LinkClick.SRP", 0);
+}
+
+// Tests that a renderer-initiated POST form submission with a user gesture is
+// recorded as `ChromeInitiatorLocation::kFormSubmission`.
+//
+// Scenario:
+// 1. Navigate to an initial non-SRP page (empty.html).
+// 2. Submit a POST form to another non-SRP page (simple.html) with a user
+//    gesture.
+// 3. Verify `Navigation.InitiatorType.All` records `kFormSubmission`.
+IN_PROC_BROWSER_TEST_F(NavigationInitiatorPageLoadMetricsBrowserTest,
+                       FormSubmission_Post) {
+  base::HistogramTester histogram_tester;
+
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(
+      browser(),
+      embedded_test_server()->GetURL("www.example.com", "/empty.html")));
+
+  // Simulate a POST form submission from the renderer.
+  GURL form_url =
+      embedded_test_server()->GetURL("www.example.com", "/simple.html");
+  SubmitForm(form_url, "POST", /*has_user_gesture=*/true);
+
+  histogram_tester.ExpectTotalCount("Navigation.InitiatorType.All", 2);
+  histogram_tester.ExpectBucketCount(
+      "Navigation.InitiatorType.All",
+      MetricValue(
+          GetInitiatorLocation(ChromeInitiatorLocation::kFormSubmission)),
+      1);
+  histogram_tester.ExpectBucketCount(
+      "Navigation.InitiatorType.SRP",
+      MetricValue(
+          GetInitiatorLocation(ChromeInitiatorLocation::kFormSubmission)),
+      0);
+
+  // Navigate away to flush PreloadServingMetrics.
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), GURL("about:blank")));
+
+  histogram_tester.ExpectUniqueSample(
+      "PreloadServingMetrics.FormSubmission.All", 0 /* kNoInstantLoad */, 1);
+  histogram_tester.ExpectTotalCount("PreloadServingMetrics.FormSubmission.SRP",
+                                    0);
+}
+
+// It's a variant of `FormSubmission_Post` for a GET form submission.
+IN_PROC_BROWSER_TEST_F(NavigationInitiatorPageLoadMetricsBrowserTest,
+                       FormSubmission_Get) {
+  base::HistogramTester histogram_tester;
+
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(
+      browser(),
+      embedded_test_server()->GetURL("www.example.com", "/empty.html")));
+
+  // Simulate a GET form submission from the renderer.
+  GURL action_url =
+      embedded_test_server()->GetURL("www.example.com", "/simple.html");
+  SubmitForm(action_url, "GET", /*has_user_gesture=*/true, "q", "test");
+
+  histogram_tester.ExpectTotalCount("Navigation.InitiatorType.All", 2);
+  histogram_tester.ExpectBucketCount(
+      "Navigation.InitiatorType.All",
+      MetricValue(
+          GetInitiatorLocation(ChromeInitiatorLocation::kFormSubmission)),
+      1);
+  histogram_tester.ExpectBucketCount(
+      "Navigation.InitiatorType.SRP",
+      MetricValue(
+          GetInitiatorLocation(ChromeInitiatorLocation::kFormSubmission)),
+      0);
+
+  // Navigate away to flush PreloadServingMetrics.
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), GURL("about:blank")));
+
+  histogram_tester.ExpectUniqueSample(
+      "PreloadServingMetrics.FormSubmission.All", 0 /* kNoInstantLoad */, 1);
+  histogram_tester.ExpectTotalCount("PreloadServingMetrics.FormSubmission.SRP",
+                                    0);
+}
+
+// Tests that a renderer-initiated POST form submission with a user gesture to a
+// search results page (SRP) is recorded as
+// `ChromeInitiatorLocation::kFormSubmission` in both All and SRP metrics.
+//
+// Scenario:
+// 1. Navigate to an initial non-SRP page (empty.html).
+// 2. Submit a POST form to SRP (search?q=test) with a user gesture.
+// 3. Verify both `Navigation.InitiatorType.All` and `.SRP` record
+//    `kFormSubmission`.
+IN_PROC_BROWSER_TEST_F(NavigationInitiatorPageLoadMetricsBrowserTest,
+                       FormSubmissionSRP_Post) {
+  base::HistogramTester histogram_tester;
+
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(
+      browser(),
+      embedded_test_server()->GetURL("www.example.com", "/empty.html")));
+
+  // Simulate a POST form submission from the renderer to SRP.
+  GURL form_url =
+      embedded_test_server()->GetURL("www.google.com", "/search?q=test");
+  SubmitForm(form_url, "POST", /*has_user_gesture=*/true);
+
+  histogram_tester.ExpectTotalCount("Navigation.InitiatorType.All", 2);
+  histogram_tester.ExpectBucketCount(
+      "Navigation.InitiatorType.All",
+      MetricValue(
+          GetInitiatorLocation(ChromeInitiatorLocation::kFormSubmission)),
+      1);
+  histogram_tester.ExpectBucketCount(
+      "Navigation.InitiatorType.SRP",
+      MetricValue(
+          GetInitiatorLocation(ChromeInitiatorLocation::kFormSubmission)),
+      1);
+
+  // Navigate away to flush PreloadServingMetrics.
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), GURL("about:blank")));
+
+  histogram_tester.ExpectUniqueSample(
+      "PreloadServingMetrics.FormSubmission.All", 0 /* kNoInstantLoad */, 1);
+  histogram_tester.ExpectUniqueSample(
+      "PreloadServingMetrics.FormSubmission.SRP", 0 /* kNoInstantLoad */, 1);
+}
+
+// It's a variant of `FormSubmissionSRP_Post` for a GET form submission.
+IN_PROC_BROWSER_TEST_F(NavigationInitiatorPageLoadMetricsBrowserTest,
+                       FormSubmissionSRP_Get) {
+  base::HistogramTester histogram_tester;
+
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(
+      browser(),
+      embedded_test_server()->GetURL("www.example.com", "/empty.html")));
+
+  // Simulate a GET form submission from the renderer to SRP.
+  GURL action_url = embedded_test_server()->GetURL("www.google.com", "/search");
+  SubmitForm(action_url, "GET", /*has_user_gesture=*/true, "q", "test");
+
+  histogram_tester.ExpectTotalCount("Navigation.InitiatorType.All", 2);
+  histogram_tester.ExpectBucketCount(
+      "Navigation.InitiatorType.All",
+      MetricValue(
+          GetInitiatorLocation(ChromeInitiatorLocation::kFormSubmission)),
+      1);
+  histogram_tester.ExpectBucketCount(
+      "Navigation.InitiatorType.SRP",
+      MetricValue(
+          GetInitiatorLocation(ChromeInitiatorLocation::kFormSubmission)),
+      1);
+
+  // Navigate away to flush PreloadServingMetrics.
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), GURL("about:blank")));
+
+  histogram_tester.ExpectUniqueSample(
+      "PreloadServingMetrics.FormSubmission.All", 0 /* kNoInstantLoad */, 1);
+  histogram_tester.ExpectUniqueSample(
+      "PreloadServingMetrics.FormSubmission.SRP", 0 /* kNoInstantLoad */, 1);
+}
+
+// Tests that a renderer-initiated POST form submission without a user gesture
+// is recorded as `kOther` instead of `kFormSubmission`.
+//
+// Scenario:
+// 1. Navigate to an initial non-SRP page (empty.html).
+// 2. Submit a POST form without a user gesture.
+// 3. Verify `Navigation.InitiatorType.All` records `kOther` and does not record
+//    `kFormSubmission`.
+IN_PROC_BROWSER_TEST_F(NavigationInitiatorPageLoadMetricsBrowserTest,
+                       FormSubmission_NoUserGesture_Post) {
+  base::HistogramTester histogram_tester;
+
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(
+      browser(),
+      embedded_test_server()->GetURL("www.example.com", "/empty.html")));
+
+  // Simulate a POST form submission from the renderer without a user gesture.
+  GURL form_url =
+      embedded_test_server()->GetURL("www.example.com", "/simple.html");
+  SubmitForm(form_url, "POST", /*has_user_gesture=*/false);
+
+  histogram_tester.ExpectTotalCount("Navigation.InitiatorType.All", 2);
+  histogram_tester.ExpectBucketCount(
+      "Navigation.InitiatorType.All",
+      MetricValue(
+          page_load_metrics::NavigationHandleUserData::kInitiatorLocationOther),
+      2);
+  histogram_tester.ExpectBucketCount(
+      "Navigation.InitiatorType.SRP",
+      MetricValue(
+          page_load_metrics::NavigationHandleUserData::kInitiatorLocationOther),
+      0);
+  histogram_tester.ExpectBucketCount(
+      "Navigation.InitiatorType.All",
+      MetricValue(
+          GetInitiatorLocation(ChromeInitiatorLocation::kFormSubmission)),
+      0);
+  histogram_tester.ExpectBucketCount(
+      "Navigation.InitiatorType.SRP",
+      MetricValue(
+          GetInitiatorLocation(ChromeInitiatorLocation::kFormSubmission)),
+      0);
+
+  // Navigate away to flush PreloadServingMetrics.
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), GURL("about:blank")));
+
+  histogram_tester.ExpectTotalCount("PreloadServingMetrics.FormSubmission.All",
+                                    0);
+  histogram_tester.ExpectTotalCount("PreloadServingMetrics.FormSubmission.SRP",
+                                    0);
+}
+
+// It's a variant of `FormSubmission_NoUserGesture_Post` for a GET form
+// submission.
+IN_PROC_BROWSER_TEST_F(NavigationInitiatorPageLoadMetricsBrowserTest,
+                       FormSubmission_NoUserGesture_Get) {
+  base::HistogramTester histogram_tester;
+
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(
+      browser(),
+      embedded_test_server()->GetURL("www.example.com", "/empty.html")));
+
+  // Simulate a GET form submission from the renderer without a user gesture.
+  GURL action_url =
+      embedded_test_server()->GetURL("www.example.com", "/simple.html");
+  SubmitForm(action_url, "GET", /*has_user_gesture=*/false, "q", "test");
+
+  histogram_tester.ExpectTotalCount("Navigation.InitiatorType.All", 2);
+  histogram_tester.ExpectBucketCount(
+      "Navigation.InitiatorType.All",
+      MetricValue(
+          page_load_metrics::NavigationHandleUserData::kInitiatorLocationOther),
+      2);
+  histogram_tester.ExpectBucketCount(
+      "Navigation.InitiatorType.SRP",
+      MetricValue(
+          page_load_metrics::NavigationHandleUserData::kInitiatorLocationOther),
+      0);
+  histogram_tester.ExpectBucketCount(
+      "Navigation.InitiatorType.All",
+      MetricValue(
+          GetInitiatorLocation(ChromeInitiatorLocation::kFormSubmission)),
+      0);
+  histogram_tester.ExpectBucketCount(
+      "Navigation.InitiatorType.SRP",
+      MetricValue(
+          GetInitiatorLocation(ChromeInitiatorLocation::kFormSubmission)),
+      0);
+
+  // Navigate away to flush PreloadServingMetrics.
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(browser(), GURL("about:blank")));
+
+  histogram_tester.ExpectTotalCount("PreloadServingMetrics.FormSubmission.All",
+                                    0);
+  histogram_tester.ExpectTotalCount("PreloadServingMetrics.FormSubmission.SRP",
+                                    0);
 }
 
 IN_PROC_BROWSER_TEST_F(NavigationInitiatorPageLoadMetricsBrowserTest,
@@ -542,6 +837,361 @@ IN_PROC_BROWSER_TEST_F(NavigationInitiatorPageLoadMetricsBrowserTest,
   // navigations.
   histogram_tester.ExpectTotalCount("Navigation.InitiatorType.All", 2);
   histogram_tester.ExpectTotalCount("Navigation.InitiatorType.SRP", 1);
+}
+
+// Tests that searching selected text via the context menu records
+// kContextMenuSearch in Navigation.InitiatorType.All, and does not record it in
+// Navigation.InitiatorType.SRP for a non-Google search provider.
+IN_PROC_BROWSER_TEST_F(NavigationInitiatorPageLoadMetricsBrowserTest,
+                       ContextMenuSearchNavigation) {
+  auto* model =
+      TemplateURLServiceFactory::GetForProfile(browser()->GetProfile());
+  search_test_utils::WaitForTemplateURLServiceToLoad(model);
+  TemplateURLData data;
+  data.SetShortName(u"test");
+  data.SetKeyword(u"test");
+  data.SetURL(embedded_test_server()
+                  ->GetURL("www.example.com", "/search?q={searchTerms}")
+                  .spec());
+  TemplateURL* t_url = model->Add(std::make_unique<TemplateURL>(data));
+  model->SetUserSelectedDefaultSearchProvider(t_url);
+
+  base::HistogramTester histogram_tester;
+
+  ASSERT_TRUE(content::NavigateToURL(
+      GetActiveWebContents(),
+      GURL("data:text/html,<html><body>SearchMe</body></html>")));
+
+  ASSERT_TRUE(content::ExecJs(
+      GetActiveWebContents(),
+      "window.getSelection().selectAllChildren(document.body);"));
+
+  // Register an observer to intercept the context menu and execute the search
+  // command programmatically once shown.
+  ContextMenuNotificationObserver menu_observer(
+      IDC_CONTENT_CONTEXT_SEARCHWEBFOR);
+  ui_test_utils::AllBrowserTabAddedWaiter add_tab;
+
+  // Simulate a right-click on the WebContents to trigger the context menu.
+  // When the menu is shown, `menu_observer` automatically executes the search
+  // command (IDC_CONTENT_CONTEXT_SEARCHWEBFOR), avoiding the need to simulate a
+  // UI-layer mouse click on the native context menu.
+  content::SimulateMouseClickAt(GetActiveWebContents(), 0,
+                                blink::WebMouseEvent::Button::kRight,
+                                gfx::Point(15, 15));
+
+  content::WebContents* search_tab = add_tab.Wait();
+  EXPECT_TRUE(content::WaitForLoadStop(search_tab));
+
+  EXPECT_EQ(
+      search_tab->GetLastCommittedURL(),
+      embedded_test_server()->GetURL("www.example.com", "/search?q=SearchMe"));
+
+  histogram_tester.ExpectBucketCount(
+      "Navigation.InitiatorType.All",
+      MetricValue(
+          GetInitiatorLocation(ChromeInitiatorLocation::kContextMenuSearch)),
+      1);
+  histogram_tester.ExpectBucketCount(
+      "Navigation.InitiatorType.SRP",
+      MetricValue(
+          GetInitiatorLocation(ChromeInitiatorLocation::kContextMenuSearch)),
+      0);
+}
+
+// Tests that searching selected text via the context menu records
+// kContextMenuSearch in both Navigation.InitiatorType.All and
+// Navigation.InitiatorType.SRP when navigating to Google Search.
+IN_PROC_BROWSER_TEST_F(NavigationInitiatorPageLoadMetricsBrowserTest,
+                       ContextMenuSearchNavigationSRP) {
+  auto* model =
+      TemplateURLServiceFactory::GetForProfile(browser()->GetProfile());
+  search_test_utils::WaitForTemplateURLServiceToLoad(model);
+  TemplateURLData data;
+  data.SetShortName(u"test");
+  data.SetKeyword(u"test");
+  data.SetURL(embedded_test_server()
+                  ->GetURL("www.google.com", "/search?q={searchTerms}")
+                  .spec());
+  TemplateURL* t_url = model->Add(std::make_unique<TemplateURL>(data));
+  model->SetUserSelectedDefaultSearchProvider(t_url);
+
+  base::HistogramTester histogram_tester;
+
+  ASSERT_TRUE(content::NavigateToURL(
+      GetActiveWebContents(),
+      GURL("data:text/html,<html><body>SearchMe</body></html>")));
+
+  ASSERT_TRUE(content::ExecJs(
+      GetActiveWebContents(),
+      "window.getSelection().selectAllChildren(document.body);"));
+
+  // Register an observer to intercept the context menu and execute the search
+  // command programmatically once shown.
+  ContextMenuNotificationObserver menu_observer(
+      IDC_CONTENT_CONTEXT_SEARCHWEBFOR);
+  ui_test_utils::AllBrowserTabAddedWaiter add_tab;
+
+  // Simulate a right-click on the WebContents to trigger the context menu.
+  // When the menu is shown, `menu_observer` automatically executes the search
+  // command (IDC_CONTENT_CONTEXT_SEARCHWEBFOR), avoiding the need to simulate a
+  // UI-layer mouse click on the native context menu.
+  content::SimulateMouseClickAt(GetActiveWebContents(), 0,
+                                blink::WebMouseEvent::Button::kRight,
+                                gfx::Point(15, 15));
+
+  content::WebContents* search_tab = add_tab.Wait();
+  EXPECT_TRUE(content::WaitForLoadStop(search_tab));
+
+  EXPECT_EQ(search_tab->GetLastCommittedURL(),
+            embedded_test_server()->GetURL(
+                "www.google.com", "/search?q=SearchMe&source=chrome.ctxt"));
+  EXPECT_TRUE(page_load_metrics::IsGoogleSearchResultUrl(
+      search_tab->GetLastCommittedURL()));
+
+  histogram_tester.ExpectBucketCount(
+      "Navigation.InitiatorType.All",
+      MetricValue(
+          GetInitiatorLocation(ChromeInitiatorLocation::kContextMenuSearch)),
+      1);
+  histogram_tester.ExpectBucketCount(
+      "Navigation.InitiatorType.SRP",
+      MetricValue(
+          GetInitiatorLocation(ChromeInitiatorLocation::kContextMenuSearch)),
+      1);
+}
+
+// Tests that opening a link in a new tab via the context menu records
+// kContextMenuOpenLink in Navigation.InitiatorType.All, and does not record it
+// in Navigation.InitiatorType.SRP for a non-Google URL.
+IN_PROC_BROWSER_TEST_F(NavigationInitiatorPageLoadMetricsBrowserTest,
+                       ContextMenuOpenLinkInNewTab) {
+  base::HistogramTester histogram_tester;
+
+  GURL link_url =
+      embedded_test_server()->GetURL("www.example.com", "/simple.html");
+  ASSERT_TRUE(content::NavigateToURL(GetActiveWebContents(),
+                                     GURL("data:text/html,<a id='link' href='" +
+                                          link_url.spec() + "'>ClickMe</a>")));
+
+  // Register an observer to intercept the context menu and execute the open
+  // link command programmatically once shown.
+  ContextMenuNotificationObserver menu_observer(
+      IDC_CONTENT_CONTEXT_OPENLINKNEWTAB);
+  ui_test_utils::AllBrowserTabAddedWaiter add_tab;
+
+  gfx::Point center =
+      gfx::ToFlooredPoint(content::GetCenterCoordinatesOfElementWithId(
+          GetActiveWebContents(), "link"));
+  // Simulate a right-click on the link to trigger the context menu. When the
+  // menu is shown, `menu_observer` automatically executes the open link in new
+  // tab command (IDC_CONTENT_CONTEXT_OPENLINKNEWTAB), avoiding the need to
+  // simulate a UI-layer mouse click on the native context menu.
+  content::SimulateMouseClickAt(GetActiveWebContents(), 0,
+                                blink::WebMouseEvent::Button::kRight, center);
+
+  content::WebContents* new_tab = add_tab.Wait();
+  EXPECT_TRUE(content::WaitForLoadStop(new_tab));
+
+  EXPECT_EQ(new_tab->GetLastCommittedURL(), link_url);
+
+  histogram_tester.ExpectBucketCount(
+      "Navigation.InitiatorType.All",
+      MetricValue(
+          GetInitiatorLocation(ChromeInitiatorLocation::kContextMenuOpenLink)),
+      1);
+  histogram_tester.ExpectBucketCount(
+      "Navigation.InitiatorType.SRP",
+      MetricValue(
+          GetInitiatorLocation(ChromeInitiatorLocation::kContextMenuOpenLink)),
+      0);
+  histogram_tester.ExpectBucketCount(
+      "Navigation.InitiatorType.All",
+      MetricValue(GetInitiatorLocation(ChromeInitiatorLocation::kOther)), 0);
+  histogram_tester.ExpectBucketCount(
+      "Navigation.InitiatorType.SRP",
+      MetricValue(GetInitiatorLocation(ChromeInitiatorLocation::kOther)), 0);
+  histogram_tester.ExpectBucketCount(
+      "Navigation.InitiatorType.All",
+      MetricValue(
+          GetInitiatorLocation(ChromeInitiatorLocation::kContextMenuSearch)),
+      0);
+}
+
+// Tests that opening a link to Google Search in a new tab via the context menu
+// records kContextMenuOpenLink in both Navigation.InitiatorType.All and
+// Navigation.InitiatorType.SRP.
+IN_PROC_BROWSER_TEST_F(NavigationInitiatorPageLoadMetricsBrowserTest,
+                       ContextMenuOpenLinkInNewTabSRP) {
+  base::HistogramTester histogram_tester;
+
+  GURL link_url =
+      embedded_test_server()->GetURL("www.google.com", "/search?q=test");
+  ASSERT_TRUE(content::NavigateToURL(GetActiveWebContents(),
+                                     GURL("data:text/html,<a id='link' href='" +
+                                          link_url.spec() + "'>ClickMe</a>")));
+
+  // Register an observer to intercept the context menu and execute the open
+  // link command programmatically once shown.
+  ContextMenuNotificationObserver menu_observer(
+      IDC_CONTENT_CONTEXT_OPENLINKNEWTAB);
+  ui_test_utils::AllBrowserTabAddedWaiter add_tab;
+
+  gfx::Point center =
+      gfx::ToFlooredPoint(content::GetCenterCoordinatesOfElementWithId(
+          GetActiveWebContents(), "link"));
+  // Simulate a right-click on the link to trigger the context menu. When the
+  // menu is shown, `menu_observer` automatically executes the open link in new
+  // tab command (IDC_CONTENT_CONTEXT_OPENLINKNEWTAB), avoiding the need to
+  // simulate a UI-layer mouse click on the native context menu.
+  content::SimulateMouseClickAt(GetActiveWebContents(), 0,
+                                blink::WebMouseEvent::Button::kRight, center);
+
+  content::WebContents* new_tab = add_tab.Wait();
+  EXPECT_TRUE(content::WaitForLoadStop(new_tab));
+
+  EXPECT_EQ(new_tab->GetLastCommittedURL(), link_url);
+  EXPECT_TRUE(page_load_metrics::IsGoogleSearchResultUrl(
+      new_tab->GetLastCommittedURL()));
+
+  histogram_tester.ExpectBucketCount(
+      "Navigation.InitiatorType.All",
+      MetricValue(
+          GetInitiatorLocation(ChromeInitiatorLocation::kContextMenuOpenLink)),
+      1);
+  histogram_tester.ExpectBucketCount(
+      "Navigation.InitiatorType.SRP",
+      MetricValue(
+          GetInitiatorLocation(ChromeInitiatorLocation::kContextMenuOpenLink)),
+      1);
+  histogram_tester.ExpectBucketCount(
+      "Navigation.InitiatorType.All",
+      MetricValue(GetInitiatorLocation(ChromeInitiatorLocation::kOther)), 0);
+  histogram_tester.ExpectBucketCount(
+      "Navigation.InitiatorType.SRP",
+      MetricValue(GetInitiatorLocation(ChromeInitiatorLocation::kOther)), 0);
+  histogram_tester.ExpectBucketCount(
+      "Navigation.InitiatorType.All",
+      MetricValue(
+          GetInitiatorLocation(ChromeInitiatorLocation::kContextMenuSearch)),
+      0);
+}
+
+// Tests that opening a link in a new window via the context menu records
+// kContextMenuOpenLink in Navigation.InitiatorType.All.
+IN_PROC_BROWSER_TEST_F(NavigationInitiatorPageLoadMetricsBrowserTest,
+                       ContextMenuOpenLinkInNewWindow) {
+  base::HistogramTester histogram_tester;
+
+  GURL link_url =
+      embedded_test_server()->GetURL("www.example.com", "/simple.html");
+  ASSERT_TRUE(content::NavigateToURL(GetActiveWebContents(),
+                                     GURL("data:text/html,<a id='link' href='" +
+                                          link_url.spec() + "'>ClickMe</a>")));
+
+  ContextMenuNotificationObserver menu_observer(
+      IDC_CONTENT_CONTEXT_OPENLINKNEWWINDOW);
+  ui_test_utils::AllBrowserTabAddedWaiter add_tab;
+
+  gfx::Point center =
+      gfx::ToFlooredPoint(content::GetCenterCoordinatesOfElementWithId(
+          GetActiveWebContents(), "link"));
+  content::SimulateMouseClickAt(GetActiveWebContents(), 0,
+                                blink::WebMouseEvent::Button::kRight, center);
+
+  content::WebContents* new_tab = add_tab.Wait();
+  EXPECT_TRUE(content::WaitForLoadStop(new_tab));
+
+  EXPECT_EQ(new_tab->GetLastCommittedURL(), link_url);
+
+  histogram_tester.ExpectBucketCount(
+      "Navigation.InitiatorType.All",
+      MetricValue(
+          GetInitiatorLocation(ChromeInitiatorLocation::kContextMenuOpenLink)),
+      1);
+  histogram_tester.ExpectBucketCount(
+      "Navigation.InitiatorType.SRP",
+      MetricValue(
+          GetInitiatorLocation(ChromeInitiatorLocation::kContextMenuOpenLink)),
+      0);
+}
+
+// Tests that opening a link in an incognito window via the context menu records
+// kContextMenuOpenLink in Navigation.InitiatorType.All.
+IN_PROC_BROWSER_TEST_F(NavigationInitiatorPageLoadMetricsBrowserTest,
+                       ContextMenuOpenLinkInIncognito) {
+  base::HistogramTester histogram_tester;
+
+  GURL link_url =
+      embedded_test_server()->GetURL("www.example.com", "/simple.html");
+  ASSERT_TRUE(content::NavigateToURL(GetActiveWebContents(),
+                                     GURL("data:text/html,<a id='link' href='" +
+                                          link_url.spec() + "'>ClickMe</a>")));
+
+  ContextMenuNotificationObserver menu_observer(
+      IDC_CONTENT_CONTEXT_OPENLINKOFFTHERECORD);
+  ui_test_utils::AllBrowserTabAddedWaiter add_tab;
+
+  gfx::Point center =
+      gfx::ToFlooredPoint(content::GetCenterCoordinatesOfElementWithId(
+          GetActiveWebContents(), "link"));
+  content::SimulateMouseClickAt(GetActiveWebContents(), 0,
+                                blink::WebMouseEvent::Button::kRight, center);
+
+  content::WebContents* new_tab = add_tab.Wait();
+  EXPECT_TRUE(content::WaitForLoadStop(new_tab));
+
+  EXPECT_EQ(new_tab->GetLastCommittedURL(), link_url);
+
+  histogram_tester.ExpectBucketCount(
+      "Navigation.InitiatorType.All",
+      MetricValue(
+          GetInitiatorLocation(ChromeInitiatorLocation::kContextMenuOpenLink)),
+      1);
+  histogram_tester.ExpectBucketCount(
+      "Navigation.InitiatorType.SRP",
+      MetricValue(
+          GetInitiatorLocation(ChromeInitiatorLocation::kContextMenuOpenLink)),
+      0);
+}
+
+// Tests that opening a link in split view via the context menu records
+// kContextMenuOpenLink in Navigation.InitiatorType.All.
+IN_PROC_BROWSER_TEST_F(NavigationInitiatorPageLoadMetricsBrowserTest,
+                       ContextMenuOpenLinkInSplitView) {
+  base::HistogramTester histogram_tester;
+
+  GURL link_url =
+      embedded_test_server()->GetURL("www.example.com", "/simple.html");
+  ASSERT_TRUE(content::NavigateToURL(GetActiveWebContents(),
+                                     GURL("data:text/html,<a id='link' href='" +
+                                          link_url.spec() + "'>ClickMe</a>")));
+
+  ContextMenuNotificationObserver menu_observer(
+      IDC_CONTENT_CONTEXT_OPENLINKSPLITVIEW);
+  ui_test_utils::AllBrowserTabAddedWaiter add_tab;
+
+  gfx::Point center =
+      gfx::ToFlooredPoint(content::GetCenterCoordinatesOfElementWithId(
+          GetActiveWebContents(), "link"));
+  content::SimulateMouseClickAt(GetActiveWebContents(), 0,
+                                blink::WebMouseEvent::Button::kRight, center);
+
+  content::WebContents* new_tab = add_tab.Wait();
+  EXPECT_TRUE(content::WaitForLoadStop(new_tab));
+
+  EXPECT_EQ(new_tab->GetLastCommittedURL(), link_url);
+
+  histogram_tester.ExpectBucketCount(
+      "Navigation.InitiatorType.All",
+      MetricValue(
+          GetInitiatorLocation(ChromeInitiatorLocation::kContextMenuOpenLink)),
+      1);
+  histogram_tester.ExpectBucketCount(
+      "Navigation.InitiatorType.SRP",
+      MetricValue(
+          GetInitiatorLocation(ChromeInitiatorLocation::kContextMenuOpenLink)),
+      0);
 }
 
 class NavigationInitiatorPageLoadMetricsBFCacheBrowserTest

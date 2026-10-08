@@ -20,6 +20,7 @@
 #include "base/values.h"
 #include "build/build_config.h"
 #include "chrome/browser/browser_features.h"
+#include "chrome/browser/enterprise/data_protection/data_protection_page_user_data.h"
 #include "chrome/browser/extensions/extension_browsertest.h"
 #include "chrome/browser/media/webrtc/desktop_media_list.h"
 #include "chrome/browser/media/webrtc/tab_desktop_media_list_mock_observer.h"
@@ -27,6 +28,7 @@
 #include "chrome/browser/ui/apps/chrome_app_delegate.h"
 #include "chrome/browser/ui/browser_commands.h"
 #include "chrome/browser/ui/browser_window/test/mock_browser_window_interface.h"
+#include "chrome/browser/ui/tabs/tab_enums.h"
 #include "chrome/browser/ui/tabs/tab_model.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/web_applications/test/isolated_web_app_test_utils.h"
@@ -37,6 +39,7 @@
 #include "chrome/test/base/in_process_browser_test.h"
 #include "chrome/test/base/ui_test_utils.h"
 #include "content/public/browser/favicon_status.h"
+#include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/navigation_entry.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/common/content_switches.h"
@@ -53,6 +56,7 @@
 #include "net/test/embedded_test_server/embedded_test_server.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "third_party/skia/include/core/SkBitmap.h"
+#include "ui/base/window_open_disposition.h"
 
 #if BUILDFLAG(IS_CHROMEOS)
 #include "chrome/browser/ash/login/users/user_manager_delegate_impl.h"
@@ -506,4 +510,37 @@ IN_PROC_BROWSER_TEST_F(TabDesktopMediaListWithIwaIncludedTest,
   InstallAndOpenIsolatedWebApp();
 
   EXPECT_EQ(initial_list_size + 1, list().GetSourceCount());
+}
+
+class TabDesktopMediaListProtectionTest
+    : public InProcessBrowserTest,
+      public testing::WithParamInterface<bool> {};
+
+INSTANTIATE_TEST_SUITE_P(All,
+                         TabDesktopMediaListProtectionTest,
+                         testing::Bool());
+
+IN_PROC_BROWSER_TEST_P(TabDesktopMediaListProtectionTest,
+                       SetsIsSharingBlockedCorrectly) {
+  const bool allow_screenshots = GetParam();
+
+  content::WebContents* contents =
+      browser()->tab_strip_model()->GetActiveWebContents();
+  ASSERT_TRUE(contents);
+
+  enterprise_data_protection::DataProtectionPageUserData::
+      UpdateDataControlsScreenshotState(contents->GetPrimaryPage(), "test_id",
+                                        allow_screenshots);
+
+  TabDesktopMediaList media_list(
+      contents, base::BindRepeating([](content::WebContents*) { return true; }),
+      /*include_chrome_app_windows=*/false);
+
+  base::RunLoop run_loop;
+  media_list.Update(run_loop.QuitClosure());
+  run_loop.Run();
+
+  ASSERT_GE(media_list.GetSourceCount(), 1);
+  const auto& source = media_list.GetSource(0);
+  EXPECT_EQ(source.id.is_sharing_blocked, !allow_screenshots);
 }

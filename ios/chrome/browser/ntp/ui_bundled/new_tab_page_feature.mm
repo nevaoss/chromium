@@ -25,8 +25,6 @@ BASE_FEATURE(kFeedSwipeInProductHelp, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kUseFeedEligibilityService, base::FEATURE_DISABLED_BY_DEFAULT);
 
-BASE_FEATURE(kEnableNTPBackgroundImageCache, base::FEATURE_DISABLED_BY_DEFAULT);
-
 BASE_FEATURE(kConsistentLogoDoodleHeight, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kNewTabPageRedesign, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -124,10 +122,6 @@ bool IsAimEnabledInNtp() {
   return YES;
 }
 
-bool IsNTPBackgroundImageCacheEnabled() {
-  return base::FeatureList::IsEnabled(kEnableNTPBackgroundImageCache);
-}
-
 bool IsConsistentLogoDoodleHeightEnabled() {
   return base::FeatureList::IsEnabled(kConsistentLogoDoodleHeight);
 }
@@ -156,7 +150,22 @@ bool IsNewTabPageUICleanupEnabled() {
          variation == NTPUICleanupVariation::kPreferredPadding;
 }
 
-bool IsNewTabPageUICleanupFakeboxOnlyEnabled() {
-  return GetNewTabPageUICleanupVariation() ==
-         NTPUICleanupVariation::kFakeboxBackgroundAndShadow;
+bool ShouldApplyFakeboxBackgroundAndShadow() {
+  return IsNewTabPageUICleanupEnabled() ||
+         GetNewTabPageUICleanupVariation() ==
+             NTPUICleanupVariation::kFakeboxBackgroundAndShadow;
+}
+
+NTPUICleanupVariation GetNewTabPageUICleanupPaddingVariation() {
+  if (ui::GetDeviceFormFactor() == ui::DEVICE_FORM_FACTOR_TABLET) {
+    return NTPUICleanupVariation::kDisabled;
+  }
+  return GetNewTabPageUICleanupVariation();
+}
+
+bool IsNewTabPageUICleanupPaddingEnabled() {
+  NTPUICleanupVariation variation = GetNewTabPageUICleanupPaddingVariation();
+  return variation == NTPUICleanupVariation::kTightPadding ||
+         variation == NTPUICleanupVariation::kMediumPadding ||
+         variation == NTPUICleanupVariation::kPreferredPadding;
 }

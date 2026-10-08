@@ -33,6 +33,7 @@
 #include "components/contextual_tasks/public/mock_contextual_tasks_service.h"
 #include "components/prefs/pref_service.h"
 #include "components/sessions/content/session_tab_helper.h"
+#include "components/sessions/core/session_id.h"
 #include "components/tabs/public/mock_tab_interface.h"
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/navigation_entry.h"
@@ -297,6 +298,16 @@ class ContextualTasksSidePanelCoordinatorTest : public testing::Test {
     mock_controller_ = mock.get();
     return mock;
   }
+
+#if BUILDFLAG(ENABLE_EXTENSIONS_CORE) && !BUILDFLAG(IS_ANDROID)
+  void TriggerOnSeeExtensionsClicked(views::BubbleAnchor anchor) {
+    coordinator_->OnSeeExtensionsClicked(anchor);
+  }
+
+  ContextualTasksExtensionsContainer* GetExtensionsContainer() {
+    return coordinator_->extensions_container_.get();
+  }
+#endif
 
  protected:
   content::BrowserTaskEnvironment task_environment_;
@@ -1282,6 +1293,14 @@ TEST_F(ContextualTasksSidePanelCoordinatorTest,
       "https://www.google.com/search?udm=50&q=test&cs=0&gsc=2&hl=en");
   EXPECT_EQ(cached_wc->GetVisibleURL(), expected_url);
 }
+
+#if BUILDFLAG(ENABLE_EXTENSIONS_CORE) && !BUILDFLAG(IS_ANDROID)
+TEST_F(ContextualTasksSidePanelCoordinatorTest,
+       OnSeeExtensionsClicked_NoActiveContents) {
+  TriggerOnSeeExtensionsClicked(views::BubbleAnchor());
+  EXPECT_EQ(GetExtensionsContainer(), nullptr);
+}
+#endif
 
 }  // namespace contextual_tasks
 

@@ -674,6 +674,7 @@ viz_source_set("unit_tests") {
     "main/viz_main_impl_unittest.cc",
     "performance_hint/boost_manager_unittest.cc",
     "surfaces/referenced_surface_tracker_unittest.cc",
+    "surfaces/surface_dependency_deadline_unittest.cc",
     "surfaces/surface_saved_frame_unittest.cc",
     "surfaces/surface_unittest.cc",
     "transitions/transferable_resource_tracker_unittest.cc",
@@ -791,13 +792,6 @@ viz_source_set("unit_tests") {
       "input/viz_touch_state_handler_unittest.cc",
     ]
     deps += [ "//ui/events:motionevent_jni_headers" ]
-  }
-
-  if (enable_vulkan) {
-    deps += [
-      "//gpu/vulkan:test_support",
-      "//gpu/vulkan/init",
-    ]
   }
 }
 

@@ -27,9 +27,6 @@ const char kDefaultUploadURL[] = "https://clients2.google.com/cr/report";
 
 }  // namespace
 
-ProductInfo::ProductInfo() = default;
-ProductInfo::~ProductInfo() = default;
-
 void SetCrashReporterClient(CrashReporterClient* client) {
   g_client = client;
 }
@@ -149,6 +146,19 @@ std::string CrashReporterClient::GetUploadUrl() {
 #else
   return std::string();
 #endif
+}
+
+bool CrashReporterClient::ShouldRateLimitUploads() {
+  return true;
+}
+
+bool CrashReporterClient::ShouldCompressUploads() {
+  return true;
+}
+
+std::map<std::string, std::string>
+CrashReporterClient::GetExtraProcessAnnotations() {
+  return {};
 }
 
 bool CrashReporterClient::ShouldMonitorCrashHandlerExpensively() {

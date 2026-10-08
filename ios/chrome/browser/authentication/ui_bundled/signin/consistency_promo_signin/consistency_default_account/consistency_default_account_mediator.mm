@@ -178,6 +178,7 @@ NSString* GetPromoLabelString(
     case signin_metrics::AccessPoint::kAgeMismatchSignout:
     case signin_metrics::AccessPoint::kSignoutUndoSnackbar:
     case signin_metrics::AccessPoint::kComposeboxDriveContextMenuOptionBubble:
+    case signin_metrics::AccessPoint::kSkills:
       // Nothing prevents instantiating ConsistencyDefaultAccountViewController
       // with an arbitrary entry point, API-wise. In doubt, no label is a good,
       // generic default that fits all entry points.
@@ -398,7 +399,7 @@ NSString* GetPromoLabelString(
 
 - (void)extendedAccountInfoDidUpdate:(const AccountInfo&)info {
   id<SystemIdentity> identity =
-      _accountManagerService->GetIdentityOnDeviceWithGaiaID(info.gaia);
+      _accountManagerService->GetIdentityOnDeviceWithGaiaID(info.GetGaiaId());
   [self handleIdentityUpdated:identity];
 }
 @end

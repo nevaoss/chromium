@@ -6,6 +6,7 @@
 #define UI_ANDROID_UI_ANDROID_FEATURES_H_
 
 #include "base/feature_list.h"
+#include "base/metrics/field_trial_params.h"
 #include "ui/android/ui_android_export.h"
 
 namespace ui {
@@ -65,8 +66,17 @@ UI_ANDROID_EXPORT BASE_DECLARE_FEATURE(kDeprecatedExternalPickerFunction);
 // Whether photo picker should be disabled for video capture.
 UI_ANDROID_EXPORT BASE_DECLARE_FEATURE(kDisablePhotoPickerForVideoCapture);
 
+// Whether to read ClipDescription.hasContentUri().
+UI_ANDROID_EXPORT BASE_DECLARE_FEATURE(kHasContentUri);
+
 // Guard changes to use maximum window metrics for gesture navigation detection.
 UI_ANDROID_EXPORT BASE_DECLARE_FEATURE(kMaximumWindowForGestureNavDetection);
+
+// Scaling multiplier for captured physical mouse movement
+// (crbug.com/490206349).
+UI_ANDROID_EXPORT BASE_DECLARE_FEATURE(kPointerLockMouseScaling);
+inline constexpr base::FeatureParam<double> kPointerLockMouseScalingFactor{
+    &kPointerLockMouseScaling, "factor", 2.4};
 
 // Whether to enable the refactor of the smallestScreenWidthDp override.
 UI_ANDROID_EXPORT BASE_DECLARE_FEATURE(kRefactorMinWidthContextOverride);

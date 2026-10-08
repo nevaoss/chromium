@@ -59,6 +59,7 @@
 #include "chrome/grit/generated_resources.h"
 #include "chrome/grit/theme_resources.h"
 #include "components/contextual_search/contextual_search_metrics_recorder.h"
+#include "components/contextual_search/contextual_search_service.h"
 #include "components/contextual_tasks/public/context_decoration_params.h"
 #include "components/contextual_tasks/public/contextual_task.h"
 #include "components/contextual_tasks/public/features.h"
@@ -88,6 +89,7 @@
 #include "content/public/browser/web_ui.h"
 #include "content/public/browser/web_ui_data_source.h"
 #include "content/public/common/content_features.h"
+#include "extensions/buildflags/buildflags.h"
 #include "google_apis/gaia/gaia_constants.h"
 #include "google_apis/gaia/google_service_auth_error.h"
 #include "net/base/backoff_entry.h"
@@ -99,6 +101,7 @@
 #include "ui/base/device_form_factor.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/ui_base_features.h"
+#include "ui/base/window_open_disposition.h"
 #include "ui/color/color_provider_key.h"
 #include "ui/webui/buildflags.h"
 #include "ui/webui/tracked_element/tracked_element_handler_document_singleton.h"
@@ -135,23 +138,20 @@ BrowserWindowInterface* FromWebContents(content::WebContents* web_contents) {
 }
 
 void UpdateDarkModePreferenceFromUrl(content::WebContents* wc,
-                                     const GURL& url) {
+                                     const GURL& url,
+                                     Profile* profile) {
+#if !BUILDFLAG(IS_ANDROID)
+  bool use_dark = contextual_tasks::ShouldUseDarkMode(profile, url);
+#else
   std::optional<bool> is_dark_mode = contextual_tasks::GetDarkModeFromUrl(url);
-  if (is_dark_mode.has_value()) {
-    blink::web_pref::WebPreferences prefs = wc->GetOrCreateWebPreferences();
-    prefs.preferred_color_scheme =
-        is_dark_mode.value() ? blink::mojom::PreferredColorScheme::kDark
-                             : blink::mojom::PreferredColorScheme::kLight;
-    wc->SetWebPreferences(prefs);
-  } else {
-    blink::web_pref::WebPreferences prefs = wc->GetOrCreateWebPreferences();
-    ui::ColorProviderKey::ColorMode browser_color_scheme = wc->GetColorMode();
-    prefs.preferred_color_scheme =
-        browser_color_scheme == ui::ColorProviderKey::ColorMode::kLight
-            ? blink::mojom::PreferredColorScheme::kLight
-            : blink::mojom::PreferredColorScheme::kDark;
-    wc->SetWebPreferences(prefs);
-  }
+  bool use_dark = is_dark_mode.value_or(wc->GetColorMode() ==
+                                        ui::ColorProviderKey::ColorMode::kDark);
+#endif
+  blink::web_pref::WebPreferences prefs = wc->GetOrCreateWebPreferences();
+  prefs.preferred_color_scheme =
+      use_dark ? blink::mojom::PreferredColorScheme::kDark
+               : blink::mojom::PreferredColorScheme::kLight;
+  wc->SetWebPreferences(prefs);
 }
 
 bool IsUserFeedbackAllowed(Profile* profile) {
@@ -250,6 +250,8 @@ std::string EntryPointToString(omnibox::ChromeAimEntryPoint entry_point) {
       return "omnibox_tab_search";
     case omnibox::DESKTOP_CHROME_COBROWSE_OMNIBOX_CONTEXTUAL_SUGGESTION:
       return "omnibox_contextual_suggestion";
+    case omnibox::DESKTOP_CHROME_COBROWSE_OMNIBOX_POPUP_BUTTON:
+      return "omnibox_popup_button";
     default:
       return "unknown";
   }
@@ -372,8 +374,8 @@ ContextualTasksUI::ContextualTasksUI(content::WebUI* web_ui)
     }
   }
 
+  const GURL& url = web_ui->GetWebContents()->GetVisibleURL();
 #if !BUILDFLAG(IS_ANDROID)
-  GURL url = web_ui->GetWebContents()->GetVisibleURL();
   bool is_dark_mode = contextual_tasks::ShouldUseDarkMode(profile, url);
   source->AddBoolean("darkMode", is_dark_mode);
 #else
@@ -381,6 +383,7 @@ ContextualTasksUI::ContextualTasksUI(content::WebUI* web_ui)
                       ui::ColorProviderKey::ColorMode::kDark;
   source->AddBoolean("darkMode", is_dark_mode);
 #endif
+  UpdateDarkModePreferenceFromUrl(web_ui->GetWebContents(), url, profile);
 
   // Overwrite searchbox strings with actual session state if composebox is
   // enabled.
@@ -400,6 +403,19 @@ ContextualTasksUI::ContextualTasksUI(content::WebUI* web_ui)
   source->AddBoolean(
       "voiceSearchCoherenceComposeboxesEnabled",
       SearchboxHandler::GetVoiceSearchCoherenceCobrowsingComposeboxEnabled());
+#if !BUILDFLAG(IS_ANDROID)
+  std::optional<lens::LensOverlayInvocationSource> invocation_source;
+  if (auto* browser = GetBrowser()) {
+    if (auto* active_tab = browser->GetActiveTabInterface()) {
+      if (auto* controller = LensSearchController::FromTabWebContents(
+              active_tab->GetContents())) {
+        invocation_source = controller->invocation_source();
+      }
+    }
+  }
+  source->AddBoolean("clearAllInputsWhenSubmittingQuery",
+                     ShouldClearAllInputsOnSubmit(invocation_source));
+#endif
 #endif  // BUILDFLAG(ENABLE_WEBUI_CONTEXTUAL_TASKS_COMPOSEBOX)
 
   // Determine and cache tab input support on initialization.
@@ -479,10 +495,6 @@ base::DictValue ContextualTasksUI::GetContextualTasksLoadTimeData(
       {"onboardingLink", IDS_CONTEXTUAL_TASKS_FIRST_RUN_EXPERIENCE_LEARN_MORE},
       {"onboardingAcceptButton",
        IDS_CONTEXTUAL_TASKS_FIRST_RUN_EXPERIENCE_ACCEPT_BUTTON},
-      {"lensSearchTooltipAcceptButton",
-       IDS_CONTEXTUAL_TASKS_FIRST_RUN_EXPERIENCE_ACCEPT_BUTTON},
-      {"lensSearchTooltipTitle", IDS_LENS_COBROWSE_IPH_HEADER},
-      {"lensSearchTooltipBody", IDS_LENS_COBROWSE_IPH_DESCRIPTION},
       {"oauthErrorDialogTitle", IDS_CONTEXTUAL_TASKS_OAUTH_ERROR_DIALOG_TITLE},
       {"oauthErrorDialogBody", IDS_CONTEXTUAL_TASKS_OAUTH_ERROR_DIALOG_BODY},
       {"oauthErrorDialogReloadButton",
@@ -597,10 +609,12 @@ base::DictValue ContextualTasksUI::GetContextualTasksLoadTimeData(
   dict.Set(
       "composeboxSkillsEnabled",
       base::FeatureList::IsEnabled(omnibox::kComposeboxSkillsContextualTasks));
-  dict.Set("enablePinButton",
-           contextual_tasks::IsContextualTasksPinButtonInToolbarEnabled());
+  const bool is_pinning_eligible =
+      contextual_tasks::EntryPointEligibilityManager::IsPinningEligible(
+          profile);
+  dict.Set("enablePinButton", is_pinning_eligible);
   dict.Set("isSidePanelPinned",
-           contextual_tasks::IsContextualTasksPinButtonInToolbarEnabled() &&
+           is_pinning_eligible &&
                contextual_tasks::GetEffectivePinState(profile));
   dict.Set("showOnboardingTooltip",
            base::FeatureList::IsEnabled(
@@ -617,14 +631,6 @@ base::DictValue ContextualTasksUI::GetContextualTasksLoadTimeData(
           contextual_tasks::kContextualTasksOnboardingTooltipDismissedCount) <
           contextual_tasks::GetContextualTasksOnboardingTooltipDismissedCap());
   dict.Set(
-      "isLensSearchTooltipDismissCountBelowCap",
-      profile->GetPrefs()->GetInteger(
-          contextual_tasks::kContextualTasksLensSearchTooltipDismissedCount) <
-          contextual_tasks::GetContextualTasksLensSearchTooltipDismissedCap());
-  dict.Set("lensSearchTooltipSessionImpressionCap",
-           contextual_tasks::
-               GetContextualTasksLensSearchTooltipSessionImpressionCap());
-  dict.Set(
       "isAskGTooltipDismissCountBelowCap",
       profile->GetPrefs()->GetInteger(
           contextual_tasks::kContextualTasksAskGTooltipDismissedCount) <
@@ -633,6 +639,7 @@ base::DictValue ContextualTasksUI::GetContextualTasksLoadTimeData(
            contextual_tasks::
                GetContextualTasksAskGTooltipSessionImpressionCap());
   dict.Set("askGCoBrowseEnabled", omnibox::kAskGCoBrowse.Get());
+  dict.Set("clearAllInputsWhenSubmittingQuery", true);
   dict.Set("contextualTasksSidePanelRearchitectureEnabled",
            contextual_tasks::IsContextualTasksSidePanelRearchitectureEnabled());
 
@@ -657,6 +664,8 @@ base::DictValue ContextualTasksUI::GetContextualTasksLoadTimeData(
   dict.Set("composeboxContextMenuEnableMultiTabSelection", true);
   dict.Set("composeboxContextMenuEnableTabDeselection",
            omnibox::IsTabDeselectionInComposeboxEnabled());
+  dict.Set("composeboxContextMenuTooltipsEnabled",
+           omnibox::IsContextMenuTooltipsInComposeboxEnabled());
   dict.Set("enableGhostLoader", contextual_tasks::GetIsGhostLoaderEnabled());
   dict.Set("forceBasicModeIfOpeningThreadHistory",
            contextual_tasks::ShouldForceBasicModeIfOpeningThreadHistory());
@@ -679,8 +688,7 @@ base::DictValue ContextualTasksUI::GetContextualTasksLoadTimeData(
            base::FeatureList::IsEnabled(
                contextual_tasks::kContextualTasksHideMenuOnAiPage));
   dict.Set("contextualTasksUnboundedMenuEnabled",
-           base::FeatureList::IsEnabled(
-               contextual_tasks::kContextualTasksUnboundedMenu));
+           contextual_tasks::IsContextualTasksUnboundedMenuEnabled());
   dict.Set(
       "contextualTasksEnableSpatialModelToolbarLayout",
       contextual_tasks::GetContextualTasksSpatialModelToolbarLayoutEnabled());
@@ -740,11 +748,6 @@ base::DictValue ContextualTasksUI::GetContextualTasksLoadTimeData(
       "energyEffectEnabled",
       base::FeatureList::IsEnabled(contextual_tasks::kEnergyEffectInNextbox));
 
-  dict.Set("useStratusDarkModeColors",
-           contextual_tasks::ShouldUseStratusDarkModeColors());
-  dict.Set(
-      "useStratusDarkModeColorsAttr",
-      contextual_tasks::ShouldUseStratusDarkModeColors() ? "true" : "false");
 
   dict.Set("smartTabSharingEnabled",
            contextual_tasks::ContextualTasksContextService::
@@ -760,6 +763,24 @@ base::DictValue ContextualTasksUI::GetContextualTasksLoadTimeData(
   AddZeroStateStrings(dict, profile);
 
   return dict;
+}
+
+// static
+bool ContextualTasksUI::ShouldClearAllInputsOnSubmit(
+    std::optional<lens::LensOverlayInvocationSource> invocation_source) {
+#if !BUILDFLAG(IS_ANDROID)
+  if (invocation_source.has_value() &&
+      invocation_source.value() ==
+          lens::LensOverlayInvocationSource::kOmniboxPageAction) {
+    return false;
+  }
+#endif
+  // If context management in composebox is enabled, do not wipe restored tabs
+  // on submit.
+  if (base::FeatureList::IsEnabled(omnibox::kContextManagementInComposebox)) {
+    return false;
+  }
+  return true;
 }
 
 void ContextualTasksUI::CreatePageHandler(
@@ -1461,6 +1482,14 @@ void ContextualTasksUI::SyncAutoSuggestedTabContext() {
   }
 }
 
+void ContextualTasksUI::ResetForNewThread(const base::Uuid& task_id,
+                                          const GURL& url) {
+  SetTaskId(task_id);
+  if (page_) {
+    page_->ResetForNewThread(task_id, url);
+  }
+}
+
 void ContextualTasksUI::OnActiveTabContextStatusChanged() {
   if (contextual_tasks::GetIsProtectedPageErrorEnabled() && page_) {
     page_->HideErrorPage();
@@ -1703,7 +1732,9 @@ void ContextualTasksUI::FrameNavObserver::DidFinishNavigation(
   // settings.
   if (navigation_handle->IsInPrimaryMainFrame() &&
       navigation_handle->IsSameDocument()) {
-    UpdateDarkModePreferenceFromUrl(web_contents(), url);
+    Profile* profile =
+        Profile::FromBrowserContext(web_contents()->GetBrowserContext());
+    UpdateDarkModePreferenceFromUrl(web_contents(), url, profile);
   }
   bool is_url_changed = false;
   bool last_committed_url_was_empty = last_committed_url_.is_empty();
@@ -1721,6 +1752,7 @@ void ContextualTasksUI::FrameNavObserver::DidFinishNavigation(
   }
 
   if (!is_ai_page) {
+    task_info_delegate_->SetThreadTitle(std::nullopt);
     OMNIBOX_LOG("nav_trace")
         << "ContextualTasks navigation trace: "
            "FrameNavObserver::DidFinishNavigation returning early, not AI page";

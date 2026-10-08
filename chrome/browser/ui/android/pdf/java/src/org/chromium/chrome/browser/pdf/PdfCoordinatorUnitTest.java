@@ -17,6 +17,7 @@ import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
@@ -49,6 +50,7 @@ import androidx.pdf.PdfDocument;
 import androidx.pdf.PdfDocument.PageInfo;
 import androidx.pdf.PdfPoint;
 import androidx.pdf.PdfWriteHandle;
+import androidx.pdf.content.ExternalLink;
 import androidx.pdf.ink.EditablePdfViewerFragment;
 import androidx.pdf.view.PdfView;
 import androidx.pdf.viewer.fragment.PdfViewerFragment;
@@ -90,6 +92,7 @@ import org.chromium.base.test.util.Features.DisableFeatures;
 import org.chromium.base.test.util.Features.EnableFeatures;
 import org.chromium.base.test.util.HistogramWatcher;
 import org.chromium.base.test.util.UserActionTester;
+import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.pdf.PdfUtils.PdfHyperlinkClickResult;
 import org.chromium.chrome.browser.profiles.Profile;
@@ -146,6 +149,7 @@ public class PdfCoordinatorUnitTest {
     private PdfView mPdfView;
     private static final String PDF_URL =
             "chrome-native://pdf/link?url=https%3A%2F%2Fwww.irs.gov%2Fpub%2Firs-pdf%2Ffw4.pdf";
+    private static final String PDF_DOWNLOAD_URL = "https://www.irs.gov/pub/irs-pdf/fw4.pdf";
     private static final String PDF_TITLE = "fw4.pdf";
     private static final String LINK_URL = "https://www.bar.com";
     private String mFilePath;
@@ -184,6 +188,10 @@ public class PdfCoordinatorUnitTest {
     }
 
     private void createPdfCoordinator() {
+        createPdfCoordinator(mFilePath);
+    }
+
+    private void createPdfCoordinator(@Nullable String filePath) {
         // For the purpose of testing, we are using the transient file path and url above when in
         // reality, the file path will not be available for a transient pdf when this constructor
         // is called.
@@ -192,7 +200,7 @@ public class PdfCoordinatorUnitTest {
                         mNativePageHost,
                         mProfile,
                         mActivity,
-                        mFilePath,
+                        filePath,
                         PDF_TITLE,
                         mTab,
                         PDF_URL,
@@ -217,8 +225,7 @@ public class PdfCoordinatorUnitTest {
                 HistogramWatcher.newSingleRecordWatcher(
                         "Android.Pdf.Hyperlink.ClickResult",
                         PdfHyperlinkClickResult.SUCCESS_LOAD_INITIATED);
-        boolean result = mPdfCoordinator.onLinkClicked(linkUri);
-        assertTrue("name should verify true", result);
+        mPdfCoordinator.onLinkClicked(linkUri);
         histogramExpectation.assertExpected();
         ArgumentCaptor<LoadUrlParams> captor = ArgumentCaptor.forClass(LoadUrlParams.class);
         verify(mNativePageHost).openNewTab(captor.capture());
@@ -355,9 +362,7 @@ public class PdfCoordinatorUnitTest {
                     HistogramWatcher.newSingleRecordWatcher(
                             "Android.Pdf.Hyperlink.ClickResult",
                             PdfHyperlinkClickResult.BLOCKED_INVALID_SCHEME);
-            assertFalse(
-                    "onLinkClicked should reject " + raw,
-                    mPdfCoordinator.onLinkClicked(Uri.parse(raw)));
+            mPdfCoordinator.onLinkClicked(Uri.parse(raw));
             histogramExpectation.assertExpected();
         }
         verify(mNativePageHost, never()).openNewTab(any(LoadUrlParams.class));
@@ -373,9 +378,7 @@ public class PdfCoordinatorUnitTest {
                 HistogramWatcher.newSingleRecordWatcher(
                         "Android.Pdf.Hyperlink.ClickResult",
                         PdfHyperlinkClickResult.BLOCKED_INVALID_SCHEME);
-        assertFalse(
-                "onLinkClicked should reject schemeless URI.",
-                mPdfCoordinator.onLinkClicked(Uri.parse("//www.example.com/foo")));
+        mPdfCoordinator.onLinkClicked(Uri.parse("//www.example.com/foo"));
         histogramExpectation.assertExpected();
         verify(mNativePageHost, never()).openNewTab(any(LoadUrlParams.class));
     }
@@ -386,15 +389,140 @@ public class PdfCoordinatorUnitTest {
         when(mProfile.isOffTheRecord()).thenReturn(false);
         createPdfCoordinator();
 
+        Uri linkUri = Uri.parse(LINK_URL);
         HistogramWatcher histogramExpectation =
                 HistogramWatcher.newSingleRecordWatcher(
                         "Android.Pdf.Hyperlink.ClickResult",
-                        PdfHyperlinkClickResult.IGNORED_V2_DISABLED);
-        assertFalse(
-                "onLinkClicked should return false when inline PDF V2 is disabled.",
-                mPdfCoordinator.onLinkClicked(Uri.parse("https://www.example.com/")));
+                        PdfHyperlinkClickResult.SUCCESS_LOAD_INITIATED);
+        mPdfCoordinator.onLinkClicked(linkUri);
         histogramExpectation.assertExpected();
+        ArgumentCaptor<LoadUrlParams> captor = ArgumentCaptor.forClass(LoadUrlParams.class);
+        verify(mNativePageHost).openNewTab(captor.capture());
+        LoadUrlParams params = captor.getValue();
+        assertEquals("URL should match.", LINK_URL, params.getUrl());
+        assertEquals(
+                "Transition type should be LINK.", PageTransition.LINK, params.getTransitionType());
+        assertTrue("isRendererInitiated should be true.", params.getIsRendererInitiated());
+        assertEquals(
+                Origin.create(new GURL(PDF_URL)).toString(),
+                params.getInitiatorOrigin().toString());
+    }
+
+    @Test
+    public void testFragmentOnLinkClicked_AlwaysConsumesEvent() {
+        createPdfCoordinator();
+        ExternalLink link = mock(ExternalLink.class);
+        when(link.getUri()).thenReturn(Uri.parse(LINK_URL));
+
+        boolean handled = mPdfCoordinator.mChromePdfViewerFragment.onLinkClicked(link);
+        assertTrue("ChromePdfViewerFragment.onLinkClicked must always return true.", handled);
+
+        ArgumentCaptor<LoadUrlParams> captor = ArgumentCaptor.forClass(LoadUrlParams.class);
+        verify(mNativePageHost).openNewTab(captor.capture());
+        assertEquals(LINK_URL, captor.getValue().getUrl());
+        assertTrue(captor.getValue().getIsRendererInitiated());
+        assertNull(
+                "No external activity should be started directly",
+                Shadows.shadowOf(mActivity).getNextStartedActivity());
+    }
+
+    @Test
+    @DisableFeatures(ChromeFeatureList.INLINE_PDF_V2)
+    public void testFragmentOnLinkClicked_V2Disabled_LoadsThroughNativePageHost() {
+        when(mProfile.isOffTheRecord()).thenReturn(false);
+        createPdfCoordinator();
+        ExternalLink link = mock(ExternalLink.class);
+        when(link.getUri()).thenReturn(Uri.parse(LINK_URL));
+
+        boolean handled = mPdfCoordinator.mChromePdfViewerFragment.onLinkClicked(link);
+        assertTrue(
+                "ChromePdfViewerFragment.onLinkClicked must return true when V2 is disabled.",
+                handled);
+
+        ArgumentCaptor<LoadUrlParams> captor = ArgumentCaptor.forClass(LoadUrlParams.class);
+        verify(mNativePageHost).openNewTab(captor.capture());
+        assertEquals(LINK_URL, captor.getValue().getUrl());
+        assertTrue(captor.getValue().getIsRendererInitiated());
+        assertNull(
+                "No external activity should be started directly",
+                Shadows.shadowOf(mActivity).getNextStartedActivity());
+    }
+
+    @Test
+    public void testFragmentOnLinkClicked_DisallowedScheme_ConsumesEventAndDropsNavigation() {
+        when(mProfile.isOffTheRecord()).thenReturn(false);
+        createPdfCoordinator();
+
+        String[] dangerousUris = {
+            "javascript:alert('XSS')",
+            "intent://scan/#Intent;scheme=zxing;package=com.evil.app;end",
+            "file:///etc/hosts",
+            "content://com.android.contacts/contacts",
+            "chrome://flags",
+            "data:text/html,test",
+        };
+
+        for (String raw : dangerousUris) {
+            HistogramWatcher histogramExpectation =
+                    HistogramWatcher.newSingleRecordWatcher(
+                            "Android.Pdf.Hyperlink.ClickResult",
+                            PdfHyperlinkClickResult.BLOCKED_INVALID_SCHEME);
+            ExternalLink link = mock(ExternalLink.class);
+            when(link.getUri()).thenReturn(Uri.parse(raw));
+
+            boolean handled = mPdfCoordinator.mChromePdfViewerFragment.onLinkClicked(link);
+            assertTrue(
+                    "ChromePdfViewerFragment.onLinkClicked must consume event even for dangerous"
+                            + " URI: "
+                            + raw,
+                    handled);
+            histogramExpectation.assertExpected();
+        }
         verify(mNativePageHost, never()).openNewTab(any(LoadUrlParams.class));
+        assertNull(
+                "No external activity should be started directly",
+                Shadows.shadowOf(mActivity).getNextStartedActivity());
+    }
+
+    @Test
+    public void testFragmentOnLinkClicked_NoDelegate_ConsumesEventWithoutError() {
+        PdfCoordinator.ChromePdfViewerFragment fragment =
+                new PdfCoordinator.ChromePdfViewerFragment();
+        ExternalLink link = mock(ExternalLink.class);
+        when(link.getUri()).thenReturn(Uri.parse(LINK_URL));
+
+        boolean handled = fragment.onLinkClicked(link);
+        assertTrue(
+                "ChromePdfViewerFragment.onLinkClicked must return true even with null delegate.",
+                handled);
+        assertNull(
+                "No external activity should be started directly",
+                Shadows.shadowOf(mActivity).getNextStartedActivity());
+    }
+
+    @Test
+    public void testFragmentOnLinkClicked_DelegateSetAfterRecreation_Works() {
+        createPdfCoordinator();
+        PdfCoordinator.ChromePdfViewerFragment fragment =
+                new PdfCoordinator.ChromePdfViewerFragment();
+        ExternalLink link = mock(ExternalLink.class);
+        when(link.getUri()).thenReturn(Uri.parse(LINK_URL));
+
+        // Before delegate is attached: consumes event, does not crash.
+        assertTrue(fragment.onLinkClicked(link));
+        verify(mNativePageHost, never()).openNewTab(any(LoadUrlParams.class));
+
+        // Attach delegate.
+        fragment.setDelegate(mPdfCoordinator);
+
+        // After delegate is attached: consumes event and routes navigation.
+        assertTrue(fragment.onLinkClicked(link));
+        ArgumentCaptor<LoadUrlParams> captor = ArgumentCaptor.forClass(LoadUrlParams.class);
+        verify(mNativePageHost).openNewTab(captor.capture());
+        assertEquals(LINK_URL, captor.getValue().getUrl());
+        assertNull(
+                "No external activity should be started directly",
+                Shadows.shadowOf(mActivity).getNextStartedActivity());
     }
 
     @Test
@@ -417,9 +545,7 @@ public class PdfCoordinatorUnitTest {
                     HistogramWatcher.newSingleRecordWatcher(
                             "Android.Pdf.Hyperlink.ClickResult",
                             PdfHyperlinkClickResult.SUCCESS_LOAD_INITIATED);
-            assertTrue(
-                    "onLinkClicked should accept " + raw,
-                    mPdfCoordinator.onLinkClicked(Uri.parse(raw)));
+            mPdfCoordinator.onLinkClicked(Uri.parse(raw));
             histogramExpectation.assertExpected();
         }
         verify(mNativePageHost, times(allowedUris.length)).openNewTab(any(LoadUrlParams.class));
@@ -1318,6 +1444,72 @@ public class PdfCoordinatorUnitTest {
     }
 
     @Test
+    @EnableFeatures({ChromeFeatureList.INLINE_PDF_V2, ChromeFeatureList.PDF_REUSE_FRAGMENT})
+    @Config(shadows = {ShadowEditablePdfViewerFragment.class, ShadowPdfView.class})
+    public void testRecoveredFragmentUriMatches_SameUri_RecordsTrue() {
+        PdfCoordinator.skipLoadPdfForTesting(false);
+        TestChromePdfViewerFragment existingFragment = new TestChromePdfViewerFragment();
+        Uri expectedUri = Uri.parse(TEST_CONTENT_URI);
+        existingFragment.setDocumentUri(expectedUri);
+        mActivity
+                .getSupportFragmentManager()
+                .beginTransaction()
+                .add(existingFragment, String.valueOf(TAB_ID))
+                .commitNow();
+        PdfView pdfView = new PdfView(mActivity);
+        ShadowPdfView shadowPdfView = Shadow.extract(pdfView);
+        PdfDocument mockDocument = Mockito.mock(PdfDocument.class);
+        when(mockDocument.getPageCount()).thenReturn(3);
+        shadowPdfView.mPdfDocument = mockDocument;
+        existingFragment.onPdfViewCreated(pdfView);
+
+        HistogramWatcher watcher =
+                HistogramWatcher.newSingleRecordWatcher(
+                        "Android.Pdf.RecoveredFragmentUriMatches", true);
+        createPdfCoordinator(TEST_CONTENT_URI);
+        watcher.assertExpected();
+    }
+
+    @Test
+    @EnableFeatures({ChromeFeatureList.INLINE_PDF_V2, ChromeFeatureList.PDF_REUSE_FRAGMENT})
+    @Config(shadows = {ShadowEditablePdfViewerFragment.class, ShadowPdfView.class})
+    public void testRecoveredFragmentUriMatches_DifferentUri_RecordsFalse() {
+        PdfCoordinator.skipLoadPdfForTesting(false);
+        TestChromePdfViewerFragment existingFragment = new TestChromePdfViewerFragment();
+        Uri differentUri = Uri.parse("content://different/uri.pdf");
+        existingFragment.setDocumentUri(differentUri);
+        mActivity
+                .getSupportFragmentManager()
+                .beginTransaction()
+                .add(existingFragment, String.valueOf(TAB_ID))
+                .commitNow();
+        PdfView pdfView = new PdfView(mActivity);
+        ShadowPdfView shadowPdfView = Shadow.extract(pdfView);
+        PdfDocument mockDocument = Mockito.mock(PdfDocument.class);
+        when(mockDocument.getPageCount()).thenReturn(3);
+        shadowPdfView.mPdfDocument = mockDocument;
+        existingFragment.onPdfViewCreated(pdfView);
+
+        HistogramWatcher watcher =
+                HistogramWatcher.newSingleRecordWatcher(
+                        "Android.Pdf.RecoveredFragmentUriMatches", false);
+        createPdfCoordinator(TEST_CONTENT_URI);
+        watcher.assertExpected();
+    }
+
+    @Test
+    @EnableFeatures({ChromeFeatureList.INLINE_PDF_V2, ChromeFeatureList.PDF_REUSE_FRAGMENT})
+    public void testRecoveredFragmentUriMatches_FreshLoad_DoesNotRecord() {
+        PdfCoordinator.skipLoadPdfForTesting(false);
+        HistogramWatcher watcher =
+                HistogramWatcher.newBuilder()
+                        .expectNoRecords("Android.Pdf.RecoveredFragmentUriMatches")
+                        .build();
+        createPdfCoordinator();
+        watcher.assertExpected();
+    }
+
+    @Test
     @EnableFeatures(ChromeFeatureList.INLINE_PDF_V2)
     @Config(qualifiers = "w800dp")
     public void testToolBoxViewVisibility() {
@@ -1488,7 +1680,7 @@ public class PdfCoordinatorUnitTest {
             customActivity.setTheme(R.style.Theme_BrowserUI_DayNight);
             controller.setup();
             FakeModalDialogManager fakeModalDialogManager =
-                    new FakeModalDialogManager(ModalDialogType.APP);
+                    new FakeModalDialogManager(ModalDialogType.TAB);
             customActivity.setModalDialogManager(fakeModalDialogManager);
 
             ChromeFileProvider.setGeneratedUriForTesting(Uri.parse(TEST_CONTENT_URI));
@@ -1548,7 +1740,7 @@ public class PdfCoordinatorUnitTest {
             customActivity.setTheme(R.style.Theme_BrowserUI_DayNight);
             controller.setup();
             FakeModalDialogManager fakeModalDialogManager =
-                    new FakeModalDialogManager(ModalDialogType.APP);
+                    new FakeModalDialogManager(ModalDialogType.TAB);
             customActivity.setModalDialogManager(fakeModalDialogManager);
 
             PdfCoordinator pdfCoordinator =
@@ -1608,7 +1800,7 @@ public class PdfCoordinatorUnitTest {
             customActivity.setTheme(R.style.Theme_BrowserUI_DayNight);
             controller.setup();
             FakeModalDialogManager fakeModalDialogManager =
-                    new FakeModalDialogManager(ModalDialogType.APP);
+                    new FakeModalDialogManager(ModalDialogType.TAB);
             customActivity.setModalDialogManager(fakeModalDialogManager);
 
             ChromeFileProvider.setGeneratedUriForTesting(Uri.parse(TEST_CONTENT_URI));
@@ -1667,7 +1859,7 @@ public class PdfCoordinatorUnitTest {
             customActivity.setTheme(R.style.Theme_BrowserUI_DayNight);
             controller.setup();
             FakeModalDialogManager fakeModalDialogManager =
-                    new FakeModalDialogManager(ModalDialogType.APP);
+                    new FakeModalDialogManager(ModalDialogType.TAB);
             customActivity.setModalDialogManager(fakeModalDialogManager);
 
             PdfCoordinator pdfCoordinator =
@@ -1733,7 +1925,7 @@ public class PdfCoordinatorUnitTest {
             customActivity.setTheme(R.style.Theme_BrowserUI_DayNight);
             controller.setup();
             FakeModalDialogManager fakeModalDialogManager =
-                    new FakeModalDialogManager(ModalDialogType.APP);
+                    new FakeModalDialogManager(ModalDialogType.TAB);
             customActivity.setModalDialogManager(fakeModalDialogManager);
 
             PdfCoordinator pdfCoordinator =
@@ -1785,7 +1977,7 @@ public class PdfCoordinatorUnitTest {
             customActivity.setTheme(R.style.Theme_BrowserUI_DayNight);
             controller.setup();
             FakeModalDialogManager fakeModalDialogManager =
-                    new FakeModalDialogManager(ModalDialogType.APP);
+                    new FakeModalDialogManager(ModalDialogType.TAB);
             customActivity.setModalDialogManager(fakeModalDialogManager);
 
             PdfCoordinator pdfCoordinator =
@@ -2091,7 +2283,7 @@ public class PdfCoordinatorUnitTest {
             customActivity.setTheme(R.style.Theme_BrowserUI_DayNight);
             controller.setup();
             FakeModalDialogManager fakeModalDialogManager =
-                    new FakeModalDialogManager(ModalDialogType.APP);
+                    new FakeModalDialogManager(ModalDialogType.TAB);
             customActivity.setModalDialogManager(fakeModalDialogManager);
 
             File tempFile = File.createTempFile("test_pdf", ".pdf");
@@ -2409,7 +2601,7 @@ public class PdfCoordinatorUnitTest {
             customActivity.setTheme(R.style.Theme_BrowserUI_DayNight);
             controller.setup();
             FakeModalDialogManager fakeModalDialogManager =
-                    new FakeModalDialogManager(ModalDialogType.APP);
+                    new FakeModalDialogManager(ModalDialogType.TAB);
             customActivity.setModalDialogManager(fakeModalDialogManager);
 
             ChromeFileProvider.setGeneratedUriForTesting(Uri.parse(TEST_CONTENT_URI));
@@ -2467,7 +2659,7 @@ public class PdfCoordinatorUnitTest {
             customActivity.setTheme(R.style.Theme_BrowserUI_DayNight);
             controller.setup();
             FakeModalDialogManager fakeModalDialogManager =
-                    new FakeModalDialogManager(ModalDialogType.APP);
+                    new FakeModalDialogManager(ModalDialogType.TAB);
             customActivity.setModalDialogManager(fakeModalDialogManager);
 
             ChromeFileProvider.setGeneratedUriForTesting(Uri.parse(TEST_CONTENT_URI));
@@ -2634,14 +2826,153 @@ public class PdfCoordinatorUnitTest {
 
     @Test
     @EnableFeatures(ChromeFeatureList.INLINE_PDF_V2)
-    public void testDownload_ShowsDownloadingToastImmediately() {
+    public void testDownload_WithAnnotations_ShowsDownloadingToastImmediately() {
         createPdfCoordinator();
         mPdfCoordinator.onDownloadComplete(mFilePath, PDF_TITLE);
+        mPdfCoordinator.onEditsApplied();
 
         mPdfCoordinator.download();
 
         assertEquals(
                 mActivity.getString(R.string.pdf_downloading), ShadowToast.getTextOfLatestToast());
+    }
+
+    @Test
+    @EnableFeatures(ChromeFeatureList.INLINE_PDF_V2)
+    public void testDownload_NoAnnotations_CallsHostDownload() {
+        createPdfCoordinator();
+        mPdfCoordinator.onDownloadComplete(mFilePath, PDF_TITLE);
+
+        mPdfCoordinator.download();
+
+        verify(mNativePageHost).downloadUrl(PDF_DOWNLOAD_URL);
+        assertNull(ShadowToast.getTextOfLatestToast());
+    }
+
+    @Test
+    @EnableFeatures(ChromeFeatureList.INLINE_PDF_V2)
+    public void testDownload_NoAnnotations_LocalPdf_IsNoOp() {
+        mPdfCoordinator =
+                new PdfCoordinator(
+                        mNativePageHost,
+                        mProfile,
+                        mActivity,
+                        mFilePath,
+                        PDF_TITLE,
+                        mTab,
+                        TEST_CONTENT_URI,
+                        mPdfFragmentViewTracker);
+        mPdfCoordinator.onDownloadComplete(mFilePath, PDF_TITLE);
+
+        mPdfCoordinator.download();
+
+        verify(mNativePageHost, never()).downloadUrl(any());
+        assertNull(ShadowToast.getTextOfLatestToast());
+    }
+
+    @Test
+    @EnableFeatures(ChromeFeatureList.INLINE_PDF_V2)
+    public void testDownload_NoAnnotations_BlobPdf_CallsHostDownload() {
+        String blobUrl = "blob:https://www.irs.gov/1234-5678";
+        String encodedBlobPdfUrl = PdfUtils.encodePdfPageUrl(blobUrl);
+        mPdfCoordinator =
+                new PdfCoordinator(
+                        mNativePageHost,
+                        mProfile,
+                        mActivity,
+                        mFilePath,
+                        PDF_TITLE,
+                        mTab,
+                        encodedBlobPdfUrl,
+                        mPdfFragmentViewTracker);
+        mPdfCoordinator.onDownloadComplete(mFilePath, PDF_TITLE);
+
+        mPdfCoordinator.download();
+
+        verify(mNativePageHost).downloadUrl(blobUrl);
+        assertNull(ShadowToast.getTextOfLatestToast());
+    }
+
+    @Test
+    @EnableFeatures(ChromeFeatureList.INLINE_PDF_V2)
+    public void testDownload_NoAnnotations_DataPdf_CallsHostDownload() {
+        String dataUrl = "data:application/pdf;base64,JVBERi0xLjc=";
+        String encodedDataPdfUrl = PdfUtils.encodePdfPageUrl(dataUrl);
+        mPdfCoordinator =
+                new PdfCoordinator(
+                        mNativePageHost,
+                        mProfile,
+                        mActivity,
+                        mFilePath,
+                        PDF_TITLE,
+                        mTab,
+                        encodedDataPdfUrl,
+                        mPdfFragmentViewTracker);
+        mPdfCoordinator.onDownloadComplete(mFilePath, PDF_TITLE);
+
+        mPdfCoordinator.download();
+
+        verify(mNativePageHost).downloadUrl(dataUrl);
+        assertNull(ShadowToast.getTextOfLatestToast());
+    }
+
+    @Test
+    @EnableFeatures(ChromeFeatureList.INLINE_PDF_V2)
+    public void testDownload_NoAnnotations_DisallowedScheme_IsNoOp() {
+        String disallowedUrl = "javascript:alert(1)";
+        String encodedUrl = PdfUtils.encodePdfPageUrl(disallowedUrl);
+        mPdfCoordinator =
+                new PdfCoordinator(
+                        mNativePageHost,
+                        mProfile,
+                        mActivity,
+                        mFilePath,
+                        PDF_TITLE,
+                        mTab,
+                        encodedUrl,
+                        mPdfFragmentViewTracker);
+        mPdfCoordinator.onDownloadComplete(mFilePath, PDF_TITLE);
+
+        mPdfCoordinator.download();
+
+        verify(mNativePageHost, never()).downloadUrl(any());
+        assertNull(ShadowToast.getTextOfLatestToast());
+    }
+
+    @Test
+    @EnableFeatures(ChromeFeatureList.INLINE_PDF_V2)
+    public void testDownload_WithAnnotations_LocalPdf_CallsDownloadAnnotatedPdf() {
+        mPdfCoordinator =
+                new PdfCoordinator(
+                        mNativePageHost,
+                        mProfile,
+                        mActivity,
+                        mFilePath,
+                        PDF_TITLE,
+                        mTab,
+                        TEST_CONTENT_URI,
+                        mPdfFragmentViewTracker);
+        mPdfCoordinator.onDownloadComplete(mFilePath, PDF_TITLE);
+        mPdfCoordinator.onEditsApplied();
+
+        mPdfCoordinator.download();
+
+        verify(mNativePageHost, never()).downloadUrl(any());
+        assertEquals(
+                mActivity.getString(R.string.pdf_downloading), ShadowToast.getTextOfLatestToast());
+    }
+
+    @Test
+    @DisableFeatures(ChromeFeatureList.INLINE_PDF_V2)
+    public void testDownload_FeatureDisabled_CallsHostDownload() {
+        createPdfCoordinator();
+        mPdfCoordinator.onDownloadComplete(mFilePath, PDF_TITLE);
+        mPdfCoordinator.onEditsApplied();
+
+        mPdfCoordinator.download();
+
+        verify(mNativePageHost).downloadUrl(PDF_DOWNLOAD_URL);
+        assertNull(ShadowToast.getTextOfLatestToast());
     }
 
     @Test

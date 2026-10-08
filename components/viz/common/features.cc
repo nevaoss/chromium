@@ -23,9 +23,6 @@
 #include "media/media_buildflags.h"
 #include "ui/gl/gl_switches.h"
 
-#if BUILDFLAG(IS_ANDROID)
-#include "base/android/device_info.h"
-#endif
 
 #if BUILDFLAG(IS_WIN)
 #include "base/win/windows_version.h"
@@ -39,6 +36,13 @@ namespace features {
 // mean scrolling without a resource, or OffsetTagValues trying to position
 // the UI outside of their valid constraints.
 BASE_FEATURE(kAndroidDumpForBadCompositedUiState,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
+// Enables the use of SurfaceControl underlays/overlays for HDR content on
+// Android. When disabled (default), HDR video is composited directly by
+// SkiaRenderer to prevent tone-mapping mismatches between
+// SurfaceFlinger/RenderEngine and Skia when UI controls are shown/hidden.
+BASE_FEATURE(kAndroidSurfaceControlHdrOverlays,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 #endif  // BUILDFLAG(IS_ANDROID)
@@ -545,6 +549,17 @@ bool ShouldUseAdpfForSoc(std::string_view soc_allowlist,
 bool ShouldDiscardVizBufferQueueOnVisibilityChange() {
   return kAllowVizBufferQueueDiscardOnVisibilityChange &&
          base::FeatureList::IsEnabled(kVizBufferQueueDiscardOnVisibilityChange);
+}
+
+// When enabled, deadlines are tracked per activation dependency of a
+// CompositorFrame independently. Each dependent surface uses its own specified
+// deadline policy (e.g., from cc::DeadlinePolicy), allowing the frame to
+// activate once all its dependencies have individually resolved or expired,
+// without being bounded by the frame's overall global deadline.
+BASE_FEATURE(kPerDependencyDeadlines, base::FEATURE_DISABLED_BY_DEFAULT);
+
+bool UsePerDependencyDeadlines() {
+  return base::FeatureList::IsEnabled(kPerDependencyDeadlines);
 }
 
 }  // namespace features

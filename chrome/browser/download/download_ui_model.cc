@@ -39,8 +39,10 @@
 #include "third_party/blink/public/common/mime_util/mime_util.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/l10n/time_format.h"
+#include "ui/base/page_transition_types.h"
 #include "ui/base/text/bytes_formatting.h"
 #include "ui/base/ui_base_features.h"
+#include "ui/base/window_open_disposition.h"
 #include "ui/color/color_id.h"
 
 #if !BUILDFLAG(IS_ANDROID)
@@ -705,28 +707,28 @@ void DownloadUIModel::ExecuteCommand(DownloadCommands* download_commands,
       NOTREACHED();
     case DownloadCommands::LEARN_MORE_INTERRUPTED:
       download_commands->GetBrowser()->OpenURL(
-          content::OpenURLParams(
+          content::OpenURLParams::CreateBrowserInitiated(
               download_commands->GetLearnMoreURLForInterruptedDownload(),
-              content::Referrer(), WindowOpenDisposition::NEW_FOREGROUND_TAB,
-              ui::PAGE_TRANSITION_LINK, false),
+              WindowOpenDisposition::NEW_FOREGROUND_TAB,
+              ui::PAGE_TRANSITION_LINK),
           /*navigation_handle_callback=*/{});
       break;
     case DownloadCommands::LEARN_MORE_INSECURE_DOWNLOAD:
       download_commands->GetBrowser()->OpenURL(
-          content::OpenURLParams(
+          content::OpenURLParams::CreateBrowserInitiated(
               GURL(chrome::kInsecureDownloadBlockingLearnMoreUrl),
-              content::Referrer(), WindowOpenDisposition::NEW_FOREGROUND_TAB,
-              ui::PAGE_TRANSITION_LINK, false),
+              WindowOpenDisposition::NEW_FOREGROUND_TAB,
+              ui::PAGE_TRANSITION_LINK),
           /*navigation_handle_callback=*/{});
       break;
     case DownloadCommands::LEARN_MORE_DOWNLOAD_BLOCKED:
       download_commands->GetBrowser()->OpenURL(
-          content::OpenURLParams(google_util::AppendGoogleLocaleParam(
-                                     GURL(chrome::kDownloadBlockedLearnMoreURL),
-                                     g_browser_process->GetApplicationLocale()),
-                                 content::Referrer(),
-                                 WindowOpenDisposition::NEW_FOREGROUND_TAB,
-                                 ui::PAGE_TRANSITION_LINK, false),
+          content::OpenURLParams::CreateBrowserInitiated(
+              google_util::AppendGoogleLocaleParam(
+                  GURL(chrome::kDownloadBlockedLearnMoreURL),
+                  g_browser_process->GetApplicationLocale()),
+              WindowOpenDisposition::NEW_FOREGROUND_TAB,
+              ui::PAGE_TRANSITION_LINK),
           /*navigation_handle_callback=*/{});
       break;
     case DownloadCommands::OPEN_SAFE_BROWSING_SETTING:

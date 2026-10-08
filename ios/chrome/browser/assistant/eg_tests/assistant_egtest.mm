@@ -123,7 +123,8 @@ void OpenAssistantFromOmnibox() {
   [[EarlGrey
       selectElementWithMatcher:grey_accessibilityID(
                                    kAssistantContainerAccessibilityIdentifier)]
-      performAction:grey_swipeFastInDirection(kGREYDirectionDown)];
+      performAction:grey_swipeFastInDirectionWithStartPoint(kGREYDirectionDown,
+                                                            0.5, 0.1)];
 
   // Verify the composebox is no longer the first responder (meaning the
   // keyboard is dismissed).
@@ -149,9 +150,6 @@ void OpenAssistantFromOmnibox() {
   config.features_enabled.push_back(kAssistantSidePanel);
   config.features_enabled.push_back(kChromeNextIa);
   config.features_enabled.push_back(kFullscreenRefactoring);
-  if (![self isRunningTest:@selector(testOmniboxVisibleInSidePanel)]) {
-    config.features_enabled.push_back(kComposeboxIpad);
-  }
 
   return config;
 }

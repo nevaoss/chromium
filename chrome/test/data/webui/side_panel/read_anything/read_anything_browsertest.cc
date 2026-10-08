@@ -5,6 +5,7 @@
 #include <vector>
 
 #include "base/test/scoped_feature_list.h"
+#include "build/build_config.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/side_panel/side_panel_entry_id.h"
 #include "chrome/browser/ui/side_panel/side_panel_enums.h"
@@ -28,7 +29,7 @@ class ReadAnythingMochaBrowserTest : public WebUIMochaBrowserTest {
   }
 
   void RunSidePanelTest(const std::string& file, const std::string& trigger) {
-    auto* side_panel_ui = browser()->GetFeatures().side_panel_ui();
+    auto* side_panel_ui = SidePanelUI::From(browser());
     side_panel_ui->Show(SidePanelEntryId::kReadAnything);
     auto* web_contents =
         side_panel_ui->GetWebContentsForTest(SidePanelEntryId::kReadAnything);
@@ -154,10 +155,20 @@ IN_PROC_BROWSER_TEST_F(ReadAnythingMochaTest, VoiceSelectionMenu) {
                    "mocha.run()");
 }
 
+IN_PROC_BROWSER_TEST_F(ReadAnythingMochaTest, VoiceSelectionDialog) {
+  RunSidePanelTest("side_panel/read_anything/voice_selection_dialog_test.js",
+                   "mocha.run()");
+}
+
 IN_PROC_BROWSER_TEST_F(ReadAnythingMochaTest, VoiceLanguageUtil) {
   RunSidePanelTest(
       "side_panel/read_anything/voice_language_conversions_test.js",
       "mocha.run()");
+}
+
+IN_PROC_BROWSER_TEST_F(ReadAnythingMochaTest, VoiceMenuDisplay) {
+  RunSidePanelTest("side_panel/read_anything/voice_menu_display_test.js",
+                   "mocha.run()");
 }
 
 IN_PROC_BROWSER_TEST_F(ReadAnythingMochaTest, KeyboardUtil) {

@@ -147,6 +147,7 @@ ToolbarController::ToolbarController(
               views::FlexSpecification flex_spec;
               if (!original_spec) {
                 flex_spec = views::FlexSpecification(
+                    views::LayoutOrientation::kHorizontal,
                     views::MinimumFlexSizeRule::kPreferredSnapToZero,
                     views::MaximumFlexSizeRule::kPreferred);
                 toolbar_element->SetProperty(views::kFlexBehaviorKey,
@@ -231,11 +232,11 @@ std::string ToolbarController::GetActionNameFromElementIdentifier(
            {kActionCopyUrl, "PinnedCopyLinkButton"},
            {kActionDevTools, "PinnedDeveloperToolsButton"},
            {kActionNewIncognitoWindow, "PinnedNewIncognitoWindowButton"},
+           {kActionNewIsolatedWindow, "PinnedNewIsolatedWindowButton"},
            {kActionPrint, "PinnedPrintButton"},
            {kActionQrCodeGenerator, "PinnedQrCodeGeneratorButton"},
            {kActionRouteMedia, "PinnedCastButton"},
            {kActionSendTabToSelf, "PinnedSendTabToSelfButton"},
-           {kActionShowAddresses, "PinnedShowAddressesBubbleOrPageButton"},
            {kActionShowAddressesBubbleOrPage,
             "PinnedShowAddressesBubbleOrPageButton"},
            {kActionShowChromeLabs, "PinnedShowChromeLabsButton"},
@@ -303,7 +304,8 @@ bool ToolbarController::PopOut(ui::ElementIdentifier identifier,
       // below the mininmum size.
       element->SetProperty(
           views::kFlexBehaviorKey,
-          views::FlexSpecification(views::MinimumFlexSizeRule::kScaleToMinimum,
+          views::FlexSpecification(views::LayoutOrientation::kHorizontal,
+                                   views::MinimumFlexSizeRule::kScaleToMinimum,
                                    views::MaximumFlexSizeRule::kPreferred)
               .WithOrder((*original).order())
               .WithWeight((*original).weight())
@@ -358,7 +360,7 @@ bool ToolbarController::ShouldShowOverflowButton(gfx::Size available_size) {
           toolbar_container_view_->GetLayoutManager()));
   const auto exclusion =
       manual_layout_util.TemporarilyExcludeFromLayout(overflow_button());
-  views::ProposedLayout proposed_layout =
+  const views::ProposedLayout& proposed_layout =
       static_cast<views::LayoutManagerBase*>(
           toolbar_container_view_->GetLayoutManager())
           ->GetProposedLayout(available_size);
@@ -366,7 +368,7 @@ bool ToolbarController::ShouldShowOverflowButton(gfx::Size available_size) {
   // Check if any buttons should overflow from pinned action delegate given the
   // available size.
   if (pinned_actions_delegate_) {
-    if (views::ChildLayout* child_layout = proposed_layout.GetLayoutFor(
+    if (const views::ChildLayout* child_layout = proposed_layout.GetLayoutFor(
             pinned_actions_delegate_->GetContainerView())) {
       if (pinned_actions_delegate_->ShouldAnyButtonsOverflow(gfx::Size(
               child_layout->bounds.width(), child_layout->bounds.height()))) {

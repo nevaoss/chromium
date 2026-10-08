@@ -51,6 +51,7 @@
 #include "ui/base/interaction/element_identifier.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/test/ui_controls.h"
+#include "ui/views/bubble/bubble_border.h"
 #include "ui/views/controls/label.h"
 #include "ui/views/controls/menu/menu_item_view.h"
 #include "ui/views/interaction/element_tracker_views.h"
@@ -100,9 +101,9 @@ class SendTabToSelfTutorialInteractiveUiTest : public InteractiveBrowserTest {
   }
 
   user_education::TutorialService* GetTutorialService() {
-    return &UserEducationServiceFactory::GetForBrowserContext(
-                browser()->GetProfile())
-                ->tutorial_service();
+    return UserEducationServiceFactory::GetForBrowserContext(
+               browser()->GetProfile())
+        ->tutorial_service();
   }
 
   // Starts the Send Tab to Self tutorial with optional callbacks.
@@ -171,6 +172,15 @@ class SendTabToSelfTutorialInteractiveUiTest : public InteractiveBrowserTest {
         &views::Label::GetText, l10n_util::GetStringUTF16(string_id));
   }
 
+  // Verifies the help bubble arrow orientation.
+  auto CheckHelpBubbleArrow(views::BubbleBorder::Arrow arrow) {
+    return CheckView(
+        user_education::HelpBubbleView::kHelpBubbleElementIdForTesting,
+        [arrow](user_education::HelpBubbleView* bubble) {
+          return bubble->arrow() == arrow;
+        });
+  }
+
   // Injects a dummy view with the specified element identifier for testing.
   auto AddDummyElement(ui::ElementIdentifier id) {
     return Do([this, id]() {
@@ -236,6 +246,7 @@ IN_PROC_BROWSER_TEST_F(SendTabToSelfTutorialInteractiveUiTest, TutorialSteps) {
       WaitForShow(
           user_education::HelpBubbleView::kHelpBubbleElementIdForTesting),
       CheckHelpBubbleAnchor(kTabSendTabToSelfMenuItem),
+      CheckHelpBubbleArrow(views::BubbleBorder::BOTTOM_LEFT),
       CheckHelpBubbleBodyText(IDS_TUTORIAL_SEND_TAB_TO_SELF_STEP_2_BODY),
 
       // Step 3: Show the ToastView.
@@ -385,11 +396,7 @@ class SendTabToSelfIphInteractiveUiTest : public InteractiveFeaturePromoTest {
 
   auto StopToastTimer() {
     return Do([this]() {
-      browser()
-          ->GetFeatures()
-          .toast_controller()
-          ->GetToastCloseTimerForTesting()
-          ->Stop();
+      ToastController::From(browser())->GetToastCloseTimerForTesting()->Stop();
     });
   }
 

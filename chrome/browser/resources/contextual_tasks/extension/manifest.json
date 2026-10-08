@@ -1,5 +1,5 @@
 {
-  "name": "google.com",
+  "name": "Contextual Tasks",
   "version": "1.0",
   "manifest_version": 3,
   "description": "Provides Contextual Tasks Private APIs",
@@ -30,7 +30,8 @@
   "web_accessible_resources": [
     {
       "resources": [
-        "input_plate.html"
+        "chip.html",
+        "lens_button.html"
       ],
       "matches": [
         "https://*.google.com/*",

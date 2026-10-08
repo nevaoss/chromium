@@ -27,6 +27,7 @@ import org.chromium.build.annotations.EnsuresNonNull;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.components.omnibox.OmniboxFeatures;
+import org.chromium.components.omnibox.OmniboxUrlEmphasizer.UrlEmphasisSpan;
 import org.chromium.ui.accessibility.AccessibilityState;
 import org.chromium.ui.text.EmptyTextWatcher;
 import org.chromium.ui.widget.EditTextWithLeading;
@@ -50,8 +51,8 @@ public class AutocompleteEditText extends EditTextWithLeading
      */
     private boolean mDisableTextScrollingFromAutocomplete;
 
-    /** Local copy of the OnKeyListener. */
     private @Nullable OnKeyListener mOnKeyListener;
+    private boolean mModelShouldIgnoreFocusChanges;
 
     public AutocompleteEditText(Context context, AttributeSet attrs) {
         super(context, attrs);
@@ -195,9 +196,13 @@ public class AutocompleteEditText extends EditTextWithLeading
 
     @Override
     protected void onFocusChanged(boolean focused, int direction, Rect previouslyFocusedRect) {
-        if (mModel != null) mModel.onFocusChanged(focused);
+        if (mModel != null && !mModelShouldIgnoreFocusChanges) mModel.onFocusChanged(focused);
         super.onFocusChanged(focused, direction, previouslyFocusedRect);
         if (!focused) setCursorVisible(false);
+    }
+
+    void setModelShouldIgnoreFocusChanges(boolean ignoreFocusChanges) {
+        mModelShouldIgnoreFocusChanges = ignoreFocusChanges;
     }
 
     @Override
@@ -277,13 +282,26 @@ public class AutocompleteEditText extends EditTextWithLeading
     public void setText(CharSequence text, BufferType type) {
         if (DEBUG) Log.i(TAG, "setText -- text: %s", text);
         mDisableTextScrollingFromAutocomplete = false;
-        if (TextUtils.equals(getText(), text)) {
+        if (isTextEquivalentToExistingText(text)) {
             if (mModel != null) mModel.onSetText(text);
             return;
         }
 
         super.setText(text, type);
         if (mModel != null) mModel.onSetText(text);
+    }
+
+    /**
+     * Returns whether setting {@code text} would leave the URL-emphasis state unchanged. Subclasses
+     * may extend this policy for other persistent spans. Framework, selection, composing, watcher,
+     * and IME spans are intentionally ignored so they do not defeat the no-reset path.
+     */
+    protected boolean isTextEquivalentToExistingText(CharSequence text) {
+        Editable currentText = getText();
+        return currentText != null
+                && TextUtils.equals(currentText, text)
+                && OmniboxViewUtil.haveEquivalentSpans(
+                        currentText, text, UrlEmphasisSpan.class);
     }
 
     @Override
@@ -400,9 +418,6 @@ public class AutocompleteEditText extends EditTextWithLeading
     }
 
     @Override
-    public void onUpdateSelectionForTesting(int selStart, int selEnd) {}
-
-    @Override
     public String getKeyboardPackageName() {
         String defaultIme =
                 Settings.Secure.getString(
@@ -412,14 +427,6 @@ public class AutocompleteEditText extends EditTextWithLeading
 
     @Override
     public void setInputIsMultilineEligible(boolean isMultilineEligible) {}
-
-    /* package */ void setModelForTesting(AutocompleteEditTextModelBase model) {
-        mModel = model;
-    }
-
-    /* package */ @Nullable AutocompleteEditTextModelBase getModelForTesting() {
-        return mModel;
-    }
 
     @Override
     public void setSiteSearchChip(@Nullable String keyword) {
@@ -440,5 +447,16 @@ public class AutocompleteEditText extends EditTextWithLeading
         setOnKeyListener(null);
         dispatchKeyEventToModel(event);
         setOnKeyListener(onKeyListener);
+    }
+
+    @Override
+    public void onUpdateSelectionForTesting(int selStart, int selEnd) {}
+
+    /* package */ void setModelForTesting(AutocompleteEditTextModelBase model) {
+        mModel = model;
+    }
+
+    /* package */ @Nullable AutocompleteEditTextModelBase getModelForTesting() {
+        return mModel;
     }
 }

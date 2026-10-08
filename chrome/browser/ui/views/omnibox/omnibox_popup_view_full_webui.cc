@@ -4,8 +4,11 @@
 
 #include "chrome/browser/ui/views/omnibox/omnibox_popup_view_full_webui.h"
 
+#include <memory>
 #include <string>
+#include <utility>
 
+#include "base/trace_event/trace_event.h"
 #include "chrome/browser/search/search.h"
 #include "chrome/browser/ui/location_bar/location_bar.h"
 #include "chrome/browser/ui/omnibox/omnibox_controller.h"
@@ -24,12 +27,12 @@
 #include "chrome/browser/ui/webui/omnibox_popup/omnibox_popup_handler.h"
 #include "chrome/browser/ui/webui/omnibox_popup/omnibox_popup_ui.h"
 #include "chrome/browser/ui/webui/searchbox/webui_omnibox_handler.h"
-#include "chrome/browser/ui/webui/top_chrome/webui_contents_wrapper.h"
 #include "chrome/browser/ui/webui/webui_embedding_context.h"
 #include "chrome/common/url_constants.h"
 #include "chrome/common/webui_url_constants.h"
 #include "components/omnibox/browser/searchbox.mojom.h"
 #include "components/strings/grit/components_strings.h"
+#include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/navigation_entry.h"
 #include "content/public/browser/web_contents.h"
 #include "ui/base/l10n/l10n_util.h"
@@ -86,7 +89,8 @@ OmniboxPopupViewFullWebUI::OmniboxPopupViewFullWebUI(
     OmniboxView* omnibox_view,
     OmniboxController* controller,
     LocationBar* location_bar,
-    OmniboxPopupPresenterDelegate& presenter_delegate)
+    OmniboxPopupPresenterDelegate& presenter_delegate,
+    base::OnceClosure on_ready_callback)
     : OmniboxPopupViewWebUI(
           omnibox_view,
           controller,
@@ -94,34 +98,25 @@ OmniboxPopupViewFullWebUI::OmniboxPopupViewFullWebUI(
           presenter_delegate,
           std::make_unique<OmniboxPopupFullPresenter>(location_bar,
                                                       presenter_delegate,
-                                                      controller)) {}
+                                                      controller)),
+      on_ready_callback_(std::move(on_ready_callback)) {}
 
 OmniboxPopupViewFullWebUI::~OmniboxPopupViewFullWebUI() = default;
 
-// This method acts solely as a visibility and focus guard gate. Avoid adding
-// extra feature logic here, as content updates are typically handled via
-// `SyncNativeStateToWebUI` from specific event hooks (such as focus or tab
-// switches).
 void OmniboxPopupViewFullWebUI::UpdatePopupAppearance() {
-  // Show the suggestions popup and synchronize state if the browser window is
-  // active and the omnibox view holds keyboard focus. This prevents background
-  // updates or asynchronous tab-switch restorations from opening the popup
-  // when the user is interacting with other parts of the UI, while allowing
-  // typing into the WebUI omnibox after clicking the top container.
-  if (controller()->popup_state_manager()->popup_state() !=
-      OmniboxPopupState::kFull) {
-    return;
-  }
-  views::Widget* widget = presenter()->delegate().GetLocationBarWidget();
-  if (widget && widget->IsActive() && location_bar()->IsFocusWithin()) {
-    if (!IsReverting()) {
-      OnFocus(/*query_zps=*/false);
-      SyncNativeStateToWebUI(/*query_zps=*/true);
-    }
-  }
+  // Intentional no-op in Full WebUI mode. Suggestions and content updates are
+  // handled directly via WebUI Mojo handlers and specific event hooks
+  // (focus, tab switch). Avoid calling `OnFocus()` or
+  // `SyncNativeStateToWebUI()` here, as that would clobber selection and cause
+  // focus fights during deactivation or autocomplete changes.
 }
 
+// TODO(crbug.com/553005514): Instrument callsite traces
+// (ex: OnNewTabFocus, OnFocus, OnTabChanged, SaveStateToTab) at their
+// respective entry points to capture individual trigger contexts.
 void OmniboxPopupViewFullWebUI::SyncNativeStateToWebUI(bool query_zps) {
+  TRACE_EVENT1("omnibox", "OmniboxPopupViewFullWebUI::SyncNativeStateToWebUI",
+               "query_zps", query_zps);
   auto* edit_model = controller()->edit_model();
 
   edit_model->ResetDisplayTexts();
@@ -135,27 +130,40 @@ void OmniboxPopupViewFullWebUI::SyncNativeStateToWebUI(bool query_zps) {
   std::u16string text =
       user_input_in_progress ? edit_model->user_text() : permanent_display_text;
   bool focus = edit_model->has_focus();
-  // Default to select-all if focused so that taking focus selects all text by
-  // default (whether permanent URL or draft). Otherwise default to empty
-  // selection.
-  gfx::Range selection =
-      focus ? gfx::Range(0, text.length()) : gfx::Range(0, 0);
-  // If the user is actively typing a draft or has an active highlight from
-  // mouse dragging or double-clicking, use the native view's selection range.
-  if (omnibox_view_) {
-    if (user_input_in_progress || omnibox_view_->HasSelection()) {
-      selection = omnibox_view_->GetSelectionBounds();
-    }
-  }
+  // Default to select-all on permanent URLs (so focusing or refocusing selects
+  // all text, and empty text defaults to Range(0, 0)).
+  gfx::Range selection(0, text.length());
+
+  const gfx::Range handler_selection = popup_handler->latest_selection();
   const std::u16string full_url = controller()->client()->GetFormattedFullURL();
+  const bool is_handler_selection_valid =
+      handler_selection.IsValid() &&
+      handler_selection.GetMax() <= text.length();
+
+  if (omnibox_view_ && omnibox_view_->HasSelection()) {
+    // If the native view has an active highlight (e.g. from mouse dragging or
+    // double-clicking in Views), preserve the exact selection range.
+    selection = omnibox_view_->GetSelectionBounds();
+  } else if (user_input_in_progress) {
+    // Preserve existing WebUI selection if valid, otherwise place
+    // caret at the end of the text.
+    selection = is_handler_selection_valid
+                    ? handler_selection
+                    : gfx::Range(text.length(), text.length());
+  } else if (is_handler_selection_valid && !handler_selection.is_empty()) {
+    // For permanent URLs without native selection, if WebUI already has a valid
+    // non-empty selection range (e.g. from user highlighting text in WebUI),
+    // preserve it.
+    selection = handler_selection;
+  }
 
   // `last_sent_text_` is null after a state reset (e.g., tab switch).
   // Otherwise, check if `text`, `selection`, or `focus` has diverged.
   bool text_changed = !last_sent_text_ || text != *last_sent_text_;
-  bool selection_changed = selection != popup_handler->latest_selection();
+  bool selection_changed = selection != handler_selection;
   bool focus_changed = !last_sent_focus_ || focus != *last_sent_focus_;
 
-  if (text_changed || selection_changed || focus_changed) {
+  if (text_changed || selection_changed || focus_changed || query_zps) {
     searchbox::mojom::InputKeywordModelPtr keyword_model =
         CreateInputKeywordModel(
             edit_model->keyword_state(), edit_model->keyword(),
@@ -168,7 +176,7 @@ void OmniboxPopupViewFullWebUI::SyncNativeStateToWebUI(bool query_zps) {
         base::UTF16ToUTF8(text), selection, user_input_in_progress,
         base::UTF16ToUTF8(full_url), edit_model->has_focus(),
         base::UTF16ToUTF8(permanent_display_text), /*show_full_url=*/false,
-        query_zps, std::move(keyword_model));
+        query_zps, std::move(keyword_model), /*is_tab_switch=*/false);
     last_sent_text_ = text;
     last_sent_focus_ = focus;
   }
@@ -231,8 +239,14 @@ void OmniboxPopupViewFullWebUI::SaveStateToTab(content::WebContents* tab) {
 }
 
 void OmniboxPopupViewFullWebUI::OnTabChanged(content::WebContents* contents) {
+  TRACE_EVENT0("omnibox", "OmniboxPopupViewFullWebUI::OnTabChanged");
   last_sent_text_.reset();
   last_sent_focus_.reset();
+  controller()->edit_model()->ResetDisplayTexts();
+
+  // Cancel in-flight queries from the previous tab immediately rather than
+  // waiting for the WebUI's `stopAutocomplete` IPC.
+  controller()->StopAutocomplete(/*clear_result=*/true);
 
   // TODO(b:544433912) Consider removing or fixing `target_popup_state` logic as
   //   it doesn't seem to be opening the popup as it intends, nor is it clear if
@@ -246,9 +260,28 @@ void OmniboxPopupViewFullWebUI::OnTabChanged(content::WebContents* contents) {
   bool non_empty_user_input_in_progress =
       state ? state->model_state.user_input_in_progress : false;
 
+  const bool is_first_tab_changed = !has_completed_first_tab_changed_;
+  has_completed_first_tab_changed_ = true;
+
   if (state) {
     // Restore the saved state for the tab.
     controller()->edit_model()->RestoreState(&state->model_state);
+
+    // Only request native keyboard focus for the omnibox
+    // popup if it was logically focused when the user switched tabs.
+    should_focus_popup = (state->model_state.focus_state != OMNIBOX_FOCUS_NONE);
+
+    // The popup must be visible (`OmniboxPopupState::kFull`) if there is an
+    // active draft or if the omnibox should have visible focus, and the popup
+    // is initialized and ready.
+    target_popup_state =
+        IsPopupHandlerReady() &&
+                (non_empty_user_input_in_progress || should_focus_popup)
+            ? OmniboxPopupState::kFull
+            : OmniboxPopupState::kNone;
+
+    // Set popup state before setting focus state to avoid focus ring flicker.
+    controller()->popup_state_manager()->SetPopupState(target_popup_state);
 
     // Prevent focus state leaks by explicitly syncing the `OmniboxEditModel`'s
     // focus state with the restored state of the newly active tab.
@@ -257,34 +290,31 @@ void OmniboxPopupViewFullWebUI::OnTabChanged(content::WebContents* contents) {
     } else {
       controller()->edit_model()->OnKillFocus();
     }
-
-    // Only request native keyboard focus for the omnibox
-    // popup if it was logically focused when the user switched tabs.
-    should_focus_popup = (state->model_state.focus_state != OMNIBOX_FOCUS_NONE);
-
-    // The popup must be visible (`OmniboxPopupState::kFull`) if there is an
-    // active draft or if the omnibox should have visible focus.
-    target_popup_state = non_empty_user_input_in_progress || should_focus_popup
-                             ? OmniboxPopupState::kFull
-                             : OmniboxPopupState::kNone;
   } else {
     // No saved state. Revert the edit model and check if the tab should focus
     // the location bar by default (e.g., New Tab Page).
     controller()->edit_model()->Revert();
     controller()->edit_model()->OnChanged();
     should_focus_popup = ShouldFocusLocationBarForTab(contents);
+    // Only transition to `kFull` if the popup is initialized and ready.
+    // Otherwise, maintain `kNone` until `OnPopupHandlerReady()` is called.
+    target_popup_state = IsPopupHandlerReady() && should_focus_popup
+                             ? OmniboxPopupState::kFull
+                             : OmniboxPopupState::kNone;
+    // Set popup state before setting focus state to avoid focus ring flicker.
+    controller()->popup_state_manager()->SetPopupState(target_popup_state);
+
     if (should_focus_popup) {
+      if (!is_first_tab_changed) {
+        TRACE_EVENT_INSTANT0(
+            "omnibox", "OmniboxPopupViewFullWebUI::OnTabChanged:OnSetFocus",
+            TRACE_EVENT_SCOPE_THREAD);
+      }
       controller()->edit_model()->OnSetFocus(/*control_down=*/false);
-      target_popup_state = OmniboxPopupState::kFull;
     } else {
       controller()->edit_model()->OnKillFocus();
-      target_popup_state = OmniboxPopupState::kNone;
     }
   }
-
-  // TODO(b/504668582): Fix flicker that occurs when switching between two tabs
-  //   that have an Omnibox with text.
-  controller()->popup_state_manager()->SetPopupState(target_popup_state);
 
   // Request focus before pushing content state so our `SetInputState` IPC
   // overrides any OS-default focus selection (such as macOS Select-All).
@@ -311,13 +341,18 @@ void OmniboxPopupViewFullWebUI::OnTabChanged(content::WebContents* contents) {
           }
         }
         presenter()->RequestFocus();
+      } else if (contents) {
+        if (auto* focus_helper =
+                ChromeWebContentsViewFocusHelper::FromWebContents(contents)) {
+          focus_helper->RestoreFocus();
+        }
       }
     }
   } else {
     if (presenter()) {
       presenter()->Hide();
     }
-    if (contents) {
+    if (!should_focus_popup && contents) {
       if (auto* focus_helper =
               ChromeWebContentsViewFocusHelper::FromWebContents(contents)) {
         focus_helper->RestoreFocus();
@@ -336,7 +371,8 @@ void OmniboxPopupViewFullWebUI::OnTabChanged(content::WebContents* contents) {
     bool show_full_url = state ? state->show_full_url : false;
     const std::u16string full_url =
         controller()->client()->GetFormattedFullURL();
-    gfx::Range selection = state ? state->selection : gfx::Range(0, 0);
+    gfx::Range selection =
+        state ? state->selection : gfx::Range(0, text.length());
     searchbox::mojom::InputKeywordModelPtr keyword_model;
     if (state) {
       keyword_model = CreateInputKeywordModel(
@@ -347,13 +383,14 @@ void OmniboxPopupViewFullWebUI::OnTabChanged(content::WebContents* contents) {
         base::UTF16ToUTF8(text), selection, non_empty_user_input_in_progress,
         base::UTF16ToUTF8(full_url), should_focus_popup,
         base::UTF16ToUTF8(permanent_display_text), show_full_url,
-        /*query_zps=*/false, std::move(keyword_model));
+        /*query_zps=*/false, std::move(keyword_model),
+        /*is_tab_switch=*/true);
     last_sent_text_ = text;
     last_sent_focus_ = should_focus_popup;
   }
 }
 
-void OmniboxPopupViewFullWebUI::OnFocus(bool query_zps) {
+void OmniboxPopupViewFullWebUI::OnFocus(bool query_zps, bool select_all) {
   focused_ = true;
   bool changed = controller()->popup_state_manager()->popup_state() !=
                  OmniboxPopupState::kFull;
@@ -363,8 +400,10 @@ void OmniboxPopupViewFullWebUI::OnFocus(bool query_zps) {
     last_sent_focus_.reset();
   }
 
-  controller()->edit_model()->OnSetFocus(/*control_down=*/false);
+  // Set popup state to kFull before setting focus state to prevent focus ring
+  // flicker during the transition.
   controller()->popup_state_manager()->SetPopupState(OmniboxPopupState::kFull);
+  controller()->edit_model()->OnSetFocus(/*control_down=*/false);
 
   if (presenter()) {
     presenter()->Show();
@@ -377,9 +416,9 @@ void OmniboxPopupViewFullWebUI::OnFocus(bool query_zps) {
     SyncNativeStateToWebUI(query_zps);
   } else if (auto* popup_handler = GetPopupHandler()) {
     // If the popup was already open (`!changed`), explicitly send
-    // `SetFocus(true)` via IPC to ensure WebUI DOM input element focus is
-    // restored if it was lost.
-    popup_handler->SetFocus(true);
+    // `SetFocus(true, query_zps, select_all)` via IPC to ensure WebUI DOM input
+    // element focus and suggestions are restored.
+    popup_handler->SetFocus(true, query_zps, select_all);
   }
 }
 
@@ -388,6 +427,24 @@ void OmniboxPopupViewFullWebUI::OnBlur() {
   if (auto* popup_handler = GetPopupHandler()) {
     popup_handler->SetFocus(false);
   }
+}
+
+void OmniboxPopupViewFullWebUI::OnPopupHandlerReady() {
+  is_popup_handler_ready_ = true;
+  if (on_ready_callback_) {
+    std::move(on_ready_callback_).Run();
+  }
+}
+
+bool OmniboxPopupViewFullWebUI::IsPopupHandlerReady() const {
+  // Check `is_popup_handler_ready_` to handle the synchronous
+  // `OnPopupHandlerReady()` callback invoked during the `OmniboxPopupHandler`
+  // constructor before `std::make_unique` finishes assigning to
+  // `popup_ui->popup_handler_`. Also check `GetPopupHandler()` to verify
+  // presence once construction has completed.
+  return is_popup_handler_ready_ ||
+         const_cast<OmniboxPopupViewFullWebUI*>(this)->GetPopupHandler() !=
+             nullptr;
 }
 
 OmniboxPopupHandler* OmniboxPopupViewFullWebUI::GetPopupHandler() {

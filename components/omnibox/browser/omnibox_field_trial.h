@@ -20,7 +20,6 @@
 #include "components/omnibox/browser/autocomplete_provider.h"
 #include "components/omnibox/common/omnibox_features.h"
 #include "third_party/metrics_proto/omnibox_event.pb.h"
-#include "third_party/omnibox_proto/entity_info.pb.h"
 
 namespace base {
 class TimeDelta;
@@ -697,12 +696,6 @@ inline constexpr base::FeatureParam<bool> kMobileParityEnableFeedForGoogleOnly{
 
 #if BUILDFLAG(IS_ANDROID)
 // Fusebox -->
-inline constexpr base::FeatureParam<bool> kOmniboxShowModelPicker{
-    &omnibox::kOmniboxMultimodalInput, "show_model_picker", false};
-
-inline constexpr base::FeatureParam<bool> kOmniboxModelPickerOptimizations{
-    &omnibox::kOmniboxMultimodalInput, "model_picker_optimizations", true};
-
 inline constexpr base::FeatureParam<bool>
     kOmniboxMultimodalPrioritizeSuggestionsForFirstDocument{
         &omnibox::kOmniboxMultimodalInput,

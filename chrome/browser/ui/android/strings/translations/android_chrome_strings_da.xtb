@@ -57,6 +57,7 @@
 <translation id="1181037720776840403">Fjern</translation>
 <translation id="1183189057400844278">Verificer din identitet for at sikre, at du altid kan bruge adgangskoderne på din Google-konto</translation>
 <translation id="1187810343066461819">Slet også bogmærker, historik m.m. fra denne bil</translation>
+<translation id="1191987227666124897">Anmodning om fravalg</translation>
 <translation id="1193729455103054076">Vil du bruge en stærk adgangskode?</translation>
 <translation id="11947597112837849">mailadresse</translation>
 <translation id="1197267115302279827">Flyt bogmærker</translation>
@@ -105,6 +106,7 @@
 <translation id="138181280295369883">Log ind for at få adgang til dine gemte oplysninger og meget mere på alle dine enheder</translation>
 <translation id="1381838868249179644">Tilladelserne er blevet fjernet fra nogle websites for at beskytte dig</translation>
 <translation id="1383876407941801731">Søg</translation>
+<translation id="1384568202352682721">Gem som…</translation>
 <translation id="1384704387250346179">Oversæt billedet med Google Lens <ph name="BEGIN_NEW" />Nyhed<ph name="END_NEW" /></translation>
 <translation id="1390418506739274310">Du kan muligvis se historikken fra andre apps, der åbner links i Chrome. Din Google-konto kan have andre former for browserhistorik på <ph name="BEGIN_LINK" />myactivity.google.com<ph name="END_LINK" />.</translation>
 <translation id="139752016751285248">Felt i bunden med prisinfo åbnet i fuld højde</translation>
@@ -133,6 +135,7 @@ Du kan finde flere indstillinger, der bruger data til at forbedre din Chrome-opl
 <translation id="147982357559798527">Ændret</translation>
 <translation id="1480287803138246127">Noget af din historik vises muligvis ikke her. Hvis du vil se hele din Chrome-historik, skal du åbne den komplette Chrome-historik.</translation>
 <translation id="1483493594462132177">Send</translation>
+<translation id="1485343711570311792">Åbn i <ph name="NATIVE_APP_NAME" /> • Fra <ph name="DEVICE_NAME" /></translation>
 <translation id="1495677929897281669">Tilbage til fanen</translation>
 <translation id="1496514951988037011">brugernavn</translation>
 <translation id="1501480321619201731">Slet gruppe</translation>
@@ -210,6 +213,7 @@ Kun personer med din adgangssætning kan læse dine krypterede data. Adgangssæt
 <translation id="1832459821645506983">Ja tak</translation>
 <translation id="1845958458910716240">Du kan beskytte dine data ved at lade Chrome fjerne tilladelser fra websites, du ikke har besøgt for nylig</translation>
 <translation id="1851551847729706116"><ph name="TAB_NAME" /> deles med denne fane</translation>
+<translation id="1855268219431673036">Side <ph name="CURRENT_PAGE" /> af <ph name="TOTAL_PAGE_COUNT" /></translation>
 <translation id="1869691326892615940">Mere sikre adgangskoder og hurtigere login</translation>
 <translation id="1871098866036088250">Åbn i Chrome-browseren</translation>
 <translation id="1877026089748256423">Chrome er forældet</translation>
@@ -248,6 +252,7 @@ Kun personer med din adgangssætning kan læse dine krypterede data. Adgangssæt
 <translation id="1984087999855033707">telefonnummer</translation>
 <translation id="1984417487208496350">Ingen beskyttelse (anbefales ikke)</translation>
 <translation id="1986685561493779662">Navnet findes allerede</translation>
+<translation id="1992244793717364584">Appen blev afinstalleret</translation>
 <translation id="200114059308480249">Vil du medtage omgivende tekst i Google-søgninger?</translation>
 <translation id="2004096469149679223"><ph name="TAB_TITLE" />, fastgjort inkognitofane med lyden slået fra</translation>
 <translation id="2021896219286479412">Kontrolelementer på website i fuld skærm</translation>
@@ -327,6 +332,7 @@ Kun personer med din adgangssætning kan læse dine krypterede data. Adgangssæt
 <translation id="232137538351753795">Stryg fra venstre kant for at gå tilbage</translation>
 <translation id="2323763861024343754">Websitelagerplads</translation>
 <translation id="2327445548174191329">Fra <ph name="DEVICE_NAME" /></translation>
+<translation id="232757965409810352">Gem side som…</translation>
 <translation id="2328474416100889417">Alle mister øjeblikkeligt adgang til fanegruppen "<ph name="GROUP_NAME" />", og alle invitationslinks deaktiveres</translation>
 <translation id="2329500425421091035">Vi præsenterer AI-tilstand i Chrome</translation>
 <translation id="2330186936255788117">Flere bogmærker</translation>
@@ -561,6 +567,7 @@ Kun personer med din adgangssætning kan læse dine krypterede data. Adgangssæt
 <translation id="3232754137068452469">Webapp</translation>
 <translation id="3236059992281584593">1 minut tilbage</translation>
 <translation id="3237087289225714896">Standardforudindlæsning:</translation>
+<translation id="3243650379537999343">Tegn</translation>
 <translation id="3244271242291266297">MM</translation>
 <translation id="3245429137663807393">Hvis du også deler Chrome-brugsrapporter, omfatter de pågældende rapporter de webadresser, du besøger</translation>
 <translation id="3250563604907490871">Billedbeskrivelserne genoptages, når du opretter forbindelse til Wi-Fi</translation>
@@ -584,7 +591,6 @@ Kun personer med din adgangssætning kan læse dine krypterede data. Adgangssæt
 <translation id="331080746368555063">Private websites kan f.eks. omfatte din virksomheds intranet</translation>
 <translation id="3311330810461485557">Søg efter app, dato med mere.</translation>
 <translation id="3312300514034250578">Udvidet beskyttet browsing</translation>
-<translation id="3331974543021145906">Appinfo</translation>
 <translation id="3334729583274622784">Vil du ændre filtypen?</translation>
 <translation id="333863344734218290">Advarer dig om usikre offentlige og private websites</translation>
 <translation id="3339788961947270565">Afslutter</translation>
@@ -658,6 +664,7 @@ Kun personer med din adgangssætning kan læse dine krypterede data. Adgangssæt
 <translation id="3649090831059057090"><ph name="WINDOW_TITLE" />-<ph name="TAB_COUNT" /></translation>
 <translation id="3653111872753786013"><ph name="WEBSITE_TITLE" />: <ph name="WEBSITE_URL" /></translation>
 <translation id="3662363748131724714">Afslut maksimaltilstand</translation>
+<translation id="3662595332590803433">Åbn altid tilpassede faner i Chrome</translation>
 <translation id="3674208116086565128">Gå til startsiden i Google-appen</translation>
 <translation id="368329460027487650">Logget ud. Åbner valgmuligheder for login.</translation>
 <translation id="3684540848053703310">Felt i bunden med prisinfo lukket</translation>
@@ -732,6 +739,7 @@ Kun personer med din adgangssætning kan læse dine krypterede data. Adgangssæt
 <translation id="3950820424414687140">Log ind</translation>
 <translation id="395377504920307820">Brug uden en konto</translation>
 <translation id="3955353672249727801">Siderne blev føjet til læselisten</translation>
+<translation id="3958283758104508528"><ph name="APP_NAME" /> er afinstalleret</translation>
 <translation id="396192773038029076">{NUM_IN_PROGRESS,plural, =1{Chrome indlæser din side, når det er muligt}one{Chrome indlæser din side, når det er muligt}other{Chrome indlæser dine sider, når det er muligt}}</translation>
 <translation id="3969142555815019568">Chrome kan ikke tjekke dine adgangskoder</translation>
 <translation id="3969863827134279083">Flyt op</translation>
@@ -902,6 +910,7 @@ Din Google-konto kan have andre former for browserhistorik, f.eks. søgninger og
 <translation id="4595805675102978678">Google-kontofejl</translation>
 <translation id="4599585406846903742">Enkeltsidevisning</translation>
 <translation id="4601095002996233687">Grundige scanninger efter mistænkelige downloads.</translation>
+<translation id="4604434672720336227">Luk Chrome</translation>
 <translation id="4606559747793337066">Når et website eller en app beder om at forudindlæse links privat på det pågældende website, krypterer og forudindlæser Chrome siderne via Googles servere uden cookies. På denne måde skjules din identitet fra det forudindlæste website.</translation>
 <translation id="4619615317237390068">Faner fra andre enheder</translation>
 <translation id="4624065194742029982">Inkognitotilstand i Chrome</translation>
@@ -963,7 +972,6 @@ Din Google-konto kan have andre former for browserhistorik, f.eks. søgninger og
 <translation id="480990236307250886">Åbn startsiden</translation>
 <translation id="4816492930507672669">Tilpas til siden</translation>
 <translation id="4822710610088666676">Fanegruppen <ph name="TAB_GROUP_TITLE" /> er lukket og gemt</translation>
-<translation id="4834250788637067901">Betalingsmetoder, tilbud og adresser, der bruger Google Pay</translation>
 <translation id="4835385943915508971">Chrome har ikke adgang til den ressource, du anmoder om.</translation>
 <translation id="483742037940503070">{TAB_COUNT,plural, =1{Gendan fanegruppen med <ph name="TAB_COUNT_ONE" /> fane og farven <ph name="COLOR_NAME" /> som en ny fanegruppe i baggrunden.}one{Gendan fanegruppen med <ph name="TAB_COUNT_MANY" /> fane og farven <ph name="COLOR_NAME" /> som en ny fanegruppe i baggrunden.}other{Gendan fanegruppen med <ph name="TAB_COUNT_MANY" /> faner og farven <ph name="COLOR_NAME" /> som en ny fanegruppe i baggrunden.}}</translation>
 <translation id="4849731766219625109">Brug din <ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" />-konto</translation>
@@ -1338,6 +1346,7 @@ Nogle websites kan f.eks. reagere på denne anmodning ved at vise dig annoncer, 
 <translation id="634208815998129842">Jobliste</translation>
 <translation id="6343495912647200061">{SHIPPING_ADDRESS,plural, =1{<ph name="SHIPPING_ADDRESS_PREVIEW" />\u2026 og <ph name="NUMBER_OF_ADDITIONAL_ADDRESSES" /> mere}one{<ph name="SHIPPING_ADDRESS_PREVIEW" />\u2026 og <ph name="NUMBER_OF_ADDITIONAL_ADDRESSES" /> mere}other{<ph name="SHIPPING_ADDRESS_PREVIEW" />\u2026 og <ph name="NUMBER_OF_ADDITIONAL_ADDRESSES" /> mere}}</translation>
 <translation id="6345878117466430440">Markér som læst</translation>
+<translation id="63490081267265251">De websites, du besøger, herunder Google, er ansvarlige for at afgøre, hvordan de reagerer på denne anmodning. Afhængigt af lovgivningen i din region kan websites reagere ved at begrænse salget og delingen af dine data eller brugen af dem til personligt tilpassede annoncer. <ph name="BEGIN_LINK" />Få flere oplysninger<ph name="END_LINK" /></translation>
 <translation id="6350745006329795504">Administrer dine enheder</translation>
 <translation id="6356893102071098867">Tjek, om du har valgt den rigtige konto</translation>
 <translation id="6364438453358674297">Vil du fjerne forslaget fra historikken?</translation>
@@ -1418,12 +1427,12 @@ Nogle websites kan f.eks. reagere på denne anmodning ved at vise dig annoncer, 
 <translation id="6642299196749785472">Vedhæft faner</translation>
 <translation id="6647441008198474441">De websites, du besøger, sendes til Google for at forudsige, hvilke websites du kunne have lyst til at besøge som det næste</translation>
 <translation id="6648977384226967773">{CONTACT,plural, =1{<ph name="CONTACT_PREVIEW" />\u2026 og <ph name="NUMBER_OF_ADDITIONAL_CONTACTS" /> mere}one{<ph name="CONTACT_PREVIEW" />\u2026 og <ph name="NUMBER_OF_ADDITIONAL_CONTACTS" /> mere}other{<ph name="CONTACT_PREVIEW" />\u2026 og <ph name="NUMBER_OF_ADDITIONAL_CONTACTS" /> mere}}</translation>
-<translation id="6649642165559792194">Se forhåndsvisning af <ph name="BEGIN_NEW" />Ny<ph name="END_NEW" /></translation>
 <translation id="6659594942844771486">Fane</translation>
 <translation id="666731172850799929">Åbn i <ph name="APP_NAME" /></translation>
 <translation id="6669390930482049506">Send mig notifikationer</translation>
 <translation id="6671495933530132209">Kopiér billede</translation>
 <translation id="6672697278890207089">Angiv din adgangssætning</translation>
+<translation id="6675622031235530028">Hold Ctrl + Q nede for at afslutte</translation>
 <translation id="6676927815633975364">Log ind på dette website og Chrome</translation>
 <translation id="6684262542644248484">Log ind på et website</translation>
 <translation id="6684809838922667136">Gør Chrome bedre</translation>
@@ -1508,7 +1517,6 @@ Nogle websites kan f.eks. reagere på denne anmodning ved at vise dig annoncer, 
 <translation id="6922812712751566567"><ph name="PERMISSION" /> <ph name="SEPARATOR" /> Chrome har fjernet disse tilladelser, fordi du ikke har besøgt websitet for nylig</translation>
 <translation id="6923291640965724312">Maksimalformat</translation>
 <translation id="6927821422725196292">{TABS_COUNT,plural, =1{1 fane}one{<ph name="NUMBER_OF_TABS" /> fane}other{<ph name="NUMBER_OF_TABS" /> faner}}</translation>
-<translation id="6929224077895306814">Alle sikkerhedskoder, der er gemt på din enhed og på din Google-konto, slettes</translation>
 <translation id="6933180670536678127"><ph name="TAB_TITLE" />, valgt fane, der er fastgjort og afspiller lyd</translation>
 <translation id="6937524809504266803">Personlig tilpasning og tilknytning</translation>
 <translation id="6937876069006524083">Kaldenavn (valgfrit)</translation>
@@ -1619,6 +1627,7 @@ Du kan ændre denne indstilling ved at <ph name="BEGIN_LINK" />slette Chrome-dat
 <translation id="7335766481146072567">Tryk på Fortsæt</translation>
 <translation id="7336259382292148213">Der er ingen notifikationer</translation>
 <translation id="7339898014177206373">Nyt vindue</translation>
+<translation id="7349983576451251297">Åbn websider i Chrome-browseren i stedet for tilpassede faner</translation>
 <translation id="7352339641508007922">Træk for at tage et langt screenshot</translation>
 <translation id="7352651011704765696">Noget gik galt</translation>
 <translation id="7353894246028566792">{NUM_SELECTED,plural, =1{Del 1 valgt element}one{Del # valgt element}other{Del # valgte elementer}}</translation>
@@ -1662,6 +1671,7 @@ Du kan ændre denne indstilling ved at <ph name="BEGIN_LINK" />slette Chrome-dat
 <translation id="7493994139787901920"><ph name="VERSION" /> (Opdateret <ph name="TIME_SINCE_UPDATE" />)</translation>
 <translation id="7498271377022651285">Vent…</translation>
 <translation id="7499065150275272675"><ph name="TAB_TITLE" />, fastgjort fane med lyden slået fra</translation>
+<translation id="7500851014030446046">Downloader PDF-fil</translation>
 <translation id="7501135638693251872">Alle bogmærker</translation>
 <translation id="7507207699631365376">Se denne udbyders <ph name="BEGIN_LINK" />privatlivspolitik<ph name="END_LINK" /></translation>
 <translation id="750886945254958667">Behold denne gruppe for at tilføje faner senere, eller forlad den, hvis du ikke længere vil have adgang til den</translation>
@@ -1708,6 +1718,7 @@ Du kan ændre denne indstilling ved at <ph name="BEGIN_LINK" />slette Chrome-dat
 <translation id="7690596512217303514">Din enhed kunne ikke åbne Chrome. Du kan løse problemet ved at downloade den nyeste Chrome-opdatering fra din appbutik.</translation>
 <translation id="7692761875510935111">Åbn hurtigt i browseren. Hold fingeren på denne genvej for at redigere den.</translation>
 <translation id="7695270712963178084">Chrome-registrering</translation>
+<translation id="7695610746377249436">Websites, herunder Google, vurderer selv, om de vil besvare denne anmodning.</translation>
 <translation id="7697383401610880082">Håndtag</translation>
 <translation id="7698359219371678927">Opret mail i <ph name="APP_NAME" /></translation>
 <translation id="7702420606070050505">Feltet i bunden med den seneste aktivitet er åbnet i fuld højde</translation>
@@ -1729,10 +1740,12 @@ Du kan ændre denne indstilling ved at <ph name="BEGIN_LINK" />slette Chrome-dat
 <translation id="7774809984919390718">{PAYMENT_METHOD,plural, =1{<ph name="PAYMENT_METHOD_PREVIEW" />\u2026 og <ph name="NUMBER_OF_ADDITIONAL_PAYMENT_METHODS" /> mere}one{<ph name="PAYMENT_METHOD_PREVIEW" />\u2026 og <ph name="NUMBER_OF_ADDITIONAL_PAYMENT_METHODS" /> mere}other{<ph name="PAYMENT_METHOD_PREVIEW" />\u2026 og <ph name="NUMBER_OF_ADDITIONAL_PAYMENT_METHODS" /> mere}}</translation>
 <translation id="777637629667389858">Når du er logget ind, beskyttes du i Google-tjenester.</translation>
 <translation id="7778840695157240389">Vend tilbage senere for at se nye historier</translation>
+<translation id="7780992949171378848">Send en anmodning om fravalg til websites vedrørende brugen af dine data</translation>
 <translation id="7791543448312431591">Tilføj</translation>
 <translation id="7792388396321542707">Stop deling</translation>
 <translation id="780287761701992588">Få adgang til dine bogmærker, adgangskoder og meget mere på alle dine enheder</translation>
 <translation id="780301667611848630">Nej tak</translation>
+<translation id="7804364787702057554">Din konto i Chrome</translation>
 <translation id="7810647596859435254">Åbn med…</translation>
 <translation id="7814066895362068701">{FILE_COUNT,plural, =1{Alle filer, 1 fil på listen}one{Alle filer, # fil på listen}other{Alle filer, # filer på listen}}</translation>
 <translation id="7815484226266492798">Langt screenshot</translation>
@@ -1775,7 +1788,6 @@ Du kan ændre denne indstilling ved at <ph name="BEGIN_LINK" />slette Chrome-dat
 <translation id="7968014550143838305">Føjet til læseliste</translation>
 <translation id="7968982339740310781">Se oplysninger</translation>
 <translation id="7969391000881506217">Udløbsdato*</translation>
-<translation id="7975379999046275268">Se forhåndsvisning af siden <ph name="BEGIN_NEW" />Ny<ph name="END_NEW" /></translation>
 <translation id="7977451675950311423">Advarer dig, hvis du bruger en adgangskode, der er blevet kompromitteret som følge af et brud på datasikkerheden.</translation>
 <translation id="7987499071758862048"><ph name="PERMISSION_1" />, <ph name="PERMISSION_2" />, <ph name="PERMISSION_3" /> <ph name="SEPARATOR" /> Chrome har fjernet disse tilladelser, fordi du ikke har besøgt websitet for nylig</translation>
 <translation id="799576009106109668">Du får hurtigere browsing, da indholdet indlæses proaktivt på baggrund af den webside, du aktuelt er på</translation>
@@ -1874,6 +1886,7 @@ Du kan ændre denne indstilling ved at <ph name="BEGIN_LINK" />slette Chrome-dat
 <translation id="8313599942510782709">Din opgave er stadig i gang</translation>
 <translation id="8317318757008452355">Åbn valgmulighederne for udskrivning</translation>
 <translation id="8320212361750431956">Seneste aktivitet</translation>
+<translation id="8322452989119079156">Åbn i <ph name="NATIVE_APP_NAME" /> – sendt fra <ph name="DEVICE_NAME" /></translation>
 <translation id="832514020744584629"><ph name="PREF_TITLE" />  <ph name="BEGIN_NEW" />Nyhed<ph name="END_NEW" /></translation>
 <translation id="8333026248928723981">Bogmærker og lister</translation>
 <translation id="8342727528718219152">Chrome giver dig besked om websites, der muligvis sender for mange notifikationer</translation>
@@ -1946,6 +1959,7 @@ Du kan ændre denne indstilling ved at <ph name="BEGIN_LINK" />slette Chrome-dat
 <translation id="8580435650274205305">Udløbsdato, påkrævet</translation>
 <translation id="8582529315803410153">Her kan du se dine faner fra andre enheder</translation>
 <translation id="8585103689515290060">Tjenester til autofyld</translation>
+<translation id="8586116786993312006">Tryk for at slette browserdata i Chrome</translation>
 <translation id="859046281437143747">Hold øje med prisen ved hjælp af knappen Flere valgmuligheder</translation>
 <translation id="859064343657890103">Fanegruppen <ph name="TAB_GROUP_TITLE" /> er slettet</translation>
 <translation id="860043288473659153">Kortholderens navn</translation>

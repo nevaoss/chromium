@@ -72,39 +72,24 @@ export function getHtml(this: OmniboxEverywhereOmniboxElement) {
           <cr-composebox-file-inputs id="fileInputs" @file-change="${
       this.onFileChange_}">
             <div class="context-menu-container" id="contextMenuContainer">
-              <cr-composebox-contextual-entrypoint-and-menu id="context"
-                  exportparts="context-menu-entrypoint-icon"
+              <cr-composebox-contextual-entrypoint-button id="context"
+                  exportparts="context-menu-entrypoint-icon,
+                               entrypoint-button"
                   class="upload-button"
-                  disable-auto-reposition
                   .inputState="${this.inputState_}"
-                  .searchboxLayoutMode="${this.searchboxLayoutMode}"
-                  .tabSuggestions="${this.tabSuggestions_}"
-                  .tabSuggestionsState="${this.tabSuggestionsState_}"
-                  .contextManagementInComposeboxEnabled="${
-      this.contextManagementInComposeboxEnabled}"
-                  unbounded-menu-enabled
+                  .energyEffectAnimationEnabled="${
+                      this.energyEffectAnimationEnabled_}"
+                  .hasPopupFocus="${this.isContextEntrypointVirtualFocused()}"
                   @context-menu-entrypoint-click="${
-      this.onContextMenuEntrypointClick_}"
-                  @context-menu-opened="${this.onContextMenuOpened_}"
-                  @context-menu-closed="${this.onContextMenuClosed_}"
-                  @add-tab-context="${this.onAddTabContext_}"
-                  @request-tab-suggestions-load="${
-      this.onRequestTabSuggestionsLoad}"
-                  @tool-click="${this.onToolClick_}"
-                  @deep-search-click="${this.onDeepSearchClick_}"
-                  @create-image-click="${this.onCreateImageClick_}"
-                  @model-click="${this.onModelClick_}"
-                  @open-drive-upload="${this.onOpenDriveUpload_}">
-              </cr-composebox-contextual-entrypoint-and-menu>
+      this.onContextMenuEntrypointClick_}">
+              </cr-composebox-contextual-entrypoint-button>
             </div>
           </cr-composebox-file-inputs>
         </div>
         ` : ''}
         <div id="actionButtons">
           ${
-              this.showVoiceAndLensButtons_(
-                  this.searchboxVoiceSearchEnabled_) ?
-              html`
+              this.showVoiceSearchButton_() ? html`
           <div class="searchbox-icon-button-container voice">
             <button id="voiceSearchButton" class="searchbox-icon-button"
                 tabindex="${this.virtualFocusEnabled &&
@@ -115,15 +100,14 @@ export function getHtml(this: OmniboxEverywhereOmniboxElement) {
           </div>
           ` :
               ''}
-          ${this.isFuseboxEnabled &&
-              this.showVoiceAndLensButtons_(
-                  this.searchboxLensSearchEnabled_) ?
-              html`
+          ${this.showLensSearchButton_() ? html`
           <div class="searchbox-icon-button-container lens ${
               this.isScreenshotMenuOpen ? 'menu-open' : ''}">
             <button id="lensSearchButton" class="searchbox-icon-button"
                 tabindex="${this.virtualFocusEnabled &&
                     this.dropdownIsVisible ? -1 : 0}"
+                @pointerdown="${this.onLensSearchPointerdown_}"
+                @pointercancel="${this.onLensSearchPointercancel_}"
                 @click="${this.onLensSearchClick_}"
                 title="${this.i18n('lensSearchButtonLabel')}">
             </button>

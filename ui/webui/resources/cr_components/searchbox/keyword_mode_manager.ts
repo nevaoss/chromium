@@ -3,8 +3,9 @@
 // found in the LICENSE file.
 
 import {assert} from '//resources/js/assert.js';
-import {KeywordType} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
-import type {AutocompleteMatch, InputKeywordModel} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
+import {loadTimeData} from '//resources/js/load_time_data.js';
+import {KeywordType, SelectionLineState} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
+import type {AutocompleteMatch, InputKeywordModel, OmniboxPopupSelection} from '//resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 
 /**
  * Loosely based on `metrics::OmniboxEventProto::KeywordModeEntryMethod` in
@@ -17,6 +18,7 @@ export enum KeywordModeEntryMethod {
   QUESTION_MARK = 3,
   KEYBOARD_SHORTCUT = 4,
   CLICK = 5,
+  SPACE_IN_MIDDLE = 6,
 }
 
 export interface KeywordClearedEvent {
@@ -41,12 +43,31 @@ export interface KeywordModeManagerDelegate {
  * the WebUI searchbox.
  */
 export class KeywordModeManager {
+  keywordSpaceTriggeringEnabled: boolean = loadTimeData.isInitialized() &&
+          loadTimeData.valueExists('keywordSpaceTriggeringEnabled') ?
+      loadTimeData.getBoolean('keywordSpaceTriggeringEnabled') :
+      true;
+
+  private availableKeywordModels_: Map<string, InputKeywordModel> = new Map();
   private inputKeywordModel_: InputKeywordModel|null = null;
   private entryMethod_: KeywordModeEntryMethod = KeywordModeEntryMethod.NONE;
   private delegate_: KeywordModeManagerDelegate;
 
   constructor(delegate: KeywordModeManagerDelegate) {
     this.delegate_ = delegate;
+  }
+
+  get entryMethod(): KeywordModeEntryMethod {
+    return this.entryMethod_;
+  }
+
+  get availableKeywordModels(): InputKeywordModel[] {
+    return Array.from(this.availableKeywordModels_.values());
+  }
+
+  set availableKeywordModels(models: InputKeywordModel[]) {
+    this.availableKeywordModels_ =
+        new Map(models.map(model => [model.keyword.toLowerCase(), model]));
   }
 
   get inputKeywordModel(): InputKeywordModel|null {
@@ -163,50 +184,140 @@ export class KeywordModeManager {
    * keyword mode (e.g. space after instant keyword, or leading '?').
    * If triggered, enters keyword mode and returns true.
    */
-  acceptInputTrigger(input: string, cursorPosition: number|null): boolean {
+  acceptInputTrigger(
+      input: string, cursorPosition: number|null, event: Event|null): boolean {
     if (cursorPosition === null) {
       return false;
     }
-    return this.acceptSpaceAtEnd_(input, cursorPosition) ||
+    return this.acceptSpaceAtEnd_(input, cursorPosition, event) ||
+        this.acceptSpaceInMiddle_(input, cursorPosition, event) ||
         this.acceptQuestionMark_(input, cursorPosition);
   }
 
-  private acceptSpaceAtEnd_(input: string, cursorPosition: number): boolean {
+  private isSpaceEvent_(event: Event|null): boolean {
+    if (event instanceof KeyboardEvent) {
+      return event.key === ' ' || event.key === '\u3000';
+    }
+    if (event instanceof InputEvent) {
+      return (event.data === ' ' || event.data === '\u3000') &&
+          event.inputType !== 'insertFromPaste';
+    }
+    return false;
+  }
+
+  private acceptSpaceAtEnd_(
+      input: string, cursorPosition: number, event: Event|null): boolean {
+    // Space triggering must be enabled.
+    if (!this.keywordSpaceTriggeringEnabled) {
+      return false;
+    }
+
+    // Must not already be in keyword mode.
+    if (this.isInKeywordMode) {
+      return false;
+    }
+
+    // Space must have been typed, not backspaced to a space or pasted.
+    if (!this.isSpaceEvent_(event)) {
+      return false;
+    }
+
     // Cursor must be at end.
     if (cursorPosition !== input.length) {
       return false;
     }
 
     // Input must end in space.
-    if (!input.endsWith(' ') && !input.endsWith('　')) {
+    if (!input.endsWith(' ') && !input.endsWith('\u3000')) {
       return false;
     }
 
-    // Chip must be shown.
-    if (this.inputKeywordModel_?.type !== KeywordType.kChip) {
+    // Keyword candidate is the single word preceding the space.
+    const candidate = input.slice(0, -1);
+    if (!candidate || candidate.includes(' ') || candidate.includes('\u3000')) {
       return false;
     }
 
-    // Input must match keyword.
-    const keyword = this.inputKeywordModel_.keyword;
-    if (!keyword || input.slice(0, -1) !== keyword) {
+    // Must match an available keyword.
+    const lowerCandidate = candidate.toLowerCase();
+    const model = this.availableKeywordModels_.get(lowerCandidate) ||
+        (this.inputKeywordModel_?.keyword.toLowerCase() === lowerCandidate ?
+             this.inputKeywordModel_ :
+             null);
+    if (!model) {
       return false;
     }
 
-    // Space must have been typed, not backspaced to a space. E.g. 'keyword
-    // q<backspace>' should not accept keyword mode.
-    // TODO(b/504669216): this isn't handled yet.
+    const keyword = model.keyword;
+    const displayText = model.displayText || keyword;
 
-    // Space must have been typed, not pasted.
-    // TODO(b/504669216): webUI doesn't track paste state yet.
+    this.enter(keyword, displayText, KeywordModeEntryMethod.SPACE_AT_END);
+    return true;
+  }
 
+  private acceptSpaceInMiddle_(
+      input: string, cursorPosition: number, event: Event|null): boolean {
     // Space triggering must be enabled.
-    // TODO(b/504669216): webUI isn't aware of
-    //   `kKeywordSpaceTriggeringEnabled` pref.
+    if (!this.keywordSpaceTriggeringEnabled) {
+      return false;
+    }
 
-    this.enter(
-        keyword, this.inputKeywordModel_.displayText,
-        KeywordModeEntryMethod.SPACE_AT_END);
+    // Must not already be in keyword mode.
+    if (this.isInKeywordMode) {
+      return false;
+    }
+
+    // Space must have been typed, not backspaced to a space or pasted.
+    if (!this.isSpaceEvent_(event)) {
+      return false;
+    }
+
+    // Cursor must be after at least 1 keyword character and the typed space,
+    // with at least 1 character after the space.
+    const spacePosition = cursorPosition - 1;
+    if (spacePosition <= 0 || cursorPosition >= input.length) {
+      return false;
+    }
+
+    // Character at spacePosition must be a space.
+    const spaceChar = input[spacePosition];
+    if (spaceChar !== ' ' && spaceChar !== '\u3000') {
+      return false;
+    }
+
+    // Character preceding the space must not be whitespace.
+    const charBeforeSpace = input[spacePosition - 1];
+    if (charBeforeSpace === ' ' || charBeforeSpace === '\u3000') {
+      return false;
+    }
+
+    // Keyword candidate is the single word preceding the space.
+    const candidate = input.slice(0, spacePosition);
+    if (candidate.includes(' ') || candidate.includes('\u3000')) {
+      return false;
+    }
+
+    // Must match an available keyword.
+    const lowerCandidate = candidate.toLowerCase();
+    const model = this.availableKeywordModels_.get(lowerCandidate) ||
+        (this.inputKeywordModel_?.keyword.toLowerCase() === lowerCandidate ?
+             this.inputKeywordModel_ :
+             null);
+    if (!model) {
+      return false;
+    }
+
+    // Text after the space must not be empty or start with whitespace.
+    const textAfter = input.slice(cursorPosition);
+    if (!textAfter.trim() || textAfter.startsWith(' ') ||
+        textAfter.startsWith('\u3000')) {
+      return false;
+    }
+
+    const keyword = model.keyword;
+    const displayText = model.displayText || keyword;
+
+    this.enter(keyword, displayText, KeywordModeEntryMethod.SPACE_IN_MIDDLE);
     return true;
   }
 
@@ -245,29 +356,63 @@ export class KeywordModeManager {
   formatMatchFillIntoEdit(
       match: AutocompleteMatch, matchIndex: number,
       lastQueriedInput?: string|null): string {
+    if (this.isInKeywordMode) {
+      const keyword = this.inputKeywordModel_?.keyword;
+      if (keyword) {
+        const lowerKeyword = keyword.toLowerCase();
+        const lowerFill = match.fillIntoEdit.toLowerCase();
+        if (lowerFill.startsWith(lowerKeyword + ' ')) {
+          return match.fillIntoEdit.substring(keyword.length + 1);
+        }
+        if (lowerFill === lowerKeyword ||
+            (match.keywordModel?.type !== KeywordType.kInKeyword &&
+             match.keywordModel?.keyword.toLowerCase() === lowerKeyword)) {
+          return '';
+        }
+      }
+      return match.fillIntoEdit;
+    }
     const isDefaultMatch = matchIndex === 0 && match.allowedToBeDefaultMatch;
     if (isDefaultMatch && lastQueriedInput) {
       return lastQueriedInput + match.inlineAutocompletion;
-    }
-    if (this.isInKeywordMode) {
-      const keyword = this.inputKeywordModel_?.keyword;
-      if (keyword && match.fillIntoEdit.startsWith(keyword + ' ')) {
-        return match.fillIntoEdit.substring(keyword.length + 1);
-      }
     }
     return match.fillIntoEdit;
   }
 
   /**
    * Updates or preserves the keyword model when the selected autocomplete match
-   * changes.
+   * or popup selection changes.
    */
-  onSelectedMatchChanged(selectedMatch: AutocompleteMatch|null): void {
-    // If the input is in keyword mode, preserve keyword mode.
-    if (this.isInKeywordMode) {
+  onSelectedMatchChanged(
+      selectedMatch: AutocompleteMatch|null,
+      selection?: OmniboxPopupSelection): void {
+    if (!selectedMatch) {
+      if (!this.isInKeywordMode) {
+        this.inputKeywordModel = null;
+      }
       return;
     }
-    if (!selectedMatch?.keywordModel) {
+    const isKeywordChipSelected =
+        selection?.state === SelectionLineState.kKeywordMode ||
+        selectedMatch.keywordModel?.type === KeywordType.kInstant;
+
+    if (isKeywordChipSelected && selectedMatch.keywordModel) {
+      if (!this.isInKeywordMode ||
+          this.activeKeyword.toLowerCase() !==
+              selectedMatch.keywordModel.keyword.toLowerCase()) {
+        this.enter(
+            selectedMatch.keywordModel.keyword,
+            selectedMatch.keywordModel.chipHint, KeywordModeEntryMethod.TAB);
+      }
+      return;
+    }
+    if (selectedMatch.keywordModel?.type === KeywordType.kInKeyword) {
+      return;
+    }
+    if (this.isInKeywordMode) {
+      this.exit();
+    }
+    if (!selectedMatch.keywordModel) {
       this.inputKeywordModel = null;
       return;
     }

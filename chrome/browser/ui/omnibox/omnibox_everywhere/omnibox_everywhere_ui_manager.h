@@ -10,6 +10,7 @@
 #include <vector>
 
 #include "base/cancelable_callback.h"
+#include "base/functional/callback_helpers.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/scoped_observation.h"
@@ -17,9 +18,11 @@
 #include "chrome/browser/ui/browser_window/public/browser_collection_observer.h"
 #include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"
 #include "chrome/browser/ui/omnibox/omnibox_everywhere_service.h"
+#include "chrome/browser/ui/views/permissions/permission_prompt_observer.h"
 #include "chrome/browser/ui/webui/top_chrome/webui_contents_wrapper.h"
 #include "components/prefs/pref_change_registrar.h"
 #include "content/public/browser/context_menu_params.h"
+#include "content/public/browser/web_contents.h"
 #include "third_party/blink/public/mojom/page/draggable_region.mojom-forward.h"
 #include "third_party/skia/include/core/SkRegion.h"
 #include "ui/base/interaction/element_identifier.h"
@@ -55,7 +58,8 @@ class OmniboxEverywhereUIManager : public views::WidgetObserver,
                                    public WebUIContentsWrapper::Host,
                                    public BrowserCollectionObserver,
                                    public ui::SimpleMenuModel::Delegate,
-                                   public views::ContextMenuController {
+                                   public views::ContextMenuController,
+                                   public PermissionPromptObserver::Observer {
  public:
   DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(kOmniboxEverywhereElementId);
 
@@ -119,6 +123,8 @@ class OmniboxEverywhereUIManager : public views::WidgetObserver,
 
   // views::WidgetObserver:
   void OnWidgetActivationChanged(views::Widget* widget, bool active) override;
+  void OnWidgetVisibilityOnScreenChanged(views::Widget* widget,
+                                         bool visible) override;
   void OnWidgetDestroying(views::Widget* widget) override;
   void OnWidgetUserDragStarted(views::Widget* widget) override;
   void OnWidgetUserDragEnded(views::Widget* widget) override;
@@ -159,16 +165,27 @@ class OmniboxEverywhereUIManager : public views::WidgetObserver,
       const gfx::Point& point,
       ui::mojom::MenuSourceType source_type) override;
 
+  // PermissionPromptObserver::Observer:
+  void OnPermissionPromptChanged(bool is_showing,
+                                 const gfx::Size& prompt_size) override;
+
   void OnFileChooserOpened();
   void OnFileChooserClosed();
 
   void OnDrivePickerOpened();
   void OnDrivePickerClosed();
 
+  void OnHotkeyDropdownOpened();
+  void OnHotkeyDropdownClosed();
+
   using RegionCaptureSource = OmniboxEverywhereService::RegionCaptureSource;
 
   void OnScreensharePickerOpened();
   void OnScreensharePickerClosed();
+
+  void ShowScreenshotDisclosureDialog(
+      base::OnceClosure on_accepted,
+      base::OnceClosure on_cancelled = base::DoNothing());
   using RegionSelectedCallback =
       base::OnceCallback<void(const SkBitmap& result_bitmap)>;
   void ShowRegionSelectOverlay(const SkBitmap& screenshot,
@@ -209,6 +226,24 @@ class OmniboxEverywhereUIManager : public views::WidgetObserver,
   bool is_screenshare_picker_open_for_testing() const {
     return is_screenshare_picker_open_;
   }
+  bool is_screenshare_disclosure_open_for_testing() const {
+    return is_screenshare_disclosure_open_;
+  }
+  views::Widget* disclosure_dialog_widget_for_testing() {
+    return disclosure_dialog_widget_.get();
+  }
+  bool is_permission_prompt_open_for_testing() const {
+    return is_permission_prompt_open_;
+  }
+  bool is_hotkey_dropdown_open_for_testing() const {
+    return is_hotkey_dropdown_open_;
+  }
+  bool is_hotkey_dropdown_deactivation_task_pending_for_testing() const {
+    return !hotkey_dropdown_deactivation_task_.IsCancelled();
+  }
+  void CheckDeactivationAfterHotkeyDropdownClosedForTesting() {
+    CheckDeactivationAfterHotkeyDropdownClosed();
+  }
   OmniboxEverywhereRegionSelectOverlay* region_select_overlay_for_testing() {
     return region_select_overlay_.get();
   }
@@ -218,6 +253,8 @@ class OmniboxEverywhereUIManager : public views::WidgetObserver,
   void set_is_context_menu_open_for_testing(bool open) {
     is_context_menu_open_ = open;
   }
+  bool is_dragging_for_testing() const { return is_dragging_; }
+  bool is_demoted_for_testing() const { return is_demoted_; }
   void OnContextMenuClosedForTesting() { OnContextMenuClosed(); }
   const ui::SimpleMenuModel* context_menu_model_for_testing() const {
     return context_menu_model_.get();
@@ -234,7 +271,7 @@ class OmniboxEverywhereUIManager : public views::WidgetObserver,
   void ActivateAndFocus();
   void OnEphemeralModelPrefChanged();
   void OnMostVisitedPrefChanged();
-  void RecordFreImpression();
+  void MaybeRecordFreImpression();
   static gfx::Rect CalculateWidgetBounds(int height);
 
   // Try and acquire process and profile keep alives. If unsuccessful, releases
@@ -256,6 +293,11 @@ class OmniboxEverywhereUIManager : public views::WidgetObserver,
   void OnWidgetClosed(views::Widget::ClosedReason reason);
   void OnContextMenuClosed();
   void HandleWidgetDeactivated();
+  void CheckDeactivationAfterHotkeyDropdownClosed();
+  void OnScreenshotDisclosureClosed(base::OnceClosure on_accepted,
+                                    base::OnceClosure on_cancelled,
+                                    views::Widget::ClosedReason reason);
+  void UpdateModalInteractionState();
 
 #if defined(USE_AURA)
   std::unique_ptr<OmniboxEverywhereEventHandlerAura> event_handler_;
@@ -272,12 +314,22 @@ class OmniboxEverywhereUIManager : public views::WidgetObserver,
   std::unique_ptr<ScopedKeepAlive> keep_alive_;
   std::unique_ptr<OmniboxEverywhereRegionSelectOverlay> region_select_overlay_;
 
+  std::unique_ptr<views::Widget> disclosure_dialog_widget_;
+  std::optional<content::WebContents::ScopedIgnoreInputEvents>
+      scoped_ignore_input_events_;
+
   bool is_file_chooser_open_ = false;
   bool is_drive_picker_open_ = false;
+  bool is_hotkey_dropdown_open_ = false;
   bool is_context_menu_open_ = false;
   bool is_demoted_ = false;
   bool is_screenshare_picker_open_ = false;
+  bool is_screenshare_disclosure_open_ = false;
+  bool is_permission_prompt_open_ = false;
   bool is_dragging_ = false;
+  // Re-entrancy guard to prevent recursive closing or processing deactivation
+  // events while Close() is executing synchronously on the stack.
+  bool is_closing_ = false;
   std::optional<gfx::Size> pending_auto_resize_size_;
   std::optional<SkRegion> draggable_region_;
 
@@ -291,6 +343,7 @@ class OmniboxEverywhereUIManager : public views::WidgetObserver,
   // Task posted when the widget is deactivated, used to either dismiss or
   // reactivate the widget after the grace period.
   base::CancelableOnceClosure deactivation_task_;
+  base::CancelableOnceClosure hotkey_dropdown_deactivation_task_;
 
   PrefChangeRegistrar local_state_pref_change_registrar_;
   PrefChangeRegistrar profile_pref_change_registrar_;
@@ -298,6 +351,9 @@ class OmniboxEverywhereUIManager : public views::WidgetObserver,
       widget_observation_{this};
   base::ScopedObservation<ProfileBrowserCollection, BrowserCollectionObserver>
       browser_collection_observation_{this};
+  base::ScopedObservation<PermissionPromptObserver,
+                          PermissionPromptObserver::Observer>
+      permission_prompt_observation_{this};
 
   base::WeakPtrFactory<OmniboxEverywhereUIManager> weak_factory_{this};
 };

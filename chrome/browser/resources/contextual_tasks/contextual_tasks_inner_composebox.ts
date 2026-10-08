@@ -381,6 +381,15 @@ export class
       return;
     }
 
+    // Prevent re-suggesting tabs that are already restored in the conversation
+    // thread to avoid displaying duplicate tab coins.
+    if (this.contextManagementInComposeboxEnabled &&
+        this.aimThreadRestoredTabs.some(
+            t => (tab.tabId && t.tabId === tab.tabId) ||
+                (!!tab.url && t.url === tab.url))) {
+      return;
+    }
+
     if (tab) {
       // Ignore the `TabInfo` update if there is a matching
       // `automaticActiveTab`, unless the title has changed.
@@ -392,9 +401,9 @@ export class
               this.automaticActiveTab.type, this.automaticActiveTab.inputType,
               this.automaticActiveTab);
           this.automaticActiveTab = updatedFile;
-          const fileMap = new Map(this.files);
+          const fileMap = new Map(this.attachedContext);
           fileMap.set(updatedFile.uuid, updatedFile);
-          this.files = fileMap;
+          this.attachedContext = fileMap;
         }
         return;
       }
@@ -462,9 +471,9 @@ export class
             this.automaticActiveTab.type, this.automaticActiveTab.inputType,
             this.automaticActiveTab);
         this.automaticActiveTab = updatedFile;
-        const fileMap = new Map(this.files);
+        const fileMap = new Map(this.attachedContext);
         fileMap.set(updatedFile.uuid, updatedFile);
-        this.files = fileMap;
+        this.attachedContext = fileMap;
       }
     }
     return attachment;
@@ -557,15 +566,16 @@ export class
 
     // The file hint should only be shown when there is context that was
     // deliberately added by the user (i.e. not the automatic active tab).
-    const isOnlyAutoTab = this.files.size === 1 && !!this.automaticActiveTab;
+    const isOnlyAutoTab = this.attachedContext.size === 1
+        && !!this.automaticActiveTab;
     const shouldUseFileHint = this.enableFileHint && this.hasFiles() &&
         !isOnlyAutoTab && this.inputState?.activeTool === ToolMode.kUnspecified;
     if (shouldUseFileHint) {
-      if (this.files.size > 1) {
+      if (this.attachedContext.size > 1) {
         this.inputPlaceholder = this.i18n('composeboxHintTextAskAboutThese');
         return;
       }
-      const file = this.files.values().next().value!;
+      const file = this.attachedContext.values().next().value!;
       if (file.type === 'tab') {
         this.inputPlaceholder = this.i18n('composeboxHintTextAskAboutThisTab');
         return;
@@ -594,7 +604,8 @@ export class
 
   override shouldShowDivider(): boolean {
     // Retain the divider when only tab favicons are present.
-    const hasNonTabFiles = Array.from(this.files.values()).some(f => !f.url);
+    const hasNonTabFiles =
+        Array.from(this.attachedContext.values()).some(f => !f.url);
     if (this.hasTabs() && !hasNonTabFiles) {
       return this.showDropdown;
     }

@@ -526,6 +526,14 @@ bool AimEligibilityService::IsFuseboxEligible() const {
   return IsEligibleByServer(GetMostRecentResponse().is_fusebox_eligible());
 }
 
+bool AimEligibilityService::IsCsbEligible() const {
+  if (!GetMostRecentResponse().has_is_contextual_searchbox_eligible()) {
+    return IsFuseboxEligible();
+  }
+  return IsEligibleByServer(
+      GetMostRecentResponse().is_contextual_searchbox_eligible());
+}
+
 bool AimEligibilityService::IsAimUrl(
     const GURL& url,
     std::optional<contextual_tasks::HostOverride> host_override) const {
@@ -1153,6 +1161,14 @@ void AimEligibilityService::StartServerEligibilityRequest(
       !configuration_.full_version_list.empty()) {
     request->headers.SetHeader("Sec-CH-UA-Full-Version-List",
                                configuration_.full_version_list);
+  }
+
+  if (base::FeatureList::IsEnabled(
+          omnibox::kAimServerEligibilitySendSearchCapabilitiesHeaderEnabled) &&
+      !configuration_.search_capabilities_version.empty()) {
+    request->headers.SetHeader(
+        contextual_tasks::kContextualTasksSearchCapabilitiesHeaderName,
+        configuration_.search_capabilities_version);
   }
 
   GaiaId pending_request_account = GetActiveAccount();

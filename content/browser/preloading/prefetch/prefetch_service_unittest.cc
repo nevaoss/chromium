@@ -6837,6 +6837,13 @@ class RecordingPrefetchContainerObserver final
               PrefetchContainer::LoadState::kFailed);
     AddEvent(Event::kObserverOnPrefetchCompletedOrFailed);
   }
+  void OnPrefetchStale(const PrefetchContainer& prefetch_container) override {
+    CHECK_EQ(&prefetch_container, prefetch_container_.get());
+    CHECK(prefetch_container.IsPrefetchStale() ||
+          prefetch_container.is_in_dtor());
+    // TODO(crbug.com/551306029): Revisit what and how to record here once
+    // `OnPrefetchStale()` has complete notification semantics.
+  }
 
   base::WeakPtr<PrefetchContainer> prefetch_container_;
   std::vector<Event> actual_output_event_sequence_;
@@ -7980,6 +7987,72 @@ TEST_P(PrefetchServiceTest, PrefetchScheduler_BurstTakesPriority) {
             PrefetchContainer::LoadState::kEligible);
   ASSERT_EQ(prefetch_container4->GetLoadState(),
             PrefetchContainer::LoadState::kStarted);
+}
+
+// Tests bursting behavior with `kWebViewPrefetchHighestPrefetchPriority`.
+//
+// Scenario:
+//
+// - `kPrefetchSchedulerTesting`, `kPrerender2FallbackPrefetchSpecRules`, and
+//   `kPrefetchMultipleActiveSetSizeLimitForBase` are disabled (simulating
+//   Android WebView), and `kWebViewPrefetchHighestPrefetchPriority` is enabled
+//   with burst limit 3.
+// - Three prefetches with highest priority are triggered.
+// - `PrefetchScheduler` starts all three of them concurrently.
+// - A fourth prefetch is triggered and stays eligible as the burst limit is 3.
+TEST_P(PrefetchServiceTest,
+       PrefetchScheduler_BurstWithWebViewPrefetchHighestPrefetchPriority) {
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitWithFeaturesAndParameters(
+      {
+          {features::kWebViewPrefetchHighestPrefetchPriority,
+           {{"WebViewPrefetchHighestPrefetchPriorityBurstLimit", "3"}}},
+      },
+      {features::kPrerender2FallbackPrefetchSpecRules,
+       features::kPrefetchMultipleActiveSetSizeLimitForBase,
+       features::kPrefetchSchedulerTesting});
+
+  NavigateAndCommit(GURL("https://example.com"));
+  MakePrefetchService(
+      std::make_unique<testing::NiceMock<MockPrefetchServiceDelegate>>());
+
+  const auto url_1 = GURL("https://example.com/one");
+  const auto url_2 = GURL("https://example.com/two");
+  const auto url_3 = GURL("https://example.com/three");
+  const auto url_4 = GURL("https://example.com/four");
+  auto handle_1 =
+      MakePrefetchFromBrowserContext(url_1, std::nullopt, {}, nullptr);
+  auto handle_2 =
+      MakePrefetchFromBrowserContext(url_2, std::nullopt, {}, nullptr);
+  auto handle_3 =
+      MakePrefetchFromBrowserContext(url_3, std::nullopt, {}, nullptr);
+  auto handle_4 =
+      MakePrefetchFromBrowserContext(url_4, std::nullopt, {}, nullptr);
+  task_environment()->RunUntilIdle();
+
+  base::WeakPtr<PrefetchContainer> prefetch_container1, prefetch_container2,
+      prefetch_container3, prefetch_container4;
+  std::tie(std::ignore, prefetch_container1) =
+      prefetch_service().GetAllForUrlWithoutRefAndQueryForTesting(
+          PrefetchKey(std::nullopt, url_1))[0];
+  std::tie(std::ignore, prefetch_container2) =
+      prefetch_service().GetAllForUrlWithoutRefAndQueryForTesting(
+          PrefetchKey(std::nullopt, url_2))[0];
+  std::tie(std::ignore, prefetch_container3) =
+      prefetch_service().GetAllForUrlWithoutRefAndQueryForTesting(
+          PrefetchKey(std::nullopt, url_3))[0];
+  std::tie(std::ignore, prefetch_container4) =
+      prefetch_service().GetAllForUrlWithoutRefAndQueryForTesting(
+          PrefetchKey(std::nullopt, url_4))[0];
+
+  ASSERT_EQ(prefetch_container1->GetLoadState(),
+            PrefetchContainer::LoadState::kStarted);
+  ASSERT_EQ(prefetch_container2->GetLoadState(),
+            PrefetchContainer::LoadState::kStarted);
+  ASSERT_EQ(prefetch_container3->GetLoadState(),
+            PrefetchContainer::LoadState::kStarted);
+  ASSERT_EQ(prefetch_container4->GetLoadState(),
+            PrefetchContainer::LoadState::kEligible);
 }
 
 TEST_P(PrefetchServiceTest,

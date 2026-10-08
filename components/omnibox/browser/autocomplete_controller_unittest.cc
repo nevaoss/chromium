@@ -2154,6 +2154,43 @@ TEST_F(AutocompleteControllerTest, UpdateResult_ContextualSuggestionsAndLens) {
     check_results(/*expect_contextual=*/true, /*expect_lens=*/true);
   }
 }
+
+TEST_F(AutocompleteControllerTest, UpdateResult_HasContextualChips) {
+  AutocompleteInput zps_input(u"", 0u, metrics::OmniboxEventProto::OTHER,
+                              TestSchemeClassifier());
+  zps_input.set_current_url(GURL("https://google.com"));
+  zps_input.set_focus_type(metrics::OmniboxFocusType::INTERACTION_FOCUS);
+
+  EXPECT_CALL(*provider_client(), IsOmniboxNextAimPopupEnabled())
+      .WillRepeatedly(testing::Return(true));
+  EXPECT_CALL(*provider_client(), IsPagePaywalled())
+      .WillRepeatedly(testing::Return(true));
+  EXPECT_CALL(*provider_client(), IsLensEnabled())
+      .WillRepeatedly(testing::Return(false));
+
+  // When neither Lens nor AskG is enabled and page is paywalled, has_contextual_chips is false.
+  EXPECT_CALL(*provider_client(), IsAskGShowChipEnabled())
+      .WillRepeatedly(testing::Return(false));
+  controller_.SimulateAutocompletePass(/*sync=*/true, /*done=*/true, {},
+                                       zps_input);
+  EXPECT_FALSE(controller_.result().has_contextual_chips());
+
+  // When IsAskGShowChipEnabled is true, has_contextual_chips is true.
+  EXPECT_CALL(*provider_client(), IsAskGShowChipEnabled())
+      .WillRepeatedly(testing::Return(true));
+  controller_.SimulateAutocompletePass(/*sync=*/true, /*done=*/true, {},
+                                       zps_input);
+  EXPECT_TRUE(controller_.result().has_contextual_chips());
+
+  // When IsLensEnabled is true, has_contextual_chips is true.
+  EXPECT_CALL(*provider_client(), IsAskGShowChipEnabled())
+      .WillRepeatedly(testing::Return(false));
+  EXPECT_CALL(*provider_client(), IsLensEnabled())
+      .WillRepeatedly(testing::Return(true));
+  controller_.SimulateAutocompletePass(/*sync=*/true, /*done=*/true, {},
+                                       zps_input);
+  EXPECT_TRUE(controller_.result().has_contextual_chips());
+}
 #endif  // !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
 
 TEST_F(AutocompleteControllerTest, ExtraHeaders) {
@@ -2348,12 +2385,14 @@ TEST_F(AutocompleteControllerTest,
   drive_turl_data.SetShortName(u"Google Drive");
   drive_turl_data.SetKeyword(u"drive.google.com");
   drive_turl_data.SetURL("https://drive.google.com/search?q={searchTerms}");
+  drive_turl_data.is_active = TemplateURLData::ActiveStatus::kTrue;
   controller_.template_url_service_->Add(
       std::make_unique<TemplateURL>(drive_turl_data));
   TemplateURLData turl_data;
   turl_data.SetShortName(u"Test Keyword");
   turl_data.SetKeyword(u"keyword");
   turl_data.SetURL("https://google.com/search?q={searchTerms}");
+  turl_data.is_active = TemplateURLData::ActiveStatus::kTrue;
   controller_.template_url_service_->Add(
       std::make_unique<TemplateURL>(turl_data));
 
@@ -2459,6 +2498,7 @@ TEST_F(AutocompleteControllerTest,
     data.SetURL("https://" + name + ".com/q={searchTerms}");
     data.policy_origin = policy_origin;
     data.featured_by_policy = featured;
+    data.is_active = TemplateURLData::ActiveStatus::kTrue;
     controller_.template_url_service_->Add(std::make_unique<TemplateURL>(data));
   };
 
@@ -3486,5 +3526,48 @@ TEST_F(AutocompleteControllerTest,
   EXPECT_EQ(
       l10n_util::GetStringUTF16(IDS_CONTEXTUAL_SEARCH_OPEN_LENS_ACTION_LABEL),
       controller_.internal_result_.match_at(0)->description);
+}
+
+TEST_F(AutocompleteControllerTest, ExcludedProviderStoppedAndUpdatesIgnored) {
+  // Set up an excluded provider, e.g., OnDeviceHeadProvider which does not run
+  // in keyword mode.
+  auto head_provider = base::MakeRefCounted<FakeAutocompleteProvider>(
+      AutocompleteProvider::Type::TYPE_ON_DEVICE_HEAD);
+  controller_.providers_.push_back(head_provider);
+
+  // Non-keyword input: head_provider should run.
+  AutocompleteInput input(u"query", 5u, metrics::OmniboxEventProto::OTHER,
+                          TestSchemeClassifier());
+  EXPECT_TRUE(controller_.ShouldRunProvider(head_provider.get()));
+
+  // Start query: head_provider runs.
+  controller_.Start(input);
+  head_provider->done_ = false;
+
+  // Now enter keyword mode.
+  AutocompleteInput keyword_input(u"keyword query", 13u,
+                                  metrics::OmniboxEventProto::OTHER,
+                                  TestSchemeClassifier());
+  keyword_input.set_in_keyword_mode(true);
+
+  // Starting new input in keyword mode should update input_ and stop
+  // head_provider.
+  controller_.Start(keyword_input);
+  EXPECT_FALSE(controller_.ShouldRunProvider(head_provider.get()));
+  EXPECT_TRUE(head_provider->done());
+
+  // Simulate all running providers finishing so controller is done.
+  controller_.last_update_type_ =
+      AutocompleteController::UpdateType::kLastAsyncPass;
+  EXPECT_TRUE(controller_.done());
+
+  // A late update from the excluded provider should be safely ignored and not
+  // crash with a DCHECK.
+  controller_.OnProviderUpdate(true, head_provider.get());
+
+  // Explicit Stop should stop all providers.
+  head_provider->done_ = false;
+  controller_.Stop(AutocompleteStopReason::kInteraction);
+  EXPECT_TRUE(head_provider->done());
 }
 #endif  // !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)

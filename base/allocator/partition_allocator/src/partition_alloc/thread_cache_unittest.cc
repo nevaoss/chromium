@@ -22,6 +22,7 @@
 #include "partition_alloc/partition_alloc_for_testing.h"
 #include "partition_alloc/partition_freelist_entry.h"
 #include "partition_alloc/partition_lock.h"
+#include "partition_alloc/partition_tls.h"
 #include "partition_alloc/tagging.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
@@ -574,6 +575,71 @@ TEST_P(PartitionAllocThreadCacheTest, ThreadCacheRegistry) {
   internal::ScopedGuard lock(ThreadCacheRegistry::GetLock());
   EXPECT_EQ(parent_thread_tcache->prev_for_testing(), nullptr);
   EXPECT_EQ(parent_thread_tcache->next_for_testing(), nullptr);
+#endif
+}
+
+namespace {
+
+class ThreadDelegateForPartitionTlsRegistry
+    : public internal::base::PlatformThreadForTesting::Delegate {
+ public:
+  ThreadDelegateForPartitionTlsRegistry(std::atomic<bool>& tls_touched,
+                                        std::atomic<bool>& can_finish)
+      : tls_touched_(tls_touched), can_finish_(can_finish) {}
+
+  void ThreadMain() override {
+    // Touch TLS on this thread.
+    PartitionTls* tls = internal::GetTls();
+    EXPECT_NE(tls, nullptr);
+    EXPECT_TRUE(PartitionTlsRegistry::Instance().IsRegisteredForTesting(tls));
+    tls_ = tls;
+
+    tls_touched_.store(true, std::memory_order_release);
+    while (!can_finish_.load(std::memory_order_acquire)) {
+      internal::base::PlatformThreadForTesting::YieldCurrentThread();
+    }
+  }
+
+  PartitionTls* tls() const { return tls_; }
+
+ private:
+  std::atomic<bool>& tls_touched_;
+  std::atomic<bool>& can_finish_;
+  PartitionTls* tls_ = nullptr;
+};
+
+}  // namespace
+
+TEST_P(PartitionAllocThreadCacheTest, PartitionTlsRegistry) {
+  PartitionTls* parent_thread_tls = internal::GetTls();
+  ASSERT_NE(parent_thread_tls, nullptr);
+  EXPECT_TRUE(PartitionTlsRegistry::Instance().IsRegisteredForTesting(
+      parent_thread_tls));
+
+  std::atomic<bool> tls_touched{false};
+  std::atomic<bool> can_finish{false};
+  ThreadDelegateForPartitionTlsRegistry delegate(tls_touched, can_finish);
+
+  internal::base::PlatformThreadHandle thread_handle;
+  ASSERT_TRUE(internal::base::PlatformThreadForTesting::Create(0, &delegate,
+                                                               &thread_handle));
+
+  while (!tls_touched.load(std::memory_order_acquire)) {
+    internal::base::PlatformThreadForTesting::YieldCurrentThread();
+  }
+
+  PartitionTls* other_thread_tls = delegate.tls();
+  ASSERT_NE(other_thread_tls, nullptr);
+  EXPECT_NE(other_thread_tls, parent_thread_tls);
+  EXPECT_TRUE(PartitionTlsRegistry::Instance().IsRegisteredForTesting(
+      other_thread_tls));
+
+  can_finish.store(true, std::memory_order_release);
+  internal::base::PlatformThreadForTesting::Join(thread_handle);
+
+#if !PA_BUILDFLAG(IS_FUCHSIA)
+  EXPECT_FALSE(PartitionTlsRegistry::Instance().IsRegisteredForTesting(
+      other_thread_tls));
 #endif
 }
 
@@ -1157,6 +1223,79 @@ TEST_P(PartitionAllocThreadCacheTest, DynamicSizeThreshold) {
   EXPECT_EQ(3u, alloc_miss_too_large_counter.Delta());
 }
 
+namespace {
+
+class ThreadDelegateForDynamicSizeThresholdMultipleThreads
+    : public internal::base::PlatformThreadForTesting::Delegate {
+ public:
+  ThreadDelegateForDynamicSizeThresholdMultipleThreads(
+      PartitionRoot* root,
+      std::atomic<bool>& other_thread_started,
+      std::atomic<bool>& threshold_changed,
+      BucketDistribution bucket_distribution)
+      : root_(root),
+        other_thread_started_(other_thread_started),
+        threshold_changed_(threshold_changed),
+        bucket_distribution_(bucket_distribution) {}
+
+  void ThreadMain() override {
+    FillThreadCacheAndReturnIndex(
+        root_, ThreadCache::kDefaultSizeThreshold, bucket_distribution_);
+    auto* this_thread_tcache = root_->thread_cache_for_testing();
+    EXPECT_TRUE(this_thread_tcache);
+
+    DeltaCounter alloc_miss_too_large_counter{
+        this_thread_tcache->stats_for_testing().alloc_miss_too_large};
+
+    // Too large to be cached with default threshold.
+    FillThreadCacheAndReturnIndex(
+        root_, ThreadCache::kDefaultSizeThreshold + 1, bucket_distribution_);
+    EXPECT_EQ(1u, alloc_miss_too_large_counter.Delta());
+
+    other_thread_started_.store(true, std::memory_order_release);
+    while (!threshold_changed_.load(std::memory_order_acquire)) {
+    }
+
+    // Now large threshold is set, so it should be cached without new miss.
+    FillThreadCacheAndReturnIndex(
+        root_, ThreadCache::kDefaultSizeThreshold + 1, bucket_distribution_);
+    EXPECT_EQ(1u, alloc_miss_too_large_counter.Delta());
+  }
+
+ private:
+  PartitionRoot* root_ = nullptr;
+  std::atomic<bool>& other_thread_started_;
+  std::atomic<bool>& threshold_changed_;
+  BucketDistribution bucket_distribution_;
+};
+
+}  // namespace
+
+TEST_P(PartitionAllocThreadCacheTest, DynamicSizeThresholdMultipleThreads) {
+  std::atomic<bool> other_thread_started{false};
+  std::atomic<bool> threshold_changed{false};
+
+  ThreadCache::SetLargestCachedSize(ThreadCache::kDefaultSizeThreshold);
+
+  ThreadDelegateForDynamicSizeThresholdMultipleThreads delegate(
+      root(), other_thread_started, threshold_changed,
+      GetParam().bucket_distribution);
+
+  internal::base::PlatformThreadHandle thread_handle;
+  internal::base::PlatformThreadForTesting::Create(0, &delegate,
+                                                   &thread_handle);
+
+  while (!other_thread_started.load(std::memory_order_acquire)) {
+  }
+
+  ThreadCache::SetLargestCachedSize(ThreadCache::kLargeSizeThreshold);
+  threshold_changed.store(true, std::memory_order_release);
+
+  internal::base::PlatformThreadForTesting::Join(thread_handle);
+
+  ThreadCache::SetLargestCachedSize(ThreadCache::kDefaultSizeThreshold);
+}
+
 // Disabled due to flakiness: crbug.com/1287811
 TEST_P(PartitionAllocThreadCacheTest, DISABLED_DynamicSizeThresholdPurge) {
   auto* tcache = root()->thread_cache_for_testing();
@@ -1234,8 +1373,7 @@ TEST_P(PartitionAllocThreadCacheTest, Bookkeeping) {
   void* ptr =
       root()->Alloc(root()->AdjustSizeForExtrasSubtract(kMediumSize), "");
 
-  auto* medium_bucket =
-      PA_UNSAFE_TODO(root()->buckets_ + SizeToIndex(kMediumSize));
+  auto* medium_bucket = &root()->buckets_[SizeToIndex(kMediumSize)];
   size_t medium_alloc_size = medium_bucket->slot_size;
   expected_allocated_size += medium_alloc_size;
   expected_committed_size += kUseLazyCommit
@@ -1291,19 +1429,19 @@ TEST_P(PartitionAllocThreadCacheTest, AllocationRecording) {
   void* ptr =
       root()->Alloc(root()->AdjustSizeForExtrasSubtract(kSmallSize), "");
   ASSERT_TRUE(ptr);
-  expected_total_size += PartitionRoot::GetUsableSize(ptr);
+  expected_total_size += PartitionRoot::GetExternalUsableSize(ptr);
   void* ptr2 = root()->Alloc(
       root()->AdjustSizeForExtrasSubtract(kBucketedNotCached), "");
   ASSERT_TRUE(ptr2);
-  expected_total_size += PartitionRoot::GetUsableSize(ptr2);
+  expected_total_size += PartitionRoot::GetExternalUsableSize(ptr2);
   void* ptr3 =
       root()->Alloc(root()->AdjustSizeForExtrasSubtract(kDirectMapped), "");
   ASSERT_TRUE(ptr3);
-  expected_total_size += PartitionRoot::GetUsableSize(ptr3);
+  expected_total_size += PartitionRoot::GetExternalUsableSize(ptr3);
   void* ptr4 =
       root()->Alloc(root()->AdjustSizeForExtrasSubtract(kSingleSlot), "");
   ASSERT_TRUE(ptr4);
-  expected_total_size += PartitionRoot::GetUsableSize(ptr4);
+  expected_total_size += PartitionRoot::GetExternalUsableSize(ptr4);
 
   EXPECT_EQ(4u, tcache->thread_alloc_stats().alloc_count);
   EXPECT_EQ(expected_total_size, tcache->thread_alloc_stats().alloc_total_size);
@@ -1358,7 +1496,7 @@ TEST_P(PartitionAllocThreadCacheTest, AllocationRecordingAligned) {
     void* ptr = root()->AlignedAlloc(alignment, requested_size);
     ASSERT_TRUE(ptr);
     alloc_count++;
-    total_size += PartitionRoot::GetUsableSize(ptr);
+    total_size += PartitionRoot::GetExternalUsableSize(ptr);
     EXPECT_EQ(alloc_count, tcache->thread_alloc_stats().alloc_count);
     EXPECT_EQ(total_size, tcache->thread_alloc_stats().alloc_total_size);
     root()->Free(ptr);
@@ -1402,14 +1540,14 @@ TEST_P(PartitionAllocThreadCacheTest, AllocationRecordingRealloc) {
     void* ptr = root()->Alloc(size);
     ASSERT_TRUE(ptr);
     alloc_count++;
-    size_t usable_size = PartitionRoot::GetUsableSize(ptr);
+    size_t usable_size = PartitionRoot::GetExternalUsableSize(ptr);
     total_alloc_size += usable_size;
 
     ptr = root()->Realloc(ptr, new_size, "");
     ASSERT_TRUE(ptr);
     total_dealloc_size += usable_size;
     dealloc_count++;
-    usable_size = PartitionRoot::GetUsableSize(ptr);
+    usable_size = PartitionRoot::GetExternalUsableSize(ptr);
     total_alloc_size += usable_size;
     alloc_count++;
 

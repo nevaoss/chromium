@@ -12,6 +12,7 @@
 #include "base/check_is_test.h"
 #include "base/feature_list.h"
 #include "base/functional/bind.h"
+#include "base/functional/callback_helpers.h"
 #include "base/metrics/field_trial.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/metrics/user_metrics.h"
@@ -41,16 +42,21 @@
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/tab_list/tab_list_interface.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
+#include "components/sessions/core/session_id.h"
+#include "extensions/buildflags/buildflags.h"
 #if !BUILDFLAG(IS_ANDROID)
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/views/page_info/page_info_bubble_specification.h"
 #include "chrome/browser/ui/views/page_info/page_info_bubble_view.h"
+#include "extensions/buildflags/buildflags.h"
+#if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+#include "chrome/browser/contextual_tasks/contextual_tasks_extensions_container.h"
+#endif
 #include "ui/base/interaction/element_tracker.h"
 #include "ui/views/bubble/bubble_anchor.h"
 #include "ui/webui/tracked_element/tracked_element_handler.h"
 #include "ui/webui/tracked_element/tracked_element_handler_document_singleton.h"
 #endif
-#include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/user_education/browser_user_education_interface.h"
 #include "chrome/browser/ui/webui/new_tab_page/composebox/variations/composebox_fieldtrial.h"
@@ -369,7 +375,7 @@ void ContextualTasksSidePanelCoordinator::Show(
 #if !BUILDFLAG(IS_ANDROID)
   // Hide the GLIC nudge when the panel is opened.
   if (auto* glic_nudge_controller =
-          browser_window_->GetFeatures().glic_nudge_controller()) {
+          glic::GlicNudgeController::From(browser_window_)) {
     glic_nudge_controller->UpdateNudgeLabel(
         active_tab_interface->GetContents(), "", std::nullopt,
         glic::GlicNudgeActivity::kNudgeIgnoredOpenedContextualTasksSidePanel,
@@ -708,8 +714,10 @@ void ContextualTasksSidePanelCoordinator::OnTabAdded(TabListInterface& tab_list,
   content::WebContents* content = tab->GetContents();
 
   // Background tabs opened via hotkey commands (e.g. Ctrl+Click, middle-click)
-  // or context menus should not inherit task association from the opener.
-  if (tab_list.GetActiveTab() != tab) {
+  // or context menus should not inherit task association from the opener,
+  // unless clobbering is enabled.
+  if (!contextual_tasks::IsContextualTasksClobberActiveTabEnabled() &&
+      tab_list.GetActiveTab() != tab) {
     return;
   }
 
@@ -1395,6 +1403,10 @@ bool ContextualTasksSidePanelCoordinator::CanExpandToFullTab() const {
 void ContextualTasksSidePanelCoordinator::ShowPageInfoBubble(
     bool is_pointer_interaction) {
 #if !BUILDFLAG(IS_ANDROID)
+  if (!IsContextualTasksSidePanelRearchitectureEnabled()) {
+    return;
+  }
+
   if (page_info_bubble_suppressor_.ShouldSuppressBubbleShow(
           is_pointer_interaction)) {
     return;
@@ -1437,11 +1449,15 @@ void ContextualTasksSidePanelCoordinator::ShowPageInfoBubble(
   views::BubbleAnchor specification_anchor =
       views::BubbleAnchor(anchor_element);
 
-  std::unique_ptr<PageInfoBubbleSpecification> specification =
-      PageInfoBubbleSpecification::Builder(
-          specification_anchor, browser_view->GetWidget()->GetNativeWindow(),
-          contents, contents->GetVisibleURL())
-          .Build();
+  PageInfoBubbleSpecification::Builder builder(
+      specification_anchor, browser_view->GetWidget()->GetNativeWindow(),
+      contents, contents->GetVisibleURL());
+#if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+  builder.SetOnExtensionsClickedCallback(base::BindRepeating(
+      &ContextualTasksSidePanelCoordinator::OnSeeExtensionsClicked,
+      weak_ptr_factory_.GetWeakPtr(), specification_anchor));
+#endif
+  std::unique_ptr<PageInfoBubbleSpecification> specification = builder.Build();
 
   views::BubbleDialogDelegateView* const bubble =
       PageInfoBubbleView::CreatePageInfoBubble(std::move(specification));
@@ -1455,8 +1471,30 @@ void ContextualTasksSidePanelCoordinator::ShowPageInfoBubble(
 #endif
 }
 
+#if BUILDFLAG(ENABLE_EXTENSIONS_CORE) && !BUILDFLAG(IS_ANDROID)
+void ContextualTasksSidePanelCoordinator::OnSeeExtensionsClicked(
+    views::BubbleAnchor anchor) {
+  content::WebContents* contents = GetActiveWebContents();
+  if (!contents) {
+    return;
+  }
+  if (!extensions_container_) {
+    extensions_container_ =
+        std::make_unique<ContextualTasksExtensionsContainer>(browser_window_,
+                                                             contents);
+  } else {
+    extensions_container_->SetWebContents(contents);
+  }
+  extensions_container_->ShowExtensionsMenu(anchor);
+}
+#endif
+
 void ContextualTasksSidePanelCoordinator::OnLogoPointerDown() {
 #if !BUILDFLAG(IS_ANDROID)
+  if (!IsContextualTasksSidePanelRearchitectureEnabled()) {
+    return;
+  }
+
   page_info_bubble_suppressor_.OnMousePressed();
 #endif
 }

@@ -14,7 +14,6 @@
 #include "base/not_fatal_until.h"
 #include "base/numerics/safe_conversions.h"
 #include "build/build_config.h"
-#include "third_party/blink/public/common/features.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_binding_for_core.h"
 #include "third_party/blink/renderer/bindings/core/v8/v8_navigation_type.h"
 #include "third_party/blink/renderer/core/dom/element.h"
@@ -31,6 +30,7 @@
 #include "third_party/blink/renderer/core/navigation_api/navigation_type_util.h"
 #include "third_party/blink/renderer/core/page/page.h"
 #include "third_party/blink/renderer/core/paint/timing/largest_contentful_paint_calculator.h"
+#include "third_party/blink/renderer/core/paint/timing/paint_timing.h"
 #include "third_party/blink/renderer/core/paint/timing/paint_timing_detector.h"
 #include "third_party/blink/renderer/core/paint/timing/paint_timing_record.h"
 #include "third_party/blink/renderer/core/timing/dom_window_performance.h"
@@ -203,9 +203,6 @@ SoftNavigationHeuristics::SoftNavigationHeuristics(LocalDOMWindow* window)
 
 SoftNavigationHeuristics* SoftNavigationHeuristics::CreateIfNeeded(
     LocalDOMWindow* window) {
-  if (!base::FeatureList::IsEnabled(features::kSoftNavigationDetection)) {
-    return nullptr;
-  }
   // We expect the window to be valid and the frame to be attached.
   CHECK(window && window->GetFrame() && window->GetFrame()->GetPage());
 
@@ -315,12 +312,6 @@ void SoftNavigationHeuristics::SameDocumentNavigationCommitted(
     WebFrameLoadType load_type,
     base::UnguessableToken same_document_metrics_token,
     PerformanceTimelineEntryIdInfo interaction_id) {
-  if (load_type == WebFrameLoadType::kReplaceCurrentItem &&
-      !RuntimeEnabledFeatures::
-          SoftNavigationDetectionIncludeReplaceStateEnabled()) {
-    return;
-  }
-
   if (new_url == old_url) {
     return;
   }
@@ -489,7 +480,13 @@ void SoftNavigationHeuristics::OnElementLastContentfulPaint(
 template <IsDerivedFromPaintTimingRecord T>
 void SoftNavigationHeuristics::OnContentfulPaintImpl(T* record) const {
   Node* node = record->GetNode();
-  CHECK(node);
+  // TODO(crbug.com/441914208, crbug.com/557111456): `node` can be null here,
+  // which is unexpected. Change this back to a CHECK when the root cause is
+  // understood and fixed.
+  if (!node) {
+    return;
+  }
+
   SoftNavigationContext* context =
       paint_attribution_tracker_->GetSoftNavigationContextForNode(node);
   if (!context || !context->ShouldTrackForPaintTiming(*record)) {
@@ -519,7 +516,7 @@ void SoftNavigationHeuristics::OnInputOrScroll() {
 void SoftNavigationHeuristics::OnFramePresented(
     const HeapVector<Member<ImageRecord>>& image_records,
     const HeapVector<Member<TextRecord>>& text_records,
-    const GCedHeapVector<Member<ElementTimingInfo>>*,
+    const HeapVector<Member<ElementTimingInfo>>&,
     const DOMPaintTimingInfo&) {
   // First, group the records by context, ignoring records that aren't needed.
   ContextToCandidatesMap candidates_per_context;

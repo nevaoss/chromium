@@ -57,6 +57,7 @@
 <translation id="1181037720776840403">Удалить</translation>
 <translation id="1183189057400844278">Чтобы всегда иметь доступ к паролям, сохраненным в аккаунте Google, подтвердите свою личность.</translation>
 <translation id="1187810343066461819">Удалить закладки, историю и другие данные с автомобиля</translation>
+<translation id="1191987227666124897">Запрос на отказ</translation>
 <translation id="1193729455103054076">Использовать надежный пароль?</translation>
 <translation id="11947597112837849">адрес электронной почты</translation>
 <translation id="1197267115302279827">Переместить закладки</translation>
@@ -105,6 +106,7 @@
 <translation id="138181280295369883">Войдите, чтобы получить доступ к сохраненной информации и другим данным на всех устройствах.</translation>
 <translation id="1381838868249179644">Чтобы защитить вас, мы отозвали разрешения у нескольких сайтов.</translation>
 <translation id="1383876407941801731">Поиск</translation>
+<translation id="1384568202352682721">Сохранить как…</translation>
 <translation id="1384704387250346179">Перевести с помощью Google Объектива <ph name="BEGIN_NEW" />Новинка<ph name="END_NEW" /></translation>
 <translation id="1390418506739274310">Вы можете видеть историю из приложений, которые открывают ссылки в Chrome. В вашем аккаунте Google также могут храниться другие данные истории браузера. Вы найдете их на странице <ph name="BEGIN_LINK" />myactivity.google.com<ph name="END_LINK" />.</translation>
 <translation id="139752016751285248">Нижний экран с информацией о ценах открыт полностью</translation>
@@ -133,6 +135,7 @@
 <translation id="147982357559798527">Изменено</translation>
 <translation id="1480287803138246127">Некоторые данные могут здесь не показываться. Чтобы увидеть их все, откройте историю Chrome.</translation>
 <translation id="1483493594462132177">Отправить</translation>
+<translation id="1485343711570311792">Открыть в приложении "<ph name="NATIVE_APP_NAME" />" • Отправлено с устройства "<ph name="DEVICE_NAME" />".</translation>
 <translation id="1495677929897281669">Вернуться на вкладку</translation>
 <translation id="1496514951988037011">имя пользователя</translation>
 <translation id="1501480321619201731">Удалить группу</translation>
@@ -160,7 +163,7 @@
 <translation id="1598163867407640634">Вход на сайт <ph name="SITE_ETLD_PLUS_ONE" /> с аккаунтом <ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /></translation>
 <translation id="1598770407402123677">Закрепленная вкладка "<ph name="TAB_TITLE" />", на которой ведется запись</translation>
 <translation id="1600756129506222718">Вкладка "<ph name="TAB_TITLE" />" с доступом к экрану</translation>
-<translation id="1601378265092360672">К данным о работе в браузере относятся история браузера, файлы cookie и другие данные сайтов, изображения и файлы, сохраненные в кеше, а также открытые вкладки.</translation>
+<translation id="1601378265092360672">К данным о работе в браузере относятся история браузера, файлы cookie и другие данные сайтов, кешированные изображения и файлы, а также открытые вкладки.</translation>
 <translation id="160275202205869636">Когда параметр включен, данные можно использовать и сохранять в аккаунте Google. В противном случае данные хранятся только на этом устройстве.</translation>
 <translation id="1628019612362412531">{NUM_SELECTED,plural, =1{Удалить 1 выбранный объект}one{Удалить # выбранный объект}few{Удалить # выбранных объекта}many{Удалить # выбранных объектов}other{Удалить # выбранного объекта}}</translation>
 <translation id="1639239467298939599">Загрузка…</translation>
@@ -210,6 +213,7 @@
 <translation id="1832459821645506983">ОК</translation>
 <translation id="1845958458910716240">Чтобы защитить свои данные, разрешите Chrome отзывать разрешения у сайтов, которые вы давно не посещали</translation>
 <translation id="1851551847729706116">Демонстрация с другой вкладки: <ph name="TAB_NAME" /></translation>
+<translation id="1855268219431673036">Страница <ph name="CURRENT_PAGE" /> из <ph name="TOTAL_PAGE_COUNT" /></translation>
 <translation id="1869691326892615940">Надежные пароли и быстрый вход</translation>
 <translation id="1871098866036088250">Открывать в браузере Chrome</translation>
 <translation id="1877026089748256423">Версия Chrome устарела</translation>
@@ -248,6 +252,7 @@
 <translation id="1984087999855033707">номер телефона</translation>
 <translation id="1984417487208496350">Защита отключена (не рекомендуется)</translation>
 <translation id="1986685561493779662">Это имя уже используется.</translation>
+<translation id="1992244793717364584">Приложение удалено</translation>
 <translation id="200114059308480249">Учитывать контекст в поиске Google?</translation>
 <translation id="2004096469149679223">Закрепленная вкладка инкогнито "<ph name="TAB_TITLE" />" с отключенным звуком</translation>
 <translation id="2021896219286479412">Настройки полноэкранного режима</translation>
@@ -327,6 +332,7 @@
 <translation id="232137538351753795">Чтобы вернуться, проведите слева направо</translation>
 <translation id="2323763861024343754">Данные сайтов</translation>
 <translation id="2327445548174191329">С устройства <ph name="DEVICE_NAME" />.</translation>
+<translation id="232757965409810352">Сохранить страницу как…</translation>
 <translation id="2328474416100889417">Группа вкладок "<ph name="GROUP_NAME" />" сразу станет недоступна всем пользователям, а ссылки для приглашения больше не будут работать.</translation>
 <translation id="2329500425421091035">Представляем режим ИИ в Chrome</translation>
 <translation id="2330186936255788117">Ещё закладки</translation>
@@ -561,6 +567,7 @@
 <translation id="3232754137068452469">Веб-приложение</translation>
 <translation id="3236059992281584593">Осталась 1 мин.</translation>
 <translation id="3237087289225714896">Стандартная предзагрузка:</translation>
+<translation id="3243650379537999343">Нарисовать</translation>
 <translation id="3244271242291266297">ММ</translation>
 <translation id="3245429137663807393">Если вы также отправляете отчеты об использовании Chrome, в них включаются URL посещенных вами страниц.</translation>
 <translation id="3250563604907490871">Описания изображений станут доступны при подключении к сети Wi-Fi.</translation>
@@ -584,7 +591,6 @@
 <translation id="331080746368555063">К частным сайтам можно отнести, например, те, которые размещены в интранете вашей компании</translation>
 <translation id="3311330810461485557">Поиск по приложению, дате и другим параметрам</translation>
 <translation id="3312300514034250578">Улучшенный Безопасный просмотр</translation>
-<translation id="3331974543021145906">О приложении</translation>
 <translation id="3334729583274622784">Изменить расширение имени файла?</translation>
 <translation id="333863344734218290">Предупреждать о незащищенных общедоступных и частных сайтах</translation>
 <translation id="3339788961947270565">Завершение работы</translation>
@@ -658,6 +664,7 @@
 <translation id="3649090831059057090"><ph name="WINDOW_TITLE" />, <ph name="TAB_COUNT" /></translation>
 <translation id="3653111872753786013"><ph name="WEBSITE_TITLE" /> (<ph name="WEBSITE_URL" />)</translation>
 <translation id="3662363748131724714">Выйти из режима виртуальной реальности</translation>
+<translation id="3662595332590803433">Всегда открывать спец. вкладки в Chrome</translation>
 <translation id="3674208116086565128">Открыть главную страницу приложения Google</translation>
 <translation id="368329460027487650">Выполнен выход. Открывает окно с вариантами входа.</translation>
 <translation id="3684540848053703310">Нижний экран с информацией о ценах закрыт</translation>
@@ -732,6 +739,7 @@
 <translation id="3950820424414687140">Войти</translation>
 <translation id="395377504920307820">Продолжить без входа в аккаунт</translation>
 <translation id="3955353672249727801">Страницы добавлены в список для чтения.</translation>
+<translation id="3958283758104508528">Приложение "<ph name="APP_NAME" />" удалено</translation>
 <translation id="396192773038029076">{NUM_IN_PROGRESS,plural, =1{Страница будет загружена при подключении к сети}one{Страницы будут загружены при подключении к сети}few{Страницы будут загружены при подключении к сети}many{Страницы будут загружены при подключении к сети}other{Страницы будут загружены при подключении к сети}}</translation>
 <translation id="3969142555815019568">Браузеру Chrome не удается проверить пароли.</translation>
 <translation id="3969863827134279083">Перейти вверх</translation>
@@ -902,6 +910,7 @@
 <translation id="4595805675102978678">Ошибка в аккаунте Google</translation>
 <translation id="4599585406846903742">Одностраничный режим</translation>
 <translation id="4601095002996233687">Выполняет тщательную проверку подозрительных файлов, которые вы скачали.</translation>
+<translation id="4604434672720336227">Выйти из Chrome</translation>
 <translation id="4606559747793337066">Когда сайт или приложение запрашивает анонимную предзагрузку страниц по ссылкам, Chrome шифрует и предварительно загружает страницы через серверы Google, не используя файлы cookie. Благодаря этому предзагруженный сайт не получает сведений о вашей личности.</translation>
 <translation id="4619615317237390068">Вкладки с других устройств</translation>
 <translation id="4624065194742029982">Режим инкогнито в Chrome</translation>
@@ -963,7 +972,6 @@
 <translation id="480990236307250886">Перейти на главную страницу</translation>
 <translation id="4816492930507672669">Выровнять по размеру страницы</translation>
 <translation id="4822710610088666676">Группа вкладок "<ph name="TAB_GROUP_TITLE" />" закрыта и сохранена.</translation>
-<translation id="4834250788637067901">Способы оплаты, предложения и адреса из Google Pay</translation>
 <translation id="4835385943915508971">Запрошенный ресурс недоступен в Chrome</translation>
 <translation id="483742037940503070">{TAB_COUNT,plural, =1{Восстановить группу из <ph name="TAB_COUNT_ONE" /> вкладки, которой присвоен <ph name="COLOR_NAME" /> цвет, и открыть ее в фоновом режиме.}one{Восстановить группу из <ph name="TAB_COUNT_MANY" /> вкладки, которой присвоен <ph name="COLOR_NAME" /> цвет, и открыть ее в фоновом режиме.}few{Восстановить группу из <ph name="TAB_COUNT_MANY" /> вкладок, которой присвоен <ph name="COLOR_NAME" /> цвет, и открыть ее в фоновом режиме.}many{Восстановить группу из <ph name="TAB_COUNT_MANY" /> вкладок, которой присвоен <ph name="COLOR_NAME" /> цвет, и открыть ее в фоновом режиме.}other{Восстановить группу из <ph name="TAB_COUNT_MANY" /> вкладки, которой присвоен <ph name="COLOR_NAME" /> цвет, и открыть ее в фоновом режиме.}}</translation>
 <translation id="4849731766219625109">Использовать аккаунт <ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /></translation>
@@ -1338,6 +1346,7 @@
 <translation id="634208815998129842">Диспетчер задач</translation>
 <translation id="6343495912647200061">{SHIPPING_ADDRESS,plural, =1{<ph name="SHIPPING_ADDRESS_PREVIEW" /> и ещё <ph name="NUMBER_OF_ADDITIONAL_ADDRESSES" /> адрес доставки}one{<ph name="SHIPPING_ADDRESS_PREVIEW" /> и ещё <ph name="NUMBER_OF_ADDITIONAL_ADDRESSES" /> адрес доставки}few{<ph name="SHIPPING_ADDRESS_PREVIEW" /> и ещё <ph name="NUMBER_OF_ADDITIONAL_ADDRESSES" /> адреса доставки}many{<ph name="SHIPPING_ADDRESS_PREVIEW" /> и ещё <ph name="NUMBER_OF_ADDITIONAL_ADDRESSES" /> адресов доставки}other{<ph name="SHIPPING_ADDRESS_PREVIEW" /> и ещё <ph name="NUMBER_OF_ADDITIONAL_ADDRESSES" /> адреса доставки}}</translation>
 <translation id="6345878117466430440">Отметить как прочитанное</translation>
+<translation id="63490081267265251">Сайты, которые вы посещаете, в том числе Google, сами определяют, как реагировать на этот запрос. В зависимости от законов, действующих в вашем регионе, сайты могут ограничить продажу и передачу ваших данных или их использование для показа персонализированной рекламы. <ph name="BEGIN_LINK" />Подробнее…<ph name="END_LINK" /></translation>
 <translation id="6350745006329795504">Управление устройствами</translation>
 <translation id="6356893102071098867">Убедитесь, что выбрали нужный аккаунт.</translation>
 <translation id="6364438453358674297">Удалить подсказку из истории?</translation>
@@ -1418,12 +1427,12 @@
 <translation id="6642299196749785472">Прикрепить вкладки</translation>
 <translation id="6647441008198474441">Для прогнозирования ваших дальнейших запросов URL посещенных вами страниц отправляются в Google.</translation>
 <translation id="6648977384226967773">{CONTACT,plural, =1{<ph name="CONTACT_PREVIEW" /> и ещё <ph name="NUMBER_OF_ADDITIONAL_CONTACTS" /> контактное лицо}one{<ph name="CONTACT_PREVIEW" /> и ещё <ph name="NUMBER_OF_ADDITIONAL_CONTACTS" /> контактное лицо}few{<ph name="CONTACT_PREVIEW" /> и ещё <ph name="NUMBER_OF_ADDITIONAL_CONTACTS" /> контактных лица}many{<ph name="CONTACT_PREVIEW" /> и ещё <ph name="NUMBER_OF_ADDITIONAL_CONTACTS" /> контактных лиц}other{<ph name="CONTACT_PREVIEW" /> и ещё <ph name="NUMBER_OF_ADDITIONAL_CONTACTS" /> контактного лица}}</translation>
-<translation id="6649642165559792194">Просмотреть изображение <ph name="BEGIN_NEW" />Новинка<ph name="END_NEW" /></translation>
 <translation id="6659594942844771486">Tab</translation>
 <translation id="666731172850799929">Открыть в <ph name="APP_NAME" /></translation>
 <translation id="6669390930482049506">Включить</translation>
 <translation id="6671495933530132209">Скопировать изображение</translation>
 <translation id="6672697278890207089">Введите кодовую фразу</translation>
+<translation id="6675622031235530028">Чтобы выйти, удерживайте Ctrl + Q.</translation>
 <translation id="6676927815633975364">Вы выполните вход на этом сайте и в Chrome</translation>
 <translation id="6684262542644248484">Войдите в аккаунт на нужном сайте.</translation>
 <translation id="6684809838922667136">Сделайте браузер Chrome лучше</translation>
@@ -1508,7 +1517,6 @@
 <translation id="6922812712751566567"><ph name="PERMISSION" /> <ph name="SEPARATOR" /> Chrome отозвал эти разрешения у сайта, так как вы давно его не посещали</translation>
 <translation id="6923291640965724312">Формат видео</translation>
 <translation id="6927821422725196292">{TABS_COUNT,plural, =1{1 вкладка}one{<ph name="NUMBER_OF_TABS" /> вкладка}few{<ph name="NUMBER_OF_TABS" /> вкладки}many{<ph name="NUMBER_OF_TABS" /> вкладок}other{<ph name="NUMBER_OF_TABS" /> вкладки}}</translation>
-<translation id="6929224077895306814">Все защитные коды, сохраненные на вашем устройстве и в аккаунте Google, будут удалены.</translation>
 <translation id="6933180670536678127">Выбранная и закрепленная вкладка "<ph name="TAB_TITLE" />" с включенным звуком</translation>
 <translation id="6937524809504266803">Персонализация и связывание</translation>
 <translation id="6937876069006524083">Название (необязательно)</translation>
@@ -1619,6 +1627,7 @@
 <translation id="7335766481146072567">Нажмите "Продолжить".</translation>
 <translation id="7336259382292148213">С уведомлениями все в порядке</translation>
 <translation id="7339898014177206373">Новое окно</translation>
+<translation id="7349983576451251297">Открывать веб-страницы в Chrome, а не в специальных вкладках</translation>
 <translation id="7352339641508007922">Перетащите, чтобы сделать длинный скриншот.</translation>
 <translation id="7352651011704765696">Ошибка</translation>
 <translation id="7353894246028566792">{NUM_SELECTED,plural, =1{Поделиться 1 выбранным объектом}one{Поделиться # выбранным объектом}few{Поделиться # выбранными объектами}many{Поделиться # выбранными объектами}other{Поделиться # выбранного объекта}}</translation>
@@ -1662,6 +1671,7 @@
 <translation id="7493994139787901920"><ph name="VERSION" /> (последнее обновление: <ph name="TIME_SINCE_UPDATE" />)</translation>
 <translation id="7498271377022651285">Подождите…</translation>
 <translation id="7499065150275272675">Закрепленная вкладка "<ph name="TAB_TITLE" />" с отключенным звуком</translation>
+<translation id="7500851014030446046">Скачивание PDF-файла…</translation>
 <translation id="7501135638693251872">Все закладки</translation>
 <translation id="7507207699631365376">Посмотреть <ph name="BEGIN_LINK" />политику конфиденциальности<ph name="END_LINK" /> этого поставщика услуг</translation>
 <translation id="750886945254958667">Вы сможете пользоваться ей в дальнейшем и добавлять вкладки. Если группа больше не нужна, выйдите из нее.</translation>
@@ -1708,6 +1718,7 @@
 <translation id="7690596512217303514">Не удалось запустить Chrome. Чтобы устранить неполадку, установите последнее обновление браузера из магазина приложений.</translation>
 <translation id="7692761875510935111">Открыть в браузере. Чтобы изменить функцию кнопки, нажмите и удерживайте ее.</translation>
 <translation id="7695270712963178084">Рекомендации Chrome</translation>
+<translation id="7695610746377249436">Сайты, в том числе Google, сами определяют, как реагировать на этот запрос</translation>
 <translation id="7697383401610880082">Маркер перемещения</translation>
 <translation id="7698359219371678927">Написать письмо в приложении "<ph name="APP_NAME" />"</translation>
 <translation id="7702420606070050505">Нижний экран недавних действий открыт полностью</translation>
@@ -1729,10 +1740,12 @@
 <translation id="7774809984919390718">{PAYMENT_METHOD,plural, =1{<ph name="PAYMENT_METHOD_PREVIEW" /> и ещё <ph name="NUMBER_OF_ADDITIONAL_PAYMENT_METHODS" /> способ оплаты}one{<ph name="PAYMENT_METHOD_PREVIEW" /> и ещё <ph name="NUMBER_OF_ADDITIONAL_PAYMENT_METHODS" /> способ оплаты}few{<ph name="PAYMENT_METHOD_PREVIEW" /> и ещё <ph name="NUMBER_OF_ADDITIONAL_PAYMENT_METHODS" /> способа оплаты}many{<ph name="PAYMENT_METHOD_PREVIEW" /> и ещё <ph name="NUMBER_OF_ADDITIONAL_PAYMENT_METHODS" /> способов оплаты}other{<ph name="PAYMENT_METHOD_PREVIEW" /> и ещё <ph name="NUMBER_OF_ADDITIONAL_PAYMENT_METHODS" /> способа оплаты}}</translation>
 <translation id="777637629667389858">Если вы вошли в аккаунт, защищает вас во всех сервисах Google.</translation>
 <translation id="7778840695157240389">Загляните сюда позже – здесь появятся интересные статьи.</translation>
+<translation id="7780992949171378848">Отправлять сайтам запрос на отказ от использования ваших данных</translation>
 <translation id="7791543448312431591">Добавить</translation>
 <translation id="7792388396321542707">Закрыть доступ</translation>
 <translation id="780287761701992588">Синхронизируйте закладки, пароли и другую информацию на всех своих устройствах.</translation>
 <translation id="780301667611848630">Нет, спасибо</translation>
+<translation id="7804364787702057554">Ваш аккаунт в Chrome</translation>
 <translation id="7810647596859435254">Открыть с помощью...</translation>
 <translation id="7814066895362068701">{FILE_COUNT,plural, =1{Все файлы, 1 файл в списке}one{Все файлы, # файл в списке}few{Все файлы, # файла в списке}many{Все файлы, # файлов в списке}other{Все файлы, # файла в списке}}</translation>
 <translation id="7815484226266492798">Длинный скриншот</translation>
@@ -1775,7 +1788,6 @@
 <translation id="7968014550143838305">Добавлено в список для чтения.</translation>
 <translation id="7968982339740310781">Просмотреть сведения</translation>
 <translation id="7969391000881506217">Срок действия*</translation>
-<translation id="7975379999046275268">Просмотреть страницу <ph name="BEGIN_NEW" />Новинка<ph name="END_NEW" /></translation>
 <translation id="7977451675950311423">Предупреждает, если вы используете пароль, скомпрометированный в результате утечки данных.</translation>
 <translation id="7987499071758862048"><ph name="PERMISSION_1" />, <ph name="PERMISSION_2" />, <ph name="PERMISSION_3" /> <ph name="SEPARATOR" /> Chrome отозвал эти разрешения у сайта, так как вы давно его не посещали</translation>
 <translation id="799576009106109668">Работа браузера станет быстрее благодаря автоматической загрузке контента с учетом просматриваемой в настоящий момент страницы.</translation>
@@ -1874,6 +1886,7 @@
 <translation id="8313599942510782709">Задача ещё не выполнена.</translation>
 <translation id="8317318757008452355">Открыть параметры печати</translation>
 <translation id="8320212361750431956">Недавние действия</translation>
+<translation id="8322452989119079156">Открыть в приложении "<ph name="NATIVE_APP_NAME" />". Отправлено с устройства "<ph name="DEVICE_NAME" />".</translation>
 <translation id="832514020744584629"><ph name="PREF_TITLE" />  <ph name="BEGIN_NEW" />Новая функция<ph name="END_NEW" /></translation>
 <translation id="8333026248928723981">Закладки и списки</translation>
 <translation id="8342727528718219152">Chrome будет предупреждать о сайтах, которые могут отправлять слишком много уведомлений</translation>
@@ -1946,6 +1959,7 @@
 <translation id="8580435650274205305">Срок действия (обязательно)</translation>
 <translation id="8582529315803410153">Здесь вы найдете свои вкладки с других устройств</translation>
 <translation id="8585103689515290060">Сервисы автозаполнения</translation>
+<translation id="8586116786993312006">Нажмите, чтобы удалить данные о работе в браузере Chrome.</translation>
 <translation id="859046281437143747">Нажмите кнопку "Ещё" и выберите пункт "Отслеживание цен"</translation>
 <translation id="859064343657890103">Группа вкладок "<ph name="TAB_GROUP_TITLE" />" удалена.</translation>
 <translation id="860043288473659153">Имя владельца карты</translation>

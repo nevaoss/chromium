@@ -5,6 +5,7 @@
 #ifndef CHROME_BROWSER_UI_VIEWS_DESKTOP_CAPTURE_DESKTOP_MEDIA_PICKER_VIEWS_H_
 #define CHROME_BROWSER_UI_VIEWS_DESKTOP_CAPTURE_DESKTOP_MEDIA_PICKER_VIEWS_H_
 
+#include <optional>
 #include <string>
 
 #include "base/feature_list.h"
@@ -32,7 +33,6 @@ class MdTextButton;
 }  // namespace views
 
 class DesktopMediaPickerImpl;
-
 
 const DesktopMediaSourceViewStyle& GetGenericScreenStyle();
 const DesktopMediaSourceViewStyle& GetSingleScreenStyle();
@@ -261,6 +261,8 @@ class DesktopMediaPickerDialogView : public views::DialogDelegateView,
 
   // For recording dialog-duration UMA histograms.
   const base::TimeTicks dialog_open_time_;
+
+  base::OnceClosure on_picker_destroying_;
 
   base::WeakPtrFactory<DesktopMediaPickerDialogView> weak_factory_{this};
 };

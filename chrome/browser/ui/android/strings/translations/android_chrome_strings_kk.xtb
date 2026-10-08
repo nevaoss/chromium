@@ -57,6 +57,7 @@
 <translation id="1181037720776840403">Өшіру</translation>
 <translation id="1183189057400844278">Google аккаунтыңыздағы құпия сөздерді пайдалана алу үшін жеке басыңызды растаңыз.</translation>
 <translation id="1187810343066461819">Бұл көліктен бетбелгілерді, тарих пен т.б. мәліметтерді де жою</translation>
+<translation id="1191987227666124897">Бас тарту туралы сұрау</translation>
 <translation id="1193729455103054076">Күрделі құпия сөз пайдаланылсын ба?</translation>
 <translation id="11947597112837849">электрондық пошта мекенжайы</translation>
 <translation id="1197267115302279827">Бетбелгілерді жылжыту</translation>
@@ -105,6 +106,7 @@
 <translation id="138181280295369883">Барлық құрылғыдағы сақталған ақпарат пен басқа деректерді алу үшін аккаунтқа кіріңіз.</translation>
 <translation id="1381838868249179644">Сізді қорғау үшін рұқсаттар кейбір сайттардан өшірілді.</translation>
 <translation id="1383876407941801731">Іздеу</translation>
+<translation id="1384568202352682721">Басқаша сақтау…</translation>
 <translation id="1384704387250346179">Google Lens арқылы аудару <ph name="BEGIN_NEW" />Жаңа<ph name="END_NEW" /></translation>
 <translation id="1390418506739274310">Сілтемелерді Chrome-нан ашатын кейбір қолданбалардың тарихы көрсетілуі ықтимал. <ph name="BEGIN_LINK" />myactivity.google.com<ph name="END_LINK" /> мекенжайында Google аккаунтымен браузерді қолдану тарихының басқа түрлері болуы мүмкін.</translation>
 <translation id="139752016751285248">Баға статистикасының толығымен ашылған төменгі парақшасы</translation>
@@ -133,6 +135,7 @@ Chrome тәжірибесін жақсарту үшін деректерді қ�
 <translation id="147982357559798527">Өзгертілді</translation>
 <translation id="1480287803138246127">Тарих бұл жерде толық көрсетілмеуі мүмкін. Барлық дерек көру үшін толық Chrome тарихын ашыңыз.</translation>
 <translation id="1483493594462132177">Жіберу</translation>
+<translation id="1485343711570311792"><ph name="NATIVE_APP_NAME" /> қолданбасынан ашу • <ph name="DEVICE_NAME" /> құрылғысынан жіберілген.</translation>
 <translation id="1495677929897281669">Қойындыға оралу</translation>
 <translation id="1496514951988037011">пайдаланушы аты</translation>
 <translation id="1501480321619201731">Топты жою</translation>
@@ -210,6 +213,7 @@ Chrome тәжірибесін жақсарту үшін деректерді қ�
 <translation id="1832459821645506983">Жарайды</translation>
 <translation id="1845958458910716240">Деректеріңізді қорғау үшін Chrome-ға сіз соңғы уақытта кірмеген сайттар рұқсаттарын өшіруге рұқсат беріңіз.</translation>
 <translation id="1851551847729706116">"<ph name="TAB_NAME" />" қойындысы осы қойындыда көрсетіліп жатыр</translation>
+<translation id="1855268219431673036"><ph name="CURRENT_PAGE" />/<ph name="TOTAL_PAGE_COUNT" />-бет</translation>
 <translation id="1869691326892615940">Сенімді құпия сөздер, аккаунтқа жылдам кіру</translation>
 <translation id="1871098866036088250">Chrome браузерінде ашу</translation>
 <translation id="1877026089748256423">Chrome ескірген</translation>
@@ -248,6 +252,7 @@ Chrome тәжірибесін жақсарту үшін деректерді қ�
 <translation id="1984087999855033707">телефон нөмірі</translation>
 <translation id="1984417487208496350">Қорғау режимін өшіру (ұсынылмайды)</translation>
 <translation id="1986685561493779662">Атау бұрыннан бар.</translation>
+<translation id="1992244793717364584">Қолданба жойылды</translation>
 <translation id="200114059308480249">Google іздеу сұрауларында көбірек мәтін қамтылсын ба?</translation>
 <translation id="2004096469149679223"><ph name="TAB_TITLE" />, бекітілген, дыбысы өшірілген инкогнито қойындысы</translation>
 <translation id="2021896219286479412">Толық экран режимін басқару</translation>
@@ -327,6 +332,7 @@ Chrome тәжірибесін жақсарту үшін деректерді қ�
 <translation id="232137538351753795">Артқа оралу үшін сол жақ шеттен сырғытыңыз.</translation>
 <translation id="2323763861024343754">Сайт деректері</translation>
 <translation id="2327445548174191329">Жіберген: <ph name="DEVICE_NAME" /></translation>
+<translation id="232757965409810352">Бетті басқаша сақтау…</translation>
 <translation id="2328474416100889417">Барлығы "<ph name="GROUP_NAME" />" қойындылар тобын пайдалану рұқсатынан бірден айырылып қалады. Барлық шақыру сілтемесі өшіріледі.</translation>
 <translation id="2329500425421091035">Chrome-дағы ЖИ режимімен танысыңыз</translation>
 <translation id="2330186936255788117">Басқа бетбелгілер</translation>
@@ -561,6 +567,7 @@ Chrome тәжірибесін жақсарту үшін деректерді қ�
 <translation id="3232754137068452469">Веб-қолданба</translation>
 <translation id="3236059992281584593">1 мин қалды</translation>
 <translation id="3237087289225714896">Стандартты алдын ала жүктеу:</translation>
+<translation id="3243650379537999343">Сурет салу</translation>
 <translation id="3244271242291266297">АА</translation>
 <translation id="3245429137663807393">Chrome пайдалану есептерін де бөліссеңіз, бұл есептерде сіз кірген URL мекенжайлары қамтылады.</translation>
 <translation id="3250563604907490871">Cурет сипаттамалары Wi-Fi желісіне қосылған кезде қайтадан жүктеледі.</translation>
@@ -584,7 +591,6 @@ Chrome тәжірибесін жақсарту үшін деректерді қ�
 <translation id="331080746368555063">Жеке сайттарға компанияңыздың интранет желісі сияқты нәрселер кіруі мүмкін</translation>
 <translation id="3311330810461485557">Қолданба, күн және т.б. бойынша іздеңіз.</translation>
 <translation id="3312300514034250578">Күшейтілген Safe Browsing</translation>
-<translation id="3331974543021145906">Қолданба ақпараты</translation>
 <translation id="3334729583274622784">Файл кеңейтімін өзгертесіз бе?</translation>
 <translation id="333863344734218290">Баршаға ашық қауіпті және жеке сайттар туралы ескертеді</translation>
 <translation id="3339788961947270565">Өшіру аяқталып жатыр</translation>
@@ -658,6 +664,7 @@ Chrome тәжірибесін жақсарту үшін деректерді қ�
 <translation id="3649090831059057090"><ph name="WINDOW_TITLE" /> – <ph name="TAB_COUNT" /></translation>
 <translation id="3653111872753786013"><ph name="WEBSITE_TITLE" />: <ph name="WEBSITE_URL" /></translation>
 <translation id="3662363748131724714">Иммерсивтік ойнатудан шығу</translation>
+<translation id="3662595332590803433">Арнаулы қойындыларды үнемі Chrome-да ашу</translation>
 <translation id="3674208116086565128">Google қолданбасының негізгі бетіне өту</translation>
 <translation id="368329460027487650">Аккаунттан шыққансыз. Аккаунтқа кіру опцияларын ашады.</translation>
 <translation id="3684540848053703310">Баға статистикасының төменгі парақшасы жабылды.</translation>
@@ -732,6 +739,7 @@ Chrome тәжірибесін жақсарту үшін деректерді қ�
 <translation id="3950820424414687140">Кіру</translation>
 <translation id="395377504920307820">Аккаунтсыз пайдалану</translation>
 <translation id="3955353672249727801">Беттер оқу тізіміне қосылды.</translation>
+<translation id="3958283758104508528"><ph name="APP_NAME" /> жойылды</translation>
 <translation id="396192773038029076">{NUM_IN_PROGRESS,plural, =1{Дайын болған кезде, Chrome бетті жүктейді.}other{Дайын болған кезде, Chrome беттерді жүктейді.}}</translation>
 <translation id="3969142555815019568">Chrome сіздің құпия сөздеріңізді тексере алмайды.</translation>
 <translation id="3969863827134279083">Жоғарыға жылжыту</translation>
@@ -902,6 +910,7 @@ Google аккаунтының шолу тарихы басқа Google қызме
 <translation id="4595805675102978678">Google аккаунтының қатесі</translation>
 <translation id="4599585406846903742">Бір беттік көрініс</translation>
 <translation id="4601095002996233687">Күдікті жүктеп алынғандарға арналған тереңінен сканерлеулер.</translation>
+<translation id="4604434672720336227">Chrome-нан шығу</translation>
 <translation id="4606559747793337066">Сайт немесе қолданба беттегі сілтемелерді құпия түрде алдын ала жүктеуді сұрағанда, Chrome беттерді шифрлап, оларды Google серверлері арқылы cookie файлдарынсыз алдын ала жүктейді. Осылайша сіздің жеке деректеріңіз алдын ала жүктелетін сайттан жасырылады.</translation>
 <translation id="4619615317237390068">Басқа құрылғылардағы қойындылар</translation>
 <translation id="4624065194742029982">Chrome-ның инкогнито режимі</translation>
@@ -963,7 +972,6 @@ Google аккаунтының шолу тарихы басқа Google қызме
 <translation id="480990236307250886">Негізгі бетті ашу</translation>
 <translation id="4816492930507672669">Бетке бейімдеу</translation>
 <translation id="4822710610088666676"><ph name="TAB_GROUP_TITLE" /> қойындылар тобы жабылды және сақталды.</translation>
-<translation id="4834250788637067901">Google Pay қызметіндегі төлеу әдістері, ұсыныстар және мекенжайлар</translation>
 <translation id="4835385943915508971">Chrome браузері сұралған ресурсқа кіре алмайды.</translation>
 <translation id="483742037940503070">{TAB_COUNT,plural, =1{<ph name="TAB_COUNT_ONE" /> қойындының <ph name="COLOR_NAME" /> түсті қойындылар тобын жаңа фондық қойындылар тобы ретінде қалпына келтіру.}other{<ph name="TAB_COUNT_MANY" /> қойындының <ph name="COLOR_NAME" /> түсті қойындылар тобын жаңа фондық қойындылар тобы ретінде қалпына келтіру.}}</translation>
 <translation id="4849731766219625109"><ph name="IDENTITY_PROVIDER_ETLD_PLUS_ONE" /> аккаунтыңызды пайдаланыңыз</translation>
@@ -1338,6 +1346,7 @@ Google аккаунтының шолу тарихы басқа Google қызме
 <translation id="634208815998129842">Тапсырмалар реттегіші</translation>
 <translation id="6343495912647200061">{SHIPPING_ADDRESS,plural, =1{<ph name="SHIPPING_ADDRESS_PREVIEW" />\u2026 және тағы <ph name="NUMBER_OF_ADDITIONAL_ADDRESSES" />}other{<ph name="SHIPPING_ADDRESS_PREVIEW" />\u2026 және тағы <ph name="NUMBER_OF_ADDITIONAL_ADDRESSES" />}}</translation>
 <translation id="6345878117466430440">Оқылды деп белгілеу</translation>
+<translation id="63490081267265251">Сіз кіретін сайттар, соның ішінде Google бұл сұрауға қалай жауап беретінін анықтауға жауапты. Аймағыңыздағы заңдарға байланысты сайттар деректеріңізді сатуды және бөлісуді немесе оларды жекелендірілген жарнамалар үшін пайдалануды шектеу арқылы жауап беруі мүмкін. <ph name="BEGIN_LINK" />Толық ақпарат<ph name="END_LINK" /></translation>
 <translation id="6350745006329795504">Құрылғыларыңызды басқару</translation>
 <translation id="6356893102071098867">Дұрыс аккаунт таңдалғанын тексеріңіз.</translation>
 <translation id="6364438453358674297">Журналдың ұсынысын жою қажет пе?</translation>
@@ -1418,12 +1427,12 @@ Google аккаунтының шолу тарихы басқа Google қызме
 <translation id="6642299196749785472">Қойындыларды тіркеу</translation>
 <translation id="6647441008198474441">Сіз кірген URL мекенжайлары Google-ға жіберіледі. Осылайша Google келесіде қандай сайтқа кіруіңіз мүмкін екендігін болжай алады.</translation>
 <translation id="6648977384226967773">{CONTACT,plural, =1{<ph name="CONTACT_PREVIEW" />\u2026 және тағы <ph name="NUMBER_OF_ADDITIONAL_CONTACTS" />}other{<ph name="CONTACT_PREVIEW" />\u2026 және тағы <ph name="NUMBER_OF_ADDITIONAL_CONTACTS" />}}</translation>
-<translation id="6649642165559792194">Кескінді алдын ала көру <ph name="BEGIN_NEW" />Жаңа<ph name="END_NEW" /></translation>
 <translation id="6659594942844771486">Қойынды</translation>
 <translation id="666731172850799929"><ph name="APP_NAME" /> арқылы ашу</translation>
 <translation id="6669390930482049506">Хабарландыру алу</translation>
 <translation id="6671495933530132209">Кескінді көшіру</translation>
 <translation id="6672697278890207089">Құпия фразаңызды енгізу</translation>
+<translation id="6675622031235530028">Шығу үшін Ctrl+Q тіркесімін басып тұрыңыз.</translation>
 <translation id="6676927815633975364">Осы сайтта және Chrome-да аккаунтқа кіріңіз.</translation>
 <translation id="6684262542644248484">Веб-сайтқа кіріңіз.</translation>
 <translation id="6684809838922667136">Chrome-ды жақсартуға үлес қосыңыз</translation>
@@ -1508,7 +1517,6 @@ Google аккаунтының шолу тарихы басқа Google қызме
 <translation id="6922812712751566567"><ph name="PERMISSION" /> <ph name="SEPARATOR" /> Chrome бұл рұқсаттарды өшірді, себебі сіз соңғы уақытта бұл сайтқа кірмегенсіз.</translation>
 <translation id="6923291640965724312">Иммерсивтік формат</translation>
 <translation id="6927821422725196292">{TABS_COUNT,plural, =1{1 қойынды}other{<ph name="NUMBER_OF_TABS" /> қойынды}}</translation>
-<translation id="6929224077895306814">Құрылғы мен Google аккаунтында сақталған барлық қауіпсіздік коды жойылады.</translation>
 <translation id="6933180670536678127"><ph name="TAB_TITLE" />, таңдалған, бекітілген дыбыстық қойынды</translation>
 <translation id="6937524809504266803">Жекелендіру және байланыстыру</translation>
 <translation id="6937876069006524083">Лақап ат (міндетті емес)</translation>
@@ -1619,6 +1627,7 @@ Google аккаунтының шолу тарихы басқа Google қызме
 <translation id="7335766481146072567">"Жалғастыру" түймесін басыңыз.</translation>
 <translation id="7336259382292148213">Тексеру қажет хабарландыру рұқсаттары жоқ</translation>
 <translation id="7339898014177206373">Жаңа терезе</translation>
+<translation id="7349983576451251297">Веб-беттерді арнаулы қойындыларда емес, Chrome-да ашу</translation>
 <translation id="7352339641508007922">Ұзын скриншот түсіру үшін сүйреңіз</translation>
 <translation id="7352651011704765696">Бірнәрсе дұрыс емес</translation>
 <translation id="7353894246028566792">{NUM_SELECTED,plural, =1{Таңдалған 1 элементті бөлісу}other{Таңдалған # элементті бөлісу}}</translation>
@@ -1662,6 +1671,7 @@ Google аккаунтының шолу тарихы басқа Google қызме
 <translation id="7493994139787901920"><ph name="VERSION" /> (Жаңартылған <ph name="TIME_SINCE_UPDATE" />)</translation>
 <translation id="7498271377022651285">Күте тұрыңыз…</translation>
 <translation id="7499065150275272675"><ph name="TAB_TITLE" />, бекітілген, дыбысы өшірілген қойынды</translation>
+<translation id="7500851014030446046">PDF файлы жүктеп алынып жатыр.</translation>
 <translation id="7501135638693251872">Барлық бетбелгілер</translation>
 <translation id="7507207699631365376">Бұл провайдердің <ph name="BEGIN_LINK" />құпиялық саясатын<ph name="END_LINK" /> көру</translation>
 <translation id="750886945254958667">Бұл топты кейінірек қойындылар қосу үшін сақтаңыз. Қажет болмаса, шығыңыз.</translation>
@@ -1708,6 +1718,7 @@ Google аккаунтының шолу тарихы басқа Google қызме
 <translation id="7690596512217303514">Құрылғыңыз Chrome браузерін аша алмады. Мәселені шешу үшін қолданбалар дүкенінен соңғы Chrome жаңартуын жүктеп алыңыз.</translation>
 <translation id="7692761875510935111">Браузерде жылдам ашу. Бұл пернелер тіркесімін өзгерту үшін оны түртіп, ұстап тұрыңыз.</translation>
 <translation id="7695270712963178084">Chrome Finds</translation>
+<translation id="7695610746377249436">Сайттар, соның ішінде Google бұл сұрауға жауап бермеуді таңдауы мүмкін.</translation>
 <translation id="7697383401610880082">Сүйрейтін тетік</translation>
 <translation id="7698359219371678927"><ph name="APP_NAME" /> қолданбасында электрондық пошта жасау</translation>
 <translation id="7702420606070050505">"Соңғы іс-әрекеттер" төменгі парақшасы толығымен ашылды.</translation>
@@ -1729,10 +1740,12 @@ Google аккаунтының шолу тарихы басқа Google қызме
 <translation id="7774809984919390718">{PAYMENT_METHOD,plural, =1{<ph name="PAYMENT_METHOD_PREVIEW" />\u2026 және тағы <ph name="NUMBER_OF_ADDITIONAL_PAYMENT_METHODS" />}other{<ph name="PAYMENT_METHOD_PREVIEW" />\u2026 және тағы <ph name="NUMBER_OF_ADDITIONAL_PAYMENT_METHODS" />}}</translation>
 <translation id="777637629667389858">Аккаунтқа кірген кезде, сізді Google қызметтерінде қорғайды.</translation>
 <translation id="7778840695157240389">Жаңалықтарды кейінірек тексеріңіз.</translation>
+<translation id="7780992949171378848">Сайттарға деректеріңізді пайдаланудан бас тарту туралы сұрау жіберу</translation>
 <translation id="7791543448312431591">Қосу</translation>
 <translation id="7792388396321542707">Бөлісуді тоқтату</translation>
 <translation id="780287761701992588">Бетбелгілер, құпия сөздер және т.б. барлық құрылғыда болады.</translation>
 <translation id="780301667611848630">Жоқ, рақмет</translation>
+<translation id="7804364787702057554">Chrome-дағы аккаунтыңыз</translation>
 <translation id="7810647596859435254">Ашу әдісі…</translation>
 <translation id="7814066895362068701">{FILE_COUNT,plural, =1{Барлық файл, тізімдегі 1 файл}other{Барлық файл, тізімдегі # файл}}</translation>
 <translation id="7815484226266492798">Ұзын скриншот</translation>
@@ -1775,7 +1788,6 @@ Google аккаунтының шолу тарихы басқа Google қызме
 <translation id="7968014550143838305">Оқу тізіміне енгізілді.</translation>
 <translation id="7968982339740310781">Мәліметтерді көру</translation>
 <translation id="7969391000881506217">Жарамдылық мерзімі*</translation>
-<translation id="7975379999046275268">Бетті алдын ала көру <ph name="BEGIN_NEW" />Жаңа<ph name="END_NEW" /></translation>
 <translation id="7977451675950311423">Деректер қолды болған кезде ұрланған құпия сөзді пайдалансаңыз, сізге ескертеді.</translation>
 <translation id="7987499071758862048"><ph name="PERMISSION_1" />, <ph name="PERMISSION_2" />, <ph name="PERMISSION_3" /> <ph name="SEPARATOR" /> Chrome бұл рұқсаттарды өшірді, себебі сіз соңғы уақытта бұл сайтқа кірмегенсіз.</translation>
 <translation id="799576009106109668">Кіріп отырған веб-бетке сәйкес контент алдын ала жүктелетіндіктен, шолу барысы жылдамдайды.</translation>
@@ -1874,6 +1886,7 @@ Google аккаунтының шолу тарихы басқа Google қызме
 <translation id="8313599942510782709">Тапсырмаңыз әлі орындалып жатыр</translation>
 <translation id="8317318757008452355">Басып шығару опцияларын ашу</translation>
 <translation id="8320212361750431956">Соңғы іс-әрекеттер</translation>
+<translation id="8322452989119079156"><ph name="NATIVE_APP_NAME" /> қолданбасынан ашу – <ph name="DEVICE_NAME" /> құрылғысынан жіберілген.</translation>
 <translation id="832514020744584629"><ph name="PREF_TITLE" />  <ph name="BEGIN_NEW" />Жаңалық<ph name="END_NEW" /></translation>
 <translation id="8333026248928723981">Бетбелгілер мен тізімдер</translation>
 <translation id="8342727528718219152">Chrome сізге тым көп хабарландыру жіберетін сайттар туралы хабарлайды.</translation>
@@ -1946,6 +1959,7 @@ Google аккаунтының шолу тарихы басқа Google қызме
 <translation id="8580435650274205305">Жарамдылық мерзімін көрсету қажет</translation>
 <translation id="8582529315803410153">Басқа құрылғылардағы қойындыларды осы жерден табасыз</translation>
 <translation id="8585103689515290060">Автотолтыру қызметтері</translation>
+<translation id="8586116786993312006">Chrome-дағы браузерді пайдалану деректерін жою үшін түртіңіз.</translation>
 <translation id="859046281437143747">"Қосымша опциялар" түймесін басып, бағаларды бақылаңыз.</translation>
 <translation id="859064343657890103"><ph name="TAB_GROUP_TITLE" /> қойындылар тобы жойылды.</translation>
 <translation id="860043288473659153">Карта иесінің аты-жөні</translation>

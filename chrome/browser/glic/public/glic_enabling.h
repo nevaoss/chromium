@@ -136,6 +136,13 @@ enum class RequiredExperimentalOptIn {
 };
 // LINT.ThenChange(//tools/metrics/histograms/metadata/glic/enums.xml:GlicRequiredExperimentalOptIn)
 
+// Returns true if any Glic entry point (such as the tab strip button or the
+// OS-level shortcut) is enabled in settings.
+bool IsAnyEntryPointEnabled(Profile* profile);
+
+// Sets the state of Glic entry points for testing.
+void SetAnyEntryPointEnabledForTesting(Profile* profile, bool is_enabled);
+
 // This class provides a central location for checking if Glic is enabled. It
 // allows for future expansion to include other ways the feature may be disabled
 // such as based on user preferences or system settings.
@@ -226,6 +233,10 @@ class GlicEnabling final : public signin::IdentityManager::Observer,
                                           std::string_view permanent_country,
                                           std::string_view session_country,
                                           const AccountInfo& account_info);
+
+  // Returns true if the device is running in retail demo mode on Android
+  // Desktop.
+  static bool IsRetailDemoModeDesktop();
 
   // Returns true if the user was previously determined to be ineligible for
   // Glic.
@@ -482,6 +493,10 @@ class GlicEnabling final : public signin::IdentityManager::Observer,
 
   // Whether the Web Actuation Toggle (Auto Browse) should be shown in Settings.
   bool ShouldShowWebActuationToggle() const;
+
+  // Whether the experimental triggering ("Gemini Spark") toggle should be shown
+  // in Settings. Shared by the desktop and Android settings UIs.
+  bool ShouldShowExperimentalTriggeringToggle() const;
 
   // Returns whether user enabled actuation on web.
   bool GetUserEnabledActuationOnWeb() const;

@@ -68,6 +68,7 @@ import org.chromium.chrome.browser.searchwidget.SearchActivityUtils;
 import org.chromium.chrome.browser.searchwidget.SearchBoxDataProvider;
 import org.chromium.chrome.browser.searchwidget.SearchUiCoordinator;
 import org.chromium.chrome.browser.tab.Tab;
+import org.chromium.chrome.browser.tab.TabLaunchType;
 import org.chromium.chrome.browser.tab.TabObscuringHandler;
 import org.chromium.chrome.browser.tab.TabSelectionType;
 import org.chromium.chrome.browser.tab_group_sync.TabGroupSyncServiceFactory;
@@ -511,7 +512,6 @@ public class TabSearchOverlayCoordinator
             LinearLayout panelContainer = assumeNonNull(mPanelContainer);
             View closeButton =
                     assumeNonNull(panelContainer.findViewById(R.id.tab_search_close_button));
-            closeButton.setFocusableInTouchMode(true);
 
             var suggestionsVisualState = locationBarCoordinator.getOmniboxSuggestionsVisualState();
             AutocompleteCoordinator autocompleteCoordinator =
@@ -534,6 +534,7 @@ public class TabSearchOverlayCoordinator
 
                         if (isTabBack || isUp) {
                             if (selectedIndex == null) {
+                                closeButton.setFocusableInTouchMode(true);
                                 closeButton.requestFocus();
                                 return true;
                             } else if (selectedIndex <= 0) {
@@ -550,6 +551,12 @@ public class TabSearchOverlayCoordinator
             urlBar.setKeyDownListener(keyListener);
             urlBar.setOnKeyListener(keyListener);
 
+            closeButton.setOnFocusChangeListener(
+                    (v, hasFocus) -> {
+                        if (!hasFocus) {
+                            closeButton.setFocusableInTouchMode(false);
+                        }
+                    });
             closeButton.setOnKeyListener(
                     (v, keyCode, event) -> {
                         if (KeyNavigationUtil.isTabForward(event)
@@ -614,6 +621,19 @@ public class TabSearchOverlayCoordinator
         if (isIncognito) {
             intent.putExtra(Browser.EXTRA_APPLICATION_ID, mActivity.getPackageName());
         }
+
+        // Ensure new tabs opened from search suggestions are appended to the end of the tab
+        // strip rather than inserted adjacent to the active tab. If an existing tab matches the
+        // URL, REUSE_URL_MATCHING_TAB_ELSE_NEW_TAB causes Chrome to switch to it in place, so this
+        // insertion index only applies when a new tab must be created.
+        TabModelSelector selector = mTabModelSelectorSupplier.get();
+        if (selector != null) {
+            TabModel tabModel = selector.getModel(isIncognito);
+            if (tabModel != null) {
+                intent.putExtra(IntentHandler.EXTRA_TAB_INDEX, tabModel.getCount());
+            }
+        }
+        IntentHandler.setTabLaunchType(intent, TabLaunchType.FROM_OMNIBOX);
 
         // Add trusted intent extras so Chrome trusts the incognito launch request
         IntentUtils.addTrustedIntentExtras(intent);
@@ -753,38 +773,77 @@ public class TabSearchOverlayCoordinator
     }
 
     /**
-     * Updates the top margin of the panel view based on desktop windowing state.
+     * Updates the top margin of the panel view.
      *
-     * <p>In desktop windowing mode (freeform window), the panel starts at the top of the window
-     * (topMargin = 0) to align with the caption bar / tab strip. When not in desktop windowing
-     * (e.g. fullscreen or split screen mode), the panel is offset below the OS application window
-     * toolbar / status bar trigger zone so that the close button remains accessible and clickable.
+     * <p>In desktop windowing, OS caption controls overlapping the window are unavoidable. We use
+     * {@link AppHeaderState#getCaptionControlsTopOffset()} to ensure the panel header aligns with
+     * the caption controls (or is offset below any status bar sitting above the caption).
+     *
+     * <p>When not in desktop windowing (conventional app state, e.g. fullscreen), the top margin is
+     * calculated via {@link #getTopMarginForConventionalState()} so the panel aligns below the
+     * system status bar.
      */
     private void updatePanelTopMargin() {
-        boolean isInDesktopWindow =
-                mDesktopWindowStateManager != null
-                        && mDesktopWindowStateManager.getAppHeaderState() != null
-                        && mDesktopWindowStateManager.getAppHeaderState().isInDesktopWindow();
-        if (mPanelContainer != null) {
-            View panelView = mPanelContainer.findViewById(R.id.tab_search_overlay_panel);
-            if (panelView != null
-                    && panelView.getLayoutParams() instanceof LinearLayout.LayoutParams params) {
-                var res = mPanelContainer.getContext().getResources();
-                int tabStripHeight = res.getDimensionPixelSize(R.dimen.tab_strip_height);
-                int reservedTopPadding =
-                        res.getDimensionPixelSize(R.dimen.tab_strip_reserved_top_padding);
-                int hairlineGap =
-                        res.getDimensionPixelSize(R.dimen.tab_search_overlay_hairline_gap);
-                int topMargin =
-                        !isInDesktopWindow
-                                ? (tabStripHeight - reservedTopPadding - hairlineGap)
-                                : 0;
-                if (params.topMargin != topMargin) {
-                    params.topMargin = topMargin;
-                    panelView.setLayoutParams(params);
-                }
-            }
+        if (mPanelContainer == null) {
+            return;
         }
+        View panelView = mPanelContainer.findViewById(R.id.tab_search_overlay_panel);
+        if (panelView == null
+                || !(panelView.getLayoutParams() instanceof LinearLayout.LayoutParams params)) {
+            return;
+        }
+
+        AppHeaderState appHeaderState =
+                mDesktopWindowStateManager != null
+                        ? mDesktopWindowStateManager.getAppHeaderState()
+                        : null;
+
+        int topMargin =
+                appHeaderState != null && appHeaderState.isInDesktopWindow()
+                        ? appHeaderState.getCaptionControlsTopOffset()
+                        : getTopMarginForConventionalState();
+
+        if (params.topMargin != topMargin) {
+            params.topMargin = topMargin;
+            panelView.setLayoutParams(params);
+        }
+    }
+
+    /**
+     * Calculates the top margin for the panel when in a conventional app state (outside desktop
+     * windowing, such as fullscreen or multi-window).
+     *
+     * <p>With horizontal tabs, the tab strip sits above the toolbar, so we subtract {@code
+     * tabStripHeight} from {@code toolbarTop} to align the panel below the status bar. When
+     * vertical tabs is active, there is no horizontal tab strip above the toolbar; the toolbar is
+     * already at the top of the browser UI, so {@code tabStripHeight} is 0.
+     */
+    private int getTopMarginForConventionalState() {
+        View controlContainer = mActivity.findViewById(R.id.control_container);
+        View toolbarContainer =
+                controlContainer != null
+                        ? controlContainer.findViewById(R.id.toolbar_container)
+                        : null;
+        if (toolbarContainer == null) {
+            return 0;
+        }
+
+        int[] location = new int[2];
+        toolbarContainer.getLocationInWindow(location);
+        int toolbarTop = location[1] > 0 ? location[1] : toolbarContainer.getTop();
+
+        // When vertical tabs is active, there is no horizontal tab strip above the toolbar.
+        // The toolbar itself is already positioned directly below the system status bar, so the
+        // effective horizontal strip height is 0. Subtracting the static tab_strip_height dimension
+        // here would underflow toolbarTop and clamp to 0, pushing the panel into the OS status bar.
+        View verticalRail = mActivity.findViewById(R.id.vertical_tab_rail_container);
+        boolean hasVerticalTabs = verticalRail != null && verticalRail.isShown();
+        int tabStripHeight =
+                hasVerticalTabs
+                        ? 0
+                        : mActivity.getResources().getDimensionPixelSize(R.dimen.tab_strip_height);
+
+        return Math.max(0, toolbarTop - tabStripHeight);
     }
 
     /**

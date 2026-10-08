@@ -90,7 +90,7 @@ public class KeyboardShortcuts {
         KeyboardShortcutsSemanticMeaning.NOT_IMPLEMENTED_TOGGLE_MULTITASK_MENU,
         KeyboardShortcutsSemanticMeaning.CLOSE_TAB,
         KeyboardShortcutsSemanticMeaning.CLOSE_WINDOW,
-        KeyboardShortcutsSemanticMeaning.NOT_IMPLEMENTED_QUIT_CHROME,
+        KeyboardShortcutsSemanticMeaning.QUIT_CHROME,
         KeyboardShortcutsSemanticMeaning.JUMP_TO_OMNIBOX,
         KeyboardShortcutsSemanticMeaning.JUMP_TO_SEARCH,
         KeyboardShortcutsSemanticMeaning.NOT_IMPLEMENTED_FOCUS_WEB_CONTENTS_PANE,
@@ -141,6 +141,7 @@ public class KeyboardShortcuts {
         // KeyboardShortcutsSemanticMeaning.ZOOM_IN_LEGACY,
         // KeyboardShortcutsSemanticMeaning.ZOOM_OUT_LEGACY,
         KeyboardShortcutsSemanticMeaning.FOCUS_APP_MENU_BUTTON,
+        KeyboardShortcutsSemanticMeaning.OPEN_FILE,
         KeyboardShortcutsSemanticMeaning.MAX_VALUE
     })
     @Retention(RetentionPolicy.SOURCE)
@@ -169,7 +170,7 @@ public class KeyboardShortcuts {
         // Closing.
         int CLOSE_TAB = 14;
         int CLOSE_WINDOW = 15;
-        int NOT_IMPLEMENTED_QUIT_CHROME = 16;
+        int QUIT_CHROME = 16;
 
         // Navigation controls.
         int JUMP_TO_OMNIBOX = 17;
@@ -256,6 +257,9 @@ public class KeyboardShortcuts {
 
         // Top controls switch row reverse.
         int KEYBOARD_FOCUS_SWITCH_ROW_OF_TOP_ELEMENTS_REVERSE = 67;
+
+        // Open file shortcut.
+        int OPEN_FILE = 68;
 
         // Max value.
         int MAX_VALUE = 68;
@@ -422,6 +426,11 @@ public class KeyboardShortcuts {
                 R.string.keyboard_shortcut_close_window,
                 R.string.keyboard_shortcut_tab_group_header,
                 new KeyCombo[] {new KeyCombo(KeyEvent.KEYCODE_F4, KeyEvent.META_ALT_ON)});
+        new KeyboardShortcutDefinition(
+                KeyboardShortcutsSemanticMeaning.QUIT_CHROME,
+                new KeyCombo(KeyEvent.KEYCODE_Q, KeyEvent.META_CTRL_ON),
+                R.string.keyboard_shortcut_quit_chrome,
+                R.string.keyboard_shortcut_tab_group_header);
 
         new KeyboardShortcutDefinition(
                 KeyboardShortcutsSemanticMeaning.OPEN_NEW_TAB,
@@ -810,6 +819,9 @@ public class KeyboardShortcuts {
         new KeyboardShortcutDefinition(
                 KeyboardShortcutsSemanticMeaning.OPEN_HOME_PAGE,
                 new KeyCombo(KeyEvent.KEYCODE_HOME, KeyEvent.META_ALT_ON));
+        new KeyboardShortcutDefinition(
+                KeyboardShortcutsSemanticMeaning.OPEN_FILE,
+                new KeyCombo(KeyEvent.KEYCODE_O, KeyEvent.META_CTRL_ON));
     }
 
     /**
@@ -1187,6 +1199,9 @@ public class KeyboardShortcuts {
             case KeyboardShortcutsSemanticMeaning.CLOSE_WINDOW:
                 return menuOrKeyboardActionController.onMenuOrKeyboardAction(
                         R.id.close_window, /* fromMenu= */ false);
+            case KeyboardShortcutsSemanticMeaning.QUIT_CHROME:
+                return menuOrKeyboardActionController.onMenuOrKeyboardAction(
+                        R.id.quit_chrome, /* fromMenu= */ false);
         }
 
         if (isCurrentTabVisible) {
@@ -1327,6 +1342,13 @@ public class KeyboardShortcuts {
                 case KeyboardShortcutsSemanticMeaning.OPEN_HELP:
                     menuOrKeyboardActionController.onMenuOrKeyboardAction(R.id.help_id, false);
                     return true;
+                case KeyboardShortcutsSemanticMeaning.OPEN_FILE:
+                    if (ChromeFeatureList.sAndroidKeyboardShortcutOpenFile.isEnabled()) {
+                        menuOrKeyboardActionController.onMenuOrKeyboardAction(
+                                R.id.open_file_id, false);
+                        return true;
+                    }
+                    return false;
                 case KeyboardShortcutsSemanticMeaning.FOCUS_APP_MENU_BUTTON:
                     View menuButtonView = toolbarManager.getMenuButtonView();
                     if (menuButtonView != null) {

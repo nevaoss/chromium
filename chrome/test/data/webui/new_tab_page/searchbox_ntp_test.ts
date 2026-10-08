@@ -18,6 +18,8 @@ import {TestSearchboxBrowserProxy} from 'chrome://webui-test/cr_components/searc
 import {TestMock} from 'chrome://webui-test/test_mock.js';
 import {eventToPromise, isVisible, microtasksFinished} from 'chrome://webui-test/test_util.js';
 
+import {createFuseboxAction} from './test_support.js';
+
 enum Attributes {
   SELECTED = 'selected',
 }
@@ -665,7 +667,10 @@ suite('SearchboxTest', () => {
 
         // Mock image finishing loading, which should remove the temporary
         // background color.
-        matchEls[1]!.$.icon.$.image.dispatchEvent(new Event('load'));
+        const image = matchEls[1]!.$.icon.$.image;
+        const loadPromise = eventToPromise('load', image);
+        image.dispatchEvent(new Event('load'));
+        await loadPromise;
         await microtasksFinished();
         assertStyle(containerEl, 'background-color', 'rgba(0, 0, 0, 0)');
         // Realbox icon is not updated as the input does not feature images.
@@ -1345,14 +1350,10 @@ suite('SearchboxTest', () => {
 
         assertFalse(realbox.shareTabsFlyoutOpen);
 
-        await realbox.handleFuseboxAction({
-          preselectedTool: null,
-          preferredInventory: null,
-          preselectedModel: null,
-          queryActionOverride: null,
+        await realbox.handleFuseboxAction(createFuseboxAction({
           preselectedInputSource: InputSource.kInputSourceTabPicker,
           searchboxOverride: SearchboxOverride.kRealbox,
-        });
+        }));
         await microtasksFinished();
 
         assertTrue(realbox.shareTabsFlyoutOpen);

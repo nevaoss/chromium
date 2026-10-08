@@ -42,6 +42,8 @@ export function getHtml(this: ContextualTasksInnerComposeboxElement) {
       .smartTabSharingVisible="${this.smartTabSharingVisible}"
       .shareTabsFlyoutOpen="${this.shareTabsFlyoutOpen}"
       .contextManagementInComposeboxEnabled="${this.contextManagementInComposeboxEnabled}"
+      .composeboxContextMenuTooltipsEnabled="${
+          this.composeboxContextMenuTooltipsEnabled}"
       .searchboxLayoutMode="${this.searchboxLayoutMode}"
       .tabSuggestions="${this.tabSuggestions}"
       .tabSuggestionsState="${this.tabSuggestionsState}"
@@ -49,7 +51,7 @@ export function getHtml(this: ContextualTasksInnerComposeboxElement) {
       .hasImageFiles="${this.hasImageFiles()}"
       .selectedTabIds="${this.addedTabsIds}"
       .aimThreadRestoredTabs="${this.aimThreadRestoredTabs}"
-      .fileNum="${this.files.size}"
+      .fileNum="${this.attachedContext.size}"
       .nonTabFileNum="${this.getNonTabFileNum()}"
       .sharedTabs="${this.getSharedTabs()}"
       .isSidePanel="${this.isSidePanel}"

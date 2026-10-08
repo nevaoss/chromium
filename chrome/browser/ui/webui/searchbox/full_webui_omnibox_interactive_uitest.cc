@@ -15,9 +15,12 @@
 #include "chrome/browser/ui/browser_element_identifiers.h"
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+#include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
+#include "chrome/browser/ui/location_bar/location_bar.h"
 #include "chrome/browser/ui/omnibox/omnibox_controller.h"
 #include "chrome/browser/ui/omnibox/omnibox_next_features.h"
 #include "chrome/browser/ui/omnibox/omnibox_popup_state_manager.h"
+#include "chrome/browser/ui/toolbar/app_menu_model.h"
 #include "chrome/browser/ui/views/bookmarks/bookmark_bar_view.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/views/frame/contents_web_view.h"
@@ -26,6 +29,7 @@
 #include "chrome/browser/ui/views/omnibox/omnibox_popup_view_webui.h"
 #include "chrome/browser/ui/views/omnibox/omnibox_popup_webui_base_content.h"
 #include "chrome/browser/ui/views/omnibox/omnibox_view_views.h"
+#include "chrome/browser/ui/views/omnibox/webui_readonly_omnibox.h"
 #include "chrome/browser/ui/views/toolbar/toolbar_view.h"
 #include "chrome/browser/ui/webui/searchbox/searchbox_interactive_test_mixin.h"
 #include "chrome/browser/ui/webui/test_support/webui_interactive_test_mixin.h"
@@ -44,6 +48,7 @@
 #include "content/public/test/browser_test.h"
 #include "third_party/omnibox_proto/aim_eligibility_response.pb.h"
 #include "ui/base/l10n/l10n_util.h"
+#include "ui/display/screen.h"
 #include "ui/events/event_constants.h"
 #include "ui/events/keycodes/keyboard_codes.h"
 #include "ui/views/controls/button/label_button.h"
@@ -75,17 +80,27 @@ class FullWebUIOmniboxInteractiveTestBase
     : public SearchboxInteractiveTestMixin<
           WebUiInteractiveTestMixin<InteractiveBrowserTest>> {
  public:
-  FullWebUIOmniboxInteractiveTestBase() = default;
+  FullWebUIOmniboxInteractiveTestBase() {
+    // interactive_ui_tests sets `ui_test_utils::BringBrowserWindowToFront()`
+    // for the setup function by default, which causes timeouts on Windows bots.
+    // Tests that require browser activation rely on `WaitForBrowserActive()`
+    // instead.
+    set_global_browser_set_up_function(nullptr);
+  }
   ~FullWebUIOmniboxInteractiveTestBase() override = default;
 
  protected:
   auto GetActivePopupWebView() {
-    return base::BindLambdaForTesting([&]() -> views::View* {
+    return base::BindLambdaForTesting([this]() -> views::View* {
+      auto* browser_view = BrowserView::GetBrowserViewForBrowser(browser());
+      if (!browser_view || !browser_view->GetLocationBar()) {
+        return nullptr;
+      }
       auto* popup_view = static_cast<OmniboxPopupViewWebUI*>(
-          BrowserView::GetBrowserViewForBrowser(browser())
-              ->toolbar()
-              ->location_bar_view()
-              ->GetOmniboxPopupView());
+          browser_view->GetLocationBar()->GetOmniboxPopupView());
+      if (!popup_view || !popup_view->presenter()) {
+        return nullptr;
+      }
       return popup_view->presenter()->GetWebUIContent();
     });
   }
@@ -215,11 +230,40 @@ class FullWebUIOmniboxInteractiveTestBase
   }
 
   auto WaitForOmniboxFocus(bool expected_focus) {
-    DEFINE_LOCAL_POLLING_VIEW_PROPERTY_STATE_IDENTIFIER(views::View, HasFocus,
-                                                        kOmniboxHasFocusState);
-    return Steps(PollViewProperty(kOmniboxHasFocusState, kOmniboxElementId),
-                 WaitForState(kOmniboxHasFocusState, expected_focus),
-                 StopObservingState(kOmniboxHasFocusState));
+    return PollUntil(
+        [this, expected_focus]() -> bool {
+          auto* browser_view = BrowserView::GetBrowserViewForBrowser(browser());
+          if (!browser_view) {
+            return false;
+          }
+          if (auto* location_bar_view = browser_view->GetLocationBarView()) {
+            return location_bar_view->omnibox_view() &&
+                   location_bar_view->omnibox_view()->HasFocus() ==
+                       expected_focus;
+          }
+          if (auto* location_bar = browser_view->GetLocationBar()) {
+            auto* omnibox_view = static_cast<WebUIReadOnlyOmnibox*>(
+                location_bar->GetOmniboxView());
+            return omnibox_view && omnibox_view->has_focus() == expected_focus;
+          }
+          return false;
+        },
+        "WaitForOmniboxFocus");
+  }
+
+  auto WaitForOmniboxText(const std::u16string& expected_text) {
+    return PollUntil(
+        [this, expected_text]() {
+          auto* browser_window = BrowserWindow::FromBrowser(browser());
+          if (!browser_window || !browser_window->GetLocationBar() ||
+              !browser_window->GetLocationBar()->GetOmniboxView()) {
+            return false;
+          }
+          return browser_window->GetLocationBar()
+                     ->GetOmniboxView()
+                     ->GetText() == expected_text;
+        },
+        "WaitForOmniboxText");
   }
 
   // Waits for the 100ms popup transition state lock that
@@ -268,13 +312,15 @@ class FullWebUIOmniboxInteractiveTestBase
                  WaitForPopupReady());
   }
 
+  auto WaitForBrowserActive() {
+    return Do([this]() {
+      BrowserView::GetBrowserViewForBrowser(browser())->Activate();
+    });
+  }
+
   auto OpenInitialTabAndFocusOmnibox(ui::ElementIdentifier tab_id,
                                      const GURL& url) {
-    return Steps(Do([this]() {
-                   ASSERT_TRUE(
-                       ui_test_utils::BringBrowserWindowToFront(browser()));
-                 }),
-                 AddInstrumentedTab(tab_id, url),
+    return Steps(WaitForBrowserActive(), AddInstrumentedTab(tab_id, url),
                  WaitForWebContentsReady(tab_id),
                  WaitForPopupTransitionLockout(), Do([this]() {
                    if (auto* popup_view = BrowserWindow::FromBrowser(browser())
@@ -373,12 +419,28 @@ IN_PROC_BROWSER_TEST_F(FullWebUIOmniboxInteractiveTest, ActiveUnfocusedDraft) {
       CheckWebUIInputFocus(false));
 }
 
-// Verifies focusing the omnibox without typing a draft, switching away to
-// another tab, and switching back restores focus to the omnibox.
+// Verifies focusing the omnibox without typing a draft, selecting a portion of
+// the URL text, switching away to another tab, and switching back restores
+// focus to the omnibox and preserves the selection range without opening
+// the suggestions dropdown.
 IN_PROC_BROWSER_TEST_F(FullWebUIOmniboxInteractiveTest, FocusOnlyNtp) {
   RunTestSequence(
       // Open Tab 1 and focus Omnibox (popup opens, but no draft exists yet).
       OpenInitialTabAndFocusOmnibox(kTab1, GURL("chrome://version/")),
+      WaitForWebUIInputValue("chrome://version"),
+      // Verify the suggestions dropdown is not visible when focused without
+      // user input.
+      WaitForJsConditionAt(kPopupWebView, kPopupSearchbox,
+                           "(el) => el && !el.dropdownIsVisible"),
+      // Select a portion of the text in the WebUI searchbox (e.g. "chrome").
+      InAnyContext(ExecuteJsAt(kPopupWebView, kWebUIInput,
+                               R"(el => {
+                                    el.setSelectionRange(0, 6);
+                                    el.dispatchEvent(new Event('select'));
+                                    document.dispatchEvent(
+                                        new Event('selectionchange'));
+                                  })")),
+      CheckWebUIInputSelection(0, 6),
       // Switch to Tab 2.
       AddInstrumentedTab(kTab2, GURL("about:blank")),
       WaitForWebContentsReady(kTab2), UninstrumentWebContents(kPopupWebView),
@@ -386,11 +448,16 @@ IN_PROC_BROWSER_TEST_F(FullWebUIOmniboxInteractiveTest, FocusOnlyNtp) {
       SwitchTabAndRestorePopup(kTabStripElementId, 1, kTab1),
       // Verify the native Omnibox displays the page's permanent URL (since
       // no draft).
-      WaitForViewProperty(kOmniboxElementId, views::Textfield, Text,
-                          u"chrome://version"),
+      WaitForOmniboxText(u"chrome://version"),
       // Verify the WebUI popup is open and focused (focus is restored to
       // Omnibox on tab switch back.).
-      CheckWebUIInputFocus(true));
+      CheckWebUIInputFocus(true),
+      // Verify the partial selection range [0, 6] is preserved across tab
+      // switch.
+      CheckWebUIInputSelection(0, 6),
+      // Verify suggestions dropdown remains closed after tab restoration.
+      WaitForJsConditionAt(kPopupWebView, kPopupSearchbox,
+                           "(el) => el && !el.dropdownIsVisible"));
 }
 
 // Verifies switching to a tab where the webpage body is focused and has no
@@ -417,8 +484,7 @@ IN_PROC_BROWSER_TEST_F(FullWebUIOmniboxInteractiveTest, MAYBE_BlurredPage) {
       UninstrumentWebContents(kPopupWebView), SwitchTab(kTabStripElementId, 2),
       FocusWebContents(kTab2),
       // Verify the native Omnibox displays the page's permanent URL.
-      WaitForViewProperty(kOmniboxElementId, views::Textfield, Text,
-                          u"chrome://version"),
+      WaitForOmniboxText(u"chrome://version"),
       // Verify keyboard focus remains on the webpage body (Omnibox is
       // unfocused).
       WaitForOmniboxFocus(false),
@@ -436,13 +502,14 @@ IN_PROC_BROWSER_TEST_F(FullWebUIOmniboxInteractiveTest, ClearAndManualBlur) {
       // Clear the input text.
       ClearWebUIText(),
       // Verify the native Omnibox text is also empty.
-      WaitForViewProperty(kOmniboxElementId, views::Textfield, Text, u""),
+      WaitForOmniboxText(u""),
       // Click the webpage body (triggering blur).
       ClickWebPageBody(kTab1),
-      // Verify WebUI Omnibox popup is closed, empty, and Omnibox is unfocused.
+      // Verify WebUI Omnibox popup is closed, uncommitted cleared draft remains
+      // empty, and Omnibox is unfocused.
       InAnyContext(WaitForHide(OmniboxPopupPresenter::kRoundedResultsFrame)),
-      WaitForViewProperty(kOmniboxElementId, views::Textfield, Text, u""),
-      WaitForOmniboxFocus(false),
+      UninstrumentWebContents(kPopupWebView), FocusWebContents(kTab1),
+      WaitForOmniboxText(u""), WaitForOmniboxFocus(false),
       // Focus the Omnibox.
       Do([this]() {
         if (auto* popup_view = BrowserWindow::FromBrowser(browser())
@@ -453,23 +520,24 @@ IN_PROC_BROWSER_TEST_F(FullWebUIOmniboxInteractiveTest, ClearAndManualBlur) {
       }),
       // Verify popup is open, and WebUI input is empty.
       InAnyContext(WaitForShow(OmniboxPopupPresenter::kRoundedResultsFrame)),
+      InAnyContext(
+          InstrumentNonTabWebView(kPopupWebView, GetActivePopupWebView())),
       WaitForJsConditionAt(kPopupWebView, kWebUIInput,
                            "(el) => el && el.value === ''"),
       CheckWebUIInputFocus(true),
       // Unfocus the Omnibox.
       ClickWebPageBody(kTab1),
       InAnyContext(WaitForHide(OmniboxPopupPresenter::kRoundedResultsFrame)),
+      UninstrumentWebContents(kPopupWebView), FocusWebContents(kTab1),
       WaitForOmniboxFocus(false),
       // Switch to Tab 2.
       AddInstrumentedTab(kTab2, GURL("about:blank")),
-      WaitForWebContentsReady(kTab2), UninstrumentWebContents(kPopupWebView),
+      WaitForWebContentsReady(kTab2),
       // Switch back to Tab 1.
-      SwitchTab(kTabStripElementId, 1),
+      SwitchTab(kTabStripElementId, 1), FocusWebContents(kTab1),
       // Verify the WebUI popup remains closed.
       InAnyContext(WaitForHide(OmniboxPopupPresenter::kRoundedResultsFrame)),
-      WaitForViewProperty(kOmniboxElementId, views::Textfield, Text,
-                          u"chrome://version"),
-      WaitForOmniboxFocus(false));
+      WaitForOmniboxText(u"chrome://version"), WaitForOmniboxFocus(false));
 }
 
 // Verifies that after typing a draft and clearing the input in one tab,
@@ -484,7 +552,7 @@ IN_PROC_BROWSER_TEST_F(FullWebUIOmniboxInteractiveTest, ClearAndSwitchTab) {
       // Clear the input text (triggers OnInputCleared).
       ClearWebUIText(),
       // Verify the native Omnibox text is empty.
-      WaitForViewProperty(kOmniboxElementId, views::Textfield, Text, u""),
+      WaitForOmniboxText(u""),
       // Switch to Tab 2.
       AddInstrumentedTab(kTab2, GURL("about:blank")),
       WaitForWebContentsReady(kTab2), UninstrumentWebContents(kPopupWebView),
@@ -492,8 +560,7 @@ IN_PROC_BROWSER_TEST_F(FullWebUIOmniboxInteractiveTest, ClearAndSwitchTab) {
       SwitchTabAndRestorePopup(kTabStripElementId, 1, kTab1),
       // Verify that SaveStateToTab reverted the cleared draft, restoring the
       // permanent URL of Tab 1 instead of an empty string.
-      WaitForViewProperty(kOmniboxElementId, views::Textfield, Text,
-                          u"chrome://version"));
+      WaitForOmniboxText(u"chrome://version"));
 }
 
 // Verifies that opening multiple New Tab Pages (NTPs) consecutively focuses the
@@ -516,7 +583,7 @@ IN_PROC_BROWSER_TEST_F(FullWebUIOmniboxInteractiveTest,
       CheckWebUIInputFocus(true),
 
       // Open NTP Tab 2.
-      UninstrumentWebContents(kPopupWebView),
+      UninstrumentWebContents(kPopupWebView), WaitForPopupTransitionLockout(),
       AddInstrumentedTab(kTab2, GURL(chrome::kChromeUINewTabURL)),
       WaitForWebContentsReady(kTab2),
       InAnyContext(WaitForShow(OmniboxPopupPresenter::kRoundedResultsFrame)),
@@ -526,7 +593,7 @@ IN_PROC_BROWSER_TEST_F(FullWebUIOmniboxInteractiveTest,
       CheckWebUIInputFocus(true),
 
       // Open non-NTP, expect focus to not linger.
-      UninstrumentWebContents(kPopupWebView),
+      UninstrumentWebContents(kPopupWebView), WaitForPopupTransitionLockout(),
       AddInstrumentedTab(kTab3, GURL("about:blank")),
       WaitForWebContentsReady(kTab3),
       InAnyContext(WaitForHide(OmniboxPopupPresenter::kRoundedResultsFrame)),
@@ -534,6 +601,7 @@ IN_PROC_BROWSER_TEST_F(FullWebUIOmniboxInteractiveTest,
       WaitForOmniboxFocus(false),
 
       // Open a third NTP.
+      WaitForPopupTransitionLockout(),
       AddInstrumentedTab(kTab4, GURL(chrome::kChromeUINewTabURL)),
       WaitForWebContentsReady(kTab4),
       InAnyContext(WaitForShow(OmniboxPopupPresenter::kRoundedResultsFrame)),
@@ -797,6 +865,146 @@ IN_PROC_BROWSER_TEST_F(FullWebUIOmniboxInteractiveTest,
       InAnyContext(WaitForShow(OmniboxPopupPresenter::kRoundedResultsFrame)));
 }
 
+// Verifies that clicking on Top Chrome when the Omnibox has draft text
+// preserves the cursor / selection position rather than selecting all text.
+// TODO(b/552482504): Fix this test on Windows.
+#if BUILDFLAG(IS_WIN)
+#define MAYBE_ClickTopChromeWithDraftPreservesCursorPosition \
+  DISABLED_ClickTopChromeWithDraftPreservesCursorPosition
+#else
+#define MAYBE_ClickTopChromeWithDraftPreservesCursorPosition \
+  ClickTopChromeWithDraftPreservesCursorPosition
+#endif
+IN_PROC_BROWSER_TEST_F(FullWebUIOmniboxInteractiveTest,
+                       MAYBE_ClickTopChromeWithDraftPreservesCursorPosition) {
+  RunTestSequence(
+      OpenInitialTabAndFocusOmnibox(kTab1, GURL("chrome://version/")),
+      ClearWebUIText(), InputWebUIText("example text"),
+      InAnyContext(WaitForShow(OmniboxPopupPresenter::kRoundedResultsFrame)),
+      InAnyContext(ExecuteJsAt(
+          kPopupWebView, kWebUIInput,
+          "el => { el.setSelectionRange(7, 7); "
+          "document.dispatchEvent(new Event('selectionchange')); }")),
+      CheckWebUIInputSelection(7, 7),
+      MoveMouseTo(kTabStripFrameGrabHandleElementId), ClickMouse(),
+      InAnyContext(WaitForShow(OmniboxPopupPresenter::kRoundedResultsFrame)),
+      CheckWebUIInputSelection(7, 7));
+}
+
+// Verifies that focusing the native Omnibox with an active selection range
+// (e.g. from double-clicking or dragging in Views) preserves the exact
+// selection bounds when synchronizing state to the WebUI popup.
+IN_PROC_BROWSER_TEST_F(FullWebUIOmniboxInteractiveTest,
+                       ViewsSelectionPreservedOnInitialHandoff) {
+  RunTestSequence(
+      WaitForBrowserActive(),
+      AddInstrumentedTab(kTab1, GURL("chrome://version/")),
+      WaitForWebContentsReady(kTab1), WaitForPopupTransitionLockout(),
+      Do([this]() {
+        auto* browser_view = BrowserView::GetBrowserViewForBrowser(browser());
+        auto* omnibox_view = browser_view->GetLocationBarView()->omnibox_view();
+        ASSERT_TRUE(omnibox_view);
+        // Set word selection range [0, 6] ("chrome").
+        omnibox_view->SetSelectedRange(gfx::Range(0, 6));
+        if (auto* popup_view =
+                browser_view->GetLocationBar()->GetOmniboxPopupView()) {
+          popup_view->OnFocus(/*query_zps=*/false);
+        }
+      }),
+      WaitForPopupReady(), WaitForWebUIInputValue("chrome://version"),
+      CheckWebUIInputSelection(0, 6), CheckWebUIInputFocus(true));
+}
+
+// Verifies that opening the App Menu from both empty and typed Omnibox states
+// opens the menu (without ZPS collision dismissing it) and closes suggestions,
+// and closing the App Menu restores keyboard focus and typing ability to the
+// Full WebUI Omnibox.
+// TODO(b/552482504): Fix this test.
+IN_PROC_BROWSER_TEST_F(FullWebUIOmniboxInteractiveTest,
+                       DISABLED_AppMenuOpenAndCloseLifecycle) {
+  const ui::ElementContext browser_context =
+      BrowserView::GetBrowserViewForBrowser(browser())->GetElementContext();
+
+  RunTestSequence(
+      // --- Part 1: Empty Omnibox / NTP (verifies no ZPS collision) ---
+      AddInstrumentedTab(kTab1, GURL(chrome::kChromeUINewTabURL)),
+      WaitForWebContentsReady(kTab1),
+      InAnyContext(WaitForShow(OmniboxPopupPresenter::kRoundedResultsFrame)),
+      InAnyContext(
+          InstrumentNonTabWebView(kPopupWebView, GetActivePopupWebView())),
+      CheckWebUIInputFocus(true),
+
+      // Open App Menu from empty state.
+      InContext(browser_context, MoveMouseTo(kToolbarAppMenuButtonElementId)),
+      InSameContextAs(OmniboxPopupPresenter::kRoundedResultsFrame,
+                      ClickMouse()),
+      InAnyContext(WaitForShow(AppMenuModel::kMoreToolsMenuItem)),
+
+      // Close App Menu via Escape and verify focus restoration.
+      InAnyContext(
+          SendKeyPress(kBrowserViewElementId, ui::VKEY_ESCAPE, ui::EF_NONE)),
+      InAnyContext(WaitForHide(AppMenuModel::kMoreToolsMenuItem)),
+      InAnyContext(WaitForShow(OmniboxPopupPresenter::kRoundedResultsFrame)),
+      CheckWebUIInputFocus(true),
+
+      // --- Part 2: Active Draft & Suggestions (verifies dropdown hiding &
+      // typing restoration) ---
+      InputWebUIText("a"),
+      WaitForMatch(kPopupWebView, kFirstSuggestionMatchContents,
+                   "suggestion-1"),
+      WaitForJsConditionAt(kPopupWebView, kPopupSearchbox,
+                           "(el) => el && el.dropdownIsVisible"),
+      InAnyContext(WaitForShow(OmniboxPopupPresenter::kRoundedResultsFrame)),
+
+      // Re-open App Menu while suggestions are showing.
+      InContext(browser_context, MoveMouseTo(kToolbarAppMenuButtonElementId)),
+      InSameContextAs(OmniboxPopupPresenter::kRoundedResultsFrame,
+                      ClickMouse()),
+      InAnyContext(WaitForShow(AppMenuModel::kMoreToolsMenuItem)),
+
+      // Suggestions should collapse while rounded results frame remains
+      // visible.
+      WaitForJsConditionAt(kPopupWebView, kPopupSearchbox,
+                           "(el) => el && !el.dropdownIsVisible"),
+      InAnyContext(WaitForShow(OmniboxPopupPresenter::kRoundedResultsFrame)),
+
+      // Close App Menu again and verify we can continue typing.
+      InAnyContext(
+          SendKeyPress(kBrowserViewElementId, ui::VKEY_ESCAPE, ui::EF_NONE)),
+      InAnyContext(WaitForHide(AppMenuModel::kMoreToolsMenuItem)),
+      InAnyContext(WaitForShow(OmniboxPopupPresenter::kRoundedResultsFrame)),
+      CheckWebUIInputFocus(true), InputWebUIText("ab"),
+      WaitForWebUIInputValue("ab"));
+}
+
+// Verifies that dragging the mouse across the WebUI Omnibox input
+// produces a non-empty text selection highlight.
+// TODO(b/552482504): Fix this test.
+IN_PROC_BROWSER_TEST_F(FullWebUIOmniboxInteractiveTest,
+                       DISABLED_MouseDragHighlightsInputText) {
+  RunTestSequence(
+      OpenInitialTabAndFocusOmnibox(kTab1, GURL("chrome://version/")),
+      InputWebUIText("dragandhighlight"),
+      WaitForWebUIInputValue("dragandhighlight"),
+      // Move native mouse to the start of the input text within the popup.
+      InAnyContext(
+          MoveMouseTo(kPopupWebView, base::BindOnce([](ui::TrackedElement* el) {
+                        gfx::Rect bounds = el->GetScreenBounds();
+                        return gfx::Point(bounds.x() + 65, bounds.y() + 24);
+                      }))),
+      // Drag mouse to the right across the input text.
+      InSameContext(DragMouseTo(base::BindOnce([]() -> gfx::Point {
+        return display::Screen::Get()->GetCursorScreenPoint() +
+               gfx::Vector2d(100, 0);
+      }))),
+      // Verify that non-empty text selection was created.
+      InAnyContext(WaitForJsConditionAt(
+          kPopupWebView, kWebUIInput,
+          "(el) => el && Math.abs(el.selectionEnd - el.selectionStart) > 0")),
+      // Verify input value remains intact.
+      WaitForWebUIInputValue("dragandhighlight"));
+}
+
 #if !BUILDFLAG(IS_MAC)
 // Verifies that pressing Shift+Arrow keys after Select All adjusts the
 // selection character-by-character on Windows and Linux rather than collapsing
@@ -880,6 +1088,40 @@ IN_PROC_BROWSER_TEST_F(FullWebUIOmniboxInteractiveTest,
       CheckWebUIInputFocus(true));
 }
 
+// Verifies that opening a new window / tab on NTP focuses the WebUI Omnibox
+// popup and that focus is sustained without being stolen by subsequent layout
+// passes or `views::FocusManager::AdvanceFocusIfNecessary()`.
+IN_PROC_BROWSER_TEST_F(FullWebUIOmniboxInteractiveTest,
+                       NewWindowOpensAndFocusesWebUIOmniboxOnNTP) {
+  RunTestSequence(
+      WaitForBrowserActive(),
+      // Instrument the default tab 0 and navigate to NTP
+      InstrumentTab(kTab1, 0),
+      NavigateWebContents(kTab1, GURL(chrome::kChromeUINewTabURL)),
+      WaitForWebContentsReady(kTab1),
+      // Verify WebUI popup opens automatically on the NTP
+      InAnyContext(WaitForShow(OmniboxPopupPresenter::kRoundedResultsFrame)),
+      InAnyContext(
+          InstrumentNonTabWebView(kPopupWebView, GetActivePopupWebView())),
+      // Verify WebUI searchbox has DOM focus and focus is not stolen
+      CheckWebUIInputFocus(true),
+      // Wait to ensure all asynchronous tasks, timers, and animations settle.
+      WaitForPopupTransitionLockout(base::Seconds(1)),
+      // Force an explicit layout pass on BrowserView (which re-evaluates
+      // LocationBarView::UpdateFocusBehavior() and would trigger
+      // AdvanceFocusIfNecessary if OmniboxViewViews had focus).
+      Do([this]() {
+        auto* browser_view = BrowserView::GetBrowserViewForBrowser(browser());
+        browser_view->InvalidateLayout();
+        browser_view->GetWidget()->LayoutRootViewIfNecessary();
+      }),
+      // Verify popup is STILL showing and DOM input is STILL focused.
+      InAnyContext(WaitForShow(OmniboxPopupPresenter::kRoundedResultsFrame)),
+      CheckWebUIInputFocus(true),
+      // Verify native OmniboxViewViews does not have Views focus.
+      CheckViewProperty(kOmniboxElementId, &views::View::HasFocus, false));
+}
+
 // Verifies that pressing Shift+Enter on a match opens the result in a new
 // window and resets the original window's omnibox popup state to steady state.
 IN_PROC_BROWSER_TEST_F(FullWebUIOmniboxInteractiveTest,
@@ -940,6 +1182,175 @@ IN_PROC_BROWSER_TEST_F(FullWebUIOmniboxInteractiveTest,
       WaitForOmniboxFocus(false));
 }
 
+// Verifies that pressing Ctrl+N / Cmd+N while the WebUI Omnibox is focused
+// opens a new browser window.
+// TODO(b/552482504): Fix this test.
+IN_PROC_BROWSER_TEST_F(FullWebUIOmniboxInteractiveTest,
+                       DISABLED_NewWindowShortcutWithWebUIOmniboxFocused) {
+  ui_test_utils::BrowserCreatedObserver observer;
+  RunTestSequence(
+      OpenInitialTabAndFocusOmnibox(kTab1, GURL("chrome://version/")),
+      WaitForWebUIInputValue("chrome://version"), CheckWebUIInputFocus(true),
+      InAnyContext(
+          SendKeyPress(kPopupWebView, ui::VKEY_N, ui::EF_PLATFORM_ACCELERATOR)),
+      Do([&observer]() { observer.Wait(); }), Check([]() {
+        return GlobalBrowserCollection::GetInstance()->GetSize() == 2;
+      }));
+}
+
+// Verifies that pressing Ctrl+L / Cmd+L while typing a query selects the typed
+// text and keeps the suggestions dropdown open without interruption.
+IN_PROC_BROWSER_TEST_F(FullWebUIOmniboxInteractiveTest,
+                       RefocusWhileTypingPreservesDropdownAndSelectsText) {
+  RunTestSequence(
+      OpenInitialTabAndFocusOmnibox(kTab1, GURL("chrome://version/")),
+      WaitForWebUIInputValue("chrome://version"),
+
+      // Type "a" and wait for suggestions dropdown.
+      InputWebUIText("a"),
+      WaitForMatch(kPopupWebView, kFirstSuggestionMatchContents,
+                   "suggestion-1"),
+      WaitForJsConditionAt(kPopupWebView, kPopupSearchbox,
+                           "(el) => el && el.dropdownIsVisible"),
+
+      // Press Ctrl+L / Cmd+L from keyboard.
+      WaitForPopupTransitionLockout(),
+      SendKeyPress(kBrowserViewElementId, ui::VKEY_L,
+                   ui::EF_PLATFORM_ACCELERATOR),
+
+#if !BUILDFLAG(IS_MAC)
+      // Verify typed text "a" is fully selected. Text selection
+      // modification/inspection on macOS inputs follows different platform
+      // conventions.
+      InAnyContext(CheckWebUIInputSelection(0, 1)),
+#endif
+      InAnyContext(CheckWebUIInputFocus(true)),
+      // Verify suggestions dropdown remains open.
+      WaitForJsConditionAt(kPopupWebView, kPopupSearchbox,
+                           "(el) => el && el.dropdownIsVisible"));
+}
+
+// TODO(b/552482504): Reenable this test once the Omnibox is focusable again.
+// Verifies that navigating to the Omnibox via Tab traversal opens and focuses
+// the full WebUI popup instead of retaining focus in the native textfield.
+IN_PROC_BROWSER_TEST_F(FullWebUIOmniboxInteractiveTest,
+                       DISABLED_TabTraversalOpensAndFocusesWebUIPopup) {
+  RunTestSequence(
+      OpenInitialTabAndFocusOmnibox(kTab1, GURL("chrome://version/")),
+      WaitForWebUIInputValue("chrome://version"),
+
+      // Blur and close the Omnibox popup by clicking the webpage body.
+      ClickWebPageBody(kTab1),
+      InAnyContext(WaitForHide(OmniboxPopupPresenter::kRoundedResultsFrame)),
+      UninstrumentWebContents(kPopupWebView), WaitForOmniboxFocus(false),
+      WaitForPopupTransitionLockout(),
+
+      // Focus the view directly before the Omnibox.
+      Do([this]() {
+        auto* browser_view = BrowserView::GetBrowserViewForBrowser(browser());
+        auto* omnibox_view = browser_view->GetLocationBarView()->omnibox_view();
+        auto* focus_manager = browser_view->GetFocusManager();
+        auto* prev_view = focus_manager->GetNextFocusableView(
+            omnibox_view, nullptr, /*reverse=*/true,
+            /*dont_loop=*/false);
+        CHECK(prev_view);
+        prev_view->RequestFocus();
+      }),
+
+      // Traverse focus into the Omnibox using Tab.
+      SendKeyPress(kBrowserViewElementId, ui::VKEY_TAB, ui::EF_NONE),
+
+      // Verify the WebUI popup opens and gains focus.
+      InAnyContext(
+          InstrumentNonTabWebView(kPopupWebView, GetActivePopupWebView())),
+      InSameContext(WaitForWebContentsReady(
+          kPopupWebView, GURL(chrome::kChromeUIOmniboxPopupURL))),
+      InAnyContext(CheckWebUIInputFocus(true)),
+      // Verify that the native omnibox textfield does not retain focus.
+      WaitForOmniboxFocus(false));
+}
+
+// Verifies that clicking outside on the webpage body when text is selected
+// in the WebUI Omnibox closes the popup on the first click and shifts focus
+// to the webpage.
+IN_PROC_BROWSER_TEST_F(FullWebUIOmniboxInteractiveTest,
+                       ClickOutsideDismissesPopupWithSelectedText) {
+  RunTestSequence(
+      OpenInitialTabAndFocusOmnibox(kTab1, GURL("chrome://version/")),
+      WaitForWebUIInputValue("chrome://version"), CheckWebUIInputFocus(true),
+      // Select a portion of the text in the WebUI searchbox.
+      InAnyContext(ExecuteJsAt(kPopupWebView, kWebUIInput,
+                               R"(el => {
+                                    el.setSelectionRange(0, 6);
+                                    el.dispatchEvent(new Event('select'));
+                                    document.dispatchEvent(
+                                        new Event('selectionchange'));
+                                  })")),
+      CheckWebUIInputSelection(0, 6),
+      // Click on the webpage body to blur and dismiss.
+      ClickWebPageBody(kTab1),
+      InAnyContext(WaitForHide(OmniboxPopupPresenter::kRoundedResultsFrame)),
+      WaitForOmniboxFocus(false));
+}
+
+// Verifies that the native LocationBarView focus ring remains hidden
+// across all popup state transitions in Full WebUI mode.
+IN_PROC_BROWSER_TEST_F(FullWebUIOmniboxInteractiveTest,
+                       LocationBarFocusRingHiddenInFullWebUIMode) {
+  auto check_focus_ring = [this](bool should_paint) {
+    return Do([this, should_paint]() {
+      auto* location_bar = BrowserView::GetBrowserViewForBrowser(browser())
+                               ->toolbar()
+                               ->location_bar_view();
+      if (!location_bar) {
+        return;
+      }
+      auto* focus_ring = views::FocusRing::Get(location_bar);
+      if (focus_ring) {
+        EXPECT_EQ(focus_ring->ShouldPaintForTesting(), should_paint);
+      }
+    });
+  };
+
+  RunTestSequence(
+      // 1. Open tab and focus WebUI popup -> native focus ring should not
+      // paint.
+      OpenInitialTabAndFocusOmnibox(kTab1, GURL("chrome://version/")),
+      WaitForWebUIInputValue("chrome://version"), CheckWebUIInputFocus(true),
+      check_focus_ring(false),
+      // 2. Click webpage body to dismiss -> focus ring should still not paint.
+      ClickWebPageBody(kTab1),
+      InAnyContext(WaitForHide(OmniboxPopupPresenter::kRoundedResultsFrame)),
+      WaitForOmniboxFocus(false), check_focus_ring(false));
+}
+
+// Verifies that typing into the WebUI Omnibox, clicking outside on the webpage
+// body to blur, and then refocusing the location bar (via Ctrl+L) selects all
+// text in the Omnibox.
+IN_PROC_BROWSER_TEST_F(FullWebUIOmniboxInteractiveTest,
+                       FocusLocationBarAfterBlurSelectsAll) {
+  RunTestSequence(
+      // 1. Open the WebUI omnibox.
+      OpenInitialTabAndFocusOmnibox(kTab1, GURL("chrome://version/")),
+      // 2. Type into it.
+      InputWebUIText("hello"), WaitForWebUIInputValue("hello"),
+      // 3. Click outside of it.
+      ClickWebPageBody(kTab1),
+      WaitForJsConditionAt(kPopupWebView, kPopupSearchbox,
+                           "(el) => el && !el.dropdownIsVisible"),
+      CheckWebUIInputFocus(false),
+      // 4. Focus the location bar to reopen/refocus it (via Ctrl+L).
+      WaitForPopupTransitionLockout(),
+      SendKeyPress(kBrowserViewElementId, ui::VKEY_L,
+                   ui::EF_PLATFORM_ACCELERATOR),
+      InAnyContext(CheckWebUIInputFocus(true)),
+      // 5. Verifies that everything is selected.
+      InAnyContext(CheckJsResultAt(
+          kPopupWebView, kWebUIInput,
+          "el => `${el.selectionStart},${el.selectionEnd}`", "0,5")),
+      InAnyContext(CheckWebUIInputSelection(0, 5)));
+}
+
 class FullWebUIOmniboxAimInteractiveTestBase
     : public FullWebUIOmniboxInteractiveTestBase {
  public:
@@ -958,8 +1369,7 @@ class FullWebUIOmniboxAimInteractiveTestBase
       base::FieldTrialParams simplification_params = {
           {omnibox::kWebUIOmniboxAimPopupAddContextButtonVariantParam.name,
            "below_results"},
-          {omnibox::kHideClassicContextButton.name, "false"},
-          {omnibox::kShowLensSearchChip.name, "true"}};
+          {omnibox::kHideClassicContextButton.name, "false"}};
       features.emplace_back(omnibox::internal::kWebUIOmniboxSimplification,
                             simplification_params);
       features.emplace_back(omnibox::kAimEnabled, base::FieldTrialParams());
@@ -1024,8 +1434,7 @@ class FullWebUIOmniboxSimplificationInteractiveTest
              "below_results"},
             {omnibox::kHideClassicContextButton.name, "false"},
             {"Omnibox_ContextButtonHasBackground", "true"},
-            {"Omnibox_ContextButtonShapeIsOblong", "true"},
-            {"Omnibox_ContextButtonShowSuggestionLabel", "true"}});
+            {"Omnibox_ContextButtonShapeIsOblong", "true"}});
     enabled_features.emplace_back(omnibox::kAimUsePecApi,
                                   base::FieldTrialParams());
     feature_list_.InitWithFeaturesAndParameters(
@@ -1091,28 +1500,3 @@ IN_PROC_BROWSER_TEST_F(FullWebUIOmniboxSimplificationInteractiveTest,
       InAnyContext(WaitForStateChange(kPopupWebView, style_applied)));
 }
 
-IN_PROC_BROWSER_TEST_F(FullWebUIOmniboxSimplificationInteractiveTest,
-                       HasSuggestionLabel) {
-  const DeepQuery kSuggestionLabel = {
-      "omnibox-full-app",
-      "omnibox-popup-searchbox",
-      "omnibox-popup-contextual-entrypoint",
-      "#context",
-      "cr-composebox-contextual-entrypoint-button",
-      "#description"};
-  std::u16string expected_text =
-      l10n_util::GetStringUTF16(IDS_GOOGLE_SEARCH_BOX_EMPTY_HINT_MULTIMODAL);
-  RunTestSequence(
-      SetAimEligibleResponse(),
-      OpenInitialTabAndFocusOmnibox(kTab1, GURL("chrome://version/")),
-      InAnyContext(WaitForOmniboxAimStateReady(kPopupWebView)),
-      InputWebUIText("a"),
-      WaitForMatch(kPopupWebView, kFirstSuggestionMatchContents,
-                   "suggestion-1"),
-      WaitForJsConditionAt(kPopupWebView, kPopupSearchbox,
-                           "(el) => el && el.dropdownIsVisible"),
-      InAnyContext(WaitForElementToRender(kPopupWebView, kSuggestionLabel)),
-      InSameContext(CheckJsResultAt(kPopupWebView, kSuggestionLabel,
-                                    "el => el.textContent.trim()",
-                                    base::UTF16ToUTF8(expected_text))));
-}

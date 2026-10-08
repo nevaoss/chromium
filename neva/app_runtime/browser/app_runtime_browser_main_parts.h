@@ -74,7 +74,7 @@ class AppRuntimeBrowserMainParts : public content::BrowserMainParts {
   void PreCreateMainMessageLoop() override;
   void PostCreateMainMessageLoop() override;
   int PreCreateThreads() override;
-  void PostCreateThreads() override;
+  int PostCreateThreads() override;
   int PreMainMessageLoopRun() override;
   void WillRunMainMessageLoop(
       std::unique_ptr<base::RunLoop>& run_loop) override;

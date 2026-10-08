@@ -190,6 +190,8 @@ public class PdfCoordinator
 
     private boolean mHasMadeAnyChanges;
 
+    private boolean mIsFragmentRestored;
+
     boolean mIsInitialZoomPass = true;
     private boolean mIsDefaultZoomPending;
 
@@ -279,6 +281,7 @@ public class PdfCoordinator
         if (fragment != null) {
             if (reuseFragment) {
                 mChromePdfViewerFragment = (ChromePdfViewerFragment) fragment;
+                mIsFragmentRestored = true;
                 mChromePdfViewerFragment.setPagesPerRow(false);
                 if (mPdfFilePath == null) {
                     mPdfFilePath =
@@ -575,8 +578,10 @@ public class PdfCoordinator
                 mRestorePositionPending = state.getBoolean(KEY_RESTORE_POSITION_PENDING, false);
             }
             super.onViewCreated(view, savedInstanceState);
+            if (getView() != null && mViewTag != null) {
+                getView().setTag(mViewTag);
+            }
             if (savedInstanceState != null) {
-                if (getView() != null) getView().setTag(mViewTag);
                 mFilePath = savedInstanceState.getString(KEY_FILE_PATH, null);
                 mFileName = savedInstanceState.getString(KEY_FILE_NAME, null);
             }
@@ -972,10 +977,12 @@ public class PdfCoordinator
 
         @Override
         public boolean onLinkClicked(ExternalLink externalLink) {
-            if (mDelegate == null) {
-                return false;
+            if (mDelegate != null) {
+                mDelegate.onLinkClicked(externalLink.getUri());
             }
-            return mDelegate.onLinkClicked(externalLink.getUri());
+            // Always return true to consume the click event, preventing androidx.pdf from
+            // falling back to its internal startActivity() call.
+            return true;
         }
 
         @Override
@@ -1527,6 +1534,7 @@ public class PdfCoordinator
     @Override
     public void resetLoadState() {
         mIsPdfLoaded = false;
+        mIsFragmentRestored = false;
         mIsFitToPageActive = TriState.NOT_SET;
         mLastFitZoom = -1f;
         mHasMadeAnyChanges = false;
@@ -1691,6 +1699,11 @@ public class PdfCoordinator
                 try {
                     mIsInitialZoomPass = true;
                     mIsDefaultZoomPending = false;
+                    if (mIsFragmentRestored) {
+                        mIsFragmentRestored = false;
+                        PdfUtils.recordRecoveredFragmentUriMatches(
+                                mUri.equals(mChromePdfViewerFragment.getDocumentUri()));
+                    }
                     if (!mUri.equals(mChromePdfViewerFragment.getDocumentUri())) {
                         mChromePdfViewerFragment.setDocumentUri(mUri);
                         mChromePdfViewerFragment.setFilePath(mPdfFilePath);
@@ -1927,12 +1940,47 @@ public class PdfCoordinator
 
     @Override
     public void download() {
+        // Extract the download URL; null for local PDFs (e.g. file:// or content://).
+        String downloadUrl = getDownloadUrl();
+
+        // Re-download unmodified web/blob/data PDFs or fallback when V2 is disabled.
+        // For unmodified local PDFs, downloadUrl is null and this is a no-op since the file is
+        // already on the device.
+        if (!PdfUtils.isInlinePdfV2Enabled() || !hasChanges()) {
+            if (downloadUrl != null) {
+                mNativePageHost.downloadUrl(downloadUrl);
+            }
+            return;
+        }
+
+        // If there are unsaved edits, flush draft edits first before triggering download.
         if (mChromePdfViewerFragment != null && (hasUnsavedChanges() || isEditModeActive())) {
             mDownloadAfterSave = true;
             mChromePdfViewerFragment.applyDraftEdits();
         } else {
+            // Otherwise, export the annotated PDF file directly to the Downloads directory.
             downloadAnnotatedPdf();
         }
+    }
+
+    private @Nullable String getDownloadUrl() {
+        String downloadUrl = PdfUtils.getPdfReDownloadUrl(mUrl);
+        if (downloadUrl != null) {
+            return downloadUrl;
+        }
+        String decodedUrl = PdfUtils.decodePdfPageUrl(mUrl);
+        String candidateUrl = decodedUrl != null ? decodedUrl : mUrl;
+        if (candidateUrl != null) {
+            GURL gurl = new GURL(candidateUrl);
+            if (gurl.isValid()) {
+                String scheme = gurl.getScheme();
+                if (UrlConstants.BLOB_SCHEME.equalsIgnoreCase(scheme)
+                        || UrlConstants.DATA_SCHEME.equalsIgnoreCase(scheme)) {
+                    return candidateUrl;
+                }
+            }
+        }
+        return null;
     }
 
     @Override
@@ -2044,15 +2092,11 @@ public class PdfCoordinator
     }
 
     @Override
-    public boolean onLinkClicked(Uri uri) {
-        if (!PdfUtils.isInlinePdfV2Enabled()) {
-            PdfUtils.recordHyperlinkClickResult(PdfHyperlinkClickResult.IGNORED_V2_DISABLED);
-            return false;
-        }
+    public void onLinkClicked(Uri uri) {
         String scheme = uri.getScheme();
         if (scheme == null || !ALLOWED_LINK_SCHEMES.contains(scheme.toLowerCase(Locale.ROOT))) {
             PdfUtils.recordHyperlinkClickResult(PdfHyperlinkClickResult.BLOCKED_INVALID_SCHEME);
-            return false;
+            return;
         }
         LoadUrlParams params = new LoadUrlParams(uri.toString(), PAGE_TRANSITION_TYPE);
         params.setIsRendererInitiated(true);
@@ -2061,7 +2105,6 @@ public class PdfCoordinator
         // TODO(crbug.com/548013417): Reuse existing tab for link clicks.
         mNativePageHost.openNewTab(params);
         PdfUtils.recordHyperlinkClickResult(PdfHyperlinkClickResult.SUCCESS_LOAD_INITIATED);
-        return true;
     }
 
     @Override
@@ -2481,7 +2524,7 @@ public class PdfCoordinator
                         .build();
 
         mModalDialogModel = model;
-        manager.showDialog(model, ModalDialogType.APP);
+        manager.showDialog(model, ModalDialogType.TAB);
     }
 
     private void showUnsavedChangesAlertDialog(

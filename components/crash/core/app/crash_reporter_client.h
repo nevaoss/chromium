@@ -7,10 +7,14 @@
 
 #include <stdint.h>
 
+#include <map>
 #include <string>
+#include <string_view>
+#include <type_traits>
 #include <vector>
 
 #include "base/memory/read_only_shared_memory_region.h"
+#include "base/strings/string_util.h"
 #include "build/build_config.h"
 
 #if !BUILDFLAG(IS_WIN)
@@ -21,14 +25,30 @@ class FilePath;
 
 namespace crash_reporter {
 
+// Structure used to pass product info across module boundaries without
+// allocating std::string across different module allocators.
 struct ProductInfo {
-  ProductInfo();
-  ~ProductInfo();
+ public:
+  ProductInfo() = default;
+  ProductInfo(std::string_view product_name,
+              std::string_view version,
+              std::string_view channel) {
+    base::strlcpy(product_name_, product_name);
+    base::strlcpy(version_, version);
+    base::strlcpy(channel_, channel);
+  }
 
-  std::string product_name;
-  std::string version;
-  std::string channel;
+  std::string_view product_name() const { return product_name_; }
+  std::string_view version() const { return version_; }
+  std::string_view channel() const { return channel_; }
+
+ private:
+  char product_name_[128] = {};
+  char version_[128] = {};
+  char channel_[128] = {};
 };
+static_assert(std::is_trivially_copyable_v<ProductInfo>);
+static_assert(std::is_trivially_destructible_v<ProductInfo>);
 
 class CrashReporterClient;
 
@@ -175,6 +195,21 @@ class CrashReporterClient {
 
   // Returns the URL target for crash report uploads.
   virtual std::string GetUploadUrl();
+
+  // Returns true (the default) if the handler should rate limit uploads.
+  // Returning false passes --no-rate-limit to the Crashpad handler.
+  virtual bool ShouldRateLimitUploads();
+
+  // Returns true (the default) if the handler should gzip-compress uploads.
+  // Returning false passes --no-upload-gzip to the Crashpad handler, for
+  // collection servers that do not accept compressed bodies.
+  virtual bool ShouldCompressUploads();
+
+  // Returns process-wide ("simple") annotations to pass to the Crashpad
+  // handler in addition to the default prod/ver/channel/plat ones. Entries
+  // with the same key replace the defaults. The default implementation returns
+  // an empty map.
+  virtual std::map<std::string, std::string> GetExtraProcessAnnotations();
 
   // This method should return true to configure a crash reporter capable of
   // monitoring itself for its own crashes to do so, even if self-monitoring

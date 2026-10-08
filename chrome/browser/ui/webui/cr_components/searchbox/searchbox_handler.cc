@@ -8,6 +8,7 @@
 #include <memory>
 #include <optional>
 #include <string>
+#include <unordered_set>
 #include <utility>
 #include <vector>
 
@@ -37,6 +38,7 @@
 #include "chrome/browser/preloading/search_preload/search_preload_service.h"
 #include "chrome/browser/preloading/search_preload/search_preload_service_factory.h"
 #include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/search_engines/template_url_service_factory.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/omnibox/omnibox_controller.h"
 #include "chrome/browser/ui/omnibox/omnibox_edit_model.h"
@@ -63,10 +65,12 @@
 #include "components/omnibox/browser/omnibox_field_trial.h"
 #include "components/omnibox/browser/omnibox_metrics_constants.h"
 #include "components/omnibox/browser/omnibox_popup_selection.h"
+#include "components/omnibox/browser/omnibox_pref_names.h"
 #include "components/omnibox/browser/omnibox_prefs.h"
 #include "components/omnibox/browser/searchbox_utils.h"
 #include "components/omnibox/browser/vector_icons.h"
 #include "extensions/buildflags/buildflags.h"
+#include "ui/base/window_open_disposition.h"
 #if BUILDFLAG(ENABLE_EXTENSIONS)
 #include "extensions/common/extension_features.h"
 #endif
@@ -74,6 +78,9 @@
 #include "components/omnibox/common/omnibox_feature_configs.h"
 #include "components/omnibox/common/omnibox_features.h"
 #include "components/search/ntp_features.h"
+#include "components/search_engines/template_url.h"
+#include "components/search_engines/template_url_service.h"
+#include "components/search_engines/template_url_starter_pack_data.h"
 #include "components/strings/grit/components_strings.h"
 #include "components/variations/variations_client.h"
 #include "components/vector_icons/vector_icons.h"
@@ -85,6 +92,7 @@
 #include "third_party/omnibox_proto/rich_answer_template.pb.h"
 #include "third_party/omnibox_proto/rule_set.pb.h"
 #include "third_party/omnibox_proto/searchbox_config.pb.h"
+#include "third_party/omnibox_proto/suggest_template_info.pb.h"
 #include "third_party/skia/include/core/SkBitmap.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/ui_base_features.h"
@@ -351,6 +359,11 @@ base::DictValue SearchboxHandler::GetWebUIDataSourceDict(
   dict.Set("forceHideEllipsis", false);
   dict.Set("enableThumbnailSizingTweaks", false);
   dict.Set("enableCsbMotionTweaks", false);
+  dict.Set("keywordSpaceTriggeringEnabled",
+           profile && profile->GetPrefs()
+               ? profile->GetPrefs()->GetBoolean(
+                     omnibox::kKeywordSpaceTriggeringEnabled)
+               : true);
 
   // Returns if ALL composeboxe surfaces' voice coherence is not gated. Includes
   // new metrics, new animation, new submit/stop buttons, no live transcription.
@@ -375,6 +388,14 @@ base::DictValue SearchboxHandler::GetWebUIDataSourceDict(
   // metrics, new animation, new submit/stop buttons, live transcription.
   dict.Set("voiceSearchCoherenceSearchboxWithLiveTranscriptionEnabled",
            omnibox::kVoiceSearchCoherenceSearchboxWithLiveTranscription.Get());
+
+  // Enables 3-second auto-endpointing for NTP Realbox voice search.
+  dict.Set("voiceSearchCoherenceRealboxAutoEndpointEnabled",
+           omnibox::kVoiceSearchCoherenceRealboxAutoEndpoint.Get());
+
+  // Enables helper text (e.g. "Listening...") in NTP Realbox voice search.
+  dict.Set("voiceSearchCoherenceRealboxHelperTextEnabled",
+           omnibox::kVoiceSearchCoherenceRealboxHelperText.Get());
 
   // Enables if either arm of the voice search ntp searchbox live experiment
   // is on.
@@ -401,6 +422,7 @@ base::DictValue SearchboxHandler::GetWebUIDataSourceDict(
       {"recentTabsSuffix", IDS_NTP_COMPOSEBOX_RECENT_TAB_SUFFIX},
       {"currentTabSuffix", IDS_COMPOSE_CURRENT_TAB},
       {"sharingTabsWithGoogle", IDS_COMPOSE_SHARING_TABS_WITH_GOOGLE},
+      {"addOpenTabsToAskAnything", IDS_COMPOSE_ADD_OPEN_TABS_TO_ASK_ANYTHING},
       {"dismissButton", IDS_NTP_DISMISS},
       {"searchboxComposeButtonText", IDS_NTP_COMPOSE_ENTRYPOINT},
       {"searchboxComposeButtonTitle", IDS_NTP_COMPOSE_ENTRYPOINT_A11Y_LABEL},
@@ -559,8 +581,8 @@ base::DictValue SearchboxHandler::GetWebUIDataSourceDict(
   dict.Set("composeboxContextDragAndDropEnabled",
            options.session_allows_drag_and_drop);
 
-  auto composebox_config = ntp_composebox::FeatureConfig::Get().config;
 #if !BUILDFLAG(IS_ANDROID)
+  auto composebox_config = ntp_composebox::FeatureConfig::Get().config;
   dict.Set("searchboxShowComposeAnimation",
            profile->GetPrefs()->GetInteger(
                prefs::kNtpComposeButtonShownCountPrefName) <
@@ -993,6 +1015,15 @@ SearchboxHandler::CreateAutocompleteMatch(
       match.type == AutocompleteMatchType::CALCULATOR ||
       match.enterprise_search_aggregator_type ==
           AutocompleteMatch::EnterpriseSearchAggregatorType::PEOPLE;
+  if (match.suggest_template) {
+    if (match.suggest_template->secondary_text_placement() ==
+        omnibox::SuggestTemplateInfo::BELOW_PRIMARY_TEXT) {
+      mojom_match->is_two_row_suggestion = true;
+    } else if (match.suggest_template->secondary_text_placement() ==
+               omnibox::SuggestTemplateInfo::IN_FRONT_OF_PRIMARY_TEXT) {
+      mojom_match->is_two_row_suggestion = false;
+    }
+  }
   if (!match.from_keyword) {
     for (const auto& action : match.actions) {
 // TODO(b/544764632): Implement Pedals for Android.
@@ -1039,6 +1070,11 @@ SearchboxHandler::CreateAutocompleteMatch(
   if (match.suggest_template && match.suggest_template->has_fusebox_action()) {
     mojom_match->fusebox_action = fusebox_action::SyncFuseboxActionProtoToMojo(
         match.suggest_template->fusebox_action());
+  }
+
+  if (match.suggest_template && match.suggest_template->has_style()) {
+    mojom_match->suggest_style = static_cast<searchbox::mojom::SuggestStyle>(
+        match.suggest_template->style());
   }
 
   if (SupportsKeywordMode()) {
@@ -1137,6 +1173,21 @@ SearchboxHandler::SearchboxHandler(
     PermissionPromptObserver::CreateForWebContents(web_contents_);
     PermissionPromptObserver::FromWebContents(web_contents_)->AddObserver(this);
   }
+
+  if (profile_ && profile_->GetPrefs()) {
+    pref_change_registrar_.Init(profile_->GetPrefs());
+    pref_change_registrar_.Add(
+        omnibox::kKeywordSpaceTriggeringEnabled,
+        base::BindRepeating(
+            &SearchboxHandler::OnKeywordSpaceTriggeringPrefChanged,
+            base::Unretained(this)));
+    OnKeywordSpaceTriggeringPrefChanged();
+  }
+
+  if (auto* template_url_service = GetTemplateURLService()) {
+    template_url_service_observation_.Observe(template_url_service);
+  }
+  SendAvailableKeywordModels();
 }
 
 SearchboxHandler::~SearchboxHandler() {
@@ -1146,6 +1197,92 @@ SearchboxHandler::~SearchboxHandler() {
             PermissionPromptObserver::FromWebContents(web_contents_)) {
       observer->RemoveObserver(this);
     }
+  }
+  template_url_service_observation_.Reset();
+}
+
+void SearchboxHandler::OnTemplateURLServiceChanged() {
+  SendAvailableKeywordModels();
+}
+
+void SearchboxHandler::OnTemplateURLServiceShuttingDown() {
+  template_url_service_observation_.Reset();
+}
+
+TemplateURLService* SearchboxHandler::GetTemplateURLService() const {
+  if (client()) {
+    return client()->GetTemplateURLService();
+  }
+  if (profile_) {
+    return TemplateURLServiceFactory::GetForProfile(profile_);
+  }
+  return nullptr;
+}
+
+void SearchboxHandler::SendAvailableKeywordModels() {
+  if (!page_) {
+    return;
+  }
+
+  TemplateURLService* template_url_service = GetTemplateURLService();
+  if (!template_url_service) {
+    page_->SetAvailableKeywordModels({});
+    return;
+  }
+
+  std::vector<searchbox::mojom::InputKeywordModelPtr> models;
+  const bool is_off_the_record = profile_ && profile_->IsOffTheRecord();
+
+  std::unordered_set<std::u16string> seen_keywords;
+  for (TemplateURL* turl : template_url_service->GetTemplateURLs()) {
+    if (!turl || turl->keyword().empty()) {
+      continue;
+    }
+
+    // Must be eligible for keyword matching in omnibox autocomplete.
+    if (!turl->CanBeUsedForKeywordMatching()) {
+      continue;
+    }
+
+    // Must support replacement of search terms.
+    if (!turl->SupportsReplacement(template_url_service->search_terms_data())) {
+      continue;
+    }
+
+    // The built-in history keyword mode is disabled in incognito mode.
+    if (is_off_the_record &&
+        turl->starter_pack_id() ==
+            template_url_starter_pack_data::StarterPackId::kHistory) {
+      continue;
+    }
+
+    if (!seen_keywords.insert(base::ToLowerASCII(turl->keyword())).second) {
+      continue;
+    }
+
+    auto keyword_model = searchbox::mojom::InputKeywordModel::New();
+    keyword_model->type =
+        (turl->starter_pack_id() !=
+             template_url_starter_pack_data::StarterPackId::kNone ||
+         turl->featured_by_policy())
+            ? searchbox::mojom::KeywordType::kInstant
+            : searchbox::mojom::KeywordType::kChip;
+    keyword_model->keyword = base::UTF16ToUTF8(turl->keyword());
+    const auto names =
+        searchbox::GetKeywordLabelNames(turl->keyword(), template_url_service);
+    keyword_model->display_text = names.full_name.empty()
+                                      ? base::UTF16ToUTF8(turl->keyword())
+                                      : base::UTF16ToUTF8(names.full_name);
+    models.push_back(std::move(keyword_model));
+  }
+
+  page_->SetAvailableKeywordModels(std::move(models));
+}
+
+void SearchboxHandler::OnKeywordSpaceTriggeringPrefChanged() {
+  if (page_) {
+    page_->SetKeywordSpaceTriggeringEnabled(profile_->GetPrefs()->GetBoolean(
+        omnibox::kKeywordSpaceTriggeringEnabled));
   }
 }
 
@@ -1200,8 +1337,7 @@ void SearchboxHandler::QueryAutocomplete(
   bool is_keyword_selected = false;
   const TemplateURL* template_url = nullptr;
   if (!keyword.empty()) {
-    TemplateURLService* service =
-        client() ? client()->GetTemplateURLService() : nullptr;
+    TemplateURLService* service = GetTemplateURLService();
     if (service) {
       std::u16string keyword16;
       // TODO(b:504669216): There may actually exist a `TemplateURL` with
@@ -1455,8 +1591,13 @@ void SearchboxHandler::SetPopupSelection(
     searchbox::mojom::OmniboxPopupSelectionPtr selection) {
   if (!base::FeatureList::IsEnabled(
           omnibox::kWebUISearchboxWithoutModelController)) {
-    edit_model()->SetPopupSelection(ConvertSelection(std::move(selection)),
-                                    false, false, false);
+    OmniboxPopupSelection popup_selection =
+        ConvertSelection(std::move(selection));
+    if (popup_selection.line != OmniboxPopupSelection::kNoMatch &&
+        popup_selection.line >= autocomplete_controller()->result().size()) {
+      return;
+    }
+    edit_model()->SetPopupSelection(popup_selection, false, false, false);
   }
 }
 
@@ -1679,8 +1820,7 @@ void SearchboxHandler::GetInputState(GetInputStateCallback callback) {
 
 void SearchboxHandler::OnResultChanged(AutocompleteController* controller,
                                        bool default_match_changed) {
-  TemplateURLService* template_url_service =
-      client() ? client()->GetTemplateURLService() : nullptr;
+  TemplateURLService* template_url_service = GetTemplateURLService();
 
   std::u16string input_text = controller->input().text();
   if (controller->input().in_keyword_mode() && template_url_service) {
@@ -1727,6 +1867,13 @@ void SearchboxHandler::OnResultChanged(AutocompleteController* controller,
             web_contents_, autocomplete_controller()->result());
       }
     }
+  }
+}
+
+void SearchboxHandler::OnControllerDestroying(
+    AutocompleteController* controller) {
+  if (autocomplete_controller_observation_.IsObservingSource(controller)) {
+    autocomplete_controller_observation_.Reset();
   }
 }
 

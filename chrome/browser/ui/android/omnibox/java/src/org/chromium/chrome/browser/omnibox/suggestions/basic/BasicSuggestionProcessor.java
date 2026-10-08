@@ -44,7 +44,7 @@ import java.util.Set;
 public class BasicSuggestionProcessor extends BaseSuggestionViewProcessor {
     private static final String TAKEOVER_SEPARATOR = " - ";
 
-    /** Bookmarked state of a URL */
+    /** Bookmarked state of a URL. */
     public interface BookmarkState {
         /**
          * @param url URL to check.
@@ -75,7 +75,7 @@ public class BasicSuggestionProcessor extends BaseSuggestionViewProcessor {
 
     @Override
     public PropertyModel createModel() {
-        return new PropertyModel(SuggestionViewProperties.ALL_KEYS);
+        return createPropertyModel(SuggestionViewProperties.ALL_KEYS);
     }
 
     @VisibleForTesting

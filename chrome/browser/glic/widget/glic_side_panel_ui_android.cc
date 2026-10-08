@@ -20,6 +20,7 @@
 #include "chrome/browser/glic/service/metrics/glic_instance_metrics.h"
 #include "chrome/browser/glic/widget/conversions.h"
 #include "chrome/browser/glic/widget/glic_inactive_side_panel_ui_android.h"
+#include "chrome/browser/glic/widget/web_contents_delegate_util.h"
 #include "chrome/browser/media/webrtc/media_capture_devices_dispatcher.h"
 #include "chrome/browser/ui/browser_window/public/browser_collection.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
@@ -31,7 +32,6 @@
 #include "content/public/browser/render_widget_host_view.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/common/drop_data.h"
-#include "printing/buildflags/buildflags.h"
 #include "third_party/blink/public/common/input/web_input_event.h"
 #include "third_party/blink/public/common/mediastream/media_stream_request.h"
 #include "third_party/blink/public/mojom/mediastream/media_stream.mojom.h"
@@ -40,10 +40,6 @@
 #include "ui/base/base_window.h"
 #include "ui/content_accelerators/accelerator_util.h"
 #include "ui/events/keycodes/keyboard_codes.h"
-
-#if BUILDFLAG(ENABLE_PRINTING)
-#include "components/printing/browser/print_composite_client.h"
-#endif
 
 namespace glic {
 
@@ -104,13 +100,17 @@ GlicSidePanelUi::GlicSidePanelUi(Profile* profile,
         browser_window->GetWindow()->IsActive());
   }
 
+  // In NoWebview mode, PrivilegedWebContents owns the WebContentsDelegate.
+  // We attach as its EmbedderDelegate to receive non-security callbacks
+  // (such as zoom changes and keyboard events).
+  // TODO(crbug.com/534807813): Plumb remaining required delegate callbacks via
+  // PrivilegedWebContents APIs instead of setting the delegate directly.
   content::WebContents* web_contents = delegate_->host().webui_contents();
-  if (web_contents) {
-    web_contents->SetDelegate(this);
-  }
+  SetWebContentsDelegate(web_contents, /*delegate=*/this);
 
   glic_side_panel_coordinator->SetWebContents(web_contents);
 
+  host_observation_.Observe(&delegate_->host());
   panel_state_.kind = mojom::PanelStateKind::kAttached;
 }
 
@@ -121,9 +121,8 @@ GlicSidePanelUi::~GlicSidePanelUi() {
   panel_focus_dependent_hotkey_manager_.reset();
   panel_visibility_dependent_hotkey_manager_.reset();
   content::WebContents* web_contents = delegate_->host().webui_contents();
-  if (web_contents && web_contents->GetDelegate() == this) {
-    web_contents->SetDelegate(nullptr);
-  }
+  SetWebContentsDelegate(web_contents, /*delegate=*/nullptr,
+                         /*expected_delegate=*/this);
 }
 
 Host::EmbedderDelegate* GlicSidePanelUi::GetHostEmbedderDelegate() {
@@ -246,6 +245,19 @@ void GlicSidePanelUi::OnReload() {
   }
 }
 
+void GlicSidePanelUi::ActiveWebContentsChanged(
+    content::WebContents* new_contents) {
+  if (auto* glic_side_panel_coordinator = GetGlicSidePanelCoordinator()) {
+    content::WebContents* old_contents = delegate_->host().webui_contents();
+    if (old_contents && old_contents != new_contents) {
+      SetWebContentsDelegate(old_contents, /*delegate=*/nullptr,
+                             /*expected_delegate=*/this);
+    }
+    SetWebContentsDelegate(new_contents, /*delegate=*/this);
+    glic_side_panel_coordinator->SetWebContents(new_contents);
+  }
+}
+
 void GlicSidePanelUi::OnBrowserActivated(BrowserWindowInterface* browser) {
   if (tab_ && tab_->GetBrowserWindowInterface() == browser) {
     delegate_->OnEmbedderWindowActivationChanged(true);
@@ -346,19 +358,6 @@ void GlicSidePanelUi::RunFileChooser(
                                    params);
 }
 
-void GlicSidePanelUi::PrintCrossProcessSubframe(
-    content::WebContents* web_contents,
-    const gfx::Rect& rect,
-    int document_cookie,
-    content::RenderFrameHost* subframe_host) const {
-#if BUILDFLAG(ENABLE_PRINTING)
-  auto* client = printing::PrintCompositeClient::FromWebContents(web_contents);
-  if (client) {
-    client->PrintCrossProcessSubframe(rect, document_cookie, subframe_host);
-  }
-#endif
-}
-
 void GlicSidePanelUi::FocusIfOpen() {
   if (IsShowing()) {
     Focus();
@@ -425,6 +424,12 @@ bool GlicSidePanelUi::HandleKeyboardEvent(
   }
   return web_contents_delegate_android::WebContentsDelegateAndroid::
       HandleKeyboardEvent(source, event);
+}
+
+void GlicSidePanelUi::ContentsZoomChange(bool zoom_in) {
+  delegate_->host().Zoom(
+      zoom_in ? mojom::ZoomAction::kZoomIn : mojom::ZoomAction::kZoomOut,
+      ZoomSource::kScroll);
 }
 
 }  // namespace glic

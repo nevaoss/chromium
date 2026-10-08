@@ -24,11 +24,13 @@ import android.content.res.Configuration;
 import android.graphics.Rect;
 import android.graphics.drawable.Drawable;
 import android.os.Build;
+import android.os.SystemClock;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.WindowManager;
+import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
@@ -82,6 +84,7 @@ import org.chromium.chrome.browser.omnibox.suggestions.OmniboxLoadUrlParams;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.searchwidget.SearchUiCoordinator;
 import org.chromium.chrome.browser.tab.Tab;
+import org.chromium.chrome.browser.tab.TabLaunchType;
 import org.chromium.chrome.browser.tab.TabObscuringHandler;
 import org.chromium.chrome.browser.tab.TabSelectionType;
 import org.chromium.chrome.browser.tab_group_sync.TabGroupSyncServiceFactory;
@@ -379,6 +382,29 @@ public class TabSearchOverlayCoordinatorUnitTest {
     }
 
     @Test
+    public void testTouchCloseButton_dismissesOnFirstTap() {
+        showOverlay();
+        var watcher =
+                HistogramWatcher.newSingleRecordWatcher(
+                        "Android.TabSearch.DismissalReason", TabSearchDismissalReason.CLOSE_BUTTON);
+        ImageButton closeButton = mPanelContainer.findViewById(R.id.tab_search_close_button);
+        assertNotNull(closeButton);
+
+        long now = SystemClock.uptimeMillis();
+        MotionEvent downEvent = MotionEvent.obtain(now, now, MotionEvent.ACTION_DOWN, 0f, 0f, 0);
+        closeButton.dispatchTouchEvent(downEvent);
+        downEvent.recycle();
+
+        MotionEvent upEvent = MotionEvent.obtain(now, now, MotionEvent.ACTION_UP, 0f, 0f, 0);
+        closeButton.dispatchTouchEvent(upEvent);
+        upEvent.recycle();
+        ShadowLooper.idleMainLooper();
+
+        watcher.assertExpected();
+        assertOverlayHidden();
+    }
+
+    @Test
     public void testHide_hidesOverlayAndClearsFocus() {
         showOverlay();
         var watcher =
@@ -392,6 +418,7 @@ public class TabSearchOverlayCoordinatorUnitTest {
 
     @Test
     public void testLoadUrl_regular() {
+        when(mTabModel.getCount()).thenReturn(3);
         showOverlay();
         verifySearchUiCoordinatorInitialized();
 
@@ -416,10 +443,16 @@ public class TabSearchOverlayCoordinatorUnitTest {
         assertTrue(
                 intent.getBooleanExtra(WebappConstants.REUSE_URL_MATCHING_TAB_ELSE_NEW_TAB, false));
         assertFalse(intent.getBooleanExtra(IntentHandler.EXTRA_OPEN_NEW_INCOGNITO_TAB, false));
+        assertEquals(
+                3, intent.getIntExtra(IntentHandler.EXTRA_TAB_INDEX, TabModel.INVALID_TAB_INDEX));
+        assertEquals(
+                Integer.valueOf(TabLaunchType.FROM_OMNIBOX),
+                IntentHandler.getTabLaunchType(intent));
     }
 
     @Test
     public void testLoadUrl_incognito() {
+        when(mTabModel.getCount()).thenReturn(5);
         showOverlay();
         verifySearchUiCoordinatorInitialized();
 
@@ -444,6 +477,36 @@ public class TabSearchOverlayCoordinatorUnitTest {
         assertTrue(
                 intent.getBooleanExtra(WebappConstants.REUSE_URL_MATCHING_TAB_ELSE_NEW_TAB, false));
         assertTrue(intent.getBooleanExtra(IntentHandler.EXTRA_OPEN_NEW_INCOGNITO_TAB, false));
+        assertEquals(
+                5, intent.getIntExtra(IntentHandler.EXTRA_TAB_INDEX, TabModel.INVALID_TAB_INDEX));
+        assertEquals(
+                Integer.valueOf(TabLaunchType.FROM_OMNIBOX),
+                IntentHandler.getTabLaunchType(intent));
+    }
+
+    @Test
+    public void testLoadUrl_nullModel() {
+        when(mTabModelSelector.getModel(false)).thenReturn(null);
+        showOverlay();
+        verifySearchUiCoordinatorInitialized();
+
+        OverrideUrlLoadingDelegate delegate = mOverrideUrlLoadingDelegateCaptor.getValue();
+        OmniboxLoadUrlParams params =
+                new OmniboxLoadUrlParams.Builder(
+                                "https://www.google.com/search?q=test", PageTransition.TYPED)
+                        .build();
+        boolean handled = delegate.willHandleLoadUrlWithPostData(params, /* incognito= */ false);
+        assertTrue(handled);
+        assertFalse(mCoordinator.isVisible());
+
+        Intent intent = Shadows.shadowOf(mActivity).getNextStartedActivity();
+        assertNotNull(intent);
+        assertEquals(
+                TabModel.INVALID_TAB_INDEX,
+                intent.getIntExtra(IntentHandler.EXTRA_TAB_INDEX, TabModel.INVALID_TAB_INDEX));
+        assertEquals(
+                Integer.valueOf(TabLaunchType.FROM_OMNIBOX),
+                IntentHandler.getTabLaunchType(intent));
     }
 
     @Test
@@ -954,31 +1017,74 @@ public class TabSearchOverlayCoordinatorUnitTest {
     }
 
     @Test
-    public void testPanelTopMargin_FullscreenVsDesktopWindowing() {
-        // In fullscreen / split screen (not in desktop windowing), top margin is offset by
-        // (tabStripHeight - reservedTopPadding - hairlineGap).
-        when(mAppHeaderState.isInDesktopWindow()).thenReturn(false);
+    public void testPanelTopMargin_AlignsWithControlContainer() {
+        FrameLayout controlContainer = new FrameLayout(mActivity);
+        controlContainer.setId(R.id.control_container);
+        View toolbarContainer = new View(mActivity);
+        toolbarContainer.setId(R.id.toolbar_container);
+        int tabStripHeight =
+                mActivity.getResources().getDimensionPixelSize(R.dimen.tab_strip_height);
+        toolbarContainer.setTop(48 + tabStripHeight);
+        controlContainer.addView(toolbarContainer);
+        mActivity.setContentView(controlContainer);
+
+        // Non-caption mode (e.g. fullscreen tablet): topMargin aligns with tab strip, header
+        // visible.
         showOverlay();
 
         View panelView = mPanelContainer.findViewById(R.id.tab_search_overlay_panel);
+        View headerView = mPanelContainer.findViewById(R.id.tab_search_overlay_header);
         var params = (LinearLayout.LayoutParams) panelView.getLayoutParams();
-        int expectedMargin =
-                mActivity.getResources().getDimensionPixelSize(R.dimen.tab_strip_height)
-                        - mActivity
-                                .getResources()
-                                .getDimensionPixelSize(R.dimen.tab_strip_reserved_top_padding)
-                        - mActivity
-                                .getResources()
-                                .getDimensionPixelSize(R.dimen.tab_search_overlay_hairline_gap);
-        assertEquals(expectedMargin, params.topMargin);
+        assertEquals(48, params.topMargin);
+        assertNotNull(headerView);
+        assertEquals(View.VISIBLE, headerView.getVisibility());
 
-        // In desktop windowing mode, top margin is 0.
+        // In desktop windowing mode (freeform window, caption offset = 0): topMargin is 0,
+        // header remains visible.
         mCoordinator.hide(TabSearchDismissalReason.CLOSE_BUTTON);
         when(mAppHeaderState.isInDesktopWindow()).thenReturn(true);
+        when(mAppHeaderState.getAppHeaderHeight()).thenReturn(144);
+        when(mAppHeaderState.getCaptionControlsTopOffset()).thenReturn(0);
         showOverlay();
 
         params = (LinearLayout.LayoutParams) panelView.getLayoutParams();
         assertEquals(0, params.topMargin);
+        assertEquals(View.VISIBLE, headerView.getVisibility());
+
+        // In desktop windowing mode with status bar offset (e.g. split-screen mode):
+        // topMargin matches caption top offset so overlay aligns below the status bar.
+        mCoordinator.hide(TabSearchDismissalReason.CLOSE_BUTTON);
+        when(mAppHeaderState.getCaptionControlsTopOffset()).thenReturn(48);
+        showOverlay();
+
+        params = (LinearLayout.LayoutParams) panelView.getLayoutParams();
+        assertEquals(48, params.topMargin);
+        assertEquals(View.VISIBLE, headerView.getVisibility());
+    }
+
+    @Test
+    public void testPanelTopMargin_VerticalTabs_ConventionalState() {
+        FrameLayout rootLayout = new FrameLayout(mActivity);
+        FrameLayout controlContainer = new FrameLayout(mActivity);
+        controlContainer.setId(R.id.control_container);
+        View toolbarContainer = new View(mActivity);
+        toolbarContainer.setId(R.id.toolbar_container);
+        toolbarContainer.setTop(48);
+        controlContainer.addView(toolbarContainer);
+        rootLayout.addView(controlContainer);
+
+        View verticalRailContainer = new View(mActivity);
+        verticalRailContainer.setId(R.id.vertical_tab_rail_container);
+        rootLayout.addView(verticalRailContainer);
+        mActivity.setContentView(rootLayout);
+
+        when(mAppHeaderState.isInDesktopWindow()).thenReturn(false);
+
+        showOverlay();
+
+        View panelView = mPanelContainer.findViewById(R.id.tab_search_overlay_panel);
+        var params = (LinearLayout.LayoutParams) panelView.getLayoutParams();
+        assertEquals(48, params.topMargin);
     }
 
     @Test
@@ -1176,6 +1282,7 @@ public class TabSearchOverlayCoordinatorUnitTest {
         assertTrue(popupWindow.isFocusable());
         assertTrue(popupWindow.isOutsideTouchable());
         assertFalse(popupWindow.isClippingEnabled());
+        assertTrue(popupWindow.isAttachedInDecor());
         assertEquals(PopupWindow.INPUT_METHOD_NEEDED, popupWindow.getInputMethodMode());
         assertEquals(
                 WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE,
@@ -1211,7 +1318,7 @@ public class TabSearchOverlayCoordinatorUnitTest {
         ImageButton closeButton = mPanelContainer.findViewById(R.id.tab_search_close_button);
         assertNotNull(closeButton);
         assertTrue(closeButton.isFocusable());
-        assertTrue(closeButton.isFocusableInTouchMode());
+        assertFalse(closeButton.isFocusableInTouchMode());
         assertTrue(closeButton.isClickable());
         assertEquals(
                 View.IMPORTANT_FOR_ACCESSIBILITY_YES, closeButton.getImportantForAccessibility());

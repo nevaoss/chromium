@@ -20,6 +20,7 @@ namespace features {
 // alongside the definition of their values in the .cc file.
 
 BASE_DECLARE_FEATURE(kUseActionsForBrowserCommands);
+bool ShouldUseActionsForBrowserCommands();
 
 BASE_DECLARE_FEATURE(kAllowEyeDropperWGCScreenCapture);
 
@@ -45,6 +46,7 @@ BASE_DECLARE_FEATURE(kTabStripDeclutter);
 BASE_DECLARE_FEATURE(kToolbarGlowUp);
 BASE_DECLARE_FEATURE_PARAM(bool, kToolbarGlowUpReloadEnabled);
 BASE_DECLARE_FEATURE_PARAM(bool, kToolbarGlowUpBackForwardEnabled);
+BASE_DECLARE_FEATURE_PARAM(bool, kToolbarGlowUpBookmarkEnabled);
 BASE_DECLARE_FEATURE(kMenuSimplification);
 BASE_DECLARE_FEATURE(kTabGroupColorRefresh);
 BASE_DECLARE_FEATURE(kWebuiRefresh2026);
@@ -58,9 +60,11 @@ bool IsTabStripDeclutterEnabled();
 bool IsToolbarGlowUpEnabled();
 bool IsToolbarGlowUpReloadEnabled();
 bool IsToolbarGlowUpBackForwardEnabled();
+bool IsToolbarGlowUpBookmarkEnabled();
 bool IsMenuSimplificationEnabled();
 bool IsTabGroupColorRefreshEnabled();
 bool IsWebuiRefresh2026Enabled();
+bool IsSettingsRefresh2026Enabled();
 
 #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
 
@@ -264,7 +268,6 @@ BASE_DECLARE_FEATURE_PARAM(int, kSidePanelFlyoverDurationMs);
 BASE_DECLARE_FEATURE(kUseDefaultDeadlineWhenAnimatingBounds);
 
 // TODO(crbug.com/460764864): Cleanup all the enterprise badging feature flags.
-BASE_DECLARE_FEATURE(kEnterpriseProfileBadgingForMenu);
 BASE_DECLARE_FEATURE(kNTPFooterBadgingPolicies);
 
 BASE_DECLARE_FEATURE(kEnterpriseManagementDisclaimerUsesCustomLabel);
@@ -376,6 +379,7 @@ BASE_DECLARE_FEATURE(kAiOverlayDialog);
 BASE_DECLARE_FEATURE_PARAM(std::string, kAiOverlayDialogApiKey);
 BASE_DECLARE_FEATURE_PARAM(std::string, kAiOverlayDialogMockJsonPath);
 BASE_DECLARE_FEATURE_PARAM(bool, kAiOverlayDialogUsesActor);
+BASE_DECLARE_FEATURE_PARAM(bool, kAiOverlayDialogUseMes);
 BASE_DECLARE_FEATURE(kAiOverlayDisableNavigationContext);
 
 BASE_DECLARE_FEATURE(kTabGroupsFocusing);
