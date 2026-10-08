@@ -71,7 +71,6 @@
 <translation id="1201402288615127009">Järgmine</translation>
 <translation id="1204075260022434100">{count,plural, =1{Järjehoidja salvestati teie kontol {email} kausta „{title}“}other{{count} järjehoidjat salvestati teie kontol {email} kausta „{title}“.}}</translation>
 <translation id="1207493287814084192">17.30</translation>
-<translation id="1215414310909588335">{count,plural, =1{1 minut kirjutamist säästetud}other{# minutit kirjutamist säästetud}}</translation>
 <translation id="1217294226280635614">Poolitatud vaade</translation>
 <translation id="1218730690561976633">Täiustatud automaattäite kasutaja kinnitamise sisselülitamine</translation>
 <translation id="1219674500290482172">Internetiga ei saa ühendust.</translation>
@@ -2113,6 +2112,7 @@ Saate igal ajal uuesti alustada.</translation>
 <translation id="7772948288262733182">Tere tulemast tagasi!</translation>
 <translation id="777637629667389858">Kui olete sisse logitud, kaitseb see teid Google'i teenustes.</translation>
 <translation id="7776604279034196531">Juurdepääs lugemisrežiimile aadressiribalt, kui see on saadaval</translation>
+<translation id="7780992949171378848">Saitidele loobumistaotluse saatmine seoses teie andmete kasutamisega</translation>
 <translation id="7781829728241885113">Eile</translation>
 <translation id="7788474973847076315">Pildista</translation>
 <translation id="7788868432173225918">Laiendatud vaatest loobumine</translation>

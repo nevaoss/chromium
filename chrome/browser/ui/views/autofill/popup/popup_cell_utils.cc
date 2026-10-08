@@ -392,6 +392,7 @@ bool IsPaymentMethodSuggestion(const Suggestion& suggestion) {
     case SuggestionType::kFillPassword:
     case SuggestionType::kFreeformFooter:
     case SuggestionType::kGeneratePasswordEntry:
+    case SuggestionType::kGmailOneTimePasswordEntry:
     case SuggestionType::kIdentityCredential:
     case SuggestionType::kInsecureContextPaymentDisabledMessage:
     case SuggestionType::kLoadingThrobber:
@@ -404,9 +405,11 @@ bool IsPaymentMethodSuggestion(const Suggestion& suggestion) {
     case SuggestionType::kManageCreditCard:
     case SuggestionType::kManageIban:
     case SuggestionType::kManageLoyaltyCard:
+    case SuggestionType::kManageOffers:
     case SuggestionType::kManageEnhancedAutofill:
     case SuggestionType::kMerchantPromoCodeEntry:
     case SuggestionType::kOneTimePasswordEntry:
+    case SuggestionType::kOpenGmailForOtps:
     case SuggestionType::kPasswordEntry:
     case SuggestionType::kPasswordFieldByFieldFilling:
     case SuggestionType::kPendingStateSignin:
@@ -686,8 +689,12 @@ std::optional<ui::ImageModel> GetIconImageModelFromIcon(Suggestion::Icon icon) {
 #else
       return std::nullopt;
 #endif
-    case Suggestion::Icon::kIban:
     case Suggestion::Icon::kOfferTag:
+      return ImageModelFromVectorIcon(::features::IsRoundedIconsEnabled()
+                                          ? vector_icons::kShoppingmodeIcon
+                                          : vector_icons::kShoppingmodeOldIcon,
+                                      kIconSize);
+    case Suggestion::Icon::kIban:
     case Suggestion::Icon::kScanCreditCard:
     case Suggestion::Icon::kCardGeneric:
     case Suggestion::Icon::kCardAmericanExpress:

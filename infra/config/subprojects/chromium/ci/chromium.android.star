@@ -4106,6 +4106,7 @@ ci.builder(
         ],
         per_test_modifications = {
             "android_browsertests": targets.mixin(
+                enable_rts_filtering = True,
                 swarming = targets.swarming(
                     shards = 25,
                 ),
@@ -4143,6 +4144,7 @@ ci.builder(
                     "--emulator-debug-tags=all",
                     "--enable-leak-checks",
                 ],
+                enable_rts_filtering = True,
                 swarming = targets.swarming(
                     shards = 47,
                 ),

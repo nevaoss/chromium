@@ -49,7 +49,6 @@ class RTCAnswerOptionsPlatform;
 class RTCOfferOptionsPlatform;
 class RTCPeerConnectionHandlerClient;
 class RTCSessionDescriptionInit;
-class RTCTrackEvent;
 class RTCVoidRequest;
 class SetLocalDescriptionRequest;
 
@@ -191,10 +190,6 @@ class MODULES_EXPORT RTCPeerConnectionHandler {
   virtual void TrackIceConnectionStateChange(
       webrtc::PeerConnectionInterface::IceConnectionState state);
 
-  // Called by the client when the "track" event is fired for a remote track
-  // added by setRemoteDescription.
-  virtual void TrackOnTrack(const RTCTrackEvent& event);
-
   // Asynchronously calls native_peer_connection_->getStats on the signaling
   // thread. (Future cleanup potential: just use the other GetStats() method?)
   void GetStandardStatsForTracker(
@@ -261,8 +256,6 @@ class MODULES_EXPORT RTCPeerConnectionHandler {
           pending_remote_description,
       std::unique_ptr<webrtc::SessionDescriptionInterface>
           current_remote_description);
-  void TrackSignalingChange(
-      webrtc::PeerConnectionInterface::SignalingState new_state);
   void OnIceConnectionChange(
       webrtc::PeerConnectionInterface::IceConnectionState new_state);
   void OnConnectionChange(
@@ -342,6 +335,9 @@ class MODULES_EXPORT RTCPeerConnectionHandler {
       webrtc::CreateSessionDescriptionObserver* observer,
       webrtc::PeerConnectionInterface::RTCOfferAnswerOptions offer_options,
       blink::TransceiverStateSurfacer* transceiver_state_surfacer);
+  void CreateAnswerOnSignalingThread(
+      webrtc::CreateSessionDescriptionObserver* observer,
+      webrtc::PeerConnectionInterface::RTCOfferAnswerOptions answer_options);
   Vector<std::unique_ptr<blink::RTCRtpSenderImpl>>::iterator FindSender(
       uintptr_t id);
   Vector<std::unique_ptr<blink::RTCRtpReceiverImpl>>::iterator FindReceiver(
@@ -375,11 +371,6 @@ class MODULES_EXPORT RTCPeerConnectionHandler {
   bool is_closed_ = false;
   // True if CloseAndUnregister has been called.
   bool is_unregistered_ = false;
-
-  // Transition from kHaveLocalOffer to kHaveRemoteOffer indicates implicit
-  // rollback in which case we need to also make visiting of kStable observable.
-  webrtc::PeerConnectionInterface::SignalingState previous_signaling_state_ =
-      webrtc::PeerConnectionInterface::kStable;
 
   // Will be reset to nullptr when the handler is `CloseAndUnregister()`-ed, so
   // it doesn't prevent the factory from being garbage-collected.

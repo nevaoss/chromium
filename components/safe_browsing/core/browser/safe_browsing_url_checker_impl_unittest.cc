@@ -19,8 +19,8 @@
 #include "base/test/task_environment.h"
 #include "base/timer/mock_timer.h"
 #include "components/safe_browsing/core/browser/db/database_manager.h"
+#include "components/safe_browsing/core/browser/db/sb_protocol_manager_util.h"
 #include "components/safe_browsing/core/browser/db/test_database_manager.h"
-#include "components/safe_browsing/core/browser/db/v4_protocol_manager_util.h"
 #include "components/safe_browsing/core/browser/db/v5_get_hash_protocol_manager.h"
 #include "components/safe_browsing/core/browser/realtime/fake_url_lookup_service.h"
 #include "components/safe_browsing/core/browser/realtime/url_lookup_service.h"
@@ -366,12 +366,12 @@ class FakeRealTimeUrlLookupService
       case SB_THREAT_TYPE_SUBRESOURCE_FILTER:
       case SB_THREAT_TYPE_CSD_ALLOWLIST:
       case DEPRECATED_SB_THREAT_TYPE_URL_PASSWORD_PROTECTION_PHISHING:
+      case DEPRECATED_SB_THREAT_TYPE_BLOCKED_AD_REDIRECT:
+      case DEPRECATED_SB_THREAT_TYPE_BLOCKED_AD_POPUP:
       case SB_THREAT_TYPE_SAVED_PASSWORD_REUSE:
       case SB_THREAT_TYPE_SIGNED_IN_SYNC_PASSWORD_REUSE:
       case SB_THREAT_TYPE_SIGNED_IN_NON_SYNC_PASSWORD_REUSE:
-      case SB_THREAT_TYPE_BLOCKED_AD_REDIRECT:
       case SB_THREAT_TYPE_AD_SAMPLE:
-      case SB_THREAT_TYPE_BLOCKED_AD_POPUP:
       case SB_THREAT_TYPE_ENTERPRISE_PASSWORD_REUSE:
       case SB_THREAT_TYPE_BILLING:
       case SB_THREAT_TYPE_APK_DOWNLOAD:

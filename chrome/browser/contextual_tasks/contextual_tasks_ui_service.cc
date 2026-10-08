@@ -4,7 +4,6 @@
 
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_service.h"
 
-#include <algorithm>
 #include <optional>
 
 #include "base/command_line.h"
@@ -1881,7 +1880,6 @@ bool ContextualTasksUiService::HandleNavigationImpl(
 
   if (is_nav_to_ai) {
     should_bypass_interception =
-        aim_eligibility_service_ &&
         aim_eligibility_service_->HasNoCobrowseParams(url_params.url);
 
     // If the page is to AI and the navigation is not same site, apply a param
@@ -2130,6 +2128,21 @@ bool ContextualTasksUiService::HandleNavigationImpl(
                "returning false, valid SRP with params or CAPTCHA URL";
         return false;
       }
+    }
+
+    // Link navigation helpers below (OnThreadLinkClicked / OpenUrl) issue
+    // a fresh load in a new tab without carrying over the guest renderer's
+    // navigation context (initiator origin, renderer-initiated flag).
+    // Restrict them to HTTP(S) and about:blank (used for window tracking).
+    // All other schemes (e.g. chrome-extension://, chrome://, file://,
+    // data:, javascript:) should not be re-dispatched by the browser and are
+    // instead left to the standard navigation flow and navigation throttles.
+    if (!url_params.url.SchemeIsHTTPOrHTTPS() &&
+        !url_params.url.IsAboutBlank()) {
+      OMNIBOX_LOG("nav_trace")
+          << "ContextualTasks navigation trace: HandleNavigationImpl "
+             "returning false, non-web scheme from embedded page";
+      return false;
     }
 
     // On mobile phones without window tracking, link navigations that request
@@ -3187,24 +3200,6 @@ bool ContextualTasksUiService::IsAiUrl(const GURL& url) {
          aim_eligibility_service_->IsAimUrl(url, GetForcedEmbeddedPageHost());
 }
 
-bool ContextualTasksUiService::IsSidePanelOpenAndRequestInSidePanel(
-    content::WebContents* web_contents) {
-  if (!web_contents) {
-    return false;
-  }
-  BrowserWindowInterface* browser =
-      webui::GetBrowserWindowInterface(web_contents);
-  if (!browser) {
-    return false;
-  }
-  auto* controller = ContextualTasksPanelController::From(browser);
-  if (!controller || !controller->IsPanelOpenForContextualTask()) {
-    return false;
-  }
-  return std::ranges::contains(controller->GetPanelWebContentsList(),
-                               web_contents);
-}
-
 bool ContextualTasksUiService::IsPendingErrorPage(const base::Uuid& task_id) {
   if (!pending_error_page_tasks_.contains(task_id)) {
     return false;
@@ -3344,6 +3339,14 @@ void ContextualTasksUiService::OnLensOverlayStateChanged(
     BrowserWindowInterface* browser_window_interface,
     bool is_showing,
     std::optional<lens::LensOverlayInvocationSource> invocation_source) {
+  for (auto& observer : observers_) {
+    observer.OnLensOverlayStateChanged(is_showing);
+  }
+
+  if (!browser_window_interface) {
+    return;
+  }
+
   auto* controller =
       ContextualTasksPanelController::From(browser_window_interface);
   if (!controller || !controller->IsPanelOpenForContextualTask()) {
@@ -3523,8 +3526,7 @@ void ContextualTasksUiService::OnImageClickedFromSourcesMenu(
 }
 
 bool ContextualTasksUiService::IsAllowedHost(const GURL& url) {
-  return aim_eligibility_service_ &&
-         aim_eligibility_service_->IsAimHost(url, GetForcedEmbeddedPageHost());
+  return aim_eligibility_service_->IsAimHost(url, GetForcedEmbeddedPageHost());
 }
 
 void ContextualTasksUiService::OnInitialThreadUrlAvailable(

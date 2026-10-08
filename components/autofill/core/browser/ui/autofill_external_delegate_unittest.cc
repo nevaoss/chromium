@@ -2391,6 +2391,15 @@ TEST_F(AutofillExternalDelegateTest, AcceptManageLoyaltyCards) {
                                           {.multi_index = {0}});
 }
 
+TEST_F(AutofillExternalDelegateTest, AcceptManageOffers) {
+  Suggestion manage_suggestion =
+      Suggestion(u"Manage offers", SuggestionType::kManageOffers);
+  EXPECT_CALL(autofill_client(),
+              ShowAutofillSettings(SuggestionType::kManageOffers));
+  external_delegate().DidAcceptSuggestion(manage_suggestion,
+                                          {.multi_index = {0}});
+}
+
 // Test that the Autofill delegate routes the merchant promo code suggestions
 // footer redirect logic correctly.
 TEST_F(AutofillExternalDelegateTest,
@@ -3880,6 +3889,102 @@ TEST_F(AutofillExternalDelegateWithAmbientAutofillTest,
   external_delegate().DidAcceptSuggestion(remove_suggestion,
                                           {.multi_index = {0}});
 
+  EXPECT_TRUE(autofill_client().GetEntitySuppressionManager()->IsSuppressed(
+      full_passport));
+}
+
+// Tests that calling `RemoveSuggestion` for a `kFillAutofillAi` suggestion
+// suppresses the corresponding entity in `EntitySuppressionManager`.
+TEST_F(AutofillExternalDelegateWithAmbientAutofillTest,
+       RemoveSuggestion_FillAutofillAi_SuppressesEntity) {
+  EntityInstance full_passport = GetPassportEntityInstanceWithRandomGuid(
+      {.record_type = EntityInstance::RecordType::kPersonalContext});
+  autofill_client().GetEntityDataManager()->OnPrefetchContextComplete(
+      personal_context_manager(), std::vector<EntityInstance>{full_passport});
+  IssueOnQuery({.fields = {{.role = PASSPORT_NUMBER}}});
+  Suggestion suggestion(SuggestionType::kFillAutofillAi);
+  suggestion.payload = Suggestion::AutofillAiPayload(full_passport.guid());
+
+  EXPECT_TRUE(external_delegate().RemoveSuggestion(suggestion));
+
+  EXPECT_TRUE(autofill_client().GetEntitySuppressionManager()->IsSuppressed(
+      full_passport));
+}
+
+// Tests that calling `RemoveSuggestion` for a `kFillAutofillAi` suggestion
+// fails and does not suppress when suppression feature is disabled.
+TEST_F(AutofillExternalDelegateWithAmbientAutofillTest,
+       RemoveSuggestion_FillAutofillAi_FeatureDisabled) {
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitAndDisableFeature(
+      features::kAutofillAmbientAutofillSuppression);
+  EntityInstance full_passport = GetPassportEntityInstanceWithRandomGuid(
+      {.record_type = EntityInstance::RecordType::kPersonalContext});
+  autofill_client().GetEntityDataManager()->OnPrefetchContextComplete(
+      personal_context_manager(), std::vector<EntityInstance>{full_passport});
+  IssueOnQuery({.fields = {{.role = PASSPORT_NUMBER}}});
+  Suggestion suggestion(SuggestionType::kFillAutofillAi);
+  suggestion.payload = Suggestion::AutofillAiPayload(full_passport.guid());
+
+  EXPECT_FALSE(external_delegate().RemoveSuggestion(suggestion));
+
+  EXPECT_FALSE(autofill_client().GetEntitySuppressionManager()->IsSuppressed(
+      full_passport));
+}
+
+// Tests that calling `RemoveSuggestion` for a `kFillAutofillAi` suggestion
+// fails when the entity is not found in EntityDataManager.
+TEST_F(AutofillExternalDelegateWithAmbientAutofillTest,
+       RemoveSuggestion_FillAutofillAi_EntityNotFound) {
+  IssueOnQuery({.fields = {{.role = PASSPORT_NUMBER}}});
+  Suggestion suggestion(SuggestionType::kFillAutofillAi);
+  suggestion.payload = Suggestion::AutofillAiPayload(
+      EntityInstance::EntityId("non-existent-guid"));
+
+  EXPECT_FALSE(external_delegate().RemoveSuggestion(suggestion));
+}
+
+// Tests that calling `RemoveSuggestion` for a `kFillAutofillAi` suggestion
+// fails and does not suppress when the entity has no merge constraints
+// satisfied.
+TEST_F(AutofillExternalDelegateWithAmbientAutofillTest,
+       RemoveSuggestion_FillAutofillAi_NoMergeConstraintsSatisfied) {
+  // Passport requires either {number} or {name, country}. Setting only {name}
+  // leaves no merge constraint satisfied.
+  EntityInstance passport = GetPassportEntityInstanceWithRandomGuid(
+      {.name = u"Alice",
+       .number = nullptr,
+       .country = nullptr,
+       .record_type = EntityInstance::RecordType::kPersonalContext});
+  autofill_client().GetEntityDataManager()->OnPrefetchContextComplete(
+      personal_context_manager(), std::vector<EntityInstance>{passport});
+  IssueOnQuery({.fields = {{.role = PASSPORT_NUMBER}}});
+  Suggestion suggestion(SuggestionType::kFillAutofillAi);
+  suggestion.payload = Suggestion::AutofillAiPayload(passport.guid());
+
+  EXPECT_FALSE(external_delegate().RemoveSuggestion(suggestion));
+  EXPECT_FALSE(
+      autofill_client().GetEntitySuppressionManager()->IsSuppressed(passport));
+}
+
+// Tests that calling `RemoveSuggestion` for a `kFillAutofillAi` suggestion
+// succeeds if the entity was already suppressed.
+TEST_F(AutofillExternalDelegateWithAmbientAutofillTest,
+       RemoveSuggestion_FillAutofillAi_AlreadySuppressed) {
+  EntityInstance full_passport = GetPassportEntityInstanceWithRandomGuid(
+      {.record_type = EntityInstance::RecordType::kPersonalContext});
+  autofill_client().GetEntityDataManager()->OnPrefetchContextComplete(
+      personal_context_manager(), std::vector<EntityInstance>{full_passport});
+  IssueOnQuery({.fields = {{.role = PASSPORT_NUMBER}}});
+  autofill_client().GetEntitySuppressionManager()->SuppressEntity(
+      full_passport);
+  ASSERT_TRUE(autofill_client().GetEntitySuppressionManager()->IsSuppressed(
+      full_passport));
+
+  Suggestion suggestion(SuggestionType::kFillAutofillAi);
+  suggestion.payload = Suggestion::AutofillAiPayload(full_passport.guid());
+
+  EXPECT_TRUE(external_delegate().RemoveSuggestion(suggestion));
   EXPECT_TRUE(autofill_client().GetEntitySuppressionManager()->IsSuppressed(
       full_passport));
 }

@@ -5,7 +5,6 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include <limits>
 #include <memory>
 #include <string_view>
 #include <tuple>
@@ -18,6 +17,7 @@
 #include "base/run_loop.h"
 #include "base/task/single_thread_task_runner.h"
 #include "base/test/metrics/histogram_tester.h"
+#include "base/test/run_until.h"
 #include "base/test/scoped_feature_list.h"
 #include "base/test/simple_test_tick_clock.h"
 #include "base/time/time.h"
@@ -69,7 +69,6 @@
 #include "mojo/public/cpp/bindings/pending_receiver.h"
 #include "mojo/public/cpp/bindings/pending_remote.h"
 #include "mojo/public/cpp/bindings/remote.h"
-#include "mojo/public/cpp/test_support/test_utils.h"
 #include "skia/ext/skia_utils_base.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -1001,6 +1000,30 @@ TEST_F(RenderWidgetHostTest, SetPopupBoundsConstrainedByDelegate) {
   static_cast<blink::mojom::PopupWidgetHost*>(host_.get())
       ->SetPopupBounds(unconstrained_bounds, base::DoNothing());
   EXPECT_EQ(gfx::Rect(5, 100, 20, 20), view_->GetViewBounds());
+}
+
+// Tests that oversized popup bounds from the renderer are clamped to the
+// display, since their area would otherwise overflow int browser side.
+TEST_F(RenderWidgetHostTest, PopupBoundsAreClampedToTheDisplay) {
+  // Let the initial screen rects settle, otherwise the popup bounds below are
+  // dropped rather than clamped.
+  ClearScreenRects();
+  ASSERT_TRUE(base::test::RunUntil(
+      [&]() { return !host_->waiting_for_screen_rects_ack_; }));
+
+  const gfx::Rect work_area =
+      display::Screen::Get()->GetPrimaryDisplay().work_area();
+  ASSERT_FALSE(work_area.IsEmpty());
+
+  constexpr gfx::Rect kHugeBounds(0, 0, 100000, 100000);
+  ASSERT_FALSE(kHugeBounds.size().GetCheckedArea().IsValid());
+  static_cast<blink::mojom::PopupWidgetHost*>(host_.get())
+      ->SetPopupBounds(kHugeBounds, base::DoNothing());
+
+  const gfx::Rect bounds = view_->GetViewBounds();
+  EXPECT_EQ(work_area.width(), bounds.width());
+  EXPECT_EQ(work_area.height(), bounds.height());
+  EXPECT_TRUE(bounds.size().GetCheckedArea().IsValid());
 }
 
 TEST_F(RenderWidgetHostTest, SynchronizeVisualProperties) {
@@ -3300,257 +3323,6 @@ TEST_F(RenderWidgetHostTest, AnimateDoubleTapZoomEmptyBounds) {
 
   static_cast<blink::mojom::FrameWidgetHost*>(host_.get())
       ->AnimateDoubleTapZoomInMainFrame(tap_point, valid_rect);
-}
-
-TEST(RenderFrameMetadataMojoTraitsTest, ValidMetadata) {
-  cc::RenderFrameMetadata input;
-  input.device_scale_factor = 2.0f;
-  input.page_scale_factor = 1.0f;
-  input.external_page_scale_factor = 1.0f;
-  input.browser_controls_metadata.top_controls_height = 100.0f;
-  input.browser_controls_metadata.top_controls_shown_ratio = 1.0f;
-  input.viewport_size_in_pixels = gfx::Size(800, 600);
-
-#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_IOS)
-  input.browser_controls_metadata.bottom_controls_height = 50.0f;
-  input.browser_controls_metadata.bottom_controls_shown_ratio = 0.5f;
-  input.browser_controls_metadata.top_controls_min_height_offset = 10.0f;
-  input.browser_controls_metadata.bottom_controls_min_height_offset = 5.0f;
-  input.min_page_scale_factor = 0.5f;
-  input.max_page_scale_factor = 4.0f;
-  input.scrollable_viewport_size = gfx::SizeF(800.0f, 600.0f);
-  input.root_layer_size = gfx::SizeF(800.0f, 2000.0f);
-#endif
-
-  cc::RenderFrameMetadata output;
-  EXPECT_TRUE(
-      mojo::test::SerializeAndDeserialize<cc::mojom::RenderFrameMetadata>(
-          input, output));
-  EXPECT_EQ(input.device_scale_factor, output.device_scale_factor);
-  EXPECT_EQ(input.page_scale_factor, output.page_scale_factor);
-  EXPECT_EQ(input.external_page_scale_factor,
-            output.external_page_scale_factor);
-  EXPECT_EQ(input.browser_controls_metadata.top_controls_height,
-            output.browser_controls_metadata.top_controls_height);
-  EXPECT_EQ(input.browser_controls_metadata.top_controls_shown_ratio,
-            output.browser_controls_metadata.top_controls_shown_ratio);
-#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_IOS)
-  EXPECT_EQ(input.browser_controls_metadata.bottom_controls_height,
-            output.browser_controls_metadata.bottom_controls_height);
-  EXPECT_EQ(input.browser_controls_metadata.bottom_controls_shown_ratio,
-            output.browser_controls_metadata.bottom_controls_shown_ratio);
-  EXPECT_EQ(input.browser_controls_metadata.top_controls_min_height_offset,
-            output.browser_controls_metadata.top_controls_min_height_offset);
-  EXPECT_EQ(input.browser_controls_metadata.bottom_controls_min_height_offset,
-            output.browser_controls_metadata.bottom_controls_min_height_offset);
-  EXPECT_EQ(input.min_page_scale_factor, output.min_page_scale_factor);
-  EXPECT_EQ(input.max_page_scale_factor, output.max_page_scale_factor);
-#endif
-}
-
-TEST(RenderFrameMetadataMojoTraitsTest, BoundaryShownRatios) {
-  cc::RenderFrameMetadata input;
-  cc::RenderFrameMetadata output;
-
-  for (float ratio : {0.0f, 0.5f, 1.0f}) {
-    input.browser_controls_metadata.top_controls_shown_ratio = ratio;
-    EXPECT_TRUE(
-        mojo::test::SerializeAndDeserialize<cc::mojom::RenderFrameMetadata>(
-            input, output));
-    EXPECT_EQ(ratio, output.browser_controls_metadata.top_controls_shown_ratio);
-
-#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_IOS)
-    input.browser_controls_metadata.bottom_controls_shown_ratio = ratio;
-    EXPECT_TRUE(
-        mojo::test::SerializeAndDeserialize<cc::mojom::RenderFrameMetadata>(
-            input, output));
-    EXPECT_EQ(ratio,
-              output.browser_controls_metadata.bottom_controls_shown_ratio);
-#endif
-  }
-}
-
-TEST(RenderFrameMetadataMojoTraitsTest, InvalidScaleFactors) {
-  cc::RenderFrameMetadata input;
-  cc::RenderFrameMetadata output;
-
-  const float invalid_scales[] = {
-      0.0f,
-      -0.001f,
-      -1.0f,
-      std::numeric_limits<float>::infinity(),
-      -std::numeric_limits<float>::infinity(),
-      std::numeric_limits<float>::quiet_NaN(),
-  };
-
-  for (float scale : invalid_scales) {
-    input = cc::RenderFrameMetadata();
-    input.device_scale_factor = scale;
-    EXPECT_FALSE(
-        mojo::test::SerializeAndDeserialize<cc::mojom::RenderFrameMetadata>(
-            input, output));
-
-    input = cc::RenderFrameMetadata();
-    input.page_scale_factor = scale;
-    EXPECT_FALSE(
-        mojo::test::SerializeAndDeserialize<cc::mojom::RenderFrameMetadata>(
-            input, output));
-
-    input = cc::RenderFrameMetadata();
-    input.external_page_scale_factor = scale;
-    EXPECT_FALSE(
-        mojo::test::SerializeAndDeserialize<cc::mojom::RenderFrameMetadata>(
-            input, output));
-  }
-
-#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_IOS)
-  const float invalid_scale_limits[] = {
-      -0.001f,
-      -1.0f,
-      std::numeric_limits<float>::infinity(),
-      -std::numeric_limits<float>::infinity(),
-      std::numeric_limits<float>::quiet_NaN(),
-  };
-
-  for (float scale : invalid_scale_limits) {
-    input = cc::RenderFrameMetadata();
-    input.min_page_scale_factor = scale;
-    EXPECT_FALSE(
-        mojo::test::SerializeAndDeserialize<cc::mojom::RenderFrameMetadata>(
-            input, output));
-
-    input = cc::RenderFrameMetadata();
-    input.max_page_scale_factor = scale;
-    EXPECT_FALSE(
-        mojo::test::SerializeAndDeserialize<cc::mojom::RenderFrameMetadata>(
-            input, output));
-  }
-
-  // Max page scale factor less than min page scale factor.
-  input = cc::RenderFrameMetadata();
-  input.min_page_scale_factor = 2.0f;
-  input.max_page_scale_factor = 1.0f;
-  EXPECT_FALSE(
-      mojo::test::SerializeAndDeserialize<cc::mojom::RenderFrameMetadata>(
-          input, output));
-#endif
-}
-
-TEST(RenderFrameMetadataMojoTraitsTest, InvalidTopControlsValues) {
-  cc::RenderFrameMetadata input;
-  cc::RenderFrameMetadata output;
-
-  const float invalid_heights[] = {
-      -0.001f,
-      -1.0f,
-      -100.0f,
-      std::numeric_limits<float>::infinity(),
-      -std::numeric_limits<float>::infinity(),
-      std::numeric_limits<float>::quiet_NaN(),
-  };
-
-  for (float height : invalid_heights) {
-    input = cc::RenderFrameMetadata();
-    input.browser_controls_metadata.top_controls_height = height;
-    EXPECT_FALSE(
-        mojo::test::SerializeAndDeserialize<cc::mojom::RenderFrameMetadata>(
-            input, output));
-  }
-
-  const float invalid_ratios[] = {
-      -0.1f,
-      -0.001f,
-      1.001f,
-      1.1f,
-      100.0f,
-      std::numeric_limits<float>::infinity(),
-      -std::numeric_limits<float>::infinity(),
-      std::numeric_limits<float>::quiet_NaN(),
-  };
-
-  for (float ratio : invalid_ratios) {
-    input = cc::RenderFrameMetadata();
-    input.browser_controls_metadata.top_controls_shown_ratio = ratio;
-    EXPECT_FALSE(
-        mojo::test::SerializeAndDeserialize<cc::mojom::RenderFrameMetadata>(
-            input, output));
-  }
-}
-
-#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_IOS)
-TEST(RenderFrameMetadataMojoTraitsTest, InvalidBottomControlsAndOffsets) {
-  cc::RenderFrameMetadata input;
-  cc::RenderFrameMetadata output;
-
-  const float invalid_heights[] = {
-      -0.001f,
-      -1.0f,
-      -100.0f,
-      std::numeric_limits<float>::infinity(),
-      -std::numeric_limits<float>::infinity(),
-      std::numeric_limits<float>::quiet_NaN(),
-  };
-
-  for (float height : invalid_heights) {
-    input = cc::RenderFrameMetadata();
-    input.browser_controls_metadata.bottom_controls_height = height;
-    EXPECT_FALSE(
-        mojo::test::SerializeAndDeserialize<cc::mojom::RenderFrameMetadata>(
-            input, output));
-
-    input = cc::RenderFrameMetadata();
-    input.browser_controls_metadata.top_controls_min_height_offset = height;
-    EXPECT_FALSE(
-        mojo::test::SerializeAndDeserialize<cc::mojom::RenderFrameMetadata>(
-            input, output));
-
-    input = cc::RenderFrameMetadata();
-    input.browser_controls_metadata.bottom_controls_min_height_offset = height;
-    EXPECT_FALSE(
-        mojo::test::SerializeAndDeserialize<cc::mojom::RenderFrameMetadata>(
-            input, output));
-  }
-
-  const float invalid_ratios[] = {
-      -0.1f,
-      -0.001f,
-      1.001f,
-      1.1f,
-      100.0f,
-      std::numeric_limits<float>::infinity(),
-      -std::numeric_limits<float>::infinity(),
-      std::numeric_limits<float>::quiet_NaN(),
-  };
-
-  for (float ratio : invalid_ratios) {
-    input = cc::RenderFrameMetadata();
-    input.browser_controls_metadata.bottom_controls_shown_ratio = ratio;
-    EXPECT_FALSE(
-        mojo::test::SerializeAndDeserialize<cc::mojom::RenderFrameMetadata>(
-            input, output));
-  }
-}
-#endif
-
-TEST_F(RenderWidgetHostTest, RenderFrameMetadataOutOfRangeMessageDisconnects) {
-  mojo::Remote<cc::mojom::RenderFrameMetadataObserverClient> client_remote;
-  mojo::PendingRemote<cc::mojom::RenderFrameMetadataObserver> observer_remote;
-  mojo::PendingReceiver<cc::mojom::RenderFrameMetadataObserver>
-      observer_receiver = observer_remote.InitWithNewPipeAndPassReceiver();
-
-  host_->RegisterRenderFrameMetadataObserver(
-      client_remote.BindNewPipeAndPassReceiver(), std::move(observer_remote));
-
-  base::RunLoop run_loop;
-  client_remote.set_disconnect_handler(run_loop.QuitClosure());
-
-  cc::RenderFrameMetadata invalid_metadata;
-  invalid_metadata.browser_controls_metadata.top_controls_shown_ratio = 100.0f;
-
-  client_remote->OnRenderFrameMetadataChanged(1u, invalid_metadata);
-  run_loop.Run();
-
-  EXPECT_FALSE(client_remote.is_connected());
 }
 
 }  // namespace content

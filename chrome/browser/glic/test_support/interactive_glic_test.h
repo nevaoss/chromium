@@ -24,7 +24,7 @@
 #include "base/types/expected.h"
 #include "chrome/browser/actor/actor_keyed_service.h"
 #include "chrome/browser/actor/actor_test_util.h"
-#include "chrome/browser/actor/ui/actor_ui_state_manager_interface.h"
+#include "chrome/browser/actor/ui/actor_ui_state_manager.h"
 #include "chrome/browser/glic/glic_pref_names.h"
 #include "chrome/browser/glic/host/glic.mojom.h"
 #include "chrome/browser/glic/host/glic_cookie_synchronizer.h"
@@ -182,8 +182,7 @@ class InteractiveGlicTestMixin : public T {
     instance_tracker_.SetProfile(T::GetProfile());
     LOG(INFO) << "InteractiveGlicTest: setting up";
     CHECK(glic_test_environment_.SetupEmbeddedTestServers(
-        Test::embedded_test_server(), &Test::embedded_https_test_server(),
-        use_https_for_glic_url_));
+        Test::embedded_test_server(), &Test::embedded_https_test_server()));
 
     LOG(INFO) << "InteractiveGlicTest: done setting up";
 
@@ -210,33 +209,69 @@ class InteractiveGlicTestMixin : public T {
     Api::MultiStep steps;
     switch (instrument_mode) {
       case GlicInstrumentMode::kHostAndContents:
-        steps = Api::Steps(
-            Api::UninstrumentWebContents(kGlicContentsElementId, false),
-            Api::UninstrumentWebContents(kGlicHostElementId, false),
-            Api::InAnyContext(
-                Api::Steps(Api::InstrumentNonTabWebView(kGlicHostElementId,
-                                                        kGlicViewElementId),
-                           Api::InstrumentInnerWebContents(
-                               kGlicContentsElementId, kGlicHostElementId, 0),
-                           Api::Log("Waiting for Glic web contents ready"),
-                           Api::WaitForWebContentsReady(kGlicContentsElementId),
-                           Api::Log("Glic web contents is ready"))),
-            WaitUntil(
-                [this]() -> std::string {
-                  GlicInstanceImpl* instance = GetGlicInstanceImpl();
-                  if (!instance) {
-                    return "No glic instance for " +
-                           instance_tracker_.DescribeGlicTracking();
-                  }
-                  if (!instance->IsShowing()) {
-                    return "Glic not showing";
-                  }
-                  if (!instance->host().IsWebClientConnected()) {
-                    return "Glic host not ready";
-                  }
-                  return "showing and ready";
-                },
-                "showing and ready", "WaitForReadyAndShowing"));
+        if (features::IsGlicNoWebviewEnabled()) {
+          // In NoWebview mode, the guest WebContents is loaded directly into
+          // GlicView (top-level), so we instrument GlicView as both the host
+          // and contents rather than looking for an inner <webview>.
+          steps = Api::Steps(
+              Api::UninstrumentWebContents(kGlicContentsElementId, false),
+              Api::UninstrumentWebContents(kGlicHostElementId, false),
+              Api::InAnyContext(Api::Steps(
+                  Api::InstrumentNonTabWebView(kGlicContentsElementId,
+                                               kGlicViewElementId),
+                  Api::InstrumentNonTabWebView(kGlicHostElementId,
+                                               kGlicViewElementId),
+                  Api::Log("Waiting for Glic web contents ready"),
+                  Api::WaitForWebContentsReady(kGlicContentsElementId),
+                  Api::Log("Glic web contents is ready"))),
+              WaitUntil(
+                  [this]() -> std::string {
+                    GlicInstanceImpl* instance = GetGlicInstanceImpl();
+                    if (!instance) {
+                      return "No glic instance for " +
+                             instance_tracker_.DescribeGlicTracking();
+                    }
+                    if (!instance->IsShowing()) {
+                      return "Glic not showing";
+                    }
+                    if (!instance->host().IsWebClientConnected()) {
+                      return "Glic host not ready";
+                    }
+                    return "showing and ready";
+                  },
+                  "showing and ready", "WaitForReadyAndShowing"));
+        } else {
+          // In Webview mode, GlicView hosts the WebUI (kGlicHostElementId)
+          // and the guest WebContents (kGlicContentsElementId) is embedded
+          // as an inner WebContents within the <webview> tag.
+          steps = Api::Steps(
+              Api::UninstrumentWebContents(kGlicContentsElementId, false),
+              Api::UninstrumentWebContents(kGlicHostElementId, false),
+              Api::InAnyContext(Api::Steps(
+                  Api::InstrumentNonTabWebView(kGlicHostElementId,
+                                               kGlicViewElementId),
+                  Api::InstrumentInnerWebContents(kGlicContentsElementId,
+                                                  kGlicHostElementId, 0),
+                  Api::Log("Waiting for Glic web contents ready"),
+                  Api::WaitForWebContentsReady(kGlicContentsElementId),
+                  Api::Log("Glic web contents is ready"))),
+              WaitUntil(
+                  [this]() -> std::string {
+                    GlicInstanceImpl* instance = GetGlicInstanceImpl();
+                    if (!instance) {
+                      return "No glic instance for " +
+                             instance_tracker_.DescribeGlicTracking();
+                    }
+                    if (!instance->IsShowing()) {
+                      return "Glic not showing";
+                    }
+                    if (!instance->host().IsWebClientConnected()) {
+                      return "Glic host not ready";
+                    }
+                    return "showing and ready";
+                  },
+                  "showing and ready", "WaitForReadyAndShowing"));
+        }
         break;
       case GlicInstrumentMode::kNone:
         // no-op.
@@ -251,8 +286,25 @@ class InteractiveGlicTestMixin : public T {
     Api::MultiStep steps;
     switch (instrument_mode) {
       case GlicInstrumentMode::kHostAndContents:
-        steps = Api::Steps(WaitForGlicOpen(),
-                           WaitForWebUIState(mojom::WebUiState::kReady));
+        if (features::IsGlicNoWebviewEnabled()) {
+          steps = Api::Steps(
+              WaitForGlicOpen(),
+              WaitUntil(
+                  [this]() -> std::string {
+                    GlicInstanceImpl* instance = GetGlicInstanceImpl();
+                    if (!instance) {
+                      return "No glic instance";
+                    }
+                    if (!instance->host().IsWebClientConnected()) {
+                      return "Glic host not ready";
+                    }
+                    return "ready";
+                  },
+                  "ready", "WaitForWebClientConnected"));
+        } else {
+          steps = Api::Steps(WaitForGlicOpen(),
+                             WaitForWebUIState(mojom::WebUiState::kReady));
+        }
         break;
       case GlicInstrumentMode::kHostOnly:
         steps = Api::Steps(WaitForGlicOpen());
@@ -281,22 +333,47 @@ class InteractiveGlicTestMixin : public T {
 
     switch (instrument_mode) {
       case GlicInstrumentMode::kHostAndContents:
-        steps = Api::Steps(
-            Api::UninstrumentWebContents(kGlicContentsElementId, false),
-            Api::UninstrumentWebContents(kGlicHostElementId, false),
-            Api::ObserveState(internal::kGlicInstanceCoordinatorState,
-                              std::ref(window_controller),
-                              std::move(active_tab)),
-            Api::InAnyContext(Api::Steps(
-                Api::InstrumentNonTabWebView(kGlicHostElementId,
-                                             kGlicViewElementId),
-                Api::InstrumentInnerWebContents(kGlicContentsElementId,
-                                                kGlicHostElementId, 0),
-                Api::WaitForWebContentsReady(kGlicContentsElementId))),
-            Api::WaitForState(internal::kGlicInstanceCoordinatorState,
-                              GlicPanelState::kOpen),
-            Api::StopObservingState(internal::kGlicInstanceCoordinatorState)
-            /*, WaitForElementVisible(kPathToGuestPanel)*/);
+        if (features::IsGlicNoWebviewEnabled()) {
+          // In NoWebview mode, the guest WebContents is loaded directly into
+          // GlicView (top-level), so we instrument GlicView as both the host
+          // and contents rather than looking for an inner <webview>.
+          steps = Api::Steps(
+              Api::UninstrumentWebContents(kGlicContentsElementId, false),
+              Api::UninstrumentWebContents(kGlicHostElementId, false),
+              Api::ObserveState(internal::kGlicInstanceCoordinatorState,
+                                std::ref(window_controller),
+                                std::move(active_tab)),
+              Api::InAnyContext(Api::Steps(
+                  Api::InstrumentNonTabWebView(kGlicContentsElementId,
+                                               kGlicViewElementId),
+                  Api::InstrumentNonTabWebView(kGlicHostElementId,
+                                               kGlicViewElementId),
+                  Api::WaitForWebContentsReady(kGlicContentsElementId))),
+              Api::WaitForState(internal::kGlicInstanceCoordinatorState,
+                                GlicPanelState::kOpen),
+              Api::StopObservingState(internal::kGlicInstanceCoordinatorState)
+              /*, WaitForElementVisible(kPathToGuestPanel)*/);
+        } else {
+          // In Webview mode, GlicView hosts the WebUI (kGlicHostElementId)
+          // and the guest WebContents (kGlicContentsElementId) is embedded
+          // as an inner WebContents within the <webview> tag.
+          steps = Api::Steps(
+              Api::UninstrumentWebContents(kGlicContentsElementId, false),
+              Api::UninstrumentWebContents(kGlicHostElementId, false),
+              Api::ObserveState(internal::kGlicInstanceCoordinatorState,
+                                std::ref(window_controller),
+                                std::move(active_tab)),
+              Api::InAnyContext(Api::Steps(
+                  Api::InstrumentNonTabWebView(kGlicHostElementId,
+                                               kGlicViewElementId),
+                  Api::InstrumentInnerWebContents(kGlicContentsElementId,
+                                                  kGlicHostElementId, 0),
+                  Api::WaitForWebContentsReady(kGlicContentsElementId))),
+              Api::WaitForState(internal::kGlicInstanceCoordinatorState,
+                                GlicPanelState::kOpen),
+              Api::StopObservingState(internal::kGlicInstanceCoordinatorState)
+              /*, WaitForElementVisible(kPathToGuestPanel)*/);
+        }
         break;
       case GlicInstrumentMode::kHostOnly:
         steps = Api::Steps(
@@ -605,7 +682,7 @@ class InteractiveGlicTestMixin : public T {
     auto steps = Api::Steps();
     if (!use_element_identifiers_) {
       steps = Api::Steps(
-          WaitForGlicOpen(), WaitForWebUIState(mojom::WebUiState::kReady),
+          WaitForGlic(GlicInstrumentMode::kHostAndContents),
           WaitUntil(
               [this]() -> std::string {
                 auto* host = GetHost();
@@ -800,7 +877,8 @@ class InteractiveGlicTestMixin : public T {
     actor::TaskId task_id =
         actor_service->CreateTask(actor::NoEnterprisePolicyChecker());
     actor::ui::StartTask start_task_event(task_id);
-    actor_service->GetActorUiStateManager()->OnUiEvent(start_task_event);
+    actor::ui::ActorUiStateManager::Get(browser()->GetProfile())
+        ->OnUiEvent(start_task_event);
   }
 
   void ReloadGlicWebui() {
@@ -935,12 +1013,6 @@ class InteractiveGlicTestMixin : public T {
         desc);
   }
 
-  // Configures whether the Glic guest URL should use HTTPS instead of HTTP.
-  // Must be called before `SetUpOnMainThread()`.
-  void SetUseHttpsForGlicUrl(bool use_https = true) {
-    use_https_for_glic_url_ = use_https;
-  }
-
   void SetGlicPagePath(const std::string& glic_page_path) {
     glic_test_environment_.SetGlicPagePath(glic_page_path);
   }
@@ -1032,7 +1104,6 @@ class InteractiveGlicTestMixin : public T {
 
   base::WeakPtr<BrowserWindowInterface> active_browser_;
   glic::GlicTestEnvironment glic_test_environment_;
-  bool use_https_for_glic_url_ = false;
   // This is the default test file. Tests can override with a different path.
   base::test::ScopedFeatureList features_;
 };

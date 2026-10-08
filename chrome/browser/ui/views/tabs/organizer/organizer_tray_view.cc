@@ -132,19 +132,9 @@ OrganizerTrayView::OrganizerTrayView(BrowserWindowInterface& browser,
 
   // Set up the default background.
   if (browser_view) {
-    auto background = std::make_unique<CustomCornersBackground>(
+    SetBackground(std::make_unique<CustomCornersBackground>(
         *this, *browser_view, organizer_panel::kOrganizerPanelBackgroundColor,
-        organizer_panel::kOrganizerPanelBackgroundColor);
-    CustomCornersBackground::Corners corners;
-    corners[CornerOrientation::kTopLeading] = background->GetWindowCorner(true);
-    corners[CornerOrientation::kBottomLeading] =
-        background->GetWindowCorner(false);
-    corners[CornerOrientation::kTopTrailing].type =
-        CustomCornersBackground::CornerType::kRounded;
-    corners[CornerOrientation::kBottomTrailing].type =
-        CustomCornersBackground::CornerType::kRounded;
-    background->SetCorners(corners);
-    SetBackground(std::move(background));
+        organizer_panel::kOrganizerPanelBackgroundColor));
   } else {
     CHECK_IS_TEST() << "Should only happen in unit tests.";
   }
@@ -190,19 +180,23 @@ void OrganizerTrayView::SetTargetWidth(int target_width) {
   InvalidateLayout(/*avoid_propagate_during_layout=*/true);
 }
 
-void OrganizerTrayView::SetPanelView(std::unique_ptr<views::View> panel_view) {
+void OrganizerTrayView::SetOrganizerPanelView(
+    std::unique_ptr<views::View> panel_view) {
   CHECK(!panel_view_);
+  // Panel view is always visible in the tray; the tray itself is not always
+  // visible.
+  panel_view->SetVisible(true);
+  panel_view->SetProperty(views::kViewIgnoredByLayoutKey, true);
   panel_view_ = AddChildView(std::move(panel_view));
-  panel_view_->SetProperty(views::kViewIgnoredByLayoutKey, true);
 }
 
-std::unique_ptr<views::View> OrganizerTrayView::TakePanelView() {
+std::unique_ptr<views::View> OrganizerTrayView::TakeOrganizerPanelView() {
   CHECK(panel_view_);
   panel_view_->SetProperty(views::kViewIgnoredByLayoutKey, false);
   return RemoveChildViewT(std::exchange(panel_view_, nullptr));
 }
 
-bool OrganizerTrayView::HasPanelView() const {
+bool OrganizerTrayView::HasOrganizerPanelView() const {
   return panel_view_;
 }
 
@@ -235,8 +229,17 @@ void OrganizerTrayView::AddedToWidget() {
   // This has to be done after there is a color provider, which happens after
   // attaching to a widget.
   int radius = 8;
-  if (auto* const bg = background()) {
-    radius = bg->AsA<CustomCornersBackground>()->default_radius();
+  if (background()) {
+    auto* const bg = background()->AsA<CustomCornersBackground>();
+    CustomCornersBackground::Corners corners;
+    corners[CornerOrientation::kTopLeading] = bg->GetWindowCorner(true);
+    corners[CornerOrientation::kBottomLeading] = bg->GetWindowCorner(false);
+    corners[CornerOrientation::kTopTrailing].type =
+        CustomCornersBackground::CornerType::kRounded;
+    corners[CornerOrientation::kBottomTrailing].type =
+        CustomCornersBackground::CornerType::kRounded;
+    bg->SetCorners(corners);
+    radius = bg->default_radius();
   }
   shadow_frame_->SetShadowCornerRadius(radius);
   shadow_frame_->SetShadowVisible(true);

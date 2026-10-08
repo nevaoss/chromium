@@ -183,6 +183,7 @@ import org.chromium.chrome.browser.readaloud.ReadAloudController;
 import org.chromium.chrome.browser.screenshot_protection.ScreenshotProtectionController;
 import org.chromium.chrome.browser.selection.SelectionPopupBackPressHandler;
 import org.chromium.chrome.browser.settings.SettingsInTab;
+import org.chromium.chrome.browser.settings.SettingsIntentUtil;
 import org.chromium.chrome.browser.settings.SettingsNavigationFactory;
 import org.chromium.chrome.browser.settings.SettingsTabUtil;
 import org.chromium.chrome.browser.share.ShareDelegate;
@@ -213,6 +214,7 @@ import org.chromium.chrome.browser.tabmodel.TabModelSelectorTabObserver;
 import org.chromium.chrome.browser.tabmodel.TabModelUtils;
 import org.chromium.chrome.browser.task_manager.TaskManager;
 import org.chromium.chrome.browser.task_manager.TaskManagerFactory;
+import org.chromium.chrome.browser.tasks.tab_management.TabGroupUiUtils;
 import org.chromium.chrome.browser.toolbar.ControlContainer;
 import org.chromium.chrome.browser.toolbar.ToolbarManager;
 import org.chromium.chrome.browser.translate.TranslateBridge;
@@ -242,7 +244,6 @@ import org.chromium.chrome.browser.ui.system.StatusBarColorController;
 import org.chromium.chrome.browser.webapps.AppInstallMenuHandler;
 import org.chromium.components.bookmarks.BookmarkId;
 import org.chromium.components.browser_ui.modaldialog.AppModalPresenter;
-import org.chromium.components.browser_ui.settings.SettingsNavigation;
 import org.chromium.components.browser_ui.util.motion.MotionEventInfo;
 import org.chromium.components.browser_ui.widget.MenuOrKeyboardActionController;
 import org.chromium.components.browser_ui.widget.gesture.BackPressHandler;
@@ -2752,25 +2753,22 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
                         getActivityTab());
             }
 
-            // On automotive, ignore density changes to prevent Chrome from exiting fullscreen.
-            // See https://crbug.com/352816133.
-            if (newConfig.densityDpi != mConfig.densityDpi) {
+            // On automotive, ignore density and fontScale changes to prevent Chrome from restarting
+            // when window size changes. See https://crbug.com/537023087.
+            if (newConfig.densityDpi != mConfig.densityDpi
+                    || newConfig.fontScale != mConfig.fontScale) {
                 if (!DeviceInfo.isAutomotive()) {
                     doRecreateActivity();
                     return;
                 }
             }
 
-            if (newConfig.fontScale != mConfig.fontScale) {
-                doRecreateActivity();
-                return;
-            }
-
             // Maintain tab state by re-parenting tabs when a Chrome window is moved between
             // displays.
             if ((newConfig.touchscreen != mConfig.touchscreen
                             || newConfig.colorMode != mConfig.colorMode)
-                    && !ChromeFeatureList.sAvoidRecreateOnTouchscreenOrColorModeChange.isEnabled()) {
+                    && !ChromeFeatureList.sAvoidRecreateOnTouchscreenOrColorModeChange
+                            .isEnabled()) {
                 doRecreateActivity();
                 return;
             }
@@ -2993,9 +2991,20 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
                             .createNewTab(params, TabLaunchType.FROM_CHROME_UI, getActivityTab());
                 }
             } else {
-                SettingsNavigation settingsNavigation =
-                        SettingsNavigationFactory.createSettingsNavigation();
-                settingsNavigation.startSettings(this);
+                // Don't use SettingsNavigation.startSettings() here. On foldables
+                // SettingsInTab.isEnabled() is true even while folded (so that an already-open
+                // settings tab survives folding), and SettingsNavigationImpl re-derives the
+                // tab-vs-activity decision from it, which would reverse the choice made above.
+                // Build the intent directly to force SettingsActivity. See crbug.com/561692651.
+                Intent intent =
+                        SettingsIntentUtil.createIntent(
+                                this,
+                                /* fragmentName= */ null,
+                                /* fragmentArgs= */ null,
+                                /* addToBackStack= */ false,
+                                /* tag= */ null,
+                                /* useSettingsInTab= */ false);
+                IntentUtils.safeStartActivity(this, intent);
             }
             RecordUserAction.record("MobileMenuSettings");
             RecordHistogram.recordEnumeratedHistogram(
@@ -3137,19 +3146,22 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
         }
 
         if (id == R.id.tab_group_tab_menu_item) {
-            assert menuItemData != null
-                    && menuItemData.containsKey(AppMenuPropertiesDelegateImpl.TAB_ID_BUNDLE_KEY);
-            @TabId int tabId = menuItemData.getInt(AppMenuPropertiesDelegateImpl.TAB_ID_BUNDLE_KEY);
-            if (ChromeFeatureList.sCrossWindowTabGroupOperations.isEnabled()) {
-                Tab tab = TabWindowManagerSingleton.getInstance().getTabById(tabId);
-                if (tab != null) {
-                    getTabCreator(tab.isIncognito())
+            assert menuItemData != null;
+            if (TabGroupUiUtils.isCrossWindowTabGroupOperationsEnabled()) {
+                String urlString =
+                        menuItemData.getString(AppMenuPropertiesDelegateImpl.TAB_URL_BUNDLE_KEY);
+                if (urlString != null) {
+                    GURL url = new GURL(urlString);
+                    assert url.isValid();
+                    getTabCreator(getCurrentTabModel().isIncognito())
                             .createNewTab(
-                                    new LoadUrlParams(tab.getUrl()),
+                                    new LoadUrlParams(url),
                                     TabLaunchType.FROM_CHROME_UI,
                                     /* parent= */ null);
                 }
             } else {
+                @TabId
+                int tabId = menuItemData.getInt(AppMenuPropertiesDelegateImpl.TAB_ID_BUNDLE_KEY);
                 TabModelUtils.selectTabById(
                         getTabModelSelector(), tabId, TabSelectionType.FROM_USER);
             }
@@ -3305,14 +3317,14 @@ public abstract class ChromeActivity extends AsyncInitializationActivity
         if (id == R.id.view_source
                 && !currentTab.isNativePage()
                 && DevToolsWindowAndroid.canViewSource(
-                        currentTab.getProfile(), currentTab.getWebContents())) {
+                        this, currentTab.getProfile(), currentTab.getWebContents())) {
             currentTab.getWebContents().getMainFrame().viewSource();
             return true;
         }
 
         if (id == R.id.dev_tools
                 && DevToolsWindowAndroid.isDevToolsAllowedFor(
-                        currentTab.getProfile(), currentTab.getWebContents())) {
+                        this, currentTab.getProfile(), currentTab.getWebContents())) {
             DevToolsWindowAndroid.openDevTools(currentTab.getWebContents());
             if (fromMenu) {
                 RecordUserAction.record("MobileMenuDevTools");

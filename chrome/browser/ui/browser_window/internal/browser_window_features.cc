@@ -32,6 +32,7 @@
 #include "chrome/browser/extensions/browser_extension_window_controller.h"
 #include "chrome/browser/glic/browser_ui/glic_iph_controller.h"
 #include "chrome/browser/glic/browser_ui/glic_split_button_controller.h"
+#include "chrome/browser/glic/browser_ui/glic_split_button_delegate_impl.h"
 #include "chrome/browser/glic/public/glic_enabling.h"
 #include "chrome/browser/glic/public/glic_keyed_service.h"
 #include "chrome/browser/glic/public/glic_keyed_service_factory.h"
@@ -42,6 +43,8 @@
 #include "chrome/browser/sessions/session_service_factory.h"
 #include "chrome/browser/skills/skills_ui_window_controller.h"
 #include "chrome/browser/tab_group_sync/tab_group_sync_service_factory.h"
+#include "chrome/browser/ttc/core/entrypoint_controller.h"
+#include "chrome/browser/ttc/core/ttc_keyed_service.h"
 #include "chrome/browser/ui/ai_overlay_dialog/ai_overlay_dialog_controller_views.h"
 #include "chrome/browser/ui/animation/browser_animation_controller.h"
 #include "chrome/browser/ui/bookmarks/bookmark_bar_controller.h"
@@ -107,7 +110,7 @@
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/tabs/tab_strip_prefs.h"
 #include "chrome/browser/ui/tabs/vertical_tab_iph_controller.h"
-#include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h"
+#include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller_impl.h"
 #include "chrome/browser/ui/toasts/toast_features.h"
 #include "chrome/browser/ui/toasts/toast_service.h"
 #include "chrome/browser/ui/toolbar/chrome_labs/chrome_labs_utils.h"
@@ -598,8 +601,9 @@ void BrowserWindowFeatures::Init(BrowserWindowInterface* browser) {
             GetUserDataFactory().CreateInstance<glic::GlicIphController>(
                 *browser, browser, *glic_service);
         glic_split_button_controller_ =
-            std::make_unique<glic::GlicSplitButtonController>(browser,
-                                                              glic_service);
+            std::make_unique<glic::GlicSplitButtonController>(
+                browser, std::make_unique<glic::GlicSplitButtonDelegateImpl>(
+                             browser, glic_service));
       }
     }
 
@@ -646,8 +650,8 @@ void BrowserWindowFeatures::Init(BrowserWindowInterface* browser) {
 
     vertical_tab_strip_state_controller_ =
         GetUserDataFactory()
-            .CreateInstance<tabs::VerticalTabStripStateController>(
-                *browser, browser, profile->GetPrefs(),
+            .CreateInstance<tabs::VerticalTabStripStateControllerImpl>(
+                *browser, *browser, profile->GetPrefs(),
                 browser_actions_->root_action_item(),
                 SessionServiceFactory::GetForProfile(browser_->GetProfile()),
                 browser_->GetSessionID(), restored_state_collapsed,
@@ -1094,6 +1098,13 @@ void BrowserWindowFeatures::InitPostWindowConstruction(
                                                                       browser);
     }
 
+    if (ttc::TtcKeyedService* ttc_service =
+            ttc::TtcKeyedService::Get(profile)) {
+      ttc_entrypoint_controller_ =
+          GetUserDataFactory().CreateInstance<ttc::EntrypointController>(
+              *browser, *browser, *ttc_service);
+    }
+
     if (base::FeatureList::IsEnabled(
             feature_engagement::kIPHVerticalTabstripTutorialFeature)) {
       vertical_tab_iph_controller_ =
@@ -1140,6 +1151,7 @@ void BrowserWindowFeatures::TearDownPreBrowserWindowDestruction() {
   // TYPE_NORMAL members.
   send_tab_to_self_iph_controller_.reset();
   vertical_tab_iph_controller_.reset();
+  ttc_entrypoint_controller_.reset();
   split_view_iph_controller_.reset();
   split_tab_highlight_controller_.reset();
   sharing_window_controller_.reset();

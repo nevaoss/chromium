@@ -144,13 +144,12 @@ class OmniboxEverywhereMostVisitedPrefObserver
   }
 };
 
-void AddMostVisitedSourceStrings(content::WebUIDataSource* source,
-                                 Profile* profile) {
+void AddMostVisitedSourceStrings(content::WebUIDataSource* source) {
   source->AddBoolean("omniboxEverywhereMostVisitedEnabled",
                      omnibox::kOmniboxEverywhereMostVisitedParam.Get());
   source->AddBoolean(
-      "omniboxEverywhereShowShortcuts",
-      omnibox_everywhere::prefs::IsOmniboxEverywhereShortcutsVisible(profile));
+      "omniboxEverywhereMostVisitedHideTitle",
+      !omnibox::kOmniboxEverywhereMostVisitedShowTitleParam.Get());
 
   static constexpr webui::LocalizedString kMostVisitedStrings[] = {
       {"addLinkTitle", IDS_NTP_CUSTOM_LINKS_ADD_SHORTCUT_TITLE},
@@ -346,6 +345,8 @@ OmniboxEverywhereUI::OmniboxEverywhereUI(content::WebUI* web_ui)
   source->AddBoolean(
       "omniboxPopupDebugEnabled",
       base::FeatureList::IsEnabled(omnibox::kWebUIOmniboxPopupDebug));
+  source->AddBoolean("searchboxMultiline",
+                     omnibox::kOmniboxEverywhereMultilineParam.Get());
 
   source->AddBoolean("reportMetrics", true);
   source->AddString("charTypedToPaintMetricName",
@@ -383,7 +384,9 @@ OmniboxEverywhereUI::OmniboxEverywhereUI(content::WebUI* web_ui)
   source->AddBoolean("composeboxShowImageSuggest",
                      omnibox::kShowComposeboxImageSuggestions.Get());
 
-  AddMostVisitedSourceStrings(source, profile_);
+  AddMostVisitedSourceStrings(source);
+  source->AddBoolean("smallLoomnibox",
+                     omnibox::kOmniboxEverywhereSmallLoomniboxParam.Get());
 
   const bool is_fusebox_enabled = IsFuseboxEnabled(profile_);
   source->AddBoolean("searchboxShowComposeEntrypoint", is_fusebox_enabled);
@@ -428,12 +431,12 @@ OmniboxEverywhereUI::OmniboxEverywhereUI(content::WebUI* web_ui)
   source->AddBoolean("composeboxAnimationDisabled",
                      base::FeatureList::IsEnabled(
                          omnibox::kWebUIOmniboxAimPopupDisableAnimation));
-  // Disable the energy effect for the searchbox in Omnibox Everywhere so the
-  // AIM compose button renders the outer conic rainbow glow animation instead
-  // of the energy effect. The composebox explicitly enables energy effect for
-  // its own expanding glow animation.
-  source->AddBoolean("energyEffectEnabled", false);
-  source->AddBoolean("energyEffectAnimationEnabled", false);
+  source->AddBoolean(
+      "energyEffectEnabled",
+      base::FeatureList::IsEnabled(omnibox::kEnergyEffectInOmnibox));
+  source->AddBoolean(
+      "energyEffectAnimationEnabled",
+      base::FeatureList::IsEnabled(omnibox::kEnergyEffectInOmnibox));
   source->AddBoolean("composeboxEnergyEffectAnimationEnabled", true);
   source->AddBoolean("contextButtonShapeIsOblong",
                      omnibox::kContextButtonShapeIsOblong.Get());

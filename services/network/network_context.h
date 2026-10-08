@@ -42,6 +42,7 @@
 #include "net/cert/cert_verifier.h"
 #include "net/cert/cert_verify_result.h"
 #include "net/cookies/cookie_setting_override.h"
+#include "net/disk_cache/buildflags.h"
 #include "net/dns/host_resolver.h"
 #include "net/dns/public/dns_config_overrides.h"
 #include "net/first_party_sets/first_party_set_metadata.h"
@@ -591,6 +592,12 @@ class COMPONENT_EXPORT(NETWORK_SERVICE) NetworkContext
       ClearSharedDictionaryCacheForIsolationKeyCallback callback) override;
   void ClearSharedDictionarySessionOnlyData(
       ClearSharedDictionarySessionOnlyDataCallback callback) override;
+#if BUILDFLAG(ENABLE_DISK_CACHE_SQL_BACKEND)
+  void RegisterHttpCacheClient(
+      const net::NetworkIsolationKey& key,
+      mojo::PendingRemote<network::mojom::SharedHttpCacheClientFactory>
+          shared_http_cache_client) override;
+#endif  // BUILDFLAG(ENABLE_DISK_CACHE_SQL_BACKEND)
   void GetSharedDictionaryUsageInfo(
       GetSharedDictionaryUsageInfoCallback callback) override;
   void GetSharedDictionaryInfo(
@@ -848,11 +855,17 @@ class COMPONENT_EXPORT(NETWORK_SERVICE) NetworkContext
       net::handles::NetworkHandle bound_network);
   scoped_refptr<SessionCleanupCookieStore> MakeSessionCleanupCookieStore()
       const;
+
+  // These values are persisted to logs. Entries should not be renumbered and
+  // numeric values should never be reused.
+  //
+  // LINT.IfChange(ClearHttpCacheMode)
   enum class ClearHttpCacheMode {
     kPhysical = 0,
     kLogical = 1,
     kMaxValue = kLogical,
   };
+  // LINT.ThenChange(//tools/metrics/histograms/metadata/network/enums.xml:NetworkServiceClearHttpCacheMode)
 
   void ClearHttpCacheInternal(base::Time start_time,
                               base::Time end_time,

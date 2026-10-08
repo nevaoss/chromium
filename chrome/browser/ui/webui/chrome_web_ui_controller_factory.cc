@@ -19,8 +19,6 @@
 #include "build/build_config.h"
 #include "chrome/browser/about_flags.h"
 #include "chrome/browser/buildflags.h"
-#include "chrome/browser/optimization_guide/optimization_guide_keyed_service.h"
-#include "chrome/browser/optimization_guide/optimization_guide_keyed_service_factory.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/webui/about/about_ui.h"
 #include "chrome/browser/ui/webui/components/components_ui.h"
@@ -347,8 +345,6 @@ bool ChromeWebUIControllerFactory::IsWebUIAllowedToMakeNetworkRequests(
   return
       // https://crbug.com/40571286
       origin.host() == chrome::kChromeUISyncConfirmationHost ||
-      // https://crbug.com/41382586
-      origin.host() == chrome::kChromeUIInspectHost ||
       // https://crbug.com/40583261
       origin.host() == chrome::kChromeUIDownloadsHost ||
       // https://crbug.com/376417346

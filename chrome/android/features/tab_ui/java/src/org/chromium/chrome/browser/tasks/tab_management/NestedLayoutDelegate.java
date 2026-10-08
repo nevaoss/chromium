@@ -115,7 +115,7 @@ class NestedLayoutDelegate extends TabListLayoutDelegate {
                 tabIdToBackendIndexMap.get(tab.getId(), TabModel.INVALID_TAB_INDEX);
         if (targetTabModelIndex == TabModel.INVALID_TAB_INDEX) return TabList.INVALID_TAB_INDEX;
 
-        int targetTabCurrentIndex = mModelList.indexFromTabId(tab.getId());
+        int targetTabCurrentIndex = getIndexFromTabId(tab.getId());
 
         // Find the first UI card that logically comes AFTER the target tab.
         for (int currentIndex = 0; currentIndex < mModelList.size(); currentIndex++) {
@@ -166,7 +166,7 @@ class NestedLayoutDelegate extends TabListLayoutDelegate {
 
     @Override
     int onTabAdded(Tab tab) {
-        int existingIndex = mModelList.indexFromTabId(tab.getId());
+        int existingIndex = getIndexFromTabId(tab.getId());
         if (existingIndex != TabModel.INVALID_TAB_INDEX) return existingIndex;
 
         int newIndex = getInsertionIndexOfTab(tab);
@@ -200,7 +200,7 @@ class NestedLayoutDelegate extends TabListLayoutDelegate {
         super.didAddTab(tab, type);
 
         if (type == TabLaunchType.FROM_RESTORE) {
-            int tabUiIndex = mModelList.indexFromTabId(tab.getId());
+            int tabUiIndex = getIndexFromTabId(tab.getId());
             if (tabUiIndex != TabModel.INVALID_TAB_INDEX) {
                 mMediator.updateTab(
                         tabUiIndex, tab, /* isUpdatingId= */ false, /* quickMode= */ false);
@@ -325,29 +325,13 @@ class NestedLayoutDelegate extends TabListLayoutDelegate {
         Token tabGroupId = destinationTab.getTabGroupId();
         if (tabGroupId == null) return;
 
-        int destUiIndex = mModelList.indexFromTabId(destinationTab.getId());
+        int destUiIndex = getIndexFromTabId(destinationTab.getId());
         if (destUiIndex == TabModel.INVALID_TAB_INDEX) return;
 
         if (ensureGroupHeaderExists(destinationTab, tabGroupId, destUiIndex)) {
             // After adding the group header, the destination tab's model shifts by one position.
             PropertyModel childModel = mModelList.get(destUiIndex + 1).model;
             setupGroupPropertiesForChildTab(destinationTab, childModel);
-        }
-    }
-
-    @Override
-    public void didRemoveTabGroup(
-            int oldRootId,
-            @Nullable Token oldTabGroupId,
-            @DidRemoveTabGroupReason int removalReason) {
-        if (oldTabGroupId == null) {
-            return;
-        }
-        // When a group is destroyed (due to tab closures, ungrouping, etc.), the corresponding
-        // Group Header card needs to be removed as well.
-        int index = mModelList.indexFromTabGroupId(oldTabGroupId);
-        if (index != TabModel.INVALID_TAB_INDEX) {
-            mModelList.removeAt(index);
         }
     }
 
@@ -394,7 +378,7 @@ class NestedLayoutDelegate extends TabListLayoutDelegate {
      * @param oldTabGroupId The previous group ID of the tab, if any.
      */
     private void syncChildTab(Tab tab, @Nullable Token oldTabGroupId) {
-        int srcIndex = mModelList.indexFromTabId(tab.getId());
+        int srcIndex = getIndexFromTabId(tab.getId());
 
         Token newTabGroupId = tab.getTabGroupId();
         if (oldTabGroupId == null && srcIndex != TabModel.INVALID_TAB_INDEX) {
@@ -420,7 +404,7 @@ class NestedLayoutDelegate extends TabListLayoutDelegate {
             mModelList.moveItem(srcIndex, desIndex);
 
             if (newTabGroupId != null) {
-                int newTabUiIndex = mModelList.indexFromTabId(tab.getId());
+                int newTabUiIndex = getIndexFromTabId(tab.getId());
                 ensureGroupHeaderExists(tab, newTabGroupId, newTabUiIndex);
             }
         }
@@ -478,7 +462,7 @@ class NestedLayoutDelegate extends TabListLayoutDelegate {
         if (tabAfterGroupId != null) {
             return mModelList.indexFromTabGroupId(tabAfterGroupId);
         } else {
-            return mModelList.indexFromTabId(tabAfterGroupSelected.getId());
+            return getIndexFromTabId(tabAfterGroupSelected.getId());
         }
     }
 

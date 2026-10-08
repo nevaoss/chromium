@@ -354,6 +354,7 @@ test("components_unittests") {
     "//components/site_token_provider:unit_tests",
     "//components/skills:unit_tests",
     "//components/speech:unit_tests",
+    "//components/sqlite_encrypted_vfs:unit_tests",
     "//components/sqlite_proto:unit_tests",
     "//components/sqlite_vfs:unit_tests",
     "//components/ssl_errors:unit_tests",
@@ -491,6 +492,7 @@ test("components_unittests") {
       "//components/drive:unit_tests",
       "//components/embedder_support:unit_tests",
       "//components/endpoint_fetcher:unit_tests",
+      "//components/facilitated_payments/content/renderer:unit_tests",
       "//components/favicon/content:unit_tests",
       "//components/feed/core/v2:core_unit_tests",
       "//components/feed/core/v2:ios_shared_unit_tests",
@@ -1432,9 +1434,9 @@ if (use_blink) {
     if (safe_browsing_mode == 1 || is_ios) {
       sources += [ "safe_browsing/core/browser/db/v4_store_perftest.cc" ]
       deps += [
+        "//components/safe_browsing/core/browser/db:sb_protocol_manager_util",
         "//components/safe_browsing/core/browser/db:sb_store",
         "//components/safe_browsing/core/browser/db:sb_test_util",
-        "//components/safe_browsing/core/browser/db:v4_protocol_manager_util",
         "//crypto",
       ]
     }

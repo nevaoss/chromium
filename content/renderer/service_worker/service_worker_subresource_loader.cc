@@ -9,6 +9,7 @@
 #include "base/debug/crash_logging.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback.h"
+#include "base/functional/callback_helpers.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/metrics/histogram_functions.h"
@@ -872,15 +873,18 @@ void ServiceWorkerSubresourceLoader::StartResponse(
   response_source_ = response->response_source;
 
   // Synthetic and same-origin responses are same-origin to the requesting
-  // client, so the timing allow check trivially passes. Filtered responses
-  // wrap a cross-origin response for which the timing allow check must not
-  // be assumed to have passed unless the Timing-Allow-Origin check passes.
+  // client, so the timing allow check passes unless the response was fetched
+  // via a redirect chain that failed the TAO check. Filtered responses wrap
+  // a cross-origin response for which the timing allow check must not be
+  // assumed to have passed unless the response passed the TAO check and the
+  // Timing-Allow-Origin check passes for the request initiator.
   if (response_head_->response_type ==
           network::mojom::FetchResponseType::kBasic ||
       response_head_->response_type ==
           network::mojom::FetchResponseType::kDefault) {
-    response_head_->timing_allow_passed = true;
-  } else if (resource_request_.request_initiator &&
+    response_head_->timing_allow_passed = response->timing_allow_passed;
+  } else if (response->timing_allow_passed &&
+             resource_request_.request_initiator &&
              response_head_->parsed_headers &&
              network::TimingAllowOriginCheck(
                  response_head_->parsed_headers->timing_allow_origin,

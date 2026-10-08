@@ -397,6 +397,7 @@ chromium-metrics-reviews@google.com.
   <int value="123" label="AutofillWalletReminderNoticeShown"/>
   <int value="124" label="AutofillAtMemoryDoubleCtrlTriggerEnabled"/>
   <int value="125" label="AutofillAtMemoryShortcut"/>
+  <int value="126" label="SubscriptionEligibilitySubscriptionBenefits"/>
 <!-- LINT.ThenChange(/components/sync_preferences/common_syncable_prefs_database.cc:CommonSyncablePref)-->
 
 <!-- LINT.IfChange(ChromeSyncablePref) -->
@@ -848,10 +849,11 @@ chromium-metrics-reviews@google.com.
   <int value="200015" label="LevelUpHighestLevel"/>
   <int value="200016" label="LevelUpUIEnabled"/>
   <int value="200017" label="LevelUpTabsDeclutteredStat"/>
-  <int value="200018" label="LevelUpTypingSavedStat"/>
+  <int value="200018" label="LevelUpPasswordsAutofilledStat"/>
   <int value="200019" label="LevelUpPasswordsVerifiedStat"/>
   <int value="200020" label="LevelUpPhotoSearchesPerformedStat"/>
   <int value="200021" label="LevelUpOptIn"/>
+  <int value="200022" label="LevelUpNewTasksNotificationEnabled"/>
 <!-- LINT.ThenChange(/ios/chrome/browser/sync/model/prefs/ios_chrome_syncable_prefs_database.cc:IosSyncablePref)-->
 
 </enum>
@@ -1029,7 +1031,7 @@ chromium-metrics-reviews@google.com.
   <int value="46" label="OS Preferences"/>
   <int value="47" label="OS Priority Preferences"/>
   <int value="48" label="Sharing Message"/>
-  <int value="49" label="Autofill Wallet Offer"/>
+  <int value="49" label="(Obsolete) Autofill Wallet Offer"/>
   <int value="50" label="Workspace Desk"/>
   <int value="51" label="History"/>
   <int value="52" label="Printers Authorization Servers"/>

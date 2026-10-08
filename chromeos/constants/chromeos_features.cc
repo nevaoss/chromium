@@ -12,10 +12,6 @@
 
 namespace chromeos::features {
 
-// Enables smaller battery badge icons to improve legibility of the battery
-// percentage.
-BASE_FEATURE(kBatteryBadgeIcon, base::FEATURE_ENABLED_BY_DEFAULT);
-
 // Enables better quick settings UI for bluetooth and wifi error states.
 BASE_FEATURE(kBluetoothWifiQSPodRefresh, base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -51,24 +47,9 @@ BASE_FEATURE(kDataControlsFileAccessDefaultDeny,
 // Feature flag used to gate preinstallation of the Gemini app.
 BASE_FEATURE(kGeminiAppPreinstall, base::FEATURE_ENABLED_BY_DEFAULT);
 
-// Enables the new Magic Boost Consent Flow.
-BASE_FEATURE(kMagicBoostRevamp, base::FEATURE_ENABLED_BY_DEFAULT);
-
-// Enables the new Magic Boost Consent Flow For Quick Answers.
-BASE_FEATURE(kMagicBoostRevampForQuickAnswers,
-             base::FEATURE_ENABLED_BY_DEFAULT);
-
 // Controls enabling / disabling the mahi feature from the feature management
 // module.
 BASE_FEATURE(kFeatureManagementMahi, base::FEATURE_DISABLED_BY_DEFAULT);
-
-
-// Changes the ChromeOS notification width size from 360px to 400px for pop-up
-// notifications and 344px to 400px for notifications in the message center.
-BASE_FEATURE(kNotificationWidthIncrease, base::FEATURE_ENABLED_BY_DEFAULT);
-
-// Controls enabling / disabling the orca feature.
-BASE_FEATURE(kOrca, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Controls enabling / disabling the orca feature for dogfood population.
 BASE_FEATURE(kOrcaDogfood, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -124,9 +105,6 @@ BASE_FEATURE(kQuickAnswersV2SettingsSubToggle,
 // Controls whether to enable Quick Answers Rich card.
 BASE_FEATURE(kQuickAnswersRichCard, base::FEATURE_DISABLED_BY_DEFAULT);
 
-// Controls whether to enable Material Next UI for Quick Answers.
-BASE_FEATURE(kQuickAnswersMaterialNextUI, base::FEATURE_ENABLED_BY_DEFAULT);
-
 // Enables CloudFileSystem for FileSystemProvider extensions.
 BASE_FEATURE(kFileSystemProviderCloudFileSystem,
              base::FEATURE_DISABLED_BY_DEFAULT);
@@ -134,11 +112,6 @@ BASE_FEATURE(kFileSystemProviderCloudFileSystem,
 // Enables a content cache in CloudFileSystem for FileSystemProvider extensions.
 BASE_FEATURE(kFileSystemProviderContentCache,
              base::FEATURE_DISABLED_BY_DEFAULT);
-
-
-bool IsBatteryBadgeIconEnabled() {
-  return base::FeatureList::IsEnabled(kBatteryBadgeIcon);
-}
 
 bool IsBluetoothWifiQSPodRefreshEnabled() {
   return base::FeatureList::IsEnabled(kBluetoothWifiQSPodRefresh);
@@ -194,14 +167,6 @@ bool IsGeminiAppPreinstallEnabled() {
   return base::FeatureList::IsEnabled(kGeminiAppPreinstall);
 }
 
-bool IsMagicBoostRevampEnabled() {
-  return base::FeatureList::IsEnabled(kMagicBoostRevamp);
-}
-
-bool IsMagicBoostRevampForQuickAnswersEnabled() {
-  return base::FeatureList::IsEnabled(kMagicBoostRevampForQuickAnswers);
-}
-
 bool IsMahiEnabled() {
   return base::FeatureList::IsEnabled(kFeatureManagementMahi);
 }
@@ -210,23 +175,14 @@ bool IsPlatformKeysChangesWave1Enabled() {
   return base::FeatureList::IsEnabled(kPlatformKeysChangesWave1);
 }
 
-bool IsNotificationWidthIncreaseEnabled() {
-  return base::FeatureList::IsEnabled(kNotificationWidthIncrease);
-}
-
 bool IsOrcaEnabled() {
   return base::FeatureList::IsEnabled(chromeos::features::kOrcaDogfood) ||
-         (base::FeatureList::IsEnabled(chromeos::features::kOrca) &&
-          base::FeatureList::IsEnabled(kFeatureManagementOrca));
+         base::FeatureList::IsEnabled(kFeatureManagementOrca);
 }
 
 bool ShouldDisableChromeComposeOnChromeOS() {
   return base::FeatureList::IsEnabled(kFeatureManagementDisableChromeCompose) ||
          IsOrcaEnabled();
-}
-
-bool IsQuickAnswersMaterialNextUIEnabled() {
-  return base::FeatureList::IsEnabled(kQuickAnswersMaterialNextUI);
 }
 
 bool IsQuickAnswersRichCardEnabled() {

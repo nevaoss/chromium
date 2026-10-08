@@ -6,7 +6,6 @@
 
 #include <stdint.h>
 
-#include <map>
 #include <memory>
 #include <optional>
 #include <string>
@@ -30,6 +29,7 @@
 #include "components/autofill/core/browser/integrators/password_manager/password_manager_delegate.h"
 #include "components/autofill/core/browser/integrators/touch_to_fill/touch_to_fill_autofill_delegate.h"
 #include "components/autofill/core/browser/payments/credit_card_access_manager.h"
+#include "components/autofill/core/browser/payments/payments_autofill_client.h"
 #include "components/autofill/core/browser/studies/autofill_ablation_study.h"
 #include "components/autofill/core/browser/studies/autofill_experiments.h"
 #include "components/autofill/core/browser/suggestions/suggestion.h"
@@ -46,7 +46,7 @@ namespace autofill {
 
 AutofillClient::PopupOpenArgs::PopupOpenArgs() = default;
 AutofillClient::PopupOpenArgs::PopupOpenArgs(
-    LocalFrameToken frame_token,
+    LocalFrameToken anchor_frame_token,
     const gfx::RectF& element_bounds,
     base::i18n::TextDirection text_direction,
     std::vector<Suggestion> suggestions,
@@ -56,7 +56,7 @@ AutofillClient::PopupOpenArgs::PopupOpenArgs(
     bool show_tabbed_popup,
     bool prefer_prev_arrow_side_on_suggestions_update,
     std::u16string search_bar_initial_value)
-    : frame_token(std::move(frame_token)),
+    : anchor_frame_token(std::move(anchor_frame_token)),
       element_bounds(element_bounds),
       text_direction(text_direction),
       suggestions(std::move(suggestions)),
@@ -244,6 +244,19 @@ AutofillClient::GetPaymentsAutofillClient() const {
   return const_cast<AutofillClient*>(this)->GetPaymentsAutofillClient();
 }
 
+payments::WalletReminderNoticeManager*
+AutofillClient::GetWalletReminderNoticeManager() {
+  payments::PaymentsAutofillClient* payments_client =
+      GetPaymentsAutofillClient();
+  return payments_client ? payments_client->GetWalletReminderNoticeManager()
+                         : nullptr;
+}
+
+const payments::WalletReminderNoticeManager*
+AutofillClient::GetWalletReminderNoticeManager() const {
+  return const_cast<AutofillClient*>(this)->GetWalletReminderNoticeManager();
+}
+
 GeoIpCountryCode AutofillClient::GetVariationConfigCountryCode() const {
   return GeoIpCountryCode(std::string());
 }
@@ -295,7 +308,7 @@ void AutofillClient::DismissAutofillAiLoadingDialog() {
 
 void AutofillClient::TriggerUserPerceptionOfAutofillSurvey(
     FillingProduct filling_product,
-    const std::map<std::string, std::string>& field_filling_stats_data) {
+    const HatsSurveyStringData& field_filling_stats_data) {
   NOTIMPLEMENTED();
 }
 

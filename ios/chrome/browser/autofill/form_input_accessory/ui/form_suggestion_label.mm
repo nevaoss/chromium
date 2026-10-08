@@ -263,6 +263,7 @@ bool IsPasswordSuggestion(FormSuggestion* suggestion) {
     case SuggestionType::kManageCreditCard:
     case SuggestionType::kManageIban:
     case SuggestionType::kManageLoyaltyCard:
+    case SuggestionType::kManageOffers:
     case SuggestionType::kManageEnhancedAutofill:
     case SuggestionType::kComposeResumeNudge:
     case SuggestionType::kComposeDisable:
@@ -302,7 +303,9 @@ bool IsPasswordSuggestion(FormSuggestion* suggestion) {
     case SuggestionType::kPendingStateSignin:
     case SuggestionType::kLoyaltyCardEntry:
     case SuggestionType::kAllLoyaltyCardsEntry:
+    case SuggestionType::kGmailOneTimePasswordEntry:
     case SuggestionType::kOneTimePasswordEntry:
+    case SuggestionType::kOpenGmailForOtps:
     case SuggestionType::kLoadingThrobber:
     case SuggestionType::kAtMemoryAiDisclosure:
     case SuggestionType::kAtMemorySearchResult:

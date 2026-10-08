@@ -239,10 +239,6 @@ BASE_FEATURE(kAutofillEnableOmniboxAutofill, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kAutofillEnablePayNowPayLaterTabs,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-// When enabled, risk data is prefetched during payments autofill flows to
-// reduce user-perceived latency.
-BASE_FEATURE(kAutofillEnablePrefetchingRiskDataForRetrieval,
-             base::FEATURE_DISABLED_BY_DEFAULT);
 
 // When enabled, users that have previously turned off payments autofill will be
 // prompted to turn it back on in instances where they can benefit from it.
@@ -261,13 +257,6 @@ BASE_FEATURE(kAutofillEnableScanCardOptionWhenNoCardsSaved,
 // When enabled, show Pix settings as a separate preference menu item instead of
 // bundling them together with the non-card payment preference menu item.
 BASE_FEATURE(kAutofillEnableSeparatePixPreferenceItem,
-             base::FEATURE_ENABLED_BY_DEFAULT);
-#endif  // BUILDFLAG(IS_ANDROID)
-
-#if BUILDFLAG(IS_ANDROID)
-// When enabled, the Touch To Fill bottom sheet on Android can be reshown after
-// a BNPL flow is dismissed by a user.
-BASE_FEATURE(kAutofillEnableTouchToFillReshowForBnpl,
              base::FEATURE_ENABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_ANDROID)
 
@@ -325,7 +314,7 @@ BASE_FEATURE(kAutofillEnableWalletReminderNotice,
 // FormFieldData::value() for import to avoid silently importing obfuscated
 // values.
 // TODO(crbug.com/526738761): Clean up after launch.
-BASE_FEATURE(kAutofillFixCvcImport, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kAutofillFixCvcImport, base::FEATURE_ENABLED_BY_DEFAULT);
 
 #if BUILDFLAG(IS_IOS)
 // When enabled, skips empty CVCs in AutofillWalletCredentialSyncBridge instead

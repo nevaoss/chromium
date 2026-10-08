@@ -23,8 +23,6 @@ static_library("app_list") {
     "app_list_model_updater_observer.h",
     "app_list_notifier_impl.cc",
     "app_list_notifier_impl.h",
-    "app_list_survey_handler.cc",
-    "app_list_survey_handler.h",
     "app_list_sync_model_sanitizer.cc",
     "app_list_sync_model_sanitizer.h",
     "app_list_syncable_service.cc",
@@ -59,7 +57,6 @@ static_library("app_list") {
     "//ash/public/cpp",
     "//base",
     "//chrome/browser:browser_public_dependencies",
-    "//chrome/browser/ash/hats",
     "//chrome/browser/profiles:profile",
     "//components/feature_engagement/public",
     "//components/search_engines",
@@ -208,6 +205,7 @@ source_set("unit_tests") {
     "//chrome/browser/ash/app_list/search/ranking:unit_tests",
     "//chrome/browser/ash/app_list/search/system_info:unit_tests",
     "//chrome/browser/ash/app_list/search/util:unit_tests",
+    "//chrome/browser/ui:settings_window_manager_chromeos",
   ]
 
   # TODO(crbug.com/40031409): Fix code that adds exit-time destructors and
@@ -253,7 +251,6 @@ source_set("browser_tests") {
     "//chrome/browser/ash/file_manager",
     "//chrome/browser/ash/file_suggest",
     "//chrome/browser/ash/file_suggest:test_support",
-    "//chrome/browser/ash/hats",
     "//chrome/browser/ash/login:test_support",
     "//chrome/browser/ash/login/demo_mode",
     "//chrome/browser/ash/login/demo_mode:test_support",
@@ -264,6 +261,8 @@ source_set("browser_tests") {
     "//chrome/browser/search_engines",
     "//chrome/browser/signin",
     "//chrome/browser/ui",
+    "//chrome/browser/ui:browser_window_header",
+    "//chrome/browser/ui:settings_window_manager_chromeos",
     "//chrome/browser/ui/ash/assistant",
     "//chrome/browser/ui/ash/login",
     "//chrome/browser/ui/ash/shelf",

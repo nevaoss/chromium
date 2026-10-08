@@ -12,6 +12,7 @@ import static org.hamcrest.Matchers.hasItems;
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
+import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 import static org.mockito.Mockito.any;
 import static org.mockito.Mockito.anyBoolean;
@@ -379,6 +380,7 @@ public class ReadAloudControllerUnitTest {
     public void tearDown() {
         Locale.setDefault(mDefaultLocale);
         mUserActionTester.tearDown();
+        mController.setPlayback(null);
         mController.destroy();
         if (mController2 != null) {
             mController2.destroy();
@@ -505,6 +507,39 @@ public class ReadAloudControllerUnitTest {
         // Verify Java playback hooks are bypassed when native playback is active.
         verify(mPlaybackHooks, never()).createPlayback(any(), any());
         verify(mNativeBridgeNatives).play(eq(12345L), eq(mWebContents));
+    }
+
+    @Test
+    public void testOnTextChunked_forwardsToNativePlayback() {
+        NativePlayback nativePlayback = Mockito.mock(NativePlayback.class);
+        mController.setPlayback(nativePlayback);
+
+        String[] chunks = new String[] {"Paragraph 1", "Paragraph 2"};
+        mController.onTextChunked(chunks);
+
+        verify(nativePlayback).onTextChunked(chunks);
+    }
+
+    @Test
+    public void testOnTextChunked_withActiveTabAndMetadata_initializesHighlighter() {
+        NativePlayback nativePlayback = Mockito.mock(NativePlayback.class);
+        when(nativePlayback.getMetadata()).thenReturn(mMetadata);
+        when(mMetadata.playbackMode()).thenReturn(PlaybackArgs.PlaybackMode.CLASSIC);
+        mController.setTimepointsSupportedForTest(mTab.getUrl().getSpec(), true);
+        mController.setPlayback(nativePlayback);
+        mController.setActivePlaybackTab(mTab);
+
+        String[] chunks = new String[] {"Paragraph 1", "Paragraph 2"};
+        mController.onTextChunked(chunks);
+
+        verify(nativePlayback).onTextChunked(chunks);
+        verify(mHighlighter).initializeJs(eq(mTab), eq(mMetadata), any(Highlighter.Config.class));
+    }
+
+    @Test
+    public void testOnTextChunked_nullPlayback_safeNoOp() {
+        mController.setPlayback(null);
+        mController.onTextChunked(new String[] {"Paragraph"});
     }
 
     @Test
@@ -2538,6 +2573,21 @@ public class ReadAloudControllerUnitTest {
         assertEquals(
                 PlaybackListener.State.STOPPED,
                 ((NativeVoicePreviewPlayback) previewPlayback).getState());
+    }
+
+    @Test
+    public void testOnPlaybackError_irrecoverable() {
+        mController.playTab(mTab, ReadAloudController.Entrypoint.MAGIC_TOOLBAR);
+        resolvePromises();
+        // Confirm tab is tracked for playback.
+        assertEquals(mTab, mController.getActivePlaybackTabSupplier().get());
+
+        mController.onPlaybackError("Distillation failed");
+
+        // Verify UI is transitioned to error state.
+        verify(mPlayerCoordinator).playbackFailed();
+        // Verify active playback tab state is cleared.
+        assertNull(mController.getActivePlaybackTabSupplier().get());
     }
 
     @Test

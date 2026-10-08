@@ -29,6 +29,7 @@
 #include "chrome/browser/sharing_hub/sharing_hub_features.h"
 #include "chrome/browser/ui/actions/chrome_action_id.h"
 #include "chrome/browser/ui/browser_actions.h"
+#include "chrome/browser/ui/managed_ui.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "ui/base/class_property.h"
 #include "ui/base/models/menu_separator_types.h"
@@ -64,6 +65,7 @@
 #include "chrome/grit/branded_strings.h"
 #include "chrome/grit/generated_resources.h"
 #include "components/bookmarks/browser/bookmark_model.h"
+#include "components/bookmarks/common/bookmark_bar_visibility_state.h"
 #include "components/bookmarks/common/bookmark_pref_names.h"
 #include "components/prefs/pref_service.h"
 #include "components/search/ntp_features.h"
@@ -152,15 +154,17 @@ class AppMenuBuilder {
   AppMenuBuilder& operator=(const AppMenuBuilder&) = delete;
   ~AppMenuBuilder() = default;
 
-  // Adds a standard row item.
-  AppMenuBuilder& AddAction(
-      actions::ActionId id,
-      std::optional<DisplayType> type = std::nullopt,
-      std::optional<std::u16string> text_override = std::nullopt,
-      std::optional<ui::ImageModel> icon_override = std::nullopt) {
-    auto item = AppMenuActionItem::CreateIndirect(
-        id, scope_, type.value_or(default_display_type_), bg_color_,
-        std::move(text_override), std::move(icon_override));
+  // Adds an action item.
+  AppMenuBuilder& AddAction(actions::ActionId id,
+                            AppMenuActionItem::ActionParams params = {}) {
+    if (!params.container_color.has_value()) {
+      params.container_color = bg_color_;
+    }
+    if (!params.display_type.has_value()) {
+      params.display_type = default_display_type_;
+    }
+    auto item =
+        AppMenuActionItem::CreateIndirect(id, scope_, std::move(params));
     if (item && parent_) {
       parent_->AddChild(std::move(item));
     }
@@ -190,11 +194,15 @@ class AppMenuBuilder {
   AppMenuBuilder& AddSubmenu(
       actions::ActionId id,
       base::FunctionRef<void(AppMenuBuilder&)> build_submenu,
-      std::optional<DisplayType> type = std::nullopt,
-      std::optional<std::u16string> text_override = std::nullopt) {
-    auto item = AppMenuActionItem::CreateIndirect(
-        id, scope_, type.value_or(default_display_type_), bg_color_,
-        std::move(text_override));
+      AppMenuActionItem::ActionParams params = {}) {
+    if (!params.container_color.has_value()) {
+      params.container_color = bg_color_;
+    }
+    if (!params.display_type.has_value()) {
+      params.display_type = default_display_type_;
+    }
+    auto item =
+        AppMenuActionItem::CreateIndirect(id, scope_, std::move(params));
     if (!item || !parent_) {
       return *this;
     }
@@ -236,7 +244,8 @@ class AppMenuBuilder {
       std::optional<base::FunctionRef<void(AppMenuBuilder&)>> build_submenu =
           std::nullopt) {
     auto item = AppMenuActionItem::CreateIndirect(
-        id, scope_, default_display_type_, bg_color_);
+        id, scope_,
+        {.display_type = default_display_type_, .container_color = bg_color_});
     if (!item || !parent_) {
       return *this;
     }
@@ -328,25 +337,27 @@ void ActionAppMenuManager::AddBlockHeaderActions(actions::ActionItem* root) {
         }
         section
             .AddAction(
-                kActionNewTab, DisplayType::kBlock,
-                /*text_override=*/new_tab_text_override,
-                /*icon_override=*/
-                ui::ImageModel::FromVectorIcon(
-                    features::IsRoundedIconsEnabled() ? kTabIcon
-                                                      : kNewTabRefreshOldIcon,
-                    ui::kColorIcon, ui::SimpleMenuModel::kDefaultIconSize))
-            .AddAction(kActionNewWindow, DisplayType::kBlock);
+                kActionNewTab,
+                {.display_type = DisplayType::kBlock,
+                 .text_override = new_tab_text_override,
+                 .icon_override = ui::ImageModel::FromVectorIcon(
+                     features::IsRoundedIconsEnabled() ? kTabIcon
+                                                       : kNewTabRefreshOldIcon,
+                     ui::kColorIcon, ui::SimpleMenuModel::kDefaultIconSize)})
+            .AddAction(kActionNewWindow, {.display_type = DisplayType::kBlock});
 
         if (!profile->IsGuestSession()) {
           if (enterprise_isolated_mode::IsolatedModeReplacesIncognito(
                   profile)) {
             section.AddAction(
-                kActionNewIsolatedWindow, DisplayType::kBlock,
-                /*text_override=*/l10n_util::GetStringUTF16(IDS_ISOLATED));
+                kActionNewIsolatedWindow,
+                {.display_type = DisplayType::kBlock,
+                 .text_override = l10n_util::GetStringUTF16(IDS_ISOLATED)});
           } else {
             section.AddAction(
-                kActionNewIncognitoWindow, DisplayType::kBlock,
-                /*text_override=*/l10n_util::GetStringUTF16(IDS_INCOGNITO));
+                kActionNewIncognitoWindow,
+                {.display_type = DisplayType::kBlock,
+                 .text_override = l10n_util::GetStringUTF16(IDS_INCOGNITO)});
           }
         }
       });
@@ -371,9 +382,10 @@ void ActionAppMenuManager::AddYourChromeActions(actions::ActionItem* root) {
                  })
                   .AddAction(kActionManageGoogleAccount)
                   .AddAction(kActionCustomizeChrome)
-                  .AddAction(kActionCloseProfile, /*type=*/std::nullopt,
-                             l10n_util::GetPluralStringFUTF16(
-                                 IDS_CLOSE_PROFILE, CountBrowsersFor(profile)))
+                  .AddAction(
+                      kActionCloseProfile,
+                      {.text_override = l10n_util::GetPluralStringFUTF16(
+                           IDS_CLOSE_PROFILE, CountBrowsersFor(profile))})
                   .AddDynamicSection([this](actions::BaseAction* parent) {
                     profile_menu_->BuildOtherProfiles(parent);
                   })
@@ -381,10 +393,10 @@ void ActionAppMenuManager::AddYourChromeActions(actions::ActionItem* root) {
                   .AddAction(kActionOpenGuestProfile)
                   .AddAction(kActionManageChromeProfiles);
             },
-            DisplayType::kRow,
-            /*text_override=*/profile_name.empty()
-                ? std::nullopt
-                : std::make_optional(std::move(profile_name)));
+            {.text_override =
+                 profile_name.empty()
+                     ? std::nullopt
+                     : std::make_optional(std::move(profile_name))});
 #endif
 
         if (!profile->IsGuestSession()) {
@@ -418,40 +430,44 @@ void ActionAppMenuManager::AddYourChromeActions(actions::ActionItem* root) {
                     .AddAction(kActionBookmarkAllTabs)
                     .AddDivider();
 
+                Profile* profile = browser_window_interface_->GetProfile();
                 if (base::FeatureList::IsEnabled(
                         ntp_features::kNtpSimplificationBookmarkBar)) {
                   sub_builder.AddSubmenu(
                       kActionBookmarkBarSubmenu, [](AppMenuBuilder& bar_sub) {
-                        bar_sub.AddAction(kActionBookmarkBarSubmenuAlwaysHide)
-                            .AddAction(kActionBookmarkBarSubmenuAlwaysShow)
-                            .AddAction(kActionBookmarkBarSubmenuOnlyOnNtp);
+                        bar_sub
+                            .AddAction(kActionBookmarkBarSubmenuAlwaysHide,
+                                       {.is_checkable = true})
+                            .AddAction(kActionBookmarkBarSubmenuAlwaysShow,
+                                       {.is_checkable = true})
+                            .AddAction(kActionBookmarkBarSubmenuOnlyOnNtp,
+                                       {.is_checkable = true});
                       });
                 } else {
-                  Profile* profile = browser_window_interface_->GetProfile();
                   const int bookmark_bar_string_id =
                       profile->GetPrefs()->GetBoolean(
                           bookmarks::prefs::kShowBookmarkBar)
                           ? IDS_HIDE_BOOKMARK_BAR
                           : IDS_SHOW_BOOKMARK_BAR;
                   sub_builder.AddAction(
-                      kActionShowBookmarkBar, /*type=*/std::nullopt,
-                      /*text_override=*/
-                      l10n_util::GetStringUTF16(bookmark_bar_string_id));
+                      kActionShowBookmarkBar,
+                      {.text_override =
+                           l10n_util::GetStringUTF16(bookmark_bar_string_id)});
                 }
 
                 sub_builder.AddAction(
-                    kActionSidePanelShowBookmarks, /*type=*/std::nullopt,
-                    /*text_override=*/
-                    l10n_util::GetStringUTF16(IDS_SHOW_BOOKMARK_SIDE_PANEL));
+                    kActionSidePanelShowBookmarks,
+                    {.text_override = l10n_util::GetStringUTF16(
+                         IDS_SHOW_BOOKMARK_SIDE_PANEL)});
 
                 const int bookmark_manager_string_id =
                     features::IsMenuSimplificationEnabled()
                         ? IDS_BOOKMARK_MANAGER_V2
                         : IDS_BOOKMARK_MANAGER;
                 sub_builder.AddAction(
-                    kActionShowBookmarkManager, /*type=*/std::nullopt,
-                    /*text_override=*/
-                    l10n_util::GetStringUTF16(bookmark_manager_string_id));
+                    kActionShowBookmarkManager,
+                    {.text_override = l10n_util::GetStringUTF16(
+                         bookmark_manager_string_id)});
 
 #if !BUILDFLAG(IS_CHROMEOS)
                 sub_builder.AddAction(kActionImportSettings);
@@ -463,11 +479,10 @@ void ActionAppMenuManager::AddYourChromeActions(actions::ActionItem* root) {
                     kActionReadingListSubmenu,
                     [](AppMenuBuilder& reading_list_sub) {
                       reading_list_sub.AddAction(kActionReadingListMenuAddTab)
-                          .AddAction(kActionSidePanelShowReadingList,
-                                     /*type=*/std::nullopt,
-                                     /*text_override=*/
-                                     l10n_util::GetStringUTF16(
-                                         IDS_READING_LIST_MENU_SHOW_UI));
+                          .AddAction(
+                              kActionSidePanelShowReadingList,
+                              {.text_override = l10n_util::GetStringUTF16(
+                                   IDS_READING_LIST_MENU_SHOW_UI)});
                     });
               });
         }
@@ -514,7 +529,7 @@ void ActionAppMenuManager::AddToolsAndActionsActions(
                       .AddAction(kActionZoomPlus)
                       .AddAction(kActionFullscreen);
                 },
-                DisplayType::kCustom)
+                {.display_type = DisplayType::kCustom})
             .AddDivider(ui::MenuSeparatorType::SPACING_SEPARATOR)
             .AddAction(kActionPrint);
 
@@ -562,23 +577,21 @@ void ActionAppMenuManager::AddToolsAndActionsActions(
               if (std::u16string install_item = web_app::GetInstallPWALabel(
                       browser_window_interface_.get());
                   !install_item.empty()) {
-                sub.AddAction(kActionInstallPwa, /*type=*/std::nullopt,
-                              /*text_override=*/install_item,
-                              /*icon_override=*/
-                              web_app::GetInstallPWAIcon(
-                                  browser_window_interface_.get()));
+                sub.AddAction(kActionInstallPwa,
+                              {.text_override = install_item,
+                               .icon_override = web_app::GetInstallPWAIcon(
+                                   browser_window_interface_.get())});
               } else if (std::u16string open_item = web_app::GetOpenPWALabel(
                              browser_window_interface_.get());
                          !open_item.empty()) {
-                sub.AddAction(kActionOpenInPwaWindow, /*type=*/std::nullopt,
-                              /*text_override=*/open_item,
-                              /*icon_override=*/
-                              ui::ImageModel::FromVectorIcon(
-                                  features::IsRoundedIconsEnabled()
-                                      ? kDesktopWindowsIcon
-                                      : kDesktopWindowsChromeRefreshOldIcon,
-                                  ui::kColorMenuIcon,
-                                  ui::SimpleMenuModel::kDefaultIconSize));
+                sub.AddAction(kActionOpenInPwaWindow,
+                              {.text_override = open_item,
+                               .icon_override = ui::ImageModel::FromVectorIcon(
+                                   features::IsRoundedIconsEnabled()
+                                       ? kDesktopWindowsIcon
+                                       : kDesktopWindowsChromeRefreshOldIcon,
+                                   ui::kColorMenuIcon,
+                                   ui::SimpleMenuModel::kDefaultIconSize)});
               }
 
               sub.AddAction(kActionCreateShortcut);
@@ -625,26 +638,24 @@ void ActionAppMenuManager::AddToolsAndActionsActions(
                 }
               }
             },
-            /*type=*/std::nullopt,
-            /*text_override=*/
-            l10n_util::GetStringUTF16(save_and_share_string_id));
+            {.text_override =
+                 l10n_util::GetStringUTF16(save_and_share_string_id)});
 
 #if BUILDFLAG(IS_CHROMEOS)
         if (display::Screen::Get()->InTabletMode()) {
           section.AddAction(
-              kActionToggleRequestTabletSite, /*type=*/std::nullopt,
-              /*text_override=*/
-              l10n_util::GetStringUTF16(IDS_TOGGLE_REQUEST_TABLET_SITE),
-              /*icon_override=*/
-              ui::ImageModel::FromVectorIcon(
-                  IsRequestingTabletSite(browser_window_interface_.get())
-                      ? (features::IsRoundedIconsEnabled()
-                             ? kMobileCheckIcon
-                             : kRequestMobileSiteCheckedOldIcon)
-                      : (features::IsRoundedIconsEnabled()
-                             ? kMobileIcon
-                             : kRequestMobileSiteUncheckedOldIcon),
-                  ui::kColorMenuIcon, ui::SimpleMenuModel::kDefaultIconSize));
+              kActionToggleRequestTabletSite,
+              {.text_override =
+                   l10n_util::GetStringUTF16(IDS_TOGGLE_REQUEST_TABLET_SITE),
+               .icon_override = ui::ImageModel::FromVectorIcon(
+                   IsRequestingTabletSite(browser_window_interface_.get())
+                       ? (features::IsRoundedIconsEnabled()
+                              ? kMobileCheckIcon
+                              : kRequestMobileSiteCheckedOldIcon)
+                       : (features::IsRoundedIconsEnabled()
+                              ? kMobileIcon
+                              : kRequestMobileSiteUncheckedOldIcon),
+                   ui::kColorMenuIcon, ui::SimpleMenuModel::kDefaultIconSize)});
         }
 #endif
 
@@ -665,30 +676,28 @@ void ActionAppMenuManager::AddToolsAndActionsActions(
                   browser_window_interface_.get())) {
             if (controller->ShouldDisplayVerticalTabs()) {
               sub.AddAction(
-                  kActionToggleVerticalTabs, /*type=*/std::nullopt,
-                  /*text_override=*/
-                  l10n_util::GetStringUTF16(IDS_SWITCH_TO_HORIZONTAL_TAB),
-                  /*icon_override=*/
-                  ui::ImageModel::FromVectorIcon(
-                      features::IsRoundedIconsEnabled() ? kToolbarIcon
-                                                        : kToolbarOldIcon,
-                      ui::kColorMenuIcon,
-                      ui::SimpleMenuModel::kDefaultIconSize));
+                  kActionToggleVerticalTabs,
+                  {.text_override =
+                       l10n_util::GetStringUTF16(IDS_SWITCH_TO_HORIZONTAL_TAB),
+                   .icon_override = ui::ImageModel::FromVectorIcon(
+                       features::IsRoundedIconsEnabled() ? kToolbarIcon
+                                                         : kToolbarOldIcon,
+                       ui::kColorMenuIcon,
+                       ui::SimpleMenuModel::kDefaultIconSize)});
             } else {
               sub.AddAction(
-                  kActionToggleVerticalTabs, /*type=*/std::nullopt,
-                  /*text_override=*/
-                  l10n_util::GetStringUTF16(IDS_SWITCH_TO_VERTICAL_TAB),
-                  /*icon_override=*/
-                  ui::ImageModel::FromVectorIcon(
-                      base::i18n::IsRTL() ? (features::IsRoundedIconsEnabled()
-                                                 ? kDockToLeftIcon
-                                                 : kDockToRightOldIcon)
-                                          : (features::IsRoundedIconsEnabled()
-                                                 ? kDockToRightIcon
-                                                 : kDockToLeftOldIcon),
-                      ui::kColorMenuIcon,
-                      ui::SimpleMenuModel::kDefaultIconSize));
+                  kActionToggleVerticalTabs,
+                  {.text_override =
+                       l10n_util::GetStringUTF16(IDS_SWITCH_TO_VERTICAL_TAB),
+                   .icon_override = ui::ImageModel::FromVectorIcon(
+                       base::i18n::IsRTL() ? (features::IsRoundedIconsEnabled()
+                                                  ? kDockToLeftIcon
+                                                  : kDockToRightOldIcon)
+                                           : (features::IsRoundedIconsEnabled()
+                                                  ? kDockToRightIcon
+                                                  : kDockToLeftOldIcon),
+                       ui::kColorMenuIcon,
+                       ui::SimpleMenuModel::kDefaultIconSize)});
             }
           }
 
@@ -712,7 +721,8 @@ void ActionAppMenuManager::AddToolsAndActionsActions(
           sub.AddDivider().AddAction(kActionDevTools);
 
           if (base::debug::IsProfilingSupported()) {
-            sub.AddDivider().AddAction(kActionProfilingEnabled);
+            sub.AddDivider().AddAction(kActionProfilingEnabled,
+                                       {.is_checkable = true});
           }
 
           if (IsChromeLabsEnabled()) {
@@ -746,8 +756,8 @@ void ActionAppMenuManager::AddFooterActions(actions::ActionItem* root) {
 
 #if BUILDFLAG(IS_CHROMEOS) && defined(OFFICIAL_BUILD)
           sub.AddAction(
-              kActionHelpPageViaMenu, /*type=*/std::nullopt,
-              /*text_override=*/l10n_util::GetStringUTF16(IDS_GET_HELP));
+              kActionHelpPageViaMenu,
+              {.text_override = l10n_util::GetStringUTF16(IDS_GET_HELP)});
 #else
           sub.AddAction(kActionHelpPageViaMenu);
 #endif
@@ -768,5 +778,17 @@ void ActionAppMenuManager::AddFooterActions(actions::ActionItem* root) {
         if (browser_defaults::kShowExitMenuItem) {
           section.AddAction(kActionExit);
         }
+
+#if !BUILDFLAG(IS_CHROMEOS)
+        Profile* profile = browser_window_interface->GetProfile();
+        if (ShouldDisplayManagedUi(profile)) {
+          section.AddAction(
+              kActionShowManagementPage,
+              {.display_type = DisplayType::kRow,
+               .text_override = GetManagedUiMenuItemLabel(profile),
+               .icon_override =
+                   ui::ImageModel::FromVectorIcon(GetManagedUiIcon(profile))});
+        }
+#endif  // !BUILDFLAG(IS_CHROMEOS)
       });
 }

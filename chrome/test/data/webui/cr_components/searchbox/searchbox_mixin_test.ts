@@ -11,6 +11,7 @@ import {createAutocompleteMatch, createAutocompleteResultForTesting, createMatch
 import type {ComposeClickEventDetail} from 'chrome://resources/cr_components/searchbox/searchbox_compose_button.js';
 import type {SearchboxDropdownElement} from 'chrome://resources/cr_components/searchbox/searchbox_dropdown.js';
 import type {SearchboxInputElement} from 'chrome://resources/cr_components/searchbox/searchbox_input.js';
+import {kDefaultSelection} from 'chrome://resources/cr_components/searchbox/searchbox_match.js';
 import type {SearchboxMatchElement} from 'chrome://resources/cr_components/searchbox/searchbox_match.js';
 import {SearchboxMixin} from 'chrome://resources/cr_components/searchbox/searchbox_mixin.js';
 import type {AriaNotificationOptions} from 'chrome://resources/cr_components/searchbox/utils.js';
@@ -48,6 +49,7 @@ class TestSearchboxMixinElement extends TestElementBase {
           @keydown="${this.onInputWrapperKeydown}">
         <cr-searchbox-input id="input"
             searchbox-icon="search.svg"
+            ?multi-line-enabled="${this.multiLineEnabled}"
             .result="${this.result}"
             .selectedMatch="${this.selectedMatch}"
             .inputKeywordModel="${this.inputKeywordModel}"
@@ -2842,11 +2844,12 @@ suite('SearchboxMixinVirtualFocusTest', () => {
         }).isVirtualFocusEventTarget_.bind(element);
 
     let inputResult = false;
-    element.getInputElement().addEventListener(
-        'keydown', (e: KeyboardEvent) => {
-          inputResult = isVirtualFocusEventTarget(e);
+    element.getInputElement().inputElement.addEventListener(
+        'keydown', (e: Event) => {
+          inputResult = isVirtualFocusEventTarget(e as KeyboardEvent);
         });
-    element.getInputElement().dispatchEvent(createKeyboardEvent('Enter'));
+    element.getInputElement().inputElement.dispatchEvent(
+        createKeyboardEvent('Enter'));
     assertTrue(inputResult);
 
     let dropdownResult = false;
@@ -2867,6 +2870,26 @@ suite('SearchboxMixinVirtualFocusTest', () => {
       composeButton.dispatchEvent(createKeyboardEvent('Enter'));
       assertTrue(composeResult);
     }
+
+    const contextChip = document.createElement('button');
+    contextChip.slot = 'contextual-entrypoint';
+    element.getInputElement().appendChild(contextChip);
+    let contextChipResult = true;
+    contextChip.addEventListener('keydown', (e: Event) => {
+      contextChipResult = isVirtualFocusEventTarget(e as KeyboardEvent);
+    });
+    contextChip.dispatchEvent(createKeyboardEvent('Tab'));
+    assertFalse(contextChipResult);
+
+    const actionBtn = document.createElement('button');
+    actionBtn.slot = 'action-buttons';
+    element.getInputElement().appendChild(actionBtn);
+    let actionBtnResult = true;
+    actionBtn.addEventListener('keydown', (e: Event) => {
+      actionBtnResult = isVirtualFocusEventTarget(e as KeyboardEvent);
+    });
+    actionBtn.dispatchEvent(createKeyboardEvent('Tab'));
+    assertFalse(actionBtnResult);
   });
 
   test(
@@ -2941,6 +2964,80 @@ suite('SearchboxMixinVirtualFocusTest', () => {
       });
 
   test(
+      'updateDropdownVisibility suppresses dropdown when multiLineEnabled ' +
+          'and input is multiline',
+      async () => {
+        element.multiLineEnabled = true;
+        const inputElement = element.getInputElement();
+        inputElement.multiLineEnabled = true;
+        await microtasksFinished();
+
+        element.result = createAutocompleteResultForTesting({
+          input: 'hello world',
+          matches: [createSearchMatchForTesting()],
+        });
+        element.dropdownIsVisible = true;
+
+        Object.defineProperty(inputElement.$.input, 'scrollHeight', {
+          value: 64,
+          configurable: true,
+        });
+
+        element.updateDropdownVisibility();
+        assertFalse(element.dropdownIsVisible);
+      });
+
+  test(
+      'updateDropdownVisibility suppresses dropdown when multiline input ' +
+          'contains only newlines or whitespace',
+      async () => {
+        element.multiLineEnabled = true;
+        const inputElement = element.getInputElement();
+        inputElement.multiLineEnabled = true;
+        await microtasksFinished();
+
+        element.result = createAutocompleteResultForTesting({
+          input: '\n\n',
+          matches: [createSearchMatchForTesting()],
+        });
+        element.dropdownIsVisible = true;
+
+        Object.defineProperty(inputElement.$.input, 'scrollHeight', {
+          value: 64,
+          configurable: true,
+        });
+
+        element.updateDropdownVisibility();
+        assertFalse(element.dropdownIsVisible);
+      });
+
+  test(
+      'ArrowUp and ArrowDown do not prevent default when multiLineEnabled ' +
+          'and isMultiline',
+      async () => {
+        element.multiLineEnabled = true;
+        const inputElement = element.getInputElement();
+        inputElement.multiLineEnabled = true;
+        await microtasksFinished();
+        element.dropdownIsVisible = false;
+
+        Object.defineProperty(inputElement.$.input, 'scrollHeight', {
+          value: 64,
+          configurable: true,
+        });
+
+        const upEvent = createKeyboardEvent('ArrowUp');
+        inputElement.inputElement.dispatchEvent(upEvent);
+        await microtasksFinished();
+        assertFalse(upEvent.defaultPrevented);
+
+        const downEvent = createKeyboardEvent('ArrowDown');
+        inputElement.inputElement.dispatchEvent(downEvent);
+        await microtasksFinished();
+        assertFalse(downEvent.defaultPrevented);
+      });
+
+  test(
       'updateInputForSelection only sets inline autocomplete for default ' +
           'match at line 0',
       async () => {
@@ -3001,7 +3098,10 @@ suite('SearchboxMixinVirtualFocusTest', () => {
       async () => {
         const contextChip = document.createElement('button');
         contextChip.slot = 'contextual-entrypoint';
-        element.$.inputWrapper.appendChild(contextChip);
+        element.getInputElement().appendChild(contextChip);
+
+        element.virtualFocusEnabledOverride = true;
+        element.dropdownIsVisible = true;
 
         const tabEvent = new KeyboardEvent('keydown', {
           key: 'Tab',
@@ -3015,6 +3115,57 @@ suite('SearchboxMixinVirtualFocusTest', () => {
 
         // The event should not be intercepted with preventDefault.
         assertFalse(tabEvent.defaultPrevented);
+        assertDeepEquals(kDefaultSelection, element.selection);
+      });
+
+  test(
+      'two tabs from contextual-entrypoint reach virtual AI mode focus',
+      async () => {
+        loadTimeData.overrideValues({realboxVirtualFocusNavigation: true});
+        element.virtualFocusEnabledOverride = true;
+        element.isAimButtonVisibleOverride = true;
+        element.dropdownIsVisible = true;
+
+        const matches = [createSearchMatchForTesting({fillIntoEdit: 'test'})];
+        element.onAutocompleteResultChanged(createAutocompleteResultForTesting({
+          queryId: element.activeQueryId,
+          input: 'test',
+          matches: matches,
+        }));
+        await microtasksFinished();
+
+        const contextChip = document.createElement('button');
+        contextChip.slot = 'contextual-entrypoint';
+        element.getInputElement().appendChild(contextChip);
+
+        // Tab 1 from contextual entrypoint: native tab into input,
+        // virtual selection remains at default (input).
+        const tab1 = createKeyboardEvent('Tab');
+        contextChip.dispatchEvent(tab1);
+        await microtasksFinished();
+        assertFalse(tab1.defaultPrevented);
+        assertDeepEquals(kDefaultSelection, element.selection);
+
+        // Tab 2 from input element: virtual focus moves to AI Mode button.
+        const tab2 = createKeyboardEvent('Tab');
+        element.getInputElement().inputElement.dispatchEvent(tab2);
+        await microtasksFinished();
+        assertTrue(tab2.defaultPrevented);
+        assertEquals(
+            SelectionLineState.kFocusedButtonAim, element.selection.state);
+
+        // Shift+Tab 1 from AI Mode: moves virtual focus back to input.
+        const shiftTab1 = createKeyboardEvent('Tab', {shiftKey: true});
+        element.getInputElement().inputElement.dispatchEvent(shiftTab1);
+        await microtasksFinished();
+        assertTrue(shiftTab1.defaultPrevented);
+        assertDeepEquals(kDefaultSelection, element.selection);
+
+        // Shift+Tab 2 from input: boundary reached, native Shift+Tab allowed.
+        const shiftTab2 = createKeyboardEvent('Tab', {shiftKey: true});
+        element.getInputElement().inputElement.dispatchEvent(shiftTab2);
+        await microtasksFinished();
+        assertFalse(shiftTab2.defaultPrevented);
       });
 
   test(

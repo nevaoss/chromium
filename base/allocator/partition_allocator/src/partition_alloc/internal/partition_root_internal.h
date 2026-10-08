@@ -14,6 +14,7 @@
 #include "partition_alloc/buildflags.h"
 #include "partition_alloc/in_slot_metadata.h"
 #include "partition_alloc/internal/partition_page_internal.h"
+#include "partition_alloc/internal/partition_root_internal_forward.h"
 #include "partition_alloc/internal/reservation_offset_table_internal.h"
 #include "partition_alloc/internal/thread_cache_internal.h"
 #include "partition_alloc/partition_address_space.h"
@@ -121,7 +122,7 @@ PartitionRoot::GetSlotUsableSize(const SlotSpanMetadata* slot_span) const {
 
 PA_ALWAYS_INLINE size_t PartitionRoot::GetSlotUsableSize(
     const internal::BucketSizeDetails& size_details,
-    SlotSpanMetadata* slot_span) const {
+    const SlotSpanMetadata* slot_span) const {
   if (size_details.slot_size <= kThreadCacheLargeSizeThreshold) [[likely]] {
     PA_DCHECK(!slot_span->CanStoreRawSize());
     auto usable_size = AdjustSizeForExtrasSubtract(size_details.slot_size);
@@ -928,9 +929,9 @@ PA_ALWAYS_INLINE void PartitionRoot::RawFreeWithThreadCache(
   // direct-mapped allocations are uncommon.
   internal::ThreadCache* thread_cache = GetThreadCache();
   // TODO(crbug.com/467243745): Once
-  // `internal::ThreadCache::active_bucket_count_` becomes a per-class
+  // `internal::ThreadCache::largest_active_bucket_index_` becomes a per-class
   // variable, remove the initialization check in `IsValid` and reuse the
-  // `bucket_index >= active_bucket_count_` within `MaybePutInCache`.
+  // `bucket_index > largest_active_bucket_index_` within `MaybePutInCache`.
   if (internal::ThreadCache::IsValid(thread_cache) &&
       (size_details.slot_size <= BucketIndexLookup::kMaxBucketSize))
       [[likely]] {
@@ -1228,7 +1229,8 @@ PartitionRoot::SizeToBucketIndex(size_t size,
 }
 
 PA_ALWAYS_INLINE internal::BucketSizeDetails
-PartitionRoot::SlotSpanToBucketSizeDetails(SlotSpanMetadata* slot_span) const {
+PartitionRoot::SlotSpanToBucketSizeDetails(
+    const SlotSpanMetadata* slot_span) const {
   return internal::BucketSizeDetails{
       .bucket_index =
           static_cast<uint16_t>(slot_span->bucket - this->buckets_.data()),
@@ -1237,8 +1239,9 @@ PartitionRoot::SlotSpanToBucketSizeDetails(SlotSpanMetadata* slot_span) const {
 }
 
 PA_ALWAYS_INLINE internal::BucketSizeDetails
-PartitionRoot::SizeToBucketSizeDetails(size_t requested_size,
-                                       SlotSpanMetadata* slot_span) const {
+PartitionRoot::SizeToBucketSizeDetails(
+    size_t requested_size,
+    const SlotSpanMetadata* slot_span) const {
   auto raw_size = AdjustSizeForExtrasAdd(requested_size);
   if (raw_size <= BucketIndexLookup::kMaxBucketSize) [[likely]] {
     // For non-direct-mapped allocations, `bucket_index` and `slot_size` are

@@ -71,7 +71,6 @@
 <translation id="1201402288615127009">Següent</translation>
 <translation id="1204075260022434100">{count,plural, =1{L'adreça d'interès s'ha desat a {title} al teu compte, {email}}other{{count} adreces d'interès s'han desat a {title} al teu compte, {email}}}</translation>
 <translation id="1207493287814084192">17:30</translation>
-<translation id="1215414310909588335">{count,plural, =1{T'has estalviat 1 minut d'escriptura}other{T'has estalviat # minuts d'escriptura}}</translation>
 <translation id="1217294226280635614">Vista dividida</translation>
 <translation id="1218730690561976633">Commuta la verificació d'usuari d'Emplenament automàtic millorat</translation>
 <translation id="1219674500290482172">No es pot connectar a Internet.</translation>
@@ -2113,6 +2112,7 @@ Pots reiniciar Level Up en qualsevol moment.</translation>
 <translation id="7772948288262733182">Et donem la benvinguda de nou</translation>
 <translation id="777637629667389858">Quan tens la sessió iniciada, et protegeix en tots els serveis de Google.</translation>
 <translation id="7776604279034196531">Accedeix al mode de lectura des de la barra d'adreces quan estigui disponible</translation>
+<translation id="7780992949171378848">Envia una sol·licitud de desactivació als llocs web pel que fa a l'ús de les teves dades</translation>
 <translation id="7781829728241885113">Ahir</translation>
 <translation id="7788474973847076315">Fes una foto</translation>
 <translation id="7788868432173225918">Ignora la visualització ampliada</translation>

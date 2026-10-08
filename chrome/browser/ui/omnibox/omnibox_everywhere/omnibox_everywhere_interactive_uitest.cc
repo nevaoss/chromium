@@ -2,6 +2,7 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "base/task/single_thread_task_runner.h"
 #include "base/test/run_until.h"
 #include "base/test/scoped_feature_list.h"
 #include "build/build_config.h"
@@ -77,6 +78,12 @@
 #include "media/base/media_switches.h"
 #endif
 
+#if BUILDFLAG(IS_WIN)
+#include "base/base_paths_win.h"
+#include "base/files/scoped_temp_dir.h"
+#include "base/test/scoped_path_override.h"
+#endif
+
 namespace omnibox_everywhere {
 
 class OmniboxEverywhereBrowserTest : public InteractiveBrowserTest {
@@ -92,6 +99,29 @@ class OmniboxEverywhereBrowserTest : public InteractiveBrowserTest {
 #endif
   }
   ~OmniboxEverywhereBrowserTest() override = default;
+
+  void SetUp() override {
+#if BUILDFLAG(IS_WIN)
+    ASSERT_TRUE(temp_start_menu_dir_.CreateUniqueTempDir());
+    start_menu_override_.emplace(base::DIR_START_MENU,
+                                 temp_start_menu_dir_.GetPath());
+#endif
+    InteractiveBrowserTest::SetUp();
+  }
+
+  void TearDownOnMainThread() override {
+    // If Chrome was launched without a browser window (e.g. via
+    // --omnibox-everywhere) or all browser windows closed while background mode
+    // was enabled, trigger a clean shutdown while the message loop is still
+    // running so keep-alives are released before
+    // BrowserProcessImpl::StartTearDown.
+    if (GlobalBrowserCollection::GetInstance()->IsEmpty() &&
+        !browser_shutdown::IsTryingToQuit()) {
+      base::SingleThreadTaskRunner::GetCurrentDefault()->PostTask(
+          FROM_HERE, base::BindOnce(&chrome::CloseAllBrowsersAndQuit));
+    }
+    InteractiveBrowserTest::TearDownOnMainThread();
+  }
 
   // Simulates triggering the global hotkey to show or dismiss the Omnibox
   // Everywhere widget.
@@ -251,6 +281,10 @@ class OmniboxEverywhereBrowserTest : public InteractiveBrowserTest {
 
  private:
   base::test::ScopedFeatureList feature_list_;
+#if BUILDFLAG(IS_WIN)
+  base::ScopedTempDir temp_start_menu_dir_;
+  std::optional<base::ScopedPathOverride> start_menu_override_;
+#endif
 };
 
 IN_PROC_BROWSER_TEST_F(OmniboxEverywhereBrowserTest, ShowAndCloseWidget) {
@@ -271,7 +305,8 @@ IN_PROC_BROWSER_TEST_F(OmniboxEverywhereBrowserTest, ShowAndCloseWidget) {
   ASSERT_TRUE(delegate);
   EXPECT_TRUE(delegate->CanActivate());
   EXPECT_FALSE(delegate->CanMaximize());
-  EXPECT_FALSE(delegate->CanMinimize());
+  EXPECT_EQ(!omnibox_everywhere::prefs::IsEphemeralModelEnabled(),
+            delegate->CanMinimize());
   EXPECT_FALSE(delegate->CanResize());
 
   // Close (hide) the widget.
@@ -598,7 +633,7 @@ IN_PROC_BROWSER_TEST_F(OmniboxEverywhereEphemeralBrowserTest,
       "omnibox-everywhere-app",
       "omnibox-everywhere-omnibox",
       "cr-searchbox-input",
-      "input",
+      "#input",
   };
 
   RunTestSequence(

@@ -6,10 +6,16 @@
 
 #include <android/hardware_buffer.h>
 
+#include <vector>
+
 #include "base/android/scoped_hardware_buffer_fence_sync.h"
+#include "base/android/scoped_hardware_buffer_handle.h"
 #include "base/compiler_specific.h"
+#include "base/containers/span.h"
 #include "base/functional/callback_helpers.h"
 #include "base/memory/raw_ptr.h"
+#include "base/memory/unsafe_shared_memory_region.h"
+#include "base/numerics/safe_conversions.h"
 #include "components/viz/common/resources/shared_image_format_utils.h"
 #include "gpu/command_buffer/common/mailbox.h"
 #include "gpu/command_buffer/common/shared_image_info.h"
@@ -778,11 +784,498 @@ TEST_P(AHardwareBufferImageBackingFactoryTest, Overlay) {
   skia_representation.reset();
 }
 
+base::android::ScopedHardwareBufferHandle CreateScopedHardwareBufferHandle(
+    const gfx::Size& size,
+    viz::SharedImageFormat format,
+    gfx::BufferUsage usage,
+    uint32_t layers = 1) {
+  AHardwareBuffer_Desc desc = {};
+  desc.width = size.width();
+  desc.height = size.height();
+  desc.layers = layers;
+  desc.format = AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM;
+  desc.usage = AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE |
+               AHARDWAREBUFFER_USAGE_GPU_COLOR_OUTPUT;
+  AHardwareBuffer* buffer = nullptr;
+  AHardwareBuffer_allocate(&desc, &buffer);
+  return base::android::ScopedHardwareBufferHandle::Adopt(buffer);
+}
+
+TEST_P(AHardwareBufferImageBackingFactoryTest, Texture2DArray) {
+  auto mailbox = Mailbox::Generate();
+  auto format = viz::SinglePlaneFormat::kRGBA_8888;
+  gfx::Size size(256, 256);
+  uint32_t layers = 4;
+  auto color_space = gfx::ColorSpace::CreateSRGB();
+  GrSurfaceOrigin surface_origin = kTopLeft_GrSurfaceOrigin;
+  SkAlphaType alpha_type = kPremul_SkAlphaType;
+  gpu::SharedImageUsageSet usage = SHARED_IMAGE_USAGE_GLES2_READ;
+
+  auto handle = CreateScopedHardwareBufferHandle(
+      size, format, gfx::BufferUsage::GPU_READ, layers);
+  if (!handle.is_valid()) {
+    GTEST_SKIP()
+        << "AHardwareBuffer_allocate with layers > 1 not supported on this "
+           "device";
+  }
+
+  gfx::GpuMemoryBufferHandle gmb_handle;
+  gmb_handle.type = gfx::ANDROID_HARDWARE_BUFFER;
+  gmb_handle.android_hardware_buffer = std::move(handle);
+
+  auto backing = backing_factory_->CreateSharedImage(
+      mailbox,
+      {format, size, color_space, surface_origin, alpha_type, usage,
+       "TestLabel", layers},
+      /*is_thread_safe=*/false, std::move(gmb_handle));
+  ASSERT_TRUE(backing);
+
+  // Check that the backing target is GL_TEXTURE_2D_ARRAY.
+  std::unique_ptr<SharedImageRepresentationFactoryRef> factory_ref =
+      shared_image_manager_.Register(std::move(backing), &memory_type_tracker_);
+
+  // Create a GLTextureImageRepresentation.
+  auto gl_representation =
+      shared_image_representation_factory_.ProduceGLTexture(mailbox);
+  ASSERT_TRUE(gl_representation);
+  EXPECT_EQ(static_cast<GLenum>(GL_TEXTURE_2D_ARRAY),
+            gl_representation->GetTexture()->target());
+
+  auto* texture = gl_representation->GetTexture();
+  GLsizei width = 0, height = 0, depth = 0;
+  EXPECT_TRUE(
+      texture->GetLevelSize(GL_TEXTURE_2D_ARRAY, 0, &width, &height, &depth));
+  EXPECT_EQ(size.width(), width);
+  EXPECT_EQ(size.height(), height);
+  EXPECT_EQ(static_cast<GLsizei>(layers), depth);
+
+  gl_representation.reset();
+  factory_ref.reset();
+}
+
+// Test verifying if glEGLImageTargetTexStorageEXT correctly binds a multi-layer
+// AHardwareBuffer EGLImage to GL_TEXTURE_2D_ARRAY. On native GLES drivers that
+// lack full GL_TEXTURE_2D_ARRAY support for EGLImages, attaching Layer 1 to an
+// FBO will fail with GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT (0x8CD7).
+TEST_P(AHardwareBufferImageBackingFactoryTest,
+       DirectEGLImageTargetTexStorage2DArray) {
+  if (GrContextType() != GrContextType::kGL) {
+    GTEST_SKIP() << "GL only";
+  }
+
+  // 1. Allocate a 2-layer AHardwareBuffer (for stereo/layer 0 and 1).
+  AHardwareBuffer_Desc desc = {};
+  desc.width = 64;
+  desc.height = 64;
+  desc.layers = 2;
+  desc.format = AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM;
+  desc.usage = AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE |
+               AHARDWAREBUFFER_USAGE_GPU_COLOR_OUTPUT;
+  AHardwareBuffer* buffer = nullptr;
+  if (AHardwareBuffer_allocate(&desc, &buffer) != 0 || !buffer) {
+    GTEST_SKIP()
+        << "AHardwareBuffer_allocate with layers > 1 not supported on this "
+           "device";
+  }
+  auto handle = base::android::ScopedHardwareBufferHandle::Adopt(buffer);
+
+  // 2. Create EGLImageKHR from AHardwareBuffer.
+  EGLClientBuffer client_buffer = eglGetNativeClientBufferANDROID(buffer);
+  ASSERT_TRUE(client_buffer);
+
+  EGLint attribs[] = {EGL_IMAGE_PRESERVED_KHR, EGL_TRUE, EGL_NONE};
+  EGLImageKHR egl_image =
+      eglCreateImageKHR(eglGetCurrentDisplay(), EGL_NO_CONTEXT,
+                        EGL_NATIVE_BUFFER_ANDROID, client_buffer, attribs);
+  ASSERT_NE(EGL_NO_IMAGE_KHR, egl_image);
+
+  // 3. Create GL_TEXTURE_2D_ARRAY texture and query
+  // glEGLImageTargetTexStorageEXT.
+  GLuint texture = 0;
+  glGenTextures(1, &texture);
+  glBindTexture(GL_TEXTURE_2D_ARRAY, texture);
+
+  PFNGLEGLIMAGETARGETTEXSTORAGEEXTPROC eglImageTargetTexStorageEXT =
+      reinterpret_cast<PFNGLEGLIMAGETARGETTEXSTORAGEEXTPROC>(
+          eglGetProcAddress("glEGLImageTargetTexStorageEXT"));
+
+  if (!eglImageTargetTexStorageEXT) {
+    GTEST_SKIP() << "glEGLImageTargetTexStorageEXT not supported by driver";
+  }
+
+  // 4. Directly invoke glEGLImageTargetTexStorageEXT with GL_TEXTURE_2D_ARRAY.
+  eglImageTargetTexStorageEXT(GL_TEXTURE_2D_ARRAY, egl_image, nullptr);
+  GLenum err = glGetError();
+  if (err != GL_NO_ERROR) {
+    glBindTexture(GL_TEXTURE_2D_ARRAY, 0);
+    glDeleteTextures(1, &texture);
+    eglDestroyImageKHR(eglGetCurrentDisplay(), egl_image);
+    GTEST_SKIP()
+        << "glEGLImageTargetTexStorageEXT(GL_TEXTURE_2D_ARRAY) failed with "
+           "error 0x"
+        << std::hex << err << " (driver limitation)";
+  }
+
+  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_BASE_LEVEL, 0);
+  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAX_LEVEL, 0);
+  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
+  glTexParameteri(GL_TEXTURE_2D_ARRAY, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
+
+  // 5. Test attaching Layer 0 and Layer 1 to a Framebuffer.
+  GLuint fbo = 0;
+  glGenFramebuffers(1, &fbo);
+  glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+  glFramebufferTextureLayer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, texture, 0,
+                            0);
+  GLenum fbo_status0 = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+
+  glFramebufferTextureLayer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, texture, 0,
+                            1);
+  GLenum fbo_status = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+  glDeleteFramebuffers(1, &fbo);
+  glDeleteTextures(1, &texture);
+  eglDestroyImageKHR(eglGetCurrentDisplay(), egl_image);
+
+  if (fbo_status0 != GL_FRAMEBUFFER_COMPLETE ||
+      fbo_status != GL_FRAMEBUFFER_COMPLETE) {
+    GTEST_SKIP()
+        << "Driver does not support multi-layer EGLImage GL_TEXTURE_2D_ARRAY "
+           "FBO "
+        << "(status0=0x" << std::hex << fbo_status0 << ", status1=0x"
+        << fbo_status << ")";
+  }
+}
+
+TEST_P(AHardwareBufferImageBackingFactoryTest,
+       CheckNativeDriverHasEGLImageTargetTexStorageEXT) {
+  if (GrContextType() != GrContextType::kGL) {
+    GTEST_SKIP() << "GL only";
+  }
+
+  void* proc = nullptr;
+  if (gl::g_current_gl_driver) {
+    proc = reinterpret_cast<void*>(
+        gl::g_current_gl_driver->fn.glEGLImageTargetTexStorageEXTFn);
+  }
+
+  void* egl_proc = reinterpret_cast<void*>(
+      eglGetProcAddress("glEGLImageTargetTexStorageEXT"));
+
+  const char* extensions =
+      reinterpret_cast<const char*>(glGetString(GL_EXTENSIONS));
+  bool has_ext =
+      extensions &&
+      std::string_view(extensions).find("GL_EXT_EGL_image_storage") !=
+          std::string_view::npos;
+
+  LOG(INFO)
+      << "[NativeDriverTest] driver->fn.glEGLImageTargetTexStorageEXTFn = "
+      << proc;
+  LOG(INFO) << "[NativeDriverTest] "
+               "eglGetProcAddress(\"glEGLImageTargetTexStorageEXT\") = "
+            << egl_proc;
+  LOG(INFO) << "[NativeDriverTest] GL_EXT_EGL_image_storage in GL_EXTENSIONS: "
+            << (has_ext ? "YES" : "NO");
+
+  if (!proc && !egl_proc) {
+    GTEST_SKIP() << "glEGLImageTargetTexStorageEXT not supported by driver";
+  }
+}
+
+TEST_P(AHardwareBufferImageBackingFactoryTest,
+       AHBBackingProduceTexture2DArray) {
+  if (GrContextType() != GrContextType::kGL) {
+    GTEST_SKIP() << "GL only";
+  }
+
+  PFNGLEGLIMAGETARGETTEXSTORAGEEXTPROC eglImageTargetTexStorageEXT =
+      reinterpret_cast<PFNGLEGLIMAGETARGETTEXSTORAGEEXTPROC>(
+          eglGetProcAddress("glEGLImageTargetTexStorageEXT"));
+  if (!eglImageTargetTexStorageEXT) {
+    GTEST_SKIP() << "glEGLImageTargetTexStorageEXT not supported by driver";
+  }
+
+  gfx::Size size(64, 64);
+  auto format = viz::SinglePlaneFormat::kRGBA_8888;
+  auto color_space = gfx::ColorSpace::CreateSRGB();
+  uint32_t layers = 2;
+
+  AHardwareBuffer_Desc desc = {};
+  desc.width = size.width();
+  desc.height = size.height();
+  desc.layers = layers;
+  desc.format = AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM;
+  desc.usage = AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE |
+               AHARDWAREBUFFER_USAGE_GPU_COLOR_OUTPUT;
+  AHardwareBuffer* buffer = nullptr;
+  if (AHardwareBuffer_allocate(&desc, &buffer) != 0 || !buffer) {
+    GTEST_SKIP()
+        << "AHardwareBuffer_allocate with layers > 1 not supported on this "
+           "device";
+  }
+  auto scoped_ahb_handle =
+      base::android::ScopedHardwareBufferHandle::Adopt(buffer);
+
+  gfx::GpuMemoryBufferHandle gmb_handle;
+  gmb_handle.type = gfx::ANDROID_HARDWARE_BUFFER;
+  gmb_handle.android_hardware_buffer = scoped_ahb_handle.Clone();
+
+  auto mailbox = Mailbox::Generate();
+  SharedImageUsageSet usage =
+      SHARED_IMAGE_USAGE_GLES2_READ | SHARED_IMAGE_USAGE_GLES2_WRITE;
+
+  auto backing = backing_factory_->CreateSharedImage(
+      mailbox,
+      {format, size, color_space, kTopLeft_GrSurfaceOrigin, kPremul_SkAlphaType,
+       usage, "TestTag", layers},
+      /*is_thread_safe=*/false, std::move(gmb_handle));
+  ASSERT_TRUE(backing);
+
+  std::unique_ptr<SharedImageRepresentationFactoryRef> factory_ref =
+      shared_image_manager_.Register(std::move(backing), &memory_type_tracker_);
+
+  std::unique_ptr<GLTextureImageRepresentation> gl_representation =
+      shared_image_representation_factory_.ProduceGLTexture(mailbox);
+  ASSERT_TRUE(gl_representation);
+
+  auto scoped_access = gl_representation->BeginScopedAccess(
+      GL_SHARED_IMAGE_ACCESS_MODE_READWRITE_CHROMIUM,
+      GLTextureImageRepresentation::AllowUnclearedAccess::kYes);
+  ASSERT_TRUE(scoped_access);
+
+  auto* texture = gl_representation->GetTexture();
+  ASSERT_TRUE(texture);
+  EXPECT_EQ(static_cast<GLenum>(GL_TEXTURE_2D_ARRAY), texture->target());
+
+  GLuint fbo = 0;
+  glGenFramebuffers(1, &fbo);
+  glBindFramebuffer(GL_FRAMEBUFFER, fbo);
+  glFramebufferTextureLayer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                            texture->service_id(), 0, 0);
+  GLenum status0 = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+
+  glFramebufferTextureLayer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0,
+                            texture->service_id(), 0, 1);
+  GLenum status1 = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+
+  glBindFramebuffer(GL_FRAMEBUFFER, 0);
+  glDeleteFramebuffers(1, &fbo);
+
+  if (status0 != GL_FRAMEBUFFER_COMPLETE ||
+      status1 != GL_FRAMEBUFFER_COMPLETE) {
+    GTEST_SKIP()
+        << "Driver does not support multi-layer EGLImage GL_TEXTURE_2D_ARRAY "
+           "FBO "
+        << "(status0=0x" << std::hex << status0 << ", status1=0x" << status1
+        << ")";
+  }
+}
+
+TEST_P(AHardwareBufferImageBackingFactoryTest, ArrayLayersValidation) {
+  auto mailbox = Mailbox::Generate();
+  gfx::Size size(64, 64);
+  auto format = viz::SinglePlaneFormat::kRGBA_8888;
+  auto color_space = gfx::ColorSpace::CreateSRGB();
+  uint32_t layers = 2;
+
+  // 1. Array layers > 1 with non-GLES2 usages should be rejected.
+  SharedImageUsageSet invalid_usage =
+      SHARED_IMAGE_USAGE_RASTER_READ | SHARED_IMAGE_USAGE_RASTER_WRITE;
+  auto backing = backing_factory_->CreateSharedImage(
+      mailbox,
+      {format, size, color_space, kTopLeft_GrSurfaceOrigin, kPremul_SkAlphaType,
+       invalid_usage, "TestTag", layers},
+      gpu::kNullSurfaceHandle, /*is_thread_safe=*/false);
+  EXPECT_FALSE(backing);
+
+  // 2. Array layers > 1 with initial pixel data should be rejected.
+  SharedImageUsageSet valid_usage =
+      SHARED_IMAGE_USAGE_GLES2_READ | SHARED_IMAGE_USAGE_GLES2_WRITE;
+  std::vector<uint8_t> pixel_data(64 * 64 * 4 * layers, 0xFF);
+  backing = backing_factory_->CreateSharedImage(
+      mailbox,
+      {format, size, color_space, kTopLeft_GrSurfaceOrigin, kPremul_SkAlphaType,
+       valid_usage, "TestTag", layers},
+      /*is_thread_safe=*/false, pixel_data);
+  EXPECT_FALSE(backing);
+}
+
 INSTANTIATE_TEST_SUITE_P(,
                          AHardwareBufferImageBackingFactoryTest,
                          testing::Values(GrContextType::kGL,
                                          GrContextType::kGraphiteDawn),
                          testing::PrintToStringParamName());
+
+// Usage bits of a real NV12 buffer that is read back to shared memory: it is
+// sampled by the GPU and read by the CPU. Allocating with GPU usage matters,
+// since a CPU-only Y8Cb8Cr8_420 allocation is free to come back as a planar
+// (YV12) layout, which this code path does not support.
+constexpr uint64_t kNV12ReadbackUsage =
+    AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE |
+    AHARDWAREBUFFER_USAGE_CPU_READ_OFTEN;
+
+// Allocates an NV12 AHardwareBuffer of `size`, or returns an empty handle if
+// the platform refuses the allocation (e.g. for odd dimensions).
+base::android::ScopedHardwareBufferHandle AllocateNV12Buffer(
+    const gfx::Size& size,
+    uint64_t usage = kNV12ReadbackUsage) {
+  AHardwareBuffer_Desc desc = {
+      .width = static_cast<uint32_t>(size.width()),
+      .height = static_cast<uint32_t>(size.height()),
+      .layers = 1,
+      .format = AHARDWAREBUFFER_FORMAT_Y8Cb8Cr8_420,
+      .usage = usage,
+  };
+  AHardwareBuffer* buffer = nullptr;
+  AHardwareBuffer_allocate(&desc, &buffer);
+  if (!buffer) {
+    return base::android::ScopedHardwareBufferHandle();
+  }
+  return base::android::ScopedHardwareBufferHandle::Adopt(buffer);
+}
+
+// Whether the platform allocator hands back the interleaved NV12 plane layout
+// that CopyNativeBufferToSharedMemoryAsync() supports. Gralloc is free to pick
+// a planar layout instead, in which case the copy legitimately fails and the
+// tests below that expect success have nothing to assert.
+bool SupportsNV12PlaneLayout(AHardwareBuffer* buffer) {
+  AHardwareBuffer_Planes planes;
+  if (AHardwareBuffer_lockPlanes(buffer, AHARDWAREBUFFER_USAGE_CPU_READ_OFTEN,
+                                 /*fence=*/-1, nullptr, &planes) != 0) {
+    return false;
+  }
+  const bool supported =
+      planes.planeCount == 3 && planes.planes[0].pixelStride == 1 &&
+      planes.planes[1].pixelStride == 2 && planes.planes[2].pixelStride == 2 &&
+      planes.planes[1].rowStride == planes.planes[2].rowStride &&
+      (static_cast<uint8_t*>(planes.planes[2].data) -
+       static_cast<uint8_t*>(planes.planes[1].data)) == 1;
+  AHardwareBuffer_unlock(buffer, nullptr);
+  return supported;
+}
+
+// Writes a distinct value into every byte the copy is supposed to read, and
+// returns those bytes in the order the destination is supposed to hold them:
+// `height` rows of `width` Y bytes, followed by `height / 2` rows of `width`
+// interleaved UV bytes. Returns an empty vector if the buffer can't be locked.
+std::vector<uint8_t> FillNV12Buffer(AHardwareBuffer* buffer,
+                                    const gfx::Size& size) {
+  AHardwareBuffer_Planes planes;
+  if (AHardwareBuffer_lockPlanes(buffer, AHARDWAREBUFFER_USAGE_CPU_WRITE_OFTEN,
+                                 /*fence=*/-1, nullptr, &planes) != 0) {
+    return {};
+  }
+
+  const size_t width = base::checked_cast<size_t>(size.width());
+  const size_t height = base::checked_cast<size_t>(size.height());
+  std::vector<uint8_t> expected;
+  auto fill_plane = [&](const AHardwareBuffer_Plane& src, size_t rows,
+                        uint8_t seed) {
+    const size_t row_stride = src.rowStride;
+    // SAFETY: A locked plane holds `rows` rows at `rowStride` byte intervals,
+    // the last of which is at least `width` bytes long.
+    base::span<uint8_t> plane = UNSAFE_BUFFERS(base::span(
+        static_cast<uint8_t*>(src.data), (rows - 1) * row_stride + width));
+    for (size_t row = 0; row < rows; ++row) {
+      base::span<uint8_t> src_row = plane.subspan(row * row_stride, width);
+      for (size_t col = 0; col < width; ++col) {
+        src_row[col] = static_cast<uint8_t>(seed + row * 7 + col);
+        expected.push_back(src_row[col]);
+      }
+    }
+  };
+  fill_plane(planes.planes[0], height, /*seed=*/0);
+  fill_plane(planes.planes[1], height / 2, /*seed=*/128);
+
+  AHardwareBuffer_unlock(buffer, nullptr);
+  return expected;
+}
+
+// Regression test for the out-of-bounds write reachable from a compromised
+// renderer via the CopyNativeGmbToSharedMemoryAsync IPC. The destination size
+// used to be computed as `width * height * 3 / 2`, which rounds *down* for odd
+// dimensions, while libyuv::NV12Copy() writes ceil-rounded chroma planes. A
+// buffer with odd dimensions must be rejected outright.
+TEST(AHardwareBufferImageBackingFactoryCopyTest, RejectsOddDimensions) {
+  constexpr gfx::Size kOddSize(65, 65);
+  auto ahb_handle = AllocateNV12Buffer(kOddSize);
+  if (!ahb_handle.is_valid()) {
+    GTEST_SKIP() << "Odd-sized NV12 AHardwareBuffer allocation unsupported";
+  }
+
+  // This is the size that the old (truncating) check would have accepted; it is
+  // smaller than what NV12Copy() would write, so accepting it overflows.
+  const size_t undersized =
+      static_cast<size_t>(kOddSize.width()) * kOddSize.height() * 3 / 2;
+  ASSERT_LT(undersized, viz::SharedMemorySizeForSharedImageFormat(
+                            viz::MultiPlaneFormat::kNV12, kOddSize)
+                            .value());
+  auto region = base::UnsafeSharedMemoryRegion::Create(undersized);
+  ASSERT_TRUE(region.IsValid());
+
+  EXPECT_FALSE(
+      AHardwareBufferImageBackingFactory::CopyNativeBufferToSharedMemoryAsync(
+          gfx::GpuMemoryBufferHandle(std::move(ahb_handle)),
+          std::move(region)));
+}
+
+// A destination smaller than the full NV12 image must be rejected.
+TEST(AHardwareBufferImageBackingFactoryCopyTest, RejectsUndersizedDestination) {
+  constexpr gfx::Size kSize(64, 64);
+  auto ahb_handle = AllocateNV12Buffer(kSize);
+  if (!ahb_handle.is_valid()) {
+    GTEST_SKIP() << "NV12 AHardwareBuffer allocation unsupported";
+  }
+  const size_t required = viz::SharedMemorySizeForSharedImageFormat(
+                              viz::MultiPlaneFormat::kNV12, kSize)
+                              .value();
+  auto region = base::UnsafeSharedMemoryRegion::Create(required - 1);
+  ASSERT_TRUE(region.IsValid());
+
+  EXPECT_FALSE(
+      AHardwareBufferImageBackingFactory::CopyNativeBufferToSharedMemoryAsync(
+          gfx::GpuMemoryBufferHandle(std::move(ahb_handle)),
+          std::move(region)));
+}
+
+// A correctly sized destination must receive the whole image in the layout the
+// client expects: a tightly packed Y plane followed by a tightly packed UV
+// plane, both with a row size of `width` bytes.
+TEST(AHardwareBufferImageBackingFactoryCopyTest, CopiesBothPlanes) {
+  constexpr gfx::Size kSize(64, 64);
+  auto ahb_handle = AllocateNV12Buffer(
+      kSize, kNV12ReadbackUsage | AHARDWAREBUFFER_USAGE_CPU_WRITE_OFTEN);
+  if (!ahb_handle.is_valid()) {
+    GTEST_SKIP() << "NV12 AHardwareBuffer allocation unsupported";
+  }
+  if (!SupportsNV12PlaneLayout(ahb_handle.get())) {
+    GTEST_SKIP() << "Platform does not provide an interleaved NV12 layout";
+  }
+
+  const std::vector<uint8_t> expected = FillNV12Buffer(ahb_handle.get(), kSize);
+  ASSERT_EQ(expected.size(), viz::SharedMemorySizeForSharedImageFormat(
+                                 viz::MultiPlaneFormat::kNV12, kSize)
+                                 .value());
+
+  auto region = base::UnsafeSharedMemoryRegion::Create(expected.size());
+  ASSERT_TRUE(region.IsValid());
+  base::UnsafeSharedMemoryRegion region_for_reading = region.Duplicate();
+  ASSERT_TRUE(region_for_reading.IsValid());
+
+  ASSERT_TRUE(
+      AHardwareBufferImageBackingFactory::CopyNativeBufferToSharedMemoryAsync(
+          gfx::GpuMemoryBufferHandle(std::move(ahb_handle)),
+          std::move(region)));
+
+  base::WritableSharedMemoryMapping mapping = region_for_reading.Map();
+  ASSERT_TRUE(mapping.IsValid());
+  EXPECT_EQ(mapping.GetMemoryAsSpan<uint8_t>().first(expected.size()),
+            base::span(expected));
+}
 
 }  // anonymous namespace
 }  // namespace gpu

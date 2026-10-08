@@ -22,6 +22,7 @@
 
 #include "base/containers/flat_map.h"
 #include "base/feature_list.h"
+#include "base/functional/callback.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/raw_ptr_exclusion.h"
 #include "base/observer_list.h"
@@ -139,6 +140,13 @@ enum class ProbingResult {
   DISABLED_BY_NON_MIGRABLE_STREAM,  // Probing disabled by special stream.
   INTERNAL_ERROR,                   // Probing failed for internal reason.
   FAILURE,                          // Probing failed for other reason.
+};
+
+// Reason for cancelling an in-flight connectivity probing attempt.
+enum class ProbingCancellationReason {
+  kWriterError,          // Socket write error during probing.
+  kNetworkDisconnected,  // Candidate network disconnected.
+  kSuperseded,           // Preempted by a newer migration or probing attempt.
 };
 
 // All possible combinations of observed ECN codepoints in a session. Several of
@@ -742,8 +750,16 @@ class NET_EXPORT_PRIVATE QuicChromiumClientSession
   void OnServerPreferredAddressProbeSucceeded(
       std::unique_ptr<QuicMigrationAttemptContext> migration_context);
 
-  void OnProbeFailed(handles::NetworkHandle network,
-                     const quic::QuicSocketAddress& peer_address);
+  void LogProbeFailure(handles::NetworkHandle network,
+                       const quic::QuicSocketAddress& peer_address);
+
+  // If there is an ongoing probing on <network, peer_address>, marks the
+  // attempt according to `reason` and cancels path validation.
+  void MaybeCancelProbing(
+      handles::NetworkHandle network,
+      const quic::QuicSocketAddress& peer_address,
+      ProbingCancellationReason reason,
+      std::optional<QuicMigrationAttemptCause> superseded_cause = std::nullopt);
 
   // quic::QuicSpdySession methods:
   size_t WriteHeadersOnHeadersStream(
@@ -919,6 +935,9 @@ class NET_EXPORT_PRIVATE QuicChromiumClientSession
   bool CommitMigration(
       std::unique_ptr<QuicMigrationAttemptContext> migration_context);
 
+  // Creates a callback that returns whether this session is still alive.
+  base::RepeatingCallback<bool()> CreateSessionAliveCallback();
+
   // Called when NetworkChangeNotifier notifies observers of a newly
   // connected network. Migrates this session to the newly connected
   // network if the session has a pending migration.
@@ -1052,7 +1071,8 @@ class NET_EXPORT_PRIVATE QuicChromiumClientSession
   // attempt when path degrading is detected.
   // Called when path is degrading and there is an alternate network or a new
   // network is connected after path degrading.
-  void MaybeMigrateToAlternateNetworkOnPathDegrading();
+  void MaybeMigrateToAlternateNetworkOnPathDegrading(
+      MigrationCause migration_cause);
 
   // Helper method to initiate a port migration on path degrading is detected.
   void MaybeMigrateToDifferentPortOnPathDegrading();

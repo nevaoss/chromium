@@ -7543,8 +7543,8 @@ Keep your key file in a safe place. You will need it to create new versions of y
           Quit
         </message>
       </if>
-      <message name="IDS_OMNIBOX_EVERYWHERE_LENS_PROMO_BODY" desc="Body text for the promo highlighting screen sharing and Google Lens search in Omnibox Everywhere." translateable="false">
-        Ask about what's on your screen
+      <message name="IDS_OMNIBOX_EVERYWHERE_LENS_PROMO_BODY" desc="Body text for the promo highlighting screen sharing and Google Lens search in Omnibox Everywhere.">
+        Ask about anything on your screen
       </message>
       <message name="IDS_OMNIBOX_EVERYWHERE_LENS_PROMO_ACCESSIBLE_TEXT" desc="Accessible text for the promo highlighting screen sharing and Google Lens search in Omnibox Everywhere." translateable="false">
         Ask anything about what's on your screen by sharing your screen.
@@ -8781,13 +8781,13 @@ Keep your key file in a safe place. You will need it to create new versions of y
       <message name="IDS_NTP_COMPOSE_SMART_COMPOSE_TAB" desc="The label for the call to action to accept the inline suggestion.">
         Tab
       </message>
-      <message name="IDS_NTP_COMPOSE_DEEP_SEARCH" desc="The label for the deep search button in the context menu in the composebox as well as the chip that indicates that the user is in deep search mode." formatter_data="android_java">
+      <message name="IDS_NTP_COMPOSE_DEEP_SEARCH" desc="The label for the deep search button in the context menu in the composebox as well as the chip that indicates that the user is in deep search mode.">
         Deep Search
       </message>
       <message name="IDS_NTP_COMPOSE_CREATE_IMAGES" desc="The label for the create images button in the context menu in the composebox as well as the chip that indicates that the user is in create images mode.">
         Create images
       </message>
-      <message name="IDS_NTP_COMPOSE_CANVAS" desc="The label for the canvas button in the context menu in the composebox as well as the chip that indicates that the user is in canvas mode." formatter_data="android_java">
+      <message name="IDS_NTP_COMPOSE_CANVAS" desc="The label for the canvas button in the context menu in the composebox as well as the chip that indicates that the user is in canvas mode.">
         Canvas
       </message>
       <message name="IDS_NTP_COMPOSE_MODELS_LABEL" desc="The label for the models label in the context menu in the composebox.">
@@ -12254,6 +12254,9 @@ Check your passwords anytime in <ph name="GOOGLE_PASSWORD_MANAGER">$1<ex>Google 
         <message name="IDS_TAB_CXMENU_UNFOCUS_TAB_GROUP" desc="The label of the tab context menu item for unfocusing the tab group containing the tab.">
           Unfocus tab group
         </message>
+        <message name="IDS_TAB_CXMENU_FOCUS_TABS" desc="The label of the tab context menu item for focusing one or more tabs. [ICU Syntax]">
+          {NUM_TABS, plural, =1 {Focus tab} other {Focus # tabs}}
+        </message>
         <message name="IDS_TAB_CXMENU_PLACEHOLDER_GROUP_TITLE" desc="The descriptive placeholder title of a group used when the user has not explicitly named a group. The plural value refers to the number of tabs in the group other than the one explicitly named. [ICU Syntax]">
           {NUM_OTHER_TABS, plural, =0 {"<ph name="TAB_TITLE">$1<ex>Google News</ex></ph>"} =1 {"<ph name="TAB_TITLE">$1<ex>Google News</ex></ph>" and 1 other tab} other {"<ph name="TAB_TITLE">$1<ex>Google News</ex></ph>" and # other tabs}}
         </message>
@@ -12375,6 +12378,9 @@ Check your passwords anytime in <ph name="GOOGLE_PASSWORD_MANAGER">$1<ex>Google 
         </message>
         <message name="IDS_TAB_CXMENU_UNFOCUS_TAB_GROUP" desc="In Title Case: The label of the tab context menu item for unfocusing the tab group containing the tab.">
           Unfocus Tab Group
+        </message>
+        <message name="IDS_TAB_CXMENU_FOCUS_TABS" desc="In Title Case: The label of the tab context menu item for focusing one or more tabs. [ICU Syntax]">
+          {NUM_TABS, plural, =1 {Focus Tab} other {Focus # Tabs}}
         </message>
         <message name="IDS_TAB_CXMENU_PLACEHOLDER_GROUP_TITLE" desc="In Title Case: The descriptive placeholder title of a group used when the user has not explicitly named a group. The plural value refers to the number of tabs in the group other than the one explicitly named. [ICU Syntax]">
           {NUM_OTHER_TABS, plural, =0 {"<ph name="TAB_TITLE">$1<ex>Google News</ex></ph>"} =1 {"<ph name="TAB_TITLE">$1<ex>Google News</ex></ph>" and 1 Other Tab} other {"<ph name="TAB_TITLE">$1<ex>Google News</ex></ph>" and # Other Tabs}}
@@ -15700,6 +15706,11 @@ Please help our engineers fix this problem. Tell us what happened right before y
             Reset
         </message>
       </if>
+
+      <!-- TTC -->
+      <message name="IDS_TTC_ENTRYPOINT_LABEL" desc="The text label of the TTC menu item" translateable="false">
+        TTC
+      </message>
 
       <!-- Web and message center notifications -->
       <message name="IDS_NOTIFICATION_BUTTON_SETTINGS" desc="Short button label to go to the notification settings panel">

@@ -173,6 +173,8 @@ inline constexpr char kEnableLensOnIPadPresentationStyleSidePanel[] =
     "side-panel";
 inline constexpr char kEnableLensOnIPadPresentationStyleBottomSheet[] =
     "bottom-sheet";
+inline constexpr char kEnableLensOnIPadPresentationStyleWideBottomSheet[] =
+    "wide-bottom-sheet";
 
 // Feature flag that allows the Auto-deletion feature to clear all downloaded
 // files scheduled for deletion on every application startup, regardless of when
@@ -946,5 +948,11 @@ BASE_DECLARE_FEATURE(kAimHistoryThreadsManagement);
 
 // Returns true if the AimHistoryThreadsManagement feature is enabled.
 bool IsAimHistoryThreadsManagementEnabled();
+
+// Enables TalkToChrome prototype.
+BASE_DECLARE_FEATURE(kTTCEnabled);
+
+// Returns true if the TTCEnabled feature is enabled.
+bool IsTTCEnabled();
 
 #endif  // IOS_CHROME_BROWSER_SHARED_PUBLIC_FEATURES_FEATURES_H_

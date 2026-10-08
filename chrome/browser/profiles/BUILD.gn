@@ -522,6 +522,7 @@ source_set("profile_manager_impl") {
       "profile_window.cc",
     ]
     deps += [
+      "//chrome/browser/ui:browser_window_header",
       "//chrome/browser/ui/browser_window",
       "//chrome/browser/ui/dialogs:browser_dialogs",
       "//chrome/browser/ui/profiles",
@@ -780,6 +781,7 @@ source_set("profiles_extra_parts_impl") {
     "//chrome/browser/notifications",
     "//chrome/browser/omnibox",
     "//chrome/browser/optimization_guide",
+    "//chrome/browser/origin_gating",
     "//chrome/browser/origin_trials",
     "//chrome/browser/page_content_annotations",
     "//chrome/browser/page_content_annotations:extraction_service",
@@ -838,7 +840,7 @@ source_set("profiles_extra_parts_impl") {
     "//chrome/browser/sync",
     "//chrome/browser/tab_group_sync:factories",
     "//chrome/browser/tips",
-    "//chrome/browser/ttc",
+    "//chrome/browser/ttc/core",
     "//chrome/browser/ui",
     "//chrome/browser/ui:ui_features",
     "//chrome/browser/ui/autofill",
@@ -895,6 +897,7 @@ source_set("profiles_extra_parts_impl") {
 
   if (is_android) {
     deps += [
+      "//chrome/browser/android/thin_webview:initializer",
       "//chrome/browser/auxiliary_search",
       "//chrome/browser/commerce/merchant_viewer:merchant_viewer_data_manager",
       "//chrome/browser/feed",
@@ -931,6 +934,7 @@ source_set("profiles_extra_parts_impl") {
       "//chrome/browser/search_engine_choice",
       "//chrome/browser/sharing_hub",
       "//chrome/browser/themes",
+      "//chrome/browser/ui:browser_manager_service",
       "//chrome/browser/ui/desktop_to_mobile_promos:service",
       "//chrome/browser/ui/global_error",
       "//chrome/browser/ui/global_media_controls",
@@ -1238,6 +1242,7 @@ if (!is_android) {
       "//chrome/browser/profiles:profile",
       "//chrome/browser/search_engines",
       "//chrome/browser/ui",
+      "//chrome/browser/ui:browser_window_header",
       "//chrome/browser/ui:chrome_pages",
       "//chrome/browser/ui:ui_features",
       "//chrome/browser/ui/browser_window",
@@ -1246,6 +1251,8 @@ if (!is_android) {
       "//chrome/browser/ui/startup",
       "//chrome/test:test_support",
       "//chrome/test:test_support_ui",
+      "//chrome/test/base:browser_test_waiters",
+      "//chrome/test/base:profile_lifecycle_test_utils",
       "//components/commerce/core:feature_list",
       "//components/spellcheck/common",
       "//components/universal_optout:features",

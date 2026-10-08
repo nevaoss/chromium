@@ -1637,6 +1637,7 @@
       "crypto/subtle/rsa-indexeddb.html",
       "external/wpt/clear-site-data/storage.https.html",
       "external/wpt/fs/FileSystemBaseHandle-IndexedDB.https.any.html",
+      "external/wpt/fs/FileSystemBaseHandle-IndexedDB-deferred-deserialization.https.any.html",
       "external/wpt/html/anonymous-iframe/indexeddb.tentative.https.window.html",
       "external/wpt/html/infrastructure/common-dom-interfaces/collections/domstringlist.html",
       "external/wpt/presentation-api/receiving-ua/PresentationReceiver_create-manual.https.html",
@@ -1655,6 +1656,33 @@
     ],
     "args": [
       "--enable-features=IdbSqliteOnDiskRollout:stage/UseLevelDbOnly"
+    ],
+    "expires": "never"
+  },
+  {
+    "prefix": "indexeddb_in_memory",
+    "owners": [
+      "abhishek.shanthkumar@microsoft.com",
+      "evanstade@microsoft.com",
+      "chrome-storage-team@google.com"
+    ],
+    "platforms": [
+      "Linux"
+    ],
+    "bases": [
+      "external/wpt/IndexedDB/blob-composite-blob-reads.any.html",
+      "external/wpt/IndexedDB/blob-delete-objectstore-db.any.html",
+      "external/wpt/IndexedDB/blob-valid-after-deletion.any.html",
+      "external/wpt/IndexedDB/blob-contenttype.any.html",
+      "external/wpt/IndexedDB/blob-valid-after-abort.any.html",
+      "external/wpt/IndexedDB/blob-valid-before-commit.any.html",
+      "external/wpt/fs/FileSystemBaseHandle-IndexedDB.https.any.html",
+      "external/wpt/fs/FileSystemBaseHandle-IndexedDB-deferred-deserialization.https.any.html",
+      "storage/indexeddb/blob-basics-metadata.html",
+      "storage/indexeddb/empty-blob-file.html"
+    ],
+    "args": [
+      "--incognito"
     ],
     "expires": "never"
   },
@@ -3042,27 +3070,6 @@
       "yoichio@chromium.org"
     ],
     "expires": "Apr 1, 2027"
-  },
-  {
-    "prefix": "speculation-rules-browser-side-heuristics",
-    "platforms": [
-      "Linux",
-      "Mac",
-      "Win"
-    ],
-    "bases": [
-      "external/wpt/speculation-rules/prefetch",
-      "external/wpt/speculation-rules/speculation-tags"
-    ],
-    "exclusive_tests": [],
-    "args": [
-      "--disable-features=SpeculationRulesRendererSideHeuristics"
-    ],
-    "owners": [
-      "yoavweiss@chromium.org",
-      "chrome-prerendering@google.com"
-    ],
-    "expires": "Jul 1, 2027"
   },
   {
     "prefix": "prerender-cross-origin-iframe-scroll",
@@ -4663,26 +4670,6 @@
     "args": ["--enable-blink-features=WebTransportHeaders"],
     "expires": "Dec 1, 2026"
   },
-  "Run selected WPTs with webui browser.",
-  {
-    "prefix": "webui-browser",
-    "owners": [
-      "lzhao@microsoft.com",
-      "kerenzhu@chromium.org",
-      "tluk@chromium.org"
-    ],
-    "platforms": [
-      "Linux",
-      "Win"
-    ],
-    "bases": [
-      "external/wpt/html/browsers/windows/nested-browsing-contexts/window-top.html"
-    ],
-    "args": [
-      "--enable-features=AttachUnownedInnerWebContents,Webium"
-    ],
-    "expires": "Sep 15, 2026"
-  },
   {
     "prefix": "wide-gamut",
     "owners": [
@@ -4791,7 +4778,8 @@
       "http/tests/origin_trials/xslt-deprecation-trial-enabled.html",
       "fast/parser/xml-cap-alert-xslt-use-counter.html",
       "fast/parser/xml-cap-alert-xslt-enabled.html",
-      "fast/parser/xml-xslt-warning-banner.html"
+      "fast/parser/xml-xslt-warning-banner.html",
+      "fast/parser/xml-xslt-warning-banner-polyfill.html"
     ],
     "exclusive_tests": [
       "http/tests/xsl/xslt/xsltpi-issue.js",
@@ -4819,7 +4807,8 @@
       "http/tests/origin_trials/xslt-deprecation-trial-disabled.html",
       "http/tests/origin_trials/xslt-deprecation-trial-enabled.html",
       "fast/parser/xml-cap-alert-xslt-enabled.html",
-      "fast/parser/xml-xslt-warning-banner.html"
+      "fast/parser/xml-xslt-warning-banner.html",
+      "fast/parser/xml-xslt-warning-banner-polyfill.html"
     ],
     "args": ["--disable-blink-features=XSLTSpecialTrial"],
     "owners": [
@@ -5129,5 +5118,16 @@
       "masonf@chromium.org"
     ],
     "expires": "Dec 1, 2027"
+  },
+  {
+    "prefix": "subresource-link-preload-enabled",
+    "platforms": ["Linux", "Mac", "Win"],
+    "bases": [
+      "http/tests/linkHeader/link-preload-in-js.html"
+    ],
+    "exclusive_tests": "ALL",
+    "args": ["--enable-features=RestrictLinkHeaderOnSubresource:disable_resource_load/false"],
+    "owners": ["tnak@chromium.org"],
+    "expires": "Jan 1, 2027"
   }
 ]

@@ -62,6 +62,10 @@ struct PageLayoutData {
 
 // Computed page-specific metrics, styling properties, and classification
 // thresholds used as decision factors by the heuristic tree builder.
+//
+// Every length, coordinate, and font size below uses the same units as
+// `chrome_pdf::AccessibilityTextRunInfo::bounds`: page-relative pixels, with
+// the origin at the top-left corner of the page and y increasing downward.
 struct HeuristicPageProperties {
   // The line spacing threshold above which a paragraph break is identified.
   float paragraph_spacing_threshold = 0.0f;
@@ -72,6 +76,30 @@ struct HeuristicPageProperties {
   // The minimum font size threshold required for a run to be considered a
   // heading.
   float heading_font_size_threshold = 0.0f;
+
+  // The height of the page.
+  float page_height = 0.0f;
+
+  // The vertical offset of the page in document coordinates.
+  float page_offset_y = 0.0f;
+
+  // The maximum width threshold for page numbers. Runs exceeding this width are
+  // disqualified from being considered page numbers.
+  float max_page_number_width = 0.0f;
+
+  // The Y-coordinate threshold for the header margin (top margin). Runs ending
+  // at or above this Y-coordinate are within the top margin.
+  float top_margin = 0.0f;
+
+  // The Y-coordinate threshold for page-number footers (bottom margin). Runs
+  // starting at or below this Y-coordinate are within the page number bottom
+  // margin.
+  float bottom_page_number_margin = 0.0f;
+
+  // The Y-coordinate threshold for non-page-number footers (bottom margin).
+  // Runs starting at or below this Y-coordinate are within the non-page-number
+  // bottom margin.
+  float bottom_non_page_number_margin = 0.0f;
 
   // The dominant body text color on the page (in ARGB format), if multiple
   // colors exist.

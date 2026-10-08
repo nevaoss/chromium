@@ -211,16 +211,13 @@ FieldTypeSet Address::GetSupportedTypes() const {
 
 std::u16string Address::GetInfo(const AutofillType& type,
                                 std::string_view locale) const {
-  std::string country_code =
-      base::UTF16ToUTF8(GetRoot().GetValueForType(ADDRESS_HOME_COUNTRY));
   FieldType storable_type = type.GetAddressType();
 
-  if (storable_type == ADDRESS_HOME_COUNTRY && type.is_country_code()) {
-    return base::ASCIIToUTF16(country_code);
+  if (storable_type == ADDRESS_HOME_COUNTRY) {
+    return AutofillCountry(GetRoot().GetValueForType(ADDRESS_HOME_COUNTRY),
+                           locale)
+        .name();
   }
-
-  if (storable_type == ADDRESS_HOME_COUNTRY && !country_code.empty())
-    return AutofillCountry(country_code, locale).name();
 
   return GetRawInfo(storable_type);
 }
@@ -232,9 +229,9 @@ bool Address::SetInfoWithVerificationStatus(const AutofillType& type,
   FieldType storable_type = type.GetAddressType();
 
   if (storable_type == ADDRESS_HOME_COUNTRY) {
-    // `ParseCountryCode` handles empty values, trying to parse the country from
-    // a country code or a country name
-    const std::string country_code = ParseCountryCode(type, value, locale);
+    // `ParseCountry` handles empty values, trying to parse the country from a
+    // country code or a country name
+    const std::string country_code = ParseCountry(value, locale);
 
     SetRawInfoWithVerificationStatus(ADDRESS_HOME_COUNTRY,
                                      base::UTF8ToUTF16(country_code), status);

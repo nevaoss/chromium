@@ -513,10 +513,14 @@ const FeatureEntry::FeatureParam kEnableLensOnIPadSidePanel[] = {
 const FeatureEntry::FeatureParam kEnableLensOnIPadBottomSheet[] = {
     {kEnableLensOnIPadPresentationStyleParam,
      kEnableLensOnIPadPresentationStyleBottomSheet}};
+const FeatureEntry::FeatureParam kEnableLensOnIPadWideBottomSheet[] = {
+    {kEnableLensOnIPadPresentationStyleParam,
+     kEnableLensOnIPadPresentationStyleWideBottomSheet}};
 
 const FeatureEntry::FeatureVariation kEnableLensOnIPadVariations[] = {
     {"(Side Panel)", kEnableLensOnIPadSidePanel, nullptr},
-    {"(Bottom Sheet)", kEnableLensOnIPadBottomSheet, nullptr}};
+    {"(Bottom Sheet)", kEnableLensOnIPadBottomSheet, nullptr},
+    {"(Wide Bottom Sheet)", kEnableLensOnIPadWideBottomSheet, nullptr}};
 
 const FeatureEntry::FeatureParam
     kMlUrlPiecewiseMappedSearchBlendingAdjustedBy0[] = {
@@ -1204,15 +1208,15 @@ const FeatureEntry::FeatureVariation kNewTabPageUICleanupVariations[] = {
 };
 
 constexpr FeatureEntry::FeatureParam kAimButtonRefactorOneMerchandisingChip[] =
-    {{kAimButtonRefactorArmParam, "1"}};
+    {{ntp_tiles::kAimButtonRefactorArmParam, "1"}};
 constexpr FeatureEntry::FeatureParam kAimButtonRefactorTwoMerchandisingChips[] =
-    {{kAimButtonRefactorArmParam, "2"}};
+    {{ntp_tiles::kAimButtonRefactorArmParam, "2"}};
 constexpr FeatureEntry::FeatureParam kAimButtonRefactorAimAsModule[] = {
-    {kAimButtonRefactorArmParam, "3"}};
+    {ntp_tiles::kAimButtonRefactorArmParam, "3"}};
 constexpr FeatureEntry::FeatureParam kAimButtonRefactorAimAsMvt[] = {
-    {kAimButtonRefactorArmParam, "4"}};
+    {ntp_tiles::kAimButtonRefactorArmParam, "4"}};
 constexpr FeatureEntry::FeatureParam kAimButtonRefactorNoChips[] = {
-    {kAimButtonRefactorArmParam, "5"}};
+    {ntp_tiles::kAimButtonRefactorArmParam, "5"}};
 
 constexpr FeatureEntry::FeatureVariation kAimButtonRefactorVariations[] = {
     {" - One Merchandising Chip", kAimButtonRefactorOneMerchandisingChip,
@@ -1293,11 +1297,6 @@ constexpr FeatureEntry::FeatureVariation
 //
 // When adding a new choice, add it to the end of the list.
 constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
-    {"build-external-privacy-context",
-     flag_descriptions::kBuildExternalPrivacyContextName,
-     flag_descriptions::kBuildExternalPrivacyContextDescription,
-     flags_ui::kOsIos,
-     FEATURE_VALUE_TYPE(switches::kBuildExternalPrivacyContext)},
     {"in-product-help-demo-mode-choice",
      flag_descriptions::kInProductHelpDemoModeName,
      flag_descriptions::kInProductHelpDemoModeDescription, flags_ui::kOsIos,
@@ -1594,13 +1593,6 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      FEATURE_WITH_PARAMS_VALUE_TYPE(kEnableLensOnIPad,
                                     kEnableLensOnIPadVariations,
                                     "EnableLensOnIPad")},
-    {"autofill-enable-prefetching-risk-data-for-retrieval",
-     flag_descriptions::kAutofillEnablePrefetchingRiskDataForRetrievalName,
-     flag_descriptions::
-         kAutofillEnablePrefetchingRiskDataForRetrievalDescription,
-     flags_ui::kOsIos,
-     FEATURE_VALUE_TYPE(
-         autofill::features::kAutofillEnablePrefetchingRiskDataForRetrieval)},
     {"page-info-certificate-information",
      flag_descriptions::kViewCertificateInformationName,
      flag_descriptions::kViewCertificateInformationDescription,
@@ -2476,10 +2468,6 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kPageToolsFeatureUnavailabilityName,
      flag_descriptions::kPageToolsFeatureUnavailabilityDescription,
      flags_ui::kOsIos, FEATURE_VALUE_TYPE(kPageToolsFeatureUnavailability)},
-    {"page-context-ipc-optimization",
-     flag_descriptions::kPageContextIPCOptimizationName,
-     flag_descriptions::kPageContextIPCOptimizationDescription,
-     flags_ui::kOsIos, FEATURE_VALUE_TYPE(kPageContextIPCOptimization)},
     {"page-context-pdf", flag_descriptions::kPageContextPdfName,
      flag_descriptions::kPageContextPdfDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kPageContextPdf)},
@@ -2730,7 +2718,7 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      FEATURE_VALUE_TYPE(enterprise_reporting::kSaasUsageReporting)},
     {"aim-button-refactor", flag_descriptions::kAimButtonRefactorName,
      flag_descriptions::kAimButtonRefactorDescription, flags_ui::kOsIos,
-     FEATURE_WITH_PARAMS_VALUE_TYPE(kAimButtonRefactor,
+     FEATURE_WITH_PARAMS_VALUE_TYPE(ntp_tiles::kAimButtonRefactor,
                                     kAimButtonRefactorVariations,
                                     "AimButtonRefactor")},
     {"prevent-cobrowse-on-aim-srp-tap",
@@ -2795,6 +2783,19 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
          safe_browsing::kClientSideDetectionEnabledIos,
          kClientSideDetectionEnforcementVariations,
          "ClientSideDetectionEnabledIos")},
+    {"browsing-history-filter-by-device",
+     flag_descriptions::kBrowsingHistoryFilterByDeviceName,
+     flag_descriptions::kBrowsingHistoryFilterByDeviceDescription,
+     flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(history::kBrowsingHistoryFilterByDevice)},
+    {"ttc-enabled", flag_descriptions::kTTCEnabledName,
+     flag_descriptions::kTTCEnabledDescription, flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(kTTCEnabled)},
+    {"browsing-history-similar-visits-grouping",
+     flag_descriptions::kBrowsingHistorySimilarVisitsGroupingName,
+     flag_descriptions::kBrowsingHistorySimilarVisitsGroupingDescription,
+     flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(history::kBrowsingHistorySimilarVisitsGrouping)},
 });
 
 bool SkipConditionalFeatureEntry(const flags_ui::FeatureEntry& entry) {

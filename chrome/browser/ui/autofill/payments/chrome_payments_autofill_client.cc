@@ -65,6 +65,7 @@
 #include "components/autofill/core/browser/ui/payments/card_unmask_otp_input_dialog_controller_impl.h"
 #include "components/autofill/core/browser/ui/payments/card_unmask_prompt_controller_impl.h"
 #include "components/autofill/core/browser/ui/payments/card_unmask_prompt_view.h"
+#include "components/autofill/core/browser/ui/payments/payments_churned_users_ui_delegate.h"
 #include "components/autofill/core/browser/ui/payments/save_and_fill_dialog_controller_impl.h"
 #include "components/autofill/core/browser/ui/payments/wallet_reminder_notice_ui_delegate.h"
 #include "components/autofill/core/common/autofill_features.h"
@@ -106,6 +107,7 @@
 #include "chrome/browser/ui/autofill/payments/android_bnpl_ui_delegate.h"
 #include "chrome/browser/ui/autofill/payments/android_payments_window_manager.h"
 #include "chrome/browser/ui/autofill/payments/offer_notification_controller_android.h"
+#include "chrome/browser/ui/autofill/payments/payments_churned_users_ui_delegate_android.h"
 #include "components/autofill/core/browser/payments/android_bnpl_strategy.h"
 #include "components/autofill/core/browser/payments/autofill_save_iban_ui_info.h"
 #include "components/autofill/core/browser/ui/payments/card_expiration_date_fix_flow_view.h"
@@ -118,6 +120,7 @@
 #include "chrome/browser/ui/autofill/payments/offer_notification_bubble_controller_impl.h"
 #include "chrome/browser/ui/autofill/payments/omnibox_autofill_page_action_controller.h"
 #include "chrome/browser/ui/autofill/payments/payments_churned_users_bubble_controller.h"
+#include "chrome/browser/ui/autofill/payments/payments_churned_users_ui_delegate_desktop.h"
 #include "chrome/browser/ui/autofill/payments/save_card_bubble_controller_impl.h"
 #include "chrome/browser/ui/autofill/payments/wallet_reminder_notice_ui_delegate_desktop.h"
 #include "chrome/browser/ui/autofill/payments/webauthn_dialog_controller_impl.h"
@@ -162,23 +165,16 @@ ChromePaymentsAutofillClient::~ChromePaymentsAutofillClient() = default;
 
 void ChromePaymentsAutofillClient::LoadRiskData(
     base::OnceCallback<void(const std::string&)> callback) {
-  if (!risk_data_.empty() &&
-      base::FeatureList::IsEnabled(
-          features::kAutofillEnablePrefetchingRiskDataForRetrieval)) {
-    // Notify tests that the cached risk data was used and new risk data was not
-    // loaded, if the callback exists.
-    if (cached_risk_data_loaded_callback_for_testing_) {
-      std::move(cached_risk_data_loaded_callback_for_testing_).Run(risk_data_);
-      return;
-    }
-    std::move(callback).Run(risk_data_);
-    return;
-  }
   risk_util::LoadRiskData(
       0, web_contents(),
-      base::BindOnce(&ChromePaymentsAutofillClient::OnRiskDataLoaded,
-                     weak_ptr_factory_.GetWeakPtr(), std::move(callback),
-                     base::TimeTicks::Now()));
+      base::BindOnce(
+          [](base::OnceCallback<void(const std::string&)> callback,
+             base::TimeTicks start_time, const std::string& risk_data) {
+            autofill_metrics::LogRiskDataLoadingLatency(base::TimeTicks::Now() -
+                                                        start_time);
+            std::move(callback).Run(risk_data);
+          },
+          std::move(callback), base::TimeTicks::Now()));
 }
 
 #if BUILDFLAG(IS_ANDROID)
@@ -937,7 +933,9 @@ void ChromePaymentsAutofillClient::UpdateOfferNotification(
                                      .GetCreditCardByInstrumentId(
                                          offer.GetEligibleInstrumentIds()[0]);
 
-  if (offer.IsCardLinkedOffer() && !card) {
+  if (offer.GetOfferType() ==
+          AutofillOfferData::OfferType::GPAY_CARD_LINKED_OFFER &&
+      !card) {
     return;
   }
 
@@ -1304,6 +1302,20 @@ ChromePaymentsAutofillClient::GetWalletReminderNoticeManager() {
   return wallet_reminder_notice_manager_.get();
 }
 
+PaymentsChurnedUsersUiDelegate*
+ChromePaymentsAutofillClient::GetPaymentsChurnedUsersUiDelegate() {
+  if (!payments_churned_users_ui_delegate_) {
+#if BUILDFLAG(IS_ANDROID)
+    payments_churned_users_ui_delegate_ =
+        std::make_unique<PaymentsChurnedUsersUiDelegateAndroid>(&client_.get());
+#else
+    payments_churned_users_ui_delegate_ =
+        std::make_unique<PaymentsChurnedUsersUiDelegateDesktop>(&client_.get());
+#endif
+  }
+  return payments_churned_users_ui_delegate_.get();
+}
+
 #if !BUILDFLAG(IS_ANDROID)
 OmniboxAutofillDelegate*
 ChromePaymentsAutofillClient::GetOmniboxAutofillDelegate() {
@@ -1447,18 +1459,6 @@ void ChromePaymentsAutofillClient::
 }
 #endif  // #if BUILDFLAG(IS_ANDROID)
 
-void ChromePaymentsAutofillClient::SetRiskDataForTesting(
-    const std::string& risk_data) {
-  risk_data_ = risk_data;
-}
-
-void ChromePaymentsAutofillClient::SetCachedRiskDataLoadedCallbackForTesting(
-    base::OnceCallback<void(const std::string&)>
-        cached_risk_data_loaded_callback_for_testing) {
-  cached_risk_data_loaded_callback_for_testing_ =
-      std::move(cached_risk_data_loaded_callback_for_testing);
-}
-
 std::u16string ChromePaymentsAutofillClient::GetAccountHolderName() const {
   if (!web_contents()) {
     return std::u16string();
@@ -1476,16 +1476,6 @@ std::u16string ChromePaymentsAutofillClient::GetAccountHolderName() const {
   AccountInfo primary_account_info = identity_manager->FindExtendedAccountInfo(
       identity_manager->GetPrimaryAccountInfo(signin::ConsentLevel::kSignin));
   return base::UTF8ToUTF16(primary_account_info.GetFullName().value_or(""));
-}
-
-void ChromePaymentsAutofillClient::OnRiskDataLoaded(
-    base::OnceCallback<void(const std::string&)> callback,
-    base::TimeTicks start_time,
-    const std::string& risk_data) {
-  autofill_metrics::LogRiskDataLoadingLatency(base::TimeTicks::Now() -
-                                              start_time);
-  risk_data_ = risk_data;
-  std::move(callback).Run(risk_data_);
 }
 
 }  // namespace autofill::payments

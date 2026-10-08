@@ -334,7 +334,6 @@
 #include "third_party/blink/renderer/core/page/frame_tree.h"
 #include "third_party/blink/renderer/core/page/page.h"
 #include "third_party/blink/renderer/core/page/page_animator.h"
-#include "third_party/blink/renderer/core/page/plugin_script_forbidden_scope.h"
 #include "third_party/blink/renderer/core/page/pointer_lock_controller.h"
 #include "third_party/blink/renderer/core/page/scrolling/fragment_anchor.h"
 #include "third_party/blink/renderer/core/page/scrolling/root_scroller_controller.h"
@@ -2090,6 +2089,10 @@ CaretPosition* Document::caretPositionFromPoint(
   Node* anchor_node = position_with_affinity.AnchorNode();
   if (TextControlElement* text_control = EnclosingTextControl(anchor_node)) {
     anchor_node = text_control;
+    CHECK(anchor_node == text_control ||
+          text_control->InnerEditorElement()->contains(anchor_node))
+        << "We should not expose positions in content (e.g., autofill "
+           "suggestions) not in the editor";
   }
   bool adjust_position = false;
   while (anchor_node->IsInShadowTree() &&
@@ -2635,7 +2638,6 @@ void Document::UpdateStyleAndLayoutTree(LayoutUpgrade& upgrade) {
     return;
   }
 
-  HTMLFrameOwnerElement::PluginDisposeSuspendScope suspend_plugin_dispose;
   ScriptForbiddenScope forbid_script;
 
   if (HTMLFrameOwnerElement* owner = LocalOwner()) {
@@ -3142,7 +3144,6 @@ void Document::UpdateStyleAndLayout(DocumentUpdateReason reason) {
   if (reason != DocumentUpdateReason::kBeginMainFrame && frame_view)
     frame_view->WillStartForcedLayout(reason, is_potentially_clean);
 
-  HTMLFrameOwnerElement::PluginDisposeSuspendScope suspend_plugin_dispose;
   ScriptForbiddenScope forbid_script;
 
   DCHECK(!frame_view || !frame_view->IsInPerformLayout())
@@ -3334,15 +3335,9 @@ void Document::Shutdown() {
   // Frame navigation can cause a new Document to be attached. Don't allow that,
   // since that will cause a situation where LocalFrame still has a Document
   // attached after this finishes!  Normally, it shouldn't actually be possible
-  // to trigger navigation here.  However, plugins (see below) can cause lots of
-  // crazy things to happen, since plugin detach involves nested run loops.
+  // to trigger navigation here.  However, plugins can cause lots of crazy
+  // things to happen, since plugin detach involves nested run loops.
   FrameNavigationDisabler navigation_disabler(*GetFrame());
-  // Defer plugin dispose to avoid plugins trying to run script inside
-  // ScriptForbiddenScope, which will crash the renderer after
-  // https://crrev.com/200984
-  // TODO(dcheng): This is a temporary workaround, Document::Shutdown() should
-  // not be running script at all.
-  HTMLFrameOwnerElement::PluginDisposeSuspendScope suspend_plugin_dispose;
   // Don't allow script to run in the middle of DetachLayoutTree() because a
   // detaching Document is not in a consistent state.
   ScriptForbiddenScope forbid_script;
@@ -3352,8 +3347,7 @@ void Document::Shutdown() {
   // Do not add code before this without a documented reason. A postcondition of
   // Shutdown() is that |dom_window_| must not have an attached Document.
   // Allowing script execution when the Document is shutting down can make it
-  // easy to accidentally violate this condition, and the ordering of the
-  // scopers above is subtle due to legacy interactions with plugins.
+  // easy to accidentally violate this condition.
 
   if (num_canvases_ > 0)
     UMA_HISTOGRAM_COUNTS_100("Blink.Canvas.NumCanvasesPerPage", num_canvases_);
@@ -4663,7 +4657,6 @@ void Document::DispatchUnloadEvents(
               perfetto::Flow::FromPointer(this));
   base::ScopedUmaHistogramTimer histogram_timer(
       "Navigation.Document.DispatchUnloadEvents");
-  PluginScriptForbiddenScope forbid_plugin_destructor_scripting;
   PageDismissalScope in_page_dismissal;
   if (parser_) {
     parser_->StopParsing();
@@ -10198,11 +10191,33 @@ bool Document::IsLcpElementFoundInHtml() {
 }
 
 void Document::ScheduleShadowTreeCreation(HTMLInputElement& element) {
-  elements_needing_shadow_tree_.insert(&element);
+  DCHECK(!element.IsShadowTreeCreationScheduled());
+  DCHECK(IsActive());
+  element.SetScheduledShadowTreeCreationIndex(
+      elements_needing_shadow_tree_.size());
+  elements_needing_shadow_tree_.push_back(&element);
 }
 
 void Document::UnscheduleShadowTreeCreation(HTMLInputElement& element) {
-  elements_needing_shadow_tree_.erase(&element);
+  // Swap-remove, so that this is O(1) no matter in which order inputs are
+  // removed. The element only stores the low bits of its index; with more
+  // than kShadowTreeCreationIndexHintRange inputs pending, several slots share
+  // those bits and we probe each of them (the list is bounded by the number
+  // of inputs in the document, so this stays a handful of probes).
+  wtf_size_t index = element.ScheduledShadowTreeCreationIndexHint();
+  while (elements_needing_shadow_tree_[index] != &element) {
+    index += HTMLInputElement::kShadowTreeCreationIndexHintRange;
+    CHECK_LT(index, elements_needing_shadow_tree_.size());
+  }
+  // Note that `last` is `element` itself when removing the last entry, so
+  // the order matters: move `last` into the slot and update its hint first,
+  // then shrink the list, and clear `element` last so that it ends up
+  // unscheduled either way.
+  HTMLInputElement& last = *elements_needing_shadow_tree_.back();
+  elements_needing_shadow_tree_[index] = &last;
+  last.SetScheduledShadowTreeCreationIndex(index);
+  elements_needing_shadow_tree_.pop_back();
+  element.ClearScheduledShadowTreeCreation();
 }
 
 #if BUILDFLAG(IS_ANDROID)
@@ -10228,9 +10243,15 @@ void Document::ProcessScheduledShadowTreeCreationsNow() {
   if (elements_needing_shadow_tree_.empty()) {
     return;
   }
-  HeapHashSet<Member<HTMLInputElement>> elements_needing_shadow_tree;
+  // EnsureShadowSubtree() can schedule or unschedule other elements, so work
+  // on a swapped-out list, and mark every element unscheduled first so that
+  // such re-entrant calls never refer to the swapped-out list.
+  HeapVector<Member<HTMLInputElement>> elements_needing_shadow_tree;
   std::swap(elements_needing_shadow_tree, elements_needing_shadow_tree_);
-  for (auto& element : elements_needing_shadow_tree) {
+  for (HTMLInputElement* element : elements_needing_shadow_tree) {
+    element->ClearScheduledShadowTreeCreation();
+  }
+  for (HTMLInputElement* element : elements_needing_shadow_tree) {
     element->EnsureShadowSubtree();
   }
 }

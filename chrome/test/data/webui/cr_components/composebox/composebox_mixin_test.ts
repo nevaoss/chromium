@@ -8,7 +8,6 @@ import './test_composebox_mixin.js';
 import {ComposeboxFile, ComposeboxInputModel, ContextType, ContextualSearchInputStateDeletionType, isValidTabId, TabUploadOrigin} from 'chrome://resources/cr_components/composebox/common.js';
 import type {ComposeboxFuseboxActionRequest} from 'chrome://resources/cr_components/composebox/common.js';
 import {PageHandlerRemote} from 'chrome://resources/cr_components/composebox/composebox.mojom-webui.js';
-import type {ComposeboxInputElement} from 'chrome://resources/cr_components/composebox/composebox_input.js';
 import type {ComposeboxEmbedderMixinInterface} from 'chrome://resources/cr_components/composebox/composebox_mixin.js';
 import {ComposeboxProxyImpl, createAutocompleteMatch} from 'chrome://resources/cr_components/composebox/composebox_proxy.js';
 import type {ContextualEntrypointAndMenuElement} from 'chrome://resources/cr_components/composebox/contextual_entrypoint_and_menu.js';
@@ -18,7 +17,7 @@ import {createAutocompleteResultForTesting} from 'chrome://resources/cr_componen
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {InputSource, QueryActionOverride, SearchboxOverride, SuggestInventory} from 'chrome://resources/mojo/components/omnibox/browser/fusebox_action.mojom-webui.js';
 import type {FuseboxAction} from 'chrome://resources/mojo/components/omnibox/browser/fusebox_action.mojom-webui.js';
-import {DriveDisclaimerStatus, DriveUploadError, InputMethod, PageCallbackRouter as SearchboxPageCallbackRouter, PageHandlerRemote as SearchboxPageHandlerRemote} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
+import {DriveDisclaimerStatus, DriveUploadError, PageCallbackRouter as SearchboxPageCallbackRouter, PageHandlerRemote as SearchboxPageHandlerRemote} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 import type {AutocompleteMatch, AutocompleteResult, PageRemote as SearchboxPageRemote, SelectedFileInfo} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 import {ContextUploadStatus, InputType, ModelMode, ToolMode} from 'chrome://resources/mojo/components/omnibox/composebox/composebox_query.mojom-webui.js';
 import type {InputState} from 'chrome://resources/mojo/components/omnibox/composebox/composebox_query.mojom-webui.js';
@@ -33,15 +32,8 @@ import {eventToPromise, microtasksFinished} from 'chrome://webui-test/test_util.
 import {getTrustedHtml} from 'chrome://webui-test/trusted_html.js';
 
 // </if>
-import {installMock, MockInputState} from './composebox_test_utils.js';
+import {installMock, MockInputState, simulateUserTextInput} from './composebox_test_utils.js';
 import type {TestComposeboxMixinElement} from './test_composebox_mixin.js';
-
-function simulateUserTextInput(
-    inputElement: ComposeboxInputElement, value: string): Promise<void> {
-  inputElement.input = value;
-  inputElement.fire('input-input');
-  return microtasksFinished();
-}
 
 async function pollUntil(
     predicate: () => boolean, timeoutMs = 10000): Promise<void> {
@@ -51,24 +43,6 @@ async function pollUntil(
       throw new Error('pollUntil timed out');
     }
     await new Promise<void>(resolve => requestAnimationFrame(() => resolve()));
-  }
-}
-
-function setSelectionOffset(input: HTMLElement, offset: number) {
-  if (input instanceof HTMLTextAreaElement) {
-    input.setSelectionRange(offset, offset);
-    return;
-  }
-  const range = document.createRange();
-  const sel = window.getSelection();
-  if (sel) {
-    const textNode = input.childNodes[0];
-    if (textNode && textNode.nodeType === Node.TEXT_NODE) {
-      range.setStart(textNode, offset);
-      range.collapse(true);
-      sel.removeAllRanges();
-      sel.addRange(range);
-    }
   }
 }
 
@@ -653,89 +627,6 @@ suite('ComposeboxMixinTest', () => {
         assertEquals(1, searchboxHandler.getCallCount('getRecentTabs'));
       });
 
-  test('queryAutocomplete passes cursor position', async () => {
-    element.input = 'hello';
-    await microtasksFinished();
-
-    const inputElement = element.getInputElement();
-    (inputElement.inputElement as HTMLTextAreaElement).value = 'hello';
-    inputElement.inputElement.focus();
-    setSelectionOffset(inputElement.inputElement, 3);
-
-    searchboxHandler.resetResolver('queryAutocomplete');
-    element.queryAutocomplete(/*clearMatches=*/ false);
-
-    const args = await searchboxHandler.whenCalled('queryAutocomplete');
-    assertDeepEquals(args, [
-      0,
-      null,
-      'hello',
-      false,
-      3,
-      SuggestInventory.kDefault,
-      false,
-      '',
-      InputMethod.kKeyboard,
-    ]);
-  });
-
-  test(
-      'queryAutocomplete passes cursor position when input is out of sync',
-      async () => {
-        element.input = 'hello';
-        await microtasksFinished();
-
-        const inputElement = element.getInputElement();
-        (inputElement.inputElement as HTMLTextAreaElement).value = 'hello';
-        inputElement.inputElement.focus();
-
-        // Simulate a programming update of the input as happens when, e.g., the
-        // user closes the composebox. This update won't be immediately
-        // reflected in the DOM.
-        element.input = 'hello world';
-
-        // Clear the `queryAutocomplete` called for ZPS.
-        searchboxHandler.resetResolver('queryAutocomplete');
-        element.queryAutocomplete(/*clearMatches=*/ false);
-
-        const args = await searchboxHandler.whenCalled('queryAutocomplete');
-        assertDeepEquals(args, [
-          0,
-          null,
-          'hello world',
-          false,
-          11,
-          SuggestInventory.kDefault,
-          false,
-          '',
-          InputMethod.kKeyboard,
-        ]);
-      });
-
-  test('queries autocomplete on load by default', async () => {
-    searchboxHandler.resetResolver('queryAutocomplete');
-    const freshComposebox = document.createElement('test-composebox-mixin');
-    document.body.appendChild(freshComposebox);
-    await microtasksFinished();
-
-    assertEquals(1, searchboxHandler.getCallCount('queryAutocomplete'));
-  });
-
-  test(
-      'does not query autocomplete on load when queryZpsOnLoad is false',
-      async () => {
-        searchboxHandler.resetResolver('queryAutocomplete');
-        const freshComposebox = document.createElement('test-composebox-mixin');
-        // queryZpsOnLoad is read in connectedCallback, so it must be set before
-        // the element connects. Contextual Tasks sets it false and drives
-        // autocomplete from its own zero-state logic instead.
-        freshComposebox.queryZpsOnLoad = false;
-        document.body.appendChild(freshComposebox);
-        await microtasksFinished();
-
-        assertEquals(0, searchboxHandler.getCallCount('queryAutocomplete'));
-      });
-
   test(
       'Shift+Enter allows inserting a newline when input is focused and not empty',
       async () => {
@@ -777,45 +668,6 @@ suite('ComposeboxMixinTest', () => {
 
         assertTrue(event.defaultPrevented);
       });
-
-  test(
-      'Shift+Enter submits dropdown selection when focus is in dropdown',
-      async () => {
-        const event = new KeyboardEvent('keydown', {
-          key: 'Enter',
-          shiftKey: true,
-          bubbles: true,
-          cancelable: true,
-        });
-
-        element.setActiveElement(element.getDropdownElement());
-
-        element.getWrapperElement().dispatchEvent(event);
-        await microtasksFinished();
-
-        assertTrue(event.defaultPrevented);
-      });
-
-  test('autocomplete matches are cleared on submit', async () => {
-    element.input = 'Some text';
-    await microtasksFinished();
-
-    const event = new KeyboardEvent('keydown', {
-      key: 'Enter',
-      shiftKey: false,
-      bubbles: true,
-      cancelable: true,
-    });
-    element.setActiveElement(element.getInputElement().inputElement);
-    element.getWrapperElement().dispatchEvent(event);
-    await microtasksFinished();
-
-    const clearResult = await searchboxHandler.whenCalled('stopAutocomplete');
-    assertTrue(clearResult);
-    assertFalse(element.showDropdown);
-    assertEquals(null, element.result);
-    assertEquals('', element.lastQueriedInput);
-  });
 
   test('routes suggestion actions on click only', async () => {
     const makeAction = (overrides: Partial<FuseboxAction> = {}) =>
@@ -980,42 +832,6 @@ suite('ComposeboxMixinTest', () => {
     }
   });
 
-  test('activeQueryId is not reset to -1 when selection cleared and input is empty', async () => {
-    element.input = '';
-    element.activeQueryId = 0;
-    element.lastQueriedInput = '';
-
-    const matches = [
-      {fillIntoEdit: 'match1', supportsDeletion: false} as AutocompleteMatch,
-    ];
-    element.result = {input: '', matches} as AutocompleteResult;
-    element.selectedMatchIndex = 0;
-    await element.updateComplete;
-
-    element.selectedMatchIndex = -1;
-    await element.updateComplete;
-
-    assertEquals(0, element.activeQueryId);
-  });
-
-  test('activeQueryId is reset to -1 when selection cleared and input is not empty', async () => {
-    element.input = 'Some text';
-    element.activeQueryId = 0;
-    element.lastQueriedInput = '';
-
-    const matches = [
-      {fillIntoEdit: 'match1', supportsDeletion: false} as AutocompleteMatch,
-    ];
-    element.result = {input: '', matches} as AutocompleteResult;
-    element.selectedMatchIndex = 0;
-    await element.updateComplete;
-
-    element.selectedMatchIndex = -1;
-    await element.updateComplete;
-
-    assertEquals(-1, element.activeQueryId);
-  });
-
   test('clearAutocompleteMatches preserves typed draft input', async () => {
     element.input = 'Draft text';
     element.lastQueriedInput = 'Draft text';
@@ -1114,35 +930,6 @@ suite('ComposeboxMixinTest', () => {
     } finally {
       inputComponent.resetHeight = originalResetHeight;
     }
-  });
-
-  test('smartComposeInlineHint is sliced on sequential typing', async () => {
-    element.smartComposeEnabled = true;
-    element.input = 'hello';
-    element.smartComposeInlineHint = ' world';
-    await microtasksFinished();
-
-    const inputElem = element.getInputElement();
-    await simulateUserTextInput(inputElem, 'hello ');
-
-    assertEquals('world', element.smartComposeInlineHint);
-    assertEquals('hello ', element.input);
-
-    await simulateUserTextInput(inputElem, 'hello w');
-
-    assertEquals('orld', element.smartComposeInlineHint);
-  });
-
-  test('smartComposeInlineHint is cleared on non-matching typing', async () => {
-    element.smartComposeEnabled = true;
-    element.input = 'hello';
-    element.smartComposeInlineHint = ' world';
-    await microtasksFinished();
-
-    const inputElem = element.getInputElement();
-    await simulateUserTextInput(inputElem, 'hello!');
-
-    assertEquals('', element.smartComposeInlineHint);
   });
 
   test(
@@ -1414,7 +1201,7 @@ suite('ComposeboxMixinTest', () => {
         assertEquals(ContextUploadStatus.kUploadSuccessful, attachment.status);
       });
 
-  test('navigates matches with ArrowDown and ArrowUp', async () => {
+  test('navigating matches preserves or shrinks height lock', async () => {
     const originalBodyWidth = document.body.style.width;
     const originalBodyHeight = document.body.style.height;
     const originalElementWidth = element.style.width;
@@ -1430,15 +1217,6 @@ suite('ComposeboxMixinTest', () => {
       const matchesElement = element.getDropdownElement();
       const wrapper = inputComponent.shadowRoot.querySelector<HTMLElement>(
           '#inputWrapper')!;
-
-      element.result = {input: '', matches: []} as unknown as
-          AutocompleteResult;
-      await microtasksFinished();
-
-      input.dispatchEvent(new KeyboardEvent(
-          'keydown', {key: 'ArrowDown', bubbles: true, composed: true}));
-      await microtasksFinished();
-      assertEquals(-1, matchesElement.selectedMatchIndex);
 
       // 1. Establish height lock with multiline text.
       const initialHeight = wrapper.clientHeight;
@@ -1507,53 +1285,6 @@ suite('ComposeboxMixinTest', () => {
       assertTrue(
           parseFloat(wrapper.style.minHeight) < parseFloat(initialMinHeight));
       assertTrue(wrapper.clientHeight < tallHeight);
-
-      // 5. Verify keyboard navigation behaviors (ArrowDown, ArrowUp, ctrlKey,
-      // dropdownNeeded).
-      // ArrowDown navigates forward to next suggestion ('test3', index 2).
-      input.dispatchEvent(new KeyboardEvent(
-          'keydown', {key: 'ArrowDown', bubbles: true, composed: true}));
-      await microtasksFinished();
-      assertEquals(2, matchesElement.selectedMatchIndex);
-      assertEquals('test3', element.input);
-
-      // ArrowDown on the last match (index 2) wraps around to the first visible
-      // match (index 1) in typed suggest, skipping the hidden verbatim match.
-      input.dispatchEvent(new KeyboardEvent(
-          'keydown', {key: 'ArrowDown', bubbles: true, composed: true}));
-      await microtasksFinished();
-      assertEquals(1, matchesElement.selectedMatchIndex);
-      assertEquals('test2', element.input);
-
-      // ArrowUp on the first visible match (index 1) wraps around to the last
-      // visible match (index 2) in typed suggest.
-      input.dispatchEvent(new KeyboardEvent(
-          'keydown', {key: 'ArrowUp', bubbles: true, composed: true}));
-      await microtasksFinished();
-      assertEquals(2, matchesElement.selectedMatchIndex);
-      assertEquals('test3', element.input);
-
-      // ArrowUp navigates backwards to previous suggestion ('test2', index 1).
-      input.dispatchEvent(new KeyboardEvent(
-          'keydown', {key: 'ArrowUp', bubbles: true, composed: true}));
-      await microtasksFinished();
-      assertEquals(1, matchesElement.selectedMatchIndex);
-      assertEquals('test2', element.input);
-
-      input.dispatchEvent(new KeyboardEvent('keydown', {
-        key: 'ArrowDown',
-        ctrlKey: true,
-        bubbles: true,
-        composed: true,
-      }));
-      await microtasksFinished();
-      assertEquals(1, matchesElement.selectedMatchIndex);
-
-      element.dropdownNeeded = false;
-      input.dispatchEvent(new KeyboardEvent(
-          'keydown', {key: 'ArrowDown', bubbles: true, composed: true}));
-      await microtasksFinished();
-      assertEquals(1, matchesElement.selectedMatchIndex);
     } finally {
       inputComponent.resetHeight = originalResetHeight;
       element.style.width = originalElementWidth;
@@ -1561,282 +1292,6 @@ suite('ComposeboxMixinTest', () => {
       document.body.style.height = originalBodyHeight;
     }
   });
-
-  test('selects first or last match with PageUp and PageDown', async () => {
-    const input = element.getInputElement().inputElement;
-    const matchesElement = element.getDropdownElement();
-
-    const matches = [
-      {fillIntoEdit: 'test1'} as AutocompleteMatch,
-      {fillIntoEdit: 'test2'} as AutocompleteMatch,
-      {fillIntoEdit: 'test3'} as AutocompleteMatch,
-    ];
-    element.result = {input: 'test', matches} as AutocompleteResult;
-    await microtasksFinished();
-
-    input.dispatchEvent(new KeyboardEvent(
-        'keydown', {key: 'PageDown', bubbles: true, composed: true}));
-    await microtasksFinished();
-    assertEquals(2, matchesElement.selectedMatchIndex);
-
-    input.dispatchEvent(new KeyboardEvent(
-        'keydown', {key: 'PageUp', bubbles: true, composed: true}));
-    await microtasksFinished();
-    assertEquals(0, matchesElement.selectedMatchIndex);
-
-    input.dispatchEvent(new KeyboardEvent('keydown', {
-      key: 'PageDown',
-      altKey: true,
-      bubbles: true,
-      composed: true,
-    }));
-    await microtasksFinished();
-    assertEquals(0, matchesElement.selectedMatchIndex);
-  });
-
-  test(
-      'PageDown and PageUp are ignored when no matches are available',
-      async () => {
-        const input = element.getInputElement().inputElement;
-        const matchesElement = element.getDropdownElement();
-
-        input.dispatchEvent(new KeyboardEvent(
-            'keydown', {key: 'PageDown', bubbles: true, composed: true}));
-        await element.updateComplete;
-        assertEquals(-1, matchesElement.selectedMatchIndex);
-      });
-
-  test('Tab behavior when focus is in input', async () => {
-    element.smartComposeEnabled = true;
-    const inputElem = element.getInputElement();
-    const input = inputElem.inputElement;
-    const matchesElement = element.getDropdownElement();
-
-    const matches = [{fillIntoEdit: 'match1'} as AutocompleteMatch];
-    element.result = {input: 'tes', matches} as AutocompleteResult;
-    await microtasksFinished();
-
-    matchesElement.selectNext();
-    assertEquals(0, matchesElement.selectedMatchIndex);
-    input.focus();
-
-    input.dispatchEvent(new KeyboardEvent(
-        'keydown',
-        {key: 'Tab', shiftKey: true, bubbles: true, composed: true}));
-    await microtasksFinished();
-    assertEquals(-1, matchesElement.selectedMatchIndex);
-
-    await simulateUserTextInput(inputElem, 'tes');
-    element.smartComposeInlineHint = 't';
-    await element.updateComplete;
-
-    const tabEvent = new KeyboardEvent(
-        'keydown',
-        {key: 'Tab', bubbles: true, cancelable: true, composed: true});
-    input.dispatchEvent(tabEvent);
-    await microtasksFinished();
-
-    assertEquals('test', (input as HTMLTextAreaElement).value);
-    assertTrue(tabEvent.defaultPrevented);
-  });
-
-  test('Tab on last dropdown match unselects active match', async () => {
-    const matchesElement = element.getDropdownElement();
-    const matches = [
-      {fillIntoEdit: 'match1', supportsDeletion: false} as AutocompleteMatch,
-      {fillIntoEdit: 'match2', supportsDeletion: false} as AutocompleteMatch,
-    ];
-    element.result = {input: 'm', matches} as AutocompleteResult;
-    await microtasksFinished();
-
-    matchesElement.selectNext();
-    matchesElement.selectNext();
-    assertEquals(1, matchesElement.selectedMatchIndex);
-
-    await matchesElement.updateComplete;
-    element.setActiveElement(matchesElement);
-
-    const tabEvent = new KeyboardEvent(
-        'keydown',
-        {key: 'Tab', bubbles: true, cancelable: true, composed: true});
-    matchesElement.dispatchEvent(tabEvent);
-    await element.updateComplete;
-
-    assertEquals(-1, matchesElement.selectedMatchIndex);
-    assertFalse(tabEvent.defaultPrevented);
-  });
-
-  test('Tab in dropdown is ignored when key modifiers are active', async () => {
-    const matchesElement = element.getDropdownElement();
-    const matches = [
-      {fillIntoEdit: 'match1', supportsDeletion: false} as AutocompleteMatch,
-      {fillIntoEdit: 'match2', supportsDeletion: false} as AutocompleteMatch,
-    ];
-    element.result = {input: 'm', matches} as AutocompleteResult;
-    await element.updateComplete;
-
-    matchesElement.selectNext();
-    matchesElement.selectNext();
-    await matchesElement.updateComplete;
-    await element.updateComplete;
-    element.setActiveElement(matchesElement);
-    const tabEventCtrl = new KeyboardEvent('keydown', {
-      key: 'Tab',
-      ctrlKey: true,
-      bubbles: true,
-      cancelable: true,
-    });
-    matchesElement.dispatchEvent(tabEventCtrl);
-    await element.updateComplete;
-    assertEquals(1, matchesElement.selectedMatchIndex);
-  });
-
-  test('Tab in dropdown is ignored when no matches are available', async () => {
-    const matchesElement = element.getDropdownElement();
-
-    const tabEventNoMatch = new KeyboardEvent('keydown', {
-      key: 'Tab',
-      bubbles: true,
-      cancelable: true,
-    });
-    matchesElement.dispatchEvent(tabEventNoMatch);
-    await element.updateComplete;
-    assertEquals(-1, matchesElement.selectedMatchIndex);
-  });
-
-  test('Smart Compose hint is hidden during backspacing', async () => {
-    element.smartComposeEnabled = true;
-    const inputElem = element.getInputElement();
-    const input = inputElem.inputElement;
-
-    await simulateUserTextInput(inputElem, 'tes');
-    element.smartComposeInlineHint = 't';
-    await element.updateComplete;
-
-    assertTrue(!!inputElem.shadowRoot.querySelector('#smartCompose'));
-
-    input.dispatchEvent(new KeyboardEvent('keydown', {key: 'Backspace'}));
-    await microtasksFinished();
-
-    assertFalse(!!inputElem.shadowRoot.querySelector('#smartCompose'));
-  });
-
-  test('Smart Compose hint is hidden when cursor is not at end', async () => {
-    element.smartComposeEnabled = true;
-    const inputElem = element.getInputElement();
-
-    await simulateUserTextInput(inputElem, 'test');
-    element.smartComposeInlineHint = 'a';
-    await element.updateComplete;
-
-    assertTrue(!!inputElem.shadowRoot.querySelector('#smartCompose'));
-
-    inputElem.inputElement.focus();
-    setSelectionOffset(inputElem.inputElement, 1);
-    inputElem.requestUpdate();
-    await microtasksFinished();
-
-    assertFalse(!!inputElem.shadowRoot.querySelector('#smartCompose'));
-  });
-
-  test(
-      'Smart Compose hint is hidden when it wraps in the middle of a word',
-      async () => {
-        const inputElement = element.getInputElement();
-        const input = inputElement.inputElement as HTMLTextAreaElement;
-
-        const originalMeasureText =
-            CanvasRenderingContext2D.prototype.measureText;
-        try {
-          CanvasRenderingContext2D.prototype.measureText = function(
-              text: string) {
-            if (text.includes('wrap')) {
-              return {width: 150} as TextMetrics;
-            }
-            return {width: 50} as TextMetrics;
-          };
-          Object.defineProperty(
-              input, 'clientWidth', {configurable: true, get: () => 100});
-
-          element.smartComposeEnabled = true;
-          await simulateUserTextInput(inputElement, 'tes.');
-          element.smartComposeInlineHint = 'wrap';
-          await element.updateComplete;
-
-          assertFalse(!!inputElement.shadowRoot.querySelector('#smartCompose'));
-        } finally {
-          CanvasRenderingContext2D.prototype.measureText = originalMeasureText;
-        }
-      });
-
-  test(
-      'Smart Compose hint is NOT hidden when only full hint wraps but first word fits',
-      async () => {
-        const inputElement = element.getInputElement();
-        const input = inputElement.inputElement as HTMLTextAreaElement;
-
-        const originalMeasureText =
-            CanvasRenderingContext2D.prototype.measureText;
-        try {
-          CanvasRenderingContext2D.prototype.measureText = function(
-              text: string) {
-            if (text.includes('wraps')) {
-              return {width: 150} as TextMetrics;
-            }
-            return {width: 50} as TextMetrics;
-          };
-          Object.defineProperty(
-              input, 'clientWidth', {configurable: true, get: () => 100});
-
-          element.smartComposeEnabled = true;
-          await simulateUserTextInput(inputElement, 'tes.');
-          element.smartComposeInlineHint = 'fits wraps';
-          await element.updateComplete;
-
-          assertTrue(!!inputElement.shadowRoot.querySelector('#smartCompose'));
-        } finally {
-          CanvasRenderingContext2D.prototype.measureText = originalMeasureText;
-        }
-      });
-
-  test(
-      'Tab key does not accept Smart Compose when hidden by wrapping',
-      async () => {
-        const inputElement = element.getInputElement();
-        const input = inputElement.inputElement as HTMLTextAreaElement;
-
-        const originalMeasureText =
-            CanvasRenderingContext2D.prototype.measureText;
-        try {
-          CanvasRenderingContext2D.prototype.measureText = function(
-              text: string) {
-            if (text.includes('wrap')) {
-              return {width: 150} as TextMetrics;
-            }
-            return {width: 50} as TextMetrics;
-          };
-          Object.defineProperty(
-              input, 'clientWidth', {configurable: true, get: () => 100});
-
-          element.smartComposeEnabled = true;
-          await simulateUserTextInput(inputElement, 'tes.');
-          element.smartComposeInlineHint = 'wrap';
-          await element.updateComplete;
-
-          element.setActiveElement(input);
-          const tabEvent = new KeyboardEvent('keydown', {
-            key: 'Tab',
-            bubbles: true,
-            cancelable: true,
-          });
-          element.getWrapperElement().dispatchEvent(tabEvent);
-          await element.updateComplete;
-
-          assertEquals('tes.', element.input);
-        } finally {
-          CanvasRenderingContext2D.prototype.measureText = originalMeasureText;
-        }
-      });
 
   test('sets and deletes visual selection thumbnail', async () => {
     assertFalse(element.showFileCarousel);

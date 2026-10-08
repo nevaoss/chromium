@@ -447,6 +447,10 @@
   <message name="IDS_AUTOFILL_GMAIL_OTP_REQUIRED_STEP_2" desc="Second step in the Gmail OTP settings required dialog prompting the user to turn on smart features in other Google products.">
     Turn on “<ph name="BEGIN_LINK">&lt;a href="$1" tabindex="0" aria-description="$2" target="_blank"&gt;</ph>Smart features in other Google products<ph name="LINK_END">&lt;/a&gt;</ph>”
   </message>
+  <!-- TODO(crbug.com/556170227): Make this string translateable once UI is finalized. -->
+  <message name="IDS_AUTOFILL_OPEN_GMAIL_FOR_OTP" desc="The text of the suggestion that opens Gmail to view one time passwords." translateable="false">
+    Open Gmail
+  </message>
   <message name="IDS_AUTOFILL_DISABLE_SETTINGS_EXPLANATION_TITLE" desc="Title of the card explaining why the settings page was disabled. Sentence-Cased." formatter_data="android_java">
     Google isn’t your autofill provider
   </message>
@@ -1169,47 +1173,45 @@
   </message>
 
   <!-- Attributes of the order entity -->
-  <!-- TODO(crbug.com/485269384): Make Order entity attributes translatable. -->
-  <message name="IDS_AUTOFILL_AI_ORDER_ID_ATTRIBUTE_NAME" desc="Used as a general label for the order id attribute." translateable="false">
+  <message name="IDS_AUTOFILL_AI_ORDER_ID_ATTRIBUTE_NAME" desc="Used as a general label for the order id attribute.">
     Id
   </message>
-  <message name="IDS_AUTOFILL_AI_ORDER_ACCOUNT_ATTRIBUTE_NAME" desc="Used as a general label for the order account attribute." translateable="false">
+  <message name="IDS_AUTOFILL_AI_ORDER_ACCOUNT_ATTRIBUTE_NAME" desc="Used as a general label for the order account attribute.">
     Account
   </message>
-  <message name="IDS_AUTOFILL_AI_ORDER_DATE_ATTRIBUTE_NAME" desc="Used as a general label for the order date attribute." translateable="false">
+  <message name="IDS_AUTOFILL_AI_ORDER_DATE_ATTRIBUTE_NAME" desc="Used as a general label for the order date attribute.">
     Date
   </message>
-  <message name="IDS_AUTOFILL_AI_ORDER_MERCHANT_NAME_ATTRIBUTE_NAME" desc="Used as a general label for the order merchant name attribute." translateable="false">
+  <message name="IDS_AUTOFILL_AI_ORDER_MERCHANT_NAME_ATTRIBUTE_NAME" desc="Used as a general label for the order merchant name attribute.">
     Merchant name
   </message>
-  <message name="IDS_AUTOFILL_AI_ORDER_MERCHANT_DOMAIN_ATTRIBUTE_NAME" desc="Used as a general label for the order merchant domain attribute." translateable="false">
+  <message name="IDS_AUTOFILL_AI_ORDER_MERCHANT_DOMAIN_ATTRIBUTE_NAME" desc="Used as a general label for the order merchant domain attribute.">
     Merchant domain
   </message>
-  <message name="IDS_AUTOFILL_AI_ORDER_PRODUCT_NAMES_ATTRIBUTE_NAME" desc="Used as a general label for the order product names attribute." translateable="false">
+  <message name="IDS_AUTOFILL_AI_ORDER_PRODUCT_NAMES_ATTRIBUTE_NAME" desc="Used as a general label for the order product names attribute.">
     Product names
   </message>
 
   <!-- Attributes of the shipment entity -->
-  <!-- TODO(crbug.com/485363832): Make Shipment entity attributes translatable. -->
-  <message name="IDS_AUTOFILL_AI_SHIPMENT_TRACKING_NUMBER_ATTRIBUTE_NAME" desc="Used as a general label for the shipment tracking number attribute." translateable="false">
+  <message name="IDS_AUTOFILL_AI_SHIPMENT_TRACKING_NUMBER_ATTRIBUTE_NAME" desc="Used as a general label for the shipment tracking number attribute.">
     Tracking number
   </message>
-  <message name="IDS_AUTOFILL_AI_SHIPMENT_DELIVERY_ZIP_CODE_ATTRIBUTE_NAME" desc="Used as a general label for the shipment delivery zip code attribute." translateable="false">
+  <message name="IDS_AUTOFILL_AI_SHIPMENT_DELIVERY_ZIP_CODE_ATTRIBUTE_NAME" desc="Used as a general label for the shipment delivery zip code attribute.">
     Delivery zip code
   </message>
-  <message name="IDS_AUTOFILL_AI_SHIPMENT_CARRIER_NAME_ATTRIBUTE_NAME" desc="Used as a general label for the shipment carrier name attribute." translateable="false">
+  <message name="IDS_AUTOFILL_AI_SHIPMENT_CARRIER_NAME_ATTRIBUTE_NAME" desc="Used as a general label for the shipment carrier name attribute.">
     Carrier name
   </message>
-  <message name="IDS_AUTOFILL_AI_SHIPMENT_CARRIER_DOMAIN_ATTRIBUTE_NAME" desc="Used as a general label for the shipment carrier domain attribute." translateable="false">
+  <message name="IDS_AUTOFILL_AI_SHIPMENT_CARRIER_DOMAIN_ATTRIBUTE_NAME" desc="Used as a general label for the shipment carrier domain attribute.">
     Carrier domain
   </message>
-  <message name="IDS_AUTOFILL_AI_SHIPMENT_SHIPPED_DATE_ATTRIBUTE_NAME" desc="Used as a general label for the shipment shipped date attribute." translateable="false">
+  <message name="IDS_AUTOFILL_AI_SHIPMENT_SHIPPED_DATE_ATTRIBUTE_NAME" desc="Used as a general label for the shipment shipped date attribute.">
     Shipped date
   </message>
-  <message name="IDS_AUTOFILL_AI_SHIPMENT_MERCHANT_NAME_ATTRIBUTE_NAME" desc="Used as a general label for the shipment merchant name attribute." translateable="false">
+  <message name="IDS_AUTOFILL_AI_SHIPMENT_MERCHANT_NAME_ATTRIBUTE_NAME" desc="Used as a general label for the shipment merchant name attribute.">
     Merchant name
   </message>
-  <message name="IDS_AUTOFILL_AI_SHIPMENT_PRODUCT_NAMES_ATTRIBUTE_NAME" desc="Used as a general label for the shipment product names attribute." translateable="false">
+  <message name="IDS_AUTOFILL_AI_SHIPMENT_PRODUCT_NAMES_ATTRIBUTE_NAME" desc="Used as a general label for the shipment product names attribute.">
     Product names
   </message>
 

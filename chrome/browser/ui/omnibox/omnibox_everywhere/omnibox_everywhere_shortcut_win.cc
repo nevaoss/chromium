@@ -4,21 +4,24 @@
 
 #include "chrome/browser/ui/omnibox/omnibox_everywhere/omnibox_everywhere_shortcut_win.h"
 
-#include <optional>
 #include <string>
 
 #include "base/command_line.h"
 #include "base/files/file_path.h"
+#include "base/files/file_util.h"
 #include "base/path_service.h"
 #include "base/strings/strcat.h"
 #include "base/strings/utf_string_conversions.h"
 #include "base/win/shortcut.h"
 #include "chrome/browser/shell_integration_win.h"
+#include "chrome/common/channel_info.h"
 #include "chrome/common/chrome_constants.h"
 #include "chrome/common/chrome_icon_resources_win.h"
 #include "chrome/common/chrome_paths.h"
 #include "chrome/common/chrome_switches.h"
 #include "chrome/grit/branded_strings.h"
+#include "chrome/install_static/install_details.h"
+#include "components/version_info/channel.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/win/shell.h"
 
@@ -44,16 +47,65 @@ base::FilePath GetChromeProxyPath() {
   return chrome_dir.Append(FILE_PATH_LITERAL("chrome_proxy.exe"));
 }
 
-std::wstring GetDisplayName() {
-  return base::UTF16ToWide(
-      l10n_util::GetStringUTF16(IDS_OMNIBOX_EVERYWHERE_NAME));
+int GetDisplayNameMessageId() {
+  if (install_static::InstallDetails::Get().is_primary_mode()) {
+    return IDS_OMNIBOX_EVERYWHERE_NAME;
+  }
+  switch (chrome::GetChannel()) {
+    case version_info::Channel::BETA:
+      return IDS_OMNIBOX_EVERYWHERE_NAME_BETA;
+    case version_info::Channel::DEV:
+      return IDS_OMNIBOX_EVERYWHERE_NAME_DEV;
+    case version_info::Channel::CANARY:
+      return IDS_OMNIBOX_EVERYWHERE_NAME_CANARY;
+    default:
+      return IDS_OMNIBOX_EVERYWHERE_NAME;
+  }
 }
 
 std::wstring GetShortcutName() {
   return base::StrCat({GetDisplayName(), L".lnk"});
 }
 
+// Returns an empty path if the Start Menu directory is unavailable.
+base::FilePath GetStartMenuShortcutPath() {
+  base::FilePath start_menu_dir;
+  if (!base::PathService::Get(base::DIR_START_MENU, &start_menu_dir) ||
+      start_menu_dir.empty()) {
+    return base::FilePath();
+  }
+  return start_menu_dir.Append(GetShortcutName());
+}
+
+// Returns whether the shortcut at `shortcut_path` already resolves to the
+// launch properties in `expected`.
+bool ShortcutMatches(const base::FilePath& shortcut_path,
+                     const base::win::ShortcutProperties& expected) {
+  base::win::ShortcutProperties existing;
+  if (!base::win::ResolveShortcutProperties(
+          shortcut_path,
+          base::win::ShortcutProperties::PROPERTIES_TARGET |
+              base::win::ShortcutProperties::PROPERTIES_ARGUMENTS |
+              base::win::ShortcutProperties::PROPERTIES_ICON |
+              base::win::ShortcutProperties::PROPERTIES_APP_ID,
+          &existing)) {
+    return false;
+  }
+  return base::FilePath::CompareEqualIgnoreCase(existing.target.value(),
+                                                expected.target.value()) &&
+         existing.arguments == expected.arguments &&
+         existing.app_id == expected.app_id &&
+         base::FilePath::CompareEqualIgnoreCase(existing.icon.value(),
+                                                expected.icon.value()) &&
+         existing.icon_index == expected.icon_index;
+}
+
 }  // namespace
+
+std::wstring GetDisplayName() {
+  return base::UTF16ToWide(
+      l10n_util::GetStringUTF16(GetDisplayNameMessageId()));
+}
 
 std::wstring GetAppUserModelId() {
   return shell_integration::win::GetAppUserModelIdForApp(
@@ -61,7 +113,7 @@ std::wstring GetAppUserModelId() {
       /*profile_path=*/base::FilePath());
 }
 
-void SetWindowProperties(HWND hwnd, bool is_ephemeral) {
+void SetWindowProperties(HWND hwnd, bool is_ephemeral, bool allow_pinning) {
   if (!hwnd) {
     return;
   }
@@ -69,6 +121,12 @@ void SetWindowProperties(HWND hwnd, bool is_ephemeral) {
     // Ephemeral widgets are hidden from the taskbar and should not be pinned.
     ui::win::PreventWindowFromPinning(hwnd);
     return;
+  }
+
+  // Must precede SetAppDetailsForWindow(): the Shell ignores PreventPinning
+  // once the AUMID is set.
+  if (!allow_pinning) {
+    ui::win::PreventWindowFromPinning(hwnd);
   }
 
   // In persistent mode, assign the dedicated AppUserModelId and relaunch
@@ -94,9 +152,8 @@ OmniboxEverywhereShortcutHelperWin::~OmniboxEverywhereShortcutHelperWin() =
     default;
 
 bool OmniboxEverywhereShortcutHelperWin::CreateStartMenuShortcut() {
-  base::FilePath start_menu_dir;
-  if (!base::PathService::Get(base::DIR_START_MENU, &start_menu_dir) ||
-      start_menu_dir.empty()) {
+  const base::FilePath shortcut_path = GetStartMenuShortcutPath();
+  if (shortcut_path.empty()) {
     return false;
   }
 
@@ -114,7 +171,12 @@ bool OmniboxEverywhereShortcutHelperWin::CreateStartMenuShortcut() {
                                icon_resources::kOmniboxEverywhereIndex);
   shortcut_properties.set_description(GetDisplayName());
 
-  base::FilePath shortcut_path = start_menu_dir.Append(GetShortcutName());
+  // A shortcut left by an older install may point at a stale target or AUMID,
+  // which breaks taskbar pinning, so rewrite anything that does not match.
+  if (base::PathExists(shortcut_path) &&
+      ShortcutMatches(shortcut_path, shortcut_properties)) {
+    return true;
+  }
 
   return base::win::CreateOrUpdateShortcutLink(
       shortcut_path, shortcut_properties,

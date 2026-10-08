@@ -49,6 +49,7 @@
 #include "third_party/blink/renderer/core/script/script.h"
 #include "third_party/blink/renderer/core/url/dom_origin_utils.h"
 #include "third_party/blink/renderer/core/workers/custom_event_message.h"
+#include "third_party/blink/renderer/core/workers/worker_classic_script_loader.h"
 #include "third_party/blink/renderer/core/workers/worker_or_worklet_global_scope.h"
 #include "third_party/blink/renderer/core/workers/worker_settings.h"
 #include "third_party/blink/renderer/platform/heap/collection_support/heap_hash_map.h"
@@ -303,6 +304,29 @@ class CORE_EXPORT WorkerGlobalScope
   void ExceptionThrown(ErrorEvent*) override;
   void RemoveURLFromMemoryCache(const KURL&) final;
 
+  void FetchClassicScript(
+      const KURL& script_url,
+      std::unique_ptr<WorkerMainScriptLoadParameters>
+          worker_main_script_load_params,
+      const FetchClientSettingsObjectSnapshot& outside_settings_object,
+      WorkerResourceTimingNotifier& outside_resource_timing_notifier,
+      mojom::blink::RequestContextType context_type,
+      network::mojom::RequestDestination destination,
+      const v8_inspector::V8StackTraceId& stack_id);
+  void DidReceiveResponseForClassicScript(
+      WorkerClassicScriptLoader* classic_script_loader);
+  void DidFetchClassicScript(WorkerClassicScriptLoader* classic_script_loader,
+                             const v8_inspector::V8StackTraceId& stack_id);
+  void RunClassicScript(
+      const KURL& response_url,
+      network::mojom::ReferrerPolicy response_referrer_policy,
+      Vector<network::mojom::blink::ContentSecurityPolicyPtr> response_csp,
+      DocumentPolicy::DocumentPolicyBundle response_document_policy,
+      const Vector<String>* response_origin_trial_tokens,
+      const String& source_code,
+      std::unique_ptr<Vector<uint8_t>> cached_meta_data,
+      const v8_inspector::V8StackTraceId&);
+
   virtual bool FetchClassicImportedScript(
       const KURL& script_url,
       KURL* out_response_url,
@@ -327,6 +351,10 @@ class CORE_EXPORT WorkerGlobalScope
   // Used for importScripts().
   // Also called by ServiceWorkerGlobalScope::importScripts.
   void ImportScriptsInternal(const Vector<String>& urls, ExceptionState&);
+
+  // The timestamp taken when FetchAndRunClassicScript() is called.
+  // Currently only used for `DedicatedWorkerGlobalScope` metrics.
+  base::TimeTicks fetch_classic_script_start_time_;
 
  private:
   void SetWorkerSettings(std::unique_ptr<WorkerSettings>);

@@ -208,10 +208,6 @@ class MODULES_EXPORT CanvasRenderingContext2D final
   Color GetCurrentColor() const final;
 
   MemoryManagedPaintCanvas* GetOrCreatePaintCanvas() final;
-  using BaseRenderingContext2D::GetPaintCanvas;  // Pull the non-const overload.
-  const MemoryManagedPaintCanvas* GetPaintCanvas() const final;
-  const MemoryManagedPaintRecorder* Recorder() const override;
-  MemoryManagedPaintRecorder* Recorder();
 
   void WillDraw(const gfx::Rect& dirty_rect,
                 CanvasPerformanceMonitor::DrawType) final;
@@ -322,11 +318,7 @@ class MODULES_EXPORT CanvasRenderingContext2D final
   // This method should be called only when both providers are null.
   void RecreateResourceProvider();
 
-  void FlushIfRecordingLimitExceeded();
-
   void WakeUpFromHibernation();
-
-  void SetRecorder(std::unique_ptr<MemoryManagedPaintRecorder> recorder);
 
   FilterOperations filter_operations_;
   HashMap<String, FontDescription> fonts_resolved_using_current_style_;
@@ -336,7 +328,6 @@ class MODULES_EXPORT CanvasRenderingContext2D final
   std::unique_ptr<CanvasHibernationHandler> hibernation_handler_;
   std::unique_ptr<Canvas2DResourceProvider> shared_image_provider_;
   std::unique_ptr<Canvas2DBitmapProvider> bitmap_provider_;
-  std::unique_ptr<MemoryManagedPaintRecorder> recorder_;
 
   // `did_fail_to_create_resource_provider_` prevents repeated attempts in
   // allocating resources after the first attempt failed.

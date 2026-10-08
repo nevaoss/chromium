@@ -6104,7 +6104,8 @@ void WebFrameWidgetImpl::OnWindowShowStateChanged(
     ui::mojom::blink::WindowShowState old_state,
     ui::mojom::blink::WindowShowState new_state) {
   if (!RuntimeEnabledFeatures::
-          DesktopPWAsAdditionalWindowingControlsEnabled()) {
+          DesktopPWAsAdditionalWindowingControlsEnabled() ||
+      !ForMainFrame() || IsProvisional()) {
     return;
   }
 
@@ -6135,7 +6136,7 @@ void WebFrameWidgetImpl::OnWindowShowStateChanged(
 void WebFrameWidgetImpl::OnResizableChanged(bool new_resizable) {
   if (!RuntimeEnabledFeatures::
           DesktopPWAsAdditionalWindowingControlsEnabled() ||
-      !ForMainFrame()) {
+      !ForMainFrame() || IsProvisional()) {
     return;
   }
 

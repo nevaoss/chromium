@@ -26,6 +26,7 @@ import org.chromium.base.ui.KeyboardUtils;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.bookmarks.bar.BookmarkBarUtils;
+import org.chromium.chrome.browser.devtools.DevToolsWindowAndroid;
 import org.chromium.chrome.browser.feedback.FeedbackPolicyManager;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.fullscreen.FullscreenManager;
@@ -43,8 +44,6 @@ import org.chromium.chrome.browser.task_manager.TaskManager;
 import org.chromium.chrome.browser.toolbar.ToolbarManager;
 import org.chromium.components.browser_ui.widget.MenuOrKeyboardActionController;
 import org.chromium.content_public.browser.BrowserContextHandle;
-import org.chromium.content_public.browser.ContentFeatureList;
-import org.chromium.content_public.browser.ContentFeatureMap;
 import org.chromium.content_public.browser.LoadUrlParams;
 import org.chromium.content_public.browser.WebContents;
 import org.chromium.device.gamepad.GamepadList;
@@ -853,6 +852,12 @@ public class KeyboardShortcuts {
             return null;
         }
 
+        if (KeyEvent.isGamepadButton(keyCode)) {
+            if (GamepadList.isGamepadAPIActive()) {
+                return null;
+            }
+        }
+
         switch (keyCode) {
             case KeyEvent.KEYCODE_SEARCH:
                 if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) {
@@ -1017,7 +1022,7 @@ public class KeyboardShortcuts {
                     KeyEvent.KEYCODE_I,
                     KeyEvent.META_ALT_ON | KeyEvent.META_SHIFT_ON);
         }
-        if (ContentFeatureMap.isEnabled(ContentFeatureList.ANDROID_DEV_TOOLS_FRONTEND)) {
+        if (DevToolsWindowAndroid.isDevToolsAvailable(context)) {
             addShortcut(
                     context,
                     shortcutGroupsById,

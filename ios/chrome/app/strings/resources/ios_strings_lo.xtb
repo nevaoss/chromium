@@ -71,7 +71,6 @@
 <translation id="1201402288615127009">ຕໍ່ໄປ</translation>
 <translation id="1204075260022434100">{count,plural, =1{ບັນທຶກບຸກມາກໃສ່ "{title}" ໃນບັນຊີ {email} ຂອງທ່ານແລ້ວ}other{ບັນທຶກບຸກມາກ {count} ລາຍການໃສ່ "{title}" ໃນບັນຊີ {email} ຂອງທ່ານແລ້ວ}}</translation>
 <translation id="1207493287814084192">5:30 ຫຼັງທ່ຽງ</translation>
-<translation id="1215414310909588335">{count,plural, =1{ປະຢັດເວລາພິມໄປ 1 ນາທີແລ້ວ}other{ບັນທຶກການພິມໄປ # ນາທີແລ້ວ}}</translation>
 <translation id="1217294226280635614">ມຸມມອງແບບແຍກ</translation>
 <translation id="1218730690561976633">ເປີດ/ປິດການຢັ້ງຢືນຜູ້ໃຊ້ສຳລັບການຕື່ມຂໍ້ມູນອັດຕະໂນມັດທີ່ປັບປຸງໃຫ້ດີຂຶ້ນ</translation>
 <translation id="1219674500290482172">ບໍ່ສາມາດເຊື່ອມຕໍ່ກັບອິນເຕີເນັດໄດ້.</translation>
@@ -2113,6 +2112,7 @@ Handoff ຍັງ​ຕ້ອງ​ໄດ້​ເປີດ​ໃຊ້​ງາ
 <translation id="7772948288262733182">ຍິນດີຕ້ອນຮັບກັບມາ</translation>
 <translation id="777637629667389858">ປົກປ້ອງທ່ານໃນທົ່ວບໍລິການ Google ເມື່ອທ່ານເຂົ້າສູ່ລະບົບ.</translation>
 <translation id="7776604279034196531">ເຂົ້າເຖິງໂໝດການອ່ານຈາກແຖບທີ່ຢູ່ເມື່ອພ້ອມໃຫ້ນຳໃຊ້</translation>
+<translation id="7780992949171378848">ສົ່ງຄຳຮ້ອງຂໍການຖອນຕົວໄປຫາເວັບໄຊກ່ຽວກັບການໃຊ້ຂໍ້ມູນຂອງທ່ານ</translation>
 <translation id="7781829728241885113">ມື້​ວານ​ນີ້</translation>
 <translation id="7788474973847076315">ຖ່າຍຮູບ</translation>
 <translation id="7788868432173225918">ປິດມຸມມອງແບບຂະຫຍາຍ</translation>

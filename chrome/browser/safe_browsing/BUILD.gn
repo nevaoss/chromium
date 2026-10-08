@@ -137,6 +137,10 @@ static_library("safe_browsing") {
   }
 
   if (!is_android) {
+    deps += [
+      "//chrome/browser/ui:browser_window_header",
+      "//chrome/browser/ui:scoped_tabbed_browser_displayer",
+    ]
     public += [
       "generated_safe_browsing_pref.h",
       "generated_security_settings_bundle_pref.h",
@@ -1050,6 +1054,10 @@ source_set("unit_tests") {
       "//testing/gmock",
     ]
   }
+
+  if (!is_android) {
+    deps += [ "//chrome/browser/ui:browser_manager_service" ]
+  }
 }
 
 source_set("test_support") {
@@ -1097,8 +1105,8 @@ source_set("test_support") {
       "//components/safe_browsing/content/browser:safe_browsing_service",
       "//components/safe_browsing/core/browser/db:database_manager",
       "//components/safe_browsing/core/browser/db:sb_protocol_config",
+      "//components/safe_browsing/core/browser/db:sb_protocol_manager_util",
       "//components/safe_browsing/core/browser/db:test_database_manager",
-      "//components/safe_browsing/core/browser/db:v4_protocol_manager_util",
       "//components/safe_browsing/core/common/proto:crx_info_proto",
       "//services/network:test_support",
       "//testing/gtest",
@@ -1143,8 +1151,8 @@ source_set("test_database_helper") {
     ":safe_browsing",
     ":test_support",
     "//components/safe_browsing/core/browser/db:sb_database",
+    "//components/safe_browsing/core/browser/db:sb_protocol_manager_util",
     "//components/safe_browsing/core/browser/db:sb_test_util",
-    "//components/safe_browsing/core/browser/db:v4_protocol_manager_util",
     "//components/safe_browsing/core/browser/db:v5_search_hashes_cache",
     "//components/safe_browsing/core/common:features",
     "//components/security_interstitials/core:unsafe_resource",
@@ -1186,6 +1194,7 @@ if (safe_browsing_mode != 0) {
       "//chrome/browser/policy:test_support",
       "//chrome/browser/safe_browsing:metrics_collector",
       "//chrome/browser/safe_browsing:verdict_cache_manager_factory",
+      "//chrome/test/base:chrome_test_utils",
       "//components/safe_browsing/core/browser:verdict_cache_manager",
       "//components/security_interstitials/content:security_interstitial_page",
       "//content/test:test_support",
@@ -1197,6 +1206,28 @@ if (safe_browsing_mode != 0) {
     if (safe_browsing_mode == 1) {
       public_deps += [ "//chrome/browser/ui/hats:test_support" ]
     }
+  }
+}
+
+if (safe_browsing_mode != 0) {
+  source_set("platform_browser_tests") {
+    testonly = true
+    defines = [ "HAS_OUT_OF_PROC_TEST_RUNNER" ]
+
+    sources = [ "client_side_detection_service_browsertest.cc" ]
+
+    deps = [
+      ":safe_browsing",
+      "//chrome/test:test_support",
+      "//chrome/test/base:chrome_test_utils",
+      "//components/metrics:content",
+      "//components/safe_browsing/content/browser:client_side_detection",
+      "//components/safe_browsing/content/browser:client_side_detection_service",
+      "//components/safe_browsing/content/common:interfaces",
+      "//components/safe_browsing/core/browser:client_side_detection_service_base",
+      "//components/safe_browsing/core/common/proto:client_model_proto",
+      "//testing/gtest",
+    ]
   }
 }
 
@@ -1290,6 +1321,7 @@ source_set("browser_tests") {
       "safe_browsing_blocking_page_test.cc",
       "safe_browsing_navigation_observer_browsertest.cc",
       "safe_browsing_service_browsertest.cc",
+      "sb_embedded_test_server_browsertest.cc",
       "tailored_security/chrome_tailored_security_service_browsertest.cc",
       "url_lookup_service_browsertest.cc",
     ]

@@ -17,6 +17,7 @@
 #include "base/types/expected_macros.h"
 #include "components/origin_gating/core/origin_gating_cache.h"
 #include "components/origin_gating/core/origin_gating_configuration.h"
+#include "components/origin_gating/core/task_policy_config_slot.h"
 #include "components/origin_gating/core/types.h"
 #include "net/base/url_util.h"
 #include "third_party/abseil-cpp/absl/functional/overload.h"
@@ -111,9 +112,26 @@ DecisionAttribution MakeAttribution(const CustomPredicate& predicate) {
   return DecisionAttribution(predicate.attribution());
 }
 
+Decision EvaluateActorContainerConfig(const TaskPolicyConfigSlot& config_slot,
+                                      GateableEvent event,
+                                      const url::Origin& source,
+                                      const url::Origin& destination) {
+  if (!config_slot.has_value()) {
+    return Decision::kNoDecision;
+  }
+  const TaskPolicyConfig& config = config_slot.value();
+  if (event == GateableEvent::kPageAction) {
+    return config.IsActuationAllowed(destination) ? Decision::kAllowed
+                                                  : Decision::kBlocked;
+  }
+
+  return config.IsNavigationAllowed(source, destination) ? Decision::kAllowed
+                                                         : Decision::kBlocked;
+}
+
 }  // namespace
 
-OriginGatingChecker::OriginGatingChecker(Delegate& delegate,
+OriginGatingChecker::OriginGatingChecker(base::WeakPtr<Delegate> delegate,
                                          OriginGatingConfiguration config)
     : delegate_(delegate),
       config_(std::move(config)),
@@ -149,6 +167,10 @@ void OriginGatingChecker::EvaluatePredicates(
     GatingDecisionCallback callback) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
+  if (!delegate_) {
+    return;
+  }
+
   for (size_t i = 0; i < pending_predicates.size(); ++i) {
     const PredicateConfiguration& predicate_config = pending_predicates[i];
     if (!predicate_config.AppliesTo(input.event)) {
@@ -177,6 +199,9 @@ void OriginGatingChecker::EvaluatePredicates(
   RunActionOrGetUserConfirmationInfo(
       context, /*pending_predicates=*/{}, input, callback,
       [&]() VALID_CONTEXT_REQUIRED(sequence_checker_) {
+        if (!delegate_) {
+          return;
+        }
         GatingDecisionContext* raw_context = context.get();
         GateableEvent event = input.event;
         GURL source = input.source;
@@ -238,9 +263,14 @@ std::optional<Decision> OriginGatingChecker::EvaluateSinglePredicate(
       return EvaluateRequireHttpsOrLocalhost(input.destination);
     case DecisionSource::kRequireHttpsOrHttp:
       return EvaluateRequireHttpsOrHttp(input.destination);
-    case DecisionSource::kActorContainerConfig:
-      return EvaluateActorContainerConfig(input.event, input.source_origin,
-                                          input.destination_origin);
+    case DecisionSource::kBlockByTaskPolicyConfig:
+      return EvaluateTaskPolicyConfigWithCache(input) == Decision::kBlocked
+                 ? Decision::kBlocked
+                 : Decision::kNoDecision;
+    case DecisionSource::kAllowByTaskPolicyConfig:
+      return EvaluateTaskPolicyConfigWithCache(input) == Decision::kAllowed
+                 ? Decision::kAllowed
+                 : Decision::kNoDecision;
     case DecisionSource::kNoVerdict:
       // This is an internal/fallback decision source and is not an
       // executable predicate. OriginGatingConfiguration's
@@ -358,6 +388,9 @@ void OriginGatingChecker::RunActionOrGetUserConfirmationInfo(
   if (input.requires_user_confirmation.has_value()) {
     return action();
   }
+  if (!delegate_) {
+    return;
+  }
   GatingDecisionContext* raw_context = context.get();
   GateableEvent event = input.event;
   GURL source = input.source;
@@ -376,21 +409,14 @@ Decision OriginGatingChecker::IsCachedWithUserConfirmation(
                                                     : Decision::kNoDecision;
 }
 
-Decision OriginGatingChecker::EvaluateActorContainerConfig(
-    GateableEvent event,
-    const url::Origin& source,
-    const url::Origin& destination) const {
-  if (!actor_container_config_slot_.has_value()) {
-    return Decision::kNoDecision;
+Decision OriginGatingChecker::EvaluateTaskPolicyConfigWithCache(
+    DelegateInputs& input) const {
+  if (!input.actor_container_decision.has_value()) {
+    input.actor_container_decision = EvaluateActorContainerConfig(
+        task_policy_config_slot_, input.event, input.source_origin,
+        input.destination_origin);
   }
-  const ActorContainerConfig& config = actor_container_config_slot_.value();
-  if (event == GateableEvent::kPageAction) {
-    return config.IsActuationAllowed(destination) ? Decision::kAllowed
-                                                  : Decision::kBlocked;
-  }
-
-  return config.IsNavigationAllowed(source, destination) ? Decision::kAllowed
-                                                         : Decision::kBlocked;
+  return input.actor_container_decision.value();
 }
 
 }  // namespace origin_gating

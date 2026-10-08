@@ -836,6 +836,9 @@ void ChromeAutofillClient::ShowAutofillSettings(
         return;
       case SuggestionType::kManageCreditCard:
       case SuggestionType::kManageIban:
+      // TODO(crbug.com/546252995): Open up the shopping leaf for Wallet Direct
+      // Offers when navigating to settings.
+      case SuggestionType::kManageOffers:
         base::UmaHistogramEnumeration(
             "Autofill.YourSavedInfoSettingsPage.VisitReferrer",
             autofill_metrics::AutofillSettingsReferrer::kFillingFlowDropdown);
@@ -911,7 +914,7 @@ void ChromeAutofillClient::UpdateAutofillDataListValues(
     const LocalFrameToken& frame_token,
     base::span<const SelectOption> options) {
   if (suggestion_controller_ &&
-      suggestion_controller_->GetFrameToken() == frame_token) {
+      suggestion_controller_->GetAnchorFrameToken() == frame_token) {
     suggestion_controller_->UpdateDataListValues(options);
   }
 }
@@ -971,7 +974,7 @@ void ChromeAutofillClient::HideSuggestions(
 
 void ChromeAutofillClient::TriggerUserPerceptionOfAutofillSurvey(
     FillingProduct filling_product,
-    const std::map<std::string, std::string>& field_filling_stats_data) {
+    const HatsSurveyStringData& field_filling_stats_data) {
 #if !BUILDFLAG(IS_ANDROID)
   CHECK(filling_product == FillingProduct::kAddress ||
         filling_product == FillingProduct::kCreditCard);
@@ -1442,7 +1445,7 @@ void ChromeAutofillClient::ShowAutofillSuggestionsImpl(
   suggestion_controller_ = AutofillSuggestionController::GetOrCreate(
       suggestion_controller_, delegate, web_contents(),
       PopupControllerCommon(
-          open_args.frame_token, element_bounds_in_screen_space,
+          open_args.anchor_frame_token, element_bounds_in_screen_space,
           open_args.text_direction, open_args.anchor_type,
           open_args.show_tabbed_popup,
           open_args.prefer_prev_arrow_side_on_suggestions_update),

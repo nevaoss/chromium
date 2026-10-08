@@ -13,6 +13,7 @@ import type {ComposeboxState} from 'chrome://resources/cr_components/composebox/
 import {PageHandlerRemote} from 'chrome://resources/cr_components/composebox/composebox.mojom-webui.js';
 import {ContextUploadErrorType, ContextUploadStatus, InputType, ModelMode, ToolMode} from 'chrome://resources/cr_components/composebox/composebox_query.mojom-webui.js';
 import type {ContextualEntrypointButtonElement} from 'chrome://resources/cr_components/composebox/contextual_entrypoint_button.js';
+import {browserProxyFactory, MostVisitedPageHandlerRemote} from 'chrome://resources/cr_components/most_visited/most_visited.mojom-webui.js';
 import type {SearchAnimatedGlowElement} from 'chrome://resources/cr_components/search/animated_glow.js';
 import {GlowAnimationState} from 'chrome://resources/cr_components/search/constants.js';
 import {createAutocompleteResultForTesting, createSearchMatchForTesting} from 'chrome://resources/cr_components/searchbox/searchbox_browser_proxy.js';
@@ -20,6 +21,7 @@ import {SelectionDirection, SelectionLineState, SelectionStep} from 'chrome://re
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {FreStage} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 import type {PageCallbackRouter as SearchboxPageCallbackRouter, PageHandlerRemote as SearchboxPageHandlerRemote, SelectedFileInfo} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
+import {TextDirection} from 'chrome://resources/mojo/mojo/public/mojom/base/text_direction.mojom-webui.js';
 import type {UnguessableToken} from 'chrome://resources/mojo/mojo/public/mojom/base/unguessable_token.mojom-webui.js';
 import {assertEquals, assertFalse, assertTrue} from 'chrome://webui-test/chai_assert.js';
 import {TestMock} from 'chrome://webui-test/test_mock.js';
@@ -49,7 +51,7 @@ suite('OmniboxEverywhereOmniboxTest', () => {
       searchboxShowComposeEntrypoint: true,
       ntpRealboxDynamicAiModeButton: true,
       composeboxContextDragAndDropEnabled: true,
-      energyEffectAnimationEnabled: false,
+      energyEffectAnimationEnabled: true,
       searchboxCr23Theming: true,
       searchboxCr23SteadyStateShadow: false,
       contextManagementInComposeboxEnabled: false,
@@ -60,6 +62,7 @@ suite('OmniboxEverywhereOmniboxTest', () => {
       omniboxEverywhereProfilePickerEnabled: false,
       isEnterpriseProfile: false,
       searchboxLayoutMode: 'TallBottomContext',
+      searchboxMultiline: true,
     });
     testProxy = new TestSearchboxBrowserProxy();
     SearchboxBrowserProxy.setInstance(testProxy);
@@ -170,10 +173,13 @@ suite('OmniboxEverywhereOmniboxTest', () => {
                 'search-animated-glow');
         assertTrue(!!glow);
         assertEquals('OmniboxEverywhere', glow.entrypointName);
+        assertTrue(glow.energyEffectAnimationEnabled);
 
         const composeButton =
             omnibox.shadowRoot.querySelector('#composeButton');
         assertTrue(!!composeButton);
+        assertTrue(
+            composeButton.hasAttribute('energy-effect-animation-enabled'));
       });
 
   test(
@@ -334,6 +340,30 @@ suite('OmniboxEverywhereOmniboxTest', () => {
 
     assertEquals('', omnibox.$.input.inputElement.value);
   });
+
+  test('multiLineEnabled is initialized from loadTimeData', () => {
+    assertTrue(omnibox.multiLineEnabled);
+    assertTrue(omnibox.hasAttribute('multi-line-enabled'));
+  });
+
+  test(
+      'updateDropdownVisibility suppresses dropdown when multiline input ' +
+          'expands',
+      () => {
+        omnibox.result = createAutocompleteResultForTesting({
+          input: 'multiline text',
+          matches: [createSearchMatchForTesting()],
+        });
+        omnibox.dropdownIsVisible = true;
+
+        Object.defineProperty(omnibox.$.input.inputElement, 'scrollHeight', {
+          value: 64,
+          configurable: true,
+        });
+
+        omnibox.updateDropdownVisibility();
+        assertFalse(omnibox.dropdownIsVisible);
+      });
 
   test('respects isFuseboxEnabled false', async () => {
     document.body.innerHTML = window.trustedTypes!.emptyHTML;
@@ -663,7 +693,7 @@ suite('OmniboxEverywhereOmniboxTest', () => {
         const entrypoint =
             omnibox.shadowRoot.querySelector<ContextualEntrypointButtonElement>(
                 '#context')!;
-        assertTrue(entrypoint.hasPopupFocus);
+        assertTrue(entrypoint.hasVirtualFocus);
       });
 
   test(
@@ -1090,6 +1120,43 @@ suite('OmniboxEverywhereComposeboxTest', () => {
         assertFalse(composebox.isScreenshotMenuOpen);
         assertEquals(1, testProxy.handler.getCallCount('showScreenshotMenu'));
       });
+
+  test('deleting file context queries autocomplete', async () => {
+    const token = 'test-token';
+    const file = ComposeboxFile.createFromFile(
+        token, {name: 'file.png', type: 'image/png'});
+    composebox.onFileContextAdded(file);
+    await microtasksFinished();
+
+    testProxy.handler.resetResolver('queryAutocomplete');
+    composebox.deleteFile(token, /*fromUserAction=*/ true);
+    await microtasksFinished();
+
+    assertEquals(1, testProxy.handler.getCallCount('queryAutocomplete'));
+    const args = testProxy.handler.getArgs('queryAutocomplete')[0];
+    assertEquals('', args[2]);
+    assertFalse(args[3]);
+    assertEquals(null, composebox.result);
+  });
+
+  test('context upload replaced queries autocomplete', async () => {
+    const token = 'test-token';
+    const file = ComposeboxFile.createFromFile(
+        token, {name: 'file.png', type: 'image/png'});
+    composebox.onFileContextAdded(file);
+    await microtasksFinished();
+
+    testProxy.handler.resetResolver('queryAutocomplete');
+    composebox.onContextualInputStatusChanged(
+        token, ContextUploadStatus.kUploadReplaced, null);
+    await microtasksFinished();
+
+    assertEquals(1, testProxy.handler.getCallCount('queryAutocomplete'));
+    const args = testProxy.handler.getArgs('queryAutocomplete')[0];
+    assertEquals('', args[2]);
+    assertFalse(args[3]);
+    assertEquals(null, composebox.result);
+  });
 });
 
 declare global {
@@ -1132,11 +1199,19 @@ suite('OmniboxEverywhereAppTest', () => {
       profileName: 'Test Profile',
       profileEmail: 'test@example.com',
       omniboxEverywhereProfilePickerEnabled: false,
-      omniboxEverywhereShowShortcuts: true,
+      smallLoomnibox: true,
+      omniboxEverywhereMostVisitedHideTitle: true,
       initialFreStage: 0,
       composeboxCancelButtonTitle: 'Close AI Mode',
       composeboxCancelButtonTitleInput: 'Clear text',
     });
+
+    const mostVisitedHandler = TestMock.fromClass(MostVisitedPageHandlerRemote);
+    const {instance: mostVisitedInstance} =
+        browserProxyFactory.createForTest(mostVisitedHandler);
+    browserProxyFactory.setInstance(mostVisitedInstance);
+    mostVisitedHandler.setResultFor(
+        'getMostVisitedExpandedState', Promise.resolve({isExpanded: false}));
 
     testProxy = new TestSearchboxBrowserProxy();
     SearchboxBrowserProxy.setInstance(testProxy);
@@ -1657,11 +1732,37 @@ suite('OmniboxEverywhereAppTest', () => {
         document.body.innerHTML = window.trustedTypes!.emptyHTML;
         loadTimeData.overrideValues({
           omniboxEverywhereMostVisitedEnabled: true,
-          omniboxEverywhereShowShortcuts: true,
           initialFreStage: 0,
         });
+        const mvHandler = TestMock.fromClass(MostVisitedPageHandlerRemote);
+        const {instance: mvInstance, remote: mvRemote} =
+            browserProxyFactory.createForTest(mvHandler);
+        browserProxyFactory.setInstance(mvInstance);
+        mvHandler.setResultFor(
+            'getMostVisitedExpandedState',
+            Promise.resolve({isExpanded: false}));
+
         const appWithMv = document.createElement('omnibox-everywhere-app');
         document.body.appendChild(appWithMv);
+        await microtasksFinished();
+
+        const testTiles = [{
+          title: 'Google',
+          titleDirection: TextDirection.LEFT_TO_RIGHT,
+          url: 'https://www.google.com/',
+          source: 0,
+          titleSource: 0,
+          isQueryTile: false,
+          allowUserEdit: false,
+          allowUserDelete: false,
+        }];
+        mvRemote.setMostVisitedInfo({
+          customLinksEnabled: false,
+          enterpriseShortcutsEnabled: false,
+          tiles: testTiles,
+          visible: true,
+        });
+        await mvRemote.$.flushForTesting();
         await microtasksFinished();
 
         const searchbox =
@@ -1703,6 +1804,196 @@ suite('OmniboxEverywhereAppTest', () => {
         assertEquals('flex', window.getComputedStyle(mvContainer).display);
       });
   // </if>
+
+  test('dynamic MVT visibility updates container visibility', async () => {
+    document.body.innerHTML = window.trustedTypes!.emptyHTML;
+    loadTimeData.overrideValues({
+      omniboxEverywhereMostVisitedEnabled: true,
+      initialFreStage: 0,
+    });
+    const mvHandler = TestMock.fromClass(MostVisitedPageHandlerRemote);
+    const {instance: mvInstance, remote: mvRemote} =
+        browserProxyFactory.createForTest(mvHandler);
+    browserProxyFactory.setInstance(mvInstance);
+    mvHandler.setResultFor(
+        'getMostVisitedExpandedState', Promise.resolve({isExpanded: false}));
+
+    const appWithMv = document.createElement('omnibox-everywhere-app');
+    document.body.appendChild(appWithMv);
+    await microtasksFinished();
+
+    const mvContainer = appWithMv.shadowRoot.querySelector<HTMLElement>(
+        '#mostVisitedContainer');
+    const mostVisited = appWithMv.shadowRoot.querySelector('cr-most-visited');
+    assertTrue(!!mvContainer);
+    assertTrue(!!mostVisited);
+    assertTrue(mvContainer.hidden);
+
+    const testTiles = [{
+      title: 'Google',
+      titleDirection: TextDirection.LEFT_TO_RIGHT,
+      url: 'https://www.google.com/',
+      source: 0,
+      titleSource: 0,
+      isQueryTile: false,
+      allowUserEdit: false,
+      allowUserDelete: false,
+    }];
+
+    mvRemote.setMostVisitedInfo({
+      customLinksEnabled: false,
+      enterpriseShortcutsEnabled: false,
+      tiles: testTiles,
+      visible: true,
+    });
+    await mvRemote.$.flushForTesting();
+    await microtasksFinished();
+
+    assertFalse(mvContainer.hidden);
+
+    mvRemote.setMostVisitedInfo({
+      customLinksEnabled: false,
+      enterpriseShortcutsEnabled: false,
+      tiles: testTiles,
+      visible: false,
+    });
+    await mvRemote.$.flushForTesting();
+    await microtasksFinished();
+
+    assertTrue(mvContainer.hidden);
+  });
+
+  test(
+      'MVT remains mounted and hidden during FRE, unhiding when FRE dismissed',
+      async () => {
+        document.body.innerHTML = window.trustedTypes!.emptyHTML;
+        loadTimeData.overrideValues({
+          omniboxEverywhereMostVisitedEnabled: true,
+          initialFreStage: FreStage.kIntroModal,
+        });
+        const mvHandler = TestMock.fromClass(MostVisitedPageHandlerRemote);
+        const {instance: mvInstance, remote: mvRemote} =
+            browserProxyFactory.createForTest(mvHandler);
+        browserProxyFactory.setInstance(mvInstance);
+        mvHandler.setResultFor(
+            'getMostVisitedExpandedState',
+            Promise.resolve({isExpanded: false}));
+
+        const appWithMv = document.createElement('omnibox-everywhere-app');
+        document.body.appendChild(appWithMv);
+        await microtasksFinished();
+
+        const mvContainer = appWithMv.shadowRoot.querySelector<HTMLElement>(
+            '#mostVisitedContainer');
+        const mostVisited =
+            appWithMv.shadowRoot.querySelector('cr-most-visited');
+        assertTrue(!!mvContainer);
+        assertTrue(!!mostVisited);
+        assertTrue(mvContainer.hidden);
+
+        const testTiles = [{
+          title: 'Google',
+          titleDirection: TextDirection.LEFT_TO_RIGHT,
+          url: 'https://www.google.com/',
+          source: 0,
+          titleSource: 0,
+          isQueryTile: false,
+          allowUserEdit: false,
+          allowUserDelete: false,
+        }];
+
+        mvRemote.setMostVisitedInfo({
+          customLinksEnabled: false,
+          enterpriseShortcutsEnabled: false,
+          tiles: testTiles,
+          visible: true,
+        });
+        await mvRemote.$.flushForTesting();
+        await microtasksFinished();
+
+        // Still hidden because FRE modal is active.
+        assertTrue(mvContainer.hidden);
+
+        // Transition FRE to kNone.
+        testProxy.page.setFreState({
+          stage: FreStage.kNone,
+          currentHotkeyTokens: [],
+        });
+        await microtasksFinished();
+
+        // Now unhidden.
+        assertFalse(mvContainer.hidden);
+      });
+
+  test('smallLoomnibox controls max-tiles and attribute', async () => {
+    document.body.innerHTML = window.trustedTypes!.emptyHTML;
+    loadTimeData.overrideValues({
+      omniboxEverywhereMostVisitedEnabled: true,
+      smallLoomnibox: true,
+      initialFreStage: 0,
+    });
+    const smallApp = document.createElement('omnibox-everywhere-app');
+    document.body.appendChild(smallApp);
+    await microtasksFinished();
+
+    assertTrue(smallApp.hasAttribute('small-loomnibox'));
+    const mv = smallApp.shadowRoot.querySelector('cr-most-visited')!;
+    assertTrue(!!mv);
+    assertEquals('5', mv.getAttribute('max-tiles'));
+
+    document.body.innerHTML = window.trustedTypes!.emptyHTML;
+    loadTimeData.overrideValues({
+      omniboxEverywhereMostVisitedEnabled: true,
+      smallLoomnibox: false,
+      initialFreStage: 0,
+    });
+    const normalApp = document.createElement('omnibox-everywhere-app');
+    document.body.appendChild(normalApp);
+    await microtasksFinished();
+
+    assertFalse(normalApp.hasAttribute('small-loomnibox'));
+    const normalMv = normalApp.shadowRoot.querySelector('cr-most-visited')!;
+    assertTrue(!!normalMv);
+    assertEquals('7', normalMv.getAttribute('max-tiles'));
+  });
+
+  test(
+      'most visited tiles hide-title reflects hideTitle_ property',
+      async () => {
+        document.body.innerHTML = window.trustedTypes!.emptyHTML;
+        loadTimeData.overrideValues({
+          omniboxEverywhereMostVisitedEnabled: true,
+          omniboxEverywhereShowShortcuts: true,
+          omniboxEverywhereMostVisitedHideTitle: true,
+          initialFreStage: 0,
+        });
+        const appWithHiddenTitles =
+            document.createElement('omnibox-everywhere-app');
+        document.body.appendChild(appWithHiddenTitles);
+        await microtasksFinished();
+
+        const mvHidden =
+            appWithHiddenTitles.shadowRoot.querySelector('cr-most-visited')!;
+        assertTrue(!!mvHidden);
+        assertTrue(mvHidden.hasAttribute('hide-title'));
+
+        document.body.innerHTML = window.trustedTypes!.emptyHTML;
+        loadTimeData.overrideValues({
+          omniboxEverywhereMostVisitedEnabled: true,
+          omniboxEverywhereShowShortcuts: true,
+          omniboxEverywhereMostVisitedHideTitle: false,
+          initialFreStage: 0,
+        });
+        const appWithVisibleTitles =
+            document.createElement('omnibox-everywhere-app');
+        document.body.appendChild(appWithVisibleTitles);
+        await microtasksFinished();
+
+        const mvShown =
+            appWithVisibleTitles.shadowRoot.querySelector('cr-most-visited')!;
+        assertTrue(!!mvShown);
+        assertFalse(mvShown.hasAttribute('hide-title'));
+      });
 
   test(
       'close-composebox event exits composebox mode and focuses searchbox',
@@ -1978,6 +2269,111 @@ suite('OmniboxEverywhereAppTest', () => {
         assertEquals('Alt', reminderChin.hotkeyTokens[0]);
         assertEquals('Space', reminderChin.hotkeyTokens[1]);
       });
+
+  test(
+      'escape key with text in composebox clears text and stays in composebox',
+      async () => {
+        const searchbox =
+            app.shadowRoot.querySelector('omnibox-everywhere-omnibox')!;
+        searchbox.dispatchEvent(new CustomEvent('open-composebox', {
+          detail: {text: 'hello world', files: [], mode: 0, model: 0},
+          bubbles: true,
+          composed: true,
+        }));
+        await microtasksFinished();
+
+        const composebox =
+            app.shadowRoot.querySelector('omnibox-everywhere-composebox')!;
+        assertTrue(!!composebox);
+        assertEquals('hello world', composebox.input);
+
+        window.dispatchEvent(new KeyboardEvent(
+            'keydown', {key: 'Escape', bubbles: true, cancelable: true}));
+        await microtasksFinished();
+
+        assertTrue(
+            !!app.shadowRoot.querySelector('omnibox-everywhere-composebox'));
+        assertEquals('', composebox.input);
+        assertEquals(0, testProxy.handler.getCallCount('onEscapePressed'));
+      });
+
+  test(
+      'escape key with empty composebox exits composebox mode to searchbox',
+      async () => {
+        const searchbox =
+            app.shadowRoot.querySelector('omnibox-everywhere-omnibox')!;
+        searchbox.dispatchEvent(new CustomEvent('open-composebox', {
+          detail: {text: '', files: [], mode: 0, model: 0},
+          bubbles: true,
+          composed: true,
+        }));
+        await microtasksFinished();
+
+        const composebox =
+            app.shadowRoot.querySelector('omnibox-everywhere-composebox')!;
+        assertTrue(!!composebox);
+        assertEquals('', composebox.input);
+
+        window.dispatchEvent(new KeyboardEvent(
+            'keydown', {key: 'Escape', bubbles: true, cancelable: true}));
+        await microtasksFinished();
+
+        assertFalse(
+            !!app.shadowRoot.querySelector('omnibox-everywhere-composebox'));
+        const restoredSearchbox =
+            app.shadowRoot.querySelector('omnibox-everywhere-omnibox')!;
+        assertTrue(!!restoredSearchbox);
+        assertEquals(0, testProxy.handler.getCallCount('onEscapePressed'));
+      });
+
+  test('escape key with text in searchbox clears searchbox text', async () => {
+    const searchbox =
+        app.shadowRoot.querySelector('omnibox-everywhere-omnibox')!;
+    searchbox.setInputText('searchbox query');
+    assertEquals('searchbox query', searchbox.$.input.getInputValue());
+
+    window.dispatchEvent(new KeyboardEvent(
+        'keydown', {key: 'Escape', bubbles: true, cancelable: true}));
+    await microtasksFinished();
+
+    assertEquals('', searchbox.$.input.getInputValue());
+    assertEquals(0, testProxy.handler.getCallCount('onEscapePressed'));
+  });
+
+  test('escape key with empty searchbox calls onEscapePressed', async () => {
+    const searchbox =
+        app.shadowRoot.querySelector('omnibox-everywhere-omnibox')!;
+    assertEquals('', searchbox.$.input.getInputValue());
+
+    window.dispatchEvent(new KeyboardEvent(
+        'keydown', {key: 'Escape', bubbles: true, cancelable: true}));
+    await microtasksFinished();
+
+    assertEquals(1, testProxy.handler.getCallCount('onEscapePressed'));
+  });
+
+  test(
+      'escape key with empty searchbox when FRE modal is showing calls ' +
+          'onEscapePressed',
+      async () => {
+        testProxy.page.setFreState({
+          stage: FreStage.kIntroModal,
+          currentHotkeyTokens: [],
+        });
+        await testProxy.page.$.flushForTesting();
+        await microtasksFinished();
+
+        assertTrue(!!app.shadowRoot.querySelector('fre-modal'));
+        const searchbox =
+            app.shadowRoot.querySelector('omnibox-everywhere-omnibox')!;
+        assertEquals('', searchbox.$.input.getInputValue());
+
+        window.dispatchEvent(new KeyboardEvent(
+            'keydown', {key: 'Escape', bubbles: true, cancelable: true}));
+        await microtasksFinished();
+
+        assertEquals(1, testProxy.handler.getCallCount('onEscapePressed'));
+      });
 });
 
 suite('OmniboxEverywhereProfileIconTest', () => {
@@ -2008,7 +2404,12 @@ suite('OmniboxEverywhereProfileIconTest', () => {
         const container = profileIcon.shadowRoot.querySelector<HTMLElement>(
             '#profileContainer');
         assertTrue(!!container);
+        assertEquals('BUTTON', container.tagName);
         assertFalse(container.classList.contains('clickable'));
+        assertEquals('true', container.getAttribute('aria-disabled'));
+        assertEquals(
+            'Chrome profile Test Profile test@example.com',
+            container.getAttribute('aria-label'));
         assertEquals(
             'Chrome profile\nTest Profile\ntest@example.com',
             container.getAttribute('title'));
@@ -2020,7 +2421,7 @@ suite('OmniboxEverywhereProfileIconTest', () => {
         profileIcon.shadowRoot.querySelector<HTMLElement>('#profileContainer');
     assertTrue(!!container);
     assertTrue(container.classList.contains('clickable'));
-    assertEquals('pointer', window.getComputedStyle(container).cursor);
+    assertEquals('false', container.getAttribute('aria-disabled'));
     assertEquals(
         'Chrome profile\nTest Profile\ntest@example.com',
         container.getAttribute('title'));

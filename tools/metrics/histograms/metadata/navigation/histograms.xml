@@ -3928,10 +3928,13 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="Prerender.Experimental.ActivationTransitionMismatch{PreloadingTriggerType}"
-    enum="PrerenderActivationTransitionMismatchType" expires_after="2025-04-06">
+    enum="PrerenderActivationTransitionMismatchType" expires_after="2027-03-16">
   <owner>nhiroki@chromium.org</owner>
   <owner>chrome-prerendering@google.com</owner>
   <summary>
+    Warning: this histogram was expired from 2025-04-06 to 2026-09-16; data may
+    be missing.
+
     Breakdown metric for PrerenderActivationNavigationParamsMatch::kTransition.
 
     When we are attempting to activate a prerendered page, we compare the
@@ -3965,7 +3968,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Prerender.Experimental.FoundReusePrerenderHost" enum="Boolean"
-    expires_after="2027-01-10">
+    expires_after="2027-03-14">
   <owner>gjc@google.com</owner>
   <owner>chrome-prerendering@google.com</owner>
   <owner>chrome-loading@google.com</owner>
@@ -4175,7 +4178,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="Prerender.Experimental.ReusePrerenderHost.PrerenderHostCount.Failed"
-    units="count" expires_after="2027-01-10">
+    units="count" expires_after="2027-03-14">
   <owner>suzukikeita@google.com</owner>
   <owner>gjc@google.com</owner>
   <owner>chrome-prerendering@google.com</owner>

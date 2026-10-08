@@ -4,6 +4,8 @@
 
 #include "chrome/browser/ui/omnibox/omnibox_everywhere/omnibox_everywhere_controller.h"
 
+#include <utility>
+
 #include "base/check.h"
 #include "base/command_line.h"
 #include "base/feature_list.h"
@@ -35,12 +37,6 @@
 #include "ui/events/keycodes/keyboard_codes.h"
 #include "ui/views/widget/widget.h"
 
-#if BUILDFLAG(IS_WIN)
-#include "base/task/task_traits.h"
-#include "base/task/thread_pool.h"
-#include "chrome/browser/ui/omnibox/omnibox_everywhere/omnibox_everywhere_shortcut_win.h"
-#endif
-
 namespace omnibox_everywhere {
 
 OmniboxEverywhereController::OmniboxEverywhereController(
@@ -56,14 +52,7 @@ OmniboxEverywhereController::OmniboxEverywhereController(
               base::BindRepeating(&OmniboxEverywhereController::Close,
                                   base::Unretained(this)))),
       listener_(listener ? listener
-                         : ui::GlobalAcceleratorListener::GetInstance())
-#if BUILDFLAG(IS_WIN)
-      ,
-      shortcut_helper_(base::ThreadPool::CreateCOMSTATaskRunner(
-          {base::MayBlock(), base::TaskPriority::USER_VISIBLE,
-           base::TaskShutdownBehavior::CONTINUE_ON_SHUTDOWN}))
-#endif
-{
+                         : ui::GlobalAcceleratorListener::GetInstance()) {
   CHECK(base::FeatureList::IsEnabled(omnibox::kOmniboxEverywhere));
   if (g_browser_process && g_browser_process->local_state()) {
     enabled_pref_member_.Init(
@@ -389,6 +378,16 @@ void OmniboxEverywhereController::OnInvoke(InvocationSource source,
     }
   }
 
+  // Ignore invocations while a screenshot capture flow (the native OS screen
+  // picker, Chrome's default desktop media picker, or the region selection
+  // overlay) owns the screen. The widget is deliberately hidden for the
+  // duration of that flow; re-showing it would obscure the picker and could
+  // leak the UI into the captured screenshot. The widget is restored when the
+  // flow completes or is cancelled.
+  if (ui_manager_->IsScreenshareCaptureInProgress()) {
+    return;
+  }
+
   SetTargetProfile(profile);
   switch (source) {
     case InvocationSource::kGlobalHotkey:
@@ -406,6 +405,21 @@ void OmniboxEverywhereController::OnInvoke(InvocationSource source,
     case InvocationSource::kProfilePicker:
     case InvocationSource::kCommandLine:
       break;
+  }
+
+  // Enable background mode/launch on startup the first time this is invoked.
+  if (g_browser_process && g_browser_process->local_state()) {
+    PrefService* local_state = g_browser_process->local_state();
+    const PrefService::Preference* bg_mode_pref =
+        local_state->FindPreference(prefs::kOmniboxEverywhereBackgroundMode);
+    if (bg_mode_pref && bg_mode_pref->IsDefaultValue()) {
+      local_state->SetBoolean(prefs::kOmniboxEverywhereBackgroundMode, true);
+    }
+    const PrefService::Preference* launch_on_startup_pref =
+        local_state->FindPreference(prefs::kOmniboxEverywhereLaunchOnStartup);
+    if (launch_on_startup_pref && launch_on_startup_pref->IsDefaultValue()) {
+      local_state->SetBoolean(prefs::kOmniboxEverywhereLaunchOnStartup, true);
+    }
   }
 
   base::UmaHistogramEnumeration("OmniboxEverywhere.InvocationSource", source);
@@ -491,24 +505,6 @@ void OmniboxEverywhereController::OnKeyPressed(
 void OmniboxEverywhereController::ExecuteCommand(
     const std::string& accelerator_group_id,
     const std::string& command_id) {}
-
-void OmniboxEverywhereController::CreateStartMenuShortcut(
-    base::OnceCallback<void(bool)> callback) {
-#if BUILDFLAG(IS_WIN)
-  if (callback) {
-    shortcut_helper_
-        .AsyncCall(&OmniboxEverywhereShortcutHelperWin::CreateStartMenuShortcut)
-        .Then(std::move(callback));
-  } else {
-    shortcut_helper_.AsyncCall(base::IgnoreResult(
-        &OmniboxEverywhereShortcutHelperWin::CreateStartMenuShortcut));
-  }
-#else
-  if (callback) {
-    std::move(callback).Run(false);
-  }
-#endif
-}
 
 void OmniboxEverywhereController::OfferPinToTaskbar(
     base::OnceCallback<void(bool)> callback) {

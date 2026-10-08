@@ -566,6 +566,10 @@ should be able to be added at any place in this file.
       summary="For iOSGeminiFullscreenPromoFeature feature"/>
   <variant name="_iOSGeminiImageRemix"
       summary="For iOSGeminiImageRemix IPH feature"/>
+  <variant name="_iOSGeminiLiveIPHFeature"
+      summary="For Gemini Live IPH tooltip feature."/>
+  <variant name="_iOSGeminiLiveNewBadgeFeature"
+      summary="For Gemini Live New badge feature."/>
   <variant name="_iOSHistoryOnOverflowMenuFeature"
       summary="For iOSHistoryOnOverflowMenuFeature feature"/>
   <variant name="_iOSHomepageCustomizationNewBadge"
@@ -15448,6 +15452,35 @@ should be able to be added at any place in this file.
   <owner>payments-autofill-team@google.com</owner>
   <description>
     User scanned a credit card using the Credit Card Scanner. iOS only.
+  </description>
+</action>
+
+<action name="IOS.DefaultBrowserContextualPromo.Gemini.Dismiss">
+  <owner>cheickcisse@google.com</owner>
+  <owner>bling-mony-pod@google.com</owner>
+  <description>
+    Recorded when the user dismisses the Gemini contextual default browser
+    promo, either by tapping the secondary (&quot;No thanks&quot;) button or by
+    swiping the promo sheet down.
+  </description>
+</action>
+
+<action name="IOS.DefaultBrowserContextualPromo.Gemini.Impression">
+  <owner>cheickcisse@google.com</owner>
+  <owner>bling-mony-pod@google.com</owner>
+  <description>
+    Recorded when the Gemini contextual default browser promo is presented to
+    the user.
+  </description>
+</action>
+
+<action name="IOS.DefaultBrowserContextualPromo.Gemini.OpenSettingsTapped">
+  <owner>cheickcisse@google.com</owner>
+  <owner>bling-mony-pod@google.com</owner>
+  <description>
+    Recorded when the user taps the primary button of the Gemini contextual
+    default browser promo, which opens the iOS Settings app so that Chrome can
+    be set as the default browser.
   </description>
 </action>
 
@@ -37992,6 +38025,15 @@ should be able to be added at any place in this file.
   <owner>top-chrome-desktop-ui@google.com</owner>
   <description>
     User selected Focus This Tab from the tab context menu.
+  </description>
+</action>
+
+<action name="TabContextMenu_FocusNonGroupTabs">
+  <owner>kunaldaftari@google.com</owner>
+  <owner>top-chrome-desktop-ui@google.com</owner>
+  <description>
+    User selected Focus Tab or Focus Tabs from the tab context menu for
+    non-grouped tabs.
   </description>
 </action>
 

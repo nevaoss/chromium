@@ -376,6 +376,10 @@ public final class ProductionSupportedFlagList {
                 "Schedules tasks related to the navigation network responses on a higher "
                         + "priority task queue."),
         Flag.baseFeature(
+                ContentFeatures.PRIORITIZE_MAIN_FRAME_NAVIGATION_NETWORK_RESPONSE,
+                "Schedules tasks related to the primary main frame navigation network responses"
+                        + " on a highest priority task queue."),
+        Flag.baseFeature(
                 ContentFeatures.GIN_JAVA_BRIDGE_MOJO_SKIP_CLEAR_OBJECTS_ON_MAIN_DOCUMENT_READY,
                 "Skips clearing objects on main document ready."),
         Flag.baseFeature(
@@ -437,6 +441,7 @@ public final class ProductionSupportedFlagList {
         Flag.baseFeature(CcFeatures.NEW_CONTENT_FOR_CHECKERBOARDED_SCROLLS),
         Flag.baseFeature(CcFeatures.PRESERVE_DISCARDABLE_IMAGE_MAP_QUALITY),
         Flag.baseFeature(BlinkFeatures.SCROLLBAR_COLOR),
+        Flag.baseFeature(BlinkFeatures.RASTER_INDUCING_SCROLL),
         Flag.baseFeature(
                 AwFeatures.WEBVIEW_FILE_SYSTEM_ACCESS, "Enables JS File System Access API"),
         Flag.baseFeature(
@@ -1486,6 +1491,10 @@ public final class ProductionSupportedFlagList {
                 BlinkFeatures.XSLT,
                 "Controls whether XSLT is supported by the browser. Disabling this flag disables"
                         + " all XSLT processing."),
+        Flag.baseFeature("UseRustCborParser", "Enables the Rust-based CBOR parser instead of C++."),
+        Flag.baseFeature(
+                AwFeatures.WEBVIEW_PREFETCH_AHEAD_OF_PRERENDER,
+                "Enables automatic triggering of prefetch ahead of prerender in WebView."),
         // Add new commandline switches and features above. The final entry should have a
         // trailing comma for cleaner diffs.
     };

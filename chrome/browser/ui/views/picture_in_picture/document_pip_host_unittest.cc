@@ -20,6 +20,7 @@
 #include "content/public/browser/fullscreen_types.h"
 #include "content/public/browser/invalidate_type.h"
 #include "content/public/browser/keyboard_event_processing_result.h"
+#include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/common/referrer.h"
 #include "content/public/common/window_container_type.mojom.h"
@@ -34,8 +35,10 @@
 #include "ui/base/page_transition_types.h"
 #include "ui/base/window_open_disposition.h"
 #include "ui/display/screen.h"
+#include "ui/views/accessibility/view_accessibility.h"
 #include "ui/views/controls/webview/webview.h"
 #include "ui/views/focus/focus_manager.h"
+#include "ui/views/view.h"
 #include "ui/views/widget/widget.h"
 #include "ui/views/widget/widget_observer.h"
 #include "ui/views/window/non_client_view.h"
@@ -279,6 +282,35 @@ TEST_F(DocumentPipHostTest, WidgetIsCreated) {
   views::Widget* w = host->GetWidget();
   ASSERT_TRUE(w);
   EXPECT_FALSE(w->IsClosed());
+}
+
+TEST_F(DocumentPipHostTest, WindowTitleUpdatesWithOpener) {
+  content::WebContentsTester::For(opener())->NavigateAndCommit(
+      GURL("https://example.com/"));
+  auto* entry = opener()->GetController().GetLastCommittedEntry();
+  ASSERT_TRUE(entry);
+  opener()->UpdateTitleForEntry(entry, u"Original\ntitle");
+
+  auto* host = CreateHostAndOpenPipWindow();
+  auto* widget = host->GetWidget();
+  ASSERT_TRUE(widget);
+  auto& root_accessibility = widget->GetRootView()->GetViewAccessibility();
+  EXPECT_EQ(u"Originaltitle", widget->widget_delegate()->GetWindowTitle());
+  EXPECT_EQ(u"Originaltitle", root_accessibility.GetCachedName());
+
+  opener()->UpdateTitleForEntry(entry, u"Updated\ntitle");
+  EXPECT_EQ(u"Updatedtitle", widget->widget_delegate()->GetWindowTitle());
+  EXPECT_EQ(u"Updatedtitle", root_accessibility.GetCachedName());
+
+  content::WebContentsTester::For(host->GetChildWebContents())
+      ->SetTitle(u"Child title");
+  host->NavigationStateChanged(host->GetChildWebContents(),
+                               content::INVALIDATE_TYPE_TITLE);
+  EXPECT_EQ(u"Updatedtitle", root_accessibility.GetCachedName());
+
+  host->Close();
+  opener()->UpdateTitleForEntry(entry, u"Title after PiP closes");
+  EXPECT_FALSE(host->GetWidget());
 }
 
 // Regression test for crbug.com/519833771: opening the PiP window builds the
@@ -1028,6 +1060,56 @@ TEST_F(DocumentPipHostTest, Close_IsIdempotent) {
 
   host->Close();
   EXPECT_EQ(nullptr, host->GetWidget());
+}
+
+TEST_F(DocumentPipHostTest, WidgetCloseNow_TearsDownWidgetSynchronously) {
+  auto* host = CreateHostAndOpenPipWindow();
+  ASSERT_TRUE(host);
+  ASSERT_TRUE(host->GetWidget());
+  auto widget = host->GetWidget()->GetWeakPtr();
+  auto* child = host->GetChildWebContents();
+  ASSERT_TRUE(child);
+  content::WebContentsDestroyedWatcher child_destroyed_watcher(child);
+  DialogManagerDelegateTeardownObserver teardown_observer(host->GetWidget(),
+                                                          child);
+  TestModalDialogHostObserver modal_observer;
+  host->AddObserver(&modal_observer);
+
+  host->GetWidget()->CloseNow();
+
+  EXPECT_FALSE(widget);
+  EXPECT_EQ(host, DocumentPipHost::FromWebContents(opener()));
+  EXPECT_EQ(nullptr, host->GetWidget());
+  EXPECT_EQ(nullptr, host->GetChildWebContents());
+  EXPECT_TRUE(child_destroyed_watcher.IsDestroyed());
+  EXPECT_TRUE(teardown_observer.on_widget_destroying_called());
+  EXPECT_TRUE(teardown_observer.was_delegate_null_at_destruction());
+  EXPECT_EQ(1, modal_observer.on_host_destroying_count());
+
+  host->Close();
+  EXPECT_EQ(1, modal_observer.on_host_destroying_count());
+
+  EXPECT_EQ(host, CreateHostAndOpenPipWindow());
+  ASSERT_TRUE(host->GetWidget());
+  host->Close();
+  EXPECT_EQ(2, modal_observer.on_host_destroying_count());
+  host->RemoveObserver(&modal_observer);
+}
+
+TEST_F(DocumentPipHostTest, WidgetClose_UsesSynchronousCallback) {
+  auto* host = CreateHostAndOpenPipWindow();
+  ASSERT_TRUE(host);
+  ASSERT_TRUE(host->GetWidget());
+  auto widget = host->GetWidget()->GetWeakPtr();
+  content::WebContentsDestroyedWatcher child_destroyed_watcher(
+      host->GetChildWebContents());
+
+  host->GetWidget()->Close();
+
+  EXPECT_FALSE(widget);
+  EXPECT_EQ(nullptr, host->GetWidget());
+  EXPECT_EQ(nullptr, host->GetChildWebContents());
+  EXPECT_TRUE(child_destroyed_watcher.IsDestroyed());
 }
 
 // A second CreateAndShowPipWindow() while a window is already open is a
