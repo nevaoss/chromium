@@ -79,12 +79,8 @@ bool IsRendererDebugURL(const GURL& url) {
   if (url == kChromeUICheckCrashURL || url == kChromeUIBadCastCrashURL ||
       url == kChromeUICrashURL || url == kChromeUIDumpURL ||
       url == kChromeUIKillURL || url == kChromeUIHangURL ||
-<<<<<<< HEAD
-      url == kChromeUIShorthangURL || url == kChromeUIMemoryExhaustURL) {
-=======
       url == kChromeUIShorthangURL || url == kChromeUIMemoryExhaustURL ||
       url == kChromeUIV8OOMURL || url == kChromeUICrashRustURL) {
->>>>>>> 156.0.8064.0~1
     return true;
   }
 
