@@ -833,14 +833,10 @@ void DevToolsHttpHandler::OnWebSocketRequest(
   if (!thread_)
     return;
 
-<<<<<<< HEAD
 // TODO(neva): The below check on allowed origins causes DevTools disconnection.
 // Needs to be revised later.
 // See http://clm.lge.com/issue/browse/NEVA-7987 for details.
 #if !BUILDFLAG(IS_NEVA_APPRUNTIME)
-  if (request.headers.count("origin") &&
-      !remote_allow_origins_.count(request.headers.at("origin")) &&
-=======
   bool is_same_origin =
       server_ip_address_ &&
       url::Origin::Create(
@@ -849,7 +845,6 @@ void DevToolsHttpHandler::OnWebSocketRequest(
   if (request.headers.count("origin") && !is_same_origin &&
       !remote_allow_origins_.count(
           base::ToLowerASCII(request.headers.at("origin"))) &&
->>>>>>> 156.0.8068.0~1
       !remote_allow_origins_.count("*")) {
     const std::string& origin = request.headers.at("origin");
     const std::string message = base::StringPrintf(
