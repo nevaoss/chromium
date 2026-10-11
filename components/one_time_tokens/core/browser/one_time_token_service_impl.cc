@@ -70,6 +70,12 @@ ExpiringSubscription OneTimeTokenServiceImpl::Subscribe(
     base::OnceClosure expiration_callback) {
   switch (source) {
     case OneTimeTokenSource::kOnDeviceSms: {
+      if (!sms_.backend) {
+        callback.Run(OneTimeTokenSource::kOnDeviceSms,
+                     base::unexpected(OneTimeTokenRetrievalError::
+                                          kSmsOtpBackendPlatformNotSupported));
+        return ExpiringSubscription();
+      }
       ExpiringSubscription subscription = sms_subscription_manager_.Subscribe(
           expiration, std::move(callback), std::move(expiration_callback));
       RetrieveSmsOtpIfNeeded();
@@ -81,10 +87,11 @@ ExpiringSubscription OneTimeTokenServiceImpl::Subscribe(
       RetrieveGmailOtpIfNeeded(expiration);
       return subscription;
     }
-    default:
-      NOTREACHED() << "OneTimeTokenServiceImpl::Subscribe: Unsupported source "
-                   << static_cast<int>(source);
+    case OneTimeTokenSource::kUnknown:
+      break;
   }
+  NOTREACHED() << "OneTimeTokenServiceImpl::Subscribe: Unsupported source "
+               << static_cast<int>(source);
 }
 
 ExpiringSubscription OneTimeTokenServiceImpl::SubscribeToTickles(
@@ -120,9 +127,10 @@ bool OneTimeTokenServiceImpl::HasPendingRequests(
       return gmail_.backend && gmail_.backend->HasPendingRequests();
     case OneTimeTokenSource::kOnDeviceSms:
       return sms_.has_pending_request;
-    default:
-      return false;
+    case OneTimeTokenSource::kUnknown:
+      break;
   }
+  return false;
 }
 
 void OneTimeTokenServiceImpl::RequestOneTimeToken(
@@ -162,10 +170,11 @@ void OneTimeTokenServiceImpl::FetchUserDataProcessingConsent(
 }
 
 void OneTimeTokenServiceImpl::RetrieveSmsOtpIfNeeded() {
-  if (!sms_.backend || sms_.has_pending_request ||
+  if (sms_.has_pending_request ||
       !sms_subscription_manager_.GetNumberSubscribers()) {
     return;
   }
+  CHECK(sms_.backend);
   sms_.has_pending_request = true;
   sms_.backend->RetrieveSmsOtp(
       base::BindOnce(&OneTimeTokenServiceImpl::OnResponseFromSmsOtpBackend,

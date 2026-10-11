@@ -396,13 +396,17 @@ void OmniboxAutofillDelegate::OnSuggestionsHidden(
 }
 
 void OmniboxAutofillDelegate::DidSelectSuggestion(
-    const Suggestion& suggestion) {
+    const Suggestion& suggestion,
+    const FormGlobalId& form_id,
+    const FieldGlobalId& field_id) {
   FillOrPreviewCard(suggestion, mojom::ActionPersistence::kPreview);
 }
 
 void OmniboxAutofillDelegate::DidAcceptSuggestion(
     const Suggestion& suggestion,
-    const SuggestionMetadata& metadata) {
+    const SuggestionMetadata& metadata,
+    const FormGlobalId& form_id,
+    const FieldGlobalId& field_id) {
   FillOrPreviewCard(suggestion, mojom::ActionPersistence::kFill);
 
   auto* manager =
@@ -498,12 +502,29 @@ void OmniboxAutofillDelegate::OnFieldBecameVisible() {
             }
           },
           weak_ptr_factory_.GetWeakPtr()),
-      base::BindRepeating(&OmniboxAutofillDelegate::DidSelectSuggestion,
-                          weak_ptr_factory_.GetWeakPtr()),
+      base::BindRepeating(
+          [](base::WeakPtr<OmniboxAutofillDelegate> delegate,
+             FormGlobalId form_id, FieldGlobalId field_id,
+             const Suggestion& suggestion) {
+            if (delegate) {
+              delegate->DidSelectSuggestion(suggestion, form_id, field_id);
+            }
+          },
+          weak_ptr_factory_.GetWeakPtr(), trigger_form_global_id_,
+          trigger_field_global_id_),
       base::BindRepeating(&OmniboxAutofillDelegate::ClearPreviewedForm,
                           weak_ptr_factory_.GetWeakPtr()),
-      base::BindRepeating(&OmniboxAutofillDelegate::DidAcceptSuggestion,
-                          weak_ptr_factory_.GetWeakPtr()));
+      base::BindRepeating(
+          [](base::WeakPtr<OmniboxAutofillDelegate> delegate,
+             FormGlobalId form_id, FieldGlobalId field_id,
+             const Suggestion& suggestion, const SuggestionMetadata& metadata) {
+            if (delegate) {
+              delegate->DidAcceptSuggestion(suggestion, metadata, form_id,
+                                            field_id);
+            }
+          },
+          weak_ptr_factory_.GetWeakPtr(), trigger_form_global_id_,
+          trigger_field_global_id_));
 }
 
 void OmniboxAutofillDelegate::OnChipShown() {

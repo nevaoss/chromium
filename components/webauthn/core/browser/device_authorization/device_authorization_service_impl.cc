@@ -11,6 +11,7 @@
 #include "base/logging.h"
 #include "components/signin/public/base/consent_level.h"
 #include "components/signin/public/identity_manager/identity_manager.h"
+#include "components/webauthn/core/browser/device_authorization/device_authorization_features.h"
 #include "google_apis/gaia/gaia_id.h"
 #include "services/network/public/cpp/shared_url_loader_factory.h"
 
@@ -82,26 +83,51 @@ void DeviceAuthorizationServiceImpl::FetchKeysImpl(
   const GaiaId gaia_id =
       identity_manager_->GetPrimaryAccountInfo(signin::ConsentLevel::kSignin)
           .gaia;
+
   if (!reauth_proof_token.has_value()) {
-    std::optional<DeviceAuthorizationKeys> cached_keys =
-        client_->GetCachedKeys(gaia_id);
-    // TODO(crbug.com/405036154): Implement cache version logic invalidation.
-    if (cached_keys.has_value() && cached_keys->keys_size() > 0) {
-      std::move(callback).Run(DeviceAuthFetchResult{*std::move(cached_keys)});
-      return;
-    }
+    client_->GetCachedKeys(
+        gaia_id,
+        base::BindOnce(&DeviceAuthorizationServiceImpl::OnCachedKeysFetched,
+                       weak_ptr_factory_.GetWeakPtr(), gaia_id,
+                       std::move(callback)));
+    return;
   }
 
   is_fetching_ = true;
   pending_callback_ = std::move(callback);
 
   sync_pb::GetDeviceAuthorizationKeyRequest request;
-  if (reauth_proof_token.has_value()) {
-    request.set_reauth_proof_token(*std::move(reauth_proof_token));
-  }
+  request.set_reauth_proof_token(*std::move(reauth_proof_token));
 
   client_->PopulatePlatformData(
       gaia_id, std::move(request),
+      base::BindOnce(&DeviceAuthorizationServiceImpl::OnPlatformDataPopulated,
+                     weak_ptr_factory_.GetWeakPtr(), gaia_id));
+}
+
+void DeviceAuthorizationServiceImpl::OnCachedKeysFetched(
+    const GaiaId& gaia_id,
+    FetchDeviceAuthKeysCallback callback,
+    std::optional<CachedDeviceAuthorizationKeys> cached_keys) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  if (cached_keys.has_value() &&
+      cached_keys->cache_version() ==
+          features::kDeviceAuthorizationKeyCacheVersion.Get() &&
+      cached_keys->keys().keys_size() > 0) {
+    std::move(callback).Run(DeviceAuthFetchResult{cached_keys->keys()});
+    return;
+  }
+
+  if (is_fetching_) {
+    std::move(callback).Run(DeviceAuthFetchResult{});
+    return;
+  }
+
+  is_fetching_ = true;
+  pending_callback_ = std::move(callback);
+
+  client_->PopulatePlatformData(
+      gaia_id, sync_pb::GetDeviceAuthorizationKeyRequest{},
       base::BindOnce(&DeviceAuthorizationServiceImpl::OnPlatformDataPopulated,
                      weak_ptr_factory_.GetWeakPtr(), gaia_id));
 }
@@ -138,12 +164,15 @@ void DeviceAuthorizationServiceImpl::OnFetchCompleted(
     // manager's current primary account gaia_id before storing keys.
     // TODO(crbug.com/405036154): Handle key validation (e.g. expected count).
     DeviceAuthorizationKeys keys = response->device_authorization_keys();
-    if (!client_->StoreKeys(gaia_id, keys)) {
-      std::move(callback).Run(DeviceAuthFetchResult{});
-      return;
-    }
-
-    std::move(callback).Run(DeviceAuthFetchResult{std::move(keys)});
+    CachedDeviceAuthorizationKeys cached_keys;
+    cached_keys.set_cache_version(
+        features::kDeviceAuthorizationKeyCacheVersion.Get());
+    *cached_keys.mutable_keys() = keys;
+    client_->StoreKeys(
+        gaia_id, cached_keys,
+        base::BindOnce(&DeviceAuthorizationServiceImpl::OnKeysStored,
+                       weak_ptr_factory_.GetWeakPtr(), std::move(callback),
+                       std::move(keys)));
     return;
   }
 
@@ -153,6 +182,19 @@ void DeviceAuthorizationServiceImpl::OnFetchCompleted(
   }
 
   std::move(callback).Run(DeviceAuthFetchResult{});
+}
+
+void DeviceAuthorizationServiceImpl::OnKeysStored(
+    FetchDeviceAuthKeysCallback callback,
+    DeviceAuthorizationKeys keys,
+    bool success) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  if (!success) {
+    std::move(callback).Run(DeviceAuthFetchResult{});
+    return;
+  }
+
+  std::move(callback).Run(DeviceAuthFetchResult{std::move(keys)});
 }
 
 }  // namespace webauthn

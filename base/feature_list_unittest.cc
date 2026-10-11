@@ -121,6 +121,12 @@ BASE_FEATURE_PARAM(int,
                    &kRuntimeMutableFeature,
                    12345);
 
+BASE_FEATURE_ENUM_PARAM(TestEnum,
+                        kRuntimeMutableFeatureEnumParam,
+                        &kRuntimeMutableFeature,
+                        TestEnum::kFirst,
+                        &kTestEnumOptions);
+
 // For testing features with country restrictions.
 BASE_FEATURE_WITH_COUNTRY_RESTRICTIONS(kCountryEnabledEuropeFeature,
                                        FEATURE_ENABLED_FOR_COUNTRIES,
@@ -1712,7 +1718,10 @@ TEST_F(FeatureListTest, RuntimeMutability_FeatureParamBypassCache) {
     trial->SetForced();
     ASSERT_TRUE(base::AssociateFieldTrialParams(
         kTrialName, kGroupName,
-        FieldTrialParams{{kRuntimeMutableFeatureParam.name, "99999"}}));
+        FieldTrialParams{
+            {kRuntimeMutableFeatureParam.name, "99999"},
+            {kRuntimeMutableFeatureEnumParam.name, "second"},
+        }));
     feature_list->RegisterFieldTrialOverride(
         kRuntimeMutableFeature.name, FeatureList::OVERRIDE_ENABLE_FEATURE,
         trial.get());
@@ -1734,6 +1743,7 @@ TEST_F(FeatureListTest, RuntimeMutability_FeatureParamBypassCache) {
   // The overridden enabled state and overridden param should be reflected.
   EXPECT_TRUE(FeatureList::IsEnabled(kRuntimeMutableFeature));
   EXPECT_EQ(99999, kRuntimeMutableFeatureParam.Get());
+  EXPECT_EQ(TestEnum::kSecond, kRuntimeMutableFeatureEnumParam.Get());
 
   // Update parameters/configuration.
   auto update =
@@ -1750,6 +1760,7 @@ TEST_F(FeatureListTest, RuntimeMutability_FeatureParamBypassCache) {
   // reflected.
   EXPECT_FALSE(FeatureList::IsEnabled(kRuntimeMutableFeature));
   EXPECT_EQ(12345, kRuntimeMutableFeatureParam.Get());
+  EXPECT_EQ(TestEnum::kFirst, kRuntimeMutableFeatureEnumParam.Get());
 
   // The runtime mutability interactions should be logged.
   histogram_tester.ExpectUniqueSample(kRuntimeMutabilityResult,
@@ -2011,6 +2022,94 @@ TEST_F(FeatureListTest, GetFeaturesAssociatedWithTrial) {
           ->GetFeaturesAssociatedWithTrial(FeatureList::ControllingTrialInfo{
               .trial_name = "TrialB", .is_runtime_override = false})
           .empty());
+}
+
+TEST_F(FeatureListTest, GetFeaturesAssociatedWithTrial_MultipleTrials) {
+  auto feature_list = std::make_unique<FeatureList>();
+
+  FieldTrial* trial_a = FieldTrialList::CreateFieldTrial("TrialA", "GroupA");
+  FieldTrial* trial_b = FieldTrialList::CreateFieldTrial("TrialB", "GroupB");
+  feature_list->RegisterFieldTrialOverride(
+      "Feature1", FeatureList::OVERRIDE_ENABLE_FEATURE, trial_a);
+  feature_list->RegisterFieldTrialOverride(
+      "Feature2", FeatureList::OVERRIDE_DISABLE_FEATURE, trial_b);
+  feature_list->RegisterFieldTrialOverride(
+      "Feature3", FeatureList::OVERRIDE_ENABLE_FEATURE, trial_a);
+  // An override with no associated trial.
+  feature_list->InitFromCommandLine("Feature4", "");
+
+  test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitWithFeatureList(std::move(feature_list));
+  const auto* active_feature_list = FeatureList::GetInstance();
+
+  EXPECT_EQ(base::flat_set<std::string>({"Feature1", "Feature3"}),
+            active_feature_list->GetFeaturesAssociatedWithTrial(
+                FeatureList::ControllingTrialInfo{.trial_name = "TrialA"}));
+  EXPECT_EQ(base::flat_set<std::string>({"Feature2"}),
+            active_feature_list->GetFeaturesAssociatedWithTrial(
+                FeatureList::ControllingTrialInfo{.trial_name = "TrialB"}));
+
+  // Repeated lookups return the same results.
+  EXPECT_EQ(base::flat_set<std::string>({"Feature1", "Feature3"}),
+            active_feature_list->GetFeaturesAssociatedWithTrial(
+                FeatureList::ControllingTrialInfo{.trial_name = "TrialA"}));
+
+  // Features without an associated trial are never returned, and unknown or
+  // empty trial names return nothing.
+  EXPECT_TRUE(
+      active_feature_list
+          ->GetFeaturesAssociatedWithTrial(
+              FeatureList::ControllingTrialInfo{.trial_name = "Unknown"})
+          .empty());
+  EXPECT_TRUE(active_feature_list
+                  ->GetFeaturesAssociatedWithTrial(
+                      FeatureList::ControllingTrialInfo{.trial_name = ""})
+                  .empty());
+}
+
+// Trials associated for reporting purposes are attached to an override entry
+// that already exists, so this verifies that the association is still picked
+// up by the index built at initialization time.
+TEST_F(FeatureListTest, GetFeaturesAssociatedWithTrial_ReportingFieldTrial) {
+  auto feature_list = std::make_unique<FeatureList>();
+  feature_list->InitFromCommandLine(kFeatureOffByDefaultName, "");
+
+  FieldTrial* trial =
+      FieldTrialList::CreateFieldTrial("ReportingTrial", "Group");
+  feature_list->AssociateReportingFieldTrial(
+      kFeatureOffByDefaultName, FeatureList::OVERRIDE_ENABLE_FEATURE, trial);
+
+  test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitWithFeatureList(std::move(feature_list));
+
+  EXPECT_EQ(
+      base::flat_set<std::string>({kFeatureOffByDefaultName}),
+      FeatureList::GetInstance()->GetFeaturesAssociatedWithTrial(
+          FeatureList::ControllingTrialInfo{.trial_name = "ReportingTrial"}));
+}
+
+// Replacing an OVERRIDE_USE_DEFAULT entry rewrites its associated trial, so
+// this verifies that the index reflects the final association.
+TEST_F(FeatureListTest, GetFeaturesAssociatedWithTrial_ReplaceUseDefault) {
+  auto feature_list = std::make_unique<FeatureList>();
+
+  FieldTrial* trial1 = FieldTrialList::CreateFieldTrial("Trial1", "Group");
+  feature_list->RegisterFieldTrialOverride(
+      kFeatureOnByDefaultName, FeatureList::OVERRIDE_USE_DEFAULT, trial1);
+
+  std::vector<FeatureList::FeatureOverrideInfo> overrides;
+  overrides.emplace_back(std::cref(kFeatureOnByDefault),
+                         FeatureList::OverrideState::OVERRIDE_DISABLE_FEATURE);
+  feature_list->RegisterExtraFeatureOverrides(
+      std::move(overrides), /*replace_use_default_overrides=*/true);
+
+  test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitWithFeatureList(std::move(feature_list));
+
+  // The replacement passed a null trial, so the existing trial is kept.
+  EXPECT_EQ(base::flat_set<std::string>({kFeatureOnByDefaultName}),
+            FeatureList::GetInstance()->GetFeaturesAssociatedWithTrial(
+                FeatureList::ControllingTrialInfo{.trial_name = "Trial1"}));
 }
 
 TEST_F(FeatureListTest, RuntimeMutableFeatureUpdate_MoveSemantics) {

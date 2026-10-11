@@ -941,6 +941,7 @@ source_set("extensions") {
       "//chrome/browser/device_identity",
       "//chrome/browser/feedback",
       "//chrome/browser/glic",
+      "//chrome/browser/glic/gemini_enterprise",
       "//chrome/browser/importer",
       "//chrome/browser/language",
       "//chrome/browser/lifetime:termination_notification",
@@ -1310,6 +1311,7 @@ source_set("extensions") {
       "//ash/webui/camera_app_ui",
       "//ash/webui/camera_app_ui:mojo_bindings",
       "//ash/webui/file_manager/untrusted_resources:file_manager_untrusted_resources",
+      "//ash/webui/os_feedback_ui:url_constants",
       "//ash/webui/resources:media_app_bundle_resources_grit",
       "//ash/webui/settings/public/constants:mojom",
       "//chrome/browser/ash/accessibility",
@@ -1664,6 +1666,7 @@ static_library("test_support") {
     "//components/services/unzip/content",
     "//components/sessions",
     "//components/signin/public/identity_manager:test_support",
+    "//components/supervised_user/core/browser:test_support",
     "//components/sync:test_support",
     "//components/sync_preferences",
     "//components/user_manager",
@@ -2078,6 +2081,7 @@ source_set("unit_tests") {
     "//components/services/unzip:in_process",
     "//components/services/unzip/content",
     "//components/signin/public/identity_manager:test_support",
+    "//components/supervised_user/core/browser:test_support",
     "//components/sync:test_support",
     "//components/sync_bookmarks",
     "//components/sync_preferences:test_support",
@@ -2220,6 +2224,7 @@ source_set("unit_tests") {
     ]
     deps += [
       "//ash/constants",
+      "//ash/webui/os_feedback_ui:url_constants",
       "//chrome/browser/ash/app_list/arc:test_support",
       "//chrome/browser/ash/arc:arc_util",
       "//chrome/browser/ash/extensions",
@@ -2658,6 +2663,7 @@ source_set("browser_tests") {
       "//chrome/browser/ui:browser_window_header",
       "//chrome/browser/ui/search:test_support_ui",
       "//chrome/browser/ui/tabs/saved_tab_groups",
+      "//chrome/browser/ui/views/frame:browser_view_header",
       "//chrome/browser/ui/views/location_bar",
       "//chrome/browser/ui/webui/history_clusters:browser_tests",
       "//chrome/browser/ui/webui/interstitials:browser_tests",
@@ -3207,6 +3213,7 @@ source_set("interactive_ui_tests") {
   if (!is_android) {
     deps += [
       "//chrome/browser/ui:browser_window_header",
+      "//chrome/browser/ui/views/frame:browser_view_header",
       "//chrome/browser/ui/window_feature_controller",
     ]
   }
@@ -3273,6 +3280,10 @@ source_set("interactive_ui_tests") {
 
     if (use_ozone) {
       deps += [ "//ui/ozone" ]
+    }
+
+    if (toolkit_views) {
+      deps += [ "//chrome/browser/ui/views/extensions:extensions_views_utils" ]
     }
   }
 }

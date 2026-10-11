@@ -203,10 +203,6 @@ BASE_FEATURE(kCorsPreflightCacheKeyTaintedOrigin,
 // and continue the handshake without sending one if requested.
 BASE_FEATURE(kOmitCorsClientCert, base::FEATURE_DISABLED_BY_DEFAULT);
 
-// Enforces that frame-type destinations require kNavigate mode.
-BASE_FEATURE(kRestrictFrameDestinationsToNavigate,
-             base::FEATURE_ENABLED_BY_DEFAULT);
-
 // Enables support for the `Variants` response header and reduce
 // accept-language. https://github.com/Tanych/accept-language
 BASE_FEATURE(kReduceAcceptLanguage, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -553,7 +549,7 @@ BASE_FEATURE(kReportingApiEnableVariationsHeaders,
 BASE_FEATURE(kNetworkContextDirectReceiver, base::FEATURE_DISABLED_BY_DEFAULT);
 
 bool ShouldBindNetworkContextDirectReceiver() {
-  return base::CurrentIOThread::IsSet() &&
+  return mojo::IsDirectReceiverSupported() && base::CurrentIOThread::IsSet() &&
          base::FeatureList::IsEnabled(features::kNetworkContextDirectReceiver);
 }
 

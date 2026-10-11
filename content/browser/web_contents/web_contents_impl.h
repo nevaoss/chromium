@@ -751,6 +751,7 @@ class CONTENT_EXPORT WebContentsImpl
       const GURL& blocked_url,
       const GURL& initiator_url,
       const url::Origin& initiator_origin,
+      scoped_refptr<InitiatorNavigationState> initiator_navigation_state,
       blink::mojom::NavigationBlockedReason reason) override;
   void OnDidFinishLoad(RenderFrameHostImpl* render_frame_host,
                        const GURL& url) override;
@@ -1819,9 +1820,6 @@ class CONTENT_EXPORT WebContentsImpl
                            ForEachFrameTreeInnerContents);
   FRIEND_TEST_ALL_PREFIXES(WebContentsImplBrowserTest,
                            UserAgentOverrideDuringDeferredNavigation);
-  FRIEND_TEST_ALL_PREFIXES(FencedFrameMPArchBrowserTest, FrameIteration);
-  FRIEND_TEST_ALL_PREFIXES(FencedFrameParameterizedBrowserTest,
-                           ShouldIgnoreJsDialog);
   FRIEND_TEST_ALL_PREFIXES(FormStructureBrowserTest, HTMLFiles);
   FRIEND_TEST_ALL_PREFIXES(NavigationControllerTest, HistoryNavigate);
   FRIEND_TEST_ALL_PREFIXES(RenderFrameHostManagerTest, PageDoesBackAndReload);
@@ -2140,6 +2138,10 @@ class CONTENT_EXPORT WebContentsImpl
   // called once as this call also removes it from the internal map.
   RenderWidgetHostView* GetCreatedWidget(ChildProcessId process_id,
                                          int route_id);
+
+  // Closes and destroys any pending or shown popup widgets created by
+  // `render_frame_host`.
+  void ClosePopupWidgetsForFrame(RenderFrameHost* render_frame_host);
 
   // Finds the new CreatedWindow by |main_frame_widget_route_id|, initializes
   // it for renderer-initiated creation, and returns it. Note that this can only

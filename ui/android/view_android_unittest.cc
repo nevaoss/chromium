@@ -10,12 +10,15 @@
 #include "base/functional/callback.h"
 #include "base/test/bind.h"
 #include "base/test/gtest_util.h"
+#include "base/test/scoped_feature_list.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "ui/android/event_forwarder.h"
 #include "ui/android/test_view_android_delegate.h"
+#include "ui/android/ui_android_features.h"
 #include "ui/android/view_android.h"
 #include "ui/android/view_android_observer.h"
 #include "ui/android/window_android.h"
+#include "ui/color/android/color_provider_bridge.h"
 #include "ui/color/color_provider_key.h"
 #include "ui/events/android/event_handler_android.h"
 #include "ui/events/android/motion_event_android_factory.h"
@@ -424,6 +427,79 @@ TEST_F(ViewAndroidBoundsTest, RemoveAllChildrenKeepsReparentedChild) {
   view2_.RemoveObserver(&observer);
 }
 
+// Helper observer that invokes a callback on OnDetachedFromWindow().
+class ReentrantDetachObserver : public ViewAndroidObserver {
+ public:
+  explicit ReentrantDetachObserver(base::OnceClosure action)
+      : action_(std::move(action)) {}
+
+  void OnDetachedFromWindow() override {
+    if (action_) {
+      std::move(action_).Run();
+    }
+  }
+
+ private:
+  base::OnceClosure action_;
+};
+
+// Verifies RemoveAllChildren() handles a child unlinking itself during
+// OnDetachedFromWindow().
+TEST_F(ViewAndroidBoundsTest, RemoveAllChildrenSurvivesChildUnlink) {
+  ReentrantDetachObserver observer(
+      base::BindLambdaForTesting([&]() { view1_.RemoveFromParent(); }));
+  view1_.AddObserver(&observer);
+
+  bool view2_detached = false;
+  ReentrantDetachObserver view2_observer(
+      base::BindLambdaForTesting([&]() { view2_detached = true; }));
+  view2_.AddObserver(&view2_observer);
+
+  root_.AddChild(&view1_);
+  root_.AddChild(&view2_);
+
+  RemoveAllChildrenAttached(&root_);
+
+  EXPECT_TRUE(view2_detached);
+  EXPECT_EQ(0u, root_.GetChildrenCountForTesting());
+  EXPECT_EQ(nullptr, view1_.parent());
+  EXPECT_EQ(nullptr, view2_.parent());
+
+  view1_.RemoveObserver(&observer);
+  view2_.RemoveObserver(&view2_observer);
+}
+
+// Verifies RemoveAllChildren() handles a child being destroyed during
+// OnDetachedFromWindow().
+TEST_F(ViewAndroidBoundsTest, RemoveAllChildrenSurvivesChildDestruction) {
+  auto child_to_destroy =
+      std::make_unique<TestViewAndroid>(ViewAndroid::LayoutType::kNormal);
+  ReentrantDetachObserver destroy_observer(
+      base::BindLambdaForTesting([&]() { child_to_destroy.reset(); }));
+
+  bool view2_detached = false;
+  ReentrantDetachObserver view2_observer(
+      base::BindLambdaForTesting([&]() { view2_detached = true; }));
+  view2_.AddObserver(&view2_observer);
+
+  // Detaching view1_ triggers destruction of `child_to_destroy`.
+  child_to_destroy->AddChild(&view1_);
+  view1_.AddObserver(&destroy_observer);
+  root_.AddChild(child_to_destroy.get());
+  root_.AddChild(&view2_);
+
+  RemoveAllChildrenAttached(&root_);
+
+  EXPECT_FALSE(child_to_destroy);
+  EXPECT_TRUE(view2_detached);
+  EXPECT_EQ(0u, root_.GetChildrenCountForTesting());
+  EXPECT_EQ(nullptr, view1_.parent());
+  EXPECT_EQ(nullptr, view2_.parent());
+
+  view1_.RemoveObserver(&destroy_observer);
+  view2_.RemoveObserver(&view2_observer);
+}
+
 TEST(ViewAndroidTest, ChecksMultipleEventForwarders) {
   ViewAndroid parent;
   ViewAndroid child;
@@ -575,6 +651,38 @@ TEST(ViewAndroidTest, WindowAndroidColorProviderSource) {
   JNIEnv* env = base::android::AttachCurrentThread();
   base::android::ScopedJavaLocalRef<jobject> context = key.context.get(env);
   EXPECT_FALSE(context.is_null());
+}
+
+TEST(ViewAndroidTest,
+     WindowAndroidColorProviderKeyIsContextAgnosticWithoutBridge) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeature(kAvoidPerContextColorProviders);
+
+  // No ColorProviderBridge is registered in unit tests, so the key should not
+  // be scoped to the Context.
+  ASSERT_FALSE(ColorProviderBridge::HasInstance());
+
+  std::unique_ptr<ui::WindowAndroid::ScopedWindowAndroidForTesting> window =
+      ui::WindowAndroid::CreateForTesting();
+  ui::ColorProviderKey key = window->get()->GetColorProviderKey();
+
+  EXPECT_EQ(key.context_hash, 0);
+  JNIEnv* env = base::android::AttachCurrentThread();
+  EXPECT_TRUE(key.context.get(env).is_null());
+}
+
+TEST(ViewAndroidTest, WindowAndroidColorProviderKeyKeepsContextWithBridge) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeature(kAvoidPerContextColorProviders);
+
+  std::unique_ptr<ui::WindowAndroid::ScopedWindowAndroidForTesting> window =
+      ui::WindowAndroid::CreateForTesting();
+  ui::ColorProviderKey key = window->get()->GetColorProviderKeyForTesting(
+      /*has_color_provider_bridge=*/true);
+
+  EXPECT_NE(key.context_hash, 0);
+  JNIEnv* env = base::android::AttachCurrentThread();
+  EXPECT_FALSE(key.context.get(env).is_null());
 }
 
 }  // namespace ui

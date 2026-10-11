@@ -559,7 +559,7 @@ class MockPaymentsAutofillClient : public payments::TestPaymentsAutofillClient {
       : payments::TestPaymentsAutofillClient(client) {}
   ~MockPaymentsAutofillClient() override = default;
 
-  MOCK_METHOD(bool, HasCreditCardScanFeature, (), (const override));
+  MOCK_METHOD(bool, HasCreditCardScanFeature, (), (const, override));
   MOCK_METHOD(void,
               OnCardDataAvailable,
               (const FilledCardInformationBubbleOptions&, const url::Origin&),
@@ -622,7 +622,7 @@ class MockAutofillClient : public TestAutofillClient {
   MOCK_METHOD(profile_metrics::BrowserProfileType,
               GetProfileType,
               (),
-              (const override));
+              (const, override));
   MOCK_METHOD(void,
               HideSuggestions,
               (SuggestionHidingReason reason,
@@ -638,7 +638,7 @@ class MockAutofillClient : public TestAutofillClient {
               (const FormFieldData& field, AutofillClient::IphFeature feature),
               (override));
   MOCK_METHOD(void, HideAutofillFieldIph, (), (override));
-  MOCK_METHOD(bool, IsTabInActorMode, (), (const override));
+  MOCK_METHOD(bool, IsTabInActorMode, (), (const, override));
   MOCK_METHOD(AutofillAiManager*, GetAutofillAiManager, (), (override));
   MOCK_METHOD(void, ShowAutofillAiPrivateInferenceNotice, (), (override));
 };
@@ -788,7 +788,7 @@ class MockAutofillDriver : public TestAutofillDriver {
               SendTypePredictionsToRenderer,
               ((const FormStructure&)),
               (override));
-  MOCK_METHOD(bool, CanShowAutofillUi, (), (const override));
+  MOCK_METHOD(bool, CanShowAutofillUi, (), (const, override));
 };
 
 class MockAmountExtractionManager : public payments::AmountExtractionManager {
@@ -7456,7 +7456,7 @@ TEST_F(BrowserAutofillManagerTest,
 
   autofill_manager().OnDidDetectJavaScriptAutofill(
       form, form.fields()[0].global_id(), field_modifications,
-      AutofillManagerTestApi::pass_key());
+      base::TimeTicks::Now(), AutofillManagerTestApi::pass_key());
 
   EXPECT_TRUE(form_structure->field(0)->did_trigger_javascript_autofill());
   EXPECT_FALSE(form_structure->field(1)->did_trigger_javascript_autofill());
@@ -7485,7 +7485,7 @@ TEST_F(BrowserAutofillManagerTest,
 
   autofill_manager().OnDidDetectJavaScriptAutofill(
       form, form.fields()[0].global_id(), field_modifications,
-      AutofillManagerTestApi::pass_key());
+      base::TimeTicks::Now(), AutofillManagerTestApi::pass_key());
 
   EXPECT_FALSE(form_structure->field(0)->did_trigger_javascript_autofill());
 }
@@ -7517,7 +7517,7 @@ TEST_F(BrowserAutofillManagerTest,
 
   autofill_manager().OnDidDetectJavaScriptAutofill(
       form, form.fields()[0].global_id(), field_modifications,
-      AutofillManagerTestApi::pass_key());
+      base::TimeTicks::Now(), AutofillManagerTestApi::pass_key());
 
   EXPECT_FALSE(form_structure->field(0)->did_trigger_javascript_autofill());
 }
@@ -7546,7 +7546,7 @@ TEST_F(
 
   autofill_manager().OnDidDetectJavaScriptAutofill(
       form, form.fields()[0].global_id(), field_modifications,
-      AutofillManagerTestApi::pass_key());
+      base::TimeTicks::Now(), AutofillManagerTestApi::pass_key());
 
   EXPECT_TRUE(form_structure->field(0)->did_trigger_javascript_autofill());
 }
@@ -7570,7 +7570,7 @@ TEST_F(BrowserAutofillManagerTest,
 
   autofill_manager().OnDidDetectJavaScriptAutofill(
       form, form.fields()[0].global_id(), field_modifications,
-      AutofillManagerTestApi::pass_key());
+      base::TimeTicks::Now(), AutofillManagerTestApi::pass_key());
 
   EXPECT_TRUE(form_structure->field(0)->did_trigger_javascript_autofill());
 }
@@ -7595,7 +7595,7 @@ TEST_F(
 
   autofill_manager().OnDidDetectJavaScriptAutofill(
       form, form.fields()[0].global_id(), field_modifications,
-      AutofillManagerTestApi::pass_key());
+      base::TimeTicks::Now(), AutofillManagerTestApi::pass_key());
 
   EXPECT_FALSE(form_structure->field(0)->did_trigger_javascript_autofill());
 }

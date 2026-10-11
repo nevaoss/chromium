@@ -7,19 +7,13 @@
 #include <utility>
 
 #include "base/check.h"
-#include "chrome/browser/profiles/profile.h"
-#include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
-#include "chrome/browser/ui/exclusive_access/exclusive_access_manager.h"
 #include "chrome/browser/ui/read_anything/read_anything_controller.h"
 #include "chrome/browser/ui/read_anything/read_anything_enums.h"
 #include "components/find_in_page/find_tab_helper.h"
 #include "components/input/native_web_keyboard_event.h"
-#include "components/tabs/public/tab_interface.h"
 #include "content/public/browser/context_menu_params.h"
 #include "content/public/browser/web_contents.h"
-#include "third_party/blink/public/common/input/web_input_event.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
-#include "ui/events/keycodes/keyboard_codes.h"
 
 ReadAnythingImmersiveWebView::ReadAnythingImmersiveWebView(
     base::OnceClosure on_show_ui_callback,
@@ -61,17 +55,10 @@ content::WebContents* ReadAnythingImmersiveWebView::OpenURLFromTab(
 bool ReadAnythingImmersiveWebView::HandleKeyboardEvent(
     content::WebContents* source,
     const input::NativeWebKeyboardEvent& event) {
-  if (event.windows_key_code == ui::VKEY_ESCAPE) {
-    auto* controller =
-        ReadAnythingControllerGlue::FromWebContents(web_contents())
-            ->controller();
-    if (controller && controller->tab() &&
-        controller->tab()->GetBrowserWindowInterface()) {
-      ExclusiveAccessManager::From(
-          controller->tab()->GetBrowserWindowInterface())
-          ->HandleUserKeyEvent(event);
-      return true;
-    }
+  auto* glue = ReadAnythingControllerGlue::FromWebContents(web_contents());
+  if (glue && glue->controller() &&
+      glue->controller()->HandleEscapeKey(event)) {
+    return true;
   }
   // Call the unhandled keyboard event handler to allow for default handling
   // and propagation.
@@ -98,11 +85,7 @@ void ReadAnythingImmersiveWebView::FindReply(content::WebContents* web_contents,
 std::unique_ptr<WebUIContentsWrapperT<ReadAnythingUntrustedUI>>
 ReadAnythingImmersiveWebView::CloseAndTakeContentsWrapper() {
   SetWebContents(nullptr);  // This is necessary to reset the web contents.
-  // SetHost cannot be called on a crashed WebContents and will throw a DCHECK
-  // crash if it is.
-  if (!contents_wrapper_->web_contents()->IsCrashed()) {
-    contents_wrapper_->SetHost(nullptr);
-  }
+  contents_wrapper_->SetHost(nullptr);
   SetVisible(false);
 
   // Call OnEntryHidden on the Controller

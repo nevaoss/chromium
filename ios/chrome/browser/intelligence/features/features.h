@@ -190,18 +190,6 @@ BASE_DECLARE_FEATURE(kPageContextExtractorRefactored);
 // Returns true if the refactored page context extractor is enabled.
 bool IsPageContextExtractorRefactoredEnabled();
 
-// Feature flag to enable the updated eligibility checks for Gemini.
-BASE_DECLARE_FEATURE(kGeminiUpdatedEligibility);
-
-// Returns true if the updated eligibiliy checks for Gemini are enabled.
-bool IsGeminiUpdatedEligibilityEnabled();
-
-// Feature flag to enable the updated Gemini consent.
-BASE_DECLARE_FEATURE(kGeminiUpdatedConsent);
-
-// Returns true if the updated Gemini consent is enabled.
-bool IsGeminiUpdatedConsentEnabled();
-
 // Feature flag for enabling the Gemini eligibility ablation experiment.
 BASE_DECLARE_FEATURE(kGeminiEligibilityAblation);
 bool IsGeminiEligibilityAblationEnabled();
@@ -213,10 +201,6 @@ bool IsGeminiLiveEnabled();
 // Feature flag for Gemini Live Dormant Reasons.
 BASE_DECLARE_FEATURE(kGeminiLiveDormantReasons);
 bool IsGeminiLiveDormantReasonsEnabled();
-
-// Returns true if the Gemini chat persistence is enabled.
-bool IsGeminiChatPersistenceEnabled();
-BASE_DECLARE_FEATURE(kGeminiChatPersistence);
 
 // Feature flag for Gemini configurable parameters.
 BASE_DECLARE_FEATURE(kGeminiConfigParams);
@@ -258,6 +242,9 @@ base::TimeDelta GetActorPageStabilityAutofillPredictionsTimeout();
 // Returns true if the specified tool is disabled via the "DisabledTools"
 // feature parameter of the `kActorTools` feature.
 bool IsToolDisabled(optimization_guide::proto::Action::ActionCase tool);
+
+// Feature flag for Actor origin gating on navigation.
+BASE_DECLARE_FEATURE(kActorOriginGatingForNavigation);
 
 // Feature flag for Model based page classification experiment.
 BASE_DECLARE_FEATURE(kModelBasedPageClassification);

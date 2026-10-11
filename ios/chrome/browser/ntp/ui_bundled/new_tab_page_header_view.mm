@@ -630,11 +630,6 @@ CGFloat Interpolate(CGFloat from, CGFloat to, CGFloat percent) {
   self.hintLabelLeadingConstraint = [self.searchHintLabel.leadingAnchor
       constraintEqualToAnchor:self.fakeLocationBar.leadingAnchor
                      constant:self.hintLabelFakeboxLeadingSpace];
-  if (IsNTPHeaderTransformsForAnimationsEnabled()) {
-    // Keep constraints fixed at progress = 0 values.
-    self.hintLabelLeadingConstraint.constant =
-        self.hintLabelFakeboxLeadingSpace;
-  }
   [NSLayoutConstraint activateConstraints:@[
     self.hintLabelLeadingConstraint,
     [self.searchHintLabel.heightAnchor
@@ -849,15 +844,8 @@ CGFloat Interpolate(CGFloat from, CGFloat to, CGFloat percent) {
     return;
   }
 
-  if (IsNTPHeaderTransformsForAnimationsEnabled()) {
-    self.leadingViewConstraint.constant = [self fakeboxLeadingSpace];
-    CGFloat translationX =
-        ([self omniboxLeadingSpace] - [self fakeboxLeadingSpace]) * progress;
-    _logoView.transform = CGAffineTransformMakeTranslation(translationX, 0);
-  } else {
-    self.leadingViewConstraint.constant = Interpolate(
-        [self fakeboxLeadingSpace], [self omniboxLeadingSpace], progress);
-  }
+  self.leadingViewConstraint.constant = Interpolate(
+      [self fakeboxLeadingSpace], [self omniboxLeadingSpace], progress);
 }
 
 // Updates the background color and opacity of the fakebox based on progress.
@@ -890,36 +878,19 @@ CGFloat Interpolate(CGFloat from, CGFloat to, CGFloat percent) {
       (_currentHintLabelScale - 1) *
       self.searchHintLabel.intrinsicContentSize.width * 0.5;
 
-  if (IsNTPHeaderTransformsForAnimationsEnabled()) {
-    self.hintLabelTrailingConstraint.constant = -kHintLabelFakeboxTrailingSpace;
-    CGFloat tx = 0;
-    if (CanShowTabStrip(self) || !IsSplitToolbarMode(self)) {
-      tx = hintLabelScalingExtraOffset;
-    } else {
-      tx = hintLabelScalingExtraOffset + (self.hintLabelOmniboxLeadingSpace -
-                                          self.hintLabelFakeboxLeadingSpace) *
-                                             progress;
-    }
+  // If MIA animation view is shown then add an aditional spacing to avoid any
+  // overlap with the label.
+  self.hintLabelTrailingConstraint.constant =
+      -hintLabelScalingExtraOffset - kHintLabelFakeboxTrailingSpace;
 
-    // Combine scale (already set in scaleHintLabelForPercent:) and translation.
-    self.searchHintLabel.transform =
-        CGAffineTransformScale(CGAffineTransformMakeTranslation(tx, 0),
-                               _currentHintLabelScale, _currentHintLabelScale);
+  if (CanShowTabStrip(self) || !IsSplitToolbarMode(self)) {
+    self.hintLabelLeadingConstraint.constant =
+        self.hintLabelFakeboxLeadingSpace + hintLabelScalingExtraOffset;
   } else {
-    // If MIA animation view is shown then add an aditional spacing to avoid any
-    // overlap with the label.
-    self.hintLabelTrailingConstraint.constant =
-        -hintLabelScalingExtraOffset - kHintLabelFakeboxTrailingSpace;
-
-    if (CanShowTabStrip(self) || !IsSplitToolbarMode(self)) {
-      self.hintLabelLeadingConstraint.constant =
-          self.hintLabelFakeboxLeadingSpace + hintLabelScalingExtraOffset;
-    } else {
-      self.hintLabelLeadingConstraint.constant =
-          hintLabelScalingExtraOffset +
-          Interpolate(self.hintLabelFakeboxLeadingSpace,
-                      self.hintLabelOmniboxLeadingSpace, progress);
-    }
+    self.hintLabelLeadingConstraint.constant =
+        hintLabelScalingExtraOffset +
+        Interpolate(self.hintLabelFakeboxLeadingSpace,
+                    self.hintLabelOmniboxLeadingSpace, progress);
   }
 }
 
@@ -977,7 +948,8 @@ CGFloat Interpolate(CGFloat from, CGFloat to, CGFloat percent) {
   CGFloat maxTopMarginDiff = fakeOmniboxHeight - locationBarHeight -
                              kAdaptiveLocationBarVerticalMargin;
   topMarginConstraint.constant =
-      -content_suggestions::LogoToFakeboxPadding(self.searchEngineLogoState) -
+      -content_suggestions::LogoToFakeboxPadding(self.searchEngineLogoState,
+                                                 self.traitCollection) -
       maxTopMarginDiff * progress;
   heightConstraint.constant =
       ntp_header::kFakeLocationBarTopConstraint -
@@ -1664,7 +1636,7 @@ CGFloat Interpolate(CGFloat from, CGFloat to, CGFloat percent) {
       offset += content_suggestions::FakeOmniboxHeight();
       if (canShowTabStrip) {
         offset -= content_suggestions::LogoToFakeboxPadding(
-            self.searchEngineLogoState);
+            self.searchEngineLogoState, self.traitCollection);
       }
     }
     return offset;
@@ -1692,8 +1664,8 @@ CGFloat Interpolate(CGFloat from, CGFloat to, CGFloat percent) {
             content_suggestions::FakeOmniboxHeight();
 
   if (canShowTabStrip) {
-    offset -=
-        content_suggestions::LogoToFakeboxPadding(self.searchEngineLogoState);
+    offset -= content_suggestions::LogoToFakeboxPadding(
+        self.searchEngineLogoState, self.traitCollection);
   } else {
     offset -= self.safeAreaInsets.top + topToolbarHeight;
   }
@@ -2118,7 +2090,8 @@ CGFloat Interpolate(CGFloat from, CGFloat to, CGFloat percent) {
   self.searchEngineLogoState = logoState;
 
   self.fakeOmniboxTopMarginConstraint.constant =
-      -content_suggestions::LogoToFakeboxPadding(self.searchEngineLogoState);
+      -content_suggestions::LogoToFakeboxPadding(self.searchEngineLogoState,
+                                                 self.traitCollection);
 
   [self updateFakeboxDisplay];
 
@@ -2274,7 +2247,8 @@ CGFloat Interpolate(CGFloat from, CGFloat to, CGFloat percent) {
   self.fakeOmniboxTopMarginConstraint = [logoView.bottomAnchor
       constraintEqualToAnchor:fakeOmnibox.topAnchor
                      constant:-content_suggestions::LogoToFakeboxPadding(
-                                  self.searchEngineLogoState)];
+                                  self.searchEngineLogoState,
+                                  self.traitCollection)];
   self.headerViewHeightConstraint =
       [headerView.heightAnchor constraintEqualToConstant:[self headerHeight]];
   self.headerViewHeightConstraint.active = YES;

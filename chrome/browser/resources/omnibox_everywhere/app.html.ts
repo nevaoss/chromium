@@ -47,6 +47,7 @@ export function getHtml(this: OmniboxEverywhereAppElement) {
   ${
       this.isFreIntroModal_() ? html`
     <fre-modal
+        ?small-loomnibox="${this.smallLoomnibox_}"
         @close="${this.onFreClose_}">
     </fre-modal>
   ` : ''}
@@ -54,8 +55,10 @@ export function getHtml(this: OmniboxEverywhereAppElement) {
       this.isFreShortcutSetupChin_() ? html`
     <fre-chin
         id="freShortcutSetupChin"
+        ?small-loomnibox="${this.smallLoomnibox_}"
         .mode="${FreChinMode.SHORTCUT_SETUP}"
         .hotkeyTokens="${this.hotkeyTokens_}"
+        .dropdownOpen="${this.isHotkeyDropdownOpen_}"
         @show-hotkey-dropdown="${this.onFreShowHotkeyDropdown_}"
         @open-settings="${this.onFreOpenSettings_}"
         @close="${this.onFreClose_}">
@@ -65,8 +68,10 @@ export function getHtml(this: OmniboxEverywhereAppElement) {
       this.isFreShortcutReminderChin_() ? html`
     <fre-chin
         id="freShortcutReminderChin"
+        ?small-loomnibox="${this.smallLoomnibox_}"
         .mode="${FreChinMode.SHORTCUT_REMINDER}"
         .hotkeyTokens="${this.hotkeyTokens_}"
+        .dropdownOpen="${this.isHotkeyDropdownOpen_}"
         @show-hotkey-dropdown="${this.onFreShowHotkeyDropdown_}"
         @open-settings="${this.onFreOpenSettings_}"
         @close="${this.onFreClose_}">

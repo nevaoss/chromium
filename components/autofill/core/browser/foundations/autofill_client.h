@@ -27,6 +27,7 @@
 #include "components/autofill/core/browser/data_model/autofill_ai/entity_type.h"
 #include "components/autofill/core/browser/data_model/autofill_ai/entity_type_names.h"
 #include "components/autofill/core/browser/field_types.h"
+#include "components/autofill/core/browser/payments/legal_message_line.h"
 #include "components/autofill/core/browser/studies/hats_surveys_util.h"
 #include "components/autofill/core/browser/ui/popup_open_enums.h"
 #include "components/autofill/core/common/aliases.h"
@@ -288,7 +289,8 @@ class AutofillClient {
   // Required arguments to create a dropdown showing autofill suggestions.
   struct PopupOpenArgs {
     PopupOpenArgs();
-    PopupOpenArgs(LocalFrameToken anchor_frame_token,
+    PopupOpenArgs(FormGlobalId form_id,
+                  FieldGlobalId field_id,
                   const gfx::RectF& element_bounds,
                   base::i18n::TextDirection text_direction,
                   std::vector<Suggestion> suggestions,
@@ -303,9 +305,9 @@ class AutofillClient {
     PopupOpenArgs& operator=(const PopupOpenArgs&);
     PopupOpenArgs& operator=(PopupOpenArgs&&);
     ~PopupOpenArgs();
-    // The frame which the popup is anchored to. Typically this is the frame of
-    // the field on which the user triggered Autofill.
-    LocalFrameToken anchor_frame_token;
+    // The form and field to which the popup is anchored.
+    FormGlobalId form_id;
+    FieldGlobalId field_id;
     // TODO(crbug.com/340817507): Update this member name since bounds can now
     // refer to the caret bounds and elements gives the idea of HTML elements
     // only.
@@ -876,10 +878,14 @@ class AutofillClient {
   // `save_is_synchronous` indicates whether accepting the prompt requires a
   // (notably) asynchronous operation. The UI can use this information to decide
   // whether to close the prompt upon acceptance.
+  // `public_passes_notice` contains the Wallet legal disclosure messages to
+  // show in the prompt's footer. It is empty if no disclosure is required, or
+  // if fetching the disclosure from the Wallet backend failed.
   virtual void ShowEntityImportBubble(
       EntityInstance new_entity,
       std::optional<EntityInstance> old_entity,
       bool save_is_synchronous,
+      LegalMessageLines public_passes_notice,
       EntityImportPromptResultCallback prompt_result_callback);
 
   // Hides the Autofill AI import bubble if it is currently showing.
@@ -908,8 +914,6 @@ class AutofillClient {
   // default.
   virtual void ShowAutofillAiPrivateInferenceNotice();
 
-  virtual void ShowEmailVerifiedToast(const GURL& issuer);
-
   // Shows a yes/no prompt asking the user to confirm that they want to verify
   // their email. The prompt is anchored on the field at `element_bounds`.
   // `issuer_site` is the site that issued the assertion.
@@ -920,6 +924,26 @@ class AutofillClient {
       const net::SchemefulSite& issuer_site,
       const std::u16string& email,
       base::OnceCallback<void(EmailVerificationPermissionUiStatus)> callback);
+
+  // Dismisses the email verification permission prompt popup if currently
+  // showing. Called when token verification completes (on success or error) to
+  // dismiss the first-run prompt while its verify button was displaying an
+  // in-button loading spinner.
+  virtual void HideEmailVerificationPopup();
+
+  // Displays a loading toast indicating that email verification is in progress.
+  // Called for subsequent-run requests where permission was already granted,
+  // so the permission prompt popup is bypassed while the token request is in
+  // flight.
+  virtual void ShowEmailVerificationLoadingToast();
+
+  // Displays a toast notifying the user that email verification succeeded for
+  // `issuer`. Called upon receiving a valid verification token.
+  virtual void ShowEmailVerifiedToast(const GURL& issuer);
+
+  // Displays an error toast notifying the user that email verification failed.
+  // Called when token verification fails or returns an error.
+  virtual void ShowEmailVerificationErrorToast();
 
   // May return null on platforms where OTPs are not supported.
   virtual OtpFieldDetector* GetOtpFieldDetector();

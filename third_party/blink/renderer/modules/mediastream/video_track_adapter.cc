@@ -23,10 +23,12 @@
 #include "base/task/sequenced_task_runner.h"
 #include "base/task/single_thread_task_runner.h"
 #include "base/trace_event/trace_event.h"
+#include "base/types/expected.h"
 #include "build/build_config.h"
 #include "media/base/limits.h"
 #include "media/base/video_frame_converter.h"
 #include "media/base/video_frame_pool.h"
+#include "media/base/video_types.h"
 #include "media/base/video_util.h"
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/public/platform/platform.h"
@@ -258,9 +260,15 @@ class VideoTrackAdapter::VideoFrameResolutionAdapter
   virtual ~VideoFrameResolutionAdapter();
   friend class ThreadSafeRefCounted<VideoFrameResolutionAdapter>;
 
-  void DoDeliverFrame(
-      scoped_refptr<media::VideoFrame> video_frame,
-      const base::TimeTicks& estimated_capture_time);
+  base::expected<scoped_refptr<media::VideoFrame>,
+                 media::VideoCaptureFrameDropReason>
+  AdaptFrameResolution(scoped_refptr<media::VideoFrame> video_frame,
+                       bool is_device_rotated);
+
+  // Delivers |video_frame| to the specific track represented by |callback|.
+  void DeliverFrameToTrack(const VideoTrackCallbacks& callback,
+                           scoped_refptr<media::VideoFrame> video_frame,
+                           const base::TimeTicks& estimated_capture_time);
 
   // Returns |true| if the input frame rate is higher that the requested max
   // frame rate and |frame| should be dropped. If it returns true, |reason| is
@@ -270,10 +278,8 @@ class VideoTrackAdapter::VideoFrameResolutionAdapter
                       media::VideoCaptureFrameDropReason* reason);
 
   // Updates track settings if either frame width, height or frame rate have
-  // changed since last update.
-  void MaybeUpdateTrackSettings(
-      const VideoTrackSettingsInternalCallback& settings_callback,
-      const media::VideoFrame& frame);
+  // changed since last update. Returns true if settings changed.
+  bool MaybeUpdateTrackSettings(const media::VideoFrame& frame);
 
   // Updates computed source format for all tracks if either frame width, height
   // or frame rate have changed since last update.
@@ -370,6 +376,7 @@ void VideoTrackAdapter::VideoFrameResolutionAdapter::AddCallbacks(
       std::move(capture_version_callback),
       std::move(settings_callback),
       std::move(format_callback)};
+
   callbacks_.emplace(track, std::move(track_callbacks));
 }
 
@@ -391,6 +398,91 @@ VideoTrackAdapter::VideoFrameResolutionAdapter::RemoveAndGetCallbacks(
   track_callbacks = std::move(it->second);
   callbacks_.erase(it);
   return track_callbacks;
+}
+
+base::expected<scoped_refptr<media::VideoFrame>,
+               media::VideoCaptureFrameDropReason>
+VideoTrackAdapter::VideoFrameResolutionAdapter::AdaptFrameResolution(
+    scoped_refptr<media::VideoFrame> video_frame,
+    bool is_device_rotated) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(video_sequence_checker_);
+  // If the frame holds a SharedImage that is not CPU-mappable we don't apply
+  // cropping/scaling and deliver the frame as-is, leaving it up to the
+  // destination to rescale it. Otherwise, cropping and scaling is soft-applied
+  // before delivery for efficiency.
+  if (video_frame->HasSharedImage() && !video_frame->HasMappableSharedImage()) {
+    return video_frame;
+  }
+
+  gfx::Size desired_size;
+  CalculateDesiredSize(is_device_rotated, video_frame->natural_size(),
+                       settings_, &desired_size);
+  if (desired_size == video_frame->natural_size()) {
+    return video_frame;
+  }
+
+  // The video frame we deliver may or may not get cropping and scaling
+  // soft-applied. Ultimately the listener will decide whether to use the
+  // |delivered_video_frame|.
+  scoped_refptr<media::VideoFrame> delivered_video_frame;
+
+  // For screen capture tracks, we scale the frame to the desired size without
+  // cropping to not to lose any information.
+  if (base::FeatureList::IsEnabled(kScaleFrameForGetDisplayMedia) &&
+      is_video_desktop_capture_type_) {
+    gfx::Rect region_in_frame = ComputeLetterboxRect(
+        gfx::Rect(desired_size), video_frame->visible_rect().size());
+    desired_size = region_in_frame.size();
+
+    // Instead of soft-applied scaling, we convert the frame to be memory-mapped
+    // and then scale it. This ensures that the frame has the same behavior as
+    // when the restriction is applied to the capturer.
+    if (video_frame->HasMappableSharedImage()) {
+      video_frame = ConvertToMemoryMappedFrame(video_frame);
+      if (!video_frame || !video_frame->HasDirectCpuAccess()) {
+        return base::unexpected(media::VideoCaptureFrameDropReason::
+                                    kResolutionAdapterFrameIsNotMappable);
+      }
+    }
+
+    delivered_video_frame = frame_pool_.CreateFrame(
+        video_frame->format(), desired_size, gfx::Rect(desired_size),
+        desired_size, video_frame->timestamp());
+    if (!delivered_video_frame) {
+      return base::unexpected(media::VideoCaptureFrameDropReason::
+                                  kResolutionAdapterCannotCreateConvertFrame);
+    }
+
+    delivered_video_frame->set_color_space(video_frame->ColorSpace());
+    delivered_video_frame->metadata().MergeMetadataFrom(
+        video_frame->metadata());
+    delivered_video_frame->metadata().ClearTextureFrameMetadata();
+
+    media::EncoderStatus convert_status =
+        frame_converter_.ConvertAndScale(*video_frame, *delivered_video_frame);
+    if (!convert_status.is_ok()) {
+      return base::unexpected(media::VideoCaptureFrameDropReason::
+                                  kResolutionAdapterConvertAndScaleFailed);
+    }
+  } else {
+    gfx::Rect region_in_frame =
+        ComputeLetterboxRect(video_frame->visible_rect(), desired_size);
+    delivered_video_frame = media::VideoFrame::WrapVideoFrame(
+        video_frame, video_frame->format(), region_in_frame, desired_size);
+    if (!delivered_video_frame) {
+      return base::unexpected(
+          media::VideoCaptureFrameDropReason::
+              kResolutionAdapterWrappingFrameForCroppingFailed);
+    }
+  }
+
+  DVLOG(3) << "desired size  " << desired_size.ToString()
+           << " output natural size "
+           << delivered_video_frame->natural_size().ToString()
+           << " output visible rect  "
+           << delivered_video_frame->visible_rect().ToString();
+
+  return delivered_video_frame;
 }
 
 void VideoTrackAdapter::VideoFrameResolutionAdapter::DeliverFrame(
@@ -420,87 +512,30 @@ void VideoTrackAdapter::VideoFrameResolutionAdapter::DeliverFrame(
     return;
   }
 
-  // If the frame holds a SharedImage that is not CPU-mappable we don't apply
-  // cropping/scaling and deliver the frame as-is, leaving it up to the
-  // destination to rescale it. Otherwise, cropping and scaling is soft-applied
-  // before delivery for efficiency.
-  if (video_frame->HasSharedImage() && !video_frame->HasMappableSharedImage()) {
-    DoDeliverFrame(std::move(video_frame), estimated_capture_time);
+  if (callbacks_.empty()) {
     return;
   }
 
-  gfx::Size desired_size;
-  CalculateDesiredSize(is_device_rotated, video_frame->natural_size(),
-                       settings_, &desired_size);
-  if (desired_size == video_frame->natural_size()) {
-    DoDeliverFrame(std::move(video_frame), estimated_capture_time);
+  base::expected<scoped_refptr<media::VideoFrame>,
+                 media::VideoCaptureFrameDropReason>
+      adapted_frame =
+          AdaptFrameResolution(std::move(video_frame), is_device_rotated);
+  if (!adapted_frame.has_value()) {
+    OnFrameDropped(adapted_frame.error());
     return;
   }
 
-  // The video frame we deliver may or may not get cropping and scaling
-  // soft-applied. Ultimately the listener will decide whether to use the
-  // |delivered_video_frame|.
-  scoped_refptr<media::VideoFrame> delivered_video_frame;
-
-  // For screen capture tracks, we scale the frame to the desired size without
-  // cropping to not to lose any information.
-  if (base::FeatureList::IsEnabled(kScaleFrameForGetDisplayMedia) &&
-      is_video_desktop_capture_type_) {
-    gfx::Rect region_in_frame = ComputeLetterboxRect(
-        gfx::Rect(desired_size), video_frame->visible_rect().size());
-    desired_size = region_in_frame.size();
-
-    // Instead of soft-applied scaling, we convert the frame to be memory-mapped
-    // and then scale it. This ensures that the frame has the same behavior as
-    // when the restriction is applied to the capturer.
-    if (video_frame->HasMappableSharedImage()) {
-      video_frame = ConvertToMemoryMappedFrame(video_frame);
-      if (!video_frame || !video_frame->HasDirectCpuAccess()) {
-        OnFrameDropped(media::VideoCaptureFrameDropReason::
-                           kResolutionAdapterFrameIsNotMappable);
-        return;
-      }
+  bool settings_changed = MaybeUpdateTrackSettings(*adapted_frame.value());
+  for (const auto& callback : callbacks_) {
+    if (settings_changed) {
+      callback.second.settings_callback.Run(
+          track_settings_.frame_size, track_settings_.frame_rate,
+          track_settings_.metadata_frame_source_size,
+          track_settings_.device_scale_factor);
     }
-
-    delivered_video_frame = frame_pool_.CreateFrame(
-        video_frame->format(), desired_size, gfx::Rect(desired_size),
-        desired_size, video_frame->timestamp());
-    if (!delivered_video_frame) {
-      OnFrameDropped(media::VideoCaptureFrameDropReason::
-                         kResolutionAdapterCannotCreateConvertFrame);
-      return;
-    }
-
-    delivered_video_frame->set_color_space(video_frame->ColorSpace());
-    delivered_video_frame->metadata().MergeMetadataFrom(
-        video_frame->metadata());
-    delivered_video_frame->metadata().ClearTextureFrameMetadata();
-
-    media::EncoderStatus convert_status =
-        frame_converter_.ConvertAndScale(*video_frame, *delivered_video_frame);
-    if (!convert_status.is_ok()) {
-      OnFrameDropped(media::VideoCaptureFrameDropReason::
-                         kResolutionAdapterConvertAndScaleFailed);
-      return;
-    }
-  } else {
-    gfx::Rect region_in_frame =
-        ComputeLetterboxRect(video_frame->visible_rect(), desired_size);
-    delivered_video_frame = media::VideoFrame::WrapVideoFrame(
-        video_frame, video_frame->format(), region_in_frame, desired_size);
-    if (!delivered_video_frame) {
-      OnFrameDropped(media::VideoCaptureFrameDropReason::
-                         kResolutionAdapterWrappingFrameForCroppingFailed);
-      return;
-    }
+    DeliverFrameToTrack(callback.second, adapted_frame.value(),
+                        estimated_capture_time);
   }
-  DVLOG(3) << "desired size  " << desired_size.ToString()
-           << " output natural size "
-           << delivered_video_frame->natural_size().ToString()
-           << " output visible rect  "
-           << delivered_video_frame->visible_rect().ToString();
-
-  DoDeliverFrame(std::move(delivered_video_frame), estimated_capture_time);
 }
 
 void VideoTrackAdapter::VideoFrameResolutionAdapter::DeliverEncodedVideoFrame(
@@ -531,18 +566,12 @@ bool VideoTrackAdapter::VideoFrameResolutionAdapter::IsEmpty() const {
   return callbacks_.empty();
 }
 
-void VideoTrackAdapter::VideoFrameResolutionAdapter::DoDeliverFrame(
+void VideoTrackAdapter::VideoFrameResolutionAdapter::DeliverFrameToTrack(
+    const VideoTrackCallbacks& callback,
     scoped_refptr<media::VideoFrame> video_frame,
     const base::TimeTicks& estimated_capture_time) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(video_sequence_checker_);
-  if (callbacks_.empty()) {
-    OnFrameDropped(
-        media::VideoCaptureFrameDropReason::kResolutionAdapterHasNoCallbacks);
-  }
-  for (const auto& callback : callbacks_) {
-    MaybeUpdateTrackSettings(callback.second.settings_callback, *video_frame);
-    callback.second.frame_callback.Run(video_frame, estimated_capture_time);
-  }
+  callback.frame_callback.Run(std::move(video_frame), estimated_capture_time);
 }
 
 void VideoTrackAdapter::VideoFrameResolutionAdapter::OnFrameDropped(
@@ -600,8 +629,7 @@ bool VideoTrackAdapter::VideoFrameResolutionAdapter::MaybeDropFrame(
   return false;
 }
 
-void VideoTrackAdapter::VideoFrameResolutionAdapter::MaybeUpdateTrackSettings(
-    const VideoTrackSettingsInternalCallback& settings_callback,
+bool VideoTrackAdapter::VideoFrameResolutionAdapter::MaybeUpdateTrackSettings(
     const media::VideoFrame& frame) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(video_sequence_checker_);
   ComputeFrameRate(frame.timestamp(), &track_settings_.frame_rate,
@@ -615,17 +643,15 @@ void VideoTrackAdapter::VideoFrameResolutionAdapter::MaybeUpdateTrackSettings(
     track_settings_.frame_size = frame.natural_size();
     track_settings_.metadata_frame_source_size = frame.metadata().source_size;
     track_settings_.device_scale_factor = frame.metadata().device_scale_factor;
-    settings_callback.Run(track_settings_.frame_size,
-                          track_settings_.frame_rate,
-                          track_settings_.metadata_frame_source_size,
-                          track_settings_.device_scale_factor);
+    return true;
   }
+  return false;
 }
 void VideoTrackAdapter::VideoFrameResolutionAdapter::MaybeUpdateTracksFormat(
     const media::VideoFrame& frame) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(video_sequence_checker_);
   if (MaybeUpdateFrameRate(&source_format_settings_) ||
-      frame.natural_size() != track_settings_.frame_size) {
+      frame.natural_size() != source_format_settings_.frame_size) {
     source_format_settings_.frame_size = frame.natural_size();
     media::VideoCaptureFormat source_format;
     source_format.frame_size = source_format_settings_.frame_size;
@@ -637,6 +663,12 @@ void VideoTrackAdapter::VideoFrameResolutionAdapter::MaybeUpdateTracksFormat(
 
 void VideoTrackAdapter::VideoFrameResolutionAdapter::ResetFrameRate() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(video_sequence_checker_);
+  track_settings_.frame_rate = 0.0;
+  track_settings_.last_updated_frame_rate = 0.0;
+  track_settings_.prev_frame_timestamp = base::TimeDelta::Max();
+  source_format_settings_.prev_frame_timestamp = base::TimeDelta::Max();
+  timestamp_last_delivered_frame_ = base::TimeDelta::Max();
+  accumulated_drift_ = base::TimeDelta();
   for (const auto& callback : callbacks_) {
     callback.second.settings_callback.Run(
         track_settings_.frame_size, 0.0,
@@ -932,6 +964,9 @@ void VideoTrackAdapter::DeliverFrameOnVideoTaskRunner(
   TRACE_EVENT0("media", "VideoTrackAdapter::DeliverFrameOnVideoTaskRunner");
   ++frame_counter_;
 
+  last_frame_timestamp_ = video_frame->timestamp();
+  last_frame_arrival_time_ = base::TimeTicks::Now();
+
   bool is_device_rotated = false;
   // TODO(guidou): Use actual device information instead of this heuristic to
   // detect frames from rotated devices. https://crbug.com/722748
@@ -944,6 +979,46 @@ void VideoTrackAdapter::DeliverFrameOnVideoTaskRunner(
     adapter->DeliverFrame(video_frame, estimated_capture_time,
                           is_device_rotated);
   }
+}
+
+void VideoTrackAdapter::DeliverBlackFrameOnVideoTaskRunner(
+    const gfx::Size& size,
+    media::CaptureVersion capture_version,
+    base::TimeTicks estimated_capture_time) {
+  DCHECK(video_task_runner_->RunsTasksInCurrentSequence());
+
+  scoped_refptr<media::VideoFrame> black_frame =
+      media::VideoFrame::CreateBlackFrame(size);
+  if (!black_frame) {
+    return;
+  }
+
+  // CreateBlackFrame() produces a frame with a zero timestamp and default
+  // metadata. Advance it along the existing timeline instead, so that it does
+  // not appear to travel backwards relative to everything delivered so far.
+  //
+  // The delta is deliberately forced past kMaxTimeBetweenFrames, which is the
+  // unconditional "keep" branch of
+  // VideoFrameResolutionAdapter::MaybeDropFrame(). A merely monotonic delta is
+  // not enough: when the source has a max frame rate (the common case for
+  // screen share) a small delta is discarded as
+  // kResolutionAdapterFrameRateIsHigherThanRequested. This frame is a security
+  // control, so it must not be rate limited. The forward jump is harmless --
+  // the capture is about to be suspended anyway, and when real frames resume
+  // their apparently-backwards timestamp hits the is_negative() keep branch.
+  const base::TimeDelta elapsed =
+      last_frame_arrival_time_.is_null()
+          ? base::TimeDelta()
+          : base::TimeTicks::Now() - last_frame_arrival_time_;
+  const base::TimeDelta advance =
+      std::max(elapsed, kMaxTimeBetweenFrames + base::Milliseconds(1));
+  black_frame->set_timestamp(last_frame_timestamp_ + advance);
+  // MediaStreamVideoTrack::FrameDeliverer discards frames whose capture version
+  // is older than the latest one it has seen, which a default-constructed one
+  // generally is.
+  black_frame->metadata().capture_version = capture_version;
+
+  DeliverFrameOnVideoTaskRunner(std::move(black_frame), estimated_capture_time);
 }
 
 void VideoTrackAdapter::DeliverEncodedVideoFrameOnVideoTaskRunner(

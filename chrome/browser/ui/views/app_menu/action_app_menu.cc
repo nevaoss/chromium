@@ -30,6 +30,7 @@
 #include "ui/menus/simple_menu_model.h"
 #include "ui/views/border.h"
 #include "ui/views/controls/button/menu_button_controller.h"
+#include "ui/views/controls/label.h"
 #include "ui/views/controls/menu/menu_item_view.h"
 #include "ui/views/controls/menu/menu_runner.h"
 #include "ui/views/controls/menu/menu_separator.h"
@@ -61,6 +62,9 @@ bool ShouldRoundBottomCorners(size_t index,
     return true;
   }
   for (size_t i = index + 1; i < items.size(); ++i) {
+    if (!items[i]->GetActionItem()->GetVisible()) {
+      continue;
+    }
     const auto display_type = items[i]->GetActionItem()->GetProperty(
         AppMenuActionItem::kDisplayTypeKey);
     if (display_type != AppMenuActionItem::DisplayType::kDivider &&
@@ -77,6 +81,9 @@ bool ShouldRoundTopCorners(size_t index,
   // preceding non-divider item rounded its bottom corners.
   for (size_t i = index; i > 0; --i) {
     size_t prev_index = i - 1;
+    if (!items[prev_index]->GetActionItem()->GetVisible()) {
+      continue;
+    }
     const auto display_type = items[prev_index]->GetActionItem()->GetProperty(
         AppMenuActionItem::kDisplayTypeKey);
     if (display_type == AppMenuActionItem::DisplayType::kDivider ||
@@ -165,6 +172,7 @@ void ActionAppMenu::OnMenuClosed(views::MenuItemView* menu) {
   }
 
   search_bar_ = nullptr;
+  has_notification_header_ = false;
   action_to_execute_on_close_.reset();
   command_to_action_map_.clear();
   header_count_ = 0;
@@ -235,6 +243,10 @@ void ActionAppMenu::PopulateMenu(views::MenuItemView* view_parent,
     actions::BaseAction* const child_base = children_action_items[i].get();
     actions::ActionItem* const child_ptr = child_base->GetActionItem();
 
+    if (!child_ptr->GetVisible()) {
+      continue;
+    }
+
     const auto display_type =
         child_ptr->GetProperty(AppMenuActionItem::kDisplayTypeKey);
 
@@ -300,6 +312,10 @@ views::MenuItemView* ActionAppMenu::AppendMenuItem(
       is_checkable ? views::MenuItemView::Type::kCheckbox
                    : views::MenuItemView::Type::kNormal;
 
+  if (display_type == AppMenuActionItem::DisplayType::kNotification) {
+    has_notification_header_ = true;
+  }
+
   views::MenuItemView* menu_item =
       has_submenu ? parent_menu_item->AppendSubMenu(
                         command_id, std::u16string(action_item->GetText()))
@@ -348,6 +364,10 @@ void ActionAppMenu::ConfigureMenuItem(views::MenuItemView* menu_item,
   const ui::Accelerator& accel = action_item->GetAccelerator();
   if (accel.key_code() != ui::VKEY_UNKNOWN) {
     menu_item->SetMinorText(accel.GetShortcutText());
+  } else if (const std::u16string* minor_text =
+                 child_base->GetProperty(AppMenuActionItem::kMinorTextKey);
+             minor_text && !minor_text->empty()) {
+    menu_item->SetMinorText(*minor_text);
   }
 
   if (std::u16string* chip_text =
@@ -357,13 +377,14 @@ void ActionAppMenu::ConfigureMenuItem(views::MenuItemView* menu_item,
 
   const auto* provider = ChromeLayoutProvider::Get();
 
-  const bool use_expanded_height =
-      action_item->GetActionId() == kActionZoomSubmenu;
+  const auto item_height =
+      action_item->GetProperty(AppMenuActionItem::kItemHeightKey);
 
   const int vertical_padding =
       (provider->GetDistanceMetric(
-           use_expanded_height ? DISTANCE_ACTION_APP_MENU_EXPANDED_ITEM_HEIGHT
-                               : DISTANCE_ACTION_APP_MENU_FULL_ITEM_HEIGHT) -
+           item_height == AppMenuActionItem::ItemHeight::kExpanded
+               ? DISTANCE_ACTION_APP_MENU_EXPANDED_ITEM_HEIGHT
+               : DISTANCE_ACTION_APP_MENU_FULL_ITEM_HEIGHT) -
        provider->GetDistanceMetric(DISTANCE_ACTION_APP_MENU_ICON_SIZE)) /
       2;
 
@@ -404,9 +425,12 @@ void ActionAppMenu::PopulateSearchBar(views::MenuItemView* view_parent,
   search_item->set_vertical_margin(0);
 
   auto search_bar = std::make_unique<AppMenuSearchBarView>();
-  search_bar->SetProperty(views::kMarginsKey,
-                          ChromeLayoutProvider::Get()->GetInsetsMetric(
-                              INSETS_ACTION_APP_MENU_SEARCH_BAR_MARGIN));
+  search_bar->SetProperty(
+      views::kMarginsKey,
+      ChromeLayoutProvider::Get()->GetInsetsMetric(
+          has_notification_header_
+              ? INSETS_ACTION_APP_MENU_SEARCH_BAR_WITH_NOTIFICATION_MARGIN
+              : INSETS_ACTION_APP_MENU_SEARCH_BAR_MARGIN));
   search_bar_ = search_bar.get();
   search_item->AddChildView(std::move(search_bar));
 }
@@ -454,9 +478,12 @@ void ActionAppMenu::PopulateBlockSection(
       block_action_item, &action_view_controller_, &command_to_action_map_,
       base::BindRepeating(&ActionAppMenu::CancelAndEvaluate,
                           base::Unretained(this)));
-  block_view->SetProperty(views::kMarginsKey,
-                          ChromeLayoutProvider::Get()->GetInsetsMetric(
-                              INSETS_ACTION_APP_MENU_BLOCK_MARGIN));
+  block_view->SetProperty(
+      views::kMarginsKey,
+      ChromeLayoutProvider::Get()->GetInsetsMetric(
+          has_notification_header_ && !search_bar_
+              ? INSETS_ACTION_APP_MENU_BLOCK_WITH_NOTIFICATION_MARGIN
+              : INSETS_ACTION_APP_MENU_BLOCK_MARGIN));
   block_item->AddChildView(std::move(block_view));
 }
 

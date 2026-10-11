@@ -343,7 +343,7 @@ void Host::NotifyWindowIntentToShow() {
 }
 
 void Host::Zoom(mojom::ZoomAction zoom_action, ZoomSource source) {
-  if (base::FeatureList::IsEnabled(features::kGlicNoWebview)) {
+  if (features::IsGlicNoWebviewEnabled()) {
     if (contents_) {
       contents_->Zoom(zoom_action, source);
     }
@@ -594,6 +594,10 @@ void Host::WebUiStateChanged(GlicPageHandler* page_handler,
   // UI State has changed
   primary_webui_state_ = new_state;
   observers_.Notify(&Observer::WebUiStateChanged, primary_webui_state_);
+}
+
+void Host::ClientLoadErrorOccurred(ClientLoadErrorReason reason) {
+  observers_.Notify(&Observer::ClientLoadErrorOccurred, reason);
 }
 
 void Host::NotifyInstanceActivationChanged(bool is_active) {

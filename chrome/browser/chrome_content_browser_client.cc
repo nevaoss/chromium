@@ -95,7 +95,7 @@
 #include "chrome/browser/enterprise/browser_management/management_service_factory.h"
 #include "chrome/browser/enterprise/net/proxy_error_utils.h"
 #include "chrome/browser/enterprise/reporting/legacy_tech/legacy_tech_service.h"
-#include "chrome/browser/enterprise/reporting/prefs.h"
+#include "components/enterprise/browser/reporting/prefs.h"
 #include "chrome/browser/enterprise/util/managed_browser_utils.h"
 #include "chrome/browser/external_protocol/external_protocol_handler.h"
 #include "chrome/browser/favicon/favicon_utils.h"
@@ -669,6 +669,8 @@
 #include "chrome/browser/extensions/chrome_extension_cookies.h"
 #include "chrome/browser/extensions/extension_util.h"
 #include "extensions/browser/api/web_request/web_request_api.h"
+#include "extensions/browser/extension_config_map.h"
+#include "extensions/browser/extension_config_map_factory.h"
 #include "extensions/browser/extension_mojo_binder_registry.h"
 #include "extensions/browser/extension_mojo_binder_registry_factory.h"
 #include "extensions/browser/extension_protocols.h"
@@ -681,6 +683,7 @@
 #include "extensions/common/extension.h"
 #include "extensions/common/extension_set.h"
 #include "extensions/common/manifest_handlers/background_info.h"
+#include "extensions/common/mojom/api_permission_id.mojom.h"
 #include "extensions/common/mojom/context_type.mojom.h"
 #include "extensions/common/permissions/permissions_data.h"
 #include "extensions/common/switches.h"
@@ -1689,11 +1692,6 @@ void ChromeContentBrowserClient::RegisterProfilePrefs(
 
 #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
   registry->RegisterListPref(prefs::kMandatoryExtensionsForIncognitoNavigation);
-#endif
-
-#if BUILDFLAG(IS_CHROMEOS)
-  registry->RegisterListPref(
-      prefs::kSubAppsAPIsAllowedWithoutGestureAndAuthorizationForOrigins);
 #endif
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_ANDROID)
@@ -3675,6 +3673,24 @@ bool ChromeContentBrowserClient::AllowWorkerWebLocks(
                                                storage_key);
 }
 
+bool ChromeContentBrowserClient::AllowWorkerWriteToClipboard(
+    const url::Origin& origin,
+    content::BrowserContext* browser_context) {
+#if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+  if (origin.scheme() != extensions::kExtensionScheme) {
+    return false;
+  }
+  const extensions::Extension* extension =
+      extensions::ExtensionRegistry::Get(browser_context)
+          ->enabled_extensions()
+          .GetByID(origin.host());
+  return extension && extension->permissions_data()->HasAPIPermission(
+                          extensions::mojom::APIPermissionID::kClipboardWrite);
+#else
+  return false;
+#endif
+}
+
 bool ChromeContentBrowserClient::IsPrivacySandboxReportingDestinationAttested(
     content::BrowserContext* browser_context,
     const url::Origin& destination_origin,
@@ -4361,6 +4377,20 @@ bool ChromeContentBrowserClient::IsPopupBypassAllowed(
     base::UmaHistogramEnumeration("Security.PopupBypassAllowedType",
                                   PopupBypassType::kContentScript);
     return true;
+  }
+#endif
+  return false;
+}
+
+bool ChromeContentBrowserClient::IsUnboundedElementAllowed(
+    content::RenderFrameHost* render_frame_host) {
+#if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+  const url::Origin& origin = render_frame_host->GetLastCommittedOrigin();
+  if (origin.scheme() == extensions::kExtensionScheme) {
+    auto* config_map =
+        extensions::ExtensionConfigMapFactory::GetForBrowserContext(
+            render_frame_host->GetBrowserContext());
+    return config_map && config_map->IsUnboundedElementAllowed(origin.host());
   }
 #endif
   return false;
@@ -6082,8 +6112,15 @@ ChromeContentBrowserClient::CreateURLLoaderThrottles(
   }
 
 #if BUILDFLAG(ENABLE_PLUGINS)
-  result.push_back(std::make_unique<PluginResponseInterceptorURLLoaderThrottle>(
-      request.destination, frame_tree_node_id));
+  // MIME handler interception replaces the response with a document load,
+  // so only a navigation request may be intercepted; the navigation ID is
+  // present exactly for those. Browser-side preloads and other
+  // non-navigation requests pass through untouched.
+  if (navigation_id.has_value()) {
+    result.push_back(
+        std::make_unique<PluginResponseInterceptorURLLoaderThrottle>(
+            request.destination, frame_tree_node_id, navigation_id.value()));
+  }
 #endif
 
 #if BUILDFLAG(IS_ANDROID)
@@ -7734,7 +7771,7 @@ void ChromeContentBrowserClient::LogWebDXFeatureForCurrentPage(
 }
 
 std::string ChromeContentBrowserClient::GetProduct() {
-  return std::string(version_info::GetProductNameAndVersionForUserAgent());
+  return version_info::GetProductNameAndVersionForUserAgent();
 }
 
 std::string ChromeContentBrowserClient::GetUserAgent() {
@@ -7771,11 +7808,13 @@ bool ChromeContentBrowserClient::IsBuiltinComponent(
 
 void ChromeContentBrowserClient::StartRtcDiagnosticLogging(
     content::RenderFrameHost& frame_host,
+    const base::Uuid& session_id,
     bool should_upload_on_stop,
     const base::flat_map<std::string, std::string>& metadata,
-    base::OnceCallback<void(const std::string&)> callback) {
+    base::OnceClosure callback) {
   rtc_diagnostic_logging::StartRtcDiagnosticLogging(
-      frame_host, should_upload_on_stop, metadata, std::move(callback));
+      frame_host, session_id, should_upload_on_stop, metadata,
+      std::move(callback));
 }
 
 void ChromeContentBrowserClient::FinishRtcDiagnosticLogging(

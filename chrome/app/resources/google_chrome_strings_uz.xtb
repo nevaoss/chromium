@@ -70,6 +70,7 @@
             Bukmarklar, tarix va saqlangan parollar joyida qoladi.</translation>
 <translation id="1619887657840448962">Chrome brauzerini xavfsiz holda saqlash uchun <ph name="IDS_EXTENSION_WEB_STORE_TITLE" /> ro‘yxatida keltirilmagan va sizga bildirmasdan qo‘shilgan bo‘lishi mumkin bo‘lgan quyidagi kengaytma o‘chirib qo‘yiladi.</translation>
 <translation id="1628000112320670027">Chrome yordam markazi</translation>
+<translation id="1632241302126471515">Chrome Canary orqali qidirish</translation>
 <translation id="1640672724030957280">Yuklab olinmoqda...</translation>
 <translation id="1651617469580841801">Google Lens ishlatilganda sahifa sarlavhasi, URL manzili, kontenti, jumladan, PDF fayllar Google serverlariga yuboriladi. <ph name="LEARN_MORE" /></translation>
 <translation id="1662146548738125461">ChromeOS Flex haqida</translation>
@@ -228,6 +229,7 @@ Bu sahifa kutilganidek ishlamasa, optimallashga ruxsat bering.</translation>
 <translation id="3112458742631356345">Chrome bu yuklamani blokladi, chunki bunday fayl odatda yuklab olinmaydi va xavfli boʻlishi mumkin</translation>
 <translation id="3119573284443908657">Chrome bu yuklanmani blokladi, chunki bu arxivda zararli dastur yashirilgan boʻlishi mumkin</translation>
 <translation id="3124332159330678621">Chromeni moaslash orqali uni yangicha bezating</translation>
+<translation id="3125851611828811913">Chrome yigʻilgan boʻlsa ham, istalgan joydan qidiruv soʻrovini kiriting va savollaringizga javob oling. Chromega fonda ishlash ruxsatini beradi.</translation>
 <translation id="3130333203120345554">Yangi qidiruv</translation>
 <translation id="3135560418014806498">Chrome profilini qoʻshish</translation>
 <translation id="3137969841538672700">Qidirish uchun obyektni torting</translation>
@@ -272,6 +274,7 @@ Bu sahifa kutilganidek ishlamasa, optimallashga ruxsat bering.</translation>
 <translation id="3596080736082218006">{COUNT,plural, =0{Administrator yangilishlarni oʻrnatish uchun Chrome brauzerini qayta ishga tushirishni talab qilmoqda}=1{Administrator yangilishlarni oʻrnatish uchun Chrome brauzerini qayta ishga tushirishni talab qilmoqda Inkognito oynalar qayta ochilmaydi.}other{Administrator yangilishlarni oʻrnatish uchun Chrome brauzerini qayta ishga tushirishni talab qilmoqda # ta inkognito oyna qayta ochilmaydi.}}</translation>
 <translation id="3597003331831379823">Kengaytirilgan ruxsatlar bilan sozlash ishga tushmadi. <ph name="METAINSTALLER_ERROR" /></translation>
 <translation id="3598673391539778844">Gemini belgisini tizim panelida Chrome ichida chiqarish</translation>
+<translation id="3616622400661108683">Boshqa ilova yoki fayllar kabi Chromedan tashqaridagi kontent haqida soʻrang</translation>
 <translation id="3622716124581627104">Obyekt yoki joylarni aniqlash, nusxalash yoki matn tarjima qilish. Google Lens ishlatilganda sahifa skrinshoti Google serverlariga yuboriladi. <ph name="LEARN_MORE" /></translation>
 <translation id="3622797965165704966">Endi Google hisobida Chrome bilan ishlash yanada qulay bo‘ladi, jumladan umumiy kompyuterlarda ham.</translation>
 <translation id="3628103251823745322"><ph name="EXISTING_USER" /> hisobiga allaqachon kirilgan. Internetni alohida kezish uchun Chromega shaxsiy profilingiz (<ph name="USER_EMAIL_ADDRESS" />) orqali kiring. Shuningdek, saqlangan maʼlumotlar va boshqa maʼlumotlardan barcha qurilmalarda foydalana olasiz.</translation>
@@ -384,6 +387,7 @@ Bu sahifa kutilganidek ishlamasa, optimallashga ruxsat bering.</translation>
 <translation id="4793679854893018356">Chrome qanday qilib sizni himoya qilishi haqida batafsil</translation>
 <translation id="4799870290441980300">Chromening eng kuchli himoya tizimi bilan taʼminlash uchun qoʻshimcha funksiyalarni yoqadi</translation>
 <translation id="4828579605166583682">Google Chrome joriy parollarni almashtirishga urinmoqda. Ruxsat berish uchun Windows parolingizni kiriting.</translation>
+<translation id="4836321460899997044">Chrome profili</translation>
 <translation id="4842397268809523050">Domeningizda Sinxronlash xizmati mavjud emasligi sababli ChromeOS Flex maʼlumotlaringizni sinxronlay olmadi.</translation>
 <translation id="4851866215237571846"><ph name="EXISTING_USER" /> hisobiga allaqachon kirilgan.  Internetni alohida kezish uchun Chromega shaxsiy profilingiz (<ph name="USER_EMAIL_ADDRESS" />) orqali kiring.</translation>
 <translation id="4855026984605187434">Ekranni ulashish uchun tizim sozlamalarida Chrome uchun ekranni yozib olishga ruxsat bering.</translation>
@@ -501,6 +505,7 @@ Google Chrome sozlamalaringizni qaytadan tiklay olmadi.</translation>
 <translation id="6014316319780893079"><ph name="BEGIN_LINK" />Chrome vositalari yordamida<ph name="END_LINK" /> xavfsiz kezishingiz va nazoratni ushlab turishingiz mumkin</translation>
 <translation id="6018578474045062808">Telefonda Chrome orqali Google Lens qidiruvini sinang</translation>
 <translation id="6022659036123304283">Shaxsiy Chrome brauzeringiz</translation>
+<translation id="6024930613143833266">Chrome yordamida istalgan joydan qidiring</translation>
 <translation id="6025087594896450715">Google Chrome <ph name="REMAINING_TIME" />dan keyin qayta ishga tushadi</translation>
 <translation id="6040143037577758943">Yopish</translation>
 <translation id="604424701295382420">Mahkamlandi! Endi Google Lensni asboblar panelidagi yangi tugma orqali ochish mumkin</translation>
@@ -522,7 +527,6 @@ Google Chrome sozlamalaringizni qaytadan tiklay olmadi.</translation>
 <translation id="6166185671393271715">Parollarni Chrome’ga import qilish</translation>
 <translation id="6169866489629082767"><ph name="PAGE_TITLE" /> - Google Chrome</translation>
 <translation id="6173637689840186878"><ph name="PAGE_TITLE" /> - Google Chrome Beta</translation>
-<translation id="6177442314419606057">Chromedan qidirish</translation>
 <translation id="6180522807229584611">Bu varaq ortiqcha resurs sarflayapti. Unumdorlikni kuchaytirish uchun Chrome varaqni nofaol qilishiga ruxsat bering.</translation>
 <translation id="6182736845697986886">Yangilanish serveridagi ichki xato sababli oʻrnatilmadi.</translation>
 <translation id="6192058120268468905">Chromedagi hisobingiz</translation>
@@ -645,6 +649,7 @@ Google Chrome sozlamalaringizni qaytadan tiklay olmadi.</translation>
 <translation id="7285990705317078173">Narxlarni kuzatish va istalgan saytda narx pasayishi haqida xabar olish uchun telefonga Chrome ilovasini yuklab oling</translation>
 <translation id="7288567540154601580">Varaqlar va kengaytmalar</translation>
 <translation id="7296210096911315575">Foydalanish va xavfsizlik</translation>
+<translation id="7299899569525778554">Ish stolidan qidirish</translation>
 <translation id="7302361266603927550">Ayrim Chrome maʼlumotlari Google hisobingizga hali saqlanmagan. Hisobdan chiqishga shoshilmang. Hozir chiqsangiz, bu maʼlumotlar oʻchib ketadi.</translation>
 <translation id="7306401458628386911">Darhol kezishni boshlang: Chrome endi Windows ishga tushirilganda ochiladi.</translation>
 <translation id="7308322188646931570">Yuklab olish uchun Chrome brauzerida omborga saqlash ruxsati bo‘lishi zarur</translation>
@@ -751,7 +756,9 @@ Google Chrome sozlamalaringizni qaytadan tiklay olmadi.</translation>
 <translation id="8162006532256575008">Chrome brauzeridan hisobsiz foydalanish</translation>
 <translation id="8172231188687329735">Parollarni istalgan joyda saqlash uchun Chrome ilovasini yuklab oling</translation>
 <translation id="8177472873527554730">Sahifada kontent topilmadi</translation>
+<translation id="8196526165798579689">Chrome Dev orqali qidirish</translation>
 <translation id="8221491193165283816">Odatda bildirishnomalarni bloklaysiz. Bu saytga ruxsat berish uchun bu yerga bosing.</translation>
+<translation id="8227493674161801700">Chrome Beta orqali qidirish</translation>
 <translation id="8253851811470049684">Istalgan ilovadagi havolalarni Chromeda oching va brauzerni vazifalar panelida saqlang</translation>
 <translation id="8255190535488645436">Google Chrome kamera va mikrofoningizdan foydalanmoqda.</translation>
 <translation id="8260086374035800939">Chrome ichida Gemini ochiq boʻlsa, yangi varaq yaratishda yon panel ochiq qoladi</translation>

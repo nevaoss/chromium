@@ -14,7 +14,7 @@
 #include "base/memory/weak_ptr.h"
 #include "base/values.h"
 #include "chrome/browser/optimization_guide/optimization_guide_keyed_service.h"
-#include "chrome/browser/ttc/app/public/tool_definition.h"
+#include "chrome/browser/ttc/app/public/tool_types.h"
 #include "chrome/browser/ttc/app/ttc_backend.h"
 #include "components/optimization_guide/core/model_execution/remote_model_executor.h"
 #include "components/optimization_guide/proto/features/ttc.pb.h"
@@ -33,17 +33,16 @@ class TtcMesClient
  public:
   using Observer = TtcBackend::Observer;
 
-  TtcMesClient(Profile* profile, Observer* observer);
+  explicit TtcMesClient(Profile* profile);
   ~TtcMesClient() override;
 
   TtcMesClient(const TtcMesClient&) = delete;
   TtcMesClient& operator=(const TtcMesClient&) = delete;
 
   // TtcBackend implementation:
-  void set_observer(Observer* observer) override;
-  void Connect() override;
+  void Connect(Observer* observer) override;
   void SendToolSetUpdate(const std::vector<ToolDefinition>& tools) override;
-  void SendAudioChunk(const std::vector<uint8_t>& audio_data) override;
+  void SendAudioChunk(base::span<const int16_t> audio_data) override;
   void SendTextInput(const std::string& text) override;
   void SendContextUpdate(
       const GURL& url,
@@ -59,22 +58,23 @@ class TtcMesClient
       override;
 
  protected:
-  // Constructor for unit test mocks.
-  TtcMesClient();
+  // Dispatches a decoded server frame to the observer. Protected so tests can
+  // feed frames without a server sending them.
+  void HandleServerFrame(
+      const optimization_guide::proto::TtcServerFrame& frame);
 
  private:
   void OnStreamingResult(
       optimization_guide::OptimizationGuideModelStreamingResult result);
-  void HandleServerFrame(
-      const optimization_guide::proto::TtcServerFrame& frame);
   void HandleToolCall(const optimization_guide::proto::ToolCall& tool_call);
   void OnToolExecutionComplete(const std::string& call_id,
                                const std::string& tool_name,
-                               base::DictValue result);
+                               ToolResponse response);
   void SendFrame(const optimization_guide::proto::TtcClientFrame& frame);
 
-  raw_ptr<Profile> profile_;
-  raw_ptr<Observer> observer_;
+  raw_ptr<Profile> profile_ = nullptr;
+  // Set by Connect(); null until then.
+  raw_ptr<Observer> observer_ = nullptr;
 
   std::unique_ptr<optimization_guide::RemoteModelExecutionSession> session_;
   bool is_connected_ = false;

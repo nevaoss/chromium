@@ -149,10 +149,6 @@ bool IsReadingListAccountStorageEnabled() {
 #if BUILDFLAG(IS_IOS) || BUILDFLAG(IS_ANDROID)
 #endif  // BUILDFLAG(IS_IOS) || BUILDFLAG(IS_ANDROID)
 
-// Enabled by default, intended as a kill switch.
-BASE_FEATURE(kSyncReadingListBatchUploadSelectedItems,
-             base::FEATURE_ENABLED_BY_DEFAULT);
-
 BASE_FEATURE(kSeparateLocalAndAccountThemes,
 #if BUILDFLAG(IS_CHROMEOS)
              base::FEATURE_DISABLED_BY_DEFAULT
@@ -218,14 +214,14 @@ BASE_FEATURE(kEstimateNewSignInUsersWithFinchAvailablePopulation,
 BASE_FEATURE(kSyncFixWebSigninSessionDurationForShortLivedSessions,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
-BASE_FEATURE(kSyncSimplifyDeviceNaming, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kSyncSimplifyDeviceNaming, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kSyncDisambiguateDeviceNamesWithChannel,
              "SyncDisambiguateDeviceNamesWithChannel",
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kSyncUseServerDeterminedDeviceName,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kSyncCopyPreferencesToTransportModeOnServerForcedDisable,
              base::FEATURE_ENABLED_BY_DEFAULT);

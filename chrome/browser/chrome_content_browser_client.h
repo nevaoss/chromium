@@ -409,6 +409,10 @@ class ChromeContentBrowserClient : public content::ContentBrowserClient {
       const std::vector<content::GlobalRenderFrameHostId>& render_frames,
       const blink::StorageKey& storage_key) override;
 
+  bool AllowWorkerWriteToClipboard(
+      const url::Origin& origin,
+      content::BrowserContext* browser_context) override;
+
   bool IsPrivacySandboxReportingDestinationAttested(
       content::BrowserContext* browser_context,
       const url::Origin& destination_origin,
@@ -482,6 +486,8 @@ class ChromeContentBrowserClient : public content::ContentBrowserClient {
   content::MediaObserver* GetMediaObserver() override;
   content::FeatureObserverClient* GetFeatureObserverClient() override;
   bool IsPopupBypassAllowed(
+      content::RenderFrameHost* render_frame_host) override;
+  bool IsUnboundedElementAllowed(
       content::RenderFrameHost* render_frame_host) override;
   bool CanCreateWindow(content::RenderFrameHost* opener,
                        const GURL& opener_url,
@@ -862,9 +868,10 @@ class ChromeContentBrowserClient : public content::ContentBrowserClient {
 
   void StartRtcDiagnosticLogging(
       content::RenderFrameHost& frame_host,
+      const base::Uuid& session_id,
       bool should_upload_on_stop,
       const base::flat_map<std::string, std::string>& metadata,
-      base::OnceCallback<void(const std::string&)> callback) override;
+      base::OnceClosure callback) override;
 
   void FinishRtcDiagnosticLogging(
       content::RenderFrameHost& frame_host,

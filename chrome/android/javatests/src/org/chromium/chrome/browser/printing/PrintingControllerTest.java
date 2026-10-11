@@ -32,6 +32,7 @@ import org.chromium.base.ThreadUtils;
 import org.chromium.base.test.util.CallbackHelper;
 import org.chromium.base.test.util.CommandLineFlags;
 import org.chromium.base.test.util.CriteriaHelper;
+import org.chromium.base.test.util.DisableIf;
 import org.chromium.base.test.util.Feature;
 import org.chromium.base.test.util.Features.EnableFeatures;
 import org.chromium.base.test.util.MinAndroidSdkLevel;
@@ -64,6 +65,7 @@ import org.chromium.printing.PrintManagerDelegate;
 import org.chromium.printing.Printable;
 import org.chromium.printing.PrintingController;
 import org.chromium.printing.PrintingControllerImpl;
+import org.chromium.ui.base.DeviceFormFactor;
 import org.chromium.ui.base.WindowAndroid;
 import org.chromium.ui.widget.Toast;
 import org.chromium.ui.widget.ToastManager;
@@ -918,12 +920,62 @@ public class PrintingControllerTest {
     }
 
     /**
+     * Test to verify that sequential print jobs do not leak state (pages, callbacks, finished flag)
+     * across jobs.
+     */
+    @Test
+    @SmallTest
+    @Feature({"Printing"})
+    public void testSequentialPrintJobsDoNotLeakState() throws Throwable {
+        WebPageStation page = mActivityTestRule.startOnUrl(URL);
+        Tab tab = page.getTab();
+        WindowAndroid window = tab.getWindowAndroid();
+
+        PrintManagerDelegate successfulPrintManager =
+                new PrintManagerDelegate() {
+                    @Override
+                    public boolean print(
+                            String printJobName,
+                            PrintDocumentAdapter documentAdapter,
+                            @Nullable PrintAttributes attributes) {
+                        return true;
+                    }
+                };
+
+        ThreadUtils.runOnUiThreadBlocking(
+                () -> {
+                    PrintingControllerImpl printingController =
+                            (PrintingControllerImpl) PrintingControllerImpl.getInstance(window);
+                    // Start first job.
+                    printingController.startPrint(new TabPrinter(tab), successfulPrintManager);
+                    Assert.assertTrue(printingController.isBusy());
+                    Assert.assertFalse(printingController.hasPrintingFinished());
+
+                    // Simulate completion of first job.
+                    printingController.onStart();
+                    printingController.onFinish();
+                    Assert.assertFalse(printingController.isBusy());
+                    Assert.assertTrue(printingController.hasPrintingFinished());
+
+                    // Start second job.
+                    printingController.startPrint(new TabPrinter(tab), successfulPrintManager);
+                    Assert.assertTrue(printingController.isBusy());
+                    // Verify that finished flag from job 1 does not leak into job 2.
+                    Assert.assertFalse(printingController.hasPrintingFinished());
+
+                    // Cleanup
+                    printingController.onFinish();
+                });
+    }
+
+    /**
      * Test to verify that if the Activity is finishing, calling startPendingPrint() will
      * immediately invoke the pending print callback and not start printing.
      */
     @Test
     @SmallTest
     @Feature({"Printing"})
+    @DisableIf.Device(DeviceFormFactor.PHONE) // https://crbug.com/562625776
     public void testStartPendingPrintWhenActivityIsFinishing() throws Throwable {
         WebPageStation page = mActivityTestRule.startOnUrl(URL);
         Tab tab = page.getTab();

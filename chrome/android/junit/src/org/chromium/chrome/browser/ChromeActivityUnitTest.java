@@ -417,7 +417,6 @@ public class ChromeActivityUnitTest {
     @Test
     @EnableFeatures(ChromeFeatureList.ANDROID_THEME_RESOURCE_PROVIDER)
     public void testGetResources() {
-
         TestChromeActivity chromeActivity = new TestChromeActivity();
         chromeActivity.setThemeResourceProviderForTesting(mThemeResourceProvider);
         chromeActivity.getResources();
@@ -560,9 +559,8 @@ public class ChromeActivityUnitTest {
         assertTrue(
                 chromeActivity.onMenuOrKeyboardAction(R.id.preferences_id, /* fromMenu= */ true));
 
-        // Verify that the standard settings activity was launched. SettingsInTab.isEnabled() is
-        // true on foldables even in phone mode, so this asserts that the activity-vs-tab decision
-        // made by ChromeActivity is honored. Regression test for crbug.com/561692651.
+        // Verify that the standard settings activity was launched. Foldables in phone mode
+        // open SettingsActivity rather than a settings tab.
         assertSettingsActivityStarted(chromeActivity);
     }
 
@@ -589,6 +587,7 @@ public class ChromeActivityUnitTest {
 
     @Test
     @EnableFeatures(ChromeFeatureList.SETTINGS_IN_TAB)
+    @Config(qualifiers = "sw600dp")
     public void testPreferencesMenuItem_SettingsInTabFoldable_TabletMode() {
         DeviceInfo.setIsFoldableForTesting(true);
         TestChromeActivity chromeActivity = Mockito.spy(new TestChromeActivity());
@@ -635,7 +634,7 @@ public class ChromeActivityUnitTest {
 
         verify(mTabCreator)
                 .createNewTab(
-                        mLoadUrlParamsCaptor.capture(), eq(TabLaunchType.FROM_CHROME_UI), eq(null));
+                        mLoadUrlParamsCaptor.capture(), eq(TabLaunchType.FROM_LINK), eq(null));
         assertEquals(JUnitTestGURLs.URL_1.getSpec(), mLoadUrlParamsCaptor.getValue().getUrl());
         assertEquals(1, userActionTester.getActionCount("MobileMenuSelectTabFromGroup"));
     }
@@ -663,7 +662,7 @@ public class ChromeActivityUnitTest {
 
         verify(mTabCreator)
                 .createNewTab(
-                        mLoadUrlParamsCaptor.capture(), eq(TabLaunchType.FROM_CHROME_UI), eq(null));
+                        mLoadUrlParamsCaptor.capture(), eq(TabLaunchType.FROM_LINK), eq(null));
         assertEquals(JUnitTestGURLs.URL_1.getSpec(), mLoadUrlParamsCaptor.getValue().getUrl());
         assertEquals(1, userActionTester.getActionCount("MobileMenuSelectTabFromGroup"));
     }

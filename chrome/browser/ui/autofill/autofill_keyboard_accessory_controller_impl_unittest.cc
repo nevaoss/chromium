@@ -128,13 +128,15 @@ class AutofillKeyboardAccessoryControllerImplTest
   }
 
   EntityInstance CreatePassport() {
+    using GmailSource =
+        EntityInstance::PersonalContextRecordTypePayload::GmailSource;
+    using Source = EntityInstance::PersonalContextRecordTypePayload::Source;
     return test::GetPassportEntityInstance({
         .guid = "00000000-0000-4000-8000-000000000000",
         .record_type =
             EntityInstance::PersonalContextRecordTypePayload{
-                .sources = {{EntityInstance::PersonalContextRecordTypePayload::
-                                 Source::Type::kGmail,
-                             "https://mail.google.com"}}},
+                .sources = {Source{.url = "https://mail.google.com",
+                                   .data = GmailSource{}}}},
     });
   }
 
@@ -1184,8 +1186,11 @@ TEST_F(AutofillKeyboardAccessoryControllerImplTest,
                         1)));
 
   client().suggestion_controller(manager()).Recycle(
-      PopupControllerCommon(manager().driver().GetFrameToken(), {},
-                            base::i18n::UNKNOWN_DIRECTION),
+      PopupControllerCommon(FormGlobalId(manager().driver().GetFrameToken(),
+                                         test::MakeFormRendererId()),
+                            FieldGlobalId(manager().driver().GetFrameToken(),
+                                          test::MakeFieldRendererId()),
+                            {}, base::i18n::UNKNOWN_DIRECTION),
       /*form_control_ax_id=*/0);
 
   ShowSuggestions(manager(), {test::CreateAutofillSuggestion(

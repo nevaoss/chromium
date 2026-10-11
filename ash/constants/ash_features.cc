@@ -362,9 +362,6 @@ const base::FeatureParam<BorealisZinkGlDriverParam> kBorealisZinkGlDriverParam{
     BorealisZinkGlDriverParam::kZinkEnableRecommended,
     &borealis_zink_gl_driver_options};
 
-// Enables the feature to parameterize glyph for "Campbell" feature.
-BASE_FEATURE(kCampbellGlyph, base::FEATURE_DISABLED_BY_DEFAULT);
-
 // Enables the nudges/tutorials that inform users of the screen capture keyboard
 // shortcut and feature tile.
 BASE_FEATURE(kCaptureModeEducation, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -1107,19 +1104,6 @@ const base::FeatureParam<bool> kLanguagePacksFontsLoadAfterDownloadDuringLogin =
 // via the corresponding Settings page.
 BASE_FEATURE(kLanguagePacksInSettings, base::FEATURE_DISABLED_BY_DEFAULT);
 
-// When enabled, launcher continue section will suggest drive files based on
-// recency, instead of fetching them using drive's ItemSuggest API.
-BASE_FEATURE(kLauncherContinueSectionWithRecents,
-             base::FEATURE_ENABLED_BY_DEFAULT);
-
-// Same as `kLauncherContinueSectionWithRecents`, but used to enable the feature
-// via finch, while ensuring minimum Chrome version - i.e. to avoid finch config
-// from enabling the feature on versions where
-// LauncherContinueSectionWithRecents was first added.
-BASE_FEATURE(kLauncherContinueSectionWithRecentsRollout,
-             "LauncherContinueSectionWithRecentsRollout125",
-             base::FEATURE_DISABLED_BY_DEFAULT);
-
 // Uses short intervals for launcher nudge for testing if enabled.
 BASE_FEATURE(kLauncherNudgeShortInterval, base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -1728,11 +1712,6 @@ const base::FeatureParam<SystemShortcutBehaviorParam>
 // Enables or disables the shadows of system tray bubbles.
 BASE_FEATURE(kSystemTrayShadow, base::FEATURE_DISABLED_BY_DEFAULT);
 
-// Enables the ChromeOS system-proxy daemon, only for system services. This
-// means that system services like tlsdate, update engine etc. can opt to be
-// authenticated to a remote HTTP web proxy via system-proxy.
-BASE_FEATURE(kSystemProxyForSystemServices, base::FEATURE_DISABLED_BY_DEFAULT);
-
 // Enables the UI to allow Chromebook hotspot functionality for experimental
 // carriers, modem and modem FW.
 BASE_FEATURE(kTetheringExperimentalFunctionality,
@@ -1872,9 +1851,6 @@ BASE_FEATURE(kVcTrayTitleHeader,
 
 // Enables or disables web API support for ChromeOS video conferencing.
 BASE_FEATURE(kVcWebApi, base::FEATURE_DISABLED_BY_DEFAULT);
-
-// Controls whether to allow enabling wake on WiFi features in shill.
-BASE_FEATURE(kWakeOnWifiAllowed, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enable "daily" refresh wallpaper to refresh every ten seconds for testing.
 BASE_FEATURE(kWallpaperFastRefresh, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -2024,20 +2000,12 @@ BASE_FEATURE(kHappinessTrackingSystemBatteryLife,
 BASE_FEATURE(kHappinessTrackingSystemPeripherals,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-// Enables or disables the Happiness Tracking System for the Ent survey.
-BASE_FEATURE(kHappinessTrackingSystemEnt, base::FEATURE_DISABLED_BY_DEFAULT);
-
 // Enables or disables the Happiness Tracking System for the Stability survey.
 BASE_FEATURE(kHappinessTrackingSystemStability,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables or disables the Happiness Tracking System for the Performance survey.
 BASE_FEATURE(kHappinessTrackingSystemPerformance,
-             base::FEATURE_DISABLED_BY_DEFAULT);
-
-// Enables or disables the Happiness Tracking System for Onboarding Experience.
-BASE_FEATURE(kHappinessTrackingSystemOnboarding,
-             "HappinessTrackingOnboardingExperience",
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables or disables the Happiness Tracking System for ARC Games survey.
@@ -2095,10 +2063,6 @@ BASE_FEATURE(kHappinessTrackingGeneralCameraPrioritized,
 
 // Enables the Happiness Tracking System for OS Settings Search survey.
 BASE_FEATURE(kHappinessTrackingOsSettingsSearch,
-             base::FEATURE_DISABLED_BY_DEFAULT);
-
-// Enables the Happiness Tracking System for Borealis games survey.
-BASE_FEATURE(kHappinessTrackingBorealisGames,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Enables the Happiness Tracking System for the Office integration.
@@ -2723,12 +2687,6 @@ bool IsJupiterScreensaverEnabled() {
          IsTimeOfDayScreenSaverEnabled();
 }
 
-bool IsLauncherContinueSectionWithRecentsEnabled() {
-  return base::FeatureList::IsEnabled(kLauncherContinueSectionWithRecents) ||
-         base::FeatureList::IsEnabled(
-             kLauncherContinueSectionWithRecentsRollout);
-}
-
 bool IsLobsterEnabled() {
   return base::FeatureList::IsEnabled(kLobsterDogfood) ||
          (base::FeatureList::IsEnabled(kLobster) &&
@@ -3054,9 +3012,8 @@ bool IsShimlessRMAHideGoogleSKUEnabled() {
 }
 
 bool IsShowSharingUserInLauncherContinueSectionEnabled() {
-  return IsLauncherContinueSectionWithRecentsEnabled() &&
-         base::FeatureList::IsEnabled(
-             kShowSharingUserInLauncherContinueSection);
+  return base::FeatureList::IsEnabled(
+      kShowSharingUserInLauncherContinueSection);
 }
 
 bool IsSunfishFeatureEnabled() {
@@ -3248,18 +3205,6 @@ bool IsWebAuthNAuthDialogMergeEnabled() {
 
 bool ShouldEnterOverviewFromWallpaper() {
   return base::FeatureList::IsEnabled(kEnterOverviewFromWallpaper);
-}
-
-bool UseMixedFileLauncherContinueSection() {
-  return (base::FeatureList::IsEnabled(kLauncherContinueSectionWithRecents) &&
-          base::GetFieldTrialParamByFeatureAsBool(
-              features::kLauncherContinueSectionWithRecents,
-              "mix_local_and_drive", false)) ||
-         (base::FeatureList::IsEnabled(
-              kLauncherContinueSectionWithRecentsRollout) &&
-          base::GetFieldTrialParamByFeatureAsBool(
-              features::kLauncherContinueSectionWithRecentsRollout,
-              "mix_local_and_drive", false));
 }
 
 bool IsUseTokenHandleStoreEnabled() {

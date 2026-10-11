@@ -4,6 +4,9 @@
 
 #import "ios/chrome/browser/composebox/model/ios_contextual_search_service_factory.h"
 
+#import <optional>
+#import <vector>
+
 #import "base/functional/bind.h"
 #import "components/application_locale_storage/application_locale_storage.h"
 #import "components/contextual_search/contextual_search_service.h"
@@ -50,6 +53,26 @@ ContextualSearchServiceFactory::ContextualSearchServiceFactory()
 
 ContextualSearchServiceFactory::~ContextualSearchServiceFactory() = default;
 
+namespace {
+
+void FetchIdentityDelegationHeadersForProfile(
+    ProfileIOS* profile,
+    std::optional<size_t> auth_user_index,
+    base::OnceCallback<void(std::vector<std::string>)> callback) {
+  if (!profile) {
+    std::move(callback).Run({});
+    return;
+  }
+  lens::FetchIdentityDelegationHeaders(
+      profile->GetCookieManager(),
+      IdentityManagerFactory::GetForProfile(profile),
+      google_util::kGoogleHomepageURL,
+      base::BindRepeating(&ios::provider::GenerateLensSapisidHash),
+      auth_user_index, std::move(callback));
+}
+
+}  // namespace
+
 std::unique_ptr<KeyedService>
 ContextualSearchServiceFactory::BuildServiceInstanceFor(
     ProfileIOS* profile) const {
@@ -64,11 +87,10 @@ ContextualSearchServiceFactory::BuildServiceInstanceFor(
       ios::TemplateURLServiceFactory::GetForProfile(profile),
       static_cast<variations::VariationsClient*>(variations_client_service),
       ::GetChannel(),
-      GetApplicationContext()->GetApplicationLocaleStorage()->Get(),
-      base::BindRepeating(
-          &lens::FetchIdentityDelegationHeaders,
-          base::Unretained(profile->GetCookieManager()),
-          IdentityManagerFactory::GetForProfile(profile),
-          google_util::kGoogleHomepageURL,
-          base::BindRepeating(&ios::provider::GenerateLensSapisidHash)));
+      std::string(GetApplicationContext()
+                      ->GetApplicationLocaleStorage()
+                      ->GetTag()
+                      .tag_string()),
+      base::BindRepeating(&FetchIdentityDelegationHeadersForProfile,
+                          base::Unretained(profile)));
 }

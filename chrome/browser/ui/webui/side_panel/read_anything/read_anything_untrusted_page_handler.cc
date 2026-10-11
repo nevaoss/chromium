@@ -4,22 +4,18 @@
 
 #include "chrome/browser/ui/webui/side_panel/read_anything/read_anything_untrusted_page_handler.h"
 
-#include <algorithm>
 #include <string>
 #include <string_view>
 #include <utility>
 #include <vector>
 
 #include "base/check.h"
-#include "base/check_op.h"
 #include "base/command_line.h"
-#include "base/containers/flat_map.h"
 #include "base/functional/bind.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/values.h"
 #include "chrome/browser/accessibility/phrase_segmentation/dependency_parser_model_loader.h"
 #include "chrome/browser/accessibility/phrase_segmentation/dependency_parser_model_loader_factory.h"
-#include "chrome/browser/browser_features.h"
 #include "chrome/browser/dom_distiller/dom_distiller_service_factory.h"
 #include "chrome/browser/language/language_model_manager_factory.h"
 #include "chrome/browser/profiles/profile.h"
@@ -66,7 +62,7 @@
 #include "content/public/common/url_constants.h"
 #include "extensions/browser/extension_registrar.h"
 #include "extensions/browser/extension_registry.h"
-#include "net/http/http_status_code.h"
+#include "mojo/public/cpp/bindings/callback_helpers.h"
 #include "pdf/buildflags.h"
 #include "services/metrics/public/cpp/ukm_builders.h"
 #include "services/metrics/public/cpp/ukm_recorder.h"
@@ -76,11 +72,8 @@
 #include "ui/accessibility/ax_action_data.h"
 #include "ui/accessibility/ax_enums.mojom-shared.h"
 #include "ui/accessibility/ax_mode.h"
-#include "ui/accessibility/ax_node.h"
 #include "ui/accessibility/ax_node_id_forward.h"
-#include "ui/accessibility/ax_tree_manager.h"
 #include "ui/accessibility/ax_tree_update.h"
-#include "ui/gfx/geometry/rect.h"
 #include "ui/gfx/geometry/size.h"
 #include "url/gurl.h"
 #include "url/url_constants.h"
@@ -140,6 +133,14 @@ class ReadAnythingUntrustedPageHandler::DomDistillerDelegate
             std::make_unique<dom_distiller::SourcePageHandleWebContents>(
                 contents, /*owned=*/false)),
         url);
+  }
+
+  // Cancels an in-flight distillation request, if any. Resetting the handle
+  // removes this delegate as an observer, so OnArticleReady() is not called.
+  void CancelDistillation() {
+    viewer_handle_.reset();
+    // Cleared so it is never attributed to a later distillation.
+    start_time_ = base::TimeTicks();
   }
 
   // dom_distiller::ViewRequestDelegate:
@@ -305,12 +306,6 @@ ReadAnythingWebContentsObserver::~ReadAnythingWebContentsObserver() = default;
 void ReadAnythingWebContentsObserver::AccessibilityEventReceived(
     const ui::AXUpdatesAndEvents& details) {
   page_handler_->AccessibilityEventReceived(details);
-}
-
-void ReadAnythingWebContentsObserver::AccessibilityLocationChangesReceived(
-    const ui::AXTreeID& tree_id,
-    ui::AXLocationAndScrollUpdates& details) {
-  page_handler_->AccessibilityLocationChangesReceived(tree_id, details);
 }
 
 void ReadAnythingWebContentsObserver::PrimaryPageChanged(content::Page& page) {
@@ -542,14 +537,6 @@ void ReadAnythingUntrustedPageHandler::AccessibilityEventReceived(
     const ui::AXUpdatesAndEvents& details) {
   page_->AccessibilityEventReceived(details.ax_tree_id, details.updates,
                                     details.events);
-}
-
-void ReadAnythingUntrustedPageHandler::AccessibilityLocationChangesReceived(
-    const ui::AXTreeID& tree_id,
-    ui::AXLocationAndScrollUpdates& details) {
-  if (features::IsReadAnythingDocsIntegrationEnabled()) {
-    page_->AccessibilityLocationChangesReceived(tree_id, details);
-  }
 }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -1239,12 +1226,37 @@ void ReadAnythingUntrustedPageHandler::OnSpeechEngineStalled() {
 #endif
 }
 
-void ReadAnythingUntrustedPageHandler::RequestReadabilityDistillation() {
+void ReadAnythingUntrustedPageHandler::RequestReadabilityDistillation(
+    RequestReadabilityDistillationCallback callback) {
+  // Use a local wrapper so any early return runs the callback with ("", "") on
+  // destruction, containing fallback handling to this function scope.
+  auto wrapped_callback =
+      mojo::WrapCallbackWithDefaultInvokeIfNotRun(std::move(callback), "", "");
   if (!features::IsReadAnythingWithReadabilityEnabled()) {
     return;
   }
+
+  // Tree changes reset this state in OnActiveAXTreeIDChanged(), but
+  // same-document (SPA) navigations reuse the AXTree ID, so reset here.
+  ResetReadabilityState();
+
+  // Registered before starting so a result can never arrive before the
+  // callback. Resetting replies ("", "") if distillation never started.
+  readability_callback_ = std::move(wrapped_callback);
+  if (!RequestDomDistillerDistillation(tab_->GetContents())) {
+    readability_callback_.Reset();
+  }
+}
+
+void ReadAnythingUntrustedPageHandler::ResetReadabilityState() {
+  // readability_callback_ is always wrapped, so resetting it replies ("", "").
+  readability_callback_.Reset();
+  if (distiller_delegate_) {
+    distiller_delegate_->CancelDistillation();
+  }
+  dom_distiller_title_.reset();
+  dom_distiller_content_.reset();
   readability_distillation_tree_change_start_time_ = base::TimeTicks();
-  RequestDomDistillerDistillation(tab_->GetContents());
 }
 
 void ReadAnythingUntrustedPageHandler::PerformActionInTargetTree(
@@ -1550,6 +1562,10 @@ void ReadAnythingUntrustedPageHandler::CheckIfActiveAXTreeChangedToPdf() {
 }
 
 void ReadAnythingUntrustedPageHandler::OnActiveAXTreeIDChanged() {
+  // Reset the distillation from the previous tree/page so its result is not
+  // used as stale content.
+  ResetReadabilityState();
+
   is_pdf_with_frame_ = false;
   is_waiting_for_pdf_frame_ = false;
 
@@ -1648,13 +1664,13 @@ void ReadAnythingUntrustedPageHandler::OnActiveAXTreeIDChanged() {
     RequestDomDistillerDistillation(contents);
   }
 }
-void ReadAnythingUntrustedPageHandler::RequestDomDistillerDistillation(
+bool ReadAnythingUntrustedPageHandler::RequestDomDistillerDistillation(
     content::WebContents* content) {
-  if (!features::IsReadAnythingWithReadabilityEnabled() ||
+  if (!content || !features::IsReadAnythingWithReadabilityEnabled() ||
       features::IsReadAnythingReadAloudPhraseHighlightingEnabled() ||
-      is_pdf_with_frame_ ||
-      (content && IsGoogleDocs(content->GetLastCommittedURL()))) {
-    return;
+      is_pdf_with_frame_ || is_waiting_for_pdf_frame_ ||
+      IsGoogleDocs(content->GetLastCommittedURL())) {
+    return false;
   }
 
   // Don't attempt Readability distillation in automated tests. This is to prevent internal
@@ -1664,8 +1680,10 @@ void ReadAnythingUntrustedPageHandler::RequestDomDistillerDistillation(
     page_->OnReadabilityDistillationStateChanged(
         read_anything::mojom::ReadAnythingDistillationState::
             kDistillationEmpty);
-    page_->UpdateContent("", "");
-    return;
+    if (!features::IsReadAnythingDistillerRefactorEnabled()) {
+      page_->UpdateContent("", "");
+    }
+    return false;
   }
 
   const GURL& url = content->GetLastCommittedURL();
@@ -1679,8 +1697,10 @@ void ReadAnythingUntrustedPageHandler::RequestDomDistillerDistillation(
     page_->OnReadabilityDistillationStateChanged(
         read_anything::mojom::ReadAnythingDistillationState::
             kDistillationEmpty);
-    page_->UpdateContent("", "");
-    return;
+    if (!features::IsReadAnythingDistillerRefactorEnabled()) {
+      page_->UpdateContent("", "");
+    }
+    return false;
   }
 
   dom_distiller::DomDistillerService* dom_distiller_service =
@@ -1691,6 +1711,7 @@ void ReadAnythingUntrustedPageHandler::RequestDomDistillerDistillation(
       read_anything::mojom::ReadAnythingDistillationState::
           kDistillationInProgress);
   distiller_delegate_->StartDistillation(dom_distiller_service, content);
+  return true;
 }
 
 void ReadAnythingUntrustedPageHandler::RecordListenToThisPagePlaybackMetric(
@@ -1759,8 +1780,16 @@ void ReadAnythingUntrustedPageHandler::ProcessDistilledArticle(
       page_->OnReadabilityDistillationStateChanged(
           read_anything::mojom::ReadAnythingDistillationState::
               kDistillationWithContent);
-      page_->UpdateContent(dom_distiller_title().value_or(""),
-                           dom_distiller_content().value());
+      // `readability_callback_` Set only for renderer-requested distillations.
+      if (readability_callback_) {
+        std::move(readability_callback_)
+            .Run(dom_distiller_title().value_or(""),
+                 dom_distiller_content().value());
+      }
+      if (!features::IsReadAnythingDistillerRefactorEnabled()) {
+        page_->UpdateContent(dom_distiller_title().value_or(""),
+                             dom_distiller_content().value());
+      }
       if (features::IsReadAnythingDistillationQualityEvaluationEnabled()) {
         EvaluateDistillationQuality(dom_distiller_content().value());
       }
@@ -1776,7 +1805,12 @@ void ReadAnythingUntrustedPageHandler::ProcessDistilledArticle(
     page_->OnReadabilityDistillationStateChanged(
         read_anything::mojom::ReadAnythingDistillationState::
             kDistillationEmpty);
-    page_->UpdateContent(/*title=*/"", /*content=*/"");
+    if (readability_callback_) {
+      std::move(readability_callback_).Run(/*title=*/"", /*content=*/"");
+    }
+    if (!features::IsReadAnythingDistillerRefactorEnabled()) {
+      page_->UpdateContent(/*title=*/"", /*content=*/"");
+    }
   }
   // Reset the tree-change start time once distillation has finished,
   // regardless of whether content was successfully produced.

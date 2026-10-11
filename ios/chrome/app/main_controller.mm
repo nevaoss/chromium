@@ -234,16 +234,16 @@ NSString* const kLogInstallAttribution = @"LogInstallAttribution";
 // Constant for deferred MetricKit registration.
 NSString* const kRegisterMetricKit = @"RegisterMetricKit";
 
-// Constant for enabling  multi-profile.
-NSString* const kMultiprofileKey = @"MultiprofileKey";
-
 // Adapted from chrome/browser/ui/browser_init.cc.
 void RegisterComponentsForUpdate() {
   component_updater::ComponentUpdateService* cus =
       GetApplicationContext()->GetComponentUpdateService();
   DCHECK(cus);
   RegisterOnDeviceHeadSuggestComponent(
-      cus, GetApplicationContext()->GetApplicationLocaleStorage()->Get());
+      cus, std::string(GetApplicationContext()
+                           ->GetApplicationLocaleStorage()
+                           ->GetTag()
+                           .tag_string()));
   RegisterSafetyTipsComponent(cus);
   RegisterOptimizationHintsComponent(cus);
   if (IsActorEnabled()) {
@@ -1389,12 +1389,6 @@ std::string GetProfileNameForChoice(ProfileChoice choice,
     kWidgetKitRefreshFiveMinutes : @{
       kFieldTrialValueKey : @([[NSUserDefaults standardUserDefaults]
           boolForKey:kWidgetKitRefreshFiveMinutes]),
-      kFieldTrialVersionKey : @1,
-    },
-    // TODO(crbug.com/407498240): Remove this key and its usages, since
-    // multi-profile is now always enabled.
-    kMultiprofileKey : @{
-      kFieldTrialValueKey : @YES,
       kFieldTrialVersionKey : @1,
     },
   };

@@ -71,7 +71,6 @@
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/devtools/devtools_policy_dialog.h"
 #include "chrome/browser/devtools/devtools_window.h"
-#include "chrome/browser/devtools/features.h"
 #include "chrome/browser/feedback/show_feedback_page.h"
 #include "chrome/browser/geic/geic_enabling.h"
 #include "chrome/browser/glic/public/glic_enabling.h"
@@ -1742,6 +1741,41 @@ void BrowserActions::InitializeChromeMenuActions() {
               vector_icons::kGoogleChromeWebstoreIcon, ui::kColorIcon))
 #endif
           .Build());
+
+  root_action_item_->AddChild(
+      actions::ActionItem::Builder(
+          base::BindRepeating(
+              [](BrowserWindowInterface* bwi, actions::ActionItem* item,
+                 actions::ActionInvocationContext context) {
+                chrome::ShowSkillsYourSkills(
+                    webui::GetBrowserForOpeningWebUi(bwi));
+              },
+              bwi))
+          .SetActionId(kActionManageSkills)
+          .SetText(l10n_util::GetStringUTF16(IDS_SKILLS_MENU_MANAGE_SKILLS))
+          .SetTooltipText(
+              l10n_util::GetStringUTF16(IDS_SKILLS_MENU_MANAGE_SKILLS))
+          .SetImage(ui::ImageModel::FromVectorIcon(
+              features::IsRoundedIconsEnabled() ? kSettingsIcon
+                                                : kSettingsMenuOldIcon))
+          .Build());
+
+  root_action_item_->AddChild(
+      actions::ActionItem::Builder(
+          base::BindRepeating(
+              [](BrowserWindowInterface* bwi, actions::ActionItem* item,
+                 actions::ActionInvocationContext context) {
+                chrome::ShowSkillsBrowse(webui::GetBrowserForOpeningWebUi(bwi));
+              },
+              bwi))
+          .SetActionId(kActionBrowseSkills)
+          .SetText(l10n_util::GetStringUTF16(IDS_SKILLS_MENU_BROWSE_SKILLS))
+          .SetTooltipText(
+              l10n_util::GetStringUTF16(IDS_SKILLS_MENU_BROWSE_SKILLS))
+          .SetImage(ui::ImageModel::FromVectorIcon(
+              features::IsRoundedIconsEnabled() ? kExploreIcon
+                                                : kTravelExploreOldIcon))
+          .Build());
 }
 
 void BrowserActions::InitializeToolbarAndMiscActions() {
@@ -1853,10 +1887,6 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
               [](BrowserWindowInterface* bwi, actions::ActionItem* item,
                  actions::ActionInvocationContext context) {
 #if BUILDFLAG(IS_CHROMEOS)
-                // ChromeOS does not use DownloadToolbarUIController (downloads
-                // are managed via the Ash shelf/holding space), so directly
-                // open the downloads WebUI page instead of showing the toolbar
-                // bubble.
                 chrome::ShowDownloads(webui::GetBrowserForOpeningWebUi(bwi));
 #else
                 if (auto* controller = DownloadToolbarUIController::From(bwi)) {
@@ -1869,7 +1899,6 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
           features::IsRoundedIconsEnabled()
               ? kDownloadIcon
               : kDownloadToolbarButtonChromeRefreshOldIcon)
-          .SetAccelerator(GetAcceleratorForCommandId(IDC_SHOW_DOWNLOADS))
           .Build());
 
   if (tab_groups::SavedTabGroupUtils::SupportsSharedTabGroups()) {
@@ -3635,9 +3664,7 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
                 if (!web_contents) {
                   return;
                 }
-                if (base::FeatureList::IsEnabled(
-                        features::kDevToolsShowPolicyDialog) &&
-                    !DevToolsWindow::AllowDevToolsFor(bwi->GetProfile(),
+                if (!DevToolsWindow::AllowDevToolsFor(bwi->GetProfile(),
                                                       web_contents)) {
 #if !BUILDFLAG(IS_ANDROID)
                   DevToolsPolicyDialog::Show(web_contents);
@@ -4070,6 +4097,18 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
               },
               bwi))
           .SetActionId(kActionSetBrowserAsDefault)
+          .SetText(
+              l10n_util::GetStringUTF16(IDS_SET_BROWSER_AS_DEFAULT_MENU_ITEM))
+          .SetImage(ui::ImageModel::FromVectorIcon(
+              features::IsRoundedIconsEnabled()
+                  ? omnibox::kChromeProductIcon
+                  : omnibox::kProductChromeRefreshOldIcon,
+              ui::kColorMenuIconOnEmphasizedBackground))
+          .SetProperty(views::kElementIdentifierKey,
+                       AppMenuModel::kSetBrowserAsDefaultMenuItem)
+          .SetVisible(
+              DefaultBrowserPromptManager::GetInstance()->ShouldShowAppMenuItem(
+                  profile))
           .Build());
 #endif
 
@@ -4445,6 +4484,27 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
           base::BindRepeating(
               [](BrowserWindowInterface* bwi, actions::ActionItem* item,
                  actions::ActionInvocationContext context) {
+                chrome::ShowDownloads(webui::GetBrowserForOpeningWebUi(bwi));
+              },
+              bwi))
+          .SetActionId(kActionShowDownloadsPage)
+          .SetText(BrowserActions::GetCleanTitleAndTooltipText(
+              l10n_util::GetStringUTF16(IDS_SHOW_DOWNLOADS)))
+          .SetTooltipText(BrowserActions::GetCleanTitleAndTooltipText(
+              l10n_util::GetStringUTF16(IDS_SHOW_DOWNLOADS)))
+          .SetImage(ui::ImageModel::FromVectorIcon(
+              features::IsRoundedIconsEnabled()
+                  ? kDownloadIcon
+                  : kDownloadToolbarButtonChromeRefreshOldIcon,
+              ui::kColorIcon))
+          .SetAccelerator(GetAcceleratorForCommandId(IDC_SHOW_DOWNLOADS))
+          .Build());
+
+  root_action_item_->AddChild(
+      actions::ActionItem::Builder(
+          base::BindRepeating(
+              [](BrowserWindowInterface* bwi, actions::ActionItem* item,
+                 actions::ActionInvocationContext context) {
                 chrome::ShowHelp(bwi, chrome::HelpSource::kKeyboard);
               },
               bwi))
@@ -4575,6 +4635,13 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
               },
               bwi))
           .SetActionId(kActionUpgradeDialog)
+          .SetText(AppMenuModel::GetUpgradeDialogTitleText())
+          .SetImage(ui::ImageModel::FromVectorIcon(
+              features::IsRoundedIconsEnabled()
+                  ? kRocketLaunchIcon
+                  : kBrowserToolsUpdateChromeRefreshOldIcon,
+              ui::kColorMenuIconOnEmphasizedBackground))
+          .SetVisible(false)
           .Build());
 
   root_action_item_->AddChild(
@@ -4628,9 +4695,7 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
                 if (!web_contents) {
                   return;
                 }
-                if (base::FeatureList::IsEnabled(
-                        features::kDevToolsShowPolicyDialog) &&
-                    !DevToolsWindow::AllowDevToolsFor(bwi->GetProfile(),
+                if (!DevToolsWindow::AllowDevToolsFor(bwi->GetProfile(),
                                                       web_contents)) {
                   DevToolsPolicyDialog::Show(web_contents);
                 } else {
@@ -5139,6 +5204,18 @@ void BrowserActions::InitializeSubmenuActions() {
           features::IsRoundedIconsEnabled()
               ? vector_icons::kChromeExtensionIcon
               : vector_icons::kExtensionChromeRefreshOldIcon,
+          /*is_pinnable=*/false)
+          .Build());
+
+  root_action_item_->AddChild(
+      ChromeMenuAction(
+          base::BindRepeating(
+              [](BrowserWindowInterface* bwi, actions::ActionItem* item,
+                 actions::ActionInvocationContext context) {},
+              bwi),
+          kActionSkillsSubmenu, IDS_SKILLS_MENU, IDS_SKILLS_MENU,
+          features::IsRoundedIconsEnabled() ? kContractIcon
+                                            : vector_icons::kDescriptionOldIcon,
           /*is_pinnable=*/false)
           .Build());
 }

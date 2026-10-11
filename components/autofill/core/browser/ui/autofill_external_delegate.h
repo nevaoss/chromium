@@ -45,7 +45,6 @@ namespace autofill {
 class AddressDataManager;
 class AutofillDriver;
 class BrowserAutofillManager;
-class FormStructure;
 
 // Retrieves a copy of the profile that the `payload` refers to.
 std::optional<AutofillProfile> GetProfileFromPayload(
@@ -79,9 +78,13 @@ class AutofillExternalDelegate : public AutofillSuggestionDelegate {
   bool OnFilterChanged(const std::u16string& filter) override;
   bool OnSearchSubmitted(const std::u16string& filter) override;
   bool IsSearching() const override;
-  void DidSelectSuggestion(const Suggestion& suggestion) override;
+  void DidSelectSuggestion(const Suggestion& suggestion,
+                           const FormGlobalId& form_id,
+                           const FieldGlobalId& field_id) override;
   void DidAcceptSuggestion(const Suggestion& suggestion,
-                           const SuggestionMetadata& metadata) override;
+                           const SuggestionMetadata& metadata,
+                           const FormGlobalId& form_id,
+                           const FieldGlobalId& field_id) override;
   bool RemoveSuggestion(const Suggestion& suggestion) override;
   void ClearPreviewedForm() override;
 
@@ -179,20 +182,15 @@ class AutofillExternalDelegate : public AutofillSuggestionDelegate {
 
   // Private handler for DidAcceptSuggestions for address related suggestions.
   void DidAcceptAddressSuggestion(const Suggestion& suggestion,
-                                  const SuggestionMetadata& metadata);
+                                  const SuggestionMetadata& metadata,
+                                  const FormGlobalId& form_id,
+                                  const FieldGlobalId& field_id);
 
   // Private handler for DidAcceptSuggestions for payments related suggestions.
   void DidAcceptPaymentsSuggestion(const Suggestion& suggestion,
-                                   const SuggestionMetadata& metadata);
-
-  // Returns the last Autofill triggering field. Derived from the `form` and
-  // `field` parameters of `OnQuery(). Returns nullptr if called before
-  // `OnQuery()` or if the `form` becomes outdated, see crbug.com/1117028.
-  const AutofillField* GetQueriedField() const;
-
-  // Returns the last Autofill triggering field and its form.
-  std::pair<const FormStructure*, const AutofillField*> GetQueriedFormAndField()
-      const;
+                                   const SuggestionMetadata& metadata,
+                                   const FormGlobalId& form_id,
+                                   const FieldGlobalId& field_id);
 
   AutofillTriggerSource GetTriggerSource() const;
 
@@ -204,12 +202,16 @@ class AutofillExternalDelegate : public AutofillSuggestionDelegate {
                     const Suggestion::Payload& payload,
                     std::optional<SuggestionMetadata> metadata,
                     bool is_preview,
-                    AutofillTriggerSource trigger_source);
+                    AutofillTriggerSource trigger_source,
+                    const FormGlobalId& form_id,
+                    const FieldGlobalId& field_id);
 
   // Previews the value from `profile` specified in the `suggestion`.
   void PreviewAddressFieldByFieldFillingSuggestion(
       const AutofillProfile& profile,
-      const Suggestion& suggestion);
+      const Suggestion& suggestion,
+      const FormGlobalId& form_id,
+      const FieldGlobalId& field_id);
 
   // Fills the value from `profile` specified in the `suggestion`. Emits
   // necessary metrics based on the
@@ -217,7 +219,9 @@ class AutofillExternalDelegate : public AutofillSuggestionDelegate {
   void FillAddressFieldByFieldFillingSuggestion(
       const AutofillProfile& profile,
       const Suggestion& suggestion,
-      const SuggestionMetadata& metadata);
+      const SuggestionMetadata& metadata,
+      const FormGlobalId& form_id,
+      const FieldGlobalId& field_id);
 
   // Handle applying any Autofill option listings to the Autofill popup.
   // This function should only get called when there is at least one

@@ -11,6 +11,7 @@ import org.chromium.base.CommandLine;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.enterprise.util.ManagedBrowserUtils;
+import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.flags.ChromeSwitches;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.signin.services.IdentityServicesProvider;
@@ -21,6 +22,7 @@ import org.chromium.components.signin.identitymanager.IdentityManager;
 import org.chromium.google_apis.gaia.GaiaId;
 import org.chromium.ui.modaldialog.ModalDialogManager;
 
+import java.util.List;
 import java.util.Objects;
 
 /**
@@ -39,6 +41,7 @@ public class EnterpriseSignalsDisclaimerController implements SigninManager.Sign
     private final EnterpriseSignalsDisclaimerCoordinator.Delegate mDelegate;
     private final Profile mProfile;
     private final SigninManager mSigninManager;
+    private final MetricsHelper mMetricsHelper = new MetricsHelper();
 
     private @Nullable EnterpriseSignalsDisclaimerCoordinator mCoordinator;
     private boolean mIsDestroyed;
@@ -51,7 +54,8 @@ public class EnterpriseSignalsDisclaimerController implements SigninManager.Sign
                 ModalDialogManager modalDialogManager,
                 SigninManager signinManager,
                 EnterpriseSignalsDisclaimerCoordinator.Delegate delegate,
-                Runnable onDestroyCallback);
+                Runnable onDestroyCallback,
+                MetricsHelper metricsHelper);
     }
 
     /**
@@ -133,7 +137,21 @@ public class EnterpriseSignalsDisclaimerController implements SigninManager.Sign
      *
      * @return true if the disclaimer was shown (or put in a queue), false otherwise.
      */
-    public boolean maybeShow() {
+    public boolean maybeShowOnStartup() {
+        // This is used for testing only and will be removed together with the flag.
+        if (ChromeFeatureList.getFieldTrialParamByFeatureAsBoolean(
+                ChromeFeatureList.ANDROID_DEVICE_SIGNALS_DISCLAIMER,
+                ChromeFeatureList.ANDROID_DEVICE_SIGNALS_DISCLAIMER_CLEAR_CONSENT)) {
+            // Passing an empty list of known accounts clears the acknowledgment for every
+            // account, so the disclaimer is shown again on each startup.
+            EnterpriseSignalsDisclaimerBridge.removeUnknownAccounts(List.of());
+        }
+
+        return maybeShow(MetricsHelper.ShownOn.STARTUP);
+    }
+
+    @VisibleForTesting
+    boolean maybeShow(@MetricsHelper.ShownOn int shownOn) {
         if (mIsDestroyed) {
             return false;
         }
@@ -173,10 +191,12 @@ public class EnterpriseSignalsDisclaimerController implements SigninManager.Sign
                         mModalDialogManager,
                         mSigninManager,
                         mDelegate,
-                        this::onCoordinatorDestroyed);
+                        this::onCoordinatorDestroyed,
+                        mMetricsHelper);
         // If the dialog is not shown immediately it will be queued by the controller and shown
         // whenever possible.
-        mCoordinator.show();
+        MetricsHelper.recordShownRequested(shownOn);
+        mCoordinator.show(shownOn);
         return true;
     }
 
@@ -194,7 +214,7 @@ public class EnterpriseSignalsDisclaimerController implements SigninManager.Sign
     public void onSignedIn() {
         // TODO(b/553341908): Once the existing management disclaimer is replaced with the
         // enterprise signals disclaimer, this function should be removed.
-        maybeShow();
+        maybeShow(MetricsHelper.ShownOn.SIGN_IN);
     }
 
     @Override

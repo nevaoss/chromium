@@ -521,8 +521,8 @@ class CORE_EXPORT LayoutBox : public LayoutBoxModelObject {
     explicit PhysicalFragmentList(const LayoutResultList& layout_results)
         : layout_results_(layout_results) {}
 
-    wtf_size_t Size() const { return layout_results_.size(); }
-    bool IsEmpty() const { return layout_results_.empty(); }
+    wtf_size_t size() const { return layout_results_.size(); }
+    bool empty() const { return layout_results_.empty(); }
 
     bool MayHaveFragmentItems() const;
     bool HasFragmentItems() const {
@@ -1117,6 +1117,9 @@ class CORE_EXPORT LayoutBox : public LayoutBoxModelObject {
   // https://drafts.csswg.org/css-anchor-position-1/#ref-for-valdef-anchor-implicit
   const LayoutObject* AcceptableImplicitAnchor() const;
 
+  // Finds the default anchor element based on StylePositionAnchor type.
+  const LayoutObject* FindDefaultAnchor() const;
+
   const GCedHeapVector<NonOverflowingScrollRange>* NonOverflowingScrollRanges()
       const;
 
@@ -1131,6 +1134,11 @@ class CORE_EXPORT LayoutBox : public LayoutBoxModelObject {
       const;
   bool NeedsAnchorPositionScrollAdjustmentInX() const;
   bool NeedsAnchorPositionScrollAdjustmentInY() const;
+
+  // The inset-modified containing block of this out-of-flow box, relative to
+  // the containing block's border-box.
+  // https://www.w3.org/TR/css-position-3/#inset-modified-containing-block
+  std::optional<PhysicalRect> InsetModifiedContainingBlockRect() const;
 
   using LayoutObject::GetBackgroundPaintLocation;
 

@@ -20,6 +20,8 @@
 #include "third_party/blink/public/common/peerconnection/webrtc_ip_handling_policy.h"
 #include "third_party/blink/public/common/renderer_preferences/renderer_preferences.h"
 #include "third_party/blink/public/mojom/peerconnection/webrtc_ip_handling_policy.mojom-shared.h"
+#include "ui/events/event_constants.h"
+#include "ui/events/keycodes/keyboard_codes.h"
 
 class RendererPreferencesUtilTest : public testing::Test {
  public:
@@ -134,14 +136,25 @@ TEST_F(RendererPreferencesUtilTest, WebRTCIPHandlingURLValidEntries) {
             blink::mojom::WebRtcIpHandlingPolicy::kDefault);
 }
 
-TEST_F(RendererPreferencesUtilTest, AutofillAtMemoryTriggerString) {
+TEST_F(RendererPreferencesUtilTest, AutofillAtMemoryShortcut) {
   blink::RendererPreferences renderer_preferences;
   renderer_preferences_util::UpdateFromSystemSettings(&renderer_preferences,
                                                       &profile_);
+  EXPECT_EQ(renderer_preferences.autofill_shortcut_key_code, ui::VKEY_UNKNOWN);
+  EXPECT_EQ(renderer_preferences.autofill_shortcut_modifiers, 0);
+
+  pref_service_->SetString(autofill::prefs::kAutofillAtMemoryShortcut,
+                           "Ctrl+Shift+Y");
+  renderer_preferences_util::UpdateFromSystemSettings(&renderer_preferences,
+                                                      &profile_);
   if constexpr (BUILDFLAG(IS_ANDROID)) {
-    EXPECT_TRUE(renderer_preferences.autofill_trigger_string.empty());
+    EXPECT_EQ(renderer_preferences.autofill_shortcut_key_code,
+              ui::VKEY_UNKNOWN);
+    EXPECT_EQ(renderer_preferences.autofill_shortcut_modifiers, 0);
   } else {
-    EXPECT_EQ(renderer_preferences.autofill_trigger_string, u"@@");
+    EXPECT_EQ(renderer_preferences.autofill_shortcut_key_code, ui::VKEY_Y);
+    EXPECT_EQ(renderer_preferences.autofill_shortcut_modifiers,
+              ui::EF_CONTROL_DOWN | ui::EF_SHIFT_DOWN);
   }
 }
 

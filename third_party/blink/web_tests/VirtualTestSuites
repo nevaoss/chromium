@@ -1189,14 +1189,12 @@
     ],
     "bases": [
       "http/tests/fenced_frame",
-      "http/tests/inspector-protocol/fenced-frame",
       "external/wpt/html/anonymous-iframe",
       "external/wpt/fenced-frame"
     ],
     "exclusive_tests": [
       "http/tests/fenced_frame",
-      "external/wpt/fenced-frame",
-      "http/tests/inspector-protocol/fenced-frame"
+      "external/wpt/fenced-frame"
     ],
     "args": [
       "--enable-features=PrivacySandboxAdsAPIsOverride,FencedFramesEnforceFocus,FencedFramesLocalUnpartitionedDataAccess,FencedFramesCrossOriginEventReportingAllTraffic,FencedFramesReportEventHeaderChanges,FencedFramesSrcPermissionsPolicy,FencedFramesCrossOriginAutomaticBeaconData"
@@ -2478,6 +2476,25 @@
     ]
   },
   {
+    "prefix": "persistent-widgets",
+    "platforms": [
+      "Linux",
+      "Mac",
+      "Win"
+    ],
+    "bases": [
+      "wpt_internal/persistent-widgets"
+    ],
+    "args": [
+      "--enable-features=PersistentWidgetAPI"
+    ],
+    "exclusive_tests": "ALL",
+    "owners": [
+      "jarhar@chromium.org"
+    ],
+    "expires": "Jul 1, 2027"
+  },
+  {
     "prefix": "port-bound-cookies",
     "platforms": [
       "Linux",
@@ -2839,6 +2856,7 @@
       "svg/zoom/page/zoom-getbbox-invariance.html",
       "svg/zoom/page/zoom-getctm-invariance.html",
       "svg/zoom/page/zoom-getscreenctm-getboundingclientrect-parity.html",
+      "external/wpt/css/css-overflow/scroll-axis-lock-dynamic-change.html",
       "external/wpt/css/css-overflow/scroll-axis-lock-none-touch.html",
       "external/wpt/css/css-overflow/scroll-axis-lock-none-wheel.html"
     ],

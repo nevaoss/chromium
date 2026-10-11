@@ -45,6 +45,7 @@
 #include "ui/gfx/geometry/point_f.h"
 #include "ui/views/controls/button/md_text_button.h"
 #include "ui/views/controls/combobox/combobox.h"
+#include "ui/views/controls/scroll_view.h"
 #include "ui/views/layout/animating_layout_manager_test_util.h"
 #include "ui/views/test/button_test_api.h"
 #include "ui/views/test/combobox_test_api.h"
@@ -61,6 +62,10 @@
 
 #if BUILDFLAG(GOOGLE_CHROME_BRANDING) && !BUILDFLAG(IS_CHROMEOS)
 #include "chrome/test/base/scoped_channel_override.h"
+
+#if !BUILDFLAG(IS_CHROMEOS) || !BUILDFLAG(GOOGLE_CHROME_BRANDING)
+#include "ui/views/bubble/bubble_dialog_delegate_view.h"
+#endif  // !BUILDFLAG(IS_CHROMEOS) || !BUILDFLAG(GOOGLE_CHROME_BRANDING)
 #endif
 
 #if !BUILDFLAG(IS_CHROMEOS) || !BUILDFLAG(GOOGLE_CHROME_BRANDING)

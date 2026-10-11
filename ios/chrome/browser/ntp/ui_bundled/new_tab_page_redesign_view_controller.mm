@@ -132,6 +132,7 @@ constexpr CGFloat kPadFormSheetMinHeight = 300.0;
   HomeCustomizationFramingCoordinates* _framingCoordinates;
   NewTabPageBottomSheetViewController* _bottomSheetViewController;
   UIViewController* _feedViewController;
+  UIViewController* _feedTopSectionViewController;
   NSArray<NSLayoutConstraint*>* _logoConstraints;
   SearchEngineLogoState _logoState;
 
@@ -199,6 +200,8 @@ constexpr CGFloat kPadFormSheetMinHeight = 300.0;
       [[NewTabPageBottomSheetViewController alloc] init];
   _bottomSheetViewController.delegate = self;
   _bottomSheetViewController.feedViewController = _feedViewController;
+  _bottomSheetViewController.feedTopSectionViewController =
+      _feedTopSectionViewController;
   [self addChildViewController:_bottomSheetViewController];
   [self.view addSubview:_bottomSheetViewController.view];
   [_bottomSheetViewController didMoveToParentViewController:self];
@@ -382,7 +385,8 @@ constexpr CGFloat kPadFormSheetMinHeight = 300.0;
     UIView* anchorView = self.quickActionsVisible
                              ? _quickActionsViewController.view
                              : _fakeLocationBar;
-    CGFloat constant = content_suggestions::MostVisitedTopPadding();
+    CGFloat constant =
+        content_suggestions::MostVisitedTopPadding(self.traitCollection);
 
     _mvtTopConstraint = [_mostVisitedContainerView.topAnchor
         constraintEqualToAnchor:anchorView.bottomAnchor
@@ -552,6 +556,13 @@ constexpr CGFloat kPadFormSheetMinHeight = 300.0;
   [self updateLogoConstraints];
   _fakeLocationBarTopConstraint.constant = [self centeredFakeOmniboxTop];
   _fakeLocationBarWidthConstraint.constant = [self fakeLocationBarWidth];
+  if (_qaTopConstraint) {
+    _qaTopConstraint.constant = content_suggestions::QuickActionsTopPadding();
+  }
+  if (_mvtTopConstraint) {
+    _mvtTopConstraint.constant =
+        content_suggestions::MostVisitedTopPadding(self.traitCollection);
+  }
   if (_dividerWidthConstraint) {
     _dividerWidthConstraint.constant = 1.0 / self.traitCollection.displayScale;
   }
@@ -613,6 +624,7 @@ constexpr CGFloat kPadFormSheetMinHeight = 300.0;
   _mostVisitedView = nil;
   self.magicStackViewController = nil;
   [self setFeedViewController:nil];
+  self.feedTopSectionViewController = nil;
   if (_quickActionsViewController) {
     [self detachChildViewController:_quickActionsViewController];
     _quickActionsViewController = nil;
@@ -843,6 +855,12 @@ constexpr CGFloat kPadFormSheetMinHeight = 300.0;
   }
 }
 
+- (void)bottomSheetViewController:
+            (NewTabPageBottomSheetViewController*)bottomSheetViewController
+    didChangeSigninPromoVisibility:(BOOL)visible {
+  [self.NTPContentDelegate signinPromoHasChangedVisibility:visible];
+}
+
 #pragma mark - ContentSuggestionsConsumer
 
 - (void)setMostVisitedTilesConfig:(MostVisitedTilesConfig*)config {
@@ -980,6 +998,30 @@ constexpr CGFloat kPadFormSheetMinHeight = 300.0;
   }
 }
 
+- (UIViewController*)feedTopSectionViewController {
+  return _feedTopSectionViewController;
+}
+
+- (void)setFeedTopSectionViewController:
+    (UIViewController*)feedTopSectionViewController {
+  if (_feedTopSectionViewController == feedTopSectionViewController) {
+    return;
+  }
+  _feedTopSectionViewController = feedTopSectionViewController;
+  if (_bottomSheetViewController) {
+    _bottomSheetViewController.feedTopSectionViewController =
+        feedTopSectionViewController;
+  }
+}
+
+- (void)handleFeedTopSectionClosed {
+  [_bottomSheetViewController handleFeedTopSectionClosed];
+}
+
+- (void)updateFeedLayout {
+  [_bottomSheetViewController updateFeedLayout];
+}
+
 - (void)setMagicStackViewController:
     (MagicStackCollectionViewController*)magicStackViewController {
   if (_magicStackViewController == magicStackViewController) {
@@ -1040,8 +1082,7 @@ constexpr CGFloat kPadFormSheetMinHeight = 300.0;
     return;
   }
   UIView* topAnchorView = [self topContentAnchorViewForMagicStack];
-  CGFloat spacing =
-      content_suggestions::ReducedModuleSpacing(self.traitCollection);
+  CGFloat spacing = content_suggestions::ReducedModuleSpacing();
   _magicStackConstraints = @[
     [_magicStackContainerView.topAnchor
         constraintEqualToAnchor:topAnchorView.bottomAnchor
@@ -1145,7 +1186,7 @@ constexpr CGFloat kPadFormSheetMinHeight = 300.0;
     [_searchEngineLogoView.bottomAnchor
         constraintEqualToAnchor:_fakeLocationBar.topAnchor
                        constant:-content_suggestions::LogoToFakeboxPadding(
-                                    _logoState)],
+                                    _logoState, self.traitCollection)],
     [_searchEngineLogoView.widthAnchor constraintEqualToConstant:width],
     [_searchEngineLogoView.heightAnchor constraintEqualToConstant:height]
   ];
@@ -1158,9 +1199,9 @@ constexpr CGFloat kPadFormSheetMinHeight = 300.0;
   if (self.quickActionsVisible && _quickActionsViewController) {
     height += content_suggestions::QuickActionsTopPadding();
     height += _quickActionsViewController.preferredContentSize.height;
-    height += content_suggestions::MostVisitedTopPadding();
+    height += content_suggestions::MostVisitedTopPadding(self.traitCollection);
   } else {
-    height += content_suggestions::MostVisitedTopPadding();
+    height += content_suggestions::MostVisitedTopPadding(self.traitCollection);
   }
 
   if (!IsMVTInBottomSheetEnabled() || [self isIPadRegularLayout]) {
@@ -1169,7 +1210,7 @@ constexpr CGFloat kPadFormSheetMinHeight = 300.0;
   }
 
   if ([self isIPadRegularLayout] && _magicStackViewController) {
-    height += content_suggestions::ReducedModuleSpacing(self.traitCollection);
+    height += content_suggestions::ReducedModuleSpacing();
     height += kMagicStackHeight;
   }
 
@@ -1193,7 +1234,8 @@ constexpr CGFloat kPadFormSheetMinHeight = 300.0;
       content_suggestions::DoodleHeight(_logoState, self.traitCollection);
   CGFloat logoTopMargin = [self logoTopPaddingForCurrentOrientation];
   return safeAreaTop + logoTopMargin + logoHeight +
-         content_suggestions::LogoToFakeboxPadding(_logoState);
+         content_suggestions::LogoToFakeboxPadding(_logoState,
+                                                   self.traitCollection);
 }
 
 
@@ -1308,7 +1350,8 @@ constexpr CGFloat kPadFormSheetMinHeight = 300.0;
 
       UIView* anchorView =
           isVisible ? _quickActionsViewController.view : _fakeLocationBar;
-      CGFloat constant = content_suggestions::MostVisitedTopPadding();
+      CGFloat constant =
+          content_suggestions::MostVisitedTopPadding(self.traitCollection);
 
       _mvtTopConstraint = [_mostVisitedContainerView.topAnchor
           constraintEqualToAnchor:anchorView.bottomAnchor

@@ -109,20 +109,24 @@ public class SettingsSearchCoordinatorUnitTest {
 
         mActivity.setContentView(rootView);
 
+        mCoordinator = createCoordinator(/* shownInTab= */ false);
+    }
+
+    private SettingsSearchCoordinator createCoordinator(boolean shownInTab) {
         SettableMonotonicObservableSupplier<ModalDialogManager> modalDialogSupplier =
                 ObservableSuppliers.createMonotonic();
         modalDialogSupplier.set(mModalDialogManager);
 
-        mCoordinator =
-                new SettingsSearchCoordinator(
-                        mActivity,
-                        mToolbar,
-                        this::isTwoColumnSettingsVisible,
-                        mMultiColumnSettings,
-                        new HashMap<>(),
-                        mProfile,
-                        (index) -> {},
-                        modalDialogSupplier);
+        return new SettingsSearchCoordinator(
+                mActivity,
+                mToolbar,
+                this::isTwoColumnSettingsVisible,
+                mMultiColumnSettings,
+                new HashMap<>(),
+                mProfile,
+                (index) -> {},
+                modalDialogSupplier,
+                shownInTab);
     }
 
     /**
@@ -328,6 +332,7 @@ public class SettingsSearchCoordinatorUnitTest {
     public void testSingleColumnSearchUiWidth_withSettingsInTab_accountsForToolbarPadding() {
         setUpMultiColumnSettings();
         mUseMultiColumn = false;
+        mCoordinator = createCoordinator(/* shownInTab= */ true);
 
         // Give toolbar padding, insets, and an initial non-zero end margin.
         mToolbar.setPaddingRelative(16, 0, 16, 0);
@@ -380,6 +385,7 @@ public class SettingsSearchCoordinatorUnitTest {
     public void testSingleColumnSearchUiWidth_withSettingsInTab_narrowScreen_includesItemMargin() {
         setUpMultiColumnSettings();
         mUseMultiColumn = false;
+        mCoordinator = createCoordinator(/* shownInTab= */ true);
 
         mToolbar.setPaddingRelative(16, 0, 16, 0);
         mToolbar.setContentInsetsRelative(16, 16);
@@ -557,6 +563,7 @@ public class SettingsSearchCoordinatorUnitTest {
     @EnableFeatures({ChromeFeatureList.SETTINGS_IN_TAB})
     @Config(qualifiers = "w800dp-h1280dp")
     public void testUpdateHelpMenuVisibility_withSettingsInTab_withMenuItems_showsMenu() {
+        mCoordinator = createCoordinator(/* shownInTab= */ true);
         mToolbar.getMenu().add(Menu.NONE, R.id.delete_menu_id, Menu.NONE, "Delete");
         mCoordinator.updateHelpMenuVisibility();
         ShadowLooper.idleMainLooper();
@@ -568,6 +575,7 @@ public class SettingsSearchCoordinatorUnitTest {
     @EnableFeatures({ChromeFeatureList.SETTINGS_IN_TAB})
     @Config(qualifiers = "w800dp-h1280dp")
     public void testUpdateHelpMenuVisibility_withSettingsInTab_withoutMenuItems_hidesMenu() {
+        mCoordinator = createCoordinator(/* shownInTab= */ true);
         mToolbar.getMenu().clear();
         mCoordinator.updateHelpMenuVisibility();
         ShadowLooper.idleMainLooper();
@@ -579,6 +587,7 @@ public class SettingsSearchCoordinatorUnitTest {
     @EnableFeatures({ChromeFeatureList.SETTINGS_IN_TAB})
     @Config(qualifiers = "w800dp-h1280dp")
     public void testUpdateHelpMenuVisibility_withSettingsInTab_inSearchState_hidesMenu() {
+        mCoordinator = createCoordinator(/* shownInTab= */ true);
         mToolbar.getMenu().add(Menu.NONE, R.id.delete_menu_id, Menu.NONE, "Delete");
         mCoordinator.setFragmentState(SettingsSearchCoordinator.FS_SEARCH);
         mCoordinator.updateHelpMenuVisibility();
@@ -689,10 +698,9 @@ public class SettingsSearchCoordinatorUnitTest {
     }
 
     @Test
-    @EnableFeatures(ChromeFeatureList.SETTINGS_IN_TAB)
-    @Config(qualifiers = "sw600dp")
-    public void testInitializeSearchUi_withSettingsInTab_setsSearchBoxFocusable() {
+    public void testInitializeSearchUi_whenShownInTab_setsSearchBoxFocusable() {
         setUpMultiColumnSettings();
+        mCoordinator = createCoordinator(/* shownInTab= */ true);
         mCoordinator.initializeSearchUi(null);
 
         View searchBox = mActivity.findViewById(R.id.search_box);
@@ -702,8 +710,7 @@ public class SettingsSearchCoordinatorUnitTest {
     }
 
     @Test
-    @DisableFeatures({ChromeFeatureList.SETTINGS_IN_TAB, ChromeFeatureList.SETTINGS_IN_TAB_DESKTOP})
-    public void testInitializeSearchUi_withoutSettingsInTab_doesNotSetSearchBoxFocusable() {
+    public void testInitializeSearchUi_whenNotShownInTab_doesNotSetSearchBoxFocusable() {
         setUpMultiColumnSettings();
         mCoordinator.initializeSearchUi(null);
 
@@ -754,11 +761,10 @@ public class SettingsSearchCoordinatorUnitTest {
     }
 
     @Test
-    @EnableFeatures(ChromeFeatureList.SETTINGS_IN_TAB)
-    @Config(qualifiers = "sw600dp")
-    public void testExitSearchState_withSettingsInTab_multiColumn_focusesSearchBox() {
+    public void testExitSearchState_whenShownInTab_multiColumn_focusesSearchBox() {
         setUpMultiColumnSettings();
         mUseMultiColumn = true;
+        mCoordinator = createCoordinator(/* shownInTab= */ true);
         mCoordinator.initializeSearchUi(null);
         ShadowLooper.idleMainLooper();
 
@@ -771,6 +777,31 @@ public class SettingsSearchCoordinatorUnitTest {
         mCoordinator.exitSearchState();
         assertEquals(View.VISIBLE, searchBox.getVisibility());
         assertTrue(searchBox.isFocused());
+    }
+
+    @Test
+    public void testExitSearchState_whenColumnModeCacheIsStale_showsSearchBox() {
+        setUpMultiColumnSettings();
+        mUseMultiColumn = true;
+        mCoordinator = createCoordinator(/* shownInTab= */ true);
+        mCoordinator.initializeSearchUi(null);
+        ShadowLooper.idleMainLooper();
+
+        View searchBox = mActivity.findViewById(R.id.search_box);
+        assertNotNull(searchBox);
+
+        // Simulate the layout callbacks having cached single-column mode even though the live
+        // layout is two-column. In two-column mode the sliding pane is not slideable, so nothing
+        // else would ever restore the search box. https://crbug.com/562493964
+        mCoordinator.setUseMultiColumnForTesting(false);
+        mCoordinator.setFragmentState(SettingsSearchCoordinator.FS_SEARCH);
+        searchBox.setVisibility(View.GONE);
+
+        mCoordinator.exitSearchState();
+        ShadowLooper.idleMainLooper();
+
+        // Search box is visible.
+        assertEquals(View.VISIBLE, searchBox.getVisibility());
     }
 
     /**
@@ -916,13 +947,11 @@ public class SettingsSearchCoordinatorUnitTest {
     }
 
     @Test
-    @EnableFeatures(ChromeFeatureList.SETTINGS_IN_TAB)
-    @Config(qualifiers = "sw600dp")
     public void testTouchSearchBox_whenUnfocused_entersSearchState() {
         SettingsIndexData.createInstance().resetNeedsIndexing();
         setUpMultiColumnSettings();
         mUseMultiColumn = true;
-
+        mCoordinator = createCoordinator(/* shownInTab= */ true);
         mCoordinator.initializeSearchUi(null);
         ShadowLooper.idleMainLooper();
 
@@ -953,13 +982,11 @@ public class SettingsSearchCoordinatorUnitTest {
     }
 
     @Test
-    @EnableFeatures(ChromeFeatureList.SETTINGS_IN_TAB)
-    @Config(qualifiers = "sw600dp")
     public void testTouchSearchBox_whenUnfocused_dragDoesNotEnterSearchState() {
         SettingsIndexData.createInstance().resetNeedsIndexing();
         setUpMultiColumnSettings();
         mUseMultiColumn = true;
-
+        mCoordinator = createCoordinator(/* shownInTab= */ true);
         mCoordinator.initializeSearchUi(null);
         ShadowLooper.idleMainLooper();
 

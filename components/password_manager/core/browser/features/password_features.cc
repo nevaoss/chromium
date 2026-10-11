@@ -168,15 +168,8 @@ BASE_FEATURE(kPasswordFormGroupedAffiliations,
 
 BASE_FEATURE(kPasswordManagerLogToTerminal, base::FEATURE_DISABLED_BY_DEFAULT);
 
-#if !BUILDFLAG(IS_ANDROID)
 BASE_FEATURE(kPasswordManagerOnDeviceEncryptionMetricsReporter,
-#if BUILDFLAG(IS_IOS)
-             base::FEATURE_DISABLED_BY_DEFAULT
-#else
-             base::FEATURE_ENABLED_BY_DEFAULT
-#endif
-);
-#endif  // !BUILDFLAG(IS_ANDROID)
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kPasswordManualFallbackSecurityChecks,
              base::FEATURE_DISABLED_BY_DEFAULT);

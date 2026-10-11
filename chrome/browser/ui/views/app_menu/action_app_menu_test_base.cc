@@ -9,6 +9,8 @@
 #include <utility>
 
 #include "base/functional/bind.h"
+#include "base/time/default_clock.h"
+#include "base/time/default_tick_clock.h"
 #include "chrome/browser/sessions/tab_restore_service_factory.h"
 #include "chrome/browser/sync/sync_service_factory.h"
 #include "chrome/browser/tab_group_sync/tab_group_sync_service_factory.h"
@@ -71,7 +73,8 @@ void ActionAppMenuTestBase::SetUp() {
                        .SetActionId(action_id)
                        .SetText(text)
                        .SetEnabled(true)
-                       .SetVisible(true)
+                       .SetVisible(action_id != kActionUpgradeDialog &&
+                                   action_id != kActionSetBrowserAsDefault)
                        .Build());
   };
 
@@ -92,6 +95,7 @@ void ActionAppMenuTestBase::SetUp() {
   add_action(kActionShowSyncPassphraseDialog, u"Enter passphrase");
   add_action(kActionShowSigninWhenPaused, u"Sign in again");
   add_action(kActionUpgradeDialog, u"Update Chrome");
+  add_action(kActionSetBrowserAsDefault, u"Set Chrome as default browser");
   add_action(kActionPasswordsAndAutofillSubmenu, u"Passwords and autofill");
   add_action(kActionShowPasswordManager, u"Password Manager");
   add_action(kActionShowPaymentMethods, u"Payment methods");
@@ -100,7 +104,7 @@ void ActionAppMenuTestBase::SetUp() {
   add_action(kActionShowTravel, u"Travel");
   add_action(kActionShowHistory, u"History");
   add_action(kActionRecentTabsSubmenu, u"Recent Tabs");
-  add_action(kActionShowDownloads, u"Downloads");
+  add_action(kActionShowDownloadsPage, u"Downloads");
   add_action(kActionBookmarksSubmenu, u"Bookmarks and Lists");
   add_action(kActionBookmarkThisTab, u"Bookmark This Tab");
   add_action(kActionBookmarkAllTabs, u"Bookmark All Tabs");
@@ -175,6 +179,7 @@ void ActionAppMenuTestBase::SetUp() {
   add_action(kActionShowManagementPage, u"Managed by your organization");
   add_action(kActionZoomSubmenu, u"Zoom");
   add_action(kActionZoomMinus, u"Zoom Out");
+  add_action(kActionZoomNormal, u"100%");
   add_action(kActionZoomPlus, u"Zoom In");
   add_action(kActionFullscreen, u"Fullscreen");
 

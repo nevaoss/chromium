@@ -1445,7 +1445,7 @@ void ChromeAutofillClient::ShowAutofillSuggestionsImpl(
   suggestion_controller_ = AutofillSuggestionController::GetOrCreate(
       suggestion_controller_, delegate, web_contents(),
       PopupControllerCommon(
-          open_args.anchor_frame_token, element_bounds_in_screen_space,
+          open_args.form_id, open_args.field_id, element_bounds_in_screen_space,
           open_args.text_direction, open_args.anchor_type,
           open_args.show_tabbed_popup,
           open_args.prefer_prev_arrow_side_on_suggestions_update),
@@ -1548,22 +1548,22 @@ void ChromeAutofillClient::ShowEntityImportBubble(
     EntityInstance new_entity,
     std::optional<EntityInstance> old_entity,
     bool save_is_synchronous,
+    LegalMessageLines public_passes_notice,
     EntityImportPromptResultCallback prompt_result_callback) {
 #if BUILDFLAG(IS_ANDROID)
   if (autofill_ai_save_update_entity_flow_manager_) {
     autofill_ai_save_update_entity_flow_manager_->OfferSave(
         new_entity, std::move(old_entity), std::move(prompt_result_callback),
-        /*public_passes_notice=*/{});
+        std::move(public_passes_notice));
   }
 #else
   if (auto* controller = AutofillAiImportDataController::GetOrCreate(
           web_contents(), GetAppLocale())) {
-    // TODO(crbug.com/553442816): Add the legal message lines.
-    // TODO(crbug.com/556588522): Rename legal_message_lines to
-    // public_passes_notice.
+    // TODO(crbug.com/556588522): Rename `ShowPrompt()`'s `legal_message_lines`
+    // to `public_passes_notice`.
     controller->ShowPrompt(std::move(new_entity), std::move(old_entity),
                            /*close_on_accept=*/save_is_synchronous,
-                           /*legal_message_lines=*/{},
+                           std::move(public_passes_notice),
                            std::move(prompt_result_callback));
   } else {
     std::move(prompt_result_callback)

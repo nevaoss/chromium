@@ -8128,7 +8128,110 @@ TEST_F(ComposeboxQueryControllerTest,
                 .stored_chunk_options()
                 .total_stored_chunks(),
             2);
+  EXPECT_EQ(controller()
+                .last_sent_file_upload_request()
+                ->objects_request()
+                .payload()
+                .content()
+                .content_data(0)
+                .content_type(),
+            lens::ContentData::CONTENT_TYPE_PDF);
+}
+
+TEST_F(ComposeboxQueryControllerTest,
+       UploadPdfRawFileRequest_CompressesPdfAndSetsContentType) {
+  CreateController(
+      /*send_lns_surface=*/false,
+      /*suppress_lns_surface_param_if_no_image=*/true,
+      /*enable_viewport_images=*/true,
+      /*use_separate_request_ids_for_viewport_images=*/true,
+      /*enable_cluster_info_ttl=*/false,
+      /*prioritize_suggestions_for_the_first_attached_document=*/false,
+      /*attach_page_title_and_url_to_suggest_requests=*/false,
+      /*enable_send_vit_for_single_context_next_queries=*/true,
+      /*enable_send_raw_file_media_types=*/true,
+      /*enable_only_send_aai_for_modality_chips=*/false);
+  controller().InitializeIfNeeded();
+
+  const base::UnguessableToken file_token = base::UnguessableToken::Create();
+  std::vector<uint8_t> pdf_bytes = {1, 2, 3, 4, 5};
+  StartPdfRawFileUploadFlow(file_token, pdf_bytes);
+
+  WaitForClusterInfo();
+  WaitForFileUpload(file_token, lens::MimeType::kUnknown);
+
+  // Validate the file upload request payload has CONTENT_TYPE_PDF and ZSTD
+  // compression.
+  EXPECT_EQ(controller()
+                .last_sent_file_upload_request()
+                ->objects_request()
+                .payload()
+                .content()
+                .content_data(0)
+                .content_type(),
+            lens::ContentData::CONTENT_TYPE_PDF);
+  EXPECT_EQ(controller()
+                .last_sent_file_upload_request()
+                ->objects_request()
+                .payload()
+                .content()
+                .content_data(0)
+                .compression_type(),
+            kExpectedPdfCompressionType);
 }
 #endif  // !BUILDFLAG(IS_ANDROID)
+
+TEST_F(ComposeboxQueryControllerTest,
+       IdentityDelegationUsesAuthUserIndexWhenSet) {
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitAndEnableFeature(
+      lens::features::kLensComposeboxIdentityDelegation);
+
+  controller().SetAuthUserIndex(2);
+
+  std::optional<size_t> received_auth_user_index;
+  controller().set_get_auth_headers_callback_for_testing(
+      base::BindLambdaForTesting(
+          [&](std::optional<size_t> auth_user_index,
+              base::OnceCallback<void(std::vector<std::string>)> callback) {
+            received_auth_user_index = auth_user_index;
+            std::move(callback).Run({"Authorization: SAPISIDHASH 123"});
+          }));
+
+  controller().TriggerFetchClusterInfo();
+  WaitForClusterInfo();
+
+  EXPECT_EQ(received_auth_user_index, std::make_optional<size_t>(2));
+}
+
+TEST_F(ComposeboxQueryControllerTest,
+       FileUploadUsesAuthUserIndexForIdentityDelegation) {
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitAndEnableFeature(
+      lens::features::kLensComposeboxIdentityDelegation);
+
+  controller().SetAuthUserIndex(3);
+
+  std::vector<std::optional<size_t>> received_indices;
+  controller().set_get_auth_headers_callback_for_testing(
+      base::BindLambdaForTesting(
+          [&](std::optional<size_t> auth_user_index,
+              base::OnceCallback<void(std::vector<std::string>)> callback) {
+            received_indices.push_back(auth_user_index);
+            std::move(callback).Run({"Authorization: SAPISIDHASH 456"});
+          }));
+
+  controller().TriggerFetchClusterInfo();
+  WaitForClusterInfo();
+
+  const base::UnguessableToken file_token = base::UnguessableToken::Create();
+  StartPdfFileUploadFlow(file_token, /*file_data=*/std::vector<uint8_t>());
+  WaitForFileUpload(file_token, lens::MimeType::kPdf);
+
+  EXPECT_GE(received_indices.size(), 2u);
+  for (const auto& idx : received_indices) {
+    EXPECT_EQ(idx, std::make_optional<size_t>(3));
+  }
+}
 
 }  // namespace contextual_search

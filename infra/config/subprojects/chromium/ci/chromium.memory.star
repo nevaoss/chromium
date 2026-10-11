@@ -345,7 +345,7 @@ linux_memory_builder(
                     "--disable-features=WebUIOmniboxPopup,WebUIOmniboxAimPopup",
                 ],
                 swarming = targets.swarming(
-                    shards = 60,
+                    shards = 94,
                 ),
             ),
             "crashpad_tests": targets.remove(
@@ -367,7 +367,7 @@ linux_memory_builder(
                 ],
                 # Slow on certain debug builders, see crbug.com/1513713.
                 swarming = targets.swarming(
-                    shards = 15,
+                    shards = 26,
                 ),
             ),
             "sync_integration_tests": targets.mixin(
@@ -754,7 +754,7 @@ linux_memory_builder(
                     "--disable-features=WebUIOmniboxPopup,WebUIOmniboxAimPopup",
                 ],
                 swarming = targets.swarming(
-                    shards = 70,
+                    shards = 119,
                 ),
             ),
             "content_browsertests": targets.mixin(
@@ -775,7 +775,7 @@ linux_memory_builder(
                     "--disable-features=WebUIOmniboxPopup,WebUIOmniboxAimPopup",
                 ],
                 swarming = targets.swarming(
-                    shards = 25,
+                    shards = 43,
                 ),
             ),
             "services_unittests": targets.remove(
@@ -829,10 +829,10 @@ ci.builder(
             "x64",
         ],
     ),
-    builderless = True,
+    builderless = False,
     cores = None,  # Swapping between 8 and 24
-    os = os.MAC_DEFAULT,
-    cpu = cpu.ARM64,
+    # TODO(crbug.com/543006750): Revert to MAC_DEFAULT after arm migration.
+    os = os.MAC_15,
     console_view_entry = consoles.console_view_entry(
         category = "mac",
         short_name = "bld",
@@ -1036,7 +1036,7 @@ linux_memory_builder(
                     "--disable-features=WebUIOmniboxPopup,WebUIOmniboxAimPopup",
                 ],
                 swarming = targets.swarming(
-                    shards = 20,
+                    shards = 34,
                 ),
             ),
             "content_browsertests": targets.mixin(

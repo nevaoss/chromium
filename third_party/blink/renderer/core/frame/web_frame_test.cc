@@ -86,6 +86,7 @@
 #include "third_party/blink/public/mojom/frame/viewport_intersection_state.mojom-blink.h"
 #include "third_party/blink/public/mojom/page/draggable_region.mojom-blink.h"
 #include "third_party/blink/public/mojom/page_state/page_state.mojom-blink.h"
+#include "third_party/blink/public/mojom/scroll/scroll_enums.mojom-shared.h"
 #include "third_party/blink/public/mojom/scroll/scrollbar_mode.mojom-blink.h"
 #include "third_party/blink/public/mojom/webpreferences/web_preferences.mojom-blink.h"
 #include "third_party/blink/public/mojom/window_features/window_features.mojom-blink.h"
@@ -237,6 +238,7 @@
 #include "third_party/blink/renderer/platform/wtf/hash_map.h"
 #include "third_party/blink/renderer/platform/wtf/hash_set.h"
 #include "third_party/blink/renderer/platform/wtf/text/format.h"
+#include "third_party/blink/renderer/platform/wtf/uuid.h"
 #include "third_party/skia/include/core/SkTextBlob.h"
 #include "ui/base/ime/mojom/text_input_state.mojom-blink.h"
 #include "ui/base/mojom/menu_source_type.mojom-blink.h"
@@ -7770,7 +7772,7 @@ class TestScrolledFrameClient : public frame_test_helpers::TestWebFrameClient {
   bool WasFrameScrolled() const { return did_scroll_frame_; }
 
   // WebLocalFrameClient:
-  void DidChangeScrollOffset() override {
+  void DidChangeScrollOffset(blink::mojom::ScrollType) override {
     if (Frame()->Parent()) {
       return;
     }
@@ -12082,11 +12084,11 @@ TEST(WebFrameGlobalReuseTest, ReuseForMainFrameIfEnabled) {
 class BlobRegistryForSaveImageFromDataURL : public mojom::blink::BlobRegistry {
  public:
   void Register(mojo::PendingReceiver<mojom::blink::Blob> blob,
-                const String& uuid,
                 const String& content_type,
                 const String& content_disposition,
                 Vector<mojom::blink::DataElementPtr> elements,
                 RegisterCallback callback) override {
+    const String uuid = CreateCanonicalUuidString();
     DCHECK_EQ(elements.size(), 1u);
     DCHECK(elements[0]->is_bytes());
 
@@ -12097,7 +12099,7 @@ class BlobRegistryForSaveImageFromDataURL : public mojom::blink::BlobRegistry {
         base::span(*bytes->embedded_data).first(static_cast<uint32_t>(length)));
     mojo::MakeSelfOwnedReceiver(std::make_unique<FakeBlob>(uuid, body),
                                 std::move(blob));
-    std::move(callback).Run();
+    std::move(callback).Run(uuid);
   }
 
   void RegisterFromStream(

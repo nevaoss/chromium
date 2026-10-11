@@ -92,8 +92,10 @@ void AtMemorySuggestionController::AcceptSuggestion(
   Suggestion suggestion = suggestions_[index];
   if (delegate_) {
     delegate_->DidAcceptSuggestion(
-        suggestion, AutofillSuggestionDelegate::SuggestionMetadata{
-                        .multi_index = {static_cast<size_t>(index)}});
+        suggestion,
+        AutofillSuggestionDelegate::SuggestionMetadata{
+            .multi_index = {static_cast<size_t>(index)}},
+        controller_common_.form_id, controller_common_.field_id);
   }
 }
 
@@ -147,7 +149,7 @@ void AtMemorySuggestionController::Show(
         web_contents_->GetTopLevelNativeWindow(),
         Profile::FromBrowserContext(web_contents_->GetBrowserContext()), this);
   }
-  bridge_->RequestShowContent(suggestions_);
+  bridge_->RequestShowContent(suggestions_, search_bar_initial_value);
 
   if (delegate_) {
     delegate_->OnSuggestionsShown(suggestions_, /*metadata=*/{});
@@ -171,7 +173,7 @@ void AtMemorySuggestionController::UpdateDataListValues(
 
 const LocalFrameToken& AtMemorySuggestionController::GetAnchorFrameToken()
     const {
-  return controller_common_.anchor_frame_token;
+  return controller_common_.field_id.frame_token;
 }
 
 void AtMemorySuggestionController::HideViewAndDie() {
@@ -207,9 +209,11 @@ void AtMemorySuggestionController::HideViewAndDie() {
 bool AtMemorySuggestionController::MayRecycle(
     base::WeakPtr<AutofillSuggestionDelegate> delegate,
     content::WebContents* web_contents,
+    const LocalFrameToken& anchor_frame_token,
     AutofillSuggestionTriggerSource trigger_source) const {
   return delegate_.get() == delegate.get() &&
          container_view() == web_contents->GetNativeView() &&
+         GetAnchorFrameToken() == anchor_frame_token &&
          IsAtMemoryTriggerSource(trigger_source);
 }
 
@@ -237,7 +241,7 @@ void AtMemorySuggestionController::OnQueryTextChanged(
   }
 }
 
-void AtMemorySuggestionController::OnSuggestionSelected(int position) {
+void AtMemorySuggestionController::OnSuggestionAccepted(int position) {
   AcceptSuggestion(position, AutofillMetrics::SuggestionAcceptedMethod::kTap);
 }
 
@@ -250,7 +254,7 @@ void AtMemorySuggestionController::OnSuggestionDismissed(int position) {
   if (delegate_ && delegate_->RemoveSuggestion(suggestions_[position])) {
     suggestions_.erase(suggestions_.begin() + position);
     if (bridge_) {
-      bridge_->RequestShowContent(suggestions_);
+      bridge_->RequestShowContent(suggestions_, std::nullopt);
     }
   }
 }
@@ -288,9 +292,11 @@ void AtMemorySuggestionController::OnChildSuggestionSelected(
   Suggestion suggestion = parent_suggestion.children[child_position];
   if (delegate_) {
     delegate_->DidAcceptSuggestion(
-        suggestion, AutofillSuggestionDelegate::SuggestionMetadata{
-                        .multi_index = {static_cast<size_t>(parent_position),
-                                        static_cast<size_t>(child_position)}});
+        suggestion,
+        AutofillSuggestionDelegate::SuggestionMetadata{
+            .multi_index = {static_cast<size_t>(parent_position),
+                            static_cast<size_t>(child_position)}},
+        controller_common_.form_id, controller_common_.field_id);
   }
 }
 

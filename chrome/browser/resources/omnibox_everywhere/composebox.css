@@ -51,7 +51,7 @@
   --cr-composebox-submit-border-radius: 100px;
   --cr-composebox-submit-height: 32px;
   --cr-composebox-submit-icon-offset: 0;
-  --cr-composebox-submit-icon-size: 14px;
+  --cr-composebox-submit-icon-size: 20px;
   --cr-composebox-submit-width: 40px;
 }
 
@@ -158,6 +158,7 @@ cr-composebox-submit::part(submit) {
   inset-inline-end: unset;
   bottom: unset;
   opacity: 1;
+  margin-inline-start: 4px;
 }
 
 #bottomControls .context-menu-container {
@@ -175,7 +176,7 @@ cr-composebox-submit::part(submit) {
   display: flex;
   flex-direction: row;
   align-items: center;
-  gap: 12px;
+  gap: 4px;
 }
 
 /* TODO(crbug.com/532200145): Refine the selectors. New interactive elements

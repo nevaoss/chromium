@@ -136,26 +136,19 @@
 
 cr-searchbox-input::part(searchbox-input) {
   align-self: center;
+  padding-inline-end: 64px;
   padding-inline-start: 7px;
   padding-top: 2px;
 }
 
 :host([compose-button-enabled]) cr-searchbox-input::part(searchbox-input) {
-  padding-inline-end: 16px;
+  padding-inline-end: 8px;
 }
 
-:host([is-fusebox-enabled]) cr-searchbox-input::part(searchbox-input) {
-  padding-inline-end: 64px;
-}
-
-:host cr-searchbox-input::part(searchbox-input) {
-  padding-inline-end: 110px;
-}
-
-:host([multi-line-enabled][is-fusebox-enabled])
+:host([multi-line-enabled])
     cr-searchbox-input::part(searchbox-input) {
   padding-bottom: 10px;
-  padding-top: 16px;
+  padding-top: 12px;
 }
 
 :host([searchbox-chrome-refresh-theming])

@@ -68,6 +68,11 @@ BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE_PARAM(
 
 BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kLowerHighResolutionTimerThreshold);
 
+// Gates navigator.clipboard on extension service workers. Checked only where
+// the renderer has already established it is an extension process, so that
+// turning this on cannot expose the API to ordinary web workers.
+BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kClipboardOnExtensionServiceWorker);
+
 // Enables rate obfuscation mitigation in compute pressure, to prevent
 // cross-channel attacks.
 BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(
@@ -542,6 +547,10 @@ BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE_PARAM(
 BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE_PARAM(size_t,
                                                kHTMLParserYieldTimeoutInMs);
 
+// Whether blink::HeapVector promptly frees its backing store via
+// Allocator::FreeVectorBacking(). When disabled, the backing store is left to
+// be reclaimed by garbage collection.
+BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kHeapVectorPromptlyFree);
 
 // If enabled, a fix for image loading prioritization based on visibility is
 // applied. See https://crbug.com/1369823.
@@ -1305,9 +1314,6 @@ BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(kPaintHolding);
 // paint preview, etc.
 BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(
     kPaintTimingIngnoreOutOfLifecyclePaints);
-
-BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE(
-    kPopulateDOMNodeIdInFocusedNodeDetails);
 
 #if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_CHROMEOS)
 BLINK_COMMON_EXPORT BASE_DECLARE_FEATURE_PARAM(

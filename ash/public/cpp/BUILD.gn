@@ -232,11 +232,6 @@ component("cpp") {
     "note_taking_client.h",
     "notification_utils.cc",
     "notification_utils.h",
-    "notifier_metadata.cc",
-    "notifier_metadata.h",
-    "notifier_settings_controller.cc",
-    "notifier_settings_controller.h",
-    "notifier_settings_observer.h",
     "oobe_dialog_util.cc",
     "oobe_dialog_util.h",
     "pagination/pagination_controller.cc",
@@ -489,10 +484,6 @@ component("cpp") {
   }
 
   output_name = "ash_public_cpp"
-
-  # TODO(crbug.com/40031409): Fix code that adds exit-time destructors and
-  # enable the diagnostic by removing this line.
-  configs += [ "//build/config/compiler:no_exit_time_destructors" ]
 }
 
 source_set("unit_tests") {
@@ -552,10 +543,6 @@ source_set("unit_tests") {
     # Needed to make commit bots run unit_tests on enums.xml changes.
     "//tools/metrics/histograms/metadata/chromeos/enums.xml",
   ]
-
-  # TODO(crbug.com/40031409): Fix code that adds exit-time destructors and
-  # enable the diagnostic by removing this line.
-  configs += [ "//build/config/compiler:no_exit_time_destructors" ]
 }
 
 source_set("accelerator_actions") {

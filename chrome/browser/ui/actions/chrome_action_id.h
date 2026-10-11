@@ -155,6 +155,7 @@
     IDC_BOOKMARK_BAR_SUBMENU_ONLY_ON_NTP) \
   E(kActionShowHistory, IDC_SHOW_HISTORY) \
   E(kActionShowBookmarkManager, IDC_SHOW_BOOKMARK_MANAGER) \
+  E(kActionShowDownloadsPage, IDC_SHOW_DOWNLOADS) \
   E(kActionImportSettings, IDC_IMPORT_SETTINGS) \
   E(kActionOptions, IDC_OPTIONS) \
   E(kActionEditSearchEngines, IDC_EDIT_SEARCH_ENGINES) \
@@ -206,6 +207,8 @@
     IDC_EXTENSIONS_SUBMENU_MANAGE_EXTENSIONS) \
   E(kActionExtensionsSubmenuVisitChromeWebStore, \
     IDC_EXTENSIONS_SUBMENU_VISIT_CHROME_WEB_STORE) \
+  E(kActionManageSkills, IDC_MANAGE_SKILLS) \
+  E(kActionBrowseSkills, IDC_BROWSE_SKILLS) \
   E(kActionReadingListMenuAddTab, IDC_READING_LIST_MENU_ADD_TAB) \
   E(kActionRecentTabsLoginForDeviceTabs, \
     IDC_RECENT_TABS_LOGIN_FOR_DEVICE_TABS) \
@@ -522,7 +525,7 @@
   E(kActionShowPasswordManager, IDC_SHOW_PASSWORD_MANAGER) \
   E(kActionShowPaymentMethods, IDC_SHOW_PAYMENT_METHODS) \
   E(kActionShowAddressesBubbleOrPage) \
-  E(kActionShowDownloads, IDC_SHOW_DOWNLOADS) \
+  E(kActionShowDownloads) \
   E(kActionClearBrowsingData, IDC_CLEAR_BROWSING_DATA) \
   E(kActionPrint, IDC_PRINT) \
   E(kActionShowTranslate, IDC_SHOW_TRANSLATE) \
@@ -569,7 +572,8 @@
   E(kActionSavedTabGroupsSubmenu, IDC_SAVED_TAB_GROUPS_MENU)               \
   E(kActionRecentTabsSubmenu, IDC_RECENT_TABS_MENU)                       \
   E(kActionDeveloperSubmenu, IDC_DEVELOPER_MENU)                               \
-  E(kActionExtensionsSubmenu, IDC_EXTENSIONS_SUBMENU)
+  E(kActionExtensionsSubmenu, IDC_EXTENSIONS_SUBMENU)                          \
+  E(kActionSkillsSubmenu, IDC_SKILLS_MENU)
 
 #define CHROME_ACTION_IDS \
     CHROME_COMMON_ACTION_IDS \

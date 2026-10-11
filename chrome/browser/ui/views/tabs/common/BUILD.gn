@@ -185,6 +185,7 @@ source_set("browser_tests") {
     ":common",
     ":impl",
     "//base",
+    "//base/i18n:test_support",
     "//chrome/browser",
     "//chrome/browser/performance_manager/public/user_tuning",
     "//chrome/browser/tab_group_sync:factories",
@@ -208,6 +209,7 @@ source_set("browser_tests") {
     "//content/test:test_support",
     "//testing/gmock",
     "//ui/events:test_support",
+    "//ui/views:test_support",
   ]
 
   if (use_ozone) {

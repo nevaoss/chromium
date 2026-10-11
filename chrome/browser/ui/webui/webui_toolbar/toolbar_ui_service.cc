@@ -206,9 +206,11 @@ void ToolbarUIService::OnPageActionClick(
 
 void ToolbarUIService::OnPageActionChipShowingChanged(
     ::toolbar_ui_api::mojom::PageActionId action_id,
+    bool is_showing,
     OnPageActionChipShowingChangedCallback callback) {
   if (delegate_) {
-    delegate_->OnPageActionChipShowingChanged(action_id, std::move(callback));
+    delegate_->OnPageActionChipShowingChanged(action_id, is_showing,
+                                              std::move(callback));
   } else {
     std::move(callback).Run(base::unexpected(Error::New(
         Code::kFailedPrecondition,
@@ -271,9 +273,10 @@ void ToolbarUIService::OnLhsChipMousePressed(
 
 void ToolbarUIService::OnLhsChipClicked(
     toolbar_ui_api::mojom::LhsChipIdentifier identifier,
-    bool is_mouse_interaction) {
+    bool is_mouse_interaction,
+    uint32_t state_token) {
   if (delegate_) {
-    delegate_->OnLhsChipClicked(identifier, is_mouse_interaction);
+    delegate_->OnLhsChipClicked(identifier, is_mouse_interaction, state_token);
   }
 }
 

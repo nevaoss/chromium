@@ -1946,6 +1946,8 @@ targets.bundle(
         # TODO(crbug.com/40287410): Remove this once the BackgroundResourceFetch
         # feature launches.
         "chromium_web_tests_brfetch_isolated_scripts",
+        "webdriver_bidi_e2e_tests",
+        "webdriver_bidi_unittests",
     ],
 )
 
@@ -4922,8 +4924,8 @@ targets.bundle(
         targets.bundle(
             targets = "ios_common_tests",
             variants = [
-                "SIM_IPAD_A16_27_0",
-                "SIM_IPHONE_16_27_0",
+                "SIM_IPAD_A16_27_2",
+                "SIM_IPHONE_16_27_2",
             ],
         ),
         targets.bundle(
@@ -4932,8 +4934,8 @@ targets.bundle(
                 "xcodebuild_sim_runner",
             ],
             variants = [
-                "SIM_IPAD_A16_27_0",
-                "SIM_IPHONE_16_27_0",
+                "SIM_IPAD_A16_27_2",
+                "SIM_IPHONE_16_27_2",
             ],
         ),
         targets.bundle(
@@ -4943,8 +4945,8 @@ targets.bundle(
                 "record_failed_tests",
             ],
             variants = [
-                "SIM_IPAD_A16_27_0",
-                "SIM_IPHONE_16_27_0",
+                "SIM_IPAD_A16_27_2",
+                "SIM_IPHONE_16_27_2",
             ],
         ),
         targets.bundle(
@@ -4954,16 +4956,16 @@ targets.bundle(
                 "record_failed_tests",
             ],
             variants = [
-                "SIM_IPAD_A16_27_0",
-                "SIM_IPHONE_16_27_0",
+                "SIM_IPAD_A16_27_2",
+                "SIM_IPHONE_16_27_2",
             ],
         ),
         targets.bundle(
             targets = "ios_screen_size_dependent_tests",
             variants = [
-                "SIM_IPAD_A16_27_0",
-                "SIM_IPHONE_16_27_0",
-                "SIM_IPHONE_SE_3RD_GEN_27_0",
+                "SIM_IPAD_A16_27_2",
+                "SIM_IPHONE_16_27_2",
+                "SIM_IPHONE_SE_3RD_GEN_27_2",
             ],
         ),
     ],
@@ -4978,8 +4980,8 @@ targets.bundle(
                 "use-ios-simulator-cache",
             ],
             variants = [
-                "SIM_IPAD_A16_27_0",
-                "SIM_IPHONE_16_27_0",
+                "SIM_IPAD_A16_27_2",
+                "SIM_IPHONE_16_27_2",
             ],
         ),
         targets.bundle(
@@ -4989,8 +4991,8 @@ targets.bundle(
                 "use-ios-simulator-cache",
             ],
             variants = [
-                "SIM_IPAD_A16_27_0",
-                "SIM_IPHONE_16_27_0",
+                "SIM_IPAD_A16_27_2",
+                "SIM_IPHONE_16_27_2",
             ],
         ),
         targets.bundle(
@@ -5000,8 +5002,8 @@ targets.bundle(
                 "use-ios-simulator-cache",
             ],
             variants = [
-                "SIM_IPAD_A16_27_0",
-                "SIM_IPHONE_16_27_0",
+                "SIM_IPAD_A16_27_2",
+                "SIM_IPHONE_16_27_2",
             ],
         ),
         targets.bundle(
@@ -5010,9 +5012,9 @@ targets.bundle(
                 "use-ios-simulator-cache",
             ],
             variants = [
-                "SIM_IPAD_A16_27_0",
-                "SIM_IPHONE_16_27_0",
-                "SIM_IPHONE_SE_3RD_GEN_27_0",
+                "SIM_IPAD_A16_27_2",
+                "SIM_IPHONE_16_27_2",
+                "SIM_IPHONE_SE_3RD_GEN_27_2",
             ],
         ),
     ],

@@ -6,6 +6,7 @@
 
 #include "base/metrics/user_metrics.h"
 #include "base/metrics/user_metrics_action.h"
+#include "base/unguessable_token.h"
 #include "build/build_config.h"
 #include "chrome/browser/contextual_search/contextual_search_service_factory.h"
 #include "chrome/browser/contextual_search/contextual_search_web_contents_helper.h"
@@ -34,6 +35,7 @@
 #include "content/public/browser/web_ui.h"
 #include "mojo/public/cpp/base/proto_wrapper.h"
 #include "third_party/lens_server_proto/aim_communication.pb.h"
+#include "third_party/lens_server_proto/search_communication.pb.h"
 #include "ui/base/window_open_disposition.h"
 
 #if !BUILDFLAG(IS_ANDROID)
@@ -137,6 +139,22 @@ void ContextualTasksExtensionHandler::OnWebviewMessage(
   if (message.size() > kMaxWebviewMessageBytes) {
     return;
   }
+
+  // Try parsing SearchToClientMessage first (Search in Chrome protocol).
+  lens::SearchToClientMessage search_to_client_message;
+  if (search_to_client_message.ParseFromArray(message.data(), message.size())) {
+    if (search_to_client_message.has_handshake_response()) {
+      size_t auth_user_index = static_cast<size_t>(std::max(
+          0, search_to_client_message.handshake_response().auth_user_index()));
+      if (auto* session_handle = GetOrCreateContextualSessionHandle()) {
+        session_handle->set_auth_user_index(auth_user_index);
+      }
+      contextual_tasks_page_->OnHandshakeComplete();
+      return;
+    }
+  }
+
+  // Fall back to legacy AimToClientMessage.
   lens::AimToClientMessage aim_to_client_message;
   if (!aim_to_client_message.ParseFromArray(message.data(), message.size())) {
     return;
@@ -152,6 +170,27 @@ void ContextualTasksExtensionHandler::GetHandshakeMessage(
   std::move(callback).Run(
       mojo_base::ProtoWrapper(contextual_tasks::GetHandshakeMessageProto()));
 }
+
+void ContextualTasksExtensionHandler::GetLensCropPreview(
+    const std::string& data_id,
+    GetLensCropPreviewCallback callback) {
+  auto model = GetOrCreateInputStateModel();
+  if (!model) {
+    std::move(callback).Run(std::nullopt);
+    return;
+  }
+  std::move(callback).Run(model->GetLensCrop(data_id));
+}
+
+void ContextualTasksExtensionHandler::OnLensThumbnailCreated(
+    const std::string& thumbnail_uri) {
+  std::string data_id = base::UnguessableToken::Create().ToString();
+  auto model = GetOrCreateInputStateModel();
+  if (model) {
+    model->SetLensCrop(data_id, thumbnail_uri);
+  }
+}
+
 // composebox::mojom::PageHandler stubs:
 void ContextualTasksExtensionHandler::FocusChanged(bool focused) {}
 void ContextualTasksExtensionHandler::StartPlatformVoiceRecognition() {}
@@ -161,6 +200,9 @@ void ContextualTasksExtensionHandler::HandleLensButtonClick() {
       "ContextualTasks.Composebox.UserAction.LensButtonClicked"));
 
   if (auto* controller = GetLensSearchController()) {
+    controller->SetThumbnailCreatedCallback(base::BindRepeating(
+        &ContextualTasksExtensionHandler::OnLensThumbnailCreated,
+        weak_ptr_factory_.GetWeakPtr()));
     if (controller->IsShowingUI()) {
       if (controller->invocation_source() ==
           lens::LensOverlayInvocationSource::kContextualTasksComposebox) {
@@ -225,6 +267,7 @@ void ContextualTasksExtensionHandler::QueryAutocomplete(
 }
 void ContextualTasksExtensionHandler::StopAutocomplete(bool clear_result) {}
 void ContextualTasksExtensionHandler::OpenAutocompleteMatch(
+    uint32_t result_sequence_id,
     uint8_t line,
     const GURL& url,
     bool are_matches_showing,
@@ -567,5 +610,11 @@ void ContextualTasksExtensionHandler::StartScreenshare(
 
 void ContextualTasksExtensionHandler::CaptureRegionScreenshot(
     CaptureRegionScreenshotCallback callback) {
+  NOTREACHED();
+}
+
+void ContextualTasksExtensionHandler::ShowHotkeyDropdown(
+    const gfx::Rect& anchor_bounds,
+    ShowHotkeyDropdownCallback callback) {
   NOTREACHED();
 }

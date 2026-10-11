@@ -50,12 +50,12 @@ import org.chromium.chrome.browser.omnibox.fusebox.FuseboxMetrics.FuseboxAttachm
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxMetrics.SetActiveModelSource;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxProperties.AnchoringMode;
 import org.chromium.chrome.browser.omnibox.fusebox.FuseboxProperties.BackgroundStyle;
-import org.chromium.chrome.browser.omnibox.fusebox.FuseboxProperties.PopupButtonData;
-import org.chromium.chrome.browser.omnibox.fusebox.FuseboxProperties.PopupButtonType;
+import org.chromium.chrome.browser.omnibox.fusebox.PopupButtonData.PopupButtonType;
 import org.chromium.chrome.browser.omnibox.styles.OmniboxResourceProvider;
 import org.chromium.chrome.browser.profiles.Profile;
 import org.chromium.chrome.browser.profiles.ProfileIntentUtils;
 import org.chromium.chrome.browser.tab.Tab;
+import org.chromium.chrome.browser.tab.utilities.TabLoadingService;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
 import org.chromium.chrome.browser.ui.messages.snackbar.Snackbar;
 import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager;
@@ -68,7 +68,7 @@ import org.chromium.components.browser_ui.widget.scrim.ScrimManager;
 import org.chromium.components.browser_ui.widget.scrim.ScrimProperties;
 import org.chromium.components.contextual_search.InputState;
 import org.chromium.components.feature_engagement.Tracker;
-import org.chromium.components.omnibox.AimModelsProto.ModelMode;
+import org.chromium.components.omnibox.AimModelsProtoIntDef.ModelMode;
 import org.chromium.components.omnibox.AutocompleteInput;
 import org.chromium.components.omnibox.AutocompleteInput.AutocompleteState;
 import org.chromium.components.omnibox.AutocompleteInput.DisplayState;
@@ -444,8 +444,7 @@ import java.util.function.Supplier;
                 if (inputState != null) {
                     boolean inputHasNonDefaultModel =
                             mInput != null
-                                    && mInput.getModelMode()
-                                            != ModelMode.MODEL_MODE_UNSPECIFIED_VALUE
+                                    && mInput.getModelMode() != ModelMode.MODEL_MODE_UNSPECIFIED
                                     && mInput.getModelMode() != inputState.defaultModel;
                     boolean modelNeedsReset =
                             inputState.activeModel != inputState.defaultModel
@@ -752,16 +751,14 @@ import java.util.function.Supplier;
             Bitmap favicon = OmniboxResourceProvider.getFaviconBitmapForTab(tab);
 
             buttons.add(
-                    new PopupButtonData(
-                            (data) -> onAddRecentTab(tab),
-                            tab.getTitle(),
-                            favicon,
-                            /* enabled= */ true,
-                            /* selected= */ false,
-                            PopupButtonType.RECENT_TAB,
-                            /* protoId= */ 0,
-                            /* hasColor= */ favicon != null,
-                            /* tooltip= */ ""));
+                    new PopupButtonData.Builder()
+                            .setType(PopupButtonType.RECENT_TAB)
+                            .setOnClicked((data) -> onAddRecentTab(tab))
+                            .setText(tab.getTitle())
+                            .setCustomIcon(favicon)
+                            .setEnabled(true)
+                            .setHasColor(favicon != null)
+                            .build());
         }
         return buttons;
     }
@@ -776,8 +773,8 @@ import java.util.function.Supplier;
         mPopupItemSelected = true;
         maybeActivateAiMode(AiModeActivationSource.IMPLICIT);
 
-        if (!FuseboxTabUtils.isTabActive(tab)) {
-            tab.loadIfNeeded(/* forceBackingSize= */ true);
+        if (!FuseboxTabUtils.hasLoadedContent(tab)) {
+            TabLoadingService.getInstance().queueLoadIfNeeded(tab);
         }
 
         Set<Integer> currentAttachedIds = mModelList.getAttachedTabIds();
@@ -1004,16 +1001,15 @@ import java.util.function.Supplier;
     private PopupButtonData createAiModeToolButtonData() {
         boolean selected =
                 mInput != null && mInput.getRequestType() == AutocompleteRequestType.AI_MODE;
-        return new PopupButtonData(
-                this::onDynamicButtonClicked,
-                mContext.getString(R.string.ai_mode_entrypoint_label),
-                IconResourceIds.SEARCH_LOUPE_WITH_SPARKLE,
-                /* enabled= */ true,
-                selected,
-                PopupButtonType.TOOL,
-                ToolMode.TOOL_MODE_UNSPECIFIED,
-                /* hasColor= */ false,
-                /* tooltip= */ "");
+        return new PopupButtonData.Builder()
+                .setType(PopupButtonType.TOOL)
+                .setOnClicked(this::onDynamicButtonClicked)
+                .setText(mContext.getString(R.string.ai_mode_entrypoint_label))
+                .setIconId(IconResourceIds.SEARCH_LOUPE_WITH_SPARKLE)
+                .setEnabled(true)
+                .setSelected(selected)
+                .setProtoId(ToolMode.TOOL_MODE_UNSPECIFIED)
+                .build();
     }
 
     private void launchCamera() {
@@ -1307,7 +1303,7 @@ import java.util.function.Supplier;
         }
 
         for (ToolConfig toolConfig : inputState.getToolConfigs()) {
-            int toolMode = toolConfig.getToolValue();
+            @ToolMode int toolMode = toolConfig.getToolValue();
             if (!inputState.isToolVisible(toolMode)) continue;
 
             String label = toolConfig.getMenuLabel();
@@ -1328,16 +1324,17 @@ import java.util.function.Supplier;
             boolean hasColor = !shouldTintRequestTypeButtonIcon(iconId);
 
             toolButtonDataList.add(
-                    new PopupButtonData(
-                            this::onDynamicButtonClicked,
-                            label,
-                            iconId,
-                            enabled,
-                            selected,
-                            PopupButtonType.TOOL,
-                            toolMode,
-                            hasColor,
-                            tooltip));
+                    new PopupButtonData.Builder()
+                            .setType(PopupButtonType.TOOL)
+                            .setOnClicked(this::onDynamicButtonClicked)
+                            .setText(label)
+                            .setIconId(iconId)
+                            .setEnabled(enabled)
+                            .setSelected(selected)
+                            .setProtoId(toolMode)
+                            .setHasColor(hasColor)
+                            .setTooltip(tooltip)
+                            .build());
         }
 
         boolean showTools = !toolButtonDataList.isEmpty();
@@ -1365,16 +1362,16 @@ import java.util.function.Supplier;
                                 ? modelConfig.getIcon().getIconIdValue()
                                 : UNSPECIFIED_ICON_RESOURCE_ID;
                 modelButtonDataList.add(
-                        new PopupButtonData(
-                                this::onDynamicButtonClicked,
-                                modelConfig.getMenuLabel(),
-                                iconId,
-                                inputState.isModelEnabled(modelMode),
-                                selected,
-                                PopupButtonType.MODEL,
-                                modelMode,
-                                /* hasColor= */ false,
-                                tooltip));
+                        new PopupButtonData.Builder()
+                                .setType(PopupButtonType.MODEL)
+                                .setOnClicked(this::onDynamicButtonClicked)
+                                .setText(modelConfig.getMenuLabel())
+                                .setIconId(iconId)
+                                .setEnabled(inputState.isModelEnabled(modelMode))
+                                .setSelected(selected)
+                                .setProtoId(modelMode)
+                                .setTooltip(tooltip)
+                                .build());
             }
         }
         boolean showModelPicker = modelButtonDataList.size() >= 2;
@@ -1482,7 +1479,7 @@ import java.util.function.Supplier;
         }
     }
 
-    private void setModelMode(int modelMode) {
+    private void setModelMode(@ModelMode int modelMode) {
         if (!isInInputSession()) return;
 
         hidePopup();

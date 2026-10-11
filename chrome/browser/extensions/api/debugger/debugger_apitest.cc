@@ -13,6 +13,7 @@
 
 #include "base/command_line.h"
 #include "base/containers/to_vector.h"
+#include "base/i18n/icubridge/default_icu_locale.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory/ref_counted.h"
 #include "base/path_service.h"
@@ -162,6 +163,10 @@ using testing::Eq;
 
 class DebuggerApiTest : public ExtensionApiTest {
  protected:
+  DebuggerApiTest() {
+    feature_list_.InitAndDisableFeature(
+        extensions_features::kDisableExtensionsOnChromeUrlsSwitch);
+  }
   ~DebuggerApiTest() override = default;
 
   void SetUpCommandLine(base::CommandLine* command_line) override;
@@ -199,6 +204,7 @@ class DebuggerApiTest : public ExtensionApiTest {
   // |extension_|.
   TestExtensionDir test_extension_dir_;
   base::SimpleTestTickClock clock_;
+  base::test::ScopedFeatureList feature_list_;
 };
 
 void DebuggerApiTest::SetUpCommandLine(base::CommandLine* command_line) {
@@ -551,7 +557,7 @@ class TestInterstitialPage
                 web_contents,
                 CreateTestMetricsHelper(web_contents),
                 nullptr,
-                base::i18n::GetConfiguredLocale(),
+                std::string(base::i18n::GetDefaultIcuLocale().tag_string()),
                 GURL(),
                 /* settings_page_helper*/ nullptr)) {}
 

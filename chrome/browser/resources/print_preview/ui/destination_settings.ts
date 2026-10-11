@@ -2,11 +2,13 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+import 'chrome://resources/cr_elements/cr_button/cr_button.js';
 import 'chrome://resources/cr_elements/cr_lazy_render/cr_lazy_render_lit.js';
 import './destination_dialog.js';
 import './destination_select.js';
 import '/strings.m.js';
 
+import type {CrButtonElement} from 'chrome://resources/cr_elements/cr_button/cr_button.js';
 import type {CrLazyRenderLitElement} from 'chrome://resources/cr_elements/cr_lazy_render/cr_lazy_render_lit.js';
 import {I18nMixinLit} from 'chrome://resources/cr_elements/i18n_mixin_lit.js';
 import {WebUiListenerMixinLit} from 'chrome://resources/cr_elements/web_ui_listener_mixin_lit.js';
@@ -22,8 +24,8 @@ import {Error, State} from '../data/state.js';
 
 import type {PrintPreviewDestinationDialogElement} from './destination_dialog.js';
 import type {PrintPreviewDestinationSelectElement} from './destination_select.js';
+import {getCss} from './destination_settings.css.js';
 import {getHtml} from './destination_settings.html.js';
-import {getCss as getPrintPreviewSharedCss} from './print_preview_shared.css.js';
 import {SettingsMixin} from './settings_mixin.js';
 
 export enum DestinationState {
@@ -47,6 +49,7 @@ export interface PrintPreviewDestinationSettingsElement {
     destinationDialog:
         CrLazyRenderLitElement<PrintPreviewDestinationDialogElement>,
     destinationSelect: PrintPreviewDestinationSelectElement,
+    seeMore: CrButtonElement,
   };
 }
 
@@ -60,9 +63,7 @@ export class PrintPreviewDestinationSettingsElement extends
   }
 
   static override get styles() {
-    return [
-      getPrintPreviewSharedCss(),
-    ];
+    return getCss();
   }
 
   override render() {
@@ -94,7 +95,6 @@ export class PrintPreviewDestinationSettingsElement extends
       state: {type: Number},
       destinationStore_: {type: Object},
       displayedDestinations_: {type: Array},
-      isDialogOpen_: {type: Boolean},
       noDestinations_: {type: Boolean},
       pdfPrinterDisabled_: {type: Boolean},
       loaded_: {type: Boolean},
@@ -110,7 +110,6 @@ export class PrintPreviewDestinationSettingsElement extends
   accessor state: State = State.NOT_READY;
   protected accessor destinationStore_: DestinationStore|null = null;
   protected accessor displayedDestinations_: Destination[] = [];
-  private accessor isDialogOpen_: boolean = false;
   protected accessor noDestinations_: boolean = false;
   protected accessor pdfPrinterDisabled_: boolean = false;
   protected accessor loaded_: boolean = false;
@@ -361,6 +360,13 @@ export class PrintPreviewDestinationSettingsElement extends
          this.state !== State.NOT_READY);
   }
 
+  /**
+   * @return Whether the See More button should be disabled.
+   */
+  protected shouldDisableSeeMore_(): boolean {
+    return !this.loaded_ || this.shouldDisableDropdown_();
+  }
+
   private computeLoaded_(): boolean {
     return this.destinationState === DestinationState.ERROR ||
         this.destinationState === DestinationState.UPDATED ||
@@ -371,24 +377,15 @@ export class PrintPreviewDestinationSettingsElement extends
 
   /**
    * @param e Event containing the key of the recent destination that was
-   *     selected, or "seeMore".
+   *     selected.
    */
   protected onSelectedOptionChange_(e: CustomEvent<string>) {
-    const value = e.detail;
-    if (value === 'seeMore') {
-      this.destinationStore_!.startLoadAllDestinations();
-      this.$.destinationDialog.get().show();
-      this.isDialogOpen_ = true;
-    } else {
-      this.destinationStore_!.selectDestinationByKey(value);
-    }
+    this.destinationStore_!.selectDestinationByKey(e.detail);
   }
 
-  protected onDialogClose_() {
-    // Reset the select value if the user dismissed the dialog without
-    // selecting a new destination.
-    this.updateDestinationSelect_();
-    this.isDialogOpen_ = false;
+  protected onSeeMoreClick_() {
+    this.destinationStore_!.startLoadAllDestinations();
+    this.$.destinationDialog.get().show();
   }
 
   private async updateDestinationSelect_() {

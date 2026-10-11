@@ -525,7 +525,6 @@ Bəzi funksiyalar əlçatmaz ola bilər. Xüsusi profil direktoriyası göstəri
 <translation id="6166185671393271715">Parolları Chrome'a import edin</translation>
 <translation id="6169866489629082767"><ph name="PAGE_TITLE" /> - Google Chrome</translation>
 <translation id="6173637689840186878"><ph name="PAGE_TITLE" /> - Google Chrome Beta</translation>
-<translation id="6177442314419606057">Chrome'da axtarın</translation>
 <translation id="6180522807229584611">Bu tab əlavə resurslardan istifadə edir. Performansı təkmilləşdirmək üçün Chrome-a onu deaktiv etmək imkanı verin.</translation>
 <translation id="6182736845697986886">Yeniləmə serverində daxili xəta səbəbindən quraşdırma alınmadı.</translation>
 <translation id="6192058120268468905">Chrome-dakı Hesabınız</translation>
@@ -557,6 +556,7 @@ Bəzi funksiyalar əlçatmaz ola bilər. Xüsusi profil direktoriyası göstəri
 <translation id="6434035853014503219">Chrome-u defolt brauzer kimi seçdiyiniz üçün təşəkkür edirik!</translation>
 <translation id="6438015621983209660">Telefonda Chrome ilə qabaqcıl güvənli baxışı genişləndirin</translation>
 <translation id="6442774133615368941">Chrome iOS tətbiqində kamera ilə alış-veriş edin, tərcümə edin və gördüklərinizi müəyyənləşdirin</translation>
+<translation id="6446105560007692480">Chrome ilə axtarmaq və ya <ph name="BEGIN_LINK" />Ayarlarda<ph name="END_LINK" /> fərdiləşdirmək üçün</translation>
 <translation id="6448835208126432197">Chrome-da Gemini-da ekranın bir hissəsini seçmək üçün klaviatura qısayolundan istifadə edin.</translation>
 <translation id="6473905796280459355">Chrome haqqında səhifəsinə keçin</translation>
 <translation id="6481963882741794338">Fərdiləşdirmə və digər məqsədlər üçün Chrome və digər Google xidmətlərini əlaqələndirin</translation>
@@ -578,6 +578,7 @@ Bəzi funksiyalar əlçatmaz ola bilər. Xüsusi profil direktoriyası göstəri
 <translation id="6612152958212564387">İstifadə statistikası və xəta hesabatlarını Google-a göndərmirsiniz. <ph name="BEGIN_LINK" />İdarə edin<ph name="END_LINK" /></translation>
 <translation id="6613949864921837107">Chrome-u defolt brauzeriniz kimi təyin etməklə parollarınızı, əlfəcinlərinizi və tarixçənizi cihazlar arasında mükəmməl şəkildə sinxronlaşdırın.</translation>
 <translation id="6631524303639368205">Qaldığınız yerdən davam edin: Chrome tablarınızı son sessiyadan bərpa etdi. Burada deaktiv edə bilərsiniz:</translation>
+<translation id="6632012506031284914">Chrome ilə axtarmaq üçün.</translation>
 <translation id="6632473616050862500">ChromeOS Flex əlavə <ph name="BEGIN_LINK_CROS_OSS" />açıq mənbə proqramı<ph name="END_LINK_CROS_OSS" /> ilə əlçatan edilib.</translation>
 <translation id="6634299872736643004">Bu ayara edilən dəyişikliklər Chrome yenidən başladıqda tətbiq olunacaq.</translation>
 <translation id="6660596345553328257">Chrome-a daxil olursunuz?</translation>
@@ -594,7 +595,6 @@ Bəzi funksiyalar əlçatmaz ola bilər. Xüsusi profil direktoriyası göstəri
 <translation id="6750954913813541382">Orfoqrafik səhvləri düzəltmək üçün Chrome brauzerində yazdığınız mətni Google'a göndərir</translation>
 <translation id="6760235774835597023">Chrome-un V8 mühərriki ilə saytları sürətləndirir, lakin Chrome-un hücumlara qarşı müqavimətini bir qədər azaldır. Bu ayar aktivdir.</translation>
 <translation id="677276454032249905">Chrome'dan istənilən hada çıxılsın?</translation>
-<translation id="6777654166489463890">Chrome-dan kənar kontent, məsələn, açdığınız başqa tətbiq və ya fayl haqqında soruşun</translation>
 <translation id="6794858689789885890">Chrome-u bağladıqda sayt datasını cihazdan silin</translation>
 <translation id="6800285125190089494">iOS-da Chrome üçün yadda saxlanmış parollardan istifadə edərək saytlara daha sürətli daxil olun</translation>
 <translation id="6831043979455480757">Tərcümə et</translation>

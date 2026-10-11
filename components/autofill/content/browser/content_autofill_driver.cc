@@ -151,6 +151,7 @@ JavaScriptFieldModification Lift(
   return JavaScriptFieldModification{
       .field_id = Lift(source, mod->field_id),
       .modification_type = mod->modification_type,
+      .timestamp = mod->timestamp,
   };
 }
 
@@ -656,14 +657,6 @@ void ContentAutofillDriver::SendEmailVerificationToken(
                email_field_id, email, token);
 }
 
-void ContentAutofillDriver::UpdateEmailVerificationState(
-    const FieldGlobalId& email_field_id,
-    mojom::EmailVerificationState state) {
-  RouteToAgent(router(), &AutofillDriverRouter::UpdateEmailVerificationState,
-               &mojom::AutofillAgent::UpdateEmailVerificationState,
-               email_field_id, state);
-}
-
 void ContentAutofillDriver::FormsSeen(
     const std::vector<FormData>& updated_forms,
     const std::vector<FormRendererId>& removed_forms) {
@@ -793,11 +786,12 @@ void ContentAutofillDriver::FormWithEmailVerificationTokenSubmitted(
 void ContentAutofillDriver::DidDetectJavaScriptAutofill(
     const FormData& form,
     FieldRendererId trigger_field_id,
-    std::vector<mojom::JavaScriptFieldModificationPtr> field_modifications) {
-  RouteToManager(*this, router(),
-                 &AutofillDriverRouter::DidDetectJavaScriptAutofill,
-                 &AutofillManager::OnDidDetectJavaScriptAutofill, form,
-                 trigger_field_id, field_modifications);
+    std::vector<mojom::JavaScriptFieldModificationPtr> field_modifications,
+    base::TimeTicks detection_start_timestamp) {
+  RouteToManager(
+      *this, router(), &AutofillDriverRouter::DidDetectJavaScriptAutofill,
+      &AutofillManager::OnDidDetectJavaScriptAutofill, form, trigger_field_id,
+      field_modifications, detection_start_timestamp);
 }
 
 const mojo::AssociatedRemote<mojom::AutofillAgent>&

@@ -37,6 +37,8 @@ import org.chromium.ui.modelutil.MVCListAdapter.ListItem;
 import org.chromium.ui.modelutil.PropertyModel;
 import org.chromium.url.GURL;
 
+import java.util.List;
+
 /**
  * Abstract delegate handler for {@link TabGroupObserver} and {@link TabObserver} callbacks.
  * Layout-specific subclasses override only the callbacks they handle.
@@ -78,6 +80,11 @@ abstract class TabListLayoutDelegate implements TabGroupObserver, TabObserver {
      */
     abstract boolean isChildTabRepresentedByGroupCard(Tab tab);
 
+    /** Whether this layout displays Actor tab alert indicators on the tab item. */
+    boolean supportsActorTabAlerts() {
+        return false;
+    }
+
     /**
      * Resolves the visual alert state indicator (e.g. playing audio) for a tab card or group
      * header.
@@ -86,17 +93,44 @@ abstract class TabListLayoutDelegate implements TabGroupObserver, TabObserver {
      * @param model The property model associated with the tab or group header.
      * @return The {@link TabAlert} that should be displayed, or {@link TabAlert#NONE} if none.
      */
-    abstract @TabAlert int getAlertState(Tab representativeTab, PropertyModel model);
+    @TabAlert
+    int getAlertState(Tab representativeTab, PropertyModel model) {
+        @TabAlert int alertState = representativeTab.getAlertState();
+        if (alertState == TabAlert.GLIC_ACCESSING || alertState == TabAlert.GLIC_SHARING) {
+            // Glic accessing and sharing states use dedicated tab underlines on the vertical tab
+            // strip and are not shown in the grid tab switcher.
+            return TabAlert.NONE;
+        }
+        if (!supportsActorTabAlerts()
+                && (alertState == TabAlert.ACTOR_ACCESSING
+                        || alertState == TabAlert.ACTOR_WAITING_ON_USER)) {
+            // In the grid tab switcher, Actor states use dedicated thumbnail overlays via
+            // TabProperties.ACTOR_UI_STATE rather than card header alert icons.
+            return TabAlert.NONE;
+        }
+        return alertState;
+    }
 
     /** Returns the insertion index for a new tab card. */
     abstract int getInsertionIndexOfTab(Tab tab);
 
     /**
-     * Returns the index in {@link #mModelList} of the group with {@code tabGroupId} and the {@link
-     * Tab} representing the group. Will be null if the entry is not present, the tab cannot be
-     * found, or the tab is not part of a tab group.
+     * Returns the index in {@link #mModelList} of the group card with {@code tabGroupId} and the
+     * first {@link Tab} of the group. Will be null if the group card is not present or the group
+     * has no tabs.
      */
-    abstract @Nullable Pair<Integer, Tab> getIndexAndTabForTabGroupId(@Nullable Token tabGroupId);
+    @Nullable Pair<Integer, Tab> getIndexAndTabForTabGroupId(@Nullable Token tabGroupId) {
+        if (!supportsTabGroups() || tabGroupId == null) return null;
+
+        // Look up the group card directly by group ID and return the first tab in the group.
+        int headerIndex = mModelList.indexFromTabGroupId(tabGroupId);
+        if (headerIndex == TabModel.INVALID_TAB_INDEX) return null;
+
+        List<Tab> tabs = mMediator.getCurrentTabModelChecked().getTabsInGroup(tabGroupId);
+        if (tabs.isEmpty()) return null;
+
+        return Pair.create(headerIndex, tabs.get(0));
+    }
 
     /**
      * Handles tab insertion into {@link #mModelList} by resolving the target insertion index,
@@ -143,12 +177,15 @@ abstract class TabListLayoutDelegate implements TabGroupObserver, TabObserver {
     }
 
     /**
-     * Resolves the UI index in {@link #mModelList} of the card representing the given tab in this
-     * layout.
+     * Resolves the UI index in {@link #mModelList} of the card that displays the given tab, falling
+     * back to the containing group card when the tab has no card of its own.
      *
-     * <p>For flat and nested layouts, this locates the tab's direct card in the model list.
-     * Subclasses (such as grouped layouts) may override this to resolve to the containing group
-     * card if the tab is part of a tab group.
+     * <p>This differs from {@link #getIndexFromTabId} only in legacy GTS, where group cards are
+     * keyed by a representative tab ID and therefore cannot be found by a child tab's ID.
+     *
+     * <p>TODO(crbug.com/517544602): Remove when the flag is cleaned up. Once group cards are keyed
+     * by token, {@link #getIndexFromTabId} resolves child tabs on its own and callers should use
+     * it.
      *
      * @param tabId The ID of the tab to locate.
      * @return The UI index in {@link #mModelList}, or {@link TabModel#INVALID_TAB_INDEX} if not

@@ -3088,8 +3088,14 @@ public class TabListMediator implements TabListNotificationHandler {
                             + TabUiMetricsHelper.getComponentNameForMetrics(mComponentId));
 
             // Special case in defense of a group not being completely closed. We need to find the
-            // group by the tab's old root ID.
-            int index = getIndexForTabIdWithRelatedTabs(tab.getId());
+            // group by the tab's old root ID or group token.
+            if (!mTabListLayoutDelegate.supportsTabGroups()) return;
+
+            int index =
+                    TabUiFeatureUtilities.isAndroidTabUiRefactorEnabled()
+                                    && tab.getTabGroupId() != null
+                            ? mModelList.indexFromTabGroupId(tab.getTabGroupId())
+                            : getIndexForTabIdWithRelatedTabs(tab.getId());
             if (mModelList.isValidIndex(index)) {
                 if (mTabListConfig.supportsShrinkCloseAnimation) {
                     mModelList
@@ -3246,6 +3252,7 @@ public class TabListMediator implements TabListNotificationHandler {
 
         if (model.get(TabProperties.TAB_GROUP_ID) == null) {
             model.set(TabProperties.TAB_GROUP_HEADER_ID, tabGroupId);
+            model.set(CARD_TYPE, mTabListLayoutDelegate.getGroupCardType());
         } else {
             model.set(TabProperties.TAB_GROUP_HEADER_ID, null);
         }

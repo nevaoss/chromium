@@ -31,6 +31,7 @@ import org.chromium.base.ApplicationStatus;
 import org.chromium.base.ThreadUtils;
 import org.chromium.base.test.util.CommandLineFlags;
 import org.chromium.base.test.util.CriteriaHelper;
+import org.chromium.base.test.util.DisableIf;
 import org.chromium.base.test.util.DoNotBatch;
 import org.chromium.base.test.util.Feature;
 import org.chromium.base.test.util.Features.EnableFeatures;
@@ -64,6 +65,7 @@ import org.chromium.components.messages.ManagedMessageDispatcher;
 import org.chromium.components.messages.MessageDispatcherProvider;
 import org.chromium.components.sync.protocol.EntitySpecifics;
 import org.chromium.components.sync.protocol.SendTabToSelfSpecifics;
+import org.chromium.ui.base.DeviceFormFactor;
 import org.chromium.ui.test.util.RenderTestRule.Component;
 
 import java.nio.ByteBuffer;
@@ -74,6 +76,7 @@ import java.util.concurrent.TimeUnit;
 @CommandLineFlags.Add({ChromeSwitches.DISABLE_FIRST_RUN_EXPERIENCE})
 @DoNotBatch(reason = "Manages sign-in state, which is global.")
 @EnableFeatures({ChromeFeatureList.SEND_TAB_TO_SELF_AUTO_OPEN})
+@DisableIf.Device(DeviceFormFactor.DESKTOP) // https://crbug.com/563033707
 public class SendTabToSelfReceiverTest {
     @Rule public SyncTestRule mSyncTestRule = new SyncTestRule();
 
@@ -875,6 +878,10 @@ public class SendTabToSelfReceiverTest {
     @LargeTest
     @Feature({"Sync"})
     @EnableFeatures({ChromeFeatureList.SEND_TAB_TO_SELF_SWITCH_TO_PARENT_ON_BACK})
+    // On desktop Android, back gestures follow desktop conventions (see
+    // ChromeFeatureList.BACK_GESTURE_REFLECTS_DESKTOP_BEHAVIOR) and do not close tabs
+    // when history is exhausted.
+    @DisableIf.Device(DeviceFormFactor.DESKTOP)
     public void testSendTabToSelfMessageBannerClick_BackGestureClosesTabAndReturnsToPreviousTab() {
         long now = getCurrentTimeSinceWindowsEpochMicros();
         injectSendTabToSelfEntity(

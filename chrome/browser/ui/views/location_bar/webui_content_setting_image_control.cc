@@ -93,10 +93,13 @@ WebUIContentSettingImageControl::ProcessContentSettingState(
   }
 
   for (auto& model : models_) {
-    // The activity indicators (camera, mic) are drawn on the left side of the
-    // location bar, managed by the Permissions Dashboard, so we don't include
-    // them in the right hand side content setting images here.
-    if (model->image_type() == ImageType::kMediaStream) {
+    // Activity indicators (camera, mic and sensors) are drawn on the left side
+    // of the location bar by the Permissions Dashboard while the corresponding
+    // feature is enabled, so they must not also appear as right-hand-side
+    // content setting images. The model is still updated, because the dashboard
+    // reads it.
+    if (ContentSettingImageModel::IsLeftHandSideIndicatorEnabled(
+            model->image_type())) {
       model->Update(setting_view_delegate_->ShouldHideContentSettingImage()
                         ? nullptr
                         : web_contents);
@@ -231,9 +234,17 @@ WebUIContentSettingImageControl::ShowContentSettingsBubbleImpl(ImageType type) {
       views::BubbleBorder::TOP_RIGHT);
   bubble_contents->SetHighlightedElement(model->GetElementIdentifier());
 
+  ContentSettingBubbleContents* bubble_contents_ptr = bubble_contents.get();
   views::Widget* bubble_widget =
       views::BubbleDialogDelegateView::CreateBubble(std::move(bubble_contents));
   if (bubble_widget) {
+    if (views::BubbleFrameView* const frame_view =
+            bubble_contents_ptr->GetBubbleFrameView()) {
+      if (views::Label* title_label = frame_view->default_title()) {
+        title_label->SetTextStyle(views::style::STYLE_HEADLINE_4);
+        title_label->SetEnabledColor(kColorActivityIndicatorForeground);
+      }
+    }
     bubble_reopen_suppressor_.Observe(bubble_widget);
     last_tracked_bubble_type_ = type;
     bubble_widget->Show();

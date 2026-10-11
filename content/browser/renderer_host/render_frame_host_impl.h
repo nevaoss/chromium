@@ -207,6 +207,7 @@
 #include "ui/accessibility/platform/ax_unique_id.h"
 #include "ui/base/clipboard/clipboard_metadata.h"
 #include "ui/base/page_transition_types.h"
+#include "ui/gfx/geometry/point.h"
 #include "ui/gfx/geometry/rect.h"
 #include "url/gurl.h"
 
@@ -333,6 +334,10 @@ struct ResourceTimingInfo;
 typedef base::RepeatingCallback<
     void(RenderFrameHostImpl*, ax::mojom::Event, int)>
     AccessibilityCallbackForTesting;
+
+using CachedPermissionMap =
+    std::optional<base::flat_map<blink::mojom::PermissionName,
+                                 blink::mojom::PermissionStatus>>;
 
 class CONTENT_EXPORT RenderFrameHostImpl
     : public RenderFrameHost,
@@ -2563,6 +2568,8 @@ class CONTENT_EXPORT RenderFrameHostImpl
       const GURL& url,
       const net::NetworkTrafficAnnotationTag& traffic_annotation)
       const override;
+  scoped_refptr<InitiatorNavigationState> GetCurrentInitiatorNavigationState()
+      const override;
 
   // Dispatches the first contentful paint notification to the delegate when
   // this is the primary main frame. Split from the OnFirstContentfulPaint()
@@ -3144,8 +3151,15 @@ class CONTENT_EXPORT RenderFrameHostImpl
   // this instance's AXNodeIdDelegate implementation.
   size_t GetAxUniqueIdCountForTesting() const { return ax_unique_ids_.size(); }
 
+  // Query necessary permission statues in order to propagate to the renderer.
+  // Right now, we're only caring about permissions for Geolocation, Camera, and
+  // Microphone. The permission statuses already take into account the device's
+  // status.
+  CachedPermissionMap GetCachedPermissionStatuses();
+
   // Returns the Storage Access API status for this instance.
   net::StorageAccessApiStatus GetStorageAccessApiStatus();
+
   // Allows tests to disable the unload event timer to simulate bugs that
   // happen before it fires (to avoid flakiness).
   void DisableUnloadTimerForTesting();
@@ -3187,10 +3201,6 @@ class CONTENT_EXPORT RenderFrameHostImpl
   // existence of the MockRenderProcessHost.
   void SetPrerenderStateChangedCallback(
       PrerenderStateChangedCallback prerender_state_callback);
-
-  // Records the current navigation state of this RFH. It should be passed to
-  // NavigationRequests initiated by this RFH.
-  scoped_refptr<InitiatorNavigationState> GetCurrentInitiatorNavigationState();
 
   // Used in tests. This bypasses normal lifecycle security checks around
   // setting a PolicyContainerHost and generating an InitiatorNavigationState.
@@ -3479,6 +3489,11 @@ class CONTENT_EXPORT RenderFrameHostImpl
   void OnSetNeedsOcclusionTracking(bool needs_tracking);
   void OnSaveImageFromDataURL(const std::string& url_str);
   bool ValidateOutermostMainFrameWindowChange(std::string_view method_name);
+
+  // Maps `root_point` into this frame's view coordinates for actions like
+  // CopyImageAt(). Returns nullopt if the point cannot be mapped.
+  std::optional<gfx::Point> TransformRootPointForContextMenuAction(
+      const gfx::Point& root_point);
 
   // Computes the IsolationInfo for both navigations and subresources.
   //
@@ -5525,6 +5540,18 @@ class CONTENT_EXPORT RenderFrameHostImpl
 
   // True if this rfh was created via a window creation with user activation.
   bool opener_had_user_gesture_ = false;
+
+  // Caches context menu coordinates so actions from that menu (e.g.
+  // CopyImageAt) act on `local_point` even if the frame moves or hides.
+  struct ContextMenuLocation {
+    // Menu location in root coordinates (or `local_point` if unmapped).
+    gfx::Point root_point;
+    // Click location in this frame's view coordinates.
+    gfx::Point local_point;
+  };
+
+  // Cached location from the last ShowContextMenu().
+  std::optional<ContextMenuLocation> context_menu_location_;
 
   // WeakPtrFactories are the last members, to ensure they are destroyed before
   // all other fields of `this`.

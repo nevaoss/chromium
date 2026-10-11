@@ -250,6 +250,7 @@ import java.util.function.Supplier;
         instrumentedPackages = {
             "androidx.recyclerview.widget.RecyclerView" // required to mock final
         })
+@EnableFeatures(ChromeFeatureList.ANDROID_TAB_UI_REFACTOR)
 @DisableFeatures({
     ChromeFeatureList.DATA_SHARING,
     ChromeFeatureList.DATA_SHARING_JOIN_ONLY,
@@ -819,7 +820,8 @@ public class TabListMediatorUnitTest {
     }
 
     @Test
-    public void tabGroupColorViewProviderDestroyed_Ungroup() {
+    @DisableFeatures(ChromeFeatureList.ANDROID_TAB_UI_REFACTOR)
+    public void tabGroupColorViewProviderDestroyed_Ungroup_featureDisabled() {
         mMediator.resetWithListOfTabs(List.of(mTab1, mTab2), null, false);
 
         PropertyModel model = mModelList.get(0).model;
@@ -828,6 +830,22 @@ public class TabListMediatorUnitTest {
         mTabGroupObserverCaptor.getValue().didMoveTabOutOfGroup(mTab2, POSITION1);
 
         assertNull(model.get(TabProperties.TAB_GROUP_COLOR_VIEW_PROVIDER));
+        verify(mTabGroupColorViewProvider).destroy();
+    }
+
+    @Test
+    public void tabGroupColorViewProviderDestroyed_Ungroup() {
+        mMediator.resetWithListOfTabs(List.of(mTab1, mTab2), null, false);
+
+        PropertyModel model = mModelList.get(0).model;
+        model.set(CARD_TYPE, TAB_GROUP);
+        model.set(TabProperties.TAB_GROUP_HEADER_ID, TAB_GROUP_ID);
+        model.set(TabProperties.TAB_GROUP_COLOR_VIEW_PROVIDER, mTabGroupColorViewProvider);
+
+        mTabGroupObserverCaptor
+                .getValue()
+                .didRemoveTabGroup(TAB1_ID, TAB_GROUP_ID, DidRemoveTabGroupReason.UNGROUP);
+
         verify(mTabGroupColorViewProvider).destroy();
     }
 
@@ -1446,7 +1464,8 @@ public class TabListMediatorUnitTest {
 
     // Regression test for https://crbug.com/40871078
     @Test
-    public void handlesGroupMergeCorrectly_InOrder() {
+    @DisableFeatures(ChromeFeatureList.ANDROID_TAB_UI_REFACTOR)
+    public void handlesGroupMergeCorrectly_InOrder_featureDisabled() {
         Tab tab3 = prepareTab(TAB3_ID, TAB3_TITLE, TAB3_URL);
         Tab tab4 = prepareTab(TAB4_ID, TAB4_TITLE, TAB4_URL);
         when(mTabModel.getTabAt(2)).thenReturn(tab3);
@@ -1526,6 +1545,107 @@ public class TabListMediatorUnitTest {
         mTabGroupObserverCaptor.getValue().didMergeTabToGroup(tab3, /* isDestinationTab= */ false);
 
         assertThat(mModelList.size(), equalTo(1));
+    }
+
+    // Regression test for https://crbug.com/40871078
+    @Test
+    public void handlesGroupMergeCorrectly_InOrder() {
+        Tab tab3 = prepareTab(TAB3_ID, TAB3_TITLE, TAB3_URL);
+        Tab tab4 = prepareTab(TAB4_ID, TAB4_TITLE, TAB4_URL);
+        when(mTabModel.getTabAt(2)).thenReturn(tab3);
+        when(mTabModel.getTabAt(3)).thenReturn(tab4);
+        when(mItemView3.isAttachedToWindow()).thenReturn(true);
+        when(mItemView4.isAttachedToWindow()).thenReturn(true);
+
+        RecyclerView.ViewHolder fakeViewHolder3 = prepareFakeViewHolder(mItemView3, 2);
+        RecyclerView.ViewHolder fakeViewHolder4 = prepareFakeViewHolder(mItemView4, 3);
+
+        List<Tab> tabs = List.of(mTab1, mTab2, tab3, tab4);
+        mMediator.resetWithListOfTabs(tabs, null, false);
+        assertThat(mModelList.size(), equalTo(4));
+
+        // Merge 2 to 1.
+        TabGridItemTouchHelperCallback itemTouchHelperCallback = getItemTouchHelperCallback();
+        itemTouchHelperCallback.setHoveredTabIndexForTesting(POSITION1);
+        itemTouchHelperCallback.setSelectedTabIndexForTesting(POSITION2);
+        itemTouchHelperCallback.setRecyclerView(mRecyclerView);
+
+        when(mRecyclerView.getAdapter()).thenReturn(mAdapter);
+
+        itemTouchHelperCallback.onSelectedChanged(
+                mFakeViewHolder2, ItemTouchHelper.ACTION_STATE_IDLE);
+
+        verify(mTabModel).mergeTabsToGroup(eq(TAB2_ID), eq(TAB1_ID));
+        verify(mGridLayoutManager).removeView(mItemView2);
+        verify(mTracker).notifyEvent(eq(EventConstants.TAB_DRAG_AND_DROP_TO_GROUP));
+
+        createTabGroup(List.of(mTab1, mTab2), TAB_GROUP_ID);
+        when(mTabModel.indexOf(mTab1)).thenReturn(POSITION1);
+        when(mTabModel.indexOf(mTab2)).thenReturn(POSITION2);
+        mTabGroupObserverCaptor.getValue().didMergeTabToGroup(mTab1, /* isDestinationTab= */ true);
+        mTabGroupObserverCaptor.getValue().didMergeTabToGroup(mTab2, /* isDestinationTab= */ false);
+
+        assertThat(mModelList.size(), equalTo(3));
+        mFakeViewHolder1 = prepareFakeViewHolder(mItemView1, 0);
+        fakeViewHolder3 = prepareFakeViewHolder(mItemView3, 1);
+        fakeViewHolder4 = prepareFakeViewHolder(mItemView4, 2);
+
+        // Merge 4 to 3.
+        mockRepresentativeTabs(mTab1, tab3, tab4);
+        itemTouchHelperCallback.setHoveredTabIndexForTesting(1);
+        itemTouchHelperCallback.setSelectedTabIndexForTesting(2);
+        itemTouchHelperCallback.setRecyclerView(mRecyclerView);
+
+        itemTouchHelperCallback.onSelectedChanged(
+                fakeViewHolder4, ItemTouchHelper.ACTION_STATE_IDLE);
+
+        verify(mTabModel).mergeTabsToGroup(eq(TAB4_ID), eq(TAB3_ID));
+        verify(mGridLayoutManager).removeView(mItemView4);
+        verify(mTracker, times(2)).notifyEvent(eq(EventConstants.TAB_DRAG_AND_DROP_TO_GROUP));
+
+        Token tabGroupId2 = new Token(99L, 88L);
+        createTabGroup(List.of(tab3, tab4), tabGroupId2);
+        when(mTabModel.indexOf(tab3)).thenReturn(2);
+        when(mTabModel.indexOf(tab4)).thenReturn(3);
+        mTabGroupObserverCaptor.getValue().didMergeTabToGroup(tab3, /* isDestinationTab= */ true);
+        mTabGroupObserverCaptor.getValue().didMergeTabToGroup(tab4, /* isDestinationTab= */ false);
+
+        assertThat(mModelList.size(), equalTo(2));
+        mFakeViewHolder1 = prepareFakeViewHolder(mItemView1, 0);
+        fakeViewHolder3 = prepareFakeViewHolder(mItemView3, 1);
+
+        // Merge 3 to 1.
+        mockRepresentativeTabs(mTab1, tab3);
+        itemTouchHelperCallback.setHoveredTabIndexForTesting(0);
+        itemTouchHelperCallback.setSelectedTabIndexForTesting(1);
+        itemTouchHelperCallback.setRecyclerView(mRecyclerView);
+
+        itemTouchHelperCallback.onSelectedChanged(
+                fakeViewHolder3, ItemTouchHelper.ACTION_STATE_IDLE);
+
+        verify(mTabModel).mergeTabsToGroup(eq(TAB3_ID), eq(TAB1_ID));
+        verify(mGridLayoutManager).removeView(mItemView3);
+        verify(mTracker, times(3)).notifyEvent(eq(EventConstants.TAB_DRAG_AND_DROP_TO_GROUP));
+
+        // Merge Group 2 (tab3, tab4) into Group 1 (mTab1, mTab2).
+        // 1. tab3 moves from tabGroupId2 into TAB_GROUP_ID.
+        createTabGroup(List.of(mTab1, mTab2, tab3), TAB_GROUP_ID);
+        createTabGroup(List.of(tab4), tabGroupId2);
+        when(mTabModel.getTabCountForGroup(TAB_GROUP_ID)).thenReturn(3);
+        mTabGroupObserverCaptor.getValue().didMoveTabOutOfGroup(tab3, 1);
+        mTabGroupObserverCaptor.getValue().didMergeTabToGroup(tab3, /* isDestinationTab= */ false);
+
+        // 2. tab4 moves from tabGroupId2 into TAB_GROUP_ID, dissolving tabGroupId2.
+        createTabGroup(List.of(mTab1, mTab2, tab3, tab4), TAB_GROUP_ID);
+        when(mTabModel.getTabCountForGroup(TAB_GROUP_ID)).thenReturn(4);
+        mTabGroupObserverCaptor.getValue().didMoveTabOutOfGroup(tab4, 0);
+        mTabGroupObserverCaptor.getValue().didMergeTabToGroup(tab4, /* isDestinationTab= */ false);
+        mTabGroupObserverCaptor
+                .getValue()
+                .didRemoveTabGroup(Tab.INVALID_TAB_ID, tabGroupId2, DidRemoveTabGroupReason.MERGE);
+
+        assertThat(mModelList.size(), equalTo(1));
+        assertThat(mModelList.indexFromTabGroupId(TAB_GROUP_ID), equalTo(0));
     }
 
     @Test
@@ -2069,7 +2189,8 @@ public class TabListMediatorUnitTest {
     }
 
     @Test
-    public void testUngroupAllTabs_GroupedLayout() {
+    @DisableFeatures(ChromeFeatureList.ANDROID_TAB_UI_REFACTOR)
+    public void testUngroupAllTabs_GroupedLayout_featureDisabled() {
         setUpTabListMediator(TabListMediatorType.TAB_SWITCHER, TabListMode.GRID);
         mMediator.initWithNative(mProfile);
 
@@ -2109,6 +2230,59 @@ public class TabListMediatorUnitTest {
         assertEquals(2, mModelList.size());
         assertEquals(TAB1_ID, mModelList.get(0).model.get(TabProperties.TAB_ID));
         assertEquals(TAB2_ID, mModelList.get(1).model.get(TabProperties.TAB_ID));
+    }
+
+    @Test
+    public void testUngroupAllTabs_GroupedLayout() {
+        setUpTabListMediator(TabListMediatorType.TAB_SWITCHER, TabListMode.GRID);
+        mMediator.initWithNative(mProfile);
+
+        initAndAssertAllProperties();
+
+        // Group has mTab1 and mTab2.
+        List<Tab> tabs = List.of(mTab1, mTab2);
+        createTabGroup(tabs, TAB_GROUP_ID);
+        mockRepresentativeTabs(mTab1);
+        mMediator.resetWithListOfTabs(List.of(mTab1), null, false);
+
+        assertEquals(1, mModelList.size());
+        PropertyModel groupCardModel = mModelList.get(0).model;
+        assertEquals(TAB_GROUP, groupCardModel.get(CARD_TYPE));
+        assertEquals(TAB_GROUP_ID, groupCardModel.get(TabProperties.TAB_GROUP_HEADER_ID));
+
+        // Ungroup mTab2 (non-representative).
+        when(mTab2.getTabGroupId()).thenReturn(null);
+        when(mTabModel.isTabInTabGroup(mTab2)).thenReturn(false);
+        mockTabIndexes(mTab1, mTab2);
+        mockRepresentativeTabs(mTab1, mTab2);
+        when(mTabModel.getTabCountForGroup(TAB_GROUP_ID)).thenReturn(1);
+        mTabModelObserverCaptor.getValue().didMoveTab(mTab2, POSITION2, POSITION1);
+        mTabGroupObserverCaptor.getValue().didMoveTabOutOfGroup(mTab2, POSITION1);
+
+        // Card for mTab2 is added, group card for TAB_GROUP_ID remains.
+        assertEquals(2, mModelList.size());
+
+        // Group dissolves when mTab1 is also ungrouped.
+        when(mTab1.getTabGroupId()).thenReturn(null);
+        when(mTabModel.isTabInTabGroup(mTab1)).thenReturn(false);
+        when(mTabModel.getTabCountForGroup(TAB_GROUP_ID)).thenReturn(0);
+        when(mTabModel.tabGroupExists(TAB_GROUP_ID)).thenReturn(false);
+
+        // Move the remaining representative tab and notify didMoveTabOutOfGroup.
+        mTabModelObserverCaptor.getValue().didMoveTab(mTab1, POSITION2, POSITION1);
+        mTabGroupObserverCaptor.getValue().didMoveTabOutOfGroup(mTab1, POSITION1);
+
+        // didRemoveTabGroup removes the TAB_GROUP card.
+        mTabGroupObserverCaptor
+                .getValue()
+                .didRemoveTabGroup(TAB1_ID, TAB_GROUP_ID, DidRemoveTabGroupReason.UNGROUP);
+
+        // Verify model list now contains two standalone tabs.
+        assertEquals(2, mModelList.size());
+        assertEquals(TAB1_ID, mModelList.get(0).model.get(TabProperties.TAB_ID));
+        assertEquals(TAB, mModelList.get(0).model.get(CARD_TYPE));
+        assertEquals(TAB2_ID, mModelList.get(1).model.get(TabProperties.TAB_ID));
+        assertEquals(TAB, mModelList.get(1).model.get(CARD_TYPE));
     }
 
     @Test
@@ -2167,7 +2341,7 @@ public class TabListMediatorUnitTest {
         assertEquals(TAB, childModel.get(CARD_TYPE));
         assertEquals(TAB1_ID, childModel.get(TabProperties.TAB_ID));
 
-        // indexFromTabId should skip the header card and find the child tab.
+        // getIndexFromTabId should skip the header card and find the child tab.
         assertEquals(1, mMediator.getIndexFromTabId(TAB1_ID));
     }
 
@@ -2665,7 +2839,8 @@ public class TabListMediatorUnitTest {
     }
 
     @Test
-    public void didMoveTabOutOfGroup_UndoForwardGrouped_BetweenGroups() {
+    @DisableFeatures(ChromeFeatureList.ANDROID_TAB_UI_REFACTOR)
+    public void didMoveTabOutOfGroup_UndoForwardGrouped_BetweenGroups_featureDisabled() {
         // Assume there are 3 tabs in TabModel, tab3, tab4, just grouped with mTab1;
         Tab tab3 = prepareTab(TAB3_ID, TAB3_TITLE, TAB3_URL);
         Tab tab4 = prepareTab(TAB4_ID, TAB4_TITLE, TAB4_URL);
@@ -2695,10 +2870,10 @@ public class TabListMediatorUnitTest {
         when(mTabModel.getRelatedTabList(TAB3_ID)).thenReturn(relatedTabs);
         mTabGroupObserverCaptor.getValue().didMoveTabOutOfGroup(tab3, POSITION1);
         assertThat(mModelList.size(), equalTo(2));
-        assertThat(mMediator.getIndexFromTabId(TAB1_ID), equalTo(0));
-        assertThat(mMediator.getIndexFromTabId(TAB2_ID), equalTo(-1));
-        assertThat(mMediator.getIndexFromTabId(TAB3_ID), equalTo(1));
-        assertThat(mMediator.getIndexFromTabId(TAB4_ID), equalTo(-1));
+        assertThat(mModelList.indexFromTabId(TAB1_ID), equalTo(0));
+        assertThat(mModelList.indexFromTabId(TAB2_ID), equalTo(-1));
+        assertThat(mModelList.indexFromTabId(TAB3_ID), equalTo(1));
+        assertThat(mModelList.indexFromTabId(TAB4_ID), equalTo(-1));
 
         // Undo tab 4
         relatedTabs = List.of(tab3, tab4);
@@ -2719,10 +2894,69 @@ public class TabListMediatorUnitTest {
         mTabGroupObserverCaptor.getValue().didMergeTabToGroup(tab4, /* isDestinationTab= */ false);
 
         assertThat(mModelList.size(), equalTo(2));
+        assertThat(mModelList.indexFromTabId(TAB1_ID), equalTo(0));
+        assertThat(mModelList.indexFromTabId(TAB2_ID), equalTo(-1));
+        assertThat(mModelList.indexFromTabId(TAB3_ID), equalTo(1));
+        assertThat(mModelList.indexFromTabId(TAB4_ID), equalTo(-1));
+    }
+
+    @Test
+    public void didMoveTabOutOfGroup_UndoForwardGrouped_BetweenGroups() {
+        // Assume there are 4 tabs in TabModel, tab3, tab4, just grouped with mTab1, mTab2.
+        Tab tab3 = prepareTab(TAB3_ID, TAB3_TITLE, TAB3_URL);
+        Tab tab4 = prepareTab(TAB4_ID, TAB4_TITLE, TAB4_URL);
+        Token groupId1 = new Token(1L, 1L);
+        createTabGroup(List.of(mTab1, mTab2, tab3, tab4), groupId1);
+        when(mTabModel.iterator()).thenAnswer(_ -> List.of(mTab1, mTab2, tab3, tab4).iterator());
+        when(mTabModel.getCount()).thenReturn(4);
+        List<Tab> tabs = List.of(mTab1);
+        mMediator.resetWithListOfTabs(tabs, null, false);
+        assertThat(mModelList.size(), equalTo(1));
+
+        // Assume undo grouping tab3 with mTab1.
+
+        // Undo tab 3.
+        createTabGroup(List.of(mTab1, mTab2, tab4), groupId1);
+        createTabGroup(List.of(tab3), TAB_GROUP_ID);
+        mockRepresentativeTabs(mTab1, tab3);
+        when(mTabModel.getTabAt(0)).thenReturn(mTab1);
+        when(mTabModel.getTabAt(1)).thenReturn(mTab2);
+        when(mTabModel.getTabAt(2)).thenReturn(tab4);
+        when(mTabModel.getTabAt(3)).thenReturn(tab3);
+        when(mTabModel.representativeIndexOf(mTab2)).thenReturn(POSITION1);
+        when(mTabModel.representativeIndexOf(tab4)).thenReturn(POSITION1);
+        when(mTabModel.indexOf(mTab1)).thenReturn(0);
+        when(mTabModel.indexOf(mTab2)).thenReturn(1);
+        when(mTabModel.indexOf(tab4)).thenReturn(2);
+        when(mTabModel.indexOf(tab3)).thenReturn(3);
+        when(mTabModel.getTabCountForGroup(TAB_GROUP_ID)).thenReturn(1);
+        mTabGroupObserverCaptor.getValue().didMoveTabOutOfGroup(tab3, POSITION1);
+        mTabGroupObserverCaptor.getValue().didMergeTabToGroup(tab3, /* isDestinationTab= */ true);
+        assertThat(mModelList.size(), equalTo(2));
+        assertThat(mModelList.indexFromTabGroupId(groupId1), equalTo(0));
+        assertThat(mModelList.indexFromTabGroupId(TAB_GROUP_ID), equalTo(1));
+
+        // Undo tab 4
+        createTabGroup(List.of(mTab1, mTab2), groupId1);
+        createTabGroup(List.of(tab3, tab4), TAB_GROUP_ID);
+        when(mTabModel.representativeIndexOf(tab4)).thenReturn(POSITION2);
+        when(mTabModel.indexOf(tab3)).thenReturn(2);
+        when(mTabModel.indexOf(tab4)).thenReturn(3);
+        when(mTabModel.getTabAt(2)).thenReturn(tab3);
+        when(mTabModel.getTabAt(3)).thenReturn(tab4);
+        when(mTabModel.getTabCountForGroup(TAB_GROUP_ID)).thenReturn(2);
+        mTabGroupObserverCaptor.getValue().didMoveTabOutOfGroup(tab4, POSITION1);
+        assertThat(mModelList.size(), equalTo(2));
+
+        mTabGroupObserverCaptor.getValue().didMergeTabToGroup(tab4, /* isDestinationTab= */ false);
+
+        assertThat(mModelList.size(), equalTo(2));
+        assertThat(mModelList.indexFromTabGroupId(groupId1), equalTo(0));
+        assertThat(mModelList.indexFromTabGroupId(TAB_GROUP_ID), equalTo(1));
         assertThat(mMediator.getIndexFromTabId(TAB1_ID), equalTo(0));
-        assertThat(mMediator.getIndexFromTabId(TAB2_ID), equalTo(-1));
+        assertThat(mMediator.getIndexFromTabId(TAB2_ID), equalTo(0));
         assertThat(mMediator.getIndexFromTabId(TAB3_ID), equalTo(1));
-        assertThat(mMediator.getIndexFromTabId(TAB4_ID), equalTo(-1));
+        assertThat(mMediator.getIndexFromTabId(TAB4_ID), equalTo(1));
     }
 
     @Test
@@ -5351,7 +5585,8 @@ public class TabListMediatorUnitTest {
     }
 
     @Test
-    public void testUnsetShrinkCloseAnimation_DidClose_Tab1Closed() {
+    @DisableFeatures(ChromeFeatureList.ANDROID_TAB_UI_REFACTOR)
+    public void testUnsetShrinkCloseAnimation_DidClose_Tab1Closed_featureDisabled() {
         Tab newTab = prepareTab(TAB3_ID, TAB3_TITLE, TAB3_URL);
         List<Tab> tabs = List.of(mTab1, newTab);
         createTabGroup(tabs, TAB_GROUP_ID);
@@ -5365,6 +5600,46 @@ public class TabListMediatorUnitTest {
 
         callback.onResult(true);
         assertFalse(mModelList.get(0).model.get(TabProperties.USE_SHRINK_CLOSE_ANIMATION));
+    }
+
+    @Test
+    public void testUnsetShrinkCloseAnimation_DidClose_Tab1Closed() {
+        Tab newTab = prepareTab(TAB3_ID, TAB3_TITLE, TAB3_URL);
+        List<Tab> tabs = List.of(mTab1, newTab);
+        createTabGroup(tabs, TAB_GROUP_ID);
+
+        mMediator.resetWithListOfTabs(tabs, null, false);
+
+        PropertyModel model = mModelList.get(0).model;
+        model.set(CARD_TYPE, TAB_GROUP);
+        model.set(TabProperties.TAB_GROUP_HEADER_ID, TAB_GROUP_ID);
+        model.set(TabProperties.USE_SHRINK_CLOSE_ANIMATION, true);
+
+        var callback = mMediator.getOnMaybeTabClosedCallback(TAB1_ID);
+
+        mTabModelObserverCaptor.getValue().didRemoveTabForClosure(mTab1);
+
+        callback.onResult(true);
+        assertFalse(mModelList.get(0).model.get(TabProperties.USE_SHRINK_CLOSE_ANIMATION));
+    }
+
+    @Test
+    public void testUnsetShrinkCloseAnimation_DidClose_FlatLayout_NoOp() {
+        setUpTabListMediator(TabListMediatorType.TAB_GRID_DIALOG, TabListMode.GRID);
+        Tab newTab = prepareTab(TAB3_ID, TAB3_TITLE, TAB3_URL);
+        List<Tab> tabs = List.of(mTab1, newTab);
+        createTabGroup(tabs, TAB_GROUP_ID);
+
+        mMediator.resetWithListOfTabs(tabs, null, false);
+
+        mModelList.get(1).model.set(TabProperties.USE_SHRINK_CLOSE_ANIMATION, true);
+        var callback = mMediator.getOnMaybeTabClosedCallback(TAB1_ID);
+
+        mTabModelObserverCaptor.getValue().didRemoveTabForClosure(mTab1);
+
+        callback.onResult(true);
+        // Sibling tab in FLAT layout should not be affected by group card defense.
+        assertTrue(mModelList.get(0).model.get(TabProperties.USE_SHRINK_CLOSE_ANIMATION));
     }
 
     @Test
@@ -6810,6 +7085,10 @@ public class TabListMediatorUnitTest {
                     layoutType != TabListLayoutType.NESTED
                             || mTabModel.getTabGroupCollapsed(tabGroupId);
             model.set(TabProperties.IS_COLLAPSED, isCollapsed);
+            if (layoutType == TabListLayoutType.GROUPED
+                    && ChromeFeatureList.sAndroidTabUiRefactor.isEnabled()) {
+                model.set(CARD_TYPE, TAB_GROUP);
+            }
         }
     }
 
@@ -7022,5 +7301,18 @@ public class TabListMediatorUnitTest {
                                         .build()),
                         /* allowDialog= */ eq(true),
                         any());
+    }
+
+    @Test
+    public void testGetIndexFromTabIdAndGetModelFromTabId() {
+        initAndAssertAllProperties();
+
+        assertEquals(0, mMediator.getIndexFromTabId(TAB1_ID));
+        assertEquals(1, mMediator.getIndexFromTabId(TAB2_ID));
+        assertEquals(TabModel.INVALID_TAB_INDEX, mMediator.getIndexFromTabId(99999));
+
+        assertEquals(mModelList.get(0).model, mMediator.getModelFromTabId(TAB1_ID));
+        assertEquals(mModelList.get(1).model, mMediator.getModelFromTabId(TAB2_ID));
+        assertNull(mMediator.getModelFromTabId(99999));
     }
 }

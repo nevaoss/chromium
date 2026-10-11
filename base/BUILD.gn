@@ -1287,8 +1287,6 @@ component("base") {
       "android/java_handler_thread.h",
       "android/java_runtime.cc",
       "android/java_runtime.h",
-      "android/locale_utils.cc",
-      "android/locale_utils.h",
       "android/meminfo_dump_provider.cc",
       "android/meminfo_dump_provider.h",
       "android/memory_pressure_listener_android.cc",
@@ -3303,6 +3301,14 @@ component("i18n") {
 
   if (is_win) {
     public_deps += [ "//base/i18n:win_i18n" ]
+  }
+
+  if (is_android) {
+    sources += [
+      "i18n/android_locale.cc",
+      "i18n/android_locale.h",
+    ]
+    deps += [ ":base_jni" ]
   }
 }
 
@@ -5342,7 +5348,6 @@ if (is_android) {
     deps = [
       ":build_info_java",
       ":command_line_java",
-      ":supplier_java",
       ":tasks_java",
     ]
   }
@@ -5488,7 +5493,6 @@ if (is_android) {
       ":log_java",
       ":metrics_java",
       ":resetters_java",
-      ":supplier_java",
       ":tasks_java",
       ":time_utils_java",
       "//third_party/androidx:androidx_annotation_annotation_java",
@@ -5505,6 +5509,7 @@ if (is_android) {
     deps = [
       ":tasks_java",
       "//third_party/androidx:androidx_annotation_annotation_java",
+      "//third_party/jni_zero:jni_zero_java",
     ]
   }
 
@@ -5567,9 +5572,7 @@ if (is_android) {
       ":callback_java",
       ":lifetime_java",
       ":promise_java",
-      ":resetters_java",
       ":tasks_java",
-      ":unowned_user_data_java",
       "//third_party/android_deps:com_google_errorprone_error_prone_annotations_java",
       "//third_party/androidx:androidx_annotation_annotation_java",
     ]
@@ -5595,7 +5598,6 @@ if (is_android) {
     deps = [
       ":callback_jni_java",
       "//third_party/android_deps:com_google_code_findbugs_jsr305_java",
-      "//third_party/android_deps:com_google_errorprone_error_prone_annotations_java",
       "//third_party/androidx:androidx_annotation_annotation_experimental_java",
       "//third_party/androidx:androidx_annotation_annotation_java",
       "//third_party/jni_zero:jni_zero_java",
@@ -5818,7 +5820,7 @@ if (is_android) {
       ":log_java",
       ":resetters_java",
       ":tasks_java",
-      "//base/version_info/android:version_constants_java",
+      "//base/version_info/android:channel_enum_java",
       "//third_party/android_deps:com_google_code_findbugs_jsr305_java",
       "//third_party/androidx:androidx_annotation_annotation_experimental_java",
       "//third_party/androidx:androidx_annotation_annotation_java",
@@ -5877,10 +5879,8 @@ if (is_android) {
       sources = [ "android/java/src/org/chromium/base/ui/KeyboardUtils.java" ]
       deps = [
         ":base_java",
-        ":build_info_java",
         ":log_java",
         ":tasks_java",
-        "//third_party/androidx:androidx_annotation_annotation_java",
         "//third_party/androidx:androidx_core_core_java",
       ]
     }
@@ -5902,10 +5902,10 @@ if (is_android) {
     ]
 
     deps = [
-      ":base_switches_java",
       ":callback_java",
       ":command_line_java",
       ":library_loader_jni_java",
+      ":lifetime_java",
       ":log_java",
       ":metrics_java",
       ":resetters_java",
@@ -5975,7 +5975,6 @@ if (is_android) {
   android_library("base_cached_flags_java") {
     deps = [
       ":base_java",
-      ":base_shared_preferences_java",
       "//third_party/androidx:androidx_annotation_annotation_java",
     ]
 
@@ -5987,10 +5986,7 @@ if (is_android) {
   android_library("holder_java") {
     sources = [ "android/java/src/org/chromium/base/Holder.java" ]
 
-    deps = [
-      ":callback_java",
-      ":supplier_java",
-    ]
+    deps = [ ":callback_java" ]
   }
 
   android_aidl("build_info_aidl") {
@@ -6103,7 +6099,6 @@ if (is_android) {
 
     deps = [
       ":base_java",
-      "//third_party/androidx:androidx_annotation_annotation_java",
       "//third_party/jni_zero:jni_zero_java",
       "//third_party/junit",
     ]
@@ -6206,6 +6201,7 @@ if (is_android) {
       "test/android/javatests/src/org/chromium/base/test/util/PayloadCallbackHelper.java",
       "test/android/javatests/src/org/chromium/base/test/util/RawFailureHandler.java",
       "test/android/javatests/src/org/chromium/base/test/util/RequiresRestart.java",
+      "test/android/javatests/src/org/chromium/base/test/util/ResetSharedPrefsRule.java",
       "test/android/javatests/src/org/chromium/base/test/util/Restriction.java",
       "test/android/javatests/src/org/chromium/base/test/util/RestrictionSkipCheck.java",
       "test/android/javatests/src/org/chromium/base/test/util/ScalableTimeout.java",
@@ -6295,6 +6291,7 @@ if (is_android) {
     deps = [
       ":base_java",
       ":base_java_test_support",
+      "//base/version_info/android:version_constants_java",
       "//testing/android/junit:junit_test_support",
       "//third_party/androidx:androidx_test_core_java",
       "//third_party/androidx:androidx_test_monitor_java",
@@ -6414,7 +6411,6 @@ if (is_android) {
       "//third_party/android_deps:guava_android_java",
       "//third_party/androidx:androidx_annotation_annotation_java",
       "//third_party/androidx:androidx_test_core_java",
-      "//third_party/androidx:androidx_test_runner_java",
       "//third_party/google-truth:google_truth_java",
       "//third_party/hamcrest:hamcrest_java",
       "//third_party/jni_zero:jni_zero_java",

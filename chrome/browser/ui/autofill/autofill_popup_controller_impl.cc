@@ -11,7 +11,6 @@
 #include <variant>
 #include <vector>
 
-#include "base/check_deref.h"
 #include "base/check_op.h"
 #include "base/command_line.h"
 #include "base/containers/to_vector.h"
@@ -258,13 +257,14 @@ std::optional<AutofillPopupView::SubPopupConfig> GetSubPopupConfig(
 
 }  // namespace
 
-
 bool AutofillPopupControllerImpl::MayRecycle(
     base::WeakPtr<AutofillSuggestionDelegate> delegate,
     content::WebContents* web_contents,
+    const LocalFrameToken& anchor_frame_token,
     AutofillSuggestionTriggerSource trigger_source) const {
   return delegate_.get() == delegate.get() &&
          container_view() == web_contents->GetNativeView() &&
+         GetAnchorFrameToken() == anchor_frame_token &&
          GetSuggestionTriggerSource() == trigger_source;
 }
 
@@ -331,7 +331,7 @@ void AutofillPopupControllerImpl::Show(
   }
 
   content::RenderFrameHost* rfh = FindRenderFrameHostByToken(
-      *web_contents_, controller_common_.anchor_frame_token);
+      *web_contents_, controller_common_.field_id.frame_token);
   if (!rfh) {
     Hide(SuggestionHidingReason::kNoFrameHasFocus);
     return;
@@ -413,11 +413,17 @@ void AutofillPopupControllerImpl::Show(
   }
 
   if (IsRootPopup()) {
-    // We may already be observing from a previous `Show` call.
     // TODO(crbug.com/41486228): Consider not to recycle views or controllers
     // and only permit a single call to `Show`.
-    key_press_observer_.Reset();
-    key_press_observer_.Observe(rfh);
+    key_press_registration_.Register(
+        rfh, base::BindRepeating(
+                 // Cannot bind HandleKeyPressEvent() directly because of its
+                 // return value.
+                 [](base::WeakPtr<AutofillPopupControllerImpl> weak_this,
+                    const input::NativeWebKeyboardEvent& event) {
+                   return weak_this && weak_this->HandleKeyPressEvent(event);
+                 },
+                 weak_ptr_factory_.GetWeakPtr()));
 
     if (non_filtered_suggestions_.size() == 1 &&
         non_filtered_suggestions_[0].type ==
@@ -462,7 +468,7 @@ void AutofillPopupControllerImpl::UpdateDataListValues(
 
 const LocalFrameToken& AutofillPopupControllerImpl::GetAnchorFrameToken()
     const {
-  return controller_common_.anchor_frame_token;
+  return controller_common_.field_id.frame_token;
 }
 
 bool AutofillPopupControllerImpl::IsViewVisibilityAcceptingThresholdEnabled()
@@ -501,7 +507,7 @@ void AutofillPopupControllerImpl::Hide(SuggestionHidingReason reason) {
     delegate_->ClearPreviewedForm();
     delegate_->OnSuggestionsHidden(reason);
   }
-  key_press_observer_.Reset();
+  key_press_registration_.Unregister();
   popup_hide_helper_.reset();
   // TODO(crbug.com/341916065): Consider only emitting this metric if the popup
   // has been opened before. Today the show method can call `Hide()` before
@@ -565,7 +571,9 @@ void AutofillPopupControllerImpl::AcceptSuggestion(
   base::UmaHistogramEnumeration("Autofill.SuggestionAccepted.Method",
                                 accept_method);
 
-  delegate_->DidAcceptSuggestion(suggestion, GetSuggestionMetadata(index));
+  delegate_->DidAcceptSuggestion(suggestion, GetSuggestionMetadata(index),
+                                 controller_common_.form_id,
+                                 controller_common_.field_id);
 }
 
 AutofillSuggestionDelegate::SuggestionUiMetadata
@@ -680,7 +688,8 @@ bool AutofillPopupControllerImpl::RemoveSuggestion(int list_index) {
       break;
     case FillingProduct::kAutocomplete:
       AutofillMetrics::LogAutocompleteEvent(
-          AutofillMetrics::AutocompleteEvent::AUTOCOMPLETE_SUGGESTION_DELETED);
+          AutofillMetrics::AutocompleteEvent::AUTOCOMPLETE_SUGGESTION_DELETED,
+          GetSuggestions()[list_index]);
       if (view_) {
         view_->AxAnnounce(l10n_util::GetStringFUTF16(
             IDS_AUTOFILL_AUTOCOMPLETE_ENTRY_DELETED_A11Y_HINT,
@@ -895,36 +904,6 @@ AutofillPopupControllerImpl::GetRootAXPlatformNodeForWebContents() {
   return ui::AXPlatformNode::FromNativeViewAccessible(native_view_accessible);
 }
 
-AutofillPopupControllerImpl::KeyPressObserver::KeyPressObserver(
-    AutofillPopupControllerImpl* observer)
-    : observer_(CHECK_DEREF(observer)) {}
-
-AutofillPopupControllerImpl::KeyPressObserver::~KeyPressObserver() {
-  Reset();
-}
-
-void AutofillPopupControllerImpl::KeyPressObserver::Observe(
-    content::RenderFrameHost* rfh) {
-  rfh_ = rfh->GetGlobalId();
-  handler_ = base::BindRepeating(
-      // Cannot bind HandleKeyPressEvent() directly because of its
-      // return value.
-      [](base::WeakPtr<AutofillPopupControllerImpl> weak_this,
-         const input::NativeWebKeyboardEvent& event) {
-        return weak_this && weak_this->HandleKeyPressEvent(event);
-      },
-      observer_->weak_ptr_factory_.GetWeakPtr());
-  rfh->GetRenderWidgetHost()->AddKeyPressEventCallback(handler_);
-}
-
-void AutofillPopupControllerImpl::KeyPressObserver::Reset() {
-  if (auto* rfh = content::RenderFrameHost::FromID(rfh_)) {
-    rfh->GetRenderWidgetHost()->RemoveKeyPressEventCallback(handler_);
-  }
-  rfh_ = {};
-  handler_ = content::RenderWidgetHost::KeyPressEventCallback();
-}
-
 // AutofillPopupController implementation.
 
 void AutofillPopupControllerImpl::SelectSuggestion(int index) {
@@ -953,7 +932,9 @@ void AutofillPopupControllerImpl::SelectSuggestion(int index) {
   }
 
   any_suggestion_selected_ = true;
-  delegate_->DidSelectSuggestion(GetSuggestionAt(index));
+  delegate_->DidSelectSuggestion(GetSuggestionAt(index),
+                                 controller_common_.form_id,
+                                 controller_common_.field_id);
 }
 
 void AutofillPopupControllerImpl::UnselectSuggestion() {

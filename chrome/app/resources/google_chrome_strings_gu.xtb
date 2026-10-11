@@ -529,7 +529,6 @@ Google Chrome તમારા સેટિંગને રિકવર કરી
 <translation id="6166185671393271715">Chrome માં પાસવર્ડ્સને આયાત કરો</translation>
 <translation id="6169866489629082767"><ph name="PAGE_TITLE" /> - Google Chrome</translation>
 <translation id="6173637689840186878"><ph name="PAGE_TITLE" /> - Google Chrome બીટા</translation>
-<translation id="6177442314419606057">Chromeમાં શોધો</translation>
 <translation id="6180522807229584611">આ ટૅબ વધારાના સંસાધનોનો ઉપયોગ કરી રહ્યું છે. તમારા પર્ફોર્મન્સને બહેતર બનાવવા માટે, Chromeને તેને નિષ્ક્રિય કરવા દો.</translation>
 <translation id="6182736845697986886">કોઈ અપડેટ સર્વરની આંતરિક ભૂલને કારણે ઇન્સ્ટૉલેશન નિષ્ફળ રહ્યું.</translation>
 <translation id="6192058120268468905">Chromeમાં તમારું એકાઉન્ટ</translation>
@@ -561,6 +560,7 @@ Google Chrome તમારા સેટિંગને રિકવર કરી
 <translation id="6434035853014503219">Chromeને તમારા ડિફૉલ્ટ બ્રાઉઝર તરીકે પસંદ કરવા બદલ આભાર!</translation>
 <translation id="6438015621983209660">તમારા ફોન પર Chrome વડે Safe Browsingમાં વધારેલી સુરક્ષા વિસ્તૃત કરો</translation>
 <translation id="6442774133615368941">Chrome iOS ઍપ પર તમારા કૅમેરા વડે જે જુઓ, તેને ખરીદો, અનુવાદ કરો અને તેની ઓળખ કરો</translation>
+<translation id="6446105560007692480">Chrome વડે શોધવા અથવા <ph name="BEGIN_LINK" />સેટિંગ<ph name="END_LINK" />માં કસ્ટમાઇઝ કરવા માટે</translation>
 <translation id="6448835208126432197">Chromeમાં Geminiમાં સ્ક્રીનનો ભાગ પસંદ કરવા માટે, કીબોર્ડ શૉર્ટકટનો ઉપયોગ કરો.</translation>
 <translation id="6473905796280459355">Chrome વિશે પેજ પર જાઓ</translation>
 <translation id="6481963882741794338">મનગમતું બનાવવા અને અન્ય હેતુઓ માટે, Chrome અને Googleની અન્ય સેવાઓ લિંક કરો</translation>
@@ -582,6 +582,7 @@ Google Chrome તમારા સેટિંગને રિકવર કરી
 <translation id="6612152958212564387">તમે Googleને વપરાશના આંકડા અને ક્રૅશ રિપોર્ટ મોકલી રહ્યાં નથી. <ph name="BEGIN_LINK" />મેનેજ કરો<ph name="END_LINK" /></translation>
 <translation id="6613949864921837107">Chromeને તમારા ડિફૉલ્ટ બ્રાઉઝર તરીકે સેટ કરીને તમારા પાસવર્ડ, બુકમાર્ક અને ઇતિહાસને બધા ડિવાઇસ પર સંપૂર્ણ રીતે સિંક કરેલા રાખો.</translation>
 <translation id="6631524303639368205">તમે જ્યાંથી છોડ્યું હતું ત્યાંથી ચાલુ કરો: Chromeએ તમારા છેલ્લા સત્રના ટૅબ રિસ્ટોર કર્યા છે. તમે આને આમાં બંધ કરી શકો છો</translation>
+<translation id="6632012506031284914">Chrome વડે શોધવા માટે.</translation>
 <translation id="6632473616050862500">ChromeOS Flex વધારાના <ph name="BEGIN_LINK_CROS_OSS" />ઓપન સૉર્સ સૉફ્ટવેર<ph name="END_LINK_CROS_OSS" /> દ્વારા શક્ય બન્યું છે.</translation>
 <translation id="6634299872736643004">આ સેટિંગના ફેરફારો એકવાર Chrome ફરી શરૂ થાય પછી લાગુ થશે.</translation>
 <translation id="6660596345553328257">શું Chromeમાં સાઇન ઇન કરીએ?</translation>
@@ -598,7 +599,6 @@ Google Chrome તમારા સેટિંગને રિકવર કરી
 <translation id="6750954913813541382">જોડણીની ભૂલો સુધારવા માટે, તમે બ્રાઉઝરમાં ટાઇપ કરો છો તે ટેક્સ્ટ Chrome દ્વારા Googleને મોકલવામાં આવે છે</translation>
 <translation id="6760235774835597023">Chromeના V8 એન્જિન વડે સાઇટની ગતિ વધારે છે પરંતુ Chromeને અટૅક સામે થોડું ઓછું પ્રતિરોધક બનાવે છે. આ સેટિંગ ચાલુ છે.</translation>
 <translation id="677276454032249905">છતાં પણ Chromeમાંથી બહાર નિકળવું છે?</translation>
-<translation id="6777654166489463890">Chromeની બહારના કન્ટેન્ટ વિશે પૂછો, જેમ કે તમે ખોલેલી અન્ય ઍપ અથવા ફાઇલ</translation>
 <translation id="6794858689789885890">જ્યારે તમે Chrome બંધ કરો, ત્યારે હંમેશાં તમારા ડિવાઇસમાંથી સાઇટનો ડેટા ડિલીટ કરો</translation>
 <translation id="6800285125190089494">iOS પર Chrome માટે સાચવેલા પાસવર્ડનો ઉપયોગ કરીને સાઇટ પર વધુ ઝડપથી સાઇન ઇન કરો</translation>
 <translation id="6831043979455480757">અનુવાદ કરો</translation>

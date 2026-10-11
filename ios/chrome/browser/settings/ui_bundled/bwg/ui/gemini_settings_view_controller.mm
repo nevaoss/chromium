@@ -15,6 +15,7 @@
 #import "ios/chrome/browser/settings/ui_bundled/bwg/model/gemini_settings_metadata.h"
 #import "ios/chrome/browser/settings/ui_bundled/bwg/ui/gemini_camera_view_controller.h"
 #import "ios/chrome/browser/settings/ui_bundled/bwg/ui/gemini_location_view_controller.h"
+#import "ios/chrome/browser/settings/ui_bundled/bwg/ui/gemini_suggestions_view_controller.h"
 #import "ios/chrome/browser/settings/ui_bundled/bwg/utils/gemini_settings_metrics.h"
 #import "ios/chrome/browser/shared/model/url/chrome_url_constants.h"
 #import "ios/chrome/browser/shared/ui/table_view/cells/table_view_detail_text_item.h"
@@ -38,6 +39,7 @@ typedef NS_ENUM(NSInteger, SectionIdentifier) {
   SectionIdentifierLocation = kSectionIdentifierEnumZero,
   SectionIdentifierCamera,
   SectionIdentifierPageContent,
+  SectionIdentifierSuggestions,
   SectionIdentifierPreferences,
   SectionIdentifierMicrophone,
 };
@@ -50,12 +52,14 @@ typedef NS_ENUM(NSInteger, ItemType) {
   ItemTypeExtensions,
   ItemTypeClosedCaptioning,
   ItemTypeMicrophone,
+  ItemTypeSuggestions,
   ItemTypeLocationFooter,
   ItemTypeCameraFooter,
   ItemTypePageContentSharingFooter,
   ItemTypeAppActivityFooter,
   ItemTypeClosedCaptioningFooter,
   ItemTypeMicrophoneFooter,
+  ItemTypeSuggestionsFooter,
 };
 
 // Table identifier.
@@ -68,6 +72,7 @@ NSString* const kLocationCellId = @"LocationCellId";
 NSString* const kCameraCellId = @"CameraCellId";
 NSString* const kMicrophoneCellId = @"MicrophoneCellId";
 NSString* const kPageContentSharingCellId = @"PageContentSharingCellId";
+NSString* const kSuggestionsCellId = @"SuggestionsCellId";
 
 // Action identifier on a tap on links.
 NSString* const kLocationLinkAction = @"LocationLinkAction";
@@ -86,6 +91,8 @@ NSString* const kPageContentSharingAction = @"PageContentSharingAction";
   TableViewMultiDetailTextItem* _preciseLocationItem;
   // Camera item.
   TableViewMultiDetailTextItem* _cameraItem;
+  // Suggestions item.
+  TableViewMultiDetailTextItem* _suggestionsItem;
   // Switch item for toggling microphone.
   TableViewSwitchItem* _microphoneItem;
   // Switch item for toggling page content sharing.
@@ -94,12 +101,16 @@ NSString* const kPageContentSharingAction = @"PageContentSharingAction";
   GeminiLocationViewController* _locationViewController;
   // Camera view controller shown when camera row is tapped.
   GeminiCameraViewController* _cameraViewController;
+  // Suggestions view controller shown when suggestions row is tapped.
+  GeminiSuggestionsViewController* _suggestionsViewController;
   // Closed captioning preference value.
   BOOL _closedCaptioningEnabled;
   // Precise location preference value.
   BOOL _preciseLocationEnabled;
   // Camera preference value.
   BOOL _cameraEnabled;
+  // Suggestions preference value.
+  BOOL _suggestionsEnabled;
   // Microphone preference value.
   BOOL _microphoneEnabled;
   // Page content sharing preference value.
@@ -186,6 +197,23 @@ NSString* const kPageContentSharingAction = @"PageContentSharingAction";
                                    IDS_IOS_GEMINI_SETTINGS_CAMERA_FOOTER_TEXT)
                        linkURL:GURL()];
 
+  TableViewLinkHeaderFooterItem* suggestionsFooterItem;
+  if (IsGeminiContextualSuggestionsCuesEnabled()) {
+    _suggestionsItem = [self
+             detailItemWithType:ItemTypeSuggestions
+                           text:l10n_util::GetNSString(
+                                    IDS_IOS_GEMINI_SETTINGS_SUGGESTIONS_TITLE)
+             trailingDetailText:[self suggestionsTrailingDetailText]
+        accessibilityIdentifier:kSuggestionsCellId];
+
+    NSString* suggestionsFooterText =
+        l10n_util::GetNSString(IDS_IOS_GEMINI_SETTINGS_SUGGESTIONS_FOOTER_TEXT);
+    suggestionsFooterItem =
+        [self headerFooterItemWithType:ItemTypeSuggestionsFooter
+                                  text:suggestionsFooterText
+                               linkURL:GURL(kGeminiPageContentSharingURL)];
+  }
+
   TableViewLinkHeaderFooterItem* microphoneFooterItem = [self
       headerFooterItemWithType:ItemTypeMicrophoneFooter
                           text:
@@ -254,6 +282,17 @@ NSString* const kPageContentSharingAction = @"PageContentSharingAction";
       toSectionWithIdentifier:SectionIdentifierPageContent];
   [model setFooter:pageContentSharingFooterItem
       forSectionWithIdentifier:SectionIdentifierPageContent];
+
+  if (IsGeminiContextualSuggestionsCuesEnabled()) {
+    [model addSectionWithIdentifier:SectionIdentifierSuggestions];
+    if (!firstPermissionsSectionIdentifier) {
+      firstPermissionsSectionIdentifier = SectionIdentifierSuggestions;
+    }
+    [model addItem:_suggestionsItem
+        toSectionWithIdentifier:SectionIdentifierSuggestions];
+    [model setFooter:suggestionsFooterItem
+        forSectionWithIdentifier:SectionIdentifierSuggestions];
+  }
 
   if (firstPermissionsSectionIdentifier) {
     [model setHeader:[self headerItemWithText:
@@ -410,6 +449,16 @@ NSString* const kPageContentSharingAction = @"PageContentSharingAction";
   return l10n_util::GetNSString(IDS_IOS_SETTING_OFF);
 }
 
+// Returns suggestions trailing detail text which depends on the related pref
+// value.
+- (NSString*)suggestionsTrailingDetailText {
+  if (_suggestionsEnabled) {
+    return l10n_util::GetNSString(IDS_IOS_SETTING_ON);
+  }
+
+  return l10n_util::GetNSString(IDS_IOS_SETTING_OFF);
+}
+
 #pragma mark - UITableViewDelegate
 
 - (void)tableView:(UITableView*)tableView
@@ -432,6 +481,16 @@ NSString* const kPageContentSharingAction = @"PageContentSharingAction";
     _cameraViewController.cameraEnabled = _cameraEnabled;
     _cameraViewController.mutator = self.mutator;
     [self.navigationController pushViewController:_cameraViewController
+                                         animated:YES];
+  }
+
+  if ([self.tableViewModel itemTypeForIndexPath:indexPath] ==
+      ItemTypeSuggestions) {
+    _suggestionsViewController = [[GeminiSuggestionsViewController alloc]
+        initWithStyle:ChromeTableViewStyle()];
+    _suggestionsViewController.suggestionsEnabled = _suggestionsEnabled;
+    _suggestionsViewController.mutator = self.mutator;
+    [self.navigationController pushViewController:_suggestionsViewController
                                          animated:YES];
   }
 
@@ -533,6 +592,23 @@ NSString* const kPageContentSharingAction = @"PageContentSharingAction";
   if ([self isViewLoaded]) {
     _cameraItem.trailingDetailText = [self cameraTrailingDetailText];
     [self reconfigureCellsForItems:@[ _cameraItem ]];
+  }
+}
+
+- (void)setGeminiSuggestionsEnabled:(BOOL)enabled {
+  if (!IsGeminiContextualSuggestionsCuesEnabled()) {
+    return;
+  }
+
+  _suggestionsEnabled = enabled;
+
+  if (_suggestionsViewController) {
+    _suggestionsViewController.suggestionsEnabled = enabled;
+  }
+
+  if ([self isViewLoaded]) {
+    _suggestionsItem.trailingDetailText = [self suggestionsTrailingDetailText];
+    [self reconfigureCellsForItems:@[ _suggestionsItem ]];
   }
 }
 

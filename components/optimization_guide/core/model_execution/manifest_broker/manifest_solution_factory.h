@@ -28,7 +28,6 @@
 #include "services/on_device_model/public/cpp/model_assets.h"
 #include "services/on_device_model/public/cpp/service_client.h"
 #include "services/on_device_model/public/mojom/on_device_model.mojom.h"
-#include "third_party/abseil-cpp/absl/container/flat_hash_map.h"
 
 namespace optimization_guide {
 
@@ -125,6 +124,9 @@ class ManifestSolutionFactory {
 
  private:
   class Solution;
+
+  // Unloads models and resets state associated with the given asset.
+  void UnloadAsset(const std::string& asset_id);
 
   // Resolves a file reference to a file path.
   // Returns nullopt if the asset is not available.

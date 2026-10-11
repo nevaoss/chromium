@@ -17,7 +17,7 @@
 #include "chrome/browser/search_engines/ai_mode_button_service_factory.h"
 #include "chrome/browser/tab_list/tab_list_interface.h"
 #include "chrome/browser/ui/bookmarks/bookmark_stats.h"
-#include "chrome/browser/ui/browser_window/public/browser_window_features.h"
+#include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/contextual_search/searchbox_context_data.h"
 #include "chrome/browser/ui/location_bar/location_bar.h"
@@ -44,6 +44,7 @@
 #include "components/contextual_search/contextual_search_service.h"
 #include "components/contextual_search/pref_names.h"
 #include "components/lens/lens_features.h"
+#include "components/lens/lens_overlay_invocation_source.h"
 #include "components/navigation_metrics/navigation_metrics.h"
 #include "components/omnibox/browser/aim_eligibility_service.h"
 #include "components/omnibox/browser/autocomplete_classifier.h"
@@ -147,6 +148,7 @@ WebuiOmniboxHandler::WebuiOmniboxHandler(
   // `OmniboxView`.
   CHECK(omnibox_controller);
   controller_ = omnibox_controller;
+  SendAvailableKeywordModels();
   autocomplete_controller_observation_.Observe(autocomplete_controller());
   edit_model_observation_.Observe(omnibox_controller->edit_model());
 
@@ -321,6 +323,11 @@ void WebuiOmniboxHandler::AddTabContext(
     context = std::make_unique<SearchboxContextData::Context>();
   }
 
+  if (source == searchbox::mojom::TabAttachmentSource::kCurrentTabChip) {
+    context->invocation_source =
+        lens::LensOverlayInvocationSource::kOmniboxPageAction;
+  }
+
   auto tab_attachment = searchbox::mojom::TabAttachment::New();
   tab_attachment->tab_id = tab_id;
   tab_attachment->title = base::UTF16ToUTF8(TabUIHelper::From(tab)->GetTitle());
@@ -404,7 +411,6 @@ WindowOpenDisposition WebuiOmniboxHandler::ComputeWindowOpenDisposition(
                    meta_key, shift_key);
 }
 
-
 bool WebuiOmniboxHandler::ShouldShowFirstContextualDescription() const {
   return omnibox::kAskGShowFirstDescription.Get() &&
          autocomplete_controller() &&
@@ -466,12 +472,16 @@ void WebuiOmniboxHandler::OnStart(AutocompleteController* controller,
   bool cobrowse_blocked = (omnibox::kAskGCoBrowse.Get() ||
                            omnibox::kAskGCoBrowseWithVisualSelection.Get()) &&
                           client && !client->ShouldOpenCoBrowsePanel();
+  bool composebox_blocked = omnibox::kAskGComposeBox.Get() && client &&
+                            !client->ShouldOpenComposeboxForAskG();
+  bool ask_g_fallback_to_lens = cobrowse_blocked || composebox_blocked;
   // Check if there are zero suggest (either on NTP or on web) or the
   // input text is empty (necessary because `IsZeroSuggest()` is false on
   // clobber).
   page_->UpdateLensSearchEligibility(
       ContextualSearchProvider::LensEntrypointEligible(input, client) &&
-      !cobrowse_blocked && (input.IsZeroSuggest() || input.text().empty()));
+      !ask_g_fallback_to_lens &&
+      (input.IsZeroSuggest() || input.text().empty()));
 }
 
 void WebuiOmniboxHandler::OnResultChanged(AutocompleteController* controller,
@@ -535,8 +545,11 @@ void WebuiOmniboxHandler::OnTabWillDetach(
 
 void WebuiOmniboxHandler::OnTabDidInsert(tabs::TabInterface* tab) {
   if (auto* browser_window_interface = tab->GetBrowserWindowInterface()) {
+    // The window can be absent in unit tests that stub out the browser.
+    BrowserWindow* const browser_window =
+        BrowserWindow::FromBrowser(browser_window_interface);
     if (auto* location_bar =
-            browser_window_interface->GetFeatures().location_bar()) {
+            browser_window ? browser_window->GetLocationBar() : nullptr) {
       if (auto* omnibox_controller = location_bar->GetOmniboxController()) {
         edit_model_observation_.Reset();
         autocomplete_controller_observation_.Reset();

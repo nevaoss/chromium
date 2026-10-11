@@ -244,13 +244,6 @@ bool IsExperimentalAccessibilityDictationContextCheckingEnabled() {
       ::features::kExperimentalAccessibilityDictationContextChecking);
 }
 
-BASE_FEATURE(kAccessibilityInvertedMouseCursor,
-             base::FEATURE_ENABLED_BY_DEFAULT);
-bool IsAccessibilityInvertedMouseCursorEnabled() {
-  return base::FeatureList::IsEnabled(
-      ::features::kAccessibilityInvertedMouseCursor);
-}
-
 BASE_FEATURE(kAccessibilityShakeToLocate, base::FEATURE_DISABLED_BY_DEFAULT);
 bool IsAccessibilityShakeToLocateEnabled() {
   return base::FeatureList::IsEnabled(::features::kAccessibilityShakeToLocate);
@@ -425,11 +418,6 @@ bool IsReadAnythingLineFocusEnabled() {
 BASE_FEATURE(kHatsReadingModeSurvey, base::FEATURE_DISABLED_BY_DEFAULT);
 bool IsHatsReadingModeSurveyEnabled() {
   return base::FeatureList::IsEnabled(::features::kHatsReadingModeSurvey);
-}
-
-bool IsReadAnythingDocsIntegrationEnabled() {
-  return base::FeatureList::IsEnabled(
-      ax::mojom::features::kReadAnythingDocsIntegration);
 }
 
 BASE_FEATURE(kReadAnythingWithReadability, base::FEATURE_ENABLED_BY_DEFAULT);

@@ -418,7 +418,7 @@
     // tracked using the Element::SetTrackedElementSubRect() method.
     {
       name: "AIPageContentTrackedElementsPassword",
-      status: "test"
+      status: "stable"
     },
     // Clamp AIPageContent visible bounding boxes to the local-root viewport
     // after visual-viewport mapping to normalize viewport-relative geometry.
@@ -1190,6 +1190,15 @@
       status: "stable",
     },
     {
+      // Run the CSP "Should element's inline behavior be blocked?" check when
+      // an event handler content attribute is set to an inline script.
+      // See the specs:
+      // https://html.spec.whatwg.org/multipage/webappapis.html#event-handler-content-attributes
+      // https://w3c.github.io/webappsec-csp/#should-block-inline
+      name: "CheckCSPOnInlineScriptAttributeSet",
+      status: "stable",
+    },
+    {
       name: "CheckVisibilityExtraProperties",
       status: "stable",
     },
@@ -1242,6 +1251,12 @@
       // See https://crbug.com/40684204
       name: "ClipboardEventTargetUsesContainerNode",
       status: "stable",
+    },
+    {
+      // It is only enabled in extension environment.
+      name: "ClipboardOnExtensionServiceWorker",
+      base_feature: "none",
+      public: true,
     },
     {
       // Fix middle-click paste (kSelection buffer) from leaking images on
@@ -1395,7 +1410,7 @@
     },
     {
       name: "ConstructableStylesheetCache",
-      status: "stable",
+      status: "test",
     },
     {
       name: "ContactsManager",
@@ -2141,12 +2156,6 @@
       status: "experimental",
     },
     {
-      // Support resolving naming conficts for scroll and view timeline names
-      // by selecting the last in flat tree order.
-      name: "CSSTimelineNameConflictResolution",
-      status: "experimental",
-    },
-    {
       // Support for the 'all' keyword of the 'timeline-scope' property.
       //
       // https://drafts.csswg.org/scroll-animations-1/#timeline-scope
@@ -2158,6 +2167,12 @@
       //
       // https://github.com/w3c/csswg-drafts/issues/12581
       name: "CSSTimelineScopeGlobal",
+    },
+    {
+      // Support tree-scoped scroll and view timeline names according to the
+      // CSSWG resolution on tree-scoped references.
+      name: "CSSTreeScopedScrollTimeline",
+      status: "experimental",
     },
     {
       name: "CSSTypedArithmetic",
@@ -2675,15 +2690,6 @@
       status: "experimental",
       base_feature: "none",
       browser_process_read_access: true,
-    },
-    {
-      name: "EmailVerificationStatusIndicator",
-      status: "experimental",
-      depends_on: ["EmailVerificationProtocol"],
-      origin_trial_feature_name: "EmailVerificationProtocol",
-      origin_trial_allows_third_party: true,
-      origin_trial_os: ["win", "mac", "linux", "chromeos", "android"],
-      base_feature: "none",
     },
     {
       // This was added in M151 and can be removed after M153.
@@ -3363,7 +3369,7 @@
       // drags not start if the "dragstart" event caused a layout shift that
       // made the mouse hit test miss the drag source.
       name: "GenerateDragOverlayBeforeDragStart",
-      status: "experimental",
+      status: "stable",
     },
     {
       // Killswitch for the visible deprecation warning banner shown on
@@ -3447,6 +3453,12 @@
       // This was added in M141 and can be removed after M143.
       // https://issues.chromium.org/issues/40502558
       name: "GetElementsByNameOnlyHTMLElements",
+      status: "stable",
+    },
+    {
+      // Performs retargeting on the output of InputEvent.getTargetRanges() to
+      // prevent leaking nodes in shadow roots.
+      name: "GetTargetRangesRetargeting",
       status: "stable",
     },
     {
@@ -3591,14 +3603,6 @@
       name: "HTMLElementScrollParent",
       status: "experimental",
     },
-    // Remove support for `::-webkit-clear-button`.
-    // This shipped in M149 and the flag can be removed in M151.,
-    // NOTE: when this flag is removed, be sure to also remove "clear"
-    // from third_party/blink/renderer/core/html/shadow/shadow_element_names.json5.
-    {
-      name: "HTMLInputElementDropWebkitClearButton",
-      status: "stable"
-    },
     // Adds support for the `::interest-button` pseudo element, which is a sub-
     // feature of the interest invokers feature.
     // https://open-ui.org/components/interest-invokers.explainer/
@@ -3649,6 +3653,13 @@
       // https://open-ui.org/components/switch.attribute.explainer/
       name: "HTMLSwitchAttribute",
       status: "experimental",
+    },
+    {
+      // Use orientation segmentation for hyphenation strings in vertical mixed
+      // text, so characters such as "+=" render sideways instead of upright.
+      // https://crbug.com/562849567
+      name: "HyphenVerticalOrientationFix",
+      status: "stable",
     },
     {
       name: "ICUCapitalization",
@@ -3836,7 +3847,7 @@
     },
     {
       name: "JavaScriptImportText",
-      status: "experimental",
+      status: "stable",
     },
     {
       name: "JavaScriptSourcePhaseImports",
@@ -4249,7 +4260,7 @@
     // https://crbug.com/534781954
     {
       name: "ModuleMapDoNotCacheFailedFetch",
-      status: "experimental",
+      status: "stable",
     },
     // ModulePreloadReferrer enables modulepreload to send proper referrer
     // headers as specified in the HTML spec.
@@ -4787,6 +4798,18 @@
       name: "PermissionsRequestRevoke",
       status: "experimental",
     },
+    {
+      // Enables the <persistentwidget> element, which is like an <iframe> but
+      // can stay alive without reloading when its opener/embedder navigates
+      // from one same-origin document to another.
+      // There are checks for this flag in content/browser, which means that
+      // setting status to "experimental" would not actually enable this
+      // feature, it has to be "stable" in order for it to actually get enabled
+      // in the browser process. Manual and automated tests must pass the
+      // --enable-features=PersistentWidgetAPI command line flag to the
+      // browser.
+      name: "PersistentWidgetAPI",
+    },
     // This is a reverse OT used for a phased deprecation.
     // https://crbug.com/918374
     {
@@ -4880,9 +4903,10 @@
       status: "stable",
     },
     {
-      // Kill switch for skipping MathML <script src> and simulating the HTML
-      // breakout tags in the HTML preload scanner. https://crbug.com/40728681
-      name: "PreloadScannerSkipMathMLScript",
+      // Kill switch for spec-compliant handling of HTML <image> and SVG/MathML
+      // foreign content in the HTML preload scanner. Ships in M155 and can be
+      // removed in M158. https://crbug.com/40728681
+      name: "PreloadScannerImprovements",
       status: "stable",
     },
     {
@@ -5022,6 +5046,13 @@
     {
       // ChromeStatus: https://chromestatus.com/feature/6194847180128256
       name: "QuotaExceededErrorUpdate",
+      status: "stable",
+    },
+    {
+      // Gives a natively painted input[type=radio] a 50% border radius so that
+      // box-shadow and outline follow the circle the theme paints instead of
+      // the square border box. See crbug.com/40877887.
+      name: "RadioButtonCircularBorderRadius",
       status: "stable",
     },
     {
@@ -5956,14 +5987,6 @@
       public: true,
     },
     {
-      // Historically, the parser split Text nodes at ~64k boundaries. This
-      // behavior is no longer necessary; by default the parser keeps each run
-      // of text in a single Text node. Enabling this flag restores the legacy
-      // behavior of splitting Text nodes at 64k boundaries. Shipping in M151
-      // and can be removed in M153.
-      name: "SplitLargeTextNodes",
-    },
-    {
       // Splits a qualified name on its first colon, per the DOM "validate and
       // extract" algorithm, so any later colons are part of the local name.
       // See https://crbug.com/490251709
@@ -6520,12 +6543,6 @@
       name: "TrustedTypesFromLiteral",
       status: "experimental",
       base_feature: "none",
-    },
-    {
-      // Adapt Trusted Types to its new spec, as part of HTML.
-      // Tracking bug: 330516530
-      name: "TrustedTypesHTML",
-      status: "stable",
     },
     {
       name: "TrustedTypesUseCodeLike",
@@ -7428,6 +7445,15 @@
     {
       name: "WindowOpenAlwaysOnTop",
       status: "test",
+    },
+    {
+      // If enabled, "attributionsrc" in window.open() features will not
+      // disable UI features (avoiding opening as a popup instead of a new tab)
+      // when Attribution Reporting is disabled/removed. Can be removed once
+      // kAttributionReportingWindowOpen usage is sufficiently low.
+      // https://crbug.com/553155942
+      name: "WindowOpenAttributionSrc",
+      status: "stable",
     },
     {
       // Fixes an issue where Ctrl+Right Arrow skips punctuation before a newline.

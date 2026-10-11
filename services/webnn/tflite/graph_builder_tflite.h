@@ -8,6 +8,7 @@
 #include <concepts>
 #include <cstdint>
 #include <map>
+#include <optional>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -29,6 +30,7 @@
 #include "services/webnn/public/cpp/webnn_types.h"
 #include "services/webnn/public/mojom/webnn_context_provider.mojom.h"
 #include "services/webnn/public/mojom/webnn_graph.mojom.h"
+#include "services/webnn/webnn_utils.h"
 #include "third_party/abseil-cpp/absl/container/flat_hash_map.h"
 #include "third_party/flatbuffers/src/include/flatbuffers/flatbuffers.h"
 #include "third_party/tflite/src/tensorflow/compiler/mlir/lite/schema/schema_generated.h"
@@ -44,10 +46,6 @@ class WebNNConstantOperand;
 namespace tflite {
 
 using TensorIndex = int32_t;
-
-struct Float16 {
-  uint16_t data;
-};
 
 struct TensorDescriptor {
   TensorIndex tensor_index;
@@ -237,6 +235,17 @@ class GraphBuilderTflite final {
       QuantizateParametersOffset quantize_params = 0,
       bool operation_supports_float16 = false,
       std::optional<::tflite::TensorType> override_tensor_type = std::nullopt);
+
+  // Must be called right after the operator that produced the float32
+  // temporary those casts read is appended to `operators_`. A graph output
+  // operand may also be consumed by a later operation, and that consumer reads
+  // the float16 tensor these casts write, because
+  // `operand_to_tensor_info_map_` holds the float16 graph output tensor rather
+  // than the float32 temporary. Deferring the casts any further would place
+  // them after their consumers, and TFLite both executes operators in list
+  // order and rejects a model whose operator reads a tensor that no earlier
+  // operator produced.
+  void FlushGraphOutputCastOperators();
 
   // The following steps implement the `SerializeOperation` function:
   // 1. Create `tflite::OperatorCode` with the kind of operator.
@@ -766,14 +775,14 @@ class GraphBuilderTflite final {
       const mojom::Clamp& clamp);
   base::expected<OperatorOffset, std::string> SerializeConv2d(
       const mojom::Conv2d& conv2d);
-  base::expected<OperatorOffset, std::string> SerializeConcat(
+  base::expected<std::optional<OperatorOffset>, std::string> SerializeConcat(
       const mojom::Concat& concat);
   base::expected<OperatorOffset, std::string> SerializeCumulativeSum(
       const mojom::CumulativeSum& cumulative_sum);
   base::expected<OperatorOffset, std::string> SerializeElementWiseBinary(
       const mojom::ElementWiseBinary& op);
-  base::expected<OperatorOffset, std::string> SerializeElementWiseUnary(
-      const mojom::ElementWiseUnary& op);
+  base::expected<std::optional<OperatorOffset>, std::string>
+  SerializeElementWiseUnary(const mojom::ElementWiseUnary& op);
   base::expected<OperatorOffset, std::string> SerializeElu(
       const mojom::Elu& elu);
   base::expected<OperatorOffset, std::string> SerializeErf(
@@ -815,11 +824,11 @@ class GraphBuilderTflite final {
       const mojom::HardSigmoid& hard_sigmoid);
   base::expected<OperatorOffset, std::string> SerializeHardSwish(
       const mojom::HardSwish& hard_swish);
-  // Returns Null OperatorOffset if the operation is elided, otherwise returns
-  // the OperatorOffset of the serialized operation.
-  base::expected<OperatorOffset, std::string> SerializeIdentityOperation(
-      OperandId input_operand_id,
-      OperandId output_operand_id);
+  // Returns std::nullopt if the operation is elided (no TFLite operator is
+  // created), otherwise the OperatorOffset of the serialized operation.
+  base::expected<std::optional<OperatorOffset>, std::string>
+  SerializeIdentityOperation(OperandId input_operand_id,
+                             OperandId output_operand_id);
 
   base::expected<OperatorOffset, std::string> SerializeInstanceNormalization(
       const mojom::InstanceNormalization& instance_normalization);
@@ -882,7 +891,7 @@ class GraphBuilderTflite final {
       const mojom::Resample2d& resample2d);
   base::expected<OperatorOffset, std::string> SerializeReshape(
       const mojom::Reshape& reshape);
-  base::expected<OperatorOffset, std::string> SerializeReverse(
+  base::expected<std::optional<OperatorOffset>, std::string> SerializeReverse(
       const mojom::Reverse& reverse);
   base::expected<OperatorOffset, std::string> SerializeScatterElements(
       const mojom::ScatterElements& scatter_elements);

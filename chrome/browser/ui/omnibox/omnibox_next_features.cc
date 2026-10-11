@@ -282,6 +282,15 @@ bool IsAimPopupFeatureEnabled() {
   return base::FeatureList::IsEnabled(internal::kWebUIOmniboxAimPopup);
 }
 
+bool ShouldDrawAimShadowInWebUI() {
+  return IsWebUIOmniboxFullPopupEnabled() &&
+         base::FeatureList::IsEnabled(kOmniboxAimWebUIShadow);
+}
+
+bool ShouldDrawFullPopupShadowInWebUI() {
+  return base::FeatureList::IsEnabled(kOmniboxFullWebUIShadow);
+}
+
 bool IsAimPopupEnabled(Profile* profile) {
   if (!profile) {
     return false;
@@ -466,6 +475,8 @@ const base::FeatureParam<bool> kWebUIOmniboxFullPopupUseBrowserView{
     &kWebUIOmniboxFullPopup, "Omnibox_UseBrowserView", false};
 const base::FeatureParam<bool> kWebUIOmniboxFullPopupMultiline{
     &kWebUIOmniboxFullPopup, "Omnibox_Multiline", false};
+const base::FeatureParam<int> kWebUIOmniboxFullPopupSnapshotCacheSize{
+    &kWebUIOmniboxFullPopup, "Omnibox_SnapshotCacheSize", 10};
 const base::FeatureParam<bool> kWebUIOmniboxDynamicAnimation{
     &kWebUIOmniboxDynamicAiModeButton, "Omnibox_DynamicAnimation", false};
 const base::FeatureParam<bool> kWebUIOmniboxDynamicColorScheme{

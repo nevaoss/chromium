@@ -579,6 +579,11 @@ BASE_FEATURE(kExternalClearKeyForTesting, base::FEATURE_DISABLED_BY_DEFAULT);
 const base::FeatureParam<std::string> kMediaFoundationClearKeyCdmPathForTesting{
     &kExternalClearKeyForTesting, "media_foundation_cdm_path", ""};
 
+// When enabled, URLProvisionFetcher is hardened against SSRF and OOM by
+// restricting requests and redirects to HTTPS POST, and enforcing a maximum
+// response size.
+BASE_FEATURE(kHardenUrlProvisionFetcher, base::FEATURE_DISABLED_BY_DEFAULT);
+
 // Prevents UrlProvisionFetcher from making a provisioning request. If
 // specified, any provisioning request made will not be sent to the provisioning
 // server, and the response will indicate a failure to communicate with the
@@ -820,11 +825,6 @@ BASE_FEATURE(kMediaPowerExperiment, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kMediaSourceSeiRecoveryPointKeyframe,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
-// Enables accurate dropped frame count for MediaStreamVideoSource.
-// TODO(crbug.com/432367602): Remove after M143.
-BASE_FEATURE(kMediaStreamAccurateDroppedFrameCount,
-             base::FEATURE_ENABLED_BY_DEFAULT);
-
 // If enabled, chrome would inform Glic once it starts transcribing, if Glic
 // requested to be informed.
 BASE_FEATURE(kMediaTrasncriptsFlagInPageMetadata,
@@ -841,6 +841,11 @@ BASE_FEATURE(kOnDeviceWebSpeech,
 
 // Enables on-device speech recognition using on-device Gemini Nano.
 BASE_FEATURE(kOnDeviceWebSpeechGeminiNano, base::FEATURE_DISABLED_BY_DEFAULT);
+
+// Kill switch for requiring sticky activation in SpeechRecognition.install()
+// for relaxed model downloads. See https://crbug.com/559063678.
+BASE_FEATURE(kOnDeviceWebSpeechRequiresStickyActivation,
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enables on-device speech recognition using on-device TinyGemma.
 BASE_FEATURE(kOnDeviceWebSpeechSmallExpertModel,
@@ -1085,10 +1090,6 @@ BASE_FEATURE(kWebRTCColorAccuracy, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kWebRTCHardwareVideoEncoderFrameDrop,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
-// Enables verbose logging of color space.
-// TODO: Delete this after testing is done.
-BASE_FEATURE(kWebRTCLogColorSpace, base::FEATURE_DISABLED_BY_DEFAULT);
-
 BASE_FEATURE(kWebRtcAudioNeuralResidualEchoEstimation,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
@@ -1162,6 +1163,13 @@ BASE_FEATURE(kChromeWideEchoCancellation, base::FEATURE_ENABLED_BY_DEFAULT);
 // voice isolation denoiser.
 BASE_FEATURE(kWebRtcVoiceIsolationDenoiser, base::FEATURE_DISABLED_BY_DEFAULT);
 
+// When enabled, VoiceIsolationHandler uses a dedicated ProcessingAudioFifo to
+// run voice isolation on its own real-time processing thread.
+BASE_FEATURE(kWebRtcVoiceIsolationProcessingFifo,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+const base::FeatureParam<int> kWebRtcVoiceIsolationProcessingFifoSize{
+    &kWebRtcVoiceIsolationProcessingFifo, "fifo_size", 10};
+
 #endif  // BUILDFLAG(CHROME_WIDE_ECHO_CANCELLATION)
 
 #if BUILDFLAG(ENABLE_HEVC_PARSER_AND_HW_DECODER)
@@ -1218,11 +1226,12 @@ BASE_FEATURE(kPlatformHEVCDecoderSupport, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kPlatformHEVCEncoderSupport, base::FEATURE_ENABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_APPLE) || BUILDFLAG(IS_ANDROID)
 
-#if BUILDFLAG(IS_APPLE)
-// Enables HEVC high-bit-depth hardware accelerated encoding on macOS. Covers
-// Main10 (10-bit 4:2:0) and RExt 8/10-bit 4:2:2 and 4:4:4.
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_APPLE)
+// Enables HEVC high-bit-depth hardware accelerated encoding. Covers Main10
+// (10-bit 4:2:0) and RExt 8/10-bit 4:2:2 and 4:4:4 on macOS, and the 10-bit
+// HEVC range extension profiles on Windows via the D3D12 encoder.
 BASE_FEATURE(kPlatformHEVCHbdEncoderSupport, base::FEATURE_DISABLED_BY_DEFAULT);
-#endif  // BUILDFLAG(IS_APPLE)
+#endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_APPLE)
 
 #endif  // BUILDFLAG(ENABLE_PLATFORM_HEVC)
 

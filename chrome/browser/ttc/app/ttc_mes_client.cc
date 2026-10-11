@@ -6,10 +6,12 @@
 
 #include <utility>
 
+#include "base/containers/span.h"
 #include "base/functional/bind.h"
 #include "base/json/json_reader.h"
 #include "base/json/json_writer.h"
 #include "base/strings/string_number_conversions.h"
+#include "base/strings/to_string.h"
 #include "base/time/time.h"
 #include "chrome/browser/optimization_guide/optimization_guide_keyed_service.h"
 #include "chrome/browser/optimization_guide/optimization_guide_keyed_service_factory.h"
@@ -41,28 +43,54 @@ ToProtoVerbalization(ToolDefinition::Verbalization verbalization) {
   }
 }
 
+// Encodes `response` as the JSON object the server expects: successful calls
+// report {"status": "ok"} alongside any tool-specific values, and failures
+// report {"error": {"message": <message>, "code": <numeric actor error code>}},
+// where each of `message` and `code` is present only if set on the error.
+base::DictValue ToResponseDict(ToolResponse response) {
+  if (!response.Ok()) {
+    const ToolError& error = response.error();
+    VLOG(1) << "Tool call failed: "
+            << (error.code ? base::ToString(*error.code) : "no code") << ": "
+            << error.message.value_or("no message");
+    CHECK(error.message || error.code);
+
+    base::DictValue error_dict;
+    if (error.message) {
+      error_dict.Set("message", *error.message);
+    }
+    if (error.code) {
+      error_dict.Set("code", static_cast<int>(*error.code));
+    }
+
+    base::DictValue dict;
+    dict.Set("error", std::move(error_dict));
+    return dict;
+  }
+
+  base::DictValue dict = std::move(response).TakeResult();
+  dict.Set("status", "ok");
+  return dict;
+}
+
 }  // namespace
 
-TtcMesClient::TtcMesClient() = default;
-
-TtcMesClient::TtcMesClient(Profile* profile, Observer* observer)
-    : profile_(profile), observer_(observer) {
+TtcMesClient::TtcMesClient(Profile* profile) : profile_(profile) {
   CHECK(profile_);
-  CHECK(observer_);
 }
 
 TtcMesClient::~TtcMesClient() {
   Close();
 }
 
-void TtcMesClient::set_observer(Observer* observer) {
-  observer_ = observer;
-}
+void TtcMesClient::Connect(Observer* observer) {
+  CHECK(observer);
 
-void TtcMesClient::Connect() {
   if (session_ && is_connected_) {
     return;
   }
+
+  observer_ = observer;
 
   OptimizationGuideKeyedService* opt_guide =
       OptimizationGuideKeyedServiceFactory::GetForProfile(profile_);
@@ -133,10 +161,20 @@ void TtcMesClient::HandleServerFrame(
   if (frame.has_server_content()) {
     const auto& content = frame.server_content();
     if (content.has_audio_output()) {
-      const std::string& raw_bytes = content.audio_output().audio_data();
-      std::vector<uint8_t> audio_vec(raw_bytes.begin(), raw_bytes.end());
-      observer_->OnAudioOutput(audio_vec,
-                               content.audio_output().sequence_number());
+      // The payload length is peer-controlled so guard that it can indeed be
+      // split into 16-bit frames.
+      base::span<const uint8_t> raw_bytes =
+          base::as_byte_span(content.audio_output().audio_data());
+      if (raw_bytes.size() % sizeof(int16_t) != 0) {
+        // TODO(bokan): We should probably show an error and close down the
+        // session here.
+        VLOG(1) << "Discarding malformed audio chunk of " << raw_bytes.size()
+                << " bytes; not a whole number of PCM16 samples";
+      } else {
+        observer_->OnAudioOutput(
+            base::subtle::reinterpret_span<const int16_t>(raw_bytes),
+            content.audio_output().sequence_number());
+      }
     }
 
     if (!content.input_transcription().empty() ||
@@ -198,49 +236,52 @@ void TtcMesClient::HandleToolCall(
   if (!observer_) {
     return;
   }
-  base::DictValue args;
+  ToolRequest tool_request;
+  tool_request.name = tool_call.name();
   if (!tool_call.arguments_json().empty()) {
     std::optional<base::DictValue> args_dict = base::JSONReader::ReadDict(
         tool_call.arguments_json(), base::JSON_PARSE_RFC);
     if (!args_dict) {
       LOG(ERROR) << "Failed to parse tool call arguments as JSON: "
                  << tool_call.arguments_json();
-      base::DictValue error_result;
-      error_result.Set("error", "Invalid JSON provided for tool arguments");
-      OnToolExecutionComplete(tool_call.call_id(), tool_call.name(),
-                              std::move(error_result));
+      OnToolExecutionComplete(
+          tool_call.call_id(), tool_call.name(),
+          ToolResponse::Error(actor::mojom::ActionResultCode::kArgumentsInvalid,
+                              "Invalid JSON provided for tool arguments"));
       return;
     }
-    args = std::move(*args_dict);
+    tool_request.arguments = std::move(*args_dict);
   }
 
   auto callback = base::BindOnce(&TtcMesClient::OnToolExecutionComplete,
                                  weak_factory_.GetWeakPtr(),
                                  tool_call.call_id(), tool_call.name());
-  observer_->OnToolCall(tool_call.name(), std::move(args), std::move(callback));
+  observer_->OnToolCall(std::move(tool_request), std::move(callback));
 }
 
 void TtcMesClient::OnToolExecutionComplete(const std::string& call_id,
                                            const std::string& tool_name,
-                                           base::DictValue result) {
+                                           ToolResponse response) {
   optimization_guide::proto::TtcClientFrame frame;
   frame.set_client_timestamp_ms(
       base::Time::Now().InMillisecondsSinceUnixEpoch());
-  auto* response = frame.mutable_tool_response();
-  response->set_call_id(call_id);
-  response->set_name(tool_name);
-  std::optional<std::string> json = base::WriteJson(result);
+  auto* tool_response = frame.mutable_tool_response();
+  tool_response->set_call_id(call_id);
+  tool_response->set_name(tool_name);
+  std::optional<std::string> json =
+      base::WriteJson(ToResponseDict(std::move(response)));
   CHECK(json);
-  response->set_response_json(std::move(*json));
+  tool_response->set_response_json(std::move(*json));
   SendFrame(frame);
 }
 
-void TtcMesClient::SendAudioChunk(const std::vector<uint8_t>& audio_data) {
+void TtcMesClient::SendAudioChunk(base::span<const int16_t> audio_data) {
   optimization_guide::proto::TtcClientFrame frame;
   frame.set_client_timestamp_ms(
       base::Time::Now().InMillisecondsSinceUnixEpoch());
   auto* chunk = frame.mutable_audio_input();
-  chunk->set_audio_data(audio_data.data(), audio_data.size());
+  base::span<const uint8_t> audio_bytes = base::as_byte_span(audio_data);
+  chunk->set_audio_data(audio_bytes.data(), audio_bytes.size());
   chunk->set_timestamp_ms(base::Time::Now().InMillisecondsSinceUnixEpoch());
   SendFrame(frame);
 }
@@ -289,6 +330,7 @@ void TtcMesClient::Close() {
     session_->RemoveObserver(this);
     session_.reset();
   }
+  observer_ = nullptr;
   is_connected_ = false;
   session_id_.clear();
 }

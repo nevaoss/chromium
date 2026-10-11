@@ -38,7 +38,6 @@
 #include "components/browser_apis/ui_controllers/toolbar/toolbar_ui_api.mojom.h"
 #include "components/browser_apis/ui_controllers/toolbar/toolbar_ui_api_data_model.mojom.h"
 #include "content/public/browser/scoped_accessibility_mode.h"
-#include "content/public/browser/web_contents_delegate.h"
 #include "content/public/browser/web_contents_observer.h"
 #include "ui/base/metadata/metadata_header_macros.h"
 #include "ui/base/pointer/touch_ui_controller.h"
@@ -241,6 +240,7 @@ class WebUIToolbarWebView
           callback) override;
   void OnPageActionChipShowingChanged(
       ::toolbar_ui_api::mojom::PageActionId action_id,
+      bool is_showing,
       ::toolbar_ui_api::mojom::ToolbarUIService::
           OnPageActionChipShowingChangedCallback callback) override;
   void OnPageInitialized() override;
@@ -261,7 +261,8 @@ class WebUIToolbarWebView
       toolbar_ui_api::mojom::LhsChipIdentifier identifier,
       bool is_middle_click) override;
   void OnLhsChipClicked(toolbar_ui_api::mojom::LhsChipIdentifier identifier,
-                        bool is_mouse_interaction) override;
+                        bool is_mouse_interaction,
+                        uint32_t state_token) override;
   void OnLhsChipPointerEntered(
       toolbar_ui_api::mojom::LhsChipIdentifier identifier) override;
   void OnLhsChipPointerExited(

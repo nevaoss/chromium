@@ -20,6 +20,7 @@
 #include "chrome/browser/glic/glic_metrics.h"
 #include "chrome/browser/glic/glic_warming_checks.h"
 #include "chrome/browser/glic/host/glic.mojom.h"
+#include "chrome/browser/glic/host/glic_warming_scheduler.h"
 #include "chrome/browser/glic/host/glic_web_client_access.h"
 #include "chrome/browser/glic/host/host.h"
 #include "chrome/browser/glic/public/context/glic_sharing_manager.h"
@@ -114,6 +115,10 @@ class GlicKeyedService : public KeyedService, public base::SupportsUserData {
   virtual void ToggleUI(BrowserWindowInterface* bwi,
                         bool prevent_close,
                         mojom::InvocationSource source);
+
+  // Returns whether `ToggleUI(bwi, /*prevent_close=*/false, ...)` would close a
+  // panel rather than open one.
+  virtual bool WouldToggleUIClose(BrowserWindowInterface* bwi) const;
 
   // Invokes Glic with the given options and automatically submits the prompt.
   // Access is restricted to authorized callers via InvokeWithAutoSubmitPasskey.
@@ -228,6 +233,9 @@ class GlicKeyedService : public KeyedService, public base::SupportsUserData {
   void reset_profile_for_test() { profile_ = nullptr; }
   void ShowExperimentalOptInDialogForTesting(
       content::WebContents* web_contents);
+  GlicWarmingScheduler& GetColdWarmingSchedulerForTesting() {
+    return cold_warming_scheduler_;
+  }
 
   base::WeakPtr<GlicKeyedService> GetWeakPtr();
 
@@ -292,6 +300,8 @@ class GlicKeyedService : public KeyedService, public base::SupportsUserData {
   std::unique_ptr<GlicShareImageHandler> share_image_handler_;
 
   std::unique_ptr<AuthController> auth_controller_;
+
+  GlicWarmingScheduler cold_warming_scheduler_;
 
   base::OnceCallback<void()> preload_callback_;
 

@@ -20,7 +20,9 @@
 #include "components/autofill/core/browser/suggestions/suggestion_hiding_reason.h"
 #include "components/autofill/core/browser/suggestions/suggestion_type.h"
 #include "components/autofill/core/browser/ui/popup_interaction.h"
+#include "components/autofill/core/browser/webdata/autocomplete/autocomplete_table_label_sensitive.h"
 #include "components/autofill/core/common/aliases.h"
+#include "components/autofill/core/common/autofill_features.h"
 #include "content/public/test/test_renderer_host.h"
 #include "content/public/test/test_utils.h"
 #include "testing/gmock/include/gmock/gmock.h"
@@ -520,7 +522,7 @@ TEST_F(AutofillPopupControllerImplTest, PopupForwardsSuggestionPosition) {
 
   EXPECT_CALL(manager().external_delegate(),
               DidAcceptSuggestion(
-                  _, EqualsSuggestionMetadata({.multi_index = {0, 0}})));
+                  _, EqualsSuggestionMetadata({.multi_index = {0, 0}}), _, _));
 
   task_environment()->FastForwardBy(base::Milliseconds(1000));
   sub_controller->AcceptSuggestion(
@@ -1177,10 +1179,12 @@ TEST_F(AutofillPopupControllerImplTest,
   ShowSuggestions(manager(),
                   {Suggestion(u"main_text", SuggestionType::kAddressEntry)});
 
-  EXPECT_CALL(manager().external_delegate(),
-              DidAcceptSuggestion(
-                  _, EqualsSuggestionMetadata(
-                         {.multi_index = {0}, .from_search_result = true})));
+  EXPECT_CALL(
+      manager().external_delegate(),
+      DidAcceptSuggestion(_,
+                          EqualsSuggestionMetadata(
+                              {.multi_index = {0}, .from_search_result = true}),
+                          _, _));
 
   controller.SetFilter(AutofillPopupController::StringFilter(u"main_text"),
                        AutofillPopupController::FilterSource::kInputChanged);
@@ -1311,6 +1315,39 @@ TEST_F(AutofillPopupControllerImplTest,
       "Autofill.ProfileDeleted.KeyboardAccessory.Total", 1, 0);
   histogram_tester.ExpectUniqueSample("Autofill.ProfileDeleted.Any.Total", 1,
                                       0);
+}
+
+// Tests that when `kAutofillLabelSensitiveAutocomplete` is enabled,
+// deleting an autocomplete suggestion emits `AUTOCOMPLETE_SUGGESTION_DELETED`
+// to `Autocomplete.Events3` and the corresponding matching-type histogram.
+TEST_F(AutofillPopupControllerImplTest,
+       RemoveAutocompleteSuggestion_LabelSensitiveMetricsEmittedOnSuccess) {
+  base::test::ScopedFeatureList feature_list;
+  feature_list.InitAndEnableFeature(
+      features::kAutofillLabelSensitiveAutocomplete);
+
+  base::HistogramTester histogram_tester;
+  Suggestion suggestion(u"autocomplete", SuggestionType::kAutocompleteEntry);
+  suggestion.payload = AutocompleteSearchResultLabelSensitive(
+      u"autocomplete", MatchingType::kLabel, /*query_name=*/u"name",
+      /*query_label=*/u"label", /*count=*/1);
+  ShowSuggestions(manager(), {std::move(suggestion)});
+  test::GenerateTestAutofillPopup(&manager().external_delegate());
+  EXPECT_CALL(manager().external_delegate(),
+              RemoveSuggestion(
+                  Field(&Suggestion::type, SuggestionType::kAutocompleteEntry)))
+      .WillOnce(Return(true));
+
+  EXPECT_TRUE(client().suggestion_controller(manager()).RemoveSuggestion(0));
+  histogram_tester.ExpectUniqueSample(
+      "Autocomplete.Events3",
+      AutofillMetrics::AutocompleteEvent::AUTOCOMPLETE_SUGGESTION_DELETED, 1);
+  histogram_tester.ExpectUniqueSample(
+      "Autocomplete.LabelBasedSuggestions",
+      AutofillMetrics::AutocompleteEvent::AUTOCOMPLETE_SUGGESTION_DELETED, 1);
+  histogram_tester.ExpectTotalCount("Autocomplete.NameBasedSuggestions", 0);
+  histogram_tester.ExpectTotalCount(
+      "Autocomplete.BothNameAndLabelBasedSuggestions", 0);
 }
 
 TEST_F(AutofillPopupControllerImplTest,
@@ -1444,7 +1481,6 @@ class MockAutofillDriver : public ContentAutofillDriver {
   MockAutofillDriver& operator=(MockAutofillDriver&) = delete;
 
   ~MockAutofillDriver() override = default;
-  MOCK_METHOD(ui::AXTreeID, GetAxTreeId, (), (const override));
 };
 
 class AutofillPopupControllerForPopupAxTest
@@ -1467,18 +1503,8 @@ class MockAxTreeManager : public ui::AXTreeManager {
   MockAxTreeManager& operator=(MockAxTreeManager&) = delete;
   ~MockAxTreeManager() override = default;
 
-  MOCK_METHOD(ui::AXPlatformNodeDelegate*,
-              GetDelegate,
-              (const ui::AXTreeID tree_id, const int32_t node_id),
-              (const override));
-  MOCK_METHOD(ui::AXPlatformNodeDelegate*,
-              GetRootDelegate,
-              (const ui::AXTreeID tree_id),
-              (const override));
-  MOCK_METHOD(ui::AXTreeID, GetTreeID, (), (const override));
-  MOCK_METHOD(ui::AXTreeID, GetParentTreeID, (), (const override));
-  MOCK_METHOD(ui::AXNode*, GetRootAsAXNode, (), (const override));
-  MOCK_METHOD(ui::AXNode*, GetParentNodeFromParentTree, (), (const override));
+  MOCK_METHOD(ui::AXTreeID, GetParentTreeID, (), (const, override));
+  MOCK_METHOD(ui::AXNode*, GetParentNodeFromParentTree, (), (const, override));
 };
 
 class MockAxPlatformNodeDelegate : public ui::AXPlatformNodeDelegate {
@@ -1507,8 +1533,8 @@ class MockAxPlatformNode : public ui::AXPlatformNodeBase {
   MockAxPlatformNode& operator=(MockAxPlatformNode&) = delete;
   ~MockAxPlatformNode() override = default;
 
-  MOCK_METHOD(bool, IsDestroyed, (), (const override));
-  MOCK_METHOD(ui::AXPlatformNodeDelegate*, GetDelegate, (), (const override));
+  MOCK_METHOD(bool, IsDestroyed, (), (const, override));
+  MOCK_METHOD(ui::AXPlatformNodeDelegate*, GetDelegate, (), (const, override));
 };
 
 using AutofillPopupControllerImplTestAccessibilityBase =
@@ -1532,7 +1558,6 @@ class AutofillPopupControllerImplTestAccessibility
   void SetUp() override {
     AutofillPopupControllerImplTestAccessibilityBase::SetUp();
 
-    ON_CALL(driver(), GetAxTreeId()).WillByDefault(Return(test_tree_id_));
     ON_CALL(client().suggestion_controller(manager()),
             GetRootAXPlatformNodeForWebContents)
         .WillByDefault(Return(&mock_ax_platform_node_));

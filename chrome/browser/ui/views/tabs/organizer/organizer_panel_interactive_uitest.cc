@@ -4,6 +4,7 @@
 
 #include "base/callback_list.h"
 #include "base/test/scoped_feature_list.h"
+#include "build/build_config.h"
 #include "chrome/browser/ui/actions/chrome_action_id.h"
 #include "chrome/browser/ui/animation/browser_animation_controller.h"
 #include "chrome/browser/ui/browser_actions.h"
@@ -27,6 +28,7 @@
 #include "content/public/test/browser_test.h"
 #include "extensions/buildflags/buildflags.h"
 #include "extensions/common/extension_id.h"
+#include "ui/views/controls/separator.h"
 
 #if BUILDFLAG(ENABLE_EXTENSIONS)
 #include "base/strings/stringprintf.h"
@@ -148,9 +150,12 @@ class OrganizerPanelInteractiveUiTest : public InteractiveBrowserTest {
         CheckView(
             kOrganizerPanelViewElementId,
             [](OrganizerPanelView* panel_view) {
-              return panel_view->layer()->rounded_corner_radii().IsEmpty();
+              const auto radii = panel_view->layer()->rounded_corner_radii();
+              // Leading corners may be rounded to accommodate the window
+              // itself, so only count the trailing corners.
+              return radii.upper_right() > 0.0f || radii.lower_right() > 0.0f;
             },
-            !should_have_rounded_corners)
+            should_have_rounded_corners)
             .SetDescription("Panel has expected corners."));
     AddDescriptionPrefix(steps, "CheckPanelHasExpectedWidthAndStyling");
     return steps;
@@ -171,7 +176,15 @@ class OrganizerPanelInteractiveUiTest : public InteractiveBrowserTest {
 };
 
 // This test checks that the organizer panel closes when clicking outside.
-IN_PROC_BROWSER_TEST_F(OrganizerPanelInteractiveUiTest, CloseOnClickOutside) {
+// TODO(https://crbug.com/563448217): Re-enable when we use the event's
+// location to determine whether it is in the panel on Mac.
+#if BUILDFLAG(IS_MAC)
+#define MAYBE_CloseOnClickOutside DISABLED_CloseOnClickOutside
+#else
+#define MAYBE_CloseOnClickOutside CloseOnClickOutside
+#endif
+IN_PROC_BROWSER_TEST_F(OrganizerPanelInteractiveUiTest,
+                       MAYBE_CloseOnClickOutside) {
   RunTestSequence(
       // Verify Vertical Tabs is showing.
       WaitForShow(kVerticalTabStripTopContainerElementId),
@@ -195,7 +208,15 @@ IN_PROC_BROWSER_TEST_F(OrganizerPanelInteractiveUiTest, GrabsFocusOnOpen) {
 
 // This test checks that the organizer panel closes when focus is switched to
 // another UI element like the omnibox.
-IN_PROC_BROWSER_TEST_F(OrganizerPanelInteractiveUiTest, ClosesOnFocusLost) {
+// TODO(https://crbug.com/563448217): Re-enable when the behavior is re-enabled
+// on mac.
+#if BUILDFLAG(IS_MAC)
+#define MAYBE_ClosesOnFocusLost DISABLED_ClosesOnFocusLost
+#else
+#define MAYBE_ClosesOnFocusLost ClosesOnFocusLost
+#endif
+IN_PROC_BROWSER_TEST_F(OrganizerPanelInteractiveUiTest,
+                       MAYBE_ClosesOnFocusLost) {
   RunTestSequence(OpenOrganizerPanel(),
                   // Focus the omnibox.
                   FocusElement(kOmniboxElementId),
@@ -236,9 +257,15 @@ IN_PROC_BROWSER_TEST_F(OrganizerPanelInteractiveUiTest, RestoresFocusOnClose) {
 
 // This is a regression test that checks that the panel stays open when clicking
 // inside (but not on a button or other interactive element).
-// TODO(crbug.com/540107609): Re-enable once panel is implemented.
+// TODO(https://crbug.com/563448217): Re-enable when we use the event's
+// location to determine whether it is in the panel on Mac.
+#if BUILDFLAG(IS_MAC)
+#define MAYBE_StaysOpenOnClickInside DISABLED_StaysOpenOnClickInside
+#else
+#define MAYBE_StaysOpenOnClickInside StaysOpenOnClickInside
+#endif
 IN_PROC_BROWSER_TEST_F(OrganizerPanelInteractiveUiTest,
-                       DISABLED_StaysOpenOnClickInside) {
+                       MAYBE_StaysOpenOnClickInside) {
   RunTestSequence(
       // Verify Vertical Tabs is showing.
       WaitForShow(kVerticalTabStripTopContainerElementId),
@@ -249,7 +276,7 @@ IN_PROC_BROWSER_TEST_F(OrganizerPanelInteractiveUiTest,
       // Click inside the panel view (background).
       MoveMouseTo(kOrganizerPanelViewElementId), ClickMouse(),
       // Verify Organizer Panel is still shown.
-      Do([this]() { RunScheduledLayouts(); }), CheckControllerState(false));
+      Do([this]() { RunScheduledLayouts(); }), CheckControllerState(true));
 }
 
 // This test checks that the organizer panel closes when pressing Esc.

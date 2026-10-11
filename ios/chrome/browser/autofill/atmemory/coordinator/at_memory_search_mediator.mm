@@ -28,6 +28,7 @@
 #import "ios/chrome/browser/autofill/atmemory/public/at_memory_search_result_commands.h"
 #import "ios/chrome/browser/autofill/atmemory/ui/at_memory_search_consumer.h"
 #import "ios/chrome/browser/autofill/atmemory/ui/at_memory_search_item.h"
+#import "ios/chrome/browser/autofill/public/autofill_settings_navigator.h"
 #import "ios/web/public/web_state.h"
 #import "services/metrics/public/cpp/ukm_source_id.h"
 #import "url/origin.h"
@@ -54,6 +55,10 @@ constexpr std::string_view kNoticeInteractionsHistogram =
 
   // Suggestions returned by AtMemoryManager.
   std::vector<autofill::Suggestion> _suggestions;
+
+  // Whether the current suggestions represent 0-state recent fills (as opposed
+  // to search results).
+  BOOL _isRecentFills;
 
   // Tells if the notice is visible.
   BOOL _noticeIsVisible;
@@ -115,6 +120,7 @@ constexpr std::string_view kNoticeInteractionsHistogram =
         /*metadata=*/{},
         /*update_callback=*/std::move(updateCallback),
         /*ukm_source_id=*/ukmSourceId);
+    _isRecentFills = YES;
     _atMemoryManager->OnFilterChanged(u"");
   }
   return self;
@@ -141,6 +147,7 @@ constexpr std::string_view kNoticeInteractionsHistogram =
   _suggestions.clear();
   _atMemoryHandler = nil;
   _searchResultHandler = nil;
+  _settingsNavigator = nil;
 }
 
 #pragma mark - Consumer
@@ -172,6 +179,7 @@ constexpr std::string_view kNoticeInteractionsHistogram =
     return;
   }
 
+  _isRecentFills = NO;
   _atMemoryManager->OnSearchSubmitted(base::SysNSStringToUTF16(query));
 }
 
@@ -191,7 +199,8 @@ constexpr std::string_view kNoticeInteractionsHistogram =
   base::UmaHistogramEnumeration(
       kNoticeInteractionsHistogram,
       autofill::AutofillMetrics::PopupNoticeInteractions::kLinkButtonClicked);
-  [self.atMemoryHandler openAutofillSettings];
+  [self.settingsNavigator
+      openSettingsForPage:AutofillSettingsPage::kEnhancedAutofill];
 }
 
 - (void)didSelectSearchResultItem:(AtMemorySearchItem*)item {
@@ -217,6 +226,12 @@ constexpr std::string_view kNoticeInteractionsHistogram =
   [self.searchResultHandler showAtMemoryGranularFill:suggestion];
 }
 
+- (void)didTapAIDisclosureLink {
+  [self.settingsNavigator
+      openSettingsForPage:AutofillSettingsPage::
+                              kSuggestionsFromGeminiHelpImprove];
+}
+
 #pragma mark - Private
 
 // Handles suggestions returned by the AtMemoryManager.
@@ -228,18 +243,11 @@ constexpr std::string_view kNoticeInteractionsHistogram =
 
 // Pushes current suggestions to the consumer.
 - (void)pushSuggestionsToConsumer {
-  NSMutableArray<AtMemorySearchItem*>* searchItems =
-      [[NSMutableArray alloc] init];
-  NSMutableArray<AtMemorySearchItem*>* recentFillItems =
-      [[NSMutableArray alloc] init];
+  NSMutableArray<AtMemorySearchItem*>* items = [[NSMutableArray alloc] init];
 
-  bool isRecentFills = false;
   for (size_t i = 0; i < _suggestions.size(); ++i) {
     const auto& suggestion = _suggestions[i];
     switch (suggestion.type) {
-      case autofill::SuggestionType::kTitle:
-        isRecentFills = true;
-        break;
       case autofill::SuggestionType::kAtMemoryNoConnection:
         [self.consumer setErrorType:AtMemoryErrorType::kNoConnectionError];
         return;
@@ -261,11 +269,7 @@ constexpr std::string_view kNoticeInteractionsHistogram =
 
         AtMemorySearchItem* item =
             [[AtMemorySearchItem alloc] initWithSuggestion:suggestion index:i];
-        if (isRecentFills) {
-          [recentFillItems addObject:item];
-        } else {
-          [searchItems addObject:item];
-        }
+        [items addObject:item];
         break;
       }
       default:
@@ -273,14 +277,12 @@ constexpr std::string_view kNoticeInteractionsHistogram =
     }
   }
 
-  if (recentFillItems.count > 0) {
-    [self.consumer setRecentFills:recentFillItems];
-  } else if (searchItems.count > 0) {
-    [self.consumer setSearchResults:searchItems];
-  } else if (_atMemoryManager && _atMemoryManager->IsSearching()) {
-    [self.consumer setErrorType:AtMemoryErrorType::kNoDataError];
+  if (_isRecentFills) {
+    [self.consumer setRecentFills:items];
+  } else if (items.count > 0) {
+    [self.consumer setSearchResults:items];
   } else {
-    [self.consumer setRecentFills:@[]];
+    [self.consumer setErrorType:AtMemoryErrorType::kNoDataError];
   }
 }
 

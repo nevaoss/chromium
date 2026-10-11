@@ -5,7 +5,6 @@
 #ifndef CHROME_BROWSER_UI_WEBUI_SIDE_PANEL_READ_ANYTHING_READ_ANYTHING_UNTRUSTED_PAGE_HANDLER_H_
 #define CHROME_BROWSER_UI_WEBUI_SIDE_PANEL_READ_ANYTHING_READ_ANYTHING_UNTRUSTED_PAGE_HANDLER_H_
 
-#include <deque>
 #include <memory>
 #include <optional>
 #include <string>
@@ -126,9 +125,6 @@ class ReadAnythingWebContentsObserver : public content::WebContentsObserver {
   // content::WebContentsObserver:
   void AccessibilityEventReceived(
       const ui::AXUpdatesAndEvents& details) override;
-  void AccessibilityLocationChangesReceived(
-      const ui::AXTreeID& tree_id,
-      ui::AXLocationAndScrollUpdates& details) override;
   void PrimaryPageChanged(content::Page& page) override;
   void WebContentsDestroyed() override;
   void DidStopLoading() override;
@@ -193,6 +189,11 @@ class ReadAnythingUntrustedPageHandler :
   const std::optional<std::string>& dom_distiller_content() const {
     return dom_distiller_content_;
   }
+
+  base::TimeTicks readability_distillation_tree_change_start_time() const {
+    return readability_distillation_tree_change_start_time_;
+  }
+
   bool ack_timed_out_for_testing() const { return ack_timed_out_for_testing_; }
 
   static const int kMaxWordsDistilled = 25000;
@@ -211,9 +212,6 @@ class ReadAnythingUntrustedPageHandler :
       base::Seconds(2);
 
   void AccessibilityEventReceived(const ui::AXUpdatesAndEvents& details);
-  void AccessibilityLocationChangesReceived(
-      const ui::AXTreeID& tree_id,
-      ui::AXLocationAndScrollUpdates& details);
   void PrimaryPageChanged();
   void DidStopLoading();
   void DidUpdateAudioMutingState(bool muted);
@@ -260,7 +258,8 @@ class ReadAnythingUntrustedPageHandler :
   void OnDistillationStateChanged(
       read_anything::mojom::ReadAnythingDistillationState new_state) override;
   void OnSpeechEngineStalled() override;
-  void RequestReadabilityDistillation() override;
+  void RequestReadabilityDistillation(
+      RequestReadabilityDistillationCallback callback) override;
 
   // PinnedToolbarModel::Observer
   void OnActionsChanged() override;
@@ -417,8 +416,15 @@ class ReadAnythingUntrustedPageHandler :
       bool is_available);
 
   // Called if IsReadAnythingWithReadabilityEnabled is enabled. Triggers
-  // DomDistiller Distillation for the current page.
-  void RequestDomDistillerDistillation(content::WebContents* contents);
+  // DomDistiller Distillation for the current page. Returns true if
+  // distillation was successfully started.
+  bool RequestDomDistillerDistillation(content::WebContents* contents);
+
+  // Resets the state of the current readability distillation: resolves an
+  // outstanding RequestReadabilityDistillation callback with empty strings,
+  // cancels the in-flight DomDistiller distillation, if any, and clears the
+  // cached article and its timing state.
+  void ResetReadabilityState();
 
   // Called if IsReadAnythingWithReadabilityEnabled is enabled. Records
   // the current url scheme in ReadAnything.DistillationScheme.
@@ -552,6 +558,11 @@ class ReadAnythingUntrustedPageHandler :
 
   read_anything::mojom::ReadAnythingDistillationState distillation_state_ =
       read_anything::mojom::ReadAnythingDistillationState::kUndefined;
+
+  // Stores the active callback for a RequestReadabilityDistillation request.
+  // Always wrapped with mojo::WrapCallbackWithDefaultInvokeIfNotRun to ensure
+  // automatic default invocation on overwrite, early return, or destruction.
+  RequestReadabilityDistillationCallback readability_callback_;
 
   base::WeakPtrFactory<ReadAnythingUntrustedPageHandler> weak_factory_{this};
 };

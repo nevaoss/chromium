@@ -68,25 +68,26 @@ class OrganizerTrayView::EventObserver : public ui::EventObserver,
   }
 
   void OnEvent(const ui::Event& event) override {
-    // Ignore mouse events when the panel is closed.
+    // Ignore mouse events when the panel is closed or otherwise hidden.
     if (!tray_->GetVisible()) {
       return;
     }
 
-    if (event.type() == ui::EventType::kMousePressed ||
-        event.type() == ui::EventType::kGestureTapDown) {
-      if (!tray_->GetWidget()) {
-        return;
-      }
-
-      auto point_in_view = event.AsLocatedEvent()->location();
-
-      // Convert the point from the event's target to the panel's coordinates.
-      views::View::ConvertPointFromWidget(&*tray_, &point_in_view);
-
-      if (!tray_->GetLocalBounds().Contains(point_in_view)) {
-        tray_->ClosePanel();
-      }
+    const auto point_in_screen =
+#if BUILDFLAG(IS_MAC)
+        // This approach is more reliable on Mac.
+        // TODO(https://crbug.com/563448217): figure out how to make this work
+        // using the event's location or root_location so tests can be re-
+        // enabled.
+        event_monitor_->GetLastMouseLocation();
+#else
+        // This should work for all Aura platforms.
+        event.AsLocatedEvent()->root_location();
+#endif
+    const auto point_in_view =
+        views::View::ConvertPointFromScreen(&*tray_, point_in_screen);
+    if (!tray_->GetLocalBounds().Contains(point_in_view)) {
+      tray_->ClosePanel();
     }
   }
 
@@ -100,7 +101,12 @@ class OrganizerTrayView::EventObserver : public ui::EventObserver,
     // focused or a tab was activated), the last focused view before the panel
     // was opened should not be refocused.
     tray_->last_focused_view_before_opening_.SetView(nullptr);
+
+    // TODO(https://crbug.com/563448217): Mac has issues with focus and overlaid
+    // WebContents. Re-enable this after fixing the issue.
+#if !BUILDFLAG(IS_MAC)
     tray_->ClosePanel();
+#endif
   }
 
  private:
@@ -153,6 +159,14 @@ OrganizerTrayView::OrganizerTrayView(BrowserWindowInterface& browser,
 }
 
 OrganizerTrayView::~OrganizerTrayView() = default;
+
+void OrganizerTrayView::UpdatePanelClip() {
+  if (!background() || !panel_view_) {
+    return;
+  }
+  const auto* const bg = background()->AsA<CustomCornersBackground>();
+  bg->ClipViewToBackground(panel_view_);
+}
 
 bool OrganizerTrayView::IsPositionInWindowCaption(const gfx::Point& point) {
   const auto in_controls =
@@ -231,14 +245,6 @@ void OrganizerTrayView::AddedToWidget() {
   int radius = 8;
   if (background()) {
     auto* const bg = background()->AsA<CustomCornersBackground>();
-    CustomCornersBackground::Corners corners;
-    corners[CornerOrientation::kTopLeading] = bg->GetWindowCorner(true);
-    corners[CornerOrientation::kBottomLeading] = bg->GetWindowCorner(false);
-    corners[CornerOrientation::kTopTrailing].type =
-        CustomCornersBackground::CornerType::kRounded;
-    corners[CornerOrientation::kBottomTrailing].type =
-        CustomCornersBackground::CornerType::kRounded;
-    bg->SetCorners(corners);
     radius = bg->default_radius();
   }
   shadow_frame_->SetShadowCornerRadius(radius);
@@ -295,6 +301,7 @@ void OrganizerTrayView::Layout(PassKey) {
         controls_view_->bounds().bottom() + controls_margins.bottom();
     panel_view_->SetBounds(std::min(0, width() - target_width_), panel_top,
                            target_width_, height() - panel_top);
+    panel_view_->SetVisible(panel_view_->bounds().Intersects(GetLocalBounds()));
   }
 
   // If there's an exclusion for caption buttons and the panel is not at its

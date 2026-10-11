@@ -9,14 +9,10 @@
 #include <utility>
 #include <vector>
 
-#include "base/base_paths.h"
-#include "base/containers/span.h"
 #include "base/functional/callback_helpers.h"
 #include "base/memory/raw_ptr.h"
-#include "base/path_service.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/test/gmock_callback_support.h"
-#include "base/test/gtest_util.h"
 #include "base/test/metrics/histogram_tester.h"
 #include "base/test/scoped_feature_list.h"
 #include "base/test/test_future.h"
@@ -43,10 +39,8 @@
 #include "ui/accessibility/ax_node.h"
 #include "ui/accessibility/ax_node_data.h"
 #include "ui/accessibility/ax_node_id_forward.h"
-#include "ui/accessibility/ax_serializable_tree.h"
 #include "ui/accessibility/ax_tree_id.h"
 #include "ui/base/l10n/l10n_util.h"
-#include "url/gurl.h"
 #include "v8/include/v8-context.h"
 #include "v8/include/v8-microtask-queue.h"
 
@@ -67,7 +61,12 @@ class MockAXTreeDistiller : public AXTreeDistiller {
 class MockReadAnythingUntrustedPageHandler
     : public read_anything::mojom::UntrustedPageHandler {
  public:
-  MockReadAnythingUntrustedPageHandler() = default;
+  MockReadAnythingUntrustedPageHandler() {
+    ON_CALL(*this, RequestReadabilityDistillation(testing::_))
+        .WillByDefault([](RequestReadabilityDistillationCallback callback) {
+          std::move(callback).Run("", "");
+        });
+  }
 
   MOCK_METHOD(void,
               GetDependencyParserModel,
@@ -156,7 +155,10 @@ class MockReadAnythingUntrustedPageHandler
               (read_anything::mojom::ReadAnythingDistillationState new_state),
               (override));
   MOCK_METHOD(void, OnSpeechEngineStalled, (), (override));
-  MOCK_METHOD(void, RequestReadabilityDistillation, (), (override));
+  MOCK_METHOD(void,
+              RequestReadabilityDistillation,
+              (RequestReadabilityDistillationCallback),
+              (override));
 
   mojo::PendingRemote<read_anything::mojom::UntrustedPageHandler>
   BindNewPipeAndPassRemote() {
@@ -395,12 +397,6 @@ class ReadAnythingAppControllerTest : public ChromeRenderViewTest {
 
     ProcessDisplayNodes(node_ids);
     controller().InitAXPositionWithNode(nodes[0].id);
-  }
-
-  void EnableDocs() {
-    scoped_feature_list_.Reset();
-    scoped_feature_list_.InitAndEnableFeature(
-        ax::mojom::features::kReadAnythingDocsIntegration);
   }
 
   void EnableReadAnythingTranslateEntryPoint() {
@@ -1310,6 +1306,32 @@ TEST_F(ReadAnythingAppControllerTest, LogLineFocusSession_ResetsSession) {
   ASSERT_EQ(model().line_focus_speech_lines(), 0);
 }
 
+TEST_F(ReadAnythingAppControllerTest,
+       TurningLineFocusOffThenClosingReadingModeLogsOneSession) {
+  EnableLineFocus();
+  base::HistogramTester histogram_tester;
+
+  auto line_focus = read_anything::mojom::LineFocus::kLineCursor;
+  EXPECT_CALL(page_handler_, OnLineFocusChanged).Times(2);
+  controller().OnLineFocusChanged(static_cast<int>(line_focus),
+                                  static_cast<int>(line_focus));
+  StartLineFocusSession();
+
+  auto line_focus_off = read_anything::mojom::LineFocus::kOff;
+  controller().OnLineFocusChanged(static_cast<int>(line_focus_off),
+                                  static_cast<int>(line_focus));
+  LogLineFocusSession();
+
+  histogram_tester.ExpectTotalCount(
+      "Accessibility.ReadAnything.LineFocusSessionLength", 1);
+
+  EXPECT_CALL(page_handler_, AckReadingModeHidden()).Times(1);
+  controller().OnReadingModeHidden(/*tab_active=*/true);
+
+  histogram_tester.ExpectTotalCount(
+      "Accessibility.ReadAnything.LineFocusSessionLength", 1);
+}
+
 TEST_F(ReadAnythingAppControllerTest, OnSettingsRestoredFromPrefs) {
   auto line_spacing = read_anything::mojom::LineSpacing::kVeryLoose;
   auto letter_spacing = read_anything::mojom::LetterSpacing::kVeryWide;
@@ -2151,42 +2173,6 @@ TEST_F(ReadAnythingAppControllerTest, AccessibilityEventReceivedWhileSpeaking) {
   EXPECT_EQ(u"Final update", controller().GetTextContent(2));
   EXPECT_EQ(u"Node 3", controller().GetTextContent(3));
   EXPECT_EQ(u"Node 4", controller().GetTextContent(4));
-}
-
-TEST_F(ReadAnythingAppControllerTest, AccessibilityLocationChangesReceived) {
-  EnableDocs();
-  ui::AXTreeUpdate update;
-  ui::AXTreeID id_1 = ui::AXTreeID::CreateNewAXTreeID();
-  test::SetUpdateTreeID(&update, id_1);
-
-  ui::AXRelativeBounds initial_bounds;
-  initial_bounds.bounds = gfx::RectF(1, 1, 100, 100);
-  initial_bounds.offset_container_id = 12345;
-  ui::AXNodeData node;
-  node.id = 2;
-  node.relative_bounds = std::move(initial_bounds);
-
-  ui::AXNodeData root;
-  root.id = 1;
-  root.child_ids = {node.id};
-  update.root_id = root.id;
-  update.nodes = {std::move(root), std::move(node)};
-
-  AccessibilityEventReceived({std::move(update)});
-  OnAXTreeDistilled(tree_id_, {1});
-  controller().OnActiveAXTreeIDChanged(id_1, ukm::kInvalidSourceId, false);
-
-  // Create a new bounding box that the node will update to have
-  ui::AXRelativeBounds location_update;
-  location_update.offset_container_id = 1;
-  location_update.bounds = gfx::RectF(5, 5, 100, 100);
-  ui::AXLocationAndScrollUpdates location_and_scroll_updates;
-  location_and_scroll_updates.location_changes.emplace_back(2, location_update);
-
-  // Test that the node data updates correctly
-  controller().AccessibilityLocationChangesReceived(
-      id_1, location_and_scroll_updates);
-  EXPECT_EQ(model().GetAXNode(2)->data().relative_bounds, location_update);
 }
 
 TEST_F(ReadAnythingAppControllerTest, OnActiveAXTreeIDChanged) {
@@ -3089,6 +3075,112 @@ TEST_F(ReadAnythingAppControllerTest,
   controller().OnActiveAXTreeIDChanged(id, ukm::kInvalidSourceId, false);
 
   EXPECT_EQ(0, model().words_heard());
+}
+
+TEST_F(ReadAnythingAppControllerTest,
+       OnActiveAXTreeIDChanged_StartsNewLineFocusSessionIfLineFocusOn) {
+  EnableLineFocus();
+  base::HistogramTester histogram_tester;
+  model().set_line_focus_enabled(true);
+  StartLineFocusSession();
+  const int mouse_distance = 2001;
+  const int scroll_distance = 202;
+  const int keyboard_lines = 405;
+  const int speech_lines = 21;
+  model().set_line_focus_mouse_distance(mouse_distance);
+  model().set_line_focus_scroll_distance(scroll_distance);
+  model().set_line_focus_keyboard_lines(keyboard_lines);
+  model().set_line_focus_speech_lines(speech_lines);
+
+  auto const new_id = ui::AXTreeID::CreateNewAXTreeID();
+  controller().OnActiveAXTreeIDChanged(new_id, ukm::kInvalidSourceId, false);
+
+  histogram_tester.ExpectTotalCount(
+      "Accessibility.ReadAnything.LineFocusSessionLength", 1);
+  histogram_tester.ExpectUniqueSample(
+      "Accessibility.ReadAnything.LineFocusSessionMouseDistance",
+      mouse_distance, 1);
+  histogram_tester.ExpectUniqueSample(
+      "Accessibility.ReadAnything.LineFocusSessionScrollDistance",
+      scroll_distance, 1);
+  histogram_tester.ExpectUniqueSample(
+      "Accessibility.ReadAnything.LineFocusSessionKeyboardLines",
+      keyboard_lines, 1);
+  histogram_tester.ExpectUniqueSample(
+      "Accessibility.ReadAnything.LineFocusSessionSpeechLines", speech_lines,
+      1);
+  EXPECT_TRUE(model().line_focus_session_start_time().has_value());
+  EXPECT_EQ(model().line_focus_mouse_distance(), 0);
+  EXPECT_EQ(model().line_focus_scroll_distance(), 0);
+  EXPECT_EQ(model().line_focus_keyboard_lines(), 0);
+  EXPECT_EQ(model().line_focus_speech_lines(), 0);
+
+  // A subsequent tree change logs the restarted session.
+  auto const third_id = ui::AXTreeID::CreateNewAXTreeID();
+  controller().OnActiveAXTreeIDChanged(third_id, ukm::kInvalidSourceId, false);
+
+  histogram_tester.ExpectTotalCount(
+      "Accessibility.ReadAnything.LineFocusSessionLength", 2);
+  EXPECT_TRUE(model().line_focus_session_start_time().has_value());
+}
+
+TEST_F(ReadAnythingAppControllerTest,
+       OnActiveAXTreeIDChanged_DoesNotStartLineFocusSessionIfLineFocusOff) {
+  EnableLineFocus();
+  model().set_line_focus_enabled(false);
+
+  auto const new_id = ui::AXTreeID::CreateNewAXTreeID();
+  controller().OnActiveAXTreeIDChanged(new_id, ukm::kInvalidSourceId, false);
+
+  EXPECT_FALSE(model().line_focus_session_start_time().has_value());
+}
+
+TEST_F(ReadAnythingAppControllerTest,
+       OnActiveAXTreeIDChanged_DoesNotStartLineFocusSessionWithoutFlag) {
+  model().set_line_focus_enabled(true);
+  StartLineFocusSession();
+
+  auto const new_id = ui::AXTreeID::CreateNewAXTreeID();
+  controller().OnActiveAXTreeIDChanged(new_id, ukm::kInvalidSourceId, false);
+
+  EXPECT_FALSE(model().line_focus_session_start_time().has_value());
+}
+
+TEST_F(ReadAnythingAppControllerTest,
+       OnActiveAXTreeIDChanged_DoesNotStartLineFocusSessionIfHidden) {
+  EnableLineFocus();
+  model().set_line_focus_enabled(true);
+  model().set_active_presentation_state(
+      read_anything::mojom::ReadAnythingPresentationState::kInactive);
+
+  auto const new_id = ui::AXTreeID::CreateNewAXTreeID();
+  controller().OnActiveAXTreeIDChanged(new_id, ukm::kInvalidSourceId, false);
+
+  EXPECT_FALSE(model().line_focus_session_start_time().has_value());
+}
+
+TEST_F(ReadAnythingAppControllerTest,
+       OnActiveAXTreeIDChanged_DoesNotStartLineFocusSessionIfWillHide) {
+  EnableLineFocus();
+  model().set_line_focus_enabled(true);
+  model().set_will_hide(true);
+
+  auto const new_id = ui::AXTreeID::CreateNewAXTreeID();
+  controller().OnActiveAXTreeIDChanged(new_id, ukm::kInvalidSourceId, false);
+
+  EXPECT_FALSE(model().line_focus_session_start_time().has_value());
+}
+
+TEST_F(ReadAnythingAppControllerTest,
+       OnActiveAXTreeIDChanged_NoPreviousTree_DoesNotStartLineFocusSession) {
+  EnableLineFocus();
+  model().set_line_focus_enabled(true);
+  model().SetRootTreeId(ui::AXTreeIDUnknown());
+
+  auto const new_id = ui::AXTreeID::CreateNewAXTreeID();
+  controller().OnActiveAXTreeIDChanged(new_id, ukm::kInvalidSourceId, false);
+
+  EXPECT_FALSE(model().line_focus_session_start_time().has_value());
 }
 
 TEST_F(ReadAnythingAppControllerTest,
@@ -6096,7 +6188,8 @@ TEST_F(ReadAnythingAppControllerReadabilitySelectTextTest,
   // Sanity check: Ensure content is actually there before we start.
   ASSERT_EQ(controller().GetDomDistillerContentHtml(), stale_content);
 
-  EXPECT_CALL(page_handler_, RequestReadabilityDistillation()).Times(1);
+  EXPECT_CALL(page_handler_, RequestReadabilityDistillation(testing::_))
+      .Times(1);
 
   ProcessModelUpdates();
 
@@ -6127,7 +6220,8 @@ TEST_F(ReadAnythingAppControllerReadabilitySelectTextTest,
 
   // Since the URL of the active tree is still "https://example.com/page",
   // RequestReadabilityDistillation() should NOT be called.
-  EXPECT_CALL(page_handler_, RequestReadabilityDistillation()).Times(0);
+  EXPECT_CALL(page_handler_, RequestReadabilityDistillation(testing::_))
+      .Times(0);
 
   ProcessModelUpdates();
 
@@ -6174,7 +6268,8 @@ TEST_F(
 
   // Since the URL changed to "https://example.com/page2",
   // RequestReadabilityDistillation() SHOULD be called.
-  EXPECT_CALL(page_handler_, RequestReadabilityDistillation()).Times(1);
+  EXPECT_CALL(page_handler_, RequestReadabilityDistillation(testing::_))
+      .Times(1);
 
   ProcessModelUpdates();
 
@@ -6513,6 +6608,68 @@ TEST_F(ReadAnythingAppControllerTest,
   histogram_tester.ExpectUniqueSample(
       ReadAloudAppModel::kSpeechStopSourceHistogramName,
       ReadAloudAppModel::ReadAloudStopSource::kButton, 1);
+}
+
+TEST_F(ReadAnythingAppControllerTest,
+       OnReadingModeShown_StartsNewLineFocusSessionIfLineFocusOn) {
+  EnableLineFocus();
+  base::HistogramTester histogram_tester;
+  model().set_line_focus_enabled(true);
+  StartLineFocusSession();
+
+  EXPECT_CALL(page_handler_, AckReadingModeHidden()).Times(2);
+  controller().OnReadingModeHidden(true);
+  histogram_tester.ExpectTotalCount(
+      "Accessibility.ReadAnything.LineFocusSessionLength", 1);
+  ASSERT_FALSE(model().line_focus_session_start_time().has_value());
+
+  controller().OnReadingModeShown(
+      read_anything::mojom::ReadAnythingOpenTrigger::kOmniboxChip);
+  EXPECT_TRUE(model().line_focus_session_start_time().has_value());
+
+  // The session from the reopened Reading Mode is logged on the next hide.
+  controller().OnReadingModeHidden(true);
+  histogram_tester.ExpectTotalCount(
+      "Accessibility.ReadAnything.LineFocusSessionLength", 2);
+}
+
+TEST_F(ReadAnythingAppControllerTest,
+       OnReadingModeShown_DoesNotStartLineFocusSessionIfLineFocusOff) {
+  EnableLineFocus();
+  model().set_line_focus_enabled(false);
+
+  controller().OnReadingModeShown(
+      read_anything::mojom::ReadAnythingOpenTrigger::kOmniboxChip);
+
+  EXPECT_FALSE(model().line_focus_session_start_time().has_value());
+}
+
+TEST_F(ReadAnythingAppControllerTest,
+       OnReadingModeShown_PreservesExistingLineFocusSessionIfAlreadyActive) {
+  EnableLineFocus();
+  model().set_line_focus_enabled(true);
+  StartLineFocusSession();
+
+  ASSERT_TRUE(model().line_focus_session_start_time().has_value());
+  auto const initial_start_time =
+      model().line_focus_session_start_time().value();
+
+  controller().OnReadingModeShown(
+      read_anything::mojom::ReadAnythingOpenTrigger::kOmniboxChip);
+
+  EXPECT_TRUE(model().line_focus_session_start_time().has_value());
+  EXPECT_EQ(model().line_focus_session_start_time().value(),
+            initial_start_time);
+}
+
+TEST_F(ReadAnythingAppControllerTest,
+       OnReadingModeShown_DoesNotStartLineFocusSessionWithoutFlag) {
+  model().set_line_focus_enabled(true);
+
+  controller().OnReadingModeShown(
+      read_anything::mojom::ReadAnythingOpenTrigger::kOmniboxChip);
+
+  EXPECT_FALSE(model().line_focus_session_start_time().has_value());
 }
 
 TEST_F(ReadAnythingAppControllerTest,

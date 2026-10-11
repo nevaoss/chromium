@@ -283,6 +283,8 @@ TEST_F(OmniboxEverywhereUIManagerTest, ShowWhileWidgetIsHidden) {
 #define MAYBE_InitialBoundsMatchRestingHeight InitialBoundsMatchRestingHeight
 #endif
 TEST_F(OmniboxEverywhereUIManagerTest, MAYBE_InitialBoundsMatchRestingHeight) {
+  profile_.GetPrefs()->SetBoolean(omnibox_everywhere::prefs::kFreDismissed,
+                                  true);
   display::test::TestScreen test_screen(/*create_display=*/false,
                                         /*register_screen=*/false);
   ScopedScreenOverride screen_override(&test_screen);
@@ -307,7 +309,90 @@ TEST_F(OmniboxEverywhereUIManagerTest, MAYBE_InitialBoundsMatchRestingHeight) {
   ui_manager->Shutdown();
 }
 
+#if BUILDFLAG(IS_CHROMEOS)
+#define MAYBE_InitialBoundsMatchFreModalRestingHeight \
+  DISABLED_InitialBoundsMatchFreModalRestingHeight
+#else
+#define MAYBE_InitialBoundsMatchFreModalRestingHeight \
+  InitialBoundsMatchFreModalRestingHeight
+#endif
+TEST_F(OmniboxEverywhereUIManagerTest,
+       MAYBE_InitialBoundsMatchFreModalRestingHeight) {
+  display::test::TestScreen test_screen(/*create_display=*/false,
+                                        /*register_screen=*/false);
+  ScopedScreenOverride screen_override(&test_screen);
+
+  display::Display display1(1, gfx::Rect(0, 0, 1920, 1080));
+  test_screen.display_list().AddDisplay(display1,
+                                        display::DisplayList::Type::PRIMARY);
+
+  const int expected_width =
+      omnibox_everywhere::OmniboxEverywhereUIManager::GetPopupFixedWidth();
+  const int expected_x = (1920 - expected_width) / 2;
+
+  // 1. Fresh profile with kOmniboxEverywhereFre enabled starts at
+  // FreStage::kIntroModal and uses kFreModalRestingHeight.
+  ASSERT_EQ(omnibox_everywhere::prefs::GetCurrentFreStage(&profile_),
+            omnibox_everywhere::prefs::FreStage::kIntroModal);
+  {
+    auto ui_manager = CreateUIManager();
+    ui_manager->ShowForProfile(&profile_, GetContext());
+    views::Widget* widget = ui_manager->widget();
+    ASSERT_TRUE(widget);
+
+    const int expected_fre_y =
+        (1080 - omnibox_everywhere::OmniboxEverywhereUIManager::
+                    kFreModalRestingHeight) /
+        2;
+    EXPECT_EQ(widget->GetWindowBoundsInScreen(),
+              gfx::Rect(expected_x, expected_fre_y, expected_width,
+                        omnibox_everywhere::OmniboxEverywhereUIManager::
+                            kFreModalRestingHeight));
+    ui_manager->Shutdown();
+  }
+
+  // 2. When FreStage transitions to kShortcutSetupChin (intro modal dismissed),
+  // initial bounds use kDefaultRestingHeight.
+  profile_.GetPrefs()->SetBoolean(omnibox_everywhere::prefs::kFreIntroDismissed,
+                                  true);
+  ASSERT_EQ(omnibox_everywhere::prefs::GetCurrentFreStage(&profile_),
+            omnibox_everywhere::prefs::FreStage::kShortcutSetupChin);
+  {
+    auto ui_manager = CreateUIManager();
+    ui_manager->ShowForProfile(&profile_, GetContext());
+    views::Widget* widget = ui_manager->widget();
+    ASSERT_TRUE(widget);
+
+    EXPECT_EQ(widget->GetWindowBoundsInScreen(),
+              gfx::Rect(expected_x, 464, expected_width,
+                        omnibox_everywhere::OmniboxEverywhereUIManager::
+                            kDefaultRestingHeight));
+    ui_manager->Shutdown();
+  }
+
+  // 3. When kOmniboxEverywhereFre feature is disabled on a fresh profile,
+  // initial bounds use kDefaultRestingHeight.
+  profile_.GetPrefs()->SetBoolean(omnibox_everywhere::prefs::kFreIntroDismissed,
+                                  false);
+  base::test::ScopedFeatureList disable_fre;
+  disable_fre.InitAndDisableFeature(omnibox::kOmniboxEverywhereFre);
+  {
+    auto ui_manager = CreateUIManager();
+    ui_manager->ShowForProfile(&profile_, GetContext());
+    views::Widget* widget = ui_manager->widget();
+    ASSERT_TRUE(widget);
+
+    EXPECT_EQ(widget->GetWindowBoundsInScreen(),
+              gfx::Rect(expected_x, 464, expected_width,
+                        omnibox_everywhere::OmniboxEverywhereUIManager::
+                            kDefaultRestingHeight));
+    ui_manager->Shutdown();
+  }
+}
+
 TEST_F(OmniboxEverywhereUIManagerTest, SmallLoomniboxBounds) {
+  profile_.GetPrefs()->SetBoolean(omnibox_everywhere::prefs::kFreDismissed,
+                                  true);
   base::test::ScopedFeatureList scoped_feature_list;
   scoped_feature_list.InitAndEnableFeatureWithParameters(
       omnibox::kOmniboxEverywhere, {{"smallLoomnibox", "true"}});
@@ -352,6 +437,8 @@ TEST_F(OmniboxEverywhereUIManagerTest, SmallLoomniboxBounds) {
 #endif
 TEST_F(OmniboxEverywhereUIManagerTest,
        MAYBE_CalculateBoundsClampsToSmallDisplays) {
+  profile_.GetPrefs()->SetBoolean(omnibox_everywhere::prefs::kFreDismissed,
+                                  true);
   display::test::TestScreen test_screen(/*create_display=*/false,
                                         /*register_screen=*/false);
   ScopedScreenOverride screen_override(&test_screen);
@@ -2024,7 +2111,10 @@ TEST_F(OmniboxEverywhereUIManagerTest,
   ScopedScreenOverride screen_override(&test_screen);
 
   display::Display display1(1, gfx::Rect(0, 0, 1920, 1080));
-  display1.set_work_area(gfx::Rect(0, 30, 1920, 1050));
+  // Use a top work area offset (50) safely below the native macOS menu bar
+  // (which can be up to ~38pt on MacBook screens with a notch) so AppKit does
+  // not constrain the native window below work_area.origin().
+  display1.set_work_area(gfx::Rect(0, 50, 1920, 1030));
   test_screen.display_list().AddDisplay(display1,
                                         display::DisplayList::Type::PRIMARY);
 
@@ -2237,6 +2327,56 @@ TEST_F(OmniboxEverywhereUIManagerTest, ScreensharePickerStateTracking) {
   EXPECT_FALSE(ui_manager->is_screenshare_picker_open_for_testing());
   EXPECT_FALSE(ui_manager->IsScreenshareCaptureInProgress());
   EXPECT_FALSE(ui_manager->web_contents()->ShouldIgnoreInputEventsForTesting());
+}
+
+TEST_F(OmniboxEverywhereUIManagerTest,
+       CancelChromeDefaultPickerRestoresWidget) {
+  auto ui_manager = CreateUIManager();
+  ui_manager->ShowForProfile(&profile_, GetContext());
+  ASSERT_TRUE(ui_manager->widget());
+  EXPECT_TRUE(ui_manager->widget()->IsVisible());
+
+  ui_manager->OnScreensharePickerOpened();
+  EXPECT_TRUE(ui_manager->is_screenshare_picker_open_for_testing());
+  EXPECT_TRUE(ui_manager->IsScreenshareCaptureInProgress());
+  EXPECT_FALSE(ui_manager->widget()->IsVisible());
+
+  EXPECT_TRUE(ui_manager->CancelChromeDefaultPicker());
+  EXPECT_FALSE(ui_manager->is_screenshare_picker_open_for_testing());
+  EXPECT_FALSE(ui_manager->IsScreenshareCaptureInProgress());
+  EXPECT_TRUE(ui_manager->widget()->IsVisible());
+}
+
+TEST_F(OmniboxEverywhereUIManagerTest,
+       CancelChromeDefaultPickerReturnsFalseWhenNotOpen) {
+  auto ui_manager = CreateUIManager();
+  ui_manager->ShowForProfile(&profile_, GetContext());
+  ASSERT_TRUE(ui_manager->widget());
+  EXPECT_TRUE(ui_manager->widget()->IsVisible());
+
+  EXPECT_FALSE(ui_manager->CancelChromeDefaultPicker());
+  EXPECT_TRUE(ui_manager->widget()->IsVisible());
+}
+
+TEST_F(OmniboxEverywhereUIManagerTest,
+       CancelChromeDefaultPickerSuppressesRestoreWhenTargetProfileDiffers) {
+  TestingProfile other_profile;
+  auto ui_manager = CreateUIManager();
+  ui_manager->ShowForProfile(&profile_, GetContext());
+  ASSERT_TRUE(ui_manager->widget());
+  EXPECT_TRUE(ui_manager->widget()->IsVisible());
+
+  ui_manager->OnScreensharePickerOpened();
+  EXPECT_TRUE(ui_manager->is_screenshare_picker_open_for_testing());
+  EXPECT_TRUE(ui_manager->IsScreenshareCaptureInProgress());
+  EXPECT_FALSE(ui_manager->widget()->IsVisible());
+
+  // When invoked for a different profile, the picker is cancelled but the old
+  // profile's widget is not restored/focused (preventing visual flicker).
+  EXPECT_TRUE(ui_manager->CancelChromeDefaultPicker(&other_profile));
+  EXPECT_FALSE(ui_manager->is_screenshare_picker_open_for_testing());
+  EXPECT_FALSE(ui_manager->IsScreenshareCaptureInProgress());
+  EXPECT_FALSE(ui_manager->widget()->IsVisible());
 }
 
 TEST_F(OmniboxEverywhereUIManagerTest, DismissBypassedDuringScreensharePicker) {
@@ -2896,6 +3036,35 @@ TEST_F(OmniboxEverywhereUIManagerTest, HasOpenModalDialog_RegionSelectOverlay) {
   EXPECT_FALSE(ui_manager->web_contents()->ShouldIgnoreInputEventsForTesting());
 
   ui_manager->Shutdown();
+}
+
+TEST_F(OmniboxEverywhereUIManagerTest,
+       CancelChromeDefaultPickerDoesNotCancelRegionSelectOverlay) {
+  using RegionCaptureSource = OmniboxEverywhereUIManager::RegionCaptureSource;
+  auto ui_manager = CreateUIManager();
+  ui_manager->ShowForProfile(&profile_, GetContext());
+  ASSERT_TRUE(ui_manager->web_contents());
+
+  SkBitmap bitmap;
+  bitmap.allocN32Pixels(100, 100);
+  bitmap.eraseColor(SK_ColorRED);
+
+  base::test::TestFuture<const SkBitmap&> future;
+  ui_manager->ShowRegionSelectOverlay(
+      bitmap, RegionCaptureSource::AllDisplays(), future.GetCallback());
+  EXPECT_TRUE(ui_manager->HasOpenModalDialog());
+  EXPECT_TRUE(ui_manager->IsScreenshareCaptureInProgress());
+
+  // Region selection overlay covers the entire screen and is unaffected by
+  // CancelChromeDefaultPicker().
+  EXPECT_FALSE(ui_manager->CancelChromeDefaultPicker());
+  EXPECT_FALSE(future.IsReady());
+  EXPECT_TRUE(ui_manager->HasOpenModalDialog());
+  EXPECT_TRUE(ui_manager->IsScreenshareCaptureInProgress());
+
+  ui_manager->Shutdown();
+  EXPECT_TRUE(future.IsReady());
+  EXPECT_TRUE(future.Get().empty());
 }
 
 TEST_F(OmniboxEverywhereUIManagerTest,

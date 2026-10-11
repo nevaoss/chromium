@@ -48,6 +48,7 @@ De reținut:
 <translation id="1784567647421309104">Salvează parolele în Chrome</translation>
 <translation id="1790080846677398234">Adaugă adresele URL introduse la marcajele din Chrome.</translation>
 <translation id="1799920918471566157">Sfaturi pentru Chrome</translation>
+<translation id="1802420021606590788">Chrome procesează titlurile paginilor și adresele URL într-un spațiu privat în cloud</translation>
 <translation id="1830634592642484976">Această adresă se salvează momentan în Chrome. Pentru a o folosi în toate produsele Google, salveaz-o în Contul Google, <ph name="USER_EMAIL" />.</translation>
 <translation id="1891812034154776216">Ascunde filele incognito deschise când ieși din Chrome</translation>
 <translation id="1894434821386148799">Poți găsi setările Chrome și multe altele aici</translation>
@@ -140,6 +141,7 @@ Nu poți salva marcaje noi în cont până când nu ștergi câteva. Dacă te de
 <translation id="3984746313391923992">Organizația îți solicită să nu te conectezi la Chrome.</translation>
 <translation id="3988789688219830639">Google Chrome nu are acces la fotografii și videoclipuri. Activează accesul din Setări iOS &gt; Confidențialitate &gt; Fotografii.</translation>
 <translation id="4064699917955374540">Pentru a folosi și a salva datele Chrome în Contul Google, confirmă-ți identitatea.</translation>
+<translation id="4093789416346364876">Setează Chrome ca browser prestabilit pentru a primi statistici de la Gemini oriunde navighezi</translation>
 <translation id="411154422556990518">Rămâi la curent cu actualizările privind urmărirea prețurilor și sfaturile pentru Chrome.</translation>
 <translation id="417201473131094001">Nu se acceptă pe Chrome Canary</translation>
 <translation id="424864128008805179">Te deconectezi de la Chrome?</translation>
@@ -359,6 +361,7 @@ Datele au fost criptate cu expresia de acces pentru <ph name="TIME" />. Introdu-
 <translation id="8610372330814566250">Folosește parolele, istoricul, marcajele și cardurile de credit din Safari în Chrome</translation>
 <translation id="8630122478628016441">Activează Blochează filele incognito când închizi Chrome.</translation>
 <translation id="8673726683583791503">Fă cumpărături cu Google Lens</translation>
+<translation id="869525545193934083">Videoclip pe ecran complet despre cum să setezi Chrome ca browser prestabilit: deschide Setările Chrome în iOS, atinge Aplicația browser prestabilit și selectează Chrome.</translation>
 <translation id="8765470054473112089">Când introduci text în bara de adrese sau în caseta de căutare, Chrome trimite ceea ce introduci la motorul de căutare prestabilit, pentru a primi sugestii mai bune. Această opțiune este dezactivată în modul incognito.</translation>
 <translation id="8772179140489533211">Afișează solicitări pentru conectarea la Chrome.</translation>
 <translation id="8788269841521769222">Nu va trebui să reții această parolă. Ea se va salva în Managerul de parole Google pentru <ph name="EMAIL" /></translation>

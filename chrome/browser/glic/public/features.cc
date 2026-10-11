@@ -102,26 +102,12 @@ BASE_FEATURE(kGlicLiveMode,
 #endif
 );
 
-BASE_FEATURE(kGlicDefaultToLastActiveConversation,
-             base::FEATURE_DISABLED_BY_DEFAULT);
-
-const base::FeatureParam<base::TimeDelta>
-    kGlicDefaultToLastActiveConversationMaxRecency{
-        &kGlicDefaultToLastActiveConversation, "max_recency",
-        base::Minutes(20)};
-
 BASE_FEATURE(kGlicSummarizeVideoSuggestion, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kGlicFixTimeToFirstQueryKillSwitch,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
-BASE_FEATURE(kGlicContextMenu,
-#if BUILDFLAG(IS_ANDROID)
-             base::FEATURE_DISABLED_BY_DEFAULT
-#else
-             base::FEATURE_ENABLED_BY_DEFAULT
-#endif
-);
+BASE_FEATURE(kGlicContextMenu, FEATURE_ENABLED_BY_DEFAULT_NON_ANDROID);
 const base::FeatureParam<std::string> kGlicContextMenuArm{&kGlicContextMenu,
                                                           "variant", "arm3"};
 const base::FeatureParam<bool> kGlicContextMenuWithOnboarding{
@@ -134,6 +120,8 @@ BASE_FEATURE(kGlicDynamicChromeTools, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kGlicTextSelectionContextMenu, base::FEATURE_DISABLED_BY_DEFAULT);
 const base::FeatureParam<bool> kGlicTextSelectionContextMenuMessageFirstFre{
     &kGlicTextSelectionContextMenu, "message_first_fre", false};
+const base::FeatureParam<bool> kGlicTextSelectionContextMenuAutoSubmit{
+    &kGlicTextSelectionContextMenu, "auto_submit", false};
 
 BASE_FEATURE(kGlicTieredRolloutV2, base::FEATURE_DISABLED_BY_DEFAULT);
 const base::FeatureParam<std::string> kGlicTieredRolloutV2EligibleTiers{
@@ -314,4 +302,10 @@ BASE_FEATURE(kGlicActionFirstFRE,
 BASE_FEATURE(kGlicWarmOnNudge, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kGlicWarmOnIph, base::FEATURE_DISABLED_BY_DEFAULT);
+
+BASE_FEATURE(kGlicBackfillWarmingUsePerformanceManager,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
+BASE_FEATURE(kGlicColdWarmingUsePerformanceManager,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 }  // namespace features

@@ -28,7 +28,13 @@ class AppMenuActionItem {
     kSection,
     kHeader,
     kSearch,
+    kNotification,
     kCustom,
+  };
+
+  enum class ItemHeight {
+    kDefault,
+    kExpanded,
   };
 
   struct ActionParams {
@@ -38,6 +44,8 @@ class AppMenuActionItem {
     std::optional<ui::ImageModel> icon_override;
     std::optional<std::u16string> chip_text;
     std::optional<bool> is_checkable;
+    std::optional<ItemHeight> item_height;
+    std::optional<std::u16string> minor_text;
   };
 
   static const ui::ClassProperty<DisplayType>* const kDisplayTypeKey;
@@ -45,9 +53,11 @@ class AppMenuActionItem {
   static const ui::ClassProperty<std::u16string*>* const kTextOverrideKey;
   static const ui::ClassProperty<ui::ImageModel*>* const kIconOverrideKey;
   static const ui::ClassProperty<ui::ImageModel*>* const kMinorIconKey;
+  static const ui::ClassProperty<std::u16string*>* const kMinorTextKey;
   static const ui::ClassProperty<ui::MenuSeparatorType>* const kSeparatorKey;
   static const ui::ClassProperty<std::u16string*>* const kChipTextKey;
   static const ui::ClassProperty<bool>* const kIsCheckableKey;
+  static const ui::ClassProperty<ItemHeight>* const kItemHeightKey;
 
   AppMenuActionItem() = delete;
   AppMenuActionItem(const AppMenuActionItem&) = delete;
@@ -71,6 +81,7 @@ class AppMenuActionItem {
 };
 
 DECLARE_UI_CLASS_PROPERTY_TYPE(AppMenuActionItem::DisplayType)
+DECLARE_UI_CLASS_PROPERTY_TYPE(AppMenuActionItem::ItemHeight)
 DECLARE_UI_CLASS_PROPERTY_TYPE(ui::ImageModel*)
 DECLARE_UI_CLASS_PROPERTY_TYPE(ui::MenuSeparatorType)
 

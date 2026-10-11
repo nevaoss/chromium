@@ -4,8 +4,6 @@
 
 package org.chromium.chrome.browser.tasks.tab_management;
 
-import android.util.Pair;
-
 import org.chromium.base.Token;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
@@ -13,7 +11,6 @@ import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tabmodel.TabList;
 import org.chromium.chrome.browser.tabmodel.TabModel;
 import org.chromium.components.tab_groups.TabGroupColorId;
-import org.chromium.components.tabs.TabAlert;
 import org.chromium.ui.modelutil.PropertyModel;
 
 import java.util.List;
@@ -49,12 +46,6 @@ class FlatLayoutDelegate extends TabListLayoutDelegate {
     }
 
     @Override
-    @TabAlert
-    int getAlertState(Tab representativeTab, PropertyModel model) {
-        return representativeTab.getAlertState();
-    }
-
-    @Override
     int getInsertionIndexOfTab(Tab tab) {
         if (tab == null) return TabList.INVALID_TAB_INDEX;
         // Compute the index of the tab within the tab's group.
@@ -67,11 +58,6 @@ class FlatLayoutDelegate extends TabListLayoutDelegate {
         // Get the position of the nth tab card ignoring any other CARD_TYPE entries present in the
         // model list outside of TAB, TAB_GROUP, and ARCHIVED_TAB_GROUP.
         return mModelList.indexOfNthTabCard(tabIndex);
-    }
-
-    @Override
-    @Nullable Pair<Integer, Tab> getIndexAndTabForTabGroupId(@Nullable Token tabGroupId) {
-        return null;
     }
 
     @Override

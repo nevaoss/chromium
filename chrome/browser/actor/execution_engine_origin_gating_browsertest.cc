@@ -11,6 +11,7 @@
 #include "base/test/scoped_feature_list.h"
 #include "base/test/test_future.h"
 #include "base/test/values_test_util.h"
+#include "build/build_config.h"
 #include "chrome/browser/actor/actor_keyed_service.h"
 #include "chrome/browser/actor/actor_task.h"
 #include "chrome/browser/actor/actor_task_metadata.h"
@@ -2812,8 +2813,9 @@ IN_PROC_BROWSER_TEST_P(OutOfTurnNavigationBrowserTest,
   }
 }
 
-// TODO(crbug.com/482434165): Flaky test on win-asan builder.
-#if BUILDFLAG(IS_WIN) && defined(ADDRESS_SANITIZER)
+// TODO(crbug.com/482434165, crbug.com/563615151): Flaky test on Win and Mac
+// builders.
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
 #define MAYBE_InterleavedAction_OutOfTurnNavigation \
   DISABLED_InterleavedAction_OutOfTurnNavigation
 #else
@@ -3096,5 +3098,68 @@ INSTANTIATE_TEST_SUITE_P(
     [](const testing::TestParamInfo<LocalhostTestParam>& info) {
       return info.param.test_name;
     });
+
+class ExecutionEngineHardcodedSensitiveSiteBrowserTest
+    : public ExecutionEngineOriginGatingBrowserTestBase {
+ public:
+  ExecutionEngineHardcodedSensitiveSiteBrowserTest() = default;
+  ~ExecutionEngineHardcodedSensitiveSiteBrowserTest() override = default;
+
+  void SetUpCommandLine(base::CommandLine* command_line) override {
+    ExecutionEngineOriginGatingBrowserTestBase::SetUpCommandLine(command_line);
+    command_line->AppendSwitchASCII(switches::kActorSensitiveSites,
+                                    "https://bar.com");
+  }
+};
+
+IN_PROC_BROWSER_TEST_F(ExecutionEngineHardcodedSensitiveSiteBrowserTest,
+                       PageActionPromptsUser) {
+  const GURL sensitive_url =
+      embedded_https_test_server().GetURL("bar.com", "/actor/blank.html");
+  ASSERT_TRUE(content::NavigateToURL(web_contents(), sensitive_url));
+  OpenGlicAndCreateTask();
+
+  RunTestSequence(CreateMockWebClientRequest(
+      content::JsReplace(kHandleUserConfirmationDialogTempl, true)));
+
+  WaitTool::SetNoDelayForTesting();
+  std::unique_ptr<ToolRequest> tool_request = MakeWaitRequest(active_tab());
+  ASSERT_TRUE(tool_request->RequiresUrlCheckInCurrentTab());
+
+  ActResultFuture result;
+  actor_task().Act(ToRequestList(tool_request), result.GetCallback());
+  ExpectOkResult(result);
+
+  RunTestSequence(VerifyUserConfirmationDialogRequest(
+      base::test::ParseJsonDict(content::JsReplace(
+          R"({"navigationOrigin": $1, "forBlocklistedOrigin": true})",
+          url::Origin::Create(sensitive_url)))));
+}
+
+IN_PROC_BROWSER_TEST_F(ExecutionEngineHardcodedSensitiveSiteBrowserTest,
+                       NavigatePromptsUser) {
+  const GURL start_url =
+      embedded_https_test_server().GetURL("example.com", "/actor/blank.html");
+  ASSERT_TRUE(content::NavigateToURL(web_contents(), start_url));
+  OpenGlicAndCreateTask();
+
+  RunTestSequence(CreateMockWebClientRequest(
+      content::JsReplace(kHandleUserConfirmationDialogTempl, true)));
+
+  const GURL sensitive_url =
+      embedded_https_test_server().GetURL("bar.com", "/actor/blank.html");
+  std::unique_ptr<ToolRequest> tool_request =
+      MakeNavigateRequest(*active_tab(), sensitive_url.spec());
+
+  ActResultFuture result;
+  actor_task().Act(ToRequestList(tool_request), result.GetCallback());
+  ExpectOkResult(result);
+  EXPECT_EQ(web_contents()->GetLastCommittedURL(), sensitive_url);
+
+  RunTestSequence(VerifyUserConfirmationDialogRequest(
+      base::test::ParseJsonDict(content::JsReplace(
+          R"({"navigationOrigin": $1, "forBlocklistedOrigin": true})",
+          url::Origin::Create(sensitive_url)))));
+}
 
 }  // namespace actor

@@ -52,19 +52,6 @@ LogBuffer& operator<<(LogBuffer& buffer,
 // One instance per frame, owned by the BrowserAutofillManager.
 class OtpManagerImpl : public OtpManager, public AutofillManager::Observer {
  public:
-  // The duration for which `OtpManagerImpl` will wait for an incoming OTP
-  // coming from an SMS message.
-  static constexpr base::TimeDelta kSmsOtpSubscriptionDuration =
-      base::Minutes(1);
-
-  // The duration for which `OtpManagerImpl` will wait for a notification
-  // about an incoming OTP in the user's Gmail inbox. The actual OTP fetch
-  // will happen as part of a `gmail_otp_retriever_` call.
-  static constexpr base::TimeDelta kGmailOtpTickleSubscriptionDuration =
-      base::Minutes(5);
-
-  friend class OtpManagerImplTestApi;
-
   OtpManagerImpl(BrowserAutofillManager& owner,
                  one_time_tokens::OneTimeTokenService* one_time_token_service);
   OtpManagerImpl(const OtpManagerImpl&) = delete;
@@ -72,8 +59,9 @@ class OtpManagerImpl : public OtpManager, public AutofillManager::Observer {
   ~OtpManagerImpl() override;
 
   // OtpManager:
-  // Returns any cached OTPs (if they exist) and renews a subscription so that
-  // incoming OTPs can be reported.
+  // Evaluates in-memory cached Gmail OTPs for immediate delivery (subject
+  // to PhishGuard verification), queries recent OTPs from the backend, and
+  // renews subscriptions for incoming OTPs.
   void GetOtpSuggestions(const FormStructure& form,
                          const FormFieldData& field,
                          GetOtpSuggestionsCallback callback) override;
@@ -91,13 +79,30 @@ class OtpManagerImpl : public OtpManager, public AutofillManager::Observer {
   // Callback handler for `log_subscription_`.
   void OnLogMessage(std::string_view message);
 
-  // Returns the most recent token from a list of tokens. Relevance is
-  // determined by the on-device arrival time.
-  std::optional<one_time_tokens::OneTimeToken> SelectMostRecentToken() const;
-
  private:
+  friend class OtpManagerImplTestApi;
+
+  // The duration for which `OtpManagerImpl` will wait for an incoming OTP
+  // coming from an SMS message.
+  static constexpr base::TimeDelta kSmsOtpSubscriptionDuration =
+      base::Minutes(1);
+
+  // The duration for which `OtpManagerImpl` will wait for a notification
+  // about an incoming OTP in the user's Gmail inbox. The actual OTP fetch
+  // will happen as part of a `gmail_otp_retriever_` call.
+  static constexpr base::TimeDelta kGmailOtpTickleSubscriptionDuration =
+      base::Minutes(5);
+
+  // Returns the most recent non-expired token from the token service's cache
+  // matching the optional `type`. If `type` is nullopt, tokens of any type
+  // are considered. Returns std::nullopt if the service is unavailable, the
+  // cache is empty, or all matching tokens are expired.
+  std::optional<one_time_tokens::OneTimeToken> SelectMostRecentToken(
+      std::optional<one_time_tokens::OneTimeTokenType> type =
+          std::nullopt) const;
   // Fetches recent OTPs and creates or renewes a subscription. Any OTPs
   // discovered in this process are reported to `OnOneTimeTokenReceived`.
+  // This calls OnOneTimeTokenReceived() at least one time.
   void GetRecentOtpsAndRenewSubscription();
 
   // Called when an incoming OTP tickle push notification arrives.
@@ -152,10 +157,6 @@ class OtpManagerImpl : public OtpManager, public AutofillManager::Observer {
 
   // The time when the phish guard check was started.
   base::TimeTicks phish_guard_check_start_time_;
-
-  // The received OTPs. This is used to store the OTPs between the phishing
-  // check and the actual display of the suggestions.
-  std::vector<one_time_tokens::OneTimeToken> received_otps_;
 
   base::ScopedObservation<BrowserAutofillManager, AutofillManager::Observer>
       autofill_manager_observation_{this};

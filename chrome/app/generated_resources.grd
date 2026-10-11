@@ -759,7 +759,7 @@ are declared in tools/grit/grit_args.gni.
             &amp;Print...
           </message>
           <message name="IDS_CONTENT_CONTEXT_PRINT_SELECTION" desc="The name of the Print command in the content area context menu when there is a text selection.">
-            &amp;Print “<ph name="SELECTION">$1<ex>selected text</ex></ph>”
+            &amp;Print text selection...
           </message>
           <message name="IDS_CONTENT_CONTEXT_VIEWPAGESOURCE" desc="The name of the View Page Source command in the content area context menu">
             &amp;View page source
@@ -882,7 +882,11 @@ are declared in tools/grit/grit_args.gni.
             Copy link to highlight
           </message>
 
-          <message name="IDS_CONTENT_CONTEXT_ADD_LINK_TO_READING_LIST" desc="In Title Case: The name of the Add link to reading list command in the content area context menu">
+          <message name="IDS_CONTENT_CONTEXT_COPYLINKTOTEXT_V2" desc="The name of the Copy Link to Highlight command in the content area context menu when text is selected.">
+            Copy link to "<ph name="SELECTION">$1<ex>selected text</ex></ph>"
+          </message>
+
+          <message name="IDS_CONTENT_CONTEXT_ADD_LINK_TO_READING_LIST" desc="The name of the Add link to reading list command in the content area context menu">
             Add link to reading list
           </message>
 
@@ -983,9 +987,6 @@ are declared in tools/grit/grit_args.gni.
           <message name="IDS_CONTENT_CONTEXT_COPY" desc="The name of the Copy command in the content area context menu">
             &amp;Copy
           </message>
-          <message name="IDS_CONTENT_CONTEXT_COPY_SELECTION" desc="The name of the Copy command with selection in the content area context menu">
-            &amp;Copy “<ph name="SELECTION">$1<ex>text</ex></ph>”
-          </message>
           <message name="IDS_CONTENT_CONTEXT_PASTE" desc="The name of the Paste command in the content area context menu" meaning="'Paste' menu command in sentence case">
             &amp;Paste
           </message>
@@ -1036,14 +1037,11 @@ are declared in tools/grit/grit_args.gni.
           <message name="IDS_CONTENT_CONTEXT_PARTIAL_TRANSLATE" desc="The name of the Partial Translate command in the content area context menu">
             &amp;Translate selection to <ph name="LANGUAGE">$1<ex>English</ex></ph>
           </message>
-          <message name="IDS_CONTENT_CONTEXT_PARTIAL_TRANSLATE_V2" desc="The name of the Partial Translate command in the content area context menu when simplified menu is enabled and there is no specific selection text to display.">
-            &amp;Translate selection
+          <message name="IDS_CONTENT_CONTEXT_PARTIAL_TRANSLATE_V2" desc="The name of the Partial Translate command in the content area context menu when simplified menu is enabled.">
+            &amp;Translate
           </message>
           <message name="IDS_CONTENT_CONTEXT_PARTIAL_TRANSLATE_SELECTION" desc="The name of the Translate command in the content area context menu when there is a text selection.">
             &amp;Translate “<ph name="SELECTION">$1<ex>text</ex></ph>” to <ph name="LANGUAGE">$2<ex>English</ex></ph>
-          </message>
-          <message name="IDS_CONTENT_CONTEXT_PARTIAL_TRANSLATE_SELECTION_V2" desc="The name of the Translate command in the content area context menu when there is a text selection and menu simplification is enabled.">
-            &amp;Translate “<ph name="SELECTION">$1<ex>text</ex></ph>”
           </message>
           <message name="IDS_CONTENT_CONTEXT_SEARCHWEBFOR" desc="The name of the Search the Web for “string” command in the content area context menu">
             &amp;Search <ph name="SEARCH_ENGINE">$1<ex>Google</ex></ph> for “<ph name="SEARCH_TERMS">$2<ex>flowers</ex></ph>”
@@ -1112,7 +1110,7 @@ are declared in tools/grit/grit_args.gni.
             &amp;Print...
           </message>
           <message name="IDS_CONTENT_CONTEXT_PRINT_SELECTION" desc="In Title Case: The name of the Print command in the content area context menu when there is a text selection.">
-            &amp;Print “<ph name="SELECTION">$1<ex>selected text</ex></ph>”
+            &amp;Print Text Selection...
           </message>
           <message name="IDS_CONTENT_CONTEXT_VIEWPAGESOURCE" desc="In Title Case: The name of the View Page Source command in the content area context menu">
             &amp;View Page Source
@@ -1238,6 +1236,10 @@ are declared in tools/grit/grit_args.gni.
             Copy Link to Highlight
           </message>
 
+          <message name="IDS_CONTENT_CONTEXT_COPYLINKTOTEXT_V2" desc="In Title Case: The name of the Copy Link to Highlight command in the content area context menu when text is selected.">
+            Copy Link to “<ph name="SELECTION">$1<ex>selected text</ex></ph>”
+          </message>
+
           <message name="IDS_CONTENT_CONTEXT_ADD_LINK_TO_READING_LIST" desc="In Title Case: The name of the Add link to reading list command in the content area context menu">
             Add Link to Reading List
           </message>
@@ -1340,9 +1342,6 @@ are declared in tools/grit/grit_args.gni.
           <message name="IDS_CONTENT_CONTEXT_COPY" desc="In Title Case: The name of the Copy command in the content area context menu">
             &amp;Copy
           </message>
-          <message name="IDS_CONTENT_CONTEXT_COPY_SELECTION" desc="The name of the Copy command with selection in the content area context menu">
-            &amp;Copy “<ph name="SELECTION">$1<ex>text</ex></ph>”
-          </message>
           <!-- Paste and Match Style / Paste as Plain Text -->
           <if expr="is_macosx">
             <message name="IDS_CONTENT_CONTEXT_PASTE" desc="Mac/In Title Case: The name of the Paste command in the content area context menu" meaning="'Paste' menu command for Mac">
@@ -1407,11 +1406,8 @@ are declared in tools/grit/grit_args.gni.
           <message name="IDS_CONTENT_CONTEXT_PARTIAL_TRANSLATE" desc="In Title Case: The name of the Partial Translate command in the content area context menu">
             &amp;Translate Selection to <ph name="LANGUAGE">$1<ex>English</ex></ph>
           </message>
-          <message name="IDS_CONTENT_CONTEXT_PARTIAL_TRANSLATE_V2" desc="In Title Case: The name of the Partial Translate command in the content area context menu when simplified menu is enabled and there is no specific selection text to display.">
-            &amp;Translate Selection
-          </message>
-          <message name="IDS_CONTENT_CONTEXT_PARTIAL_TRANSLATE_SELECTION_V2" desc="In Title Case: The name of the Translate command in the content area context menu when there is a text selection and menu simplification is enabled.">
-            &amp;Translate “<ph name="SELECTION">$1<ex>text</ex></ph>”
+          <message name="IDS_CONTENT_CONTEXT_PARTIAL_TRANSLATE_V2" desc="In Title Case: The name of the Partial Translate command in the content area context menu when simplified menu is enabled.">
+            &amp;Translate
           </message>
           <message name="IDS_CONTENT_CONTEXT_SEARCHWEBFOR" desc="In Title Case: The name of the Search the Web for “string” command in the content area context menu">
             &amp;Search <ph name="SEARCH_ENGINE">$1<ex>Google</ex></ph> for “<ph name="SEARCH_TERMS">$2<ex>flowers</ex></ph>”
@@ -9661,32 +9657,11 @@ Keep your key file in a safe place. You will need it to create new versions of y
       <message name="IDS_BOOKMARK_FOLDER_CHILD_COUNT" desc="Text description for the number of children of a bookmark folder">
         (<ph name="COUNT">$1<ex>1</ex></ph>)
       </message>
-      <message name="IDS_BOOKMARKS_EDIT_BOOKMARK" desc="Title for the bookmarks side panel edit dialog when full editing is available">
-        Edit Bookmark
-      </message>
       <message name="IDS_BOOKMARKS_EDIT_MOVE_TO_ANOTHER_FOLDER" desc="Tooltip for the button in the bookmarks side panel bulk edit mode that allows the user to move the selected bookmarks to a different folder.">
         Move
       </message>
       <message name="IDS_BOOKMARKS_EDIT_MORE" desc="Tooltip for the menu button in the bookmarks side panel bulk edit mode that shows more actions the user can take on selected bookmarks.">
         More
-      </message>
-      <message name="IDS_BOOKMARKS_EDIT_MOVE_TO" desc="Title for the bookmarks side panel edit dialog when move-only editing is available">
-        Move to…
-      </message>
-      <message name="IDS_BOOKMARKS_EDIT_NEW_FOLDER" desc="Label for the button to add a new folder in the bookmarks side panel edit dialog">
-        New Folder
-      </message>
-      <message name="IDS_BOOKMARKS_EDIT_CANCEL" desc="Label for the button to close the bookmarks side panel edit dialog">
-        Cancel
-      </message>
-      <message name="IDS_BOOKMARKS_EDIT_SAVE" desc="Label for the button to save changes from the bookmarks side panel edit dialog">
-        Save
-      </message>
-      <message name="IDS_BOOKMARKS_EDIT_NAME" desc="Label for the name text field in the bookmarks side panel edit dialog">
-        Name
-      </message>
-      <message name="IDS_BOOKMARKS_EDIT_URL" desc="Label for the url text field in the bookmarks side panel edit dialog">
-        URL
       </message>
       <message name="IDS_BOOKMARK_DELETION_COUNT" desc="Text description for the number of deleted bookmarks">
         {NUM_BOOKMARKS, plural, =1 {1 bookmark deleted} other {# bookmarks deleted}}
@@ -9717,9 +9692,6 @@ Keep your key file in a safe place. You will need it to create new versions of y
       </message>
       <message name="IDS_BOOKMARKS_BACK_BUTTON_TOOLTIP" desc="Tooltip for the bookmarks side panel folder header back button">
         Back
-      </message>
-      <message name="IDS_BOOKMARKS_FORWARD_BUTTON_LABEL" is_accessibility_with_no_ui="true" desc="Accessible label for the bookmarks side panel edit dialog button to view a folder's children">
-        <ph name="FOLDER_TITLE">$1<ex>All Bookmarks</ex></ph> folder
       </message>
       <message name="IDS_BOOKMARK_OPTIONS_LABEL" is_accessibility_with_no_ui="true" desc="Accessible label for the bookmarks side panel context menu button">
         More options for <ph name="FOLDER_TITLE">$1<ex>All Bookmarks</ex></ph> bookmark
@@ -10704,6 +10676,9 @@ Keep your key file in a safe place. You will need it to create new versions of y
       <message name="IDS_ORGANIZER_PANEL" desc="The name of the organizer panel announced by screenreaders." is_accessibility_with_no_ui="true">
         Organizer
       </message>
+      <message name="IDS_ORGANIZER_PANEL_NO_RESULTS" desc="Text shown in an organizer panel list section when a search yields no matching items.">
+        No results
+      </message>
       <message name="IDS_ORGANIZER_PANEL_TAB_GROUPS" desc="The label on the organizer panel list section corresponding to tab groups.">
         Tab Groups
       </message>
@@ -10999,6 +10974,9 @@ Keep your key file in a safe place. You will need it to create new versions of y
       <!--Accessible name/action strings-->
       <message name="IDS_ACCESSIBLE_INCOGNITO_WINDOW_TITLE_FORMAT" desc="The format for the accessible title of an Incognito window">
         <ph name="WINDOW_TITLE">$1</ph> (Incognito)
+      </message>
+      <message name="IDS_ACCESSIBLE_ISOLATED_WINDOW_TITLE_FORMAT" desc="The format for the accessible title of an Isolated mode window">
+        <ph name="WINDOW_TITLE">$1</ph> (Isolated)
       </message>
       <message name="IDS_ACCESSIBLE_GUEST_WINDOW_TITLE_FORMAT" desc="The format for the accessible title of a guest mode window">
         <ph name="WINDOW_TITLE">$1</ph> (Guest)
@@ -15010,6 +14988,38 @@ This can include information about installed software, files, your browser, the 
         <message name="IDS_ACCOUNT_PREVIEW_PROMO_SUBTITLE_EXTENSIONS" desc="Subtitle of a sign-in promo informing the user they can access their extensions on all your devices.">
           Sign in to get your extensions and more on all your devices
         </message>
+
+        <!-- Account Preview Profile Menu Signin Promo Subtitles -->
+        <message name="IDS_ACCOUNT_PREVIEW_PROFILE_MENU_SUBTITLE_PASSWORDS_WITH_DEVICE" desc="Subtitle of the profile menu sign-in promo informing the user they can access their passwords from their other device.">
+          To get your passwords and more from <ph name="DEVICE">$1<ex>your phone</ex></ph>, sign in as <ph name="EMAIL">$2<ex>elisa.g.beckett@gmail.com</ex></ph>
+        </message>
+        <message name="IDS_ACCOUNT_PREVIEW_PROFILE_MENU_SUBTITLE_BOOKMARKS_WITH_DEVICE" desc="Subtitle of the profile menu sign-in promo informing the user they can access their bookmarks from their other device.">
+          To get your bookmarks and more from <ph name="DEVICE">$1<ex>your phone</ex></ph>, sign in as <ph name="EMAIL">$2<ex>elisa.g.beckett@gmail.com</ex></ph>
+        </message>
+        <message name="IDS_ACCOUNT_PREVIEW_PROFILE_MENU_SUBTITLE_SAVED_INFO_WITH_DEVICE" desc="Subtitle of the profile menu sign-in promo informing the user they can access their saved info (such as autofill data, addresses, and payment methods) from their other device.">
+          To get your saved info and more from <ph name="DEVICE">$1<ex>your phone</ex></ph>, sign in as <ph name="EMAIL">$2<ex>elisa.g.beckett@gmail.com</ex></ph>
+        </message>
+        <message name="IDS_ACCOUNT_PREVIEW_PROFILE_MENU_SUBTITLE_READING_LIST_WITH_DEVICE" desc="Subtitle of the profile menu sign-in promo informing the user they can access their reading list from their other device.">
+          To get your reading list and more from <ph name="DEVICE">$1<ex>your phone</ex></ph>, sign in as <ph name="EMAIL">$2<ex>elisa.g.beckett@gmail.com</ex></ph>
+        </message>
+        <message name="IDS_ACCOUNT_PREVIEW_PROFILE_MENU_SUBTITLE_EXTENSIONS_WITH_DEVICE" desc="Subtitle of the profile menu sign-in promo informing the user they can access their extensions from their computer. Only desktop/computer DEVICE are supported for extensions.">
+          To get your extensions and more from <ph name="DEVICE">$1<ex>your computer</ex></ph>, sign in as <ph name="EMAIL">$2<ex>elisa.g.beckett@gmail.com</ex></ph>
+        </message>
+        <message name="IDS_ACCOUNT_PREVIEW_PROFILE_MENU_SUBTITLE_PASSWORDS" desc="Subtitle of the profile menu sign-in promo informing the user they can access their passwords on all their devices.">
+          To get your passwords and more on all your devices, sign in as <ph name="EMAIL">$1<ex>elisa.g.beckett@gmail.com</ex></ph>
+        </message>
+        <message name="IDS_ACCOUNT_PREVIEW_PROFILE_MENU_SUBTITLE_BOOKMARKS" desc="Subtitle of the profile menu sign-in promo informing the user they can access their bookmarks on all their devices.">
+          To get your bookmarks and more on all your devices, sign in as <ph name="EMAIL">$1<ex>elisa.g.beckett@gmail.com</ex></ph>
+        </message>
+        <message name="IDS_ACCOUNT_PREVIEW_PROFILE_MENU_SUBTITLE_SAVED_INFO" desc="Subtitle of the profile menu sign-in promo informing the user they can access their saved info (such as autofill data, addresses, and payment methods) on all their devices.">
+          To get your saved info and more on all your devices, sign in as <ph name="EMAIL">$1<ex>elisa.g.beckett@gmail.com</ex></ph>
+        </message>
+        <message name="IDS_ACCOUNT_PREVIEW_PROFILE_MENU_SUBTITLE_READING_LIST" desc="Subtitle of the profile menu sign-in promo informing the user they can access their reading list on all their devices.">
+          To get your reading list and more on all your devices, sign in as <ph name="EMAIL">$1<ex>elisa.g.beckett@gmail.com</ex></ph>
+        </message>
+        <message name="IDS_ACCOUNT_PREVIEW_PROFILE_MENU_SUBTITLE_EXTENSIONS" desc="Subtitle of the profile menu sign-in promo informing the user they can access their extensions on all your devices.">
+          To get your extensions and more on all your devices, sign in as <ph name="EMAIL">$1<ex>elisa.g.beckett@gmail.com</ex></ph>
+        </message>
         <message name="IDS_SIGNIN_DICE_WEB_INTERCEPT_ENTERPRISE_BUBBLE_DESC_MANAGED_BY_TOKEN" desc="Body of the web signin interception bubble when the new account is managed via a token">
           You just signed in a managed account, creating a new managed profile will allow you to access some resources linked to that account.
         </message>
@@ -16884,6 +16894,9 @@ Please help our engineers fix this problem. Tell us what happened right before y
       <message name="IDS_DESKTOP_MEDIA_PICKER_EMPTY_PREVIEW" desc="Text shown instead of a preview image of a tab when the user hasn't yet selected a tab to screenshare." >
         Select a tab to share
       </message>
+      <message name="IDS_DESKTOP_MEDIA_PICKER_BLOCKED_PREVIEW" desc="Text shown instead of a preview image of a tab when sharing of the selected tab is blocked by enterprise policy.">
+        Blocked by your admin
+      </message>
       <message name="IDS_DESKTOP_MEDIA_PICKER_PREVIEW_ACCESSIBLE_NAME" desc="Name used by screen readers for a preview screenshot of a tab selected for screensharing." >
         Preview of shared tab
       </message>
@@ -18553,6 +18566,31 @@ Please help our engineers fix this problem. Tell us what happened right before y
       Close Incognito
     </message>
     <message name="IDS_INCOGNITO_HISTORY_BUBBLE_CANCEL_BUTTON_TEXT" desc="Text of button in bubble view for calling to the close the bubble action.">
+      Got it
+    </message>
+
+    <!-- Isolated Delete Browsing Data dialog bubble. -->
+    <message name="IDS_ISOLATED_CLEAR_BROWSING_DATA_DIALOG_PRIMARY_TEXT" desc="The primary text of the delete browsing data dialog which is shown in Isolated Mode when a user invokes a delete browsing data action in Isolated Mode. The text describes how Isolated Mode users can delete the browsing data by closing all Isolated Mode windows.">
+      To delete data, close all Isolated windows
+    </message>
+    <message name="IDS_ISOLATED_CLEAR_BROWSING_DATA_DIALOG_SECONDARY_TEXT" desc="The secondary text of the clear browsing data dialog which is shown in Isolated Mode when a user invokes a clear browsing data action in Isolated Mode. The text describes how the clear browsing data action affects only the Isolated Mode windows.">
+      This only affects Isolated windows
+    </message>
+    <message name="IDS_ISOLATED_CLEAR_BROWSING_DATA_DIALOG_CLOSE_WINDOWS_BUTTON" desc="The text of the button offering to close all Isolated windows in the dialog.">
+      Close windows
+    </message>
+
+    <!-- Isolated History Disclaimer dialog bubble. -->
+    <message name="IDS_ISOLATED_HISTORY_BUBBLE_PRIMARY_TEXT" desc="Header in bubble view that states visited sites aren't saved in Isolated mode.">
+      Sites you visit aren’t saved in Isolated
+    </message>
+    <message name="IDS_ISOLATED_HISTORY_BUBBLE_SECONDARY_TEXT" desc="Description in bubble view that states closing all Isolated tabs is necessary to delete Isolated browsing history from the device.">
+      To delete Isolated browsing history from your device, close all Isolated tabs
+    </message>
+    <message name="IDS_ISOLATED_HISTORY_BUBBLE_CLOSE_ISOLATED_BUTTON_TEXT" desc="Text of button in bubble view for calling to the close all Isolated tabs action.">
+      Close Isolated
+    </message>
+    <message name="IDS_ISOLATED_HISTORY_BUBBLE_CANCEL_BUTTON_TEXT" desc="Text of button in bubble view for calling to the close the bubble action.">
       Got it
     </message>
 

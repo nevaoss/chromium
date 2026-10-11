@@ -261,6 +261,7 @@
   E_CPONLY(kColorGlicBackground) \
   E_CPONLY(kColorGlicModalBackground) \
   E_CPONLY(kColorGlicModalForeground) \
+  E_CPONLY(kColorGlicPlaceholderElem) \
   E_CPONLY(kColorGlicActiveTabUnderlineGradient1) \
   E_CPONLY(kColorGlicActiveTabUnderlineGradient2) \
   E_CPONLY(kColorGlicActiveTabUnderlineGradient3) \
@@ -1141,6 +1142,7 @@
   E_CPONLY(kColorToolbarSeparator) \
   E_CPONLY(kColorToolbarActionItemEngaged) \
   E_CPONLY(kColorToolbarSeparatorDefault) \
+  E_CPONLY(kColorToolbarSearchFieldTextColor) \
   E_CPONLY(kColorToolbarText) \
   E_CPONLY(kColorToolbarTextDefault) \
   E_CPONLY(kColorToolbarTextDisabled) \

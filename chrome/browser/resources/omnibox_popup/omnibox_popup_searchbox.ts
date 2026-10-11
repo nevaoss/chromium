@@ -64,6 +64,12 @@ function isNtpUrl(url: string): boolean {
       url.startsWith('chrome-search://local-ntp') || url === 'about:blank';
 }
 
+/**
+ * Minimum distance (in pixels) moved to differentiate dragging from clicking.
+ * Matches Blink's native drag threshold.
+ */
+const DRAG_THRESHOLD_PX = 3;
+
 export interface AimButtonConfig {
   text: string;
   title: string;
@@ -142,6 +148,14 @@ export class OmniboxPopupSearchboxElement extends
         type: Boolean,
         reflect: true,
       },
+      /**
+       * Whether this page, rather than the Views frame, paints the popup's
+       * drop shadow. See `omnibox::kOmniboxFullWebUIShadow`.
+       */
+      webuiShadowEnabled_: {
+        type: Boolean,
+        reflect: true,
+      },
       multiLineEnabled: {
         type: Boolean,
         reflect: true,
@@ -209,9 +223,15 @@ export class OmniboxPopupSearchboxElement extends
     };
   }
 
-  override accessor virtualFocusEnabled: boolean =
-      loadTimeData.valueExists('omniboxPopupVirtualFocusNavigation') &&
-      loadTimeData.getBoolean('omniboxPopupVirtualFocusNavigation');
+  override accessor virtualFocusEnabled: boolean = true;
+
+  override setSelection(selection: OmniboxPopupSelection) {
+    super.setSelection(selection);
+    if (this.virtualFocusEnabled &&
+        this.selectedMatchIndex !== selection.line) {
+      this.selectedMatchIndex = selection.line;
+    }
+  }
   accessor canShowSecondarySide: boolean =
       canShowSecondarySideMediaQueryList.matches;
   accessor hasSecondarySide: boolean = false;
@@ -235,6 +255,8 @@ export class OmniboxPopupSearchboxElement extends
   // TODO(b/519185419): Remove `isTouchUi_` property and from `loadTimeData` and
   // get layout constants and font sizes from a C++ layout helper instead.
   protected accessor isTouchUi_: boolean = loadTimeData.getBoolean('isTouchUi');
+  protected accessor webuiShadowEnabled_: boolean =
+      loadTimeData.getBoolean('omniboxFullWebUIShadowEnabled');
   protected accessor searchboxDynamicColorScheme_: boolean =
       loadTimeData.getBoolean('searchboxDynamicColorScheme');
   protected accessor searchboxDynamicAnimation_: boolean =
@@ -276,14 +298,23 @@ export class OmniboxPopupSearchboxElement extends
   // True during an active IME (Input Method Editor) text composition session.
   // Used to suppress intermediate selection updates until composition finishes.
   private isComposing_: boolean = false;
+  // True if the user has typed directly into the WebUI DOM input element since
+  // the last `onSetInputState_` invocation.
+  private hasDirectUserDomInput_: boolean = false;
+  // True after the initial `onSetInputState_` has arrived from native Views to
+  // synchronize input state.
+  private hasReceivedInitialInputState_: boolean = false;
   private fullUrlShown_: boolean = false;
   // TODO(b/504669677): Replace `deferredFocusAction_` with
   // an actual handshake, to give more control of when focusing happens, instead
   // of relying on deferred focus/selectall.
   // Stores pending focus action if focus arrives while document is hidden.
   private deferredFocusAction_: DeferredFocusAction|null = null;
-  // Used to signify that on mouseup, the default action of `unselect()`
-  // should be ignored.
+  // Captured mouse coordinates when mouse button is pressed.
+  private clientXAtMouseDown_: number = 0;
+  private clientYAtMouseDown_: number = 0;
+  // If true, the entire text will be selected on mouse release (if no drag
+  // occurred).
   private selectAllOnMouseRelease_: boolean = false;
   private textfieldModel_: TextfieldModel = new TextfieldModel();
   // Stores the input text prior to the latest edit or selection change event.
@@ -379,18 +410,8 @@ export class OmniboxPopupSearchboxElement extends
     });
     this.inputResizeObserver_.observe(this.$.inputWrapper);
 
-    // When `selectAllOnMouseRelease_` is true (set during `onInputMousedown_`
-    // when the input is focused and the selection is collapsed), prevent the
-    // default `mouseup` behavior. This stops the text from being unselected
-    // after a full selection was programmatically applied during `mousedown`.
-    this.eventTracker_.add(
-        this.$.input.inputElement, 'mouseup', (e: MouseEvent) => {
-          if (this.shadowRoot?.activeElement === this.$.input &&
-              this.selectAllOnMouseRelease_) {
-            this.selectAllOnMouseRelease_ = false;
-            e.preventDefault();
-          }
-        });
+    this.eventTracker_.add(document, 'mousemove', this.onMouseMove_.bind(this));
+    this.eventTracker_.add(document, 'mouseup', this.onMouseUp_.bind(this));
 
     this.eventTracker_.add(
         canShowSecondarySideMediaQueryList, 'change',
@@ -414,6 +435,16 @@ export class OmniboxPopupSearchboxElement extends
   }
 
   override willUpdate(changedProperties: PropertyValues<this>) {
+    if (this.virtualFocusEnabled &&
+        changedProperties.has('selectedMatchIndex') &&
+        this.selectedMatchIndex !== this.selection.line) {
+      this.setSelection(this.selectedMatchIndex === -1 ? kDefaultSelection : {
+        line: this.selectedMatchIndex,
+        state: SelectionLineState.kNormal,
+        actionIndex: 0,
+      });
+    }
+
     super.willUpdate(changedProperties);
 
     if (changedProperties.has('searchboxChromeRefreshTheming')) {
@@ -433,8 +464,17 @@ export class OmniboxPopupSearchboxElement extends
   override updated(changedProperties: PropertyValues<this>) {
     super.updated(changedProperties);
 
-    if (this.virtualFocusEnabled) {
-      if (changedProperties.has('selection')) {
+    if (changedProperties.has('selection') ||
+        changedProperties.has('selectedMatchIndex')) {
+      // Guard against transient out-of-bounds indices when autocomplete
+      // results are being cleared or updated asynchronously. The backend will
+      // be synced once the new valid results are rendered.
+      if (this.selectedMatchIndex !== -1 &&
+          (!this.result || !this.result.matches ||
+           this.selectedMatchIndex >= this.result.matches.length)) {
+        return;
+      }
+      if (this.virtualFocusEnabled) {
         this.searchboxPageHandler_.setPopupSelection(
             selectionIsNativelySupported(this.selection) ? this.selection :
                                                            kDefaultSelection);
@@ -443,17 +483,7 @@ export class OmniboxPopupSearchboxElement extends
         if (entrypoint) {
           entrypoint.hasVirtualFocus = this.isContextEntrypointVirtualFocused();
         }
-      }
-    } else {
-      if (changedProperties.has('selectedMatchIndex')) {
-        // Guard against transient out-of-bounds indices when autocomplete
-        // results are being cleared or updated asynchronously. The backend will
-        // be synced once the new valid results are rendered.
-        if (this.selectedMatchIndex !== -1 &&
-            (!this.result || !this.result.matches ||
-             this.selectedMatchIndex >= this.result.matches.length)) {
-          return;
-        }
+      } else {
         // Synchronize selection changes driven by WebUI back to C++. This
         // ensures the backend edit model is aware of the active selection and
         // can preserve it across tab switches.
@@ -645,25 +675,69 @@ export class OmniboxPopupSearchboxElement extends
   }
 
   protected onInputMousedown_(e: MouseEvent) {
+    const wasUnfocused = this.shadowRoot?.activeElement !== this.$.input;
+    const input = this.getInputElement().inputElement;
+
     // If the full url is currently selected, a second mouse click should
     // show the full url.
     this.showFullUrlOnDeselect_();
+
+    // Multi-clicks (e.g. double-click word select) should let Blink handle
+    // selection without being overwritten on mouseup.
+    if (e.detail >= 2) {
+      this.selectAllOnMouseRelease_ = false;
+      // If a range is currently selected (e.g., from the first click of a
+      // double click selecting all text on mouse release), Blink's
+      // SelectionController ignores double-click word selection because
+      // Selection().IsRange() is true. Collapse the selection so Blink performs
+      // native word selection at the click coordinates.
+      if (input.selectionStart !== input.selectionEnd) {
+        this.getInputElement().setSelectionRange(0, 0);
+      }
+      return;
+    }
+
     // If nothing is selected, a mouse click should select all the text
-    // if the input is not already focused. (i.e. focusing on omnibox).
-    if (!this.dropdownIsVisible &&
-        this.shadowRoot?.activeElement !== this.$.input) {
-      // Only handle left (0) and middle (1) mouse button clicks.
-      if (e.button === 0 || e.button === 1) {
-        const input = this.getInputElement().inputElement;
-        if (input.selectionStart === input.selectionEnd) {
-          this.selectAllOnMouseRelease_ = true;
-          input.select();
-        }
+    // if the input is not already focused (i.e. focusing on omnibox).
+    if (!this.dropdownIsVisible && wasUnfocused && e.button === 0) {
+      if (input.selectionStart === input.selectionEnd) {
+        this.selectAllOnMouseRelease_ = true;
+        this.clientXAtMouseDown_ = e.clientX;
+        this.clientYAtMouseDown_ = e.clientY;
+      }
+    }
+    if (e.button === 0 && e.composedPath().includes(input)) {
+      this.onInputFocusChanged(new CustomEvent('input-focus-changed', {
+        detail: {value: input.value, isOnFocus: !input.value},
+      }));
+    }
+  }
+
+  private onMouseMove_(e: MouseEvent) {
+    // Only track drag distance while the primary (left) mouse button is held.
+    if (this.selectAllOnMouseRelease_ && (e.buttons & 1) !== 0) {
+      const dx = Math.abs(e.clientX - this.clientXAtMouseDown_);
+      const dy = Math.abs(e.clientY - this.clientYAtMouseDown_);
+      if (dx > DRAG_THRESHOLD_PX || dy > DRAG_THRESHOLD_PX) {
+        this.selectAllOnMouseRelease_ = false;
       }
     }
   }
 
+  private onMouseUp_(e: MouseEvent) {
+    // Defer selecting all text to mouseup so that Blink finishes native
+    // pointer/caret placement before we apply the full selection, preventing
+    // the selection from being collapsed on mouse release.
+    if (this.shadowRoot?.activeElement === this.$.input &&
+        this.selectAllOnMouseRelease_ && e.button === 0) {
+      this.getInputElement().select();
+    }
+    this.selectAllOnMouseRelease_ = false;
+  }
+
   override async onInputWrapperKeydown(e: KeyboardEvent) {
+    this.selectAllOnMouseRelease_ = false;
+
     const modifier = isMac ? e.metaKey && !e.ctrlKey : e.ctrlKey && !e.metaKey;
 
     if (modifier) {
@@ -897,7 +971,6 @@ export class OmniboxPopupSearchboxElement extends
     }
 
     this.lastInputSelection_ = {start, end};
-
     this.popupPageHandler_.onSelectionChanged(
         {start, end}, this.currentSequenceNum_, this.fullUrlShown_);
   }
@@ -912,26 +985,49 @@ export class OmniboxPopupSearchboxElement extends
       performance.mark(
           'OmniboxPopupSearchboxElement::onSetInputState_:TabSwitch');
     }
-    this.$.input.setInputText(state.text);
+    this.hasReceivedInitialInputState_ = true;
+
+    let text = state.text;
+    let selection = state.selection;
+
+    // Handle race condition where user typed characters into WebUI while
+    // the SetInputState IPC was in-flight from native Views.
+    if (this.hasDirectUserDomInput_ && state.userInputInProgress &&
+        !state.isTabSwitch) {
+      const lastInput = this.getInputElement().lastInput();
+      const userTypedVal = this.lastInputText_ || lastInput?.text ||
+          this.getInputElement().getInputValue();
+      if (userTypedVal) {
+        if (!userTypedVal.startsWith(state.text)) {
+          text = state.text + userTypedVal;
+          selection = {start: text.length, end: text.length};
+        } else if (userTypedVal.length > state.text.length) {
+          text = userTypedVal;
+          selection = {start: text.length, end: text.length};
+        }
+      }
+    }
+    this.hasDirectUserDomInput_ = false;
+
+    this.$.input.setInputText(text);
     this.userInputInProgress_ = state.userInputInProgress;
-    this.hasUserInput_ = state.userInputInProgress && !!state.text.trim();
+    this.hasUserInput_ = state.userInputInProgress && !!text.trim();
     this.currentSequenceNum_ = state.sequenceNumber;
     this.tabId_ = state.tabId;
     this.fullUrl_ = state.fullUrl;
-    this.lastQueriedInput = state.text;
     this.permanentDisplayText_ = state.permanentDisplayText;
     this.isComposing_ = false;
     const keywordChanged =
         this.inputKeywordModel?.keyword !== state.keywordModel?.keyword ||
         this.inputKeywordModel?.type !== state.keywordModel?.type;
     this.inputKeywordModel = state.keywordModel;
-    this.lastInputText_ = state.text;
-    this.lastInputSelection_ = state.selection;
+    this.lastInputText_ = text;
+    this.lastInputSelection_ = selection;
     // Clear edit history and set baseline text on hard state resets (e.g. tab
     // switch, revert), but preserve active edit history if an IPC arrives
     // while the user is actively typing in the same tab.
     if (state.isTabSwitch || !state.userInputInProgress) {
-      this.textfieldModel_.setInitialText(state.text, state.selection);
+      this.textfieldModel_.setInitialText(text, selection);
     }
     this.updateEditHistoryState_();
 
@@ -960,9 +1056,9 @@ export class OmniboxPopupSearchboxElement extends
       this.fullUrlShown_ = false;
     }
 
-    this.hasInputSelection_ = state.selection.start !== state.selection.end;
+    this.hasInputSelection_ = selection.start !== selection.end;
 
-    this.selectRange(state.selection);
+    this.selectRange(selection);
     this.getDropdownElement().unselect();
 
     // Records user timing marks for tab state restoration and browser/tab
@@ -992,11 +1088,17 @@ export class OmniboxPopupSearchboxElement extends
     // an on-focus autocomplete query.
     if (state.queryZps) {
       this.queryAutocomplete(
-          state.text, /*preventInlineAutocomplete=*/ false,
+          text, /*preventInlineAutocomplete=*/ false,
           /*isOnFocus=*/ true);
+    } else if (text !== state.text) {
+      this.queryAutocomplete(
+          text, /*preventInlineAutocomplete=*/ false,
+          /*isOnFocus=*/ false);
+      this.popupPageHandler_.onSelectionChanged(
+          selection, this.currentSequenceNum_, this.fullUrlShown_);
     } else {
       // Prevent stale tracking of queried input across state updates.
-      this.lastQueriedInput = state.text;
+      this.lastQueriedInput = text;
     }
   }
 
@@ -1044,6 +1146,8 @@ export class OmniboxPopupSearchboxElement extends
    * callback to complete the hide handshake.
    */
   private async onClearPopup_(): Promise<void> {
+    this.hasReceivedInitialInputState_ = false;
+    this.hasDirectUserDomInput_ = false;
     this.$.input.setInputText('');
     this.getInputElement().blur();
     this.clearAutocompleteMatches();
@@ -1055,6 +1159,9 @@ export class OmniboxPopupSearchboxElement extends
    * clicking outside.
    */
   private handleFocusLost_() {
+    this.hasReceivedInitialInputState_ = false;
+    this.hasDirectUserDomInput_ = false;
+    this.selectAllOnMouseRelease_ = false;
     this.getInputElement().setSelectionRange(0, 0);
     this.getInputElement().blur();
     // Clear autocomplete results so clicking into omnibox_view_views
@@ -1081,7 +1188,7 @@ export class OmniboxPopupSearchboxElement extends
     // If a partial sub-range (e.g. from double click or drag) is requested
     // while displaying an elided URL, unelide to `fullUrl_` before applying
     // the selection so the highlight matches full URL coordinates exactly.
-    if (start !== end && !isFullSelection && this.fullUrl_) {
+    if (start !== end && !isFullSelection) {
       this.maybeShowFullUrl_();
     }
 
@@ -1095,7 +1202,7 @@ export class OmniboxPopupSearchboxElement extends
   }
 
   private maybeShowFullUrl_() {
-    if (this.fullUrlShown_ || this.userInputInProgress_) {
+    if (this.fullUrlShown_ || this.userInputInProgress_ || !this.fullUrl_) {
       return;
     }
     this.fullUrlShown_ = true;
@@ -1213,8 +1320,10 @@ export class OmniboxPopupSearchboxElement extends
 
   protected onSearchboxInputTextUpdated_(
       e: CustomEvent<{value: string, isComposing: boolean}>) {
+    this.selectAllOnMouseRelease_ = false;
     this.userInputInProgress_ = true;
     this.hasUserInput_ = !!e.detail.value.trim();
+    this.hasDirectUserDomInput_ = true;
 
     this.updateTextfieldModel_(e.detail.value, e.detail.isComposing);
     this.lastInputText_ = e.detail.value;
@@ -1227,7 +1336,7 @@ export class OmniboxPopupSearchboxElement extends
       // tab switch (restoring the permanent URL instead of a blank string).
       this.clearAutocompleteMatches();
       this.popupPageHandler_.onInputCleared(this.currentSequenceNum_);
-    } else {
+    } else if (this.hasReceivedInitialInputState_) {
       this.onSearchboxInputTextUpdated(e);
     }
   }
@@ -1265,7 +1374,9 @@ export class OmniboxPopupSearchboxElement extends
   }
 
   protected onComposeClick_(e: CustomEvent<ComposeClickEventDetail>) {
-    this.dropdownIsVisible = false;
+    // Clear autocomplete matches so they don't resurface when transitioning
+    // back from the AIM popup to the full popup.
+    this.clearAutocompleteMatches();
     this.popupPageHandler_.openAimPopup(e.detail?.viaKeyboard || false);
   }
 
@@ -1365,6 +1476,7 @@ export class OmniboxPopupSearchboxElement extends
       // verbatim input text (or reload the permanent URL).
       e.preventDefault();
       this.pageHandler().openAutocompleteMatch(
+          /*resultSequenceId=*/ this.result?.sequenceId ?? 0,
           /*line=*/ -1,
           /*url=*/ '',
           /*areMatchesShowing=*/ this.dropdownIsVisible,
@@ -1378,15 +1490,63 @@ export class OmniboxPopupSearchboxElement extends
       return;
     }
 
-    if (!this.virtualFocusEnabled && e.key === 'Tab' &&
-        this.$.input === this.shadowRoot?.activeElement) {
-      if (!e.shiftKey &&
-          this.keywordModeManager.acceptTab(
-              this.selectedMatch, this.matchIndex)) {
-        e.preventDefault();
+    if (e.key === 'Tab') {
+      const isShift = e.shiftKey;
+      const isAimButtonFocused = this.isAiModeVirtualFocused() ||
+          this.shadowRoot?.activeElement === this.$.composeButton;
+      const isInputFocused = this.$.input === this.shadowRoot?.activeElement;
+
+      if (this.dropdownIsVisible) {
+        if (!this.virtualFocusEnabled) {
+          if (!isShift &&
+              this.keywordModeManager.acceptTab(
+                  this.selectedMatch, this.matchIndex)) {
+            e.preventDefault();
+            return;
+          }
+          if (this.acceptInlineAutocomplete(e)) {
+            return;
+          }
+        }
+        super.handleKeyNavigation(e);
         return;
       }
-      if (this.acceptInlineAutocomplete(e)) {
+
+      if (isAimButtonFocused) {
+        e.preventDefault();
+        this.setSelection(kDefaultSelection);
+        if (isShift) {
+          // Shift+Tab from AIM button moves focus back to the omnibox input.
+          this.getInputElement().focus();
+          return;
+        }
+        // If dropdown is closed / no suggestions, advance focus out of the
+        // omnibox.
+        this.popupPageHandler_.advanceFocus(/*reverse=*/ false);
+        return;
+      }
+
+      if (isInputFocused) {
+        if (!isShift) {
+          e.preventDefault();
+          // Forward Tab from input: always focus the AIM button first if
+          // visible.
+          if (this.aimButtonVisible_) {
+            this.$.composeButton.focus();
+            return;
+          }
+
+          // Advance focus out of the omnibox.
+          this.popupPageHandler_.advanceFocus(/*reverse=*/ false);
+          return;
+        }
+
+        // Shift+Tab from input:
+        e.preventDefault();
+
+        // Advance focus backwards out
+        // of the omnibox (e.g. to the Reload button).
+        this.popupPageHandler_.advanceFocus(/*reverse=*/ true);
         return;
       }
     }
@@ -1402,19 +1562,23 @@ export class OmniboxPopupSearchboxElement extends
     // (selectedMatchIndex > 0 or non-default match/action highlighted),
     // restores typed query and resets match selection to index 0. Dropdown
     // stays open and focus stays in Omnibox.
-    const defaultMatchSelection = {
-      line: 0,
-      state: SelectionLineState.kNormal,
-      actionIndex: 0,
-    };
-    const hasTemporaryText = this.virtualFocusEnabled ?
-        !selectionsEqual(this.selection, defaultMatchSelection) :
-        this.selectedMatchIndex > 0 ||
-            (dropdown && dropdown.selection &&
-             dropdown.selection.state !== SelectionLineState.kNormal);
+    const selectedLine = this.virtualFocusEnabled ? this.selection.line :
+                                                    this.selectedMatchIndex;
+    const selectedState = this.virtualFocusEnabled ?
+        this.selection.state :
+        (dropdown?.selection?.state ?? SelectionLineState.kNormal);
+    const hasTemporaryText =
+        selectedLine > 0 || selectedState !== SelectionLineState.kNormal;
     if (this.dropdownIsVisible && hasTemporaryText) {
       dropdown.selectFirst();
       this.selectedMatchIndex = 0;
+      if (this.virtualFocusEnabled) {
+        this.setSelection({
+          line: 0,
+          state: SelectionLineState.kNormal,
+          actionIndex: 0,
+        });
+      }
       const defaultMatch = this.result?.matches?.[0];
       const typedText = this.lastQueriedInput ?? '';
       const inlineText =

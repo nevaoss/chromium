@@ -43,6 +43,7 @@
 #include "ui/base/text/bytes_formatting.h"
 #include "ui/events/event_utils.h"
 #include "ui/events/types/event_type.h"
+#include "ui/views/bubble/bubble_dialog_delegate_view.h"
 #include "ui/views/controls/button/button.h"
 #include "ui/views/controls/label.h"
 #include "ui/views/interaction/element_tracker_views.h"
@@ -132,6 +133,11 @@ class MemorySaverBubbleViewTest
       performance_manager::user_tuning::UserPerformanceTuningManager::
           PreDiscardResourceUsage::CreateForWebContents(new_contents, savings,
                                                         reason);
+    }
+    if (browser()->GetTabStripModel()->active_index() == tab_index) {
+      new_contents->GetController().Reload(content::ReloadType::NORMAL,
+                                           /*check_for_repost=*/true);
+      content::WaitForLoadStop(new_contents);
     }
   }
 

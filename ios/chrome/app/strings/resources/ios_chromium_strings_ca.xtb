@@ -142,6 +142,7 @@ Espera uns quants minuts abans de canviar de compte. Si canvies de compte ara, a
 <translation id="3855938650519180865">Novetats de Chromium</translation>
 <translation id="3886689467633467988">Inicia la sessió en aquest lloc web i a Chromium per accedir a les teves adreces d'interès i més contingut en tots els teus dispositius.</translation>
 <translation id="3949514465204582407">Consell de Chromium: obtén les contrasenyes en qualsevol aplicació</translation>
+<translation id="3983298990898629929">Defineix Chromium com a navegador predeterminat per obrir els enllaços amb un toc</translation>
 <translation id="4005283307739974863">Obre i executa la comprovació de seguretat a Chromium.</translation>
 <translation id="4043291146360695975">Les contrasenyes es desen al gestor de contrasenyes només en aquest dispositiu.</translation>
 <translation id="4046625794029820944">Deixa de copiar URL. Estableix Chromium com a predeterminat per carregar les pàgines directament.</translation>
@@ -273,6 +274,7 @@ Aspectes que cal tenir en compte:
 <translation id="6680609900732453726">Mantén la navegació privada amb l'autenticació de dispositius quan tanquis Chromium</translation>
 <translation id="6696512128741076907">Estableix Chromium com a predeterminat per obrir enllaços d'altres aplicacions a l'instant.</translation>
 <translation id="6752854822223394465">La teva organització està configurant Chromium...</translation>
+<translation id="6777348401413221846">Vídeo en pantalla completa de com es pot definir Chromium com a navegador predeterminat: obre la configuració de Chromium a iOS, toca Aplicació de navegador predeterminada i selecciona Chromium.</translation>
 <translation id="6794054469102824109">Obre el joc El dinosaure de Chromium.</translation>
 <translation id="6820823224820483452">Chromium no ha pogut comprovar totes les contrasenyes. Torna-ho a provar demà.</translation>
 <translation id="6830782797004194206">Inicia la sessió més de pressa amb Emplenament automàtic de Chromium</translation>
@@ -302,6 +304,7 @@ Només les persones que sàpiguen la teva frase de contrasenya podran llegir les
 <translation id="7337881442233988129">Chromium</translation>
 <translation id="7395825497086981028">La contrasenya es desarà al gestor de contrasenyes per a <ph name="EMAIL" />.</translation>
 <translation id="7434848749522628428">Aquesta clau d'accés es desarà al gestor de contrasenyes de Google per a <ph name="USER_EMAIL" /></translation>
+<translation id="7453822113116681031">Estableix Chromium com a navegador predeterminat per obrir els enllaços amb un sol toc</translation>
 <translation id="7504829997542308412">Obre Chromium</translation>
 <translation id="7531461704633548377">De Chromium</translation>
 <translation id="7554983317097061001">Consell de Chromium: mou Chromium al Dock</translation>
@@ -348,6 +351,7 @@ Només les persones que sàpiguen la teva frase de contrasenya podran llegir les
 <translation id="865600487977764604">Et protegeix a Chromium i és possible que s'utilitzi per millorar la teva seguretat en altres aplicacions de Google quan tinguis la sessió iniciada.</translation>
 <translation id="8663480472502753423">Mantén Chromium actualitzat</translation>
 <translation id="8685813584220679697">Inicia la sessió en aquest lloc web i a Chromium.</translation>
+<translation id="869832267508702259">Estableix Chromium com a predeterminat per obtenir estadístiques de Gemini en qualsevol lloc on naveguis</translation>
 <translation id="8698780336333802489">Importa a Chromium</translation>
 <translation id="8730503818204408000">Obre la configuració de Chromium per establir Chromium com a navegador predeterminat.</translation>
 <translation id="8754966941001340678">Chromium recomana la protecció millorada</translation>

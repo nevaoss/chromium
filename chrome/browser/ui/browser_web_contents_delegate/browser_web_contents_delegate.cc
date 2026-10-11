@@ -37,6 +37,8 @@
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/desktop_browser_window_capabilities.h"
 #include "chrome/browser/ui/exclusive_access/exclusive_access_manager.h"
+#include "chrome/browser/ui/exclusive_access/fullscreen_controller.h"
+#include "chrome/browser/ui/exclusive_access/fullscreen_tab_params.h"
 #include "chrome/browser/ui/exclusive_access/keyboard_lock_controller.h"
 #include "chrome/browser/ui/exclusive_access/pointer_lock_controller.h"
 #include "chrome/browser/ui/location_bar/location_bar.h"
@@ -495,6 +497,7 @@ void BrowserWebContentsDelegate::OnDidBlockNavigation(
     const GURL& blocked_url,
     const GURL& initiator_url,
     const url::Origin& initiator_origin,
+    scoped_refptr<content::InitiatorNavigationState> initiator_navigation_state,
     blink::mojom::NavigationBlockedReason reason) {
   if (reason ==
       blink::mojom::NavigationBlockedReason::kRedirectWithNoUserGesture) {
@@ -503,6 +506,7 @@ void BrowserWebContentsDelegate::OnDidBlockNavigation(
     if (auto* framebust_helper =
             tab ? FramebustBlockTabHelper::From(tab) : nullptr) {
       framebust_helper->AddBlockedUrl(blocked_url, initiator_origin,
+                                      initiator_navigation_state,
                                       base::NullCallback());
     }
   }
@@ -1384,10 +1388,17 @@ void BrowserWebContentsDelegate::RegisterProtocolHandler(
       return;
     }
 
+    // The permission prompt must attribute the request to the initiator frame
+    // that called navigator.registerProtocolHandler, rather than the target
+    // handler URL. For web pages these are always same-origin, but extensions
+    // can register cross-origin HTTPS endpoints; attributing the prompt to the
+    // target URL would allow an extension to spoof the prompt as coming from
+    // the target origin.
     permission_request_manager->AddRequest(
         rfh, std::make_unique<
                  custom_handlers::RegisterProtocolHandlerPermissionRequest>(
-                 registry, handler, url, std::move(*blocker)));
+                 registry, handler, rfh->GetLastCommittedOrigin(),
+                 std::move(*blocker)));
   }
 }
 

@@ -43,6 +43,9 @@ import org.mockito.junit.MockitoRule;
 import org.robolectric.Robolectric;
 import org.robolectric.shadows.ShadowLooper;
 
+import org.chromium.base.UnownedUserDataHost;
+import org.chromium.base.supplier.MonotonicObservableSupplier;
+import org.chromium.base.supplier.ObservableSuppliers;
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.R;
@@ -86,6 +89,8 @@ public class TabBottomSheetWebUiUnitTest {
     @Mock private View mMockDecorView;
     @Mock private EventForwarder mEventForwarder;
     @Mock private Activity mMockActivity;
+    @Mock private CoBrowseComponentProvider mMockComponentProvider;
+    @Mock private ResizingPlaceholderCoordinator mMockPlaceholderCoordinator;
 
     private TabBottomSheetWebUi mWebUi;
 
@@ -120,6 +125,7 @@ public class TabBottomSheetWebUiUnitTest {
                         mContextMenuPopulatorFactory,
                         mSelectionDropdownMenuDelegate,
                         Color.WHITE,
+                        Color.LTGRAY,
                         TabBottomSheetClientType.UNKNOWN,
                         CoBrowseContainerType.BOTTOM_SHEET,
                         /* ephemeralTabOpener= */ null,
@@ -134,7 +140,6 @@ public class TabBottomSheetWebUiUnitTest {
                 new ContextThemeWrapper(
                         ApplicationProvider.getApplicationContext(),
                         R.style.Theme_BrowserUI_DayNight);
-        CoBrowseComponentProvider mockProvider = mock(CoBrowseComponentProvider.class);
         View containerView = new View(context);
         TabBottomSheetWebUi webUi =
                 new TabBottomSheetWebUi(
@@ -144,13 +149,15 @@ public class TabBottomSheetWebUiUnitTest {
                         mContextMenuPopulatorFactory,
                         mSelectionDropdownMenuDelegate,
                         Color.WHITE,
+                        Color.LTGRAY,
                         TabBottomSheetClientType.UNKNOWN,
                         CoBrowseContainerType.BOTTOM_SHEET,
                         null,
                         null,
-                        mockProvider);
+                        mMockComponentProvider);
         assertEquals(
-                mockProvider, webUi.getWebViewResizingHelper().getComponentProviderForTesting());
+                mMockComponentProvider,
+                webUi.getWebViewResizingHelper().getComponentProviderForTesting());
     }
 
     @Test
@@ -168,6 +175,7 @@ public class TabBottomSheetWebUiUnitTest {
                         mContextMenuPopulatorFactory,
                         mSelectionDropdownMenuDelegate,
                         Color.WHITE,
+                        Color.LTGRAY,
                         TabBottomSheetClientType.UNKNOWN,
                         CoBrowseContainerType.BOTTOM_SHEET,
                         null,
@@ -308,7 +316,37 @@ public class TabBottomSheetWebUiUnitTest {
         mWebUi.setWebContents(mWebContents, true);
         mWebUi.destroy();
         verify(mThinWebView).destroy();
+        verify(mWindowAndroid).removeActivityStateObserver(any());
         assertNull(mWebUi.getWebContents());
+    }
+
+    @Test
+    public void testDestroy_destroysPlaceholderCoordinator() {
+        Context context =
+                new ContextThemeWrapper(
+                        ApplicationProvider.getApplicationContext(),
+                        R.style.Theme_BrowserUI_DayNight);
+        when(mMockComponentProvider.createResizingPlaceholderCoordinator(
+                        any(), eq(Color.WHITE), eq(Color.LTGRAY)))
+                .thenReturn(mMockPlaceholderCoordinator);
+        View containerView = new View(context);
+        TabBottomSheetWebUi webUi =
+                new TabBottomSheetWebUi(
+                        context,
+                        containerView,
+                        mWindowAndroid,
+                        mContextMenuPopulatorFactory,
+                        mSelectionDropdownMenuDelegate,
+                        Color.WHITE,
+                        Color.LTGRAY,
+                        TabBottomSheetClientType.UNKNOWN,
+                        CoBrowseContainerType.BOTTOM_SHEET,
+                        null,
+                        null,
+                        mMockComponentProvider);
+
+        webUi.destroy();
+        verify(mMockPlaceholderCoordinator).destroy();
     }
 
     @Test
@@ -390,6 +428,7 @@ public class TabBottomSheetWebUiUnitTest {
                         mockFactory,
                         mSelectionDropdownMenuDelegate,
                         Color.WHITE,
+                        Color.LTGRAY,
                         TabBottomSheetClientType.UNKNOWN,
                         CoBrowseContainerType.SIDE_PANEL,
                         /* ephemeralTabOpener= */ null,
@@ -436,6 +475,7 @@ public class TabBottomSheetWebUiUnitTest {
                         mockFactory,
                         mSelectionDropdownMenuDelegate,
                         Color.WHITE,
+                        Color.LTGRAY,
                         TabBottomSheetClientType.UNKNOWN,
                         CoBrowseContainerType.SIDE_PANEL,
                         /* ephemeralTabOpener= */ null,
@@ -621,6 +661,7 @@ public class TabBottomSheetWebUiUnitTest {
                         mockFactory,
                         mSelectionDropdownMenuDelegate,
                         Color.WHITE,
+                        Color.LTGRAY,
                         TabBottomSheetClientType.UNKNOWN,
                         CoBrowseContainerType.SIDE_PANEL,
                         mockOpener,
@@ -667,6 +708,7 @@ public class TabBottomSheetWebUiUnitTest {
                         mockFactory,
                         mSelectionDropdownMenuDelegate,
                         Color.WHITE,
+                        Color.LTGRAY,
                         TabBottomSheetClientType.UNKNOWN,
                         CoBrowseContainerType.SIDE_PANEL,
                         /* ephemeralTabOpener= */ null,
@@ -709,6 +751,7 @@ public class TabBottomSheetWebUiUnitTest {
                         mContextMenuPopulatorFactory,
                         mSelectionDropdownMenuDelegate,
                         Color.WHITE,
+                        Color.LTGRAY,
                         TabBottomSheetClientType.CONTEXTUAL_TASKS,
                         CoBrowseContainerType.BOTTOM_SHEET,
                         /* ephemeralTabOpener= */ null,
@@ -739,6 +782,7 @@ public class TabBottomSheetWebUiUnitTest {
                         mContextMenuPopulatorFactory,
                         mSelectionDropdownMenuDelegate,
                         Color.WHITE,
+                        Color.LTGRAY,
                         TabBottomSheetClientType.GLIC,
                         CoBrowseContainerType.BOTTOM_SHEET,
                         /* ephemeralTabOpener= */ null,
@@ -814,6 +858,26 @@ public class TabBottomSheetWebUiUnitTest {
         verify(thinWindow).setAndroidPermissionDelegate(mWindowAndroid);
     }
 
+    @Test
+    public void testSetWebContents_forwardsTabModelSelectorSupplier() {
+        WindowAndroid thinWindow = mock(WindowAndroid.class);
+        when(mWebContents.getTopLevelNativeWindow()).thenReturn(thinWindow);
+
+        UnownedUserDataHost hostWindowHost = new UnownedUserDataHost();
+        when(mWindowAndroid.getUnownedUserDataHost()).thenReturn(hostWindowHost);
+
+        UnownedUserDataHost thinWindowHost = new UnownedUserDataHost();
+        when(thinWindow.getUnownedUserDataHost()).thenReturn(thinWindowHost);
+
+        MonotonicObservableSupplier<TabModelSelector> selectorSupplier =
+                ObservableSuppliers.createMonotonic(mock(TabModelSelector.class));
+        TabModelSelectorSupplier.attach(hostWindowHost, selectorSupplier);
+
+        mWebUi.setWebContents(mWebContents, true);
+
+        assertEquals(selectorSupplier, TabModelSelectorSupplier.from(thinWindow));
+    }
+
     private static class TestTabBottomSheetWebUi extends TabBottomSheetWebUi {
         private final ContentView mMockContentView;
         private boolean mDisableActionModeSelectionMenuCalled;
@@ -825,6 +889,7 @@ public class TabBottomSheetWebUiUnitTest {
                 ContextMenuPopulatorFactory contextMenuPopulatorFactory,
                 SelectionDropdownMenuDelegate selectionDropdownMenuDelegate,
                 int backgroundColor,
+                int placeholderElemColor,
                 @TabBottomSheetClientType int clientType,
                 @CoBrowseContainerType int containerType,
                 @Nullable BiConsumer<GURL, String> ephemeralTabOpener,
@@ -837,6 +902,7 @@ public class TabBottomSheetWebUiUnitTest {
                     contextMenuPopulatorFactory,
                     selectionDropdownMenuDelegate,
                     backgroundColor,
+                    placeholderElemColor,
                     clientType,
                     containerType,
                     ephemeralTabOpener,

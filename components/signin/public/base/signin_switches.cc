@@ -95,8 +95,6 @@ BASE_FEATURE(kBeforeFirstRunDesktopRefreshSurvey,
              base::FEATURE_DISABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 
-BASE_FEATURE(kBookmarksMigrateUiChanges, base::FEATURE_ENABLED_BY_DEFAULT);
-
 #if BUILDFLAG(ENABLE_BOUND_SESSION_CREDENTIALS)
 // Allows to disable the bound session credentials code in case of emergency.
 BASE_FEATURE(kBoundSessionCredentialsKillSwitch,
@@ -666,6 +664,11 @@ const base::FeatureParam<base::TimeDelta>
         base::Hours(8)};
 #endif
 
+#if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+BASE_FEATURE(kExtensionWebAuthFlowInitiatorOrigin,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+#endif
+
 BASE_FEATURE(kFetchAccountInfoOnRestart, base::FEATURE_DISABLED_BY_DEFAULT);
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
@@ -763,6 +766,11 @@ BASE_FEATURE(kGlicEligibilitySeparateAccountCapability,
 
 BASE_FEATURE(kHandleMdmErrorsForDasherAccounts,
              base::FEATURE_DISABLED_BY_DEFAULT);
+
+#if BUILDFLAG(IS_ANDROID)
+BASE_FEATURE(kHandleMdmErrorsForDasherAccountsOnAndroid,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+#endif  // BUILDFLAG(IS_ANDROID)
 
 #if BUILDFLAG(IS_IOS)
 BASE_FEATURE(kIgnoreChromeManageAccountsInSubframes,

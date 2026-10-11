@@ -228,6 +228,7 @@ import org.chromium.chrome.browser.ui.appmenu.MenuButtonDelegate;
 import org.chromium.chrome.browser.ui.bottombar.AiModeActionCoordinator;
 import org.chromium.chrome.browser.ui.bottombar.BottomBarConfigUtils;
 import org.chromium.chrome.browser.ui.bottombar.BottomBarHostManager;
+import org.chromium.chrome.browser.ui.bottombar.BottomBarUtils;
 import org.chromium.chrome.browser.ui.browser_window.ChromeAndroidTask;
 import org.chromium.chrome.browser.ui.browser_window.ChromeAndroidTaskFeatureKey;
 import org.chromium.chrome.browser.ui.edge_to_edge.EdgeToEdgeController;
@@ -2557,7 +2558,9 @@ public class ToolbarManager
                         mActivityTabProvider.asObservable(),
                         (ScrollingBottomViewResourceFrameLayout) tabGroupUiContainer,
                         LayerType.TABSTRIP_TOOLBAR,
-                        R.dimen.tab_group_ui_height,
+                        mActivity
+                                .getResources()
+                                .getDimensionPixelSize(R.dimen.tab_group_ui_height),
                         SupplierUtils.upcast(
                                 mTabGroupUiOneshotSupplier, BottomControlsContentDelegate.class),
                         mTabObscuringHandler,
@@ -2622,7 +2625,7 @@ public class ToolbarManager
                         mActivityTabProvider.asObservable(),
                         (ScrollingBottomViewResourceFrameLayout) bottomAppBarContainer,
                         LayerType.BOTTOM_APP_BAR,
-                        R.dimen.bottom_bar_height,
+                        BottomBarUtils.getBottomBarHeight(mActivity),
                         bottomBarContainerOneshotSupplier,
                         mTabObscuringHandler,
                         mLayoutManager.getOverlayPanelManager().getPanelStateSupplier(),
@@ -3414,24 +3417,13 @@ public class ToolbarManager
      * @return The extra Y offset for the toolbar in pixels.
      */
     private int getToolbarExtraYOffset() {
-        final int toolbarHairlineHeight = mToolbarHairline.getHeight();
-        final int controlContainerHeight = mControlContainer.getHeight();
-        final int bookmarkBarHeight =
-                mBookmarkBarHeightSupplier != null ? mBookmarkBarHeightSupplier.get() : 0;
-
-        // Offset can't be calculated if control container height isn't known yet.
-        if (controlContainerHeight == 0) {
+        if (mBrowserControlsSizer.getControlsPosition() == ControlsPosition.BOTTOM) {
             return 0;
         }
 
-        final int extraYOffset =
-                mBrowserControlsSizer.getTopControlsHeight()
-                        - (controlContainerHeight - toolbarHairlineHeight)
-                        - bookmarkBarHeight;
-
-        // There are cases where extraYOffset can be negative e.g. during tab strip transitioning
-        // from invisible -> visible.
-        return Math.max(0, extraYOffset);
+        // The control container's top edge is where the tab strip layer sits, so the margin is the
+        // total height of the layers stacked above it.
+        return mTopControlsStacker.getHeightFromLayerToTop(TopControlType.TABSTRIP);
     }
 
     /**

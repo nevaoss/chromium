@@ -737,6 +737,15 @@ ci.thin_tester(
             "webdriver_wpt_tests": targets.mixin(
                 ci_only = True,
             ),
+            "webdriver_bidi_e2e_tests": targets.mixin(
+                experiment_percentage = 10,
+                swarming = targets.swarming(
+                    shards = 8,
+                ),
+            ),
+            "webdriver_bidi_unittests": targets.mixin(
+                experiment_percentage = 10,
+            ),
         },
     ),
     console_view_entry = consoles.console_view_entry(
@@ -799,7 +808,7 @@ ci.thin_tester(
                 # crbug.com/1508286
                 # crbug.com/404871436
                 swarming = targets.swarming(
-                    shards = 90,
+                    shards = 152,
                 ),
             ),
             "content_browsertests": targets.mixin(
@@ -827,7 +836,7 @@ ci.thin_tester(
                 ],
                 # Slow on certain debug builders, see crbug.com/1513713.
                 swarming = targets.swarming(
-                    shards = 25,
+                    shards = 41,
                 ),
             ),
             "leveldb_unittests": targets.mixin(

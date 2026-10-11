@@ -190,6 +190,7 @@
 #include "third_party/blink/public/mojom/permissions/permission.mojom.h"
 #include "third_party/blink/public/mojom/render_accessibility.mojom.h"
 #include "third_party/blink/public/mojom/renderer_preference_watcher.mojom.h"
+#include "third_party/blink/public/mojom/scroll/scroll_enums.mojom-shared.h"
 #include "third_party/blink/public/mojom/widget/platform_widget.mojom.h"
 #include "third_party/blink/public/platform/file_path_conversion.h"
 #include "third_party/blink/public/platform/modules/service_worker/web_service_worker_network_provider.h"
@@ -4989,16 +4990,19 @@ void RenderFrameImpl::DidCreateScriptContext(v8::Local<v8::Context> context,
 
   if (world_id == ISOLATED_WORLD_ID_GLOBAL &&
       base::FeatureList::IsEnabled(blink::features::kUnboundedElement)) {
-    bool is_unbounded_allowed =
-        base::FeatureList::IsEnabled(
-            blink::features::kUnboundedElementOnTheOpenWeb) ||
+    bool is_privileged =
         enabled_bindings_.Has(BindingsPolicyValue::kWebUi) ||
         (GetWebFrame() && !GetWebFrame()->GetSecurityOrigin().IsNull() &&
          GetWebFrame()->GetSecurityOrigin().IsWebUI() &&
          GetWebFrame()->GetSecurityOrigin().Protocol() !=
-             kChromeUIUntrustedScheme);
+             kChromeUIUntrustedScheme) ||
+        GetContentClient()->renderer()->IsUnboundedElementAllowed(this);
+    bool is_unbounded_allowed =
+        base::FeatureList::IsEnabled(
+            blink::features::kUnboundedElementOnTheOpenWeb) ||
+        is_privileged;
     if (is_unbounded_allowed) {
-      blink::WebV8Features::EnableUnboundedElement(context, true);
+      blink::WebV8Features::EnableUnboundedElement(context, is_privileged);
     }
   }
 
@@ -5022,11 +5026,12 @@ void RenderFrameImpl::WillReleaseScriptContext(v8::Local<v8::Context> context,
   }
 }
 
-void RenderFrameImpl::DidChangeScrollOffset() {
+void RenderFrameImpl::DidChangeScrollOffset(
+    blink::mojom::ScrollType scroll_type) {
   StartDelayedSyncTimer();
 
   for (auto& observer : observers_) {
-    observer.DidChangeScrollOffset();
+    observer.DidChangeScrollOffset(scroll_type);
   }
 }
 

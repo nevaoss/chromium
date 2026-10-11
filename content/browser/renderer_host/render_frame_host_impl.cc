@@ -352,6 +352,7 @@
 #include "ui/base/window_open_disposition.h"
 #include "ui/display/screen.h"
 #include "ui/events/event_constants.h"
+#include "ui/gfx/geometry/point_conversions.h"
 #include "ui/gfx/geometry/rect_conversions.h"
 #include "url/gurl.h"
 #include "url/origin.h"
@@ -3700,17 +3701,42 @@ void RenderFrameHostImpl::SetWantErrorMessageStackTrace() {
   GetMojomFrameInRenderer()->SetWantErrorMessageStackTrace();
 }
 
+std::optional<gfx::Point>
+RenderFrameHostImpl::TransformRootPointForContextMenuAction(
+    const gfx::Point& root_point) {
+  // Actions from this frame's menu act on the clicked point directly, so
+  // moving or hiding the frame cannot steer the action.
+  if (context_menu_location_ &&
+      context_menu_location_->root_point == root_point) {
+    return context_menu_location_->local_point;
+  }
+
+  RenderWidgetHostViewBase* view = GetView();
+  if (!view) {
+    return std::nullopt;
+  }
+  RenderWidgetHostViewBase* root_view = view->GetRootView();
+  gfx::PointF point_in_view;
+  if (!root_view || !root_view->TransformPointToCoordSpaceForView(
+                        gfx::PointF(root_point), view, &point_in_view)) {
+    return std::nullopt;
+  }
+  return gfx::ToRoundedPoint(point_in_view);
+}
+
 void RenderFrameHostImpl::ExecuteMediaPlayerActionAtLocation(
     const gfx::Point& location,
     const blink::mojom::MediaPlayerAction& action) {
+  std::optional<gfx::Point> point_in_view =
+      TransformRootPointForContextMenuAction(location);
+  if (!point_in_view) {
+    return;
+  }
   auto media_player_action = blink::mojom::MediaPlayerAction::New();
   media_player_action->type = action.type;
   media_player_action->enable = action.enable;
-  gfx::PointF point_in_view = GetView()->TransformRootPointToViewCoordSpace(
-      gfx::PointF(location.x(), location.y()));
   GetAssociatedLocalFrame()->MediaPlayerActionAt(
-      gfx::Point(point_in_view.x(), point_in_view.y()),
-      std::move(media_player_action));
+      *point_in_view, std::move(media_player_action));
 }
 
 void RenderFrameHostImpl::RequestVideoFrameAtWithBoundsHint(
@@ -3718,11 +3744,14 @@ void RenderFrameHostImpl::RequestVideoFrameAtWithBoundsHint(
     const gfx::Size& max_size,
     int max_area,
     base::OnceCallback<void(const SkBitmap&, const gfx::Rect&)> callback) {
-  gfx::PointF point_in_view = GetView()->TransformRootPointToViewCoordSpace(
-      gfx::PointF(location.x(), location.y()));
+  std::optional<gfx::Point> point_in_view =
+      TransformRootPointForContextMenuAction(location);
+  if (!point_in_view) {
+    std::move(callback).Run(SkBitmap(), gfx::Rect());
+    return;
+  }
   GetAssociatedLocalFrame()->RequestVideoFrameAtWithBoundsHint(
-      gfx::Point(point_in_view.x(), point_in_view.y()), max_size, max_area,
-      std::move(callback));
+      *point_in_view, max_size, max_area, std::move(callback));
 }
 
 bool RenderFrameHostImpl::CreateNetworkServiceDefaultFactory(
@@ -3967,23 +3996,30 @@ void RenderFrameHostImpl::ExecuteJavaScriptForTests(
 void RenderFrameHostImpl::ExecutePluginActionAtLocalLocation(
     const gfx::Point& location,
     blink::mojom::PluginActionType plugin_action) {
-  gfx::Point local_location = gfx::ToFlooredPoint(
-      GetView()->TransformRootPointToViewCoordSpace(gfx::PointF(location)));
-  GetAssociatedLocalFrame()->PluginActionAt(local_location, plugin_action);
+  std::optional<gfx::Point> point_in_view =
+      TransformRootPointForContextMenuAction(location);
+  if (!point_in_view) {
+    return;
+  }
+  GetAssociatedLocalFrame()->PluginActionAt(*point_in_view, plugin_action);
 }
 
 void RenderFrameHostImpl::CopyImageAt(int x, int y) {
-  gfx::PointF point_in_view =
-      GetView()->TransformRootPointToViewCoordSpace(gfx::PointF(x, y));
-  GetAssociatedLocalFrame()->CopyImageAt(
-      gfx::Point(point_in_view.x(), point_in_view.y()));
+  std::optional<gfx::Point> point_in_view =
+      TransformRootPointForContextMenuAction(gfx::Point(x, y));
+  if (!point_in_view) {
+    return;
+  }
+  GetAssociatedLocalFrame()->CopyImageAt(*point_in_view);
 }
 
 void RenderFrameHostImpl::SaveImageAt(int x, int y) {
-  gfx::PointF point_in_view =
-      GetView()->TransformRootPointToViewCoordSpace(gfx::PointF(x, y));
-  GetAssociatedLocalFrame()->SaveImageAt(
-      gfx::Point(point_in_view.x(), point_in_view.y()));
+  std::optional<gfx::Point> point_in_view =
+      TransformRootPointForContextMenuAction(gfx::Point(x, y));
+  if (!point_in_view) {
+    return;
+  }
+  GetAssociatedLocalFrame()->SaveImageAt(*point_in_view);
 }
 
 RenderViewHost* RenderFrameHostImpl::GetRenderViewHost() const {
@@ -6178,6 +6214,25 @@ void RenderFrameHostImpl::Detach() {
     return;
   }
 
+  // Once a page has entered the back/forward cache its renderer is frozen and
+  // should not be removing frames. Handling Detach here would also operate on
+  // the primary frame tree's NavigationController via the cached
+  // FrameTreeNode's `frame_tree_` reference, which now belongs to a different
+  // page. Trigger a renderer kill if we receive an unexpected Detach message.
+  if (IsInBackForwardCache()) {
+    if (render_view_host()->DidReceiveBackForwardCacheAck()) {
+      bad_message::ReceivedBadMessage(GetProcess(),
+                                      bad_message::RFH_DETACH_WHILE_BFCACHED);
+    } else {
+      // The renderer might not have realized that it's in BFCache when it sent
+      // the Detach call, since we haven't received the BFCache ACK. In this
+      // case, just evict from BFCache instead of killing the renderer.
+      IsInactiveAndDisallowActivation(DisallowActivationReasonId::kDetach);
+    }
+    // Return early in any case.
+    return;
+  }
+
   // A frame is removed while replacing this document with the new one. When it
   // happens, delete the frame and both the new and old documents. Unload
   // handlers aren't guaranteed to run here.
@@ -6969,6 +7024,7 @@ void RenderFrameHostImpl::SwapOuterDelegateFrame(
 }
 
 void RenderFrameHostImpl::DetachFromProxy() {
+  CHECK(!IsInBackForwardCache());
   if (IsPendingDeletion()) {
     return;
   }
@@ -8981,7 +9037,8 @@ void RenderFrameHostImpl::DidBlockNavigation(
   process->FilterURL(/*empty_allowed=*/false, &validated_blocked_url);
 
   delegate_->OnDidBlockNavigation(validated_blocked_url, GetLastCommittedURL(),
-                                  GetLastCommittedOrigin(), reason);
+                                  GetLastCommittedOrigin(),
+                                  GetCurrentInitiatorNavigationState(), reason);
 }
 
 void RenderFrameHostImpl::DidChangeLoadProgress(double load_progress) {
@@ -10066,12 +10123,22 @@ void RenderFrameHostImpl::ShowContextMenu(
 
   // It is necessary to transform the coordinates to account for nested
   // RenderWidgetHosts, such as with out-of-process iframes.
-  gfx::Point original_point(validated_params.x, validated_params.y);
-  gfx::Point transformed_point =
-      static_cast<RenderWidgetHostViewBase*>(GetView())
-          ->TransformPointToRootCoordSpace(original_point);
-  validated_params.x = transformed_point.x();
-  validated_params.y = transformed_point.y();
+  RenderWidgetHostViewBase* view = GetView();
+  if (!view) {
+    return;
+  }
+  RenderWidgetHostViewBase* root_view = view->GetRootView();
+  const gfx::Point original_point(validated_params.x, validated_params.y);
+  gfx::PointF transformed_point_f;
+  // If hit-test data is unavailable, show the menu at the renderer's point
+  // rather than suppressing it, since most menu items do not use position.
+  if (root_view &&
+      view->TransformPointToCoordSpaceForView(
+          gfx::PointF(original_point), root_view, &transformed_point_f)) {
+    const gfx::Point root_point = gfx::ToRoundedPoint(transformed_point_f);
+    validated_params.x = root_point.x();
+    validated_params.y = root_point.y();
+  }
 
   if (validated_params.selection_start_offset < 0) {
     bad_message::ReceivedBadMessage(
@@ -10081,6 +10148,11 @@ void RenderFrameHostImpl::ShowContextMenu(
 
   validated_params.form_field_dom_node_id =
       GlobalDOMNodeId{GetWeakDocumentPtr(), validated_params.field_renderer_id};
+
+  // Cache coordinates so actions from this menu act where the user clicked.
+  context_menu_location_ = {
+      .root_point = gfx::Point(validated_params.x, validated_params.y),
+      .local_point = original_point};
 
   delegate_->ShowContextMenu(*this, std::move(context_menu_client),
                              validated_params);
@@ -10411,8 +10483,7 @@ void RenderFrameHostImpl::OpenURL(blink::mojom::OpenURLParamsPtr params) {
     blink::NavigationDownloadPolicy download_policy;
 
     MaybeRecordAdClickMainFrameNavigationMetrics(
-        /*initiator_frame=*/this, /*target_frame=*/target_frame,
-        validated_params_url, params->user_gesture, params->started_by_ad);
+        /*initiator_frame=*/this, params->user_gesture, params->started_by_ad);
 
     target_frame->frame_tree_node()->navigator().NavigateFromFrameProxy(
         target_frame, validated_params_url,
@@ -10445,17 +10516,11 @@ void RenderFrameHostImpl::OpenURL(blink::mojom::OpenURLParamsPtr params) {
 
     // Try recording the AdClickMainFrameNavigation use counter for navigation
     // targeting this page's main frame, or targeting a new tab.
-    if (params->disposition != WindowOpenDisposition::CURRENT_TAB) {
-      // A different tab is navigating, but we don't have the target frame yet.
-      // Set `target_frame` to nullptr and we should get another chance to
-      // record it in BeginNavigation.
+    if (params->disposition != WindowOpenDisposition::CURRENT_TAB ||
+        IsOutermostMainFrame()) {
       MaybeRecordAdClickMainFrameNavigationMetrics(
-          /*initiator_frame=*/initiator_frame, /*target_frame=*/nullptr, GURL(),
-          params->user_gesture, params->started_by_ad);
-    } else if (IsOutermostMainFrame()) {
-      MaybeRecordAdClickMainFrameNavigationMetrics(
-          /*initiator_frame=*/initiator_frame, /*target_frame=*/this,
-          validated_url, params->user_gesture, params->started_by_ad);
+          /*initiator_frame=*/initiator_frame, params->user_gesture,
+          params->started_by_ad);
     }
   }
 
@@ -10606,6 +10671,26 @@ void RenderFrameHostImpl::CreateNewWindow(
     return;
   }
 
+  StoragePartition* storage_partition = GetStoragePartition();
+  DOMStorageContextWrapper* dom_storage_context =
+      static_cast<DOMStorageContextWrapper*>(
+          storage_partition->GetDOMStorageContext());
+
+  // Blink asks the storage service to clone sessionStorage before asking the
+  // browser to create the window. Acquire the browser-side handle before the
+  // checks below so it deletes the clone in the storage service if the window
+  // is refused. If the params can't be validated above, it is acceptable to let
+  // the cloned namespace leak.
+  //
+  // TODO(crbug.com/562128302): Validate the source and destination
+  // sessionStorage namespace IDs.
+  scoped_refptr<SessionStorageNamespaceHandleImpl> cloned_namespace;
+  if (!params->clone_from_session_storage_namespace_id.empty()) {
+    cloned_namespace = SessionStorageNamespaceHandleImpl::CloneFrom(
+        dom_storage_context, params->session_storage_namespace_id,
+        params->clone_from_session_storage_namespace_id);
+  }
+
   // Only top-most frames can open picture-in-picture windows.
   if (params->disposition == WindowOpenDisposition::NEW_PICTURE_IN_PICTURE &&
       !IsOutermostMainFrame()) {
@@ -10690,18 +10775,10 @@ void RenderFrameHostImpl::CreateNewWindow(
     return;
   }
 
-  // This will clone the sessionStorage for namespace_id_to_clone.
-  StoragePartition* storage_partition = GetStoragePartition();
-  DOMStorageContextWrapper* dom_storage_context =
-      static_cast<DOMStorageContextWrapper*>(
-          storage_partition->GetDOMStorageContext());
-
-  scoped_refptr<SessionStorageNamespaceHandleImpl> cloned_namespace;
-  if (!params->clone_from_session_storage_namespace_id.empty()) {
-    cloned_namespace = SessionStorageNamespaceHandleImpl::CloneFrom(
-        dom_storage_context, params->session_storage_namespace_id,
-        params->clone_from_session_storage_namespace_id);
-  } else {
+  // Windows opened with noopener have nothing to clone, so their namespace is
+  // created from scratch here. The clone case is handled above, before the
+  // checks that can refuse the window.
+  if (!cloned_namespace) {
     cloned_namespace = SessionStorageNamespaceHandleImpl::Create(
         dom_storage_context, params->session_storage_namespace_id);
   }
@@ -10753,8 +10830,8 @@ void RenderFrameHostImpl::CreateNewWindow(
 
   if (params->started_with_transient_activation) {
     MaybeRecordAdClickMainFrameNavigationMetrics(
-        /*initiator_frame=*/this, /*target_frame=*/nullptr, GURL(),
-        params->started_with_transient_activation, params->started_by_ad);
+        /*initiator_frame=*/this, params->started_with_transient_activation,
+        params->started_by_ad);
   }
 
   if (is_new_browsing_instance || !new_frame_tree) {
@@ -11413,7 +11490,7 @@ void RenderFrameHostImpl::IssueKeepAliveHandle(
 }
 
 scoped_refptr<InitiatorNavigationState>
-RenderFrameHostImpl::GetCurrentInitiatorNavigationState() {
+RenderFrameHostImpl::GetCurrentInitiatorNavigationState() const {
   return current_navigation_state_;
 }
 
@@ -11520,15 +11597,19 @@ void RenderFrameHostImpl::InitializeCrashReportContext(
 // - ContextFeatureSettings::GetUnboundedElementAuth (renderer side)
 //
 // Permissions require UnboundedElement to be enabled AND either:
-// 1) UnboundedElementOnTheOpenWeb is enabled, or
-// 2) The context/origin is a privileged WebUI scheme (or has WebUI bindings).
+// - UnboundedElementOnTheOpenWeb is enabled,
+// - The context/origin is a privileged WebUI scheme (or has WebUI bindings), or
+// - The embedder explicitly authorizes the frame via
+//   ContentBrowserClient::IsUnboundedElementAllowed.
 RenderFrameHostImpl::UnboundedElementAuth
 RenderFrameHostImpl::GetUnboundedElementAuth() const {
   if (!base::FeatureList::IsEnabled(blink::features::kUnboundedElement)) {
     return UnboundedElementAuth::kDenied;
   }
   if (GetLastCommittedOrigin().scheme() != kChromeUIUntrustedScheme &&
-      (web_ui() != nullptr || HasWebUIOrigin(GetLastCommittedOrigin()))) {
+      (web_ui() != nullptr || HasWebUIOrigin(GetLastCommittedOrigin()) ||
+       GetContentClient()->browser()->IsUnboundedElementAllowed(
+           const_cast<RenderFrameHostImpl*>(this)))) {
     return UnboundedElementAuth::kAllowedPrivileged;
   }
   if (base::FeatureList::IsEnabled(
@@ -11925,8 +12006,7 @@ void RenderFrameHostImpl::BeginNavigation(
         begin_params->initiator_frame_token.value());
     if (IsOutermostMainFrame()) {
       MaybeRecordAdClickMainFrameNavigationMetrics(
-          /*initiator_frame=*/initiator_frame, /*target_frame=*/this,
-          validated_common_params->url,
+          /*initiator_frame=*/initiator_frame,
           begin_params->started_with_transient_activation,
           begin_params->started_by_ad);
     }
@@ -13840,7 +13920,9 @@ bool RenderFrameHostImpl::IsStorageAccessRestricted() {
          IsNestedWithinFencedFrame() ||
          IsSandboxed(
              network::mojom::WebSandboxFlags::kStorageAccessByUserActivation) ||
-         GetStorageKey().ForbidsUnpartitionedStorageAccess();
+         GetStorageKey().ForbidsUnpartitionedStorageAccess() ||
+         !ChildProcessSecurityPolicyImpl::GetInstance()->CanAccessDataForOrigin(
+             GetProcess()->GetID().GetUnsafeValue(), GetLastCommittedOrigin());
 }
 
 void RenderFrameHostImpl::BindBlobUrlStoreAssociatedReceiver(
@@ -16262,9 +16344,9 @@ bool RenderFrameHostImpl::ValidateDidCommitParams(
       params->transition &
       ui::PAGE_TRANSITION_RENDERER_DISALLOWED_QUALIFIERS_MASK);
   if ((commit_qualifiers & ~request_qualifiers) != 0) {
-    bad_message::ReceivedBadMessage(
-        process, bad_message::RFH_COMMIT_NAVIGATION_DISALLOWED_QUALIFIER);
-    return false;
+    // TODO(https://crbug.com/562797793): Re-enable
+    // RFH_COMMIT_NAVIGATION_DISALLOWED_QUALIFIER once same-document navigation
+    // transitions are fixed (https://crbug.com/557522042).
   }
 
   if (is_main_frame) {
@@ -16273,9 +16355,9 @@ bool RenderFrameHostImpl::ValidateDidCommitParams(
       // without a browser NavigationRequest, the transition must be
       // web-triggerable.
       if (!ui::PageTransitionIsWebTriggerable(transition)) {
-        bad_message::ReceivedBadMessage(
-            process, bad_message::RFH_COMMIT_NAVIGATION_NON_WEBBY_TRANSITION);
-        return false;
+        // TODO(https://crbug.com/562797793): Re-enable
+        // RFH_COMMIT_NAVIGATION_NON_WEBBY_TRANSITION once same-document
+        // navigation transitions are fixed (https://crbug.com/557522042).
       }
     } else {
       // For main-frame navigations where the browser provided an expected
@@ -16290,11 +16372,10 @@ bool RenderFrameHostImpl::ValidateDidCommitParams(
            ui::PageTransitionCoreTypeIs(transition,
                                         ui::PAGE_TRANSITION_FORM_SUBMIT));
       if (!core_type_matches) {
-        bad_message::ReceivedBadMessage(
-            process,
-            bad_message::
-                RFH_COMMIT_NAVIGATION_BROWSER_INITIATED_TRANSITION_MISMATCH);
-        return false;
+        // TODO(https://crbug.com/562797793): Re-enable
+        // RFH_COMMIT_NAVIGATION_BROWSER_INITIATED_TRANSITION_MISMATCH once
+        // same-document navigation transitions are fixed
+        // (https://crbug.com/557522042).
       }
     }
   }
@@ -17514,6 +17595,16 @@ void RenderFrameHostImpl::MaybeGenerateCrashReport(
     base::TerminationStatus status,
     int exit_code) {
   if (!last_committed_url_.SchemeIsHTTPOrHTTPS()) {
+    return;
+  }
+
+  // Only generate crash reports for active documents (and not documents in
+  // BackForwardCache, Prerendering, PendingCommit, Speculative, or
+  // PendingDeletion states). When a renderer process terminates in those
+  // states, the browser silently evicts the BFCached page, cancels
+  // prerendering, or completes frame deletion in the background; the user is
+  // not interacting with the document and never observes a crash.
+  if (!IsActive()) {
     return;
   }
 
@@ -20830,6 +20921,51 @@ void RenderFrameHostImpl::GetBoundInterfacesForTesting(
     std::vector<std::string>& out) {
   broker_holder_->broker().GetBinderMapInterfacesForTesting(  // IN-TEST
       out);
+}
+
+std::optional<base::flat_map<blink::mojom::PermissionName,
+                             blink::mojom::PermissionStatus>>
+RenderFrameHostImpl::GetCachedPermissionStatuses() {
+  using blink::PermissionType;
+  using blink::mojom::PermissionName;
+  static constexpr auto kPermissions =
+      std::to_array<std::pair<PermissionName, PermissionType>>(
+          {{PermissionName::VIDEO_CAPTURE, PermissionType::VIDEO_CAPTURE},
+           {PermissionName::AUDIO_CAPTURE, PermissionType::AUDIO_CAPTURE},
+#if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
+           // `WEB_APP_INSTALLATION` is only registered for desktop platforms
+           // via `WebsiteSettingsRegistry::DESKTOP`.
+           {PermissionName::WEB_APP_INSTALLATION,
+            PermissionType::WEB_APP_INSTALLATION},
+#endif
+           {PermissionName::GEOLOCATION, PermissionType::GEOLOCATION}});
+
+  base::flat_map<PermissionName, PermissionStatus> permission_map;
+  for (const auto& permission : kPermissions) {
+    PermissionStatus status = GetCombinedPermissionStatus(permission.second);
+    // Default value is ASK, we don't need add the permission status in this
+    // case.
+    if (status != PermissionStatus::ASK) {
+      permission_map.emplace(permission.first, status);
+    }
+  }
+
+  return permission_map;
+}
+
+blink::mojom::PermissionStatus RenderFrameHostImpl::GetCombinedPermissionStatus(
+    blink::PermissionType permission_type) {
+  auto descriptor = content::PermissionDescriptorUtil::
+      CreatePermissionDescriptorForPermissionType(permission_type);
+  if (PermissionUtil::IsDevicePermission(descriptor)) {
+    return GetBrowserContext()
+        ->GetPermissionController()
+        ->GetCombinedPermissionAndDeviceStatus(descriptor, this);
+  }
+  return GetBrowserContext()
+      ->GetPermissionController()
+      ->GetPermissionResultForCurrentDocument(descriptor, this)
+      .status;
 }
 
 media::PictureInPictureEventsInfo::AutoPipReasonCallback

@@ -36,6 +36,8 @@
 #import "ios/chrome/browser/shared/model/url/chrome_url_constants.h"
 #import "ios/chrome/browser/ssl/model/captive_portal_tab_helper.h"
 #import "ios/chrome/browser/web/model/error_page_util.h"
+#import "ios/chrome/browser/web_extension/model/extension_service.h"
+#import "ios/chrome/browser/web_extension/model/extension_service_factory.h"
 #import "ios/components/security_interstitials/https_only_mode/https_only_mode_container.h"
 #import "ios/components/security_interstitials/https_only_mode/https_only_mode_error.h"
 #import "ios/components/security_interstitials/ios_blocking_page_tab_helper.h"
@@ -46,6 +48,7 @@
 #import "ios/net/protocol_handler_util.h"
 #import "ios/web/common/features.h"
 #import "ios/web/common/web_view_creation_util.h"
+#import "ios/web/public/extension/extension_controller.h"
 #import "ios/web/public/test/error_test_util.h"
 #import "ios/web/public/test/fakes/fake_navigation_manager.h"
 #import "ios/web/public/test/fakes/fake_web_state.h"
@@ -662,22 +665,57 @@ TEST_F(ChromeWebClientTest, GetJavaScriptFeatures_ClientSideDetection) {
   }
 }
 
-// Tests that IsUniversalOptOutEnabled reflects the kUniversalOptOutEnabled
-// pref.
-TEST_F(ChromeWebClientTest, IsUniversalOptOutEnabled) {
+// Tests that GetUniversalOptOutState reflects the kUniversalOptOutEnabled
+// and kUniversalOptOutEligible prefs.
+TEST_F(ChromeWebClientTest, GetUniversalOptOutState) {
   base::test::ScopedFeatureList scoped_feature_list;
   scoped_feature_list.InitWithFeatures(
-      /*enabled_features=*/{universal_optout::features::kUniversalOptOut,
-                            universal_optout::features::
-                                kUniversalOptOutSettings},
+      /*enabled_features=*/
+      {universal_optout::features::kUniversalOptOut,
+       universal_optout::features::kUniversalOptOutExtension,
+       universal_optout::features::kUniversalOptOutSettings},
       /*disabled_features=*/{});
 
   ChromeWebClient web_client;
   profile()->GetPrefs()->SetBoolean(
+      universal_optout::prefs::kUniversalOptOutEligible, false);
+  profile()->GetPrefs()->SetBoolean(
       universal_optout::prefs::kUniversalOptOutEnabled, false);
-  EXPECT_FALSE(web_client.IsUniversalOptOutEnabled(profile()));
+  EXPECT_EQ(web::UniversalOptOutState::kNotEligible,
+            web_client.GetUniversalOptOutState(profile()));
+
+  profile()->GetPrefs()->SetBoolean(
+      universal_optout::prefs::kUniversalOptOutEligible, true);
+  EXPECT_EQ(web::UniversalOptOutState::kEligible,
+            web_client.GetUniversalOptOutState(profile()));
 
   profile()->GetPrefs()->SetBoolean(
       universal_optout::prefs::kUniversalOptOutEnabled, true);
-  EXPECT_TRUE(web_client.IsUniversalOptOutEnabled(profile()));
+  EXPECT_EQ(web::UniversalOptOutState::kEnabled,
+            web_client.GetUniversalOptOutState(profile()));
+}
+
+// Tests that GetExtensionController returns nullptr when no ExtensionService is
+// registered, and returns the controller from ExtensionService when available.
+TEST_F(ChromeWebClientTest, GetExtensionController) API_AVAILABLE(ios(18.4)) {
+  ChromeWebClient web_client;
+  EXPECT_EQ(nullptr, web_client.GetExtensionController(nullptr));
+  EXPECT_EQ(nullptr, web_client.GetExtensionController(profile()));
+
+  TestProfileIOS::Builder builder;
+  builder.AddTestingFactory(
+      ExtensionServiceFactory::GetInstance(),
+      base::BindRepeating(
+          [](ProfileIOS* profile) -> std::unique_ptr<KeyedService> {
+            return std::make_unique<ExtensionService>(
+                profile->GetPrefs(),
+                /*universal_optout_service=*/nullptr,
+                web::ExtensionController::Create());
+          }));
+  auto profile_with_service = std::move(builder).Build();
+  ExtensionService* service =
+      ExtensionServiceFactory::GetForProfile(profile_with_service.get());
+  ASSERT_TRUE(service);
+  EXPECT_EQ(service->GetExtensionController(),
+            web_client.GetExtensionController(profile_with_service.get()));
 }

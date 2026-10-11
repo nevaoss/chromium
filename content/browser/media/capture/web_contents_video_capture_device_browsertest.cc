@@ -11,15 +11,20 @@
 #include "base/run_loop.h"
 #include "base/strings/strcat.h"
 #include "base/strings/stringprintf.h"
+#include "base/test/run_until.h"
 #include "base/test/scoped_feature_list.h"
+#include "base/test/test_timeouts.h"
+#include "base/time/time.h"
 #include "build/build_config.h"
 #include "cc/test/pixel_test_utils.h"
 #include "content/browser/media/capture/content_capture_device_browsertest_base.h"
 #include "content/browser/media/capture/fake_video_capture_stack.h"
 #include "content/browser/media/capture/frame_test_util.h"
 #include "content/browser/renderer_host/render_widget_host_view_base.h"
+#include "content/public/browser/back_forward_cache.h"
 #include "content/public/browser/browser_task_traits.h"
 #include "content/public/browser/browser_thread.h"
+#include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/render_process_host.h"
 #include "content/public/browser/render_widget_host_view.h"
@@ -71,9 +76,27 @@ class WebContentsVideoCaptureDeviceBrowserTest
   // failure. This allows the callers to tighten the tolerance on the frames
   // they are willing to accept (since specifying `tolerate_color` causes the
   // test to fail in case we encounter something else).
+  //
+  // A capturer only produces a new frame when it observes damage. Damage
+  // originating in a cross-process child frame has to travel through the child
+  // frame sink, the surface aggregator and finally the capturer, and a delayed
+  // or lost signal anywhere along that path used to wedge this loop until the
+  // test harness killed the browser, with no diagnostics whatsoever. Two
+  // mitigations are applied here:
+  //  * Real capture clients do not rely on damage alone; they ask the device
+  //    for a refresh frame when they need up-to-date content. Do the same once
+  //    frames stop showing up for `kRefreshFrameInterval`.
+  //  * Give up after `TestTimeouts::action_max_timeout()` with an actionable
+  //    failure (including a PNG dump of the last frame seen) instead of
+  //    hanging until the suite-level timeout kills the process.
   void WaitForFrameWithColor(
       SkColor color,
       std::optional<SkColor> tolerate_color = std::nullopt) {
+    // Frames normally arrive within a few capture periods, so this only kicks
+    // in when something has gone wrong.
+    static constexpr base::TimeDelta kRefreshFrameInterval =
+        base::Milliseconds(250);
+
     const std::string color_string =
         base::StringPrintf("red=%d, green=%d, blue=%d", SkColorGetR(color),
                            SkColorGetG(color), SkColorGetB(color));
@@ -86,6 +109,14 @@ class WebContentsVideoCaptureDeviceBrowserTest
     VLOG(1) << "Waiting for frame content area filled with color: "
             << color_string << ", tolerated color: " << tolerated_color_string;
 
+    const base::TimeTicks start_time = base::TimeTicks::Now();
+    const base::TimeTicks deadline =
+        start_time + TestTimeouts::action_max_timeout();
+    base::TimeTicks next_refresh_frame_time =
+        start_time + kRefreshFrameInterval;
+    // Kept around so that a timeout can report what was actually on screen.
+    SkBitmap last_frame;
+
     while (!testing::Test::HasFailure()) {
       EXPECT_FALSE(capture_stack()->ErrorOccurred());
       capture_stack()->ExpectNoLogMessages();
@@ -97,6 +128,7 @@ class WebContentsVideoCaptureDeviceBrowserTest
         // bitmap for analysis.
         const SkBitmap rgb_frame = capture_stack()->NextCapturedFrame();
         EXPECT_FALSE(rgb_frame.empty());
+        last_frame = rgb_frame;
 
         // Three regions of the frame will be analyzed:
         // 1. The upper-left quadrant of the content region where the iframe
@@ -219,6 +251,33 @@ class WebContentsVideoCaptureDeviceBrowserTest
         // one, and the frame did not match. Keep waiting.
       }
 
+      const base::TimeTicks now = base::TimeTicks::Now();
+      if (now >= deadline) {
+        ADD_FAILURE() << "Timed out after "
+                      << (now - start_time).InMilliseconds()
+                      << " ms waiting for a frame with color=" << color_string
+                      << ", tolerated_color=" << tolerated_color_string << ". "
+                      << (last_frame.empty()
+                              ? std::string("No frame was captured at all.")
+                              : base::StrCat(
+                                    {"Last captured frame, PNG dump:\n",
+                                     cc::GetPNGDataUrl(last_frame)}));
+        return;
+      }
+
+      // Nothing usable showed up in time, so the damage signal that should
+      // have produced it was either delayed or lost. Ask the device for a
+      // refresh frame, the same way a real capture client would.
+      if (now >= next_refresh_frame_time) {
+        next_refresh_frame_time = now + kRefreshFrameInterval;
+        VLOG(1) << "No matching frame after "
+                << (now - start_time).InMilliseconds()
+                << " ms; requesting a refresh frame.";
+        if (device()) {
+          device()->RequestRefreshFrame();
+        }
+      }
+
       // Wait for at least the minimum capture period before checking for more
       // captured frames.
       base::RunLoop run_loop;
@@ -236,6 +295,25 @@ class WebContentsVideoCaptureDeviceBrowserTest
     return view ? view->GetFrameSinkId() : viz::FrameSinkId();
   }
 
+  // Freezes the routing id that CreateDevice() will use, so that a device
+  // created later is built from the id captured now rather than from whatever
+  // the current main frame happens to be.
+  //
+  // This mirrors production: the routing id is baked into the DesktopMediaID
+  // when the user picks a tab, and is reused verbatim for the lifetime of the
+  // capture session -- including when the device is destroyed and re-created
+  // by a pause/resume. Tests that restart capture must pin it, or re-reading
+  // the current main frame would silently paper over a stale id.
+  void PinCaptureIdToCurrentMainFrame() {
+    auto* const main_frame = shell()->web_contents()->GetPrimaryMainFrame();
+    pinned_capture_id_.emplace(main_frame->GetProcess()->GetDeprecatedID(),
+                               main_frame->GetRoutingID());
+  }
+
+  std::optional<GlobalRenderFrameHostId> pinned_capture_id() const {
+    return pinned_capture_id_;
+  }
+
  protected:
   // Don't call this. Call <BaseClass>::GetExpectedSourceSize() instead.
   gfx::Size GetCapturedSourceSize() const final {
@@ -248,6 +326,10 @@ class WebContentsVideoCaptureDeviceBrowserTest
   }
 
   std::unique_ptr<FrameSinkVideoCaptureDevice> CreateDevice() final {
+    if (pinned_capture_id_) {
+      return std::make_unique<WebContentsVideoCaptureDevice>(
+          *pinned_capture_id_);
+    }
     auto* const main_frame = shell()->web_contents()->GetPrimaryMainFrame();
     const GlobalRenderFrameHostId id(
         main_frame->GetProcess()->GetDeprecatedID(),
@@ -259,6 +341,7 @@ class WebContentsVideoCaptureDeviceBrowserTest
 
  private:
   base::test::ScopedFeatureList scoped_feature_list_;
+  std::optional<GlobalRenderFrameHostId> pinned_capture_id_;
 };
 
 // Tests that the device refuses to start if the WebContents target was
@@ -466,6 +549,92 @@ IN_PROC_BROWSER_TEST_F(WebContentsVideoCaptureDeviceBrowserTest,
   WaitForFrameWithColor(SK_ColorGREEN);
 }
 
+// Tests that capture can be restarted from the routing id the session began
+// with, even though the captured tab navigated cross-process while capture was
+// stopped and the RenderFrameHost that id names no longer exists.
+//
+// This is the pause/resume shape used by enterprise tab sharing protection: the
+// device is released entirely while the shared tab shows protected content, and
+// a new one is built from the same DesktopMediaID once the tab navigates back
+// to allowed content. Regression test for the case where the restarted device
+// resolved a null WebContents and reported
+// kFrameSinkVideoCaptureDeviceEncounteredFatalError, aborting the whole
+// session.
+// TODO(crbug.com/40947039): Fails with MSAN. Determine if enabling the test for
+// MSAN is feasible or not
+// TODO(crbug.com/328658521): It is also flaky on macOS.
+#if defined(MEMORY_SANITIZER) || BUILDFLAG(IS_MAC)
+#define MAYBE_ResumesCaptureAfterCrossProcessNavigationWhileStopped \
+  DISABLED_ResumesCaptureAfterCrossProcessNavigationWhileStopped
+#else
+#define MAYBE_ResumesCaptureAfterCrossProcessNavigationWhileStopped \
+  ResumesCaptureAfterCrossProcessNavigationWhileStopped
+#endif
+IN_PROC_BROWSER_TEST_F(
+    WebContentsVideoCaptureDeviceBrowserTest,
+    MAYBE_ResumesCaptureAfterCrossProcessNavigationWhileStopped) {
+  NavigateToInitialDocument();
+
+  // The defect this test covers is only reachable when the RenderFrameHost the
+  // capture session started with is genuinely gone. BackForwardCache would keep
+  // it alive and still resolvable by routing id, so the recovery path would
+  // never run and this test would pass with the fix removed.
+  shell()
+      ->web_contents()
+      ->GetController()
+      .GetBackForwardCache()
+      .DisableForTesting(BackForwardCache::TEST_REQUIRES_NO_CACHING);
+
+  // Pin the routing id before the first device is created, so that the second
+  // device is built from this same id rather than from the post-navigation main
+  // frame. Production does the same via the DesktopMediaID.
+  PinCaptureIdToCurrentMainFrame();
+  const GlobalRenderFrameHostId original_id = *pinned_capture_id();
+
+  AllocateAndStartAndWaitForFirstFrame();
+  EXPECT_TRUE(shell()->web_contents()->IsBeingCaptured());
+  ChangePageContentColor(SK_ColorRED);
+  WaitForFrameWithColor(SK_ColorRED);
+
+  // Pause: release the device entirely. The capturer count is released on a
+  // task hop, so wait for it rather than sampling it immediately.
+  StopAndDeAllocate();
+  ASSERT_TRUE(base::test::RunUntil(
+      [&]() { return !shell()->web_contents()->IsBeingCaptured(); }));
+
+  // The captured tab navigates to a different site while capture is stopped.
+  NavigateToAlternateSite();
+
+  // Precondition: the navigation really did destroy the RenderFrameHost the
+  // capture session was started with, so the pinned id is genuinely
+  // unresolvable. This is the exact condition the fix must recover from; assert
+  // it directly rather than inferring it, since a cached RenderFrameHost would
+  // make this test pass for the wrong reason.
+  //
+  // The old RenderFrameHost is not destroyed synchronously with the commit: it
+  // stays in pending-deletion state until its unload ack arrives, so poll
+  // rather than assuming it is already gone.
+  auto* const new_main_frame = shell()->web_contents()->GetPrimaryMainFrame();
+  const GlobalRenderFrameHostId new_id(
+      new_main_frame->GetProcess()->GetDeprecatedID(),
+      new_main_frame->GetRoutingID());
+  ASSERT_NE(original_id, new_id);
+  ASSERT_TRUE(base::test::RunUntil([&]() {
+    return RenderFrameHost::FromID(original_id) == nullptr;
+  })) << "The RenderFrameHost capture started with was never destroyed.";
+
+  // Resume: build a new device from the stale id. It must still find the tab.
+  AllocateAndStartAndWaitForFirstFrame();
+  EXPECT_TRUE(shell()->web_contents()->IsBeingCaptured());
+
+  // Frames must reflect the content of the page the tab navigated to, proving
+  // the restarted device targeted the live tab rather than erroring out.
+  ChangePageContentColor(SK_ColorGREEN);
+  WaitForFrameWithColor(SK_ColorGREEN);
+
+  StopAndDeAllocate();
+}
+
 // Tests that the device stops delivering frames while suspended. When resumed,
 // any content changes that occurred during the suspend should cause a new frame
 // to be delivered, to ensure the client is up-to-date.
@@ -659,7 +828,9 @@ INSTANTIATE_TEST_SUITE_P(
 // TODO(crbug.com/328419809): Also flaky on Mac.
 // TODO(crbug.com/329654821): Also flaky for ChromeOS ASAN LSAN and debug.
 // TODO(crbug.com/540031290): Also flaky on Win ASAN.
+// TODO(crbug.com/562441464): Also flaky on Android.
 #if defined(MEMORY_SANITIZER) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
+    BUILDFLAG(IS_ANDROID) ||                                                 \
     (BUILDFLAG(IS_CHROMEOS) && defined(ADDRESS_SANITIZER)) ||                \
     (BUILDFLAG(IS_CHROMEOS) && !defined(NDEBUG)) ||                          \
     (BUILDFLAG(IS_WIN) && defined(ADDRESS_SANITIZER))

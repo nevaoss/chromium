@@ -275,6 +275,8 @@ suite('SearchboxInputTest', () => {
       type: KeywordType.kInKeyword,
       keyword: '@bookmarks',
       displayText: 'Search Bookmarks',
+      iconPath: '',
+      placeholder: '',
     };
     // Even if a URL match with a destination URL is selected, keyword mode
     // should use the generic search loupe rather than the match's favicon.
@@ -285,9 +287,41 @@ suite('SearchboxInputTest', () => {
     await input.$.icon.updateComplete;
 
     assertTrue(input.$.icon.inKeywordMode);
+    assertEquals(
+        '//resources/cr_components/searchbox/icons/search_cr23.svg',
+        input.$.icon.defaultIcon);
     assertIconMaskImageUrl(
         input.$.icon,
         '//resources/cr_components/searchbox/icons/search_cr23.svg');
+    assertFalse(isVisible(input.$.icon.$.faviconImage));
+  });
+
+  test('Keyword mode displays custom keyword icon if set', async () => {
+    loadTimeData.resetForTesting({
+      isLensSearchbox: false,
+      isTopChromeSearchbox: false,
+    });
+    input = await createInput({
+      searchboxIcon: 'google_g.svg',
+    });
+
+    // Enter keyword mode with custom icon path (e.g. @gemini).
+    input.inputKeywordModel = {
+      type: KeywordType.kInKeyword,
+      keyword: '@gemini',
+      displayText: 'Gemini',
+      iconPath: '//resources/cr_components/searchbox/icons/spark.svg',
+      placeholder: '',
+    };
+    await input.updateComplete;
+    await input.$.icon.updateComplete;
+
+    assertTrue(input.$.icon.inKeywordMode);
+    assertEquals(
+        '//resources/cr_components/searchbox/icons/spark.svg',
+        input.$.icon.defaultIcon);
+    assertIconMaskImageUrl(
+        input.$.icon, '//resources/cr_components/searchbox/icons/spark.svg');
     assertFalse(isVisible(input.$.icon.$.faviconImage));
   });
 
@@ -304,6 +338,8 @@ suite('SearchboxInputTest', () => {
       type: KeywordType.kInKeyword,
       keyword: '@bookmarks',
       displayText: 'Search Bookmarks',
+      iconPath: '',
+      placeholder: '',
     };
     await input.updateComplete;
     await input.$.icon.updateComplete;
@@ -319,5 +355,45 @@ suite('SearchboxInputTest', () => {
 
     assertFalse(input.$.icon.inKeywordMode);
     assertEquals('google_g.svg', input.$.icon.defaultIcon);
+  });
+
+  test('Keyword mode displays keyword placeholder', async () => {
+    input = await createInput({placeholderText: 'Default Search'});
+    assertEquals('Default Search', input.inputElement.placeholder);
+    assertFalse(input.hasAttribute('in-keyword-mode'));
+
+    // Enter keyword mode with placeholder.
+    input.inputKeywordModel = {
+      type: KeywordType.kInKeyword,
+      keyword: '@bookmarks',
+      displayText: 'Search Bookmarks',
+      iconPath: '',
+      placeholder: 'Search Bookmarks',
+    };
+    await input.updateComplete;
+
+    assertTrue(input.hasAttribute('in-keyword-mode'));
+    assertEquals('Search Bookmarks', input.inputElement.placeholder);
+
+    // Enter keyword mode with empty placeholder -> placeholder becomes empty
+    // string.
+    input.inputKeywordModel = {
+      type: KeywordType.kInKeyword,
+      keyword: '@bookmarks',
+      displayText: 'Search Bookmarks',
+      iconPath: '',
+      placeholder: '',
+    };
+    await input.updateComplete;
+
+    assertTrue(input.hasAttribute('in-keyword-mode'));
+    assertEquals('', input.inputElement.placeholder);
+
+    // Exit keyword mode restores default placeholder.
+    input.inputKeywordModel = null;
+    await input.updateComplete;
+
+    assertFalse(input.hasAttribute('in-keyword-mode'));
+    assertEquals('Default Search', input.inputElement.placeholder);
   });
 });

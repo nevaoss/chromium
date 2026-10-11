@@ -46,7 +46,8 @@ namespace autofill {
 
 AutofillClient::PopupOpenArgs::PopupOpenArgs() = default;
 AutofillClient::PopupOpenArgs::PopupOpenArgs(
-    LocalFrameToken anchor_frame_token,
+    FormGlobalId form_id,
+    FieldGlobalId field_id,
     const gfx::RectF& element_bounds,
     base::i18n::TextDirection text_direction,
     std::vector<Suggestion> suggestions,
@@ -56,7 +57,8 @@ AutofillClient::PopupOpenArgs::PopupOpenArgs(
     bool show_tabbed_popup,
     bool prefer_prev_arrow_side_on_suggestions_update,
     std::u16string search_bar_initial_value)
-    : anchor_frame_token(std::move(anchor_frame_token)),
+    : form_id(std::move(form_id)),
+      field_id(std::move(field_id)),
       element_bounds(element_bounds),
       text_direction(text_direction),
       suggestions(std::move(suggestions)),
@@ -426,6 +428,7 @@ void AutofillClient::ShowEntityImportBubble(
     EntityInstance new_entity,
     std::optional<EntityInstance> old_entity,
     bool save_is_synchronous,
+    LegalMessageLines public_passes_notice,
     EntityImportPromptResultCallback prompt_closed_callback) {}
 
 void AutofillClient::CloseEntityImportBubble() {
@@ -457,16 +460,29 @@ void AutofillClient::ShowAutofillAiPrivateInferenceNotice() {
   NOTIMPLEMENTED();
 }
 
-void AutofillClient::ShowEmailVerifiedToast(const GURL& issuer) {
-  NOTIMPLEMENTED();
-}
-
 void AutofillClient::ShowEmailVerificationPopup(
     const gfx::RectF& element_bounds,
     const net::SchemefulSite& issuer_site,
     const std::u16string& email,
     base::OnceCallback<void(EmailVerificationPermissionUiStatus)> callback) {
+  NOTIMPLEMENTED();
   std::move(callback).Run(EmailVerificationPermissionUiStatus::kOther);
+}
+
+void AutofillClient::HideEmailVerificationPopup() {
+  NOTIMPLEMENTED();
+}
+
+void AutofillClient::ShowEmailVerificationLoadingToast() {
+  NOTIMPLEMENTED();
+}
+
+void AutofillClient::ShowEmailVerifiedToast(const GURL& issuer) {
+  NOTIMPLEMENTED();
+}
+
+void AutofillClient::ShowEmailVerificationErrorToast() {
+  NOTIMPLEMENTED();
 }
 
 OtpFieldDetector* AutofillClient::GetOtpFieldDetector() {

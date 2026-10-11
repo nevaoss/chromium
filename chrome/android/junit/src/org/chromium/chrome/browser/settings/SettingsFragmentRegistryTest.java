@@ -6,6 +6,7 @@ package org.chromium.chrome.browser.settings;
 
 import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
@@ -39,11 +40,14 @@ import org.chromium.chrome.browser.safe_browsing.settings.SafeBrowsingSettingsFr
 import org.chromium.chrome.browser.safe_browsing.settings.StandardProtectionSettingsFragment;
 import org.chromium.chrome.browser.tracing.settings.DeveloperSettings;
 import org.chromium.chrome.browser.tracing.settings.TracingSettings;
+import org.chromium.components.browser_ui.site_settings.AllSiteSettings;
 import org.chromium.components.browser_ui.site_settings.ChosenObjectSettings;
 import org.chromium.components.browser_ui.site_settings.GroupedWebsitesSettings;
 import org.chromium.components.browser_ui.site_settings.LocationPermissionSubpageSettings;
+import org.chromium.components.browser_ui.site_settings.SingleCategorySettings;
 import org.chromium.components.browser_ui.site_settings.SingleWebsiteSettings;
 import org.chromium.components.browser_ui.site_settings.SiteSettings;
+import org.chromium.components.browser_ui.site_settings.SiteSettingsCategory;
 import org.chromium.components.browser_ui.site_settings.StorageAccessSubpageSettings;
 import org.chromium.components.browser_ui.site_settings.Website;
 import org.chromium.components.browser_ui.site_settings.WebsiteAddress;
@@ -60,18 +64,15 @@ public class SettingsFragmentRegistryTest {
 
     @Test
     public void testRegistryInitialization() throws Exception {
-        Map<String, Class<? extends Fragment>> pathMap =
-                SettingsFragmentRegistry.sPathToFragmentMap;
-
         // Verify root path
-        assertEquals(MainSettings.class, pathMap.get(""));
-        assertEquals(MainSettings.class, pathMap.get("/"));
+        assertEquals(MainSettings.class, fragmentClassForPath(""));
+        assertEquals(MainSettings.class, fragmentClassForPath("/"));
 
         // Verify some notable mappings
-        assertEquals(PrivacySettings.class, pathMap.get("/privacy"));
-        assertEquals(AppearanceSettingsFragment.class, pathMap.get("/appearance"));
-        assertEquals(ThemeSettingsFragment.class, pathMap.get("/theme"));
-        assertEquals(SafeBrowsingSettingsFragment.class, pathMap.get("/safebrowsing"));
+        assertEquals(PrivacySettings.class, fragmentClassForPath("/privacy"));
+        assertEquals(AppearanceSettingsFragment.class, fragmentClassForPath("/appearance"));
+        assertEquals(ThemeSettingsFragment.class, fragmentClassForPath("/theme"));
+        assertEquals(SafeBrowsingSettingsFragment.class, fragmentClassForPath("/safebrowsing"));
 
         // Verify canonical path mapping
         Map<Class<? extends Fragment>, String> fragmentMap =
@@ -83,8 +84,6 @@ public class SettingsFragmentRegistryTest {
 
     @Test
     public void testRegisterMappingForTesting() throws Exception {
-        Map<String, Class<? extends Fragment>> pathMap =
-                SettingsFragmentRegistry.sPathToFragmentMap;
         Map<Class<? extends Fragment>, String> fragmentMap =
                 SettingsFragmentRegistry.sFragmentToPathMap;
 
@@ -92,17 +91,17 @@ public class SettingsFragmentRegistryTest {
         Class<? extends Fragment> testClass = Fragment.class;
 
         // Ensure it doesn't exist yet
-        assertFalse(pathMap.containsKey("/test/custom"));
+        assertNull(fragmentClassForPath(testPath));
 
         // Register the new mapping
         SettingsFragmentRegistry.registerMappingForTesting(testPath, testClass);
 
         // Verify it was added
-        assertEquals(testClass, pathMap.get("/test/custom"));
+        assertEquals(testClass, fragmentClassForPath(testPath));
         assertEquals("test/custom", fragmentMap.get(testClass));
 
         // Clean up
-        pathMap.remove("/test/custom");
+        SettingsFragmentRegistry.sPathToRouteSpecMap.remove(testPath);
         fragmentMap.remove(testClass);
     }
 
@@ -126,20 +125,18 @@ public class SettingsFragmentRegistryTest {
         // Registering with mixed case should be lowercased in the registry map
         SettingsFragmentRegistry.registerMappingForTesting("/Test/Case", Fragment.class);
 
-        Map<String, Class<? extends Fragment>> pathMap =
-                SettingsFragmentRegistry.sPathToFragmentMap;
         Map<Class<? extends Fragment>, String> fragmentMap =
                 SettingsFragmentRegistry.sFragmentToPathMap;
 
-        // Lookup key should be lowercased
-        assertTrue(pathMap.containsKey("/test/case"));
-        assertEquals(Fragment.class, pathMap.get("/test/case"));
+        // The Url is matched case insensitively, however it was registered or is written.
+        assertEquals(Fragment.class, fragmentClassForPath("/test/case"));
+        assertEquals(Fragment.class, fragmentClassForPath("/Test/Case"));
 
         // Canonical path map should preserve casing of the subpage path (without the slash)
         assertEquals("Test/Case", fragmentMap.get(Fragment.class));
 
         // Clean up
-        pathMap.remove("/test/case");
+        SettingsFragmentRegistry.sPathToRouteSpecMap.remove("/test/case");
         fragmentMap.remove(Fragment.class);
     }
 
@@ -421,5 +418,222 @@ public class SettingsFragmentRegistryTest {
         // not need an anchor.
         assertNull(SettingsFragmentRegistry.getMainMenuAnchor(SiteSettings.class));
         assertNull(SettingsFragmentRegistry.getMainMenuAnchor(PrivacySettings.class));
+    }
+
+    @Test
+    public void testIsSameSettingsPage() {
+        // Scheme is ignored: both schemes reach settings and are currently used interchangeably.
+        assertTrue(
+                SettingsFragmentRegistry.isSameSettingsPage(
+                        "chrome://settings/allSites", "chrome-native://settings/allSites"));
+
+        // Path comparison is case insensitive and tolerates a trailing slash, matching
+        // getFragmentClassForUrl().
+        assertTrue(
+                SettingsFragmentRegistry.isSameSettingsPage(
+                        "chrome://settings/allSites/", "chrome://settings/allsites"));
+
+        // Query parameters are part of the page identity.
+        assertTrue(
+                SettingsFragmentRegistry.isSameSettingsPage(
+                        "chrome://settings/allSites/group?group=example.com",
+                        "chrome://settings/allSites/group?group=example.com"));
+        assertFalse(
+                SettingsFragmentRegistry.isSameSettingsPage(
+                        "chrome://settings/allSites/group?group=example.com",
+                        "chrome://settings/allSites/group?group=other.com"));
+        assertFalse(
+                SettingsFragmentRegistry.isSameSettingsPage(
+                        "chrome://settings/allSites", "chrome://settings/siteSettings"));
+
+        // Non-settings and malformed URLs never match, including against each other.
+        assertFalse(
+                SettingsFragmentRegistry.isSameSettingsPage(
+                        "https://example.com/allSites", "chrome://settings/allSites"));
+        assertFalse(
+                SettingsFragmentRegistry.isSameSettingsPage(
+                        "https://example.com/", "https://example.com/"));
+        assertFalse(
+                SettingsFragmentRegistry.isSameSettingsPage(null, "chrome://settings/allSites"));
+        assertFalse(
+                SettingsFragmentRegistry.isSameSettingsPage("chrome://settings/allSites", null));
+    }
+
+    @Test
+    public void testResolveRedirectsWhenRequiredArgumentIsMissing() {
+        // Each of these pages is identified entirely by an argument, so without it there is no
+        // page to show. They fall back to the closest page that lists what they were showing.
+        assertRedirects("chrome://settings/siteDetails", "chrome://settings/allSites");
+        assertRedirects("chrome://settings/allSites/group", "chrome://settings/allSites");
+        assertRedirects("chrome://settings/locationPermission", "chrome://settings/allSites");
+        assertRedirects("chrome://settings/storageAccess", "chrome://settings/allSites");
+        assertRedirects(
+                "chrome://settings/siteSettings/category", "chrome://settings/siteSettings");
+    }
+
+    @Test
+    public void testResolveShowsPageWhenRequiredArgumentIsPresent() {
+        SettingsFragmentRegistry.Resolution resolution =
+                SettingsFragmentRegistry.resolve(
+                        "chrome://settings/siteDetails?site=https://example.com");
+        assertNull(resolution.redirectUrl);
+        assertEquals(SingleWebsiteSettings.class, resolution.fragmentClass);
+        assertTrue(resolution.args.containsKey(SingleWebsiteSettings.EXTRA_SITE_ADDRESS));
+
+        resolution =
+                SettingsFragmentRegistry.resolve(
+                        "chrome://settings/allSites/group?group=example.com");
+        assertNull(resolution.redirectUrl);
+        assertEquals(GroupedWebsitesSettings.class, resolution.fragmentClass);
+    }
+
+    @Test
+    public void testResolveRedirectsCategoriesToThePageThatRendersThem() {
+        // "All sites", "Storage" and "Zoom" are rendered by AllSiteSettings, every other category
+        // by SingleCategorySettings. Each page throws when handed the other's categories, so a URL
+        // naming the wrong one is sent to its counterpart rather than being shown.
+        assertRedirects(
+                "chrome://settings/siteSettings/category?category="
+                        + SiteSettingsCategory.preferenceKey(SiteSettingsCategory.Type.ALL_SITES),
+                "chrome://settings/allSites?category=all_sites");
+        assertRedirects(
+                "chrome://settings/allSites?category="
+                        + SiteSettingsCategory.preferenceKey(SiteSettingsCategory.Type.CAMERA),
+                "chrome://settings/siteSettings/category?category=camera");
+
+        // The categories each page does render are shown, not redirected.
+        SettingsFragmentRegistry.Resolution resolution =
+                SettingsFragmentRegistry.resolve("chrome://settings/allSites?category=all_sites");
+        assertNull(resolution.redirectUrl);
+        assertEquals(AllSiteSettings.class, resolution.fragmentClass);
+
+        resolution =
+                SettingsFragmentRegistry.resolve(
+                        "chrome://settings/siteSettings/category?category=camera");
+        assertNull(resolution.redirectUrl);
+        assertEquals(SingleCategorySettings.class, resolution.fragmentClass);
+    }
+
+    @Test
+    public void testEveryRouteReachesAPageWithoutLooping() {
+        // A fallback that itself redirects would leave the tab navigating in a circle, so walk
+        // every registered route, with no arguments supplied, to a page that can be shown.
+        for (String path : SettingsFragmentRegistry.sPathToRouteSpecMap.keySet()) {
+            String url = "chrome://settings" + path;
+            for (int hops = 0; ; hops++) {
+                assertTrue(
+                        "Redirect loop reached from chrome://settings" + path + " at " + url,
+                        hops < 5);
+                SettingsFragmentRegistry.Resolution resolution =
+                        SettingsFragmentRegistry.resolve(url);
+                if (resolution.redirectUrl == null) {
+                    assertNotNull(url, resolution.fragmentClass);
+                    break;
+                }
+                url = resolution.redirectUrl;
+            }
+        }
+    }
+
+    @Test
+    public void testResolveShowsMainSettingsForUnroutedUrls() {
+        // ChosenObjectSettings has no URL: it is identified by a serialized device descriptor.
+        SettingsFragmentRegistry.Resolution resolution =
+                SettingsFragmentRegistry.resolve("chrome://settings/chosenObject");
+        assertNull(resolution.redirectUrl);
+        assertEquals(MainSettings.class, resolution.fragmentClass);
+        assertNull(
+                SettingsFragmentRegistry.getFragmentClassForUrl("chrome://settings/chosenObject"));
+
+        resolution = SettingsFragmentRegistry.resolve("chrome://settings/notAPage");
+        assertNull(resolution.redirectUrl);
+        assertEquals(MainSettings.class, resolution.fragmentClass);
+    }
+
+    @Test
+    public void testResolveWalksUpToTheClosestPageForUnknownPaths() {
+        // A Url is user editable, so a mistyped or truncated path should land as close to what was
+        // asked for as possible. Here the query separator was typed as "&", making the whole thing
+        // one unknown path segment.
+        assertRedirects(
+                "chrome://settings/siteSettings/category&title=Location",
+                "chrome://settings/siteSettings");
+
+        // The redirect keeps the registered casing rather than the lowercased matching form.
+        assertRedirects("chrome://settings/allsites/nonsense", "chrome://settings/allSites");
+
+        // Several unknown segments still walk all the way back to a real page.
+        assertRedirects("chrome://settings/siteSettings/a/b/c", "chrome://settings/siteSettings");
+    }
+
+    @Test
+    public void testResolveRedirectsCategoryUrlMissingOnlyItsCategory() {
+        // The title is decoration; the category is what names the page. Dropping the category
+        // leaves nothing to show, so this falls back rather than landing on the settings root.
+        assertRedirects(
+                "chrome://settings/siteSettings/category?title=Location",
+                "chrome://settings/siteSettings");
+    }
+
+    @Test
+    public void testResolveRedirectsWhenRequiredArgumentIsEmpty() {
+        // A Url is user editable, and trimming the value off a parameter is easier than trimming
+        // the whole parameter. An empty value names nothing, so it is the same as being absent.
+        assertRedirects("chrome://settings/siteDetails?site=", "chrome://settings/allSites");
+        assertRedirects("chrome://settings/siteDetails?site", "chrome://settings/allSites");
+        assertRedirects("chrome://settings/allSites/group?group=", "chrome://settings/allSites");
+        assertRedirects(
+                "chrome://settings/siteSettings/category?category=",
+                "chrome://settings/siteSettings");
+    }
+
+    @Test
+    public void testParseUrlArgumentsSkipsEmptyValues() {
+        // The same rule applies to arguments that merely decorate a page: an empty title would
+        // otherwise blank the toolbar instead of letting the page name itself.
+        Bundle args =
+                SettingsFragmentRegistry.parseUrlArguments(
+                        "chrome://settings/siteSettings/category?category=camera&title=");
+        assertFalse(args.containsKey(SingleCategorySettings.EXTRA_TITLE));
+        assertEquals("camera", args.getString(SingleCategorySettings.EXTRA_CATEGORY));
+    }
+
+    @Test
+    public void testResolveRedirectsUnknownCategories() {
+        // A category this build does not have is not a page, and must not be mistaken for one
+        // belonging to the other of the two category pages, which asserts on it.
+        assertRedirects(
+                "chrome://settings/siteSettings/category?category=unknown_nonsense",
+                "chrome://settings/siteSettings");
+
+        // On All sites the same string is only decoration: the page falls back to "All sites" for
+        // any category it does not render, so it is shown rather than redirected. Redirecting
+        // would hand the category to a page that cannot show it either, and it would come back.
+        SettingsFragmentRegistry.Resolution resolution =
+                SettingsFragmentRegistry.resolve(
+                        "chrome://settings/allSites?category=unknown_nonsense");
+        assertNull(resolution.redirectUrl);
+        assertEquals(AllSiteSettings.class, resolution.fragmentClass);
+    }
+
+    @Test
+    public void testResolveAppliesRouteDefaults() {
+        SettingsFragmentRegistry.Resolution resolution =
+                SettingsFragmentRegistry.resolve("chrome://settings/theme");
+        assertEquals(ThemeSettingsFragment.class, resolution.fragmentClass);
+        assertEquals(
+                NightModeMetrics.ThemeSettingsEntry.SETTINGS,
+                resolution.args.getInt(ThemeSettingsFragment.KEY_THEME_SETTINGS_ENTRY));
+    }
+
+    private static void assertRedirects(String url, String expectedRedirectUrl) {
+        SettingsFragmentRegistry.Resolution resolution = SettingsFragmentRegistry.resolve(url);
+        assertEquals(url, expectedRedirectUrl, resolution.redirectUrl);
+        assertNull(url, resolution.fragmentClass);
+    }
+
+    /** The page a settings path resolves to, or null if the path is not registered. */
+    private static Class<? extends Fragment> fragmentClassForPath(String path) {
+        return SettingsFragmentRegistry.getFragmentClassForUrl("chrome://settings" + path);
     }
 }

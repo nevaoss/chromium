@@ -18,6 +18,7 @@ import {ComposeboxProxyImpl, createAutocompleteMatch} from './composebox_proxy.j
 
 export interface ComposeboxMatchElement {
   $: {
+    iconContainer: HTMLElement,
     image: HTMLElement,
     remove: HTMLElement,
     textContainer: HTMLElement,
@@ -44,6 +45,17 @@ export class ComposeboxMatchElement extends CrLitElement {
       // Public properties
       //========================================================================
 
+      /**
+       * Whether the match should be rendered in a two-row layout, i.e. with the
+       * description (secondary text) rendered below the contents (primary
+       * text). Mirrors `AutocompleteMatch::is_two_row_suggestion`, which the
+       * handler derives from `SuggestTemplateInfo::secondary_text_placement`.
+       */
+      isTwoRowSuggestion: {
+        type: Boolean,
+        reflect: true,
+      },
+
       match: {type: Object},
       overrideClampLineNum: {
         type: Number,
@@ -55,6 +67,8 @@ export class ComposeboxMatchElement extends CrLitElement {
        * of events such as deletion, click, etc.
        */
       matchIndex: {type: Number},
+
+      resultSequenceId: {type: Number},
 
       toolMode: {
         type: Number,
@@ -71,10 +85,12 @@ export class ComposeboxMatchElement extends CrLitElement {
     };
   }
 
+  accessor isTwoRowSuggestion: boolean = false;
   accessor match: AutocompleteMatch = createAutocompleteMatch();
   accessor overrideClampLineNum: number = -1;
 
   accessor matchIndex: number = -1;
+  accessor resultSequenceId: number = 0;
   accessor toolMode: ToolMode = ToolMode.kUnspecified;
   accessor richImageSuggestionsEnabled: boolean = false;
   accessor suggestStyle: string = 'default';
@@ -99,7 +115,9 @@ export class ComposeboxMatchElement extends CrLitElement {
 
     // Prevent default mousedown behavior (e.g., focus) to avoid layout shifts
     // that could interfere with click events, especially for ZPS suggestions.
-    this.addEventListener('mousedown', (event) => event.preventDefault());
+    this.addEventListener('mousedown', (event) => {
+      event.preventDefault();
+    });
 
     this.style.setProperty(
         '--clamp-line-num',
@@ -119,11 +137,19 @@ export class ComposeboxMatchElement extends CrLitElement {
     }
   }
 
+  private computeIsTwoRowSuggestion_(): boolean {
+    // Rich image suggestions have their own (grid) layout and never render a
+    // second row of text.
+    return !this.isRichImage && this.match.isTwoRowSuggestion &&
+        !!this.match.description;
+  }
+
   override willUpdate(changedProperties: PropertyValues<this>) {
     super.willUpdate(changedProperties);
     if (changedProperties.has('match') ||
         changedProperties.has('richImageSuggestionsEnabled')) {
       this.suggestStyle = this.computeSuggestStyle_();
+      this.isTwoRowSuggestion = this.computeIsTwoRowSuggestion_();
     }
   }
 
@@ -177,7 +203,7 @@ export class ComposeboxMatchElement extends CrLitElement {
     }
 
     this.searchboxHandler_.openAutocompleteMatch(
-        this.matchIndex, this.match.destinationUrl,
+        this.resultSequenceId, this.matchIndex, this.match.destinationUrl,
         /*areMatchesShowing=*/ true,
         /*mouseButton=*/ e.button || 0, {
           altKey: e.altKey,

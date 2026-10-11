@@ -250,6 +250,7 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &kAndroidBottomBar,
     &kAndroidBottomBarAim,
     &kAndroidBricksNativePage,
+    &kAndroidCloseAllTabsRetainsPinnedTabs,
     &kAndroidContextMenuDisabledMenuItems,
     &kAndroidDesktopBookmarkDialog,
     &kAndroidDesktopBookmarkLayout,
@@ -318,8 +319,6 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &kBrowserControlsHidingToken,
     &kBrowserControlsPersistsOnCvh,
     &kBrowserControlsRenderDrivenShowConstraint,
-    &kCCTAdaptiveButton,
-    &kCCTAdaptiveButtonTestSwitch,
     &kCCTAlwaysOpenInBrowser,
     &kCCTBlockTouchesDuringEnterAnimation,
     &kCCTClientDataHeader,
@@ -344,6 +343,7 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &kCCTReportParallelRequestStatus,
     &kCCTReportPrerenderEvents,
     &kCCTResetTimeoutAllowed,
+    &kCCTResetTimeoutSkipConfigurationChanges,
     &kCCTResizableForThirdParties,
     &kCCTTabModalDialog,
     &kCCTTabSwitcherEnabledForChromeExperiment,
@@ -386,6 +386,7 @@ const base::Feature* const kFeaturesExposedToJava[] = {
     &kDisablePartnerHomepageAndroid,
     &kDisableScrollbarOfFadingEdgeScrollView,
     &kDontAutoHideBrowserControls,
+    &kDownloadToolbarButtonForDesktop,
     &kEdgeToEdgeAutomotive,
     &kEdgeToEdgeBottomChin,
     &kEdgeToEdgeEverywhere,
@@ -676,6 +677,10 @@ BASE_FEATURE(kAndroidBeforeUnloadSupport, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidBottomBar, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidBottomBarAim, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidBricksNativePage, base::FEATURE_DISABLED_BY_DEFAULT);
+// When enabled, the "Close all tabs" action in the tab switcher (GTS/Hub) leaves
+// pinned tabs open, and the confirmation dialog offers an opt-in checkbox to close
+// them as well.
+BASE_FEATURE(kAndroidCloseAllTabsRetainsPinnedTabs, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidContextMenuDisabledMenuItems, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidDesktopBookmarkDialog, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kAndroidDesktopBookmarkLayout, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -746,8 +751,6 @@ BASE_FEATURE(kBrowserControlsEarlyResize, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kBrowserControlsHidingToken, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kBrowserControlsPersistsOnCvh, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kBrowserControlsRenderDrivenShowConstraint, base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE(kCCTAdaptiveButton, base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE(kCCTAdaptiveButtonTestSwitch, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kCCTAlwaysOpenInBrowser, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kCCTBlockTouchesDuringEnterAnimation, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kCCTClientDataHeader, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -772,6 +775,7 @@ BASE_FEATURE(kCCTRealtimeEngagementEventsInBackground, base::FEATURE_ENABLED_BY_
 BASE_FEATURE(kCCTReportParallelRequestStatus, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kCCTReportPrerenderEvents, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kCCTResetTimeoutAllowed, base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kCCTResetTimeoutSkipConfigurationChanges, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kCCTResizableForThirdParties, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kCCTTabModalDialog, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kCCTTabSwitcherEnabledForChromeExperiment, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -803,7 +807,7 @@ BASE_FEATURE(kCrossWindowTabGroupOperations, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kDebugToolbarPositioning, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kDefaultBrowserPromoAndroid2, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kDefaultBrowserPromoEntryPoint, base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE(kDefaultBrowserPromoFre, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kDefaultBrowserPromoFre, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kDeferNavigationStateChanged, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kDesktopAndroidBackgroundTabLoading, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kDesktopAndroidFilePickerForMedia, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -817,6 +821,7 @@ BASE_FEATURE(kDisablePartnerHomepageAndroid, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kDisableScrollbarOfFadingEdgeScrollView, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kDiscardPageWithCrashedSubframePolicy, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kDontAutoHideBrowserControls, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kDownloadToolbarButtonForDesktop, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kEdgeToEdgeAutomotive, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kEdgeToEdgeBottomChin, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kEdgeToEdgeEverywhere, base::FEATURE_ENABLED_BY_DEFAULT);

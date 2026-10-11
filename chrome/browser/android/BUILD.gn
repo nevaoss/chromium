@@ -59,9 +59,9 @@ source_set("tabs_impl") {
     "//chrome/browser/ui/tabs:page_context_eligibility_helper",
     "//chrome/browser/ui/webui:webui_util",
 
-    # TODO(crbug.com/489548570): Remove "side_panel/internal/android"
-    # since it's for the tab-scoped dev feature.
-    "//chrome/browser/ui/side_panel/internal/android",
+    # TODO(crbug.com/489548570): Remove "side_panel/internal/android:dev"
+    # from release builds. We need it in tests.
+    "//chrome/browser/ui/side_panel/internal/android:dev",
     "//components/external_intents/android",
     "//components/favicon/content",
     "//components/lens",
@@ -438,8 +438,6 @@ if (is_android) {
       "usage_stats/usage_stats_database.h",
       "warmup_manager.cc",
       "web_contents_printer.cc",
-      "webapk/pwa_restore_bottom_sheet_mediator.cc",
-      "webapk/pwa_restore_bottom_sheet_mediator.h",
       "webapk/webapk_install_service.cc",
       "webapk/webapk_install_service_factory.cc",
       "webapk/webapk_install_service_factory.h",
@@ -484,6 +482,7 @@ if (is_android) {
       "//cc/slim",
       "//chrome/android:jni_headers",
       "//chrome/app:command_ids",
+      "//chrome/browser:global_features",
       "//chrome/browser/accessibility/settings",
       "//chrome/browser/android/content:jni_headers",
       "//chrome/browser/android/extensions:android",
@@ -626,6 +625,7 @@ if (is_android) {
       "//chrome/common:non_code_constants",
       "//components/android_autofill/browser:android",
       "//components/android_autofill/browser:features",
+      "//components/application_locale_storage",
       "//components/autofill/android:keyboard_suppressor",
       "//components/background_sync",
       "//components/bookmarks/common/android",
@@ -736,7 +736,6 @@ if (is_android) {
       "//components/visited_url_ranking/public",
       "//components/viz/common",
       "//components/webapk:proto",
-      "//components/webapps/browser/android:pwa_restore_bottom_sheet_mediator_jni_headers",
       "//components/webauthn/android",
       "//content/public/browser",
       "//device/fido:cablev2_registration",
@@ -852,6 +851,7 @@ if (is_android) {
       "//components/content_relationship_verification",
       "//components/contextual_search:public",
       "//components/contextual_search:types",
+      "//components/contextual_search/consent_kit",
       "//components/contextual_search/footprints/internal",
       "//components/contextual_search/footprints/public",
       "//components/contextual_search/internal",

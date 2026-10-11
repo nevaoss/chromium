@@ -16,6 +16,7 @@ import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyFloat;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.argThat;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
@@ -137,6 +138,10 @@ public class UrlBarUnitTest {
     /** A supplementary-plane character, i.e. a surrogate pair rather than a single char. */
     private static final String GRINNING_FACE_EMOJI = "\uD83D\uDE00";
 
+    // Fixture describing text presented over multiple wrapped lines.
+    private static final String WRAPPED_TEXT = "aaa bbb ccc";
+    private static final int WRAPPED_TEXT_LINE_COUNT = 3;
+
     @Rule
     public final MockitoRule mMockitoRule = MockitoJUnit.rule().strictness(Strictness.STRICT_STUBS);
 
@@ -184,6 +189,7 @@ public class UrlBarUnitTest {
 
         mUrlBar.setDelegate(mUrlBarDelegate);
         mUrlBar.setTextContextMenuDelegate(mTextContextMenuDelegate);
+        mUrlBar.setSelected(true);
     }
 
     private void setupUrlBarSpy() {
@@ -319,6 +325,14 @@ public class UrlBarUnitTest {
                 "Addition Text",
                 expectedAdditionalText,
                 mUrlBar.getAdditionalText() != null ? mUrlBar.getAdditionalText() : "");
+    }
+
+    private void setUpCursorVisible() {
+        doReturn(true).when(mUrlBar).isFocused();
+        doReturn(true).when(mUrlBar).hasWindowFocus();
+        mUrlBar.setSelected(true);
+        mUrlBar.setCursorVisible(true);
+        assertTrue(mUrlBar.isCursorVisible());
     }
 
     @Test
@@ -490,7 +504,7 @@ public class UrlBarUnitTest {
     }
 
     @Test
-    public void onTouchEvent_touchDownIsIgnored() {
+    public void onTouchEvent_touchDownEmitsOnUrlBarTouchDown() {
         mUrlBar.onFocusChanged(
                 /* focused= */ true,
                 /* direction= */ View.FOCUS_DOWN,
@@ -503,6 +517,7 @@ public class UrlBarUnitTest {
                         /* x= */ 0,
                         /* y= */ 0,
                         /* metaState= */ 0));
+        verify(mUrlBarDelegate).onUrlBarTouchDown();
         verify(mUrlBarDelegate, never()).onTouchAfterFocus();
     }
 
@@ -972,9 +987,7 @@ public class UrlBarUnitTest {
         assertEquals(0, mUrlBar.getSelectionEnd());
     }
 
-    @Test
-    public void scrollWhenOriginChanges() {
-        // Initialize the URL bar. Verify test conditions.
+    private void setupInitialDomainScroll() {
         mUrlBar.setText(SHORT_DOMAIN);
         mUrlBar.setScrollState(
                 UrlBar.ScrollType.SCROLL_TO_TLD,
@@ -984,12 +997,53 @@ public class UrlBarUnitTest {
         assertFalse(mUrlBar.hasPendingDisplayTextScrollForTesting());
         verify(mUrlBar).scrollToTLD();
         mUrlBar.setVisibleTextPrefixHintForTesting(SHORT_DOMAIN);
+    }
+
+    @Test
+    public void scrollWhenOriginChanges() {
+        setupInitialDomainScroll();
 
         mUrlBar.setText(SHORT_SUBDOMAIN);
         mUrlBar.setScrollState(
                 UrlBar.ScrollType.SCROLL_TO_TLD,
                 /* scrollToIndex= */ SHORT_SUBDOMAIN.length(),
                 /* originChanged= */ true);
+        verify(mUrlBar, times(2)).scrollToTLD();
+    }
+
+    @Test
+    public void scrollWhenOriginChanges_scrollDeferredUntilLayout() {
+        setupInitialDomainScroll();
+
+        // Simulate a text change that requests a new layout pass (e.g. a wrap_content view),
+        // deferring the scroll request until the pass completes.
+        mUrlBar.setText(SHORT_SUBDOMAIN);
+        mUrlBar.requestLayout();
+        mUrlBar.setScrollState(
+                UrlBar.ScrollType.SCROLL_TO_TLD,
+                /* scrollToIndex= */ SHORT_SUBDOMAIN.length(),
+                /* originChanged= */ true);
+        assertTrue(mUrlBar.hasPendingDisplayTextScrollForTesting());
+        verify(mUrlBar).scrollToTLD();
+
+        // The deferred scroll must honor the origin change and recompute the scroll position
+        // rather than restore the position computed for the previous origin.
+        measureAndLayoutUrlBar();
+        assertFalse(mUrlBar.hasPendingDisplayTextScrollForTesting());
+        verify(mUrlBar, times(2)).scrollToTLD();
+    }
+
+    @Test
+    public void scrollWhenOriginEndIndexChanges() {
+        setupInitialDomainScroll();
+
+        // Even without the origin change signal, a scroll position computed for an origin that
+        // ended at a different index must not be reused.
+        mUrlBar.setText(SHORT_SUBDOMAIN);
+        mUrlBar.setScrollState(
+                UrlBar.ScrollType.SCROLL_TO_TLD,
+                /* scrollToIndex= */ SHORT_SUBDOMAIN.length(),
+                /* originChanged= */ false);
         verify(mUrlBar, times(2)).scrollToTLD();
     }
 
@@ -1172,6 +1226,182 @@ public class UrlBarUnitTest {
 
             clearInvocations(mViewOnKeyListener, mUrlBar);
         }
+    }
+
+    /**
+     * Configures the UrlBar with focused, wrapping-eligible input laid out over {@code lineCount}
+     * lines, with a key listener attached. Note: line-to-line cursor movement is performed by the
+     * EditText itself, emulated here by stubbing {@link UrlBar#super_onKeyDown}.
+     */
+    private void setUpWrappedMultilineInput(int lineCount) {
+        mUrlBar.setAllowMultilineInput(true);
+        mUrlBar.onFocusChanged(
+                /* focused= */ true, /* direction= */ 0, /* previouslyFocusedRect= */ null);
+        mUrlBar.setInputIsMultilineEligible(true);
+        mUrlBar.setText(WRAPPED_TEXT);
+        mUrlBar.setKeyDownListener(mViewOnKeyListener);
+
+        lenient().doReturn(mLayout).when(mUrlBar).getLayout();
+        lenient().doReturn(lineCount).when(mLayout).getLineCount();
+    }
+
+    @Test
+    public void dpadDown_walksWrappedLinesBeforeReachingKeyListener() {
+        setUpWrappedMultilineInput(WRAPPED_TEXT_LINE_COUNT);
+        var event = new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_DOWN);
+        mUrlBar.setSelection(WRAPPED_TEXT.length() - 1);
+
+        // The EditText moves the cursor to the line below; the key listener is not involved.
+        doReturn(true).when(mUrlBar).super_onKeyDown(anyInt(), any());
+        assertTrue(mUrlBar.onKeyDown(KeyEvent.KEYCODE_DPAD_DOWN, event));
+        verify(mViewOnKeyListener, never()).onKey(any(), anyInt(), any());
+
+        // Bottom line reached: the cursor snaps to the end of the text.
+        doReturn(false).when(mUrlBar).super_onKeyDown(anyInt(), any());
+        assertTrue(mUrlBar.onKeyDown(KeyEvent.KEYCODE_DPAD_DOWN, event));
+        assertEquals(WRAPPED_TEXT.length(), mUrlBar.getSelectionStart());
+        verify(mViewOnKeyListener, never()).onKey(any(), anyInt(), any());
+
+        // The cursor rests at the end of the text: the event reaches the key listener.
+        doReturn(true).when(mViewOnKeyListener).onKey(any(), anyInt(), any());
+        assertTrue(mUrlBar.onKeyDown(KeyEvent.KEYCODE_DPAD_DOWN, event));
+        verify(mViewOnKeyListener).onKey(mUrlBar, KeyEvent.KEYCODE_DPAD_DOWN, event);
+    }
+
+    @Test
+    public void dpadUp_walksWrappedLinesBeforeReachingKeyListener() {
+        setUpWrappedMultilineInput(WRAPPED_TEXT_LINE_COUNT);
+        var event = new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_UP);
+        mUrlBar.setSelection(1);
+
+        // The EditText moves the cursor to the line above; the key listener is not involved.
+        doReturn(true).when(mUrlBar).super_onKeyDown(anyInt(), any());
+        assertTrue(mUrlBar.onKeyDown(KeyEvent.KEYCODE_DPAD_UP, event));
+        verify(mViewOnKeyListener, never()).onKey(any(), anyInt(), any());
+
+        // Top line reached: the cursor snaps to the beginning of the text.
+        doReturn(false).when(mUrlBar).super_onKeyDown(anyInt(), any());
+        assertTrue(mUrlBar.onKeyDown(KeyEvent.KEYCODE_DPAD_UP, event));
+        assertEquals(0, mUrlBar.getSelectionStart());
+        verify(mViewOnKeyListener, never()).onKey(any(), anyInt(), any());
+
+        // The cursor rests at the beginning of the text: the event reaches the key listener.
+        doReturn(true).when(mViewOnKeyListener).onKey(any(), anyInt(), any());
+        assertTrue(mUrlBar.onKeyDown(KeyEvent.KEYCODE_DPAD_UP, event));
+        verify(mViewOnKeyListener).onKey(mUrlBar, KeyEvent.KEYCODE_DPAD_UP, event);
+    }
+
+    @Test
+    public void dpadDown_singleLineTextIsPassedToKeyListener() {
+        setUpWrappedMultilineInput(/* lineCount= */ 1);
+        var event = new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_DPAD_DOWN);
+        mUrlBar.setSelection(1);
+
+        doReturn(true).when(mViewOnKeyListener).onKey(any(), anyInt(), any());
+        assertTrue(mUrlBar.onKeyDown(KeyEvent.KEYCODE_DPAD_DOWN, event));
+        assertEquals(1, mUrlBar.getSelectionStart());
+        verify(mViewOnKeyListener).onKey(mUrlBar, KeyEvent.KEYCODE_DPAD_DOWN, event);
+        verify(mUrlBar, never()).super_onKeyDown(anyInt(), any());
+    }
+
+    @Test
+    public void dpadDown_withNonShiftModifiersIsPassedToKeyListener() {
+        setUpWrappedMultilineInput(WRAPPED_TEXT_LINE_COUNT);
+        // Alt+Down or Ctrl+Down should retain default listener handling.
+        var event =
+                new KeyEvent(
+                        /* downTime= */ 0,
+                        /* eventTime= */ 0,
+                        KeyEvent.ACTION_DOWN,
+                        KeyEvent.KEYCODE_DPAD_DOWN,
+                        /* repeat= */ 0,
+                        KeyEvent.META_ALT_ON);
+
+        doReturn(true).when(mViewOnKeyListener).onKey(any(), anyInt(), any());
+        assertTrue(mUrlBar.onKeyDown(KeyEvent.KEYCODE_DPAD_DOWN, event));
+        verify(mViewOnKeyListener).onKey(mUrlBar, KeyEvent.KEYCODE_DPAD_DOWN, event);
+        verify(mUrlBar, never()).super_onKeyDown(anyInt(), any());
+    }
+
+    @Test
+    public void dpadDown_withShiftSelectsText() {
+        setUpWrappedMultilineInput(WRAPPED_TEXT_LINE_COUNT);
+        var event =
+                new KeyEvent(
+                        /* downTime= */ 0,
+                        /* eventTime= */ 0,
+                        KeyEvent.ACTION_DOWN,
+                        KeyEvent.KEYCODE_DPAD_DOWN,
+                        /* repeat= */ 0,
+                        KeyEvent.META_SHIFT_ON);
+        mUrlBar.setSelection(2);
+
+        // While moving between lines, super_onKeyDown handles the selection extension.
+        doReturn(true).when(mUrlBar).super_onKeyDown(anyInt(), any());
+        assertTrue(mUrlBar.onKeyDown(KeyEvent.KEYCODE_DPAD_DOWN, event));
+        verify(mViewOnKeyListener, never()).onKey(any(), anyInt(), any());
+
+        // When bottom line is reached, selection extends to the end of the text.
+        doReturn(false).when(mUrlBar).super_onKeyDown(anyInt(), any());
+        assertTrue(mUrlBar.onKeyDown(KeyEvent.KEYCODE_DPAD_DOWN, event));
+        assertEquals(2, mUrlBar.getSelectionStart());
+        assertEquals(WRAPPED_TEXT.length(), mUrlBar.getSelectionEnd());
+        verify(mViewOnKeyListener, never()).onKey(any(), anyInt(), any());
+
+        // Once at the end, Shift+Down is consumed and never navigates suggestions.
+        assertTrue(mUrlBar.onKeyDown(KeyEvent.KEYCODE_DPAD_DOWN, event));
+        verify(mViewOnKeyListener, never()).onKey(any(), anyInt(), any());
+    }
+
+    @Test
+    public void dpadUp_withShiftSelectsText() {
+        setUpWrappedMultilineInput(WRAPPED_TEXT_LINE_COUNT);
+        var event =
+                new KeyEvent(
+                        /* downTime= */ 0,
+                        /* eventTime= */ 0,
+                        KeyEvent.ACTION_DOWN,
+                        KeyEvent.KEYCODE_DPAD_UP,
+                        /* repeat= */ 0,
+                        KeyEvent.META_SHIFT_ON);
+        mUrlBar.setSelection(2, 4);
+
+        // While moving between lines, super_onKeyDown handles the selection extension.
+        doReturn(true).when(mUrlBar).super_onKeyDown(anyInt(), any());
+        assertTrue(mUrlBar.onKeyDown(KeyEvent.KEYCODE_DPAD_UP, event));
+        verify(mViewOnKeyListener, never()).onKey(any(), anyInt(), any());
+
+        // When top line is reached, selection extends to the beginning of the text.
+        doReturn(false).when(mUrlBar).super_onKeyDown(anyInt(), any());
+        assertTrue(mUrlBar.onKeyDown(KeyEvent.KEYCODE_DPAD_UP, event));
+        assertEquals(2, mUrlBar.getSelectionStart());
+        assertEquals(0, mUrlBar.getSelectionEnd());
+        verify(mViewOnKeyListener, never()).onKey(any(), anyInt(), any());
+
+        // Once at the beginning, Shift+Up is consumed and never navigates suggestions.
+        assertTrue(mUrlBar.onKeyDown(KeyEvent.KEYCODE_DPAD_UP, event));
+        verify(mViewOnKeyListener, never()).onKey(any(), anyInt(), any());
+    }
+
+    @Test
+    public void numpadKeys_translatedToDpad() {
+        setUpWrappedMultilineInput(WRAPPED_TEXT_LINE_COUNT);
+        var numpadDownEvent = new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_NUMPAD_2);
+        var numpadUpEvent = new KeyEvent(KeyEvent.ACTION_DOWN, KeyEvent.KEYCODE_NUMPAD_8);
+
+        doReturn(true).when(mUrlBar).super_onKeyDown(anyInt(), any());
+
+        assertTrue(mUrlBar.onKeyDown(KeyEvent.KEYCODE_NUMPAD_2, numpadDownEvent));
+        verify(mUrlBar)
+                .super_onKeyDown(
+                        eq(KeyEvent.KEYCODE_DPAD_DOWN),
+                        argThat(e -> e.getKeyCode() == KeyEvent.KEYCODE_DPAD_DOWN));
+
+        assertTrue(mUrlBar.onKeyDown(KeyEvent.KEYCODE_NUMPAD_8, numpadUpEvent));
+        verify(mUrlBar)
+                .super_onKeyDown(
+                        eq(KeyEvent.KEYCODE_DPAD_UP),
+                        argThat(e -> e.getKeyCode() == KeyEvent.KEYCODE_DPAD_UP));
     }
 
     /** Verifies that {@link UrlBar#dispatchKeyEvent} intercepts and handles the TAB key. */
@@ -1915,6 +2145,17 @@ public class UrlBarUnitTest {
 
         doReturn(true).when(mUrlBar).hasWindowFocus();
         mUrlBar.onWindowFocusChanged(/* hasWindowFocus= */ true);
+        assertTrue(mUrlBar.isCursorVisible());
+    }
+
+    @Test
+    public void testCursorVisibility_Selected() {
+        setUpCursorVisible();
+
+        mUrlBar.setSelected(false);
+        assertFalse(mUrlBar.isCursorVisible());
+
+        mUrlBar.setSelected(true);
         assertTrue(mUrlBar.isCursorVisible());
     }
 

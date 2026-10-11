@@ -10,12 +10,14 @@
 #include "base/functional/callback.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/stringprintf.h"
+#include "base/synchronization/lock.h"
 #include "base/test/bind.h"
 #include "base/test/gmock_callback_support.h"
 #include "base/test/gmock_expected_support.h"
 #include "base/test/metrics/user_action_tester.h"
 #include "base/test/scoped_logging_settings.h"
 #include "base/test/test_future.h"
+#include "base/thread_annotations.h"
 #include "base/types/expected.h"
 #include "base/types/expected_macros.h"
 #include "base/values.h"
@@ -86,6 +88,7 @@
 #include "components/optimization_guide/proto/features/common_quality_data.pb.h"
 #include "components/optimization_guide/proto/hints.pb.h"
 #include "components/page_content_annotations/content/page_context_fetcher.h"
+#include "components/page_content_annotations/content/page_context_fetcher_metrics.h"
 #include "components/policy/core/common/management/scoped_management_service_override_for_testing.h"
 #include "components/policy/core/common/mock_configuration_policy_provider.h"
 #include "components/policy/core/common/policy_map.h"
@@ -140,6 +143,10 @@
 #include "chrome/test/base/ui_test_utils.h"
 #include "ui/display/screen.h"
 #include "ui/views/widget/widget_delegate.h"
+#endif
+
+#if BUILDFLAG(ENABLE_PDF)
+#include "chrome/browser/pdf/pdf_extension_test_util.h"
 #endif
 
 #if BUILDFLAG(IS_ANDROID)
@@ -1955,19 +1962,26 @@ IN_PROC_BROWSER_TEST_P(GlicApiTest,
       "Glic.Api.GetContextForActorFromTab.Error.Text", 1);
 }
 
-// Note: PDF support is a necessary precondition for this test.
+// Note: PDF support is a necessary precondition for these tests.
 #if BUILDFLAG(ENABLE_PDF)
-#define MAYBE_testGetContextFromFocusedTabWithPdfFile \
-  testGetContextFromFocusedTabWithPdfFile
-#else
-#define MAYBE_testGetContextFromFocusedTabWithPdfFile \
-  DISABLED_testGetContextFromFocusedTabWithPdfFile
-#endif
-IN_PROC_BROWSER_TEST_P(GlicApiTest,
-                       MAYBE_testGetContextFromFocusedTabWithPdfFile) {
+class GlicApiPdfTest : public GlicApiTest {
+ public:
+  GlicApiPdfTest() {
+    feature_list_.InitWithFeatureState(
+        page_content_annotations::kGlicEmbeddedPdfBytesExtraction,
+        GetParam().enable_embedded_pdf_bytes_extraction);
+  }
+
+ private:
+  base::test::ScopedFeatureList feature_list_;
+};
+
+IN_PROC_BROWSER_TEST_P(GlicApiPdfTest,
+                       testGetContextFromFocusedTabWithTopLevelPdf) {
   tabs::TabInterface* tab0 = GetTabListInterface()->GetActiveTab();
   ASSERT_TRUE(tab0);
   NavigateTab(*tab0, embedded_test_server()->GetURL("/pdf/test.pdf"));
+  ASSERT_TRUE(pdf_extension_test_util::EnsurePDFHasLoaded(tab0->GetContents()));
   ASSERT_OK(OpenGlicForActiveTab());
   glic::GlicHistogramTester histogram_tester;
   ExecuteJsTest();
@@ -1976,7 +1990,132 @@ IN_PROC_BROWSER_TEST_P(GlicApiTest,
   EXPECT_THAT(histogram_tester.GetAllSamplesForPrefix(
                   "Glic.Api.GetContextFromFocusedTab.Error"),
               testing::IsEmpty());
+
+  // Top-level PDF always extracts PDF contents. The histogram records a sample
+  // that this is a top-level document PDF, and the `PageContextFetcher` finds
+  // the PDF.
+  histogram_tester.ExpectUniqueSample(
+      page_content_annotations::kPdfContentsRequestedHistogram,
+      page_content_annotations::PdfRequestStates::kPdfMainDoc_PdfFound, 1);
 }
+
+IN_PROC_BROWSER_TEST_P(GlicApiPdfTest,
+                       testGetContextFromFocusedTabWithEmbeddedPdf) {
+  tabs::TabInterface* tab0 = GetTabListInterface()->GetActiveTab();
+  ASSERT_TRUE(tab0);
+  NavigateTab(*tab0, embedded_test_server()->GetURL("/iframe.html"));
+
+  const GURL pdf_url = embedded_test_server()->GetURL("b.com", "/pdf/test.pdf");
+  // Embeds a cross-origin PDF. This is for verifying the result PDF document
+  // origin is actually the origin of the embedded PDF, instead of the top-level
+  // page origin.
+  ASSERT_TRUE(content::NavigateIframeToURL(tab0->GetContents(),
+                                           /*iframe_id=*/"test", pdf_url));
+
+  content::RenderFrameHost* pdf_frame =
+      content::ChildFrameAt(tab0->GetContents()->GetPrimaryMainFrame(), 0);
+  ASSERT_TRUE(pdf_frame);
+  ASSERT_TRUE(pdf_extension_test_util::EnsurePDFHasLoaded(pdf_frame));
+  ASSERT_OK(OpenGlicForActiveTab());
+  glic::GlicHistogramTester histogram_tester;
+  ExecuteJsTest(
+      {.params = base::Value(base::DictValue().Set(
+           "expectedPdfOrigin", url::Origin::Create(pdf_url).Serialize()))});
+
+  // No context error should have been recorded.
+  EXPECT_THAT(histogram_tester.GetAllSamplesForPrefix(
+                  "Glic.Api.GetContextFromFocusedTab.Error"),
+              testing::IsEmpty());
+
+  if (GetParam().enable_embedded_pdf_bytes_extraction) {
+    // When feature is enabled, `PageContextFetcher` searches and extracts
+    // embedded PDF in the page.
+    histogram_tester.ExpectUniqueSample(
+        page_content_annotations::kPdfContentsRequestedHistogram,
+        page_content_annotations::PdfRequestStates::kNonPdfMainDoc_PdfFound, 1);
+  } else {
+    // When feature is disabled, the page context request should not request PDF
+    // data. There is no sample in the histogram.
+    histogram_tester.ExpectTotalCount(
+        page_content_annotations::kPdfContentsRequestedHistogram, 0);
+  }
+}
+
+// Test that if Glic API requests tab context with `pdfData` being true while
+// the page is not a top-level PDF and the embedded PDF extraction support
+// feature is disabled, PageContextFetcher should not extract embedded PDF. This
+// scenario should not happen as the Glic API should only request embedded PDF
+// data if the host has the capability. However, PageContextFetcher should
+// handle this, if somehow it happens, gracefully.
+IN_PROC_BROWSER_TEST_P(
+    GlicApiPdfTest,
+    testGetContextFromFocusedTabWithEmbeddedPdfFeatureDisabled) {
+  if (GetParam().enable_embedded_pdf_bytes_extraction) {
+    // This test is only meaningful when feature is disabled.
+    return;
+  }
+  tabs::TabInterface* tab0 = GetTabListInterface()->GetActiveTab();
+  ASSERT_TRUE(tab0);
+  NavigateTab(*tab0, embedded_test_server()->GetURL("/iframe.html"));
+
+  const GURL pdf_url = embedded_test_server()->GetURL("b.com", "/pdf/test.pdf");
+  ASSERT_TRUE(content::NavigateIframeToURL(tab0->GetContents(),
+                                           /*iframe_id=*/"test", pdf_url));
+
+  content::RenderFrameHost* pdf_frame =
+      content::ChildFrameAt(tab0->GetContents()->GetPrimaryMainFrame(), 0);
+  ASSERT_TRUE(pdf_frame);
+  ASSERT_TRUE(pdf_extension_test_util::EnsurePDFHasLoaded(pdf_frame));
+  ASSERT_OK(OpenGlicForActiveTab());
+  glic::GlicHistogramTester histogram_tester;
+  ExecuteJsTest(
+      {.params = base::Value(base::DictValue().Set(
+           "expectedPdfOrigin", url::Origin::Create(pdf_url).Serialize()))});
+
+  // No context error should have been recorded.
+  EXPECT_THAT(histogram_tester.GetAllSamplesForPrefix(
+                  "Glic.Api.GetContextFromFocusedTab.Error"),
+              testing::IsEmpty());
+
+  // The Glic API requests PDF data. However, the host does not have embedded
+  // PDF extraction capability. There is no extraction taken place. The
+  // histogram records a sample that PageContextFetcher finds no PDF.
+  histogram_tester.ExpectUniqueSample(
+      page_content_annotations::kPdfContentsRequestedHistogram,
+      page_content_annotations::PdfRequestStates::kNonPdfMainDoc_PdfNotFound,
+      1);
+}
+
+IN_PROC_BROWSER_TEST_P(GlicApiPdfTest, testGetContextFromFocusedTabWithoutPdf) {
+  tabs::TabInterface* tab0 = GetTabListInterface()->GetActiveTab();
+  ASSERT_TRUE(tab0);
+
+  // This page does not have any PDF.
+  NavigateTab(*tab0, embedded_test_server()->GetURL("/iframe.html"));
+  ASSERT_OK(OpenGlicForActiveTab());
+  glic::GlicHistogramTester histogram_tester;
+  ExecuteJsTest();
+
+  // No context error should have been recorded.
+  EXPECT_THAT(histogram_tester.GetAllSamplesForPrefix(
+                  "Glic.Api.GetContextFromFocusedTab.Error"),
+              testing::IsEmpty());
+
+  if (GetParam().enable_embedded_pdf_bytes_extraction) {
+    // When feature is enabled, `PageContextFetcher` searches for an embedded
+    // PDF on the page and finds none.
+    histogram_tester.ExpectUniqueSample(
+        page_content_annotations::kPdfContentsRequestedHistogram,
+        page_content_annotations::PdfRequestStates::kNonPdfMainDoc_PdfNotFound,
+        1);
+  } else {
+    // When feature is disabled, the page context request should not request PDF
+    // data. There is no sample in the histogram.
+    histogram_tester.ExpectTotalCount(
+        page_content_annotations::kPdfContentsRequestedHistogram, 0);
+  }
+}
+#endif  // BUILDFLAG(ENABLE_PDF)
 
 IN_PROC_BROWSER_TEST_P(GlicApiTest,
                        testGetContextFromFocusedTabWithUnFocusablePage) {
@@ -3481,7 +3620,39 @@ IN_PROC_BROWSER_TEST_P(GlicApiTest, testGetUserProfileInfo) {
       "Glic.Api.RequestHostLatency.GetUserProfileInfo", 1);
 }
 
-IN_PROC_BROWSER_TEST_P(GlicApiTest, testRequestHeader) {
+// Test fixture that monitors HTTP requests on the embedded HTTPS test server.
+// Only testRequestHeader requires request monitoring; keeping observation
+// scoped to this fixture avoids incurring monitoring overhead and cross-thread
+// data race risks in unrelated tests.
+class GlicApiTestWithRequestMonitor : public GlicApiTest {
+ public:
+  GlicApiTestWithRequestMonitor() {
+    // Register the request monitor before the server starts (required by
+    // EmbeddedTestServer). We only monitor the HTTPS test server since Glic
+    // WebClient tests run exclusively over HTTPS.
+    embedded_https_test_server().RegisterRequestMonitor(base::BindRepeating(
+        &GlicApiTestWithRequestMonitor::OnHttpRequest, base::Unretained(this)));
+  }
+
+  // Returns a copy of observed requests. Requests are appended on the
+  // EmbeddedTestServer's IO thread and read on the test's main UI thread, so
+  // access is synchronized with a lock to prevent data races.
+  std::vector<net::test_server::HttpRequest> requests() const {
+    base::AutoLock auto_lock(lock_);
+    return requests_;
+  }
+
+ private:
+  void OnHttpRequest(const net::test_server::HttpRequest& request) {
+    base::AutoLock auto_lock(lock_);
+    requests_.push_back(request);
+  }
+
+  mutable base::Lock lock_;
+  std::vector<net::test_server::HttpRequest> requests_ GUARDED_BY(lock_);
+};
+
+IN_PROC_BROWSER_TEST_P(GlicApiTestWithRequestMonitor, testRequestHeader) {
   if (GetParam().no_webview) {
     GTEST_SKIP() << "Test doesn't yet work in kGlicNoWebview";
   }
@@ -3503,13 +3674,15 @@ IN_PROC_BROWSER_TEST_P(GlicApiTest, testRequestHeader) {
           testing::Pair(testing::StrCaseEq("x-glic-chrome-version"),
                         version_info::GetVersionNumber())));
 
+  const std::vector<net::test_server::HttpRequest> captured_requests =
+      requests();
   auto find_request = [&](std::string_view path) {
-    const auto it = std::ranges::find_if(
-        embedded_test_server_requests_, [&](const auto& request) {
+    const auto it =
+        std::ranges::find_if(captured_requests, [&](const auto& request) {
           return request.GetURL().GetPath() == path &&
                  request.method == net::test_server::METHOD_GET;
         });
-    return it == embedded_test_server_requests_.end() ? nullptr : &(*it);
+    return it == captured_requests.end() ? nullptr : &(*it);
   };
 
   auto* main_request = find_request(GetGuestURL().GetPath());
@@ -5026,6 +5199,11 @@ INSTANTIATE_TEST_SUITE_P(,
                          DefaultTestParamSet(),
                          &WithTestParams::PrintTestVariant);
 
+INSTANTIATE_TEST_SUITE_P(,
+                         GlicApiTestWithRequestMonitor,
+                         DefaultTestParamSet(),
+                         &WithTestParams::PrintTestVariant);
+
 INSTANTIATE_TEST_SUITE_P(
     ,
     GlicGetHostCapabilityApiTest,
@@ -5181,4 +5359,14 @@ INSTANTIATE_TEST_SUITE_P(,
                          DefaultTestParamSet(),
                          &WithTestParams::PrintTestVariant);
 #endif
+
+#if BUILDFLAG(ENABLE_PDF)
+INSTANTIATE_TEST_SUITE_P(
+    ,
+    GlicApiPdfTest,
+    testing::Values(TestParams{.enable_embedded_pdf_bytes_extraction = false},
+                    TestParams{.enable_embedded_pdf_bytes_extraction = true}),
+    &WithTestParams::PrintTestVariant);
+#endif
+
 }  // namespace glic

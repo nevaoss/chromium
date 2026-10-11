@@ -977,9 +977,6 @@ const PolicyToPreferenceMapEntry kSimplePolicyMap[] = {
   { key::kIsolatedWebAppUserInstallationEnabled,
     prefs::kIsolatedWebAppUserInstallationEnabled,
     base::Value::Type::BOOLEAN },
-  { key::kSubAppsAPIsAllowedWithoutGestureAndAuthorizationForOrigins,
-    prefs::kSubAppsAPIsAllowedWithoutGestureAndAuthorizationForOrigins,
-    base::Value::Type::LIST },
 #endif  // BUILDFLAG(IS_CHROMEOS)
   { key::kForceYouTubeRestrict,
     policy::policy_prefs::kForceYouTubeRestrict,
@@ -2273,7 +2270,7 @@ const PolicyToPreferenceMapEntry kSimplePolicyMap[] = {
 
 #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
   { key::kExtensionDOMActivityLoggingEnabled,
-    prefs::kExtensionDOMActivityLoggingEnabled,
+    enterprise_reporting::kExtensionDOMActivityLoggingEnabled,
     base::Value::Type::BOOLEAN },
   { key::kExtensionReviewPromptsEnabled,
     prefs::kExtensionReviewPromptsAllowed,

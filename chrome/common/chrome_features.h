@@ -203,6 +203,10 @@ COMPONENT_EXPORT(CHROME_FEATURES)
 BASE_DECLARE_FEATURE(kGlicExperimentalTriggeringOpenWindowIfNone);
 COMPONENT_EXPORT(CHROME_FEATURES)
 BASE_DECLARE_FEATURE(kGlicExperimentalTriggeringOsNotification);
+// Enables direct execution of ScriptTool actions in Glic experimental
+// triggering without launching a full Glic UI/actuation session.
+COMPONENT_EXPORT(CHROME_FEATURES)
+BASE_DECLARE_FEATURE(kGlicExperimentalTriggeringScriptTools);
 COMPONENT_EXPORT(CHROME_FEATURES)
 BASE_DECLARE_FEATURE(kGlicBackgroundTriggering);
 COMPONENT_EXPORT(CHROME_FEATURES)
@@ -222,7 +226,6 @@ extern const base::FeatureParam<base::TimeDelta> kGlicActorPageToolTimeout;
 COMPONENT_EXPORT(CHROME_FEATURES)
 extern const base::FeatureParam<base::TimeDelta> kGlicActorClickDelay;
 COMPONENT_EXPORT(CHROME_FEATURES) BASE_DECLARE_FEATURE(kGlicActorUi);
-COMPONENT_EXPORT(CHROME_FEATURES) BASE_DECLARE_FEATURE(kGlicActorUiNewIcon);
 COMPONENT_EXPORT(CHROME_FEATURES) BASE_DECLARE_FEATURE(kGlicConfirmTabClose);
 COMPONENT_EXPORT(CHROME_FEATURES)
 BASE_DECLARE_FEATURE(kGlicActorUiTabIndicatorSpinnerIgnoreReducedMotion);
@@ -926,10 +929,20 @@ COMPONENT_EXPORT(CHROME_FEATURES)
 extern const base::FeatureParam<std::string> kIndigoScopes;
 
 COMPONENT_EXPORT(CHROME_FEATURES)
+extern const base::FeatureParam<bool>
+    kIndigoContextualCueingV2OverrideUcbScoring;
+
+COMPONENT_EXPORT(CHROME_FEATURES)
 BASE_DECLARE_FEATURE(kIndigoMetadataKeywordHeuristic);
 COMPONENT_EXPORT(CHROME_FEATURES)
 extern const base::FeatureParam<base::TimeDelta>
     kIndigoMetadataKeywordHeuristicSameDocumentNavigationDelay;
+COMPONENT_EXPORT(CHROME_FEATURES)
+extern const base::FeatureParam<base::TimeDelta>
+    kIndigoMetadataKeywordHeuristicPostDclDelay;
+COMPONENT_EXPORT(CHROME_FEATURES)
+extern const base::FeatureParam<base::TimeDelta>
+    kIndigoMetadataKeywordHeuristicMaxWaitTime;
 
 COMPONENT_EXPORT(CHROME_FEATURES)
 BASE_DECLARE_FEATURE(kIndigoOpenGlic);
@@ -1000,10 +1013,19 @@ BASE_DECLARE_FEATURE_PARAM(bool,
 COMPONENT_EXPORT(CHROME_FEATURES)
 BASE_DECLARE_FEATURE_PARAM(bool, kLazyKeyedServiceInstantiationExtensions);
 COMPONENT_EXPORT(CHROME_FEATURES)
+BASE_DECLARE_FEATURE_PARAM(bool, kLazyKeyedServiceInstantiationExtensionsApi);
+COMPONENT_EXPORT(CHROME_FEATURES)
 BASE_DECLARE_FEATURE_PARAM(bool, kLazyKeyedServiceInstantiationSafeBrowsing);
 COMPONENT_EXPORT(CHROME_FEATURES)
 BASE_DECLARE_FEATURE_PARAM(bool,
                            kLazyKeyedServiceInstantiationVisitedUrlRanking);
+COMPONENT_EXPORT(CHROME_FEATURES)
+BASE_DECLARE_FEATURE_PARAM(bool, kLazyKeyedServiceInstantiationSafetyHub);
+COMPONENT_EXPORT(CHROME_FEATURES)
+BASE_DECLARE_FEATURE_PARAM(bool, kLazyKeyedServiceInstantiationSharesheet);
+COMPONENT_EXPORT(CHROME_FEATURES)
+BASE_DECLARE_FEATURE_PARAM(bool,
+                           kLazyKeyedServiceInstantiationStorageNotification);
 
 COMPONENT_EXPORT(CHROME_FEATURES) BASE_DECLARE_FEATURE(kNativeNotifications);
 

@@ -108,7 +108,8 @@ source_set("extensions") {
   if (is_chromeos) {
     deps += [
       "//ash/constants",
-      "//chromeos/ash/experiences/extensions",
+      "//ash/webui/os_feedback_ui:url_constants",
+      "//chromeos/ash/experiences/extensions/common",
     ]
   }
 }

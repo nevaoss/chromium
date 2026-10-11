@@ -415,11 +415,22 @@ bool AreValidRegisterProtocolHandlerArguments(
     return false;
   }
   url::Origin url_origin = url::Origin::Create(url);
-  if (url_origin.opaque()) {
+  // Opaque handler URLs (e.g. data:, blob:) and opaque requesting origins (e.g.
+  // sandboxed iframes) are not allowed to register protocol handlers. In the
+  // case of web pages, the requesting origin and target origin have to be the
+  // same; however, this is not true for other contexts (e.g. extensions).
+  // Checking both `origin.opaque()` ensures that opaque origins cannot register
+  // handlers.
+  if (url_origin.opaque() || origin.opaque()) {
     return false;
   }
-  if (security_level < blink::ProtocolHandlerSecurityLevel::kUntrustedOrigins &&
-      !origin.IsSameOriginWith(url)) {
+  // At elevated levels the same-origin requirement may be relaxed only for
+  // HTTP(S) handler URLs; non-HTTP(S) handler URLs (e.g. extension or
+  // isolated-app schemes) must always be same-origin with the requester.
+  if (!origin.IsSameOriginWith(url) &&
+      (security_level <
+           blink::ProtocolHandlerSecurityLevel::kUntrustedOrigins ||
+       !url.SchemeIsHTTPOrHTTPS())) {
     return false;
   }
 
@@ -6138,13 +6149,28 @@ void WebContentsImpl::ShowCreatedWidget(ChildProcessId process_id,
     return;
   }
 
+  RenderWidgetHostImpl* render_widget_host_impl = widget_host_view->host();
+
+  // Do not show a popup widget whose creator document is no longer active
+  // (e.g., pending deletion, in BFCache, prerendering, or already destroyed).
+  RenderFrameHostImpl* creator_rfh =
+      render_widget_host_impl->GetPopupCreatorFrameId().has_value()
+          ? RenderFrameHostImpl::FromID(
+                *render_widget_host_impl->GetPopupCreatorFrameId())
+          : nullptr;
+  if (!creator_rfh || !creator_rfh->IsActive() ||
+      WebContents::FromRenderFrameHost(creator_rfh) != this) {
+    render_widget_host_impl->ShutdownAndDestroyWidget(true);
+    return;
+  }
+
   RenderWidgetHostImpl* rwh = GetPrimaryMainFrame()->GetRenderWidgetHost();
   if (base::FeatureList::IsEnabled(
           blink::features::kBlockSelectPopupUnfocusedWindow) &&
       !rwh->is_active()) {
     // If the OS window isn't focused, then don't open select element popups for
     // it: https://issues.chromium.org/issues/365089001
-    widget_host_view->host()->ShutdownAndDestroyWidget(true);
+    render_widget_host_impl->ShutdownAndDestroyWidget(true);
     return;
   }
 
@@ -6189,8 +6215,6 @@ void WebContentsImpl::ShowCreatedWidget(ChildProcessId process_id,
   }
 
   transformed_rect = ConstrainPopupBounds(transformed_rect);
-
-  RenderWidgetHostImpl* render_widget_host_impl = widget_host_view->host();
 
   // A background tab cannot show a popup over the active tab.
   if (GetVisibility() != Visibility::VISIBLE) {
@@ -6260,7 +6284,6 @@ RenderWidgetHostView* WebContentsImpl::GetCreatedWidget(
 
   auto iter = pending_widgets_.find(GlobalRoutingID(process_id, route_id));
   if (iter == pending_widgets_.end()) {
-    DCHECK(false);
     return nullptr;
   }
 
@@ -6274,6 +6297,22 @@ RenderWidgetHostView* WebContentsImpl::GetCreatedWidget(
   }
 
   return widget_host->GetView();
+}
+
+void WebContentsImpl::ClosePopupWidgetsForFrame(
+    RenderFrameHost* render_frame_host) {
+  GlobalRenderFrameHostId creator_frame_id = render_frame_host->GetGlobalId();
+  std::vector<base::WeakPtr<RenderWidgetHostImpl>> widgets_to_destroy;
+  for (const auto& [_, host] : created_widgets_) {
+    if (host->GetPopupCreatorFrameId() == creator_frame_id) {
+      widgets_to_destroy.push_back(host->GetWeakPtr());
+    }
+  }
+  for (base::WeakPtr<RenderWidgetHostImpl>& widget : widgets_to_destroy) {
+    if (widget) {
+      widget->ShutdownAndDestroyWidget(true);
+    }
+  }
 }
 
 void WebContentsImpl::CreateMediaPlayerHostForRenderFrameHost(
@@ -9471,13 +9510,15 @@ void WebContentsImpl::OnDidBlockNavigation(
     const GURL& blocked_url,
     const GURL& initiator_url,
     const url::Origin& initiator_origin,
+    scoped_refptr<InitiatorNavigationState> initiator_navigation_state,
     blink::mojom::NavigationBlockedReason reason) {
   OPTIONAL_TRACE_EVENT("content", "WebContentsImpl::OnDidBlockNavigation",
                        "blocked_url", blocked_url, "initiator_url",
                        initiator_url, "reason", reason);
   if (delegate_) {
     delegate_->OnDidBlockNavigation(this, blocked_url, initiator_url,
-                                    initiator_origin, reason);
+                                    initiator_origin,
+                                    initiator_navigation_state, reason);
   }
 }
 
@@ -9515,6 +9556,7 @@ void WebContentsImpl::RenderFrameDeleted(
     RenderFrameHostImpl* render_frame_host) {
   TRACE_EVENT1("content", "WebContentsImpl::RenderFrameDeleted",
                "render_frame_host", render_frame_host);
+  ClosePopupWidgetsForFrame(render_frame_host);
   {
     SCOPED_UMA_HISTOGRAM_TIMER("WebContentsObserver.RenderFrameDeleted");
     observers_.NotifyObservers(&WebContentsObserver::RenderFrameDeleted,
@@ -13058,15 +13100,19 @@ void WebContentsImpl::RenderFrameHostStateChanged(
                        "render_frame_host", render_frame_host, "old_state",
                        old_state, "new_state", new_state);
 
+  if (old_state == LifecycleState::kActive) {
 #if BUILDFLAG(IS_ANDROID)
-  if (old_state == LifecycleState::kActive && !render_frame_host->GetParent()) {
-    // TODO(sreejakshetty): Remove this reset when ColorChooserHolder becomes
-    // per-frame.
-    // Close the color chooser popup when RenderFrameHost changes state from
-    // kActive.
-    color_chooser_holder_.reset();
-  }
+    if (!render_frame_host->GetParent()) {
+      // TODO(sreejakshetty): Remove this reset when ColorChooserHolder becomes
+      // per-frame.
+      // Close the color chooser popup when RenderFrameHost changes state from
+      // kActive.
+      color_chooser_holder_.reset();
+    }
 #endif  // BUILDFLAG(IS_ANDROID)
+
+    ClosePopupWidgetsForFrame(render_frame_host);
+  }
 
   observers_.NotifyObservers(&WebContentsObserver::RenderFrameHostStateChanged,
                              render_frame_host, old_state, new_state);

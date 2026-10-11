@@ -1142,6 +1142,10 @@ void RasterImplementation::UnmapRasterCHROMIUM(uint32_t raster_written_size,
 // instead of having to edit some template or the code generator.
 #include "gpu/command_buffer/client/raster_implementation_impl_autogen.h"
 
+const Capabilities& RasterImplementation::GetCapabilities() const {
+  return capabilities();
+}
+
 void RasterImplementation::CopySharedImage(const gpu::Mailbox& source_mailbox,
                                            const gpu::Mailbox& dest_mailbox,
                                            GLint xoffset,
@@ -1856,7 +1860,7 @@ void RasterImplementation::FlushPaintCachePurgedEntries() {
   paint_cache_->Purge(&temp_paint_cache_purged_data_);
   for (uint32_t i = static_cast<uint32_t>(cc::PaintCacheDataType::kPath);
        i < cc::PaintCacheDataTypeCount; ++i) {
-    auto& ids = UNSAFE_TODO(temp_paint_cache_purged_data_[i]);
+    auto& ids = temp_paint_cache_purged_data_[i];
     if (ids.empty()) {
       continue;
     }

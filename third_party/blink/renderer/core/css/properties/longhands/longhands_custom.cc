@@ -4874,9 +4874,9 @@ void InternalVisitedColor::ApplyInherit(StyleResolverState& state) const {
   } else {
     // In principle, we should always inherit the InternalVisitedColor()
     // of the parent, but (as an optimization) we don't store anything in
-    // that field for elements outside of visited links.
+    // that field for elements outside of links.
     const StyleColor& inherited_color =
-        (state.ParentStyle()->InsideLink() == EInsideLink::kInsideVisitedLink)
+        (state.ParentStyle()->InsideLink() != EInsideLink::kNotInsideLink)
             ? state.ParentStyle()->InternalVisitedColor()
             : state.ParentStyle()->Color();
     builder.SetInternalVisitedColor(inherited_color);
@@ -9305,12 +9305,14 @@ const CSSValue* ScrollTimelineName::CSSValueFromComputedStyleInternal(
     const LayoutObject* layout_object,
     bool allow_visited_style,
     CSSValuePhase value_phase) const {
-  if (style.ScrollTimelineName().empty()) {
+  if (!style.ScrollTimelineName() ||
+      style.ScrollTimelineName()->GetNames().empty()) {
     return InitialValue();
   }
   CSSValueList* list = CSSValueList::CreateCommaSeparated();
-  for (const AtomicString& name : style.ScrollTimelineName()) {
-    list->Append(*ComputedStyleUtils::ValueForCustomIdentOrNone(name));
+  for (const Member<const ScopedCSSName>& name :
+       style.ScrollTimelineName()->GetNames()) {
+    list->Append(*ComputedStyleUtils::ValueForCustomIdentOrNone(name.Get()));
   }
   return list;
 }
@@ -11006,12 +11008,14 @@ const CSSValue* ViewTimelineName::CSSValueFromComputedStyleInternal(
     const LayoutObject* layout_object,
     bool allow_visited_style,
     CSSValuePhase value_phase) const {
-  if (style.ViewTimelineName().empty()) {
+  if (!style.ViewTimelineName() ||
+      style.ViewTimelineName()->GetNames().empty()) {
     return InitialValue();
   }
   CSSValueList* list = CSSValueList::CreateCommaSeparated();
-  for (const AtomicString& name : style.ViewTimelineName()) {
-    list->Append(*ComputedStyleUtils::ValueForCustomIdentOrNone(name));
+  for (const Member<const ScopedCSSName>& name :
+       style.ViewTimelineName()->GetNames()) {
+    list->Append(*ComputedStyleUtils::ValueForCustomIdentOrNone(name.Get()));
   }
   return list;
 }

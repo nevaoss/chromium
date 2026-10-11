@@ -16,7 +16,9 @@
 #include "chrome/browser/ui/location_bar/location_bar.h"
 #include "chrome/browser/ui/omnibox/chrome_omnibox_client.h"
 #include "chrome/browser/ui/omnibox/omnibox_controller.h"
+#include "chrome/browser/ui/omnibox/omnibox_edit_model.h"
 #include "chrome/browser/ui/omnibox/omnibox_next_features.h"
+#include "chrome/browser/ui/omnibox/omnibox_popup_view.h"
 #include "chrome/browser/ui/omnibox/omnibox_view.h"
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/views/omnibox/omnibox_popup_presenter_base.h"
@@ -144,6 +146,8 @@ OmniboxPopupUI::OmniboxPopupUI(content::WebUI* web_ui)
                         TemplateURLServiceFactory::GetForProfile(profile_)));
   source->AddBoolean("omniboxAimPopupEnabled",
                      omnibox::IsAimPopupFeatureEnabled());
+  source->AddBoolean("webuiOmniboxFullPopupEnabled",
+                     omnibox::IsWebUIOmniboxFullPopupEnabled());
   // TODO(b/504670497): Replace this NTP-specific flag with a generic flag.
   // TODO(b/474406096): Replace this NTP-specific flag with a generic flag.
   source->AddBoolean("isFuseboxEnabled", false);
@@ -157,6 +161,10 @@ OmniboxPopupUI::OmniboxPopupUI(content::WebUI* web_ui)
   source->AddBoolean("webuiOmniboxPopupSelectionControlEnabled",
                      base::FeatureList::IsEnabled(
                          omnibox::kWebUIOmniboxPopupSelectionControl));
+  source->AddBoolean("omniboxAimWebUIShadowEnabled",
+                     omnibox::ShouldDrawAimShadowInWebUI());
+  source->AddBoolean("omniboxFullWebUIShadowEnabled",
+                     omnibox::ShouldDrawFullPopupShadowInWebUI());
   source->AddBoolean(
       "searchboxMultiline",
       base::FeatureList::IsEnabled(omnibox::kWebUIOmniboxFullPopup) &&
@@ -360,6 +368,14 @@ void OmniboxPopupUI::CreatePageHandler(
       std::move(receiver), std::move(page), web_ui()->GetWebContents(),
       omnibox_controller);
   popup_handler_->set_embedder(embedder());
+  if (omnibox_controller->edit_model()) {
+    if (auto* popup_view = omnibox_controller->edit_model()->popup_view()) {
+      // Notify the popup view after `popup_handler_` is assigned so
+      // `GetPopupHandler()` is valid during synchronous `OnPopupHandlerReady()`
+      // callbacks.
+      popup_view->OnPopupHandlerReady();
+    }
+  }
 }
 
 void OmniboxPopupUI::BindInterface(

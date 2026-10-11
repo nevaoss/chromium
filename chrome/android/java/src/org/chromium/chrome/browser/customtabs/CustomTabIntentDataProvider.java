@@ -99,7 +99,6 @@ import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.flags.CustomTabProfileType;
 import org.chromium.chrome.browser.share.ShareUtils;
 import org.chromium.chrome.browser.tab.Tab;
-import org.chromium.chrome.browser.toolbar.adaptive.AdaptiveToolbarButtonVariant;
 import org.chromium.chrome.browser.ui.google_bottom_bar.GoogleBottomBarCoordinator;
 import org.chromium.chrome.browser.ui.google_bottom_bar.proto.IntentParams.GoogleBottomBarIntentParams;
 import org.chromium.chrome.browser.ui.web_app_header.WebAppHeaderUtils;
@@ -342,7 +341,7 @@ public class CustomTabIntentDataProvider extends BrowserServicesIntentDataProvid
     }
 
     private final Intent mIntent;
-    private final @Nullable SessionHolder<CustomTabsSessionToken> mSession;
+    private final SessionHolder.@Nullable CustomTab mSession;
     private final boolean mIsTrustedIntent;
     private final @Nullable Intent mKeepAliveServiceIntent;
     private final @Nullable Bundle mAnimationBundle;
@@ -420,14 +419,14 @@ public class CustomTabIntentDataProvider extends BrowserServicesIntentDataProvid
      * @param session The connected session for the custom tabs activity, or null.
      * @return True if the intent or session are trusted.
      */
-    public static boolean isTrustedCustomTab(Intent intent, @Nullable SessionHolder<?> session) {
+    public static boolean isTrustedCustomTab(Intent intent, @Nullable SessionHolder session) {
         if (IntentHandler.wasIntentSenderChrome(intent)) return true;
         String packageName = getClientPackageNameFromSessionOrCallingActivity(intent, session);
         return CustomTabsConnection.getInstance().isFirstParty(packageName);
     }
 
     static @Nullable String getClientPackageNameFromSessionOrCallingActivity(
-            Intent intent, @Nullable SessionHolder<?> session) {
+            Intent intent, @Nullable SessionHolder session) {
         String packageNameFromSession =
                 CustomTabsConnection.getInstance().getClientPackageNameForSession(session);
         if (!TextUtils.isEmpty(packageNameFromSession)) return packageNameFromSession;
@@ -441,7 +440,7 @@ public class CustomTabIntentDataProvider extends BrowserServicesIntentDataProvid
     }
 
     public static void configureIntentForResizableCustomTab(Context context, Intent intent) {
-        SessionHolder<?> session = SessionHolder.getSessionHolderFromIntent(intent);
+        SessionHolder session = SessionHolder.getSessionHolderFromIntent(intent);
         boolean isTrustedCustomTab = isTrustedCustomTab(intent, session);
         String packageName = getClientPackageNameFromSessionOrCallingActivity(intent, session);
         @Px
@@ -586,7 +585,7 @@ public class CustomTabIntentDataProvider extends BrowserServicesIntentDataProvid
         mIntent = intent;
 
         CustomTabsSessionToken token = CustomTabsSessionToken.getSessionTokenFromIntent(intent);
-        mSession = token != null ? new SessionHolder<>(token) : null;
+        mSession = token != null ? SessionHolder.of(token) : null;
         mIsTrustedIntent = isTrustedCustomTab(intent, mSession);
 
         mAnimationBundle =
@@ -1034,8 +1033,6 @@ public class CustomTabIntentDataProvider extends BrowserServicesIntentDataProvid
     }
 
     private boolean canAddShareAction() {
-        if (!ChromeFeatureList.sCctAdaptiveButton.isEnabled()) return mToolbarButtons.isEmpty();
-
         if (!canAddMoreToolbarItems()) return false;
 
         if (mShareState == CustomTabsIntent.SHARE_STATE_OFF) {
@@ -1065,7 +1062,7 @@ public class CustomTabIntentDataProvider extends BrowserServicesIntentDataProvid
                     && IntentUtils.safeGetBooleanExtra(
                             intent, EXTRA_OPEN_IN_BROWSER_BUTTON_ALLOWED, false)) {
                 openInBrowserState = CustomTabsButtonState.BUTTON_STATE_ON;
-            } else if (!isCpaOnlyOpenInBrowserDefault()) {
+            } else {
                 openInBrowserState = CustomTabsButtonState.BUTTON_STATE_OFF;
             }
         }
@@ -1082,24 +1079,12 @@ public class CustomTabIntentDataProvider extends BrowserServicesIntentDataProvid
     }
 
     private boolean canAddOpenInBrowserAction(int oibState) {
-        if (!ChromeFeatureList.sCctAdaptiveButton.isEnabled()
-                && oibState == CustomTabsButtonState.BUTTON_STATE_ON) {
-            return mToolbarButtons.isEmpty();
-        }
-
         if (!canAddMoreToolbarItems()) return false;
 
-        if (oibState == CustomTabsButtonState.BUTTON_STATE_OFF) {
-            return false;
-        } else if (oibState == CustomTabsButtonState.BUTTON_STATE_ON) {
+        if (oibState == CustomTabsButtonState.BUTTON_STATE_ON) {
             return mToolbarButtons.isEmpty() || mShareState != CustomTabsIntent.SHARE_STATE_ON;
-        } else { // oibState == CustomTabsButtonState.BUTTON_STATE_DEFAULT
-            // Give SHARE a higher precedence than OIB. OIB is visible only in CPA+OIB
-            // experiment arm where SHARE is explicitly off.
-            return mToolbarButtons.isEmpty()
-                    && isCpaOnlyOpenInBrowserDefault()
-                    && mShareState == CustomTabsIntent.SHARE_STATE_OFF;
         }
+        return false;
     }
 
     /**
@@ -1398,7 +1383,7 @@ public class CustomTabIntentDataProvider extends BrowserServicesIntentDataProvid
     }
 
     @Override
-    public @Nullable SessionHolder<CustomTabsSessionToken> getSession() {
+    public SessionHolder.@Nullable CustomTab getSession() {
         return mSession;
     }
 
@@ -1899,9 +1884,7 @@ public class CustomTabIntentDataProvider extends BrowserServicesIntentDataProvid
 
     @Override
     public boolean isOptionalButtonSupported() {
-        return ChromeFeatureList.sCctAdaptiveButton.isEnabled()
-                && !isTrustedWebActivity()
-                && mUiType == CustomTabsUiType.DEFAULT;
+        return !isTrustedWebActivity() && mUiType == CustomTabsUiType.DEFAULT;
     }
 
     private static boolean isDisplayModeSupported(
@@ -1981,13 +1964,6 @@ public class CustomTabIntentDataProvider extends BrowserServicesIntentDataProvid
     @Override
     public int getAndroidBrowserHelperVersion() {
         return IntentUtils.safeGetIntExtra(getIntent(), EXTRA_ANDROID_BROWSER_HELPER_VERSION, 0);
-    }
-
-    private boolean isCpaOnlyOpenInBrowserDefault() {
-        return ChromeFeatureList.sCctAdaptiveButton.isEnabled()
-                && ChromeFeatureList.sCctAdaptiveButtonContextualOnly.getValue()
-                && ChromeFeatureList.sCctAdaptiveButtonDefaultVariant.getValue()
-                        == AdaptiveToolbarButtonVariant.OPEN_IN_BROWSER;
     }
 
     @Override

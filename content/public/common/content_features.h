@@ -249,6 +249,7 @@ CONTENT_EXPORT BASE_DECLARE_FEATURE(kNoStatePrefetchHoldback);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kOriginIsolationHeader);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kOverscrollHistoryNavigation);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kPeriodicBackgroundSync);
+CONTENT_EXPORT BASE_DECLARE_FEATURE(kPreconnectManagerDirectFastPath);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kPrefetchActivationBeacon);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kPrefetchOffTheMainThread);
 CONTENT_EXPORT extern const base::FeatureParam<bool>
@@ -416,6 +417,8 @@ CONTENT_EXPORT extern const base::FeatureParam<int>
 CONTENT_EXPORT BASE_DECLARE_FEATURE(
     kGinJavaBridgeMojoSkipClearObjectsOnMainDocumentReady);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kReduceGpuPriorityOnBackground);
+CONTENT_EXPORT BASE_DECLARE_FEATURE(
+    kRestrictInteractionsInSwipeRegionOnFullscreen);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kSmartZoom);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kUserMediaScreenCapturing);
 CONTENT_EXPORT BASE_DECLARE_FEATURE(kTextClassifierTimeout);

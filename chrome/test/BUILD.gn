@@ -1411,7 +1411,10 @@ if (is_android) {
     }
 
     if (enable_webui_ntp) {
-      deps += [ "//chrome/browser/ui/webui/customize_buttons:browser_tests" ]
+      deps += [
+        "//chrome/browser/ui/customize_chrome:android_browsertests",
+        "//chrome/browser/ui/webui/customize_buttons:browser_tests",
+      ]
     }
 
     if (enable_chrome_android_internal) {
@@ -1746,7 +1749,6 @@ if (!is_android) {
       "//chrome/browser/file_system_access",
       "//chrome/browser/file_system_access:browser_tests",
       "//chrome/browser/first_party_sets",
-      "//chrome/browser/first_party_sets:browser_tests",
       "//chrome/browser/first_run:browser_tests",
       "//chrome/browser/gcm",
       "//chrome/browser/geic",
@@ -1868,6 +1870,7 @@ if (!is_android) {
       "//chrome/browser/privacy_sandbox:headers",
       "//chrome/browser/privacy_sandbox:test_support",
       "//chrome/browser/private_ai",
+      "//chrome/browser/private_verification_tokens",
       "//chrome/browser/private_verification_tokens:browser_tests",
       "//chrome/browser/profile_resetter",
       "//chrome/browser/profile_resetter:browser_tests",
@@ -2157,6 +2160,7 @@ if (!is_android) {
       "//chrome/browser/ui/webui/new_tab_page:impl",
       "//chrome/browser/ui/webui/ntp:browser_tests",
       "//chrome/browser/ui/webui/omnibox/aim_eligibility_extension:browser_tests",
+      "//chrome/browser/ui/webui/organizer_panel:browser_tests",
       "//chrome/browser/ui/webui/searchbox",
       "//chrome/browser/ui/webui/searchbox:browser_tests",
       "//chrome/browser/ui/webui/settings:browser_tests",
@@ -5129,6 +5133,7 @@ test("unit_tests") {
     "//chrome/browser/ui/startup",
     "//chrome/browser/ui/startup:unit_tests",
     "//chrome/browser/ui/sync:unit_tests",
+    "//chrome/browser/ui/tabs/alert:unit_tests",
     "//chrome/browser/ui/toolbar/chrome_labs",
     "//chrome/browser/ui/toolbar/pinned_toolbar",
     "//chrome/browser/ui/webui",
@@ -6001,6 +6006,7 @@ test("unit_tests") {
       "../browser/ui/views/autofill/autofill_ai/autofill_ai_import_data_bubble_view_unittest.cc",
       "../browser/ui/views/autofill/autofill_ai/autofill_ai_local_save_notification_view_unittest.cc",
       "../browser/ui/views/autofill/edit_address_profile_view_unittest.cc",
+      "../browser/ui/views/autofill/payments/save_and_fill_dialog_unittest.cc",
       "../browser/ui/views/autofill/popup/email_verifier/email_verification_popup_view_unittest.cc",
       "../browser/ui/views/autofill/save_address_profile_view_unittest.cc",
       "../browser/ui/views/autofill/update_address_profile_view_unittest.cc",
@@ -6203,6 +6209,7 @@ test("unit_tests") {
       "//components/webapps/isolated_web_apps",
       "//components/webapps/isolated_web_apps/test_support",
       "//components/webauthn/content/browser",
+      "//services/strings",
     ]
 
     # TODO(crbug.com/437811373): Remove this dependency when
@@ -6351,7 +6358,6 @@ test("unit_tests") {
       "//chrome/browser/ui/safety_hub:unit_tests",
       "//chrome/browser/ui/signin",
       "//chrome/browser/ui/tab_contents:unit_tests",
-      "//chrome/browser/ui/tabs/alert:unit_tests",
       "//chrome/browser/ui/tabs/back_to_opener:unit_tests",
       "//chrome/browser/ui/tabs/saved_tab_groups:test_support",
       "//chrome/browser/ui/toasts",
@@ -7293,6 +7299,7 @@ test("unit_tests") {
       "//chrome/browser/ui/views:tab_icon_view",
       "//chrome/browser/ui/views/apps/app_info_dialog:unit_tests",
       "//chrome/browser/ui/views/autofill/payments:dialog_view_ids",
+      "//chrome/browser/ui/views/autofill/payments:save_and_fill_dialog",
       "//chrome/browser/ui/views/autofill/payments:select_bnpl_issuer_dialog",
       "//chrome/browser/ui/views/autofill/popup:popup_bnpl_footnote_view",
       "//chrome/browser/ui/views/autofill/popup:popup_notice_view",

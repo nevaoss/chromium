@@ -450,17 +450,9 @@ IN_PROC_BROWSER_TEST_F(ProfileKeyedServiceGuestBrowserTest,
     "ExtensionInstallEventRouter",
 #endif  // BUILDFLAG(ENTERPRISE_CONTENT_ANALYSIS)
     "ChromeEnterpriseRealTimeUrlLookupService",
-#if !BUILDFLAG(IS_ANDROID)
-#if BUILDFLAG(IS_CHROMEOS)
-    "AshPolicyBlocklistService",
-#else
-    "ChromePolicyBlocklistService",
-#endif  // !BUILDFLAG(IS_CHROMEOS)
-#endif  // !BUILDFLAG(IS_ANDROID)
 #if BUILDFLAG(IS_CHROMEOS)
     "ComponentExtensionContentSettingsAllowlist",
 #endif
-    "DeveloperToolsPolicyChecker",
     "EnterpriseReportingPrivateEventRouter",
     "ExtensionKeybindingRegistryShutdownNotifierFactory",
     "ExtensionNavigationRegistry",
@@ -635,8 +627,22 @@ IN_PROC_BROWSER_TEST_F(ProfileKeyedServiceGuestBrowserTest,
     guest_otr_active_services.erase("SafeBrowsingPrivateEventRouter");
   }
   if (base::FeatureList::IsEnabled(features::kLazyKeyedServiceInstantiation) &&
+      features::kLazyKeyedServiceInstantiationExtensionsApi.Get()) {
+    guest_otr_active_services.erase("HidConnectionResourceManager");
+  }
+  if (base::FeatureList::IsEnabled(features::kLazyKeyedServiceInstantiation) &&
       features::kLazyKeyedServiceInstantiationCommerceAndUI.Get()) {
     guest_otr_active_services.erase("ReadAnythingServiceFactory");
+  }
+#if BUILDFLAG(IS_CHROMEOS)
+  if (base::FeatureList::IsEnabled(features::kLazyKeyedServiceInstantiation) &&
+      features::kLazyKeyedServiceInstantiationSharesheet.Get()) {
+    guest_otr_active_services.erase("SharesheetService");
+  }
+#endif
+  if (base::FeatureList::IsEnabled(features::kLazyKeyedServiceInstantiation) &&
+      features::kLazyKeyedServiceInstantiationStorageNotification.Get()) {
+    guest_otr_active_services.erase("StorageNotificationService");
   }
   TestKeyedProfileServicesActives(guest_otr_profile, guest_otr_active_services);
 }
@@ -693,7 +699,6 @@ IN_PROC_BROWSER_TEST_F(ProfileKeyedServiceGuestBrowserTest,
 #endif  // BUILDFLAG(IS_CHROMEOS)
     "BookmarkManagerPrivateAPI",
 #if defined(TOOLKIT_VIEWS)
-    "BookmarkExpandedStateTracker",
     "BookmarkMergedSurfaceService",
 #endif
     "BookmarkModel",
@@ -1062,6 +1067,13 @@ IN_PROC_BROWSER_TEST_F(ProfileKeyedServiceGuestBrowserTest,
   if (base::FeatureList::IsEnabled(features::kLazyKeyedServiceInstantiation) &&
       features::kLazyKeyedServiceInstantiationExtensions.Get()) {
     guest_active_services.erase("SafeBrowsingPrivateEventRouter");
+  }
+  if (base::FeatureList::IsEnabled(features::kLazyKeyedServiceInstantiation) &&
+      features::kLazyKeyedServiceInstantiationExtensionsApi.Get()) {
+    guest_active_services.erase("HidConnectionResourceManager");
+    guest_active_services.erase("OperationManager");
+    guest_active_services.erase("PasswordsPrivateEventRouter");
+    guest_active_services.erase("SidePanelService");
   }
   if (base::FeatureList::IsEnabled(features::kLazyKeyedServiceInstantiation) &&
       features::kLazyKeyedServiceInstantiationSafeBrowsing.Get()) {

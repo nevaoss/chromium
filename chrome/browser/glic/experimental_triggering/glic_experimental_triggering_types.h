@@ -13,8 +13,12 @@
 #include <vector>
 
 #include "base/functional/callback.h"
+#include "components/optimization_guide/proto/features/actions_data.pb.h"
 
 namespace glic {
+
+// Capabilities supported for experimental triggering.
+inline constexpr char kGlicCapabilityScreenshot[] = "screenshot";
 
 // Outcome of a device opt-in request for experimental triggering.
 enum class DeviceOptInResult {
@@ -103,6 +107,11 @@ struct GetScreenshotRequest {
   std::vector<uint8_t> request_token;
 };
 
+// Payload for directly executing actions.
+struct ExecuteActionsRequest {
+  optimization_guide::proto::Actions actions;
+};
+
 // Incoming request payload container for experimental triggering.
 struct ExperimentalTriggeringRequest {
   std::optional<int32_t> version;
@@ -116,8 +125,14 @@ struct ExperimentalTriggeringRequest {
                                StopActuationRequest,
                                DeviceOptInRequest,
                                TaskMetadataUpdated,
-                               GetScreenshotRequest>;
+                               GetScreenshotRequest,
+                               ExecuteActionsRequest>;
   Payload payload;
+};
+
+// Result payload for directly executed actions.
+struct ExecuteActionsResponse {
+  optimization_guide::proto::ActionsResult actions_result;
 };
 
 // Result payload for encrypted screenshot capture operations.
@@ -146,6 +161,7 @@ struct ExperimentalTriggeringResponse {
   std::optional<TaskUpdate> task_update;
   std::optional<DeviceOptInResult> device_opt_in_result;
   std::optional<ScreenshotResult> screenshot_result;
+  std::optional<ExecuteActionsResponse> execute_actions_response;
 };
 
 using GlicExperimentalTriggeringResponseCallback =
