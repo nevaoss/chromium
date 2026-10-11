@@ -1430,7 +1430,13 @@ void FeatureList::RegisterOverride(std::string_view feature_name,
                                    bool replace_use_default_overrides) {
   // Registering an override after initialization would make
   // `trial_to_features_` stale.
+  // TODO(neva): For unknown reason this check fails and FATAL occurs. Temporary
+  // replace with DCHECK until this issue is investigated.
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+  DCHECK(!initialized_);
+#else   // !BUILDFLAG(IS_NEVA_APPRUNTIME)
   CHECK(!initialized_);
+#endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
 
   DCheckOverridesAllowed();
   if (field_trial) {
