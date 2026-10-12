@@ -9,6 +9,7 @@ use std::sync::{Arc, Mutex, OnceLock};
 chromium::import! {
     "//mojo/public/rust/bindings";
     "//mojo/public/rust/bindings/test:bindings_unittests_mojom_rust";
+    "//mojo/public/rust/mojom_value_parser";
     "//mojo/public/rust/system";
     "//mojo/public/rust/system/test_util";
     "//base:run_loop";
@@ -242,6 +243,71 @@ fn test_remote_receiver_notifying() {
 
     // 1 + 2 + 3 + 4 + 7 + 12 = 31
     expect_eq!(Arc::into_inner(sum).unwrap().into_inner().unwrap(), 31);
+}
+#[gtest(RustBindingsAPI, EmptyResponseTest)]
+fn test_empty_response() {
+    let _task_env = task_environment::ffi::CreateTaskEnvironment();
+    test_util::set_default_process_error_handler(|msg: &str| panic!("Got a bad message: {}", msg));
+
+    let (pending_remote, pending_receiver) = PendingRemote::<dyn MathService>::new_pipe().unwrap();
+
+    let run_loop = RunLoop::new();
+    let quit = run_loop.get_quit_closure();
+
+    let mut remote = pending_remote.bind();
+    let _receiver = pending_receiver.bind(SaturatingMathService {});
+
+    // Gets no response at all
+    remote.DoNothing();
+
+    let acked = Arc::new(Mutex::new(false));
+    let acked_clone = acked.clone();
+
+    // Gets an empty response, which should trigger the response callback.
+    remote.DoNothingWithAck(move || {
+        *acked_clone.lock().unwrap() = true;
+        quit();
+    });
+
+    run_loop.run();
+
+    expect_true!(*acked.lock().unwrap());
+}
+
+/// The same method, but acknowledged by a C++ receiver.
+///
+/// This is the cross-language half of the contract: the Rust remote has to
+/// mark the outgoing request as expecting a response, or the C++ receiver's
+/// validator rejects it as a bad message.
+#[gtest(RustBindingsAPI, EmptyResponseCppReceiverTest)]
+fn test_empty_response_cpp_receiver() {
+    let _task_env = task_environment::ffi::CreateTaskEnvironment();
+    test_util::set_default_process_error_handler(|msg: &str| panic!("Got a bad message: {}", msg));
+
+    let (pending_remote, pending_receiver) = PendingRemote::<dyn MathService>::new_pipe().unwrap();
+
+    let run_loop = RunLoop::new();
+    let quit = run_loop.get_quit_closure();
+
+    // Pass the receiver handle to C++ and bind it there
+    let receiver_wrapper =
+        system::scoped_handle_interop::ScopedMessagePipeHandleWrapper::from_message_endpoint(
+            pending_receiver.into_endpoint(),
+        );
+    let _cpp_receiver = crate::cxx::ffi::CreatePlusSevenMathService(receiver_wrapper);
+
+    let mut remote = pending_remote.bind();
+
+    let acked = Arc::new(Mutex::new(false));
+    let acked_clone = acked.clone();
+    remote.DoNothingWithAck(move || {
+        *acked_clone.lock().unwrap() = true;
+        quit();
+    });
+
+    run_loop.run();
+
+    expect_true!(*acked.lock().unwrap());
 }
 
 #[gtest(RustBindingsAPI, CppReceiverTest)]
@@ -850,6 +916,77 @@ fn test_bad_control_message() {
     expect_eq!(reported.unwrap(), "Control message has incorrect message ID");
 }
 
+/// Serialize `params` and send it on the provided remote,
+/// with the given `flags`. This lets us test incorrect flag
+/// combinations.
+fn send_request_with_flags<T: mojom_value_parser::MojomParse<()>>(
+    remote: &mut Remote<dyn MathService>,
+    ordinal: u32,
+    flags: MessageHeaderFlags,
+    params: T,
+) {
+    let (payload, handles, interface_ids_offset) = mojom_value_parser::serialize(params, &());
+    let header = MessageHeader::new(0, ordinal, flags, 0, interface_ids_offset);
+    // Don't call this yourself! We're being bad here!
+    remote.send_message_internal(
+        MojomMessage { header, payload, handles, raw_message_handle: None },
+        None,
+    );
+}
+
+/// Installs a process error handler that records the most recent bad-message
+/// report, and returns the slot it writes into.
+fn capture_bad_messages() -> Arc<Mutex<Option<String>>> {
+    let reported = Arc::new(Mutex::new(None::<String>));
+    let reported_clone = reported.clone();
+    test_util::set_default_process_error_handler(move |msg: &str| {
+        *reported_clone.lock().unwrap() = Some(msg.to_string());
+    });
+    reported
+}
+
+/// Make sure that we notice if we get a message
+/// with incorrect response flags.
+#[gtest(RustBindingsAPI, TestRequestMissingExpectsResponseFlag)]
+fn test_request_missing_expects_response_flag() {
+    let _task_env = task_environment::ffi::CreateTaskEnvironment();
+    let reported = capture_bad_messages();
+
+    let (pending_remote, pending_receiver) = PendingRemote::<dyn MathService>::new_pipe().unwrap();
+    let _receiver = pending_receiver.bind(WrappingMathService {});
+    let mut remote = pending_remote.bind();
+
+    // Missing response flag
+    send_request_with_flags(
+        &mut remote,
+        0, // Corresponds to `Add`
+        MessageHeaderFlags::default(),
+        test_mojom::MathService_Add_Params { a: 1, b: 2 },
+    );
+
+    RunLoop::new().run_until_idle();
+
+    expect_eq!(
+        reported.lock().unwrap().take(),
+        Some("Message flags do not match the method signature".to_string())
+    );
+
+    // Extraneous response flag
+    send_request_with_flags(
+        &mut remote,
+        2, // `DoNothing`
+        MessageHeaderFlags::EXPECTS_RESPONSE,
+        test_mojom::MathService_DoNothing_Params {},
+    );
+
+    RunLoop::new().run_until_idle();
+
+    expect_eq!(
+        reported.lock().unwrap().take(),
+        Some("Message flags do not match the method signature".to_string())
+    );
+}
+
 // These types and functions provide us a way to set a disconnect handler for
 // C++ remotes/receivers that will end up calling back into rust so we can
 // easily track it. It stores a function that takes an integer so we can
@@ -1087,4 +1224,107 @@ fn test_associated_interop_cpp_primary_remote() {
         quit();
     });
     run_loop.run();
+}
+
+#[gtest(RustBindingsAPI, TestDuplicateInterfaceIdRejected)]
+fn test_duplicate_interface_id_rejected() {
+    let _task_env = task_environment::ffi::CreateTaskEnvironment();
+    test_util::set_default_process_error_handler(|msg: &str| panic!("Got a bad message: {}", msg));
+
+    let (pending_remote, pending_receiver) =
+        PendingRemote::<dyn AssociatedSender>::new_pipe().unwrap();
+    let _receiver = pending_receiver.bind(AssociatedSenderInteropRustImpl {});
+    let remote_wrapper =
+        system::scoped_handle_interop::ScopedMessagePipeHandleWrapper::from_message_endpoint(
+            pending_remote.into_endpoint(),
+        );
+    let mut cxx_remote = crate::cxx::ffi::CreateAssociatedSenderTestRemote(remote_wrapper);
+
+    let cpp_adapter = cxx_remote.pin_mut().RequestRemote();
+
+    let existing_id = cpp_adapter.GetInterfaceId();
+    let duplicate_adapter = cpp_adapter.RegisterNewEndpoint(existing_id);
+    assert!(
+        duplicate_adapter.is_null(),
+        "Registering an already-registered interface ID should return null."
+    );
+}
+
+/// Similar to the previous test, but the duplicate interface ID comes in
+/// a message rather than a direct call.
+#[gtest(RustBindingsAPI, TestDuplicateInterfaceIdReportsBadMessage)]
+fn test_duplicate_interface_id_reports_bad_message() {
+    let _task_env = task_environment::ffi::CreateTaskEnvironment();
+
+    let bad_message_flag = Arc::new(Mutex::new(None::<String>));
+    let bad_message_flag_clone = bad_message_flag.clone();
+    test_util::set_default_process_error_handler(move |msg: &str| {
+        *bad_message_flag_clone.lock().unwrap() = Some(msg.to_string());
+    });
+
+    // Create a message with interface IDs, that we'll send multiple times
+    let message_bytes = {
+        // A short-lived pipe to create IDs on
+        let (pending_remote, pending_receiver) =
+            PendingRemote::<dyn AssociatedSender>::new_pipe().unwrap();
+        let mut remote = pending_remote.bind();
+        let (_math_remote, math_receiver) = PendingAssociatedRemote::<dyn MathService>::new_pair();
+        remote.SendReceiver(math_receiver);
+        let raw_msg = pending_receiver.into_endpoint().read().unwrap();
+        raw_msg.read_bytes().unwrap().to_vec()
+    };
+
+    // Sending the message twice, through a pure-rust pipe
+    {
+        let (handle0, handle1) = system::message_pipe::MessageEndpoint::create_pipe().unwrap();
+        let _receiver =
+            PendingReceiver::<dyn AssociatedSender>::new(handle0).bind(AssociatedSenderImpl::new());
+
+        let msg1 = system::message::WritableMessage::new_with_bytes(&message_bytes).unwrap().into();
+        let msg2 = system::message::WritableMessage::new_with_bytes(&message_bytes).unwrap().into();
+        handle1.write(msg1).unwrap();
+        handle1.write(msg2).unwrap();
+
+        RunLoop::new().run_until_idle();
+
+        let reported = bad_message_flag.lock().unwrap().take();
+        expect_true!(reported.is_some());
+    }
+}
+
+/// Tests that when sending a message fails on a pure-Rust pipe, any associated
+/// endpoints serialized into that message are notified of peer closure.
+#[gtest(RustBindingsAPI, TestFailedSendMessageNotifiesSerializedEndpointPureRust)]
+fn test_failed_send_message_notifies_serialized_endpoint_pure_rust() {
+    let _task_env = task_environment::ffi::CreateTaskEnvironment();
+    test_util::set_default_process_error_handler(|msg: &str| panic!("Got a bad message: {}", msg));
+
+    let (pending_remote, pending_receiver) =
+        PendingRemote::<dyn AssociatedSender>::new_pipe().unwrap();
+    let mut primary_remote = pending_remote.bind();
+
+    let run_loop = RunLoop::new();
+    let quit = run_loop.get_quit_closure();
+
+    let (child_remote, child_receiver) = PendingAssociatedRemote::<dyn MathService>::new_pair();
+    let child_disconnected = Arc::new(Mutex::new(false));
+    let child_disconnected_clone = child_disconnected.clone();
+    let _child_remote = child_remote.bind_with_options(
+        None,
+        Some(Box::new(move || {
+            *child_disconnected_clone.lock().unwrap() = true;
+            quit();
+        })),
+    );
+
+    // Drop the primary receiver so any subsequent message on this pipe fails.
+    drop(pending_receiver);
+
+    // Send child_receiver across primary_remote; writing will fail and
+    // child_remote should be notified.
+    primary_remote.SendReceiver(child_receiver);
+
+    run_loop.run();
+
+    assert!(*child_disconnected.lock().unwrap());
 }

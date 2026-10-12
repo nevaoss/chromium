@@ -268,11 +268,12 @@ class WebUILocationBarInteractiveUiTest
            features::kWebUILocationBar,
            omnibox::internal::kWebUIOmniboxAimPopup},
           {omnibox::kAimServerEligibilityEnabled, features::kPrewarm,
-           omnibox::kWebUIOmniboxFullPopup});
+           omnibox::internal::kWebUIOmniboxFullPopup});
     } else {
       feature_list_.InitWithFeatures(
           {features::kInitialWebUI, features::kWebUIReloadButton,
-           features::kWebUILocationBar, omnibox::kWebUIOmniboxFullPopup,
+           features::kWebUILocationBar,
+           omnibox::internal::kWebUIOmniboxFullPopup,
            omnibox::internal::kWebUIOmniboxAimPopup},
           {omnibox::kAimServerEligibilityEnabled, features::kPrewarm});
     }
@@ -468,20 +469,23 @@ class WebUILocationBarInteractiveUiTest
   auto WaitForPopupHide() {
     if (mode() == Mode::kFull) {
       return Steps(InAnyContext(
-          PollState(
-              kPopupShort,
-              []() {
-                const ui::TrackedElement* el =
-                    ui::ElementTracker::GetElementTracker()
-                        ->GetElementInAnyContext(
-                            OmniboxPopupPresenterBase::kRoundedResultsFrame);
-                if (!el) {
-                  return true;
-                }
+          PollState(kPopupShort,
+                    [this]() {
+                      auto* view = GetActiveClassicPopupWebView().Run();
+                      if (!view || !view->GetWidget()) {
+                        return true;
+                      }
+                      const ui::TrackedElement* el =
+                          views::ElementTrackerViews::GetInstance()
+                              ->GetElementForView(
+                                  view, /* assign_temporary_id =*/true);
+                      if (!el) {
+                        return true;
+                      }
 
-                auto size = el->GetScreenBounds();
-                return size.height() <= 100;
-              }),
+                      auto size = el->GetScreenBounds();
+                      return size.height() <= 100;
+                    }),
           WaitForState(kPopupShort, true), StopObservingState(kPopupShort)));
     } else {
       return InAnyContext(
@@ -1003,6 +1007,35 @@ IN_PROC_BROWSER_TEST_P(WebUILocationBarInteractiveUiTest, ShowHideAIPopup) {
       WaitForAimPopupHide());
 }
 
+// Show and hide the omnibox AI mode popup, with no user text
+IN_PROC_BROWSER_TEST_P(WebUILocationBarInteractiveUiTest, ShowHideAIPopup2) {
+  RunTestSequence(
+      InstrumentTab(kTabId), WaitForWebContentsReady(kTabId),
+      InstrumentNonTabWebView(kWebUIToolbarId, GetToolbarWebView()),
+      HandleAutofocus(), WaitTillOmniboxViewText("about:blank"),
+      WaitTillOmniboxViewSelection("about:blank", gfx::Range(11, 0)),
+      // Unfocus, want the popup that shows from focus in.
+      FocusTab(),
+      // Go to a URL that will give us a popup.
+      NavigateWebContents(kTabId, GURL("https://local.test")),
+      WaitTillOmniboxViewText("local.test", View::kStatic),
+      // Click to focus location bar.
+      MoveMouseTo(kOmniboxElementId), ClickMouse(), WaitTillOmniboxViewFocus(),
+      WaitForPopupShow(),
+      // We should see the AIM button.
+      WaitForJsResultAt(
+          InputWebContents(), AIMButton(),
+          "el => (el.tooltip || el.title) === 'Ask AI Mode in Google Search'"),
+      // Click it.
+      ClickElement(InputWebContents(), AIMButton()),
+      // Should hide classic popup, show AIM one.
+      WaitForPopupHide(), WaitForAimPopupReady(),
+      // Press Esc to close it.
+      InAnyContext(SendKeyPress(kAimPopupWebViewId, ui::VKEY_ESCAPE)
+                       .SetMustRemainVisible(false)),
+      WaitForAimPopupHide());
+}
+
 // Test tabbing over to the AIM button, make sure typing when it's active still
 // works and that activating it triggers an AI-mode search and not a regular
 // one.
@@ -1069,9 +1102,6 @@ IN_PROC_BROWSER_TEST_P(WebUILocationBarInteractiveUiTest, Resize) {
 
 // Use arrow keys to select between various suggestions.
 IN_PROC_BROWSER_TEST_P(WebUILocationBarInteractiveUiTest, NavigateSuggestions) {
-  FAILS_IN_MODE(Mode::kFull,
-                "Esc restore of default suggestion broken in full +"
-                " virtual focus; see crbug.com/559625534");
   RunTestSequence(
       InstrumentTab(kTabId), WaitForWebContentsReady(kTabId),
       InstrumentNonTabWebView(kWebUIToolbarId, GetToolbarWebView()),

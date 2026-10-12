@@ -13,6 +13,7 @@
 #include "chrome/browser/autocomplete/aim_eligibility_service_factory.h"
 #include "chrome/browser/bookmarks/bookmark_model_factory.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
+#include "chrome/browser/ui/browser_tabstrip.h"
 #include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
@@ -355,7 +356,7 @@ class FullWebUIOmniboxInteractiveTest
  public:
   FullWebUIOmniboxInteractiveTest() {
     feature_list_.InitWithFeatures(
-        /*enabled_features=*/{omnibox::kWebUIOmniboxFullPopup},
+        /*enabled_features=*/{omnibox::internal::kWebUIOmniboxFullPopup},
         /*disabled_features=*/{omnibox::internal::kWebUIOmniboxPopup});
   }
   ~FullWebUIOmniboxInteractiveTest() override = default;
@@ -921,6 +922,66 @@ IN_PROC_BROWSER_TEST_F(FullWebUIOmniboxInteractiveTest,
       // restoration.
       WaitForJsConditionAt(kPopupWebView, kPopupSearchbox,
                            "(el) => el && !el.dropdownIsVisible"));
+}
+
+// Verifies that switching between two tabs that both show the popup keeps it on
+// screen for the whole switch. Restoring the newly active tab's state reverts
+// the omnibox, which used to close the popup before `OnTabChanged()` applied
+// the target state; hiding tears the popup widget down, so the user saw the
+// popup flicker on every tab switch.
+IN_PROC_BROWSER_TEST_F(FullWebUIOmniboxInteractiveTest, TabSwitchKeepsPopup) {
+  std::vector<OmniboxPopupState> observed_states;
+  base::CallbackListSubscription subscription;
+  auto* const popup_state_manager = BrowserWindow::FromBrowser(browser())
+                                        ->GetLocationBar()
+                                        ->GetOmniboxController()
+                                        ->popup_state_manager();
+
+  RunTestSequence(
+      // Open Tab 1 at chrome://version/ and focus the Omnibox, which shows the
+      // popup.
+      OpenInitialTabAndFocusOmnibox(kTab1, GURL("chrome://version/")),
+      // Open Tab 2 and focus its Omnibox too, so the popup is shown on both
+      // tabs.
+      AddInstrumentedTab(kTab2, GURL("chrome://about/")),
+      WaitForWebContentsReady(kTab2), WaitForPopupTransitionLockout(),
+      Do([this]() {
+        BrowserWindow::FromBrowser(browser())
+            ->GetLocationBar()
+            ->GetOmniboxPopupView()
+            ->OnFocus(/*query_zps=*/true);
+      }),
+      WaitForPopupTransitionLockout(),
+      // Start recording popup state changes.
+      Do([&]() {
+        subscription = popup_state_manager->AddPopupStateChangedCallback(
+            base::BindLambdaForTesting(
+                [&observed_states](OmniboxPopupState /*old_state*/,
+                                   OmniboxPopupState new_state) {
+                  observed_states.push_back(new_state);
+                }));
+      }),
+      // Switch back to Tab 1 (index 1, since the browser starts off with a tab
+      // before the two added above).
+      SwitchTab(kTabStripElementId, 1),
+      // The popup is shown on both tabs, so the switch must not have moved
+      // through `kNone` and hidden it.
+      CheckResult([&]() { return observed_states; },
+                  std::vector<OmniboxPopupState>(), "PopupStateChanges"),
+      CheckResult(
+          [popup_state_manager]() {
+            return popup_state_manager->popup_state();
+          },
+          OmniboxPopupState::kFull, "PopupState"),
+      CheckResult(
+          [this]() {
+            auto* popup_view = BrowserWindow::FromBrowser(browser())
+                                   ->GetLocationBar()
+                                   ->GetOmniboxPopupView();
+            return popup_view->presenter() &&
+                   popup_view->presenter()->IsShown();
+          },
+          true, "PopupIsShown"));
 }
 
 // Verifies that clicking a bookmark button in the bookmarks bar situated
@@ -1725,7 +1786,7 @@ class FullWebUIOmniboxAimInteractiveTestBase
   static std::vector<base::test::FeatureRefAndParams> GetEnabledFeatures(
       bool force_enable_aim) {
     std::vector<base::test::FeatureRefAndParams> features = {
-        {omnibox::kWebUIOmniboxFullPopup, {}},
+        {omnibox::internal::kWebUIOmniboxFullPopup, {}},
         {omnibox::kOmniboxWebUIDeferShowUntilVisualStateReady, {}}};
     if (force_enable_aim) {
       features.emplace_back(omnibox::internal::kWebUIOmniboxAimPopup,
@@ -1968,6 +2029,61 @@ IN_PROC_BROWSER_TEST_F(FullWebUIOmniboxAimInteractiveTest,
       WaitForPopupState(OmniboxPopupState::kFull),
       WaitForWebUIInputValue("my test query"),
       InAnyContext(CheckWebUIInputFocus(true)));
+}
+
+// Opening multiple New Tab Pages rapidly while the Full WebUI omnibox popup is
+// already open and focused should keep the AIM entrypoint button visible on
+// every new tab (regression test for b/563421197).
+IN_PROC_BROWSER_TEST_F(FullWebUIOmniboxAimInteractiveTest,
+                       AimButtonRemainsVisibleAcrossRapidNewTabs) {
+  RunTestSequence(
+      SetAimEligibleResponse(),
+      OpenInitialTabAndFocusOmnibox(kTab1, GURL(chrome::kChromeUINewTabURL)),
+      InAnyContext(WaitForOmniboxAimStateReady(kPopupWebView)),
+      InAnyContext(WaitForElementToRender(kPopupWebView, kComposeButton)),
+      Do([this]() {
+        for (int i = 0; i < 5; ++i) {
+          chrome::AddTabAt(browser(), GURL(chrome::kChromeUINewTabURL), -1,
+                           true);
+        }
+      }),
+      WaitForPopupState(OmniboxPopupState::kFull),
+      InAnyContext(CheckWebUIInputFocus(true)),
+      InAnyContext(WaitForElementToRender(kPopupWebView, kComposeButton)),
+      InAnyContext(CheckJsResultAt(kPopupWebView, kPopupSearchbox,
+                                   "el => el.aimButtonVisible_", true)));
+}
+
+// Switching back and forth between tabs where the omnibox is focused should
+// keep the AIM entrypoint button visible in the Full WebUI popup (regression
+// test for b/563421197 after keeping the popup on screen across tab switches).
+IN_PROC_BROWSER_TEST_F(FullWebUIOmniboxAimInteractiveTest,
+                       AimButtonRemainsVisibleAcrossTabSwitch) {
+  RunTestSequence(
+      SetAimEligibleResponse(),
+      OpenInitialTabAndFocusOmnibox(kTab1, GURL(chrome::kChromeUINewTabURL)),
+      InAnyContext(WaitForOmniboxAimStateReady(kPopupWebView)),
+      InAnyContext(WaitForElementToRender(kPopupWebView, kComposeButton)),
+      AddInstrumentedTab(kTab2, GURL(chrome::kChromeUINewTabURL)),
+      WaitForWebContentsReady(kTab2), WaitForPopupTransitionLockout(),
+      WaitForPopupState(OmniboxPopupState::kFull),
+      InAnyContext(WaitForElementToRender(kPopupWebView, kComposeButton)),
+      InAnyContext(CheckJsResultAt(kPopupWebView, kPopupSearchbox,
+                                   "el => el.aimButtonVisible_", true)),
+      // Switch back to Tab 1 (index 1, since browser starts with an initial
+      // tab at index 0).
+      SwitchTab(kTabStripElementId, 1),
+      WaitForPopupState(OmniboxPopupState::kFull),
+      InAnyContext(WaitForElementToRender(kPopupWebView, kComposeButton)),
+      InAnyContext(CheckJsResultAt(kPopupWebView, kPopupSearchbox,
+                                   "el => el.aimButtonVisible_", true)),
+      // Switch forward to Tab 2 (index 2) and verify the AIM button remains
+      // visible.
+      SwitchTab(kTabStripElementId, 2),
+      WaitForPopupState(OmniboxPopupState::kFull),
+      InAnyContext(WaitForElementToRender(kPopupWebView, kComposeButton)),
+      InAnyContext(CheckJsResultAt(kPopupWebView, kPopupSearchbox,
+                                   "el => el.aimButtonVisible_", true)));
 }
 #endif  // !BUILDFLAG(IS_MAC) && !BUILDFLAG(IS_WIN)
 

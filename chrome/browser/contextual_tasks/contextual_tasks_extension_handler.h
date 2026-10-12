@@ -6,6 +6,7 @@
 #define CHROME_BROWSER_CONTEXTUAL_TASKS_CONTEXTUAL_TASKS_EXTENSION_HANDLER_H_
 
 #include <map>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -47,6 +48,11 @@ namespace content {
 class WebContents;
 }  // namespace content
 
+namespace lens {
+class AddedContext;
+class ClientToSearchMessage;
+}  // namespace lens
+
 class LensSearchController;
 class ContextualTasksExtensionHandler
     : public content::DocumentUserData<ContextualTasksExtensionHandler>,
@@ -71,6 +77,9 @@ class ContextualTasksExtensionHandler
   // contextual_tasks::AimMessagePoster:
   void PostAimMessage(const lens::ClientToAimMessage& message) override;
 
+  // Sends a search communication message to the extension page.
+  void PostSearchMessage(const lens::ClientToSearchMessage& message);
+
   void BindContextualTasksFactory(
       mojo::PendingReceiver<
           contextual_tasks::mojom::ExtensionPageHandlerFactory> receiver);
@@ -85,8 +94,7 @@ class ContextualTasksExtensionHandler
   void SetTaskId(const base::Uuid& uuid) override;
   void OnWebviewMessage(const std::vector<uint8_t>& message) override;
   void GetHandshakeMessage(GetHandshakeMessageCallback callback) override;
-  void GetLensCropPreview(const std::string& data_id,
-                          GetLensCropPreviewCallback callback) override;
+  void GetLensCropPreview(GetLensCropPreviewCallback callback) override;
 
   base::WeakPtr<contextual_search::InputStateModel>
   GetOrCreateInputStateModelForTesting() {
@@ -229,7 +237,7 @@ class ContextualTasksExtensionHandler
   explicit ContextualTasksExtensionHandler(content::RenderFrameHost* rfh);
   DOCUMENT_USER_DATA_KEY_DECL();
 
-  content::WebContents* GetActiveTabWebContents() const;
+  BrowserWindowInterface* GetBrowserWindowInterface() const;
 
   contextual_search::ContextualSearchSessionHandle*
   GetOrCreateContextualSessionHandle();
@@ -258,6 +266,9 @@ class ContextualTasksExtensionHandler
   base::WeakPtr<contextual_search::InputStateModel>
   GetOrCreateInputStateModel();
   void OnLensThumbnailCreated(const std::string& thumbnail_uri);
+  void RecordTimeToHandshakeComplete();
+  void HandleOnSubmitQueryRequest();
+  std::optional<lens::AddedContext> GetLensAddedContext();
 
   base::WeakPtr<contextual_search::InputStateModel> input_state_model_;
   base::CallbackListSubscription input_state_subscription_;

@@ -55,6 +55,7 @@ import org.chromium.chrome.browser.document.ChromeLauncherActivity;
 import org.chromium.chrome.browser.externalnav.IntentWithRequestMetadataHandler;
 import org.chromium.chrome.browser.externalnav.IntentWithRequestMetadataHandler.RequestMetadata;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
+import org.chromium.chrome.browser.glic.GlicIntentConstants;
 import org.chromium.chrome.browser.gsa.GSAUtils;
 import org.chromium.chrome.browser.intents.BrowserIntentUtils;
 import org.chromium.chrome.browser.notifications.NotificationConstants;
@@ -756,7 +757,12 @@ public class IntentHandler {
             params.setReferrer(new Referrer(referrer, getReferrerPolicyFromIntent(intent)));
         }
         String headers = getExtraHeadersFromIntent(intent, params.getUrl());
-        if (headers != null) params.setVerbatimHeaders(headers);
+        if (headers != null) {
+            params.setVerbatimHeaders(headers);
+            if (ChromeFeatureList.sRemoveExtraHeadersOnCrossOriginRedirect.isEnabled()) {
+                params.setRemoveExtraHeadersOnCrossOriginRedirect(true);
+            }
+        }
     }
 
     public static int getReferrerPolicyFromIntent(Intent intent) {
@@ -1855,8 +1861,7 @@ public class IntentHandler {
      */
     public static @Nullable String getGlicConversationId(@Nullable Intent intent) {
         if (!wasIntentSenderChrome(intent)) return null;
-        return IntentUtils.safeGetStringExtra(
-                intent, NotificationConstants.EXTRA_GLIC_CONVERSATION_ID);
+        return IntentUtils.safeGetStringExtra(intent, GlicIntentConstants.EXTRA_CONVERSATION_ID);
     }
 
     /** Sets the Tab Id extra for a given intent. Will only be usable by trusted Chrome intents. */
@@ -1999,7 +2004,7 @@ public class IntentHandler {
                     new Referrer(referrer, IntentHandler.getReferrerPolicyFromIntent(intent)));
         }
 
-        String headers = getExtraHeadersFromIntent(intent);
+        String headers = getExtraHeadersFromIntent(intent, url);
         headers = maybeAddAdditionalContentHeaders(intent, url, headers);
 
         if (IntentHandler.wasIntentSenderChrome(intent)) {
@@ -2037,6 +2042,10 @@ public class IntentHandler {
             loadUrlParams.setInitiatorOrigin(Origin.createOpaqueOrigin());
         }
         loadUrlParams.setVerbatimHeaders(headers);
+        if (!TextUtils.isEmpty(headers)
+                && ChromeFeatureList.sRemoveExtraHeadersOnCrossOriginRedirect.isEnabled()) {
+            loadUrlParams.setRemoveExtraHeadersOnCrossOriginRedirect(true);
+        }
         loadUrlParams.setIsRendererInitiated(
                 metadata == null ? false : metadata.isRendererInitiated());
 

@@ -1602,7 +1602,7 @@
     {
         "name": "firebase-common",
         "group": "com.google.firebase",
-        "version": "22.2.1"
+        "version": "23.0.0"
     },
     {
         "name": "firebase-components",
@@ -1708,11 +1708,6 @@
         "name": "protobuf-javalite",
         "group": "com.google.protobuf",
         "version": "4.36.2"
-    },
-    {
-        "name": "protobuf-lite",
-        "group": "com.google.protobuf",
-        "version": "3.0.1"
     },
     {
         "name": "compile-testing",
@@ -2062,7 +2057,7 @@
     {
         "name": "kotlinx-coroutines-play-services",
         "group": "org.jetbrains.kotlinx",
-        "version": "1.9.0"
+        "version": "1.10.2"
     },
     {
         "name": "kotlinx-coroutines-reactive",

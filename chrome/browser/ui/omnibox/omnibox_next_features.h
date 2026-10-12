@@ -45,6 +45,14 @@ BASE_DECLARE_FEATURE(kWebUIOmniboxAimPopup);
 // TODO(crbug.com/521521553): Remove this feature flag once the
 // feature flag is fully rolled out.
 BASE_DECLARE_FEATURE(kWebUIOmniboxSimplification);
+BASE_DECLARE_FEATURE(kWebUIOmniboxFullPopup);
+
+// Returns true if `kWebUIOmniboxFullPopup` is enabled.
+// UI and model callers must instead query:
+// - `OmniboxPopupPresenterDelegate::is_full_webui_omnibox()`
+// - `OmniboxView::IsFullWebUIOmnibox()`
+// - `OmniboxViewViews::IsFullWebUIOmniboxReady()`
+bool IsWebUIOmniboxFullPopupEnabled();
 
 }  // namespace internal
 
@@ -63,7 +71,6 @@ BASE_DECLARE_FEATURE(kOmniboxEverywhereFre);
 BASE_DECLARE_FEATURE(kAiModeSpaceDoesNotActivate);
 BASE_DECLARE_FEATURE(kWebUIOmniboxDisableCaretColorAnimation);
 BASE_DECLARE_FEATURE(kWebUIOmniboxAimPopupDisableAnimation);
-BASE_DECLARE_FEATURE(kWebUIOmniboxFullPopup);
 BASE_DECLARE_FEATURE(kWebUIOmniboxFullPopupDoubleClick);
 BASE_DECLARE_FEATURE(kOmniboxEverywhere);
 BASE_DECLARE_FEATURE(kWebUIOmniboxPopupDebug);
@@ -79,6 +86,8 @@ BASE_DECLARE_FEATURE(kOmniboxKeepOpenOnFileSelection);
 extern const base::FeatureParam<bool> kWebUIOmniboxPopupDebugSxSParam;
 extern const base::FeatureParam<bool> kOmniboxEverywhereProfilePickerParam;
 extern const base::FeatureParam<bool> kOmniboxEverywhereMultilineParam;
+extern const base::FeatureParam<bool>
+    kOmniboxEverywhereSingleLineOnInlineAutocompleteParam;
 
 // The serialized base64 encoded `omnibox::NTPComposeboxConfig`.
 extern const base::FeatureParam<std::string> kConfigParam;
@@ -138,9 +147,6 @@ extern const base::FeatureParam<bool> kWebUIOmniboxDynamicColorScheme;
 // Returns true if `kWebUIOmniboxPopup` is enabled.
 bool IsWebUIOmniboxPopupEnabled();
 
-// Returns true if `kWebUIOmniboxFullPopup` is enabled.
-bool IsWebUIOmniboxFullPopupEnabled();
-
 // Returns true if the webui omnibox should use the WebuiOmniboxFullHandler
 bool ShouldUseWebUIOmniboxFullHandler();
 
@@ -158,6 +164,13 @@ bool IsAimPopupFeatureEnabled();
 // both sides rather than recombining the underlying flags.
 bool ShouldDrawAimShadowInWebUI();
 bool ShouldDrawFullPopupShadowInWebUI();
+
+// Enables the use of separate flags for pre/post Full WebUI Omnibox. There
+// are new flicker issues with AIM + Full WebUI and these functions will allow
+// us to control the fixes independently of if Full WebUI is enabled.
+bool ShouldDeferAimShowUntilVisualStateReady();
+bool ShouldApplyAimHeightWorkarounds();
+bool ShouldAimEvictOnHide();
 
 // Returns true if the AIM Popup feature is fully enabled for the given
 // `profile`. This is the correct function for external code to use, as it

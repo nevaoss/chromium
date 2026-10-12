@@ -204,8 +204,9 @@ BASE_FEATURE(kOmniboxFuseboxPopupVariations, DISABLED);
 // attached.
 BASE_FEATURE(kOmniboxDisableTabsForCanvas, ENABLED);
 
-// Enables the AIM entrypoint for third party search engines.
-BASE_FEATURE(kAim3pEntrypoint, ENABLED);
+// Enables the AIM entrypoint for third party search engines. Held dark on
+// Android until the Android entrypoint UI is implemented.
+BASE_FEATURE(kAim3pEntrypoint, enable_if(!IS_ANDROID));
 const base::FeatureParam<bool> kAim3pEntrypointDebug{
     &kAim3pEntrypoint, "Aim3pEntrypointDebug", false};
 
@@ -217,6 +218,10 @@ BASE_FEATURE(kAIMSuppressVerbatimMatch, ENABLED);
 // painted a clean frame, avoiding the issue of the popup being shown with a
 // stale frame.
 BASE_FEATURE(kOmniboxAimDeferShowUntilVisualStateReady, ENABLED);
+// Consulted instead of `kOmniboxAimDeferShowUntilVisualStateReady` when the
+// full WebUI omnibox is enabled, where the deferred show is not needed and only
+// adds latency. See `omnibox::ShouldDeferAimShowUntilVisualStateReady()`.
+BASE_FEATURE(kOmniboxAimDeferShowUntilVisualStateReadyWithFullWebUI, DISABLED);
 // When enabled, the Omnibox WebUI popup will defer showing until the WebUI has
 // painted a clean frame, avoiding the issue of the popup being shown with a
 // stale frame.
@@ -236,8 +241,12 @@ BASE_FEATURE(kOmniboxFullWebUIDebounceResize, DISABLED);
 BASE_FEATURE(kOmniboxWebUIHeightWorkarounds, ENABLED);
 // When enabled, height workarounds are applied for the AIM WebUI popup.
 BASE_FEATURE(kOmniboxAimHeightWorkarounds, ENABLED);
+// Consulted instead of `kOmniboxAimHeightWorkarounds` when the full WebUI
+// omnibox is enabled, where the workarounds are not needed and cause visible
+// resize jank. See `omnibox::ShouldApplyAimHeightWorkarounds()`.
+BASE_FEATURE(kOmniboxAimHeightWorkaroundsWithFullWebUI, DISABLED);
 // When enabled, height workarounds are applied for the Omnibox Full WebUI popup.
-BASE_FEATURE(kOmniboxFullWebUIHeightWorkarounds, ENABLED);
+BASE_FEATURE(kOmniboxFullWebUIHeightWorkarounds, DISABLED);
 // If enabled, stabilizes the popup showing behavior on startup by forcing
 // layout with a 1px height and hiding it initially to avoid visual artifacts.
 BASE_FEATURE(kOmniboxWebUIPopupStabilizeStartupShow, ENABLED);
@@ -262,9 +271,14 @@ BASE_FEATURE(kOmniboxWebUIEvictOnHide, DISABLED);
 // when hidden.
 BASE_FEATURE(kOmniboxAimEvictOnHide, DISABLED);
 
+// Consulted instead of `kOmniboxAimEvictOnHide` when the full WebUI omnibox is
+// enabled, where evicting the stale frame is needed to avoid showing it on the
+// next show. See `omnibox::ShouldAimEvictOnHide()`.
+BASE_FEATURE(kOmniboxAimEvictOnHideWithFullWebUI, ENABLED);
+
 // When enabled, the Omnibox Full WebUI popup will evict its saved compositor
 // frame when hidden.
-BASE_FEATURE(kOmniboxFullWebUIEvictOnHide, DISABLED);
+BASE_FEATURE(kOmniboxFullWebUIEvictOnHide, ENABLED);
 
 // When enabled, the AIM WebUI popup's drop shadow is painted by the page
 // rather than by the Views frame. Only takes effect when both the AIM
@@ -644,6 +658,7 @@ static int64_t JNI_OmniboxFeatureMap_GetNativeMap(JNIEnv* env) {
       &kOmniboxFuseboxPopupVariations,
       &kServeJavaCachedZeroSuggest,
       &kAIMSuppressVerbatimMatch,
+      &kAim3pEntrypoint,
       &kResetSuggestionsScroll,
       &kExactMatchFavicons,
       &kStarterPackExpansion,

@@ -11,6 +11,7 @@
 #include "base/logging.h"
 #include "base/notimplemented.h"
 #include "base/task/sequenced_task_runner.h"
+#include "base/task/single_thread_task_runner.h"
 #include "build/branding_buildflags.h"
 #include "build/buildflag.h"
 #include "chrome/browser/actor/ui/actor_ui_window_controller.h"
@@ -108,8 +109,7 @@ WebUILocationBar::WebUILocationBar(BrowserWindowInterface* browser,
       page_action_control_(
           browser ? BrowserActions::From(browser)->root_action_item()
                   : nullptr),
-      using_full_popup_(
-          base::FeatureList::IsEnabled(omnibox::kWebUIOmniboxFullPopup)) {
+      using_full_popup_(omnibox::internal::IsWebUIOmniboxFullPopupEnabled()) {
   permission_dashboard_ = std::make_unique<WebUIPermissionDashboard>(this);
   permission_dashboard_controller_ =
       std::make_unique<PermissionDashboardController>(
@@ -310,34 +310,9 @@ bool WebUILocationBar::UpdateContentSettingModels() {
     return false;
   }
 
-  bool permission_dashboard_changed = false;
-  bool dashboard_updated = false;
-
-  if (ContentSettingImageModel::IsLeftHandSideIndicatorEnabled(
-          ContentSettingImageModel::ImageType::kMediaStream)) {
-    ContentSettingImageModel* media_stream_model =
-        content_setting_image_control_.GetModel(
-            ContentSettingImageModel::ImageType::kMediaStream);
-    if (media_stream_model) {
-      permission_dashboard_changed |=
-          permission_dashboard_controller_->Update(media_stream_model);
-      if (media_stream_model->is_visible()) {
-        dashboard_updated = true;
-      }
-    }
-  }
-
-  if (!dashboard_updated &&
-      ContentSettingImageModel::IsLeftHandSideIndicatorEnabled(
-          ContentSettingImageModel::ImageType::kSensors)) {
-    ContentSettingImageModel* sensors_model =
-        content_setting_image_control_.GetModel(
-            ContentSettingImageModel::ImageType::kSensors);
-    if (sensors_model) {
-      permission_dashboard_changed |=
-          permission_dashboard_controller_->Update(sensors_model);
-    }
-  }
+  bool permission_dashboard_changed =
+      content_setting_image_control_.UpdatePermissionDashboard(
+          permission_dashboard_controller_.get());
 
   if (!toolbar_delegate_) {
     return permission_dashboard_changed;
@@ -1034,6 +1009,10 @@ views::View* WebUILocationBar::GetLocationBarFocusRestoreView() {
   return toolbar_delegate_ ? toolbar_delegate_->GetInternalWebView() : nullptr;
 }
 
+bool WebUILocationBar::is_full_webui_omnibox() const {
+  return using_full_popup_;
+}
+
 bool WebUILocationBar::ShouldChipOverrideLocationIcon() {
   return permission_dashboard_->GetIndicatorChip()->GetVisible() ||
          permission_dashboard_->GetRequestChip()->GetVisible();
@@ -1132,12 +1111,10 @@ void WebUILocationBar::OnPopupStateChanged(OmniboxPopupState old_state,
 
 void WebUILocationBar::ClearInPopupStateTransition() {
   in_popup_state_transition_ = false;
-  // AIM Placeholder text gets deferred during transition if
-  // kOmniboxAimDeferShowUntilVisualStateReady is on,
-  // so request a repaint when the transition period expires.
-  if (omnibox_view_ &&
-      base::FeatureList::IsEnabled(
-          omnibox::kOmniboxAimDeferShowUntilVisualStateReady)) {
+  // AIM Placeholder text gets deferred during transition if the AIM popup
+  // defers its show until the visual state is ready, so request a repaint when
+  // the transition period expires.
+  if (omnibox_view_ && omnibox::ShouldDeferAimShowUntilVisualStateReady()) {
     omnibox_view_->RequestUpdateWebUI();
   }
 }

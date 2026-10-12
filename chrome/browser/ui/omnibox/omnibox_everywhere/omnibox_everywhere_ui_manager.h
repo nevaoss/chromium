@@ -15,6 +15,7 @@
 #include "base/memory/weak_ptr.h"
 #include "base/scoped_observation.h"
 #include "base/time/time.h"
+#include "base/timer/timer.h"
 #include "build/build_config.h"
 #include "chrome/browser/ui/browser_window/public/browser_collection_observer.h"
 #include "chrome/browser/ui/browser_window/public/profile_browser_collection.h"
@@ -85,6 +86,8 @@ class OmniboxEverywhereUIManager : public views::WidgetObserver,
   static constexpr int kFreModalRestingHeight = 424;
   static constexpr base::TimeDelta kActivationGracePeriod =
       base::Milliseconds(500);
+  static constexpr base::TimeDelta kPostHideCaptureDuration =
+      base::Milliseconds(200);
 
   enum ContextMenuCommandId {
     kUndo = 1,
@@ -303,7 +306,7 @@ class OmniboxEverywhereUIManager : public views::WidgetObserver,
     is_context_menu_open_ = open;
   }
   bool is_dragging_for_testing() const { return is_dragging_; }
-  bool is_demoted_for_testing() const { return is_demoted_; }
+  bool is_demoted() const { return is_demoted_; }
   void OnContextMenuClosedForTesting() { OnContextMenuClosed(); }
   const ui::SimpleMenuModel* context_menu_model_for_testing() const {
     return context_menu_model_.get();
@@ -326,6 +329,8 @@ class OmniboxEverywhereUIManager : public views::WidgetObserver,
 #endif
   void OnMostVisitedPrefChanged();
   void MaybeRecordFreImpression();
+  void MaybeShowLensPromo();
+  void EndLensPromo();
   static gfx::Rect CalculateWidgetBounds(int height);
 
   // Try and acquire process and profile keep alives. If unsuccessful, releases
@@ -378,6 +383,7 @@ class OmniboxEverywhereUIManager : public views::WidgetObserver,
   std::unique_ptr<views::Widget> disclosure_dialog_widget_;
   std::optional<content::WebContents::ScopedIgnoreInputEvents>
       scoped_ignore_input_events_;
+  base::OneShotTimer capture_release_timer_;
 
   bool is_file_chooser_open_ = false;
   bool is_drive_picker_open_ = false;

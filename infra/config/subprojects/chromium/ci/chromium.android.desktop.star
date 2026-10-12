@@ -295,6 +295,21 @@ ci.thin_tester(
                 ],
                 enable_rts_filtering = True,
                 swarming = targets.swarming(
+                    optional_dimensions = {
+                        # TODO(crrev.com/541675870): Remove x86-64-n4 when migration is done.
+                        # Wait 30 seconds for n4 cpu with cache, wait 30 seconds for n4 cpu
+                        # wait 60 seconds for any bot with a cache.
+                        30: {
+                            "cpu": "x86-64-n4",
+                            "caches": "android_35_google_apis_tablet_x64_tablet_landscape",
+                        },
+                        60: {
+                            "cpu": "x86-64-n4",
+                        },
+                        120: {
+                            "caches": "android_35_google_apis_tablet_x64_tablet_landscape",
+                        },
+                    },
                     shards = 50,
                 ),
             ),
@@ -330,6 +345,7 @@ ci.thin_tester(
     targets_settings = targets.settings(
         os_type = targets.os_type.ANDROID,
     ),
+    builderless = True,
     cores = 8,
     gardener_rotations = gardener_rotations.ANDROID,
     console_view_entry = consoles.console_view_entry(

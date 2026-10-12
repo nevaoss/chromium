@@ -75,6 +75,10 @@ chromium-metrics-reviews@google.com.
   <variant name="ModalDialogWithSettingsIllustration"
       summary="the modal dialog with settings illustration"/>
   <variant name="SettingsPage" summary="the settings page"/>
+  <variant name="StickyModalDialogWithoutSettingsIllustration"
+      summary="the sticky modal dialog without settings illustration"/>
+  <variant name="StickyModalDialogWithSettingsIllustration"
+      summary="the sticky modal dialog with settings illustration"/>
 </variants>
 
 <!-- LINT.ThenChange(//chrome/browser/default_browser/default_browser_controller.h:DefaultBrowserEntrypointType) -->
@@ -472,6 +476,20 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram
+    name="DefaultBrowser.{DefaultBrowserEntrypointType}.{DefaultBrowserSetterType}.OutcomeV2"
+    enum="BooleanSuccess" expires_after="2027-04-27">
+  <owner>alsan@chromium.org</owner>
+  <owner>amyhwang@chromium.org</owner>
+  <owner>atharvmaan@chromium.org</owner>
+  <owner>koretadaniel@chromium.org</owner>
+  <owner>chrome-desktop-ui-waterloo@google.com</owner>
+  <summary>
+    Records whether setting Chrome as the default browser was successful using
+    {DefaultBrowserSetterType} initiated from {DefaultBrowserEntrypointType}.
+  </summary>
+</histogram>
+
+<histogram
     name="DefaultBrowser.{DefaultBrowserEntrypointType}.{DefaultBrowserSetterType}.Shown"
     units="count" expires_after="2027-04-27">
   <owner>alsan@chromium.org</owner>
@@ -699,7 +717,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="InitialWebUI.ReloadButton.InputCount"
-    enum="ReloadButtonInputType" expires_after="2027-01-17">
+    enum="ReloadButtonInputType" expires_after="2027-03-21">
   <owner>mych@chromium.org</owner>
   <owner>chrome-webium-product-eng@google.com</owner>
   <summary>
@@ -1018,7 +1036,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="InitialWebUI.Toolbar.ProcessAlreadyExistsForTheSameProfileOnCreation"
-    enum="Boolean" expires_after="2027-01-17">
+    enum="Boolean" expires_after="2027-03-21">
   <owner>leimy@chromium.org</owner>
   <owner>chrome-webium-product-eng@google.com</owner>
   <summary>
@@ -1104,7 +1122,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="RenderTextHarfBuzz.GetFallbackFontsTime" units="ms"
-    expires_after="2027-01-17">
+    expires_after="2027-03-21">
   <owner>dayeung@chromium.org</owner>
   <owner>etienneb@chromium.org</owner>
   <summary>
@@ -1115,7 +1133,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="RenderTextHarfBuzz.GetFallbackFontTime" units="ms"
-    expires_after="2027-01-17">
+    expires_after="2027-03-21">
   <owner>dayeung@chromium.org</owner>
   <owner>etienneb@chromium.org</owner>
   <summary>
@@ -1133,7 +1151,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="RenderTextHarfBuzz.ShapeRunsFallback" enum="ShapeRunFallback"
-    expires_after="2026-11-29">
+    expires_after="2027-03-21">
   <owner>dayeung@chromium.org</owner>
   <owner>etienneb@chromium.org</owner>
   <summary>
@@ -1143,7 +1161,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="RenderTextHarfBuzz.ShapeRunsWithFallbackFontsTime" units="ms"
-    expires_after="2027-01-17">
+    expires_after="2027-03-21">
   <owner>dayeung@chromium.org</owner>
   <owner>etienneb@chromium.org</owner>
   <summary>
@@ -1453,7 +1471,7 @@ features through Chrome Labs. -->
 </histogram>
 
 <histogram name="WebUI.Settings.PathVisited" enum="WebUISettingsPathHashes"
-    expires_after="2027-01-17">
+    expires_after="2027-03-21">
   <owner>dschuyler@chromium.org</owner>
   <owner>tbuckley@chromium.org</owner>
   <owner>bettes@chromium.org</owner>
@@ -1555,7 +1573,7 @@ features through Chrome Labs. -->
 </histogram>
 
 <histogram name="WrenchMenu.MenuAction" enum="WrenchMenuAction"
-    expires_after="2027-01-17">
+    expires_after="2027-03-21">
   <owner>ainslie@chromium.org</owner>
   <owner>edwardjung@chromium.org</owner>
   <summary>Number of times that each menu item is clicked.</summary>
@@ -1656,6 +1674,7 @@ features through Chrome Labs. -->
     <variant name=".SiteSettings"/>
     <variant name=".SwitchToAnotherProfile"/>
     <variant name=".TaskManager"/>
+    <variant name=".TtcAppMenu"/>
     <variant name=".ViewSource"/>
     <variant name=".VisitChromeWebStore"/>
     <variant name=".Win8MetroRestart"/>

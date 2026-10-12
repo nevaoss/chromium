@@ -34,6 +34,7 @@
 #include "components/autofill/core/browser/field_types.h"
 #include "components/autofill/core/common/is_required.h"
 #include "third_party/abseil-cpp/absl/functional/overload.h"
+#include "url/gurl.h"
 
 namespace sync_pb {
 class AutofillValuableSpecifics;
@@ -317,33 +318,43 @@ class EntityInstance final {
                            const WalletRecordTypePayload&) = default;
   };
   struct PersonalContextRecordTypePayload {
-    struct GmailSource {
+    struct GmailSourceMetadata {
       std::string title;
-      friend bool operator==(const GmailSource&, const GmailSource&) = default;
+      friend bool operator==(const GmailSourceMetadata&,
+                             const GmailSourceMetadata&) = default;
     };
-    struct PhotosSource {
-      friend bool operator==(const PhotosSource&,
-                             const PhotosSource&) = default;
+    struct PhotosSourceMetadata {
+      base::Time timestamp;
+      friend bool operator==(const PhotosSourceMetadata&,
+                             const PhotosSourceMetadata&) = default;
     };
 
-    using SourceData = std::variant<GmailSource, PhotosSource>;
+    using SourceMetadata =
+        std::variant<GmailSourceMetadata, PhotosSourceMetadata>;
 
     // Captures the provenance of an entity (e.g., its product source and URL).
     struct Source {
+      // These values are persisted to logs. Entries should not be renumbered
+      // and numeric values should never be reused.
+      // GENERATED_JAVA_ENUM_PACKAGE: (
+      //   org.chromium.components.autofill.autofill_ai)
+      // GENERATED_JAVA_CLASS_NAME_OVERRIDE: SourceType
       enum class Type {
-        kGmail,
-        kPhotos,
+        kGmail = 0,
+        kPhotos = 1,
+        kMaxValue = kPhotos,
       };
 
-      std::string url;
-      SourceData data;
+      GURL url;
+      SourceMetadata metadata;
 
-      // Derived from `data` so type and payload can never get out of sync.
+      // Derived from `metadata` so type and payload can never get out of sync.
       Type type() const {
         return std::visit(
-            absl::Overload{[](const GmailSource&) { return Type::kGmail; },
-                           [](const PhotosSource&) { return Type::kPhotos; }},
-            data);
+            absl::Overload{
+                [](const GmailSourceMetadata&) { return Type::kGmail; },
+                [](const PhotosSourceMetadata&) { return Type::kPhotos; }},
+            metadata);
       }
 
       friend bool operator==(const Source&, const Source&) = default;

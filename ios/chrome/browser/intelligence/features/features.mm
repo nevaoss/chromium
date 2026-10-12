@@ -688,19 +688,10 @@ bool IsGeminiClientMigrationEnabled() {
 BASE_FEATURE(kGeminiMultiTabContext, base::FEATURE_ENABLED_BY_DEFAULT);
 
 bool IsGeminiMultiTabContextEnabled() {
-  if (!IsPageActionMenuEnabled() || !IsGeminiScreenContextMigrationEnabled()) {
-    return false;
-  }
-  return base::FeatureList::IsEnabled(kGeminiMultiTabContext);
-}
-
-BASE_FEATURE(kGeminiScreenContextMigration, base::FEATURE_ENABLED_BY_DEFAULT);
-
-bool IsGeminiScreenContextMigrationEnabled() {
   if (!IsPageActionMenuEnabled()) {
     return false;
   }
-  return base::FeatureList::IsEnabled(kGeminiScreenContextMigration);
+  return base::FeatureList::IsEnabled(kGeminiMultiTabContext);
 }
 
 BASE_FEATURE(kGeneralizedGeminiEntryFlow, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -730,70 +721,6 @@ bool IsAppSwitcherAISummarizationEnabled() {
   return base::FeatureList::IsEnabled(kAppSwitcherAISummarization);
 }
 
-BASE_FEATURE(kGeminiContextualSuggestionsCues,
-             base::FEATURE_DISABLED_BY_DEFAULT);
-
-const char kGeminiContextualSuggestionsCuesOnDeviceClassifierParam[] =
-    "enable_on_device_classifier";
-
-BASE_FEATURE_PARAM(bool,
-                   kGeminiContextualSuggestionsCuesOnDeviceClassifier,
-                   &kGeminiContextualSuggestionsCues,
-                   kGeminiContextualSuggestionsCuesOnDeviceClassifierParam,
-                   false);
-
-const char kGeminiContextualSuggestionsCuesAllowGpuExecutionParam[] =
-    "allow_gpu_execution";
-
-BASE_FEATURE_PARAM(bool,
-                   kGeminiContextualSuggestionsCuesAllowGpuExecution,
-                   &kGeminiContextualSuggestionsCues,
-                   kGeminiContextualSuggestionsCuesAllowGpuExecutionParam,
-                   false);
-
-const char kGeminiContextualSuggestionsCuesTitleAndUrlOnlyParam[] =
-    "use_title_and_url_only";
-
-BASE_FEATURE_PARAM(bool,
-                   kGeminiContextualSuggestionsCuesTitleAndUrlOnly,
-                   &kGeminiContextualSuggestionsCues,
-                   kGeminiContextualSuggestionsCuesTitleAndUrlOnlyParam,
-                   true);
-
-const char kGeminiContextualSuggestionsCuesServerModelExecutionParam[] =
-    "enable_server_model_execution";
-
-BASE_FEATURE_PARAM(bool,
-                   kGeminiContextualSuggestionsCuesServerModelExecution,
-                   &kGeminiContextualSuggestionsCues,
-                   kGeminiContextualSuggestionsCuesServerModelExecutionParam,
-                   false);
-
-bool IsGeminiContextualSuggestionsCuesEnabled() {
-  if (!IsPageActionMenuEnabled()) {
-    return false;
-  }
-  return base::FeatureList::IsEnabled(kGeminiContextualSuggestionsCues);
-}
-
-bool IsGeminiContextualSuggestionsCuesOnDeviceClassifierEnabled() {
-  return IsGeminiContextualSuggestionsCuesEnabled() &&
-         kGeminiContextualSuggestionsCuesOnDeviceClassifier.Get();
-}
-
-bool IsGeminiContextualSuggestionsCuesAllowGpuExecutionEnabled() {
-  return IsGeminiContextualSuggestionsCuesEnabled() &&
-         kGeminiContextualSuggestionsCuesAllowGpuExecution.Get();
-}
-
-bool IsGeminiContextualSuggestionsCuesTitleAndUrlOnlyEnabled() {
-  return kGeminiContextualSuggestionsCuesTitleAndUrlOnly.Get();
-}
-
-bool IsGeminiContextualSuggestionsCuesServerModelExecutionEnabled() {
-  return IsGeminiContextualSuggestionsCuesEnabled() &&
-         kGeminiContextualSuggestionsCuesServerModelExecution.Get();
-}
 
 #pragma mark - Debugging Features
 

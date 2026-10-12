@@ -293,8 +293,10 @@ std::string_view GetThreatInfoSizeMetricSuffix(
       return ".SubresourceFilter";
     case CHECK_CSD_ALLOWLIST:
       return ".CsdAllowlist";
+    // Not used in local database manager.
+    case CHECK_NOTIFICATION_ABUSE:
+    // Synchronous checks never perform full-hash checks.
     case CHECK_OTHER:
-      // Synchronous checks never perform full-hash checks.
       NOTREACHED();
   }
 }
@@ -1267,6 +1269,11 @@ void SBLocalDatabaseManager::PerformFullHashCheck(
             return GetSBThreatTypeForList(store_and_prefix.list_id);
           });
     }
+    std::optional<V5GetHashProtocolManager::CheckContext> check_context;
+    if (v5_get_hash_protocol_manager->HasWebUIListener()) {
+      check_context = V5GetHashProtocolManager::CheckContext{
+          check->urls, check->client_callback_type};
+    }
     v5_get_hash_protocol_manager->GetFullHashes(
         std::move(full_hash_to_threat_types),
         // Wrap with WrapCallbackWithDefaultInvokeIfNotRun to ensure
@@ -1277,7 +1284,8 @@ void SBLocalDatabaseManager::PerformFullHashCheck(
             base::BindOnce(&SBLocalDatabaseManager::OnFullHashResponseV5,
                            weak_factory_.GetWeakPtr(), std::move(check)),
             /*threat_type=*/SBThreatType::SB_THREAT_TYPE_SAFE,
-            /*metadata=*/ThreatMetadata()));
+            /*metadata=*/ThreatMetadata()),
+        std::move(check_context));
     return;
   }
 
@@ -1470,6 +1478,7 @@ void SBLocalDatabaseManager::RespondToClientWithoutPendingCheckCleanup(
       break;
     }
 
+    case ClientCallbackType::CHECK_NOTIFICATION_ABUSE:
     case ClientCallbackType::CHECK_OTHER:
       NOTREACHED() << "Unexpected client_callback_type encountered";
   }

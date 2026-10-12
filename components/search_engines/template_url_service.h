@@ -62,8 +62,9 @@ class RegionalCapabilitiesService;
 }  // namespace regional_capabilities
 
 namespace search_engines {
-class SearchEngineChoiceService;
 class ChoiceScreenData;
+class SearchEngineChoiceService;
+class SearchEngineSettingsDataProvider;
 }  // namespace search_engines
 
 namespace syncer {
@@ -141,30 +142,6 @@ class TemplateURLService final : public WebDataServiceConsumer,
     raw_ptr<const TemplateURL> template_url;
     GURL normalized_url;
     std::u16string search_terms;
-  };
-
-  // Container for categorized search engine metadata. It groups TemplateURLs
-  // into specific buckets based on their type (e.g., prepopulated, starter
-  // pack, or custom) and their active state. This structure is primarily used
-  // to pass organized lists from the `TemplateURLService` to the WebUI settings
-  // page.
-  struct CategorizedTemplateUrls {
-    CategorizedTemplateUrls();
-    ~CategorizedTemplateUrls();
-    CategorizedTemplateUrls(const CategorizedTemplateUrls& other);
-
-    // All prepopulated engines retrieved from `GetPrepopulatedEngines()`, and
-    // custom shortcuts that are currently active. This always includes the
-    // current default search engine.
-    TemplateURLVector active_site_shortcuts;
-    // Custom shortcuts that are currently active.
-    TemplateURLVector inactive_site_shortcuts;
-    // Shortcuts with a starter pack id and extensions that are currently
-    // active.
-    TemplateURLVector active_feature_shortcuts;
-    // Shortcuts with a starter pack id and extensions that are currently
-    // inactive.
-    TemplateURLVector inactive_feature_shortcuts;
   };
 
 #if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_IOS)
@@ -276,6 +253,11 @@ class TemplateURLService final : public WebDataServiceConsumer,
   // or nullptr if there are no such TemplateURLs.
   TemplateURL* GetTemplateURLForHost(const std::string& host);
   const TemplateURL* GetTemplateURLForHost(const std::string& host) const;
+
+  // Looks up `id` and returns the best `TemplateURL` for it. Returns
+  // `nullptr` if the id was not found.
+  TemplateURL* GetTemplateURLForId(TemplateURLID id);
+  const TemplateURL* GetTemplateURLForId(TemplateURLID id) const;
 
   // Returns the `TemplateURL` corresponding to `starter_pack_id`, if any.
   TemplateURL* FindStarterPackTemplateURL(
@@ -453,32 +435,23 @@ class TemplateURLService final : public WebDataServiceConsumer,
   //       2.) The default search engine is disabled by policy.
   const TemplateURL* GetDefaultSearchProvider() const;
 
-  // Returns a CategorizedTemplateUrls object containing all TemplateURLs
-  // categorized into specific buckets (active/inactive site shortcuts and
-  // feature shortcuts).
-  //
-  // The ordering of `active_site_shortcuts` is specifically handled to ensure
-  // that prepopulated regional engines appear first in the order defined by the
-  // prepopulate_data_resolver. Enterprise policy search engines (both mandatory
-  // and recommended) and user-added (custom) engines are appended to the end of
-  // this list and sorted alphabetically.
-  //
-  // `disabled_starter_pack_ids` contains all `starter_pack_id`s that should not
-  // be included in either of the lists.
-  const CategorizedTemplateUrls GetCategorizedTemplateURLs(
-      template_url_starter_pack_data::StarterPackIdSet
-          disabled_starter_pack_ids =
-              template_url_starter_pack_data::StarterPackIdSet());
+  // Creates a provider that prepares search engine data and owns settings
+  // telemetry for the search settings screens. The returned object is expected
+  // to be owned by a settings UI controller for that controller's lifetime;
+  // see `search_engines::SearchEngineSettingsDataProvider`.
+  std::unique_ptr<search_engines::SearchEngineSettingsDataProvider>
+  CreateSearchEngineSettingsDataProvider();
 
 #if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_IOS)
   // Returns an object containing two lists. The first one contains engines that
   // are prepopulated (in the order defined by the prepopulate_data_resolver,
   // created by policy or the default search engine. The second one contains
   // recently visited engines.
-  // In contrast to `GetCategorizedTemplateURLs()`, this only creates these two
-  // lists and omits any extension or starter pack shortcuts. Additionally, as
-  // there is no way to activate/deactivate engines on platforms that use this
-  // function, there is no notion of "active" here.
+  // In contrast to
+  // `SearchEngineSettingsDataProvider::GetCategorizedTemplateURLs()`, this only
+  // creates these two lists and omits any extension or starter pack shortcuts.
+  // Additionally, as there is no way to activate/deactivate engines on
+  // platforms that use this function, there is no notion of "active" here.
   PrepopulatedAndRecentlyVisitedTemplateUrls
   GetPrepopulatedAndRecentlyVisitedTemplateURLs();
 #endif  // BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_IOS)
@@ -748,6 +721,9 @@ class TemplateURLService final : public WebDataServiceConsumer,
   using GUIDToTURL =
       std::map<std::string, raw_ptr<TemplateURL, CtnExperimental>>;
 
+  using IdToTURL =
+      std::map<TemplateURLID, raw_ptr<TemplateURL, CtnExperimental>>;
+
   // A mapping from keywords to the corresponding TemplateURLs.
   // This is a multimap, so the system can
   // efficiently tolerate multiple engines with the same keyword, like from
@@ -806,14 +782,14 @@ class TemplateURLService final : public WebDataServiceConsumer,
   void ApplyInitializersForTesting(
       base::span<const TemplateURLService::Initializer> initializers);
 
-  // Removes |template_url| from various internal maps
-  // (|keyword_to_turl_|, |guid_to_turl_|, |provider_map_|).
+  // Removes `template_url` from various internal maps
+  // (`keyword_to_turl_`, `guid_to_turl_`, `id_to_turl_`, `provider_map_`).
   void RemoveFromMaps(const TemplateURL* template_url);
 
-  // Adds |template_url| to various internal maps
-  // (|keyword_to_turl_|, |guid_to_turl_|, |provider_map_|) if
+  // Adds `template_url` to various internal maps
+  // (`keyword_to_turl_`, `guid_to_turl_`, `id_to_turl_`, `provider_map_`) if
   // appropriate.  (It might not be appropriate if, for instance,
-  // |template_url|'s keyword conflicts with the keyword of a custom search
+  // `template_url`'s keyword conflicts with the keyword of a custom search
   // engine already existing in the maps that is not allowed to be replaced.)
   void AddToMaps(TemplateURL* template_url);
 
@@ -1017,6 +993,9 @@ class TemplateURLService final : public WebDataServiceConsumer,
 
   // Mapping from Sync GUIDs to the TemplateURL.
   GUIDToTURL guid_to_turl_;
+
+  // Mapping from IDs to the TemplateURL.
+  IdToTURL id_to_turl_;
 
   // Mapping from keyword to TemplateURLs created by the policy.
   base::flat_map<std::u16string, raw_ptr<TemplateURL, CtnExperimental>>

@@ -51,6 +51,7 @@ class MockPage extends TestBrowserProxy implements PageInterface {
       'showSmartTabSharingDefaultOnIph',
       'onWindowClosed',
       'resetForNewThread',
+      'focusComposebox',
     ]);
   }
 
@@ -190,6 +191,10 @@ class MockPage extends TestBrowserProxy implements PageInterface {
 
   resetForNewThread(taskId: Uuid, threadUrl: Url) {
     this.methodCalled('resetForNewThread', taskId, threadUrl);
+  }
+
+  focusComposebox() {
+    this.methodCalled('focusComposebox');
   }
 }
 
@@ -535,9 +540,15 @@ export class TestExtensionPageHandler extends TestBrowserProxy implements
     ]);
   }
 
-  getLensCropPreview(dataId: string) {
-    this.methodCalled('getLensCropPreview', dataId);
-    return Promise.resolve({dataUri: null});
+  lensCropPreviewResult: {dataUri: string|null} = {dataUri: null};
+
+  setLensCropPreviewResult(dataUri: string|null) {
+    this.lensCropPreviewResult = {dataUri};
+  }
+
+  getLensCropPreview() {
+    this.methodCalled('getLensCropPreview');
+    return Promise.resolve(this.lensCropPreviewResult);
   }
 
   getHandshakeMessage() {

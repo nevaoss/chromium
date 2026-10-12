@@ -29,7 +29,7 @@ suite('TopToolbarTest', () => {
     loadTimeData.overrideValues({
       contextManagementInComposeboxEnabled: false,
       contextualTasksEnableSpatialModelToolbarLayout: false,
-      contextualTasksUnboundedMenuEnabled: true,
+      contextualTasksUnboundedMenuEnabled: false,
       contextualTasksSidePanelRearchitectureEnabled: false,
     });
   });

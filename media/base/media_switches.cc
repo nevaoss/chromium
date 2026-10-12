@@ -367,7 +367,7 @@ BASE_FEATURE(kAccurateVideoFrameConverterColorSpace,
 
 // Controls whether AOM/VPX decoders should use the presentation thread type.
 BASE_FEATURE(kAomVpxUsePresentationThreadType,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enables flash to be ducked by audio focus. This is enabled on Chrome OS which
 // has audio focus enabled.
@@ -486,6 +486,10 @@ BASE_FEATURE(kCdmThreadPriorityElevation, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kClearPipCachedBoundsWhenPermissionPromptVisible,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
+// Killswitch for coarsening CurrentMediaTime() to prevent high-resolution
+// timing attacks (crbug.com/562970433). Remove after M157 reaches stable.
+BASE_FEATURE(kCoarseWallClockTimeSource, base::FEATURE_ENABLED_BY_DEFAULT);
+
 // Enables the "Copy Video Frame" context menu item.
 BASE_FEATURE(kContextMenuCopyVideoFrame, base::FEATURE_ENABLED_BY_DEFAULT);
 
@@ -601,6 +605,11 @@ BASE_FEATURE(kFallbackAfterDecodeError, base::FEATURE_ENABLED_BY_DEFAULT);
 // FeatureManagement gate for Live Translate on ChromeOS devices. No impact
 // outside of CrOS.
 BASE_FEATURE(kFeatureManagementLiveTranslateCrOS,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
+// Controls whether FFmpegDemuxer attaches the HDR metadata carried by ITU-T
+// T.35 timed metadata tracks to the video tracks that reference them.
+BASE_FEATURE(kFFmpegDemuxerIT35MetadataTrack,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Forces software video encoders to be used for low resolutions.
@@ -964,10 +973,6 @@ BASE_FEATURE(kSpeakerChangeDetection, base::FEATURE_DISABLED_BY_DEFAULT);
 // CanPlayThrough issued according to standard.
 BASE_FEATURE(kSpecCompliantCanPlayThrough, base::FEATURE_ENABLED_BY_DEFAULT);
 
-// Suspends WebMediaPlayerImpl instances when the containing RenderFrame is
-// frozen. TODO(crbug.com/41161335): Remove in M143 after it goes stable.
-BASE_FEATURE(kSuspendMediaForFrozenFrames, base::FEATURE_ENABLED_BY_DEFAULT);
-
 // Enables the Unified Autoplay policy by overriding the platform's default
 // autoplay policy.
 BASE_FEATURE(kUnifiedAutoplay, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -1072,11 +1077,6 @@ BASE_FEATURE(kVideoBlitColorAccuracy,
 // smaller than maximum supported decodes as advertiszed by decoder.
 // Note: This is controlled on a per-board basis by ChromeOS and must be kept.
 BASE_FEATURE(kVideoDecodeBatching, base::FEATURE_ENABLED_BY_DEFAULT);
-
-// Enables optimizations to flush() and configure() in the WebCodecs' audio and
-// video decoder implementations. Kill-switch to be removed after M145 stable.
-BASE_FEATURE(kWebCodecsDecoderFlushOptimizations,
-             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // A video encoder is allowed to drop a frame in WebCodecs.
 BASE_FEATURE(kWebCodecsVideoEncoderFrameDrop,

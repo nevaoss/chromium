@@ -729,7 +729,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="OptimizationGuide.AIPageContent.ActiveRequestCount"
-    units="requests" expires_after="2027-01-17">
+    units="requests" expires_after="2027-03-21">
   <owner>alexmt@chromium.org</owner>
   <owner>khushalsagar@chromium.org</owner>
   <summary>
@@ -1134,7 +1134,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="OptimizationGuide.HintsManager.ConcurrentBatchUpdateFetches"
-    units="counts" expires_after="M145">
+    units="counts" expires_after="2027-04-14">
   <owner>rajendrant@chromium.org</owner>
   <owner>catliu@chromium.org</owner>
   <summary>
@@ -1154,18 +1154,6 @@ chromium-metrics-reviews@google.com.
     The number of active hints fetches initiated by the hints manager. Recorded
     when a fetch is initiated to the remote Optimization Guide Service at
     navigation start.
-  </summary>
-</histogram>
-
-<histogram
-    name="OptimizationGuide.HintsManager.PageNavigationHintsReturnedBeforeDataFlushed"
-    enum="BooleanStored" expires_after="M145">
-  <owner>rajendrant@chromium.org</owner>
-  <owner>catliu@chromium.org</owner>
-  <summary>
-    Records whether a page navigation hints fetch returned before navigation
-    data used to record additional page load metrics is flushed. Recorded only
-    for navigations that have a hints fetch initiated for it.
   </summary>
 </histogram>
 
@@ -1408,6 +1396,18 @@ chromium-metrics-reviews@google.com.
     not. Recorded once at the start of each execution session.
   </summary>
   <token key="ModelExecutionFeature" variants="ModelExecutionFeature"/>
+</histogram>
+
+<histogram
+    name="OptimizationGuide.ModelExecution.OnDeviceModelEvictableAssetsCount"
+    units="counts" expires_after="2027-04-14">
+  <owner>holte@chromium.org</owner>
+  <owner>wittman@chromium.org</owner>
+  <summary>
+    Records the number of installed on-device model assets that are marked as
+    evictable (have not been required by any recently used use case within the
+    retention period). Recorded whenever asset registrations are updated.
+  </summary>
 </histogram>
 
 <histogram
@@ -1860,9 +1860,9 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="OptimizationGuide.ModelQualityLogsUploaderService.NetErrorCode"
-    enum="NetErrorCodes" expires_after="2025-08-15">
+    enum="NetErrorCodes" expires_after="2027-09-15">
   <owner>sreejakshetty@chromium.org</owner>
-  <owner>rajendrant@chromium.org</owner>
+  <owner>ryansturm@chromium.org</owner>
   <summary>
     Net error codes for each model quality logs upload, recorded on success and
     failure.
@@ -2005,7 +2005,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="OptimizationGuide.PageContentAnnotations.CategoryClassifier.EducationScore"
-    units="%" expires_after="2027-01-17">
+    units="%" expires_after="2027-03-21">
   <owner>zekunjiang@google.com</owner>
   <owner>chrome-intelligence-core@google.com</owner>
   <summary>
@@ -2016,7 +2016,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="OptimizationGuide.PageContentAnnotations.CategoryClassifier.ShoppingScore"
-    units="%" expires_after="2027-01-17">
+    units="%" expires_after="2027-03-21">
   <owner>zekunjiang@google.com</owner>
   <owner>chrome-intelligence-core@google.com</owner>
   <summary>
@@ -2136,7 +2136,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="OptimizationGuide.PageContentCache.AddPageContentResult"
-    enum="BooleanSuccess" expires_after="2027-01-17">
+    enum="BooleanSuccess" expires_after="2027-03-21">
   <owner>ssid@chromium.org</owner>
   <owner>chrome-intelligence-core@google.com</owner>
   <summary>
@@ -2312,7 +2312,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="OptimizationGuide.PageContentCache.RemovePageContentForTabResult"
-    enum="BooleanSuccess" expires_after="2027-01-17">
+    enum="BooleanSuccess" expires_after="2027-03-21">
   <owner>ssid@chromium.org</owner>
   <owner>chrome-intelligence-core@google.com</owner>
   <summary>
@@ -2411,7 +2411,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="OptimizationGuide.PageContentExtraction.AutomaticOnLoad.ExtractionLatency"
-    units="ms" expires_after="2027-01-17">
+    units="ms" expires_after="2027-03-21">
   <owner>alexmt@chromium.org</owner>
   <owner>chrome-intelligence-core@google.com</owner>
   <summary>

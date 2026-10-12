@@ -12,12 +12,14 @@
 #include "chrome/browser/global_features.h"
 #include "chrome/browser/lifetime/application_lifetime_desktop.h"
 #include "chrome/browser/lifetime/browser_shutdown.h"
+#include "chrome/browser/prefs/session_startup_pref.h"
 #include "chrome/browser/profiles/keep_alive/profile_keep_alive_types.h"
 #include "chrome/browser/profiles/profile_attributes_entry.h"
 #include "chrome/browser/profiles/profile_attributes_storage.h"
 #include "chrome/browser/profiles/profile_avatar_icon_util.h"
 #include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/browser/profiles/profile_test_util.h"
+#include "chrome/browser/sessions/session_restore.h"
 #include "chrome/browser/status_icons/status_tray.h"
 #include "chrome/browser/ui/browser_commands.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
@@ -46,6 +48,7 @@
 #include "components/prefs/pref_service.h"
 #include "content/public/browser/web_ui.h"
 #include "content/public/test/browser_test.h"
+#include "content/public/test/browser_test_utils.h"
 #include "extensions/buildflags/buildflags.h"
 #include "third_party/blink/public/mojom/page/draggable_region.mojom.h"
 #include "ui/base/accelerators/accelerator.h"
@@ -333,6 +336,55 @@ IN_PROC_BROWSER_TEST_F(OmniboxEverywhereBrowserTest, FocusAndActivationState) {
 
   ui_manager.Close();
   EXPECT_FALSE(widget->IsVisible());
+  ui_manager.Shutdown();
+}
+
+IN_PROC_BROWSER_TEST_F(OmniboxEverywhereBrowserTest,
+                       SynthesizesMouseEventOnMenuClosed) {
+  OmniboxEverywhereUIManager ui_manager;
+
+  ui_manager.ShowForProfile(browser()->GetProfile(),
+                            browser()->GetWindow()->GetNativeWindow());
+  views::Widget* widget = ui_manager.widget();
+  ASSERT_TRUE(widget);
+  EXPECT_TRUE(widget->IsVisible());
+
+  ASSERT_TRUE(ui_manager.contents_wrapper_for_testing());
+  content::WebContents* web_contents =
+      ui_manager.contents_wrapper_for_testing()->web_contents();
+  ASSERT_TRUE(web_contents);
+  ASSERT_TRUE(content::WaitForLoadStop(web_contents));
+
+  auto* rwh = web_contents->GetPrimaryMainFrame()->GetRenderWidgetHost();
+  ASSERT_TRUE(rwh);
+
+  ASSERT_TRUE(web_contents->GetWebUI());
+  auto* controller =
+      web_contents->GetWebUI()->GetController()->GetAs<OmniboxEverywhereUI>();
+  ASSERT_TRUE(controller);
+
+  // 1. Verify OnContextMenuClosed forwards a synthetic mouse event to the host.
+  {
+    content::RenderWidgetHostMouseEventMonitor monitor(rwh);
+    controller->OnContextMenuClosed();
+    EXPECT_TRUE(monitor.EventWasReceived());
+    EXPECT_TRUE(
+        monitor.event().GetType() == blink::WebInputEvent::Type::kMouseMove ||
+        monitor.event().GetType() == blink::WebInputEvent::Type::kMouseLeave);
+  }
+
+  // 2. Verify OnScreenshotMenuClosed forwards a synthetic mouse event to the
+  // host.
+  {
+    content::RenderWidgetHostMouseEventMonitor monitor(rwh);
+    controller->OnScreenshotMenuClosed();
+    EXPECT_TRUE(monitor.EventWasReceived());
+    EXPECT_TRUE(
+        monitor.event().GetType() == blink::WebInputEvent::Type::kMouseMove ||
+        monitor.event().GetType() == blink::WebInputEvent::Type::kMouseLeave);
+  }
+
+  ui_manager.Close();
   ui_manager.Shutdown();
 }
 
@@ -1075,6 +1127,43 @@ IN_PROC_BROWSER_TEST_F(
     OmniboxEverywherePersistentBrowserTest,
     MAYBE_OpenUrlCreatesBrowserBeforeDemotingPopupWhenNoBrowsers) {
   TestOpenUrlCreatesBrowserWhenNoBrowsers(/*ephemeral=*/false);
+}
+
+IN_PROC_BROWSER_TEST_F(OmniboxEverywhereEphemeralBrowserTest,
+                       OpenUrlDoesNotTriggerSessionRestoreWhenNoBrowsers) {
+  Profile* profile = browser()->GetProfile();
+  set_exit_when_last_browser_closes(false);
+
+  // Set startup pref to restore last session.
+  SessionStartupPref::SetStartupPref(
+      profile, SessionStartupPref(SessionStartupPref::LAST));
+
+  GlobalFeatures* features = g_browser_process->GetFeatures();
+  ASSERT_TRUE(features);
+  auto* controller = features->omnibox_everywhere_controller();
+  ASSERT_TRUE(controller);
+
+  // Show the Omnibox Everywhere widget.
+  controller->OnInvoke(InvocationSource::kGlobalHotkey, profile);
+  EXPECT_TRUE(controller->IsVisible());
+
+  // Close the existing browser window so 0 browser windows exist.
+  CloseBrowserSynchronously(browser());
+  EXPECT_EQ(0u, GlobalBrowserCollection::GetInstance()->GetSize());
+  EXPECT_TRUE(controller->IsVisible());
+
+  // Trigger OpenUrl from the Omnibox Everywhere service.
+  auto* service = OmniboxEverywhereServiceFactory::GetForProfile(profile);
+  ASSERT_TRUE(service);
+  service->OpenUrl(GURL("chrome://version/"),
+                   WindowOpenDisposition::CURRENT_TAB,
+                   ui::PAGE_TRANSITION_TYPED);
+
+  // Verify that only one browser window was created and session restore was
+  // not triggered.
+  EXPECT_EQ(1u, GlobalBrowserCollection::GetInstance()->GetSize());
+  EXPECT_FALSE(SessionRestore::IsRestoring(profile));
+  EXPECT_FALSE(controller->IsVisible());
 }
 
 class OmniboxEverywhereCommandLineBrowserTest

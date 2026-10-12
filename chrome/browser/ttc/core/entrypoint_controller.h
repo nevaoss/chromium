@@ -7,7 +7,7 @@
 
 #include "base/callback_list.h"
 #include "base/memory/raw_ref.h"
-#include "chrome/browser/ttc/core/ttc_state.h"
+#include "chrome/browser/ttc/core/states.h"
 #include "ui/base/unowned_user_data/scoped_unowned_user_data.h"
 
 class BrowserWindowInterface;
@@ -18,7 +18,8 @@ class TtcKeyedService;
 
 enum class EntrypointType {
   kToolbarButton = 0,
-  kMaxValue = kToolbarButton,
+  kAppMenu = 1,
+  kMaxValue = kAppMenu,
 };
 
 // Window-scoped controller for TTC's entrypoints. Routes entrypoint activations
@@ -40,9 +41,10 @@ class EntrypointController {
 
  private:
   void ToolbarButtonHandler();
-  void OnTtcStateChanged(TtcState state);
-  void UpdateUi(TtcState state);
-  void UpdateToolbarButton(TtcState state);
+  void AppMenuHandler();
+  void OnTtcStateChanged(ServiceState state);
+  void UpdateUi(ServiceState state);
+  void UpdateToolbarButton(ServiceState state);
 
   void ToggleSession();
 

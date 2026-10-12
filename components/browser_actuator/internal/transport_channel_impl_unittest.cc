@@ -28,6 +28,7 @@
 #include "components/browser_actuator/internal/transport_session_impl.h"
 #include "components/browser_actuator/internal/transport_session_registry_impl.h"
 #include "components/browser_actuator/public/features.h"
+#include "components/browser_actuator/public/payload_type_mapping.h"
 #include "components/browser_actuator/public/transport_handler.h"
 #include "components/browser_actuator/public/transport_handler_factory.h"
 #include "components/browser_actuator/public/transport_handler_factory_registry.h"
@@ -293,6 +294,7 @@ TEST_F(TransportChannelImplTest,
 struct TestPayload {
   ActuatorDownstreamPayloadType type;
   std::string value;
+  std::string type_url;
 };
 
 std::string SerializedDownstreamMessage(
@@ -310,6 +312,7 @@ std::string SerializedDownstreamMessage(
     typed->set_payload_type(payload.type);
     typed->mutable_proto_payload()->set_value(payload.value.data(),
                                               payload.value.size());
+    typed->mutable_proto_payload()->set_type_url(payload.type_url);
   }
 
   return response.SerializeAsString();
@@ -335,6 +338,32 @@ TEST_F(TransportChannelImplTest, RoutesPayloadTypeToHandler) {
         command.SerializeAsString()}}));
 
   EXPECT_TRUE(message_handled);
+}
+
+// Regression test for crbug.com/560176806.
+TEST_F(TransportChannelImplTest, RoutesExperimentalTriggeringToHandler) {
+  std::string handled_payload;
+  bool message_handled = false;
+  FakeTransportHandlerFactory factory(
+      {PayloadType::kExperimentalTriggering},
+      base::BindLambdaForTesting(
+          [&](TransportSession*) -> std::unique_ptr<TransportHandler> {
+            return std::make_unique<FakeTransportHandler>(
+                base::BindLambdaForTesting([&](std::string_view payload) {
+                  message_handled = true;
+                  handled_payload = std::string(payload);
+                }));
+          }));
+  channel_->GetHandlerFactoryRegistry()->RegisterFactory(&factory);
+
+  fake_client_->Dispatch(SerializedDownstreamMessage(
+      "s1", 1,
+      {{ACTUATOR_DOWNSTREAM_PAYLOAD_TYPE_EXPERIMENTAL_TRIGGERING,
+        "triggering-bytes",
+        std::string(ExpectedTypeUrl(PayloadType::kExperimentalTriggering))}}));
+
+  EXPECT_TRUE(message_handled);
+  EXPECT_EQ(handled_payload, "triggering-bytes");
 }
 
 TEST_F(TransportChannelImplTest, SessionDestructionMidLoop) {
@@ -636,6 +665,53 @@ TEST_F(TransportChannelImplTest, SendUpstreamMessagesAcrossMultipleSessions) {
   test_url_loader_factory_.SimulateResponseForPendingRequest(
       request_url, /*content=*/"", net::HTTP_OK);
   EXPECT_EQ(test_url_loader_factory_.NumPending(), 0);
+}
+
+TEST_F(TransportChannelImplTest,
+       StartSessionDownstreamTriggersStartSessionAckUpstream) {
+  WatchSessionsResponse response;
+  ActuatorDownstreamMessage* downstream =
+      response.mutable_actuator_downstream_message();
+  downstream->set_session_id("session_start_test");
+  downstream->set_sequence_number(42);
+
+  ControlCommand command;
+  command.mutable_start_session();
+
+  auto* typed_payload = downstream->add_typed_payloads();
+  typed_payload->set_payload_type(
+      ACTUATOR_DOWNSTREAM_PAYLOAD_TYPE_CONTROL_COMMAND);
+  typed_payload->mutable_proto_payload()->set_value(
+      command.SerializeAsString());
+
+  fake_client_->Dispatch(response.SerializeAsString());
+
+  ASSERT_TRUE(
+      WaitFor([&]() { return test_url_loader_factory_.NumPending() == 1; }));
+
+  const network::TestURLLoaderFactory::PendingRequest* pending =
+      test_url_loader_factory_.GetPendingRequest(0);
+  ASSERT_NE(pending, nullptr);
+
+  std::string upload_body = network::GetUploadData(pending->request);
+  SendSessionMessageRequest request;
+  ASSERT_TRUE(request.ParseFromString(upload_body));
+
+  const ActuatorUpstreamMessage& upstream = request.actuator_upstream_message();
+  EXPECT_EQ(upstream.session_id(), "session_start_test");
+  EXPECT_EQ(upstream.client_sequence_number(), 1);
+  EXPECT_EQ(upstream.responding_to_sequence_number(), 42);
+
+  ASSERT_EQ(upstream.typed_payloads_size(), 1);
+  EXPECT_EQ(upstream.typed_payloads(0).payload_type(),
+            ACTUATOR_UPSTREAM_PAYLOAD_TYPE_CONTROL_COMMAND);
+
+  ControlCommand command_ack;
+  command_ack.mutable_start_session_ack();
+  EXPECT_EQ(upstream.typed_payloads(0).proto_payload().value(),
+            command_ack.SerializeAsString());
+  EXPECT_EQ(upstream.typed_payloads(0).proto_payload().type_url(),
+            "type.googleapis.com/browser_actuator.ControlCommand");
 }
 
 TEST_F(TransportChannelImplTestWithMockTime, SendUpstreamMessageHTTPError) {

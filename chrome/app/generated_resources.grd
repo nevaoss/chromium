@@ -2488,6 +2488,12 @@ are declared in tools/grit/grit_args.gni.
       <message name="IDS_EMAIL_VERIFIED" desc="Toast message to notify the user when their email is automatically verified by the browser.">
         <ph name="ISSUER">$1<ex>google.com</ex></ph> verified your email
       </message>
+      <message name="IDS_EMAIL_VERIFICATION_LOADING" desc="Accessibility announcement and toast message to notify the user that background email verification is in progress.">
+        Verifying email
+      </message>
+      <message name="IDS_EMAIL_VERIFICATION_ERROR" desc="Toast message to notify the user when background email verification failed.">
+        Couldn't verify your email
+      </message>
 
       <if expr="is_chromeos">
         <message name="IDS_PROMPT_BLOCKED_INSECURE_DOWNLOAD_TITLE"
@@ -4873,6 +4879,9 @@ are declared in tools/grit/grit_args.gni.
         <message name="IDS_TASK_MANAGER_SEARCH_HINT" desc="The placeholder text for the Task Manager search box" formatter_data="android_java">
           Search
         </message>
+        <message name="IDS_TASK_MANAGER_EMPTY_VIEW_TEXT" desc="The text displayed when there are no tasks or no search results in the Task Manager." formatter_data="android_java">
+          No tasks
+        </message>
         <message name="IDS_TASK_MANAGER_KILL_V2" desc="The caption of the Task Manager kill button">
           End task
         </message>
@@ -5143,12 +5152,6 @@ are declared in tools/grit/grit_args.gni.
       </message>
       <message name="IDS_TASK_MANAGER_PORTAL_INCOGNITO_PREFIX" desc="The prefix for an Incognito portal row in the Task Manager (these processes are created when portals is enabled, in Incognito mode)">
         Incognito Portal: <ph name="SUBFRAME_SITE">$1<ex>https://youtube.com/</ex></ph>
-      </message>
-      <message name="IDS_TASK_MANAGER_FENCED_FRAME_PREFIX" desc="The prefix for a fenced frame row in the Task Manager">
-        Fenced Frame: <ph name="FENCEDFRAME_SITE">$1<ex>https://youtube.com/</ex></ph>
-      </message>
-      <message name="IDS_TASK_MANAGER_FENCED_FRAME_INCOGNITO_PREFIX" desc="The prefix for an Incognito fenced frame row in the Task Manager">
-        Incognito Fenced Frame: <ph name="FENCEDFRAME_SITE">$1<ex>https://youtube.com/</ex></ph>
       </message>
       <message name="IDS_TASK_MANAGER_ARC_PREFIX" desc="The prefix for an ARC general process row">
         App: <ph name="ARC_PROCESS_NAME">$1<ex>com.android.systemui</ex></ph>
@@ -6880,14 +6883,13 @@ Keep your key file in a safe place. You will need it to create new versions of y
       </message>
 
       <!-- Remote Actor Credential Sharing Dialog -->
-      <!-- TODO(crbug.com/558163687): Enable translations closer to launch. -->
-      <message name="IDS_REMOTE_ACTOR_SHARING_DIALOG_TITLE" desc="Title of the dialog asking the user to share credentials with Gemini Spark." translateable="false">
-        Allow Gemini Spark to sign in to <ph name="DOMAIN">$1<ex>example.com</ex></ph> for you?
+      <message name="IDS_REMOTE_ACTOR_SHARING_DIALOG_TITLE" desc="Title of the dialog asking the user to share credentials with Gemini.">
+        Allow Gemini to sign in to <ph name="DOMAIN">$1<ex>example.com</ex></ph> for you?
       </message>
-      <message name="IDS_REMOTE_ACTOR_SHARING_DIALOG_SUBTITLE" desc="Subtitle of the dialog asking the user to share credentials with Gemini Spark." translateable="false">
-        Spark can use Google Password Manager to sign in for you. <ph name="BEGIN_LINK">$1</ph>Learn how Spark handles your data<ph name="END_LINK">$2</ph>
+      <message name="IDS_REMOTE_ACTOR_SHARING_DIALOG_SUBTITLE" desc="Subtitle of the dialog asking the user to share credentials with Gemini.">
+        Gemini can use Google Password Manager to sign in for you. <ph name="BEGIN_LINK">$1</ph>Learn how Gemini handles your data<ph name="END_LINK">$2</ph>
       </message>
-      <message name="IDS_REMOTE_ACTOR_SHARING_DIALOG_ALLOW_BUTTON" desc="Button label to allow password sharing for Gemini Spark this time." translateable="false">
+      <message name="IDS_REMOTE_ACTOR_SHARING_DIALOG_ALLOW_BUTTON" desc="Button label to allow password sharing for Gemini this time.">
         Allow this time
       </message>
 
@@ -11852,6 +11854,17 @@ Check your passwords anytime in <ph name="GOOGLE_PASSWORD_MANAGER">$1<ex>Google 
         <message name="IDS_FEEDBACK_OFFLINE_DIALOG_TEXT" desc="The content of the message box displayed when the user attempts to send a report while offline">
           Thank you for your feedback. You are offline now, and your report will be sent later.
         </message>
+        <if expr="is_win or is_macosx or is_linux">
+          <message name="IDS_FEEDBACK_DISABLED_DIALOG_TITLE" desc="The title of a dialog informing the user that feedback cannot be submitted for their account.">
+            Can't send feedback
+          </message>
+          <message name="IDS_FEEDBACK_DISABLED_DIALOG_BODY" desc="The body text of a dialog that explains why feedback cannot be sent due to account restrictions, specifically for underaged accounts.">
+            Feedback isn't available for your account. An adult can use their device or profile to report an issue for you.
+          </message>
+          <message name="IDS_FEEDBACK_DISABLED_DIALOG_BODY_ENTERPRISE" desc="The body text of a dialog that explains why feedback cannot be sent due to enterprise policy restrictions.">
+            Feedback isn't available for your account. Your enterprise administrator can use their device or profile to report an issue for you.
+          </message>
+        </if>
         <if expr="not is_chromeos">
           <message name="IDS_FEEDBACK_INCLUDE_SYSTEM_INFORMATION_CHKBOX" desc="Checkbox for including system information on the bug report dialog box">
             Send <ph name="BEGIN_LINK1">&lt;a href="#" id="sys-info-url"&gt;</ph>system information<ph name="END_LINK1">&lt;/a&gt;</ph>
@@ -12865,6 +12878,15 @@ Check your passwords anytime in <ph name="GOOGLE_PASSWORD_MANAGER">$1<ex>Google 
       <message name="IDS_TAB_GROUP_HEADER_CXMENU_UNFOCUS_GROUP" desc="The label for unfocus group in the tab group editor bubble.">
         Unfocus group
       </message>
+      <message name="IDS_TAB_GROUP_HEADER_CXMENU_CREATE_GROUP" desc="The label for create button in the tab group editor bubble when creating a permanent tab group from an ephemeral one.">
+        Create
+      </message>
+      <message name="IDS_TAB_GROUP_HEADER_CXMENU_CONVERT_TO_GROUP" desc="Title shown at top of the tab group editor bubble when in non group focus mode.">
+        Add Tabs to New Group
+      </message>
+      <message name="IDS_TAB_GROUP_HEADER_EPHEMERAL_TAB_COUNT" desc="The title shown on the tab group header for an ephemeral tab group indicating the number of tabs in the group. [ICU Syntax]">
+        {NUM_TABS, plural, =1 {1 Tab} other {# Tabs}}
+      </message>
       <message name="IDS_TAB_GROUP_HEADER_CXMENU_SHARE_GROUP" desc="The label of the tab group header context menu item for sharing the current group.">
         Share group
       </message>
@@ -13714,6 +13736,9 @@ Check your passwords anytime in <ph name="GOOGLE_PASSWORD_MANAGER">$1<ex>Google 
       </message>
       <message name="IDS_DEFAULT_BROWSER_MODAL_CONFIRM_BUTTON" desc="Label for the button to confirm setting the default browser.">
         Open settings
+      </message>
+      <message name="IDS_DEFAULT_BROWSER_MODAL_TRY_AGAIN_BUTTON" desc="Retry button for the sticky default browser modal.">
+        Try again
       </message>
       <message name="IDS_DEFAULT_BROWSER_MODAL_CANCEL_BUTTON" desc="Label for the button to cancel setting the default browser.">
         Set later
@@ -18004,8 +18029,8 @@ Please help our engineers fix this problem. Tell us what happened right before y
       <message name="IDS_WEBAUTHN_TRANSPORT_WINDOWS_HELLO" desc="Menu item text. The user selects this to use Windows Hello. Windows Hello is a Microsoft brand and should be translated the same as it is in Windows. If you edit the language code in https://support.microsoft.com/en-us/windows/learn-about-windows-hello-and-set-it-up-dae28983-8242-bb2a-d3d1-87c9d265a5f0 you can see how Microsoft translates it in several languages. (It is often left untranslated.)">
         Windows Hello
       </message>
-      <message name="IDS_WEBAUTHN_TRANSPORT_ICLOUD_KEYCHAIN" desc="Menu item text. The user selects this to use iCloud Keychain. iCloud Keychain is an Apple brand and should be translated the same as it is in Apple devices. If you edit the language code in https://support.apple.com/es-es/HT204085 you can see how Apple translates it in several languages. ('Keychain' is usually localized.)">
-        iCloud Keychain
+      <message name="IDS_WEBAUTHN_TRANSPORT_ICLOUD_KEYCHAIN" desc="Menu item text. The user selects this to use Apple Passwords. Apple Passwords is an Apple brand and should be translated the same as it is in Apple devices. If you edit the language code in https://support.apple.com/es-es/104955 you can see how Apple translates it in several languages. ('Passwords' is usually localized.)">
+        Apple Passwords
       </message>
       <message name="IDS_WEBAUTHN_TRANSPORT_EXTERNAL_SECURITY_KEY" desc="Menu item text. The user selects this to use a security key (an external physical device for user authentication).">
         Use an external security key
@@ -18257,8 +18282,8 @@ Please help our engineers fix this problem. Tell us what happened right before y
       <message name="IDS_WEBAUTHN_SOURCE_CHROME_PROFILE" desc="The subtitle shown in a button that lets the user select a passkey to sign in, indicating that the passkey resides in the user's Chrome Profile.">
         Your Chrome profile
       </message>
-      <message name="IDS_WEBAUTHN_SOURCE_ICLOUD_KEYCHAIN" desc="The subtitle shown in a button that lets the user select a passkey to sign in, indicating that the passkey resides in the user's iCloud Keychain.">
-        iCloud Keychain
+      <message name="IDS_WEBAUTHN_SOURCE_ICLOUD_KEYCHAIN" desc="The subtitle shown in a button that lets the user select a passkey to sign in, indicating that the passkey resides in Apple Passwords. Apple Passwords is an Apple brand and should be translated the same as it is in Apple devices. If you edit the language code in https://support.apple.com/es-es/104955 you can see how Apple translates it in several languages. ('Passwords' is usually localized.)">
+        Apple Passwords
       </message>
       <message name="IDS_WEBAUTHN_SOURCE_WINDOWS_HELLO" desc="The subtitle shown in a button that lets the user select a passkey to sign in, indicating that the passkey resides in Windows Hello.">
         Windows Hello
@@ -18304,7 +18329,7 @@ Please help our engineers fix this problem. Tell us what happened right before y
       <message name="IDS_WEBAUTHN_GPM_CREATE_PASSKEY_DESC" desc="This string appears in a dialog users see after they choose to create a sign-in method called a passkey on a website. The first sentence means they can sign in to the site faster on any device. The second sentence tells users that the passkey will be saved to Google Password Manager for the Google email address they are using. Refer to Glossary for the meaning of 'passkey'; do not translate it as 'password'.">
         You can use this passkey to sign in faster across your devices. It will be saved to Google Password Manager for <ph name="ACCOUNT_NAME">$1<ex>example@gmail.com</ex></ph>.
       </message>
-      <message name="IDS_WEBAUTHN_SAVE_ANOTHER_WAY" desc="Text link that appears on a button to save the passkey another way. For example, in their iCloud Keychain account or by using Windows Hello.">
+      <message name="IDS_WEBAUTHN_SAVE_ANOTHER_WAY" desc="Text link that appears on a button to save the passkey another way. For example, in Apple Passwords or by using Windows Hello.">
         Save another way
       </message>
       <message name="IDS_WEBAUTHN_GPM_TRUST_THIS_COMPUTER_CREATION_TITLE" desc="This string appears in a dialog users see after they choose to create a sign-in method called a passkey on a website. It means that before the user can create the passkey, they need to verify their identity by, e.g., entering their Google Password Manager PIN or the lockscreen of a phone they own. Refer to Glossary for the meaning of 'passkey'; do not translate it as 'password'.">

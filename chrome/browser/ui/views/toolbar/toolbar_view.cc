@@ -27,7 +27,6 @@
 #include "chrome/browser/actor/ui/task_list_bubble/actor_task_list_bubble_controller.h"
 #include "chrome/browser/command_updater.h"
 #include "chrome/browser/glic/browser_ui/glic_actor_nudge_controller.h"
-#include "chrome/browser/glic/browser_ui/glic_actor_task_icon_manager_factory.h"
 #include "chrome/browser/glic/browser_ui/glic_nudge_controller.h"
 #include "chrome/browser/glic/browser_ui/glic_split_button_controller.h"
 #include "chrome/browser/glic/public/features.h"
@@ -35,6 +34,7 @@
 #include "chrome/browser/glic/public/glic_invoke_options.h"
 #include "chrome/browser/glic/public/glic_keyed_service.h"
 #include "chrome/browser/glic/public/glic_keyed_service_factory.h"
+#include "chrome/browser/glic/public/service/glic_activity_manager_factory.h"
 #include "chrome/browser/glic/public/service/glic_instance_coordinator.h"
 #include "chrome/browser/media/router/media_router_feature.h"
 #include "chrome/browser/performance_manager/public/user_tuning/user_tuning_utils.h"
@@ -53,6 +53,7 @@
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/color/chrome_color_id.h"
+#include "chrome/browser/ui/global_error/global_error.h"
 #include "chrome/browser/ui/global_error/global_error_service.h"
 #include "chrome/browser/ui/global_error/global_error_service_factory.h"
 #include "chrome/browser/ui/intent_picker_tab_helper.h"
@@ -772,9 +773,9 @@ ToolbarView::CreateGlicActorTaskIcon() {
 
 void ToolbarView::OnGlicActorTaskIconClicked() {
   Profile* const profile = browser_view_->GetProfile();
-  auto* icon_manager =
-      glic::GlicActorTaskIconManagerFactory::GetForProfile(profile);
-  CHECK(icon_manager);
+  auto* activity_manager =
+      glic::GlicActivityManagerFactory::GetForProfile(profile);
+  CHECK(activity_manager);
 
   ActorTaskListBubbleController* controller =
       ActorTaskListBubbleController::From(browser_view_->browser());
@@ -784,7 +785,8 @@ void ToolbarView::OnGlicActorTaskIconClicked() {
     controller->ShowBubble(glic_actor_task_icon_);
   }
 
-  auto current_task_nudge_state = icon_manager->GetCurrentActorTaskNudgeState();
+  auto current_task_nudge_state =
+      activity_manager->GetCurrentActorTaskNudgeState();
   actor::ui::LogGlobalTaskIndicatorClick(current_task_nudge_state);
 }
 
@@ -978,8 +980,7 @@ void ToolbarView::ShowActorTaskListBubble() {
   }
   if (!actor_task_list_bubble_) {
     Profile* profile = browser_->GetProfile();
-    auto* manager =
-        glic::GlicActorTaskIconManagerFactory::GetForProfile(profile);
+    auto* manager = glic::GlicActivityManagerFactory::GetForProfile(profile);
     auto* controller = ActorTaskListBubbleController::From(browser_);
     if (manager && controller) {
       actor_task_list_bubble_ = std::make_unique<ActorTaskListBubble>(
@@ -1175,7 +1176,9 @@ void ToolbarView::AnimationProgressed(const gfx::Animation* animation) {
 }
 
 void ToolbarView::Update(WebContents* tab) {
-  if (location_bar_) {
+  if (custom_tab_bar_) {
+    custom_tab_bar_->UpdateContents();
+  } else if (location_bar_) {
     location_bar_->Update(tab);
   }
 
@@ -1194,7 +1197,12 @@ void ToolbarView::Update(WebContents* tab) {
 }
 
 bool ToolbarView::UpdateSecurityState() {
-  if (location_bar_ && location_bar_->HasSecurityStateChanged()) {
+  const bool has_security_state_changed =
+      display_mode_ == DisplayMode::kCustomTab
+          ? (custom_tab_bar_ && custom_tab_bar_->HasSecurityStateChanged())
+          : (location_bar_ && location_bar_->HasSecurityStateChanged());
+
+  if (has_security_state_changed) {
     Update(nullptr);
     return true;
   }
@@ -1872,6 +1880,19 @@ void ToolbarView::UpdateTypeAndSeverity(
       type_and_severity.type ==
       AppMenuIconController::IconType::kUpgradeNotification);
   action_item->SetText(AppMenuModel::GetUpgradeDialogTitleText());
+
+  auto* global_error_action_item = actions::ActionManager::Get().FindAction(
+      kActionGlobalError, BrowserActions::From(browser_)->root_action_item());
+  CHECK(global_error_action_item);
+  if (GlobalError* error =
+          GlobalErrorServiceFactory::GetForProfile(browser_->GetProfile())
+              ->GetHighestSeverityGlobalErrorWithAppMenuItem()) {
+    global_error_action_item->SetVisible(true);
+    global_error_action_item->SetText(error->MenuItemLabel());
+    global_error_action_item->SetImage(error->MenuItemIcon());
+  } else {
+    global_error_action_item->SetVisible(false);
+  }
 }
 
 ExtensionsContainerViews* ToolbarView::GetExtensionsContainerViews() {

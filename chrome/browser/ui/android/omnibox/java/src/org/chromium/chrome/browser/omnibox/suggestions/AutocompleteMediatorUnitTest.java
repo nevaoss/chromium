@@ -386,6 +386,13 @@ public class AutocompleteMediatorUnitTest {
         return session;
     }
 
+    private FuseboxSessionState setUpSessionForPendingItemSelection() {
+        var session = createEmptySession();
+        mMediator.beginInput(session);
+        mMediator.allowPendingItemSelection();
+        return session;
+    }
+
     private AutocompleteMatch createSearchSuggestMatch() {
         return AutocompleteMatchBuilder.searchWithType(OmniboxSuggestionType.SEARCH_SUGGEST)
                 .setDisplayText(SAMPLE_QUERY)
@@ -414,7 +421,8 @@ public class AutocompleteMediatorUnitTest {
                 url,
                 /* inputStart= */ 0,
                 /* openInNewTab= */ false,
-                /* openInNewWindow= */ false);
+                /* openInNewWindow= */ false,
+                /* openInBackground= */ false);
     }
 
     private void setUpSessionAndMatch(
@@ -1214,6 +1222,21 @@ public class AutocompleteMediatorUnitTest {
         mMediator.onSuggestionFocused(match);
 
         assertNull(session.getAutocompleteInput().getPreviewMatchUrl());
+    }
+
+    @Test
+    public void onSuggestionFocused_emptyFillIntoEdit_doesNotFallbackToDisplayText() {
+        setUpSessionForPendingItemSelection();
+
+        AutocompleteMatch match =
+                new AutocompleteMatchBuilder()
+                        .setDisplayText("View your AI Mode history")
+                        .setFillIntoEdit("")
+                        .build();
+
+        mMediator.onSuggestionFocused(match);
+
+        verify(mAutocompleteDelegate).setOmniboxEditingText("");
     }
 
     @Test
@@ -2935,7 +2958,8 @@ public class AutocompleteMediatorUnitTest {
                 extensionUrl,
                 /* inputStart= */ 0,
                 /* openInNewTab= */ true,
-                /* openInNewWindow= */ false);
+                /* openInNewWindow= */ false,
+                /* openInBackground= */ false);
 
         // Verify that extension matches are dispatched to the extension system via
         // ExtensionUi rather than triggering a normal tab navigation via
@@ -2962,9 +2986,25 @@ public class AutocompleteMediatorUnitTest {
                 extensionUrl,
                 /* inputStart= */ 0,
                 /* openInNewTab= */ false,
-                /* openInNewWindow= */ false);
+                /* openInNewWindow= */ false,
+                /* openInBackground= */ false);
 
         verify(mAutocompleteDelegate).loadUrl(any());
+    }
+
+    @Test
+    public void loadUrlForOmniboxMatch_inBackground() {
+        setUpSessionAndMatch(AutocompleteRequestType.SEARCH, OmniboxSuggestionType.SEARCH_SUGGEST);
+        mMediator.loadUrlForOmniboxMatch(
+                /* matchIndex= */ 0,
+                mAutocompleteMatch,
+                JUnitTestGURLs.EXAMPLE_URL,
+                /* inputStart= */ 0,
+                /* openInNewTab= */ true,
+                /* openInNewWindow= */ false,
+                /* openInBackground= */ true);
+        verify(mAutocompleteDelegate).loadUrl(mOmniboxLoadUrlParamsCaptor.capture());
+        assertTrue(mOmniboxLoadUrlParamsCaptor.getValue().openInBackground);
     }
 
     @Test

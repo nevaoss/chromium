@@ -46,6 +46,7 @@ import org.chromium.base.test.util.Feature;
 import org.chromium.base.test.util.Features.DisableFeatures;
 import org.chromium.base.test.util.Features.EnableFeatures;
 import org.chromium.content_public.browser.ContentFeatureList;
+import org.chromium.content_public.browser.GlobalRenderFrameHostId;
 import org.chromium.content_public.common.ContentFeatures;
 
 import java.util.concurrent.Callable;
@@ -411,7 +412,23 @@ public class ThreadedInputConnectionTest {
     @Feature({"TextInput"})
     @EnableFeatures(ContentFeatures.ANDROID_MEDIA_INSERTION)
     public void testCommitContent_NullTargetFrame() {
-        when(mImeAdapter.getFocusedFrame()).thenReturn(null);
+        when(mImeAdapter.getFocusedFrameId()).thenReturn(null);
+        mConnection.resetOnUiThread();
+        assertFalse(mConnection.commitContent(mInputContentInfo, 0, null));
+    }
+
+    @Test
+    @Feature({"TextInput"})
+    @EnableFeatures(ContentFeatures.ANDROID_MEDIA_INSERTION)
+    public void testCommitContent_TargetFrameClearedOnReset() {
+        GlobalRenderFrameHostId frameId = new GlobalRenderFrameHostId(1, 2);
+        when(mImeAdapter.getFocusedFrameId()).thenReturn(frameId);
+        mConnection.resetOnUiThread();
+
+        // Now clear the focused frame and reset again.
+        when(mImeAdapter.getFocusedFrameId()).thenReturn(null);
+        mConnection.resetOnUiThread();
+
         assertFalse(mConnection.commitContent(mInputContentInfo, 0, null));
     }
 }

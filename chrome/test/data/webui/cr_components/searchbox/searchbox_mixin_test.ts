@@ -51,6 +51,8 @@ class TestSearchboxMixinElement extends TestElementBase {
         <cr-searchbox-input id="input"
             searchbox-icon="search.svg"
             ?multi-line-enabled="${this.multiLineEnabled}"
+            .singleLineOnInlineAutocomplete="${
+        this.singleLineOnInlineAutocomplete}"
             .result="${this.result}"
             .selectedMatch="${this.selectedMatch}"
             .inputKeywordModel="${this.inputKeywordModel}"
@@ -1855,11 +1857,7 @@ suite('SearchboxMixinTest', () => {
     await microtasksFinished();
 
     const dropdown = element.getDropdownElement();
-    dropdown.dispatchEvent(new CustomEvent('keyword-click', {
-      bubbles: true,
-      composed: true,
-      detail: {match, matchIndex: 0},
-    }));
+    dropdown.fire('keyword-click', {match, matchIndex: 0});
     await microtasksFinished();
 
     assertEquals(0, element.selection.line);
@@ -1871,6 +1869,44 @@ suite('SearchboxMixinTest', () => {
     assertEquals('Search Google', element.inputKeywordModel.placeholder);
     assertEquals('Search Google', mockInput.inputElement.placeholder);
     assertEquals('', mockInput.inputElement.value);
+    assertEquals(0, testProxy.handler.getCallCount('queryAutocomplete'));
+  });
+
+  test('chip click keyword entry with additional input text', async () => {
+    const mockInput = element.getInputElement();
+    const keyword = 'bing.com';
+
+    const match = createSearchMatchForTesting({
+      fillIntoEdit: 'bing.com bad',
+      keywordModel: createMatchKeywordModelForTesting({
+        type: KeywordType.kChip,
+        keyword,
+        chipHint: 'Search Bing',
+        placeholder: 'Search Bing',
+      }),
+    });
+    element.lastQueriedInput = 'bing.com bad';
+    element.onAutocompleteResultChanged(createAutocompleteResultForTesting({
+      queryId: element.activeQueryId,
+      input: 'bing.com bad',
+      matches: [match],
+    }));
+    await microtasksFinished();
+    testProxy.handler.resetResolver('queryAutocomplete');
+
+    const dropdown = element.getDropdownElement();
+    dropdown.fire('keyword-click', {match, matchIndex: 0});
+    await microtasksFinished();
+
+    assertTrue(element.inputKeywordModel !== null);
+    assertEquals(KeywordType.kInKeyword, element.inputKeywordModel.type);
+    assertEquals(keyword, element.inputKeywordModel.keyword);
+    assertEquals('bad', mockInput.inputElement.value);
+    assertEquals('bad', element.lastQueriedInput);
+    assertEquals(1, testProxy.handler.getCallCount('queryAutocomplete'));
+    const args = testProxy.handler.getArgs('queryAutocomplete')[0];
+    assertEquals('bad', args.input);
+    assertEquals(keyword, args.keyword);
   });
 
   // TODO(crbug.com/555945371): Fails on multiple OSes.
@@ -2721,6 +2757,63 @@ suite('SearchboxMixinVirtualFocusTest', () => {
       });
 
   test(
+      'Space activates focused buttons except AIM and keyword mode',
+      async () => {
+        element.virtualFocusEnabledOverride = true;
+        const mockInput = element.getInputElement();
+        await simulateUserTextInput(mockInput, 'query');
+
+        element.onAutocompleteResultChanged(createAutocompleteResultForTesting({
+          queryId: element.activeQueryId,
+          input: 'query',
+          matches: [createSearchMatchForTesting({
+            fillIntoEdit: 'query',
+            supportsDeletion: true,
+            destinationUrl: 'https://example.com/delete',
+          })],
+        }));
+        await microtasksFinished();
+
+        // 1. Space on kNormal or kKeywordMode does not prevent default.
+        for (const state
+                 of [SelectionLineState.kNormal,
+                     SelectionLineState.kKeywordMode]) {
+          element.setSelection({line: 0, state, actionIndex: 0});
+          const event = createKeyboardEvent(' ');
+          mockInput.inputElement.dispatchEvent(event);
+          await microtasksFinished();
+          assertFalse(event.defaultPrevented);
+        }
+
+        // 2. Space on kFocusedButtonAim resets selection to kNormal without
+        // preventing default.
+        element.setSelection({
+          line: 0,
+          state: SelectionLineState.kFocusedButtonAim,
+          actionIndex: 0,
+        });
+        const aimSpace = createKeyboardEvent(' ');
+        mockInput.inputElement.dispatchEvent(aimSpace);
+        await microtasksFinished();
+        assertFalse(aimSpace.defaultPrevented);
+        assertEquals(SelectionLineState.kNormal, element.selection.state);
+
+        // 3. Space on kFocusedButtonRemoveSuggestion prevents default and
+        // deletes the match via handleVirtualFocusEnter.
+        element.setSelection({
+          line: 0,
+          state: SelectionLineState.kFocusedButtonRemoveSuggestion,
+          actionIndex: 0,
+        });
+        const removeSpace = createKeyboardEvent(' ');
+        mockInput.inputElement.dispatchEvent(removeSpace);
+        await microtasksFinished();
+        assertTrue(removeSpace.defaultPrevented);
+        assertEquals(
+            1, testProxy.handler.getCallCount('deleteAutocompleteMatch'));
+      });
+
+  test(
       'Shift + Arrow keys do not trigger virtual focus navigation',
       async () => {
         element.virtualFocusEnabledOverride = true;
@@ -2959,9 +3052,7 @@ suite('SearchboxMixinVirtualFocusTest', () => {
         await microtasksFinished();
 
         const handled =
-            (element as unknown as {
-              handleVirtualFocusEnter_: (e: KeyboardEvent) => boolean,
-            }).handleVirtualFocusEnter_(createKeyboardEvent('Enter'));
+            element.handleVirtualFocusEnter(createKeyboardEvent('Enter'));
         assertFalse(handled);
       });
 
@@ -3023,6 +3114,127 @@ suite('SearchboxMixinVirtualFocusTest', () => {
 
         element.updateDropdownVisibility();
         assertFalse(element.dropdownIsVisible);
+      });
+
+  test(
+      'updateDropdownVisibility keeps dropdown when ' +
+          'singleLineOnInlineAutocomplete is true and ' +
+          'multiline is caused by inline autocompletion',
+      async () => {
+        element.multiLineEnabled = true;
+        element.singleLineOnInlineAutocomplete = true;
+        const inputElement = element.getInputElement();
+        inputElement.multiLineEnabled = true;
+        inputElement.singleLineOnInlineAutocomplete = true;
+        await microtasksFinished();
+
+        inputElement.setInput({text: 'm', inline: 'essages.google.com'});
+
+        element.result = createAutocompleteResultForTesting({
+          input: 'm',
+          matches: [createSearchMatchForTesting({
+            allowedToBeDefaultMatch: true,
+            inlineAutocompletion: 'essages.google.com',
+          })],
+        });
+        element.dropdownIsVisible = true;
+
+        // When single-line on inline autocomplete is active, isMultiline() is
+        // suppressed and the dropdown remains visible even if the input
+        // content would otherwise exceed the multiline height threshold.
+        Object.defineProperty(inputElement.$.input, 'scrollHeight', {
+          get: () => 64,
+          configurable: true,
+        });
+
+        element.updateDropdownVisibility();
+        assertTrue(element.dropdownIsVisible);
+      });
+
+  test(
+      'updateDropdownVisibility suppresses dropdown when ' +
+          'singleLineOnInlineAutocomplete is true and ' +
+          'raw input is multiline',
+      async () => {
+        element.multiLineEnabled = true;
+        element.singleLineOnInlineAutocomplete = true;
+        const inputElement = element.getInputElement();
+        inputElement.multiLineEnabled = true;
+        inputElement.singleLineOnInlineAutocomplete = true;
+        await microtasksFinished();
+
+        inputElement.setInput({text: 'first line\nsecond line', inline: ''});
+
+        element.result = createAutocompleteResultForTesting({
+          input: 'first line\nsecond line',
+          matches: [createSearchMatchForTesting()],
+        });
+        element.dropdownIsVisible = true;
+
+        Object.defineProperty(inputElement.$.input, 'scrollHeight', {
+          get: () => 64,
+          configurable: true,
+        });
+
+        element.updateDropdownVisibility();
+        assertFalse(element.dropdownIsVisible);
+      });
+
+  test(
+      'arrow down to match keeps single line mode when ' +
+          'singleLineOnInlineAutocomplete is true',
+      async () => {
+        element.multiLineEnabled = true;
+        element.singleLineOnInlineAutocomplete = true;
+        const inputElement = element.getInputElement();
+        inputElement.multiLineEnabled = true;
+        inputElement.singleLineOnInlineAutocomplete = true;
+        await microtasksFinished();
+
+        inputElement.inputElement.focus();
+        await simulateUserTextInput(inputElement, 'query');
+
+        await element.onAutocompleteResultChanged(
+            createAutocompleteResultForTesting({
+              queryId: element.activeQueryId,
+              input: 'query',
+              matches: [
+                createSearchMatchForTesting({
+                  allowedToBeDefaultMatch: false,
+                  fillIntoEdit: 'query',
+                }),
+                createSearchMatchForTesting({
+                  allowedToBeDefaultMatch: false,
+                  fillIntoEdit: 'query with a very long second suggestion text',
+                }),
+              ],
+            }));
+        element.dropdownIsVisible = true;
+        await microtasksFinished();
+
+        // Arrow down to match 0.
+        element.getWrapperElement().dispatchEvent(
+            createKeyboardEvent('ArrowDown'));
+        await microtasksFinished();
+
+        // Arrow down to match 1 (match preview).
+        element.getWrapperElement().dispatchEvent(
+            createKeyboardEvent('ArrowDown'));
+        await microtasksFinished();
+        await inputElement.updateComplete;
+
+        // Even if the long preview text would exceed the multiline threshold,
+        // force-single-line ensures single-line mode is preserved and the
+        // dropdown stays visible.
+        Object.defineProperty(inputElement.$.input, 'scrollHeight', {
+          get: () => 64,
+          configurable: true,
+        });
+
+        assertEquals(1, element.selection.line);
+        assertTrue(inputElement.hasAttribute('force-single-line'));
+        assertFalse(inputElement.isMultiline());
+        assertTrue(element.dropdownIsVisible);
       });
 
   test(
@@ -3532,4 +3744,40 @@ suite('SearchboxMixinVirtualFocusTest', () => {
     element.onMatchClick();
     assertFalse(element.keywordModeManager.isInKeywordMode);
   });
+
+  test(
+      'mousedown on match prevents focus loss and does not prematurely fill ' +
+          'input in zero state under virtual focus',
+      async () => {
+        element.activeQueryId = 0;
+        await element.onAutocompleteResultChanged(
+            createAutocompleteResultForTesting({
+              matches: [createSearchMatchForTesting()],
+            }));
+        await microtasksFinished();
+
+        const matchEl = element.getDropdownElement().shadowRoot.querySelector(
+            'cr-searchbox-match');
+        assertTrue(!!matchEl);
+
+        const mousedownEvent = new MouseEvent('mousedown', {
+          button: 0,
+          bubbles: true,
+          cancelable: true,
+          composed: true,
+        });
+        matchEl.dispatchEvent(mousedownEvent);
+        assertTrue(mousedownEvent.defaultPrevented);
+
+        // Even if focusin fires on the match element, virtual focus should
+        // ignore it and keep the input empty until click/navigation.
+        matchEl.dispatchEvent(new FocusEvent('focusin', {
+          bubbles: true,
+          composed: true,
+        }));
+        await microtasksFinished();
+
+        assertEquals('', element.getInputElement().inputElement.value);
+        assertDeepEquals(kDefaultSelection, element.selection);
+      });
 });

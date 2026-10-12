@@ -5,6 +5,7 @@
 #ifndef COMPONENTS_AUTOFILL_CORE_BROWSER_STUDIES_HATS_SURVEYS_UTIL_H_
 #define COMPONENTS_AUTOFILL_CORE_BROWSER_STUDIES_HATS_SURVEYS_UTIL_H_
 
+#include <cstddef>
 #include <map>
 #include <optional>
 #include <string>
@@ -73,11 +74,6 @@ class RecentUserAutofillAiInteractionsForHats final {
   base::LRUCache<FormGlobalId, InteractionDetails>
       user_suggestion_interactions_per_form_{kSuggestionInteractionMemorySize};
 };
-
-void MaybeTriggerAutofillAiSubmissionHatsSurveys(
-    AutofillClient& client,
-    const FormStructure& submitted_form,
-    const RecentUserAutofillAiInteractionsForHats& suggestion_interactions);
 
 }  // namespace autofill
 

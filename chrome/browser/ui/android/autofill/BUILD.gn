@@ -65,6 +65,7 @@ source_set("autofill") {
   ]
   deps = [
     "//base",
+    "//base:i18n",
     "//chrome/android:chrome_jni_headers",
     "//chrome/android/features/keyboard_accessory:jni_headers",
     "//chrome/browser/android:resource_mapper",
@@ -133,6 +134,7 @@ source_set("unit_tests") {
     "//chrome/browser/ui/autofill:test_support",
     "//chrome/browser/ui/autofill/payments:test_support",
     "//chrome/test:test_support",
+    "//chrome/test/base:chrome_render_view_host_test_harness",
     "//components/autofill/content/browser:test_support",
     "//components/autofill/core/browser:test_support",
     "//components/browser_ui/device_lock/android",

@@ -103,7 +103,7 @@
 
 #error-container {
   display: none;
-  font-size: var(--cr-composebox-font-size, 18px);
+  font-size: var(--cr-composebox-font-size, 16px);
 }
 
 #error-container:not([hidden]) {
@@ -290,9 +290,9 @@
 }
 
 /* Positioned absolute at bottom-end to stay fixed during dynamic height
- * expansion (16px bottom in single-line, 8px in multiline per Figma spec). */
+ * expansion (16px bottom per Figma spec). */
 :host([audio-wave-enabled]) #bottomActions {
-  bottom: var(--voice-bottom-actions-bottom, 12px);
+  bottom: var(--voice-bottom-actions-bottom, 16px);
   inset-inline-end: var(--voice-bottom-actions-inset-inline-end, 16px);
   margin: 0;
   position: absolute;

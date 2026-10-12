@@ -43,6 +43,10 @@ enum class EntryPoint {
   AppSwitcherAISummarization = 13,
   // Gemini was opened from an unsupported query in AtMemory search.
   AtMemorySearch = 14,
+  // Gemini was opened from the contextual cue chip in the omnibox.
+  ContextualCueChip = 15,
+  // Gemini was opened from the contextual cue infobar banner.
+  ContextualCueInfobar = 16,
   // The entry point is unknown.
   Unknown = 100,
   kMaxValue = Unknown,
@@ -240,6 +244,10 @@ enum class GeminiFirstRunType {
 // An optional text prompt to prepopulate the input field.
 @property(nonatomic, copy) NSString* prepopulatedPrompt;
 
+// Whether to automatically submit `prepopulatedPrompt` upon presenting the
+// floaty.
+@property(nonatomic, assign) BOOL shouldAutoSubmit;
+
 // Whether the signed-in active account does not match the target account
 // specified by the triggering entry point (e.g. App Switcher AI
 // Summarization). Entry points targeting a specific user identity generally
@@ -335,5 +343,8 @@ extern const int kGeminiContextualCueChipSlidingWindow;
 
 // The accessibility ID of the Gemini wrapper stack in the first run flow.
 extern NSString* const kGeminiFirstRunWrapperStackAccessibilityIdentifier;
+
+// The accessibility ID of the close button in the Gemini modal.
+extern NSString* const kGeminiModalContentCloseButtonAccessibilityIdentifier;
 
 #endif  // IOS_CHROME_BROWSER_INTELLIGENCE_BWG_UTILS_GEMINI_CONSTANTS_H_

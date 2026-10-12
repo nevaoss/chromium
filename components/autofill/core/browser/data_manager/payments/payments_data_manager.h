@@ -144,7 +144,7 @@ class PaymentsDataManager : public AutofillWebDataServiceObserverOnUISequence,
   // Returns the `AutofillOfferData` with the specified `offer_id`, or nullptr
   // if there is no promo code with the specified `offer_id`.
   const AutofillOfferData* GetMerchantPromoCodeByOfferId(
-      const int64_t offer_id) const;
+      std::string_view offer_id) const;
 
   // Returns the IBAN if any cached IBAN in `server_ibans_` has the same
   // `instrument_id` as the given `instrument_id`, otherwise returns nullptr.
@@ -588,7 +588,8 @@ class PaymentsDataManager : public AutofillWebDataServiceObserverOnUISequence,
   // Loads the payments customer data from the web database.
   void LoadPaymentsCustomerData();
 
-  // Loads the autofill offer data from the web database.
+  // Loads the autofill offer data from the profile web database, which is where
+  // the `ValuableSyncBridge` persists Wallet direct offers.
   void LoadAutofillOffers();
 
   // Loads the virtual card usage data from the web database.

@@ -476,9 +476,9 @@ IN_PROC_BROWSER_TEST_F(SurfaceEmbedBrowserTestNoHost, NoCrash) {
   // Check that the sad plugin page got rendered.
   EXPECT_TRUE(CheckHasPixelInColor(SkColors::kGray.toSkColor()));
 
-  // Try attaching a new child. Still shouldn't crash.
-  // (Handling data-content-id changes isn't implemented yet, but once it is,
-  //  this should help make sure we don't get confused).
+  // Changing data-content-id after plugin creation must not crash.
+  // TODO(crbug.com/561637127): Handling data-content-id changes isn't
+  // implemented yet.
   auto child_contents2 = CreateChildWebContents();
   NavigateChildToUrl(child_contents2.get(), kBlueBoxUrl);
   guest_contents::GuestContentsHandle* guest_handle2 =
@@ -889,6 +889,30 @@ IN_PROC_BROWSER_TEST_F(SurfaceEmbedBrowserTest,
     SurfaceEmbedHost* host = GetHost(i);
     ASSERT_NE(nullptr, host);
   }
+}
+
+IN_PROC_BROWSER_TEST_F(SurfaceEmbedBrowserTest,
+                       ChildDestroyedBeforeEmbedAttachment) {
+  NavigateToAttachHarness();
+
+  auto child_contents = CreateChildWebContents();
+  guest_contents::GuestContentsHandle* guest_handle =
+      guest_contents::GuestContentsHandle::CreateForWebContents(
+          child_contents.get());
+  ASSERT_NE(guest_handle, nullptr);
+  const std::string stale_content_id = guest_handle->id().ToString();
+  child_contents.reset();
+
+  ASSERT_TRUE(content::ExecJs(web_contents(),
+                              "createEmbed('" + stale_content_id + "');"));
+  WaitForHostCount(kSingleEmbedCount);
+  ASSERT_TRUE(base::test::RunUntil(
+      [&]() { return GetHost(0)->HasReceivedAttachConnectorForTesting(); }));
+  EXPECT_EQ(0u, GetAttachedHostCount());
+
+  // Verify that processing the stale attachment did not terminate the parent
+  // renderer or browser.
+  EXPECT_EQ(kSingleEmbedCount, CountEmbedElementsInPage());
 }
 
 IN_PROC_BROWSER_TEST_F(SurfaceEmbedBrowserTest, EmbedTagRemovedDestroysHost) {

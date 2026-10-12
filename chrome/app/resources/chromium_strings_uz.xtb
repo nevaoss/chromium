@@ -8,6 +8,7 @@
 <translation id="1051793555070215510">1 daqiqalik soʻrovnoma orqali Inkognito rejimini yaxshilashimizga yordam bering.</translation>
 <translation id="1065672644894730302">Sozlamalarni ko‘rib bo‘lmadi. Ba’zi funksiyalar mavjud emas va o‘zgartirilgan sozlamalar saqlanmaydi.</translation>
 <translation id="1083934481477628225">Chromiumdagi “Sayt, ilova va kengaytmalarga ruxsat” ota-onangiz tomonidan faolsizlantirilgan</translation>
+<translation id="109026165963220603">Chromium atrofdagi qurilmalarni topish va ulardan foydalanish uchun mahalliy tarmoqqa ruxsat olishi kerak</translation>
 <translation id="1090946077924227754">Muayyan Chromium funksiyasi yoki kengaytmasini qidirish uchun manzillar qatorida buyruqni kiritib, keyin belgilangan tezkor tugmani bosing.</translation>
 <translation id="1098493699368672217">Chromium orqali qidiruv belgisini tizim panelida chiqarish va tezkor tugmasini yoqish</translation>
 <translation id="1104942323762546749">Chromium parollaringizni eksport qilmoqchi. Ruxsat berish uchun Windows platformasidagi parolingizni kiriting.</translation>
@@ -259,7 +260,6 @@
 
           **Savol takliflari:** Skrinshotni yaxshiroq tushunish uchun foydalanuvchi berishi mumkin 3-5 oʻylantiruvchi savollarning markerlangan roʻyxatini yarating. Bu savollarga vizual obyekt, uning dizayni yoki joylashuvi haqida kamida bittasi kiritilishi kerak.</translation>
 <translation id="3848258323044014972"><ph name="PAGE_TITLE" /> - Chromium</translation>
-<translation id="387514319934708384">Chromium bu saytda mahalliy tarmoqdan foydalanishiga ruxsat bering</translation>
 <translation id="3885770153807205175">Til tanlash vositasi</translation>
 <translation id="388648406173476553">Chromium brauzerini sozlash va boshqarish. Diqqat qaratishingiz zarur. Batafsil axborot olish uchun bu yerga bosing.</translation>
 <translation id="3889543394854987837">Chromium‘ga kirish uchun o‘z ismingiz ustiga bosing.</translation>
@@ -301,6 +301,7 @@
 <translation id="4251772536351901305">Standart himoyadan koʻra koʻproq saytlardan olingan maʼlumotlarni tahlil qilish orqali sizni xavfli saytlar, hatto Google ilgari bilmagan saytlar haqida ogohlantiradi. Chromium ogohlantirishlarini eʼtiborsiz qoldirishni tanlashingiz mumkin.</translation>
 <translation id="4269093074552541569">Chromium hisobidan chiqish</translation>
 <translation id="4271805377592243930">Chromium yordam markazi</translation>
+<translation id="4275788652681621337">Yon panelni yopish</translation>
 <translation id="4281844954008187215">Xizmat shartlari</translation>
 <translation id="4285930937574705105">Noma’lum xatolik tufayli o‘rnatish amalga oshmadi. Agar hozirda Chromium ishlab turgan bo‘lsa, iltimos brauzeringizni yoping va qaytadan urinib ko‘ring.</translation>
 <translation id="4298125729853015961">Chromiumdan parollarini eksport qilish</translation>
@@ -437,9 +438,9 @@ Bu sahifa kutilganidek ishlamasa, optimallashga ruxsat bering.</translation>
 <translation id="5883558403894052917">Chromium tarkibida zararli dasturi bor quyidagi fayllarni aniqladi:</translation>
 <translation id="5889361821821684993">Chromium brauzer sozlamalari xavfsiz ekanini muntazam tekshiradi. Biror sozlamaga diqqat qilish kerak boʻlganda sizga xabar qilamiz.</translation>
 <translation id="5895138241574237353">Qayta ishga tushirish</translation>
+<translation id="5896077214220653386">Chromium ichida Gemini Enterprise</translation>
 <translation id="5903106910045431592"><ph name="PAGE_TITLE" /> - Tarmoqqa kirish</translation>
 <translation id="5924017743176219022">Internetga ulanmoqda…</translation>
-<translation id="5939553720811388432">Chromiumni moslab olaylik</translation>
 <translation id="5941711191222866238">Yig‘ish</translation>
 <translation id="5949225980829865667">Bu bukmark va boshqalardan barcha qurilmalarda foydalanish uchun Chromium hisobiga kiring</translation>
 <translation id="5953657885167112863">Chromiumni oʻzingizga moslang</translation>

@@ -324,20 +324,28 @@ TEST_F(OmniboxEditModelTest, RevertZeroSuggestTemporaryText) {
   EXPECT_EQ(u"https://www.example.com/", view()->GetText());
   EXPECT_FALSE(model()->user_input_in_progress());
   EXPECT_TRUE(view()->IsSelectAll());
+  // Starting ZeroSuggest from a focused omnibox should set focus type to
+  // `INTERACTION_FOCUS`.
+  EXPECT_EQ(metrics::OmniboxFocusType::INTERACTION_FOCUS,
+            controller()->autocomplete_controller()->input().focus_type());
 }
 
 TEST_F(OmniboxEditModelTest, FullWebUISuppressesZeroSuggestRequest) {
-  base::test::ScopedFeatureList feature_list;
-  feature_list.InitAndEnableFeature(omnibox::kWebUIOmniboxFullPopup);
+  view()->set_is_full_webui_omnibox(true);
   location_bar_model()->set_url(GURL("https://www.example.com/"));
   location_bar_model()->set_url_for_display(u"https://www.example.com/");
   EXPECT_TRUE(model()->ResetDisplayTexts());
   model()->Revert();
 
-  // In Full WebUI mode, native OmniboxEditModel::StartZeroSuggestRequest early-
-  // returns so WebUI can exclusively manage autocomplete queries.
   model()->StartZeroSuggestRequest();
-  EXPECT_TRUE(controller()->autocomplete_controller()->done());
+  // In Full WebUI mode, native `StartZeroSuggestRequest` early-returns
+  // so WebUI can exclusively manage autocomplete queries. When
+  // `StartZeroSuggestRequest()` early-returns, `controller_->StartAutocomplete(
+  // input_)` is never called, so
+  // `autocomplete_controller()->input().focus_type()` remains
+  // `INTERACTION_DEFAULT`.
+  EXPECT_EQ(metrics::OmniboxFocusType::INTERACTION_DEFAULT,
+            controller()->autocomplete_controller()->input().focus_type());
 }
 
 // This verifies the fix for a bug where calling OpenMatch() with a valid
@@ -642,6 +650,23 @@ TEST_F(OmniboxEditModelTest,
   OmniboxEditModel::State state = model()->GetStateForTabSwitch();
   EXPECT_EQ(GURL("https://www.example.com/"),
             state.autocomplete_input.canonicalized_url());
+}
+
+TEST_F(OmniboxEditModelTest, CtrlEnterSelectionNavigatesToDesiredTLDNoMatch) {
+  view()->SetUserText(u"google");
+  model()->StartAutocomplete(false);
+
+  TestOmniboxClient* client =
+      static_cast<TestOmniboxClient*>(controller_->client());
+  EXPECT_CALL(*client, OnAutocompleteAccept(GURL("http://www.google.com/"), _,
+                                            WindowOpenDisposition::CURRENT_TAB,
+                                            _, _, _, _, _, _, _, _))
+      .Times(1);
+
+  // When selection state is CTRL_ENTER and line is kNoMatch (e.g. popup closed
+  // after typing and pressing Ctrl+Enter in WebUI), verify navigation to .com.
+  model()->OpenSelection(OmniboxPopupSelection(
+      OmniboxPopupSelection::kNoMatch, OmniboxPopupSelection::CTRL_ENTER));
 }
 
 TEST_F(OmniboxEditModelTest, SpaceInMiddleWithoutKeywordSelectionDoesNotCrash) {

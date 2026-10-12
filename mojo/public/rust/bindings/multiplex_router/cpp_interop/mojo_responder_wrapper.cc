@@ -25,14 +25,9 @@ class MojoResponderWrapper::ResponderHolder {
       std::unique_ptr<mojo::internal::ResponderThunk> responder)
       : responder_(std::move(responder)) {}
 
-  void Accept(
-      std::unique_ptr<mojo::rust::ScopedMessageHandleWrapper> msg_wrapper) {
-    if (!responder_ || !msg_wrapper) {
-      return;
-    }
-    mojo::ScopedMessageHandle handle = msg_wrapper->take_handle();
-    mojo::Message message = mojo::Message::CreateFromMessageHandle(&handle);
-    std::ignore = responder_->Accept(&message);
+  void Accept(std::unique_ptr<mojo::Message> message) {
+    auto responder = std::move(responder_);
+    std::ignore = responder->Accept(message.get());
   }
 
  private:
@@ -52,15 +47,11 @@ MojoResponderWrapper::MojoResponderWrapper(
 MojoResponderWrapper::~MojoResponderWrapper() = default;
 
 // Sends a response message using the wrapped C++ responder.
-bool MojoResponderWrapper::Accept(
-    std::unique_ptr<mojo::rust::ScopedMessageHandleWrapper> message_wrapper)
-    const {
-  if (!message_wrapper || !responder_) {
-    return false;
-  }
-  responder_.AsyncCall(&ResponderHolder::Accept)
-      .WithArgs(std::move(message_wrapper));
-  return true;
+void MojoResponderWrapper::Accept(
+    std::unique_ptr<mojo::Message> message) const {
+  CHECK(responder_);
+  responder_.AsyncCall(&ResponderHolder::Accept).WithArgs(std::move(message));
+  responder_.Reset();
 }
 
 // Returns true if this wrapper can be used to send a response message.
@@ -95,14 +86,6 @@ MojoResponderWrapper::RegisterNewEndpoint(uint32_t interface_id) const {
     return nullptr;
   }
   return std::make_unique<AssociatedEndpointRustAdapter>(std::move(new_handle));
-}
-
-// Returns a copy of this wrapper that can register new endpoints on the
-// message pipe but can't send response messages.
-std::unique_ptr<MojoResponderWrapper> MojoResponderWrapper::CloneAsRegistrar()
-    const {
-  return std::make_unique<MojoResponderWrapper>(
-      nullptr, scoped_refptr<base::SequencedTaskRunner>(), group_controller_);
 }
 
 }  // namespace mojo::rust::bindings

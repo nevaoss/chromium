@@ -100,6 +100,8 @@ source_set("impl") {
     sources += [
       "accessibility_labels_bubble_model.cc",
       "accessibility_labels_menu_observer.cc",
+      "context_menu_content_type_glic.cc",
+      "context_menu_content_type_glic.h",
       "context_menu_content_type_read_anything.cc",
       "context_menu_content_type_read_anything.h",
       "dictation_menu_observer.cc",
@@ -343,6 +345,8 @@ if (!is_android) {
       "//chrome/browser/user_education",
       "//chrome/test:test_support",
       "//chrome/test/base:browser_test_waiters",
+      "//chrome/test/base:chrome_render_view_host_test_harness",
+      "//chrome/test/base:testing_browser_process",
       "//components/proxy_config",
       "//components/send_tab_to_self",
       "//components/send_tab_to_self:features",

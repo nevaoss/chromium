@@ -381,6 +381,14 @@ using ios::provider::GeminiViewState;
   [_stateManager handleResponseCancellationWithReason:reason];
 }
 
+- (void)didTapResponseReadyViewButton {
+  if (!IsIOSGeminiBottomSheetMigrationEnabled()) {
+    return;
+  }
+  [self.containerHandler
+      animateAssistantContainerToDetent:AssistantContainerDetent::kMedium];
+}
+
 - (void)setActuationActive:(BOOL)actuationActive {
   if (_stateManager.currentUIState.actuating == actuationActive) {
     return;
@@ -449,6 +457,7 @@ using ios::provider::GeminiViewState;
     config.shouldShowAccountSnackbar = YES;
   }
   config.contextualCueChipLabel = startupState.prepopulatedPrompt;
+  config.shouldAutoSubmit = startupState.shouldAutoSubmit;
   config.entryPoint = startupState.entryPoint;
   config.blockQuerySubmissionWhileLoading =
       [self shouldBlockQuerySubmissionWhileLoadingForEntryPoint:

@@ -266,14 +266,14 @@ class TestVariationsService : public VariationsService {
                  std::string seed_signature,
                  std::string country_code,
                  std::string geo_level1,
-                 base::Time date_fetched,
+                 base::Time seed_date,
                  bool is_delta_compressed,
                  bool is_gzip_compressed) override {
     seed_stored_ = true;
     stored_seed_data_ = seed_data;
     stored_country_ = country_code;
     stored_geo_level_ = geo_level1;
-    stored_date_ = date_fetched;
+    stored_date_ = seed_date;
     delta_compressed_seed_ = is_delta_compressed;
     gzip_compressed_seed_ = is_gzip_compressed;
     OnSeedStoreResult(is_delta_compressed, seed_stores_succeed_,
@@ -2958,8 +2958,7 @@ TEST_F(VariationsServiceTest,
   class TestObserver : public base::RuntimeFieldTrialOverrides::Observer {
    public:
     void OnRuntimeFieldTrialOverride(
-        const base::RuntimeFieldTrialOverrides::RuntimeOverrideInfo&
-            override_info,
+        const base::RuntimeFieldTrialInfo& override_info,
         std::string_view previous_override_trial_name) override {
       applied_order.push_back(override_info.trial_name);
     }
@@ -3029,8 +3028,7 @@ TEST_F(VariationsServiceTest,
   class TestObserver : public base::RuntimeFieldTrialOverrides::Observer {
    public:
     void OnRuntimeFieldTrialOverride(
-        const base::RuntimeFieldTrialOverrides::RuntimeOverrideInfo&
-            override_info,
+        const base::RuntimeFieldTrialInfo& override_info,
         std::string_view previous_override_trial_name) override {
       notified = true;
       feature_enabled = base::FeatureList::IsEnabled(kTestRuntimeFeatureA);

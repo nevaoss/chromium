@@ -428,10 +428,6 @@ BASE_FEATURE_PARAM(base::TimeDelta,
                    base::Days(180));
 #endif
 
-#if BUILDFLAG(IS_IOS)
-BASE_FEATURE(kEnableACPrefetch, base::FEATURE_DISABLED_BY_DEFAULT);
-#endif
-
 #if BUILDFLAG(IS_ANDROID)
 // Whether activityless sign-in should be used for all entry points.
 // Extensions are not shipped on Android yet. The flow is newly implemented. We
@@ -664,6 +660,16 @@ const base::FeatureParam<base::TimeDelta>
         base::Hours(8)};
 #endif
 
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
+BASE_FEATURE(kEnterpriseSigninDialogsRefresh,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+bool IsEnterpriseSigninDialogsRefreshEnabled(
+    bool is_in_search_engine_choice_region) {
+  return IsFirstRunDesktopRefreshEnabled(is_in_search_engine_choice_region) &&
+         base::FeatureList::IsEnabled(kEnterpriseSigninDialogsRefresh);
+}
+#endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
+
 #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
 BASE_FEATURE(kExtensionWebAuthFlowInitiatorOrigin,
              base::FEATURE_ENABLED_BY_DEFAULT);
@@ -689,19 +695,6 @@ bool IsFirstRunDesktopRefreshEnabled(bool is_in_search_engine_choice_region) {
   }
   return base::FeatureList::IsEnabled(kFirstRunDesktopRefresh);
 }
-constexpr base::FeatureParam<FirstRunDesktopSignInPromoVariation>::Option
-    kFirstRunDesktopSignInPromoVariations[] = {
-        {FirstRunDesktopSignInPromoVariation::kDefault, "default"},
-        {FirstRunDesktopSignInPromoVariation::kDontSignInInTheTopCorner,
-         "dont-sign-in-in-the-top-corner"},
-        {FirstRunDesktopSignInPromoVariation::kDontSignInOnGaiaPage,
-         "dont-sign-in-on-gaia-page"},
-};
-constexpr base::FeatureParam<FirstRunDesktopSignInPromoVariation>
-    kFirstRunDesktopSignInPromoVariation{
-        &kFirstRunDesktopRefresh, "sign-in-promo-variation",
-        FirstRunDesktopSignInPromoVariation::kDefault,
-        &kFirstRunDesktopSignInPromoVariations};
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
@@ -902,20 +895,6 @@ const base::FeatureParam<int> kContextualSigninPromoDismissedThreshold(
 BASE_FEATURE(kSignInPromoMaterialNextUI, base::FEATURE_ENABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 
-#if BUILDFLAG(ENABLE_DICE_SUPPORT)
-BASE_FEATURE(kSigninPromoOnAvatarPill, base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE_PARAM(base::TimeDelta,
-                   kSigninPromoOnAvatarPillStartupDelayForPromoShow,
-                   &kSigninPromoOnAvatarPill,
-                   "startup_delay_for_promo_show",
-                   base::Seconds(0));
-BASE_FEATURE_PARAM(base::TimeDelta,
-                   kSigninPromoOnAvatarPillDelayForNextPromoAllowed,
-                   &kSigninPromoOnAvatarPill,
-                   "delay_for_next_promo_allowed",
-                   base::Days(7));
-#endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
-
 BASE_FEATURE(kSigninWindows10DepreciationStateBypassForTesting,
              base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kSigninWindows10DepreciationStateForTesting,
@@ -1014,8 +993,13 @@ BASE_FEATURE(kUnifyWaitForCookies, base::FEATURE_DISABLED_BY_DEFAULT);
 
 #if BUILDFLAG(IS_ANDROID)
 BASE_FEATURE(kUserPolicyFetchRequiresAcceptance,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_ANDROID)
+
+#if BUILDFLAG(IS_IOS)
+BASE_FEATURE(kVerifyRequestInitiatorForMirrorHeaders,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+#endif  // BUILDFLAG(IS_IOS)
 
 // keep-sorted end
 

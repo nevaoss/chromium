@@ -261,7 +261,6 @@
 
           **建议问题：**生成 3-5 个发人深省的问题，以项目符号列表的形式呈现，帮助用户更深入地理解屏幕截图。这些问题中，至少应有一个是关于某个视觉对象、其设计或其放置位置的问题。</translation>
 <translation id="3848258323044014972"><ph name="PAGE_TITLE" /> - Chromium</translation>
-<translation id="387514319934708384">Chromium 需要为此网站授予本地网络权限</translation>
 <translation id="3885770153807205175">语言选择器</translation>
 <translation id="388648406173476553">自定义和控制 Chromium。出了点需要您注意的状况 - 点击即可查看详情。</translation>
 <translation id="3889543394854987837">点击您的姓名即可打开Chromium并开始浏览。</translation>
@@ -304,6 +303,7 @@
 <translation id="4251772536351901305">通过比“标准保护”机制分析更多的网站数据，针对危险网站（甚至是 Google 未曾得知的网站）向您发出警告。您可以选择忽略 Chromium 警告。</translation>
 <translation id="4269093074552541569">退出 Chromium</translation>
 <translation id="4271805377592243930">获取有关 Chromium 的帮助</translation>
+<translation id="4275788652681621337">关闭侧边栏</translation>
 <translation id="4281844954008187215">服务条款</translation>
 <translation id="4285930937574705105">未知错误导致安装失败。如果 Chromium 正在运行，请将其关闭，然后重试。</translation>
 <translation id="4298125729853015961">从 Chromium 导出密码</translation>
@@ -440,9 +440,9 @@
 <translation id="5883558403894052917">Chromium 发现这些内容包含恶意软件：</translation>
 <translation id="5889361821821684993">Chromium 会定期进行检查，以确保您的浏览器使用了最安全的设置。如有任何事项需要您审核，我们会通知您。</translation>
 <translation id="5895138241574237353">重新启动</translation>
+<translation id="5896077214220653386">Chromium 中的 Gemini Enterprise</translation>
 <translation id="5903106910045431592"><ph name="PAGE_TITLE" /> - 网络登录</translation>
 <translation id="5924017743176219022">正在连接到互联网…</translation>
-<translation id="5939553720811388432">立即开始设置您的 Chromium</translation>
 <translation id="5941711191222866238">最小化</translation>
 <translation id="5949225980829865667">如需在您的所有设备上获取此书签等内容，请登录 Chromium</translation>
 <translation id="5953657885167112863">打造您的专属 Chromium</translation>
@@ -593,6 +593,7 @@
 <translation id="7213407614656404070">随时使用 Chromium 打开您在消息、文档和其他应用内点击的链接</translation>
 <translation id="7216228761061470870">当您在桌面设备上使用“图片搜索”功能时，系统会将网页标题、网址和内容（包括 PDF 文件）发送给服务器</translation>
 <translation id="7223968959479464213">任务管理器 - Chromium</translation>
+<translation id="7226331818892775989">针对 Chromium 之外的内容提问，例如其他应用或文件</translation>
 <translation id="7227958669698166857"><ph name="EXISTING_USER" />已登录。若要区分您的浏览数据，请使用您自己的个人资料 (<ph name="USER_EMAIL_ADDRESS" />) 登录 Chromium。登录后，您还可在自己的所有设备上获取保存的信息等内容。</translation>
 <translation id="7252276985725323153">即刻开启浏览之旅：Chromium 现在可以在 Windows 启动时启动。</translation>
 <translation id="7274695763216404502">已固定！可通过工具栏再次使用图片搜索功能</translation>

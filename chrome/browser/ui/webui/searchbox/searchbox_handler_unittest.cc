@@ -1474,6 +1474,16 @@ TEST_F(WebuiOmniboxHandlerTest, SetPopupSelection_IgnoresOutOfBounds) {
   handler_->SetPopupSelection(std::move(selection));
   EXPECT_EQ(0U, omnibox_controller_->edit_model()->GetPopupSelection().line);
 
+  // Calling SetPopupSelection with kKeywordMode when associated_keyword is
+  // empty should be ignored instead of hitting a DCHECK.
+  selection = searchbox::mojom::OmniboxPopupSelection::New();
+  selection->line = 0;
+  selection->state = searchbox::mojom::SelectionLineState::kKeywordMode;
+  selection->action_index = 0;
+  handler_->SetPopupSelection(std::move(selection));
+  EXPECT_EQ(OmniboxPopupSelection::NORMAL,
+            omnibox_controller_->edit_model()->GetPopupSelection().state);
+
   // Calling SetPopupSelection with a valid index should succeed.
   selection = searchbox::mojom::OmniboxPopupSelection::New();
   selection->line = 1;
@@ -1485,7 +1495,7 @@ TEST_F(WebuiOmniboxHandlerTest, SetPopupSelection_IgnoresOutOfBounds) {
 
 TEST_F(WebuiOmniboxHandlerTest, OnActiveTabChanged_SavesAndRestoresState) {
   base::test::ScopedFeatureList feature_list;
-  feature_list.InitAndEnableFeature(omnibox::kWebUIOmniboxFullPopup);
+  feature_list.InitAndEnableFeature(omnibox::internal::kWebUIOmniboxFullPopup);
   tabs::MockTabInterface tab1;
   tabs::MockTabInterface tab2;
   auto web_contents1 =
@@ -2013,6 +2023,30 @@ TEST_F(WebuiOmniboxHandlerTest, OpenAutocompleteMatch_IndexOutOfBounds) {
       SearchboxHandler::kSnapshotMatchSequenceDistanceHistogram, 0);
 }
 
+TEST_F(WebuiOmniboxHandlerTest, OpenPopupSelection_CtrlEnterWithNoMatch) {
+  page_.FlushForTesting();
+  testing::Mock::VerifyAndClearExpectations(&page_);
+
+  test_omnibox_view_->SetUserText(u"google");
+  omnibox_controller_->edit_model()->StartAutocomplete(false);
+
+  TestOmniboxClient* client =
+      static_cast<TestOmniboxClient*>(omnibox_controller_->client());
+  EXPECT_CALL(*client, OnAutocompleteAccept(GURL("http://www.google.com/"), _,
+                                            WindowOpenDisposition::CURRENT_TAB,
+                                            _, _, _, _, _, _, _, _))
+      .Times(1);
+
+  auto selection = searchbox::mojom::OmniboxPopupSelection::New();
+  selection->line = static_cast<uint8_t>(OmniboxPopupSelection::kNoMatch);
+  selection->state = searchbox::mojom::SelectionLineState::kCtrlEnter;
+  selection->action_index = 0;
+
+  handler_->OpenPopupSelection(
+      omnibox_controller_->autocomplete_controller()->result().sequence_id(),
+      std::move(selection), WindowOpenDisposition::CURRENT_TAB);
+}
+
 TEST_F(WebuiOmniboxHandlerTest, OpenLensSearch) {
   // Set a mock AutocompleteController.
   auto mock_client = std::make_unique<MockAutocompleteProviderClient>();
@@ -2112,9 +2146,10 @@ TEST_F(WebuiOmniboxHandlerTest, OpenMatchResumesNavigationWhenNoDialogShown) {
                                             testing::_, testing::_, testing::_,
                                             testing::_, testing::_, testing::_))
       .Times(1);
-  handler_->OpenMatch(OmniboxPopupSelection(0), match,
-                      WindowOpenDisposition::CURRENT_TAB,
-                      base::TimeTicks::Now());
+  handler_->OpenMatch(
+      OmniboxPopupSelection(0), match, WindowOpenDisposition::CURRENT_TAB,
+      base::TimeTicks::Now(),
+      searchbox::MakeAutocompleteSnapshot(handler_->autocomplete_controller()));
 }
 
 TEST_F(WebuiOmniboxHandlerTest, OpenMatchDropsNavigationWhenDialogCancelled) {
@@ -2141,9 +2176,10 @@ TEST_F(WebuiOmniboxHandlerTest, OpenMatchDropsNavigationWhenDialogCancelled) {
                                             testing::_, testing::_))
       .Times(0);
 
-  handler_->OpenMatch(OmniboxPopupSelection(0), match,
-                      WindowOpenDisposition::CURRENT_TAB,
-                      base::TimeTicks::Now());
+  handler_->OpenMatch(
+      OmniboxPopupSelection(0), match, WindowOpenDisposition::CURRENT_TAB,
+      base::TimeTicks::Now(),
+      searchbox::MakeAutocompleteSnapshot(handler_->autocomplete_controller()));
 }
 
 TEST_F(WebuiOmniboxHandlerTest,
@@ -2250,7 +2286,8 @@ TEST_F(WebuiOmniboxHandlerTest,
 class WebuiOmniboxHandlerTabScopingTest : public WebuiOmniboxHandlerTest {
  protected:
   void SetUp() override {
-    scoped_feature_list_.InitAndEnableFeature(omnibox::kWebUIOmniboxFullPopup);
+    scoped_feature_list_.InitAndEnableFeature(
+        omnibox::internal::kWebUIOmniboxFullPopup);
     WebuiOmniboxHandlerTest::SetUp();
 
     browser_window_interface_ =
@@ -2349,7 +2386,7 @@ TEST_F(WebuiOmniboxHandlerTabScopingTest,
 TEST_F(WebuiOmniboxHandlerTabScopingTest,
        QueryAutocomplete_StartsAutocompleteWhenFullPopupDisabled) {
   base::test::ScopedFeatureList feature_list;
-  feature_list.InitAndDisableFeature(omnibox::kWebUIOmniboxFullPopup);
+  feature_list.InitAndDisableFeature(omnibox::internal::kWebUIOmniboxFullPopup);
 
   AutocompleteInput input;
   EXPECT_CALL(*mock_autocomplete_controller_, Start(_))

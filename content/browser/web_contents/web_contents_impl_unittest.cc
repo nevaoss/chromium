@@ -4383,38 +4383,33 @@ TEST_F(WebContentsImplTest, DragProvenanceLifecycle) {
 
   contents()->OnStartDragging(&drop_data, source_rfh_token);
 
-  auto it = drop_data.custom_data.find(u"chromium/x-drag-id");
-  ASSERT_NE(it, drop_data.custom_data.end())
-      << "drag_id should be added to custom_data when file_contents is "
-         "present.";
-
-  std::string drag_id_str = base::UTF16ToASCII(it->second);
-  std::optional<base::UnguessableToken> drag_id =
-      base::UnguessableToken::DeserializeFromString(drag_id_str);
-  ASSERT_TRUE(drag_id.has_value());
+  ASSERT_TRUE(drop_data.drag_id.has_value())
+      << "drag_id should be populated when dragging from a valid frame.";
+  EXPECT_TRUE(drop_data.custom_data.empty())
+      << "custom_data must remain untouched so internal drag tokens never leak "
+         "to web renderers via DataTransfer.";
+  base::UnguessableToken drag_id = *drop_data.drag_id;
 
   // 2. Verify global lookup works.
   EXPECT_EQ(WebContents::FromDragId(contents()->GetBrowserContext(),
-                                    WebContents::DragId(*drag_id)),
+                                    WebContents::DragId(drag_id)),
             contents());
 
   // 3. Verify drag id is NOT cleaned up on drag end (due to async race
   // conditions, especially on Mac).
   contents()->OnDragSourceEnded();
   EXPECT_EQ(WebContents::FromDragId(contents()->GetBrowserContext(),
-                                    WebContents::DragId(*drag_id)),
+                                    WebContents::DragId(drag_id)),
             contents());
 }
 
-TEST_F(WebContentsImplTest, NoStashIfNoFileContents) {
+TEST_F(WebContentsImplTest, NoStashIfInvalidSourceFrame) {
   DropData drop_data;
-  // Intentionally leaving file_contents empty.
 
   contents()->OnStartDragging(&drop_data, GlobalRenderFrameHostToken());
 
-  EXPECT_EQ(drop_data.custom_data.find(u"chromium/x-drag-id"),
-            drop_data.custom_data.end())
-      << "No drag_id should be created if file_contents is empty.";
+  EXPECT_FALSE(drop_data.drag_id.has_value());
+  EXPECT_TRUE(drop_data.custom_data.empty());
 }
 
 TEST_F(WebContentsImplTest, MultipleDragProvenancesAreIsolated) {
@@ -4426,15 +4421,17 @@ TEST_F(WebContentsImplTest, MultipleDragProvenancesAreIsolated) {
   data1.file_contents =
       base::ToVector(base::byte_span_from_cstring("content 1"));
   contents()->OnStartDragging(&data1, source_rfh_token);
-  base::UnguessableToken id1 = *base::UnguessableToken::DeserializeFromString(
-      base::UTF16ToASCII(data1.custom_data[u"chromium/x-drag-id"]));
+  ASSERT_TRUE(data1.drag_id.has_value());
+  EXPECT_TRUE(data1.custom_data.empty());
+  base::UnguessableToken id1 = *data1.drag_id;
 
   DropData data2;
   data2.file_contents =
       base::ToVector(base::byte_span_from_cstring("content 2"));
   contents()->OnStartDragging(&data2, source_rfh_token);
-  base::UnguessableToken id2 = *base::UnguessableToken::DeserializeFromString(
-      base::UTF16ToASCII(data2.custom_data[u"chromium/x-drag-id"]));
+  ASSERT_TRUE(data2.drag_id.has_value());
+  EXPECT_TRUE(data2.custom_data.empty());
+  base::UnguessableToken id2 = *data2.drag_id;
 
   EXPECT_NE(id1, id2);
   EXPECT_EQ(WebContents::FromDragId(contents()->GetBrowserContext(),
@@ -4479,6 +4476,24 @@ TEST_F(WebContentsImplTest, ConstrainPopupBounds) {
   feature_list.InitAndDisableFeature(features::kLimitPopupWidgetHostPosition);
   EXPECT_EQ(contents()->ConstrainPopupBounds(above_line_of_death),
             above_line_of_death);
+}
+
+TEST_F(WebContentsImplTest, DestroyWebContentsWithFrameSinkIdOwnerView) {
+  std::unique_ptr<WebContents> web_contents = CreateTestWebContents();
+  auto* web_contents_impl = static_cast<WebContentsImpl*>(web_contents.get());
+  RenderWidgetHostImpl* rwh =
+      web_contents_impl->GetPrimaryMainFrame()->GetRenderWidgetHost();
+  ASSERT_TRUE(rwh);
+  EXPECT_EQ(rwh->delegate(), web_contents_impl);
+
+  RenderWidgetHostViewBase* view = rwh->GetView();
+  ASSERT_TRUE(view);
+  view->SetIsFrameSinkIdOwner(true);
+
+  // Destroy WebContents. Its destructor must detach the delegate from
+  // the main frame widget so that subsequent FrameTree destruction does
+  // not dereference a dead delegate in DestroyOrDefer().
+  web_contents.reset();
 }
 
 }  // namespace content

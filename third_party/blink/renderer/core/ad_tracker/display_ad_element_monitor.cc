@@ -150,20 +150,26 @@ void DisplayAdElementMonitor::OnElementRemoved() {
     return;
   }
 
-  if (element_->InActiveDocument() && !last_reported_rect_.IsEmpty()) {
-    gfx::Rect empty_rect;
-    element_->GetDocument()
-        .GetFrame()
-        ->LocalFrameRoot()
-        .Client()
-        ->OnMainFrameAdRectangleChanged(element_->GetDomNodeId(), empty_rect);
-    last_reported_rect_ = empty_rect;
+  if (!last_reported_rect_.IsEmpty() && element_->isConnected()) {
+    if (LocalFrame* frame = element_->GetDocument().GetFrame()) {
+      const LocalFrame& local_root_main_frame = frame->LocalFrameRoot();
+      if (local_root_main_frame.GetDocument()->IsActive()) {
+        gfx::Rect empty_rect;
+        local_root_main_frame.Client()->OnMainFrameAdRectangleChanged(
+            element_->GetDomNodeId(), empty_rect);
+        last_reported_rect_ = empty_rect;
+      }
+    }
   }
 
   if (element_->GetDocument().View()) {
     element_->GetDocument().View()->UnregisterFromLifecycleNotifications(this);
   }
   started_ = false;
+}
+
+void DisplayAdElementMonitor::WillDisposeView() {
+  OnElementRemoved();
 }
 
 void DisplayAdElementMonitor::DidFinishLifecycleUpdate(
@@ -176,6 +182,13 @@ void DisplayAdElementMonitor::DidFinishLifecycleUpdate(
 
   LocalFrame* frame = element_->GetDocument().GetFrame();
   DCHECK(frame);
+  const LocalFrame& local_root_main_frame = frame->LocalFrameRoot();
+
+  if (PaintTiming::From(*(local_root_main_frame.GetDocument()))
+          .FirstContentfulPaint()
+          .is_null()) {
+    return;
+  }
 
   // We use this lifecycle update to check the "Highlight ads" settings, which
   // are toggled via the internals page and DevTools. If the combined state
@@ -190,14 +203,6 @@ void DisplayAdElementMonitor::DidFinishLifecycleUpdate(
     if (auto* layout_object = element_->GetLayoutObject()) {
       layout_object->SetShouldDoFullPaintInvalidation();
     }
-  }
-
-  const LocalFrame& local_root_main_frame = frame->LocalFrameRoot();
-
-  if (PaintTiming::From(*(local_root_main_frame.GetDocument()))
-          .FirstContentfulPaint()
-          .is_null()) {
-    return;
   }
 
   gfx::Rect rect_to_report;

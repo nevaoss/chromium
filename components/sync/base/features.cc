@@ -11,8 +11,6 @@ namespace syncer {
 BASE_FEATURE(kDeferredSyncStartupCustomDelay,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-BASE_FEATURE(kSyncSharedTabGroupAccountData, base::FEATURE_ENABLED_BY_DEFAULT);
-
 BASE_FEATURE(kSyncSharedComment, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kSyncAIThread, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -161,9 +159,6 @@ BASE_FEATURE(kSyncIncreaseNudgeDelayForSingleClient,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 #if BUILDFLAG(IS_ANDROID)
-BASE_FEATURE(kSyncEnablePasswordsSyncErrorMessageAlternative,
-             base::FEATURE_ENABLED_BY_DEFAULT);
-
 BASE_FEATURE(kSyncTrustedVaultErrorMessageDuration,
              base::FEATURE_DISABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_ANDROID)
@@ -177,19 +172,6 @@ BASE_FEATURE(kSyncPreferencesUseSelectedTypes,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kSyncEnableNewSyncDashboardUrl, base::FEATURE_ENABLED_BY_DEFAULT);
-
-BASE_FEATURE(kSyncRecordDeviceStatisticsMetrics,
-             base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE_PARAM(base::TimeDelta,
-                   kSyncRecordDeviceStatisticsMetricsDelay,
-                   &kSyncRecordDeviceStatisticsMetrics,
-                   "SyncRecordDeviceStatisticsMetricsDelay",
-                   base::Seconds(30));
-BASE_FEATURE_PARAM(int,
-                   kSyncRecordDeviceStatisticsMetricsPeriodDays,
-                   &kSyncRecordDeviceStatisticsMetrics,
-                   "SyncRecordDeviceStatisticsMetricsPeriodDays",
-                   1);
 
 BASE_FEATURE(kSyncValidateAccessToken, base::FEATURE_ENABLED_BY_DEFAULT);
 

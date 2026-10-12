@@ -13,6 +13,7 @@
 #include "base/test/bind.h"
 #include "base/test/metrics/histogram_tester.h"
 #include "base/test/simple_test_clock.h"
+#include "build/branding_buildflags.h"
 #include "build/build_config.h"
 #include "chrome/browser/captive_portal/captive_portal_service_factory.h"
 #include "chrome/browser/content_settings/host_content_settings_map_factory.h"
@@ -44,6 +45,7 @@
 #include "components/captive_portal/content/captive_portal_service.h"
 #include "components/content_settings/core/browser/host_content_settings_map.h"
 #include "components/embedder_support/pref_names.h"
+#include "components/enterprise/isolated_mode/isolated_mode_features.h"
 #include "components/omnibox/browser/omnibox_client.h"
 #include "components/prefs/pref_service.h"
 #include "components/safe_browsing/core/browser/db/fake_database_manager.h"
@@ -85,6 +87,10 @@
 #include "ui/base/page_transition_types.h"
 #include "ui/base/window_open_disposition.h"
 #include "url/url_constants.h"
+
+#if BUILDFLAG(GOOGLE_CHROME_BRANDING) && !BUILDFLAG(IS_CHROMEOS)
+#include "chrome/test/base/scoped_channel_override.h"
+#endif  // BUILDFLAG(GOOGLE_CHROME_BRANDING) && !BUILDFLAG(IS_CHROMEOS)
 
 namespace {
 
@@ -196,6 +202,11 @@ enum class HttpsUpgradesTestType {
   // Enables HFM in Incognito mode. Runs testcases inside an Incognito
   // window.
   kHttpsFirstModeIncognito,
+
+  // Enables HFM in Enterprise Isolated Mode, which replaces Incognito. Runs
+  // testcases inside an Isolated Mode window. Behaves identically to
+  // kHttpsFirstModeIncognito apart from the warning strings.
+  kHttpsFirstModeIsolatedMode,
 
   // Enables HFM in balanced mode.
   kHttpsFirstBalancedMode,
@@ -320,6 +331,7 @@ class HttpsUpgradesBrowserTest
         break;
 
       case HttpsUpgradesTestType::kHttpsFirstModeIncognito:
+      case HttpsUpgradesTestType::kHttpsFirstModeIsolatedMode:
         feature_list_.InitWithFeatures(
             /*enabled_features=*/{features::kHttpsFirstModeIncognito,
                                   security_interstitials::features::
@@ -434,11 +446,10 @@ class HttpsUpgradesBrowserTest
     HttpsUpgradesInterceptor::SetHttpsPortForTesting(https_server()->port());
     HttpsUpgradesInterceptor::SetHttpPortForTesting(http_server()->port());
 
-    // Incognito tests swap out the default Browser instance for an Incognito
-    // window, and then should behave like kHttpsFirstMode type tests but
-    // without enabling the full HFM pref.
-    if (https_upgrades_test_type() ==
-        HttpsUpgradesTestType::kHttpsFirstModeIncognito) {
+    // Incognito and Isolated Mode tests swap out the default Browser instance
+    // for an off-the-record window, and then should behave like
+    // kHttpsFirstMode type tests but without enabling the full HFM pref.
+    if (IsIncognitoMode() || IsIsolatedMode()) {
       UseIncognitoBrowser();
       SetPref(false);
     }
@@ -483,6 +494,12 @@ class HttpsUpgradesBrowserTest
 
   void SetUpCommandLine(base::CommandLine* command_line) override {
     mock_cert_verifier_.SetUpCommandLine(command_line);
+
+    if (IsIsolatedMode()) {
+      command_line->AppendSwitch(
+          enterprise_isolated_mode::switches::
+              kForceEnterpriseIsolatedModeReplacesIncognito);
+    }
   }
 
   void SetUpInProcessBrowserTestFixture() override {
@@ -503,8 +520,24 @@ class HttpsUpgradesBrowserTest
   void UseIncognitoBrowser() {
     ASSERT_EQ(nullptr, incognito_browser_.get());
     incognito_browser_ = CreateIncognitoBrowser();
+    ASSERT_EQ(
+        IsIsolatedMode(),
+        incognito_browser_->GetProfile()->IsEnterpriseIsolatedModeProfile());
   }
-  bool IsIncognito() const { return incognito_browser_ != nullptr; }
+  // Returns true if the test is running in the off-the-record browser window,
+  // which is used by both the Incognito and the Isolated Mode test types.
+  bool IsIncognitoOrIsolatedBrowser() const {
+    return incognito_browser_ != nullptr;
+  }
+  bool IsIncognitoMode() const {
+    return https_upgrades_test_type() ==
+           HttpsUpgradesTestType::kHttpsFirstModeIncognito;
+  }
+  bool IsIsolatedMode() const {
+    return https_upgrades_test_type() ==
+           HttpsUpgradesTestType::kHttpsFirstModeIsolatedMode;
+  }
+
   bool OnlyInBalancedMode() const {
     return https_upgrades_test_type() ==
                HttpsUpgradesTestType::kHttpsFirstBalancedMode ||
@@ -567,7 +600,8 @@ class HttpsUpgradesBrowserTest
   // that assume the HTTP interstitial will trigger (i.e., for fallback HTTP
   // navigations when HTTPS-First Mode is enabled).
   bool IsHttpsFirstModeInterstitialEnabledAcrossSites() const {
-    return IsHttpsFirstModePrefEnabled() || InBalancedMode() || IsIncognito() ||
+    return IsHttpsFirstModePrefEnabled() || InBalancedMode() ||
+           IsIncognitoOrIsolatedBrowser() ||
            safe_browsing::AdvancedProtectionStatusManagerFactory::GetForProfile(
                browser()->GetProfile())
                ->IsUnderAdvancedProtection();
@@ -749,6 +783,10 @@ class HttpsUpgradesBrowserTest
   void EnableCaptivePortalDetection(BrowserWindowInterface* browser);
 
  private:
+#if BUILDFLAG(GOOGLE_CHROME_BRANDING) && !BUILDFLAG(IS_CHROMEOS)
+  chrome::ScopedChannelOverride channel_override_{
+      chrome::ScopedChannelOverride::Channel::kDev};
+#endif  // BUILDFLAG(GOOGLE_CHROME_BRANDING) && !BUILDFLAG(IS_CHROMEOS)
   // TODO(https://crbug.com/423465927): Explore a better approach to make the
   // existing tests run with the prewarm feature enabled.
   test::ScopedPrewarmFeatureList prewarm_feature_list_{
@@ -780,6 +818,7 @@ INSTANTIATE_TEST_SUITE_P(
         HttpsUpgradesTestType::kHttpsFirstModeForTypicallySecureUsers,
         HttpsUpgradesTestType::kAllAutoHFM,
         HttpsUpgradesTestType::kHttpsFirstModeIncognito,
+        HttpsUpgradesTestType::kHttpsFirstModeIsolatedMode,
         HttpsUpgradesTestType::kHttpsFirstBalancedMode,
         HttpsUpgradesTestType::kHttpsFirstModeAdvancedProtection,
         HttpsUpgradesTestType::kAll,
@@ -799,6 +838,8 @@ INSTANTIATE_TEST_SUITE_P(
           return "AllAutoHFM";
         case HttpsUpgradesTestType::kHttpsFirstModeIncognito:
           return "HttpsFirstModeIncognito";
+        case HttpsUpgradesTestType::kHttpsFirstModeIsolatedMode:
+          return "HttpsFirstModeIsolatedMode";
         case HttpsUpgradesTestType::kHttpsFirstBalancedMode:
           return "HttpsFirstBalancedMode";
         case HttpsUpgradesTestType::kHttpsFirstModeAdvancedProtection:
@@ -1127,8 +1168,9 @@ IN_PROC_BROWSER_TEST_P(HttpsUpgradesBrowserTest,
 // HTTPS-First Mode in Incognito should customize the interstitial.
 IN_PROC_BROWSER_TEST_P(HttpsUpgradesBrowserTest,
                        IncognitoInterstitialVariation) {
-  // This test only applies to fully-enabled HFM and HFM-in-Incognito.
-  if (!IsHttpsFirstModePrefEnabled() && !IsIncognito()) {
+  // This test only applies to fully-enabled HFM, HFM-in-Incognito and
+  // HFM-in-Isolated-Mode.
+  if (!IsHttpsFirstModePrefEnabled() && !IsIncognitoOrIsolatedBrowser()) {
     return;
   }
 
@@ -1141,7 +1183,11 @@ IN_PROC_BROWSER_TEST_P(HttpsUpgradesBrowserTest,
 
   if (IsHttpsFirstModePrefEnabled()) {
     EXPECT_EQ(HFMInterstitialType::kStandard, GetHFMInterstitialType(contents));
-  } else if (IsIncognito()) {
+  } else if (IsIsolatedMode()) {
+    // Test that HFM-in-Isolated-Mode overrides the default interstitial text.
+    EXPECT_EQ(HFMInterstitialType::kIsolatedMode,
+              GetHFMInterstitialType(contents));
+  } else if (IsIncognitoMode()) {
     // Test that HFM-in-Incognito overrides the default interstitial text.
     EXPECT_EQ(HFMInterstitialType::kIncognito,
               GetHFMInterstitialType(contents));
@@ -1203,8 +1249,8 @@ MakeInterceptorForSiteEngagementHeuristic() {
 IN_PROC_BROWSER_TEST_P(
     HttpsUpgradesBrowserTest,
     MAYBE_UrlWithHttpScheme_BrokenSSL_SiteEngagementHeuristic_ShouldInterstitial) {
-  // HFM+SE is not enabled in Incognito.
-  if (IsIncognito()) {
+  // HFM+SE is not enabled in Incognito or Isolated Mode.
+  if (IsIncognitoOrIsolatedBrowser()) {
     return;
   }
   // Disable the testing port configuration, as this test doesn't use the
@@ -1424,8 +1470,8 @@ IN_PROC_BROWSER_TEST_P(
 IN_PROC_BROWSER_TEST_P(
     HttpsUpgradesBrowserTest,
     UrlWithHttpScheme_BrokenSSL_SiteEngagementHeuristic_ShouldIgnoreUrlsWithNonDefaultPorts) {
-  // HFM+SE is not enabled in Incognito.
-  if (IsIncognito()) {
+  // HFM+SE is not enabled in Incognito or Isolated Mode.
+  if (IsIncognitoOrIsolatedBrowser()) {
     return;
   }
   // Advanced Protection users have HFM enabled unconditionally, which does not
@@ -1537,8 +1583,9 @@ IN_PROC_BROWSER_TEST_P(
 IN_PROC_BROWSER_TEST_P(
     HttpsUpgradesBrowserTest,
     PRE_UrlWithHttpScheme_BrokenSSL_ShouldInterstitial_TypicallySecureUser) {
-  // HFM-for-Typically-Secure-Users is not enabled in Incognito.
-  if (IsIncognito()) {
+  // HFM-for-Typically-Secure-Users is not enabled in Incognito or Isolated
+  // Mode.
+  if (IsIncognitoOrIsolatedBrowser()) {
     return;
   }
   if (https_upgrades_test_type() ==
@@ -1641,8 +1688,9 @@ IN_PROC_BROWSER_TEST_P(
 IN_PROC_BROWSER_TEST_P(
     HttpsUpgradesBrowserTest,
     MAYBE_UrlWithHttpScheme_BrokenSSL_ShouldInterstitial_TypicallySecureUser) {
-  // HFM-for-Typically-Secure-Users is not enabled in Incognito.
-  if (IsIncognito()) {
+  // HFM-for-Typically-Secure-Users is not enabled in Incognito or Isolated
+  // Mode.
+  if (IsIncognitoOrIsolatedBrowser()) {
     return;
   }
   if (https_upgrades_test_type() ==
@@ -1779,8 +1827,9 @@ IN_PROC_BROWSER_TEST_P(
 IN_PROC_BROWSER_TEST_P(
     HttpsUpgradesBrowserTest,
     TypicallySecure_NonUniqueHostname_ShouldNotShowInterstitial) {
-  // HFM-for-Typically-Secure-Users is not enabled in Incognito.
-  if (IsIncognito()) {
+  // HFM-for-Typically-Secure-Users is not enabled in Incognito or Isolated
+  // Mode.
+  if (IsIncognitoOrIsolatedBrowser()) {
     return;
   }
   if (https_upgrades_test_type() ==
@@ -1827,8 +1876,9 @@ IN_PROC_BROWSER_TEST_P(
 IN_PROC_BROWSER_TEST_P(
     HttpsUpgradesBrowserTest,
     TypicallySecure_NonUniqueHostnameFallbackShouldNotDisableTypicallySecureHeuristic) {
-  // HFM-for-Typically-Secure-Users is not enabled in Incognito.
-  if (IsIncognito()) {
+  // HFM-for-Typically-Secure-Users is not enabled in Incognito or Isolated
+  // Mode.
+  if (IsIncognitoOrIsolatedBrowser()) {
     return;
   }
   // Disable the testing port configuration, as this test doesn't use the
@@ -2178,7 +2228,7 @@ IN_PROC_BROWSER_TEST_P(
     ExemptNetErrorOnUpgrade_UniqueSingleLabelHostname_ShouldFallback) {
   // This test is only interesting when HTTPS-First Strict Mode is enabled.
   // Balanced Mode won't try to upgrade these requests at all.
-  if (!IsHttpsFirstModePrefEnabled() || IsIncognito()) {
+  if (!IsHttpsFirstModePrefEnabled() || IsIncognitoOrIsolatedBrowser()) {
     return;
   }
 
@@ -3494,11 +3544,11 @@ IN_PROC_BROWSER_TEST_P(HttpsUpgradesBrowserTest, crbug1431026) {
 // HTTP allowlist is cleared.
 IN_PROC_BROWSER_TEST_P(HttpsUpgradesBrowserTest,
                        TogglingSettingClearsAllowlist) {
-  // The allowlist in an Incognito window is in-memory only, and is not cleared
-  // when the main profile's pref changes.
+  // The allowlist in an Incognito or Isolated Mode window is in-memory only,
+  // and is not cleared when the main profile's pref changes.
   // TODO(crbug.com/40937027): Add a test to cover the Incognito allowlisting
   // behavior explicitly.
-  if (IsIncognito()) {
+  if (IsIncognitoOrIsolatedBrowser()) {
     return;
   }
 
@@ -3549,8 +3599,9 @@ IN_PROC_BROWSER_TEST_P(HttpsUpgradesBrowserTest,
 // Regression test for crbug.com/40949400.
 IN_PROC_BROWSER_TEST_P(HttpsUpgradesBrowserTest,
                        IncognitoHasSeparateAllowlist) {
-  // This test only covers the case of HFM-in-Incognito.
-  if (!IsIncognito()) {
+  // This test only covers the cases of HFM-in-Incognito and
+  // HFM-in-Isolated-Mode.
+  if (!IsIncognitoOrIsolatedBrowser()) {
     return;
   }
   // In a regular window, add a host to the HTTP allowlist.
@@ -4287,8 +4338,7 @@ void HttpsUpgradesBrowserTest::EnableCaptivePortalDetection(
 IN_PROC_BROWSER_TEST_P(
     HttpsUpgradesBrowserTest,
     CaptivePortal_LoginPageWithValidSSL_ShouldNotUpgradeUnlessInterstitialEnabled) {
-  if (https_upgrades_test_type() ==
-      HttpsUpgradesTestType::kHttpsFirstModeIncognito) {
+  if (IsIncognitoOrIsolatedBrowser()) {
     return;
   }
   auto interceptor =
@@ -4354,8 +4404,7 @@ IN_PROC_BROWSER_TEST_P(
 IN_PROC_BROWSER_TEST_P(
     HttpsUpgradesBrowserTest,
     CaptivePortal_LoginPageWithoutValidSSL_ShouldNotUpgradeUnlessInterstitialEnabled) {
-  if (https_upgrades_test_type() ==
-      HttpsUpgradesTestType::kHttpsFirstModeIncognito) {
+  if (IsIncognitoOrIsolatedBrowser()) {
     return;
   }
   auto interceptor =
@@ -4738,7 +4787,7 @@ INSTANTIATE_TEST_SUITE_P(
 IN_PROC_BROWSER_TEST_P(
     HttpsUpgradesHeuristicsWithoutBalancedModeBrowserTest,
     UrlWithHttpScheme_BrokenSSL_SiteEngagementHeuristicWithoutBalancedMode_ShouldIgnore) {
-  ASSERT_FALSE(IsIncognito() || IsHttpsFirstModePrefEnabled());
+  ASSERT_FALSE(IsIncognitoOrIsolatedBrowser() || IsHttpsFirstModePrefEnabled());
 
   // Disable the testing port configuration, as this test doesn't use the
   // EmbeddedTestServer.

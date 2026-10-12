@@ -165,7 +165,7 @@ public class AutocompleteMatch {
                 // When parsing error occurs, leave template as null.
             }
         }
-        mFillIntoEdit = TextUtils.isEmpty(fillIntoEdit) ? displayText : fillIntoEdit;
+        mFillIntoEdit = fillIntoEdit;
         assert url != null;
         mUrl = url;
         assert imageUrl != null;
@@ -525,6 +525,16 @@ public class AutocompleteMatch {
 
     public /* SuggestTemplateInfo.IconType */ int getIconType() {
         return mIconType;
+    }
+
+    public @Nullable SuggestTemplateInfo getSuggestTemplate() {
+        return mSuggestTemplate;
+    }
+
+    public boolean shouldWrapSecondaryText() {
+        return mSuggestTemplate != null
+                && mSuggestTemplate.hasWrapSecondaryText()
+                && mSuggestTemplate.getWrapSecondaryText();
     }
 
     /**

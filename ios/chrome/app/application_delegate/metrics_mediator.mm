@@ -24,6 +24,7 @@
 #import "components/metrics/metrics_reporting_choice_service.h"
 #import "components/metrics/metrics_service.h"
 #import "components/metrics/metrics_switches.h"
+#import "components/password_manager/core/common/browser_assisted_login_type.h"
 #import "components/prefs/pref_service.h"
 #import "components/previous_session_info/previous_session_info.h"
 #import "components/signin/public/identity_manager/tribool.h"
@@ -272,16 +273,16 @@ void RecordWidgetUsage(base::span<const HistogramNameCountPair> histograms) {
   }
 
   for (const HistogramNameCountPair& pair : histograms) {
-    int maxSamples = pair.buckets;
+    int bucket_count = pair.bucket_count;
     // Check each possible bucket to see if it has any events to emit.
-    for (int bucket = 0; bucket < maxSamples; ++bucket) {
+    for (int bucket = 0; bucket < bucket_count; ++bucket) {
       NSString* key = app_group::HistogramCountKey(pair.name, bucket);
       int count = [shared_defaults integerForKey:key];
       if (count != 0) {
         [shared_defaults setInteger:0 forKey:key];
         std::string histogramName = SysNSStringToUTF8(pair.name);
         for (int emitCount = 0; emitCount < count; ++emitCount) {
-          base::UmaHistogramExactLinear(histogramName, bucket, maxSamples + 1);
+          base::UmaHistogramExactLinear(histogramName, bucket, bucket_count);
         }
       }
     }
@@ -702,6 +703,12 @@ BOOL _credentialExtensionWasUsed = NO;
       {
           @"IOS.CredentialExtension.NewCredentialUsername",
           static_cast<int>(CPENewCredentialUsername::kMaxValue) + 1,
+      },
+      {
+          @"PasswordManager.BrowserAssistedLogin.Type",
+          static_cast<int>(password_manager::metrics_util::
+                               BrowserAssistedLoginType::kMaxValue) +
+              1,
       }};
   metrics_mediator::RecordWidgetUsage(histogramsFromExtension);
 }

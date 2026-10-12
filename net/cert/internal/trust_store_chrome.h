@@ -48,8 +48,8 @@ struct StaticChromeRootCertConstraints {
 
   base::span<const std::string_view> permitted_dns_names;
 
-  std::optional<uint64_t> index_not_after;
-  std::optional<uint64_t> index_after;
+  std::optional<uint64_t> serial_not_after;
+  std::optional<uint64_t> serial_after;
 
   std::optional<base::Time> validity_starts_not_after;
   std::optional<base::Time> validity_starts_after;
@@ -71,14 +71,6 @@ struct ChromeRootCertInfo {
   std::optional<int32_t> crs_root_id;
 };
 
-struct ChromeMtcAnchorInfo {
-  base::span<const uint8_t> log_id;
-  base::span<const StaticChromeRootCertConstraints> constraints;
-  std::optional<int32_t> crs_root_id;
-  // Does not contain `tls_trust_anchor`, as MtcAnchors without that set to
-  // true are simply ignored.
-};
-
 struct NET_EXPORT ChromeRootCertConstraints {
   ChromeRootCertConstraints();
   ChromeRootCertConstraints(std::optional<base::Time> sct_not_after,
@@ -86,8 +78,8 @@ struct NET_EXPORT ChromeRootCertConstraints {
                             std::optional<base::Version> min_version,
                             std::optional<base::Version> max_version_exclusive,
                             std::vector<std::string> permitted_dns_names,
-                            std::optional<uint64_t> index_not_after,
-                            std::optional<uint64_t> index_after,
+                            std::optional<uint64_t> serial_not_after,
+                            std::optional<uint64_t> serial_after,
                             std::optional<base::Time> validity_starts_not_after,
                             std::optional<base::Time> validity_starts_after);
   explicit ChromeRootCertConstraints(
@@ -106,8 +98,8 @@ struct NET_EXPORT ChromeRootCertConstraints {
 
   std::vector<std::string> permitted_dns_names;
 
-  std::optional<uint64_t> index_not_after;
-  std::optional<uint64_t> index_after;
+  std::optional<uint64_t> serial_not_after;
+  std::optional<uint64_t> serial_after;
 
   std::optional<base::Time> validity_starts_not_after;
   std::optional<base::Time> validity_starts_after;
@@ -405,7 +397,7 @@ class NET_EXPORT TrustStoreChrome : public bssl::TrustStore {
   //   `maxversionexclusive=${dotted_version_string}`
   //   `dns=${permitted_dns_name}` (can be specified multiple times)
   //
-  // TODO(crbug.com/452986180): support constraint overrides for MTC index
+  // TODO(crbug.com/452986180): support constraint overrides for MTC serial
   // constraints.
   //
   // If the same root hash is specified multiple times in separate constraint

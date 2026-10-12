@@ -80,16 +80,14 @@ public interface TabGroupObserver {
      */
     default void didMergeTabToGroup(Tab movedTab, boolean isDestinationTab) {}
 
-    // TODO(crbug.com/434015906): Passing the last tab here is a limitation of the current impl,
-    // we should fix this once tab collections is launched.
     /**
      * This method is called after a group is moved.
      *
-     * @param movedTab The tab which has been moved. This is the last tab within the group.
-     * @param tabModelOldIndex The old index of the {@code movedTab} in the {@link TabModel}.
-     * @param tabModelNewIndex The new index of the {@code movedTab} in the {@link TabModel}.
+     * @param tabGroupId The tab group ID of the group that was moved.
+     * @param tabModelOldIndex The old index of the first tab in the group in the {@link TabModel}.
+     * @param tabModelNewIndex The new index of the first tab in the group in the {@link TabModel}.
      */
-    default void didMoveTabGroup(Tab movedTab, int tabModelOldIndex, int tabModelNewIndex) {}
+    default void didMoveTabGroup(Token tabGroupId, int tabModelOldIndex, int tabModelNewIndex) {}
 
     /**
      * This method is called after a tab within a group is moved.
@@ -104,9 +102,10 @@ public interface TabGroupObserver {
      * This method is called after a tab within a group is moved out of the group.
      *
      * @param movedTab The tab which has been moved.
-     * @param prevFilterIndex The index of the group where {@code moveTab} was before ungrouping.
+     * @param oldTabGroupId The tab group ID of the group where {@code movedTab} was before
+     *     ungrouping.
      */
-    default void didMoveTabOutOfGroup(Tab movedTab, int prevFilterIndex) {}
+    default void didMoveTabOutOfGroup(Tab movedTab, Token oldTabGroupId) {}
 
     /**
      * This method is called after a group is created and an undo group snackbar should be shown.
@@ -160,6 +159,14 @@ public interface TabGroupObserver {
      * @param newRootId The new root id.
      */
     default void didChangeGroupRootId(int oldRootId, int newRootId) {}
+
+    /**
+     * Called when a tab group is about to be removed from the tab model (e.g. as a result of
+     * closure, ungrouping, or merging), prior to {@link #didRemoveTabGroup}.
+     *
+     * @param tabGroupId The tab group id being removed.
+     */
+    default void willRemoveTabGroup(Token tabGroupId) {}
 
     /**
      * Called when a tab group is removed from the tab model. This could be the result of merging

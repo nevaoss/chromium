@@ -98,7 +98,14 @@ class ContextualSearchSessionHandle {
   std::optional<bool> smart_tab_sharing_active() const {
     return smart_tab_sharing_active_;
   }
-  void set_smart_tab_sharing_active(std::optional<bool> active);
+  void set_smart_tab_sharing_active(std::optional<bool> active) {
+    smart_tab_sharing_active_ = active;
+  }
+
+  // Invoked when the user explicitly toggles Smart Tab Sharing in the UI.
+  // Clears active/persisted context tokens and records removed context IDs so
+  // that tab strip underlines clear immediately and the server drops context.
+  void OnSmartTabSharingToggled(bool active);
 
   bool smart_tab_sharing_toggled_since_last_turn() const {
     return smart_tab_sharing_toggled_since_last_turn_;
@@ -160,6 +167,16 @@ class ContextualSearchSessionHandle {
   virtual std::optional<lens::proto::LensOverlaySuggestInputs>
   GetSuggestInputs() const;
 
+  // Returns the search session ID from the underlying controller, or empty
+  // string if not available.
+  virtual std::string search_session_id() const;
+
+  // Constructs the visual search interaction data for the given file token, if
+  // available.
+  virtual std::optional<lens::LensOverlayVisualSearchInteractionData>
+  GetVisualSearchInteractionData(const base::UnguessableToken& file_token,
+                                 const std::optional<std::string>& query_text);
+
   // Generates a token and adds it to the list of uploaded context tokens. A
   // followup call to 'StartFileContextUploadFlow` or
   // `StartTabContextUploadFlow`, using the returned token, is required to start
@@ -177,7 +194,9 @@ class ContextualSearchSessionHandle {
 
   // Starts the tab context upload flow for the given file token using the
   // tab context stored in the contextual input data. The file token must have
-  // been previously returned by `CreateContextToken`.
+  // been previously returned by `CreateContextToken`. If
+  // `contextual_input_data` is null, the upload flow is aborted and
+  // `file_token` is removed from uploaded context tokens.
   virtual void StartTabContextUploadFlow(
       const base::UnguessableToken& file_token,
       std::unique_ptr<lens::ContextualInputData> contextual_input_data,

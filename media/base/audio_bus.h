@@ -47,6 +47,14 @@ class MEDIA_EXPORT AudioBus {
   static std::unique_ptr<AudioBus> Create(int channels, int frames);
   static std::unique_ptr<AudioBus> Create(const AudioParameters& params);
 
+  // Like Create(), but returns nullptr on allocation failure, invalid channel
+  // counts, or integer overflow instead of crashing. Intended for large,
+  // variable-size, or untrusted inputs where memory exhaustion should be
+  // handled gracefully.
+  // Note: Does not support bitstream formats.
+  static std::unique_ptr<AudioBus> TryCreate(int channels, int frames);
+  static std::unique_ptr<AudioBus> TryCreate(const AudioParameters& params);
+
   // Creates a new AudioBus with the given number of channels, but zero length.
   // Clients are expected to subsequently call SetChannelData() and set_frames()
   // to wrap externally allocated memory.
@@ -199,10 +207,6 @@ class MEDIA_EXPORT AudioBus {
 
   // Convenience function to allow range-based for-loops.
   const ChannelVector& AllChannels() const;
-
-  // Returns a copy of `channels_`, with `subspan()` applied to each channel.
-  // Note: The returned channels might not be aligned, depending on `offset`.
-  ChannelVector AllChannelsSubspan(size_t offset, size_t count) const;
 
   // Returns the number of channels.
   int channels() const { return static_cast<int>(channel_data_.size()); }

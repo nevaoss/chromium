@@ -79,7 +79,7 @@ class ActionAppMenu : public views::MenuDelegate {
   void PopulateSearchBar(views::MenuItemView* view_parent,
                          actions::ActionItem* search_action_item);
   void PopulateHeader(views::MenuItemView* view_parent,
-                      actions::ActionItem* header_action_item);
+                      actions::BaseAction* header_base_action);
   void PopulateFooter(views::MenuItemView* view_parent,
                       actions::ActionItem* footer_action_item);
   void PopulateBlockSection(views::MenuItemView* view_parent,
@@ -112,7 +112,7 @@ class ActionAppMenu : public views::MenuDelegate {
 
   bool has_notification_header_ = false;
 
-  size_t header_count_ = 0;
+  size_t section_header_count_ = 0;
 
   // The action to execute when the menu is closed.
   std::optional<actions::ActionId> action_to_execute_on_close_;

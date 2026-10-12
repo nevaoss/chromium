@@ -5,8 +5,11 @@
 #ifndef CHROME_BROWSER_TTC_CORE_SESSION_CONTROLLER_H_
 #define CHROME_BROWSER_TTC_CORE_SESSION_CONTROLLER_H_
 
+#include <string>
+
 #include "chrome/browser/ttc/app/public/tool_types.h"
 #include "chrome/browser/ttc/core/page_context.h"
+#include "chrome/browser/ttc/core/states.h"
 
 class Profile;
 
@@ -30,6 +33,12 @@ class SessionController {
 
   // The profile this session belongs to.
   virtual Profile* GetProfile() = 0;
+
+  // The current lifecycle state of this session.
+  virtual SessionLifecycle GetSessionLifecycle() const = 0;
+
+  // Moves this session to the `lifecycle` state.
+  virtual void SetSessionLifecycle(SessionLifecycle lifecycle) = 0;
 
   // Runs a tool (using parameters provided in `tool_request`) and calls
   // `tool_response_callback` with the result (or an error).

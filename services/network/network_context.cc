@@ -2200,7 +2200,8 @@ void NetworkContext::CreateWebSocket(
     mojo::PendingRemote<mojom::TrustedHeaderClient> header_client,
     const std::optional<base::UnguessableToken>& throttling_profile_id,
     const base::UnguessableToken& network_restrictions_id,
-    mojom::IPAddressSpace target_address_space) {
+    mojom::IPAddressSpace target_address_space,
+    std::optional<int64_t> target_network) {
 #if BUILDFLAG(ENABLE_WEBSOCKETS)
   if (!websocket_factory_) {
     websocket_factory_ = std::make_unique<WebSocketFactory>(this);
@@ -2215,7 +2216,8 @@ void NetworkContext::CreateWebSocket(
       static_cast<net::NetworkTrafficAnnotationTag>(traffic_annotation),
       std::move(handshake_client), std::move(url_loader_network_observer),
       std::move(auth_handler), std::move(header_client), throttling_profile_id,
-      network_restrictions_id, target_address_space);
+      network_restrictions_id, target_address_space,
+      target_network.value_or(net::handles::kInvalidNetworkHandle));
 #endif  // BUILDFLAG(ENABLE_WEBSOCKETS)
 }
 
@@ -4188,19 +4190,28 @@ void NetworkContext::OnInvalidationFiltersLoaded(
     return;
   }
 
-  // 1. Determine and save the final list of filters in O(N log N) time.
+  // 1. Determine and save the final list of filters.
   if (logical_invalidation_store_) {
-    std::vector<net::HttpCache::InvalidationFilter> filters_to_save(
-        loaded_filters);
-    filters_to_save.append_range(pending_additions_);
-    std::erase_if(filters_to_save, [&](const auto& filter) {
-      return std::ranges::contains(pending_removals_, filter);
-    });
-    std::ranges::sort(filters_to_save, std::less<>());
-    auto [first, last] =
-        std::ranges::unique(filters_to_save, std::equal_to<>());
-    filters_to_save.erase(first, last);
-    logical_invalidation_store_->Save(std::move(filters_to_save));
+    // Skip saving if no filters were added or removed during load, avoiding a
+    // redundant startup write (and avoiding overwriting an unparsable file
+    // with an empty list).
+    const bool skipped =
+        pending_additions_.empty() && pending_removals_.empty();
+    base::UmaHistogramBoolean(
+        "Net.HttpCache.LogicalInvalidation.StartupSaveSkipped", skipped);
+    if (!skipped) {
+      std::vector<net::HttpCache::InvalidationFilter> filters_to_save(
+          loaded_filters);
+      filters_to_save.append_range(pending_additions_);
+      std::erase_if(filters_to_save, [&](const auto& filter) {
+        return std::ranges::contains(pending_removals_, filter);
+      });
+      std::ranges::sort(filters_to_save, std::less<>());
+      auto [first, last] =
+          std::ranges::unique(filters_to_save, std::equal_to<>());
+      filters_to_save.erase(first, last);
+      logical_invalidation_store_->Save(std::move(filters_to_save));
+    }
   }
 
   // 2. Determine which loaded filters need to be registered logically in

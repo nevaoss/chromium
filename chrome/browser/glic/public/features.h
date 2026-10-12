@@ -100,6 +100,28 @@ BASE_DECLARE_FEATURE(kGlicTieredRolloutV2);
 extern const base::FeatureParam<std::string> kGlicTieredRolloutV2EligibleTiers;
 const base::flat_set<int32_t>& GetGlicTieredRolloutV2EligibleTiers();
 
+// When enabled, Glic and Autobrowse (web actuation) entitlement is determined
+// by the synced subscription benefits priority pref
+// (`subscription_eligibility::prefs::kSubscriptionBenefits`) instead of the AI
+// subscription tier (`kAiSubscriptionTier`).
+BASE_DECLARE_FEATURE(kGlicSubscriptionBenefitsEligibility);
+// Comma separated list of subscription benefit values which make a profile
+// eligible for Glic.
+extern const base::FeatureParam<std::string> kGlicEligibleBenefits;
+// Comma separated list of subscription benefit values which make a profile
+// eligible for Autobrowse (web actuation).
+extern const base::FeatureParam<std::string> kGlicActorEligibleBenefits;
+// These parse the params on each call, so that experiment configurations
+// applied after startup (e.g. in tests) are respected.
+base::flat_set<std::string> GetGlicEligibleBenefits();
+base::flat_set<std::string> GetGlicActorEligibleBenefits();
+
+// Returns true if `profile_benefits`, the benefits stored in the subscription
+// benefits priority pref, contains at least one of `eligible_benefits`.
+bool HasAnyEligibleGlicBenefit(
+    const base::flat_set<std::string>& profile_benefits,
+    const base::flat_set<std::string>& eligible_benefits);
+
 BASE_DECLARE_FEATURE(kGlicHorizontalTabToolbarButton);
 
 enum class GlicToolbarButtonLocation {
@@ -159,6 +181,18 @@ BASE_DECLARE_FEATURE(kGlicNoWebUiLoader);
 BASE_DECLARE_FEATURE(kGlicGeminiEnterpriseSettingsEnabled);
 BASE_DECLARE_FEATURE(kGlicGeminiEnterpriseConsentEnabled);
 
+// Enables Gemini Enterprise in Chrome (GEiC), the standalone enterprise
+// surface. This is distinct from Gemini Enterprise as a Tool (GEaaT), which is
+// governed by kGlicGeminiEnterpriseSettingsEnabled above.
+BASE_DECLARE_FEATURE(kGeic);
+// Allows the GEiC surface to be turned off from within the kGeic study without
+// having to disable the study itself.
+extern const base::FeatureParam<bool> kGeicEnabledParam;
+// The Gemini Enterprise guest URL. Intentionally empty by default: running in
+// GEiC mode without an explicit GEiC URL is a misconfiguration, so callers
+// error rather than fall back to the consumer Gemini URL.
+extern const base::FeatureParam<std::string> kGeicGuestURL;
+
 BASE_DECLARE_FEATURE(kGlicMarketingAutoOpen);
 extern const base::FeatureParam<std::string> kGlicMarketingUrlAllowlist;
 extern const base::FeatureParam<int> kGlicMarketingAutoOpenMaxCount;
@@ -175,7 +209,7 @@ BASE_DECLARE_FEATURE(kGlicOptInDialogA11yFix);
 BASE_DECLARE_FEATURE(kGlicStructuredYieldMetadata);
 
 BASE_DECLARE_FEATURE(kGlicNoWebview);
-// Returns true if both kGlicNoWebview and kPrivilegedWebContents are enabled.
+// Returns true if kGlicNoWebview is enabled.
 bool IsGlicNoWebviewEnabled();
 BASE_DECLARE_FEATURE(kGlicDisconnectedWebview);
 
@@ -183,6 +217,10 @@ BASE_DECLARE_FEATURE(kGlicShakeTrigger);
 extern const base::FeatureParam<bool> kGlicShakeTriggerOnlyOnSidePanel;
 
 BASE_DECLARE_FEATURE(kGlicAndroidTablet);
+
+// Enables voice input for Gemini in Chrome, including the microphone permission
+// toggle in Glic settings.
+BASE_DECLARE_FEATURE(kGlicVoice);
 
 BASE_DECLARE_FEATURE(kGlicActionFirstFRE);
 

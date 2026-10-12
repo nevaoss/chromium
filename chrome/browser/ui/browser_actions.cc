@@ -72,7 +72,6 @@
 #include "chrome/browser/devtools/devtools_policy_dialog.h"
 #include "chrome/browser/devtools/devtools_window.h"
 #include "chrome/browser/feedback/show_feedback_page.h"
-#include "chrome/browser/geic/geic_enabling.h"
 #include "chrome/browser/glic/public/glic_enabling.h"
 #include "chrome/browser/indigo/resources/grit/indigo_strings.h"
 #include "chrome/browser/lifetime/application_lifetime_desktop.h"
@@ -116,6 +115,9 @@
 #include "chrome/browser/ui/commerce/commerce_ui_tab_helper.h"
 #include "chrome/browser/ui/customize_chrome/side_panel_controller.h"
 #include "chrome/browser/ui/dialogs/browser_dialogs.h"
+#include "chrome/browser/ui/global_error/global_error.h"
+#include "chrome/browser/ui/global_error/global_error_service.h"
+#include "chrome/browser/ui/global_error/global_error_service_factory.h"
 #include "chrome/browser/ui/intent_picker_tab_helper.h"
 #include "chrome/browser/ui/lens/lens_overlay_controller.h"
 #include "chrome/browser/ui/lens/lens_overlay_entry_point_controller.h"
@@ -665,15 +667,7 @@ void BrowserActions::InitializeSidePanelActions() {
             .Build());
   }
 
-  if (geic::IsGeicEnabled(profile)) {
-    root_action_item_->AddChild(
-        SidePanelAction(
-            SidePanelEntryId::kGeic, IDS_SETTINGS_SIDE_PANEL_ALIGNMENT_GLIC,
-            IDS_SETTINGS_SIDE_PANEL_ALIGNMENT_GLIC, omnibox::kSparkIcon,
-            kActionSidePanelShowGeic, bwi, false)
-            .SetVisible(true)
-            .Build());
-  } else if (glic::GlicEnabling::IsEnabledByGlobalCriteria()) {
+  if (glic::GlicEnabling::IsEnabledByGlobalCriteria()) {
     root_action_item_->AddChild(
         SidePanelAction(
             SidePanelEntryId::kGlic, IDS_SETTINGS_SIDE_PANEL_ALIGNMENT_GLIC,
@@ -701,10 +695,8 @@ void BrowserActions::InitializePageActionIconActions() {
           .SetTooltipText(l10n_util::GetStringUTF16(
               IDS_AUTOFILL_OFFERS_REMINDER_ICON_TOOLTIP_TEXT))
           .SetImage(ui::ImageModel::FromVectorIcon(
-              features::IsRoundedIconsEnabled()
-                  ? vector_icons::kShoppingmodeIcon
-                  : kLocalOfferFlippedRefreshOldIcon,
-              ui::kColorIcon, ui::SimpleMenuModel::kDefaultIconSize))
+              kWalletIcon, ui::kColorIcon,
+              ui::SimpleMenuModel::kDefaultIconSize))
           .Build());
 
   // TODO(crbug.com/435220196): Ideally this action would have
@@ -1776,6 +1768,30 @@ void BrowserActions::InitializeChromeMenuActions() {
               features::IsRoundedIconsEnabled() ? kExploreIcon
                                                 : kTravelExploreOldIcon))
           .Build());
+
+  if (ttc::TtcKeyedService* service =
+          ttc::TtcKeyedService::Get(bwi->GetProfile());
+      service && service->IsEnabled()) {
+    root_action_item_->AddChild(
+        ChromeMenuAction(
+            base::BindRepeating(
+                [](BrowserWindowInterface* bwi, actions::ActionItem* item,
+                   actions::ActionInvocationContext context) {
+                  chrome::ShowTtcMenuItem(bwi);
+                },
+                bwi),
+            kActionShowTtcMenu, IDS_TTC_ENTRYPOINT_LABEL,
+            IDS_TTC_ENTRYPOINT_LABEL,
+#if BUILDFLAG(GOOGLE_CHROME_BRANDING)
+            vector_icons::kAudioSparkIcon,
+#else
+            features::IsRoundedIconsEnabled()
+                ? vector_icons::kMicFilledIcon
+                : vector_icons::kMicChromeRefreshOldIcon,
+#endif
+            /*is_pinnable=*/false)
+            .Build());
+  }
 }
 
 void BrowserActions::InitializeToolbarAndMiscActions() {
@@ -2252,7 +2268,7 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
             base::BindRepeating(
                 [](BrowserWindowInterface* bwi, actions::ActionItem* item,
                    actions::ActionInvocationContext context) {
-                  chrome::UnfocusTabGroup(
+                  chrome::ExitFocusMode(
                       bwi, TabGroupFocusExitReason::kTabStripButton);
                 },
                 bwi))
@@ -2793,6 +2809,7 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
               bwi))
           .SetActionId(kActionFullscreen)
           .SetTooltipText(l10n_util::GetStringUTF16(IDS_ACCNAME_FULLSCREEN))
+          .SetAccessibleName(l10n_util::GetStringUTF16(IDS_ACCNAME_FULLSCREEN))
           .SetImage(ui::ImageModel::FromVectorIcon(
               features::IsRoundedIconsEnabled() ? kFullscreenIcon
                                                 : kFullscreenRefreshOldIcon))
@@ -3844,6 +3861,10 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
               },
               bwi))
           .SetActionId(kActionSafetyHubShowPasswordCheckup)
+          .SetImage(ui::ImageModel::FromVectorIcon(
+              features::IsRoundedIconsEnabled() ? kSecurityIcon
+                                                : kSecurityOldIcon,
+              ui::kColorMenuIconOnEmphasizedBackground))
           .Build());
 
   root_action_item_->AddChild(
@@ -4578,10 +4599,12 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
               bwi),
           kActionSafetyHubManageExtensions, IDS_MANAGE_EXTENSIONS,
           IDS_MANAGE_EXTENSIONS,
-          features::IsRoundedIconsEnabled()
-              ? vector_icons::kChromeExtensionIcon
-              : vector_icons::kExtensionChromeRefreshOldIcon,
+          features::IsRoundedIconsEnabled() ? kSecurityIcon : kSecurityOldIcon,
           /*is_pinnable=*/false)
+          .SetImage(ui::ImageModel::FromVectorIcon(
+              features::IsRoundedIconsEnabled() ? kSecurityIcon
+                                                : kSecurityOldIcon,
+              ui::kColorMenuIconOnEmphasizedBackground))
           .Build());
   root_action_item_->AddChild(
       ChromeMenuAction(
@@ -4609,6 +4632,10 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
           IDS_SETTINGS_SAFETY_HUB,
           features::IsRoundedIconsEnabled() ? kSecurityIcon : kSecurityOldIcon,
           /*is_pinnable=*/false)
+          .SetImage(ui::ImageModel::FromVectorIcon(
+              features::IsRoundedIconsEnabled() ? kSecurityIcon
+                                                : kSecurityOldIcon,
+              ui::kColorMenuIconOnEmphasizedBackground))
           .Build());
   if (base::FeatureList::IsEnabled(features::kEnterpriseReleaseNotes)) {
     root_action_item_->AddChild(
@@ -4641,6 +4668,25 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
                   ? kRocketLaunchIcon
                   : kBrowserToolsUpdateChromeRefreshOldIcon,
               ui::kColorMenuIconOnEmphasizedBackground))
+          .SetVisible(false)
+          .Build());
+
+  root_action_item_->AddChild(
+      actions::ActionItem::Builder(
+          base::BindRepeating(
+              [](BrowserWindowInterface* bwi, actions::ActionItem* item,
+                 actions::ActionInvocationContext context) {
+                if (auto* service = GlobalErrorServiceFactory::GetForProfile(
+                        bwi->GetProfile())) {
+                  if (GlobalError* error =
+                          service
+                              ->GetHighestSeverityGlobalErrorWithAppMenuItem()) {
+                    error->ExecuteMenuItem(bwi);
+                  }
+                }
+              },
+              bwi))
+          .SetActionId(kActionGlobalError)
           .SetVisible(false)
           .Build());
 
@@ -4903,8 +4949,9 @@ void BrowserActions::InitializeToolbarAndMiscActions() {
 #if BUILDFLAG(GOOGLE_CHROME_BRANDING)
             vector_icons::kAudioSparkIcon,
 #else
-            features::IsRoundedIconsEnabled() ? vector_icons::kMicFilledIcon
-                                              : vector_icons::kMicOldIcon,
+            features::IsRoundedIconsEnabled()
+                ? vector_icons::kMicFilledIcon
+                : vector_icons::kMicChromeRefreshOldIcon,
 #endif  // BUILDFLAG(GOOGLE_CHROME_BRANDING)
             /*is_pinnable=*/true)
             .Build());

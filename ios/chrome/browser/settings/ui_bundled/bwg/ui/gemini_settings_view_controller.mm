@@ -5,6 +5,7 @@
 #import "ios/chrome/browser/settings/ui_bundled/bwg/ui/gemini_settings_view_controller.h"
 
 #import "base/apple/foundation_util.h"
+#import "ios/chrome/browser/intelligence/contextual_cueing/features.h"
 #import "ios/chrome/browser/intelligence/features/features.h"
 #import "ios/chrome/browser/net/model/crurl.h"
 #import "ios/chrome/browser/settings/ui_bundled/bwg/coordinator/gemini_settings_mutator.h"
@@ -25,6 +26,7 @@
 #import "ios/chrome/browser/shared/ui/table_view/cells/table_view_text_header_footer_item.h"
 #import "ios/chrome/browser/shared/ui/table_view/table_view_utils.h"
 #import "ios/chrome/browser/shared/ui/util/uikit_ui_util.h"
+#import "ios/chrome/common/string_util.h"
 #import "ios/chrome/common/ui/colors/semantic_color_names.h"
 #import "ios/chrome/grit/ios_branded_strings.h"
 #import "ios/chrome/grit/ios_strings.h"
@@ -198,7 +200,7 @@ NSString* const kPageContentSharingAction = @"PageContentSharingAction";
                        linkURL:GURL()];
 
   TableViewLinkHeaderFooterItem* suggestionsFooterItem;
-  if (IsGeminiContextualSuggestionsCuesEnabled()) {
+  if (contextual_cueing::IsGeminiContextualSuggestionsCuesEnabled()) {
     _suggestionsItem = [self
              detailItemWithType:ItemTypeSuggestions
                            text:l10n_util::GetNSString(
@@ -283,7 +285,7 @@ NSString* const kPageContentSharingAction = @"PageContentSharingAction";
   [model setFooter:pageContentSharingFooterItem
       forSectionWithIdentifier:SectionIdentifierPageContent];
 
-  if (IsGeminiContextualSuggestionsCuesEnabled()) {
+  if (contextual_cueing::IsGeminiContextualSuggestionsCuesEnabled()) {
     [model addSectionWithIdentifier:SectionIdentifierSuggestions];
     if (!firstPermissionsSectionIdentifier) {
       firstPermissionsSectionIdentifier = SectionIdentifierSuggestions;
@@ -596,7 +598,7 @@ NSString* const kPageContentSharingAction = @"PageContentSharingAction";
 }
 
 - (void)setGeminiSuggestionsEnabled:(BOOL)enabled {
-  if (!IsGeminiContextualSuggestionsCuesEnabled()) {
+  if (!contextual_cueing::IsGeminiContextualSuggestionsCuesEnabled()) {
     return;
   }
 
@@ -659,10 +661,17 @@ NSString* const kPageContentSharingAction = @"PageContentSharingAction";
          toSectionWithIdentifier:settingIdentifier];
 
     if (newItem.metadata.subtitle) {
+      GURL linkURL;
+      StringWithTags parsedSubtitle =
+          ParseStringWithLinks(newItem.metadata.subtitle);
+      if (!parsedSubtitle.ranges.empty() &&
+          newItem.metadata.context == GeminiSettingsContextGeminiAppsActivity) {
+        linkURL = GURL(kGeminiAppActivityURL);
+      }
       TableViewLinkHeaderFooterItem* settingFooterItem =
           [self headerFooterItemWithType:ItemTypeAppActivityFooter
                                     text:newItem.metadata.subtitle
-                                 linkURL:GURL()];
+                                 linkURL:linkURL];
       [self.tableViewModel setFooter:settingFooterItem
             forSectionWithIdentifier:settingIdentifier];
     }

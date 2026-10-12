@@ -1201,9 +1201,9 @@ public class TabCollectionTabModelImplTest {
                     }
 
                     @Override
-                    public void didMoveTabOutOfGroup(Tab movedTab, int prevFilterIndex) {
+                    public void didMoveTabOutOfGroup(Tab movedTab, Token oldTabGroupId) {
                         assertEquals(tab1, movedTab);
-                        assertEquals(1, prevFilterIndex);
+                        assertEquals(tab1GroupId, oldTabGroupId);
                         didMoveTabOutOfGroupHelper.notifyCalled();
                     }
 
@@ -1257,11 +1257,11 @@ public class TabCollectionTabModelImplTest {
                     }
 
                     @Override
-                    public void didMoveTabGroup(Tab movedTab, int oldIndex, int newIndex) {
-                        // movedTab is the last tab in the group.
-                        assertEquals(tab2, movedTab);
-                        assertEquals(2, oldIndex);
-                        assertEquals(3, newIndex);
+                    public void didMoveTabGroup(
+                            Token tabGroupId, int tabModelOldIndex, int tabModelNewIndex) {
+                        assertEquals(groupId, tabGroupId);
+                        assertEquals(1, tabModelOldIndex);
+                        assertEquals(2, tabModelNewIndex);
                         didMoveTabGroupHelper.notifyCalled();
                     }
                 };
@@ -1376,7 +1376,8 @@ public class TabCollectionTabModelImplTest {
                     }
 
                     @Override
-                    public void didMoveTabGroup(Tab movedTab, int oldIndex, int newIndex) {
+                    public void didMoveTabGroup(
+                            Token tabGroupId, int tabModelOldIndex, int tabModelNewIndex) {
                         fail("didMoveTabGroup should not be called for individual tab.");
                     }
                 };
@@ -1487,9 +1488,9 @@ public class TabCollectionTabModelImplTest {
 
                                 @Override
                                 public void didMoveTabOutOfGroup(
-                                        Tab movedTab, int prevFilterIndex) {
+                                        Tab movedTab, Token oldTabGroupId) {
                                     assertEquals(tab0, movedTab);
-                                    assertEquals(1, prevFilterIndex);
+                                    assertEquals(groupId, oldTabGroupId);
                                     didMoveOutOfGroup.notifyCalled();
                                 }
 
@@ -1539,9 +1540,9 @@ public class TabCollectionTabModelImplTest {
                     }
 
                     @Override
-                    public void didMoveTabOutOfGroup(Tab movedTab, int prevFilterIndex) {
+                    public void didMoveTabOutOfGroup(Tab movedTab, Token oldTabGroupId) {
                         assertEquals(tab1, movedTab);
-                        assertEquals(1, prevFilterIndex);
+                        assertEquals(groupId, oldTabGroupId);
                         didMoveOutOfGroup.notifyCalled();
                     }
 
@@ -1653,9 +1654,9 @@ public class TabCollectionTabModelImplTest {
                     }
 
                     @Override
-                    public void didMoveTabOutOfGroup(Tab movedTab, int prevFilterIndex) {
+                    public void didMoveTabOutOfGroup(Tab movedTab, Token oldTabGroupId) {
                         assertEquals(tab0, movedTab);
-                        assertEquals(0, prevFilterIndex);
+                        assertEquals(groupId, oldTabGroupId);
                         didMoveOutOfGroup.notifyCalled();
                     }
 

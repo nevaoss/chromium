@@ -4,18 +4,30 @@
 
 #include "components/autofill/core/browser/studies/hats_surveys_util.h"
 
+#include <algorithm>
+#include <array>
+#include <cstddef>
+#include <limits>
 #include <memory>
+#include <optional>
 #include <ranges>
 #include <string>
+#include <string_view>
+#include <utility>
+#include <vector>
 
+#include "base/containers/to_vector.h"
 #include "base/feature_list.h"
+#include "base/notimplemented.h"
 #include "base/strings/string_number_conversions.h"
+#include "base/strings/string_util.h"
+#include "base/time/time.h"
 #include "components/autofill/core/browser/autofill_field.h"
-#include "components/autofill/core/browser/data_manager/autofill_ai/entity_data_manager.h"
 #include "components/autofill/core/browser/filling/filling_product.h"
 #include "components/autofill/core/browser/form_structure.h"
-#include "components/autofill/core/browser/form_types.h"
 #include "components/autofill/core/browser/foundations/autofill_client.h"
+#include "components/autofill/core/browser/integrators/autofill_ai/autofill_ai_manager.h"
+#include "components/autofill/core/browser/integrators/autofill_ai/metrics/autofill_ai_metrics.h"
 #include "components/autofill/core/browser/metrics/field_filling_stats_and_score_metrics.h"
 #include "components/autofill/core/common/autofill_constants.h"
 #include "components/autofill/core/common/autofill_features.h"
@@ -24,60 +36,171 @@ namespace autofill {
 
 namespace {
 
-// Converts `filling_stats` to a key-value representation, where the key
-// is the "stats category" and the value is the number of fields that match
-// such category. This is used to show users a survey that will measure the
-// perception of Autofill.
-HatsSurveyStringData FormFillingStatsToSurveyStringData(
-    const autofill_metrics::FormGroupFillingStats& filling_stats) {
-  return {
-      {"Accepted fields", base::NumberToString(filling_stats.num_accepted)},
-      {"Corrected to same type",
-       base::NumberToString(filling_stats.num_corrected_to_same_type)},
-      {"Corrected to a different type",
-       base::NumberToString(filling_stats.num_corrected_to_different_type)},
-      {"Corrected to an unknown type",
-       base::NumberToString(filling_stats.num_corrected_to_unknown_type)},
-      {"Corrected to empty",
-       base::NumberToString(filling_stats.num_corrected_to_empty)},
-      {"Manually filled to same type",
-       base::NumberToString(filling_stats.num_manually_filled_to_same_type)},
-      {"Manually filled to a different type",
-       base::NumberToString(
-           filling_stats.num_manually_filled_to_different_type)},
-      {"Manually filled to an unknown type",
-       base::NumberToString(filling_stats.num_manually_filled_to_unknown_type)},
-      {"Total corrected", base::NumberToString(filling_stats.TotalCorrected())},
-      {"Total filled", base::NumberToString(filling_stats.TotalFilled())},
-      {"Total unfilled", base::NumberToString(filling_stats.TotalUnfilled())},
-      {"Total manually filled",
-       base::NumberToString(filling_stats.TotalManuallyFilled())},
-      {"Total number of fields", base::NumberToString(filling_stats.Total())}};
+// Returns true if all preconditions for the `filling_product`-specific survey
+// are fulfilled.
+bool CanTriggerPersonalizationAndTrustSurvey(const FormStructure& form,
+                                             FillingProduct filling_product) {
+  auto is_survey_enabled = [](FillingProduct filling_product) {
+    switch (filling_product) {
+      case FillingProduct::kAddress:
+        return base::FeatureList::IsEnabled(
+            features::kAutofillPersonalizationAndTrustAddressSurvey);
+      case FillingProduct::kAutofillAi:
+        return base::FeatureList::IsEnabled(
+            features::kAutofillPersonalizationAndTrustAutofillAiSurvey);
+      case FillingProduct::kNone:
+      case FillingProduct::kCreditCard:
+      case FillingProduct::kMerchantPromoCode:
+      case FillingProduct::kIban:
+      case FillingProduct::kAutocomplete:
+      case FillingProduct::kPassword:
+      case FillingProduct::kCompose:
+      case FillingProduct::kLoyaltyCard:
+      case FillingProduct::kIdentityCredential:
+      case FillingProduct::kDataList:
+      case FillingProduct::kOneTimePassword:
+      case FillingProduct::kPasskey:
+      case FillingProduct::kAtMemory:
+        NOTIMPLEMENTED();
+        break;
+    }
+    return false;
+  };
+  auto count_filled_fields_for_filling_product =
+      [](const FormStructure& form, FillingProduct filling_product) -> size_t {
+    return std::ranges::count_if(
+        form.fields(),
+        [filling_product](const std::unique_ptr<AutofillField>& field) {
+          return field->filling_product() == filling_product;
+        });
+  };
+  auto minimum_field_count_requirement =
+      [](FillingProduct filling_product) -> size_t {
+    switch (filling_product) {
+      case FillingProduct::kAddress:
+        return kMinRequiredFieldsForHeuristics;
+      case FillingProduct::kAutofillAi:
+        return 1;
+      case FillingProduct::kNone:
+      case FillingProduct::kCreditCard:
+      case FillingProduct::kMerchantPromoCode:
+      case FillingProduct::kIban:
+      case FillingProduct::kAutocomplete:
+      case FillingProduct::kPassword:
+      case FillingProduct::kCompose:
+      case FillingProduct::kLoyaltyCard:
+      case FillingProduct::kIdentityCredential:
+      case FillingProduct::kDataList:
+      case FillingProduct::kOneTimePassword:
+      case FillingProduct::kPasskey:
+      case FillingProduct::kAtMemory:
+        NOTIMPLEMENTED();
+        break;
+    }
+    return std::numeric_limits<size_t>::max();
+  };
+
+  return count_filled_fields_for_filling_product(form, filling_product) >=
+             minimum_field_count_requirement(filling_product) &&
+         is_survey_enabled(filling_product);
 }
 
-size_t CountFormType(const FormStructure& form, FormType type) {
-  return std::ranges::count_if(
-      form.fields(), [type](const std::unique_ptr<AutofillField>& field) {
-        return field->Type().GetFormTypes().contains(type);
-      });
+template <typename Range, typename Proj>
+std::string ListToString(Range&& range, Proj&& projection) {
+  return base::JoinString(base::ToVector(std::forward<Range>(range),
+                                         std::forward<Proj>(projection)),
+                          "; ");
 }
 
-// Returns the product specific data (PSD) of the survey. If the conditions of
-// the survey are not satisfied, returns `std::nullopt`.
-std::optional<HatsSurveyStringData> GetUserPerceptionSurveyData(
+// Creates the product specific string data map for the personalization and
+// trust surveys.
+HatsSurveyStringData CollectPersonalizationAndTrustFillingData(
     const FormStructure& submitted_form,
-    FormType type,
-    size_t min_number_of_fields_of_type,
-    const base::Feature& feature) {
-  const autofill_metrics::FormGroupFillingStats filling_stats =
-      autofill_metrics::GetFormFillingStatsForFormType(type, submitted_form);
+    const AutofillAiManager* autofill_ai_manager) {
+  size_t num_correctly_filled = 0;
+  size_t num_submitted_empty = 0;
+  size_t num_modified_after_filling = 0;
+  size_t num_cleared_after_filling = 0;
+  size_t num_manually_filled = 0;
+  FieldTypeSet all_field_types;
+  FillingProductSet filling_products_used;
 
-  if (CountFormType(submitted_form, type) >= min_number_of_fields_of_type &&
-      filling_stats.TotalFilled() > 0 &&
-      base::FeatureList::IsEnabled(feature)) {
-    return FormFillingStatsToSurveyStringData(filling_stats);
+  for (const std::unique_ptr<AutofillField>& field : submitted_form) {
+    all_field_types.insert_all(field->Type().GetTypes());
+    if (field->filling_product() != FillingProduct::kNone) {
+      filling_products_used.insert(field->filling_product());
+    }
+
+    const autofill_metrics::FieldFillingStatus status =
+        autofill_metrics::GetFieldFillingStatus(*field);
+    switch (status) {
+      case autofill_metrics::FieldFillingStatus::kAccepted:
+        ++num_correctly_filled;
+        break;
+      case autofill_metrics::FieldFillingStatus::kLeftEmpty:
+        ++num_submitted_empty;
+        break;
+      case autofill_metrics::FieldFillingStatus::kCorrectedToSameType:
+      case autofill_metrics::FieldFillingStatus::kCorrectedToDifferentType:
+      case autofill_metrics::FieldFillingStatus::kCorrectedToUnknownType:
+        ++num_modified_after_filling;
+        break;
+      case autofill_metrics::FieldFillingStatus::kCorrectedToEmpty:
+        ++num_cleared_after_filling;
+        break;
+      case autofill_metrics::FieldFillingStatus::kManuallyFilledToSameType:
+      case autofill_metrics::FieldFillingStatus::kManuallyFilledToDifferentType:
+      case autofill_metrics::FieldFillingStatus::kManuallyFilledToUnknownType:
+        ++num_manually_filled;
+        break;
+    }
   }
-  return std::nullopt;
+
+  std::vector<EntityInstance::RecordType> autofill_ai_record_types_used;
+  std::vector<EntityType> autofill_ai_entity_types_used;
+  if (autofill_ai_manager) {
+    std::optional<RecentUserAutofillAiInteractionsForHats::InteractionDetails>
+        interaction = autofill_ai_manager->GetRecentUserInteractionForHats(
+            submitted_form.global_id());
+    if (interaction) {
+      autofill_ai_record_types_used =
+          std::move(interaction->accepted_entity_record_type);
+      autofill_ai_entity_types_used =
+          std::move(interaction->entity_type_accepted);
+    }
+  }
+
+  return {{"All field types", FieldTypeSetToString(all_field_types)},
+          {"Total number of fields in form",
+           base::NumberToString(submitted_form.field_count())},
+          {"Number of correctly filled fields",
+           base::NumberToString(num_correctly_filled)},
+          {"Number of fields that were submitted empty without filling",
+           base::NumberToString(num_submitted_empty)},
+          {"Number of fields that were modified after filling",
+           base::NumberToString(num_modified_after_filling)},
+          {"Number of fields that were cleared after filling",
+           base::NumberToString(num_cleared_after_filling)},
+          {"Number of fields that were manually filled without filling",
+           base::NumberToString(num_manually_filled)},
+          {"Filling products used",
+           base::JoinString(
+               base::ToVector(filling_products_used, &FillingProductToString),
+               ", ")},
+          {"AutofillAi entity record types used",
+           ListToString(autofill_ai_record_types_used,
+                        &EntityRecordTypeToMetricsString)},
+          {"AutofillAi entity types used",
+           ListToString(autofill_ai_entity_types_used,
+                        &EntityType::name_as_string)},
+          {"Time since last Autofill use",
+           submitted_form.last_filling_timestamp()
+               .transform([](base::TimeTicks time) {
+                 return base::NumberToString(
+                     std::max(base::TimeDelta(), base::TimeTicks::Now() - time)
+                         .InSeconds());
+               })
+               .value_or("")}};
 }
 
 }  // namespace
@@ -85,27 +208,19 @@ std::optional<HatsSurveyStringData> GetUserPerceptionSurveyData(
 void MaybeTriggerFormSubmissionHatsSurveys(
     AutofillClient& client,
     const FormStructure& submitted_form) {
-  // Use the same minimum required number of fields for a user perception survey
-  // that is required for running local heuristics. This makes the survey more
-  // consistent with recorded UMA metrics that rely on a type prediction.
-  if (std::optional<HatsSurveyStringData> survey_data =
-          GetUserPerceptionSurveyData(
-              submitted_form, FormType::kAddressForm,
-              /*min_number_of_fields_of_type=*/kMinRequiredFieldsForHeuristics,
-              features::kAutofillAddressUserPerceptionSurvey)) {
-    client.TriggerUserPerceptionOfAutofillSurvey(FillingProduct::kAddress,
-                                                 *survey_data);
-    return;
-  }
-
-  if (std::optional<HatsSurveyStringData> survey_data =
-          GetUserPerceptionSurveyData(
-              submitted_form, FormType::kCreditCardForm,
-              /*min_number_of_fields_of_type=*/1,
-              features::kAutofillCreditCardUserPerceptionSurvey)) {
-    client.TriggerUserPerceptionOfAutofillSurvey(FillingProduct::kCreditCard,
-                                                 *survey_data);
-    return;
+  for (FillingProduct filling_product :
+       std::array{FillingProduct::kAutofillAi, FillingProduct::kAddress}) {
+    if (CanTriggerPersonalizationAndTrustSurvey(submitted_form,
+                                                filling_product)) {
+      // Product was used on at least one field in the submitted form, initiate
+      // attempt to show survey. To prevent timing-dependent behavior when
+      // triggering multiple surveys, return after first attempt to start a
+      // survey. For this reason, try to trigger rarely used products first.
+      client.TriggerPersonalizationAndTrustSurveys(
+          filling_product, CollectPersonalizationAndTrustFillingData(
+                               submitted_form, client.GetAutofillAiManager()));
+      return;
+    }
   }
 }
 
@@ -166,34 +281,6 @@ RecentUserAutofillAiInteractionsForHats::GetRecentUserInteraction(
     return it->second;
   }
   return std::nullopt;
-}
-
-void MaybeTriggerAutofillAiSubmissionHatsSurveys(
-    AutofillClient& client,
-    const FormStructure& submitted_form,
-    const RecentUserAutofillAiInteractionsForHats& suggestion_interactions) {
-  std::optional<RecentUserAutofillAiInteractionsForHats::InteractionDetails>
-      interaction_details = suggestion_interactions.GetRecentUserInteraction(
-          submitted_form.global_id());
-  if (!interaction_details) {
-    return;
-  }
-  const EntityDataManager* entity_manager = client.GetEntityDataManager();
-  if (!entity_manager) {
-    return;
-  }
-  if (!interaction_details->entity_type_accepted.empty() &&
-      std::ranges::contains(interaction_details->accepted_entity_record_type,
-                            EntityInstance::RecordType::kPersonalContext)) {
-    auto saved_entity_type_names = base::MakeFlatSet<EntityTypeName>(
-        entity_manager->GetEntityInstances(), std::less(),
-        [](const EntityInstance& entity) { return entity.type().name(); });
-
-    client.TriggerAutofillAiFillingJourneySurvey(
-        /*suggestion_accepted=*/true,
-        interaction_details->entity_type_accepted.front(),
-        saved_entity_type_names, interaction_details->autofill_ai_field_types);
-  }
 }
 
 }  // namespace autofill

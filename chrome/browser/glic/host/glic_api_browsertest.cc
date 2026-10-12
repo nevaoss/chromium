@@ -40,6 +40,7 @@
 #include "chrome/browser/glic/host/context/glic_tab_favicon_observer.h"
 #include "chrome/browser/glic/host/glic.mojom.h"
 #include "chrome/browser/glic/host/glic_features.mojom-features.h"
+#include "chrome/browser/glic/host/glic_no_webview_contents_manager.h"
 #include "chrome/browser/glic/host/glic_web_client_manager.h"
 #include "chrome/browser/glic/host/glic_web_contents_manager.h"
 #include "chrome/browser/glic/host/glic_web_contents_warming_pool.h"
@@ -64,7 +65,6 @@
 #include "chrome/browser/policy/profile_policy_connector.h"
 #include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/browser/profiles/profile_test_util.h"
-#include "chrome/browser/pwc/pwc_features.mojom-features.h"
 #include "chrome/browser/signin/chrome_signin_client_factory.h"
 #include "chrome/browser/signin/chrome_signin_client_test_util.h"
 #include "chrome/browser/signin/identity_manager_factory.h"
@@ -117,6 +117,7 @@
 #include "content/public/test/test_navigation_observer.h"
 #include "google_apis/gaia/gaia_auth_util.h"
 #include "mojo/public/cpp/base/big_buffer.h"
+#include "mojo/public/cpp/bindings/pending_remote.h"
 #include "net/base/net_errors.h"
 #include "pdf/buildflags.h"
 #include "services/network/test/test_url_loader_factory.h"
@@ -213,6 +214,10 @@ std::string GlicTabId(tabs::TabHandle tab_handle) {
   return base::NumberToString(tab_handle.raw_value());
 }
 
+// Must match the payload expected by ConfirmationResponseTests in
+// glic_api_browsertest.ts.
+constexpr uint8_t kTestConfirmationResponsePayload[] = {0xde, 0xad, 0xbe, 0xef};
+
 }  // namespace
 
 // All tests in this file use the same test params here.
@@ -235,7 +240,6 @@ class WithTestParams : public testing::WithParamInterface<TestParams> {
     std::vector<base::test::FeatureRef> disabled_features;
     if (GetParam().no_webview) {
       enabled_features.push_back(features::kGlicNoWebview);
-      enabled_features.push_back(pwc::mojom::features::kPrivilegedWebContents);
     } else {
       disabled_features.push_back(features::kGlicNoWebview);
     }
@@ -2685,7 +2689,15 @@ IN_PROC_BROWSER_TEST_P(GlicApiTestWithNewTabDaisyChain,
       },
       1));
 }
-IN_PROC_BROWSER_TEST_P(GlicApiTestWithNewTabDaisyChain, testNewTabMetrics) {
+
+// TODO(b/565497972): Re-enable once crash during teardown is resolved on Android.
+#if BUILDFLAG(IS_ANDROID)
+#define MAYBE_testNewTabMetrics DISABLED_testNewTabMetrics
+#else
+#define MAYBE_testNewTabMetrics testNewTabMetrics
+#endif
+IN_PROC_BROWSER_TEST_P(GlicApiTestWithNewTabDaisyChain,
+                       MAYBE_testNewTabMetrics) {
   // 1. Open Glic in first tab.
   ASSERT_OK(OpenGlicForActiveTab());
   base::HistogramTester histogram_tester;
@@ -3104,7 +3116,9 @@ IN_PROC_BROWSER_TEST_P(GlicApiTestWithFastTimeout, MAYBE_testNoClientCreated) {
 #endif
 }
 
-#if BUILDFLAG(IS_ANDROID) || defined(SLOW_BINARY) || BUILDFLAG(IS_LINUX)
+// TODO(crbug.com/565561978): Failing on ChromeOS, too.
+#if BUILDFLAG(IS_ANDROID) || defined(SLOW_BINARY) || BUILDFLAG(IS_LINUX) || \
+    BUILDFLAG(IS_CHROMEOS)
 #define MAYBE_testNoBootstrap DISABLED_testNoBootstrap
 #else
 #define MAYBE_testNoBootstrap testNoBootstrap
@@ -3653,9 +3667,6 @@ class GlicApiTestWithRequestMonitor : public GlicApiTest {
 };
 
 IN_PROC_BROWSER_TEST_P(GlicApiTestWithRequestMonitor, testRequestHeader) {
-  if (GetParam().no_webview) {
-    GTEST_SKIP() << "Test doesn't yet work in kGlicNoWebview";
-  }
   ASSERT_OK(OpenGlicForActiveTab());
   const GURL cross_origin_rpc_url =
       embedded_https_test_server().GetURL("b.com", "/fake-rpc/cors");
@@ -3815,9 +3826,6 @@ IN_PROC_BROWSER_TEST_P(GlicApiTest, testRefreshSignInCookies) {
 }
 
 IN_PROC_BROWSER_TEST_P(GlicApiTest, testSignInPauseState) {
-  if (GetParam().no_webview) {
-    GTEST_SKIP() << "Test doesn't yet work in kGlicNoWebview";
-  }
   ASSERT_OK(OpenGlicForActiveTab());
   // Check that Glic web client is open and can retrieve the user's info.
   ExecuteJsTest();
@@ -3827,10 +3835,16 @@ IN_PROC_BROWSER_TEST_P(GlicApiTest, testSignInPauseState) {
       IdentityManagerFactory::GetForProfile(GetProfile());
   signin::SetInvalidRefreshTokenForPrimaryAccount(identity_manager);
 
-  // The guest frame should be destroyed, and the WebUI should show the sign-in
-  // panel.
-  ASSERT_OK(RunUntilNull([&]() { return FindGlicGuestMainFrame(); }));
-  ASSERT_OK(WaitForWebUiState(mojom::WebUiState::kSignIn));
+  if (GetParam().no_webview) {
+    // In NoWebview mode, invalidating account credentials transitions Glic to
+    // the kSignIn error panel on the overlay WebUI.
+    ASSERT_OK(WaitForErrorPanelType(mojom::ErrorPanelType::kSignIn));
+  } else {
+    // The guest frame should be destroyed, and the WebUI should show the
+    // sign-in panel.
+    ASSERT_OK(RunUntilNull([&]() { return FindGlicGuestMainFrame(); }));
+    ASSERT_OK(WaitForWebUiState(mojom::WebUiState::kSignIn));
+  }
 }
 
 IN_PROC_BROWSER_TEST_P(GlicApiTest, testInvoke) {
@@ -4730,6 +4744,56 @@ IN_PROC_BROWSER_TEST_P(
   base::expected<std::string, ScreenshotResult::Status> result = future.Get();
   EXPECT_FALSE(result.has_value());
   EXPECT_EQ(result.error(), ScreenshotResult::Status::kErrorCapture);
+}
+
+IN_PROC_BROWSER_TEST_P(GlicApiTest, testSubmitConfirmationResponse) {
+  ASSERT_OK(OpenGlicForActiveTab());
+
+  ASSERT_TRUE(RunUntil(
+      [&]() { return GetOnlyGlicInstance()->host().IsWebClientConnected(); },
+      "waiting for web client connected"));
+
+  ASSERT_NE(GetOnlyGlicInstance()->GetExperimentalTriggeringManager(), nullptr);
+
+  base::test::TestFuture<bool> future;
+  GetOnlyGlicInstance()
+      ->GetExperimentalTriggeringManager()
+      ->SubmitConfirmationResponse(
+          base::ToVector(kTestConfirmationResponsePayload),
+          future.GetCallback());
+
+  // Verifies the opaque payload arrived at the web client intact.
+  ExecuteJsTest();
+
+  EXPECT_TRUE(future.Get());
+}
+
+IN_PROC_BROWSER_TEST_P(GlicApiTest,
+                       testConfirmationResponseNotAppliedOnDisconnect) {
+  ASSERT_OK(OpenGlicForActiveTab());
+
+  ASSERT_TRUE(RunUntil(
+      [&]() { return GetOnlyGlicInstance()->host().IsWebClientConnected(); },
+      "waiting for web client connected"));
+
+  GlicExperimentalTriggeringManager* manager =
+      GetOnlyGlicInstance()->GetExperimentalTriggeringManager();
+  ASSERT_NE(manager, nullptr);
+
+  base::test::TestFuture<bool> future;
+  manager->SubmitConfirmationResponse(
+      base::ToVector(kTestConfirmationResponsePayload), future.GetCallback());
+
+  // The web client used by this test receives the response but never calls
+  // onComplete(), so the reply is still in flight when the JS test returns.
+  ExecuteJsTest();
+  EXPECT_FALSE(future.IsReady());
+
+  // Simulate the web client going away with the response in flight. The reply
+  // callback must still run, reporting the response as not applied, rather
+  // than being dropped.
+  manager->Bind(mojo::NullRemote());
+  EXPECT_FALSE(future.Get());
 }
 
 class GlicApiUnresponsiveTest : public GlicApiTest {

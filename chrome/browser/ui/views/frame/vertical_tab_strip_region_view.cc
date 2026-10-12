@@ -396,8 +396,13 @@ views::ProposedLayout VerticalTabStripRegionView::CalculateProposedLayout(
   const auto vertical_padding = GetLayoutConstant(
       LayoutConstant::kVerticalTabStripUncollapsedVerticalPadding);
 
+  views::SizeBounds button_available_size = size_bounds;
+  if (button_available_size.width().is_bounded()) {
+    button_available_size.set_width(button_available_size.width() -
+                                    2 * horizontal_padding);
+  }
   const gfx::Size button_size =
-      top_button_container_->GetPreferredSize(size_bounds);
+      top_button_container_->GetPreferredSize(button_available_size);
   const gfx::Size tab_strip_size =
       tab_strip_view() ? tab_strip_view()->GetPreferredSize() : gfx::Size();
   const gfx::Size organizer_panel_size =
@@ -454,6 +459,15 @@ views::ProposedLayout VerticalTabStripRegionView::CalculateProposedLayout(
 
 void VerticalTabStripRegionView::Layout(PassKey) {
   LayoutSuperclass<BaseTabStripRegionView>(this);
+
+  // When animating the organizer panel in, as soon as it is visible, focus it.
+  const bool organizer_panel_visible =
+      organizer_panel_view_ && organizer_panel_view_->GetVisible();
+  if (!organizer_panel_was_visible_ && organizer_panel_visible) {
+    // This may also trigger expand-on-hover.
+    GetFocusManager()->SetFocusedView(organizer_panel_view_);
+  }
+  organizer_panel_was_visible_ = organizer_panel_visible;
 
   // Manually position the resize area as it overlaps views handled by the flex
   // layout.
@@ -560,6 +574,8 @@ void VerticalTabStripRegionView::OnMouseExited(const ui::MouseEvent& event) {
 void VerticalTabStripRegionView::SetOrganizerPanelView(
     std::unique_ptr<views::View> panel_view) {
   CHECK(!organizer_panel_view_);
+  panel_view->SetVisible(false);
+  organizer_panel_was_visible_ = false;
   organizer_panel_view_ =
       AddChildViewAt(std::move(panel_view), *GetIndexOf(content_area_view_));
 }
@@ -568,6 +584,7 @@ std::unique_ptr<views::View>
 VerticalTabStripRegionView::TakeOrganizerPanelView() {
   CHECK(organizer_panel_view_);
   organizer_panel_show_percent_ = 0.0;
+  organizer_panel_was_visible_ = false;
   return RemoveChildViewT(std::exchange(organizer_panel_view_, nullptr));
 }
 

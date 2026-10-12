@@ -10,7 +10,6 @@
 #include "base/functional/bind.h"
 #include "base/location.h"
 #include "base/notimplemented.h"
-#include "base/task/sequenced_task_runner.h"
 #include "base/task/single_thread_task_runner.h"
 #include "base/types/pass_key.h"
 #include "build/build_config.h"
@@ -65,26 +64,29 @@ SessionControllerImpl::SessionControllerImpl(TtcKeyedService& service)
   }
 
   if (conversation_) {
-    conversation_->AddObserver(this);
     conversation_->Start();
   }
 }
 
 SessionControllerImpl::~SessionControllerImpl() {
   if (conversation_) {
-    conversation_->RemoveObserver(this);
     conversation_->Stop();
   }
 }
 
-void SessionControllerImpl::OnConversationStateChanged(
-    bool connected,
-    const std::string& session_id,
-    const std::string& error_message) {
-  if (!connected) {
-    base::SequencedTaskRunner::GetCurrentDefault()->PostTask(
-        FROM_HERE,
-        base::BindOnce(&TtcKeyedService::EndSession, service_->GetWeakPtr()));
+SessionLifecycle SessionControllerImpl::GetSessionLifecycle() const {
+  return session_lifecycle_;
+}
+
+void SessionControllerImpl::SetSessionLifecycle(SessionLifecycle lifecycle) {
+  if (session_lifecycle_ == lifecycle) {
+    return;
+  }
+
+  session_lifecycle_ = lifecycle;
+
+  if (session_lifecycle_ == SessionLifecycle::kFinished) {
+    EndSessionAsync();
   }
 }
 

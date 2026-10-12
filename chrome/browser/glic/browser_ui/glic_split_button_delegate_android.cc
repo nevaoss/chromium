@@ -2,6 +2,8 @@
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
+#include "chrome/browser/glic/browser_ui/glic_split_button_delegate.h"
+
 #include <string>
 #include <vector>
 
@@ -10,10 +12,9 @@
 #include "base/check.h"
 #include "base/memory/raw_ptr.h"
 #include "chrome/browser/actor/ui/task_list_bubble/actor_task_list_bubble_controller.h"
-#include "chrome/browser/glic/browser_ui/glic_actor_task_icon_manager.h"
-#include "chrome/browser/glic/browser_ui/glic_actor_task_icon_manager_factory.h"
 #include "chrome/browser/glic/browser_ui/glic_nudge_controller.h"
-#include "chrome/browser/glic/browser_ui/glic_split_button_view_delegate.h"
+#include "chrome/browser/glic/public/service/glic_activity_manager.h"
+#include "chrome/browser/glic/public/service/glic_activity_manager_factory.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "components/actor/core/task_id.h"
@@ -27,11 +28,10 @@ namespace glic {
 
 using jni_zero::AttachCurrentThread;
 
-// C++ implementation of GlicSplitButtonViewDelegate for Android.
+// C++ implementation of GlicSplitButtonDelegate for Android.
 // Acts as JNI bridge to forward C++ split button requests to Java's
 // GlicSplitButtonDelegateBridge.
-// TODO(crbug.com/559190458): Rename to GlicSplitButtonViewDelegateAndroid.
-class GlicSplitButtonDelegateAndroid : public GlicSplitButtonViewDelegate {
+class GlicSplitButtonDelegateAndroid : public GlicSplitButtonDelegate {
  public:
   GlicSplitButtonDelegateAndroid(
       BrowserWindowInterface* browser,
@@ -53,7 +53,7 @@ class GlicSplitButtonDelegateAndroid : public GlicSplitButtonViewDelegate {
     }
   }
 
-  // GlicSplitButtonViewDelegate:
+  // GlicSplitButtonDelegate:
   void OnTriggerGlicNudgeUI(NudgeParams params) override {
     Java_GlicSplitButtonDelegateBridge_onTriggerGlicNudgeUi(
         AttachCurrentThread(), j_delegate_, params.label,
@@ -102,8 +102,7 @@ class GlicSplitButtonDelegateAndroid : public GlicSplitButtonViewDelegate {
 
   void ShowActorTaskListBubble() override {
     Profile* profile = browser_->GetProfile();
-    auto* manager =
-        glic::GlicActorTaskIconManagerFactory::GetForProfile(profile);
+    auto* manager = glic::GlicActivityManagerFactory::GetForProfile(profile);
     if (!manager) {
       return;
     }

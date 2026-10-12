@@ -467,7 +467,6 @@
 <translation id="1757773103848038814">Фонт фиксне ширине</translation>
 <translation id="1757935267918149452">Дугме Промени Google лозинку, активирајте га да бисте променили лозинку за Google налог</translation>
 <translation id="1759776526873274358">Аутоматски попуњавај верификационе кодове које сајтови користе ради побољшања безбедности. Chrome може да добија те кодове из Gmail-а. <ph name="BEGIN_LINK" />Сазнајте више о овој функцији<ph name="LINK_END" /></translation>
-<translation id="176013700366797492">Отворите Google новчаник да бисте контролисали <ph name="BEGIN_LINK1" />подешавања података и приватности<ph name="END_LINK1" /> или управљали <ph name="BEGIN_LINK2" />начинима плаћања<ph name="END_LINK2" /> и <ph name="BEGIN_LINK3" />картама<ph name="END_LINK3" /> као што су картице лојалности и лични документи</translation>
 <translation id="1763864636252898013">Овај сервер не може да докаже да је <ph name="DOMAIN" />; оперативни систем уређаја нема поверења у његов безбедносни сертификат. Узрок томе је можда погрешна конфигурација или нападач који је прекинуо везу.</translation>
 <translation id="1768211456781949159"><ph name="BEGIN_LINK" />Покушајте да покренете Windows дијагностику мреже<ph name="END_LINK" />.</translation>
 <translation id="1777422078676229054">Слика (архивска)</translation>
@@ -550,6 +549,7 @@
 <translation id="1924727005275031552">Ново</translation>
 <translation id="1927930548546198515">Chrome евидентира како користите ту функцију, на пример, захтеве и понашање када прихватате или игноришете предлоге</translation>
 <translation id="1932098463447129402">Не пре</translation>
+<translation id="1932629105611536854">Поштански број за доставу</translation>
 <translation id="1935353813610900265">Пошаљите повратне информације за претрагу историје коју омогућава AI</translation>
 <translation id="1935995810530254458">Ипак копирај</translation>
 <translation id="1938580037092872316">Додајте нове информације у сачувану адресу</translation>
@@ -615,6 +615,7 @@
 <translation id="2045871135676061132">Коверта Personal</translation>
 <translation id="2048261947532620704">Страница се преводи</translation>
 <translation id="2055016614992422886">Конверзација</translation>
+<translation id="2057654338925604102">Домен мобилног оператера</translation>
 <translation id="2058468041496756763">Можете да промените претраживач у сваком тренутку у подешавањима Chrome-а. Ако не видите жељени претраживач, можете да обавите претрагу са његовог сајта. У подешавањима Chrome-а биће наведен као недавно посећен претраживач и моћи ћете да га подесите као подразумевани.</translation>
 <translation id="2059166748188874810">Општина</translation>
 <translation id="2059202684901022309">22×34 in</translation>
@@ -775,7 +776,6 @@
 <translation id="2292556288342944218">Приступ интернету је блокиран</translation>
 <translation id="2294150501457238325">Безбедно додајте пасош</translation>
 <translation id="2295831393422400053">Укључите подешавање Побољшај претраге и прегледање да бисте користили Помоћ при писању</translation>
-<translation id="2296244067976588032">Приступни кључ • iCloud Keychain</translation>
 <translation id="2296331629987861142">Плаћајте у малим ратама (ако испуњавате услове, наплаћују се накнаде)</translation>
 <translation id="2300306941146563769">Није отпремљено</translation>
 <translation id="2301064673700597535">Изјаве о квалификованом сертификату</translation>
@@ -903,6 +903,7 @@
 <translation id="2493122313108999546">Промењена је величина</translation>
 <translation id="249376477913017009">Отворено је обавештење о аутоматском попуњавању из Gmail-а и других извора</translation>
 <translation id="2495083838625180221">Рашчлањивач JSON датотека</translation>
+<translation id="2495909791227061512">Желите да повежете уређаје у близини?</translation>
 <translation id="2496402116964818747">Можете да промените да ли ћете користити отисак прста за попуњавање лозинки у: <ph name="SETTINGS" /></translation>
 <translation id="2498091847651709837">Скенирајте нову картицу</translation>
 <translation id="2501270939904835585">Налепнице (сатен)</translation>
@@ -911,6 +912,7 @@
 <translation id="2505063700931618106">Информације о картици су сачуване</translation>
 <translation id="2505268675989099013">Заштити налог</translation>
 <translation id="2508626115198287271"><ph name="BENEFIT_DESCRIPTION" /> (важе услови)</translation>
+<translation id="251033673027346551">Отворите Google новчаник да бисте управљали <ph name="BEGIN_LINK" />подешавањима података и приватности<ph name="END_LINK" />.</translation>
 <translation id="2512101340618156538">Није дозвољено (подразумевано)</translation>
 <translation id="2512413427717747692">Дугме Подеси Chrome као подразумевани прегледач, притисните Enter да бисте подесили Chrome као подразумевани прегледач система у подешавањима iOS-а</translation>
 <translation id="2515629240566999685">да проверите сигнал у својој области</translation>
@@ -1303,6 +1305,7 @@
 <translation id="3207960819495026254">Обележено</translation>
 <translation id="3209034400446768650">Страница може да наплаћује</translation>
 <translation id="3209071504641569648">Захтеви, наслови страница и URL-ови шаљу се Google-у и могу да се прегледају ради побољшања побољшаног аутоматског попуњавања</translation>
+<translation id="3211727636285361260">Отварајте <ph name="PROTOCOL" /> линкове преко: <ph name="HANDLER_HOSTNAME" /></translation>
 <translation id="3212468046572043669">Преузимање је почело. Да бисте га видели, превуците са врха и додирните дугме Назад</translation>
 <translation id="3212581601480735796">Ваше активности на <ph name="HOSTNAME" /> се прате</translation>
 <translation id="3215092763954878852">Коришћење веб-стандарда WebAuthn није успело</translation>
@@ -1610,6 +1613,7 @@
 <translation id="3715597595485130451">Повезивање са WiFi мрежом</translation>
 <translation id="3717027428350673159"><ph name="BEGIN_LINK" />да проверите конфигурацију проксија, заштитног зида и DNS-а<ph name="END_LINK" /></translation>
 <translation id="3723316892512143176">IBAN</translation>
+<translation id="3724078054554953078">Датум слања</translation>
 <translation id="372429172604983730">Апликације које могу да доведу до ове грешке обухватају антивирусни софтвер, заштитни зид и веб-филтрирање или прокси софтвер.</translation>
 <translation id="3727101516080730231"><ph name="CREATE_GOOGLE_SLIDE_FOCUSED_FRIENDLY_MATCH_TEXT" />, притисните Tab, па Enter да бисте брзо направили нову Google презентацију у Презентацијама</translation>
 <translation id="3727309136762649052">Именски простор</translation>
@@ -2084,6 +2088,7 @@
 <translation id="449126573531210296">Шифруј синхронизоване лозинке помоћу Google налога</translation>
 <translation id="4493480324863638523">URL је неважећи. URL мора да има стандардну шему, нпр. http://example.com или https://example.com.</translation>
 <translation id="4497010149473852018">Картице лојалности су доступне за попуњавање на додир. Тастатура је сакривена.</translation>
+<translation id="4497843134750481377">Управљајте понудама</translation>
 <translation id="4500587658229086076">небезбедан садржај</translation>
 <translation id="4501939680615452918">Пронађи слободне столове у популарним ресторанима</translation>
 <translation id="4503459574136856756">Преформулиши биографију тако да звучи професионалније</translation>
@@ -2210,6 +2215,7 @@
 <translation id="4732860731866514038">Преузима се језички пакет за језик <ph name="LANGUAGE" />… <ph name="PERCENT" />%</translation>
 <translation id="4733082559415072992"><ph name="URL" /> жели да користи локацију уређаја</translation>
 <translation id="473414950835101501">Користите камере</translation>
+<translation id="4736089601076994090">Истиче: <ph name="EXPIRATION_DATE" /></translation>
 <translation id="4736825316280949806">Поново покрените Chromium</translation>
 <translation id="4736934858538408121">Виртуелна картица</translation>
 <translation id="473775607612524610">Ажурирај</translation>
@@ -2537,8 +2543,10 @@
 <translation id="5258473597674772367">Група картица <ph name="GROUP_NAME" /> више није доступна</translation>
 <translation id="5260842098960755113">Конверзација је затворена</translation>
 <translation id="5262342527470539728">Информације се чувају у услузи <ph name="IDS_AUTOFILL_GOOGLE_WALLET_TITLE" /> за <ph name="ACCOUNT" /></translation>
+<translation id="5263202631354741256">ИД</translation>
 <translation id="5263867360296733198">Потребан је преглед пре отпремања</translation>
 <translation id="5266128565379329178">Повез на врху</translation>
+<translation id="5268746892698450173">Назив оператера</translation>
 <translation id="5269225904387178860">Четвороструко бушење на дну</translation>
 <translation id="5271381225185906340">„<ph name="DATA_CONTROLS_ATTRIBUTE" />“ није подржан услов за „<ph name="DATA_CONTROLS_RESTRICTION" />“</translation>
 <translation id="527191520368130807">Дотерај</translation>
@@ -2566,6 +2574,7 @@
 <translation id="5314967030527622926">Алат за прављење брошуре</translation>
 <translation id="5316812925700871227">Окрените у смеру супротном од казаљке на сату</translation>
 <translation id="5317780077021120954">Сачувај</translation>
+<translation id="5318654747230250818">Кôд: <ph name="PROMO_CODE" /></translation>
 <translation id="531996107159483074"><ph name="BEGIN_BOLD" />Подразумевани претраживач вам омогућава да претражујете веб и омогућава Chromium функције<ph name="END_BOLD" /> попут претраживања из траке за адресу и слика на веб-страницама. Функција можда није доступна ако је претраживач не подржава.</translation>
 <translation id="5323043727018853753">Уграђен садржај је дозвољен</translation>
 <translation id="5323105697514565458"><ph name="FRIENDLY_MATCH_TEXT" />, <ph name="MATCH_POSITION" />. од <ph name="NUM_MATCHES" /></translation>
@@ -2614,7 +2623,6 @@
 <translation id="5398461103557553443">Да бисте следећи пут аутоматски попунили овај IBAN, сачувајте га у Google новчанику</translation>
 <translation id="5398772614898833570">Огласи су блокирани</translation>
 <translation id="5400836586163650660">Сива</translation>
-<translation id="5402715318763077894">Желите да дозволите приступ локалној мрежи?</translation>
 <translation id="540949333488055151">Пластика (у боји)</translation>
 <translation id="540969355065856584">Овај сервер не може да докаже да је <ph name="DOMAIN" />; његов безбедносни сертификат тренутно није важећи. Узрок томе је можда погрешна конфигурација или нападач који је прекинуо везу.</translation>
 <translation id="5411462078004183575">Опција ниске цене</translation>
@@ -2856,6 +2864,7 @@
 <translation id="5789643057113097023">,</translation>
 <translation id="5793317771769868848">Овај начин плаћања ће бити избрисан са овог уређаја</translation>
 <translation id="5794065675298686371">Укључите обавештења о праћењу цена</translation>
+<translation id="5794093550048860249">Број за праћење</translation>
 <translation id="5796050750059455142">Укључите <ph name="BEGIN_LINK" />Паметне функције у другим Google производима<ph name="LINK_END" /></translation>
 <translation id="5797984091151707075">Блокирају смернице администратора</translation>
 <translation id="5804241973901381774">Дозволе</translation>
@@ -3743,6 +3752,7 @@
 <translation id="7347640536700429009">Име на картици је неважеће</translation>
 <translation id="7352651011704765696">Дошло је до грешке</translation>
 <translation id="7353601530677266744">Командна линија</translation>
+<translation id="7358055687760675498">Отварајте <ph name="PROTOCOL" /> линкове преко: <ph name="HANDLER_HOSTNAME" /> уместо: <ph name="REPLACED_HANDLER_TITLE" /></translation>
 <translation id="7359588939039777303">Огласи су блокирани.</translation>
 <translation id="7362281996276843968">Ова група је затворена</translation>
 <translation id="7363096869660964304">Међутим, нисте невидљиви. Преласком у режим без архивирања нећете сакрити прегледање од послодавца, интернет провајдера или веб-сајтова које посећујете.</translation>
@@ -4021,6 +4031,7 @@
 <translation id="7765158879357617694">Премести</translation>
 <translation id="7766518757692125295">Обод</translation>
 <translation id="776749070095465053">Тканина</translation>
+<translation id="7772659560036894129">Називи производа</translation>
 <translation id="7773005668374414287">Истим редоследом са одштампаном страном нагоре</translation>
 <translation id="7779418012194492374">Опозовите приступ за <ph name="DEVICE_NAME" /></translation>
 <translation id="7781829728241885113">Јуче</translation>
@@ -4212,6 +4223,7 @@
 <translation id="8118506371121007279">Пошаљите повратне информације</translation>
 <translation id="812020627659652807">Избриши фајлове</translation>
 <translation id="8120720167840853945">Ове смернице не контролишу подразумевано понашање других смерница.</translation>
+<translation id="8120827570827570666">Домен продавца</translation>
 <translation id="8127301229239896662">Софтвер „<ph name="SOFTWARE_NAME" />“ није правилно инсталиран на рачунару или мрежи. Затражите од ИТ администратора да реши овај проблем.</translation>
 <translation id="8130113808541743942">Преместите у…</translation>
 <translation id="813024282736408069">Укључите виртуелну картицу за аутоматско попуњавање</translation>
@@ -4323,6 +4335,7 @@
 <translation id="830868413617744215">Beta</translation>
 <translation id="8310477433309274098">Без накнада, годишња каматна стопа од само 0%</translation>
 <translation id="8312841338723044391">УЖИВО</translation>
+<translation id="8314036873065514376">Назив продавца</translation>
 <translation id="8316555157357957253">Тренутно користите</translation>
 <translation id="8319414634934645341">Употреба проширеног кључа</translation>
 <translation id="831997045666694187">Увече</translation>

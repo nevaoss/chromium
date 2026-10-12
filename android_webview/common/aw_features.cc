@@ -246,7 +246,7 @@ BASE_FEATURE(kWebViewInvokeZoomPickerOnGSU, base::FEATURE_DISABLED_BY_DEFAULT);
 // When enabled, cookie policy settings are captured at RestrictedCookieManager
 // creation time and used throughout its lifetime. This enables shared memory
 // cookie versioning to reduce IPC overhead.
-BASE_FEATURE(kWebViewLatchedCookiePolicy, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kWebViewLatchedCookiePolicy, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Install the profiling client with memory_system::Initializer. If this is
 // enabled the profiler MAY be started by
@@ -332,8 +332,7 @@ BASE_FEATURE(kWebViewPrefetchOffTheMainThread,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Prefetches the native WebView code to memory when renderer is reused.
-BASE_FEATURE(kWebViewPrefetchOnRendererReuse,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kWebViewPrefetchOnRendererReuse, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // When enabled, stale `AwPrefetchHandleWrapper`s in `AwPrefetchManagerData` are
 // proactively pruned when new prefetch requests are added or reserved.

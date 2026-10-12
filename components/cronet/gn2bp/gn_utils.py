@@ -276,6 +276,7 @@ class GnParser:
 
             self.java_jar_excluded_patterns = []
             self.java_jar_included_patterns = []
+            self.java_prevent_excluded_classes_from_classpath = False
             # This is only populated for build script actions. It refers to the directory for which
             # the original source files are.
             self.rust_source_dir = None
@@ -550,6 +551,10 @@ class GnParser:
                 "java_library_jar_excluded_patterns", [])
             target.java_jar_included_patterns = metadata.get(
                 "java_library_jar_included_patterns", [])
+            target.java_prevent_excluded_classes_from_classpath = bool(
+                metadata.get(
+                    "java_library_prevent_excluded_classes_from_classpath",
+                    [False])[0])
 
             android_sdk_dep = metadata.get("java_library_android_sdk_dep",
                                            None)
@@ -635,7 +640,9 @@ class GnParser:
             target.arch[arch].sources.update(
                 source for source in desc.get('sources', [])
                 if not source.startswith("//out"))
-            target.arch[arch].inputs.update(desc.get('inputs', []))
+            target.arch[arch].inputs.update(inp
+                                            for inp in desc.get('inputs', [])
+                                            if not inp.startswith("//out"))
             target.rust_package_version = _extract_rust_package_version(
                 desc['rustenv'])
         else:

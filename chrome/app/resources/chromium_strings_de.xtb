@@ -261,7 +261,6 @@
 
           **Fragen vorschlagen:** Erstelle eine Aufzählungsliste mit 3–5 Fragen, die ein Nutzer stellen könnte, um den Screenshot besser zu verstehen. Mindestens eine der Fragen sollte sich konkret auf ein visuelles Objekt, sein Design oder seine Platzierung beziehen.</translation>
 <translation id="3848258323044014972"><ph name="PAGE_TITLE" /> - Chromium</translation>
-<translation id="387514319934708384">Chromium benötigt die Berechtigung für das lokale Netzwerk für diese Website</translation>
 <translation id="3885770153807205175">Sprachauswahl</translation>
 <translation id="388648406173476553">Du kannst Chromium anpassen und Einstellungen festlegen. Etwas erfordert deine Aufmerksamkeit – klicke hier, um mehr zu erfahren.</translation>
 <translation id="3889543394854987837">Klicke auf deinen Namen, um Chromium zu öffnen und im Web zu surfen.</translation>
@@ -303,6 +302,7 @@
 <translation id="4251772536351901305">Warnt dich vor schädlichen Websites, auch solchen, die Google vorher nicht bekannt waren, indem mehr Daten von Websites analysiert werden als beim Standardschutz. Du kannst festlegen, dass Warnungen von Chromium übersprungen werden.</translation>
 <translation id="4269093074552541569">Von Chromium abmelden</translation>
 <translation id="4271805377592243930">Hilfe für Chromium aufrufen</translation>
+<translation id="4275788652681621337">Seitenleiste schließen</translation>
 <translation id="4281844954008187215">Nutzungsbedingungen</translation>
 <translation id="4285930937574705105">Die Installation konnte aufgrund eines undefinierten Fehlers nicht abgeschlossen werden. Falls Chromium derzeit ausgeführt wird, schließe es bitte und versuche es erneut.</translation>
 <translation id="4298125729853015961">Passwörter aus Chromium exportieren</translation>
@@ -439,9 +439,9 @@ Wenn diese Seite nicht wie erwartet funktioniert, kannst du versuchen, die Optim
 <translation id="5883558403894052917">Chromium hat festgestellt, dass diese Elemente Malware enthalten:</translation>
 <translation id="5889361821821684993">Chromium prüft regelmäßig, ob dein Browser die sichersten Einstellungen hat. Solltest du etwas überprüfen müssen, informieren wir dich.</translation>
 <translation id="5895138241574237353">Neu starten</translation>
+<translation id="5896077214220653386">Gemini Enterprise in Chromium</translation>
 <translation id="5903106910045431592"><ph name="PAGE_TITLE" /> – Netzwerkanmeldung</translation>
 <translation id="5924017743176219022">Internetverbindung wird hergestellt…</translation>
-<translation id="5939553720811388432">Lass uns Chromium für dich einrichten</translation>
 <translation id="5941711191222866238">Minimieren</translation>
 <translation id="5949225980829865667">Wenn du auf allen deinen Geräten auf dieses Lesezeichen und andere Daten zugreifen möchtest, melde dich in Chromium an</translation>
 <translation id="5953657885167112863">Chromium personalisieren</translation>
@@ -592,6 +592,7 @@ Du kannst erst neue Lesezeichen in deinem Konto speichern, wenn du einige gelös
 <translation id="7213407614656404070">Chromium immer verwenden, wenn du auf Links in Nachrichten, Dokumenten und anderen Apps klickst</translation>
 <translation id="7216228761061470870">Wenn du die Bildersuche auf dem Computer verwendest, werden der Seitentitel, die URL und der Inhalt, einschließlich PDFs, an den Server gesendet</translation>
 <translation id="7223968959479464213">Task-Manager - Chromium</translation>
+<translation id="7226331818892775989">Fragen zu Inhalten außerhalb von Chromium stellen, z. B. zu anderen Apps oder Dateien</translation>
 <translation id="7227958669698166857"><ph name="EXISTING_USER" /> ist bereits angemeldet. Wenn du deine Browsingaktivitäten getrennt halten möchtest, melde dich mit <ph name="USER_EMAIL_ADDRESS" /> in deinem eigenen Profil in Chromium an. Du kannst dann auch auf allen deinen Geräten auf deine gespeicherten Informationen und weitere Daten zugreifen.</translation>
 <translation id="7252276985725323153">Sofort lossurfen: Chromium kann jetzt beim Starten von Windows geöffnet werden.</translation>
 <translation id="7274695763216404502">Angepinnt! Du kannst die Bildersuche wieder über die Symbolleiste verwenden.</translation>

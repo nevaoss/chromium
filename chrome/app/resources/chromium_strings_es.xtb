@@ -264,7 +264,6 @@ Es posible que algunas funciones no estén disponibles y que no se guarden los c
 
           **Sugerir preguntas:** genera una lista con viñetas de entre 3 y 5 preguntas que inviten a la reflexión y que un usuario podría hacer para entender mejor la captura de pantalla. Al menos una de estas preguntas debe referirse específicamente a un objeto visual, su diseño o su ubicación.</translation>
 <translation id="3848258323044014972"><ph name="PAGE_TITLE" /> - Chromium</translation>
-<translation id="387514319934708384">Chromium necesita el permiso de red local para este sitio</translation>
 <translation id="3885770153807205175">Selector de idioma</translation>
 <translation id="388648406173476553">Personaliza y controla Chromium. Se requiere tu intervención. Haz clic aquí para obtener más información.</translation>
 <translation id="3889543394854987837">Haz clic en tu nombre para abrir Chromium y empezar a navegar.</translation>
@@ -306,6 +305,7 @@ Es posible que algunas funciones no estén disponibles y que no se guarden los c
 <translation id="4251772536351901305">Te envía advertencias sobre sitios peligrosos (aunque Google no los conozca) analizando más datos de sitios que la protección estándar. Si quieres, puedes omitir las advertencias de Chromium.</translation>
 <translation id="4269093074552541569">Cerrar sesión en Chromium</translation>
 <translation id="4271805377592243930">Obtener ayuda de Chromium</translation>
+<translation id="4275788652681621337">Cerrar panel lateral</translation>
 <translation id="4281844954008187215">Términos del Servicio</translation>
 <translation id="4285930937574705105">La instalación ha fallado debido a un error no especificado. Si Chromium se está ejecutando, ciérralo y vuelve a intentarlo.</translation>
 <translation id="4298125729853015961">Exportar contraseñas de Chromium</translation>
@@ -442,9 +442,9 @@ Si esta página no funciona correctamente, prueba a permitir la optimización.</
 <translation id="5883558403894052917">Chromium ha detectado que estos elementos contienen malware:</translation>
 <translation id="5889361821821684993">Chromium comprueba de forma periódica si tu navegador tiene la configuración más segura. Te avisaremos si tienes que revisar algo.</translation>
 <translation id="5895138241574237353">Reiniciar</translation>
+<translation id="5896077214220653386">Gemini Enterprise en Chromium</translation>
 <translation id="5903106910045431592"><ph name="PAGE_TITLE" />, inicio de sesión en la red</translation>
 <translation id="5924017743176219022">Conectando a Internet...</translation>
-<translation id="5939553720811388432">Vamos a preparar tu Chromium</translation>
 <translation id="5941711191222866238">Minimizar</translation>
 <translation id="5949225980829865667">Para obtener este marcador y más en todos tus dispositivos, inicia sesión en Chromium</translation>
 <translation id="5953657885167112863">Personaliza Chromium a tu gusto</translation>
@@ -595,6 +595,7 @@ No podrás guardar marcadores nuevos en tu cuenta hasta que elimines algunos. Si
 <translation id="7213407614656404070">Usa Chromium siempre que hagas clic en enlaces de mensajes, documentos y otras aplicaciones</translation>
 <translation id="7216228761061470870">Cuando usas la búsqueda por imágenes en el ordenador, el título, la URL y el contenido de la página (incluidos los PDFs) se envían al servidor</translation>
 <translation id="7223968959479464213">Administrador de tareas - Chromium</translation>
+<translation id="7226331818892775989">Pregunta sobre contenido que no esté en Chromium, como otras aplicaciones o archivos</translation>
 <translation id="7227958669698166857">Ya has iniciado sesión con <ph name="EXISTING_USER" />. Para mantener tu información de navegación aparte, inicia sesión en Chromium con tu perfil de <ph name="USER_EMAIL_ADDRESS" />. También tendrás tu información guardada y otros datos en todos tus dispositivos.</translation>
 <translation id="7252276985725323153">Empieza a navegar al instante: ahora Chromium puede iniciarse cuando se inicia Windows.</translation>
 <translation id="7274695763216404502">¡Fijada! Vuelve a usar la búsqueda por imágenes desde la barra de herramientas.</translation>

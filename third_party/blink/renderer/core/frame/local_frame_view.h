@@ -172,6 +172,10 @@ class CORE_EXPORT LocalFrameView final
     // be clean but don't need to update state that is pushed further in the
     // rendering pipeline.
     virtual void DidFinishPostLifecycleSteps(const LocalFrameView&) {}
+
+    // Called when the LocalFrameView is being disposed (e.g. during
+    // Document::Shutdown).
+    virtual void WillDisposeView() {}
   };
 
   explicit LocalFrameView(LocalFrame&);
@@ -736,7 +740,7 @@ class CORE_EXPORT LocalFrameView final
   void DequeueScrollAnchoringAdjustment(ScrollableArea*);
   void PerformScrollAnchoringAdjustments();
 
-  void SetNeedsEnqueueScrollEvent(PaintLayerScrollableArea*);
+  void SetNeedsEnqueueDeferredScrollEvent(PaintLayerScrollableArea*);
 
   std::unique_ptr<JSONObject> CompositedLayersAsJSON(LayerTreeFlags);
 
@@ -907,7 +911,7 @@ class CORE_EXPORT LocalFrameView final
   void SelfVisibleChanged() override;
   void ParentVisibleChanged() override;
   void PropagateFrameRectsInternal() override;
-  void PropagateFrameRectsRecursively(bool force = false);
+  void PropagateFrameRectsRecursively();
   void NotifyFrameRectsChangedIfNeeded();
 
   // Updates viewport intersection state when LocalFrame's scroll positions,
@@ -920,7 +924,7 @@ class CORE_EXPORT LocalFrameView final
   }
   void VisibilityChanged(blink::mojom::FrameVisibility visibility) override;
 
-  void EnqueueScrollEvents();
+  void ProcessDeferredScrollEvents();
 
  private:
   friend class NaturalSizeLayoutScope;
@@ -1254,7 +1258,8 @@ class CORE_EXPORT LocalFrameView final
       HeapLinkedHashSet<WeakMember<ScrollableArea>>;
   AnchoringAdjustmentQueue anchoring_adjustment_queue_;
 
-  HeapLinkedHashSet<WeakMember<PaintLayerScrollableArea>> scroll_event_queue_;
+  HeapLinkedHashSet<WeakMember<PaintLayerScrollableArea>>
+      deferred_scroll_event_queue_;
 
   bool suppress_adjust_view_size_;
 #if DCHECK_IS_ON()

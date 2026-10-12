@@ -11,6 +11,7 @@
 #include "base/notimplemented.h"
 #include "chrome/browser/ttc/app/audio_controller.h"
 #include "chrome/browser/ttc/core/session_controller.h"
+#include "chrome/browser/ttc/core/states.h"
 
 namespace ttc {
 
@@ -27,14 +28,6 @@ ConversationImpl::ConversationImpl(
 
 ConversationImpl::~ConversationImpl() {
   Stop();
-}
-
-void ConversationImpl::AddObserver(Conversation::Observer* observer) {
-  observers_.AddObserver(observer);
-}
-
-void ConversationImpl::RemoveObserver(Conversation::Observer* observer) {
-  observers_.RemoveObserver(observer);
 }
 
 void ConversationImpl::Start() {
@@ -65,13 +58,9 @@ void ConversationImpl::Stop() {
   audio_controller_->StopCapture();
   audio_controller_->StopPlayback();
 
-  if (backend_->is_connected()) {
+  if (backend_->is_transport_connected()) {
     backend_->Close();
   }
-}
-
-bool ConversationImpl::is_connected() const {
-  return backend_->is_connected();
 }
 
 void ConversationImpl::SendTextInput(const std::string& text) {
@@ -102,33 +91,24 @@ void ConversationImpl::OnPlaybackCompleted(int64_t sequence_number) {
   backend_->ReportPlaybackStatus(sequence_number);
 }
 
-void ConversationImpl::OnStreamingStateChanged(
-    bool connected,
-    const std::string& session_id,
-    const std::string& error_message) {
-  // TODO(b/561651267): Technically we only need to send this when a session is
-  // established. This method can be called after an already created session
-  // reconnects after a temporary disconnection. Differentiating this state
-  // would require us to cache the session_id, and ideally TtcBackend::Observer
-  // would just expose a separate notification for this.
-  if (connected && !session_id.empty()) {
-    // `backend_` is necessarily alive here since it invoked this
-    // TtcBackend::Observer call.
-    CHECK(backend_);
-    backend_->SendToolSetUpdate(session_controller_->GetToolDefinitions());
-  }
+void ConversationImpl::OnApplicationInitialized() {
+  backend_->SendToolSetUpdate(session_controller_->GetToolDefinitions());
+  session_controller_->SetSessionLifecycle(SessionLifecycle::kLive);
+}
 
-  for (auto& observer : observers_) {
-    observer.OnConversationStateChanged(connected, session_id, error_message);
-  }
+void ConversationImpl::OnApplicationClosed() {
+  session_controller_->SetSessionLifecycle(SessionLifecycle::kFinished);
+}
+
+void ConversationImpl::OnApplicationError(ErrorCode error) {
+  // TODO(b/561677132): Show the error in some way.
+  session_controller_->SetSessionLifecycle(SessionLifecycle::kFinished);
 }
 
 void ConversationImpl::OnTranscriptions(
     const std::string& input_transcription,
     const std::string& output_transcription) {
-  for (auto& observer : observers_) {
-    observer.OnTranscriptions(input_transcription, output_transcription);
-  }
+  NOTIMPLEMENTED();
 }
 
 void ConversationImpl::OnAudioOutput(base::span<const int16_t> audio_data,
@@ -141,9 +121,6 @@ void ConversationImpl::OnGenerationStateChanged(bool started,
                                                 bool interrupted) {
   if (interrupted) {
     audio_controller_->ClearPlaybackQueue();
-  }
-  for (auto& observer : observers_) {
-    observer.OnGenerationStateChanged(started, completed, interrupted);
   }
 }
 

@@ -322,7 +322,7 @@ bool TransportSecurityState::ShouldUpgradeToSSL(
 TransportSecurityState::PKPStatus TransportSecurityState::CheckPublicKeyPins(
     std::string_view host,
     bool is_issued_by_known_root,
-    const std::vector<SHA256HashValue>& public_key_hashes) {
+    const std::vector<SHA256HashValue>& public_key_hashes) const {
   // Perform pin validation only if the server actually has public key pins.
   if (!HasPublicKeyPins(host)) {
     return PKPStatus::OK;
@@ -332,7 +332,7 @@ TransportSecurityState::PKPStatus TransportSecurityState::CheckPublicKeyPins(
                                 public_key_hashes);
 }
 
-bool TransportSecurityState::HasPublicKeyPins(std::string_view host) {
+bool TransportSecurityState::HasPublicKeyPins(std::string_view host) const {
   PKPState pkp_state;
   return GetPKPState(host, &pkp_state) && pkp_state.HasPublicKeyPins();
 }
@@ -434,11 +434,10 @@ void TransportSecurityState::AddHSTSInternal(
   DirtyNotify();
 }
 
-void TransportSecurityState::AddHPKPInternal(std::string_view host,
-                                             base::Time last_observed,
-                                             base::Time expiry,
-                                             bool include_subdomains,
-                                             const HashValueVector& hashes) {
+void TransportSecurityState::AddHPKP(std::string_view host,
+                                     base::Time expiry,
+                                     bool include_subdomains,
+                                     const HashValueVector& hashes) {
   DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
   const std::vector<uint8_t> canonicalized_host = CanonicalizeHost(host);
   if (canonicalized_host.empty()) {
@@ -448,7 +447,6 @@ void TransportSecurityState::AddHPKPInternal(std::string_view host,
   PKPState pkp_state;
   // No need to store |pkp_state.domain| since it is redundant.
   // (|canonicalized_host| is the map key.)
-  pkp_state.last_observed = last_observed;
   pkp_state.expiry = expiry;
   pkp_state.include_subdomains = include_subdomains;
   for (const auto& hash : hashes) {
@@ -475,7 +473,7 @@ void TransportSecurityState::
 TransportSecurityState::PKPStatus TransportSecurityState::CheckPins(
     bool is_issued_by_known_root,
     const TransportSecurityState::PKPState& pkp_state,
-    const std::vector<SHA256HashValue>& hashes) {
+    const std::vector<SHA256HashValue>& hashes) const {
   if (pkp_state.CheckPublicKeyPins(hashes)) {
     return PKPStatus::OK;
   }
@@ -583,14 +581,6 @@ void TransportSecurityState::AddHSTS(std::string_view host,
   AddHSTSInternal(host, STSState::MODE_FORCE_HTTPS, expiry, include_subdomains);
 }
 
-void TransportSecurityState::AddHPKP(std::string_view host,
-                                     base::Time expiry,
-                                     bool include_subdomains,
-                                     const HashValueVector& hashes) {
-  DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
-  AddHPKPInternal(host, base::Time::Now(), expiry, include_subdomains, hashes);
-}
-
 size_t TransportSecurityState::num_sts_entries() const {
   return enabled_sts_hosts_.size();
 }
@@ -613,7 +603,7 @@ TransportSecurityState::PKPStatus
 TransportSecurityState::CheckPublicKeyPinsImpl(
     std::string_view host,
     bool is_issued_by_known_root,
-    const std::vector<SHA256HashValue>& hashes) {
+    const std::vector<SHA256HashValue>& hashes) const {
   PKPState pkp_state;
   bool found_state = GetPKPState(host, &pkp_state);
 
@@ -678,7 +668,6 @@ bool TransportSecurityState::GetStaticPKPState(std::string_view host,
       if (iter != host_pins_->end() &&
           (iter->second.second || search_hostname == normalized_host)) {
         pkp_result->domain = std::string(search_hostname);
-        pkp_result->last_observed = key_pins_list_last_update_time_;
         pkp_result->include_subdomains = iter->second.second;
         const PinSet* pinset = iter->second.first;
         for (const auto& hash : pinset->static_spki_hashes()) {
@@ -713,10 +702,6 @@ bool TransportSecurityState::GetStaticPKPState(std::string_view host,
     if (pin &&
         (pin->include_subdomains || search_hostname == normalized_host)) {
       pkp_result->domain = std::string(search_hostname);
-      // TODO(crbug.com/497882860): using GetBuildTime() here matches the
-      // pre-existing behavior of this code, but shouldn't this be
-      // kPinsListTimestamp? Don't know if anything actually cares.
-      pkp_result->last_observed = base::GetBuildTime();
       pkp_result->include_subdomains = pin->include_subdomains;
       for (const SHA256HashValue* hash : pin->pinset->accepted_pins) {
         pkp_result->spki_hashes.insert(*hash);
@@ -744,7 +729,7 @@ bool TransportSecurityState::GetSTSState(std::string_view host,
 }
 
 bool TransportSecurityState::GetPKPState(std::string_view host,
-                                         PKPState* result) {
+                                         PKPState* result) const {
   return GetDynamicPKPState(host, result) || GetStaticPKPState(host, result);
 }
 
@@ -793,7 +778,7 @@ bool TransportSecurityState::GetDynamicSTSState(std::string_view host,
 }
 
 bool TransportSecurityState::GetDynamicPKPState(std::string_view host,
-                                                PKPState* result) {
+                                                PKPState* result) const {
   DCHECK_CALLED_ON_VALID_THREAD(thread_checker_);
 
   const std::vector<uint8_t> canonicalized_host = CanonicalizeHost(host);
@@ -811,9 +796,8 @@ bool TransportSecurityState::GetDynamicPKPState(std::string_view host,
       continue;
     }
 
-    // If the entry is invalid, drop it.
+    // If the entry is invalid, skip it.
     if (current_time > j->second.expiry) {
-      enabled_pkp_hosts_.erase(j);
       continue;
     }
 

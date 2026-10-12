@@ -195,7 +195,7 @@ const CGFloat kBackgroundImageAnimationDuration = 0.2;
   CGFloat _feedBottomInset;
 }
 
-// Properties synthesized from NewTabPageConsumer.
+// Properties synthesized from NewTabPageScrollConsumer.
 @synthesize mostVisitedVisible = _mostVisitedVisible;
 @synthesize magicStackVisible = _magicStackVisible;
 
@@ -652,8 +652,9 @@ const CGFloat kBackgroundImageAnimationDuration = 0.2;
       // top and bottom spacing.
       heightAboveFeed -= content_suggestions::ReducedModuleSpacing();
       // Then add in the custom spacing used for this module.
-      heightAboveFeed += content_suggestions::QuickActionsTopPadding() +
-                         [self quickActionsBottomSpacing];
+      heightAboveFeed +=
+          content_suggestions::QuickActionsTopPadding(self.traitCollection) +
+          [self quickActionsBottomSpacing];
     }
   }
   return heightAboveFeed;
@@ -739,7 +740,7 @@ const CGFloat kBackgroundImageAnimationDuration = 0.2;
   return _moduleLayoutGuide;
 }
 
-#pragma mark - NewTabPageConsumer
+#pragma mark - NewTabPageScrollConsumer
 
 - (void)restoreScrollPosition:(CGFloat)scrollPosition {
   if (self.view.window) {
@@ -1420,7 +1421,8 @@ const CGFloat kBackgroundImageAnimationDuration = 0.2;
             constraintEqualToAnchor:self.headerView.bottomAnchor
                            constant:self.quickActionsVisible
                                         ? content_suggestions::
-                                              QuickActionsTopPadding()
+                                              QuickActionsTopPadding(
+                                                  self.traitCollection)
                                         : content_suggestions::
                                               ReducedModuleSpacing()],
       ];
@@ -1806,10 +1808,8 @@ const CGFloat kBackgroundImageAnimationDuration = 0.2;
   CGFloat oldWidth = _moduleWidth.constant;
   CGFloat width;
   if (IsNewTabPageUICleanupEnabled()) {
-    CGFloat maxWidth = (IsRegularXRegularSizeClass(self))
-                           ? kDiscoverFeedContentMaxWidthUICleanup
-                           : kDiscoverFeedContentMaxWidth;
-    width = MIN(viewWidth - (2 * kNewTabPageHorizontalMargin), maxWidth);
+    width = MIN(viewWidth - (2 * kNewTabPageHorizontalMargin),
+                kDiscoverFeedContentMaxWidth);
   } else {
     CGFloat widthMultiplier = (100 - kHomeModuleMinimumPadding) / 100;
     width = MIN(viewWidth * widthMultiplier, kDiscoverFeedContentMaxWidth);

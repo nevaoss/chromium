@@ -8,10 +8,14 @@
 
 #include "base/functional/bind.h"
 #include "base/metrics/histogram_functions.h"
+#include "base/strings/escape.h"
 #include "base/strings/string_number_conversions.h"
+#include "base/strings/utf_string_conversions.h"
 #include "components/enterprise/net/core/features.h"
 #include "components/error_page/common/localized_error.h"
+#include "components/strings/grit/components_strings.h"
 #include "net/log/net_log_event_type.h"
+#include "ui/base/l10n/l10n_util.h"
 
 namespace enterprise_net {
 
@@ -66,7 +70,8 @@ base::DictValue EnterpriseProxyErrorService::GetErrorPageParams(
   RecordErrorCodeHistogram(error_data.error_code());
 
   params.Set(error_page::kOverrideErrorPage, true);
-  params.Set("title", "Enterprise Proxy Error");
+  params.Set("title", l10n_util::GetStringUTF16(
+                          IDS_ENTERPRISE_PROXY_OTHER_ERROR_HEADING));
   params.Set("destination_url", error_data.destination_url().spec());
   params.Set("proxy_url", error_data.proxy_url().spec());
   params.Set("error_code", base::NumberToString(error_data.error_code()));
@@ -74,6 +79,45 @@ base::DictValue EnterpriseProxyErrorService::GetErrorPageParams(
       "error_category",
       base::NumberToString(static_cast<int>(error_data.error_category())));
   params.Set("is_enterprise_proxy_error", true);
+
+  params.Set("heading", l10n_util::GetStringUTF16(
+                            IDS_ENTERPRISE_PROXY_OTHER_ERROR_HEADING));
+  params.Set("primary_paragraph",
+             l10n_util::GetStringUTF16(
+                 IDS_ENTERPRISE_PROXY_OTHER_ERROR_PRIMARY_PARAGRAPH));
+  params.Set("button_text",
+             l10n_util::GetStringUTF16(IDS_ENTERPRISE_BLOCK_GO_BACK));
+
+  switch (error_data.error_category()) {
+    case EnterpriseProxyErrorData::ErrorCategory::kAuthentication:
+      params.Set("title", l10n_util::GetStringUTF16(
+                              IDS_ENTERPRISE_PROXY_AUTHN_ERROR_HEADING));
+      params.Set("heading", l10n_util::GetStringUTF16(
+                                IDS_ENTERPRISE_PROXY_AUTHN_ERROR_HEADING));
+      params.Set("primary_paragraph",
+                 l10n_util::GetStringUTF16(
+                     IDS_ENTERPRISE_PROXY_AUTHN_ERROR_PRIMARY_PARAGRAPH));
+      params.Set("button_text", l10n_util::GetStringUTF16(IDS_CONTINUE));
+      break;
+    case EnterpriseProxyErrorData::ErrorCategory::kAuthorization:
+      params.Set("title", l10n_util::GetStringUTF16(
+                              IDS_ENTERPRISE_PROXY_AUTHZ_ERROR_HEADING));
+      params.Set("heading", l10n_util::GetStringUTF16(
+                                IDS_ENTERPRISE_PROXY_AUTHZ_ERROR_HEADING));
+      params.Set("primary_paragraph",
+                 l10n_util::GetStringFUTF16(
+                     IDS_ENTERPRISE_PROXY_AUTHZ_ERROR_PRIMARY_PARAGRAPH,
+                     base::EscapeForHTML(base::UTF8ToUTF16(
+                         error_data.destination_url().spec()))));
+      params.Set("button_text",
+                 l10n_util::GetStringUTF16(IDS_ENTERPRISE_BLOCK_GO_BACK));
+      break;
+    default:
+      // Corresponds to the "other" error cases. Strings are already populated
+      // with defaults above.
+      break;
+  }
+
   return params;
 }
 

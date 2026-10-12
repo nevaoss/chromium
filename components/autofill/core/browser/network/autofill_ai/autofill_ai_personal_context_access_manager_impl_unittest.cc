@@ -1609,29 +1609,6 @@ TEST_F(AutofillAiPersonalContextAccessManagerImplTest,
       personal_context::PersonalContextNonEligibilityReason::kEligible, 2);
 }
 
-// Tests that `PrefetchContext` populates the `client_id` field of
-// `ContextMemoryAmbientAutofillRequest` using the cache GUID retrieved from
-// `DeviceInfoSyncService`.
-TEST_F(AutofillAiPersonalContextAccessManagerImplTest,
-       PrefetchContext_PopulatesClientIdFromCacheGuid) {
-  EXPECT_CALL(
-      mock_personal_context_service(),
-      FetchContext(
-          personal_context::proto::CONTEXT_MEMORY_FEATURE_AMBIENT_AUTOFILL,
-          MatchContextFetchRequestWithClientId(
-              std::vector<personal_context::proto::EntityType>{
-                  AutofillEntityTypeToPersonalContextEntityType(kOrderType)},
-              /*expected_presence=*/false,
-              /*expected_client_id=*/
-              fake_device_info_sync_service()
-                  .GetLocalDeviceInfoProvider()
-                  ->GetLocalDeviceInfo()
-                  ->guid()),
-          _, _));
-
-  access_manager().PrefetchContext({kOrderType});
-}
-
 // Tests that `PrefetchContext` populates an empty `client_id` when local device
 // info is unavailable.
 TEST_F(AutofillAiPersonalContextAccessManagerImplTest,
@@ -1855,6 +1832,29 @@ class AutofillAiPersonalContextAccessManagerImplSpiiCacheTest
   base::test::ScopedFeatureList feature_list_{
       features::kAutofillAmbientAutofillSpiiCache};
 };
+
+// Tests that `PrefetchContext` populates the `client_id` field of
+// `ContextMemoryAmbientAutofillRequest` using the cache GUID retrieved from
+// `DeviceInfoSyncService`.
+TEST_F(AutofillAiPersonalContextAccessManagerImplSpiiCacheTest,
+       PrefetchContext_PopulatesClientIdFromCacheGuid) {
+  EXPECT_CALL(
+      mock_personal_context_service(),
+      FetchContext(
+          personal_context::proto::CONTEXT_MEMORY_FEATURE_AMBIENT_AUTOFILL,
+          MatchContextFetchRequestWithClientId(
+              std::vector<personal_context::proto::EntityType>{
+                  AutofillEntityTypeToPersonalContextEntityType(kOrderType)},
+              /*expected_presence=*/false,
+              /*expected_client_id=*/
+              fake_device_info_sync_service()
+                  .GetLocalDeviceInfoProvider()
+                  ->GetLocalDeviceInfo()
+                  ->guid()),
+          _, _));
+
+  access_manager().PrefetchContext({kOrderType});
+}
 
 // Tests that when `kAutofillAmbientAutofillSpiiCache` is enabled, prefetching
 // SPII types sends a single request that does not ask for SPII presence, and
@@ -2455,13 +2455,24 @@ TEST_F(AutofillAiPersonalContextAccessManagerImplTest,
   drive_order.add_source_references()->mutable_drive();
   *response.add_entities() = std::move(drive_order);
 
-  // 3. Order with a valid Gmail source reference -> kValid
+  // 3. Order with an invalid source URL -> kFailedMissingSource
+  personal_context::proto::Entity invalid_url_order =
+      CreateOrderProto({.id = u"INVALID_URL_SOURCE",
+                        .date = u"2025-06-01",
+                        .merchant_name = u"Store"});
+  invalid_url_order.add_source_references()->mutable_gmail()->set_message_url(
+      "invalid_url");
+  *response.add_entities() = std::move(invalid_url_order);
+
+  // 4. Order with a valid Gmail source reference -> kValid
   personal_context::proto::Entity valid_order =
       CreateOrderProto({.id = u"VALID_SOURCE",
                         .date = u"2025-06-01",
                         .merchant_name = u"Store"});
-  valid_order.add_source_references()->mutable_gmail()->set_message_url(
-      "https://mail.google.com/mail/u/0/#inbox/123");
+  personal_context::proto::GmailReference* valid_gmail =
+      valid_order.add_source_references()->mutable_gmail();
+  valid_gmail->set_message_url("https://mail.google.com/mail/u/0/#inbox/123");
+  valid_gmail->set_subject("Order Confirmation");
   *response.add_entities() = std::move(valid_order);
 
   std::vector<EntityInstance> entities;
@@ -2481,14 +2492,14 @@ TEST_F(AutofillAiPersonalContextAccessManagerImplTest,
 
   histogram_tester().ExpectBucketCount(kBaseMetric, Result::kValid, 1);
   histogram_tester().ExpectBucketCount(kBaseMetric,
-                                       Result::kFailedMissingSource, 2);
-  histogram_tester().ExpectTotalCount(kBaseMetric, 3);
+                                       Result::kFailedMissingSource, 3);
+  histogram_tester().ExpectTotalCount(kBaseMetric, 4);
 
   histogram_tester().ExpectBucketCount(base::StrCat({kBaseMetric, ".Order"}),
                                        Result::kValid, 1);
   histogram_tester().ExpectBucketCount(base::StrCat({kBaseMetric, ".Order"}),
-                                       Result::kFailedMissingSource, 2);
-  histogram_tester().ExpectTotalCount(base::StrCat({kBaseMetric, ".Order"}), 3);
+                                       Result::kFailedMissingSource, 3);
+  histogram_tester().ExpectTotalCount(base::StrCat({kBaseMetric, ".Order"}), 4);
 }
 
 }  // namespace

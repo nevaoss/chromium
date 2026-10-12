@@ -14,7 +14,6 @@
 #include "base/callback_list.h"
 #include "base/containers/span.h"
 #include "base/memory/raw_ref.h"
-#include "base/observer_list.h"
 #include "chrome/browser/ttc/app/audio_controller.h"
 #include "chrome/browser/ttc/app/public/conversation.h"
 #include "chrome/browser/ttc/app/ttc_backend.h"
@@ -49,11 +48,8 @@ class ConversationImpl : public Conversation, public TtcBackend::Observer {
   ConversationImpl& operator=(const ConversationImpl&) = delete;
 
   // Conversation implementation:
-  void AddObserver(Conversation::Observer* observer) override;
-  void RemoveObserver(Conversation::Observer* observer) override;
   void Start() override;
   void Stop() override;
-  bool is_connected() const override;
   void SendTextInput(const std::string& text) override;
   void SendContextUpdate(
       const GURL& url,
@@ -62,9 +58,9 @@ class ConversationImpl : public Conversation, public TtcBackend::Observer {
   void OnPageContextChanged() override;
 
   // TtcBackend::Observer implementation:
-  void OnStreamingStateChanged(bool connected,
-                               const std::string& session_id,
-                               const std::string& error_message) override;
+  void OnApplicationInitialized() override;
+  void OnApplicationClosed() override;
+  void OnApplicationError(ErrorCode error) override;
   void OnTranscriptions(const std::string& input_transcription,
                         const std::string& output_transcription) override;
   void OnAudioOutput(base::span<const int16_t> audio_data,
@@ -93,7 +89,6 @@ class ConversationImpl : public Conversation, public TtcBackend::Observer {
   base::CallbackListSubscription audio_capture_subscription_;
   base::CallbackListSubscription audio_energy_subscription_;
   base::CallbackListSubscription playback_completion_subscription_;
-  base::ObserverList<Conversation::Observer> observers_;
 };
 
 }  // namespace ttc

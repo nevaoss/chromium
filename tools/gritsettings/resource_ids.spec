@@ -384,10 +384,6 @@
     "META": {"sizes": {"includes": [320],}},
     "includes": [3360],
   },
-  "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/chromeos/manage_mirrorsync/resources.grd": {
-    "META": {"sizes": {"includes": [10]}},
-    "includes": [3380],
-  },
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/chromeos/multidevice_internals/resources.grd": {
     "META": {"sizes": {"includes": [35]}},
     "includes": [3400],
@@ -555,10 +551,6 @@
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/gaia_auth_host/resources.grd": {
     "META": {"sizes": {"includes": [20],}},
     "includes": [4000],
-  },
-  "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/geic/resources.grd": {
-    "META": {"sizes": {"includes": [5]}},
-    "includes": [4005],
   },
   "<(SHARED_INTERMEDIATE_DIR)/chrome/browser/resources/glic/resources.grd": {
     "META": {"sizes": {"includes": [60]}},

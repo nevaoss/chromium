@@ -18,6 +18,7 @@
 #include "chrome/browser/context_hub/context_hub_service_factory.h"
 #include "chrome/browser/context_hub/features.h"
 #include "chrome/browser/context_hub/prefs.h"
+#include "chrome/browser/history/history_service_factory.h"
 #include "chrome/browser/optimization_guide/mock_optimization_guide_keyed_service.h"
 #include "chrome/browser/optimization_guide/optimization_guide_keyed_service_factory.h"
 #include "chrome/browser/personal_context/personal_context_service_factory.h"
@@ -25,7 +26,13 @@
 #include "chrome/browser/ui/webui/context_hub/context_hub.mojom-features.h"
 #include "chrome/browser/ui/webui/context_hub/context_hub.mojom.h"
 #include "chrome/test/base/testing_profile.h"
+#include "components/history/core/browser/history_database_params.h"
+#include "components/history/core/browser/history_service.h"
+#include "components/history/core/browser/journeys/journey.h"
+#include "components/history/core/browser/journeys/journey_row.h"
+#include "components/history/core/test/test_history_database.h"
 #include "components/keyed_service/content/browser_context_dependency_manager.h"
+#include "components/keyed_service/core/service_access_type.h"
 #include "components/optimization_guide/core/optimization_guide_features.h"
 #include "components/optimization_guide/proto/features/context_hub.pb.h"
 #include "components/personal_context/core/mock_personal_context_service.h"
@@ -44,9 +51,29 @@
 #include "content/public/test/web_contents_tester.h"
 #include "mojo/public/cpp/bindings/pending_receiver.h"
 #include "mojo/public/cpp/test_support/test_utils.h"
+#include "net/base/url_util.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "url/gurl.h"
+
+#if !BUILDFLAG(IS_ANDROID)
+#include "chrome/browser/glic/glic_pref_names.h"                    // nogncheck
+#include "chrome/browser/glic/glic_profile_manager.h"               // nogncheck
+#include "chrome/browser/glic/host/context/glic_sharing_utils.h"    // nogncheck
+#include "chrome/browser/glic/public/glic_enabling.h"               // nogncheck
+#include "chrome/browser/glic/public/glic_invoke_options.h"         // nogncheck
+#include "chrome/browser/glic/public/glic_keyed_service_factory.h"  // nogncheck
+#include "chrome/browser/glic/test_support/glic_test_util.h"        // nogncheck
+#include "chrome/browser/glic/test_support/mock_glic_instance.h"    // nogncheck
+#include "chrome/browser/glic/test_support/mock_glic_keyed_service.h"  // nogncheck
+#include "chrome/browser/signin/identity_manager_factory.h"
+#include "chrome/common/webui_url_constants.h"
+#include "chrome/test/base/chrome_render_view_host_test_harness.h"  // nogncheck
+#include "chrome/test/base/testing_browser_process.h"
+#include "chrome/test/base/testing_profile_manager.h"
+#include "components/tabs/public/mock_tab_interface.h"  // nogncheck
+#include "components/tabs/public/tab_interface.h"       // nogncheck
+#endif
 
 namespace context_hub {
 namespace {
@@ -78,8 +105,31 @@ class MockTabProvider : public ContextHubPageHandler::TabProvider {
               UngroupGroupFromTabstripIfOpen,
               (const base::Uuid&),
               (override));
+  MOCK_METHOD(void,
+              OpenTopic,
+              (browser::context_hub::mojom::TopicIdOrUrlPtr),
+              (override));
 };
 #endif
+
+class MockHistoryService : public history::HistoryService {
+ public:
+  MockHistoryService() = default;
+  ~MockHistoryService() override = default;
+
+  MOCK_METHOD(base::CancelableTaskTracker::TaskId,
+              GetAllJourneys,
+              (history::HistoryService::GetAllJourneysCallback callback,
+               base::CancelableTaskTracker* tracker),
+              (override));
+};
+
+std::unique_ptr<KeyedService> BuildMockHistoryService(
+    content::BrowserContext* context) {
+  auto service = std::make_unique<testing::NiceMock<MockHistoryService>>();
+  service->Init(history::TestHistoryDatabaseParamsForPath(context->GetPath()));
+  return service;
+}
 
 class MockPage : public browser::context_hub::mojom::Page {
  public:
@@ -146,6 +196,8 @@ class ContextHubPageHandlerTest : public testing::Test {
                                     -> std::unique_ptr<KeyedService> {
               return std::make_unique<MockOptimizationGuideKeyedService>();
             }));
+    HistoryServiceFactory::GetInstance()->SetTestingFactory(
+        browser_context, base::BindRepeating(&BuildMockHistoryService));
   }
 
   void SetUp() override {
@@ -186,6 +238,7 @@ class ContextHubPageHandlerTest : public testing::Test {
          browser::context_hub::mojom::kAutoTabGroups,
          browser::context_hub::mojom::kAutoTodos,
          browser::context_hub::mojom::kSmartSearch,
+         browser::context_hub::mojom::kTopics,
          optimization_guide::features::kOptimizationHints},
         {});
     return feature_list;
@@ -199,6 +252,12 @@ class ContextHubPageHandlerTest : public testing::Test {
   MockOptimizationGuideKeyedService* GetMockOptimizationGuideService() {
     return static_cast<MockOptimizationGuideKeyedService*>(
         OptimizationGuideKeyedServiceFactory::GetForProfile(&profile_));
+  }
+
+  MockHistoryService* GetMockHistoryService() {
+    return static_cast<MockHistoryService*>(
+        HistoryServiceFactory::GetForProfile(
+            &profile_, ServiceAccessType::EXPLICIT_ACCESS));
   }
 
   base::test::ScopedFeatureList feature_list_;
@@ -1812,14 +1871,20 @@ TEST_F(ContextHubPageHandlerTest, AskGeminiWithContext_Success) {
             nullptr);
       });
 
+  ContextHubService* service =
+      ContextHubServiceFactory::GetForProfile(&profile_);
+  ASSERT_TRUE(service);
+
   base::test::TestFuture<browser::context_hub::mojom::ChatMessagePtr> future;
   handler_->AskGeminiWithContext("Summarize memories", {1, 2},
+                                 /*save_to_history=*/true,
                                  future.GetCallback());
 
   browser::context_hub::mojom::ChatMessagePtr response = future.Take();
   ASSERT_TRUE(response);
   EXPECT_EQ(response->role, browser::context_hub::mojom::ChatRole::kAssistant);
   EXPECT_EQ(response->content, "Gemini response for prompt.");
+  EXPECT_EQ(service->GetMemoryBankChatHistory().size(), 2u);
 }
 
 TEST_F(ContextHubPageHandlerTest, AskGeminiWithContext_WithSelectedEntries) {
@@ -1886,12 +1951,14 @@ TEST_F(ContextHubPageHandlerTest, AskGeminiWithContext_WithSelectedEntries) {
   base::test::TestFuture<browser::context_hub::mojom::ChatMessagePtr>
       ask_future;
   handler_->AskGeminiWithContext("Summarize", {entry_id},
+                                 /*save_to_history=*/false,
                                  ask_future.GetCallback());
 
   browser::context_hub::mojom::ChatMessagePtr response = ask_future.Take();
   ASSERT_TRUE(response);
   EXPECT_EQ(response->role, browser::context_hub::mojom::ChatRole::kAssistant);
   EXPECT_EQ(response->content, "Summary of Test Page.");
+  EXPECT_TRUE(service->GetMemoryBankChatHistory().empty());
 }
 
 TEST_F(ContextHubPageHandlerTest, ClearTodoFeedbacks) {
@@ -1962,10 +2029,10 @@ TEST_F(ContextHubPageHandlerTest, GetConfirmedTabGroups) {
   auto* sync_service =
       tab_groups::TabGroupSyncServiceFactory::GetForProfile(&profile_);
   base::Uuid uuid = base::Uuid::GenerateRandomV4();
-  tab_groups::SavedTabGroup group(
-      u"Test Group", tab_groups::TabGroupColorId::kBlue, {},
-      /*position=*/std::nullopt, uuid,
-      tab_groups::test::GenerateRandomTabGroupID());
+  tab_groups::SavedTabGroup group(u"Test Group",
+                                  tab_groups::TabGroupColorId::kBlue, {},
+                                  /*position=*/std::nullopt, uuid,
+                                  tab_groups::test::GenerateRandomTabGroupID());
   tab_groups::SavedTabGroupTab tab(
       GURL("https://example.com"), u"Example", group.saved_guid(),
       /*position=*/0, /*saved_tab_guid=*/std::nullopt, /*local_tab_id=*/1);
@@ -2040,10 +2107,10 @@ TEST_F(ContextHubPageHandlerTest, RemoveAllConfirmedTabGroups) {
   auto* sync_service =
       tab_groups::TabGroupSyncServiceFactory::GetForProfile(&profile_);
   base::Uuid uuid = base::Uuid::GenerateRandomV4();
-  tab_groups::SavedTabGroup group(
-      u"Test Group", tab_groups::TabGroupColorId::kBlue, {},
-      /*position=*/std::nullopt, uuid,
-      tab_groups::test::GenerateRandomTabGroupID());
+  tab_groups::SavedTabGroup group(u"Test Group",
+                                  tab_groups::TabGroupColorId::kBlue, {},
+                                  /*position=*/std::nullopt, uuid,
+                                  tab_groups::test::GenerateRandomTabGroupID());
   tab_groups::SavedTabGroupTab tab(
       GURL("https://example.com"), u"Example", group.saved_guid(),
       /*position=*/0, /*saved_tab_guid=*/std::nullopt, /*local_tab_id=*/1);
@@ -2218,8 +2285,7 @@ TEST_F(ContextHubPageHandlerTest, ExecuteSmartSearch_Success) {
   personal_context::proto::SmartSearchItem* item =
       expected_response.add_items();
   item->set_description("Document discussing project plan.");
-  personal_context::proto::SourceReference* ref =
-      item->add_source_references();
+  personal_context::proto::SourceReference* ref = item->add_source_references();
   ref->mutable_drive()->set_name("Project Plan 2026");
   ref->mutable_drive()->set_url("https://docs.google.com/document/d/123");
 
@@ -2228,8 +2294,8 @@ TEST_F(ContextHubPageHandlerTest, ExecuteSmartSearch_Success) {
 
   EXPECT_CALL(
       *GetMockService(),
-      FetchContext(
-          personal_context::proto::CONTEXT_MEMORY_FEATURE_SMART_SEARCH, _, _, _))
+      FetchContext(personal_context::proto::CONTEXT_MEMORY_FEATURE_SMART_SEARCH,
+                   _, _, _))
       .WillOnce(RunOnceCallback<3>(
           personal_context::FetchContextResult(base::ok(any_response))));
 
@@ -2253,8 +2319,8 @@ TEST_F(ContextHubPageHandlerTest, ExecuteSmartSearch_Success) {
 TEST_F(ContextHubPageHandlerTest, ExecuteSmartSearch_Failure) {
   EXPECT_CALL(
       *GetMockService(),
-      FetchContext(
-          personal_context::proto::CONTEXT_MEMORY_FEATURE_SMART_SEARCH, _, _, _))
+      FetchContext(personal_context::proto::CONTEXT_MEMORY_FEATURE_SMART_SEARCH,
+                   _, _, _))
       .WillOnce(RunOnceCallback<3>(
           personal_context::FetchContextResult(base::unexpected(
               personal_context::ContextMemoryError::FromExecutionError(
@@ -2277,8 +2343,8 @@ TEST_F(ContextHubPageHandlerTest, ExecuteSmartSearch_EmptyResults) {
 
   EXPECT_CALL(
       *GetMockService(),
-      FetchContext(
-          personal_context::proto::CONTEXT_MEMORY_FEATURE_SMART_SEARCH, _, _, _))
+      FetchContext(personal_context::proto::CONTEXT_MEMORY_FEATURE_SMART_SEARCH,
+                   _, _, _))
       .WillOnce(RunOnceCallback<3>(
           personal_context::FetchContextResult(base::ok(any_response))));
 
@@ -2290,6 +2356,347 @@ TEST_F(ContextHubPageHandlerTest, ExecuteSmartSearch_EmptyResults) {
   const auto& results = future.Get();
   EXPECT_TRUE(results.empty());
 }
+
+TEST_F(ContextHubPageHandlerTest, GetTopics_MapsResolvedJourneys) {
+  history::journeys::Journey journey(
+      "test-topic-id", "Test Topic Title", base::Time::FromTimeT(1000),
+      "Test Topic Emoji", "Test Topic Long Description",
+      "Test Topic Short Description",
+      {history::journeys::JourneyVisit(GURL("https://example.com/visit"),
+                                       u"Test Visit Title")},
+      {history::journeys::JourneyContinuationQuery(
+          "Test Continuation Query Title", "Test Continuation Query Prompt")});
+
+  EXPECT_CALL(*GetMockHistoryService(), GetAllJourneys(_, _))
+      .WillOnce(
+          [&journey](history::HistoryService::GetAllJourneysCallback callback,
+                     base::CancelableTaskTracker* tracker) {
+            std::move(callback).Run({journey});
+            return base::CancelableTaskTracker::kBadTaskId;
+          });
+
+  base::test::TestFuture<std::vector<browser::context_hub::mojom::TopicPtr>>
+      future;
+  handler_->GetTopics(future.GetCallback());
+
+  const auto& topics = future.Get();
+  ASSERT_EQ(topics.size(), 1u);
+  EXPECT_EQ(topics[0]->id, "test-topic-id");
+  EXPECT_EQ(topics[0]->title, "Test Topic Title");
+  EXPECT_EQ(topics[0]->creation_time, base::Time::FromTimeT(1000));
+  EXPECT_EQ(topics[0]->emoji, "Test Topic Emoji");
+  EXPECT_EQ(topics[0]->overview, "Test Topic Long Description");
+  EXPECT_EQ(topics[0]->short_overview, "Test Topic Short Description");
+
+  ASSERT_EQ(topics[0]->visits.size(), 1u);
+  EXPECT_EQ(topics[0]->visits[0]->url, GURL("https://example.com/visit"));
+  EXPECT_EQ(topics[0]->visits[0]->title, "Test Visit Title");
+
+  ASSERT_EQ(topics[0]->continuation_queries.size(), 1u);
+  EXPECT_EQ(topics[0]->continuation_queries[0]->title,
+            "Test Continuation Query Title");
+  EXPECT_EQ(topics[0]->continuation_queries[0]->prompt,
+            "Test Continuation Query Prompt");
+}
+
+TEST_F(ContextHubPageHandlerTest, GetTopics_NoJourneys) {
+  EXPECT_CALL(*GetMockHistoryService(), GetAllJourneys(_, _))
+      .WillOnce([](history::HistoryService::GetAllJourneysCallback callback,
+                   base::CancelableTaskTracker* tracker) {
+        std::move(callback).Run({});
+        return base::CancelableTaskTracker::kBadTaskId;
+      });
+
+  base::test::TestFuture<std::vector<browser::context_hub::mojom::TopicPtr>>
+      future;
+  handler_->GetTopics(future.GetCallback());
+
+  EXPECT_THAT(future.Get(), IsEmpty());
+}
+
+#if !BUILDFLAG(IS_ANDROID)
+TEST_F(ContextHubPageHandlerTest, OpenTopic_TopicId) {
+  auto topic =
+      browser::context_hub::mojom::TopicIdOrUrl::NewTopicId("topic_123");
+  EXPECT_CALL(*mock_tab_provider_, OpenTopic(testing::_))
+      .WillOnce([](browser::context_hub::mojom::TopicIdOrUrlPtr arg) {
+        ASSERT_TRUE(arg);
+        ASSERT_TRUE(arg->is_topic_id());
+        EXPECT_EQ(arg->get_topic_id(), "topic_123");
+      });
+  handler_->OpenTopic(std::move(topic));
+}
+
+TEST_F(ContextHubPageHandlerTest, OpenTopic_TopicUrl) {
+  auto topic = browser::context_hub::mojom::TopicIdOrUrl::NewTopicUrl(
+      GURL("chrome://context-hub/topic_details?id=topic_123"));
+  EXPECT_CALL(*mock_tab_provider_, OpenTopic(testing::_))
+      .WillOnce([](browser::context_hub::mojom::TopicIdOrUrlPtr arg) {
+        ASSERT_TRUE(arg);
+        ASSERT_TRUE(arg->is_topic_url());
+        EXPECT_EQ(arg->get_topic_url(),
+                  GURL("chrome://context-hub/topic_details?id=topic_123"));
+      });
+  handler_->OpenTopic(std::move(topic));
+}
+
+TEST_F(ContextHubPageHandlerTest, OpenTopic_DelegatesToTabProvider) {
+  auto topic = browser::context_hub::mojom::TopicIdOrUrl::NewTopicId("123");
+  EXPECT_CALL(*mock_tab_provider_, OpenTopic(_));
+  handler_->OpenTopic(std::move(topic));
+}
+
+TEST_F(ContextHubPageHandlerTest, OpenTopic_TopicUrl_DelegatesToTabProvider) {
+  auto topic = browser::context_hub::mojom::TopicIdOrUrl::NewTopicUrl(
+      GURL("chrome://context-hub/topic_details?id=123"));
+  EXPECT_CALL(*mock_tab_provider_, OpenTopic(_));
+  handler_->OpenTopic(std::move(topic));
+}
+
+TEST_F(ContextHubPageHandlerTest,
+       OpenTopic_TopicIdAndUrlsStayUpToDateWithGlic) {
+  // Verifies that topic URLs handled by ContextHubPageHandler are accepted
+  // by glic::IsContextHubTopicUrl.
+  const GURL resolved_url = net::AppendQueryParameter(
+      GURL(chrome::kChromeUIContextHubURL).Resolve("topic_details"), "id",
+      "test-id");
+  EXPECT_TRUE(glic::IsContextHubTopicUrl(resolved_url));
+
+  const GURL kValidUrls[] = {
+      GURL("chrome://context-hub/topic_details"),
+      GURL("chrome://context-hub/topic_details?id=123"),
+      GURL("chrome://context-hub/topic_details.html"),
+      GURL("chrome://context-hub/topics"),
+  };
+  for (const GURL& url : kValidUrls) {
+    EXPECT_TRUE(glic::IsContextHubTopicUrl(url));
+  }
+}
+
+// Fixture for OpenGlicPanel. Unlike ContextHubPageHandlerTest, these tests
+// need a WebContents that is discoverable as a tab, plus a mock
+// GlicKeyedService installed on the profile, since OpenGlicPanel resolves the
+// service through GlicKeyedService::Get().
+class ContextHubPageHandlerGlicTest : public ChromeRenderViewHostTestHarness {
+ protected:
+  void SetUp() override {
+    // GlicKeyedService is created eagerly along with the profile and reaches
+    // for the global ProfileManager, so this has to exist before the harness
+    // builds the profile.
+    profile_manager_ = std::make_unique<TestingProfileManager>(
+        TestingBrowserProcess::GetGlobal());
+    ASSERT_TRUE(profile_manager_->SetUp());
+
+    ChromeRenderViewHostTestHarness::SetUp();
+
+    // Real tabs always carry a SessionTabHelper, and creating one keeps the
+    // global session-ID counter advancing in step with the tab-handle counter
+    // consumed by `mock_tab_`. Without it the two drift apart, which makes
+    // ContextHubTabProviderDesktop's "is this a handle or a session ID?"
+    // lookup resolve to the wrong tab in later tests in the same process.
+    // See the note on ContextHubTabProviderDesktop::GetSessionIdForTabHandle.
+    sessions::SessionTabHelper::CreateForWebContents(
+        web_contents(), sessions::SessionTabHelper::DelegateLookup());
+
+    handler_ = std::make_unique<ContextHubPageHandler>(
+        page_.BindAndGetRemote(),
+        mojo::PendingReceiver<browser::context_hub::mojom::PageHandler>(),
+        profile(), web_contents(), std::make_unique<MockTabProvider>());
+
+    // Resolve the service once, here, while Glic is still enabled. Tests that
+    // exercise the disabled path still need a handle to set expectations on,
+    // and the factory will not hand one out once enablement is revoked.
+    mock_glic_service_ = static_cast<glic::MockGlicKeyedService*>(
+        glic::GlicKeyedServiceFactory::GetGlicKeyedService(profile(),
+                                                           /*create=*/true));
+    ASSERT_TRUE(mock_glic_service_);
+  }
+
+  void TearDown() override {
+    handler_.reset();
+    mock_glic_service_ = nullptr;
+    // The profile, and with it the mock service holding a ProfileManager
+    // pointer, must go away before the TestingProfileManager does.
+    ChromeRenderViewHostTestHarness::TearDown();
+    profile_manager_.reset();
+  }
+
+  // Substitutes the mock for the real Glic service. This has to happen as the
+  // profile is built, since the service is created with it.
+  std::unique_ptr<TestingProfile> CreateTestingProfile() override {
+    TestingProfile::Builder builder;
+    builder.AddTestingFactory(
+        glic::GlicKeyedServiceFactory::GetInstance(),
+        base::BindRepeating(
+            &ContextHubPageHandlerGlicTest::CreateMockGlicService,
+            base::Unretained(this)));
+    return builder.Build();
+  }
+
+  std::unique_ptr<KeyedService> CreateMockGlicService(
+      content::BrowserContext* context) {
+    Profile* profile = Profile::FromBrowserContext(context);
+    return std::make_unique<testing::NiceMock<glic::MockGlicKeyedService>>(
+        profile, IdentityManagerFactory::GetForProfile(profile),
+        profile_manager_->profile_manager(), &glic_profile_manager_,
+        /*contextual_cueing_service=*/nullptr,
+        /*actor_keyed_service=*/nullptr);
+  }
+
+  glic::MockGlicKeyedService* mock_glic_service() { return mock_glic_service_; }
+
+  // Makes the page's WebContents resolvable as a tab. Without this there is
+  // nothing to bind the side panel to and OpenGlicPanel bails out.
+  void AttachWebContentsToTab() {
+    tabs::TabLookupFromWebContents::CreateForWebContents(web_contents(),
+                                                         &mock_tab_);
+  }
+
+  // Arranges for the next Invoke() to be recorded in `captured_options_`.
+  void ExpectInvokeCapturingOptions() {
+    EXPECT_CALL(*mock_glic_service(), Invoke(_))
+        .WillOnce([this](glic::GlicInvokeOptions options) {
+          captured_options_ = std::move(options);
+          return base::WeakPtr<glic::GlicInstance>();
+        });
+  }
+
+  // Reports an already-open panel bound to this tab.
+  void SimulatePanelAlreadyShowing() {
+    ON_CALL(showing_instance_, IsShowing())
+        .WillByDefault(testing::Return(true));
+    ON_CALL(*mock_glic_service(), GetInstanceForTab(_))
+        .WillByDefault(testing::Return(&showing_instance_));
+  }
+
+  // Constructed by default so that most tests exercise the enabled path. Tests
+  // covering the disabled path reset it.
+  std::optional<glic::GlicEnabling::ScopedBypassEnablementChecksForTesting>
+      scoped_glic_bypass_{std::in_place};
+  tabs::MockTabInterface mock_tab_;
+  testing::NiceMock<glic::MockGlicInstance> showing_instance_;
+  MockPage page_;
+  std::unique_ptr<ContextHubPageHandler> handler_;
+  std::optional<glic::GlicInvokeOptions> captured_options_;
+
+ private:
+  std::unique_ptr<TestingProfileManager> profile_manager_;
+  glic::GlicProfileManager glic_profile_manager_;
+  raw_ptr<glic::MockGlicKeyedService> mock_glic_service_ = nullptr;
+};
+
+TEST_F(ContextHubPageHandlerGlicTest, ForwardsPromptsAsSuggestionChips) {
+  AttachWebContentsToTab();
+  ExpectInvokeCapturingOptions();
+
+  handler_->OpenGlicPanel({"Catch me up on Topic", "What should I do next?",
+                           "Summarize what I've read"});
+
+  ASSERT_TRUE(captured_options_.has_value());
+  EXPECT_THAT(
+      captured_options_->prompts,
+      testing::ElementsAre("Catch me up on Topic", "What should I do next?",
+                           "Summarize what I've read"));
+  EXPECT_EQ(captured_options_->GetInvocationSource(),
+            glic::mojom::InvocationSource::kContextHubTopics);
+  // The page's own suggestions replace the generic Zero State Suggestions.
+  EXPECT_TRUE(captured_options_->disable_zss);
+}
+
+TEST_F(ContextHubPageHandlerGlicTest, CapsPromptsAtThree) {
+  AttachWebContentsToTab();
+  ExpectInvokeCapturingOptions();
+
+  // The renderer is not trusted to respect the cap.
+  handler_->OpenGlicPanel({"one", "two", "three", "four", "five"});
+
+  ASSERT_TRUE(captured_options_.has_value());
+  EXPECT_THAT(captured_options_->prompts,
+              testing::ElementsAre("one", "two", "three"));
+}
+
+TEST_F(ContextHubPageHandlerGlicTest, KeepsZeroStateSuggestionsWhenNoPrompts) {
+  AttachWebContentsToTab();
+  ExpectInvokeCapturingOptions();
+
+  // A topic with no title yields no suggestions; ZSS should fill the gap
+  // rather than leaving the panel with nothing to offer.
+  handler_->OpenGlicPanel({});
+
+  ASSERT_TRUE(captured_options_.has_value());
+  EXPECT_THAT(captured_options_->prompts, IsEmpty());
+  EXPECT_FALSE(captured_options_->disable_zss);
+}
+
+TEST_F(ContextHubPageHandlerGlicTest, FocusesPanelWhenNotAlreadyShowing) {
+  AttachWebContentsToTab();
+  ExpectInvokeCapturingOptions();
+
+  handler_->OpenGlicPanel({"Catch me up on Topic"});
+
+  ASSERT_TRUE(captured_options_.has_value());
+  EXPECT_TRUE(captured_options_->focus_on_show);
+  EXPECT_FALSE(captured_options_->supersede_if_in_progress);
+}
+
+TEST_F(ContextHubPageHandlerGlicTest,
+       RefreshesWithoutStealingFocusWhenAlreadyShowing) {
+  AttachWebContentsToTab();
+  SimulatePanelAlreadyShowing();
+  ExpectInvokeCapturingOptions();
+
+  handler_->OpenGlicPanel({"Catch me up on Topic"});
+
+  ASSERT_TRUE(captured_options_.has_value());
+  // The chips are still delivered, but the user is already looking at the
+  // panel, so the topic page keeps focus.
+  EXPECT_THAT(captured_options_->prompts,
+              testing::ElementsAre("Catch me up on Topic"));
+  EXPECT_FALSE(captured_options_->focus_on_show);
+  EXPECT_TRUE(captured_options_->supersede_if_in_progress);
+}
+
+TEST_F(ContextHubPageHandlerGlicTest, ExtendsTimeoutWhenFreNotCompleted) {
+  AttachWebContentsToTab();
+  glic::SetFRECompletion(profile(), glic::prefs::FreStatus::kNotStarted);
+  ExpectInvokeCapturingOptions();
+
+  handler_->OpenGlicPanel({"Catch me up on Topic"});
+
+  ASSERT_TRUE(captured_options_.has_value());
+  // The default one minute watchdog is not enough time to read and accept the
+  // consent screen rendered inside the panel.
+  EXPECT_EQ(captured_options_->timeout, base::Minutes(5));
+}
+
+TEST_F(ContextHubPageHandlerGlicTest, UsesDefaultTimeoutWhenFreCompleted) {
+  AttachWebContentsToTab();
+  glic::SetFRECompletion(profile(), glic::prefs::FreStatus::kCompleted);
+  ExpectInvokeCapturingOptions();
+
+  handler_->OpenGlicPanel({"Catch me up on Topic"});
+
+  ASSERT_TRUE(captured_options_.has_value());
+  EXPECT_FALSE(captured_options_->timeout.has_value());
+}
+
+TEST_F(ContextHubPageHandlerGlicTest, NoOpWhenGlicDisabledForProfile) {
+  AttachWebContentsToTab();
+  scoped_glic_bypass_.reset();
+
+  EXPECT_CALL(*mock_glic_service(), Invoke(_)).Times(0);
+
+  handler_->OpenGlicPanel({"Catch me up on Topic"});
+}
+
+TEST_F(ContextHubPageHandlerGlicTest, NoOpWhenNotHostedInTab) {
+  // The WebUI may be hosted outside a tab (e.g. in a dialog), so
+  // AttachWebContentsToTab() is deliberately not called here.
+  EXPECT_CALL(*mock_glic_service(), Invoke(_)).Times(0);
+
+  handler_->OpenGlicPanel({"Catch me up on Topic"});
+}
+#endif
 
 }  // namespace
 }  // namespace context_hub

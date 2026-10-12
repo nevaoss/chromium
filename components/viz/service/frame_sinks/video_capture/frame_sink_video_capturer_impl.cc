@@ -412,6 +412,10 @@ void FrameSinkVideoCapturerImpl::SetAutoThrottlingEnabled(bool enabled) {
   oracle_->SetAutoThrottlingEnabled(enabled);
 }
 
+void FrameSinkVideoCapturerImpl::SetIsSecure(bool is_secure) {
+  is_secure_ = is_secure;
+}
+
 void FrameSinkVideoCapturerImpl::ChangeTarget(
     const std::optional<VideoCaptureTarget>& target,
     uint32_t sub_capture_version) {
@@ -1103,14 +1107,23 @@ void FrameSinkVideoCapturerImpl::MaybeCaptureFrame(
   // embedded in different renderers.
   const bool is_same_frame_sink_as_requested =
       resolved_target_->GetFrameSinkId() == target_->frame_sink_id;
-  if (IsRegionCapture(target_->sub_target) && is_same_frame_sink_as_requested) {
-    const float scale_factor = frame_metadata.device_scale_factor;
-    metadata.region_capture_rect =
-        scale_factor
-            ? ScaleToEnclosingRect(region_properties->render_pass_subrect,
-                                   1.0f / scale_factor)
-            : region_properties->render_pass_subrect;
-    metadata.source_size = source_size;
+  if (IsRegionCapture(target_->sub_target)) {
+    // The frame was physically cropped to the crop-target, so the target
+    // occupies the entirety of the frame. This holds irrespective of which
+    // frame sink the target resolved to.
+    metadata.region_capture_bounds = {
+        {std::get<RegionCaptureCropId>(target_->sub_target),
+         frame->visible_rect()}};
+
+    if (is_same_frame_sink_as_requested) {
+      const float scale_factor = frame_metadata.device_scale_factor;
+      metadata.region_capture_rect =
+          scale_factor
+              ? ScaleToEnclosingRect(region_properties->render_pass_subrect,
+                                     1.0f / scale_factor)
+              : region_properties->render_pass_subrect;
+      metadata.source_size = source_size;
+    }
   } else if (IsEntireTabCapture(target_->sub_target) &&
              !frame_metadata.capture_bounds.IsEmpty()) {
     // In full-frame mode (multi-target or uncropped capture), populate
@@ -1208,6 +1221,7 @@ void FrameSinkVideoCapturerImpl::MaybeCaptureFrame(
                      capture_weak_factory_.GetWeakPtr(),
                      std::move(frame_capture)));
 
+  request->set_is_secure(is_secure_);
   request->set_result_task_runner(
       base::SequencedTaskRunner::GetCurrentDefault());
   request->set_source(copy_request_source_);

@@ -3905,13 +3905,6 @@ blink::WebLocalFrame* RenderFrameImpl::CreateChildFrame(
   return web_frame;
 }
 
-void RenderFrameImpl::DidCreateFencedFrame(
-    const blink::RemoteFrameToken& frame_token) {
-  for (auto& observer : observers_) {
-    observer.DidCreateFencedFrame(frame_token);
-  }
-}
-
 blink::WebFrame* RenderFrameImpl::FindFrame(const blink::WebString& name) {
   if (GetBlinkPreferences().renderer_wide_named_frame_lookup) {
     for (const auto& it : g_frame_map.Get()) {
@@ -4999,7 +4992,7 @@ void RenderFrameImpl::DidCreateScriptContext(v8::Local<v8::Context> context,
         GetContentClient()->renderer()->IsUnboundedElementAllowed(this);
     bool is_unbounded_allowed =
         base::FeatureList::IsEnabled(
-            blink::features::kUnboundedElementOnTheOpenWeb) ||
+            blink::features::kUnsafeUnboundedElementOnTheOpenWeb) ||
         is_privileged;
     if (is_unbounded_allowed) {
       blink::WebV8Features::EnableUnboundedElement(context, is_privileged);
@@ -5158,7 +5151,7 @@ bool RenderFrameImpl::IsMainFrame() {
 }
 
 bool RenderFrameImpl::IsInFencedFrameTree() const {
-  return GetWebFrame()->IsInFencedFrameTree();
+  return false;
 }
 
 bool RenderFrameImpl::IsHidden() {

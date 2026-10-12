@@ -102,6 +102,18 @@ inspector_protocol_generate("protocol_generated_sources") {
   outputs = _protocol_generated
 }
 
+source_set("devtools_contents_resizing_strategy") {
+  public = [
+    "devtools_contents_resizing_strategy.h",
+    "devtools_dock_side.h",
+  ]
+  sources = [ "devtools_contents_resizing_strategy.cc" ]
+  public_deps = [
+    "//base",
+    "//ui/gfx/geometry",
+  ]
+}
+
 static_library("devtools") {
   # Note: new sources and deps should be generally added in (!is_android) below.
   sources = [
@@ -239,6 +251,7 @@ static_library("devtools") {
       "//components/viz/host",
       "//ui/shell_dialogs",
     ]
+    public_deps += [ "//chrome/browser/themes" ]
     if (!is_android) {
       deps += [
         "//chrome/browser:certificate_viewer",
@@ -282,13 +295,13 @@ static_library("devtools") {
       "//chrome/app/theme:theme_resources",
       "//chrome/browser/infobars",
       "//chrome/browser/media/router:media_router_feature",
-      "//chrome/browser/themes",
       "//chrome/browser/ui:tab_modal_confirm_dialog",
       "//chrome/browser/ui/exclusive_access",
       "//chrome/browser/ui/navigator",
       "//chrome/browser/ui/tabs:tab_strip",
       "//chrome/browser/ui/user_education",
       "//chrome/browser/ui/views:layout_provider",
+      "//chrome/browser/ui/views/frame:contents_container_view",
       "//chrome/browser/ui/views/frame:contents_web_view",
       "//chrome/browser/ui/views/frame:scrim_view",
       "//chrome/browser/ui/webui_browser:headers",
@@ -560,6 +573,8 @@ source_set("unit_tests") {
     "//chrome/browser/file_system_access",
     "//chrome/browser/sync",
     "//chrome/test:test_support",
+    "//chrome/test/base:chrome_render_view_host_test_harness",
+    "//chrome/test/base:testing_browser_process",
     "//content/test:test_support",
     "//testing/gtest",
   ]

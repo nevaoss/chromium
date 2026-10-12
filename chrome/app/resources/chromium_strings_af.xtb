@@ -264,7 +264,6 @@ Sommige kenmerke kan dalk nie beskikbaar wees nie en veranderings aan voorkeure 
 
           **Stel vrae voor:** Genereer ’n koeëlpuntlys met 3-5 besinningswaardige vrae wat ’n gebruiker kan vra om die skermskoot beter te verstaan. Hierdie vrae moet ten minste een vraag wat spesifiek oor ’n visuele objek, sy ontwerp of sy plasing gaan, insluit.</translation>
 <translation id="3848258323044014972"><ph name="PAGE_TITLE" /> – Chromium</translation>
-<translation id="387514319934708384">Chromium het plaaslikenetwerktoestemming vir hierdie werf nodig</translation>
 <translation id="3885770153807205175">Taalkieser</translation>
 <translation id="388648406173476553">Pasmaak en beheer Chromium. Iets verg jou aandag – klik vir besonderhede.</translation>
 <translation id="3889543394854987837">Klik jou naam om Chromium oop te maak en te begin blaai.</translation>
@@ -306,6 +305,7 @@ Sommige kenmerke kan dalk nie beskikbaar wees nie en veranderings aan voorkeure 
 <translation id="4251772536351901305">Waarsku jou oor gevaarlike werwe – selfs werwe waarvan Google nie voorheen geweet het nie – deur meer data van werwe te ontleed as standaardbeskerming. Jy kan kies om Chromium-waarskuwings oor te slaan.</translation>
 <translation id="4269093074552541569">Meld by Chromium af</translation>
 <translation id="4271805377592243930">Kry hulp met Chromium</translation>
+<translation id="4275788652681621337">Maak kantpaneel toe</translation>
 <translation id="4281844954008187215">Diensbepalings</translation>
 <translation id="4285930937574705105">Kon weens 'n ongespesifiseerde fout nie installeer nie. As Chromium tans loop, maak dit asseblief toe en probeer weer.</translation>
 <translation id="4298125729853015961">Voer wagwoorde vanaf Chromium uit</translation>
@@ -442,9 +442,9 @@ Probeer om optimering toe te laat as hierdie bladsy nie werk soos verwag nie.</t
 <translation id="5883558403894052917">Chromium het bevind dat hierdie items wanware bevat:</translation>
 <translation id="5889361821821684993">Chromium kontroleer gereeld om seker te maak jou blaaier het die veiligste instellings. Ons sal jou laat weet as jy enigiets moet nagaan.</translation>
 <translation id="5895138241574237353">Herbegin</translation>
+<translation id="5896077214220653386">Gemini Enterprise in Chromium</translation>
 <translation id="5903106910045431592"><ph name="PAGE_TITLE" /> – Netwerkaanmelding</translation>
 <translation id="5924017743176219022">Koppel tans aan die internet …</translation>
-<translation id="5939553720811388432">Kom ons kry jou Chromium gereed</translation>
 <translation id="5941711191222866238">Maak kleiner</translation>
 <translation id="5949225980829865667">Meld aan by Chromium om hierdie boekmerk en meer op al jou toestelle te kry</translation>
 <translation id="5953657885167112863">Maak Chromium joune</translation>
@@ -595,6 +595,7 @@ Nuwe boekmerke kan nie in jou rekening gestoor word totdat jy sommige uitvee nie
 <translation id="7213407614656404070">Gebruik Chromium enige tyd wanneer jy op skakels in boodskappe, dokumente en ander apps klik</translation>
 <translation id="7216228761061470870">Wanneer jy Prentsoektog gebruik, word die bladsytitel, URL en inhoud, insluitend PDF’s, na die bediener toe gestuur</translation>
 <translation id="7223968959479464213">Taakbestuurder – Chromium</translation>
+<translation id="7226331818892775989">Vra oor inhoud buite Chromium, soos ander apps of lêers</translation>
 <translation id="7227958669698166857"><ph name="EXISTING_USER" /> is reeds aangemeld. Meld in jou eie profiel as <ph name="USER_EMAIL_ADDRESS" /> by Chromium aan om jou blaai-aktiwiteit apart te hou. Jy sal ook jou gestoorde inligting en meer op al jou toestelle kry.</translation>
 <translation id="7252276985725323153">Begin dadelik blaai: Chromium kan nou begin wanneer Windows begin.</translation>
 <translation id="7274695763216404502">Vasgespeld! Probeer Prentsoektog weer van die nutsbalk af</translation>

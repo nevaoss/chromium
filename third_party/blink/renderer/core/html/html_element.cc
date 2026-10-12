@@ -89,6 +89,7 @@
 #include "third_party/blink/renderer/core/events/keyboard_event.h"
 #include "third_party/blink/renderer/core/events/pointer_event.h"
 #include "third_party/blink/renderer/core/events/toggle_event.h"
+#include "third_party/blink/renderer/core/events/ui_event.h"
 #include "third_party/blink/renderer/core/frame/csp/content_security_policy.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
 #include "third_party/blink/renderer/core/frame/local_frame.h"
@@ -3270,17 +3271,18 @@ bool HTMLElement::IsValidBuiltinCommand(HTMLElement& invoker,
   }
   if (Element::IsOverscrollCommand(command)) {
     CHECK(RuntimeEnabledFeatures::OverscrollGesturesEnabled());
-    return true;
+    return GetTreeScope() == invoker.GetTreeScope();
   }
   return false;
 }
 
 bool HTMLElement::HandleCommandInternal(HTMLElement& invoker,
-                                        CommandEventType command) {
+                                        CommandEventType command,
+                                        UIEvent* activate_event) {
   if (!IsValidBuiltinCommand(invoker, command)) {
     return false;
   }
-  if (Element::HandleCommandInternal(invoker, command)) {
+  if (Element::HandleCommandInternal(invoker, command, activate_event)) {
     return true;
   }
 
@@ -3411,7 +3413,7 @@ bool HTMLElement::CanBeCommandInvoker() const {
   return false;
 }
 
-bool HTMLElement::HandleCommandForActivation() {
+bool HTMLElement::HandleCommandForActivation(UIEvent* activate_event) {
   if (!CanBeCommandInvoker()) {
     return false;
   }
@@ -3421,12 +3423,6 @@ bool HTMLElement::HandleCommandForActivation() {
   Element* command_target = commandForElement();
   if (!command_target) {
     return false;
-  }
-  // commandfor & popovertarget shouldn't be combined, so warn.
-  if (FastHasAttribute(html_names::kPopovertargetAttr)) {
-    AddConsoleMessage(mojom::blink::ConsoleMessageSource::kOther,
-                      mojom::blink::ConsoleMessageLevel::kWarning,
-                      "popovertarget is ignored on elements with commandfor.");
   }
   const AtomicString& action = command();
   if (action.empty()) {
@@ -3442,6 +3438,14 @@ bool HTMLElement::HandleCommandForActivation() {
   if (!is_valid_builtin && command_event_type != CommandEventType::kCustom) {
     return false;
   }
+  // commandfor & popovertarget shouldn't be combined, so warn. This comes
+  // after the early returns above, which are the cases where no command runs
+  // and popovertarget is therefore honored, not ignored.
+  if (FastHasAttribute(html_names::kPopovertargetAttr)) {
+    AddConsoleMessage(mojom::blink::ConsoleMessageSource::kOther,
+                      mojom::blink::ConsoleMessageLevel::kWarning,
+                      "popovertarget is ignored on elements with commandfor.");
+  }
   Event* command_event =
       CommandEvent::Create(event_type_names::kCommand, action, this);
   if (RuntimeEnabledFeatures::ShadowRootReferenceTargetEnabled(
@@ -3451,7 +3455,8 @@ bool HTMLElement::HandleCommandForActivation() {
   command_target->DispatchEvent(*command_event);
   if (!command_event->defaultPrevented() &&
       command_event_type != CommandEventType::kCustom) {
-    command_target->HandleCommandInternal(*this, command_event_type);
+    command_target->HandleCommandInternal(*this, command_event_type,
+                                          activate_event);
   }
   return true;
 }
@@ -4218,17 +4223,47 @@ FocusgroupFlags HTMLElement::NativeArrowKeyAxes() const {
   return Element::NativeArrowKeyAxes();
 }
 
-void HTMLElement::DefaultEventHandler(Event& event) {
-  auto* submit_behavior = SubmitBehavior();
+bool HTMLElement::HasActivationBehavior() const {
+  if (!RuntimeEnabledFeatures::CleanUpActivationBehaviorEnabled()) {
+    return false;
+  }
+  return SubmitBehavior();
+}
 
-  if (event.type() == event_type_names::kDOMActivate) {
-    // Delegate to `HTMLSubmitButtonBehavior` if present.
-    if (submit_behavior && submit_behavior->HandleActivation(event)) {
+void HTMLElement::RunActivationBehavior(
+    Event& event,
+    EventDispatchHandlingState* handling_state) {
+  if (RuntimeEnabledFeatures::CleanUpActivationBehaviorEnabled()) {
+    if (event.defaultPrevented() || event.DefaultHandled()) {
       return;
     }
 
-    if (HandleCommandForActivation()) {
+    if (auto* submit_behavior = SubmitBehavior()) {
+      if (submit_behavior->HandleActivation(event)) {
+        return;
+      }
+    }
+
+    if (HandleCommandForActivation(DynamicTo<UIEvent>(&event))) {
       return;
+    }
+  }
+  Element::RunActivationBehavior(event, handling_state);
+}
+
+void HTMLElement::DefaultEventHandler(Event& event) {
+  auto* submit_behavior = SubmitBehavior();
+
+  if (!RuntimeEnabledFeatures::CleanUpActivationBehaviorEnabled()) {
+    if (event.type() == event_type_names::kDOMActivate) {
+      // Delegate to `HTMLSubmitButtonBehavior` if present.
+      if (submit_behavior && submit_behavior->HandleActivation(event)) {
+        return;
+      }
+
+      if (HandleCommandForActivation(To<UIEvent>(&event))) {
+        return;
+      }
     }
   }
 

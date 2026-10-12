@@ -52,6 +52,8 @@
 #include "chrome/browser/signin/signin_ui_util.h"
 #include "chrome/browser/sync/sync_ui_util.h"
 #include "chrome/browser/translate/chrome_translate_client.h"
+#include "chrome/browser/ttc/core/states.h"
+#include "chrome/browser/ttc/core/ttc_keyed_service.h"
 #include "chrome/browser/ui/actions/chrome_action_id.h"
 #include "chrome/browser/ui/actions/chrome_action_properties.h"
 #include "chrome/browser/ui/actions/command_action_updater.h"
@@ -110,6 +112,7 @@
 #include "chrome/common/pref_names.h"
 #include "chrome/common/url_constants.h"
 #include "chrome/common/webui_url_constants.h"
+#include "chrome/grit/generated_resources.h"
 #include "components/bookmarks/browser/bookmark_model_load_waiter.h"
 #include "components/bookmarks/common/bookmark_bar_visibility_state.h"
 #include "components/bookmarks/common/bookmark_pref_names.h"
@@ -145,6 +148,7 @@
 #include "printing/buildflags/buildflags.h"
 #include "ui/accessibility/accessibility_features.h"
 #include "ui/actions/actions.h"
+#include "ui/base/l10n/l10n_util.h"
 #include "ui/base/ui_base_features.h"
 #include "ui/base/window_open_disposition.h"
 #include "ui/events/keycodes/keyboard_codes.h"
@@ -414,6 +418,13 @@ BrowserCommandController::BrowserCommandController(BrowserWindowInterface* bwi)
     }
   }
 
+  if (ttc::TtcKeyedService* ttc_service =
+          ttc::TtcKeyedService::Get(profile())) {
+    ttc_state_subscription_ = ttc_service->RegisterStateChangedCallback(
+        base::BindRepeating(&BrowserCommandController::TtcStateChanged,
+                            base::Unretained(this)));
+  }
+
   InitCommandState();
 
   // Bookmark editing commands depend on the bookmark model to be loaded.
@@ -563,6 +574,10 @@ void BrowserCommandController::LoadingStateChanged(bool is_loading,
 void BrowserCommandController::GlicActiveInstanceChanged(
     glic::GlicInstance* instance) {
   UpdateGlicState();
+}
+
+void BrowserCommandController::TtcStateChanged(ttc::ServiceState state) {
+  UpdateTtcState(state);
 }
 
 void BrowserCommandController::FindBarVisibilityChanged() {
@@ -1034,6 +1049,9 @@ void BrowserCommandController::HandleCommandWithDisposition(
     case IDC_SHARING_HUB_SCREENSHOT:
       ScreenshotCapture(browser_);
       break;
+    case IDC_SHOW_TTC_MENU:
+      ShowTtcMenuItem(browser_);
+      break;
 
     // Clipboard commands
     case IDC_CUT:
@@ -1416,7 +1434,7 @@ void BrowserCommandController::HandleCommandWithDisposition(
       AddNewTabToRecentGroup(browser_);
       break;
     case IDC_UNFOCUS_TAB_GROUP:
-      UnfocusTabGroup(browser_, TabGroupFocusExitReason::kTabStripButton);
+      ExitFocusMode(browser_, TabGroupFocusExitReason::kTabStripButton);
       break;
     case IDC_WINDOW_CLOSE_TABS_TO_RIGHT:
       CloseTabsToRight(browser_);
@@ -2019,6 +2037,12 @@ void BrowserCommandController::InitCommandState() {
       IDC_GLIC_TOGGLE_PIN, glic::GlicEnabling::IsProfileEligible(profile()));
   UpdateGlicState();
 
+  // TTC commands.
+  if (ttc::TtcKeyedService* ttc_service =
+          ttc::TtcKeyedService::Get(profile())) {
+    UpdateTtcState(ttc_service->GetState());
+  }
+
   // Initialize other commands whose state changes based on various conditions.
   UpdateCommandsForFullscreenMode();
   UpdateCommandsForContentRestrictionState();
@@ -2413,6 +2437,15 @@ void BrowserCommandController::UpdateCommandsForFullscreenMode() {
   command_updater_->UpdateCommandEnabled(IDC_TOGGLE_FULLSCREEN_TOOLBAR,
                                          fullscreen_enabled);
 
+  if (auto* const fullscreen_action = FindAction(kActionFullscreen, browser_)) {
+    const int string_id =
+        is_fullscreen ? IDS_ACCNAME_EXIT_FULLSCREEN
+                      : (fullscreen_enabled ? IDS_ACCNAME_FULLSCREEN
+                                            : IDS_ACCNAME_FULLSCREEN_DISABLED);
+    fullscreen_action->SetTooltipText(l10n_util::GetStringUTF16(string_id));
+    fullscreen_action->SetAccessibleName(l10n_util::GetStringUTF16(string_id));
+  }
+
   UpdateCommandsForBookmarkBar();
   UpdateCommandsForIncognitoAvailability();
   UpdateCommandsForHostedAppAvailability();
@@ -2483,6 +2516,18 @@ void BrowserCommandController::UpdateCommandsForLockedFullscreenMode() {
     if (IsLockedForOnTask(browser_)) {
       UpdateTabSwitchingCommandState();
       UpdateCommandsForFind();
+    }
+    if (auto* side_panel_ui = SidePanelUI::From(browser_)) {
+      if (side_panel_ui->GetCurrentEntryId() == SidePanelEntryId::kGlic) {
+        side_panel_ui->Close();
+      }
+    }
+    if (auto* const action = FindAction(kActionSidePanelShowGlic, browser_)) {
+      action->SetVisible(false);
+    }
+    if (auto* service =
+            glic::GlicKeyedServiceFactory::GetGlicKeyedService(profile())) {
+      service->CloseFloatingPanel();
     }
   } else {
     // Do an init call to re-initialize command state after the
@@ -2565,6 +2610,15 @@ void BrowserCommandController::UpdateGlicState() {
       }
     }
   }
+}
+
+void BrowserCommandController::UpdateTtcState(ttc::ServiceState state) {
+  if (IsInLockedFullscreenMode(/*allow_ontask=*/false)) {
+    return;
+  }
+
+  UpdateCommandAndActionEnabled(IDC_SHOW_TTC_MENU, kActionShowTtcMenu,
+                                state == ttc::ServiceState::kSessionInactive);
 }
 
 void BrowserCommandController::UpdateSaveAsState() {

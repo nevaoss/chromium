@@ -20,6 +20,7 @@
 #include "base/test/run_until.h"
 #include "base/test/values_test_util.h"
 #include "base/time/time.h"
+#include "build/branding_buildflags.h"
 #include "build/build_config.h"
 #include "chrome/app/chrome_command_ids.h"
 #include "chrome/app/vector_icons/vector_icons.h"
@@ -46,6 +47,8 @@
 #include "chrome/browser/ui/exclusive_access/fullscreen_controller.h"
 #include "chrome/browser/ui/find_bar/find_bar.h"
 #include "chrome/browser/ui/find_bar/find_bar_controller.h"
+#include "chrome/browser/ui/global_error/global_error_service.h"
+#include "chrome/browser/ui/global_error/global_error_service_factory.h"
 #include "chrome/browser/ui/navigator/browser_navigator.h"
 #include "chrome/browser/ui/performance_controls/tab_resource_usage_tab_helper.h"
 #include "chrome/browser/ui/recently_audible_helper.h"
@@ -76,6 +79,7 @@
 #include "chrome/browser/ui/views/side_panel/side_panel_coordinator.h"
 #include "chrome/browser/ui/views/tabs/tab/tab_accessibility.h"
 #include "chrome/browser/ui/views/tabs/tab_strip.h"
+#include "chrome/browser/ui/views/toolbar/app_menu_control.h"
 #include "chrome/browser/ui/views/toolbar/toolbar_view.h"
 #include "chrome/browser/ui/window_metadata/window_metadata_controller.h"
 #include "chrome/common/chrome_features.h"
@@ -166,6 +170,10 @@
 #include "chrome/browser/ash/boca/on_task/on_task_locked_controller.h"
 #include "chrome/browser/ui/ash/test_util.h"
 #endif
+
+#if BUILDFLAG(GOOGLE_CHROME_BRANDING) && !BUILDFLAG(IS_CHROMEOS)
+#include "chrome/test/base/scoped_channel_override.h"
+#endif  // BUILDFLAG(GOOGLE_CHROME_BRANDING) && !BUILDFLAG(IS_CHROMEOS)
 
 #if BUILDFLAG(IS_WIN)
 
@@ -313,9 +321,7 @@ class BrowserViewTest : public InProcessBrowserTest {
         ->devtools_web_view();
   }
 
-  views::WebView* contents_web_view() {
-    return browser_view()->contents_web_view();
-  }
+  views::View* contents_web_view() { return browser_view()->GetContentsView(); }
 
   content::WebContents* active_web_contents() {
     return browser()->GetTabStripModel()->GetActiveWebContents();
@@ -679,6 +685,18 @@ IN_PROC_BROWSER_TEST_F(BrowserViewTest, FindBarBoundingBoxLocationBar) {
   EXPECT_GT(find_bar_bounds.height(), 0);
 }
 
+IN_PROC_BROWSER_TEST_F(BrowserViewTest, ClosesAppMenuOnGlobalErrorsChanged) {
+  AppMenuControl* app_menu_control =
+      browser_view()->toolbar_button_provider()->GetAppMenuControl();
+  ASSERT_TRUE(app_menu_control);
+  app_menu_control->ShowMenu();
+  EXPECT_TRUE(app_menu_control->IsMenuShowing());
+
+  GlobalErrorServiceFactory::GetForProfile(browser()->GetProfile())
+      ->NotifyErrorsChanged();
+  EXPECT_FALSE(app_menu_control->IsMenuShowing());
+}
+
 // Test the find bar's bounding box when the location bar is not visible.
 IN_PROC_BROWSER_TEST_F(BrowserViewTest, FindBarBoundingBoxNoLocationBar) {
   BrowserWindowCreateParams params(BrowserWindowInterface::TYPE_POPUP,
@@ -767,7 +785,7 @@ IN_PROC_BROWSER_TEST_F(BrowserViewTest,
   BrowserWindowCreateParams params =
       BrowserWindowCreateParams::CreateForPictureInPicture(
           "PipApp", /*trusted_source=*/true, browser()->GetProfile(),
-          /*user_gesture=*/true);
+          /*from_user_gesture=*/true);
   BrowserWindowInterface* pip_browser = CreateBrowserWindow(std::move(params));
   pip_browser->GetWindow()->Show();
   BrowserView* pip_browser_view =
@@ -1015,6 +1033,12 @@ class BrowserViewIsolatedTest : public BrowserViewTest {
         enterprise_isolated_mode::switches::
             kForceEnterpriseIsolatedModeReplacesIncognito);
   }
+
+ private:
+#if BUILDFLAG(GOOGLE_CHROME_BRANDING) && !BUILDFLAG(IS_CHROMEOS)
+  chrome::ScopedChannelOverride channel_override_{
+      chrome::ScopedChannelOverride::Channel::kDev};
+#endif  // BUILDFLAG(GOOGLE_CHROME_BRANDING) && !BUILDFLAG(IS_CHROMEOS)
 };
 
 IN_PROC_BROWSER_TEST_F(BrowserViewIsolatedTest, AccessibleWindowTitleIsolated) {
@@ -2291,4 +2315,76 @@ IN_PROC_BROWSER_TEST_F(BrowserViewDeferLayoutTest, DeferLayoutWhileInvisible) {
   EXPECT_FALSE(browser_view2->is_layout_deferred_for_testing());
 
   widget2->CloseNow();
+}
+
+IN_PROC_BROWSER_TEST_F(BrowserViewDeferLayoutTest,
+                       NoDeferLayoutOnSizeChangeWhileInvisible) {
+  BrowserWindowInterface* browser2 = CreateBrowserWindow(
+      BrowserWindowCreateParams(browser()->GetProfile(),
+                                /*from_user_gesture=*/true));
+  BrowserView* browser_view2 = BrowserView::GetBrowserViewForBrowser(browser2);
+  views::Widget* widget2 = browser_view2->GetWidget();
+  ASSERT_FALSE(widget2->IsVisible());
+
+  // Trigger initial layout pass.
+  widget2->LayoutRootViewIfNecessary();
+
+  chrome::AddTabAt(browser2, GURL("about:blank"), -1, true);
+  widget2->LayoutRootViewIfNecessary();
+  EXPECT_FALSE(browser_view2->GetContentsSize().IsEmpty());
+
+  // Subsequent layout without size change is deferred.
+  browser_view2->InvalidateLayout();
+  widget2->LayoutRootViewIfNecessary();
+  EXPECT_TRUE(browser_view2->is_layout_deferred_for_testing());
+
+  // Changing the widget's size while invisible must not defer layout, so child
+  // views are updated with the new size. Shrink the widget bounds to avoid
+  // hitting display work area limits on smaller test screens (e.g. Windows VMs
+  // or ChromeOS).
+  const gfx::Size original_client_size = browser_view2->size();
+  const gfx::Size original_contents_size = browser_view2->GetContentsSize();
+  gfx::Rect bounds = widget2->GetWindowBoundsInScreen();
+  bounds.set_width(bounds.width() - 100);
+  bounds.set_height(bounds.height() - 100);
+  widget2->SetBounds(bounds);
+  widget2->LayoutRootViewIfNecessary();
+  EXPECT_EQ(browser_view2->size().width(), original_client_size.width() - 100);
+  EXPECT_EQ(browser_view2->size().height(),
+            original_client_size.height() - 100);
+  EXPECT_EQ(browser_view2->GetContentsSize().width(),
+            original_contents_size.width() - 100);
+  EXPECT_EQ(browser_view2->GetContentsSize().height(),
+            original_contents_size.height() - 100);
+
+  // Subsequent layout without size change should be deferred again.
+  browser_view2->InvalidateLayout();
+  widget2->LayoutRootViewIfNecessary();
+  EXPECT_TRUE(browser_view2->is_layout_deferred_for_testing());
+
+  widget2->CloseNow();
+}
+
+IN_PROC_BROWSER_TEST_F(BrowserViewDeferLayoutTest,
+                       NoDeferLayoutForNonNormalWindow) {
+  BrowserWindowCreateParams params(BrowserWindowInterface::TYPE_POPUP,
+                                   browser()->GetProfile(),
+                                   /*user_gesture=*/true);
+  BrowserWindowInterface* popup = CreateBrowserWindow(std::move(params));
+  BrowserView* popup_view = BrowserView::GetBrowserViewForBrowser(popup);
+  views::Widget* popup_widget = popup_view->GetWidget();
+  ASSERT_FALSE(popup_widget->IsVisible());
+
+  // Non-normal windows should have startup layout deferral disabled.
+  EXPECT_TRUE(popup_view->is_startup_layout_disabled_for_testing());
+
+  popup_widget->LayoutRootViewIfNecessary();
+  EXPECT_FALSE(popup_view->is_layout_deferred_for_testing());
+
+  chrome::AddTabAt(popup, GURL("about:blank"), -1, true);
+  popup_view->InvalidateLayout();
+  popup_widget->LayoutRootViewIfNecessary();
+  EXPECT_FALSE(popup_view->is_layout_deferred_for_testing());
+
+  popup_widget->CloseNow();
 }

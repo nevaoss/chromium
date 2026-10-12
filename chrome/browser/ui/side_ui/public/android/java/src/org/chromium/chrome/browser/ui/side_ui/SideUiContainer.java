@@ -18,6 +18,7 @@ import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator.HeightType;
 import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator.SideUiId;
 import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator.SideUiSpecs;
 import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator.SideUiSpecs.SideUiSize;
+import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator.UiUpdateRequest.UpdateReason;
 
 /**
  * Container for a side UI view that will be anchored to either the left or right side of the main
@@ -92,8 +93,13 @@ public interface SideUiContainer {
      * Sets the new width. <strong>Important:</strong> this should only be called by the {@link
      * SideUiCoordinator} that this container is registered to.
      *
+     * <p>This is the <i>rendered</i> width, i.e. {@link SideUiSize#mRenderedWidth}, which is larger
+     * than the reserved width while the container overlays other browser UI.
+     *
      * @param width The new width in px.
      */
+    // TODO(crbug.com/542280452): Rename setWidth(@Px int width) to setRenderedWidth(@Px int
+    // renderedWidth).
     void setWidth(@Px int width);
 
     /**
@@ -197,8 +203,10 @@ public interface SideUiContainer {
      * Called for each pointer move while the resize handle is being dragged.
      *
      * <p>The proposed width is the raw width implied by the pointer position; it is not clamped.
-     * Implementations are expected to record it as a transient width and request a UI update, which
-     * lets {@link #determineShowableSize} apply the container's own clamping.
+     * Implementations should record it as a transient width for {@link #determineShowableSize}. The
+     * Side UI framework triggers a {@link UpdateReason#RESIZE_LIVE} UI update immediately after
+     * this call, so implementations must not call {@link SideUiCoordinator#updateUi} in this
+     * method.
      *
      * @param proposedWidthPx The raw candidate width in px.
      */
@@ -209,7 +217,9 @@ public interface SideUiContainer {
      *
      * <p>Implementations should drop the transient width recorded by {@link #onResizeLive}, and
      * either persist {@code finalWidthPx} or fall back to another state, e.g. collapsing when the
-     * width is below the container's minimum.
+     * width is below the container's minimum. The Side UI framework triggers a {@link
+     * UpdateReason#RESIZE_COMMITTED} UI update immediately after this call, so implementations must
+     * not call {@link SideUiCoordinator#updateUi} in this method.
      *
      * @param finalWidthPx The raw candidate width in px at the end of the gesture.
      */

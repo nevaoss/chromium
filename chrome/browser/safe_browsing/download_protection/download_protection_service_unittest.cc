@@ -322,7 +322,8 @@ class FakeSafeBrowsingService : public TestSafeBrowsingService {
     services_delegate_ = ServicesDelegate::CreateForTest(this, this);
     CloudBinaryUploadServiceFactory::GetInstance()->SetTestingFactory(
         profile, base::BindRepeating(&CreateTestBinaryUploadService));
-    mock_database_manager_ = new NiceMock<MockSafeBrowsingDatabaseManager>();
+    mock_database_manager_ =
+        base::MakeRefCounted<NiceMock<MockSafeBrowsingDatabaseManager>>();
   }
   FakeSafeBrowsingService(const FakeSafeBrowsingService&) = delete;
   FakeSafeBrowsingService& operator=(const FakeSafeBrowsingService&) = delete;
@@ -400,8 +401,9 @@ class FakeSafeBrowsingService : public TestSafeBrowsingService {
 #endif
   }
 
-  safe_browsing::SafeBrowsingDatabaseManager* CreateDatabaseManager() override {
-    return mock_database_manager_.get();
+  scoped_refptr<safe_browsing::SafeBrowsingDatabaseManager>
+  CreateDatabaseManager() override {
+    return mock_database_manager_;
   }
 
   IncidentReportingService* CreateIncidentReportingService() override {
@@ -6600,7 +6602,7 @@ TEST_F(DownloadProtectionServiceTest,
   safe_browsing::V5GetHashProtocolManager v5_protocol_manager(
       /*url_loader_factory=*/nullptr,
       safe_browsing::SBProtocolConfig("test", false, "key", "1.0"),
-      /*cache=*/nullptr);
+      /*cache=*/nullptr, /*webui_delegate=*/nullptr);
 
   NiceMockDownloadItem item;
   PrepareBasicDownloadItem(&item, {"http://www.evil.com/a.exe"},

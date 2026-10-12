@@ -148,6 +148,22 @@
 
 @end
 
+#if BUILDFLAG(IOS_BACKGROUND_CONTINUED_PROCESSING_ENABLED)
+@interface TestBackgroundContinuedProcessingTaskContext
+    : BackgroundContinuedProcessingTaskContext
+@property(nonatomic, assign) NSInteger subtitleUpdateCount;
+@end
+
+@implementation TestBackgroundContinuedProcessingTaskContext
+
+- (void)setSubtitle:(NSString*)subtitle {
+  _subtitleUpdateCount++;
+  [super setSubtitle:subtitle];
+}
+
+@end
+#endif  // BUILDFLAG(IOS_BACKGROUND_CONTINUED_PROCESSING_ENABLED)
+
 namespace actor {
 
 namespace {
@@ -560,7 +576,8 @@ TEST_F(ActorTaskTest, NewObserverRegistrationIsIsolated) {
 }
 
 // Tests that calling Act multiple times updates the cached task update blurb
-// and that subsequent observer registrations receive the latest cached update.
+// when non-empty, preserves the cached blurb when given an empty string, and
+// provides the latest cached update to subsequent observer registrations.
 TEST_F(ActorTaskTest, CachesLatestTaskUpdateAcrossActs) {
   std::unique_ptr<web::FakeWebState> web_state =
       std::make_unique<web::FakeWebState>();
@@ -575,6 +592,17 @@ TEST_F(ActorTaskTest, CachesLatestTaskUpdateAcrossActs) {
       [[FakeActorTaskUpdatesObserver alloc] init];
   task_->AddObserver(observer1);
   EXPECT_NSEQ(@"First Update", observer1.registeredTaskUpdate);
+
+  // An empty task update should not overwrite the previously cached update.
+  std::vector<std::unique_ptr<ActorToolRequest>> actions_empty;
+  actions_empty.push_back(
+      MakeSuccessfulActorToolRequest(web_state->GetUniqueIdentifier()));
+  task_->Act(std::move(actions_empty), "", base::DoNothing());
+
+  FakeActorTaskUpdatesObserver* observer_empty =
+      [[FakeActorTaskUpdatesObserver alloc] init];
+  task_->AddObserver(observer_empty);
+  EXPECT_NSEQ(@"First Update", observer_empty.registeredTaskUpdate);
 
   std::vector<std::unique_ptr<ActorToolRequest>> actions_2;
   actions_2.push_back(
@@ -937,6 +965,7 @@ TEST_F(ActorTaskTest, BackgroundTaskProgressIncrementsOnToolExecution) {
   BackgroundContinuedProcessingTaskConfiguration* config =
       [[BackgroundContinuedProcessingTaskConfiguration alloc]
               initWithTitle:@"Test Task"
+                   subtitle:@""
           expirationHandler:^{
           }];
   BackgroundContinuedProcessingTaskContext* context =
@@ -971,6 +1000,7 @@ TEST_F(ActorTaskTest, BackgroundTaskStoppedByUser) {
   BackgroundContinuedProcessingTaskConfiguration* config =
       [[BackgroundContinuedProcessingTaskConfiguration alloc]
               initWithTitle:@"Test Task"
+                   subtitle:@""
           expirationHandler:^{
           }];
   BackgroundContinuedProcessingTaskContext* context =
@@ -990,7 +1020,8 @@ TEST_F(ActorTaskTest, BackgroundTaskStoppedByUser) {
   EXPECT_TRUE(context.completed);
 }
 
-// Test that `Act()` updates the background task context subtitle.
+// Test that `Act()` updates the background task context subtitle and ignores
+// empty or duplicate task updates.
 TEST_F(ActorTaskTest, BackgroundTaskSubtitleUpdate) {
   base::test::ScopedFeatureList scoped_feature_list;
   scoped_feature_list.InitWithFeatures(
@@ -1001,18 +1032,78 @@ TEST_F(ActorTaskTest, BackgroundTaskSubtitleUpdate) {
   BackgroundContinuedProcessingTaskConfiguration* config =
       [[BackgroundContinuedProcessingTaskConfiguration alloc]
               initWithTitle:@"Test Task"
+                   subtitle:@""
           expirationHandler:^{
           }];
-  BackgroundContinuedProcessingTaskContext* context =
-      [[BackgroundContinuedProcessingTaskContext alloc]
+  TestBackgroundContinuedProcessingTaskContext* context =
+      [[TestBackgroundContinuedProcessingTaskContext alloc]
           initWithTaskIdentifier:@"org.chromium.test.task"
                    configuration:config
                    finishHandler:nil];
 
   task_->SetBackgroundTaskContext(context);
+  EXPECT_EQ(context.subtitleUpdateCount, 0);
 
-  task_->Act({}, "Searching for flights", base::DoNothing());
-  EXPECT_NSEQ(context.subtitle, @"Searching for flights");
+  // Empty update should not send a subtitle update.
+  task_->Act({}, "", base::DoNothing());
+  EXPECT_EQ(context.subtitleUpdateCount, 0);
+
+  // First non-empty update should update the subtitle.
+  task_->Act({}, "Foo", base::DoNothing());
+  EXPECT_NSEQ(context.subtitle, @"Foo");
+  EXPECT_EQ(context.subtitleUpdateCount, 1);
+
+  // Identical update should not send a duplicate subtitle update.
+  task_->Act({}, "Foo", base::DoNothing());
+  EXPECT_NSEQ(context.subtitle, @"Foo");
+  EXPECT_EQ(context.subtitleUpdateCount, 1);
+
+  // Empty update after a valid update should not clear the subtitle or send an
+  // update.
+  task_->Act({}, "", base::DoNothing());
+  EXPECT_NSEQ(context.subtitle, @"Foo");
+  EXPECT_EQ(context.subtitleUpdateCount, 1);
+
+  // Identical update after an empty update should still be deduplicated.
+  task_->Act({}, "Foo", base::DoNothing());
+  EXPECT_NSEQ(context.subtitle, @"Foo");
+  EXPECT_EQ(context.subtitleUpdateCount, 1);
+
+  // Distinct non-empty update should update the subtitle.
+  task_->Act({}, "Bar", base::DoNothing());
+  EXPECT_NSEQ(context.subtitle, @"Bar");
+  EXPECT_EQ(context.subtitleUpdateCount, 2);
+}
+
+// Test that registering a background task context via
+// `SetBackgroundTaskContext()` applies the latest cached non-empty task update.
+TEST_F(ActorTaskTest, BackgroundTaskContextUsesCachedTaskUpdateOnRegistration) {
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitWithFeatures(
+      {kPageActionMenu, kActorTools, kGeminiActor,
+       kEnableBackgroundContinuedProcessing},
+      {});
+
+  // Execute an action with a non-empty update, followed by one with an empty
+  // update before the background task context is attached.
+  task_->Act({}, "Foo", base::DoNothing());
+  task_->Act({}, "", base::DoNothing());
+
+  BackgroundContinuedProcessingTaskConfiguration* config =
+      [[BackgroundContinuedProcessingTaskConfiguration alloc]
+              initWithTitle:@"Test Task"
+                   subtitle:@""
+          expirationHandler:^{
+          }];
+  TestBackgroundContinuedProcessingTaskContext* context =
+      [[TestBackgroundContinuedProcessingTaskContext alloc]
+          initWithTaskIdentifier:@"org.chromium.test.task"
+                   configuration:config
+                   finishHandler:nil];
+
+  task_->SetBackgroundTaskContext(context);
+  EXPECT_NSEQ(context.subtitle, @"Foo");
+  EXPECT_EQ(context.subtitleUpdateCount, 1);
 }
 
 // Test that stopping an ActorTask with `kShutdown` finalizes the background
@@ -1027,6 +1118,7 @@ TEST_F(ActorTaskTest, BackgroundTaskStoppedWithShutdown) {
   BackgroundContinuedProcessingTaskConfiguration* config =
       [[BackgroundContinuedProcessingTaskConfiguration alloc]
               initWithTitle:@"Test Task"
+                   subtitle:@""
           expirationHandler:^{
           }];
   BackgroundContinuedProcessingTaskContext* context =
@@ -1060,6 +1152,7 @@ TEST_F(ActorTaskTest, DestructorFinalizesBackgroundTask) {
   BackgroundContinuedProcessingTaskConfiguration* config =
       [[BackgroundContinuedProcessingTaskConfiguration alloc]
               initWithTitle:@"Test Task"
+                   subtitle:@""
           expirationHandler:^{
           }];
   BackgroundContinuedProcessingTaskContext* context =

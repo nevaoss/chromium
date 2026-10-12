@@ -72,6 +72,7 @@ Baadhi ya vipengele huenda visipatikane na mabadiliko katika mapendeleo hayatahi
             Alamisho, historia na manenosiri uliyohifadhi hayataathiriwa.</translation>
 <translation id="1619887657840448962">Ili kufanya Chrome salama zaidi, tumezima kiendelezi kinachofuata ambacho hakijaorodheshwa katika <ph name="IDS_EXTENSION_WEB_STORE_TITLE" /> na huenda kimeongezwa bila ridhaa yako.</translation>
 <translation id="1628000112320670027">Pata usaidizi wa kutumia Chrome</translation>
+<translation id="1632241302126471515">Tafuta ukitumia Chrome Canary (toleo la jaribio)</translation>
 <translation id="1640672724030957280">Inapakua...</translation>
 <translation id="1651617469580841801">Unapotumia Lenzi ya Google, jina la ukurasa, URL na maudhui, ikijumuisha PDF, hutumwa kwenda Google. <ph name="LEARN_MORE" /></translation>
 <translation id="1662146548738125461">Kuhusu ChromeOS Flex</translation>
@@ -201,14 +202,12 @@ Jaribu kuruhusu uboreshaji ikiwa ukurasa huu haufanyi kazi inavyotarajiwa.</tran
 <translation id="2885378588091291677">Kidhibiti cha Shughuli</translation>
 <translation id="2888126860611144412">Kuhusu Chrome</translation>
 <translation id="2915996080311180594">Ifunge kisha Uifungue Baadaye</translation>
-<translation id="2916983411556218750">Hebu tuweke mipangilio ya Chrome yako</translation>
 <translation id="2926952073016206995">Chrome inahitaji ruhusa ya kufikia kamera kwa ajili ya tovuti hii</translation>
 <translation id="2945997411976714835">Hitilafu ya kusakinisha: Mchakato wa kisakinishaji umeshindwa kuanza.</translation>
 <translation id="2959224682348913614">Tayari umeingia katika akaunti ya <ph name="EXISTING_USER" />. Ili utenganishe shughuli zako za kuvinjari, ingia katika akaunti ya Chrome kwenye wasifu wako binafsi ukitumia <ph name="USER_EMAIL_ADDRESS" />. Pia utapata manenosiri yako na zaidi kwenye <ph name="DEVICE" />.</translation>
 <translation id="2969728957078202736"><ph name="PAGE_TITLE" /> - Kuingia katika Akaunti ya Mtandao - Chrome</translation>
 <translation id="2970681950995291301">Ili uondoe Akaunti yako ya Google kwenye Chrome, ondoka kwenye Chrome katika ukurasa wa Mipangilio</translation>
 <translation id="2976869732253036751">Pata arifa za ufuatiliaji wa bei ukitumia Chrome kwenye simu yako</translation>
-<translation id="2985091279808606502">Chrome inahitaji ruhusa ya kufikia mtandao wa karibu ili kutumia tovuti hii</translation>
 <translation id="2991167882679440829">Manenosiri na data yako nyingine ya Chrome uliyohifadhi kwenye Akaunti yako ya Google itaondolewa kwenye kifaa hiki. Ili uzitumie tena kwenye Chrome, ingia tena katika akaunti.</translation>
 <translation id="2994465299455873643">Hutoa huduma za usimbaji fiche na njia salama ya kurejesha <ph name="BROWSER_NAME" /> ikiwa imepitwa na wakati. Huduma hii ikizimwa, huenda <ph name="BROWSER_NAME" /> ikapoteza uwezo wa kufikia data iliyosimbwa kwa njia fiche na huenda <ph name="BROWSER_NAME" /> isiweze kujirejesha.</translation>
 <translation id="3003694935412297923">Majukumu yote</translation>
@@ -276,6 +275,7 @@ Jaribu kuruhusu uboreshaji ikiwa ukurasa huu haufanyi kazi inavyotarajiwa.</tran
 <translation id="3596080736082218006">{COUNT,plural, =0{Msimamizi wako anataka ufungue Chrome tena ili utumie sasisho}=1{Msimamizi wako anataka ufungue Chrome tena ili utumie sasisho. Haitafungua upya dirisha fiche.}other{Msimamizi wako anataka ufungue Chrome tena ili utumie sasisho. Haitafungua upya madirisha # fiche.}}</translation>
 <translation id="3597003331831379823">Imeshindwa kuweka mipangilio ikitumia ufikiaji maalum. <ph name="METAINSTALLER_ERROR" /></translation>
 <translation id="3598673391539778844">Onyesha Gemini kwenye Chrome katika ubao wa aikoni</translation>
+<translation id="3616622400661108683">Uliza kuhusu maudhui yaliyo nje ya Chrome, kama vile programu au faili nyingine</translation>
 <translation id="3622716124581627104">Tambua vitu au maeneo kisha unakili au utafsiri maandishi. Unapotumia Lenzi ya Google, picha ya skrini ya ukurasa hutumwa kwenda Google. <ph name="LEARN_MORE" /></translation>
 <translation id="3622797965165704966">Sasa ni rahisi zaidi kutumia Chrome pamoja na Akaunti yako ya Google na kwenye kompyuta zinazoshirikiwa.</translation>
 <translation id="3628103251823745322">Tayari umeingia katika akaunti ya <ph name="EXISTING_USER" />. Ili utenganishe shughuli zako za kuvinjari, ingia katika akaunti ya Chrome kwenye wasifu wako binafsi ukitumia <ph name="USER_EMAIL_ADDRESS" />. Pia utapata taarifa zako zilizohifadhiwa na zaidi kwenye vifaa vyako vyote.</translation>
@@ -550,6 +550,7 @@ Google Chrome haiwezi kufufua mipangilio yako.</translation>
 <translation id="6326175484149238433">Ondoa kwenye Chrome</translation>
 <translation id="6334815226785304306">Fanya Google Chrome iwe kivinjari chaguomsingi na uibandike kwenye upauzana</translation>
 <translation id="63540178978900677">Chrome haitumiki tena kama kivinjari chako chaguomsingi. Ungependa kufanya Chrome iwe kivinjari chaguomsingi?</translation>
+<translation id="6357670763064300993">Gemini Enterprise kwenye Chrome</translation>
 <translation id="6360449101159168105">Kichupo hiki kilipokuwa hakitumiki, nafasi ya hifadhi ilirejeshwa ili Chrome iwe na kasi ya utendaji. Unaweza kuchagua tovuti hii iendelee kutumika kila wakati.</translation>
 <translation id="6362984640667950211">Tayari umeingia katika akaunti ya <ph name="EXISTING_USER" />. Ili utenganishe shughuli zako za kuvinjari, ingia katika akaunti kwenye Chrome katika wasifu wako binafsi ukitumia <ph name="USER_EMAIL_ADDRESS" />. Pia utapata orodha yako ya kusoma na zaidi kwenye vifaa vyako vyote.</translation>
 <translation id="6388799252195623474">nisaidie kwa hili</translation>
@@ -758,7 +759,9 @@ Google Chrome haiwezi kufufua mipangilio yako.</translation>
 <translation id="8162006532256575008">Tumia Chrome Bila Akaunti</translation>
 <translation id="8172231188687329735">Pakua programu ya Chrome ili uhifadhi manenosiri popote ulipo</translation>
 <translation id="8177472873527554730">Imeshindwa kupata maudhui kwenye ukurasa</translation>
+<translation id="8196526165798579689">Tafuta ukitumia Chrome - toleo la Dev</translation>
 <translation id="8221491193165283816">Huwa unazuia arifa. Ili uruhusu tovuti hii ikuarifu, bofya hapa.</translation>
+<translation id="8227493674161801700">Tafuta ukitumia Chrome - toleo la Beta</translation>
 <translation id="8253851811470049684">Fungua viungo kwenye Chrome ukitumia programu yoyote na ufanye kivinjari kiweze kufikiwa kwenye upauzana wako</translation>
 <translation id="8255190535488645436">Google Chrome inatumia kamera na maikrofoni yako.</translation>
 <translation id="8260086374035800939">Iwapo Gemini kwenye Chrome imefunguliwa, kidirisha cha pembeni kitasalia wazi wakati unafungua vichupo vipya</translation>

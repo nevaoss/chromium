@@ -391,8 +391,7 @@ public class NotificationManagerTest {
 
         Intent tapIntent = getRealIntent(captor.getValue().getNotification().contentIntent);
         Assert.assertNotNull(tapIntent);
-        Assert.assertEquals(
-                NotificationManager.NOTIFICATION_ACTION_TAP, tapIntent.getAction());
+        Assert.assertEquals(NotificationManager.NOTIFICATION_ACTION_TAP, tapIntent.getAction());
         Assert.assertEquals(
                 GUID, tapIntent.getStringExtra(NotificationManager.NOTIFICATION_GUID_EXTRA));
         Assert.assertArrayEquals(

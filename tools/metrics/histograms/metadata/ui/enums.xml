@@ -160,6 +160,8 @@ chromium-metrics-reviews@google.com.
   <int value="6" label="User navigated the guide tab away before completion"/>
   <int value="7"
       label="User moved or resized the Settings window (degraded to floating)"/>
+  <int value="8"
+      label="Settings page layout unpredictable (degraded to floating)"/>
 </enum>
 
 <!-- LINT.ThenChange(//chrome/browser/ui/webui/default_browser/visual_guided_setter_controller_win.h:DefaultBrowserVisualGuideOutcome) -->
@@ -559,6 +561,7 @@ chromium-metrics-reviews@google.com.
       label="UMA_FACILITATED_PAYMENTS_PIX_ACCOUNT_LINKING_FAILURE_NOTIFICATION"/>
   <int value="95" label="UMA_GLIC_UNPIN_UNDO"/>
   <int value="96" label="UMA_GLIC_MIC_DISABLED"/>
+  <int value="97" label="UMA_AUTOFILL_AI_SUPPRESSION_UNDO"/>
 </enum>
 
 <!-- LINT.ThenChange(//chrome/browser/ui/messages/android/java/src/org/chromium/chrome/browser/ui/messages/snackbar/Snackbar.java:SnackbarIdentifier) -->
@@ -1268,6 +1271,7 @@ chromium-metrics-reviews@google.com.
   <int value="102"
       label="(Obsolete) Show contextual tasks side panel. Removed 12/18/25"/>
   <int value="103" label="New isolated window"/>
+  <int value="104" label="TTC app menu"/>
 </enum>
 
 <!-- LINT.ThenChange(/chrome/browser/ui/toolbar/app_menu_model.h:AppMenuAction) -->

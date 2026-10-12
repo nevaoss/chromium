@@ -420,6 +420,9 @@ void LensOverlayQueryController::EndQuery() {
 }
 
 void LensOverlayQueryController::MaybeRestartQueryFlow() {
+  if (IsOff()) {
+    return;
+  }
   if (query_controller_state_ == QueryControllerState::kClusterInfoExpired ||
       query_controller_state_ == QueryControllerState::kWaitingForPermissions) {
     PrepareAndFetchFullImageRequest();
@@ -465,8 +468,9 @@ void LensOverlayQueryController::SendUpdatedPageContent(
     std::optional<std::string> new_page_title,
     std::optional<uint32_t> pdf_current_page,
     const SkBitmap& screenshot) {
-  CHECK(query_controller_state_ != QueryControllerState::kOff)
-      << "SendUpdatedPageContent called when query controller is off";
+  if (IsOff()) {
+    return;
+  }
 
   if (underlying_page_content.has_value()) {
     underlying_page_contents_ = underlying_page_content.value();
@@ -501,8 +505,9 @@ void LensOverlayQueryController::SendUpdatedPageContent(
 
 void LensOverlayQueryController::SendPartialPageContentRequest(
     base::span<const std::u16string> partial_content) {
-  CHECK(query_controller_state_ != QueryControllerState::kOff)
-      << "SendPartialPageContentRequest called when query controller is off";
+  if (IsOff()) {
+    return;
+  }
   partial_content_ = partial_content;
 
   PrepareAndFetchPartialPageContentRequest();
@@ -767,6 +772,16 @@ LensOverlayQueryController::LensServerFetchRequest::LensServerFetchRequest(
     : request_id_(std::move(request_id)), query_start_time_(query_start_time) {}
 LensOverlayQueryController::LensServerFetchRequest::~LensServerFetchRequest() =
     default;
+
+std::string LensOverlayQueryController::search_session_id() const {
+  return cluster_info_.has_value() ? cluster_info_->search_session_id()
+                                   : std::string();
+}
+
+std::optional<lens::LensOverlayVisualSearchInteractionData>
+LensOverlayQueryController::GetVisualSearchInteractionData() {
+  return visual_search_interaction_data_;
+}
 
 std::string LensOverlayQueryController::GetVsridForNewTab() {
   // LensOverlay search urls are all considered to use implicit uploads and

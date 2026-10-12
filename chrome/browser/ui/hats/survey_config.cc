@@ -30,6 +30,7 @@
 #include "ui/accessibility/accessibility_features.h"
 
 #if !BUILDFLAG(IS_ANDROID)
+#include "chrome/browser/contextual_cueing/features.h"  // nogncheck
 #include "chrome/browser/download/download_warning_desktop_hats_utils.h"
 #include "chrome/browser/metrics/critical_user_journeys/features.h"
 #include "components/password_manager/core/browser/features/password_features.h"  // nogncheck
@@ -50,16 +51,12 @@
 
 #if !BUILDFLAG(IS_ANDROID)
 constexpr char kHatsSurveyTriggerAutofillAddress[] = "autofill-address";
-constexpr char kHatsSurveyTriggerAutofillAddressUserPerception[] =
-    "autofill-address-users-perception";
 constexpr char kHatsSurveyTriggerAutofillAiSavePrompt[] =
     "autofill-ai-walletable-entity-save-prompt";
 constexpr char kHatsSurveyTriggerAutofillAddressUserDeclinedSuggestion[] =
     "autofill-address-users-perception";
 constexpr char kHatsSurveyTriggerAutofillAddressUserDeclinedSave[] =
     "autofill-address-user-declined-save";
-constexpr char kHatsSurveyTriggerAutofillCreditCardUserPerception[] =
-    "autofill-credit-card-users-perception";
 constexpr char kHatsSurveyTriggerAutofillPasswordUserPerception[] =
     "autofill-password-users-perception";
 constexpr char kHatsSurveyTriggerManageYourSavedInfoPerception[] =
@@ -80,6 +77,8 @@ constexpr char kHatsSurveyTriggerAutoPipAllowed[] = "autopip-allowed";
 constexpr char kHatsSurveyTriggerAutoPipBlocked[] = "autopip-blocked";
 constexpr char kHatsSurveyTriggerAutoPipPermissionPromptIgnored[] =
     "autopip-permission-prompt-ignored";
+constexpr char kHatsSurveyTriggerContextualCueingDismissed[] =
+    "contextual-cueing-dismissed";
 constexpr char kHatsSurveyTriggerDownloadWarningBubbleBypass[] =
     "download-warning-bubble-bypass";
 constexpr char kHatsSurveyTriggerDownloadWarningBubbleHeed[] =
@@ -209,7 +208,15 @@ constexpr char kHatsSurveyTriggerTesting[] = "testing";
 constexpr char kHatsNextSurveyTriggerIDTesting[] =
     "HLpeYy5Av0ugnJ3q1cK0XzzA8UHv";
 
-constexpr char kHatsSurveyTriggerAutofillAiFilling[] = "autofill-ai-filling";
+constexpr char
+    kHatsSurveyTriggerAutofillPersonalizationAndTrustAddressFilled[] =
+        "autofill-personalization-and-trust-address-filled";
+// This survey is a requirement for the Ambient Autofill feature to allow users
+// to provide feedback and should not be removed without legal approval. Its
+// PSDs must allow to see if Ambient Autofill (pContext record type) was used.
+constexpr char
+    kHatsSurveyTriggerAutofillPersonalizationAndTrustAutofillAiFilled[] =
+        "autofill-personalization-and-trust-autofill-ai-filled";
 constexpr char kHatsSurveyTriggerPermissionsPrompt[] = "permissions-prompt";
 constexpr char kHatsSurveyTriggerOnFocusZpsSuggestionsHappiness[] =
     "omnibox-on-focus-happiness";
@@ -479,19 +486,6 @@ std::vector<hats::SurveyConfig> GetAllSurveyConfigs() {
 
   // Autofill surveys.
   survey_configs.emplace_back(
-      &::autofill::features::kAutofillAddressUserPerceptionSurvey,
-      kHatsSurveyTriggerAutofillAddressUserPerception,
-      /*presupplied_trigger_id=*/std::nullopt, std::vector<std::string>{},
-      std::vector<std::string>{
-          "Accepted fields", "Corrected to same type",
-          "Corrected to a different type", "Corrected to an unknown type",
-          "Corrected to empty", "Manually filled to same type",
-          "Manually filled to a different type",
-          "Manually filled to an unknown type", "Total corrected",
-          "Total filled", "Total unfilled", "Total manually filled",
-          "Total number of fields"});
-
-  survey_configs.emplace_back(
       &::autofill::features::kAutofillAiSavePromptSurvey,
       kHatsSurveyTriggerAutofillAiSavePrompt,
       /*presupplied_trigger_id=*/std::nullopt, std::vector<std::string>{},
@@ -507,22 +501,11 @@ std::vector<hats::SurveyConfig> GetAllSurveyConfigs() {
       kHatsSurveyTriggerAutofillAddressUserDeclinedSave);
 
   survey_configs.emplace_back(
-      &::autofill::features::kAutofillCreditCardUserPerceptionSurvey,
-      kHatsSurveyTriggerAutofillCreditCardUserPerception,
-      /*presupplied_trigger_id=*/std::nullopt, std::vector<std::string>{},
-      std::vector<std::string>{
-          "Accepted fields", "Corrected to same type",
-          "Corrected to a different type", "Corrected to an unknown type",
-          "Corrected to empty", "Manually filled to same type",
-          "Manually filled to a different type",
-          "Manually filled to an unknown type", "Total corrected",
-          "Total filled", "Total unfilled", "Total manually filled",
-          "Total number of fields"});
-  survey_configs.emplace_back(
       &password_manager::features::kAutofillPasswordUserPerceptionSurvey,
       kHatsSurveyTriggerAutofillPasswordUserPerception,
       /*presupplied_trigger_id=*/std::nullopt, std::vector<std::string>{},
       std::vector<std::string>{"Filling assistance"});
+
   survey_configs.emplace_back(&features::kAutofillAddressSurvey,
                               kHatsSurveyTriggerAutofillAddress);
   survey_configs.emplace_back(&features::kAutofillCardSurvey,
@@ -885,6 +868,14 @@ std::vector<hats::SurveyConfig> GetAllSurveyConfigs() {
       /*presupplied_trigger_id=*/std::nullopt, std::vector<std::string>{},
       std::vector<std::string>{"ID that's tied to your Google Lens session"});
 
+  // Contextual cueing surveys.
+  survey_configs.emplace_back(
+      &contextual_cueing::kHappinessTrackingSurveysForContextualCueingDismissed,
+      kHatsSurveyTriggerContextualCueingDismissed,
+      /*presupplied_trigger_id=*/std::nullopt,
+      /*product_specific_bits_data_fields=*/std::vector<std::string>{},
+      /*product_specific_string_data_fields=*/std::vector<std::string>{"CUJ"});
+
 #else  // BUILDFLAG(IS_ANDROID)
   survey_configs.emplace_back(&chrome::android::kChromeSurveyNextAndroid,
                               kHatsSurveyTriggerAndroidStartupSurvey);
@@ -950,13 +941,43 @@ std::vector<hats::SurveyConfig> GetAllSurveyConfigs() {
                                "referring_app"});
 #endif  // #if !BUILDFLAG(IS_ANDROID)
 
+  const std::vector<std::string>
+      autofill_personalization_and_trust_product_specific_data = {
+          // Comma-separated list of all field types in the submitted form. The
+          // types are sent in canonical order with duplicates removed.
+          "All field types",
+
+          "Total number of fields in form",
+          "Number of correctly filled fields",
+          "Number of fields that were submitted empty without filling",
+          "Number of fields that were modified after filling",
+          "Number of fields that were cleared after filling",
+          "Number of fields that were manually filled without filling",
+
+          // Comma-separated list of the filling products that were used on the
+          // fields of the submitted form. The list is in canonical order with
+          // duplicates removed.
+          "Filling products used",
+          // For each filling using AutofillAi, the kind of record that was used
+          // (local, wallet, personal context).
+          "AutofillAi entity record types used",
+          // For each filling using AutofillAi, the entity type that was filled.
+          "AutofillAi entity types used",
+          // Time between form submission and the last Autofill use, in seconds.
+          "Time since last Autofill use",
+      };
   survey_configs.emplace_back(
-      &::autofill::features::kAutofillAiFillingSurvey,
-      kHatsSurveyTriggerAutofillAiFilling,
+      &::autofill::features::kAutofillPersonalizationAndTrustAddressSurvey,
+      kHatsSurveyTriggerAutofillPersonalizationAndTrustAddressFilled,
       /*presupplied_trigger_id=*/std::nullopt,
-      std::vector<std::string>{"User accepted suggestion"},
-      std::vector<std::string>{"Entity type", "Triggering field types",
-                               "Saved entities"});
+      /*product_specific_bits_data_fields=*/std::vector<std::string>{},
+      autofill_personalization_and_trust_product_specific_data);
+  survey_configs.emplace_back(
+      &::autofill::features::kAutofillPersonalizationAndTrustAutofillAiSurvey,
+      kHatsSurveyTriggerAutofillPersonalizationAndTrustAutofillAiFilled,
+      /*presupplied_trigger_id=*/std::nullopt,
+      /*product_specific_bits_data_fields=*/std::vector<std::string>{},
+      autofill_personalization_and_trust_product_specific_data);
 
   survey_configs.emplace_back(
       &omnibox_feature_configs::HappinessTrackingSurveyForOmniboxOnFocusZps::

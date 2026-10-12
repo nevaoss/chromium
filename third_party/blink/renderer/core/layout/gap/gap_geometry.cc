@@ -605,7 +605,7 @@ void GapGeometry::GenerateMainIntersectionListForFlex(
     wtf_size_t gap_index,
     Vector<GapIntersection>& intersections,
     GapSegmentStateCursor& cursor) const {
-  MainGap main_gap = GetMainGaps()[gap_index];
+  const MainGap& main_gap = GetMainGaps()[gap_index];
 
   const bool has_cross_gaps_before = main_gap.HasCrossGapsBefore();
   const bool has_cross_gaps_after = main_gap.HasCrossGapsAfter();
@@ -865,7 +865,7 @@ void GapGeometry::GenerateCrossIntersectionListForFlex(
   //
   // See third_party/blink/renderer/core/layout/gap/README.md for more.
   intersections.reserve(2);
-  CrossGap cross_gap = GetCrossGaps()[gap_index];
+  const CrossGap& cross_gap = GetCrossGaps()[gap_index];
   LayoutUnit offset = direction == kForColumns
                           ? cross_gap.GetGapOffset().block_offset
                           : cross_gap.GetGapOffset().inline_offset;
@@ -924,7 +924,7 @@ void GapGeometry::GenerateCrossIntersectionListForMulticol(
   intersections.reserve(main_gaps_.size() + 2);
 
   CHECK_LT(gap_index, GetCrossGaps().size());
-  const CrossGap cross_gap = GetCrossGaps()[gap_index];
+  const CrossGap& cross_gap = GetCrossGaps()[gap_index];
 
   intersections.emplace_back(cross_gap.GetGapOffset().block_offset,
                              cursor.GetNextGapSegmentState());
@@ -1038,11 +1038,6 @@ bool GapGeometry::IsIntersectionAtContainerEdge(
     //     * kBoth: Both first and last intersections are edges.
     //     * kStart: Only the first intersection is an edge.
     //     * kEnd: Only the last intersection is an edge.
-    //
-    // TODO(samomekarajr): Introducing the edge state to main_gap, can avoid the
-    // special logic for flex cross gaps here. We can simply check the edge
-    // state of the gap to determine if the first and/or last intersection are
-    // edges.
     CrossGap::EdgeIntersectionState cross_gap_edge_state =
         GetCrossGaps()[gap_index].GetEdgeIntersectionState();
     if (cross_gap_edge_state == CrossGap::EdgeIntersectionState::kBoth) {

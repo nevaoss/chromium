@@ -149,6 +149,7 @@ _CONFIG = [
             'base::PostJob',
             'base::PowerMonitor',
             'base::Process',
+            'base::DegToRad',
             'base::RadToDeg',
             'base::raw_span',
             'base::RefCountedData',
@@ -589,6 +590,7 @@ _CONFIG = [
             'base::ToLowerASCII',
             'network::cors::IsCorsSafelistedResponseHeaderName',
             'network::mojom::FetchResponseType',
+            'network::ParseUnencodedDigestsFromHeaders',
         ],
     },
     {
@@ -1667,7 +1669,6 @@ _CONFIG = [
             'third_party/blink/public/platform/platform.h',
         ],
         'allowed': [
-            'media::AudioBus',
             'viz::RasterContextProvider',
         ],
     },

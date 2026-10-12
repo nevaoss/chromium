@@ -1179,6 +1179,7 @@ class CORE_EXPORT Document : public ContainerNode,
   void FlushAutofocusCandidates();
   void FinalizeAutofocus();
   Element* GetAutofocusDelegate() const;
+  bool HasSequentialFocusNavigationStartingPoint() const;
   void SetSequentialFocusNavigationStartingPoint(Node*);
   Element* SequentialFocusNavigationStartingPoint(
       mojom::blink::FocusType) const;
@@ -1293,6 +1294,15 @@ class CORE_EXPORT Document : public ContainerNode,
   bool MayHaveMutationObservers() const { return mutation_observer_types_; }
   void AddMutationObserverTypes(MutationType types) {
     mutation_observer_types_ |= types;
+  }
+  // The target of the outermost active ChildListMutationScope in this
+  // document that found no interested observer, if any. See
+  // ChildListMutationScope.
+  Node* UnobservedChildListMutationTarget() const {
+    return unobserved_child_list_mutation_target_.Get();
+  }
+  void SetUnobservedChildListMutationTarget(Node* target) {
+    unobserved_child_list_mutation_target_ = target;
   }
 
   IntersectionObserverController* GetIntersectionObserverController();
@@ -2871,6 +2881,7 @@ class CORE_EXPORT Document : public ContainerNode,
   uint32_t event_listener_counts_ = 0;
 
   MutationObserverOptions mutation_observer_types_ = 0;
+  Member<Node> unobserved_child_list_mutation_target_;
 
   Member<ElementIntersectionObserverData>
       document_explicit_root_intersection_observer_data_;

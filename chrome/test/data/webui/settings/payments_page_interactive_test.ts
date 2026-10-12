@@ -15,7 +15,7 @@ import {eventToPromise, microtasksFinished, whenAttributeIs} from 'chrome://webu
 import {flushTasks} from 'chrome://webui-test/polymer_test_util.js';
 
 import {createCreditCardEntry, createIbanEntry, TestPaymentsManager} from './autofill_fake_data.js';
-import {verifyBooleanHistogramRecorded} from './payments_page_test_utils.js';
+import {setupPaymentsPrefs, verifyBooleanHistogramRecorded} from './payments_page_test_utils.js';
 import {TestMetricsBrowserProxy} from './test_metrics_browser_proxy.js';
 // clang-format on
 
@@ -26,8 +26,7 @@ async function typeInNickname(
     nicknameInput: CrInputElement, nickname: string): Promise<void> {
   nicknameInput.value = nickname;
   await nicknameInput.updateComplete;
-  nicknameInput.dispatchEvent(
-      new CustomEvent('input', {bubbles: true, composed: true}));
+  nicknameInput.fire('input');
 }
 
 /**
@@ -40,12 +39,13 @@ async function ibanValidated(paymentsManager: TestPaymentsManager) {
 }
 
 suite('PaymentsPageCreditCardEditDialogTest', function() {
-  setup(function() {
+  setup(async function() {
     document.body.innerHTML = window.trustedTypes!.emptyHTML;
     loadTimeData.overrideValues({
       showIbansSettings: true,
       cvcStorageAvailable: true,
     });
+    await setupPaymentsPrefs();
   });
 
   /**
@@ -61,15 +61,14 @@ suite('PaymentsPageCreditCardEditDialogTest', function() {
     paymentsManager.data.ibans = ibans;
     PaymentsManagerImpl.setInstance(paymentsManager);
 
+    await setupPaymentsPrefs({
+      credit_card_enabled: {value: true},
+      payment_methods_mandatory_reauth: {value: true},
+      payment_cvc_storage: {value: true},
+      types_blocked: {value: []},
+    });
+
     const page = document.createElement('settings-payments-page');
-    page.prefs = {
-      autofill: {
-        credit_card_enabled: {value: true},
-        payment_methods_mandatory_reauth: {value: true},
-        payment_cvc_storage: {value: true},
-        types_blocked: {value: []},
-      },
-    };
     document.body.appendChild(page);
     await flushTasks();
     return page;
@@ -169,7 +168,7 @@ suite('PaymentsPageCreditCardEditDialogTest', function() {
     // Simulate clicking three-dots menu button for the first card in the list.
     const rowShadowRoot =
         page.$.paymentsList.shadowRoot!
-            .querySelector('settings-credit-card-list-entry')!.shadowRoot!;
+            .querySelector('settings-credit-card-list-entry')!.shadowRoot;
     assertFalse(!!rowShadowRoot.querySelector('#remoteCreditCardLink'));
     const menuButton =
         rowShadowRoot.querySelector<HTMLElement>('#creditCardMenu');
@@ -200,9 +199,9 @@ suite('PaymentsPageCreditCardEditDialogTest', function() {
     const firstEntry = page.$.paymentsList.shadowRoot!.querySelector(
         'settings-iban-list-entry');
     assertTrue(!!firstEntry);
-    assertFalse(!!firstEntry.shadowRoot!.querySelector('#remoteIbanLink'));
+    assertFalse(!!firstEntry.shadowRoot.querySelector('#remoteIbanLink'));
     const menuButton =
-        firstEntry.shadowRoot!.querySelector<HTMLElement>('#ibanMenu');
+        firstEntry.shadowRoot.querySelector<HTMLElement>('#ibanMenu');
     assertTrue(!!menuButton);
 
     menuButton.click();

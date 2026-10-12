@@ -120,8 +120,7 @@ bool operator==(const TransportSecurityState::STSState& lhs,
 
 bool operator==(const TransportSecurityState::PKPState& lhs,
                 const TransportSecurityState::PKPState& rhs) {
-  return lhs.last_observed == rhs.last_observed && lhs.expiry == rhs.expiry &&
-         lhs.spki_hashes == rhs.spki_hashes &&
+  return lhs.expiry == rhs.expiry && lhs.spki_hashes == rhs.spki_hashes &&
          lhs.bad_spki_hashes == rhs.bad_spki_hashes &&
          lhs.include_subdomains == rhs.include_subdomains &&
          lhs.domain == rhs.domain;
@@ -450,19 +449,14 @@ TEST_F(TransportSecurityStateTest, Expiration) {
   EXPECT_FALSE(TransportSecurityState::STSStateIterator(state).HasNext());
 
   state.AddHPKP("example1.test", older, false, GetSampleSPKIHashes());
-  EXPECT_TRUE(state.has_dynamic_pkp_state());
   EXPECT_FALSE(state.HasPublicKeyPins("example1.test"));
-  // Querying |state| for a domain should flush out expired entries.
-  EXPECT_FALSE(state.has_dynamic_pkp_state());
 
   state.AddHSTS("example1.test", older, false);
   state.AddHPKP("example1.test", older, false, GetSampleSPKIHashes());
   EXPECT_TRUE(TransportSecurityState::STSStateIterator(state).HasNext());
-  EXPECT_TRUE(state.has_dynamic_pkp_state());
   EXPECT_FALSE(state.ShouldSSLErrorsBeFatal("example1.test"));
   // Querying |state| for a domain should flush out expired entries.
   EXPECT_FALSE(TransportSecurityState::STSStateIterator(state).HasNext());
-  EXPECT_FALSE(state.has_dynamic_pkp_state());
 
   // Test that HSTS can outlive HPKP.
   state.AddHSTS("example1.test", expiry, false);

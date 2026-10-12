@@ -263,7 +263,6 @@ Disa funksione mund të mos ofrohen dhe ndryshimet në preferenca nuk do të ruh
 
           **Sugjero pyetje:** Gjenero një listë me pika prej 3 deri në 5 pyetje që nxisin të menduarit dhe që mund të bëhen nga një përdorues për të kuptuar më mirë pamjen e ekranit. Këto pyetje duhet të përfshijnë të paktën një pyetje që ka të bëjë në mënyrë specifike me një objekt vizual, dizajnin ose vendosjen e tij.</translation>
 <translation id="3848258323044014972"><ph name="PAGE_TITLE" /> - Chromium</translation>
-<translation id="387514319934708384">Chromium ka nevojë për lejen e rrjetit lokal për këtë sajt</translation>
 <translation id="3885770153807205175">Zgjedhësi i gjuhës</translation>
 <translation id="388648406173476553">Personalizo dhe kontrollo Chromium. Diçka ka nevojë për vëmendjen tënde - kliko për detaje.</translation>
 <translation id="3889543394854987837">Kliko emrin tënd për të hapur Chromium dhe fillo shfletimin.</translation>
@@ -305,6 +304,7 @@ Disa funksione mund të mos ofrohen dhe ndryshimet në preferenca nuk do të ruh
 <translation id="4251772536351901305">Të paralajmëron për sajtet e rrezikshme, edhe ato që Google nuk i ka njohur më parë, duke analizuar më shumë të dhëna nga sajtet sesa nga mbrojtja standarde. Mund të zgjedhësh që t'i kapërcesh paralajmërimet e Chromium.</translation>
 <translation id="4269093074552541569">Dil nga Chromium</translation>
 <translation id="4271805377592243930">Merr ndihmë me Chromium</translation>
+<translation id="4275788652681621337">Mbyll panelin anësor</translation>
 <translation id="4281844954008187215">Kushtet e shërbimit</translation>
 <translation id="4285930937574705105">Instalimi dështoi për shkak të një gabimi të paspecifikuar. Nëse Chromium është aktualisht në ekzekutim, mbylle dhe provo përsëri.</translation>
 <translation id="4298125729853015961">Eksporto fjalëkalimet nga Chromium</translation>
@@ -441,9 +441,9 @@ Nëse kjo faqe nuk funksionon siç pritet, provo të lejosh optimizimin.</transl
 <translation id="5883558403894052917">Chromium vuri re se këta artikuj përmbajnë softuer keqdashës:</translation>
 <translation id="5889361821821684993">Chromium kontrollon rregullisht për t'u siguruar që shfletuesi yt ka cilësimet më të sigurta. Do të të informojmë nëse ka nevojë të rishikosh diçka.</translation>
 <translation id="5895138241574237353">Rinis</translation>
+<translation id="5896077214220653386">Gemini Enterprise në Chromium</translation>
 <translation id="5903106910045431592"><ph name="PAGE_TITLE" /> - identifikimi në rrjet</translation>
 <translation id="5924017743176219022">Po lidhet me internetin...</translation>
-<translation id="5939553720811388432">Le ta bëjmë gati Chromium</translation>
 <translation id="5941711191222866238">Minimizo</translation>
 <translation id="5949225980829865667">Për të marrë këtë faqeshënues dhe më shumë në të gjitha pajisjet e tua, identifikohu në Chromium</translation>
 <translation id="5953657885167112863">Personalizo Chromium sipas dëshirës</translation>
@@ -594,6 +594,7 @@ Faqeshënuesit e rinj nuk mund të ruhen në llogarinë tënde derisa të fshish
 <translation id="7213407614656404070">Përdor Chromium sa herë që klikon te lidhjet në mesazhe, dokumente dhe aplikacione të tjera</translation>
 <translation id="7216228761061470870">Kur përdor "Kërkimin e imazheve" në desktop, titulli i faqes, URL-ja dhe përmbajtja, duke përfshirë skedarët PDF, dërgohen te serveri</translation>
 <translation id="7223968959479464213">Menaxheri i detyrave - Chromium</translation>
+<translation id="7226331818892775989">Pyet për përmbajtjet jashtë Chromium, si p.sh. aplikacione ose skedarë të tjerë</translation>
 <translation id="7227958669698166857"><ph name="EXISTING_USER" /> është identifikuar tashmë. Për ta mbajtur shfletimin tënd të ndarë, identifikohu në Chromium në profilin tënd si <ph name="USER_EMAIL_ADDRESS" />. Do të marrësh gjithashtu informacionet e ruajtura etj. në të gjitha pajisjet e tua.</translation>
 <translation id="7252276985725323153">Fillo të shfletosh menjëherë: Chromium tani mund të niset kur të niset Windows.</translation>
 <translation id="7274695763216404502">U gozhdua! Përdor përsëri "Kërkimin nëpërmjet imazheve" nga shiriti i veglave</translation>

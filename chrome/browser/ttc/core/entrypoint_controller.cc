@@ -11,7 +11,7 @@
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 
 #if !BUILDFLAG(IS_ANDROID)
-#include "chrome/browser/ui/browser_window/public/browser_window_features.h"
+#include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/views/toolbar/pinned_toolbar_actions.h"
 #endif
 
@@ -52,6 +52,9 @@ void EntrypointController::EntrypointHandler(EntrypointType type) {
     case EntrypointType::kToolbarButton:
       ToolbarButtonHandler();
       break;
+    case EntrypointType::kAppMenu:
+      AppMenuHandler();
+      break;
   }
 }
 
@@ -59,32 +62,41 @@ void EntrypointController::ToolbarButtonHandler() {
   ToggleSession();
 }
 
-void EntrypointController::OnTtcStateChanged(TtcState state) {
+void EntrypointController::AppMenuHandler() {
+  CHECK(!service_->is_session_active());
+  service_->StartSession();
+}
+
+void EntrypointController::OnTtcStateChanged(ServiceState state) {
   UpdateUi(state);
 }
 
-void EntrypointController::UpdateUi(TtcState state) {
+void EntrypointController::UpdateUi(ServiceState state) {
   UpdateToolbarButton(state);
 }
 
-void EntrypointController::UpdateToolbarButton(TtcState state) {
+void EntrypointController::UpdateToolbarButton(ServiceState state) {
 #if !BUILDFLAG(IS_ANDROID)
+  // Driven by OnTtcStateChanged(), which can fire while the window is going
+  // away.
+  BrowserWindow* const browser_window =
+      BrowserWindow::FromBrowser(&browser_.get());
   PinnedToolbarActions* const pinned_actions =
-      browser_->GetFeatures().pinned_toolbar_actions();
+      browser_window ? browser_window->GetPinnedToolbarActions() : nullptr;
   if (!pinned_actions) {
     return;
   }
 
   switch (state) {
-    case TtcState::kDisabled:
+    case ServiceState::kProfileIneligible:
       // TODO(danielmendz): Remove the toolbar button entirely when TTC becomes
       // unavailable.
       break;
-    case TtcState::kSessionInactive:
+    case ServiceState::kSessionInactive:
       pinned_actions->UpdateActionState(kActionTtcToolbar,
                                         /*is_active=*/false);
       break;
-    case TtcState::kSessionActive:
+    case ServiceState::kSessionActive:
       pinned_actions->UpdateActionState(kActionTtcToolbar,
                                         /*is_active=*/true);
       break;

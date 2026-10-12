@@ -42,7 +42,8 @@
 }
 
 .searchbox-icon-button-container:hover,
-.searchbox-icon-button-container.menu-open {
+.searchbox-icon-button-container.menu-open,
+.searchbox-icon-button-container.help-bubble-open {
   background-color: var(--color-new-tab-page-realbox-next-icon-hover);
 }
 
@@ -50,14 +51,14 @@
   .searchbox-icon-button-container {
     background-color: ButtonText;
   }
-  .searchbox-icon-button-container:focus-within {
+  .searchbox-icon-button-container:not(.help-bubble-open):focus-within {
     outline: 2px solid Highlight;
     outline-offset: 2px;
   }
 }
 
-:host-context(.focus-outline-visible)
-    .searchbox-icon-button-container:focus-within {
+.searchbox-icon-button-container:not(.help-bubble-open):has(:focus-visible),
+.searchbox-icon-button-container:not(.help-bubble-open)[has-virtual-focus] {
   box-shadow: 0 0 0 2px var(--cr-focus-outline-color);
 }
 
@@ -93,9 +94,9 @@
 
 #profileIcon {
   height: 28px;
+  inset-inline-end: 16px;
   pointer-events: none;
   position: absolute;
-  right: 16px;
   top: var(--omnibox-everywhere-top-actions-top, 16px);
   width: auto;
   z-index: 100;

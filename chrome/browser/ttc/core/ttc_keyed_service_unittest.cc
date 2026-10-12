@@ -13,6 +13,7 @@
 #include "chrome/browser/ttc/core/features.h"
 #include "chrome/browser/ttc/core/session_controller.h"
 #include "chrome/browser/ttc/core/session_controller_impl.h"
+#include "chrome/browser/ttc/core/states.h"
 #include "chrome/test/base/testing_profile.h"
 #include "content/public/test/browser_task_environment.h"
 #include "testing/gmock/include/gmock/gmock.h"
@@ -27,12 +28,6 @@ class FakeConversation : public Conversation {
       : on_stopped_(std::move(on_stopped)) {}
   ~FakeConversation() override = default;
 
-  void AddObserver(Observer* observer) override {
-    observers_.AddObserver(observer);
-  }
-  void RemoveObserver(Observer* observer) override {
-    observers_.RemoveObserver(observer);
-  }
   void Start() override { is_started_ = true; }
   void Stop() override {
     is_started_ = false;
@@ -40,7 +35,6 @@ class FakeConversation : public Conversation {
       on_stopped_.Run();
     }
   }
-  bool is_connected() const override { return is_started_; }
   void SendTextInput(const std::string& text) override {}
   void SendContextUpdate(
       const GURL& url,
@@ -49,19 +43,9 @@ class FakeConversation : public Conversation {
   void OnPageContextChanged() override {}
 
   bool is_started() const { return is_started_; }
-  const base::ObserverList<Observer>& observers() const { return observers_; }
-
-  void NotifyStateChanged(bool connected,
-                          const std::string& session_id,
-                          const std::string& error_message) {
-    for (auto& observer : observers_) {
-      observer.OnConversationStateChanged(connected, session_id, error_message);
-    }
-  }
 
  private:
   bool is_started_ = false;
-  base::ObserverList<Observer> observers_;
   base::RepeatingClosure on_stopped_;
 };
 }  // namespace
@@ -141,19 +125,13 @@ TEST_F(TtcKeyedServiceUnitTest, ConversationStartedAndStoppedWithSession) {
   EXPECT_EQ(conversation_stopped_count(), 1);
 }
 
-TEST_F(TtcKeyedServiceUnitTest, ConversationErrorEndsSession) {
+TEST_F(TtcKeyedServiceUnitTest, FinishedSessionIsEnded) {
   service_->StartSession();
   SessionController* controller = service_->session_controller();
   ASSERT_NE(controller, nullptr);
-  auto* conversation = static_cast<FakeConversation*>(
-      &static_cast<SessionControllerImpl*>(controller)->conversation());
-  ASSERT_NE(conversation, nullptr);
 
-  // When disconnected (with or without an error message), SessionController
-  // should post a task to end the session.
-  conversation->NotifyStateChanged(
-      /*connected=*/false, /*session_id=*/"",
-      /*error_message=*/"");
+  // Finishing the session should post a task to end it.
+  controller->SetSessionLifecycle(SessionLifecycle::kFinished);
 
   EXPECT_TRUE(base::test::RunUntil(
       [&]() { return service_->session_controller() == nullptr; }));

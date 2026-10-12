@@ -172,6 +172,7 @@
     IDC_CHROME_ENTERPRISE_RELEASE_NOTES) \
   E(kActionDevToolsInspect, IDC_DEV_TOOLS_INSPECT) \
   E(kActionUpgradeDialog, IDC_UPGRADE_DIALOG) \
+  E(kActionGlobalError) \
   E(kActionSetBrowserAsDefault, IDC_SET_BROWSER_AS_DEFAULT) \
   E(kActionProfilingEnabled, IDC_PROFILING_ENABLED) \
   E(kActionExtensionErrors, IDC_EXTENSION_ERRORS) \
@@ -223,6 +224,7 @@
   E(kActionSpellcheckMultiLingual, IDC_SPELLCHECK_MULTI_LINGUAL) \
   E(kActionSpellcheckRemoveFromDictionary, \
     IDC_SPELLCHECK_REMOVE_FROM_DICTIONARY) \
+  E(kActionShowTtcMenu, IDC_SHOW_TTC_MENU) \
   /* Writing direction */ \
   E(kActionWritingDirectionLtr, IDC_WRITING_DIRECTION_LTR) \
   E(kActionWritingDirectionRtl, IDC_WRITING_DIRECTION_RTL) \

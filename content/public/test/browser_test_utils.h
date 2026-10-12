@@ -382,9 +382,6 @@ void SimulateUnresponsiveRenderer(WebContents* web_contents,
 // Notes:
 // - Input events to a page may not work right after a page load, see
 // `SimulateEndOfPaintHoldingOnPrimaryMainFrame` for a workaround.
-// - For simulating clicks inside a fenced frame tree, this function does not
-// work. Use `SimulateClickInFencedFrameTree` in
-// `content/public/test/fenced_frame_test_util.cc`
 void SimulateMouseClick(WebContents* web_contents,
                         int modifiers,
                         blink::WebMouseEvent::Button button);
@@ -398,9 +395,6 @@ void SimulateMouseClick(WebContents* web_contents,
 // Notes:
 // - Input events to a page may not work right after a page load, see
 // `SimulateEndOfPaintHoldingOnPrimaryMainFrame` for a workaround.
-// - For simulating clicks inside a fenced frame tree, this function does not
-// work. Use `SimulateClickInFencedFrameTree` in
-// `content/public/test/fenced_frame_test_util.cc`
 void SimulateMouseClickAt(WebContents* web_contents,
                           int modifiers,
                           blink::WebMouseEvent::Button button,
@@ -2704,11 +2698,6 @@ RegisterWebContentsCreationCallback(
 // and/or main. This can be useful to enable when the process hosting the window
 // is a standalone executable without an Info.plist.
 bool EnableNativeWindowActivation();
-
-// Ensures that if no key window is set (can happen in apps that are not
-// frontmost), we simulate the frontmost window becoming key, which triggers
-// any logic that would normally run in this case.
-void HandleMissingKeyWindow();
 #endif  // BUILDFLAG(IS_MAC)
 
 #if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)

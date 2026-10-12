@@ -50,31 +50,30 @@ class EslintTsTest(unittest.TestCase):
       "eslint_ts.config_base.js",
     )
     orig_tsconfig_path = os.path.join(self._in_folder, "tsconfig.json")
-
-    with open(orig_tsconfig_path, "r") as f:
-      config = json.load(f)
-
-    if "compilerOptions" not in config:
-      config["compilerOptions"] = {}
     gen_lit_dir = os.path.join(
       os.path.abspath(_BUILD_DIR), "gen", "third_party", "lit", "v3_0"
     )
-    rel_lit_path = os.path.relpath(gen_lit_dir, self._in_folder).replace(
+    rel_lit_path = os.path.relpath(gen_lit_dir, self._out_dir).replace(
       os.sep, "/"
     )
-
-    config["compilerOptions"]["rootDir"] = os.path.normpath(self._in_folder)
-    config["extends"] = os.path.normpath(
-      os.path.join(self._in_folder, config["extends"])
-    )
-    config["files"] = [
-      os.path.join(self._in_folder, f) for f in config["files"]
-    ]
-    config["references"] = [{"path": rel_lit_path + "/tsconfig_build_ts.json"}]
-
     tsconfig = os.path.join(self._out_dir, "tsconfig.json")
     with open(tsconfig, "w") as f:
-      json.dump(config, f, indent=4)
+      json.dump(
+        {
+          "extends": os.path.relpath(orig_tsconfig_path, self._out_dir).replace(
+            os.sep, "/"
+          ),
+          "compilerOptions": {
+            "paths": {
+              "//resources/lit/v3_0/lit.rollup.js": [
+                rel_lit_path + "/lit.d.ts"
+              ],
+            },
+          },
+        },
+        f,
+        indent=4,
+      )
 
     custom_loader = os.path.join(_HERE_DIR, "eslint", "custom_loader.mjs")
 
@@ -86,9 +85,7 @@ class EslintTsTest(unittest.TestCase):
       "--config_base",
       os.path.relpath(config_base, self._out_dir).replace(os.sep, "/"),
       "--tsconfig",
-      os.path.relpath(
-        os.path.join(self._in_folder, 'tsconfig.json'), _HERE_DIR
-      ).replace(os.sep, "/"),
+      os.path.relpath(tsconfig, os.getcwd()).replace(os.sep, "/"),
       "--custom_loader_script",
       custom_loader,
       "--in_files",
@@ -106,13 +103,19 @@ class EslintTsTest(unittest.TestCase):
       os.path.join(self._out_dir, "eslint.config.mjs")
     )
     path_to_build_dir = os.path.relpath(_BUILD_DIR, self._out_dir).replace(
-      '\\', '/'
+      os.sep, "/"
     )
+    tsconfig = os.path.join(self._out_dir, "tsconfig.json")
+    rel_tsconfig = os.path.relpath(tsconfig, os.getcwd()).replace(os.sep, "/")
     expected_contents = self._read_file(
       os.path.join(self._in_folder, "eslint_expected.config.mjs")
-    ).replace('./../tsconfig.json', './tsconfig.json')
+    )
     self.assertMultiLineEqual(
-      expected_contents % {"path_to_build_dir": path_to_build_dir},
+      expected_contents
+      % {
+        "path_to_build_dir": path_to_build_dir,
+        "path_to_tsconfig": rel_tsconfig,
+      },
       actual_contents,
     )
 
@@ -321,10 +324,6 @@ class EslintTsTest(unittest.TestCase):
     )
     _EXPECTED_MISSING_SUPER_CALLS_ERROR = "Missing superclass calls for lifecycle method(s) %(lifecycleMethods)s in class %(className)s"
     _EXPECTED_MISSING_TAG_NAME_REGISTRATION_ERROR = "Tag/class name pair registration to HTMLElementTagNameMap interface missing for %(domName)s ↔ %(className)s"
-    _EXPECTED_USE_FIRE_HELPER_ERROR = (
-      "Use this.fire(...) instead of this.dispatchEvent(new CustomEvent(...))."
-    )
-    _EXPECTED_USE_FIRE_HELPER_WITH_EVENT_NAME_ERROR = "Use this.fire(...) instead of this.dispatchEvent(new CustomEvent(...)), for event '%(eventName)s'"
     _EXPECTED_MISSING_CUSTOM_EVENT_TYPE_PARAMETER_ERROR = "Missing CustomEvent type parameter for %(type)s '%(name)s' (use CustomEvent<void> or CustomEvent<SomeType>)"
 
     super_call_required_methods = [
@@ -380,15 +379,6 @@ class EslintTsTest(unittest.TestCase):
         'expectedOrder': '[is, styles, render, properties, constructor, connectedCallback, disconnectedCallback, willUpdate, firstUpdated, updated]',
         'actualOrder': '[render, styles, is, properties, disconnectedCallback, connectedCallback, constructor, willUpdate, updated, firstUpdated]',
       },
-      _EXPECTED_USE_FIRE_HELPER_WITH_EVENT_NAME_ERROR
-      % {
-        'eventName': 'foo1-updated',
-      },
-      _EXPECTED_USE_FIRE_HELPER_WITH_EVENT_NAME_ERROR
-      % {
-        'eventName': 'foo2-updated',
-      },
-      _EXPECTED_USE_FIRE_HELPER_ERROR,
       _EXPECTED_INCORRECT_DOLLAR_SIGN_NOTATION_ERROR
       % {
         'dashCaseName': 'hello-button',
@@ -513,10 +503,6 @@ class EslintTsTest(unittest.TestCase):
       % {
         'className': 'TestNoError3Element',
         'domName': 'test-no-error3',
-      },
-      _EXPECTED_USE_FIRE_HELPER_WITH_EVENT_NAME_ERROR
-      % {
-        'eventName': 'bar-updated',
       },
       _EXPECTED_INCORRECT_DOLLAR_SIGN_NOTATION_ERROR
       % {
@@ -1125,6 +1111,103 @@ class EslintTsTest(unittest.TestCase):
       "Use assertTrue(anyBool) instead of assertEquals(anyBool, true)",
       "Use assertFalse(anyBool) instead of assertEquals(false, anyBool)",
       "Use assertFalse(anyBool) instead of assertEquals(anyBool, false)",
+    ]
+    for e in non_errors:
+      self.assertFalse(
+        e in str(context.exception), f'Found unexpected error: {e}'
+      )
+
+  def testWebUiEslintPlugin_LitUseFireHelper(self):
+    with self.assertRaises(RuntimeError) as context:
+      self._run_test(["with_webui_plugin_lit_use_fire_helper_violations.ts"])
+
+    _EXPECTED_STRING = "@webui-eslint/lit-use-fire-helper"
+    self.assertTrue(_EXPECTED_STRING in str(context.exception))
+
+    _EXPECTED_USE_FIRE_HELPER_ERROR = "Use %(expr)s.fire(...) instead of %(expr)s.dispatchEvent(new CustomEvent(...))"
+    _EXPECTED_USE_FIRE_HELPER_WITH_EVENT_NAME_ERROR = "Use %(expr)s.fire(...) instead of %(expr)s.dispatchEvent(new CustomEvent(...)), for event '%(eventName)s'"
+
+    errors = [
+      _EXPECTED_USE_FIRE_HELPER_WITH_EVENT_NAME_ERROR
+      % {
+        'expr': 'this',
+        'eventName': 'this1-updated',
+      },
+      _EXPECTED_USE_FIRE_HELPER_WITH_EVENT_NAME_ERROR
+      % {
+        'expr': 'this',
+        'eventName': 'this2-updated',
+      },
+      _EXPECTED_USE_FIRE_HELPER_ERROR
+      % {
+        'expr': 'this',
+      },
+      _EXPECTED_USE_FIRE_HELPER_WITH_EVENT_NAME_ERROR
+      % {
+        'expr': 'childElement',
+        'eventName': 'foo1-updated',
+      },
+      _EXPECTED_USE_FIRE_HELPER_WITH_EVENT_NAME_ERROR
+      % {
+        'expr': 'parentElement',
+        'eventName': 'foo2-updated',
+      },
+      _EXPECTED_USE_FIRE_HELPER_ERROR
+      % {
+        'expr': 'parentElement',
+      },
+      _EXPECTED_USE_FIRE_HELPER_WITH_EVENT_NAME_ERROR
+      % {
+        'expr': 'queriedChild!',
+        'eventName': 'foo4-updated',
+      },
+    ]
+    for e in errors:
+      self.assertTrue(
+        e in str(context.exception), f'Didn\'t find expected error: {e}'
+      )
+
+    non_errors = [
+      _EXPECTED_USE_FIRE_HELPER_WITH_EVENT_NAME_ERROR
+      % {
+        'expr': 'this',
+        'eventName': 'this-bar-updated',
+      },
+      _EXPECTED_USE_FIRE_HELPER_WITH_EVENT_NAME_ERROR
+      % {
+        'expr': 'this',
+        'eventName': 'non-lit-this-updated',
+      },
+      _EXPECTED_USE_FIRE_HELPER_WITH_EVENT_NAME_ERROR
+      % {
+        'expr': 'htmlElement',
+        'eventName': 'bar1-updated',
+      },
+      _EXPECTED_USE_FIRE_HELPER_WITH_EVENT_NAME_ERROR
+      % {
+        'expr': 'window',
+        'eventName': 'bar2-updated',
+      },
+      _EXPECTED_USE_FIRE_HELPER_WITH_EVENT_NAME_ERROR
+      % {
+        'expr': 'anyElement',
+        'eventName': 'bar3-updated',
+      },
+      _EXPECTED_USE_FIRE_HELPER_WITH_EVENT_NAME_ERROR
+      % {
+        'expr': 'childElement',
+        'eventName': 'bar4-updated',
+      },
+      _EXPECTED_USE_FIRE_HELPER_WITH_EVENT_NAME_ERROR
+      % {
+        'expr': 'childElement',
+        'eventName': 'bar5-updated',
+      },
+      _EXPECTED_USE_FIRE_HELPER_WITH_EVENT_NAME_ERROR
+      % {
+        'expr': 'childElement',
+        'eventName': 'bar6-updated',
+      },
     ]
     for e in non_errors:
       self.assertFalse(

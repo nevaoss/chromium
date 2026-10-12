@@ -21,6 +21,7 @@
 #include "base/time/time.h"
 #include "base/timer/timer.h"
 #include "base/values.h"
+#include "build/branding_buildflags.h"
 #include "build/build_config.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/enterprise/browser_management/management_service_factory.h"
@@ -119,6 +120,10 @@
 #include "ui/gfx/image/image_unittest_util.h"
 #include "ui/gfx/scoped_animation_duration_scale_mode.h"
 #include "ui/views/controls/button/md_text_button.h"
+
+#if BUILDFLAG(GOOGLE_CHROME_BRANDING) && !BUILDFLAG(IS_CHROMEOS)
+#include "chrome/test/base/scoped_channel_override.h"
+#endif  // BUILDFLAG(GOOGLE_CHROME_BRANDING) && !BUILDFLAG(IS_CHROMEOS)
 
 #if BUILDFLAG(IS_CHROMEOS)
 #include "ash/constants/ash_switches.h"
@@ -331,7 +336,6 @@ class AvatarToolbarButtonInterfaceBaseBrowserTest {
 #if BUILDFLAG(ENABLE_DICE_SUPPORT)
     SetInfiniteAvatarDelay(AvatarDelayType::kSigninPendingText);
     SetInfiniteAvatarDelay(AvatarDelayType::kPromo);
-    SetInfiniteAvatarDelay(AvatarDelayType::kSignedOutPromo);
 #endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
   }
 
@@ -980,6 +984,12 @@ class AvatarToolbarButtonEnterpriseIsolatedBrowserTest
         enterprise_isolated_mode::switches::
             kForceEnterpriseIsolatedModeReplacesIncognito);
   }
+
+ private:
+#if BUILDFLAG(GOOGLE_CHROME_BRANDING) && !BUILDFLAG(IS_CHROMEOS)
+  chrome::ScopedChannelOverride channel_override_{
+      chrome::ScopedChannelOverride::Channel::kDev};
+#endif  // BUILDFLAG(GOOGLE_CHROME_BRANDING) && !BUILDFLAG(IS_CHROMEOS)
 };
 
 IN_PROC_BROWSER_TEST_P(AvatarToolbarButtonEnterpriseIsolatedBrowserTest,
@@ -2715,13 +2725,6 @@ INSTANTIATE_TEST_SUITE_P(
 class MAYBE_AvatarToolbarButtonSignedOutPromoBrowserTest
     : public AvatarToolbarButtonWithInteractiveFeaturePromoBrowserTest {
  public:
-  MAYBE_AvatarToolbarButtonSignedOutPromoBrowserTest() {
-    scoped_feature_list_.InitWithFeatures(
-        /*enabled_features=*/{syncer::kReplaceSyncPromosWithSignInPromos,
-                              switches::kSigninPromoOnAvatarPill},
-        /*disabled_features=*/{});
-  }
-
   void SetUpDefaultCommandLine(base::CommandLine* command_line) override {
     AvatarToolbarButtonWithInteractiveFeaturePromoBrowserTest::
         SetUpDefaultCommandLine(command_line);
@@ -2730,36 +2733,32 @@ class MAYBE_AvatarToolbarButtonSignedOutPromoBrowserTest
   }
 
  private:
-  base::test::ScopedFeatureList scoped_feature_list_;
+  base::test::ScopedFeatureList scoped_feature_list_{
+      syncer::kReplaceSyncPromosWithSignInPromos};
 };
 
 IN_PROC_BROWSER_TEST_F(MAYBE_AvatarToolbarButtonSignedOutPromoBrowserTest,
-                       SignedOutPromoTriggeredOnStartupAfterDelayExpired) {
-  AvatarToolbarButtonInterface* avatar =
-      GetAvatarToolbarButtonInterface(browser());
+                       SignedOutPromoTriggeredOnStartup) {
   AvatarToolbarButtonTestAccessor avatar_accessor(browser());
-  ASSERT_EQ(avatar_accessor.GetText(), std::u16string());
-
-  ASSERT_TRUE(avatar->GetStateAndFireSignedOutTriggerDelayTimerForTesting());
   EXPECT_EQ(avatar_accessor.GetText(),
             l10n_util::GetStringUTF16(IDS_AVATAR_BUTTON_SIGNIN_PROMO));
 
   BrowserWindowInterface* new_browser = CreateBrowser(browser()->GetProfile());
-  EXPECT_FALSE(avatar->GetStateAndFireSignedOutTriggerDelayTimerForTesting());
   EXPECT_EQ(AvatarToolbarButtonTestAccessor(new_browser).GetText(),
             l10n_util::GetStringUTF16(IDS_AVATAR_BUTTON_SIGNIN_PROMO));
 }
 
 IN_PROC_BROWSER_TEST_F(MAYBE_AvatarToolbarButtonSignedOutPromoBrowserTest,
+                       PRE_NoSignedOutPromoWhenSigninIsNotAllowed) {
+  browser()->GetProfile()->GetPrefs()->SetBoolean(
+      prefs::kSigninAllowedOnNextStartup, false);
+}
+
+IN_PROC_BROWSER_TEST_F(MAYBE_AvatarToolbarButtonSignedOutPromoBrowserTest,
                        NoSignedOutPromoWhenSigninIsNotAllowed) {
-  browser()->GetProfile()->GetPrefs()->SetBoolean(prefs::kSigninAllowed, false);
-
-  AvatarToolbarButtonInterface* avatar =
-      GetAvatarToolbarButtonInterface(browser());
+  ASSERT_FALSE(
+      browser()->GetProfile()->GetPrefs()->GetBoolean(prefs::kSigninAllowed));
   AvatarToolbarButtonTestAccessor avatar_accessor(browser());
-  ASSERT_EQ(avatar_accessor.GetText(), std::u16string());
-
-  ASSERT_TRUE(avatar->GetStateAndFireSignedOutTriggerDelayTimerForTesting());
   EXPECT_EQ(avatar_accessor.GetText(), std::u16string());
 }
 
@@ -2778,13 +2777,6 @@ class
     : public AvatarToolbarButtonInterfaceBaseBrowserTest,
       public InProcessBrowserTest {
  public:
-  MAYBE_AvatarToolbarButtonSignedOutPromoOverriddenIdentityManagerBrowserTest() {
-    scoped_feature_list_.InitWithFeatures(
-        /*enabled_features=*/{syncer::kReplaceSyncPromosWithSignInPromos,
-                              switches::kSigninPromoOnAvatarPill},
-        /*disabled_features=*/{});
-  }
-
   void SetUpDefaultCommandLine(base::CommandLine* command_line) override {
     InProcessBrowserTest::SetUpDefaultCommandLine(command_line);
     command_line->RemoveSwitch(
@@ -2827,24 +2819,19 @@ class
   std::unique_ptr<IdentityTestEnvironmentProfileAdaptor>
       identity_test_env_adaptor_;
 
-  base::test::ScopedFeatureList scoped_feature_list_;
+  base::test::ScopedFeatureList scoped_feature_list_{
+      syncer::kReplaceSyncPromosWithSignInPromos};
 };
 
 IN_PROC_BROWSER_TEST_F(
     MAYBE_AvatarToolbarButtonSignedOutPromoOverriddenIdentityManagerBrowserTest,
-    SignedOutPromoTriggerDelayTimerStartAfterRefreshTokensAreLoaded) {
+    SignedOutPromoTriggeredAfterRefreshTokensAreLoaded) {
   ASSERT_FALSE(GetIdentityManager()->AreRefreshTokensLoaded());
-  AvatarToolbarButtonInterface* avatar =
-      GetAvatarToolbarButtonInterface(browser());
   AvatarToolbarButtonTestAccessor avatar_accessor(browser());
   ASSERT_EQ(avatar_accessor.GetText(), std::u16string());
-  // Timer is not started as long as the refresh tokens are not loaded.
-  EXPECT_FALSE(avatar->GetStateAndFireSignedOutTriggerDelayTimerForTesting());
 
   LoadRefreshTokens();
   ASSERT_TRUE(GetIdentityManager()->AreRefreshTokensLoaded());
-  // Timer is now started and the promo computation happens.
-  EXPECT_TRUE(avatar->GetStateAndFireSignedOutTriggerDelayTimerForTesting());
   EXPECT_EQ(avatar_accessor.GetText(),
             l10n_util::GetStringUTF16(IDS_AVATAR_BUTTON_SIGNIN_PROMO));
 }

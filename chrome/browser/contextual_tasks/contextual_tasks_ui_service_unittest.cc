@@ -22,6 +22,7 @@
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_service_test_base.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_utils.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_window_tracker.h"
+#include "chrome/browser/contextual_tasks/mock_contextual_tasks_panel_controller.h"
 #include "chrome/browser/contextual_tasks/mock_contextual_tasks_panel_host.h"
 #include "chrome/browser/contextual_tasks/mock_contextual_tasks_ui_service_delegate.h"
 #include "chrome/browser/contextual_tasks/site_exclusion_detail.h"
@@ -72,7 +73,9 @@
 #include "ui/base/window_open_disposition.h"
 #include "url/gurl.h"
 
-#if !BUILDFLAG(IS_ANDROID)
+#if BUILDFLAG(IS_ANDROID)
+#include "base/android/device_info.h"
+#else
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #endif
 
@@ -90,6 +93,23 @@ class WebContents;
 namespace contextual_tasks {
 
 namespace {
+
+#if BUILDFLAG(IS_ANDROID)
+class ScopedDesktopAndroidForTesting {
+ public:
+  explicit ScopedDesktopAndroidForTesting(bool is_desktop) {
+    base::android::device_info::set_is_desktop_for_testing(is_desktop);
+  }
+  ~ScopedDesktopAndroidForTesting() {
+    base::android::device_info::reset_is_desktop_for_testing();
+  }
+};
+#else
+class ScopedDesktopAndroidForTesting {
+ public:
+  explicit ScopedDesktopAndroidForTesting(bool is_desktop) {}
+};
+#endif
 
 class MockActiveTaskContextProvider : public ActiveTaskContextProvider {
  public:
@@ -718,6 +738,219 @@ TEST_F(
       blink::mojom::WindowFeatures()));
 }
 
+// The signed-out bypass only exists on Android at the desktop form factor;
+// elsewhere Lens side panel unification governs signed-out access.
+#if BUILDFLAG(IS_ANDROID)
+TEST_F(
+    ContextualTasksUiServiceTest,
+    HandleNavigation_AiPage_SignedOut_WithAttachedTab_DesktopAndroid_Intercepted) {
+  ScopedDesktopAndroidForTesting desktop_android(true);
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitWithFeatures(
+      {kContextualTasksSidePanel, kAllowSignedOutUserInDesktopAndroid}, {});
+  GURL ai_url(kAiPageUrl);
+  ON_CALL(*aim_eligibility_service_, IsAimUrl(_, _))
+      .WillByDefault(Return(true));
+  ON_CALL(*service_for_nav_, IsSignedInToBrowserWithValidCredentials())
+      .WillByDefault(Return(false));
+  ON_CALL(*service_for_nav_, IsUrlForPrimaryAccount(_))
+      .WillByDefault(Return(false));
+
+  auto web_contents = content::WebContentsTester::CreateTestWebContents(
+      profile_.get(), content::SiteInstance::Create(profile_.get()));
+  sessions::SessionTabHelper::CreateForWebContents(
+      web_contents.get(),
+      base::BindRepeating([](content::WebContents* contents) {
+        return static_cast<sessions::SessionTabHelperDelegate*>(nullptr);
+      }));
+
+  auto mock_session = std::make_unique<testing::NiceMock<
+      contextual_search::MockContextualSearchSessionHandle>>();
+  contextual_search::FileInfo file_info;
+  file_info.tab_session_id =
+      sessions::SessionTabHelper::IdForTab(web_contents.get());
+  std::vector<contextual_search::FileInfo> submitted_files = {file_info};
+  ON_CALL(*mock_session, GetSubmittedContextFileInfos)
+      .WillByDefault(Return(submitted_files));
+
+  auto* helper = ContextualSearchWebContentsHelper::GetOrCreateForWebContents(
+      web_contents.get());
+  helper->SetTaskSession(std::nullopt, std::move(mock_session),
+                         /*input_state_model=*/nullptr);
+
+  base::RunLoop run_loop;
+  EXPECT_CALL(*service_for_nav_, OnNavigationToAiPageIntercepted(ai_url, _, _))
+      .WillOnce(testing::InvokeWithoutArgs(&run_loop, &base::RunLoop::Quit));
+
+  EXPECT_TRUE(service_for_nav_->HandleNavigation(
+      CreateOpenUrlParams(ai_url, false), web_contents.get(),
+      /*is_from_embedded_page=*/false, /*from_can_create_window=*/false,
+      /*is_same_site_or_from_ui=*/true, false, std::nullopt, std::nullopt,
+      blink::mojom::WindowFeatures()));
+
+  run_loop.Run();
+}
+#endif  // BUILDFLAG(IS_ANDROID)
+
+TEST_F(
+    ContextualTasksUiServiceTest,
+    HandleNavigation_AiPage_SignedOut_WithAttachedTab_DesktopAndroid_FlagDisabled_NotIntercepted) {
+  ScopedDesktopAndroidForTesting desktop_android(true);
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitWithFeatures({kContextualTasksSidePanel},
+                                       {kAllowSignedOutUserInDesktopAndroid});
+  GURL ai_url(kAiPageUrl);
+  ON_CALL(*aim_eligibility_service_, IsAimUrl(_, _))
+      .WillByDefault(Return(true));
+  ON_CALL(*service_for_nav_, IsSignedInToBrowserWithValidCredentials())
+      .WillByDefault(Return(false));
+  ON_CALL(*service_for_nav_, IsUrlForPrimaryAccount(_))
+      .WillByDefault(Return(false));
+
+  auto web_contents = content::WebContentsTester::CreateTestWebContents(
+      profile_.get(), content::SiteInstance::Create(profile_.get()));
+  sessions::SessionTabHelper::CreateForWebContents(
+      web_contents.get(),
+      base::BindRepeating([](content::WebContents* contents) {
+        return static_cast<sessions::SessionTabHelperDelegate*>(nullptr);
+      }));
+
+  auto mock_session = std::make_unique<testing::NiceMock<
+      contextual_search::MockContextualSearchSessionHandle>>();
+  contextual_search::FileInfo file_info;
+  file_info.tab_session_id =
+      sessions::SessionTabHelper::IdForTab(web_contents.get());
+  std::vector<contextual_search::FileInfo> submitted_files = {file_info};
+  ON_CALL(*mock_session, GetSubmittedContextFileInfos)
+      .WillByDefault(Return(submitted_files));
+
+  auto* helper = ContextualSearchWebContentsHelper::GetOrCreateForWebContents(
+      web_contents.get());
+  helper->SetTaskSession(std::nullopt, std::move(mock_session),
+                         /*input_state_model=*/nullptr);
+
+  EXPECT_CALL(*service_for_nav_, OnNavigationToAiPageIntercepted(_, _, _))
+      .Times(0);
+
+  EXPECT_FALSE(service_for_nav_->HandleNavigation(
+      CreateOpenUrlParams(ai_url, false), web_contents.get(),
+      /*is_from_embedded_page=*/false, /*from_can_create_window=*/false,
+      /*is_same_site_or_from_ui=*/true, false, std::nullopt, std::nullopt,
+      blink::mojom::WindowFeatures()));
+}
+
+TEST_F(
+    ContextualTasksUiServiceTest,
+    HandleNavigation_AiPage_SignedOut_NoAttachedTab_DesktopAndroid_NotIntercepted) {
+  ScopedDesktopAndroidForTesting desktop_android(true);
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitWithFeatures(
+      {kContextualTasksSidePanel, kAllowSignedOutUserInDesktopAndroid}, {});
+  GURL ai_url(kAiPageUrl);
+  ON_CALL(*aim_eligibility_service_, IsAimUrl(_, _))
+      .WillByDefault(Return(true));
+  ON_CALL(*service_for_nav_, IsSignedInToBrowserWithValidCredentials())
+      .WillByDefault(Return(false));
+  ON_CALL(*service_for_nav_, IsUrlForPrimaryAccount(_))
+      .WillByDefault(Return(false));
+
+  auto web_contents = content::WebContentsTester::CreateTestWebContents(
+      profile_.get(), content::SiteInstance::Create(profile_.get()));
+
+  EXPECT_CALL(*service_for_nav_, OnNavigationToAiPageIntercepted(_, _, _))
+      .Times(0);
+
+  EXPECT_FALSE(service_for_nav_->HandleNavigation(
+      CreateOpenUrlParams(ai_url, false), web_contents.get(),
+      /*is_from_embedded_page=*/false, /*from_can_create_window=*/false,
+      /*is_same_site_or_from_ui=*/true, false, std::nullopt, std::nullopt,
+      blink::mojom::WindowFeatures()));
+}
+
+// A navigation from within an existing Contextual Tasks session is no longer
+// on its own enough to admit a signed-out user on Desktop Android: that bypass
+// stays scoped to Lens side panel unification, which does not exist here.
+// Signed-out access is granted solely via an attached tab (tab in context).
+TEST_F(
+    ContextualTasksUiServiceTest,
+    HandleNavigation_ExistingSession_SignedOut_DesktopAndroid_NotIntercepted) {
+  ScopedDesktopAndroidForTesting desktop_android(true);
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitWithFeatures(
+      {kContextualTasksSidePanel, kAllowSignedOutUserInDesktopAndroid}, {});
+  GURL ai_url(kAiPageUrl);
+  ON_CALL(*aim_eligibility_service_, IsAimUrl(_, _))
+      .WillByDefault(Return(true));
+  ON_CALL(*service_for_nav_, IsSignedInToBrowserWithValidCredentials())
+      .WillByDefault(Return(false));
+  ON_CALL(*service_for_nav_, IsUrlForPrimaryAccount(_))
+      .WillByDefault(Return(false));
+
+  auto web_contents = content::WebContentsTester::CreateTestWebContents(
+      profile_.get(), content::SiteInstance::Create(profile_.get()));
+  GURL host_url(chrome::kChromeUIContextualTasksURL);
+  content::WebContentsTester::For(web_contents.get())
+      ->SetLastCommittedURL(host_url);
+
+  EXPECT_CALL(*service_for_nav_, OnNavigationToAiPageIntercepted(_, _, _))
+      .Times(0);
+
+  EXPECT_FALSE(service_for_nav_->HandleNavigation(
+      CreateOpenUrlParams(ai_url, false), web_contents.get(),
+      /*is_from_embedded_page=*/true, /*from_can_create_window=*/false,
+      /*is_same_site_or_from_ui=*/true, false, std::nullopt, std::nullopt,
+      blink::mojom::WindowFeatures()));
+}
+
+#if BUILDFLAG(IS_ANDROID)
+TEST_F(
+    ContextualTasksUiServiceTest,
+    HandleNavigation_AiPage_SignedOut_WithAttachedTab_NotDesktopAndroid_NotIntercepted) {
+  ScopedDesktopAndroidForTesting not_desktop_android(false);
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitWithFeatures(
+      {kContextualTasksSidePanel, kAllowSignedOutUserInDesktopAndroid}, {});
+  GURL ai_url(kAiPageUrl);
+  ON_CALL(*aim_eligibility_service_, IsAimUrl(_, _))
+      .WillByDefault(Return(true));
+  ON_CALL(*service_for_nav_, IsSignedInToBrowserWithValidCredentials())
+      .WillByDefault(Return(false));
+  ON_CALL(*service_for_nav_, IsUrlForPrimaryAccount(_))
+      .WillByDefault(Return(false));
+
+  auto web_contents = content::WebContentsTester::CreateTestWebContents(
+      profile_.get(), content::SiteInstance::Create(profile_.get()));
+  sessions::SessionTabHelper::CreateForWebContents(
+      web_contents.get(),
+      base::BindRepeating([](content::WebContents* contents) {
+        return static_cast<sessions::SessionTabHelperDelegate*>(nullptr);
+      }));
+
+  auto mock_session = std::make_unique<testing::NiceMock<
+      contextual_search::MockContextualSearchSessionHandle>>();
+  contextual_search::FileInfo file_info;
+  file_info.tab_session_id =
+      sessions::SessionTabHelper::IdForTab(web_contents.get());
+  std::vector<contextual_search::FileInfo> submitted_files = {file_info};
+  ON_CALL(*mock_session, GetSubmittedContextFileInfos)
+      .WillByDefault(Return(submitted_files));
+
+  auto* helper = ContextualSearchWebContentsHelper::GetOrCreateForWebContents(
+      web_contents.get());
+  helper->SetTaskSession(std::nullopt, std::move(mock_session),
+                         /*input_state_model=*/nullptr);
+
+  EXPECT_CALL(*service_for_nav_, OnNavigationToAiPageIntercepted(_, _, _))
+      .Times(0);
+
+  EXPECT_FALSE(service_for_nav_->HandleNavigation(
+      CreateOpenUrlParams(ai_url, false), web_contents.get(),
+      /*is_from_embedded_page=*/false, /*from_can_create_window=*/false,
+      /*is_same_site_or_from_ui=*/true, false, std::nullopt, std::nullopt,
+      blink::mojom::WindowFeatures()));
+}
+#endif
+
 TEST_F(ContextualTasksUiServiceTest,
        HandleNavigation_BypassedWhenRearchitectureEnabled) {
   base::test::ScopedFeatureList scoped_feature_list;
@@ -1208,6 +1441,58 @@ TEST_F(ContextualTasksUiServiceTest, AiPageNotIntercepted_NotEligible) {
   run_loop.Run();
 }
 
+#if BUILDFLAG(IS_ANDROID)
+TEST_F(ContextualTasksUiServiceTest,
+       ShouldRedirectIneligibleRequest_SignedOutDesktopAndroid_NoRedirect) {
+  ScopedDesktopAndroidForTesting desktop_android(true);
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitAndEnableFeature(kAllowSignedOutUserInDesktopAndroid);
+
+  // A signed-out user: ineligible overall, but eligible apart from identity.
+  auto* eligibility_manager = service_for_nav_->GetFakeEligibilityManager();
+  eligibility_manager->SetIsEligible(false);
+  eligibility_manager->SetIsEligibleWithoutIdentity(true);
+
+  EXPECT_FALSE(service_for_nav_->ShouldRedirectIneligibleRequest(
+      GURL(chrome::kChromeUIContextualTasksURL),
+      /*source_contents=*/nullptr));
+}
+#endif  // BUILDFLAG(IS_ANDROID)
+
+TEST_F(ContextualTasksUiServiceTest,
+       ShouldRedirectIneligibleRequest_SignedOutFeatureDisabled_Redirects) {
+  ScopedDesktopAndroidForTesting desktop_android(true);
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitAndDisableFeature(
+      kAllowSignedOutUserInDesktopAndroid);
+
+  auto* eligibility_manager = service_for_nav_->GetFakeEligibilityManager();
+  eligibility_manager->SetIsEligible(false);
+  eligibility_manager->SetIsEligibleWithoutIdentity(true);
+
+  EXPECT_TRUE(service_for_nav_->ShouldRedirectIneligibleRequest(
+      GURL(chrome::kChromeUIContextualTasksURL),
+      /*source_contents=*/nullptr));
+}
+
+// The bypass must be scoped to the missing-identity case only. A user who is
+// ineligible for another reason (e.g. policy or a non-Google DSE) must still be
+// redirected even with the feature enabled.
+TEST_F(ContextualTasksUiServiceTest,
+       ShouldRedirectIneligibleRequest_IneligibleWithoutIdentity_Redirects) {
+  ScopedDesktopAndroidForTesting desktop_android(true);
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitAndEnableFeature(kAllowSignedOutUserInDesktopAndroid);
+
+  auto* eligibility_manager = service_for_nav_->GetFakeEligibilityManager();
+  eligibility_manager->SetIsEligible(false);
+  eligibility_manager->SetIsEligibleWithoutIdentity(false);
+
+  EXPECT_TRUE(service_for_nav_->ShouldRedirectIneligibleRequest(
+      GURL(chrome::kChromeUIContextualTasksURL),
+      /*source_contents=*/nullptr));
+}
+
 // Verifies the happy path. The AI page is intercepted when the user is signed
 // in to Chrome and the web identity matches.
 TEST_F(ContextualTasksUiServiceTest, AiPageIntercepted_FromTab) {
@@ -1469,9 +1754,12 @@ TEST_F(ContextualTasksUiServiceTest, Navigation_ToNewTab_Allowed) {
   EXPECT_CALL(*service_for_nav_, OnNavigationToAiPageIntercepted(_, _, _))
       .Times(0);
   content::Referrer referrer;
-  content::OpenURLParams params(navigated_url, referrer,
-                                WindowOpenDisposition::NEW_FOREGROUND_TAB,
-                                ui::PAGE_TRANSITION_AUTO_TOPLEVEL, true);
+  content::OpenURLParams params =
+      content::OpenURLParams::CreateRendererInitiated(
+          navigated_url, WindowOpenDisposition::NEW_FOREGROUND_TAB,
+          ui::PAGE_TRANSITION_AUTO_TOPLEVEL, referrer,
+          web_contents->GetPrimaryMainFrame()
+              ->GetCurrentInitiatorNavigationState());
   EXPECT_FALSE(service_for_nav_->HandleNavigationImpl(
       std::move(params), web_contents.get(), &tab,
       /*is_from_embedded_page=*/true,
@@ -1651,10 +1939,15 @@ TEST_F(ContextualTasksUiServiceTest,
       ->SetLastCommittedURL(host_web_content_url);
 
   base::RunLoop run_loop;
+  std::optional<content::OpenURLParams> intercepted_params;
   EXPECT_CALL(*service_for_nav_, OnThreadLinkClicked(_, _, _, _, _)).Times(0);
   EXPECT_CALL(*service_for_nav_, OnSearchResultsNavigationInSidePanel(
                                      OpenURLParamsHasUrl(navigated_url), _))
-      .WillOnce(testing::InvokeWithoutArgs(&run_loop, &base::RunLoop::Quit));
+      .WillOnce([&](content::OpenURLParams url_params,
+                    ContextualTasksUIInterface* web_ui_interface) {
+        intercepted_params = std::move(url_params);
+        run_loop.Quit();
+      });
   EXPECT_CALL(*service_for_nav_, OnNavigationToAiPageIntercepted(_, _, _))
       .Times(0);
   EXPECT_TRUE(service_for_nav_->HandleNavigationImpl(
@@ -1663,6 +1956,18 @@ TEST_F(ContextualTasksUiServiceTest,
       /*from_can_create_window=*/false, /*is_same_site_or_from_ui=*/true, false,
       std::nullopt, std::nullopt, blink::mojom::WindowFeatures()));
   run_loop.Run();
+
+  // Regression check for b/564494672: once OnSearchResultsNavigationInSidePanel
+  // resets `is_renderer_initiated` to false and transfers the navigation to the
+  // embedded <webview>, the resulting navigation must not be re-intercepted by
+  // HandleNavigationImpl.
+  ASSERT_TRUE(intercepted_params.has_value());
+  intercepted_params->is_renderer_initiated = false;
+  EXPECT_FALSE(service_for_nav_->HandleNavigationImpl(
+      *intercepted_params, web_contents.get(), nullptr,
+      /*is_from_embedded_page=*/true,
+      /*from_can_create_window=*/false, /*is_same_site_or_from_ui=*/true, false,
+      std::nullopt, std::nullopt, blink::mojom::WindowFeatures()));
 }
 
 TEST_F(ContextualTasksUiServiceTest, CaptchaNavigation_ViewedInSidePanel) {
@@ -2690,6 +2995,218 @@ TEST_F(ContextualTasksUiServiceTest,
   contextual_tasks::SetForcedEmbeddedPageHostOverride(std::nullopt);
 }
 
+TEST_F(ContextualTasksUiServiceTest, IsWebContentsInSidePanel) {
+  auto web_contents = content::WebContentsTester::CreateTestWebContents(
+      profile_.get(), content::SiteInstance::Create(profile_.get()));
+
+  // Null web contents returns false.
+  EXPECT_FALSE(service_for_nav_->IsWebContentsInSidePanel(nullptr));
+
+  // Regular web contents not in side panel returns false.
+  EXPECT_FALSE(service_for_nav_->IsWebContentsInSidePanel(web_contents.get()));
+}
+
+TEST_F(ContextualTasksUiServiceTest, IsAllowedSidePanelUrl) {
+  EXPECT_CALL(*aim_eligibility_service_, IsAimUrl(_, _))
+      .WillRepeatedly(testing::Return(false));
+
+  // AI URL is allowed.
+  EXPECT_TRUE(service_for_nav_->IsAllowedSidePanelUrl(GURL("https://g.ai/")));
+  EXPECT_TRUE(
+      service_for_nav_->IsAllowedSidePanelUrl(GURL("https://www.g.ai/chat")));
+
+  // Valid search results page is allowed.
+  EXPECT_TRUE(service_for_nav_->IsAllowedSidePanelUrl(
+      GURL("https://www.google.com/search?q=query")));
+  EXPECT_TRUE(service_for_nav_->IsAllowedSidePanelUrl(
+      GURL("https://www.google.com/search?lns_mode=un")));
+
+  // Sign-in domain is allowed.
+  EXPECT_TRUE(service_for_nav_->IsAllowedSidePanelUrl(
+      GURL("https://login.corp.google.com/signin")));
+
+  // Google CAPTCHA is allowed.
+  EXPECT_TRUE(service_for_nav_->IsAllowedSidePanelUrl(GURL(
+      "https://www.google.com/sorry/index?continue=https://www.google.com/")));
+
+  // External web domains are not allowed.
+  EXPECT_FALSE(
+      service_for_nav_->IsAllowedSidePanelUrl(GURL("https://www.example.com")));
+  EXPECT_FALSE(service_for_nav_->IsAllowedSidePanelUrl(
+      GURL("https://en.wikipedia.org/")));
+
+  // Invalid or non-HTTP(S) schemes are not allowed.
+  EXPECT_FALSE(
+      service_for_nav_->IsAllowedSidePanelUrl(GURL("chrome://settings")));
+  EXPECT_FALSE(
+      service_for_nav_->IsAllowedSidePanelUrl(GURL("javascript:alert(1)")));
+  EXPECT_FALSE(service_for_nav_->IsAllowedSidePanelUrl(GURL("about:blank")));
+  EXPECT_FALSE(service_for_nav_->IsAllowedSidePanelUrl(
+      GURL("file:///path/to/test.pdf")));
+}
+
+TEST_F(ContextualTasksUiServiceTest,
+       HandleNavigation_PostRearchitecture_NotInSidePanel) {
+  base::test::ScopedFeatureList scoped_feature_list(
+      contextual_tasks::kContextualTasksSidePanelRearchitecture);
+
+  auto web_contents = content::WebContentsTester::CreateTestWebContents(
+      profile_.get(), content::SiteInstance::Create(profile_.get()));
+
+  service_for_nav_->SetIsWebContentsInSidePanelForTesting(false);
+
+  // External link clicked outside side panel should not be intercepted by
+  // post-rearch handler.
+  GURL external_url("https://example.com/page");
+  EXPECT_FALSE(service_for_nav_->HandleNavigation(
+      CreateOpenUrlParams(external_url, /*is_renderer_initiated=*/true),
+      web_contents.get(), /*is_from_embedded_page=*/false,
+      /*from_can_create_window=*/false, /*is_same_site_or_from_ui=*/false,
+      /*is_mobile_ua=*/false, std::nullopt, std::nullopt,
+      blink::mojom::WindowFeatures()));
+}
+
+TEST_F(
+    ContextualTasksUiServiceTest,
+    HandleNavigation_PostRearchitecture_SidePanel_ExternalHttpUrl_RoutesToTab) {
+  base::test::ScopedFeatureList scoped_feature_list(
+      contextual_tasks::kContextualTasksSidePanelRearchitecture);
+
+  ON_CALL(*aim_eligibility_service_, IsAimUrl(_, _))
+      .WillByDefault(testing::Return(false));
+
+  auto web_contents = content::WebContentsTester::CreateTestWebContents(
+      profile_.get(), content::SiteInstance::Create(profile_.get()));
+
+  service_for_nav_->SetIsWebContentsInSidePanelForTesting(true);
+
+  GURL external_url("https://example.com/article");
+
+  base::RunLoop run_loop;
+  EXPECT_CALL(*service_for_nav_, OpenUrl(_, _, _))
+      .WillOnce([&](const content::OpenURLParams& params,
+                    const blink::mojom::WindowFeatures& features,
+                    BrowserWindowInterface* browser) {
+        EXPECT_EQ(external_url, params.url);
+        // CURRENT_TAB should be converted to NEW_FOREGROUND_TAB.
+        EXPECT_EQ(WindowOpenDisposition::NEW_FOREGROUND_TAB,
+                  params.disposition);
+        run_loop.Quit();
+      });
+
+  EXPECT_TRUE(service_for_nav_->HandleNavigation(
+      CreateOpenUrlParams(external_url, /*is_renderer_initiated=*/true),
+      web_contents.get(), /*is_from_embedded_page=*/false,
+      /*from_can_create_window=*/false, /*is_same_site_or_from_ui=*/false,
+      /*is_mobile_ua=*/false, std::nullopt, std::nullopt,
+      blink::mojom::WindowFeatures()));
+
+  run_loop.Run();
+}
+
+TEST_F(
+    ContextualTasksUiServiceTest,
+    HandleNavigation_PostRearchitecture_SidePanel_PreservesNewTabDisposition) {
+  base::test::ScopedFeatureList scoped_feature_list(
+      contextual_tasks::kContextualTasksSidePanelRearchitecture);
+
+  ON_CALL(*aim_eligibility_service_, IsAimUrl(_, _))
+      .WillByDefault(testing::Return(false));
+
+  auto web_contents = content::WebContentsTester::CreateTestWebContents(
+      profile_.get(), content::SiteInstance::Create(profile_.get()));
+
+  service_for_nav_->SetIsWebContentsInSidePanelForTesting(true);
+
+  GURL external_url("https://example.com/article");
+
+  base::RunLoop run_loop;
+  EXPECT_CALL(*service_for_nav_, OpenUrl(_, _, _))
+      .WillOnce([&](const content::OpenURLParams& params,
+                    const blink::mojom::WindowFeatures& features,
+                    BrowserWindowInterface* browser) {
+        EXPECT_EQ(external_url, params.url);
+        EXPECT_EQ(WindowOpenDisposition::NEW_BACKGROUND_TAB,
+                  params.disposition);
+        run_loop.Quit();
+      });
+
+  content::OpenURLParams open_params(external_url, content::Referrer(),
+                                     WindowOpenDisposition::NEW_BACKGROUND_TAB,
+                                     ui::PageTransition::PAGE_TRANSITION_LINK,
+                                     /*is_renderer_initiated=*/true);
+
+  EXPECT_TRUE(service_for_nav_->HandleNavigation(
+      std::move(open_params), web_contents.get(),
+      /*is_from_embedded_page=*/false, /*from_can_create_window=*/false,
+      /*is_same_site_or_from_ui=*/false, /*is_mobile_ua=*/false, std::nullopt,
+      std::nullopt, blink::mojom::WindowFeatures()));
+
+  run_loop.Run();
+}
+
+TEST_F(ContextualTasksUiServiceTest,
+       HandleNavigation_PostRearchitecture_SidePanel_NonHttpUrl_NotRouted) {
+  base::test::ScopedFeatureList scoped_feature_list(
+      contextual_tasks::kContextualTasksSidePanelRearchitecture);
+
+  auto web_contents = content::WebContentsTester::CreateTestWebContents(
+      profile_.get(), content::SiteInstance::Create(profile_.get()));
+
+  service_for_nav_->SetIsWebContentsInSidePanelForTesting(true);
+
+  // Non-HTTP(S) schemes must not be dispatched via OpenUrl.
+  EXPECT_CALL(*service_for_nav_, OpenUrl(_, _, _)).Times(0);
+
+  GURL js_url("javascript:alert(1)");
+  EXPECT_FALSE(service_for_nav_->HandleNavigation(
+      CreateOpenUrlParams(js_url, /*is_renderer_initiated=*/true),
+      web_contents.get(), /*is_from_embedded_page=*/false,
+      /*from_can_create_window=*/false, /*is_same_site_or_from_ui=*/false,
+      /*is_mobile_ua=*/false, std::nullopt, std::nullopt,
+      blink::mojom::WindowFeatures()));
+
+  GURL file_url("file:///path/to/test.pdf");
+  EXPECT_FALSE(service_for_nav_->HandleNavigation(
+      CreateOpenUrlParams(file_url, /*is_renderer_initiated=*/true),
+      web_contents.get(), /*is_from_embedded_page=*/false,
+      /*from_can_create_window=*/false, /*is_same_site_or_from_ui=*/false,
+      /*is_mobile_ua=*/false, std::nullopt, std::nullopt,
+      blink::mojom::WindowFeatures()));
+}
+
+TEST_F(
+    ContextualTasksUiServiceTest,
+    HandleNavigation_PostRearchitecture_SidePanel_AllowedUrlWithParams_Proceeds) {
+  base::test::ScopedFeatureList scoped_feature_list(
+      contextual_tasks::kContextualTasksSidePanelRearchitecture);
+
+  auto web_contents = content::WebContentsTester::CreateTestWebContents(
+      profile_.get(), content::SiteInstance::Create(profile_.get()));
+
+  service_for_nav_->SetIsWebContentsInSidePanelForTesting(true);
+
+  // Generate an allowed search URL that already contains all required side
+  // panel parameters.
+  GURL raw_search_url("https://www.google.com/search?q=test");
+  GURL allowed_url_with_params =
+      ContextualTasksUiService::AddRequiredSidePanelUrlChanges(
+          raw_search_url, web_contents.get());
+
+  // Should not call OpenUrl.
+  EXPECT_CALL(*service_for_nav_, OpenUrl(_, _, _)).Times(0);
+
+  // Since it is an allowed side panel URL and has all params, it proceeds in
+  // side panel (returns false).
+  EXPECT_FALSE(service_for_nav_->HandleNavigation(
+      CreateOpenUrlParams(allowed_url_with_params,
+                          /*is_renderer_initiated=*/true),
+      web_contents.get(), /*is_from_embedded_page=*/false,
+      /*from_can_create_window=*/false, /*is_same_site_or_from_ui=*/true,
+      /*is_mobile_ua=*/false, std::nullopt, std::nullopt,
+      blink::mojom::WindowFeatures()));
+}
+
 TEST_F(ContextualTasksUiServiceTest, HandleNavigation_DisplayUrlRewritten) {
   GURL display_url("chrome://google.com/search?udm=50&q=test+query");
   auto web_contents = content::WebContentsTester::CreateTestWebContents(
@@ -3253,8 +3770,16 @@ TEST_F(
       std::nullopt, blink::mojom::WindowFeatures()));
 }
 
+// TODO(crbug.com/565086795): Flaky on Android.
+#if BUILDFLAG(IS_ANDROID)
+#define MAYBE_HandleNavigation_WebUI_NotSignedIn_Redirects \
+  DISABLED_HandleNavigation_WebUI_NotSignedIn_Redirects
+#else
+#define MAYBE_HandleNavigation_WebUI_NotSignedIn_Redirects \
+  HandleNavigation_WebUI_NotSignedIn_Redirects
+#endif
 TEST_F(ContextualTasksUiServiceTest,
-       HandleNavigation_WebUI_NotSignedIn_Redirects) {
+       MAYBE_HandleNavigation_WebUI_NotSignedIn_Redirects) {
   base::test::ScopedFeatureList scoped_feature_list(
       contextual_tasks::kContextualTasks);
   GURL webui_url(chrome::kChromeUIContextualTasksURL);
@@ -3796,6 +4321,88 @@ TEST_F(ContextualTasksUiServiceTest,
                                            /*invocation_source=*/std::nullopt);
 
   real_service_->RemoveObserver(&observer);
+}
+
+TEST_F(ContextualTasksUiServiceTest, DestroyClosedSidePanel) {
+  auto tab_contents = content::WebContentsTester::CreateTestWebContents(
+      profile_.get(), content::SiteInstance::Create(profile_.get()));
+  sessions::SessionTabHelper::CreateForWebContents(
+      tab_contents.get(),
+      base::BindRepeating([](content::WebContents* contents) {
+        return static_cast<sessions::SessionTabHelperDelegate*>(nullptr);
+      }));
+
+  tabs::MockTabInterface tab;
+  ON_CALL(tab, GetContents).WillByDefault(Return(tab_contents.get()));
+
+  NiceMock<MockBrowserWindowInterface> mock_browser_window;
+  ON_CALL(mock_browser_window, GetProfile())
+      .WillByDefault(Return(profile_.get()));
+  ON_CALL(testing::Const(mock_browser_window), GetProfile())
+      .WillByDefault(Return(profile_.get()));
+
+  ui::UnownedUserDataHost unowned_user_data_host;
+  ON_CALL(mock_browser_window, GetUnownedUserDataHost())
+      .WillByDefault(ReturnRef(unowned_user_data_host));
+
+  NiceMock<MockTabListInterface> mock_tab_list;
+  ON_CALL(mock_tab_list, GetActiveTab).WillByDefault(Return(&tab));
+  ui::ScopedUnownedUserData<TabListInterface> tab_list_registration(
+      unowned_user_data_host, mock_tab_list);
+
+  auto mock_panel_host =
+      std::make_unique<NiceMock<MockContextualTasksPanelHost>>();
+  ON_CALL(*mock_panel_host, IsPanelInitialized())
+      .WillByDefault(testing::Return(true));
+
+  NiceMock<MockActiveTaskContextProvider> mock_active_task_context_provider;
+  ContextualTasksSidePanelCoordinator coordinator(
+      &mock_browser_window, std::move(mock_panel_host),
+      &mock_active_task_context_provider, nullptr);
+
+  auto tab_session_id = sessions::SessionTabHelper::IdForTab(tab_contents.get());
+  ContextualTask task(base::Uuid::GenerateRandomV4());
+
+  EXPECT_CALL(*contextual_tasks_service_, GetContextualTaskForTab(tab_session_id))
+      .WillOnce(Return(task));
+  EXPECT_CALL(*contextual_tasks_service_,
+              DisassociateAllTabsFromTask(task.GetTaskId()))
+      .Times(1);
+
+  real_service_->DestroyClosedSidePanel(&mock_browser_window);
+}
+
+TEST_F(ContextualTasksUiServiceTest,
+       DestroyClosedSidePanel_NoTaskDoesNotDisassociate) {
+  auto tab_contents = content::WebContentsTester::CreateTestWebContents(
+      profile_.get(), content::SiteInstance::Create(profile_.get()));
+  sessions::SessionTabHelper::CreateForWebContents(
+      tab_contents.get(),
+      base::BindRepeating([](content::WebContents* contents) {
+        return static_cast<sessions::SessionTabHelperDelegate*>(nullptr);
+      }));
+
+  tabs::MockTabInterface tab;
+  ON_CALL(tab, GetContents).WillByDefault(Return(tab_contents.get()));
+
+  NiceMock<MockBrowserWindowInterface> mock_browser_window;
+  ui::UnownedUserDataHost unowned_user_data_host;
+  ON_CALL(mock_browser_window, GetUnownedUserDataHost())
+      .WillByDefault(ReturnRef(unowned_user_data_host));
+
+  NiceMock<MockTabListInterface> mock_tab_list;
+  ON_CALL(mock_tab_list, GetActiveTab).WillByDefault(Return(&tab));
+  ui::ScopedUnownedUserData<TabListInterface> tab_list_registration(
+      unowned_user_data_host, mock_tab_list);
+
+  auto tab_session_id = sessions::SessionTabHelper::IdForTab(tab_contents.get());
+
+  EXPECT_CALL(*contextual_tasks_service_, GetContextualTaskForTab(tab_session_id))
+      .WillOnce(Return(std::nullopt));
+  EXPECT_CALL(*contextual_tasks_service_, DisassociateAllTabsFromTask)
+      .Times(0);
+
+  real_service_->DestroyClosedSidePanel(&mock_browser_window);
 }
 
 }  // namespace contextual_tasks

@@ -210,6 +210,32 @@ struct TabTime {
   raw_ptr<tabs::TabInterface> tab;
   base::TimeTicks time;
 };
+
+bool IsImplicitUpload(
+    contextual_search::ContextualSearchSessionHandle* session_handle,
+    const base::UnguessableToken& context_token) {
+  if (!session_handle) {
+    return false;
+  }
+  auto* controller = session_handle->GetController();
+  if (!controller) {
+    return false;
+  }
+  const auto* file_info = controller->GetFileInfo(context_token);
+  if (!file_info) {
+    return false;
+  }
+  return file_info->is_implicit_upload ||
+         (file_info->input_data &&
+          file_info->input_data->was_smart_tab_selection);
+}
+
+bool IsFailedTerminalStatus(
+    contextual_search::ContextUploadStatus context_upload_status) {
+  return contextual_search::IsTerminalContextStatus(context_upload_status) &&
+         context_upload_status !=
+             contextual_search::ContextUploadStatus::kUploadSuccessful;
+}
 }  // namespace
 
 // static
@@ -283,7 +309,7 @@ ContextualSearchboxHandler::GetRecentTabInfos(
       continue;
     }
     const GURL& url = tab->GetURL();
-    if (!url.is_valid()) {
+    if (!url.is_valid() || url.IsAboutBlank()) {
       continue;
     }
     bool is_internal_page = url.SchemeIs(content::kChromeUIScheme) ||
@@ -598,8 +624,21 @@ ContextualSearchboxHandler::ContextualSearchboxHandler(
           base::BindRepeating(
               &ContextualSearchboxHandler::CreateImageEncodingOptions),
           contextual_tasks_context_service_,
-          base::BindRepeating(&webui::GetBrowserWindowInterface,
-                              web_contents_.get()));
+          base::BindRepeating(
+              [](ContextualSearchboxHandler* handler,
+                 content::WebContents* web_contents)
+                  -> BrowserWindowInterface* {
+                if (handler->omnibox_controller() &&
+                    handler->omnibox_controller()->client() &&
+                    handler->omnibox_controller()
+                            ->client()
+                            ->GetPageClassification(/*is_prefetch=*/false) ==
+                        metrics::OmniboxEventProto::COMPOSEBOX_EVERYWHERE) {
+                  return nullptr;
+                }
+                return webui::GetBrowserWindowInterface(web_contents);
+              },
+              base::Unretained(this), web_contents_.get()));
   query_contextualizer_ =
       std::make_unique<contextual_tasks::QueryContextualizer>(
           contextual_tasks_service_, desktop_delegate_.get());
@@ -866,9 +905,12 @@ void ContextualSearchboxHandler::SetSmartTabSharingActive(bool active) {
   smart_tab_sharing_active_for_thread_ = active;
   auto* session_handle = GetContextualSessionHandle();
   if (session_handle) {
-    session_handle->set_smart_tab_sharing_active(active);
+    session_handle->OnSmartTabSharingToggled(active);
   }
   ClearFiles(/*should_block_auto_suggested_tabs=*/true);
+  if (page_) {
+    page_->SetAimThreadRestoredTabs({});
+  }
   if (input_state_model_) {
     input_state_model_->SetSmartTabSharingActive(active);
     input_state_model_->OnContextChanged();
@@ -2035,13 +2077,22 @@ void ContextualSearchboxHandler::OnContextUploadStatusChanged(
     contextual_search::ContextUploadStatus context_upload_status,
     const std::optional<contextual_search::ContextUploadErrorType>&
         error_type) {
-  page_->OnContextualInputStatusChanged(context_token, context_upload_status,
-                                        error_type);
+  const bool is_implicit_upload =
+      IsImplicitUpload(GetContextualSessionHandle(), context_token);
+  const bool is_failed_terminal_status =
+      IsFailedTerminalStatus(context_upload_status);
+
+  // Suppress WebUI error notifications for implicit background uploads (Smart
+  // Tab Sharing / auto-recontextualization). Implicit uploads have no
+  // composebox chip and forwarding errors to WebUI causes composebox_mixin.ts
+  // to display <ntp-error-scrim> and call deleteContext().
+  if (!is_implicit_upload || !is_failed_terminal_status) {
+    page_->OnContextualInputStatusChanged(context_token, context_upload_status,
+                                          error_type);
+  }
 
   if (base::FeatureList::IsEnabled(omnibox::kContextManagementInComposebox) &&
-      contextual_search::IsTerminalContextStatus(context_upload_status) &&
-      context_upload_status !=
-          contextual_search::ContextUploadStatus::kUploadSuccessful) {
+      is_failed_terminal_status) {
     RemoveSelectedTabState(context_token);
   }
 

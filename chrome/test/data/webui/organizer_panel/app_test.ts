@@ -28,6 +28,7 @@ suite('OrganizerPanelAppTest', () => {
       recentlyClosed: 'Recently Closed',
       searchTabs: 'Search Tabs',
       shortcutText: 'Ctrl+Shift+A',
+      tabGroupMoreOptions: 'More options',
       tabGroups: 'Tab Groups',
     });
     mockPageHandler = TestMock.fromClass(PageHandlerRemote);
@@ -48,7 +49,9 @@ suite('OrganizerPanelAppTest', () => {
         TestMock.fromClass(TabGroupsOrganizerPageHandlerRemote);
     mockTabGroupsHandler.setResultFor(
         'getTabGroups', Promise.resolve({tabGroups: []}));
-    tabGroupsBrowserProxyFactory.setInstance({handler: mockTabGroupsHandler});
+    const {instance: tabGroupsInstance} =
+        tabGroupsBrowserProxyFactory.createForTest(mockTabGroupsHandler);
+    tabGroupsBrowserProxyFactory.setInstance(tabGroupsInstance);
 
     app = document.createElement('organizer-panel-app');
     document.body.appendChild(app);
@@ -74,4 +77,38 @@ suite('OrganizerPanelAppTest', () => {
     await microtasksFinished();
     assertEquals('test search', app.$.list.searchQuery);
   });
+
+  test(
+      'search field remains fixed and list scrolls when overflowing',
+      async () => {
+        const appStyle = window.getComputedStyle(app);
+        assertEquals('flex', appStyle.display);
+        assertEquals('column', appStyle.flexDirection);
+
+        const searchFieldStyle = window.getComputedStyle(app.$.searchField);
+        assertEquals('0', searchFieldStyle.flexShrink);
+
+        const listStyle = window.getComputedStyle(app.$.list);
+        assertEquals('1', listStyle.flexGrow);
+        assertEquals('auto', listStyle.overflowY);
+        assertEquals('hidden', listStyle.overflowX);
+        assertEquals('none', listStyle.overscrollBehavior);
+        assertEquals('8px', listStyle.paddingLeft);
+        assertEquals('8px', listStyle.paddingRight);
+
+        app.style.height = '100px';
+        const dummy = document.createElement('div');
+        dummy.style.height = '500px';
+        app.$.list.shadowRoot.appendChild(dummy);
+        await microtasksFinished();
+
+        assertTrue(app.$.list.scrollHeight > app.$.list.clientHeight);
+
+        const searchFieldRectBefore = app.$.searchField.getBoundingClientRect();
+        app.$.list.scrollTop = 50;
+        assertEquals(50, app.$.list.scrollTop);
+
+        const searchFieldRectAfter = app.$.searchField.getBoundingClientRect();
+        assertEquals(searchFieldRectBefore.top, searchFieldRectAfter.top);
+      });
 });

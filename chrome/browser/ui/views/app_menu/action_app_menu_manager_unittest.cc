@@ -12,6 +12,11 @@
 #include "chrome/browser/ui/actions/chrome_action_id.h"
 #include "chrome/browser/ui/color/chrome_color_id.h"
 #include "chrome/browser/ui/profiles/profile_view_utils.h"
+#include "chrome/browser/ui/safety_hub/menu_notification_service.h"
+#include "chrome/browser/ui/safety_hub/menu_notification_service_factory.h"
+#include "chrome/browser/ui/safety_hub/safe_browsing_result.h"
+#include "chrome/browser/ui/tabs/features.h"
+#include "chrome/browser/ui/tabs/mock_vertical_tab_strip_state_controller.h"
 #include "chrome/browser/ui/views/app_menu/action_app_menu_test_base.h"
 #include "chrome/browser/ui/views/app_menu/app_menu_action_item.h"
 #include "chrome/grit/branded_strings.h"
@@ -134,6 +139,8 @@ TEST_F(ActionAppMenuManagerTest, MAYBE_ProfileSubmenu) {
   TestingProfile* profile1 = profile_manager.CreateTestingProfile("Profile 1");
   profile_manager.CreateTestingProfile("Profile 2");
 
+  SafetyHubMenuNotificationServiceFactory::GetInstance()->SetTestingFactory(
+      profile1, BrowserContextKeyedServiceFactory::TestingFactory());
   SyncServiceFactory::GetInstance()->SetTestingFactory(
       profile1,
       base::BindRepeating(
@@ -158,19 +165,32 @@ TEST_F(ActionAppMenuManagerTest, MAYBE_ProfileSubmenu) {
   actions::ActionItem* your_chrome_section = GetYourChromeSection(root);
   ASSERT_NE(your_chrome_section, nullptr);
 
-  actions::BaseAction* profile_submenu = nullptr;
-  for (const auto& child : your_chrome_section->GetChildren().children()) {
-    if (child->GetActionItem()->GetActionId() == kActionProfileSubmenu) {
-      profile_submenu = child.get();
-      break;
-    }
-  }
-  ASSERT_NE(profile_submenu, nullptr);
+  const auto& section_children = your_chrome_section->GetChildren().children();
+  ASSERT_GE(section_children.size(), 3u);
+  actions::BaseAction* profile_submenu = section_children[1].get();
+  actions::BaseAction* item_after_profile = section_children[2].get();
+
   EXPECT_EQ(profile_submenu->GetActionItem()->GetActionId(),
             kActionProfileSubmenu);
   EXPECT_EQ(profile_submenu->GetActionItem()->GetProperty(
                 AppMenuActionItem::kDisplayTypeKey),
             AppMenuActionItem::DisplayType::kRow);
+  EXPECT_EQ(profile_submenu->GetActionItem()->GetProperty(
+                AppMenuActionItem::kItemHeightKey),
+            AppMenuActionItem::ItemHeight::kExpanded);
+  EXPECT_NE(profile_submenu->GetProperty(AppMenuActionItem::kIconOverrideKey),
+            nullptr);
+  ASSERT_NE(profile_submenu->GetProperty(AppMenuActionItem::kChipTextKey),
+            nullptr);
+  EXPECT_EQ(*profile_submenu->GetProperty(AppMenuActionItem::kChipTextKey),
+            l10n_util::GetStringUTF16(IDS_PROFILE_ROW_SIGNED_IN_MESSAGE));
+
+  EXPECT_EQ(item_after_profile->GetActionItem()->GetProperty(
+                AppMenuActionItem::kDisplayTypeKey),
+            AppMenuActionItem::DisplayType::kDivider);
+  EXPECT_EQ(item_after_profile->GetActionItem()->GetProperty(
+                AppMenuActionItem::kSeparatorKey),
+            ui::MenuSeparatorType::MENU_ITEM_SEPARATOR);
 
   // It should contain sync header, divider, primary actions, divider, header,
   // other profiles, divider, and footer actions.
@@ -240,6 +260,8 @@ TEST_F(ActionAppMenuManagerTest, MAYBE_ProfileSubmenuSingleProfile) {
 
   TestingProfile* profile1 = profile_manager.CreateTestingProfile("Profile 1");
 
+  SafetyHubMenuNotificationServiceFactory::GetInstance()->SetTestingFactory(
+      profile1, BrowserContextKeyedServiceFactory::TestingFactory());
   SyncServiceFactory::GetInstance()->SetTestingFactory(
       profile1,
       base::BindRepeating(
@@ -341,6 +363,73 @@ TEST_F(ActionAppMenuManagerTest,
             kActionNewIsolatedWindow);
 }
 
+TEST_F(ActionAppMenuManagerTest, BlockActionsIncognitoNewTabTextOverride) {
+  Profile* otr_profile =
+      profile_->GetPrimaryOTRProfile(/*create_if_needed=*/true);
+  ASSERT_TRUE(otr_profile->IsIncognitoProfile());
+  ON_CALL(mock_window_interface_, GetProfile())
+      .WillByDefault(testing::Return(otr_profile));
+
+  ActionAppMenuManager menu_manager(&mock_window_interface_);
+  menu_manager.CreateMenuHierarchy();
+
+  actions::ActionItem* root = menu_manager.GetAppMenuRoot();
+  ASSERT_NE(root, nullptr);
+
+  actions::ActionItem* block_section =
+      root->GetChildren().children()[1]->GetActionItem();
+  ASSERT_NE(block_section, nullptr);
+  ASSERT_FALSE(block_section->GetChildren().children().empty());
+
+  actions::BaseAction* new_tab_action =
+      block_section->GetChildren().children()[0].get();
+  ASSERT_NE(new_tab_action, nullptr);
+  EXPECT_EQ(new_tab_action->GetActionItem()->GetActionId(), kActionNewTab);
+
+  std::u16string* text_override =
+      new_tab_action->GetProperty(AppMenuActionItem::kTextOverrideKey);
+  ASSERT_NE(text_override, nullptr);
+  EXPECT_EQ(*text_override, u"New Incognito tab");
+}
+
+TEST_F(ActionAppMenuManagerTest,
+       BlockActionsEnterpriseIsolatedModeNewTabTextOverride) {
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitAndEnableFeature(
+      enterprise_isolated_mode::kEnableEnterpriseIsolatedMode);
+  profile_->GetPrefs()->SetInteger(
+      enterprise_isolated_mode::kEnterpriseIsolatedModeSettings,
+      static_cast<int>(
+          enterprise_isolated_mode::IsolatedModeSetting::kEnabled));
+
+  Profile* isolated_profile =
+      profile_->GetPrimaryOTRProfile(/*create_if_needed=*/true);
+  ASSERT_TRUE(isolated_profile->IsEnterpriseIsolatedModeProfile());
+  ON_CALL(mock_window_interface_, GetProfile())
+      .WillByDefault(testing::Return(isolated_profile));
+
+  ActionAppMenuManager menu_manager(&mock_window_interface_);
+  menu_manager.CreateMenuHierarchy();
+
+  actions::ActionItem* root = menu_manager.GetAppMenuRoot();
+  ASSERT_NE(root, nullptr);
+
+  actions::ActionItem* block_section =
+      root->GetChildren().children()[1]->GetActionItem();
+  ASSERT_NE(block_section, nullptr);
+  ASSERT_FALSE(block_section->GetChildren().children().empty());
+
+  actions::BaseAction* new_tab_action =
+      block_section->GetChildren().children()[0].get();
+  ASSERT_NE(new_tab_action, nullptr);
+  EXPECT_EQ(new_tab_action->GetActionItem()->GetActionId(), kActionNewTab);
+
+  std::u16string* text_override =
+      new_tab_action->GetProperty(AppMenuActionItem::kTextOverrideKey);
+  ASSERT_NE(text_override, nullptr);
+  EXPECT_EQ(*text_override, u"New Isolated tab");
+}
+
 TEST_F(ActionAppMenuManagerTest, BookmarkBarSubmenuCheckItems) {
   base::test::ScopedFeatureList feature_list;
   feature_list.InitAndEnableFeature(
@@ -405,34 +494,11 @@ TEST_F(ActionAppMenuManagerTest, NotificationHeaderNoNotification) {
   actions::ActionItem* root = menu_manager.GetAppMenuRoot();
   ASSERT_NE(root, nullptr);
 
-  // The notification header actions are present in the action tree, but are not
-  // visible.
   ASSERT_FALSE(root->GetChildren().children().empty());
   actions::ActionItem* notification_section =
       root->GetChildren().children()[0]->GetActionItem();
   ASSERT_NE(notification_section, nullptr);
-  ASSERT_FALSE(notification_section->GetChildren().children().empty());
-  EXPECT_EQ(notification_section->GetChildren()
-                .children()[0]
-                ->GetActionItem()
-                ->GetActionId(),
-            kActionUpgradeDialog);
-  EXPECT_FALSE(notification_section->GetChildren()
-                   .children()[0]
-                   ->GetActionItem()
-                   ->GetVisible());
-#if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_CHROMEOS)
-  ASSERT_GE(notification_section->GetChildren().children().size(), 2u);
-  EXPECT_EQ(notification_section->GetChildren()
-                .children()[1]
-                ->GetActionItem()
-                ->GetActionId(),
-            kActionSetBrowserAsDefault);
-  EXPECT_FALSE(notification_section->GetChildren()
-                   .children()[1]
-                   ->GetActionItem()
-                   ->GetVisible());
-#endif
+  EXPECT_TRUE(notification_section->GetChildren().children().empty());
 }
 
 #if !BUILDFLAG(IS_CHROMEOS)
@@ -466,7 +532,7 @@ TEST_F(ActionAppMenuManagerTest, NotificationHeaderUpgradeNotification) {
       ui::kColorAppMenuUpgradeRowBackground);
 
   const auto& section_children = notification_section->GetChildren().children();
-  ASSERT_GE(section_children.size(), 1u);
+  ASSERT_EQ(section_children.size(), 1u);
   EXPECT_EQ(section_children[0]->GetActionItem()->GetActionId(),
             kActionUpgradeDialog);
   EXPECT_TRUE(section_children[0]->GetActionItem()->GetVisible());
@@ -478,6 +544,97 @@ TEST_F(ActionAppMenuManagerTest, NotificationHeaderUpgradeNotification) {
             ui::kColorAppMenuUpgradeRowBackground);
 }
 #endif
+
+TEST_F(ActionAppMenuManagerTest, NotificationHeaderSafetyHubNotification) {
+  SafetyHubMenuNotificationServiceFactory::GetInstance()->SetTestingFactory(
+      profile_.get(), base::BindRepeating([](content::BrowserContext* context)
+                                              -> std::unique_ptr<KeyedService> {
+        Profile* profile = Profile::FromBrowserContext(context);
+        auto service = std::make_unique<SafetyHubMenuNotificationService>(
+            profile->GetPrefs(), nullptr, nullptr,
+#if !BUILDFLAG(IS_ANDROID)
+            nullptr,
+#endif
+            profile);
+        auto getter = base::BindRepeating(
+            []() -> std::optional<std::unique_ptr<SafetyHubResult>> {
+              return std::make_unique<SafetyHubSafeBrowsingResult>(
+                  SafeBrowsingState::kDisabledByUser);
+            });
+        service->UpdateResultGetterForTesting(
+            safety_hub::SafetyHubModuleType::UNUSED_SITE_PERMISSIONS, getter);
+        return service;
+      }));
+
+  ActionAppMenuManager menu_manager(&mock_window_interface_);
+  menu_manager.CreateMenuHierarchy();
+
+  actions::ActionItem* root = menu_manager.GetAppMenuRoot();
+  ASSERT_NE(root, nullptr);
+
+  const auto& children = root->GetChildren().children();
+  ASSERT_GE(children.size(), 2u);
+
+  actions::ActionItem* notification_section = children[0]->GetActionItem();
+  ASSERT_NE(notification_section, nullptr);
+  const auto& section_children = notification_section->GetChildren().children();
+  ASSERT_EQ(section_children.size(), 1u);
+
+  EXPECT_EQ(section_children[0]->GetActionItem()->GetActionId(),
+            kActionOpenSafetyHub);
+  EXPECT_TRUE(section_children[0]->GetActionItem()->GetVisible());
+  ASSERT_NE(
+      section_children[0]->GetProperty(AppMenuActionItem::kTextOverrideKey),
+      nullptr);
+  EXPECT_EQ(
+      *section_children[0]->GetProperty(AppMenuActionItem::kTextOverrideKey),
+      l10n_util::GetStringUTF16(
+          IDS_SETTINGS_SAFETY_HUB_SAFE_BROWSING_MENU_NOTIFICATION));
+  EXPECT_EQ(section_children[0]->GetActionItem()->GetProperty(
+                AppMenuActionItem::kDisplayTypeKey),
+            AppMenuActionItem::DisplayType::kNotification);
+  EXPECT_EQ(section_children[0]->GetActionItem()->GetProperty(
+                AppMenuActionItem::kContainerColorKey),
+            ui::kColorAppMenuUpgradeRowBackground);
+}
+
+TEST_F(ActionAppMenuManagerTest, NotificationHeaderGlobalError) {
+  actions::ActionItem* global_error_action =
+      actions::ActionManager::Get().FindAction(kActionGlobalError);
+  ASSERT_NE(global_error_action, nullptr);
+  global_error_action->SetVisible(true);
+
+  ActionAppMenuManager menu_manager(&mock_window_interface_);
+  menu_manager.CreateMenuHierarchy();
+
+  actions::ActionItem* root = menu_manager.GetAppMenuRoot();
+  ASSERT_NE(root, nullptr);
+
+  const auto& children = root->GetChildren().children();
+  ASSERT_GE(children.size(), 2u);
+
+  actions::ActionItem* notification_section = children[0]->GetActionItem();
+  ASSERT_NE(notification_section, nullptr);
+  EXPECT_EQ(
+      notification_section->GetProperty(AppMenuActionItem::kDisplayTypeKey),
+      AppMenuActionItem::DisplayType::kSection);
+  EXPECT_EQ(
+      notification_section->GetProperty(AppMenuActionItem::kContainerColorKey),
+      ui::kColorAppMenuUpgradeRowBackground);
+
+  const auto& section_children = notification_section->GetChildren().children();
+  ASSERT_EQ(section_children.size(), 1u);
+
+  EXPECT_EQ(section_children[0]->GetActionItem()->GetActionId(),
+            kActionGlobalError);
+  EXPECT_TRUE(section_children[0]->GetActionItem()->GetVisible());
+  EXPECT_EQ(section_children[0]->GetActionItem()->GetProperty(
+                AppMenuActionItem::kDisplayTypeKey),
+            AppMenuActionItem::DisplayType::kNotification);
+  EXPECT_EQ(section_children[0]->GetActionItem()->GetProperty(
+                AppMenuActionItem::kContainerColorKey),
+            ui::kColorAppMenuUpgradeRowBackground);
+}
 
 TEST_F(ActionAppMenuManagerTest, ZoomSubmenuHasExpandedHeightProperty) {
   ActionAppMenuManager menu_manager(&mock_window_interface_);
@@ -518,20 +675,53 @@ TEST_F(ActionAppMenuManagerTest, NotificationHeaderDefaultBrowserPrompt) {
       ui::kColorAppMenuUpgradeRowBackground);
 
   const auto& section_children = notification_section->GetChildren().children();
-  ASSERT_GE(section_children.size(), 2u);
+  ASSERT_EQ(section_children.size(), 1u);
 
-  // The second item in the notification section should be the default browser
-  // action and visible.
-  EXPECT_EQ(section_children[1]->GetActionItem()->GetActionId(),
+  EXPECT_EQ(section_children[0]->GetActionItem()->GetActionId(),
             kActionSetBrowserAsDefault);
-  EXPECT_TRUE(section_children[1]->GetActionItem()->GetVisible());
-  EXPECT_EQ(section_children[1]->GetActionItem()->GetProperty(
+  EXPECT_TRUE(section_children[0]->GetActionItem()->GetVisible());
+  EXPECT_EQ(section_children[0]->GetActionItem()->GetProperty(
                 AppMenuActionItem::kDisplayTypeKey),
             AppMenuActionItem::DisplayType::kNotification);
-  EXPECT_EQ(section_children[1]->GetActionItem()->GetProperty(
+  EXPECT_EQ(section_children[0]->GetActionItem()->GetProperty(
                 AppMenuActionItem::kContainerColorKey),
             ui::kColorAppMenuUpgradeRowBackground);
 }
 #endif
+
+TEST_F(ActionAppMenuManagerTest, VerticalTabsNewBadgeProperty) {
+  tabs::test::MockVerticalTabStripStateController vertical_tabs_controller(
+      mock_window_interface_);
+
+  EXPECT_CALL(vertical_tabs_controller, ShouldDisplayVerticalTabs())
+      .WillOnce(testing::Return(false));
+
+  ActionAppMenuManager menu_manager(&mock_window_interface_);
+  menu_manager.CreateMenuHierarchy();
+
+  actions::ActionItem* root = menu_manager.GetAppMenuRoot();
+  ASSERT_NE(root, nullptr);
+
+  actions::ActionItem* toggle_vertical_tabs =
+      actions::ActionManager::Get().FindAction(kActionToggleVerticalTabs, root);
+  ASSERT_NE(toggle_vertical_tabs, nullptr);
+  EXPECT_EQ(
+      toggle_vertical_tabs->GetProperty(AppMenuActionItem::kNewBadgeFeatureKey),
+      &tabs::kVerticalTabsNewBadge);
+
+  // When vertical tabs are already displayed, the new badge feature should not
+  // be set.
+  root->ResetActionList();
+  EXPECT_CALL(vertical_tabs_controller, ShouldDisplayVerticalTabs())
+      .WillOnce(testing::Return(true));
+  menu_manager.CreateMenuHierarchy();
+
+  toggle_vertical_tabs =
+      actions::ActionManager::Get().FindAction(kActionToggleVerticalTabs, root);
+  ASSERT_NE(toggle_vertical_tabs, nullptr);
+  EXPECT_EQ(
+      toggle_vertical_tabs->GetProperty(AppMenuActionItem::kNewBadgeFeatureKey),
+      nullptr);
+}
 
 }  // namespace

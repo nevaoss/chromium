@@ -6,9 +6,11 @@
 
 #include <algorithm>
 #include <utility>
+#include <vector>
 
 #include "base/auto_reset.h"
 #include "base/feature_list.h"
+#include "base/functional/callback_helpers.h"
 #include "base/memory/ptr_util.h"
 #include "base/task/single_thread_task_runner.h"
 #include "base/time/time.h"
@@ -50,13 +52,13 @@
 #include "components/search_engines/ai_mode_button_service.h"
 #include "components/search_engines/search_engines_switches.h"
 #include "content/public/browser/file_select_listener.h"
-#include "content/public/browser/render_widget_host.h"
 #include "content/public/browser/render_widget_host_view.h"
 #include "content/public/browser/web_contents.h"
 #include "extensions/buildflags/buildflags.h"
 #include "third_party/blink/public/common/context_menu_data/edit_flags.h"
 #include "third_party/metrics_proto/omnibox_event.pb.h"
 #include "third_party/skia/include/core/SkRect.h"
+#include "third_party/skia/include/core/SkRegion.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/models/dialog_model.h"
 #include "ui/base/page_transition_types.h"
@@ -68,6 +70,7 @@
 #include "ui/events/keycodes/keyboard_codes.h"
 #include "ui/gfx/geometry/rect.h"
 #include "ui/gfx/geometry/size.h"
+#include "ui/gfx/geometry/skia_conversions.h"
 #include "ui/strings/grit/ui_strings.h"
 #include "ui/views/bubble/bubble_border.h"
 #include "ui/views/bubble/bubble_dialog_model_host.h"
@@ -174,26 +177,19 @@ class OmniboxEverywhereFileSelectListener : public content::FileSelectListener {
 
 SkRegion ComputeDraggableRegion(
     const std::vector<blink::mojom::DraggableRegionPtr>& regions) {
+  // Non-draggable rects take precedence regardless of DOM order. Build each
+  // set with SkRegion::setRects(); one SkRegion::op() per rect is quadratic.
+  std::vector<SkIRect> draggable_rects;
+  std::vector<SkIRect> non_draggable_rects;
+  for (const blink::mojom::DraggableRegionPtr& region : regions) {
+    (region->draggable ? draggable_rects : non_draggable_rects)
+        .push_back(gfx::RectToSkIRect(region->bounds));
+  }
   SkRegion draggable_region;
-  // First, union all draggable background areas.
-  for (const blink::mojom::DraggableRegionPtr& region : regions) {
-    if (region->draggable) {
-      draggable_region.op(
-          SkIRect::MakeXYWH(region->bounds.x(), region->bounds.y(),
-                            region->bounds.width(), region->bounds.height()),
-          SkRegion::kUnion_Op);
-    }
-  }
-  // Next, subtract non-draggable regions so they take precedence over DOM
-  // order.
-  for (const blink::mojom::DraggableRegionPtr& region : regions) {
-    if (!region->draggable) {
-      draggable_region.op(
-          SkIRect::MakeXYWH(region->bounds.x(), region->bounds.y(),
-                            region->bounds.width(), region->bounds.height()),
-          SkRegion::kDifference_Op);
-    }
-  }
+  draggable_region.setRects(draggable_rects);
+  SkRegion non_draggable_region;
+  non_draggable_region.setRects(non_draggable_rects);
+  draggable_region.op(non_draggable_region, SkRegion::kDifference_Op);
   return draggable_region;
 }
 
@@ -577,6 +573,7 @@ void OmniboxEverywhereUIManager::ActivateAndFocus() {
   widget_->MoveToActiveFullscreenSpace();
 #endif
   widget_->Show();
+  capture_release_timer_.Stop();
   widget_->Activate();
 
   if (widget_->GetContentsView()) {
@@ -586,12 +583,7 @@ void OmniboxEverywhereUIManager::ActivateAndFocus() {
     web_contents()->Focus();
   }
 
-  if (profile_) {
-    if (auto* service =
-            OmniboxEverywhereServiceFactory::GetForProfile(profile_)) {
-      service->MaybeShowLensPromo();
-    }
-  }
+  MaybeShowLensPromo();
 }
 
 void OmniboxEverywhereUIManager::OnEphemeralModelPrefChanged() {
@@ -633,6 +625,26 @@ void OmniboxEverywhereUIManager::MaybeRecordFreImpression() {
   omnibox_everywhere::prefs::IncrementFreImpression(profile_, local_state);
 }
 
+void OmniboxEverywhereUIManager::MaybeShowLensPromo() {
+  if (!profile_) {
+    return;
+  }
+  if (auto* service =
+          OmniboxEverywhereServiceFactory::GetForProfile(profile_)) {
+    service->MaybeShowLensPromo();
+  }
+}
+
+void OmniboxEverywhereUIManager::EndLensPromo() {
+  if (!profile_) {
+    return;
+  }
+  if (auto* service =
+          OmniboxEverywhereServiceFactory::GetForProfile(profile_)) {
+    service->EndLensPromo();
+  }
+}
+
 void OmniboxEverywhereUIManager::Close() {
   if (is_closing_) {
     return;
@@ -659,6 +671,20 @@ void OmniboxEverywhereUIManager::Close() {
       omnibox_everywhere::DisassociatePopupOnMac(widget_->GetNativeWindow());
     }
 #endif
+    if (widget_->IsVisible() && web_contents()) {
+      // Temporarily keep the WebContents painting (`kHiddenButPainting`) across
+      // `widget_->Hide()` so Blink finishes collapsing the dropdown and
+      // running AutoResize offscreen before entering `kHidden`.
+      if (capture_release_timer_.IsRunning()) {
+        capture_release_timer_.Reset();
+      } else {
+        capture_release_timer_.Start(
+            FROM_HERE, kPostHideCaptureDuration,
+            base::DoNothingWithBoundArgs(web_contents()->IncrementCapturerCount(
+                gfx::Size(), /*stay_hidden=*/true, /*stay_awake=*/false,
+                /*is_activity=*/false)));
+      }
+    }
     widget_->Hide();
   }
   ReleaseKeepAlives();
@@ -671,6 +697,7 @@ void OmniboxEverywhereUIManager::Demote() {
     return;
   }
   is_demoted_ = true;
+  EndLensPromo();
   widget_->SetZOrderLevel(ui::ZOrderLevel::kNormal);
   // Deactivate only if the widget is currently active to avoid deactivating
   // other windows in the application.
@@ -698,11 +725,15 @@ void OmniboxEverywhereUIManager::Minimize() {
     return;
   }
   CancelTransientUiState();
+  if (!std::exchange(is_demoted_, true)) {
+    EndLensPromo();
+  }
   widget_->Minimize();
 }
 #endif  // BUILDFLAG(IS_WIN)
 
 void OmniboxEverywhereUIManager::CleanUpWidget() {
+  capture_release_timer_.Stop();
   deactivation_task_.Cancel();
   hotkey_dropdown_deactivation_task_.Cancel();
   if (disclosure_dialog_widget_) {
@@ -809,9 +840,12 @@ void OmniboxEverywhereUIManager::OnWidgetActivationChanged(
   if (active) {
     deactivation_task_.Cancel();
     hotkey_dropdown_deactivation_task_.Cancel();
-    is_demoted_ = false;
+    const bool was_demoted = std::exchange(is_demoted_, false);
     if (!HasOpenModalDialog() && !is_context_menu_open_ && web_contents()) {
       web_contents()->Focus();
+    }
+    if (was_demoted) {
+      MaybeShowLensPromo();
     }
     return;
   }
@@ -835,10 +869,15 @@ void OmniboxEverywhereUIManager::OnWidgetShowStateChanged(
     return;
   }
   if (!widget_->IsMinimized()) {
-    is_demoted_ = false;
+    if (std::exchange(is_demoted_, false)) {
+      MaybeShowLensPromo();
+    }
     return;
   }
   CancelTransientUiState();
+  if (!std::exchange(is_demoted_, true)) {
+    EndLensPromo();
+  }
   if (prefs::IsEphemeralModelEnabled() && !HasOpenModalDialog()) {
     Close();
   }

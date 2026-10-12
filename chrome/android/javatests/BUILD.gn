@@ -135,6 +135,7 @@ android_library("chrome_test_java_helper") {
     "//chrome/browser/notifications:java",
     "//chrome/browser/notifications:test_support_java",
     "//chrome/browser/omaha/android:java",
+    "//chrome/browser/omaha/android:ui_java",
     "//chrome/browser/optimization_guide/android:java",
     "//chrome/browser/page_load_metrics:java",
     "//chrome/browser/paint_preview/android:java",
@@ -491,6 +492,7 @@ android_library("chrome_test_java_org.chromium.chrome.browser") {
     "src/org/chromium/chrome/browser/ExampleUiCaptureTest.java",
     "src/org/chromium/chrome/browser/FeaturesAnnotationsTest.java",
     "src/org/chromium/chrome/browser/FocusedEditableTextFieldZoomTest.java",
+    "src/org/chromium/chrome/browser/GamepadTabNavigationTest.java",
     "src/org/chromium/chrome/browser/HTTPSTabsOpenedFromExternalAppTest.java",
     "src/org/chromium/chrome/browser/ImageFetcherIntegrationTest.java",
     "src/org/chromium/chrome/browser/InputHintCheckerTest.java",
@@ -507,6 +509,7 @@ android_library("chrome_test_java_org.chromium.chrome.browser") {
     "src/org/chromium/chrome/browser/PopupPTTest.java",
     "src/org/chromium/chrome/browser/SafeBrowsingTest.java",
     "src/org/chromium/chrome/browser/SelectFileDialogTest.java",
+    "src/org/chromium/chrome/browser/ServiceTabLauncherTest.java",
     "src/org/chromium/chrome/browser/ShareIntentTest.java",
     "src/org/chromium/chrome/browser/SmartClipProviderTest.java",
     "src/org/chromium/chrome/browser/TabCountLabelTest.java",
@@ -528,6 +531,7 @@ android_library("chrome_test_java_org.chromium.chrome.browser") {
     "//chrome/browser/actor/android:java",
     "//chrome/browser/settings:settings_in_tab_java",
     "//chrome/browser/ui/android/bars_common:java",
+    "//device/gamepad:java",
   ]
 }
 
@@ -576,12 +580,14 @@ android_library("chrome_test_java_org.chromium.chrome.browser.appearance") {
   sources = [
     "src/org/chromium/chrome/browser/appearance/settings/AppearanceSettingsFragmentTest.java",
     "src/org/chromium/chrome/browser/appearance/settings/BookmarkBarSettingsFragmentTest.java",
+    "src/org/chromium/chrome/browser/appearance/settings/TabPositionSettingsFragmentTest.java",
   ]
 
   deps = [
     ":chrome_test_java_helper",
     "//chrome/browser/ui/android/toolbar:adaptive_features_java",
     "//chrome/browser/ui/android/toolbar:optional_button_java",
+    "//chrome/browser/ui/vertical_tabs:java",
   ]
 }
 
@@ -1069,6 +1075,7 @@ android_library("chrome_test_java_org.chromium.chrome.browser.omnibox") {
     ":chrome_test_java_helper",
     "//chrome/browser/ui/android/toolbar:adaptive_features_java",
     "//chrome/browser/ui/android/toolbar:optional_button_java",
+    "//chrome/browser/ui/vertical_tabs:java",
   ]
 }
 
@@ -1842,6 +1849,8 @@ android_library("chrome_test_java_various") {
     "src/org/chromium/chrome/browser/webid/DigitalCredentialProviderTest.java",
     "src/org/chromium/chrome/browser/webshare/WebShareTest.java",
     "src/org/chromium/chrome/browser/widget/bottomsheet/BottomSheetControllerTest.java",
+    "src/org/chromium/chrome/browser/widget/bottomsheet/BottomSheetLargeFormFactorTest.java",
+    "src/org/chromium/chrome/browser/widget/bottomsheet/BottomSheetRenderTest.java",
     "src/org/chromium/chrome/browser/widget/bottomsheet/BottomSheetTest.java",
     "src/org/chromium/chrome/test/crash/IntentionalCrashTest.java",
     "src/org/chromium/chrome/test/memory_leaks/ChromeInstrumentationLeaks.java",
@@ -1863,12 +1872,14 @@ android_library("chrome_test_java_various") {
     "//chrome/browser/glic/android:jni_headers_java",
     "//chrome/browser/gsa:java",
     "//chrome/browser/ntp_customization:java",
+    "//chrome/browser/omaha/android:ui_java",
     "//chrome/browser/personal_context/first_run:java",
     "//chrome/browser/ui/android/bottombar:java",
     "//chrome/browser/ui/android/logo:utils_java",
     "//chrome/browser/ui/android/toolbar:adaptive_features_java",
     "//chrome/browser/ui/android/toolbar:optional_button_java",
     "//chrome/browser/ui/side_panel/android:dev_java",
+    "//components/browser_ui/contacts_picker/android:java",
     "//components/browser_ui/http_auth/android:java",
     "//components/variations:variations_java",
     "//third_party/androidx:androidx_test_ext_junit_java",

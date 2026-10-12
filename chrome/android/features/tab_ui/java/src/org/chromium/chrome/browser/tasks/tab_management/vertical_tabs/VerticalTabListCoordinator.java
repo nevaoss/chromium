@@ -385,7 +385,9 @@ public class VerticalTabListCoordinator {
         } else {
             mTabUnderlineManager = null;
         }
-        mCollapseController = new VerticalTabRailCollapseController(this::setRailCollapseState);
+        mCollapseController =
+                new VerticalTabRailCollapseController(
+                        this::setRailCollapseState, this::setCollapseButtonEnabled);
         mModelList = new TabListModel();
         SimpleRecyclerViewAdapter adapter =
                 new SimpleRecyclerViewAdapter(mModelList) {
@@ -406,7 +408,7 @@ public class VerticalTabListCoordinator {
         adapter.registerType(
                 UiType.TAB,
                 parent ->
-                        (ViewGroup)
+                        (VerticalTabItemLayout)
                                 LayoutInflater.from(activity)
                                         .inflate(
                                                 R.layout.vertical_tab_item,
@@ -469,6 +471,8 @@ public class VerticalTabListCoordinator {
                     public void onScrollStateChanged(RecyclerView recyclerView, int newState) {
                         if (newState != RecyclerView.SCROLL_STATE_IDLE) {
                             mTabHoverController.hideHoverCard();
+                        } else {
+                            mTabHoverController.resetHoverState();
                         }
                         if (newState == RecyclerView.SCROLL_STATE_DRAGGING) {
                             dismissActiveContextMenus();
@@ -617,10 +621,10 @@ public class VerticalTabListCoordinator {
                                 mCollapseController::expandOrCollapseOnHover)
                         .with(
                                 VerticalTabListProperties.IS_COLLAPSE_BUTTON_ENABLED,
-                                mCollapseController.isCollapseButtonEnabled())
+                                !mCollapseController.isForcedCollapsed())
                         .with(
                                 VerticalTabListProperties.COLLAPSE_STATE,
-                                mCollapseController.getRailCollapseStateByUser())
+                                mCollapseController.getEffectiveRailCollapseState())
                         .build();
         PropertyModelChangeProcessor.create(
                 mContainerModel, mContainerView, VerticalTabListViewBinder::bind);
@@ -830,7 +834,7 @@ public class VerticalTabListCoordinator {
                         if (mIsActive && type != TabSelectionType.FROM_DRAG) {
                             scrollActiveTabIntoView();
                         }
-                        mTabHoverController.hideHoverCard();
+                        mTabHoverController.resetHoverState();
                     }
 
                     @Override
@@ -867,23 +871,23 @@ public class VerticalTabListCoordinator {
 
                     @Override
                     public void willCloseTab(Tab tab, boolean didCloseAlone) {
-                        mTabHoverController.hideHoverCard();
+                        mTabHoverController.resetHoverState();
                     }
 
                     @Override
                     public void willCloseTabs(
                             List<Tab> tabs, boolean isAllTabs, boolean allowUndo) {
-                        mTabHoverController.hideHoverCard();
+                        mTabHoverController.resetHoverState();
                     }
 
                     @Override
                     public void tabClosureCommitted(Tab tab) {
-                        mTabHoverController.hideHoverCard();
+                        mTabHoverController.resetHoverState();
                     }
 
                     @Override
                     public void willAddTab(Tab tab, @TabLaunchType int type) {
-                        mTabHoverController.hideHoverCard();
+                        mTabHoverController.resetHoverState();
                     }
                 };
 
@@ -1027,31 +1031,35 @@ public class VerticalTabListCoordinator {
     }
 
     /**
-     * Sets the collapsed state of the vertical tab rail.
+     * Applies the collapsed state of the vertical tab rail.
      *
      * <p>This updates the model properties and layouts for the rail container and all tab items to
      * transition between the expanded (icons + text) and collapsed (icons only) states.
+     *
+     * <p>Only invoked by {@link VerticalTabRailCollapseController}, which owns this state. Do not
+     * call directly; feed the controller inputs instead.
      *
      * @param railCollapseState The {@link RailCollapseState} to apply to the rail.
      */
     void setRailCollapseState(@RailCollapseState int railCollapseState) {
         if (mTabHoverController != null) {
-            mTabHoverController.hideHoverCard();
+            mTabHoverController.resetHoverState();
         }
         mContainerModel.set(VerticalTabListProperties.COLLAPSE_STATE, railCollapseState);
         updatePinnedLayoutSpanCount();
         updatePinnedTabsSeparatorVisibility();
-        mCollapseController.setRailCollapseStateSupplierValue(railCollapseState);
     }
 
     /**
-     * Sets whether the rail collapse button is enabled.
+     * Applies the collapse button enabled state to the model.
+     *
+     * <p>Only invoked by {@link VerticalTabRailCollapseController}, which owns this state. Do not
+     * call directly; feed the controller inputs instead.
      *
      * @param enabled True if the collapse button should be enabled, false otherwise.
      */
     void setCollapseButtonEnabled(boolean enabled) {
         mContainerModel.set(VerticalTabListProperties.IS_COLLAPSE_BUTTON_ENABLED, enabled);
-        mCollapseController.setCollapseButtonEnabled(enabled);
     }
 
     /**
@@ -1133,7 +1141,7 @@ public class VerticalTabListCoordinator {
         if (mIsActive) {
             scrollActiveTabIntoView();
         } else {
-            mTabHoverController.hideHoverCard();
+            mTabHoverController.resetHoverState();
         }
     }
 
@@ -1610,7 +1618,7 @@ public class VerticalTabListCoordinator {
 
             @Override
             public boolean handleDragStart(float xPx, float yPx) {
-                mTabHoverController.hideHoverCard();
+                mTabHoverController.resetHoverState();
                 return true;
             }
 
@@ -1893,7 +1901,7 @@ public class VerticalTabListCoordinator {
 
             @Override
             public boolean handleDragStart(float xPx, float yPx) {
-                mTabHoverController.hideHoverCard();
+                mTabHoverController.resetHoverState();
                 itemTouchHelper.onExternalDragStart(xPx, yPx, /* hideItemWhileDragging= */ true);
                 deselectDraggedTabIfNeeded();
 
@@ -2204,7 +2212,8 @@ public class VerticalTabListCoordinator {
                                             groupId,
                                             toPrevious),
                             TabClosingSource.VERTICAL_TAB_STRIP,
-                            TabStripLayoutType.VERTICAL);
+                            TabStripLayoutType.VERTICAL,
+                            mTabHoverController::resetHoverState);
         }
         mTabHoverController.hideHoverCard();
         mTabGroupContextMenuCoordinator.showMenu(rectProvider, tabGroupId);
@@ -2262,7 +2271,8 @@ public class VerticalTabListCoordinator {
                             TabClosingSource.VERTICAL_TAB_STRIP,
                             mCanActivateTabLayoutToggleMenuSupplier,
                             TabStripLayoutType.VERTICAL,
-                            /* tabGroupUiActionHandler= */ null);
+                            mDataSharingTabManager.getTabGroupUiActionHandler(),
+                            mTabHoverController::resetHoverState);
         }
         mTabHoverController.hideHoverCard();
         mTabContextMenuCoordinator.showMenu(rectProvider, anchorInfo);
@@ -2279,7 +2289,8 @@ public class VerticalTabListCoordinator {
                             mSnackbarManager,
                             this::handleNewTabButtonClick,
                             mCanActivateTabLayoutToggleMenuSupplier,
-                            TabStripLayoutType.VERTICAL);
+                            TabStripLayoutType.VERTICAL,
+                            mTabHoverController::resetHoverState);
         }
 
         boolean isIncognito = mTabModelSelector.getCurrentModel().isIncognitoBranded();

@@ -9,7 +9,9 @@
 #include "base/memory/raw_ptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/scoped_observation.h"
+#include "base/task/cancelable_task_tracker.h"
 #include "base/uuid.h"
+#include "build/build_config.h"
 #include "chrome/browser/context_hub/context_hub_service.h"
 #include "chrome/browser/ui/webui/context_hub/context_hub.mojom.h"
 #include "mojo/public/cpp/bindings/pending_receiver.h"
@@ -46,6 +48,18 @@ class ContextHubPageHandler : public browser::context_hub::mojom::PageHandler,
         const base::Uuid& saved_guid) = 0;
     virtual bool OpenUrlsInTabGroup(const std::string& group_label,
                                     base::span<const GURL> urls);
+    virtual void OpenTopic(
+        browser::context_hub::mojom::TopicIdOrUrlPtr topic_id_or_url);
+
+#if !BUILDFLAG(IS_ANDROID)
+    // Resolves `topic_id_or_url` into the Context Hub topic URL it refers to,
+    // either directly, or by building a topic details URL from the topic id.
+    // Returns an empty GURL if the argument is missing, or does not resolve to
+    // a valid Context Hub topic URL, reporting a bad message if the caller is
+    // handling an incoming mojo message.
+    static GURL ResolveTopicUrl(
+        const browser::context_hub::mojom::TopicIdOrUrlPtr& topic_id_or_url);
+#endif
   };
 
   ContextHubPageHandler(
@@ -112,6 +126,7 @@ class ContextHubPageHandler : public browser::context_hub::mojom::PageHandler,
       ClearTabGroupChatHistoryCallback callback) override;
   void AskGeminiWithContext(const std::string& user_command,
                             const std::vector<int64_t>& memory_bank_entry_ids,
+                            bool save_to_history,
                             AskGeminiWithContextCallback callback) override;
   void GetMemoryBankChatHistory(
       GetMemoryBankChatHistoryCallback callback) override;
@@ -131,6 +146,10 @@ class ContextHubPageHandler : public browser::context_hub::mojom::PageHandler,
   void OpenUrlsInTabGroup(const std::string& group_label,
                           const std::vector<GURL>& urls,
                           OpenUrlsInTabGroupCallback callback) override;
+  void GetTopics(GetTopicsCallback callback) override;
+  void OpenTopic(
+      browser::context_hub::mojom::TopicIdOrUrlPtr topic_id_or_url) override;
+  void OpenGlicPanel(const std::vector<std::string>& prompts) override;
 
  private:
   mojo::Remote<browser::context_hub::mojom::Page> page_;
@@ -141,6 +160,9 @@ class ContextHubPageHandler : public browser::context_hub::mojom::PageHandler,
   std::unique_ptr<TabProvider> tab_provider_;
   raw_ptr<Profile> profile_;
   raw_ptr<content::WebContents> web_contents_;
+  // Tracks in-flight HistoryService::GetAllJourneys queries. Destroying it
+  // cancels their replies, so a query outliving this handler is dropped.
+  base::CancelableTaskTracker topics_task_tracker_;
   base::WeakPtrFactory<ContextHubPageHandler> weak_factory_{this};
 };
 

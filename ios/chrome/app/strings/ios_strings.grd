@@ -398,11 +398,26 @@
       <message name="IDS_IOS_AIM_HISTORY" desc="Title of the AI mode history conversations.">
         AI Mode History
       </message>
+      <message name="IDS_IOS_AIM_HISTORY_SIGNED_OUT_SUBTITLE" desc="Message displayed below IDS_IOS_AIM_HISTORY_SIGNED_OUT_TITLE in the AI mode history, explaining that the user needs to sign in to their account to see their past conversations.">
+        To access history and more, sign in to your account
+      </message>
+      <message name="IDS_IOS_AIM_HISTORY_SIGNED_OUT_TITLE" desc="Title displayed in the AI mode history when the user is signed out and therefore has no history to display.">
+        You're signed out
+      </message>
       <message name="IDS_IOS_AIM_SNACKBAR_UNDO_BUTTON" desc="Title of the undo button in the close snackbar in AIM assistant.">
         Undo
       </message>
       <message name="IDS_IOS_AI_HUB_ALWAYS_SHOW_POPUPS_ACCESSIBILITY_LABEL" desc="The accessibility label for the button to always show pop-ups on this site in the AI hub.">
         Always show pop-ups on this site
+      </message>
+      <message name="IDS_IOS_AI_HUB_CAMERA_PERMISSION_ALWAYS_ALLOWED_EXPLANATION" desc="Explanation text shown under the camera permission row of the AI hub when the site is always allowed to use the camera.">
+        "<ph name="SITE_DOMAIN">$1<ex>camera.com</ex></ph>" can access your camera whenever you visit this site
+      </message>
+      <message name="IDS_IOS_AI_HUB_CAMERA_PERMISSION_BLOCKED_EXPLANATION" desc="Explanation text shown under the camera permission row of the AI hub when the site is never allowed to use the camera.">
+        "<ph name="SITE_DOMAIN">$1<ex>camera.com</ex></ph>" is blocked from accessing your camera
+      </message>
+      <message name="IDS_IOS_AI_HUB_CAMERA_PERMISSION_DROPDOWN_ACCESSIBILITY_LABEL" desc="The accessibility label for the dropdown used to choose the camera permission for the current site in the AI hub.">
+        Camera access for this site
       </message>
       <message name="IDS_IOS_AI_HUB_CAMERA_PERMISSION_LABEL" desc="The button label for the Camera permission feature of the AI hub.">
         Camera
@@ -430,6 +445,15 @@
       </message>
       <message name="IDS_IOS_AI_HUB_LENS_UNAVAILABLE_SEARCH_ENGINE_LABEL" desc="The message displayed in the footer for the Lens entry point of the AI hub whenever it is unavailable because Google is not set as the default search engine.">
         Search screen is only available when Google is set as your default search engine. You can change your default search engine in <ph name="BEGIN_LINK">BEGIN_LINK</ph>Settings<ph name="END_LINK">END_LINK</ph>.
+      </message>
+      <message name="IDS_IOS_AI_HUB_MICROPHONE_PERMISSION_ALWAYS_ALLOWED_EXPLANATION" desc="Explanation text shown under the microphone permission row of the AI hub when the site is always allowed to use the microphone.">
+        "<ph name="SITE_DOMAIN">$1<ex>microphone.com</ex></ph>" can access your microphone whenever you visit this site
+      </message>
+      <message name="IDS_IOS_AI_HUB_MICROPHONE_PERMISSION_BLOCKED_EXPLANATION" desc="Explanation text shown under the microphone permission row of the AI hub when the site is never allowed to use the microphone.">
+        "<ph name="SITE_DOMAIN">$1<ex>microphone.com</ex></ph>" is blocked from accessing your microphone
+      </message>
+      <message name="IDS_IOS_AI_HUB_MICROPHONE_PERMISSION_DROPDOWN_ACCESSIBILITY_LABEL" desc="The accessibility label for the dropdown used to choose the microphone permission for the current site in the AI hub.">
+        Microphone access for this site
       </message>
       <message name="IDS_IOS_AI_HUB_MICROPHONE_PERMISSION_LABEL" desc="The button label for the Microphone permission feature of the AI hub.">
         Microphone
@@ -736,28 +760,19 @@
       <message name="IDS_IOS_AUTOFILL_AI_PRIVATE_INFERENCE_NOTICE_TITLE" desc="Title of the bottom sheet notice for Autofill AI Private Inference. [iOS only]">
         Smarter autofill, kept private
       </message>
-      <message name="IDS_IOS_AUTOFILL_AI_REMOVE_ACTION" desc="Context menu option to remove an Autofill AI suggestion from personal context. [iOS only]" translateable="false">
-        <!-- TODO(crbug.com/551864564): Make string translateable once finalized. -->
+      <message name="IDS_IOS_AUTOFILL_AI_REMOVE_ACTION" desc="Context menu option to remove an Autofill AI suggestion from personal context. [iOS only]">
         Remove
       </message>
-      <message name="IDS_IOS_AUTOFILL_AI_REMOVE_CONFIRMATION_MESSAGE" desc="Message of the confirmation alert dialog shown when the user chooses to remove an Autofill AI suggestion from personal context. [iOS only]" translateable="false">
-        <!-- TODO(crbug.com/551864564): Make string translateable once finalized. -->
-        Chrome will stop suggesting this info. Your original source won't be deleted. You can change this in settings.
+      <message name="IDS_IOS_AUTOFILL_AI_REMOVE_CONFIRMATION_MESSAGE" desc="Message of the confirmation alert dialog shown when the user chooses to remove an Autofill AI suggestion from personal context. [iOS only]">
+        Chrome will stop suggesting this info. Your original source won't be deleted.
       </message>
-      <message name="IDS_IOS_AUTOFILL_AI_REMOVE_CONFIRMATION_TITLE" desc="Title of the confirmation alert dialog shown when the user chooses to remove an Autofill AI suggestion from personal context. [iOS only]" translateable="false">
-        <!-- TODO(crbug.com/551864564): Make string translateable once finalized. -->
+      <message name="IDS_IOS_AUTOFILL_AI_REMOVE_CONFIRMATION_TITLE" desc="Title of the confirmation alert dialog shown when the user chooses to remove an Autofill AI suggestion from personal context. [iOS only]">
         Remove from Chrome?
       </message>
-      <message name="IDS_IOS_AUTOFILL_AI_REMOVE_SNACKBAR_SUBTITLE" desc="Subtitle of the snackbar shown after removing an Autofill AI suggestion. [iOS only]" translateable="false">
-        <!-- TODO(crbug.com/551864564): Make string translateable once finalized. -->
-        Your original source won't be deleted.
+      <message name="IDS_IOS_AUTOFILL_AI_REMOVE_SNACKBAR_TITLE" desc="Title of the snackbar shown after removing an Autofill AI suggestion. [iOS only]">
+        Suggestion removed from Chrome
       </message>
-      <message name="IDS_IOS_AUTOFILL_AI_REMOVE_SNACKBAR_TITLE" desc="Title of the snackbar shown after removing an Autofill AI suggestion. [iOS only]" translateable="false">
-        <!-- TODO(crbug.com/551864564): Make string translateable once finalized. -->
-        Suggestion removed
-      </message>
-      <message name="IDS_IOS_AUTOFILL_AI_REMOVE_UNDO_ACTION" desc="Button text on the snackbar to undo removing an Autofill AI suggestion. [iOS only]" translateable="false">
-        <!-- TODO(crbug.com/551864564): Make string translateable once finalized. -->
+      <message name="IDS_IOS_AUTOFILL_AI_REMOVE_UNDO_ACTION" desc="Button text on the snackbar to undo removing an Autofill AI suggestion. [iOS only]">
         Undo
       </message>
       <message name="IDS_IOS_AUTOFILL_AI_SAVED_LOCALLY_FOOTER" desc="The notice text displayed in the footer when the Autofill AI entity (ex. Passport, Vehicle info etc.) is saved locally. [iOS only]">
@@ -796,25 +811,20 @@
       <message name="IDS_IOS_AUTOFILL_AI_SAVE_VEHICLE_ENTITY_DIALOG_TITLE" desc="The title of a dialog that prompts the user to save information they just filled in on a form. For example, the user has filled in details related to their car. When they click Submit, we offer to save the data in Chrome. Depending on the form and what Chrome recognizes, there might be just one or several pieces of data saved at this moment. This is a similar moment to saving a password or credit card with Chrome.">
       Save vehicle
       </message>
-      <message name="IDS_IOS_AUTOFILL_AI_SOURCES_FALLBACK_GMAIL_MESSAGE" desc="Fallback label for a Gmail source in the Autofill AI sources bottom sheet when the email subject is unavailable. [iOS only]" translateable="false">
-        <!-- TODO(crbug.com/551864564): Make string translateable once finalized. -->
-        TEST - Gmail message <ph name="INDEX">$1<ex>1</ex></ph>
+      <message name="IDS_IOS_AUTOFILL_AI_SOURCES_FALLBACK_GMAIL_MESSAGE" desc="Fallback label for a Gmail source in the Autofill AI sources bottom sheet when the email subject is unavailable. [iOS only]">
+        Gmail message <ph name="INDEX">$1<ex>1</ex></ph>
       </message>
-      <message name="IDS_IOS_AUTOFILL_AI_SOURCES_FALLBACK_SAVED_PHOTO" desc="Fallback label for a Google Photos source in the Autofill AI sources bottom sheet when the photo title is unavailable. [iOS only]" translateable="false">
-        <!-- TODO(crbug.com/551864564): Make string translateable once finalized. -->
-        TEST - Saved photo <ph name="INDEX">$1<ex>1</ex></ph>
+      <message name="IDS_IOS_AUTOFILL_AI_SOURCES_FALLBACK_SAVED_PHOTO" desc="Fallback label for a Google Photos source in the Autofill AI sources bottom sheet when the photo title is unavailable. [iOS only]">
+        Saved photo <ph name="INDEX">$1<ex>1</ex></ph>
       </message>
-      <message name="IDS_IOS_AUTOFILL_AI_SOURCES_GMAIL_SECTION_TITLE" desc="Section title for Gmail sources in the Autofill AI sources bottom sheet. [iOS only]" translateable="false">
-        <!-- TODO(crbug.com/551864564): Make string translateable once finalized. -->
-        TEST - Gmail
+      <message name="IDS_IOS_AUTOFILL_AI_SOURCES_GMAIL_SECTION_TITLE" desc="Section title for Gmail sources in the Autofill AI sources bottom sheet. [iOS only]">
+        Gmail
       </message>
-      <message name="IDS_IOS_AUTOFILL_AI_SOURCES_PHOTOS_SECTION_TITLE" desc="Section title for Google Photos sources in the Autofill AI sources bottom sheet. [iOS only]" translateable="false">
-        <!-- TODO(crbug.com/551864564): Make string translateable once finalized. -->
-        TEST - Photos
+      <message name="IDS_IOS_AUTOFILL_AI_SOURCES_PHOTOS_SECTION_TITLE" desc="Section title for Google Photos sources in the Autofill AI sources bottom sheet. [iOS only]">
+        Photos
       </message>
-      <message name="IDS_IOS_AUTOFILL_AI_SOURCES_TITLE" desc="Title of the bottom sheet displaying the sources (such as Gmail or Google Photos) of an Autofill AI suggestion. [iOS only]" translateable="false">
-        <!-- TODO(crbug.com/551864564): Make string translateable once finalized. -->
-        TEST - Sources
+      <message name="IDS_IOS_AUTOFILL_AI_SOURCES_TITLE" desc="Title of the bottom sheet displaying the sources (such as Gmail or Google Photos) of an Autofill AI suggestion. [iOS only]">
+        Sources
       </message>
       <message name="IDS_IOS_AUTOFILL_AI_UPDATE_DRIVERS_LICENSE_ENTITY_DIALOG_TITLE" desc="The title of a dialog that prompts the user to update information associated with something they have previously saved. For example, the user previously saved information related to their driver’s license. Now, the user is filling out a new form either with additional details associated with the driver’s license or with different values than what was previously saved. The interface shows new or modified values at the top with blue dots to indicate they’re new. Existing information associated with the driver’s license that isn’t changing appears at the bottom without blue dots. Depending on the form and what Chrome recognizes, there might be just one or several pieces of data updated at this moment. This is a similar moment to updating a password or credit card with Chrome.">
       Update driver's license
@@ -840,8 +850,7 @@
       <message name="IDS_IOS_AUTOFILL_AI_VEHICLE_VIN_NAME" desc="The display name for the vehicle identification number (VIN) in Autofill AI. [iOS only]">
         VIN
       </message>
-      <message name="IDS_IOS_AUTOFILL_AI_VIEW_SOURCES" desc="Context menu option to view the source documents or origins (such as Gmail or Google Photos) of an Autofill AI suggestion. [iOS only]" translateable="false">
-        <!-- TODO(crbug.com/551864564): Make string translateable once finalized. -->
+      <message name="IDS_IOS_AUTOFILL_AI_VIEW_SOURCES" desc="Context menu option to view the source documents or origins (such as Gmail or Google Photos) of an Autofill AI suggestion. [iOS only]">
         View sources
       </message>
       <message name="IDS_IOS_AUTOFILL_AI_WALLET_CONNECTION_FAILURE" desc="Instructions for the user displayed in the error dialog if they attempt to access or autofill information but the request fails due to network connectivity issues.">
@@ -3581,7 +3590,7 @@ To continue from your computer, switch to <ph name="OTHER_EMAIL">$2<ex>john.doe@
         Create an image with Gemini
       </message>
       <message name="IDS_IOS_GEMINI_IMAGE_REMIX_LIMIT_RESET_SUBTITLE" desc="Subtitle on the image context menu item when the image generation quota is reached. [iOS only]">
-        Images will be available again when your limit resets <ph name="RESET_TIME">$1<ex>May 4 at 4:30 PM</ex></ph>
+        Limit resets <ph name="RESET_TIME">$1<ex>May 4 at 4:30 PM</ex></ph>
       </message>
       <message name="IDS_IOS_GEMINI_IMAGE_REMIX_TOOL_IPH" desc="Main text in the in-product help tooltip suggesting to users that they can upload an image to remix with Nano Banana.">
         Upload an image to remix with Nano Banana
@@ -4703,6 +4712,12 @@ To continue from your computer, switch to <ph name="OTHER_EMAIL">$2<ex>john.doe@
           =1 {1 completed task}
           other {# completed tasks}}
       </message>
+      <message name="IDS_IOS_LEVEL_UP_FEATURE_AI_SEARCH" desc="Feature Name for Level Up's AI Search task. [iOS only]">
+        Search with AI Mode
+      </message>
+      <message name="IDS_IOS_LEVEL_UP_FEATURE_AI_SEARCH_DESCRIPTION" desc="Description for Level Up's AI Search task. [iOS only]">
+        Get AI-powered responses with AI Mode in Google Search
+      </message>
       <message name="IDS_IOS_LEVEL_UP_FEATURE_DELETE_BROWSING_DATA" desc="Feature Name for Level Up's Delete browsing data task. [iOS only]">
         Delete browsing data
       </message>
@@ -4715,8 +4730,11 @@ To continue from your computer, switch to <ph name="OTHER_EMAIL">$2<ex>john.doe@
       <message name="IDS_IOS_LEVEL_UP_FEATURE_ENHANCED_SAFE_BROWSING_DESCRIPTION" desc="Description for Level Up's Enhanced Safe Browsing task. [iOS only]">
         Add an extra layer of protection against online threats
       </message>
-      <message name="IDS_IOS_LEVEL_UP_FEATURE_GOOGLE_LENS" desc="Feature name for Google Lens. [iOS only]">
-        Google Lens
+      <message name="IDS_IOS_LEVEL_UP_FEATURE_GEMINI" desc="Feature name for Level Up's Gemini task. [iOS only]">
+        Ask Gemini a question
+      </message>
+      <message name="IDS_IOS_LEVEL_UP_FEATURE_GEMINI_DESCRIPTION" desc="Description for Level Up's Gemini task. [iOS only]">
+        Get key takeaways, clarify concepts, find answers, and more
       </message>
       <message name="IDS_IOS_LEVEL_UP_FEATURE_INCOGNITO" desc="Feature name for Level Up's Incognito task. [iOS only]">
         Go Incognito
@@ -4724,8 +4742,23 @@ To continue from your computer, switch to <ph name="OTHER_EMAIL">$2<ex>john.doe@
       <message name="IDS_IOS_LEVEL_UP_FEATURE_INCOGNITO_DESCRIPTION" desc="Description for Level Up's Incognito task. [iOS only]">
         Open tabs in Incognito mode to browse the web more privately
       </message>
+      <message name="IDS_IOS_LEVEL_UP_FEATURE_LENS_CAMERA_SEARCH" desc="Feature Name for Level Up's Lens Camera Search task. [iOS only]">
+        Use your camera to search with Google Lens
+      </message>
+      <message name="IDS_IOS_LEVEL_UP_FEATURE_LENS_CAMERA_SEARCH_DESCRIPTION" desc="Description for Level Up's Lens Camera Search task. [iOS only]">
+        Identify, shop, or translate what you see with your camera or an image
+      </message>
+      <message name="IDS_IOS_LEVEL_UP_FEATURE_LENS_WEBSITE_SEARCH" desc="Feature name for Level Up's Lens Website Search task. [iOS only]">
+        Search your screen with Google Lens
+      </message>
+      <message name="IDS_IOS_LEVEL_UP_FEATURE_LENS_WEBSITE_SEARCH_DESCRIPTION" desc="Description for Level Up's Lens Website Search task. [iOS only]">
+        Draw, highlight, or tap anything on your screen to search
+      </message>
       <message name="IDS_IOS_LEVEL_UP_FEATURE_PASSWORDS_AUTOFILL" desc="Feature name for Passwords and Autofill. [iOS only]">
-        Passwords and Autofill
+        Save a password
+      </message>
+      <message name="IDS_IOS_LEVEL_UP_FEATURE_PASSWORDS_AUTOFILL_DESCRIPTION" desc="Description for Level Up's Passwords and Autofill task. [iOS only]">
+        Securely save passwords so you can easily sign in to sites and apps
       </message>
       <message name="IDS_IOS_LEVEL_UP_FEATURE_PASSWORD_CHECKUP" desc="Feature name for Password checkup. [iOS only]">
         Check your passwords
@@ -4733,8 +4766,23 @@ To continue from your computer, switch to <ph name="OTHER_EMAIL">$2<ex>john.doe@
       <message name="IDS_IOS_LEVEL_UP_FEATURE_PASSWORD_CHECKUP_DESCRIPTION" desc="Description for Level Up's Password checkup task. [iOS only]">
         Use Password Checkup to make sure your passwords are secure
       </message>
-      <message name="IDS_IOS_LEVEL_UP_FEATURE_TAB_GROUPS" desc="Feature name for Tab Groups. [iOS only]">
-        Tab Groups
+      <message name="IDS_IOS_LEVEL_UP_FEATURE_PAYMENT_METHODS" desc="Feature name for Level Up's Payment Methods task. [iOS only]">
+        Manage payment methods
+      </message>
+      <message name="IDS_IOS_LEVEL_UP_FEATURE_PAYMENT_METHODS_DESCRIPTION" desc="Description for Level Up's Payment Methods task. [iOS only]">
+        Save and manage payment info to check out faster
+      </message>
+      <message name="IDS_IOS_LEVEL_UP_FEATURE_PIN_TABS" desc="Feature name for Pin Tabs task. [iOS only]">
+        Pin a tab
+      </message>
+      <message name="IDS_IOS_LEVEL_UP_FEATURE_PIN_TABS_DESCRIPTION" desc="Description for Level Up's Pin Tabs task. [iOS only]">
+        Pin your favorite sites for easy access later
+      </message>
+      <message name="IDS_IOS_LEVEL_UP_FEATURE_TAB_GROUPS" desc="Feature name for Level Up's Tab Groups task. [iOS only]">
+        Create a tab group
+      </message>
+      <message name="IDS_IOS_LEVEL_UP_FEATURE_TAB_GROUPS_DESCRIPTION" desc="Description for Level Up's Tab Groups task. [iOS only]">
+        Organize your tabs into groups
       </message>
       <message name="IDS_IOS_LEVEL_UP_HEADER_TITLE" desc="The header title displaying at the top of the Level Up task progress card. [iOS only]">
         Current Chrome Level
@@ -4834,40 +4882,40 @@ To continue from your computer, switch to <ph name="OTHER_EMAIL">$2<ex>john.doe@
           other {Complete {count} more tasks to level up}}
       </message>
       <message name="IDS_IOS_LEVEL_UP_TASK_COMPLETED_AI_SEARCH" desc="Completion snackbar message for the AI Search task. [iOS only]">
-        Search with AI Mode completed!
+        "Search with AI Mode" completed!
       </message>
       <message name="IDS_IOS_LEVEL_UP_TASK_COMPLETED_AUTOFILL" desc="Completion snackbar message for the Autofill task. [iOS only]">
-        Passwords and Autofill completed!
+        "Save a password" completed!
       </message>
       <message name="IDS_IOS_LEVEL_UP_TASK_COMPLETED_DELETE_BROWSING_DATA" desc="Completion snackbar message for the Delete Browsing Data task. [iOS only]">
         "Delete browsing data" completed!
       </message>
       <message name="IDS_IOS_LEVEL_UP_TASK_COMPLETED_GEMINI" desc="Completion snackbar message for the Gemini task. [iOS only]">
-        Use Gemini in Chrome completed!
+        "Ask Gemini a question" completed!
       </message>
       <message name="IDS_IOS_LEVEL_UP_TASK_COMPLETED_INCOGNITO" desc="Completion snackbar message for the Incognito task. [iOS only]">
         "Go Incognito" completed!
       </message>
       <message name="IDS_IOS_LEVEL_UP_TASK_COMPLETED_LENS_CAMERA_SEARCH" desc="Completion snackbar message for the Lens Camera Search task. [iOS only]">
-        Search with camera completed!
+        "Use your camera to search with Google Lens" completed!
       </message>
       <message name="IDS_IOS_LEVEL_UP_TASK_COMPLETED_LENS_WEBSITE_SEARCH" desc="Completion snackbar message for the Lens Website Search task. [iOS only]">
-        Google Lens completed!
+        "Search your screen with Google Lens" completed!
       </message>
       <message name="IDS_IOS_LEVEL_UP_TASK_COMPLETED_PASSWORD_CHECKUP" desc="Completion snackbar message for the Password Checkup task. [iOS only]">
         "Check your passwords" completed!
       </message>
       <message name="IDS_IOS_LEVEL_UP_TASK_COMPLETED_PAYMENT_METHODS" desc="Completion snackbar message for the Payment Methods task. [iOS only]">
-        Manage payment methods completed!
+        "Manage payment methods" completed!
       </message>
       <message name="IDS_IOS_LEVEL_UP_TASK_COMPLETED_PIN_TABS" desc="Completion snackbar message for the Pin Tabs task. [iOS only]">
-        Pin tabs completed!
+        "Pin a tab" completed!
       </message>
       <message name="IDS_IOS_LEVEL_UP_TASK_COMPLETED_SAFE_BROWSING" desc="Completion snackbar message for the Safe Browsing task. [iOS only]">
         "Go Incognito" completed!
       </message>
       <message name="IDS_IOS_LEVEL_UP_TASK_COMPLETED_TAB_GROUPS" desc="Completion snackbar message for the Tab Groups task. [iOS only]">
-        Tab Groups completed!
+        "Create a tab group" completed!
       </message>
       <message name="IDS_IOS_LEVEL_UP_TURN_OFF_CONFIRMATION_SUBTITLE" desc="Subtitle message in the confirmation alert dialog when turning off Level Up. [iOS only]">
         This will permanently delete your Level Up progress and feature usage data for Level Up will no longer be sent to Google for your profile.

@@ -9,9 +9,12 @@
 #include <optional>
 #include <string>
 
+#include "base/feature_list.h"
+#include "base/memory/raw_ptr.h"
 #include "ui/actions/action_id.h"
 #include "ui/actions/actions.h"
 #include "ui/base/class_property.h"
+#include "ui/base/interaction/element_identifier.h"
 #include "ui/base/models/image_model.h"
 #include "ui/base/models/menu_separator_types.h"
 #include "ui/color/color_id.h"
@@ -46,6 +49,8 @@ class AppMenuActionItem {
     std::optional<bool> is_checkable;
     std::optional<ItemHeight> item_height;
     std::optional<std::u16string> minor_text;
+    raw_ptr<const base::Feature> new_badge_feature;
+    ui::ElementIdentifier element_id;
   };
 
   static const ui::ClassProperty<DisplayType>* const kDisplayTypeKey;
@@ -58,6 +63,8 @@ class AppMenuActionItem {
   static const ui::ClassProperty<std::u16string*>* const kChipTextKey;
   static const ui::ClassProperty<bool>* const kIsCheckableKey;
   static const ui::ClassProperty<ItemHeight>* const kItemHeightKey;
+  static const ui::ClassProperty<const base::Feature*>* const
+      kNewBadgeFeatureKey;
 
   AppMenuActionItem() = delete;
   AppMenuActionItem(const AppMenuActionItem&) = delete;
@@ -82,6 +89,7 @@ class AppMenuActionItem {
 
 DECLARE_UI_CLASS_PROPERTY_TYPE(AppMenuActionItem::DisplayType)
 DECLARE_UI_CLASS_PROPERTY_TYPE(AppMenuActionItem::ItemHeight)
+DECLARE_UI_CLASS_PROPERTY_TYPE(const base::Feature*)
 DECLARE_UI_CLASS_PROPERTY_TYPE(ui::ImageModel*)
 DECLARE_UI_CLASS_PROPERTY_TYPE(ui::MenuSeparatorType)
 

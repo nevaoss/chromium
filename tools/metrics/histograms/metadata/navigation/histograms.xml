@@ -981,7 +981,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Navigation.CommitRenderFrame" units="ms"
-    expires_after="2027-01-17">
+    expires_after="2027-03-21">
   <owner>rakina@chromium.org</owner>
   <owner>chrome-security-architecture@google.com</owner>
   <summary>
@@ -1782,7 +1782,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="Navigation.MainframeSameDocumentNavigationCommitToPresentFirstFrame"
-    units="ms" expires_after="2027-01-17">
+    units="ms" expires_after="2027-03-21">
   <owner>liuwilliam@chromium.org</owner>
   <owner>chrome-seamless-core@google.com</owner>
   <summary>
@@ -2281,6 +2281,20 @@ chromium-metrics-reviews@google.com.
   <token key="FrameType" variants="FrameTypes"/>
 </histogram>
 
+<histogram name="Navigation.RemoveExtraHeadersOnCrossOriginRedirect"
+    enum="Boolean" expires_after="2027-03-18">
+  <owner>adelm@google.com</owner>
+  <owner>mthiesse@chromium.org</owner>
+  <summary>
+    Records whether extra headers configured to be stripped on cross-origin
+    redirects were removed during a navigation redirect (true when the redirect
+    was cross-origin and headers were removed, false when the redirect was
+    same-origin and headers were kept). Recorded on each redirect of a
+    navigation that has non-empty extra headers with
+    remove_extra_headers_on_cross_origin_redirect enabled.
+  </summary>
+</histogram>
+
 <histogram name="Navigation.Renderer.BlockedForFilterURL"
     enum="RendererBlockedURLReason" expires_after="2026-10-25">
   <owner>creis@chromium.org</owner>
@@ -2608,7 +2622,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Navigation.SpeculativeRFHProcessGone.MayResume" enum="Boolean"
-    expires_after="2027-01-17">
+    expires_after="2027-03-21">
   <owner>gjc@google.com</owner>
   <owner>chrome-loading@google.com</owner>
   <summary>
@@ -3249,7 +3263,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Navigation.URLLoader.HasClientHintsControllerDelegate"
-    enum="Boolean" expires_after="2027-01-17">
+    enum="Boolean" expires_after="2027-03-21">
   <owner>yyanagisawa@chromium.org</owner>
   <owner>chrome-loading@google.com</owner>
   <summary>

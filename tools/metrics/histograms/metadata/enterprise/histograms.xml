@@ -593,7 +593,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Enterprise.Boca.Spotlight.Crd.Result"
-    enum="EnterpriseCrdSessionResultCode" expires_after="2026-10-25">
+    enum="EnterpriseCrdSessionResultCode" expires_after="2027-10-25">
   <owner>caott@google.com</owner>
   <owner>cros-edu-eng@google.com</owner>
   <summary>
@@ -726,7 +726,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Enterprise.CBCMRemoteCommand.Executed"
-    enum="RemoteCommandExecutionStatus" expires_after="2026-11-01">
+    enum="RemoteCommandExecutionStatus" expires_after="2027-05-01">
   <owner>nicolaso@chromium.org</owner>
   <owner>zmin@chromium.org</owner>
   <owner>cbe-eng@google.com</owner>
@@ -738,7 +738,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Enterprise.CBCMRemoteCommand.Received"
-    enum="RemoteCommandReceivedStatus" expires_after="2026-11-01">
+    enum="RemoteCommandReceivedStatus" expires_after="2027-05-01">
   <owner>nicolaso@chromium.org</owner>
   <owner>zmin@chromium.org</owner>
   <owner>cbe-eng@google.com</owner>
@@ -751,7 +751,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Enterprise.CBCMRemoteCommandInvalidations"
-    enum="EnterprisePolicyInvalidations" expires_after="2026-11-01">
+    enum="EnterprisePolicyInvalidations" expires_after="2027-05-01">
   <owner>nicolaso@chromium.org</owner>
   <owner>zmin@chromium.org</owner>
   <owner>cbe-eng@google.com</owner>
@@ -988,7 +988,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram name="Enterprise.ClientCertificates.ClankKeySecurityLevel"
     enum="ClankClientCertificatesBrowserKeySecurityLevel"
-    expires_after="2027-01-17">
+    expires_after="2027-03-21">
   <owner>eliashomsi@google.com</owner>
   <owner>cbe-device-trust-eng@google.com</owner>
   <summary>
@@ -3245,15 +3245,63 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="Enterprise.FileOpeningJob.CancelBlockingDuration{JobState}"
+    units="ms" expires_after="2027-03-07">
+  <owner>valadkevich@google.com</owner>
+  <owner>cbe-cep-eng@google.com</owner>
+  <summary>
+    Records how long the calling thread (the UI thread) was blocked inside
+    base::JobHandle::Cancel() while tearing down a FileOpeningJob that the user
+    cancelled. JobHandle::Cancel() forces workers to yield but does not return
+    until they have all returned from the job callback, so this is the portion
+    of cancellation latency that is directly user visible as UI jank. Logged
+    once per cancelled FileOpeningJob, for the first JobHandle::Cancel() call
+    only, and recorded regardless of whether the
+    EnableCancelUploadOnContentAnalysis or NonBlockingFileOpeningJobCancel
+    features are enabled, so that experiment arms can be compared. Not logged
+    when the job completed without being cancelled. {JobState}
+  </summary>
+  <token key="JobState">
+    <variant name="" summary="Recorded for every cancelled job."/>
+    <variant name=".InFlight"
+        summary="Recorded only when at least one worker thread was still
+                 inside file opening or hashing at the moment cancellation
+                 was first signalled. This is the population that
+                 cancellation latency work targets, and the variant to
+                 compare across experiment arms."/>
+  </token>
+</histogram>
+
 <histogram name="Enterprise.FileOpeningJob.CancelDuration" units="ms"
     expires_after="2027-03-07">
   <owner>valadkevich@google.com</owner>
   <owner>cbe-cep-eng@google.com</owner>
   <summary>
-    Records the time it takes to cancel the FileOpeningJob. The cancellation
-    waits for currently running file analysis tasks to yield or complete. This
-    provides a measure of how long the UI thread or other threads might block
-    while waiting for the background job to finish.
+    Records the time between cancellation first being signalled for a
+    FileOpeningJob and that job being destroyed, i.e. how long it takes for all
+    background file opening and hashing threads to observe the cancellation and
+    release their references to the job. Logged once per cancelled
+    FileOpeningJob. Kept as a guardrail only: the start point is the earliest
+    cancellation signal, which is the user's click when
+    NonBlockingFileOpeningJobCancel is enabled but handler teardown when it is
+    not, so this is not directly comparable across experiment arms. Use
+    Enterprise.FileOpeningJob.CancelBlockingDuration for that.
+  </summary>
+</histogram>
+
+<histogram name="Enterprise.FileOpeningJob.CancelledWhileInFlight"
+    enum="BooleanActive" expires_after="2027-03-07">
+  <owner>valadkevich@google.com</owner>
+  <owner>cbe-cep-eng@google.com</owner>
+  <summary>
+    Records whether at least one worker thread was still opening or hashing a
+    file at the moment cancellation was first signalled for a FileOpeningJob.
+    Logged once per cancelled FileOpeningJob, and recorded regardless of whether
+    the EnableCancelUploadOnContentAnalysis or NonBlockingFileOpeningJobCancel
+    features are enabled, so that experiment arms can be compared over a stable
+    population. Use this to normalise the cancellation latency histograms, which
+    otherwise mix jobs that had already finished all their file work (and so
+    tear down instantly) with jobs that genuinely had to wait.
   </summary>
 </histogram>
 
@@ -3799,7 +3847,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Enterprise.OnBulkDataEntry.DataSize" units="bytes"
-    expires_after="2027-01-17">
+    expires_after="2027-03-21">
   <owner>domfc@chromium.org</owner>
   <owner>webprotect-team@google.com</owner>
   <summary>
@@ -5139,7 +5187,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Enterprise.UserPolicy.Count" units="policies"
-    expires_after="2027-01-17">
+    expires_after="2027-03-21">
   <owner>vincb@google.com</owner>
   <owner>ftirelo@chromium.org</owner>
   <summary>
@@ -5184,7 +5232,7 @@ chromium-metrics-reviews@google.com.
 
 <histogram
     name="Enterprise.UserRemoteCommand.Executed{Enterprise_RemoteCommandType}"
-    enum="RemoteCommandExecutionStatus" expires_after="2027-01-03">
+    enum="RemoteCommandExecutionStatus" expires_after="2027-03-21">
   <owner>asumaneev@google.com</owner>
   <owner>chromeos-commercial-remote-management@google.com</owner>
   <summary>

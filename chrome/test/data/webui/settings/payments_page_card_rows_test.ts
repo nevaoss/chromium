@@ -11,10 +11,10 @@ import {TestOpenWindowProxy} from 'chrome://webui-test/test_open_window_proxy.js
 
 import type {TestPaymentsManager} from './autofill_fake_data.js';
 import {createCreditCardEntry, STUB_USER_ACCOUNT_INFO} from './autofill_fake_data.js';
-import {createPaymentsPage, getDefaultExpectations, getLocalAndServerCreditCardListItems, getCardRowShadowRoot} from './payments_page_test_utils.js';
+import {createPaymentsPage, getDefaultExpectations, getLocalAndServerCreditCardListItems, getCardRowShadowRoot, setupPaymentsPrefs} from './payments_page_test_utils.js';
 import {TestMetricsBrowserProxy} from './test_metrics_browser_proxy.js';
 
-import {isVisible} from 'chrome://webui-test/test_util.js';
+import {isVisible, microtasksFinished} from 'chrome://webui-test/test_util.js';
 // clang-format on
 
 suite('PaymentsPageCardRows', function() {
@@ -30,6 +30,7 @@ suite('PaymentsPageCardRows', function() {
         .replace(/\s+/g, ' ')
         .replace(/\n/g, '');
   }
+
   setup(function() {
     document.body.innerHTML = window.trustedTypes!.emptyHTML;
     loadTimeData.overrideValues({
@@ -40,6 +41,7 @@ suite('PaymentsPageCardRows', function() {
     });
     metricsBrowserProxy = new TestMetricsBrowserProxy();
     MetricsBrowserProxyImpl.setInstance(metricsBrowserProxy);
+    return setupPaymentsPrefs();
   });
 
   test('verifyCreditCardFields', async function() {
@@ -86,40 +88,41 @@ suite('PaymentsPageCardRows', function() {
         rowShadowRoot.querySelector<HTMLElement>('#creditCardMenu');
     assertTrue(!!menuButton);
     const updateCreditCardCallback =
-        (creditCard: chrome.autofillPrivate.CreditCardEntry) => {
-          (PaymentsManagerImpl.getInstance() as TestPaymentsManager)
-              .lastCallback.setPersonalDataManagerListener!
-              ([], [creditCard], [], [], {
-                ...STUB_USER_ACCOUNT_INFO,
-                isSyncEnabledForAutofillProfiles: true,
-              });
-          flush();
-        };
+        async (creditCard: chrome.autofillPrivate.CreditCardEntry) => {
+      (PaymentsManagerImpl.getInstance() as TestPaymentsManager)
+          .lastCallback.setPersonalDataManagerListener!
+          ([], [creditCard], [], [], {
+            ...STUB_USER_ACCOUNT_INFO,
+            isSyncEnabledForAutofillProfiles: true,
+          });
+      flush();
+      await microtasksFinished();
+    };
 
     // Case 1: a card with a nickname
     creditCard = createCreditCardEntry();
     creditCard.nickname = 'My card name';
-    updateCreditCardCallback(creditCard);
+    await updateCreditCardCallback(creditCard);
     assertEquals('More actions for My card name', menuButton.title);
 
     // Case 2: a card without nickname
     creditCard = createCreditCardEntry();
     creditCard.cardNumber = '0000000000001234';
     creditCard.network = 'Visa';
-    updateCreditCardCallback(creditCard);
+    await updateCreditCardCallback(creditCard);
     assertEquals('More actions for Visa ending in 1234', menuButton.title);
 
     // Case 3: a card without network
     creditCard = createCreditCardEntry();
     creditCard.cardNumber = '0000000000001234';
     creditCard.network = undefined;
-    updateCreditCardCallback(creditCard);
+    await updateCreditCardCallback(creditCard);
     assertEquals('More actions for Card ending in 1234', menuButton.title);
 
     // Case 4: a card without number
     creditCard = createCreditCardEntry();
     creditCard.cardNumber = undefined;
-    updateCreditCardCallback(creditCard);
+    await updateCreditCardCallback(creditCard);
     assertEquals('More actions for Jane Doe', menuButton.title);
 
     // Case 5: a card with CVC
@@ -127,7 +130,7 @@ suite('PaymentsPageCardRows', function() {
     creditCard.cardNumber = '0000000000001234';
     creditCard.network = 'Visa';
     creditCard.cvc = '111';
-    updateCreditCardCallback(creditCard);
+    await updateCreditCardCallback(creditCard);
     assertEquals(
         'More actions for Visa ending in 1234, CVC saved', menuButton.title);
   });
@@ -643,7 +646,7 @@ suite('PaymentsPageCardRows', function() {
       assertTrue(!!paymentsList);
       assertEquals(1, paymentsList.length);
       assertTrue(isVisible(
-          paymentsList[0]!.shadowRoot!.querySelector<HTMLElement>(
+          paymentsList[0]!.shadowRoot.querySelector<HTMLElement>(
               '#summarySublabel')));
 
       // Build the expected resulting sublabel based on which features are
@@ -658,17 +661,17 @@ suite('PaymentsPageCardRows', function() {
       assertEquals(
           benefitExpectedSublabel,
           cleanUpWhitespace(
-              paymentsList[0]!.shadowRoot!.querySelector<HTMLElement>(
+              paymentsList[0]!.shadowRoot.querySelector<HTMLElement>(
                   '#summarySublabel')!));
       if (benefitsAvailable && productTermsUrlAvailable) {
         const termsLink =
-            paymentsList[0]!.shadowRoot!.querySelector<HTMLAnchorElement>(
+            paymentsList[0]!.shadowRoot.querySelector<HTMLAnchorElement>(
                 '#summaryTermsLink');
         assertTrue(!!termsLink);
         assertEquals(creditCard.productTermsUrl, termsLink.href);
       } else {
         assertFalse(isVisible(
-            paymentsList[0]!.shadowRoot!.querySelector<HTMLElement>(
+            paymentsList[0]!.shadowRoot.querySelector<HTMLElement>(
                 '#summaryTermsLink')));
       }
     });
@@ -708,7 +711,7 @@ suite('PaymentsPageCardRows', function() {
       assertTrue(!!paymentsList);
       assertEquals(1, paymentsList.length);
       assertTrue(isVisible(
-          paymentsList[0]!.shadowRoot!.querySelector<HTMLElement>(
+          paymentsList[0]!.shadowRoot.querySelector<HTMLElement>(
               '#summarySublabel')));
 
       // Build the expected resulting sublabel based on which features are
@@ -724,17 +727,17 @@ suite('PaymentsPageCardRows', function() {
       assertEquals(
           benefitExpectedSublabel,
           cleanUpWhitespace(
-              paymentsList[0]!.shadowRoot!.querySelector<HTMLElement>(
+              paymentsList[0]!.shadowRoot.querySelector<HTMLElement>(
                   '#summarySublabel')!));
       if (benefitsAvailable && productTermsUrlAvailable) {
         const termsLink =
-            paymentsList[0]!.shadowRoot!.querySelector<HTMLAnchorElement>(
+            paymentsList[0]!.shadowRoot.querySelector<HTMLAnchorElement>(
                 '#summaryTermsLink');
         assertTrue(!!termsLink);
         assertEquals(creditCard.productTermsUrl, termsLink.href);
       } else {
         assertFalse(isVisible(
-            paymentsList[0]!.shadowRoot!.querySelector<HTMLElement>(
+            paymentsList[0]!.shadowRoot.querySelector<HTMLElement>(
                 '#summaryTermsLink')));
       }
     });
@@ -771,7 +774,7 @@ suite('PaymentsPageCardRows', function() {
       assertEquals(1, paymentsList.length);
       if (benefitsAvailable && productTermsUrlAvailable) {
         assertTrue(isVisible(
-            paymentsList[0]!.shadowRoot!.querySelector<HTMLElement>(
+            paymentsList[0]!.shadowRoot.querySelector<HTMLElement>(
                 '#summarySublabel')));
       }
 
@@ -786,17 +789,17 @@ suite('PaymentsPageCardRows', function() {
       assertEquals(
           benefitExpectedSublabel,
           cleanUpWhitespace(
-              paymentsList[0]!.shadowRoot!.querySelector<HTMLElement>(
+              paymentsList[0]!.shadowRoot.querySelector<HTMLElement>(
                   '#summarySublabel')!));
       if (benefitsAvailable && productTermsUrlAvailable) {
         const termsLink =
-            paymentsList[0]!.shadowRoot!.querySelector<HTMLAnchorElement>(
+            paymentsList[0]!.shadowRoot.querySelector<HTMLAnchorElement>(
                 '#summaryTermsLink');
         assertTrue(!!termsLink);
         assertEquals(serverCreditCard.productTermsUrl, termsLink.href);
       } else {
         assertFalse(isVisible(
-            paymentsList[0]!.shadowRoot!.querySelector<HTMLElement>(
+            paymentsList[0]!.shadowRoot.querySelector<HTMLElement>(
                 '#summaryTermsLink')));
       }
     });
@@ -835,14 +838,14 @@ suite('PaymentsPageCardRows', function() {
       assertEquals(1, paymentsList.length);
 
       assertTrue(isVisible(
-          paymentsList[0]!.shadowRoot!.querySelector<HTMLElement>('#label')));
+          paymentsList[0]!.shadowRoot.querySelector<HTMLElement>('#label')));
       assertTrue(isVisible(
-          paymentsList[0]!.shadowRoot!.querySelector<HTMLElement>(
+          paymentsList[0]!.shadowRoot.querySelector<HTMLElement>(
               '#expirationLabel')));
       assertEquals(
           '· ' + parseInt(serverCreditCard.expirationMonth!, 10) + '/' +
               serverCreditCard.expirationYear!.substring(2),
-          paymentsList[0]!.shadowRoot!
+          paymentsList[0]!.shadowRoot
               .querySelector<HTMLElement>(
                   '#expirationLabel')!.textContent.trim());
 
@@ -855,17 +858,17 @@ suite('PaymentsPageCardRows', function() {
       assertEquals(
           benefitExpectedSublabel,
           cleanUpWhitespace(
-              paymentsList[0]!.shadowRoot!.querySelector<HTMLElement>(
+              paymentsList[0]!.shadowRoot.querySelector<HTMLElement>(
                   '#summarySublabel')!));
       if (benefitsAvailable && productTermsUrlAvailable) {
         const termsLink =
-            paymentsList[0]!.shadowRoot!.querySelector<HTMLAnchorElement>(
+            paymentsList[0]!.shadowRoot.querySelector<HTMLAnchorElement>(
                 '#summaryTermsLink');
         assertTrue(!!termsLink);
         assertEquals(serverCreditCard.productTermsUrl, termsLink.href);
       } else {
         assertFalse(isVisible(
-            paymentsList[0]!.shadowRoot!.querySelector<HTMLElement>(
+            paymentsList[0]!.shadowRoot.querySelector<HTMLElement>(
                 '#summaryTermsLink')));
       }
     });
@@ -890,10 +893,10 @@ suite('PaymentsPageCardRows', function() {
     assertTrue(!!paymentsList);
     assertEquals(1, paymentsList.length);
     assertTrue(isVisible(
-        paymentsList[0]!.shadowRoot!.querySelector<HTMLElement>(
+        paymentsList[0]!.shadowRoot.querySelector<HTMLElement>(
             '#summarySublabel')));
     const termsLink =
-        paymentsList[0]!.shadowRoot!.querySelector<HTMLAnchorElement>(
+        paymentsList[0]!.shadowRoot.querySelector<HTMLAnchorElement>(
             '#summaryTermsLink');
     assertTrue(!!termsLink);
     assertEquals(creditCard.productTermsUrl, termsLink.href);
@@ -950,7 +953,7 @@ suite('PaymentsPageCardRows', function() {
     assertEquals(
         expected,
         cleanUpWhitespace(
-            paymentsList[0]!.shadowRoot!.querySelector<HTMLElement>(
+            paymentsList[0]!.shadowRoot.querySelector<HTMLElement>(
                 '.screen-reader-only')!));
   });
 
@@ -989,7 +992,7 @@ suite('PaymentsPageCardRows', function() {
     assertEquals(
         expected,
         cleanUpWhitespace(
-            paymentsList[0]!.shadowRoot!.querySelector<HTMLElement>(
+            paymentsList[0]!.shadowRoot.querySelector<HTMLElement>(
                 '.screen-reader-only')!));
   });
 
@@ -1026,7 +1029,7 @@ suite('PaymentsPageCardRows', function() {
     assertEquals(
         expected,
         cleanUpWhitespace(
-            paymentsList[0]!.shadowRoot!.querySelector<HTMLElement>(
+            paymentsList[0]!.shadowRoot.querySelector<HTMLElement>(
                 '.screen-reader-only')!));
   });
 
@@ -1049,7 +1052,7 @@ suite('PaymentsPageCardRows', function() {
     const paymentsList = getLocalAndServerCreditCardListItems();
     assertTrue(!!paymentsList);
     const termsLink =
-        paymentsList[0]!.shadowRoot!.querySelector<HTMLAnchorElement>(
+        paymentsList[0]!.shadowRoot.querySelector<HTMLAnchorElement>(
             '#summaryTermsLink');
     assertTrue(!!termsLink);
 
@@ -1093,42 +1096,42 @@ suite('PaymentsPageCardRows', function() {
           const paymentsList = getLocalAndServerCreditCardListItems();
 
           assertTrue(isVisible(
-              paymentsList[0]!.shadowRoot!.querySelector<HTMLElement>(
+              paymentsList[0]!.shadowRoot.querySelector<HTMLElement>(
                   '#label')));
           assertEquals(
               serverCreditCard.metadata!.summaryLabel,
-              paymentsList[0]!.shadowRoot!.querySelector<HTMLElement>(
-                                              '#label')!.textContent.trim());
+              paymentsList[0]!.shadowRoot.querySelector<HTMLElement>(
+                                             '#label')!.textContent.trim());
           assertTrue(isVisible(
-              paymentsList[1]!.shadowRoot!.querySelector<HTMLElement>(
+              paymentsList[1]!.shadowRoot.querySelector<HTMLElement>(
                   '#label')));
           assertEquals(
               localCreditCard.metadata!.summaryLabel,
-              paymentsList[1]!.shadowRoot!.querySelector<HTMLElement>(
-                                              '#label')!.textContent.trim());
+              paymentsList[1]!.shadowRoot.querySelector<HTMLElement>(
+                                             '#label')!.textContent.trim());
           if (cvcOnServerCard) {
             assertTrue(isVisible(
-                paymentsList[0]!.shadowRoot!.querySelector<HTMLElement>(
+                paymentsList[0]!.shadowRoot.querySelector<HTMLElement>(
                     '#expirationLabel')));
             assertEquals(
                 serverCardExpectedSublabel,
-                paymentsList[0]!.shadowRoot!
+                paymentsList[0]!.shadowRoot
                     .querySelector<HTMLElement>(
                         '#expirationLabel')!.textContent.trim());
             assertTrue(isVisible(
-                paymentsList[0]!.shadowRoot!.querySelector<HTMLElement>(
+                paymentsList[0]!.shadowRoot.querySelector<HTMLElement>(
                     '#summarySublabel')));
           } else {
             assertTrue(isVisible(
-                paymentsList[1]!.shadowRoot!.querySelector<HTMLElement>(
+                paymentsList[1]!.shadowRoot.querySelector<HTMLElement>(
                     '#expirationLabel')));
             assertEquals(
                 localCardExpectedSublabel,
-                paymentsList[1]!.shadowRoot!
+                paymentsList[1]!.shadowRoot
                     .querySelector<HTMLElement>(
                         '#expirationLabel')!.textContent.trim());
             assertTrue(isVisible(
-                paymentsList[1]!.shadowRoot!.querySelector<HTMLElement>(
+                paymentsList[1]!.shadowRoot.querySelector<HTMLElement>(
                     '#summarySublabel')));
           }
 
@@ -1146,12 +1149,12 @@ suite('PaymentsPageCardRows', function() {
           assertEquals(2, paymentsList.length);
           assertEquals(
               serverExpectedSublabel,
-              paymentsList[0]!.shadowRoot!
+              paymentsList[0]!.shadowRoot
                   .querySelector<HTMLElement>(
                       '#summarySublabel')!.textContent.trim());
           assertEquals(
               localExpectedSublabel,
-              paymentsList[1]!.shadowRoot!
+              paymentsList[1]!.shadowRoot
                   .querySelector<HTMLElement>(
                       '#summarySublabel')!.textContent.trim());
         });

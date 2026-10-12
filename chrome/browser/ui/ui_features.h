@@ -24,14 +24,11 @@ bool ShouldUseActionsForBrowserCommands();
 
 BASE_DECLARE_FEATURE(kAllowEyeDropperWGCScreenCapture);
 
-// Enables a compositor-driven rotation animation for the tab load throbber.
-BASE_DECLARE_FEATURE(kCompositorLoadingThrobber);
-
-
 BASE_DECLARE_FEATURE(kCtrlTabMru);
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 BASE_DECLARE_FEATURE(kDseIntegrity);
+BASE_DECLARE_FEATURE(kFeedbackDisabledDialog);
 BASE_DECLARE_FEATURE(kFewerUpdateConfirmations);
 BASE_DECLARE_FEATURE(kLegacySearchIntegrityCheck);
 #endif
@@ -92,6 +89,11 @@ BASE_DECLARE_FEATURE_PARAM(int, kSeparateDefaultAndPinPromptMessageVersion);
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
 
 #if BUILDFLAG(IS_MAC) || BUILDFLAG(IS_WIN) || BUILDFLAG(IS_LINUX)
+// When enabled, SessionService respects the should_trigger_session_restore
+// flag on BrowserInitState when deciding whether to restore a session for a
+// newly opened browser window.
+BASE_DECLARE_FEATURE(kRespectShouldTriggerSessionRestoreOnDesktop);
+
 // When enabled, user may see the session restore UI flow.
 BASE_DECLARE_FEATURE(kSessionRestoreInfobar);
 
@@ -203,10 +205,6 @@ BASE_DECLARE_FEATURE(kCollapseTabGroupDuringDrag);
 
 #if !BUILDFLAG(IS_ANDROID)
 BASE_DECLARE_FEATURE(kNewTabButtonContextMenu);
-
-BASE_DECLARE_FEATURE(kTabGroupHoverCards);
-bool IsTabGroupHoverCardsEnabled();
-
 #endif  // !BUILDFLAG(IS_ANDROID)
 
 BASE_DECLARE_FEATURE(kTabHoverCardImages);

@@ -263,7 +263,6 @@ Niektoré funkcie nemusia byť k dispozícii a zmeny vykonané v predvoľbách s
 
           **Navrhnite otázky:** vygenerujte nečíslovaný zoznam troch až piatich otázok na zamyslenie, ktoré by používateľ mohol položiť, aby lepšie porozumel snímke obrazovky. Medzi týmito otázkami by mala byť aspoň jedna, ktorá sa bude týkať konkrétneho vizuálneho objektu, jeho vzhľadu alebo umiestnenia.</translation>
 <translation id="3848258323044014972"><ph name="PAGE_TITLE" /> – Chromium</translation>
-<translation id="387514319934708384">Chromium vyžaduje pre tento web povolenie na prístup k miestnej sieti</translation>
 <translation id="3885770153807205175">Výber jazyka</translation>
 <translation id="388648406173476553">Prispôsobte a ovládajte Chromium. Vyžaduje sa vaša pozornosť. Podrobnosti získate kliknutím.</translation>
 <translation id="3889543394854987837">Ak chcete otvoriť prehliadač Chromium a začať prehliadať, kliknite na svoje meno.</translation>
@@ -305,6 +304,7 @@ Niektoré funkcie nemusia byť k dispozícii a zmeny vykonané v predvoľbách s
 <translation id="4251772536351901305">Analyzuje viac údajov z webov než štandardná ochrana a upozorňuje vás na nebezpečné weby, dokonca aj také, o ktorých Google predtým nevedel. Upozornenia z prehliadača Chromium môžete preskočiť.</translation>
 <translation id="4269093074552541569">Odhlásiť sa z prehliadača Chromium</translation>
 <translation id="4271805377592243930">Pomoc s prehliadačom Chromium</translation>
+<translation id="4275788652681621337">Zavrieť bočný panel</translation>
 <translation id="4281844954008187215">Zmluvné podmienky</translation>
 <translation id="4285930937574705105">Inštalácia zlyhala kvôli neurčenej chybe. Ak je prehliadač Chromium momentálne spustený, zatvorte ho a skúste znova.</translation>
 <translation id="4298125729853015961">Exportovať heslá z prehliadača Chromium</translation>
@@ -441,9 +441,9 @@ Ak stránka nefunguje podľa očakávaní, skúste optimalizáciu povoliť.</tra
 <translation id="5883558403894052917">Prehliadač Chromium zistil, že tieto položky obsahujú malvér:</translation>
 <translation id="5889361821821684993">Chromium vykonáva pravidelné kontroly s cieľom uistiť sa, že v prehliadači máte najbezpečnejšie nastavenia. Ak bude treba, aby ste niečo skontrolovali, oznámime vám to.</translation>
 <translation id="5895138241574237353">Reštartovať</translation>
+<translation id="5896077214220653386">Gemini Enterprise v prehliadači Chromium</translation>
 <translation id="5903106910045431592"><ph name="PAGE_TITLE" /> – prihlásenie do siete</translation>
 <translation id="5924017743176219022">Pripája sa k internetu…</translation>
-<translation id="5939553720811388432">Pripravme váš Chromium</translation>
 <translation id="5941711191222866238">Minimalizovať</translation>
 <translation id="5949225980829865667">Ak chcete mať túto záložku a ďalší obsah k dispozícii vo všetkých svojich zariadeniach, prihláste sa do prehliadača Chromium</translation>
 <translation id="5953657885167112863">Prispôsobte si Chromium podľa seba</translation>
@@ -594,6 +594,7 @@ Nové záložky sa nebudú môcť ukladať do vášho účtu, kým niektoré neo
 <translation id="7213407614656404070">Chromium môžete kedykoľvek použiť kliknutím na odkazy v správach, dokumentoch a ďalších aplikáciách</translation>
 <translation id="7216228761061470870">Pri používaní vyhľadávania podľa obrázkov v počítači sa názov stránky, webová adresa a obsah vrátane súborov PDF odosielajú na server</translation>
 <translation id="7223968959479464213">Správca úloh – Chromium</translation>
+<translation id="7226331818892775989">Spýtajte sa na obsah mimo prehliadača Chromium, napríklad na iné aplikácie či súbory</translation>
 <translation id="7227958669698166857">Používateľ <ph name="EXISTING_USER" /> je už prihlásený. Ak chcete, aby bolo vaše prehliadanie naďalej samostatné, prihláste sa vo svojom profile do prehliadača Chromium účtom <ph name="USER_EMAIL_ADDRESS" />. Navyše budete mať k dispozícii informácie a ďalšie položky uložené vo všetkých svojich zariadeniach.</translation>
 <translation id="7252276985725323153">Začnite prehliadať okamžite: Chromium sa teraz môže spúšťať pri spustení systému Windows.</translation>
 <translation id="7274695763216404502">Pripnuté! Vyhľadávanie podľa obrázkov môžete znova používať z panela s nástrojmi.</translation>

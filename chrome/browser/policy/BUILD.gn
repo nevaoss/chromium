@@ -242,6 +242,7 @@ source_set("test_support") {
     "//chrome/browser/policy/messaging_layer/storage_selector",
     "//chrome/test:test_support",
     "//chrome/test/base:chrome_test_utils",
+    "//chrome/test/base:testing_browser_process",
     "//components/policy/core/common",
     "//components/policy/core/common:common_constants",
     "//components/policy/core/common:test_support",
@@ -844,6 +845,7 @@ source_set("unit_tests") {
     "//chrome/browser/policy:test_support",
     "//chrome/browser/prefs",
     "//chrome/test:test_support",
+    "//chrome/test/base:testing_browser_process",
     "//components/account_id:test_support",
     "//components/enterprise:test_support",
     "//components/invalidation:test_support",
@@ -867,7 +869,12 @@ source_set("unit_tests") {
     sources += [
       "cloud/user_policy_signin_service_unittest.cc",
       "cloud/user_policy_signin_service_util_unittest.cc",
+      "file_selection_dialogs_policy_handler_unittest.cc",
     ]
+  }
+
+  if (is_win || is_mac || is_linux || is_chromeos) {
+    sources += [ "gemini_enterprise_settings_policy_handler_unittest.cc" ]
   }
 
   if (!is_android) {
@@ -887,7 +894,6 @@ source_set("unit_tests") {
       "cbcm_invalidations_initializer_unittest.cc",
       "chrome_browser_cloud_management_register_watcher_unittest.cc",
       "client_data_delegate_desktop_unittest.cc",
-      "file_selection_dialogs_policy_handler_unittest.cc",
     ]
   }
 
@@ -1090,6 +1096,10 @@ source_set("policy") {
     ]
   }
 
+  if (is_win || is_mac || is_linux || is_chromeos) {
+    public += [ "gemini_enterprise_settings_policy_handler.h" ]
+  }
+
   if (!is_android) {
     public += [
       "device_account_initializer.h",
@@ -1103,7 +1113,6 @@ source_set("policy") {
         "chrome_browser_cloud_management_controller_desktop.h",
         "client_data_delegate_desktop.h",
         "cloud/user_policy_signin_service.h",
-        "file_selection_dialogs_policy_handler.h",
       ]
     }
   }
@@ -1130,6 +1139,7 @@ source_set("policy") {
       "browser_signin_policy_handler.h",
       "cloud/user_policy_signin_service_factory.h",
       "cloud/user_policy_signin_service_util.h",
+      "file_selection_dialogs_policy_handler.h",
     ]
   }
 
@@ -1377,6 +1387,7 @@ source_set("impl") {
     ]
     deps += [
       "//chrome/browser/android:tabs_public",
+      "//chrome/browser/enterprise/connectors/device_trust/key_management/android",
       "//chrome/browser/lens",
       "//chrome/browser/policy/android",
       "//chrome/browser/policy/android:jni_headers",
@@ -1385,6 +1396,10 @@ source_set("impl") {
       "//components/enterprise/device_trust",
       "//components/performance_manager",
     ]
+  }
+
+  if (is_win || is_mac || is_linux || is_chromeos) {
+    sources += [ "gemini_enterprise_settings_policy_handler.cc" ]
   }
 
   if (!is_android) {
@@ -1409,7 +1424,6 @@ source_set("impl") {
         "chrome_browser_cloud_management_register_watcher.h",
         "client_data_delegate_desktop.cc",
         "cloud/user_policy_signin_service.cc",
-        "file_selection_dialogs_policy_handler.cc",
       ]
       deps += [
         "//chrome/browser/enterprise:browser_launch_reporting",
@@ -1483,6 +1497,7 @@ source_set("impl") {
       "browser_signin_policy_handler.cc",
       "cloud/user_policy_signin_service_factory.cc",
       "cloud/user_policy_signin_service_util.cc",
+      "file_selection_dialogs_policy_handler.cc",
     ]
   }
 

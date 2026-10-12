@@ -31,8 +31,10 @@
 #include "components/strings/grit/components_strings.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/blink/public/common/input/web_input_event.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/pointer/pointer_device.h"
+#include "url/gurl.h"
 
 namespace autofill {
 namespace {
@@ -46,6 +48,7 @@ using ::testing::ElementsAreArray;
 using ::testing::Eq;
 using ::testing::Field;
 using ::testing::InSequence;
+using ::testing::IsEmpty;
 using ::testing::Mock;
 using ::testing::MockFunction;
 using ::testing::Property;
@@ -53,6 +56,11 @@ using ::testing::Return;
 
 using RemovalConfirmationText =
     AutofillKeyboardAccessoryController::RemovalConfirmationText;
+using GmailSourceMetadata =
+    EntityInstance::PersonalContextRecordTypePayload::GmailSourceMetadata;
+using PhotosSourceMetadata =
+    EntityInstance::PersonalContextRecordTypePayload::PhotosSourceMetadata;
+using Source = EntityInstance::PersonalContextRecordTypePayload::Source;
 
 auto MatchesConfirmationText(const std::u16string& title,
                              const std::u16string& body,
@@ -127,16 +135,17 @@ class AutofillKeyboardAccessoryControllerImplTest
     return client().suggestion_controller(manager());
   }
 
-  EntityInstance CreatePassport() {
-    using GmailSource =
-        EntityInstance::PersonalContextRecordTypePayload::GmailSource;
-    using Source = EntityInstance::PersonalContextRecordTypePayload::Source;
+  EntityInstance CreatePassport(
+      std::vector<EntityInstance::PersonalContextRecordTypePayload::Source>
+          sources = {EntityInstance::PersonalContextRecordTypePayload::Source{
+              .url = GURL("https://mail.google.com"),
+              .metadata = EntityInstance::PersonalContextRecordTypePayload::
+                  GmailSourceMetadata{.title = "Flight Confirmation"}}}) {
     return test::GetPassportEntityInstance({
         .guid = "00000000-0000-4000-8000-000000000000",
         .record_type =
             EntityInstance::PersonalContextRecordTypePayload{
-                .sources = {Source{.url = "https://mail.google.com",
-                                   .data = GmailSource{}}}},
+                .sources = std::move(sources)},
     });
   }
 
@@ -154,7 +163,8 @@ class AutofillKeyboardAccessoryControllerImplTest
   AutofillWebDataServiceTestHelper webdata_helper_{
       std::make_unique<EntityTable>()};
   base::test::ScopedFeatureList feature_list_{
-      features::kAutofillAndroidKeyboardAccessoryHoverPreview};
+      {features::kAutofillAndroidKeyboardAccessoryHoverPreview,
+       features::kAutofillAmbientAutofillSuppressionUI}};
 };
 
 TEST_F(AutofillKeyboardAccessoryControllerImplTest,
@@ -169,16 +179,19 @@ TEST_F(AutofillKeyboardAccessoryControllerImplTest,
 
   ShowSuggestions(manager(), {SuggestionType::kAddressEntry});
   client().suggestion_controller(manager()).AcceptSuggestion(
-      /*index=*/0, AutofillMetrics::SuggestionAcceptedMethod::kTap);
+      /*index=*/0, AutofillMetrics::SuggestionAcceptedMethod::kTap,
+      /*was_obscured=*/false);
   task_environment()->FastForwardBy(base::Milliseconds(100));
   client().suggestion_controller(manager()).AcceptSuggestion(
-      /*index=*/0, AutofillMetrics::SuggestionAcceptedMethod::kTap);
+      /*index=*/0, AutofillMetrics::SuggestionAcceptedMethod::kTap,
+      /*was_obscured=*/false);
   task_environment()->FastForwardBy(base::Milliseconds(400));
 
   // Only now suggestions should be accepted.
   check.Call();
   client().suggestion_controller(manager()).AcceptSuggestion(
-      /*index=*/0, AutofillMetrics::SuggestionAcceptedMethod::kTap);
+      /*index=*/0, AutofillMetrics::SuggestionAcceptedMethod::kTap,
+      /*was_obscured=*/false);
 }
 
 // Tests that reshowing the suggestions resets the accept threshold.
@@ -197,10 +210,12 @@ TEST_F(AutofillKeyboardAccessoryControllerImplTest,
             FillingProduct::kAddress);
   // Calls before the threshold are ignored.
   client().suggestion_controller(manager()).AcceptSuggestion(
-      /*index=*/0, AutofillMetrics::SuggestionAcceptedMethod::kTap);
+      /*index=*/0, AutofillMetrics::SuggestionAcceptedMethod::kTap,
+      /*was_obscured=*/false);
   task_environment()->FastForwardBy(base::Milliseconds(100));
   client().suggestion_controller(manager()).AcceptSuggestion(
-      /*index=*/0, AutofillMetrics::SuggestionAcceptedMethod::kTap);
+      /*index=*/0, AutofillMetrics::SuggestionAcceptedMethod::kTap,
+      /*was_obscured=*/false);
   task_environment()->FastForwardBy(base::Milliseconds(400));
 
   // Show the suggestions again (simulating, e.g., a click somewhere slightly
@@ -209,13 +224,15 @@ TEST_F(AutofillKeyboardAccessoryControllerImplTest,
   EXPECT_EQ(client().suggestion_controller(manager()).GetMainFillingProduct(),
             FillingProduct::kAddress);
   client().suggestion_controller(manager()).AcceptSuggestion(
-      /*index=*/0, AutofillMetrics::SuggestionAcceptedMethod::kTap);
+      /*index=*/0, AutofillMetrics::SuggestionAcceptedMethod::kTap,
+      /*was_obscured=*/false);
 
   // After waiting again, suggestions become acceptable.
   task_environment()->FastForwardBy(base::Milliseconds(500));
   check.Call();
   client().suggestion_controller(manager()).AcceptSuggestion(
-      /*index=*/0, AutofillMetrics::SuggestionAcceptedMethod::kTap);
+      /*index=*/0, AutofillMetrics::SuggestionAcceptedMethod::kTap,
+      /*was_obscured=*/false);
 }
 
 // Tests that calling `Show()` on the controller shows the view.
@@ -464,9 +481,7 @@ TEST_F(AutofillKeyboardAccessoryControllerImplTest,
 }
 
 TEST_F(AutofillKeyboardAccessoryControllerImplTest,
-       ShowAutofillAiSuggestionDetails) {
-  base::test::ScopedFeatureList scoped_feature_list{
-      features::kAutofillAmbientAutofillSuppressionUI};
+       ShowAutofillAiSuggestionDetails_WithValidSources) {
   EntityInstance passport = CreatePassport();
   SetEntitiesInClient({passport});
 
@@ -491,8 +506,11 @@ TEST_F(AutofillKeyboardAccessoryControllerImplTest,
               IDS_AUTOFILL_AI_SUPPRESSION_DIALOG_SECONDARY_BUTTON),
           l10n_util::GetStringUTF16(
               IDS_AUTOFILL_AI_SUPPRESSION_DIALOG_PRIMARY_BUTTON),
+          ElementsAre(Source{
+              .url = GURL("https://mail.google.com"),
+              .metadata = GmailSourceMetadata{.title = "Flight Confirmation"}}),
           _))
-      .WillOnce(RunOnceCallback<4>(/*confirmed=*/true));
+      .WillOnce(RunOnceCallback<5>(/*confirmed=*/true));
   EXPECT_CALL(manager().external_delegate(), RemoveSuggestion(suggestion))
       .WillOnce(Return(true));
 
@@ -501,9 +519,75 @@ TEST_F(AutofillKeyboardAccessoryControllerImplTest,
 }
 
 TEST_F(AutofillKeyboardAccessoryControllerImplTest,
+       ShowAutofillAiSuggestionDetails_CappedAtMaxDisplayedSources) {
+  EntityInstance passport = CreatePassport({
+      Source{.url = GURL("https://mail.google.com/1"),
+             .metadata = GmailSourceMetadata{.title = "Flight Confirmation"}},
+      Source{.url = GURL("https://photos.google.com/1"),
+             .metadata = PhotosSourceMetadata{}},
+      Source{.url = GURL("http://example.com/2"),
+             .metadata = GmailSourceMetadata{.title = "Receipt"}},
+      Source{.url = GURL("https://photos.google.com/3"),
+             .metadata = PhotosSourceMetadata{}},
+      Source{.url = GURL("https://photos.google.com/4"),
+             .metadata = PhotosSourceMetadata{}},
+      Source{.url = GURL("https://photos.google.com/5"),
+             .metadata = PhotosSourceMetadata{}},
+      Source{.url = GURL("https://photos.google.com/6"),
+             .metadata = PhotosSourceMetadata{}},
+  });
+  SetEntitiesInClient({passport});
+
+  Suggestion suggestion(u"Passport", SuggestionType::kFillAutofillAi);
+  suggestion.payload = Suggestion::AutofillAiPayload(passport.guid());
+  ShowSuggestions(manager(), {suggestion});
+
+  EXPECT_CALL(
+      *client().popup_view(),
+      ShowAutofillAiSuggestionDetails(
+          base::StrCat({passport.type().GetNameForI18n(),
+                        autofill::kLabelSeparator, u"Pippi Långstrump"}),
+          l10n_util::GetStringUTF16(IDS_AUTOFILL_AI_SUPPRESSION_DIALOG_BODY),
+          l10n_util::GetStringUTF16(
+              IDS_AUTOFILL_AI_SUPPRESSION_DIALOG_SECONDARY_BUTTON),
+          l10n_util::GetStringUTF16(
+              IDS_AUTOFILL_AI_SUPPRESSION_DIALOG_PRIMARY_BUTTON),
+          ElementsAre(
+              Source{.url = GURL("https://mail.google.com/1"),
+                     .metadata =
+                         GmailSourceMetadata{.title = "Flight Confirmation"}},
+              Source{.url = GURL("https://photos.google.com/1"),
+                     .metadata = PhotosSourceMetadata{}},
+              Source{.url = GURL("http://example.com/2"),
+                     .metadata = GmailSourceMetadata{.title = "Receipt"}},
+              Source{.url = GURL("https://photos.google.com/3"),
+                     .metadata = PhotosSourceMetadata{}},
+              Source{.url = GURL("https://photos.google.com/4"),
+                     .metadata = PhotosSourceMetadata{}}),
+          _))
+      .WillOnce(RunOnceCallback<5>(/*confirmed=*/false));
+
+  EXPECT_TRUE(suggestion_controller().ShowAutofillAiSuggestionDetails(0));
+}
+
+TEST_F(AutofillKeyboardAccessoryControllerImplTest,
+       ShowAutofillAiSuggestionDetails_NonPersonalContextEntityRejected) {
+  EntityInstance passport = test::GetPassportEntityInstance({
+      .guid = "00000000-0000-4000-8000-000000000000",
+      .record_type = EntityInstance::LocalRecordTypePayload{},
+  });
+  AddLocalEntity(passport);
+
+  Suggestion suggestion(u"Passport", SuggestionType::kFillAutofillAi);
+  suggestion.payload = Suggestion::AutofillAiPayload(passport.guid());
+  ShowSuggestions(manager(), {suggestion});
+
+  EXPECT_CALL(*client().popup_view(), ShowAutofillAiSuggestionDetails).Times(0);
+  EXPECT_FALSE(suggestion_controller().ShowAutofillAiSuggestionDetails(0));
+}
+
+TEST_F(AutofillKeyboardAccessoryControllerImplTest,
        ShowAutofillAiSuggestionDetails_RemoveSuggestionFails) {
-  base::test::ScopedFeatureList scoped_feature_list{
-      features::kAutofillAmbientAutofillSuppressionUI};
   EntityInstance passport = CreatePassport();
   SetEntitiesInClient({passport});
 
@@ -512,7 +596,7 @@ TEST_F(AutofillKeyboardAccessoryControllerImplTest,
   ShowSuggestions(manager(), {suggestion});
 
   EXPECT_CALL(*client().popup_view(), ShowAutofillAiSuggestionDetails)
-      .WillOnce(RunOnceCallback<4>(/*confirmed=*/true));
+      .WillOnce(RunOnceCallback<5>(/*confirmed=*/true));
   EXPECT_CALL(manager().external_delegate(), RemoveSuggestion(suggestion))
       .WillOnce(Return(false));
 
@@ -522,8 +606,6 @@ TEST_F(AutofillKeyboardAccessoryControllerImplTest,
 
 TEST_F(AutofillKeyboardAccessoryControllerImplTest,
        ShowAutofillAiSuggestionDetails_StaleSuggestionNotRemoved) {
-  base::test::ScopedFeatureList scoped_feature_list{
-      features::kAutofillAmbientAutofillSuppressionUI};
   EntityInstance passport = CreatePassport();
   SetEntitiesInClient({passport});
 
@@ -536,6 +618,7 @@ TEST_F(AutofillKeyboardAccessoryControllerImplTest,
       .WillOnce([&](const std::u16string& title, const std::u16string& body,
                     const std::u16string& confirm_button_text,
                     const std::u16string& primary_button_text,
+                    std::vector<Source> sources,
                     base::OnceCallback<void(bool)> dialog_callback) {
         captured_dialog_callback = std::move(dialog_callback);
       });
@@ -554,8 +637,6 @@ TEST_F(AutofillKeyboardAccessoryControllerImplTest,
 
 TEST_F(AutofillKeyboardAccessoryControllerImplTest,
        ShowAutofillAiSuggestionDetails_Dismissed) {
-  base::test::ScopedFeatureList scoped_feature_list{
-      features::kAutofillAmbientAutofillSuppressionUI};
   EntityInstance passport = CreatePassport();
   SetEntitiesInClient({passport});
 
@@ -573,8 +654,8 @@ TEST_F(AutofillKeyboardAccessoryControllerImplTest,
               IDS_AUTOFILL_AI_SUPPRESSION_DIALOG_SECONDARY_BUTTON),
           l10n_util::GetStringUTF16(
               IDS_AUTOFILL_AI_SUPPRESSION_DIALOG_PRIMARY_BUTTON),
-          _))
-      .WillOnce(RunOnceCallback<4>(/*confirmed=*/false));
+          /*sources=*/_, _))
+      .WillOnce(RunOnceCallback<5>(/*confirmed=*/false));
   EXPECT_CALL(manager().external_delegate(), RemoveSuggestion).Times(0);
 
   EXPECT_TRUE(suggestion_controller().ShowAutofillAiSuggestionDetails(0));
@@ -583,8 +664,6 @@ TEST_F(AutofillKeyboardAccessoryControllerImplTest,
 TEST_F(AutofillKeyboardAccessoryControllerImplTest,
        ShowAutofillAiSuggestionDetails_Rtl) {
   base::test::ScopedRestoreICUDefaultLocale scoped_locale("ar");
-  base::test::ScopedFeatureList scoped_feature_list{
-      features::kAutofillAmbientAutofillSuppressionUI};
   EntityInstance passport = CreatePassport();
   SetEntitiesInClient({passport});
 
@@ -602,7 +681,7 @@ TEST_F(AutofillKeyboardAccessoryControllerImplTest,
               IDS_AUTOFILL_AI_SUPPRESSION_DIALOG_SECONDARY_BUTTON),
           l10n_util::GetStringUTF16(
               IDS_AUTOFILL_AI_SUPPRESSION_DIALOG_PRIMARY_BUTTON),
-          _));
+          /*sources=*/_, _));
 
   EXPECT_TRUE(suggestion_controller().ShowAutofillAiSuggestionDetails(0));
 }
@@ -625,8 +704,6 @@ TEST_F(AutofillKeyboardAccessoryControllerImplTest,
 
 TEST_F(AutofillKeyboardAccessoryControllerImplTest,
        ShowAutofillAiSuggestionDetails_NonAiSuggestionReturnsFalse) {
-  base::test::ScopedFeatureList scoped_feature_list{
-      features::kAutofillAmbientAutofillSuppressionUI};
   const auto suggestion =
       Suggestion(u"Autocomplete entry", SuggestionType::kAutocompleteEntry);
   ShowSuggestions(manager(), {suggestion});
@@ -637,8 +714,6 @@ TEST_F(AutofillKeyboardAccessoryControllerImplTest,
 
 TEST_F(AutofillKeyboardAccessoryControllerImplTest,
        ShowAutofillAiSuggestionDetails_NonExistentEntityReturnsFalse) {
-  base::test::ScopedFeatureList scoped_feature_list{
-      features::kAutofillAmbientAutofillSuppressionUI};
   Suggestion suggestion(u"Passport", SuggestionType::kFillAutofillAi);
   suggestion.payload = Suggestion::AutofillAiPayload(
       EntityInstance::EntityId(base::Uuid::GenerateRandomV4()));
@@ -650,8 +725,6 @@ TEST_F(AutofillKeyboardAccessoryControllerImplTest,
 
 TEST_F(AutofillKeyboardAccessoryControllerImplTest,
        ShowAutofillAiSuggestionDetails_NonPersonalContextEntityReturnsFalse) {
-  base::test::ScopedFeatureList scoped_feature_list{
-      features::kAutofillAmbientAutofillSuppressionUI};
   EntityInstance local_passport = test::GetPassportEntityInstance({
       .guid = "00000000-0000-4000-8000-000000000001",
       .record_type = EntityInstance::RecordType::kLocal,
@@ -684,6 +757,48 @@ TEST_F(AutofillKeyboardAccessoryControllerImplTest, RemoveAfterConfirmation) {
 
   EXPECT_TRUE(client().suggestion_controller(manager()).RemoveSuggestion(
       /*index=*/0));
+}
+
+// Tests that deleting a suggestion resets selected_suggestion_index to nullopt.
+TEST_F(AutofillKeyboardAccessoryControllerImplTest,
+       RemoveSuggestion_ResetsSelectedSuggestionIndex) {
+  const auto suggestion1 =
+      Suggestion(u"Autocomplete entry 1", SuggestionType::kAutocompleteEntry);
+  const auto suggestion2 =
+      Suggestion(u"Autocomplete entry 2", SuggestionType::kAutocompleteEntry);
+  ShowSuggestions(manager(), {suggestion1, suggestion2});
+  ASSERT_TRUE(client().popup_view());
+
+  auto& controller = client().suggestion_controller(manager());
+  controller.SelectSuggestion(1);
+  EXPECT_EQ(test_api(controller).selected_suggestion_index(), 1);
+
+  EXPECT_CALL(*client().popup_view(), ConfirmDeletion)
+      .WillOnce(RunOnceCallback<4>(/*confirmed=*/true));
+  EXPECT_CALL(manager().external_delegate(), RemoveSuggestion(suggestion1))
+      .WillOnce(Return(true));
+
+  EXPECT_TRUE(controller.RemoveSuggestion(/*index=*/0));
+
+  EXPECT_EQ(test_api(controller).selected_suggestion_index(), std::nullopt);
+}
+
+// Tests that updating suggestions via Show() resets selected_suggestion_index
+// to nullopt.
+TEST_F(AutofillKeyboardAccessoryControllerImplTest,
+       Show_ResetsSelectedSuggestionIndex) {
+  ShowSuggestions(manager(),
+                  {test::CreateAutofillSuggestion(SuggestionType::kAddressEntry,
+                                                  u"Address 1"),
+                   test::CreateAutofillSuggestion(SuggestionType::kAddressEntry,
+                                                  u"Address 2")});
+  auto& controller = client().suggestion_controller(manager());
+  controller.SelectSuggestion(0);
+  EXPECT_EQ(test_api(controller).selected_suggestion_index(), 0);
+
+  ShowSuggestions(manager(), {test::CreateAutofillSuggestion(
+                                 SuggestionType::kAddressEntry, u"Address 2")});
+  EXPECT_EQ(test_api(controller).selected_suggestion_index(), std::nullopt);
 }
 
 // Tests that if suggestions are updated while a deletion confirmation dialog is
@@ -746,7 +861,8 @@ TEST_F(AutofillKeyboardAccessoryControllerImplTest,
             SuggestionHidingReason::kAcceptSuggestion);
       });
   client().suggestion_controller(manager()).AcceptSuggestion(
-      /*index=*/0, AutofillMetrics::SuggestionAcceptedMethod::kTap);
+      /*index=*/0, AutofillMetrics::SuggestionAcceptedMethod::kTap,
+      /*was_obscured=*/false);
 }
 
 TEST_F(AutofillKeyboardAccessoryControllerImplTest,
@@ -763,7 +879,8 @@ TEST_F(AutofillKeyboardAccessoryControllerImplTest,
 
   // This should not call manual_filling_controller->Hide().
   client().suggestion_controller(manager()).AcceptSuggestion(
-      /*index=*/0, AutofillMetrics::SuggestionAcceptedMethod::kTap);
+      /*index=*/0, AutofillMetrics::SuggestionAcceptedMethod::kTap,
+      /*was_obscured=*/false);
 }
 
 TEST_F(AutofillKeyboardAccessoryControllerImplTest,
@@ -784,7 +901,8 @@ TEST_F(AutofillKeyboardAccessoryControllerImplTest,
 
   // This should call manual_filling_controller->Hide().
   client().suggestion_controller(manager()).AcceptSuggestion(
-      /*index=*/0, AutofillMetrics::SuggestionAcceptedMethod::kTap);
+      /*index=*/0, AutofillMetrics::SuggestionAcceptedMethod::kTap,
+      /*was_obscured=*/false);
 }
 
 TEST_F(AutofillKeyboardAccessoryControllerImplTest,
@@ -817,7 +935,8 @@ TEST_F(AutofillKeyboardAccessoryControllerImplTest,
 
   EXPECT_CALL(manager().external_delegate(), DidAcceptSuggestion).Times(0);
   client().suggestion_controller(manager()).AcceptSuggestion(
-      /*index=*/0, AutofillMetrics::SuggestionAcceptedMethod::kTap);
+      /*index=*/0, AutofillMetrics::SuggestionAcceptedMethod::kTap,
+      /*was_obscured=*/false);
 }
 
 // Tests that the `KeyboardAccessoryController` moves "clear form" suggestions
@@ -885,10 +1004,10 @@ TEST_F(AutofillKeyboardAccessoryControllerImplTest, SelectInvalidSuggestion) {
   // The following should not crash:
   client().suggestion_controller(manager()).AcceptSuggestion(
       /*index=*/0,  // Non-acceptable type.
-      AutofillMetrics::SuggestionAcceptedMethod::kTap);
+      AutofillMetrics::SuggestionAcceptedMethod::kTap, /*was_obscured=*/false);
   client().suggestion_controller(manager()).AcceptSuggestion(
       /*index=*/1,  // Out of bounds!
-      AutofillMetrics::SuggestionAcceptedMethod::kTap);
+      AutofillMetrics::SuggestionAcceptedMethod::kTap, /*was_obscured=*/false);
 }
 
 // Tests that the profile deletion metric is recorded as true (accepted) when
@@ -1060,7 +1179,8 @@ TEST_F(AutofillKeyboardAccessoryControllerImplTest,
   task_environment()->FastForwardBy(
       AutofillSuggestionController::kIgnoreEarlyClicksOnSuggestionsDuration);
   client().suggestion_controller(manager()).AcceptSuggestion(
-      0, AutofillMetrics::SuggestionAcceptedMethod::kMouse);
+      0, AutofillMetrics::SuggestionAcceptedMethod::kMouse,
+      /*was_obscured=*/false);
 
   EXPECT_THAT(
       histogram_tester.GetAllSamples(
@@ -1150,7 +1270,8 @@ TEST_F(AutofillKeyboardAccessoryControllerImplTest,
   task_environment()->FastForwardBy(
       AutofillSuggestionController::kIgnoreEarlyClicksOnSuggestionsDuration);
   client().suggestion_controller(manager()).AcceptSuggestion(
-      0, AutofillMetrics::SuggestionAcceptedMethod::kTap);
+      0, AutofillMetrics::SuggestionAcceptedMethod::kTap,
+      /*was_obscured=*/false);
 
   EXPECT_THAT(
       histogram_tester.GetAllSamples(
@@ -1221,12 +1342,327 @@ TEST_F(AutofillKeyboardAccessoryControllerImplTest,
   task_environment()->FastForwardBy(
       AutofillSuggestionController::kIgnoreEarlyClicksOnSuggestionsDuration);
   client().suggestion_controller(manager()).AcceptSuggestion(
-      0, AutofillMetrics::SuggestionAcceptedMethod::kTap);
+      0, AutofillMetrics::SuggestionAcceptedMethod::kTap,
+      /*was_obscured=*/false);
 
   histogram_tester.ExpectTotalCount(
       "Autofill.KeyboardAccessoryInteraction.WithMouse", 0);
   histogram_tester.ExpectTotalCount(
       "Autofill.KeyboardAccessoryInteraction.WithMouse.Address", 0);
+}
+
+// Tests that arrow Left/Right do not navigate suggestions before the user
+// has entered the suggestion navigation mode with arrow Up/Down. Instead, the
+// events are propagated so that they move the text caret.
+TEST_F(AutofillKeyboardAccessoryControllerImplTest,
+       ArrowKeysDoNotNavigateSuggestionsBeforeArrowUpOrDown) {
+  ShowSuggestions(manager(),
+                  {
+                      test::CreateAutofillSuggestion(
+                          SuggestionType::kAddressEntry, u"Address 1"),
+                      test::CreateAutofillSuggestion(
+                          SuggestionType::kAddressEntry, u"Address 2"),
+                  });
+
+  auto& controller = client().suggestion_controller(manager());
+
+  EXPECT_CALL(*manual_filling_view(), NavigateSuggestions).Times(0);
+  EXPECT_FALSE(test_api(controller)
+                   .HandleKeyPressEvent(CreateKeyPressEvent(ui::VKEY_RIGHT)));
+  EXPECT_FALSE(test_api(controller)
+                   .HandleKeyPressEvent(CreateKeyPressEvent(ui::VKEY_LEFT)));
+}
+
+// Tests that arrow Up/Down toggles the suggestion navigation mode: the first
+// press enables arrow Left/Right navigation, the second press disables it
+// again and restores the caret movement behavior.
+TEST_F(AutofillKeyboardAccessoryControllerImplTest,
+       ArrowUpDownTogglesSuggestionNavigationMode) {
+  ShowSuggestions(manager(),
+                  {
+                      test::CreateAutofillSuggestion(
+                          SuggestionType::kAddressEntry, u"Address 1"),
+                      test::CreateAutofillSuggestion(
+                          SuggestionType::kAddressEntry, u"Address 2"),
+                  });
+
+  auto& controller = client().suggestion_controller(manager());
+
+  // Arrow Down enters the navigation mode and selects the first suggestion.
+  EXPECT_CALL(*manual_filling_view(),
+              NavigateSuggestions(NavigationDirection::kForward))
+      .WillOnce(testing::Return(true));
+  EXPECT_TRUE(test_api(controller)
+                  .HandleKeyPressEvent(CreateKeyPressEvent(ui::VKEY_DOWN)));
+
+  // Arrow Up leaves the navigation mode again.
+  EXPECT_TRUE(test_api(controller)
+                  .HandleKeyPressEvent(CreateKeyPressEvent(ui::VKEY_UP)));
+
+  // Arrow Left/Right are not handled anymore.
+  EXPECT_CALL(*manual_filling_view(), NavigateSuggestions).Times(0);
+  EXPECT_FALSE(test_api(controller)
+                   .HandleKeyPressEvent(CreateKeyPressEvent(ui::VKEY_RIGHT)));
+}
+
+// Tests that keyboard navigation forwards events to ManualFillingController
+// once the suggestion navigation mode is active.
+TEST_F(AutofillKeyboardAccessoryControllerImplTest,
+       KeyboardNavigationDelegatesToManualFillingController) {
+  ShowSuggestions(manager(),
+                  {
+                      test::CreateAutofillSuggestion(
+                          SuggestionType::kAddressEntry, u"Address 1"),
+                      test::CreateAutofillSuggestion(
+                          SuggestionType::kAddressEntry, u"Address 2"),
+                  });
+
+  auto& controller = client().suggestion_controller(manager());
+
+  // Enter the suggestion navigation mode.
+  EXPECT_CALL(*manual_filling_view(),
+              NavigateSuggestions(NavigationDirection::kForward))
+      .WillOnce(testing::Return(true));
+  EXPECT_TRUE(test_api(controller)
+                  .HandleKeyPressEvent(CreateKeyPressEvent(ui::VKEY_DOWN)));
+
+  EXPECT_CALL(*manual_filling_view(),
+              NavigateSuggestions(NavigationDirection::kForward))
+      .WillOnce(testing::Return(true));
+  EXPECT_TRUE(test_api(controller)
+                  .HandleKeyPressEvent(CreateKeyPressEvent(ui::VKEY_RIGHT)));
+
+  EXPECT_CALL(*manual_filling_view(),
+              NavigateSuggestions(NavigationDirection::kBackward))
+      .WillOnce(testing::Return(true));
+  EXPECT_TRUE(test_api(controller)
+                  .HandleKeyPressEvent(CreateKeyPressEvent(ui::VKEY_LEFT)));
+}
+
+// Tests that arrow Down neither enters the suggestion navigation mode nor
+// consumes the event if the accessory bar has no suggestion to navigate to.
+// Otherwise the key press would be swallowed without any visible effect.
+TEST_F(AutofillKeyboardAccessoryControllerImplTest,
+       ArrowDownDoesNotEnterSuggestionNavigationModeIfNavigationFails) {
+  ShowSuggestions(manager(),
+                  {
+                      test::CreateAutofillSuggestion(
+                          SuggestionType::kAddressEntry, u"Address 1"),
+                  });
+
+  auto& controller = client().suggestion_controller(manager());
+
+  EXPECT_CALL(*manual_filling_view(),
+              NavigateSuggestions(NavigationDirection::kForward))
+      .WillOnce(testing::Return(false));
+  EXPECT_FALSE(test_api(controller)
+                   .HandleKeyPressEvent(CreateKeyPressEvent(ui::VKEY_DOWN)));
+
+  // Since the navigation mode was not entered, arrow Left/Right still move the
+  // text caret.
+  EXPECT_CALL(*manual_filling_view(), NavigateSuggestions).Times(0);
+  EXPECT_FALSE(test_api(controller)
+                   .HandleKeyPressEvent(CreateKeyPressEvent(ui::VKEY_RIGHT)));
+}
+
+// Tests that pressing Tab accepts the selected suggestion without consuming the
+// event so that focus can advance to the next element.
+TEST_F(AutofillKeyboardAccessoryControllerImplTest,
+       TabKeyAcceptsSuggestionAndDoesNotConsumeEvent) {
+  ShowSuggestions(manager(),
+                  {
+                      test::CreateAutofillSuggestion(
+                          SuggestionType::kAddressEntry, u"Address 1"),
+                      test::CreateAutofillSuggestion(
+                          SuggestionType::kAddressEntry, u"Address 2"),
+                  });
+  task_environment()->FastForwardBy(
+      AutofillSuggestionController::kIgnoreEarlyClicksOnSuggestionsDuration);
+
+  auto& controller = client().suggestion_controller(manager());
+  controller.SelectSuggestion(0);
+
+  EXPECT_CALL(manager().external_delegate(), DidAcceptSuggestion);
+  // Tab should accept the suggestion but return false so focus advances.
+  EXPECT_FALSE(test_api(controller)
+                   .HandleKeyPressEvent(CreateKeyPressEvent(ui::VKEY_TAB)));
+}
+
+// Tests that pressing Shift+Tab accepts the selected suggestion without
+// consuming the event so that focus can move to the previous element.
+TEST_F(AutofillKeyboardAccessoryControllerImplTest,
+       ShiftTabKeyAcceptsSuggestionAndDoesNotConsumeEvent) {
+  ShowSuggestions(manager(),
+                  {
+                      test::CreateAutofillSuggestion(
+                          SuggestionType::kAddressEntry, u"Address 1"),
+                      test::CreateAutofillSuggestion(
+                          SuggestionType::kAddressEntry, u"Address 2"),
+                  });
+  task_environment()->FastForwardBy(
+      AutofillSuggestionController::kIgnoreEarlyClicksOnSuggestionsDuration);
+
+  auto& controller = client().suggestion_controller(manager());
+  controller.SelectSuggestion(0);
+
+  EXPECT_CALL(manager().external_delegate(), DidAcceptSuggestion);
+  // Shift+Tab should accept the suggestion but return false so focus moves
+  // back.
+  EXPECT_FALSE(test_api(controller)
+                   .HandleKeyPressEvent(CreateKeyPressEvent(
+                       ui::VKEY_TAB, blink::WebInputEvent::kShiftKey)));
+}
+
+// Tests that pressing Tab with a non-Shift modifier (e.g. Ctrl or Alt) does not
+// accept the suggestion so system and browser shortcuts are not hijacked.
+TEST_F(AutofillKeyboardAccessoryControllerImplTest,
+       TabKeyWithNonShiftModifierDoesNotAcceptSuggestion) {
+  ShowSuggestions(manager(),
+                  {
+                      test::CreateAutofillSuggestion(
+                          SuggestionType::kAddressEntry, u"Address 1"),
+                      test::CreateAutofillSuggestion(
+                          SuggestionType::kAddressEntry, u"Address 2"),
+                  });
+  task_environment()->FastForwardBy(
+      AutofillSuggestionController::kIgnoreEarlyClicksOnSuggestionsDuration);
+
+  auto& controller = client().suggestion_controller(manager());
+  controller.SelectSuggestion(0);
+
+  EXPECT_CALL(manager().external_delegate(), DidAcceptSuggestion).Times(0);
+  // Ctrl+Tab (switch tabs) should not accept the suggestion and return false.
+  EXPECT_FALSE(test_api(controller)
+                   .HandleKeyPressEvent(CreateKeyPressEvent(
+                       ui::VKEY_TAB, blink::WebInputEvent::kControlKey)));
+
+  // Alt+Tab (switch apps) should not accept the suggestion and return false.
+  EXPECT_FALSE(test_api(controller)
+                   .HandleKeyPressEvent(CreateKeyPressEvent(
+                       ui::VKEY_TAB, blink::WebInputEvent::kAltKey)));
+}
+
+// Tests that pressing Tab when no suggestion is selected does not accept any
+// suggestion and allows normal tab navigation.
+TEST_F(AutofillKeyboardAccessoryControllerImplTest,
+       TabKeyWithoutSelectionDoesNotAcceptSuggestion) {
+  ShowSuggestions(manager(),
+                  {
+                      test::CreateAutofillSuggestion(
+                          SuggestionType::kAddressEntry, u"Address 1"),
+                  });
+  task_environment()->FastForwardBy(
+      AutofillSuggestionController::kIgnoreEarlyClicksOnSuggestionsDuration);
+
+  auto& controller = client().suggestion_controller(manager());
+
+  EXPECT_CALL(manager().external_delegate(), DidAcceptSuggestion).Times(0);
+  EXPECT_FALSE(test_api(controller)
+                   .HandleKeyPressEvent(CreateKeyPressEvent(ui::VKEY_TAB)));
+}
+
+// Tests that pressing Return accepts the selected suggestion and consumes the
+// event to prevent accidental form submission.
+TEST_F(AutofillKeyboardAccessoryControllerImplTest,
+       ReturnKeyAcceptsSuggestionAndConsumesEvent) {
+  ShowSuggestions(manager(),
+                  {
+                      test::CreateAutofillSuggestion(
+                          SuggestionType::kAddressEntry, u"Address 1"),
+                      test::CreateAutofillSuggestion(
+                          SuggestionType::kAddressEntry, u"Address 2"),
+                  });
+  task_environment()->FastForwardBy(
+      AutofillSuggestionController::kIgnoreEarlyClicksOnSuggestionsDuration);
+
+  auto& controller = client().suggestion_controller(manager());
+  controller.SelectSuggestion(0);
+
+  EXPECT_CALL(manager().external_delegate(), DidAcceptSuggestion);
+  // Enter should accept the suggestion and return true to prevent form
+  // submission.
+  EXPECT_TRUE(test_api(controller)
+                  .HandleKeyPressEvent(CreateKeyPressEvent(ui::VKEY_RETURN)));
+}
+
+// Tests that pressing Return with a modifier (e.g. Ctrl, Shift, or Alt) does
+// not accept the suggestion and allows the event to propagate.
+TEST_F(AutofillKeyboardAccessoryControllerImplTest,
+       ReturnKeyWithModifierDoesNotAcceptSuggestion) {
+  ShowSuggestions(manager(),
+                  {
+                      test::CreateAutofillSuggestion(
+                          SuggestionType::kAddressEntry, u"Address 1"),
+                      test::CreateAutofillSuggestion(
+                          SuggestionType::kAddressEntry, u"Address 2"),
+                  });
+  task_environment()->FastForwardBy(
+      AutofillSuggestionController::kIgnoreEarlyClicksOnSuggestionsDuration);
+
+  auto& controller = client().suggestion_controller(manager());
+  controller.SelectSuggestion(0);
+
+  EXPECT_CALL(manager().external_delegate(), DidAcceptSuggestion).Times(0);
+  EXPECT_FALSE(test_api(controller)
+                   .HandleKeyPressEvent(CreateKeyPressEvent(
+                       ui::VKEY_RETURN, blink::WebInputEvent::kControlKey)));
+  EXPECT_FALSE(test_api(controller)
+                   .HandleKeyPressEvent(CreateKeyPressEvent(
+                       ui::VKEY_RETURN, blink::WebInputEvent::kShiftKey)));
+  EXPECT_FALSE(test_api(controller)
+                   .HandleKeyPressEvent(CreateKeyPressEvent(
+                       ui::VKEY_RETURN, blink::WebInputEvent::kAltKey)));
+}
+
+// Tests that pressing Return when no suggestion is selected does not accept any
+// suggestion and allows normal Return handling (e.g. submitting the form).
+TEST_F(AutofillKeyboardAccessoryControllerImplTest,
+       ReturnKeyWithoutSelectionDoesNotAcceptSuggestion) {
+  ShowSuggestions(manager(),
+                  {
+                      test::CreateAutofillSuggestion(
+                          SuggestionType::kAddressEntry, u"Address 1"),
+                  });
+  task_environment()->FastForwardBy(
+      AutofillSuggestionController::kIgnoreEarlyClicksOnSuggestionsDuration);
+
+  auto& controller = client().suggestion_controller(manager());
+
+  EXPECT_CALL(manager().external_delegate(), DidAcceptSuggestion).Times(0);
+  EXPECT_FALSE(test_api(controller)
+                   .HandleKeyPressEvent(CreateKeyPressEvent(ui::VKEY_RETURN)));
+}
+
+// Tests that selecting a suggestion by hovering it with the mouse enters the
+// navigation mode, so that arrow Left/Right immediately continue navigating
+// from the hovered suggestion.
+TEST_F(AutofillKeyboardAccessoryControllerImplTest,
+       HoveringSuggestionEntersSuggestionNavigationMode) {
+  ShowSuggestions(manager(),
+                  {
+                      test::CreateAutofillSuggestion(
+                          SuggestionType::kAddressEntry, u"Address 1"),
+                      test::CreateAutofillSuggestion(
+                          SuggestionType::kAddressEntry, u"Address 2"),
+                  });
+
+  auto& controller = client().suggestion_controller(manager());
+
+  controller.SelectSuggestion(1);
+
+  EXPECT_CALL(*manual_filling_view(),
+              NavigateSuggestions(NavigationDirection::kForward))
+      .WillOnce(testing::Return(true));
+  EXPECT_TRUE(test_api(controller)
+                  .HandleKeyPressEvent(CreateKeyPressEvent(ui::VKEY_RIGHT)));
+
+  // Once the mouse stops hovering the suggestion, arrow Left/Right move the
+  // text caret again.
+  controller.UnselectSuggestion();
+
+  EXPECT_CALL(*manual_filling_view(), NavigateSuggestions).Times(0);
+  EXPECT_FALSE(test_api(controller)
+                   .HandleKeyPressEvent(CreateKeyPressEvent(ui::VKEY_RIGHT)));
 }
 
 // TODO(crbug.com/542535472): Add renderer test for preview on Android.

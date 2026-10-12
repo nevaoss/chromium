@@ -829,9 +829,9 @@
       status: "stable",
     },
     {
-      // Killswitch M153.
+      // Killswitch M156.
       name: "AvoidEmbeddedContentViewLocation",
-      status: "test",
+      status: "stable",
     },
     {
       // Don't use a position inside non-selectable content as a selection
@@ -1210,8 +1210,9 @@
     {
       // This is a kill switch for a refactor of the way activation
       // behaviors are triggered. It should not affect behavior.
+      // This flag shipped in M155 and can be removed in M158.
       name: "CleanUpActivationBehavior",
-      status: "experimental",
+      status: "stable",
     },
     {
       // Set currentTarget to null after dispatch for EventTarget.
@@ -1595,7 +1596,7 @@
       // https://drafts.csswg.org/css-backgrounds/#layering
       // https://github.com/w3c/csswg-drafts/issues/7164
       name: "CSSBackgroundLayerCountIndependence",
-      status: "test",
+      status: "experimental",
     },
     // https://chromestatus.com/feature/5459864205393920
     {
@@ -2167,6 +2168,8 @@
       //
       // https://github.com/w3c/csswg-drafts/issues/12581
       name: "CSSTimelineScopeGlobal",
+      depends_on: ["CSSTreeScopedScrollTimeline"],
+      status: "experimental",
     },
     {
       // Support tree-scoped scroll and view timeline names according to the
@@ -2955,13 +2958,6 @@
       status: "stable",
     },
     {
-      // Consumes user activation when showing a picker via input.click() for
-      // file and color inputs to match input.showPicker() and avoid issues
-      // with multiple pickers trying to open at the same time.
-      name: "FileColorPickerConsumeActivation",
-      status: "stable",
-    },
-    {
       // Also enabled when blink::features::kFileHandlingAPI is overridden
       // on the command line (or via chrome://flags).
       name: "FileHandling",
@@ -3373,7 +3369,8 @@
     },
     {
       // Killswitch for the visible deprecation warning banner shown on
-      // XSLT-transformed documents.
+      // XSLT-transformed documents. This will be present until the banner is
+      // removed in M158.
       name: "GenerateXSLTWarningBanner",
       status: "stable",
     },
@@ -3892,6 +3889,10 @@
     {
       name: "LanguageDetectionAPIForWorkers",
       public: true,
+    },
+    {
+      name: "LayoutCloneForScrollableOverflowChange",
+      status: "stable",
     },
     {
       name: "LayoutIgnoreMarginsForSticky",
@@ -4440,6 +4441,14 @@
       depends_on: ["NormalizeNbspForPasteAndDrop"],
     },
     {
+      // Dispatch an error event for the cross-origin violation for the worker
+      // script URL fetching, instead of throwing error synchronously on worker
+      // construction.
+      // See https://github.com/whatwg/html/issues/337
+      name: "NoSynchronousThrowForCrossOriginBlockedWorker",
+      status: "experimental",
+    },
+    {
       name: "NotificationConstructor",
       // Android won't be able to reliably support non-persistent notifications, the
       // intended behavior for which is in flux by itself.
@@ -4694,6 +4703,7 @@
       // https://chromestatus.com/feature/5261280285949952
       name: "OverscrollGestures",
       status: "experimental",
+      depends_on: ["CSSScrollSnapTypePair"],
     },
     {
       name: "PagePopup",
@@ -4907,6 +4917,10 @@
       // foreign content in the HTML preload scanner. Ships in M155 and can be
       // removed in M158. https://crbug.com/40728681
       name: "PreloadScannerImprovements",
+      status: "stable",
+    },
+    {
+      name: "PrePaintBoxInvalidatorUsesFragments",
       status: "stable",
     },
     {
@@ -5484,6 +5498,13 @@
       name: "ScrollIntoViewNearest",
       status: "stable"
     },
+    {
+      // Prevents scrollIntoView() from creating the initial sequential focus
+      // navigation starting point before one has been established.
+      // https://crbug.com/537801211
+      name: "ScrollIntoViewNoInitialFocusNavigationStartingPoint",
+      status: "stable",
+    },
     // TODO(355460994): Remove after M129.
     // scroll into root frame didn't take scrollbar and borders into account,
     // while this is fixed, to avoid any web compat issues we have this killswitch.
@@ -5849,7 +5870,7 @@
     },
     {
       name: "SingleAxisScrollContainers",
-      status: "experimental",
+      status: "stable",
     },
     {
       name: "SingleAxisScrollContainersForScrollSnap",
@@ -5891,11 +5912,6 @@
     {
       // See crbug.com/446113738.
       name: "SkipUnselectableElementsInParagraphBoundary",
-      status: "stable",
-    },
-    {
-      // See crbug.com/502616235.
-      name: "SkipViewTransitionSnapshotResumeRendering",
       status: "stable",
     },
     {
@@ -6072,6 +6088,15 @@
     {
       name: "StrictMimeTypesForWorkers",
       status: "experimental",
+    },
+    {
+      // When enabled, a StyleImage/FontResource cached on a (potentially
+      // shared) StyleSheetContents is keyed on the requesting document's
+      // ResourceFetcher, so a second document that shares the stylesheet
+      // re-runs its own request checks (e.g. Content Security Policy) instead
+      // of reusing the first document's already-fetched resource. crbug.com/504107363.
+      name: "StyleResourceFetcherIdentityCheck",
+      status: "stable",
     },
     {
       name: "StylusHandwriting",
@@ -6334,6 +6359,12 @@
       status: "stable",
     },
     {
+      // Kill switch for crbug.com/562543774.
+      name: "TextBoxTrimOnInlineBoxTextDecoration",
+      depends_on: ["TextBoxTrimOnInlineBox"],
+      status: "stable",
+    },
+    {
       name: "TextDetector",
       status: "experimental",
     },
@@ -6526,11 +6557,6 @@
       status: "stable",
     },
     {
-      // crbug.com/451651633
-      name: "TreeRubyPlacement",
-      status: "stable",
-    },
-    {
       // When enabled, trusted types can be used to enforce sanitization &
       // script running rules.
       // For example, it can enforce that any HTML setter would go through a
@@ -6561,19 +6587,13 @@
       // Note that this flag is enabled by default, to enable WebUI and other
       // privileged UI to depend on this feature. The flag is here as a kill
       // switch. Importantly, open web content still requires
-      // UnboundedElementOnTheOpenWeb to be enabled.
+      // UnsafeUnboundedElementOnTheOpenWeb to be enabled.
       // There is an override in SetCustomizedRuntimeFeaturesFromCombinedArgs to ensure this
       // is only enabled for Android U+, which is the minimum version the platform supports.
       name: "UnboundedElement",
       public: true,
       status: "stable",
-      implied_by: ["UnboundedElementOnTheOpenWeb"],
-    },
-    {
-      // The Unbounded Element API. See crbug.com/508672616.
-      // Enable Unbounded Element on the open web without privileged context.
-      name: "UnboundedElementOnTheOpenWeb",
-      public: true,
+      implied_by: ["UnsafeUnboundedElementOnTheOpenWeb"],
     },
     {
       name: "UnclosedFormControlIsInvalid",
@@ -6605,6 +6625,12 @@
       name: "UnrestrictedUsb",
       status: "stable",
       depends_on: ["WebUSB"],
+    },
+    {
+      // The Unbounded Element API. See crbug.com/508672616.
+      // Enable Unbounded Element on the open web without privileged context.
+      name: "UnsafeUnboundedElementOnTheOpenWeb",
+      public: true,
     },
     // If enabled, notify the associated DisplayCutoutHost of changes in
     // complex safe area constraint usage on the page.
@@ -6910,6 +6936,15 @@
     {
       name: "WebAuthenticationCrossDeviceFallbackUrl",
       status: {"Android": "", "default": "experimental"},
+      base_feature: "none",
+      public: true,
+    },
+    // Lets an authorized remote desktop client supply the clientDataJSON for a
+    // WebAuthn request. Can be enabled only in conjunction with
+    // the device::kWebAuthnRemoteClientDataJson base::Feature.
+    // https://w3c.github.io/webauthn/#sctn-remote-client-data-json-extension
+    {
+      name: "WebAuthenticationRemoteClientDataJson",
       base_feature: "none",
       public: true,
     },
@@ -7237,7 +7272,6 @@
     {
       name: "WebTransportDatagramsReadableType",
       status: "experimental",
-      base_feature: "none",
     },
     {
       name: "WebTransportDatagramsWritable",
@@ -7490,7 +7524,7 @@
       // with its responseXML document.
       // https://crbug.com/466303347
       name: "XMLRustForNonXslt",
-      status: "experimental",
+      status: "stable",
     },
     {
       name: "XMLSerializerConsistentDefaultNsDeclMatching",

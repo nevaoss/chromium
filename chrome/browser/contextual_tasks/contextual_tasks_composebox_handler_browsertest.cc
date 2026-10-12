@@ -11,6 +11,7 @@
 #include "base/containers/span.h"
 #include "base/files/file_util.h"
 #include "base/files/scoped_temp_dir.h"
+#include "base/functional/callback_helpers.h"
 #include "base/memory/raw_ptr.h"
 #include "base/observer_list.h"
 #include "base/run_loop.h"
@@ -59,6 +60,7 @@
 #include "components/keyed_service/content/browser_context_dependency_manager.h"
 #include "components/keyed_service/core/keyed_service.h"
 #include "components/omnibox/common/composebox_features.h"
+#include "components/omnibox/common/omnibox_features.h"
 #include "components/sessions/content/session_tab_helper.h"
 #include "components/sessions/core/session_id.h"
 #include "components/tabs/public/mock_tab_interface.h"
@@ -3602,6 +3604,98 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksComposeboxHandlerTest,
   ASSERT_FALSE(handler_->HasPendingQueryForTesting());
 }
 
+IN_PROC_BROWSER_TEST_F(
+    ContextualTasksComposeboxHandlerTest,
+    NoUafWhenHandlerDestroyedWithPendingRecontextualization) {
+  ASSERT_NE(mock_contextual_tasks_service_ptr_, nullptr)
+      << "Mock controller is NULL!";
+  std::string kQuery = "stashed query";
+  base::Uuid task_id = base::Uuid::GenerateRandomV4();
+  EXPECT_CALL(*mock_ui_, GetTaskId())
+      .WillRepeatedly(
+          testing::ReturnRefOfCopy(std::optional<base::Uuid>(task_id)));
+
+  // Setup context with uploaded tab.
+  contextual_tasks::ContextualTask task(task_id);
+  SessionID session_id = sessions::SessionTabHelper::IdForTab(web_contents());
+  GURL kUrl("about:blank");
+  std::string kTitle = "about:blank";
+
+  contextual_tasks::UrlResource resource(
+      kUrl, contextual_tasks::ResourceType::kWebpage);
+  resource.title = kTitle;
+  resource.tab_id = session_id;
+  task.AddUrlResource(resource);
+
+  auto context =
+      std::make_unique<contextual_tasks::ContextualTaskContext>(task);
+
+  EXPECT_CALL(
+      *mock_contextual_tasks_service_ptr_,
+      GetContextForTask(
+          task_id,
+          testing::Contains(contextual_tasks::ContextualTaskContextSource::
+                                kSubmittedContextDecorator),
+          testing::NotNull(), testing::_))
+      .WillOnce(
+          [&context](
+              const base::Uuid& task_id,
+              const std::set<contextual_tasks::ContextualTaskContextSource>&
+                  sources,
+              std::unique_ptr<contextual_tasks::ContextDecorationParams> params,
+              base::OnceCallback<void(
+                  std::unique_ptr<contextual_tasks::ContextualTaskContext>)>
+                  callback) { std::move(callback).Run(std::move(context)); });
+
+  // Setup FileInfo with expired status.
+  std::vector<raw_ptr<const contextual_search::FileInfo>> file_info_list;
+  contextual_search::FileInfo file_info;
+  file_info.tab_session_id = session_id;
+  file_info.upload_status =
+      contextual_search::ContextUploadStatus::kUploadExpired;
+  file_info.request_id.emplace();
+  file_info.request_id->set_context_id(12345);
+  file_info_list.push_back(&file_info);
+
+  EXPECT_CALL(*mock_controller_, GetFileInfoList())
+      .WillRepeatedly(testing::Return(file_info_list));
+
+  // 1. Capture the GetPageContext callback.
+  MockTabContextualizationController::GetPageContextCallback pending_callback;
+  EXPECT_CALL(*mock_tab_controller_, GetPageContext(testing::_))
+      .WillOnce([&](MockTabContextualizationController::GetPageContextCallback
+                        callback) { pending_callback = std::move(callback); });
+
+  // 2. Call CreateAndSendQueryMessage.
+  handler_->CreateAndSendQueryMessage(kQuery, /*is_voice_search=*/false);
+
+  // 3. Start file upload when recontextualizer completes context fetch.
+  base::UnguessableToken uploaded_token;
+  EXPECT_CALL(*mock_controller_,
+              StartFileUploadFlow(testing::_, testing::_, testing::_))
+      .WillOnce([&](const base::UnguessableToken& file_token,
+                    std::unique_ptr<lens::ContextualInputData> data,
+                    std::optional<lens::ImageEncodingOptions> image_options) {
+        uploaded_token = file_token;
+      });
+
+  auto data = std::make_unique<lens::ContextualInputData>();
+  data->tab_session_id = session_id;
+  data->page_url = GURL("about:blank");
+  data->page_title = "about:blank";
+  data->context_id = 12345;
+  data->is_page_context_eligible = true;
+  std::move(pending_callback).Run(std::move(data));
+
+  // 4. Destroy the handler while upload is still in progress in UploadTracker.
+  handler_.reset();
+
+  // 5. Complete the upload status change. Must safely no-op without UAF.
+  SimulateUploadStatusChanged(
+      uploaded_token, lens::MimeType::kUnknown,
+      contextual_search::ContextUploadStatus::kUploadSuccessful);
+}
+
 IN_PROC_BROWSER_TEST_F(ContextualTasksComposeboxHandlerTest,
                        Recontextualization_TabInvalidatedGracefullyCompletes) {
   ASSERT_NE(mock_contextual_tasks_service_ptr_, nullptr)
@@ -4067,6 +4161,99 @@ IN_PROC_BROWSER_TEST_F(
 
   SetUpHandler();
   ASSERT_NE(handler_, nullptr);
+
+  mock_ui_->SetSessionHandle(nullptr);
+}
+
+IN_PROC_BROWSER_TEST_F(
+    ContextualTasksComposeboxHandlerTestWithContextManagementEnabled,
+    CacheSubmittedTabsOnQuerySubmission_AccumulatesAcrossTurns) {
+  tabs::TabInterface* tab1 =
+      tabs::TabLookupFromWebContents::FromWebContents(web_contents_)->model();
+  ASSERT_NE(tab1, nullptr);
+  SessionID session_id1 =
+      sessions::SessionTabHelper::FromWebContents(tab1->GetContents())
+          ->session_id();
+
+  tabs::TabInterface* tab2 = AddTab(GURL("about:blank#2"));
+  ASSERT_NE(tab2, nullptr);
+  SessionID session_id2 =
+      sessions::SessionTabHelper::FromWebContents(tab2->GetContents())
+          ->session_id();
+
+  auto mock_session = std::make_unique<testing::NiceMock<
+      contextual_search::MockContextualSearchSessionHandle>>();
+  mock_ui_->SetSessionHandle(mock_session.get());
+
+  EXPECT_CALL(*mock_session, GetSubmittedContextFileInfos())
+      .WillRepeatedly(
+          testing::Return(std::vector<contextual_search::FileInfo>()));
+
+  SetUpHandler();
+  ASSERT_NE(handler_, nullptr);
+
+  EXPECT_CALL(*mock_ui_, GetTaskId())
+      .WillRepeatedly(testing::ReturnRefOfCopy(std::optional<base::Uuid>()));
+  EXPECT_CALL(*mock_controller_, CreateClientToAimRequest(testing::_))
+      .WillRepeatedly([](std::unique_ptr<
+                          contextual_search::ContextualSearchContextController::
+                              CreateClientToAimRequestInfo> info) {
+        return lens::ClientToAimMessage();
+      });
+  EXPECT_CALL(*mock_ui_, PostAimMessage(testing::_)).Times(2);
+
+  // Initial query submission with tab1.
+  base::Time now = base::Time::Now();
+  contextual_search::FileInfo tab_info1;
+  tab_info1.tab_url = GURL("about:blank#1");
+  tab_info1.tab_title = "About Blank 1";
+  tab_info1.tab_session_id = session_id1;
+  tab_info1.mime_type = lens::MimeType::kHtml;
+  tab_info1.selection_time = now;
+
+  EXPECT_CALL(*mock_session, GetSubmittedContextFileInfos())
+      .WillRepeatedly(
+          testing::Return(std::vector<contextual_search::FileInfo>{tab_info1}));
+
+  EXPECT_CALL(mock_searchbox_page_, SetAimThreadRestoredTabs(testing::_))
+      .WillOnce([&](const std::vector<searchbox::mojom::TabInfoPtr>& tabs) {
+        ASSERT_EQ(tabs.size(), 1u);
+        EXPECT_EQ(tabs[0]->url, GURL("about:blank#1"));
+        EXPECT_EQ(tabs[0]->title, "About Blank 1");
+        EXPECT_EQ(tabs[0]->tab_id, tab1->GetHandle().raw_value());
+      });
+
+  handler_->CreateAndSendQueryMessage("first query",
+                                      /*is_voice_search=*/false);
+  searchbox_page_receiver_.FlushForTesting();
+
+  // Subsequent query submission where session handle returns both persisted
+  // tab1 and newly submitted tab2.
+  contextual_search::FileInfo tab_info2;
+  tab_info2.tab_url = GURL("about:blank#2");
+  tab_info2.tab_title = "About Blank 2";
+  tab_info2.tab_session_id = session_id2;
+  tab_info2.mime_type = lens::MimeType::kHtml;
+  tab_info2.selection_time = now + base::Seconds(5);
+
+  EXPECT_CALL(*mock_session, GetSubmittedContextFileInfos())
+      .WillRepeatedly(testing::Return(
+          std::vector<contextual_search::FileInfo>{tab_info1, tab_info2}));
+
+  EXPECT_CALL(mock_searchbox_page_, SetAimThreadRestoredTabs(testing::_))
+      .WillOnce([&](const std::vector<searchbox::mojom::TabInfoPtr>& tabs) {
+        ASSERT_EQ(tabs.size(), 2u);
+        EXPECT_EQ(tabs[0]->url, GURL("about:blank#1"));
+        EXPECT_EQ(tabs[0]->title, "About Blank 1");
+        EXPECT_EQ(tabs[0]->tab_id, tab1->GetHandle().raw_value());
+        EXPECT_EQ(tabs[1]->url, GURL("about:blank#2"));
+        EXPECT_EQ(tabs[1]->title, "About Blank 2");
+        EXPECT_EQ(tabs[1]->tab_id, tab2->GetHandle().raw_value());
+      });
+
+  handler_->CreateAndSendQueryMessage("second query",
+                                      /*is_voice_search=*/false);
+  searchbox_page_receiver_.FlushForTesting();
 
   mock_ui_->SetSessionHandle(nullptr);
 }

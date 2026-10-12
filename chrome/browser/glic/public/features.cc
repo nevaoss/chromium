@@ -4,12 +4,16 @@
 
 #include "chrome/browser/glic/public/features.h"
 
+#include <algorithm>
+#include <string>
+#include <vector>
+
 #include "base/feature.h"
+#include "base/no_destructor.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_split.h"
 #include "build/android_buildflags.h"
 #include "build/build_config.h"
-#include "chrome/browser/pwc/pwc_features.mojom-features.h"
 
 namespace features {
 
@@ -144,6 +148,40 @@ const base::flat_set<int32_t>& GetGlicTieredRolloutV2EligibleTiers() {
   return *eligible_tiers;
 }
 
+namespace {
+
+base::flat_set<std::string> ParseBenefitList(const std::string& benefit_list) {
+  std::vector<std::string> benefits = base::SplitString(
+      benefit_list, ",", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY);
+  return base::flat_set<std::string>(std::move(benefits));
+}
+
+}  // namespace
+
+BASE_FEATURE(kGlicSubscriptionBenefitsEligibility,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+const base::FeatureParam<std::string> kGlicEligibleBenefits{
+    &kGlicSubscriptionBenefitsEligibility, "glic-eligible-benefits", ""};
+const base::FeatureParam<std::string> kGlicActorEligibleBenefits{
+    &kGlicSubscriptionBenefitsEligibility, "glic-actor-eligible-benefits", ""};
+
+base::flat_set<std::string> GetGlicEligibleBenefits() {
+  return ParseBenefitList(kGlicEligibleBenefits.Get());
+}
+
+base::flat_set<std::string> GetGlicActorEligibleBenefits() {
+  return ParseBenefitList(kGlicActorEligibleBenefits.Get());
+}
+
+bool HasAnyEligibleGlicBenefit(
+    const base::flat_set<std::string>& profile_benefits,
+    const base::flat_set<std::string>& eligible_benefits) {
+  return std::ranges::any_of(eligible_benefits,
+                             [&profile_benefits](const std::string& benefit) {
+                               return profile_benefits.contains(benefit);
+                             });
+}
+
 BASE_FEATURE(kGlicHorizontalTabToolbarButton,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -238,6 +276,13 @@ BASE_FEATURE(kGlicGeminiEnterpriseSettingsEnabled,
 BASE_FEATURE(kGlicGeminiEnterpriseConsentEnabled,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
+BASE_FEATURE(kGeic, base::FEATURE_DISABLED_BY_DEFAULT);
+
+const base::FeatureParam<bool> kGeicEnabledParam{&kGeic, "enabled", true};
+
+const base::FeatureParam<std::string> kGeicGuestURL{&kGeic, "geic-guest-url",
+                                                    ""};
+
 BASE_FEATURE(kGlicHotkeyLocalScope,
 #if BUILDFLAG(IS_ANDROID)
              base::FEATURE_ENABLED_BY_DEFAULT
@@ -265,9 +310,7 @@ BASE_FEATURE(kGlicStructuredYieldMetadata, base::FEATURE_ENABLED_BY_DEFAULT);
 // This is a work in progress. See b/534807813.
 BASE_FEATURE(kGlicNoWebview, base::FEATURE_DISABLED_BY_DEFAULT);
 bool IsGlicNoWebviewEnabled() {
-  return base::FeatureList::IsEnabled(kGlicNoWebview) &&
-         base::FeatureList::IsEnabled(
-             pwc::mojom::features::kPrivilegedWebContents);
+  return base::FeatureList::IsEnabled(kGlicNoWebview);
 }
 // Whether to disallow webview communication directly with the glic host
 // (chrome/browser/resources/glic/glic_api_impl/host). When enabled, some
@@ -281,6 +324,8 @@ const base::FeatureParam<bool> kGlicShakeTriggerOnlyOnSidePanel{
     &kGlicShakeTrigger, "only_on_side_panel", true};
 
 BASE_FEATURE(kGlicAndroidTablet, base::FEATURE_DISABLED_BY_DEFAULT);
+
+BASE_FEATURE(kGlicVoice, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kGlicMarketingAutoOpen, base::FEATURE_ENABLED_BY_DEFAULT);
 const base::FeatureParam<std::string> kGlicMarketingUrlAllowlist{

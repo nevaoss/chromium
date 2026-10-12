@@ -22,6 +22,7 @@
 #include "build/build_config.h"
 #include "chrome/browser/browser_process.h"
 #include "chrome/browser/glic/actor/glic_actor_policy_checker.h"
+#include "chrome/browser/glic/gemini_enterprise/geic_enabling.h"
 #include "chrome/browser/glic/glic_hotkey.h"
 #include "chrome/browser/glic/glic_pref_names.h"
 #include "chrome/browser/glic/host/glic_features.mojom.h"
@@ -70,6 +71,7 @@
 #include "mojo/public/cpp/bindings/associated_remote.h"
 #include "net/base/url_util.h"
 #include "pdf/buildflags.h"
+#include "printing/buildflags/buildflags.h"
 #include "third_party/blink/public/common/associated_interfaces/associated_interface_provider.h"
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/public/common/page/page_zoom.h"
@@ -85,6 +87,10 @@
 #include "ui/base/clipboard/clipboard_observer.h"
 #include "ui/gfx/geometry/skia_conversions.h"
 #include "url/gurl.h"
+
+#if BUILDFLAG(ENABLE_PRINTING)
+#include "chrome/browser/printing/printing_init.h"
+#endif
 
 #if BUILDFLAG(IS_ANDROID)
 #include "base/android/device_info.h"
@@ -171,6 +177,20 @@ class GlicWebUiData : public content::WebContentsUserData<GlicWebUiData>,
 
 WEB_CONTENTS_USER_DATA_KEY_IMPL(GlicWebUiData);
 
+// Attached to the overlay WebContents using WebContentsUserData.
+class GlicOverlayData : public content::WebContentsUserData<GlicOverlayData> {
+ public:
+  ~GlicOverlayData() override = default;
+
+ private:
+  explicit GlicOverlayData(content::WebContents* overlay_contents)
+      : content::WebContentsUserData<GlicOverlayData>(*overlay_contents) {}
+  friend class content::WebContentsUserData<GlicOverlayData>;
+  WEB_CONTENTS_USER_DATA_KEY_DECL();
+};
+
+WEB_CONTENTS_USER_DATA_KEY_IMPL(GlicOverlayData);
+
 // Attached to RenderProcessHost to identify Glic processes.
 class GlicProcessUserData : public base::SupportsUserData::Data {
  public:
@@ -245,6 +265,15 @@ void PrepareGlicGuestWebContents(content::WebContents& guest_contents,
   PrefsTabHelper::CreateForWebContents(&guest_contents);
   ConfigureGuestZoom(guest_contents);
 
+#if BUILDFLAG(ENABLE_PRINTING)
+  // In <webview> mode, WebViewGuest attaches printing helpers via
+  // ChromeExtensionsAPIClient::AttachWebContentsHelpers. In NoWebview mode,
+  // initialize printing explicitly on the guest WebContents.
+  if (features::IsGlicNoWebviewEnabled()) {
+    printing::InitializePrintingForWebContents(&guest_contents);
+  }
+#endif
+
 #if !BUILDFLAG(IS_ANDROID)
   guest_contents.SetSupportsDraggableRegions(true);
 #endif  // !BUILDFLAG(IS_ANDROID)
@@ -256,7 +285,7 @@ void SetHostForGuest(content::WebContents& guest_contents, Host* host) {
   }
 }
 
-bool IsGlicGuest(content::WebContents* web_contents) {
+bool IsGlicGuest(const content::WebContents* web_contents) {
   return web_contents &&
          GlicGuestObserver::FromWebContents(web_contents) != nullptr;
 }
@@ -267,6 +296,10 @@ void MarkProcessAsGlic(content::RenderProcessHost* rph) {
 
 void CreateGlicWebUiData(content::WebContents* webui_contents) {
   GlicWebUiData::CreateForWebContents(webui_contents);
+}
+
+void CreateGlicOverlayData(content::WebContents* overlay_contents) {
+  GlicOverlayData::CreateForWebContents(overlay_contents);
 }
 
 void SetContentsManagerForWebContents(
@@ -307,12 +340,24 @@ GlicWebClientManager* GetWebClientManagerForWebContents(
 }
 
 GURL GetGuestURL() {
-  auto* command_line = base::CommandLine::ForCurrentProcess();
-  bool has_glic_guest_url = command_line->HasSwitch(::switches::kGlicGuestURL);
-  GURL url =
-      GURL(has_glic_guest_url
-               ? command_line->GetSwitchValueASCII(::switches::kGlicGuestURL)
-               : features::kGlicGuestURL.Get());
+  GURL url;
+  if (geic::IsGeicEnabled()) {
+    url = geic::GetGeicGuestUrl();
+    if (url.is_empty()) {
+      LOG(ERROR) << "GEiC is enabled but no guest URL was provided.";
+      return GURL();
+    }
+  }
+
+  if (url.is_empty()) {
+    auto* command_line = base::CommandLine::ForCurrentProcess();
+    bool has_glic_guest_url =
+        command_line->HasSwitch(::switches::kGlicGuestURL);
+    url =
+        GURL(has_glic_guest_url
+                 ? command_line->GetSwitchValueASCII(::switches::kGlicGuestURL)
+                 : features::kGlicGuestURL.Get());
+  }
 
   // If a preset url is enabled, use it instead.
   url = MaybeApplyPresetGuestUrl(std::move(url));
@@ -517,6 +562,19 @@ GURL GetLocalizedGuestURL(const GURL& guest_url) {
 bool IsGlicWebUI(const content::WebContents* web_contents) {
   return web_contents &&
          GlicWebUiData::FromWebContents(web_contents) != nullptr;
+}
+
+bool IsGlicOverlay(const content::WebContents* web_contents) {
+  return web_contents &&
+         GlicOverlayData::FromWebContents(web_contents) != nullptr;
+}
+
+bool IsAnyGlicWebContents(const content::WebContents* web_contents) {
+  if (!web_contents) {
+    return false;
+  }
+  return IsGlicGuest(web_contents) || IsGlicWebUI(web_contents) ||
+         IsGlicOverlay(web_contents);
 }
 
 bool IsProcessHostForGlic(content::RenderProcessHost* process_host) {
