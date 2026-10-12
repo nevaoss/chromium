@@ -49,7 +49,6 @@ import org.chromium.base.DeviceInfo;
 import org.chromium.base.Token;
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.base.test.util.Features.DisableFeatures;
-import org.chromium.base.test.util.UserActionTester;
 import org.chromium.chrome.browser.incognito.IncognitoUtils;
 import org.chromium.chrome.browser.tab_ui.TabListFaviconProvider.TabFavicon;
 import org.chromium.chrome.browser.tab_ui.TabListFaviconProvider.TabFaviconFetcher;
@@ -98,7 +97,7 @@ public class TabVerticalViewBinderUnitTest {
     @Mock private TabFaviconFetcher mFaviconFetcher2;
     @Mock private TabHoverListener mTabHoverListener;
 
-    private ViewGroup mItemView;
+    private VerticalTabItemLayout mItemView;
     private TextView mTitleView;
     private ImageView mFaviconView;
     private ImageView mCloseButton;
@@ -119,7 +118,7 @@ public class TabVerticalViewBinderUnitTest {
                 .updateConfiguration(config, mActivity.getResources().getDisplayMetrics());
 
         mItemView =
-                (ViewGroup)
+                (VerticalTabItemLayout)
                         LayoutInflater.from(mActivity)
                                 .inflate(R.layout.vertical_tab_item, null, false);
         mActivity.setContentView(mItemView);
@@ -628,7 +627,7 @@ public class TabVerticalViewBinderUnitTest {
     }
 
     @Test
-    public void testTabHover_ExitTagRunnable_ClearsHoverState() {
+    public void testTabHover_StateListenerTag_ClearsHoverState() {
         mModel.set(TabProperties.IS_SELECTED, false);
         TabVerticalViewBinder.bindTab(mModel, mItemView, TabProperties.IS_SELECTED);
 
@@ -644,9 +643,11 @@ public class TabVerticalViewBinderUnitTest {
                         mItemView.getContext(), /* isIncognito= */ false),
                 bgTint.getDefaultColor());
 
-        Object tag = mItemView.getTag(R.id.tab_hover_exit_listener);
-        assertTrue(tag instanceof Runnable);
-        ((Runnable) tag).run();
+        @SuppressWarnings("unchecked")
+        Callback<Boolean> callback =
+                (Callback<Boolean>) mItemView.getTag(R.id.tab_hover_state_listener);
+        assertNotNull(callback);
+        callback.onResult(/* result= */ false);
 
         bgTint = mItemView.getBackgroundTintList();
         assertNotNull(bgTint);
@@ -884,8 +885,8 @@ public class TabVerticalViewBinderUnitTest {
 
     @Test
     public void testActionButtonTouchDelegate_UnattachedToWindow() {
-        ViewGroup unattachedView =
-                (ViewGroup)
+        VerticalTabItemLayout unattachedView =
+                (VerticalTabItemLayout)
                         LayoutInflater.from(mActivity)
                                 .inflate(R.layout.vertical_tab_item, null, false);
         View closeButton = unattachedView.findViewById(R.id.action_button);
@@ -1446,6 +1447,7 @@ public class TabVerticalViewBinderUnitTest {
     @Test
     public void testBindTabGroupHeader_HoverListener() {
         ViewGroup headerView = inflateGroupHeaderView();
+        View menuButton = headerView.findViewById(R.id.menu_button);
         mModel.set(TabProperties.TAB_ID, TEST_HEADER_TAB_ID);
         mModel.set(TabProperties.TAB_GROUP_HEADER_ID, TEST_TAB_GROUP_ID);
         mModel.set(TabProperties.TAB_HOVER_LISTENER, mTabHoverListener);
@@ -1455,8 +1457,6 @@ public class TabVerticalViewBinderUnitTest {
 
         TabVerticalViewBinder.bindTabGroupHeader(
                 mModel, headerView, TabProperties.TAB_ACTION_BUTTON_DATA);
-
-        UserActionTester userActionTester = new UserActionTester();
 
         // Hover enter.
         MotionEvent enterEvent =
@@ -1472,8 +1472,13 @@ public class TabVerticalViewBinderUnitTest {
         verify(mTabHoverListener)
                 .onTabGroupHoverStateChanged(
                         TEST_HEADER_TAB_ID, TEST_TAB_GROUP_ID, headerView, /* isHovered= */ true);
-        assertTrue(
-                userActionTester.getActions().contains("Android.VerticalTabs.GroupHeaderHovered"));
+
+        @SuppressWarnings("unchecked")
+        Callback<Boolean> visualCallback =
+                (Callback<Boolean>) headerView.getTag(R.id.tab_hover_state_listener);
+        assertNotNull(visualCallback);
+        visualCallback.onResult(true);
+        assertEquals(View.VISIBLE, menuButton.getVisibility());
         enterEvent.recycle();
 
         // Hover exit.
@@ -1490,12 +1495,15 @@ public class TabVerticalViewBinderUnitTest {
         verify(mTabHoverListener)
                 .onTabGroupHoverStateChanged(
                         TEST_HEADER_TAB_ID, TEST_TAB_GROUP_ID, headerView, /* isHovered= */ false);
+        visualCallback.onResult(false);
+        assertEquals(View.GONE, menuButton.getVisibility());
         exitEvent.recycle();
     }
 
     @Test
-    public void testBindTabGroupHeader_Hover_RailCollapsed_NoActionRecorded() {
+    public void testBindTabGroupHeader_Hover_RailCollapsed_MenuButtonStaysHidden() {
         ViewGroup headerView = inflateGroupHeaderView();
+        View menuButton = headerView.findViewById(R.id.menu_button);
         mModel.set(TabProperties.TAB_ID, TEST_HEADER_TAB_ID);
         mModel.set(TabProperties.TAB_GROUP_HEADER_ID, TEST_TAB_GROUP_ID);
         mModel.set(TabProperties.RAIL_COLLAPSE_STATE, RailCollapseState.COLLAPSED);
@@ -1506,21 +1514,12 @@ public class TabVerticalViewBinderUnitTest {
         TabVerticalViewBinder.bindTabGroupHeader(
                 mModel, headerView, TabProperties.TAB_ACTION_BUTTON_DATA);
 
-        UserActionTester userActionTester = new UserActionTester();
-
-        MotionEvent enterEvent =
-                MotionEvent.obtain(
-                        /* downTime= */ 0,
-                        /* eventTime= */ 0,
-                        MotionEvent.ACTION_HOVER_ENTER,
-                        /* x= */ HOVER_EVENT_X,
-                        /* y= */ HOVER_EVENT_Y,
-                        /* metaState= */ 0);
-        enterEvent.setSource(InputDevice.SOURCE_MOUSE);
-        headerView.dispatchGenericMotionEvent(enterEvent);
-        assertFalse(
-                userActionTester.getActions().contains("Android.VerticalTabs.GroupHeaderHovered"));
-        enterEvent.recycle();
+        @SuppressWarnings("unchecked")
+        Callback<Boolean> visualCallback =
+                (Callback<Boolean>) headerView.getTag(R.id.tab_hover_state_listener);
+        assertNotNull(visualCallback);
+        visualCallback.onResult(true);
+        assertEquals(View.GONE, menuButton.getVisibility());
     }
 
     @Test

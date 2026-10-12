@@ -7,13 +7,14 @@ import '//resources/cr_components/searchbox/searchbox_input.js';
 import '//resources/cr_components/searchbox/searchbox_compose_button.js';
 import './omnibox_popup_contextual_entrypoint.js';
 
+import type {ComposeboxLensSearchElement} from '//resources/cr_components/composebox/composebox_lens_search.js';
 import {SearchboxBrowserProxy} from '//resources/cr_components/searchbox/searchbox_browser_proxy.js';
 import type {ComposeClickEventDetail, SearchboxComposeButtonElement} from '//resources/cr_components/searchbox/searchbox_compose_button.js';
 import type {SearchboxDropdownElement} from '//resources/cr_components/searchbox/searchbox_dropdown.js';
 import type {SearchboxInputElement} from '//resources/cr_components/searchbox/searchbox_input.js';
 import {kDefaultSelection} from '//resources/cr_components/searchbox/searchbox_match.js';
 import type {SearchboxMixinInterface} from '//resources/cr_components/searchbox/searchbox_mixin.js';
-import {SearchboxMixin} from '//resources/cr_components/searchbox/searchbox_mixin.js';
+import {ControlKeyState, SearchboxMixin} from '//resources/cr_components/searchbox/searchbox_mixin.js';
 import type {OmniboxPopupSelection, SelectionDirection, SelectionStep} from '//resources/cr_components/searchbox/searchbox_selection_mixin.js';
 import {selectionIsNativelySupported, selectionsEqual} from '//resources/cr_components/searchbox/searchbox_selection_mixin.js';
 import {afterNextPaint, markOnce, sanitizeTextForPaste} from '//resources/cr_components/searchbox/utils.js';
@@ -220,6 +221,9 @@ export class OmniboxPopupSearchboxElement extends
         type: Boolean,
         reflect: true,
       },
+      isLensSearchEligible_: {
+        type: Boolean,
+      },
     };
   }
 
@@ -236,6 +240,7 @@ export class OmniboxPopupSearchboxElement extends
       canShowSecondarySideMediaQueryList.matches;
   accessor hasSecondarySide: boolean = false;
   accessor isLogicallyFocused_: boolean = false;
+  accessor isLensSearchEligible_: boolean = false;
   accessor hasInputSelection_: boolean = false;
   accessor searchboxChromeRefreshTheming: boolean =
       loadTimeData.getBoolean('searchboxCr23Theming');
@@ -249,6 +254,8 @@ export class OmniboxPopupSearchboxElement extends
       loadTimeData.getBoolean('searchboxVoiceSearch');
   protected accessor searchboxLensSearchEnabled_: boolean =
       loadTimeData.getBoolean('searchboxLensSearch');
+  private isComposeboxChipEnabled_: boolean =
+      loadTimeData.getBoolean('composeboxShowChip');
   protected accessor useWebkitSearchIcons_: boolean = false;
   override accessor multiLineEnabled: boolean =
       loadTimeData.getBoolean('searchboxMultiline');
@@ -270,12 +277,21 @@ export class OmniboxPopupSearchboxElement extends
     icon: '',
   };
 
+  private getContextualEntrypoint_():
+      OmniboxPopupContextualEntrypointElement|null {
+    return this.shadowRoot.querySelector<
+        OmniboxPopupContextualEntrypointElement>(
+        'omnibox-popup-contextual-entrypoint');
+  }
+
   override get showContextEntrypoint(): boolean {
-    return this.shadowRoot
-               ?.querySelector<OmniboxPopupContextualEntrypointElement>(
-                   'omnibox-popup-contextual-entrypoint')
-               ?.showContextEntrypoint ??
-        false;
+    const entrypoint = this.getContextualEntrypoint_();
+    return entrypoint ? entrypoint.showContextEntrypoint : false;
+  }
+
+  get showLensSearchIcon(): boolean {
+    const entrypoint = this.getContextualEntrypoint_();
+    return entrypoint ? entrypoint.showLensSearchIcon : false;
   }
 
   private eventTracker_ = new EventTracker();
@@ -373,6 +389,13 @@ export class OmniboxPopupSearchboxElement extends
               icon: iconUrl,
             };
           }),
+      this.searchboxCallbackRouter_.updateLensSearchEligibility.addListener(
+          (eligible: boolean) => {
+            this.isLensSearchEligible_ = eligible;
+            if (this.isComposeboxChipEnabled_) {
+              this.updateDropdownVisibility();
+            }
+          }),
     ];
     this.popupListenerIds_ = [
       this.popupCallbackRouter_.setInputState.addListener(
@@ -452,13 +475,20 @@ export class OmniboxPopupSearchboxElement extends
     }
   }
 
-  getContextualEntrypointButton(): OmniboxPopupContextualEntrypointButtonElement
-      |null {
-    return this.shadowRoot
-               ?.querySelector<OmniboxPopupContextualEntrypointElement>(
-                   'omnibox-popup-contextual-entrypoint')
-               ?.getContextEntrypointElement() ??
-        null;
+  getContextualEntrypointButton():
+      OmniboxPopupContextualEntrypointButtonElement|null {
+    const entrypoint = this.getContextualEntrypoint_();
+    return entrypoint ? entrypoint.getContextEntrypointElement() : null;
+  }
+
+  getLensSearchIconElement(): ComposeboxLensSearchElement|null {
+    const entrypoint = this.getContextualEntrypoint_();
+    return entrypoint ? entrypoint.getLensSearchIconElement() : null;
+  }
+
+  isLensSearchVirtualFocused(): boolean {
+    return this.showLensSearchIcon &&
+        this.selection.state === SelectionLineState.kFocusedButtonLensSearch;
   }
 
   override updated(changedProperties: PropertyValues<this>) {
@@ -482,6 +512,11 @@ export class OmniboxPopupSearchboxElement extends
         const entrypoint = this.getContextualEntrypointButton();
         if (entrypoint) {
           entrypoint.hasVirtualFocus = this.isContextEntrypointVirtualFocused();
+        }
+
+        const lensIcon = this.getLensSearchIconElement();
+        if (lensIcon) {
+          lensIcon.hasVirtualFocus = this.isLensSearchVirtualFocused();
         }
       } else {
         // Synchronize selection changes driven by WebUI back to C++. This
@@ -554,6 +589,31 @@ export class OmniboxPopupSearchboxElement extends
     this.getContextualEntrypointButton()?.showContextMenu();
   }
 
+  override handleVirtualFocusEnter(e: KeyboardEvent): boolean {
+    if (this.isLensSearchVirtualFocused()) {
+      e.preventDefault();
+      this.pageHandler().openLensSearch();
+      return true;
+    }
+    return super.handleVirtualFocusEnter(e);
+  }
+
+  override getAvailableSelections(result: AutocompleteResult|null):
+      OmniboxPopupSelection[] {
+    const available = super.getAvailableSelections(result);
+    if (!result || available.length === 0) {
+      return available;
+    }
+    if (this.showLensSearchIcon) {
+      available.push({
+        line: -1,
+        state: SelectionLineState.kFocusedButtonLensSearch,
+        actionIndex: 0,
+      });
+    }
+    return available;
+  }
+
   override stepCyclesSelection(
       _result: AutocompleteResult|null, _from: OmniboxPopupSelection,
       _direction: SelectionDirection, _step: SelectionStep): boolean {
@@ -570,7 +630,17 @@ export class OmniboxPopupSearchboxElement extends
     this.clearAutocompleteMatches();
     this.popupPageHandler_.revert(this.currentSequenceNum_);
   }
-
+  /**
+   * Determines whether the dropdown should be visible considering contextual
+   * chips because the header "Ask Google about this page" is suppressed when
+   * this chip mode is enabled.
+   * TODO(crbug.com/555355466): Clean up contextual chip visibility logic.
+   */
+  override shouldDropdownBeVisible(): boolean {
+    const hasContextualChips =
+        this.isComposeboxChipEnabled_ && this.isLensSearchEligible_;
+    return this.hasMatches() || hasContextualChips;
+  }
   /**
    * Dispatches an autocomplete query to the browser process via Mojo.
    *
@@ -637,6 +707,7 @@ export class OmniboxPopupSearchboxElement extends
 
   isInputEmpty(): boolean {
     // If this is called before first render, the input element will not exist.
+    // TODO (crbug.com/565444900): Remove `?` from `shadowRoot` in this file.
     if (!this.shadowRoot?.querySelector('#input') || !this.$.input ||
         !this.$.input.lastInput()) {
       return true;
@@ -1475,18 +1546,23 @@ export class OmniboxPopupSearchboxElement extends
       // On an open page where no suggestion match is highlighted, submit the
       // verbatim input text (or reload the permanent URL).
       e.preventDefault();
-      this.pageHandler().openAutocompleteMatch(
-          /*resultSequenceId=*/ this.result?.sequenceId ?? 0,
-          /*line=*/ -1,
-          /*url=*/ '',
-          /*areMatchesShowing=*/ this.dropdownIsVisible,
-          /*mouseButton=*/ 0, {
-            altKey: e.altKey,
-            ctrlKey: e.ctrlKey,
-            metaKey: e.metaKey,
-            shiftKey: e.shiftKey,
-          },
-          /*viaKeyboard=*/ true);
+      if (e.ctrlKey && !e.shiftKey && !e.altKey && !e.metaKey &&
+          this.controlKeyState !== ControlKeyState.DOWN_AND_CONSUMED) {
+        this.openCtrlEnterMatch(-1);
+      } else {
+        this.pageHandler().openAutocompleteMatch(
+            /*resultSequenceId=*/ this.result?.sequenceId ?? 0,
+            /*line=*/ -1,
+            /*url=*/ '',
+            /*areMatchesShowing=*/ this.dropdownIsVisible,
+            /*mouseButton=*/ 0, {
+              altKey: e.altKey,
+              ctrlKey: e.ctrlKey,
+              metaKey: e.metaKey,
+              shiftKey: e.shiftKey,
+            },
+            /*viaKeyboard=*/ true);
+      }
       return;
     }
 

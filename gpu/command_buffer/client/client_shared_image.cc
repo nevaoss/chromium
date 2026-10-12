@@ -650,7 +650,11 @@ std::vector<SyncToken> ClientSharedImage::GetSyncTokensForDisplayCompositor(
           features::kUseAutomaticSyncTokenManagement)) {
     return CollectSyncTokens();
   } else {
-    return {sync_token};
+    if (sync_token.HasData()) {
+      return {sync_token};
+    } else {
+      return {};
+    }
   }
 }
 
@@ -1008,6 +1012,9 @@ scoped_refptr<ClientSharedImage> ClientSharedImage::CreateForTesting(
   // https://issues.chromium.org/339546249.
   if (info.format.PrefersExternalSampler()) {
     info.format.ClearPrefersExternalSampler();
+    if (info.alpha_type == kPremul_SkAlphaType) {
+      info.alpha_type = kUnpremul_SkAlphaType;
+    }
   }
 
   auto client_si = base::MakeRefCounted<ClientSharedImage>(

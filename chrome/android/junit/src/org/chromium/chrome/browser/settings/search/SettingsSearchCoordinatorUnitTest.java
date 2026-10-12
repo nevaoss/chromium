@@ -761,6 +761,36 @@ public class SettingsSearchCoordinatorUnitTest {
     }
 
     @Test
+    public void testOnSlideStateUpdated_whenColumnModeCacheIsStale_showsSearchBox() {
+        setUpMultiColumnSettings();
+        // Start in single-column mode with the detail pane open (isLayoutOpen() == true). Because
+        // the detail pane covers main settings, initializeSearchUi() hides the search box.
+        mUseMultiColumn = false;
+        when(mMultiColumnSettings.isLayoutOpen()).thenReturn(true);
+        mCoordinator.initializeSearchUi(null);
+        ShadowLooper.idleMainLooper();
+
+        // The search box is hidden.
+        View searchBox = mActivity.findViewById(R.id.search_box);
+        assertNotNull(searchBox);
+        assertEquals(View.GONE, searchBox.getVisibility());
+
+        // Rotating a display whose width is within a few pixels of
+        // R.dimen.settings_min_multi_column_screen_width settles into two-column mode. The
+        // one-shot listener that refreshes |mUseMultiColumn| can read the pre-layout
+        // single-column value and never run again, leaving the cache stale. isLayoutOpen() reports
+        // the live two-column state, so pairing the two used to report main settings as hidden and
+        // hide the search box, with no way back: the pane is not slideable in two-column mode, so
+        // onPanelClosed() never fires. https://crbug.com/562493964
+        mUseMultiColumn = true;
+
+        mCoordinator.onSlideStateUpdated(MultiColumnSettings.SlideState.OPENED);
+
+        // The search box recovers instead of staying hidden.
+        assertEquals(View.VISIBLE, searchBox.getVisibility());
+    }
+
+    @Test
     public void testExitSearchState_whenShownInTab_multiColumn_focusesSearchBox() {
         setUpMultiColumnSettings();
         mUseMultiColumn = true;
@@ -802,6 +832,112 @@ public class SettingsSearchCoordinatorUnitTest {
 
         // Search box is visible.
         assertEquals(View.VISIBLE, searchBox.getVisibility());
+    }
+
+    @Test
+    public void testExitSearchIfOpen_whenSearchIsOpen_leavesSearch() {
+        setUpMultiColumnSettings();
+        mUseMultiColumn = true;
+        mCoordinator = createCoordinator(/* shownInTab= */ true);
+        mCoordinator.initializeSearchUi(null);
+        ShadowLooper.idleMainLooper();
+
+        View searchBox = mActivity.findViewById(R.id.search_box);
+        assertNotNull(searchBox);
+        mCoordinator.setFragmentState(SettingsSearchCoordinator.FS_SEARCH);
+        searchBox.setVisibility(View.GONE);
+
+        mCoordinator.exitSearchIfOpen();
+
+        assertFalse(mCoordinator.isSearchOpen());
+        assertEquals(View.VISIBLE, searchBox.getVisibility());
+    }
+
+    @Test
+    public void testExitSearchIfOpen_whenBrowsingResults_leavesSearch() {
+        SettingsIndexData.createInstance().resetNeedsIndexing();
+
+        setUpMultiColumnSettings();
+        mUseMultiColumn = true;
+        FragmentManager fragmentManager = mActivity.getSupportFragmentManager();
+        TestDetailFragment initialDetailFragment = new TestDetailFragment();
+        fragmentManager
+                .beginTransaction()
+                .add(R.id.preferences_detail, initialDetailFragment)
+                .commitNow();
+
+        mCoordinator = createCoordinator(/* shownInTab= */ true);
+        mCoordinator.initializeSearchUi(null);
+        ShadowLooper.idleMainLooper();
+
+        // Enter search, display results, and open a result page (FS_RESULTS) plus a subpage on
+        // top of it.
+        View searchBox = mActivity.findViewById(R.id.search_box);
+        assertNotNull(searchBox);
+        searchBox.performClick();
+        fragmentManager.executePendingTransactions();
+        ShadowLooper.idleMainLooper();
+
+        var entry =
+                new SettingsIndexData.Entry.Builder(
+                                "theme_id", "theme_key", "Theme", "MainSettings")
+                        .build();
+        var results = new SettingsIndexData.SearchResults();
+        results.addItem(entry, 100);
+        mCoordinator.displayResultsFragment(results);
+        fragmentManager.executePendingTransactions();
+
+        fragmentManager
+                .beginTransaction()
+                .replace(R.id.preferences_detail, new Fragment())
+                .addToBackStack(SettingsSearchCoordinator.RESULT_BACKSTACK)
+                .setReorderingAllowed(true)
+                .commit();
+        fragmentManager
+                .beginTransaction()
+                .replace(R.id.preferences_detail, new Fragment())
+                .addToBackStack(null)
+                .setReorderingAllowed(true)
+                .commit();
+        fragmentManager.executePendingTransactions();
+        mCoordinator.setFragmentState(SettingsSearchCoordinator.FS_RESULTS);
+        assertTrue(mCoordinator.isSearchOpen());
+
+        mCoordinator.exitSearchIfOpen();
+        fragmentManager.executePendingTransactions();
+        ShadowLooper.idleMainLooper();
+
+        // Search stands down and puts its own UI back, the same as it does from FS_SEARCH.
+        //
+        // Unwinding the pages opened from the results is deliberately not asserted here: it
+        // belongs to the caller that is taking the screen away. The only caller,
+        // SettingsPageFragmentDelegateImpl#updateForUrl, goes on to show the new page with
+        // addToBackStack = false, and MultiColumnSettings#showDetailFragment pops the whole back
+        // stack from entry 0 inclusive before replacing the container.
+        assertFalse(mCoordinator.isSearchOpen());
+        assertEquals(View.VISIBLE, searchBox.getVisibility());
+        View queryContainer = mActivity.findViewById(R.id.search_query_container);
+        assertEquals(View.GONE, queryContainer.getVisibility());
+    }
+
+    @Test
+    public void testExitSearchIfOpen_whenSearchIsNotOpen_doesNothing() {
+        setUpMultiColumnSettings();
+        mUseMultiColumn = true;
+        mCoordinator = createCoordinator(/* shownInTab= */ true);
+        mCoordinator.initializeSearchUi(null);
+        ShadowLooper.idleMainLooper();
+
+        // Browsing settings normally. Exiting a search that is not open would pop a back stack
+        // belonging to whatever is on screen.
+        assertFalse(mCoordinator.isSearchOpen());
+        View queryContainer = mActivity.findViewById(R.id.search_query_container);
+        assertNotNull(queryContainer);
+        queryContainer.setVisibility(View.VISIBLE);
+
+        mCoordinator.exitSearchIfOpen();
+
+        assertEquals(View.VISIBLE, queryContainer.getVisibility());
     }
 
     /**

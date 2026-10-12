@@ -7,6 +7,8 @@
 #include "base/command_line.h"
 #include "base/memory/raw_ptr.h"
 #include "base/test/metrics/histogram_tester.h"
+#include "build/branding_buildflags.h"
+#include "build/build_config.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
@@ -27,15 +29,25 @@
 #include "ui/views/test/widget_test.h"
 #include "ui/views/widget/widget_observer.h"
 
+#if BUILDFLAG(GOOGLE_CHROME_BRANDING) && !BUILDFLAG(IS_CHROMEOS)
+#include "chrome/test/base/scoped_channel_override.h"
+#endif  // BUILDFLAG(GOOGLE_CHROME_BRANDING) && !BUILDFLAG(IS_CHROMEOS)
+
 namespace {
 
 class IncognitoClearBrowsingDataDialogTest : public InProcessBrowserTest {
  public:
+  BrowserWindowInterface* CreateIncognitoBrowser(Profile* profile = nullptr) {
+    BrowserWindowInterface* incognito_browser =
+        InProcessBrowserTest::CreateIncognitoBrowser(profile);
+    AvatarToolbarButtonTestAccessor(incognito_browser).WaitForAvatarButton();
+    return incognito_browser;
+  }
+
   void OpenDialog(IncognitoClearBrowsingDataDialogInterface::Type type) {
     if (!incognito_browser_) {
       incognito_browser_ = CreateIncognitoBrowser(GetProfile());
     }
-    AvatarToolbarButtonTestAccessor(incognito_browser_).WaitForAvatarButton();
 
     auto* coordinator = GetCoordinator();
     BrowserView* browser_view =
@@ -191,6 +203,10 @@ class IsolatedClearBrowsingDataDialogTest
   }
 
  private:
+#if BUILDFLAG(GOOGLE_CHROME_BRANDING) && !BUILDFLAG(IS_CHROMEOS)
+  chrome::ScopedChannelOverride channel_override_{
+      chrome::ScopedChannelOverride::Channel::kDev};
+#endif  // BUILDFLAG(GOOGLE_CHROME_BRANDING) && !BUILDFLAG(IS_CHROMEOS)
   base::test::ScopedFeatureList scoped_feature_list_;
 };
 

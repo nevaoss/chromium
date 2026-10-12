@@ -25,6 +25,16 @@ function getContextualEntrypointButton(searchbox: OmniboxPopupSearchboxElement):
       popupEntrypoint, 'omnibox-popup-contextual-entrypoint-button');
 }
 
+function getLensSearchIcon(searchbox: OmniboxPopupSearchboxElement):
+    (HTMLElement&{hasVirtualFocus: boolean})|null {
+  const popupEntrypoint = $$(searchbox, 'omnibox-popup-contextual-entrypoint');
+  if (!popupEntrypoint) {
+    return null;
+  }
+  return $$<HTMLElement&{hasVirtualFocus: boolean}>(
+      popupEntrypoint, '#lensSearchIcon');
+}
+
 function createDefaultOmniboxInputState(overrides?: Partial<OmniboxInputState>):
     OmniboxInputState {
   return {
@@ -123,12 +133,9 @@ suite('OmniboxPopupSearchboxTest', function() {
     handler.reset();
 
     // Simulate typing in Tab 1 to create undo history.
-    searchbox.$.input.dispatchEvent(
-        new CustomEvent('searchbox-input-text-updated', {
-          bubbles: true,
-          composed: true,
-          detail: {value: 'tab 1 draft edited', isComposing: false},
-        }));
+    searchbox.$.input.fire(
+        'searchbox-input-text-updated',
+        {value: 'tab 1 draft edited', isComposing: false});
     await microtasksFinished();
 
     // Verify edit history has undoable edits on Tab 1.
@@ -1095,12 +1102,9 @@ suite('OmniboxPopupSearchboxTest', function() {
     // Baseline text: "hello world" with caret at index 11.
     inputEl.value = 'hello world';
     inputEl.setSelectionRange(11, 11);
-    searchbox.$.input.dispatchEvent(
-        new CustomEvent('searchbox-input-text-updated', {
-          detail: {value: 'hello world', isComposing: false},
-          bubbles: true,
-          composed: true,
-        }));
+    searchbox.$.input.fire(
+        'searchbox-input-text-updated',
+        {value: 'hello world', isComposing: false});
     await microtasksFinished();
 
     // User performs word deletion (Alt/Ctrl + Backspace): text becomes "hello
@@ -1108,12 +1112,8 @@ suite('OmniboxPopupSearchboxTest', function() {
     inputEl.value = 'hello ';
     inputEl.selectionStart = 6;
     inputEl.selectionEnd = 6;
-    searchbox.$.input.dispatchEvent(
-        new CustomEvent('searchbox-input-text-updated', {
-          detail: {value: 'hello ', isComposing: false},
-          bubbles: true,
-          composed: true,
-        }));
+    searchbox.$.input.fire(
+        'searchbox-input-text-updated', {value: 'hello ', isComposing: false});
     await microtasksFinished();
     assertEquals('hello ', inputEl.value);
 
@@ -2113,12 +2113,8 @@ suite('OmniboxPopupSearchboxTest', function() {
    // Type a single character '!' (length 1 -> mergeable).
    inputEl.value = 'hello!';
    inputEl.setSelectionRange(6, 6);
-   searchbox.$.input.dispatchEvent(
-       new CustomEvent('searchbox-input-text-updated', {
-         detail: {value: 'hello!', isComposing: false},
-         bubbles: true,
-         composed: true,
-       }));
+   searchbox.$.input.fire(
+       'searchbox-input-text-updated', {value: 'hello!', isComposing: false});
    await microtasksFinished();
    assertEquals('hello!', inputEl.value);
 
@@ -2151,12 +2147,8 @@ suite('OmniboxPopupSearchboxTest', function() {
    // Step 1: User types 'world'.
    inputEl.value = 'world';
    inputEl.setSelectionRange(5, 5);
-   searchbox.$.input.dispatchEvent(
-       new CustomEvent('searchbox-input-text-updated', {
-         detail: {value: 'world', isComposing: false},
-         bubbles: true,
-         composed: true,
-       }));
+   searchbox.$.input.fire(
+       'searchbox-input-text-updated', {value: 'world', isComposing: false});
    await microtasksFinished();
 
    // Step 2: User selects all text 'world' (0..5).
@@ -2167,12 +2159,8 @@ suite('OmniboxPopupSearchboxTest', function() {
    // Step 3: User replaces selected 'world' with 'universe'.
    inputEl.value = 'universe';
    inputEl.setSelectionRange(8, 8);
-   searchbox.$.input.dispatchEvent(
-       new CustomEvent('searchbox-input-text-updated', {
-         detail: {value: 'universe', isComposing: false},
-         bubbles: true,
-         composed: true,
-       }));
+   searchbox.$.input.fire(
+       'searchbox-input-text-updated', {value: 'universe', isComposing: false});
    await microtasksFinished();
    assertEquals('universe', inputEl.value);
 
@@ -2347,6 +2335,7 @@ suite('OmniboxPopupSearchboxTest', function() {
          hideClassicContextButton: false,
          contextualMenuUsePecApi: false,
          searchboxLayoutMode: 'TallBottomContext',
+         composeboxShowChip: true,
        });
 
        localSearchbox = document.createElement('omnibox-popup-searchbox');
@@ -2427,6 +2416,72 @@ suite('OmniboxPopupSearchboxTest', function() {
        await microtasksFinished();
 
        assertFalse(!!getContextualEntrypointButton(localSearchbox));
+     });
+
+     test(
+         'DropdownVisibleWhenHasContextualChipsEvenWithoutMatches',
+         async () => {
+           localSearchbox.dropdownIsVisible = false;
+           testProxy.page.updateAimPopupEligibility(true);
+           testProxy.page.updateLensSearchEligibility(true);
+           await microtasksFinished();
+
+           assertTrue(localSearchbox.dropdownIsVisible);
+           const contextualEntrypoint =
+               getContextualEntrypointButton(localSearchbox);
+           assertTrue(!!contextualEntrypoint);
+           assertTrue(isVisible(contextualEntrypoint));
+         });
+
+     test('DropdownHiddenWhenNotLensEligibleAndNoMatches', async () => {
+       localSearchbox.dropdownIsVisible = false;
+       testProxy.page.updateAimPopupEligibility(true);
+       testProxy.page.updateLensSearchEligibility(false);
+       await microtasksFinished();
+
+       assertFalse(localSearchbox.dropdownIsVisible);
+       const contextualEntrypoint =
+           getContextualEntrypointButton(localSearchbox);
+       assertFalse(!!contextualEntrypoint);
+     });
+
+     test('DropdownHiddenWhenAskGShowChipDisabledAndNoMatches', async () => {
+       document.body.innerHTML = window.trustedTypes!.emptyHTML;
+       loadTimeData.overrideValues({composeboxShowChip: false});
+       localSearchbox = document.createElement('omnibox-popup-searchbox');
+       localSearchbox.dropdownIsVisible = false;
+       document.body.appendChild(localSearchbox);
+       await microtasksFinished();
+
+       testProxy.page.updateAimPopupEligibility(true);
+       testProxy.page.updateLensSearchEligibility(true);
+       await microtasksFinished();
+
+       assertFalse(localSearchbox.dropdownIsVisible);
+       const contextualEntrypoint =
+           getContextualEntrypointButton(localSearchbox);
+       assertFalse(!!contextualEntrypoint);
+     });
+
+     test('DropdownSuppressedWhenMultilineInputGrows', async () => {
+       localSearchbox.multiLineEnabled = true;
+       const inputElement = localSearchbox.getInputElement();
+       inputElement.multiLineEnabled = true;
+       localSearchbox.result = createAutocompleteResultForTesting({
+         input: 'hello world',
+         matches: [],
+       });
+       Object.defineProperty(
+           inputElement.$.input, 'scrollHeight',
+           {value: 60, configurable: true});
+       testProxy.page.updateAimPopupEligibility(true);
+       testProxy.page.updateLensSearchEligibility(true);
+       await microtasksFinished();
+
+       assertFalse(localSearchbox.dropdownIsVisible);
+       const contextualEntrypoint =
+           getContextualEntrypointButton(localSearchbox);
+       assertFalse(!!contextualEntrypoint);
      });
    });
 
@@ -2961,6 +3016,43 @@ suite('OmniboxPopupSearchboxTest', function() {
        assertEquals(0, testProxy.handler.getCallCount('openAutocompleteMatch'));
      });
 
+ test('EnterKeyWithVirtualFocusOnLensSearchIconOpensLensSearch', async () => {
+   document.body.innerHTML = window.trustedTypes!.emptyHTML;
+   loadTimeData.overrideValues({
+     realboxVirtualFocusNavigation: true,
+     hideClassicContextButton: false,
+     contextualMenuUsePecApi: false,
+     searchboxLayoutMode: 'TallBottomContext',
+     composeboxShowChip: false,
+     composeboxShowLensIcon: true,
+   });
+   const localSearchbox = document.createElement('omnibox-popup-searchbox');
+   localSearchbox.dropdownIsVisible = true;
+   localSearchbox.virtualFocusEnabled = true;
+   document.body.appendChild(localSearchbox);
+   await microtasksFinished();
+
+   testProxy.initVisibilityPrefs();
+   testProxy.page.updateAimPopupEligibility(true);
+   testProxy.page.updateLensSearchEligibility(true);
+   await microtasksFinished();
+
+   assertTrue(localSearchbox.showLensSearchIcon);
+   localSearchbox.setSelection({
+     line: -1,
+     state: SelectionLineState.kFocusedButtonLensSearch,
+     actionIndex: 0,
+   });
+   await microtasksFinished();
+
+   await localSearchbox.handleKeyNavigation(
+       new KeyboardEvent('keydown', {key: 'Enter', cancelable: true}));
+   await microtasksFinished();
+
+   assertEquals(1, testProxy.handler.getCallCount('openLensSearch'));
+   assertEquals(0, testProxy.handler.getCallCount('openAutocompleteMatch'));
+ });
+
  test('stepCyclesSelection always returns false', () => {
    const selection = {
      line: 0,
@@ -3131,6 +3223,90 @@ suite('OmniboxPopupSearchboxTest', function() {
        assertFalse(localSearchbox.isContextEntrypointVirtualFocused());
        assertFalse(entrypointButton.hasVirtualFocus);
      });
+
+ test('ShiftTabAndTabWithVirtualFocusCyclesThroughLensSearchIcon', async () => {
+   document.body.innerHTML = window.trustedTypes!.emptyHTML;
+   loadTimeData.overrideValues({
+     realboxVirtualFocusNavigation: true,
+     hideClassicContextButton: false,
+     contextualMenuUsePecApi: false,
+     searchboxLayoutMode: 'TallBottomContext',
+     composeboxShowChip: false,
+     composeboxShowLensIcon: true,
+   });
+   const localSearchbox = document.createElement('omnibox-popup-searchbox');
+   localSearchbox.dropdownIsVisible = true;
+   localSearchbox.virtualFocusEnabled = true;
+   document.body.appendChild(localSearchbox);
+   await microtasksFinished();
+
+   testProxy.initVisibilityPrefs();
+   testProxy.page.updateAimPopupEligibility(true);
+   testProxy.page.updateLensSearchEligibility(true);
+   await microtasksFinished();
+
+   localSearchbox.activeQueryId = 0;
+   localSearchbox.onAutocompleteResultChanged(
+       createAutocompleteResultForTesting({
+         queryId: 0,
+         input: 'test',
+         matches: [createSearchMatchForTesting({
+           allowedToBeDefaultMatch: true,
+           contents: 'match 1',
+         })],
+       }));
+   await microtasksFinished();
+
+   assertTrue(localSearchbox.showContextEntrypoint);
+   assertTrue(localSearchbox.showLensSearchIcon);
+   const entrypointButton = getContextualEntrypointButton(localSearchbox);
+   const lensSearchIcon = getLensSearchIcon(localSearchbox);
+   assertTrue(!!entrypointButton);
+   assertTrue(!!lensSearchIcon);
+
+   localSearchbox.setSelection({
+     line: 0,
+     state: SelectionLineState.kNormal,
+     actionIndex: 0,
+   });
+   await microtasksFinished();
+
+   const pressTab = async (shiftKey: boolean) => {
+     await localSearchbox.handleKeyNavigation(new KeyboardEvent(
+         'keydown', {key: 'Tab', shiftKey, cancelable: true, bubbles: true}));
+     await microtasksFinished();
+   };
+
+   // 1st Shift-Tab: cycles backward from match 0 to lens search icon.
+   await pressTab(/*shiftKey=*/ true);
+   assertEquals(
+       SelectionLineState.kFocusedButtonLensSearch,
+       localSearchbox.selection.state);
+   assertTrue(lensSearchIcon.hasVirtualFocus);
+   assertFalse(entrypointButton.hasVirtualFocus);
+
+   // 2nd Shift-Tab: moves backward from lens search icon to contextual entrypoint.
+   await pressTab(/*shiftKey=*/ true);
+   assertEquals(
+       SelectionLineState.kFocusedButtonContextEntrypoint,
+       localSearchbox.selection.state);
+   assertFalse(lensSearchIcon.hasVirtualFocus);
+   assertTrue(entrypointButton.hasVirtualFocus);
+
+   // Forward Tab: moves forward from contextual entrypoint to lens search icon.
+   await pressTab(/*shiftKey=*/ false);
+   assertEquals(
+       SelectionLineState.kFocusedButtonLensSearch,
+       localSearchbox.selection.state);
+   assertTrue(lensSearchIcon.hasVirtualFocus);
+   assertFalse(entrypointButton.hasVirtualFocus);
+
+   // 2nd Forward Tab: wraps forward from lens search icon to match 0.
+   await pressTab(/*shiftKey=*/ false);
+   assertEquals(0, localSearchbox.selection.line);
+   assertEquals(SelectionLineState.kNormal, localSearchbox.selection.state);
+   assertFalse(lensSearchIcon.hasVirtualFocus);
+ });
 
  test('TabKeyFromInputFocusesAimButtonWhenVisible', async () => {
    searchbox.dropdownIsVisible = false;

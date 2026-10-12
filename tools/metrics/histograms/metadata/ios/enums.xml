@@ -124,6 +124,18 @@ chromium-metrics-reviews@google.com.
 
 <!-- LINT.ThenChange(//ios/chrome/browser/fullscreen/ui_bundled/fullscreen_metrics.h:FullscreenModeTransitionTrigger) -->
 
+<!-- LINT.IfChange(GeminiAppSwitcherAccountStatus) -->
+
+<enum name="GeminiAppSwitcherAccountStatus">
+  <int value="0" label="Matching"/>
+  <int value="1" label="Mismatched"/>
+  <int value="2" label="External App Only Signed In"/>
+  <int value="3" label="Client App Only Signed In"/>
+  <int value="4" label="Both Signed Out"/>
+</enum>
+
+<!-- LINT.ThenChange(//ios/chrome/browser/intelligence/bwg/metrics/gemini_metrics.h:GeminiAppSwitcherAccountStatus) -->
+
 <!-- LINT.IfChange(GeminiViewState) -->
 
 <enum name="GeminiViewState">
@@ -893,6 +905,8 @@ chromium-metrics-reviews@google.com.
   <int value="12" label="Toolbar"/>
   <int value="13" label="App Switcher AI Summarization"/>
   <int value="14" label="AtMemory Search Unsupported Query"/>
+  <int value="15" label="Contextual Cue Chip"/>
+  <int value="16" label="Contextual Cue Infobar"/>
   <int value="100" label="Unknown"/>
 </enum>
 
@@ -2386,6 +2400,7 @@ chromium-metrics-reviews@google.com.
   <int value="4" label="The suggestion provider's type was incorrect"/>
   <int value="5"
       label="Bottom Sheet couldn't be presented for various reasons"/>
+  <int value="6" label="Dismissed due to page navigation or tab change"/>
 </enum>
 
 <!-- LINT.IfChange(PictureInPictureAppRestoration) -->

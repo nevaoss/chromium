@@ -2884,6 +2884,246 @@ def _IsMojomFile(input_api, file_path):
     return input_api.os_path.splitext(file_path)[1] == '.mojom'
 
 
+# The presubmit runtime executes Check* functions from top to bottom in the
+# order they appear in this file. Checks that use input_api.Command() (directly,
+# via canned_checks, or via helper modules) are placed first so that their
+# external commands are queued onto the background ThreadPool immediately and
+# can run concurrently while the remaining in-process Python checks execute.
+
+
+def CheckAyeAye(input_api, output_api):
+    """Runs AyeAye checks locally via the alint tool if opted in.
+
+    These checks get run automatically behind the scenes on CLs in
+    Gerrit. Running them locally should surface any warnings or errors
+    earlier. Set PRESUBMIT_ENABLE_AYEAYE=1 in the environment to enable.
+    """
+    if input_api.environ.get('PRESUBMIT_ENABLE_AYEAYE') != '1':
+        return []
+    return input_api.canned_checks.CheckAyeAye(input_api, output_api)
+
+
+def CheckCommonCommands(input_api, output_api):
+    """Common checks for both upload and commit that use input_api.Command()."""
+    commands = []
+    commands.extend(
+        input_api.canned_checks.CheckVPythonSpec(input_api, output_api))
+
+    dirmd = 'dirmd.bat' if input_api.is_windows else 'dirmd'
+    dirmd_bin = input_api.os_path.join(input_api.PresubmitLocalPath(),
+                                       'third_party', 'depot_tools', dirmd)
+    commands.extend(
+        input_api.canned_checks.CheckDirMetadataFormat(
+            input_api, output_api, dirmd_bin))
+
+    presubmit_py_filter = lambda f: input_api.FilterSourceFile(
+        f, files_to_check=[r'.*PRESUBMIT(?:_test)?\.py$'])
+    potential_paths = set(
+        map(
+            lambda f: input_api.os_path.dirname(f.AbsoluteLocalPath()),
+            input_api.AffectedFiles(include_deletes=False,
+                                    file_filter=presubmit_py_filter)))
+    for full_path in potential_paths:
+        test_file = input_api.os_path.join(full_path, 'PRESUBMIT_test.py')
+        # The PRESUBMIT.py file (and the directory containing it) might have
+        # been affected by being moved or removed, so only try to run the tests
+        # if they still exist.
+        if not input_api.os_path.exists(test_file):
+            continue
+
+        commands.extend(
+            input_api.canned_checks.GetUnitTestsInDirectory(
+                input_api,
+                output_api,
+                full_path,
+                files_to_check=[r'^PRESUBMIT_test\.py$']))
+    return input_api.RunTests(commands)
+
+
+def _GetIDLParseCommand(input_api, output_api, filename, display_path=None):
+    display_path = display_path or filename
+    idl_schema = input_api.os_path.join(input_api.PresubmitLocalPath(),
+                                        'tools', 'json_schema_compiler',
+                                        'idl_schema.py')
+    cmd = [input_api.python3_executable, idl_schema, filename]
+
+    def parse_output(returncode, stdout, stderr):
+        if returncode != 0:
+            return [
+                output_api.PresubmitError('%s could not be parsed: %s' %
+                                          (display_path, stderr))
+            ]
+        return None
+
+    return input_api.Command(name='idl_schema: %s' % display_path,
+                             cmd=cmd,
+                             kwargs={},
+                             output_parser=parse_output)
+
+
+def CheckIDLParseErrors(input_api, output_api):
+    """Check that IDL files do not contain syntax errors."""
+    # Only run IDL checker on files in these directories.
+    idl_included_patterns = [
+        r'^chrome/common/extensions/api/',
+        r'^extensions/common/api/',
+    ]
+
+    def FilterFile(affected_file):
+        if not affected_file.LocalPath().endswith('.idl'):
+            return False
+        path = affected_file.UnixLocalPath()
+        return _MatchesFile(input_api, idl_included_patterns, path)
+
+    results = []
+    for affected_file in input_api.AffectedFiles(file_filter=FilterFile,
+                                                 include_deletes=False):
+        results.append(
+            _GetIDLParseCommand(input_api, output_api,
+                                affected_file.AbsoluteLocalPath(),
+                                affected_file.LocalPath()))
+    return input_api.RunTests(results)
+
+
+def CheckJavaStyle(input_api, output_api):
+    """Runs checkstyle on changed java files and returns errors if any exist."""
+    if not _HasJavaFiles(input_api):
+        return []
+
+    import sys
+    original_sys_path = sys.path
+    try:
+        sys.path = sys.path + [
+            input_api.os_path.join(input_api.PresubmitLocalPath(), 'tools',
+                                   'android', 'checkstyle')
+        ]
+        import checkstyle
+    finally:
+        # Restore sys.path to what it was before.
+        sys.path = original_sys_path
+
+    return checkstyle.run_presubmit(input_api,
+                                    output_api,
+                                    files_to_skip=_EXCLUDED_PATHS +
+                                    input_api.DEFAULT_FILES_TO_SKIP)
+
+
+def CheckPydepsNeedsUpdating(input_api, output_api):
+    """Checks if a .pydeps file needs to be regenerated."""
+    # This check is for Python dependency lists (.pydeps files), and involves
+    # paths not only in the PRESUBMIT.py, but also in the .pydeps files. It
+    # doesn't work on Windows and Mac, so skip it on other platforms.
+    if not input_api.platform.startswith('linux'):
+        return []
+
+    import sys
+    original_sys_path = sys.path
+    try:
+        sys.path = sys.path + [
+            input_api.os_path.join(input_api.PresubmitLocalPath(), 'build')
+        ]
+        import pydeps_presubmit
+    finally:
+        # Restore sys.path to what it was before.
+        sys.path = original_sys_path
+
+    return pydeps_presubmit.run_presubmit(
+        input_api,
+        output_api,
+        all_pydeps_files=_ALL_PYDEPS_FILES,
+        android_specific_pydeps_files=_ANDROID_SPECIFIC_PYDEPS_FILES,
+        generic_pydeps_files=_GENERIC_PYDEPS_FILES)
+
+
+def CheckPatchFormatted(input_api, output_api):
+    """Checks that the patch is formatted properly."""
+    return input_api.canned_checks.CheckPatchFormatted(input_api, output_api)
+
+
+def CheckStableMojomChanges(input_api, output_api):
+    """Changes to [Stable] mojom types must preserve backward-compatibility."""
+    has_mojom = _HasMojomFiles(input_api)
+    footers = input_api.change.GitFootersFromDescription()
+    no_stable_mojom_checks = None
+    if footers:
+        for k, v in footers.items():
+            if k.lower() == 'no-stable-mojom-checks':
+                no_stable_mojom_checks = v
+                break
+
+    if not has_mojom and not no_stable_mojom_checks:
+        return []
+
+    expect_stable_mojom_failures = False
+    if no_stable_mojom_checks:
+        if no_stable_mojom_checks == ['true']:
+            expect_stable_mojom_failures = True
+        else:
+            return [
+                output_api.PresubmitError(
+                    f'If present, No-Stable-Mojom-Checks only accepts the value '
+                    f'"true", but got "{no_stable_mojom_checks}" instead.')
+            ]
+
+    unnecessary_footer_error = output_api.PresubmitError(
+        'No [Stable] mojom definitions changed in a way breaks '
+        'backward compatibility.\n\n'
+        'Please remove the unnecessary git footer '
+        '`No-Stable-Mojom-Checks: true`.')
+
+    if not has_mojom or input_api.no_diffs:
+        if expect_stable_mojom_failures:
+            return [unnecessary_footer_error]
+        else:
+            return []
+
+    changed_mojoms = input_api.AffectedFiles(
+        include_deletes=True,
+        file_filter=lambda f: f.LocalPath().endswith('.mojom'))
+
+    delta = []
+    for mojom in changed_mojoms:
+        delta.append({
+            'filename': mojom.LocalPath(),
+            'old': '\n'.join(mojom.OldContents()) or None,
+            'new': '\n'.join(mojom.NewContents()) or None,
+        })
+
+    def parse_output(returncode, stdout, stderr):
+        failed = bool(returncode)
+        if failed != expect_stable_mojom_failures:
+            if expect_stable_mojom_failures:
+                return [unnecessary_footer_error]
+            return [
+                output_api.PresubmitError(
+                    'One or more [Stable] mojom definitions changed in a way '
+                    'that breaks backward compatibility. See '
+                    'https://chromium.googlesource.com/chromium/src/+/HEAD/mojo/public/tools/bindings/README.md#versioning'
+                    ' for details.\n\n'
+                    'If you are confident this is a false positive, add '
+                    '`No-Stable-Mojom-Checks: true` to the git footers to suppress '
+                    'this check.',
+                    long_text=stderr)
+            ]
+        return []
+
+    cmd = [
+        input_api.python3_executable,
+        input_api.os_path.join(input_api.PresubmitLocalPath(), 'mojo', 'public',
+                               'tools', 'mojom',
+                               'check_stable_mojom_compatibility.py'),
+        '--src-root',
+        input_api.PresubmitLocalPath(),
+    ]
+    return input_api.RunTests([
+        input_api.Command(
+            name='check_stable_mojom_compatibility',
+            cmd=cmd,
+            kwargs={'stdin': input_api.json.dumps(delta).encode('utf-8')},
+            output_parser=parse_output)
+    ])
+
+
 def CheckNoUpstreamDepsOnClank(input_api, output_api):
     """Prevent additions of dependencies from the upstream repo on //clank."""
     # This check only inspects GN build files (BUILD.gn and *.gni) for //clank
@@ -4537,104 +4777,38 @@ def _GetJSONParseError(input_api, filename, eat_comments=True):
     return None
 
 
-def _GetIDLParseError(input_api, filename):
-    try:
-        contents = input_api.ReadFile(filename)
-        for i, char in enumerate(contents):
-            if not char.isascii():
-                return (
-                    'Non-ascii character "%s" (ord %d) found at offset %d.' %
-                    (char, ord(char), i))
-        idl_schema = input_api.os_path.join(input_api.PresubmitLocalPath(),
-                                            'tools', 'json_schema_compiler',
-                                            'idl_schema.py')
-        process = input_api.subprocess.Popen(
-            [input_api.python3_executable, idl_schema],
-            stdin=input_api.subprocess.PIPE,
-            stdout=input_api.subprocess.PIPE,
-            stderr=input_api.subprocess.PIPE,
-            universal_newlines=True)
-        (_, error) = process.communicate(input=contents)
-        return error or None
-    except ValueError as e:
-        return e
+def CheckJSONParseErrors(input_api, output_api):
+    """Check that JSON files do not contain syntax errors.
 
-
-def CheckParseErrors(input_api, output_api):
-    """Check that IDL and JSON files do not contain syntax errors."""
-    actions = {
-        '.idl': _GetIDLParseError,
-        '.json': _GetJSONParseError,
-    }
+    Note: IDL parse checks use input_api.Command() and are in
+    CheckIDLParseErrors() at the top of the file.
+    """
     # Most JSON files are preprocessed and support comments, but these do not.
     json_no_comments_patterns = [
         r'^testing/',
     ]
-    # Only run IDL checker on files in these directories.
-    idl_included_patterns = [
-        r'^chrome/common/extensions/api/',
-        r'^extensions/common/api/',
-    ]
-
-    def get_action(affected_file):
-        filename = affected_file.LocalPath()
-        return actions.get(input_api.os_path.splitext(filename)[1])
 
     def FilterFile(affected_file):
-        action = get_action(affected_file)
-        if not action:
+        if not affected_file.LocalPath().endswith('.json'):
             return False
         path = affected_file.UnixLocalPath()
-
-        if _MatchesFile(input_api,
-                        _KNOWN_TEST_DATA_AND_INVALID_JSON_FILE_PATTERNS, path):
-            return False
-
-        if (action == _GetIDLParseError
-                and not _MatchesFile(input_api, idl_included_patterns, path)):
-            return False
-        return True
+        return not _MatchesFile(
+            input_api, _KNOWN_TEST_DATA_AND_INVALID_JSON_FILE_PATTERNS, path)
 
     results = []
     for affected_file in input_api.AffectedFiles(file_filter=FilterFile,
                                                  include_deletes=False):
-        action = get_action(affected_file)
-        kwargs = {}
-        if (action == _GetJSONParseError
-                and _MatchesFile(input_api, json_no_comments_patterns,
-                                 affected_file.UnixLocalPath())):
-            kwargs['eat_comments'] = False
-        parse_error = action(input_api, affected_file.AbsoluteLocalPath(),
-                             **kwargs)
+        eat_comments = not _MatchesFile(input_api, json_no_comments_patterns,
+                                        affected_file.UnixLocalPath())
+        parse_error = _GetJSONParseError(input_api,
+                                         affected_file.AbsoluteLocalPath(),
+                                         eat_comments=eat_comments)
         if parse_error:
             results.append(
                 output_api.PresubmitError(
                     '%s could not be parsed: %s' %
                     (affected_file.LocalPath(), parse_error)))
     return results
-
-
-def CheckJavaStyle(input_api, output_api):
-    """Runs checkstyle on changed java files and returns errors if any exist."""
-    if not _HasJavaFiles(input_api):
-        return []
-
-    import sys
-    original_sys_path = sys.path
-    try:
-        sys.path = sys.path + [
-            input_api.os_path.join(input_api.PresubmitLocalPath(), 'tools',
-                                   'android', 'checkstyle')
-        ]
-        import checkstyle
-    finally:
-        # Restore sys.path to what it was before.
-        sys.path = original_sys_path
-
-    return checkstyle.run_presubmit(input_api,
-                                    output_api,
-                                    files_to_skip=_EXCLUDED_PATHS +
-                                    input_api.DEFAULT_FILES_TO_SKIP)
 
 
 def CheckPythonDevilInit(input_api, output_api):
@@ -5496,220 +5670,6 @@ def _CheckAndroidInfoBarDeprecation(input_api, output_api):
     return infobar_deprecation.CheckDeprecationOnUpload(input_api, output_api)
 
 
-class _PydepsCheckerResult:
-
-    def __init__(self, cmd, pydeps_path, process, old_contents):
-        self._cmd = cmd
-        self._pydeps_path = pydeps_path
-        self._process = process
-        self._old_contents = old_contents
-
-    def GetError(self):
-        """Returns an error message, or None."""
-        import difflib
-        new_contents = self._process.stdout.read().splitlines()[2:]
-        if self._process.wait() != 0:
-            # STDERR should already be printed.
-            return 'Command failed: ' + self._cmd
-        if self._old_contents != new_contents:
-            diff = '\n'.join(
-                difflib.context_diff(self._old_contents, new_contents))
-            return ('File is stale: {}\n'
-                    'Diff (apply to fix):\n'
-                    '{}\n'
-                    'To regenerate, run:\n\n'
-                    '    {}').format(self._pydeps_path, diff, self._cmd)
-        return None
-
-
-class PydepsChecker:
-
-    def __init__(self, input_api, pydeps_files):
-        self._file_cache = {}
-        self._input_api = input_api
-        self._pydeps_files = pydeps_files
-
-    def _LoadFile(self, path):
-        """Returns the list of paths within a .pydeps file relative to //."""
-        if path not in self._file_cache:
-            with open(path, encoding='utf-8') as f:
-                self._file_cache[path] = f.read()
-        return self._file_cache[path]
-
-    def _ComputeNormalizedPydepsEntries(self, pydeps_path):
-        """Returns an iterable of paths within the .pydep, relativized to //."""
-        pydeps_data = self._LoadFile(pydeps_path)
-        uses_gn_paths = '--gn-paths' in pydeps_data
-        entries = (l for l in pydeps_data.splitlines()
-                   if not l.startswith('#'))
-        if uses_gn_paths:
-            # Paths look like: //foo/bar/baz
-            return (e[2:] for e in entries)
-        else:
-            # Paths look like: path/relative/to/file.pydeps
-            os_path = self._input_api.os_path
-            pydeps_dir = os_path.dirname(pydeps_path)
-            return (os_path.normpath(os_path.join(pydeps_dir, e))
-                    for e in entries)
-
-    def _CreateFilesToPydepsMap(self):
-        """Returns a map of local_path -> list_of_pydeps."""
-        ret = {}
-        for pydep_local_path in self._pydeps_files:
-            for path in self._ComputeNormalizedPydepsEntries(pydep_local_path):
-                ret.setdefault(path, []).append(pydep_local_path)
-        return ret
-
-    def ComputeAffectedPydeps(self):
-        """Returns an iterable of .pydeps files that might need regenerating."""
-        affected_pydeps = set()
-        file_to_pydeps_map = None
-        for f in self._input_api.AffectedFiles(include_deletes=True):
-            local_path = f.LocalPath()
-            # Changes to DEPS can lead to .pydeps changes if any .py files are in
-            # subrepositories. We can't figure out which files change, so re-check
-            # all files.
-            # Changes to print_python_deps.py affect all .pydeps.
-            if local_path in ('DEPS', 'PRESUBMIT.py'
-                              ) or local_path.endswith('print_python_deps.py'):
-                return self._pydeps_files
-            elif local_path.endswith('.pydeps'):
-                if local_path in self._pydeps_files:
-                    affected_pydeps.add(local_path)
-            elif local_path.endswith('.py'):
-                if file_to_pydeps_map is None:
-                    file_to_pydeps_map = self._CreateFilesToPydepsMap()
-                affected_pydeps.update(file_to_pydeps_map.get(local_path, ()))
-        return affected_pydeps
-
-    def DetermineIfStaleAsync(self, pydeps_path):
-        """Runs print_python_deps.py to see if the files is stale."""
-        import os
-
-        old_pydeps_data = self._LoadFile(pydeps_path).splitlines()
-        if old_pydeps_data:
-            cmd = old_pydeps_data[1][1:].strip()
-            if '--output' not in cmd:
-                cmd += ' --output ' + pydeps_path
-            old_contents = old_pydeps_data[2:]
-        else:
-            # A default cmd that should work in most cases (as long as pydeps filename
-            # matches the script name) so that PRESUBMIT.py does not crash if pydeps
-            # file is empty/new.
-            cmd = 'build/print_python_deps.py {} --root={} --output={}'.format(
-                pydeps_path[:-4], os.path.dirname(pydeps_path), pydeps_path)
-            old_contents = []
-        env = dict(os.environ)
-        env['PYTHONDONTWRITEBYTECODE'] = '1'
-        process = self._input_api.subprocess.Popen(
-            cmd + ' --output ""',
-            shell=True,
-            env=env,
-            stdout=self._input_api.subprocess.PIPE,
-            encoding='utf-8')
-        return _PydepsCheckerResult(cmd, pydeps_path, process, old_contents)
-
-
-def _ParseGclientArgs():
-    args = {}
-    with open('build/config/gclient_args.gni', 'r') as f:
-        for line in f:
-            line = line.strip()
-            if not line or line.startswith('#'):
-                continue
-            attribute, value = line.split('=')
-            args[attribute.strip()] = value.strip()
-    return args
-
-
-def CheckPydepsNeedsUpdating(input_api, output_api, checker_for_tests=None):
-    """Checks if a .pydeps file needs to be regenerated."""
-    # This check is for Python dependency lists (.pydeps files), and involves
-    # paths not only in the PRESUBMIT.py, but also in the .pydeps files. It
-    # doesn't work on Windows and Mac, so skip it on other platforms.
-    if not input_api.platform.startswith('linux'):
-        return []
-
-    results = []
-    # First, check for new / deleted .pydeps.
-    for f in input_api.AffectedFiles(include_deletes=True):
-        # Check whether we are running the presubmit check for a file in src.
-        if f.LocalPath().endswith('.pydeps'):
-            # f.LocalPath is relative to repo (src, or internal repo).
-            # os_path.exists is relative to src repo.
-            # Therefore if os_path.exists is true, it means f.LocalPath is relative
-            # to src and we can conclude that the pydeps is in src.
-            exists = input_api.os_path.exists(f.LocalPath())
-            if f.Action() == 'D' and f.LocalPath() in _ALL_PYDEPS_FILES:
-                results.append(
-                    output_api.PresubmitError(
-                        'Please update _ALL_PYDEPS_FILES within //PRESUBMIT.py to '
-                        'remove %s' % f.LocalPath()))
-            elif (f.Action() != 'D' and exists
-                  and f.LocalPath() not in _ALL_PYDEPS_FILES):
-                results.append(
-                    output_api.PresubmitError(
-                        'Please update _ALL_PYDEPS_FILES within //PRESUBMIT.py to '
-                        'include %s' % f.LocalPath()))
-
-    if results:
-        return results
-
-    try:
-        parsed_args = _ParseGclientArgs()
-    except FileNotFoundError:
-        message = (
-            'build/config/gclient_args.gni not found. Please make sure your '
-            'workspace has been initialized with gclient sync.')
-        import sys
-        original_sys_path = sys.path
-        try:
-            sys.path = sys.path + [
-                input_api.os_path.join(input_api.PresubmitLocalPath(),
-                                       'third_party', 'depot_tools')
-            ]
-            import gclient_utils
-            if gclient_utils.IsEnvCog():
-                # Users will always hit this when they run presubmits before cog
-                # workspace initialization finishes. The check shouldn't fail in
-                # this case. This is an unavoidable workaround that's needed for
-                # good presubmit UX for cog.
-                results.append(output_api.PresubmitPromptWarning(message))
-            else:
-                results.append(output_api.PresubmitError(message))
-            return results
-        finally:
-            # Restore sys.path to what it was before.
-            sys.path = original_sys_path
-
-    is_android = parsed_args.get('checkout_android', 'false') == 'true'
-    checker = checker_for_tests or PydepsChecker(input_api, _ALL_PYDEPS_FILES)
-    affected_pydeps = set(checker.ComputeAffectedPydeps())
-    affected_android_pydeps = affected_pydeps.intersection(
-        set(_ANDROID_SPECIFIC_PYDEPS_FILES))
-    if affected_android_pydeps and not is_android:
-        results.append(
-            output_api.PresubmitPromptOrNotify(
-                'You have changed python files that may affect pydeps for android\n'
-                'specific scripts. However, the relevant presubmit check cannot be\n'
-                'run because you are not using an Android checkout. To validate that\n'
-                'the .pydeps are correct, re-run presubmit in an Android checkout, or\n'
-                'use the android-internal-presubmit optional trybot.\n'
-                'Possibly stale pydeps files:\n{}'.format(
-                    '\n'.join(affected_android_pydeps))))
-
-    all_pydeps = _ALL_PYDEPS_FILES if is_android else _GENERIC_PYDEPS_FILES
-    pydeps_to_check = affected_pydeps.intersection(all_pydeps)
-    # Process these concurrently, as each one takes 1-2 seconds.
-    pydep_results = [checker.DetermineIfStaleAsync(p) for p in pydeps_to_check]
-    for result in pydep_results:
-        error_msg = result.GetError()
-        if error_msg:
-            results.append(output_api.PresubmitError(error_msg))
-
-    return results
-
-
 def CheckSingletonInHeaders(input_api, output_api):
     """Checks to make sure no header files have |Singleton<|."""
     if not _HasCPlusPlusHeaderFiles(input_api):
@@ -6528,7 +6488,11 @@ _NON_INCLUSIVE_TERMS = (
 
 
 def CheckCommon(input_api, output_api):
-    """Checks common to both upload and commit."""
+    """Checks common to both upload and commit.
+
+    Note: Common checks that use input_api.Command() should be added to
+    CheckCommonCommands() at the top of the file to maximize concurrency.
+    """
     results = []
     results.extend(
         input_api.canned_checks.PanProjectChecks(
@@ -6545,17 +6509,6 @@ def CheckCommon(input_api, output_api):
             input_api,
             output_api,
             source_file_filter=lambda x: x.LocalPath().endswith('.grd')))
-    results.extend(
-        input_api.RunTests(
-            input_api.canned_checks.CheckVPythonSpec(input_api, output_api)))
-
-    dirmd = 'dirmd.bat' if input_api.is_windows else 'dirmd'
-    dirmd_bin = input_api.os_path.join(input_api.PresubmitLocalPath(),
-                                       'third_party', 'depot_tools', dirmd)
-    results.extend(
-        input_api.RunTests(
-            input_api.canned_checks.CheckDirMetadataFormat(
-                input_api, output_api, dirmd_bin)))
     results.extend(
         input_api.canned_checks.CheckOwnersDirMetadataExclusive(
             input_api, output_api))
@@ -6576,28 +6529,6 @@ def CheckCommon(input_api, output_api):
     results.extend(
         input_api.canned_checks.CheckValidHostsInDEPSOnUpload(
             input_api, output_api))
-
-    presubmit_py_filter = lambda f: input_api.FilterSourceFile(
-        f, files_to_check=[r'.*PRESUBMIT(?:_test)?\.py$'])
-    potential_paths = set(
-        map(
-            lambda f: input_api.os_path.dirname(f.AbsoluteLocalPath()),
-            input_api.AffectedFiles(include_deletes=False,
-                                    file_filter=presubmit_py_filter)))
-    for full_path in potential_paths:
-        test_file = input_api.os_path.join(full_path, 'PRESUBMIT_test.py')
-        # The PRESUBMIT.py file (and the directory containing it) might have
-        # been affected by being moved or removed, so only try to run the tests
-        # if they still exist.
-        if not input_api.os_path.exists(test_file):
-            continue
-
-        results.extend(
-            input_api.canned_checks.RunUnitTestsInDirectory(
-                input_api,
-                output_api,
-                full_path,
-                files_to_check=[r'^PRESUBMIT_test\.py$']))
     return results
 
 
@@ -7252,11 +7183,6 @@ def CheckNoDirectRefToAndroidSidePanelCachedFlag(input_api, output_api):
     return results
 
 
-def CheckPatchFormatted(input_api, output_api):
-    """Checks that the patch is formatted properly."""
-    return input_api.canned_checks.CheckPatchFormatted(input_api, output_api)
-
-
 def CheckTreeIsOpenOnCommit(input_api, output_api):
     """Makes sure the tree is 'open' before committing."""
     return input_api.canned_checks.CheckTreeIsOpen(
@@ -7723,88 +7649,6 @@ def CheckTranslationExpectations(input_api,
                 ' - %s is not updated.\n'
                 'Stack:\n%s' % (translation_expectations_path, str(e)))
         ]
-    return []
-
-
-def CheckStableMojomChanges(input_api, output_api):
-    """Changes to [Stable] mojom types must preserve backward-compatibility."""
-    has_mojom = _HasMojomFiles(input_api)
-    footers = input_api.change.GitFootersFromDescription()
-    no_stable_mojom_checks = None
-    if footers:
-        for k, v in footers.items():
-            if k.lower() == 'no-stable-mojom-checks':
-                no_stable_mojom_checks = v
-                break
-
-    if not has_mojom and not no_stable_mojom_checks:
-        return []
-
-    expect_stable_mojom_failures = False
-    if no_stable_mojom_checks:
-        if no_stable_mojom_checks == ['true']:
-            expect_stable_mojom_failures = True
-        else:
-            return [
-                output_api.PresubmitError(
-                    f'If present, No-Stable-Mojom-Checks only accepts the value '
-                    f'"true", but got "{no_stable_mojom_checks}" instead.')
-            ]
-
-    def CheckMojomsIfNeeded():
-        changed_mojoms = input_api.AffectedFiles(
-            include_deletes=True,
-            file_filter=lambda f: f.LocalPath().endswith(('.mojom')))
-
-        if not changed_mojoms or input_api.no_diffs:
-            return []
-
-        delta = []
-        for mojom in changed_mojoms:
-            delta.append({
-                'filename': mojom.LocalPath(),
-                'old': '\n'.join(mojom.OldContents()) or None,
-                'new': '\n'.join(mojom.NewContents()) or None,
-            })
-
-        process = input_api.subprocess.Popen([
-            input_api.python3_executable,
-            input_api.os_path.join(
-                input_api.PresubmitLocalPath(), 'mojo', 'public', 'tools',
-                'mojom', 'check_stable_mojom_compatibility.py'), '--src-root',
-            input_api.PresubmitLocalPath()
-        ],
-                                             stdin=input_api.subprocess.PIPE,
-                                             stdout=input_api.subprocess.PIPE,
-                                             stderr=input_api.subprocess.PIPE,
-                                             universal_newlines=True)
-        (_, error) = process.communicate(input=input_api.json.dumps(delta))
-        if process.returncode:
-            return [
-                output_api.PresubmitError(
-                    'One or more [Stable] mojom definitions changed in a way '
-                    'that breaks backward compatibility. See '
-                    'https://chromium.googlesource.com/chromium/src/+/HEAD/mojo/public/tools/bindings/README.md#versioning'
-                    ' for details.\n\n'
-                    'If you are confident this is a false positive, add '
-                    '`No-Stable-Mojom-Checks: true` to the git footers to suppress '
-                    'this check.',
-                    long_text=error)
-            ]
-        return []
-
-    results = CheckMojomsIfNeeded()
-    if bool(results) != expect_stable_mojom_failures:
-        if expect_stable_mojom_failures:
-            return [
-                output_api.PresubmitError(
-                    'No [Stable] mojom definitions changed in a way breaks '
-                    'backward compatibility.\n\n'
-                    'Please remove the unnecessary git footer '
-                    '`No-Stable-Mojom-Checks: true`.')
-            ]
-        else:
-            return results
     return []
 
 
@@ -8726,16 +8570,6 @@ def CheckTestFileNamesOnUpload(input_api, output_api):
             'not plural (_unittests.cc or _browsertests.cc).',
             items=bad_files)
     ]
-
-
-def CheckAyeAye(input_api, output_api):
-    """Runs AyeAye checks locally via the alint tool.
-
-    These checks get run automatically behind the scenes on CLs in
-    Gerrit. Running them locally should surface any warnings or errors
-    earlier.
-    """
-    return input_api.canned_checks.CheckAyeAye(input_api, output_api)
 
 
 def CheckSettingsChanges(input_api, output_api):

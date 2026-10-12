@@ -6,7 +6,7 @@
 import 'chrome://settings/lazy_load.js';
 
 import {flush} from 'chrome://resources/polymer/v3_0/polymer/polymer_bundled.min.js';
-import type {SettingsSimpleConfirmationDialogElement, CrInputElement, SettingsIbanEditDialogElement} from 'chrome://settings/lazy_load.js';
+import type {SettingsSimpleConfirmationDialogElement, CrInputElement, SettingsIbanEditDialogElement, SettingsIbanListEntryElement} from 'chrome://settings/lazy_load.js';
 import {PaymentsManagerImpl} from 'chrome://settings/lazy_load.js';
 import type {CrButtonElement} from 'chrome://settings/settings.js';
 import {loadTimeData} from 'chrome://settings/settings.js';
@@ -15,7 +15,7 @@ import {eventToPromise, isVisible, microtasksFinished, whenAttributeIs} from 'ch
 
 import type {TestPaymentsManager} from './autofill_fake_data.js';
 import {createIbanEntry} from './autofill_fake_data.js';
-import {createPaymentsPage, getDefaultExpectations} from './payments_page_test_utils.js';
+import {createPaymentsPage, getDefaultExpectations, setupPaymentsPrefs} from './payments_page_test_utils.js';
 
 // clang-format on
 
@@ -26,9 +26,8 @@ async function updateIbanTextboxValue(
     valueInput: CrInputElement, value: string): Promise<void> {
   valueInput.focus();
   valueInput.value = value;
-  await valueInput.updateComplete;
-  valueInput.dispatchEvent(
-      new CustomEvent('input', {bubbles: true, composed: true}));
+  await microtasksFinished();
+  valueInput.fire('input');
 }
 
 /**
@@ -41,7 +40,7 @@ async function ibanValidated(paymentsManager: TestPaymentsManager) {
 }
 
 suite('PaymentsPageIban', function() {
-  setup(function() {
+  setup(async function() {
     document.body.innerHTML = window.trustedTypes!.emptyHTML;
     loadTimeData.overrideValues({
       migrationEnabled: true,
@@ -49,6 +48,7 @@ suite('PaymentsPageIban', function() {
       autofillEnableWalletBranding: true,
       autofillEnableGradientGoogleLogos: false,
     });
+    await setupPaymentsPrefs();
   });
 
   /**
@@ -74,14 +74,14 @@ suite('PaymentsPageIban', function() {
   }
 
   /**
-   * Returns the shadow root of the IBAN row from the specified list of
-   * payment methods.
+   * Returns the first IBAN row from the specified list of payment methods.
    */
-  function getIbanRowShadowRoot(paymentsList: HTMLElement): ShadowRoot {
+  function getFirstIbanEntry(paymentsList: HTMLElement):
+      SettingsIbanListEntryElement {
     const row =
         paymentsList.shadowRoot!.querySelector('settings-iban-list-entry');
     assertTrue(!!row);
-    return row.shadowRoot!;
+    return row;
   }
 
   test('verifyIbanSettingsDisabled', async function() {
@@ -142,10 +142,11 @@ suite('PaymentsPageIban', function() {
 
     assertEquals(1, getIbanListItems().length);
 
-    const ibanItemLabel = getIbanRowShadowRoot(page.$.paymentsList)
-                              .querySelector<HTMLElement>('#label');
-    const ibanItemSubLabel = getIbanRowShadowRoot(page.$.paymentsList)
-                                 .querySelector<HTMLElement>('#subLabel');
+    const ibanEntry = getFirstIbanEntry(page.$.paymentsList);
+    const ibanItemLabel =
+        ibanEntry.shadowRoot.querySelector<HTMLElement>('#label');
+    const ibanItemSubLabel =
+        ibanEntry.shadowRoot.querySelector<HTMLElement>('#subLabel');
 
     assertTrue(!!ibanItemLabel);
     assertTrue(!!ibanItemSubLabel);
@@ -161,7 +162,7 @@ suite('PaymentsPageIban', function() {
     await whenAttributeIs(ibanDialog.$.dialog, 'open', '');
 
     const charCount =
-        ibanDialog.shadowRoot!.querySelector<HTMLElement>('#charCount');
+        ibanDialog.shadowRoot.querySelector<HTMLElement>('#charCount');
     assertTrue(!!charCount);
     assertTrue(charCount.hidden);
 
@@ -278,7 +279,7 @@ suite('PaymentsPageIban', function() {
 
     const valueInput = ibanDialog.$.valueInput;
     valueInput.value = 'FI1410093000123412';
-    flush();
+    await microtasksFinished();
 
     const cancelButton = ibanDialog.$.cancelButton;
     cancelButton.click();
@@ -287,8 +288,8 @@ suite('PaymentsPageIban', function() {
     ibanDialog = createIbanDialog(iban);
     await whenAttributeIs(ibanDialog.$.dialog, 'open', '');
 
-    assertEquals(ibanDialog.get('nickname_'), iban.nickname);
-    assertEquals(ibanDialog.get('value_'), iban.value);
+    assertEquals(ibanDialog.$.nicknameInput.value, iban.nickname);
+    assertEquals(ibanDialog.$.valueInput.value, iban.value);
   });
 
   test('verifyLocalIbanMenu', async function() {
@@ -322,9 +323,9 @@ suite('PaymentsPageIban', function() {
         /*prefValues=*/ {});
     assertEquals(1, getIbanListItems().length);
 
-    const rowShadowRoot = getIbanRowShadowRoot(page.$.paymentsList);
-    assertTrue(!!rowShadowRoot);
-    const menuButton = rowShadowRoot.querySelector<HTMLElement>('#ibanMenu');
+    const ibanEntry = getFirstIbanEntry(page.$.paymentsList);
+    const menuButton =
+        ibanEntry.shadowRoot.querySelector<HTMLElement>('#ibanMenu');
     assertTrue(!!menuButton);
     menuButton.click();
     flush();
@@ -365,9 +366,9 @@ suite('PaymentsPageIban', function() {
         /*prefValues=*/ {});
     assertEquals(1, getIbanListItems().length);
 
-    const rowShadowRoot = getIbanRowShadowRoot(page.$.paymentsList);
-    assertTrue(!!rowShadowRoot);
-    const menuButton = rowShadowRoot.querySelector<HTMLElement>('#ibanMenu');
+    const ibanEntry = getFirstIbanEntry(page.$.paymentsList);
+    const menuButton =
+        ibanEntry.shadowRoot.querySelector<HTMLElement>('#ibanMenu');
     assertTrue(!!menuButton);
     menuButton.click();
     flush();
@@ -406,9 +407,9 @@ suite('PaymentsPageIban', function() {
         /*creditCards=*/[], [iban], /*payOverTimeIssuers=*/[],
         /*prefValues=*/ {});
     assertEquals(1, getIbanListItems().length);
-    assertTrue(
-        isVisible(getIbanRowShadowRoot(page.$.paymentsList)
-                      .querySelector<HTMLElement>('#paymentsIndicator')));
+    assertTrue(isVisible(
+        getFirstIbanEntry(page.$.paymentsList)
+            .shadowRoot.querySelector<HTMLElement>('#paymentsIndicator')));
   });
 
   test('verifyIbanRowButtonIsOutlinkForServerIbans', async function() {
@@ -418,11 +419,11 @@ suite('PaymentsPageIban', function() {
         /*creditCards=*/[], [iban], /*payOverTimeIssuers=*/[],
         /*prefValues=*/ {});
     assertEquals(1, getIbanListItems().length);
-    const rowShadowRoot = getIbanRowShadowRoot(page.$.paymentsList);
-    const menuButton = rowShadowRoot.querySelector('#ibanMenu');
+    const ibanEntry = getFirstIbanEntry(page.$.paymentsList);
+    const menuButton = ibanEntry.shadowRoot.querySelector('#ibanMenu');
     assertFalse(!!menuButton);
     const outlinkButton =
-        rowShadowRoot.querySelector('cr-icon-button.icon-external');
+        ibanEntry.shadowRoot.querySelector('cr-icon-button.icon-external');
     assertTrue(!!outlinkButton);
   });
 
@@ -437,8 +438,8 @@ suite('PaymentsPageIban', function() {
         /*creditCards=*/[], [iban], /*payOverTimeIssuers=*/[],
         /*prefValues=*/ {});
     assertEquals(1, getIbanListItems().length);
-    const rowShadowRoot = getIbanRowShadowRoot(page.$.paymentsList);
-    const outlinkButton = rowShadowRoot.querySelector<HTMLElement>(
+    const ibanEntry = getFirstIbanEntry(page.$.paymentsList);
+    const outlinkButton = ibanEntry.shadowRoot.querySelector<HTMLElement>(
         'cr-icon-button.icon-external');
     assertTrue(!!outlinkButton);
 
@@ -456,8 +457,8 @@ suite('PaymentsPageIban', function() {
         /*creditCards=*/[], [iban], /*payOverTimeIssuers=*/[],
         /*prefValues=*/ {});
     assertEquals(1, getIbanListItems().length);
-    const rowShadowRoot = getIbanRowShadowRoot(page.$.paymentsList);
-    const outlinkButton = rowShadowRoot.querySelector<HTMLElement>(
+    const ibanEntry = getFirstIbanEntry(page.$.paymentsList);
+    const outlinkButton = ibanEntry.shadowRoot.querySelector<HTMLElement>(
         'cr-icon-button.icon-external');
     assertTrue(!!outlinkButton);
 
@@ -473,8 +474,8 @@ suite('PaymentsPageIban', function() {
     const page = await createPaymentsPage(
         /*creditCards=*/[], [iban], /*payOverTimeIssuers=*/[],
         /*prefValues=*/ {});
-    const rowShadowRoot = getIbanRowShadowRoot(page.$.paymentsList);
-    const paymentsIcon = rowShadowRoot.querySelector('#paymentsIcon');
+    const ibanEntry = getFirstIbanEntry(page.$.paymentsList);
+    const paymentsIcon = ibanEntry.shadowRoot.querySelector('#paymentsIcon');
     // #paymentsIcon is only present in Google Chrome branded builds.
     if (paymentsIcon) {
       const source = paymentsIcon.querySelector('source');
@@ -487,7 +488,7 @@ suite('PaymentsPageIban', function() {
           img.srcset.includes('IDR_AUTOFILL_GOOGLE_PAY_WITH_GRADIENT_SMALL'));
     } else {
       const textIndicator =
-          rowShadowRoot.querySelector('#paymentsIndicator .sub-label');
+          ibanEntry.shadowRoot.querySelector('#paymentsIndicator .sub-label');
       assertTrue(!!textIndicator);
       assertTrue(isVisible(textIndicator));
     }
@@ -502,8 +503,8 @@ suite('PaymentsPageIban', function() {
     const page = await createPaymentsPage(
         /*creditCards=*/[], [iban], /*payOverTimeIssuers=*/[],
         /*prefValues=*/ {});
-    const rowShadowRoot = getIbanRowShadowRoot(page.$.paymentsList);
-    const paymentsIcon = rowShadowRoot.querySelector('#paymentsIcon');
+    const ibanEntry = getFirstIbanEntry(page.$.paymentsList);
+    const paymentsIcon = ibanEntry.shadowRoot.querySelector('#paymentsIcon');
     // #paymentsIcon is only present in Google Chrome branded builds.
     if (paymentsIcon) {
       const source = paymentsIcon.querySelector('source');
@@ -514,7 +515,7 @@ suite('PaymentsPageIban', function() {
       assertTrue(img.srcset.includes('IDR_AUTOFILL_GOOGLE_PAY_SMALL'));
     } else {
       const textIndicator =
-          rowShadowRoot.querySelector('#paymentsIndicator .sub-label');
+          ibanEntry.shadowRoot.querySelector('#paymentsIndicator .sub-label');
       assertTrue(!!textIndicator);
       assertTrue(isVisible(textIndicator));
     }

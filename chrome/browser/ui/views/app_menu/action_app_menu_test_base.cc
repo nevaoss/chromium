@@ -16,6 +16,7 @@
 #include "chrome/browser/tab_group_sync/tab_group_sync_service_factory.h"
 #include "chrome/browser/ui/actions/chrome_action_id.h"
 #include "chrome/browser/ui/browser_actions.h"
+#include "chrome/browser/ui/safety_hub/menu_notification_service_factory.h"
 #include "chrome/test/base/testing_profile.h"
 #include "components/saved_tab_groups/test_support/fake_tab_group_sync_service.h"
 #include "components/sync/test/test_sync_service.h"
@@ -27,6 +28,8 @@ ActionAppMenuTestBase::~ActionAppMenuTestBase() = default;
 void ActionAppMenuTestBase::SetUp() {
   ChromeViewsTestBase::SetUp();
   profile_ = std::make_unique<TestingProfile>();
+  SafetyHubMenuNotificationServiceFactory::GetInstance()->SetTestingFactory(
+      profile_.get(), BrowserContextKeyedServiceFactory::TestingFactory());
   SyncServiceFactory::GetInstance()->SetTestingFactory(
       profile_.get(),
       base::BindRepeating(
@@ -72,8 +75,11 @@ void ActionAppMenuTestBase::SetUp() {
                            base::Unretained(&mock_action_invoked_), action_id))
                        .SetActionId(action_id)
                        .SetText(text)
+                       .SetTooltipText(text)
+                       .SetAccessibleName(text)
                        .SetEnabled(true)
                        .SetVisible(action_id != kActionUpgradeDialog &&
+                                   action_id != kActionGlobalError &&
                                    action_id != kActionSetBrowserAsDefault)
                        .Build());
   };
@@ -95,6 +101,10 @@ void ActionAppMenuTestBase::SetUp() {
   add_action(kActionShowSyncPassphraseDialog, u"Enter passphrase");
   add_action(kActionShowSigninWhenPaused, u"Sign in again");
   add_action(kActionUpgradeDialog, u"Update Chrome");
+  add_action(kActionGlobalError, u"Global error");
+  add_action(kActionOpenSafetyHub, u"Safety Hub");
+  add_action(kActionSafetyHubManageExtensions, u"Manage extensions");
+  add_action(kActionSafetyHubShowPasswordCheckup, u"Check passwords");
   add_action(kActionSetBrowserAsDefault, u"Set Chrome as default browser");
   add_action(kActionPasswordsAndAutofillSubmenu, u"Passwords and autofill");
   add_action(kActionShowPasswordManager, u"Password Manager");

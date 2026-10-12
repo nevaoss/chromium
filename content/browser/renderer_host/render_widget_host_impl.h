@@ -246,6 +246,10 @@ class CONTENT_EXPORT RenderWidgetHostImpl
   const viz::FrameSinkId& GetFrameSinkId() override;
   std::optional<GlobalRenderFrameHostId> GetPopupCreatorFrameId()
       const override;
+  void set_popup_creator_frame_id_for_testing(
+      std::optional<GlobalRenderFrameHostId> id) {
+    popup_creator_frame_id_ = id;
+  }
   void UpdateTextDirection(base::i18n::TextDirection direction) override;
   void NotifyTextDirection() override;
   void SetExternallySourcedComposition(
@@ -1353,7 +1357,7 @@ class CONTENT_EXPORT RenderWidgetHostImpl
 
   // Our delegate, which wants to know mainly about keyboard events.
   // It will remain non-null until DetachDelegate() is called.
-  raw_ptr<RenderWidgetHostDelegate, FlakyDanglingUntriaged> delegate_;
+  raw_ptr<RenderWidgetHostDelegate> delegate_;
 
   // The delegate of the owner of this object.
   // This member is non-null if and only if this RenderWidgetHost is associated

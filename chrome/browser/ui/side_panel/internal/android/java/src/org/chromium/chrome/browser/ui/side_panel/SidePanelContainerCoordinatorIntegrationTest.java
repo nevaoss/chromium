@@ -30,6 +30,7 @@ import org.chromium.base.ThreadUtils;
 import org.chromium.base.test.util.ApplicationTestUtils;
 import org.chromium.base.test.util.CommandLineFlags;
 import org.chromium.base.test.util.CriteriaHelper;
+import org.chromium.base.test.util.DisableIf;
 import org.chromium.base.test.util.DoNotBatch;
 import org.chromium.base.test.util.Feature;
 import org.chromium.base.test.util.Features.DisableFeatures;
@@ -53,6 +54,7 @@ import org.chromium.chrome.test.transit.ntp.IncognitoNewTabPageStation;
 import org.chromium.chrome.test.transit.ntp.RegularNewTabPageStation;
 import org.chromium.chrome.test.transit.page.WebPageStation;
 import org.chromium.chrome.test.util.ChromeTabUtils;
+import org.chromium.components.browser_ui.widget.RecyclerViewTestUtils;
 import org.chromium.ui.base.DeviceFormFactor;
 import org.chromium.ui.test.util.RenderTestRule;
 import org.chromium.ui.util.ColorUtils;
@@ -546,6 +548,7 @@ public class SidePanelContainerCoordinatorIntegrationTest {
     @MediumTest
     @DisableFeatures(ChromeFeatureList.DISABLE_GRID_TAB_SWITCHER)
     @EnableFeatures(ChromeFeatureList.ENABLE_ANDROID_SIDE_PANEL_DEV_FEATURE + ":scope/tab")
+    @DisableIf.Device(DeviceFormFactor.DESKTOP) // https://crbug.com/565523923
     public void closeAllTabsInGridTabSwitcher_undo_restoresTabScopedSidePanel() {
         // Arrange: Open 2 tabs.
         var tab1 = mResponsivePageStation.getTab();
@@ -575,6 +578,8 @@ public class SidePanelContainerCoordinatorIntegrationTest {
 
         // Act: Undo the tab closure using the undo snackbar.
         undoSnackbar.pressUndo();
+        RecyclerViewTestUtils.waitForView(tabSwitcherStation.recyclerViewElement.value(), 0);
+        RecyclerViewTestUtils.waitForView(tabSwitcherStation.recyclerViewElement.value(), 1);
 
         // Act: Select the restored tab 1.
         mResponsivePageStation =
@@ -619,6 +624,8 @@ public class SidePanelContainerCoordinatorIntegrationTest {
 
         // Act: Undo the tab closure using the undo snackbar.
         undoSnackbar.pressUndo();
+        RecyclerViewTestUtils.waitForView(tabSwitcherStation.recyclerViewElement.value(), 0);
+        RecyclerViewTestUtils.waitForView(tabSwitcherStation.recyclerViewElement.value(), 1);
 
         // Act: Select the restored tab 1.
         mResponsivePageStation =
@@ -833,6 +840,7 @@ public class SidePanelContainerCoordinatorIntegrationTest {
     @Test
     @MediumTest
     @DisableFeatures(ChromeFeatureList.ANDROID_OPEN_INCOGNITO_AS_WINDOW)
+    @DisableIf.Device(DeviceFormFactor.DESKTOP) // https://crbug.com/565523923
     public void
             testMixedProfileMode_openPanelInRegularPane_switchToIncognitoPaneThenBackToDifferentTab_switchToOriginalTab_restoresPanel() {
         // Arrange: Open 2 tabs in the regular pane and show the side panel on tab1.
@@ -898,6 +906,7 @@ public class SidePanelContainerCoordinatorIntegrationTest {
     @Test
     @MediumTest
     @DisableFeatures(ChromeFeatureList.ANDROID_OPEN_INCOGNITO_AS_WINDOW)
+    @DisableIf.Device(DeviceFormFactor.DESKTOP) // https://crbug.com/565523923
     public void
             testMixedProfileMode_bothRegularPaneAndIncognitoPaneHaveSidePanel_switchBetweenPanes_keepsPanelOpen() {
         // Arrange: Open the side panel in both the regular pane and the incognito pane.

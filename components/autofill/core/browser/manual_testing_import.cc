@@ -20,6 +20,7 @@
 #include "base/strings/utf_string_conversions.h"
 #include "base/task/task_traits.h"
 #include "base/task/thread_pool.h"
+#include "base/time/time.h"
 #include "base/values.h"
 #include "components/autofill/core/browser/autofill_type.h"
 #include "components/autofill/core/browser/data_manager/addresses/address_data_manager.h"
@@ -32,6 +33,7 @@
 #include "components/autofill/core/browser/field_type_util.h"
 #include "components/autofill/core/browser/field_types.h"
 #include "components/autofill/core/browser/network/autofill_ai/autofill_ai_personal_context_access_manager_impl.h"
+#include "url/gurl.h"
 
 namespace autofill {
 
@@ -62,6 +64,7 @@ constexpr std::string_view kKeySources = "sources";
 constexpr std::string_view kKeySourceType = "type";
 constexpr std::string_view kKeySourceUrl = "url";
 constexpr std::string_view kKeySourceTitle = "title";
+constexpr std::string_view kKeySourceTimestamp = "timestamp";
 constexpr std::string_view kKeyInitialCreatorId = "initial_creator_id";
 constexpr auto kRecordTypeMapping =
     base::MakeFixedFlatMap<std::string_view, AutofillProfile::RecordType>(
@@ -232,21 +235,31 @@ GetPersonalContextSourcesFromDict(const base::DictValue& dict) {
       LOG(ERROR) << "Invalid source type: " << *type_str << ".";
       continue;
     }
-    const std::string* title_str = src_dict.FindString(kKeySourceTitle);
+    GURL url(*url_str);
     switch (*type) {
-      case Source::Type::kGmail:
+      case Source::Type::kGmail: {
+        const std::string* title_str = src_dict.FindString(kKeySourceTitle);
         sources.push_back(
-            {.url = *url_str,
-             .data =
-                 EntityInstance::PersonalContextRecordTypePayload::GmailSource{
-                     .title = title_str ? *title_str : ""}});
+            {.url = std::move(url),
+             .metadata = EntityInstance::PersonalContextRecordTypePayload::
+                 GmailSourceMetadata{.title = title_str ? *title_str : ""}});
         break;
-      case Source::Type::kPhotos:
+      }
+      case Source::Type::kPhotos: {
+        base::Time timestamp = base::Time::Now();
+        if (const std::string* timestamp_str =
+                src_dict.FindString(kKeySourceTimestamp)) {
+          if (!base::Time::FromUTCString(timestamp_str->c_str(), &timestamp)) {
+            LOG(ERROR) << "Invalid timestamp: " << *timestamp_str << ".";
+            break;
+          }
+        }
         sources.push_back(
-            {.url = *url_str,
-             .data = EntityInstance::PersonalContextRecordTypePayload::
-                 PhotosSource{}});
+            {.url = std::move(url),
+             .metadata = EntityInstance::PersonalContextRecordTypePayload::
+                 PhotosSourceMetadata{.timestamp = timestamp}});
         break;
+      }
     }
   }
   return sources;

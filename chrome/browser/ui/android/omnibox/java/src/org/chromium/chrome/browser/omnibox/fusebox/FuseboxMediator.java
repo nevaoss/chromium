@@ -133,7 +133,8 @@ import java.util.function.Supplier;
     private final OmniboxResourceProvider mResourceProvider;
     private @Nullable AttachmentsSelectionController mSelectionController;
 
-    private boolean mIsTextWrapping;
+    private final NonNullObservableSupplier<Boolean> mUrlTextWrappingSupplier;
+    private final Callback<Boolean> mOnTextWrappingChanged = _ -> updateFuseboxState();
     private @BrandedColorScheme int mBrandedColorScheme = BrandedColorScheme.APP_DEFAULT;
     private @Nullable Profile mProfile;
     private @Nullable AutocompleteInput mInput;
@@ -172,7 +173,8 @@ import java.util.function.Supplier;
             Supplier<@Nullable View> scrimAnchorViewSupplier,
             BackPressManager backPressManager,
             @Nullable Runnable onFirstPickerInteractionCanceledCallback,
-            SettableNonNullObservableSupplier<Boolean> hasAttachmentsSupplier) {
+            SettableNonNullObservableSupplier<Boolean> hasAttachmentsSupplier,
+            NonNullObservableSupplier<Boolean> urlTextWrappingSupplier) {
         mContext = context;
         mWindowAndroid = windowAndroid;
         mPermissionDelegate = windowAndroid;
@@ -190,6 +192,8 @@ import java.util.function.Supplier;
         mOnFirstPickerInteractionCanceledCallback = onFirstPickerInteractionCanceledCallback;
         mIsDesktopPlatform = OmniboxCapabilities.isDesktopPlatform();
         mHasAttachmentsSupplier = hasAttachmentsSupplier;
+        mUrlTextWrappingSupplier = urlTextWrappingSupplier;
+        mUrlTextWrappingSupplier.addSyncObserverAndCallIfNonNull(mOnTextWrappingChanged);
 
         // Create the upload failed snackbar.
         mAttachmentUploadFailedSnackbar =
@@ -236,6 +240,7 @@ import java.util.function.Supplier;
     /* package */ void destroy() {
         endInput();
         mBackPressManager.removeHandler(this);
+        mUrlTextWrappingSupplier.removeObserver(mOnTextWrappingChanged);
     }
 
     public boolean wasPopupItemSelected() {
@@ -363,7 +368,6 @@ import java.util.function.Supplier;
         setAutocompleteInput(null);
         mProfile = null;
         mMetrics = null;
-        mIsTextWrapping = false;
         updateFuseboxState();
     }
 
@@ -485,11 +489,6 @@ import java.util.function.Supplier;
         }
     }
 
-    /* package */ void setIsTextWrapping(boolean isTextWrapping) {
-        mIsTextWrapping = isTextWrapping;
-        updateFuseboxState();
-    }
-
     private void updateFuseboxState() {
         @FuseboxState int targetState;
         boolean showRequestTypeButton = shouldShowRequestTypeButton();
@@ -504,11 +503,12 @@ import java.util.function.Supplier;
             boolean isPopover =
                     mModel.get(FuseboxProperties.FUSEBOX_LAYOUT_MODE)
                             == FuseboxLayoutMode.SUGGESTIONS_POPOVER;
+            boolean isTextWrapping = mUrlTextWrappingSupplier.get();
             targetState =
                     // If we're showing the request type button...
                     showRequestTypeButton
                                     // or the text is wrapping (popover doesn't care)...
-                                    || (mIsTextWrapping && !isPopover)
+                                    || (isTextWrapping && !isPopover)
                                     // or the attachments list has elements...
                                     || !mModelList.isEmpty()
                                     // or popover with any ai request type, even when the request
@@ -1005,11 +1005,28 @@ import java.util.function.Supplier;
                 .setType(PopupButtonType.TOOL)
                 .setOnClicked(this::onDynamicButtonClicked)
                 .setText(mContext.getString(R.string.ai_mode_entrypoint_label))
+                .setSubtext(getToolSubtext(ToolMode.TOOL_MODE_UNSPECIFIED))
                 .setIconId(IconResourceIds.SEARCH_LOUPE_WITH_SPARKLE)
                 .setEnabled(true)
                 .setSelected(selected)
                 .setProtoId(ToolMode.TOOL_MODE_UNSPECIFIED)
                 .build();
+    }
+
+    @VisibleForTesting
+    String getToolSubtext(@ToolMode int toolMode) {
+        if (!OmniboxFeatures.hasAccordion()) {
+            return "";
+        }
+
+        return switch (toolMode) {
+            case ToolMode.TOOL_MODE_UNSPECIFIED ->
+                    mContext.getString(R.string.fusebox_ai_mode_subtext);
+            case ToolMode.TOOL_MODE_IMAGE_GEN ->
+                    mContext.getString(R.string.fusebox_create_image_subtext);
+            case ToolMode.TOOL_MODE_CANVAS -> mContext.getString(R.string.fusebox_canvas_subtext);
+            default -> "";
+        };
     }
 
     private void launchCamera() {
@@ -1107,13 +1124,13 @@ import java.util.function.Supplier;
         mPopupItemSelected = true;
         hidePopup();
         mMetrics.notifyAttachmentButtonUsed(FuseboxAttachmentButtonType.DRIVE_FILES);
-        launchDrivePicker();
+        launchDrivePicker(mProfile);
     }
 
-    private void launchDrivePicker() {
+    private void launchDrivePicker(Profile profile) {
         long startTime = TimeUtils.elapsedRealtimeMillis();
         DriveFilePickerClient.getInstance()
-                .launchPicker(mWindowAndroid, /* mimeTypes= */ null)
+                .launchPicker(mWindowAndroid, profile, /* mimeTypes= */ null)
                 .then(
                         metadata -> {
                             if (metadata == null) {
@@ -1281,7 +1298,7 @@ import java.util.function.Supplier;
         boolean driveVisible =
                 OmniboxFeatures.sComposeboxDriveContextMenuOption.isEnabled()
                         && inputState.allowedInputTypes.contains(InputType.INPUT_TYPE_DRIVE_VALUE)
-                        && DriveFilePickerClient.getInstance().isAvailable(mContext);
+                        && DriveFilePickerClient.getInstance().isAvailable(mContext, mProfile);
         boolean driveEnabled =
                 !inputState.disabledInputTypes.contains(InputType.INPUT_TYPE_DRIVE_VALUE);
         mModel.set(FuseboxProperties.POPUP_ATTACH_CURRENT_TAB_ENABLED, tabsEnabled);
@@ -1328,6 +1345,7 @@ import java.util.function.Supplier;
                             .setType(PopupButtonType.TOOL)
                             .setOnClicked(this::onDynamicButtonClicked)
                             .setText(label)
+                            .setSubtext(getToolSubtext(toolMode))
                             .setIconId(iconId)
                             .setEnabled(enabled)
                             .setSelected(selected)
@@ -1337,11 +1355,14 @@ import java.util.function.Supplier;
                             .build());
         }
 
+        boolean showSectionHeaders = !OmniboxFeatures.hasAccordion();
         boolean showTools = !toolButtonDataList.isEmpty();
         mModel.set(FuseboxProperties.POPUP_TOOL_DIVIDER_VISIBLE, showTools);
         mModel.set(
                 FuseboxProperties.POPUP_TOOL_HEADER_VISIBLE,
-                showTools && !TextUtils.isEmpty(inputState.getToolsSectionConfig().getHeader()));
+                showTools
+                        && showSectionHeaders
+                        && !TextUtils.isEmpty(inputState.getToolsSectionConfig().getHeader()));
         mModel.set(FuseboxProperties.POPUP_TOOL_BUTTON_DATA_LIST, toolButtonDataList);
 
         // The InputState is always targeting an AI Mode request and what would be possible, but the
@@ -1375,10 +1396,10 @@ import java.util.function.Supplier;
             }
         }
         boolean showModelPicker = modelButtonDataList.size() >= 2;
-        boolean showModelPickerDivider =
-                showModelPicker && !OmniboxFeatures.shouldShowBottomSheetPopup();
-        mModel.set(FuseboxProperties.POPUP_MODEL_DIVIDER_VISIBLE, showModelPickerDivider);
-        mModel.set(FuseboxProperties.POPUP_MODEL_HEADER_VISIBLE, showModelPicker);
+        mModel.set(FuseboxProperties.POPUP_MODEL_DIVIDER_VISIBLE, showModelPicker);
+        mModel.set(
+                FuseboxProperties.POPUP_MODEL_HEADER_VISIBLE,
+                showModelPicker && showSectionHeaders);
         mModel.set(
                 FuseboxProperties.POPUP_MODEL_HEADER_TEXT,
                 inputState.getModelSectionConfig().getHeader());

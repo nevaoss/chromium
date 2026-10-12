@@ -20,6 +20,10 @@
 #include "components/sync/model/data_type_store.h"
 #include "components/sync/model/data_type_sync_bridge.h"
 
+namespace sync_pb {
+class AutofillEntitySuppressionSpecifics;
+}  // namespace sync_pb
+
 namespace os_crypt_async {
 class Encryptor;
 }  // namespace os_crypt_async
@@ -71,6 +75,9 @@ class EntitySuppressionSyncBridge : public syncer::DataTypeSyncBridge {
   // Returns all currently active suppression entries.
   base::flat_set<EntitySuppressionEntry> GetSuppressions() const;
 
+  // Returns true if `entry` is currently suppressed.
+  bool IsSuppressed(const EntitySuppressionEntry& entry) const;
+
   bool IsLoaded() const;
 
   // Returns a weak pointer to the sync controller delegate.
@@ -99,6 +106,17 @@ class EntitySuppressionSyncBridge : public syncer::DataTypeSyncBridge {
       const sync_pb::EntitySpecifics& entity_specifics) const override;
 
  private:
+  // Applies a remote suppression to persistent storage and in-memory cache:
+  // Encrypts `specifics` and writes it to `batch` under `storage_key`, and
+  // indexes the parsed `entry` in `guids_by_entry_`. Resolves conflicts if an
+  // entry with the same data already exists under a different GUID.
+  // Returns `true` if `entry` was not already suppressed, `false` otherwise.
+  bool ApplyRemoteEntry(
+      const std::string& storage_key,
+      const sync_pb::AutofillEntitySuppressionSpecifics& specifics,
+      EntitySuppressionEntry entry,
+      syncer::DataTypeStore::WriteBatch& batch);
+
   void OnStoreCreated(const std::optional<syncer::ModelError>& error,
                       std::unique_ptr<syncer::DataTypeStore> store);
   void OnReadAllDataAndMetadata(

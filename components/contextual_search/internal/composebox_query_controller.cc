@@ -127,10 +127,36 @@ constexpr net::NetworkTrafficAnnotationTag kTrafficAnnotationTag =
       )");
 
 ComposeboxQueryController::UploadRequest::UploadRequest() = default;
-ComposeboxQueryController::UploadRequest::~UploadRequest() = default;
+
+ComposeboxQueryController::UploadRequest::~UploadRequest() {
+  base::UmaHistogramEnumeration("Lens.Composebox.ContextUpload.TerminalStatus",
+                                terminal_status);
+}
 
 ComposeboxQueryController::FileInfo::FileInfo() = default;
-ComposeboxQueryController::FileInfo::~FileInfo() = default;
+
+void ComposeboxQueryController::FileInfo::MarkAsCancelled() {
+  is_cancelled_ = true;
+  for (auto& upload_request : upload_requests_) {
+    if (upload_request &&
+        upload_request->terminal_status !=
+            ContextUploadTerminalStatus::kSuccess &&
+        upload_request->terminal_status !=
+            ContextUploadTerminalStatus::kHttpError) {
+      upload_request->terminal_status = ContextUploadTerminalStatus::kCancelled;
+    }
+  }
+}
+
+ComposeboxQueryController::FileInfo::~FileInfo() {
+  if (upload_requests_.empty() &&
+      (!input_data || !input_data->modality_chip_props.has_value())) {
+    base::UmaHistogramEnumeration(
+        "Lens.Composebox.ContextUpload.TerminalStatus",
+        is_cancelled_ ? ContextUploadTerminalStatus::kCancelled
+                      : ContextUploadTerminalStatus::kNeverIssued);
+  }
+}
 
 ComposeboxQueryController::LensServerInteractionRequest::
     LensServerInteractionRequest(
@@ -780,6 +806,13 @@ void ComposeboxQueryController::CreateSearchUrl(
         {kAimMultiContextQueryParameter, "1"});
   }
 
+  if (should_create_multimodal_url) {
+    base::UmaHistogramBoolean("Lens.Composebox.SearchUrl.HasClusterInfo",
+                              cluster_info_.has_value());
+  }
+
+  size_t num_attached_files = search_url_request_info->file_tokens.size();
+  size_t num_validated_files = 0;
   if (should_create_multimodal_url && cluster_info_.has_value()) {
     std::unique_ptr<lens::LensOverlayContextualInputs> contextual_inputs =
         CreateContextualInputs(search_url_request_info->file_tokens,
@@ -787,7 +820,6 @@ void ComposeboxQueryController::CreateSearchUrl(
     const FileInfo* last_active_lens_file = nullptr;
     bool has_image_upload = false;
     bool has_drive_id = false;
-    size_t num_valid_lens_files = 0;
     for (const auto& file_token : search_url_request_info->file_tokens) {
       auto* file_info = GetMutableFileInfo(file_token);
       if (!file_info) {
@@ -797,7 +829,7 @@ void ComposeboxQueryController::CreateSearchUrl(
           IsValidContextUploadStatusForMultimodalRequest(
               file_info->upload_status) &&
           file_info->request_id.has_value()) {
-        num_valid_lens_files++;
+        num_validated_files++;
         if (file_info->input_data &&
             file_info->input_data->drive_id.has_value() &&
             !file_info->input_data->drive_id->empty()) {
@@ -818,7 +850,15 @@ void ComposeboxQueryController::CreateSearchUrl(
       }
     }
 
-    if (num_valid_lens_files > 0) {
+    if (num_attached_files > 0) {
+      base::UmaHistogramCounts100(
+          "Lens.Composebox.SearchUrl.ContextFilesAttached", num_attached_files);
+      base::UmaHistogramCounts100(
+          "Lens.Composebox.SearchUrl.ContextFilesValidatedAndIncluded",
+          num_validated_files);
+    }
+
+    if (num_validated_files > 0) {
       DCHECK(last_active_lens_file != nullptr);
       DCHECK(last_active_lens_file->request_id.has_value());
       request_id_generator_.SetHasChromeTabData(
@@ -864,7 +904,7 @@ void ComposeboxQueryController::CreateSearchUrl(
 
       // If there is only one valid lens file, determine if we should send the
       // vit parameter.
-      if (num_valid_lens_files == 1) {
+      if (num_validated_files == 1) {
         bool is_translate =
             search_url_request_info->lens_overlay_selection_type ==
             lens::TRANSLATE_CHIP;
@@ -958,6 +998,11 @@ void ComposeboxQueryController::CreateSearchUrl(
       }
       return;
     }
+  } else if (num_attached_files > 0) {
+    base::UmaHistogramCounts100(
+        "Lens.Composebox.SearchUrl.ContextFilesAttached", num_attached_files);
+    base::UmaHistogramCounts100(
+        "Lens.Composebox.SearchUrl.ContextFilesValidatedAndIncluded", 0);
   }
 
   // For queries in which the cluster info has expired, or without valid
@@ -1148,6 +1193,9 @@ void ComposeboxQueryController::StartFileUploadFlow(
       std::make_unique<base::ios::ScopedCriticalAction>("ComposeboxFileUpload");
 #endif
   file_info->file_token = file_token;
+  if (file_info->selection_time.is_null()) {
+    file_info->selection_time = base::Time::Now();
+  }
   if (contextual_input_data->primary_content_type.has_value()) {
     file_info->mime_type = contextual_input_data->primary_content_type.value();
   } else {
@@ -1527,11 +1575,24 @@ lens::LensOverlayClientContext ComposeboxQueryController::CreateClientContext()
 bool ComposeboxQueryController::DeleteFile(
     const base::UnguessableToken& file_token) {
   MarkContextUploadAsInTerminalState(file_token);
-  return !!active_files_.erase(file_token);
+  auto it = active_files_.find(file_token);
+  if (it != active_files_.end()) {
+    if (it->second) {
+      it->second->MarkAsCancelled();
+    }
+    active_files_.erase(it);
+    return true;
+  }
+  return false;
 }
 
 void ComposeboxQueryController::ClearFiles() {
   pending_context_uploads_.clear();
+  for (auto& [token, file_info] : active_files_) {
+    if (file_info) {
+      file_info->MarkAsCancelled();
+    }
+  }
   active_files_.clear();
 
   // Uploading files no longer block the search URL creation.
@@ -1826,8 +1887,11 @@ void ComposeboxQueryController::SendInteractionRequest(
 
 void ComposeboxQueryController::FetchClusterInfo() {
   if (is_backgrounded_) {
+    base::UmaHistogramEnumeration("Lens.Composebox.ClusterInfo.Status",
+                                  ClusterInfoStatus::kBackgrounded);
     return;
   }
+  cluster_info_fetch_start_time_ = base::TimeTicks::Now();
   SetQueryControllerState(QueryControllerState::kAwaitingClusterInfoResponse);
 
   // There should not be any in-flight cluster info access token request.
@@ -1893,11 +1957,23 @@ void ComposeboxQueryController::HandleClusterInfoResponse(
   }
   cluster_info_endpoint_fetcher_.reset();
 
+  if (cluster_info_fetch_start_time_.has_value()) {
+    base::UmaHistogramTimes(
+        "Lens.Composebox.ClusterInfo.ResponseTime",
+        base::TimeTicks::Now() - *cluster_info_fetch_start_time_);
+    cluster_info_fetch_start_time_.reset();
+  }
+
   if (response->http_status_code != google_apis::ApiErrorCode::HTTP_SUCCESS) {
     ++cluster_info_retries_;
 
     if (cluster_info_retries_ <= kMaxClusterInfoRetries) {
       cluster_info_backoff_.InformOfRequest(false);
+      base::UmaHistogramEnumeration("Lens.Composebox.ClusterInfo.Status",
+                                    ClusterInfoStatus::kHttpError);
+    } else {
+      base::UmaHistogramEnumeration("Lens.Composebox.ClusterInfo.Status",
+                                    ClusterInfoStatus::kMaxRetriesReached);
     }
 
     SetQueryControllerState(QueryControllerState::kClusterInfoInvalid);
@@ -1933,6 +2009,8 @@ void ComposeboxQueryController::HandleClusterInfoResponse(
     }
   }
   if (!server_response.ParseFromString(response_string)) {
+    base::UmaHistogramEnumeration("Lens.Composebox.ClusterInfo.Status",
+                                  ClusterInfoStatus::kProtoParseError);
     SetQueryControllerState(QueryControllerState::kClusterInfoInvalid);
     if (pending_search_url_request_) {
       std::move(pending_search_url_request_).Run(/*failure=*/false);
@@ -1963,6 +2041,8 @@ void ComposeboxQueryController::HandleClusterInfoResponse(
       }
     }
   }
+  base::UmaHistogramEnumeration("Lens.Composebox.ClusterInfo.Status",
+                                ClusterInfoStatus::kSuccess);
   SetQueryControllerState(QueryControllerState::kClusterInfoReceived);
 
   // Collect the tokens and requests that need updating first to avoid iterator
@@ -2447,6 +2527,7 @@ void ComposeboxQueryController::OnUploadRequestBodyReady(
   upload_request->response_time = base::TimeTicks();
   upload_request->start_time = base::TimeTicks();
   upload_request->endpoint_fetcher_.reset();
+  upload_request->terminal_status = ContextUploadTerminalStatus::kNeverIssued;
 
   MaybeSendUploadNetworkRequest(file_token, request_index);
 }
@@ -2593,6 +2674,8 @@ void ComposeboxQueryController::OnUploadEndpointFetcherCreated(
 
   upload_request->start_time = base::TimeTicks::Now();
   upload_request->endpoint_fetcher_ = std::move(endpoint_fetcher);
+  upload_request->terminal_status =
+      ContextUploadTerminalStatus::kInFlightAtTeardown;
   if (file_info->upload_status ==
           contextual_search::ContextUploadStatus::kProcessing ||
       file_info->upload_status == contextual_search::ContextUploadStatus::
@@ -2609,6 +2692,9 @@ void ComposeboxQueryController::HandleUploadResponse(
     std::unique_ptr<EndpointResponse> response) {
   auto* file_info = GetMutableFileInfo(file_token);
   if (!file_info) {
+    base::UmaHistogramEnumeration(
+        "Lens.Composebox.ContextUpload.TerminalStatus",
+        ContextUploadTerminalStatus::kResponseAfterFileInfoDestroyed);
     return;
   }
 
@@ -2618,6 +2704,12 @@ void ComposeboxQueryController::HandleUploadResponse(
     // The chunker is handling missing chunk errors. Exit early. This handler
     // will be called again after the retry has finished.
     file_info->num_outstanding_network_requests_--;
+    if (request_index < file_info->upload_requests_.size() &&
+        file_info->upload_requests_[request_index]) {
+      file_info->upload_requests_[request_index]->terminal_status =
+          ContextUploadTerminalStatus::kPendingChunkerRetry;
+      file_info->upload_requests_[request_index]->endpoint_fetcher_.reset();
+    }
     return;
   }
 
@@ -2635,9 +2727,11 @@ void ComposeboxQueryController::HandleUploadResponse(
   base::TimeDelta elapsed =
       upload_request->response_time - upload_request->start_time;
   if (response->http_status_code == google_apis::ApiErrorCode::HTTP_SUCCESS) {
+    upload_request->terminal_status = ContextUploadTerminalStatus::kSuccess;
     base::UmaHistogramMediumTimes(
         "Lens.Composebox.ContextUpload.SuccessResponseTime", elapsed);
   } else {
+    upload_request->terminal_status = ContextUploadTerminalStatus::kHttpError;
     base::UmaHistogramMediumTimes(
         "Lens.Composebox.ContextUpload.FailureResponseTime", elapsed);
   }
@@ -2776,6 +2870,23 @@ void ComposeboxQueryController::SetAuthUserIndex(size_t auth_user_index) {
 base::WeakPtr<contextual_search::ContextualSearchContextController>
 ComposeboxQueryController::AsWeakPtr() {
   return weak_ptr_factory_.GetWeakPtr();
+}
+
+std::string ComposeboxQueryController::search_session_id() const {
+  return cluster_info_.has_value() ? cluster_info_->search_session_id() : "";
+}
+
+std::optional<lens::LensOverlayVisualSearchInteractionData>
+ComposeboxQueryController::GetVisualSearchInteractionData(
+    const base::UnguessableToken& file_token,
+    const std::optional<std::string>& query_text) {
+  const FileInfo* file_info = GetMutableFileInfo(file_token);
+  if (!file_info) {
+    return std::nullopt;
+  }
+  return ConstructVisualSearchInteractionData(
+      file_info, query_text, std::nullopt,
+      /*force_include_latest_interaction_request_data=*/true);
 }
 
 void ComposeboxQueryController::BeforeCreateSearchUrl(

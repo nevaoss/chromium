@@ -264,8 +264,8 @@ export const ComposeboxEmbedderMixin =
         pendingAutomaticActiveTabUrl: string = '';
         pendingAutomaticActiveTabTitle: string = '';
         automaticActiveTab: ComposeboxFile|null = null;
-        pendingUploads: Set<UnguessableToken> = new Set();
-        earlyCompletedUploads: Set<UnguessableToken> = new Set();
+        earlyTerminalUploads: Map<UnguessableToken, ContextUploadStatus> =
+            new Map();
         dragAndDropEnabled: boolean =
             loadTimeData.getBoolean('composeboxContextDragAndDropEnabled');
         composeboxSource: string = loadTimeData.getString('composeboxSource');
@@ -311,6 +311,23 @@ export const ComposeboxEmbedderMixin =
         set files(value: Map<UnguessableToken, ComposeboxFile>) {
           this.attachedContext = value;
         }
+
+        /**
+         * The attached context whose uploads have not finished yet. This is a
+         * read-only view over `attachedContext` rather than a set that upload
+         * callbacks add to and remove from, so it cannot hold tokens for files
+         * that are gone or already done.
+         */
+        get pendingUploads(): Set<UnguessableToken> {
+          const pending = new Set<UnguessableToken>();
+          for (const [uuid, file] of this.attachedContext) {
+            if (!isContextUploadStatusTerminal(file.status)) {
+              pending.add(uuid);
+            }
+          }
+          return pending;
+        }
+
         accessor fileUploadsComplete: boolean = true;
         accessor hasAllowedInputs: boolean = false;
         accessor input: string = '';
@@ -528,6 +545,12 @@ export const ComposeboxEmbedderMixin =
           const changedPrivateProperties =
               changedProperties as Map<PropertyKey, unknown>;
 
+          // Recompute before anything below reads it. This is unconditional
+          // rather than gated on `attachedContext` changing because the map is
+          // sometimes mutated in place, and because recomputing is what makes
+          // the flag self-correcting.
+          this.fileUploadsComplete = this.computeFileUploadsComplete();
+
           // <if expr="not is_android">
           if (changedPrivateProperties.has('smartTabSharingVisible')) {
             if (this.smartTabSharingVisible) {
@@ -565,7 +588,9 @@ export const ComposeboxEmbedderMixin =
               changedPrivateProperties.has('submitEnabled') ||
               changedPrivateProperties.has('fileUploadsComplete')) {
             this.submitEnabled = this.computeSubmitEnabled();
-            this.uploadButtonDisabled = !this.fileUploadsComplete;
+            // Note the upload button is intentionally not gated on
+            // `fileUploadsComplete`: more context can be attached while earlier
+            // uploads are still in flight. Only submission waits on them.
             // `canSubmitFilesAndInput` checks if there is a valid query rather
             // than if submit is enabled, as `submitEnabled` only defines if the
             // submit button should be shown rather than its actual active
@@ -789,9 +814,8 @@ export const ComposeboxEmbedderMixin =
           const newAttachedContext = new Map(this.attachedContext);
           newAttachedContext.set(file.uuid, file);
           this.attachedContext = newAttachedContext;
-          if (file.status !== ContextUploadStatus.kUploadSuccessful) {
-            this.addToPendingUploads(file.uuid);
-          }
+          // Whether this file blocks submission follows from `file.status`;
+          // see `computeFileUploadsComplete()`.
         }
 
         addFileContextForTesting(file: ComposeboxFile) {
@@ -946,10 +970,7 @@ export const ComposeboxEmbedderMixin =
             errorType: ContextUploadErrorType|null) {
           if (!this.attachedContext.has(token) &&
               isContextUploadStatusTerminal(status)) {
-            // Buffer early terminal statuses in case C++ finishes uploading
-            // before the async `addTabContext` response resolves and maps
-            // the token into `this.attachedContext`.
-            this.earlyCompletedUploads.add(token);
+            this.earlyTerminalUploads.set(token, status);
           }
           // If error message is updated, then the returned file is stale and
           // removed from carousel. File is removed from carousel on
@@ -958,10 +979,12 @@ export const ComposeboxEmbedderMixin =
           // state, and `errorMessage` is null.
           const {file, errorMessage} =
               this.updateFileStatus(token, status, errorType);
+          // `updateFileStatus()` above either wrote `status` onto the file in
+          // `attachedContext` or dropped the file from it, which is all that
+          // `pendingUploads` and `fileUploadsComplete` are derived from. No
+          // separate upload bookkeeping is needed below.
           if (errorMessage) {  // `file` value is definitely stale.
             this.errorMessage = errorMessage;
-            this.pendingUploads.delete(token);
-            this.fileUploadsComplete = this.pendingUploads.size === 0;
             // Clear autocomplete matches and refresh zero state suggestions if
             // there are no attached files and no user input after a file upload
             // error.
@@ -977,28 +1000,10 @@ export const ComposeboxEmbedderMixin =
             // This means for `kUploadReplaced`, we do not fetch suggestions,
             // etc.
             if (file.status === ContextUploadStatus.kUploadReplaced) {
-              this.pendingUploads.delete(file.uuid);
-              this.fileUploadsComplete = this.pendingUploads.size === 0;
               return;
             } else if (file.status === ContextUploadStatus.kUploadSuccessful) {
-              // At this point, due to the error message handling above (for
-              // `kValidationFailed`, `kUploadExpired`, and `kUploadFailed`),
-              // if kUploadSuccessful, the file upload is complete.
-              // Else, the file upload is in progress.
-              this.pendingUploads.delete(file.uuid);
-              this.fileUploadsComplete = this.pendingUploads.size === 0;
-
               const announcer = getAnnouncerInstance();
               announcer.announce(this.i18n('composeboxFileUploadCompleteText'));
-            } else if (
-                file.status === ContextUploadStatus.kProcessing ||
-                file.status ===
-                    ContextUploadStatus.kProcessingSuggestSignalsReady) {
-              // `NotUploaded`, `UploadStarted` come before and after
-              // `kProcessing`
-              //  respectively, so we only need to add to `pendingUploads` when
-              //  in a type of processing state.
-              this.addToPendingUploads(file.uuid);
             }
 
             // Fetch contextual suggestions for processingSuggestSignalsReady
@@ -1156,6 +1161,13 @@ export const ComposeboxEmbedderMixin =
           if (this.getActiveElement() === this.getDropdownElement() ||
               !e.shiftKey) {
             e.preventDefault();
+            if (this.selectedMatchIndex >= 0) {
+              const match = this.result!.matches[this.selectedMatchIndex];
+              assert(match);
+              if (this.maybeHandleSuggestionFuseboxAction_(match)) {
+                return;
+              }
+            }
             if (this.canSubmitFilesAndInput) {
               this.submitQuery(e);
             }
@@ -1345,10 +1357,8 @@ export const ComposeboxEmbedderMixin =
           ComposeboxProxyImpl.getInstance().setSmartTabSharingActive(active);
           if (!active) {
             this.addedTabsIds = new Map();
-            if (this.shouldResetRestoredTabs()) {
-              this.resetRestoredTabs();
-            }
           }
+          this.resetRestoredTabs();
           this.clearContextForSmartTabSharingActive();
           // </if>
         }
@@ -1480,9 +1490,34 @@ export const ComposeboxEmbedderMixin =
             if (!token) {
               return null;
             }
+            // A terminal status may have arrived while this async
+            // `addTabContext` call was in flight, before the token could be
+            // mapped into `attachedContext`. Consume it here; note the
+            // `delete()` must run even when the status is unused, so that it
+            // is not left behind for a later tab that reuses the token.
+            const earlyStatus = this.earlyTerminalUploads.get(token) ?? null;
+            this.earlyTerminalUploads.delete(token);
+            if (earlyStatus !== null &&
+                earlyStatus !== ContextUploadStatus.kUploadSuccessful) {
+              return null;
+            }
+            // `createFromTab` optimistically reports `kUploadSuccessful`, which
+            // is only true when nothing is actually being uploaded: either the
+            // upload was delayed, or it already finished while this async
+            // `addTabContext` call was in flight. Otherwise, the
+            // upload has just started, and saying so here is what keeps the
+            // submit button disabled, since `fileUploadsComplete` is derived
+            // from these statuses.
+            const uploadInFlight =
+                !tabUpload.delayUpload && earlyStatus === null;
             const attachment = ComposeboxFile.createFromTab(
-                token, tabUpload.tabId, tabUpload.title, tabUpload.url,
-                {supportsUnimodal: true, origin: tabUpload.origin});
+                token, tabUpload.tabId, tabUpload.title, tabUpload.url, {
+                  supportsUnimodal: true,
+                  origin: tabUpload.origin,
+                  status: uploadInFlight ?
+                      ContextUploadStatus.kUploadStarted :
+                      ContextUploadStatus.kUploadSuccessful,
+                });
 
             if (onBeforeUpdateFiles) {
               onBeforeUpdateFiles(attachment);
@@ -1496,13 +1531,6 @@ export const ComposeboxEmbedderMixin =
               ...this.addedTabsIds.entries(),
               [tabUpload.tabId, attachment.uuid],
             ]);
-            // If the upload already completed before the async `addTabContext`
-            // call resolved, avoid adding it to pending uploads so the submit
-            // button is not stuck disabled.
-            if (!tabUpload.delayUpload &&
-                !this.earlyCompletedUploads.delete(token)) {
-              this.addToPendingUploads(attachment.uuid);
-            }
             this.focusInput();
             return attachment;
           } catch (e) {
@@ -1534,14 +1562,25 @@ export const ComposeboxEmbedderMixin =
 
         async handleFuseboxAction(request: ComposeboxFuseboxActionRequest) {
           const action = request.fuseboxAction;
-          const isHint =
-              action?.queryActionOverride === QueryActionOverride.kHint;
-          if (isHint) {
-            this.fuseboxChipHint_ = request.suggestion;
-            this.updateInputPlaceholder();
+          let text = request.suggestion;
+          let selectAllInput = false;
+          if (action?.queryActionOverride) {
+            switch (action.queryActionOverride) {
+              case QueryActionOverride.kHint:
+                this.fuseboxChipHint_ = request.suggestion;
+                this.updateInputPlaceholder();
+                text = '';
+                break;
+              case QueryActionOverride.kPaste:
+                this.focusInput();
+                selectAllInput = true;
+                break;
+              default:
+                break;
+            }
           }
-          this.state = {
-            text: isHint ? '' : request.suggestion,
+          const fuseboxActionState: ComposeboxState = {
+            text,
             files: request.files,
             mode: action?.preselectedTool ?? ToolMode.kUnspecified,
             model: action?.preselectedModel ?? ModelMode.kUnspecified,
@@ -1550,6 +1589,7 @@ export const ComposeboxEmbedderMixin =
             smartTabSharingActive: false,
             // </if>
           };
+          this.state = fuseboxActionState;
           if (action?.preselectedInputSource) {
             switch (action.preselectedInputSource) {
               case InputSource.kInputSourceGallery:
@@ -1566,6 +1606,21 @@ export const ComposeboxEmbedderMixin =
                 break;
               default:
                 break;
+            }
+          }
+          // TODO(crbug.com/565508610): Handle state updates in a more robust
+          // way to avoid this race condition.
+          if (selectAllInput) {
+            // The pasted text is applied by updateState(), which runs from
+            // updated(), and only shows up in the input after the following
+            // render. Selecting any earlier would be undone when the input is
+            // updated.
+            await this.updateComplete;
+            await this.updateStateComplete_;
+            await this.updateComplete;
+            // Bail out if a newer action has replaced this one.
+            if (this.state === fuseboxActionState) {
+              this.getInputElement().selectAll();
             }
           }
         }
@@ -1843,11 +1898,6 @@ export const ComposeboxEmbedderMixin =
         // Common helper methods
         // =====================================================================
 
-        addToPendingUploads(uuid: UnguessableToken) {
-          this.pendingUploads.add(uuid);
-          this.fileUploadsComplete = false;
-        }
-
         closeMenu() {
           const entrypointAndMenu = this.getContextEntrypointElement();
           if (entrypointAndMenu instanceof ContextualEntrypointAndMenuElement) {
@@ -1861,8 +1911,6 @@ export const ComposeboxEmbedderMixin =
           this.attachedContext =
               new Map([...this.attachedContext.entries()].filter(
                   ([uuid, _]) => uuid !== uuidToDelete));
-          this.pendingUploads.delete(uuidToDelete);
-          this.fileUploadsComplete = this.pendingUploads.size === 0;
           this.getSearchboxHandler().deleteContext(
               uuidToDelete, fromAutoSuggestedChip);
         }
@@ -1966,12 +2014,9 @@ export const ComposeboxEmbedderMixin =
                 new Map(undeletableFiles.filter(file => file.tabId)
                             .map(file => [file.tabId!, file.uuid]));
           }
-          // Reset files in set to match remaining files in carousel that are
-          // still uploading.
-          this.pendingUploads = new Set(
-              Array.from(this.attachedContext.values())
-                  .filter(file => !isContextUploadStatusTerminal(file.status))
-                  .map(file => file.uuid));
+          // `pendingUploads` and `fileUploadsComplete` are derived from
+          // `attachedContext`, so the files that were just dropped above stop
+          // counting as pending without any bookkeeping here.
           this.smartComposeInlineHint = '';
           this.resetSmartComposeStats();
           // Ask the searchbox handler to clear its own state when the clear all
@@ -1989,7 +2034,6 @@ export const ComposeboxEmbedderMixin =
           if (!querySubmitted) {
             this.getSearchboxHandler().clearFiles(shouldBlockAutoSuggestedTabs);
           }
-          this.fileUploadsComplete = this.pendingUploads.size === 0;
           if (this.inVoiceSearchMode) {
             this.voiceSearchEndCleanup();
           }
@@ -2180,6 +2224,7 @@ export const ComposeboxEmbedderMixin =
             assert(match);
             this.getSearchboxHandler().setSmartComposeStats(
                 this.smartComposeStats);
+
             const viaKeyboard = !!e && e instanceof KeyboardEvent;
             this.getSearchboxHandler().openAutocompleteMatch(
                 this.result!.sequenceId, this.selectedMatchIndex,
@@ -2393,6 +2438,20 @@ export const ComposeboxEmbedderMixin =
           // show the submit button. The button will still appear disabled
           // because that is controlled by `canSubmitFilesAndInput`.
           return this.inputModel.canSubmit();
+        }
+
+        /**
+         * Returns whether every attached file has finished uploading, based on
+         * the current status of each entry in `attachedContext`. A file counts
+         * as still uploading until its status reaches a terminal one.
+         */
+        computeFileUploadsComplete(): boolean {
+          for (const file of this.attachedContext.values()) {
+            if (!isContextUploadStatusTerminal(file.status)) {
+              return false;
+            }
+          }
+          return true;
         }
 
         hasValidQuery(): boolean {
@@ -3061,8 +3120,8 @@ export interface ComposeboxEmbedderMixinInterface extends I18nMixinLitInterface,
   showMenuOnClick: boolean;
   isCanvasQuerySubmitted: boolean;
   browserTabContextAdded: boolean;
-  pendingUploads: Set<UnguessableToken>;
-  earlyCompletedUploads: Set<UnguessableToken>;
+  readonly pendingUploads: Set<UnguessableToken>;
+  earlyTerminalUploads: Map<UnguessableToken, ContextUploadStatus>;
   dragAndDropEnabled: boolean;
   composeboxSource: string;
   maxFileCount: number;
@@ -3238,7 +3297,6 @@ export interface ComposeboxEmbedderMixinInterface extends I18nMixinLitInterface,
       e: CustomEvent<{uuid: UnguessableToken, fromUserAction?: boolean}>): void;
 
   // Common helper methods
-  addToPendingUploads(token: UnguessableToken): void;
   focusInput(): void;
   hasContent(ignoreAutoTab?: boolean): boolean;
   clearInput(): void;
@@ -3270,6 +3328,7 @@ export interface ComposeboxEmbedderMixinInterface extends I18nMixinLitInterface,
   queryAutocomplete(clearMatches: boolean, inputMethod?: InputMethod): void;
   clearAutocompleteMatches(): void;
   computeSubmitEnabled(): boolean;
+  computeFileUploadsComplete(): boolean;
   hasValidQuery(): boolean;
   recordFileValidationMetric(enumValue: ComposeboxFileValidationError): void;
   addFileContext(files: File[]): Promise<void>;

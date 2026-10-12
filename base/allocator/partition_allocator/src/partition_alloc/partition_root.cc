@@ -14,6 +14,7 @@
 #include "partition_alloc/bucket_lookup.h"
 #include "partition_alloc/build_config.h"
 #include "partition_alloc/buildflags.h"
+#include "partition_alloc/debug_data_on_stack.h"
 #include "partition_alloc/in_slot_metadata.h"
 #include "partition_alloc/oom.h"
 #include "partition_alloc/page_allocator.h"
@@ -1163,6 +1164,8 @@ void PartitionRoot::Init(PartitionOptions opts) {
 
     settings_.use_tighter_aligned_alloc_bound =
         (opts.tighter_aligned_alloc_bound == PartitionOptions::kEnabled);
+    settings_.allow_giga_allocations =
+        (opts.allow_giga_allocations == PartitionOptions::kAllowed);
 
     initialized_ = true;
   }
@@ -1533,7 +1536,8 @@ size_t PartitionRoot::AllocationCapacityFromRequestedSize(size_t size) const {
 
   if (!bucket.is_direct_mapped()) [[likely]] {
     size = bucket.slot_size;
-  } else if (size > MaxAllocationSize()) {
+  } else if (size > MaxAllocationSize() &&
+             (!allow_giga_allocations() || size > MaxGigaAllocationSize())) {
     // Too large to allocate => return the size unchanged.
   } else {
     size = GetDirectMapSlotSize(size);

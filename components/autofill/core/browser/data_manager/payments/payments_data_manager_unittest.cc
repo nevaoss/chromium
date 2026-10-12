@@ -420,10 +420,11 @@ TEST_F(PaymentsDataManagerTest,
 }
 
 // Verifies that a `syncer::AUTOFILL_VALUABLE` change triggers a `Refresh()`,
-// which reloads the offers written by the `ValuableSyncBridge`.
+// which reloads the offers written by the `ValuableSyncBridge`. The bridge
+// writes them into the profile database.
 TEST_F(PaymentsDataManagerTest, OnAutofillChangedBySync_AutofillValuable) {
   ASSERT_TRUE(payments_data_manager().GetAutofillOffers().empty());
-  GetServerDataTable()->SetAutofillOffers(
+  profile_autofill_table_->SetAutofillOffers(
       {test::GetPromoCodeOfferData(GURL("https://www.example.com"))});
 
   payments_data_manager().OnAutofillChangedBySync(syncer::AUTOFILL_VALUABLE);
@@ -1059,6 +1060,20 @@ TEST_P(PaymentsDataManagerServerTest, GetAutofillOffers) {
   EXPECT_EQ(payments_data_manager().GetAutofillOffers().size(), 3U);
 }
 
+// Tests that offers are loaded from the profile database, which is where the
+// `ValuableSyncBridge` persists them. This must hold in sync transport mode
+// too, where the other server data lives in the ephemeral account database.
+TEST_P(PaymentsDataManagerServerTest, OffersAreLoadedFromProfileDatabase) {
+  ASSERT_TRUE(payments_data_manager().GetAutofillOffers().empty());
+  profile_autofill_table_->SetAutofillOffers(
+      {test::GetPromoCodeOfferData(GURL("https://www.example.com"))});
+
+  payments_data_manager().Refresh();
+  WaitForOnPaymentsDataChanged();
+
+  EXPECT_EQ(payments_data_manager().GetAutofillOffers().size(), 1U);
+}
+
 // Tests that GetActiveAutofillPromoCodeOffersForOrigin returns only active and
 // site-relevant promo code offers.
 TEST_P(PaymentsDataManagerServerTest,
@@ -1182,32 +1197,32 @@ TEST_P(PaymentsDataManagerServerTest,
 
   // Expired wallet direct offers should not be returned.
   AddOfferDataForTest(AutofillOfferData::WalletDirectOffer(
-      /*offer_id=*/111, AutofillClock::Now() - base::Days(1),
+      /*offer_id=*/"111", AutofillClock::Now() - base::Days(1),
       {GURL("http://www.example.com")}, GURL("https://pay.google.com"),
       display_strings, "CODE111"));
 
   // Active wallet direct offers for a different site should not be returned.
   AddOfferDataForTest(AutofillOfferData::WalletDirectOffer(
-      /*offer_id=*/222, AutofillClock::Now() + base::Days(35),
+      /*offer_id=*/"222", AutofillClock::Now() + base::Days(35),
       {GURL("http://www.some-other-merchant.com")},
       GURL("https://pay.google.com"), display_strings, "CODE222"));
 
   // Invalid wallet direct offers (empty value prop) should not be returned.
   DisplayStrings empty_display_strings;
   AddOfferDataForTest(AutofillOfferData::WalletDirectOffer(
-      /*offer_id=*/333, AutofillClock::Now() + base::Days(35),
+      /*offer_id=*/"333", AutofillClock::Now() + base::Days(35),
       {GURL("http://www.example.com")}, GURL("https://pay.google.com"),
       empty_display_strings, "CODE333"));
 
   // Invalid wallet direct offers (empty promo code) should not be returned.
   AddOfferDataForTest(AutofillOfferData::WalletDirectOffer(
-      /*offer_id=*/444, AutofillClock::Now() + base::Days(35),
+      /*offer_id=*/"444", AutofillClock::Now() + base::Days(35),
       {GURL("http://www.example.com")}, GURL("https://pay.google.com"),
       display_strings, ""));
 
   // Active wallet direct offers for example.com should be returned.
   AddOfferDataForTest(AutofillOfferData::WalletDirectOffer(
-      /*offer_id=*/555, AutofillClock::Now() + base::Days(35),
+      /*offer_id=*/"555", AutofillClock::Now() + base::Days(35),
       {GURL("http://www.example.com")}, GURL("https://pay.google.com"),
       display_strings, "CODE555"));
 
@@ -1216,7 +1231,7 @@ TEST_P(PaymentsDataManagerServerTest,
       payments_data_manager().GetActiveAutofillPromoCodeOffersForOrigin(
           GURL("http://www.example.com"));
   ASSERT_EQ(offers.size(), 1U);
-  EXPECT_EQ(offers[0]->GetOfferId(), 555);
+  EXPECT_EQ(offers[0]->GetOfferId(), "555");
 }
 
 // Tests that GetActiveAutofillPromoCodeOffersForOrigin does not return any

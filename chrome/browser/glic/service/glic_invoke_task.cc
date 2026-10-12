@@ -283,6 +283,47 @@ void WaitForClientConnectedTask::WebClientConnected() {
   }
 }
 
+WaitForClientReadyTask::WaitForClientReadyTask(
+    Host& host,
+    base::OnceCallback<void(GlicInvokeError)> error_callback)
+    : host_(host), error_callback_(std::move(error_callback)) {}
+
+WaitForClientReadyTask::~WaitForClientReadyTask() = default;
+
+void WaitForClientReadyTask::Start(base::OnceClosure done_callback) {
+  done_callback_ = std::move(done_callback);
+  observation_.Observe(&*host_);
+  CheckState(host_->client_load_state());
+}
+
+void WaitForClientReadyTask::ClientLoadStateChanged(ClientLoadState state) {
+  CheckState(state);
+}
+
+void WaitForClientReadyTask::CheckState(ClientLoadState state) {
+  if (!done_callback_) {
+    return;
+  }
+
+  switch (state) {
+    case ClientLoadState::kReady:
+      observation_.Reset();
+      std::move(done_callback_).Run();
+      break;
+
+    case ClientLoadState::kError:
+      observation_.Reset();
+      if (error_callback_) {
+        std::move(error_callback_).Run(GlicInvokeError::kClientLoadError);
+      }
+      break;
+
+    case ClientLoadState::kLoading:
+      // Loading in progress, continue waiting.
+      break;
+  }
+}
+
 PostCallbackTask::PostCallbackTask(base::OnceClosure callback)
     : callback_(std::move(callback)) {}
 
@@ -532,7 +573,7 @@ void CopyPolicyTask::Start(base::OnceClosure done_callback) {
     return;
   }
 
-  content::ClipboardEndpoint source(
+  content::ClipboardEndpoint source = content::ClipboardEndpoint::ForFrame(
       ui::DataTransferEndpoint(
           source_rfh->GetMainFrame()->GetLastCommittedURL(),
           {.off_the_record =
@@ -584,7 +625,7 @@ PastePolicyTask::PastePolicyTask(
     return;
   }
 
-  content::ClipboardEndpoint source(
+  content::ClipboardEndpoint source = content::ClipboardEndpoint::ForFrame(
       ui::DataTransferEndpoint(
           source_rfh->GetMainFrame()->GetLastCommittedURL(),
           {.off_the_record =
@@ -620,7 +661,7 @@ void PastePolicyTask::Start(base::OnceClosure done_callback) {
     return;
   }
 
-  content::ClipboardEndpoint destination(
+  content::ClipboardEndpoint destination = content::ClipboardEndpoint::ForFrame(
       ui::DataTransferEndpoint(
           glic_rfh->GetLastCommittedURL(),
           {.off_the_record = glic_rfh->GetBrowserContext()->IsOffTheRecord()}),
@@ -707,6 +748,10 @@ std::optional<GlicTaskType> CopyPolicyTask::GetType() const {
 
 std::optional<GlicTaskType> PastePolicyTask::GetType() const {
   return GlicTaskType::kPastePolicy;
+}
+
+std::optional<GlicTaskType> WaitForClientReadyTask::GetType() const {
+  return GlicTaskType::kWaitForClientReady;
 }
 
 }  // namespace glic

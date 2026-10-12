@@ -55,6 +55,15 @@ BASE_FEATURE(kWebUIOmniboxAimPopup, ENABLED);
 // webpage.
 BASE_FEATURE(kWebUIOmniboxSimplification, ENABLED);
 
+// If enabled, then both the input row and suggestions dropdown (in the Omnibox)
+// will be rendered using the WebUI stack (i.e. the cutout for the location bar
+// will be removed).
+BASE_FEATURE(kWebUIOmniboxFullPopup, DISABLED);
+
+bool IsWebUIOmniboxFullPopupEnabled() {
+  return base::FeatureList::IsEnabled(internal::kWebUIOmniboxFullPopup);
+}
+
 }  // namespace internal
 
 constexpr base::FeatureParam<AddContextButtonVariant>::Option
@@ -88,10 +97,6 @@ BASE_FEATURE(kWebUIOmniboxDisableCaretColorAnimation, ENABLED);
 // If enabled, there will no longer be animation when opening the WebUI Omnibox
 // AIM popup.
 BASE_FEATURE(kWebUIOmniboxAimPopupDisableAnimation, DISABLED);
-// If enabled, then both the input row and suggestions dropdown (in the Omnibox)
-// will be rendered using the WebUI stack (i.e. the cutout for the location bar
-// will be removed).
-BASE_FEATURE(kWebUIOmniboxFullPopup, DISABLED);
 // Enables the double click mechanism of sending selection set by
 // passing click events through the WebView.
 BASE_FEATURE(kWebUIOmniboxFullPopupDoubleClick, ENABLED);
@@ -100,6 +105,11 @@ BASE_FEATURE(kOmniboxEverywhere, DISABLED);
 // Controls multiline searchbox support in OmniboxEverywhere.
 const base::FeatureParam<bool> kOmniboxEverywhereMultilineParam{
     &kOmniboxEverywhere, "Multiline", true};
+// Controls keeping the searchbox single line during inline autocomplete in
+// OmniboxEverywhere.
+const base::FeatureParam<bool>
+    kOmniboxEverywhereSingleLineOnInlineAutocompleteParam{
+        &kOmniboxEverywhere, "SingleLineOnInlineAutocomplete", true};
 // Controls showing the profile picker menu on profile avatar click in
 // OmniboxEverywhere.
 const base::FeatureParam<bool> kOmniboxEverywhereProfilePickerParam{
@@ -263,18 +273,14 @@ bool IsWebUIOmniboxPopupEnabled() {
   return base::FeatureList::IsEnabled(internal::kWebUIOmniboxPopup);
 }
 
-bool IsWebUIOmniboxFullPopupEnabled() {
-  return base::FeatureList::IsEnabled(omnibox::kWebUIOmniboxFullPopup);
-}
-
 bool ShouldUseWebUIOmniboxFullHandler() {
-  return IsWebUIOmniboxFullPopupEnabled() &&
+  return internal::IsWebUIOmniboxFullPopupEnabled() &&
          base::FeatureList::IsEnabled(
              omnibox::kWebUISearchboxWithoutModelController);
 }
 
 bool IsWebUIOmniboxInBrowserViewEnabled() {
-  return base::FeatureList::IsEnabled(omnibox::kWebUIOmniboxFullPopup) &&
+  return internal::IsWebUIOmniboxFullPopupEnabled() &&
          kWebUIOmniboxFullPopupUseBrowserView.Get();
 }
 
@@ -283,12 +289,32 @@ bool IsAimPopupFeatureEnabled() {
 }
 
 bool ShouldDrawAimShadowInWebUI() {
-  return IsWebUIOmniboxFullPopupEnabled() &&
+  return internal::IsWebUIOmniboxFullPopupEnabled() &&
          base::FeatureList::IsEnabled(kOmniboxAimWebUIShadow);
 }
 
 bool ShouldDrawFullPopupShadowInWebUI() {
   return base::FeatureList::IsEnabled(kOmniboxFullWebUIShadow);
+}
+
+bool ShouldDeferAimShowUntilVisualStateReady() {
+  return base::FeatureList::IsEnabled(
+      internal::IsWebUIOmniboxFullPopupEnabled()
+          ? kOmniboxAimDeferShowUntilVisualStateReadyWithFullWebUI
+          : kOmniboxAimDeferShowUntilVisualStateReady);
+}
+
+bool ShouldApplyAimHeightWorkarounds() {
+  return base::FeatureList::IsEnabled(
+      internal::IsWebUIOmniboxFullPopupEnabled()
+          ? kOmniboxAimHeightWorkaroundsWithFullWebUI
+          : kOmniboxAimHeightWorkarounds);
+}
+
+bool ShouldAimEvictOnHide() {
+  return base::FeatureList::IsEnabled(internal::IsWebUIOmniboxFullPopupEnabled()
+                                          ? kOmniboxAimEvictOnHideWithFullWebUI
+                                          : kOmniboxAimEvictOnHide);
 }
 
 bool IsAimPopupEnabled(Profile* profile) {
@@ -472,11 +498,11 @@ const base::FeatureParam<bool> kContextButtonShowSuggestionLabel{
     &internal::kWebUIOmniboxSimplification,
     "Omnibox_ContextButtonShowSuggestionLabel", false};
 const base::FeatureParam<bool> kWebUIOmniboxFullPopupUseBrowserView{
-    &kWebUIOmniboxFullPopup, "Omnibox_UseBrowserView", false};
+    &internal::kWebUIOmniboxFullPopup, "Omnibox_UseBrowserView", false};
 const base::FeatureParam<bool> kWebUIOmniboxFullPopupMultiline{
-    &kWebUIOmniboxFullPopup, "Omnibox_Multiline", false};
+    &internal::kWebUIOmniboxFullPopup, "Omnibox_Multiline", false};
 const base::FeatureParam<int> kWebUIOmniboxFullPopupSnapshotCacheSize{
-    &kWebUIOmniboxFullPopup, "Omnibox_SnapshotCacheSize", 10};
+    &internal::kWebUIOmniboxFullPopup, "Omnibox_SnapshotCacheSize", 10};
 const base::FeatureParam<bool> kWebUIOmniboxDynamicAnimation{
     &kWebUIOmniboxDynamicAiModeButton, "Omnibox_DynamicAnimation", false};
 const base::FeatureParam<bool> kWebUIOmniboxDynamicColorScheme{

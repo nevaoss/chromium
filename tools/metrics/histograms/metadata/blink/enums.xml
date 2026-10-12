@@ -6760,6 +6760,7 @@ Called by update_use_counter_feature_enum.py.-->
   <int value="6022" label="AttributionReportingWindowOpen"/>
   <int value="6023" label="StickyVideoAdDetected"/>
   <int value="6024" label="CSSTimelineTreeScopeMismatch"/>
+  <int value="6025" label="WorkerScriptURLFetchBlockedByCrossOrigin"/>
 </enum>
 
 <!-- LINT.ThenChange(//third_party/blink/public/mojom/use_counter/metrics/web_feature.mojom:WebFeature) -->
@@ -6896,7 +6897,7 @@ Called by update_permissions_policy_enum.py.-->
   <int value="123" label="Deprecated: PartitionedPopins"/>
   <int value="124" label="WebAppInstallation"/>
   <int value="125" label="ControlledFrame"/>
-  <int value="126" label="DirectSocketsPrivate"/>
+  <int value="126" label="Deprecated: DirectSocketsPrivate"/>
   <int value="127" label="FencedUnpartitionedStorageRead"/>
   <int value="128" label="DeferredFetchMinimal"/>
   <int value="129" label="ClientHintUAHighEntropyValues"/>
@@ -9265,6 +9266,7 @@ Called by update_use_counter_feature_enum.py.-->
   <int value="454" label="ContainerTiming"/>
   <int value="455"
       label="SameSiteCookieInclusionChangedByCrossSiteRedirectNoInitiator"/>
+  <int value="456" label="DRAFT_GeolocationAccuracyModeApproximate"/>
 </enum>
 
 <!-- LINT.ThenChange(//third_party/blink/public/mojom/use_counter/metrics/webdx_feature.mojom:WebDXFeature) -->

@@ -17,17 +17,16 @@
 #if !BUILDFLAG(IS_ANDROID)
 // Trigger identifiers currently used; duplicates not allowed.
 extern const char kHatsSurveyTriggerAutofillAddress[];
-extern const char kHatsSurveyTriggerAutofillAddressUserPerception[];
 extern const char kHatsSurveyTriggerAutofillAiSavePrompt[];
 extern const char kHatsSurveyTriggerAutofillAddressUserDeclinedSuggestion[];
 extern const char kHatsSurveyTriggerAutofillAddressUserDeclinedSave[];
-extern const char kHatsSurveyTriggerAutofillCreditCardUserPerception[];
 extern const char kHatsSurveyTriggerAutofillPasswordUserPerception[];
 extern const char kHatsSurveyTriggerAutofillCard[];
 extern const char kHatsSurveyTriggerAutofillPassword[];
 extern const char kHatsSurveyTriggerAutoPipAllowed[];
 extern const char kHatsSurveyTriggerAutoPipBlocked[];
 extern const char kHatsSurveyTriggerAutoPipPermissionPromptIgnored[];
+extern const char kHatsSurveyTriggerContextualCueingDismissed[];
 extern const char kHatsSurveyTriggerManageYourSavedInfoPerception[];
 extern const char kHatsSurveyTriggerManagePasswordsPerception[];
 extern const char kHatsSurveyTriggerManagePaymentsPerception[];
@@ -112,7 +111,10 @@ extern const char kHatsSurveyTriggerSigninBookmarkPromo[];
 extern const char kHatsSurveyTriggerSuspiciousSiteWarning[];
 #endif  // #if !BUILDFLAG(IS_ANDROID)
 
-extern const char kHatsSurveyTriggerAutofillAiFilling[];
+extern const char
+    kHatsSurveyTriggerAutofillPersonalizationAndTrustAddressFilled[];
+extern const char
+    kHatsSurveyTriggerAutofillPersonalizationAndTrustAutofillAiFilled[];
 extern const char kHatsSurveyTriggerPermissionsPrompt[];
 extern const char kHatsSurveyTriggerPrivacySandboxActSurvey[];
 extern const char kHatsSurveyTriggerOnFocusZpsSuggestionsHappiness[];

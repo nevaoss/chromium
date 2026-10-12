@@ -88,7 +88,6 @@ class InitialWebUIWindowMetricsManager;
 class IOSPromoController;
 class LocationBarModel;
 class MemorySaverOptInIPHController;
-class PinnedToolbarActions;
 class ProfileMenuCoordinator;
 class OrganizerPanelController;
 class ReadingListSidePanelCoordinator;
@@ -302,13 +301,6 @@ class BrowserWindowFeatures {
   // Called exactly once to tear down state that depends on the window object.
   void TearDownPreBrowserWindowDestruction();
 
-  // Get the FindBarController for this browser window, creating it if it does
-  // not yet exist.
-  FindBarController* GetFindBarController();
-
-  // Returns true if a FindBarController exists for this browser window.
-  bool HasFindBarController() const;
-
   LocationBarModel* location_bar_model() { return location_bar_model_.get(); }
   const LocationBarModel* location_bar_model() const {
     return location_bar_model_.get();
@@ -319,10 +311,6 @@ class BrowserWindowFeatures {
     location_bar_model->swap(location_bar_model_);
   }
 #endif
-
-  PinnedToolbarActions* pinned_toolbar_actions() {
-    return pinned_toolbar_actions_;
-  }
 
   static ui::UserDataFactoryWithOwner<BrowserWindowInterface>&
   GetUserDataFactoryForTesting();
@@ -584,7 +572,6 @@ class BrowserWindowFeatures {
   // TODO(crbug.com/423956131): Remove this.
   raw_ptr<BrowserWindowInterface> browser_ = nullptr;
 
-  raw_ptr<PinnedToolbarActions> pinned_toolbar_actions_ = nullptr;
   raw_ptr<TabStripModel> tab_strip_model_;
 
   // Embedder features. Must be declared last.

@@ -69,6 +69,12 @@ class FakeContextualTasksEligibilityManager
 
   void SetIsEligible(bool eligible);
 
+  // Overrides `IsEligibleWithoutIdentity()` independently of `SetIsEligible()`.
+  // This is needed to represent a signed-out user who would otherwise be
+  // eligible: `IsEligible()` is false while `IsEligibleWithoutIdentity()` is
+  // true. When unset, `IsEligibleWithoutIdentity()` follows `SetIsEligible()`.
+  void SetIsEligibleWithoutIdentity(bool eligible);
+
   bool IsEligibleWithoutIdentity() const override;
 
  protected:
@@ -76,6 +82,7 @@ class FakeContextualTasksEligibilityManager
 
  private:
   bool is_eligible_ = true;
+  std::optional<bool> is_eligible_without_identity_;
 };
 
 class MockUiServiceForUrlIntercept : public ContextualTasksUiService {
@@ -132,7 +139,23 @@ class MockUiServiceForUrlIntercept : public ContextualTasksUiService {
                BrowserWindowInterface* browser),
               (override));
 
+  bool IsWebContentsInSidePanel(content::WebContents* web_contents) override {
+    if (is_web_contents_in_side_panel_override_.has_value()) {
+      return *is_web_contents_in_side_panel_override_;
+    }
+    return ContextualTasksUiService::IsWebContentsInSidePanel(web_contents);
+  }
+
+  void SetIsWebContentsInSidePanelForTesting(
+      std::optional<bool> in_side_panel) {
+    is_web_contents_in_side_panel_override_ = in_side_panel;
+  }
+
   using ContextualTasksUiService::HandleNavigationImpl;
+  using ContextualTasksUiService::HandleSidePanelExternalNavigation;
+  using ContextualTasksUiService::IsAllowedSidePanelUrl;
+  using ContextualTasksUiService::IsWebContentsInSidePanel;
+  using ContextualTasksUiService::ShouldHandleSidePanelExternalNavigation;
   bool HandleNavigationImpl(
       content::OpenURLParams url_params,
       content::WebContents* source_contents,
@@ -145,6 +168,13 @@ class MockUiServiceForUrlIntercept : public ContextualTasksUiService {
       const std::optional<content::GlobalRenderFrameHostToken>&
           initiator_frame_token,
       const blink::mojom::WindowFeatures& window_features) override;
+
+  // Exposes the protected eligibility redirect check so tests can assert on it
+  // directly.
+  using ContextualTasksUiService::ShouldRedirectIneligibleRequest;
+
+ private:
+  std::optional<bool> is_web_contents_in_side_panel_override_;
 };
 
 inline content::OpenURLParams CreateOpenUrlParams(

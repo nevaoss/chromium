@@ -409,8 +409,6 @@ public class CustomTabActivityTimeoutHandlerUnitTest {
         verify(constructorContext, never()).getSystemService(Context.POWER_SERVICE);
     }
 
-
-
     @Test
     public void onStop_isChangingConfigurations_doesNotSetTimestamp() {
         when(mActivity.isChangingConfigurations()).thenReturn(true);

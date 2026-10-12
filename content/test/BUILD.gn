@@ -229,8 +229,6 @@ static_library("test_support") {
     "../public/test/fake_speech_recognition_manager.h",
     "../public/test/fenced_frame_reporter_observer.cc",
     "../public/test/fenced_frame_reporter_observer.h",
-    "../public/test/fenced_frame_test_util.cc",
-    "../public/test/fenced_frame_test_util.h",
     "../public/test/file_system_chooser_test_helpers.cc",
     "../public/test/file_system_chooser_test_helpers.h",
     "../public/test/find_test_utils.cc",
@@ -1154,7 +1152,10 @@ static_library("browsertest_support") {
       "../public/test/content_browser_test_utils_mac.mm",
       "content_browser_test_utils_internal_mac.mm",
     ]
-    deps += [ "//ui/base/mojom" ]
+    deps += [
+      "//ui/base:test_support",
+      "//ui/base/mojom",
+    ]
   }
 
   configs += [ "//v8:external_startup_data" ]
@@ -1542,7 +1543,7 @@ test("content_browsertests") {
     "../browser/download/drag_download_file_browsertest.cc",
     "../browser/download/mhtml_generation_browsertest.cc",
     "../browser/download/save_package_browsertest.cc",
-    "../browser/fenced_frame/fenced_frame_browsertest.cc",
+    "../browser/fenced_frame/fenced_frame_stub_browsertest.cc",
     "../browser/file_system/file_system_browsertest.cc",
     "../browser/file_system/file_system_url_drag_drop_browsertest.cc",
     "../browser/file_system/file_system_url_loader_factory_browsertest.cc",
@@ -2652,6 +2653,7 @@ test("content_unittests") {
     "../browser/declarative_performance_observer/declarative_performance_observer_store_unittest.cc",
     "../browser/declarative_performance_observer/declarative_performance_observer_unittest.cc",
     "../browser/device_posture/device_posture_provider_impl_unittest.cc",
+    "../browser/devtools/devtools_agent_host_impl_unittest.cc",
     "../browser/devtools/devtools_background_services_context_impl_unittest.cc",
     "../browser/devtools/devtools_frontend_host_impl_unittest.cc",
     "../browser/devtools/devtools_http_handler_unittest.cc",
@@ -2674,7 +2676,6 @@ test("content_unittests") {
     "../browser/embedder_isolation_info_unittest.cc",
     "../browser/eye_dropper_chooser_impl_unittest.cc",
     "../browser/fenced_frame/fenced_frame_reporter_unittest.cc",
-    "../browser/fenced_frame/fenced_frame_unittest.cc",
     "../browser/fenced_frame/fenced_frame_url_mapping_unittest.cc",
     "../browser/fenced_frame/redacted_fenced_frame_config_mojom_traits_unittest.cc",
     "../browser/field_trial_synchronizer_unittest.cc",
@@ -2935,6 +2936,7 @@ test("content_unittests") {
     "../browser/service_worker/service_worker_registration_unittest.cc",
     "../browser/service_worker/service_worker_registry_unittest.cc",
     "../browser/service_worker/service_worker_script_loader_factory_unittest.cc",
+    "../browser/service_worker/service_worker_security_utils_unittest.cc",
     "../browser/service_worker/service_worker_single_script_update_checker_unittest.cc",
     "../browser/service_worker/service_worker_synthetic_response_data_pipe_connector_unittest.cc",
     "../browser/service_worker/service_worker_synthetic_response_manager_unittest.cc",
@@ -2986,6 +2988,7 @@ test("content_unittests") {
     "../browser/webid/delegation/jwt_signer_unittest.cc",
     "../browser/webid/delegation/sd_jwt_unittest.cc",
     "../browser/webid/disconnect_request_unittest.cc",
+    "../browser/webid/fedcm_request_spec_unittest.cc",
     "../browser/webid/federated_embedder_login_request_unittest.cc",
     "../browser/webid/identity_credential_source_impl_unittest.cc",
     "../browser/webid/identity_registry_unittest.cc",
@@ -3565,6 +3568,7 @@ test("content_unittests") {
   }
   if (is_win) {
     sources += [
+      "../app/sandbox_helper_win_unittest.cc",
       "../browser/child_process_sandbox_support_win_unittest.cc",
       "../browser/device_posture/device_posture_registry_watcher_win_unittest.cc",
       "../browser/haptics/haptics_manager_impl_win_unittest.cc",
@@ -3581,6 +3585,7 @@ test("content_unittests") {
     deps += [
       "//components/services/font_data/public/mojom",
       "//components/stylus_handwriting/win",
+      "//content:sandbox_helper_win",
       "//sandbox/policy:sandbox_test_utils",
       "//sandbox/win:sandbox",
       "//third_party/blink/public/common",
@@ -3596,6 +3601,7 @@ test("content_unittests") {
   }
   if (is_mac) {
     deps += [
+      "//components/remote_cocoa/app_shim",
       "//crypto:test_support",
       "//device/fido:icloud_keychain_test_support",
       "//sandbox/mac:seatbelt",

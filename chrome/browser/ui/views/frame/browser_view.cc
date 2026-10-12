@@ -901,6 +901,14 @@ BrowserView::BrowserView(BrowserWindowInterface* browser)
   SetShowIcon(::ShouldShowWindowIcon(
       browser_.get(), AppUsesWindowControlsOverlay(), AppUsesTabbed()));
 
+  // Layout deferral during startup is only intended for normal browser windows
+  // (which experience redundant layout passes while loading the WebUI toolbar).
+  // Non-normal windows (popups, app windows, etc.) do not use the WebUI toolbar
+  // and must not defer layout while invisible.
+  if (!GetIsNormalType()) {
+    startup_layout_state_ = StartupLayoutState::kDisabled;
+  }
+
   // In forced app mode, all size controls are always disabled. Otherwise, use
   // `create_params` to enable/disable specific size controls.
   if (IsRunningInForcedAppMode()) {
@@ -1023,7 +1031,7 @@ BrowserView::BrowserView(BrowserWindowInterface* browser)
   find_bar_host_view_ = AddChildView(std::make_unique<View>());
 
   window_scrim_view_ = AddChildView(std::make_unique<ScrimView>());
-  window_scrim_view_->layer()->SetName("WindowScrimView");
+  window_scrim_view_->layer()->SetName("BrowserView:WindowScrimView");
 
   side_panel_content_transition_scrim_view_ =
       AddChildView(std::make_unique<ScrimView>(kColorToolbar));
@@ -1079,6 +1087,11 @@ BrowserView::BrowserView(BrowserWindowInterface* browser)
     focus_manager_observation_.Observe(GetFocusManager());
   }
 
+  if (auto* global_error_service =
+          GlobalErrorServiceFactory::GetForProfile(GetProfile())) {
+    global_error_observation_.Observe(global_error_service);
+  }
+
 #if BUILDFLAG(IS_CHROMEOS)
   on_locked_task_subscription_ =
       ash::boca::OnTaskLockedController::From(browser_)
@@ -1099,6 +1112,8 @@ BrowserView::~BrowserView() {
   SetLayoutManager(nullptr);
 
   tab_search_bubble_host_.reset();
+
+  global_error_observation_.Reset();
 
   // Destroy the top controls slide controller first as it depends on the
   // tabstrip model and the browser frame.
@@ -1903,12 +1918,7 @@ void BrowserView::UpdateLoadingAnimations(bool is_visible) {
     std::move(loading_animation_state_change_closure_).Run();
   }
 
-  const bool should_use_timer_driven_animation =
-      should_animate &&
-      (!base::FeatureList::IsEnabled(features::kCompositorLoadingThrobber) ||
-       ShouldShowWindowIcon());
-
-  if (should_use_timer_driven_animation) {
+  if (should_animate) {
     if (!loading_animation_timer_.IsRunning()) {
 #if BUILDFLAG(IS_CHROMEOS)
       loading_animation_tracker_.emplace(
@@ -1929,8 +1939,6 @@ void BrowserView::UpdateLoadingAnimations(bool is_visible) {
       loading_animation_tracker_->Stop();
 #endif
     }
-  }
-  if (!should_animate) {
     // Loads are now complete, update the state if a task was scheduled.
     loading_animation_start_ = base::TimeTicks();
     LoadingAnimationCallback(base::TimeTicks::Now());
@@ -2324,6 +2332,13 @@ LocationBar* BrowserView::GetLocationBar() const {
 
 ui::AcceleratorProvider* BrowserView::GetAcceleratorProvider() {
   return this;
+}
+
+PinnedToolbarActions* BrowserView::GetPinnedToolbarActions() {
+  // The provider is registered by the toolbar, so it is absent for windows
+  // that have no toolbar and during window teardown.
+  ToolbarButtonProvider* const provider = toolbar_button_provider();
+  return provider ? provider->GetPinnedToolbarActions() : nullptr;
 }
 
 void BrowserView::SetFocusToLocationBar(bool is_user_initiated) {
@@ -4757,7 +4772,7 @@ int BrowserView::NonClientHitTest(const gfx::Point& point) {
       controller->draggable_region().has_value()) {
     // Draggable regions are defined relative to the web contents.
     gfx::Point point_in_contents_web_view_coords(point_in_browser_view_coords);
-    views::View::ConvertPointToTarget(this, contents_web_view(),
+    views::View::ConvertPointToTarget(this, GetContentsView(),
                                       &point_in_contents_web_view_coords);
 
     if (controller->draggable_region()->contains(
@@ -4836,11 +4851,15 @@ void BrowserView::Layout(PassKey) {
     // safe to skip because the window size has not changed, meaning the initial
     // bounds remain valid.
     //
-    // However, if the active contents container has not yet received its
+    // However, if the window size changed since the last layout pass, do not
+    // defer; child views must be laid out to match the new window size.
+    //
+    // Also, if the active contents container has not yet received its
     // initial non-empty bounds (e.g. during tab restore or when the first tab
     // is added to the window), allow this layout pass so that the web contents
     // gets properly sized before it starts loading.
-    if (size().IsEmpty() || !GetContentsSize().IsEmpty()) {
+    const bool size_changed = size() != last_laid_out_size_;
+    if (!size_changed && (size().IsEmpty() || !GetContentsSize().IsEmpty())) {
       layout_deferred_while_invisible_ = true;
       return;
     }
@@ -4930,6 +4949,9 @@ void BrowserView::Layout(PassKey) {
   if (startup_layout_state_ == StartupLayoutState::kInitial) {
     startup_layout_state_ = StartupLayoutState::kDeferring;
   }
+
+  layout_deferred_while_invisible_ = false;
+  last_laid_out_size_ = size();
 }
 
 void BrowserView::OnGestureEvent(ui::GestureEvent* event) {
@@ -5274,8 +5296,7 @@ void BrowserView::LoadingAnimationCallback(base::TimeTicks timestamp) {
     return;
   }
 
-  if (GetSupportsTabStrip() &&
-      !base::FeatureList::IsEnabled(features::kCompositorLoadingThrobber)) {
+  if (GetSupportsTabStrip()) {
     // Loading animations are shown in the tab for tabbed windows. Update them
     // even if the tabstrip isn't currently visible so they're in the right
     // state when it returns.
@@ -5516,7 +5537,17 @@ void BrowserView::ProcessFullscreen(bool fullscreen, const int64_t display_id) {
   PrepareFullscreen(fullscreen);
 
   // TODO(b/40276379): Move this out from ProcessFullscreen.
+  // RequestFullscreen() executes lower-layer platform widget and window manager
+  // operations. On some platforms or window configurations, synchronous event
+  // processing during window resize or display transitions can result in window
+  // closure and the destruction of `this`. Capture a WeakPtr to verify that
+  // `this` remains valid before continuing with post-transition processing and
+  // layout updates.
+  base::WeakPtr<BrowserView> weak_this = GetAsWeakPtr();
   RequestFullscreen(fullscreen, display_id);
+  if (!weak_this) {
+    return;
+  }
 
 #if !BUILDFLAG(IS_MAC)
   // On Mac platforms, FullscreenStateChanged() is invoked from
@@ -5906,10 +5937,14 @@ void BrowserView::ShowEmojiPanel() {
   // the emoji panel is non-modal UI that can interfere with the fullscreen
   // bubble. Drop fullscreen when showing the emoji panel to prevent UI
   // spoofing.
+  base::WeakPtr<BrowserView> weak_this = GetAsWeakPtr();
   if (content::WebContents* web_contents = GetActiveWebContents()) {
     if (!web_contents->ForSecurityDropFullscreen(display::kInvalidDisplayId)) {
       return;
     }
+  }
+  if (!weak_this || !GetWidget() || GetWidget()->IsClosed()) {
+    return;
   }
   GetWidget()->ShowEmojiPanel();
 }
@@ -5964,6 +5999,14 @@ bool BrowserView::FindCommandIdForAccelerator(
 // BrowserView, ExclusiveAccessContext implementation:
 Profile* BrowserView::GetProfile() const {
   return browser_->GetProfile();
+}
+
+void BrowserView::OnGlobalErrorsChanged() {
+  if (auto* provider = toolbar_button_provider()) {
+    if (auto* control = provider->GetAppMenuControl()) {
+      control->CloseMenu();
+    }
+  }
 }
 
 ///////////////////////////////////////////////////////////////////////////////

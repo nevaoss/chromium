@@ -70,6 +70,7 @@
 #import "ios/chrome/browser/geolocation/model/geolocation_manager.h"
 #import "ios/chrome/browser/google_one/shared/google_one_deep_link_util.h"
 #import "ios/chrome/browser/incognito_reauth/ui_bundled/incognito_reauth_scene_agent.h"
+#import "ios/chrome/browser/intelligence/bwg/metrics/gemini_metrics.h"
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_tab_helper.h"
 #import "ios/chrome/browser/intelligence/bwg/utils/gemini_constants.h"
 #import "ios/chrome/browser/intelligence/bwg/utils/gemini_prefs.h"
@@ -140,6 +141,7 @@
 #import "ios/chrome/browser/shared/public/commands/qr_scanner_commands.h"
 #import "ios/chrome/browser/shared/public/commands/quick_delete_commands.h"
 #import "ios/chrome/browser/shared/public/commands/scene_commands.h"
+#import "ios/chrome/browser/shared/public/commands/scene_sign_in_commands.h"
 #import "ios/chrome/browser/shared/public/commands/search_image_with_lens_command.h"
 #import "ios/chrome/browser/shared/public/commands/show_signin_command.h"
 #import "ios/chrome/browser/shared/public/commands/snackbar_commands.h"
@@ -277,6 +279,27 @@ bool IsProfileUnmanaged(ProfileIOS* profile) {
   }
   // Otherwise, the profile is unmanaged if it is not managed.
   return !service->IsManaged();
+}
+
+// Returns the account alignment status given the external app and client app
+// hashed Gaia IDs.
+GeminiAppSwitcherAccountStatus GetAppSwitcherAccountStatus(
+    NSString* external_app_hashed_gaia_id,
+    NSString* client_app_hashed_gaia_id) {
+  if (external_app_hashed_gaia_id.length && client_app_hashed_gaia_id.length) {
+    if ([external_app_hashed_gaia_id
+            isEqualToString:client_app_hashed_gaia_id]) {
+      return GeminiAppSwitcherAccountStatus::kMatching;
+    }
+    return GeminiAppSwitcherAccountStatus::kMismatched;
+  }
+  if (external_app_hashed_gaia_id.length) {
+    return GeminiAppSwitcherAccountStatus::kExternalAppOnlySignedIn;
+  }
+  if (client_app_hashed_gaia_id.length) {
+    return GeminiAppSwitcherAccountStatus::kClientAppOnlySignedIn;
+  }
+  return GeminiAppSwitcherAccountStatus::kBothSignedOut;
 }
 
 }  // namespace
@@ -1564,12 +1587,16 @@ UrlLoadParams UpdateParamsForDinoGame(UrlLoadParams params) {
   _mainCoordinator.tabGridDelegate = self;
   _mainCoordinator.sceneURLLoadingService = _sceneURLLoadingService.get();
 
+  BrowserCommandEndpoints commandEndpoints = {
+      .sceneEndpoint = _mainCoordinator,
+      .settingsEndpoint = _mainCoordinator,
+      .geminiEndpoint = _mainCoordinator,
+      .sceneSignInEndpoint = _mainCoordinator.sceneSignInEndpoint,
+  };
   self.browserLifecycleManager =
       [[BrowserLifecycleManager alloc] initWithProfile:profile
                                             sceneState:sceneState
-                                         sceneEndpoint:_mainCoordinator
-                                      settingsEndpoint:_mainCoordinator
-                                        geminiEndpoint:_mainCoordinator];
+                                      commandEndpoints:commandEndpoints];
 
   // Create and start the BVC.
   [self.browserLifecycleManager createMainCoordinatorAndInterface];
@@ -1869,9 +1896,9 @@ UrlLoadParams UpdateParamsForDinoGame(UrlLoadParams params) {
   }
   self.sceneState.profileState.appState.fullscreenSigninPromoPresentedOnce =
       YES;
-  id<SceneCommands> sceneHandler = HandlerForProtocol(
-      self.mainInterface.browser->GetCommandDispatcher(), SceneCommands);
-  [sceneHandler showFullscreenSigninPromoWithCompletion:nil];
+  id<SceneSignInCommands> sceneSignInHandler = HandlerForProtocol(
+      self.mainInterface.browser->GetCommandDispatcher(), SceneSignInCommands);
+  [sceneSignInHandler showFullscreenSigninPromoWithCompletion:nil];
 }
 
 - (BOOL)canHandleIntents {
@@ -2075,11 +2102,14 @@ UrlLoadParams UpdateParamsForDinoGame(UrlLoadParams params) {
   }
 
   if (base::FeatureList::IsEnabled(switches::kCrossDeviceSignin)) {
+    id<SceneSignInCommands> sceneSignInHandler =
+        HandlerForProtocol(mainCommandDispatcher, SceneSignInCommands);
     [sceneState
         addAgent:[[CrossDeviceSigninSceneAgent alloc]
                      initWithSceneURLLoadingService:_sceneURLLoadingService
                                                         .get()
-                                       sceneHandler:sceneHandler]];
+                                       sceneHandler:sceneHandler
+                                 sceneSignInHandler:sceneSignInHandler]];
   }
 
   // Add Cobalt scene agent if the feature is enabled and the profile management
@@ -2688,10 +2718,12 @@ UrlLoadParams UpdateParamsForDinoGame(UrlLoadParams params) {
       authService ? authService->GetPrimaryIdentity() : nil;
   NSString* activeHashedGaiaID = identity ? identity.hashedGaiaID : nil;
   NSString* targetHashedGaiaID = self.startupParameters.appSwitcherHashedUserID;
-  if (targetHashedGaiaID.length && activeHashedGaiaID.length &&
-      ![targetHashedGaiaID isEqualToString:activeHashedGaiaID]) {
+  GeminiAppSwitcherAccountStatus accountStatus =
+      GetAppSwitcherAccountStatus(targetHashedGaiaID, activeHashedGaiaID);
+  if (accountStatus == GeminiAppSwitcherAccountStatus::kMismatched) {
     startupState.isMismatchedAccount = YES;
   }
+  RecordGeminiAppSwitcherAccountStatus(accountStatus);
 
   id<GeminiCommands> geminiHandler =
       HandlerForProtocol(browser->GetCommandDispatcher(), GeminiCommands);

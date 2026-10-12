@@ -8,9 +8,11 @@
 #include <string>
 
 #include "base/functional/callback_helpers.h"
+#include "base/strings/strcat.h"
 #include "base/test/bind.h"
 #include "components/browser_actuator/internal/proto/transport_messages.pb.h"
 #include "components/browser_actuator/public/common.h"
+#include "components/browser_actuator/public/payload_type_mapping.h"
 #include "components/browser_actuator/public/transport_session.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
@@ -36,6 +38,49 @@ class TestTransportSession : public TransportSession {
  private:
   std::string session_id_;
 };
+
+class MockTransportSession : public TransportSession {
+ public:
+  explicit MockTransportSession(std::string_view session_id)
+      : session_id_(session_id) {}
+  ~MockTransportSession() override = default;
+
+  std::string_view GetSessionId() const override { return session_id_; }
+  MOCK_METHOD((base::expected<void, SendUpstreamMessageError>),
+              SendUpstreamMessage,
+              (PayloadType payload_type,
+               const google::protobuf::MessageLite& message),
+              (override));
+  MOCK_METHOD(void,
+              OnMessage,
+              (PayloadType payload_type,
+               const google::protobuf::MessageLite& message),
+              (override));
+
+ private:
+  std::string session_id_;
+};
+
+TEST(ControlTransportHandlerTest, OnMessageStartSessionSendsAck) {
+  MockTransportSession session("session_1");
+  ControlTransportHandler handler(&session, base::DoNothing(),
+                                  base::DoNothing());
+
+  EXPECT_CALL(session, SendUpstreamMessage(PayloadType::kControl, testing::_))
+      .WillOnce([&](PayloadType type, const google::protobuf::MessageLite& msg)
+                    -> base::expected<void, SendUpstreamMessageError> {
+        EXPECT_EQ(msg.GetTypeName(),
+                  ControlCommand::default_instance().GetTypeName());
+        const auto* cmd = static_cast<const ControlCommand*>(&msg);
+        EXPECT_TRUE(cmd->has_start_session_ack());
+        return {};
+      });
+
+  ControlCommand command;
+  command.mutable_start_session();
+
+  handler.OnMessage(PayloadType::kControl, command.SerializeAsString());
+}
 
 TEST(ControlTransportHandlerTest, OnMessageCloseChannel) {
   bool close_channel_called = false;
@@ -177,6 +222,12 @@ TEST(ControlTransportHandlerTest, FactoryOnNewSession) {
   handler->OnMessage(PayloadType::kControl, command.SerializeAsString());
 
   EXPECT_EQ(closed_session_id, "session_abc");
+}
+
+// Pins `ExpectedTypeUrl` to the generated proto; this layer may include it.
+TEST(ControlTransportHandlerTest, ExpectedTypeUrlMatchesControlCommand) {
+  EXPECT_EQ(ExpectedTypeUrl(PayloadType::kControl),
+            base::StrCat({kTypeUrlPrefix, ControlCommand().GetTypeName()}));
 }
 
 }  // namespace

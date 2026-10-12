@@ -60,6 +60,10 @@ BASE_FEATURE(kAutofillAcrossIframesIosThrottling,
 BASE_FEATURE(kAutofillAcrossIframesIosTriggerFormExtraction,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
+// When enabled, the extracted APC proto includes node geometry.
+BASE_FEATURE(kAutofillActionableAIPageContent,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 // If enabled, ActorFormFillingServiceImpl will attempt to split requests for a
 // form section fill (when relevant) into two sub-fills - one for a "contact
 // info" sub-section and one for an "address" sub-section.
@@ -162,16 +166,6 @@ BASE_FEATURE(kAutofillAddressUserDeclinedSaveSurvey,
 BASE_FEATURE(kAutofillAddressUserDeclinedSuggestionSurvey,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-// Feature flag to control the displaying of an ongoing hats survey that
-// measures users perception of Autofill. Differently from other surveys,
-// the Autofill user perception survey will not have a specific target
-// number of answers where it will be fully stop, instead, it will run
-// indefinitely. A target number of full answers exists, but per quarter. The
-// goal is to have a go to place to understand how users are perceiving autofill
-// across quarters.
-BASE_FEATURE(kAutofillAddressUserPerceptionSurvey,
-             base::FEATURE_DISABLED_BY_DEFAULT);
-
 // If enabled (and if `AutofillAiServerModel` is also enabled), this ignores
 // the `may_run_server_model` boolean sent by the Autofill server and, instead,
 // queries the server model for every encountered form that is not already
@@ -196,11 +190,6 @@ DEFINE_FEATURE_WITH_MOBILE_COUNTRY_RESTRICTION(kAutofillAiDedupeEntities);
 BASE_FEATURE(kAutofillAiEditEntitiesFromSaveUpdatePrompt,
              base::FEATURE_DISABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_ANDROID)
-
-// When enabled, a HaTS survey is shown after a walletable suggestion is
-// displayed and the form submitted. The survey does not require the suggestion
-// to be accepted.
-BASE_FEATURE(kAutofillAiFillingSurvey, base::FEATURE_DISABLED_BY_DEFAULT);
 
 // If enabled, no GeoIp requirements are imposed for AutofillAi.
 // Note that this feature can be modified as follows (all assuming that
@@ -623,10 +612,6 @@ BASE_FEATURE(kAutofillCheckTriggeringFieldDoesNotChangeDuringFilling,
 BASE_FEATURE(kAutofillComplementCountryUsingPhoneNumber,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-// Same as `kAutofillAddressUserPerceptionSurvey` but for credit card forms.
-BASE_FEATURE(kAutofillCreditCardUserPerceptionSurvey,
-             base::FEATURE_DISABLED_BY_DEFAULT);
-
 // If enabled, `FormPredictionsTracker` will wait up to 1 second
 // for Autofill to finish parsing forms pesent on a given tab before capturing
 // APC. For more context see: go/autofill-actor-mode-implementation
@@ -954,6 +939,14 @@ BASE_FEATURE(kAutofillPageLanguageDetection, base::FEATURE_DISABLED_BY_DEFAULT);
 // TODO(crbug.com/354175563): Remove when launched.
 BASE_FEATURE(kAutofillPaymentsFieldSwapping, base::FEATURE_DISABLED_BY_DEFAULT);
 
+// If enabled, the user may be prompted a HaTS survey about the personalization
+// experience and the perceived trust they have in the features.
+// TODO(crbug.com/543741063): Transform to killswitch after some time.
+BASE_FEATURE(kAutofillPersonalizationAndTrustAddressSurvey,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kAutofillPersonalizationAndTrustAutofillAiSurvey,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 // Controls whether Autofill may fill across origins.
 // In payment forms, the cardholder name field is often on the merchant's origin
 // while the credit card number and CVC are in iframes hosted by a payment
@@ -1007,11 +1000,6 @@ BASE_FEATURE(kAutofillReplaceFormElementObserver,
 // TODO(crbug.com/536607604): Clean up when launched.
 BASE_FEATURE(kAutofillRequireFocusInFrameForSuggestions,
              base::FEATURE_DISABLED_BY_DEFAULT);
-
-// Restricts OTP fields detection and fetching to forms that are in a frame
-// with the same TLD+1 as the main frame.
-BASE_FEATURE(kAutofillRestrictOtpToSameTldPlusOne,
-             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // TODO(crbug.com/435646513) - Clean-up after feature lands at 100% Stable.
 // Enables the new experimental server-side signatures for evaluation purposes.

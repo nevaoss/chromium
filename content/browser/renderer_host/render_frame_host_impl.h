@@ -294,7 +294,6 @@ class CrossOriginEmbedderPolicyReporter;
 class CrossOriginOpenerPolicyAccessReportManager;
 class EmbedderIsolationInfo;
 class FeatureObserver;
-class FencedFrame;
 class FileSystemManagerImpl;
 class FrameTree;
 class FrameTreeNode;
@@ -334,10 +333,6 @@ struct ResourceTimingInfo;
 typedef base::RepeatingCallback<
     void(RenderFrameHostImpl*, ax::mojom::Event, int)>
     AccessibilityCallbackForTesting;
-
-using CachedPermissionMap =
-    std::optional<base::flat_map<blink::mojom::PermissionName,
-                                 blink::mojom::PermissionStatus>>;
 
 class CONTENT_EXPORT RenderFrameHostImpl
     : public RenderFrameHost,
@@ -1815,13 +1810,6 @@ class CONTENT_EXPORT RenderFrameHostImpl
   void NavigationRequestCancelled(NavigationRequest* navigation_request,
                                   NavigationDiscardReason reason);
 
-  // Return fenced frames owned by |this|. The returned vector is in the order
-  // the fenced frames were added (most recent at end).
-  std::vector<FencedFrame*> GetFencedFrames() const;
-
-  // Called when a fenced frame needs to be destroyed.
-  void DestroyFencedFrame(FencedFrame& fenced_frame);
-
   void TakeGuestOwnership(std::unique_ptr<GuestPageHolderImpl> guest_page);
   void DestroyGuestPage(const FrameTreeNode* child_frame_tree_node);
   GuestPageHolderImpl* FindGuestPageHolder(
@@ -2463,31 +2451,9 @@ class CONTENT_EXPORT RenderFrameHostImpl
                        const std::string& srcdoc_value) override;
   void ReceivedDelegatedCapability(
       blink::mojom::DelegatedCapability delegated_capability) override;
-  void SendFencedFrameReportingBeacon(
-      const std::string& event_data,
-      const std::string& event_type,
-      const std::vector<blink::FencedFrame::ReportingDestination>& destinations,
-      bool cross_origin_exposed) override;
-  void SendFencedFrameReportingBeaconToCustomURL(
-      const GURL& destination_url,
-      bool cross_origin_exposed) override;
-  void SetFencedFrameAutomaticBeaconReportEventData(
-      blink::mojom::AutomaticBeaconType event_type,
-      const std::string& event_data,
-      const std::vector<blink::FencedFrame::ReportingDestination>& destinations,
-      bool once,
-      bool cross_origin_exposed) override;
   void SendLegacyTechEvent(
       const std::string& type,
       blink::mojom::LegacyTechEventCodeLocationPtr code_location) override;
-
-  void CreateFencedFrame(
-      mojo::PendingAssociatedReceiver<blink::mojom::FencedFrameOwnerHost>
-          pending_receiver,
-      blink::mojom::RemoteFrameInterfacesFromRendererPtr
-          remote_frame_interfaces,
-      const blink::RemoteFrameToken& frame_token,
-      const base::UnguessableToken& devtools_frame_token) override;
   void OnViewTransitionOptInChanged(blink::mojom::ViewTransitionSameOriginOptIn
                                         view_transition_opt_in) override;
   void StartDragging(blink::mojom::DragDataPtr drag_data,
@@ -2561,6 +2527,7 @@ class CONTENT_EXPORT RenderFrameHostImpl
   void DraggableRegionsChanged(
       std::vector<blink::mojom::DraggableRegionPtr> regions) override;
   void NotifyDocumentInteractive() override;
+  void SuppressXSLTDeprecationBanner() override;
   void OnFirstContentfulPaint(base::TimeTicks presentation_time) override;
   void OnLargestContentfulPaint(base::TimeTicks presentation_time) override;
   void SetStorageAccessApiStatus(net::StorageAccessApiStatus status) override;
@@ -3111,13 +3078,6 @@ class CONTENT_EXPORT RenderFrameHostImpl
   void RecordBackForwardCacheDisablingReason(
       BackForwardCacheDisablingFeature feature);
 
-  // Send an automatic beacon of type `event_type` if one was registered
-  // with the NavigationRequest's initiator frame using the
-  // `window.fence.setReportEventDataForAutomaticBeacons` API.
-  void MaybeSendFencedFrameAutomaticReportingBeacon(
-      NavigationRequest& navigation_request,
-      blink::mojom::AutomaticBeaconType event_type);
-
   // If this RenderFrameHost is a local root (i.e., either the main frame or a
   // subframe in a different process than its parent), this returns the
   // RenderWidgetHost corresponding to this frame. Otherwise this returns null.
@@ -3140,7 +3100,6 @@ class CONTENT_EXPORT RenderFrameHostImpl
   // beforeunload is currently in progress.
   RenderFrameHostImpl* GetBeforeUnloadInitiator();
 
-
   void GetBoundInterfacesForTesting(std::vector<std::string>& out);
 
   void GetBoundAssociatedInterfacesForTesting(std::vector<std::string>& out) {
@@ -3151,15 +3110,8 @@ class CONTENT_EXPORT RenderFrameHostImpl
   // this instance's AXNodeIdDelegate implementation.
   size_t GetAxUniqueIdCountForTesting() const { return ax_unique_ids_.size(); }
 
-  // Query necessary permission statues in order to propagate to the renderer.
-  // Right now, we're only caring about permissions for Geolocation, Camera, and
-  // Microphone. The permission statuses already take into account the device's
-  // status.
-  CachedPermissionMap GetCachedPermissionStatuses();
-
   // Returns the Storage Access API status for this instance.
   net::StorageAccessApiStatus GetStorageAccessApiStatus();
-
   // Allows tests to disable the unload event timer to simulate bugs that
   // happen before it fires (to avoid flakiness).
   void DisableUnloadTimerForTesting();
@@ -3509,7 +3461,6 @@ class CONTENT_EXPORT RenderFrameHostImpl
       net::IsolationInfo::RequestType request_type,
       bool is_credentialless,
       std::optional<base::UnguessableToken> fenced_frame_nonce_for_navigation);
-
 
   // mojom::FrameHost:
   void CreateNewWindow(mojom::CreateNewWindowParamsPtr params,
@@ -4301,23 +4252,6 @@ class CONTENT_EXPORT RenderFrameHostImpl
   void ClosePageTimeout(
       ClosePageSource source,
       base::RepeatingClosure completion_callback = base::DoNothing());
-
-  // Perform pre-conditions checks on RenderFrameHost lifecycle state and fenced
-  // frame properties that are common for `SendFencedFrameReportingBeacon()` and
-  // `SendFencedFrameReportingBeaconToCustomURL()`, both are from renderers. If
-  // checks fail, it implies none of the reporting beacons can be sent. This
-  // function should only handle checks not specific to individual destination
-  // and event data.
-  // Note: This function has side effects. It may terminate misbehaving
-  // renderers. It may also add messages for certain cases that return false.
-  bool IsFencedFrameReportingFromRendererAllowed(bool cross_origin_exposed);
-
-  // Helper function that handles creating and sending a fenced frame beacon for
-  // a given destination.
-  void SendFencedFrameReportingBeaconInternal(
-      const FencedFrameReporter::DestinationVariant& event_variant,
-      blink::FencedFrame::ReportingDestination destination,
-      std::optional<int64_t> navigation_id = std::nullopt);
 
   // Indicates whether this frame has third-party storage
   // partitioning enabled. This depends on the deprecation trial (which can
@@ -5165,10 +5099,6 @@ class CONTENT_EXPORT RenderFrameHostImpl
   // Keeps the track of the latest ServiceWorkerClient.
   base::WeakPtr<ServiceWorkerClient> last_committed_service_worker_client_;
 
-  // The fenced frames owned by this document, ordered with newer fenced frames
-  // being appended to the end.
-  std::vector<std::unique_ptr<FencedFrame>> fenced_frames_;
-
   // The guest frame trees owned by this document.
   std::vector<std::unique_ptr<GuestPageHolderImpl>> guest_pages_;
 
@@ -5515,7 +5445,6 @@ class CONTENT_EXPORT RenderFrameHostImpl
   // is ongoing. Destroying this object cancels the validation.
   std::unique_ptr<webauthn::RemoteValidation> webauthn_remote_rp_id_validation_;
 #endif
-
 
   // The default group for crash reports is `default`. However, if
   // `Reporting-Endpoints` response header specifies `crash-reporting`, crash

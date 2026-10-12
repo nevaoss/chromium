@@ -79,7 +79,6 @@
 #include "content/public/test/back_forward_cache_util.h"
 #include "content/public/test/browser_test.h"
 #include "content/public/test/browser_test_utils.h"
-#include "content/public/test/fenced_frame_test_util.h"
 #include "content/public/test/simple_url_loader_test_helper.h"
 #include "content/public/test/test_navigation_observer.h"
 #include "content/public/test/test_utils.h"
@@ -895,10 +894,6 @@ class DeclarativeNetRequestBrowserTest
     return https_server_.get();
   }
 
-  content::test::FencedFrameTestHelper& fenced_frame_test_helper() {
-    return fenced_frame_test_helper_;
-  }
-
  private:
   enum class RulesetScope { kDynamic, kSession };
   void UpdateRules(const ExtensionId& extension_id,
@@ -1101,8 +1096,6 @@ class DeclarativeNetRequestBrowserTest
         base::BindRepeating(&DeclarativeNetRequestBrowserTest::MonitorRequest,
                             base::Unretained(this)));
   }
-
-  content::test::FencedFrameTestHelper fenced_frame_test_helper_;
 
   base::test::ScopedFeatureList feature_list_;
   base::ScopedTempDir temp_dir_;
@@ -7204,6 +7197,79 @@ IN_PROC_BROWSER_TEST_P(DeclarativeNetRequestWebTransportTest, BlockRequests) {
                             base::StringPrintf(
                                 kOpenWebTransportScript,
                                 webtransport_server_.server_address().port())));
+}
+
+// Tests that redirect rules are not applied to WebTransport handshakes and
+// no false-positive matched rules are recorded.
+IN_PROC_BROWSER_TEST_P(DeclarativeNetRequestWebTransportTest, RedirectIgnored) {
+  set_config_flags(ConfigFlag::kConfig_HasBackgroundScript |
+                   ConfigFlag::kConfig_HasFeedbackPermission);
+
+  ASSERT_TRUE(https_server()->Start());
+
+  // Rule 1 is a redirect rule for echo1. Since redirect is unsupported for
+  // WebTransport, this rule should be ignored, the connection should succeed,
+  // and the rule should not be counted as matched.
+  TestRule rule1 = CreateGenericRule(1);
+  rule1.condition->url_filter = "echo1_redirect";
+  rule1.priority = kMinValidPriority;
+  rule1.action->type = "redirect";
+  rule1.action->redirect.emplace();
+  rule1.action->redirect->url = "https://other.com/";
+
+  // Rule 2 is a block rule for echo2. This should successfully block the
+  // WebTransport handshake and be recorded in matched rules.
+  TestRule rule2 = CreateGenericRule(2);
+  rule2.condition->url_filter = "echo2_block";
+  rule2.priority = kMinValidPriority;
+  rule2.action->type = "block";
+
+  ASSERT_NO_FATAL_FAILURE(LoadExtensionWithRules(
+      {rule1, rule2}, "test_extension", {URLPattern::kAllUrlsPattern}));
+
+  NavigateToURL(https_server()->GetURL("/echo"));
+
+  static constexpr char kOpenWebTransportScript[] = R"((
+    async () =>
+    {
+      const testCases = ["echo1_redirect", "echo2_block"];
+
+      let blockedTestCases = [];
+
+      await Promise.allSettled(
+        testCases.map(testCase =>
+          new Promise(async (resolve) =>
+          {
+            try {
+              const transport = new WebTransport(
+                `https://localhost:%d/${testCase}`);
+              // `transport.ready` only resolves if the handshake with the local
+              // server succeeds. Any failure (whether blocked by DNR or
+              // redirected to the unreachable "https://other.com/") rejects and
+              // enters `catch`.
+              await transport.ready;
+              transport.close();
+            } catch (e) {
+              blockedTestCases.push(testCase);
+            }
+            resolve();
+          })
+        )
+      );
+      return blockedTestCases.sort().join();
+    }
+  )())";
+
+  content::RenderFrameHost* main_frame = GetPrimaryMainFrame();
+  EXPECT_EQ("echo2_block",
+            content::EvalJs(main_frame,
+                            base::StringPrintf(
+                                kOpenWebTransportScript,
+                                webtransport_server_.server_address().port())));
+
+  // Verify that only the block rule (rule 2) was recorded as matched. The
+  // redirect rule (rule 1) should not have matched.
+  EXPECT_EQ("2", GetRuleIdsMatched(last_loaded_extension_id(), base::Time()));
 }
 
 // TODO(crbug.com/393191910): Port to desktop Android. These tests fail with

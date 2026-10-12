@@ -50,25 +50,6 @@ void WebGpuSharedImageLease::SetSyncToken(const gpu::SyncToken& sync_token) {
   resource_.shared_image_->UpdateDestructionSyncToken(resource_.sync_token_);
 }
 
-scoped_refptr<gpu::ClientSharedImage> WebGpuSharedImageLease::GetSharedImage()
-    const {
-  if (IsGpuContextLost()) {
-    return nullptr;
-  }
-  return resource_.shared_image_;
-}
-
-gpu::SyncToken WebGpuSharedImageLease::GetSyncToken() const {
-  if (IsGpuContextLost()) {
-    return gpu::SyncToken();
-  }
-  return resource_.sync_token_;
-}
-
-bool WebGpuSharedImageLease::IsGpuContextLost() const {
-  return ::blink::IsGpuContextLost(resource_.context_provider_wrapper_.get());
-}
-
 void WebGpuSharedImageLease::OnMemoryDump(
     base::trace_event::ProcessMemoryDump* pmd) {
   std::string path = base::StringPrintf("canvas/ResourceProvider_0x%" PRIXPTR,
@@ -216,7 +197,8 @@ WebGpuSharedImageCache::LeaseSharedImage(viz::SharedImageFormat format,
 }
 
 void WebGpuSharedImageCache::ReturnResource(Resource resource) {
-  if (context_provider_) {
+  if (context_provider_ &&
+      !IsGpuContextLost(resource.context_provider_wrapper_.get())) {
     resource.timer_id_ = current_timer_id_;
     total_unused_resources_in_bytes_ += resource.resource_size_;
     unused_resources_.push_front(std::move(resource));
@@ -255,6 +237,13 @@ WebGpuSharedImageCache::AcquireCachedResource(
     const viz::SharedImageFormat& format,
     SkAlphaType alpha_type,
     const gfx::ColorSpace& color_space) {
+  if (!unused_resources_.empty() &&
+      IsGpuContextLost(
+          unused_resources_.front().context_provider_wrapper_.get())) {
+    unused_resources_.clear();
+    total_unused_resources_in_bytes_ = 0;
+  }
+
   // Loop from MRU to LRU
   DequeResource::iterator it;
   for (it = unused_resources_.begin(); it != unused_resources_.end(); ++it) {

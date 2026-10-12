@@ -22,7 +22,6 @@
 #include "chrome/browser/extensions/api/settings_private/generated_prefs.h"
 #include "chrome/browser/extensions/api/settings_private/generated_prefs_factory.h"
 #include "chrome/browser/extensions/settings_api_helpers.h"
-#include "chrome/browser/glic/gemini_enterprise/geic_pref_names.h"
 #include "chrome/browser/glic/glic_pref_names.h"
 #include "chrome/browser/metrics/profile_pref_names.h"
 #include "chrome/browser/nearby_sharing/common/nearby_share_prefs.h"
@@ -322,8 +321,7 @@ const PrefsUtil::TypedPrefMap& PrefsUtil::GetAllowlistedKeys() {
   (*s_allowlist)[::prefs::kCtrlTabMru] = settings_api::PrefType::kBoolean;
   (*s_allowlist)[::prefs::kCurrentThemeID] = settings_api::PrefType::kString;
   (*s_allowlist)[::prefs::kPinnedActions] = settings_api::PrefType::kList;
-  (*s_allowlist)[themes::prefs::kPolicyThemeColor] =
-      settings_api::PrefType::kNumber;
+  (*s_allowlist)[themes::kPolicyThemeColor] = settings_api::PrefType::kNumber;
 #if BUILDFLAG(IS_LINUX)
   (*s_allowlist)[::prefs::kSystemTheme] = settings_api::PrefType::kNumber;
 #endif
@@ -491,8 +489,6 @@ const PrefsUtil::TypedPrefMap& PrefsUtil::GetAllowlistedKeys() {
       settings_api::PrefType::kString;
   (*s_allowlist)[::content_settings::kThirdPartyCookieBlockingSetting] =
       settings_api::PrefType::kNumber;
-  (*s_allowlist)[::prefs::kPrivacySandboxRelatedWebsiteSetsEnabled] =
-      settings_api::PrefType::kBoolean;
   (*s_allowlist)[::prefs::kEnableDoNotTrack] = settings_api::PrefType::kBoolean;
   (*s_allowlist)[universal_optout::prefs::kUniversalOptOutEnabled] =
       settings_api::PrefType::kBoolean;
@@ -1395,10 +1391,6 @@ const PrefsUtil::TypedPrefMap& PrefsUtil::GetAllowlistedKeys() {
       settings_api::PrefType::kNumber;
   (*s_allowlist)[contextual_tasks::kContextualTasksSmartTabSharingSettings] =
       settings_api::PrefType::kNumber;
-
-  // Geic prefs
-  (*s_allowlist)[geic::prefs::kGeicPinnedToTabstrip] =
-      settings_api::PrefType::kBoolean;
 
   // Glic prefs
   (*s_allowlist)[glic::prefs::kGlicPinnedToTabstrip] =

@@ -16,11 +16,13 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import android.app.Activity;
 import android.content.Context;
 import android.content.Intent;
 import android.os.Bundle;
@@ -45,11 +47,13 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.Mockito;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 import org.mockito.stubbing.Answer;
+import org.robolectric.Robolectric;
 import org.robolectric.annotation.Config;
 import org.robolectric.shadows.ShadowLooper;
 
@@ -673,6 +677,52 @@ public class SettingsPageFragmentDelegateImplTest {
     }
 
     @Test
+    public void testInitSettings_onActivityRestart_doesNotFocusBackButton() {
+        // Regression test for crbug.com/556140901: when the Activity restarts (e.g. changing theme)
+        // while a detail subpage is open, the back button is set up before the toolbar reaches the
+        // screen, so it should be displayed without forcing focus onto it. View focus stands in for
+        // screen reader focus here, because both are requested together.
+        when(mMockSettingsHostFragment.getSavedInstanceState()).thenReturn(new Bundle());
+        when(mMockSettingsHostFragment.isAttachedToActivity()).thenReturn(true);
+        when(mMockSettingsHostFragment.getActiveFragment()).thenReturn(mMultiColumnSettings);
+        when(mMultiColumnSettings.isTwoColumn()).thenReturn(false);
+        when(mMultiColumnSettings.isLayoutOpen()).thenReturn(true);
+
+        mDelegate.initSettings(mContainerView, "", mPadAdjusterGenerator);
+
+        Activity hostActivity = Robolectric.buildActivity(Activity.class).setup().get();
+        hostActivity.setContentView(mInflatedSettingsView);
+
+        Toolbar toolbar = mInflatedSettingsView.findViewById(R.id.action_bar);
+        assertNotNull(toolbar);
+        assertEquals(
+                ApplicationProvider.getApplicationContext().getString(R.string.back),
+                toolbar.getNavigationContentDescription());
+
+        triggerFragmentViewCreated();
+        mDelegate.onHeaderLayoutUpdated();
+        mDelegate.onTitleUpdated();
+
+        View navigationButton = null;
+        for (int i = 0; i < toolbar.getChildCount(); i++) {
+            View child = toolbar.getChildAt(i);
+            if (child instanceof android.widget.ImageButton) {
+                navigationButton = child;
+                break;
+            }
+        }
+        assertNotNull(navigationButton);
+        assertFalse(navigationButton.isFocused());
+
+        // Subsequent navigation from main settings to a subpage should focus the back button.
+        when(mMultiColumnSettings.isLayoutOpen()).thenReturn(false);
+        mDelegate.onHeaderLayoutUpdated();
+        when(mMultiColumnSettings.isLayoutOpen()).thenReturn(true);
+        mDelegate.onHeaderLayoutUpdated();
+        assertTrue(navigationButton.isFocused());
+    }
+
+    @Test
     public void testUpdateNavigationIcon_singleColumnInSearch_hidesNavigationIcon() {
         mDelegate.initSettings(mContainerView, "", mPadAdjusterGenerator);
 
@@ -945,6 +995,26 @@ public class SettingsPageFragmentDelegateImplTest {
         verify(mMockSettingsHostFragment).setInitialUrl("chrome://settings/appearance");
         verify(mMockSettingsHostFragment, never())
                 .showFragment(any(Fragment.class), anyBoolean(), any());
+    }
+
+    @Test
+    @EnableFeatures(ChromeFeatureList.SETTINGS_IN_TAB_URL_NAV)
+    public void testUpdateForUrl_WithSearchOpen_LeavesSearchFirst() {
+        mDelegate.initSettings(mContainerView, "", mPadAdjusterGenerator);
+        when(mMockSettingsHostFragment.isAttachedToActivity()).thenReturn(true);
+        when(mMockSettingsHostFragment.getActiveFragment()).thenReturn(mMultiColumnSettings);
+        when(mMultiColumnSettings.getView()).thenReturn(mFragmentView);
+        SettingsSearchCoordinator mockSearchCoordinator = mock(SettingsSearchCoordinator.class);
+        mDelegate.setSearchCoordinatorForTesting(mockSearchCoordinator);
+
+        mDelegate.updateForUrl("chrome://settings/appearance");
+
+        // Search stands down before the page it is showing is replaced, rather than having the
+        // back stack it holds its own pages on purged from under it.
+        InOrder inOrder = inOrder(mockSearchCoordinator, mMockSettingsHostFragment);
+        inOrder.verify(mockSearchCoordinator).exitSearchIfOpen();
+        inOrder.verify(mMockSettingsHostFragment)
+                .showFragment(any(Fragment.class), eq(false), eq((String) null));
     }
 
     @Test

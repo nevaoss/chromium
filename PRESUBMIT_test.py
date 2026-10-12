@@ -10,10 +10,9 @@ from __future__ import annotations
 
 import dataclasses
 import enum
-import io
 import os.path
-import subprocess
 import sys
+import tempfile
 import textwrap
 import unittest
 from unittest import mock
@@ -775,6 +774,25 @@ class JSONParsingTest(unittest.TestCase):
 
 class IDLParsingTest(unittest.TestCase):
 
+    def setUp(self):
+        self._temp_dir = tempfile.TemporaryDirectory()
+
+    def tearDown(self):
+        self._temp_dir.cleanup()
+
+    def _WriteTempFile(self, filename, contents):
+        full_path = os.path.join(self._temp_dir.name, filename)
+        os.makedirs(os.path.dirname(full_path), exist_ok=True)
+        with open(full_path, 'w', encoding='utf-8', newline='') as f:
+            f.write('\n'.join(contents))
+        return full_path
+
+    def _RunIDLParse(self, input_api, filename):
+        output_api = MockOutputApi()
+        results = input_api.RunTests(
+            [PRESUBMIT._GetIDLParseCommand(input_api, output_api, filename)])
+        return results[0].message if results else None
+
     def testSuccess(self):
         input_api = MockInputApi()
         filename = 'valid_idl_basics.idl'
@@ -798,8 +816,8 @@ class IDLParsingTest(unittest.TestCase):
             '    static void onFoo2(MyType1 arg);',
             '    static void onFoo3(EnumType type);', '  };', '};'
         ]
-        input_api.files = [MockFile(filename, contents)]
-        self.assertIsNone(PRESUBMIT._GetIDLParseError(input_api, filename))
+        full_path = self._WriteTempFile(filename, contents)
+        self.assertIsNone(self._RunIDLParse(input_api, full_path))
 
     def testFailure(self):
         input_api = MockInputApi()
@@ -807,7 +825,7 @@ class IDLParsingTest(unittest.TestCase):
             ('invalid_idl_1.idl', [
                 '//', 'namespace test {', '  dictionary {', '    DOMString s;',
                 '  };', '};'
-            ], 'Unexpected "{" after keyword "dictionary".\n'),
+            ], 'Unexpected "{" after keyword "dictionary".'),
             # TODO(yoz): Disabled because it causes the IDL parser to hang.
             # See crbug.com/363830.
             # ('invalid_idl_2.idl',
@@ -845,16 +863,49 @@ class IDLParsingTest(unittest.TestCase):
                 '//', 'namespace test {', '  interface {',
                 '    static void function1();', '  };', '};'
             ], 'Interface missing name.'),
+            ('invalid_idl_non_ascii.idl', [
+                '// Non-ascii \xa0 char', 'namespace test {};'
+            ], 'UnicodeEncodeError'),
         ]
 
-        input_api.files = [
-            MockFile(filename, contents)
-            for (filename, contents, _) in test_data
-        ]
-
-        for (filename, _, expected_error) in test_data:
-            actual_error = PRESUBMIT._GetIDLParseError(input_api, filename)
+        for (filename, contents, expected_error) in test_data:
+            full_path = self._WriteTempFile(filename, contents)
+            actual_error = self._RunIDLParse(input_api, full_path)
             self.assertIn(expected_error, str(actual_error))
+
+    def testCheckIDLParseErrors(self):
+        input_api = MockInputApi()
+        output_api = MockOutputApi()
+        valid_path = 'extensions/common/api/valid.idl'
+        invalid_path = 'extensions/common/api/invalid.idl'
+        valid_contents = [
+            '// Valid comment.',
+            'namespace valid_ns {',
+            '  dictionary MyDict { DOMString a; };',
+            '};',
+        ]
+        invalid_contents = [
+            '// Invalid comment.',
+            'namespace invalid_ns {',
+            '  dictionary { DOMString s; };',
+            '};',
+        ]
+        self._WriteTempFile(valid_path, valid_contents)
+        self._WriteTempFile(invalid_path, invalid_contents)
+        input_api.files = [
+            MockAffectedFile(valid_path,
+                             valid_contents,
+                             local_root=self._temp_dir.name),
+            MockAffectedFile(invalid_path,
+                             invalid_contents,
+                             local_root=self._temp_dir.name),
+        ]
+        results = PRESUBMIT.CheckIDLParseErrors(input_api, output_api)
+        self.assertEqual(1, len(results))
+        self.assertIn(invalid_path, results[0].message)
+        self.assertIn('Unexpected "{" after keyword "dictionary".',
+                      results[0].message)
+
 
 
 class UserMetricsActionTest(unittest.TestCase):
@@ -908,71 +959,22 @@ class UserMetricsActionTest(unittest.TestCase):
 
 class PydepsNeedsUpdatingTest(unittest.TestCase):
 
-    class MockPopen:
-
-        def __init__(self, stdout):
-            self.stdout = io.StringIO(stdout)
-
-        def wait(self):
-            return 0
-
-    class MockSubprocess:
-        CalledProcessError = subprocess.CalledProcessError
-        PIPE = 0
-
-        def __init__(self):
-            self._popen_func = None
-
-        def SetPopenCallback(self, func):
-            self._popen_func = func
-
-        def Popen(self, cmd, *args, **kwargs):
-            return PydepsNeedsUpdatingTest.MockPopen(self._popen_func(cmd))
-
-    def _MockParseGclientArgs(self, is_android=True):
-        return lambda: {'checkout_android': 'true' if is_android else 'false'}
-
     def setUp(self):
         mock_all_pydeps = ['A.pydeps', 'B.pydeps', 'D.pydeps']
         self.old_ALL_PYDEPS_FILES = PRESUBMIT._ALL_PYDEPS_FILES
         PRESUBMIT._ALL_PYDEPS_FILES = mock_all_pydeps
-        mock_android_pydeps = ['D.pydeps']
-        self.old_ANDROID_SPECIFIC_PYDEPS_FILES = (
-            PRESUBMIT._ANDROID_SPECIFIC_PYDEPS_FILES)
-        PRESUBMIT._ANDROID_SPECIFIC_PYDEPS_FILES = mock_android_pydeps
-        self.old_ParseGclientArgs = PRESUBMIT._ParseGclientArgs
-        PRESUBMIT._ParseGclientArgs = self._MockParseGclientArgs()
         self.mock_input_api = MockInputApi()
+        self.mock_input_api.platform = 'linux'
         self.mock_output_api = MockOutputApi()
-        self.mock_input_api.subprocess = PydepsNeedsUpdatingTest.MockSubprocess(
-        )
-        self.checker = PRESUBMIT.PydepsChecker(self.mock_input_api,
-                                               mock_all_pydeps)
-        self.checker._file_cache = {
-            'A.pydeps':
-            '# Generated by:\n# CMD --output A.pydeps A\nA.py\nC.py\n',
-            'B.pydeps':
-            '# Generated by:\n# CMD --output B.pydeps B\nB.py\nC.py\n',
-            'D.pydeps': '# Generated by:\n# CMD --output D.pydeps D\nD.py\n',
-        }
 
     def tearDown(self):
         PRESUBMIT._ALL_PYDEPS_FILES = self.old_ALL_PYDEPS_FILES
-        PRESUBMIT._ANDROID_SPECIFIC_PYDEPS_FILES = (
-            self.old_ANDROID_SPECIFIC_PYDEPS_FILES)
-        PRESUBMIT._ParseGclientArgs = self.old_ParseGclientArgs
 
     def _RunCheck(self):
-        return PRESUBMIT.CheckPydepsNeedsUpdating(
-            self.mock_input_api,
-            self.mock_output_api,
-            checker_for_tests=self.checker)
+        return PRESUBMIT.CheckPydepsNeedsUpdating(self.mock_input_api,
+                                                  self.mock_output_api)
 
     def testAddedPydep(self):
-        # PRESUBMIT.CheckPydepsNeedsUpdating is only implemented for Linux.
-        if not self.mock_input_api.platform.startswith('linux'):
-            return
-
         self.mock_input_api.InitFiles([
             MockAffectedFile('new.pydeps', [], action='A'),
         ])
@@ -990,136 +992,12 @@ class PydepsNeedsUpdatingTest(unittest.TestCase):
         self.assertEqual(0, len(results))
 
     def testRemovedPydep(self):
-        # PRESUBMIT.CheckPydepsNeedsUpdating is only implemented for Linux.
-        if not self.mock_input_api.platform.startswith('linux'):
-            return
-
         self.mock_input_api.InitFiles([
             MockAffectedFile(PRESUBMIT._ALL_PYDEPS_FILES[0], [], action='D'),
         ])
         results = self._RunCheck()
         self.assertEqual(1, len(results))
         self.assertIn('PYDEPS_FILES', str(results[0]))
-
-    def testRandomPyIgnored(self):
-        # PRESUBMIT.CheckPydepsNeedsUpdating is only implemented for Linux.
-        if not self.mock_input_api.platform.startswith('linux'):
-            return
-
-        self.mock_input_api.files = [
-            MockAffectedFile('random.py', []),
-        ]
-
-        results = self._RunCheck()
-        self.assertEqual(0, len(results), 'Unexpected results: %r' % results)
-
-    def testRelevantPyNoChange(self):
-        # PRESUBMIT.CheckPydepsNeedsUpdating is only implemented for Linux.
-        if not self.mock_input_api.platform.startswith('linux'):
-            return
-
-        self.mock_input_api.files = [
-            MockAffectedFile('A.py', []),
-        ]
-
-        def popen_callback(cmd):
-            self.assertEqual('CMD --output A.pydeps A --output ""', cmd)
-            return self.checker._file_cache['A.pydeps']
-
-        self.mock_input_api.subprocess.SetPopenCallback(popen_callback)
-
-        results = self._RunCheck()
-        self.assertEqual(0, len(results), 'Unexpected results: %r' % results)
-
-    def testRelevantPyOneChange(self):
-        # PRESUBMIT.CheckPydepsNeedsUpdating is only implemented for Linux.
-        if not self.mock_input_api.platform.startswith('linux'):
-            return
-
-        self.mock_input_api.files = [
-            MockAffectedFile('A.py', []),
-        ]
-
-        def popen_callback(cmd):
-            self.assertEqual('CMD --output A.pydeps A --output ""', cmd)
-            return 'changed data'
-
-        self.mock_input_api.subprocess.SetPopenCallback(popen_callback)
-
-        results = self._RunCheck()
-        self.assertEqual(1, len(results))
-        # Check that --output "" is not included.
-        self.assertNotIn('""', str(results[0]))
-        self.assertIn('File is stale', str(results[0]))
-
-    def testRelevantPyTwoChanges(self):
-        # PRESUBMIT.CheckPydepsNeedsUpdating is only implemented for Linux.
-        if not self.mock_input_api.platform.startswith('linux'):
-            return
-
-        self.mock_input_api.files = [
-            MockAffectedFile('C.py', []),
-        ]
-
-        def popen_callback(cmd):
-            return 'changed data'
-
-        self.mock_input_api.subprocess.SetPopenCallback(popen_callback)
-
-        results = self._RunCheck()
-        self.assertEqual(2, len(results))
-        self.assertIn('File is stale', str(results[0]))
-        self.assertIn('File is stale', str(results[1]))
-
-    def testRelevantAndroidPyInNonAndroidCheckout(self):
-        # PRESUBMIT.CheckPydepsNeedsUpdating is only implemented for Linux.
-        if not self.mock_input_api.platform.startswith('linux'):
-            return
-
-        self.mock_input_api.files = [
-            MockAffectedFile('D.py', []),
-        ]
-
-        def popen_callback(cmd):
-            self.assertEqual('CMD --output D.pydeps D --output ""', cmd)
-            return 'changed data'
-
-        self.mock_input_api.subprocess.SetPopenCallback(popen_callback)
-        PRESUBMIT._ParseGclientArgs = self._MockParseGclientArgs(
-            is_android=False)
-
-        results = self._RunCheck()
-        self.assertEqual(1, len(results))
-        self.assertIn('Android', str(results[0]))
-        self.assertIn('D.pydeps', str(results[0]))
-
-    def testGnPathsAndMissingOutputFlag(self):
-        # PRESUBMIT.CheckPydepsNeedsUpdating is only implemented for Linux.
-        if not self.mock_input_api.platform.startswith('linux'):
-            return
-
-        self.checker._file_cache = {
-            'A.pydeps':
-            '# Generated by:\n# CMD --gn-paths A\n//A.py\n//C.py\n',
-            'B.pydeps':
-            '# Generated by:\n# CMD --gn-paths B\n//B.py\n//C.py\n',
-            'D.pydeps': '# Generated by:\n# CMD --gn-paths D\n//D.py\n',
-        }
-
-        self.mock_input_api.files = [
-            MockAffectedFile('A.py', []),
-        ]
-
-        def popen_callback(cmd):
-            self.assertEqual('CMD --gn-paths A --output A.pydeps --output ""',
-                             cmd)
-            return 'changed data'
-
-        self.mock_input_api.subprocess.SetPopenCallback(popen_callback)
-
-        results = self._RunCheck()
-        self.assertEqual(1, len(results))
-        self.assertIn('File is stale', str(results[0]))
 
 
 class IncludeGuardTest(unittest.TestCase):
@@ -7577,6 +7455,43 @@ class ExtensionFastPathsTest(unittest.TestCase):
         mock_inp_inl = self._make_input('base/inline.inl')
         self.assertTrue(PRESUBMIT._HasCPlusPlusFiles(mock_inp_inl))
         self.assertTrue(PRESUBMIT._HasCPlusPlusHeaderFiles(mock_inp_inl))
+
+
+class CheckAyeAyeTest(unittest.TestCase):
+
+    def testSkippedIfEnvVarNotDefined(self):
+        mock_input_api = MockInputApi()
+        mock_output_api = MockOutputApi()
+        mock_input_api.canned_checks.CheckAyeAye = mock.MagicMock(
+            return_value=['finding'])
+
+        results = PRESUBMIT.CheckAyeAye(mock_input_api, mock_output_api)
+        self.assertEqual([], results)
+        mock_input_api.canned_checks.CheckAyeAye.assert_not_called()
+
+    def testSkippedWhenDisabled(self):
+        mock_input_api = MockInputApi()
+        mock_input_api.environ = {'PRESUBMIT_ENABLE_AYEAYE': '0'}
+        mock_output_api = MockOutputApi()
+        mock_input_api.canned_checks.CheckAyeAye = mock.MagicMock(
+            return_value=['finding'])
+
+        results = PRESUBMIT.CheckAyeAye(mock_input_api, mock_output_api)
+        self.assertEqual([], results)
+        mock_input_api.canned_checks.CheckAyeAye.assert_not_called()
+
+    def testRunsWhenEnabled(self):
+        mock_input_api = MockInputApi()
+        mock_input_api.environ = {'PRESUBMIT_ENABLE_AYEAYE': '1'}
+        mock_output_api = MockOutputApi()
+        mock_input_api.canned_checks.CheckAyeAye = mock.MagicMock(
+            return_value=['finding'])
+
+        results = PRESUBMIT.CheckAyeAye(mock_input_api, mock_output_api)
+        self.assertEqual(['finding'], results)
+        mock_input_api.canned_checks.CheckAyeAye.assert_called_once_with(
+            mock_input_api, mock_output_api)
+
 
 if __name__ == '__main__':
     unittest.main()

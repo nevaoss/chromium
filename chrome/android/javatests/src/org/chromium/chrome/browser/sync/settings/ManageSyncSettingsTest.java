@@ -455,7 +455,6 @@ public class ManageSyncSettingsTest {
     @Test
     @LargeTest
     @Feature({"Sync"})
-    @DisableIf.Device(DeviceFormFactor.DESKTOP) // crbug.com/545268511
     public void testHistoryOptInDoNotCarryOverFromOneUserToAnother() {
         mSyncTestRule.getSigninTestRule().addAccountThenSignin(TestAccounts.ACCOUNT1);
 
@@ -469,6 +468,10 @@ public class ManageSyncSettingsTest {
         Assert.assertTrue(historyAndTabsToggle.isChecked());
 
         mSyncTestRule.signOut();
+        // Signing out indirectly closes the settings activity (when ManageSyncSettings detects the
+        // primary account change). Wait for this to complete before signing in again and
+        // re-starting the settings activity.
+        ApplicationTestUtils.waitForActivityState(mSettingsTestRule.getActivity(), Stage.DESTROYED);
 
         // Add a different account, and open the sync settings to check that history opt-in did not
         // carry over from one user to another.
@@ -503,7 +506,6 @@ public class ManageSyncSettingsTest {
     @Test
     @LargeTest
     @Feature({"Sync"})
-    @DisabledTest(message = "crbug.com/544726018")
     public void testRemoveAccountFromDeviceShouldClearSyncPrefs() {
         SigninTestRule signinTestRule = mSyncTestRule.getSigninTestRule();
         signinTestRule.addAccountThenSignin(TestAccounts.ACCOUNT1);
@@ -518,6 +520,11 @@ public class ManageSyncSettingsTest {
         Assert.assertFalse(passwordsToggle.isChecked());
 
         mSyncTestRule.signOut();
+        // Signing out indirectly closes the settings activity (when ManageSyncSettings detects the
+        // primary account change). Wait for this to complete before signing in again and
+        // re-starting the settings activity.
+        ApplicationTestUtils.waitForActivityState(mSettingsTestRule.getActivity(), Stage.DESTROYED);
+
         signinTestRule.removeAccount(TestAccounts.ACCOUNT1.getId());
 
         // Add the same account again, and open the sync settings to check that prefs was cleared
@@ -805,7 +812,7 @@ public class ManageSyncSettingsTest {
                         () -> {
                             return fragment.getActivity().findViewById(R.id.central_account_card);
                         });
-        mRenderTestRule.render(view, "sign_in_settings_top_avatar");
+        render(view, "sign_in_settings_top_avatar");
     }
 
     @Test
@@ -821,7 +828,7 @@ public class ManageSyncSettingsTest {
                         () -> {
                             return fragment.getActivity().findViewById(R.id.central_account_card);
                         });
-        mRenderTestRule.render(view, "sign_in_settings_top_avatar_with_no_name");
+        render(view, "sign_in_settings_top_avatar_with_no_name");
     }
 
     @Test
@@ -841,7 +848,7 @@ public class ManageSyncSettingsTest {
                         () -> {
                             return fragment.getActivity().findViewById(R.id.central_account_card);
                         });
-        mRenderTestRule.render(view, "sign_in_settings_top_avatar_with_non_displayable_email");
+        render(view, "sign_in_settings_top_avatar_with_non_displayable_email");
     }
 
     @Test
@@ -861,8 +868,7 @@ public class ManageSyncSettingsTest {
                         () -> {
                             return fragment.getActivity().findViewById(R.id.central_account_card);
                         });
-        mRenderTestRule.render(
-                view, "sign_in_settings_top_avatar_with_non_displayable_email_and_no_name");
+        render(view, "sign_in_settings_top_avatar_with_non_displayable_email_and_no_name");
     }
 
     @Test
@@ -900,7 +906,7 @@ public class ManageSyncSettingsTest {
                         () -> {
                             return fragment.getActivity().findViewById(R.id.sign_out_button);
                         });
-        mRenderTestRule.render(view, "sign_out_button");
+        render(view, "sign_out_button");
     }
 
     @Test
@@ -940,7 +946,7 @@ public class ManageSyncSettingsTest {
                         () -> {
                             return fragment.getActivity().findViewById(R.id.signin_settings_card);
                         });
-        mRenderTestRule.render(view, "batch_upload_entry_description_passwords");
+        render(view, "batch_upload_entry_description_passwords");
     }
 
     @Test
@@ -980,7 +986,7 @@ public class ManageSyncSettingsTest {
                         () -> {
                             return fragment.getActivity().findViewById(R.id.signin_settings_card);
                         });
-        mRenderTestRule.render(view, "batch_upload_entry_description_other");
+        render(view, "batch_upload_entry_description_other");
     }
 
     @Test
@@ -1020,7 +1026,7 @@ public class ManageSyncSettingsTest {
                         () -> {
                             return fragment.getActivity().findViewById(R.id.signin_settings_card);
                         });
-        mRenderTestRule.render(view, "batch_upload_entry_description_password_and_other");
+        render(view, "batch_upload_entry_description_password_and_other");
     }
 
     @Test
@@ -1068,7 +1074,7 @@ public class ManageSyncSettingsTest {
                                                     .getCurrentPresenterForTest();
                             return presenter.getDialogViewForTesting();
                         });
-        mRenderTestRule.render(view, "batch_upload_passwords_dialog");
+        render(view, "batch_upload_passwords_dialog");
     }
 
     @Test
@@ -1117,7 +1123,7 @@ public class ManageSyncSettingsTest {
                                                     .getCurrentPresenterForTest();
                             return presenter.getDialogViewForTesting();
                         });
-        mRenderTestRule.render(view, "batch_upload_bookmarks_and_reading_list_dialog");
+        render(view, "batch_upload_bookmarks_and_reading_list_dialog");
     }
 
     @Test
@@ -1165,7 +1171,7 @@ public class ManageSyncSettingsTest {
                                                     .getCurrentPresenterForTest();
                             return presenter.getDialogViewForTesting();
                         });
-        mRenderTestRule.render(view, "batch_upload_all_toggles_dialog");
+        render(view, "batch_upload_all_toggles_dialog");
     }
 
     @Test
@@ -1561,11 +1567,15 @@ public class ManageSyncSettingsTest {
     }
 
     private void render(ManageSyncSettings fragment, String skiaGoldId) throws IOException {
+        render(fragment.getView(), skiaGoldId);
+    }
+
+    private void render(View view, String skiaGoldId) throws IOException {
         InstrumentationRegistry.getInstrumentation().waitForIdleSync();
         // Sanitize the view, in particular to ensure the presence of scroll bars do not cause
         // image diffs.
-        ChromeRenderTestRule.sanitize(fragment.getView());
-        mRenderTestRule.render(fragment.getView(), skiaGoldId);
+        ChromeRenderTestRule.sanitize(view);
+        mRenderTestRule.render(view, skiaGoldId);
     }
 
     private void scrollToAndVerifyPresence(@StringRes int textId) {

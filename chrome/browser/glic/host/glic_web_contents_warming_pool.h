@@ -9,9 +9,10 @@
 #include <optional>
 
 #include "base/feature.h"
-#include "base/memory/memory_pressure_listener.h"
 #include "base/memory/post_delayed_memory_reduction_task.h"
 #include "base/memory/raw_ptr.h"
+#include "base/memory_coordinator/memory_consumer.h"
+#include "base/memory_coordinator/utils.h"
 #include "base/scoped_observation.h"
 #include "base/time/time.h"
 #include "base/timer/timer.h"
@@ -28,6 +29,7 @@ namespace glic {
 
 BASE_DECLARE_FEATURE(kGlicReloadWebContentsAfterExpiry);
 
+class GlicEnabling;
 class GlicWebContentsManager;
 
 // A pool for pre-warming Glic WebContents.
@@ -50,7 +52,7 @@ class GlicWebContentsWarmingPool : public ProfileObserver {
   };
   // LINT.ThenChange(//tools/metrics/histograms/metadata/glic/enums.xml:GlicContainerCreationReason)
 
-  explicit GlicWebContentsWarmingPool(Profile* profile);
+  explicit GlicWebContentsWarmingPool(Profile* profile, GlicEnabling* enabling);
   ~GlicWebContentsWarmingPool() override;
 
   // Retrieves a warmed GlicWebContentsManager from the pool. If no warmed
@@ -68,7 +70,7 @@ class GlicWebContentsWarmingPool : public ProfileObserver {
 
   // Handles memory pressure notifications by clearing or statefully disabling
   // pre-warming, depending on feature configuration.
-  void OnMemoryPressure(base::MemoryPressureLevel level);
+  void OnMemoryPressure(int memory_limit);
 
   // LINT.IfChange(GlicWarmingPoolStatus)
   enum class WarmingPoolStatus {
@@ -149,14 +151,14 @@ class GlicWebContentsWarmingPool : public ProfileObserver {
   // delay or when idle.
   void EnsurePreloadDelayed(ContainerCreationReason reason);
 
-  // Returns true if pre-warming is permitted to run (i.e. not currently under
-  // critical memory pressure).
-  bool IsWarmingAllowedByMemoryPressure() const;
+  // Returns true if currently under critical memory pressure.
+  bool IsUnderMemoryPressure() const;
 
   // ProfileObserver:
   void OnProfileWillBeDestroyed(Profile* profile) override;
 
   raw_ptr<Profile> profile_;
+  raw_ptr<GlicEnabling> enabling_;
   base::ScopedObservation<Profile, ProfileObserver> profile_observation_{this};
   std::unique_ptr<GlicWebContentsManager> warmed_container_;
 
@@ -167,8 +169,7 @@ class GlicWebContentsWarmingPool : public ProfileObserver {
   std::unique_ptr<Metrics> metrics_;
   // Number of times the standby container has been reloaded after expiring.
   int reload_count_ = 0;
-  base::MemoryPressureLevel memory_pressure_level_ =
-      base::MEMORY_PRESSURE_LEVEL_NONE;
+  int memory_limit_ = base::MemoryConsumer::kDefaultMemoryLimit;
   base::TimeDelta expiry_delay_ = base::Hours(23);
 
   // Tracks whether warming is enabled for this session and the pool should

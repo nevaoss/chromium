@@ -5,6 +5,7 @@
 #include "chrome/browser/glic/service/glic_instance_coordinator_impl.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstdint>
 #include <functional>
 
@@ -14,7 +15,9 @@
 #include "base/functional/bind.h"
 #include "base/logging.h"
 #include "base/memory_coordinator/memory_coordinator_features.h"
+#include "base/memory_coordinator/utils.h"
 #include "base/metrics/histogram_functions.h"
+#include "base/numerics/safe_conversions.h"
 #include "base/rand_util.h"
 #include "base/task/sequenced_task_runner.h"
 #include "base/task/single_thread_task_runner.h"
@@ -85,21 +88,31 @@ bool IsEligibleForHibernation(const GlicInstanceImpl* instance) {
          !instance->IsShowing();
 }
 
+// Whether `target.live_mode_behavior` can have any effect on an invocation
+// targeting `target.surface`. Apart from `kFail`, these behaviors work by
+// choosing between a tab's side panel and the floaty, so they need a surface
+// that resolves to one of those up front. `LastActiveOrNew` instead resolves
+// to whichever surface the instance is already on, so nothing can steer it.
+bool CanLiveModeBehaviorTakeEffect(const Target& target) {
+  switch (target.live_mode_behavior) {
+    case LiveModeBehavior::kProceedInLiveMode:
+    case LiveModeBehavior::kFail:
+      return true;
+    case LiveModeBehavior::kForceSidePanelTextMode:
+      return !std::holds_alternative<Floating>(target.surface) &&
+             !std::holds_alternative<LastActiveOrNew>(target.surface);
+    case LiveModeBehavior::kForceFloatingTextMode:
+      return !std::holds_alternative<LastActiveOrNew>(target.surface);
+  }
+}
+
 }  // namespace
 
-BASE_FEATURE(kGlicMaxAwakeInstances, base::FEATURE_ENABLED_BY_DEFAULT);
-constexpr base::FeatureParam<int> kGlicMaxAwakeInstancesLimit{
-    &kGlicMaxAwakeInstances, "limit", 15};
-constexpr base::FeatureParam<size_t>
-    kGlicMaxAwakeInstancesModeratePressureLimit{&kGlicMaxAwakeInstances,
-                                                "moderate_pressure_limit", 8};
-constexpr base::FeatureParam<size_t>
-    kGlicMaxAwakeInstancesCriticalPressureLimit{&kGlicMaxAwakeInstances,
-                                                "critical_pressure_limit", 0};
-
 GlicInstanceCoordinatorImpl::GlicInstanceCoordinatorImpl(
-    Profile* profile, signin::IdentityManager* identity_manager,
-    GlicKeyedService* service, GlicEnabling* enabling,
+    Profile* profile,
+    signin::IdentityManager* identity_manager,
+    GlicKeyedService* service,
+    GlicEnabling* enabling,
     ContextualCueingService* contextual_cueing_service)
     : coordinator_uid_(
           base::RandGenerator(std::numeric_limits<int64_t>::max())),
@@ -107,14 +120,16 @@ GlicInstanceCoordinatorImpl::GlicInstanceCoordinatorImpl(
       service_(service),
       contextual_cueing_service_(contextual_cueing_service),
       memory_pressure_listener_registration_(
-          FROM_HERE, base::MemoryPressureListenerTag::kGlicKeyedService, this),
+          FROM_HERE,
+          base::MemoryPressureListenerTag::kGlicKeyedService,
+          this),
       metrics_(this),
       web_contents_warming_pool_(
-          std::make_unique<GlicWebContentsWarmingPool>(profile)),
+          std::make_unique<GlicWebContentsWarmingPool>(profile, enabling)),
       active_instance_sharing_manager_(
           std::make_unique<GlicActiveInstanceSharingManager>(profile,
                                                              enabling)) {
-  if (memory_pressure_level() != base::MEMORY_PRESSURE_LEVEL_NONE) {
+  if (GetMemoryLimit() <= base::kModerateMemoryPressureThreshold) {
     OnMemoryPressure(memory_pressure_level());
   }
   if (identity_manager) {
@@ -664,6 +679,20 @@ base::WeakPtr<GlicInstanceImpl> GlicInstanceCoordinatorImpl::InvokeInternal(
     }
   }
 
+  // Validate against the requested surface, before it gets resolved and
+  // rewritten below: a behavior that could never take effect is a caller
+  // configuration error, whether or not an instance happens to be live.
+  // TODO(b/559214349): Expose a way for callers to ask up front whether an
+  // invocation would be rejected here or by the `kFail` check below, so that
+  // UI entry points can be disabled or hidden instead of failing on click.
+  if (!CanLiveModeBehaviorTakeEffect(options.target)) {
+    metrics->RecordError(GlicInvokeError::kInvalidConfiguration);
+    if (options.on_error) {
+      std::move(options.on_error).Run(GlicInvokeError::kInvalidConfiguration);
+    }
+    return nullptr;
+  }
+
   GlicInvokeHandler::ResolvedTarget resolved_target;
   tabs::TabInterface* tab = nullptr;
 
@@ -753,10 +782,47 @@ base::WeakPtr<GlicInstanceImpl> GlicInstanceCoordinatorImpl::InvokeInternal(
     return nullptr;
   }
 
+  // `options.target.live_mode_behavior` decides what happens when this
+  // invocation lands on an instance that is already in live (audio) mode,
+  // superseding `options.preserve_active_surface`. A newly created instance is
+  // never in live mode, so this only affects invocations that joined an
+  // existing conversation. The interaction mode is sticky once reported by the
+  // client, so a hidden instance doesn't count as being in live mode.
+  const bool is_showing_live_mode =
+      instance->IsShowing() && instance->IsLiveMode();
+  if (is_showing_live_mode &&
+      options.target.live_mode_behavior == LiveModeBehavior::kFail) {
+    metrics->RecordError(GlicInvokeError::kLiveModeActive);
+    if (options.on_error) {
+      std::move(options.on_error).Run(GlicInvokeError::kLiveModeActive);
+    }
+    return nullptr;
+  }
+
+  const bool is_floating = instance->IsActiveEmbedder(FloatingEmbedderKey{});
+  bool keep_in_floaty = false;
+  if (is_showing_live_mode) {
+    switch (options.target.live_mode_behavior) {
+      case LiveModeBehavior::kProceedInLiveMode:
+        // Live mode runs in the floaty, so carrying on in live mode means
+        // leaving the conversation where it is.
+        keep_in_floaty = is_floating;
+        break;
+      case LiveModeBehavior::kForceFloatingTextMode:
+        // Unlike the above, this pulls the conversation into the floaty.
+        keep_in_floaty = true;
+        break;
+      case LiveModeBehavior::kForceSidePanelTextMode:
+      case LiveModeBehavior::kFail:
+        break;
+    }
+  } else {
+    keep_in_floaty = options.preserve_active_surface && is_floating;
+  }
+
   // Leave the conversation in the floaty instead of pulling it into the
   // targeted tab's side panel.
-  if (options.preserve_active_surface && tab &&
-      instance->IsActiveEmbedder(FloatingEmbedderKey{})) {
+  if (keep_in_floaty && tab) {
     // A `DefaultConversation` only resolves to a floating instance when the tab
     // is already bound to it. An explicitly targeted one may still need to
     // adopt the tab.
@@ -1039,19 +1105,7 @@ size_t GlicInstanceCoordinatorImpl::GetCurrentMaxAwakeInstancesLimit() const {
     return baseline_limit;
   }
 
-  const size_t moderate_limit = std::min(
-      baseline_limit, kGlicMaxAwakeInstancesModeratePressureLimit.Get());
-  const size_t critical_limit = std::min(
-      moderate_limit, kGlicMaxAwakeInstancesCriticalPressureLimit.Get());
-
-  switch (memory_pressure_level()) {
-    case base::MEMORY_PRESSURE_LEVEL_NONE:
-      return baseline_limit;
-    case base::MEMORY_PRESSURE_LEVEL_MODERATE:
-      return moderate_limit;
-    case base::MEMORY_PRESSURE_LEVEL_CRITICAL:
-      return critical_limit;
-  }
+  return CalculateAwakeInstancesLimit(baseline_limit, GetMemoryLimit());
 }
 
 void GlicInstanceCoordinatorImpl::TrimAwakeInstancesTo(
@@ -1543,24 +1597,21 @@ void GlicInstanceCoordinatorImpl::MaybeDaisyChainNewTab(
 
 void GlicInstanceCoordinatorImpl::OnMemoryPressure(
     base::MemoryPressureLevel level) {
-  metrics_.OnMemoryPressure(level);
+  const int memory_limit = GetMemoryLimit();
 
-  web_contents_warming_pool_->OnMemoryPressure(level);
-
-  if (level == base::MEMORY_PRESSURE_LEVEL_NONE) {
-    return;
-  }
+  metrics_.OnMemoryPressure(memory_limit);
+  web_contents_warming_pool_->OnMemoryPressure(memory_limit);
 
   if (!base::FeatureList::IsEnabled(kGlicMaxAwakeInstances) ||
       !base::FeatureList::IsEnabled(base::kStatefulMemoryPressure)) {
-    if (level >= base::MEMORY_PRESSURE_LEVEL_CRITICAL) {
+    if (memory_limit <= base::kCriticalMemoryPressureThreshold) {
       TrimAwakeInstancesTo(0u);
     }
     return;
   }
 
   // Both features are enabled; dynamically trim awake instances to the limit
-  // configured for the current memory pressure level.
+  // configured for the current memory limit.
   TrimAwakeInstancesTo(GetCurrentMaxAwakeInstancesLimit());
 }
 

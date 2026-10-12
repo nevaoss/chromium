@@ -56,7 +56,6 @@
 #include "base/rand_util.h"
 #include "base/strings/string_util.h"
 #include "base/strings/utf_string_conversions.h"
-#include "chromeos/ash/services/assistant/public/cpp/assistant_browser_delegate.h"
 #include "chromeos/constants/chromeos_features.h"
 #include "chromeos/ui/vector_icons/vector_icons.h"
 #include "components/vector_icons/vector_icons.h"
@@ -134,16 +133,6 @@ constexpr auto kDefaultPlaceholders =
         SearchBoxView::PlaceholderTextType::kTabs,
         SearchBoxView::PlaceholderTextType::kSettings,
         SearchBoxView::PlaceholderTextType::kImages,
-    });
-
-// PlaceholderTextTypes used for productivity launcher for cloud gaming devices.
-// Randomly selected when placeholder text would be shown.
-constexpr auto kGamingPlaceholders =
-    std::to_array<SearchBoxView::PlaceholderTextType>({
-        SearchBoxView::PlaceholderTextType::kShortcuts,
-        SearchBoxView::PlaceholderTextType::kTabs,
-        SearchBoxView::PlaceholderTextType::kSettings,
-        SearchBoxView::PlaceholderTextType::kGames,
     });
 
 // List of all categories with their corresponding string id that would be shown
@@ -457,7 +446,7 @@ class FilterMenuAdapter : public views::MenuModelAdapter {
 class SearchBoxView::FocusRingLayer : public ui::LayerOwner, ui::LayerDelegate {
  public:
   FocusRingLayer() : LayerOwner(std::make_unique<ui::LayerTextured>()) {
-    layer()->SetName("search_box/FocusRing");
+    layer()->SetName("SearchBoxView:FocusRing");
     layer()->SetFillsBoundsOpaquely(false);
     layer()->set_delegate(this);
   }
@@ -1263,15 +1252,6 @@ void SearchBoxView::UpdatePlaceholderTextAndAccessibleName() {
           l10n_util::GetStringUTF16(
               IDS_APP_LIST_SEARCH_BOX_PLACEHOLDER_SETTINGS)));
       break;
-    case PlaceholderTextType::kGames:
-      search_box()->SetPlaceholderText(l10n_util::GetStringFUTF16(
-          IDS_APP_LIST_SEARCH_BOX_PLACEHOLDER_TEMPLATE,
-          l10n_util::GetStringUTF16(
-              IDS_APP_LIST_SEARCH_BOX_PLACEHOLDER_GAMES)));
-      search_box()->GetViewAccessibility().SetName(l10n_util::GetStringFUTF16(
-          a11y_name_template, l10n_util::GetStringUTF16(
-                                  IDS_APP_LIST_SEARCH_BOX_PLACEHOLDER_GAMES)));
-      break;
     case PlaceholderTextType::kImages:
       search_box()->SetPlaceholderText(l10n_util::GetStringFUTF16(
           IDS_APP_LIST_SEARCH_BOX_PLACEHOLDER_TEMPLATE,
@@ -1363,11 +1343,6 @@ SearchBoxView::PlaceholderTextType SearchBoxView::SelectPlaceholderText()
     const {
   if (use_fixed_placeholder_text_for_test_)
     return kDefaultPlaceholders[0];
-
-  if (chromeos::features::IsCloudGamingDeviceEnabled() ||
-      chromeos::features::IsAlmanacLauncherPayloadEnabled()) {
-    return kGamingPlaceholders[rand() % std::size(kGamingPlaceholders)];
-  }
 
   return kDefaultPlaceholders[rand() % std::size(kDefaultPlaceholders)];
 }

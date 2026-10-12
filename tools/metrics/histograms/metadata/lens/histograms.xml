@@ -108,8 +108,29 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
+<histogram name="Lens.Composebox.ClusterInfo.ResponseTime" units="ms"
+    expires_after="2027-03-21">
+  <owner>hujasonx@chromium.org</owner>
+  <owner>lens-chrome@google.com</owner>
+  <summary>
+    Recorded when a Composebox ClusterInfo response is received. Measures the
+    time elapsed between when the ClusterInfo fetch was initiated and when the
+    response was received.
+  </summary>
+</histogram>
+
+<histogram name="Lens.Composebox.ClusterInfo.Status"
+    enum="LensComposeboxClusterInfoStatus" expires_after="2027-03-21">
+  <owner>hujasonx@chromium.org</owner>
+  <owner>lens-chrome@google.com</owner>
+  <summary>
+    Recorded when a Composebox ClusterInfo fetch request completes, fails, is
+    backgrounded, or exhausts retries.
+  </summary>
+</histogram>
+
 <histogram name="Lens.Composebox.ContextUpload.FailureResponseTime" units="ms"
-    expires_after="2026-12-03">
+    expires_after="2027-03-21">
   <owner>hujasonx@chromium.org</owner>
   <owner>lens-chrome@google.com</owner>
   <summary>
@@ -127,6 +148,18 @@ chromium-metrics-reviews@google.com.
     Recorded when a context upload request succeeds. Measures the time elapsed
     between the time the request was initiated and the time the successful
     response was received.
+  </summary>
+</histogram>
+
+<histogram name="Lens.Composebox.ContextUpload.TerminalStatus"
+    enum="ContextUploadTerminalStatus" expires_after="2027-03-21">
+  <owner>hujasonx@chromium.org</owner>
+  <owner>lens-chrome@google.com</owner>
+  <summary>
+    Recorded exactly once per contextual file upload request (or upon file
+    destruction if unissued) when the request reaches a terminal state. Tracks
+    the outcome including successes, HTTP failures, drops after teardown,
+    pending chunker retries, in-flight cancellations, and unissued requests.
   </summary>
 </histogram>
 
@@ -216,6 +249,37 @@ chromium-metrics-reviews@google.com.
     (width or height) of the successfully downscaled image.
   </summary>
   <token key="UploadType" variants="ComposeboxImageUploadType"/>
+</histogram>
+
+<histogram name="Lens.Composebox.SearchUrl.ContextFilesAttached" units="files"
+    expires_after="2027-03-21">
+  <owner>hujasonx@chromium.org</owner>
+  <owner>lens-chrome@google.com</owner>
+  <summary>
+    Recorded when a Composebox Search URL is generated with context attachments.
+    Measures the number of attached files the user included in the request.
+  </summary>
+</histogram>
+
+<histogram name="Lens.Composebox.SearchUrl.ContextFilesValidatedAndIncluded"
+    units="files" expires_after="2027-03-21">
+  <owner>hujasonx@chromium.org</owner>
+  <owner>lens-chrome@google.com</owner>
+  <summary>
+    Recorded when a Composebox Search URL is generated with context attachments.
+    Measures the number of attached files that were successfully validated and
+    included in the search URL request.
+  </summary>
+</histogram>
+
+<histogram name="Lens.Composebox.SearchUrl.HasClusterInfo" enum="Boolean"
+    expires_after="2027-03-21">
+  <owner>hujasonx@chromium.org</owner>
+  <owner>lens-chrome@google.com</owner>
+  <summary>
+    Recorded when a Composebox Search URL is requested for multimodal context.
+    Logs whether cluster info was present and valid at the time of URL creation.
+  </summary>
 </histogram>
 
 <histogram name="Lens.Composebox.ShownInSession" enum="Boolean"
@@ -576,7 +640,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Lens.Overlay.ContextualSearchBox.FocusedInSession"
-    enum="Boolean" expires_after="2027-01-17">
+    enum="Boolean" expires_after="2027-03-21">
   <owner>niharm@google.com</owner>
   <owner>lens-chrome@google.com</owner>
   <summary>
@@ -587,7 +651,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Lens.Overlay.ContextualSearchBox.ShownInSession"
-    enum="BooleanShown" expires_after="2027-01-17">
+    enum="BooleanShown" expires_after="2027-03-21">
   <owner>stanfield@google.com</owner>
   <owner>mercerd@google.com</owner>
   <owner>lens-chrome@google.com</owner>
@@ -675,7 +739,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Lens.Overlay.ContextualSuggest.QueryIssuedInSession"
-    enum="Boolean" expires_after="2027-01-17">
+    enum="Boolean" expires_after="2027-03-21">
   <owner>niharm@google.com</owner>
   <owner>lens-chrome@google.com</owner>
   <summary>
@@ -718,7 +782,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Lens.Overlay.ContextualSuggest.ZPS.ShownInSession"
-    enum="Boolean" expires_after="2027-01-17">
+    enum="Boolean" expires_after="2027-03-21">
   <owner>niharm@google.com</owner>
   <owner>lens-chrome@google.com</owner>
   <summary>
@@ -729,7 +793,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Lens.Overlay.ContextualSuggest.ZPS.SuggestionUsedInSession"
-    enum="Boolean" expires_after="2027-01-17">
+    enum="Boolean" expires_after="2027-03-21">
   <owner>niharm@google.com</owner>
   <owner>lens-chrome@google.com</owner>
   <summary>
@@ -740,7 +804,7 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Lens.Overlay.ContextualTasks.QueryEligibility"
-    enum="LensContextualTasksQueryEligibility" expires_after="2027-01-17">
+    enum="LensContextualTasksQueryEligibility" expires_after="2027-03-21">
   <owner>juanmojica@google.com</owner>
   <owner>lens-chrome@google.com</owner>
   <summary>

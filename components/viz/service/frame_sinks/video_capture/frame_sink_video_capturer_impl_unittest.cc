@@ -44,7 +44,7 @@
 #include "media/base/video_util.h"
 #include "media/capture/mojom/video_capture_buffer.mojom.h"
 #include "media/capture/mojom/video_capture_types.mojom.h"
-#include "media/video/renderable_mappable_shared_image_video_frame_pool.h"
+#include "media/gfx/renderable_mappable_shared_image_video_frame_pool.h"
 #include "mojo/public/cpp/bindings/pending_receiver.h"
 #include "mojo/public/cpp/bindings/pending_remote.h"
 #include "mojo/public/cpp/bindings/receiver.h"
@@ -403,9 +403,15 @@ class FakeCapturableFrameSink : public CapturableFrameSink {
 
   Client* attached_client() const { return client_; }
 
-  const FrameSinkId& GetFrameSinkId() const override {
-    return kVideoCaptureTarget.frame_sink_id;
+  // Allows a test to simulate the target resolving to a frame sink other than
+  // the one that was requested, e.g. a crop-target living in an
+  // out-of-process iframe, which `FindCapturableFrameSink()` resolves to the
+  // OOPIF's own frame sink.
+  void set_frame_sink_id(const FrameSinkId& frame_sink_id) {
+    frame_sink_id_ = frame_sink_id;
   }
+
+  const FrameSinkId& GetFrameSinkId() const override { return frame_sink_id_; }
 
   void AttachCaptureClient(Client* client) override {
     ASSERT_FALSE(client_);
@@ -480,6 +486,7 @@ class FakeCapturableFrameSink : public CapturableFrameSink {
     auto expected_content_rect = gfx::Rect(
         size_set_.ExpectedContentRect(request->result_format()).size());
     EXPECT_EQ(expected_content_rect, request->result_selection());
+    last_copy_request_is_secure_ = request->is_secure();
 
     std::unique_ptr<CopyOutputResult> result;
     switch (request->result_destination()) {
@@ -578,11 +585,15 @@ class FakeCapturableFrameSink : public CapturableFrameSink {
   }
 
   int number_clients_capturing() const { return number_clients_capturing_; }
+  bool last_copy_request_is_secure() const {
+    return last_copy_request_is_secure_;
+  }
 
  private:
   // Number of clients that have started capturing.
   int number_clients_capturing_ = 0;
   raw_ptr<CapturableFrameSink::Client> client_ = nullptr;
+  FrameSinkId frame_sink_id_ = kVideoCaptureTarget.frame_sink_id;
   // YUV {0xde, 0xad, 0xbf};
   SkColor color_ = SkColorSetARGB(255, 255, 161, 255);
   SizeSet size_set_;
@@ -596,6 +607,7 @@ class FakeCapturableFrameSink : public CapturableFrameSink {
   gfx::Rect crop_bounds_;
   gfx::Rect capture_bounds_;
   std::vector<base::OnceClosure> results_;
+  bool last_copy_request_is_secure_ = false;
 };
 
 class InstrumentedVideoCaptureOracle : public media::VideoCaptureOracle {
@@ -2005,6 +2017,44 @@ TEST_P(FrameSinkVideoCapturerTest, ClientCaptureStartsAndStops) {
   EXPECT_EQ(frame_sink_.number_clients_capturing(), 0);
 }
 
+TEST_P(FrameSinkVideoCapturerTest, SetIsSecure) {
+  EXPECT_CALL(frame_sink_manager_, FindCapturableFrameSink(kVideoCaptureTarget))
+      .WillRepeatedly(Return(&frame_sink_));
+
+  capturer_->ChangeTarget(kVideoCaptureTarget,
+                          /*sub_capture_target_version=*/0);
+
+  NiceMock<MockConsumer> consumer;
+  StartCapture(&consumer);
+
+  // An immediate refresh frame occurs on start. By default, it is not secure.
+  ASSERT_EQ(1, frame_sink_.num_copy_results());
+  EXPECT_FALSE(frame_sink_.last_copy_request_is_secure());
+  frame_sink_.SendCopyOutputResult(0);
+  consumer.SendDoneNotification(0);
+
+  // Marking capturer secure should mark subsequent copy requests secure.
+  capturer_->SetIsSecure(true);
+  AdvanceClockToNextVsync();
+  NotifyFrameDamaged(gfx::Rect(size_set().source_size));
+  ASSERT_EQ(2, frame_sink_.num_copy_results());
+  EXPECT_TRUE(frame_sink_.last_copy_request_is_secure());
+  frame_sink_.SendCopyOutputResult(1);
+  consumer.SendDoneNotification(1);
+
+  // Marking capturer insecure should revert subsequent copy requests back to
+  // insecure.
+  capturer_->SetIsSecure(false);
+  AdvanceClockToNextVsync();
+  NotifyFrameDamaged(gfx::Rect(size_set().source_size));
+  ASSERT_EQ(3, frame_sink_.num_copy_results());
+  EXPECT_FALSE(frame_sink_.last_copy_request_is_secure());
+  frame_sink_.SendCopyOutputResult(2);
+  consumer.SendDoneNotification(2);
+
+  StopCapture();
+}
+
 TEST_P(FrameSinkVideoCapturerTest, ChangeTargetIncreasesCaptureVersion) {
   const auto kCropId = RegionCaptureCropId::CreateRandom();
   VideoCaptureTarget target(kVideoCaptureTarget.frame_sink_id, kCropId);
@@ -2506,6 +2556,79 @@ TEST_P(FrameSinkVideoCapturerTest,
   ASSERT_TRUE(frame);
   EXPECT_TRUE(frame->metadata().region_capture_bounds.empty());
   EXPECT_FALSE(frame->metadata().region_capture_rect.has_value());
+
+  StopCapture();
+}
+
+TEST_P(FrameSinkVideoCapturerTest,
+       RegionCaptureBoundsPopulatedDuringSingleTargetRegionCapture) {
+  SwitchToSizeSet(kSizeSets[4]);
+  constexpr gfx::Rect kValidCropBounds{1, 2, 638, 476};
+  const auto kCropId = RegionCaptureCropId::CreateRandom();
+
+  VideoCaptureTarget target(kVideoCaptureTarget.frame_sink_id, kCropId);
+  frame_sink_.set_crop_bounds(kValidCropBounds);
+  EXPECT_CALL(frame_sink_manager_, FindCapturableFrameSink(target))
+      .WillRepeatedly(Return(&frame_sink_));
+  capturer_->ChangeTarget(std::move(target), /*sub_capture_target_version=*/0);
+
+  MockConsumer consumer;
+  EXPECT_CALL(consumer, OnFrameCapturedMock()).Times(1);
+  StartCapture(&consumer);
+
+  ASSERT_EQ(1, frame_sink_.num_copy_results());
+  frame_sink_.SendCopyOutputResult(0);
+  ASSERT_EQ(1, consumer.num_frames_received());
+
+  scoped_refptr<media::VideoFrame> frame = consumer.TakeFrame(0);
+  ASSERT_TRUE(frame);
+  EXPECT_TRUE(frame->metadata().region_capture_rect.has_value());
+  const auto& bounds = frame->metadata().region_capture_bounds;
+  EXPECT_EQ(bounds.size(), 1u);
+  EXPECT_EQ(bounds.at(kCropId), frame->visible_rect());
+
+  StopCapture();
+}
+
+// A crop-target living in an out-of-process iframe resolves to that iframe's
+// own frame sink rather than the requested one. The frame is still physically
+// cropped to the target, so `region_capture_bounds` must still be populated.
+// `region_capture_rect` must not be, since it is expressed in the requested
+// frame sink's coordinate space. See https://crbug.com/1327560.
+TEST_P(FrameSinkVideoCapturerTest,
+       RegionCaptureBoundsPopulatedWhenResolvedToChildFrameSink) {
+  SwitchToSizeSet(kSizeSets[4]);
+  constexpr gfx::Rect kValidCropBounds{1, 2, 638, 476};
+  const auto kCropId = RegionCaptureCropId::CreateRandom();
+
+  // The target requests the root frame sink, but resolution lands on a child.
+  const FrameSinkId kChildFrameSinkId(
+      kVideoCaptureTarget.frame_sink_id.client_id(),
+      kVideoCaptureTarget.frame_sink_id.sink_id() + 1);
+  ASSERT_NE(kChildFrameSinkId, kVideoCaptureTarget.frame_sink_id);
+
+  VideoCaptureTarget target(kVideoCaptureTarget.frame_sink_id, kCropId);
+  frame_sink_.set_frame_sink_id(kChildFrameSinkId);
+  frame_sink_.set_crop_bounds(kValidCropBounds);
+  EXPECT_CALL(frame_sink_manager_, FindCapturableFrameSink(target))
+      .WillRepeatedly(Return(&frame_sink_));
+  capturer_->ChangeTarget(std::move(target), /*sub_capture_target_version=*/0);
+
+  MockConsumer consumer;
+  EXPECT_CALL(consumer, OnFrameCapturedMock()).Times(1);
+  StartCapture(&consumer);
+
+  ASSERT_EQ(1, frame_sink_.num_copy_results());
+  frame_sink_.SendCopyOutputResult(0);
+  ASSERT_EQ(1, consumer.num_frames_received());
+
+  scoped_refptr<media::VideoFrame> frame = consumer.TakeFrame(0);
+  ASSERT_TRUE(frame);
+  EXPECT_FALSE(frame->metadata().region_capture_rect.has_value());
+  const auto& bounds = frame->metadata().region_capture_bounds;
+  // ASSERT rather than EXPECT: `at()` below is fatal if the entry is missing.
+  ASSERT_EQ(bounds.size(), 1u);
+  EXPECT_EQ(bounds.at(kCropId), frame->visible_rect());
 
   StopCapture();
 }

@@ -47,6 +47,7 @@
 #include "gpu/command_buffer/service/shared_image/shared_image_representation.h"
 #include "gpu/command_buffer/service/shared_image/skia_gl_image_representation.h"
 #include "gpu/command_buffer/service/shared_image/skia_graphite_dawn_image_representation.h"
+#include "gpu/command_buffer/service/shared_image/skia_graphite_vk_android_image_representation.h"
 #include "gpu/command_buffer/service/shared_image/skia_vk_android_image_representation.h"
 #include "gpu/command_buffer/service/skia_utils.h"
 #include "gpu/command_buffer/service/texture_manager.h"
@@ -138,13 +139,21 @@ GLuint CreateAndBindTexture(EGLImage image, GLenum target) {
   gl::ScopedTextureBinder texture_binder(target, service_id);
 
   if (target == GL_TEXTURE_2D_ARRAY) {
-    if (!gl::g_current_gl_driver ||
-        !gl::g_current_gl_driver->fn.glEGLImageTargetTexStorageEXTFn) {
-      LOG(ERROR) << "glEGLImageTargetTexStorageEXT is not supported";
+    if (gl::g_current_gl_driver &&
+        gl::g_current_gl_driver->ext.b_GL_EXT_EGL_image_storage &&
+        gl::g_current_gl_driver->fn.glEGLImageTargetTexStorageEXTFn) {
+      api->glEGLImageTargetTexStorageEXTFn(target, image, nullptr);
+    } else if (gl::g_current_gl_driver &&
+               gl::g_current_gl_driver->ext.b_GL_EXT_EGL_image_array &&
+               gl::g_current_gl_driver->fn.glEGLImageTargetTexture2DOESFn) {
+      api->glEGLImageTargetTexture2DOESFn(target, image);
+    } else {
+      LOG(ERROR) << "Neither glEGLImageTargetTexStorageEXT nor "
+                    "glEGLImageTargetTexture2DOES is supported for "
+                    "GL_TEXTURE_2D_ARRAY";
       api->glDeleteTexturesFn(1, &service_id);
       return 0;
     }
-    api->glEGLImageTargetTexStorageEXTFn(target, image, nullptr);
     api->glTexParameteriFn(target, GL_TEXTURE_BASE_LEVEL, 0);
     api->glTexParameteriFn(target, GL_TEXTURE_MAX_LEVEL, 0);
   } else {
@@ -433,6 +442,9 @@ class AHardwareBufferImageBacking : public AndroidImageBacking {
     GLuint service_id = 0;
   };
 
+  std::unique_ptr<VulkanImage> CreateVulkanImageFromAHB(
+      SharedContextState* context_state);
+
   std::optional<GLTextureParams> GetGLTextureParams();
 
   const base::android::ScopedHardwareBufferHandle hardware_buffer_handle_;
@@ -465,6 +477,26 @@ class SkiaVkAHBImageRepresentation : public SkiaVkAndroidImageRepresentation {
     DCHECK(promise_texture_);
   }
 };
+
+#if BUILDFLAG(SKIA_USE_GRAPHITE_VULKAN)
+class SkiaGraphiteVkAHBImageRepresentation
+    : public SkiaGraphiteVkAndroidImageRepresentation {
+ public:
+  SkiaGraphiteVkAHBImageRepresentation(
+      SharedImageManager* manager,
+      AndroidImageBacking* backing,
+      scoped_refptr<SharedContextState> context_state,
+      MemoryTypeTracker* tracker,
+      std::unique_ptr<VulkanImage> vulkan_image)
+      : SkiaGraphiteVkAndroidImageRepresentation(manager,
+                                                 backing,
+                                                 std::move(context_state),
+                                                 tracker) {
+    CHECK(vulkan_image);
+    SetVulkanImage(std::move(vulkan_image));
+  }
+};
+#endif
 
 class OverlayAHBImageRepresentation : public OverlayImageRepresentation {
  public:
@@ -676,28 +708,38 @@ AHardwareBufferImageBacking::ProduceSkiaGraphite(
     MemoryTypeTracker* tracker,
     scoped_refptr<SharedContextState> context_state) {
   CHECK(context_state);
-  CHECK(context_state->IsGraphiteDawn());
+
+  if (context_state->IsGraphiteDawn()) {
 #if BUILDFLAG(SKIA_USE_DAWN)
-  auto device = context_state->dawn_context_provider()->GetDevice();
-  auto backend_type = context_state->dawn_context_provider()->backend_type();
-  auto dawn_representation = ProduceDawn(manager, tracker, device, backend_type,
-                                         /*view_formats=*/{}, context_state);
-  if (!dawn_representation) {
-    LOG(ERROR) << "Could not create Dawn Representation";
-    return nullptr;
+    auto device = context_state->dawn_context_provider()->GetDevice();
+    auto backend_type = context_state->dawn_context_provider()->backend_type();
+    auto dawn_representation =
+        ProduceDawn(manager, tracker, device, backend_type,
+                    /*view_formats=*/{}, context_state);
+    if (!dawn_representation) {
+      LOG(ERROR) << "Could not create Dawn Representation";
+      return nullptr;
+    }
+
+    // Use GPU main recorder since this should only be called for
+    // fulfilling Graphite promise images on GPU main thread.
+    // NOTE: AHardwareBufferImageBacking doesn't support multiplanar formats,
+    // so there is no need to specify the `is_yuv_plane` or
+    // `legacy_plane_index` optional parameters.
+    return std::make_unique<SkiaGraphiteDawnImageRepresentation>(
+        std::move(dawn_representation), context_state,
+        context_state->gpu_main_graphite_recorder(), manager, this, tracker);
+#endif
+  } else if (context_state->IsGraphiteVulkan()) {
+#if BUILDFLAG(SKIA_USE_GRAPHITE_VULKAN)
+    auto vulkan_image = CreateVulkanImageFromAHB(context_state.get());
+    return std::make_unique<SkiaGraphiteVkAHBImageRepresentation>(
+        manager, this, std::move(context_state), tracker,
+        std::move(vulkan_image));
+#endif
   }
 
-  // Use GPU main recorder since this should only be called for
-  // fulfilling Graphite promise images on GPU main thread.
-  // NOTE: AHardwareBufferImageBacking doesn't support multiplanar formats,
-  // so there is no need to specify the `is_yuv_plane` or
-  // `legacy_plane_index` optional parameters.
-  return std::make_unique<SkiaGraphiteDawnImageRepresentation>(
-      std::move(dawn_representation), context_state,
-      context_state->gpu_main_graphite_recorder(), manager, this, tracker);
-#else
-  NOTREACHED();
-#endif
+  return nullptr;
 }
 
 std::unique_ptr<SkiaGaneshImageRepresentation>
@@ -710,28 +752,7 @@ AHardwareBufferImageBacking::ProduceSkiaGanesh(
   // Check whether we are in Vulkan mode OR GL mode and accordingly create
   // Skia representation.
   if (context_state->GrContextIsVulkan()) {
-    uint32_t queue_family = VK_QUEUE_FAMILY_EXTERNAL;
-    if (usage().Has(SHARED_IMAGE_USAGE_SCANOUT)) {
-      // Any Android API that consume or produce buffers (e.g SurfaceControl)
-      // requires a foreign queue.
-      queue_family = VK_QUEUE_FAMILY_FOREIGN_EXT;
-    }
-    auto vulkan_image = CreateVkImageFromAhbHandle(
-        GetAhbHandle(), context_state.get(), size(), format(), queue_family);
-
-    if (!vulkan_image) {
-      return nullptr;
-    }
-
-    // TODO(496392525, vasilyt): Move the following check to
-    // `AHardwareBufferImageBackingFactory::CreateSharedImage`
-    // (i.e calling AHardwareBuffer_Desc and reject if size of AHB doesn't match
-    // size of SI).
-    if (vulkan_image->size().width() < size().width() ||
-        vulkan_image->size().height() < size().height()) {
-      return nullptr;
-    }
-
+    auto vulkan_image = CreateVulkanImageFromAHB(context_state.get());
     return std::make_unique<SkiaVkAHBImageRepresentation>(
         manager, this, std::move(context_state), std::move(vulkan_image),
         tracker);
@@ -869,6 +890,35 @@ void AHardwareBufferImageBacking::EndOverlayAccess() {
   }
 }
 
+std::unique_ptr<VulkanImage>
+AHardwareBufferImageBacking::CreateVulkanImageFromAHB(
+    SharedContextState* context_state) {
+  uint32_t queue_family = VK_QUEUE_FAMILY_EXTERNAL;
+  if (usage().Has(SHARED_IMAGE_USAGE_SCANOUT)) {
+    // Any Android API that consume or produce buffers (e.g SurfaceControl)
+    // requires a foreign queue.
+    queue_family = VK_QUEUE_FAMILY_FOREIGN_EXT;
+  }
+
+  auto vulkan_image = CreateVkImageFromAhbHandle(
+      GetAhbHandle(), context_state, size(), format(), queue_family);
+
+  if (!vulkan_image) {
+    return nullptr;
+  }
+
+  // TODO(496392525, vasilyt): Move the following check to
+  // `AHardwareBufferImageBackingFactory::CreateSharedImage`
+  // (i.e calling AHardwareBuffer_Desc and reject if size of AHB doesn't match
+  // size of SI).
+  if (vulkan_image->size().width() < size().width() ||
+      vulkan_image->size().height() < size().height()) {
+    return nullptr;
+  }
+
+  return vulkan_image;
+}
+
 AHardwareBufferImageBackingFactory::AHardwareBufferImageBackingFactory(
     const gles2::FeatureInfo* feature_info,
     const GpuPreferences& gpu_preferences,
@@ -896,8 +946,15 @@ AHardwareBufferImageBackingFactory::AHardwareBufferImageBackingFactory(
   // Vulkan mode, we should only need this with GLES2.
   gl::GLApi* api = gl::g_current_gl_context;
   api->glGetIntegervFn(GL_MAX_TEXTURE_SIZE, &max_gl_texture_size_);
-  if (gl::g_current_gl_driver &&
-      gl::g_current_gl_driver->fn.glEGLImageTargetTexStorageEXTFn) {
+  const bool has_egl_image_array =
+      gl::g_current_gl_driver &&
+      gl::g_current_gl_driver->ext.b_GL_EXT_EGL_image_array &&
+      gl::g_current_gl_driver->fn.glEGLImageTargetTexture2DOESFn;
+  const bool has_egl_image_storage =
+      gl::g_current_gl_driver &&
+      gl::g_current_gl_driver->ext.b_GL_EXT_EGL_image_storage &&
+      gl::g_current_gl_driver->fn.glEGLImageTargetTexStorageEXTFn;
+  if (has_egl_image_array || has_egl_image_storage) {
     api->glGetIntegervFn(GL_MAX_ARRAY_TEXTURE_LAYERS,
                          &max_gl_array_texture_layers_);
     max_gl_array_texture_layers_ = std::max(1, max_gl_array_texture_layers_);

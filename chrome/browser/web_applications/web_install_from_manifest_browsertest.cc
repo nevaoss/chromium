@@ -15,7 +15,6 @@
 #include "base/run_loop.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_util.h"
-#include "base/synchronization/lock.h"
 #include "base/test/bind.h"
 #include "base/test/metrics/histogram_tester.h"
 #include "base/test/run_until.h"
@@ -23,7 +22,6 @@
 #include "base/test/simple_test_clock.h"
 #include "base/test/test_future.h"
 #include "base/test/with_feature_override.h"
-#include "base/thread_annotations.h"
 #include "base/threading/thread_restrictions.h"
 #include "base/time/time.h"
 #include "chrome/browser/profiles/profile.h"
@@ -76,8 +74,6 @@
 #include "net/test/embedded_test_server/http_request.h"
 #include "net/test/embedded_test_server/http_response.h"
 #include "services/metrics/public/cpp/ukm_builders.h"
-#include "services/network/public/cpp/ip_address_space_overrides_test_utils.h"
-#include "services/network/public/mojom/ip_address_space.mojom.h"
 #include "skia/ext/image_operations.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "third_party/blink/public/common/features_generated.h"
@@ -409,73 +405,6 @@ IN_PROC_BROWSER_TEST_F(WebInstallFromManifestBrowserTest,
             ukm::SourceIdType::APP_ID);
 }
 
-// Fixture with a dedicated manifest server placed in the local network
-// address space, while the page servers stay in the public address space (as
-// the test harness configures by default).
-class WebInstallFromManifestLocalNetworkBrowserTest
-    : public WebInstallFromManifestBrowserTest {
- public:
-  void SetUpCommandLine(base::CommandLine* command_line) override {
-    WebInstallFromManifestBrowserTest::SetUpCommandLine(command_line);
-    manifest_server_.AddDefaultHandlers(GetChromeTestDataDir());
-    manifest_server_.RegisterRequestHandler(base::BindRepeating(
-        &WebInstallFromManifestLocalNetworkBrowserTest::RecordManifestRequest,
-        base::Unretained(this)));
-    ASSERT_TRUE(manifest_server_.InitializeAndListen());
-    // Keep every other test server endpoint in the public address space, as
-    // the test harness does by default, while placing the manifest server on
-    // the local network.
-    network::AddIpAddressSpaceOverridesToCommandLine(
-        {network::GenerateIpAddressSpaceOverride(
-             manifest_server_, network::mojom::IPAddressSpace::kLocal),
-         "127.0.0.1:0=public", "[::1]:0=public"},
-        *command_line);
-  }
-
-  void SetUpOnMainThread() override {
-    WebInstallFromManifestBrowserTest::SetUpOnMainThread();
-    manifest_server_.StartAcceptingConnections();
-  }
-
-  // Returns whether the manifest server received any request.
-  bool ManifestServerSawRequest() {
-    base::AutoLock lock(manifest_request_count_lock_);
-    return manifest_request_count_ > 0;
-  }
-
- protected:
-  net::EmbeddedTestServer manifest_server_;
-
- private:
-  std::unique_ptr<net::test_server::HttpResponse> RecordManifestRequest(
-      const net::test_server::HttpRequest& request) {
-    base::AutoLock lock(manifest_request_count_lock_);
-    manifest_request_count_++;
-    // Fall through to the default handlers.
-    return nullptr;
-  }
-
-  base::Lock manifest_request_count_lock_;
-  int manifest_request_count_ GUARDED_BY(manifest_request_count_lock_) = 0;
-};
-
-// The manifest is fetched in the browser process on behalf of the initiating
-// document. A document in the public address space must not retrieve a
-// manifest from a host on the local network: the fetch is denied before any
-// request reaches the manifest host, and the install reports a DataError.
-IN_PROC_BROWSER_TEST_F(WebInstallFromManifestLocalNetworkBrowserTest,
-                       ManifestOnLocalNetworkRejected) {
-  NavigateToValidUrl();
-  SetPermissionResponse(/*permission_granted=*/false);
-
-  ASSERT_TRUE(
-      TryInstallFromManifest(manifest_server_.GetURL(kValidManifestWithId)));
-
-  EXPECT_FALSE(ManifestServerSawRequest());
-  ASSERT_TRUE(ErrorExists());
-  EXPECT_EQ(GetErrorName(), kDataError);
-}
-
 // Valid manifest with custom id, matching id option.
 IN_PROC_BROWSER_TEST_F(WebInstallFromManifestBrowserTest,
                        ManifestAndId_Succeeds) {
@@ -569,6 +498,51 @@ IN_PROC_BROWSER_TEST_F(WebInstallFromManifestBrowserTest,
                          ".then(result => { webInstallResult = result; })"
                          ".catch(error => { webInstallError = error; });",
                          kValidManifestWithId)));
+  observer.Wait();
+
+  EXPECT_TRUE(observer.request_shown());
+  EXPECT_TRUE(ResultExists());
+  EXPECT_FALSE(ErrorExists());
+
+  const GURL manifest_id = embedded_https_test_server().GetURL("/some_id");
+  const webapps::AppId app_id =
+      GenerateAppIdFromManifestId(webapps::ManifestId(manifest_id));
+  EXPECT_TRUE(provider().registrar_unsafe().AppMatches(
+      app_id, WebAppFilter::LaunchableFromInstallApi()));
+}
+
+// Id attribute is resolved against the base URL, not the document URL.
+IN_PROC_BROWSER_TEST_F(WebInstallFromManifestBrowserTest,
+                       ManifestAndRelativeId_Succeeds) {
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(
+      browser(),
+      embedded_https_test_server().GetURL("/banners/manifest_test_page.html")));
+  ASSERT_TRUE(content::ExecJs(web_contents(),
+                              "const base = document.createElement('base');"
+                              "base.href = '/';"
+                              "document.head.appendChild(base);"));
+  // Ensure the document URL and base URL resolve the id differently, so the
+  // test would detect use of the wrong base.
+  EXPECT_EQ(content::EvalJs(web_contents(),
+                            "new URL('some_id', document.URL).pathname"),
+            "/banners/some_id");
+  EXPECT_EQ(content::EvalJs(web_contents(),
+                            "new URL('some_id', document.baseURI).pathname"),
+            "/some_id");
+  SetPermissionResponse(/*permission_granted=*/true);
+  base::AutoReset<web_app::InstallDialogTestResponse> auto_accept_pwa =
+      web_app::SetPwaInstallationAutoRespondForTesting(
+          web_app::InstallDialogTestResponse::kAcceptAndLaunch);
+
+  permissions::PermissionRequestObserver observer(web_contents());
+  ASSERT_TRUE(content::ExecJs(
+      web_contents(),
+      content::JsReplace(
+          "navigator.install({manifest: $1, manifestId: $2})"
+          ".then(result => { webInstallResult = result; })"
+          ".catch(error => { webInstallError = error; });",
+          embedded_https_test_server().GetURL(kValidManifestWithId).spec(),
+          "some_id")));
   observer.Wait();
 
   EXPECT_TRUE(observer.request_shown());

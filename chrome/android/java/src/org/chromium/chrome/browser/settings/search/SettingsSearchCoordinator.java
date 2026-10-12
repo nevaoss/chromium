@@ -824,7 +824,17 @@ public class SettingsSearchCoordinator
         if (mMultiColumnSettings == null || mMultiColumnSettings.getView() == null) {
             return false;
         }
-        return mUseMultiColumn ? true : !mMultiColumnSettings.isLayoutOpen();
+
+        // Read the column mode from the supplier rather than the |mUseMultiColumn| cache. The cache
+        // is refreshed by a one-shot layout listener, so it can read a single-column value
+        // mid-rotation, whereas isLayoutOpen() below always reports the live layout and returns
+        // true whenever the layout is two-column. Mixing the two makes this method claim main
+        // settings is hidden when it is fully visible, which hides the search box with no way back:
+        // the pane is not slideable in two-column mode, so closePane() is a no-op and
+        // onPanelClosed() never fires. https://crbug.com/562493964
+        if (mUseMultiColumnSupplier.getAsBoolean()) return true;
+
+        return !mMultiColumnSettings.isLayoutOpen();
     }
 
     private @Nullable View getHelpMenuView() {
@@ -1010,6 +1020,27 @@ public class SettingsSearchCoordinator
     void setFragmentState(int state) {
         mFragmentState = state;
         if (!mUseMultiColumn) showTitleTextView(state != FS_SEARCH);
+    }
+
+    /**
+     * Returns whether the search UI is on screen, i.e. the user is entering a query or browsing
+     * what a query found, rather than browsing settings normally.
+     */
+    public boolean isSearchOpen() {
+        return mFragmentState != FS_SETTINGS;
+    }
+
+    /**
+     * Leaves the search UI as if the user had dismissed it, or does nothing if it is not open.
+     *
+     * <p>For a caller that is about to take the screen away from search, so that search hears about
+     * it and stands down in order, rather than discovering it afterwards by finding the fragments
+     * it was showing gone.
+     */
+    public void exitSearchIfOpen() {
+        if (!isSearchOpen()) return;
+
+        exitSearchState();
     }
 
     private void showBackArrowInSingleColumnMode(boolean show) {
@@ -1276,7 +1307,10 @@ public class SettingsSearchCoordinator
             View detailPane = findViewById(R.id.preferences_detail);
             if (searchBox == null || query == null || detailPane == null) return;
 
-            int detailPaneWidth = detailPane.getWidth();
+            int detailPaneWidth =
+                    detailPane.getMeasuredWidth() > 0
+                            ? detailPane.getMeasuredWidth()
+                            : detailPane.getWidth();
             if (detailPaneWidth == 0) {
                 // If the detail pane is not laid out yet, defer until onDetailLayoutUpdated()
                 // is called by MultiColumnSettings. Don't post to mHandler to prevent a busy loop.

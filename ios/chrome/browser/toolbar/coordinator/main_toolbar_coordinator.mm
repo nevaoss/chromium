@@ -324,7 +324,6 @@ inline LayoutStateToolbarPassKey PassKey() {
                                          locationBar:_topLocationBarCoordinator
                                  textOnlyLocationBar:
                                      _topTextOnlyLocationBarCoordinator
-                                         .locationBarViewController
                                          topPosition:YES];
     _tabGroupIndicatorCoordinator = [[TabGroupIndicatorCoordinator alloc]
         initWithBaseViewController:self.baseViewController
@@ -363,7 +362,6 @@ inline LayoutStateToolbarPassKey PassKey() {
                                    locationBar:_bottomLocationBarCoordinator
                            textOnlyLocationBar:
                                _bottomTextOnlyLocationBarCoordinator
-                                   .locationBarViewController
                                    topPosition:NO];
     if (!IsFullscreenRefactoringEnabled()) {
       _bottomToolbarFullscreenUIUpdater = std::make_unique<FullscreenUIUpdater>(
@@ -1276,15 +1274,27 @@ inline LayoutStateToolbarPassKey PassKey() {
   CGFloat topMax = [self expandedPrimaryToolbarHeight];
   CGFloat topInset = topMin + (topMax - topMin) * agent->top_progress();
   agent->AddObscuredInset(UIRectEdgeTop, topInset);
-  [_topToolbarViewController updateForFullscreenProgress:agent->top_progress()];
+  if (!agent->is_animating()) {
+    [_topToolbarViewController
+        updateForFullscreenProgress:agent->top_progress()];
+  }
 
   CGFloat bottomMin = [self collapsedSecondaryToolbarHeight];
   CGFloat bottomMax = [self expandedSecondaryToolbarHeight];
   CGFloat bottomInset =
       bottomMin + (bottomMax - bottomMin) * agent->bottom_progress();
   agent->AddObscuredInset(UIRectEdgeBottom, bottomInset);
+  if (!agent->is_animating()) {
+    [_bottomToolbarViewController
+        updateForFullscreenProgress:agent->bottom_progress()];
+  }
+}
+
+- (void)fullscreenDidUpdateInterpolatedProgress:(FullscreenBrowserAgent*)agent {
+  [_topToolbarViewController
+      updateForFullscreenProgress:agent->interpolated_progress()];
   [_bottomToolbarViewController
-      updateForFullscreenProgress:agent->bottom_progress()];
+      updateForFullscreenProgress:agent->interpolated_progress()];
 }
 
 #pragma mark - BrowserLayoutStateObserver
@@ -1394,7 +1404,7 @@ inline LayoutStateToolbarPassKey PassKey() {
     createToolbarViewControllerForMediator:(ToolbarMediator*)mediator
                                locationBar:(LocationBarCoordinator*)locationBar
                        textOnlyLocationBar:
-                           (UIViewController*)textOnlyLocationBar
+                           (LocationBarCoordinator*)textOnlyLocationBar
                                topPosition:(BOOL)topPosition {
   CHECK(IsChromeNextIaEnabled());
 
@@ -1429,7 +1439,11 @@ inline LayoutStateToolbarPassKey PassKey() {
       setLocationBarViewController:locationBar.locationBarViewController
           andSteadyViewLayoutGuide:locationBar.steadyViewLayoutGuide];
   [toolbarViewController
-      setTextOnlyLocationBarViewController:textOnlyLocationBar];
+      setTextOnlyLocationBarViewController:textOnlyLocationBar
+                                               .locationBarViewController];
+  // The toolbar measures the text-only location bar to size the collapsed
+  // glass pill, so it must be told when that content changes.
+  textOnlyLocationBar.contentSizeDelegate = toolbarViewController;
   toolbarViewController.bannerPromoDelegate = mediator;
 
   if (incognito) {
@@ -1508,6 +1522,7 @@ inline LayoutStateToolbarPassKey PassKey() {
   toolbarMediator.sceneHandler =
       HandlerForProtocol(browser->GetCommandDispatcher(), SceneCommands);
   toolbarMediator.delegate = self;
+  toolbarMediator.browserLayoutState = _browserLayoutState;
 
   return toolbarMediator;
 }

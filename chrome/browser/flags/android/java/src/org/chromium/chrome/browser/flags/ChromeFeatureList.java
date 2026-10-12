@@ -285,6 +285,7 @@ public abstract class ChromeFeatureList {
     public static final String ANDROID_HISTORY_CLUSTERING = "AndroidHistoryClustering";
     public static final String ANDROID_KEYBOARD_SHORTCUT_OPEN_FILE =
             "AndroidKeyboardShortcutOpenFile";
+    public static final String ANDROID_NEW_MANAGEMENT_NOTICE = "AndroidNewManagementNotice";
     public static final String ANDROID_NO_VISIBLE_HINT_FOR_DIFFERENT_TLD =
             "AndroidNoVisibleHintForDifferentTLD";
     public static final String ANDROID_OMNIBOX_FOCUSED_NEW_TAB_PAGE =
@@ -617,6 +618,8 @@ public abstract class ChromeFeatureList {
     public static final String GLIC_BACKGROUND_ACTUATION_TAB_GROUP_SYNC =
             "GlicBackgroundActuationTabGroupSync";
     public static final String GLIC_BACKGROUND_TRIGGERING = "GlicBackgroundTriggering";
+    public static final String GLIC_SHARE_IMAGE = "GlicShareImage";
+    public static final String GLIC_VOICE = "GlicVoice";
     public static final String GMSCORE_BIND_SERVICE_OPTIMIZATION = "GmsCoreBindServiceOptimization";
     public static final String GMS_CORE_ULP = "GmsCoreUlp";
     public static final String GRID_TAB_SWITCHER_SURFACE_COLOR_UPDATE =
@@ -739,6 +742,8 @@ public abstract class ChromeFeatureList {
     public static final String RELATED_SEARCHES_ALL_LANGUAGE = "RelatedSearchesAllLanguage";
     public static final String RELATED_SEARCHES_SWITCH = "RelatedSearchesSwitch";
     public static final String RELATED_WEBSITE_SETS_UI = "RelatedWebsiteSetsUi";
+    public static final String REMOVE_EXTRA_HEADERS_ON_CROSS_ORIGIN_REDIRECT =
+            "RemoveExtraHeadersOnCrossOriginRedirect";
     public static final String REMOVE_TAB_FOCUS_ON_SHOWING_AND_SELECT =
             "RemoveTabFocusOnShowingAndSelect";
     public static final String REPORT_NOTIFICATION_CONTENT_DETECTION_DATA =
@@ -761,10 +766,6 @@ public abstract class ChromeFeatureList {
             "ExtendedReportingRemovePrefDependency";
     public static final String SCHEDULE_WINDOW_CLEANING = "ScheduleWindowCleaning";
     public static final String SEARCH_IN_CCT = "SearchInCCT";
-    public static final String SEARCH_IN_CCT_ALTERNATE_TAP_HANDLING =
-            "SearchInCCTAlternateTapHandling";
-    public static final String SEARCH_IN_CCT_ALTERNATE_TAP_HANDLING_IF_ENABLED_BY_EMBEDDER =
-            "SearchInCCTAlternateTapHandlingIfEnabledByEmbedder";
     public static final String SEARCH_IN_CCT_IF_ENABLED_BY_EMBEDDER =
             "SearchInCCTIfEnabledByEmbedder";
     public static final String SEARCH_SETTINGS_UPDATE_V2 = "SearchSettingsUpdateV2";
@@ -823,8 +824,6 @@ public abstract class ChromeFeatureList {
     public static final String SUBMENUS_IN_APP_MENU_LFF = "SubmenusInAppMenuLff";
     public static final String SUGGESTION_ANSWERS_COLOR_REVERSE = "SuggestionAnswersColorReverse";
     public static final String SYNC_ENABLE_NEW_SYNC_DASHBOARD_URL = "SyncEnableNewSyncDashboardUrl";
-    public static final String SYNC_ENABLE_PASSWORDS_SYNC_ERROR_MESSAGE_ALTERNATIVE =
-            "SyncEnablePasswordsSyncErrorMessageAlternative";
     public static final String SYNC_RESTORE_ON_STARTUP_PREF = "SyncRestoreOnStartupPref";
     public static final String SYNC_TRUSTED_VAULT_ERROR_MESSAGE_DURATION =
             "SyncTrustedVaultErrorMessageDuration";
@@ -934,6 +933,9 @@ public abstract class ChromeFeatureList {
                             Map.entry(ACCOUNT_FOR_SUPPRESSED_KEYBOARD_INSETS, true),
                             Map.entry(ANDROID_THEME_MODULE, true),
                             Map.entry(ANDROID_THEME_RESOURCE_PROVIDER, false),
+                            Map.entry(GMSCORE_BIND_SERVICE_OPTIMIZATION, true),
+                            Map.entry(NTP_AURORA, true),
+                            Map.entry(NTP_AURORA_V2, false),
                             Map.entry(UNIVERSAL_KEYBOARD_HANDLING, true));
 
     // keep-sorted start group_prefixes=["public static final CachedFlag"]
@@ -1158,7 +1160,7 @@ public abstract class ChromeFeatureList {
     public static final CachedFlag sDesktopAndroidTWADisclosures =
             newCachedFlag(DESKTOP_ANDROID_TWA_DISCLOSURES, true);
     public static final CachedFlag sDesktopAndroidTWADisclosuresHelpLink =
-            newCachedFlag(DESKTOP_ANDROID_TWA_DISCLOSURES_HELP_LINK, false);
+            newCachedFlag(DESKTOP_ANDROID_TWA_DISCLOSURES_HELP_LINK, true);
     public static final CachedFlag sDesktopUAOnConnectedDisplay =
             newCachedFlag(
                     DESKTOP_UA_ON_CONNECTED_DISPLAY,
@@ -1259,9 +1261,6 @@ public abstract class ChromeFeatureList {
             newCachedFlag(GLIC_BACKGROUND_ACTUATION_TAB_GROUP_SYNC, /* defaultValue= */ false);
     public static final CachedFlag sGlicBackgroundTriggering =
             newCachedFlag(GLIC_BACKGROUND_TRIGGERING, false);
-    public static final CachedFlag sGmscoreBindServiceOptimization =
-            newCachedFlag(
-                    GMSCORE_BIND_SERVICE_OPTIMIZATION, false, /* defaultValueInTests= */ true);
     public static final CachedFlag sGridTabSwitcherSurfaceColorUpdate =
             newCachedFlag(
                     GRID_TAB_SWITCHER_SURFACE_COLOR_UPDATE,
@@ -1338,10 +1337,6 @@ public abstract class ChromeFeatureList {
             newCachedFlag(NOTIFICATION_TRAMPOLINE, false);
     public static final CachedFlag sNotificationTrampolineNoNewTask =
             newCachedFlag(NOTIFICATION_TRAMPOLINE_NO_NEW_TASK, true);
-    public static final CachedFlag sNtpAurora =
-            newCachedFlag(NTP_AURORA, /* defaultValue= */ false, /* defaultValueInTests= */ true);
-    public static final CachedFlag sNtpAuroraV2 =
-            newCachedFlag(NTP_AURORA_V2, /* defaultValue= */ false);
     public static final CachedFlag sNtpMvcRefactor =
             newCachedFlag(NTP_MVC_REFACTOR, /* defaultValue= */ false);
     public static final CachedFlag sNtpVision =
@@ -1381,10 +1376,6 @@ public abstract class ChromeFeatureList {
     public static final CachedFlag sSearchInCCT =
             newCachedFlag(
                     SEARCH_IN_CCT, /* defaultValue= */ false, /* defaultValueInTests= */ true);
-    public static final CachedFlag sSearchInCCTAlternateTapHandling =
-            newCachedFlag(SEARCH_IN_CCT_ALTERNATE_TAP_HANDLING, false);
-    public static final CachedFlag sSearchInCCTAlternateTapHandlingIfEnabledByEmbedder =
-            newCachedFlag(SEARCH_IN_CCT_ALTERNATE_TAP_HANDLING_IF_ENABLED_BY_EMBEDDER, true);
     public static final CachedFlag sSearchInCCTIfEnabledByEmbedder =
             newCachedFlag(SEARCH_IN_CCT_IF_ENABLED_BY_EMBEDDER, true);
     public static final CachedFlag sSendTabToSelfExtraEntryPoints =
@@ -1393,10 +1384,7 @@ public abstract class ChromeFeatureList {
                     /* defaultValue= */ false,
                     /* defaultValueInTests= */ true);
     public static final CachedFlag sSessionRestoreAfterCrash =
-            newCachedFlag(
-                    SESSION_RESTORE_AFTER_CRASH,
-                    /* defaultValue= */ false,
-                    /* defaultValueInTests= */ true);
+            newCachedFlag(SESSION_RESTORE_AFTER_CRASH, true);
     // Do not use this flag directly. Use SettingsInTab.shouldOpenSettingsInTab(), which takes into
     // account both the feature flag and device form factor. defaultValueInTests is true to match
     // the value in fieldtrial_testing_config.json.
@@ -1650,7 +1638,6 @@ public abstract class ChromeFeatureList {
                     sGlicBackgroundActuation,
                     sGlicBackgroundActuationTabGroupSync,
                     sGlicBackgroundTriggering,
-                    sGmscoreBindServiceOptimization,
                     sGridTabSwitcherSurfaceColorUpdate,
                     sHistoryPaneAndroid,
                     sHomeButtonRemoval,
@@ -1671,8 +1658,6 @@ public abstract class ChromeFeatureList {
                     sNewTabPageCustomizationV2,
                     sNotificationTrampoline,
                     sNotificationTrampolineNoNewTask,
-                    sNtpAurora,
-                    sNtpAuroraV2,
                     sNtpMvcRefactor,
                     sNtpVision,
                     sOnStartupWindowPolicy,
@@ -1690,8 +1675,6 @@ public abstract class ChromeFeatureList {
                     sReportNotificationContentDetectionData,
                     sSafetyHubWeakAndReusedPasswords,
                     sSearchInCCT,
-                    sSearchInCCTAlternateTapHandling,
-                    sSearchInCCTAlternateTapHandlingIfEnabledByEmbedder,
                     sSearchInCCTIfEnabledByEmbedder,
                     sSendTabToSelfExtraEntryPoints,
                     sSessionRestoreAfterCrash,
@@ -1838,6 +1821,8 @@ public abstract class ChromeFeatureList {
             newMutableFlagWithSafeDefault(PDF_LAUNCHER_ACTIVITY, false);
     public static final MutableFlagWithSafeDefault sRecordSuppressionMetrics =
             newMutableFlagWithSafeDefault(RECORD_SUPPRESSION_METRICS, true);
+    public static final MutableFlagWithSafeDefault sRemoveExtraHeadersOnCrossOriginRedirect =
+            newMutableFlagWithSafeDefault(REMOVE_EXTRA_HEADERS_ON_CROSS_ORIGIN_REDIRECT, true);
     public static final MutableFlagWithSafeDefault sSafetyFrePromo =
             newMutableFlagWithSafeDefault(SAFETY_FRE_PROMO, false);
     public static final MutableFlagWithSafeDefault sScheduleWindowCleaning =
@@ -1899,6 +1884,10 @@ public abstract class ChromeFeatureList {
     public static final String ANDROID_THEME_MODULE_FORCE_DEPENDENCIES =
             "force_theme_module_dependencies";
     public static final String ANDROID_THEME_RESOURCE_PROVIDER_FORCE_LIGHT = "force_light_theme";
+    public static final String NTP_AURORA_CHANGE_BUTTON_COLOR = "change_button_color";
+    public static final String NTP_AURORA_PADDING_STYLE = "padding_style";
+    public static final String NTP_AURORA_V2_ACTION_CHIPS = "action_chips";
+    public static final String NTP_AURORA_V2_LAYOUT_TYPE = "layout_type";
     public static final String XPLAT_SYNCED_SETUP_THEMES_OBSERVATION_ONLY = "observation_only";
 
     // keep-sorted end
@@ -1921,6 +1910,16 @@ public abstract class ChromeFeatureList {
                     Map.entry(
                             ANDROID_THEME_RESOURCE_PROVIDER,
                             Map.of(ANDROID_THEME_RESOURCE_PROVIDER_FORCE_LIGHT, "false")),
+                    Map.entry(
+                            NTP_AURORA,
+                            Map.ofEntries(
+                                    Map.entry(NTP_AURORA_CHANGE_BUTTON_COLOR, "false"),
+                                    Map.entry(NTP_AURORA_PADDING_STYLE, "0"))),
+                    Map.entry(
+                            NTP_AURORA_V2,
+                            Map.ofEntries(
+                                    Map.entry(NTP_AURORA_V2_ACTION_CHIPS, "0"),
+                                    Map.entry(NTP_AURORA_V2_LAYOUT_TYPE, "0"))),
                     Map.entry(
                             XPLAT_SYNCED_SETUP_THEMES,
                             Map.of(XPLAT_SYNCED_SETUP_THEMES_OBSERVATION_ONLY, "false")));
@@ -1945,6 +1944,16 @@ public abstract class ChromeFeatureList {
                             Map.entry(
                                     ANDROID_THEME_RESOURCE_PROVIDER,
                                     Map.of(ANDROID_THEME_RESOURCE_PROVIDER_FORCE_LIGHT, "false")),
+                            Map.entry(
+                                    NTP_AURORA,
+                                    Map.ofEntries(
+                                            Map.entry(NTP_AURORA_CHANGE_BUTTON_COLOR, "true"),
+                                            Map.entry(NTP_AURORA_PADDING_STYLE, "3"))),
+                            Map.entry(
+                                    NTP_AURORA_V2,
+                                    Map.ofEntries(
+                                            Map.entry(NTP_AURORA_V2_ACTION_CHIPS, "0"),
+                                            Map.entry(NTP_AURORA_V2_LAYOUT_TYPE, "0"))),
                             Map.entry(
                                     XPLAT_SYNCED_SETUP_THEMES,
                                     Map.of(XPLAT_SYNCED_SETUP_THEMES_OBSERVATION_ONLY, "false")));
@@ -2271,14 +2280,6 @@ public abstract class ChromeFeatureList {
     public static final IntCachedFeatureParam sNotificationTrampolineTimeoutPriorNativeInitMs =
             newIntCachedFeatureParam(
                     NOTIFICATION_TRAMPOLINE, "timeout_in_millis_prior_native_init", 5 * 1000);
-    public static final IntCachedFeatureParam sNtpAuroraPaddingStyle =
-            newIntCachedFeatureParam(NTP_AURORA, "padding_style", 0);
-    public static final BooleanCachedFeatureParam sNtpAuroraChangeButtonColor =
-            newBooleanCachedFeatureParam(NTP_AURORA, "change_button_color", false);
-    public static final IntCachedFeatureParam sNtpAuroraV2ActionChips =
-            newIntCachedFeatureParam(NTP_AURORA_V2, "action_chips", 0);
-    public static final IntCachedFeatureParam sNtpAuroraV2LayoutType =
-            newIntCachedFeatureParam(NTP_AURORA_V2, "layout_type", 0);
     public static final IntCachedFeatureParam sOmahaMinSdkVersionMinSdkVersion =
             newIntCachedFeatureParam(OMAHA_MIN_SDK_VERSION_ANDROID, "min_sdk_version", -1);
 
@@ -2443,10 +2444,6 @@ public abstract class ChromeFeatureList {
                     sNotificationTrampolineLongJobDurationMs,
                     sNotificationTrampolineNormalJobDurationMs,
                     sNotificationTrampolineTimeoutPriorNativeInitMs,
-                    sNtpAuroraChangeButtonColor,
-                    sNtpAuroraPaddingStyle,
-                    sNtpAuroraV2ActionChips,
-                    sNtpAuroraV2LayoutType,
                     sOmahaMinSdkVersionMinSdkVersion,
                     sPCctMinimumHeightRatio,
                     sPriceChangeModuleSkipShoppingPersistedTabDataDelayedInit,

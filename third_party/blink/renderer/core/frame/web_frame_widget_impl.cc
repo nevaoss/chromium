@@ -122,8 +122,6 @@
 #include "third_party/blink/renderer/core/frame/web_local_frame_impl.h"
 #include "third_party/blink/renderer/core/html/anchor_element_viewport_position_tracker.h"
 #include "third_party/blink/renderer/core/html/canvas/html_canvas_element.h"
-#include "third_party/blink/renderer/core/html/fenced_frame/document_fenced_frames.h"
-#include "third_party/blink/renderer/core/html/fenced_frame/html_fenced_frame_element.h"
 #include "third_party/blink/renderer/core/html/forms/text_control_element.h"
 #include "third_party/blink/renderer/core/html/html_element.h"
 #include "third_party/blink/renderer/core/html/html_frame_owner_element.h"
@@ -289,18 +287,6 @@ void ForEachRemoteFrameChildrenControlledByWidget(
       // controlled by another widget.
       if (!local_frame->IsLocalRoot()) {
         ForEachRemoteFrameChildrenControlledByWidget(local_frame, callback);
-      }
-    }
-  }
-
-  if (auto* local_frame = DynamicTo<LocalFrame>(frame)) {
-    if (Document* document = local_frame->GetDocument()) {
-      // Iterate on any fenced frames owned by a local frame.
-      if (auto* fenced_frames = DocumentFencedFrames::Get(*document)) {
-        for (HTMLFencedFrameElement* fenced_frame :
-             fenced_frames->GetFencedFrames()) {
-          callback(To<RemoteFrame>(fenced_frame->ContentFrame()));
-        }
       }
     }
   }
@@ -1593,6 +1579,7 @@ void WebFrameWidgetImpl::NotifyLatchedScrollMarkerGroup(
 void WebFrameWidgetImpl::UpdateCompositorScrollState(
     const cc::CompositorCommitData& commit_data) {
   is_scroll_gesture_active_ = commit_data.is_scroll_active;
+  scroll_latched_element_id_ = commit_data.scroll_latched_element_id;
   if (WebDevToolsAgentImpl* devtools =
           LocalRootImpl()->DevToolsAgentImpl(/*create_if_necessary=*/false)) {
     devtools->SetPageIsScrolling(is_scroll_gesture_active_);
@@ -1637,6 +1624,10 @@ void WebFrameWidgetImpl::UpdateAnimatedImageState(
 
 bool WebFrameWidgetImpl::IsScrollGestureActive() const {
   return is_scroll_gesture_active_;
+}
+
+cc::ElementId WebFrameWidgetImpl::ScrollLatchedElementId() const {
+  return scroll_latched_element_id_;
 }
 
 void WebFrameWidgetImpl::RequestViewportScreenshot(

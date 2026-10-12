@@ -6,6 +6,7 @@
 
 #include "base/feature_list.h"
 #include "base/functional/bind.h"
+#include "base/memory_coordinator/utils.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/time/time.h"
 #include "base/trace_event/trace_event.h"
@@ -139,8 +140,10 @@ class GlicWebContentsWarmingPool::Metrics {
   std::optional<base::TimeTicks> warmed_container_creation_time_;
 };
 
-GlicWebContentsWarmingPool::GlicWebContentsWarmingPool(Profile* profile)
+GlicWebContentsWarmingPool::GlicWebContentsWarmingPool(Profile* profile,
+                                                       GlicEnabling* enabling)
     : profile_(profile),
+      enabling_(enabling),
       backfill_scheduler_(GlicWarmingScheduler::Options{
           .use_performance_manager = base::FeatureList::IsEnabled(
               features::kGlicBackfillWarmingUsePerformanceManager),
@@ -150,6 +153,7 @@ GlicWebContentsWarmingPool::GlicWebContentsWarmingPool(Profile* profile)
                   : base::Seconds(20),
       }),
       metrics_(std::make_unique<Metrics>()) {
+  CHECK(enabling_);
   profile_observation_.Observe(profile_);
   if (base::FeatureList::IsEnabled(features::kGlicWebContentsWarming)) {
     expiry_delay_ = features::kGlicWebContentsWarmingPoolExpiryDelay.Get();
@@ -182,7 +186,7 @@ bool GlicWebContentsWarmingPool::MaybeStartWarming(GlicWarmingTrigger trigger) {
     return false;
   }
   should_warm_when_memory_allows_ = true;
-  if (memory_pressure_level_ >= base::MEMORY_PRESSURE_LEVEL_CRITICAL) {
+  if (IsUnderMemoryPressure()) {
     metrics_->RecordWarmingBlockedByMemoryPressure();
     return false;
   }
@@ -206,7 +210,7 @@ GlicWebContentsWarmingPool::CreateContainer() {
   bool initially_hidden =
       base::FeatureList::IsEnabled(features::kGlicContentsInitiallyHidden);
   if (features::IsGlicNoWebviewEnabled()) {
-    return std::make_unique<GlicNoWebviewContentsManager>(profile_,
+    return std::make_unique<GlicNoWebviewContentsManager>(profile_, enabling_,
                                                           initially_hidden);
   }
   return std::make_unique<GlicWebUIContentsManager>(profile_, initially_hidden);
@@ -225,7 +229,7 @@ void GlicWebContentsWarmingPool::OnContainerExpired() {
   CHECK(warmed_container_);
   TRACE_EVENT_INSTANT("glic", "GlicWebContentsWarmingPool::OnContainerExpired");
   Clear(ClearReason::kExpired);
-  if (!IsWarmingAllowedByMemoryPressure()) {
+  if (IsUnderMemoryPressure()) {
     return;
   }
   // This only happens if there was a warmed contents at the time of expiry.
@@ -255,7 +259,7 @@ void GlicWebContentsWarmingPool::EnsurePreload(ContainerCreationReason reason) {
   if (profile_->ShutdownStarted()) {
     return;
   }
-  CHECK(IsWarmingAllowedByMemoryPressure() ||
+  CHECK(!IsUnderMemoryPressure() ||
         reason == ContainerCreationReason::kUserTriggeredColdStart);
   backfill_scheduler_.Cancel();
   if (warmed_container_ && warmed_container_->ShouldReloadOnShow()) {
@@ -273,13 +277,12 @@ void GlicWebContentsWarmingPool::EnsurePreload(ContainerCreationReason reason) {
   }
 }
 
-void GlicWebContentsWarmingPool::OnMemoryPressure(
-    base::MemoryPressureLevel level) {
-  memory_pressure_level_ = level;
+void GlicWebContentsWarmingPool::OnMemoryPressure(int memory_limit) {
+  memory_limit_ = memory_limit;
 
   // Clear the warmed container when receiving critical memory pressure.
   // Pre-warming is suspended while the system remains under critical pressure.
-  if (level >= base::MEMORY_PRESSURE_LEVEL_CRITICAL) {
+  if (IsUnderMemoryPressure()) {
     Clear(ClearReason::kMemoryPressure);
     return;
   }
@@ -292,8 +295,8 @@ void GlicWebContentsWarmingPool::OnMemoryPressure(
   }
 }
 
-bool GlicWebContentsWarmingPool::IsWarmingAllowedByMemoryPressure() const {
-  return memory_pressure_level_ < base::MEMORY_PRESSURE_LEVEL_CRITICAL;
+bool GlicWebContentsWarmingPool::IsUnderMemoryPressure() const {
+  return memory_limit_ <= base::kCriticalMemoryPressureThreshold;
 }
 
 void GlicWebContentsWarmingPool::EnsurePreloadDelayed(
@@ -302,7 +305,7 @@ void GlicWebContentsWarmingPool::EnsurePreloadDelayed(
     return;
   }
   CHECK(!warmed_container_);
-  if (!IsWarmingAllowedByMemoryPressure()) {
+  if (IsUnderMemoryPressure()) {
     return;
   }
   if (backfill_scheduler_.IsScheduled()) {

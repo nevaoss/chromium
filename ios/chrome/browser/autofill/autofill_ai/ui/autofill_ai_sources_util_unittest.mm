@@ -19,10 +19,10 @@
 
 namespace {
 
-using GmailSource =
-    autofill::EntityInstance::PersonalContextRecordTypePayload::GmailSource;
-using PhotosSource =
-    autofill::EntityInstance::PersonalContextRecordTypePayload::PhotosSource;
+using GmailSourceMetadata = autofill::EntityInstance::
+    PersonalContextRecordTypePayload::GmailSourceMetadata;
+using PhotosSourceMetadata = autofill::EntityInstance::
+    PersonalContextRecordTypePayload::PhotosSourceMetadata;
 using Source =
     autofill::EntityInstance::PersonalContextRecordTypePayload::Source;
 using SourceType = Source::Type;
@@ -47,9 +47,10 @@ TEST_F(AutofillAiSourcesUtilTest, TestExtractSourcesFromEntity_InvalidURLs) {
   autofill::EntityInstance entity = autofill::test::GetOrderEntityInstance(
       {.record_type = PersonalContextRecordTypePayload{
            .sources = {
-               Source{.url = "", .data = GmailSource{}},
-               Source{.url = "invalid_url", .data = GmailSource{}},
-               Source{.url = "", .data = PhotosSource{}},
+               Source{.url = GURL(""), .metadata = GmailSourceMetadata{}},
+               Source{.url = GURL("invalid_url"),
+                      .metadata = GmailSourceMetadata{}},
+               Source{.url = GURL(""), .metadata = PhotosSourceMetadata{}},
            }}});
 
   EXPECT_FALSE(EntityHasValidSources(entity));
@@ -59,12 +60,14 @@ TEST_F(AutofillAiSourcesUtilTest, TestExtractSourcesFromEntity_InvalidURLs) {
 
 // Tests extracting Gmail sources with a custom title.
 TEST_F(AutofillAiSourcesUtilTest, TestExtractSourcesFromEntity_GmailWithTitle) {
-  const std::string url = "https://mail.google.com/mail/u/0/#inbox/msg1";
+  const GURL url = GURL("https://mail.google.com/mail/u/0/#inbox/msg1");
   autofill::EntityInstance entity = autofill::test::GetOrderEntityInstance(
       {.record_type = PersonalContextRecordTypePayload{
            .sources = {
-               Source{.url = url,
-                      .data = GmailSource{.title = "Your order confirmation"}},
+               Source{
+                   .url = url,
+                   .metadata =
+                       GmailSourceMetadata{.title = "Your order confirmation"}},
            }}});
 
   EXPECT_TRUE(EntityHasValidSources(entity));
@@ -76,13 +79,13 @@ TEST_F(AutofillAiSourcesUtilTest, TestExtractSourcesFromEntity_GmailWithTitle) {
 
 // Tests extracting Gmail sources.
 TEST_F(AutofillAiSourcesUtilTest, TestExtractSourcesFromEntity_GmailOnly) {
-  const std::string url1 = "https://mail.google.com/mail/u/0/#inbox/msg1";
-  const std::string url2 = "https://mail.google.com/mail/u/0/#inbox/msg2";
+  const GURL url1("https://mail.google.com/mail/u/0/#inbox/msg1");
+  const GURL url2("https://mail.google.com/mail/u/0/#inbox/msg2");
   autofill::EntityInstance entity = autofill::test::GetOrderEntityInstance(
       {.record_type = PersonalContextRecordTypePayload{
            .sources = {
-               Source{.url = url1, .data = GmailSource{}},
-               Source{.url = url2, .data = GmailSource{}},
+               Source{.url = url1, .metadata = GmailSourceMetadata{}},
+               Source{.url = url2, .metadata = GmailSourceMetadata{}},
            }}});
 
   EXPECT_TRUE(EntityHasValidSources(entity));
@@ -100,7 +103,7 @@ TEST_F(AutofillAiSourcesUtilTest, TestExtractSourcesFromEntity_GmailOnly) {
               l10n_util::GetNSStringF(
                   IDS_IOS_AUTOFILL_AI_SOURCES_FALLBACK_GMAIL_MESSAGE,
                   base::NumberToString16(1)));
-  EXPECT_EQ(item1.URL, GURL(url1));
+  EXPECT_EQ(item1.URL, url1);
   EXPECT_EQ(item1.type, AutofillAiSourceType::kGmail);
   EXPECT_NE(item1.icon, nil);
 
@@ -109,18 +112,18 @@ TEST_F(AutofillAiSourcesUtilTest, TestExtractSourcesFromEntity_GmailOnly) {
               l10n_util::GetNSStringF(
                   IDS_IOS_AUTOFILL_AI_SOURCES_FALLBACK_GMAIL_MESSAGE,
                   base::NumberToString16(2)));
-  EXPECT_EQ(item2.URL, GURL(url2));
+  EXPECT_EQ(item2.URL, url2);
   EXPECT_EQ(item2.type, AutofillAiSourceType::kGmail);
   EXPECT_NE(item2.icon, nil);
 }
 
 // Tests extracting Google Photos sources.
 TEST_F(AutofillAiSourcesUtilTest, TestExtractSourcesFromEntity_PhotosOnly) {
-  const std::string photo_url = "https://photos.google.com/photo/123";
+  const GURL photo_url("https://photos.google.com/photo/123");
   autofill::EntityInstance entity = autofill::test::GetOrderEntityInstance(
       {.record_type = PersonalContextRecordTypePayload{
            .sources = {
-               Source{.url = photo_url, .data = PhotosSource{}},
+               Source{.url = photo_url, .metadata = PhotosSourceMetadata{}},
            }}});
 
   EXPECT_TRUE(EntityHasValidSources(entity));
@@ -137,7 +140,7 @@ TEST_F(AutofillAiSourcesUtilTest, TestExtractSourcesFromEntity_PhotosOnly) {
   EXPECT_NSEQ(item.title, l10n_util::GetNSStringF(
                               IDS_IOS_AUTOFILL_AI_SOURCES_FALLBACK_SAVED_PHOTO,
                               base::NumberToString16(1)));
-  EXPECT_EQ(item.URL, GURL(photo_url));
+  EXPECT_EQ(item.URL, photo_url);
   EXPECT_EQ(item.type, AutofillAiSourceType::kPhotos);
   EXPECT_NE(item.icon, nil);
 }
@@ -145,13 +148,13 @@ TEST_F(AutofillAiSourcesUtilTest, TestExtractSourcesFromEntity_PhotosOnly) {
 // Tests extracting mixed sources contains both Gmail and Photos groups in
 // order.
 TEST_F(AutofillAiSourcesUtilTest, TestExtractSourcesFromEntity_Mixed) {
-  const std::string gmail_url = "https://mail.google.com/mail/u/0/#inbox/msg1";
-  const std::string photo_url = "https://photos.google.com/photo/123";
+  const GURL gmail_url("https://mail.google.com/mail/u/0/#inbox/msg1");
+  const GURL photo_url("https://photos.google.com/photo/123");
   autofill::EntityInstance entity = autofill::test::GetOrderEntityInstance(
       {.record_type = PersonalContextRecordTypePayload{
            .sources = {
-               Source{.url = photo_url, .data = PhotosSource{}},
-               Source{.url = gmail_url, .data = GmailSource{}},
+               Source{.url = photo_url, .metadata = PhotosSourceMetadata{}},
+               Source{.url = gmail_url, .metadata = GmailSourceMetadata{}},
            }}});
 
   EXPECT_TRUE(EntityHasValidSources(entity));
@@ -162,13 +165,13 @@ TEST_F(AutofillAiSourcesUtilTest, TestExtractSourcesFromEntity_Mixed) {
       groups[0].title,
       l10n_util::GetNSString(IDS_IOS_AUTOFILL_AI_SOURCES_GMAIL_SECTION_TITLE));
   ASSERT_EQ(groups[0].items.count, 1u);
-  EXPECT_EQ(groups[0].items[0].URL, GURL(gmail_url));
+  EXPECT_EQ(groups[0].items[0].URL, gmail_url);
 
   EXPECT_NSEQ(
       groups[1].title,
       l10n_util::GetNSString(IDS_IOS_AUTOFILL_AI_SOURCES_PHOTOS_SECTION_TITLE));
   ASSERT_EQ(groups[1].items.count, 1u);
-  EXPECT_EQ(groups[1].items[0].URL, GURL(photo_url));
+  EXPECT_EQ(groups[1].items[0].URL, photo_url);
 }
 
 // Tests that non-personal-context entities (such as local entities) return an

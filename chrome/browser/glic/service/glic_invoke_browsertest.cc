@@ -32,8 +32,10 @@
 #include "chrome/common/webui_url_constants.h"
 #include "components/enterprise/data_controls/core/browser/prefs.h"
 #include "components/prefs/scoped_user_pref_update.h"
+#include "content/public/common/result_codes.h"
 #include "content/public/test/browser_test.h"
 #include "content/public/test/browser_test_utils.h"
+#include "content/public/test/no_renderer_crashes_assertion.h"
 #include "mojo/public/cpp/base/big_buffer.h"
 #include "testing/gtest/include/gtest/gtest.h"
 
@@ -74,6 +76,90 @@ class GlicInvokeBrowserTest : public GlicBrowserTestMixin<PlatformBrowserTest> {
   static InvokeWithAutoSubmitPasskey GetPassKey() {
     return InvokeWithAutoSubmitPasskeyProvider::GetPassKey();
   }
+
+  // Puts `instance` into live (audio) mode, as the web client would.
+  [[nodiscard]] TestResult<> EnterLiveMode(GlicInstanceImpl* instance) {
+    RETURN_IF_ERROR(WaitForGlicClient(instance));
+    instance->OnInteractionModeChange(mojom::WebClientMode::kAudio);
+    if (!instance->IsLiveMode()) {
+      return base::unexpected("EnterLiveMode: instance is not in live mode");
+    }
+    return base::ok();
+  }
+
+  // Opens Glic for the active tab, detaches it into the floating panel, and
+  // puts it into live mode. The active tab stays bound to the instance.
+  [[nodiscard]] TestResult<GlicInstanceImpl*> OpenLiveModeFloatyForActiveTab() {
+    ASSIGN_OR_RETURN(GlicInstanceImpl * instance,
+                     OpenGlicForActiveTabAndDetach());
+    RETURN_IF_ERROR(EnterLiveMode(instance));
+    return instance;
+  }
+
+  // Opens glic for the active tab and waits until it is fully idle: the
+  // invocation that opened the panel has terminated and the client has
+  // finished loading.
+  //
+  // `OpenGlicForActiveTab()` only waits for the panel to be open; the
+  // invocation that opened it may still be running. Tests that manipulate the
+  // client load state must wait for it, otherwise that invocation observes the
+  // manipulated state and records an extra `Glic.InvokeResult` sample. Driving
+  // the open with an invocation of our own lets us wait for it to report
+  // completion, which happens after `WaitForClientReadyTask` has run and so
+  // also means the client is ready.
+  [[nodiscard]] TestResult<GlicInstanceImpl*>
+  OpenGlicForActiveTabAndWaitIdle() {
+    tabs::TabInterface* tab = GetTabListInterface()->GetActiveTab();
+    base::test::TestFuture<void> success_future;
+    GlicInvokeOptions options(glic::Target(*tab),
+                              mojom::InvocationSource::kTopChromeButton);
+    options.on_success = success_future.GetCallback();
+
+    coordinator().Invoke(std::move(options));
+
+    if (!success_future.Wait()) {
+      return base::unexpected("Timed out opening glic for the active tab");
+    }
+    GlicInstanceImpl* instance = GetInstanceForTab(tab);
+    if (!instance) {
+      return base::unexpected("No glic instance is bound to the active tab");
+    }
+    return instance;
+  }
+
+  // Makes the web client go away for good by crashing the guest renderer, and
+  // waits for the resulting load failure to reach the host.
+  //
+  // `Host` derives readiness from the web client connection, and hosts can
+  // only report failure, so a test cannot fake a non-ready client while a
+  // healthy one is connected; it has to actually become unusable. Navigating
+  // the guest away does not work under `GlicNoWebview`, where the load is
+  // dropped and the client stays up, so the renderer is killed instead: that
+  // reaches the host the same way whichever way the client is hosted.
+  [[nodiscard]] TestResult<> DisconnectWebClient(GlicInstanceImpl* instance) {
+    content::RenderProcessHost* client_process =
+        instance->host().GetWebClientRenderProcessHost();
+    if (!client_process) {
+      return base::unexpected("Glic has no web client render process");
+    }
+    {
+      content::ScopedAllowRendererCrashes allow_crashes(client_process);
+      content::RenderProcessHostWatcher process_gone(
+          client_process,
+          content::RenderProcessHostWatcher::WATCH_FOR_PROCESS_EXIT);
+      client_process->Shutdown(content::RESULT_CODE_KILLED);
+      process_gone.Wait();
+    }
+    // Losing the client makes the host page report a load failure. Waiting for
+    // it means the reported state has settled, so the tests below can drive it
+    // without racing against that report.
+    return RunUntilEqual([&]() { return instance->host().client_load_state(); },
+                         ClientLoadState::kError,
+                         "DisconnectWebClient: the client did not fail");
+  }
+
+ private:
+  base::test::ScopedFeatureList feature_list_;
 };
 
 IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest, InvokeWithInvalidTab) {
@@ -698,7 +784,13 @@ IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest,
   EXPECT_FALSE(error_future1.IsReady());
 }
 
-IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest, InvokeTimeoutBehaviors) {
+// TODO(b/564473727): Test is flaky on Mac.
+#if BUILDFLAG(IS_MAC)
+#define MAYBE_InvokeTimeoutBehaviors DISABLED_InvokeTimeoutBehaviors
+#else
+#define MAYBE_InvokeTimeoutBehaviors InvokeTimeoutBehaviors
+#endif
+IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest, MAYBE_InvokeTimeoutBehaviors) {
   // 1. Test custom short timeout
   base::test::TestFuture<GlicInvokeError> short_error_future;
   GlicInvokeOptions short_options(mojom::InvocationSource::kOsButton);
@@ -732,7 +824,13 @@ IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest, InvokeTimeoutBehaviors) {
   EXPECT_GE(elapsed_timer.Elapsed(), base::Milliseconds(50));
 }
 
-IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest, InvokeFailsOnTabClosed) {
+// TODO(crbug.com/564285975): Re-enable the test.
+#if BUILDFLAG(IS_CHROMEOS) && !defined(NDEBUG)
+#define MAYBE_InvokeFailsOnTabClosed DISABLED_InvokeFailsOnTabClosed
+#else
+#define MAYBE_InvokeFailsOnTabClosed InvokeFailsOnTabClosed
+#endif
+IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest, MAYBE_InvokeFailsOnTabClosed) {
   // Add a new tab so we don't close the browser when we close the active tab.
   CreateAndActivateTab(GURL("about:blank"));
 
@@ -757,8 +855,16 @@ IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest, InvokeFailsOnTabClosed) {
   EXPECT_EQ(error_future.Get(), GlicInvokeError::kTabClosed);
 }
 
+// TODO(crbug.com/564531222): Fix flakiness and enable on linux-chromeos-dbg
+// bot.
+#if BUILDFLAG(IS_CHROMEOS) && !defined(NDEBUG)
+#define MAYBE_InvokeFailsOnInstanceDestruction \
+  DISABLED_InvokeFailsOnInstanceDestruction
+#else
+#define MAYBE_InvokeFailsOnInstanceDestruction InvokeFailsOnInstanceDestruction
+#endif
 IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest,
-                       InvokeFailsOnInstanceDestruction) {
+                       MAYBE_InvokeFailsOnInstanceDestruction) {
   tabs::TabInterface* tab1 = GetTabListInterface()->GetActiveTab();
 
   ASSERT_OK(OpenGlicForActiveTab());
@@ -1616,6 +1722,281 @@ IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest,
   EXPECT_EQ(coordinator().GetInstances().size(), 2u);
 }
 
+// `kProceedInLiveMode` is the default: the conversation carries on in live
+// mode in the floaty, rather than being pulled into the targeted tab's side
+// panel. `preserve_active_surface` is not needed (or consulted) for this.
+IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest,
+                       LiveModeProceedInLiveModeKeepsConversationInFloaty) {
+  tabs::TabInterface* tab = GetTabListInterface()->GetActiveTab();
+  ASSERT_OK_AND_ASSIGN(GlicInstanceImpl * instance,
+                       OpenLiveModeFloatyForActiveTab());
+  ASSERT_EQ(GetInstanceForTab(tab), instance);
+
+  base::test::TestFuture<void> success_future;
+  GlicInvokeOptions options(glic::Target(*tab),
+                            mojom::InvocationSource::kOsButton);
+  ASSERT_EQ(options.target.live_mode_behavior,
+            LiveModeBehavior::kProceedInLiveMode);
+  ASSERT_FALSE(options.preserve_active_surface);
+  options.on_success = success_future.GetCallback();
+  coordinator().Invoke(std::move(options));
+  ASSERT_TRUE(success_future.Wait());
+
+  EXPECT_TRUE(instance->IsActiveEmbedder(FloatingEmbedderKey{}));
+  EXPECT_FALSE(instance->IsActiveEmbedder(SidePanelEmbedderKey(tab)));
+}
+
+// `kProceedInLiveMode` leaves the conversation where it is, so a live mode
+// conversation in a side panel isn't dragged into the floaty.
+IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest,
+                       LiveModeProceedInLiveModeKeepsSidePanelConversation) {
+  tabs::TabInterface* tab = GetTabListInterface()->GetActiveTab();
+  ASSERT_OK_AND_ASSIGN(GlicInstanceImpl * instance, OpenGlicForActiveTab());
+  ASSERT_OK(WaitForActiveEmbedderToMatchTab(instance, tab));
+  ASSERT_OK(EnterLiveMode(instance));
+
+  base::test::TestFuture<void> success_future;
+  GlicInvokeOptions options(glic::Target(*tab),
+                            mojom::InvocationSource::kOsButton);
+  options.on_success = success_future.GetCallback();
+  coordinator().Invoke(std::move(options));
+  ASSERT_TRUE(success_future.Wait());
+
+  EXPECT_TRUE(instance->IsActiveEmbedder(SidePanelEmbedderKey(tab)));
+  EXPECT_FALSE(instance->IsActiveEmbedder(FloatingEmbedderKey{}));
+}
+
+// In live mode the behavior supersedes `preserve_active_surface`, which would
+// otherwise keep the conversation in the floaty.
+IN_PROC_BROWSER_TEST_F(
+    GlicInvokeBrowserTest,
+    LiveModeForceSidePanelTextModeSupersedesPreserveActiveSurface) {
+  tabs::TabInterface* tab = GetTabListInterface()->GetActiveTab();
+  ASSERT_OK_AND_ASSIGN(GlicInstanceImpl * instance,
+                       OpenLiveModeFloatyForActiveTab());
+  ASSERT_EQ(GetInstanceForTab(tab), instance);
+
+  base::test::TestFuture<void> success_future;
+  GlicInvokeOptions options(glic::Target(*tab),
+                            mojom::InvocationSource::kOsButton);
+  options.preserve_active_surface = true;
+  options.target.live_mode_behavior = LiveModeBehavior::kForceSidePanelTextMode;
+  options.on_success = success_future.GetCallback();
+  coordinator().Invoke(std::move(options));
+  ASSERT_TRUE(success_future.Wait());
+
+  ASSERT_OK(WaitForActiveEmbedderToMatchTab(instance, tab));
+  EXPECT_FALSE(instance->IsActiveEmbedder(FloatingEmbedderKey{}));
+}
+
+// `preserve_active_surface` still applies when the instance isn't in live
+// mode, even if `kForceSidePanelTextMode` was requested.
+IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest,
+                       LiveModeForceSidePanelTextModeIgnoredWhenNotInLiveMode) {
+  tabs::TabInterface* tab = GetTabListInterface()->GetActiveTab();
+  ASSERT_OK_AND_ASSIGN(GlicInstanceImpl * instance,
+                       OpenGlicForActiveTabAndDetach());
+  ASSERT_FALSE(instance->IsLiveMode());
+  ASSERT_EQ(GetInstanceForTab(tab), instance);
+
+  base::test::TestFuture<void> success_future;
+  GlicInvokeOptions options(glic::Target(*tab),
+                            mojom::InvocationSource::kOsButton);
+  options.preserve_active_surface = true;
+  options.target.live_mode_behavior = LiveModeBehavior::kForceSidePanelTextMode;
+  options.on_success = success_future.GetCallback();
+  coordinator().Invoke(std::move(options));
+  ASSERT_TRUE(success_future.Wait());
+
+  EXPECT_TRUE(instance->IsActiveEmbedder(FloatingEmbedderKey{}));
+  EXPECT_FALSE(instance->IsActiveEmbedder(SidePanelEmbedderKey(tab)));
+}
+
+// `kForceFloatingTextMode` keeps the conversation in the floaty, without the
+// caller having to also set `preserve_active_surface`.
+IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest,
+                       LiveModeForceFloatingTextModeKeepsConversationInFloaty) {
+  tabs::TabInterface* tab = GetTabListInterface()->GetActiveTab();
+  ASSERT_OK_AND_ASSIGN(GlicInstanceImpl * instance,
+                       OpenLiveModeFloatyForActiveTab());
+  ASSERT_EQ(GetInstanceForTab(tab), instance);
+
+  base::test::TestFuture<void> success_future;
+  GlicInvokeOptions options(glic::Target(*tab),
+                            mojom::InvocationSource::kOsButton);
+  options.target.live_mode_behavior = LiveModeBehavior::kForceFloatingTextMode;
+  options.on_success = success_future.GetCallback();
+  coordinator().Invoke(std::move(options));
+  ASSERT_TRUE(success_future.Wait());
+
+  EXPECT_TRUE(instance->IsActiveEmbedder(FloatingEmbedderKey{}));
+  EXPECT_FALSE(instance->IsActiveEmbedder(SidePanelEmbedderKey(tab)));
+}
+
+// A live mode conversation showing in a side panel is moved into the floaty,
+// which is asked to open in text mode.
+IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest,
+                       LiveModeForceFloatingTextModeRequestsTextMode) {
+  tabs::TabInterface* tab = GetTabListInterface()->GetActiveTab();
+  ASSERT_OK_AND_ASSIGN(GlicInstanceImpl * instance, OpenGlicForActiveTab());
+  ASSERT_OK(WaitForActiveEmbedderToMatchTab(instance, tab));
+  ASSERT_OK(EnterLiveMode(instance));
+
+  GlicHistogramTester histogram_tester;
+  base::test::TestFuture<void> success_future;
+  GlicInvokeOptions options(glic::Target(*tab),
+                            mojom::InvocationSource::kOsButton);
+  options.target.live_mode_behavior = LiveModeBehavior::kForceFloatingTextMode;
+  options.on_success = success_future.GetCallback();
+  coordinator().Invoke(std::move(options));
+  ASSERT_TRUE(success_future.Wait());
+
+  EXPECT_TRUE(instance->IsActiveEmbedder(FloatingEmbedderKey{}));
+  histogram_tester.ExpectUniqueSample("Glic.Instance.Floaty.InitialMode",
+                                      mojom::WebClientMode::kText, 1);
+}
+
+// `kFail` rejects the invocation rather than disrupting live mode.
+IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest, LiveModeFailRejectsInvocation) {
+  tabs::TabInterface* tab = GetTabListInterface()->GetActiveTab();
+  ASSERT_OK_AND_ASSIGN(GlicInstanceImpl * instance,
+                       OpenLiveModeFloatyForActiveTab());
+  ASSERT_EQ(GetInstanceForTab(tab), instance);
+
+  GlicHistogramTester histogram_tester;
+  base::test::TestFuture<GlicInvokeError> error_future;
+  GlicInvokeOptions options(glic::Target(*tab),
+                            mojom::InvocationSource::kOsButton);
+  options.target.live_mode_behavior = LiveModeBehavior::kFail;
+  options.on_error = error_future.GetCallback();
+  coordinator().Invoke(std::move(options));
+
+  EXPECT_EQ(error_future.Get(), GlicInvokeError::kLiveModeActive);
+  histogram_tester.ExpectUniqueSample("Glic.InvokeResult",
+                                      GlicInvokeError::kLiveModeActive, 1);
+  // The conversation is left where it was.
+  EXPECT_TRUE(instance->IsActiveEmbedder(FloatingEmbedderKey{}));
+}
+
+// `kFail` only applies to instances that are in live mode.
+IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest,
+                       LiveModeFailIgnoredWhenNotInLiveMode) {
+  tabs::TabInterface* tab = GetTabListInterface()->GetActiveTab();
+  ASSERT_OK_AND_ASSIGN(GlicInstanceImpl * instance, OpenGlicForActiveTab());
+  ASSERT_FALSE(instance->IsLiveMode());
+
+  base::test::TestFuture<void> success_future;
+  GlicInvokeOptions options(glic::Target(*tab),
+                            mojom::InvocationSource::kOsButton);
+  options.target.live_mode_behavior = LiveModeBehavior::kFail;
+  options.on_success = success_future.GetCallback();
+  coordinator().Invoke(std::move(options));
+
+  EXPECT_TRUE(success_future.Wait());
+}
+
+// `kForceSidePanelTextMode` steers the invocation towards a tab's side panel,
+// so it can't be combined with a surface that always resolves to the floaty.
+IN_PROC_BROWSER_TEST_F(
+    GlicInvokeBrowserTest,
+    LiveModeForceSidePanelTextModeWithFloatingTargetIsInvalid) {
+  ASSERT_OK_AND_ASSIGN(GlicInstanceImpl * instance,
+                       OpenLiveModeFloatyForActiveTab());
+
+  GlicHistogramTester histogram_tester;
+  base::test::TestFuture<GlicInvokeError> error_future;
+  GlicInvokeOptions options(instance->GetInvokeTarget(Target::Surface()),
+                            mojom::InvocationSource::kOsButton);
+  ASSERT_TRUE(std::holds_alternative<Floating>(options.target.surface));
+  options.target.live_mode_behavior = LiveModeBehavior::kForceSidePanelTextMode;
+  options.on_error = error_future.GetCallback();
+  coordinator().Invoke(std::move(options));
+
+  EXPECT_EQ(error_future.Get(), GlicInvokeError::kInvalidConfiguration);
+  histogram_tester.ExpectUniqueSample(
+      "Glic.InvokeResult", GlicInvokeError::kInvalidConfiguration, 1);
+}
+
+// `kForceFloatingTextMode` can steer a `Floating` target: the conversation is
+// already where it wants it, and the text mode request still applies.
+IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest,
+                       LiveModeForceFloatingTextModeWithFloatingTargetIsValid) {
+  ASSERT_OK_AND_ASSIGN(GlicInstanceImpl * instance,
+                       OpenLiveModeFloatyForActiveTab());
+
+  base::test::TestFuture<void> success_future;
+  GlicInvokeOptions options(instance->GetInvokeTarget(Target::Surface()),
+                            mojom::InvocationSource::kOsButton);
+  options.target.live_mode_behavior = LiveModeBehavior::kForceFloatingTextMode;
+  options.on_success = success_future.GetCallback();
+  coordinator().Invoke(std::move(options));
+
+  ASSERT_TRUE(success_future.Wait());
+  EXPECT_TRUE(instance->IsActiveEmbedder(FloatingEmbedderKey{}));
+}
+
+// `LastActiveOrNew` follows whichever surface the instance is already on, so
+// neither of the surface-choosing behaviors could take effect.
+IN_PROC_BROWSER_TEST_F(
+    GlicInvokeBrowserTest,
+    LiveModeForceSidePanelTextModeWithLastActiveOrNewIsInvalid) {
+  BrowserWindowInterface* window =
+      GetTabListInterface()->GetActiveTab()->GetBrowserWindowInterface();
+  ASSERT_OK_AND_ASSIGN(GlicInstanceImpl * instance,
+                       OpenLiveModeFloatyForActiveTab());
+
+  base::test::TestFuture<GlicInvokeError> error_future;
+  GlicInvokeOptions options(mojom::InvocationSource::kOsButton);
+  options.target.conversation = glic::InstanceId(instance->id());
+  options.target.surface =
+      glic::LastActiveOrNew{window, /*open_in_foreground=*/true};
+  options.target.live_mode_behavior = LiveModeBehavior::kForceSidePanelTextMode;
+  options.on_error = error_future.GetCallback();
+  coordinator().Invoke(std::move(options));
+
+  EXPECT_EQ(error_future.Get(), GlicInvokeError::kInvalidConfiguration);
+}
+
+IN_PROC_BROWSER_TEST_F(
+    GlicInvokeBrowserTest,
+    LiveModeForceFloatingTextModeWithLastActiveOrNewIsInvalid) {
+  BrowserWindowInterface* window =
+      GetTabListInterface()->GetActiveTab()->GetBrowserWindowInterface();
+  ASSERT_OK_AND_ASSIGN(GlicInstanceImpl * instance,
+                       OpenLiveModeFloatyForActiveTab());
+
+  base::test::TestFuture<GlicInvokeError> error_future;
+  GlicInvokeOptions options(mojom::InvocationSource::kOsButton);
+  options.target.conversation = glic::InstanceId(instance->id());
+  options.target.surface =
+      glic::LastActiveOrNew{window, /*open_in_foreground=*/true};
+  options.target.live_mode_behavior = LiveModeBehavior::kForceFloatingTextMode;
+  options.on_error = error_future.GetCallback();
+  coordinator().Invoke(std::move(options));
+
+  EXPECT_EQ(error_future.Get(), GlicInvokeError::kInvalidConfiguration);
+}
+
+// `kFail` doesn't choose a surface, so it works with any of them.
+IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest,
+                       LiveModeFailWithLastActiveOrNewRejectsInvocation) {
+  BrowserWindowInterface* window =
+      GetTabListInterface()->GetActiveTab()->GetBrowserWindowInterface();
+  ASSERT_OK_AND_ASSIGN(GlicInstanceImpl * instance,
+                       OpenLiveModeFloatyForActiveTab());
+
+  base::test::TestFuture<GlicInvokeError> error_future;
+  GlicInvokeOptions options(mojom::InvocationSource::kOsButton);
+  options.target.conversation = glic::InstanceId(instance->id());
+  options.target.surface =
+      glic::LastActiveOrNew{window, /*open_in_foreground=*/true};
+  options.target.live_mode_behavior = LiveModeBehavior::kFail;
+  options.on_error = error_future.GetCallback();
+  coordinator().Invoke(std::move(options));
+
+  EXPECT_EQ(error_future.Get(), GlicInvokeError::kLiveModeActive);
+}
+
 // An instance can be bound to several tabs at once, but only one of its side
 // panels is active at a time. An invocation that targets a specific tab must
 // show on that tab, rather than following the instance to wherever it happens
@@ -2124,6 +2505,123 @@ IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest,
 
   // Glic should be bound to tab1 again.
   EXPECT_EQ(GetInstanceForTab(tab1), instance);
+}
+
+IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest, InvokeFailsWhenClientLoadErrors) {
+  tabs::TabInterface* tab = GetTabListInterface()->GetActiveTab();
+  ASSERT_OK_AND_ASSIGN(auto* instance, OpenGlicForActiveTabAndWaitIdle());
+  ASSERT_OK(DisconnectWebClient(instance));
+
+  GlicHistogramTester histogram_tester;
+  base::test::TestFuture<GlicInvokeError> error_future;
+
+  GlicInvokeOptions options(glic::Target(*tab),
+                            mojom::InvocationSource::kOsButton);
+  options.on_error = error_future.GetCallback();
+
+  coordinator().Invoke(std::move(options));
+
+  EXPECT_EQ(error_future.Get(), GlicInvokeError::kClientLoadError);
+  histogram_tester.ExpectUniqueSample("Glic.InvokeResult",
+                                      GlicInvokeError::kClientLoadError, 1);
+  histogram_tester.ExpectUniqueSample("Glic.InvokeResult.OsButton",
+                                      GlicInvokeError::kClientLoadError, 1);
+}
+
+IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest,
+                       InvokeFailsWhenClientLoadErrorsWhileWaiting) {
+  tabs::TabInterface* tab = GetTabListInterface()->GetActiveTab();
+  ASSERT_OK_AND_ASSIGN(auto* instance, OpenGlicForActiveTabAndWaitIdle());
+  ASSERT_OK(DisconnectWebClient(instance));
+  // The client is disconnected, so the reported failure is what decides
+  // between loading and failed. Clear it so the invocation below has to wait.
+  instance->host().SetClientLoadFailed(false);
+  ASSERT_EQ(instance->host().client_load_state(), ClientLoadState::kLoading);
+
+  GlicHistogramTester histogram_tester;
+  base::test::TestFuture<GlicInvokeError> error_future;
+
+  GlicInvokeOptions options(glic::Target(*tab),
+                            mojom::InvocationSource::kOsButton);
+  options.on_error = error_future.GetCallback();
+
+  coordinator().Invoke(std::move(options));
+
+  instance->host().SetClientLoadFailed(true);
+
+  EXPECT_EQ(error_future.Get(), GlicInvokeError::kClientLoadError);
+  histogram_tester.ExpectUniqueSample("Glic.InvokeResult",
+                                      GlicInvokeError::kClientLoadError, 1);
+  histogram_tester.ExpectUniqueSample("Glic.InvokeResult.OsButton",
+                                      GlicInvokeError::kClientLoadError, 1);
+}
+
+IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest,
+                       InvokeFailsWhenWebClientInitializeFailed) {
+  tabs::TabInterface* tab = GetTabListInterface()->GetActiveTab();
+  ASSERT_OK_AND_ASSIGN(auto* instance, OpenGlicForActiveTabAndWaitIdle());
+  ASSERT_OK(DisconnectWebClient(instance));
+  instance->host().SetClientLoadFailed(false);
+  ASSERT_EQ(instance->host().client_load_state(), ClientLoadState::kLoading);
+
+  GlicHistogramTester histogram_tester;
+  base::test::TestFuture<GlicInvokeError> error_future;
+
+  GlicInvokeOptions options(glic::Target(*tab),
+                            mojom::InvocationSource::kOsButton);
+  options.on_error = error_future.GetCallback();
+
+  coordinator().Invoke(std::move(options));
+
+  instance->host().WebClientInitializeFailed();
+
+  EXPECT_EQ(error_future.Get(), GlicInvokeError::kClientLoadError);
+  histogram_tester.ExpectUniqueSample("Glic.InvokeResult",
+                                      GlicInvokeError::kClientLoadError, 1);
+  histogram_tester.ExpectUniqueSample("Glic.InvokeResult.OsButton",
+                                      GlicInvokeError::kClientLoadError, 1);
+}
+
+IN_PROC_BROWSER_TEST_F(GlicInvokeBrowserTest,
+                       InvokeSucceedsWhenClientAlreadyReady) {
+  tabs::TabInterface* tab = GetTabListInterface()->GetActiveTab();
+  ASSERT_OK(OpenGlicForActiveTabAndWaitIdle());
+
+  base::test::TestFuture<void> success_future;
+  GlicInvokeOptions options(glic::Target(*tab),
+                            mojom::InvocationSource::kOsButton);
+  options.on_success = success_future.GetCallback();
+
+  coordinator().Invoke(std::move(options));
+
+  EXPECT_TRUE(success_future.Wait());
+}
+
+// Delays the mock client's registration so that an invocation is guaranteed to
+// start while the client is still loading.
+class GlicInvokeSlowClientBrowserTest : public GlicInvokeBrowserTest {
+ public:
+  GlicInvokeSlowClientBrowserTest() {
+    AddMockGlicQueryParam("delay_ms", "2000");
+  }
+};
+
+IN_PROC_BROWSER_TEST_F(GlicInvokeSlowClientBrowserTest,
+                       InvokeSucceedsWhenClientTransitionsToReady) {
+  tabs::TabInterface* tab = GetTabListInterface()->GetActiveTab();
+  ASSERT_OK_AND_ASSIGN(auto* instance, OpenGlicForActiveTab());
+  ASSERT_EQ(instance->host().client_load_state(), ClientLoadState::kLoading);
+
+  base::test::TestFuture<void> success_future;
+  GlicInvokeOptions options(glic::Target(*tab),
+                            mojom::InvocationSource::kOsButton);
+  options.on_success = success_future.GetCallback();
+
+  coordinator().Invoke(std::move(options));
+
+  // The invocation waits for the client to finish loading before succeeding.
+  EXPECT_TRUE(success_future.Wait());
+  EXPECT_EQ(instance->host().client_load_state(), ClientLoadState::kReady);
 }
 
 }  // namespace glic

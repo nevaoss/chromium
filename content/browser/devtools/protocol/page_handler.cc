@@ -150,15 +150,25 @@ GetEncoder(const std::string& format, int quality, bool optimize_for_speed) {
   return protocol::Response::InvalidParams("Invalid image format");
 }
 
+// Returns the time at which |frame| was expected to be displayed, which the
+// capturer records as |reference_time|.
+base::TimeTicks ScreencastFrameTimestamp(const media::VideoFrame& frame) {
+  return frame.metadata().reference_time.value_or(base::TimeTicks::Now());
+}
+
 std::unique_ptr<Page::ScreencastFrameMetadata> BuildScreencastFrameMetadata(
     const gfx::Size& surface_size,
     float device_scale_factor,
     float page_scale_factor,
     const gfx::PointF& root_scroll_offset,
-    float top_controls_visible_height) {
+    float top_controls_visible_height,
+    base::TimeTicks timestamp) {
   if (surface_size.IsEmpty() || device_scale_factor == 0) {
     return nullptr;
   }
+
+  const base::Time wall_timestamp =
+      base::Time::Now() - (base::TimeTicks::Now() - timestamp);
 
   const gfx::SizeF content_size_dip =
       gfx::ScaleSize(gfx::SizeF(surface_size), 1 / device_scale_factor);
@@ -174,7 +184,8 @@ std::unique_ptr<Page::ScreencastFrameMetadata> BuildScreencastFrameMetadata(
           .SetDeviceHeight(content_size_dip.height())
           .SetScrollOffsetX(root_scroll_offset_dip.x())
           .SetScrollOffsetY(root_scroll_offset_dip.y())
-          .SetTimestamp(base::Time::Now().InSecondsFSinceUnixEpoch())
+          .SetTimestamp(wall_timestamp.InSecondsFSinceUnixEpoch())
+          .SetMonotonicTimestamp(timestamp.since_origin().InSecondsF())
           .Build();
   return page_metadata;
 }
@@ -672,11 +683,17 @@ Response PageHandler::Enable(
     FrameTreeNode* frame_tree_node = host_->frame_tree_node();
     NavigationRequest* navigation_request =
         host_->frame_tree_node()->navigation_request();
+    // A client that is not allowed to navigate the page to a URL must not
+    // learn it either (see GetNavigationHistory()). Redact the URL rather
+    // than omitting the event, so that navigation bookkeeping in clients
+    // keeps working.
+    const GURL& pending_url = navigation_request->common_params().url;
+    const bool may_disclose = !CheckNavigationAllowed(pending_url).IsError();
     frontend_->FrameStartedNavigating(
         frame_tree_node->current_frame_host()
             ->devtools_frame_token()
             .ToString(),
-        navigation_request->common_params().url.spec(),
+        may_disclose ? pending_url.spec() : std::string(),
         navigation_request->devtools_navigation_token().ToString(),
         GetFrameStartedNavigatingNavigationTypeString(
             navigation_request->common_params().navigation_type));
@@ -1177,9 +1194,16 @@ void PageHandler::DidStartNavigating(
     return;
   }
 
+  // A client that is not allowed to navigate the page to a URL must not
+  // learn it either (see GetNavigationHistory()). Redact the URL rather than
+  // omitting the event, so that navigation bookkeeping in clients keeps
+  // working. This event fires at FrameTreeNode::TakeNavigationRequest() time,
+  // BEFORE NavigationRequest::OnStartChecksComplete() force-detaches sessions
+  // whose client fails MayAttachToURL(), so it must gate disclosure itself.
+  const bool may_disclose = host_ && !CheckNavigationAllowed(url).IsError();
   frontend_->FrameStartedNavigating(
-      ftn.current_frame_host()->devtools_frame_token().ToString(), url.spec(),
-      loader_id.ToString(),
+      ftn.current_frame_host()->devtools_frame_token().ToString(),
+      may_disclose ? url.spec() : std::string(), loader_id.ToString(),
       GetFrameStartedNavigatingNavigationTypeString(navigation_type));
 }
 
@@ -1909,7 +1933,8 @@ void PageHandler::OnFrameFromVideoConsumer(
   std::unique_ptr<Page::ScreencastFrameMetadata> page_metadata =
       BuildScreencastFrameMetadata(surface_size, device_scale_factor,
                                    page_scale_factor, root_scroll_offset,
-                                   top_controls_visible_height);
+                                   top_controls_visible_height,
+                                   ScreencastFrameTimestamp(*frame));
   if (!page_metadata) {
     return;
   }

@@ -164,6 +164,9 @@ if (is_mac || is_win) {
     if (is_win) {
       sources += [ "omnibox_everywhere_shortcut_win_unittest.cc" ]
     }
+    if (is_mac) {
+      sources += [ "mac_window_util_unittest.mm" ]
+    }
     deps = [
       ":impl",
       ":omnibox_everywhere",
@@ -177,6 +180,7 @@ if (is_mac || is_win) {
       "//chrome/browser/new_tab_page/prefs",
       "//chrome/browser/ui/omnibox",
       "//chrome/test:test_support",
+      "//chrome/test/base:testing_browser_process",
       "//chrome/test/views",
       "//components/ntp_tiles:pref_names",
       "//content/test:test_support",
@@ -203,6 +207,7 @@ if (is_mac || is_win) {
       "//base",
       "//base/test:test_support",
       "//chrome/browser/background/omnibox_everywhere",
+      "//chrome/browser/prefs:util",
       "//chrome/browser/status_icons",
       "//chrome/browser/ui:browser_window_header",
       "//chrome/browser/ui:chrome_pages",

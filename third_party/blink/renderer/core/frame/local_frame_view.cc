@@ -107,8 +107,6 @@
 #include "third_party/blink/renderer/core/html/anchor_element_viewport_position_tracker.h"
 #include "third_party/blink/renderer/core/html/canvas/canvas_paint_event.h"
 #include "third_party/blink/renderer/core/html/canvas/html_canvas_element.h"
-#include "third_party/blink/renderer/core/html/fenced_frame/document_fenced_frames.h"
-#include "third_party/blink/renderer/core/html/fenced_frame/html_fenced_frame_element.h"
 #include "third_party/blink/renderer/core/html/forms/text_control_element.h"
 #include "third_party/blink/renderer/core/html/html_embed_element.h"
 #include "third_party/blink/renderer/core/html/html_frame_element.h"
@@ -405,7 +403,7 @@ void LocalFrameView::Trace(Visitor* visitor) const {
   visitor->Trace(scrollbars_);
   visitor->Trace(viewport_scrollable_area_);
   visitor->Trace(anchoring_adjustment_queue_);
-  visitor->Trace(scroll_event_queue_);
+  visitor->Trace(deferred_scroll_event_queue_);
   visitor->Trace(delayed_intersection_timer_);
   visitor->Trace(paint_controller_persistent_data_);
   visitor->Trace(paint_artifact_compositor_);
@@ -434,17 +432,6 @@ void LocalFrameView::ForAllChildViewsAndPlugins(
 
   for (const auto& plugin : plugins_) {
     function(*plugin);
-  }
-
-  if (Document* document = frame_->GetDocument()) {
-    if (DocumentFencedFrames* fenced_frames =
-            DocumentFencedFrames::Get(*document)) {
-      for (HTMLFencedFrameElement* fenced_frame :
-           fenced_frames->GetFencedFrames()) {
-        if (Frame* frame = fenced_frame->ContentFrame())
-          function(*frame->View());
-      }
-    }
   }
 }
 
@@ -516,19 +503,6 @@ void LocalFrameView::ForAllRemoteFrameViews(
         function(*view);
     }
   }
-  if (Document* document = frame_->GetDocument()) {
-    if (DocumentFencedFrames* fenced_frames =
-            DocumentFencedFrames::Get(*document)) {
-      for (HTMLFencedFrameElement* fenced_frame :
-           fenced_frames->GetFencedFrames()) {
-        if (RemoteFrame* frame =
-                To<RemoteFrame>(fenced_frame->ContentFrame())) {
-          if (RemoteFrameView* view = frame->View())
-            function(*view);
-        }
-      }
-    }
-  }
 }
 
 void LocalFrameView::Dispose() {
@@ -592,6 +566,13 @@ void LocalFrameView::Dispose() {
     metrics_aggregator_.reset();
   }
   layout_shift_tracker_->Dispose();
+
+  // Make a copy before notifying in case observers unregister themselves.
+  auto lifecycle_observers = lifecycle_observers_;
+  for (LifecycleNotificationObserver* observer : lifecycle_observers) {
+    observer->WillDisposeView();
+  }
+  lifecycle_observers_.clear();
 
 #if DCHECK_IS_ON()
   has_been_disposed_ = true;
@@ -2306,42 +2287,46 @@ void LocalFrameView::ScheduleVisualUpdateForPaintInvalidationIfNeeded() {
 }
 
 bool LocalFrameView::NotifyResizeObservers() {
-  // Return true if lifecycles need to be re-run
   TRACE_EVENT0("blink,benchmark", "LocalFrameView::NotifyResizeObservers");
 
   // Controller exists only if ResizeObserver was created.
   ResizeObserverController* resize_controller =
       ResizeObserverController::FromIfExists(*GetFrame().DomWindow());
-  if (!resize_controller)
+  if (!resize_controller) {
     return false;
+  }
 
   size_t min_depth = resize_controller->GatherObservations();
 
+  bool needs_to_repeat_lifecycle = false;
   if (min_depth != ResizeObserverController::kDepthBottom) {
     resize_controller->DeliverObservations();
-  } else {
-    // Observation depth limit reached
-    if (resize_controller->SkippedObservations() &&
-        !resize_controller->IsLoopLimitErrorDispatched()) {
-      resize_controller->ClearObservations();
+    // Delivering active observations can dirty state, and another pass is
+    // needed to gather any deeper observations and check for skipped
+    // observations.
+    needs_to_repeat_lifecycle = true;
+  } else if (resize_controller->SkippedObservations()) {
+    // Observation depth limit reached.
+    resize_controller->ClearObservations();
+    if (!resize_controller->IsLoopLimitErrorDispatched()) {
       ErrorEvent* error = ErrorEvent::Create(
           "ResizeObserver loop completed with undelivered notifications.",
           CaptureSourceLocation(frame_->DomWindow()), nullptr);
-      // We're using |SanitizeScriptErrors::kDoNotSanitize| as the error is made
-      // by blink itself.
+      // We're using |SanitizeScriptErrors::kDoNotSanitize| as the error is
+      // made by blink itself.
       // TODO(yhirano): Reconsider this.
       frame_->DomWindow()->DispatchErrorEvent(
           error, SanitizeScriptErrors::kDoNotSanitize);
       // Ensure notifications will get delivered in next cycle.
       ScheduleAnimation();
       resize_controller->SetLoopLimitErrorDispatched(true);
+      // Dispatching the error event can run script that dirties state, so
+      // re-run the lifecycle.
+      needs_to_repeat_lifecycle = true;
     }
-    if (Lifecycle().GetState() >= DocumentLifecycle::kPrePaintClean)
-      return false;
   }
 
-  // Lifecycle needs to be run again because Resize Observer affected layout
-  return true;
+  return needs_to_repeat_lifecycle;
 }
 
 bool LocalFrameView::LocalFrameTreeAllowsThrottling() const {
@@ -2533,14 +2518,11 @@ void LocalFrameView::UpdateLifecyclePhasesInternal(
 
   auto old_force_commit_criteria = ForceCommitCriteria();
 
-  // Run style, layout, compositing and prepaint lifecycle phases and deliver
-  // resize observations if required. Resize observer callbacks/delegates have
-  // the potential to dirty layout (until loop limit is reached) and therefore
-  // the above lifecycle phases need to be re-run until the limit is reached
-  // or no layout is pending.
-  // Note that after ResizeObserver has settled, we also run intersection
-  // observations that need to be delievered in post-layout. This process can
-  // also dirty layout, which will run this loop again.
+  // Run style, layout, compositing, and prepaint lifecycle phases, followed by
+  // post-layout steps (such as post-layout intersection observations, resize
+  // observations, container query list notifications, and view transitions).
+  // Any of these steps can dirty style or layout and require repeating the
+  // lifecycle phases.
 
   // A LocalFrameView can be unthrottled at this point, but become throttled as
   // it advances through lifecycle stages. If that happens, it will prevent
@@ -2555,8 +2537,8 @@ void LocalFrameView::UpdateLifecyclePhasesInternal(
 
   while (true) {
     for (LocalFrameView* frame_view : unthrottled_frame_views) {
-      // RunResizeObserverSteps may run arbitrary script, which can cause a
-      // frame to become detached.
+      // Steps in this loop (such as ResizeObserver and ContainerQueryList) may
+      // run arbitrary script, which can cause a frame to become detached.
       if (frame_view->GetFrame().IsAttached()) {
         frame_view->Lifecycle().EnsureStateAtMost(
             DocumentLifecycle::kVisualUpdatePending);
@@ -2631,8 +2613,11 @@ void LocalFrameView::UpdateLifecyclePhasesInternal(
     bool needs_to_repeat_lifecycle = false;
 
     // ResizeObserver and post-layout IntersectionObserver observation
-    // deliveries may dirty style and layout. RunResizeObserverSteps will return
-    // true if any observer ran that may have dirtied style or layout;
+    // deliveries may require repeating the lifecycle. RunResizeObserverSteps
+    // returns true if any resize observations were delivered or a loop limit
+    // error event was dispatched (requiring another pass to update any dirtied
+    // state, gather deeper observations, or check for skipped observations), or
+    // if anchor position fallback updates invalidated layout;
     // RunPostLayoutIntersectionObserverSteps will return true if any
     // observations led to content-visibility intersection changing visibility
     // state synchronously (which happens on the first intersection
@@ -2739,15 +2724,17 @@ void LocalFrameView::UpdateLifecyclePhasesInternal(
   DisallowLayoutInvalidationScope disallow_layout_invalidation(this);
 #endif
 
+  if (RuntimeEnabledFeatures::AvoidEmbeddedContentViewLocationEnabled()) {
+    PropagateFrameRectsRecursively();
+  }
   // This needs to be done prior to paint: it will update the cc::Layer bounds
   // for the remote frame views, which will be wrapped during paint in
   // ForeignLayerDisplayItem's whose visual rect is set at construction based
   // on cc::Layer bounds.
+  // If the compositing rect changes, the new rect will propagated to the remote
+  // frame in post-lifecycle steps or the next lifecycle.
   ForAllRemoteFrameViews(
       [](RemoteFrameView& frame_view) { frame_view.UpdateCompositingRect(); });
-  if (RuntimeEnabledFeatures::AvoidEmbeddedContentViewLocationEnabled()) {
-    PropagateFrameRectsRecursively();
-  }
 
   uint64_t dom_version = frame_->GetDocument()->DomTreeVersion();
   if (last_dom_stats_version_ != dom_version) {
@@ -2924,7 +2911,7 @@ bool LocalFrameView::RunStyleAndLayoutLifecyclePhases(
 
   ExecutePendingScrollMarkerSelectionUpdates();
 
-  EnqueueScrollEvents();
+  ProcessDeferredScrollEvents();
 
   frame_->GetPage()->GetValidationMessageClient().LayoutOverlay();
 
@@ -3206,9 +3193,9 @@ void LocalFrameView::DequeueScrollAnchoringAdjustment(
   anchoring_adjustment_queue_.erase(scrollable_area);
 }
 
-void LocalFrameView::SetNeedsEnqueueScrollEvent(
+void LocalFrameView::SetNeedsEnqueueDeferredScrollEvent(
     PaintLayerScrollableArea* scrollable_area) {
-  scroll_event_queue_.insert(scrollable_area);
+  deferred_scroll_event_queue_.insert(scrollable_area);
   GetPage()->Animator().ScheduleVisualUpdate(
       frame_.Get(), cc::BeginMainFrameReason::kMainThreadScroll);
 }
@@ -3234,14 +3221,15 @@ void LocalFrameView::PerformScrollAnchoringAdjustments() {
   }
 }
 
-void LocalFrameView::EnqueueScrollEvents() {
+void LocalFrameView::ProcessDeferredScrollEvents() {
   ForAllNonThrottledLocalFrameViews([](LocalFrameView& frame_view) {
     for (const WeakMember<PaintLayerScrollableArea>& scroller :
-         frame_view.scroll_event_queue_) {
-      if (scroller)
-        scroller->EnqueueScrollEventIfNeeded();
+         frame_view.deferred_scroll_event_queue_) {
+      if (scroller) {
+        scroller->ProcessDeferredScrollEvents();
+      }
     }
-    frame_view.scroll_event_queue_.clear();
+    frame_view.deferred_scroll_event_queue_.clear();
   });
 }
 
@@ -4189,7 +4177,10 @@ void LocalFrameView::SetCursor(const ui::Cursor& cursor) {
 void LocalFrameView::PropagateFrameRectsInternal() {
   TRACE_EVENT0("blink", "LocalFrameView::PropagateFrameRects");
 
-  if (!RuntimeEnabledFeatures::AvoidEmbeddedContentViewLocationEnabled()) {
+  if (RuntimeEnabledFeatures::AvoidEmbeddedContentViewLocationEnabled()) {
+    ForAllChildViewsAndPlugins(
+        [](EmbeddedContentView& view) { view.SetNeedsFrameRectPropagation(); });
+  } else {
     if (LayoutSizeFixedToFrameSize()) {
       SetLayoutSizeInternal(
           Size(), {.should_suppress_events =
@@ -4216,19 +4207,18 @@ void LocalFrameView::PropagateFrameRectsInternal() {
   }
 }
 
-void LocalFrameView::PropagateFrameRectsRecursively(bool force) {
+void LocalFrameView::PropagateFrameRectsRecursively() {
   CHECK(RuntimeEnabledFeatures::AvoidEmbeddedContentViewLocationEnabled());
-  bool propagate = force || NeedsFrameRectPropagation();
-  if (propagate) {
+  if (NeedsFrameRectPropagation()) {
     PropagateFrameRects();
   }
-  ForAllChildViewsAndPlugins([propagate](EmbeddedContentView& view) {
+  ForAllChildViewsAndPlugins([](EmbeddedContentView& view) {
     auto* local_frame_view = DynamicTo<LocalFrameView>(view);
-    if (local_frame_view && !local_frame_view->ShouldThrottleRendering()) {
-      // If the current frame view propagates, it will force descendant frame
-      // views to propagate as well.
-      local_frame_view->PropagateFrameRectsRecursively(propagate);
-    } else if (propagate) {
+    if (local_frame_view) {
+      if (!local_frame_view->ShouldThrottleRendering()) {
+        local_frame_view->PropagateFrameRectsRecursively();
+      }
+    } else if (view.NeedsFrameRectPropagation()) {
       view.PropagateFrameRects();
     }
   });
@@ -4777,19 +4767,6 @@ void LocalFrameView::UpdateIntersectionObserverStatus() {
     needs_occlusion_tracking_ |= child->View()->NeedsOcclusionTracking();
   }
 
-  if (DocumentFencedFrames* fenced_frames =
-          DocumentFencedFrames::Get(*frame_->GetDocument())) {
-    for (HTMLFencedFrameElement* fenced_frame :
-         fenced_frames->GetFencedFrames()) {
-      if (Frame* frame = fenced_frame->ContentFrame()) {
-        frame->View()->UpdateIntersectionObserverStatus();
-        has_active_intersection_observations_ |=
-            frame->View()->HasActiveIntersectionObservations();
-        needs_occlusion_tracking_ |= frame->View()->NeedsOcclusionTracking();
-      }
-    }
-  }
-
   if (FrameOwner* owner = frame_->Owner()) {
     owner->SetNeedsOcclusionTracking(needs_occlusion_tracking_);
   }
@@ -4839,15 +4816,6 @@ void LocalFrameView::UpdateViewportIntersectionsForSubtree(
     child->View()->UpdateViewportIntersectionsForSubtree(flags, context);
   }
 
-  if (DocumentFencedFrames* fenced_frames =
-          DocumentFencedFrames::Get(*frame_->GetDocument())) {
-    for (HTMLFencedFrameElement* fenced_frame :
-         fenced_frames->GetFencedFrames()) {
-      if (Frame* frame = fenced_frame->ContentFrame()) {
-        frame->View()->UpdateViewportIntersectionsForSubtree(flags, context);
-      }
-    }
-  }
 }
 
 void LocalFrameView::DeliverSynchronousIntersectionObservations() {

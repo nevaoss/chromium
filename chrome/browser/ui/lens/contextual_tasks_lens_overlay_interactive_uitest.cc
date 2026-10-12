@@ -163,7 +163,7 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksLensOverlayControllerInteractiveUiTest,
   auto* const browser_view = BrowserView::GetBrowserViewForBrowser(browser());
   auto off_center_point = base::BindLambdaForTesting([browser_view]() {
     gfx::Point off_center =
-        browser_view->contents_web_view()->bounds().CenterPoint();
+        browser_view->GetContentsView()->bounds().CenterPoint();
     off_center.Offset(100, 100);
     return off_center;
   });
@@ -192,7 +192,7 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksLensOverlayControllerInteractiveUiTest,
   auto* const browser_view = BrowserView::GetBrowserViewForBrowser(browser());
   auto off_center_point = base::BindLambdaForTesting([browser_view]() {
     gfx::Point off_center =
-        browser_view->contents_web_view()->bounds().CenterPoint();
+        browser_view->GetContentsView()->bounds().CenterPoint();
     off_center.Offset(100, 100);
     return off_center;
   });
@@ -235,7 +235,7 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksLensOverlayControllerInteractiveUiTest,
   auto* const browser_view = BrowserView::GetBrowserViewForBrowser(browser());
   auto off_center_point = base::BindLambdaForTesting([browser_view]() {
     gfx::Point off_center =
-        browser_view->contents_web_view()->bounds().CenterPoint();
+        browser_view->GetContentsView()->bounds().CenterPoint();
     off_center.Offset(100, 100);
     return off_center;
   });
@@ -270,7 +270,8 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksLensOverlayControllerInteractiveUiTest,
 }
 
 IN_PROC_BROWSER_TEST_F(ContextualTasksLensOverlayControllerInteractiveUiTest,
-                       TitleResetsWhenTransitioningFromAimToLensPage) {
+                       // TODO(crbug.com/565503241): Re-enable this test
+                       DISABLED_TitleResetsWhenTransitioningFromAimToLensPage) {
   WaitForTemplateURLServiceToLoad();
   DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kOverlayId);
   DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kSidePanelWebContentsId);
@@ -308,7 +309,7 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksLensOverlayControllerInteractiveUiTest,
   auto off_center_point = base::BindLambdaForTesting([this]() {
     auto* const browser_view = BrowserView::GetBrowserViewForBrowser(browser());
     gfx::Point off_center =
-        browser_view->contents_web_view()->GetBoundsInScreen().CenterPoint();
+        browser_view->GetContentsView()->GetBoundsInScreen().CenterPoint();
     off_center.Offset(50, 50);
     return off_center;
   });
@@ -470,7 +471,7 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksLensOverlayControllerInteractiveUiTest,
   auto* const browser_view = BrowserView::GetBrowserViewForBrowser(browser());
   auto off_center_point = base::BindLambdaForTesting([browser_view]() {
     gfx::Point off_center =
-        browser_view->contents_web_view()->bounds().CenterPoint();
+        browser_view->GetContentsView()->bounds().CenterPoint();
     off_center.Offset(100, 100);
     return off_center;
   });
@@ -539,7 +540,7 @@ IN_PROC_BROWSER_TEST_F(
   auto* const browser_view = BrowserView::GetBrowserViewForBrowser(browser());
   auto off_center_point = base::BindLambdaForTesting([browser_view]() {
     gfx::Point off_center =
-        browser_view->contents_web_view()->bounds().CenterPoint();
+        browser_view->GetContentsView()->bounds().CenterPoint();
     off_center.Offset(100, 100);
     return off_center;
   });
@@ -662,7 +663,7 @@ IN_PROC_BROWSER_TEST_P(
   auto* const browser_view = BrowserView::GetBrowserViewForBrowser(browser());
   auto off_center_point = base::BindLambdaForTesting([browser_view]() {
     gfx::Point off_center =
-        browser_view->contents_web_view()->bounds().CenterPoint();
+        browser_view->GetContentsView()->bounds().CenterPoint();
     off_center.Offset(100, 100);
     return off_center;
   });

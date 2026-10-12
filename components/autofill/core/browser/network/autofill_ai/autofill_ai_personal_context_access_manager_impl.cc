@@ -85,12 +85,15 @@ CreateAmbientAutofillRequest(DenseSet<EntityType> types,
     request.add_requested_types(
         AutofillEntityTypeToPersonalContextEntityType(type));
   }
-  // Do not request presence if spii cache is enabled.
-  if (!base::FeatureList::IsEnabled(
+
+  if (base::FeatureList::IsEnabled(
           features::kAutofillAmbientAutofillSpiiCache)) {
+    request.set_client_id(std::move(client_id));
+  } else {
+    // Do not request presence if spii cache is enabled.
     request.set_return_spii_presence(return_spii_presence);
   }
-  request.set_client_id(std::move(client_id));
+
   return request;
 }
 
@@ -197,7 +200,6 @@ PersonalContextPrefetchEntityValidationResult ValidateAmbientAutofillEntity(
     const auto& payload =
         std::get<EntityInstance::PersonalContextRecordTypePayload>(
             entity.record_type_data());
-    // TODO(crbug.com/541184524): Check for valid source URLs.
     if (payload.sources.empty()) {
       return PersonalContextPrefetchEntityValidationResult::
           kFailedMissingSource;
@@ -494,7 +496,9 @@ void AutofillAiPersonalContextAccessManagerImpl::GetUnmaskedSpiiEntity(
   const base::TimeTicks request_start_time = base::TimeTicks::Now();
 
   if (base::FeatureList::IsEnabled(
-          features::kAutofillAmbientAutofillSpiiCache)) {
+          features::kAutofillAmbientAutofillSpiiCache) &&
+      proto_entity->entity_case() ==
+          personal_context::proto::Entity::kEncryptedEntity) {
     if (std::optional<EntityInstance> unmasked_entity =
             ConvertProtoToEntityInstance(*proto_entity,
                                          /*mask_spii=*/false)) {

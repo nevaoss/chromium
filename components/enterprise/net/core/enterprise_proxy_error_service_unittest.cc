@@ -18,14 +18,17 @@
 #include "base/test/test_future.h"
 #include "base/values.h"
 #include "components/enterprise/browser/identifiers/profile_id_service.h"
+#include "components/enterprise/net/core/auth_scope_metadata.h"
 #include "components/enterprise/net/core/enterprise_network_auth_service.h"
 #include "components/enterprise/net/core/enterprise_proxy_error_data.h"
 #include "components/enterprise/net/core/enterprise_proxy_service.h"
 #include "components/enterprise/net/core/features.h"
 #include "components/enterprise/net/core/prefs.h"
+#include "components/enterprise/net/core/scoped_extra_allowed_domains_for_testing.h"
 #include "components/prefs/testing_pref_service.h"
 #include "components/signin/public/identity_manager/account_info.h"
 #include "components/signin/public/identity_manager/identity_test_environment.h"
+#include "components/strings/grit/components_strings.h"
 #include "net/base/auth.h"
 #include "net/log/net_log.h"
 #include "net/log/test_net_log.h"
@@ -33,6 +36,7 @@
 #include "services/network/public/cpp/weak_wrapper_shared_url_loader_factory.h"
 #include "services/network/test/test_url_loader_factory.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "ui/base/l10n/l10n_util.h"
 
 namespace enterprise_net {
 
@@ -116,11 +120,16 @@ class EnterpriseProxyErrorServiceTest : public testing::Test {
         &pref_service_, auth_service_.get(), std::move(callback),
         &profile_id_service_, net::NetLog::Get());
 
+    scoped_allowed_domains_ =
+        std::make_unique<ScopedExtraAllowedDomainsForTesting>(
+            std::vector<std::string>{"example.com"});
+
     error_service_ =
         std::make_unique<EnterpriseProxyErrorService>(proxy_service_.get());
   }
 
   void TearDown() override {
+    scoped_allowed_domains_.reset();
     error_service_.reset();
     proxy_service_.reset();
     auth_service_.reset();
@@ -130,7 +139,7 @@ class EnterpriseProxyErrorServiceTest : public testing::Test {
   void SetupManagedDomainWithProxy(std::string_view proxy_host,
                                    bool with_auth = true) {
     base::ListValue policy_domains;
-    policy_domains.Append(CreateDomainPolicyEntry("example-pvd.com", true));
+    policy_domains.Append(CreateDomainPolicyEntry("pvd.example.com", true));
     pref_service_.SetList(kProxyProvisioningDomains, std::move(policy_domains));
 
     std::string auth_block = with_auth ? kAuthBlockJson : "";
@@ -139,7 +148,7 @@ class EnterpriseProxyErrorServiceTest : public testing::Test {
                            std::string(proxy_host).c_str(), auth_block.c_str());
 
     test_url_loader_factory_->SimulateResponseForPendingRequest(
-        "https://example-pvd.com/.well-known/pvd", pvd_config_json);
+        "https://pvd.example.com/.well-known/pvd", pvd_config_json);
   }
 
   net::AuthChallengeInfo CreateProxyAuthChallengeInfo(
@@ -184,6 +193,7 @@ class EnterpriseProxyErrorServiceTest : public testing::Test {
   std::unique_ptr<EnterpriseNetworkAuthService> auth_service_;
   std::unique_ptr<EnterpriseProxyService> proxy_service_;
   std::unique_ptr<EnterpriseProxyErrorService> error_service_;
+  std::unique_ptr<ScopedExtraAllowedDomainsForTesting> scoped_allowed_domains_;
 };
 
 TEST_F(EnterpriseProxyErrorServiceTest, NotApplicableWhenNoManagedProxy) {
@@ -383,6 +393,47 @@ TEST_F(EnterpriseProxyErrorServiceTest, GetErrorPageParams_ValidData) {
               *params.FindString("error_code"));
     EXPECT_EQ(test_case.expected_category_str,
               *params.FindString("error_category"));
+
+    if (test_case.category ==
+        EnterpriseProxyErrorData::ErrorCategory::kAuthentication) {
+      EXPECT_EQ(
+          l10n_util::GetStringUTF8(IDS_ENTERPRISE_PROXY_AUTHN_ERROR_HEADING),
+          *params.FindString("title"));
+      EXPECT_EQ(
+          l10n_util::GetStringUTF8(IDS_ENTERPRISE_PROXY_AUTHN_ERROR_HEADING),
+          *params.FindString("heading"));
+      EXPECT_EQ(l10n_util::GetStringUTF8(
+                    IDS_ENTERPRISE_PROXY_AUTHN_ERROR_PRIMARY_PARAGRAPH),
+                *params.FindString("primary_paragraph"));
+      EXPECT_EQ(l10n_util::GetStringUTF8(IDS_CONTINUE),
+                *params.FindString("button_text"));
+    } else if (test_case.category ==
+               EnterpriseProxyErrorData::ErrorCategory::kAuthorization) {
+      EXPECT_EQ(
+          l10n_util::GetStringUTF8(IDS_ENTERPRISE_PROXY_AUTHZ_ERROR_HEADING),
+          *params.FindString("title"));
+      EXPECT_EQ(
+          l10n_util::GetStringUTF8(IDS_ENTERPRISE_PROXY_AUTHZ_ERROR_HEADING),
+          *params.FindString("heading"));
+      EXPECT_EQ(l10n_util::GetStringFUTF8(
+                    IDS_ENTERPRISE_PROXY_AUTHZ_ERROR_PRIMARY_PARAGRAPH,
+                    u"https://target.example.com/page"),
+                *params.FindString("primary_paragraph"));
+      EXPECT_EQ(l10n_util::GetStringUTF8(IDS_ENTERPRISE_BLOCK_GO_BACK),
+                *params.FindString("button_text"));
+    } else {
+      EXPECT_EQ(
+          l10n_util::GetStringUTF8(IDS_ENTERPRISE_PROXY_OTHER_ERROR_HEADING),
+          *params.FindString("title"));
+      EXPECT_EQ(
+          l10n_util::GetStringUTF8(IDS_ENTERPRISE_PROXY_OTHER_ERROR_HEADING),
+          *params.FindString("heading"));
+      EXPECT_EQ(l10n_util::GetStringUTF8(
+                    IDS_ENTERPRISE_PROXY_OTHER_ERROR_PRIMARY_PARAGRAPH),
+                *params.FindString("primary_paragraph"));
+      EXPECT_EQ(l10n_util::GetStringUTF8(IDS_ENTERPRISE_BLOCK_GO_BACK),
+                *params.FindString("button_text"));
+    }
 
     histogram_tester.ExpectUniqueSample(
         "Enterprise.Proxy.DisguisedErrorPage.ErrorCode", test_case.error_code,

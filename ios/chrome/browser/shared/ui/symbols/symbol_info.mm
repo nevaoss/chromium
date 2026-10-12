@@ -87,6 +87,8 @@ SymbolInfo InfoForSymbol(Symbol symbol) {
       return {@"cloud_and_arrow_up", SymbolType::kCustom};
     case SymbolCloudSlash:
       return {@"cloud_slash", SymbolType::kCustom};
+    case SymbolCreditCardSpark:
+      return {@"creditcard_spark", SymbolType::kCustom};
     case SymbolCustomShield:
       return {@"shield", SymbolType::kCustom};
     case SymbolDangerousOmnibox:
@@ -441,6 +443,8 @@ SymbolInfo InfoForSymbol(Symbol symbol) {
       return {@"list.bullet.clipboard", SymbolType::kSystem};
     case SymbolListBulletRectangle:
       return {@"list.bullet.rectangle.portrait", SymbolType::kSystem};
+    case SymbolLocationSlash:
+      return {@"location.slash", SymbolType::kSystem};
     case SymbolLock:
       return {@"lock", SymbolType::kSystem};
     case SymbolMacbookAndIPhone:
@@ -469,6 +473,8 @@ SymbolInfo InfoForSymbol(Symbol symbol) {
       return {@"mic", SymbolType::kSystem};
     case SymbolMicrophoneFill:
       return {@"mic.fill", SymbolType::kSystem};
+    case SymbolMicrophoneSlash:
+      return {@"mic.slash", SymbolType::kSystem};
     case SymbolMinusInCircle:
       return {@"minus.circle", SymbolType::kSystem};
     case SymbolMovePlatterToBottomPhone:
@@ -648,6 +654,8 @@ SymbolInfo InfoForSymbol(Symbol symbol) {
       return {@"viewfinder", SymbolType::kSystem};
     case SymbolVideo:
       return {@"video", SymbolType::kSystem};
+    case SymbolVideoSlash:
+      return {@"video.slash", SymbolType::kSystem};
     case SymbolWalletBifold:
       return {@"wallet.bifold", SymbolType::kSystem};
     case SymbolWarning:

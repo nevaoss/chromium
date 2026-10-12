@@ -379,8 +379,8 @@ std::optional<int> MaybeFindRowColumn(ui::BrowserAccessibility* start_node,
     }
 
     auto* node = table_node->node();
-    if (std::optional<int> row = node->GetTableCellRowIndex(),
-        col = node->GetTableCellColIndex();
+    if (std::optional<int> row = node->GetTableCellDomRowIndex(),
+        col = node->GetTableCellDomColIndex();
         row && col) {
       cell_node = node;
       cur_row_index = *row;
@@ -416,12 +416,12 @@ std::optional<int> MaybeFindRowColumn(ui::BrowserAccessibility* start_node,
   int want_row_index = cur_row_index, want_col_index = cur_col_index;
   if (want_row) {
     want_row_index +=
-        forwards ? cell_node->GetTableCellRowSpan().value_or(1) : -1;
+        forwards ? cell_node->GetTableCellDomRowSpan().value_or(1) : -1;
   }
 
   if (want_col) {
     want_col_index +=
-        forwards ? cell_node->GetTableCellColSpan().value_or(1) : -1;
+        forwards ? cell_node->GetTableCellDomColSpan().value_or(1) : -1;
   }
 
   if (want_col_bounds || want_table_bounds) {
@@ -658,7 +658,7 @@ int ResolvePositionToTextOffsetForNode(
   if (accessibility_focus->PlatformGetParent() == pos.node) {
     std::optional<size_t> index_in_parent =
         accessibility_focus->GetIndexInParent();
-    // TODO(crbug.com/443078007): Consider converting this to a CHECK.
+    // TODO(crbug.com/564162661): Consider converting this to a CHECK.
     if (!index_in_parent.has_value()) {
       DUMP_WILL_BE_NOTREACHED();
       return ui::kAXAndroidUndefinedSelectionIndex;
@@ -1642,8 +1642,8 @@ void WebContentsAccessibilityAndroid::
       node->IsPasswordField(), node->IsScrollable(), node->IsSelected(),
       node->IsTextSelectable(), node->IsVisibleToUser(),
       node->HasCharacterLocations(), node->IsRequired(),
-      node->IsHeading() || node->IsTableHeader(),
-      node->HasLayoutBasedActions());
+      node->IsHeading() || node->IsTableHeader(), node->HasLayoutBasedActions(),
+      !node->GetTextContentUTF16().empty());
 }
 
 void WebContentsAccessibilityAndroid::

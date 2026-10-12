@@ -81,7 +81,10 @@ void AtMemorySuggestionController::OnSuggestionsChanged() {
 
 void AtMemorySuggestionController::AcceptSuggestion(
     int index,
-    AutofillMetrics::SuggestionAcceptedMethod accept_method) {
+    AutofillMetrics::SuggestionAcceptedMethod accept_method,
+    bool was_obscured) {
+  // TODO(crbug.com/561395976): Use the `was_obscured` parameter to run
+  // additional authentication.
   if (base::checked_cast<size_t>(index) >= suggestions_.size()) {
     return;
   }
@@ -135,8 +138,6 @@ void AtMemorySuggestionController::Show(
     AutoselectFirstSuggestion autoselect_first_suggestion,
     AutofillSuggestionsIgnoreFocusLoss ignore_focus_loss,
     std::u16string search_bar_initial_value) {
-  // TODO(crbug.com/535486238): Plumb search_bar_initial_value through to the
-  // UI.
   ui_session_id_ = session_id;
   suggestions_ = std::move(suggestions);
   trigger_source_ = trigger_source;
@@ -242,7 +243,9 @@ void AtMemorySuggestionController::OnQueryTextChanged(
 }
 
 void AtMemorySuggestionController::OnSuggestionAccepted(int position) {
-  AcceptSuggestion(position, AutofillMetrics::SuggestionAcceptedMethod::kTap);
+  // TODO(crbug.com/561395976): Pass the `was_obscured` flag from Java.
+  AcceptSuggestion(position, AutofillMetrics::SuggestionAcceptedMethod::kTap,
+                   /*was_obscured=*/false);
 }
 
 void AtMemorySuggestionController::OnSuggestionDismissed(int position) {

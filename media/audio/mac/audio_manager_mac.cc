@@ -23,15 +23,17 @@
 #include "base/memory/free_deleter.h"
 #include "base/metrics/histogram_functions.h"
 #include "base/notreached.h"
+#include "base/numerics/safe_conversions.h"
 #include "base/power_monitor/power_monitor.h"
 #include "base/power_monitor/power_observer.h"
+#include "base/sequence_checker.h"
 #include "base/strings/strcat.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_split.h"
 #include "base/strings/stringprintf.h"
 #include "base/strings/sys_string_conversions.h"
 #include "base/task/bind_post_task.h"
-#include "base/threading/thread_checker.h"
+#include "base/thread_annotations.h"
 #include "base/time/time.h"
 #include "media/audio/apple/audio_auhal.h"
 #include "media/audio/apple/audio_low_latency_input.h"
@@ -288,9 +290,8 @@ bool AudioManagerMac::GetDefaultOutputDevice(AudioDeviceID* output_device,
   return true;
 }
 
-// Returns the total number of channels on a device; regardless of what the
-// device's preferred rendering layout looks like. Should only be used for the
-// channel count when a device has more than kMaxConcurrentChannels.
+// Returns the total number of channels on a device, regardless of what the
+// device's preferred rendering layout looks like.
 static bool GetDeviceTotalChannelCount(AudioDeviceID device,
                                        AudioObjectPropertyScope scope,
                                        int* channels) {
@@ -379,70 +380,6 @@ static bool GetInputDeviceChannels(AudioDeviceID device, int* channels) {
   return true;
 }
 
-// Attempts to find a standard Chromium layout that matches the Apple
-// `AudioChannelLayout`. If no valid channels are found, we default to zero
-// channels and `CHANNEL_LAYOUT_DISCRETE`.
-void ParseCoreAudioChannelLayout(AudioChannelLayout* device_layout,
-                                 uint32_t* channels,
-                                 ChannelLayout* channel_layout) {
-  // There is no channel info for stereo, assume so for mono as well.
-  if (device_layout->mNumberChannelDescriptions == 1 ||
-      device_layout->mNumberChannelDescriptions == 2) {
-    *channels = device_layout->mNumberChannelDescriptions;
-    *channel_layout =
-        *channels == 2 ? CHANNEL_LAYOUT_STEREO : CHANNEL_LAYOUT_MONO;
-    return;
-  }
-
-  *channels = 0;
-  // use `CHANNEL_LAYOUT_DISCRETE` as the default layout if we can't
-  // find out a matched one.
-  *channel_layout = CHANNEL_LAYOUT_DISCRETE;
-
-  const auto descriptions = GetDescriptions(*device_layout);
-  std::vector<Channels> channels_to_match;
-  for (const auto& description : descriptions) {
-    AudioChannelLabel label = description.mChannelLabel;
-    if (label == kAudioChannelLabel_Unknown) {
-      continue;
-    }
-
-    *channels += 1;
-
-    const std::optional<Channels> maybe_channel =
-        AudioChannelLabelToChannel(label);
-    if (maybe_channel.has_value()) {
-      channels_to_match.push_back(*maybe_channel);
-    }
-  }
-
-  if (*channels == 0 || *channels != channels_to_match.size()) {
-    return;
-  }
-
-  for (int i = 0; i <= ChannelLayout::CHANNEL_LAYOUT_MAX; i++) {
-    ChannelLayout layout = static_cast<ChannelLayout>(i);
-    if (static_cast<uint32_t>(ChannelLayoutToChannelCount(layout)) !=
-        *channels) {
-      continue;
-    }
-
-    bool matched = true;
-    for (const auto& channel : channels_to_match) {
-      auto channel_order = ChannelOrder(layout, channel);
-      if (channel_order == -1) {
-        matched = false;
-        break;
-      }
-    }
-
-    if (matched) {
-      *channel_layout = layout;
-      return;
-    }
-  }
-}
-
 // Returns the `channels` and `channel_layout` for `device` as provided by the
 // AudioUnit attached to that output device. Returns true if the `channels` and
 // `channel_layout` could be pulled from the AudioUnit successfully, otherwise
@@ -471,10 +408,19 @@ static bool GetOutputDeviceChannelsAndLayout(AudioDeviceID device,
     result = AudioObjectGetPropertyData(device, &pa, 0, nullptr, &size,
                                         preferred_layout->layout());
     if (result == noErr) {
-      ParseCoreAudioChannelLayout(preferred_layout->layout(), channels,
+      ParseCoreAudioChannelLayout(*preferred_layout->layout(), channels,
                                   channel_layout);
       // Some devices can return noErr but 0 channels.
       if (*channels) {
+        // Discrete layouts have no speaker arrangement to honor, so use the
+        // hardware channel count directly instead of the layout's count.
+        int total_channel_count = 0;
+        if (*channel_layout == CHANNEL_LAYOUT_DISCRETE &&
+            GetDeviceTotalChannelCount(device, kAudioDevicePropertyScopeOutput,
+                                       &total_channel_count) &&
+            total_channel_count > 0) {
+          *channels = base::checked_cast<uint32_t>(total_channel_count);
+        }
         return true;
       }
     }
@@ -489,7 +435,7 @@ static bool GetOutputDeviceChannelsAndLayout(AudioDeviceID device,
   if (GetDeviceTotalChannelCount(device, kAudioDevicePropertyScopeOutput,
                                  &total_channel_count) &&
       total_channel_count > kMaxConcurrentChannels) {
-    *channels = total_channel_count;
+    *channels = base::checked_cast<uint32_t>(total_channel_count);
     *channel_layout = CHANNEL_LAYOUT_DISCRETE;
   } else {
     ScopedAudioUnit au(device, AUElement::OUTPUT);
@@ -499,6 +445,14 @@ static bool GetOutputDeviceChannelsAndLayout(AudioDeviceID device,
 
     if (!GetOutputDeviceChannelsAndLayout(au.audio_unit(), channels,
                                           channel_layout)) {
+      return false;
+    }
+
+    // Use the hardware channel count for discrete layouts (see above).
+    if (*channel_layout == CHANNEL_LAYOUT_DISCRETE && total_channel_count > 0) {
+      *channels = base::checked_cast<uint32_t>(total_channel_count);
+    }
+    if (*channels == 0) {
       return false;
     }
   }
@@ -519,7 +473,7 @@ static bool GetOutputDeviceChannelsAndLayout(AudioUnit audio_unit,
     return false;
   }
 
-  ParseCoreAudioChannelLayout(scoped_device_layout->layout(), channels,
+  ParseCoreAudioChannelLayout(*scoped_device_layout->layout(), channels,
                               channel_layout);
   return true;
 }
@@ -543,7 +497,7 @@ class AudioManagerMac::AudioPowerObserver : public base::PowerSuspendObserver {
   AudioPowerObserver& operator=(const AudioPowerObserver&) = delete;
 
   ~AudioPowerObserver() override {
-    DCHECK(thread_checker_.CalledOnValidThread());
+    DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
     if (!is_monitoring_) {
       return;
     }
@@ -551,33 +505,33 @@ class AudioManagerMac::AudioPowerObserver : public base::PowerSuspendObserver {
   }
 
   bool IsSuspending() const {
-    DCHECK(thread_checker_.CalledOnValidThread());
+    DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
     return is_suspending_;
   }
 
   size_t num_resume_notifications() const { return num_resume_notifications_; }
 
   bool ShouldDeferStreamStart() const {
-    DCHECK(thread_checker_.CalledOnValidThread());
+    DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
     // Start() should be deferred if the system is in the middle of a suspend or
     // has recently started the process of resuming.
     return is_suspending_ || base::TimeTicks::Now() < earliest_start_time_;
   }
 
   bool IsOnBatteryPower() const {
-    DCHECK(thread_checker_.CalledOnValidThread());
+    DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
     return base::PowerMonitor::GetInstance()->IsOnBatteryPower();
   }
 
  private:
   void OnSuspend() override {
-    DCHECK(thread_checker_.CalledOnValidThread());
+    DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
     DVLOG(1) << "AudioPowerObserver::" << __FUNCTION__;
     is_suspending_ = true;
   }
 
   void OnResume() override {
-    DCHECK(thread_checker_.CalledOnValidThread());
+    DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
     DVLOG(1) << "AudioPowerObserver::" << __FUNCTION__;
     ++num_resume_notifications_;
     is_suspending_ = false;
@@ -586,10 +540,10 @@ class AudioManagerMac::AudioPowerObserver : public base::PowerSuspendObserver {
         base::Seconds(std::to_underlying(kStartDelayInSecsForPowerEvents));
   }
 
-  bool is_suspending_;
+  bool is_suspending_ GUARDED_BY_CONTEXT(sequence_checker_);
   const bool is_monitoring_;
-  base::TimeTicks earliest_start_time_;
-  base::ThreadChecker thread_checker_;
+  base::TimeTicks earliest_start_time_ GUARDED_BY_CONTEXT(sequence_checker_);
+  SEQUENCE_CHECKER(sequence_checker_);
   size_t num_resume_notifications_;
 };
 

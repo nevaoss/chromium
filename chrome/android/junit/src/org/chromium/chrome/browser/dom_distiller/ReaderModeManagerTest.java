@@ -61,7 +61,6 @@ import org.chromium.chrome.browser.tab.TabObserver;
 import org.chromium.chrome.browser.toolbar.adaptive.AdaptiveToolbarButtonVariant;
 import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManager;
 import org.chromium.chrome.browser.ui.messages.snackbar.SnackbarManagerProvider;
-import org.chromium.components.dom_distiller.core.DomDistillerFeatures;
 import org.chromium.components.dom_distiller.core.DomDistillerUrlUtils;
 import org.chromium.components.dom_distiller.core.DomDistillerUrlUtilsJni;
 import org.chromium.components.messages.MessageDispatcher;
@@ -440,9 +439,6 @@ public class ReaderModeManagerTest {
 
     @Test
     @Feature("ReaderMode")
-    @EnableFeatures({
-        DomDistillerFeatures.READER_MODE_DISTILL_IN_APP // Makes test mocking easier.
-    })
     public void testTryShowingPrompt_CctCpaButtonShowing_ShouldNotShowPrompt() {
         when(mTab.getWebContents()).thenReturn(mWebContents);
         when(mTab.isCustomTab()).thenReturn(true);
@@ -467,9 +463,6 @@ public class ReaderModeManagerTest {
 
     @Test
     @Feature("ReaderMode")
-    @EnableFeatures({
-        DomDistillerFeatures.READER_MODE_DISTILL_IN_APP // Makes test mocking easier.
-    })
     public void testTryShowingPrompt_CctCpaButtonShowingDelayed_ShouldNotShowPrompt() {
         when(mTab.getWebContents()).thenReturn(mWebContents);
         when(mTab.isCustomTab()).thenReturn(true);
@@ -497,7 +490,6 @@ public class ReaderModeManagerTest {
 
     @Test
     @Feature("ReaderMode")
-    @DisableFeatures(DomDistillerFeatures.READER_MODE_DISTILL_IN_APP)
     public void testTryShowingPrompt_CctCpaButtonNotShowing_FallbackMessage_ShouldShowPrompt() {
         when(mTab.getWebContents()).thenReturn(mWebContents);
         when(mTab.isCustomTab()).thenReturn(true);
@@ -524,7 +516,6 @@ public class ReaderModeManagerTest {
 
     @Test
     @Feature("ReaderMode")
-    @DisableFeatures(DomDistillerFeatures.READER_MODE_DISTILL_IN_APP)
     public void testTryShowingPrompt_CctCpaButtonNotShowingDelayed_ShouldShowPrompt() {
         when(mTab.getWebContents()).thenReturn(mWebContents);
         when(mTab.isCustomTab()).thenReturn(true);
@@ -582,7 +573,6 @@ public class ReaderModeManagerTest {
 
     @Test
     @Feature("ReaderMode")
-    @EnableFeatures({DomDistillerFeatures.READER_MODE_DISTILL_IN_APP})
     public void testDistillationSuccess_noSnackbar() {
         when(mTab.getWebContents()).thenReturn(mWebContents);
 
@@ -596,7 +586,6 @@ public class ReaderModeManagerTest {
 
     @Test
     @Feature("ReaderMode")
-    @EnableFeatures({DomDistillerFeatures.READER_MODE_DISTILL_IN_APP})
     public void testDistillationFailure_showSnackbar() {
         when(mTab.getWebContents()).thenReturn(mWebContents);
 

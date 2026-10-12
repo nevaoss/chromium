@@ -84,6 +84,7 @@ import org.chromium.base.CommandLine;
 import org.chromium.base.ContextUtils;
 import org.chromium.base.EarlyTraceEvent;
 import org.chromium.base.Log;
+import org.chromium.base.PackageUtils;
 import org.chromium.base.PathUtils;
 import org.chromium.base.StrictModeContext;
 import org.chromium.base.ThreadUtils;
@@ -449,8 +450,10 @@ public class WebViewChromiumFactoryProvider implements WebViewFactoryProvider {
                 // Since N, getSharedPreferences creates the preference dir if it doesn't exist,
                 // causing a disk write.
                 mWebViewPrefs = ctx.getSharedPreferences(CHROMIUM_PREFS_NAME, Context.MODE_PRIVATE);
-                if (controller.isActionEnabled(SafeModeActionIds.DELETE_VARIATIONS_SEED)) {
-                    WebViewCachedFlags.initForSafeMode(mWebViewPrefs);
+                if (isBranchDowngrade(
+                                packageInfo.versionCode, mWebViewPrefs.getInt(VERSION_CODE_PREF, 0))
+                        || controller.isActionEnabled(SafeModeActionIds.DELETE_VARIATIONS_SEED)) {
+                    WebViewCachedFlags.initWithDefaults(mWebViewPrefs);
                 } else {
                     WebViewCachedFlags.init(mWebViewPrefs);
                 }
@@ -557,8 +560,8 @@ public class WebViewChromiumFactoryProvider implements WebViewFactoryProvider {
                 Log.i(
                         TAG,
                         "version=%s (%s) minSdkVersion=%s multiprocess=%s packageId=%s splits=%s",
-                        ApkInfo.getPackageVersionName(),
-                        ApkInfo.getPackageVersionCode(),
+                        packageInfo.versionName,
+                        PackageUtils.packageVersionCode(packageInfo),
                         BuildConfig.MIN_SDK_VERSION,
                         mIsMultiProcessEnabled,
                         packageId,

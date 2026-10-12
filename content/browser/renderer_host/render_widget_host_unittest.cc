@@ -16,6 +16,7 @@
 #include "base/location.h"
 #include "base/memory/raw_ptr.h"
 #include "base/run_loop.h"
+#include "base/strings/utf_string_conversions.h"
 #include "base/task/single_thread_task_runner.h"
 #include "base/test/metrics/histogram_tester.h"
 #include "base/test/run_until.h"
@@ -23,6 +24,7 @@
 #include "base/test/simple_test_tick_clock.h"
 #include "base/time/time.h"
 #include "base/timer/timer.h"
+#include "base/unguessable_token.h"
 #include "build/build_config.h"
 #include "cc/mojom/render_frame_metadata.mojom.h"
 #include "cc/trees/render_frame_metadata.h"
@@ -94,7 +96,6 @@
 #include "ui/gfx/canvas.h"
 
 #if BUILDFLAG(IS_ANDROID)
-#include "base/strings/utf_string_conversions.h"
 #include "content/browser/renderer_host/render_widget_host_view_android.h"
 #include "ui/android/screen_android.h"
 #endif
@@ -2687,6 +2688,55 @@ TEST_F(RenderWidgetHostDragTest, SanitizeFilenameExtensionOnDrag) {
   // BaseName() should strip the path traversal components.
   EXPECT_EQ(drop_data().file_contents_filename_extension,
             FILE_PATH_LITERAL("payload.so"));
+}
+
+// Internal drag_id in DropData must never be exposed to untrusted
+// drop target renderers in outgoing DragData.
+TEST_F(RenderWidgetHostDragTest, DragIdNotExposedInOutgoingDragData) {
+  DropData drop_data;
+  drop_data.drag_id = base::UnguessableToken::Create();
+  drop_data.custom_data[u"application/x-custom-key"] = u"custom-value";
+
+  blink::mojom::DragDataPtr drag_data =
+      DropDataToDragData(drop_data, GetFileSystemAccessManager(),
+                         main_test_rfh()->GetProcess()->GetDeprecatedID(),
+                         GetChromeBlobStorageContext());
+
+  ASSERT_TRUE(drag_data);
+  ASSERT_EQ(drag_data->items.size(), 1u);
+  ASSERT_TRUE(drag_data->items[0]->is_string());
+  EXPECT_EQ(drag_data->items[0]->get_string()->string_type,
+            "application/x-custom-key");
+  EXPECT_EQ(drag_data->items[0]->get_string()->string_data, u"custom-value");
+}
+
+// Internal drag_id in DropData must never be exposed to renderers in
+// dragenter metadata.
+TEST_F(RenderWidgetHostDragTest, DragIdNotExposedInDragEnterMetaData) {
+  mojo::PendingAssociatedReceiver<blink::mojom::FrameWidget> receiver =
+      BindFakeFrameWidgetInterfaces(main_test_rfh());
+  DragCaptureFrameWidget mock_frame_widget(std::move(receiver));
+
+  DropData drop_data;
+  drop_data.drag_id = base::UnguessableToken::Create();
+  drop_data.custom_data[u"application/x-custom-key"] = u"custom-value";
+
+  base::RunLoop run_loop;
+  GetRenderWidgetHost()->DragTargetDragEnter(
+      drop_data, gfx::PointF(), gfx::PointF(),
+      blink::DragOperationsMask::kDragOperationEvery, 0,
+      base::BindOnce(
+          [](base::OnceClosure quit_closure, ui::mojom::DragOperation operation,
+             bool document_is_handling_drag) { std::move(quit_closure).Run(); },
+          run_loop.QuitClosure()));
+  run_loop.Run();
+
+  const auto& captured_drag_data = mock_frame_widget.drag_data();
+  ASSERT_TRUE(captured_drag_data);
+  ASSERT_EQ(captured_drag_data->items.size(), 1u);
+  ASSERT_TRUE(captured_drag_data->items[0]->is_string());
+  EXPECT_EQ(captured_drag_data->items[0]->get_string()->string_type,
+            "application/x-custom-key");
 }
 
 TEST_F(RenderWidgetHostDragTest, DragEnterDoesNotLeakPaths) {

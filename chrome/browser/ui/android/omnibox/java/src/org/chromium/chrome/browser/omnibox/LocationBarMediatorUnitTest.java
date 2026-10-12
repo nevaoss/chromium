@@ -66,6 +66,7 @@ import org.chromium.base.supplier.ObservableSuppliers;
 import org.chromium.base.supplier.OneshotSupplierImpl;
 import org.chromium.base.supplier.SettableMonotonicObservableSupplier;
 import org.chromium.base.supplier.SettableNonNullObservableSupplier;
+import org.chromium.base.supplier.SettableNullableObservableSupplier;
 import org.chromium.base.test.BaseRobolectricTestRunner;
 import org.chromium.base.test.RobolectricUtil;
 import org.chromium.base.test.util.Features.DisableFeatures;
@@ -76,7 +77,6 @@ import org.chromium.build.BuildConfig;
 import org.chromium.chrome.browser.banners.AppMenuVerbiage;
 import org.chromium.chrome.browser.browser_controls.BrowserControlsStateProvider;
 import org.chromium.chrome.browser.browser_controls.BrowserControlsStateProvider.ControlsPosition;
-import org.chromium.chrome.browser.composeplate.ComposeplateUtils;
 import org.chromium.chrome.browser.contextual_tasks.ContextualTasksUtils;
 import org.chromium.chrome.browser.contextual_tasks.ContextualTasksUtilsJni;
 import org.chromium.chrome.browser.feature_engagement.TrackerFactory;
@@ -138,6 +138,7 @@ import org.chromium.components.omnibox.TextSelection;
 import org.chromium.components.prefs.PrefChangeRegistrar;
 import org.chromium.components.prefs.PrefChangeRegistrarJni;
 import org.chromium.components.prefs.PrefService;
+import org.chromium.components.search_engines.AiModeButtonUiConfig;
 import org.chromium.components.search_engines.TemplateUrlService;
 import org.chromium.components.security_state.ConnectionSecurityLevel;
 import org.chromium.components.signin.identitymanager.IdentityManager;
@@ -162,7 +163,6 @@ import java.lang.ref.WeakReference;
         shadows = {LocationBarMediatorUnitTest.ObjectAnimatorShadow.class},
         qualifiers = "w1000dp")
 @DisableFeatures({OmniboxFeatureList.OMNIBOX_SEARCH_PREFETCH_ON_ENTER_KEY_DOWN})
-@EnableFeatures(ChromeFeatureList.TOOLBAR_TABLET_RESIZE_REFACTOR)
 public class LocationBarMediatorUnitTest {
 
     @Implements(ObjectAnimator.class)
@@ -286,6 +286,10 @@ public class LocationBarMediatorUnitTest {
     private final FuseboxSessionState mSessionState = new FuseboxSessionState();
     private final SettableNonNullObservableSupplier<Boolean> mScrimVisibilitySupplier =
             ObservableSuppliers.createNonNull(false);
+    private final SettableNonNullObservableSupplier<Boolean> mUrlTextWrappingSupplier =
+            ObservableSuppliers.createNonNull(false);
+    private final SettableNullableObservableSupplier<AiModeButtonUiConfig>
+            mAiModeButtonUiConfigSupplier = ObservableSuppliers.createNullable();
     private final OmniboxAnimator mOmniboxAnimator = new OmniboxAnimator(1.0f, 0);
 
     // Members capturing final state of the LocationBarLayout elements.
@@ -309,7 +313,6 @@ public class LocationBarMediatorUnitTest {
                 new OmniboxResourceProvider(mContext, BrandedColorScheme.APP_DEFAULT);
 
         UserPrefs.setPrefServiceForTesting(mPrefService);
-        ComposeplateUtils.setIsEnabledForTesting(true);
         PrefChangeRegistrarJni.setInstanceForTesting(mPrefChangeRegistrarJni);
         lenient().doReturn(1L).when(mPrefChangeRegistrarJni).init(any(), any());
         lenient().doReturn(mProfile).when(mProfile).getOriginalProfile();
@@ -335,6 +338,13 @@ public class LocationBarMediatorUnitTest {
                 .doReturn("Search Google or type URL")
                 .when(mSearchEngineService)
                 .getOmniboxHintString();
+        // Defaults to an eligible client: native only hands over a config when the AI Mode entry
+        // point is permitted, so a non-null value is what "AIM eligible" looks like in Java.
+        mAiModeButtonUiConfigSupplier.set(createTestAiModeButtonUiConfig());
+        lenient()
+                .doReturn(mAiModeButtonUiConfigSupplier)
+                .when(mSearchEngineService)
+                .getAiModeButtonUiConfigSupplier();
         SearchEngineService.setInstanceForTesting(mSearchEngineService);
         lenient().doReturn(mUrlBarData).when(mLocationBarDataProvider).getUrlBarData();
         lenient()
@@ -455,6 +465,10 @@ public class LocationBarMediatorUnitTest {
                 .when(mAutocompleteCoordinator)
                 .setupSuggestionsListShowAnimation();
 
+        lenient()
+                .doReturn(mUrlTextWrappingSupplier)
+                .when(mUrlCoordinator)
+                .getUrlTextWrappingSupplier();
         mMediator.setCoordinators(mUrlCoordinator, mAutocompleteCoordinator, mStatusCoordinator);
         mMediator.setAddToHomescreenCoordinatorForTesting(mAddToHomescreenCoordinator);
         ObjectAnimatorShadow.setUrlAnimator(mUrlAnimator);
@@ -669,6 +683,13 @@ public class LocationBarMediatorUnitTest {
 
         input.setDisplayState(DisplayState.DRAFTING);
         assertEquals(TraversalMode.SATURATING, selectionController.getSelectionModeForTesting());
+    }
+
+    @Test
+    public void testOnSuggestionsChanged_notifiesLayoutEvenWhenInputNull() {
+        assertNull(mMediator.getCurrentInput());
+        mMediator.onSuggestionsChanged(null, /* hasSuggestions= */ false);
+        verify(mLocationBarLayout).onSuggestionsChanged(/* hasSuggestions= */ false);
     }
 
     @Test
@@ -2849,11 +2870,14 @@ public class LocationBarMediatorUnitTest {
     }
 
     @Test
-    @DisableFeatures(ChromeFeatureList.TOOLBAR_TABLET_RESIZE_REFACTOR)
     public void testUpdateZoomButtonVisibility_popupShowing() {
         mTabletMediator.onFinishNativeInitialization();
         doReturn(mWebContents).when(mTab).getWebContents();
         when(mPageZoomIndicatorCoordinator.isZoomLevelDefault()).thenReturn(false);
+        int buttonWidth =
+                mContext.getResources()
+                        .getDimensionPixelSize(R.dimen.location_bar_action_icon_width);
+        mTabletMediator.getZoomButtonToolbarWidthConsumer().updateVisibility(buttonWidth);
         mTabletMediator.updateZoomButtonVisibilityForTesting();
 
         verify(mLocationBarTablet, atLeastOnce()).setZoomButtonVisibility(true);
@@ -2861,7 +2885,6 @@ public class LocationBarMediatorUnitTest {
     }
 
     @Test
-    @DisableFeatures(ChromeFeatureList.TOOLBAR_TABLET_RESIZE_REFACTOR)
     public void testUpdateZoomButtonVisibility_hideButton() {
         mMediator.onFinishNativeInitialization();
         clearInvocations(mLocationBarEmbedder);
@@ -2880,7 +2903,6 @@ public class LocationBarMediatorUnitTest {
     }
 
     @Test
-    @EnableFeatures(ChromeFeatureList.TOOLBAR_TABLET_RESIZE_REFACTOR)
     public void testMicButtonToolbarWidthConsumer() {
         int buttonWidth =
                 mContext.getResources()
@@ -2908,7 +2930,6 @@ public class LocationBarMediatorUnitTest {
     }
 
     @Test
-    @EnableFeatures(ChromeFeatureList.TOOLBAR_TABLET_RESIZE_REFACTOR)
     public void testMicButtonToolbarWidthConsumer_suggestionsPopover() {
         int buttonWidth =
                 mContext.getResources()
@@ -3179,7 +3200,6 @@ public class LocationBarMediatorUnitTest {
     }
 
     @Test
-    @EnableFeatures(ChromeFeatureList.TOOLBAR_TABLET_RESIZE_REFACTOR)
     public void testLensButtonToolbarWidthConsumer() {
         int buttonWidth =
                 mContext.getResources()
@@ -3209,7 +3229,6 @@ public class LocationBarMediatorUnitTest {
     }
 
     @Test
-    @EnableFeatures(ChromeFeatureList.TOOLBAR_TABLET_RESIZE_REFACTOR)
     public void testBookmarkButtonToolbarWidthConsumer() {
         int buttonWidth =
                 mContext.getResources()
@@ -3232,7 +3251,6 @@ public class LocationBarMediatorUnitTest {
     }
 
     @Test
-    @EnableFeatures(ChromeFeatureList.TOOLBAR_TABLET_RESIZE_REFACTOR)
     public void testBookmarkButton_ntp() {
         mTabletMediator.onFinishNativeInitialization();
         doReturn(JUnitTestGURLs.NTP_URL).when(mLocationBarDataProvider).getCurrentGurl();
@@ -3243,7 +3261,6 @@ public class LocationBarMediatorUnitTest {
     }
 
     @Test
-    @EnableFeatures(ChromeFeatureList.TOOLBAR_TABLET_RESIZE_REFACTOR)
     public void testInstallButtonToolbarWidthConsumer() {
         int buttonWidth =
                 mContext.getResources()
@@ -3301,7 +3318,6 @@ public class LocationBarMediatorUnitTest {
     }
 
     @Test
-    @EnableFeatures(ChromeFeatureList.TOOLBAR_TABLET_RESIZE_REFACTOR)
     public void testZoomButtonToolbarWidthConsumer_notVisible() {
         int buttonWidth =
                 mContext.getResources()
@@ -3324,7 +3340,6 @@ public class LocationBarMediatorUnitTest {
     }
 
     @Test
-    @EnableFeatures(ChromeFeatureList.TOOLBAR_TABLET_RESIZE_REFACTOR)
     public void testZoomButtonToolbarWidthConsumer() {
         int buttonWidth =
                 mContext.getResources()
@@ -4128,7 +4143,7 @@ public class LocationBarMediatorUnitTest {
     @Test
     public void testAlwaysShowAiMode_disabledWhenNotAimEligible() {
         mFuseboxLayoutModeSupplier.set(FuseboxLayoutMode.SUGGESTIONS_POPOVER);
-        ComposeplateUtils.setIsEnabledForTesting(false);
+        mAiModeButtonUiConfigSupplier.set(null);
         mMediator.onFinishNativeInitialization();
         mProfileSupplier.set(mProfile);
 
@@ -4139,7 +4154,6 @@ public class LocationBarMediatorUnitTest {
     @SuppressWarnings("unchecked")
     public void testAlwaysShowAiMode_aimEligible_notFuseboxEligible() {
         mFuseboxLayoutModeSupplier.set(FuseboxLayoutMode.SUGGESTIONS_POPOVER);
-        ComposeplateUtils.setIsEnabledForTesting(true);
         doReturn(false).when(mComposeboxBridgeJni).isFuseboxEligibleForProfile(any());
         mMediator.onFinishNativeInitialization();
         mProfileSupplier.set(mProfile);
@@ -4176,6 +4190,12 @@ public class LocationBarMediatorUnitTest {
         assertTrue(mMediator.handleKeyNavigationEvent(KeyEvent.KEYCODE_ENTER, mKeyEvent));
         verify(mAutocompleteCoordinator)
                 .loadTypedOmniboxText(eq(9999L), eq(NavigationTarget.NEW_WINDOW));
+
+        // Open in background tab. alt + shift + enter case
+        doReturn(true).when(mKeyEvent).isAltPressed();
+        assertTrue(mMediator.handleKeyNavigationEvent(KeyEvent.KEYCODE_ENTER, mKeyEvent));
+        verify(mAutocompleteCoordinator)
+                .loadTypedOmniboxText(eq(9999L), eq(NavigationTarget.NEW_BACKGROUND_TAB));
     }
 
     @Test
@@ -5117,6 +5137,31 @@ public class LocationBarMediatorUnitTest {
     }
 
     @Test
+    @Config(qualifiers = "sw600dp")
+    public void testMaybeShowOrClearCursorInLocationBar_aboutBlank_doesNotFocus() {
+        DeviceInput.setSupportsAlphabeticKeyboardForTesting(true);
+        doReturn(JUnitTestGURLs.ABOUT_BLANK).when(mLocationBarDataProvider).getCurrentGurl();
+
+        mTabletMediator.maybeShowOrClearCursorInLocationBar();
+
+        assertFalse(mSessionState.isSessionActive());
+        verify(mUrlCoordinator, never()).requestFocus();
+    }
+
+    @Test
+    @Config(qualifiers = "sw600dp")
+    public void testMaybeShowOrClearCursorInLocationBar_ntp_focusesInStandby() {
+        DeviceInput.setSupportsAlphabeticKeyboardForTesting(true);
+        doReturn(GURL.emptyGURL()).when(mLocationBarDataProvider).getCurrentGurl();
+
+        mTabletMediator.maybeShowOrClearCursorInLocationBar();
+
+        assertTrue(mSessionState.isSessionActive());
+        assertAutocompleteState(AutocompleteState.STANDBY);
+        verify(mUrlCoordinator).requestFocus();
+    }
+
+    @Test
     public void testOnUrlChanged_tabChanging_preservesDraftingNoFocusSession() {
         OmniboxCapabilities.setIsDesktopPlatformForTesting(true);
         beginInput(
@@ -5302,7 +5347,6 @@ public class LocationBarMediatorUnitTest {
         GURL composeplateUrl = new GURL("https://google.com/aim");
         doReturn(composeplateUrl).when(mTemplateUrlService).getComposeplateUrl();
         doReturn(false).when(mComposeboxBridgeJni).isFuseboxEligibleForProfile(any());
-        ComposeplateUtils.setIsEnabledForTesting(true);
         doReturn(mTab).when(mLocationBarDataProvider).getTab();
 
         setUpMediatorAndCoordinator();
@@ -5324,9 +5368,74 @@ public class LocationBarMediatorUnitTest {
     }
 
     @Test
+    public void testActivationChipClicked_withUserText_stillLoadsNavigationUrlEmpty() {
+        // TODO(crbug.com/561690870): the query should be expanded into `navigationUrl`, as it is
+        // on desktop. Until then it is dropped, and this pins that known gap.
+        mAiModeButtonUiConfigSupplier.set(
+                createTestAiModeButtonUiConfig(
+                        "https://3p.com/ai?q={searchTerms}", new GURL("https://3p.com/ai")));
+        doReturn(mTab).when(mLocationBarDataProvider).getTab();
+        setUpMediatorAndCoordinator();
+
+        AutocompleteInput input = mSessionState.getAutocompleteInput();
+        input.setRequestType(AutocompleteRequestType.SEARCH);
+        input.setUserText("cat pictures");
+        mMediator.beginInput(input);
+
+        mMediator.onActivationChipClicked();
+
+        assertEquals(AutocompleteRequestType.AI_MODE, input.getRequestType());
+        verify(mNavigator).loadUrl(mOmniboxLoadUrlParamsCaptor.capture());
+        assertEquals("https://3p.com/ai", mOmniboxLoadUrlParamsCaptor.getValue().url);
+        assertEquals(
+                PageTransition.FROM_ADDRESS_BAR,
+                mOmniboxLoadUrlParamsCaptor.getValue().transitionType);
+        verify(mAutocompleteCoordinator, never()).loadTypedOmniboxText(anyLong(), anyInt());
+    }
+
+    @Test
+    public void testActivationChipClicked_emptyUserText_loadsNavigationUrlEmpty() {
+        mAiModeButtonUiConfigSupplier.set(
+                createTestAiModeButtonUiConfig(
+                        "https://3p.com/ai?q={searchTerms}", new GURL("https://3p.com/ai")));
+        doReturn(mTab).when(mLocationBarDataProvider).getTab();
+        setUpMediatorAndCoordinator();
+
+        AutocompleteInput input = mSessionState.getAutocompleteInput();
+        input.setRequestType(AutocompleteRequestType.SEARCH);
+        input.setUserText("");
+        mMediator.beginInput(input);
+
+        mMediator.onActivationChipClicked();
+
+        assertEquals(AutocompleteRequestType.AI_MODE, input.getRequestType());
+        verify(mNavigator).loadUrl(mOmniboxLoadUrlParamsCaptor.capture());
+        assertEquals("https://3p.com/ai", mOmniboxLoadUrlParamsCaptor.getValue().url);
+    }
+
+    @Test
+    public void testActivationChipClicked_configWithoutNavigationUrls_fallsThrough() {
+        // Google's config declares no navigation URLs, so the click must reach the in-product
+        // handling rather than navigating nowhere.
+        setUpMediatorAndCoordinator();
+
+        AutocompleteInput input = mSessionState.getAutocompleteInput();
+        input.setRequestType(AutocompleteRequestType.SEARCH);
+        input.setInitialUserText("google.com");
+        input.setUserText("cat pictures");
+        doReturn("suggestion text").when(mUrlCoordinator).getTextWithoutAutocomplete();
+        mMediator.beginInput(input);
+
+        mMediator.onActivationChipClicked();
+
+        verify(mNavigator, never()).loadUrl(any());
+        verify(mAutocompleteCoordinator)
+                .loadTypedOmniboxText(anyLong(), eq(NavigationTarget.CURRENT_TAB));
+    }
+
+    @Test
     public void testActivationChip_aimEligible_notFuseboxEligible_visible() {
         mFuseboxLayoutModeSupplier.set(FuseboxLayoutMode.SUGGESTIONS_POPOVER);
-        ComposeplateUtils.setIsEnabledForTesting(true);
         doReturn(false).when(mComposeboxBridgeJni).isFuseboxEligibleForProfile(any());
 
         mMediator.onFinishNativeInitialization();
@@ -5340,6 +5449,69 @@ public class LocationBarMediatorUnitTest {
         mMediator.beginInput(input);
 
         verify(mLocationBarLayout, never()).setActivationChipVisibility(false);
+    }
+
+    /**
+     * Builds a Google-shaped config: its entry point is fulfilled in product, so it has no URLs.
+     */
+    private static AiModeButtonUiConfig createTestAiModeButtonUiConfig() {
+        return createTestAiModeButtonUiConfig(/* navigationUrl= */ "", GURL.emptyGURL());
+    }
+
+    /**
+     * Builds a config declaring where engaging the AI Mode entry point navigates to. Only third
+     * party engines supply these; see {@link AiModeButtonUiConfig}.
+     */
+    private static AiModeButtonUiConfig createTestAiModeButtonUiConfig(
+            String navigationUrl, GURL navigationUrlEmpty) {
+        return new AiModeButtonUiConfig(
+                "AI Mode",
+                "Ask AI Mode",
+                "AI Mode button",
+                "Always show AI Mode",
+                "Ask AI Mode",
+                GURL.emptyGURL(),
+                navigationUrl,
+                navigationUrlEmpty);
+    }
+
+    /**
+     * Drives the mediator into the state where the activation chip is shown iff the AI Mode config
+     * is non-null. Fusebox eligibility is switched off so that it cannot independently satisfy the
+     * visibility check.
+     */
+    private void beginPopoverSearchInputWithoutFusebox() {
+        mFuseboxLayoutModeSupplier.set(FuseboxLayoutMode.SUGGESTIONS_POPOVER);
+        doReturn(false).when(mComposeboxBridgeJni).isFuseboxEligibleForProfile(any());
+        mMediator.onFinishNativeInitialization();
+        mProfileSupplier.set(mProfile);
+
+        AutocompleteInput input = mSessionState.getAutocompleteInput();
+        input.setRequestType(AutocompleteRequestType.SEARCH);
+        input.setInitialUserText("page.com");
+        input.setUserText("page.com");
+        mMediator.beginInput(input);
+    }
+
+    @Test
+    public void testActivationChip_configCleared_hidesChip() {
+        beginPopoverSearchInputWithoutFusebox();
+        clearInvocations(mLocationBarLayout);
+
+        mAiModeButtonUiConfigSupplier.set(null);
+
+        verify(mLocationBarLayout).setActivationChipVisibility(false);
+    }
+
+    @Test
+    public void testActivationChip_configArrives_showsChip() {
+        mAiModeButtonUiConfigSupplier.set(null);
+        beginPopoverSearchInputWithoutFusebox();
+        clearInvocations(mLocationBarLayout);
+
+        mAiModeButtonUiConfigSupplier.set(createTestAiModeButtonUiConfig());
+
+        verify(mLocationBarLayout).setActivationChipVisibility(true);
     }
 
     @Test
@@ -5442,10 +5614,12 @@ public class LocationBarMediatorUnitTest {
     }
 
     @Test
-    public void updateActivationChipCompact_isTextWrappingTriggersCompact() {
+    public void urlTextWrappingSupplier_triggersUpdateActivationChipCompact() {
         OmniboxCapabilities.setIsDesktopPlatformForTesting(true);
         when(mLocationBarLayout.isActivationChipCompact()).thenReturn(false);
-        mMediator.setIsTextWrapping(true);
+        verify(mLocationBarLayout, never()).setActivationChipCompact(true);
+
+        mUrlTextWrappingSupplier.set(true);
         verify(mLocationBarLayout).setActivationChipCompact(true);
     }
 
@@ -5471,7 +5645,7 @@ public class LocationBarMediatorUnitTest {
         when(mLocationBarLayout.isActivationChipCompact()).thenReturn(false);
 
         mMediator.beginInput(mSessionState.getAutocompleteInput());
-        mMediator.setIsTextWrapping(true);
+        mUrlTextWrappingSupplier.set(true);
 
         verify(mLocationBarLayout).setActivationChipCompact(true);
         when(mLocationBarLayout.isActivationChipCompact()).thenReturn(true);

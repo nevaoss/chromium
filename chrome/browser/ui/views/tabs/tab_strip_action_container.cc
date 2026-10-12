@@ -12,11 +12,7 @@
 #include "chrome/browser/actor/ui/actor_ui_metrics.h"
 #include "chrome/browser/actor/ui/task_list_bubble/actor_task_list_bubble.h"
 #include "chrome/browser/actor/ui/task_list_bubble/actor_task_list_bubble_controller.h"
-#include "chrome/browser/geic/geic_button.h"
-#include "chrome/browser/geic/geic_enabling.h"
 #include "chrome/browser/glic/browser_ui/glic_actor_nudge_controller.h"
-#include "chrome/browser/glic/browser_ui/glic_actor_task_icon_manager.h"
-#include "chrome/browser/glic/browser_ui/glic_actor_task_icon_manager_factory.h"
 #include "chrome/browser/glic/browser_ui/glic_nudge_controller.h"
 #include "chrome/browser/glic/browser_ui/glic_split_button_controller.h"
 #include "chrome/browser/glic/glic_profile_manager.h"
@@ -28,6 +24,8 @@
 #include "chrome/browser/glic/public/glic_invoke_options.h"
 #include "chrome/browser/glic/public/glic_keyed_service.h"
 #include "chrome/browser/glic/public/glic_keyed_service_factory.h"
+#include "chrome/browser/glic/public/service/glic_activity_manager.h"
+#include "chrome/browser/glic/public/service/glic_activity_manager_factory.h"
 #include "chrome/browser/glic/public/service/glic_instance_coordinator.h"
 #include "chrome/browser/tab_list/tab_list_interface.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
@@ -256,14 +254,10 @@ TabStripActionContainer::TabStripActionContainer(
       glic_actor_button_container_->SetVisible(false);
     }
     glic_button_ = AddChildView(CreateGlicButton());
-  } else if (geic::IsGeicEnabled(browser_window_interface_->GetProfile())) {
-    geic_button_ =
-        AddChildView(geic::GeicButton::Create(browser_window_interface_));
   }
 
   if (glic::GlicEnabling::IsProfileEligible(
-          browser_window_interface_->GetProfile()) ||
-      geic_button_) {
+          browser_window_interface_->GetProfile())) {
 #if !BUILDFLAG(IS_MAC)
     std::unique_ptr<views::Separator> separator =
         std::make_unique<views::Separator>();
@@ -490,8 +484,7 @@ void TabStripActionContainer::ShowActorTaskListBubble() {
   }
   if (!actor_task_list_bubble_) {
     Profile* profile = browser_window_interface_->GetProfile();
-    auto* manager =
-        glic::GlicActorTaskIconManagerFactory::GetForProfile(profile);
+    auto* manager = glic::GlicActivityManagerFactory::GetForProfile(profile);
     auto* controller =
         ActorTaskListBubbleController::From(browser_window_interface_);
     if (manager && controller) {
@@ -535,8 +528,6 @@ void TabStripActionContainer::UpdateButtonBorders(
 
   if (glic_button_) {
     UpdateGlicActorButtonContainerBorders();
-  } else if (geic_button_) {
-    UpdateGeicButtonBorders();
   }
 }
 
@@ -675,9 +666,9 @@ TabStripActionContainer::CreateGlicActorTaskIcon() {
 
 void TabStripActionContainer::OnGlicActorTaskIconClicked() {
   Profile* const profile = browser_window_interface_->GetProfile();
-  auto* icon_manager =
-      glic::GlicActorTaskIconManagerFactory::GetForProfile(profile);
-  CHECK(icon_manager);
+  auto* activity_manager =
+      glic::GlicActivityManagerFactory::GetForProfile(profile);
+  CHECK(activity_manager);
 
   // Only show the bubble if the button is not currently pressed. Clicking on
   // the pressed button should dismiss the nudge.
@@ -687,7 +678,8 @@ void TabStripActionContainer::OnGlicActorTaskIconClicked() {
     controller->ShowBubble(glic_actor_task_icon_);
   }
 
-  auto current_task_nudge_state = icon_manager->GetCurrentActorTaskNudgeState();
+  auto current_task_nudge_state =
+      activity_manager->GetCurrentActorTaskNudgeState();
   actor::ui::LogGlobalTaskIndicatorClick(current_task_nudge_state);
 }
 
@@ -737,20 +729,6 @@ void TabStripActionContainer::UpdateGlicActorButtonContainerBorders() {
   glic_button_->SetBorder(views::CreateEmptyBorder(glic_border));
   // Force a background repaint to account for the new border insets.
   glic_button_->RefreshBackground();
-}
-
-void TabStripActionContainer::UpdateGeicButtonBorders() {
-  CHECK(geic_button_);
-  gfx::Insets border_insets = border_insets_;
-  int min_vertical_inset =
-      std::min(border_insets.top(), border_insets.bottom());
-  border_insets.set_top_bottom(min_vertical_inset, min_vertical_inset);
-
-  gfx::Insets geic_border = gfx::Insets().set_left_right(
-                                border_insets.top(), border_insets.bottom()) +
-                            border_insets;
-  geic_button_->SetBorder(views::CreateEmptyBorder(geic_border));
-  geic_button_->RefreshBackground();
 }
 
 void TabStripActionContainer::OnTabStripNudgeButtonTimeout(
@@ -1004,9 +982,7 @@ void TabStripActionContainer::UpdateSeparatorVisibility() {
     return;
   }
 
-  const bool has_visible_button =
-      (glic_button_ && glic_button_->GetVisible()) ||
-      (geic_button_ && geic_button_->GetVisible());
+  const bool has_visible_button = glic_button_ && glic_button_->GetVisible();
   separator_->SetVisible(has_visible_button);
 }
 

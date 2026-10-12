@@ -110,7 +110,9 @@
 <translation id="1322735045095424339">Уюмуңуз жашыруун режимди колдонууну талап кылат</translation>
 <translation id="1323735185997015385">Жок кылуу</translation>
 <translation id="132683371494960526">Түпкү куржунду өзгөртүү үчүн эки жолу таптап коюңуз.</translation>
+<translation id="132969855425874290">Таап, толтуруу терезесин жабуу</translation>
 <translation id="1333455942675373522">Баскычтоп</translation>
+<translation id="1333669029961409292">"Сырсөздөрүңүздү текшерүү" аракети аткарылды!</translation>
 <translation id="1334485477792811969">Веб-кызматтар</translation>
 <translation id="1335767868357998043">Дарек тилкесинин ордун тандаңыз</translation>
 <translation id="1347468774581902829">Аракеттерди тескөө</translation>
@@ -217,6 +219,7 @@
 <translation id="1634520742547161889">АА/ЖЖ</translation>
 <translation id="1636234353664774105">Багыт алуу функциясын колдонуп, бара турган жерге багыттарды алыңыз</translation>
 <translation id="1641113438599504367">Коопсуз серептөө</translation>
+<translation id="1644229815617955289">Купуялыгыңызды коргоо үчүн таржымалыңызды, cookie файлдарыңызды жана башка дайындарды тескеңиз</translation>
 <translation id="1644574205037202324">Таржымал</translation>
 <translation id="164673457281113247">{count,plural, =1{Кыстарма сакталды}other{Кыстармалар сакталды}}</translation>
 <translation id="1650979352027263879">Сырткы көрүнүш параметрлери өчүрүлдү</translation>
@@ -313,6 +316,7 @@
 <translation id="1938871630297275912">{count,plural, =1{Шилтеме алынды}other{{count} шилтеме алынды}}</translation>
 <translation id="1941314575388338491">Көчүрүү үчүн эки жолу таптап коюңуз.</translation>
 <translation id="1943478190258551035">Меню → Тууралоо</translation>
+<translation id="1944477975050820119">ЖИнин жардамы менен серептөөнүн жаңы жолдорун үйрөткөн сунуштарды алып турасыз. <ph name="BEGIN_LINK" />Кеңири маалымат<ph name="END_LINK" /></translation>
 <translation id="1952728750904661634">Башкарылган аккаунт менен кириңиз</translation>
 <translation id="1955773397805078763">Төлөм ыкмасын кошуу</translation>
 <translation id="1956138802718275401">Башкы экрандан сырсөздөргө өтүңүз</translation>
@@ -404,6 +408,7 @@
 <translation id="2240256190924001613">Профилдин конфигурациясы жеткиликтүү</translation>
 <translation id="2244080985779413662">Бул вебсайт файлды жүктөп алып, Капчыгыңызда ачканы жатат.</translation>
 <translation id="2245007488813216650">Которулууда…</translation>
+<translation id="2246445006133863463">Бул аркылуу Gemini менен оозеки сүйлөшө аласыз</translation>
 <translation id="2249119578464404734">Экрандын жогору жагындагы Издөө сүрөтчөсүн таптаңыз</translation>
 <translation id="2251686759395008410">Меню → Таржымал</translation>
 <translation id="2252378061043785266">Бул сайт эч качан көрсөтүлбөсүн</translation>
@@ -433,6 +438,7 @@
 <translation id="2321086116217818302">Сырсөздөр даярдалууда…</translation>
 <translation id="2323697864063408084">Сиз үчүн маанилүү болгон нерселерди өткөрүп жибербеш үчүн билдирмелерди кулпуланган экраныңызда көрнөк-жарнак катары алыңыз</translation>
 <translation id="2326302612031521902">Бирдик тандагыч</translation>
+<translation id="2326606747676847821">Жашыруун кирүү</translation>
 <translation id="2327445548174191329"><ph name="DEVICE_NAME" /> баштап</translation>
 <translation id="2330607597130465898">Коопсуздук корголгон жок</translation>
 <translation id="233375395665273385">Өчүрүү жана аккаунттан чыгуу</translation>
@@ -458,6 +464,7 @@
 <translation id="2393230427496852974">Колдонуучулардын сын-пикирлерин окуу</translation>
 <translation id="2394659309569789395">Сайтты баары бир ачуу</translation>
 <translation id="2403129868389095715">Таңгагыңызды жеткирүү мүмкүн эмес</translation>
+<translation id="2408318953009664750">Бир жолу уруксат берүү</translation>
 <translation id="2410754283952462441">Аккаунт тандоо</translation>
 <translation id="2422174748424038845">Эгер аны өчүрсөңүз, бардык колдонуучулар "<ph name="GROUP_NAME" />" өтмөктөр тобуна кирүү мүмкүнчүлүгүнөн дароо ажырап, ал бардык түзмөктөрдөн өчүрүлөт.</translation>
 <translation id="2424805048070062787">Ушул өтмөктө улантуу</translation>
@@ -502,6 +509,7 @@
 <translation id="2540111494300686866">Диалогдорду жашыруу</translation>
 <translation id="2542268842667970959">"Коопсуздукту текшерүү" функциясын жашыруу</translation>
 <translation id="2551153019974022505">Аккаунттун катасы</translation>
+<translation id="2559785333866467778">Gemini сунуштары</translation>
 <translation id="2559843230610279254">Өтмөктөр тобу, <ph name="GROUP_TITLE" />, <ph name="TABS_NUMBER" /> өтмөк.</translation>
 <translation id="257088987046510401">Темалар</translation>
 <translation id="2573117291489209663">Бүттү</translation>
@@ -556,6 +564,7 @@
 <translation id="2715440913764382254">Шилтемелерди түздөн-түз бул жерден иштетиңиз</translation>
 <translation id="2718352093833049315">Wi-Fi'да гана</translation>
 <translation id="2721190673959776287">Күнүнө бир нече жолу көрсөтүлүшү керек болгон Контексттик панел үчүн өркүндөтүлгөн кызмат боюнча жардамдын мисалы.</translation>
+<translation id="273318428051150387">Level Up программасындагы жетишкендиктериңиз тууралуу жаңыртууларды албайсыз</translation>
 <translation id="2739887572830526131">Кийинчерээк өтмөктөрдү кошуу үчүн бул топту калтырып, эгер кереги жок болуп калса, өчүрүңүз.</translation>
 <translation id="2747003861858887689">Мурунку талаа</translation>
 <translation id="2750583038402718064"><ph name="WEBSITE_TITLE" /> <ph name="POSITION" />-орунга жылдырылды</translation>
@@ -684,6 +693,7 @@
 <translation id="3177338796769255211">Бардык түзмөктөрүңүздө кыстармаларды жана башка нерселерди алуу үчүн аккаунтуңузга кириңиз</translation>
 <translation id="3181954750937456830">Коопсуз серептөө (сизди жана түзмөгүңүздү кооптуу сайттардан коргойт)</translation>
 <translation id="3183362380688692618">Жаңы өтмөктөр тобу...</translation>
+<translation id="3185000827934321633">Багытталууда</translation>
 <translation id="3185760469172949183">Камера менен издөө боюнча тапшырма аткарылды!</translation>
 <translation id="3186796054637504691">Таржымалдагы жана вебсайттагы нерселерди тазалоо</translation>
 <translation id="3190558889382726167">Сырсөз сакталды</translation>
@@ -862,6 +872,7 @@
 <translation id="3828924571679282172">{COUNT,plural, =1{1 төлөм ыкмасы}other{# төлөм ыкмалары}}</translation>
 <translation id="3831560640878483188">Эскертүү жабылсынбы?</translation>
 <translation id="3832419617903252251">Сырсөз ушул түзмөккө гана сакталды</translation>
+<translation id="3835016165506903031">Сайтка киргенде уруксат берүү</translation>
 <translation id="3835964409414434850">Кийинки өтмөккө өтүү</translation>
 <translation id="3838691874161539578">Аккаунтуңуздун коопсуздугун бекемдөө жана Интернеттеги коопсуздукту камсыздоо үчүн сакталган сырсөздөрүңүздү текшерип коюңуз</translation>
 <translation id="3838985624086228724">Көз салынган товардын (<ph name="PRODUCT_NAME" />) баасы арзандап, <ph name="PREVIOUS_PRICE" /> ордуна <ph name="PRICE" /> болуп калды, <ph name="DOMAIN" /></translation>
@@ -869,6 +880,8 @@
 <translation id="3851938967634752633"><ph name="WEBSITE" />, <ph name="SECOND_WEBSITE" /> жана дагы <ph name="NUMBER_OF_ACCOUNTS" /> вебсайттын сырсөздөрү жок кылынат. Аккаунттарыңыз өчүрүлбөйт.</translation>
 <translation id="3853162385423733133"><ph name="EMAIL" /> Google аккаунтуңуздагы сырсөздөрдү колдонуп жана сактай бериңиз</translation>
 <translation id="3853873210696342070">Өткөрүп алуу</translation>
+<translation id="3854052088499589035">Деңгээлди жогорулатууда ийгиликке жеткенде жаңыртууларды аласыз</translation>
+<translation id="3854214753902617617">Өркүндөтүлгөн коопсуз серептөөнү карап чыгуу</translation>
 <translation id="3857113360369572832"><ph name="BEGIN_BOLD" />Safari параметрлерин<ph name="END_BOLD" /> ачыңыз</translation>
 <translation id="3858860766373142691">Аталышы</translation>
 <translation id="386224966259596343">Кийинки жолу тиешелүү форманы толтурганда бул маалыматты Капчыкка сактай аласыз.</translation>
@@ -939,6 +952,7 @@
 <translation id="4047337302138771011">Сырсөздөрүңүздү бөлүшүңүз</translation>
 <translation id="4049419681095579435">Таңгакка мурунтан эле көз салынган</translation>
 <translation id="4049507953662678203">Тармакка туташып турганыңызды текшерип, кайталап көрүңүз.</translation>
+<translation id="4052951214266508382">"Gemini" колдонмосуна микрофонуңузду колдонууга уруксат бериңиз</translation>
 <translation id="4054290211988862686">Файл тандоо</translation>
 <translation id="4070132839822635162">Кирбейм</translation>
 <translation id="4072473499345702662">Кийинки деңгээлге өтүү</translation>
@@ -1047,8 +1061,10 @@
 <translation id="4430505936695785931">Башка колдонмолордо сакталган сырсөздөрдү алуу</translation>
 <translation id="4431224949908513835">Толтуруу үчүн төлөм ыкмасын тандаңыз.</translation>
 <translation id="4432122368769493392">Параметрлер…</translation>
+<translation id="443295142249850475">Тийиштүү сунуштарды берүү үчүн ачык өтмөктөрүңүздүн беттеринин аталыштары жана URL даректери колдонулат.</translation>
 <translation id="4439968635693513370">Бул курал менен дем алыш күндөрүңүздү пландаңыз:</translation>
 <translation id="4442550905108052454"><ph name="BEGIN_BOLD" />Параметрлерди<ph name="END_BOLD" /> ачыңыз</translation>
+<translation id="4444574452810111637">{count,plural, =1{{count} нерсе табылды.}other{{count} нерсе табылды.}}</translation>
 <translation id="4445840280797509738"><ph name="CELL_ACCESSIBILITY_LABEL" />: башка параметрлери</translation>
 <translation id="4455710003856931944">Артка жана алдыга өтүү үчүн кырын сүрүп коюңуз.</translation>
 <translation id="4460014764210899310">Топтолбосун</translation>
@@ -1470,6 +1486,7 @@ Handoff Параметрлердин жалпы бөлүмүндө да иште
 <translation id="574762237186762643">Иш-чаралар</translation>
 <translation id="5749158352074143502">Ушул өтмөктө улантуу</translation>
 <translation id="5753021559215751319">Сырсөздү сактоо</translation>
+<translation id="5756200167514420691">Интернетти купуя серептөө үчүн өтмөктөрдү жашыруун режимде ачыңыз</translation>
 <translation id="5756525336488841345">Кыстармаларды жашыруу</translation>
 <translation id="5758631781033351321">Окула тургандардын тизмесин ушул жерден табасыз</translation>
 <translation id="57586589942790530">Жараксыз карта номери</translation>
@@ -1540,6 +1557,7 @@ Handoff Параметрлердин жалпы бөлүмүндө да иште
 <translation id="5988097621740394599">Төмөндөгөн бааларды өтмөктөрдө көрүңүз.</translation>
 <translation id="5988851877894965432">URL'дерди Chrome'до ачуу</translation>
 <translation id="599343768974649785">Билдирменин тексти</translation>
+<translation id="6000893618966378846">"Серептөө дайындарын өчүрүү" аяктады!</translation>
 <translation id="6004988584831654445">Баары даяр! Жаңы тапшырмалар келгенде билдирме алыңыз.</translation>
 <translation id="6006672969046233841">Жаңы өтмөк</translation>
 <translation id="6011308810877101166">Издөө сунуштарын жакшыртуу</translation>
@@ -1799,6 +1817,7 @@ Handoff Параметрлердин жалпы бөлүмүндө да иште
 <translation id="6732087373923685049">камера</translation>
 <translation id="6736243959894955139">Дареги</translation>
 <translation id="6746338529702829275">Аккаунтуңуздагы нерселерди карап чыгыңыз</translation>
+<translation id="6749473226660745022">Сүрөттөр</translation>
 <translation id="6750456911389438250">{count,plural, =1{{count} таржымал жазуусу өткөрүлүп алынды}other{{count} таржымал жазуусу өткөрүлүп алынды}}</translation>
 <translation id="6751817018972413719">{count,plural, =1{Эсептик дайындардын {count} варианты баскычтоптун өйдө жагында жеткиликтүү.}other{Эсептик дайындардын {count} варианты баскычтоптун өйдө жагында жеткиликтүү.}}</translation>
 <translation id="6755200887046212842">Аккаунттарды башкаруу</translation>
@@ -1964,6 +1983,7 @@ Handoff Параметрлердин жалпы бөлүмүндө да иште
 <translation id="7311244614769792472">Эч нерсе табылган жок</translation>
 <translation id="7312823817809783355">Тапшырмаларыңыз</translation>
 <translation id="7313347584264171202">Жашыруун өтмөктөрүңүздү ушул жерден табасыз</translation>
+<translation id="7318555235645532245">"Жашыруун режимге өтүү" аткарылды!</translation>
 <translation id="7322186060879266048">{count,plural, =1{Автотолтуруунун {count} варианты баскычтоптун өйдө жагында жеткиликтүү.}other{Автотолтуруунун {count} варианты баскычтоптун өйдө жагында жеткиликтүү.}}</translation>
 <translation id="7328162502911382168">(<ph name="COUNT" />)</translation>
 <translation id="7336264872878993241"><ph name="PERCENT" /> пайыз жүктөлүп алынды</translation>
@@ -2140,6 +2160,7 @@ Handoff Параметрлердин жалпы бөлүмүндө да иште
 <translation id="7857520352710212030">Сайт кадалды</translation>
 <translation id="7859988229622350291">Эч качан которулбасын</translation>
 <translation id="7863211248337747225">Колдонмону жүктөп алуу</translation>
+<translation id="7863990181930071932">Жайгашкан жерди аныктоо функциясы өчүрүлдү</translation>
 <translation id="7865127013871431856">Которуу параметрлери</translation>
 <translation id="7866872729285243843">Окуу тизмеңиз бардык түзмөктөрүңүздө болушу үчүн жөндөөлөрдөн "Окуу тизмесин" күйгүзүңүз.</translation>
 <translation id="7874107544081154809"><ph name="CELL_ACCESSIBILITY_LABEL" /> менен форманы автотолтуруу</translation>
@@ -2224,6 +2245,7 @@ Handoff Параметрлердин жалпы бөлүмүндө да иште
 <translation id="8102130909719902723">Ж</translation>
 <translation id="8105368624971345109">Өчүрүү</translation>
 <translation id="8106442513853561174">Так даректи бөлүшүү</translation>
+<translation id="8110894698020598040">{count,plural, =1{1 сырсөз автотолтурулду}other{# сырсөз автотолтурулду}}</translation>
 <translation id="8114753159095730575">Файлды жүктөп алууга болот. Параметрлер экрандын төмөн жагында берилген.</translation>
 <translation id="8123502380991596210">"Эмне жаңылык" параметрин жашыруу</translation>
 <translation id="8123953306357309250">Шайкештештирүү жокко чыгарылсынбы? Шайкештирүүнү каалаган убакта жөндөөлөргө өтүп, күйгүзүп койсоңуз болот.</translation>
@@ -2447,6 +2469,7 @@ Handoff Параметрлердин жалпы бөлүмүндө да иште
 <translation id="8786100550345425552">Уруксаттарды түзөтүү</translation>
 <translation id="878871978861915380">"Бааларга көз салуу" картасын жашыруу</translation>
 <translation id="8792626944327216835">микрофон</translation>
+<translation id="8795809107245894196">Сырсөздөрүңүздүн коопсуз экенин текшерүү үчүн Сырсөздөрдү текшерүү функциясын колдонуңуз</translation>
 <translation id="8796634520835503150">Окуу режими жеткиликтүү</translation>
 <translation id="8803526663383843427">Күйүп турганда</translation>
 <translation id="8803639129939845298">Корголгон</translation>
@@ -2479,6 +2502,7 @@ Handoff Параметрлердин жалпы бөлүмүндө да иште
 <translation id="8879952635974818770">Жекелештирилген контент</translation>
 <translation id="8887595428614802520">Бардык өтмөктөрдү жана топторду жабуу</translation>
 <translation id="8888595487174963247">Эстеткичти өчүрүү</translation>
+<translation id="8890516388109605451">Булактар</translation>
 <translation id="8893208530912252670">Видеолор</translation>
 <translation id="8898822736010347272">Сиз баш баккан айрым барактардын URL даректерин, чектелген тутум маалыматын жана айрым барактардын мазмунун бардык колдонуучулар үчүн мүмкүн болгон коркунучтарды аныктап, бөгөттөө үчүн Google'га жөнөтөт.</translation>
 <translation id="8900845556227858314">Серепчи колдонмосу</translation>
@@ -2519,6 +2543,7 @@ Handoff Параметрлердин жалпы бөлүмүндө да иште
 <translation id="9012585441087414258">Кооптуу деп таанылган сайттардан, жүктөлүп алынган файлдардан жана кеңейтүүлөрдөн коргойт. Эгер барак шектүү аракетти жасаса, анын URL даректери жана контентинин үлгүлөрү Google Коопсуз серептөөгө жөнөтүлөт.</translation>
 <translation id="9013605037177245304">Билдирмелерди күйгүзүү</translation>
 <translation id="9029650858822697271">Аккаунттан чыгып кеттиңиз</translation>
+<translation id="9030785788945687215">Gmail</translation>
 <translation id="9032405509996909363">Серептөө дайындарын өчүрүүнү ырастаңыз</translation>
 <translation id="9035699147763101514">Gemini менен Personal Intelligence сунуштайт. Параметрлерден тандоолоруңузду тескеңиз.</translation>
 <translation id="9038526468059454274">Кыскача жыйынтыктаңыз:</translation>

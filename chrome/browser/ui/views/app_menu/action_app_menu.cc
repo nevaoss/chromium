@@ -4,6 +4,7 @@
 
 #include "chrome/browser/ui/views/app_menu/action_app_menu.h"
 
+#include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/actions/chrome_action_id.h"
 #include "chrome/browser/ui/actions/chrome_action_properties.h"
 #include "chrome/browser/ui/browser_actions.h"
@@ -11,6 +12,7 @@
 #include "chrome/browser/ui/color/chrome_color_id.h"
 #include "chrome/browser/ui/managed_ui.h"
 #include "chrome/browser/ui/ui_features.h"
+#include "chrome/browser/ui/user_education/browser_user_education_interface.h"
 #include "chrome/browser/ui/views/app_menu/action_app_menu_manager.h"
 #include "chrome/browser/ui/views/app_menu/app_menu_action_item.h"
 #include "chrome/browser/ui/views/app_menu/app_menu_block_view.h"
@@ -19,9 +21,9 @@
 #include "chrome/browser/ui/views/app_menu/app_menu_search_bar_view.h"
 #include "chrome/browser/ui/views/app_menu/app_menu_zoom_view.h"
 #include "chrome/browser/ui/views/chrome_layout_provider.h"
+#include "chrome/browser/user_education/user_education_service.h"
 #include "ui/actions/actions.h"
 #include "ui/base/models/image_model.h"
-#include "ui/base/models/menu_model.h"
 #include "ui/base/models/menu_separator_types.h"
 #include "ui/base/mojom/menu_source_type.mojom.h"
 #include "ui/base/window_open_disposition_utils.h"
@@ -54,11 +56,24 @@ ui::ImageModel StandardizeMenuIconSize(const ui::ImageModel& icon) {
   return icon;
 }
 
+bool ShouldShowNewBadge(BrowserWindowInterface* browser_window_interface,
+                        const base::Feature& feature) {
+  if (auto* const user_education =
+          BrowserUserEducationInterface::From(browser_window_interface)) {
+    return user_education->MaybeShowNewBadgeFor(feature);
+  }
+  return UserEducationService::MaybeShowNewBadge(
+      browser_window_interface->GetProfile(), feature);
+}
+
 bool ShouldRoundBottomCorners(size_t index,
                               const actions::ActionListVector& items) {
   // An item rounds its bottom corners if it is the last non-divider item in
-  // its list OR if its the zoom submenu.
-  if (items[index]->GetActionItem()->GetActionId() == kActionZoomSubmenu) {
+  // its list, if it is a notification item, OR if it is the zoom submenu.
+  actions::ActionItem* const item = items[index]->GetActionItem();
+  if (item->GetActionId() == kActionZoomSubmenu ||
+      item->GetProperty(AppMenuActionItem::kDisplayTypeKey) ==
+          AppMenuActionItem::DisplayType::kNotification) {
     return true;
   }
   for (size_t i = index + 1; i < items.size(); ++i) {
@@ -175,7 +190,7 @@ void ActionAppMenu::OnMenuClosed(views::MenuItemView* menu) {
   has_notification_header_ = false;
   action_to_execute_on_close_.reset();
   command_to_action_map_.clear();
-  header_count_ = 0;
+  section_header_count_ = 0;
   if (on_menu_closed_callback_) {
     on_menu_closed_callback_.Run();
   }
@@ -210,16 +225,35 @@ bool ActionAppMenu::IsItemChecked(int id) const {
 }
 
 const gfx::FontList* ActionAppMenu::GetLabelFontList(int id) const {
-  if (id == ui::MenuModel::kTitleId) {
+  auto action_iterator = command_to_action_map_.find(id);
+  if (action_iterator == command_to_action_map_.end()) {
+    return nullptr;
+  }
+
+  actions::ActionItem* action_ptr = action_iterator->second->GetActionItem();
+  CHECK(action_ptr);
+  if (action_ptr->GetProperty(AppMenuActionItem::kDisplayTypeKey) ==
+      AppMenuActionItem::DisplayType::kHeader) {
     return &views::TypographyProvider::Get().GetFont(
         views::style::CONTEXT_LABEL, views::style::STYLE_HEADLINE_5);
+  } else if (action_ptr->GetActionId() == kActionProfileSubmenu) {
+    return &views::TypographyProvider::Get().GetFont(
+        views::style::CONTEXT_MENU, views::style::STYLE_BODY_3_MEDIUM);
   }
   return nullptr;
 }
 
 std::optional<SkColor> ActionAppMenu::GetLabelColor(int id) const {
-  if (id == ui::MenuModel::kTitleId && root_ && root_->HasSubmenu() &&
-      root_->GetSubmenu()->GetColorProvider()) {
+  auto action_iterator = command_to_action_map_.find(id);
+  if (action_iterator == command_to_action_map_.end()) {
+    return std::nullopt;
+  }
+
+  actions::ActionItem* action_ptr = action_iterator->second->GetActionItem();
+  CHECK(action_ptr);
+  if (action_ptr->GetProperty(AppMenuActionItem::kDisplayTypeKey) ==
+          AppMenuActionItem::DisplayType::kHeader &&
+      root_ && root_->GetSubmenu()->GetColorProvider()) {
     return root_->GetSubmenu()->GetColorProvider()->GetColor(
         ui::kColorMenuItemForeground);
   }
@@ -259,7 +293,7 @@ void ActionAppMenu::PopulateMenu(views::MenuItemView* view_parent,
     } else if (display_type == AppMenuActionItem::DisplayType::kDivider) {
       PopulateDivider(view_parent, child_ptr);
     } else if (display_type == AppMenuActionItem::DisplayType::kHeader) {
-      PopulateHeader(view_parent, child_ptr);
+      PopulateHeader(view_parent, child_base);
     } else if (display_type == AppMenuActionItem::DisplayType::kSection) {
       // Recursively call using the same parent to keep the children in
       // the same menu section.
@@ -334,23 +368,25 @@ void ActionAppMenu::ConfigureMenuItem(views::MenuItemView* menu_item,
                                       actions::BaseAction* child_base,
                                       bool round_top_corners,
                                       bool round_bottom_corners) {
+  actions::ActionItem* const action_item = child_base->GetActionItem();
+  CHECK(action_item);
+
   if (std::u16string* text_override =
           child_base->GetProperty(AppMenuActionItem::kTextOverrideKey)) {
     menu_item->SetTitle(*text_override);
   }
 
-  actions::ActionItem* const action_item = child_base->GetActionItem();
-  CHECK(action_item);
-
   const ui::ElementIdentifier element_id =
-      action_item->GetProperty(views::kElementIdentifierKey);
+      child_base->GetProperty(views::kElementIdentifierKey);
   if (element_id) {
     menu_item->SetProperty(views::kElementIdentifierKey, element_id);
   }
 
   if (ui::ImageModel* icon_override =
           child_base->GetProperty(AppMenuActionItem::kIconOverrideKey)) {
-    menu_item->SetIcon(StandardizeMenuIconSize(*icon_override));
+    menu_item->SetIcon(action_item->GetActionId() == kActionProfileSubmenu
+                           ? *icon_override
+                           : StandardizeMenuIconSize(*icon_override));
   } else if (!action_item->GetImage().IsEmpty()) {
     menu_item->SetIcon(StandardizeMenuIconSize(action_item->GetImage()));
   }
@@ -375,18 +411,30 @@ void ActionAppMenu::ConfigureMenuItem(views::MenuItemView* menu_item,
     AppMenuChipView::AttachTo(menu_item, *chip_text);
   }
 
+  if (const base::Feature* new_badge_feature =
+          action_item->GetProperty(AppMenuActionItem::kNewBadgeFeatureKey)) {
+    const bool show_new_badge =
+        ShouldShowNewBadge(browser_window_interface_, *new_badge_feature);
+    menu_item->set_new_badge_type(
+        show_new_badge ? std::make_optional(ui::NewBadgeType::kNew)
+                       : std::nullopt);
+  }
+
   const auto* provider = ChromeLayoutProvider::Get();
 
   const auto item_height =
       action_item->GetProperty(AppMenuActionItem::kItemHeightKey);
 
-  const int vertical_padding =
-      (provider->GetDistanceMetric(
-           item_height == AppMenuActionItem::ItemHeight::kExpanded
-               ? DISTANCE_ACTION_APP_MENU_EXPANDED_ITEM_HEIGHT
-               : DISTANCE_ACTION_APP_MENU_FULL_ITEM_HEIGHT) -
-       provider->GetDistanceMetric(DISTANCE_ACTION_APP_MENU_ICON_SIZE)) /
-      2;
+  const int target_item_height = provider->GetDistanceMetric(
+      item_height == AppMenuActionItem::ItemHeight::kExpanded
+          ? DISTANCE_ACTION_APP_MENU_EXPANDED_ITEM_HEIGHT
+          : DISTANCE_ACTION_APP_MENU_FULL_ITEM_HEIGHT);
+
+  const int content_height =
+      std::max(provider->GetDistanceMetric(DISTANCE_ACTION_APP_MENU_ICON_SIZE),
+               menu_item->GetIconPreferredSize().height());
+
+  const int vertical_padding = (target_item_height - content_height) / 2;
 
   menu_item->set_vertical_margin(vertical_padding);
 
@@ -437,21 +485,33 @@ void ActionAppMenu::PopulateSearchBar(views::MenuItemView* view_parent,
 
 void ActionAppMenu::PopulateFooter(views::MenuItemView* view_parent,
                                    actions::ActionItem* footer_action_item) {
-  auto* footer_item = view_parent->AppendMenuItem(0);
+  auto footer_view = std::make_unique<AppMenuFooterView>(
+      view_parent, footer_action_item, &action_view_controller_,
+      &command_to_action_map_,
+      base::BindRepeating(&ActionAppMenu::CancelAndEvaluate,
+                          base::Unretained(this)),
+      base::BindRepeating(&ActionAppMenu::PopulateMenu,
+                          base::Unretained(this)));
+
+  auto* footer_item = view_parent->AppendMenuItemImpl(
+      0, /*label=*/std::u16string(), /*icon=*/ui::ImageModel(),
+      views::MenuItemView::Type::kHighlighted);
+  footer_item->SetSelectedColorId(ui::kColorMenuBackground);
   footer_item->SetTriggerActionWithNonIconChildViews(false);
   footer_item->set_children_use_full_width(true);
   footer_item->set_vertical_margin(0);
-
-  footer_item->AddChildView(std::make_unique<AppMenuFooterView>(
-      footer_action_item, &action_view_controller_, &command_to_action_map_,
-      base::BindRepeating(&ActionAppMenu::CancelAndEvaluate,
-                          base::Unretained(this))));
+  footer_item->AddChildView(std::move(footer_view));
 }
 
 void ActionAppMenu::PopulateHeader(views::MenuItemView* view_parent,
-                                   actions::ActionItem* header_action_item) {
+                                   actions::BaseAction* header_base_action) {
+  actions::ActionItem* const header_action_item =
+      header_base_action->GetActionItem();
   auto* const header_menu_item =
       view_parent->AppendTitle(std::u16string(header_action_item->GetText()));
+  const int command_id = next_id_++;
+  header_menu_item->SetCommand(command_id);
+  command_to_action_map_[command_id] = header_base_action;
   const int default_margin = views::LayoutProvider::Get()->GetDistanceMetric(
       DISTANCE_ACTION_APP_MENU_HEADER_VERTICAL_MARGIN);
   header_menu_item->set_vertical_margin(default_margin);
@@ -460,7 +520,7 @@ void ActionAppMenu::PopulateHeader(views::MenuItemView* view_parent,
     header_menu_item->SetBorder(
         views::CreateEmptyBorder(ChromeLayoutProvider::Get()->GetInsetsMetric(
             INSETS_ACTION_APP_MENU_HEADER)));
-    if (header_count_++ > 0) {
+    if (section_header_count_++ > 0) {
       header_menu_item->set_top_margin(default_margin * 2);
     }
   }
@@ -503,6 +563,11 @@ void ActionAppMenu::PopulateCustomRow(views::MenuItemView* view_parent,
 
 void ActionAppMenu::PopulateDivider(views::MenuItemView* view_parent,
                                     actions::ActionItem* divider_action_item) {
-  view_parent->AppendSeparator(
-      divider_action_item->GetProperty(AppMenuActionItem::kSeparatorKey));
+  const ui::MenuSeparatorType separator_type =
+      divider_action_item->GetProperty(AppMenuActionItem::kSeparatorKey);
+  views::MenuSeparator* separator =
+      view_parent->AppendSeparator(separator_type);
+  if (separator_type == ui::MENU_ITEM_SEPARATOR) {
+    separator->SetColorId(ui::kColorMenuBackground);
+  }
 }

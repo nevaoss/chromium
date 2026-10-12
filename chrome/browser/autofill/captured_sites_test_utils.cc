@@ -160,6 +160,14 @@ std::string DocumentForLog(const content::RenderFrameHost& frame) {
       .spec();
 }
 
+// How many times a click action resolves its target and measures it before
+// giving up.
+constexpr int kMaxClickAttempts = 3;
+
+bool FrameIsActive(const content::RenderFrameHostWrapper& frame) {
+  return !frame.IsDestroyed() && frame->IsActive();
+}
+
 void PrintDebugInstructions(const base::FilePath& command_file_path) {
   const char msg[] = R"(
 
@@ -1473,30 +1481,52 @@ bool TestRecipeReplayer::ExecuteAutofillAction(base::DictValue action) {
 
 bool TestRecipeReplayer::ExecuteClickAction(base::DictValue action) {
   std::string xpath;
-  content::RenderFrameHost* frame;
-  if (!ExtractFrameAndVerifyElement(action, &xpath, &frame)) {
-    return false;
+
+  // Scrolling and measuring run scripts in the page, and a navigation can
+  // commit while they do, which destroys the frame this action targets. No
+  // click has been sent at that point, so resolve the target again and retry.
+  for (int attempt = 1; attempt <= kMaxClickAttempts; ++attempt) {
+    content::RenderFrameHost* frame = nullptr;
+    if (!ExtractFrameAndVerifyElement(action, &xpath, &frame)) {
+      return false;
+    }
+
+    content::RenderFrameHostWrapper scroll_target(frame);
+    if (!ScrollElementIntoView(xpath, frame)) {
+      if (FrameIsActive(scroll_target)) {
+        return false;
+      }
+      continue;
+    }
+
+    WaitTillPageIsIdle(scroll_wait_timeout);
+    if (!ExtractFrameAndVerifyElement(action, &xpath, &frame)) {
+      return false;
+    }
+
+    content::RenderFrameHostWrapper measure_target(frame);
+    gfx::Rect rect;
+    if (!GetBoundingRectOfTargetElement(xpath, frame, &rect)) {
+      if (FrameIsActive(measure_target)) {
+        return false;
+      }
+      continue;
+    }
+
+    // Keep the click last: a click must never be retried.
+    VLOG(1) << "Left mouse clicking `" << xpath << "` (attempt " << attempt
+            << ").";
+    if (!SimulateLeftMouseClickAt(rect.CenterPoint(), measure_target.get())) {
+      return false;
+    }
+
+    WaitTillPageIsIdle();
+    return true;
   }
 
-  VLOG(1) << "Left mouse clicking `" << xpath << "`.";
-  if (!ScrollElementIntoView(xpath, frame)) {
-    return false;
-  }
-  WaitTillPageIsIdle(scroll_wait_timeout);
-  if (!ExtractFrameAndVerifyElement(action, &xpath, &frame)) {
-    return false;
-  }
-
-  gfx::Rect rect;
-  if (!GetBoundingRectOfTargetElement(xpath, frame, &rect)) {
-    return false;
-  }
-  if (!SimulateLeftMouseClickAt(rect.CenterPoint(), frame)) {
-    return false;
-  }
-
-  WaitTillPageIsIdle();
-  return true;
+  ADD_FAILURE() << "Gave up clicking `" << xpath << "` after "
+                << kMaxClickAttempts << " attempts.";
+  return false;
 }
 
 bool TestRecipeReplayer::ExecuteClickIfNotSeenAction(base::DictValue action) {
@@ -1759,9 +1789,8 @@ bool TestRecipeReplayer::ExecuteTypePasswordAction(base::DictValue action) {
   VLOG(1) << "Typing '" << *value << "' inside `" << xpath << "`.";
   content::WebContents* web_contents =
       content::WebContents::FromRenderFrameHost(frame);
-  for (size_t index = 0; index < value->size(); index++) {
-    SimulateKeyPressWrapper(web_contents,
-                            ui::DomKey::FromCharacter(value->at(index)));
+  for (char character : *value) {
+    SimulateKeyPressWrapper(web_contents, ui::DomKey::FromCharacter(character));
   }
   WaitTillPageIsIdle();
   return true;
@@ -1882,8 +1911,7 @@ bool TestRecipeReplayer::ExecuteValidatePasswordGenerationPromptAction(
 
   // Most common scenario is validating that the password generation prompt is
   // being shown, so if unspecified default to true.
-  bool expect_to_be_shown = expect_to_be_shown =
-      action.FindBool("shouldBeShown").value_or(true);
+  bool expect_to_be_shown = action.FindBool("shouldBeShown").value_or(true);
 
   // First, execute a click to focus on the field in question.
   ExecuteClickAction(std::move(action));
@@ -2133,8 +2161,7 @@ bool TestRecipeReplayer::GetIFrameOffsetFromIFramePath(
     gfx::Vector2d* offset) {
   *offset = gfx::Vector2d(0, 0);
 
-  for (auto it_xpath = iframe_path.begin(); it_xpath != iframe_path.end();
-       it_xpath++) {
+  for (const std::string& xpath : iframe_path) {
     content::RenderFrameHost* parent_frame = frame->GetParent();
     if (parent_frame == nullptr) {
       ADD_FAILURE() << "Trying to iterate past the top level frame!";
@@ -2142,9 +2169,9 @@ bool TestRecipeReplayer::GetIFrameOffsetFromIFramePath(
     }
 
     gfx::Rect rect;
-    if (!GetBoundingRectOfTargetElement(*it_xpath, parent_frame, &rect)) {
+    if (!GetBoundingRectOfTargetElement(xpath, parent_frame, &rect)) {
       ADD_FAILURE() << "Failed to extract position of iframe with xpath `"
-                    << *it_xpath << "`!";
+                    << xpath << "`!";
       return false;
     }
 

@@ -126,7 +126,8 @@ public class FuseboxViewBinderUnitTest {
                         popupView,
                         mDynamicRectProvider,
                         /* isBottomSheet= */ false,
-                        /* useCarousel= */ false);
+                        /* useCarousel= */ false,
+                        /* useScrollableCarousel= */ false);
         mViewHolder = new FuseboxViewHolder(parent, mPopup);
 
         // Initialize workable defaults.
@@ -183,7 +184,8 @@ public class FuseboxViewBinderUnitTest {
                         popupView,
                         mDynamicRectProvider,
                         /* isBottomSheet= */ true,
-                        /* useCarousel= */ true);
+                        /* useCarousel= */ true,
+                        /* useScrollableCarousel= */ true);
         return new FuseboxViewHolder(mViewHolder.parentView, popup);
     }
 
@@ -843,6 +845,35 @@ public class FuseboxViewBinderUnitTest {
                                 .setSelected(false)
                                 .build()));
         assertEquals("custom tool", getDynamicToolButton(0).getContentDescription());
+
+        String expectedWithSubtext =
+                res.getString(
+                        R.string.acc_fusebox_popup_text_with_subtext,
+                        "custom tool",
+                        "custom subtext");
+        mModel.set(
+                FuseboxProperties.POPUP_TOOL_BUTTON_DATA_LIST,
+                List.of(
+                        new PopupButtonData.Builder()
+                                .setText("custom tool")
+                                .setSubtext("custom subtext")
+                                .setType(PopupButtonType.TOOL)
+                                .setSelected(false)
+                                .build()));
+        assertEquals(expectedWithSubtext, getDynamicToolButton(0).getContentDescription());
+
+        mModel.set(
+                FuseboxProperties.POPUP_TOOL_BUTTON_DATA_LIST,
+                List.of(
+                        new PopupButtonData.Builder()
+                                .setText("custom tool")
+                                .setSubtext("custom subtext")
+                                .setType(PopupButtonType.TOOL)
+                                .setSelected(true)
+                                .build()));
+        assertEquals(
+                res.getString(R.string.acc_fusebox_popup_button_selected, expectedWithSubtext),
+                getDynamicToolButton(0).getContentDescription());
     }
 
     @Test
@@ -1077,6 +1108,35 @@ public class FuseboxViewBinderUnitTest {
         mBinder.bind(model, viewHolder, FuseboxProperties.POPUP_MORE_OPTIONS_VISIBLE);
         assertEquals(View.GONE, viewHolder.popup.mMoreOptionsButton.getVisibility());
         assertEquals(View.VISIBLE, viewHolder.popup.mAccordionContainer.getVisibility());
+    }
+
+    @Test
+    public void popupMoreOptionsButton_themedWithColorScheme_incognitoAndDefault() {
+        Activity activity = mActivityController.get();
+        TextView moreOptionsText =
+                mViewHolder.popup.mMoreOptionsButton.findViewById(R.id.action_text);
+        ImageView moreOptionsEndIcon =
+                mViewHolder.popup.mMoreOptionsButton.findViewById(R.id.end_icon);
+
+        // Verify non-incognito default theme.
+        mModel.set(FuseboxProperties.COLOR_SCHEME, BrandedColorScheme.APP_DEFAULT);
+        assertEquals(
+                activity.getColorStateList(R.color.default_text_color_list),
+                moreOptionsText.getTextColors());
+        assertEquals(
+                OmniboxResourceProvider.getSecondaryIconTintList(
+                        activity, BrandedColorScheme.APP_DEFAULT),
+                moreOptionsEndIcon.getImageTintList());
+
+        // Verify incognito theme.
+        mModel.set(FuseboxProperties.COLOR_SCHEME, BrandedColorScheme.INCOGNITO);
+        assertEquals(
+                activity.getColorStateList(R.color.default_text_color_light_list),
+                moreOptionsText.getTextColors());
+        assertEquals(
+                OmniboxResourceProvider.getSecondaryIconTintList(
+                        activity, BrandedColorScheme.INCOGNITO),
+                moreOptionsEndIcon.getImageTintList());
     }
 
     @Test

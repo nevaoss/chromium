@@ -25,6 +25,8 @@ export function getHtml(this: OmniboxEverywhereOmniboxElement) {
           ?dropdown-is-visible="${this.dropdownIsVisible}"
           input-aria-live="${this.inputAriaLive}"
           ?multi-line-enabled="${this.multiLineEnabled}"
+          .singleLineOnInlineAutocomplete="${
+              this.singleLineOnInlineAutocomplete}"
           placeholder-text="${this.computePlaceholderText_()}"
           searchbox-aria-description="${this.searchboxAriaDescription}"
           searchbox-icon="${this.searchboxIcon_}"
@@ -90,7 +92,8 @@ export function getHtml(this: OmniboxEverywhereOmniboxElement) {
         <div id="actionButtons">
           ${
               this.showVoiceSearchButton_() ? html`
-          <div class="searchbox-icon-button-container voice">
+          <div class="searchbox-icon-button-container voice"
+              ?has-virtual-focus="${this.isVoiceSearchVirtualFocused_()}">
             <button id="voiceSearchButton" class="searchbox-icon-button"
                 tabindex="${this.virtualFocusEnabled &&
                     this.dropdownIsVisible ? -1 : 0}"
@@ -102,7 +105,9 @@ export function getHtml(this: OmniboxEverywhereOmniboxElement) {
               ''}
           ${this.showLensSearchButton_() ? html`
           <div class="searchbox-icon-button-container lens ${
-              this.isScreenshotMenuOpen ? 'menu-open' : ''}">
+              this.isScreenshotMenuOpen ? 'menu-open' : ''} ${
+              this.isLensHelpBubbleShowing ? 'help-bubble-open' : ''}"
+              ?has-virtual-focus="${this.isLensSearchVirtualFocused_()}">
             <button id="lensSearchButton" class="searchbox-icon-button"
                 tabindex="${this.virtualFocusEnabled &&
                     this.dropdownIsVisible ? -1 : 0}"

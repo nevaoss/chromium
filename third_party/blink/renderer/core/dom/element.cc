@@ -2132,8 +2132,15 @@ void Element::HandlePointerEventsForInterestFor(
 }
 
 void Element::HandleFocusEventsForInterestFor(FocusEvent* focus_event) {
-  if (!focus_event || !focus_event->isTrusted()) {
+  if (!focus_event) {
     return;
+  }
+  if (!RuntimeEnabledFeatures::CleanUpActivationBehaviorEnabled()) {
+    if (!focus_event->isTrusted()) {
+      return;
+    }
+  } else {
+    DCHECK(focus_event->isTrusted());
   }
   if (focus_event->sourceCapabilities() &&
       focus_event->sourceCapabilities()->firesTouchEvents()) {
@@ -2148,8 +2155,23 @@ void Element::HandleFocusEventsForInterestFor(FocusEvent* focus_event) {
 }
 
 void Element::DefaultEventHandler(Event& event) {
-  if (event.isTrusted() && (InterestForElement() || SourceInterestInvoker() ||
-                            GetInterestState() != InterestState::kNoInterest))
+#if DCHECK_IS_ON()
+  if (RuntimeEnabledFeatures::CleanUpActivationBehaviorEnabled()) {
+    const bool is_click =
+        event.IsMouseEvent() && event.type() == event_type_names::kClick;
+    const bool is_android_select_mousedown_quirk =
+        event.IsMouseEvent() && event.type() == event_type_names::kMousedown &&
+        IsA<HTMLSelectElement>(*this) && GetDocument().GetSettings() &&
+        GetDocument().GetSettings()->GetWideViewportQuirkEnabled();
+    DCHECK(event.isTrusted() || is_click || is_android_select_mousedown_quirk);
+  }
+#endif
+  const bool is_trusted =
+      !RuntimeEnabledFeatures::CleanUpActivationBehaviorEnabled()
+          ? event.isTrusted()
+          : true;
+  if (is_trusted && (InterestForElement() || SourceInterestInvoker() ||
+                     GetInterestState() != InterestState::kNoInterest))
       [[unlikely]] {
     // Handle new `interestfor` activation via keyboard or long-press.
     HandleFocusEventsForInterestFor(DynamicTo<FocusEvent>(event));
@@ -2406,7 +2428,17 @@ void Element::ScrollIntoViewNoVisualUpdate(
       container ? container->GetLayoutObject() : nullptr,
       /*from_remote_frame=*/false, include_self, resolver);
 
-  GetDocument().SetSequentialFocusNavigationStartingPoint(originating_element);
+  // Avoid creating a starting point before the first sequential focus
+  // navigation. Disabling the feature restores the legacy behavior.
+  const bool has_sequential_focus_navigation_starting_point =
+      GetDocument().FocusedElement() ||
+      GetDocument().HasSequentialFocusNavigationStartingPoint();
+  if (!RuntimeEnabledFeatures::
+          ScrollIntoViewNoInitialFocusNavigationStartingPointEnabled() ||
+      has_sequential_focus_navigation_starting_point) {
+    GetDocument().SetSequentialFocusNavigationStartingPoint(
+        originating_element);
+  }
 }
 
 void Element::scrollIntoViewIfNeeded(bool center_if_needed) {
@@ -5728,22 +5760,27 @@ StyleRecalcChange Element::RecalcOwnStyle(
   // also clear GetOverscrollContainer() on `this`).
   bool is_valid_overscroll_area = OverscrollAreaTracker::IsValidOverscrollArea(
       *this, new_style, parent_style);
-  Element* parent = parentElement();
+  Element* overscroll_container = GetOverscrollContainer();
+  if (is_valid_overscroll_area || overscroll_container) {
+    Element* parent = FlatTreeTraversal::ParentElement(*this);
 
-  if (GetOverscrollContainer() && (!new_style || !is_valid_overscroll_area ||
-                                   GetOverscrollContainer() != parent)) {
-    DetachOverscroll();
-    // We may need to remove this element's ::-internal-overscroll-area-parent.
-    child_change =
-        child_change.EnsureAtLeast(StyleRecalcChange::kUpdatePseudoElements);
-  }
-  // If we no longer have an overscroll container, but need one, add this
-  // element to the parent overscroll container.
-  if (!GetOverscrollContainer() && is_valid_overscroll_area) {
-    parent->EnsureOverscrollAreaTracker().AddOverscroll(this);
-    // We need to add a ::-internal-overscroll-area-parent for this element.
-    child_change =
-        child_change.EnsureAtLeast(StyleRecalcChange::kUpdatePseudoElements);
+    if (overscroll_container && (!new_style || !is_valid_overscroll_area ||
+                                 overscroll_container != parent)) {
+      DetachOverscroll();
+      overscroll_container = nullptr;
+      // We may need to remove this element's
+      // ::-internal-overscroll-area-parent.
+      child_change =
+          child_change.EnsureAtLeast(StyleRecalcChange::kUpdatePseudoElements);
+    }
+    // If we no longer have an overscroll container, but need one, add this
+    // element to the parent overscroll container.
+    if (!overscroll_container && is_valid_overscroll_area) {
+      parent->EnsureOverscrollAreaTracker().AddOverscroll(this);
+      // We need to add a ::-internal-overscroll-area-parent for this element.
+      child_change =
+          child_change.EnsureAtLeast(StyleRecalcChange::kUpdatePseudoElements);
+    }
   }
 
   if (GetOverscrollAreaTracker() && old_style && new_style &&
@@ -9223,7 +9260,9 @@ bool Element::IsClickableControl(Node* node) {
     return true;
   }
   while (node && this != node) {
-    if (node->HasActivationBehavior()) {
+    if (node->HasActivationBehavior() ||
+        node->HasTagName(html_names::kEmbedTag) ||
+        node->HasTagName(html_names::kLabelTag)) {
       return true;
     }
     node = node->ParentOrShadowHostNode();
@@ -12224,6 +12263,7 @@ void Element::DidMoveToNewDocument(Document& old_document) {
   if (auto* context = GetDisplayLockContext()) {
     context->DidMoveToNewDocument(old_document);
   }
+  ContainerQueryListController::DidMoveToNewDocument(*this, old_document);
 }
 
 void Element::UpdateNamedItemRegistration(NamedItemType type,

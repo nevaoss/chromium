@@ -13,6 +13,7 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import android.graphics.Color;
 import android.graphics.Rect;
 import android.view.View;
 
@@ -780,5 +781,175 @@ public class BottomSheetMediatorUnitTest {
     public void testSetKeyboardCurtainHeight() {
         mMediator.setKeyboardCurtainHeight(350);
         assertEquals(350, mModel.get(BottomSheetProperties.KEYBOARD_CURTAIN_HEIGHT));
+    }
+
+    @Test
+    public void testSetBackgroundColor() {
+        mMediator.setBackgroundColor(Color.BLUE);
+        assertEquals(Color.BLUE, mModel.get(BottomSheetProperties.BACKGROUND_COLOR));
+    }
+
+    @Test
+    public void testSetAccessibilityPaneTitle() {
+        mMediator.setAccessibilityPaneTitle("Sheet Title");
+        assertEquals("Sheet Title", mModel.get(BottomSheetProperties.ACCESSIBILITY_PANE_TITLE));
+    }
+
+    @Test
+    public void testGetBackgroundColor() {
+        when(mContent.hasSolidBackgroundColor()).thenReturn(false);
+        when(mContent.getPeekHeight()).thenReturn(HeightMode.DISABLED);
+        when(mContent.getHalfHeightRatio()).thenReturn((float) HeightMode.DISABLED);
+        mMediator.setSheetContent(mContent);
+
+        int color =
+                mMediator.getBackgroundColor(
+                        /* colorNonModal= */ Color.RED,
+                        /* colorModal= */ Color.BLUE,
+                        /* maxOffset= */ 1000f,
+                        /* minOffset= */ 0f,
+                        /* currentOffset= */ 500f,
+                        /* isSmallScreen= */ false);
+
+        // When non resizable, modal color is used
+        assertEquals(Color.BLUE, color);
+    }
+
+    @Test
+    public void testGetBackgroundColor_SolidColorOverride() {
+        when(mContent.hasSolidBackgroundColor()).thenReturn(true);
+        when(mContent.getSheetBackgroundColorOverride()).thenReturn(Color.GREEN);
+        mMediator.setSheetContent(mContent);
+
+        int color =
+                mMediator.getBackgroundColor(
+                        /* colorNonModal= */ Color.RED,
+                        /* colorModal= */ Color.BLUE,
+                        /* maxOffset= */ 1000f,
+                        /* minOffset= */ 0f,
+                        /* currentOffset= */ 500f,
+                        /* isSmallScreen= */ false);
+
+        assertEquals(Color.GREEN, color);
+    }
+
+    @Test
+    public void testGetAccessibilityStringIdForState() {
+        when(mContent.getSheetClosedAccessibilityStringId()).thenReturn(1);
+        when(mContent.getSheetHalfHeightAccessibilityStringId()).thenReturn(2);
+        when(mContent.getSheetFullHeightAccessibilityStringId()).thenReturn(3);
+        when(mContent.getSheetHiddenAccessibilityStringId()).thenReturn(4);
+        mMediator.setSheetContent(mContent);
+
+        assertEquals(1, mMediator.getAccessibilityStringIdForState(SheetState.PEEK));
+        assertEquals(2, mMediator.getAccessibilityStringIdForState(SheetState.HALF));
+        assertEquals(3, mMediator.getAccessibilityStringIdForState(SheetState.FULL));
+        assertEquals(4, mMediator.getAccessibilityStringIdForState(SheetState.HIDDEN));
+    }
+
+    @Test
+    public void testShouldGestureMoveSheet() {
+        Rect defaultViewport = new Rect(0, 0, 1080, 1920);
+
+        // Offset from browser controls > 0 -> false
+        assertFalse(
+                mMediator.shouldGestureMoveSheet(
+                        /* currentX= */ 100f,
+                        /* offsetFromBrowserControls= */ 10f,
+                        /* isHiding= */ false,
+                        /* containerWidth= */ 500,
+                        defaultViewport));
+
+        // isHiding -> false
+        assertFalse(
+                mMediator.shouldGestureMoveSheet(
+                        /* currentX= */ 100f,
+                        /* offsetFromBrowserControls= */ 0f,
+                        /* isHiding= */ true,
+                        /* containerWidth= */ 500,
+                        defaultViewport));
+
+        // isSheetOpen -> true
+        mMediator.setIsSheetOpenForTesting(true);
+        assertTrue(
+                mMediator.shouldGestureMoveSheet(
+                        /* currentX= */ 100f,
+                        /* offsetFromBrowserControls= */ 0f,
+                        /* isHiding= */ false,
+                        /* containerWidth= */ 500,
+                        defaultViewport));
+        mMediator.setIsSheetOpenForTesting(false);
+
+        // Within viewport bounds
+        Rect viewport = new Rect(50, 0, 550, 1000);
+        assertTrue(
+                mMediator.shouldGestureMoveSheet(
+                        /* currentX= */ 100f,
+                        /* offsetFromBrowserControls= */ 0f,
+                        /* isHiding= */ false,
+                        /* containerWidth= */ 500,
+                        viewport));
+
+        // Outside viewport bounds
+        assertFalse(
+                mMediator.shouldGestureMoveSheet(
+                        /* currentX= */ 20f,
+                        /* offsetFromBrowserControls= */ 0f,
+                        /* isHiding= */ false,
+                        /* containerWidth= */ 500,
+                        viewport));
+    }
+
+    @Test
+    public void testSheetTranslationProperties() {
+        mMediator.setSheetTranslationY(120f);
+        assertEquals(120f, mMediator.getSheetTranslationY(), 0.0f);
+        assertEquals(120f, mModel.get(BottomSheetProperties.SHEET_TRANSLATION_Y), 0.0f);
+
+        mMediator.setSheetTranslationX(60f);
+        assertEquals(60f, mModel.get(BottomSheetProperties.SHEET_TRANSLATION_X), 0.0f);
+    }
+
+    @Test
+    public void testHandlebarVisible() {
+        mMediator.setHandlebarVisible(true);
+        assertTrue(mModel.get(BottomSheetProperties.HANDLEBAR_VISIBLE));
+
+        mMediator.setHandlebarVisible(false);
+        assertFalse(mModel.get(BottomSheetProperties.HANDLEBAR_VISIBLE));
+    }
+
+    @Test
+    public void testContentTopMargin() {
+        mMediator.setContentTopMargin(40);
+        assertEquals(40, mModel.get(BottomSheetProperties.CONTENT_TOP_MARGIN));
+    }
+
+    @Test
+    public void testVisibleBackgroundHeight() {
+        mMediator.setVisibleBackgroundHeight(450);
+        assertEquals(450, mModel.get(BottomSheetProperties.VISIBLE_BACKGROUND_HEIGHT));
+    }
+
+    @Test
+    public void testSheetFocusable() {
+        mMediator.setSheetFocusable(true);
+        assertTrue(mModel.get(BottomSheetProperties.SHEET_FOCUSABLE));
+
+        mMediator.setSheetFocusable(false);
+        assertFalse(mModel.get(BottomSheetProperties.SHEET_FOCUSABLE));
+    }
+
+    @Test
+    public void testGlowSpec() {
+        GlowSpec spec = new GlowSpec(Color.BLUE, GlowSpec.ShadowSize.DEFAULT);
+        mMediator.setGlowSpec(spec);
+        assertEquals(spec, mModel.get(BottomSheetProperties.GLOW_SPEC));
+
+        when(mContent.getSheetBackgroundGlowSpecOverride()).thenReturn(spec);
+        mMediator.setSheetContent(mContent);
+        mMediator.setGlowSpec(new GlowSpec(Color.RED, GlowSpec.ShadowSize.DEFAULT));
+        mMediator.updateBackgroundGlow();
+        assertEquals(spec, mModel.get(BottomSheetProperties.GLOW_SPEC));
     }
 }

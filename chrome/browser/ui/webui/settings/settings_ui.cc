@@ -26,7 +26,6 @@
 #include "chrome/browser/contextual_tasks/contextual_tasks_context_service.h"
 #include "chrome/browser/dictation/dictation_keyed_service.h"
 #include "chrome/browser/dictation/features.h"
-#include "chrome/browser/geic/geic_enabling.h"
 #include "chrome/browser/glic/public/features.h"
 #include "chrome/browser/glic/public/glic_enabling.h"
 #include "chrome/browser/glic/public/glic_keyed_service.h"
@@ -129,7 +128,6 @@
 #include "components/personal_context/core/personal_context_types.h"
 #include "components/pref_registry/pref_registry_syncable.h"
 #include "components/prefs/pref_service.h"
-#include "components/privacy_sandbox/privacy_sandbox_features.h"
 #include "components/regional_capabilities/regional_capabilities_service.h"
 #include "components/safe_browsing/core/common/features.h"
 #include "components/search_engines/search_engines_switches.h"
@@ -495,9 +493,6 @@ SettingsUI::SettingsUI(content::WebUI* web_ui)
                               std::make_unique<SanitizedImageSource>(profile));
   content::URLDataSource::Add(profile, std::make_unique<ThemeSource>(profile));
 
-  html_source->AddBoolean(
-      "isRelatedWebsiteSetsUiEnabled",
-      base::FeatureList::IsEnabled(privacy_sandbox::kRelatedWebsiteSetsUi));
   // Performance
   AddSettingsPageUIHandler(std::make_unique<PerformanceHandler>());
   html_source->AddBoolean(
@@ -584,8 +579,9 @@ SettingsUI::SettingsUI(content::WebUI* web_ui)
                                 base::Unretained(this)));
   }
 
+  const bool show_geic_section = base::FeatureList::IsEnabled(features::kGeic);
   html_source->AddBoolean("showGlicSettings", show_glic_section);
-  html_source->AddBoolean("showGeicSettings", geic::IsGeicEnabled(profile));
+  html_source->AddBoolean("showGeicSettings", show_geic_section);
   html_source->AddBoolean("glicDisallowedByAdmin", glic_disallowed_by_admin);
 
   const auto& autofill_client =
@@ -657,9 +653,9 @@ SettingsUI::SettingsUI(content::WebUI* web_ui)
   // Within the AI subpage are separate sections for Glic, for GEIC, and for all
   // other AI features. The visibility of these is separately controlled, but
   // we want to show the subpage if any of them are enabled.
-  html_source->AddBoolean(
-      "showAiPage", show_glic_section || show_ai_features_section ||
-                        enable_ai_mode_search || geic::IsGeicEnabled(profile));
+  html_source->AddBoolean("showAiPage",
+                          show_glic_section || show_ai_features_section ||
+                              enable_ai_mode_search || show_geic_section);
   html_source->AddBoolean("showAiPageAiFeatureSection",
                           show_ai_features_section);
 

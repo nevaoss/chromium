@@ -698,8 +698,9 @@ source_set("extensions") {
         "extension_menu_model_android.h",
       ]
 
-      # pack_extension_job.cc and developer_private_functions.cc include headers
-      # from android extension bridges under IS_ANDROID.
+      # pack_extension_job.cc, developer_private_functions.cc and
+      # extension_context_menu_model.cc include headers from android extension
+      # bridges under IS_ANDROID.
       deps += [ "//chrome/browser/ui/android/extensions:public" ]
     }
   } else {
@@ -2062,12 +2063,15 @@ source_set("unit_tests") {
     "//chrome/browser/search_engines",
     "//chrome/browser/supervised_user:test_support",
     "//chrome/browser/sync",
+    "//chrome/browser/themes",
     "//chrome/browser/ui/extensions",
     "//chrome/browser/ui/supervised_user",
     "//chrome/browser/update_client",
     "//chrome/test:test_support",
+    "//chrome/test/base:chrome_render_view_host_test_harness",
     "//chrome/test/base:chrome_test_scoped_utils",
     "//chrome/test/base:test_switches",
+    "//chrome/test/base:testing_browser_process",
     "//components/bookmarks/managed",
     "//components/bookmarks/test",
     "//components/browser_sync:switches",
@@ -2377,6 +2381,7 @@ source_set("browser_tests") {
     "api/user_scripts/user_scripts_apitest.h",
     "api/web_navigation/web_navigation_apitest.cc",
     "api/web_request/web_request_apitest.cc",
+    "api/web_request/web_request_proxying_url_loader_factory_browsertest.cc",
     "api/webrtc_logging_private/webrtc_logging_private_apitest.cc",
     "api/webrtc_logging_private/webrtc_logging_private_browsertest.cc",
     "api/webstore_private/webstore_private_apitest.cc",
@@ -2516,7 +2521,6 @@ source_set("browser_tests") {
     "//chrome/browser/push_messaging",
     "//chrome/browser/push_messaging:service_impl_public",
     "//chrome/browser/pwc",
-    "//chrome/browser/pwc:features",
     "//chrome/browser/reading_list",
     "//chrome/browser/renderer_host",
     "//chrome/browser/resource_coordinator:utils",
@@ -2546,6 +2550,7 @@ source_set("browser_tests") {
     "//chrome/test/base:browser_test_waiters",
     "//chrome/test/base:profile_lifecycle_test_utils",
     "//chrome/test/base:test_launcher_utils",
+    "//chrome/test/base:testing_browser_process",
     "//chrome/test/base:tracing",
     "//chrome/test/base:web_ui_test_support",
     "//components/back_forward_cache",

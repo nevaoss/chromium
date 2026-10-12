@@ -56,6 +56,7 @@ BASE_DECLARE_FEATURE(kAndroidFirstRunLaunchBounds);
 BASE_DECLARE_FEATURE(kAndroidFreLayoutUpdate);
 BASE_DECLARE_FEATURE(kAndroidHistoryClustering);
 BASE_DECLARE_FEATURE(kAndroidKeyboardShortcutOpenFile);
+BASE_DECLARE_FEATURE(kAndroidNewManagementNotice);
 BASE_DECLARE_FEATURE(kAndroidNoVisibleHintForDifferentTLD);
 BASE_DECLARE_FEATURE(kAndroidOmniboxFocusedNewTabPage);
 BASE_DECLARE_FEATURE(kAndroidOpenIncognitoAsWindowRestrictions);
@@ -286,13 +287,12 @@ BASE_DECLARE_FEATURE(kRecordSuppressionMetrics);
 BASE_DECLARE_FEATURE(kReengagementNotification);
 BASE_DECLARE_FEATURE(kRelatedSearchesAllLanguage);
 BASE_DECLARE_FEATURE(kRelatedSearchesSwitch);
+BASE_DECLARE_FEATURE(kRemoveExtraHeadersOnCrossOriginRedirect);
 BASE_DECLARE_FEATURE(kRemoveTabFocusOnShowingAndSelect);
 BASE_DECLARE_FEATURE(kRobustWindowManagementExperimental);
 BASE_DECLARE_FEATURE(kSafetyFrePromo);
 BASE_DECLARE_FEATURE(kScheduleWindowCleaning);
 BASE_DECLARE_FEATURE(kSearchInCCT);
-BASE_DECLARE_FEATURE(kSearchInCCTAlternateTapHandling);
-BASE_DECLARE_FEATURE(kSearchInCCTAlternateTapHandlingIfEnabledByEmbedder);
 BASE_DECLARE_FEATURE(kSearchInCCTIfEnabledByEmbedder);
 BASE_DECLARE_FEATURE(kSessionRestoreAfterCrash);
 BASE_DECLARE_FEATURE(kSettingsInTab);
@@ -453,6 +453,31 @@ inline constexpr base::FeatureParam<int>
         &kOnDemandBackgroundTabContextCaptureOptimization,
         "overall_timeout_seconds",
         /*default_value=*/35);
+
+// Whether early completion and page context extraction on first visually
+// non-empty paint is enabled.
+inline constexpr base::FeatureParam<bool>
+    kOnDemandBackgroundTabContextCaptureEnableFirstPaint(
+        &kOnDemandBackgroundTabContextCaptureOptimization,
+        "enable_first_paint",
+        /*default_value=*/false);
+
+// Whether TabContextCaptureRequest skips load completion and post-load paint
+// delays for the active/foreground tab, triggering capture immediately.
+inline constexpr base::FeatureParam<bool>
+    kOnDemandBackgroundTabContextCaptureSkipDelayForActiveTab(
+        &kOnDemandBackgroundTabContextCaptureOptimization,
+        "skip_delay_for_active_tab",
+        /*default_value=*/false);
+
+// The overall flush timeout in seconds for TabContextualizationController to
+// flush pending page context callbacks for the active/foreground tab,
+// preventing long stalls when initial visual paint is delayed.
+inline constexpr base::FeatureParam<int>
+    kOnDemandBackgroundTabContextCaptureActiveTabFlushTimeoutSeconds(
+        &kOnDemandBackgroundTabContextCaptureOptimization,
+        "active_tab_flush_timeout_seconds",
+        /*default_value=*/1);
 
 inline constexpr base::FeatureParam<int> kProtectRecentlyVisibleTabDuration(
     &kProtectRecentlyVisibleTab,

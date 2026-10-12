@@ -145,7 +145,7 @@ public interface SideUiCoordinator extends SideUiStateProvider {
             UpdateReason.RESIZE_COMMITTED
         })
         @Target(ElementType.TYPE_USE)
-        @interface UpdateReason {
+        public @interface UpdateReason {
             /** A request from outside the Side UI framework, with no originating container. */
             int UNSPECIFIED = 0;
 
@@ -197,7 +197,7 @@ public interface SideUiCoordinator extends SideUiStateProvider {
         final boolean mSuppressAnimations;
 
         /** What triggered this request. */
-        private final @UpdateReason int mUpdateReason;
+        public final @UpdateReason int mUpdateReason;
 
         /**
          * Constructs a request with {@link UpdateReason#SIDE_UI_REQUEST}.
@@ -240,13 +240,28 @@ public interface SideUiCoordinator extends SideUiStateProvider {
          * @param suppressAnimations Whether animations should be suppressed during the UI update.
          * @param updateReason What triggered this request.
          */
-        UiUpdateRequest(
+        @VisibleForTesting(otherwise = VisibleForTesting.PACKAGE_PRIVATE)
+        public UiUpdateRequest(
                 @Nullable @SideUiId Integer sideUiId,
                 boolean suppressAnimations,
                 @UpdateReason int updateReason) {
             mSideUiId = sideUiId;
             mSuppressAnimations = suppressAnimations;
             mUpdateReason = updateReason;
+        }
+
+        @Override
+        public boolean equals(@Nullable Object obj) {
+            if (this == obj) return true;
+            if (!(obj instanceof UiUpdateRequest other)) return false;
+            return Objects.equals(mSideUiId, other.mSideUiId)
+                    && mSuppressAnimations == other.mSuppressAnimations
+                    && mUpdateReason == other.mUpdateReason;
+        }
+
+        @Override
+        public int hashCode() {
+            return Objects.hash(mSideUiId, mSuppressAnimations, mUpdateReason);
         }
 
         @Override
@@ -285,32 +300,64 @@ public interface SideUiCoordinator extends SideUiStateProvider {
      */
     final class SideUiSpecs {
         public static final class SideUiSize {
+            /**
+             * The width reserved by the {@link SideUiContainer}, i.e. the width that the rest of
+             * the browser UI (web contents, toolbar, etc.) lays itself out around.
+             */
             public final @Px int mWidth;
+
+            /**
+             * The width the {@link SideUiContainer}'s {@link android.view.View} is rendered at.
+             *
+             * <p>This is the same as {@link #mWidth} unless the container overlays other browser
+             * UI.
+             */
+            public final @Px int mRenderedWidth;
+
             public final @HeightType int mHeightType;
 
+            // TODO(crbug.com/542280452): Rename mWidth to mReservedWidth and SideUiSpecs#getWidth()
+            // to
+            // getReservedWidth(), so the pair with mRenderedWidth reads consistently. Done
+            // separately because it touches every Side UI observer.
             public SideUiSize(@Px int width, @HeightType int heightType) {
+                this(width, /* renderedWidth= */ width, heightType);
+            }
+
+            public SideUiSize(@Px int width, @Px int renderedWidth, @HeightType int heightType) {
                 assert width > 0 || (width == 0 && heightType == HeightType.NOT_APPLICABLE)
                         : "inconsistent width and heightType";
+                assert renderedWidth >= width
+                        : "a container cannot render narrower than the width it reserves";
+                assert width > 0 || renderedWidth == 0
+                        : "a container that reserves no width cannot render an overlay";
 
                 mWidth = width;
+                mRenderedWidth = renderedWidth;
                 mHeightType = heightType;
             }
 
             @Override
             public boolean equals(@Nullable Object obj) {
                 if (!(obj instanceof SideUiSize that)) return false;
-                return this.mWidth == that.mWidth && this.mHeightType == that.mHeightType;
+                return this.mWidth == that.mWidth
+                        && this.mRenderedWidth == that.mRenderedWidth
+                        && this.mHeightType == that.mHeightType;
             }
 
             @Override
             public int hashCode() {
-                return Objects.hash(mWidth, mHeightType);
+                return Objects.hash(mWidth, mRenderedWidth, mHeightType);
             }
 
             @Override
             public String toString() {
                 return String.format(
-                        Locale.ENGLISH, "[width: %d, heightType: %d]", mWidth, mHeightType);
+                        Locale.ENGLISH,
+                        "[width: %d, renderedWidth: %d, heightType: %d]",
+                        mWidth,
+                        mRenderedWidth,
+                        mHeightType);
             }
         }
 
@@ -347,6 +394,15 @@ public interface SideUiCoordinator extends SideUiStateProvider {
         public int getWidth(@AnchorSide int side) {
             SideUiSize spec = mSideUiSpecs.get(side);
             return spec != null ? spec.mWidth : 0;
+        }
+
+        /**
+         * Returns the width the container on {@code side} is rendered at, which is larger than
+         * {@link #getWidth} when that container overlays the web contents.
+         */
+        public int getRenderedWidth(@AnchorSide int side) {
+            SideUiSize spec = mSideUiSpecs.get(side);
+            return spec != null ? spec.mRenderedWidth : 0;
         }
 
         public @HeightType int getHeightType(@AnchorSide int side) {

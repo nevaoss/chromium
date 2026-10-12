@@ -90,6 +90,7 @@
 #import "ios/chrome/browser/infobars/model/infobar_ios.h"
 #import "ios/chrome/browser/infobars/model/infobar_utils.h"
 #import "ios/chrome/browser/intelligence/actor/model/actor_tab_helper.h"
+#import "ios/chrome/browser/intelligence/bwg/utils/gemini_availability.h"
 #import "ios/chrome/browser/metrics/model/google_groups_manager_factory.h"
 #import "ios/chrome/browser/metrics/model/ios_profile_metrics_service_factory.h"
 #import "ios/chrome/browser/optimization_guide/model/optimization_guide_service.h"
@@ -320,6 +321,8 @@ void ChromeAutofillClientIOS::GetAiPageContent(
           std::move(callback));
 
   // Populate the PageContext proto and then execute the query.
+  // TODO(crbug.com/519079870): Make sure that geometry information is
+  // extracted.
   page_context_wrapper_ = [[PageContextWrapper alloc]
         initWithWebState:web_state()
       completionCallback:std::move(page_context_completion_callback)];
@@ -540,12 +543,46 @@ ChromeAutofillClientIOS::ShowAutofillSuggestions(
     const AutofillClient::PopupOpenArgs& open_args,
     base::WeakPtr<AutofillSuggestionDelegate> delegate) {
   active_suggestion_delegate_ = std::move(delegate);
+  current_session_id_ = session_id_generator_.GenerateNextId();
+  current_suggestions_ = open_args.suggestions;
+  current_form_id_ = open_args.form_id;
+  current_field_id_ = open_args.field_id;
 
   [bridge_ showAutofillPopup:open_args.suggestions
           suggestionDelegate:active_suggestion_delegate_
                       formId:open_args.form_id
                      fieldId:open_args.field_id];
-  return SuggestionUiSessionId();
+
+  return *current_session_id_;
+}
+
+std::optional<AutofillClient::SuggestionUiSessionId>
+ChromeAutofillClientIOS::GetSessionIdForCurrentAutofillSuggestions() const {
+  return current_session_id_;
+}
+
+base::span<const Suggestion> ChromeAutofillClientIOS::GetAutofillSuggestions()
+    const {
+  return current_suggestions_;
+}
+
+void ChromeAutofillClientIOS::UpdateAutofillSuggestions(
+    const std::vector<Suggestion>& suggestions,
+    FillingProduct main_filling_product,
+    AutofillSuggestionTriggerSource trigger_source,
+    AutofillSuggestionsIgnoreFocusLoss ignore_focus_loss) {
+  // Only update suggestions for a live session. Otherwise the popup was never
+  // shown or was already hidden, in which case the cached delegate and
+  // form/field IDs are stale.
+  if (!current_session_id_.has_value() || !active_suggestion_delegate_) {
+    return;
+  }
+
+  current_suggestions_ = suggestions;
+  [bridge_ showAutofillPopup:suggestions
+          suggestionDelegate:active_suggestion_delegate_
+                      formId:current_form_id_
+                     fieldId:current_field_id_];
 }
 
 void ChromeAutofillClientIOS::UpdateAutofillDataListValues(
@@ -570,6 +607,10 @@ void ChromeAutofillClientIOS::HideSuggestions(
   }
 
   active_suggestion_delegate_.reset();
+  current_session_id_.reset();
+  current_suggestions_.clear();
+  current_form_id_ = {};
+  current_field_id_ = {};
   [bridge_ hideAutofillPopup];
   if (reason == SuggestionHidingReason::kAcceptSuggestion) {
     [commands_handler_ legacyResetAutofillSuggestionsLoadingStates];
@@ -634,6 +675,11 @@ bool ChromeAutofillClientIOS::IsPasswordManagerEnabled() const {
 
 bool ChromeAutofillClientIOS::UsesPlatformAutofill() const {
   return false;
+}
+
+bool ChromeAutofillClientIOS::IsGlicEnabled() const {
+  return gemini::IsGeminiAvailable(gemini::EntryPoint::AtMemorySearch, profile_)
+      .enabled;
 }
 
 bool ChromeAutofillClientIOS::IsContextSecure() const {

@@ -78,6 +78,7 @@ import org.chromium.content.browser.webcontents.WebContentsImpl;
 import org.chromium.content.common.ContentInternalFeatures;
 import org.chromium.content_public.browser.ContentFeatureList;
 import org.chromium.content_public.browser.ContentFeatureMap;
+import org.chromium.content_public.browser.GlobalRenderFrameHostId;
 import org.chromium.content_public.browser.ImeAdapter;
 import org.chromium.content_public.browser.ImeEventObserver;
 import org.chromium.content_public.browser.InputMethodManagerWrapper;
@@ -702,9 +703,11 @@ public class ImeAdapterImpl
         return mSupportedMimeTypes;
     }
 
-    /** Retrieves the focused RenderFrameHost, or null if none is focused. */
-    public @Nullable RenderFrameHost getFocusedFrame() {
-        return mWebContents != null ? mWebContents.getFocusedFrame() : null;
+    /** Retrieves the focused frame's GlobalRenderFrameHostId, or null if none is focused. */
+    public @Nullable GlobalRenderFrameHostId getFocusedFrameId() {
+        ImeUtils.checkOnUiThread();
+        RenderFrameHost rfh = mWebContents != null ? mWebContents.getFocusedFrame() : null;
+        return rfh != null ? rfh.getGlobalRenderFrameHostId() : null;
     }
 
     /**
@@ -1761,21 +1764,22 @@ public class ImeAdapterImpl
     /**
      * Sends rich content into the target text field, if currently focused.
      *
-     * @param targetRenderFrameHost the render frame host targeted for media insertion
+     * @param targetFrameId the GlobalRenderFrameHostId targeted for media insertion
      * @param bytes binary data of the rich content to be inserted
      * @param extension the file extension of the rich content to be inserted
      * @return whether the insertion is successful.
      */
     boolean commitContent(
-            @Nullable RenderFrameHost targetRenderFrameHost, byte[] bytes, String extension) {
+            @Nullable GlobalRenderFrameHostId targetFrameId, byte[] bytes, String extension) {
         onImeEvent();
         boolean result =
                 isValid()
-                        && targetRenderFrameHost != null
+                        && targetFrameId != null
                         && ImeAdapterImplJni.get()
                                 .insertMediaFromBytes(
                                         mNativeImeAdapterAndroid,
-                                        targetRenderFrameHost,
+                                        targetFrameId.childId(),
+                                        targetFrameId.frameRoutingId(),
                                         bytes,
                                         extension);
         ImeMetricsUtils.recordCommitContentSuccess(extension, result);
@@ -2281,7 +2285,8 @@ public class ImeAdapterImpl
 
         boolean insertMediaFromBytes(
                 long nativeImeAdapterAndroid,
-                @JniType("content::RenderFrameHost*") RenderFrameHost targetRfh,
+                int renderProcessId,
+                int renderFrameId,
                 byte[] bytes,
                 String extension);
 

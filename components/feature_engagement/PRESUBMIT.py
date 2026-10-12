@@ -18,6 +18,8 @@ def _CommonChecks(input_api, output_api):
   results = []
   results.extend(_CheckJavaConstantsSorting(input_api, output_api))
   results.extend(_CheckFeatureListSorting(input_api, output_api))
+  results.extend(_CheckNoComparatorAny(input_api, output_api))
+  results.extend(_CheckNoRedundantNamespaceQualifier(input_api, output_api))
   return results
 
 def _CheckFeatureListSorting(input_api, output_api):
@@ -143,3 +145,65 @@ def _CheckStringConstantsSorted(input_api, output_api, lines,
       )
       return [output_api.PresubmitError(message)]
   return []
+
+def _CheckNoComparatorAny(input_api, output_api):
+  """Checks that no code uses Comparator(ANY, ...) directly."""
+  results = []
+  pattern = input_api.re.compile(
+      r'\b(?:feature_engagement::)?Comparator\s*\(\s*(?:feature_engagement::)?ANY\b')
+
+  for f in input_api.AffectedFiles():
+    local_path = f.LocalPath()
+    if not local_path.endswith(('.cc', '.h', '.mm', '.cpp')):
+      continue
+
+    # Skip unit tests that test Comparator/validator edge cases.
+    if local_path.endswith(('_unittest.cc', '_unittest.h')):
+      continue
+
+    # Skip configuration.h where the constants are defined.
+    if local_path.endswith(
+        'components/feature_engagement/public/configuration.h'):
+      continue
+
+    for line_num, line in f.ChangedContents():
+      if pattern.search(line):
+        message = (
+            f'{local_path}:{line_num}: Do not use Comparator(ANY, ...). '
+            f'Use kAlwaysTrue (or kAlwaysAvailable / kNoRestrictions) instead.'
+        )
+        results.append(output_api.PresubmitError(message))
+
+  return results
+
+def _CheckNoRedundantNamespaceQualifier(input_api, output_api):
+  """Checks that C++ files do not use redundant 'feature_engagement::' qualifiers."""
+  results = []
+  namespace_decl_pattern = input_api.re.compile(
+      r'^\s*namespace\s+feature_engagement\b')
+
+  for f in input_api.AffectedFiles():
+    local_path = f.LocalPath()
+    if not local_path.endswith(('.cc', '.h', '.mm', '.cpp')):
+      continue
+
+    for line_num, line in f.ChangedContents():
+      # Strip single-line comments
+      stripped = line.split('//')[0].strip()
+      # Skip comment-only lines in block comments
+      if stripped.startswith('*') or stripped.startswith('/*'):
+        continue
+      # Skip namespace declarations (e.g. namespace feature_engagement::stats)
+      if namespace_decl_pattern.match(stripped):
+        continue
+
+      if 'feature_engagement::' in stripped:
+        message = (
+            f'{local_path}:{line_num}: Redundant "feature_engagement::" qualifier. '
+            f'Code in components/feature_engagement is already in the '
+            f'feature_engagement namespace. If this is a false positive, please '
+            f'ping mschillaci@.'
+        )
+        results.append(output_api.PresubmitPromptWarning(message))
+
+  return results

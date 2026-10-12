@@ -71,6 +71,7 @@ source_set("tabs_impl") {
     "//components/tabs:public",
     "//content/public/browser",
     "//extensions/buildflags",
+    "//ui/base",
   ]
   if (enable_webui_ntp) {
     deps += [ "//chrome/browser/ui/customize_chrome:customize_chrome_base" ]
@@ -333,6 +334,8 @@ if (is_android) {
       "omnibox/drive_disclaimer_bridge.cc",
       "omnibox/omnibox_prerender.cc",
       "omnibox/omnibox_prerender.h",
+      "omnibox/search_engine_service_android.cc",
+      "omnibox/search_engine_service_android.h",
       "omnibox/suggestions_omt_input_anchor.cc",
       "omnibox/suggestions_omt_input_anchor.h",
       "omnibox/tab_context_capture_request.cc",
@@ -707,6 +710,7 @@ if (is_android) {
       "//components/safe_browsing/core/browser/password_protection:password_protection_metrics_util",
       "//components/safe_browsing/core/browser/utils",
       "//components/saved_tab_groups/public:conversion_utils",
+      "//components/search_engines/android:jni_headers",
       "//components/security_state/content/android",
       "//components/send_tab_to_self",
       "//components/sensitive_content:features",
@@ -718,6 +722,7 @@ if (is_android) {
       "//components/supervised_user/core/browser",
       "//components/supervised_user/core/browser:fetcher",
       "//components/supervised_user/core/browser/android",
+      "//components/sync_device_info",
       "//components/sync_preferences/synced_set_up/android",
       "//components/sync_preferences/synced_set_up/android:jni_headers",
       "//components/tabs:impl",
@@ -1045,6 +1050,8 @@ source_set("unit_tests") {
     "//chrome/browser/ui/tabs:page_context_eligibility_helper_unit_tests",
     "//chrome/browser/ui/webui:webui_util",
     "//chrome/test:test_support",
+    "//chrome/test/base:chrome_render_view_host_test_harness",
+    "//chrome/test/base:testing_browser_process",
     "//components/actor/core",
     "//components/autofill/core/browser:test_support",
     "//components/blocked_content",

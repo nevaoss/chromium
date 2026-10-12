@@ -23,9 +23,11 @@
 #include "base/timer/timer.h"
 #include "base/values.h"
 #include "base/version.h"
+#include "ios/chrome/browser/omaha/model/omaha_persistent_state.h"
 #include "ios/chrome/browser/upgrade/model/upgrade_recommended_details.h"
 
 class OmahaService;
+struct OmahaPersistentState;
 enum class OmahaPingEvent;
 
 namespace network {
@@ -81,6 +83,11 @@ class OmahaService {
   // For tests:
   friend class OmahaServiceTest;
   friend class OmahaServiceInternalTest;
+
+  // Callback used to serialize the service state.
+  using SavePersistentStateCallback =
+      base::RepeatingCallback<void(const OmahaPersistentState&)>;
+
   FRIEND_TEST_ALL_PREFIXES(OmahaServiceTest, PingMessageTest);
   FRIEND_TEST_ALL_PREFIXES(OmahaServiceTest,
                            PingMessageTestWithUnknownInstallDate);
@@ -116,8 +123,10 @@ class OmahaService {
 
   // Starts the service.
   void StartInternal(
+      OmahaPersistentState initial_state,
       PendingSharedURLLoaderFactoryCallback pending_url_loader_factory,
-      UpgradeRecommendedCallback upgrade_recommended_callback);
+      UpgradeRecommendedCallback upgrade_recommended_callback,
+      SavePersistentStateCallback save_persistent_state_callback);
 
   // Resyncs the timer if device sleep has caused it to get out of
   // sync with `next_tries_time_`.
@@ -187,16 +196,6 @@ class OmahaService {
   // reused until the ping is successful.
   std::string GetNextPingRequestId(OmahaPingEvent ping_content);
 
-  // Stores the given request id to be reused on install/update retry.
-  void SetInstallRetryRequestId(const std::string& request_id);
-
-  // Clears the stored request id for a installation/update ping retry. Must be
-  // called after a successful installation/update ping.
-  void ClearInstallRetryRequestId();
-
-  // Clears the all persistent state. Should only be used for testing.
-  static void ClearPersistentStateForTests();
-
   // To communicate with the Omaha server.
   std::unique_ptr<network::SimpleURLLoader> url_loader_;
   scoped_refptr<network::SharedURLLoaderFactory> url_loader_factory_;
@@ -215,26 +214,11 @@ class OmahaService {
   // the main thread and cached for use on the IO thread.
   int64_t application_install_date_;
 
-  // The time at which the last ping was sent.
-  base::Time last_sent_time_;
-
-  // The time at which to send the next ping.
-  base::Time next_tries_time_;
-
-  // The timestamp of the ping to send.
-  base::Time current_ping_time_;
-
-  // Last version for which an installation ping has been sent.
-  base::Version last_sent_version_;
-
-  // Last received server date.
-  int last_server_date_;
-
   // The language in use at start up.
   std::string locale_lang_;
 
-  // Number of tries of the last ping.
-  uint8_t number_of_tries_;
+  // The current service state.
+  OmahaPersistentState current_state_;
 
   // Whether the ping currently being sent is an install (new or update) ping.
   bool sending_install_event_;
@@ -252,6 +236,9 @@ class OmahaService {
 
   // Stores the callback for one off Omaha checks.
   OneOffCallback one_off_check_callback_;
+
+  // Called to save the current state of the service.
+  SavePersistentStateCallback save_persistent_state_callback_;
 };
 
 #endif  // IOS_CHROME_BROWSER_OMAHA_MODEL_OMAHA_SERVICE_H_

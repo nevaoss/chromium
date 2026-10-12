@@ -39,6 +39,7 @@ class CORE_EXPORT DisplayAdElementMonitor final
   // LocalFrameView::LifecycleNotificationObserver
   void DidFinishLifecycleUpdate(
       const LocalFrameView& local_frame_view) override;
+  void WillDisposeView() override;
 
   // Performs a hit-test on `element_` to determine if it's the topmost element
   // at its center. This check can be skipped due to frequency-capping or if the
@@ -111,8 +112,8 @@ class CORE_EXPORT DisplayAdElementMonitor final
   std::optional<StickyAdMeasurement> sticky_ad_measurement_;
 
   // Caches the last known value of the DevTools "Highlight ads" setting. This
-  // value remains `false` if the element is not eligible for monitoring (e.g.,
-  // a nested ad).
+  // value remains `false` prior to First Contentful Paint or if the element is
+  // not eligible for monitoring (e.g., a nested ad).
   bool should_highlight_ = false;
 
   base::TimeTicks last_overlay_check_time_;

@@ -81,7 +81,7 @@ class PLATFORM_EXPORT CanvasResource : public gpu::ClientImage {
 
   // Provides a TransferableResource representation of this resource to share it
   // with the compositor.
-  bool PrepareTransferableResource(viz::TransferableResource&,
+  void PrepareTransferableResource(viz::TransferableResource&,
                                    bool needs_verified_synctoken);
 
   // Issues a wait for this sync token on the context used by this resource for
@@ -197,6 +197,9 @@ class PLATFORM_EXPORT CanvasResourceSharedImage final : public CanvasResource {
   // zero-parameter variant of WaitSyncToken().
   void WaitSyncToken(const gpu::SyncToken&) override;
 
+  const gpu::SyncToken& acquire_sync_token() const {
+    return acquire_sync_token_;
+  }
   std::unique_ptr<gpu::RasterScopedAccess> BeginAccess(bool readonly);
   void EndAccess(std::unique_ptr<gpu::RasterScopedAccess> access);
 

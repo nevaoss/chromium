@@ -81,6 +81,13 @@ suite('OmniboxComposeboxTest', () => {
     }
   });
 
+  // The box grows and the dropdown fades, so an animation on either one means
+  // the load-in animation ran.
+  function loadInAnimationCount(): number {
+    return omniboxComposebox.$.composebox.getAnimations().length +
+        omniboxComposebox.$.matches.getAnimations().length;
+  }
+
   test(
       'Shift+Enter allows inserting a newline when input is focused and not empty',
       async () => {
@@ -351,7 +358,9 @@ suite('OmniboxComposeboxTest', () => {
     assertTrue(!!addedFile);
     assertEquals('Google Search', addedFile.name);
     assertEquals('tab', addedFile.type);
-    assertEquals(ContextUploadStatus.kUploadSuccessful, addedFile.status);
+    // The upload is still in flight at this point, so the tab reports
+    // `kUploadStarted` rather than optimistically claiming success.
+    assertEquals(ContextUploadStatus.kUploadStarted, addedFile.status);
     // Verify tab ID mapping.
     assertTrue(omniboxComposebox.addedTabsIds.has(42));
     assertEquals(mockToken, omniboxComposebox.addedTabsIds.get(42));
@@ -442,6 +451,83 @@ suite('OmniboxComposeboxTest', () => {
         assertEquals(
             initialCallCount + 1,
             testProxy.handler.getCallCount('queryAutocomplete'));
+      });
+
+  test(
+      'contextual suggestions animate in after a blocked zero state',
+      async () => {
+        loadTimeData.overrideValues(
+            {askGBlockAutoTabZeroStateSuggestions: true});
+
+        const context = {
+          input: '',
+          attachments: [{
+            tabAttachment: {
+              tabId: 42,
+              title: 'Google',
+              url: 'https://google.com',
+              source: TabAttachmentSource.kAutoAdded,
+            },
+          }],
+          toolMode: 0,
+        };
+        omniboxComposebox.addSearchContext(context as unknown as SearchContext);
+        await microtasksFinished();
+
+        // The zero state query was skipped, so there is nothing to animate yet.
+        assertFalse(omniboxComposebox.showDropdown);
+        assertEquals(0, loadInAnimationCount());
+
+        testProxy.page.autocompleteResultChanged(
+            createAutocompleteResultForTesting({
+              queryId: omniboxComposebox.activeQueryId,
+              matches: [createSearchMatchForTesting({
+                allowedToBeDefaultMatch: false,
+              })],
+            }));
+        await testProxy.page.$.flushForTesting();
+        await microtasksFinished();
+
+        assertTrue(omniboxComposebox.showDropdown);
+        assertNotEquals(0, loadInAnimationCount());
+      });
+
+  test(
+      'contextual suggestions do not animate when the zero state query was' +
+          ' not blocked',
+      async () => {
+        loadTimeData.overrideValues(
+            {askGBlockAutoTabZeroStateSuggestions: false});
+
+        const context = {
+          input: '',
+          attachments: [{
+            tabAttachment: {
+              tabId: 42,
+              title: 'Google',
+              url: 'https://google.com',
+              source: TabAttachmentSource.kAutoAdded,
+            },
+          }],
+          toolMode: 0,
+        };
+        omniboxComposebox.addSearchContext(context as unknown as SearchContext);
+        await microtasksFinished();
+
+        testProxy.page.autocompleteResultChanged(
+            createAutocompleteResultForTesting({
+              queryId: omniboxComposebox.activeQueryId,
+              matches: [createSearchMatchForTesting({
+                allowedToBeDefaultMatch: false,
+              })],
+            }));
+        await testProxy.page.$.flushForTesting();
+        await microtasksFinished();
+
+        // Suggestions were never withheld, so the dropdown appearing is the
+        // ordinary zero state and must not animate.
+        assertTrue(omniboxComposebox.showDropdown);
+        assertEquals(0, loadInAnimationCount());
       });
 
   test(
@@ -571,8 +657,7 @@ suite('OmniboxComposeboxTest', () => {
     assertTrue(composebox!.hasAttribute('inert'));
 
     // Dismiss error scrim.
-    scrim.dispatchEvent(new CustomEvent(
-        'dismiss-error-scrim', {bubbles: true, composed: true}));
+    scrim.fire('dismiss-error-scrim');
     await microtasksFinished();
 
     // Error cleared.
@@ -667,11 +752,7 @@ suite('OmniboxComposeboxTest', () => {
       return null;
     };
 
-    carousel.dispatchEvent(new CustomEvent('delete-file', {
-      detail: {uuid: mockToken, fromUserAction: true},
-      bubbles: true,
-      composed: true,
-    }));
+    carousel.fire('delete-file', {uuid: mockToken, fromUserAction: true});
 
     assertTrue(deleteFileCalled);
     omniboxComposebox.deleteFile = originalDeleteFile;
@@ -697,6 +778,61 @@ suite('OmniboxComposeboxTest', () => {
     assertEquals('Tab 101', addedFile.name);
     assertEquals(101, addedFile.tabId);
   });
+
+  test(
+      'addTabContextHandleCallback attaches tab that uploaded early',
+      async () => {
+        // Must be a well-formed token: it is sent over a real Mojo pipe below.
+        const testToken = '12345678901234567890123456789102';
+        testProxy.handler.setPromiseResolveFor('addTabContext', testToken);
+        // The upload finishes before `addTabContext` resolves, so the status
+        // arrives while the token is still unknown to the composebox.
+        testProxy.page.onContextualInputStatusChanged(
+            testToken, ContextUploadStatus.kUploadSuccessful, null);
+        await testProxy.page.$.flushForTesting();
+
+        await omniboxComposebox.addTabContextHandleCallback({
+          tabId: 102,
+          title: 'Tab 102',
+          url: 'https://tab102.com',
+          delayUpload: false,
+          origin: TabUploadOrigin.OTHER,
+        });
+        await omniboxComposebox.updateComplete;
+        await microtasksFinished();
+
+        const addedFile = omniboxComposebox.attachedContext.get(testToken);
+        assertTrue(!!addedFile);
+        assertEquals(ContextUploadStatus.kUploadSuccessful, addedFile.status);
+        // The buffered status is consumed, so nothing is left pending.
+        assertTrue(omniboxComposebox.fileUploadsComplete);
+      });
+
+  test(
+      'addTabContextHandleCallback drops tab whose upload already failed',
+      async () => {
+        const testToken = '12345678901234567890123456789103';
+        testProxy.handler.setPromiseResolveFor('addTabContext', testToken);
+        // The upload fails before `addTabContext` resolves.
+        testProxy.page.onContextualInputStatusChanged(
+            testToken, ContextUploadStatus.kUploadFailed, null);
+        await testProxy.page.$.flushForTesting();
+
+        const attachment = await omniboxComposebox.addTabContextHandleCallback({
+          tabId: 103,
+          title: 'Tab 103',
+          url: 'https://tab103.com',
+          delayUpload: false,
+          origin: TabUploadOrigin.OTHER,
+        });
+        await omniboxComposebox.updateComplete;
+        await microtasksFinished();
+
+        // The failed upload must not be attached as if it had succeeded.
+        assertEquals(null, attachment);
+        assertEquals(0, omniboxComposebox.attachedContext.size);
+        assertFalse(omniboxComposebox.addedTabsIds.has(103));
+      });
 
   test('addTabContextHandleCallback failure sets errorMessage', async () => {
     testProxy.handler.setPromiseRejectFor(

@@ -283,19 +283,6 @@ BASE_FEATURE(kBocaScreenSharingTeacher, base::FEATURE_ENABLED_BY_DEFAULT);
 // Enables or disables sharing student's screen in the Boca app.
 BASE_FEATURE(kBocaScreenSharingStudent, base::FEATURE_ENABLED_BY_DEFAULT);
 
-// Enables or disables Boca receiver custom polling.
-BASE_FEATURE(kBocaReceiverCustomPolling, base::FEATURE_DISABLED_BY_DEFAULT);
-
-// Custom boca receiver polling time interval.
-const base::FeatureParam<base::TimeDelta> kBocaReceiverCustomPollingInterval{
-    &kBocaReceiverCustomPolling, "BocaReceiverCustomPollingInterval",
-    base::Seconds(10)};
-
-// Max number of consecutive polling failures to end receiver session.
-const base::FeatureParam<int> kBocaReceiverCustomPollingMaxFailuresCount{
-    &kBocaReceiverCustomPolling, "BocaReceiverCustomPollingMaxFailuresCount",
-    3};
-
 BASE_FEATURE(kCrosSwitcher, base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Enables Camera Cloud Storage for saving photos and videos on Google Drive
@@ -2094,11 +2081,6 @@ BASE_FEATURE(kSmartDim, base::FEATURE_DISABLED_BY_DEFAULT);
 // Enables or disables TPM firmware update capability on Chrome OS.
 BASE_FEATURE(kTPMFirmwareUpdate, base::FEATURE_ENABLED_BY_DEFAULT);
 
-// Enables infrastructure for generating Ansible playbooks for the default
-// Crostini container from software configurations in JSON schema.
-BASE_FEATURE(kCrostiniAnsibleSoftwareManagement,
-             base::FEATURE_DISABLED_BY_DEFAULT);
-
 // Enables reporting Chrome app activity for supervised users.
 BASE_FEATURE(kUnicornChromeActivityReporting,
              base::FEATURE_DISABLED_BY_DEFAULT);
@@ -2291,10 +2273,6 @@ bool IsBocaScreenSharingTeacherEnabled() {
 
 bool IsBocaScreenSharingStudentEnabled() {
   return base::FeatureList::IsEnabled(kBocaScreenSharingStudent);
-}
-
-bool IsBocaReceiverCustomPollingEnabled() {
-  return base::FeatureList::IsEnabled(kBocaReceiverCustomPolling);
 }
 
 bool IsOnTaskStatusCheckEnabled() {

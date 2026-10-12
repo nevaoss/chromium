@@ -203,11 +203,9 @@ public class FlatLayoutDelegateUnitTest {
     public void testOnUrlUpdated() {
         addTabsToModelList(TAB1_ID);
         PropertyModel model = mModelList.get(0).model;
-        when(mMediator.getDomainForTab(mTab1, model)).thenReturn("example.com");
 
         mDelegate.onUrlUpdated(mTab1);
 
-        assertEquals("example.com", model.get(TabProperties.URL_DOMAIN));
         verify(mMediator).updateThumbnailFetcher(model, TAB1_ID);
         verify(mMediator).updateFaviconForTab(model, mTab1, null, null);
     }
@@ -216,7 +214,6 @@ public class FlatLayoutDelegateUnitTest {
     public void testOnUrlUpdated_NotFound() {
         mDelegate.onUrlUpdated(mTab1);
 
-        verify(mMediator, never()).getDomainForTab(any(), any());
         verify(mMediator, never()).updateThumbnailFetcher(any(), anyInt());
         verify(mMediator, never()).updateFaviconForTab(any(), any(), any(), any());
     }
@@ -399,9 +396,7 @@ public class FlatLayoutDelegateUnitTest {
         verify(mMediator, never()).updateFaviconForTab(any(), any(), any(), any());
 
         mDelegate.onUrlUpdated(mTab1);
-        verify(mMediator, never()).getDomainForTab(any(), any());
         verify(mMediator, never()).updateThumbnailFetcher(any(), anyInt());
-        assertNull(model.get(TabProperties.URL_DOMAIN));
 
         mDelegate.onAlertStateChanged(mTab1, TabAlert.AUDIO_PLAYING);
         assertEquals(TabAlert.NONE, model.get(TabProperties.ALERT_STATE));
@@ -505,7 +500,7 @@ public class FlatLayoutDelegateUnitTest {
         addTabsToModelList(TAB1_ID, TAB2_ID);
 
         // Execute moving mTab1 out.
-        mDelegate.didMoveTabOutOfGroup(mTab1, 0);
+        mDelegate.didMoveTabOutOfGroup(mTab1, TAB_GROUP_ID);
 
         verify(mMediator).removeObserversForTab(mTab1);
         assertModelListTabIds(TAB2_ID);
@@ -516,7 +511,7 @@ public class FlatLayoutDelegateUnitTest {
         addTabsToModelList(TAB1_ID);
 
         // Execute moving mTab1 (last tab) out.
-        mDelegate.didMoveTabOutOfGroup(mTab1, 0);
+        mDelegate.didMoveTabOutOfGroup(mTab1, TAB_GROUP_ID);
 
         verify(mMediator).removeObserversForTab(mTab1);
         assertModelListTabIds();
@@ -526,7 +521,7 @@ public class FlatLayoutDelegateUnitTest {
     public void testDidMoveTabOutOfGroup_NotInModelList() {
         addTabsToModelList(TAB2_ID);
 
-        mDelegate.didMoveTabOutOfGroup(mTab1, 0);
+        mDelegate.didMoveTabOutOfGroup(mTab1, TAB_GROUP_ID);
 
         verify(mMediator, never()).removeObserversForTab(any());
         // Verify no-op when tab is not in model list.
@@ -577,15 +572,8 @@ public class FlatLayoutDelegateUnitTest {
 
     @Test
     public void testDidMoveTabGroup_NoOp() {
-        mDelegate.didMoveTabGroup(mTab1, 0, 1);
-
-        // Flat layout does not display tab group headers, so no updates should occur.
-        verifyNoInteractions(mMediator);
-    }
-
-    @Test
-    public void testDidCreateNewGroup_NoOp() {
-        mDelegate.didCreateNewGroup(mTab1, mTabModel);
+        mDelegate.didMoveTabGroup(
+                TAB_GROUP_ID, /* tabModelOldIndex= */ 0, /* tabModelNewIndex= */ 1);
 
         // Flat layout does not display tab group headers, so no updates should occur.
         verifyNoInteractions(mMediator);

@@ -35,7 +35,6 @@
 #include "chrome/browser/new_tab_page/modules/file_suggestion/drive_suggestion_handler.h"
 #include "chrome/browser/new_tab_page/modules/file_suggestion/microsoft_files_page_handler.h"
 #include "chrome/browser/new_tab_page/modules/new_tab_page_modules.h"
-#include "chrome/browser/new_tab_page/modules/v2/authentication/microsoft_auth_page_handler.h"
 #include "chrome/browser/new_tab_page/modules/v2/calendar/google_calendar_page_handler.h"
 #include "chrome/browser/new_tab_page/modules/v2/calendar/outlook_calendar_page_handler.h"
 #include "chrome/browser/new_tab_page/modules/v2/most_relevant_tab_resumption/most_relevant_tab_resumption_page_handler.h"
@@ -640,25 +639,8 @@ content::WebUIDataSource* CreateAndAddNewTabPageUiHtmlSource(
   source->AddLocalizedStrings(kStrings);
 
   source->AddBoolean(
-      "hideDismissModules",
-      base::FeatureList::IsEnabled(
-          ntp_features::kNtpFeatureOptimizationDismissModulesRemoval));
-  source->AddBoolean(
       "showDriveModuleSeeMoreLink",
       base::FeatureList::IsEnabled(ntp_features::kNtpDriveModuleLink));
-
-  source->AddString(
-      "calendarModuleDismissHours",
-      base::NumberToString(
-          ntp_features::kNtpCalendarModuleWindowEndDeltaParam.Get().InHours()));
-  source->AddString(
-      "fileSuggestionDismissHours",
-      base::NumberToString(DriveService::kDismissDuration.InHours()));
-  source->AddString(
-      "tabGroupsModuleDismissHours",
-      base::NumberToString(
-          ntp_features::kNtpTabGroupsModuleWindowEndDeltaParam.Get()
-              .InHours()));
 
   bool microsoft_module_enabled = IsMicrosoftModuleEnabledForProfile(profile);
   source->AddBoolean("microsoftModuleEnabled", microsoft_module_enabled);
@@ -754,9 +736,9 @@ content::WebUIDataSource* CreateAndAddNewTabPageUiHtmlSource(
                      ntp_composebox::kShowComposeboxTypedSuggest.Get());
   source->AddBoolean("composeboxShowImageSuggest",
                      ntp_composebox::kShowComposeboxImageSuggestions.Get());
-  source->AddBoolean(
-      "composeboxRichImageSuggestionsEnabled",
-      base::FeatureList::IsEnabled(omnibox::kComposeboxRichImageSuggestions));
+  source->AddBoolean("composeboxRichImageSuggestionsEnabled",
+                     base::FeatureList::IsEnabled(
+                         omnibox::kComposeboxRichImageSuggestionsRealbox));
   source->AddBoolean("composeboxSmartComposeEnabled",
                      ntp_composebox::kShowSmartCompose.Get());
 
@@ -899,12 +881,7 @@ NewTabPageUI::NewTabPageUI(content::WebUI* web_ui)
       searchbox_page_factory_receiver_(this),
       help_bubble_handler_factory_receiver_(this),
       profile_(Profile::FromWebUI(web_ui)),
-// TODO(b/502297163): Implement for Android.
-#if BUILDFLAG(IS_ANDROID)
-      theme_service_(nullptr),
-#else
       theme_service_(ThemeServiceFactory::GetForProfile(profile_)),
-#endif
       ntp_custom_background_service_(
           NtpCustomBackgroundServiceFactory::GetForProfile(profile_)),
       ntp_custom_background_service_observation_(this),
@@ -1165,13 +1142,6 @@ void NewTabPageUI::BindInterface(
     mojo::PendingReceiver<ntp::calendar::mojom::OutlookCalendarPageHandler>
         pending_page_handler) {
   outlook_calendar_handler_ = std::make_unique<OutlookCalendarPageHandler>(
-      std::move(pending_page_handler), profile_);
-}
-
-void NewTabPageUI::BindInterface(
-    mojo::PendingReceiver<ntp::authentication::mojom::MicrosoftAuthPageHandler>
-        pending_page_handler) {
-  microsoft_auth_handler_ = std::make_unique<MicrosoftAuthPageHandler>(
       std::move(pending_page_handler), profile_);
 }
 

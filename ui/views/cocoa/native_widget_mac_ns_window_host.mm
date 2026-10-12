@@ -1024,7 +1024,9 @@ bool NativeWidgetMacNSWindowHost::AllowScreenshots() const {
   // https://developer.apple.com/documentation/appkit/nswindow/1419729-sharingtype
   //
   // Using `allow_screenshots_` is a workaround to be able to know the actual
-  // value `SetAllowScreenshots()` was called with.
+  // value `SetAllowScreenshots()` was called with. Note that, as on Windows,
+  // this is the state requested for this window: the window may still be
+  // excluded from capture because one of its ancestors is.
   return allow_screenshots_;
 }
 
@@ -1198,6 +1200,7 @@ void NativeWidgetMacNSWindowHost::OnSpaceActivationChanged(
 void NativeWidgetMacNSWindowHost::OnWindowNativeThemeChanged() {
   if (base::FeatureList::IsEnabled(::features::kThemeChangeOptimization)) {
     if (Widget* widget = GetWidget()) {
+      widget->ResetLastColorProviderKey();
       widget->ScheduleThemeChanged();
     }
   } else {

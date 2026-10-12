@@ -174,10 +174,6 @@ static_library("printing") {
     "//chrome/browser/ash/printing/print_management",
     "//chrome/browser/printing",
   ]
-
-  # TODO(crbug.com/40031409): Fix code that adds exit-time destructors and
-  # enable the diagnostic by removing this line.
-  configs += [ "//build/config/compiler:no_exit_time_destructors" ]
 }
 
 static_library("test_support") {
@@ -247,6 +243,7 @@ source_set("unit_tests") {
     "//chrome/browser/local_discovery:test_support",
     "//chrome/browser/printing",
     "//chrome/test:test_support",
+    "//chrome/test/base:testing_browser_process",
     "//chromeos/ash/components/dbus/debug_daemon",
     "//chromeos/ash/components/dbus/dlcservice",
     "//chromeos/ash/components/dbus/printscanmgr",

@@ -114,6 +114,7 @@
 #import "ios/chrome/browser/first_run/public/features.h"
 #import "ios/chrome/browser/flags/chrome_switches.h"
 #import "ios/chrome/browser/flags/ios_chrome_flag_descriptions.h"
+#import "ios/chrome/browser/intelligence/contextual_cueing/features.h"
 #import "ios/chrome/browser/intelligence/features/features.h"
 #import "ios/chrome/browser/intelligence/page_classification/features.h"
 #import "ios/chrome/browser/lens/ui_bundled/features.h"
@@ -1231,24 +1232,48 @@ constexpr FeatureEntry::FeatureVariation kAimButtonRefactorVariations[] = {
 
 const FeatureEntry::FeatureParam
     kGeminiContextualSuggestionsCuesWithOnDeviceClassifierCPU[] = {
-        {kGeminiContextualSuggestionsCuesOnDeviceClassifierParam, "true"},
-        {kGeminiContextualSuggestionsCuesAllowGpuExecutionParam, "false"},
-        {kGeminiContextualSuggestionsCuesTitleAndUrlOnlyParam, "true"}};
+        {contextual_cueing::
+             kGeminiContextualSuggestionsCuesOnDeviceClassifierParam,
+         "true"},
+        {contextual_cueing::
+             kGeminiContextualSuggestionsCuesAllowGpuExecutionParam,
+         "false"},
+        {contextual_cueing::
+             kGeminiContextualSuggestionsCuesTitleAndUrlOnlyParam,
+         "true"}};
 const FeatureEntry::FeatureParam
     kGeminiContextualSuggestionsCuesWithOnDeviceClassifierGPU[] = {
-        {kGeminiContextualSuggestionsCuesOnDeviceClassifierParam, "true"},
-        {kGeminiContextualSuggestionsCuesAllowGpuExecutionParam, "true"},
-        {kGeminiContextualSuggestionsCuesTitleAndUrlOnlyParam, "true"}};
+        {contextual_cueing::
+             kGeminiContextualSuggestionsCuesOnDeviceClassifierParam,
+         "true"},
+        {contextual_cueing::
+             kGeminiContextualSuggestionsCuesAllowGpuExecutionParam,
+         "true"},
+        {contextual_cueing::
+             kGeminiContextualSuggestionsCuesTitleAndUrlOnlyParam,
+         "true"}};
 const FeatureEntry::FeatureParam
     kGeminiContextualSuggestionsCuesWithOnDeviceClassifierApcCPU[] = {
-        {kGeminiContextualSuggestionsCuesOnDeviceClassifierParam, "true"},
-        {kGeminiContextualSuggestionsCuesAllowGpuExecutionParam, "false"},
-        {kGeminiContextualSuggestionsCuesTitleAndUrlOnlyParam, "false"}};
+        {contextual_cueing::
+             kGeminiContextualSuggestionsCuesOnDeviceClassifierParam,
+         "true"},
+        {contextual_cueing::
+             kGeminiContextualSuggestionsCuesAllowGpuExecutionParam,
+         "false"},
+        {contextual_cueing::
+             kGeminiContextualSuggestionsCuesTitleAndUrlOnlyParam,
+         "false"}};
 const FeatureEntry::FeatureParam
     kGeminiContextualSuggestionsCuesWithOnDeviceClassifierApcGPU[] = {
-        {kGeminiContextualSuggestionsCuesOnDeviceClassifierParam, "true"},
-        {kGeminiContextualSuggestionsCuesAllowGpuExecutionParam, "true"},
-        {kGeminiContextualSuggestionsCuesTitleAndUrlOnlyParam, "false"}};
+        {contextual_cueing::
+             kGeminiContextualSuggestionsCuesOnDeviceClassifierParam,
+         "true"},
+        {contextual_cueing::
+             kGeminiContextualSuggestionsCuesAllowGpuExecutionParam,
+         "true"},
+        {contextual_cueing::
+             kGeminiContextualSuggestionsCuesTitleAndUrlOnlyParam,
+         "false"}};
 
 const FeatureEntry::FeatureVariation
     kGeminiContextualSuggestionsCuesVariations[] = {
@@ -1367,6 +1392,10 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
     {"plus-button-in-fakebox", flag_descriptions::kPlusButtonInFakeboxName,
      flag_descriptions::kPlusButtonInFakeboxDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kPlusButtonInFakebox)},
+    {"plus-button-menu-in-fakebox",
+     flag_descriptions::kPlusButtonMenuInFakeboxName,
+     flag_descriptions::kPlusButtonMenuInFakeboxDescription, flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(kPlusButtonMenuInFakebox)},
     {"fullscreen-viewport-adjustment-experiment",
      flag_descriptions::kFullscreenSmoothScrollingName,
      flag_descriptions::kFullscreenSmoothScrollingDescription, flags_ui::kOsIos,
@@ -1507,11 +1536,6 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kDefaultBrowserOffCyclePromoName,
      flag_descriptions::kDefaultBrowserOffCyclePromoDescription,
      flags_ui::kOsIos, FEATURE_VALUE_TYPE(kIOSDefaultBrowserOffCyclePromo)},
-    {"use-default-apps-page-for-promos",
-     flag_descriptions::kUseDefaultAppsDestinationForPromosName,
-     flag_descriptions::kUseDefaultAppsDestinationForPromosDescription,
-     flags_ui::kOsIos,
-     FEATURE_VALUE_TYPE(kIOSUseDefaultAppsDestinationForPromos)},
     {"use-scene-view-controller",
      flag_descriptions::kUseSceneViewControllerName,
      flag_descriptions::kUseSceneViewControllerDescription, flags_ui::kOsIos,
@@ -2056,9 +2080,6 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kComposeboxVerbatimSuggestionInAIMName,
      flag_descriptions::kComposeboxVerbatimSuggestionInAIMDescription,
      flags_ui::kOsIos, FEATURE_VALUE_TYPE(kComposeboxVerbatimSuggestionInAIM)},
-    {"enable-ac-prefetch", flag_descriptions::kEnableACPrefetchName,
-     flag_descriptions::kEnableACPrefetchDescription, flags_ui::kOsIos,
-     FEATURE_VALUE_TYPE(switches::kEnableACPrefetch)},
     {"start-surface-user-setting",
      flag_descriptions::kStartSurfaceUserSettingName,
      flag_descriptions::kStartSurfaceUserSettingDescription, flags_ui::kOsIos,
@@ -2229,12 +2250,6 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kGeminiCoordinatorTeardownFixName,
      flag_descriptions::kGeminiCoordinatorTeardownFixDescription,
      flags_ui::kOsIos, FEATURE_VALUE_TYPE(kGeminiCoordinatorTeardownFix)},
-    {"enable-file-download-connector-ios",
-     flag_descriptions::kEnableFileDownloadConnectorIOSName,
-     flag_descriptions::kEnableFileDownloadConnectorIOSDescription,
-     flags_ui::kOsIos,
-     FEATURE_VALUE_TYPE(
-         enterprise_connectors::kEnableFileDownloadConnectorIOS)},
     {"enable-dynamic-route-fetching",
      enterprise_net::flag_descriptions::kEnableDynamicRouteFetchingName,
      enterprise_net::flag_descriptions::kEnableDynamicRouteFetchingDescription,
@@ -2484,10 +2499,6 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
     {"gemini-client-migration", flag_descriptions::kGeminiClientMigrationName,
      flag_descriptions::kGeminiClientMigrationDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kGeminiClientMigration)},
-    {"gemini-screen-context-migration",
-     flag_descriptions::kGeminiScreenContextMigrationName,
-     flag_descriptions::kGeminiScreenContextMigrationDescription,
-     flags_ui::kOsIos, FEATURE_VALUE_TYPE(kGeminiScreenContextMigration)},
     {"ios-cobalt-developer-mode",
      flag_descriptions::kIOSCobaltDeveloperModeName,
      flag_descriptions::kIOSCobaltDeveloperModeDescription, flags_ui::kOsIos,
@@ -2598,9 +2609,10 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kGeminiContextualSuggestionsCuesName,
      flag_descriptions::kGeminiContextualSuggestionsCuesDescription,
      flags_ui::kOsIos,
-     FEATURE_WITH_PARAMS_VALUE_TYPE(kGeminiContextualSuggestionsCues,
-                                    kGeminiContextualSuggestionsCuesVariations,
-                                    "GeminiContextualSuggestionsCues")},
+     FEATURE_WITH_PARAMS_VALUE_TYPE(
+         contextual_cueing::kGeminiContextualSuggestionsCues,
+         kGeminiContextualSuggestionsCuesVariations,
+         "GeminiContextualSuggestionsCues")},
     {"page-classification", flag_descriptions::kPageClassificationName,
      flag_descriptions::kPageClassificationDescription, flags_ui::kOsIos,
      FEATURE_WITH_PARAMS_VALUE_TYPE(kPageClassification,

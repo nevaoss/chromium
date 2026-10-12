@@ -199,6 +199,7 @@ source_set("unit_tests") {
     "//chrome/browser/ui:settings_window_manager_chromeos",
     "//chrome/common",
     "//chrome/test:test_support",
+    "//chrome/test/base:testing_browser_process",
     "//chromeos/ash/components/dbus/cros_disks",
     "//chromeos/ash/components/disks",
     "//chromeos/ash/components/disks:test_support",
@@ -213,10 +214,6 @@ source_set("unit_tests") {
     "//ui/chromeos/strings",
     "//ui/display:test_support",
   ]
-
-  # TODO(crbug.com/40031409): Fix code that adds exit-time destructors and
-  # enable the diagnostic by removing this line.
-  configs += [ "//build/config/compiler:no_exit_time_destructors" ]
 }
 
 source_set("browser_tests") {

@@ -3,14 +3,16 @@
 // found in the LICENSE file.
 
 import '../icons.html.js';
+import '/tab_group_shared/tab_group_dot.js';
 
 import {assert} from '//resources/js/assert.js';
 import {loadTimeData} from '//resources/js/load_time_data.js';
+import {html} from '//resources/lit/v3_0/lit.rollup.js';
 import type {Token} from '//resources/mojo/mojo/public/mojom/base/token.mojom-webui.js';
 
 import type {OrganizerListSectionClient, OrganizerListSectionDelegate} from '../organizer_list_section_delegate.js';
 import type {OrganizerListSectionItem, OrganizerListSectionItemDescriptionPart, OrganizerListSectionItemIcon} from '../organizer_list_section_item.js';
-import type {BrowserProxy, ProfileData, Tab, TabsRemovedInfo, TabUpdateInfo} from '../tab_search.mojom-webui.js';
+import type {BrowserProxy, ProfileData, Tab, TabGroup, TabsRemovedInfo, TabUpdateInfo} from '../tab_search.mojom-webui.js';
 import {browserProxyFactory, SplitTabLayout} from '../tab_search.mojom-webui.js';
 import {TabAlertState} from '../tabs.mojom-webui.js';
 
@@ -75,12 +77,17 @@ function hasAudioAlert(item: OpenTabsItem): boolean {
                             tabHasAudioAlert(item.tab);
 }
 
+export function isActive(item: OpenTabsItem): boolean {
+  return isSplitTab(item) ? item.tabs.some(tab => tab.active) : item.tab.active;
+}
+
 export class OpenTabsDelegate implements
     OrganizerListSectionDelegate<OpenTabsItem> {
   private browserProxy_: BrowserProxy = browserProxyFactory.getInstance();
   private client_?: OrganizerListSectionClient;
   private listenerIds_: number[] = [];
   private tabs_: Tab[] = [];
+  private tabGroupsMap_: Map<string, TabGroup> = new Map();
 
   init(sectionClient: OrganizerListSectionClient) {
     this.client_ = sectionClient;
@@ -128,7 +135,13 @@ export class OpenTabsDelegate implements
 
   private async updateTabs_() {
     const {profileData} = await this.browserProxy_.handler.getProfileData();
+    this.updateFromProfileData_(profileData);
+  }
+
+  private updateFromProfileData_(profileData: ProfileData) {
     this.tabs_ = this.extractTabs_(profileData);
+    this.tabGroupsMap_ = new Map(
+        profileData.tabGroups.map(group => [tokenToString(group.id), group]));
   }
 
   private notifyClient_() {
@@ -137,7 +150,7 @@ export class OpenTabsDelegate implements
   }
 
   private onTabsChanged_(profileData: ProfileData) {
-    this.tabs_ = this.extractTabs_(profileData);
+    this.updateFromProfileData_(profileData);
     this.notifyClient_();
   }
 
@@ -166,6 +179,16 @@ export class OpenTabsDelegate implements
       }
     }
     return allTabs;
+  }
+
+  private getTabGroupFromItem_(item: OpenTabsItem): TabGroup|null {
+    const groupId = isSplitTab(item) ?
+        (item.tabs[0].groupId ?? item.tabs[1].groupId) :
+        item.tab.groupId;
+    if (!groupId) {
+      return null;
+    }
+    return this.tabGroupsMap_.get(tokenToString(groupId)) ?? null;
   }
 
   private getOpenTabsItems_(): OpenTabsItem[] {
@@ -211,9 +234,16 @@ export class OpenTabsDelegate implements
       });
     }
 
-    // Tabs playing or muting audio are surfaced first, each group ordered by
-    // most recently used.
+    // The currently active tab is placed at the end of the list so that users
+    // can more easily navigate to their other tabs. Tabs playing or muting
+    // audio are surfaced first, and within each group items are ordered by most
+    // recently used.
     items.sort((a, b) => {
+      const activeA = isActive(a);
+      const activeB = isActive(b);
+      if (activeA !== activeB) {
+        return activeA ? 1 : -1;
+      }
       const audioA = hasAudioAlert(a);
       const audioB = hasAudioAlert(b);
       if (audioA !== audioB) {
@@ -255,6 +285,15 @@ export class OpenTabsDelegate implements
     const elapsedText = getMostRecentTab(item).lastActiveElapsedText;
     if (elapsedText) {
       description.push({text: elapsedText});
+    }
+
+    const tabGroup = this.getTabGroupFromItem_(item);
+    if (tabGroup) {
+      description.push({
+        text: tabGroup.title,
+        prefixElement: html`<tab-group-dot .color="${tabGroup.color}">
+            </tab-group-dot>`,
+      });
     }
 
     return {

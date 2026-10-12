@@ -32,10 +32,10 @@ class EntropyProviders;
 // Trial and group names for the seed file experiment.
 const char kSeedFileTrial[] = "SeedFileTrial";
 const char kDefaultGroup[] = "Default";
-const char kControlGroup[] = "Control_V12";
+const char kControlGroup[] = "Control_V13";
 // TODO(crbug.com/530049020): Launch on Android and iOS
 #if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_IOS)
-const char kSeedFilesGroup[] = "SeedFiles_V12";
+const char kSeedFilesGroup[] = "SeedFiles_V13";
 #else
 const char kSeedFilesGroup[] = "SeedFilesLaunched";
 #endif
@@ -195,7 +195,7 @@ class COMPONENT_EXPORT(VARIATIONS) SeedReaderWriter
   void SetTimerForTesting(base::OneShotTimer* timer_override);
 
   // Updates the server-provided seed date that is used for study date checks.
-  void SetSeedDate(base::Time server_date_fetched);
+  void SetSeedDate(base::Time seed_date);
 
   // Updates the time of the last fetch of the seed.
   void SetFetchTime(base::Time client_fetch_time);

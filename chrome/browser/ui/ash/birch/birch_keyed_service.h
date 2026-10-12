@@ -17,9 +17,17 @@
 
 class Profile;
 
+namespace favicon {
+class FaviconService;
+}  // namespace favicon
+
 namespace history {
 class HistoryService;
 }  // namespace history
+
+namespace send_tab_to_self {
+class SendTabToSelfSyncService;
+}  // namespace send_tab_to_self
 
 namespace signin {
 class IdentityManager;
@@ -44,9 +52,13 @@ class BirchKeyedService : public KeyedService,
                           public ShellObserver,
                           public BirchClient {
  public:
+  // `favicon_service` must be non-null and must outlive `this`.
   BirchKeyedService(Profile* profile,
                     signin::IdentityManager* identity_manager,
-                    history::HistoryService* history_service);
+                    history::HistoryService* history_service,
+                    favicon::FaviconService* favicon_service,
+                    send_tab_to_self::SendTabToSelfSyncService*
+                        send_tab_to_self_sync_service);
   BirchKeyedService(const BirchKeyedService&) = delete;
   BirchKeyedService& operator=(const BirchKeyedService&) = delete;
   ~BirchKeyedService() override;
@@ -115,6 +127,8 @@ class BirchKeyedService : public KeyedService,
   bool is_shutdown_ = false;
 
   raw_ptr<Profile> profile_;
+
+  const raw_ptr<favicon::FaviconService> favicon_service_;
 
   std::unique_ptr<BirchCalendarProvider> calendar_provider_;
 

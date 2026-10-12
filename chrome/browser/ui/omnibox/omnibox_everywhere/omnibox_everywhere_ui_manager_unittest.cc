@@ -29,6 +29,8 @@
 #include "chrome/browser/ui/omnibox/omnibox_everywhere/omnibox_everywhere_prefs.h"
 #include "chrome/browser/ui/omnibox/omnibox_everywhere/omnibox_everywhere_region_select_overlay.h"
 #include "chrome/browser/ui/omnibox/omnibox_everywhere/omnibox_everywhere_widget_delegate.h"
+#include "chrome/browser/ui/omnibox/omnibox_everywhere_service.h"
+#include "chrome/browser/ui/omnibox/omnibox_everywhere_service_factory.h"
 #include "chrome/browser/ui/omnibox/omnibox_next_features.h"
 #include "chrome/browser/ui/webui/top_chrome/webui_contents_wrapper.h"
 #include "chrome/test/base/testing_browser_process.h"
@@ -148,6 +150,25 @@ class TestingAimEligibilityService : public ChromeAimEligibilityService {
 
  private:
   const bool is_fusebox_eligible_;
+};
+
+class TestingOmniboxEverywhereService : public OmniboxEverywhereService {
+ public:
+  explicit TestingOmniboxEverywhereService(Profile* profile)
+      : OmniboxEverywhereService(profile) {}
+  ~TestingOmniboxEverywhereService() override = default;
+
+  void MaybeShowLensPromo() override { ++maybe_show_lens_promo_count_; }
+  void EndLensPromo() override { ++end_lens_promo_count_; }
+
+  int maybe_show_lens_promo_count() const {
+    return maybe_show_lens_promo_count_;
+  }
+  int end_lens_promo_count() const { return end_lens_promo_count_; }
+
+ private:
+  int maybe_show_lens_promo_count_ = 0;
+  int end_lens_promo_count_ = 0;
 };
 
 }  // namespace
@@ -679,7 +700,7 @@ TEST_F(OmniboxEverywhereUIManagerTest,
   ASSERT_TRUE(widget);
   EXPECT_TRUE(widget->IsVisible());
   views::test::WaitForWidgetActive(widget, true);
-  EXPECT_FALSE(ui_manager->is_demoted_for_testing());
+  EXPECT_FALSE(ui_manager->is_demoted());
   EXPECT_TRUE(ui_manager->IsActive());
   EXPECT_EQ(widget->GetZOrderLevel(), ui::ZOrderLevel::kNormal);
 
@@ -691,8 +712,7 @@ TEST_F(OmniboxEverywhereUIManagerTest,
   // Simulating deactivation (active = false) in persistent mode demotes the
   // widget (is_demoted_ == true) while keeping it visible on the desktop layer.
   ui_manager->OnWidgetActivationChanged(widget, /*active=*/false);
-  EXPECT_TRUE(base::test::RunUntil(
-      [&]() { return ui_manager->is_demoted_for_testing(); }));
+  EXPECT_TRUE(base::test::RunUntil([&]() { return ui_manager->is_demoted(); }));
   EXPECT_TRUE(widget->IsVisible());
   EXPECT_FALSE(ui_manager->IsActive());
   EXPECT_EQ(widget->GetZOrderLevel(), ui::ZOrderLevel::kNormal);
@@ -701,7 +721,7 @@ TEST_F(OmniboxEverywhereUIManagerTest,
   ui_manager->ShowForProfile(&profile_, GetContext());
   EXPECT_TRUE(widget->IsVisible());
   views::test::WaitForWidgetActive(widget, true);
-  EXPECT_FALSE(ui_manager->is_demoted_for_testing());
+  EXPECT_FALSE(ui_manager->is_demoted());
   EXPECT_TRUE(ui_manager->IsActive());
   EXPECT_EQ(widget->GetZOrderLevel(), ui::ZOrderLevel::kNormal);
 
@@ -721,7 +741,7 @@ TEST_F(OmniboxEverywhereUIManagerTest,
   ASSERT_TRUE(widget);
   EXPECT_TRUE(widget->IsVisible());
   views::test::WaitForWidgetActive(widget, true);
-  EXPECT_FALSE(ui_manager->is_demoted_for_testing());
+  EXPECT_FALSE(ui_manager->is_demoted());
   EXPECT_TRUE(ui_manager->IsActive());
 
   // Advance time within the grace period (e.g. 100ms < 500ms).
@@ -732,7 +752,7 @@ TEST_F(OmniboxEverywhereUIManagerTest,
   ui_manager->OnWidgetActivationChanged(widget, /*active=*/false);
   EXPECT_TRUE(base::test::RunUntil([&]() { return ui_manager->IsActive(); }));
   EXPECT_TRUE(widget->IsVisible());
-  EXPECT_FALSE(ui_manager->is_demoted_for_testing());
+  EXPECT_FALSE(ui_manager->is_demoted());
 
   // Advance time past the grace period.
   task_environment()->FastForwardBy(
@@ -740,8 +760,7 @@ TEST_F(OmniboxEverywhereUIManagerTest,
 
   // Deactivation after the grace period has elapsed should cleanly demote.
   ui_manager->OnWidgetActivationChanged(widget, /*active=*/false);
-  EXPECT_TRUE(base::test::RunUntil(
-      [&]() { return ui_manager->is_demoted_for_testing(); }));
+  EXPECT_TRUE(base::test::RunUntil([&]() { return ui_manager->is_demoted(); }));
   EXPECT_TRUE(widget->IsVisible());
   EXPECT_FALSE(ui_manager->IsActive());
 
@@ -761,7 +780,7 @@ TEST_F(OmniboxEverywhereUIManagerTest,
   ASSERT_TRUE(widget);
   EXPECT_TRUE(widget->IsVisible());
   views::test::WaitForWidgetActive(widget, true);
-  EXPECT_FALSE(ui_manager->is_demoted_for_testing());
+  EXPECT_FALSE(ui_manager->is_demoted());
   EXPECT_TRUE(ui_manager->IsActive());
 
   task_environment()->FastForwardBy(
@@ -774,7 +793,7 @@ TEST_F(OmniboxEverywhereUIManagerTest,
   // Simulating deactivation while file chooser is open should NOT demote.
   ui_manager->OnWidgetActivationChanged(widget, /*active=*/false);
   task_environment()->FastForwardBy(base::Milliseconds(100));
-  EXPECT_FALSE(ui_manager->is_demoted_for_testing());
+  EXPECT_FALSE(ui_manager->is_demoted());
   EXPECT_TRUE(ui_manager->IsActive());
   EXPECT_TRUE(widget->IsVisible());
 
@@ -783,8 +802,7 @@ TEST_F(OmniboxEverywhereUIManagerTest,
 
   // Deactivation after file chooser is closed should cleanly demote.
   ui_manager->OnWidgetActivationChanged(widget, /*active=*/false);
-  EXPECT_TRUE(base::test::RunUntil(
-      [&]() { return ui_manager->is_demoted_for_testing(); }));
+  EXPECT_TRUE(base::test::RunUntil([&]() { return ui_manager->is_demoted(); }));
   EXPECT_TRUE(widget->IsVisible());
   EXPECT_FALSE(ui_manager->IsActive());
 
@@ -1299,23 +1317,27 @@ TEST_F(OmniboxEverywhereUIManagerTest,
 
   ui_manager->DraggableRegionsChanged(regions, nullptr);
 
-  // Background point (draggable region) -> should NOT descend into child (claim
-  // for drag).
-  EXPECT_FALSE(
+  // Background point (draggable region).
+  EXPECT_TRUE(ui_manager->widget_delegate()->IsPointInDraggableRegion(
+      gfx::Point(10, 10)));
+  EXPECT_TRUE(ui_manager->widget_delegate()->IsPointInDraggableRegion(
+      gfx::Point(600, 40)));
+
+  // Points inside search input (non-draggable region).
+  EXPECT_FALSE(ui_manager->widget_delegate()->IsPointInDraggableRegion(
+      gfx::Point(200, 40)));
+  EXPECT_FALSE(ui_manager->widget_delegate()->IsPointInDraggableRegion(
+      gfx::Point(400, 50)));
+
+  // Event targeting should descend into child views for both draggable and
+  // non-draggable regions so WebUI receives :hover and click events while
+  // OmniboxEverywhereEventHandlerAura intercepts drags as a pre-target handler.
+  EXPECT_TRUE(
       ui_manager->widget_delegate()->ShouldDescendIntoChildForEventHandling(
           gfx::NativeView(), gfx::Point(10, 10)));
-  EXPECT_FALSE(
-      ui_manager->widget_delegate()->ShouldDescendIntoChildForEventHandling(
-          gfx::NativeView(), gfx::Point(600, 40)));
-
-  // Points inside search input (non-draggable region) -> SHOULD descend into
-  // child for button/input clicks.
   EXPECT_TRUE(
       ui_manager->widget_delegate()->ShouldDescendIntoChildForEventHandling(
           gfx::NativeView(), gfx::Point(200, 40)));
-  EXPECT_TRUE(
-      ui_manager->widget_delegate()->ShouldDescendIntoChildForEventHandling(
-          gfx::NativeView(), gfx::Point(400, 50)));
 }
 
 TEST_F(OmniboxEverywhereUIManagerTest,
@@ -1340,15 +1362,13 @@ TEST_F(OmniboxEverywhereUIManagerTest,
 
   ui_manager->DraggableRegionsChanged(regions, nullptr);
 
-  // Inner non-draggable area should remain non-draggable and receive clicks.
-  EXPECT_TRUE(
-      ui_manager->widget_delegate()->ShouldDescendIntoChildForEventHandling(
-          gfx::NativeView(), gfx::Point(150, 150)));
+  // Inner non-draggable area should remain non-draggable.
+  EXPECT_FALSE(ui_manager->widget_delegate()->IsPointInDraggableRegion(
+      gfx::Point(150, 150)));
 
   // Draggable background area outside should remain draggable.
-  EXPECT_FALSE(
-      ui_manager->widget_delegate()->ShouldDescendIntoChildForEventHandling(
-          gfx::NativeView(), gfx::Point(10, 10)));
+  EXPECT_TRUE(ui_manager->widget_delegate()->IsPointInDraggableRegion(
+      gfx::Point(10, 10)));
 }
 
 TEST_F(OmniboxEverywhereUIManagerTest, EarlyDraggableRegionsChangedPreserved) {
@@ -1368,9 +1388,8 @@ TEST_F(OmniboxEverywhereUIManagerTest, EarlyDraggableRegionsChangedPreserved) {
   ASSERT_TRUE(ui_manager->widget_delegate());
 
   // Cached region should be applied to widget_delegate_.
-  EXPECT_FALSE(
-      ui_manager->widget_delegate()->ShouldDescendIntoChildForEventHandling(
-          gfx::NativeView(), gfx::Point(10, 10)));
+  EXPECT_TRUE(ui_manager->widget_delegate()->IsPointInDraggableRegion(
+      gfx::Point(10, 10)));
 }
 
 TEST_F(OmniboxEverywhereUIManagerTest, DismissBypassedDuringContextMenu) {
@@ -3246,6 +3265,161 @@ TEST_F(OmniboxEverywhereUIManagerTest, DismissBypassedDuringHotkeyDropdown) {
       base::Milliseconds(1));
   ui_manager->OnWidgetActivationChanged(widget, /*active=*/false);
   EXPECT_TRUE(base::test::RunUntil([&]() { return !widget->IsVisible(); }));
+
+  ui_manager->Shutdown();
+}
+
+TEST_F(OmniboxEverywhereUIManagerTest,
+       CapturerCountMaintainedWhileHiddenForAutoResize) {
+  auto ui_manager = CreateUIManager();
+
+  ui_manager->ShowForProfile(&profile_, GetContext());
+  views::Widget* widget = ui_manager->widget();
+  ASSERT_TRUE(widget);
+  ASSERT_TRUE(ui_manager->web_contents());
+  EXPECT_FALSE(ui_manager->web_contents()->IsBeingCaptured());
+
+  // Simulate widget expanding due to autocomplete matches.
+  ui_manager->ResizeDueToAutoResize(ui_manager->web_contents(),
+                                    gfx::Size(728, 300));
+  EXPECT_EQ(widget->GetSize().height(), 300);
+
+  // Close hides the widget immediately while temporarily keeping the
+  // WebContents captured (`kHiddenButPainting`) so Blink AutoResize continues
+  // offscreen.
+  ui_manager->Close();
+  EXPECT_FALSE(widget->IsVisible());
+  EXPECT_TRUE(ui_manager->web_contents()->IsBeingCaptured());
+  EXPECT_FALSE(ui_manager->web_contents()->IsBeingVisiblyCaptured());
+
+  // Simulate Blink AutoResize collapsing the dropdown back to resting height
+  // (56px) while the widget is hidden.
+  ui_manager->ResizeDueToAutoResize(ui_manager->web_contents(),
+                                    gfx::Size(728, 56));
+  EXPECT_EQ(widget->GetSize().height(), 56);
+
+  // Once the post-hide capture window expires, the capture lock is released so
+  // the WebContents enters `kHidden` with zero idle overhead.
+  task_environment()->FastForwardBy(
+      OmniboxEverywhereUIManager::kPostHideCaptureDuration);
+  EXPECT_FALSE(ui_manager->web_contents()->IsBeingCaptured());
+  EXPECT_EQ(widget->GetSize().height(), 56);
+
+  // Re-showing the widget presents it at the collapsed height without flash.
+  ui_manager->ShowForProfile(&profile_, GetContext());
+  EXPECT_TRUE(widget->IsVisible());
+  EXPECT_EQ(widget->GetSize().height(), 56);
+
+  ui_manager->Shutdown();
+  EXPECT_FALSE(ui_manager->web_contents());
+}
+
+TEST_F(OmniboxEverywhereUIManagerTest, LensPromoLifecycleInPersistentMode) {
+  if (g_browser_process && g_browser_process->local_state()) {
+    g_browser_process->local_state()->SetBoolean(
+        omnibox_everywhere::prefs::kOmniboxEverywhereEphemeralModel, false);
+  }
+  auto* test_service = static_cast<TestingOmniboxEverywhereService*>(
+      OmniboxEverywhereServiceFactory::GetInstance()->SetTestingFactoryAndUse(
+          &profile_, base::BindRepeating([](content::BrowserContext* context)
+                                             -> std::unique_ptr<KeyedService> {
+            return std::make_unique<TestingOmniboxEverywhereService>(
+                Profile::FromBrowserContext(context));
+          })));
+  ASSERT_TRUE(test_service);
+
+  auto ui_manager = CreateUIManager();
+
+  // 1. Invoking LB shows the Lens promo once.
+  ui_manager->ShowForProfile(&profile_, GetContext());
+  views::Widget* widget = ui_manager->widget();
+  ASSERT_TRUE(widget);
+  EXPECT_EQ(1, test_service->maybe_show_lens_promo_count());
+  EXPECT_EQ(0, test_service->end_lens_promo_count());
+  EXPECT_FALSE(ui_manager->is_demoted());
+
+  // 2. De-invoking via Demote() ends the promo impression.
+  ui_manager->Demote();
+  EXPECT_TRUE(ui_manager->is_demoted());
+  EXPECT_EQ(1, test_service->end_lens_promo_count());
+
+  // Calling Demote() again while already demoted is a no-op.
+  ui_manager->Demote();
+  EXPECT_EQ(1, test_service->end_lens_promo_count());
+
+  // 3. Re-invoking via ShowForProfile starts a new impression check.
+  ui_manager->ShowForProfile(&profile_, GetContext());
+  EXPECT_FALSE(ui_manager->is_demoted());
+  EXPECT_EQ(2, test_service->maybe_show_lens_promo_count());
+
+  // 4. Demoting and then reactivating via OS click / taskbar activation
+  // (OnWidgetActivationChanged) also starts a new impression check.
+  ui_manager->Demote();
+  EXPECT_TRUE(ui_manager->is_demoted());
+  EXPECT_EQ(2, test_service->end_lens_promo_count());
+
+  ui_manager->OnWidgetActivationChanged(widget, /*active=*/true);
+  EXPECT_FALSE(ui_manager->is_demoted());
+  EXPECT_EQ(3, test_service->maybe_show_lens_promo_count());
+
+#if BUILDFLAG(IS_WIN)
+  // 5. Minimizing the widget ends the promo impression and marks it demoted;
+  // restoring it restarts the promo once.
+  widget->Minimize();
+  EXPECT_TRUE(ui_manager->is_demoted());
+  EXPECT_EQ(3, test_service->end_lens_promo_count());
+
+  widget->Restore();
+  EXPECT_FALSE(ui_manager->is_demoted());
+  EXPECT_EQ(4, test_service->maybe_show_lens_promo_count());
+
+  // 6. Minimizing an already-demoted widget does not double-end the promo,
+  // and restoring it still restarts the promo once.
+  ui_manager->Demote();
+  EXPECT_TRUE(ui_manager->is_demoted());
+  EXPECT_EQ(4, test_service->end_lens_promo_count());
+
+  widget->Minimize();
+  EXPECT_TRUE(ui_manager->is_demoted());
+  EXPECT_EQ(4, test_service->end_lens_promo_count());
+
+  widget->Restore();
+  EXPECT_FALSE(ui_manager->is_demoted());
+  EXPECT_EQ(5, test_service->maybe_show_lens_promo_count());
+#endif  // BUILDFLAG(IS_WIN)
+
+  ui_manager->Shutdown();
+}
+
+TEST_F(OmniboxEverywhereUIManagerTest, LensPromoLifecycleInEphemeralMode) {
+  if (g_browser_process && g_browser_process->local_state()) {
+    g_browser_process->local_state()->SetBoolean(
+        omnibox_everywhere::prefs::kOmniboxEverywhereEphemeralModel, true);
+  }
+  auto* test_service = static_cast<TestingOmniboxEverywhereService*>(
+      OmniboxEverywhereServiceFactory::GetInstance()->SetTestingFactoryAndUse(
+          &profile_, base::BindRepeating([](content::BrowserContext* context)
+                                             -> std::unique_ptr<KeyedService> {
+            return std::make_unique<TestingOmniboxEverywhereService>(
+                Profile::FromBrowserContext(context));
+          })));
+  ASSERT_TRUE(test_service);
+
+  auto ui_manager = CreateUIManager();
+
+  // Invoking LB shows the Lens promo.
+  ui_manager->ShowForProfile(&profile_, GetContext());
+  EXPECT_EQ(1, test_service->maybe_show_lens_promo_count());
+  EXPECT_EQ(0, test_service->end_lens_promo_count());
+
+  // Closing/hiding LB in ephemeral mode ends the promo impression once via
+  // ReleaseKeepAlives().
+  ui_manager->Close();
+  EXPECT_EQ(1, test_service->end_lens_promo_count());
+
+  // Re-invoking LB attempts to show the promo again as a fresh invocation.
+  ui_manager->ShowForProfile(&profile_, GetContext());
+  EXPECT_EQ(2, test_service->maybe_show_lens_promo_count());
 
   ui_manager->Shutdown();
 }

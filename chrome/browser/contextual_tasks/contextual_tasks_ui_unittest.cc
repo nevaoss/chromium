@@ -38,6 +38,7 @@
 #include "components/prefs/pref_service.h"
 #include "components/sessions/content/session_tab_helper.h"
 #include "components/variations/scoped_variations_ids_provider.h"
+#include "content/public/browser/web_contents_delegate.h"
 #include "content/public/common/content_features.h"
 #include "content/public/test/mock_navigation_handle.h"
 #include "content/public/test/test_renderer_host.h"
@@ -85,6 +86,10 @@ class MockContextualTasksComposeboxHandler
               SetAimThreadRestoredTabs,
               (std::vector<searchbox::mojom::TabInfoPtr>),
               (override));
+  MOCK_METHOD(std::vector<int32_t>,
+              GetSelectedTabIds,
+              (),
+              (const, override));
 };
 
 class MockTaskInfoDelegate : public TaskInfoDelegate {
@@ -179,10 +184,8 @@ std::unique_ptr<content::MockNavigationHandle> CreateMockNavigationHandle(
 class FakeContextualTasksPermissionController
     : public ContextualTasksPermissionController {
  public:
-  explicit FakeContextualTasksPermissionController(
-      content::WebContents* web_contents)
-      : ContextualTasksPermissionController(web_contents,
-                                            /*browser_window=*/nullptr) {}
+  FakeContextualTasksPermissionController()
+      : ContextualTasksPermissionController(/*browser_window=*/nullptr) {}
   ~FakeContextualTasksPermissionController() override = default;
 
   toolbar_ui_api::mojom::PermissionDashboardStatePtr GetState() const override {
@@ -320,6 +323,11 @@ class ContextualTasksUiTest : public ChromeRenderViewHostTestHarness {
     if (title) {
       delegate->SetThreadTitle(title.value());
     }
+  }
+
+  void TriggerOnInnerWebContentsCreated(ContextualTasksUI* controller,
+                                        content::WebContents* inner) {
+    controller->OnInnerWebContentsCreated(inner);
   }
 
   std::unique_ptr<content::WebContents> embedded_web_contents_;
@@ -895,12 +903,12 @@ TEST_F(ContextualTasksUiTest,
                 "voiceSearchCoherenceCobrowsingComposeboxEnabled"),
             true);
 
-  // The Contextual Tasks dict overrides the all-surfaces key with the
-  // cobrowsing value.
+  // The Contextual Tasks dict preserves the distinct all-surfaces and
+  // cobrowsing values.
   base::DictValue load_time_data =
       ContextualTasksUI::GetContextualTasksLoadTimeData(profile_);
   EXPECT_EQ(load_time_data.FindBool("voiceSearchCoherenceComposeboxesEnabled"),
-            true);
+            false);
   EXPECT_EQ(load_time_data.FindBool(
                 "voiceSearchCoherenceCobrowsingComposeboxEnabled"),
             true);
@@ -1786,8 +1794,7 @@ TEST_F(ContextualTasksUiTest, ContextualTasksToolbarUIServiceBindTest) {
   }
 
   // Binding with an active controller succeeds.
-  FakeContextualTasksPermissionController fake_controller(
-      embedded_web_contents_.get());
+  FakeContextualTasksPermissionController fake_controller;
   controller.set_controller(&fake_controller);
 
   {
@@ -2163,6 +2170,66 @@ TEST_F(ContextualTasksUiTest, BaseAccessors_Legacy) {
                                    &mock_browser_window);
   EXPECT_EQ(legacy_ui->GetBrowser(), &mock_browser_window);
   webui::SetBrowserWindowInterface(embedded_web_contents_.get(), nullptr);
+}
+
+namespace {
+
+class OpenURLCapturingDelegate : public content::WebContentsDelegate {
+ public:
+  content::WebContents* OpenURLFromTab(
+      content::WebContents* source,
+      const content::OpenURLParams& params,
+      base::OnceCallback<void(content::NavigationHandle&)>
+          navigation_handle_callback) override {
+    last_open_url_params_ = params;
+    return source;
+  }
+
+  const std::optional<content::OpenURLParams>& last_open_url_params() const {
+    return last_open_url_params_;
+  }
+
+ private:
+  std::optional<content::OpenURLParams> last_open_url_params_;
+};
+
+}  // namespace
+
+// Regression test for b/564494672: when a renderer-initiated navigation in the
+// side panel <webview> (such as clicking "Exact matches" or "Visual matches")
+// is intercepted and transferred back to the embedded page, the re-dispatched
+// OpenURLParams must have `is_renderer_initiated` reset to false so
+// WebViewGuest::OpenURLFromTab does not preserve `is_renderer_initiated = true`
+// and cause ContextualTasksNavigationThrottle to re-intercept the navigation in
+// an infinite loop.
+TEST_F(ContextualTasksUiTest,
+       TransferNavigationToEmbeddedPage_ResetsRendererInitiated) {
+  content::TestWebUI web_ui;
+  web_ui.set_web_contents(embedded_web_contents_.get());
+  auto legacy_ui = std::make_unique<ContextualTasksUI>(&web_ui);
+  TriggerOnInnerWebContentsCreated(legacy_ui.get(),
+                                   embedded_web_contents_.get());
+
+  OpenURLCapturingDelegate delegate;
+  embedded_web_contents_->SetDelegate(&delegate);
+
+  GURL exact_matches_url("https://www.google.com/search?q=test&udm=48");
+  content::OpenURLParams renderer_params(
+      exact_matches_url, content::Referrer(),
+      WindowOpenDisposition::CURRENT_TAB, ui::PAGE_TRANSITION_LINK,
+      /*is_renderer_initiated=*/true);
+  renderer_params.initiator_origin =
+      url::Origin::Create(GURL("https://www.google.com"));
+
+  service_for_nav_
+      ->ContextualTasksUiService::OnSearchResultsNavigationInSidePanel(
+          renderer_params, legacy_ui.get());
+
+  ASSERT_TRUE(delegate.last_open_url_params().has_value());
+  EXPECT_EQ(delegate.last_open_url_params()->url, exact_matches_url);
+  EXPECT_FALSE(delegate.last_open_url_params()->is_renderer_initiated);
+
+  embedded_web_contents_->SetDelegate(nullptr);
 }
 
 }  // namespace contextual_tasks

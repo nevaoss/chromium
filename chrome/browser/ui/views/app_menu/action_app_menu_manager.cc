@@ -27,9 +27,13 @@
 #include "chrome/browser/profiles/profile_manager.h"
 #include "chrome/browser/search/background/ntp_custom_background_service_factory.h"
 #include "chrome/browser/sharing_hub/sharing_hub_features.h"
+#include "chrome/browser/ttc/core/ttc_keyed_service.h"
 #include "chrome/browser/ui/actions/chrome_action_id.h"
+#include "chrome/browser/ui/actions/command_action_updater.h"
 #include "chrome/browser/ui/browser_actions.h"
 #include "chrome/browser/ui/managed_ui.h"
+#include "chrome/browser/ui/safety_hub/menu_notification_service.h"
+#include "chrome/browser/ui/safety_hub/menu_notification_service_factory.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "ui/base/class_property.h"
 #include "ui/base/models/menu_separator_types.h"
@@ -49,11 +53,14 @@
 #include "chrome/browser/ui/color/chrome_color_id.h"
 #include "chrome/browser/ui/lens/lens_overlay_entry_point_controller.h"
 #include "chrome/browser/ui/profiles/profile_view_utils.h"
+#include "chrome/browser/ui/tabs/features.h"
 #include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h"
 #include "chrome/browser/ui/toolbar/app_menu_icon_controller.h"
 #include "chrome/browser/ui/toolbar/app_menu_model.h"
+#include "chrome/browser/ui/toolbar/bookmark_sub_menu_model.h"
 #include "chrome/browser/ui/toolbar/chrome_labs/chrome_labs_prefs.h"
 #include "chrome/browser/ui/toolbar/chrome_labs/chrome_labs_utils.h"
+#include "chrome/browser/ui/toolbar/reading_list_sub_menu_model.h"
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/views/app_menu/app_menu_zoom_view.h"
 #include "chrome/browser/ui/views/app_menu/bookmarks_dynamic_menu.h"
@@ -61,18 +68,22 @@
 #include "chrome/browser/ui/views/app_menu/recent_tabs_dynamic_menu.h"
 #include "chrome/browser/ui/views/app_menu/send_tab_to_self_dynamic_menu.h"
 #include "chrome/browser/ui/views/app_menu/tab_group_dynamic_menu.h"
+#include "chrome/browser/ui/views/bookmarks/saved_tab_groups/saved_tab_group_everything_menu.h"
 #include "chrome/browser/ui/web_applications/web_app_ui_utils.h"
 #include "chrome/browser/ui/webui/side_panel/customize_chrome/customize_chrome_page_handler.h"
+#include "chrome/common/chrome_features.h"
 #include "chrome/common/pref_names.h"
 #include "chrome/grit/branded_strings.h"
 #include "chrome/grit/generated_resources.h"
 #include "components/bookmarks/browser/bookmark_model.h"
 #include "components/bookmarks/common/bookmark_bar_visibility_state.h"
 #include "components/bookmarks/common/bookmark_pref_names.h"
+#include "components/lens/lens_features.h"
 #include "components/prefs/pref_service.h"
 #include "components/search/ntp_features.h"
 #include "components/send_tab_to_self/entry_point_display_reason.h"
 #include "components/send_tab_to_self/features.h"
+#include "components/signin/public/base/signin_pref_names.h"
 #include "components/vector_icons/vector_icons.h"
 #include "extensions/buildflags/buildflags.h"
 #if BUILDFLAG(ENABLE_EXTENSIONS)
@@ -244,10 +255,13 @@ class AppMenuBuilder {
       actions::ActionId id,
       actions::BaseAction::PopulateChildActions populate_callback,
       std::optional<base::FunctionRef<void(AppMenuBuilder&)>> build_submenu =
-          std::nullopt) {
-    auto item = AppMenuActionItem::CreateIndirect(
-        id, scope_,
-        {.display_type = default_display_type_, .container_color = bg_color_});
+          std::nullopt,
+      AppMenuActionItem::ActionParams params = {}) {
+    if (!params.container_color.has_value()) {
+      params.container_color = bg_color_;
+    }
+    auto item =
+        AppMenuActionItem::CreateIndirect(id, scope_, std::move(params));
     if (!item || !parent_) {
       return *this;
     }
@@ -317,17 +331,73 @@ void ActionAppMenuManager::CreateMenuHierarchy() {
 }
 
 void ActionAppMenuManager::AddNotificationActions(actions::ActionItem* root) {
-  AppMenuBuilder(
-      root, BrowserActions::From(browser_window_interface_)->root_action_item(),
-      ui::kColorAppMenuUpgradeRowBackground)
-      .AddSection(DisplayType::kSection, [](AppMenuBuilder& section) {
-        section.AddAction(
+  actions::ActionItem* scope =
+      BrowserActions::From(browser_window_interface_)->root_action_item();
+  AppMenuBuilder(root, scope, ui::kColorAppMenuUpgradeRowBackground)
+      .AddSection(DisplayType::kSection, [this,
+                                          scope](AppMenuBuilder& section) {
+        bool has_notification = false;
+
+        // Helper for adding a notification if its action is visible, with an
+        // optional leading spacer if there is another notification already
+        // added.
+        auto maybe_add_notification =
+            [&section, scope, &has_notification](
+                actions::ActionId id,
+                AppMenuActionItem::ActionParams params = {}) {
+              actions::ActionItem* action =
+                  actions::ActionManager::Get().FindAction(id, scope);
+              CHECK(action);
+              if (!action->GetVisible()) {
+                return false;
+              }
+              if (has_notification) {
+                section.AddDivider(ui::MenuSeparatorType::SPACING_SEPARATOR);
+              }
+              params.display_type = DisplayType::kNotification;
+              section.AddAction(id, std::move(params));
+              has_notification = true;
+              return true;
+            };
+
+        maybe_add_notification(
             kActionUpgradeDialog,
-            {.display_type = DisplayType::kNotification,
-             .minor_text = AppMenuModel::GetUpgradeDialogSubstringText()});
+            {.minor_text = AppMenuModel::GetUpgradeDialogSubstringText()});
+
+        // At most one non-upgrade notification item (Safety Hub, Global
+        // Error, or Default Browser, which are ordered by priority) should
+        // be shown at a time. Return early as soon as the first one is added.
+
+        // Query for the correct safety hub notification (if any) rather than
+        // adding all potential actions here and allowing their visibility to
+        // be determined by the action itself because
+        // safety_hub_service->GetNotificationToShow() carries side effects and
+        // is intended to be called once per menu show.
+        if (auto* safety_hub_service =
+                SafetyHubMenuNotificationServiceFactory::GetForProfile(
+                    browser_window_interface_->GetProfile())) {
+          if (std::optional<MenuNotificationEntry> notification =
+                  safety_hub_service->GetNotificationToShow()) {
+            if (std::optional<actions::ActionId> action_id =
+                    chrome::CommandActionUpdater::GetActionId(
+                        notification->command)) {
+              if (maybe_add_notification(
+                      action_id.value(),
+                      {.text_override = notification->label})) {
+                return;
+              }
+            }
+          }
+        }
+
+        if (maybe_add_notification(kActionGlobalError)) {
+          return;
+        }
+
 #if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_CHROMEOS)
-        section.AddAction(kActionSetBrowserAsDefault,
-                          {.display_type = DisplayType::kNotification});
+        maybe_add_notification(
+            kActionSetBrowserAsDefault,
+            {.element_id = AppMenuModel::kSetBrowserAsDefaultMenuItem});
 #endif
       });
 }
@@ -348,11 +418,11 @@ void ActionAppMenuManager::AddBlockHeaderActions(actions::ActionItem* root) {
         Profile* profile = browser_window_interface_->GetProfile();
         std::optional<std::u16string> new_tab_text_override;
         if (profile->IsEnterpriseIsolatedModeProfile()) {
-          new_tab_text_override =
-              l10n_util::GetStringUTF16(IDS_NEW_ISOLATED_TAB);
+          new_tab_text_override = BrowserActions::GetCleanTitleAndTooltipText(
+              l10n_util::GetStringUTF16(IDS_NEW_ISOLATED_TAB));
         } else if (profile->IsIncognitoProfile()) {
-          new_tab_text_override =
-              l10n_util::GetStringUTF16(IDS_NEW_INCOGNITO_TAB);
+          new_tab_text_override = BrowserActions::GetCleanTitleAndTooltipText(
+              l10n_util::GetStringUTF16(IDS_NEW_INCOGNITO_TAB));
         }
         section
             .AddAction(
@@ -376,7 +446,8 @@ void ActionAppMenuManager::AddBlockHeaderActions(actions::ActionItem* root) {
             section.AddAction(
                 kActionNewIncognitoWindow,
                 {.display_type = DisplayType::kBlock,
-                 .text_override = l10n_util::GetStringUTF16(IDS_INCOGNITO)});
+                 .text_override = l10n_util::GetStringUTF16(IDS_INCOGNITO),
+                 .element_id = AppMenuModel::kIncognitoMenuItem});
           }
         }
       });
@@ -393,6 +464,12 @@ void ActionAppMenuManager::AddYourChromeActions(actions::ActionItem* root) {
 
 #if !BUILDFLAG(IS_CHROMEOS)
         std::u16string profile_name = GetProfileName(profile);
+        std::optional<std::u16string> chip_text;
+        if (!profile->IsOffTheRecord() && !profile->IsGuestSession() &&
+            !profile->IsEnterpriseIsolatedModeProfile() &&
+            profile->GetPrefs()->GetBoolean(prefs::kSigninAllowed)) {
+          chip_text = GetSigninStatusChipString(profile);
+        }
         section.AddSubmenu(
             kActionProfileSubmenu,
             [this, profile](AppMenuBuilder& sub) {
@@ -409,24 +486,39 @@ void ActionAppMenuManager::AddYourChromeActions(actions::ActionItem* root) {
                     profile_menu_->BuildOtherProfiles(parent);
                   })
                   .AddAction(kActionAddNewProfile)
-                  .AddAction(kActionOpenGuestProfile)
+                  .AddAction(
+                      kActionOpenGuestProfile,
+                      {.element_id = AppMenuModel::kProfileOpenGuestItem})
                   .AddAction(kActionManageChromeProfiles);
             },
-            {.text_override =
-                 profile_name.empty()
-                     ? std::nullopt
-                     : std::make_optional(std::move(profile_name))});
+            {.text_override = profile_name.empty()
+                                  ? std::nullopt
+                                  : std::make_optional(std::move(profile_name)),
+             .icon_override = profile_menu_->GetProfileAvatarIcon(),
+             .chip_text = std::move(chip_text),
+             .item_height = AppMenuActionItem::ItemHeight::kExpanded,
+             .element_id = AppMenuModel::kProfileMenuItem});
+        section.AddDivider(ui::MenuSeparatorType::MENU_ITEM_SEPARATOR);
 #endif
 
         if (!profile->IsGuestSession()) {
-          section.AddSubmenu(kActionPasswordsAndAutofillSubmenu,
-                             [](AppMenuBuilder& sub) {
-                               sub.AddAction(kActionShowPasswordManager)
-                                   .AddAction(kActionShowPaymentMethods)
-                                   .AddAction(kActionShowContactInfo)
-                                   .AddAction(kActionShowIdentityDocs)
-                                   .AddAction(kActionShowTravel);
-                             });
+          section.AddSubmenu(
+              kActionPasswordsAndAutofillSubmenu,
+              [](AppMenuBuilder& sub) {
+                sub.AddAction(
+                       kActionShowPasswordManager,
+                       {.element_id = AppMenuModel::kPasswordManagerMenuItem})
+                    .AddAction(kActionShowPaymentMethods)
+                    .AddAction(
+                        kActionShowContactInfo,
+                        {.element_id = AppMenuModel::kContactInfoMenuItem})
+                    .AddAction(
+                        kActionShowIdentityDocs,
+                        {.element_id = AppMenuModel::kIdentityDocsMenuItem})
+                    .AddAction(kActionShowTravel,
+                               {.element_id = AppMenuModel::kTravelMenuItem});
+              },
+              {.element_id = AppMenuModel::kPasswordAndAutofillMenuItem});
         }
 
         if (!profile->IsOffTheRecord()) {
@@ -434,10 +526,13 @@ void ActionAppMenuManager::AddYourChromeActions(actions::ActionItem* root) {
               kActionRecentTabsSubmenu,
               base::BindRepeating(
                   &RecentTabsDynamicMenu::BuildRecentTabsActions,
-                  recent_tabs_menu_->GetWeakPtr()));
+                  recent_tabs_menu_->GetWeakPtr()),
+              /*build_submenu=*/std::nullopt,
+              {.element_id = AppMenuModel::kHistoryMenuItem});
         }
 
-        section.AddAction(kActionShowDownloadsPage);
+        section.AddAction(kActionShowDownloadsPage,
+                          {.element_id = AppMenuModel::kDownloadsMenuItem});
 
         if (!profile->IsGuestSession()) {
           section.AddDynamicSubmenu(
@@ -453,7 +548,8 @@ void ActionAppMenuManager::AddYourChromeActions(actions::ActionItem* root) {
                 if (base::FeatureList::IsEnabled(
                         ntp_features::kNtpSimplificationBookmarkBar)) {
                   sub_builder.AddSubmenu(
-                      kActionBookmarkBarSubmenu, [](AppMenuBuilder& bar_sub) {
+                      kActionBookmarkBarSubmenu,
+                      [](AppMenuBuilder& bar_sub) {
                         bar_sub
                             .AddAction(kActionBookmarkBarSubmenuAlwaysHide,
                                        {.is_checkable = true})
@@ -461,7 +557,9 @@ void ActionAppMenuManager::AddYourChromeActions(actions::ActionItem* root) {
                                        {.is_checkable = true})
                             .AddAction(kActionBookmarkBarSubmenuOnlyOnNtp,
                                        {.is_checkable = true});
-                      });
+                      },
+                      {.element_id =
+                           BookmarkSubMenuModel::kShowBookmarkBarMenuItem});
                 } else {
                   const int bookmark_bar_string_id =
                       profile->GetPrefs()->GetBoolean(
@@ -471,13 +569,17 @@ void ActionAppMenuManager::AddYourChromeActions(actions::ActionItem* root) {
                   sub_builder.AddAction(
                       kActionShowBookmarkBar,
                       {.text_override =
-                           l10n_util::GetStringUTF16(bookmark_bar_string_id)});
+                           l10n_util::GetStringUTF16(bookmark_bar_string_id),
+                       .element_id =
+                           BookmarkSubMenuModel::kShowBookmarkBarMenuItem});
                 }
 
                 sub_builder.AddAction(
                     kActionSidePanelShowBookmarks,
                     {.text_override = l10n_util::GetStringUTF16(
-                         IDS_SHOW_BOOKMARK_SIDE_PANEL)});
+                         IDS_SHOW_BOOKMARK_SIDE_PANEL),
+                     .element_id =
+                         BookmarkSubMenuModel::kShowBookmarkSidePanelItem});
 
                 const int bookmark_manager_string_id =
                     features::IsMenuSimplificationEnabled()
@@ -501,9 +603,13 @@ void ActionAppMenuManager::AddYourChromeActions(actions::ActionItem* root) {
                           .AddAction(
                               kActionSidePanelShowReadingList,
                               {.text_override = l10n_util::GetStringUTF16(
-                                   IDS_READING_LIST_MENU_SHOW_UI)});
-                    });
-              });
+                                   IDS_READING_LIST_MENU_SHOW_UI),
+                               .element_id = ReadingListSubMenuModel::
+                                   kReadingListMenuShowUI});
+                    },
+                    {.element_id = BookmarkSubMenuModel::kReadingListMenuItem});
+              },
+              {.element_id = AppMenuModel::kBookmarksMenuItem});
         }
 
         if (profile->IsRegularProfile()) {
@@ -512,8 +618,12 @@ void ActionAppMenuManager::AddYourChromeActions(actions::ActionItem* root) {
               base::BindRepeating(&TabGroupDynamicMenu::BuildTabGroupsAction,
                                   tab_groups_menu_->GetWeakPtr()),
               [](AppMenuBuilder& sub) {
-                sub.AddAction(kActionCreateNewTabGroup);
-              });
+                sub.AddAction(
+                    kActionCreateNewTabGroup,
+                    {.element_id =
+                         tab_groups::STGEverythingMenu::kCreateNewTabGroup});
+              },
+              {.element_id = AppMenuModel::kTabGroupsMenuItem});
         }
 
 #if BUILDFLAG(ENABLE_EXTENSIONS)
@@ -521,16 +631,29 @@ void ActionAppMenuManager::AddYourChromeActions(actions::ActionItem* root) {
             base::FeatureList::IsEnabled(
                 features::kExtensionsCollapseMainMenu) &&
             !extensions::ui_util::HasManageableExtensions(profile)) {
-          section.AddAction(kActionFindExtensions);
+          section.AddAction(
+              kActionFindExtensions,
+              {.element_id =
+                   ExtensionsMenuModel::kVisitChromeWebStoreMenuItem});
         } else {
-          section.AddSubmenu(kActionExtensionsSubmenu, [](AppMenuBuilder& sub) {
-            sub.AddAction(kActionExtensionsSubmenuManageExtensions)
-                .AddAction(kActionExtensionsSubmenuVisitChromeWebStore);
-          });
+          section.AddSubmenu(
+              kActionExtensionsSubmenu,
+              [](AppMenuBuilder& sub) {
+                sub.AddAction(
+                       kActionExtensionsSubmenuManageExtensions,
+                       {.element_id =
+                            ExtensionsMenuModel::kManageExtensionsMenuItem})
+                    .AddAction(kActionExtensionsSubmenuVisitChromeWebStore,
+                               {.element_id = ExtensionsMenuModel::
+                                    kVisitChromeWebStoreMenuItem});
+              },
+              {.element_id = AppMenuModel::kExtensionsMenuItem});
         }
 #endif
 
-        section.AddAction(kActionClearBrowsingData);
+        section.AddAction(
+            kActionClearBrowsingData,
+            {.element_id = AppMenuModel::kClearBrowsingDataMenuItem});
       });
 }
 
@@ -557,13 +680,22 @@ void ActionAppMenuManager::AddToolsAndActionsActions(
         Profile* profile = browser_window_interface_->GetProfile();
 
         if (glic::GlicEnabling::IsEnabledForProfile(profile)) {
-          section.AddAction(kActionOpenGlic);
+          section.AddAction(
+              kActionOpenGlic,
+              {.new_badge_feature = &features::kGlicAppMenuNewBadge});
+        }
+
+        if (ttc::TtcKeyedService* service = ttc::TtcKeyedService::Get(profile);
+            service && service->IsEnabled()) {
+          section.AddAction(kActionShowTtcMenu);
         }
 
         if (auto* controller = lens::LensOverlayEntryPointController::From(
                 browser_window_interface_);
             controller && controller->IsEnabled()) {
-          section.AddAction(kActionShowLensOverlayFromAppMenu);
+          section.AddAction(kActionShowLensOverlayFromAppMenu,
+                            {.new_badge_feature = &lens::features::kLensOverlay,
+                             .element_id = AppMenuModel::kShowLensOverlay});
         }
 
         section.AddAction(kActionShowTranslate);
@@ -601,7 +733,8 @@ void ActionAppMenuManager::AddToolsAndActionsActions(
                 sub.AddAction(kActionInstallPwa,
                               {.text_override = install_item,
                                .icon_override = web_app::GetInstallPWAIcon(
-                                   browser_window_interface_.get())});
+                                   browser_window_interface_.get()),
+                               .element_id = AppMenuModel::kInstallAppItem});
               } else if (std::u16string open_item = web_app::GetOpenPWALabel(
                              browser_window_interface_.get());
                          !open_item.empty()) {
@@ -615,7 +748,8 @@ void ActionAppMenuManager::AddToolsAndActionsActions(
                                    ui::SimpleMenuModel::kDefaultIconSize)});
               }
 
-              sub.AddAction(kActionCreateShortcut);
+              sub.AddAction(kActionCreateShortcut,
+                            {.element_id = AppMenuModel::kCreateShortcutItem});
 
               if (!sharing_hub::SharingIsDisabledByPolicy(profile) ||
                   sharing_hub::DesktopScreenshotsFeatureEnabled(profile)) {
@@ -647,7 +781,11 @@ void ActionAppMenuManager::AddToolsAndActionsActions(
                         base::BindRepeating(
                             &SendTabToSelfDynamicMenu::
                                 BuildSendTabToSelfActions,
-                            send_tab_to_self_menu_->GetWeakPtr()));
+                            send_tab_to_self_menu_->GetWeakPtr()),
+                        /*build_submenu=*/std::nullopt,
+                        {.new_badge_feature =
+                             &send_tab_to_self::
+                                 kSendTabToSelfEnhancedDesktopUIv2});
                   } else {
                     sub.AddAction(kActionSendTabToSelf);
                   }
@@ -660,7 +798,8 @@ void ActionAppMenuManager::AddToolsAndActionsActions(
               }
             },
             {.text_override =
-                 l10n_util::GetStringUTF16(save_and_share_string_id)});
+                 l10n_util::GetStringUTF16(save_and_share_string_id),
+             .element_id = AppMenuModel::kSaveAndShareMenuItem});
 
 #if BUILDFLAG(IS_CHROMEOS)
         if (display::Screen::Get()->InTabletMode()) {
@@ -680,81 +819,98 @@ void ActionAppMenuManager::AddToolsAndActionsActions(
         }
 #endif
 
-        section.AddSubmenu(kActionDeveloperSubmenu, [this](
-                                                        AppMenuBuilder& sub) {
+        section.AddSubmenu(
+            kActionDeveloperSubmenu,
+            [this](AppMenuBuilder& sub) {
 #if BUILDFLAG(IS_CHROMEOS)
-          const bool is_tablet_mode = display::Screen::Get()->InTabletMode();
+              const bool is_tablet_mode =
+                  display::Screen::Get()->InTabletMode();
 #else
               const bool is_tablet_mode = false;
 #endif
-          if (!is_tablet_mode) {
-            sub.AddAction(kActionTabSearch);
-          }
+              if (!is_tablet_mode) {
+                sub.AddAction(kActionTabSearch,
+                              {.icon_override = ui::ImageModel::FromVectorIcon(
+                                   features::IsRoundedIconsEnabled()
+                                       ? kManageSearchIcon
+                                       : kTabSearchTabStripOldIcon)});
+              }
 
-          sub.AddAction(kActionNameWindow);
+              sub.AddAction(kActionNameWindow);
 
-          if (auto* controller = tabs::VerticalTabStripStateController::From(
-                  browser_window_interface_.get())) {
-            if (controller->ShouldDisplayVerticalTabs()) {
-              sub.AddAction(
-                  kActionToggleVerticalTabs,
-                  {.text_override =
-                       l10n_util::GetStringUTF16(IDS_SWITCH_TO_HORIZONTAL_TAB),
-                   .icon_override = ui::ImageModel::FromVectorIcon(
-                       features::IsRoundedIconsEnabled() ? kToolbarIcon
-                                                         : kToolbarOldIcon,
-                       ui::kColorMenuIcon,
-                       ui::SimpleMenuModel::kDefaultIconSize)});
-            } else {
-              sub.AddAction(
-                  kActionToggleVerticalTabs,
-                  {.text_override =
-                       l10n_util::GetStringUTF16(IDS_SWITCH_TO_VERTICAL_TAB),
-                   .icon_override = ui::ImageModel::FromVectorIcon(
-                       base::i18n::IsRTL() ? (features::IsRoundedIconsEnabled()
-                                                  ? kDockToLeftIcon
-                                                  : kDockToRightOldIcon)
-                                           : (features::IsRoundedIconsEnabled()
-                                                  ? kDockToRightIcon
-                                                  : kDockToLeftOldIcon),
-                       ui::kColorMenuIcon,
-                       ui::SimpleMenuModel::kDefaultIconSize)});
-            }
-          }
+              if (auto* controller =
+                      tabs::VerticalTabStripStateController::From(
+                          browser_window_interface_.get())) {
+                if (controller->ShouldDisplayVerticalTabs()) {
+                  sub.AddAction(
+                      kActionToggleVerticalTabs,
+                      {.text_override = l10n_util::GetStringUTF16(
+                           IDS_SWITCH_TO_HORIZONTAL_TAB),
+                       .icon_override = ui::ImageModel::FromVectorIcon(
+                           features::IsRoundedIconsEnabled() ? kToolbarIcon
+                                                             : kToolbarOldIcon,
+                           ui::kColorMenuIcon,
+                           ui::SimpleMenuModel::kDefaultIconSize)});
+                } else {
+                  sub.AddAction(
+                      kActionToggleVerticalTabs,
+                      {.text_override = l10n_util::GetStringUTF16(
+                           IDS_SWITCH_TO_VERTICAL_TAB),
+                       .icon_override = ui::ImageModel::FromVectorIcon(
+                           base::i18n::IsRTL()
+                               ? (features::IsRoundedIconsEnabled()
+                                      ? kDockToLeftIcon
+                                      : kDockToRightOldIcon)
+                               : (features::IsRoundedIconsEnabled()
+                                      ? kDockToRightIcon
+                                      : kDockToLeftOldIcon),
+                           ui::kColorMenuIcon,
+                           ui::SimpleMenuModel::kDefaultIconSize),
+                       .new_badge_feature = &tabs::kVerticalTabsNewBadge});
+                }
+              }
 
-          Profile* profile = browser_window_interface_->GetProfile();
-          if (CustomizeChromePageHandler::IsSupported(
-                  NtpCustomBackgroundServiceFactory::GetForProfile(profile),
-                  profile)) {
-            sub.AddAction(kActionSidePanelShowCustomizeChrome);
-          }
+              Profile* profile = browser_window_interface_->GetProfile();
+              if (CustomizeChromePageHandler::IsSupported(
+                      NtpCustomBackgroundServiceFactory::GetForProfile(profile),
+                      profile)) {
+                sub.AddAction(kActionSidePanelShowCustomizeChrome);
+              }
 
-          sub.AddDivider()
-              .AddAction(kActionShowReadingModeSidePanel)
-              .AddDivider()
-              .AddAction(kActionPerformance)
-              .AddAction(kActionTaskManagerAppMenu);
+              sub.AddDivider()
+                  .AddAction(
+                      kActionShowReadingModeSidePanel,
+                      {.element_id = ToolsMenuModel::kReadingModeMenuItem})
+                  .AddDivider()
+                  .AddAction(
+                      kActionPerformance,
+                      {.element_id = ToolsMenuModel::kPerformanceMenuItem})
+                  .AddAction(kActionTaskManagerAppMenu);
 
 #if BUILDFLAG(IS_CHROMEOS)
-          sub.AddAction(kActionTakeScreenshot);
+              sub.AddAction(kActionTakeScreenshot);
 #endif
 
-          sub.AddDivider().AddAction(kActionDevTools);
+              sub.AddDivider().AddAction(kActionDevTools);
 
-          if (base::debug::IsProfilingSupported()) {
-            sub.AddDivider().AddAction(kActionProfilingEnabled,
-                                       {.is_checkable = true});
-          }
+              if (base::debug::IsProfilingSupported()) {
+                sub.AddDivider().AddAction(kActionProfilingEnabled,
+                                           {.is_checkable = true});
+              }
 
-          if (IsChromeLabsEnabled()) {
-            UpdateChromeLabsNewBadgePrefs(profile);
-            if (ShouldShowChromeLabsUI(profile) &&
-                profile->GetPrefs()->GetBoolean(
-                    chrome_labs_prefs::kBrowserLabsEnabledEnterprisePolicy)) {
-              sub.AddDivider().AddAction(kActionShowChromeLabs);
-            }
-          }
-        });
+              if (IsChromeLabsEnabled()) {
+                UpdateChromeLabsNewBadgePrefs(profile);
+                if (ShouldShowChromeLabsUI(profile) &&
+                    profile->GetPrefs()->GetBoolean(
+                        chrome_labs_prefs::
+                            kBrowserLabsEnabledEnterprisePolicy)) {
+                  sub.AddDivider().AddAction(
+                      kActionShowChromeLabs,
+                      {.element_id = ToolsMenuModel::kChromeLabsMenuItem});
+                }
+              }
+            },
+            {.element_id = AppMenuModel::kMoreToolsMenuItem});
       });
 }
 
@@ -767,31 +923,35 @@ void ActionAppMenuManager::AddFooterActions(actions::ActionItem* root) {
         section.AddAction(kActionOptions);
 
 #if BUILDFLAG(GOOGLE_CHROME_BRANDING)
-        section.AddSubmenu(kActionHelpSubmenu, [browser_window_interface](
-                                                   AppMenuBuilder& sub) {
-          sub.AddAction(kActionAbout);
+        section.AddSubmenu(
+            kActionHelpSubmenu,
+            [browser_window_interface](AppMenuBuilder& sub) {
+              sub.AddAction(kActionAbout);
 
-          if (whats_new::IsEnabled()) {
-            sub.AddAction(kActionChromeWhatsNew);
-          }
+              if (whats_new::IsEnabled()) {
+                sub.AddAction(kActionChromeWhatsNew);
+              }
 
 #if BUILDFLAG(IS_CHROMEOS) && defined(OFFICIAL_BUILD)
-          sub.AddAction(
-              kActionHelpPageViaMenu,
-              {.text_override = l10n_util::GetStringUTF16(IDS_GET_HELP)});
+              sub.AddAction(
+                  kActionHelpPageViaMenu,
+                  {.text_override = l10n_util::GetStringUTF16(IDS_GET_HELP)});
 #else
-          sub.AddAction(kActionHelpPageViaMenu);
+              sub.AddAction(kActionHelpPageViaMenu);
 #endif
 
-          Profile* profile = browser_window_interface->GetProfile();
-          if (chrome::CanShowFeedback(profile)) {
-            sub.AddAction(kActionFeedback);
+              Profile* profile = browser_window_interface->GetProfile();
+              if (chrome::CanShowFeedback(profile)) {
+                sub.AddAction(kActionFeedback);
 
-            if (feedback::ReportUnsafeSiteDialog::IsEnabled(*profile)) {
-              sub.AddAction(kActionReportUnsafeSite);
-            }
-          }
-        });
+                if (feedback::ReportUnsafeSiteDialog::IsEnabled(*profile)) {
+                  sub.AddAction(
+                      kActionReportUnsafeSite,
+                      {.element_id = HelpMenuModel::kReportUnsafeSiteMenuItem});
+                }
+              }
+            },
+            {.element_id = AppMenuModel::kHelpMenuItem});
 #else
         section.AddAction(kActionAbout);
 #endif

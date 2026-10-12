@@ -684,10 +684,6 @@ inline constexpr char kEditPasswordsInSettingsName[] =
 inline constexpr char kEditPasswordsInSettingsDescription[] =
     "Enables password editing in settings.";
 
-inline constexpr char kEnableACPrefetchName[] = "Enable AC Prefetch";
-inline constexpr char kEnableACPrefetchDescription[] =
-    "Ensures that account capabilities are prefetched and cached.";
-
 inline constexpr char kEnableAccountPreviewPreferredAccountFollowupName[] =
     "Enable Account Preview Preferred Account Followup";
 inline constexpr char
@@ -747,12 +743,6 @@ inline constexpr char kEnableFeedHeaderSettingsName[] =
     "Enables the feed header settings.";
 inline constexpr char kEnableFeedHeaderSettingsDescription[] =
     "When enabled, some UI elements of the feed header can be modified.";
-
-inline constexpr char kEnableFileDownloadConnectorIOSName[] =
-    "Enable file download connectors on iOS.";
-inline constexpr char kEnableFileDownloadConnectorIOSDescription[] =
-    "When enabled, the enterprise DLP file download featured is available on "
-    "iOS. ";
 
 inline constexpr char kEnableFuseboxKeyboardAccessoryName[] =
     "Enable Omnibox Keyboard Accessory in Fusebox";
@@ -937,11 +927,6 @@ inline constexpr char kGeminiPreciseLocationDescription[] =
 inline constexpr char kGeminiQuizzesName[] = "GeminiQuizzes";
 inline constexpr char kGeminiQuizzesDescription[] =
     "Enables the GeminiQuizzes feature.";
-
-inline constexpr char kGeminiScreenContextMigrationName[] =
-    "Gemini Screen Context Migration";
-inline constexpr char kGeminiScreenContextMigrationDescription[] =
-    "Enables migration from Gemini Page Context to Screen Context.";
 
 inline constexpr char kGeminiUnaryMigrationName[] = "Gemini Unary Migration";
 inline constexpr char kGeminiUnaryMigrationDescription[] =
@@ -1654,6 +1639,12 @@ inline constexpr char kPlusButtonInFakeboxDescription[] =
     "When enabled, the fakebox NTP can contain a plus button for multimodal "
     "actions";
 
+inline constexpr char kPlusButtonMenuInFakeboxName[] =
+    "Show the contextual menu directly in the fakebox plus button";
+inline constexpr char kPlusButtonMenuInFakeboxDescription[] =
+    "When enabled, the fakebox plus button will display the context menu"
+    "instead of opening the composebox first";
+
 inline constexpr char kPrepopulatedEnginesShadowVariantsName[] =
     "Prepopulated Engines Shadow Variants";
 inline constexpr char kPrepopulatedEnginesShadowVariantsDescription[] =
@@ -1906,12 +1897,6 @@ inline constexpr char kUpdatedFRESequenceName[] =
 inline constexpr char kUpdatedFRESequenceDescription[] =
     "Updates the sequence of the FRE screens to show the DB promo first, "
     "remove the Sin-In & Sync screens, or both.";
-
-inline constexpr char kUseDefaultAppsDestinationForPromosName[] =
-    "Use Default Apps page for promos";
-inline constexpr char kUseDefaultAppsDestinationForPromosDescription[] =
-    "When enabled, all Default Browser promos redirecting to the iOS settings "
-    "will use the new Default Apps page, if the current device supports it.";
 
 inline constexpr char kUseFeedEligibilityServiceName[] =
     "[iOS] Use the new feed eligibility service";

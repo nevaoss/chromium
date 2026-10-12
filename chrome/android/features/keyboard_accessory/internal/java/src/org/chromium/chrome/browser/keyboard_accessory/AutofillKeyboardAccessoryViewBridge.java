@@ -21,6 +21,7 @@ import org.chromium.components.autofill.AutofillDelegate;
 import org.chromium.components.autofill.AutofillSuggestion;
 import org.chromium.components.autofill.AutofillSuggestion.Payload;
 import org.chromium.components.autofill.SuggestionType;
+import org.chromium.components.autofill.autofill_ai.AutofillAiSourceAttributionInfo;
 import org.chromium.components.autofill.autofill_ai.EntityTypeName;
 import org.chromium.ui.DropdownItem;
 import org.chromium.ui.base.WindowAndroid;
@@ -55,11 +56,13 @@ public class AutofillKeyboardAccessoryViewBridge implements AutofillDelegate {
 
     @Override
     public void suggestionAccepted(int listIndex) {
-        suggestionAccepted(listIndex, false);
+        suggestionAccepted(
+                listIndex, /* showLoadingOnAcceptance= */ false, /* wasObscured= */ false);
     }
 
     @Override
-    public void suggestionAccepted(int listIndex, boolean showLoadingOnAcceptance) {
+    public void suggestionAccepted(
+            int listIndex, boolean showLoadingOnAcceptance, boolean wasObscured) {
         if (mManualFillingComponent != null) {
             if (showLoadingOnAcceptance) {
                 mManualFillingComponent.setWaitingForFetch(true);
@@ -70,7 +73,7 @@ public class AutofillKeyboardAccessoryViewBridge implements AutofillDelegate {
         }
         if (mNativeAutofillKeyboardAccessory == 0) return;
         AutofillKeyboardAccessoryViewBridgeJni.get()
-                .suggestionAccepted(mNativeAutofillKeyboardAccessory, listIndex);
+                .suggestionAccepted(mNativeAutofillKeyboardAccessory, listIndex, wasObscured);
     }
 
     @Override
@@ -124,7 +127,9 @@ public class AutofillKeyboardAccessoryViewBridge implements AutofillDelegate {
      * @param windowAndroid The window on which to show the suggestions.
      */
     @CalledByNative
-    private void init(long nativeAutofillKeyboardAccessory, WindowAndroid windowAndroid) {
+    private void init(
+            long nativeAutofillKeyboardAccessory,
+            @JniType("ui::WindowAndroid*") WindowAndroid windowAndroid) {
         mManualFillingComponentSupplier = ManualFillingComponentSupplier.from(windowAndroid);
         if (mManualFillingComponentSupplier != null) {
             ManualFillingComponent currentFillingComponent =
@@ -221,7 +226,9 @@ public class AutofillKeyboardAccessoryViewBridge implements AutofillDelegate {
             @JniType("std::u16string") String title,
             @JniType("std::u16string") String body,
             @JniType("std::u16string") String confirmButtonText,
-            @JniType("std::u16string") String primaryButtonText) {
+            @JniType("std::u16string") String primaryButtonText,
+            @JniType("std::vector<AutofillAiSourceAttributionInfo>")
+                    List<AutofillAiSourceAttributionInfo> sources) {
         if (mManualFillingComponent == null) {
             return;
         }
@@ -230,6 +237,7 @@ public class AutofillKeyboardAccessoryViewBridge implements AutofillDelegate {
                 body,
                 confirmButtonText,
                 primaryButtonText,
+                sources,
                 () -> this.onAutofillAiSuppressionDialogClosed(/* confirmed= */ true),
                 () -> this.onAutofillAiSuppressionDialogClosed(/* confirmed= */ false));
     }
@@ -271,7 +279,7 @@ public class AutofillKeyboardAccessoryViewBridge implements AutofillDelegate {
             boolean isDeletable,
             @JniType("std::string") String featureForIph,
             @JniType("std::u16string") String iphDescriptionText,
-            GURL customIconUrl,
+            @JniType("GURL") GURL customIconUrl,
             @Acceptability int acceptability,
             boolean isLoading,
             @Nullable Payload payload,
@@ -309,7 +317,8 @@ public class AutofillKeyboardAccessoryViewBridge implements AutofillDelegate {
     interface Natives {
         void viewDismissed(long nativeAutofillKeyboardAccessoryViewImpl);
 
-        void suggestionAccepted(long nativeAutofillKeyboardAccessoryViewImpl, int listIndex);
+        void suggestionAccepted(
+                long nativeAutofillKeyboardAccessoryViewImpl, int listIndex, boolean wasObscured);
 
         void suggestionSelectionStateChanged(
                 long nativeAutofillKeyboardAccessoryViewImpl, int listIndex, boolean isSelected);

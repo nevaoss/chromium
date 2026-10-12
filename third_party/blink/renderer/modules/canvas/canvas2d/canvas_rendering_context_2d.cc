@@ -302,6 +302,7 @@ void CanvasRenderingContext2D::LoseContext(LostContextMode lost_mode) {
     return;
   context_lost_mode_ = lost_mode;
   ResetInternal();
+  ResetRecorder();
   HTMLCanvasElement* const element = canvas();
   if (element != nullptr) [[likely]] {
     ResetResourceProvider();
@@ -1117,6 +1118,7 @@ UniqueFontSelector* CanvasRenderingContext2D::GetFontSelector() const {
 
 void CanvasRenderingContext2D::SizeChanged() {
   ResetResourceProvider();
+  ResetRecorder();
   did_fail_to_create_resource_provider_ = false;
 }
 
@@ -1129,6 +1131,7 @@ void CanvasRenderingContext2D::Dispose() {
   FlushForImageListener::Get()->RemoveObserver(this);
   hibernation_handler_ = nullptr;
   ResetResourceProvider();
+  ResetRecorder();
   CanvasRenderingContext::Dispose();
 }
 
@@ -1197,8 +1200,9 @@ void CanvasRenderingContext2D::CreateProvider() {
         canvas());
   }
   if (shared_image_provider_ || bitmap_provider_) {
-    CreateRecorder(canvas()->Size(), shared_image_provider_ &&
-                                         shared_image_provider_->IsGraphite());
+    ConfigureRecorder(
+        canvas()->Size(),
+        shared_image_provider_ && shared_image_provider_->IsGraphite());
   }
 }
 
@@ -1274,11 +1278,13 @@ bool CanvasRenderingContext2D::InitializeResourceProvider() {
   }
 
   if (did_fail_to_create_resource_provider_) {
+    ResetRecorder();
     return false;
   }
 
   if (!canvas()->IsValidImageSize()) {
     did_fail_to_create_resource_provider_ = true;
+    ResetRecorder();
     if (!canvas()->Size().IsEmpty()) {
       LoseContext(CanvasRenderingContext::kInvalidCanvasSize);
     }
@@ -1303,7 +1309,6 @@ bool CanvasRenderingContext2D::InitializeResourceProvider() {
 void CanvasRenderingContext2D::ResetResourceProvider() {
   auto old_shared = std::move(shared_image_provider_);
   auto old_bitmap = std::move(bitmap_provider_);
-  ResetRecorder();
   last_recording_ = std::nullopt;
   if (canvas()) {
     canvas()->UpdateMemoryUsage();
@@ -1328,12 +1333,12 @@ void CanvasRenderingContext2D::DropAndRecreateExistingResourceProvider() {
   if (!image) {
     return;
   }
-  std::unique_ptr<MemoryManagedPaintRecorder> recorder = ReleaseRecorder();
   canvas()->ResetLayer();
   ResetResourceProvider();
 
   // Bail out if the context is lost.
   if (isContextLost() && !IsContextBeingRestored()) {
+    ResetRecorder();
     return;
   }
 
@@ -1350,8 +1355,6 @@ void CanvasRenderingContext2D::DropAndRecreateExistingResourceProvider() {
   } else {
     bitmap_provider_->RestoreBackBuffer(image->PaintImageForCurrentFrame());
   }
-  SetRecorder(std::move(recorder),
-              shared_image_provider_ && shared_image_provider_->IsGraphite());
 
   canvas()->UpdateMemoryUsage();
 }
@@ -1361,6 +1364,7 @@ void CanvasRenderingContext2D::RecreateResourceProvider() {
   CHECK(!shared_image_provider_ && !bitmap_provider_);
 
   if (did_fail_to_create_resource_provider_) {
+    ResetRecorder();
     return;
   }
 
@@ -1381,6 +1385,7 @@ void CanvasRenderingContext2D::RecreateResourceProvider() {
                                   CanvasResourceProviderType::kBitmap);
   } else {
     did_fail_to_create_resource_provider_ = true;
+    ResetRecorder();
     return;
   }
 
@@ -1438,9 +1443,10 @@ void CanvasRenderingContext2D::SetCanvas2DResourceProviderForTesting(
   canvas()->SetSize(size);
   hibernation_handler_ = std::make_unique<CanvasHibernationHandler>(*this);
   ResetResourceProvider();
+  ResetRecorder();
   shared_image_provider_ = std::move(provider);
   if (shared_image_provider_) {
-    CreateRecorder(size, shared_image_provider_->IsGraphite());
+    ConfigureRecorder(size, shared_image_provider_->IsGraphite());
   }
 }
 
@@ -1451,9 +1457,10 @@ void CanvasRenderingContext2D::SetBitmapProviderForTesting(
   canvas()->SetSize(size);
   hibernation_handler_ = std::make_unique<CanvasHibernationHandler>(*this);
   ResetResourceProvider();
+  ResetRecorder();
   bitmap_provider_ = std::move(provider);
   if (bitmap_provider_) {
-    CreateRecorder(size, /*is_graphite=*/false);
+    ConfigureRecorder(size, /*is_graphite=*/false);
   }
 }
 
@@ -1464,6 +1471,7 @@ void CanvasRenderingContext2D::SetCanvas2DResourceProviderForTesting(
   canvas()->SetSize(size);
   hibernation_handler_ = std::make_unique<CanvasHibernationHandler>(*this);
   ResetResourceProvider();
+  ResetRecorder();
 }
 
 }  // namespace blink

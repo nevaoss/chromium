@@ -80,6 +80,10 @@ namespace skills {
 class SkillsUiTabControllerInterface;
 }  // namespace skills
 
+namespace selection {
+class SuggestionService;
+}  // namespace selection
+
 namespace back_to_opener {
 class BackToOpenerController;
 }  // namespace back_to_opener
@@ -142,14 +146,11 @@ namespace extensions {
 class ExtensionSidePanelManager;
 }  // namespace extensions
 
-namespace geic {
-class GeicSidePanelCoordinator;
-}  // namespace geic
-
 namespace glic {
 class ContextualCueingHelper;
 class GlicCueTabState;
 class GlicInstanceHelper;
+class GlicPromotionSourceNavigationObserver;
 class GlicTabIndicatorHelper;
 class GlicSidePanelCoordinator;
 class GlicSelectionObserver;
@@ -555,12 +556,15 @@ class TabFeatures {
   std::unique_ptr<glic::GlicInstanceHelper> glic_instance_helper_;
   std::unique_ptr<glic::GlicTabIndicatorHelper> glic_tab_indicator_helper_;
   std::unique_ptr<glic::GlicSidePanelCoordinator> glic_side_panel_coordinator_;
-  std::unique_ptr<geic::GeicSidePanelCoordinator> geic_side_panel_coordinator_;
   std::unique_ptr<glic::GlicSelectionObserver> glic_selection_observer_;
+  std::unique_ptr<selection::SuggestionService>
+      selection_suggestion_service_;
   std::unique_ptr<glic::SelectionOverlayController>
       glic_selection_overlay_controller_;
 
   std::unique_ptr<glic::GlicPageFeaturesManager> glic_page_features_manager_;
+  std::unique_ptr<glic::GlicPromotionSourceNavigationObserver>
+      glic_promotion_source_navigation_observer_;
 
   // Observes page loads to decide when to offer glic contextual cueing.
   std::unique_ptr<glic::ContextualCueingHelper> contextual_cueing_helper_;

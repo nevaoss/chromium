@@ -290,7 +290,6 @@ if (!is_android) {
       "//chrome/browser/contextual_tasks:ui",
       "//chrome/browser/devtools",
       "//chrome/browser/enterprise/isolated_mode",
-      "//chrome/browser/geic",
       "//chrome/browser/glic",
       "//chrome/browser/glic:mojo_bindings",
       "//chrome/browser/glic/browser_ui",
@@ -340,6 +339,7 @@ if (!is_android) {
       "//chrome/browser/ui/views/download",
       "//chrome/browser/ui/views/file_system_access",
       "//chrome/browser/ui/views/frame:app_menu_button_observer",
+      "//chrome/browser/ui/views/frame:browser_view_header",
       "//chrome/browser/ui/views/frame:toolbar_button_provider",
       "//chrome/browser/ui/views/js_optimization",
       "//chrome/browser/ui/views/location_bar/cookie_controls",
@@ -528,6 +528,42 @@ if (!is_android) {
       "//content/public/browser",
       "//ui/base",
       "//url",
+    ]
+  }
+
+  source_set("browser_live_tab_context_impl") {
+    sources = [ "browser_live_tab_context.cc" ]
+    public_deps = [
+      ":browser_live_tab_context",
+      "//chrome/browser:browser_public_dependencies",
+    ]
+    deps = [
+      ":browser_init_state",
+      ":browser_tab_strip",
+      ":browser_tabrestore",
+      ":browser_window_header",
+      ":ui_features",
+      "//base",
+      "//chrome/browser/apps/app_service",
+      "//chrome/browser/glic",
+      "//chrome/browser/performance_manager",
+      "//chrome/browser/profiles:profile",
+      "//chrome/browser/sessions",
+      "//chrome/browser/tab_group_sync:factories",
+      "//chrome/browser/ui/browser_window",
+      "//chrome/browser/ui/tabs:tab_group",
+      "//chrome/browser/ui/tabs:tab_strip",
+      "//chrome/browser/ui/tabs/saved_tab_groups",
+      "//chrome/browser/ui/window_metadata",
+      "//chrome/browser/web_applications",
+      "//components/saved_tab_groups/public",
+      "//components/sessions",
+      "//components/split_tabs",
+      "//components/tab_groups",
+      "//components/tabs:public",
+      "//content/public/browser",
+      "//ui/base",
+      "//ui/base/mojom:ui_base_types",
     ]
   }
 
@@ -1146,6 +1182,48 @@ source_set("tab_helpers_impl") {
   }
 }
 
+# Browser is the desktop implementation of BrowserWindowInterface. It is
+# deliberately kept out of reach of new code: features must go through
+# BrowserWindowInterface instead. The visibility list below is intentionally
+# minimal -- please do not extend it without discussing with the Bedrock team
+# (crbug.com/428946261).
+#
+# browser.h is still listed in the :ui sources below as well, so this target
+# does not yet restrict anything; that happens in a follow-up which removes it
+# from :ui.
+if (!is_android) {
+  source_set("browser_header") {
+    public = [ "browser.h" ]
+    visibility = [
+      ":ui",
+      "//chrome/browser/ui/browser_window/internal",
+    ]
+    public_deps = [
+      ":browser_window_deleter",
+      "//base",
+      "//chrome/browser/tab_contents",
+      "//chrome/browser/ui/bookmarks",
+      "//chrome/browser/ui/browser_window",
+      "//chrome/browser/ui/browser_window:create_browser_window",
+      "//chrome/browser/ui/navigator",
+      "//chrome/browser/ui/tabs:tab_strip",
+      "//chrome/browser/ui/window_feature_controller",
+      "//components/paint_preview/buildflags",
+      "//components/sessions:session_id",
+      "//components/tab_groups",
+      "//content/public/browser",
+      "//extensions/buildflags",
+      "//printing/buildflags",
+      "//third_party/blink/public/common:headers",
+      "//ui/base",
+      "//ui/base/mojom",
+      "//ui/base/unowned_user_data",
+      "//ui/gfx/geometry",
+      "//url",
+    ]
+  }
+}
+
 # Use a static library here because many test binaries depend on this but don't
 # require many files from it. This makes linking more efficient.
 # TODO(https://crbug.com/353332589): Once //chrome/browser is properly
@@ -1244,7 +1322,6 @@ static_library("ui") {
     "//chrome/browser/first_run",
     "//chrome/browser/first_run:impl",
     "//chrome/browser/gcm",
-    "//chrome/browser/geic",
     "//chrome/browser/glic",
     "//chrome/browser/glic:impl",
     "//chrome/browser/google",
@@ -1310,6 +1387,7 @@ static_library("ui") {
     "//chrome/browser/sync_tab_context",
     "//chrome/browser/task_manager/common",
     "//chrome/browser/task_manager/common:impl",
+    "//chrome/browser/themes",
     "//chrome/browser/translate:impl",
     "//chrome/browser/trusted_vault",
     "//chrome/browser/trusted_vault:impl",
@@ -1519,6 +1597,7 @@ static_library("ui") {
       ":ui_controller_factory",
       "//chrome/browser/ui/browser_active_state_manager",
       "//chrome/browser/ui/infobars",
+      "//chrome/browser/ui/views/frame:browser_view_header",
       "//chrome/browser/ui/views/frame:glass_frame_service",
       "//chrome/browser/ui/views/relaunch_notification",
       "//chrome/browser/ui/views/relaunch_notification:impl",
@@ -1567,7 +1646,6 @@ static_library("ui") {
       # target (views/frame/browser_view.h, etc.) that can't be split out yet.
       "//chrome/browser/ui/views/search_engines:impl",
       "//chrome/browser/download:impl",
-      "//chrome/browser/geic:ui",
       "//chrome/browser/ui/browser_web_contents_delegate",
 
       # bookmarks includes headers from //chrome/browser/ui (e.g. browser.h,
@@ -1792,8 +1870,11 @@ static_library("ui") {
     deps += [
       ":browser_content_setting_bubble_model_delegate",
       ":browser_content_setting_bubble_model_delegate_impl",
+      ":browser_live_tab_context_impl",
       ":browser_tab_menu_model_delegate",
       ":browser_tab_restorer",
+      ":browser_tab_strip",
+      ":browser_tab_strip_model_delegate_impl",
       ":browser_tabrestore",
       ":browser_tabrestore_impl",
       ":browser_window_deleter",
@@ -1801,6 +1882,7 @@ static_library("ui") {
       ":browser_window_theme_observer",
       ":browser_window_theme_observer_impl",
       ":chrome_pages",
+      ":chrome_pages_impl",
       ":chrome_web_modal_dialog_manager_delegate",
       ":scoped_tabbed_browser_displayer",
       ":singleton_tabs",
@@ -1819,9 +1901,21 @@ static_library("ui") {
       ":browser_window_deleter_impl",
       ":browser_window_theme_observer_impl",
 
+      # browser_live_tab_context.cc includes browser_commands.h and
+      # browser_window.h which cannot be split out yet.
+      ":browser_live_tab_context_impl",
+
       # browser_tab_restorer.cc includes browser_commands.h which cannot be
       # split out yet.
       ":browser_tab_restorer",
+
+      # browser_tab_strip_model_delegate.cc includes browser_commands.h,
+      # browser_tabstrip.h, browser_window.h, and unload_controller.h which
+      # cannot be split out yet.
+      ":browser_tab_strip_model_delegate_impl",
+
+      # chrome_pages.cc includes browser_window.h which cannot be split out yet.
+      ":chrome_pages_impl",
 
       # scoped_tabbed_browser_displayer.cc includes browser_window.h which
       # cannot be split out yet.
@@ -1900,12 +1994,8 @@ static_library("ui") {
       "browser_command_controller.h",
       "browser_commands.cc",
       "browser_commands.h",
-      "browser_live_tab_context.cc",
-      "browser_tab_restorer.cc",
-      "browser_tab_strip_model_delegate.cc",
       "browser_tabstrip.cc",
       "browser_tabstrip.h",
-      "chrome_pages.cc",
       "unload_controller.cc",
       "unload_controller.h",
     ]
@@ -1928,6 +2018,7 @@ static_library("ui") {
     deps += [
       ":accelerator_table",
       ":browser_actions",
+      ":browser_header",
       ":browser_manager_service",
       ":browser_select_file_dialog_controller",
       ":browser_window_header",
@@ -1957,7 +2048,6 @@ static_library("ui") {
       "//chrome/browser/device_api",
       "//chrome/browser/dictation",
       "//chrome/browser/first_party_sets",
-      "//chrome/browser/geic:ui",
       "//chrome/browser/glic/browser_ui:glow",
       "//chrome/browser/glic/browser_ui:glow_controller",
       "//chrome/browser/glic/browser_ui:glow_controller_impl",
@@ -2441,10 +2531,6 @@ static_library("ui") {
     assert(enable_extensions)
     assert(enable_supervised_users)
     assert(toolkit_views)
-    sources += [
-      "views/frame/browser_frame_view_chromeos.cc",
-      "views/frame/browser_frame_view_chromeos.h",
-    ]
 
     deps += [
       ":browser_commands_chromeos",
@@ -2474,7 +2560,6 @@ static_library("ui") {
       "//chrome/browser/ash/app_list",
       "//chrome/browser/ash/app_list/reorder",
       "//chrome/browser/ash/app_list/search",
-      "//chrome/browser/ash/app_list/search/games",
       "//chrome/browser/ash/app_list/search/local_image_search",
       "//chrome/browser/ash/app_list/search/system_info",
       "//chrome/browser/ash/app_restore",
@@ -2593,6 +2678,7 @@ static_library("ui") {
       "//chrome/browser/ui/views/extensions/dialogs:request_file_system_dialog",
       "//chrome/browser/ui/views/frame:browser_frame_header_chromeos",
       "//chrome/browser/ui/views/frame:browser_frame_header_chromeos_impl",
+      "//chrome/browser/ui/views/frame:browser_frame_view_chromeos",
       "//chrome/browser/ui/views/frame:browser_frame_view_factory_chromeos",
       "//chrome/browser/ui/views/frame:browser_native_widget_ash",
       "//chrome/browser/ui/views/frame:browser_native_widget_ash_impl",
@@ -2711,18 +2797,21 @@ static_library("ui") {
       "//chrome/browser/ui/chromeos/locked_state",
 
       # browser_frame_header_chromeos.cc includes
-      # views/frame/browser_frame_view_chromeos.h and
       # views/frame/browser_view.h which cannot be split out yet.
       "//chrome/browser/ui/views/frame:browser_frame_header_chromeos_impl",
 
+      # browser_frame_view_chromeos.h includes browser_frame_view.h, and
+      # browser_frame_view_chromeos.cc includes browser_view.h,
+      # browser_widget.h, and top_container_view.h from //chrome/browser/ui:ui.
+      "//chrome/browser/ui/views/frame:browser_frame_view_chromeos",
+
       # browser_frame_view_factory_chromeos.cc includes
-      # views/frame/browser_frame_view_chromeos.h and
       # views/frame/browser_view.h which cannot be split out yet.
       "//chrome/browser/ui/views/frame:browser_frame_view_factory_chromeos",
 
       # browser_native_widget_ash.cc includes
-      # browser_commands.h, views/frame/browser_view.h, and
-      # views/frame/browser_widget.h which cannot be split out yet.
+      # browser_commands.h and views/frame/browser_view.h which cannot be
+      # split out yet.
       "//chrome/browser/ui/views/frame:browser_native_widget_ash_impl",
 
       # browser_view_ash.h includes views/frame/browser_view.h which cannot be
@@ -2730,8 +2819,8 @@ static_library("ui") {
       "//chrome/browser/ui/views/frame:browser_view_ash",
 
       # immersive_mode_controller_chromeos.cc includes
-      # browser_element_identifiers.h, views/frame/browser_view.h, and
-      # views/frame/top_container_view.h from //chrome/browser/ui:ui.
+      # browser_element_identifiers.h and views/frame/browser_view.h from
+      # //chrome/browser/ui:ui.
       "//chrome/browser/ui/views/frame:immersive_mode_controller_chromeos_impl",
 
       # picture_in_picture_browser_frame_view_ash.h includes
@@ -2927,11 +3016,6 @@ static_library("ui") {
   }
 
   if (is_mac) {
-    sources += [
-      "views/frame/browser_frame_view_mac.h",
-      "views/frame/browser_frame_view_mac.mm",
-    ]
-
     deps += [
       ":browser_commands_mac",
       ":browser_commands_mac_impl",
@@ -2941,6 +3025,7 @@ static_library("ui") {
       "//chrome/browser/ui/cocoa",
       "//chrome/browser/ui/views:certificate_viewer_mac_views",
       "//chrome/browser/ui/views/frame:browser_frame_view_factory_mac",
+      "//chrome/browser/ui/views/frame:browser_frame_view_mac",
       "//chrome/browser/ui/views/frame:browser_native_widget_factory_mac",
       "//chrome/browser/ui/views/frame:browser_native_widget_mac",
       "//chrome/browser/ui/views/frame:browser_native_widget_mac_impl",
@@ -2957,24 +3042,27 @@ static_library("ui") {
       "//chrome/browser/apps/app_shim",
       "//chrome/browser/ui/cocoa",
 
-      # browser_frame_view_factory_mac.mm includes browser_frame_view_mac.h,
-      # browser_view.h, and picture_in_picture_browser_frame_view.h from
-      # //chrome/browser/ui:ui.
+      # browser_frame_view_factory_mac.mm includes browser_view.h and
+      # picture_in_picture_browser_frame_view.h from //chrome/browser/ui:ui.
       "//chrome/browser/ui/views/frame:browser_frame_view_factory_mac",
 
+      # browser_frame_view_mac.h includes browser_frame_view.h, and
+      # browser_frame_view_mac.mm includes browser_view.h and browser_widget.h
+      # from //chrome/browser/ui:ui.
+      "//chrome/browser/ui/views/frame:browser_frame_view_mac",
+
       # browser_native_widget_mac.mm includes browser_commands.h,
-      # views/frame/browser_frame_view.h, views/frame/browser_view.h,
-      # views/frame/browser_widget.h, and
+      # views/frame/browser_frame_view.h, views/frame/browser_view.h, and
       # views/frame/vertical_tab_strip_region_view.h which cannot be split out
       # yet.
       "//chrome/browser/ui/views/frame:browser_native_widget_mac_impl",
 
-      # immersive_mode_controller_mac.mm includes browser_frame_view_mac.h,
-      # browser_view.h, and top_container_view.h from //chrome/browser/ui:ui.
+      # immersive_mode_controller_mac.mm includes browser_view.h and
+      # top_container_view.h from //chrome/browser/ui:ui.
       "//chrome/browser/ui/views/frame:immersive_mode_controller_mac_impl",
 
-      # immersive_mode_overlay_views_mac.mm includes browser_frame_view_mac.h
-      # and browser_view.h from //chrome/browser/ui:ui.
+      # immersive_mode_overlay_views_mac.mm includes browser_view.h from
+      # //chrome/browser/ui:ui.
       "//chrome/browser/ui/views/frame:immersive_mode_overlay_views_mac_impl",
     ]
 
@@ -3001,11 +3089,6 @@ static_library("ui") {
     assert(toolkit_views)
     assert(use_aura)
 
-    sources += [
-      "views/frame/browser_frame_view_win.cc",
-      "views/frame/browser_frame_view_win.h",
-    ]
-
     public_deps += [
       "//chrome/browser/ui/search_promotion",
       "//chrome/browser/win",
@@ -3015,6 +3098,10 @@ static_library("ui") {
     allow_circular_includes_from += [
       "//chrome/browser/ui/views:network_profile_bubble_view",
       "//chrome/browser/ui/views/frame:browser_caption_button_container_win",
+
+      # browser_frame_view_win.cc includes browser_view.h from
+      # //chrome/browser/ui:ui.
+      "//chrome/browser/ui/views/frame:browser_frame_view_win_impl",
       "//chrome/browser/ui/views/frame:browser_native_widget_factory_aura",
       "//chrome/browser/ui/views/frame:browser_window_property_manager_win",
       "//chrome/browser/ui/views/frame:windows_taskbar_icon_updater_impl",
@@ -3030,6 +3117,8 @@ static_library("ui") {
       "//chrome/browser/ui/views:network_profile_bubble_view",
       "//chrome/browser/ui/views:uninstall_browser_prompt",
       "//chrome/browser/ui/views/frame:browser_caption_button_container_win",
+      "//chrome/browser/ui/views/frame:browser_frame_view_win",
+      "//chrome/browser/ui/views/frame:browser_frame_view_win_impl",
       "//chrome/browser/ui/views/frame:browser_native_widget_factory_aura",
       "//chrome/browser/ui/views/frame:browser_window_property_manager_win",
       "//chrome/browser/ui/views/frame:minimize_button_metrics_win",
@@ -3048,17 +3137,14 @@ static_library("ui") {
   }
 
   if (is_linux) {
-    sources += [
-      "views/frame/browser_native_widget_aura_linux.cc",
-      "views/frame/browser_native_widget_aura_linux.h",
-    ]
-
     deps += [
       "//chrome/browser:shell_integration_linux",
       "//chrome/browser/ui/views:eula_dialog_linux",
       "//chrome/browser/ui/views:window_sizer_linux",
       "//chrome/browser/ui/views/frame:browser_desktop_window_tree_host_linux",
       "//chrome/browser/ui/views/frame:browser_desktop_window_tree_host_linux_impl",
+      "//chrome/browser/ui/views/frame:browser_native_widget_aura_linux",
+      "//chrome/browser/ui/views/frame:browser_native_widget_aura_linux_impl",
       "//chrome/browser/ui/views/frame:picture_in_picture_browser_frame_view_linux",
       "//ui/linux:linux_ui_factory",
       "//ui/platform_window",
@@ -3067,6 +3153,10 @@ static_library("ui") {
     allow_circular_includes_from += [
       "//chrome/browser/ui/views:window_sizer_linux",
       "//chrome/browser/ui/views/frame:browser_desktop_window_tree_host_linux_impl",
+
+      # browser_native_widget_aura_linux.cc includes browser_view.h and
+      # browser_widget.h from //chrome/browser/ui:ui.
+      "//chrome/browser/ui/views/frame:browser_native_widget_aura_linux_impl",
 
       # picture_in_picture_browser_frame_view_linux.cc includes
       # views/frame/browser_view.h which cannot be split out yet.
@@ -3079,6 +3169,7 @@ static_library("ui") {
         "//chrome/browser/ui/views/frame:dbus_appmenu_impl",
         "//chrome/browser/ui/views/frame:dbus_appmenu_registrar",
         "//components/dbus",
+        "//components/dbus/menu",
       ]
       allow_circular_includes_from +=
           [ "//chrome/browser/ui/views/frame:dbus_appmenu_impl" ]
@@ -3114,30 +3205,11 @@ static_library("ui") {
     sources += [
       "views/frame/base_tab_strip_region_view.cc",
       "views/frame/base_tab_strip_region_view.h",
-      "views/frame/browser_frame_view.cc",
-      "views/frame/browser_frame_view.h",
       "views/frame/browser_view.cc",
-      "views/frame/browser_view.h",
-      "views/frame/browser_widget.cc",
-      "views/frame/browser_widget.h",
-      "views/frame/contents_container_view.cc",
-      "views/frame/contents_container_view.h",
       "views/frame/horizontal_tab_strip_region_view.cc",
       "views/frame/horizontal_tab_strip_region_view.h",
-      "views/frame/layout/browser_view_layout.cc",
-      "views/frame/layout/browser_view_layout.h",
-      "views/frame/multi_contents_view.cc",
-      "views/frame/multi_contents_view.h",
-      "views/frame/top_container_view.cc",
-      "views/frame/top_container_view.h",
       "views/frame/vertical_tab_strip_region_view.cc",
       "views/frame/vertical_tab_strip_region_view.h",
-      "views/web_apps/frame_toolbar/web_app_frame_toolbar_view.cc",
-      "views/web_apps/frame_toolbar/web_app_frame_toolbar_view.h",
-      "views/web_apps/frame_toolbar/web_app_menu_button.cc",
-      "views/web_apps/frame_toolbar/web_app_menu_button.h",
-      "views/web_apps/frame_toolbar/web_app_toolbar_button_container.cc",
-      "views/web_apps/frame_toolbar/web_app_toolbar_button_container.h",
     ]
 
     sources += get_target_outputs(":webui_name_variants")
@@ -3332,16 +3404,22 @@ static_library("ui") {
       "//chrome/browser/ui/views/frame:app_menu_button_impl",
       "//chrome/browser/ui/views/frame:app_menu_button_observer",
       "//chrome/browser/ui/views/frame:browser_desktop_window_tree_host",
+      "//chrome/browser/ui/views/frame:browser_frame_view",
+      "//chrome/browser/ui/views/frame:browser_frame_view_impl",
       "//chrome/browser/ui/views/frame:browser_native_widget",
       "//chrome/browser/ui/views/frame:browser_native_widget_factory",
       "//chrome/browser/ui/views/frame:browser_root_view",
       "//chrome/browser/ui/views/frame:browser_root_view_impl",
       "//chrome/browser/ui/views/frame:browser_view_app_layout_impl",
+      "//chrome/browser/ui/views/frame:browser_view_layout",
+      "//chrome/browser/ui/views/frame:browser_view_layout_core_impl",
       "//chrome/browser/ui/views/frame:browser_view_layout_delegate",
       "//chrome/browser/ui/views/frame:browser_view_layout_delegate_impl",
       "//chrome/browser/ui/views/frame:browser_view_layout_impl",
       "//chrome/browser/ui/views/frame:browser_view_popup_layout_impl",
       "//chrome/browser/ui/views/frame:browser_view_tabbed_layout_impl",
+      "//chrome/browser/ui/views/frame:browser_widget",
+      "//chrome/browser/ui/views/frame:browser_widget_impl",
       "//chrome/browser/ui/views/frame:browser_window_factory",
       "//chrome/browser/ui/views/frame:caption_button_placeholder_container",
       "//chrome/browser/ui/views/frame:contents_border_controller",
@@ -3349,6 +3427,8 @@ static_library("ui") {
       "//chrome/browser/ui/views/frame:contents_capture_border_view",
       "//chrome/browser/ui/views/frame:contents_capture_border_view_impl",
       "//chrome/browser/ui/views/frame:contents_container_outline",
+      "//chrome/browser/ui/views/frame:contents_container_view",
+      "//chrome/browser/ui/views/frame:contents_container_view_impl",
       "//chrome/browser/ui/views/frame:contents_separator",
       "//chrome/browser/ui/views/frame:contents_web_view",
       "//chrome/browser/ui/views/frame:custom_corners",
@@ -3367,8 +3447,10 @@ static_library("ui") {
       "//chrome/browser/ui/views/frame:multi_contents_drop_target_view",
       "//chrome/browser/ui/views/frame:multi_contents_resize_area",
       "//chrome/browser/ui/views/frame:multi_contents_resize_area_impl",
+      "//chrome/browser/ui/views/frame:multi_contents_view",
       "//chrome/browser/ui/views/frame:multi_contents_view_delegate",
       "//chrome/browser/ui/views/frame:multi_contents_view_drop_target_controller",
+      "//chrome/browser/ui/views/frame:multi_contents_view_impl",
       "//chrome/browser/ui/views/frame:multi_contents_view_mini_toolbar",
       "//chrome/browser/ui/views/frame:multi_contents_view_mini_toolbar_impl",
       "//chrome/browser/ui/views/frame:opaque_browser_frame_view_layout_delegate",
@@ -3388,6 +3470,8 @@ static_library("ui") {
       "//chrome/browser/ui/views/frame:tab_modal_dialog_host_impl",
       "//chrome/browser/ui/views/frame:themed_background",
       "//chrome/browser/ui/views/frame:themed_background_impl",
+      "//chrome/browser/ui/views/frame:top_container_view",
+      "//chrome/browser/ui/views/frame:top_container_view_impl",
       "//chrome/browser/ui/views/frame:vertical_tab_strip_background_blur_backdrop",
       "//chrome/browser/ui/views/frame:web_contents_close_handler",
       "//chrome/browser/ui/views/frame:windows_icon_painter",
@@ -3501,10 +3585,16 @@ static_library("ui") {
       "//chrome/browser/ui/views/web_apps/frame_toolbar:system_app_accessible_name",
       "//chrome/browser/ui/views/web_apps/frame_toolbar:web_app_content_settings_container",
       "//chrome/browser/ui/views/web_apps/frame_toolbar:web_app_frame_toolbar_utils",
+      "//chrome/browser/ui/views/web_apps/frame_toolbar:web_app_frame_toolbar_view",
+      "//chrome/browser/ui/views/web_apps/frame_toolbar:web_app_frame_toolbar_view_impl",
+      "//chrome/browser/ui/views/web_apps/frame_toolbar:web_app_menu_button",
+      "//chrome/browser/ui/views/web_apps/frame_toolbar:web_app_menu_button_impl",
       "//chrome/browser/ui/views/web_apps/frame_toolbar:web_app_navigation_button_container",
       "//chrome/browser/ui/views/web_apps/frame_toolbar:web_app_navigation_button_container_impl",
       "//chrome/browser/ui/views/web_apps/frame_toolbar:web_app_origin_text",
       "//chrome/browser/ui/views/web_apps/frame_toolbar:web_app_origin_text_impl",
+      "//chrome/browser/ui/views/web_apps/frame_toolbar:web_app_toolbar_button_container",
+      "//chrome/browser/ui/views/web_apps/frame_toolbar:web_app_toolbar_button_container_impl",
       "//chrome/browser/ui/views/web_apps/frame_toolbar:window_controls_overlay_toggle_button",
       "//chrome/browser/ui/views/web_apps/frame_toolbar:window_controls_overlay_toggle_button_impl",
       "//chrome/browser/ui/views/web_apps/isolated_web_apps:isolated_web_app_identity_view",
@@ -3616,15 +3706,9 @@ static_library("ui") {
       "//chrome/browser/ui/views/fullscreen_control:impl",
 
       # TODO(crbug.com/353332589): Remove this circular dependency when the
-      # following header gets componentized:
-      # c/b/ui/views/frame/top_container_view.h
-      "//chrome/browser/ui/views/exclusive_access:impl",
-
-      # TODO(crbug.com/353332589): Remove this circular dependency when the
       # following headers get componentized:
       # c/b/ui/tab_dialogs.h
       # c/b/ui/views/frame/browser_view.h
-      # c/b/ui/views/frame/top_container_view.h
       "//chrome/browser/ui/views/media_router:impl",
 
       # TODO(crbug.com/353332589): Remove this circular dependency when the
@@ -3657,16 +3741,25 @@ static_library("ui") {
       # which cannot be split out yet.
       "//chrome/browser/ui/views/frame:browser_view_layout_delegate_impl",
 
-      # browser_view_layout_impl includes browser_view_layout.h and
-      # multi_contents_view.h which cannot be split out yet.
+      # browser_frame_view_impl includes browser_view.h and
+      # app_browser_controller.h from //chrome/browser/ui:ui.
+      "//chrome/browser/ui/views/frame:browser_frame_view_impl",
+
+      # browser_view_layout_core_impl includes multi_contents_view.h,
+      # exclusive_access_bubble_views.h, and app_browser_controller.h
+      # from //chrome/browser/ui:ui.
+      "//chrome/browser/ui/views/frame:browser_view_layout_core_impl",
+
+      # browser_view_layout_impl includes multi_contents_view.h which cannot be
+      # split out yet.
       "//chrome/browser/ui/views/frame:browser_view_layout_impl",
 
       # browser_window_factory includes browser_view.h, etc.
       # which cannot be split out yet.
       "//chrome/browser/ui/views/frame:browser_window_factory",
 
-      # contents_border_controller_impl includes browser_view.h and
-      # contents_container_view.h which cannot be split out yet.
+      # contents_border_controller_impl includes browser_view.h which cannot be
+      # split out yet.
       "//chrome/browser/ui/views/frame:contents_border_controller_impl",
 
       # immersive_mode_controller_factory_views includes
@@ -3694,13 +3787,41 @@ static_library("ui") {
       "//chrome/browser/ui/views/frame:themed_background_impl",
       "//chrome/browser/ui/views/frame:vertical_tab_strip_background_blur_backdrop",
 
-      # picture_in_picture_browser_frame_view.h and
-      # picture_in_picture_browser_frame_view.cc include browser_frame_view.h,
-      # browser_view.h, browser_widget.h, and top_container_view.h from
+      # browser_widget.cc includes browser_frame_view.h, browser_view.h, and
+      # unload_controller.h from //chrome/browser/ui:ui.
+      "//chrome/browser/ui/views/frame:browser_widget_impl",
+
+      # contents_container_view.cc includes browser_view.h from
       # //chrome/browser/ui:ui.
+      "//chrome/browser/ui/views/frame:contents_container_view_impl",
+
+      # multi_contents_view.cc includes browser_view.h from
+      # //chrome/browser/ui:ui.
+      "//chrome/browser/ui/views/frame:multi_contents_view_impl",
+
+      # picture_in_picture_browser_frame_view.h and
+      # picture_in_picture_browser_frame_view.cc include browser_frame_view.h
+      # and browser_view.h from //chrome/browser/ui:ui.
       "//chrome/browser/ui/views/frame:picture_in_picture_browser_frame_view",
+
+      # top_container_view.cc includes browser_frame_view.h and browser_view.h
+      # from //chrome/browser/ui:ui.
+      "//chrome/browser/ui/views/frame:top_container_view_impl",
+
+      # web_app_frame_toolbar_view.cc includes browser_frame_view.h and
+      # browser_view.h from //chrome/browser/ui:ui.
+      "//chrome/browser/ui/views/web_apps/frame_toolbar:web_app_frame_toolbar_view_impl",
+
+      # web_app_menu_button.cc includes browser_view.h from
+      # //chrome/browser/ui:ui.
+      "//chrome/browser/ui/views/web_apps/frame_toolbar:web_app_menu_button_impl",
       "//chrome/browser/ui/views/web_apps/frame_toolbar:web_app_navigation_button_container_impl",
       "//chrome/browser/ui/views/web_apps/frame_toolbar:web_app_origin_text_impl",
+
+      # web_app_toolbar_button_container.cc includes
+      # browser_command_controller.h and browser_view.h from
+      # //chrome/browser/ui:ui.
+      "//chrome/browser/ui/views/web_apps/frame_toolbar:web_app_toolbar_button_container_impl",
       "//chrome/browser/ui/views/web_apps/frame_toolbar:window_controls_overlay_toggle_button_impl",
 
       # TODO(crbug.com/353332589): Remove this circular dependency when the
@@ -3787,7 +3908,6 @@ static_library("ui") {
       # c/b/ui/views/omnibox/omnibox_popup_presenter_delegate.h
       # c/b/ui/views/omnibox/webui_readonly_omnibox.h
       # c/b/ui/views/permissions/chip/permission_dashboard_controller.h
-      # c/b/ui/views/web_apps/frame_toolbar/web_app_menu_button.h
       "//chrome/browser/ui/views/location_bar",
 
       # TODO(crbug.com/434882143): Remove this circular dependency when the
@@ -3873,7 +3993,6 @@ static_library("ui") {
       # - c/b/ui/unload_controller.h
       # - c/b/ui/views/frame/browser_frame_view.h
       # - c/b/ui/views/frame/browser_view.h
-      # - c/b/ui/views/frame/browser_widget.h
       # - c/b/ui/views/frame/horizontal_tab_strip_region_view.h
       "//chrome/browser/ui/views/tabs:tab_strip_impl",
 
@@ -3964,8 +4083,7 @@ static_library("ui") {
         # views/frame/browser_frame_view_linux.{h,cc} and
         # views/frame/browser_frame_view_layout_linux.{h,cc} include
         # opaque_browser_frame_view.h, opaque_browser_frame_view_layout.h,
-        # browser_native_widget_aura_linux.h, and browser_view.h from
-        # //chrome/browser/ui:ui.
+        # and browser_view.h from //chrome/browser/ui:ui.
         "//chrome/browser/ui/views/frame:browser_frame_view_linux",
       ]
     }
@@ -3998,9 +4116,8 @@ static_library("ui") {
         "//chrome/browser/ui/views/frame:windows_caption_button_impl",
       ]
       allow_circular_includes_from += [
-        # browser_desktop_window_tree_host_win.cc includes
-        # browser_frame_view_win.h, browser_view.h, and browser_widget.h from
-        # //chrome/browser/ui:ui.
+        # browser_desktop_window_tree_host_win.cc includes browser_view.h and
+        # browser_widget.h from //chrome/browser/ui:ui.
         "//chrome/browser/ui/views/frame:browser_desktop_window_tree_host_win_impl",
         "//chrome/browser/ui/views/frame:windows_caption_button_impl",
       ]
@@ -4012,14 +4129,11 @@ static_library("ui") {
         "//chrome/browser/ui/views/web_apps/isolated_web_apps:multi_capture_notification_details_view",
       ]
     } else {
-      sources += [
-        "views/frame/opaque_browser_frame_view.cc",
-        "views/frame/opaque_browser_frame_view.h",
-        "views/frame/opaque_browser_frame_view_layout.cc",
-        "views/frame/opaque_browser_frame_view_layout.h",
-      ]
       deps += [
         "//chrome/browser/ui/views:screen_capture_notification_ui_views",
+        "//chrome/browser/ui/views/frame:opaque_browser_frame_view",
+        "//chrome/browser/ui/views/frame:opaque_browser_frame_view_impl",
+        "//chrome/browser/ui/views/frame:opaque_browser_frame_view_layout",
         "//chrome/browser/ui/views/policy:enterprise_startup_dialog",
         "//chrome/browser/ui/views/policy:idle_dialog",
         "//chrome/browser/ui/views/shortcuts",
@@ -4031,6 +4145,12 @@ static_library("ui") {
         # componentized:
         # - c/b/ui/browser.h
         "//chrome/browser/ui/views/shortcuts:impl",
+
+        # opaque_browser_frame_view_impl includes browser_view.h,
+        # browser_widget.h, top_container_view.h, tab_icon_view.h,
+        # new_tab_button.h, tab_strip.h, toolbar_view.h, and
+        # app_browser_controller.h from //chrome/browser/ui:ui.
+        "//chrome/browser/ui/views/frame:opaque_browser_frame_view_impl",
       ]
     }
 
@@ -4077,16 +4197,19 @@ static_library("ui") {
     ]
 
     if (!is_chromeos) {
-      sources += [
-        "views/frame/browser_native_widget_aura.cc",
-        "views/frame/browser_native_widget_aura.h",
+      deps += [
+        "//chrome/browser/ui/views/frame:browser_frame_view_factory_views",
+        "//chrome/browser/ui/views/frame:browser_native_widget_aura",
+        "//chrome/browser/ui/views/frame:browser_native_widget_aura_impl",
       ]
-      deps +=
-          [ "//chrome/browser/ui/views/frame:browser_frame_view_factory_views" ]
       allow_circular_includes_from += [
         # browser_frame_view_factory_views.cc includes
         # views/frame/browser_view.h which cannot be split out yet.
         "//chrome/browser/ui/views/frame:browser_frame_view_factory_views",
+
+        # browser_native_widget_aura.cc includes browser_view.h from
+        # //chrome/browser/ui:ui.
+        "//chrome/browser/ui/views/frame:browser_native_widget_aura_impl",
       ]
     }
 
@@ -4443,6 +4566,63 @@ if (!is_android) {
     ]
   }
 
+  source_set("browser_tab_strip_model_delegate_impl") {
+    sources = [ "browser_tab_strip_model_delegate.cc" ]
+    public_deps = [
+      ":browser_tab_strip",
+      "//chrome/browser:browser_public_dependencies",
+    ]
+    deps = [
+      ":browser_init_state",
+      ":browser_live_tab_context",
+      ":browser_tab_menu_model_delegate",
+      ":browser_window_header",
+      ":tab_helpers",
+      ":ui_features",
+      "//base",
+      "//build:buildflag_header_h",
+      "//chrome/browser:primitives",
+      "//chrome/browser/glic",
+      "//chrome/browser/lifetime",
+      "//chrome/browser/profiles:profile",
+      "//chrome/browser/reading_list",
+      "//chrome/browser/sessions",
+      "//chrome/browser/tab_group_sync:factories",
+      "//chrome/browser/ui/browser_web_contents_delegate",
+      "//chrome/browser/ui/browser_window",
+      "//chrome/browser/ui/tabs:tab_enums",
+      "//chrome/browser/ui/tabs:tab_group",
+      "//chrome/browser/ui/tabs:tab_strip",
+      "//chrome/browser/ui/tabs/saved_tab_groups",
+      "//chrome/browser/ui/user_education",
+      "//chrome/browser/ui/views/contextual_tasks",
+      "//chrome/browser/ui/web_applications",
+      "//chrome/browser/ui/window_feature_controller",
+      "//chrome/common:constants",
+      "//components/contextual_tasks/public:feature_list",
+      "//components/feature_engagement/public",
+      "//components/reading_list/core",
+      "//components/saved_tab_groups/internal",
+      "//components/saved_tab_groups/public",
+      "//components/security_interstitials/content:security_interstitial_page",
+      "//components/sessions",
+      "//components/split_tabs",
+      "//components/tab_groups",
+      "//components/tabs:public",
+      "//content/public/browser",
+      "//content/public/common",
+      "//ui/base",
+      "//ui/base/mojom:ui_base_types",
+      "//ui/gfx/range",
+    ]
+    if (is_chromeos) {
+      deps += [
+        "//chrome/browser/ui/chromeos/locked_state",
+        "//chrome/common:chrome_features",
+      ]
+    }
+  }
+
   source_set("incognito_clear_browsing_data_dialog_interface") {
     public = [ "incognito_clear_browsing_data_dialog_interface.h" ]
   }
@@ -4468,6 +4648,71 @@ if (!is_android) {
       "//components/signin/public/base:signin_buildflags",
       "//url",
     ]
+  }
+
+  source_set("chrome_pages_impl") {
+    sources = [ "chrome_pages.cc" ]
+    public_deps = [
+      ":chrome_pages",
+      "//chrome/browser:browser_public_dependencies",
+    ]
+    deps = [
+      ":browser_element_identifiers",
+      ":browser_window_header",
+      ":scoped_tabbed_browser_displayer",
+      ":singleton_tabs",
+      "//base",
+      "//build:branding_buildflags",
+      "//build:buildflag_header_h",
+      "//chrome/browser/apps/app_service",
+      "//chrome/browser/bookmarks",
+      "//chrome/browser/extensions",
+      "//chrome/browser/file_system_access",
+      "//chrome/browser/policy",
+      "//chrome/browser/profiles:profile",
+      "//chrome/browser/signin",
+      "//chrome/browser/ui/browser_window",
+      "//chrome/browser/ui/browser_window:create_browser_window",
+      "//chrome/browser/ui/navigator",
+      "//chrome/browser/ui/passwords",
+      "//chrome/browser/ui/signin",
+      "//chrome/browser/ui/tabs:tab_strip",
+      "//chrome/browser/ui/user_education",
+      "//chrome/browser/ui/webui/bookmarks",
+      "//chrome/browser/ui/webui/settings",
+      "//chrome/browser/ui/window_feature_controller",
+      "//chrome/browser/user_education",
+      "//chrome/common",
+      "//chrome/common:constants",
+      "//components/autofill/core/common",
+      "//components/bookmarks/browser",
+      "//components/commerce/core:commerce_constants",
+      "//components/content_settings/core/common",
+      "//components/data_sharing/public",
+      "//components/password_manager/core/common",
+      "//components/privacy_sandbox:features",
+      "//components/safe_browsing/core/common",
+      "//components/search_engines",
+      "//components/signin/public/base",
+      "//components/version_info",
+      "//content/public/browser",
+      "//extensions/browser",
+      "//extensions/common",
+      "//net",
+      "//ui/base",
+      "//url",
+    ]
+    if (is_chromeos) {
+      deps += [
+        ":settings_window_manager_chromeos",
+        "//ash/constants",
+        "//ash/webui/settings/public/constants",
+        "//chrome/browser/ui/ash/system_web_apps",
+        "//chromeos/ash/experiences/settings_ui",
+      ]
+    } else {
+      deps += [ "//chrome/browser/download/bubble" ]
+    }
   }
 
   source_set("browser_tests") {
@@ -4542,6 +4787,7 @@ if (!is_android) {
       "//chrome/browser/ui/startup",
       "//chrome/browser/ui/tabs:tab_strip",
       "//chrome/browser/ui/tabs/saved_tab_groups:test_support",
+      "//chrome/browser/ui/views/frame:browser_view_header",
       "//chrome/browser/ui/webui/management",
       "//chrome/browser/ui/window_feature_controller",
       "//chrome/browser/ui/window_metadata",
@@ -4550,6 +4796,7 @@ if (!is_android) {
       "//chrome/common:constants",
       "//chrome/test:test_support",
       "//chrome/test:test_support_ui",
+      "//chrome/test/base:testing_browser_process",
       "//components/bookmarks/browser",
       "//components/bookmarks/test",
       "//components/breadcrumbs/core",
@@ -4733,6 +4980,7 @@ static_library("test_support") {
     deps += [
       "//chrome/browser/ui/content_settings:test_support",
       "//chrome/browser/ui/passwords:test_support_ui",
+      "//chrome/browser/ui/views/frame:browser_view_header",
       "//chrome/browser/ui/views/toolbar",
       "//components/embedder_support",
       "//components/input",
@@ -4771,6 +5019,7 @@ source_set("unit_tests") {
     "//chrome/browser",
     "//chrome/browser/prefs",
     "//chrome/test:test_support",
+    "//chrome/test/base:chrome_render_view_host_test_harness",
     "//components/tabs:test_support",
     "//components/web_package",
     "//testing/gtest",
@@ -4843,6 +5092,7 @@ if (!is_android && !is_chromeos_device) {
       "//chrome/browser/sharing_hub",
       "//chrome/browser/ui/frame",
       "//chrome/browser/ui/views:find_bar_views",
+      "//chrome/browser/ui/views/frame:browser_view_header",
       "//chrome/browser/ui/views/frame:contents_web_view",
       "//chrome/test:test_support",
       "//content/test:test_support",
@@ -4927,6 +5177,7 @@ if (toolkit_views) {
       "//chrome/browser/ui/tabs:tab_strip",
       "//chrome/browser/ui/views:layout_provider",
       "//chrome/browser/ui/views:sad_tab_view",
+      "//chrome/browser/ui/views/frame:browser_view_header",
       "//chrome/browser/ui/views/frame:contents_web_view",
       "//chrome/common",
       "//components/strings:components_strings_grit",
@@ -4970,6 +5221,7 @@ if (toolkit_views) {
       "//chrome/browser/ui/tabs:tab_strip",
       "//chrome/browser/ui/views:sad_tab_view",
       "//chrome/browser/ui/views/frame",
+      "//chrome/browser/ui/views/frame:browser_view_header",
       "//chrome/browser/ui/views/frame:contents_web_view",
       "//chrome/common",
       "//chrome/test:test_support",
@@ -4996,6 +5248,8 @@ if (toolkit_views) {
       "//chrome/browser/ui/tabs:tab_strip",
       "//chrome/browser/ui/views:sad_tab_view",
       "//chrome/browser/ui/views/frame",
+      "//chrome/browser/ui/views/frame:browser_frame_view",
+      "//chrome/browser/ui/views/frame:browser_view_header",
       "//chrome/browser/ui/views/toolbar",
       "//chrome/common",
       "//chrome/test:test_support",

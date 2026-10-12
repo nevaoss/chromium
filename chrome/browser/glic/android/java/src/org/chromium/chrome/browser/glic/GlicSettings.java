@@ -44,7 +44,6 @@ import org.chromium.chrome.browser.toolbar.adaptive.AdaptiveToolbarButtonVariant
 import org.chromium.chrome.browser.toolbar.adaptive.AdaptiveToolbarPrefs;
 import org.chromium.chrome.browser.ui.bottombar.BottomBarActionEligibility;
 import org.chromium.chrome.browser.ui.bottombar.BottomBarConfigUtils;
-import org.chromium.chrome.browser.ui.side_panel.AndroidSidePanelEnabledFn;
 import org.chromium.components.browser_ui.settings.ChromeExpandableSwitchPreference;
 import org.chromium.components.browser_ui.settings.ChromeSwitchPreference;
 import org.chromium.components.browser_ui.settings.SettingsCustomTabLauncher;
@@ -131,13 +130,20 @@ public class GlicSettings extends ChromeBaseSettingsFragment {
                 getArguments() != null
                         ? getArguments().getString(GlicNavigationUtils.EXTRA_HIGHLIGHT_FIELD)
                         : null;
+        String highlightPrefKey = null;
         if (GlicNavigationUtils.FIELD_LOCATION_PERMISSION.equals(highlightField)) {
-            view.post(
-                    () -> {
-                        if (!isAdded() || getView() == null) return;
-                        scrollAndHighlightPreference(PERMISSION_LOCATION);
-                    });
+            highlightPrefKey = PERMISSION_LOCATION;
+        } else if (GlicNavigationUtils.FIELD_MICROPHONE_PERMISSION.equals(highlightField)) {
+            highlightPrefKey = PERMISSION_MICROPHONE;
         }
+        if (highlightPrefKey == null) return;
+
+        final String prefKey = highlightPrefKey;
+        view.post(
+                () -> {
+                    if (!isAdded() || getView() == null) return;
+                    scrollAndHighlightPreference(prefKey);
+                });
     }
 
     private void scrollAndHighlightPreference(String key) {
@@ -205,14 +211,14 @@ public class GlicSettings extends ChromeBaseSettingsFragment {
         boolean isBottomBarEnabled = BottomBarConfigUtils.isBottomBarEnabled(context);
         // TODO(crbug.com/503082430): Change to tab strip visibility check once toolbar Glic
         // supported on LFF
-        boolean isSidePanelEnabled = AndroidSidePanelEnabledFn.isEnabled();
+        boolean isSidePanelFormFactor = GlicUtils.isSidePanelFormFactor(context);
         if (isBottomBarEnabled) {
             updateBottomBarButtonPreference(
                     bottomBarButtonTogglePref,
                     buttonTogglePref,
                     buttonPref,
                     /* attachListener= */ true);
-        } else if (isSidePanelEnabled) {
+        } else if (isSidePanelFormFactor) {
             buttonPref.setVisible(false); // Hide the phone UI.
             bottomBarButtonTogglePref.setVisible(false);
             buttonTogglePref.setVisible(true);
@@ -288,24 +294,34 @@ public class GlicSettings extends ChromeBaseSettingsFragment {
             ensureFineLocationPermissionGranted();
         }
 
-        ChromeSwitchPreference microphonePref =
-                setupSwitchPreference(
-                        PERMISSION_MICROPHONE,
-                        ChromePreferenceKeys.GLIC_MICROPHONE_SETTING_ENABLED,
-                        GlicPrefNames.GLIC_MICROPHONE_ENABLED,
-                        (preference, newValue) -> {
-                            boolean enabled = (boolean) newValue;
-                            if (enabled) {
-                                RecordUserAction.record("Glic.Settings.Microphone.Enabled");
-                                ensureRecordAudioPermissionGranted();
-                            } else {
-                                RecordUserAction.record("Glic.Settings.Microphone.Disabled");
-                            }
-                            return true;
-                        });
+        if (ChromeFeatureList.isEnabled(ChromeFeatureList.GLIC_VOICE)) {
+            ChromeSwitchPreference microphonePref =
+                    setupSwitchPreference(
+                            PERMISSION_MICROPHONE,
+                            ChromePreferenceKeys.GLIC_MICROPHONE_SETTING_ENABLED,
+                            GlicPrefNames.GLIC_MICROPHONE_ENABLED,
+                            (preference, newValue) -> {
+                                boolean enabled = (boolean) newValue;
+                                if (enabled) {
+                                    RecordUserAction.record("Glic.Settings.Microphone.Enabled");
+                                    ensureRecordAudioPermissionGranted();
+                                } else {
+                                    RecordUserAction.record("Glic.Settings.Microphone.Disabled");
+                                }
+                                return true;
+                            });
 
-        if (microphonePref.isChecked()) {
-            ensureRecordAudioPermissionGranted();
+            if (microphonePref.isChecked()) {
+                ensureRecordAudioPermissionGranted();
+            }
+        } else {
+            // Skip setup entirely rather than only hiding the preference: the setup path
+            // requests the RECORD_AUDIO permission when the pref is already enabled, which
+            // would prompt the user for a toggle they can no longer see.
+            Preference microphonePref = findPreference(PERMISSION_MICROPHONE);
+            if (microphonePref != null) {
+                microphonePref.setVisible(false);
+            }
         }
 
         ChromeExpandableSwitchPreference tabAccessPref =
@@ -493,7 +509,7 @@ public class GlicSettings extends ChromeBaseSettingsFragment {
 
             // TODO(crbug.com/503082430): Change to tab strip visibility check once toolbar Glic
             // supported on LFF
-        } else if (AndroidSidePanelEnabledFn.isEnabled()) {
+        } else if (GlicUtils.isSidePanelFormFactor(getContext())) {
             if (bottomBarButtonTogglePref != null) bottomBarButtonTogglePref.setVisible(false);
             if (buttonTogglePref != null) {
                 boolean isPinned = GlicUtils.isButtonPinnedToTabStrip(getProfile());
@@ -730,6 +746,7 @@ public class GlicSettings extends ChromeBaseSettingsFragment {
         pref.setSummary(spannable);
     }
 
+    @SuppressWarnings("checkstyle:SetTextColorAndSetTextSizeCheck")
     private void setupAutoBrowseExpandedArea(View expandedArea) {
         TextView consider2 =
                 expandedArea.findViewById(
@@ -776,6 +793,7 @@ public class GlicSettings extends ChromeBaseSettingsFragment {
                 });
     }
 
+    @SuppressWarnings("checkstyle:SetTextColorAndSetTextSizeCheck")
     private void setupSparkAutoBrowseExpandedArea(View expandedArea) {
         TextView considerUserResponsibility =
                 expandedArea.findViewById(
@@ -839,7 +857,8 @@ public class GlicSettings extends ChromeBaseSettingsFragment {
             mLauncherHotkeyPref.setVisible(enabled);
         }
         if (mNavigationShortcutPref != null) {
-            mNavigationShortcutPref.setVisible(enabled && AndroidSidePanelEnabledFn.isEnabled());
+            mNavigationShortcutPref.setVisible(
+                    enabled && GlicUtils.isSidePanelFormFactor(getContext()));
         }
         notifyPreferencesUpdated();
     }
@@ -867,7 +886,7 @@ public class GlicSettings extends ChromeBaseSettingsFragment {
                     String prefFrag = GlicSettings.class.getName();
                     // TODO(crbug.com/503082430): Change to tab strip visibility check once toolbar
                     // Glic supported on LFF
-                    if (AndroidSidePanelEnabledFn.isEnabled()) {
+                    if (GlicUtils.isSidePanelFormFactor(context)) {
                         indexData.removeEntryForKey(prefFrag, PREFERENCE_BUTTON);
                     } else {
                         indexData.removeEntryForKey(prefFrag, PREFERENCE_BUTTON_TOGGLE);
@@ -901,6 +920,9 @@ public class GlicSettings extends ChromeBaseSettingsFragment {
                     if (!ChromeFeatureList.isEnabled(
                             ChromeFeatureList.ACTOR_LOGIN_PERMISSIONS_UI)) {
                         indexData.removeEntryForKey(prefFrag, PERMISSION_ACTOR_LOGIN);
+                    }
+                    if (!ChromeFeatureList.isEnabled(ChromeFeatureList.GLIC_VOICE)) {
+                        indexData.removeEntryForKey(prefFrag, PERMISSION_MICROPHONE);
                     }
                     boolean shouldShowWebActuation =
                             GlicEnabling.shouldShowWebActuationToggle(profile);

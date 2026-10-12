@@ -23,6 +23,7 @@ BASE_DECLARE_FEATURE(kContextualTasksExtraOauthScopes);
 BASE_DECLARE_FEATURE(kContextualTasksDriveOAuthScope);
 BASE_DECLARE_FEATURE(kEnableContextualTasksPinButtonInToolbar);
 BASE_DECLARE_FEATURE(kEphemeralPinningVisibleWhenPermanentlyPinned);
+BASE_DECLARE_FEATURE(kContextualTasksEphemeralButtonContextMenu);
 BASE_DECLARE_FEATURE(kContextualTasksContext);
 BASE_DECLARE_FEATURE(kContextualTasksSearchQuery);
 BASE_DECLARE_FEATURE(kContextualTasksContextMultiTurnTabRelevance);
@@ -80,9 +81,6 @@ BASE_DECLARE_FEATURE(kEnergyEffectInNextbox);
 
 // Fixes the composebox jump.
 BASE_DECLARE_FEATURE(kContextualTasksComposeboxJumpFix);
-
-// Switches the Contextual Tasks composebox to the forked embedder element.
-BASE_DECLARE_FEATURE(kContextualTasksComposeboxFork);
 
 // Enables the use of a rounded clip-path for the composebox.
 BASE_DECLARE_FEATURE(kContextualTasksRoundedClipPath);
@@ -151,6 +149,13 @@ BASE_DECLARE_FEATURE(kContextualTasksNonBlockingUrlNavigation);
 
 // Returns whether non-blocking AIM URL navigation is enabled.
 bool GetIsContextualTasksNonBlockingUrlNavigationEnabled();
+
+// Allows signed-out users to use side panel cobrowse in Desktop Android.
+BASE_DECLARE_FEATURE(kAllowSignedOutUserInDesktopAndroid);
+
+// Returns whether signed-out users are allowed to use side panel cobrowse in
+// Desktop Android.
+bool IsAllowSignedOutUserInDesktopAndroidEnabled();
 
 BASE_DECLARE_FEATURE(kContextualTasksEnableSpatialModelToolbarLayout);
 
@@ -551,6 +556,8 @@ extern const char kContextualTasksBypassDismissedCapName[];
 extern const char kContextualTasksBypassDismissedCapDescription[];
 extern const char kEphemeralPinningVisibleWhenPermanentlyPinnedName[];
 extern const char kEphemeralPinningVisibleWhenPermanentlyPinnedDescription[];
+extern const char kContextualTasksEphemeralButtonContextMenuName[];
+extern const char kContextualTasksEphemeralButtonContextMenuDescription[];
 
 }  // namespace flag_descriptions
 

@@ -10,6 +10,7 @@
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/webui/favicon_source.h"
 #include "chrome/browser/ui/webui/metrics_reporter/metrics_reporter_service.h"
+#include "chrome/browser/ui/webui/organizer_panel/organizer_panel_page_handler.h"
 #include "chrome/browser/ui/webui/organizer_panel/tab_groups_organizer_page_handler.h"
 #include "chrome/browser/ui/webui/tab_search/search_handler.h"
 #include "chrome/browser/ui/webui/tab_search/tab_search_page_handler.h"
@@ -55,6 +56,7 @@ OrganizerPanelUI::OrganizerPanelUI(content::WebUI* web_ui)
       {"showLess", IDS_NTP_SHOW_LESS_BUTTON_LABEL},
       {"showMore", IDS_NTP_SHOW_MORE_BUTTON_LABEL},
       {"tabCount", IDS_TAB_SEARCH_TAB_COUNT},
+      {"tabGroupMoreOptions", IDS_TAB_GROUP_MORE_OPTIONS},
       {"tabGroups", IDS_ORGANIZER_PANEL_TAB_GROUPS},
       {"title", IDS_ORGANIZER_PANEL},
   };
@@ -86,6 +88,13 @@ OrganizerPanelUI::~OrganizerPanelUI() = default;
 WEB_UI_CONTROLLER_TYPE_IMPL(OrganizerPanelUI)
 
 void OrganizerPanelUI::BindInterface(
+    mojo::PendingReceiver<organizer_panel::mojom::PageHandlerFactory>
+        receiver) {
+  organizer_panel_page_factory_receiver_.reset();
+  organizer_panel_page_factory_receiver_.Bind(std::move(receiver));
+}
+
+void OrganizerPanelUI::BindInterface(
     mojo::PendingReceiver<tab_search::mojom::PageHandlerFactory> receiver) {
   page_factory_receiver_.reset();
   page_factory_receiver_.Bind(std::move(receiver));
@@ -105,11 +114,23 @@ void OrganizerPanelUI::BindInterface(
 }
 
 void OrganizerPanelUI::CreatePageHandler(
+    mojo::PendingReceiver<organizer_panel::mojom::PageHandler> receiver) {
+  organizer_panel_page_handler_ = std::make_unique<OrganizerPanelPageHandler>(
+      std::move(receiver), web_ui()->GetWebContents());
+}
+
+void OrganizerPanelUI::CreatePageHandler(
+    mojo::PendingRemote<organizer_panel::mojom::TabGroupsOrganizerPage> page,
     mojo::PendingReceiver<organizer_panel::mojom::TabGroupsOrganizerPageHandler>
         receiver) {
+  if (!page.is_valid() || !receiver.is_valid()) {
+    tab_groups_page_factory_receiver_.ReportBadMessage(
+        "Invalid page pending remote or receiver in CreatePageHandler");
+    return;
+  }
   tab_groups_organizer_page_handler_ =
       std::make_unique<TabGroupsOrganizerPageHandler>(
-          std::move(receiver), Profile::FromWebUI(web_ui()));
+          std::move(receiver), std::move(page), web_ui()->GetWebContents());
 }
 
 void OrganizerPanelUI::CreatePageHandler(

@@ -4,9 +4,11 @@
 
 #include "content/browser/file_system_access/file_path_watcher/file_path_watcher.h"
 
+#include <array>
 #include <list>
 #include <memory>
 #include <string>
+#include <utility>
 #include <vector>
 
 #include "base/atomic_sequence_num.h"
@@ -60,13 +62,97 @@
 #endif  // BUILDFLAG(IS_POSIX)
 
 #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
+#include <sys/inotify.h>
+#include <sys/socket.h>
+#include <unistd.h>
+
+#include "base/containers/span.h"
+#include "base/files/scoped_file.h"
 #include "base/format_macros.h"
+#include "base/posix/eintr_wrapper.h"
 #include "content/browser/file_system_access/file_path_watcher/file_path_watcher_inotify.h"
 #endif
 
 namespace content {
 
 namespace {
+
+#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
+// Queue packets before running the reader so read boundaries and the readiness
+// of the next batch do not depend on filesystem or thread scheduling.
+class InotifyReaderTest : public testing::Test {
+ protected:
+  void SetUp() override {
+    int fds[2];
+    ASSERT_EQ(0, socketpair(AF_UNIX, SOCK_SEQPACKET, 0, fds));
+    writer_.reset(fds[0]);
+    reader_.reset(fds[1]);
+  }
+
+  void QueueBatch(base::span<const inotify_event> events) {
+    ASSERT_EQ(
+        static_cast<ssize_t>(events.size_bytes()),
+        HANDLE_EINTR(write(writer_.get(), events.data(), events.size_bytes())));
+  }
+
+  void ReadEvents() {
+    ASSERT_TRUE(ReadInotifyEventsForTesting(
+        reader_.get(),
+        [this](const inotify_event* event, const inotify_event* moved_to) {
+          if (moved_to) {
+            moves_.emplace_back(event->wd, moved_to->wd);
+          } else {
+            events_.push_back(event->mask);
+          }
+        }));
+  }
+
+  base::ScopedFD writer_;
+  base::ScopedFD reader_;
+  std::vector<uint32_t> events_;
+  std::vector<std::pair<int, int>> moves_;
+};
+
+TEST_F(InotifyReaderTest, FlushesMoveFromWhenAnotherBatchIsReady) {
+  const std::array<inotify_event, 1> first = {
+      {{.wd = 1, .mask = IN_MOVED_FROM, .cookie = 42, .len = 0}}};
+  const std::array<inotify_event, 1> second = {
+      {{.wd = 2, .mask = IN_CREATE, .cookie = 0, .len = 0}}};
+  ASSERT_NO_FATAL_FAILURE(QueueBatch(first));
+  ASSERT_NO_FATAL_FAILURE(QueueBatch(second));
+
+  ReadEvents();
+
+  EXPECT_THAT(events_, testing::ElementsAre(IN_MOVED_FROM, IN_CREATE));
+  EXPECT_THAT(moves_, testing::IsEmpty());
+}
+
+TEST_F(InotifyReaderTest, PairsMovesWithinSameBuffer) {
+  const std::array<inotify_event, 2> batch = {
+      {{.wd = 1, .mask = IN_MOVED_FROM, .cookie = 42, .len = 0},
+       {.wd = 2, .mask = IN_MOVED_TO, .cookie = 42, .len = 0}}};
+  ASSERT_NO_FATAL_FAILURE(QueueBatch(batch));
+
+  ReadEvents();
+
+  EXPECT_THAT(events_, testing::IsEmpty());
+  EXPECT_THAT(moves_, testing::ElementsAre(std::make_pair(1, 2)));
+}
+
+TEST_F(InotifyReaderTest, DoesNotPairMovesAcrossBuffers) {
+  const std::array<inotify_event, 1> first = {
+      {{.wd = 1, .mask = IN_MOVED_FROM, .cookie = 42, .len = 0}}};
+  const std::array<inotify_event, 1> second = {
+      {{.wd = 2, .mask = IN_MOVED_TO, .cookie = 42, .len = 0}}};
+  ASSERT_NO_FATAL_FAILURE(QueueBatch(first));
+  ASSERT_NO_FATAL_FAILURE(QueueBatch(second));
+
+  ReadEvents();
+
+  EXPECT_THAT(events_, testing::ElementsAre(IN_MOVED_FROM, IN_MOVED_TO));
+  EXPECT_THAT(moves_, testing::IsEmpty());
+}
+#endif  // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
 
 base::AtomicSequenceNumber g_next_delegate_id;
 
@@ -255,8 +341,7 @@ inline constexpr auto IsDirectory = []() {
 inline constexpr auto IsDeletedFile = IsFile;
 inline constexpr auto IsDeletedDirectory = IsDirectory;
 
-// TODO(crbug.com/341372596): A file move is reported as a directory on linux.
-inline constexpr auto IsMovedFile = IsDirectory;
+inline constexpr auto IsMovedFile = IsFile;
 inline constexpr auto ModifiedMatcher = [](base::FilePath reported_path,
                                            base::FilePath modified_path) {
   return testing::ElementsAre(
@@ -3115,6 +3200,58 @@ TEST_P(FilePathWatcherWithChangeInfoTest, MoveChild) {
   subdir_delegate.RunUntilEventsMatch(subdir_event_expecter);
 }
 
+#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_ANDROID)
+TEST_P(FilePathWatcherWithChangeInfoTest, MoveParentWithTargetTypeChanged) {
+  base::FilePath parent_dir(temp_dir_.GetPath().AppendASCII("parent"));
+  base::FilePath moved_parent_dir(
+      temp_dir_.GetPath().AppendASCII("moved_parent"));
+  base::FilePath replacement_parent_dir(
+      temp_dir_.GetPath().AppendASCII("replacement_parent"));
+  base::FilePath moved_replacement_parent_dir(
+      temp_dir_.GetPath().AppendASCII("moved_replacement_parent"));
+  base::FilePath target(parent_dir.AppendASCII("subdir").AppendASCII("target"));
+  base::FilePath replacement_target(
+      replacement_parent_dir.AppendASCII("subdir").AppendASCII("target"));
+
+  EventExpecterWithChangeInfo deleted_file_event_expecter;
+  deleted_file_event_expecter.SetEventSequenceMatcher(
+      testing::AllOf(HasPath(target), testing::Not(HasErrored()), IsFile(),
+                     IsType(FilePathWatcher::ChangeType::kDeleted),
+                     HasModifiedPath(target), HasNoMovedFromPath()));
+  EventExpecterWithChangeInfo created_directory_event_expecter;
+  created_directory_event_expecter.SetEventSequenceMatcher(
+      testing::AllOf(HasPath(target), testing::Not(HasErrored()), IsDirectory(),
+                     IsType(FilePathWatcher::ChangeType::kCreated),
+                     HasModifiedPath(target), HasNoMovedFromPath()));
+  EventExpecterWithChangeInfo deleted_directory_event_expecter;
+  deleted_directory_event_expecter.SetEventSequenceMatcher(
+      testing::AllOf(HasPath(target), testing::Not(HasErrored()), IsDirectory(),
+                     IsType(FilePathWatcher::ChangeType::kDeleted),
+                     HasModifiedPath(target), HasNoMovedFromPath()));
+
+  ASSERT_TRUE(CreateDirectory(target.DirName()));
+  ASSERT_TRUE(WriteFile(target, "content"));
+  ASSERT_TRUE(CreateDirectory(replacement_target));
+
+  FilePathWatcher watcher;
+  TestDelegate delegate;
+  ASSERT_TRUE(
+      SetupWatchWithChangeInfo(target, &watcher, &delegate, GetWatchOptions()));
+
+  ASSERT_TRUE(Move(parent_dir, moved_parent_dir));
+  delegate.RunUntilEventsMatch(deleted_file_event_expecter);
+  delegate.SpinAndDiscardAllReceivedEvents();
+
+  ASSERT_TRUE(Move(replacement_parent_dir, parent_dir));
+  delegate.RunUntilEventsMatch(created_directory_event_expecter);
+  delegate.SpinAndDiscardAllReceivedEvents();
+
+  ASSERT_TRUE(Move(parent_dir, moved_replacement_parent_dir));
+  delegate.RunUntilEventsMatch(deleted_directory_event_expecter);
+}
+#endif  // BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS) ||
+        // BUILDFLAG(IS_ANDROID)
+
 TEST_P(FilePathWatcherWithChangeInfoTest, MoveChildWithinWatchedScope) {
   base::FilePath dir(temp_dir_.GetPath().AppendASCII("dir"));
   base::FilePath src_file(dir.AppendASCII("src_file"));
@@ -3352,6 +3489,44 @@ TEST_P(FilePathWatcherWithChangeInfoTest, DeleteTargetLinkedFile) {
   // Now make sure we get notified if the target file is deleted.
   ASSERT_TRUE(DeleteFile(test_file()));
   delegate.RunUntilEventsMatch(event_expecter);
+}
+
+TEST_P(FilePathWatcherWithChangeInfoTest,
+       CreateTargetLinkedDirectoryAndMoveParent) {
+  base::FilePath parent_dir(temp_dir_.GetPath().AppendASCII("parent"));
+  base::FilePath moved_parent_dir(
+      temp_dir_.GetPath().AppendASCII("moved_parent"));
+  base::FilePath link(parent_dir.AppendASCII("link"));
+  base::ScopedTempDir link_target_temp_dir;
+  ASSERT_TRUE(link_target_temp_dir.CreateUniqueTempDir());
+  base::FilePath link_target(
+      link_target_temp_dir.GetPath().AppendASCII("link_target"));
+
+  EventExpecterWithChangeInfo created_event_expecter;
+  created_event_expecter.SetEventSequenceMatcher(
+      testing::AllOf(HasPath(link), testing::Not(HasErrored()), IsFile(),
+                     IsType(FilePathWatcher::ChangeType::kCreated),
+                     HasModifiedPath(link), HasNoMovedFromPath()));
+  EventExpecterWithChangeInfo deleted_event_expecter;
+  deleted_event_expecter.SetEventSequenceMatcher(
+      testing::AllOf(HasPath(link), testing::Not(HasErrored()), IsFile(),
+                     IsType(FilePathWatcher::ChangeType::kDeleted),
+                     HasModifiedPath(link), HasNoMovedFromPath()));
+
+  ASSERT_TRUE(CreateDirectory(parent_dir));
+  ASSERT_TRUE(CreateSymbolicLink(link_target, link));
+
+  FilePathWatcher watcher;
+  TestDelegate delegate;
+  ASSERT_TRUE(
+      SetupWatchWithChangeInfo(link, &watcher, &delegate, GetWatchOptions()));
+
+  ASSERT_TRUE(CreateDirectory(link_target));
+  delegate.RunUntilEventsMatch(created_event_expecter);
+  delegate.SpinAndDiscardAllReceivedEvents();
+
+  ASSERT_TRUE(Move(parent_dir, moved_parent_dir));
+  delegate.RunUntilEventsMatch(deleted_event_expecter);
 }
 
 TEST_P(FilePathWatcherWithChangeInfoTest, LinkedDirectoryPart1) {

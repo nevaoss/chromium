@@ -276,6 +276,7 @@ class MockWebTransport : public network::mojom::blink::WebTransport {
            network::mojom::blink::WebTransportStreamPriorityPtr priority));
   MOCK_METHOD2(GetReceiveStreamStats,
                void(uint32_t, GetReceiveStreamStatsCallback));
+  MOCK_METHOD2(GetSendStreamStats, void(uint32_t, GetSendStreamStatsCallback));
   MOCK_METHOD0(Close, void());
   MOCK_METHOD2(Close, void(uint32_t, String));
 
@@ -2232,6 +2233,34 @@ TEST_F(WebTransportTest, ReceiveDatagramWithoutEnoughBuffer) {
   test::RunPendingTasks();
 
   tester.WaitUntilSettled();
+  EXPECT_TRUE(tester.IsRejected());
+  EXPECT_TRUE(IsRangeError(script_state, tester.Value(),
+                           "supplied view is not large enough."));
+}
+
+TEST_F(WebTransportTest, QueuedDatagramWithoutEnoughBuffer) {
+  ScopedWebTransportDatagramsReadableTypeForTest readable_type_enabled(true);
+  V8TestingScope scope;
+  auto* web_transport = CreateAndConnectSuccessfully(
+      scope, "https://example.com", ByteDatagramOptions());
+
+  client_remote_->OnDatagramReceived({'A', 'B', 'C'});
+  test::RunPendingTasks();
+
+  auto* script_state = scope.GetScriptState();
+  auto* reader =
+      web_transport->datagrams()->readable()->GetBYOBReaderForTesting(
+          script_state, ASSERT_NO_EXCEPTION);
+  auto* read_options =
+      MakeGarbageCollected<ReadableStreamBYOBReaderReadOptions>();
+
+  NotShared<DOMArrayBufferView> view =
+      NotShared<DOMUint8Array>(DOMUint8Array::Create(1));
+  ScriptPromiseTester tester(
+      script_state,
+      reader->read(script_state, view, read_options, ASSERT_NO_EXCEPTION));
+  tester.WaitUntilSettled();
+
   EXPECT_TRUE(tester.IsRejected());
   EXPECT_TRUE(IsRangeError(script_state, tester.Value(),
                            "supplied view is not large enough."));

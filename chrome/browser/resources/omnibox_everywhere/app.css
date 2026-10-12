@@ -15,15 +15,7 @@
 }
 
 :host(:not([is-active])) {
-  -webkit-app-region: no-drag;
   opacity: 0.7;
-}
-
-:host(:not([is-active])) #searchbox,
-:host(:not([is-active])) #composebox,
-:host(:not([is-active])) #mostVisitedContainer,
-:host(:not([is-active])) cr-most-visited {
-  -webkit-app-region: no-drag;
 }
 
 :host(:not([is-active]):hover) {
@@ -70,9 +62,15 @@ omnibox-everywhere-omnibox::part(dropdown-content) {
  * otherwise use existing min height.
  */
 :host(.has-permission-prompt) #voiceSearchDialog {
-  height: 100%;
+  /* Shrink by 24px each vertical side to allow room for shadows
+   * to not be cut off by outer view container.
+   */
+  height: calc(100% - 48px);
   min-height: var(--voice_search_minimum_height, 128px);
-  width: 100%;
+  /* Shrinks each horizontal side by 24px to match dialog
+   * anchor's sizing.
+   */
+  width: anchor-size(width);
   min-width: var(--voice_search_minimum_width);
 }
 
@@ -200,6 +198,14 @@ cr-most-visited {
   width: max-content;
 }
 
+:host([small-loomnibox]) omnibox-everywhere-omnibox {
+  /* In small Loomnibox, prioritize displaying page title/contents over the
+   * URL in autocomplete suggestions while preserving at least ~35% width
+   * for the URL. */
+  --cr-searchbox-url-contents-flex-shrink: 0;
+  --cr-searchbox-url-contents-max-width: 65%;
+}
+
 :host([small-loomnibox]) cr-most-visited {
   /* Total inner width for 5 tiles:
    * 480px (small content width) - 32px (16px * 2 padding) - 4px (2px * 2 border) = 444px.
@@ -236,6 +242,9 @@ cr-most-visited:not([hide-title]) {
 }
 
 #content:has(omnibox-everywhere-omnibox[dropdown-is-visible]) #mostVisitedContainer,
+#content:has([has-user-input]) #mostVisitedContainer,
+#content:has([is-context-menu-open]) #mostVisitedContainer,
+#content:has([is-screenshot-menu-open]) #mostVisitedContainer,
 #content:has(#composebox) #mostVisitedContainer,
 #mostVisitedContainer[hidden],
 #mostVisitedContainer:has(cr-most-visited:not([visible_])),

@@ -533,7 +533,11 @@ BrowserTabStripController::GetFocusedGroup() const {
 
 void BrowserTabStripController::SetFocusedGroup(
     std::optional<tab_groups::TabGroupId> group) {
-  model_->SetFocusedGroup(group);
+  if (group.has_value()) {
+    model_->EnterFocusMode(*group);
+  } else {
+    model_->ExitFocusMode();
+  }
 }
 
 void BrowserTabStripController::SetVisualDataForGroup(
@@ -813,7 +817,7 @@ void BrowserTabStripController::UpdateFocusModeTheme(
   std::optional<SkColor> color;
   if (group_id.has_value() && model_ && model_->group_model() &&
       model_->group_model()->ContainsTabGroup(group_id.value())) {
-    if (model_->IsTabGroupTemporary(group_id.value())) {
+    if (model_->IsEphemeralTabGroup(group_id.value())) {
       return;
     }
     const TabGroup* group =

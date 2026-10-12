@@ -121,6 +121,9 @@
                   '|components/crash/android/' \
                   '|components/minidump_uploader/'
     },
+    'android_extensions_side_panel': {
+      'filepath': 'chrome/browser/ui/android/extensions/side_panel/',
+    },
     'android_extensions_windowing': {
       'filepath': 'chrome/browser/ui/android/extensions/windowing/',
     },
@@ -760,6 +763,10 @@
     },
     'cbb_ref_info': {
       'filepath': 'testing/perf/cbb_ref_info/'
+    },
+    'cbe_productivity_ai': {
+      'filepath': 'chrome/browser/geic/|' \
+                  'chrome/browser/glic/gemini_enterprise/',
     },
     'cc': {
       'filepath': 'cc/'\
@@ -1543,7 +1550,7 @@
                   '|third_party/blink/renderer/modules/direct_sockets/'\
                   '|chrome/browser/printing/web_api/'\
                   '|third_party/blink/renderer/modules/printing/'\
-                  '|chrome/browser/media/webrtc/'\
+                  '|chrome/browser/media/webrtc/multi_capture/'\
                   '|chrome/browser/chromeos/policy/multi_screen_capture/'\
                   '|chrome/browser/web_applications/web_app_run_on_os_login'\
                   '|chrome/browser/ui/web_applications/sub_apps'\
@@ -2614,6 +2621,7 @@
     'android_browser_controls': ['peilinwang+watch@google.com'],
     'android_crash_reporting': ['asvitkine+watch@chromium.org',
                                 'wnwen+watch@chromium.org'],
+    'android_extensions_side_panel': ['linyuh+watch@google.com'],
     'android_extensions_windowing': ['linyuh+watch@google.com'],
     'android_flags': ['hnakashima+watch@chromium.org'],
     'android_infobars': ['dfalcantara+watch@chromium.org'],
@@ -2887,6 +2895,7 @@
                        'jophba+watch@chromium.org',
                        'mfoltz+watch-media@chromium.org'],
     'cbb_ref_info': ['johnchen+watch@chromium.org'],
+    'cbe_productivity_ai': ['cbe-productivity-cls@google.com'],
     'cc': ['cc-bugs@chromium.org'],
     'cc-animation': ['gerchiko@microsoft.com'],
     'cc-display': ['penghuang+viz@chromium.org'],

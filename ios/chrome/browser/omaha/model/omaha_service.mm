@@ -35,6 +35,7 @@
 #import "components/prefs/pref_service.h"
 #import "components/version_info/version_info.h"
 #import "ios/chrome/app/tests_hook.h"
+#import "ios/chrome/browser/omaha/model/omaha_persistent_state.h"
 #import "ios/chrome/browser/omaha/model/omaha_ping.h"
 #import "ios/chrome/browser/omaha/model/omaha_response.h"
 #import "ios/chrome/browser/shared/model/application_context/application_context.h"
@@ -120,14 +121,15 @@ void OmahaService::Start(
 
   OmahaService* service = GetInstance();
   service->StartInternal(
+      OmahaPersistentState::LoadFrom([NSUserDefaults standardUserDefaults]),
       base::BindOnce(&network::SharedURLLoaderFactory::Create,
                      shared_url_loader_factory->Clone()),
-      std::move(upgrade_recommended_callback));
+      std::move(upgrade_recommended_callback),
+      base::BindPostTask(
+          base::SequencedTaskRunner::GetCurrentDefault(),
+          base::BindRepeating(&OmahaPersistentState::SaveTo,
+                              [NSUserDefaults standardUserDefaults])));
 
-  service->locale_lang_ = GetApplicationContext()
-                              ->GetApplicationLocaleStorage()
-                              ->GetTag()
-                              .tag_string();
   web::GetIOThreadTaskRunner({})->PostTask(
       FROM_HERE, base::BindOnce(&OmahaService::SendOrScheduleNextPing,
                                 base::Unretained(service)));
@@ -198,36 +200,38 @@ OmahaService::~OmahaService() {
 }
 
 void OmahaService::StartInternal(
+    OmahaPersistentState initial_state,
     PendingSharedURLLoaderFactoryCallback pending_url_loader_factory,
-    UpgradeRecommendedCallback upgrade_recommended_callback) {
+    UpgradeRecommendedCallback upgrade_recommended_callback,
+    SavePersistentStateCallback save_persistent_state_callback) {
   if (started_) {
     return;
   }
   started_ = true;
+
   pending_url_loader_factory_ = std::move(pending_url_loader_factory);
   upgrade_recommended_callback_ = std::move(upgrade_recommended_callback);
+  save_persistent_state_callback_ = std::move(save_persistent_state_callback);
+  CHECK(pending_url_loader_factory_);
+  CHECK(save_persistent_state_callback_);
 
-  NSUserDefaults* defaults = [NSUserDefaults standardUserDefaults];
-  next_tries_time_ = base::Time::FromCFAbsoluteTime(
-      [defaults doubleForKey:kNextTriesTimesKey]);
-  current_ping_time_ =
-      base::Time::FromCFAbsoluteTime([defaults doubleForKey:kCurrentPingKey]);
-  number_of_tries_ = [defaults integerForKey:kNumberTriesKey];
-  last_sent_time_ =
-      base::Time::FromCFAbsoluteTime([defaults doubleForKey:kLastSentTimeKey]);
-  NSString* lastSentVersion = [defaults stringForKey:kLastSentVersionKey];
-  if (lastSentVersion) {
-    last_sent_version_ =
-        base::Version(base::SysNSStringToUTF8(lastSentVersion));
-  } else {
-    last_sent_version_ = base::Version(kDefaultLastSentVersion);
+  locale_lang_ = GetApplicationContext()
+                     ->GetApplicationLocaleStorage()
+                     ->GetTag()
+                     .tag_string();
+
+  current_state_ = std::move(initial_state);
+  if (!current_state_.last_sent_version.IsValid()) {
+    // base::Version() does not accept comparison with invalid version,
+    // so use kDefaultLastSentVersion when no previous version has been
+    // saved.
+    current_state_.last_sent_version = base::Version(kDefaultLastSentVersion);
   }
-  last_server_date_ = [defaults integerForKey:kLastServerDateKey];
-  if (last_server_date_ == 0) {
+  if (current_state_.last_server_date == 0) {
     // If there is no last server date, this is a first active. However, it
     // may be following a reinstall. To avoid overcounting from neutrinos,
     // transmit -2 ("unknown").
-    last_server_date_ = -2;
+    current_state_.last_server_date = -2;
   }
 
   application_install_date_ =
@@ -239,26 +243,28 @@ void OmahaService::StartInternal(
   bool persist_again = false;
 
   base::Time now = base::Time::Now();
-  // If `last_sent_time_` is in the future, the clock has been tampered with.
-  // Reset `last_sent_time_` to now.
-  if (last_sent_time_ > now) {
-    last_sent_time_ = now;
+  // If `current_state_.last_response_time` is in the future, the clock has been
+  // tampered with. Reset `current_state_.last_response_time` to now.
+  if (current_state_.last_response_time > now) {
+    current_state_.last_response_time = now;
     persist_again = true;
   }
 
-  // If the `next_tries_time_` is more than kHoursBetweenRequests hours away,
-  // there is a possibility that the clock has been tampered with. Reschedule
-  // the ping to be the usual interval after the last successful one.
-  if (next_tries_time_ - now > base::Hours(kHoursBetweenRequests)) {
-    next_tries_time_ = last_sent_time_ + base::Hours(kHoursBetweenRequests);
+  // If the `current_state_.next_ping_time` is more than kHoursBetweenRequests
+  // hours away, there is a possibility that the clock has been tampered with.
+  // Reschedule the ping to be the usual interval after the last successful one.
+  if (current_state_.next_ping_time - now >
+      base::Hours(kHoursBetweenRequests)) {
+    current_state_.next_ping_time =
+        current_state_.last_response_time + base::Hours(kHoursBetweenRequests);
     persist_again = true;
   }
 
   // Fire a ping as early as possible if the version changed.
   const base::Version& current_version = version_info::GetVersion();
-  if (last_sent_version_ < current_version) {
-    next_tries_time_ = base::Time::Now() - base::Seconds(1);
-    number_of_tries_ = 0;
+  if (current_state_.last_sent_version < current_version) {
+    current_state_.next_ping_time = base::Time::Now() - base::Seconds(1);
+    current_state_.number_of_failures = 0;
     persist_again = true;
   }
 
@@ -315,8 +321,8 @@ std::string OmahaService::GetPingContent(const std::string& requestId,
   DCHECK_CURRENTLY_ON(web::WebThread::IO);
 
   const base::Version previous_version =
-      last_sent_version_ != base::Version(kDefaultLastSentVersion)
-          ? last_sent_version_
+      current_state_.last_sent_version != base::Version(kDefaultLastSentVersion)
+          ? current_state_.last_sent_version
           : base::Version();
 
   return FormatOmahaPingEvent(
@@ -330,14 +336,14 @@ std::string OmahaService::GetPingContent(const std::string& requestId,
                        .current_version = base::Version(versionName),
                        .previous_version = previous_version,
                        .installation_time = installationTime,
-                       .last_server_date = last_server_date_,
+                       .last_server_date = current_state_.last_server_date,
                    });
 }
 
 std::string OmahaService::GetCurrentPingContent() {
   DCHECK_CURRENTLY_ON(web::WebThread::IO);
   const base::Version& current_version = version_info::GetVersion();
-  sending_install_event_ = last_sent_version_ < current_version;
+  sending_install_event_ = current_state_.last_sent_version < current_version;
   OmahaPingEvent ping_content = sending_install_event_
                                     ? OmahaPingEvent::kInstallEvent
                                     : OmahaPingEvent::kUsagePing;
@@ -385,20 +391,21 @@ void OmahaService::SendPing() {
   resource_request->credentials_mode = network::mojom::CredentialsMode::kOmit;
 
   // If this is not the first try, notify the omaha server.
-  if (number_of_tries_ && IsNextPingInstallRetry()) {
+  if (current_state_.number_of_failures && IsNextPingInstallRetry()) {
     resource_request->headers.SetHeader(
         "X-RequestAge",
         base::StringPrintf(
-            "%lld", (base::Time::Now() - current_ping_time_).InSeconds()));
+            "%lld",
+            (base::Time::Now() - current_state_.last_ping_time).InSeconds()));
   }
 
   // Update last fail time and number of tries, so that if anything fails
   // catastrophically, the fail is taken into account.
-  if (number_of_tries_ < 30) {
-    ++number_of_tries_;
+  if (current_state_.number_of_failures < 30) {
+    ++current_state_.number_of_failures;
   }
-  next_tries_time_ = base::Time::Now() + GetBackOff(number_of_tries_);
-  PersistStates();
+  current_state_.next_ping_time =
+      base::Time::Now() + GetBackOff(current_state_.number_of_failures);
 
   url_loader_ = network::SimpleURLLoader::Create(std::move(resource_request),
                                                  NO_TRAFFIC_ANNOTATION_YET);
@@ -406,18 +413,20 @@ void OmahaService::SendPing() {
   url_loader_->DownloadToStringOfUnboundedSizeUntilCrashAndDie(
       url_loader_factory_.get(),
       base::BindOnce(&OmahaService::OnURLLoadComplete, base::Unretained(this)));
+
+  PersistStates();
 }
 
 void OmahaService::SendOrScheduleNextPing() {
   DCHECK_CURRENTLY_ON(web::WebThread::IO);
   base::Time now = base::Time::Now();
-  if (next_tries_time_ <= now) {
+  if (current_state_.next_ping_time <= now) {
     SendPing();
     return;
   }
   if (schedule_) {
     timer_.Start(
-        FROM_HERE, next_tries_time_ - now,
+        FROM_HERE, current_state_.next_ping_time - now,
         base::BindOnce(&OmahaService::SendPing, base::Unretained(this)));
     // Once the timer is started, register for
     // applicationWillEnterForeground notifications.
@@ -452,7 +461,7 @@ void OmahaService::ResyncTimerIfNeeded() {
   // fire early if the device's clock was changed, but sending extra
   // pings is not harmful.
   base::Time now = base::Time::Now();
-  if (next_tries_time_ <= now) {
+  if (current_state_.next_ping_time <= now) {
     timer_.FireNow();
     return;
   }
@@ -460,29 +469,12 @@ void OmahaService::ResyncTimerIfNeeded() {
   // The deadline is still in the future, but may not match what the
   // timer is currently set to. Reset the timer with a new deadline.
   CHECK(schedule_);
-  timer_.Start(FROM_HERE, next_tries_time_ - now,
+  timer_.Start(FROM_HERE, current_state_.next_ping_time - now,
                base::BindOnce(&OmahaService::SendPing, base::Unretained(this)));
 }
 
 void OmahaService::PersistStates() {
-  // As a workaround to crbug.com/1247282, dispatch back to the main thread.
-  dispatch_async(dispatch_get_main_queue(), ^{
-    NSUserDefaults* defaults = [NSUserDefaults standardUserDefaults];
-
-    [defaults setDouble:next_tries_time_.ToCFAbsoluteTime()
-                 forKey:kNextTriesTimesKey];
-    [defaults setDouble:current_ping_time_.ToCFAbsoluteTime()
-                 forKey:kCurrentPingKey];
-    [defaults setDouble:last_sent_time_.ToCFAbsoluteTime()
-                 forKey:kLastSentTimeKey];
-    [defaults setInteger:number_of_tries_ forKey:kNumberTriesKey];
-    [defaults setObject:base::SysUTF8ToNSString(last_sent_version_.GetString())
-                 forKey:kLastSentVersionKey];
-    [defaults setInteger:last_server_date_ forKey:kLastServerDateKey];
-
-    // Save critical state information for usage reporting.
-    [defaults synchronize];
-  });
+  save_persistent_state_callback_.Run(current_state_);
 }
 
 void OmahaService::OnURLLoadComplete(std::optional<std::string> response_body) {
@@ -502,25 +494,26 @@ void OmahaService::OnURLLoadComplete(std::optional<std::string> response_body) {
   OmahaResponse response = std::move(parsing_result).value();
 
   // Handle success.
-  number_of_tries_ = 0;
-  // Schedule the next request. If requset that just finished was an install
+  current_state_.number_of_failures = 0;
+  // Schedule the next request. If request that just finished was an install
   // notification, send an active ping immediately.
-  next_tries_time_ =
+  current_state_.next_ping_time =
       sending_install_event_
           ? base::Time::Now()
           : base::Time::Now() + base::Hours(kHoursBetweenRequests);
-  current_ping_time_ = next_tries_time_;
-  base::Time original_last_sent_time = last_sent_time_;
-  last_sent_time_ = base::Time::Now();
-  last_sent_version_ = version_info::GetVersion();
+  current_state_.last_ping_time = current_state_.next_ping_time;
+  base::Time original_last_sent_time = current_state_.last_response_time;
+  current_state_.last_response_time = base::Time::Now();
+  current_state_.last_sent_version = version_info::GetVersion();
   sending_install_event_ = false;
-  last_server_date_ = response.server_date;
-  ClearInstallRetryRequestId();
+  current_state_.last_server_date = response.server_date;
+  current_state_.current_request_id = std::string();
   PersistStates();
   bool need_to_schedule_ping = true;
 
   // Log metrics.
-  base::TimeDelta success_delta = last_sent_time_ - original_last_sent_time;
+  base::TimeDelta success_delta =
+      current_state_.last_response_time - original_last_sent_time;
   base::UmaHistogramCounts1000("IOS.Omaha.HoursSinceLastSuccess",
                                success_delta.InHours());
 
@@ -556,14 +549,15 @@ void OmahaService::GetDebugInformationOnIOThread(
   base::DictValue result;
 
   result.Set("message", GetCurrentPingContent());
-  result.Set("last_sent_time",
-             base::TimeFormatShortDateAndTime(last_sent_time_));
+  result.Set("last_sent_time", base::TimeFormatShortDateAndTime(
+                                   current_state_.last_response_time));
   result.Set("next_tries_time",
-             base::TimeFormatShortDateAndTime(next_tries_time_));
+             base::TimeFormatShortDateAndTime(current_state_.next_ping_time));
   result.Set("current_ping_time",
-             base::TimeFormatShortDateAndTime(current_ping_time_));
-  result.Set("last_sent_version", last_sent_version_.GetString());
-  result.Set("number_of_tries", base::StringPrintf("%d", number_of_tries_));
+             base::TimeFormatShortDateAndTime(current_state_.last_ping_time));
+  result.Set("last_sent_version", current_state_.last_sent_version.GetString());
+  result.Set("number_of_tries",
+             base::StringPrintf("%d", current_state_.number_of_failures));
   result.Set("timer_running", base::StringPrintf("%d", timer_.IsRunning()));
   result.Set("timer_current_delay",
              base::StringPrintf("%llds", timer_.GetCurrentDelay().InSeconds()));
@@ -579,52 +573,19 @@ void OmahaService::GetDebugInformationOnIOThread(
 
 bool OmahaService::IsNextPingInstallRetry() {
   DCHECK_CURRENTLY_ON(web::WebThread::IO);
-  return [[NSUserDefaults standardUserDefaults]
-             stringForKey:kRetryRequestIdKey] != nil;
+  return !current_state_.current_request_id.empty();
 }
 
 std::string OmahaService::GetNextPingRequestId(OmahaPingEvent ping_content) {
   DCHECK_CURRENTLY_ON(web::WebThread::IO);
-  NSString* stored_id =
-      [[NSUserDefaults standardUserDefaults] stringForKey:kRetryRequestIdKey];
-  if (stored_id) {
+  if (!current_state_.current_request_id.empty()) {
     DCHECK(ping_content == OmahaPingEvent::kInstallEvent);
-    return base::SysNSStringToUTF8(stored_id);
+    return current_state_.current_request_id;
   } else {
     std::string identifier = ios::device_util::GetRandomId();
     if (ping_content == OmahaPingEvent::kInstallEvent) {
-      OmahaService::SetInstallRetryRequestId(identifier);
+      current_state_.current_request_id = identifier;
     }
     return identifier;
   }
-}
-
-void OmahaService::SetInstallRetryRequestId(const std::string& request_id) {
-  DCHECK_CURRENTLY_ON(web::WebThread::IO);
-  NSUserDefaults* defaults = [NSUserDefaults standardUserDefaults];
-  [defaults setObject:base::SysUTF8ToNSString(request_id)
-               forKey:kRetryRequestIdKey];
-  // Save critical state information for usage reporting.
-  [defaults synchronize];
-}
-
-void OmahaService::ClearInstallRetryRequestId() {
-  DCHECK_CURRENTLY_ON(web::WebThread::IO);
-  NSUserDefaults* defaults = [NSUserDefaults standardUserDefaults];
-  [defaults removeObjectForKey:kRetryRequestIdKey];
-  // Clear critical state information for usage reporting.
-  [defaults synchronize];
-}
-
-void OmahaService::ClearPersistentStateForTests() {
-  DCHECK_CURRENTLY_ON(web::WebThread::IO);
-  NSUserDefaults* defaults = [NSUserDefaults standardUserDefaults];
-  [defaults removeObjectForKey:kNextTriesTimesKey];
-  [defaults removeObjectForKey:kCurrentPingKey];
-  [defaults removeObjectForKey:kNumberTriesKey];
-  [defaults removeObjectForKey:kLastSentVersionKey];
-  [defaults removeObjectForKey:kLastSentTimeKey];
-  [defaults removeObjectForKey:kRetryRequestIdKey];
-  [defaults removeObjectForKey:kLastServerDateKey];
-  [defaults removeObjectForKey:kIOSChromeUpToDateKey];
 }

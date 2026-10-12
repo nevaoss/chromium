@@ -2,10 +2,31 @@
 # Use of this source code is governed by a BSD-style license that can be
 # found in the LICENSE file.
 
+# GEiC Finch and command-line configuration helpers.
+#
+# This is a GLiC-internal helper, not a general purpose enablement check; see
+# geic_enabling.h. Including geic_enabling.h is restricted to an allowlist in
+# chrome/browser/glic/host/DEPS so that feature code goes through GLiC's
+# enablement utilities instead.
+source_set("geic_enabling") {
+  sources = [
+    "geic_enabling.cc",
+    "geic_enabling.h",
+  ]
+
+  deps = [
+    "//base",
+    "//chrome/browser/glic",
+    "//chrome/browser/glic/public:features",
+    "//chrome/browser/profiles:profile",
+    "//components/prefs",
+    "//net",
+    "//url",
+  ]
+}
+
 source_set("gemini_enterprise") {
   sources = [
-    "geic_pref_names.cc",
-    "geic_pref_names.h",
     "glic_gemini_enterprise_manager.cc",
     "glic_gemini_enterprise_manager.h",
   ]
@@ -19,8 +40,6 @@ source_set("gemini_enterprise") {
     "//chrome/browser/ui/browser_window",
     "//chrome/browser/ui/navigator",
     "//chrome/common:constants",
-    "//components/pref_registry",
-    "//components/prefs",
     "//components/tabs:public",
     "//content/public/browser",
     "//google_apis",
@@ -31,15 +50,22 @@ source_set("gemini_enterprise") {
 
 source_set("unit_tests") {
   testonly = true
-  sources = [ "glic_gemini_enterprise_manager_unittest.cc" ]
+  sources = [
+    "geic_enabling_unittest.cc",
+    "glic_gemini_enterprise_manager_unittest.cc",
+  ]
 
   deps = [
+    ":geic_enabling",
     ":gemini_enterprise",
     "//base",
     "//base/test:test_support",
+    "//chrome/browser/glic",
     "//chrome/browser/glic:mojo_bindings",
+    "//chrome/browser/glic/public:features",
     "//chrome/common:constants",
     "//chrome/test:test_support",
+    "//components/prefs",
     "//content/test:test_support",
     "//mojo/public/cpp/bindings",
     "//testing/gtest",

@@ -308,24 +308,15 @@ void AutofillClient::DismissAutofillAiLoadingDialog() {
 }
 #endif
 
-void AutofillClient::TriggerUserPerceptionOfAutofillSurvey(
-    FillingProduct filling_product,
-    const HatsSurveyStringData& field_filling_stats_data) {
-  NOTIMPLEMENTED();
-}
-
 void AutofillClient::TriggerDeclinedSaveAddressReasonSurvey() {
   NOTIMPLEMENTED();
 }
 
-void AutofillClient::TriggerAutofillAiFillingJourneySurvey(
-    bool suggestion_accepted,
-    EntityType entity_type,
-    const base::flat_set<EntityTypeName>& saved_entities,
-    const FieldTypeSet& triggering_field_types) {
+void AutofillClient::TriggerPersonalizationAndTrustSurveys(
+    FillingProduct filling_product,
+    const HatsSurveyStringData& field_filling_stats_data) {
   NOTIMPLEMENTED();
 }
-
 
 bool AutofillClient::IsTabInActorMode() const {
   return false;
@@ -457,6 +448,11 @@ void AutofillClient::ShowAutofillAiPreFetchFailureNotification() {
 }
 
 void AutofillClient::ShowAutofillAiPrivateInferenceNotice() {
+  NOTIMPLEMENTED();
+}
+
+void AutofillClient::ShowAutofillAiSuggestionRemovedNotification(
+    base::OnceClosure on_undo_clicked) {
   NOTIMPLEMENTED();
 }
 

@@ -108,18 +108,10 @@ source_set("views") {
       "//chromeos/ash/resources/internal/strings:strings_grit",
     ]
   }
-
-  # TODO(crbug.com/40031409): Fix code that adds exit-time destructors and
-  # enable the diagnostic by removing this line.
-  configs += [ "//build/config/compiler:no_exit_time_destructors" ]
 }
 
 source_set("unit_tests") {
   testonly = true
-
-  # TODO(crbug.com/40031409): Fix code that adds exit-time destructors and
-  # enable the diagnostic by removing this line.
-  configs += [ "//build/config/compiler:no_exit_time_destructors" ]
 
   sources = [
     "editor_menu_card_context_unittest.cc",
@@ -136,6 +128,7 @@ source_set("unit_tests") {
     "//base/test:test_support",
     "//chrome/browser:global_features",
     "//chrome/test:test_support",
+    "//chrome/test/base:testing_browser_process",
     "//chromeos/ash/components/editor_menu/public/cpp",
     "//chromeos/constants",
     "//components/application_locale_storage",

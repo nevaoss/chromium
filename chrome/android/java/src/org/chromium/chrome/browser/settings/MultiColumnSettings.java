@@ -32,6 +32,7 @@ import androidx.slidingpanelayout.widget.SlidingPaneLayout;
 
 import org.chromium.base.ObserverList;
 import org.chromium.base.supplier.MonotonicObservableSupplier;
+import org.chromium.build.BuildConfig;
 import org.chromium.build.annotations.EnsuresNonNull;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
@@ -307,6 +308,13 @@ public class MultiColumnSettings extends PreferenceHeaderFragmentCompat
         if (initialDetail == null) return;
 
         showDetailFragment(initialDetail, /* addToBackStack= */ false, /* tag= */ null);
+
+        // showDetailFragment() opens the sliding pane. In two-column mode the pane is not
+        // slideable, so opening it has no visual effect, but it still latches
+        // SlidingPaneLayout's preserved open state. Returning to single-column mode would then
+        // restore the pane as open, showing this auto-created fragment instead of root settings.
+        // The user never navigated here, so undo it. https://crbug.com/563047017
+        getSlidingPaneLayout().closePane();
     }
 
     /**
@@ -397,8 +405,10 @@ public class MultiColumnSettings extends PreferenceHeaderFragmentCompat
      * layout is in two column mode.
      */
     public boolean isLayoutOpen() {
-        // getView() may be null in tests before the fragment's view is created.
-        if (getView() == null) return false;
+        // getView() may be null in tests before the fragment's view is created, or during Activity
+        // recreation before onCreateView() runs. A restored detail fragment means the detail pane
+        // will be open once the view exists.
+        if (getView() == null) return isAdded() && hasDetailFragment();
 
         if (isTwoColumn()) {
             return true;
@@ -412,6 +422,11 @@ public class MultiColumnSettings extends PreferenceHeaderFragmentCompat
         // Before the initial layout pass in single-column mode, SlidingPaneLayout.isOpen() defaults
         // to true because isSlideable() is initially false (!mCanSlide). In that pre-layout state,
         // check if a detail fragment is actually present and added in the detail container.
+        return hasDetailFragment();
+    }
+
+    /** Whether a detail fragment is present and added in the detail pane container. */
+    private boolean hasDetailFragment() {
         Fragment detail = getChildFragmentManager().findFragmentById(R.id.preferences_detail);
         return detail != null && detail.isAdded();
     }
@@ -428,7 +443,14 @@ public class MultiColumnSettings extends PreferenceHeaderFragmentCompat
         // into a canonical chrome://settings/<path> URL string, pushing a new
         // NavigationEntry onto WebContents navigation history, updating the
         // Omnibox URL, and synchronizing browser Back/Forward navigation.
-        if (!mShownInTab || !ChromeFeatureList.sSettingsInTabUrlNav.isEnabled()) {
+        //
+        // The search UI is the exception: while it is open it owns the screen, and the pages it
+        // opens are steps inside a search rather than places the user navigated the tab to.
+        // Navigating the tab from under search would purge the back stack it records those pages
+        // on, leaving it with nothing to go back to. Let them take the fragment path instead.
+        if (!mShownInTab
+                || !ChromeFeatureList.sSettingsInTabUrlNav.isEnabled()
+                || isSettingsSearchOpen()) {
             return super.onPreferenceStartFragment(caller, preference);
         }
 
@@ -453,6 +475,15 @@ public class MultiColumnSettings extends PreferenceHeaderFragmentCompat
 
         navigation.startSettings(requireContext(), fragmentClass, preference.getExtras());
         return true;
+    }
+
+    /**
+     * Returns whether the settings search UI is open over this fragment. False when settings is not
+     * hosted in a tab, where there is nothing to keep off the tab's navigation history.
+     */
+    private boolean isSettingsSearchOpen() {
+        SettingsHostFragment hostFragment = SettingsHostFragment.get(this);
+        return hostFragment != null && hostFragment.isSearchOpen();
     }
 
     /** Shows a fragment inside the detail pane (`preferences_detail`). */
@@ -638,9 +669,24 @@ public class MultiColumnSettings extends PreferenceHeaderFragmentCompat
         if (fragmentName == null) {
             return null;
         }
-        // Use a null fragment to indicate MainSettings.
-        if (mShownInTab && MainSettings.class.getName().equals(fragmentName)) {
-            return new FragmentData(null, addToBackStack, tag);
+        // An intent naming MainSettings means "show root settings", not "show MainSettings in the
+        // detail pane". MainSettings is always created for the header pane by
+        // onCreatePreferenceHeader(), so instantiating another one here would create a duplicate.
+        // https://crbug.com/563146381
+        if (MainSettings.class.getName().equals(fragmentName)) {
+            // When shown in a tab, root settings is MainSettings itself. Return a null fragment
+            // to prevent a duplicate MainSettings from being created in the detail pane.
+            if (mShownInTab) return new FragmentData(null, addToBackStack, tag);
+
+            // Outside of tab mode there is no such "root settings with no detail fragment" state,
+            // so behave as if the intent named no fragment at all. onCreateInitialDetailFragment()
+            // then falls back to super, which shows the default detail fragment.
+            //
+            // No production code path names MainSettings in EXTRA_SHOW_FRAGMENT today, only test
+            // rules do. Assert so we find out if that ever changes.
+            assert BuildConfig.IS_FOR_TEST
+                    : "SettingsActivity was given an intent naming MainSettings.";
+            return null;
         }
         // Use requireContext() instead of requireActivity() to include themed contexts used by
         // SettingsInTab.

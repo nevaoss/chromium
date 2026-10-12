@@ -190,12 +190,12 @@ public class ArchivedTabsDialogCoordinatorTest {
                     mRegularTabModel = cta.getTabModelSelectorSupplier().get().getModel(false);
                     mArchivedTabModelOrchestrator =
                             ArchivedTabModelOrchestrator.getForProfile(mProfile);
+                    mTabArchiveSettings = mArchivedTabModelOrchestrator.getTabArchiveSettings();
+                    mTabArchiveSettings.setShouldShowDialogIphForTesting(false);
                 });
         waitForArchivedTabModelsToLoad(mArchivedTabModelOrchestrator);
         mArchivedTabModel = mArchivedTabModelOrchestrator.getTabModelSelector().getModel(false);
         mUserActionTester = new UserActionTester();
-        mTabArchiveSettings = mArchivedTabModelOrchestrator.getTabArchiveSettings();
-        mTabArchiveSettings.setShouldShowDialogIphForTesting(false);
     }
 
     @After
@@ -864,7 +864,6 @@ public class ArchivedTabsDialogCoordinatorTest {
     @Feature({"RenderTest"})
     public void testIphMessageResizedOnTablet() throws IOException {
         ChromeTabbedActivity cta = mCtaTestRule.getActivity();
-        ActivityTestUtils.rotateActivityToOrientation(cta, ORIENTATION_PORTRAIT);
         addArchivedTab(new GURL("https://www.google1.com/"), "test 1");
         addArchivedTab(new GURL("https://www.google2.com/"), "test 2");
         addArchivedTab(new GURL("https://www.google3.com/"), "test 3");
@@ -874,6 +873,10 @@ public class ArchivedTabsDialogCoordinatorTest {
         RegularTabSwitcherStation tabSwitcherStation = mInitialPage.openRegularTabSwitcher();
         tabSwitcherStation.expectArchiveMessageCard().openArchivedTabsDialog();
 
+        // Rotate to portrait after opening the dialog (rather than before entering the tab
+        // switcher, where toolbar relayout races with the tab switcher button click on
+        // landscape-default tablets) to establish a portrait baseline before rotating to landscape.
+        ActivityTestUtils.rotateActivityToOrientation(cta, ORIENTATION_PORTRAIT);
         mRenderTestRule.render(
                 cta.findViewById(R.id.archived_tabs_dialog),
                 "archived_tabs_iph_message_tablet_portrait");

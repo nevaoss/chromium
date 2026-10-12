@@ -38,7 +38,7 @@ namespace {
 // URL for the AI disclosure footer link.
 constexpr char kAIDisclosureURL[] = "settings://ai_disclosure";
 
-// Vertical spacing between the notice section and search results.
+// Vertical spacing between the notice section and adjacent sections.
 constexpr CGFloat kNoticeSectionSpacing = 16.0;
 
 // Footer height for the Autofill search results section to provide spacing
@@ -111,6 +111,7 @@ enum class ItemIdentifier {
       [[UISearchController alloc] initWithSearchResultsController:nil];
   _searchController.obscuresBackgroundDuringPresentation = NO;
   _searchController.hidesNavigationBarDuringPresentation = NO;
+  _searchController.automaticallyShowsCancelButton = NO;
   _searchController.searchResultsUpdater = self;
   _searchController.searchBar.delegate = self;
   _searchController.searchBar.accessibilityIdentifier =
@@ -297,6 +298,10 @@ enum class ItemIdentifier {
       sectionIdentifier ==
           SectionIdentifier::kPersonalContextSearchResultsSection) {
     return UITableViewAutomaticDimension;
+  }
+
+  if (sectionIdentifier == SectionIdentifier::kNoticeSection && section > 0) {
+    return kNoticeSectionSpacing;
   }
 
   return 0;
@@ -705,14 +710,11 @@ enum class ItemIdentifier {
   configuration.subtitleNumberOfLines = 1;
   configuration.subtitleLineBreakMode = NSLineBreakByTruncatingTail;
 
-  if (itemIdentifier.icon) {
-    ColorfulSymbolContentConfiguration* symbolConfiguration =
-        [[ColorfulSymbolContentConfiguration alloc] init];
-    symbolConfiguration.symbolImage = itemIdentifier.icon;
-    symbolConfiguration.symbolTintColor =
-        [UIColor colorNamed:kTextSecondaryColor];
-    configuration.leadingConfiguration = symbolConfiguration;
-  }
+  ColorfulSymbolContentConfiguration* symbolConfiguration =
+      [[ColorfulSymbolContentConfiguration alloc] init];
+  symbolConfiguration.symbolImage = itemIdentifier.icon;
+  symbolConfiguration.symbolTintColor = [UIColor colorNamed:kTextPrimaryColor];
+  configuration.leadingConfiguration = symbolConfiguration;
 
   UITableViewCell* cell =
       [TableViewCellContentConfiguration dequeueTableViewCell:tableView];

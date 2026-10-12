@@ -61,6 +61,7 @@ import static org.chromium.content.browser.accessibility.AccessibilityNodeInfoBu
 import static org.chromium.content.browser.accessibility.AccessibilityNodeInfoBuilder.EXTRAS_KEY_URL;
 import static org.chromium.content.browser.accessibility.AccessibilityNodeInfoBuilder.EXTRA_SELECTION_END_OFFSET_TYPE;
 import static org.chromium.content.browser.accessibility.AccessibilityNodeInfoBuilder.EXTRA_SELECTION_START_OFFSET_TYPE;
+import static org.chromium.content.browser.accessibility.AccessibilityNodeInfoBuilder.OFFSET_TYPE_TEXT;
 import static org.chromium.content_public.browser.ContentFeatureList.ACCESSIBILITY_EXTENDED_SELECTION;
 import static org.chromium.content_public.browser.ContentFeatureList.ACCESSIBILITY_MANAGE_BROADCAST_RECEIVER_ON_BACKGROUND;
 
@@ -84,6 +85,7 @@ import android.view.ViewParent;
 import android.view.ViewStructure;
 import android.view.accessibility.AccessibilityEvent;
 import android.view.accessibility.AccessibilityNodeInfo;
+import android.view.accessibility.AccessibilityNodeInfo.Selection;
 import android.view.accessibility.AccessibilityNodeProvider;
 import android.view.autofill.AutofillManager;
 import android.view.inputmethod.EditorInfo;
@@ -97,7 +99,6 @@ import org.jni_zero.CalledByNative;
 import org.jni_zero.JNINamespace;
 import org.jni_zero.NativeMethods;
 
-import org.chromium.base.AconfigFlaggedApiDelegate;
 import org.chromium.base.ContextUtils;
 import org.chromium.base.Log;
 import org.chromium.base.ResettersForTesting;
@@ -1757,14 +1758,12 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProviderCompa
             }
             return false;
         } else if (action == ACTION_SET_EXTENDED_SELECTION.getId()) {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.CINNAMON_BUN) {
+                return false;
+            }
             if (!ContentFeatureMap.isEnabled(ACCESSIBILITY_EXTENDED_SELECTION)) {
                 return false;
             }
-            AconfigFlaggedApiDelegate delegate = AconfigFlaggedApiDelegate.getInstance();
-            if (delegate == null || !delegate.isActionSetExtendedSelectionSupported()) {
-                return false;
-            }
-            // TODO(crbug.com/443078007): Add tests for this case and below.
             if (arguments == null) {
                 // Per API specification, clear selection if no argument is provided.
                 return WebContentsAccessibilityImplJni.get()
@@ -1774,39 +1773,32 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProviderCompa
             // Since `delegate.isActionSetExtendedSelectionSupported()` is true, extended
             // selection should be readable and hence a null value for start node means
             // that `node.getSelection()` has returned null.
-            var selectionStart = delegate.getActionSetExtendedSelectionStartArgument(arguments);
-            if (selectionStart == null) {
-                return WebContentsAccessibilityImplJni.get()
-                        .clearExtendedSelection(mNativeObj, virtualViewId);
-            }
-
-            var selectionEnd = delegate.getActionSetExtendedSelectionEndArgument(arguments);
-            // This is not expected since start node is not null, but since the error is
-            // from the platform, assume selection is cleared.
-            if (selectionEnd == null) {
+            Selection selection =
+                    arguments.getParcelable(
+                            AccessibilityNodeInfo.ACTION_ARGUMENT_SELECTION_PARCELABLE,
+                            Selection.class);
+            if (selection == null) {
                 return WebContentsAccessibilityImplJni.get()
                         .clearExtendedSelection(mNativeObj, virtualViewId);
             }
 
             // Get the offset type for the start and end of the selection.
-            // (crbug.com/443078007): The default value for this argument in Android API is text
-            // offset type. If -1 is returned, it means that something is wrong in accessibility
-            // framework. Consider changing the default value to text offset type.
-            int startOffsetType = arguments.getInt(EXTRA_SELECTION_START_OFFSET_TYPE, -1);
-            int endOffsetType = arguments.getInt(EXTRA_SELECTION_END_OFFSET_TYPE, -1);
-            if (startOffsetType == -1 || endOffsetType == -1) {
-                return false;
-            }
+            int startOffsetType =
+                    arguments.getInt(EXTRA_SELECTION_START_OFFSET_TYPE, OFFSET_TYPE_TEXT);
+            int endOffsetType =
+                    arguments.getInt(EXTRA_SELECTION_END_OFFSET_TYPE, OFFSET_TYPE_TEXT);
 
+            var selectionStart = selection.getStart();
+            var selectionEnd = selection.getEnd();
             return WebContentsAccessibilityImplJni.get()
                     .setExtendedSelection(
                             mNativeObj,
                             virtualViewId,
-                            /* startNodeId= */ selectionStart.first,
-                            /* startNodeOffset= */ selectionStart.second,
+                            /* startNodeId= */ selectionStart.getVirtualDescendantId(),
+                            /* startNodeOffset= */ selectionStart.getOffset(),
                             /* startOffsetType= */ startOffsetType,
-                            /* endNodeId= */ selectionEnd.first,
-                            /* endNodeOffset= */ selectionEnd.second,
+                            /* endNodeId= */ selectionEnd.getVirtualDescendantId(),
+                            /* endNodeOffset= */ selectionEnd.getOffset(),
                             /* endOffsetType= */ endOffsetType);
         } else if (action == ACTION_SHOW_TOOLTIP.getId()) {
             return WebContentsAccessibilityImplJni.get().showTooltip(mNativeObj, virtualViewId);
@@ -2475,9 +2467,6 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProviderCompa
     }
 
     @CalledByNative
-    // TODO(b:439878463): Remove @SuppressLint("NewApi") once the Android SDK
-    // is finalized and rolled into //third_party/android_sdk.
-    @SuppressLint("NewApi")
     private void handleEditableTextChanged(int id, int subType) {
         if (id == mAccessibilityFocusId) {
             // Reset granularity movement state when text content changes, so that subsequent
@@ -2490,9 +2479,8 @@ public class WebContentsAccessibilityImpl extends AccessibilityNodeProviderCompa
         AccessibilityEvent event =
                 buildAccessibilityEvent(id, AccessibilityEvent.TYPE_VIEW_TEXT_CHANGED);
         if (event == null) return;
-        AconfigFlaggedApiDelegate delegate = AconfigFlaggedApiDelegate.getInstance();
-        if (delegate != null) {
-            delegate.setTextChangeTypes(event, subType);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.CINNAMON_BUN) {
+            event.setTextChangeTypes(subType);
         }
         requestSendAccessibilityEvent(event, WindowContentChangedSubtype.NONE, id);
     }

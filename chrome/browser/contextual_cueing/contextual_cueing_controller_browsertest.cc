@@ -33,6 +33,9 @@
 #include "chrome/browser/ui/browser_tabstrip.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+#include "chrome/browser/ui/hats/hats_service_factory.h"
+#include "chrome/browser/ui/hats/mock_hats_service.h"
+#include "chrome/browser/ui/hats/survey_config.h"
 #include "chrome/browser/ui/page_action/page_action_controller.h"
 #include "chrome/browser/ui/page_action/page_action_model.h"
 #include "chrome/browser/ui/page_action/page_action_model_observer.h"
@@ -1047,6 +1050,89 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest, ShowCueAndClick) {
 }
 
 IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest,
+                       ShowCueAndClick_DoesNotHideIfIsPersistent) {
+#if BUILDFLAG(IS_ANDROID)
+  GTEST_SKIP()
+      << "Contextual cueing anchored message not implemented for Android";
+#endif
+
+  ASSERT_FALSE(cue_target()->HasClickData());
+
+  ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
+      browser(), GURL("https://www.activetab.com/abc"),
+      WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
+
+  page_actions::PageActionController* page_action_controller =
+      GetPageActionController();
+  CHECK(page_action_controller);
+  page_actions::PageActionObserver observer(kActionAnchoredContextualCue);
+  observer.RegisterAsPageActionObserver(*page_action_controller);
+
+  cue_target()->is_persistent = true;
+
+  base::HistogramTester histogram_tester;
+  ukm::TestAutoSetUkmRecorder ukm_recorder;
+
+  // Expect Shown event.
+  EXPECT_CALL(*GetMockPrivateInsightsService(),
+              LogContextualCueEvent(testing::Property(
+                  &private_insights::events::ContextualCueLogEvent::event_type,
+                  private_insights::events::ContextualCueLogEvent::SHOWN)))
+      .Times(1);
+
+  SeedExecutionResult(MakeCompleteResponse());
+  SimulateFilterPassed();
+  optimization_guide::RetryForHistogramUntilCountReached(
+      &histogram_tester, "ContextualCueing.V2.Decision", 1);
+
+  histogram_tester.ExpectUniqueSample("ContextualCueing.V2.Decision",
+                                      ContextualCueingDecision::kSuccess, 1);
+  VerifyProactiveCueDecision(ukm_recorder, ContextualCueingDecision::kSuccess);
+
+  auto* action =
+      actions::ActionManager::Get().FindAction(kActionAnchoredContextualCue);
+  ASSERT_TRUE(action);
+
+  // Initially, the contextual cue anchored message is shown on the screen.
+  ASSERT_TRUE(base::test::RunUntil([&]() {
+    return observer.GetCurrentPageActionState().anchored_message_showing;
+  }));
+
+  // Expect Clicked event.
+  EXPECT_CALL(
+      *GetMockPrivateInsightsService(),
+      LogContextualCueEvent(testing::AllOf(
+          testing::Property(
+              &private_insights::events::ContextualCueLogEvent::event_type,
+              private_insights::events::ContextualCueLogEvent::CLICKED),
+          testing::Property(
+              &private_insights::events::ContextualCueLogEvent::cue_context,
+              testing::ResultOf(
+                  [](const auto& ctx) { return ctx.active_page().url(); },
+                  testing::Eq("https://www.activetab.com/abc"))))))
+      .Times(1);
+
+  action->InvokeAction();
+
+  ASSERT_TRUE(cue_target()->HasClickData());
+  EXPECT_EQ("Prompt",
+            std::get<GlicCueActionData>(cue_target()->click_data).prompt);
+
+  // The cue should still be showing.
+  base::RunLoop run_loop;
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
+      FROM_HERE, run_loop.QuitClosure(), base::Milliseconds(200));
+  run_loop.Run();
+
+  EXPECT_TRUE(observer.GetCurrentPageActionState().showing);
+
+  histogram_tester.ExpectUniqueSample("ContextualCueing.V2.CueInteraction",
+                                      ContextualCueingInteraction::kCueClicked,
+                                      1);
+}
+
+IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest,
                        ShowCueAndClickAsIcon) {
 #if BUILDFLAG(IS_ANDROID)
   GTEST_SKIP()
@@ -1808,6 +1894,58 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest,
   // and hid the contextual cue dynamically.
   ASSERT_TRUE(base::test::RunUntil(
       [&]() { return !observer.GetCurrentPageActionState().showing; }));
+}
+
+IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest,
+                       CueDoesNotHideWhenSidePanelOpenedIfIsPersistent) {
+#if BUILDFLAG(IS_ANDROID)
+  GTEST_SKIP()
+      << "Contextual cueing anchored message not implemented for Android";
+#endif
+
+  ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
+      browser(), GURL("https://www.activetab.com/abc"),
+      WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
+
+  cue_target()->is_persistent = true;
+
+  page_actions::PageActionController* page_action_controller =
+      GetPageActionController();
+  CHECK(page_action_controller);
+  page_actions::PageActionObserver observer(kActionAnchoredContextualCue);
+  observer.RegisterAsPageActionObserver(*page_action_controller);
+
+  base::HistogramTester histogram_tester;
+  ukm::TestAutoSetUkmRecorder ukm_recorder;
+
+  SeedExecutionResult(MakeCompleteResponse());
+  SimulateFilterPassed();
+  optimization_guide::RetryForHistogramUntilCountReached(
+      &histogram_tester, "ContextualCueing.V2.Decision", 1);
+
+  histogram_tester.ExpectUniqueSample("ContextualCueing.V2.Decision",
+                                      ContextualCueingDecision::kSuccess, 1);
+  VerifyProactiveCueDecision(ukm_recorder, ContextualCueingDecision::kSuccess);
+
+  // Initially, the contextual cue anchored message is shown on the screen.
+  ASSERT_TRUE(base::test::RunUntil([&]() {
+    return observer.GetCurrentPageActionState().anchored_message_showing;
+  }));
+
+  // Open the side panel (we use Bookmarks here as a standard global entry).
+  auto* side_panel_ui = SidePanelUI::From(browser());
+  ASSERT_TRUE(side_panel_ui);
+  side_panel_ui->Show(SidePanelEntryId::kBookmarks);
+
+  // Verify that the cue remains showing.
+  // Wait a short duration to ensure it doesn't get hidden.
+  base::RunLoop run_loop;
+  base::SingleThreadTaskRunner::GetCurrentDefault()->PostDelayedTask(
+      FROM_HERE, run_loop.QuitClosure(), base::Milliseconds(200));
+  run_loop.Run();
+
+  EXPECT_TRUE(observer.GetCurrentPageActionState().showing);
 }
 
 IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest,
@@ -3098,6 +3236,259 @@ IN_PROC_BROWSER_TEST_F(ContextualCueingControllerMultiSourceBrowserTest,
   EXPECT_TRUE(target_ptr->chip_clicked);
   EXPECT_EQ(target_ptr->anchored_message_shown_priority,
             page_actions::PageActionPriorityCategory::kUserInteraction);
+}
+
+IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest,
+                       HatsSurveyLaunchedOnDismiss_EducationAndShopping) {
+  MockHatsService* mock_hats_service = static_cast<MockHatsService*>(
+      HatsServiceFactory::GetInstance()->SetTestingFactoryAndUse(
+          browser()->GetProfile(), base::BindRepeating(&BuildMockHatsService)));
+  ASSERT_TRUE(mock_hats_service);
+
+  ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
+      browser(), GURL("https://www.activetab.com/abc"),
+      WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
+
+  PrefService* prefs = browser()->GetProfile()->GetPrefs();
+  EXPECT_FALSE(prefs::HasDismissSurveyBeenShown(
+      prefs, ContextualCueSurveyCategory::kEducation));
+  EXPECT_FALSE(prefs::HasDismissSurveyBeenShown(
+      prefs, ContextualCueSurveyCategory::kShopping));
+
+  auto response = MakeCompleteResponse();
+  auto* cue = &response.contextual_cues(0);
+
+  base::OnceClosure edu_success_callback;
+  EXPECT_CALL(
+      *mock_hats_service,
+      LaunchSurveyForWebContents(
+          kHatsSurveyTriggerContextualCueingDismissed, testing::_,
+          testing::IsEmpty(),
+          testing::UnorderedElementsAre(testing::Pair("CUJ", "LEARNING")),
+          testing::_, testing::_, testing::_, testing::_))
+      .WillOnce([&](const std::string& trigger,
+                    content::WebContents* web_contents,
+                    const SurveyBitsData& product_specific_bits_data,
+                    const SurveyStringData& product_specific_string_data,
+                    base::OnceClosure success_callback,
+                    base::OnceClosure failure_callback,
+                    const std::optional<std::string>& supplied_trigger_id,
+                    const HatsService::SurveyOptions& survey_options) {
+        edu_success_callback = std::move(success_callback);
+        return HatsService::LaunchError::kNone;
+      });
+
+  contextual_cueing_controller()->OnCueInteraction(
+      ContextualCueingInteraction::kCueDismissed, CueTargetType::kGlic, *cue,
+      /*tabs_to_show=*/{}, /*background_tabs=*/{}, /*cuj=*/"LEARNING",
+      /*action=*/{}, /*cue_id=*/"fake_id");
+
+  // Before success callback runs, pref should still be false (Option 2A).
+  EXPECT_FALSE(prefs::HasDismissSurveyBeenShown(
+      prefs, ContextualCueSurveyCategory::kEducation));
+  ASSERT_TRUE(edu_success_callback);
+  std::move(edu_success_callback).Run();
+  EXPECT_TRUE(prefs::HasDismissSurveyBeenShown(
+      prefs, ContextualCueSurveyCategory::kEducation));
+
+  // Dismissing another EDU cue should NOT launch the survey again.
+  EXPECT_CALL(
+      *mock_hats_service,
+      LaunchSurveyForWebContents(kHatsSurveyTriggerContextualCueingDismissed,
+                                 testing::_, testing::_, testing::_, testing::_,
+                                 testing::_, testing::_, testing::_))
+      .Times(0);
+
+  contextual_cueing_controller()->OnCueInteraction(
+      ContextualCueingInteraction::kCueDismissed, CueTargetType::kGlic, *cue,
+      /*tabs_to_show=*/{}, /*background_tabs=*/{}, /*cuj=*/"QUIZ_ME",
+      /*action=*/{}, /*cue_id=*/"fake_id_2");
+
+  // Dismissing a Shopping cue SHOULD launch the survey because Shopping is
+  // tracked independently from EDU.
+  base::OnceClosure shopping_success_callback;
+  EXPECT_CALL(
+      *mock_hats_service,
+      LaunchSurveyForWebContents(
+          kHatsSurveyTriggerContextualCueingDismissed, testing::_,
+          testing::IsEmpty(),
+          testing::UnorderedElementsAre(testing::Pair("CUJ", "SHOPPING")),
+          testing::_, testing::_, testing::_, testing::_))
+      .WillOnce([&](const std::string& trigger,
+                    content::WebContents* web_contents,
+                    const SurveyBitsData& product_specific_bits_data,
+                    const SurveyStringData& product_specific_string_data,
+                    base::OnceClosure success_callback,
+                    base::OnceClosure failure_callback,
+                    const std::optional<std::string>& supplied_trigger_id,
+                    const HatsService::SurveyOptions& survey_options) {
+        shopping_success_callback = std::move(success_callback);
+        return HatsService::LaunchError::kNone;
+      });
+
+  contextual_cueing_controller()->OnCueInteraction(
+      ContextualCueingInteraction::kCueDismissed, CueTargetType::kGlic, *cue,
+      /*tabs_to_show=*/{}, /*background_tabs=*/{}, /*cuj=*/"SHOPPING",
+      /*action=*/{}, /*cue_id=*/"fake_id_3");
+
+  ASSERT_TRUE(shopping_success_callback);
+  std::move(shopping_success_callback).Run();
+  EXPECT_TRUE(prefs::HasDismissSurveyBeenShown(
+      prefs, ContextualCueSurveyCategory::kShopping));
+}
+
+IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest,
+                       HatsSurveyLaunchedOnDismiss_Indigo) {
+  MockHatsService* mock_hats_service = static_cast<MockHatsService*>(
+      HatsServiceFactory::GetInstance()->SetTestingFactoryAndUse(
+          browser()->GetProfile(), base::BindRepeating(&BuildMockHatsService)));
+  ASSERT_TRUE(mock_hats_service);
+
+  ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
+      browser(), GURL("https://www.activetab.com/abc"),
+      WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
+
+  PrefService* prefs = browser()->GetProfile()->GetPrefs();
+  EXPECT_FALSE(prefs::HasDismissSurveyBeenShown(
+      prefs, ContextualCueSurveyCategory::kIndigo));
+
+  auto response = MakeCompleteResponse();
+  auto* cue = &response.contextual_cues(0);
+
+  base::OnceClosure indigo_success_callback;
+  EXPECT_CALL(
+      *mock_hats_service,
+      LaunchSurveyForWebContents(
+          kHatsSurveyTriggerContextualCueingDismissed, testing::_,
+          testing::IsEmpty(),
+          testing::UnorderedElementsAre(testing::Pair("CUJ", "TRY_ON_YOU")),
+          testing::_, testing::_, testing::_, testing::_))
+      .WillOnce([&](const std::string& trigger,
+                    content::WebContents* web_contents,
+                    const SurveyBitsData& product_specific_bits_data,
+                    const SurveyStringData& product_specific_string_data,
+                    base::OnceClosure success_callback,
+                    base::OnceClosure failure_callback,
+                    const std::optional<std::string>& supplied_trigger_id,
+                    const HatsService::SurveyOptions& survey_options) {
+        indigo_success_callback = std::move(success_callback);
+        return HatsService::LaunchError::kNone;
+      });
+
+  contextual_cueing_controller()->OnCueInteraction(
+      ContextualCueingInteraction::kCueDismissed, CueTargetType::kIndigo, *cue,
+      /*tabs_to_show=*/{}, /*background_tabs=*/{}, /*cuj=*/"Indigo",
+      /*action=*/{}, /*cue_id=*/"fake_id");
+
+  ASSERT_TRUE(indigo_success_callback);
+  std::move(indigo_success_callback).Run();
+  EXPECT_TRUE(prefs::HasDismissSurveyBeenShown(
+      prefs, ContextualCueSurveyCategory::kIndigo));
+}
+
+IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest,
+                       HatsSurveyDismiss_RetryOnFailure) {
+  MockHatsService* mock_hats_service = static_cast<MockHatsService*>(
+      HatsServiceFactory::GetInstance()->SetTestingFactoryAndUse(
+          browser()->GetProfile(), base::BindRepeating(&BuildMockHatsService)));
+  ASSERT_TRUE(mock_hats_service);
+
+  ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
+      browser(), GURL("https://www.activetab.com/abc"),
+      WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
+
+  PrefService* prefs = browser()->GetProfile()->GetPrefs();
+  auto response = MakeCompleteResponse();
+  auto* cue = &response.contextual_cues(0);
+
+  base::OnceClosure failure_cb;
+  EXPECT_CALL(
+      *mock_hats_service,
+      LaunchSurveyForWebContents(kHatsSurveyTriggerContextualCueingDismissed,
+                                 testing::_, testing::_, testing::_, testing::_,
+                                 testing::_, testing::_, testing::_))
+      .WillOnce([&](const std::string& trigger,
+                    content::WebContents* web_contents,
+                    const SurveyBitsData& product_specific_bits_data,
+                    const SurveyStringData& product_specific_string_data,
+                    base::OnceClosure success_callback,
+                    base::OnceClosure failure_callback,
+                    const std::optional<std::string>& supplied_trigger_id,
+                    const HatsService::SurveyOptions& survey_options) {
+        failure_cb = std::move(failure_callback);
+        return HatsService::LaunchError::kNone;
+      });
+
+  contextual_cueing_controller()->OnCueInteraction(
+      ContextualCueingInteraction::kCueDismissed, CueTargetType::kGlic, *cue,
+      /*tabs_to_show=*/{}, /*background_tabs=*/{}, /*cuj=*/"LEARNING",
+      /*action=*/{}, /*cue_id=*/"fake_id");
+
+  ASSERT_TRUE(failure_cb);
+  std::move(failure_cb).Run();
+  EXPECT_FALSE(prefs::HasDismissSurveyBeenShown(
+      prefs, ContextualCueSurveyCategory::kEducation));
+
+  // Subsequent dismissal should retry launching the survey since previous
+  // attempt failed.
+  EXPECT_CALL(
+      *mock_hats_service,
+      LaunchSurveyForWebContents(kHatsSurveyTriggerContextualCueingDismissed,
+                                 testing::_, testing::_, testing::_, testing::_,
+                                 testing::_, testing::_, testing::_))
+      .WillOnce(testing::Return(HatsService::LaunchError::kNone));
+
+  contextual_cueing_controller()->OnCueInteraction(
+      ContextualCueingInteraction::kCueDismissed, CueTargetType::kGlic, *cue,
+      /*tabs_to_show=*/{}, /*background_tabs=*/{}, /*cuj=*/"LEARNING",
+      /*action=*/{}, /*cue_id=*/"fake_id_2");
+}
+
+IN_PROC_BROWSER_TEST_F(ContextualCueingControllerBrowserTest,
+                       HatsSurveyNotLaunchedOnNonDismissInteractions) {
+  MockHatsService* mock_hats_service = static_cast<MockHatsService*>(
+      HatsServiceFactory::GetInstance()->SetTestingFactoryAndUse(
+          browser()->GetProfile(), base::BindRepeating(&BuildMockHatsService)));
+  ASSERT_TRUE(mock_hats_service);
+
+  ASSERT_TRUE(ui_test_utils::NavigateToURLWithDisposition(
+      browser(), GURL("https://www.activetab.com/abc"),
+      WindowOpenDisposition::NEW_FOREGROUND_TAB,
+      ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP));
+
+  EXPECT_CALL(*mock_hats_service,
+              LaunchSurveyForWebContents(testing::_, testing::_, testing::_,
+                                         testing::_, testing::_, testing::_,
+                                         testing::_, testing::_))
+      .Times(0);
+
+  auto response = MakeCompleteResponse();
+  auto* cue = &response.contextual_cues(0);
+
+  contextual_cueing_controller()->OnCueInteraction(
+      ContextualCueingInteraction::kCueClicked, CueTargetType::kGlic, *cue,
+      /*tabs_to_show=*/{}, /*background_tabs=*/{}, /*cuj=*/"LEARNING",
+      /*action=*/{}, /*cue_id=*/"fake_id_1");
+
+  contextual_cueing_controller()->OnCueInteraction(
+      ContextualCueingInteraction::kCueEditPrompt, CueTargetType::kGlic, *cue,
+      /*tabs_to_show=*/{}, /*background_tabs=*/{}, /*cuj=*/"LEARNING",
+      /*action=*/{}, /*cue_id=*/"fake_id_2");
+
+  contextual_cueing_controller()->OnCueInteraction(
+      ContextualCueingInteraction::kCueSuggestionsSettings,
+      CueTargetType::kGlic, *cue, /*tabs_to_show=*/{}, /*background_tabs=*/{},
+      /*cuj=*/"LEARNING", /*action=*/{}, /*cue_id=*/"fake_id_3");
+
+  // Dismissing a cue with an unknown survey category should not launch a
+  // survey.
+  contextual_cueing_controller()->OnCueInteraction(
+      ContextualCueingInteraction::kCueDismissed, CueTargetType::kGlic, *cue,
+      /*tabs_to_show=*/{}, /*background_tabs=*/{}, /*cuj=*/"TRAVEL",
+      /*action=*/{}, /*cue_id=*/"fake_id_4");
 }
 
 }  // namespace

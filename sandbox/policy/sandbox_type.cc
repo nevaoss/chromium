@@ -42,6 +42,7 @@ constexpr char kSpeechRecognitionSandbox[] = "speech_recognition";
     BUILDFLAG(IS_WIN)
 constexpr char kPrintBackendSandbox[] = "print_backend";
 constexpr char kScreenAISandbox[] = "screen_ai";
+constexpr char kPlatformRuntimeSandbox[] = "platform_runtime";
 #endif
 
 #if BUILDFLAG(IS_WIN)
@@ -176,6 +177,7 @@ void SetCommandLineFlagsForSandboxType(base::CommandLine* command_line,
     BUILDFLAG(IS_WIN)
     case Sandbox::kPrintBackend:
     case Sandbox::kScreenAI:
+    case Sandbox::kPlatformRuntime:
 #endif
     case Sandbox::kSpeechRecognition:
 #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_CHROMEOS)
@@ -277,6 +279,8 @@ std::string StringFromUtilitySandboxType(Sandbox sandbox_type) {
       return kPrintBackendSandbox;
     case Sandbox::kScreenAI:
       return kScreenAISandbox;
+    case Sandbox::kPlatformRuntime:
+      return kPlatformRuntimeSandbox;
 #endif
 #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_CHROMEOS)
     case Sandbox::kOnDeviceTranslation:
@@ -410,6 +414,9 @@ sandbox::mojom::Sandbox UtilitySandboxTypeFromString(
   }
   if (sandbox_string == kScreenAISandbox) {
     return Sandbox::kScreenAI;
+  }
+  if (sandbox_string == kPlatformRuntimeSandbox) {
+    return Sandbox::kPlatformRuntime;
   }
 #endif
 #if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_CHROMEOS)

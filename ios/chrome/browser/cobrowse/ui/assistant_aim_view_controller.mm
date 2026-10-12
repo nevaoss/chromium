@@ -185,7 +185,11 @@ constexpr CGFloat kThresholdForCompleteVisibility = 0.3;
       CGPoint touchLocation = [gesture locationInView:inputPlateView];
       BOOL panningInInputPlate =
           CGRectContainsPoint(inputPlateView.bounds, touchLocation);
-      if (panningInInputPlate) {
+      // When the header overlaps the input plate (e.g.; the minimized state),
+      // treat the gesture as panning the header.
+      BOOL panningHeader =
+          CGRectContainsPoint(_headerView.bounds, touchLocation);
+      if (panningInInputPlate && !panningHeader) {
         _panGestureInInputPlate = gesture;
       }
 
@@ -371,10 +375,13 @@ constexpr CGFloat kThresholdForCompleteVisibility = 0.3;
           [UIColor colorNamed:kSecondaryBackgroundColor];
       break;
   }
+
+  [self computeInputPlateVisibility];
 }
 
 - (void)displayHistoryWithItems:
-    (const std::vector<AssistantAIMHistoryItem>&)items {
+            (const std::vector<AssistantAIMHistoryItem>&)items
+                       signedIn:(BOOL)signedIn {
   if (!_historyViewController) {
     _historyViewController = [[AssistantAIMHistoryViewController alloc] init];
     _historyViewController.delegate = self;
@@ -398,6 +405,7 @@ constexpr CGFloat kThresholdForCompleteVisibility = 0.3;
     [_historyViewController didMoveToParentViewController:self];
   }
 
+  [_historyViewController setSignedIn:signedIn];
   [_historyViewController updateHistoryItems:items];
 }
 
@@ -486,7 +494,10 @@ constexpr CGFloat kThresholdForCompleteVisibility = 0.3;
 
 // Computes the visibility for the input plate.
 - (void)computeInputPlateVisibility {
-  BOOL shouldHide = _inputPlateForceHidden || _isMinimized;
+  // There is no thread to submit a query to while browsing the history, so the
+  // input plate is hidden in that state.
+  BOOL shouldHide = _inputPlateForceHidden || _isMinimized ||
+                    _state == AssistantAIMState::kHistory;
   [_inputViewController.view setHidden:shouldHide];
   [self updateWebViewInsets];
 }

@@ -21,6 +21,7 @@ import {Command, CommandHandlerRemote} from 'chrome://resources/js/browser_comma
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {isMac} from 'chrome://resources/js/platform.js';
 import {PromiseResolver} from 'chrome://resources/js/promise_resolver.js';
+import {getDeepActiveElement} from 'chrome://resources/js/util.js';
 import {SuggestInventory} from 'chrome://resources/mojo/components/omnibox/browser/fusebox_action.mojom-webui.js';
 import {PageCallbackRouter as SearchboxPageCallbackRouter, PageHandlerRemote as SearchboxPageHandlerRemote} from 'chrome://resources/mojo/components/omnibox/browser/searchbox.mojom-webui.js';
 import {assertDeepEquals, assertEquals, assertFalse, assertNotEquals, assertTrue} from 'chrome://webui-test/chai_assert.js';
@@ -1381,11 +1382,7 @@ suite('NewTabPageAppTest', () => {
       // Act: Close composebox.
       const composebox =
           app.shadowRoot.querySelector<NtpComposeboxElement>('#composebox')!;
-      composebox.dispatchEvent(new CustomEvent('close-composebox', {
-        detail: {composeboxText: ''},
-        bubbles: true,
-        composed: true,
-      }));
+      composebox.fire('close-composebox', {composeboxText: ''});
       await microtasksFinished();
 
       // Assert: Blocked elements do NOT have inert anymore.
@@ -1419,10 +1416,7 @@ suite('NewTabPageAppTest', () => {
           assertTrue(!!composebox);
 
           // Context menu opens in composebox.
-          composebox.dispatchEvent(new CustomEvent('context-menu-opened', {
-            bubbles: true,
-            composed: true,
-          }));
+          composebox.fire('context-menu-opened');
           await microtasksFinished();
 
           assertTrue(searchboxContextMenuClosed);
@@ -1506,16 +1500,8 @@ suite('NewTabPageAppTest', () => {
       };
 
       // Act: Dispatch two close requests back to back with different text.
-      composebox.dispatchEvent(new CustomEvent('close-composebox', {
-        detail: {composeboxText: 'kept'},
-        bubbles: true,
-        composed: true,
-      }));
-      composebox.dispatchEvent(new CustomEvent('close-composebox', {
-        detail: {composeboxText: 'clobber'},
-        bubbles: true,
-        composed: true,
-      }));
+      composebox.fire('close-composebox', {composeboxText: 'kept'});
+      composebox.fire('close-composebox', {composeboxText: 'clobber'});
       await microtasksFinished();
 
       // Assert: The composebox is closed, not re-opened, and only the first
@@ -1565,16 +1551,8 @@ suite('NewTabPageAppTest', () => {
               metrics.count('NewTabPage.Composebox.FromNTPLoadToSessionStart'));
 
           // Two back to back close requests do not record it either.
-          composebox.dispatchEvent(new CustomEvent('close-composebox', {
-            detail: {composeboxText: ''},
-            bubbles: true,
-            composed: true,
-          }));
-          composebox.dispatchEvent(new CustomEvent('close-composebox', {
-            detail: {composeboxText: ''},
-            bubbles: true,
-            composed: true,
-          }));
+          composebox.fire('close-composebox', {composeboxText: ''});
+          composebox.fire('close-composebox', {composeboxText: ''});
           await microtasksFinished();
           assertEquals(
               1,
@@ -2777,11 +2755,8 @@ suite('NewTabPageAppTest', () => {
       assertTrue(!!modules);
 
       // Act.
-      modules.dispatchEvent(new CustomEvent('modules-auto-removed', {
-        detail: {message: 'Module removed', undo: () => {}},
-        bubbles: true,
-        composed: true,
-      }));
+      modules.fire(
+          'modules-auto-removed', {message: 'Module removed', undo: () => {}});
       await microtasksFinished();
 
       // Assert.
@@ -2797,19 +2772,14 @@ suite('NewTabPageAppTest', () => {
       assertTrue(!!mostVisited);
 
       // Act - dispatch the first toast.
-      modules.dispatchEvent(new CustomEvent('modules-auto-removed', {
-        detail: {message: 'Modules hidden', undo: () => {}},
-        bubbles: true,
-        composed: true,
-      }));
+      modules.fire(
+          'modules-auto-removed', {message: 'Modules hidden', undo: () => {}});
       await microtasksFinished();
 
       // Act - dispatch the second toast.
-      mostVisited.dispatchEvent(new CustomEvent('most-visited-auto-removed', {
-        detail: {message: 'Shortcuts hidden', undo: () => {}},
-        bubbles: true,
-        composed: true,
-      }));
+      mostVisited.fire(
+          'most-visited-auto-removed',
+          {message: 'Shortcuts hidden', undo: () => {}});
       await microtasksFinished();
 
       // Assert.
@@ -2845,19 +2815,14 @@ suite('NewTabPageAppTest', () => {
       assertTrue(!!mostVisited);
 
       // Act - dispatch the first toast with null callback.
-      modules.dispatchEvent(new CustomEvent('modules-auto-removed', {
-        detail: {message: 'Module removed', undo: null},
-        bubbles: true,
-        composed: true,
-      }));
+      modules.fire(
+          'modules-auto-removed', {message: 'Module removed', undo: null});
       await microtasksFinished();
 
       // Act - dispatch the second toast with non-null callback.
-      mostVisited.dispatchEvent(new CustomEvent('most-visited-auto-removed', {
-        detail: {message: 'Shortcuts hidden', undo: () => {}},
-        bubbles: true,
-        composed: true,
-      }));
+      mostVisited.fire(
+          'most-visited-auto-removed',
+          {message: 'Shortcuts hidden', undo: () => {}});
       await microtasksFinished();
 
       // Assert.
@@ -2924,7 +2889,6 @@ suite('NewTabPageAppTest', () => {
     suiteSetup(() => {
       loadTimeData.overrideValues({
         ntpRealboxNextEnabled: true,
-        composeboxCloseByClickOutside: true,
       });
     });
 
@@ -3009,11 +2973,7 @@ suite('NewTabPageAppTest', () => {
       // 5 & 6. Close composebox and clear modes (the 'x' button clicks).
       const composebox =
           app.shadowRoot.querySelector<NtpComposeboxElement>('#composebox')!;
-      composebox.dispatchEvent(new CustomEvent('close-composebox', {
-        detail: {composeboxText: ''},
-        bubbles: true,
-        composed: true,
-      }));
+      composebox.fire('close-composebox', {composeboxText: ''});
       await microtasksFinished();
       composeboxDialog = app.shadowRoot.querySelector('#composeboxDialog');
       assertFalse(!!composeboxDialog);
@@ -3321,11 +3281,7 @@ suite('NewTabPageAppTest', () => {
               app.shadowRoot.querySelector<NtpComposeboxElement>('#composebox');
           assertTrue(!!realboxComposebox);
           assertEquals('realbox text', realboxComposebox.input);
-          realboxComposebox.dispatchEvent(new CustomEvent('close-composebox', {
-            detail: {composeboxText: ''},
-            bubbles: true,
-            composed: true,
-          }));
+          realboxComposebox.fire('close-composebox', {composeboxText: ''});
           await microtasksFinished();
           assertFalse(!!app.shadowRoot.querySelector<NtpComposeboxElement>(
               '#composebox'));
@@ -3858,6 +3814,55 @@ suite('NewTabPageAppTest', () => {
         });
 
     test(
+        'focuses dialog container so initial tab focuses stop button ' +
+            'first in voice search dialog',
+        async () => {
+          loadTimeData.overrideValues({
+            googleBaseUrl: 'chrome://new-tab-page/',
+            voiceSearchCoherenceAnySearchboxExperimentEnabled: true,
+            voiceSearchCoherenceSearchboxWithLiveTranscriptionEnabled: true,
+            voiceSearchCoherenceRealboxAutoEndpointEnabled: false,
+          });
+          await recreateApp();
+
+          const realbox = $$(app, '#searchbox')!;
+          realbox.dispatchEvent(new Event('open-voice-search'));
+          await microtasksFinished();
+
+          const dialog = app.shadowRoot.querySelector<HTMLDialogElement>(
+              '#voiceSearchDialog');
+          assertTrue(!!dialog);
+          assertTrue(dialog.open);
+
+          // The dialog container itself is focused rather than any inner
+          // button, so pressing Tab starts sequential navigation at the first
+          // child (#stopButton).
+          assertEquals(dialog, getDeepActiveElement());
+
+          const voiceSearch =
+              app.shadowRoot.querySelector('cr-composebox-voice-search')!;
+          assertTrue(!!voiceSearch);
+          await voiceSearch.updateComplete;
+
+          const stopButton =
+              voiceSearch.shadowRoot.querySelector<HTMLElement>('#stopButton')!;
+          assertTrue(!!stopButton);
+          assertEquals(0, stopButton.tabIndex);
+          assertEquals(stopButton.title, stopButton.getAttribute('aria-label'));
+
+          const submitButton =
+              voiceSearch.shadowRoot.querySelector<HTMLElement>(
+                  '#submitButton')!;
+          assertTrue(!!submitButton);
+
+          // Verify stop button precedes submit button in DOM tab order.
+          assertTrue(Boolean(
+              stopButton.compareDocumentPosition(submitButton) &
+              Node.DOCUMENT_POSITION_FOLLOWING));
+        });
+
+
+    test(
         'dialog handles cancel, error, and final result when NTP searchbox ' +
             '(realbox) voice search coherence with live transcription is enabled',
         async () => {
@@ -4293,35 +4298,36 @@ suite('NewTabPageAppTest', () => {
           waveOverlay.style.setProperty('transition', 'none', 'important');
 
           // Simulate multiline transcript (3 lines) where voiceSearch moves
-          // wave to 102px and expands dialog height to 206px.
+          // wave to 102px and expands dialog height to 214px, keeping bottom
+          // actions padding at 16px.
           voiceSearch.toggleAttribute('has-multiline-transcript', true);
           voiceSearch.setAttribute('transcript-lines', '3');
           assertEquals('102px', window.getComputedStyle(waveOverlay).top);
           assertEquals(
-              '206px',
+              '214px',
               window.getComputedStyle(dialog)
                   .getPropertyValue('height')
                   .trim());
           assertEquals(
-              '8px',
+              '16px',
               window.getComputedStyle(voiceSearch)
                   .getPropertyValue('--voice-bottom-actions-bottom')
                   .trim());
 
-          // Verify 7 lines expands dialog to 302px and wave to 198px.
+          // Verify 7 lines expands dialog to 310px and wave to 198px.
           voiceSearch.setAttribute('transcript-lines', '7');
           assertEquals('198px', window.getComputedStyle(waveOverlay).top);
           assertEquals(
-              '302px',
+              '310px',
               window.getComputedStyle(dialog)
                   .getPropertyValue('height')
                   .trim());
 
-          // Verify 2 lines expands dialog to 182px and wave to 78px.
+          // Verify 2 lines expands dialog to 190px and wave to 78px.
           voiceSearch.setAttribute('transcript-lines', '2');
           assertEquals('78px', window.getComputedStyle(waveOverlay).top);
           assertEquals(
-              '182px',
+              '190px',
               window.getComputedStyle(dialog)
                   .getPropertyValue('height')
                   .trim());

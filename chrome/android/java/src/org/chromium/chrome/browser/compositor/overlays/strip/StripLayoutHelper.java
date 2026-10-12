@@ -243,7 +243,7 @@ public class StripLayoutHelper
 
                 @Override
                 public void didMoveTabGroup(
-                        Tab movedTab, int tabModelOldIndex, int tabModelNewIndex) {
+                        Token tabGroupId, int tabModelOldIndex, int tabModelNewIndex) {
                     mMovingGroup = false;
 
                     // Additionally rebuild the StripLayoutTabs here as well. This was previously
@@ -279,7 +279,7 @@ public class StripLayoutHelper
                 }
 
                 @Override
-                public void didMoveTabOutOfGroup(Tab movedTab, int prevFilterIndex) {
+                public void didMoveTabOutOfGroup(Tab movedTab, Token oldTabGroupId) {
                     updateGroupTextAndSharedState(mSourceTabGroupId);
                     Token groupIdToHide = mGroupIdToHideSupplier.get();
                     // TODO(crbug.com/430514194): There is a strong possibility this is never true
@@ -675,6 +675,8 @@ public class StripLayoutHelper
     private final @Nullable BooleanSupplier mCanActivateTabLayoutToggleMenuSupplier;
     // Set when showTabContextMenu is called for the first time.
     private @MonotonicNonNull TabContextMenuCoordinator mTabContextMenuCoordinator;
+    // This is used to show the iph highlight when triggering the context menu via long-press.
+    private boolean mWasVerticalTabsIphShowingOnDown;
     private @MonotonicNonNull TabGroupListBottomSheetCoordinator
             mTabGroupListBottomSheetCoordinator;
     // Set when the context menu triggered by a gesture on empty strip space is shown for the first
@@ -2460,6 +2462,7 @@ public class StripLayoutHelper
 
     /**
      * Called when a tab has stopped loading resources.
+     *
      * @param id The id of the Tab.
      */
     public void tabLoadFinished(int id) {
@@ -2557,6 +2560,12 @@ public class StripLayoutHelper
      * @param buttons State of all buttons that are pressed.
      */
     public void onDown(float x, float y, int buttons) {
+        // When triggering the context menu via long-press, the IPH bubble closes
+        // (setDismissOnTouch(true)) on touch. UserEducationHelper waits 200ms and then runs
+        // onDismissCallback, which sets isVerticalTabsIphShowing = false, and fails to highlight
+        // the menu item. We save mVerticalTabsIphShowing here to avoid this issue.
+        mWasVerticalTabsIphShowingOnDown =
+                mTabStripIphController != null && mTabStripIphController.isVerticalTabsIphShowing();
         resetTabCloseButtonPressedState();
         if (mNewTabButton.onDown(x, y, buttons) || mTabSearchButton.onDown(x, y, buttons)) {
             mRenderHost.requestRender();
@@ -2657,7 +2666,8 @@ public class StripLayoutHelper
                                         toLeft);
                             },
                             TabClosingSource.TABLET_TAB_STRIP,
-                            TabStripLayoutType.HORIZONTAL);
+                            TabStripLayoutType.HORIZONTAL,
+                            /* onMenuDismissedCallback= */ null);
         }
         StripLayoutUtils.performHapticFeedback(mControlContainer);
 
@@ -2714,7 +2724,7 @@ public class StripLayoutHelper
                                 /* supportsShowNewGroup= */ true,
                                 /* destroyOnHide= */ false,
                                 mWindowAndroid,
-                                /* tabGroupUiActionHandler= */ null);
+                                mDataSharingTabManager.getTabGroupUiActionHandler());
             }
             mTabContextMenuCoordinator =
                     TabContextMenuCoordinator.createContextMenuCoordinator(
@@ -2744,14 +2754,23 @@ public class StripLayoutHelper
                             TabClosingSource.TABLET_TAB_STRIP,
                             mCanActivateTabLayoutToggleMenuSupplier,
                             TabStripLayoutType.HORIZONTAL,
-                            /* tabGroupUiActionHandler= */ null);
+                            mDataSharingTabManager.getTabGroupUiActionHandler(),
+                            /* onMenuDismissedCallback= */ null);
         }
         RectProvider anchorRectProvider = new RectProvider();
         anchorTab.getAnchorRect(anchorRectProvider.getRect());
         getAdjustedAnchorRect(anchorRectProvider);
         StripLayoutUtils.performHapticFeedback(mControlContainer);
+        // Covers both long-press and right-clicks.
+        boolean shouldHighlightShowTabsVertically =
+                mWasVerticalTabsIphShowingOnDown
+                        || (mTabStripIphController != null
+                                && mTabStripIphController.isVerticalTabsIphShowing());
+        mWasVerticalTabsIphShowingOnDown = false;
         mTabContextMenuCoordinator.showMenu(
-                anchorRectProvider, new AnchorInfo(anchorTab.getTabId(), tabIds));
+                anchorRectProvider,
+                new AnchorInfo(anchorTab.getTabId(), tabIds),
+                shouldHighlightShowTabsVertically);
     }
 
     /**
@@ -2917,16 +2936,28 @@ public class StripLayoutHelper
 
     private void startReorderMode(
             float x, float y, StripLayoutView interactingView, @ReorderType int reorderType) {
-        // Allow the user to drag the selected tab out of the tab strip.
+        // Ensure valid tab state.
+        if (mModel == null || !mTabStateInitialized) return;
+        // Preserve the existing reorder, if any.
         if (mReorderDelegate.getInReorderMode()) return;
-        // Attempt to start reordering. If the interacting view is a StripLayoutTab,
-        // only continue if it is valid (non-null, non-dying, non-placeholder) and
-        // the tab state is initialized.
-        if (interactingView instanceof StripLayoutTab interactingTab
-                && (interactingTab.isDying()
-                        || interactingTab.getTabId() == Tab.INVALID_TAB_ID
-                        || !mTabStateInitialized)) {
-            return;
+
+        if (interactingView instanceof StripLayoutTab stripTab) {
+            // Only continue if the StripLayoutTab is valid (non-dying & non-placeholder).
+            if (stripTab.isDying() || stripTab.getTabId() == Tab.INVALID_TAB_ID) return;
+
+            // If the tab is the last in a tab group, treat as a tab group reorder instead.
+            Tab tab = assumeNonNull(getTabById(stripTab.getTabId()));
+            Token groupId = tab.getTabGroupId();
+
+            // Ignore multi-selected tabs for now.
+            // TODO(crbug.com/552582355): Prevent multi-select from clobbering groups.
+            boolean isMultiSelected =
+                    mModel.isTabMultiSelected(tab.getId())
+                            && mModel.getMultiSelectedTabsCount() > 1;
+
+            if (groupId != null && mModel.getTabCountForGroup(groupId) == 1 && !isMultiSelected) {
+                interactingView = assertNonNull(findGroupTitle(groupId));
+            }
         }
 
         finishAnimations();
@@ -3304,6 +3335,7 @@ public class StripLayoutHelper
             handleTabSearchClick();
         }
         mIsStripScrollInProgress = false;
+        mWasVerticalTabsIphShowingOnDown = false;
         resetDelayedReorderState();
     }
 
@@ -3426,7 +3458,8 @@ public class StripLayoutHelper
                             mSnackbarManager,
                             () -> handleNewTabClick(NewTabSource.EMPTY_SPACE_CONTEXT_MENU),
                             mCanActivateTabLayoutToggleMenuSupplier,
-                            TabStripLayoutType.HORIZONTAL);
+                            TabStripLayoutType.HORIZONTAL,
+                            /* onMenuDismissedCallback= */ null);
         }
 
         // Determine the anchor view rect to position the menu.

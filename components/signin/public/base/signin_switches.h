@@ -367,12 +367,6 @@ BASE_DECLARE_FEATURE_PARAM(base::TimeDelta,
                            kAccountPreviewAppAccountExpirationDuration);
 #endif
 
-#if BUILDFLAG(IS_IOS)
-// Feature flag to prefetch and cache account capabilities.
-COMPONENT_EXPORT(SIGNIN_SWITCHES)
-BASE_DECLARE_FEATURE(kEnableACPrefetch);
-#endif
-
 #if BUILDFLAG(IS_ANDROID)
 // Whether activityless sign-in should be used for all entry points.
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
@@ -524,6 +518,30 @@ extern const base::FeatureParam<base::TimeDelta>
     kPolicyDisclaimerRegistrationRetryDelay;
 #endif
 
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
+// This feature controls showing the visually refreshed enterprise signin
+// dialogs, i.e. all the screens served by `ManagedUserProfileNoticeUI`
+// (enterprise profile welcome/creation, OIDC and the device signals
+// disclaimer). This feature is no-op if `kFirstRunDesktopRefresh` is disabled.
+//
+// This is a chained launch: these dialogs ship after the rest of the first run
+// desktop refresh, and are held back in the search engine choice screen
+// regions until `kFirstRunDesktopChoiceScreenRefresh` is enabled, so that
+// users never see them refreshed next to a non-refreshed flow.
+//
+// Clients should never use this feature directly to determine if the
+// refresh is enabled, they should use
+// `IsEnterpriseSigninDialogsRefreshEnabled()` instead.
+COMPONENT_EXPORT(SIGNIN_SWITCHES)
+BASE_DECLARE_FEATURE(kEnterpriseSigninDialogsRefresh);
+// A helper function to determine if the enterprise signin dialogs refresh is
+// enabled (see `kEnterpriseSigninDialogsRefresh`, `kFirstRunDesktopRefresh` and
+// `kFirstRunDesktopChoiceScreenRefresh` flags).
+COMPONENT_EXPORT(SIGNIN_SWITCHES)
+bool IsEnterpriseSigninDialogsRefreshEnabled(
+    bool is_in_search_engine_choice_region);
+#endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
+
 #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
 // Controls whether the navigation performed by
 // `chrome.identity.launchWebAuthFlow` is attributed with the extesion's origin.
@@ -565,23 +583,6 @@ BASE_DECLARE_FEATURE(kFirstRunDesktopRefresh);
 // flags).
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
 bool IsFirstRunDesktopRefreshEnabled(bool is_in_search_engine_choice_region);
-// LINT.IfChange(FirstRunDesktopSignInPromoVariation)
-enum class FirstRunDesktopSignInPromoVariation {
-  // Default sign-in promo containing both sign-in and don't sign-in buttons
-  // next to each other on the promo page.
-  kDefault = 0,
-  // Sign-in promo containing both sign-in and don't sign-in buttons but the
-  // don't sign in button is moved to the top corner of the promo page and the
-  // page informs the user they can create an account in the next step(s).
-  kDontSignInInTheTopCorner = 1,
-  // Sign-in promo containing only the sign-in button on the promo page. The
-  // don't sign in button is moved to the Gaia page.
-  kDontSignInOnGaiaPage = 2,
-};
-// LINT.ThenChange(//chrome/browser/resources/intro/sign_in_promo_refresh.ts:Variation)
-COMPONENT_EXPORT(SIGNIN_SWITCHES)
-extern const base::FeatureParam<FirstRunDesktopSignInPromoVariation>
-    kFirstRunDesktopSignInPromoVariation;
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
@@ -874,18 +875,6 @@ COMPONENT_EXPORT(SIGNIN_SWITCHES)
 BASE_DECLARE_FEATURE(kSignInPromoMaterialNextUI);
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
 
-#if BUILDFLAG(ENABLE_DICE_SUPPORT)
-// Feature to show a promo on the avatar pill on profile startup.
-COMPONENT_EXPORT(SIGNIN_SWITCHES)
-BASE_DECLARE_FEATURE(kSigninPromoOnAvatarPill);
-COMPONENT_EXPORT(SIGNIN_SWITCHES)
-BASE_DECLARE_FEATURE_PARAM(base::TimeDelta,
-                           kSigninPromoOnAvatarPillStartupDelayForPromoShow);
-COMPONENT_EXPORT(SIGNIN_SWITCHES)
-BASE_DECLARE_FEATURE_PARAM(base::TimeDelta,
-                           kSigninPromoOnAvatarPillDelayForNextPromoAllowed);
-#endif  // BUILDFLAG(ENABLE_DICE_SUPPORT)
-
 // Feature flag used for testing purposes only:
 //
 // Set this flag to force the flow off on Windows 10 (a lot of bots run on
@@ -983,6 +972,12 @@ BASE_DECLARE_FEATURE(kUnifyWaitForCookies);
 COMPONENT_EXPORT(SIGNIN_SWITCHES)
 BASE_DECLARE_FEATURE(kUserPolicyFetchRequiresAcceptance);
 #endif  // BUILDFLAG(IS_ANDROID)
+
+#if BUILDFLAG(IS_IOS)
+// Killswitch for verifying the request initiator when handling Mirror headers.
+COMPONENT_EXPORT(SIGNIN_SWITCHES)
+BASE_DECLARE_FEATURE(kVerifyRequestInitiatorForMirrorHeaders);
+#endif  // BUILDFLAG(IS_IOS)
 
 // keep-sorted end
 

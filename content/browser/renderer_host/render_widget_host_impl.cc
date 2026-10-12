@@ -563,6 +563,8 @@ RenderWidgetHostImpl::~RenderWidgetHostImpl() {
   if (!destroyed_) {
     Destroy(false);
   }
+
+  DetachDelegate();
 }
 
 // static
@@ -2684,6 +2686,7 @@ void RenderWidgetHostImpl::Destroy(bool also_delete) {
   // destroyed) and detached first.
   if (delegate_) {
     delegate_->RenderWidgetDeleted(this);
+    DetachDelegate();
   }
 
   if (also_delete) {
@@ -2819,11 +2822,13 @@ void RenderWidgetHostImpl::SetPopupBounds(const gfx::Rect& bounds,
 
 input::RenderWidgetHostInputEventRouter*
 RenderWidgetHostImpl::GetInputEventRouter() {
-  return delegate()->GetInputEventRouter();
+  return delegate() ? delegate()->GetInputEventRouter() : nullptr;
 }
 
 input::RenderWidgetHostViewInput* RenderWidgetHostImpl::GetPointerLockView() {
-  return delegate()->GetPointerLockWidget()->GetView();
+  RenderWidgetHostImpl* widget =
+      delegate() ? delegate()->GetPointerLockWidget() : nullptr;
+  return widget ? widget->GetView() : nullptr;
 }
 
 void RenderWidgetHostImpl::ForwardDelegatedInkPoint(
@@ -3113,9 +3118,6 @@ void RenderWidgetHostImpl::StartDragging(
     const gfx::Rect& drag_obj_rect_in_dip,
     blink::mojom::DragEventSourceInfoPtr event_info) {
   DropData drop_data = DragDataToDropData(*drag_data);
-  if (delegate_) {
-    delegate_->OnStartDragging(&drop_data, source_rfh.GetGlobalFrameToken());
-  }
   DropData filtered_data(drop_data);
   RenderProcessHost* process = GetProcess();
   ChildProcessSecurityPolicyImpl* policy =
@@ -3219,6 +3221,11 @@ void RenderWidgetHostImpl::StartDragging(
     // Need to clear drag and drop state in blink.
     DragSourceSystemDragEnded();
     return;
+  }
+
+  if (delegate_) {
+    delegate_->OnStartDragging(&filtered_data,
+                               source_rfh.GetGlobalFrameToken());
   }
   float scale = GetScaleFactorForView(GetView());
   gfx::ImageSkia image = gfx::ImageSkia::CreateFromBitmap(bitmap, scale);

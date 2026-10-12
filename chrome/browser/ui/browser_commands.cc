@@ -59,6 +59,7 @@
 #include "chrome/browser/sharing_hub/sharing_hub_features.h"
 #include "chrome/browser/tab_group_sync/tab_group_sync_service_factory.h"
 #include "chrome/browser/translate/chrome_translate_client.h"
+#include "chrome/browser/ttc/core/entrypoint_controller.h"
 #include "chrome/browser/ui/accelerator_utils.h"
 #include "chrome/browser/ui/autofill/address_bubbles_controller.h"
 #include "chrome/browser/ui/autofill/payments/filled_card_information_bubble_controller_impl.h"
@@ -109,6 +110,7 @@
 #include "chrome/browser/ui/tabs/back_to_opener/back_to_opener_controller.h"
 #include "chrome/browser/ui/tabs/features.h"
 #include "chrome/browser/ui/tabs/new_tab_grouping_user_data.h"
+#include "chrome/browser/ui/tabs/organizer/organizer_panel_controller.h"
 #include "chrome/browser/ui/tabs/saved_tab_groups/saved_tab_group_utils.h"
 #include "chrome/browser/ui/tabs/split_tab_metrics.h"
 #include "chrome/browser/ui/tabs/split_tab_util.h"
@@ -121,6 +123,7 @@
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/user_education/browser_user_education_interface.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
+#include "chrome/browser/ui/views/tabs/organizer/organizer_panel_utils.h"
 #include "chrome/browser/ui/waap/initial_webui_window_metrics_manager.h"
 #include "chrome/browser/ui/web_applications/app_browser_controller.h"
 #include "chrome/browser/ui/web_applications/web_app_launch_utils.h"
@@ -432,7 +435,7 @@ void MaybePreserveFocusedGroupInTarget(
   const int group_tab_count =
       target_model->group_model()->GetTabGroup(*focused_group)->tab_count();
   if (non_pinned_count == group_tab_count) {
-    target_model->SetFocusedGroup(*focused_group);
+    target_model->EnterFocusMode(*focused_group);
   }
 }
 
@@ -610,7 +613,7 @@ void FocusAdjacentTabGroupInFocusMode(TabStripModel* tab_strip_model,
   tab_groups::TabGroupId current_focused_group =
       tab_strip_model->GetFocusedGroup().value();
 
-  if (tab_strip_model->IsTabGroupTemporary(current_focused_group)) {
+  if (tab_strip_model->IsEphemeralTabGroup(current_focused_group)) {
     return;
   }
 
@@ -638,7 +641,7 @@ void FocusAdjacentTabGroupInFocusMode(TabStripModel* tab_strip_model,
   size_t target_index = next ? (current_index + 1) % groups_in_order.size()
                              : (current_index + groups_in_order.size() - 1) %
                                    groups_in_order.size();
-  tab_strip_model->SetFocusedGroup(groups_in_order[target_index]);
+  tab_strip_model->EnterFocusMode(groups_in_order[target_index]);
 }
 
 }  // namespace
@@ -1966,11 +1969,10 @@ void AddNewTabToRecentGroup(BrowserWindowInterface* browser) {
   AddTabAt(browser, GURL(), -1, true, group_id);
 }
 
-void UnfocusTabGroup(BrowserWindowInterface* browser,
-                     TabGroupFocusExitReason exit_reason) {
+void ExitFocusMode(BrowserWindowInterface* browser,
+                   TabGroupFocusExitReason exit_reason) {
   if (base::FeatureList::IsEnabled(features::kTabGroupsFocusing)) {
-    base::UmaHistogramEnumeration("TabGroups.Focus.ExitReason", exit_reason);
-    browser->GetTabStripModel()->UnfocusGroup();
+    browser->GetTabStripModel()->ExitFocusMode(exit_reason);
   }
 }
 
@@ -2394,6 +2396,13 @@ void ScreenshotCapture(BrowserWindowInterface* browser) {
   controller->Capture(browser);
 }
 
+void ShowTtcMenuItem(BrowserWindowInterface* browser) {
+  if (ttc::EntrypointController* controller =
+          ttc::EntrypointController::From(browser)) {
+    controller->EntrypointHandler(ttc::EntrypointType::kAppMenu);
+  }
+}
+
 void SavePage(BrowserWindowInterface* browser) {
   base::RecordAction(UserMetricsAction("SavePage"));
   WebContents* current_tab =
@@ -2524,11 +2533,16 @@ void FindPrevious(BrowserWindowInterface* browser) {
 void FindInPage(BrowserWindowInterface* browser,
                 bool find_next,
                 bool forward_direction) {
-  browser->GetFeatures().GetFindBarController()->Show(find_next,
-                                                      forward_direction);
+  FindBarController::From(browser)->Show(find_next, forward_direction);
 }
 
 void ShowTabSearch(BrowserWindowInterface* browser) {
+  if (organizer_panel::IsOrganizerPanelFeatureEnabled()) {
+    auto* controller = OrganizerPanelController::From(browser);
+    CHECK(controller);
+    controller->SetOrganizerVisible(!controller->IsOrganizerPanelVisible());
+    return;
+  }
   BrowserWindow::FromBrowser(browser)->CreateTabSearchBubble();
 }
 
@@ -2616,7 +2630,7 @@ bool CanCloseFind(BrowserWindowInterface* browser) {
 }
 
 void CloseFind(BrowserWindowInterface* browser) {
-  browser->GetFeatures().GetFindBarController()->EndFindSession(
+  FindBarController::From(browser)->EndFindSession(
       find_in_page::SelectionAction::kKeep, find_in_page::ResultAction::kKeep);
 }
 

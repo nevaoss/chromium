@@ -33,6 +33,13 @@ bool IsOfferValid(const AutofillOfferData* offer) {
     return false;
   }
 
+  if (offer->GetOfferType() ==
+          AutofillOfferData::OfferType::WALLET_DIRECT_OFFER &&
+      (!offer->GetOfferDetailsUrl().is_valid() ||
+       offer->GetOfferRewardAmount().empty())) {
+    return false;
+  }
+
   return true;
 }
 
@@ -64,7 +71,7 @@ void OfferNotificationHandler::UpdateOfferNotificationVisibility(
     //   implemented).
     const AutofillOfferData* const offer = offer_manager_->GetOfferForUrl(url);
     CHECK(IsOfferValid(offer));
-    int64_t offer_id = offer->GetOfferId();
+    const std::string& offer_id = offer->GetOfferId();
     bool offer_id_has_shown_before = shown_notification_ids_.contains(offer_id);
     client.GetPaymentsAutofillClient()->UpdateOfferNotification(
         *offer,
@@ -83,8 +90,8 @@ void OfferNotificationHandler::ClearShownNotificationIdForTesting() {
 }
 
 void OfferNotificationHandler::AddShownNotificationIdForTesting(
-    int64_t shown_notification_id) {
-  shown_notification_ids_.insert(shown_notification_id);
+    std::string shown_notification_id) {
+  shown_notification_ids_.insert(std::move(shown_notification_id));
 }
 
 bool OfferNotificationHandler::ValidOfferExistsForUrl(const GURL& url) {

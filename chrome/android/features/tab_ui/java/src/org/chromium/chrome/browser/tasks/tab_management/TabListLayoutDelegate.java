@@ -37,7 +37,9 @@ import org.chromium.ui.modelutil.MVCListAdapter.ListItem;
 import org.chromium.ui.modelutil.PropertyModel;
 import org.chromium.url.GURL;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 /**
  * Abstract delegate handler for {@link TabGroupObserver} and {@link TabObserver} callbacks.
@@ -47,6 +49,7 @@ import java.util.List;
 abstract class TabListLayoutDelegate implements TabGroupObserver, TabObserver {
     protected final TabListMediator mMediator;
     protected final TabListModel mModelList;
+    private final Set<Token> mRemovingTabGroupIds = new HashSet<>();
     private @Nullable TabGridAccessibilityHelper mAccessibilityHelper;
 
     TabListLayoutDelegate(TabListMediator mediator, TabListModel modelList) {
@@ -334,8 +337,7 @@ abstract class TabListLayoutDelegate implements TabGroupObserver, TabObserver {
     }
 
     /**
-     * Updates the URL domain, thumbnail, and favicon for a tab or its representing card when its
-     * URL changes.
+     * Updates the thumbnail and favicon for a tab or its representing card when its URL changes.
      *
      * @param updatedTab The {@link Tab} whose URL changed.
      */
@@ -346,7 +348,6 @@ abstract class TabListLayoutDelegate implements TabGroupObserver, TabObserver {
         PropertyModel model = getModelFromTabId(updatedTab.getId());
         if (!TabUtils.isValid(updatedTab) || model == null) return;
 
-        model.set(TabProperties.URL_DOMAIN, mMediator.getDomainForTab(updatedTab, model));
         mMediator.updateThumbnailFetcher(model, updatedTab.getId());
         mMediator.updateFaviconForTab(model, updatedTab, null, null);
     }
@@ -404,12 +405,19 @@ abstract class TabListLayoutDelegate implements TabGroupObserver, TabObserver {
     }
 
     /**
-     * Handles layout-specific UI model updates when a tab's Actor UI state changes.
+     * Handles UI model updates when a tab's Actor UI state changes.
      *
      * @param updatedTab The {@link Tab} whose Actor UI state changed.
      * @param state The new {@link UiTabState}.
      */
-    void onUiTabStateChanged(Tab updatedTab, UiTabState state) {}
+    void onUiTabStateChanged(Tab updatedTab, UiTabState state) {
+        if (!mMediator.isTrackingTabs()) return;
+
+        PropertyModel model = getModelFromTabId(updatedTab.getId());
+        if (model != null) {
+            mMediator.updateActorUiState(model, state);
+        }
+    }
 
     /**
      * Handles UI model updates when a tab is removed for closure.
@@ -494,9 +502,16 @@ abstract class TabListLayoutDelegate implements TabGroupObserver, TabObserver {
     }
 
     @Override
+    public void willRemoveTabGroup(Token tabGroupId) {
+        if (!supportsTabGroups()) return;
+        mRemovingTabGroupIds.add(tabGroupId);
+    }
+
+    @Override
     public void didRemoveTabGroup(
             int oldRootId, @Nullable Token tabGroupId, @DidRemoveTabGroupReason int removalReason) {
         if (!supportsTabGroups() || tabGroupId == null) return;
+        mRemovingTabGroupIds.remove(tabGroupId);
         int index = mModelList.indexFromTabGroupId(tabGroupId);
         if (index != TabModel.INVALID_TAB_INDEX) {
             mModelList.removeAt(index);
@@ -529,6 +544,21 @@ abstract class TabListLayoutDelegate implements TabGroupObserver, TabObserver {
      */
     boolean isGroupCollapsed(Token tabGroupId) {
         return true;
+    }
+
+    /**
+     * Returns whether the tab group is currently being removed from the tab model.
+     *
+     * @param tabGroupId The {@link Token} identifying the tab group.
+     * @return True if the tab group is in the process of being removed.
+     */
+    boolean isRemovingTabGroup(@Nullable Token tabGroupId) {
+        return tabGroupId != null && mRemovingTabGroupIds.contains(tabGroupId);
+    }
+
+    /** Clears transient tracking state, such as in-flight removing tab group IDs. */
+    void reset() {
+        mRemovingTabGroupIds.clear();
     }
 
     /**

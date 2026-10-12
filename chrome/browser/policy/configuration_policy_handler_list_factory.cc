@@ -37,6 +37,7 @@
 #include "chrome/browser/policy/developer_tools_policy_handler.h"
 #include "chrome/browser/policy/drive_file_sync_available_policy_handler.h"
 #include "chrome/browser/policy/file_selection_dialogs_policy_handler.h"
+#include "chrome/browser/policy/gemini_enterprise_settings_policy_handler.h"
 #include "chrome/browser/policy/homepage_location_policy_handler.h"
 #include "chrome/browser/policy/isolate_origins_policy_handler.h"
 #include "chrome/browser/policy/javascript_policy_handler.h"
@@ -673,9 +674,6 @@ const PolicyToPreferenceMapEntry kSimplePolicyMap[] = {
   { key::kDefaultSearchProviderContextMenuAccessAllowed,
     prefs::kDefaultSearchProviderContextMenuAccessAllowed,
     base::Value::Type::BOOLEAN },
-  { key::kDefaultDirectSocketsPrivateNetworkAccessSetting,
-    prefs::kManagedDefaultDirectSocketsPrivateNetworkAccessSetting,
-    base::Value::Type::INTEGER },
   { key::kDefaultDirectSocketsSetting,
     prefs::kManagedDefaultDirectSocketsSetting,
     base::Value::Type::INTEGER },
@@ -697,12 +695,6 @@ const PolicyToPreferenceMapEntry kSimplePolicyMap[] = {
     base::Value::Type::LIST },
   { key::kDirectSocketsBlockedForUrls,
     prefs::kManagedDirectSocketsBlockedForUrls,
-    base::Value::Type::LIST },
-  { key::kDirectSocketsPrivateNetworkAccessAllowedForUrls,
-    prefs::kManagedDirectSocketsPrivateNetworkAccessAllowedForUrls,
-    base::Value::Type::LIST },
-  { key::kDirectSocketsPrivateNetworkAccessBlockedForUrls,
-    prefs::kManagedDirectSocketsPrivateNetworkAccessBlockedForUrls,
     base::Value::Type::LIST },
   { key::kSubAppsWithoutPromptsAllowedForOrigins,
     prefs::kManagedSubAppsWithoutPromptsAllowedForOrigins,
@@ -1165,6 +1157,9 @@ const PolicyToPreferenceMapEntry kSimplePolicyMap[] = {
     base::Value::Type::LIST },
 
 #if !BUILDFLAG(IS_CHROMEOS)
+  { key::kAllowFileSelectionDialogs,
+    prefs::kAllowFileSelectionDialogs,
+    base::Value::Type::BOOLEAN },
   { key::kChromeVariations,
     variations::prefs::kVariationsRestrictionsByPolicy,
     base::Value::Type::INTEGER },
@@ -2100,9 +2095,6 @@ const PolicyToPreferenceMapEntry kSimplePolicyMap[] = {
     base::Value::Type::BOOLEAN },
   { key::kExternalProtocolDialogShowAlwaysOpenCheckbox,
     prefs::kExternalProtocolDialogShowAlwaysOpenCheckbox,
-    base::Value::Type::BOOLEAN },
-  { key::kAllowFileSelectionDialogs,
-    prefs::kAllowFileSelectionDialogs,
     base::Value::Type::BOOLEAN },
   { key::kShowAppsShortcutInBookmarkBar,
     bookmarks::prefs::kShowAppsShortcutInBookmarkBar,
@@ -3490,7 +3482,6 @@ std::unique_ptr<ConfigurationPolicyHandlerList> BuildHandlerList(
           extensions::pref_names::kNativeMessagingBlocklist, true));
   handlers->AddHandler(
       std::make_unique<AutoLaunchProtocolsPolicyHandler>(chrome_schema));
-  handlers->AddHandler(std::make_unique<FileSelectionDialogsPolicyHandler>());
 
   handlers->AddHandler(std::make_unique<SimpleSchemaValidatingPolicyHandler>(
       key::kProfilePickerOnStartupAvailability,
@@ -3499,6 +3490,10 @@ std::unique_ptr<ConfigurationPolicyHandlerList> BuildHandlerList(
       SimpleSchemaValidatingPolicyHandler::RECOMMENDED_PROHIBITED,
       SimpleSchemaValidatingPolicyHandler::MANDATORY_ALLOWED));
 #endif  // !BUILDFLAG(IS_CHROMEOS) && !BUILDFLAG(IS_ANDROID)
+
+#if !BUILDFLAG(IS_CHROMEOS)
+  handlers->AddHandler(std::make_unique<FileSelectionDialogsPolicyHandler>());
+#endif
 #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
   handlers->AddHandler(
       std::make_unique<extensions::ExtensionSettingsPolicyHandler>(
@@ -3721,11 +3716,8 @@ std::unique_ptr<ConfigurationPolicyHandlerList> BuildHandlerList(
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
     BUILDFLAG(IS_CHROMEOS)
-  handlers->AddHandler(std::make_unique<SimpleSchemaValidatingPolicyHandler>(
-      key::kGeminiEnterpriseSettings, glic::prefs::kGlicGeminiEnterpriseSettings,
-      chrome_schema, SCHEMA_ALLOW_UNKNOWN,
-      SimpleSchemaValidatingPolicyHandler::RECOMMENDED_ALLOWED,
-      SimpleSchemaValidatingPolicyHandler::MANDATORY_ALLOWED));
+  handlers->AddHandler(
+      std::make_unique<GeminiEnterpriseSettingsPolicyHandler>(chrome_schema));
 #endif
 
   handlers->AddHandler(std::make_unique<CloudUserOnlyPolicyChecker>(

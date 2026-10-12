@@ -34,6 +34,7 @@
 #include "third_party/blink/renderer/core/layout/geometry/physical_rect.h"
 #include "third_party/blink/renderer/core/layout/layout_box_model_object.h"
 #include "third_party/blink/renderer/core/layout/layout_object.h"
+#include "third_party/blink/renderer/core/layout/layout_result_list.h"
 #include "third_party/blink/renderer/core/layout/min_max_sizes.h"
 #include "third_party/blink/renderer/core/layout/min_max_sizes_cache.h"
 #include "third_party/blink/renderer/core/layout/overflow_model.h"
@@ -283,17 +284,24 @@ class CORE_EXPORT LayoutBox : public LayoutBoxModelObject {
     kContractToPaddingEdge,
     kContractToContentEdge,
   };
-  PhysicalRect PhysicalContractedBoxRect(ContractionEdge) const;
+  class PhysicalFragmentList;
+  static PhysicalRect PhysicalContractedBoxRect(
+      ContractionEdge edge,
+      const ComputedStyle& style,
+      const PhysicalFragmentList& fragments,
+      const PhysicalSize& size);
 
   // Get the padding box rectangle (same as "client rect").
   PhysicalRect PhysicalPaddingBoxRect() const {
     NOT_DESTROYED();
-    return PhysicalContractedBoxRect(kContractToPaddingEdge);
+    return PhysicalContractedBoxRect(kContractToPaddingEdge, StyleRef(),
+                                     PhysicalFragments(), StitchedSize());
   }
   // Get the content box rectangle.
   PhysicalRect PhysicalContentBoxRect() const {
     NOT_DESTROYED();
-    return PhysicalContractedBoxRect(kContractToContentEdge);
+    return PhysicalContractedBoxRect(kContractToContentEdge, StyleRef(),
+                                     PhysicalFragments(), StitchedSize());
   }
 
   LayoutUnit ContentLogicalWidth() const {
@@ -359,6 +367,18 @@ class CORE_EXPORT LayoutBox : public LayoutBoxModelObject {
 
   // Sets the scrollable-overflow from the current set of layout-results.
   void SetScrollableOverflowFromLayoutResults();
+
+  PhysicalRect ComputeScrollableOverflowFromFragments(
+      const PhysicalFragmentList& fragments) const;
+
+  PhysicalRect ScrollableOverflowFromFragments() const {
+    NOT_DESTROYED();
+    return ComputeScrollableOverflowFromFragments(PhysicalFragments());
+  }
+  PhysicalRect PreviousScrollableOverflowFromFragments() const {
+    NOT_DESTROYED();
+    return ComputeScrollableOverflowFromFragments(PreviousPhysicalFragments());
+  }
 
   void AddSelfVisualOverflow(const PhysicalRect& r);
   void AddContentsVisualOverflow(const PhysicalRect& r);
@@ -513,7 +533,6 @@ class CORE_EXPORT LayoutBox : public LayoutBoxModelObject {
       std::optional<FragmentGeometry>* initial_fragment_geometry,
       LayoutCacheStatus* out_cache_status);
 
-  using LayoutResultList = HeapVector<Member<const LayoutResult>, 1>;
   class PhysicalFragmentList {
     STACK_ALLOCATED();
 
@@ -523,15 +542,13 @@ class CORE_EXPORT LayoutBox : public LayoutBoxModelObject {
 
     wtf_size_t size() const { return layout_results_.size(); }
     bool empty() const { return layout_results_.empty(); }
+    const PhysicalBoxFragment& operator[](wtf_size_t i) const;
 
     bool MayHaveFragmentItems() const;
     bool HasFragmentItems() const {
       return MayHaveFragmentItems() && SlowHasFragmentItems();
     }
     bool SlowHasFragmentItems() const;
-
-    wtf_size_t IndexOf(const PhysicalBoxFragment& fragment) const;
-    bool Contains(const PhysicalBoxFragment& fragment) const;
 
     // Note: We can't use std::views.  It's banned in Chromium.
     class CORE_EXPORT Iterator {
@@ -550,15 +567,13 @@ class CORE_EXPORT LayoutBox : public LayoutBoxModelObject {
 
       const PhysicalBoxFragment& operator*() const;
 
-      UNSAFE_BUFFER_USAGE Iterator& operator++() {
-        // SAFETY: This is not safe. We should not use this operator directly.
-        UNSAFE_BUFFERS(++iterator_);
+      Iterator& operator++() {
+        ++iterator_;
         return *this;
       }
-      UNSAFE_BUFFER_USAGE Iterator operator++(int) {
+      Iterator operator++(int) {
         Iterator copy = *this;
-        // SAFETY: This is not safe. We should not use this operator directly.
-        UNSAFE_BUFFERS(++*this);
+        ++*this;
         return copy;
       }
 
@@ -596,6 +611,9 @@ class CORE_EXPORT LayoutBox : public LayoutBoxModelObject {
     NOT_DESTROYED();
     return layout_results_.size();
   }
+
+  // Make public for LayoutBox.
+  using LayoutBoxModelObject::HavePhysicalFragmentsChanged;
 
   bool IsFragmentLessBox() const final {
     NOT_DESTROYED();
@@ -916,23 +934,40 @@ class CORE_EXPORT LayoutBox : public LayoutBoxModelObject {
 
   class MutableForPainting : public LayoutObject::MutableForPainting {
    public:
+    void SavePreviousPhysicalFragments();
     void SavePreviousSize() {
       GetLayoutBox().previous_size_ = GetLayoutBox().StitchedSize();
     }
     void ClearPreviousSize() { GetLayoutBox().previous_size_ = PhysicalSize(); }
     void SavePreviousOverflowData();
     void ClearPreviousOverflowData() {
+      DCHECK(!RuntimeEnabledFeatures::
+                 PrePaintBoxInvalidatorUsesFragmentsEnabled());
       DCHECK(!GetLayoutBox().HasVisualOverflow());
       DCHECK(!GetLayoutBox().HasScrollableOverflow());
       GetLayoutBox().overflow_ = nullptr;
     }
+    void SavePreviousVisualOverflowData();
+    void ClearPreviousVisualOverflowData() {
+      DCHECK(!GetLayoutBox().HasVisualOverflow());
+      if (Member<BoxOverflowModel>& overflow = GetLayoutBox().overflow_) {
+        overflow->previous_overflow_data.reset();
+        if (!overflow->scrollable_overflow) {
+          overflow = nullptr;
+        }
+      }
+    }
     void SavePreviousContentBoxRect() {
+      DCHECK(!RuntimeEnabledFeatures::
+                 PrePaintBoxInvalidatorUsesFragmentsEnabled());
       auto& rare_data = GetLayoutBox().EnsureRareData();
       rare_data.has_previous_content_box_rect_ = true;
       rare_data.previous_physical_content_box_rect_ =
           GetLayoutBox().PhysicalContentBoxRect();
     }
     void ClearPreviousContentBoxRect() {
+      DCHECK(!RuntimeEnabledFeatures::
+                 PrePaintBoxInvalidatorUsesFragmentsEnabled());
       if (auto* rare_data = GetLayoutBox().rare_data_.Get())
         rare_data->has_previous_content_box_rect_ = false;
     }
@@ -964,12 +999,22 @@ class CORE_EXPORT LayoutBox : public LayoutBoxModelObject {
     return MutableForPainting(*this);
   }
 
+  PhysicalFragmentList PreviousPhysicalFragments() const {
+    NOT_DESTROYED();
+    return PhysicalFragmentList(previous_layout_results_);
+  }
+
   PhysicalSize PreviousSize() const {
     NOT_DESTROYED();
     return previous_size_;
   }
   PhysicalRect PreviousPhysicalContentBoxRect() const {
     NOT_DESTROYED();
+    if (RuntimeEnabledFeatures::PrePaintBoxInvalidatorUsesFragmentsEnabled()) {
+      return PhysicalContractedBoxRect(kContractToContentEdge, StyleRef(),
+                                       PreviousPhysicalFragments(),
+                                       PreviousSize());
+    }
     return rare_data_ && rare_data_->has_previous_content_box_rect_
                ? rare_data_->previous_physical_content_box_rect_
                : PhysicalRect(PhysicalOffset(), PreviousSize());
@@ -983,6 +1028,8 @@ class CORE_EXPORT LayoutBox : public LayoutBoxModelObject {
   }
   PhysicalRect PreviousScrollableOverflowRect() const {
     NOT_DESTROYED();
+    DCHECK(
+        !RuntimeEnabledFeatures::PrePaintBoxInvalidatorUsesFragmentsEnabled());
     return overflow_ && overflow_->previous_overflow_data
                ? overflow_->previous_overflow_data
                      ->previous_scrollable_overflow_rect
@@ -1202,9 +1249,10 @@ class CORE_EXPORT LayoutBox : public LayoutBoxModelObject {
   // Returns the CSS 'direction' property value when it is not atomic inline.
   TextDirection ResolvedDirection() const;
 
-  // RecalcScrollableOverflow implementations for LayoutNG.
-  RecalcScrollableOverflowResult RecalcScrollableOverflowNG();
-  RecalcScrollableOverflowResult RecalcChildScrollableOverflowNG();
+  static void RecalcFragmentScrollableOverflow(const PhysicalBoxFragment&,
+                                               RecalcScrollableOverflowResult&);
+  RecalcScrollableOverflowResult RecalcScrollableOverflow();
+  RecalcScrollableOverflowResult RecalcChildScrollableOverflow();
 
  private:
   inline bool ScrollableOverflowIsSet() const {
@@ -1296,6 +1344,7 @@ class CORE_EXPORT LayoutBox : public LayoutBoxModelObject {
  private:
   // Previous value of frame_size_, updated after paint invalidation.
   PhysicalSize previous_size_;
+  LayoutResultList previous_layout_results_;
 
  protected:
   MinMaxSizes intrinsic_logical_widths_;

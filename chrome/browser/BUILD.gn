@@ -958,7 +958,6 @@ source_set("core") {
     "//chrome/browser/first_party_sets",
     "//chrome/browser/first_run",
     "//chrome/browser/gcm",
-    "//chrome/browser/geic",
     "//chrome/browser/glic",
     "//chrome/browser/glic:impl",
     "//chrome/browser/glic/public:features",
@@ -1049,6 +1048,7 @@ source_set("core") {
     "//chrome/browser/tab_group_sync",
     "//chrome/browser/task_manager",
     "//chrome/browser/task_manager/common",
+    "//chrome/browser/themes",
     "//chrome/browser/tracing",
     "//chrome/browser/translate",
     "//chrome/browser/trusted_vault",
@@ -1285,6 +1285,7 @@ source_set("core") {
       "//chrome/browser/apps/app_service/publishers",
       "//chrome/browser/apps/link_capturing",
       "//chrome/browser/badging",
+      "//chrome/browser/child_module",
       "//chrome/browser/device_api",
       "//chrome/browser/device_api:impl",
       "//chrome/browser/dictation",
@@ -1354,7 +1355,6 @@ source_set("core") {
       "//chrome/browser/record_replay:impl",
       "//chrome/browser/sensor",
       "//chrome/browser/sharing_hub",
-      "//chrome/browser/themes",
       "//chrome/browser/ui/apps",
       "//chrome/browser/ui/apps:impl",
       "//chrome/browser/ui/bookmarks:impl",
@@ -2286,6 +2286,7 @@ source_set("browser") {
     "//chrome/browser/task_manager:impl",
     "//chrome/browser/task_manager/common",
     "//chrome/browser/task_manager/common:impl",
+    "//chrome/browser/themes",
     "//chrome/browser/thumbnail",
     "//chrome/browser/touch_to_fill/password_manager",
     "//chrome/browser/tracing",
@@ -3570,7 +3571,6 @@ group("browser_generated_files") {
       "//chrome/browser/indigo/resources:indigo_strings",
       "//chrome/browser/lens/core/mojom:mojo_bindings",
       "//chrome/browser/new_tab_page/modules/file_suggestion:mojo_bindings",
-      "//chrome/browser/new_tab_page/modules/v2/authentication:mojo_bindings",
       "//chrome/browser/new_tab_page/modules/v2/calendar:mojo_bindings",
       "//chrome/browser/new_tab_page/modules/v2/most_relevant_tab_resumption:mojo_bindings",
       "//chrome/browser/new_tab_page/modules/v2/tab_groups:mojo_bindings",
@@ -4120,6 +4120,8 @@ source_set("core_unit_tests") {
     "//chrome/common:version_header",
     "//chrome/test:test_interfaces",
     "//chrome/test:test_support",
+    "//chrome/test/base:chrome_render_view_host_test_harness",
+    "//chrome/test/base:testing_browser_process",
     "//components/enterprise/connectors/core",
     "//components/enterprise/net/core:test_support",
     "//components/performance_manager",
@@ -4160,6 +4162,11 @@ source_set("core_unit_tests") {
     if (enable_guest_view && !enable_extensions_core) {
       deps += [ "//chrome/browser/android/guest_view" ]
     }
+  } else {
+    deps += [
+      "//chrome/browser/child_module",
+      "//chrome/common/child_module",
+    ]
   }
 
   if (enable_captive_portal_detection) {
@@ -4357,6 +4364,7 @@ if (!is_android) {
       "//chrome/test:test_support_ui",
       "//chrome/test/base:profile_lifecycle_test_utils",
       "//chrome/test/base:test_launcher_utils",
+      "//chrome/test/base:testing_browser_process",
       "//components/embedder_support",
       "//components/enterprise/data_controls/core/browser:test_support",
       "//components/javascript_dialogs",

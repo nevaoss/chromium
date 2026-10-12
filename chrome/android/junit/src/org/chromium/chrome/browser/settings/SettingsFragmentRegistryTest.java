@@ -23,22 +23,28 @@ import org.chromium.base.test.util.Features.EnableFeatures;
 import org.chromium.chrome.browser.about_settings.AboutChromeSettings;
 import org.chromium.chrome.browser.about_settings.LegalInformationSettings;
 import org.chromium.chrome.browser.appearance.settings.AppearanceSettingsFragment;
+import org.chromium.chrome.browser.appearance.settings.BookmarkBarSettingsFragment;
 import org.chromium.chrome.browser.autofill.settings.AutofillAndPasswordsFragment;
 import org.chromium.chrome.browser.autofill.settings.AutofillAndPasswordsFragment.AutofillSettingsReferrer;
 import org.chromium.chrome.browser.autofill.settings.options.AutofillOptionsFragment;
 import org.chromium.chrome.browser.autofill.settings.options.AutofillOptionsReferrer;
 import org.chromium.chrome.browser.browsing_data.ClearBrowsingDataFragment;
+import org.chromium.chrome.browser.commerce.PriceNotificationSettingsFragment;
+import org.chromium.chrome.browser.contextualsearch.ContextualSearchSettingsFragment;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
+import org.chromium.chrome.browser.glic.GlicActorLoginPermissionsFragment;
 import org.chromium.chrome.browser.night_mode.NightModeMetrics;
 import org.chromium.chrome.browser.night_mode.settings.ThemeSettingsFragment;
 import org.chromium.chrome.browser.prefetch.settings.ExtendedPreloadingSettingsFragment;
 import org.chromium.chrome.browser.prefetch.settings.PreloadPagesSettingsFragment;
 import org.chromium.chrome.browser.prefetch.settings.StandardPreloadingSettingsFragment;
 import org.chromium.chrome.browser.privacy.settings.PrivacySettings;
+import org.chromium.chrome.browser.privacy.settings.UniversalOptOutSettings;
 import org.chromium.chrome.browser.safe_browsing.settings.EnhancedProtectionSettingsFragment;
 import org.chromium.chrome.browser.safe_browsing.settings.SafeBrowsingSettingsFragment;
 import org.chromium.chrome.browser.safe_browsing.settings.StandardProtectionSettingsFragment;
 import org.chromium.chrome.browser.tracing.settings.DeveloperSettings;
+import org.chromium.chrome.browser.tracing.settings.TracingCategoriesSettings;
 import org.chromium.chrome.browser.tracing.settings.TracingSettings;
 import org.chromium.components.browser_ui.site_settings.AllSiteSettings;
 import org.chromium.components.browser_ui.site_settings.ChosenObjectSettings;
@@ -67,10 +73,12 @@ public class SettingsFragmentRegistryTest {
         // Verify root path
         assertEquals(MainSettings.class, fragmentClassForPath(""));
         assertEquals(MainSettings.class, fragmentClassForPath("/"));
+        assertNull(fragmentClassForPath("/results"));
 
         // Verify some notable mappings
         assertEquals(PrivacySettings.class, fragmentClassForPath("/privacy"));
         assertEquals(AppearanceSettingsFragment.class, fragmentClassForPath("/appearance"));
+        assertEquals(BookmarkBarSettingsFragment.class, fragmentClassForPath("/bookmarkBar"));
         assertEquals(ThemeSettingsFragment.class, fragmentClassForPath("/theme"));
         assertEquals(SafeBrowsingSettingsFragment.class, fragmentClassForPath("/safebrowsing"));
 
@@ -79,7 +87,34 @@ public class SettingsFragmentRegistryTest {
                 SettingsFragmentRegistry.sFragmentToPathMap;
         assertEquals("privacy", fragmentMap.get(PrivacySettings.class));
         assertEquals("appearance", fragmentMap.get(AppearanceSettingsFragment.class));
+        assertEquals("bookmarkBar", fragmentMap.get(BookmarkBarSettingsFragment.class));
         assertEquals("theme", fragmentMap.get(ThemeSettingsFragment.class));
+        assertEquals("privacy/universalOptOut", fragmentMap.get(UniversalOptOutSettings.class));
+        assertEquals(
+                "googleServices/priceTracking",
+                fragmentMap.get(PriceNotificationSettingsFragment.class));
+        assertEquals(
+                "googleServices/contextualSearch",
+                fragmentMap.get(ContextualSearchSettingsFragment.class));
+        assertEquals(
+                "ai/gemini/permissions", fragmentMap.get(GlicActorLoginPermissionsFragment.class));
+        assertEquals(
+                "developer/tracing/categories", fragmentMap.get(TracingCategoriesSettings.class));
+
+        // Verify TracingCategoriesSettings required args and fallback
+        SettingsFragmentRegistry.Resolution missingTypeRes =
+                SettingsFragmentRegistry.resolve("chrome://settings/developer/tracing/categories");
+        assertEquals("chrome://settings/developer/tracing", missingTypeRes.redirectUrl);
+
+        SettingsFragmentRegistry.Resolution validTypeRes =
+                SettingsFragmentRegistry.resolve(
+                        "chrome://settings/developer/tracing/categories?categoryType="
+                                + TracingSettings.CategoryType.NON_DEFAULT);
+        assertNull(validTypeRes.redirectUrl);
+        assertEquals(TracingCategoriesSettings.class, validTypeRes.fragmentClass);
+        assertEquals(
+                TracingSettings.CategoryType.NON_DEFAULT,
+                validTypeRes.args.getInt(TracingCategoriesSettings.EXTRA_CATEGORY_TYPE));
     }
 
     @Test
@@ -145,6 +180,9 @@ public class SettingsFragmentRegistryTest {
         assertEquals(
                 AppearanceSettingsFragment.class,
                 SettingsFragmentRegistry.getFragmentClassForUrl("chrome://settings/appearance"));
+        assertEquals(
+                BookmarkBarSettingsFragment.class,
+                SettingsFragmentRegistry.getFragmentClassForUrl("chrome://settings/bookmarkBar"));
         assertEquals(
                 ThemeSettingsFragment.class,
                 SettingsFragmentRegistry.getFragmentClassForUrl("chrome://settings/theme"));
@@ -316,6 +354,11 @@ public class SettingsFragmentRegistryTest {
                 "chrome://settings/appearance",
                 SettingsFragmentRegistry.createUrlForFragment(
                         AppearanceSettingsFragment.class, null));
+
+        assertEquals(
+                "chrome://settings/bookmarkBar",
+                SettingsFragmentRegistry.createUrlForFragment(
+                        BookmarkBarSettingsFragment.class, null));
 
         assertEquals(
                 "chrome://settings/theme",
@@ -624,6 +667,34 @@ public class SettingsFragmentRegistryTest {
         assertEquals(
                 NightModeMetrics.ThemeSettingsEntry.SETTINGS,
                 resolution.args.getInt(ThemeSettingsFragment.KEY_THEME_SETTINGS_ENTRY));
+    }
+
+    @Test
+    public void testStorageAccessUrlRoundTrip() {
+        // The arguments the site settings pages open this page with, which under Url navigation
+        // are turned into a Url and parsed back out again.
+        Bundle args = new Bundle();
+        args.putSerializable(
+                StorageAccessSubpageSettings.EXTRA_STORAGE_ACCESS_STATE,
+                new Website(WebsiteAddress.create("https://example.com"), null));
+        args.putBoolean(StorageAccessSubpageSettings.EXTRA_ALLOWED, true);
+
+        String url =
+                SettingsFragmentRegistry.createUrlForFragment(
+                        StorageAccessSubpageSettings.class, args);
+        assertEquals(
+                "chrome://settings/storageAccess?allowed=true&site=https%3A%2F%2Fexample.com", url);
+
+        SettingsFragmentRegistry.Resolution resolution = SettingsFragmentRegistry.resolve(url);
+        assertNull(resolution.redirectUrl);
+        assertEquals(StorageAccessSubpageSettings.class, resolution.fragmentClass);
+        assertTrue(resolution.args.getBoolean(StorageAccessSubpageSettings.EXTRA_ALLOWED));
+        assertNotNull(resolution.args.get(SingleWebsiteSettings.EXTRA_SITE_ADDRESS));
+
+        // The permission state is half of what the page shows, so a Url without it has no page.
+        assertRedirects(
+                "chrome://settings/storageAccess?site=https://example.com",
+                "chrome://settings/allSites");
     }
 
     private static void assertRedirects(String url, String expectedRedirectUrl) {

@@ -115,6 +115,11 @@ BASE_FEATURE(kDelayUpdateWindowsAfterTextInputStateChanged,
 // resize.
 BASE_FEATURE(kThrottleResizeIpc, base::FEATURE_ENABLED_BY_DEFAULT);
 
+// If enabled, RenderWidgetHostViewMac::HasFocus() returns false if it is in
+// a non-key NSWindow. This aligns with Aura behavior. crbug.com/441089142.
+BASE_FEATURE(kRWHVMacHasFocusReturnsFalseForNonKeyWindow,
+             base::FEATURE_ENABLED_BY_DEFAULT);
+
 // Extract any events in `visible_time_request` that should go to the
 // DelegatedFrameHost and sends them to `delegated_frame_host`. Modifies
 // `visible_time_request` in place.
@@ -683,6 +688,12 @@ void RenderWidgetHostViewMac::Focus() {
 }
 
 bool RenderWidgetHostViewMac::HasFocus() {
+  if (base::FeatureList::IsEnabled(
+          kRWHVMacHasFocusReturnsFalseForNonKeyWindow)) {
+    // In headless mode the NSView is not in a NSWindow.
+    return is_first_responder_ && (IsHeadless() || is_window_key_);
+  }
+
   return is_first_responder_;
 }
 
@@ -784,13 +795,16 @@ void RenderWidgetHostViewMac::OnUpdateTextInputStateCalled(
 
   // Set the monitor state based on the text input focus state.
   const bool has_focus = HasFocus();
-  bool need_monitor_composition =
-      has_focus && state && state->type != ui::TEXT_INPUT_TYPE_NONE;
+  const bool is_active_view =
+      text_input_manager->GetActiveWidget() &&
+      text_input_manager->GetActiveWidget()->GetView() == updated_view;
+  bool need_monitor_composition = has_focus && is_active_view && state &&
+                                  state->type != ui::TEXT_INPUT_TYPE_NONE;
 
   widget_host->RequestCompositionUpdates(false /* immediate_request */,
                                          need_monitor_composition);
 
-  if (has_focus) {
+  if (has_focus && is_active_view) {
     SetTextInputActive(true);
 
     // Let AppKit cache the new input context to make IMEs happy.

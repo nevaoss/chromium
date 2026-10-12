@@ -16,9 +16,9 @@
 #include "base/memory/ref_counted.h"
 #include "base/time/time.h"
 #include "components/signin/public/identity_manager/account_info.h"
-#include "components/trusted_vault/legacy_standalone_trusted_vault_storage.h"
 #include "components/trusted_vault/local_recovery_factor.h"
 #include "components/trusted_vault/proto/local_trusted_vault.pb.h"
+#include "components/trusted_vault/standalone_trusted_vault_storage.h"
 #include "components/trusted_vault/trusted_vault_degraded_recoverability_handler.h"
 #include "components/trusted_vault/trusted_vault_histograms.h"
 #include "components/trusted_vault/trusted_vault_server_constants.h"
@@ -38,7 +38,7 @@ namespace trusted_vault {
 // sequence.
 class StandaloneTrustedVaultBackend
     : public base::RefCountedThreadSafe<StandaloneTrustedVaultBackend>,
-      public TrustedVaultDegradedRecoverabilityHandler::Delegate {
+      public TrustedVaultDegradedRecoverabilityHandler::Observer {
  public:
   using FetchKeysCallback = base::OnceCallback<void(
       const std::vector<std::vector<uint8_t>>& vault_keys)>;
@@ -68,7 +68,7 @@ class StandaloneTrustedVaultBackend
     // |storage| and |connection|.
     virtual std::vector<std::unique_ptr<LocalRecoveryFactor>>
     CreateLocalRecoveryFactors(SecurityDomainId security_domain_id,
-                               LegacyStandaloneTrustedVaultStorage* storage,
+                               StandaloneTrustedVaultStorage* storage,
                                TrustedVaultThrottlingConnection* connection,
                                const CoreAccountInfo& primary_account) = 0;
   };
@@ -91,7 +91,7 @@ class StandaloneTrustedVaultBackend
       const std::string& icloud_keychain_access_group_prefix,
 #endif
       SecurityDomainId security_domain_id,
-      std::unique_ptr<LegacyStandaloneTrustedVaultStorage> storage,
+      std::unique_ptr<StandaloneTrustedVaultStorage> storage,
       std::unique_ptr<Delegate> delegate,
       std::unique_ptr<TrustedVaultConnection> connection);
   StandaloneTrustedVaultBackend(const StandaloneTrustedVaultBackend& other) =
@@ -99,11 +99,9 @@ class StandaloneTrustedVaultBackend
   StandaloneTrustedVaultBackend& operator=(
       const StandaloneTrustedVaultBackend& other) = delete;
 
-  // TrustedVaultDegradedRecoverabilityHandler::Delegate implementation.
-  void WriteDegradedRecoverabilityState(
-      const trusted_vault_pb::LocalTrustedVaultDegradedRecoverabilityState&
-          degraded_recoverability_state) override;
-  void OnDegradedRecoverabilityChanged() override;
+  // TrustedVaultDegradedRecoverabilityHandler::Observer implementation.
+  void OnDegradedRecoverabilityChanged(
+      SecurityDomainId security_domain) override;
 
   // Restores state saved on disk, should be called before using the object.
   void ReadDataFromDisk();
@@ -165,7 +163,7 @@ class StandaloneTrustedVaultBackend
 
   static scoped_refptr<StandaloneTrustedVaultBackend> CreateForTesting(
       SecurityDomainId security_domain_id,
-      std::unique_ptr<LegacyStandaloneTrustedVaultStorage> storage,
+      std::unique_ptr<StandaloneTrustedVaultStorage> storage,
       std::unique_ptr<Delegate> delegate,
       std::unique_ptr<TrustedVaultThrottlingConnection> connection,
       std::unique_ptr<LocalRecoveryFactorsFactory>
@@ -179,7 +177,7 @@ class StandaloneTrustedVaultBackend
   // Only used in tests.
   StandaloneTrustedVaultBackend(
       SecurityDomainId security_domain_id,
-      std::unique_ptr<LegacyStandaloneTrustedVaultStorage> storage,
+      std::unique_ptr<StandaloneTrustedVaultStorage> storage,
       std::unique_ptr<Delegate> delegate,
       std::unique_ptr<TrustedVaultThrottlingConnection> connection,
       std::unique_ptr<LocalRecoveryFactorsFactory>
@@ -236,7 +234,7 @@ class StandaloneTrustedVaultBackend
 
   const SecurityDomainId security_domain_id_;
 
-  const std::unique_ptr<LegacyStandaloneTrustedVaultStorage> storage_;
+  const std::unique_ptr<StandaloneTrustedVaultStorage> storage_;
 
   const std::unique_ptr<Delegate> delegate_;
 

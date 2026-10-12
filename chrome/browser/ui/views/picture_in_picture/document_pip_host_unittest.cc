@@ -45,6 +45,19 @@
 #include "url/gurl.h"
 #include "url/origin.h"
 
+#if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+#include "chrome/browser/extensions/chrome_extension_web_contents_observer.h"
+#include "chrome/browser/extensions/tab_helper.h"
+#include "chrome/browser/ui/views/picture_in_picture/document_pip_base_window.h"
+#include "components/sessions/content/session_tab_helper.h"
+#include "components/zoom/zoom_controller.h"
+#include "extensions/browser/view_type_utils.h"
+#include "extensions/common/mojom/view_type.mojom.h"
+#include "testing/gmock/include/gmock/gmock.h"
+#include "ui/views/test/mock_native_widget.h"
+#include "ui/views/window/frame_view.h"
+#endif
+
 namespace {
 
 class RecordingOpenURLDelegate : public content::WebContentsDelegate {
@@ -273,6 +286,107 @@ TEST_F(DocumentPipHostTest, Accessors) {
   EXPECT_EQ(400u, host->GetPipOptions().width);
   EXPECT_EQ(300u, host->GetPipOptions().height);
 }
+
+#if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+TEST_F(DocumentPipHostTest, ExtensionWindowIdentityAndHelpers) {
+  auto* host = CreateHostAndOpenPipWindow();
+  auto* child = host->GetChildWebContents();
+  EXPECT_TRUE(host->GetSessionId().is_valid());
+  EXPECT_EQ(host->GetSessionId(),
+            sessions::SessionTabHelper::IdForWindowContainingTab(child));
+  EXPECT_TRUE(sessions::SessionTabHelper::IdForTab(child).is_valid());
+  EXPECT_NE(host->GetSessionId(), sessions::SessionTabHelper::IdForTab(child));
+  EXPECT_EQ(extensions::mojom::ViewType::kTabContents,
+            extensions::GetViewType(child));
+  EXPECT_TRUE(
+      extensions::ChromeExtensionWebContentsObserver::FromWebContents(child));
+  ASSERT_TRUE(extensions::TabHelper::FromWebContents(child));
+  EXPECT_TRUE(extensions::TabHelper::FromWebContents(child)->script_executor());
+  EXPECT_TRUE(zoom::ZoomController::FromWebContents(child));
+  host->Close();
+  EXPECT_FALSE(host->GetSessionId().is_valid());
+}
+
+TEST_F(DocumentPipHostTest, ExtensionWindowAdapterOperations) {
+  // Test adapter forwarding without the native window manager overriding the
+  // requested z-order.
+  test_views_delegate()->set_use_desktop_native_widgets(false);
+  // The in-process activation client needs another window to activate.
+  auto other_widget =
+      CreateTestWidget(views::Widget::InitParams::CLIENT_OWNS_WIDGET);
+  other_widget->Show();
+  auto widget = CreateTestWidget(views::Widget::InitParams::CLIENT_OWNS_WIDGET);
+  DocumentPipBaseWindow base_window(*widget);
+  ui::BaseWindow* window = &base_window;
+  EXPECT_EQ(widget->GetNativeWindow(), window->GetNativeWindow());
+  EXPECT_EQ(widget->GetRestoredBounds(), window->GetRestoredBounds());
+  EXPECT_EQ(ui::mojom::WindowShowState::kNormal, window->GetRestoredState());
+  EXPECT_EQ(widget->IsActive(), window->IsActive());
+  EXPECT_EQ(widget->IsMaximized(), window->IsMaximized());
+  EXPECT_EQ(widget->IsMinimized(), window->IsMinimized());
+  EXPECT_EQ(widget->IsFullscreen(), window->IsFullscreen());
+
+  EXPECT_FALSE(window->IsVisible());
+  window->Show();
+  EXPECT_TRUE(window->IsVisible());
+  EXPECT_TRUE(window->IsActive());
+  window->Hide();
+  EXPECT_FALSE(window->IsVisible());
+  other_widget->Activate();
+  window->ShowInactive();
+  EXPECT_TRUE(window->IsVisible());
+  EXPECT_FALSE(window->IsActive());
+  window->Show();
+  EXPECT_TRUE(widget->IsVisible());
+  EXPECT_TRUE(window->IsActive());
+  window->ShowInactive();
+  EXPECT_TRUE(window->IsActive());
+  // Native deactivation is unsupported on macOS; forwarding is tested below.
+  other_widget->Activate();
+  EXPECT_FALSE(window->IsActive());
+  window->ShowInactive();
+  EXPECT_FALSE(window->IsActive());
+  window->Activate();
+  EXPECT_TRUE(window->IsActive());
+  window->Maximize();
+  EXPECT_FALSE(window->IsMaximized());
+  EXPECT_FALSE(window->IsFullscreen());
+  window->Minimize();
+  EXPECT_FALSE(window->IsMinimized());
+  window->Restore();
+  EXPECT_FALSE(window->IsMinimized());
+  window->FlashFrame(true);
+  window->FlashFrame(false);
+  window->SetZOrderLevel(ui::ZOrderLevel::kNormal);
+  EXPECT_EQ(ui::ZOrderLevel::kNormal, widget->GetZOrderLevel());
+  window->SetZOrderLevel(ui::ZOrderLevel::kFloatingWindow);
+  EXPECT_EQ(ui::ZOrderLevel::kFloatingWindow, window->GetZOrderLevel());
+}
+
+TEST_F(DocumentPipHostTest, ExtensionWindowAdapterForwardsDeactivation) {
+  auto widget = std::make_unique<views::Widget>();
+  auto native_widget =
+      std::make_unique<testing::NiceMock<views::MockNativeWidget>>(
+          widget.get());
+  ON_CALL(*native_widget, CreateFrameView).WillByDefault([]() {
+    return std::make_unique<views::FrameView>();
+  });
+  auto params = CreateParams(views::Widget::InitParams::CLIENT_OWNS_WIDGET,
+                             views::Widget::InitParams::TYPE_WINDOW);
+  params.native_widget = native_widget.get();
+  widget->Init(std::move(params));
+
+  {
+    DocumentPipBaseWindow window(*widget);
+    EXPECT_CALL(*native_widget, Deactivate());
+    window.Deactivate();
+    EXPECT_CALL(*native_widget, IsActive()).WillOnce(testing::Return(false));
+    EXPECT_FALSE(window.IsActive());
+  }
+  widget.reset();
+}
+
+#endif  // BUILDFLAG(ENABLE_EXTENSIONS_CORE)
 
 // The host creates a Widget with a DocumentPipWidgetDelegate.
 TEST_F(DocumentPipHostTest, WidgetIsCreated) {
@@ -522,10 +636,11 @@ TEST_F(DocumentPipHostTest, OpenURLFromTab_CurrentTabClosesPipWindow) {
   content::WebContents* child = host->GetChildWebContents();
   content::WebContentsDestroyedWatcher child_destroyed_watcher(child);
 
-  content::OpenURLParams params(
-      GURL("https://example.test/"), content::Referrer(),
-      WindowOpenDisposition::CURRENT_TAB, ui::PAGE_TRANSITION_LINK,
-      /*is_renderer_initiated=*/true);
+  content::OpenURLParams params =
+      content::OpenURLParams::CreateRendererInitiated(
+          GURL("https://example.test/"), WindowOpenDisposition::CURRENT_TAB,
+          ui::PAGE_TRANSITION_LINK, content::Referrer(),
+          child->GetPrimaryMainFrame()->GetCurrentInitiatorNavigationState());
   EXPECT_EQ(nullptr, host->OpenURLFromTab(child, params, base::NullCallback()));
 
   EXPECT_EQ(0, opener_delegate.call_count());
@@ -550,10 +665,11 @@ TEST_F(DocumentPipHostTest, OpenURLFromTab_NewForegroundTabRoutesToOpener) {
   content::WebContents* child = host->GetChildWebContents();
   const GURL url("https://example.test/");
 
-  content::OpenURLParams params(url, content::Referrer(),
-                                WindowOpenDisposition::NEW_FOREGROUND_TAB,
-                                ui::PAGE_TRANSITION_LINK,
-                                /*is_renderer_initiated=*/true);
+  content::OpenURLParams params =
+      content::OpenURLParams::CreateRendererInitiated(
+          url, WindowOpenDisposition::NEW_FOREGROUND_TAB,
+          ui::PAGE_TRANSITION_LINK, content::Referrer(),
+          child->GetPrimaryMainFrame()->GetCurrentInitiatorNavigationState());
   EXPECT_EQ(opener(),
             host->OpenURLFromTab(child, params, base::NullCallback()));
 

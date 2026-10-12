@@ -309,6 +309,8 @@ public class FuseboxMediatorUnitTest {
             ObservableSuppliers.createNonNull(PopupState.HIDDEN);
     private final SettableNonNullObservableSupplier<Boolean> mHasAttachmentsSupplier =
             ObservableSuppliers.createNonNull(false);
+    private final SettableNonNullObservableSupplier<Boolean> mUrlTextWrappingSupplier =
+            ObservableSuppliers.createNonNull(false);
     private final AutocompleteInput mInput = new AutocompleteInput();
 
     @Before
@@ -379,11 +381,11 @@ public class FuseboxMediatorUnitTest {
                 .thenAnswer(i -> "token-" + i.getArgument(0));
         DriveFilePickerClient.setInstanceForTesting(mDriveFilePickerClient);
         TabLoadingService.setInstanceForTesting(mTabLoadingService);
-        lenient().doReturn(true).when(mDriveFilePickerClient).isAvailable(any());
+        lenient().doReturn(true).when(mDriveFilePickerClient).isAvailable(any(), any());
         lenient()
                 .doReturn(Promise.fulfilled(null))
                 .when(mDriveFilePickerClient)
-                .launchPicker(any(), any());
+                .launchPicker(any(), any(), any());
 
         mInputStateSupplier.set(DEFAULT_INPUT_STATE);
 
@@ -433,7 +435,8 @@ public class FuseboxMediatorUnitTest {
                         SupplierUtils.ofNull(),
                         mBackPressManager,
                         mOnFirstPickerInteractionCanceledCallback,
-                        mHasAttachmentsSupplier);
+                        mHasAttachmentsSupplier,
+                        mUrlTextWrappingSupplier);
         mMediator.beginInput(mSession);
     }
 
@@ -723,7 +726,7 @@ public class FuseboxMediatorUnitTest {
         mInput.setRequestType(AutocompleteRequestType.SEARCH);
         recreateMediator();
 
-        mMediator.setIsTextWrapping(/* isTextWrapping= */ true);
+        mUrlTextWrappingSupplier.set(true);
 
         assertEquals(FuseboxState.EXPANDED, mModel.get(FuseboxProperties.FUSEBOX_STATE));
     }
@@ -734,8 +737,23 @@ public class FuseboxMediatorUnitTest {
         mModel.set(FuseboxProperties.FUSEBOX_LAYOUT_MODE, FuseboxLayoutMode.SUGGESTIONS_POPOVER);
         recreateMediator();
 
-        mMediator.setIsTextWrapping(/* isTextWrapping= */ true);
+        mUrlTextWrappingSupplier.set(true);
 
+        assertEquals(FuseboxState.COMPACT, mModel.get(FuseboxProperties.FUSEBOX_STATE));
+    }
+
+    @Test
+    public void updateFuseboxState_urlTextWrappingSupplier_updatesState() {
+        OmniboxCapabilities.setIsDesktopPlatformForTesting(/* isDesktopPlatform= */ false);
+        mInput.setRequestType(AutocompleteRequestType.SEARCH);
+        recreateMediator();
+
+        assertEquals(FuseboxState.COMPACT, mModel.get(FuseboxProperties.FUSEBOX_STATE));
+
+        mUrlTextWrappingSupplier.set(true);
+        assertEquals(FuseboxState.EXPANDED, mModel.get(FuseboxProperties.FUSEBOX_STATE));
+
+        mUrlTextWrappingSupplier.set(false);
         assertEquals(FuseboxState.COMPACT, mModel.get(FuseboxProperties.FUSEBOX_STATE));
     }
 
@@ -850,7 +868,7 @@ public class FuseboxMediatorUnitTest {
         mInput.setRequestType(AutocompleteRequestType.SEARCH);
         recreateMediator();
 
-        mMediator.setIsTextWrapping(/* isTextWrapping= */ true);
+        mUrlTextWrappingSupplier.set(true);
 
         assertEquals(FuseboxState.EXPANDED, mModel.get(FuseboxProperties.FUSEBOX_STATE));
         assertEquals(
@@ -1407,7 +1425,7 @@ public class FuseboxMediatorUnitTest {
                         DriveIconUtils.MIME_TYPE_GOOGLE_DOCS);
         doReturn(Promise.fulfilled(metadata))
                 .when(mDriveFilePickerClient)
-                .launchPicker(mWindowAndroid, null);
+                .launchPicker(mWindowAndroid, mProfile, null);
         doReturn("token123")
                 .when(mComposeboxQueryControllerBridge)
                 .addDriveFile("drive_id", null, "Test Doc", DriveIconUtils.MIME_TYPE_GOOGLE_DOCS);
@@ -1528,17 +1546,6 @@ public class FuseboxMediatorUnitTest {
         setInputState(DEFAULT_INPUT_STATE);
         assertEquals(2, mModel.get(FuseboxProperties.POPUP_MODEL_BUTTON_DATA_LIST).size());
         assertTrue(mModel.get(FuseboxProperties.POPUP_MODEL_DIVIDER_VISIBLE));
-        assertTrue(mModel.get(FuseboxProperties.POPUP_MODEL_HEADER_VISIBLE));
-    }
-
-    @Test
-    public void testModelPickerVisibility_hidesInBottomSheet() {
-        OmniboxCapabilities.setIsDesktopPlatformForTesting(/* isDesktopPlatform= */ false);
-        OmniboxFeatures.setShowBottomSheetPopupForTesting(/* value= */ true);
-        recreateMediator();
-        mMediator.onPlusButtonClicked();
-        assertEquals(2, mModel.get(FuseboxProperties.POPUP_MODEL_BUTTON_DATA_LIST).size());
-        assertFalse(mModel.get(FuseboxProperties.POPUP_MODEL_DIVIDER_VISIBLE));
         assertTrue(mModel.get(FuseboxProperties.POPUP_MODEL_HEADER_VISIBLE));
     }
 
@@ -1692,7 +1699,7 @@ public class FuseboxMediatorUnitTest {
         mInput.setRequestType(AutocompleteRequestType.SEARCH);
         assertEquals(FuseboxState.COMPACT, mModel.get(FuseboxProperties.FUSEBOX_STATE));
 
-        mMediator.setIsTextWrapping(/* isTextWrapping= */ true);
+        mUrlTextWrappingSupplier.set(true);
         assertEquals(FuseboxState.EXPANDED, mModel.get(FuseboxProperties.FUSEBOX_STATE));
     }
 
@@ -2069,7 +2076,7 @@ public class FuseboxMediatorUnitTest {
     public void onInputStateChange_driveNotAvailable_hidesDriveButton() {
         FeatureOverrides.overrideFlag(
                 OmniboxFeatureList.COMPOSEBOX_DRIVE_CONTEXT_MENU_OPTION, true);
-        doReturn(false).when(mDriveFilePickerClient).isAvailable(any());
+        doReturn(false).when(mDriveFilePickerClient).isAvailable(any(), any());
         setInputState(
                 createDefaultInputStateBuilder()
                         .withAllowedInputTypes(InputType.INPUT_TYPE_DRIVE_VALUE));
@@ -2635,6 +2642,51 @@ public class FuseboxMediatorUnitTest {
         mModel.get(FuseboxProperties.POPUP_MORE_OPTIONS_CLICKED).run();
         assertFalse(mModel.get(FuseboxProperties.POPUP_ACCORDION_EXPANDED));
         watcher2.assertExpected();
+    }
+
+    @Test
+    public void getToolSubtext_returnsLocalizedStrings() {
+        OmniboxFeatures.setUseAccordionForTesting(true);
+        assertEquals(
+                mContext.getString(R.string.fusebox_ai_mode_subtext),
+                mMediator.getToolSubtext(ToolMode.TOOL_MODE_UNSPECIFIED));
+        assertEquals(
+                mContext.getString(R.string.fusebox_create_image_subtext),
+                mMediator.getToolSubtext(ToolMode.TOOL_MODE_IMAGE_GEN));
+        assertEquals(
+                mContext.getString(R.string.fusebox_canvas_subtext),
+                mMediator.getToolSubtext(ToolMode.TOOL_MODE_CANVAS));
+        assertEquals("", mMediator.getToolSubtext(ToolMode.TOOL_MODE_DEEP_SEARCH));
+
+        OmniboxFeatures.setUseAccordionForTesting(false);
+        assertEquals("", mMediator.getToolSubtext(ToolMode.TOOL_MODE_UNSPECIFIED));
+        assertEquals("", mMediator.getToolSubtext(ToolMode.TOOL_MODE_IMAGE_GEN));
+        assertEquals("", mMediator.getToolSubtext(ToolMode.TOOL_MODE_CANVAS));
+        assertEquals("", mMediator.getToolSubtext(ToolMode.TOOL_MODE_DEEP_SEARCH));
+    }
+
+    @Test
+    public void popupHeaders_accordionEnabled_suppressed() {
+        OmniboxFeatures.setUseAccordionForTesting(true);
+        recreateMediator();
+        mMediator.onPlusButtonClicked();
+
+        assertEquals(4, mModel.get(FuseboxProperties.POPUP_TOOL_BUTTON_DATA_LIST).size());
+        assertEquals(2, mModel.get(FuseboxProperties.POPUP_MODEL_BUTTON_DATA_LIST).size());
+        assertFalse(mModel.get(FuseboxProperties.POPUP_TOOL_HEADER_VISIBLE));
+        assertFalse(mModel.get(FuseboxProperties.POPUP_MODEL_HEADER_VISIBLE));
+    }
+
+    @Test
+    public void popupHeaders_accordionDisabled_visible() {
+        OmniboxFeatures.setUseAccordionForTesting(false);
+        recreateMediator();
+        mMediator.onPlusButtonClicked();
+
+        assertEquals(4, mModel.get(FuseboxProperties.POPUP_TOOL_BUTTON_DATA_LIST).size());
+        assertEquals(2, mModel.get(FuseboxProperties.POPUP_MODEL_BUTTON_DATA_LIST).size());
+        assertTrue(mModel.get(FuseboxProperties.POPUP_TOOL_HEADER_VISIBLE));
+        assertTrue(mModel.get(FuseboxProperties.POPUP_MODEL_HEADER_VISIBLE));
     }
 
     @Test

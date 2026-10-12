@@ -18,6 +18,7 @@ import android.graphics.Bitmap;
 import android.graphics.Canvas;
 import android.graphics.Point;
 import android.graphics.Rect;
+import android.os.Build;
 import android.os.CancellationSignal;
 import android.util.Size;
 import android.view.Surface;
@@ -37,6 +38,7 @@ import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 import org.mockito.quality.Strictness;
 import org.robolectric.Robolectric;
+import org.robolectric.annotation.Config;
 
 import org.chromium.base.Callback;
 import org.chromium.base.MemoryPressureLevel;
@@ -101,6 +103,7 @@ public class ScrollCaptureCallbackDelegateTest {
         when(mRenderCoordinates.getMinPageScaleFactor()).thenReturn(1f);
         when(mRenderCoordinates.getLastFrameViewportWidthPixInt()).thenReturn(200);
         when(mRenderCoordinates.getLastFrameViewportHeightPixInt()).thenReturn(500);
+        when(mSurface.isValid()).thenReturn(true);
 
         mScrollCaptureCallbackObj = new ScrollCaptureCallbackDelegate(mEntryManagerWrapper);
         ((ScrollCaptureCallbackDelegate) mScrollCaptureCallbackObj).setCurrentTab(mTab);
@@ -281,6 +284,7 @@ public class ScrollCaptureCallbackDelegateTest {
     }
 
     @Test
+    @Config(sdk = Build.VERSION_CODES.BAKLAVA)
     @EnableFeatures(ChromeFeatureList.LONG_SCREENSHOTS_NO_MEMORY_CHECK)
     @DisableFeatures(ChromeFeatureList.LONG_SCREENSHOTS_LENIENT_MEMORY_CHECK)
     public void testScrollCaptureSearch_MemoryPressure_NoMemoryCheck() {
@@ -298,11 +302,35 @@ public class ScrollCaptureCallbackDelegateTest {
         Assert.assertEquals(
                 new Rect(0, 0, 500, 2000), scrollCaptureCallback.onScrollCaptureSearch(signal));
 
-        // Even under CRITICAL memory pressure, it should still work.
+        // On Android 16+ (BAKLAVA), even under CRITICAL memory pressure, it should still work.
         MemoryPressureMonitor.INSTANCE.setLastReportedPressureForTesting(
                 MemoryPressureLevel.CRITICAL);
         Assert.assertEquals(
                 new Rect(0, 0, 500, 2000), scrollCaptureCallback.onScrollCaptureSearch(signal));
+    }
+
+    @Test
+    @Config(sdk = Build.VERSION_CODES.VANILLA_ICE_CREAM)
+    @EnableFeatures(ChromeFeatureList.LONG_SCREENSHOTS_NO_MEMORY_CHECK)
+    @DisableFeatures(ChromeFeatureList.LONG_SCREENSHOTS_LENIENT_MEMORY_CHECK)
+    public void testScrollCaptureSearch_MemoryPressure_NoMemoryCheck_PreBaklava() {
+        ScrollCaptureCallbackDelegate scrollCaptureCallback =
+                (ScrollCaptureCallbackDelegate) mScrollCaptureCallbackObj;
+        CancellationSignal signal = new CancellationSignal();
+
+        when(mRenderCoordinates.getLastFrameViewportWidthPixInt()).thenReturn(500);
+        when(mRenderCoordinates.getLastFrameViewportHeightPixInt()).thenReturn(2000);
+
+        // On Android < 16 (Pre-BAKLAVA), MODERATE pressure should be allowed (lenient threshold).
+        MemoryPressureMonitor.INSTANCE.setLastReportedPressureForTesting(
+                MemoryPressureLevel.MODERATE);
+        Assert.assertEquals(
+                new Rect(0, 0, 500, 2000), scrollCaptureCallback.onScrollCaptureSearch(signal));
+
+        // CRITICAL memory pressure should still be blocked on Android < 16 to avoid framework NPE.
+        MemoryPressureMonitor.INSTANCE.setLastReportedPressureForTesting(
+                MemoryPressureLevel.CRITICAL);
+        Assert.assertTrue(scrollCaptureCallback.onScrollCaptureSearch(signal).isEmpty());
     }
 
     @Test
@@ -392,6 +420,77 @@ public class ScrollCaptureCallbackDelegateTest {
         // The resulting capture Rect should be cropped to 500 height because the upper half of it
         // was out of the content area.
         Assert.assertEquals(new Rect(0, -1000, 500, -500), mRectCaptor.getValue());
+
+        // Test invalid surface at request entry (skips generateEntry)
+        when(mSurface.isValid()).thenReturn(false);
+        captureArea.set(0, -1500, 500, -500);
+        scrollCaptureCallback.onScrollCaptureImageRequest(
+                mSurface, signal, captureArea, mRectConsumer);
+        inOrder.verify(mRectConsumer).onResult(eq(new Rect()));
+        when(mSurface.isValid()).thenReturn(true);
+
+        // Test invalid surface when bitmap callback runs
+        doAnswer(
+                        invocation -> {
+                            when(mSurface.isValid()).thenReturn(false);
+                            EntryListener listener = invocation.getArgument(0);
+                            listener.onResult(EntryStatus.BITMAP_GENERATED);
+                            return null;
+                        })
+                .when(mEntry)
+                .setListener(any(EntryListener.class));
+        captureArea.set(0, -1500, 500, -500);
+        scrollCaptureCallback.onScrollCaptureImageRequest(
+                mSurface, signal, captureArea, mRectConsumer);
+        inOrder.verify(mEntryManager).generateEntry(any());
+        inOrder.verify(mEntry).setListener(any());
+        inOrder.verify(mEntry).getBitmap();
+        inOrder.verify(mRectConsumer).onResult(eq(new Rect()));
+        when(mSurface.isValid()).thenReturn(true);
+
+        // Test canceled signal when bitmap callback runs
+        doAnswer(
+                        invocation -> {
+                            signal.cancel();
+                            EntryListener listener = invocation.getArgument(0);
+                            listener.onResult(EntryStatus.BITMAP_GENERATED);
+                            return null;
+                        })
+                .when(mEntry)
+                .setListener(any(EntryListener.class));
+        captureArea.set(0, -1500, 500, -500);
+        scrollCaptureCallback.onScrollCaptureImageRequest(
+                mSurface, signal, captureArea, mRectConsumer);
+        inOrder.verify(mEntryManager).generateEntry(any());
+        inOrder.verify(mEntry).setListener(any());
+        inOrder.verify(mEntry).getBitmap();
+        inOrder.verify(mRectConsumer).onResult(eq(new Rect()));
+
+        // Test canceled signal at request entry (skips generateEntry)
+        captureArea.set(0, -1500, 500, -500);
+        scrollCaptureCallback.onScrollCaptureImageRequest(
+                mSurface, signal, captureArea, mRectConsumer);
+        inOrder.verify(mRectConsumer).onResult(eq(new Rect()));
+
+        // Test lockCanvas throwing IllegalArgumentException
+        CancellationSignal activeSignal = new CancellationSignal();
+        doAnswer(
+                        invocation -> {
+                            EntryListener listener = invocation.getArgument(0);
+                            listener.onResult(EntryStatus.BITMAP_GENERATED);
+                            return null;
+                        })
+                .when(mEntry)
+                .setListener(any(EntryListener.class));
+        when(mSurface.lockCanvas(any())).thenThrow(new IllegalArgumentException());
+        captureArea.set(0, -1500, 500, -500);
+        scrollCaptureCallback.onScrollCaptureImageRequest(
+                mSurface, activeSignal, captureArea, mRectConsumer);
+        inOrder.verify(mEntryManager).generateEntry(any());
+        inOrder.verify(mEntry).setListener(any());
+        inOrder.verify(mEntry).getBitmap();
+        inOrder.verify(mSurface).lockCanvas(any());
+        inOrder.verify(mRectConsumer).onResult(eq(new Rect()));
 
         // Test end capture
         scrollCaptureCallback.onScrollCaptureEnd(mOnReady);

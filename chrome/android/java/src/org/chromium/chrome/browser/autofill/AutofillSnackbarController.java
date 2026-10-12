@@ -37,24 +37,29 @@ public class AutofillSnackbarController implements SnackbarManager.SnackbarContr
         this.mSnackbarManager = snackbarManager;
     }
 
+    private long takeNativePtr() {
+        long nativeView = mNativeAutofillSnackbarView;
+        mNativeAutofillSnackbarView = 0;
+        return nativeView;
+    }
+
     @Override
     public void onAction(@Nullable Object actionData) {
-        if (mNativeAutofillSnackbarView == 0) {
+        long nativeView = takeNativePtr();
+        if (nativeView == 0) {
             return;
         }
-        // Notify the backend that the user clicked on the action button.
-        AutofillSnackbarControllerJni.get().onActionClicked(mNativeAutofillSnackbarView);
-        // Since the snackbar gets dismissed when the action is clicked, notify the backend about
-        // the dismissal as well.
-        AutofillSnackbarControllerJni.get().onDismissed(mNativeAutofillSnackbarView);
+        // Native OnActionClicked runs both the action callback and the dismiss callback.
+        AutofillSnackbarControllerJni.get().onActionClicked(nativeView);
     }
 
     @Override
     public void onDismissNoAction(@Nullable Object actionData) {
-        if (mNativeAutofillSnackbarView == 0) {
+        long nativeView = takeNativePtr();
+        if (nativeView == 0) {
             return;
         }
-        AutofillSnackbarControllerJni.get().onDismissed(mNativeAutofillSnackbarView);
+        AutofillSnackbarControllerJni.get().onDismissed(nativeView);
     }
 
     @CalledByNative
@@ -92,6 +97,8 @@ public class AutofillSnackbarController implements SnackbarManager.SnackbarContr
 
     private static int getSnackbarIdentifier(@AutofillSnackbarType int snackbarType) {
         switch (snackbarType) {
+            case AutofillSnackbarType.AUTOFILL_AI_SUPPRESSION_UNDO:
+                return Snackbar.UMA_AUTOFILL_AI_SUPPRESSION_UNDO;
             case AutofillSnackbarType.VIRTUAL_CARD:
             default:
                 // Other snackbar types intentionally share UMA_AUTOFILL_VIRTUAL_CARD_FILLED
@@ -103,8 +110,10 @@ public class AutofillSnackbarController implements SnackbarManager.SnackbarContr
     /** Dismiss the autofill snackbar if it's showing. No-op if it's not showing. */
     @CalledByNative
     void dismiss() {
+        if (takeNativePtr() == 0) {
+            return;
+        }
         mSnackbarManager.dismissSnackbars(this);
-        mNativeAutofillSnackbarView = 0;
     }
 
     @NativeMethods

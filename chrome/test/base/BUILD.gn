@@ -818,6 +818,7 @@ if (!is_android) {
       "//chrome/browser/ui:ui_features",
       "//chrome/browser/ui/browser_window:create_browser_window",
       "//chrome/browser/ui/navigator",
+      "//chrome/browser/ui/views/frame:browser_view_header",
       "//chrome/browser/ui/views/tabs:tab",
       "//chrome/browser/ui/views/toolbar:test_support",
       "//chrome/browser/ui/webui/whats_new",
@@ -916,6 +917,7 @@ if (!is_android) {
       "//chrome/browser/ui/location_bar",
       "//chrome/browser/ui/navigator",
       "//chrome/browser/ui/omnibox",
+      "//chrome/browser/ui/views/frame:browser_view_header",
       "//chrome/common",
       "//components/bookmarks/browser",
       "//components/download/public/common:public",
@@ -962,6 +964,7 @@ if (!is_android) {
     deps = [
       "//chrome/browser/ui",
       "//chrome/browser/ui/browser_window",
+      "//chrome/browser/ui/views/frame:browser_view_header",
       "//content/test:test_support",
       "//testing/gtest",
       "//ui/base",
@@ -1134,6 +1137,7 @@ if (!is_android) {
       "//chrome/browser/ui/browser_window:create_browser_window",
       "//chrome/browser/ui/navigator",
       "//chrome/browser/ui/tabs:tab_strip",
+      "//chrome/browser/ui/views/frame:browser_view_header",
       "//chrome/common",
       "//components/sync_preferences",
       "//content/public/browser",
@@ -1260,6 +1264,7 @@ if (!is_android) {
       "//chrome/browser/preloading:test_support",
       "//chrome/browser/ui/browser_window",
       "//chrome/browser/ui/tabs:tab_strip",
+      "//chrome/browser/ui/views/frame:browser_view_header",
       "//chrome/browser/ui/views/toolbar",
       "//chrome/common",
       "//content/public/browser",
@@ -1312,7 +1317,7 @@ if (is_android) {
       "//extensions/buildflags",
     ]
     if (enable_extensions_core) {
-      deps += [ "//extensions/common:extension_features" ]
+      deps += [ "//chrome/browser/extensions" ]
     }
   }
 
@@ -1506,8 +1511,8 @@ if (use_aura) {
   source_set("drag_and_drop_test_utils") {
     testonly = true
     sources = [
-      "drag_and_drop_test_utils.cc",
       "drag_and_drop_test_utils.h",
+      "drag_and_drop_test_utils_aura.cc",
     ]
     public_deps = [
       "//base",
