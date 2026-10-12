@@ -50,6 +50,7 @@ use_partition_alloc_as_malloc_on_win_component_build =
 config("public_includes") {
   include_dirs = [
     "..",
+    "$root_gen_dir",
     "$root_gen_dir/" + rebase_path("..", "//"),
   ]
 }
