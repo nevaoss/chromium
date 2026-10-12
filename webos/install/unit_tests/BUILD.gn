@@ -69,7 +69,7 @@ if (enable_library_cdms) {
 copy("media_data") {
   testonly = true
   sources = [ "//media/test/data" ]
-  outputs = [ "$image_path/$unittests_dir/media/test/data" ]
+  outputs = [ "$image_path/$unittests_data_dir/test/data" ]
 }
 
 copy("h26x_annex_b_fuzz_corpus") {
@@ -79,5 +79,5 @@ copy("h26x_annex_b_fuzz_corpus") {
     "//media/formats/mp4/h265_annex_b_fuzz_corpus",
   ]
   outputs =
-      [ "$image_path/$unittests_dir/media/formats/mp4/{{source_file_part}}" ]
+      [ "$image_path/$unittests_data_dir/formats/mp4/{{source_file_part}}" ]
 }
