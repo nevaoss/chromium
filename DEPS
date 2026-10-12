@@ -4604,13 +4604,6 @@ hooks = [
     'action': ['git', '-C', 'src/third_party/ink/src', 'am',
               '../../../neva/patches/0002-136.0.7075.0-1-GCC-Replace-std-fmodf-with-std-fmod-i.patch']
   },
-  # Apply 'GCC: Explicitly instantiate template classes in ANGLE' patch
-  {
-    'name': '0001-GCC-Explicitly-instantiate-template-classes-in-ANGLE',
-    'pattern': '.',
-    'action': ['git', '-C', 'src/third_party/angle', 'am',
-              '../../neva/patches/0001-GCC-Explicitly-instantiate-template-classes-in-ANGLE.patch']
-  },
   # Apply 'GCC: Change 'PERFETTO_HAS_NO_DESTROY()' to 1 to fix renderer crash as workaround' patch
   {
     'name': 'GCC-Change-PERFETTO_HAS_NO_DESTROY-to-1-to-fix-renderer-crash-as-workaround',
