@@ -652,15 +652,9 @@ void RenderThreadImpl::Init() {
   if (use_cached_routing_table_) {
     RequestNewItemsForFrameRoutingCache();
   }
-<<<<<<< HEAD
-
-  blink::WebV8Features::InitializeMojoJSAllowedProtectedMemory();
-
 #if defined(USE_NEVA_SUSPEND_MEDIA_CAPTURE)
   neva::RenderThreadImpl<RenderThreadImpl>::Init();
 #endif
-=======
->>>>>>> 156.0.8064.0~1
 }
 
 RenderThreadImpl::~RenderThreadImpl() {
