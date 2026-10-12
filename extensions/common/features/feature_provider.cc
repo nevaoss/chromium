@@ -191,6 +191,14 @@ void FeatureProvider::AddStaticFeatures(
     CHECK(feature);
     const std::string_view feature_name = feature->name();
     const size_t previous_size = features_.size();
+    // TODO(neva): Investigate why duplication occurs in Neva.
+#if BUILDFLAG(IS_NEVA_APPRUNTIME)
+    auto it = features_.find(feature_name);
+    if (it != features_.end()) {
+      LOG(INFO) << "Skipping duplicate feature registration: " << feature_name;
+      continue;
+    }
+#endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
     // Generated entries arrive sorted, making end() the optimal insertion
     // hint; batches from other providers transparently fall back to lookup.
     features_.emplace_hint(features_.end(), feature_name, feature);
