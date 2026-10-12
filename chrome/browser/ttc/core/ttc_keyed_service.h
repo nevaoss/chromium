@@ -10,6 +10,7 @@
 #include "base/callback_list.h"
 #include "base/functional/callback.h"
 #include "base/memory/raw_ptr.h"
+#include "base/memory/weak_ptr.h"
 #include "base/types/pass_key.h"
 #include "chrome/browser/ttc/core/ttc_state.h"
 #include "components/keyed_service/core/keyed_service.h"
@@ -30,7 +31,8 @@ class TtcKeyedService : public KeyedService {
  public:
   // Creates the Conversation used by a session.
   using ConversationFactory =
-      base::RepeatingCallback<std::unique_ptr<Conversation>(Profile*)>;
+      base::RepeatingCallback<std::unique_ptr<Conversation>(
+          SessionController&)>;
 
   static TtcKeyedService* Get(content::BrowserContext* context);
 
@@ -65,9 +67,12 @@ class TtcKeyedService : public KeyedService {
 
   // Creates the Conversation for a session. Never returns null.
   std::unique_ptr<Conversation> MakeConversation(
-      base::PassKey<SessionControllerImpl>);
+      base::PassKey<SessionControllerImpl>,
+      SessionController& session_controller);
 
   SessionController* session_controller() { return session_controller_.get(); }
+
+  base::WeakPtr<TtcKeyedService> GetWeakPtr();
 
  private:
   raw_ptr<Profile> profile_;
@@ -75,6 +80,8 @@ class TtcKeyedService : public KeyedService {
   std::unique_ptr<SessionController> session_controller_;
 
   base::RepeatingCallbackList<void(TtcState)> state_changed_callbacks_;
+
+  base::WeakPtrFactory<TtcKeyedService> weak_ptr_factory_{this};
 };
 
 }  // namespace ttc

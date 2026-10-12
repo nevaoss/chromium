@@ -24,7 +24,6 @@
 #import "ios/chrome/browser/shared/ui/buildflags.h"
 #import "ios/chrome/browser/shared/ui/symbols/symbols.h"
 #import "ios/chrome/browser/shared/ui/table_view/cells/table_view_link_header_footer_item.h"
-#import "ios/chrome/browser/shared/ui/table_view/cells/table_view_text_header_footer_item.h"
 #import "ios/chrome/browser/shared/ui/table_view/content_configuration/activity_indicator_content_configuration.h"
 #import "ios/chrome/browser/shared/ui/table_view/content_configuration/colorful_symbol_content_configuration.h"
 #import "ios/chrome/browser/shared/ui/table_view/content_configuration/table_view_cell_content_configuration.h"
@@ -39,6 +38,13 @@ namespace {
 // URL for the AI disclosure footer link.
 constexpr char kAIDisclosureURL[] = "settings://ai_disclosure";
 
+// Vertical spacing between the notice section and search results.
+constexpr CGFloat kNoticeSectionSpacing = 16.0;
+
+// Footer height for the Autofill search results section to provide spacing
+// before the subsequent section.
+constexpr CGFloat kAutofillSearchResultsSectionFooterHeight = 8.0;
+
 // Section identifiers in the "AtMemory" page table view.
 enum class SectionIdentifier {
   kSearchSection,
@@ -49,7 +55,8 @@ enum class SectionIdentifier {
   kUnsupportedQuerySection,
   kNoticeSection,
   kRecentFillsSection,
-  kSearchResultsSection,
+  kAutofillSearchResultsSection,
+  kPersonalContextSearchResultsSection,
 };
 
 // Item identifiers in the "AtMemory" page table view.
@@ -126,7 +133,8 @@ enum class ItemIdentifier {
   self.title = l10n_util::GetNSString(IDS_IOS_AUTOFILL_AI_FIND_AND_FILL_TITLE);
 
   RegisterTableViewHeaderFooter<TableViewLinkHeaderFooterView>(self.tableView);
-  RegisterTableViewHeaderFooter<TableViewTextHeaderFooterView>(self.tableView);
+  // Remove extra spacing on top of sections.
+  self.tableView.sectionHeaderTopPadding = 0;
   self.tableView.backgroundColor =
       [UIColor colorNamed:kGroupedPrimaryBackgroundColor];
   [self loadModel];
@@ -238,15 +246,45 @@ enum class ItemIdentifier {
   SectionIdentifier sectionIdentifier = static_cast<SectionIdentifier>(
       [_dataSource sectionIdentifierForIndex:section].integerValue);
 
-  if (sectionIdentifier == SectionIdentifier::kRecentFillsSection) {
-    TableViewTextHeaderFooterView* header =
-        DequeueTableViewHeaderFooter<TableViewTextHeaderFooterView>(tableView);
-    [header setTitle:l10n_util::GetNSString(
-                         IDS_AUTOFILL_AT_MEMORY_PREVIOUSLY_FILLED)];
-    return header;
+  switch (sectionIdentifier) {
+    case SectionIdentifier::kRecentFillsSection: {
+      TableViewLinkHeaderFooterView* header =
+          DequeueTableViewHeaderFooter<TableViewLinkHeaderFooterView>(
+              tableView);
+      [header setText:l10n_util::GetNSString(
+                          IDS_AUTOFILL_AT_MEMORY_PREVIOUSLY_FILLED)
+            withColor:[UIColor colorNamed:kTextSecondaryColor]];
+      return header;
+    }
+    case SectionIdentifier::kAutofillSearchResultsSection: {
+      TableViewLinkHeaderFooterView* header =
+          DequeueTableViewHeaderFooter<TableViewLinkHeaderFooterView>(
+              tableView);
+      [header setText:l10n_util::GetNSString(
+                          IDS_AUTOFILL_AT_MEMORY_YOUR_SAVED_AUTOFILL_INFO)
+            withColor:[UIColor colorNamed:kTextSecondaryColor]];
+      return header;
+    }
+    case SectionIdentifier::kPersonalContextSearchResultsSection: {
+      TableViewLinkHeaderFooterView* header =
+          DequeueTableViewHeaderFooter<TableViewLinkHeaderFooterView>(
+              tableView);
+      [header
+            setText:
+                l10n_util::GetNSString(
+                    IDS_AUTOFILL_AT_MEMORY_SOURCE_ATTRIBUTION_PERSONAL_INTELLIGENCE)
+          withColor:[UIColor colorNamed:kTextSecondaryColor]];
+      return header;
+    }
+    case SectionIdentifier::kSearchSection:
+    case SectionIdentifier::kSearchFooterSection:
+    case SectionIdentifier::kFetchingSection:
+    case SectionIdentifier::kNoDataSection:
+    case SectionIdentifier::kNoConnectionSection:
+    case SectionIdentifier::kUnsupportedQuerySection:
+    case SectionIdentifier::kNoticeSection:
+      return nil;
   }
-
-  return nil;
 }
 
 - (CGFloat)tableView:(UITableView*)tableView
@@ -254,7 +292,10 @@ enum class ItemIdentifier {
   SectionIdentifier sectionIdentifier = static_cast<SectionIdentifier>(
       [_dataSource sectionIdentifierForIndex:section].integerValue);
 
-  if (sectionIdentifier == SectionIdentifier::kRecentFillsSection) {
+  if (sectionIdentifier == SectionIdentifier::kRecentFillsSection ||
+      sectionIdentifier == SectionIdentifier::kAutofillSearchResultsSection ||
+      sectionIdentifier ==
+          SectionIdentifier::kPersonalContextSearchResultsSection) {
     return UITableViewAutomaticDimension;
   }
 
@@ -288,6 +329,19 @@ enum class ItemIdentifier {
     return UITableViewAutomaticDimension;
   }
 
+  if (sectionIdentifier == SectionIdentifier::kNoticeSection) {
+    return kNoticeSectionSpacing;
+  }
+
+  if (sectionIdentifier == SectionIdentifier::kAutofillSearchResultsSection) {
+    BOOL hasPersonalContextSection = [[_dataSource snapshot].sectionIdentifiers
+        containsObject:
+            @(static_cast<int>(
+                SectionIdentifier::kPersonalContextSearchResultsSection))];
+    return hasPersonalContextSection ? kAutofillSearchResultsSectionFooterHeight
+                                     : 0;
+  }
+
   return 0;
 }
 
@@ -295,7 +349,7 @@ enum class ItemIdentifier {
 
 - (void)view:(TableViewLinkHeaderFooterView*)view didTapLinkURL:(CrURL*)URL {
   if (URL.gurl == GURL(kAIDisclosureURL)) {
-    [self.atMemoryHandler openManageEnhancedAutofillDetails];
+    [self.mutator didTapAIDisclosureLink];
   }
 }
 
@@ -516,12 +570,40 @@ enum class ItemIdentifier {
       [[NSDiffableDataSourceSnapshot alloc] init];
 
   [self appendNoticeSectionToSnapshot:snapshot];
-  [snapshot appendSectionsWithIdentifiers:@[
-    @(static_cast<int>(SectionIdentifier::kSearchResultsSection))
-  ]];
-  [snapshot appendItemsWithIdentifiers:_searchResults
-             intoSectionWithIdentifier:
-                 @(static_cast<int>(SectionIdentifier::kSearchResultsSection))];
+
+  NSMutableArray<AtMemorySearchItem*>* autofillResults =
+      [[NSMutableArray alloc] init];
+  NSMutableArray<AtMemorySearchItem*>* personalContextResults =
+      [[NSMutableArray alloc] init];
+  for (AtMemorySearchItem* item in _searchResults) {
+    if (item.isPersonalContextSourced) {
+      [personalContextResults addObject:item];
+    } else {
+      [autofillResults addObject:item];
+    }
+  }
+
+  if (autofillResults.count > 0) {
+    [snapshot appendSectionsWithIdentifiers:@[
+      @(static_cast<int>(SectionIdentifier::kAutofillSearchResultsSection))
+    ]];
+    [snapshot appendItemsWithIdentifiers:autofillResults
+               intoSectionWithIdentifier:
+                   @(static_cast<int>(
+                       SectionIdentifier::kAutofillSearchResultsSection))];
+  }
+
+  if (personalContextResults.count > 0) {
+    [snapshot appendSectionsWithIdentifiers:@[
+      @(static_cast<int>(
+          SectionIdentifier::kPersonalContextSearchResultsSection))
+    ]];
+    [snapshot
+        appendItemsWithIdentifiers:personalContextResults
+         intoSectionWithIdentifier:
+             @(static_cast<int>(
+                 SectionIdentifier::kPersonalContextSearchResultsSection))];
+  }
 
   [_dataSource applySnapshot:snapshot animatingDifferences:YES];
   [self announceSearchResultsForAccessibility];

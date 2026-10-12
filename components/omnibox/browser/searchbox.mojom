@@ -43,6 +43,8 @@ struct InputKeywordModel {
   KeywordType type;
   string keyword;
   string display_text;
+  string icon_path;
+  string placeholder;
 };
 
 struct MatchKeywordModel {
@@ -424,7 +426,8 @@ interface PageHandler {
   // Note: |url| is only used to confirm the match |line| selection.
   // |mouse_button| indicates which mouse button was pressed on the match. See
   // https://developer.mozilla.org/en-US/docs/Web/API/MouseEvent/button
-  OpenAutocompleteMatch(uint8 line,
+  OpenAutocompleteMatch(uint32 result_sequence_id,
+                        uint8 line,
                         url.mojom.Url url,
                         bool are_matches_showing,
                         uint8 mouse_button,
@@ -626,7 +629,7 @@ interface PageHandler {
 
   // Shows the native Views dropdown menu for selecting a hotkey preset,
   // anchored to the specified bounds in WebUI viewport coordinates.
-  ShowHotkeyDropdown(gfx.mojom.Rect anchor_bounds);
+  ShowHotkeyDropdown(gfx.mojom.Rect anchor_bounds) => ();
 
   // Opens platform/browser shortcut configuration settings.
   OpenHotkeySettings();

@@ -102,6 +102,8 @@
 #include "ui/views/accessibility/view_accessibility.h"
 #include "ui/views/animation/ink_drop.h"
 #include "ui/views/border.h"
+#include "ui/views/bubble/bubble_dialog_delegate_view.h"
+#include "ui/views/bubble/bubble_frame_view.h"
 #include "ui/views/controls/button/button.h"
 #include "ui/views/controls/button/label_button.h"
 #include "ui/views/controls/image_view.h"
@@ -115,13 +117,13 @@
 #include "ui/views/view.h"
 #include "ui/views/view_class_properties.h"
 #include "ui/views/view_utils.h"
+#include "ui/views/widget/widget.h"
 #include "url/gurl.h"
 
 #if BUILDFLAG(IS_CHROMEOS)
 #include "ash/ash_element_identifiers.h"
 #include "ui/base/interaction/element_tracker.h"
 #include "ui/strings/grit/ui_strings.h"
-#include "ui/views/widget/widget.h"
 #endif
 
 #if BUILDFLAG(IS_OZONE)
@@ -442,6 +444,13 @@ void TabGroupEditorBubbleView::OnTabGroupChanged(const TabGroupChange& change) {
 
   if (text_changed) {
     title_field_->SetText(new_visuals->title());
+  }
+}
+
+void TabGroupEditorBubbleView::OnDisplayTabletStateChanged(
+    display::TabletState state) {
+  if (views::Widget* const widget = GetWidget()) {
+    widget->CloseWithReason(views::Widget::ClosedReason::kUnspecified);
   }
 }
 

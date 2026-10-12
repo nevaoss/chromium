@@ -13,6 +13,7 @@
 #include "chrome/browser/contextual_tasks/contextual_tasks.mojom.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_internals.mojom.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui.h"
+#include "chrome/browser/contextual_tasks/contextual_tasks_ui_post_rearchitecture.h"
 #include "chrome/browser/glic/selection/selection_overlay_untrusted_ui.h"
 #include "chrome/browser/history_clusters/history_clusters_service_factory.h"
 #include "chrome/browser/history_embeddings/history_embeddings_utils.h"
@@ -68,6 +69,7 @@
 #include "chrome/browser/ui/webui/omnibox_popup/omnibox_popup_ui.h"
 #include "chrome/browser/ui/webui/on_device_internals/on_device_internals_ui.h"
 #include "chrome/browser/ui/webui/organizer_panel/organizer_panel_ui.h"
+#include "chrome/browser/ui/webui/organizer_panel/tab_groups.mojom.h"
 #include "chrome/browser/ui/webui/page_action_internals/page_action_internals.mojom.h"
 #include "chrome/browser/ui/webui/page_action_internals/page_action_internals_ui.h"
 #include "chrome/browser/ui/webui/password_manager/password_manager_ui.h"
@@ -374,7 +376,8 @@ void PopulateChromeWebUIFrameBindersPartsDesktop(
       help_bubble::mojom::HelpBubbleHandlerFactory, UserEducationInternalsUI,
       ReadingListUI, NewTabPageUI, CustomizeChromeUI, PasswordManagerUI,
       HistoryUI, lens::LensOverlayUntrustedUI, lens::LensSidePanelUntrustedUI,
-      ContextualTasksUI, OmniboxEverywhereUI
+      ContextualTasksUI, contextual_tasks::ContextualTasksUIPostRearchitecture,
+      OmniboxEverywhereUI
 #if !BUILDFLAG(IS_CHROMEOS)
       ,
       ProfilePickerUI
@@ -601,7 +604,8 @@ void PopulateChromeWebUIFrameInterfaceBrokersTrustedPartsDesktop(
       .Add<tab_search::mojom::SearchHandler>();
   registry.ForWebUI<OrganizerPanelUI>()
       .Add<tab_search::mojom::PageHandlerFactory>()
-      .Add<tab_search::mojom::SearchHandler>();
+      .Add<tab_search::mojom::SearchHandler>()
+      .Add<organizer_panel::mojom::TabGroupsOrganizerPageHandlerFactory>();
 
   if (base::FeatureList::IsEnabled(ntp_features::kNtpFooter)) {
     registry.ForWebUI<NewTabFooterUI>()

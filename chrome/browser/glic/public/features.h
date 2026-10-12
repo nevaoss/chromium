@@ -12,6 +12,19 @@
 #include "base/metrics/field_trial_params.h"
 #include "build/build_config.h"
 
+// Macros to define the default state of features explicitly across platforms.
+#if BUILDFLAG(IS_ANDROID)
+#define FEATURE_ENABLED_BY_DEFAULT_NON_ANDROID base::FEATURE_DISABLED_BY_DEFAULT
+#define FEATURE_ENABLED_BY_DEFAULT_ANDROID_ONLY base::FEATURE_ENABLED_BY_DEFAULT
+#else
+#define FEATURE_ENABLED_BY_DEFAULT_NON_ANDROID base::FEATURE_ENABLED_BY_DEFAULT
+#define FEATURE_ENABLED_BY_DEFAULT_ANDROID_ONLY \
+  base::FEATURE_DISABLED_BY_DEFAULT
+#endif
+
+#define FEATURE_ENABLED_BY_DEFAULT_ALL_PLATFORMS \
+  base::FEATURE_ENABLED_BY_DEFAULT
+
 namespace features {
 
 BASE_DECLARE_FEATURE(kGlicAndroidSidePanel);
@@ -66,10 +79,6 @@ BASE_DECLARE_FEATURE(kGlicDynamicChromeTools);
 
 BASE_DECLARE_FEATURE(kGlicLiveMode);
 
-BASE_DECLARE_FEATURE(kGlicDefaultToLastActiveConversation);
-extern const base::FeatureParam<base::TimeDelta>
-    kGlicDefaultToLastActiveConversationMaxRecency;
-
 BASE_DECLARE_FEATURE(kGlicSummarizeVideoSuggestion);
 
 BASE_DECLARE_FEATURE(kGlicFixTimeToFirstQueryKillSwitch);
@@ -83,6 +92,9 @@ BASE_DECLARE_FEATURE(kGlicContextMenuBelowSearch);
 BASE_DECLARE_FEATURE(kGlicTextSelectionContextMenu);
 extern const base::FeatureParam<bool>
     kGlicTextSelectionContextMenuMessageFirstFre;
+// Whether the selected text is auto-submitted with a default prompt instead of
+// only being attached to the input area for the user to submit manually.
+extern const base::FeatureParam<bool> kGlicTextSelectionContextMenuAutoSubmit;
 
 BASE_DECLARE_FEATURE(kGlicTieredRolloutV2);
 extern const base::FeatureParam<std::string> kGlicTieredRolloutV2EligibleTiers;
@@ -177,6 +189,10 @@ BASE_DECLARE_FEATURE(kGlicActionFirstFRE);
 BASE_DECLARE_FEATURE(kGlicWarmOnNudge);
 
 BASE_DECLARE_FEATURE(kGlicWarmOnIph);
+
+BASE_DECLARE_FEATURE(kGlicBackfillWarmingUsePerformanceManager);
+
+BASE_DECLARE_FEATURE(kGlicColdWarmingUsePerformanceManager);
 }  // namespace features
 
 #endif  // CHROME_BROWSER_GLIC_PUBLIC_FEATURES_H_

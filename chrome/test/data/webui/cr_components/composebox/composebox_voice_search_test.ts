@@ -333,6 +333,46 @@ suite('ComposeboxVoiceSearch', () => {
   });
 
   test(
+      'positions error message and close button with 20px top padding ' +
+          'when audio-wave-enabled',
+      async () => {
+        loadTimeData.overrideValues({
+          voiceSearchCoherenceComposeboxesEnabled: true,
+        });
+        await createComposeboxElement();
+
+        const voiceSearchElement = await openVoiceSearchUI();
+        voiceSearchElement.audioWaveEnabled = true;
+        await voiceSearchElement.updateComplete;
+
+        mockSpeechRecognition.onerror!
+            ({error: 'network'} as SpeechRecognitionErrorEvent);
+        await microtasksFinished();
+        await voiceSearchElement.updateComplete;
+
+        const errorContainer =
+            voiceSearchElement.shadowRoot.querySelector<HTMLElement>(
+                '#error-container');
+        assertTrue(!!errorContainer);
+        assertFalse(errorContainer.hidden);
+        assertEquals(
+            '20px', window.getComputedStyle(errorContainer).paddingTop);
+
+        const closeButton =
+            voiceSearchElement.shadowRoot.querySelector<HTMLElement>(
+                '#closeButton');
+        assertTrue(!!closeButton);
+        assertEquals('14px', window.getComputedStyle(closeButton).top);
+
+        // Disabling audio-wave-enabled restores default styling.
+        voiceSearchElement.audioWaveEnabled = false;
+        await voiceSearchElement.updateComplete;
+        assertEquals(
+            '11px', window.getComputedStyle(errorContainer).paddingTop);
+        assertEquals('12px', window.getComputedStyle(closeButton).top);
+      });
+
+  test(
       'NO_MATCH error auto-closes immediately when hasErrorTimer is false',
       async () => {
         const voiceSearchElement = await openVoiceSearchUI();
@@ -1481,6 +1521,7 @@ suite('ComposeboxVoiceSearch', () => {
         assertFalse(!!buttonSpacer);
         assertEquals(
             'column', window.getComputedStyle(container).flexDirection);
+        assertEquals('20px', window.getComputedStyle(input).paddingInlineStart);
         assertEquals('20px', window.getComputedStyle(input).paddingInlineEnd);
         assertEquals('0px', window.getComputedStyle(input).paddingBottom);
         assertEquals('static', window.getComputedStyle(bottomActions).position);
@@ -1525,6 +1566,33 @@ suite('ComposeboxVoiceSearch', () => {
   });
 
   test(
+      'voice search text color can be overridden via css variable',
+      async () => {
+        await createComposeboxElement();
+        const voiceSearchElement = getVoiceSearchElement(composeboxElement);
+
+        mockSpeechRecognition.onerror!
+            ({error: 'network'} as SpeechRecognitionErrorEvent);
+        voiceSearchElement.liveTranscriptEnabled = true;
+        await microtasksFinished();
+        await voiceSearchElement.updateComplete;
+
+        const input =
+            voiceSearchElement.shadowRoot.querySelector<HTMLElement>('#input')!;
+        const errorContainer =
+            voiceSearchElement.shadowRoot.querySelector<HTMLElement>(
+                '#error-container')!;
+
+        // The default comes from a var() fallback chain, so verify embedders
+        // can still override it via --color-composebox-voice-search-font.
+        composeboxElement.style.setProperty(
+            '--color-composebox-voice-search-font', 'rgb(10, 10, 10)');
+        assertEquals('rgb(10, 10, 10)', window.getComputedStyle(input).color);
+        assertEquals(
+            'rgb(10, 10, 10)', window.getComputedStyle(errorContainer).color);
+      });
+
+  test(
       'multiline transcript behavior when wave and live transcript enabled',
       async () => {
         await createComposeboxElement();
@@ -1543,11 +1611,14 @@ suite('ComposeboxVoiceSearch', () => {
 
         const input =
             voiceSearchElement.shadowRoot.querySelector<HTMLElement>('#input')!;
-        // When empty, input has .empty class with max-height: 44px.
+        // When empty, input has .empty class with max-height: 44px and
+        // centered text without inline start padding.
         assertEquals('44px', window.getComputedStyle(input).maxHeight);
+        assertEquals('0px', window.getComputedStyle(input).paddingInlineStart);
 
         // When transcript is populated, max-height allows up to 7 lines
-        // (188px).
+        // (188px) plus room for the bottom scroll fade, and transcription text
+        // has 20px padding from start edge per Figma spec.
         const speechRes = createResults(1);
         Object.assign(
             speechRes.results[0]![0]!,
@@ -1555,8 +1626,9 @@ suite('ComposeboxVoiceSearch', () => {
         mockSpeechRecognition.onresult!(speechRes);
         await microtasksFinished();
         await voiceSearchElement.updateComplete;
-        assertEquals('188px', window.getComputedStyle(input).maxHeight);
+        assertEquals('195px', window.getComputedStyle(input).maxHeight);
         assertEquals('auto', window.getComputedStyle(input).overflowY);
+        assertEquals('20px', window.getComputedStyle(input).paddingInlineStart);
         assertEquals(1, voiceSearchElement.transcriptLines);
         assertEquals('1', voiceSearchElement.getAttribute('transcript-lines'));
 

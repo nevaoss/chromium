@@ -4,10 +4,13 @@
 
 #include "chrome/browser/chrome_content_browser_client.h"
 
+#include <algorithm>
+#include <cstdint>
 #include <list>
 #include <map>
 #include <memory>
 #include <string_view>
+#include <vector>
 
 #include "ash/webui/camera_app_ui/url_constants.h"
 #include "base/command_line.h"
@@ -38,7 +41,7 @@
 #include "chrome/browser/devtools/features.h"
 #include "chrome/browser/enterprise/net/enterprise_proxy_error_service_factory.h"
 #include "chrome/browser/enterprise/net/enterprise_proxy_service_factory.h"
-#include "chrome/browser/enterprise/reporting/prefs.h"
+#include "components/enterprise/browser/reporting/prefs.h"
 #include "chrome/browser/global_features.h"
 #include "chrome/browser/media/prefs/capture_device_ranking.h"
 #include "chrome/browser/search/search.h"
@@ -85,6 +88,7 @@
 #include "content/public/browser/browsing_data_filter_builder.h"
 #include "content/public/browser/browsing_data_remover.h"
 #include "content/public/browser/child_process_security_policy.h"
+#include "content/public/browser/frame_tree_node_id.h"
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/navigation_entry.h"
 #include "content/public/browser/render_frame_host.h"
@@ -93,8 +97,10 @@
 #include "content/public/browser/site_isolation_policy.h"
 #include "content/public/browser/storage_partition.h"
 #include "content/public/browser/web_contents.h"
+#include "content/public/browser/web_contents_delegate.h"
 #include "content/public/browser/web_ui_controller.h"
 #include "content/public/common/alternative_error_page_override_info.mojom.h"
+#include "content/public/common/buildflags.h"
 #include "content/public/common/child_process_id.h"
 #include "content/public/common/content_features.h"
 #include "content/public/common/content_switches.h"
@@ -119,9 +125,12 @@
 #include "net/test/cert_test_util.h"
 #include "net/test/test_data_directory.h"
 #include "pdf/buildflags.h"
+#include "services/network/public/cpp/resource_request.h"
+#include "services/network/public/mojom/fetch_api.mojom-shared.h"
 #include "services/network/test/test_network_context.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/blink/public/common/loader/url_loader_throttle.h"
 #include "third_party/blink/public/common/storage_key/storage_key.h"
 #include "third_party/blink/public/common/switches.h"
 #include "third_party/blink/public/common/web_preferences/web_preferences.h"
@@ -189,6 +198,7 @@
 
 #if BUILDFLAG(ENABLE_EXTENSIONS)
 #include "chrome/browser/web_applications/web_app.h"
+#include "chrome/common/extensions/extension_constants.h"
 #include "chrome/test/base/chrome_render_view_host_test_harness.h"
 #include "content/public/browser/storage_partition_config.h"
 #include "content/public/test/test_renderer_host.h"
@@ -202,6 +212,8 @@
 #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
 #include "chrome/test/base/chrome_render_view_host_test_harness.h"
 #include "content/public/test/test_renderer_host.h"
+#include "extensions/browser/extension_config_map.h"
+#include "extensions/browser/extension_config_map_factory.h"
 #include "extensions/browser/extension_registry.h"
 #include "extensions/browser/process_map.h"
 #include "extensions/browser/script_injection_tracker.h"
@@ -2620,6 +2632,53 @@ TEST_F(ChromeContentBrowserClientOopifPdfTest,
 }
 #endif  // BUILDFLAG(ENABLE_PDF)
 
+#if BUILDFLAG(ENABLE_PLUGINS)
+using ChromeContentBrowserClientPluginThrottleTest =
+    ChromeRenderViewHostTestHarness;
+
+// A request without a navigation ID is not a navigation and must not
+// receive the plugin response interceptor.
+TEST_F(ChromeContentBrowserClientPluginThrottleTest,
+       CreateURLLoaderThrottlesPluginInterceptorRequiresNavigationId) {
+  ChromeContentBrowserClient client;
+
+  network::ResourceRequest request;
+  request.url = GURL("http://example.com/doc.pdf");
+  request.destination = network::mojom::RequestDestination::kDocument;
+
+  auto get_web_contents_cb =
+      base::BindRepeating([]() -> content::WebContents* { return nullptr; });
+  const content::FrameTreeNodeId frame_tree_node_id;
+
+  std::vector<std::unique_ptr<blink::URLLoaderThrottle>> without_id =
+      client.CreateURLLoaderThrottles(
+          request, browser_context(), get_web_contents_cb,
+          /*navigation_ui_data=*/nullptr, frame_tree_node_id,
+          /*navigation_id=*/std::nullopt);
+  std::vector<std::unique_ptr<blink::URLLoaderThrottle>> with_id =
+      client.CreateURLLoaderThrottles(
+          request, browser_context(), get_web_contents_cb,
+          /*navigation_ui_data=*/nullptr, frame_tree_node_id,
+          /*navigation_id=*/std::optional<int64_t>(123));
+
+  static constexpr const char* kPluginResponseInterceptorThrottleName =
+      "PluginResponseInterceptorURLLoaderThrottle";
+  auto has_plugin_interceptor =
+      [](const std::vector<std::unique_ptr<blink::URLLoaderThrottle>>&
+             throttles) {
+        return std::ranges::any_of(
+            throttles,
+            [](const std::unique_ptr<blink::URLLoaderThrottle>& throttle) {
+              const char* name = throttle->NameForLoggingWillProcessResponse();
+              return name && std::string_view(name) ==
+                                 kPluginResponseInterceptorThrottleName;
+            });
+      };
+  EXPECT_FALSE(has_plugin_interceptor(without_id));
+  EXPECT_TRUE(has_plugin_interceptor(with_id));
+}
+#endif  // BUILDFLAG(ENABLE_PLUGINS)
+
 #if BUILDFLAG(ENABLE_EXTENSIONS) && !BUILDFLAG(IS_ANDROID)
 class ChromeContentBrowserClientMimeHandlerFilePickerTest
     : public ChromeRenderViewHostTestHarness {
@@ -2656,7 +2715,8 @@ class ChromeContentBrowserClientMimeHandlerFilePickerTest
     manager->AddStreamContainer(
         embedder_host->GetFrameTreeNodeId(), "internal_id",
         extensions::mime_handler::GenerateSampleStreamContainer(1),
-        std::make_unique<extensions::MimeHandlerStreamDelegate>());
+        std::make_unique<extensions::MimeHandlerStreamDelegate>(),
+        extensions::mime_handler::kFakeNavigationId);
     manager->ClaimStreamInfoForTesting(embedder_host);
 
     content::RenderFrameHost* extension_host =
@@ -2750,6 +2810,46 @@ TEST_F(ChromeContentBrowserClientMimeHandlerFilePickerTest,
           "chrome-extension://bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb/viewer.html"))));
 }
 #endif  // BUILDFLAG(ENABLE_EXTENSIONS) && !BUILDFLAG(IS_ANDROID)
+
+#if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
+using ChromeContentBrowserClientUnboundedElementTest =
+    ChromeRenderViewHostTestHarness;
+
+TEST_F(ChromeContentBrowserClientUnboundedElementTest,
+       IsUnboundedElementAllowed) {
+  ChromeContentBrowserClient client;
+  NavigateAndCommit(GURL("https://example.test/page"));
+  EXPECT_FALSE(client.IsUnboundedElementAllowed(main_rfh()));
+
+  const extensions::ExtensionId kExtensionId = "test_extension_id";
+
+  content::RenderFrameHostTester::For(main_rfh())
+      ->InitializeRenderFrameIfNeeded();
+  content::RenderFrameHost* extension_rfh =
+      content::RenderFrameHostTester::For(main_rfh())->AppendChild("extension");
+  content::RenderFrameHostTester::For(extension_rfh)
+      ->InitializeRenderFrameIfNeeded();
+  content::OverrideLastCommittedOrigin(
+      extension_rfh,
+      url::Origin::Create(GURL(std::string("chrome-extension://") +
+                               kExtensionId + "/index.html")));
+
+  EXPECT_FALSE(client.IsUnboundedElementAllowed(extension_rfh));
+
+  class TestUnboundedConfigProvider
+      : public extensions::ExtensionConfigProvider {
+   public:
+    explicit TestUnboundedConfigProvider(extensions::ExtensionId id)
+        : extensions::ExtensionConfigProvider(std::move(id)) {}
+    bool IsUnboundedElementAllowed() const override { return true; }
+  };
+
+  extensions::ExtensionConfigMapFactory::GetOrCreateForBrowserContext(profile())
+      ->RegisterConfigProvider(
+          std::make_unique<TestUnboundedConfigProvider>(kExtensionId));
+  EXPECT_TRUE(client.IsUnboundedElementAllowed(extension_rfh));
+}
+#endif  // BUILDFLAG(ENABLE_EXTENSIONS_CORE)
 
 #if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_MAC) || \
     BUILDFLAG(IS_WIN)

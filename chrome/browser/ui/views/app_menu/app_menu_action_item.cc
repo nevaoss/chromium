@@ -16,6 +16,7 @@
 #include "ui/color/color_id.h"
 
 DEFINE_UI_CLASS_PROPERTY_TYPE(AppMenuActionItem::DisplayType)
+DEFINE_UI_CLASS_PROPERTY_TYPE(AppMenuActionItem::ItemHeight)
 DEFINE_UI_CLASS_PROPERTY_TYPE(ui::ImageModel*)
 DEFINE_UI_CLASS_PROPERTY_TYPE(ui::MenuSeparatorType)
 
@@ -32,10 +33,14 @@ DEFINE_UI_CLASS_PROPERTY_KEY(ui::MenuSeparatorType,
                              ui::NORMAL_SEPARATOR)
 
 DEFINE_UI_CLASS_PROPERTY_KEY(bool, kAppMenuIsCheckableInternal, false)
+DEFINE_UI_CLASS_PROPERTY_KEY(AppMenuActionItem::ItemHeight,
+                             kAppMenuItemHeightInternal,
+                             AppMenuActionItem::ItemHeight::kDefault)
 
 DEFINE_OWNED_UI_CLASS_PROPERTY_KEY(std::u16string, kAppMenuTextOverrideInternal)
 DEFINE_OWNED_UI_CLASS_PROPERTY_KEY(ui::ImageModel, kAppMenuIconOverrideInternal)
 DEFINE_OWNED_UI_CLASS_PROPERTY_KEY(ui::ImageModel, kAppMenuMinorIconInternal)
+DEFINE_OWNED_UI_CLASS_PROPERTY_KEY(std::u16string, kAppMenuMinorTextInternal)
 DEFINE_OWNED_UI_CLASS_PROPERTY_KEY(std::u16string, kAppMenuChipTextInternal)
 
 const ui::ClassProperty<AppMenuActionItem::DisplayType>* const
@@ -53,6 +58,9 @@ const ui::ClassProperty<ui::ImageModel*>* const
 const ui::ClassProperty<ui::ImageModel*>* const
     AppMenuActionItem::kMinorIconKey = kAppMenuMinorIconInternal;
 
+const ui::ClassProperty<std::u16string*>* const
+    AppMenuActionItem::kMinorTextKey = kAppMenuMinorTextInternal;
+
 const ui::ClassProperty<ui::MenuSeparatorType>* const
     AppMenuActionItem::kSeparatorKey = kAppMenuSeparatorInternal;
 
@@ -61,6 +69,9 @@ const ui::ClassProperty<std::u16string*>* const
 
 const ui::ClassProperty<bool>* const AppMenuActionItem::kIsCheckableKey =
     kAppMenuIsCheckableInternal;
+
+const ui::ClassProperty<AppMenuActionItem::ItemHeight>* const
+    AppMenuActionItem::kItemHeightKey = kAppMenuItemHeightInternal;
 
 std::unique_ptr<actions::IndirectActionItem> AppMenuActionItem::CreateIndirect(
     actions::ActionId action_id,
@@ -83,6 +94,10 @@ std::unique_ptr<actions::IndirectActionItem> AppMenuActionItem::CreateIndirect(
     action->SetProperty(kIsCheckableKey, params.is_checkable.value());
   }
 
+  if (params.item_height.has_value()) {
+    action->SetProperty(kItemHeightKey, params.item_height.value());
+  }
+
   auto item = std::make_unique<actions::IndirectActionItem>(action);
 
   if (params.text_override.has_value()) {
@@ -93,6 +108,11 @@ std::unique_ptr<actions::IndirectActionItem> AppMenuActionItem::CreateIndirect(
   if (params.icon_override.has_value()) {
     item->SetProperty(kIconOverrideKey, std::make_unique<ui::ImageModel>(
                                             params.icon_override.value()));
+  }
+
+  if (params.minor_text.has_value()) {
+    item->SetProperty(kMinorTextKey, std::make_unique<std::u16string>(
+                                         params.minor_text.value()));
   }
 
   if (params.chip_text.has_value()) {

@@ -157,7 +157,6 @@ enum BorealisZinkGlDriverParam { kZinkEnableRecommended, kZinkEnableAll };
 COMPONENT_EXPORT(ASH_CONSTANTS)
 extern const base::FeatureParam<BorealisZinkGlDriverParam>
     kBorealisZinkGlDriverParam;
-COMPONENT_EXPORT(ASH_CONSTANTS) BASE_DECLARE_FEATURE(kCampbellGlyph);
 COMPONENT_EXPORT(ASH_CONSTANTS) BASE_DECLARE_FEATURE(kCaptureModeEducation);
 enum class CaptureModeEducationParam {
   kShortcutNudge,
@@ -519,10 +518,6 @@ extern const base::FeatureParam<bool>
 COMPONENT_EXPORT(ASH_CONSTANTS)
 BASE_DECLARE_FEATURE(kLanguagePacksInSettings);
 COMPONENT_EXPORT(ASH_CONSTANTS)
-BASE_DECLARE_FEATURE(kLauncherContinueSectionWithRecents);
-COMPONENT_EXPORT(ASH_CONSTANTS)
-BASE_DECLARE_FEATURE(kLauncherContinueSectionWithRecentsRollout);
-COMPONENT_EXPORT(ASH_CONSTANTS)
 BASE_DECLARE_FEATURE(kLauncherNudgeShortInterval);
 COMPONENT_EXPORT(ASH_CONSTANTS)
 BASE_DECLARE_FEATURE(kFeatureManagementLocalImageSearch);
@@ -785,8 +780,6 @@ extern const base::FeatureParam<SystemShortcutBehaviorParam>
     kSystemShortcutBehaviorParam;
 COMPONENT_EXPORT(ASH_CONSTANTS) BASE_DECLARE_FEATURE(kSystemNudgeMigration);
 COMPONENT_EXPORT(ASH_CONSTANTS) BASE_DECLARE_FEATURE(kSystemTrayShadow);
-COMPONENT_EXPORT(ASH_CONSTANTS)
-BASE_DECLARE_FEATURE(kSystemProxyForSystemServices);
 COMPONENT_EXPORT(ASH_CONSTANTS) BASE_DECLARE_FEATURE(kTelemetryExtension);
 COMPONENT_EXPORT(ASH_CONSTANTS)
 BASE_DECLARE_FEATURE(kTetheringExperimentalFunctionality);
@@ -836,7 +829,6 @@ COMPONENT_EXPORT(ASH_CONSTANTS) BASE_DECLARE_FEATURE(kVcTrayTitleHeader);
 COMPONENT_EXPORT(ASH_CONSTANTS) BASE_DECLARE_FEATURE(kVcWebApi);
 COMPONENT_EXPORT(ASH_CONSTANTS)
 BASE_DECLARE_FEATURE(kFeatureManagementVideoConference);
-COMPONENT_EXPORT(ASH_CONSTANTS) BASE_DECLARE_FEATURE(kWakeOnWifiAllowed);
 COMPONENT_EXPORT(ASH_CONSTANTS) BASE_DECLARE_FEATURE(kWallpaperFastRefresh);
 COMPONENT_EXPORT(ASH_CONSTANTS)
 BASE_DECLARE_FEATURE(kWelcomeTour);
@@ -884,13 +876,9 @@ BASE_DECLARE_FEATURE(kHappinessTrackingSystemBatteryLife);
 COMPONENT_EXPORT(ASH_CONSTANTS)
 BASE_DECLARE_FEATURE(kHappinessTrackingSystemPeripherals);
 COMPONENT_EXPORT(ASH_CONSTANTS)
-BASE_DECLARE_FEATURE(kHappinessTrackingSystemEnt);
-COMPONENT_EXPORT(ASH_CONSTANTS)
 BASE_DECLARE_FEATURE(kHappinessTrackingSystemStability);
 COMPONENT_EXPORT(ASH_CONSTANTS)
 BASE_DECLARE_FEATURE(kHappinessTrackingSystemPerformance);
-COMPONENT_EXPORT(ASH_CONSTANTS)
-BASE_DECLARE_FEATURE(kHappinessTrackingSystemOnboarding);
 COMPONENT_EXPORT(ASH_CONSTANTS)
 BASE_DECLARE_FEATURE(kHappinessTrackingSystemArcGames);
 COMPONENT_EXPORT(ASH_CONSTANTS)
@@ -917,8 +905,6 @@ COMPONENT_EXPORT(ASH_CONSTANTS)
 BASE_DECLARE_FEATURE(kHappinessTrackingGeneralCameraPrioritized);
 COMPONENT_EXPORT(ASH_CONSTANTS)
 BASE_DECLARE_FEATURE(kHappinessTrackingOsSettingsSearch);
-COMPONENT_EXPORT(ASH_CONSTANTS)
-BASE_DECLARE_FEATURE(kHappinessTrackingBorealisGames);
 COMPONENT_EXPORT(ASH_CONSTANTS) BASE_DECLARE_FEATURE(kHappinessTrackingOffice);
 COMPONENT_EXPORT(ASH_CONSTANTS)
 BASE_DECLARE_FEATURE(kHappinessTrackingSystemSlowAndLaggyDeepDive);
@@ -1136,8 +1122,6 @@ bool IsInternalServerSideSpeechRecognitionEnabled();
 COMPONENT_EXPORT(ASH_CONSTANTS)
 bool IsInternalServerSideSpeechRecognitionEnabledByFinch();
 COMPONENT_EXPORT(ASH_CONSTANTS) bool IsJupiterScreensaverEnabled();
-COMPONENT_EXPORT(ASH_CONSTANTS)
-bool IsLauncherContinueSectionWithRecentsEnabled();
 COMPONENT_EXPORT(ASH_CONSTANTS) bool IsLobsterEnabled();
 COMPONENT_EXPORT(ASH_CONSTANTS) bool IsLobsterEnabledForManagedUsers();
 COMPONENT_EXPORT(ASH_CONSTANTS) bool IsLobsterDisabledByInvalidIME();
@@ -1289,7 +1273,6 @@ COMPONENT_EXPORT(ASH_CONSTANTS) bool ShouldUseStorkSmds();
 COMPONENT_EXPORT(ASH_CONSTANTS)
 bool IsFeatureAwareDeviceDemoModeEnabled();
 COMPONENT_EXPORT(ASH_CONSTANTS) bool IsUseTokenHandleStoreEnabled();
-COMPONENT_EXPORT(ASH_CONSTANTS) bool UseMixedFileLauncherContinueSection();
 COMPONENT_EXPORT(ASH_CONSTANTS) bool IsLocalFactorsPasswordComplexityEnabled();
 COMPONENT_EXPORT(ASH_CONSTANTS) bool IsManagedLocalPinAndPasswordEnabled();
 

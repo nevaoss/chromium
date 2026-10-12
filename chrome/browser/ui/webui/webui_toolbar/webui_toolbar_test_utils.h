@@ -110,6 +110,7 @@ class MockToolbarUIServiceDelegate
   MOCK_METHOD(void,
               OnPageActionChipShowingChanged,
               (::toolbar_ui_api::mojom::PageActionId action_id,
+               bool is_showing,
                ::toolbar_ui_api::mojom::ToolbarUIService::
                    OnPageActionChipShowingChangedCallback callback),
               (override));
@@ -143,7 +144,7 @@ class MockToolbarUIServiceDelegate
               (override));
   MOCK_METHOD(void,
               OnLhsChipClicked,
-              (toolbar_ui_api::mojom::LhsChipIdentifier, bool),
+              (toolbar_ui_api::mojom::LhsChipIdentifier, bool, uint32_t),
               (override));
   MOCK_METHOD(void,
               OnLhsChipPointerEntered,

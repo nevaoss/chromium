@@ -5,13 +5,13 @@
 #include "chrome/browser/ui/omnibox/omnibox_everywhere/omnibox_everywhere_region_select_overlay.h"
 
 #include <algorithm>
-#include <cmath>
 #include <cstddef>
 #include <cstdint>
-#include <limits>
 #include <memory>
 #include <utility>
+#include <vector>
 
+#include "base/containers/span.h"
 #include "base/functional/bind.h"
 #include "base/memory/ptr_util.h"
 #include "base/memory/raw_ptr.h"
@@ -27,10 +27,13 @@
 #include "chrome/grit/generated_resources.h"
 #include "components/vector_icons/vector_icons.h"
 #include "third_party/skia/include/core/SkBitmap.h"
+#include "third_party/skia/include/core/SkCanvas.h"
 #include "third_party/skia/include/core/SkColor.h"
+#include "third_party/skia/include/core/SkPaint.h"
 #include "third_party/skia/include/core/SkPath.h"
 #include "third_party/skia/include/core/SkRRect.h"
 #include "third_party/skia/include/core/SkRect.h"
+#include "third_party/skia/include/core/SkSamplingOptions.h"
 #include "ui/accessibility/ax_enums.mojom.h"
 #include "ui/base/cursor/cursor.h"
 #include "ui/base/cursor/mojom/cursor_type.mojom-shared.h"
@@ -48,6 +51,7 @@
 #include "ui/gfx/geometry/point.h"
 #include "ui/gfx/geometry/rect.h"
 #include "ui/gfx/geometry/rect_f.h"
+#include "ui/gfx/geometry/skia_conversions.h"
 #include "ui/gfx/geometry/vector2d.h"
 #include "ui/gfx/image/image_skia.h"
 #include "ui/gfx/paint_vector_icon.h"
@@ -61,6 +65,8 @@
 
 #if BUILDFLAG(IS_WIN)
 #include "ui/display/win/screen_win.h"
+#include "ui/gfx/geometry/point_conversions.h"
+#include "ui/gfx/geometry/point_f.h"
 #endif
 
 #if defined(USE_AURA)
@@ -80,8 +86,33 @@ constexpr SkColor kChromnientSlateScrim = SkColorSetA(kSlateBaseColor, 165);
 constexpr SkColor kToastBackgroundColor = SkColorSetA(kSlateBaseColor, 220);
 
 constexpr float kSelectionRectStrokeWidth = 2.5f;
+constexpr int kSelectionStrokeOutset = 4;
+constexpr int kSelectionCornerRadius = 14;
 
 constexpr float kGlifGradientWashAlpha = 0.18f;
+
+constexpr int kMinSelectionSize = 10;
+
+struct IntersectingSlice {
+  gfx::Rect dip_intersection;
+  gfx::Rect phys_rect_in_screenshot;
+  float scale = 1.0f;
+};
+
+gfx::Rect MapDipToPhysicalBounds(const gfx::Rect& dip_rect,
+                                 const gfx::Rect& display_bounds,
+                                 const gfx::Rect& pixel_bounds) {
+  if (display_bounds.IsEmpty()) {
+    return gfx::Rect();
+  }
+  const float scale_x =
+      static_cast<float>(pixel_bounds.width()) / display_bounds.width();
+  const float scale_y =
+      static_cast<float>(pixel_bounds.height()) / display_bounds.height();
+  return gfx::ScaleToRoundedRect(dip_rect - display_bounds.OffsetFromOrigin(),
+                                 scale_x, scale_y) +
+         pixel_bounds.OffsetFromOrigin();
+}
 
 SkColor4f ColorWithAlpha(SkColor color, float alpha) {
   SkColor4f c = SkColor4f::FromColor(color);
@@ -115,6 +146,66 @@ SkBitmap ExtractCompactSubset(const SkBitmap& source,
   }
   compact_copy.setImmutable();
   return compact_copy;
+}
+
+std::pair<gfx::Rect, float> CalculateActiveBoundsAndScale(
+    base::span<const IntersectingSlice> slices) {
+  gfx::Rect active_dip_bounds;
+  float output_scale = 0.0f;
+  int64_t dominant_area = 0;
+
+  for (const auto& slice : slices) {
+    active_dip_bounds.Union(slice.dip_intersection);
+    const int64_t area = static_cast<int64_t>(slice.dip_intersection.width()) *
+                         slice.dip_intersection.height();
+    if (area > dominant_area ||
+        (area == dominant_area && slice.scale > output_scale)) {
+      dominant_area = area;
+      output_scale = slice.scale;
+    }
+  }
+  return {active_dip_bounds, output_scale};
+}
+
+void DrawSlicesToCanvas(const SkBitmap& screenshot,
+                        base::span<const IntersectingSlice> slices,
+                        const gfx::Rect& active_dip_bounds,
+                        float output_scale,
+                        SkBitmap& output) {
+  // If displays aren't perfectly aligned, then the "nothing" space will be
+  // black.
+  output.eraseColor(SK_ColorBLACK);
+
+  SkCanvas canvas(output);
+  SkPaint sk_paint;
+  sk_paint.setBlendMode(SkBlendMode::kSrc);
+
+  for (const auto& item : slices) {
+    SkBitmap piece;
+    if (!screenshot.extractSubset(
+            &piece, gfx::RectToSkIRect(item.phys_rect_in_screenshot))) {
+      continue;
+    }
+
+    const gfx::Rect dest_rect = gfx::ScaleToRoundedRect(
+        item.dip_intersection - active_dip_bounds.OffsetFromOrigin(),
+        output_scale);
+    if (dest_rect.IsEmpty()) {
+      continue;
+    }
+
+    const bool needs_resample = dest_rect.width() != piece.width() ||
+                                dest_rect.height() != piece.height();
+    const SkSamplingOptions sampling =
+        needs_resample
+            ? SkSamplingOptions(SkFilterMode::kLinear, SkMipmapMode::kNone)
+            : SkSamplingOptions();
+
+    canvas.drawImageRect(piece.asImage(),
+                         SkRect::MakeIWH(piece.width(), piece.height()),
+                         gfx::RectToSkRect(dest_rect), sampling, &sk_paint,
+                         SkCanvas::kStrict_SrcRectConstraint);
+  }
 }
 
 gfx::Rect GetDisplayPhysicalBounds(const display::Display& display) {
@@ -294,7 +385,7 @@ class TeardropCursorChipView : public views::View {
     canvas->DrawPath(teardrop_path, border_flags_);
 
     // Magnifying glass icon.
-    constexpr int kIconSize = 16;
+    constexpr int kIconSize = 20;
     const int icon_x = kPadding + (kChipSize - kIconSize) / 2;
     const int icon_y = kPadding + (kChipSize - kIconSize) / 2;
     canvas->Save();
@@ -325,9 +416,13 @@ class RegionSelectOverlayView : public views::View {
  public:
   RegionSelectOverlayView(OmniboxEverywhereRegionSelectOverlay& coordinator,
                           const SkBitmap& screenshot,
-                          const gfx::Rect& display_bounds)
+                          const display::Display& display)
       : coordinator_(coordinator),
-        display_bounds_(display_bounds),
+        display_(display),
+#if BUILDFLAG(IS_WIN)
+        display_physical_offset_(
+            GetDisplayPhysicalBounds(display).OffsetFromOrigin()),
+#endif
         bitmap_(screenshot),
         image_(!bitmap_.empty() ? gfx::ImageSkia::CreateFromBitmap(bitmap_, 1.f)
                                 : gfx::ImageSkia()) {
@@ -346,13 +441,30 @@ class RegionSelectOverlayView : public views::View {
   RegionSelectOverlayView& operator=(const RegionSelectOverlayView&) = delete;
   ~RegionSelectOverlayView() override = default;
 
-  gfx::Point GetGlobalPoint(const gfx::Point& local_point) const {
-    return display_bounds_.origin() + local_point.OffsetFromOrigin();
+  // Returns `event`'s location in the virtual desktop's DIP coordinate space,
+  // i.e. the same space as `display::Display::bounds()`.
+  //
+  // A mouse drag holds pointer capture and can therefore travel onto a monitor
+  // other than the one hosting this widget. So simply offsetting it by this
+  // widget's display origin would drift further from true cursor position.
+  gfx::Point GetScreenPointForEvent(const ui::LocatedEvent& event) const {
+#if BUILDFLAG(IS_WIN)
+    if (!GetLocalBounds().Contains(event.location())) {
+      if (const auto* screen_win = display::win::GetScreenWin();
+          screen_win && display::Screen::Get() == screen_win) {
+        const gfx::PointF phys_pt =
+            gfx::ScalePoint(event.location_f(),
+                            display_.device_scale_factor()) +
+            display_physical_offset_;
+        return gfx::ToRoundedPoint(screen_win->ScreenToDIPPoint(phys_pt));
+      }
+    }
+#endif
+    return display_.bounds().origin() + event.location().OffsetFromOrigin();
   }
 
   gfx::Rect GetGlobalSelectionRect(const ui::LocatedEvent& event) const {
-    return gfx::BoundingRect(drag_start_screen_,
-                             GetGlobalPoint(event.location()));
+    return gfx::BoundingRect(drag_start_screen_, GetScreenPointForEvent(event));
   }
 
   void HideToastChip() {
@@ -371,11 +483,12 @@ class RegionSelectOverlayView : public views::View {
     gfx::Rect new_rect;
     if (!global_rect.IsEmpty()) {
       new_rect = global_rect;
-      new_rect.Offset(-display_bounds_.OffsetFromOrigin());
+      new_rect.Offset(-display_.bounds().OffsetFromOrigin());
       // Cull selections that do not intersect this display widget's bounds to
-      // prevent scheduling invalidations on non-intersecting monitors.
+      // prevent scheduling invalidations on non-intersecting monitors. The
+      // outset keeps the sliver of border that spills across a monitor seam.
       gfx::Rect visible_bounds = GetLocalBounds();
-      visible_bounds.Outset(base::ClampCeil(kSelectionRectStrokeWidth + 1.0f));
+      visible_bounds.Outset(kSelectionStrokeOutset);
       if (!new_rect.Intersects(visible_bounds)) {
         new_rect = gfx::Rect();
       }
@@ -418,10 +531,7 @@ class RegionSelectOverlayView : public views::View {
     // 1. Draw base un-dimmed screenshot.
     DrawScreenshotImage(canvas);
 
-    gfx::Rect stroke_bounds = selection_rect_;
-    stroke_bounds.Outset(2);
-    const bool has_selection = !selection_rect_.IsEmpty() &&
-                               stroke_bounds.Intersects(GetLocalBounds());
+    const bool has_selection = !selection_rect_.IsEmpty();
 
     if (has_selection) {
       canvas->Save();
@@ -461,7 +571,7 @@ class RegionSelectOverlayView : public views::View {
   bool OnMousePressed(const ui::MouseEvent& event) override {
     if (event.IsOnlyLeftMouseButton()) {
       is_dragging_ = true;
-      drag_start_screen_ = GetGlobalPoint(event.location());
+      drag_start_screen_ = GetScreenPointForEvent(event);
       if (cursor_chip_) {
         cursor_chip_->SetVisible(false);
       }
@@ -509,7 +619,7 @@ class RegionSelectOverlayView : public views::View {
         break;
       case ui::EventType::kGestureScrollBegin:
         is_dragging_ = true;
-        drag_start_screen_ = GetGlobalPoint(event->location());
+        drag_start_screen_ = GetScreenPointForEvent(*event);
         if (cursor_chip_) {
           cursor_chip_->SetVisible(false);
         }
@@ -575,22 +685,10 @@ class RegionSelectOverlayView : public views::View {
       return;
     }
 
-    constexpr int kOffset = 8;
-    int chip_x = pos.x() + kOffset;
-    int chip_y = pos.y() + kOffset;
-
-    if (chip_x + TeardropCursorChipView::kTotalSize > width()) {
-      chip_x = pos.x() - TeardropCursorChipView::kTotalSize - kOffset;
-    }
-    if (chip_y + TeardropCursorChipView::kTotalSize > height()) {
-      chip_y = pos.y() - TeardropCursorChipView::kTotalSize - kOffset;
-    }
-    chip_x = std::clamp(
-        chip_x, 0, std::max(0, width() - TeardropCursorChipView::kTotalSize));
-    chip_y = std::clamp(
-        chip_y, 0, std::max(0, height() - TeardropCursorChipView::kTotalSize));
-
-    cursor_chip_->SetBounds(chip_x, chip_y, TeardropCursorChipView::kTotalSize,
+    constexpr int kVisualOffset = 10;
+    constexpr int kOffset = kVisualOffset - TeardropCursorChipView::kPadding;
+    cursor_chip_->SetBounds(pos.x() + kOffset, pos.y() + kOffset,
+                            TeardropCursorChipView::kTotalSize,
                             TeardropCursorChipView::kTotalSize);
     cursor_chip_->SetVisible(true);
   }
@@ -621,10 +719,11 @@ class RegionSelectOverlayView : public views::View {
     if (selection_rect_.IsEmpty()) {
       return SkPath();
     }
-    constexpr float kIdealCornerRadius = 14.0f;
-    const float corner_radius =
-        std::min({kIdealCornerRadius, selection_rect_.width() / 2.0f,
-                  selection_rect_.height() / 2.0f});
+    const float corner_radius = std::min({
+        static_cast<float>(kSelectionCornerRadius),
+        selection_rect_.width() / 2.0f,
+        selection_rect_.height() / 2.0f,
+    });
 
     SkRect sk_sel_rect =
         SkRect::MakeXYWH(selection_rect_.x(), selection_rect_.y(),
@@ -663,14 +762,19 @@ class RegionSelectOverlayView : public views::View {
     gfx::Rect damage_rect = gfx::UnionRects(selection_rect_, new_rect);
     // Expand by stroke width plus anti-aliasing margin so the perimeter
     // border is completely cleared and redrawn.
-    constexpr float kDamageRectOutset = kSelectionRectStrokeWidth + 0.5f;
-    damage_rect.Outset(base::ClampCeil(kDamageRectOutset));
+    damage_rect.Outset(kSelectionStrokeOutset);
+    // The selection can extend past this monitor; only invalidate what is
+    // actually painted.
+    damage_rect.Intersect(GetLocalBounds());
     selection_rect_ = new_rect;
     SchedulePaintInRect(damage_rect);
   }
 
   const raw_ref<OmniboxEverywhereRegionSelectOverlay> coordinator_;
-  const gfx::Rect display_bounds_;
+  const display::Display display_;
+#if BUILDFLAG(IS_WIN)
+  const gfx::Vector2d display_physical_offset_;
+#endif
   SkBitmap bitmap_;
   gfx::ImageSkia image_;
   raw_ptr<InstructionToastChipView> toast_chip_ = nullptr;
@@ -889,8 +993,8 @@ OmniboxEverywhereRegionSelectOverlay::CreateWidgetForDisplay(
                                              wm::ANIMATE_NONE);
 #endif
 
-  auto contents_view = std::make_unique<RegionSelectOverlayView>(
-      *this, display_bitmap, display.bounds());
+  auto contents_view =
+      std::make_unique<RegionSelectOverlayView>(*this, display_bitmap, display);
   widget->SetContentsView(std::move(contents_view));
 
   return widget;
@@ -921,15 +1025,7 @@ void OmniboxEverywhereRegionSelectOverlay::OnDragUpdated(
 
 void OmniboxEverywhereRegionSelectOverlay::OnDragCompleted(
     const gfx::Rect& global_selection_rect) {
-  constexpr int kMinSelectionSize = 10;
-  if (global_selection_rect.width() < kMinSelectionSize ||
-      global_selection_rect.height() < kMinSelectionSize) {
-    Finish(SkBitmap());
-    return;
-  }
-
-  SkBitmap cropped = CropGlobalSelection(global_selection_rect);
-  Finish(cropped);
+  Finish(CropGlobalSelection(global_selection_rect));
 }
 
 void OmniboxEverywhereRegionSelectOverlay::OnDragCancelled() {
@@ -938,54 +1034,69 @@ void OmniboxEverywhereRegionSelectOverlay::OnDragCancelled() {
 
 SkBitmap OmniboxEverywhereRegionSelectOverlay::CropGlobalSelection(
     const gfx::Rect& global_selection_rect) const {
-  if (screenshot_.empty() || global_selection_rect.IsEmpty()) {
+  if (screenshot_.drawsNothing() || global_selection_rect.IsEmpty()) {
     return SkBitmap();
   }
 
-  // Find the display with the largest area selected, treating it as the
-  // "owning" display and using its scaling factors for coordinate conversion.
-  const DisplaySliceInfo* best_slice = nullptr;
-  int max_intersection_area = 0;
+  std::vector<IntersectingSlice> intersecting;
+  const gfx::Rect screenshot_bounds = gfx::SkIRectToRect(screenshot_.bounds());
+
   for (const auto& slice : display_slices_) {
-    if (slice.display.bounds().Contains(global_selection_rect)) {
-      best_slice = &slice;
-      break;
+    // Find the intersection of the selection with the display.
+    // Skip if no intersection.
+    // Otherwise, map into physical bounds and union with the rest of the
+    // selection.
+    const gfx::Rect inter_dip =
+        gfx::IntersectRects(global_selection_rect, slice.display.bounds());
+    if (inter_dip.IsEmpty()) {
+      continue;
     }
 
-    const gfx::Rect intersection =
-        gfx::IntersectRects(slice.display.bounds(), global_selection_rect);
-    const int area = intersection.size().GetArea();
-    if (area > max_intersection_area) {
-      max_intersection_area = area;
-      best_slice = &slice;
+    gfx::Rect phys_crop = MapDipToPhysicalBounds(
+        inter_dip, slice.display.bounds(), slice.sub_rect_in_screenshot);
+    phys_crop.Intersect(slice.sub_rect_in_screenshot);
+    phys_crop.Intersect(screenshot_bounds);
+    if (phys_crop.IsEmpty()) {
+      continue;
     }
+
+    const float slice_scale =
+        std::max(static_cast<float>(slice.sub_rect_in_screenshot.width()) /
+                     slice.display.bounds().width(),
+                 static_cast<float>(slice.sub_rect_in_screenshot.height()) /
+                     slice.display.bounds().height());
+
+    intersecting.push_back({inter_dip, phys_crop, slice_scale});
   }
 
-  if (!best_slice) {
+  const auto [active_dip_bounds, output_scale] =
+      CalculateActiveBoundsAndScale(intersecting);
+  if (active_dip_bounds.width() < kMinSelectionSize ||
+      active_dip_bounds.height() < kMinSelectionSize) {
     return SkBitmap();
   }
 
-  // Map selection to display-local DIP coordinates.
-  const gfx::Rect local_dip =
-      global_selection_rect - best_slice->display.bounds().OffsetFromOrigin();
+  if (intersecting.size() == 1) {
+    return ExtractCompactSubset(screenshot_,
+                                intersecting[0].phys_rect_in_screenshot);
+  }
 
-  // Scale from local DIP coordinates to physical pixels within the slice.
-  const float scale_x =
-      best_slice->display.bounds().width() > 0
-          ? static_cast<float>(best_slice->sub_rect_in_screenshot.width()) /
-                best_slice->display.bounds().width()
-          : 1.0f;
-  const float scale_y =
-      best_slice->display.bounds().height() > 0
-          ? static_cast<float>(best_slice->sub_rect_in_screenshot.height()) /
-                best_slice->display.bounds().height()
-          : 1.0f;
+  const int out_width =
+      std::max(1, base::ClampRound(active_dip_bounds.width() * output_scale));
+  const int out_height =
+      std::max(1, base::ClampRound(active_dip_bounds.height() * output_scale));
 
-  gfx::Rect phys_crop = gfx::ScaleToRoundedRect(local_dip, scale_x, scale_y);
-  phys_crop.Offset(best_slice->sub_rect_in_screenshot.OffsetFromOrigin());
-  phys_crop.Intersect(best_slice->sub_rect_in_screenshot);
+  SkBitmap output;
+  if (!output.tryAllocPixels(
+          screenshot_.info().makeWH(out_width, out_height))) {
+    return SkBitmap();
+  }
 
-  return ExtractCompactSubset(screenshot_, phys_crop);
+  DrawSlicesToCanvas(screenshot_, intersecting, active_dip_bounds, output_scale,
+                     output);
+
+  output.setImmutable();
+  return output;
 }
 
 void OmniboxEverywhereRegionSelectOverlay::Finish(

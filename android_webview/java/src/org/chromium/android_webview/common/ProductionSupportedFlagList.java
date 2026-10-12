@@ -443,6 +443,9 @@ public final class ProductionSupportedFlagList {
         Flag.baseFeature(BlinkFeatures.SCROLLBAR_COLOR),
         Flag.baseFeature(BlinkFeatures.RASTER_INDUCING_SCROLL),
         Flag.baseFeature(
+                BlinkFeatures.CONSTRUCTABLE_STYLESHEET_CACHE,
+                "Enables StyleSheetContents cache for constructible stylesheets."),
+        Flag.baseFeature(
                 AwFeatures.WEBVIEW_FILE_SYSTEM_ACCESS, "Enables JS File System Access API"),
         Flag.baseFeature(
                 BlinkFeatures.V_SYNC_DECODING, "Runs the WebRTC metronome off the VSync signal."),
@@ -563,6 +566,9 @@ public final class ProductionSupportedFlagList {
                 "Enables usage of the display topology API to obtain information about all"
                         + " displays."),
         Flag.baseFeature(
+                UiAndroidFeatures.AVOID_PER_CONTEXT_COLOR_PROVIDERS,
+                "Avoids per-context ColorProviders for contexts without dynamic color support."),
+        Flag.baseFeature(
                 UiAndroidFeatures.DEPRECATED_EXTERNAL_PICKER_FUNCTION,
                 "Deprecates old external file picker function."),
         Flag.baseFeature("ThreadGroupSemaphore"),
@@ -587,7 +593,6 @@ public final class ProductionSupportedFlagList {
                 "Minimizes Mojo URLLoaderFactory cloning overhead during navigation and worker"
                         + " startup."),
         Flag.baseFeature("NetworkServiceCookiesHighPriorityTaskRunner"),
-        Flag.baseFeature("IncreaseCoookieAccesCacheSize"),
         Flag.baseFeature("AvoidScheduleWorkDuringNativeEventProcessing"),
         Flag.baseFeature("AvoidEntryCreationForNoStore"),
         Flag.baseFeature("ChangeGeneratedCodeCacheSize"),
@@ -1492,9 +1497,18 @@ public final class ProductionSupportedFlagList {
                 "Controls whether XSLT is supported by the browser. Disabling this flag disables"
                         + " all XSLT processing."),
         Flag.baseFeature("UseRustCborParser", "Enables the Rust-based CBOR parser instead of C++."),
+        Flag.baseFeature("UseRustCborWriter", "Enables the Rust-based CBOR writer instead of C++."),
         Flag.baseFeature(
                 AwFeatures.WEBVIEW_PREFETCH_AHEAD_OF_PRERENDER,
                 "Enables automatic triggering of prefetch ahead of prerender in WebView."),
+        Flag.baseFeature(
+                BlinkFeatures.HEAP_VECTOR_PROMPTLY_FREE,
+                "Whether blink::HeapVector promptly frees its backing store via"
+                        + " Allocator::FreeVectorBacking()."),
+        Flag.baseFeature(
+                MediaFeatures.HARDEN_URL_PROVISION_FETCHER,
+                "Hardens URLProvisionFetcher against SSRF and OOM by restricting requests and"
+                        + " redirects to HTTPS POST and enforcing a maximum response size."),
         // Add new commandline switches and features above. The final entry should have a
         // trailing comma for cleaner diffs.
     };

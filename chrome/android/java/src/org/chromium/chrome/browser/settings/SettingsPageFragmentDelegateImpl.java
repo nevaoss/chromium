@@ -93,6 +93,7 @@ public class SettingsPageFragmentDelegateImpl
     private final Tab mTab;
 
     private @Nullable SettingsHostFragment mSettingsHostFragment;
+    private @Nullable SettingsInTabNavigationDelegate mSettingsNavigationDelegate;
     private FragmentManager.@Nullable FragmentLifecycleCallbacks mTitleUpdaterLifecycleCallbacks;
     private FragmentManager.@Nullable FragmentLifecycleCallbacks mSettingsMetricsReporter;
     private FragmentManager.@Nullable FragmentLifecycleCallbacks mOptionsMenuLifecycleCallbacks;
@@ -116,8 +117,6 @@ public class SettingsPageFragmentDelegateImpl
             BottomSheetController bottomSheetController,
             ModalDialogManager modalDialogManager,
             Tab tab) {
-        assert SettingsInTab.isEnabled()
-                : "SettingsInTab feature must be enabled to use this class.";
         mActivity = activity;
         mProfile = profile;
         mWindowAndroid = windowAndroid;
@@ -262,6 +261,7 @@ public class SettingsPageFragmentDelegateImpl
         var dependencyProvider =
                 new FragmentDependencyProvider(
                         mActivity,
+                        /* shownInTab= */ true,
                         mProfile,
                         windowAndroidSupplier,
                         mActivityResultTracker,
@@ -316,7 +316,8 @@ public class SettingsPageFragmentDelegateImpl
         }
 
         if (ChromeFeatureList.sSettingsInTabUrlNav.isEnabled()) {
-            mSettingsHostFragment.setSettingsNavigation(new SettingsInTabNavigationDelegate(mTab));
+            mSettingsNavigationDelegate = new SettingsInTabNavigationDelegate(mTab);
+            mSettingsHostFragment.setSettingsNavigation(mSettingsNavigationDelegate);
             if (mTab.getUrl() != null && !mTab.getUrl().isEmpty()) {
                 String restoredUrl = mTab.getUrl().getSpec();
                 if (restoredUrl != null && !restoredUrl.isEmpty()) {
@@ -400,10 +401,17 @@ public class SettingsPageFragmentDelegateImpl
 
         mPendingUrl = null;
 
-        var fragmentClass = SettingsFragmentRegistry.getFragmentClassForUrl(url);
-        if (fragmentClass == null) {
-            fragmentClass = MainSettings.class;
+        // A settings URL is user editable and is replayed from history, so it may be missing
+        // arguments its page cannot do without, or name data that has since been deleted. Let the
+        // registry decide, and send the user to the fallback page rather than crashing.
+        SettingsFragmentRegistry.Resolution resolution = SettingsFragmentRegistry.resolve(url);
+        if (resolution.redirectUrl != null && mSettingsNavigationDelegate != null) {
+            // Replace rather than push: the entry being left is not a page the user can return to.
+            mSettingsNavigationDelegate.redirectFromNavigation(resolution.redirectUrl);
+            return;
         }
+        var fragmentClass =
+                resolution.fragmentClass != null ? resolution.fragmentClass : MainSettings.class;
 
         // If navigating to root chrome://settings URL (e.g. via Omnibox),
         // clear any stored initial subpage URL on attached host fragment
@@ -413,10 +421,9 @@ public class SettingsPageFragmentDelegateImpl
             mSettingsHostFragment.clearInitialUrl();
         }
 
-        Bundle args = SettingsFragmentRegistry.parseUrlArguments(url);
         Fragment fragment = null;
         if (!MainSettings.class.equals(fragmentClass)) {
-            fragment = Fragment.instantiate(mActivity, fragmentClass.getName(), args);
+            fragment = Fragment.instantiate(mActivity, fragmentClass.getName(), resolution.args);
         }
 
         // Transactions pass addToBackStack = false because browser backstack
@@ -548,6 +555,7 @@ public class SettingsPageFragmentDelegateImpl
                 new MultiColumnTitleUpdater(
                         savedInstanceState,
                         multiColumnSettings,
+                        /* shownInTab= */ true,
                         titleContainer,
                         mToolbar::setTitle,
                         this::onTitleTapped,
@@ -561,6 +569,12 @@ public class SettingsPageFragmentDelegateImpl
         if (searchCoordinator != null) {
             searchCoordinator.onTitleTapped(entryName);
         }
+    }
+
+    @Override
+    public boolean isShownInTab() {
+        // This delegate is only created for settings hosted in a browser tab.
+        return true;
     }
 
     @Override
@@ -670,7 +684,8 @@ public class SettingsPageFragmentDelegateImpl
                         containmentHelper.getItemDecorations(),
                         mProfile,
                         this::updateFirstVisibleTitle,
-                        mModalDialogSupplier);
+                        mModalDialogSupplier,
+                        /* shownInTab= */ true);
 
         // Multi column settings may have already created its view (in case of Activity
         // re-creation), so initialize the search coordinator's view if it exists.
@@ -729,6 +744,7 @@ public class SettingsPageFragmentDelegateImpl
             SettingsMenuHelper.updateNavigationIcon(
                     mToolbar,
                     mActivity,
+                    /* shownInTab= */ true,
                     /* show= */ shouldShowNavigationIcon(),
                     isTwoColumnSettingsVisible(),
                     isMainSettingsVisible());

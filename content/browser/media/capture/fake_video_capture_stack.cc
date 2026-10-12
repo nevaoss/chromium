@@ -52,6 +52,11 @@ FakeVideoCaptureStack::~FakeVideoCaptureStack() = default;
 void FakeVideoCaptureStack::Reset() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
+  // `started_` and `error_occurred_` are latched by the receiver and must be
+  // cleared too, otherwise a second capture session on the same stack starts
+  // out looking like it has already produced a frame.
+  started_ = false;
+  error_occurred_ = false;
   frames_.clear();
   last_frame_timestamp_ = base::TimeDelta::Min();
 }
@@ -329,7 +334,7 @@ class FakeVideoCaptureStackReceiver final : public media::VideoFrameReceiver {
 std::unique_ptr<media::VideoFrameReceiver>
 FakeVideoCaptureStack::CreateFrameReceiver() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  DCHECK(!receiver_);
+  CHECK(!receiver_, base::NotFatalUntil::M160);
 
   auto result = std::make_unique<FakeVideoCaptureStackReceiver>(
       weak_ptr_factory_.GetWeakPtr());

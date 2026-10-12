@@ -529,7 +529,6 @@ Google Chrome non pode recuperar a túa configuración.</translation>
 <translation id="6166185671393271715">Importar contrasinais en Chrome</translation>
 <translation id="6169866489629082767"><ph name="PAGE_TITLE" /> - Google Chrome</translation>
 <translation id="6173637689840186878"><ph name="PAGE_TITLE" /> (versión beta de Google Chrome)</translation>
-<translation id="6177442314419606057">Busca en Chrome</translation>
 <translation id="6180522807229584611">Esta pestana está usando recursos adicionais. Para mellorar o rendemento, permite que Chrome a desactive.</translation>
 <translation id="6182736845697986886">Produciuse un erro na instalación debido a un erro interno do servidor de actualizacións.</translation>
 <translation id="6192058120268468905">A túa conta en Chrome</translation>
@@ -561,6 +560,7 @@ Google Chrome non pode recuperar a túa configuración.</translation>
 <translation id="6434035853014503219">Grazas por escoller Chrome como navegador predeterminado!</translation>
 <translation id="6438015621983209660">Amplía a función Navegación segura mellorada con Chrome no teléfono</translation>
 <translation id="6442774133615368941">Fai compras, traduce contido e identifica o que vexas coa cámara na aplicación Chrome para iOS</translation>
+<translation id="6446105560007692480">para facer buscas con Chrome ou personalizar as opcións en <ph name="BEGIN_LINK" />Configuración<ph name="END_LINK" /></translation>
 <translation id="6448835208126432197">Para seleccionar unha parte da pantalla en Gemini en Chrome, usa o atallo de teclado.</translation>
 <translation id="6473905796280459355">Ir á páxina Acerca de Chrome</translation>
 <translation id="6481963882741794338">Vincula Chrome e outros servizos de Google para beneficiarte da personalización, entre outras cousas</translation>
@@ -582,6 +582,7 @@ Google Chrome non pode recuperar a túa configuración.</translation>
 <translation id="6612152958212564387">Non estás enviando estatísticas de uso nin informes de fallos a Google. <ph name="BEGIN_LINK" />Xestionar<ph name="END_LINK" /></translation>
 <translation id="6613949864921837107">Define Chrome como o navegador predeterminado para manter os contrasinais, os marcadores e o historial perfectamente sincronizados en todos os dispositivos.</translation>
 <translation id="6631524303639368205">Retoma a actividade onde a deixaches: Chrome restaurou as pestanas da última sesión. Podes desactivar esta opción en</translation>
+<translation id="6632012506031284914">para facer buscas con Chrome.</translation>
 <translation id="6632473616050862500">Chrome OS Flex é posible grazas a <ph name="BEGIN_LINK_CROS_OSS" />software de código aberto<ph name="END_LINK_CROS_OSS" /> adicional.</translation>
 <translation id="6634299872736643004">Os cambios nesta opción de configuración aplicaranse cando se reinicie Chrome.</translation>
 <translation id="6660596345553328257">Queres iniciar sesión en Chrome?</translation>
@@ -598,7 +599,6 @@ Google Chrome non pode recuperar a túa configuración.</translation>
 <translation id="6750954913813541382">Para corrixir erros ortográficos, Chrome enviaralle a Google o texto que escribas no navegador</translation>
 <translation id="6760235774835597023">Acelera os sitios co motor V8 de Chrome, pero fai que Chrome sexa un pouco menos resistente aos ataques. Esta opción de configuración está activada.</translation>
 <translation id="677276454032249905">Queres saír de Chrome de todas formas?</translation>
-<translation id="6777654166489463890">Fai preguntas sobre contido que estea fóra de Chrome, por exemplo, noutra aplicación ou nun ficheiro que teñas aberto</translation>
 <translation id="6794858689789885890">Eliminar sempre do dispositivo os datos dos sitios cando peches Chrome</translation>
 <translation id="6800285125190089494">Inicia sesión máis rápido nos sitios utilizando contrasinais gardados en Chrome para iOS</translation>
 <translation id="6831043979455480757">Traducir</translation>

@@ -2491,7 +2491,7 @@ void WebViewImpl::SetPageScaleFactorAndLocation(float scale_factor,
 
   GetPage()->GetVisualViewport().SetScaleAndLocation(
       ClampPageScaleFactorToLimits(scale_factor), is_pinch_gesture_active,
-      location);
+      location, mojom::blink::ScrollType::kCompositor);
 }
 
 void WebViewImpl::SetPageScaleFactor(float scale_factor) {

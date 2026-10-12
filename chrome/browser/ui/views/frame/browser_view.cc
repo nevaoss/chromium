@@ -93,8 +93,10 @@
 #include "chrome/browser/ui/browser_window_theme_observer.h"
 #include "chrome/browser/ui/color/chrome_color_id.h"
 #include "chrome/browser/ui/dialogs/browser_dialogs.h"
+#include "chrome/browser/ui/exclusive_access/exclusive_access_bubble_type.h"
 #include "chrome/browser/ui/exclusive_access/exclusive_access_context.h"
 #include "chrome/browser/ui/exclusive_access/exclusive_access_manager.h"
+#include "chrome/browser/ui/exclusive_access/fullscreen_tab_params.h"
 #include "chrome/browser/ui/find_bar/find_bar.h"
 #include "chrome/browser/ui/focus/browser_focus_controller.h"
 #include "chrome/browser/ui/fullscreen/browser_window_fullscreen_controller.h"
@@ -187,6 +189,7 @@
 #include "chrome/browser/ui/views/hats/hats_next_web_dialog.h"
 #include "chrome/browser/ui/views/incognito_clear_browsing_data_dialog_coordinator.h"
 #include "chrome/browser/ui/views/infobars/infobar_container_view.h"
+#include "chrome/browser/ui/views/intent_picker_bubble_view.h"
 #include "chrome/browser/ui/views/interaction/browser_elements_views.h"
 #include "chrome/browser/ui/views/interaction/browser_elements_views_impl.h"
 #include "chrome/browser/ui/views/location_bar/location_bar_view.h"
@@ -3728,6 +3731,9 @@ std::u16string BrowserView::GetAccessibleWindowTitleForChannelAndProfile(
   } else if (profile->IsIncognitoProfile()) {
     title = l10n_util::GetStringFUTF16(
         IDS_ACCESSIBLE_INCOGNITO_WINDOW_TITLE_FORMAT, title);
+  } else if (profile->IsEnterpriseIsolatedModeProfile()) {
+    title = l10n_util::GetStringFUTF16(
+        IDS_ACCESSIBLE_ISOLATED_WINDOW_TITLE_FORMAT, title);
   } else if (!profile->IsOffTheRecord() &&
              profile_manager->GetNumberOfProfiles() > 1) {
     std::u16string profile_name =

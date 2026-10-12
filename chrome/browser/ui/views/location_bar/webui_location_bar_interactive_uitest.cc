@@ -16,6 +16,7 @@
 #include "chrome/browser/preloading/preloading_features.h"
 #include "chrome/browser/ui/accelerator_utils.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
+#include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/omnibox/omnibox_next_features.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
@@ -272,7 +273,6 @@ class WebUILocationBarInteractiveUiTest
       feature_list_.InitWithFeatures(
           {features::kInitialWebUI, features::kWebUIReloadButton,
            features::kWebUILocationBar, omnibox::kWebUIOmniboxFullPopup,
-           features::kOmniboxPopupVirtualFocusNavigation,
            omnibox::internal::kWebUIOmniboxAimPopup},
           {omnibox::kAimServerEligibilityEnabled, features::kPrewarm});
     }
@@ -423,6 +423,9 @@ class WebUILocationBarInteractiveUiTest
             kAIMWebContentsVisible,
             [this]() {
               auto* view = GetActiveAimPopupWebView().Run();
+              if (!view || !view->GetWidget()) {
+                return false;
+              }
               auto* element =
                   views::ElementTrackerViews::GetInstance()->GetElementForView(
                       view, /* assign_temporary_id =*/true);
@@ -445,6 +448,9 @@ class WebUILocationBarInteractiveUiTest
           PollState(kAIMWebContentsHidden,
                     [this]() {
                       auto* view = GetActiveAimPopupWebView().Run();
+                      if (!view || !view->GetWidget()) {
+                        return true;
+                      }
                       auto* element =
                           views::ElementTrackerViews::GetInstance()
                               ->GetElementForView(
@@ -869,7 +875,8 @@ class WebUILocationBarInteractiveUiTest
   }
 
   gfx::Range GetBrowserSideSelection() {
-    auto* location_bar = browser()->GetFeatures().location_bar();
+    auto* location_bar =
+        BrowserWindow::FromBrowser(browser())->GetLocationBar();
     if (mode() == Mode::kFull) {
       // Full popup stores the selection it saves on tab switch in
       // PopupHandler rather than the OmniboxView.
@@ -1429,9 +1436,7 @@ IN_PROC_BROWSER_TEST_P(WebUILocationBarInteractiveUiTest, SearchAtKeyword) {
       // Omnibox text should should become empty, and a keyword chip
       // should show up.
       WaitTillOmniboxViewText(""), WaitTillSearchKeywordText("Search Tabs"),
-      // No placeholder in full yet, see http://crbug.com/534854816
-      WaitTillOmniboxViewPlaceholder(
-          mode() != Mode::kFull ? u"Enter a word or two" : u""),
+      WaitTillOmniboxViewPlaceholder(u"Enter a word or two"),
       InAnyContext(SendKeyPress(InputWebContents(), ui::VKEY_S)),
       WaitTillOmniboxViewText("s"), WaitTillSearchKeywordText("Search Tabs"),
       InAnyContext(SendKeyPress(InputWebContents(), ui::VKEY_BACK)),

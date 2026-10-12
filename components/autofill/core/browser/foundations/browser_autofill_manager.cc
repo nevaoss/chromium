@@ -99,6 +99,7 @@
 #include "components/autofill/core/browser/metrics/form_events/credit_card_form_event_logger.h"
 #include "components/autofill/core/browser/metrics/form_events/form_event_logger_base.h"
 #include "components/autofill/core/browser/metrics/form_interactions_ukm_logger.h"
+#include "components/autofill/core/browser/metrics/javascript_dropdown_metrics.h"
 #include "components/autofill/core/browser/metrics/log_event.h"
 #include "components/autofill/core/browser/metrics/loyalty_cards_metrics.h"
 #include "components/autofill/core/browser/metrics/per_fill_metrics.h"
@@ -177,6 +178,61 @@ using mojom::SubmissionSource;
 using payments::AmountExtractionManager;
 
 namespace {
+
+// Returns the type of JS dropdown Autofill believes to have filled `form`, or
+// `kNone` otherwise.
+JavaScriptDropdownType DetectJavaScriptDropdown(
+    const FormStructure& form,
+    const AutofillField& trigger_field,
+    base::span<const JavaScriptFieldModification> field_modifications) {
+  // Below are the strategies to detect various types of JS dropdowns. It is
+  // important that these strategies remain disjoint (at most one of them can
+  // return true) in order not to break correctness.
+
+  auto detect_address_picker = [&] {
+    size_t address_fields_count = std::ranges::count_if(
+        field_modifications, [&](const JavaScriptFieldModification& mod) {
+          const AutofillField* field = form.GetFieldById(mod.field_id);
+          return field &&
+                 field->Type().GetGroups().contains(FieldTypeGroup::kAddress);
+        });
+
+    // If multiple address fields where changed at once, declare the operation
+    // as triggered by an address picker.
+    constexpr size_t kMinFieldsChangedAddressPicker = 3;
+    if (address_fields_count >= kMinFieldsChangedAddressPicker) {
+      return true;
+    }
+
+    // Otherwise ensure all modified fields were address fields and that the
+    // trigger field was prefix completed.
+    return address_fields_count == field_modifications.size() &&
+           std::ranges::any_of(field_modifications,
+                               [&](const JavaScriptFieldModification& mod) {
+                                 return mod.field_id ==
+                                            trigger_field.global_id() &&
+                                        mod.modification_type ==
+                                            mojom::JavaScriptModificationType::
+                                                kPrefixCompletion;
+                               });
+  };
+
+  auto detect_email_picker = [&] {
+    return field_modifications.size() == 1u &&
+           trigger_field.Type().GetAddressType() == EMAIL_ADDRESS &&
+           field_modifications.front().field_id == trigger_field.global_id() &&
+           field_modifications.front().modification_type ==
+               mojom::JavaScriptModificationType::kPrefixCompletion;
+  };
+
+  if (detect_email_picker()) {
+    return JavaScriptDropdownType::kEmail;
+  }
+  if (detect_address_picker()) {
+    return JavaScriptDropdownType::kAddress;
+  }
+  return JavaScriptDropdownType::kNone;
+}
 
 ValuePatternsMetric GetValuePattern(std::u16string_view value) {
   if (IsUPIVirtualPaymentAddress(value)) {
@@ -1472,10 +1528,16 @@ void BrowserAutofillManager::GenerateSuggestionsAndMaybeShowUIPhase1(
   FormStructure* form_structure = form_and_field.form_structure;
   AutofillField* autofill_field = form_and_field.autofill_field;
 
+  // Cancels pending tasks from previous AskForValuesToFillImpl() calls.
+  generate_suggestions_and_maybe_show_ui_phase2_weak_ptr_factory_
+      .InvalidateWeakPtrs();
+
   auto generate_suggestions_and_maybe_show_ui_phase2 = base::BindOnce(
       &BrowserAutofillManager::GenerateSuggestionsAndMaybeShowUIPhase2,
-      weak_ptr_factory_.GetWeakPtr(), form, field, trigger_source,
-      suggestion_generation_start_time, std::move(scoped_on_after));
+      generate_suggestions_and_maybe_show_ui_phase2_weak_ptr_factory_
+          .GetWeakPtr(),
+      form, field, trigger_source, suggestion_generation_start_time,
+      std::move(scoped_on_after));
 
   // `otp_manager_` may not be instantiated on all platforms. If a focused field
   // is not classified, `autofill_field` is null but the field may be filled by
@@ -2408,49 +2470,20 @@ void BrowserAutofillManager::OnJavaScriptChangedAutofilledValueImpl(
 void BrowserAutofillManager::OnDidDetectJavaScriptAutofillImpl(
     const FormData& form,
     const FieldGlobalId& trigger_field_id,
-    const std::vector<JavaScriptFieldModification>& field_modifications) {
+    const std::vector<JavaScriptFieldModification>& field_modifications,
+    base::TimeTicks detection_start_timestamp) {
   auto [form_structure, trigger_field] =
       FindMutableFormAndField(form.global_id(), trigger_field_id);
   if (!form_structure || !trigger_field) {
     return;
   }
 
-  auto detect_address_picker = [&] {
-    size_t address_fields_count = std::ranges::count_if(
-        field_modifications, [&](const JavaScriptFieldModification& mod) {
-          const AutofillField* field =
-              form_structure->GetFieldById(mod.field_id);
-          return field &&
-                 field->Type().GetGroups().contains(FieldTypeGroup::kAddress);
-        });
+  const JavaScriptDropdownType dropdown_type = DetectJavaScriptDropdown(
+      *form_structure, *trigger_field, field_modifications);
+  autofill_metrics::LogJavaScriptDropdownDetectionMetrics(
+      dropdown_type, field_modifications, detection_start_timestamp);
 
-    // If multiple address fields where changed at once, declare the operation
-    // as triggered by an address picker.
-    constexpr size_t kMinFieldsChangedAddressPicker = 3;
-    if (address_fields_count >= kMinFieldsChangedAddressPicker) {
-      return true;
-    }
-
-    // Otherwise ensure all modified fields were address fields and that the
-    // trigger field was prefix completed.
-    return address_fields_count == field_modifications.size() &&
-           std::ranges::contains(
-               field_modifications,
-               JavaScriptFieldModification(
-                   trigger_field_id,
-                   mojom::JavaScriptModificationType::kPrefixCompletion));
-  };
-
-  auto detect_email_picker = [&] {
-    return field_modifications.size() == 1u &&
-           trigger_field->Type().GetAddressType() == EMAIL_ADDRESS &&
-           field_modifications.front() ==
-               JavaScriptFieldModification(
-                   trigger_field_id,
-                   mojom::JavaScriptModificationType::kPrefixCompletion);
-  };
-
-  if (detect_address_picker() || detect_email_picker()) {
+  if (dropdown_type != JavaScriptDropdownType::kNone) {
     trigger_field->set_did_trigger_javascript_autofill(true);
     if (base::FeatureList::IsEnabled(
             features::debug::kAutofillShowTypePredictions)) {
@@ -2689,6 +2722,8 @@ void BrowserAutofillManager::Reset() {
   ProcessPendingFormForUpload();
   DCHECK(!pending_form_data_);
 
+  generate_suggestions_and_maybe_show_ui_phase2_weak_ptr_factory_
+      .InvalidateWeakPtrs();
   suggestion_generators_.clear();
   four_digit_combinations_in_dom_.clear();
   last_unlocked_credit_card_cvc_.clear();

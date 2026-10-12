@@ -60,8 +60,8 @@ import org.chromium.chrome.browser.ssl.HttpsFirstModeSettingsFragment;
 import org.chromium.chrome.browser.sync.settings.GoogleServicesSettings;
 import org.chromium.chrome.browser.sync.settings.ManageSyncSettings;
 import org.chromium.chrome.browser.sync.settings.PersonalizeGoogleServicesSettings;
-import org.chromium.chrome.browser.tasks.tab_management.TabArchiveSettingsFragment;
 import org.chromium.chrome.browser.tasks.tab_management.TabsSettings;
+import org.chromium.chrome.browser.tasks.tab_management.archived_tabs.TabArchiveSettingsFragment;
 import org.chromium.chrome.browser.toolbar.adaptive.settings.AdaptiveToolbarSettingsFragment;
 import org.chromium.chrome.browser.toolbar.settings.AddressBarSettingsFragment;
 import org.chromium.chrome.browser.tracing.settings.DeveloperSettings;
@@ -205,7 +205,7 @@ public class SettingsNavigationImpl implements SettingsNavigation {
             @Nullable Bundle fragmentArgs,
             boolean addToBackStack,
             @Nullable String tag) {
-        if (useSettingsInTab()) {
+        if (useSettingsInTab(context)) {
             Activity activity = ActivityUtil.getActivityFromContext(context);
             // Some components pass a non-Activity context (e.g. AccessibilitySettings).
             if (activity == null) {
@@ -267,7 +267,12 @@ public class SettingsNavigationImpl implements SettingsNavigation {
             @Nullable String tag) {
         String fragmentName = fragment == null ? null : fragment.getName();
         return SettingsIntentUtil.createIntent(
-                context, fragmentName, fragmentArgs, addToBackStack, tag, useSettingsInTab());
+                context,
+                fragmentName,
+                fragmentArgs,
+                addToBackStack,
+                tag,
+                useSettingsInTab(context));
     }
 
     @Override
@@ -412,43 +417,42 @@ public class SettingsNavigationImpl implements SettingsNavigation {
 
     @Override
     public void finishCurrentSettings(Fragment fragment) {
-        // SettingsInTab does not use SettingsActivity.
-        if (useSettingsInTab()) {
-            // Prefer looking up the enclosing SettingsHostFragment directly from the fragment's
-            // parent hierarchy. When Chrome is in the background or during lifecycle transitions,
-            // the host fragment view may not report isShown(), which causes the activity-level
-            // lookup to return null.
-            SettingsHostFragment settingsHostFragment = SettingsHostFragment.get(fragment);
-            if (settingsHostFragment == null) {
-                Activity activity = fragment.getActivity();
-                if (activity != null) {
-                    settingsHostFragment = SettingsHostFragment.get(activity);
-                }
-            }
-            if (settingsHostFragment != null) {
-                settingsHostFragment.finishCurrentSettings(fragment);
-            }
+        // Branch on how settings is actually hosted, not on SettingsInTab, whose value depends on
+        // the current screen width and can change while settings is open. Otherwise the cast to
+        // SettingsActivity below can be reached for a tab-hosted fragment. See
+        // crbug.com/562619494.
+        //
+        // Prefer looking up the enclosing SettingsHostFragment directly from the fragment's parent
+        // hierarchy. When Chrome is in the background or during lifecycle transitions, the host
+        // fragment view may not report isShown(), which causes the activity-level lookup to return
+        // null.
+        Activity activity = fragment.getActivity();
+        SettingsHostFragment settingsHostFragment = SettingsHostFragment.get(fragment);
+        if (settingsHostFragment == null && activity != null) {
+            settingsHostFragment = SettingsHostFragment.get(activity);
+        }
+        if (settingsHostFragment != null) {
+            settingsHostFragment.finishCurrentSettings(fragment);
             return;
         }
 
-        Activity activity = fragment.getActivity();
-        if (activity == null) return;
-
-        ((SettingsActivity) activity).finishCurrentSettings(fragment);
+        if (activity instanceof SettingsActivity settingsActivity) {
+            settingsActivity.finishCurrentSettings(fragment);
+        }
     }
 
     @Override
     public void executePendingNavigations(Activity activity) {
-        // SettingsInTab does not use SettingsActivity.
-        if (useSettingsInTab()) {
-            SettingsHostFragment settingsHostFragment = SettingsHostFragment.get(activity);
-            if (settingsHostFragment != null) {
-                settingsHostFragment.executePendingNavigations();
-            }
+        // See the comment in finishCurrentSettings() above.
+        SettingsHostFragment settingsHostFragment = SettingsHostFragment.get(activity);
+        if (settingsHostFragment != null) {
+            settingsHostFragment.executePendingNavigations();
             return;
         }
 
-        ((SettingsActivity) activity).executePendingNavigations();
+        if (activity instanceof SettingsActivity settingsActivity) {
+            settingsActivity.executePendingNavigations();
+        }
     }
 
     @Override
@@ -457,11 +461,28 @@ public class SettingsNavigationImpl implements SettingsNavigation {
         ResettersForTesting.register(() -> mUseSettingsActivityForTesting = false);
     }
 
-    private boolean useSettingsInTab() {
+    /**
+     * Returns whether settings should be displayed in a tab. Derives the answer from the live
+     * settings host when one exists (so the state remains fixed even if the screen width changes
+     * while settings is open), falling back to {@link SettingsInTab#shouldOpenSettingsInTab()} only
+     * when settings is not currently open.
+     */
+    private boolean useSettingsInTab(@Nullable Context context) {
         // Always use SettingsActivity if requested by tests.
         if (mUseSettingsActivityForTesting) {
             return false;
         }
-        return SettingsInTab.isEnabled();
+        Activity activity = ActivityUtil.getActivityFromContext(context);
+        if (activity == null) {
+            activity = ApplicationStatus.getLastTrackedFocusedActivity();
+        }
+        if (activity instanceof SettingsHost host) {
+            return host.isShownInTab();
+        }
+        SettingsHostFragment settingsHostFragment = SettingsHostFragment.get(activity);
+        if (settingsHostFragment != null) {
+            return true;
+        }
+        return SettingsInTab.shouldOpenSettingsInTab();
     }
 }

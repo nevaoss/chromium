@@ -33,6 +33,7 @@
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/search_engines/template_url_service_factory.h"
 #include "chrome/browser/translate/chrome_translate_client.h"
+#include "chrome/browser/ttc/core/session_controller.h"
 #include "chrome/browser/ttc/core/tool_controller.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/ui_features.h"
@@ -150,15 +151,30 @@ void AiOverlayTools::OpenUrl(const std::string& url_string,
                              bool new_tab,
                              OpenUrlCallback callback) {
   RecordToolCallInvoked("OpenUrl");
-  if (tool_controller_) {
-    tool_controller_->OpenUrl(browser_, url_string, new_tab,
-                              std::move(callback));
+  GURL url(url_string);
+  if (!url.is_valid() || !url.SchemeIsHTTPOrHTTPS()) {
+    std::move(callback).Run(base::unexpected("Invalid URL"));
     return;
   }
 
-  GURL url(url_string);
-  if (!url.is_valid()) {
-    std::move(callback).Run(base::unexpected("Invalid URL"));
+  if (tool_controller_) {
+    ToolRequest request;
+    request.name = "open_url";
+    request.arguments.Set("url", url_string);
+    request.arguments.Set("new_tab", new_tab);
+    tool_controller_->ProcessToolCall(
+        std::move(request),
+        base::BindOnce(
+            [](OpenUrlCallback callback, ToolResponse response) {
+              if (response.Ok()) {
+                std::move(callback).Run(std::monostate());
+              } else {
+                std::move(callback).Run(
+                    base::unexpected(response.error().message.value_or(
+                        "Tool execution failed")));
+              }
+            },
+            std::move(callback)));
     return;
   }
 
@@ -220,6 +236,9 @@ void AiOverlayTools::SwitchTab(const std::string& query,
   TabStripModel* tab_strip_model = browser_->GetTabStripModel();
   for (int i = 0; i < tab_strip_model->count(); ++i) {
     content::WebContents* contents = tab_strip_model->GetWebContentsAt(i);
+    if (!contents || !contents->GetLastCommittedURL().SchemeIsHTTPOrHTTPS()) {
+      continue;
+    }
     std::string title =
         base::ToLowerASCII(base::UTF16ToUTF8(contents->GetTitle()));
     std::string url = base::ToLowerASCII(contents->GetURL().spec());
@@ -331,6 +350,11 @@ void AiOverlayTools::FindAndHighlight(const std::string& query,
   content::WebContents* contents = GetActiveWebContentsFromBrowser(browser_);
   if (!contents) {
     std::move(callback).Run(base::unexpected("No active tab"));
+    return;
+  }
+  if (!contents->GetLastCommittedURL().SchemeIsHTTPOrHTTPS()) {
+    std::move(callback).Run(base::unexpected(
+        "FindAndHighlight is only supported on HTTP/HTTPS pages"));
     return;
   }
 
@@ -769,7 +793,9 @@ void AiOverlayTools::OpenPage(const std::string& query,
   base::ListValue open_tabs_list;
   for (int i = 0; i < tab_strip->count(); ++i) {
     content::WebContents* contents = tab_strip->GetWebContentsAt(i);
-    if (!contents) continue;
+    if (!contents || !contents->GetLastCommittedURL().SchemeIsHTTPOrHTTPS()) {
+      continue;
+    }
 
     std::string title = base::UTF16ToUTF8(contents->GetTitle());
     std::string url_str = contents->GetVisibleURL().spec();
@@ -797,6 +823,9 @@ void AiOverlayTools::OpenPage(const std::string& query,
         bookmarks::GetBookmarksMatchingProperties(bookmark_model, query_fields, 10);
 
     for (const auto* node : matches) {
+      if (!node->url().SchemeIsHTTPOrHTTPS()) {
+        continue;
+      }
       base::DictValue bm_dict;
       bm_dict.Set("target_id", target_id_counter++);
       bm_dict.Set("title", node->GetTitle());
@@ -837,7 +866,8 @@ void AiOverlayTools::OpenPage(const std::string& query,
             int current_target_id = start_target_id;
 
             for (const history::URLResult& result : results) {
-              if (HasOpenTabWithUrl(*tab_strip, result.url())) {
+              if (!result.url().SchemeIsHTTPOrHTTPS() ||
+                  HasOpenTabWithUrl(*tab_strip, result.url())) {
                 continue;
               }
 

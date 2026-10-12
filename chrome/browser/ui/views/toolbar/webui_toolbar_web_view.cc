@@ -31,6 +31,7 @@
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/browser_command_controller.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
+#include "chrome/browser/ui/browser_window.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/desktop_browser_window_capabilities.h"
@@ -783,11 +784,12 @@ void WebUIToolbarWebView::OnPageActionClick(
 
 void WebUIToolbarWebView::OnPageActionChipShowingChanged(
     ::toolbar_ui_api::mojom::PageActionId action_id,
+    bool is_showing,
     ::toolbar_ui_api::mojom::ToolbarUIService::
         OnPageActionChipShowingChangedCallback callback) {
   if (location_bar_) {
     location_bar_->page_action_control().OnPageActionChipShowingChanged(
-        action_id, std::move(callback));
+        action_id, is_showing, std::move(callback));
   } else {
     std::move(callback).Run(base::unexpected(Error::New(
         Code::kFailedPrecondition,
@@ -922,7 +924,8 @@ WebUIToolbarWebView::AdjustOmniboxTextForCopy(const std::u16string& text,
   GURL url;
   bool write_url = false;
 
-  LocationBar* location_bar = browser_->GetFeatures().location_bar();
+  LocationBar* location_bar =
+      BrowserWindow::FromBrowser(browser_)->GetLocationBar();
   if (location_bar) {
     OmniboxController* controller = location_bar->GetOmniboxController();
     if (controller && controller->edit_model()) {
@@ -1597,9 +1600,11 @@ void WebUIToolbarWebView::OnLhsChipMousePressed(
 
 void WebUIToolbarWebView::OnLhsChipClicked(
     toolbar_ui_api::mojom::LhsChipIdentifier identifier,
-    bool is_mouse_interaction) {
+    bool is_mouse_interaction,
+    uint32_t state_token) {
   if (location_bar_) {
-    location_bar_->OnLhsChipClicked(identifier, is_mouse_interaction);
+    location_bar_->OnLhsChipClicked(identifier, is_mouse_interaction,
+                                    state_token);
   }
 }
 

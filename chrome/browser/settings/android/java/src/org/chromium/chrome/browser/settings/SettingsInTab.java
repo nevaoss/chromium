@@ -6,7 +6,6 @@ package org.chromium.chrome.browser.settings;
 
 import android.content.Context;
 import android.content.res.Configuration;
-import android.os.Build;
 
 import org.chromium.base.ApplicationStatus;
 import org.chromium.base.ContextUtils;
@@ -20,30 +19,45 @@ import org.chromium.ui.display.DisplayUtil;
 @NullMarked
 public class SettingsInTab {
     /**
-     * Returns true if the feature flag is enabled and the device form factor is tablet/desktop.
-     * Desktop uses SettingsInTabDesktop; tablet uses SettingsInTab.
+     * Returns whether the Settings in Tab feature flags are enabled, without considering the device
+     * form factor or the screen size.
+     *
+     * <p>Use this to decide whether settings may be hosted in a tab at all, for example when
+     * recreating an existing settings tab. Form factor must not be considered there, because the
+     * screen width can change while settings is open (e.g. folding a foldable device or changing
+     * the display density on automotive) and an open settings tab must keep working. See
+     * crbug.com/562619494.
+     *
+     * <p>To decide whether to <em>open</em> settings in a tab, use {@link
+     * #shouldOpenSettingsInTab()} instead. To find out how an already-open settings UI is hosted,
+     * use {@link SettingsHost#isShownInTab()}, usually via {@link SettingsHostUtil}.
      */
-    public static boolean isEnabled() {
+    public static boolean isFeatureEnabled() {
         // SettingsInTab requires SettingsMultiColumn, which is disabled by some tests.
         if (!ChromeFeatureList.sSettingsMultiColumn.isEnabled()) return false;
 
+        // Desktop uses SettingsInTabDesktop; tablet uses SettingsInTab.
+        return DeviceInfo.isDesktop()
+                ? ChromeFeatureList.sSettingsInTabDesktop.isEnabled()
+                : ChromeFeatureList.sSettingsInTab.isEnabled();
+    }
+
+    /**
+     * Returns whether opening settings should create a settings tab rather than starting {@code
+     * SettingsActivity}. True if the feature flag is enabled and the device form factor is
+     * tablet/desktop.
+     *
+     * <p>This depends on the current screen width, so its value can change over the life of the
+     * process. It must therefore only be called when settings is opened, and the result must be
+     * remembered by the resulting settings UI. To find out how an already-open settings UI is
+     * hosted, use {@link SettingsHost#isShownInTab()}, usually via {@link SettingsHostUtil}.
+     */
+    public static boolean shouldOpenSettingsInTab() {
+        if (!isFeatureEnabled()) return false;
+
         // DeviceInfo.isDesktop() is checked in addition to isNonMultiDisplayContextOnTablet()
         // because desktop windows can be resized to narrow widths (< 600dp).
-        if (DeviceInfo.isDesktop()) {
-            return ChromeFeatureList.sSettingsInTabDesktop.isEnabled();
-        }
-
-        // Tablets and foldables use the SettingsInTab flag.
-        if (!ChromeFeatureList.sSettingsInTab.isEnabled()) return false;
-
-        // Foldables must be explicitly checked because they act as tablets while unfolded, but if
-        // the user has settings open and folds the device, we must continue to display settings.
-        // This is consistent with other native pages like Downloads, History, and Bookmarks.
-        // Android 13 system images may falsely report a hinge angle sensor and therefore we do not
-        // support SettingsInTab on this circa-2022 OS version.
-        if (DeviceInfo.isFoldable()) {
-            return Build.VERSION.SDK_INT != Build.VERSION_CODES.TIRAMISU;
-        }
+        if (DeviceInfo.isDesktop()) return true;
 
         // Use an Activity context when available because theme changes reset application-level
         // resource configurations, causing getApplicationContext() to lose its tablet screen width

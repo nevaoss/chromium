@@ -6,11 +6,11 @@
 
 #include "base/functional/bind.h"
 #include "base/metrics/histogram_functions.h"
-#include "chrome/app/chrome_command_ids.h"
 #include "chrome/browser/profiles/profile.h"
 #include "chrome/browser/ui/accelerator_utils.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+#include "chrome/browser/ui/exclusive_access/exclusive_access_manager.h"
 #include "chrome/browser/ui/find_bar/find_bar_controller.h"
 #include "chrome/browser/ui/read_anything/read_anything_contents_wrapper.h"
 #include "chrome/browser/ui/read_anything/read_anything_entry_point_controller.h"
@@ -25,9 +25,7 @@
 #include "chrome/browser/ui/tabs/public/tab_features.h"
 #include "chrome/browser/ui/tabs/tab_model.h"
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
-#include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/user_education/browser_user_education_interface.h"
-#include "chrome/browser/ui/view_ids.h"
 #include "chrome/browser/ui/webui/side_panel/read_anything/read_anything_untrusted_ui.h"
 #include "chrome/browser/ui/webui/top_chrome/webui_contents_wrapper.h"
 #include "chrome/browser/ui/webui/webui_embedding_context.h"
@@ -35,6 +33,7 @@
 #include "chrome/grit/generated_resources.h"
 #include "components/feature_engagement/public/feature_constants.h"
 #include "components/find_in_page/find_tab_helper.h"
+#include "components/input/native_web_keyboard_event.h"
 #include "components/prefs/pref_service.h"
 #include "content/public/browser/global_routing_id.h"
 #include "content/public/browser/navigation_handle.h"
@@ -45,7 +44,7 @@
 #include "content/public/browser/web_contents.h"
 #include "ui/accessibility/accessibility_features.h"
 #include "ui/base/window_open_disposition.h"
-#include "ui/views/accessibility/view_accessibility.h"
+#include "ui/events/keycodes/keyboard_codes.h"
 
 ///////////////////////////////////////////////////////////////////////////////
 // WebContentsObserverInstance
@@ -202,14 +201,13 @@ void ReadAnythingController::RemoveImmersiveActivationObserver(
 void ReadAnythingController::OnEntryShown(ReadAnythingOpenTrigger trigger) {
   observers_.Notify(&Observer::Activate, /*active=*/true, trigger,
                     /*completed_session_duration=*/std::nullopt);
-  active_service_ =
-      ReadAnythingService::Get(tab_->GetBrowserWindowInterface()->GetProfile());
   // At the moment, services are created for normal, guest, and incognito
   // profiles but not unusual profile types. On the other hand,
   // ReadAnythingController is created for all tabs. Thus we need a
   // nullptr check.
-  if (active_service_) {
-    active_service_->OnReadAnythingShown();
+  if (auto* service = ReadAnythingService::Get(
+          tab_->GetBrowserWindowInterface()->GetProfile())) {
+    service->OnReadAnythingShown();
   }
 
   if (is_presentation_transitioning_) {
@@ -251,11 +249,6 @@ void ReadAnythingController::OnEntryHidden() {
   observers_.Notify(&Observer::Activate, /*active=*/false,
                     /*trigger=*/ReadAnythingOpenTrigger::kUnknown,
                     completed_session_duration);
-
-  if (active_service_) {
-    active_service_->OnReadAnythingHidden();
-    active_service_ = nullptr;
-  }
 }
 
 std::optional<base::TimeDelta>
@@ -731,6 +724,17 @@ content::WebContents* ReadAnythingController::OpenURLFromTab(
     }
   }
   return nullptr;
+}
+
+bool ReadAnythingController::HandleEscapeKey(
+    const input::NativeWebKeyboardEvent& event) {
+  if (event.windows_key_code == ui::VKEY_ESCAPE && tab_ &&
+      tab_->GetBrowserWindowInterface()) {
+    ExclusiveAccessManager::From(tab_->GetBrowserWindowInterface())
+        ->HandleUserKeyEvent(event);
+    return true;
+  }
+  return false;
 }
 
 void ReadAnythingController::OnDistillationStateChanged(

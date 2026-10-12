@@ -122,6 +122,7 @@ class FilePath;
 class Location;
 class SequencedTaskRunner;
 class ScopedClosureRunner;
+class Uuid;
 }  // namespace base
 
 namespace blink {
@@ -1076,6 +1077,12 @@ class CONTENT_EXPORT ContentBrowserClient {
       const std::vector<GlobalRenderFrameHostId>& render_frames,
       const blink::StorageKey& storage_key);
 
+  // Allow the embedder to control whether a service worker may write to the
+  // system clipboard. Defaults to false: content/ has no notion of which
+  // workers are privileged, so a grant has to come from the embedder.
+  virtual bool AllowWorkerWriteToClipboard(const url::Origin& origin,
+                                           BrowserContext* browser_context);
+
   // Allow the embedder to control if access to CacheStorage by a shared worker
   // is allowed.
   virtual bool AllowWorkerCacheStorage(
@@ -1275,6 +1282,10 @@ class CONTENT_EXPORT ContentBrowserClient {
   // Returns true if the given render frame host is allowed to bypass the popup
   // blocker.
   virtual bool IsPopupBypassAllowed(RenderFrameHost* render_frame_host);
+
+  // Returns true if the given render frame host is allowed to use the
+  // Unbounded Element API (for example, specific component extensions).
+  virtual bool IsUnboundedElementAllowed(RenderFrameHost* render_frame_host);
 
   // Returns true if the given page is allowed to open a window of the given
   // type. If true is returned, |no_javascript_access| will indicate whether
@@ -2516,9 +2527,10 @@ class CONTENT_EXPORT ContentBrowserClient {
   // Tries to start RTC diagnostic logging (best effort).
   virtual void StartRtcDiagnosticLogging(
       RenderFrameHost& frame_host,
+      const base::Uuid& session_id,
       bool should_upload_on_stop,
       const base::flat_map<std::string, std::string>& metadata,
-      base::OnceCallback<void(const std::string&)> callback);
+      base::OnceClosure callback);
 
   // Finishes RTC diagnostic logging if a session is ongoing.
   // The results of logging are stored to disk and potentially uploaded.

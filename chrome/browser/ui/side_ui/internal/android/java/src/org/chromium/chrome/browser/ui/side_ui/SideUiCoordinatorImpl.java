@@ -48,6 +48,7 @@ import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tabmodel.IncognitoStateProvider;
 import org.chromium.chrome.browser.tabmodel.TabModelSelector;
 import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator.SideUiSpecs.SideUiSize;
+import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator.UiUpdateRequest.UpdateReason;
 import org.chromium.ui.base.ViewUtils;
 import org.chromium.ui.util.TokenHolder;
 
@@ -95,6 +96,9 @@ final class SideUiCoordinatorImpl
      */
     private final Map<@AnchorSide Integer, @HeightType Integer> mCurrentHeightTypes =
             new ArrayMap<>();
+
+    /** Maps {@link AnchorSide} to the {@link SideUiResizeHandler} owning that side's handle. */
+    private final Map<@AnchorSide Integer, SideUiResizeHandler> mResizeHandlers = new ArrayMap<>();
 
     /** List of registered {@link SideUiContainer} objects. */
     private final List<SideUiContainer> mSideUiContainers = new ArrayList<>();
@@ -214,6 +218,14 @@ final class SideUiCoordinatorImpl
 
         // Keep the containers in descending order of the priority.
         mSideUiContainers.sort((c1, c2) -> c1.getSideUiId() - c2.getSideUiId());
+
+        @AnchorSide int anchorSide = sideUiContainer.getAnchorSide();
+        mResizeHandlers.put(
+                anchorSide,
+                new SideUiResizeHandler(
+                        mParentActivity,
+                        assumeNonNull(mAnchorContainers.get(anchorSide)),
+                        sideUiContainer));
     }
 
     @Override
@@ -225,7 +237,10 @@ final class SideUiCoordinatorImpl
         // initialization, but ChromeActivity is destroyed before the async task is completed.
         //
         // Therefore, we shouldn't assert that the given SideUiContainer is already registered.
-        mSideUiContainers.remove(sideUiContainer);
+        if (!mSideUiContainers.remove(sideUiContainer)) return;
+
+        SideUiResizeHandler resizeHandler = mResizeHandlers.remove(sideUiContainer.getAnchorSide());
+        if (resizeHandler != null) resizeHandler.destroyHandleView();
     }
 
     @Override
@@ -251,6 +266,7 @@ final class SideUiCoordinatorImpl
         }
         mCallbackController.destroy();
         mSideUiContainers.clear();
+        mResizeHandlers.clear();
         mCurrentHeightTypes.clear();
         mBrowserControlsVisibilityManager.removeObserver(this);
         mFullscreenManager.removeObserver(this);
@@ -358,7 +374,11 @@ final class SideUiCoordinatorImpl
     // BrowserControlsStateProvider.Observer implementation:
     @Override
     public void onTopControlsHeightChanged(int topControlsHeight, int topControlsMinHeight) {
-        updateUiInternal(new UiUpdateRequest(/* sideUiId= */ null, /* suppressAnimations= */ true));
+        updateUiInternal(
+                new UiUpdateRequest(
+                        /* sideUiId= */ null,
+                        /* suppressAnimations= */ true,
+                        UpdateReason.TOP_CONTROLS_HEIGHT_CHANGED));
     }
 
     @Override
@@ -371,24 +391,40 @@ final class SideUiCoordinatorImpl
             boolean bottomControlsMinHeightChanged,
             boolean requestNewFrame,
             boolean isVisibilityForced) {
-        updateUiInternal(new UiUpdateRequest(/* sideUiId= */ null, /* suppressAnimations= */ true));
+        updateUiInternal(
+                new UiUpdateRequest(
+                        /* sideUiId= */ null,
+                        /* suppressAnimations= */ true,
+                        UpdateReason.CONTROLS_OFFSET_CHANGED));
     }
 
     // ConfigurationChangedObserver Implementation
     @Override
     public void onConfigurationChanged(Configuration newConfig) {
-        updateUiInternal(new UiUpdateRequest(/* sideUiId= */ null, /* suppressAnimations= */ true));
+        updateUiInternal(
+                new UiUpdateRequest(
+                        /* sideUiId= */ null,
+                        /* suppressAnimations= */ true,
+                        UpdateReason.ANDROID_CONFIGURATION_CHANGED));
     }
 
     // FullscreenManager.Observer implementation:
     @Override
     public void onEnterFullscreen(Tab tab, FullscreenOptions options) {
-        updateUiInternal(new UiUpdateRequest(/* sideUiId= */ null, /* suppressAnimations= */ true));
+        updateUiInternal(
+                new UiUpdateRequest(
+                        /* sideUiId= */ null,
+                        /* suppressAnimations= */ true,
+                        UpdateReason.FULL_SCREEN_MODE_ENTERED));
     }
 
     @Override
     public void onExitFullscreen(Tab tab) {
-        updateUiInternal(new UiUpdateRequest(/* sideUiId= */ null, /* suppressAnimations= */ true));
+        updateUiInternal(
+                new UiUpdateRequest(
+                        /* sideUiId= */ null,
+                        /* suppressAnimations= */ true,
+                        UpdateReason.FULL_SCREEN_MODE_EXITED));
     }
 
     @VisibleForTesting
@@ -431,6 +467,12 @@ final class SideUiCoordinatorImpl
             if (newWidth != oldWidth || oldHeightType != newHeightType) {
                 container.onUiUpdateCompleted(oldWidth, newWidth, oldHeightType, newHeightType);
             }
+        }
+    }
+
+    private void updateResizeHandles() {
+        for (SideUiResizeHandler resizeHandler : mResizeHandlers.values()) {
+            resizeHandler.onUiUpdateCompleted();
         }
     }
 
@@ -511,6 +553,10 @@ final class SideUiCoordinatorImpl
             commitNewSideUiSpecs(uiUpdateSpecs, transitionSet);
             mWebContentsHairlineManager.update();
         }
+
+        // 9. Sync the resize handles. This is also done when specs change, but a container can
+        // become (non-)resizable without any change to the specs.
+        updateResizeHandles();
 
         mIsUpdatingUi = false;
     }
@@ -1014,6 +1060,12 @@ final class SideUiCoordinatorImpl
                 : "SideUiContainer was attached to an unknown group.";
 
         anchorContainer.removeView(sideUiContainerView);
+
+        // The resize handle is only meaningful while the container is attached, and the assert
+        // below requires the anchor container to be empty.
+        SideUiResizeHandler resizeHandler = mResizeHandlers.get(sideUiContainer.getAnchorSide());
+        if (resizeHandler != null) resizeHandler.destroyHandleView();
+
         assert anchorContainer.getChildCount() == 0;
         anchorContainer.setVisibility(View.GONE);
     }
@@ -1052,5 +1104,10 @@ final class SideUiCoordinatorImpl
                 .computeCurrentWindowMetrics(mParentActivity)
                 .getBounds()
                 .width();
+    }
+
+    @Nullable View getResizeHandleViewForTesting(@AnchorSide int side) {
+        SideUiResizeHandler resizeHandler = mResizeHandlers.get(side);
+        return resizeHandler == null ? null : resizeHandler.getHandleViewForTesting();
     }
 }

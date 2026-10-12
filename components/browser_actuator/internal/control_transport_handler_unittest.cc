@@ -25,7 +25,7 @@ class TestTransportSession : public TransportSession {
   ~TestTransportSession() override = default;
 
   std::string_view GetSessionId() const override { return session_id_; }
-  base::expected<void, SendMessageError> SendMessage(
+  base::expected<void, SendUpstreamMessageError> SendUpstreamMessage(
       PayloadType payload_type,
       const google::protobuf::MessageLite& message) override {
     return {};
@@ -41,8 +41,9 @@ TEST(ControlTransportHandlerTest, OnMessageCloseChannel) {
   bool close_channel_called = false;
   bool close_session_called = false;
 
+  TestTransportSession session("session_1");
   ControlTransportHandler handler(
-      "session_1",
+      &session,
       base::BindLambdaForTesting([&]() { close_channel_called = true; }),
       base::BindLambdaForTesting(
           [&](std::string_view) { close_session_called = true; }));
@@ -50,7 +51,7 @@ TEST(ControlTransportHandlerTest, OnMessageCloseChannel) {
   ControlCommand command;
   command.mutable_close_channel();
 
-  handler.OnMessage(command);
+  handler.OnMessage(PayloadType::kControl, command.SerializeAsString());
 
   EXPECT_TRUE(close_channel_called);
   EXPECT_FALSE(close_session_called);
@@ -60,8 +61,9 @@ TEST(ControlTransportHandlerTest, OnMessageCloseSession) {
   bool close_channel_called = false;
   std::string closed_session_id;
 
+  TestTransportSession session("session_1");
   ControlTransportHandler handler(
-      "session_1",
+      &session,
       base::BindLambdaForTesting([&]() { close_channel_called = true; }),
       base::BindLambdaForTesting([&](std::string_view session_id) {
         closed_session_id = session_id;
@@ -70,43 +72,66 @@ TEST(ControlTransportHandlerTest, OnMessageCloseSession) {
   ControlCommand command;
   command.mutable_close_session();
 
-  handler.OnMessage(command);
+  handler.OnMessage(PayloadType::kControl, command.SerializeAsString());
 
   EXPECT_FALSE(close_channel_called);
   EXPECT_EQ(closed_session_id, "session_1");
+}
+
+TEST(ControlTransportHandlerTest, OnMessageCloseSessionWithNullSessionNoops) {
+  bool close_channel_called = false;
+  bool close_session_called = false;
+
+  ControlTransportHandler handler(
+      nullptr,
+      base::BindLambdaForTesting([&]() { close_channel_called = true; }),
+      base::BindLambdaForTesting(
+          [&](std::string_view) { close_session_called = true; }));
+
+  ControlCommand command;
+  command.mutable_close_session();
+
+  handler.OnMessage(PayloadType::kControl, command.SerializeAsString());
+
+  EXPECT_FALSE(close_channel_called);
+  EXPECT_FALSE(close_session_called);
 }
 
 TEST(ControlTransportHandlerTest, OnMessageUnsetCommand) {
   bool close_channel_called = false;
   bool close_session_called = false;
 
+  TestTransportSession session("session_1");
   ControlTransportHandler handler(
-      "session_1",
+      &session,
       base::BindLambdaForTesting([&]() { close_channel_called = true; }),
       base::BindLambdaForTesting(
           [&](std::string_view) { close_session_called = true; }));
 
   ControlCommand command;  // empty, command_case() is COMMAND_NOT_SET
 
-  handler.OnMessage(command);
+  handler.OnMessage(PayloadType::kControl, command.SerializeAsString());
 
   EXPECT_FALSE(close_channel_called);
   EXPECT_FALSE(close_session_called);
 }
 
-TEST(ControlTransportHandlerTest, UnexpectedMessageTypeIsIgnored) {
+// The handler receives raw bytes, so a payload that is not a ControlCommand
+// surfaces as a parse failure rather than as a type mismatch. It must be
+// dropped without invoking any callback.
+TEST(ControlTransportHandlerTest, MalformedPayloadIsIgnored) {
   bool close_channel_called = false;
   bool close_session_called = false;
 
+  TestTransportSession session("session_1");
   ControlTransportHandler handler(
-      "session_1",
+      &session,
       base::BindLambdaForTesting([&]() { close_channel_called = true; }),
       base::BindLambdaForTesting(
           [&](std::string_view) { close_session_called = true; }));
 
-  ActuatorDownstreamMessage unexpected_message;
-
-  handler.OnMessage(unexpected_message);
+  // Field number 13 with wire type 6, which is not a valid wire type.
+  handler.OnMessage(PayloadType::kControl, "not a valid proto");
 
   EXPECT_FALSE(close_channel_called);
   EXPECT_FALSE(close_session_called);
@@ -149,7 +174,7 @@ TEST(ControlTransportHandlerTest, FactoryOnNewSession) {
   ControlCommand command;
   command.mutable_close_session();
 
-  handler->OnMessage(command);
+  handler->OnMessage(PayloadType::kControl, command.SerializeAsString());
 
   EXPECT_EQ(closed_session_id, "session_abc");
 }

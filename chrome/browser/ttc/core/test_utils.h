@@ -9,7 +9,7 @@
 #include <vector>
 
 #include "chrome/browser/ttc/app/public/conversation.h"
-#include "chrome/browser/ttc/app/public/tool_definition.h"
+#include "chrome/browser/ttc/app/public/tool_types.h"
 #include "components/optimization_guide/proto/features/common_quality_data.pb.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "url/gurl.h"
@@ -32,10 +32,6 @@ class MockConversation : public Conversation {
               (const GURL&,
                const std::string&,
                const optimization_guide::proto::AnnotatedPageContent&),
-              (override));
-  MOCK_METHOD(void,
-              SendToolSetUpdate,
-              (const std::vector<ToolDefinition>&),
               (override));
   MOCK_METHOD(void, OnPageContextChanged, (), (override));
 };

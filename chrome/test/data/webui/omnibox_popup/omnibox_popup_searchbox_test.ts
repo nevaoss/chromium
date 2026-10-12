@@ -44,6 +44,12 @@ function createDefaultOmniboxInputState(overrides?: Partial<OmniboxInputState>):
   };
 }
 
+const kDefaultSelection = {
+  line: -1,
+  state: SelectionLineState.kNormal,
+  actionIndex: 0,
+};
+
 suite('OmniboxPopupSearchboxTest', function() {
   let searchbox: OmniboxPopupSearchboxElement;
   let testProxy: TestSearchboxBrowserProxy;
@@ -147,6 +153,119 @@ suite('OmniboxPopupSearchboxTest', function() {
     assertFalse(canRedo);
   });
 
+  test('InFlightWebUiInputMergedWithSetInputState', async () => {
+    // User typed 'e' in WebUI while SetInputState('h') was in-flight.
+    const input = searchbox.$.input.inputElement;
+    input.value = 'e';
+    input.setSelectionRange(1, 1);
+    input.dispatchEvent(new CustomEvent('input', {
+      bubbles: true,
+      composed: true,
+      detail: {value: 'e', isComposing: false},
+    }));
+    await microtasksFinished();
+
+    // Verify autocomplete query was deferred before initial SetInputState.
+    assertEquals(0, testProxy.handler.getCallCount('queryAutocomplete'));
+
+    // SetInputState with text='h' arrives from native Views.
+    callbackRouter.setInputState(createDefaultOmniboxInputState({
+      text: 'h',
+      selection: {start: 1, end: 1},
+      userInputInProgress: true,
+      isFocused: true,
+    }));
+    await microtasksFinished();
+
+    // Verify that the merged text is 'he' and selection is at end (2, 2).
+    assertEquals('he', searchbox.$.input.inputElement.value);
+    assertEquals(2, searchbox.$.input.inputElement.selectionStart);
+    assertEquals(2, searchbox.$.input.inputElement.selectionEnd);
+
+    // Verify autocomplete query was dispatched for the merged text.
+    assertEquals(1, testProxy.handler.getCallCount('queryAutocomplete'));
+    const [, , queryText] = testProxy.handler.getArgs('queryAutocomplete')[0];
+    assertEquals('he', queryText);
+  });
+
+  test(
+      'InFlightWebUiInputWithInlineAutocompletionMergedWithSetInputState',
+      async () => {
+        // User typed 'r' in WebUI.
+        const input = searchbox.$.input.inputElement;
+        input.value = 'r';
+        input.setSelectionRange(1, 1);
+        input.dispatchEvent(new CustomEvent('input', {
+          bubbles: true,
+          composed: true,
+          detail: {value: 'r', isComposing: false},
+        }));
+        await microtasksFinished();
+
+        // Autocomplete result arrives for 'r' with inline autocompletion
+        // 'eddit.com'.
+        testProxy.page.autocompleteResultChanged(
+            createAutocompleteResultForTesting({
+              input: 'r',
+              matches: [
+                createSearchMatchForTesting({
+                  allowedToBeDefaultMatch: true,
+                  inlineAutocompletion: 'eddit.com',
+                  fillIntoEdit: 'reddit.com',
+                }),
+              ],
+            }));
+        await microtasksFinished();
+        // Verify that raw typed 'r' was not overwritten by inline
+        // autocompletion.
+        assertEquals('r', searchbox.$.input.inputElement.value);
+
+        // SetInputState with text='ca' arrives from native Views.
+        callbackRouter.setInputState(createDefaultOmniboxInputState({
+          text: 'ca',
+          selection: {start: 2, end: 2},
+          userInputInProgress: true,
+          isFocused: true,
+        }));
+        await microtasksFinished();
+
+        // Verify that only raw typed 'r' was merged with 'ca' to form 'car',
+        // ignoring the inline autocompletion ('eddit.com').
+        assertEquals('car', searchbox.$.input.inputElement.value);
+        assertEquals(3, searchbox.$.input.inputElement.selectionStart);
+        assertEquals(3, searchbox.$.input.inputElement.selectionEnd);
+      });
+
+  test(
+      'InFlightWebUiInputPreservesLongerTextWhenDelayedSetInputStateArrives',
+      async () => {
+        // User already typed 'planet' in WebUI.
+        const input = searchbox.$.input.inputElement;
+        input.value = 'planet';
+        input.setSelectionRange(6, 6);
+        input.dispatchEvent(new CustomEvent('input', {
+          bubbles: true,
+          composed: true,
+          detail: {value: 'planet', isComposing: false},
+        }));
+        await microtasksFinished();
+
+        // Delayed SetInputState with text='plan' arrives from native Views.
+        callbackRouter.setInputState(createDefaultOmniboxInputState({
+          text: 'plan',
+          selection: {start: 4, end: 4},
+          userInputInProgress: true,
+          isFocused: true,
+        }));
+        await microtasksFinished();
+
+        // Verify that the longer WebUI input 'planet' is preserved and not
+        // truncated back to 'plan'.
+        assertEquals('planet', searchbox.$.input.inputElement.value);
+        assertEquals(6, searchbox.$.input.inputElement.selectionStart);
+        assertEquals(6, searchbox.$.input.inputElement.selectionEnd);
+      });
+
   test('EnterKeySubmitsVerbatimMatchWhenNoMatchSelected', async () => {
     for (const virtualFocus of [false, true]) {
       loadTimeData.overrideValues(
@@ -168,6 +287,7 @@ suite('OmniboxPopupSearchboxTest', function() {
       await microtasksFinished();
 
       const [
+        resultSequenceId,
         line,
         url,
         areMatchesShowing,
@@ -175,6 +295,7 @@ suite('OmniboxPopupSearchboxTest', function() {
         modifiers,
         viaKeyboard,
       ] = await testProxy.handler.whenCalled('openAutocompleteMatch');
+      assertEquals(0, resultSequenceId);
       assertEquals(-1, line);
       assertEquals('', url);
       assertFalse(areMatchesShowing);
@@ -459,6 +580,32 @@ suite('OmniboxPopupSearchboxTest', function() {
     assertEquals(0, input.selectionStart);
     assertEquals(0, input.selectionEnd);
     assertEquals('', input.value);
+  });
+
+  test('MousedownTriggersZeroSuggest', async () => {
+    callbackRouter.setInputState(createDefaultOmniboxInputState({
+      sequenceNumber: 2,
+      text: 'https://example.com',
+      fullUrl: 'https://example.com',
+      permanentDisplayText: 'example.com',
+      isFocused: true,
+    }));
+    await microtasksFinished();
+    testProxy.handler.reset();
+
+    const input = searchbox.$.input.inputElement;
+    input.dispatchEvent(new MouseEvent('mousedown', {
+      button: 0,
+      bubbles: true,
+      cancelable: true,
+      composed: true,
+    }));
+    await microtasksFinished();
+
+    assertEquals(1, testProxy.handler.getCallCount('queryAutocomplete'));
+    const args = testProxy.handler.getArgs('queryAutocomplete')[0];
+    assertEquals('https://example.com', args[2]);
+    assertTrue(args[6]);  // isOnFocus
   });
 
   test('ClearsInputTextAndNotifiesHandler', async () => {
@@ -1516,71 +1663,6 @@ suite('OmniboxPopupSearchboxTest', function() {
    }
  });
 
- test('EscapeStagedUnwindingWithVirtualFocus', async () => {
-   loadTimeData.overrideValues({realboxVirtualFocusNavigation: true});
-   searchbox.virtualFocusEnabled = true;
-
-   // Stage 1 (`kRevertTemporaryText`):
-   searchbox.getInputElement().inputElement.value = 'a';
-   searchbox.lastQueriedInput = 'a';
-   searchbox.activeQueryId = 0;
-   testProxy.page.autocompleteResultChanged(createAutocompleteResultForTesting({
-     input: 'a',
-     matches: [
-       createSearchMatchForTesting({
-         allowedToBeDefaultMatch: true,
-         fillIntoEdit: 'a',
-         inlineAutocompletion: '',
-       }),
-       createSearchMatchForTesting({
-         allowedToBeDefaultMatch: false,
-         fillIntoEdit: 'suggestion-1',
-       }),
-     ],
-   }));
-   await microtasksFinished();
-   assertTrue(searchbox.dropdownIsVisible);
-
-   searchbox.setSelection({
-     line: 1,
-     state: SelectionLineState.kNormal,
-     actionIndex: 0,
-   });
-   searchbox.getInputElement().inputElement.value = 'suggestion-1';
-   await microtasksFinished();
-
-   await searchbox.handleKeyNavigation(new KeyboardEvent('keydown', {
-     key: 'Escape',
-     cancelable: true,
-   }));
-   await microtasksFinished();
-
-   assertEquals('a', searchbox.getInputElement().inputElement.value);
-   assertEquals(0, searchbox.selection.line);
-   assertTrue(searchbox.dropdownIsVisible);
-   assertEquals(1, handler.getCallCount('logEscapeAction'));
-   assertEquals(
-       OmniboxEscapeAction.kRevertTemporaryText,
-       handler.getArgs('logEscapeAction')[0]);
-
-   handler.reset();
-   testProxy.handler.reset();
-
-   // Stage 2 (`kClosePopup`):
-   await searchbox.handleKeyNavigation(new KeyboardEvent('keydown', {
-     key: 'Escape',
-     cancelable: true,
-   }));
-   await microtasksFinished();
-
-   assertFalse(searchbox.dropdownIsVisible);
-   assertEquals(1, testProxy.handler.getCallCount('stopAutocomplete'));
-   assertTrue(testProxy.handler.getArgs('stopAutocomplete')[0]);
-   assertEquals(1, handler.getCallCount('logEscapeAction'));
-   assertEquals(
-       OmniboxEscapeAction.kClosePopup, handler.getArgs('logEscapeAction')[0]);
- });
-
  test('EscapeStagedUnwinding_ClearedInputNonEmptyUrl', async () => {
    // Input was manually cleared ('') on a page with a non-empty permanent URL.
    // ESC should restore the permanent URL ('example.com') without closing UI.
@@ -2227,6 +2309,7 @@ suite('OmniboxPopupSearchboxTest', function() {
    test('LensIconShown', async () => {
      loadTimeData.overrideValues({
        composeboxShowLensIcon: true,
+       composeboxShowChip: false,
      });
 
      document.body.innerHTML = window.trustedTypes!.emptyHTML;
@@ -2439,14 +2522,6 @@ suite('OmniboxPopupSearchboxTest', function() {
  });
 
  test('ClearsAutocompleteMatchesOnSetInputState', async () => {
-   // Initial state on Tab 1.
-   callbackRouter.setInputState(createDefaultOmniboxInputState({
-     tabId: 1,
-     text: 'tab 1',
-     isFocused: true,
-   }));
-   await microtasksFinished();
-
    // Populate autocomplete result to show dropdown.
    searchbox.onAutocompleteResultChanged(createAutocompleteResultForTesting({
      queryId: searchbox.activeQueryId,
@@ -2457,9 +2532,8 @@ suite('OmniboxPopupSearchboxTest', function() {
    await microtasksFinished();
    assertTrue(searchbox.dropdownIsVisible);
 
-   // Update input state via Mojo (simulating tab switch to Tab 2).
+   // Update input state via Mojo (simulating tab switch / state reset).
    callbackRouter.setInputState(createDefaultOmniboxInputState({
-     tabId: 2,
      text: 'new tab input',
      isFocused: true,
      isTabSwitch: true,
@@ -2489,6 +2563,8 @@ suite('OmniboxPopupSearchboxTest', function() {
        type: KeywordType.kInKeyword,
        keyword: 'google.com',
        displayText: 'Search Google',
+       iconPath: '',
+       placeholder: '',
      },
    }));
    await microtasksFinished();
@@ -2593,6 +2669,8 @@ suite('OmniboxPopupSearchboxTest', function() {
  });
 
  test('TabKeyAcceptsInlineAutocomplete', async () => {
+   searchbox.virtualFocusEnabled = false;
+   searchbox.dropdownIsVisible = true;
    searchbox.focusInput();
    searchbox.getInputElement().setInput({
      text: 'you',
@@ -2629,6 +2707,8 @@ suite('OmniboxPopupSearchboxTest', function() {
  });
 
  test('ShiftTabClearsInlineAutocompleteWithoutPreventDefault', async () => {
+   searchbox.virtualFocusEnabled = false;
+   searchbox.dropdownIsVisible = true;
    searchbox.focusInput();
    searchbox.getInputElement().setInput({
      text: 'you',
@@ -2653,6 +2733,7 @@ suite('OmniboxPopupSearchboxTest', function() {
  });
 
  test('TabKeyPrioritizesKeywordEntryOverInlineAutocomplete', async () => {
+   searchbox.virtualFocusEnabled = false;
    const keyword = 'youtube.com';
    const match = createSearchMatchForTesting({
      allowedToBeDefaultMatch: true,
@@ -2694,6 +2775,7 @@ suite('OmniboxPopupSearchboxTest', function() {
  });
 
  test('TabKeyFallsBackToInlineAutocompleteWhenNoKeywordChip', async () => {
+   searchbox.virtualFocusEnabled = false;
    const match = createSearchMatchForTesting({
      allowedToBeDefaultMatch: true,
      contents: 'youtube.com',
@@ -3049,4 +3131,478 @@ suite('OmniboxPopupSearchboxTest', function() {
        assertFalse(localSearchbox.isContextEntrypointVirtualFocused());
        assertFalse(entrypointButton.hasVirtualFocus);
      });
+
+ test('TabKeyFromInputFocusesAimButtonWhenVisible', async () => {
+   searchbox.dropdownIsVisible = false;
+   searchbox.focusInput();
+   testProxy.page.setAimButtonVisible(true);
+   await microtasksFinished();
+
+   assertEquals(searchbox.$.input, searchbox.shadowRoot.activeElement);
+   handler.reset();
+
+   const tabEvent = new KeyboardEvent('keydown', {
+     key: 'Tab',
+     cancelable: true,
+     bubbles: true,
+   });
+   await searchbox.handleKeyNavigation(tabEvent);
+   await microtasksFinished();
+
+   assertTrue(tabEvent.defaultPrevented);
+   assertFalse(searchbox.isAiModeVirtualFocused());
+   assertEquals(-1, searchbox.selection.line);
+   assertEquals(SelectionLineState.kNormal, searchbox.selection.state);
+   assertEquals(searchbox.$.composeButton, searchbox.shadowRoot.activeElement);
+   assertEquals(0, handler.getCallCount('advanceFocus'));
+ });
+
+ test('TabKeyFromInputAdvancesFocusForwardWhenAimButtonHidden', async () => {
+   searchbox.dropdownIsVisible = false;
+   searchbox.focusInput();
+   testProxy.page.setAimButtonVisible(false);
+   await microtasksFinished();
+
+   assertEquals(searchbox.$.input, searchbox.shadowRoot.activeElement);
+   handler.reset();
+
+   const tabEvent = new KeyboardEvent('keydown', {
+     key: 'Tab',
+     cancelable: true,
+     bubbles: true,
+   });
+   await searchbox.handleKeyNavigation(tabEvent);
+   await microtasksFinished();
+
+   assertTrue(tabEvent.defaultPrevented);
+   assertEquals(1, handler.getCallCount('advanceFocus'));
+   assertFalse(handler.getArgs('advanceFocus')[0]);
+ });
+
+ test('ShiftTabKeyFromInputAdvancesFocusBackward', async () => {
+   searchbox.dropdownIsVisible = false;
+   searchbox.focusInput();
+   await microtasksFinished();
+
+   assertEquals(searchbox.$.input, searchbox.shadowRoot.activeElement);
+   handler.reset();
+
+   const shiftTabEvent = new KeyboardEvent('keydown', {
+     key: 'Tab',
+     shiftKey: true,
+     cancelable: true,
+     bubbles: true,
+   });
+   await searchbox.handleKeyNavigation(shiftTabEvent);
+   await microtasksFinished();
+
+   assertTrue(shiftTabEvent.defaultPrevented);
+   assertEquals(1, handler.getCallCount('advanceFocus'));
+   assertTrue(handler.getArgs('advanceFocus')[0]);
+ });
+
+ test('TabKeyFromAimButtonAdvancesFocusForward', async () => {
+   searchbox.dropdownIsVisible = false;
+   testProxy.page.setAimButtonVisible(true);
+   await microtasksFinished();
+
+   searchbox.$.composeButton.focus();
+   await microtasksFinished();
+
+   assertEquals(searchbox.$.composeButton, searchbox.shadowRoot.activeElement);
+   assertFalse(searchbox.isAiModeVirtualFocused());
+   handler.reset();
+
+   const tabEvent = new KeyboardEvent('keydown', {
+     key: 'Tab',
+     cancelable: true,
+     bubbles: true,
+   });
+   await searchbox.handleKeyNavigation(tabEvent);
+   await microtasksFinished();
+
+   assertTrue(tabEvent.defaultPrevented);
+   assertEquals(-1, searchbox.selection.line);
+   assertEquals(SelectionLineState.kNormal, searchbox.selection.state);
+   assertFalse(searchbox.isAiModeVirtualFocused());
+   assertEquals(1, handler.getCallCount('advanceFocus'));
+   assertFalse(handler.getArgs('advanceFocus')[0]);
+ });
+
+ test('ShiftTabKeyFromAimButtonReturnsFocusToInput', async () => {
+   searchbox.dropdownIsVisible = false;
+   testProxy.page.setAimButtonVisible(true);
+   await microtasksFinished();
+
+   searchbox.$.composeButton.focus();
+   await microtasksFinished();
+
+   assertEquals(searchbox.$.composeButton, searchbox.shadowRoot.activeElement);
+   assertFalse(searchbox.isAiModeVirtualFocused());
+   handler.reset();
+
+   const shiftTabEvent = new KeyboardEvent('keydown', {
+     key: 'Tab',
+     shiftKey: true,
+     cancelable: true,
+     bubbles: true,
+   });
+   await searchbox.handleKeyNavigation(shiftTabEvent);
+   await microtasksFinished();
+
+   assertTrue(shiftTabEvent.defaultPrevented);
+   assertEquals(-1, searchbox.selection.line);
+   assertEquals(SelectionLineState.kNormal, searchbox.selection.state);
+   assertFalse(searchbox.isAiModeVirtualFocused());
+   assertEquals(searchbox.$.input, searchbox.shadowRoot.activeElement);
+   assertEquals(0, handler.getCallCount('advanceFocus'));
+ });
+
+ test(
+     'TabKeyWithDropdownVisibleDelegatesToSuperWhenVirtualFocusEnabled',
+     async () => {
+       loadTimeData.overrideValues({realboxVirtualFocusNavigation: true});
+       searchbox.virtualFocusEnabled = true;
+       searchbox.dropdownIsVisible = true;
+
+       const match = createSearchMatchForTesting({
+         allowedToBeDefaultMatch: true,
+         contents: 'first match',
+       });
+       searchbox.activeQueryId = 0;
+       searchbox.onAutocompleteResultChanged(
+           createAutocompleteResultForTesting({
+             queryId: 0,
+             input: 'first',
+             matches: [match],
+           }));
+       await microtasksFinished();
+
+       searchbox.focusInput();
+       handler.reset();
+
+       const tabEvent = new KeyboardEvent('keydown', {
+         key: 'Tab',
+         cancelable: true,
+         bubbles: true,
+       });
+       await searchbox.handleKeyNavigation(tabEvent);
+       await microtasksFinished();
+
+       // Verify focus did not advance out of the omnibox popup.
+       assertEquals(0, handler.getCallCount('advanceFocus'));
+     });
+
+ test(
+     'TabKeyIgnoredWhenNeitherInputNorAimButtonFocusedAndDropdownClosed',
+     async () => {
+       searchbox.dropdownIsVisible = false;
+       searchbox.blur();
+       searchbox.setSelection(kDefaultSelection);
+       searchbox.$.input.inputElement.blur();
+       await microtasksFinished();
+
+       handler.reset();
+
+       const tabEvent = new KeyboardEvent('keydown', {
+         key: 'Tab',
+         cancelable: true,
+         bubbles: true,
+       });
+       await searchbox.handleKeyNavigation(tabEvent);
+       await microtasksFinished();
+
+       assertFalse(tabEvent.defaultPrevented);
+       assertEquals(0, handler.getCallCount('advanceFocus'));
+     });
+
+ test('UnfocusedSingleClick_SelectsAllOnMouseUp', async () => {
+   const testText = 'https://example.com/test';
+   callbackRouter.setInputState(createDefaultOmniboxInputState({
+     text: testText,
+     isFocused: false,
+     selection: {start: 0, end: 0},
+   }));
+   await microtasksFinished();
+
+   const input = searchbox.getInputElement().inputElement;
+   assertEquals(0, input.selectionStart);
+   assertEquals(0, input.selectionEnd);
+
+   // Mousedown on unfocused input.
+   searchbox.getInputElement().dispatchEvent(new MouseEvent('mousedown', {
+     button: 0,
+     buttons: 1,
+     clientX: 20,
+     clientY: 20,
+     detail: 1,
+     bubbles: true,
+     composed: true,
+   }));
+   input.focus();
+   await microtasksFinished();
+
+   // Mouseup on document without movement.
+   document.dispatchEvent(new MouseEvent('mouseup', {
+     button: 0,
+     buttons: 0,
+     clientX: 20,
+     clientY: 20,
+     detail: 1,
+     bubbles: true,
+     composed: true,
+   }));
+   await microtasksFinished();
+
+   // Verify all text is selected on mouse release.
+   assertEquals(0, input.selectionStart);
+   assertEquals(testText.length, input.selectionEnd);
+ });
+
+ test('UnfocusedDragSelection_PreservesPartialSelection', async () => {
+   const testText = 'https://example.com/test';
+   callbackRouter.setInputState(createDefaultOmniboxInputState({
+     text: testText,
+     isFocused: false,
+     selection: {start: 0, end: 0},
+   }));
+   await microtasksFinished();
+
+   const input = searchbox.getInputElement().inputElement;
+
+   // Mousedown on unfocused input.
+   searchbox.getInputElement().dispatchEvent(new MouseEvent('mousedown', {
+     button: 0,
+     buttons: 1,
+     clientX: 20,
+     clientY: 20,
+     detail: 1,
+     bubbles: true,
+     composed: true,
+   }));
+   input.focus();
+
+   // Simulate Blink setting partial drag selection.
+   input.setSelectionRange(8, 19);
+
+   // Mousemove beyond 3px threshold.
+   document.dispatchEvent(new MouseEvent('mousemove', {
+     buttons: 1,
+     clientX: 80,
+     clientY: 20,
+     bubbles: true,
+     composed: true,
+   }));
+
+   // Mouseup on document.
+   document.dispatchEvent(new MouseEvent('mouseup', {
+     button: 0,
+     buttons: 0,
+     clientX: 80,
+     clientY: 20,
+     detail: 1,
+     bubbles: true,
+     composed: true,
+   }));
+   await microtasksFinished();
+
+   // Verify partial drag selection was preserved and NOT overwritten by
+   // select-all.
+   assertEquals(8, input.selectionStart);
+   assertEquals(19, input.selectionEnd);
+   assertEquals('example.com', input.value.substring(8, 19));
+ });
+
+ test('DoubleClick_PreservesWordSelection', async () => {
+   const testText = 'hello world';
+   callbackRouter.setInputState(createDefaultOmniboxInputState({
+     text: testText,
+     isFocused: false,
+     selection: {start: 0, end: 0},
+   }));
+   await microtasksFinished();
+
+   const input = searchbox.getInputElement().inputElement;
+
+   // Simulate click 1 (select all on mouseup).
+   searchbox.getInputElement().dispatchEvent(new MouseEvent('mousedown', {
+     button: 0,
+     buttons: 1,
+     clientX: 10,
+     clientY: 10,
+     detail: 1,
+     bubbles: true,
+     composed: true,
+   }));
+   input.focus();
+   document.dispatchEvent(new MouseEvent('mouseup', {
+     button: 0,
+     buttons: 0,
+     clientX: 10,
+     clientY: 10,
+     detail: 1,
+     bubbles: true,
+     composed: true,
+   }));
+   await microtasksFinished();
+   assertEquals(0, input.selectionStart);
+   assertEquals(testText.length, input.selectionEnd);
+
+   // Simulate click 2 (double-click word selection of 'hello').
+   searchbox.getInputElement().dispatchEvent(new MouseEvent('mousedown', {
+     button: 0,
+     buttons: 1,
+     clientX: 10,
+     clientY: 10,
+     detail: 2,
+     bubbles: true,
+     composed: true,
+   }));
+   // Mousedown should have collapsed the range selection so Blink can perform
+   // native word selection.
+   assertEquals(0, input.selectionStart);
+   assertEquals(0, input.selectionEnd);
+
+   input.setSelectionRange(0, 5);
+   document.dispatchEvent(new MouseEvent('mouseup', {
+     button: 0,
+     buttons: 0,
+     clientX: 10,
+     clientY: 10,
+     detail: 2,
+     bubbles: true,
+     composed: true,
+   }));
+   await microtasksFinished();
+
+   assertEquals(0, input.selectionStart);
+   assertEquals(5, input.selectionEnd);
+ });
+
+ test('AlreadyFocusedClick_PlacesCaretWithoutSelectAll', async () => {
+   callbackRouter.setInputState(createDefaultOmniboxInputState({
+     text: 'hello world',
+     isFocused: true,
+     selection: {start: 0, end: 11},
+   }));
+   await microtasksFinished();
+
+   const input = searchbox.getInputElement().inputElement;
+   input.focus();
+   input.setSelectionRange(5, 5);
+
+   // Click inside already-focused input.
+   searchbox.getInputElement().dispatchEvent(new MouseEvent('mousedown', {
+     button: 0,
+     buttons: 1,
+     clientX: 50,
+     clientY: 20,
+     detail: 1,
+     bubbles: true,
+     composed: true,
+   }));
+   document.dispatchEvent(new MouseEvent('mouseup', {
+     button: 0,
+     buttons: 0,
+     clientX: 50,
+     clientY: 20,
+     detail: 1,
+     bubbles: true,
+     composed: true,
+   }));
+   await microtasksFinished();
+
+   assertEquals(5, input.selectionStart);
+   assertEquals(5, input.selectionEnd);
+ });
+
+ test('KeydownDuringMouseDown_CancelsSelectAll', async () => {
+   callbackRouter.setInputState(createDefaultOmniboxInputState({
+     text: 'https://example.com',
+     isFocused: false,
+     selection: {start: 0, end: 0},
+   }));
+   await microtasksFinished();
+
+   const input = searchbox.getInputElement().inputElement;
+
+   // Mousedown arms tracker.
+   searchbox.getInputElement().dispatchEvent(new MouseEvent('mousedown', {
+     button: 0,
+     buttons: 1,
+     clientX: 20,
+     clientY: 20,
+     detail: 1,
+     bubbles: true,
+     composed: true,
+   }));
+   input.focus();
+
+   // Keydown during mousedown.
+   searchbox.$.inputWrapper.dispatchEvent(new KeyboardEvent('keydown', {
+     key: 'ArrowLeft',
+     bubbles: true,
+     composed: true,
+   }));
+
+   // Mouseup after keydown.
+   document.dispatchEvent(new MouseEvent('mouseup', {
+     button: 0,
+     buttons: 0,
+     clientX: 20,
+     clientY: 20,
+     detail: 1,
+     bubbles: true,
+     composed: true,
+   }));
+   await microtasksFinished();
+
+   // Ensure select-all was canceled.
+   assertFalse(
+       input.selectionStart === 0 &&
+       input.selectionEnd === 'https://example.com'.length);
+ });
+
+ test('DropdownVisible_LocksOutSelectAllOnMouseDown', async () => {
+   callbackRouter.setInputState(createDefaultOmniboxInputState({
+     text: 'test',
+     isFocused: false,
+     selection: {start: 0, end: 0},
+   }));
+   testProxy.page.autocompleteResultChanged(createAutocompleteResultForTesting({
+     queryId: searchbox.activeQueryId,
+     sequenceId: 1,
+     input: 'test',
+     matches: [createSearchMatchForTesting()],
+   }));
+   await microtasksFinished();
+   assertTrue(searchbox.dropdownIsVisible);
+
+   const input = searchbox.getInputElement().inputElement;
+
+   searchbox.getInputElement().dispatchEvent(new MouseEvent('mousedown', {
+     button: 0,
+     buttons: 1,
+     clientX: 20,
+     clientY: 20,
+     detail: 1,
+     bubbles: true,
+     composed: true,
+   }));
+   input.focus();
+   document.dispatchEvent(new MouseEvent('mouseup', {
+     button: 0,
+     buttons: 0,
+     clientX: 20,
+     clientY: 20,
+     detail: 1,
+     bubbles: true,
+     composed: true,
+   }));
+   await microtasksFinished();
+
+   // When dropdown is already visible, mousedown should not force select all.
+   assertFalse(
+       input.selectionStart === 0 && input.selectionEnd === 'test'.length);
+ });
 });

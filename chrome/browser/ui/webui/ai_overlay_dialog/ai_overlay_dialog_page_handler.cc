@@ -10,6 +10,7 @@
 
 #include "base/base64.h"
 #include "base/command_line.h"
+#include "base/containers/span.h"
 #include "base/files/file_path.h"
 #include "base/files/file_util.h"
 #include "base/json/json_reader.h"
@@ -36,6 +37,7 @@
 #include "components/viz/common/frame_sinks/copy_output_result.h"
 #include "content/public/browser/render_widget_host_view.h"
 #include "content/public/browser/web_contents.h"
+#include "mojo/public/cpp/bindings/message.h"
 #include "third_party/blink/public/common/dom/dom_node_id.h"
 #include "ui/display/screen.h"
 #include "ui/gfx/codec/jpeg_codec.h"
@@ -113,6 +115,12 @@ class AnimatedIconSource : public gfx::CanvasImageSource {
 };
 #endif
 
+// Builds a failed ToolResponse from an AiOverlayTools error string.
+ttc::ToolResponse ToolFailure(std::string message) {
+  return ttc::ToolResponse::Error(message.empty()
+                                      ? std::string("Tool execution failed")
+                                      : std::move(message));
+}
 
 }  // namespace
 
@@ -336,7 +344,9 @@ void AiOverlayDialogPageHandler::CaptureRawViewportRegion(
 
             std::string b64_data = base::Base64Encode(*jpeg_bytes);
             auto res = ai_overlay_dialog::mojom::RawViewportRegionResult::New();
-            res->jpeg_data_b64 = b64_data;
+            res->jpeg_data_b64 = std::move(b64_data);
+            res->jpeg_bytes =
+                mojo_base::BigBuffer(base::as_byte_span(*jpeg_bytes));
             res->width = bitmap.width();
             res->height = bitmap.height();
             res->scale_factor = scale;
@@ -439,10 +449,9 @@ void AiOverlayDialogPageHandler::StartStreamingSession() {
     return;
   }
   if (!ttc_mes_client_) {
-    ttc_mes_client_ =
-        std::make_unique<TtcMesClient>(browser_->GetProfile(), this);
+    ttc_mes_client_ = std::make_unique<TtcMesClient>(browser_->GetProfile());
   }
-  ttc_mes_client_->Connect();
+  ttc_mes_client_->Connect(this);
   SendToolSetUpdate();
 }
 
@@ -549,9 +558,17 @@ void AiOverlayDialogPageHandler::SendToolSetUpdate() {
 
 void AiOverlayDialogPageHandler::SendAudioChunk(mojo_base::BigBuffer pcm_data) {
   if (ttc_mes_client_ && ttc_mes_client_->is_connected()) {
-    auto span = base::span(pcm_data);
-    std::vector<uint8_t> data(span.begin(), span.end());
-    ttc_mes_client_->SendAudioChunk(data);
+    // The renderer sends signed PCM16 samples packed as little-endian bytes.
+    // The buffer length is renderer-controlled, so validate it holds a whole
+    // number of samples before reinterpreting; reinterpret_span() would
+    // otherwise CHECK-fail on a compromised renderer's input.
+    base::span<const uint8_t> bytes = base::span(pcm_data);
+    if (bytes.size() % sizeof(int16_t) != 0) {
+      mojo::ReportBadMessage("Audio chunk is not a whole number of samples");
+      return;
+    }
+    ttc_mes_client_->SendAudioChunk(
+        base::subtle::reinterpret_span<const int16_t>(bytes));
   }
 }
 
@@ -592,10 +609,10 @@ void AiOverlayDialogPageHandler::OnTranscriptions(
 }
 
 void AiOverlayDialogPageHandler::OnAudioOutput(
-    const std::vector<uint8_t>& audio_data,
+    base::span<const int16_t> audio_data,
     int64_t sequence_number) {
   if (page_.is_bound()) {
-    mojo_base::BigBuffer buffer(audio_data);
+    mojo_base::BigBuffer buffer(base::as_byte_span(audio_data));
     page_->OnAudioOutput(std::move(buffer), sequence_number);
   }
 }
@@ -609,39 +626,31 @@ void AiOverlayDialogPageHandler::OnGenerationStateChanged(bool started,
 }
 
 void AiOverlayDialogPageHandler::OnToolCall(
-    const std::string& name,
-    base::DictValue arguments,
-    TtcMesClient::Observer::ToolResponseCallback response_callback) {
+    const ToolRequest& tool_request,
+    ToolResponseCallback response_callback) {
+  const std::string& name = tool_request.name;
+  const base::DictValue& arguments = tool_request.arguments;
   VLOG(1) << "AiOverlayDialogPageHandler executing tool: name=" << name
           << ", args=" << arguments;
 
   auto send_error = [&response_callback](std::string error_message) {
-    base::DictValue dict;
-    dict.Set("error", std::move(error_message));
-    std::move(response_callback).Run(std::move(dict));
+    std::move(response_callback).Run(ToolFailure(std::move(error_message)));
   };
 
   auto send_status_ok = [&response_callback]() {
-    base::DictValue dict;
-    dict.Set("status", "ok");
-    std::move(response_callback).Run(std::move(dict));
+    std::move(response_callback).Run(ToolResponse::Success());
   };
 
-  auto make_status_cb =
-      [](TtcMesClient::Observer::ToolResponseCallback callback) {
-        return base::BindOnce(
-            [](TtcMesClient::Observer::ToolResponseCallback cb,
-               base::expected<std::monostate, std::string> result) {
-              base::DictValue dict;
-              if (result.has_value()) {
-                dict.Set("status", "ok");
-              } else {
-                dict.Set("error", result.error());
-              }
-              std::move(cb).Run(std::move(dict));
-            },
-            std::move(callback));
-      };
+  auto make_status_cb = [](ToolResponseCallback callback) {
+    return base::BindOnce(
+        [](ToolResponseCallback cb,
+           base::expected<std::monostate, std::string> result) {
+          std::move(cb).Run(result.has_value()
+                                ? ToolResponse::Success()
+                                : ToolFailure(std::move(result.error())));
+        },
+        std::move(callback));
+  };
 
   std::optional<int> dom_id;
   if (auto id = arguments.FindInt("dom_node_id")) {
@@ -752,20 +761,19 @@ void AiOverlayDialogPageHandler::OnToolCall(
     tools->SwitchTab(
         *query,
         base::BindOnce(
-            [](TtcMesClient::Observer::ToolResponseCallback cb,
+            [](ToolResponseCallback cb,
                base::expected<ai_overlay_dialog::mojom::SwitchTabResultPtr,
                               std::string> result) {
-              base::DictValue dict;
-              if (result.has_value() && result.value()) {
-                dict.Set("status", "ok");
-                dict.Set("title", result.value()->title);
-                dict.Set("url", result.value()->url.spec());
-                dict.Set("tab_id", result.value()->tab_id);
-              } else {
-                dict.Set("error",
-                         result.has_value() ? "Null result" : result.error());
+              if (!result.has_value() || !result.value()) {
+                std::move(cb).Run(ToolFailure(
+                    result.has_value() ? "Null result" : result.error()));
+                return;
               }
-              std::move(cb).Run(std::move(dict));
+              base::DictValue dict;
+              dict.Set("title", result.value()->title);
+              dict.Set("url", result.value()->url.spec());
+              dict.Set("tab_id", result.value()->tab_id);
+              std::move(cb).Run(ToolResponse::Success(std::move(dict)));
             },
             std::move(response_callback)));
     return;
@@ -858,27 +866,27 @@ void AiOverlayDialogPageHandler::OnToolCall(
       send_error("Missing query parameter");
       return;
     }
-    tools->OpenPage(*query,
-                    base::BindOnce(
-                        [](TtcMesClient::Observer::ToolResponseCallback cb,
-                           base::expected<std::string, std::string> result) {
-                          base::DictValue dict;
-                          if (result.has_value()) {
-                            std::optional<base::DictValue> parsed =
-                                base::JSONReader::ReadDict(
-                                    result.value(),
-                                    base::JSON_PARSE_CHROMIUM_EXTENSIONS);
-                            if (parsed) {
-                              dict = std::move(*parsed);
-                            } else {
-                              dict.Set("result", result.value());
-                            }
-                          } else {
-                            dict.Set("error", result.error());
-                          }
-                          std::move(cb).Run(std::move(dict));
-                        },
-                        std::move(response_callback)));
+    tools->OpenPage(
+        *query, base::BindOnce(
+                    [](ToolResponseCallback cb,
+                       base::expected<std::string, std::string> result) {
+                      if (!result.has_value()) {
+                        std::move(cb).Run(ToolFailure(result.error()));
+                        return;
+                      }
+                      std::optional<base::DictValue> parsed =
+                          base::JSONReader::ReadDict(
+                              result.value(),
+                              base::JSON_PARSE_CHROMIUM_EXTENSIONS);
+                      base::DictValue dict;
+                      if (parsed) {
+                        dict = std::move(*parsed);
+                      } else {
+                        dict.Set("result", result.value());
+                      }
+                      std::move(cb).Run(ToolResponse::Success(std::move(dict)));
+                    },
+                    std::move(response_callback)));
     return;
   }
 
@@ -928,19 +936,19 @@ void AiOverlayDialogPageHandler::OnToolCall(
       return;
     }
     tools->OpenGeminiPanel(
-        *prompt, base::BindOnce(
-                     [](TtcMesClient::Observer::ToolResponseCallback cb,
-                        base::expected<std::string, std::string> result) {
-                       base::DictValue dict;
-                       if (result.has_value()) {
-                         dict.Set("status", "ok");
-                         dict.Set("message", result.value());
-                       } else {
-                         dict.Set("error", result.error());
-                       }
-                       std::move(cb).Run(std::move(dict));
-                     },
-                     std::move(response_callback)));
+        *prompt,
+        base::BindOnce(
+            [](ToolResponseCallback cb,
+               base::expected<std::string, std::string> result) {
+              if (!result.has_value()) {
+                std::move(cb).Run(ToolFailure(result.error()));
+                return;
+              }
+              base::DictValue dict;
+              dict.Set("message", result.value());
+              std::move(cb).Run(ToolResponse::Success(std::move(dict)));
+            },
+            std::move(response_callback)));
     return;
   }
 

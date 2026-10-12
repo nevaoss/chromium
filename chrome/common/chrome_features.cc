@@ -271,6 +271,8 @@ BASE_FEATURE(kGlicExperimentalTriggeringOpenWindowIfNone,
              base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kGlicExperimentalTriggeringOsNotification,
              base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kGlicExperimentalTriggeringScriptTools,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kGlicBackgroundTriggering, base::FEATURE_DISABLED_BY_DEFAULT);
 
 const base::FeatureParam<std::string> kGlicExperimentalTriggeringOptInURL{
@@ -304,7 +306,6 @@ const base::FeatureParam<base::TimeDelta> kGlicActorClickDelay{
 
 // Controls whether the Actor UI components are enabled.
 BASE_FEATURE(kGlicActorUi, base::FEATURE_ENABLED_BY_DEFAULT);
-BASE_FEATURE(kGlicActorUiNewIcon, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kGlicConfirmTabClose, base::FEATURE_ENABLED_BY_DEFAULT);
 // Controls whether we ignore users preference of reduced motion enabled and
 // still show the tab indicator spinner. No-op if kGlicActorUiTabIndicator is
@@ -1320,12 +1321,24 @@ const base::FeatureParam<std::string> kIndigoScopes{
     &kIndigo, "indigo_scopes",
     "https://www.googleapis.com/auth/userinfo.email"};
 
+const base::FeatureParam<bool> kIndigoContextualCueingV2OverrideUcbScoring{
+    &kIndigoContextualCueingV2,
+    "indigo_contextual_cueing_v2_override_ucb_scoring", true};
+
 BASE_FEATURE(kIndigoMetadataKeywordHeuristic,
              base::FEATURE_DISABLED_BY_DEFAULT);
 const base::FeatureParam<base::TimeDelta>
     kIndigoMetadataKeywordHeuristicSameDocumentNavigationDelay{
         &kIndigoMetadataKeywordHeuristic,
-        "same_document_navigation_metadata_delay", base::Seconds(4)};
+        "same_document_navigation_metadata_delay", base::Milliseconds(800)};
+const base::FeatureParam<base::TimeDelta>
+    kIndigoMetadataKeywordHeuristicPostDclDelay{
+        &kIndigoMetadataKeywordHeuristic, "post_dcl_metadata_delay",
+        base::Milliseconds(1000)};
+const base::FeatureParam<base::TimeDelta>
+    kIndigoMetadataKeywordHeuristicMaxWaitTime{&kIndigoMetadataKeywordHeuristic,
+                                               "max_wait_time",
+                                               base::Milliseconds(2500)};
 
 // Experimental image replacement feature opens glic.
 BASE_FEATURE(kIndigoOpenGlic, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -1411,6 +1424,12 @@ BASE_FEATURE_PARAM(bool,
                    &kLazyKeyedServiceInstantiation,
                    true);
 
+// When enabled, extension API keyed services (Batch 2) are instantiated lazily.
+BASE_FEATURE_PARAM(bool,
+                   kLazyKeyedServiceInstantiationExtensionsApi,
+                   &kLazyKeyedServiceInstantiation,
+                   true);
+
 // When enabled, commerce and browser UI keyed services are instantiated lazily.
 BASE_FEATURE_PARAM(bool,
                    kLazyKeyedServiceInstantiationCommerceAndUI,
@@ -1433,6 +1452,24 @@ BASE_FEATURE_PARAM(bool,
 // When enabled, Visited URL Ranking keyed services are instantiated lazily.
 BASE_FEATURE_PARAM(bool,
                    kLazyKeyedServiceInstantiationVisitedUrlRanking,
+                   &kLazyKeyedServiceInstantiation,
+                   true);
+
+// When enabled, Safety Hub keyed services are instantiated lazily.
+BASE_FEATURE_PARAM(bool,
+                   kLazyKeyedServiceInstantiationSafetyHub,
+                   &kLazyKeyedServiceInstantiation,
+                   true);
+
+// When enabled, Sharesheet keyed service is instantiated lazily.
+BASE_FEATURE_PARAM(bool,
+                   kLazyKeyedServiceInstantiationSharesheet,
+                   &kLazyKeyedServiceInstantiation,
+                   true);
+
+// When enabled, StorageNotificationService is instantiated lazily.
+BASE_FEATURE_PARAM(bool,
+                   kLazyKeyedServiceInstantiationStorageNotification,
                    &kLazyKeyedServiceInstantiation,
                    true);
 

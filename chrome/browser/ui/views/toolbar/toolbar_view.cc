@@ -64,6 +64,7 @@
 #include "chrome/browser/ui/tabs/tab_strip_model.h"
 #include "chrome/browser/ui/tabs/tab_strip_prefs.h"
 #include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h"
+#include "chrome/browser/ui/toolbar/app_menu_model.h"
 #include "chrome/browser/ui/toolbar/chrome_labs/chrome_labs_prefs.h"
 #include "chrome/browser/ui/toolbar/chrome_labs/chrome_labs_utils.h"
 #include "chrome/browser/ui/ui_features.h"
@@ -139,6 +140,7 @@
 #include "third_party/skia/include/core/SkPath.h"
 #include "third_party/skia/include/core/SkPathBuilder.h"
 #include "ui/accessibility/ax_node_data.h"
+#include "ui/actions/actions.h"
 #include "ui/base/interaction/element_identifier.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
@@ -211,7 +213,6 @@ auto& GetViewCommandMap() {
   return kViewCommandMap;
 }
 
-constexpr int kBrowserAppMenuRefreshExpandedMargin = 5;
 constexpr int kBrowserAppMenuRefreshCollapsedMargin = 2;
 constexpr int kLargeSpaceBetweenButtons = 6;
 constexpr int kInsideBorderAroundGlicButtons = 2;
@@ -252,8 +253,10 @@ bool IsPositionInWindowCaptionForView(const views::View* view,
 void SetRefreshMargins(views::View* button, bool expanded) {
   button->SetProperty(
       views::kMarginsKey,
-      gfx::Insets::VH(0, expanded ? kBrowserAppMenuRefreshExpandedMargin
-                                  : kBrowserAppMenuRefreshCollapsedMargin));
+      gfx::Insets::VH(
+          0, expanded ? GetLayoutConstant(
+                            LayoutConstant::kToolbarButtonRefreshExpandedMargin)
+                      : kBrowserAppMenuRefreshCollapsedMargin));
 }
 
 }  // namespace
@@ -1862,6 +1865,13 @@ void ToolbarView::UpdateTypeAndSeverity(
   if (app_menu_control) {
     app_menu_control->SetTypeAndSeverity(type_and_severity);
   }
+  auto* action_item = actions::ActionManager::Get().FindAction(
+      kActionUpgradeDialog, BrowserActions::From(browser_)->root_action_item());
+  CHECK(action_item);
+  action_item->SetVisible(
+      type_and_severity.type ==
+      AppMenuIconController::IconType::kUpgradeNotification);
+  action_item->SetText(AppMenuModel::GetUpgradeDialogTitleText());
 }
 
 ExtensionsContainerViews* ToolbarView::GetExtensionsContainerViews() {

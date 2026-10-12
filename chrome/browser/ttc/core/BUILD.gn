@@ -26,6 +26,7 @@ source_set("core") {
     "//chrome/browser/actor",
     "//chrome/browser/optimization_guide",
     "//chrome/browser/profiles:profile",
+    "//chrome/browser/ttc/app:public",
     "//chrome/browser/ui/browser_window",
     "//components/optimization_guide/content/browser",
     "//components/optimization_guide/core",
@@ -42,7 +43,6 @@ source_set("impl") {
     "page_context.cc",
     "session_controller_impl.cc",
     "session_controller_impl.h",
-    "session_view.cc",
     "session_view_delegate.h",
     "tool_controller.cc",
     "ttc_keyed_service.cc",
@@ -53,8 +53,8 @@ source_set("impl") {
   deps = [
     "//base",
     "//chrome/browser/profiles:profile",
-    "//chrome/browser/ttc/app",
     "//chrome/browser/ttc/app:impl",
+    "//chrome/browser/ttc/app:public",
     "//chrome/browser/ui/actions:actions_headers",
     "//chrome/browser/ui/browser_window",
     "//components/keyed_service/core",
@@ -67,10 +67,20 @@ source_set("impl") {
   if (is_android) {
     deps += [ "//chrome/browser/ui/android/tab_model" ]
   } else {
+    sources += [
+      "session_view_impl.cc",
+      "session_view_impl.h",
+      "voice_plate_controller.cc",
+      "voice_plate_controller.h",
+    ]
     deps += [
+      "//chrome/browser/ui:browser_element_identifiers",
       "//chrome/browser/ui/tabs:tab_strip",
       "//chrome/browser/ui/toolbar/pinned_toolbar",
+      "//chrome/browser/ui/views/dictation",
+      "//chrome/browser/ui/views/interaction",
       "//chrome/browser/ui/views/toolbar",
+      "//ui/views",
     ]
   }
 }
@@ -84,7 +94,7 @@ source_set("test_support") {
   public_deps = [
     ":core",
     "//base",
-    "//chrome/browser/ttc/app",
+    "//chrome/browser/ttc/app:public",
     "//components/optimization_guide/proto:optimization_guide_proto",
     "//testing/gmock",
     "//url",
@@ -100,7 +110,7 @@ source_set("unit_tests") {
     ":impl",
     ":test_support",
     "//base/test:test_support",
-    "//chrome/browser/ttc/app",
+    "//chrome/browser/ttc/app:public",
     "//chrome/browser/ttc/app:unit_tests",
     "//chrome/test:test_support",
     "//content/test:test_support",
@@ -149,7 +159,10 @@ if (!is_android) {
       ":test_support",
       "//base",
       "//base/test:test_support",
+      "//chrome/browser/actor",
       "//chrome/browser/profiles:profile",
+      "//chrome/browser/ttc/app:browser_tests",
+      "//chrome/browser/ttc/app:public",
       "//chrome/browser/ui",
       "//chrome/common",
       "//chrome/test:test_support",
@@ -173,26 +186,35 @@ if (!is_android) {
     defines = [ "HAS_OUT_OF_PROC_TEST_RUNNER" ]
     sources = [
       "entrypoint_controller_interactive_test.cc",
+      "session_view_impl_browsertest.cc",
       "ttc_interactive_browser_test_base.cc",
       "ttc_interactive_browser_test_base.h",
     ]
     deps = [
       ":core",
       ":impl",
+      ":test_support",
       "//base",
       "//base/test:test_support",
       "//chrome/browser/profiles:profile",
+      "//chrome/browser/ui",
       "//chrome/browser/ui:browser_element_identifiers",
       "//chrome/browser/ui/actions:actions_headers",
       "//chrome/browser/ui/browser_window",
       "//chrome/browser/ui/interaction",
+      "//chrome/browser/ui/tabs:tab_strip",
       "//chrome/browser/ui/toolbar/pinned_toolbar",
+      "//chrome/browser/ui/views/dictation",
       "//chrome/browser/ui/views/toolbar",
       "//chrome/test:test_support",
       "//chrome/test/interaction",
+      "//components/keyed_service/core",
+      "//content/public/browser",
       "//content/test:test_support",
+      "//testing/gmock",
       "//testing/gtest",
       "//ui/base/interaction",
+      "//ui/views",
     ]
   }
 }

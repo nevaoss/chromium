@@ -31,6 +31,7 @@
 #include "chrome/browser/contextual_tasks/contextual_tasks_page_handler.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_panel_controller.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_service_factory.h"
+#include "chrome/browser/contextual_tasks/contextual_tasks_ui_post_rearchitecture.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_service.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_service_factory.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_utils.h"
@@ -132,10 +133,6 @@
 #endif
 
 namespace {
-
-BrowserWindowInterface* FromWebContents(content::WebContents* web_contents) {
-  return webui::GetBrowserWindowInterface(web_contents);
-}
 
 void UpdateDarkModePreferenceFromUrl(content::WebContents* wc,
                                      const GURL& url,
@@ -459,6 +456,12 @@ content::WebUIDataSource* ContextualTasksUI::RegisterWebUIDataSource(
   content::WebUIDataSource* source =
       contextual_tasks::ContextualTasksUIBase::RegisterWebUIDataSource(profile);
   source->AddLocalizedStrings(GetContextualTasksLoadTimeData(profile));
+
+#if !BUILDFLAG(IS_ANDROID)
+  // Exposes shared components under "shared/*" (e.g.,
+  // shared/permission_chip.js)
+  source->AddResourcePaths(kWebuiToolbarSharedResources);
+#endif
 
   return source;
 }
@@ -993,21 +996,11 @@ bool ContextualTasksUI::IsShownInTab() {
 }
 
 BrowserWindowInterface* ContextualTasksUI::GetBrowser() {
-  content::WebContents* web_contents = web_ui()->GetWebContents();
-  BrowserWindowInterface* window = FromWebContents(web_contents);
-  if (window) {
-    return window;
-  }
-  tabs::TabInterface* tab =
-      tabs::TabInterface::MaybeGetFromContents(web_contents);
-  if (tab) {
-    return tab->GetBrowserWindowInterface();
-  }
-  return nullptr;
+  return ContextualTasksUIBase::GetBrowser();
 }
 
 Profile* ContextualTasksUI::GetProfile() {
-  return contextual_tasks::ContextualTasksUIBase::GetProfile();
+  return ContextualTasksUIBase::GetProfile();
 }
 
 contextual_tasks::ContextualTasksAutoSuggestionManager*
@@ -1016,7 +1009,7 @@ ContextualTasksUI::GetAutoSuggestionManager() {
 }
 
 content::WebContents* ContextualTasksUI::GetWebUIWebContents() {
-  return web_ui()->GetWebContents();
+  return ContextualTasksUIBase::GetWebUIWebContents();
 }
 
 void ContextualTasksUI::CloseSidePanel() {
@@ -1036,21 +1029,6 @@ void ContextualTasksUI::BindInterface(
       std::move(pending_receiver));
 }
 
-void ContextualTasksUI::BindInterface(
-    mojo::PendingReceiver<help_bubble::mojom::HelpBubbleHandlerFactory>
-        pending_receiver) {
-  help_bubble_factory_receiver_.reset();
-  help_bubble_factory_receiver_.Bind(std::move(pending_receiver));
-}
-
-void ContextualTasksUI::CreateHelpBubbleHandler(
-    mojo::PendingRemote<help_bubble::mojom::HelpBubbleClient> client,
-    mojo::PendingReceiver<help_bubble::mojom::HelpBubbleHandler> handler) {
-  help_bubble_handler_ = std::make_unique<user_education::HelpBubbleHandler>(
-      std::move(handler), std::move(client),
-      ui::TrackedElementHandlerDocumentSingleton::GetOrCreate(
-          web_ui()->GetRenderFrameHost()));
-}
 
 bool ContextualTasksUIConfig::IsWebUIEnabled(
     content::BrowserContext* browser_context) {
@@ -1609,19 +1587,6 @@ ContextualTasksUI::GetPageRemote() {
   return page_;
 }
 
-contextual_tasks::ContextualTasksPanelController*
-ContextualTasksUI::GetPanelController() {
-  if (!web_ui()->GetWebContents()) {
-    return nullptr;
-  }
-
-  auto* browser = webui::GetBrowserWindowInterface(web_ui()->GetWebContents());
-  if (!browser) {
-    return nullptr;
-  }
-
-  return contextual_tasks::ContextualTasksPanelController::From(browser);
-}
 
 ContextualTasksUI::FrameNavObserver::FrameNavObserver(
     content::WebContents* web_contents,

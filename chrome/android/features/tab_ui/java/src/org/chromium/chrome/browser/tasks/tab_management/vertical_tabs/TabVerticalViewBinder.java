@@ -40,8 +40,6 @@ import org.chromium.base.Token;
 import org.chromium.base.metrics.RecordUserAction;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
-import org.chromium.chrome.browser.actor.ui.ActorUiTabController.UiTabState;
-import org.chromium.chrome.browser.actor.ui.TabIndicatorStatus;
 import org.chromium.chrome.browser.incognito.IncognitoUtils;
 import org.chromium.chrome.browser.tab.TabUtils;
 import org.chromium.chrome.browser.tab_ui.TabCardThemeUtil;
@@ -246,9 +244,6 @@ class TabVerticalViewBinder {
             updateTabAlertIndicator(model, view);
             updateIcons(model, view);
             updateContentDescription(model, view);
-        } else if (TabProperties.ACTOR_UI_STATE == propertyKey) {
-            updateIcons(model, view);
-            updateContentDescription(model, view);
         } else if (TabProperties.CONTENT_DESCRIPTION_TEXT_RESOLVER == propertyKey) {
             updateContentDescription(model, view);
         } else if (TabProperties.ACCESSIBILITY_DELEGATE == propertyKey) {
@@ -289,8 +284,7 @@ class TabVerticalViewBinder {
     }
 
     // Icon Update Helpers.
-    // Icons priority when rail is collapsed: action > recording/sharing alert > ai actuation >
-    // standard alert > loading > favicon
+    // Icons priority when rail is collapsed: action > tab alert > loading > favicon
 
     private static void updateFaviconImage(PropertyModel model, ViewGroup view) {
         @Nullable ImageView faviconView = view.findViewById(R.id.tab_favicon);
@@ -312,7 +306,6 @@ class TabVerticalViewBinder {
         boolean isSelected = model.get(TabProperties.IS_SELECTED);
 
         View actionButton = view.findViewById(R.id.action_button);
-        View actuationSpark = view.findViewById(R.id.actuation_spark);
         ImageView actuationSpinner = view.findViewById(R.id.actuation_spinner);
         ImageView alertIndicator = view.findViewById(R.id.alert_indicator_icon);
         CircularProgressIndicator spinner = view.findViewById(R.id.tab_loading_spinner);
@@ -328,11 +321,6 @@ class TabVerticalViewBinder {
                         && (isIconCompact
                                 ? (isSelected && (!DeviceInfo.isDesktop() || isHovered))
                                 : (!DeviceInfo.isDesktop() || isSelected || isHovered));
-        @Nullable UiTabState actorState = model.get(TabProperties.ACTOR_UI_STATE);
-        boolean actorActuationWanted =
-                actuationSpark != null
-                        && actuationSpinner != null
-                        && TabListViewBinderUtils.isActorActive(actorState);
         @TabAlert
         int alertState =
                 model.containsKey(TabProperties.ALERT_STATE)
@@ -346,32 +334,13 @@ class TabVerticalViewBinder {
                         && !loadingWanted;
 
         // 2. Apply priority rules for collapsed state.
-        // Priority: Close > Recording/Sharing Alert > AI Actuation > Standard Alert >
-        // Loading/Favicon.
+        // Priority: Close > Tab Alert (Recording/Sharing > Actor > Audio/PiP) > Loading/Favicon.
         if (isIconCompact) {
-            boolean isRecordingOrSharing =
-                    alertState == TabAlert.MEDIA_RECORDING
-                            || alertState == TabAlert.AUDIO_RECORDING
-                            || alertState == TabAlert.VIDEO_RECORDING
-                            || alertState == TabAlert.TAB_CAPTURING
-                            || alertState == TabAlert.DESKTOP_CAPTURING;
-            boolean recordingOrSharingWanted = alertWanted && isRecordingOrSharing;
-            boolean standardAlertWanted = alertWanted && !isRecordingOrSharing;
-
             if (actionWanted) {
-                actorActuationWanted = false;
                 alertWanted = false;
                 loadingWanted = false;
                 faviconWanted = false;
-            } else if (recordingOrSharingWanted) {
-                actorActuationWanted = false;
-                loadingWanted = false;
-                faviconWanted = false;
-            } else if (actorActuationWanted) {
-                alertWanted = false;
-                loadingWanted = false;
-                faviconWanted = false;
-            } else if (standardAlertWanted) {
+            } else if (alertWanted) {
                 loadingWanted = false;
                 faviconWanted = false;
             }
@@ -393,21 +362,9 @@ class TabVerticalViewBinder {
             setActionButtonTouchDelegate(view, actionButton, actionWanted);
         }
 
-        // Actor Actuation Indicator Icons
-        if (actuationSpark != null && actuationSpinner != null) {
-            updateActorAnimations(model, actuationSpark, actuationSpinner, actorActuationWanted);
-            updateViewConstraints(
-                    actuationSpark,
-                    isIconCompact,
-                    UNSET,
-                    R.id.alert_indicator_icon,
-                    UNSET,
-                    /* marginStartDimenId= */ 0,
-                    /* marginEndDimenId= */ R.dimen.vertical_tab_item_alert_indicator_margin_end);
-        }
-
-        // Tab Alert Indicator
+        // Tab Alert Indicator and Actuation Spinner
         if (alertIndicator != null) {
+            boolean isDynamicActorAlert = alertWanted && alertState == TabAlert.ACTOR_ACCESSING;
             updateViewConstraints(
                     alertIndicator,
                     isIconCompact,
@@ -417,6 +374,10 @@ class TabVerticalViewBinder {
                     /* marginStartDimenId= */ 0,
                     /* marginEndDimenId= */ R.dimen.vertical_tab_item_alert_indicator_margin_end);
             alertIndicator.setVisibility(alertWanted ? View.VISIBLE : View.GONE);
+
+            if (actuationSpinner != null) {
+                updateActorSpinnerAnimation(actuationSpinner, isDynamicActorAlert);
+            }
         }
 
         // Favicon container constraints (loading spinner or tab favicon)
@@ -527,6 +488,38 @@ class TabVerticalViewBinder {
             if (alertState != TabAlert.NONE) {
                 alertIndicator.setImageResource(TabUtils.getTabAlertDrawable(alertState));
             }
+            boolean isDynamicActorAlert = alertState == TabAlert.ACTOR_ACCESSING;
+            Resources res = view.getResources();
+            int iconSize =
+                    res.getDimensionPixelSize(
+                            isDynamicActorAlert
+                                    ? R.dimen.vertical_tab_item_actuation_icon_size
+                                    : R.dimen.vertical_tab_item_icon_size);
+            int iconPadding =
+                    isDynamicActorAlert
+                            ? res.getDimensionPixelSize(
+                                    R.dimen.vertical_tab_item_actuation_icon_padding)
+                            : 0;
+            ViewGroup.LayoutParams params = alertIndicator.getLayoutParams();
+            if (params.width != iconSize || params.height != iconSize) {
+                params.width = iconSize;
+                params.height = iconSize;
+                alertIndicator.setLayoutParams(params);
+            }
+            alertIndicator.setPadding(iconPadding, iconPadding, iconPadding, iconPadding);
+
+            updateTabAlertIndicatorTint(model, view);
+        }
+    }
+
+    private static void updateTabAlertIndicatorTint(PropertyModel model, ViewGroup view) {
+        ImageView alertIndicator = view.findViewById(R.id.alert_indicator_icon);
+        if (alertIndicator != null) {
+            @TabAlert
+            int alertState =
+                    model.containsKey(TabProperties.ALERT_STATE)
+                            ? model.get(TabProperties.ALERT_STATE)
+                            : TabAlert.NONE;
             boolean isIncognito = isIncognito(model);
             boolean isSelected = model.get(TabProperties.IS_SELECTED);
             Context context = view.getContext();
@@ -542,21 +535,11 @@ class TabVerticalViewBinder {
         }
     }
 
-    private static void updateActorAnimations(
-            PropertyModel model,
-            View actuationSpark,
-            ImageView actuationSpinner,
-            boolean actorActuationWanted) {
-        @Nullable UiTabState state = model.get(TabProperties.ACTOR_UI_STATE);
-        boolean isDynamic =
-                actorActuationWanted
-                        && state != null
-                        && state.tabIndicator == TabIndicatorStatus.DYNAMIC;
-
+    private static void updateActorSpinnerAnimation(
+            ImageView actuationSpinner, boolean isDynamicActorAlert) {
         ObjectAnimator animator = (ObjectAnimator) actuationSpinner.getTag(R.id.actuation_spinner);
 
-        if (isDynamic) {
-            actuationSpark.setVisibility(View.VISIBLE);
+        if (isDynamicActorAlert) {
             actuationSpinner.setVisibility(View.VISIBLE);
 
             if (animator == null) {
@@ -582,7 +565,6 @@ class TabVerticalViewBinder {
             if (animator != null && animator.isRunning()) {
                 animator.cancel();
             }
-            actuationSpark.setVisibility(View.GONE);
             actuationSpinner.setVisibility(View.GONE);
         }
     }
@@ -679,7 +661,7 @@ class TabVerticalViewBinder {
             ViewCompat.setBackgroundTintList(view, tintList);
         }
         updateFaviconImage(model, view);
-        updateTabAlertIndicator(model, view);
+        updateTabAlertIndicatorTint(model, view);
         setupTabHoverListener(model, view, /* defaultBackgroundColor= */ tintList);
     }
 
@@ -866,11 +848,8 @@ class TabVerticalViewBinder {
                             ? model.get(TabProperties.ALERT_STATE)
                             : TabAlert.NONE;
 
-            @Nullable UiTabState actorState =
-                    model.containsKey(TabProperties.ACTOR_UI_STATE)
-                            ? model.get(TabProperties.ACTOR_UI_STATE)
-                            : null;
-            if (TabListViewBinderUtils.isActorActive(actorState)) {
+            if (alertState == TabAlert.ACTOR_ACCESSING
+                    || alertState == TabAlert.ACTOR_WAITING_ON_USER) {
                 // Appends "- Gemini is working on your task..." to the title when Actor is active.
                 title = context.getString(R.string.tab_ax_label_actor_accessing, title);
             }
@@ -1093,61 +1072,6 @@ class TabVerticalViewBinder {
 
     // Gesture & Interaction Layout Helpers
 
-    /**
-     * Helper to orchestrate hover enter and exit between a parent view and an optional child
-     * button. Prevents the parent from firing a visual "exit" when the mouse moves over the child
-     * button.
-     */
-    private static void setupHoverOrchestration(
-            ViewGroup parentView,
-            @Nullable View childButton,
-            Runnable onHoverEnter,
-            Runnable onHoverExit) {
-        parentView.setOnHoverListener(
-                (View _, MotionEvent motionEvent) -> {
-                    switch (motionEvent.getAction()) {
-                        case MotionEvent.ACTION_HOVER_ENTER:
-                            onHoverEnter.run();
-                            return true;
-                        case MotionEvent.ACTION_HOVER_EXIT:
-                            float x = motionEvent.getX();
-                            float y = motionEvent.getY();
-                            if (x < 0
-                                    || x >= parentView.getWidth()
-                                    || y < 0
-                                    || y >= parentView.getHeight()) {
-                                onHoverExit.run();
-                            }
-                            return true;
-                    }
-                    return false;
-                });
-
-        if (childButton != null) {
-            childButton.setOnHoverListener(
-                    (v, motionEvent) -> {
-                        int action = motionEvent.getAction();
-                        if (action == MotionEvent.ACTION_HOVER_ENTER) {
-                            v.setHovered(true);
-                            onHoverEnter.run();
-                            return true;
-                        } else if (action == MotionEvent.ACTION_HOVER_EXIT) {
-                            v.setHovered(false);
-                            float xInView = v.getLeft() + motionEvent.getX();
-                            float yInView = v.getTop() + motionEvent.getY();
-                            if (xInView < 0
-                                    || xInView >= parentView.getWidth()
-                                    || yInView < 0
-                                    || yInView >= parentView.getHeight()) {
-                                onHoverExit.run();
-                            }
-                            return true;
-                        }
-                        return false;
-                    });
-        }
-    }
-
     private static void applyHoverBackgroundState(
             PropertyModel model,
             ViewGroup view,
@@ -1162,8 +1086,6 @@ class TabVerticalViewBinder {
         }
 
         if (isHovered) {
-            // TODO(crbug.com/533531896): Handle clearing all backgrounds before
-            // showing tab background.
             // TODO(crbug.com/527641177): Maybe show a darker background color for
             // action button when it's being hovered?
             if (!isSelected && !isMultiSelected) {
@@ -1202,33 +1124,18 @@ class TabVerticalViewBinder {
     private static void setupTabHoverListener(
             PropertyModel model, ViewGroup view, @Nullable ColorStateList defaultBackgroundColor) {
         @Nullable ImageView actionButton = view.findViewById(R.id.action_button);
+        int tabId = model.get(TabProperties.TAB_ID);
+        @Nullable TabHoverListener listener = model.get(TabProperties.TAB_HOVER_LISTENER);
 
-        Runnable onHoverEnter =
-                () -> {
-                    TabHoverListener listener = model.get(TabProperties.TAB_HOVER_LISTENER);
-                    // Blocks new tab hover backgrounds to show when context menu or scroll occurs.
-                    if (listener != null
-                            && (listener.isContextMenuShowing() || listener.isScrolling())) {
-                        return;
-                    }
-                    applyHoverBackgroundState(
-                            model, view, /* isHovered= */ true, defaultBackgroundColor);
-                    updateIcons(model, view, /* isHovered= */ true);
-                    notifyHoverChange(model, view, /* isHovered= */ true);
-                };
-
-        Runnable onHoverExit =
-                () -> {
-                    applyHoverBackgroundState(
-                            model, view, /* isHovered= */ false, defaultBackgroundColor);
-                    updateIcons(model, view, /* isHovered= */ false);
-                    notifyHoverChange(model, view, /* isHovered= */ false);
-                };
-
-        view.setTag(R.id.tab_hover_exit_listener, onHoverExit);
-        setupHoverOrchestration(view, actionButton, onHoverEnter, onHoverExit);
-
-        view.setOnFocusChangeListener((v, hasFocus) -> notifyHoverChange(model, v, hasFocus));
+        VerticalTabHoverController.setupTabHover(
+                listener,
+                tabId,
+                view,
+                actionButton,
+                (isHovered) -> {
+                    applyHoverBackgroundState(model, view, isHovered, defaultBackgroundColor);
+                    updateIcons(model, view, isHovered);
+                });
     }
 
     /**
@@ -1265,7 +1172,8 @@ class TabVerticalViewBinder {
                 };
 
         view.setTag(R.id.tab_hover_exit_listener, onHoverExit);
-        setupHoverOrchestration(view, menuButton, onHoverEnter, onHoverExit);
+        VerticalTabHoverController.setupHoverOrchestration(
+                view, menuButton, onHoverEnter, onHoverExit);
 
         view.setOnFocusChangeListener(
                 (v, hasFocus) -> notifyGroupHeaderHoverChange(model, v, hasFocus));
@@ -1278,17 +1186,6 @@ class TabVerticalViewBinder {
         View menuButton = view.findViewById(R.id.menu_button);
         if (menuButton != null) {
             menuButton.setVisibility(!isRailCollapsed && isHovered ? View.VISIBLE : View.GONE);
-        }
-    }
-
-    /**
-     * Notifies {@link TabHoverListener} of hover or keyboard focus state transitions on tab items.
-     */
-    private static void notifyHoverChange(PropertyModel model, View view, boolean isHovered) {
-        TabHoverListener listener = model.get(TabProperties.TAB_HOVER_LISTENER);
-        if (listener != null) {
-            int tabId = model.get(TabProperties.TAB_ID);
-            listener.onTabHoverStateChanged(tabId, view, isHovered);
         }
     }
 

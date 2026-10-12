@@ -25,6 +25,7 @@
 #include "base/memory/ref_counted_memory.h"
 #include "base/message_loop/message_pump_type.h"
 #include "base/strings/escape.h"
+#include "base/strings/strcat.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/strings/string_util.h"
 #include "base/strings/string_view_util.h"
@@ -57,6 +58,7 @@
 #include "net/server/http_server_response_info.h"
 #include "net/socket/server_socket.h"
 #include "net/traffic_annotation/network_traffic_annotation.h"
+#include "url/origin.h"
 #include "v8/include/v8-version-string.h"
 
 #if BUILDFLAG(IS_ANDROID)
@@ -86,6 +88,14 @@ const char kTargetFaviconUrlField[] = "faviconUrl";
 const char kTargetWebSocketDebuggerUrlField[] = "webSocketDebuggerUrl";
 const char kTargetDevtoolsFrontendUrlField[] = "devtoolsFrontendUrl";
 const char kMissingGitRevision[] = "@0000000000000000000000000000000000000000";
+
+#if BUILDFLAG(IS_WIN)
+const char kNativeFilePathStyle[] = "windows";
+#elif BUILDFLAG(IS_POSIX) || BUILDFLAG(IS_FUCHSIA)
+const char kNativeFilePathStyle[] = "posix";
+#else
+#error Unsupported native file path style
+#endif
 
 const int32_t kSendBufferSizeForDevTools = 256 * 1024 * 1024;  // 256Mb
 const int32_t kReceiveBufferSizeForDevTools = 100 * 1024 * 1024;  // 100Mb
@@ -625,6 +635,7 @@ void DevToolsHttpHandler::OnJsonRequest(
     version.Set("Protocol-Version", DevToolsAgentHost::GetProtocolVersion());
     version.Set("WebKit-Version", GetWebKitVersion());
     version.Set("Browser", GetContentClient()->browser()->GetProduct());
+    version.Set("File-Path-Style", kNativeFilePathStyle);
     version.Set("User-Agent", GetContentClient()->browser()->GetUserAgent());
     version.Set("V8-Version", V8_VERSION_STRING);
     std::string host = info.GetHeaderValue("host");
@@ -822,12 +833,23 @@ void DevToolsHttpHandler::OnWebSocketRequest(
   if (!thread_)
     return;
 
+<<<<<<< HEAD
 // TODO(neva): The below check on allowed origins causes DevTools disconnection.
 // Needs to be revised later.
 // See http://clm.lge.com/issue/browse/NEVA-7987 for details.
 #if !BUILDFLAG(IS_NEVA_APPRUNTIME)
   if (request.headers.count("origin") &&
       !remote_allow_origins_.count(request.headers.at("origin")) &&
+=======
+  bool is_same_origin =
+      server_ip_address_ &&
+      url::Origin::Create(
+          GURL(base::StrCat({"http://", server_ip_address_->ToString()})))
+          .IsSameOriginWith(GURL(request.GetHeaderValue("origin")));
+  if (request.headers.count("origin") && !is_same_origin &&
+      !remote_allow_origins_.count(
+          base::ToLowerASCII(request.headers.at("origin"))) &&
+>>>>>>> 156.0.8068.0~1
       !remote_allow_origins_.count("*")) {
     const std::string& origin = request.headers.at("origin");
     const std::string message = base::StringPrintf(

@@ -65,12 +65,17 @@ base::CallbackListSubscription TtcKeyedService::RegisterStateChangedCallback(
 }
 
 std::unique_ptr<Conversation> TtcKeyedService::MakeConversation(
-    base::PassKey<SessionControllerImpl>) {
+    base::PassKey<SessionControllerImpl>,
+    SessionController& session_controller) {
   std::unique_ptr<Conversation> conversation =
-      conversation_factory_ ? conversation_factory_.Run(profile_)
-                            : MakeConversationImpl(profile_);
+      conversation_factory_ ? conversation_factory_.Run(session_controller)
+                            : MakeConversationImpl(session_controller);
   CHECK(conversation);
   return conversation;
+}
+
+base::WeakPtr<TtcKeyedService> TtcKeyedService::GetWeakPtr() {
+  return weak_ptr_factory_.GetWeakPtr();
 }
 
 }  // namespace ttc

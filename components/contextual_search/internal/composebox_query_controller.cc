@@ -245,7 +245,8 @@ lens::Payload CreateContentextualDataUploadPayload(
     std::optional<std::string> drive_id,
     std::optional<std::string> resource_key,
     std::optional<std::string> file_name,
-    std::optional<std::string> parsed_url) {
+    std::optional<std::string> parsed_url,
+    std::optional<std::string> mime_type_string) {
   lens::Payload payload;
   auto* content = payload.mutable_content();
 
@@ -263,11 +264,14 @@ lens::Payload CreateContentextualDataUploadPayload(
 
   for (const lens::ContextualInput& context_input : context_inputs) {
     auto* content_data = content->add_content_data();
-    content_data->set_content_type(
-        MimeTypeToContentType(context_input.content_type_));
+    bool is_pdf =
+        context_input.content_type_ == lens::MimeType::kPdf ||
+        (mime_type_string.has_value() &&
+         base::StartsWith(mime_type_string.value(), "application/pdf"));
+    if (is_pdf) {
+      content_data->set_content_type(lens::ContentData::CONTENT_TYPE_PDF);
 
-    // Compress PDF bytes.
-    if (context_input.content_type_ == lens::MimeType::kPdf) {
+      // Compress PDF bytes.
       // If compression is successful, set the compression type and return.
       // Otherwise, fall back to the original bytes.
       if (lens::ZstdCompressBytes(context_input.bytes_,
@@ -275,6 +279,9 @@ lens::Payload CreateContentextualDataUploadPayload(
         content_data->set_compression_type(lens::CompressionType::ZSTD);
         continue;
       }
+    } else {
+      content_data->set_content_type(
+          MimeTypeToContentType(context_input.content_type_));
     }
 
     // Add non compressed bytes. This happens if compression fails or its not
@@ -1393,9 +1400,7 @@ void ComposeboxQueryController::StartFileUploadFlow(
   // Async Flow 2: Retrieve the OAuth headers.
   current_file_info.context_upload_access_token_fetcher_ =
       CreateAuthHeadersAndContinue(
-          // TODO(crbug.com/534400256): Get auth_user_index from the active
-          // webpage if available
-          /*auth_user_index=*/0,
+          auth_user_index_,
           base::BindOnce(
               &ComposeboxQueryController::OnUploadRequestHeadersReady,
               weak_ptr_factory_.GetWeakPtr(), file_token));
@@ -1758,9 +1763,7 @@ void ComposeboxQueryController::SendInteractionRequest(
   // Start getting the OAuth headers for the interaction request.
   latest_interaction_request_data_->interaction_access_token_fetcher_ =
       CreateAuthHeadersAndContinue(
-          // TODO(crbug.com/534400256): Get auth_user_index from the active
-          // webpage if available
-          /*auth_user_index=*/0,
+          auth_user_index_,
           base::BindOnce(
               &ComposeboxQueryController::OnInteractionRequestHeadersReady,
               weak_ptr_factory_.GetWeakPtr()));
@@ -1836,9 +1839,7 @@ void ComposeboxQueryController::FetchClusterInfo() {
 #endif  // DCHECK_IS_ON()
   }
   cluster_info_access_token_fetcher_ = CreateAuthHeadersAndContinue(
-      // TODO(crbug.com/534400256): Get auth_user_index from the active webpage
-      // if available
-      /*auth_user_index=*/0,
+      auth_user_index_,
       base::BindOnce(&ComposeboxQueryController::SendClusterInfoNetworkRequest,
                      weak_ptr_factory_.GetWeakPtr()));
 }
@@ -2332,7 +2333,8 @@ void ComposeboxQueryController::CreateUploadRequestBodiesAndContinue(
               contextual_input_data->drive_id,
               contextual_input_data->resource_key,
               contextual_input_data->file_name,
-              contextual_input_data->parsed_url),
+              contextual_input_data->parsed_url,
+              contextual_input_data->mime_type_string),
           base::BindOnce(
               &CreateFileUploadRequestProtoWithPayloadAndContinue,
               file_info->request_id.value(), CreateClientContext(),
@@ -2767,6 +2769,10 @@ ComposeboxQueryController::GetFileInfoList() {
   return file_infos;
 }
 
+void ComposeboxQueryController::SetAuthUserIndex(size_t auth_user_index) {
+  auth_user_index_ = auth_user_index;
+}
+
 base::WeakPtr<contextual_search::ContextualSearchContextController>
 ComposeboxQueryController::AsWeakPtr() {
   return weak_ptr_factory_.GetWeakPtr();
@@ -2900,9 +2906,7 @@ void ComposeboxQueryController::PrepareChunkedUpload(
   // Fetch OAuth headers first.
   file_info->context_upload_access_token_fetcher_ =
       CreateAuthHeadersAndContinue(
-          // TODO(crbug.com/534400256): Get auth_user_index from the active
-          // webpage if available
-          /*auth_user_index=*/0,
+          auth_user_index_,
           base::BindOnce(
               &ComposeboxQueryController::OnChunkedUploadHeadersReady,
               weak_ptr_factory_.GetWeakPtr(), file_token));
@@ -2945,8 +2949,18 @@ void ComposeboxQueryController::MaybeStartUploadChunker(
 
   const auto& context_input = file_info->input_data->context_input->front();
 
+  // PDFs may be identified by either `content_type_` or `mime_type_string`
+  // (for raw-file uploads where `content_type_` is set to `kUnknown`).
+  bool is_pdf =
+      context_input.content_type_ == lens::MimeType::kPdf ||
+      (file_info->input_data->mime_type_string.has_value() &&
+       base::StartsWith(file_info->input_data->mime_type_string.value(),
+                        "application/pdf"));
+  lens::MimeType mime_type =
+      is_pdf ? lens::MimeType::kPdf : context_input.content_type_;
+
   file_info->upload_chunker->Start(
-      file_info->request_id.value(), context_input.content_type_,
+      file_info->request_id.value(), mime_type,
       file_info->input_data->page_url.value_or(GURL()),
       file_info->input_data->page_title, context_input.bytes_);
 }

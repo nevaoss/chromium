@@ -89,23 +89,13 @@ COLORREF GetColor(bool is_high_contrast,
                           : normal_color;
 }
 
-// Returns the system color brush corresponding to `high_contrast_color_index`
-// if `is_high_contrast` is true. Otherwise, it returns `normal_brush`.
-HBRUSH GetColorBrush(bool is_high_contrast,
-                     HBRUSH normal_brush,
-                     int high_contrast_color_index) {
-  return is_high_contrast ? ::GetSysColorBrush(high_contrast_color_index)
-                          : normal_brush;
-}
-
 gfx::Rect RectToGfx(const RECT& rc) {
   return gfx::Rect(rc.left, rc.top, rc.right - rc.left, rc.bottom - rc.top);
 }
 
 }  // namespace
 
-CaptionButton::CaptionButton()
-    : foreground_brush_(::CreateSolidBrush(kCaptionForegroundColor)) {
+CaptionButton::CaptionButton() {
   UpdateThemeState();
 }
 
@@ -147,6 +137,9 @@ HWND CaptionButton::Create(HWND parent, const RECT& bounds, int control_id) {
                  MAKELONG(2000, 0));
   ::SendMessageW(tool_tip_window_, TTM_ACTIVATE, TRUE, 0);
 
+  // TTF_SUBCLASS makes the tooltip subclass this control and read the mouse
+  // messages itself. Dropping that flag would require relaying every mouse
+  // message here with TTM_RELAYEVENT instead, which nothing does anymore.
   TOOLINFOW ti = {
       .cbSize = sizeof(TOOLINFOW),
       .uFlags = TTF_IDISHWND | TTF_SUBCLASS,
@@ -160,19 +153,10 @@ HWND CaptionButton::Create(HWND parent, const RECT& bounds, int control_id) {
   return hwnd();
 }
 
-LRESULT CaptionButton::OnMouseMessage(UINT msg, WPARAM wparam, LPARAM lparam) {
-  if (tool_tip_window_ && ::IsWindow(tool_tip_window_)) {
-    MSG relay_msg = {hwnd(), msg, wparam, lparam};
-    ::SendMessageW(tool_tip_window_, TTM_RELAYEVENT, 0,
-                   reinterpret_cast<LPARAM>(&relay_msg));
-  }
-  // Mouse messages must continue to the default `BUTTON` procedure so that
-  // it can track pressed state, capture the mouse, and fire `BN_CLICKED`.
-  SetMsgHandled(FALSE);
-  return 1;
-}
+TrackedButton::TrackedButton() = default;
+TrackedButton::~TrackedButton() = default;
 
-LRESULT CaptionButton::OnMouseMove(UINT, WPARAM, LPARAM lparam) {
+LRESULT TrackedButton::OnMouseMove(UINT, WPARAM, LPARAM lparam) {
   // `BUTTON` captures the mouse on WM_LBUTTONDOWN, so moves outside the client
   // rect keep arriving here.
   RECT client_rect = {};
@@ -202,7 +186,7 @@ LRESULT CaptionButton::OnMouseMove(UINT, WPARAM, LPARAM lparam) {
   return 0;
 }
 
-void CaptionButton::CancelMouseTracking() {
+void TrackedButton::CancelMouseTracking() {
   if (!is_tracking_mouse_events_) {
     return;
   }
@@ -215,7 +199,7 @@ void CaptionButton::CancelMouseTracking() {
   is_tracking_mouse_events_ = false;
 }
 
-LRESULT CaptionButton::OnMouseLeave(UINT, WPARAM, LPARAM) {
+LRESULT TrackedButton::OnMouseLeave(UINT, WPARAM, LPARAM) {
   is_tracking_mouse_events_ = false;
   if (is_mouse_hovering_) {
     is_mouse_hovering_ = false;
@@ -226,7 +210,7 @@ LRESULT CaptionButton::OnMouseLeave(UINT, WPARAM, LPARAM) {
   return 0;
 }
 
-LRESULT CaptionButton::OnEnable(UINT, WPARAM wparam, LPARAM) {
+LRESULT TrackedButton::OnEnable(UINT, WPARAM wparam, LPARAM) {
   if (!wparam) {
     is_mouse_hovering_ = false;
     CancelMouseTracking();
@@ -237,7 +221,7 @@ LRESULT CaptionButton::OnEnable(UINT, WPARAM wparam, LPARAM) {
   return 0;
 }
 
-LRESULT CaptionButton::OnShowWindow(UINT, WPARAM wparam, LPARAM) {
+LRESULT TrackedButton::OnShowWindow(UINT, WPARAM wparam, LPARAM) {
   if (!wparam) {
     is_mouse_hovering_ = false;
     CancelMouseTracking();
@@ -247,8 +231,13 @@ LRESULT CaptionButton::OnShowWindow(UINT, WPARAM wparam, LPARAM) {
   return 0;
 }
 
+bool TrackedButton::IsEnabled() const {
+  return IsWindow() && ::IsWindowEnabled(hwnd());
+}
+
 void CaptionButton::UpdateThemeState() {
   is_high_contrast_ = IsHighContrastOn();
+  is_dark_mode_ = IsDarkModeOn();
 }
 
 LRESULT CaptionButton::OnThemeChanged(UINT, WPARAM, LPARAM) {
@@ -261,46 +250,96 @@ LRESULT CaptionButton::OnThemeChanged(UINT, WPARAM, LPARAM) {
 }
 
 void CaptionButton::DrawItem(LPDRAWITEMSTRUCT draw_item_struct) {
-  const bool is_high_contrast = is_high_contrast_;
+  const PaintState paint_state =
+      SnapshotPaintState(draw_item_struct->itemState);
+
   HDC dc = draw_item_struct->hDC;
+  // For BS_OWNERDRAW, `rcItem` is the control's client rect.
+  const RECT& button_rect = draw_item_struct->rcItem;
 
-  RECT button_rect = {};
-  ::GetClientRect(hwnd(), &button_rect);
-
-  if (is_mouse_hovering_) {
-    // Keep the hover highlight solid.
-    FillSolidRect(dc, button_rect,
-                  GetColor(is_high_contrast, kCaptionBkHover, COLOR_HIGHLIGHT));
+  if (paint_state.paints_hover()) {
+    const COLORREF hover_color =
+        paint_state.is_dark_mode ? kCaptionBkHoverDark : kCaptionBkHover;
+    FillSolidRect(
+        dc, button_rect,
+        GetColor(paint_state.is_high_contrast, hover_color, COLOR_HIGHLIGHT));
   } else {
     // Draw the parent's gradient background.
     DrawParentBackground(hwnd(), dc, button_rect);
   }
 
-  int rgn_width = Width(button_rect) * 12 / 31;
-  int rgn_height = Height(button_rect) * 12 / 31;
+  const int rgn_width = Width(button_rect) * 12 / 31;
+  const int rgn_height = Height(button_rect) * 12 / 31;
   base::win::ScopedGDIObject<HRGN> rgn(GetButtonRgn(rgn_width, rgn_height));
+  if (rgn.is_valid()) {
+    // Center the glyph within `button_rect`. For BS_OWNERDRAW `rcItem` is the
+    // control's client rect (left/top are 0), but including `left`/`top` keeps
+    // centering robust against arbitrary bounding rects.
+    ::OffsetRgn(rgn.get(),
+                button_rect.left + (Width(button_rect) - rgn_width) / 2,
+                button_rect.top + (Height(button_rect) - rgn_height) / 2);
 
-  // Center the button in the outer button rect.
-  ::OffsetRgn(rgn.get(), (Width(button_rect) - rgn_width) / 2,
-              (Height(button_rect) - rgn_height) / 2);
-
-  ::FillRgn(
-      dc, rgn.get(),
-      GetColorBrush(is_high_contrast, foreground_brush_.get(),
-                    is_mouse_hovering_ ? COLOR_HIGHLIGHTTEXT : COLOR_BTNTEXT));
-
-  const UINT button_state = draw_item_struct->itemState;
-  if (!(button_state & ODS_FOCUS)) {
-    return;
+    // Use the stock DC brush colored for this paint state. `dc` is owned by
+    // the system only for the duration of this WM_DRAWITEM dispatch, so the
+    // previous brush color is deliberately not saved and restored.
+    ::SetDCBrushColor(dc, ResolveGlyphColor(paint_state));
+    ::FillRgn(dc, rgn.get(), static_cast<HBRUSH>(::GetStockObject(DC_BRUSH)));
   }
 
-  // Draw a scaled frame for the active/focused state.
+  // Drawn even when the control was too small for a glyph: BS_OWNERDRAW
+  // suppresses the stock focus rectangle, so this is the only keyboard focus
+  // indicator the button has.
+  if (draw_item_struct->itemState & ODS_FOCUS) {
+    DrawFocusFrame(dc, button_rect, paint_state);
+  }
+}
+
+CaptionButton::PaintState CaptionButton::SnapshotPaintState(
+    UINT item_state) const {
+  // TODO(crbug.com/409590312): Decode ODS_SELECTED for the pressed state.
+  return {.is_enabled = !(item_state & ODS_DISABLED),
+          .is_hovered = is_mouse_hovering(),
+          .is_dark_mode = is_dark_mode_,
+          .is_high_contrast = is_high_contrast_};
+}
+
+// static
+COLORREF CaptionButton::ResolveGlyphColor(PaintState paint_state) {
+  if (paint_state.is_high_contrast) {
+    // High contrast replaces the design tokens with system colors, so the
+    // glyph takes whatever a stock BUTTON would paint.
+    if (!paint_state.is_enabled) {
+      return ::GetSysColor(COLOR_GRAYTEXT);
+    }
+    // The only mode in which hover changes the glyph: the background becomes
+    // COLOR_HIGHLIGHT, so the glyph must become COLOR_HIGHLIGHTTEXT to stay
+    // legible. `DrawItem()` selects that background with the same
+    // `paints_hover()` call, so do not narrow this to `is_hovered`.
+    return ::GetSysColor(paint_state.paints_hover() ? COLOR_HIGHLIGHTTEXT
+                                                    : COLOR_BTNTEXT);
+  }
+  if (!paint_state.is_enabled) {
+    return paint_state.is_dark_mode ? kCaptionForegroundColorDisabledDark
+                                    : kCaptionForegroundColorDisabled;
+  }
+  return paint_state.is_dark_mode ? kCaptionForegroundColorDark
+                                  : kCaptionForegroundColor;
+}
+
+void CaptionButton::DrawFocusFrame(HDC dc,
+                                   const RECT& button_rect,
+                                   PaintState paint_state) const {
+  const COLORREF frame_color =
+      paint_state.is_dark_mode ? kCaptionFrameColorDark : kCaptionFrameColor;
   base::win::ScopedGDIObject<HPEN> pen(::CreatePen(
       PS_INSIDEFRAME,
       /*thickness=*/
       std::max(1, ::MulDiv(1, /*dpi=*/::GetDpiForWindow(hwnd()),
                            USER_DEFAULT_SCREEN_DPI)),
-      GetColor(is_high_contrast, kCaptionFrameColor, COLOR_WINDOWFRAME)));
+      GetColor(paint_state.is_high_contrast, frame_color, COLOR_WINDOWFRAME)));
+  if (!pen.is_valid()) {
+    return;
+  }
   const HPEN old_pen = static_cast<HPEN>(::SelectObject(dc, pen.get()));
   const HBRUSH old_brush =
       static_cast<HBRUSH>(::SelectObject(dc, ::GetStockObject(NULL_BRUSH)));
@@ -310,10 +349,6 @@ void CaptionButton::DrawItem(LPDRAWITEMSTRUCT draw_item_struct) {
 
   ::SelectObject(dc, old_brush);
   ::SelectObject(dc, old_pen);
-}
-
-bool CaptionButton::IsEnabled() const {
-  return IsWindow() && ::IsWindowEnabled(hwnd());
 }
 
 COLORREF CaptionButton::bk_color() const {
@@ -740,7 +775,7 @@ BOOL CustomDlgColors::ProcessWindowMessage(HWND,
 
   if (is_dark_mode_) {
     COLORREF text_color =
-        (msg == WM_CTLCOLORBTN) ? RGB(0xA8, 0xC7, 0xFA) : RGB(0xFF, 0xFF, 0xFF);
+        (msg == WM_CTLCOLORBTN) ? kDialogButtonTextDark : kTextColorDark;
     ::SetTextColor(dc, text_color);
     ::SetBkColor(dc, kBgColorDark);
     if (!dark_bk_brush_.is_valid()) {
@@ -917,7 +952,7 @@ LRESULT CustomProgressBarCtrl::OnPaint(UINT, WPARAM, LPARAM) {
       if (is_high_contrast) {
         fill_color = ::GetSysColor(COLOR_HIGHLIGHT);
       } else if (is_dark_mode) {
-        fill_color = RGB(0xA8, 0xC7, 0xFA);
+        fill_color = kProgressBarFillColorDark;
       }
       base::win::ScopedGDIObject<HBRUSH> fill_brush(
           ::CreateSolidBrush(fill_color));
@@ -1070,51 +1105,6 @@ void FlatButton::SetIsPrimary(bool is_primary) {
   }
 }
 
-LRESULT FlatButton::OnMouseMessage(UINT msg, WPARAM wparam, LPARAM lparam) {
-  SetMsgHandled(FALSE);
-  return 1;
-}
-
-LRESULT FlatButton::OnMouseMove(UINT, WPARAM, LPARAM) {
-  if (!is_tracking_mouse_events_) {
-    TRACKMOUSEEVENT tme = {};
-    tme.cbSize = sizeof(TRACKMOUSEEVENT);
-    tme.dwFlags = TME_HOVER | TME_LEAVE;
-    tme.hwndTrack = hwnd();
-    tme.dwHoverTime = 1;
-    is_tracking_mouse_events_ = _TrackMouseEvent(&tme);
-  }
-  SetMsgHandled(FALSE);
-  return 0;
-}
-
-LRESULT FlatButton::OnMouseHover(UINT, WPARAM, LPARAM) {
-  if (!is_mouse_hovering_) {
-    is_mouse_hovering_ = true;
-    ::InvalidateRect(hwnd(), nullptr, FALSE);
-    ::UpdateWindow(hwnd());
-  }
-  SetMsgHandled(FALSE);
-  return 0;
-}
-
-LRESULT FlatButton::OnMouseLeave(UINT, WPARAM, LPARAM) {
-  TRACKMOUSEEVENT tme = {};
-  tme.cbSize = sizeof(TRACKMOUSEEVENT);
-  tme.dwFlags = TME_CANCEL | TME_HOVER | TME_LEAVE;
-  tme.hwndTrack = hwnd();
-  _TrackMouseEvent(&tme);
-
-  is_tracking_mouse_events_ = false;
-  is_mouse_hovering_ = false;
-
-  ::InvalidateRect(hwnd(), nullptr, FALSE);
-  ::UpdateWindow(hwnd());
-
-  SetMsgHandled(FALSE);
-  return 0;
-}
-
 LRESULT FlatButton::OnThemeChanged(UINT, WPARAM, LPARAM) {
   UpdateThemeState();
   if (IsWindow()) {
@@ -1153,7 +1143,7 @@ LRESULT FlatButton::OnPaint(UINT, WPARAM, LPARAM) {
 
   DrawParentBackground(hwnd(), dc, rect);
 
-  const bool is_disabled = !::IsWindowEnabled(hwnd());
+  const bool is_disabled = !IsEnabled();
   const bool is_default =
       (::GetWindowLong(hwnd(), GWL_STYLE) & BS_DEFPUSHBUTTON) != 0;
   const bool is_pressed =
@@ -1161,6 +1151,7 @@ LRESULT FlatButton::OnPaint(UINT, WPARAM, LPARAM) {
 
   const bool is_high_contrast = is_high_contrast_;
   const bool is_dark_mode = is_dark_mode_;
+  const bool is_hovered = is_mouse_hovering();
 
   COLORREF bg = CLR_INVALID;
   COLORREF text = CLR_INVALID;
@@ -1170,8 +1161,8 @@ LRESULT FlatButton::OnPaint(UINT, WPARAM, LPARAM) {
     const bool is_focused =
         (::GetFocus() == hwnd()) ||
         ((::SendMessageW(hwnd(), BM_GETSTATE, 0, 0) & BST_FOCUS) != 0);
-    const bool use_highlight = is_pressed || is_default || is_mouse_hovering_ ||
-                               is_focused || is_primary_;
+    const bool use_highlight =
+        is_pressed || is_default || is_hovered || is_focused || is_primary_;
 
     bg = use_highlight ? ::GetSysColor(COLOR_HIGHLIGHT)
                        : ::GetSysColor(COLOR_BTNFACE);
@@ -1185,14 +1176,14 @@ LRESULT FlatButton::OnPaint(UINT, WPARAM, LPARAM) {
       border = bg;
     } else if (is_primary_) {
       bg = is_pressed ? kPrimaryButtonBgDarkPressed
-                      : (is_mouse_hovering_ ? kPrimaryButtonBgDarkHover
-                                            : kPrimaryButtonBgDark);
+                      : (is_hovered ? kPrimaryButtonBgDarkHover
+                                    : kPrimaryButtonBgDark);
       text = kPrimaryButtonFgDark;
       border = bg;
     } else {
       bg = is_pressed ? kSecondaryButtonBgDarkPressed
-                      : (is_mouse_hovering_ ? kSecondaryButtonBgDarkHover
-                                            : kSecondaryButtonBgDark);
+                      : (is_hovered ? kSecondaryButtonBgDarkHover
+                                    : kSecondaryButtonBgDark);
       text = kSecondaryButtonFgDark;
       border = kSecondaryButtonBorderDark;
     }
@@ -1203,16 +1194,15 @@ LRESULT FlatButton::OnPaint(UINT, WPARAM, LPARAM) {
       border = bg;
     } else if (is_primary_) {
       bg = is_pressed ? kPrimaryButtonBgPressed
-                      : (is_mouse_hovering_ ? kPrimaryButtonBgHover
-                                            : kPrimaryButtonBg);
+                      : (is_hovered ? kPrimaryButtonBgHover : kPrimaryButtonBg);
       text = kPrimaryButtonFg;
       border = bg;
     } else {
-      bg = is_pressed ? kSecondaryButtonBgPressed
-                      : (is_mouse_hovering_ ? kSecondaryButtonBgHover
-                                            : kSecondaryButtonBg);
+      bg = is_pressed
+               ? kSecondaryButtonBgPressed
+               : (is_hovered ? kSecondaryButtonBgHover : kSecondaryButtonBg);
       text = kSecondaryButtonFg;
-      border = is_mouse_hovering_ ? kSecondaryButtonFg : kSecondaryButtonBorder;
+      border = is_hovered ? kSecondaryButtonFg : kSecondaryButtonBorder;
     }
   }
 

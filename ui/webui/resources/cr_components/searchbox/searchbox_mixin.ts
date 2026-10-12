@@ -332,7 +332,7 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
       const match = this.result!.matches[matchIndex];
       assert(match);
       this.pageHandler().openAutocompleteMatch(
-          matchIndex, match.destinationUrl,
+          this.result!.sequenceId, matchIndex, match.destinationUrl,
           /*areMatchesShowing=*/ this.dropdownIsVisible,
           /*mouseButton=*/ (e as MouseEvent).button || 0, {
             altKey: e.altKey,
@@ -351,6 +351,7 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
           inline: '',
           moveCursorToEnd: true,
         });
+        this.keywordModeManager_.exit();
         this.clearAutocompleteMatches();
       }
       e.preventDefault();
@@ -372,6 +373,7 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
         inline: '',
         moveCursorToEnd: true,
       });
+      this.keywordModeManager_.exit();
       this.clearAutocompleteMatches();
     }
 
@@ -700,7 +702,9 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
           moveCursorToEnd: newInline.length === 0,
         });
 
-        if (key === 'ArrowDown' || key === 'ArrowUp') {
+        if (key === 'ArrowDown' || key === 'ArrowUp' || key === 'PageDown' ||
+            key === 'PageUp') {
+          this.pageHandler().stopAutocomplete(/*clearResult=*/ false);
           this.pageHandler().onNavigationLikely(
               nextSelection.line, this.selectedMatch.destinationUrl,
               NavigationPredictor.kUpOrDownArrowButton);
@@ -918,6 +922,11 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
       // Legacy fallback for Arrow keys and Tab. (Tab does nothing).
       e.preventDefault();
 
+      if (e.key === 'ArrowDown' || e.key === 'ArrowUp' ||
+          e.key === 'PageDown' || e.key === 'PageUp') {
+        this.pageHandler().stopAutocomplete(/*clearResult=*/ false);
+      }
+
       if (e.key === 'ArrowDown') {
         await this.getDropdownElement().selectNext();
       } else if (e.key === 'ArrowUp') {
@@ -968,6 +977,7 @@ export const SearchboxMixin = <T extends Constructor<CrLitElement>>(
     }
 
     onMatchClick() {
+      this.keywordModeManager_.exit();
       this.clearAutocompleteMatches();
     }
 

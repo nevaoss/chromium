@@ -268,10 +268,12 @@ bool HasAnimationsOrTransitions(const StyleResolverState& state) {
 }
 
 bool HasTimelines(const StyleResolverState& state) {
-  if (!state.StyleBuilder().ScrollTimelineName().empty()) {
+  if (state.StyleBuilder().ScrollTimelineName() &&
+      !state.StyleBuilder().ScrollTimelineName()->GetNames().empty()) {
     return true;
   }
-  if (!state.StyleBuilder().ViewTimelineName().empty()) {
+  if (state.StyleBuilder().ViewTimelineName() &&
+      !state.StyleBuilder().ViewTimelineName()->GetNames().empty()) {
     return true;
   }
   if (!state.StyleBuilder().TimelineScope().IsNone()) {
@@ -556,6 +558,10 @@ void ApplyInertness(StyleResolverState& state) {
       // https://github.com/w3c/csswg-drafts/issues/8389
       html_inert = true;
     }
+  }
+
+  if (state.HasOverscrollContainerAncestor()) {
+    StyleAdjuster::AdjustOverscrollInertness(state, html_inert);
   }
 
   if (html_inert.has_value()) {
@@ -2180,14 +2186,14 @@ class ViewportSizeChangeScopeForPrinting {
   std::optional<PhysicalSize> document_icb_size_;
 };
 
-const ComputedStyle* StyleResolver::StyleForPage(uint32_t page_index,
+const ComputedStyle& StyleResolver::StyleForPage(uint32_t page_index,
                                                  const AtomicString& page_name,
                                                  float page_fitting_scale,
                                                  bool ignore_author_style) {
   // The page context inherits from the root element.
   Element* root_element = GetDocument().documentElement();
   if (!root_element) {
-    return &InitialStyleForElement();
+    return InitialStyleForElement();
   }
   DCHECK(!GetDocument().NeedsLayoutTreeUpdateForNode(*root_element));
   const ComputedStyle* parent_style =
@@ -2195,7 +2201,7 @@ const ComputedStyle* StyleResolver::StyleForPage(uint32_t page_index,
   if (!parent_style) {
     // The root is display:none. One page box will still be created, but no
     // properties should apply.
-    return &InitialStyleForElement();
+    return InitialStyleForElement();
   }
   StyleResolverState state(GetDocument(), *root_element,
                            nullptr /* StyleRecalcContext */,
@@ -2267,7 +2273,7 @@ const ComputedStyle* StyleResolver::StyleForPage(uint32_t page_index,
   state.LoadPendingResources();
 
   // Now return the style.
-  return state.TakeStyle();
+  return *state.TakeStyle();
 }
 
 void StyleResolver::StyleForPageMargins(const ComputedStyle& page_style,
@@ -2345,9 +2351,9 @@ void StyleResolver::LoadPaginationResources() {
   // loaded. As it is now, only resources needed on the first page (with no page
   // name) will be loaded. Any resource inside a non-empty @page selector
   // (unless it happens to match the first page) will be missing.
-  const ComputedStyle* page_style = StyleForPage(0, /*page_name=*/g_null_atom);
+  const ComputedStyle& page_style = StyleForPage(0, /*page_name=*/g_null_atom);
   PageMarginsStyle ignored;
-  StyleForPageMargins(*page_style, 0, /*page_name=*/g_null_atom, &ignored);
+  StyleForPageMargins(page_style, 0, /*page_name=*/g_null_atom, &ignored);
 }
 
 const ComputedStyle& StyleResolver::InitialStyle() const {
@@ -2378,10 +2384,10 @@ float StyleResolver::InitialZoom() const {
   return 1;
 }
 
-const ComputedStyle* StyleResolver::CreateInitialStyle() const {
-  ComputedStyleBuilder builder(*ComputedStyle::GetInitialStyleSingleton());
+const ComputedStyle& StyleResolver::CreateInitialStyle() const {
+  ComputedStyleBuilder builder(ComputedStyle::GetInitialStyleSingleton());
   SetZoomedInitialLineWidths(InitialZoom(), builder);
-  return builder.TakeStyle();
+  return *builder.TakeStyle();
 }
 
 ComputedStyleBuilder StyleResolver::InitialStyleBuilderForElement() const {

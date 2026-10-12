@@ -4688,7 +4688,10 @@ NavigationControllerImpl::CreateNavigationRequestFromLoadParams(
   std::string page_state_data =
       frame_entry ? frame_entry->page_state().ToEncodedData() : std::string();
 
-  // TODO(clamy): See if user gesture should be propagated to `common_params`.
+  // Filter out user gestures for proxy navigations, to prevent them from being
+  // exposed to the committed document in the renderer. (See
+  // `has_possibly_filtered_user_gesture` in
+  // //third_party/blink/public/mojom/navigation/navigation_params.mojom.)
   bool has_user_gesture_for_common_params =
       from_frame_proxy ? false : params.has_user_gesture;
 
@@ -4781,7 +4784,7 @@ NavigationControllerImpl::CreateNavigationRequestFromLoadParams(
           /*lcpp_hint=*/nullptr, blink::CreateDefaultRendererContentSettings(),
           /*visited_link_salt=*/std::nullopt,
           /*local_surface_id=*/std::nullopt,
-          /*initial_permission_statuses=*/std::nullopt,
+          node->current_frame_host()->GetCachedPermissionStatuses(),
           /*should_skip_screentshot=*/false,
           /*force_new_document_sequence_number=*/false,
           /*navigation_metrics_token=*/base::UnguessableToken::Create(),
@@ -4979,6 +4982,8 @@ NavigationControllerImpl::CreateNavigationRequestFromEntry(
           frame_tree_node->AncestorOrSelfHasCSPEE(),
           soft_navigation_heuristics_task_id);
   commit_params->post_content_type = post_content_type;
+  commit_params->initial_permission_statuses =
+      frame_tree_node->current_frame_host()->GetCachedPermissionStatuses();
 
   if (common_params->url.IsAboutSrcdoc()) {
     // TODO(wjmaclean): initialize this in NavigationRequest's constructor
@@ -5684,10 +5689,17 @@ NavigationControllerImpl::GetNavigationApiHistoryEntryVectors(
                                        .initiator_frame_tree_node_id();
     if (initiator_id) {
       auto* initiator_node = FrameTreeNode::GloballyFindByID(initiator_id);
-      previous_entry = initiator_node->frame_tree()
-                           .controller()
-                           .GetLastCommittedEntry()
-                           ->GetFrameEntry(initiator_node);
+      // The initiator frame may have been destroyed if the initiator tab was
+      // closed while a new-tab prerender is still committing its initial
+      // navigation. The prerender WebContents destruction is deferred via
+      // DeleteSoon, creating a window where the initiator's FrameTreeNode is
+      // gone but the prerender is still alive.
+      if (initiator_node) {
+        previous_entry = initiator_node->frame_tree()
+                             .controller()
+                             .GetLastCommittedEntry()
+                             ->GetFrameEntry(initiator_node);
+      }
     }
   } else if (GetLastCommittedEntryIndex() != -1 &&
              GetLastCommittedEntryIndex() >= backmost_index &&

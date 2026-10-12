@@ -58,7 +58,7 @@
 #include "chromeos/ash/components/dbus/vm_concierge/concierge_service.pb.h"
 #include "chromeos/ash/components/disks/disk.h"
 #include "chromeos/ash/components/disks/mock_disk_mount_manager.h"
-#include "chromeos/ash/experiences/extensions/api/file_system_provider_capabilities/file_system_provider_capabilities_handler.h"
+#include "chromeos/ash/experiences/extensions/common/api/file_system_provider_capabilities/file_system_provider_capabilities_handler.h"
 #include "chromeos/dbus/dlp/dlp_client.h"
 #include "chromeos/dbus/dlp/dlp_service.pb.h"
 #include "components/drive/drive_pref_names.h"
@@ -212,8 +212,8 @@ class FileManagerPrivateApiTest : public extensions::ExtensionApiTest {
   }
 
   ~FileManagerPrivateApiTest() override {
-    DCHECK(!disk_mount_manager_mock_);
-    DCHECK(!event_router_);
+    CHECK(!disk_mount_manager_mock_, base::NotFatalUntil::M160);
+    CHECK(!event_router_, base::NotFatalUntil::M160);
   }
 
   bool SetUpUserDataDirectory() override {

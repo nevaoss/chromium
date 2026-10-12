@@ -4,11 +4,10 @@
 
 import './app.js';
 
-export {colorName, getTabGroupColorVar} from '/tab_group_shared/tab_group_color_helper.js';
-export {TabGroupDotElement} from '/tab_group_shared/tab_group_dot.js';
-export type {Range} from '/tab_search/shared/search.js';
-export type {SearchApiProxy} from '/tab_search/shared/search_api_proxy.js';
-export {SearchApiProxyImpl} from '/tab_search/shared/search_api_proxy.js';
+export type {Range} from '/tab_group_shared/search.js';
+export type {SearchApiProxy} from '/tab_group_shared/search_api_proxy.js';
+export {SearchApiProxyImpl} from '/tab_group_shared/search_api_proxy.js';
+export {TabGroupDotElement, TabGroupDotSize} from '/tab_group_shared/tab_group_dot.js';
 export {OrganizerPanelAppElement} from './app.js';
 export {isSplitTab, OpenTabsDelegate, OpenTabsItemType} from './delegates/open_tabs_delegate.js';
 export type {OpenTabsItem} from './delegates/open_tabs_delegate.js';
@@ -23,9 +22,12 @@ export {OrganizerListSectionItemElement} from './organizer_list_section_item.js'
 export type {OrganizerListSectionItemDescriptionPart} from './organizer_list_section_item_description.js';
 export {OrganizerListSectionItemDescriptionElement} from './organizer_list_section_item_description.js';
 export {OrganizerListSectionItemTitleElement} from './organizer_list_section_item_title.js';
-export {renderHighlightedText, SEARCH_PART_SEPARATOR, sliceRangesForParts} from './search_utils.js';
+export type {OptionKeyObject, SearchOptions} from './search_utils.js';
+export {renderHighlightedText, search, sliceRangesForParts} from './search_utils.js';
 export {StackedFaviconsElement} from './stacked_favicons.js';
 export {Color} from './tab_group_types.mojom-webui.js';
-export type {PageRemote, ProfileData, RecentlyClosedTab, RecentlyClosedTabGroup, Tab, TabGroup, TokenRange} from './tab_search.mojom-webui.js';
+export type {BrowserProxy as TabGroupsBrowserProxy, TabGroup} from './tab_groups.mojom-webui.js';
+export {browserProxyFactory as tabGroupsBrowserProxyFactory, TabGroupsOrganizerPageHandler, TabGroupsOrganizerPageHandlerRemote} from './tab_groups.mojom-webui.js';
+export type {PageRemote, ProfileData, RecentlyClosedTab, RecentlyClosedTabGroup, Tab, TokenRange} from './tab_search.mojom-webui.js';
 export {browserProxyFactory, PageHandlerRemote, SplitTabLayout} from './tab_search.mojom-webui.js';
 export {TabAlertState} from './tabs.mojom-webui.js';

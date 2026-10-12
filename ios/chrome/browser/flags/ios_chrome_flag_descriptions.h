@@ -588,12 +588,6 @@ inline constexpr char kDefaultBrowserPipTextVideoDescription[] =
     "When enabled, displays a text video in the default browser "
     "picture-in-picture instead of the current one.";
 
-inline constexpr char kDefaultBrowserPromoIpadInstructionsName[] =
-    "Default Browser Promo iPad Instructions";
-inline constexpr char kDefaultBrowserPromoIpadInstructionsDescription[] =
-    "When enabled, displays default browser promo instructions specifically "
-    "adapted for iPad.";
-
 inline constexpr char kDefaultBrowserPromoOverflowMenuName[] =
     "Default Browser Promo in Overflow Menu";
 inline constexpr char kDefaultBrowserPromoOverflowMenuDescription[] =
@@ -880,10 +874,6 @@ inline constexpr char kGeminiBinaryMigrationName[] = "Gemini Binary Migration";
 inline constexpr char kGeminiBinaryMigrationDescription[] =
     "Enables the binary network migration for Gemini.";
 
-inline constexpr char kGeminiChatPersistenceName[] = "Gemini Chat Persistence";
-inline constexpr char kGeminiChatPersistenceDescription[] =
-    "Enables improvements to Gemini Chat persistence.";
-
 inline constexpr char kGeminiClientMigrationName[] = "Gemini Client Migration";
 inline constexpr char kGeminiClientMigrationDescription[] =
     "Enables the client migration for Gemini, adding the infrastructure for "
@@ -956,15 +946,6 @@ inline constexpr char kGeminiScreenContextMigrationDescription[] =
 inline constexpr char kGeminiUnaryMigrationName[] = "Gemini Unary Migration";
 inline constexpr char kGeminiUnaryMigrationDescription[] =
     "Enables the unary network migration for Gemini.";
-
-inline constexpr char kGeminiUpdatedConsentName[] = "Gemini Updated Consent";
-inline constexpr char kGeminiUpdatedConsentDescription[] =
-    "Enables the updated Gemini consent flow.";
-
-inline constexpr char kGeminiUpdatedEligibilityName[] =
-    "Gemini Updated Eligibility";
-inline constexpr char kGeminiUpdatedEligibilityDescription[] =
-    "Enables the updated eligibility checks for Gemini users.";
 
 inline constexpr char kGeneralizedGeminiEntryFlowName[] =
     "Generalized Gemini Entry Flow";
@@ -1246,16 +1227,6 @@ inline constexpr char kLensContinuousZoomEnabledName[] =
 inline constexpr char kLensContinuousZoomEnabledDescription[] =
     "When enabled, Lens camera supports continuous zoom.";
 
-inline constexpr char kLensEnableSendRawFileMediaTypesName[] =
-    "Lens enable send raw file media types";
-inline constexpr char kLensEnableSendRawFileMediaTypesDescription[] =
-    "Enables sending raw file media types in the Lens overlay.";
-
-inline constexpr char kLensEnableSendUrlsInComposeboxesName[] =
-    "Lens enable send urls in composeboxes";
-inline constexpr char kLensEnableSendUrlsInComposeboxesDescription[] =
-    "Enables sending urls in AIM composeboxes.";
-
 inline constexpr char kLensFetchSrpApiEnabledName[] =
     "Lens fetch SRP API enabled";
 inline constexpr char kLensFetchSrpApiEnabledDescription[] =
@@ -1399,12 +1370,6 @@ inline constexpr char kNTPBackgroundDownsampleImageName[] =
 inline constexpr char kNTPBackgroundDownsampleImageDescription[] =
     "Downsamples user-uploaded NTP background images to screen size, "
     "reducing memory usage.";
-
-inline constexpr char kNTPHeaderUseTransformsForAnimationsName[] =
-    "NTP Header Transform Animations";
-inline constexpr char kNTPHeaderUseTransformsForAnimationsDescription[] =
-    "Use high-performance transforms for NTP header animations instead of "
-    "updating constraints on scroll.";
 
 inline constexpr char kNativeFindInPageName[] = "Native Find in Page";
 inline constexpr char kNativeFindInPageDescription[] =
@@ -1636,6 +1601,11 @@ inline constexpr char kPageActionMenuName[] = "Page Action Menu";
 inline constexpr char kPageActionMenuDescription[] =
     "When enabled, the entry point for the Page Action Menu becomes available "
     "for actions relating to the web page.";
+
+inline constexpr char kPageClassificationName[] = "Page Classification";
+inline constexpr char kPageClassificationDescription[] =
+    "Enables the page classification framework and configures classification "
+    "mode.";
 
 inline constexpr char kPageContextPdfName[] = "Page Context PDF";
 inline constexpr char kPageContextPdfDescription[] =
@@ -1916,6 +1886,11 @@ inline constexpr char kTabResumptionDescription[] =
 inline constexpr char kTaiyakiAllSurfacesName[] = "Taiyaki (all surfaces)";
 inline constexpr char kTaiyakiAllSurfacesDescription[] =
     "Enables Taiyaki for all surfaces (including post-FRE).";
+
+inline constexpr char kUniversalOptOutExtensionName[] =
+    "Universal Opt Out Extension";
+inline constexpr char kUniversalOptOutExtensionDescription[] =
+    "Enables the Universal Opt Out WebExtension.";
 
 inline constexpr char kUniversalOptOutSettingsName[] =
     "Universal Opt Out Settings";

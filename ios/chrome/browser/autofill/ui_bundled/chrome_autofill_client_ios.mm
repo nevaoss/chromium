@@ -541,9 +541,10 @@ ChromeAutofillClientIOS::ShowAutofillSuggestions(
     base::WeakPtr<AutofillSuggestionDelegate> delegate) {
   active_suggestion_delegate_ = std::move(delegate);
 
-
   [bridge_ showAutofillPopup:open_args.suggestions
-          suggestionDelegate:active_suggestion_delegate_];
+          suggestionDelegate:active_suggestion_delegate_
+                      formId:open_args.form_id
+                     fieldId:open_args.field_id];
   return SuggestionUiSessionId();
 }
 
@@ -773,6 +774,7 @@ void ChromeAutofillClientIOS::ShowEntityImportBubble(
     EntityInstance new_entity,
     std::optional<EntityInstance> old_entity,
     bool save_is_synchronous,
+    LegalMessageLines public_passes_notice,
     EntityImportPromptResultCallback prompt_result_callback) {
   // Enhanced Autofill is only available to signed-in users.
   std::optional<std::u16string> user_email = GetUserEmail();
@@ -793,8 +795,9 @@ void ChromeAutofillClientIOS::ShowEntityImportBubble(
   }
 
   SaveEntityParams params(std::move(new_entity), std::move(old_entity),
-                          std::move(user_email.value()), save_is_synchronous,
-                          std::move(prompt_result_callback));
+                          *std::move(user_email), save_is_synchronous,
+                          std::move(prompt_result_callback),
+                          std::move(public_passes_notice));
 
   auto delegate = std::make_unique<AutofillAiSaveEntityInfoBarDelegateIOS>(
       std::move(params),

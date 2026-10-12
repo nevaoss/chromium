@@ -7,6 +7,7 @@ import 'chrome://resources/cr_components/searchbox/searchbox_compose_button.js';
 import 'chrome://resources/cr_components/searchbox/searchbox_dropdown.js';
 import 'chrome://resources/cr_components/searchbox/searchbox_input.js';
 
+import {KeywordModeEntryMethod} from 'chrome://resources/cr_components/searchbox/keyword_mode_manager.js';
 import {createAutocompleteMatch, createAutocompleteResultForTesting, createMatchKeywordModelForTesting, createSearchMatchForTesting, SearchboxBrowserProxy} from 'chrome://resources/cr_components/searchbox/searchbox_browser_proxy.js';
 import type {ComposeClickEventDetail} from 'chrome://resources/cr_components/searchbox/searchbox_compose_button.js';
 import type {SearchboxDropdownElement} from 'chrome://resources/cr_components/searchbox/searchbox_dropdown.js';
@@ -1843,6 +1844,7 @@ suite('SearchboxMixinTest', () => {
         type: KeywordType.kChip,
         keyword,
         chipHint: 'Search Google',
+        placeholder: 'Search Google',
       }),
     });
     element.onAutocompleteResultChanged(createAutocompleteResultForTesting({
@@ -1866,6 +1868,8 @@ suite('SearchboxMixinTest', () => {
     assertEquals(KeywordType.kInKeyword, element.inputKeywordModel.type);
     assertEquals(keyword, element.inputKeywordModel.keyword);
     assertEquals('Search Google', element.inputKeywordModel.displayText);
+    assertEquals('Search Google', element.inputKeywordModel.placeholder);
+    assertEquals('Search Google', mockInput.inputElement.placeholder);
     assertEquals('', mockInput.inputElement.value);
   });
 
@@ -1899,6 +1903,8 @@ suite('SearchboxMixinTest', () => {
           type: KeywordType.kInKeyword,
           keyword,
           displayText: 'Search Google',
+          iconPath: '',
+          placeholder: '',
         };
         await microtasksFinished();
         await mockInput.updateComplete;
@@ -2009,6 +2015,7 @@ suite('SearchboxMixinTest', () => {
             type: KeywordType.kChip,
             keyword,
             chipHint: 'Search Google',
+            placeholder: 'Search Google',
           }),
         });
         element.onAutocompleteResultChanged(createAutocompleteResultForTesting({
@@ -2029,6 +2036,8 @@ suite('SearchboxMixinTest', () => {
         assertTrue(element.inputKeywordModel !== null);
         assertEquals(KeywordType.kInKeyword, element.inputKeywordModel.type);
         assertEquals(keyword, element.inputKeywordModel.keyword);
+        assertEquals('Search Google', element.inputKeywordModel.placeholder);
+        assertEquals('Search Google', mockInput.inputElement.placeholder);
         assertEquals('', mockInput.inputElement.value);
         assertTrue(event.defaultPrevented);
       });
@@ -2310,6 +2319,9 @@ suite('SearchboxMixinVirtualFocusTest', () => {
         assertEquals(SelectionLineState.kNormal, element.selection.state);
         assertEquals('hello world', mockInput.inputElement.value);
         assertEquals(1, testProxy.handler.getCallCount('onNavigationLikely'));
+        assertEquals(1, testProxy.handler.getCallCount('stopAutocomplete'));
+        assertFalse(
+            testProxy.handler.getArgs('stopAutocomplete')[0].clearResult);
 
         // ArrowDown navigates to second match (line 1).
         mockInput.inputElement.dispatchEvent(createKeyboardEvent('ArrowDown'));
@@ -2755,6 +2767,8 @@ suite('SearchboxMixinVirtualFocusTest', () => {
       type: KeywordType.kInKeyword,
       keyword: '@tabs',
       displayText: 'Tabs',
+      iconPath: '',
+      placeholder: '',
     };
 
     const match = createSearchMatchForTesting({
@@ -3276,11 +3290,15 @@ suite('SearchboxMixinVirtualFocusTest', () => {
         type: KeywordType.kChip,
         keyword: 'google.com',
         displayText: 'Search Google',
+        iconPath: '',
+        placeholder: '',
       },
       {
         type: KeywordType.kInstant,
         keyword: '@history',
         displayText: '@history',
+        iconPath: '',
+        placeholder: '',
       },
     ]);
     await testProxy.callbackRouterRemote.$.flushForTesting();
@@ -3303,6 +3321,8 @@ suite('SearchboxMixinVirtualFocusTest', () => {
           type: KeywordType.kChip,
           keyword: 'youtube.com',
           displayText: 'Search YouTube',
+          iconPath: '',
+          placeholder: '',
         }]);
         await testProxy.callbackRouterRemote.$.flushForTesting();
 
@@ -3344,6 +3364,8 @@ suite('SearchboxMixinVirtualFocusTest', () => {
           type: KeywordType.kChip,
           keyword: 'youtube.com',
           displayText: 'Search YouTube',
+          iconPath: '',
+          placeholder: '',
         }]);
         await testProxy.callbackRouterRemote.$.flushForTesting();
 
@@ -3380,6 +3402,8 @@ suite('SearchboxMixinVirtualFocusTest', () => {
           type: KeywordType.kInstant,
           keyword: '@history',
           displayText: 'History',
+          iconPath: '',
+          placeholder: '',
         }]);
         await testProxy.callbackRouterRemote.$.flushForTesting();
 
@@ -3404,6 +3428,8 @@ suite('SearchboxMixinVirtualFocusTest', () => {
           type: KeywordType.kChip,
           keyword: 'google.com',
           displayText: 'Google',
+          iconPath: '',
+          placeholder: '',
         }]);
         await testProxy.callbackRouterRemote.$.flushForTesting();
 
@@ -3426,6 +3452,8 @@ suite('SearchboxMixinVirtualFocusTest', () => {
       type: KeywordType.kInstant,
       keyword: '@history',
       displayText: 'History',
+      iconPath: '',
+      placeholder: '',
     }]);
     await testProxy.callbackRouterRemote.$.flushForTesting();
 
@@ -3451,5 +3479,57 @@ suite('SearchboxMixinVirtualFocusTest', () => {
     const args = await testProxy.handler.whenCalled('queryAutocomplete');
     assertEquals('@history ', args.input);
     assertEquals('', args.keyword);
+  });
+
+  test('navigateToMatch exits keyword mode', async () => {
+    element.keywordModeManager.enter(
+        'google.com', 'Google', KeywordModeEntryMethod.TAB);
+    assertTrue(element.keywordModeManager.isInKeywordMode);
+
+    element.activeQueryId = 0;
+    await element.onAutocompleteResultChanged(
+        createAutocompleteResultForTesting({
+          queryId: 0,
+          matches: [
+            createSearchMatchForTesting({
+              allowedToBeDefaultMatch: true,
+              fillIntoEdit: 'google.com query',
+            }),
+          ],
+        }));
+
+    element.navigateToMatch(
+        0, new KeyboardEvent('keydown', {key: 'Enter', cancelable: true}));
+    assertFalse(element.keywordModeManager.isInKeywordMode);
+  });
+
+  test('openCtrlEnterMatch exits keyword mode', async () => {
+    element.keywordModeManager.enter(
+        'google.com', 'Google', KeywordModeEntryMethod.TAB);
+    assertTrue(element.keywordModeManager.isInKeywordMode);
+
+    element.activeQueryId = 0;
+    await element.onAutocompleteResultChanged(
+        createAutocompleteResultForTesting({
+          queryId: 0,
+          matches: [
+            createSearchMatchForTesting({
+              allowedToBeDefaultMatch: true,
+              fillIntoEdit: 'google.com query',
+            }),
+          ],
+        }));
+
+    element.openCtrlEnterMatch(0);
+    assertFalse(element.keywordModeManager.isInKeywordMode);
+  });
+
+  test('onMatchClick exits keyword mode', () => {
+    element.keywordModeManager.enter(
+        'google.com', 'Google', KeywordModeEntryMethod.TAB);
+    assertTrue(element.keywordModeManager.isInKeywordMode);
+
+    element.onMatchClick();
+    assertFalse(element.keywordModeManager.isInKeywordMode);
   });
 });

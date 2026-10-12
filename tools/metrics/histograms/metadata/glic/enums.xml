@@ -183,6 +183,7 @@ chromium-metrics-reviews@google.com.
   <int value="3" label="ReloadAfterExpiry"/>
   <int value="4" label="Nudge"/>
   <int value="5" label="Iph"/>
+  <int value="6" label="MemoryPressureRecovery"/>
 </enum>
 
 <!-- LINT.ThenChange(//chrome/browser/glic/host/glic_web_contents_warming_pool.h:GlicContainerCreationReason) -->
@@ -334,6 +335,11 @@ chromium-metrics-reviews@google.com.
   <int value="13" label="No Actionable Request"/>
   <int value="14" label="Unexpected Request Payload"/>
   <int value="15" label="Result Not Set (instrumentation gap)"/>
+  <int value="16" label="Script Tools Disabled"/>
+  <int value="17" label="Non Script Tool Action"/>
+  <int value="18" label="Tab Not Found"/>
+  <int value="19" label="Task Already Running"/>
+  <int value="20" label="Cannot Act On Web"/>
 </enum>
 
 <!-- LINT.ThenChange(//chrome/browser/glic/experimental_triggering/glic_experimental_triggering_metrics.h:GlicExperimentalTriggeringIncomingMessageResult) -->
@@ -1288,6 +1294,17 @@ chromium-metrics-reviews@google.com.
 
 <!-- LINT.ThenChange(//chrome/browser/glic/host/glic_web_contents_warming_pool.h:GlicWarmingPoolStatus) -->
 
+<!-- LINT.IfChange(GlicWarmingSchedulerSchedulingMethod) -->
+
+<enum name="GlicWarmingSchedulerSchedulingMethod">
+  <int value="0" label="Fixed Delay Timer"/>
+  <int value="1" label="Performance Manager: Immediate Idle"/>
+  <int value="2" label="Performance Manager: Observed Scenario Changes"/>
+  <int value="3" label="Performance Manager: Missing Observer List Fallback"/>
+</enum>
+
+<!-- LINT.ThenChange(//chrome/browser/glic/host/glic_warming_scheduler.cc:GlicWarmingSchedulerSchedulingMethod) -->
+
 <!-- LINT.IfChange(GlicWebClientLifecycleEvent) -->
 
 <enum name="GlicWebClientLifecycleEvent">
@@ -1399,12 +1416,16 @@ chromium-metrics-reviews@google.com.
 
 <!-- LINT.ThenChange(//chrome/browser/resources/glic/glic_app_controller.ts:PanelWebUiStateErrorReason) -->
 
+<!-- LINT.IfChange(PdfRequestStates) -->
+
 <enum name="PdfRequestStates">
   <int value="0" label="PDF main doc; PDF found"/>
   <int value="1" label="PDF main doc; PDF not found"/>
   <int value="2" label="Non-PDF main doc; PDF found"/>
   <int value="3" label="Non-PDF main doc; PDF not found"/>
 </enum>
+
+<!-- LINT.ThenChange(//components/page_content_annotations/content/page_context_fetcher_metrics.h:PdfRequestStates) -->
 
 <!-- LINT.IfChange(PdfTextExtractionStatus) -->
 

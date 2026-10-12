@@ -269,7 +269,7 @@ public class CrossDeviceSettingImporter implements TopResumedActivityChangedObse
         if (currentTab == null) return;
 
         @Nullable Profile profile = currentTab.getProfile();
-        if (profile == null) return;
+        if (profile == null || profile.isOffTheRecord()) return;
 
         boolean localStateReady = LocalStatePrefs.areNativePrefsLoaded();
 
@@ -648,7 +648,7 @@ public class CrossDeviceSettingImporter implements TopResumedActivityChangedObse
         if (shouldShowSnackbar(profile, settingsToApply, nonNtp)) {
             SyncedSetupSettings currentSettings = getCurrentSettings(profile);
             showOfferUndoSnackbarAfterDialogs(profile, currentSettings, settingsToApply, nonNtp);
-            applySettings(profile, settingsToApply);
+            applySettings(profile, settingsToApply, nonNtp);
         } else {
             markCrossDeviceSettingImportComplete(
                     nonNtp, CrossDeviceSettingImportOutcome.NO_SETTINGS_TO_IMPORT);
@@ -765,12 +765,14 @@ public class CrossDeviceSettingImporter implements TopResumedActivityChangedObse
             prefs.put(omniboxPositionPref, localStatePrefs.getBoolean(omniboxPositionPref));
         }
 
-        PrefService userPrefs = UserPrefs.get(profile);
-        if (userPrefs != null) {
-            String allCardsPref = Pref.MAGIC_STACK_HOME_MODULE_ENABLED;
-            prefs.put(allCardsPref, userPrefs.getBoolean(allCardsPref));
-            for (String key : MODULE_TYPE_TO_USER_PREFS_KEY.values()) {
-                prefs.put(key, userPrefs.getBoolean(key));
+        if (UserPrefs.areNativePrefsLoaded(profile)) {
+            PrefService userPrefs = UserPrefs.get(profile);
+            if (userPrefs != null) {
+                String allCardsPref = Pref.MAGIC_STACK_HOME_MODULE_ENABLED;
+                prefs.put(allCardsPref, userPrefs.getBoolean(allCardsPref));
+                for (String key : MODULE_TYPE_TO_USER_PREFS_KEY.values()) {
+                    prefs.put(key, userPrefs.getBoolean(key));
+                }
             }
         }
 
@@ -783,11 +785,6 @@ public class CrossDeviceSettingImporter implements TopResumedActivityChangedObse
         return new SyncedSetupSettings(prefs, currentTheme);
     }
 
-    /**
-     * @param profile The {@link Profile}.
-     * @param settings The settings to check.
-     * @return whether the user's current settings are different from {@code settings}.
-     */
     /**
      * Returns whether cross-device theme import is enabled and supported on this device. Notably,
      * this checks whether we're in any group besides the control group and that underlying theme
@@ -880,8 +877,13 @@ public class CrossDeviceSettingImporter implements TopResumedActivityChangedObse
     }
 
     /**
+     * Checks whether preference values differ from local settings in a way that affects non-NTP
+     * pages. Note that this method only checks preference values, not theme settings (even though
+     * themes can also affect non-NTP pages via omnibox coloring). See {@link #shouldShowSnackbar}
+     * where both preference and theme changes are checked.
+     *
      * @param preferences The preferences to check.
-     * @return whether the user's settings differ from {@param preferences} in a way that affects
+     * @return whether the user's preferences differ from {@code preferences} in a way that affects
      *     non-NTP pages.
      */
     @VisibleForTesting
@@ -909,30 +911,6 @@ public class CrossDeviceSettingImporter implements TopResumedActivityChangedObse
         if (ChromeFeatureList.isEnabled(ChromeFeatureList.CROSS_DEVICE_PREF_TRACKER_EXTRA_LOGS)) {
             Log.i(TAG, "importedSettingsAffectNonNtp, returning false at bottom of function");
         }
-        return false;
-    }
-
-    /**
-     * @param settings The settings to check.
-     * @return whether the user's settings differ from {@param settings} in a way that affects
-     *     non-NTP pages (e.g. bottom omnibox position or omnibox theme coloring).
-     */
-    @VisibleForTesting
-    boolean importedSettingsAffectNonNtp(SyncedSetupSettings settings) {
-        if (importedSettingsAffectNonNtp(settings.getPrefs())) {
-            return true;
-        }
-
-        // Themes affect non-NTP pages as well by tinting the omnibox. Cross-platform themes
-        // (which do not sync continuously) that differ from the current local theme therefore
-        // affect non-NTP pages.
-        if (isThemeImportSnackbarEnabled()
-                && settings.getTheme() != null
-                && settings.getTheme().getPlatformType() != PlatformType.ANDROID
-                && importedSettingHasThemeChange(settings.getTheme())) {
-            return true;
-        }
-
         return false;
     }
 
@@ -983,14 +961,19 @@ public class CrossDeviceSettingImporter implements TopResumedActivityChangedObse
      *
      * @param profile The {@link Profile}.
      * @param settingsToApply The settings to apply.
+     * @param nonNtp Whether only settings that affect non-NTP pages should be applied.
      */
-    private void applySettings(Profile profile, SyncedSetupSettings settingsToApply) {
+    private void applySettings(
+            Profile profile, SyncedSetupSettings settingsToApply, boolean nonNtp) {
         Log.i(
                 TAG,
-                "applySettings: prefs=%s, theme=%s",
+                "applySettings: prefs=%s, theme=%s, nonNtp=%s",
                 settingsToApply.getPrefs().keySet(),
-                settingsToApply.getTheme());
-        applyUserPrefSettings(profile, settingsToApply.getPrefs());
+                settingsToApply.getTheme(),
+                nonNtp);
+        if (!nonNtp) {
+            applyUserPrefSettings(profile, settingsToApply.getPrefs());
+        }
         applyLocalStateSettings(settingsToApply.getPrefs());
         if (settingsToApply.getTheme() != null) {
             applyThemeSettings(settingsToApply.getTheme());
@@ -1043,6 +1026,8 @@ public class CrossDeviceSettingImporter implements TopResumedActivityChangedObse
      * @param preferencesToApply The preferences to apply.
      */
     private void applyUserPrefSettings(Profile profile, Map<String, Object> preferencesToApply) {
+        if (!UserPrefs.areNativePrefsLoaded(profile)) return;
+
         PrefService userPrefs = UserPrefs.get(profile);
         if (userPrefs == null) return;
 

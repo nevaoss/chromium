@@ -109,6 +109,8 @@
 #import "ios/chrome/browser/web/model/java_script_console/java_script_console_feature_factory.h"
 #import "ios/chrome/browser/web/model/print/print_java_script_feature.h"
 #import "ios/chrome/browser/web/model/web_performance_metrics/web_performance_metrics_java_script_feature.h"
+#import "ios/chrome/browser/web_extension/model/extension_service.h"
+#import "ios/chrome/browser/web_extension/model/extension_service_factory.h"
 #import "ios/chrome/browser/web_selection/model/web_selection_java_script_feature.h"
 #import "ios/chrome/common/channel_info.h"
 #import "ios/chrome/common/crash_report/crash_helper.h"
@@ -210,7 +212,10 @@ NSString* GetLookalikeUrlErrorPageHtml(web::WebState* web_state,
           lookalike_info->match_type,
           std::make_unique<LookalikeUrlControllerClient>(
               web_state, lookalike_info->safe_url, lookalike_info->request_url,
-              GetApplicationContext()->GetApplicationLocaleStorage()->Get()));
+              std::string(GetApplicationContext()
+                              ->GetApplicationLocaleStorage()
+                              ->GetTag()
+                              .tag_string())));
   std::string error_page_content = page->GetHtmlContents();
   security_interstitials::IOSBlockingPageTabHelper::FromWebState(web_state)
       ->AssociateBlockingPage(navigation_id, std::move(page));
@@ -235,7 +240,10 @@ NSString* GetHttpsOnlyModeErrorPageHtml(web::WebState* web_state,
           web_state, container->http_url(), service,
           std::make_unique<HttpsOnlyModeControllerClient>(
               web_state, container->http_url(),
-              GetApplicationContext()->GetApplicationLocaleStorage()->Get()));
+              std::string(GetApplicationContext()
+                              ->GetApplicationLocaleStorage()
+                              ->GetTag()
+                              .tag_string())));
 
   std::string error_page_content = page->GetHtmlContents();
   security_interstitials::IOSBlockingPageTabHelper::FromWebState(web_state)
@@ -270,7 +278,10 @@ NSString* GetSupervisedUserErrorPageHTML(web::WebState* web_state,
           error_info->filtering_result().reason,
           container->IsRemoteApprovalPendingForUrl(url),
           error_info->is_main_frame(),
-          GetApplicationContext()->GetApplicationLocaleStorage()->Get(),
+          std::string(GetApplicationContext()
+                          ->GetApplicationLocaleStorage()
+                          ->GetTag()
+                          .tag_string()),
           ui_util::SystemSuggestedFontSizeMultiplier());
 
   security_interstitials::IOSBlockingPageTabHelper::FromWebState(web_state)
@@ -338,7 +349,10 @@ void ChromeWebClient::AddAdditionalSchemes(Schemes* schemes) const {
 
 std::string ChromeWebClient::GetApplicationLocale() const {
   DCHECK(GetApplicationContext());
-  return GetApplicationContext()->GetApplicationLocaleStorage()->Get();
+  return std::string(GetApplicationContext()
+                         ->GetApplicationLocaleStorage()
+                         ->GetTag()
+                         .tag_string());
 }
 
 bool ChromeWebClient::IsAppSpecificURL(const GURL& url) const {
@@ -706,13 +720,12 @@ bool ChromeWebClient::IsSmoothScrollingSupported() const {
          ios::provider::IsFullscreenSmoothScrollingSupported();
 }
 
-bool ChromeWebClient::IsUniversalOptOutEnabled(
+web::UniversalOptOutState ChromeWebClient::GetUniversalOptOutState(
     web::BrowserState* browser_state) const {
-  if (!base::FeatureList::IsEnabled(
-          universal_optout::features::kUniversalOptOut) ||
+  if (!universal_optout::features::IsUniversalOptOutEnabled() ||
       !base::FeatureList::IsEnabled(
           universal_optout::features::kUniversalOptOutSettings)) {
-    return false;
+    return web::UniversalOptOutState::kNotEligible;
   }
 
   ProfileIOS* profile = ProfileIOS::FromBrowserState(browser_state);
@@ -720,5 +733,20 @@ bool ChromeWebClient::IsUniversalOptOutEnabled(
   PrefService* prefs = profile->GetPrefs();
   CHECK(prefs);
 
-  return prefs->GetBoolean(universal_optout::prefs::kUniversalOptOutEnabled);
+  if (prefs->GetBoolean(universal_optout::prefs::kUniversalOptOutEnabled)) {
+    return web::UniversalOptOutState::kEnabled;
+  }
+
+  if (prefs->GetBoolean(universal_optout::prefs::kUniversalOptOutEligible)) {
+    return web::UniversalOptOutState::kEligible;
+  }
+
+  return web::UniversalOptOutState::kNotEligible;
+}
+
+web::ExtensionController* ChromeWebClient::GetExtensionController(
+    web::BrowserState* browser_state) const {
+  ProfileIOS* profile = ProfileIOS::FromBrowserState(browser_state);
+  ExtensionService* service = ExtensionServiceFactory::GetForProfile(profile);
+  return service ? service->GetExtensionController() : nullptr;
 }

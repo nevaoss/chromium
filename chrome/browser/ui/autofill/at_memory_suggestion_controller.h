@@ -73,6 +73,7 @@ class AtMemorySuggestionController : public AutofillSuggestionController {
   bool MayRecycle(
       base::WeakPtr<AutofillSuggestionDelegate> delegate,
       content::WebContents* web_contents,
+      const LocalFrameToken& anchor_frame_token,
       AutofillSuggestionTriggerSource trigger_source) const override;
   void Recycle(PopupControllerCommon controller_common,
                int32_t form_control_ax_id) override;
@@ -80,7 +81,7 @@ class AtMemorySuggestionController : public AutofillSuggestionController {
   virtual void OnDismissed();
   void OnQuerySubmitted(const std::u16string& query);
   void OnQueryTextChanged(const std::u16string& query);
-  void OnSuggestionSelected(int position);
+  void OnSuggestionAccepted(int position);
   void OnSuggestionDismissed(int position);
   void OnChildSuggestionsShown(int parent_position);
   void OnChildSuggestionSelected(int parent_position, int child_position);

@@ -7,7 +7,6 @@
 
 #include <optional>
 
-#include "base/functional/function_ref.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/task/single_thread_task_runner.h"
 #include "base/threading/thread_checker.h"
@@ -21,16 +20,6 @@
 #include "third_party/skia/include/core/SkImageInfo.h"
 #include "ui/gfx/color_space.h"
 #include "ui/gfx/geometry/size.h"
-
-namespace cc {
-class PaintCanvas;
-}  // namespace cc
-
-namespace gpu {
-namespace raster {
-class RasterInterface;
-}  // namespace raster
-}  // namespace gpu
 
 namespace blink {
 
@@ -158,22 +147,15 @@ class PLATFORM_EXPORT WebGpuSharedImageLease final
   scoped_refptr<gpu::ClientSharedImage> GetSharedImage() const;
   gpu::SyncToken GetSyncToken() const;
 
-  void SetSyncToken(const gpu::SyncToken& sync_token) {
-    resource_.sync_token_ = sync_token;
-  }
+  void SetSyncToken(const gpu::SyncToken& sync_token);
+  bool is_cleared() const { return resource_.is_cleared_; }
   void SetCleared() { resource_.is_cleared_ = true; }
-
-  void DrawToBackingSharedImage(
-      base::FunctionRef<void(cc::PaintCanvas&)> draw_callback);
-
-  void WaitSyncToken(const gpu::SyncToken& sync_token);
 
   // CanvasMemoryDumpClient implementation.
   void OnMemoryDump(base::trace_event::ProcessMemoryDump* pmd) override;
   size_t GetSize() const override;
 
  private:
-  gpu::raster::RasterInterface* RasterInterface() const;
   bool IsGpuContextLost() const;
 
   Resource resource_;

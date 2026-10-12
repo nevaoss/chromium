@@ -4,17 +4,18 @@
 #include "chrome/browser/ui/webui/side_panel/read_anything/read_anything_untrusted_page_handler.h"
 
 #include <cstddef>
-#include <map>
 #include <memory>
 #include <optional>
 #include <string>
 #include <vector>
 
 #include "base/command_line.h"
+#include "base/functional/bind.h"
 #include "base/run_loop.h"
-#include "base/test/bind.h"
 #include "base/test/metrics/histogram_tester.h"
 #include "base/test/run_until.h"
+#include "base/test/scoped_command_line.h"
+#include "base/test/test_future.h"
 #include "base/test/values_test_util.h"
 #include "base/values.h"
 #include "chrome/browser/pdf/pdf_extension_test_util.h"
@@ -26,7 +27,6 @@
 #include "chrome/browser/ui/read_anything/read_anything_immersive_web_view.h"
 #include "chrome/browser/ui/read_anything/read_anything_prefs.h"
 #include "chrome/browser/ui/read_anything/read_anything_side_panel_controller.h"
-#include "chrome/browser/ui/read_anything/read_anything_side_panel_controller_utils.h"
 #include "chrome/browser/ui/side_panel/side_panel_entry.h"
 #include "chrome/browser/ui/side_panel/side_panel_enums.h"
 #include "chrome/browser/ui/side_panel/side_panel_registry.h"
@@ -36,9 +36,6 @@
 #include "chrome/browser/ui/user_education/browser_user_education_interface.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/views/translate/translate_bubble_controller.h"
-#include "chrome/browser/user_education/user_education_service.h"
-#include "chrome/browser/user_education/user_education_service_factory.h"
-#include "chrome/common/extensions/extension_constants.h"
 #include "chrome/common/read_anything/read_anything.mojom-shared.h"
 #include "chrome/common/read_anything/read_anything.mojom.h"
 #include "chrome/test/base/chrome_test_path_utils.h"
@@ -47,13 +44,10 @@
 #include "chrome/test/user_education/mock_browser_user_education_interface.h"
 #include "components/feature_engagement/public/feature_constants.h"
 #include "components/language_detection/core/constants.h"
-#include "components/prefs/pref_value_map.h"
 #include "components/tabs/public/tab_interface.h"
 #include "components/translate/core/browser/language_state.h"
 #include "components/translate/core/browser/translate_manager.h"
 #include "components/translate/core/common/translate_features.h"
-#include "components/user_education/common/new_badge/new_badge_specification.h"
-#include "components/user_education/common/user_education_features.h"
 #include "content/public/browser/render_widget_host_view.h"
 #include "content/public/common/content_switches.h"
 #include "content/public/test/browser_test.h"
@@ -61,7 +55,6 @@
 #include "content/public/test/content_browser_test_utils.h"
 #include "content/public/test/test_web_ui.h"
 #include "extensions/browser/mime_handler/mime_handler_stream_manager.h"
-#include "mojo/public/mojom/base/values.mojom.h"
 #include "pdf/pdf_features.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "third_party/skia/include/core/SkBitmap.h"
@@ -69,18 +62,11 @@
 #include "ui/accessibility/ax_node_id_forward.h"
 #include "ui/accessibility/ax_tree_id.h"
 #include "ui/accessibility/ax_updates_and_events.h"
-#include "ui/accessibility/mojom/ax_event.mojom.h"
-#include "ui/accessibility/mojom/ax_tree_id.mojom.h"
-#include "ui/accessibility/mojom/ax_tree_update.mojom.h"
-#include "ui/accessibility/platform/browser_accessibility.h"
-#include "ui/accessibility/platform/browser_accessibility_manager.h"
 #include "ui/base/clipboard/clipboard.h"
 #include "ui/base/clipboard/clipboard_buffer.h"
 #include "ui/base/clipboard/clipboard_sequence_number_token.h"
 #include "ui/base/window_open_disposition.h"
-#include "ui/gfx/geometry/size.h"
 #if BUILDFLAG(IS_CHROMEOS)
-#include "base/test/bind.h"
 #include "chrome/browser/speech/extension_api/tts_engine_extension_api.h"
 #include "chrome/browser/ui/webui/side_panel/read_anything/chrome_os_extension_wrapper.h"
 #include "extensions/browser/extension_host_test_helper.h"
@@ -112,14 +98,6 @@ class MockPage : public read_anything::mojom::UntrustedPage {
                void(const ui::AXTreeID& tree_id,
                     const std::vector<ui::AXTreeUpdate>& updates,
                     const std::vector<ui::AXEvent>& events));
-  MOCK_METHOD(void,
-              AccessibilityLocationChangesReceived,
-              (const ui::AXTreeID& tree_id,
-               ui::AXLocationAndScrollUpdates& details));
-  MOCK_METHOD(void,
-              AccessibilityLocationChangesReceived,
-              (const ui::AXTreeID& tree_id,
-               const ui::AXLocationAndScrollUpdates& details));
   MOCK_METHOD(void,
               OnSettingsRestoredFromPrefs,
               (read_anything::mojom::LineSpacing line_spacing,
@@ -2550,7 +2528,7 @@ IN_PROC_BROWSER_TEST_F(ReadAnythingUntrustedPageHandlerDistillerTest,
 
   base::HistogramTester histogram_tester;
 
-  handler_->RequestReadabilityDistillation();
+  handler_->RequestReadabilityDistillation(base::DoNothing());
   run_loop.Run();
 
   // After distillation by RequestReadabilityDistillation, ensure the
@@ -2559,6 +2537,250 @@ IN_PROC_BROWSER_TEST_F(ReadAnythingUntrustedPageHandlerDistillerTest,
   histogram_tester.ExpectTotalCount(
       "Accessibility.ReadAnything.TimeFromTreeChangedToDistillationComplete",
       0);
+}
+
+IN_PROC_BROWSER_TEST_F(
+    ReadAnythingUntrustedPageHandlerDistillerTest,
+    RequestReadabilityDistillation_LegacyPathSendsContentToPage) {
+  ASSERT_TRUE(embedded_test_server()->Start());
+  handler_ = CreateHandler();
+
+  ui_test_utils::NavigateToURLWithDisposition(
+      browser(), GURL(embedded_test_server()->GetURL("/simple.html")),
+      WindowOpenDisposition::CURRENT_TAB,
+      ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP);
+
+  // Wait for the initial distillation triggered by navigation to complete.
+  EXPECT_TRUE(base::test::RunUntil(
+      [&]() { return handler_->dom_distiller_content().has_value(); }));
+
+  // The distilled content still reaches the renderer through UpdateContent,
+  // even though the request itself discards the callback.
+  base::RunLoop run_loop;
+  std::string received_title;
+  std::string received_content;
+  EXPECT_CALL(page_, UpdateContent(testing::_, testing::_))
+      .WillOnce([&](const std::string& title, const std::string& content) {
+        received_title = title;
+        received_content = content;
+        run_loop.Quit();
+      });
+
+  handler_->RequestReadabilityDistillation(base::DoNothing());
+  run_loop.Run();
+
+  EXPECT_FALSE(received_title.empty());
+  EXPECT_FALSE(received_content.empty());
+}
+
+IN_PROC_BROWSER_TEST_F(ReadAnythingUntrustedPageHandlerDistillerTest,
+                       NavigationToGoogleDocs_ClearsCachedDistilledContent) {
+  ASSERT_TRUE(embedded_test_server()->Start());
+  handler_ = CreateHandler();
+
+  // Navigate to an article page and wait for distillation to complete.
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(
+      browser(), embedded_test_server()->GetURL("/simple.html")));
+  EXPECT_TRUE(base::test::RunUntil(
+      [&]() { return handler_->dom_distiller_title().has_value(); }));
+  EXPECT_TRUE(base::test::RunUntil(
+      [&]() { return handler_->dom_distiller_content().has_value(); }));
+
+  // Navigate to Google Docs where use_readability is false.
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(
+      browser(), GURL("https://docs.google.com/document/d/123")));
+
+  // Verify that cached Readability state (title, content, and distillation
+  // start time) was cleared.
+  EXPECT_FALSE(handler_->dom_distiller_title().has_value());
+  EXPECT_FALSE(handler_->dom_distiller_content().has_value());
+  EXPECT_TRUE(
+      handler_->readability_distillation_tree_change_start_time().is_null());
+}
+
+class ReadAnythingUntrustedPageHandlerDistillerRefactorTest
+    : public ReadAnythingUntrustedPageHandlerTest {
+ public:
+  ReadAnythingUntrustedPageHandlerDistillerRefactorTest()
+      : ReadAnythingUntrustedPageHandlerTest(
+            {features::kReadAnythingWithReadability,
+             features::kReadAnythingDistillerRefactor},
+            {features::kReadAnythingReadAloudPhraseHighlighting}) {}
+};
+
+IN_PROC_BROWSER_TEST_F(ReadAnythingUntrustedPageHandlerDistillerRefactorTest,
+                       OnActiveAXTreeIDChanged_CancelsInFlightDistillation) {
+  ASSERT_TRUE(embedded_test_server()->Start());
+  handler_ = CreateHandler();
+
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(
+      browser(), embedded_test_server()->GetURL("/simple.html")));
+
+  // Start distillation and assert it is in flight: the request can only be
+  // resolved by a posted task, so the callback has not run yet.
+  base::test::TestFuture<const std::string&, const std::string&> future;
+  handler_->RequestReadabilityDistillation(future.GetCallback());
+  ASSERT_FALSE(future.IsReady());
+
+  // Calling OnActiveAXTreeIDChanged immediately without yielding to the
+  // message loop guarantees that the asynchronous distillation is in flight.
+  OnActiveAXTreeIDChanged();
+
+  // Verify the in-flight request was cancelled immediately: the pending
+  // request resolves synchronously with empty content rather than with stale
+  // content from the previous tree.
+  ASSERT_TRUE(future.IsReady());
+  auto [title, content] = future.Take();
+  EXPECT_TRUE(title.empty());
+  EXPECT_TRUE(content.empty());
+}
+
+IN_PROC_BROWSER_TEST_F(ReadAnythingUntrustedPageHandlerDistillerRefactorTest,
+                       RequestReadabilityDistillation_WaitingForPdfFrame) {
+  ASSERT_TRUE(embedded_test_server()->Start());
+  handler_ = CreateHandler();
+  content::WebContents* contents = GetReadAnythingWebContents();
+  ASSERT_TRUE(ui_test_utils::NavigateToURL(
+      browser(), embedded_test_server()->GetURL("/simple.html")));
+
+  // Simulate identifying the page as a PDF but the PDF frame has not
+  // loaded yet.
+  extensions::mime_handler::MimeHandlerStreamManager::Create(contents);
+  handler_->OnActiveAXTreeIDChanged();
+
+  // Attempt to make a readability distillation
+  base::test::TestFuture<const std::string&, const std::string&> future;
+  handler_->RequestReadabilityDistillation(future.GetCallback());
+
+  // Because we are waiting for a PDF frame, the request resolves immediately
+  // with empty content, and no distillation is started, so the renderer falls
+  // back to Screen2x for the PDF.
+  ASSERT_TRUE(future.IsReady());
+  auto [title, content] = future.Take();
+  EXPECT_TRUE(title.empty());
+  EXPECT_TRUE(content.empty());
+  EXPECT_FALSE(handler_->dom_distiller_content().has_value());
+
+  contents->RemoveUserData(
+      extensions::mime_handler::MimeHandlerStreamManager::UserDataKey());
+}
+
+IN_PROC_BROWSER_TEST_F(
+    ReadAnythingUntrustedPageHandlerDistillerRefactorTest,
+    RequestReadabilityDistillation_Success_RunsCallbackWithContent) {
+  ASSERT_TRUE(embedded_test_server()->Start());
+  handler_ = CreateHandler();
+
+  ui_test_utils::NavigateToURLWithDisposition(
+      browser(), GURL(embedded_test_server()->GetURL("/simple.html")),
+      WindowOpenDisposition::CURRENT_TAB,
+      ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP);
+
+  base::test::TestFuture<const std::string&, const std::string&> future;
+  handler_->RequestReadabilityDistillation(future.GetCallback());
+
+  auto [title, content] = future.Get();
+  EXPECT_FALSE(title.empty());
+  EXPECT_FALSE(content.empty());
+}
+
+IN_PROC_BROWSER_TEST_F(
+    ReadAnythingUntrustedPageHandlerDistillerRefactorTest,
+    RequestReadabilityDistillation_NonHttpUrl_RunsCallbackWithEmptyContent) {
+  ASSERT_TRUE(embedded_test_server()->Start());
+  handler_ = CreateHandler();
+
+  ui_test_utils::NavigateToURLWithDisposition(
+      browser(), GURL("about:blank"), WindowOpenDisposition::CURRENT_TAB,
+      ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP);
+
+  base::test::TestFuture<const std::string&, const std::string&> future;
+  handler_->RequestReadabilityDistillation(future.GetCallback());
+
+  auto [title, content] = future.Get();
+  EXPECT_TRUE(title.empty());
+  EXPECT_TRUE(content.empty());
+}
+
+IN_PROC_BROWSER_TEST_F(
+    ReadAnythingUntrustedPageHandlerDistillerRefactorTest,
+    RequestReadabilityDistillation_OverwrittenCallbackAbortsFirst) {
+  ASSERT_TRUE(embedded_test_server()->Start());
+  handler_ = CreateHandler();
+
+  ui_test_utils::NavigateToURLWithDisposition(
+      browser(), GURL(embedded_test_server()->GetURL("/simple.html")),
+      WindowOpenDisposition::CURRENT_TAB,
+      ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP);
+
+  base::test::TestFuture<const std::string&, const std::string&> future1;
+  base::test::TestFuture<const std::string&, const std::string&> future2;
+
+  handler_->RequestReadabilityDistillation(future1.GetCallback());
+  // Immediately issue a second request, superseding the first.
+  handler_->RequestReadabilityDistillation(future2.GetCallback());
+
+  auto [title1, content1] = future1.Get();
+  EXPECT_TRUE(title1.empty());
+  EXPECT_TRUE(content1.empty());
+
+  auto [title2, content2] = future2.Get();
+  EXPECT_FALSE(title2.empty());
+  EXPECT_FALSE(content2.empty());
+}
+
+IN_PROC_BROWSER_TEST_F(
+    ReadAnythingUntrustedPageHandlerDistillerRefactorTest,
+    RequestReadabilityDistillation_UnstartedRequestAbortsPrevious) {
+  ASSERT_TRUE(embedded_test_server()->Start());
+  handler_ = CreateHandler();
+
+  ui_test_utils::NavigateToURLWithDisposition(
+      browser(), GURL(embedded_test_server()->GetURL("/simple.html")),
+      WindowOpenDisposition::CURRENT_TAB,
+      ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP);
+
+  base::test::TestFuture<const std::string&, const std::string&> future1;
+  base::test::TestFuture<const std::string&, const std::string&> future2;
+
+  handler_->RequestReadabilityDistillation(future1.GetCallback());
+
+  // Issue a second request that can't start a distillation. The first request
+  // is superseded even though the second one never runs.
+  base::test::ScopedCommandLine scoped_command_line;
+  scoped_command_line.GetProcessCommandLine()->AppendSwitch(
+      switches::kEnableAutomation);
+  handler_->RequestReadabilityDistillation(future2.GetCallback());
+
+  auto [title1, content1] = future1.Get();
+  EXPECT_TRUE(title1.empty());
+  EXPECT_TRUE(content1.empty());
+
+  auto [title2, content2] = future2.Get();
+  EXPECT_TRUE(title2.empty());
+  EXPECT_TRUE(content2.empty());
+}
+
+IN_PROC_BROWSER_TEST_F(
+    ReadAnythingUntrustedPageHandlerDistillerRefactorTest,
+    RequestReadabilityDistillation_NavigationAbortsInFlightRequest) {
+  ASSERT_TRUE(embedded_test_server()->Start());
+  handler_ = CreateHandler();
+
+  ui_test_utils::NavigateToURLWithDisposition(
+      browser(), GURL(embedded_test_server()->GetURL("/simple.html")),
+      WindowOpenDisposition::CURRENT_TAB,
+      ui_test_utils::BROWSER_TEST_WAIT_FOR_LOAD_STOP);
+
+  base::test::TestFuture<const std::string&, const std::string&> future;
+  handler_->RequestReadabilityDistillation(future.GetCallback());
+
+  // Simulate PrimaryPageChanged while distillation is in flight.
+  handler_->PrimaryPageChanged();
+
+  auto [title, content] = future.Get();
+  EXPECT_TRUE(title.empty());
+  EXPECT_TRUE(content.empty());
 }
 
 // In order to test that Readability isn't used in automated tests,

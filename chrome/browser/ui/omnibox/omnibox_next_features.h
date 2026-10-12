@@ -127,6 +127,9 @@ extern const base::FeatureParam<bool> kContextButtonShowSuggestionLabel;
 // BrowserView.
 extern const base::FeatureParam<bool> kWebUIOmniboxFullPopupUseBrowserView;
 extern const base::FeatureParam<bool> kWebUIOmniboxFullPopupMultiline;
+// The maximum number of autocomplete result snapshots cached for stale match
+// activation.
+extern const base::FeatureParam<int> kWebUIOmniboxFullPopupSnapshotCacheSize;
 // Whether to enable dynamic animation for the WebUI Omnibox.
 extern const base::FeatureParam<bool> kWebUIOmniboxDynamicAnimation;
 // Whether to enable dynamic color scheme for the WebUI Omnibox.
@@ -148,6 +151,13 @@ bool IsWebUIOmniboxInBrowserViewEnabled();
 // This does NOT include user eligibility checks. Most UI code should use the
 // profile-based `IsAimPopupEnabled()` function below instead.
 bool IsAimPopupFeatureEnabled();
+
+// Whether the page, rather than the Views frame, paints the popup's drop
+// shadow. The Views layer and the page must agree exactly: if they disagree
+// the shadow margin is either reserved twice or not at all. Call these from
+// both sides rather than recombining the underlying flags.
+bool ShouldDrawAimShadowInWebUI();
+bool ShouldDrawFullPopupShadowInWebUI();
 
 // Returns true if the AIM Popup feature is fully enabled for the given
 // `profile`. This is the correct function for external code to use, as it

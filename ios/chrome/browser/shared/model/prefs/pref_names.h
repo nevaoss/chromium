@@ -633,11 +633,6 @@ inline constexpr char kShowMemoryDebuggingTools[] =
 inline constexpr char kSigninShouldPromptForSigninAgain[] =
     "ios.signin.should_prompt_for_signin_again";
 
-// Per-account pref. True if the user has accepted the management dialog during
-// signin.
-inline constexpr char kSigninHasAcceptedManagementDialog[] =
-    "ios.signin.has_accepted_management_dialog";
-
 // Number of times the user dismissed the web sign-in dialog. This value is
 // reset to zero when the user signs in (using the web sign-in dialog).
 inline constexpr char kSigninWebSignDismissalCount[] =
@@ -844,6 +839,10 @@ inline constexpr char kIOSGeminiLiveIntroPlayed[] =
 
 // A boolean specifying whether the Gemini camera permission setting is enabled.
 inline constexpr char kIOSGeminiCameraSetting[] = "ios.gemini.camera.setting";
+
+// A boolean specifying whether the Gemini suggestions setting is enabled.
+inline constexpr char kIOSGeminiSuggestionsSetting[] =
+    "ios.gemini.suggestions.setting";
 
 // A boolean specifying whether the Gemini Live closed captioning setting is
 // enabled.

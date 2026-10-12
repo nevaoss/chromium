@@ -1563,27 +1563,6 @@
       <message name="IDS_IOS_BWG_ASK_GEMINI_ACCESSIBILITY_LABEL" desc="Accessibility label for the direct Gemini entry point button.">
         Ask Gemini
       </message>
-      <message name="IDS_IOS_BWG_CONSENT_FIRST_BOX_TITLE" desc="First box title text for the Gemini Consent page for managed accounts.">
-          Get more relevant answers by sharing your tabs
-      </message>
-      <message name="IDS_IOS_BWG_CONSENT_MANAGED_FIRST_BOX_BODY" desc="First box body text for the Gemini Consent page for managed accounts.">
-          By default, your current tab is shared when you start a new chat. When tabs are shared, their contents and URLs are sent to Google but won’t be used to improve generative AI models. You can change this setting anytime.
-      </message>
-      <message name="IDS_IOS_BWG_CONSENT_MANAGED_SECOND_BOX_BODY" desc="Second box body text for the Gemini Consent page for managed accounts.">
-          Neither your conversations with Gemini nor your <ph name="BEGIN_LINK">BEGIN_LINK</ph>Google Workspace data<ph name="END_LINK">END_LINK</ph> will be reviewed by human reviewers or used to improve generative AI models.
-      </message>
-      <message name="IDS_IOS_BWG_CONSENT_MANAGED_SECOND_BOX_TITLE" desc="Second box title text for the Gemini Consent page for managed accounts.">
-          Your organization's data is private and secure
-      </message>
-      <message name="IDS_IOS_BWG_CONSENT_NON_MANAGED_FIRST_BOX_BODY" desc="First box body text for the Gemini Consent page for non managed accounts.">
-          By default, your current tab is shared when you start a new chat. When tabs are shared, their contents and URLs are sent to Google. You can change this setting anytime.
-      </message>
-      <message name="IDS_IOS_BWG_CONSENT_NON_MANAGED_SECOND_BOX_BODY" desc="Second box body text for the Gemini Consent page for non managed accounts.">
-          Chats are reviewed and used to improve Google AI. <ph name="BEGIN_LINK">BEGIN_LINK</ph>Learn about your choices.<ph name="END_LINK">END_LINK</ph> <ph name="BEGIN_LINK">BEGIN_LINK</ph>Info about your location<ph name="END_LINK">END_LINK</ph> is also stored with your activity.
-      </message>
-      <message name="IDS_IOS_BWG_CONSENT_NON_MANAGED_SECOND_BOX_TITLE" desc="Second box title text for the Gemini Consent page for non managed accounts.">
-          Your activity improves Google AI
-      </message>
       <message name="IDS_IOS_BWG_CONSENT_PRIMARY_BUTTON" desc="Primary button text for the Gemini Consent page.">
           Yes, I'm in
       </message>
@@ -3689,10 +3668,10 @@ To continue from your computer, switch to <ph name="OTHER_EMAIL">$2<ex>john.doe@
         Allow “Gemini” to use your camera
       </message>
       <message name="IDS_IOS_GEMINI_PERMISSION_MICROPHONE_PROMPT_BODY" desc="Text body of the Gemini-specific microphone permission prompt.">
-        This lets you search using your voice
+        This lets you chat with Gemini using your voice
       </message>
       <message name="IDS_IOS_GEMINI_PERMISSION_MICROPHONE_PROMPT_TITLE" desc="Title of the Gemini-specific microphone permission prompt.">
-        “Chrome” would like to access your microphone
+        Allow “Gemini” to use your microphone
       </message>
       <message name="IDS_IOS_GEMINI_PROMO_CAROUSEL_PLANNING_FLOATY_TEXT" desc="Text inside the floaty bubble in the Planning carousel slide animation.">
           Add this to my calendar
@@ -4724,14 +4703,35 @@ To continue from your computer, switch to <ph name="OTHER_EMAIL">$2<ex>john.doe@
           =1 {1 completed task}
           other {# completed tasks}}
       </message>
+      <message name="IDS_IOS_LEVEL_UP_FEATURE_DELETE_BROWSING_DATA" desc="Feature Name for Level Up's Delete browsing data task. [iOS only]">
+        Delete browsing data
+      </message>
+      <message name="IDS_IOS_LEVEL_UP_FEATURE_DELETE_BROWSING_DATA_DESCRIPTION" desc="Description for Level Up's Delete browsing data task. [iOS only]">
+        Manage your history, cookies, and more to protect your privacy
+      </message>
+      <message name="IDS_IOS_LEVEL_UP_FEATURE_ENHANCED_SAFE_BROWSING" desc="Feature name for Level Up's Enhanced Safe Browsing task. [iOS only]">
+        Explore Enhanced Safe Browsing
+      </message>
+      <message name="IDS_IOS_LEVEL_UP_FEATURE_ENHANCED_SAFE_BROWSING_DESCRIPTION" desc="Description for Level Up's Enhanced Safe Browsing task. [iOS only]">
+        Add an extra layer of protection against online threats
+      </message>
       <message name="IDS_IOS_LEVEL_UP_FEATURE_GOOGLE_LENS" desc="Feature name for Google Lens. [iOS only]">
         Google Lens
+      </message>
+      <message name="IDS_IOS_LEVEL_UP_FEATURE_INCOGNITO" desc="Feature name for Level Up's Incognito task. [iOS only]">
+        Go Incognito
+      </message>
+      <message name="IDS_IOS_LEVEL_UP_FEATURE_INCOGNITO_DESCRIPTION" desc="Description for Level Up's Incognito task. [iOS only]">
+        Open tabs in Incognito mode to browse the web more privately
       </message>
       <message name="IDS_IOS_LEVEL_UP_FEATURE_PASSWORDS_AUTOFILL" desc="Feature name for Passwords and Autofill. [iOS only]">
         Passwords and Autofill
       </message>
       <message name="IDS_IOS_LEVEL_UP_FEATURE_PASSWORD_CHECKUP" desc="Feature name for Password checkup. [iOS only]">
-        Password checkup
+        Check your passwords
+      </message>
+      <message name="IDS_IOS_LEVEL_UP_FEATURE_PASSWORD_CHECKUP_DESCRIPTION" desc="Description for Level Up's Password checkup task. [iOS only]">
+        Use Password Checkup to make sure your passwords are secure
       </message>
       <message name="IDS_IOS_LEVEL_UP_FEATURE_TAB_GROUPS" desc="Feature name for Tab Groups. [iOS only]">
         Tab Groups
@@ -4839,11 +4839,14 @@ To continue from your computer, switch to <ph name="OTHER_EMAIL">$2<ex>john.doe@
       <message name="IDS_IOS_LEVEL_UP_TASK_COMPLETED_AUTOFILL" desc="Completion snackbar message for the Autofill task. [iOS only]">
         Passwords and Autofill completed!
       </message>
+      <message name="IDS_IOS_LEVEL_UP_TASK_COMPLETED_DELETE_BROWSING_DATA" desc="Completion snackbar message for the Delete Browsing Data task. [iOS only]">
+        "Delete browsing data" completed!
+      </message>
       <message name="IDS_IOS_LEVEL_UP_TASK_COMPLETED_GEMINI" desc="Completion snackbar message for the Gemini task. [iOS only]">
         Use Gemini in Chrome completed!
       </message>
       <message name="IDS_IOS_LEVEL_UP_TASK_COMPLETED_INCOGNITO" desc="Completion snackbar message for the Incognito task. [iOS only]">
-        Go Incognito completed!
+        "Go Incognito" completed!
       </message>
       <message name="IDS_IOS_LEVEL_UP_TASK_COMPLETED_LENS_CAMERA_SEARCH" desc="Completion snackbar message for the Lens Camera Search task. [iOS only]">
         Search with camera completed!
@@ -4852,7 +4855,7 @@ To continue from your computer, switch to <ph name="OTHER_EMAIL">$2<ex>john.doe@
         Google Lens completed!
       </message>
       <message name="IDS_IOS_LEVEL_UP_TASK_COMPLETED_PASSWORD_CHECKUP" desc="Completion snackbar message for the Password Checkup task. [iOS only]">
-        Password checkup completed!
+        "Check your passwords" completed!
       </message>
       <message name="IDS_IOS_LEVEL_UP_TASK_COMPLETED_PAYMENT_METHODS" desc="Completion snackbar message for the Payment Methods task. [iOS only]">
         Manage payment methods completed!
@@ -4860,11 +4863,8 @@ To continue from your computer, switch to <ph name="OTHER_EMAIL">$2<ex>john.doe@
       <message name="IDS_IOS_LEVEL_UP_TASK_COMPLETED_PIN_TABS" desc="Completion snackbar message for the Pin Tabs task. [iOS only]">
         Pin tabs completed!
       </message>
-      <message name="IDS_IOS_LEVEL_UP_TASK_COMPLETED_QUICK_DELETE" desc="Completion snackbar message for the Quick Delete task. [iOS only]">
-        Quick delete completed!
-      </message>
       <message name="IDS_IOS_LEVEL_UP_TASK_COMPLETED_SAFE_BROWSING" desc="Completion snackbar message for the Safe Browsing task. [iOS only]">
-        Enhanced Safe Browsing completed!
+        "Go Incognito" completed!
       </message>
       <message name="IDS_IOS_LEVEL_UP_TASK_COMPLETED_TAB_GROUPS" desc="Completion snackbar message for the Tab Groups task. [iOS only]">
         Tab Groups completed!
@@ -4924,6 +4924,12 @@ You can restart anytime.
       </message>
       <message name="IDS_IOS_LOCATION_BAR_SIGN_IN" desc="Text shown in the location bar while an HTTP authentication dialog is displayed.">
         Sign in to website
+      </message>
+      <message name="IDS_IOS_LOCATION_SETTINGS_HELP_BUTTON_SETTINGS" desc="Button label directing user to open iOS Settings for geolocation permission.">
+        Settings
+      </message>
+      <message name="IDS_IOS_LOCATION_SETTINGS_HELP_TITLE" desc="Title of alert shown when geolocation permissions/services are disabled in iOS settings.">
+        Location Access Disabled
       </message>
       <message name="IDS_IOS_LOCKDOWN_MODE_FOOTER" desc="Title for Lockdown Mode.">
         When turned on, certain web technologies are blocked, which might cause some websites to load more slowly or not operate correctly.

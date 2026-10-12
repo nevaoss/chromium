@@ -30,10 +30,11 @@
 #include "chrome/browser/contextual_cueing/prefs.h"
 #include "chrome/browser/download/download_prefs.h"
 #include "chrome/browser/engagement/important_sites_util.h"
-#include "chrome/browser/enterprise/reporting/prefs.h"
+#include "components/enterprise/browser/reporting/prefs.h"
 #include "chrome/browser/enterprise/util/managed_browser_utils.h"
 #include "chrome/browser/external_protocol/external_protocol_handler.h"
 #include "chrome/browser/first_run/first_run.h"
+#include "chrome/browser/glic/gemini_enterprise/geic_pref_names.h"
 #include "chrome/browser/glic/glic_pref_names.h"
 #include "chrome/browser/glic/suggestions/contextual_cueing_prefs.h"
 #include "chrome/browser/gpu/gpu_mode_manager.h"
@@ -1009,6 +1010,18 @@ inline constexpr char kPluginVmEngagementTimeDayId[] =
 // Deprecated 09/2026.
 constexpr char kNSSCertsMigratedToServerCertDb[] =
     "certificates.nss_certs_migrated_to_server_cert_db";
+inline constexpr char kHatsLauncherAppsSurveyCycleEndTs[] =
+    "hats_launcher_apps_cycle_end_timestamp";
+inline constexpr char kHatsLauncherAppsSurveyIsSelected[] =
+    "hats_launcher_apps_is_selected";
+inline constexpr char kHatsEntSurveyCycleEndTs[] =
+    "hats_ent_cycle_end_timestamp";
+inline constexpr char kHatsEntDeviceIsSelected[] =
+    "hats_ent_device_is_selected";
+inline constexpr char kHatsOnboardingSurveyCycleEndTs[] =
+    "hats_onboarding_cycle_end_timestamp";
+inline constexpr char kHatsOnboardingDeviceIsSelected[] =
+    "hats_onboarding_device_is_selected";
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
 // Deprecated 09/2026.
@@ -1016,6 +1029,18 @@ inline constexpr char kInvalidationPerSenderRegisteredForInvalidation[] =
     "invalidation.per_sender_registered_for_invalidation";
 inline constexpr char kInvalidationPerSenderActiveRegistrationTokens[] =
     "invalidation.per_sender_active_registration_tokens";
+inline constexpr char kBookmarkEditorExpandedNodes[] =
+    "bookmark_editor.expanded_nodes";
+
+#if BUILDFLAG(IS_CHROMEOS)
+// Deprecated 09/2026.
+inline constexpr char kHatsBorealisGamesSurveyCycleEndTs[] =
+    "hats_borealis_games_end_timestamp";
+inline constexpr char kHatsBorealisGamesSurveyIsSelected[] =
+    "hats_borealis_games_is_selected";
+inline constexpr char kHatsBorealisGamesLastInteractionTimestamp[] =
+    "hats_borealis_games_last_interaction_timestamp";
+#endif  // BUILDFLAG(IS_CHROMEOS)
 
 // Register local state used only for migration (clearing or moving to a new
 // key).
@@ -1391,6 +1416,12 @@ void RegisterProfilePrefsForMigration(
 #if BUILDFLAG(IS_CHROMEOS)
   // Deprecated 09/2026.
   registry->RegisterIntegerPref(kNSSCertsMigratedToServerCertDb, 0);
+  registry->RegisterInt64Pref(kHatsLauncherAppsSurveyCycleEndTs, 0);
+  registry->RegisterBooleanPref(kHatsLauncherAppsSurveyIsSelected, false);
+  registry->RegisterInt64Pref(kHatsEntSurveyCycleEndTs, 0);
+  registry->RegisterBooleanPref(kHatsEntDeviceIsSelected, false);
+  registry->RegisterInt64Pref(kHatsOnboardingSurveyCycleEndTs, 0);
+  registry->RegisterBooleanPref(kHatsOnboardingDeviceIsSelected, false);
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
   // Deprecated 09/2026.
@@ -1398,6 +1429,15 @@ void RegisterProfilePrefsForMigration(
       kInvalidationPerSenderRegisteredForInvalidation);
   registry->RegisterDictionaryPref(
       kInvalidationPerSenderActiveRegistrationTokens);
+  registry->RegisterListPref(kBookmarkEditorExpandedNodes);
+
+#if BUILDFLAG(IS_CHROMEOS)
+  // Deprecated 09/2026.
+  registry->RegisterInt64Pref(kHatsBorealisGamesSurveyCycleEndTs, 0);
+  registry->RegisterBooleanPref(kHatsBorealisGamesSurveyIsSelected, false);
+  registry->RegisterTimePref(kHatsBorealisGamesLastInteractionTimestamp,
+                             base::Time());
+#endif  // BUILDFLAG(IS_CHROMEOS)
 }
 
 }  // namespace
@@ -1785,6 +1825,7 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry,
   enterprise_reporting::RegisterProfilePrefs(registry);
   dom_distiller::DistilledPagePrefs::RegisterProfilePrefs(registry);
   DownloadPrefs::RegisterProfilePrefs(registry);
+  geic::prefs::RegisterProfilePrefs(registry);
   glic::prefs::RegisterProfilePrefs(registry);
   glic::contextual_cueing::prefs::RegisterProfilePrefs(registry);
   permissions::PermissionHatsTriggerHelper::RegisterProfilePrefs(registry);
@@ -2730,11 +2771,30 @@ void MigrateObsoleteProfilePrefs(PrefService* profile_prefs,
 #if BUILDFLAG(IS_CHROMEOS)
   // Added 09/2026.
   profile_prefs->ClearPref(kNSSCertsMigratedToServerCertDb);
+  profile_prefs->ClearPref(kHatsLauncherAppsSurveyCycleEndTs);
+  profile_prefs->ClearPref(kHatsLauncherAppsSurveyIsSelected);
+  profile_prefs->ClearPref(kHatsEntSurveyCycleEndTs);
+  profile_prefs->ClearPref(kHatsEntDeviceIsSelected);
+  profile_prefs->ClearPref(kHatsOnboardingSurveyCycleEndTs);
+  profile_prefs->ClearPref(kHatsOnboardingDeviceIsSelected);
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
   // Added 09/2026.
   profile_prefs->ClearPref(kInvalidationPerSenderRegisteredForInvalidation);
   profile_prefs->ClearPref(kInvalidationPerSenderActiveRegistrationTokens);
+  profile_prefs->ClearPref(kBookmarkEditorExpandedNodes);
+
+#if BUILDFLAG(IS_WIN)
+  // Added 09/2026.
+  CdmPrefServiceHelper::MigrateObsoleteProfilePrefs(profile_prefs);
+#endif  // BUILDFLAG(IS_WIN)
+
+#if BUILDFLAG(IS_CHROMEOS)
+  // Added 09/2026.
+  profile_prefs->ClearPref(kHatsBorealisGamesSurveyCycleEndTs);
+  profile_prefs->ClearPref(kHatsBorealisGamesSurveyIsSelected);
+  profile_prefs->ClearPref(kHatsBorealisGamesLastInteractionTimestamp);
+#endif  // BUILDFLAG(IS_CHROMEOS)
 
   // Please don't delete the following line. It is used by PRESUBMIT.py.
   // END_MIGRATE_OBSOLETE_PROFILE_PREFS

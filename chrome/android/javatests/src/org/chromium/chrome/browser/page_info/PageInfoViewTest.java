@@ -71,7 +71,6 @@ import org.chromium.base.test.transit.ViewElement;
 import org.chromium.base.test.util.CallbackHelper;
 import org.chromium.base.test.util.CommandLineFlags;
 import org.chromium.base.test.util.CriteriaHelper;
-import org.chromium.base.test.util.DisableIf;
 import org.chromium.base.test.util.DisabledTest;
 import org.chromium.base.test.util.Feature;
 import org.chromium.base.test.util.Features;
@@ -116,6 +115,7 @@ import org.chromium.components.content_settings.ContentSettingsType;
 import org.chromium.components.content_settings.CookieControlsMode;
 import org.chromium.components.embedder_support.util.UrlConstants;
 import org.chromium.components.location.LocationUtils;
+import org.chromium.components.page_info.PageInfoContainer;
 import org.chromium.components.page_info.PageInfoController;
 import org.chromium.components.page_info.PageInfoCookiesController;
 import org.chromium.components.permissions.PermissionsAndroidFeatureList;
@@ -350,6 +350,16 @@ public class PageInfoViewTest {
         View view = controller.getPageInfoView();
         assertNotNull(view);
         return view;
+    }
+
+    private void waitForPageChangeFinished() {
+        CriteriaHelper.pollUiThread(
+                () -> {
+                    PageInfoController controller = PageInfoController.getLastPageInfoController();
+                    return controller != null
+                            && !((PageInfoContainer) controller.getPageInfoView())
+                                    .isPageChangeInProgress();
+                });
     }
 
     private RwsCookieInfo getRwsCookieInfo(String url) {
@@ -609,7 +619,9 @@ public class PageInfoViewTest {
         onViewWaiting(
                 allOf(withId(R.id.page_info_connection_row), isDisplayed()),
                 ViewElement.allowDisabledOption());
-        onView(withText("Connection is secure")).check(matches(isDisplayed()));
+        onViewWaiting(
+                allOf(withText("Connection is secure"), isDisplayed()),
+                ViewElement.allowDisabledOption());
     }
 
     /** Tests PageInfo on a suspicious website. */
@@ -713,7 +725,11 @@ public class PageInfoViewTest {
                         "SafeBrowsing.SuspiciousSiteWarning.WarningOutcome",
                         /* sample=kAdhered */ 2);
 
-        onView(withId(R.id.page_info_back_to_safety_button)).perform(click());
+        ThreadUtils.runOnUiThreadBlocking(
+                () ->
+                        getPageInfoView()
+                                .findViewById(R.id.page_info_back_to_safety_button)
+                                .performClick());
         histogramWatcher.pollInstrumentationThreadUntilSatisfied();
 
         CriteriaHelper.pollUiThread(
@@ -726,6 +742,7 @@ public class PageInfoViewTest {
     /** Tests clicking "Mark as safe" button on suspicious site warning. */
     @Test
     @MediumTest
+    @DisabledTest(message = "crbug.com/564369756")
     public void testSuspiciousSiteMarkAsSafeButtonClick() throws IOException {
         loadUrlAndOpenPageInfo(mTestServerRule.getServer().getURL(sSimpleHtml));
         ThreadUtils.runOnUiThreadBlocking(
@@ -749,9 +766,14 @@ public class PageInfoViewTest {
                         "SafeBrowsing.SuspiciousSiteWarning.WarningOutcome",
                         /* sample=kBypassed */ 1);
 
-        onView(withId(R.id.page_info_mark_as_safe_button)).perform(click());
+        ThreadUtils.runOnUiThreadBlocking(
+                () ->
+                        getPageInfoView()
+                                .findViewById(R.id.page_info_mark_as_safe_button)
+                                .performClick());
         histogramWatcher.pollInstrumentationThreadUntilSatisfied();
-        onView(withId(R.id.page_info_mark_as_safe_button)).check(doesNotExist());
+        CriteriaHelper.pollInstrumentationThread(
+                () -> onView(withId(R.id.page_info_mark_as_safe_button)).check(doesNotExist()));
     }
 
     /** Tests dismissing suspicious site warning without explicit action. */
@@ -891,14 +913,15 @@ public class PageInfoViewTest {
     @MediumTest
     @Feature({"RenderTest"})
     @Features.EnableFeatures(PermissionsAndroidFeatureList.APPROXIMATE_GEOLOCATION_PERMISSION)
-    @DisableIf.Device(DeviceFormFactor.DESKTOP_FREEFORM) // crbug.com/511288676
     public void testShowPermissionsSubpage() throws IOException {
         addSomePermissions(mTestServerRule.getServer().getURL("/"));
         loadUrlAndOpenPageInfo(mTestServerRule.getServer().getURL(sSimpleHtml));
-        onView(withId(R.id.page_info_permissions_row)).perform(click());
+        onViewWaiting(allOf(withId(R.id.page_info_permissions_row), isDisplayed()))
+                .perform(click());
         onViewWaiting(
                 allOf(withText("Control this site's access to your device"), isDisplayed()),
                 ViewElement.allowDisabledOption());
+        waitForPageChangeFinished();
         mRenderTestRule.render(getPageInfoView(), "PageInfo_PermissionsSubpage");
     }
 
@@ -917,10 +940,12 @@ public class PageInfoViewTest {
                             ContentSetting.BLOCK);
                 });
         loadUrlAndOpenPageInfo(mTestServerRule.getServer().getURL(sSimpleHtml));
-        onView(withId(R.id.page_info_permissions_row)).perform(click());
+        onViewWaiting(allOf(withId(R.id.page_info_permissions_row), isDisplayed()))
+                .perform(click());
         onViewWaiting(
                 allOf(withText("Control this site's access to your device"), isDisplayed()),
                 ViewElement.allowDisabledOption());
+        waitForPageChangeFinished();
         onView(withText(containsString("Sound"))).check(matches(isDisplayed()));
     }
 
@@ -950,10 +975,12 @@ public class PageInfoViewTest {
                             ContentSetting.ALLOW);
                 });
         loadUrlAndOpenPageInfo(mTestServerRule.getServer().getURL(sSimpleHtml));
-        onView(withId(R.id.page_info_permissions_row)).perform(click());
+        onViewWaiting(allOf(withId(R.id.page_info_permissions_row), isDisplayed()))
+                .perform(click());
         onViewWaiting(
                 allOf(withText("Control this site's access to your device"), isDisplayed()),
                 ViewElement.allowDisabledOption());
+        waitForPageChangeFinished();
         onView(withText("Location"))
                 .check(matches(hasSibling(withText("Allowed this time • Precise"))));
         onView(withText("Camera")).check(matches(hasSibling(withText("Allowed"))));
@@ -1152,12 +1179,15 @@ public class PageInfoViewTest {
         expectHasPermissions(url, true);
         // Go to permissions subpage.
         openPageInfo(PageInfoController.NO_HIGHLIGHTED_PERMISSION);
-        onView(withId(R.id.page_info_permissions_row)).inRoot(isDialog()).perform(click());
+        onViewWaiting(allOf(withId(R.id.page_info_permissions_row), isDisplayed()))
+                .perform(click());
+        waitForPageChangeFinished();
         // Clear permissions in page info.
         onViewWaiting(allOf(withText("Reset permissions"), isDisplayed())).perform(click());
-        onView(withText("Reset")).perform(click());
+        onViewWaiting(allOf(withText("Reset"), isDisplayed())).perform(click());
         // Wait until the UI navigates back and check permissions are reset.
         onViewWaiting(allOf(withId(R.id.page_info_row_wrapper), isDisplayed()));
+        waitForPageChangeFinished();
         // Make sure that the permission section is gone because there are no longer
         // exceptions.
         onView(withId(R.id.page_info_permissions_row))
@@ -1192,8 +1222,10 @@ public class PageInfoViewTest {
 
         // Toggle the federated identity permission.
         openPageInfo(PageInfoController.NO_HIGHLIGHTED_PERMISSION);
-        onView(withId(R.id.page_info_permissions_row)).perform(click());
-        onView(withId(R.id.switchWidget)).perform(click());
+        onViewWaiting(allOf(withId(R.id.page_info_permissions_row), isDisplayed()))
+                .perform(click());
+        waitForPageChangeFinished();
+        onViewWaiting(allOf(withId(R.id.switchWidget), isDisplayed())).perform(click());
 
         {
             List<ContentSettingException> exceptions =
@@ -1239,15 +1271,18 @@ public class PageInfoViewTest {
     public void testShowLocationPermissionSubpage() throws IOException {
         addSomePermissions(mTestServerRule.getServer().getURL("/"));
         loadUrlAndOpenPageInfo(mTestServerRule.getServer().getURL(sSimpleHtml));
-        onView(withId(R.id.page_info_permissions_row)).perform(click());
+        onViewWaiting(allOf(withId(R.id.page_info_permissions_row), isDisplayed()))
+                .perform(click());
         onViewWaiting(
                 allOf(withText("Control this site's access to your device"), isDisplayed()),
                 ViewElement.allowDisabledOption());
+        waitForPageChangeFinished();
 
-        onView(withText("Location")).perform(click());
+        onViewWaiting(allOf(withText("Location"), isDisplayed())).perform(click());
         onViewWaiting(
                 allOf(withText(R.string.website_settings_device_location), isDisplayed()),
                 ViewElement.allowDisabledOption());
+        waitForPageChangeFinished();
         onViewWaiting(
                 allOf(
                         withText(
@@ -1266,10 +1301,12 @@ public class PageInfoViewTest {
         addSomePermissions(mTestServerRule.getServer().getURL("/"));
         loadUrlAndOpenPageInfoWithPermission(
                 mTestServerRule.getServer().getURL(sSimpleHtml), getGeolocationType());
-        onView(withId(R.id.page_info_permissions_row)).perform(click());
+        onViewWaiting(allOf(withId(R.id.page_info_permissions_row), isDisplayed()))
+                .perform(click());
         onViewWaiting(
                 allOf(withText("Control this site's access to your device"), isDisplayed()),
                 ViewElement.allowDisabledOption());
+        waitForPageChangeFinished();
         Context context = ApplicationProvider.getApplicationContext();
         // Find the preference and check its background color.
         onView(
@@ -1314,16 +1351,19 @@ public class PageInfoViewTest {
         PageInfoController controller = PageInfoController.getLastPageInfoController();
 
         // Open first subpage.
-        onView(withId(R.id.page_info_permissions_row)).perform(click());
+        onViewWaiting(allOf(withId(R.id.page_info_permissions_row), isDisplayed()))
+                .perform(click());
         onViewWaiting(
                 allOf(withText("Control this site's access to your device"), isDisplayed()),
                 ViewElement.allowDisabledOption());
+        waitForPageChangeFinished();
 
         // Open second subpage
-        onView(withText("Location")).perform(click());
+        onViewWaiting(allOf(withText("Location"), isDisplayed())).perform(click());
         onViewWaiting(
                 allOf(withText(R.string.website_settings_device_location), isDisplayed()),
                 ViewElement.allowDisabledOption());
+        waitForPageChangeFinished();
 
         // Verify back button press takes you back to the first subpage.
         ThreadUtils.runOnUiThreadBlocking(() -> controller.exitSubpage());

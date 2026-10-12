@@ -547,6 +547,32 @@ IN_PROC_BROWSER_TEST_F(
 
 IN_PROC_BROWSER_TEST_F(
     TabStripCollectionControllerTabGroupFocusingInteractiveUiTest,
+    TemporaryGroupDoesNotUpdateTheme) {
+  RunTestSequence(
+      // Verify Vertical Tabs is showing.
+      WaitForShow(kNewTabButtonElementId),
+      // Create a second tab.
+      EnsurePresent(kNewTabButtonElementId),
+      PressButton(kNewTabButtonElementId,
+                  ui::test::InteractionTestUtil::InputType::kDontCare),
+      Do([this]() {
+        EXPECT_FALSE(CheckBrowserHasColorOverride());
+        const tab_groups::TabGroupId temp_group =
+            browser()->GetTabStripModel()->AddToNewGroup({0, 1},
+                                                         /*is_temporary=*/true);
+
+        // Focus on the temporary group, which should not override the color.
+        browser()->GetTabStripModel()->SetFocusedGroup(temp_group);
+        EXPECT_FALSE(CheckBrowserHasColorOverride());
+
+        // Unset focused group, which should remain without color override.
+        browser()->GetTabStripModel()->SetFocusedGroup(std::nullopt);
+        EXPECT_FALSE(CheckBrowserHasColorOverride());
+      }));
+}
+
+IN_PROC_BROWSER_TEST_F(
+    TabStripCollectionControllerTabGroupFocusingInteractiveUiTest,
     UnfocusButtonShowsWhenGroupFocused) {
   RunTestSequence(
       // Verify Vertical Tabs is showing.
@@ -631,6 +657,27 @@ IN_PROC_BROWSER_TEST_F(
 
                     chrome::FocusPreviousTabGroup(browser());
                     EXPECT_EQ(model->GetFocusedGroup(), group1);
+                  }));
+}
+
+IN_PROC_BROWSER_TEST_F(
+    TabStripCollectionControllerTabGroupFocusingInteractiveUiTest,
+    FocusNextAndPreviousTabGroup_TemporaryGroup) {
+  RunTestSequence(WaitForShow(kNewTabButtonElementId),
+                  PressButton(kNewTabButtonElementId), Do([&]() {
+                    TabStripModel* model = browser()->GetTabStripModel();
+                    ASSERT_EQ(model->count(), 2);
+                    model->AddToNewGroup({0});
+                    tab_groups::TabGroupId temp_group =
+                        model->AddToNewGroup({1}, /*is_temporary=*/true);
+                    model->SetFocusedGroup(temp_group);
+                    EXPECT_EQ(model->GetFocusedGroup(), temp_group);
+
+                    chrome::FocusNextTabGroup(browser());
+                    EXPECT_EQ(model->GetFocusedGroup(), temp_group);
+
+                    chrome::FocusPreviousTabGroup(browser());
+                    EXPECT_EQ(model->GetFocusedGroup(), temp_group);
                   }));
 }
 

@@ -5,11 +5,13 @@
 #ifndef EXTENSIONS_BROWSER_MIME_HANDLER_MIME_HANDLER_STREAM_MANAGER_H_
 #define EXTENSIONS_BROWSER_MIME_HANDLER_MIME_HANDLER_STREAM_MANAGER_H_
 
+#include <cstdint>
 #include <map>
 #include <memory>
 #include <optional>
 
 #include "base/containers/flat_map.h"
+#include "base/gtest_prod_util.h"
 #include "base/memory/weak_ptr.h"
 #include "base/scoped_observation.h"
 #include "content/public/browser/web_contents_observer.h"
@@ -126,10 +128,13 @@ class MimeHandlerStreamManager
   // navigating to another handled URL before the original `StreamContainer` is
   // claimed.
   // `delegate` must not be null.
+  // `navigation_id` must identify the navigation whose intercepted response
+  // created the stream.
   void AddStreamContainer(content::FrameTreeNodeId frame_tree_node_id,
                           const std::string& internal_id,
                           std::unique_ptr<StreamContainer> stream_container,
-                          std::unique_ptr<MimeHandlerStreamDelegate> delegate);
+                          std::unique_ptr<MimeHandlerStreamDelegate> delegate,
+                          int64_t navigation_id);
 
   // Returns a pointer to a stream container that `embedder_host` has claimed or
   // nullptr if `embedder_host` hasn't claimed any stream containers.
@@ -338,6 +343,12 @@ class MimeHandlerStreamManager
 
  private:
   friend class content::WebContentsUserData<MimeHandlerStreamManager>;
+  FRIEND_TEST_ALL_PREFIXES(
+      MimeHandlerStreamManagerTest,
+      UncommittedNavigationErasesOnlyItsOwnUnclaimedStream);
+  FRIEND_TEST_ALL_PREFIXES(
+      MimeHandlerStreamManagerTest,
+      ReadyToCommitNavigationDoesNotClaimDifferentNavigationsStream);
   WEB_CONTENTS_USER_DATA_KEY_DECL();
 
   using StreamInfoMap =

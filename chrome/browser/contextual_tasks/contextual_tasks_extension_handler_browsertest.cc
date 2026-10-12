@@ -42,6 +42,7 @@
 #include "mojo/public/cpp/bindings/remote.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
+#include "third_party/lens_server_proto/search_communication.pb.h"
 #include "third_party/omnibox_proto/chrome_aim_entry_point.pb.h"
 #include "ui/base/unowned_user_data/user_data_factory.h"
 
@@ -434,6 +435,88 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksExtensionHandlerBrowserTest,
   run_loop.Run();
 
   static_cast<searchbox::mojom::PageHandler*>(handler_)->DeleteTabContext(1);
+}
+
+IN_PROC_BROWSER_TEST_F(ContextualTasksExtensionHandlerBrowserTest,
+                       TwoFramesResolveSameInputStateModel) {
+  base::Uuid task_id = base::Uuid::GenerateRandomV4();
+  handler_->SetTaskId(task_id);
+
+  auto model1 = handler_->GetOrCreateInputStateModelForTesting();
+  ASSERT_TRUE(model1);
+
+  // Set a lens crop through the primary handler.
+  handler_->OnLensThumbnailCreatedForTesting("data:image/png;base64,test_crop");
+
+  // Create a child iframe representing the lens chip extension frame.
+  ASSERT_TRUE(
+      content::ExecJs(web_contents_,
+                      "const iframe = document.createElement('iframe'); "
+                      "document.body.appendChild(iframe);"));
+  content::RenderFrameHost* child_rfh =
+      content::ChildFrameAt(web_contents_->GetPrimaryMainFrame(), 0);
+  ASSERT_NE(child_rfh, nullptr);
+
+  ContextualTasksExtensionHandler::CreateForCurrentDocument(child_rfh);
+  auto* child_handler =
+      ContextualTasksExtensionHandler::GetForCurrentDocument(child_rfh);
+  ASSERT_NE(child_handler, nullptr);
+
+  // Both handlers must resolve the same InputStateModel instance even though
+  // the child handler does not have task_id set.
+  auto model2 = child_handler->GetOrCreateInputStateModelForTesting();
+  ASSERT_TRUE(model2);
+  EXPECT_EQ(model1.get(), model2.get());
+
+  // Verify child handler can read the crop via GetLensCropPreview.
+  ASSERT_TRUE(model1->lens_crop().has_value());
+  std::string data_id = model1->lens_crop()->data_id;
+
+  base::RunLoop run_loop;
+  child_handler->GetLensCropPreview(
+      data_id, base::BindLambdaForTesting(
+                   [&](const std::optional<std::string>& data_uri) {
+                     ASSERT_TRUE(data_uri.has_value());
+                     EXPECT_EQ("data:image/png;base64,test_crop", *data_uri);
+                     run_loop.Quit();
+                   }));
+  run_loop.Run();
+}
+
+IN_PROC_BROWSER_TEST_F(
+    ContextualTasksExtensionHandlerBrowserTest,
+    OnWebviewMessage_SearchToClientMessageHandshakeResponse) {
+  base::RunLoop run_loop;
+  EXPECT_CALL(mock_page_, OnHandshakeComplete())
+      .WillOnce(base::test::RunClosure(run_loop.QuitClosure()));
+  EXPECT_CALL(*mock_controller_, SetAuthUserIndex(2));
+
+  lens::SearchToClientMessage message;
+  message.mutable_handshake_response()->set_auth_user_index(2);
+  const size_t size = message.ByteSizeLong();
+  std::vector<uint8_t> serialized_message(size);
+  message.SerializeToArray(serialized_message.data(), size);
+
+  handler_->OnWebviewMessage(serialized_message);
+  run_loop.Run();
+
+  EXPECT_EQ(mock_session_handle_->auth_user_index(), 2u);
+}
+
+IN_PROC_BROWSER_TEST_F(ContextualTasksExtensionHandlerBrowserTest,
+                       OnWebviewMessage_AimToClientMessageHandshakeResponse) {
+  base::RunLoop run_loop;
+  EXPECT_CALL(mock_page_, OnHandshakeComplete())
+      .WillOnce(base::test::RunClosure(run_loop.QuitClosure()));
+
+  lens::AimToClientMessage message;
+  message.mutable_handshake_response();
+  const size_t size = message.ByteSizeLong();
+  std::vector<uint8_t> serialized_message(size);
+  message.SerializeToArray(serialized_message.data(), size);
+
+  handler_->OnWebviewMessage(serialized_message);
+  run_loop.Run();
 }
 
 }  // namespace contextual_tasks

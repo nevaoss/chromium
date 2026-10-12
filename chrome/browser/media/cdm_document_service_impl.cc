@@ -230,8 +230,8 @@ GetMediaFoundationCdmDataInternal(const base::FilePath profile_path,
     return nullptr;
   }
 
-  return std::make_unique<media::MediaFoundationCdmData>(
-      pref_data->origin_id(), pref_data->client_token(), cdm_store_path_root);
+  return std::make_unique<media::MediaFoundationCdmData>(pref_data->origin_id(),
+                                                         cdm_store_path_root);
 }
 #endif  // BUILDFLAG(IS_WIN)
 
@@ -260,6 +260,7 @@ CdmDocumentServiceImpl::~CdmDocumentServiceImpl() {
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
 }
 
+#if BUILDFLAG(IS_CHROMEOS)
 void CdmDocumentServiceImpl::ChallengePlatform(
     const std::string& service_id,
     const std::string& challenge,
@@ -267,10 +268,6 @@ void CdmDocumentServiceImpl::ChallengePlatform(
   DVLOG(2) << __func__;
   DCHECK_CURRENTLY_ON(content::BrowserThread::UI);
 
-  // TODO(crbug.com/40499115). This should be commented out at the mojom
-  // level so that it's only available for ChromeOS.
-
-#if BUILDFLAG(IS_CHROMEOS)
   bool success = platform_verification::PerformBrowserChecks(
       render_frame_host().GetMainFrame());
   if (!success) {
@@ -287,13 +284,8 @@ void CdmDocumentServiceImpl::ChallengePlatform(
       service_id, challenge,
       base::BindOnce(&CdmDocumentServiceImpl::OnPlatformChallenged,
                      weak_factory_.GetWeakPtr(), std::move(callback)));
-#else
-  // Not supported, so return failure.
-  std::move(callback).Run(false, std::string(), std::string(), std::string());
-#endif  // BUILDFLAG(IS_CHROMEOS)
 }
 
-#if BUILDFLAG(IS_CHROMEOS)
 void CdmDocumentServiceImpl::OnPlatformChallenged(
     ChallengePlatformCallback callback,
     PlatformVerificationResult result,
@@ -403,20 +395,6 @@ void CdmDocumentServiceImpl::GetMediaFoundationCdmData(
       base::BindOnce(&GetMediaFoundationCdmDataInternal, profile->GetPath(),
                      std::move(pref_data)),
       std::move(callback));
-}
-
-void CdmDocumentServiceImpl::SetCdmClientToken(
-    const std::vector<uint8_t>& client_token) {
-  const url::Origin cdm_origin = origin();
-  if (cdm_origin.opaque()) {
-    mojo::ReportBadMessage("EME use is not allowed on opaque origin");
-    return;
-  }
-
-  PrefService* user_prefs =
-      Profile::FromBrowserContext(render_frame_host().GetBrowserContext())
-          ->GetPrefs();
-  CdmPrefServiceHelper::SetCdmClientToken(user_prefs, cdm_origin, client_token);
 }
 
 void CdmDocumentServiceImpl::OnCdmEvent(media::CdmEvent event,

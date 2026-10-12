@@ -189,6 +189,22 @@ class HelpMenuModel : public ui::SimpleMenuModel {
   void Build(BrowserWindowInterface* browser);
 };
 
+class SkillsMenuModel : public ui::SimpleMenuModel {
+ public:
+  DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(kManageSkillsMenuItem);
+  DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(kBrowseSkillsMenuItem);
+
+  SkillsMenuModel(ui::SimpleMenuModel::Delegate* delegate);
+
+  SkillsMenuModel(const SkillsMenuModel&) = delete;
+  SkillsMenuModel& operator=(const SkillsMenuModel&) = delete;
+
+  ~SkillsMenuModel() override;
+
+ private:
+  void Build();
+};
+
 // A menu model that builds the contents of the app menu.
 class AppMenuModel : public ui::SimpleMenuModel,
                      public user_education::HighlightingSimpleMenuModelDelegate,
@@ -201,6 +217,7 @@ class AppMenuModel : public ui::SimpleMenuModel,
   DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(kDownloadsMenuItem);
   DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(kHistoryMenuItem);
   DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(kExtensionsMenuItem);
+  DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(kSkillsMenuItem);
   DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(kClearBrowsingDataMenuItem);
   DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(kMoreToolsMenuItem);
   DECLARE_CLASS_ELEMENT_IDENTIFIER_VALUE(kIncognitoMenuItem);
@@ -229,6 +246,7 @@ class AppMenuModel : public ui::SimpleMenuModel,
   static constexpr int kProfileMenuPlaceholder = IDC_PROFILE_MENU_IN_APP_MENU;
   static constexpr int kReadingListMenuPlaceholder = IDC_READING_LIST_MENU;
   static constexpr int kExtensionsSubmenuPlaceholder = IDC_EXTENSIONS_SUBMENU;
+  static constexpr int kSkillsMenuPlaceholder = IDC_SKILLS_MENU;
   static constexpr int kBookmarksMenuPlaceholder = IDC_BOOKMARKS_MENU;
   static constexpr int kSavedTabGroupsMenuPlaceholder =
       IDC_SAVED_TAB_GROUPS_MENU;
@@ -258,6 +276,14 @@ class AppMenuModel : public ui::SimpleMenuModel,
   // is currently running in the given browser.
   static AlertMenuItem GetAlertItemForRunningTutorial(
       BrowserWindowInterface* browser);
+
+  // Conditionally return the update app menu item title based on upgrade
+  // detector state.
+  static std::u16string GetUpgradeDialogTitleText();
+
+  // Conditionally return the update app menu item substring text based on
+  // upgrade detector state.
+  static std::u16string GetUpgradeDialogSubstringText();
 
   // Creates an app menu model for the given browser. Init() must be called
   // before passing this to an AppMenu. |app_menu_icon_controller|, if provided,

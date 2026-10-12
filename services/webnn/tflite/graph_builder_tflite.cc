@@ -17,6 +17,7 @@
 
 #include "base/auto_reset.h"
 #include "base/command_line.h"
+#include "base/containers/extend.h"
 #include "base/containers/fixed_flat_set.h"
 #include "base/containers/span.h"
 #include "base/feature_list.h"
@@ -1326,6 +1327,11 @@ auto GraphBuilderTflite::SerializeInputTensorInfo(
       ASSIGN_OR_RETURN(OperatorOffset operator_offset,
                        SerializeDequantizeLinear(dequantize_op));
       operators_.emplace_back(operator_offset);
+      // `SerializeDequantizeLinear` may have queued a cast for a float16 graph
+      // output, and the operation being serialized right now is a consumer of
+      // that output, so the cast cannot wait for the flush at the end of
+      // `SerializeOperation`.
+      FlushGraphOutputCastOperators();
       serialized = true;
     }
     if (fuse_dequantize) {
@@ -1468,10 +1474,14 @@ auto GraphBuilderTflite::SerializeOutputTensorInfo(
   return output_tensor_info;
 }
 
+void GraphBuilderTflite::FlushGraphOutputCastOperators() {
+  base::Extend(operators_, std::move(graph_output_cast_operators_));
+}
+
 base::expected<void, std::string> GraphBuilderTflite::SerializeOperation(
     const mojom::Operation& op,
     OperationId operation_index) {
-  OperatorOffset operator_offset;
+  std::optional<OperatorOffset> operator_offset;
   switch (op.which()) {
     case mojom::Operation::Tag::kArgMinMax: {
       ASSIGN_OR_RETURN(operator_offset,
@@ -1707,9 +1717,11 @@ base::expected<void, std::string> GraphBuilderTflite::SerializeOperation(
       break;
     }
   }
-  if (!operator_offset.IsNull()) {
-    operators_.emplace_back(operator_offset);
+  if (operator_offset.has_value()) {
+    operators_.emplace_back(*operator_offset);
   }
+
+  FlushGraphOutputCastOperators();
 
   return base::ok();
 }
@@ -1799,7 +1811,11 @@ bool GraphBuilderTflite::RequiresFloat32Precision(const mojom::Operation& op) {
       input_operand_id = op.get_cumulative_sum()->input_operand_id;
       break;
     case mojom::Operation::Tag::kDequantizeLinear:
-      input_operand_id = op.get_dequantize_linear()->input_operand_id;
+      // `dequantizeLinear` consumes an integer type and *produces* the
+      // float, so its input data type can never be float32 and says nothing
+      // about the precision the graph needs. Check the output instead, whose
+      // data type matches the scale operand.
+      input_operand_id = op.get_dequantize_linear()->output_operand_id;
       break;
     case mojom::Operation::Tag::kElementWiseBinary:
       input_operand_id = op.get_element_wise_binary()->lhs_operand_id;
@@ -3282,11 +3298,13 @@ auto GraphBuilderTflite::FinishAndTakeResult(
                          std::back_inserter(output_name_to_descriptor),
                          get_name_and_index);
 
-  // Insert the cast operator for the graph output operand after the unsupported
-  // float16 inference operation.
-  for (auto cast_operator_offset : graph_output_cast_operators_) {
-    operators_.emplace_back(cast_operator_offset);
-  }
+  // `SerializeOperation` flushes these casts as it goes, so anything left here
+  // was queued by a caller that bypasses it, such as the trailing
+  // `dequantizeLinear` serialization in `CreateAndBuild`. Those operands are
+  // graph outputs with no further consumers (any operation that consumed one
+  // would have marked it serialized in `SerializeInputTensorInfo`), so the end
+  // of the graph is a correct position for their casts.
+  FlushGraphOutputCastOperators();
 
   // Create `tflite::SubGraph`, which typically represents an entire model.
   // The inputs of subgraph are the list of non-static tensors that feed into
@@ -4582,12 +4600,18 @@ auto GraphBuilderTflite::SerializeClamp(const mojom::Clamp& clamp)
 }
 
 auto GraphBuilderTflite::SerializeConcat(const mojom::Concat& concat)
-    -> base::expected<OperatorOffset, std::string> {
+    -> base::expected<std::optional<OperatorOffset>, std::string> {
   CHECK(std::ranges::all_of(
       concat.input_operand_ids, [&](OperandId input_operand_id) {
         return context_properties_.data_type_limits.concat_inputs.Supports(
             GetOperand(input_operand_id).descriptor);
       }));
+
+  // A concat of a single operand is an identity.
+  if (concat.input_operand_ids.size() == 1) {
+    return SerializeIdentityOperation(concat.input_operand_ids[0],
+                                      concat.output_operand_id);
+  }
 
   ASSIGN_OR_RETURN(std::optional<TensorInfo> quantized_output,
                    CanFuseQuantizeAndGetOutput(concat));
@@ -5406,7 +5430,7 @@ auto GraphBuilderTflite::SerializeElementWiseBinary(
 
 auto GraphBuilderTflite::SerializeElementWiseUnary(
     const mojom::ElementWiseUnary& op)
-    -> base::expected<OperatorOffset, std::string> {
+    -> base::expected<std::optional<OperatorOffset>, std::string> {
   // Elide identity no-ops (or use a reshape pass-through for graph outputs).
   if (op.kind == mojom::ElementWiseUnary::Kind::kIdentity) {
     CHECK(context_properties_.data_type_limits.identity_input.Supports(
@@ -7781,7 +7805,7 @@ auto GraphBuilderTflite::TransposeAndReshapeLayerNormalizationScaleBias(
 
 auto GraphBuilderTflite::SerializeIdentityOperation(OperandId input_operand_id,
                                                     OperandId output_operand_id)
-    -> base::expected<OperatorOffset, std::string> {
+    -> base::expected<std::optional<OperatorOffset>, std::string> {
   ASSIGN_OR_RETURN(
       const TensorInfo input_tensor_info,
       SerializeInputTensorInfo(input_operand_id, /*quantize_params=*/0,
@@ -7801,8 +7825,8 @@ auto GraphBuilderTflite::SerializeIdentityOperation(OperandId input_operand_id,
   // Intermediate tensors are elided by redirecting the output operand to the
   // input tensor.
   operand_to_tensor_info_map_[output_operand_id] = input_tensor_info;
-  // No TFLite operator created for intermediate Identity operations.
-  return OperatorOffset{};  // null
+  // No TFLite operator is created for an intermediate identity operation.
+  return std::nullopt;
 }
 
 auto GraphBuilderTflite::SerializeInstanceNormalization(
@@ -9315,11 +9339,20 @@ auto GraphBuilderTflite::SerializeDequantizeLinear(
 
   // TODO(crbug.com/375614289): Support constant input after TFLite runtime fix
   // the issue https://github.com/tensorflow/tensorflow/issues/78748.
+  //
+  // int4 is excluded on GPU only: ML Drift has no runtime 4-bit tensor path,
+  // so a non-constant 4-bit DEQUANTIZE crashes it. Fall through to the
+  // emulation below, which is what constant int4 inputs already use. The CPU
+  // DEQUANTIZE kernel dequantizes int4 natively, so keep the fused op there.
+  const bool is_int4_on_gpu =
+      context_device_ == mojom::Device::kGpu &&
+      input_operand.descriptor.data_type() == OperandDataType::kInt4;
   if (quantize_params &&
       !IsSerializedWithMismatchQuantizeParameters(
           dequantize_linear.input_operand_id, *quantize_params) &&
       input_operand.kind != mojom::Operand::Kind::kConstant &&
-      input_operand.descriptor.data_type() != OperandDataType::kInt32) {
+      input_operand.descriptor.data_type() != OperandDataType::kInt32 &&
+      !is_int4_on_gpu) {
     ASSIGN_OR_RETURN(const TensorInfo& input_tensor_info,
                      SerializeInputTensorInfo(
                          dequantize_linear.input_operand_id, *quantize_params));
@@ -9828,7 +9861,7 @@ auto GraphBuilderTflite::SerializeReshape(const mojom::Reshape& reshape)
 }
 
 auto GraphBuilderTflite::SerializeReverse(const mojom::Reverse& reverse)
-    -> base::expected<OperatorOffset, std::string> {
+    -> base::expected<std::optional<OperatorOffset>, std::string> {
   // Elide no-op reverse (or use a reshape pass-through for graph outputs).
   if (reverse.axes.empty()) {
     CHECK(context_properties_.data_type_limits.reverse_input.Supports(

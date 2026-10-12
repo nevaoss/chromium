@@ -204,6 +204,7 @@ MEDIA_EXPORT BASE_DECLARE_FEATURE(kGlobalMediaControlsAutoDismiss);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kGlobalMediaControlsSaveVideoFrame);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kGlobalMediaControlsSeamlessTransfer);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kGlobalVaapiLock);
+MEDIA_EXPORT BASE_DECLARE_FEATURE(kHardenUrlProvisionFetcher);
 // When enabled, H.264 keyframe detection becomes stricter for samples whose avc
 // config does not provide SPS/PPS. In that case, an IDR alone is not
 // sufficient, SPS+PPS must appear in-band to mark it as a keyframe.
@@ -257,12 +258,14 @@ MEDIA_EXPORT BASE_DECLARE_FEATURE(kMediaPowerExperiment);
 // around hardware decoders that don't handle non-IDR keyframes (some older
 // Intel/AMD devices mishandle SEI + SPS/PPS); see https://crbug.com/451536366.
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kMediaSourceSeiRecoveryPointKeyframe);
-MEDIA_EXPORT BASE_DECLARE_FEATURE(kMediaStreamAccurateDroppedFrameCount);
 // If enabled, chrome would inform Glic once it starts trasncribing, if Glic
 // requested to be informed.
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kMediaTrasncriptsFlagInPageMetadata);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kOnDeviceWebSpeech);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kOnDeviceWebSpeechGeminiNano);
+// Kill switch for requiring sticky activation in SpeechRecognition.install()
+// for relaxed model downloads.
+MEDIA_EXPORT BASE_DECLARE_FEATURE(kOnDeviceWebSpeechRequiresStickyActivation);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kOnDeviceWebSpeechSmallExpertModel);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(
     kOnDeviceWebSpeechSmallExpertModelMultiLanguage);
@@ -308,7 +311,6 @@ MEDIA_EXPORT BASE_DECLARE_FEATURE(kWebCodecsDecoderFlushOptimizations);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kWebCodecsVideoEncoderFrameDrop);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kWebRTCColorAccuracy);
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kWebRTCHardwareVideoEncoderFrameDrop);
-MEDIA_EXPORT BASE_DECLARE_FEATURE(kWebRTCLogColorSpace);
 // When enabled, input audio processing in the audio process may use an ML-based
 // residual echo estimator instead of the default heuristics, when applying
 // WebRTC echo cancellation.
@@ -336,6 +338,11 @@ MEDIA_EXPORT BASE_DECLARE_FEATURE(kChromeWideEchoCancellation);
 // When enabled, input audio processing in the audio process may use an ML-based
 // voice isolation denoiser.
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kWebRtcVoiceIsolationDenoiser);
+// When enabled, VoiceIsolationHandler uses a dedicated ProcessingAudioFifo to
+// run voice isolation on its own real-time processing thread.
+MEDIA_EXPORT BASE_DECLARE_FEATURE(kWebRtcVoiceIsolationProcessingFifo);
+MEDIA_EXPORT extern const base::FeatureParam<int>
+    kWebRtcVoiceIsolationProcessingFifoSize;
 #endif  // BUILDFLAG(CHROME_WIDE_ECHO_CANCELLATION)
 
 #if BUILDFLAG(ENABLE_HEVC_PARSER_AND_HW_DECODER)
@@ -362,9 +369,9 @@ MEDIA_EXPORT BASE_DECLARE_FEATURE(kPlatformHEVCDecoderSupport);
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_APPLE) || BUILDFLAG(IS_ANDROID)
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kPlatformHEVCEncoderSupport);
 #endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_APPLE) || BUILDFLAG(IS_ANDROID)
-#if BUILDFLAG(IS_APPLE)
+#if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_APPLE)
 MEDIA_EXPORT BASE_DECLARE_FEATURE(kPlatformHEVCHbdEncoderSupport);
-#endif  // BUILDFLAG(IS_APPLE)
+#endif  // BUILDFLAG(IS_WIN) || BUILDFLAG(IS_APPLE)
 #endif  // BUILDFLAG(ENABLE_PLATFORM_HEVC)
 
 #if BUILDFLAG(ENABLE_SYMPHONIA)

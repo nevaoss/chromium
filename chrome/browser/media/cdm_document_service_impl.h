@@ -38,9 +38,11 @@ class CdmDocumentServiceImpl final
       mojo::PendingReceiver<media::mojom::CdmDocumentService> receiver);
 
   // media::mojom::CdmDocumentService implementation.
+#if BUILDFLAG(IS_CHROMEOS)
   void ChallengePlatform(const std::string& service_id,
                          const std::string& challenge,
                          ChallengePlatformCallback callback) final;
+#endif  // BUILDFLAG(IS_CHROMEOS)
   void GetStorageId(uint32_t version, GetStorageIdCallback callback) final;
 #if BUILDFLAG(IS_CHROMEOS)
   void IsVerifiedAccessEnabled(IsVerifiedAccessEnabledCallback callback) final;
@@ -48,7 +50,6 @@ class CdmDocumentServiceImpl final
 #if BUILDFLAG(IS_WIN)
   void GetMediaFoundationCdmData(
       GetMediaFoundationCdmDataCallback callback) final;
-  void SetCdmClientToken(const std::vector<uint8_t>& client_token) final;
   void OnCdmEvent(media::CdmEvent event, uint32_t hresult) final;
 
   static void ClearCdmData(

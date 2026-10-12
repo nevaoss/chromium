@@ -1048,7 +1048,7 @@ public class TabSwitcherPaneCoordinator implements BackPressHandler {
         if (tabId == Tab.INVALID_TAB_ID) return null;
 
         TabListCoordinator coordinator = mTabListCoordinator;
-        int index = coordinator.getIndexForTabIdWithRelatedTabs(tabId);
+        int index = coordinator.getIndexFromTabId(tabId);
         ViewHolder sourceViewHolder =
                 coordinator.getContainerView().findViewHolderForAdapterPosition(index);
         // TODO(crbug.com/41479135): This is band-aid fix that will show basic fade-in/fade-out

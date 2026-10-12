@@ -520,24 +520,6 @@ input::-webkit-textfield-decoration-container {
     writing-mode: inherit !important;
 }
 
-@supports not blink-feature(HTMLInputElementDropWebkitClearButton) {
-    input::-webkit-clear-button {
-        appearance: auto;
-        display: inline-block;
-        cursor: default;
-        flex: none;
-        -webkit-user-modify: read-only !important;
-        margin-inline-start: 2px;
-        opacity: 0;
-        pointer-events: none;
-    }
-
-    input:enabled:read-write:-webkit-any(:focus,:hover)::-webkit-clear-button {
-        opacity: 1;
-        pointer-events: auto;
-    }
-}
-
 input[type="search" i]::-webkit-search-cancel-button {
     appearance: auto;
     display: block;
@@ -1177,34 +1159,6 @@ input[type="color" i]::-webkit-color-swatch {
     }
 }
 
-input::-internal-email-verification-indicator {
-    display: none;
-    inline-size: 16px;
-    block-size: 16px;
-    padding: 2px;
-    -webkit-user-modify: read-only !important;
-    cursor: default;
-    background-repeat: no-repeat;
-    background-position: center;
-    background-size: contain;
-}
-
-input::-internal-email-verification-indicator[data-state="verified"] {
-    display: inline-block;
-    background-image: url("images/email_verification_verified.svg");
-}
-
-input::-internal-email-verification-indicator[data-state="loading"] {
-    display: inline-block;
-    background-image: url("images/email_verification_loading.svg");
-    animation: -internal-email-verification-spin 1s linear infinite;
-}
-
-@keyframes -internal-email-verification-spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-}
-
 input::-webkit-calendar-picker-indicator {
     display: inline-block;
     inline-size: 0.66em;
@@ -1238,19 +1192,6 @@ input[type="month" i][readonly]::-webkit-inner-spin-button,
 input[type="week" i][readonly]::-webkit-inner-spin-button,
 input[readonly]::-webkit-calendar-picker-indicator {
     visibility: hidden;
-}
-
-@supports not blink-feature(HTMLInputElementDropWebkitClearButton) {
-    input[type="date" i]:disabled::-webkit-clear-button,
-    input[type="datetime-local" i]:disabled::-webkit-clear-button,
-    input[type="month" i]:disabled::-webkit-clear-button,
-    input[type="week" i]:disabled::-webkit-clear-button,
-    input[type="date" i][readonly]::-webkit-clear-button,
-    input[type="datetime-local" i][readonly]::-webkit-clear-button,
-    input[type="month" i][readonly]::-webkit-clear-button,
-    input[type="week" i][readonly]::-webkit-clear-button {
-        visibility: hidden;
-    }
 }
 
 /* Form controls that measure the inline size without doing actual layout
@@ -2601,10 +2542,6 @@ select optgroup optgroup {
 
 [overscrollcontainer] > [overscrollarea] {
   -internal-overscroll-position: auto;
-}
-
-[overscrollcontainer] > [overscrollarea]:not(:overscroll-open) {
-  interactivity: inert;
 }
 
 [overscrollcontainer] > [overscrollarea]::overscroll-backdrop {

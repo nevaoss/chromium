@@ -29,6 +29,8 @@
 #include "chrome/browser/enterprise/browser_management/browser_management_service.h"
 #include "chrome/browser/enterprise/browser_management/management_service_factory.h"
 #include "chrome/browser/glic/actor/glic_actor_policy_checker.h"
+#include "chrome/browser/glic/experimental_triggering/glic_experimental_triggering_coordinator.h"
+#include "chrome/browser/glic/experimental_triggering/glic_experimental_triggering_types.h"
 #include "chrome/browser/glic/glic_enums.h"
 #include "chrome/browser/glic/glic_pref_names.h"
 #include "chrome/browser/glic/glic_pref_names_internal.h"
@@ -112,7 +114,9 @@ constexpr char kDefaultEnabledCountries[] =
     "ae,am,ao,aq,az,ba,bf,bh,bi,bj,bw,cd,cf,cg,ci,cm,cv,dj,dz,eg,eh,er,et,ga,"
     "ge,gh,gm,gn,gq,gw,il,iq,jo,ke,kg,km,kw,kz,lb,lr,ls,ly,ma,md,me,mg,mk,ml,"
     "mr,mu,mw,mz,na,ne,ng,om,pr,ps,qa,rs,rw,sa,sc,sd,sl,sn,so,ss,st,sz,td,tg,"
-    "tj,tm,tn,tz,ua,ug,um,uz,vi,xk,ye,za,zm,zw";
+    "tj,tm,tn,tz,ua,ug,um,uz,vi,xk,ye,za,zm,zw,"
+    // Phase 4
+    "ai,bm,fk,gb,gg,gi,gs,im,io,je,ky,ms,sh,tc,vg";
 #endif
 
 // Feature flag kGlicLocaleFiltering controls whether locale filtering is
@@ -1579,6 +1583,12 @@ std::optional<int> GlicEnabling::GetExperimentalTriggeringVersion() const {
     return std::nullopt;
   }
   return kExperimentalTriggeringVersion;
+}
+
+base::flat_set<std::string>
+GlicEnabling::GetExperimentalTriggeringCapabilities() const {
+  return GlicExperimentalTriggeringCoordinator::GetCapabilities(
+      GetExperimentalTriggeringState());
 }
 
 RequiredExperimentalOptIn GlicEnabling::GetRequiredExperimentalOptIn() const {

@@ -208,8 +208,6 @@ BASE_FEATURE(kProcessIsolationSettings, base::FEATURE_DISABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_WIN)
 
 BASE_FEATURE(kRealboxVirtualFocusNavigation, base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE(kOmniboxPopupVirtualFocusNavigation,
-             base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kLensOverlayVirtualFocusNavigation,
              base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kOmniboxEverywhereVirtualFocusNavigation,
@@ -322,7 +320,7 @@ BASE_FEATURE(kNTPFooterBadgingPolicies, base::FEATURE_ENABLED_BY_DEFAULT);
 BASE_FEATURE(kEnterpriseManagementDisclaimerUsesCustomLabel,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
-BASE_FEATURE(kEnterpriseReleaseNotes, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kEnterpriseReleaseNotes, base::FEATURE_ENABLED_BY_DEFAULT);
 
 BASE_FEATURE(kManagedProfileRequiredInterstitial,
              base::FEATURE_ENABLED_BY_DEFAULT);

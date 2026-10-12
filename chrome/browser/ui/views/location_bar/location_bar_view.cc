@@ -149,12 +149,14 @@
 #include "ui/views/accessibility/view_accessibility.h"
 #include "ui/views/background.h"
 #include "ui/views/border.h"
+#include "ui/views/bubble/bubble_dialog_delegate_view.h"
 #include "ui/views/button_drag_utils.h"
 #include "ui/views/controls/button/image_button.h"
 #include "ui/views/controls/button/image_button_factory.h"
 #include "ui/views/controls/focus_ring.h"
 #include "ui/views/controls/highlight_path_generator.h"
 #include "ui/views/controls/label.h"
+#include "ui/views/focus/focus_manager.h"
 #include "ui/views/interaction/element_tracker_views.h"
 #include "ui/views/property_effects.h"
 #include "ui/views/style/typography.h"
@@ -349,11 +351,11 @@ void LocationBarView::Init() {
       browser_ &&
       browser_->GetType() == BrowserWindowInterface::Type::TYPE_DEVTOOLS;
 
-  // Skip creating the WebUI presenters/views for web apps and devtools windows
-  // since they're not supported there and will result in extra Omnibox
-  // processes being created (note that the address bar is not shown in web
-  // apps).
-  if (!is_web_app && !is_devtools) {
+  // Skip creating the WebUI presenters/views for web apps, devtools windows,
+  // and popup windows since they're not supported there and will result in
+  // extra Omnibox processes being created (note that the address bar is not
+  // shown in web apps, and is an uneditable address bar in popups).
+  if (!is_web_app && !is_devtools && !is_popup_mode_) {
     if (omnibox::IsAimPopupFeatureEnabled()) {
       omnibox_popup_aim_presenter_ = std::make_unique<OmniboxPopupAimPresenter>(
           /*location_bar=*/this, omnibox_controller_.get(),
@@ -389,7 +391,7 @@ void LocationBarView::Init() {
     }
   }
 
-  // Default to the legacy popup view for web apps and devtools windows.
+  // Default to the legacy popup view for web apps, devtools, and popup windows.
   // When the legacy `OmniboxPopupViewViews` is deprecated we will need to
   // ensure that a null `omnibox_popup_view_` doesn't cause any issues (or aim
   // for a cleaner solution).
@@ -1374,6 +1376,17 @@ gfx::Rect LocationBarView::GetLocalBoundsWithoutEndcaps() const {
 }
 
 void LocationBarView::RefreshBackground() {
+  // When the full WebUI popup is open, the WebUI searchbox completely replaces
+  // the native location bar visually. Suppress the native background and border
+  // so they do not peek out from underneath the WebUI searchbox.
+  if (GetOmniboxController() && GetOmniboxController()->popup_state_manager() &&
+      GetOmniboxController()->popup_state_manager()->popup_state() ==
+          OmniboxPopupState::kFull) {
+    SetBackground(nullptr);
+    SchedulePaint();
+    return;
+  }
+
   const double opacity = hover_animation_.GetCurrentValue();
   const bool is_caret_visible =
       GetOmniboxController()->edit_model()->is_caret_visible();
@@ -1455,17 +1468,11 @@ bool LocationBarView::RefreshContentSettingViews() {
   for (ContentSettingImageView* v : content_setting_views_) {
     const bool was_visible = v->GetVisible();
 
-    bool is_lhs_indicator = false;
-    if (!web_app::AppBrowserController::IsWebApp(browser_)) {
-      if (v->GetType() == ContentSettingImageModel::ImageType::kMediaStream) {
-        is_lhs_indicator = base::FeatureList::IsEnabled(
-            content_settings::features::kLeftHandSideActivityIndicators);
-      } else if (v->GetType() ==
-                 ContentSettingImageModel::ImageType::kSensors) {
-        is_lhs_indicator = base::FeatureList::IsEnabled(
-            content_settings::features::kLeftHandSideSensorActivityIndicators);
-      }
-    }
+    // Web app windows have no permission dashboard, so activity indicators
+    // stay on the right-hand side there.
+    const bool is_lhs_indicator =
+        !web_app::AppBrowserController::IsWebApp(browser_) &&
+        ContentSettingImageModel::IsLeftHandSideIndicatorEnabled(v->GetType());
 
     if (is_lhs_indicator) {
       // Prioritize Media Stream (kMediaStream) over Sensors (kSensors) by
@@ -1788,6 +1795,13 @@ void LocationBarView::OnFullWebUiOmniboxReady() {
       had_focus && omnibox_view_->is_user_initiated_focus() &&
       !GetOmniboxController()->edit_model()->user_input_in_progress();
   if (had_focus) {
+    // Capture `omnibox_view_`'s selection before `SetFocusedView(this)` blurs
+    // it (`OmniboxViewViews::OnBlur()` collapses any active selection range to
+    // a caret), and restore it so `SyncNativeStateToWebUI()` can hand off the
+    // exact selection to WebUI.
+    const gfx::Range saved_selection = omnibox_view_
+                                           ? omnibox_view_->GetSelectionBounds()
+                                           : gfx::Range::InvalidRange();
     // Make `LocationBarView` focusable so `SetFocusedView()` satisfies
     // `IsFocusable()`.
     // NOTE: We don't call `UpdateFocusBehavior()` here because it
@@ -1798,6 +1812,12 @@ void LocationBarView::OnFullWebUiOmniboxReady() {
     // it.
     if (focus_manager) {
       focus_manager->SetFocusedView(this);
+    }
+    // Restore the pre-blur selection on `omnibox_view_` so that
+    // `popup_view->OnFocus()` (and `RequestInputState()`) can read and hand off
+    // the exact selection range via `SyncNativeStateToWebUI()`.
+    if (omnibox_view_ && saved_selection.IsValid()) {
+      omnibox_view_->SetSelectionBounds(saved_selection);
     }
     if (auto* popup_view = GetOmniboxPopupView()) {
       popup_view->OnFocus(query_zps);

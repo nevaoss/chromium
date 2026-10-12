@@ -10,6 +10,7 @@
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/webui/favicon_source.h"
 #include "chrome/browser/ui/webui/metrics_reporter/metrics_reporter_service.h"
+#include "chrome/browser/ui/webui/organizer_panel/tab_groups_organizer_page_handler.h"
 #include "chrome/browser/ui/webui/tab_search/search_handler.h"
 #include "chrome/browser/ui/webui/tab_search/tab_search_page_handler.h"
 #include "chrome/browser/ui/webui/theme_source.h"
@@ -31,8 +32,6 @@
 #if !BUILDFLAG(OPTIMIZE_WEBUI)
 #include "chrome/grit/tab_group_shared_resources.h"
 #include "chrome/grit/tab_group_shared_resources_map.h"
-#include "chrome/grit/tab_search_shared_resources.h"
-#include "chrome/grit/tab_search_shared_resources_map.h"
 #endif  // !BUILDFLAG(OPTIMIZE_WEBUI)
 
 OrganizerPanelUIConfig::OrganizerPanelUIConfig()
@@ -48,10 +47,13 @@ OrganizerPanelUI::OrganizerPanelUI(content::WebUI* web_ui)
   static constexpr webui::LocalizedString kStrings[] = {
       {"clearSearch", IDS_CLEAR_SEARCH},
       {"closeTab", IDS_TAB_SEARCH_CLOSE_TAB},
+      {"noResults", IDS_ORGANIZER_PANEL_NO_RESULTS},
       {"openTabs", IDS_TAB_SEARCH_OPEN_TABS},
       {"oneTab", IDS_TAB_SEARCH_ONE_TAB},
       {"recentlyClosed", IDS_TAB_SEARCH_RECENTLY_CLOSED},
       {"searchTabs", IDS_TAB_SEARCH_SEARCH_TABS},
+      {"showLess", IDS_NTP_SHOW_LESS_BUTTON_LABEL},
+      {"showMore", IDS_NTP_SHOW_MORE_BUTTON_LABEL},
       {"tabCount", IDS_TAB_SEARCH_TAB_COUNT},
       {"tabGroups", IDS_ORGANIZER_PANEL_TAB_GROUPS},
       {"title", IDS_ORGANIZER_PANEL},
@@ -71,7 +73,6 @@ OrganizerPanelUI::OrganizerPanelUI(content::WebUI* web_ui)
                               IDR_ORGANIZER_PANEL_ORGANIZER_PANEL_HTML);
 #if !BUILDFLAG(OPTIMIZE_WEBUI)
   source->AddResourcePaths(kTabGroupSharedResources);
-  source->AddResourcePaths(kTabSearchSharedResources);
 #endif
 
   content::URLDataSource::Add(
@@ -93,6 +94,22 @@ void OrganizerPanelUI::BindInterface(
 void OrganizerPanelUI::BindInterface(
     mojo::PendingReceiver<tab_search::mojom::SearchHandler> receiver) {
   search_handler_ = std::make_unique<SearchHandler>(std::move(receiver));
+}
+
+void OrganizerPanelUI::BindInterface(
+    mojo::PendingReceiver<
+        organizer_panel::mojom::TabGroupsOrganizerPageHandlerFactory>
+        receiver) {
+  tab_groups_page_factory_receiver_.reset();
+  tab_groups_page_factory_receiver_.Bind(std::move(receiver));
+}
+
+void OrganizerPanelUI::CreatePageHandler(
+    mojo::PendingReceiver<organizer_panel::mojom::TabGroupsOrganizerPageHandler>
+        receiver) {
+  tab_groups_organizer_page_handler_ =
+      std::make_unique<TabGroupsOrganizerPageHandler>(
+          std::move(receiver), Profile::FromWebUI(web_ui()));
 }
 
 void OrganizerPanelUI::CreatePageHandler(

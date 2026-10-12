@@ -573,6 +573,13 @@ void OmniboxEverywhereUI::ShowRegionSelectOverlay(
   std::move(callback).Run(SkBitmap());
 }
 
+bool OmniboxEverywhereUI::CancelChromeDefaultPicker() {
+  if (auto* handler = GetContextualSearchboxHandler()) {
+    return handler->CancelChromeDefaultPicker();
+  }
+  return false;
+}
+
 void OmniboxEverywhereUI::BindInterface(
     mojo::PendingReceiver<omnibox_everywhere_debug::mojom::PageHandlerFactory>
         receiver) {
@@ -727,6 +734,11 @@ void OmniboxEverywhereUI::ShowScreenshotMenu(
   // torn down in the proper order (runner before adapter) before
   // re-creating them, avoiding dangling pointers.
   ResetScreenshotMenu();
+
+  if (auto* service =
+          OmniboxEverywhereServiceFactory::GetForProfile(profile_)) {
+    service->OnLensSearchClicked();
+  }
 
   active_screenshot_controller_ = std::move(controller);
 

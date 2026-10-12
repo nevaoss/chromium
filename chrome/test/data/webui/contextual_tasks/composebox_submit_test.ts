@@ -1169,8 +1169,10 @@ suite('ContextualTasksComposeboxSubmitTest', () => {
 
           pressEnter(inputElement);
 
-          const [matchIndex, url] = await mockSearchboxPageHandler.whenCalled(
-              'openAutocompleteMatch');
+          const [resultSequenceId, matchIndex, url] =
+              await mockSearchboxPageHandler.whenCalled(
+                  'openAutocompleteMatch');
+          assertEquals(0, resultSequenceId);
           assertEquals(0, matchIndex);
           assertEquals(`${fixtureUrl}/search?q=${TEST_QUERY}`, url);
           mockTimer.tick(0);
@@ -1329,7 +1331,7 @@ suite('ContextualTasksComposeboxSubmitTest', () => {
 // =============================================================================
 [true, false].forEach(useFork => {
   suite(
-      `ContextualTasksComposeboxForkInjectInputTest ` +
+      'ContextualTasksComposeboxForkInjectInputTest ' +
           `(useContextualTasksComposeboxFork = ${useFork})`,
       () => {
         const QUERY_AUTOCOMPLETE_FN = 'queryAutocomplete';

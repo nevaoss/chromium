@@ -35,18 +35,22 @@ class MockAutofillSuggestionDelegate : public AutofillSuggestionDelegate {
   MOCK_METHOD(bool, IsSearching, (), (const, override));
   MOCK_METHOD(void,
               DidSelectSuggestion,
-              (const Suggestion& suggestion),
+              (const Suggestion& suggestion,
+               const FormGlobalId& form_id,
+               const FieldGlobalId& field_id),
               (override));
   MOCK_METHOD(void,
               DidAcceptSuggestion,
               (const Suggestion& suggestion,
-               const AutofillSuggestionDelegate::SuggestionMetadata& metadata),
+               const AutofillSuggestionDelegate::SuggestionMetadata& metadata,
+               const FormGlobalId& form_id,
+               const FieldGlobalId& field_id),
               (override));
   MOCK_METHOD(bool, RemoveSuggestion, (const Suggestion&), (override));
   MOCK_METHOD(void, ClearPreviewedForm, (), (override));
-  MOCK_METHOD(FillingProduct, GetMainFillingProduct, (), (const override));
+  MOCK_METHOD(FillingProduct, GetMainFillingProduct, (), (const, override));
   MOCK_METHOD(void, OnTabSelected, (TabbedPaneTabType tab_type), (override));
-  MOCK_METHOD(FieldGlobalId, GetQueriedFieldId, (), (const override));
+  MOCK_METHOD(FieldGlobalId, GetQueriedFieldId, (), (const, override));
 
   base::WeakPtr<MockAutofillSuggestionDelegate> GetWeakPtr();
 

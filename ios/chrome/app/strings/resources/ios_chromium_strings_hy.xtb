@@ -142,6 +142,7 @@
 <translation id="3855938650519180865">Ինչ նոր բան կա Chromium-ում</translation>
 <translation id="3886689467633467988">Մտեք հաշիվ այս կայքում և Chromium-ում՝ ձեր էջանիշները և մյուս տվյալները ձեր բոլոր սարքերում օգտագործելու համար։</translation>
 <translation id="3949514465204582407">Խորհուրդ Chromium-ից. մուտքագրեք ձեր գաղտնաբառերը ցանկացած հավելվածում</translation>
+<translation id="3983298990898629929">Դարձրեք Chromium-ը ձեր կանխադրված դիտարկիչը՝ հղումները մեկ հպումով բացելու համար</translation>
 <translation id="4005283307739974863">Բացում և գործարկում է անվտանգության ստուգումը Chromium-ում։</translation>
 <translation id="4043291146360695975">Գաղտնաբառերը պահվում են միայն այս սարքի Գաղտնաբառերի կառավարիչում</translation>
 <translation id="4046625794029820944">Այլևս մի պատճենեք URL-ները։ Դարձրեք Chromium-ը կանխադրված դիտարկիչ՝ էջերն անմիջապես բացելու համար։</translation>
@@ -273,6 +274,7 @@
 <translation id="6680609900732453726">Ձեր դիտարկումը գաղտնի պահեք սարքի իսկորոշման միջոցով, երբ փակեք Chromium-ը</translation>
 <translation id="6696512128741076907">Դարձրեք Chromium-ը կանխադրված դիտարկիչ՝ այլ հավելվածներից հղումներն ակնթարթորեն բացելու համար։</translation>
 <translation id="6752854822223394465">Ձեր կազմակերպությունը կարգավորում է Chromium-ը…</translation>
+<translation id="6777348401413221846">Լիաէկրան ռեժիմով տեսանյութ, որում ցուցադրվում է, թե ինչպես Chromium-ը դարձնել կանխադրված դիտարկիչ․ բացեք Chromium-ի կարգավորումները iOS-ում, հպեք «Դիտարկիչի կանխադրված հավելված» և ընտրեք Chromium-ը։</translation>
 <translation id="6794054469102824109">Բացում է Chromium Dino խաղը։</translation>
 <translation id="6820823224820483452">Chromium-ին չհաջողվեց ստուգել բոլոր գաղտնաբառերը։ Վաղը նորից փորձեք։</translation>
 <translation id="6830782797004194206">Ավելի արագ մտեք հաշիվ Chromium-ի ավտոմատ լրացման միջոցով</translation>
@@ -302,6 +304,7 @@
 <translation id="7337881442233988129">Chromium</translation>
 <translation id="7395825497086981028">Գաղտնաբառը կպահվի <ph name="EMAIL" /> հաշվի Գաղտնաբառերի կառավարիչում։</translation>
 <translation id="7434848749522628428">Այս մուտքի բանալին կպահվի <ph name="USER_EMAIL" /> հաշվի Գաղտնաբառերի կառավարչում</translation>
+<translation id="7453822113116681031">Դարձրեք Chromium-ը ձեր կանխադրված դիտարկիչը՝ հղումները մեկ հպումով բացելու համար</translation>
 <translation id="7504829997542308412">Բացեք Chromium-ը</translation>
 <translation id="7531461704633548377">Chromium-ից</translation>
 <translation id="7554983317097061001">Խորհուրդ Chromium-ից․ տեղափոխեք Chromium-ը Dock վահանակ</translation>
@@ -348,6 +351,7 @@
 <translation id="865600487977764604">Ապահովում է ձեր անվտանգությունը Chromium-ում և Google հավելվածներում, երբ դուք գտնվում եք ձեր հաշվում։</translation>
 <translation id="8663480472502753423">Chromium-ը թարմացված պահեք</translation>
 <translation id="8685813584220679697">Մուտք գործեք այս կայք և Chromium։</translation>
+<translation id="869832267508702259">Դարձրեք Chromium-ը ձեր կանխադրված դիտարկիչը՝ Gemini-ի վիճակագրությունը ցանկացած վայրում ստանալու համար</translation>
 <translation id="8698780336333802489">Ներմուծել Chromium</translation>
 <translation id="8730503818204408000">Բացում է կարգավորումները, որտեղ կարելի է Chromium-ը դարձնել կանխադրված դիտարկիչ։</translation>
 <translation id="8754966941001340678">Բարելավված պաշտպանությունը խորհուրդ է տրվում Chromium-ի կողմից</translation>

@@ -73,6 +73,7 @@ public class TabClosureParams {
         private @TabClosingSource int mTabClosingSource = TabClosingSource.UNKNOWN;
         private @Nullable Runnable mUndoRunnable;
         private boolean mIsTabGroup;
+        private boolean mAllowUnloadHandlers = true;
 
         private Builder(
                 @TabCloseType int tabCloseType, boolean isAllTabs, @Nullable List<Tab> tabs) {
@@ -175,6 +176,23 @@ public class TabClosureParams {
         }
 
         /**
+         * Sets whether the tabs being closed may run their {@code beforeunload} and {@code unload}
+         * handlers before they are destroyed. Default is true.
+         *
+         * <p>True does not mean a handler will run: the closure still has to reach a call site
+         * that consults this, the capability has to be enabled for this build and form factor,
+         * the page has to have registered a handler, and on {@code beforeunload} the user still
+         * has to confirm. False means the tabs are destroyed without the handlers being given a
+         * chance, and a registered {@code beforeunload} handler cannot cancel the closure.
+         *
+         * @see TabClosureParamsUtils#areUnloadHandlersEnabled()
+         */
+        public Builder allowUnloadHandlers(boolean allowUnloadHandlers) {
+            mAllowUnloadHandlers = allowUnloadHandlers;
+            return this;
+        }
+
+        /**
          * Sets whether the closure is for a tab group and came from {@link forCloseTabGroup}. This
          * is used to identify if the tab closure is for an entire tab group. It is currently used
          * by {@link TabRemover} to decide which type of dialog to show. It may have other uses in
@@ -191,6 +209,46 @@ public class TabClosureParams {
             return this;
         }
 
+        /**
+         * Copies every field of {@code params} that this builder's close type can carry. The tabs,
+         * the close type, and whether this is an all-tabs closure are excluded: they identify the
+         * closure and are fixed by the factory that produced this builder.
+         *
+         * <p>Each restricted field is routed through its setter behind the matching {@code canSet*}
+         * predicate, so the copy re-runs the availability matrix rather than duplicating it. A
+         * field the destination close type cannot carry is skipped, and skipping loses nothing:
+         * {@link TabClosureParams}'s constructor is private, so {@code params} was itself built
+         * through a {@link Builder} and already satisfies the matrix, which means the value being
+         * skipped is necessarily the default.
+         *
+         * <p><b>Must be called on a builder whose fields are still at their defaults.</b> The
+         * {@code canSet*} predicates compare against the builder's current value, so on an
+         * already-configured builder they would answer "this write is a no-op" for a value that had
+         * been written rather than defaulted, and the copy would skip a field it should carry. Both
+         * call sites pass a freshly constructed builder.
+         *
+         * <p>Adding a field to {@link TabClosureParams} requires adding it in <b>three</b> places
+         * for the round-trip tests to catch a mistake: here, in {@link #equals}, and in a test that
+         * sets it to a non-default value. Miss any one of the three and the suite stays green while
+         * the field is silently dropped.
+         */
+        private Builder copyCarriedFieldsFrom(TabClosureParams params) {
+            if (canSetRecommendedNextTab(params.recommendedNextTab)) {
+                recommendedNextTab(params.recommendedNextTab);
+            }
+            if (canSetUponExit(params.uponExit)) uponExit(params.uponExit);
+            allowUndo(params.allowUndo);
+            if (canSetHideTabGroups(params.hideTabGroups)) hideTabGroups(params.hideTabGroups);
+            if (canSetSaveToTabRestoreService(params.saveToTabRestoreService)) {
+                saveToTabRestoreService(params.saveToTabRestoreService);
+            }
+            tabClosingSource(params.tabClosingSource);
+            withUndoRunnable(params.undoRunnable);
+            if (canSetIsTabGroup(params.isTabGroup)) isTabGroup(params.isTabGroup);
+            allowUnloadHandlers(params.allowUnloadHandlers);
+            return this;
+        }
+
         /** Builds the params. */
         public TabClosureParams build() {
             return new TabClosureParams(
@@ -204,11 +262,17 @@ public class TabClosureParams {
                     mTabClosingSource,
                     mTabCloseType,
                     mUndoRunnable,
-                    mIsTabGroup);
+                    mIsTabGroup,
+                    mAllowUnloadHandlers);
         }
     }
 
     // TODO(crbug.com/356445932): Consider package protecting these fields.
+    // TODO(crbug.com/356445932): `tabs` is stored by reference, so a closure, the list its
+    // caller passed in, and any builder derived from it all share one List. A
+    // `new ArrayList<>(tabs)` in the Builder constructor would give each closure its own
+    // copy; do it with the field lockdown above, since both change what callers may do
+    // with these fields.
     public final @Nullable List<Tab> tabs;
     public final boolean isAllTabs;
     public final @Nullable Tab recommendedNextTab;
@@ -221,6 +285,12 @@ public class TabClosureParams {
     public final @Nullable Runnable undoRunnable;
     public final boolean isTabGroup;
 
+    /**
+     * Whether the tabs being closed may run their {@code beforeunload} and {@code unload} handlers
+     * before they are destroyed. See {@link Builder#allowUnloadHandlers}.
+     */
+    public final boolean allowUnloadHandlers;
+
     private TabClosureParams(
             @Nullable List<Tab> tabs,
             boolean isAllTabs,
@@ -232,7 +302,8 @@ public class TabClosureParams {
             @TabClosingSource int tabClosingSource,
             @TabCloseType int tabCloseType,
             @Nullable Runnable undoRunnable,
-            boolean isTabGroup) {
+            boolean isTabGroup,
+            boolean allowUnloadHandlers) {
         this.tabs = tabs;
         this.isAllTabs = isAllTabs;
         this.recommendedNextTab = recommendedNextTab;
@@ -244,6 +315,56 @@ public class TabClosureParams {
         this.tabCloseType = tabCloseType;
         this.undoRunnable = undoRunnable;
         this.isTabGroup = isTabGroup;
+        this.allowUnloadHandlers = allowUnloadHandlers;
+    }
+
+    /**
+     * Returns a {@link Builder} seeded with this closure, for deriving a variation of it.
+     *
+     * <p>The tabs, the close type, and {@code isAllTabs} carry over and cannot be changed: a copy
+     * may alter what a closure does, never what kind of closure it is or which tabs it acts on.
+     * Retargeting the same kind of closure at a different tab list requires {@link
+     * #toBuilder(List)}; deriving a different kind requires an explicit factory call. Both keep the
+     * change visible at the call site.
+     *
+     * <p>The tab list is shared by reference with this closure rather than copied. See the second
+     * TODO on the fields above.
+     */
+    public Builder toBuilder() {
+        return new Builder(tabCloseType, isAllTabs, tabs).copyCarriedFieldsFrom(this);
+    }
+
+    /**
+     * As {@link #toBuilder()}, but retargets the closure at {@code tabs}.
+     *
+     * <p>Unlike the factories, which accept an empty list because some callers legitimately build a
+     * closure over no tabs, a <em>replacement</em> list may not be empty: dropping every tab means
+     * the closure should not be derived at all, and the caller is expected to have handled that.
+     */
+    public Builder toBuilder(List<Tab> tabs) {
+        assert !isAllTabs : "An all-tabs closure does not carry an explicit tab list to replace.";
+        assert !tabs.isEmpty() : "The replacement tab list must not be empty.";
+        assert tabCloseType != TabCloseType.SINGLE || tabs.size() == 1
+                : "Closing a single tab requires exactly one tab.";
+        return new Builder(tabCloseType, isAllTabs, tabs).copyCarriedFieldsFrom(this);
+    }
+
+    /**
+     * Converts this all-tabs closure into a {@link Builder} for a multi-tab closure over {@code
+     * tabs}, for the case where some tabs must be spared and the closure is therefore no longer a
+     * close-all.
+     *
+     * <p>This is the one sanctioned change of closure kind, and it is a narrowing: every field a
+     * multi-tab closure can carry is carried over, and the rest are dropped by {@link
+     * Builder#copyCarriedFieldsFrom} because {@code MULTIPLE} does not support them.
+     *
+     * <p>As with {@link #toBuilder(List)}, the surviving tab list may not be empty.
+     */
+    public Builder toPartialClosureBuilder(List<Tab> tabs) {
+        assert tabCloseType == TabCloseType.ALL
+                : "Only an all-tabs closure can be narrowed to a partial closure.";
+        assert !tabs.isEmpty() : "The surviving tab list must not be empty.";
+        return closeTabs(tabs).copyCarriedFieldsFrom(this);
     }
 
     @Override
@@ -261,7 +382,8 @@ public class TabClosureParams {
                     && this.tabClosingSource == otherParams.tabClosingSource
                     && this.tabCloseType == otherParams.tabCloseType
                     && Objects.equals(this.undoRunnable, otherParams.undoRunnable)
-                    && this.isTabGroup == otherParams.isTabGroup;
+                    && this.isTabGroup == otherParams.isTabGroup
+                    && this.allowUnloadHandlers == otherParams.allowUnloadHandlers;
         }
         return false;
     }
@@ -279,7 +401,8 @@ public class TabClosureParams {
                 this.tabClosingSource,
                 this.tabCloseType,
                 this.undoRunnable,
-                this.isTabGroup);
+                this.isTabGroup,
+                this.allowUnloadHandlers);
     }
 
     @Override
@@ -305,6 +428,8 @@ public class TabClosureParams {
                 + "\nundoRunnable "
                 + this.undoRunnable
                 + "\nisTabGroup "
-                + this.isTabGroup;
+                + this.isTabGroup
+                + "\nallowUnloadHandlers "
+                + this.allowUnloadHandlers;
     }
 }

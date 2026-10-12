@@ -50,6 +50,8 @@
 #include "chrome/browser/ui/lens/lens_overlay_entry_point_controller.h"
 #include "chrome/browser/ui/profiles/profile_view_utils.h"
 #include "chrome/browser/ui/tabs/vertical_tab_strip_state_controller.h"
+#include "chrome/browser/ui/toolbar/app_menu_icon_controller.h"
+#include "chrome/browser/ui/toolbar/app_menu_model.h"
 #include "chrome/browser/ui/toolbar/chrome_labs/chrome_labs_prefs.h"
 #include "chrome/browser/ui/toolbar/chrome_labs/chrome_labs_utils.h"
 #include "chrome/browser/ui/ui_features.h"
@@ -306,11 +308,28 @@ void ActionAppMenuManager::CreateMenuHierarchy() {
     return;
   }
 
+  AddNotificationActions(root);
   AddSearchBarAction(root);
   AddBlockHeaderActions(root);
   AddYourChromeActions(root);
   AddToolsAndActionsActions(root);
   AddFooterActions(root);
+}
+
+void ActionAppMenuManager::AddNotificationActions(actions::ActionItem* root) {
+  AppMenuBuilder(
+      root, BrowserActions::From(browser_window_interface_)->root_action_item(),
+      ui::kColorAppMenuUpgradeRowBackground)
+      .AddSection(DisplayType::kSection, [](AppMenuBuilder& section) {
+        section.AddAction(
+            kActionUpgradeDialog,
+            {.display_type = DisplayType::kNotification,
+             .minor_text = AppMenuModel::GetUpgradeDialogSubstringText()});
+#if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_CHROMEOS)
+        section.AddAction(kActionSetBrowserAsDefault,
+                          {.display_type = DisplayType::kNotification});
+#endif
+      });
 }
 
 void ActionAppMenuManager::AddSearchBarAction(actions::ActionItem* root) {
@@ -418,7 +437,7 @@ void ActionAppMenuManager::AddYourChromeActions(actions::ActionItem* root) {
                   recent_tabs_menu_->GetWeakPtr()));
         }
 
-        section.AddAction(kActionShowDownloads);
+        section.AddAction(kActionShowDownloadsPage);
 
         if (!profile->IsGuestSession()) {
           section.AddDynamicSubmenu(
@@ -526,10 +545,12 @@ void ActionAppMenuManager::AddToolsAndActionsActions(
                 kActionZoomSubmenu,
                 [](AppMenuBuilder& sub) {
                   sub.AddAction(kActionZoomMinus)
+                      .AddAction(kActionZoomNormal)
                       .AddAction(kActionZoomPlus)
                       .AddAction(kActionFullscreen);
                 },
-                {.display_type = DisplayType::kCustom})
+                {.display_type = DisplayType::kCustom,
+                 .item_height = AppMenuActionItem::ItemHeight::kExpanded})
             .AddDivider(ui::MenuSeparatorType::SPACING_SEPARATOR)
             .AddAction(kActionPrint);
 

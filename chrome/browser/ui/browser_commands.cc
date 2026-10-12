@@ -280,7 +280,8 @@ void CreateAndShowNewWindowWithContents(
     std::unique_ptr<content::WebContents> contents,
     BrowserWindowInterface* original_browser) {
   BrowserWindowInterface* new_browser = nullptr;
-  DCHECK(original_browser->GetType() != BrowserWindowInterface::TYPE_APP_POPUP);
+  CHECK_NE(original_browser->GetType(), BrowserWindowInterface::TYPE_APP_POPUP);
+  CHECK_NE(original_browser->GetType(), BrowserWindowInterface::TYPE_DEVTOOLS);
   if (original_browser->GetType() == BrowserWindowInterface::TYPE_APP) {
     const bool is_trusted_source =
         WindowFeatureController::From(original_browser)->IsTrustedSource();
@@ -369,6 +370,9 @@ bool BookmarkCurrentTabHelper(BrowserWindowInterface* browser,
 content::WebContents* DuplicateTabAt(BrowserWindowInterface* browser,
                                      int index,
                                      int dst_index) {
+  if (!chrome::CanDuplicateTabAt(browser, index)) {
+    return nullptr;
+  }
   content::WebContents* contents =
       browser->GetTabStripModel()->GetWebContentsAt(index);
   CHECK(contents);
@@ -601,32 +605,33 @@ bool IsTabSelectable(
   return true;
 }
 
-bool FocusAdjacentTabGroupInFocusMode(TabStripModel* tab_strip_model,
+void FocusAdjacentTabGroupInFocusMode(TabStripModel* tab_strip_model,
                                       bool next) {
-  std::optional<tab_groups::TabGroupId> current_focused_group =
-      tab_strip_model->GetFocusedGroup();
-  if (!current_focused_group.has_value()) {
-    return false;
+  tab_groups::TabGroupId current_focused_group =
+      tab_strip_model->GetFocusedGroup().value();
+
+  if (tab_strip_model->IsTabGroupTemporary(current_focused_group)) {
+    return;
   }
 
   TabGroupModel* group_model = tab_strip_model->group_model();
   if (!group_model) {
-    return false;
+    return;
   }
 
   std::vector<tab_groups::TabGroupId> groups_in_order =
       group_model->ListTabGroups();
   if (groups_in_order.empty()) {
-    return false;
+    return;
   }
 
   std::ranges::sort(groups_in_order, {}, [&](const tab_groups::TabGroupId& id) {
     return group_model->GetTabGroup(id)->ListTabs().start();
   });
 
-  auto it = std::ranges::find(groups_in_order, *current_focused_group);
+  auto it = std::ranges::find(groups_in_order, current_focused_group);
   if (it == groups_in_order.end()) {
-    return false;
+    return;
   }
 
   size_t current_index = std::distance(groups_in_order.begin(), it);
@@ -634,7 +639,6 @@ bool FocusAdjacentTabGroupInFocusMode(TabStripModel* tab_strip_model,
                              : (current_index + groups_in_order.size() - 1) %
                                    groups_in_order.size();
   tab_strip_model->SetFocusedGroup(groups_in_order[target_index]);
-  return true;
 }
 
 }  // namespace
@@ -1766,7 +1770,9 @@ void DuplicateSplit(BrowserWindowInterface* browser,
 }
 
 bool CanDuplicateTabAt(const BrowserWindowInterface* browser, int index) {
-  if (browser->GetType() == BrowserWindowInterface::TYPE_PICTURE_IN_PICTURE) {
+  if (browser->GetType() == BrowserWindowInterface::TYPE_PICTURE_IN_PICTURE ||
+      browser->GetType() == BrowserWindowInterface::TYPE_APP_POPUP ||
+      browser->GetType() == BrowserWindowInterface::TYPE_DEVTOOLS) {
     return false;
   }
   WebContents* contents = browser->GetTabStripModel()->GetWebContentsAt(index);
@@ -1858,7 +1864,8 @@ void FocusNextTabGroup(BrowserWindowInterface* browser) {
     return;
   }
 
-  if (FocusAdjacentTabGroupInFocusMode(tab_strip_model, /*next=*/true)) {
+  if (tab_strip_model->GetFocusedGroup().has_value()) {
+    FocusAdjacentTabGroupInFocusMode(tab_strip_model, /*next=*/true);
     return;
   }
 
@@ -1887,7 +1894,8 @@ void FocusPreviousTabGroup(BrowserWindowInterface* browser) {
     return;
   }
 
-  if (FocusAdjacentTabGroupInFocusMode(tab_strip_model, /*next=*/false)) {
+  if (tab_strip_model->GetFocusedGroup().has_value()) {
+    FocusAdjacentTabGroupInFocusMode(tab_strip_model, /*next=*/false);
     return;
   }
 
@@ -1962,7 +1970,7 @@ void UnfocusTabGroup(BrowserWindowInterface* browser,
                      TabGroupFocusExitReason exit_reason) {
   if (base::FeatureList::IsEnabled(features::kTabGroupsFocusing)) {
     base::UmaHistogramEnumeration("TabGroups.Focus.ExitReason", exit_reason);
-    browser->GetTabStripModel()->SetFocusedGroup(std::nullopt);
+    browser->GetTabStripModel()->UnfocusGroup();
   }
 }
 
@@ -2917,10 +2925,6 @@ bool CanViewSource(BrowserWindowInterface* browser) {
   WebContents* web_contents =
       browser->GetTabStripModel()->GetActiveWebContents();
 
-  // Disallow ViewSource if DevTools are disabled.
-  if (!DevToolsWindow::AllowDevToolsFor(browser->GetProfile(), web_contents)) {
-    return false;
-  }
   return web_contents->GetController().CanViewSource();
 }
 
@@ -2999,7 +3003,8 @@ void ShowIncognitoHistoryDisclaimerDialog(BrowserWindowInterface* browser) {
 bool ShouldInterceptChromeURLNavigationInIncognito(
     BrowserWindowInterface* browser,
     const GURL& url) {
-  if (!browser || !browser->GetProfile()->IsIncognitoProfile()) {
+  if (!browser ||
+      !browser->GetProfile()->IsPrimaryOTRProfileWithRegularParent()) {
     return false;
   }
 

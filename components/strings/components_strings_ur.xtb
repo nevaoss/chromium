@@ -837,6 +837,8 @@
 <translation id="2384307209577226199">انٹرپرائز ڈیفالٹ</translation>
 <translation id="2385809941344967209">‏اپنے Chrome کی ترتیبات سے Chrome کو اپ ڈیٹ کریں</translation>
 <translation id="2386255080630008482">سرور کا سرٹیفکیٹ کالعدم کر دیا گیا ہے۔</translation>
+<translation id="2387424091060104123">‏‫Gemini کی طرف سے تجویز کردہ · <ph name="SRC_LINK" />ذرائع دیکھیں<ph name="END_SRC_LINK" />
+آپ اس تجویز کو Chrome سے ہٹا سکتے ہیں۔ آپ کا اصل ماخذ حذف نہیں کیا جائے گا۔ ‫<ph name="MANAGE_LINK" />بہتر کردہ آٹو فل کا نظم کریں<ph name="END_MANAGE_LINK" /></translation>
 <translation id="239203817277685015">وضاحت کریں</translation>
 <translation id="2392959068659972793">بغیر کوئی قدر سیٹ کیے ہوئے پالیسیاں دکھائیں</translation>
 <translation id="239429038616798445">ترسیل کا یہ طریقہ دستیاب نہیں ہے۔ کوئی دوسرا طریقہ آزمائیں۔</translation>
@@ -923,7 +925,6 @@
 <translation id="2527451058878391043">‏آپ کا CVC آپ کے کارڈ کے سامنے کی طرف ہے۔ یہ بالائی دائیں جانب آپ کے کارڈ نمبر کے اوپر موجود 4 ہندسوں کا کوڈ ہے۔</translation>
 <translation id="2529899080962247600">اس فیلڈ میں <ph name="MAX_ITEMS_LIMIT" /> سے زیادہ اندراجات نہیں ہونے چاہیے۔ مزید تمام اندراجات کو نظر انداز کر دیا جائے گا۔</translation>
 <translation id="2530042584066815841">ماؤس لاک اور استعمال</translation>
-<translation id="253493526287553278">پرومو کوڈ کی تفصیلات دیکھیں</translation>
 <translation id="2535585790302968248">نجی طور پر براؤز کرنے کے لیے ایک نیا پوشیدگی ٹیب کھولیں</translation>
 <translation id="2535659140340599600">{COUNT,plural, =1{اور 1 مزید}other{اور # مزید}}</translation>
 <translation id="2536110899380797252">پتہ شامل کریں</translation>
@@ -1430,6 +1431,7 @@
 <translation id="3432601291244612633">صفحہ بند کریں</translation>
 <translation id="3434025015623587566">‏Google پاس ورڈ مینیجر کو مزید رسائی کی ضرورت ہے</translation>
 <translation id="343474037147570563">‏جن فائلز کو آپ اپ لوڈ یا منسلک کرتے ہیں وہ Google کلاؤڈ یا فریقین ثالث کو تجزیے کیلئے بھیجی جاتی ہیں۔ مثال کے طور پر، انہیں حساس ڈیٹا یا میلوئیر کے لیے اسکین کیا جا سکتا ہے اور کمپنی کی پالیسیوں کی بنیاد پر اسٹور کیا جا سکتا ہے اور یہ آپ کے منتظم کو دکھائی دے سکتی ہیں۔</translation>
+<translation id="3435267628744367511">‏ٹیبز سوئچ کیے بغیر معلومات تلاش کرنے اور پُر کرنے کے لیے کسی بھی فارم میں دو بار Ctrl دبائیں</translation>
 <translation id="3435557549311968410">مسلسل (مختصر)</translation>
 <translation id="3435738964857648380">سیکیورٹی</translation>
 <translation id="3436125638121079308">اس سلسلے میں بہتر ریسپانسز کے لیے متعلقہ ٹیبز کا خودکار طور پر اشتراک کریں؟</translation>
@@ -1518,6 +1520,8 @@
 <translation id="3577473026931028326">کچھ غلط ہو گیا۔ دوبارہ کوشش کریں۔</translation>
 <translation id="3580550219062570293"><ph name="TOS_TITLE" /> <ph name="LOGO_DESCRIPTION" /></translation>
 <translation id="3581089476000296252">‏جب یہ صفحہ تیار ہو جائے گا تو Chrome آپ کو مطلع کر دے گا۔ &lt;a&gt;منسوخ کریں&lt;/a&gt;</translation>
+<translation id="3581499772329034229">خودکار طور پر ٹیبز شامل کریں</translation>
+<translation id="3582670569275100909">شپمنٹس</translation>
 <translation id="3582930987043644930">نام شامل کریں</translation>
 <translation id="3583757800736429874">منتقلی &amp;واپس لائیں</translation>
 <translation id="3584299510153766161">نیچے دُہرا سوراخ</translation>
@@ -1593,6 +1597,7 @@
 <translation id="3705189812819839667"><ph name="RESULT_OWNER" /> - <ph name="RESULT_PRODUCT_SOURCE" /></translation>
 <translation id="370665806235115550">لوڈ ہو رہے ہیں…</translation>
 <translation id="3709599264800900598">آپ کا کاپی کردہ متن</translation>
+<translation id="3711223220609269738">نیا الگ تھلگ ٹیب</translation>
 <translation id="3711430313228789376">‏‫Chrome براؤزر پاس ورڈز دکھانے کی کوشش کر رہا ہے</translation>
 <translation id="3711895659073496551">معطل</translation>
 <translation id="3712004750972384495">اسکرین ریکارڈنگ کو محفوظ کیا جا رہا ہے</translation>
@@ -1611,6 +1616,7 @@
 <translation id="3727309136762649052">namespace</translation>
 <translation id="3727850735097852673">‏macOS Keychain کے ساتھ Google پاس ورڈ مینیجر کا استعمال کرنے کے لیے، Chrome کو بند کر کے دوبارہ چلائیں اور Keychain تک رسائی کی اجازت دیں۔ بند کر کے دوبارہ چلانے کے بعد، آپ کے ٹیبز دوبارہ کھل جائیں گے۔</translation>
 <translation id="3728173127485570463">‏‫Chrome براؤزر پاس ورڈز کو آٹو فل کرنے کے لیے اب آپ کے فنگر پرنٹ کی ضرورت نہیں ہوگی</translation>
+<translation id="3729811201279509483">دستی طور پر ٹیبز شامل کریں</translation>
 <translation id="3736564442532774454">‏‫Chrome براؤزر <ph name="APP_NAME" /> پر آپ کی حساس معلومات کو پُر کرنے کی کوشش کر رہا ہے۔</translation>
 <translation id="3738166223076830879">آپ کا براؤزر آپ کے منتظم کے زیر انتظام ہے۔</translation>
 <translation id="3739842843727261045">اظہار پسندیدگی تاثرات جمع کراتا ہے کہ آپ کو یہ نتائج پسند ہیں</translation>
@@ -2408,7 +2414,6 @@
 <translation id="5052488928733955073">اپنی معلومات پُر کرنے میں دشواری۔ اپنا کنکشن چیک کریں۔</translation>
 <translation id="5053116470141135293">‏آپ کی اصل تفصیلات کی حفاظت کے لیے جب آپ اس کارڈ سے چیک آؤٹ کریں گے تو ایک ورچوئل کارڈ نمبر پُر کیا جائے گا۔ ‫Google والٹ میں نظم کریں۔ <ph name="IDS_AUTOFILL_VIRTUAL_CARD_ENROLLMENT_LEARN_MORE_LINK_LABEL" /></translation>
 <translation id="5056425809654826431">{NUM_FILES,plural, =1{اس فائل کو قریبی آلات کے ساتھ اشتراک کا استعمال کرتے ہوئے بھیجنے کے لیے اپنے آلے پر <ph name="DISK_SPACE_SIZE" /> جگہ خالی کریں}other{ان فائلز کو قریبی آلات کے ساتھ اشتراک کا استعمال کرتے ہوئے بھیجنے کے لیے اپنے آلے پر <ph name="DISK_SPACE_SIZE" /> جگہ خالی کریں}}</translation>
-<translation id="5056587122125565772">تصویر تخلیق کریں</translation>
 <translation id="505757197798929356">کھولنے کی وجہ فراہم کریں (درکار ہے)</translation>
 <translation id="5058282932481719070">ترتیبات میں بہتر کردہ آٹو فل خصوصیت کے بارے میں مزید جانیں</translation>
 <translation id="5061227663725596739">کیا آپ کا مطلب <ph name="LOOKALIKE_DOMAIN" /> ہے؟</translation>
@@ -2774,6 +2779,7 @@
 <translation id="5649053991847567735">خود کار ڈاؤن لوڈز</translation>
 <translation id="5651323159439184939">ٹریکٹر فیڈ</translation>
 <translation id="5653681867130739344">‏‫Google والٹ میں اپنا شناختی کارڈ محفوظ طریقے سے اپ ڈیٹ کریں</translation>
+<translation id="5653744563415531641">‏اپنی معلومات محفوظ کریں اور Google پروڈکٹس پر فارمز پُر کرنے جیسے کام تیزی سے کریں۔ آپ <ph name="ACCOUNT" /> کے لیے <ph name="MANAGE_WALLET_SETTINGS_LINK" /> کر سکتے ہیں۔</translation>
 <translation id="5654927323611874862">‏اپ لوڈ کردہ کریش رپورٹ ID:</translation>
 <translation id="5654965123204121933">‏URL میں مطلوبہ متبادل اسٹرنگ <ph name="SEARCH_TERMS_REPLACEMENT" /> نہیں ہے: <ph name="SEARCH_URL" /></translation>
 <translation id="5659593005791499971">ای میل</translation>
@@ -2897,6 +2903,7 @@
 <translation id="5884465125445718607">‏Chinese #6 لفافہ</translation>
 <translation id="5887400589839399685">کارڈ محفوظ کیا گیا</translation>
 <translation id="5887687176710214216">آخری بار گزشتہ کل چیک کیا گیا</translation>
+<translation id="5887791684215121787">ٹیبز سوئچ کیے بغیر، کسی بھی فارم میں معلومات تلاش کرنے اور پُر کرنے کے لیے صرف ⌘ ⌘ دبائیں</translation>
 <translation id="5889251770650310375">‏اپنے دیگر آلات سے اپنی سرگزشت حاصل کرنے کیلئے، توثیق کریں کہ یہ آپ ہی ہیں اور اپنی سرگزشت اور ٹیبز کو سنک کریں۔ آپ ترتیبات میں کسی بھی وقت سنکنگ کو روک سکتے ہیں۔ ‫Google آپ کی سرگزشت کی بنیاد پر تلاش اور دیگر سروسز کو ذاتی نوعیت کا بنا سکتا ہے۔</translation>
 <translation id="5895138241574237353">دوبارہ شروع کریں</translation>
 <translation id="5895187275912066135">تاریخ اجراء</translation>
@@ -3220,6 +3227,7 @@
 <translation id="6410264514553301377">‏<ph name="CREDIT_CARD" /> کی اختتامی تاریخ اور CVC درج کریں</translation>
 <translation id="6411107829285739505">A4x8</translation>
 <translation id="6412543105195503444">والدین کی منظوری کا ڈائیلاگ</translation>
+<translation id="6413532517183895572">اپنے والٹ کی ترتیبات کا نظم کریں</translation>
 <translation id="6415778972515849510">‏Chromium آپ کی اپنا Google اکاؤنٹ محفوظ اور پاس ورڈ تبدیل کرنے میں مدد کر سکتا ہے۔</translation>
 <translation id="6416877227920300343">EDP</translation>
 <translation id="6418199314628742460">یقینی بنائیں کہ کوئی بھی اہم کاروباری یا ذاتی ڈیٹا خارجی طور پر اسٹور کیا گیا ہے۔</translation>
@@ -4007,6 +4015,7 @@
 <translation id="7758069387465995638">ممکن ہے فائروال یا اینٹی وائرس سافٹ ویئر نے کنکشن کو مسدود کر دیا ہو۔</translation>
 <translation id="7759147511335618829">‏MIDI آلے کا کنٹرول و دوبارہ پروگرام</translation>
 <translation id="7759809451544302770">اختیاری</translation>
+<translation id="7760566304700414795">شپمنٹ</translation>
 <translation id="776110834126722255">فرسودہ</translation>
 <translation id="7761159795823346334">کیمرے کی اجازت دیں؟</translation>
 <translation id="7761701407923456692">‏سرور سرٹیفکیٹ URL سے مماثل نہیں ہے۔</translation>
@@ -4352,6 +4361,7 @@
 <translation id="8371841335382565017">کاسٹ کرنے کے لیے آلے کی فہرست دکھائیں</translation>
 <translation id="8371889962595521444">حسب ضرورت روٹ سرٹیفکیٹس</translation>
 <translation id="8374636051559112948">تبدیل ہوتا رہتا ہے</translation>
+<translation id="8377507422902936905">آرڈرز</translation>
 <translation id="837840316697671463">اگر آپ کو اپنے آلہ پر فائل نہیں ملتی ہے تو اسے <ph name="CLOUD_PROVIDER" /> پر تلاش کریں۔</translation>
 <translation id="8378714024927312812">آپ کی تنظیم کے زیر نظم</translation>
 <translation id="8380941800586852976">خطرناک</translation>

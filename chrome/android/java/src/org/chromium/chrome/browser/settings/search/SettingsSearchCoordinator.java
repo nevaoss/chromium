@@ -135,6 +135,7 @@ public class SettingsSearchCoordinator
     private final Profile mProfile;
     private final Callback<Integer> mUpdateFirstVisibleTitle;
     private final MonotonicObservableSupplier<ModalDialogManager> mModalDialogManagerSupplier;
+    private final boolean mShownInTab;
 
     private @Nullable Runnable mSearchRunnable;
     private @Nullable Runnable mRemoveResultChildViewListener;
@@ -243,6 +244,8 @@ public class SettingsSearchCoordinator
      * @param profile User profile object.
      * @param updateFirstVisibleTitle Callback used to set the first visible one of the titles. See
      *     {@link MultiColumnSettings#mFirstVisibleTitleIndex}.
+     * @param shownInTab Whether settings is shown in a browser tab rather than standalone {@link
+     *     SettingsActivity}.
      */
     public SettingsSearchCoordinator(
             FragmentActivity activity,
@@ -252,7 +255,8 @@ public class SettingsSearchCoordinator
             Map<PreferenceFragmentCompat, ContainmentItemDecoration> itemDecorations,
             Profile profile,
             Callback<Integer> updateFirstVisibleTitle,
-            MonotonicObservableSupplier<ModalDialogManager> modalDialogManagerSupplier) {
+            MonotonicObservableSupplier<ModalDialogManager> modalDialogManagerSupplier,
+            boolean shownInTab) {
         AccessibilityState.addListener(this);
 
         mActivity = activity;
@@ -264,6 +268,7 @@ public class SettingsSearchCoordinator
         mProfile = profile;
         mUpdateFirstVisibleTitle = updateFirstVisibleTitle;
         mModalDialogManagerSupplier = modalDialogManagerSupplier;
+        mShownInTab = shownInTab;
     }
 
     /** Finds a view and assumes that it exists. */
@@ -802,9 +807,15 @@ public class SettingsSearchCoordinator
     /**
      * Whether the search box should automatically receive accessibility focus on page load or tab
      * switch. Anchors TalkBack focus to the search box when Settings is opened in a tab.
+     *
+     * <p>On foldable devices, {@link SettingsInTab#isEnabled()} returns true even when folded so
+     * that an already-open settings tab survives folding. However, opening settings from the app
+     * menu while folded launches {@link SettingsActivity}. If the user later unfolds the device,
+     * the screen size changes, but settings behaviors need to stay consistent with how settings is
+     * hosted (indicated by {@code mShownInTab}).
      */
     private boolean shouldAutoFocusSearchBox() {
-        return SettingsInTab.isEnabled();
+        return mShownInTab;
     }
 
     private boolean isShowingMainSettings() {
@@ -1014,6 +1025,15 @@ public class SettingsSearchCoordinator
         View queryContainer = requireViewById(R.id.search_query_container);
         queryContainer.setVisibility(View.GONE);
 
+        // |mUseMultiColumn| is a cache of the column mode that is only refreshed from layout
+        // change callbacks. Those callbacks can report a transient single-column value (e.g. while
+        // the settings fragment is detached) and never fire again once the layout has settled,
+        // leaving the cache stale. That matters here because in two-column mode nothing else
+        // restores the search box: the SlidingPaneLayout is not slideable, so its panel-closed
+        // callback never runs and the search box would stay hidden forever. Re-read the live
+        // column mode so search always recovers. https://crbug.com/562493964
+        syncColumnModeIfStale();
+
         // In single-column mode, search box visibility is handled by
         // SlidingPaneLayout#SimplePanelSlideListener set up in initializeMultiColumnSearchUi
         // for mutli-column settings, and by FragmentManager.FragmentLifecycleCallbacks set up
@@ -1081,8 +1101,7 @@ public class SettingsSearchCoordinator
     public void updateHelpMenuVisibility() {
         ViewGroup menuView = (ViewGroup) getHelpMenuView();
         if (menuView == null) {
-            if (SettingsInTab.isEnabled()
-                    && (mActionBar == null || !hasVisibleMenuItems(mActionBar.getMenu()))) {
+            if (mShownInTab && (mActionBar == null || !hasVisibleMenuItems(mActionBar.getMenu()))) {
                 updateSearchUiWidth();
                 return;
             }
@@ -1272,7 +1291,7 @@ public class SettingsSearchCoordinator
             // contentInsetEnd and padding that must be accounted for so the search box aligns
             // with the preference items in the detail pane.
             int actionBarEndMargin =
-                    SettingsInTab.isEnabled() && !hasMenuIcon()
+                    mShownInTab && !hasMenuIcon()
                             ? gapPx - actionBar.getContentInsetEnd() - actionBar.getPaddingEnd()
                             : gapPx - getPixelSize(R.dimen.settings_menu_icon_margin);
             updateView(actionBar, 0, actionBarEndMargin, LayoutParams.MATCH_PARENT);
@@ -1297,7 +1316,7 @@ public class SettingsSearchCoordinator
         if (mActionBar != null) {
             boolean isMainSettings = mMultiColumnSettings != null && isShowingMainSettings();
             SettingsMenuHelper.updateNavigationIcon(
-                    mActionBar, mActivity, show, mUseMultiColumn, isMainSettings);
+                    mActionBar, mActivity, mShownInTab, show, mUseMultiColumn, isMainSettings);
         }
     }
 
@@ -1361,7 +1380,7 @@ public class SettingsSearchCoordinator
         int endMargin = margin;
         // On wide screens and in SettingsInTab (e.g. tablet in split-screen mode), preference items
         // always include itemMargin. Include itemMargin here so the search UI aligns.
-        if (isOnWideScreen || SettingsInTab.isEnabled()) {
+        if (isOnWideScreen || mShownInTab) {
             int itemMargin = getPixelSize(R.dimen.settings_item_margin);
             margin += itemMargin;
             if (menuWidth > 0) {
@@ -1475,6 +1494,16 @@ public class SettingsSearchCoordinator
                     }
                 };
         targetView.getViewTreeObserver().addOnGlobalLayoutListener(listener);
+    }
+
+    /**
+     * Refreshes the cached column mode ({@code mUseMultiColumn}) if it no longer matches the live
+     * layout, moving the search UI to the container for the current layout as a side effect.
+     */
+    private void syncColumnModeIfStale() {
+        if (mUseMultiColumnSupplier.getAsBoolean() == mUseMultiColumn) return;
+
+        onConfigurationChangedInternal();
     }
 
     @VisibleForTesting(otherwise = PRIVATE)
@@ -1627,7 +1656,7 @@ public class SettingsSearchCoordinator
     private boolean shouldShowHelpMenu() {
         if (mFragmentState != FS_SETTINGS) return false;
 
-        if (SettingsInTab.isEnabled()) {
+        if (mShownInTab) {
             return mActionBar != null && hasVisibleMenuItems(mActionBar.getMenu());
         }
 
@@ -1788,7 +1817,8 @@ public class SettingsSearchCoordinator
                     mProfile,
                     entry.key,
                     entry.extras,
-                    mModalDialogManagerSupplier.asNonNull().get())) {
+                    mModalDialogManagerSupplier.asNonNull().get(),
+                    mShownInTab)) {
                 enterResultState();
             }
             return;

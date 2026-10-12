@@ -54,7 +54,6 @@
 #include "chrome/browser/context_hub/memory_bank/memory_bank_entry.h"
 #include "chrome/browser/custom_handlers/protocol_handler_registry_factory.h"
 #include "chrome/browser/devtools/devtools_window.h"
-#include "chrome/browser/devtools/features.h"
 #include "chrome/browser/dictation/features.h"
 #include "chrome/browser/download/download_prefs.h"
 #include "chrome/browser/download/download_stats.h"
@@ -2054,13 +2053,14 @@ void RenderViewContextMenu::AppendLinkItems() {
         enterprise_isolated_mode::IsolatedModeReplacesIncognito(GetProfile());
 
     if (show_open_link_off_the_record && isolated_mode_enabled) {
-      AddItemWithOptionalIcon(IDC_CONTENT_CONTEXT_OPENLINK_ISOLATED,
-                              features::IsMenuSimplificationEnabled()
-                                  ? IDS_CONTENT_CONTEXT_OPENLINK_ISOLATED_V2
-                                  : IDS_CONTENT_CONTEXT_OPENLINK_ISOLATED,
-                              features::IsRoundedIconsEnabled()
-                                  ? vector_icons::kDomainIcon
-                                  : vector_icons::kBusinessChromeRefreshOldIcon);
+      AddItemWithOptionalIcon(
+          IDC_CONTENT_CONTEXT_OPENLINK_ISOLATED,
+          features::IsMenuSimplificationEnabled()
+              ? IDS_CONTENT_CONTEXT_OPENLINK_ISOLATED_V2
+              : IDS_CONTENT_CONTEXT_OPENLINK_ISOLATED,
+          features::IsRoundedIconsEnabled()
+              ? vector_icons::kDomainIcon
+              : vector_icons::kBusinessChromeRefreshOldIcon);
     }
 
     AppendOpenInWebAppLinkItems();
@@ -2728,17 +2728,8 @@ void RenderViewContextMenu::AppendCopyItem() {
   if (menu_model_.GetItemCount()) {
     menu_model_.AddSeparator(ui::NORMAL_SEPARATOR);
   }
-
-  std::u16string selected_text = PrintableSelectionText();
-  base::TrimWhitespace(selected_text, base::TRIM_ALL, &selected_text);
-  if (features::IsMenuSimplificationEnabled() && !selected_text.empty()) {
-    menu_model_.AddItem(IDC_CONTENT_CONTEXT_COPY,
-                        l10n_util::GetStringFUTF16(
-                            IDS_CONTENT_CONTEXT_COPY_SELECTION, selected_text));
-  } else {
     menu_model_.AddItemWithStringId(IDC_CONTENT_CONTEXT_COPY,
                                     IDS_CONTENT_CONTEXT_COPY);
-  }
 }
 
 void RenderViewContextMenu::AppendLinkToTextItems() {
@@ -2782,12 +2773,10 @@ void RenderViewContextMenu::AppendPrintItem() {
       (params_.media_type == ContextMenuDataMediaType::kNone ||
        params_.media_flags & ContextMenuData::kMediaCanPrint) &&
       params_.misspelled_word.empty()) {
-    const std::u16string printable_selection_text = PrintableSelectionText();
     if (ShouldUseSimplifiedTextSelection() &&
-        !printable_selection_text.empty()) {
-      menu_model_.AddItem(IDC_PRINT, l10n_util::GetStringFUTF16(
-                                         IDS_CONTENT_CONTEXT_PRINT_SELECTION,
-                                         printable_selection_text));
+        !PrintableSelectionText().empty()) {
+      menu_model_.AddItemWithStringId(IDC_PRINT,
+                                      IDS_CONTENT_CONTEXT_PRINT_SELECTION);
     } else {
       menu_model_.AddItemWithStringId(IDC_PRINT, IDS_CONTENT_CONTEXT_PRINT);
     }
@@ -2802,18 +2791,10 @@ void RenderViewContextMenu::AppendPartialTranslateItem() {
     return;
   }
 
-  const std::u16string printable_selection_text = PrintableSelectionText();
   std::u16string label;
-
   if (is_menu_simplification_enabled) {
-    if (printable_selection_text.empty()) {
       label =
           l10n_util::GetStringUTF16(IDS_CONTENT_CONTEXT_PARTIAL_TRANSLATE_V2);
-    } else {
-      label = l10n_util::GetStringFUTF16(
-          IDS_CONTENT_CONTEXT_PARTIAL_TRANSLATE_SELECTION_V2,
-          printable_selection_text);
-    }
   } else {
     label = l10n_util::GetStringFUTF16(
         IDS_CONTENT_CONTEXT_PARTIAL_TRANSLATE,
@@ -3268,8 +3249,6 @@ void RenderViewContextMenu::AppendSharingItems() {
     menu_model_.RemoveItemAt(items_initial);
   }
 }
-
-
 
 void RenderViewContextMenu::AppendRegionSearchItem() {
   auto* entry_point_controller =
@@ -4103,8 +4082,7 @@ void RenderViewContextMenu::ExecuteCommand(int id, int event_flags) {
       // The policy on the source_web_contents_ applies; when performing the
       // action, do it on the appropriate target (the embedder_web_contents_ or
       // the RenderFrameHost, respectively).
-      if (base::FeatureList::IsEnabled(features::kDevToolsShowPolicyDialog) &&
-          !DevToolsWindow::AllowDevToolsFor(GetProfile(),
+      if (!DevToolsWindow::AllowDevToolsFor(GetProfile(),
                                             source_web_contents_)) {
 #if !BUILDFLAG(IS_ANDROID)
         DevToolsPolicyDialog::Show(source_web_contents_);
@@ -4453,15 +4431,6 @@ bool RenderViewContextMenu::IsDevCommandEnabled(int id) const {
     PrefService* prefs = GetPrefs(browser_context_);
     if (!prefs->GetBoolean(prefs::kWebKitJavascriptEnabled)) {
       return false;
-    }
-
-    // Don't enable the web inspector if the developer tools are disabled via
-    // the preference dev-tools-disabled.
-    if (!base::FeatureList::IsEnabled(features::kDevToolsShowPolicyDialog)) {
-      if (!DevToolsWindow::AllowDevToolsFor(GetProfile(),
-                                            source_web_contents_)) {
-        return false;
-      }
     }
   }
 
@@ -4820,10 +4789,9 @@ void RenderViewContextMenu::AppendSendTabToSelfItem(bool add_separator) {
             : send_tab_to_self::kSendTabToSelfEnhancedDesktopUI;
 
     // TODO(crbug.com/516708776): Remove new feature tag when no longer new.
-    menu_model_.SetIsNewFeatureAt(
-        menu_model_.GetItemCount() - 1,
-        UserEducationService::MaybeShowNewBadge(GetBrowserContext(),
-                                                stts_feature));
+    menu_model_.SetIsNewFeatureAt(menu_model_.GetItemCount() - 1,
+                                  UserEducationService::MaybeShowNewBadge(
+                                      GetBrowserContext(), stts_feature));
     return;
   }
 

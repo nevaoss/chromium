@@ -12,6 +12,7 @@
 #include "chrome/browser/extensions/extension_apitest.h"
 #include "chrome/browser/extensions/extension_tab_util.h"
 #include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/search_engines/ui_thread_search_terms_data.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/browser_window/public/global_browser_collection.h"
 #include "chrome/browser/ui/extensions/extension_action_test_helper.h"
@@ -33,13 +34,13 @@
 #include "components/prefs/pref_service.h"
 #include "content/public/browser/disallow_activation_reason.h"
 #include "content/public/browser/permission_controller.h"
+#include "content/public/browser/permission_result.h"
 #include "content/public/browser/render_widget_host_view.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/test/browser_test.h"
 #include "content/public/test/browser_test_utils.h"
 #include "content/public/test/content_browser_test_utils.h"
 #include "content/public/test/content_mock_cert_verifier.h"
-#include "content/public/test/fenced_frame_test_util.h"
 #include "content/public/test/permissions_test_utils.h"
 #include "content/public/test/prerender_test_util.h"
 #include "extensions/common/constants.h"
@@ -56,6 +57,7 @@
 #include "third_party/blink/public/common/features.h"
 #include "third_party/blink/public/common/permissions/permission_utils.h"
 #include "third_party/blink/public/common/web_preferences/web_preferences.h"
+#include "third_party/blink/public/mojom/permissions/permission_status.mojom-shared.h"
 #include "url/gurl.h"
 
 namespace {
@@ -253,43 +255,6 @@ constexpr char kCheckMicrophone[] = R"(
     })
     )";
 
-constexpr char kCheckClipboardRead[] = R"(
-    new Promise(async resolve => {
-      const PermissionStatus =
-        await navigator.permissions.query({name: 'clipboard-read'});
-      resolve(PermissionStatus.state === 'granted');
-    })
-    )";
-
-constexpr char kRequestClipboardRead[] = R"(
-    new Promise(async resolve => {
-      try {
-        const read_promise = await navigator.clipboard.readText();
-        resolve('granted');
-      } catch(error) {
-        resolve('denied');
-      }
-    })
-    )";
-
-constexpr char kCheckClipboardWrite[] = R"(
-    new Promise(async resolve => {
-      const PermissionStatus =
-        await navigator.permissions.query({name: 'clipboard-write'});
-      resolve(PermissionStatus.state === 'granted');
-    })
-    )";
-
-constexpr char kRequestClipboardWrite[] = R"(
-    new Promise(async resolve => {
-      try {
-        const write_promise = await navigator.clipboard.writeText("texts");
-        resolve('granted');
-      } catch(error) {
-        resolve('denied');
-      }
-    })
-    )";
 
 constexpr char kIframePolicy[] = "geolocation *; camera *";
 
@@ -364,84 +329,6 @@ void VerifyPermission(content::WebContents* opener_or_embedder_contents,
 
   // There should not be the 2nd prompt.
   EXPECT_EQ(1, bubble_factory->TotalRequestCount());
-}
-
-void VerifyPermissionsDeniedForFencedFrame(
-    content::WebContents* embedder_contents,
-    content::RenderFrameHost* fenced_rfh,
-    const std::string& request_permission_script,
-    const std::string& check_permission_script,
-    bool default_granted) {
-  // If granted by default, permission prompt factory will not receive requests.
-  int request_count = default_granted ? 0 : 1;
-
-  content::RenderFrameHost* embedder_main_rfh =
-      embedder_contents->GetPrimaryMainFrame();
-
-  ASSERT_EQ(content::EvalJs(embedder_main_rfh, check_permission_script),
-            default_granted);
-  ASSERT_EQ(false, content::EvalJs(fenced_rfh, check_permission_script));
-
-  permissions::PermissionRequestManager* manager =
-      permissions::PermissionRequestManager::FromWebContents(embedder_contents);
-  std::unique_ptr<permissions::MockPermissionPromptFactory> bubble_factory =
-      std::make_unique<permissions::MockPermissionPromptFactory>(manager);
-
-  // Enable auto-accept of a permission request.
-  bubble_factory->set_response_type(
-      permissions::PermissionRequestManager::AutoResponseType::ACCEPT_ALL);
-
-  // Move the web contents to the foreground.
-  embedder_main_rfh->GetView()->Focus();
-  ASSERT_TRUE(embedder_main_rfh->GetView()->HasFocus());
-
-  // Request permission on the embedder contents.
-  EXPECT_EQ("granted",
-            content::EvalJs(embedder_main_rfh, request_permission_script));
-  EXPECT_EQ(request_count, bubble_factory->TotalRequestCount());
-
-  // Disable auto-accept of a permission request.
-  bubble_factory->set_response_type(
-      permissions::PermissionRequestManager::AutoResponseType::NONE);
-
-  EXPECT_EQ(true, content::EvalJs(embedder_main_rfh, check_permission_script));
-
-  // MPArch RFH is not allowed to verify permissions.
-  EXPECT_EQ(false, content::EvalJs(fenced_rfh, check_permission_script));
-
-  // Enable auto-accept of a permission request.
-  bubble_factory->set_response_type(
-      permissions::PermissionRequestManager::AutoResponseType::ACCEPT_ALL);
-
-  // Request permission on the test RFH.
-  fenced_rfh->GetView()->Focus();
-  ASSERT_TRUE(fenced_rfh->GetView()->HasFocus());
-  EXPECT_EQ("denied", content::EvalJs(fenced_rfh, request_permission_script));
-
-  // There should not be the 2nd prompt.
-  EXPECT_EQ(request_count, bubble_factory->TotalRequestCount());
-}
-
-void VerifyPermissionsDeniedForFencedFrame(
-    content::WebContents* embedder_contents,
-    content::RenderFrameHost* fenced_rfh) {
-  const struct {
-    std::string check_permission;
-    std::string request_permission;
-    bool default_granted = false;
-  } kTests[] = {
-      {kCheckNotifications, kRequestNotifications},
-      {kCheckGeolocation, kRequestGeolocation},
-      {kCheckCamera, kRequestCamera},
-      {kCheckClipboardRead, kRequestClipboardRead},
-      {kCheckClipboardWrite, kRequestClipboardWrite, /*default_granted=*/true},
-  };
-
-  for (const auto& test : kTests) {
-    VerifyPermissionsDeniedForFencedFrame(
-        embedder_contents, fenced_rfh, test.request_permission,
-        test.check_permission, test.default_granted);
-  }
 }
 
 // getUserMedia requires focus. It should be verified only on a popup window.
@@ -932,25 +819,45 @@ IN_PROC_BROWSER_TEST_F(PermissionsSecurityModelInteractiveUITest,
 #endif
 }
 
-IN_PROC_BROWSER_TEST_F(PermissionsSecurityModelInteractiveUITest,
+class PermissionsSecurityModelNtpInteractiveUITest
+    : public PermissionsSecurityModelInteractiveUITest,
+      public ::testing::WithParamInterface<GURL> {};
+
+INSTANTIATE_TEST_SUITE_P(
+    All,
+    PermissionsSecurityModelNtpInteractiveUITest,
+    ::testing::Values(chrome::ChromeUINewTabURLAsGURL(),
+                      chrome::ChromeUINewTabPageURLAsGURL()));
+
+IN_PROC_BROWSER_TEST_P(PermissionsSecurityModelNtpInteractiveUITest,
                        PermissionRequestOnNtpUseDseOrigin) {
   content::WebContents* embedder_contents =
       browser()->GetTabStripModel()->GetActiveWebContents();
   ASSERT_TRUE(embedder_contents);
 
   content::RenderFrameHost* main_rfh =
-      ui_test_utils::NavigateToURLBlockUntilNavigationsComplete(
-          browser(), chrome::ChromeUINewTabURLAsGURL(), 1);
+      ui_test_utils::NavigateToURLBlockUntilNavigationsComplete(browser(),
+                                                                GetParam(), 1);
   content::WebContents::FromRenderFrameHost(main_rfh)->Focus();
 
   ASSERT_TRUE(main_rfh);
-  EXPECT_EQ(chrome::ChromeUINewTabURLAsGURL(),
-            embedder_contents->GetLastCommittedURL());
+  EXPECT_EQ(GetParam(), embedder_contents->GetLastCommittedURL());
   EXPECT_EQ(chrome::ChromeUINewTabPageURLAsGURL(),
             main_rfh->GetLastCommittedOrigin().GetURL());
 
   EXPECT_EQ(false, content::EvalJs(main_rfh, kCheckMicrophone,
                                    content::EXECUTE_SCRIPT_DEFAULT_OPTIONS, 1));
+  content::PermissionController* permission_controller =
+      browser()->GetProfile()->GetPermissionController();
+  EXPECT_EQ(permission_controller
+                ->GetPermissionResultForOriginWithoutContext(
+                    blink::mojom::PermissionDescriptor::New(
+                        blink::mojom::PermissionName::AUDIO_CAPTURE,
+                        /*extensions=*/nullptr),
+                    url::Origin::Create(
+                        GURL(UIThreadSearchTermsData().GoogleBaseURLValue())))
+                .status,
+            blink::mojom::PermissionStatus::ASK);
 
   permissions::PermissionRequestManager* manager =
       permissions::PermissionRequestManager::FromWebContents(embedder_contents);
@@ -963,6 +870,15 @@ IN_PROC_BROWSER_TEST_F(PermissionsSecurityModelInteractiveUITest,
   EXPECT_EQ("granted",
             content::EvalJs(main_rfh, kRequestMicrophone,
                             content::EXECUTE_SCRIPT_DEFAULT_OPTIONS, 1));
+  EXPECT_EQ(permission_controller
+                ->GetPermissionResultForOriginWithoutContext(
+                    blink::mojom::PermissionDescriptor::New(
+                        blink::mojom::PermissionName::AUDIO_CAPTURE,
+                        /*extensions=*/nullptr),
+                    url::Origin::Create(
+                        GURL(UIThreadSearchTermsData().GoogleBaseURLValue())))
+                .status,
+            blink::mojom::PermissionStatus::GRANTED);
 
   bubble_factory->set_response_type(
       permissions::PermissionRequestManager::AutoResponseType::NONE);
@@ -971,20 +887,19 @@ IN_PROC_BROWSER_TEST_F(PermissionsSecurityModelInteractiveUITest,
                                   content::EXECUTE_SCRIPT_DEFAULT_OPTIONS, 1));
 }
 
-IN_PROC_BROWSER_TEST_F(PermissionsSecurityModelInteractiveUITest,
+IN_PROC_BROWSER_TEST_P(PermissionsSecurityModelNtpInteractiveUITest,
                        MicActivityIndicatorOnNtpUseDseOrigin) {
   content::WebContents* embedder_contents =
       browser()->GetTabStripModel()->GetActiveWebContents();
   ASSERT_TRUE(embedder_contents);
 
   content::RenderFrameHost* main_rfh =
-      ui_test_utils::NavigateToURLBlockUntilNavigationsComplete(
-          browser(), chrome::ChromeUINewTabURLAsGURL(), 1);
+      ui_test_utils::NavigateToURLBlockUntilNavigationsComplete(browser(),
+                                                                GetParam(), 1);
   content::WebContents::FromRenderFrameHost(main_rfh)->Focus();
 
   ASSERT_TRUE(main_rfh);
-  EXPECT_EQ(chrome::ChromeUINewTabURLAsGURL(),
-            embedder_contents->GetLastCommittedURL());
+  EXPECT_EQ(GetParam(), embedder_contents->GetLastCommittedURL());
   EXPECT_EQ(chrome::ChromeUINewTabPageURLAsGURL(),
             main_rfh->GetLastCommittedOrigin().GetURL());
 
@@ -1024,20 +939,19 @@ IN_PROC_BROWSER_TEST_F(PermissionsSecurityModelInteractiveUITest,
 
 // Test that a permission prompt bubble will be shown on NTP despite the empty
 // address bar.
-IN_PROC_BROWSER_TEST_F(PermissionsSecurityModelInteractiveUITest,
+IN_PROC_BROWSER_TEST_P(PermissionsSecurityModelNtpInteractiveUITest,
                        PermissionRequestOnNtpIsNotAutoIgnored) {
   content::WebContents* embedder_contents =
       browser()->GetTabStripModel()->GetActiveWebContents();
   ASSERT_TRUE(embedder_contents);
 
   content::RenderFrameHost* main_rfh =
-      ui_test_utils::NavigateToURLBlockUntilNavigationsComplete(
-          browser(), chrome::ChromeUINewTabURLAsGURL(), 1);
+      ui_test_utils::NavigateToURLBlockUntilNavigationsComplete(browser(),
+                                                                GetParam(), 1);
   content::WebContents::FromRenderFrameHost(main_rfh)->Focus();
 
   ASSERT_TRUE(main_rfh);
-  EXPECT_EQ(chrome::ChromeUINewTabURLAsGURL(),
-            embedder_contents->GetLastCommittedURL());
+  EXPECT_EQ(GetParam(), embedder_contents->GetLastCommittedURL());
   EXPECT_EQ(chrome::ChromeUINewTabPageURLAsGURL(),
             main_rfh->GetLastCommittedOrigin().GetURL());
 
@@ -1465,49 +1379,6 @@ IN_PROC_BROWSER_TEST_F(
   RequestPermissions(main_rfh, true);
 
   RequestPermissions(subframe, true);
-}
-
-class PermissionsRequestedFromFencedFrameTest
-    : public PermissionsSecurityModelInteractiveUITest {
- public:
-  PermissionsRequestedFromFencedFrameTest() = default;
-  ~PermissionsRequestedFromFencedFrameTest() override = default;
-
-  PermissionsRequestedFromFencedFrameTest(
-      const PermissionsRequestedFromFencedFrameTest&) = delete;
-  PermissionsRequestedFromFencedFrameTest& operator=(
-      const PermissionsRequestedFromFencedFrameTest&) = delete;
-
- private:
-  base::test::ScopedFeatureList scoped_feature_list_;
-
- protected:
-  content::test::FencedFrameTestHelper& fenced_frame_test_helper() {
-    return fenced_frame_helper_;
-  }
-
- private:
-  content::test::FencedFrameTestHelper fenced_frame_helper_;
-};
-
-IN_PROC_BROWSER_TEST_F(PermissionsRequestedFromFencedFrameTest,
-                       PermissionsRequestedFromFencedFrameTest) {
-  ASSERT_TRUE(embedded_test_server()->Start());
-
-  ASSERT_TRUE(ui_test_utils::NavigateToURL(
-      browser(), embedded_test_server()->GetURL("/title1.html")));
-  content::WebContents* web_contents =
-      browser()->GetTabStripModel()->GetActiveWebContents();
-
-  // Load a fenced frame.
-  GURL fenced_frame_url =
-      embedded_test_server()->GetURL("/fenced_frames/title1.html");
-  content::RenderFrameHost* fenced_frame_host =
-      fenced_frame_test_helper().CreateFencedFrame(
-          web_contents->GetPrimaryMainFrame(), fenced_frame_url);
-  ASSERT_TRUE(fenced_frame_host);
-
-  VerifyPermissionsDeniedForFencedFrame(web_contents, fenced_frame_host);
 }
 
 class PermissionRequestWithPrerendererTest

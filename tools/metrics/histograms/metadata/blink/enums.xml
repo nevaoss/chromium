@@ -2692,7 +2692,7 @@ Called by update_use_counter_feature_enum.py.-->
   <int value="2277" label="V8DeoptimizerDisableSpeculation"/>
   <int value="2278" label="CSSSelectorCue"/>
   <int value="2279" label="CSSSelectorWebkitCalendarPickerIndicator"/>
-  <int value="2280" label="CSSSelectorWebkitClearButton"/>
+  <int value="2280" label="OBSOLETE_CSSSelectorWebkitClearButton"/>
   <int value="2281" label="CSSSelectorWebkitColorSwatch"/>
   <int value="2282" label="CSSSelectorWebkitColorSwatchWrapper"/>
   <int value="2283" label="CSSSelectorWebkitDateAndTimeValue"/>
@@ -6757,6 +6757,9 @@ Called by update_use_counter_feature_enum.py.-->
   <int value="6019" label="BeforeUnloadDialogBlockedUnload"/>
   <int value="6020" label="SRIModuleMapIntegrityMismatch"/>
   <int value="6021" label="EventTimingCreationTimeInFuture"/>
+  <int value="6022" label="AttributionReportingWindowOpen"/>
+  <int value="6023" label="StickyVideoAdDetected"/>
+  <int value="6024" label="CSSTimelineTreeScopeMismatch"/>
 </enum>
 
 <!-- LINT.ThenChange(//third_party/blink/public/mojom/use_counter/metrics/web_feature.mojom:WebFeature) -->
@@ -7647,7 +7650,8 @@ Called by update_permissions_policy_enum.py.-->
              enabled."/>
   <int value="27" label="(Deliberately skipped due to C++/enums.xml mismatch)"/>
   <int value="28" label="Failed because a deep hierarchy was encountered."/>
-  <int value="29" label="Failed because a long text string was encountered."/>
+  <int value="29"
+      label="(Obsolete) Failed because a long text string was encountered."/>
 </enum>
 
 <enum name="InnerHTMLFastPathParserUnsupportedTagType">
@@ -9224,12 +9228,12 @@ Called by update_use_counter_feature_enum.py.-->
   <int value="417" label="MetaTextScale"/>
   <int value="418" label="Jpegxl"/>
   <int value="419" label="PartitionedCookies"/>
-  <int value="420" label="LanguageModel"/>
+  <int value="420" label="Languagemodel"/>
   <int value="421" label="Proofreader"/>
   <int value="422" label="Rewriter"/>
   <int value="423" label="Writer"/>
   <int value="424" label="DRAFT_InstallElement"/>
-  <int value="425" label="LanguageDetector"/>
+  <int value="425" label="Languagedetector"/>
   <int value="426" label="Translator"/>
   <int value="427" label="DocumentModelcontext"/>
   <int value="428" label="LoadingLazyMedia"/>

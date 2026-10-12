@@ -461,6 +461,11 @@ BASE_FEATURE_PARAM(base::TimeDelta,
                    "ambient_autofill_unmasked_spii_cache_ttl",
                    base::Minutes(1));
 
+// Controls whether Personal Context entities without attached sources are
+// filtered out during Ambient Autofill prefetch validation.
+BASE_FEATURE(kAutofillAmbientAutofillFilterEntitiesWithoutSource,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 // When enabled, Personal Context Autofill AI suggestions display detailed
 // source info submenus on Desktop.
 BASE_FEATURE(kAutofillAmbientAutofillSourceAttribution,
@@ -1115,6 +1120,12 @@ BASE_FEATURE(kAutofillUseNegativePatternForAllAttributes,
 // TODO(crbug.com/525996248): Remove after M154 branchpoint if there are no
 // issues.
 BASE_FEATURE(kAutofillUseOriginalPayloadIos, base::FEATURE_ENABLED_BY_DEFAULT);
+
+// Kill switch: If enabled, use the FormGlobalId and FieldGlobalId passed to
+// AutofillExternalDelegate::Did{Select,Accept}Suggestion() instead of
+// `last_query_`.
+BASE_FEATURE(kAutofillUsePassedFormAndFieldIds,
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // Replaces the secondary signature with the structural signature for Uploads.
 // For Queries still only the secondary (alternative) signature is used.

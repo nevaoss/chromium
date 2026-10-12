@@ -107,9 +107,21 @@ public class GroupWindowChecker {
             @GroupWindowState int groupWindowState = getState(savedTabGroup);
             if (tabGroupSelectionPredicate.shouldInclude(groupWindowState)) {
                 groupList.add(
-                        GroupWindowInfo.forSyncedGroup(mContext, savedTabGroup, groupWindowState));
+                        GroupWindowInfo.forSyncedGroup(
+                                mContext,
+                                getTabModelForGroup(savedTabGroup),
+                                savedTabGroup,
+                                groupWindowState));
             }
         }
+    }
+
+    private TabModel getTabModelForGroup(SavedTabGroup savedTabGroup) {
+        if (!TabGroupUiUtils.isRemoteGroupOperationsEnabled() || savedTabGroup.localId == null) {
+            return mCurrentTabModel;
+        }
+        return TabGroupUiUtils.getTabModelForGroup(
+                mCurrentTabModel, savedTabGroup.localId.tabGroupId);
     }
 
     private void addLocalTabGroups(
@@ -122,6 +134,9 @@ public class GroupWindowChecker {
                     continue;
                 }
                 @GroupWindowState int groupWindowState = getState(groupId);
+                if (groupWindowState == GroupWindowState.IN_CURRENT_CLOSING) {
+                    continue;
+                }
                 if (tabGroupSelectionPredicate.shouldInclude(groupWindowState)) {
                     groupList.add(
                             GroupWindowInfo.forLocalGroup(
@@ -152,10 +167,7 @@ public class GroupWindowChecker {
      * @param state The {@link GroupWindowState} of the group.
      */
     public static boolean shouldShowGroupByState(@GroupWindowState int state) {
-        if (state == GroupWindowState.IN_CURRENT_CLOSING) {
-            return false;
-        }
-        if (state == GroupWindowState.HIDDEN) {
+        if (state == GroupWindowState.IN_CURRENT_CLOSING || state == GroupWindowState.HIDDEN) {
             return TabGroupUiUtils.isRemoteGroupOperationsEnabled();
         }
         if (state == GroupWindowState.IN_ANOTHER) {
@@ -185,9 +197,10 @@ public class GroupWindowChecker {
      */
     public @GroupWindowState int getState(Token groupId) {
         if (!containsGroup(groupId)) {
-            if (TabGroupUiUtils.isCrossWindowTabGroupOperationsEnabled()
-                    && isWindowForGroupNotActive(groupId)) {
-                return GroupWindowState.HIDDEN;
+            if (TabGroupUiUtils.isCrossWindowTabGroupOperationsEnabled()) {
+                if (isWindowForGroupNotActive(groupId) || isGroupClosingInAnotherWindow(groupId)) {
+                    return GroupWindowState.HIDDEN;
+                }
             }
             return GroupWindowState.IN_ANOTHER;
         }
@@ -246,6 +259,25 @@ public class GroupWindowChecker {
             tabModels.add(selector.getModel(mCurrentTabModel.isIncognito()));
         }
         return tabModels;
+    }
+
+    private boolean isGroupClosingInAnotherWindow(Token groupId) {
+        TabWindowManager windowManager = TabWindowManagerSingleton.getInstance();
+        if (windowManager == null) {
+            return false;
+        }
+        @WindowId
+        int windowId =
+                windowManager.findWindowIdForTabGroup(groupId, /* includeClosingGroups= */ true);
+        if (windowId == TabWindowManager.INVALID_WINDOW_ID) {
+            return false;
+        }
+        TabModelSelector selector = windowManager.getTabModelSelectorById(windowId);
+        if (selector == null) {
+            return false;
+        }
+        TabModel otherModel = selector.getModel(mCurrentTabModel.isIncognito());
+        return !otherModel.tabGroupExists(groupId);
     }
 
     private boolean isWindowForGroupNotActive(Token groupId) {

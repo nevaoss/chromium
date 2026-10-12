@@ -32,7 +32,6 @@
 #include "chrome/browser/extensions/browser_extension_window_controller.h"
 #include "chrome/browser/glic/browser_ui/glic_iph_controller.h"
 #include "chrome/browser/glic/browser_ui/glic_split_button_controller.h"
-#include "chrome/browser/glic/browser_ui/glic_split_button_delegate_impl.h"
 #include "chrome/browser/glic/public/glic_enabling.h"
 #include "chrome/browser/glic/public/glic_keyed_service.h"
 #include "chrome/browser/glic/public/glic_keyed_service_factory.h"
@@ -601,9 +600,8 @@ void BrowserWindowFeatures::Init(BrowserWindowInterface* browser) {
             GetUserDataFactory().CreateInstance<glic::GlicIphController>(
                 *browser, browser, *glic_service);
         glic_split_button_controller_ =
-            std::make_unique<glic::GlicSplitButtonController>(
-                browser, std::make_unique<glic::GlicSplitButtonDelegateImpl>(
-                             browser, glic_service));
+            std::make_unique<glic::GlicSplitButtonController>(browser,
+                                                              glic_service);
       }
     }
 
@@ -625,12 +623,6 @@ void BrowserWindowFeatures::Init(BrowserWindowInterface* browser) {
       session_service_tab_group_sync_observer_ =
           std::make_unique<tab_groups::SessionServiceTabGroupSyncObserver>(
               profile, browser->GetTabStripModel(), browser->GetSessionID());
-    }
-
-    if (organizer_panel::IsOrganizerPanelFeatureEnabled()) {
-      organizer_panel_controller_ =
-          GetUserDataFactory().CreateInstance<OrganizerPanelController>(
-              *browser, *browser, browser_actions_->root_action_item());
     }
 
     std::optional<bool> restored_state_collapsed =
@@ -656,6 +648,13 @@ void BrowserWindowFeatures::Init(BrowserWindowInterface* browser) {
                 SessionServiceFactory::GetForProfile(browser_->GetProfile()),
                 browser_->GetSessionID(), restored_state_collapsed,
                 restored_state_uncollapsed_width);
+
+    // This relies on the vertical tab strip state controller.
+    if (organizer_panel::IsOrganizerPanelFeatureEnabled()) {
+      organizer_panel_controller_ =
+          GetUserDataFactory().CreateInstance<OrganizerPanelController>(
+              *browser, *browser, browser_actions_->root_action_item());
+    }
   }
 
   // Constructed last, out of alphabetical order:
@@ -1267,24 +1266,6 @@ void BrowserWindowFeatures::TearDownPreBrowserWindowDestruction() {
   }
   browser_animation_controller_.reset();
   actor_border_view_controller_.reset();
-}
-
-LocationBar* BrowserWindowFeatures::location_bar() {
-  // Return nullptr if not initialized. This can happen in tests where
-  // BrowserWindowFeatures is stubbed without being initialized with a browser.
-  if (!browser_) {
-    return nullptr;
-  }
-  return BrowserWindow::FromBrowser(browser_)->GetLocationBar();
-}
-
-const LocationBar* BrowserWindowFeatures::location_bar() const {
-  // Return nullptr if not initialized. This can happen in tests where
-  // BrowserWindowFeatures is stubbed without being initialized with a browser.
-  if (!browser_) {
-    return nullptr;
-  }
-  return BrowserWindow::FromBrowser(browser_)->GetLocationBar();
 }
 
 FindBarController* BrowserWindowFeatures::GetFindBarController() {

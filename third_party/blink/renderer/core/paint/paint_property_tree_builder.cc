@@ -284,6 +284,7 @@ class FragmentPaintPropertyTreeBuilder {
       const PhysicalOffset& sticky_offset);
   ALWAYS_INLINE void UpdateAnchorPositionScrollTranslation();
   ALWAYS_INLINE void UpdateElementCanvasTransform();
+  ALWAYS_INLINE void UpdateElementCanvasClip();
 
   void UpdateIndividualTransform(
       bool (*needs_property)(const LayoutObject&, CompositingReasons),
@@ -607,6 +608,12 @@ static bool NeedsElementCanvasTransform(const LayoutObject& object) {
   // Note: Create a canvas transform node even if no canvas element transform
   // is set to avoid paint invalidation from adding a canvas element transform.
   return element->CanvasForDrawing();
+}
+
+static bool NeedsElementCanvasClip(const LayoutObject& object) {
+  // Note: Create a canvas clip node even if no canvas element clip is set to
+  // avoid paint invalidation from adding a canvas element clip.
+  return NeedsElementCanvasTransform(object);
 }
 static bool NeedsPaintOffsetTranslation(
     const LayoutObject& object,
@@ -1158,6 +1165,43 @@ void FragmentPaintPropertyTreeBuilder::UpdateElementCanvasTransform() {
       context_.current.clip =
           &canvas_for_drawing->FirstFragment().ContentsProperties().Clip();
     }
+  }
+}
+
+void FragmentPaintPropertyTreeBuilder::UpdateElementCanvasClip() {
+  DCHECK(properties_);
+  if (NeedsPaintPropertyUpdate()) {
+    if (NeedsElementCanvasClip(object_)) {
+      ClipPaintPropertyNode::State state(*context_.current.transform,
+                                         /*pixel_moving_filter=*/nullptr);
+      const auto& element = *To<Element>(object_.GetNode());
+      FloatClipRect canvas_clip = element.GetUsedCanvasClip();
+      if (!canvas_clip.IsInfinite()) {
+        gfx::RectF clip_rect = canvas_clip.Rect();
+        float zoom = object_.StyleRef().EffectiveZoom();
+        if (zoom != 1.f) {
+          clip_rect.Scale(zoom);
+        }
+        state.SetClipRect(clip_rect, FloatRoundedRect(clip_rect));
+      }
+      auto change = properties_->UpdateElementCanvasClip(*context_.current.clip,
+                                                         std::move(state));
+      // Do not call `OnUpdateClip()` here because canvas clip changes
+      // do not affect the element's rendering and should not trigger a paint
+      // invalidation.
+      if (change >= PaintPropertyChangeType::kChangedOnlySimpleValues) {
+        object_.GetFrameView()->SetPaintArtifactCompositorNeedsUpdate();
+      }
+    } else {
+      // Do not call `OnClearClip()` here to avoid a paint invalidation.
+      if (properties_->ClearElementCanvasClip()) {
+        object_.GetFrameView()->SetPaintArtifactCompositorNeedsUpdate();
+      }
+    }
+  }
+
+  if (properties_->ElementCanvasClip()) {
+    context_.current.clip = properties_->ElementCanvasClip();
   }
 }
 
@@ -2006,6 +2050,7 @@ static void PopulateCanvasChildPaintState(HTMLCanvasElement* canvas,
   const LayoutReplaced* replaced = To<LayoutReplaced>(canvas->GetLayoutBox());
   const ComputedStyle& style = replaced->StyleRef();
 
+  paint_state.canvas_size = canvas->Size();
   paint_state.canvas_content_size =
       gfx::SizeF(replaced->ReplacedContentRect().size);
   paint_state.canvas_device_pixel_content_box =
@@ -2054,9 +2099,11 @@ static void PopulateCanvasChildState(
   PopulateCanvasChildPaintState(canvas, To<Element>(object.GetNode()),
                                 state.canvas_child_state->paint_state);
   state.canvas_child_state->content_effect = canvas_fragment.ContentsEffect();
-  state.canvas_child_state->content_clip = canvas_fragment.ContentsClip();
   const auto* properties = object.FirstFragment().PaintProperties();
   DCHECK(properties);
+  state.canvas_child_state->content_clip =
+      properties->ElementCanvasClip() ? properties->ElementCanvasClip()
+                                      : &canvas_fragment.ContentsClip();
   state.canvas_child_state->content_transform =
       properties->ElementCanvasTransform()
           ? properties->ElementCanvasTransform()
@@ -4322,6 +4369,7 @@ void FragmentPaintPropertyTreeBuilder::UpdateForSelf() {
       UpdateTransformForSVGChild(full_context_.direct_compositing_reasons);
     } else {
       UpdateElementCanvasTransform();
+      UpdateElementCanvasClip();
       UpdateTranslate();
       UpdateRotate();
       UpdateScale();
@@ -4505,6 +4553,7 @@ void PaintPropertyTreeBuilder::InitPaintProperties() {
        NeedsStickyTranslation(object_) ||
        NeedsAnchorPositionScrollTranslation(object_) ||
        NeedsElementCanvasTransform(object_) ||
+       NeedsElementCanvasClip(object_) ||
        NeedsTranslate(object_, context_.direct_compositing_reasons) ||
        NeedsRotate(object_, context_.direct_compositing_reasons) ||
        NeedsScale(object_, context_.direct_compositing_reasons) ||
@@ -4822,6 +4871,13 @@ void PaintPropertyTreeBuilder::UpdateForChildren() {
           PaintPropertyChangeType::kUnchanged) {
     object_.GetFrameView()->SetIntersectionObservationState(
         LocalFrameView::kDesired);
+  }
+
+  if (const auto* canvas = DynamicTo<HTMLCanvasElement>(object_.GetNode())) {
+    if (canvas->IsContentDrawable() && object_.NeedsPaintPropertyUpdate()) {
+      context_.force_subtree_update_reasons |=
+          PaintPropertyTreeBuilderContext::kSubtreeUpdateIsolationPiercing;
+    }
   }
 
   if (is_isolated) {

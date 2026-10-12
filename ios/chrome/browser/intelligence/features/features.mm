@@ -92,7 +92,8 @@ bool IsPageActionMenuEnabled() {
   ApplicationLocaleStorage* locale_storage =
       GetApplicationContext()->GetApplicationLocaleStorage();
   std::string locale =
-      locale_storage ? base::ToLowerASCII(locale_storage->Get()) : "";
+      locale_storage ? base::ToLowerASCII(locale_storage->GetTag().tag_string())
+                     : "";
 
   std::string normalized_locale;
   base::ReplaceChars(locale, "_", "-", &normalized_locale);
@@ -324,8 +325,8 @@ bool IsZeroStateSuggestionsEnabled() {
   ApplicationLocaleStorage* locale_storage =
       GetApplicationContext()->GetApplicationLocaleStorage();
   bool is_launched_locale =
-      locale_storage &&
-      base::EqualsCaseInsensitiveASCII(locale_storage->Get(), "en-us");
+      locale_storage && base::EqualsCaseInsensitiveASCII(
+                            locale_storage->GetTag().tag_string(), "en-us");
 
   if (is_launched_country && is_launched_locale) {
     return true;
@@ -347,8 +348,8 @@ bool IsZeroStateSuggestionsWCGDEnabled() {
   ApplicationLocaleStorage* locale_storage =
       GetApplicationContext()->GetApplicationLocaleStorage();
   bool is_launched_locale =
-      locale_storage &&
-      base::EqualsCaseInsensitiveASCII(locale_storage->Get(), "en-us");
+      locale_storage && base::EqualsCaseInsensitiveASCII(
+                            locale_storage->GetTag().tag_string(), "en-us");
 
   if (is_launched_country && is_launched_locale) {
     return true;
@@ -368,21 +369,6 @@ BASE_FEATURE(kPageContextExtractorRefactored, base::FEATURE_ENABLED_BY_DEFAULT);
 
 bool IsPageContextExtractorRefactoredEnabled() {
   return base::FeatureList::IsEnabled(kPageContextExtractorRefactored);
-}
-
-BASE_FEATURE(kGeminiUpdatedEligibility, base::FEATURE_ENABLED_BY_DEFAULT);
-
-bool IsGeminiUpdatedEligibilityEnabled() {
-  if (!IsPageActionMenuEnabled()) {
-    return false;
-  }
-  return base::FeatureList::IsEnabled(kGeminiUpdatedEligibility);
-}
-
-BASE_FEATURE(kGeminiUpdatedConsent, base::FEATURE_ENABLED_BY_DEFAULT);
-
-bool IsGeminiUpdatedConsentEnabled() {
-  return base::FeatureList::IsEnabled(kGeminiUpdatedConsent);
 }
 
 BASE_FEATURE(kGeminiEligibilityAblation, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -410,15 +396,6 @@ bool IsGeminiLiveDormantReasonsEnabled() {
     return false;
   }
   return base::FeatureList::IsEnabled(kGeminiLiveDormantReasons);
-}
-
-BASE_FEATURE(kGeminiChatPersistence, base::FEATURE_DISABLED_BY_DEFAULT);
-
-bool IsGeminiChatPersistenceEnabled() {
-  if (!IsPageActionMenuEnabled()) {
-    return false;
-  }
-  return base::FeatureList::IsEnabled(kGeminiChatPersistence);
 }
 
 BASE_FEATURE(kGeminiConfigParams, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -567,6 +544,9 @@ bool IsToolDisabled(optimization_guide::proto::Action::ActionCase tool) {
   return false;
 }
 
+BASE_FEATURE(kActorOriginGatingForNavigation,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 BASE_FEATURE(kModelBasedPageClassification, base::FEATURE_DISABLED_BY_DEFAULT);
 
 const char kModelBasedPageClassificationExecutionRateParam[] = "execution_rate";
@@ -590,8 +570,8 @@ bool IsModelBasedPageClassificationEnabled() {
   ApplicationLocaleStorage* locale_storage =
       GetApplicationContext()->GetApplicationLocaleStorage();
   bool is_launched_locale =
-      locale_storage &&
-      base::EqualsCaseInsensitiveASCII(locale_storage->Get(), "en-us");
+      locale_storage && base::EqualsCaseInsensitiveASCII(
+                            locale_storage->GetTag().tag_string(), "en-us");
 
   if (!is_launched_country || !is_launched_locale) {
     return false;
@@ -705,7 +685,7 @@ bool IsGeminiClientMigrationEnabled() {
   return base::FeatureList::IsEnabled(kGeminiClientMigration);
 }
 
-BASE_FEATURE(kGeminiMultiTabContext, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kGeminiMultiTabContext, base::FEATURE_ENABLED_BY_DEFAULT);
 
 bool IsGeminiMultiTabContextEnabled() {
   if (!IsPageActionMenuEnabled() || !IsGeminiScreenContextMigrationEnabled()) {

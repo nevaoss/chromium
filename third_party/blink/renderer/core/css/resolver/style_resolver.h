@@ -123,7 +123,7 @@ class CORE_EXPORT StyleResolver final : public GarbageCollected<StyleResolver> {
   //
   // If ignore_author_style is false, only the input print job settings will be
   // honored (to get default size and margins, and nothing else).
-  const ComputedStyle* StyleForPage(uint32_t page_index,
+  const ComputedStyle& StyleForPage(uint32_t page_index,
                                     const AtomicString& page_name,
                                     float page_fitting_scale = 1.0,
                                     bool ignore_author_style = false);
@@ -413,7 +413,7 @@ class CORE_EXPORT StyleResolver final : public GarbageCollected<StyleResolver> {
   MatchedPropertiesCache matched_properties_cache_;
 
   static void SetZoomedInitialLineWidths(float zoom, ComputedStyleBuilder&);
-  const ComputedStyle* CreateInitialStyle() const;
+  const ComputedStyle& CreateInitialStyle() const;
 
   // This member is on a hot-path for creating ComputedStyle objects.
   mutable Member<const ComputedStyle> initial_style_;

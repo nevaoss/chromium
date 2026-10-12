@@ -589,6 +589,7 @@ Called by update_bad_message_reasons.py.-->
       label="BIBI_BIND_PICTURE_IN_PICTURE_SERVICE_FOR_FENCED_FRAME"/>
   <int value="403"
       label="BIBI_BIND_PICTURE_IN_PICTURE_SERVICE_BLOCKED_BY_PERMISSIONS_POLICY"/>
+  <int value="404" label="RFH_DETACH_WHILE_BFCACHED"/>
 </enum>
 
 <enum name="BadMessageReasonExtensions">
@@ -642,6 +643,7 @@ Called by update_bad_message_reasons.py.-->
   <int value="42" label="WER_INVALID_EXTENSION_ID"/>
   <int value="43" label="AER_INVALID_PROCESS_FOR_AUTOMATION_BINDING"/>
   <int value="44" label="MS_EMPTY_ANDROID_CERTIFICATES_FOR_PACKED_EXTENSION"/>
+  <int value="45" label="EMF_INVALID_CHANNEL_TYPE"/>
 </enum>
 
 <enum name="BadMessageReasonGuestView">
