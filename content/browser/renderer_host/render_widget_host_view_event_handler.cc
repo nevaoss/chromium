@@ -711,7 +711,10 @@ void RenderWidgetHostViewEventHandler::FinishImeCompositionSession() {
   // call to finish composition text should be made through the RWHVA itself
   // otherwise the following call to cancel composition will lead to an extra
   // IPC for finishing the ongoing composition (see https://crbug.com/723024).
-<<<<<<< HEAD
+  if (!host_view_ || !host_view_->GetTextInputClient()) {
+    return;
+  }
+  auto weak_this = weak_ptr_factory_.GetWeakPtr();
 #if BUILDFLAG(IS_WEBOS)
   TextInputManager* input_manager = host_view_->GetTextInputManager();
   if (input_manager) {
@@ -738,13 +741,6 @@ void RenderWidgetHostViewEventHandler::FinishImeCompositionSession() {
     }
   }
 #endif  // BUILDFLAG(IS_WEBOS)
-
-=======
-  if (!host_view_ || !host_view_->GetTextInputClient()) {
-    return;
-  }
-  auto weak_this = weak_ptr_factory_.GetWeakPtr();
->>>>>>> 156.0.8078.0~1
   host_view_->GetTextInputClient()->ConfirmCompositionText(
       /* keep_selection */ true);
   if (!weak_this || !window_ || !host_ || host_view_->destroy_pending()) {

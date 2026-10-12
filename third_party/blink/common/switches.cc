@@ -12,17 +12,15 @@ namespace switches {
 // involving a command line switch.
 const char kAllowPreCommitInput[] = "allow-pre-commit-input";
 
-<<<<<<< HEAD
 #if BUILDFLAG(IS_NEVA_APPRUNTIME)
 // Allow script to close windows that was opened by another scripts
 const char kAllowScriptsToCloseWindows[] = "allow-scripts-to-close-windows";
 #endif  // BUILDFLAG(IS_NEVA_APPRUNTIME)
-=======
+
 // Minimum time interval (in milliseconds) at which async touchmove events
 // during scroll will be skipped during rAF signal when throttling is active.
 const char kAsyncTouchMoveThrottleTimeMs[] =
     "async-touch-move-throttle-time-ms";
->>>>>>> 156.0.8078.0~1
 
 // Set blink settings. Format is <name>[=<value],<name>[=<value>],...
 // The names are declared in Settings.json5. For boolean type, use "true",
