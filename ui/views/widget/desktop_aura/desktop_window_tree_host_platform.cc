@@ -1193,10 +1193,12 @@ void DesktopWindowTreeHostPlatform::OnWindowStateChanged(
             switches::kEnableAggressiveReleasePolicy);
     if (!is_minimized) {
       GetContentWindow()->Show();
-      SetVisible(true);
+      compositor()->SetVisible(true);
+      native_widget_delegate_->OnNativeWidgetVisibilityChanged(true);
     } else if (!use_aggressive_release_policy) {
-      SetVisible(false);
+      compositor()->SetVisible(false);
       GetContentWindow()->Hide();
+      native_widget_delegate_->OnNativeWidgetVisibilityChanged(false);
     }
   }
 #else
