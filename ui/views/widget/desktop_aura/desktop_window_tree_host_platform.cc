@@ -1193,9 +1193,9 @@ void DesktopWindowTreeHostPlatform::OnWindowStateChanged(
             switches::kEnableAggressiveReleasePolicy);
     if (!is_minimized) {
       GetContentWindow()->Show();
-      SetVisible(true);
+      GetWidget()->SetVisible(true);
     } else if (!use_aggressive_release_policy) {
-      SetVisible(false);
+      GetWidget()->SetVisible(false);
       GetContentWindow()->Hide();
     }
   }
