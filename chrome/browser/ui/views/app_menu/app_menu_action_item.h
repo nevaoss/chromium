@@ -24,15 +24,22 @@
 class AppMenuActionItem {
  public:
   enum class DisplayType {
-    kRow,
+    // Searchable Types
     kBlock,
-    kFooter,
-    kDivider,
+    kCustom,
+    kNotification,
+    kRow,
     kSection,
+
+    // Non-searchable Types
+    kDivider,
+    kFooter,
     kHeader,
     kSearch,
-    kNotification,
-    kCustom,
+
+    // Exclusive boundary marker for searchable types.
+    // Any type with a value < kMaxSearchable is searchable.
+    kMaxSearchable = kDivider,
   };
 
   enum class ItemHeight {
@@ -49,8 +56,10 @@ class AppMenuActionItem {
     std::optional<bool> is_checkable;
     std::optional<ItemHeight> item_height;
     std::optional<std::u16string> minor_text;
+    std::optional<int> action_param;
     raw_ptr<const base::Feature> new_badge_feature;
     ui::ElementIdentifier element_id;
+    std::optional<bool> is_alerted;
   };
 
   static const ui::ClassProperty<DisplayType>* const kDisplayTypeKey;
@@ -65,6 +74,8 @@ class AppMenuActionItem {
   static const ui::ClassProperty<ItemHeight>* const kItemHeightKey;
   static const ui::ClassProperty<const base::Feature*>* const
       kNewBadgeFeatureKey;
+  static const ui::ClassProperty<bool>* const kIsAlertedKey;
+  static const ui::ClassProperty<int>* const kActionParamKey;
 
   AppMenuActionItem() = delete;
   AppMenuActionItem(const AppMenuActionItem&) = delete;

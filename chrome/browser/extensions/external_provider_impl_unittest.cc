@@ -108,7 +108,7 @@ const char kExternalExtensionId[] = "ghpipljflpbfljcfjlhfbfcpoklobpji";
 
 #if BUILDFLAG(IS_WIN)
 const char kExternalExtensionCrxPath[] =
-    "external\\ghpipljflpbfljcfjlhfbfcpoklobpji.crx";
+    "external_extension\\ghpipljflpbfljcfjlhfbfcpoklobpji.crx";
 const wchar_t kExternalExtensionRegistryKey[] =
     L"Software\\Google\\Chrome\\Extensions\\ghpipljflpbfljcfjlhfbfcpoklobpji";
 #endif
@@ -458,6 +458,9 @@ TEST_F(ExternalProviderImplTest, LowTrustBlockedScannerBypass) {
       kGoodApp.app_id);
 
   // 1. Simulate an unmanaged (low trust) environment.
+  policy::ScopedManagementServiceOverrideForTesting platform_management(
+      policy::ManagementServiceFactory::GetForPlatform(),
+      policy::EnterpriseManagementAuthority::NONE);
   policy::ScopedManagementServiceOverrideForTesting profile_management(
       policy::ManagementServiceFactory::GetForProfile(profile()),
       policy::EnterpriseManagementAuthority::NONE);
@@ -584,6 +587,9 @@ TEST_F(ExternalProviderImplTest, LowTrustPolicyTakeoverPrevention) {
       registry()->GetInstalledExtension(user_extension->id())->location());
 
   // 2. Simulate an unmanaged (low trust) environment.
+  policy::ScopedManagementServiceOverrideForTesting platform_management(
+      policy::ManagementServiceFactory::GetForPlatform(),
+      policy::EnterpriseManagementAuthority::NONE);
   auto* management_service =
       policy::ManagementServiceFactory::GetForProfile(profile());
   policy::ScopedManagementServiceOverrideForTesting profile_management(

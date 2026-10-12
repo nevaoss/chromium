@@ -54,8 +54,8 @@ extern const base::FeatureParam<base::TimeDelta> kAutoOpenGlicCooldown;
 BASE_DECLARE_FEATURE(kGlicInvoke);
 BASE_DECLARE_FEATURE(kGlicOnboardingMetricsMigration);
 
+// Controls inline cue for text selection.
 BASE_DECLARE_FEATURE(kGlicSelectionPrompt);
-extern const base::FeatureParam<bool> kGlicSelectionPromptUpdatesOnly;
 extern const base::FeatureParam<bool> kGlicSelectionShowCopyButtons;
 extern const base::FeatureParam<bool> kGlicSelectionAutoSendPrompt;
 extern const base::FeatureParam<std::string> kGlicSelectionPromptCta;
@@ -69,6 +69,7 @@ extern const base::FeatureParam<std::string> kGlicSelectionDefaultBlockedSites;
 base::flat_set<std::string> GetGlicSelectionDefaultBlockedSites();
 
 BASE_DECLARE_FEATURE(kGlicSelectionOverlayPrompt);
+BASE_DECLARE_FEATURE(kGlicSelectionOverlayPromptBox);
 
 BASE_DECLARE_FEATURE(kGlicSelectionSmallChip);
 extern const base::FeatureParam<bool> kGlicSelectionSmallChipOnTop;
@@ -209,7 +210,7 @@ BASE_DECLARE_FEATURE(kGlicOptInDialogA11yFix);
 BASE_DECLARE_FEATURE(kGlicStructuredYieldMetadata);
 
 BASE_DECLARE_FEATURE(kGlicNoWebview);
-// Returns true if kGlicNoWebview is enabled.
+// Returns true if kGlicNoWebview is enabled or if GEiC is enabled.
 bool IsGlicNoWebviewEnabled();
 BASE_DECLARE_FEATURE(kGlicDisconnectedWebview);
 
@@ -221,6 +222,11 @@ BASE_DECLARE_FEATURE(kGlicAndroidTablet);
 // Enables voice input for Gemini in Chrome, including the microphone permission
 // toggle in Glic settings.
 BASE_DECLARE_FEATURE(kGlicVoice);
+
+// When enabled, the Android experimental opt-in dialog uses a taller 380x710dp
+// max size, so its content fits without scrolling, instead of the default
+// 380x567dp.
+BASE_DECLARE_FEATURE(kGlicExperimentalOptInDialogNonScrollable);
 
 BASE_DECLARE_FEATURE(kGlicActionFirstFRE);
 

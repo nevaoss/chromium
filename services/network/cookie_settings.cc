@@ -34,7 +34,6 @@
 #include "net/cookies/cookie_setting_override.h"
 #include "net/cookies/cookie_util.h"
 #include "net/cookies/static_cookie_policy.h"
-#include "net/first_party_sets/first_party_set_metadata.h"
 #include "services/network/public/cpp/features.h"
 #include "url/gurl.h"
 #include "url/origin.h"
@@ -162,8 +161,16 @@ DeleteCookiePredicate CookieSettings::CreateDeleteCookieOnExitPredicate()
     }
   }
 
+  // The returned predicate may be evaluated asynchronously on a background
+  // sequence after `this` has been modified or destroyed, so bind an owned
+  // snapshot rather than `this`.
+  auto settings_snapshot = std::make_unique<CookieSettings>();
+  settings_snapshot->set_content_settings(ContentSettingsType::COOKIES,
+                                          settings);
+
   return base::BindRepeating(&CookieSettings::ShouldDeleteCookieOnExit,
-                             base::Unretained(this), std::move(settings));
+                             base::Owned(std::move(settings_snapshot)),
+                             std::move(settings));
 }
 
 bool CookieSettings::ShouldIgnoreSameSiteRestrictions(
@@ -186,7 +193,6 @@ bool CookieSettings::IsCookieAccessible(
     const GURL& url,
     const net::SiteForCookies& site_for_cookies,
     base::optional_ref<const url::Origin> top_frame_origin,
-    const net::FirstPartySetMetadata& first_party_set_metadata,
     net::CookieSettingOverrides overrides,
     net::CookieInclusionStatus* cookie_inclusion_status) const {
   const CookieSettingWithMetadata setting_with_metadata =
@@ -259,7 +265,6 @@ bool CookieSettings::AnnotateAndMoveUserBlockedCookies(
     const GURL& url,
     const net::SiteForCookies& site_for_cookies,
     base::optional_ref<const url::Origin> top_frame_origin,
-    const net::FirstPartySetMetadata& first_party_set_metadata,
     net::CookieSettingOverrides overrides,
     net::CookieAccessResultList& maybe_included_cookies,
     net::CookieAccessResultList& excluded_cookies) const {

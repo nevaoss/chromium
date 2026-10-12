@@ -242,12 +242,6 @@ void Canvas2DResourceProvider::EnsureResourceReadyForDraw() {
   }
 }
 
-std::unique_ptr<gpu::RasterScopedAccess>
-Canvas2DResourceProvider::WillDrawInternal() {
-  EnsureResourceReadyForDraw();
-  return resource_->BeginAccess(/*readonly=*/false);
-}
-
 void Canvas2DResourceProvider::WillDrawUnaccelerated() {
   CHECK(!IsAccelerated());
 
@@ -455,8 +449,8 @@ scoped_refptr<StaticBitmapImage> Canvas2DResourceProvider::Snapshot(
     cached_snapshot_ = resource_->Bitmap();
 
     // We'll record its content_id to be used by the FlushForImageListener.
-    // This will be needed in WillDrawInternal, but we are doing it now, as we
-    // don't know if later on we will be in the same thread the
+    // This will be needed in EnsureResourceReadyForDraw(), but we are doing it
+    // now, as we don't know if later on we will be in the same thread the
     // cached_snapshot_ was created and we wouldn't be able to
     // PaintImageForCurrentFrame in AcceleratedStaticBitmapImage just to check
     // the content_id. ShouldReplaceTargetBuffer needs this ID in order to let
@@ -576,7 +570,7 @@ void Canvas2DResourceProvider::RasterRecord(cc::PaintRecord last_recording) {
     return;
   }
 
-  auto access = WillDrawInternal();
+  EnsureResourceReadyForDraw();
   EnsureWriteAccess();
 
   cc::PlaybackCallbacks::CustomDataRasterCallback custom_callback;
@@ -590,44 +584,13 @@ void Canvas2DResourceProvider::RasterRecord(cc::PaintRecord last_recording) {
 
   const bool needs_clear = !is_cleared_;
   is_cleared_ = true;
+  auto* image_provider = GetOrCreateCanvasImageProvider();
 
-  gpu::raster::RasterInterface* ri = RasterInterface();
-  SkColor4f background_color = GetAlphaType() == kOpaque_SkAlphaType
-                                   ? SkColors::kBlack
-                                   : SkColors::kTransparent;
-
-  auto list = base::MakeRefCounted<cc::DisplayItemList>();
-  list->StartPaint();
-  list->push<cc::DrawRecordOp>(std::move(last_recording));
-  list->EndPaintOfUnpaired(gfx::Rect(Size().width(), Size().height()));
-  list->Finalize();
-
-  gfx::Size size(Size().width(), Size().height());
-  size_t max_op_size_hint = gpu::raster::RasterInterface::kDefaultMaxOpSizeHint;
-  gfx::Rect full_raster_rect(Size().width(), Size().height());
-  gfx::Rect playback_rect(Size().width(), Size().height());
-  gfx::Vector2dF post_translate(0.f, 0.f);
-  gfx::Vector2dF post_scale(1.f, 1.f);
-
-  const bool can_use_lcd_text = GetAlphaType() == kOpaque_SkAlphaType;
-  const auto& caps =
-      context_provider_wrapper_->ContextProvider().GetCapabilities();
-  bool use_msaa = !caps.msaa_is_slow && !caps.avoid_stencil_buffers;
-  ri->BeginRasterCHROMIUM(
-      background_color, needs_clear,
-      /*msaa_sample_count=*/use_msaa ? 1 : 0,
-      use_msaa ? gpu::raster::MsaaMode::kDMSAA : gpu::raster::MsaaMode::kNoMSAA,
-      can_use_lcd_text, /*visible=*/true, GetColorSpace(),
-      /*hdr_headroom=*/0.f, resource()->GetSharedImage()->mailbox().name);
-
-  ri->RasterCHROMIUM(list.get(), GetOrCreateCanvasImageProvider(), size,
-                     full_raster_rect, playback_rect, post_translate,
-                     post_scale, /*requires_clear=*/false,
-                     /*raster_inducing_scroll_offsets=*/nullptr,
-                     &max_op_size_hint, custom_callback);
-
-  ri->EndRasterCHROMIUM();
-  resource()->EndAccess(std::move(access));
+  gpu::SyncToken sync_token = RasterInterface()->RasterSharedImage(
+      resource()->GetSharedImage(), resource()->acquire_sync_token(),
+      std::move(last_recording), image_provider, needs_clear,
+      std::move(custom_callback));
+  resource()->SetReleaseSyncToken(sync_token);
 }
 
 void Canvas2DResourceProvider::OnFlushForImage(

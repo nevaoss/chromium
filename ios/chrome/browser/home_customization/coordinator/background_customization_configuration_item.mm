@@ -12,6 +12,7 @@
 #import "ios/chrome/browser/home_customization/ui/home_customization_framing_coordinates.h"
 #import "ios/chrome/browser/ntp/ui_bundled/new_tab_page_color_palette.h"
 #import "ios/chrome/browser/ntp/ui_bundled/new_tab_page_color_palette_util.h"
+#import "ios/chrome/browser/ntp/ui_bundled/theme_utils.h"
 #import "url/gurl.h"
 
 @implementation BackgroundCustomizationConfigurationItem {
@@ -28,6 +29,10 @@
 
   NSString* _userUploadedImagePath;
   HomeCustomizationFramingCoordinates* _userUploadedFramingCoordinates;
+
+  NSString* _animatedBackgroundPath;
+  NSDictionary<NSString*, UIColor*>* _lightModeColorProvider;
+  NSDictionary<NSString*, UIColor*>* _darkModeColorProvider;
 }
 
 @synthesize accessibilityName = _accessibilityName;
@@ -117,6 +122,29 @@
   return self;
 }
 
+- (instancetype)initWithEphemeralTheme:(UIColor*)backgroundColor
+                             imagePath:(NSString*)imagePath
+                lightModeColorProvider:
+                    (NSDictionary<NSString*, UIColor*>*)lightModeColorProvider
+                 darkModeColorProvider:
+                     (NSDictionary<NSString*, UIColor*>*)darkModeColorProvider
+                     accessibilityName:(NSString*)accessibilityName {
+  self = [super init];
+  if (self) {
+    _backgroundStyle = HomeCustomizationBackgroundStyle::kEphemeral;
+    _configurationID = [NSString
+        stringWithFormat:@"%@_%ld", kBackgroundCellIdentifier,
+                         HomeCustomizationBackgroundStyle::kEphemeral];
+    _backgroundColor = backgroundColor;
+    _colorVariant = ui::ColorProviderKey::SchemeVariant::kTonalSpot;
+    _animatedBackgroundPath = imagePath;
+    _lightModeColorProvider = [lightModeColorProvider copy];
+    _darkModeColorProvider = [darkModeColorProvider copy];
+    _accessibilityName = accessibilityName;
+  }
+  return self;
+}
+
 - (const CollectionImage&)collectionImage {
   return _collectionImage;
 }
@@ -150,7 +178,8 @@
 }
 
 - (NewTabPageColorPalette*)colorPalette {
-  if (self.backgroundStyle != HomeCustomizationBackgroundStyle::kColor) {
+  if (self.backgroundStyle != HomeCustomizationBackgroundStyle::kColor &&
+      self.backgroundStyle != HomeCustomizationBackgroundStyle::kEphemeral) {
     return nil;
   }
   return CreateColorPaletteFromSeedColor(self.backgroundColor,
@@ -163,6 +192,18 @@
 
 - (HomeCustomizationFramingCoordinates*)userUploadedFramingCoordinates {
   return _userUploadedFramingCoordinates;
+}
+
+- (NSString*)animatedBackgroundPath {
+  return _animatedBackgroundPath;
+}
+
+- (NSDictionary<NSString*, UIColor*>*)lightModeColorProvider {
+  return _lightModeColorProvider;
+}
+
+- (NSDictionary<NSString*, UIColor*>*)darkModeColorProvider {
+  return _darkModeColorProvider;
 }
 
 @end

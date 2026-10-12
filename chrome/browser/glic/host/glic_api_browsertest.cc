@@ -114,6 +114,7 @@
 #include "content/public/common/content_features.h"
 #include "content/public/test/browser_test.h"
 #include "content/public/test/browser_test_utils.h"
+#include "content/public/test/memory_coordinator_browsertest_util.h"
 #include "content/public/test/test_navigation_observer.h"
 #include "google_apis/gaia/gaia_auth_util.h"
 #include "mojo/public/cpp/base/big_buffer.h"
@@ -1296,7 +1297,7 @@ IN_PROC_BROWSER_TEST_P(GlicApiTest, MAYBE_testThereCanOnlyBeOneFloaty) {
   // Verify that the first tab instance is detached before opening the second
   // tab.
   ASSERT_EQ(mojom::PanelStateKind::kDetached,
-            tab0_instance->GetPanelState().kind);
+            tab0_instance->GetPanelState()->kind);
 
   // Select the second tab, open Floaty, and execute the test on the second
   // instance.
@@ -1310,9 +1311,9 @@ IN_PROC_BROWSER_TEST_P(GlicApiTest, MAYBE_testThereCanOnlyBeOneFloaty) {
   ContinueJsTest({.instance = tab0_instance});
 
   ASSERT_EQ(mojom::PanelStateKind::kDetached,
-            tab1_instance->GetPanelState().kind);
+            tab1_instance->GetPanelState()->kind);
   ASSERT_EQ(mojom::PanelStateKind::kHidden,
-            tab0_instance->GetPanelState().kind);
+            tab0_instance->GetPanelState()->kind);
 }
 
 #if defined(NOT_VETTED_ON_ANDROID)
@@ -1640,23 +1641,26 @@ class GlicApiTestRuntimeFeatureOff : public GlicApiTest {
 // method.
 IN_PROC_BROWSER_TEST_P(GlicApiTestRuntimeFeatureOff,
                        testErrorShownOnMojoPipeError) {
-  if (GetParam().no_webview) {
-    GTEST_SKIP() << "Test doesn't yet work in kGlicNoWebview";
-  }
   ASSERT_OK_AND_ASSIGN(auto* instance, OpenGlicForActiveTab());
-  ExecuteJsTest();
+  ExecuteJsTest(
+      {.params = base::Value(base::DictValue().Set("triggerError", true))});
+
+  if (!features::IsGlicNoWebviewEnabled()) {
+    ASSERT_OK(WaitForWebUiState(mojom::WebUiState::kError));
+  } else {
+    ASSERT_OK(WaitForOverlayErrorPanel(mojom::ErrorPanelType::kError));
+  }
 
   auto* web_contents = instance->host().webui_contents();
   ASSERT_TRUE(web_contents);
 
-  ASSERT_OK(WaitForWebUiState(mojom::WebUiState::kError));
-
   // Verify the reload button works.
-  ASSERT_TRUE(content::ExecJs(web_contents,
-                              "document.querySelector('#reload').click();"));
+  content::ExecuteScriptAsync(web_contents,
+                              "document.querySelector('#reload').click();");
 
-  ASSERT_OK(WaitForWebUiState(mojom::WebUiState::kReady));
-  ExecuteJsTest();
+  ASSERT_OK(WaitUntilGuestIsShowing());
+  ExecuteJsTest(
+      {.params = base::Value(base::DictValue().Set("triggerError", false))});
 }
 
 IN_PROC_BROWSER_TEST_P(GlicApiTest,
@@ -2690,14 +2694,7 @@ IN_PROC_BROWSER_TEST_P(GlicApiTestWithNewTabDaisyChain,
       1));
 }
 
-// TODO(b/565497972): Re-enable once crash during teardown is resolved on Android.
-#if BUILDFLAG(IS_ANDROID)
-#define MAYBE_testNewTabMetrics DISABLED_testNewTabMetrics
-#else
-#define MAYBE_testNewTabMetrics testNewTabMetrics
-#endif
-IN_PROC_BROWSER_TEST_P(GlicApiTestWithNewTabDaisyChain,
-                       MAYBE_testNewTabMetrics) {
+IN_PROC_BROWSER_TEST_P(GlicApiTestWithNewTabDaisyChain, testNewTabMetrics) {
   // 1. Open Glic in first tab.
   ASSERT_OK(OpenGlicForActiveTab());
   base::HistogramTester histogram_tester;
@@ -3097,8 +3094,9 @@ IN_PROC_BROWSER_TEST_P(GlicApiTest, testInitializeFailsAfterReload) {
   ASSERT_OK(WaitForWebUiState(mojom::WebUiState::kError));
 }
 
-// TODO(https://crbug.com/516659596): Re-enable on Linux debug builds.
-#if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_ANDROID) || !defined(NDEBUG)
+// TODO(https://crbug.com/516659596): Re-enable on Linux builds.
+#if BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_LINUX) || \
+    !defined(NDEBUG)
 #define MAYBE_testNoClientCreated DISABLED_testNoClientCreated
 #else
 #define MAYBE_testNoClientCreated testNoClientCreated
@@ -3343,6 +3341,10 @@ IN_PROC_BROWSER_TEST_P(GlicGetHostCapabilityApiTest, testGetHostCapabilities) {
     expected_capabilities.Append(
         std::to_underlying(mojom::HostCapability::kChromeTools));
   }
+  if (features::IsGlicNoWebviewEnabled()) {
+    expected_capabilities.Append(
+        std::to_underlying(mojom::HostCapability::kNoWebview));
+  }
 
   ASSERT_OK(OpenGlicForActiveTab());
   ExecuteJsTest({.params = base::Value(std::move(expected_capabilities))});
@@ -3442,7 +3444,14 @@ IN_PROC_BROWSER_TEST_P(GlicApiTestUserStatusCheckTest,
   EXPECT_LE(user_status_fetch_count_, 4u);
 }
 
-IN_PROC_BROWSER_TEST_P(GlicApiTest, testInitializeFails) {
+// TODO(crbug.com/565863579): Flaky timeout on Android waiting for
+// GlicHostRegistry in ExecuteJsTest.
+#if BUILDFLAG(IS_ANDROID)
+#define MAYBE_testInitializeFails DISABLED_testInitializeFails
+#else
+#define MAYBE_testInitializeFails testInitializeFails
+#endif
+IN_PROC_BROWSER_TEST_P(GlicApiTest, MAYBE_testInitializeFails) {
   if (GetParam().no_webview) {
     GTEST_SKIP() << "Test doesn't yet work in kGlicNoWebview";
   }
@@ -5233,8 +5242,10 @@ IN_PROC_BROWSER_TEST_P(GlicApiTest, testHibernateAllOnMemoryPressure) {
                   .HasWarmedContainerForTesting());
 
   // Simulate memory pressure.
-  base::MemoryPressureListener::NotifyMemoryPressure(
-      base::MEMORY_PRESSURE_LEVEL_CRITICAL);
+  content::test::ScopedMemoryLimitOverride scoped_memory_limit_override(
+      GlicInstanceCoordinatorImpl::kMemoryConsumerName);
+  scoped_memory_limit_override.SetLimit(base::kCriticalMemoryPressureThreshold);
+  scoped_memory_limit_override.NotifyReleaseMemory();
 
   // Wait for the non-showing instances to hibernate.
   ASSERT_OK(WaitForGlicHibernated(instance2));
@@ -5277,7 +5288,8 @@ INSTANTIATE_TEST_SUITE_P(
                     TestParams{.trust_first_onboarding_arm2 = true,
                                .auto_open_pdf = true},
                     TestParams{.skills_v2 = true},
-                    TestParams{.enable_embedded_pdf_bytes_extraction = true}),
+                    TestParams{.enable_embedded_pdf_bytes_extraction = true},
+                    TestParams{.no_webview = true}),
     &WithTestParams::PrintTestVariant);
 
 INSTANTIATE_TEST_SUITE_P(,

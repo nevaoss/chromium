@@ -92,8 +92,8 @@ class PhysicalDeviceRecoveryFactorTest : public testing::Test {
     adapter_ = std::make_unique<LegacyStandaloneTrustedVaultStorageAdapter>(
         std::move(storage));
     recovery_factor_ = std::make_unique<PhysicalDeviceRecoveryFactor>(
-        SecurityDomainId::kChromeSync, adapter_.get(), adapter_.get(),
-        adapter_.get(), connection_.get(), account_info);
+        adapter_.get(), adapter_.get(), adapter_.get(), connection_.get(),
+        account_info);
   }
 
   CoreAccountInfo account_info() {
@@ -144,7 +144,7 @@ class PhysicalDeviceRecoveryFactorTest : public testing::Test {
     EXPECT_CALL(
         *connection(),
         RegisterAuthenticationFactor(
-            Eq(account_info),
+            Eq(account_info), Eq(SecurityDomainId::kChromeSync),
             MatchTrustedVaultKeyAndVersions(GetTrustedVaultKeysWithVersions(
                 vault_keys, last_vault_key_version)),
             _,
@@ -152,7 +152,7 @@ class PhysicalDeviceRecoveryFactorTest : public testing::Test {
                 LocalPhysicalDevice())),
             _))
         .WillOnce(
-            [&](const CoreAccountInfo&,
+            [&](const CoreAccountInfo&, SecurityDomainId,
                 const MemberKeysSource& member_keys_source,
                 const SecureBoxPublicKey& device_public_key,
                 AuthenticationFactorTypeAndRegistrationParams,
@@ -166,7 +166,8 @@ class PhysicalDeviceRecoveryFactorTest : public testing::Test {
               return std::make_unique<TrustedVaultConnection::Request>();
             });
 
-    recovery_factor_->MaybeRegister(base::DoNothing());
+    recovery_factor_->MaybeRegister(SecurityDomainId::kChromeSync,
+                                    base::DoNothing());
     Mock::VerifyAndClearExpectations(connection());
     EXPECT_FALSE(device_registration_callback.is_null());
 
@@ -191,10 +192,12 @@ class PhysicalDeviceRecoveryFactorTest : public testing::Test {
     base::MockCallback<LocalRecoveryFactor::RegisterCallback> register_callback;
     EXPECT_CALL(
         register_callback,
-        Run(TrustedVaultRegistrationStatus::kRegistrationNotAttempted, _, _));
+        Run(SecurityDomainId::kChromeSync,
+            TrustedVaultRegistrationStatus::kRegistrationNotAttempted, _, _));
     base::RunLoop run_loop;
     TrustedVaultRecoveryFactorRegistrationStateForUMA status =
         recovery_factor()->MaybeRegister(
+            SecurityDomainId::kChromeSync,
             register_callback.Get().Then(run_loop.QuitClosure()));
     run_loop.Run();
     EXPECT_EQ(status, expected_state);
@@ -219,14 +222,15 @@ TEST_F(PhysicalDeviceRecoveryFactorTest, ShouldRegisterDevice) {
   EXPECT_CALL(
       *connection(),
       RegisterAuthenticationFactor(
-          Eq(account_info()),
+          Eq(account_info()), Eq(SecurityDomainId::kChromeSync),
           MatchTrustedVaultKeyAndVersions(
               GetTrustedVaultKeysWithVersions({kVaultKey}, kLastKeyVersion)),
           _,
           Eq(AuthenticationFactorTypeAndRegistrationParams(
               LocalPhysicalDevice())),
           _))
-      .WillOnce([&](const CoreAccountInfo&, const MemberKeysSource&,
+      .WillOnce([&](const CoreAccountInfo&, SecurityDomainId,
+                    const MemberKeysSource&,
                     const SecureBoxPublicKey& device_public_key,
                     AuthenticationFactorTypeAndRegistrationParams,
                     TrustedVaultConnection::RegisterAuthenticationFactorCallback
@@ -239,19 +243,21 @@ TEST_F(PhysicalDeviceRecoveryFactorTest, ShouldRegisterDevice) {
   // Register the device.
   base::MockCallback<LocalRecoveryFactor::RegisterCallback> register_callback;
   TrustedVaultRecoveryFactorRegistrationStateForUMA status =
-      recovery_factor()->MaybeRegister(register_callback.Get());
+      recovery_factor()->MaybeRegister(SecurityDomainId::kChromeSync,
+                                       register_callback.Get());
   EXPECT_EQ(status, TrustedVaultRecoveryFactorRegistrationStateForUMA::
                         kAttemptingRegistrationWithNewKeyPair);
   ASSERT_FALSE(device_registration_callback.is_null());
 
   // Pretend that the registration completed successfully.
   EXPECT_CALL(register_callback,
-              Run(TrustedVaultRegistrationStatus::kSuccess, _, _));
+              Run(SecurityDomainId::kChromeSync,
+                  TrustedVaultRegistrationStatus::kSuccess, _, _));
   std::move(device_registration_callback)
       .Run(TrustedVaultRegistrationStatus::kSuccess, kLastKeyVersion);
 
   // Now the device should be registered.
-  EXPECT_TRUE(recovery_factor()->IsRegistered());
+  EXPECT_TRUE(recovery_factor()->IsRegistered(SecurityDomainId::kChromeSync));
   const trusted_vault_pb::LocalDeviceRegistrationInfo registration_info =
       GetDeviceRegistrationInfo(account_info());
   EXPECT_TRUE(registration_info.device_registered());
@@ -307,14 +313,14 @@ TEST_F(PhysicalDeviceRecoveryFactorTest,
   EXPECT_CALL(
       *connection(),
       RegisterAuthenticationFactor(
-          Eq(account_info()),
+          Eq(account_info()), Eq(SecurityDomainId::kChromeSync),
           MatchTrustedVaultKeyAndVersions(
               GetTrustedVaultKeysWithVersions({kVaultKey}, kLastKeyVersion)),
           _,
           Eq(AuthenticationFactorTypeAndRegistrationParams(
               LocalPhysicalDevice())),
           _))
-      .WillOnce([&](const CoreAccountInfo&,
+      .WillOnce([&](const CoreAccountInfo&, SecurityDomainId,
                     const MemberKeysSource& member_keys_source,
                     const SecureBoxPublicKey& device_public_key,
                     AuthenticationFactorTypeAndRegistrationParams,
@@ -327,14 +333,16 @@ TEST_F(PhysicalDeviceRecoveryFactorTest,
   // Register the device.
   base::MockCallback<LocalRecoveryFactor::RegisterCallback> register_callback;
   TrustedVaultRecoveryFactorRegistrationStateForUMA status =
-      recovery_factor()->MaybeRegister(register_callback.Get());
+      recovery_factor()->MaybeRegister(SecurityDomainId::kChromeSync,
+                                       register_callback.Get());
   EXPECT_EQ(status, TrustedVaultRecoveryFactorRegistrationStateForUMA::
                         kAttemptingRegistrationWithNewKeyPair);
   ASSERT_FALSE(device_registration_callback.is_null());
 
   // Pretend that the registration failed with kLocalDataObsolete.
   EXPECT_CALL(register_callback,
-              Run(TrustedVaultRegistrationStatus::kLocalDataObsolete, _, _));
+              Run(SecurityDomainId::kChromeSync,
+                  TrustedVaultRegistrationStatus::kLocalDataObsolete, _, _));
   std::move(device_registration_callback)
       .Run(TrustedVaultRegistrationStatus::kLocalDataObsolete,
            /*key_version=*/0);
@@ -367,14 +375,14 @@ TEST_F(PhysicalDeviceRecoveryFactorTest,
   EXPECT_CALL(
       *connection(),
       RegisterAuthenticationFactor(
-          Eq(account_info()),
+          Eq(account_info()), Eq(SecurityDomainId::kChromeSync),
           MatchTrustedVaultKeyAndVersions(
               GetTrustedVaultKeysWithVersions({kVaultKey}, kLastKeyVersion)),
           _,
           Eq(AuthenticationFactorTypeAndRegistrationParams(
               LocalPhysicalDevice())),
           _))
-      .WillOnce([&](const CoreAccountInfo&,
+      .WillOnce([&](const CoreAccountInfo&, SecurityDomainId,
                     const MemberKeysSource& member_keys_source,
                     const SecureBoxPublicKey& device_public_key,
                     AuthenticationFactorTypeAndRegistrationParams,
@@ -387,7 +395,8 @@ TEST_F(PhysicalDeviceRecoveryFactorTest,
   // Register the device.
   base::MockCallback<LocalRecoveryFactor::RegisterCallback> register_callback;
   TrustedVaultRecoveryFactorRegistrationStateForUMA status =
-      recovery_factor()->MaybeRegister(register_callback.Get());
+      recovery_factor()->MaybeRegister(SecurityDomainId::kChromeSync,
+                                       register_callback.Get());
   EXPECT_EQ(status, TrustedVaultRecoveryFactorRegistrationStateForUMA::
                         kAttemptingRegistrationWithNewKeyPair);
   ASSERT_FALSE(device_registration_callback.is_null());
@@ -400,7 +409,8 @@ TEST_F(PhysicalDeviceRecoveryFactorTest,
 
   // Pretend that the registration succeeded.
   EXPECT_CALL(register_callback,
-              Run(TrustedVaultRegistrationStatus::kSuccess, _, _));
+              Run(SecurityDomainId::kChromeSync,
+                  TrustedVaultRegistrationStatus::kSuccess, _, _));
   std::move(device_registration_callback)
       .Run(TrustedVaultRegistrationStatus::kSuccess,
            /*key_version=*/kLastKeyVersion);
@@ -422,12 +432,12 @@ TEST_F(PhysicalDeviceRecoveryFactorTest,
   // Mimic device previously registered with some keys.
   StoreKeysAndMimicDeviceRegistration(account_info(), {kVaultKey},
                                       kLastKeyVersion);
-  EXPECT_TRUE(recovery_factor()->IsRegistered());
+  EXPECT_TRUE(recovery_factor()->IsRegistered(SecurityDomainId::kChromeSync));
 
-  recovery_factor()->MarkAsNotRegistered();
+  recovery_factor()->MarkAsNotRegistered(SecurityDomainId::kChromeSync);
 
   // Now the device should no longer be registered.
-  EXPECT_FALSE(recovery_factor()->IsRegistered());
+  EXPECT_FALSE(recovery_factor()->IsRegistered(SecurityDomainId::kChromeSync));
   const trusted_vault_pb::LocalDeviceRegistrationInfo registration_info =
       GetDeviceRegistrationInfo(account_info());
   EXPECT_FALSE(registration_info.device_registered());
@@ -469,6 +479,7 @@ TEST_F(PhysicalDeviceRecoveryFactorTest,
 
   base::RunLoop run_loop;
   recovery_factor()->AttemptRecovery(
+      SecurityDomainId::kChromeSync,
       recovery_callback.Get().Then(run_loop.QuitClosure()));
   run_loop.Run();
 
@@ -497,6 +508,7 @@ TEST_F(PhysicalDeviceRecoveryFactorTest,
 
   base::RunLoop run_loop;
   recovery_factor()->AttemptRecovery(
+      SecurityDomainId::kChromeSync,
       recovery_callback.Get().Then(run_loop.QuitClosure()));
   run_loop.Run();
 
@@ -514,9 +526,12 @@ TEST_F(PhysicalDeviceRecoveryFactorTest, ShouldThrottleKeysDownloading) {
                                       kLastKeyVersion);
 
   TrustedVaultConnection::DownloadNewKeysCallback download_keys_callback;
-  ON_CALL(*connection(), DownloadNewKeys(account_info(), _, _, _))
+  ON_CALL(*connection(),
+          DownloadNewKeys(account_info(), Eq(SecurityDomainId::kChromeSync), _,
+                          _, _))
       .WillByDefault(
-          [&](const CoreAccountInfo&, const TrustedVaultKeyAndVersion&,
+          [&](const CoreAccountInfo&, SecurityDomainId,
+              const TrustedVaultKeyAndVersion&,
               std::unique_ptr<SecureBoxKeyPair> key_pair,
               TrustedVaultConnection::DownloadNewKeysCallback callback) {
             download_keys_callback = std::move(callback);
@@ -527,7 +542,8 @@ TEST_F(PhysicalDeviceRecoveryFactorTest, ShouldThrottleKeysDownloading) {
       recovery_callback;
   base::HistogramTester histogram_tester;
 
-  recovery_factor()->AttemptRecovery(recovery_callback.Get());
+  recovery_factor()->AttemptRecovery(SecurityDomainId::kChromeSync,
+                                     recovery_callback.Get());
 
   ASSERT_FALSE(download_keys_callback.is_null());
 
@@ -536,7 +552,8 @@ TEST_F(PhysicalDeviceRecoveryFactorTest, ShouldThrottleKeysDownloading) {
   EXPECT_CALL(*connection(), RecordFailedRequestForThrottling(
                                  _, SecurityDomainId::kChromeSync));
   EXPECT_CALL(recovery_callback,
-              Run(LocalRecoveryFactor::RecoveryStatus::kFailure, _, _));
+              Run(SecurityDomainId::kChromeSync,
+                  LocalRecoveryFactor::RecoveryStatus::kFailure, _, _));
   std::move(download_keys_callback)
       .Run(TrustedVaultDownloadKeysStatus::kOtherError,
            std::vector<std::vector<uint8_t>>(), 0);
@@ -555,9 +572,12 @@ TEST_F(PhysicalDeviceRecoveryFactorTest,
                                       kLastKeyVersion);
 
   TrustedVaultConnection::DownloadNewKeysCallback download_keys_callback;
-  ON_CALL(*connection(), DownloadNewKeys(account_info(), _, _, _))
+  ON_CALL(*connection(),
+          DownloadNewKeys(account_info(), Eq(SecurityDomainId::kChromeSync), _,
+                          _, _))
       .WillByDefault(
-          [&](const CoreAccountInfo&, const TrustedVaultKeyAndVersion&,
+          [&](const CoreAccountInfo&, SecurityDomainId,
+              const TrustedVaultKeyAndVersion&,
               std::unique_ptr<SecureBoxKeyPair> key_pair,
               TrustedVaultConnection::DownloadNewKeysCallback callback) {
             download_keys_callback = std::move(callback);
@@ -566,7 +586,8 @@ TEST_F(PhysicalDeviceRecoveryFactorTest,
 
   base::HistogramTester histogram_tester;
 
-  recovery_factor()->AttemptRecovery(base::DoNothing());
+  recovery_factor()->AttemptRecovery(SecurityDomainId::kChromeSync,
+                                     base::DoNothing());
 
   ASSERT_FALSE(download_keys_callback.is_null());
 
@@ -597,12 +618,13 @@ TEST_F(PhysicalDeviceRecoveryFactorTest, ShouldDownloadNewKeys) {
 
   TrustedVaultConnection::DownloadNewKeysCallback download_keys_callback;
   ON_CALL(*connection(),
-          DownloadNewKeys(account_info(),
+          DownloadNewKeys(account_info(), Eq(SecurityDomainId::kChromeSync),
                           TrustedVaultKeyAndVersionEq(kInitialVaultKeys.back(),
                                                       kInitialLastKeyVersion),
                           _, _))
       .WillByDefault(
-          [&](const CoreAccountInfo&, const TrustedVaultKeyAndVersion&,
+          [&](const CoreAccountInfo&, SecurityDomainId,
+              const TrustedVaultKeyAndVersion&,
               std::unique_ptr<SecureBoxKeyPair> key_pair,
               TrustedVaultConnection::DownloadNewKeysCallback callback) {
             download_keys_callback = std::move(callback);
@@ -613,7 +635,8 @@ TEST_F(PhysicalDeviceRecoveryFactorTest, ShouldDownloadNewKeys) {
       recovery_callback;
   base::HistogramTester histogram_tester;
 
-  recovery_factor()->AttemptRecovery(recovery_callback.Get());
+  recovery_factor()->AttemptRecovery(SecurityDomainId::kChromeSync,
+                                     recovery_callback.Get());
 
   ASSERT_FALSE(download_keys_callback.is_null());
 
@@ -624,7 +647,8 @@ TEST_F(PhysicalDeviceRecoveryFactorTest, ShouldDownloadNewKeys) {
   const int kServerLastKeyVersion = kInitialLastKeyVersion + 1;
 
   EXPECT_CALL(recovery_callback,
-              Run(LocalRecoveryFactor::RecoveryStatus::kSuccess, kNewVaultKeys,
+              Run(SecurityDomainId::kChromeSync,
+                  LocalRecoveryFactor::RecoveryStatus::kSuccess, kNewVaultKeys,
                   kServerLastKeyVersion));
   std::move(download_keys_callback)
       .Run(TrustedVaultDownloadKeysStatus::kSuccess, kNewVaultKeys,
@@ -646,8 +670,9 @@ TEST_F(PhysicalDeviceRecoveryFactorTest,
       device_registration_callback;
   std::vector<uint8_t> serialized_public_device_key;
   EXPECT_CALL(*connection(),
-              RegisterLocalDeviceWithoutKeys(Eq(account_info()), _, _))
-      .WillOnce([&](const CoreAccountInfo& account_info,
+              RegisterLocalDeviceWithoutKeys(
+                  Eq(account_info()), Eq(SecurityDomainId::kChromeSync), _, _))
+      .WillOnce([&](const CoreAccountInfo& account_info, SecurityDomainId,
                     const SecureBoxPublicKey& device_public_key,
                     TrustedVaultConnection::RegisterAuthenticationFactorCallback
                         callback) {
@@ -659,13 +684,15 @@ TEST_F(PhysicalDeviceRecoveryFactorTest,
   // Attempt device registration.
   base::MockCallback<LocalRecoveryFactor::RegisterCallback> register_callback;
   TrustedVaultRecoveryFactorRegistrationStateForUMA status =
-      recovery_factor()->MaybeRegister(register_callback.Get());
+      recovery_factor()->MaybeRegister(SecurityDomainId::kChromeSync,
+                                       register_callback.Get());
   EXPECT_EQ(status, TrustedVaultRecoveryFactorRegistrationStateForUMA::
                         kAttemptingRegistrationWithNewKeyPair);
 
   // Mimic successful device registration and verify the state.
   EXPECT_CALL(register_callback,
-              Run(TrustedVaultRegistrationStatus::kSuccess, _, _));
+              Run(SecurityDomainId::kChromeSync,
+                  TrustedVaultRegistrationStatus::kSuccess, _, _));
   std::move(device_registration_callback)
       .Run(TrustedVaultRegistrationStatus::kSuccess, kInitialLastKeyVersion);
 
@@ -676,13 +703,15 @@ TEST_F(PhysicalDeviceRecoveryFactorTest,
 
   // Attempt recovery of new keys.
   TrustedVaultConnection::DownloadNewKeysCallback download_keys_callback;
-  ON_CALL(*connection(), DownloadNewKeys(account_info(),
-                                         TrustedVaultKeyAndVersionEq(
-                                             GetConstantTrustedVaultKey(),
-                                             kInitialLastKeyVersion),
-                                         _, _))
+  ON_CALL(
+      *connection(),
+      DownloadNewKeys(account_info(), Eq(SecurityDomainId::kChromeSync),
+                      TrustedVaultKeyAndVersionEq(GetConstantTrustedVaultKey(),
+                                                  kInitialLastKeyVersion),
+                      _, _))
       .WillByDefault(
-          [&](const CoreAccountInfo&, const TrustedVaultKeyAndVersion&,
+          [&](const CoreAccountInfo&, SecurityDomainId,
+              const TrustedVaultKeyAndVersion&,
               std::unique_ptr<SecureBoxKeyPair> key_pair,
               TrustedVaultConnection::DownloadNewKeysCallback callback) {
             download_keys_callback = std::move(callback);
@@ -691,7 +720,8 @@ TEST_F(PhysicalDeviceRecoveryFactorTest,
 
   base::MockCallback<LocalRecoveryFactor::AttemptRecoveryCallback>
       recovery_callback;
-  recovery_factor()->AttemptRecovery(recovery_callback.Get());
+  recovery_factor()->AttemptRecovery(SecurityDomainId::kChromeSync,
+                                     recovery_callback.Get());
 
   ASSERT_FALSE(download_keys_callback.is_null());
 
@@ -702,7 +732,8 @@ TEST_F(PhysicalDeviceRecoveryFactorTest,
   const int kServerLastKeyVersion = kInitialLastKeyVersion + 1;
 
   EXPECT_CALL(recovery_callback,
-              Run(LocalRecoveryFactor::RecoveryStatus::kSuccess, kNewVaultKeys,
+              Run(SecurityDomainId::kChromeSync,
+                  LocalRecoveryFactor::RecoveryStatus::kSuccess, kNewVaultKeys,
                   kServerLastKeyVersion));
   std::move(download_keys_callback)
       .Run(TrustedVaultDownloadKeysStatus::kSuccess, kNewVaultKeys,
@@ -716,8 +747,8 @@ TEST_F(PhysicalDeviceRecoveryFactorTest,
   TrustedVaultConnection::RegisterAuthenticationFactorCallback
       first_device_registration_callback;
   EXPECT_CALL(*connection(), RegisterAuthenticationFactor)
-      .WillOnce([&](const CoreAccountInfo&, const MemberKeysSource&,
-                    const SecureBoxPublicKey&,
+      .WillOnce([&](const CoreAccountInfo&, SecurityDomainId,
+                    const MemberKeysSource&, const SecureBoxPublicKey&,
                     AuthenticationFactorTypeAndRegistrationParams,
                     TrustedVaultConnection::RegisterAuthenticationFactorCallback
                         callback) {
@@ -729,21 +760,23 @@ TEST_F(PhysicalDeviceRecoveryFactorTest,
   base::MockCallback<LocalRecoveryFactor::RegisterCallback>
       first_register_callback;
   base::RunLoop first_cancelled_run_loop;
-  recovery_factor()->MaybeRegister(first_register_callback.Get().Then(
-      first_cancelled_run_loop.QuitClosure()));
+  recovery_factor()->MaybeRegister(SecurityDomainId::kChromeSync,
+                                   first_register_callback.Get().Then(
+                                       first_cancelled_run_loop.QuitClosure()));
   ASSERT_FALSE(first_device_registration_callback.is_null());
 
   // Starting a second registration should cancel the first one with
   // kRegistrationCancelled.
   EXPECT_CALL(
       first_register_callback,
-      Run(TrustedVaultRegistrationStatus::kRegistrationCancelled, _, _));
+      Run(SecurityDomainId::kChromeSync,
+          TrustedVaultRegistrationStatus::kRegistrationCancelled, _, _));
 
   TrustedVaultConnection::RegisterAuthenticationFactorCallback
       second_device_registration_callback;
   EXPECT_CALL(*connection(), RegisterAuthenticationFactor)
-      .WillOnce([&](const CoreAccountInfo&, const MemberKeysSource&,
-                    const SecureBoxPublicKey&,
+      .WillOnce([&](const CoreAccountInfo&, SecurityDomainId,
+                    const MemberKeysSource&, const SecureBoxPublicKey&,
                     AuthenticationFactorTypeAndRegistrationParams,
                     TrustedVaultConnection::RegisterAuthenticationFactorCallback
                         callback) {
@@ -753,16 +786,31 @@ TEST_F(PhysicalDeviceRecoveryFactorTest,
 
   base::MockCallback<LocalRecoveryFactor::RegisterCallback>
       second_register_callback;
-  recovery_factor()->MaybeRegister(second_register_callback.Get());
+  recovery_factor()->MaybeRegister(SecurityDomainId::kChromeSync,
+                                   second_register_callback.Get());
   first_cancelled_run_loop.Run();
   ASSERT_FALSE(second_device_registration_callback.is_null());
 
   // Complete the second registration.
   EXPECT_CALL(second_register_callback,
-              Run(TrustedVaultRegistrationStatus::kSuccess, _, _));
+              Run(SecurityDomainId::kChromeSync,
+                  TrustedVaultRegistrationStatus::kSuccess, _, _));
   std::move(second_device_registration_callback)
       .Run(TrustedVaultRegistrationStatus::kSuccess, kLastKeyVersion);
 }
+
+// TODO(crbug.com/542895033): The current test fixture (based on
+// LegacyStandaloneTrustedVaultStorageAdapter) only supports
+// SecurityDomainId::kChromeSync. Add unit tests for multi-domain use-cases once
+// multi-domain storage is available:
+// - Verifying that domains without constant key pre-enrollment support (e.g.,
+//   SecurityDomainId::kPasskeys) return
+//   kRegistrationWithConstantKeyNotSupported and kRegistrationNotAttempted when
+//   no non-constant keys exist.
+// - Concurrent recovery and registration attempts across domains, partial
+//   failures, and domain-scoped cancellations.
+//
+// Also, add a test for domains that don't support pre-enrollment.
 
 }  // namespace
 

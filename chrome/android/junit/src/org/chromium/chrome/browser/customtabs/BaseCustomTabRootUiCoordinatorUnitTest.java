@@ -198,6 +198,9 @@ public final class BaseCustomTabRootUiCoordinatorUnitTest {
         when(mWindowAndroid.getUnownedUserDataHost()).thenReturn(new UnownedUserDataHost());
         when(mWindowAndroid.getContext()).thenReturn(new WeakReference<>(mActivity));
         when(mIntentDataProvider.get()).thenReturn(mBrowserServicesIntentDataProvider);
+        // HandoffController observes the current tab from HANDOFF_SDK_VERSION on.
+        when(mTabModelSelector.getCurrentTabSupplier())
+                .thenReturn(ObservableSuppliers.alwaysNull());
         mBrowserStateBrowserControlsVisibilityDelegate =
                 new BrowserStateBrowserControlsVisibilityDelegate(
                         ObservableSuppliers.alwaysFalse());
@@ -284,6 +287,31 @@ public final class BaseCustomTabRootUiCoordinatorUnitTest {
         assertFalse(mBaseCustomTabRootUiCoordinator.shouldAllowThemingOnTablets());
     }
 
+    /**
+     * The find toolbar cannot be built without an activity, so a request that arrives after
+     * teardown (which nulls the activity out) must return null rather than crash.
+     */
+    @Test
+    public void testFindToolbarManagerNotCreatedAfterDestroy() {
+        mBaseCustomTabRootUiCoordinator.destroyActivityForTesting();
+
+        assertNull(mBaseCustomTabRootUiCoordinator.getOrCreateFindToolbarManager());
+    }
+
+    /**
+     * A manager created before teardown has already been destroyed by then, and its view stub has
+     * been spent, so handing it back would crash on the next showToolbar(). It must be withheld
+     * just like one that was never created.
+     */
+    @Test
+    public void testFindToolbarManagerNotReturnedAfterDestroy_alreadyCreated() {
+        assertNotNull(mBaseCustomTabRootUiCoordinator.getOrCreateFindToolbarManager());
+
+        mBaseCustomTabRootUiCoordinator.destroyActivityForTesting();
+
+        assertNull(mBaseCustomTabRootUiCoordinator.getOrCreateFindToolbarManager());
+    }
+
     @After
     public void tearDown() {
         mFakeTimeTestRule.resetTimes();
@@ -323,10 +351,7 @@ public final class BaseCustomTabRootUiCoordinatorUnitTest {
     }
 
     @Test
-    @DisableFeatures({
-        SigninFeatures.ENABLE_SEAMLESS_SIGNIN,
-        SigninFeatures.ENABLE_ACTIVITYLESS_SIGNIN_ALL_ENTRY_POINT
-    })
+    @DisableFeatures(SigninFeatures.ENABLE_ACTIVITYLESS_SIGNIN_ALL_ENTRY_POINT)
     public void testInitProfileDependantFeatures_callsInitDefaultSearchEngine() {
         mBaseCustomTabRootUiCoordinator.initProfileDependentFeatures(mProfile);
 
@@ -334,10 +359,7 @@ public final class BaseCustomTabRootUiCoordinatorUnitTest {
     }
 
     @Test
-    @EnableFeatures({
-        SigninFeatures.ENABLE_SEAMLESS_SIGNIN,
-        SigninFeatures.ENABLE_ACTIVITYLESS_SIGNIN_ALL_ENTRY_POINT
-    })
+    @EnableFeatures(SigninFeatures.ENABLE_ACTIVITYLESS_SIGNIN_ALL_ENTRY_POINT)
     public void testInitProfileDependantFeatures_WebSigninAndHistorySyncCoordinatorSupplier() {
         SigninAndHistorySyncActivityLauncher launcherMock =
                 Mockito.mock(SigninAndHistorySyncActivityLauncher.class);
@@ -378,10 +400,7 @@ public final class BaseCustomTabRootUiCoordinatorUnitTest {
     }
 
     @Test
-    @EnableFeatures({
-        SigninFeatures.ENABLE_SEAMLESS_SIGNIN,
-        SigninFeatures.ENABLE_ACTIVITYLESS_SIGNIN_ALL_ENTRY_POINT
-    })
+    @EnableFeatures(SigninFeatures.ENABLE_ACTIVITYLESS_SIGNIN_ALL_ENTRY_POINT)
     public void testCreateMismatchNotificationChecker() {
         // No profile
         assertNull(

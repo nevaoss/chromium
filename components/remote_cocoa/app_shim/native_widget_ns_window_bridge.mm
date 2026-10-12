@@ -48,6 +48,7 @@
 #include "ui/base/cocoa/animation_utils.h"
 #import "ui/base/cocoa/constrained_window/constrained_window_animation.h"
 #include "ui/base/cocoa/cursor_utils.h"
+#include "ui/base/cocoa/drag_permission.h"
 #include "ui/base/cocoa/remote_accessibility_api.h"
 #import "ui/base/cocoa/window_size_constants.h"
 #include "ui/base/emoji/emoji_panel_helper.h"
@@ -1406,6 +1407,10 @@ void NativeWidgetNSWindowBridge::BeginFileDrag(
     DLOG(WARNING) << "BeginFileDrag failed: window or bridged_view is null";
     return;
   }
+  if (!ui::IsDragSessionInitiationAllowed()) {
+    DLOG(WARNING) << "BeginFileDrag failed: drag session not allowed";
+    return;
+  }
 
   NSURL* file_url = base::apple::FilePathToNSURL(file_drag_data->file_path);
   if (!file_url) {
@@ -2058,6 +2063,16 @@ void NativeWidgetNSWindowBridge::SetCALayerParams(
   if (pending_alpha_value_.has_value()) {
     window_.alphaValue = pending_alpha_value_.value();
     pending_alpha_value_ = std::nullopt;
+
+    // Now that the window has visually transitioned from invisible to visible,
+    // inform observers that the window's occlusion state has changed. AppKit
+    // does not post notifications when `alphaValue` changes, so without this
+    // notification, manual occlusion detection (e.g.
+    // WebContentsOcclusionCheckerMac) could miss that this window can now
+    // occlude other windows beneath it which is needed for glass frame.
+    [[NSNotificationCenter defaultCenter]
+        postNotificationName:NSWindowDidChangeOcclusionStateNotification
+                      object:window_];
   }
 
   if (invalidate_shadow_on_frame_swap_) {

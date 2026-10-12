@@ -20,10 +20,10 @@ import org.mockito.Mock;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 
-import org.chromium.base.ContextUtils;
 import org.chromium.base.FeatureOverrides;
 import org.chromium.base.SelectionActionMenuClientWrapper.MenuType;
 import org.chromium.base.test.BaseRobolectricTestRunner;
+import org.chromium.base.test.util.Features.DisableFeatures;
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.selection.TextSelectionActionMenuDelegate;
@@ -38,6 +38,7 @@ import java.util.List;
 
 /** Unit tests for Copy Link to Highlight menu item in {@link TextSelectionActionMenuDelegate}. */
 @RunWith(BaseRobolectricTestRunner.class)
+@DisableFeatures(ChromeFeatureList.CLANK_GLIC_CONTEXT_MENU)
 public class CopyLinkToHighlightTest {
     @Rule public final MockitoRule mMockitoRule = MockitoJUnit.rule();
 
@@ -55,7 +56,6 @@ public class CopyLinkToHighlightTest {
     public void setUp() {
         LinkToTextBridgeJni.setInstanceForTesting(mLinkToTextBridgeJniMock);
         when(mTab.getWebContents()).thenReturn(mWebContents);
-        when(mTab.getContext()).thenReturn(ContextUtils.getApplicationContext());
         when(mTab.getUrl()).thenReturn(TEST_URL);
         when(mWebContents.getFocusedFrame()).thenReturn(mRenderFrameHost);
         when(mWebContents.getOrSetUserData(SelectionPopupControllerImpl.class, null))

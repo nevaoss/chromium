@@ -183,9 +183,7 @@
 #include "chrome/browser/site_protection/site_familiarity_process_selection_deferring_condition.h"
 #include "chrome/browser/site_protection/site_familiarity_process_selection_user_data.h"
 #include "chrome/browser/site_protection/site_familiarity_utils.h"
-#include "chrome/browser/site_token_provider/site_token_proxying_url_loader_factory.h"
 #include "chrome/browser/site_token_provider/site_token_url_loader_factory.h"
-#include "chrome/browser/site_token_provider/site_token_url_loader_header_client.h"
 #include "chrome/browser/speech/chrome_speech_recognition_manager_delegate.h"
 #include "chrome/browser/speech/on_device_speech_recognition_util.h"
 #include "chrome/browser/ssl/chrome_security_blocking_page_factory.h"
@@ -2651,8 +2649,12 @@ ChromeContentBrowserClient::GetOriginsRequiringDedicatedProcess() {
 void ChromeContentBrowserClient::WillComputeSiteForNavigation(
     content::BrowserContext* browser_context,
     const GURL& url) {
-  if (!site_isolation::SiteIsolationPolicy::
-          IsOriginIsolationForJsOptExceptionsEnabled(browser_context)) {
+  const bool isolate_js_opt = site_isolation::SiteIsolationPolicy::
+      IsOriginIsolationForJsOptExceptionsEnabled(browser_context);
+  const bool isolate_jitless = site_isolation::SiteIsolationPolicy::
+      IsOriginIsolationForJitlessExceptionsEnabled(browser_context);
+
+  if (!isolate_js_opt && !isolate_jitless) {
     return;
   }
 
@@ -2662,28 +2664,37 @@ void ChromeContentBrowserClient::WillComputeSiteForNavigation(
     return;
   }
 
-  // If the JS optimizer policy for this `url`'s origin differs from the default
-  // JS optimizer policy, then the url needs to be put into its own process
-  // (otherwise it will have the default JS setting applied). This lets JS
-  // optimizer policy rules be applied to URLs on clients that have partial site
-  // isolation (like Android). This also improves JS optimizer rules handling on
-  // clients where subdomains of a site are not isolated. For example, if a.com
-  // has site isolation, but sub.a.com needs a different rule (More information
-  // at: crbug.com/377733397). Note that this will cause explicit opt-outs using
-  // the Origin-Agent-Cluster header to be ignored. Note that it is safe to do
-  // this multiple times for the same origin because AddFutureIsolatedOrigins
-  // should drop requests to isolate an origin that is already isolated.
   Profile* profile = Profile::FromBrowserContext(browser_context);
   auto* map = HostContentSettingsMapFactory::GetForProfile(profile);
   if (!map) {
     return;
   }
 
-  if (map->GetDefaultContentSetting(ContentSettingsType::JAVASCRIPT_OPTIMIZER,
-                                    nullptr) !=
-      map->GetContentSetting(url, url,
-                             ContentSettingsType::JAVASCRIPT_OPTIMIZER)) {
-    url::Origin origin(url::Origin::Create(url));
+  auto has_setting_exception = [map, &url](ContentSettingsType type) {
+    return map->GetDefaultContentSetting(type, nullptr) !=
+           map->GetContentSetting(url, url, type);
+  };
+
+  // If the JS optimizer or JIT policy for this `url`'s origin differs from the
+  // default policy, then the url needs to be put into its own process
+  // (otherwise it will have the default setting applied). This lets policy
+  // rules be applied to URLs on clients that have partial site isolation (like
+  // Android). This also improves policy rules handling on clients where
+  // subdomains of a site are not isolated. For example, if a.com has site
+  // isolation, but sub.a.com needs a different rule (More information at:
+  // crbug.com/377733397). Note that this will cause explicit opt-outs using the
+  // Origin-Agent-Cluster header to be ignored. Note that it is safe to do this
+  // multiple times for the same origin because AddFutureIsolatedOrigins should
+  // drop requests to isolate an origin that is already isolated. Also note
+  // that the isolation only takes effect in BrowsingInstances created after
+  // this call, so it does not apply to the navigation that triggers it, nor
+  // to any other existing BrowsingInstances; those keep sharing a process with
+  // the origin's site until a new BrowsingInstance is created.
+  if ((isolate_js_opt &&
+       has_setting_exception(ContentSettingsType::JAVASCRIPT_OPTIMIZER)) ||
+      (isolate_jitless &&
+       has_setting_exception(ContentSettingsType::JAVASCRIPT_JIT))) {
+    url::Origin origin = url::Origin::Create(url);
     content::ChildProcessSecurityPolicy* policy =
         content::ChildProcessSecurityPolicy::GetInstance();
     // The user added a content setting rule and then navigated, so specify the
@@ -4541,6 +4552,20 @@ bool ChromeContentBrowserClient::CanCreateWindow(
 
   DCHECK(!prerender::ChromeNoStatePrefetchContentsDelegate::FromWebContents(
       web_contents));
+
+#if !BUILDFLAG(IS_ANDROID)
+  // For Automatic Document Picture-in-Picture, the window creation is
+  // authorized by the browser rather than a user gesture. If AutoPip
+  // preconditions are met, permit the window creation.
+  if (disposition == WindowOpenDisposition::NEW_PICTURE_IN_PICTURE) {
+    auto* auto_pip_tab_helper =
+        AutoPictureInPictureTabHelper::FromWebContents(web_contents);
+    if (auto_pip_tab_helper &&
+        auto_pip_tab_helper->AreAutoPictureInPicturePreconditionsMet()) {
+      return true;
+    }
+  }
+#endif  // !BUILDFLAG(IS_ANDROID)
 
   BlockedWindowParams blocked_params(
       target_url, source_origin, opener->GetSiteInstance(), referrer,
@@ -6839,18 +6864,6 @@ void ChromeContentBrowserClient::WillCreateURLLoaderFactory(
 
   MaybeSetTargetNetwork(GetBoundNetworkFromRenderFrameHost(frame),
                         factory_builder, is_for_network_service);
-
-  // The proxying factory only sets kURLLoadOptionUseHeaderClient on matching
-  // requests, so it does nothing without a header client. Site token headers
-  // are only injected for top-level document navigations (not subresources or
-  // iframes).
-  if (header_client && type == URLLoaderFactoryType::kNavigation && frame &&
-      !frame->GetParentOrOuterDocument()) {
-    site_token_provider::SiteTokenProxyingURLLoaderFactory::MaybeProxyRequest(
-        browser_context, factory_builder);
-    site_token_provider::SiteTokenURLLoaderHeaderClient::MaybeWrap(
-        browser_context, header_client);
-  }
 
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX) || \
     BUILDFLAG(IS_CHROMEOS)

@@ -243,8 +243,17 @@ base::TimeDelta GetActorPageStabilityAutofillPredictionsTimeout();
 // feature parameter of the `kActorTools` feature.
 bool IsToolDisabled(optimization_guide::proto::Action::ActionCase tool);
 
-// Feature flag for Actor origin gating on navigation.
-BASE_DECLARE_FEATURE(kActorOriginGatingForNavigation);
+// Feature flag controlling Actor origin gating.
+BASE_DECLARE_FEATURE(kActorOriginGating);
+
+extern const char kActorOriginGatingExplicitParam[];
+extern const char kActorOriginGatingImplicitParam[];
+
+// Returns true if origin gating is enabled for explicit navigations.
+bool IsActorOriginGatingForExplicitNavigationEnabled();
+
+// Returns true if origin gating is enabled for implicit navigations.
+bool IsActorOriginGatingForImplicitNavigationEnabled();
 
 // Feature flag for Model based page classification experiment.
 BASE_DECLARE_FEATURE(kModelBasedPageClassification);
@@ -352,6 +361,10 @@ BASE_DECLARE_FEATURE(kAppSwitcherAISummarization);
 // Returns true if App Switcher AI summarization is enabled.
 bool IsAppSwitcherAISummarizationEnabled();
 
+// Returns true if App Switcher AI summarization external URL testing is
+// enabled. Requires both `kAppSwitcherAISummarization` feature and the
+// experimental test flag to be enabled.
+bool IsAppSwitcherAISummarizationTestingExternalURLEnabled();
 
 #pragma mark - Debugging Features
 
@@ -501,5 +514,12 @@ BASE_DECLARE_FEATURE(kGeminiInsightsChipAblation);
 
 // Returns true if the `GeminiInsightsChipAblation` feature is enabled.
 bool IsGeminiInsightsChipAblationEnabled();
+
+// Feature flag gating passing Chrome iOS active Finch GWS variation IDs to the
+// embedded Gemini iOS SDK (`hostExperimentIDs`).
+BASE_DECLARE_FEATURE(kGeminiHostExperimentIDs);
+
+// Returns true if `kGeminiHostExperimentIDs` is enabled.
+bool IsGeminiHostExperimentIDsEnabled();
 
 #endif  // IOS_CHROME_BROWSER_INTELLIGENCE_FEATURES_FEATURES_H_

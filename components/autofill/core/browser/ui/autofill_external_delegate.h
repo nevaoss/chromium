@@ -44,7 +44,9 @@ namespace autofill {
 
 class AddressDataManager;
 class AutofillDriver;
+class AutofillField;
 class BrowserAutofillManager;
+class FormStructure;
 
 // Retrieves a copy of the profile that the `payload` refers to.
 std::optional<AutofillProfile> GetProfileFromPayload(
@@ -192,6 +194,12 @@ class AutofillExternalDelegate : public AutofillSuggestionDelegate {
                                    const FormGlobalId& form_id,
                                    const FieldGlobalId& field_id);
 
+  // Logs metrics when a suggestion is accepted.
+  void LogSuggestionAcceptedMetrics(const Suggestion& suggestion,
+                                    const SuggestionMetadata& metadata,
+                                    const FormStructure* form_structure,
+                                    const AutofillField* autofill_field) const;
+
   AutofillTriggerSource GetTriggerSource() const;
 
   // Fills the form with the Autofill data corresponding to `guid`.
@@ -244,13 +252,29 @@ class AutofillExternalDelegate : public AutofillSuggestionDelegate {
   // Returns if the Pay Now Pay Later tabs should be shown.
   virtual bool ShouldShowPayNowPayLaterTabs();
 
-  // Attempts to suppress `suggestion`'s Autofill AI personal-context entity.
-  // If suppression succeeds, triggers the removal undo notification on the
-  // client with a re-query callback. Returns true if the entity is suppressed.
+  // Suppresses the Autofill AI personal-context entity behind `suggestion` and
+  // offers to undo that. Does nothing if suppression is disabled.
+  // - On Desktop, where this is triggered by the "Remove this info" entry or by
+  //   Shift+Delete, the user is first asked to confirm in a dialog. The entity
+  //   is only suppressed once they confirm; if they decline, nothing happens.
+  // - On Android, the keyboard accessory asks the user to confirm before it
+  //   calls the delegate, so the entity is suppressed right away.
+  // - iOS does not call this: `FormInputAccessoryCoordinator` asks for
+  //   confirmation and suppresses the entity itself.
+  // Returns whether the entity is suppressed when this function returns, i.e.
+  // always false on Desktop, where the user has not confirmed yet.
   bool SuppressAutofillAiEntity(const Suggestion& suggestion);
 
-  // Unsuppresses `entity` and re-triggers Autofill suggestions on `field_id`.
-  void OnAutofillAiSuppressionUndone(const EntityInstance& entity,
+  // Suppresses `entity` and, if it was not suppressed before, lets the client
+  // notify the user and offer an undo, which runs
+  // `OnAutofillAiSuppressionUndone()`. Returns true if the entity is
+  // suppressed.
+  bool SuppressEntityAndOfferUndo(EntityInstance entity,
+                                  FieldGlobalId field_id);
+
+  // Unsuppresses `entity_id` and re-triggers Autofill suggestions on
+  // `field_id`.
+  void OnAutofillAiSuppressionUndone(EntityInstance::EntityId entity_id,
                                      FieldGlobalId field_id);
 
   base::WeakPtr<AutofillExternalDelegate> GetWeakPtr();

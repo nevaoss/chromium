@@ -10,6 +10,8 @@
 #include "base/i18n/number_formatting.h"
 #include "base/memory/raw_ptr.h"
 #include "base/test/bind.h"
+#include "base/test/metrics/histogram_tester.h"
+#include "base/test/metrics/user_action_tester.h"
 #include "base/test/mock_callback.h"
 #include "base/test/scoped_feature_list.h"
 #include "base/uuid.h"
@@ -26,18 +28,26 @@
 #include "chrome/browser/tab_group_sync/tab_group_sync_service_factory.h"
 #include "chrome/browser/ui/actions/chrome_action_id.h"
 #include "chrome/browser/ui/actions/chrome_action_properties.h"
+#include "chrome/browser/ui/bookmarks/bookmark_stats.h"
+#include "chrome/browser/ui/bookmarks/bookmark_utils_desktop.h"
 #include "chrome/browser/ui/browser_actions.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_features.h"
 #include "chrome/browser/ui/browser_window/test/mock_browser_window_interface.h"
 #include "chrome/browser/ui/global_error/global_error_service.h"
 #include "chrome/browser/ui/global_error/global_error_service_factory.h"
 #include "chrome/browser/ui/layout_constants.h"
+#include "chrome/browser/ui/navigator/browser_navigator_params.h"
 #include "chrome/browser/ui/safety_hub/menu_notification_service.h"
 #include "chrome/browser/ui/safety_hub/menu_notification_service_factory.h"
 #include "chrome/browser/ui/safety_hub/safe_browsing_result.h"
+#include "chrome/browser/ui/safety_hub/safety_hub_util.h"
+#include "chrome/browser/ui/side_panel/side_panel_action_callback.h"
+#include "chrome/browser/ui/side_panel/side_panel_enums.h"
 #include "chrome/browser/ui/tabs/features.h"
+#include "chrome/browser/ui/toolbar/app_menu_model.h"
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/views/app_menu/action_app_menu_manager.h"
+#include "chrome/browser/ui/views/app_menu/action_app_menu_metrics.h"
 #include "chrome/browser/ui/views/app_menu/action_app_menu_test_base.h"
 #include "chrome/browser/ui/views/app_menu/app_menu_action_item.h"
 #include "chrome/browser/ui/views/app_menu/app_menu_block_button.h"
@@ -45,10 +55,13 @@
 #include "chrome/browser/ui/views/app_menu/app_menu_chip_view.h"
 #include "chrome/browser/ui/views/app_menu/app_menu_footer_button.h"
 #include "chrome/browser/ui/views/app_menu/app_menu_footer_view.h"
+#include "chrome/browser/ui/views/app_menu/app_menu_minor_text_view.h"
 #include "chrome/browser/ui/views/app_menu/app_menu_search_bar_view.h"
 #include "chrome/browser/ui/views/app_menu/app_menu_zoom_view.h"
 #include "chrome/browser/ui/views/app_menu/recent_tabs_dynamic_menu.h"
 #include "chrome/browser/ui/views/chrome_layout_provider.h"
+#include "chrome/browser/user_education/user_education_service.h"
+#include "chrome/browser/user_education/user_education_service_factory.h"
 #include "chrome/grit/generated_resources.h"
 #include "chrome/test/base/testing_profile.h"
 #include "chrome/test/user_education/mock_browser_user_education_interface.h"
@@ -64,6 +77,7 @@
 #include "components/saved_tab_groups/test_support/fake_tab_group_sync_service.h"
 #include "components/search/ntp_features.h"
 #include "components/tabs/public/mock_tab_interface.h"
+#include "components/user_education/common/tutorial/tutorial_description.h"
 #include "components/zoom/zoom_controller.h"
 #include "content/public/test/test_renderer_host.h"
 #include "content/public/test/web_contents_tester.h"
@@ -73,7 +87,9 @@
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/events/event.h"
 #include "ui/gfx/color_palette.h"
+#include "ui/strings/grit/ax_strings.h"
 #include "ui/views/accessibility/ax_update_notifier.h"
+#include "ui/views/accessibility/view_accessibility.h"
 #include "ui/views/animation/ink_drop.h"
 #include "ui/views/animation/ink_drop_host.h"
 #include "ui/views/controls/button/image_button.h"
@@ -206,10 +222,10 @@ TEST_F(ActionAppMenuTest, PopulatesSectionCardsWithStyling) {
   // Check corner radiuses for section cards (first item has top radius, last
   // has bottom radius, middle items have neither).
 #if BUILDFLAG(IS_CHROMEOS)
-  EXPECT_EQ(password_item->GetMenuItemBackground()->top_radius, 8);
+  EXPECT_EQ(password_item->GetMenuItemBackground()->top_radius, 12);
   EXPECT_EQ(password_item->GetMenuItemBackground()->bottom_radius, 0);
 #else
-  EXPECT_EQ(profile_item->GetMenuItemBackground()->top_radius, 8);
+  EXPECT_EQ(profile_item->GetMenuItemBackground()->top_radius, 12);
   EXPECT_EQ(profile_item->GetMenuItemBackground()->bottom_radius, 0);
   EXPECT_EQ(password_item->GetMenuItemBackground()->top_radius, 0);
   EXPECT_EQ(password_item->GetMenuItemBackground()->bottom_radius, 0);
@@ -217,7 +233,7 @@ TEST_F(ActionAppMenuTest, PopulatesSectionCardsWithStyling) {
   EXPECT_EQ(downloads_item->GetMenuItemBackground()->top_radius, 0);
   EXPECT_EQ(downloads_item->GetMenuItemBackground()->bottom_radius, 0);
   EXPECT_EQ(clear_browsing_item->GetMenuItemBackground()->top_radius, 0);
-  EXPECT_EQ(clear_browsing_item->GetMenuItemBackground()->bottom_radius, 8);
+  EXPECT_EQ(clear_browsing_item->GetMenuItemBackground()->bottom_radius, 12);
 
   // Standard items (32dp row height): (32 - 16) / 2 = 8dp.
 #if !BUILDFLAG(IS_CHROMEOS)
@@ -441,21 +457,39 @@ TEST_F(ActionAppMenuTest, PopulatesBookmarksSubmenu) {
   }
   ASSERT_NE(other_child_item, nullptr);
 
-  // Verify click disposition for bookmarks.
-  EXPECT_CALL(mock_window_interface_,
-              OpenGURL(GURL("https://www.google.com"),
-                       WindowOpenDisposition::CURRENT_TAB));
+  // Verify click disposition and launch metrics for bookmarks.
+  class TestBookmarkNavigationWrapper
+      : public bookmarks::BookmarkNavigationWrapper {
+   public:
+    base::WeakPtr<content::NavigationHandle> NavigateTo(
+        NavigateParams* params) override {
+      last_url = params->url;
+      last_disposition = params->disposition;
+      return nullptr;
+    }
+    GURL last_url;
+    WindowOpenDisposition last_disposition = WindowOpenDisposition::UNKNOWN;
+  } nav_wrapper;
+  bookmarks::BookmarkNavigationWrapper::SetInstanceForTesting(&nav_wrapper);
+
+  base::HistogramTester histogram_tester;
   menu.ExecuteCommand(google_item->GetCommand(), ui::EF_NONE);
+  EXPECT_EQ(nav_wrapper.last_url, GURL("https://www.google.com"));
+  EXPECT_EQ(nav_wrapper.last_disposition, WindowOpenDisposition::CURRENT_TAB);
+  histogram_tester.ExpectUniqueSample("Bookmarks.LaunchLocation",
+                                      BookmarkLaunchLocation::kAppMenu, 1);
+  histogram_tester.ExpectTotalCount("Bookmarks.UsageCountPerProfileType", 1);
 
-  EXPECT_CALL(mock_window_interface_,
-              OpenGURL(GURL("https://www.google.com"),
-                       WindowOpenDisposition::NEW_BACKGROUND_TAB));
   menu.ExecuteCommand(google_item->GetCommand(), ui::EF_MIDDLE_MOUSE_BUTTON);
+  EXPECT_EQ(nav_wrapper.last_url, GURL("https://www.google.com"));
+  EXPECT_EQ(nav_wrapper.last_disposition,
+            WindowOpenDisposition::NEW_BACKGROUND_TAB);
 
-  EXPECT_CALL(mock_window_interface_,
-              OpenGURL(GURL("https://www.google.com"),
-                       WindowOpenDisposition::NEW_WINDOW));
   menu.ExecuteCommand(google_item->GetCommand(), ui::EF_SHIFT_DOWN);
+  EXPECT_EQ(nav_wrapper.last_url, GURL("https://www.google.com"));
+  EXPECT_EQ(nav_wrapper.last_disposition, WindowOpenDisposition::NEW_WINDOW);
+
+  bookmarks::BookmarkNavigationWrapper::SetInstanceForTesting(nullptr);
 
   EXPECT_CALL(on_menu_closed, Run()).Times(1);
   menu.CloseMenu();
@@ -779,7 +813,7 @@ TEST_F(ActionAppMenuTest, InflatesTopBlockRowButtons) {
   ASSERT_TRUE(block_section_view);
   ASSERT_EQ(block_section_view->children().size(), 3u);
 
-  // Verify text override is applied for incognito button.
+  // Verify short title is applied for incognito button in general mode.
   auto* incognito_button =
       views::AsViewClass<AppMenuBlockButton>(block_section_view->children()[2]);
   ASSERT_TRUE(incognito_button);
@@ -793,6 +827,9 @@ TEST_F(ActionAppMenuTest, InflatesTopBlockRowButtons) {
   ASSERT_TRUE(incognito_label);
   EXPECT_EQ(incognito_label->GetText(),
             l10n_util::GetStringUTF16(IDS_INCOGNITO));
+  EXPECT_EQ(incognito_button->GetViewAccessibility().GetCachedName(),
+            BrowserActions::GetCleanTitleAndTooltipText(
+                l10n_util::GetStringUTF16(IDS_NEW_INCOGNITO_WINDOW)));
 
   // Verify icon override is applied for new tab button.
   auto* new_tab_button =
@@ -807,6 +844,49 @@ TEST_F(ActionAppMenuTest, InflatesTopBlockRowButtons) {
   }
   ASSERT_TRUE(new_tab_icon);
   EXPECT_FALSE(new_tab_icon->GetImageModel().IsEmpty());
+
+  EXPECT_CALL(on_menu_closed, Run()).Times(1);
+  menu.CloseMenu();
+}
+
+TEST_F(ActionAppMenuTest, InflatesTopBlockRowButtonsIncognito) {
+  Profile* otr_profile =
+      profile_->GetPrimaryOTRProfile(/*create_if_needed=*/true);
+  ON_CALL(mock_window_interface_, GetProfile())
+      .WillByDefault(testing::Return(otr_profile));
+
+  base::MockCallback<base::RepeatingClosure> on_menu_closed;
+  ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
+
+  menu.RunMenu(button_->button_controller());
+  EXPECT_TRUE(menu.IsShowing());
+
+  views::MenuItemView* root = menu.root_menu_item_for_testing();
+  ASSERT_TRUE(root);
+
+  views::MenuItemView* block_item = root->GetSubmenu()->GetMenuItemAt(0);
+  ASSERT_NE(block_item, nullptr);
+  ASSERT_EQ(block_item->children().size(), 1u);
+  auto* block_section_view =
+      views::AsViewClass<AppMenuBlockView>(block_item->children()[0]);
+  ASSERT_TRUE(block_section_view);
+  ASSERT_EQ(block_section_view->children().size(), 3u);
+
+  // Verify text override is applied for incognito button in Incognito mode.
+  auto* incognito_button =
+      views::AsViewClass<AppMenuBlockButton>(block_section_view->children()[2]);
+  ASSERT_TRUE(incognito_button);
+  views::Label* incognito_label = nullptr;
+  for (views::View* child : incognito_button->children()) {
+    if (auto* label = views::AsViewClass<views::Label>(child)) {
+      incognito_label = label;
+      break;
+    }
+  }
+  ASSERT_TRUE(incognito_label);
+  EXPECT_EQ(incognito_label->GetText(),
+            BrowserActions::GetCleanTitleAndTooltipText(
+                l10n_util::GetStringUTF16(IDS_NEW_INCOGNITO_WINDOW)));
 
   EXPECT_CALL(on_menu_closed, Run()).Times(1);
   menu.CloseMenu();
@@ -909,11 +989,17 @@ TEST_F(ActionAppMenuTest, FooterButtonClickExecutesActionAfterMenuClosed) {
       views::AsViewClass<AppMenuFooterView>(footer_item->children()[0]);
   ASSERT_TRUE(footer_view);
 
+#if BUILDFLAG(IS_MAC)
+  // On Mac, right container child 0 is kActionOptions (Settings).
+  views::View* settings_container = footer_view->right_container_for_testing();
+#else
   // Left container child 0 is kActionOptions (Settings).
-  views::View* left_container = footer_view->left_container_for_testing();
-  ASSERT_TRUE(left_container);
-  auto* settings_button =
-      views::AsViewClass<AppMenuFooterButton>(left_container->children()[0]);
+  views::View* settings_container = footer_view->left_container_for_testing();
+#endif
+  ASSERT_TRUE(settings_container);
+  ASSERT_FALSE(settings_container->children().empty());
+  auto* settings_button = views::AsViewClass<AppMenuFooterButton>(
+      settings_container->children()[0]);
   ASSERT_TRUE(settings_button);
 
   // Verify strict ordering:
@@ -1091,14 +1177,22 @@ TEST_F(ActionAppMenuTest, PopulatesFooterElements) {
 
   views::View* left_container = footer_view->left_container_for_testing();
   ASSERT_TRUE(left_container);
+  views::View* right_container = footer_view->right_container_for_testing();
+  ASSERT_TRUE(right_container);
+#if BUILDFLAG(IS_MAC)
+  ASSERT_EQ(left_container->children().size(), 1u);  // Help
+  EXPECT_TRUE(
+      views::IsViewClass<AppMenuFooterButton>(left_container->children()[0]));
+  ASSERT_EQ(right_container->children().size(), 1u);  // Settings
+  EXPECT_TRUE(
+      views::IsViewClass<AppMenuFooterButton>(right_container->children()[0]));
+#else
   ASSERT_EQ(left_container->children().size(), 2u);  // Settings, Help
   EXPECT_TRUE(
       views::IsViewClass<AppMenuFooterButton>(left_container->children()[0]));
   EXPECT_TRUE(
       views::IsViewClass<AppMenuFooterButton>(left_container->children()[1]));
 
-  views::View* right_container = footer_view->right_container_for_testing();
-  ASSERT_TRUE(right_container);
   if (browser_defaults::kShowExitMenuItem) {
     ASSERT_EQ(right_container->children().size(), 1u);  // Exit
     EXPECT_TRUE(views::IsViewClass<AppMenuFooterButton>(
@@ -1106,6 +1200,7 @@ TEST_F(ActionAppMenuTest, PopulatesFooterElements) {
   } else {
     EXPECT_EQ(right_container->children().size(), 0u);
   }
+#endif
 
   // Without managed UI, separator and bottom container should not be added.
   EXPECT_EQ(footer_view->separator_for_testing(), nullptr);
@@ -1439,7 +1534,7 @@ TEST_F(ActionAppMenuTest, SearchBarEnabledWithFeatureFlag) {
   ASSERT_TRUE(search_bar_margins);
   EXPECT_EQ(*search_bar_margins, provider->GetInsetsMetric(
                                      INSETS_ACTION_APP_MENU_SEARCH_BAR_MARGIN));
-  EXPECT_EQ(*search_bar_margins, gfx::Insets::TLBR(4, 16, 16, 16));
+  EXPECT_EQ(*search_bar_margins, gfx::Insets::TLBR(0, 12, 12, 12));
 
   // The block section item follows the search bar and has 0dp top margin.
   views::MenuItemView* block_item = root->GetSubmenu()->GetMenuItemAt(1);
@@ -1455,7 +1550,7 @@ TEST_F(ActionAppMenuTest, SearchBarEnabledWithFeatureFlag) {
   ASSERT_TRUE(block_margins);
   EXPECT_EQ(*block_margins,
             provider->GetInsetsMetric(INSETS_ACTION_APP_MENU_BLOCK_MARGIN));
-  EXPECT_EQ(*block_margins, gfx::Insets::TLBR(0, 16, 8, 16));
+  EXPECT_EQ(*block_margins, gfx::Insets::TLBR(0, 12, 8, 12));
 
   // Check initial empty state.
   views::ImageView* icon = search_bar->search_icon_for_testing();
@@ -1545,8 +1640,7 @@ TEST_F(ActionAppMenuTest, PopupAndComponentLayoutInsets) {
   EXPECT_EQ(submenu->GetInsets(), gfx::Insets());
 
   // The block section item has no border. Margins are applied to the child
-  // block view (4px top margin adjusting for menu top margin and 16px
-  // horizontal insets).
+  // block view (0px top margin and 12px horizontal insets).
   views::MenuItemView* block_item = submenu->GetMenuItemAt(0);
   ASSERT_NE(block_item, nullptr);
   EXPECT_EQ(block_item->GetInsets(), gfx::Insets());
@@ -1560,7 +1654,7 @@ TEST_F(ActionAppMenuTest, PopupAndComponentLayoutInsets) {
   ASSERT_TRUE(block_margins);
   EXPECT_EQ(*block_margins,
             provider->GetInsetsMetric(INSETS_ACTION_APP_MENU_BLOCK_MARGIN));
-  EXPECT_EQ(*block_margins, gfx::Insets::TLBR(4, 16, 8, 16));
+  EXPECT_EQ(*block_margins, gfx::Insets::TLBR(0, 12, 8, 12));
   EXPECT_EQ(block_view->GetInsideBorderInsets(), gfx::Insets());
 
   // The footer item has 0 vertical margin, 0 insets (border removed).
@@ -1581,7 +1675,7 @@ TEST_F(ActionAppMenuTest, PopupAndComponentLayoutInsets) {
   EXPECT_EQ(top_container->GetInsideBorderInsets(),
             provider->GetInsetsMetric(INSETS_ACTION_APP_MENU_FOOTER_MARGIN));
   EXPECT_EQ(top_container->GetInsideBorderInsets(),
-            gfx::Insets::TLBR(8, 16, 8, 16));
+            gfx::Insets::TLBR(8, 12, 8, 12));
 
   EXPECT_CALL(on_menu_closed, Run()).Times(1);
   menu.CloseMenu();
@@ -1625,12 +1719,8 @@ TEST_F(ActionAppMenuTest, HeaderAndMenuItemBorderLayout) {
   ASSERT_TRUE(root->GetBorder());
   EXPECT_EQ(root->GetInsets(),
             provider->GetInsetsMetric(INSETS_ACTION_APP_MENU_ITEM));
-  EXPECT_EQ(root->GetInsets(), gfx::Insets::TLBR(0, 32, 0, 28));
-  EXPECT_EQ(root->GetContentStart(), 32);
-  EXPECT_EQ(root->GetItemHorizontalBorder(), 20);
-  EXPECT_EQ(submenu->content_start(), 32);
-  EXPECT_EQ(submenu->item_horizontal_border(), 20);
-  EXPECT_EQ(submenu->trailing_padding(), 28);
+  EXPECT_EQ(submenu->content_start(), root->GetInsets().left());
+  EXPECT_EQ(submenu->trailing_padding(), root->GetInsets().right());
 
   // 2. Regular card menu items do not set an individual border, avoiding
   // leaking a custom content start to child submenus. Instead, trailing
@@ -1657,26 +1747,32 @@ TEST_F(ActionAppMenuTest, HeaderAndMenuItemBorderLayout) {
   ASSERT_GE(root_titles.size(), 2u);
 
   // First header ("Your Chrome"):
-  // - Starts flush with the card (16dp horizontal insets, content start 16)
+  // - Starts flush with the card (12dp horizontal insets, content start 12)
   // - Standard top margin (8dp).
   EXPECT_EQ(root_titles[0]->GetParentMenuItem(), root);
   ASSERT_TRUE(root_titles[0]->GetBorder());
   EXPECT_EQ(root_titles[0]->GetInsets(),
             provider->GetInsetsMetric(INSETS_ACTION_APP_MENU_HEADER));
-  EXPECT_EQ(root_titles[0]->GetInsets(), gfx::Insets::VH(0, 16));
-  EXPECT_EQ(root_titles[0]->GetContentStart(), 16);
+  EXPECT_EQ(root_titles[0]->GetInsets(), gfx::Insets::VH(0, 12));
+  EXPECT_EQ(root_titles[0]->GetContentStart(), 12);
   EXPECT_EQ(root_titles[0]->GetTopMargin(), 8);
+  EXPECT_EQ(root_titles[0]->GetViewAccessibility().GetRoleDescription(),
+            l10n_util::GetStringUTF16(IDS_AX_ROLE_HEADING));
+  EXPECT_TRUE(root_titles[0]->GetViewAccessibility().GetIsEnabled());
 
   // Second header ("Tools and Actions"):
-  // - Starts flush with the card (16dp horizontal insets, content start 16)
+  // - Starts flush with the card (12dp horizontal insets, content start 12)
   // - Doubled top margin (16dp).
   EXPECT_EQ(root_titles[1]->GetParentMenuItem(), root);
   ASSERT_TRUE(root_titles[1]->GetBorder());
   EXPECT_EQ(root_titles[1]->GetInsets(),
             provider->GetInsetsMetric(INSETS_ACTION_APP_MENU_HEADER));
-  EXPECT_EQ(root_titles[1]->GetInsets(), gfx::Insets::VH(0, 16));
-  EXPECT_EQ(root_titles[1]->GetContentStart(), 16);
+  EXPECT_EQ(root_titles[1]->GetInsets(), gfx::Insets::VH(0, 12));
+  EXPECT_EQ(root_titles[1]->GetContentStart(), 12);
   EXPECT_EQ(root_titles[1]->GetTopMargin(), 16);
+  EXPECT_EQ(root_titles[1]->GetViewAccessibility().GetRoleDescription(),
+            l10n_util::GetStringUTF16(IDS_AX_ROLE_HEADING));
+  EXPECT_TRUE(root_titles[1]->GetViewAccessibility().GetIsEnabled());
 
   // 4. Headers in submenus (not under root).
   views::MenuItemView* tab_groups_item =
@@ -1711,6 +1807,9 @@ TEST_F(ActionAppMenuTest, HeaderAndMenuItemBorderLayout) {
   EXPECT_EQ(submenu_header->GetBorder(), nullptr);
   EXPECT_NE(submenu_header->GetContentStart(), 0);
   EXPECT_EQ(submenu_header->GetTopMargin(), 8);
+  EXPECT_EQ(submenu_header->GetViewAccessibility().GetRoleDescription(),
+            l10n_util::GetStringUTF16(IDS_AX_ROLE_HEADING));
+  EXPECT_TRUE(submenu_header->GetViewAccessibility().GetIsEnabled());
 
   EXPECT_CALL(on_menu_closed, Run()).Times(1);
   menu.CloseMenu();
@@ -1730,18 +1829,18 @@ TEST_F(ActionAppMenuTest, BlockSectionAndMenuHostWidth) {
   ASSERT_TRUE(submenu);
 
   // 1. Verify SubmenuView (the menu host content) preferred width and laid-out
-  // width is 330dp.
-  EXPECT_EQ(submenu->GetPreferredSize({}).width(), 330);
-  EXPECT_EQ(submenu->width(), 330);
+  // width is 322dp.
+  EXPECT_EQ(submenu->GetPreferredSize({}).width(), 322);
+  EXPECT_EQ(submenu->width(), 322);
 
-  // 2. Verify block container row MenuItemView width is 330dp.
+  // 2. Verify block container row MenuItemView width is 322dp.
   views::MenuItemView* block_item = submenu->GetMenuItemAt(0);
   ASSERT_NE(block_item, nullptr);
-  EXPECT_EQ(block_item->GetDimensions().children_width, 330);
-  EXPECT_EQ(block_item->width(), 330);
+  EXPECT_EQ(block_item->GetDimensions().children_width, 322);
+  EXPECT_EQ(block_item->width(), 322);
 
   // 3. Verify AppMenuBlockView preferred width (298dp = 3 * 94dp + 2 *
-  // 8dp) and laid-out width (330dp - 32dp margins = 298dp).
+  // 8dp) and laid-out width (322dp - 24dp margins = 298dp).
   ASSERT_EQ(block_item->children().size(), 1u);
   auto* block_view =
       views::AsViewClass<AppMenuBlockView>(block_item->children()[0]);
@@ -1758,6 +1857,23 @@ TEST_F(ActionAppMenuTest, BlockSectionAndMenuHostWidth) {
     EXPECT_EQ(button->GetPreferredSize({}).width(), 94);
     EXPECT_EQ(button->width(), 94);
   }
+
+  EXPECT_CALL(on_menu_closed, Run()).Times(1);
+  menu.CloseMenu();
+}
+
+TEST_F(ActionAppMenuTest, MaxWidthForMenu) {
+  base::MockCallback<base::RepeatingClosure> on_menu_closed;
+  ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
+  menu.RunMenu(button_->button_controller());
+  EXPECT_TRUE(menu.IsShowing());
+
+  views::MenuItemView* root = menu.root_menu_item_for_testing();
+  ASSERT_TRUE(root);
+  EXPECT_EQ(menu.GetMaxWidthForMenu(root),
+            ChromeLayoutProvider::Get()->GetDistanceMetric(
+                DISTANCE_ACTION_APP_MENU_MAX_WIDTH));
+  EXPECT_EQ(menu.GetMaxWidthForMenu(root), 800);
 
   EXPECT_CALL(on_menu_closed, Run()).Times(1);
   menu.CloseMenu();
@@ -1801,6 +1917,16 @@ TEST_F(ActionAppMenuTest, UpgradeNotificationRowStyling) {
   ASSERT_TRUE(upgrade_item);
   EXPECT_TRUE(upgrade_item->GetVisible());
   EXPECT_EQ(upgrade_item->title(), u"Update Chrome");
+  AppMenuMinorTextView* minor_text_view = nullptr;
+  for (views::View* child : upgrade_item->children()) {
+    if (auto* candidate = views::AsViewClass<AppMenuMinorTextView>(child)) {
+      minor_text_view = candidate;
+      break;
+    }
+  }
+  ASSERT_NE(minor_text_view, nullptr);
+  EXPECT_EQ(minor_text_view->label_for_testing()->GetText(),
+            u"Restart to update");
   EXPECT_EQ(upgrade_item->GetViewAccessibility().GetCachedName(),
             views::MenuItemView::GetAccessibleNameForMenuItem(
                 u"Update Chrome", u"Restart to update", std::nullopt));
@@ -1810,13 +1936,12 @@ TEST_F(ActionAppMenuTest, UpgradeNotificationRowStyling) {
   ASSERT_TRUE(upgrade_item->GetMenuItemBackground().has_value());
   EXPECT_EQ(upgrade_item->GetMenuItemBackground()->background_color_id,
             ui::kColorAppMenuUpgradeRowBackground);
-  EXPECT_EQ(upgrade_item->GetMenuItemBackground()->top_radius, 8);
-  EXPECT_EQ(upgrade_item->GetMenuItemBackground()->bottom_radius, 8);
+  EXPECT_EQ(upgrade_item->GetMenuItemBackground()->top_radius, 12);
+  EXPECT_EQ(upgrade_item->GetMenuItemBackground()->bottom_radius, 12);
 
   // Verify the following block section item has
-  // INSETS_ACTION_APP_MENU_BLOCK_WITH_NOTIFICATION_MARGIN, creating 12px of
-  // whitespace below the notification banner (matching the 12px container inset
-  // above).
+  // DISTANCE_ACTION_APP_MENU_NOTIFICATION_MARGIN added to its top margin,
+  // creating 12px of whitespace below the notification banner.
   views::MenuItemView* block_item = root->GetSubmenu()->GetMenuItemAt(1);
   ASSERT_NE(block_item, nullptr);
   ASSERT_EQ(block_item->children().size(), 1u);
@@ -1826,9 +1951,13 @@ TEST_F(ActionAppMenuTest, UpgradeNotificationRowStyling) {
   const gfx::Insets* block_margins =
       block_view->GetProperty(views::kMarginsKey);
   ASSERT_TRUE(block_margins);
-  EXPECT_EQ(*block_margins,
-            ChromeLayoutProvider::Get()->GetInsetsMetric(
-                INSETS_ACTION_APP_MENU_BLOCK_WITH_NOTIFICATION_MARGIN));
+  const auto* provider = ChromeLayoutProvider::Get();
+  gfx::Insets expected_margins =
+      provider->GetInsetsMetric(INSETS_ACTION_APP_MENU_BLOCK_MARGIN);
+  expected_margins.set_top(expected_margins.top() +
+                           provider->GetDistanceMetric(
+                               DISTANCE_ACTION_APP_MENU_NOTIFICATION_MARGIN));
+  EXPECT_EQ(*block_margins, expected_margins);
 
   EXPECT_CALL(on_menu_closed, Run()).Times(1);
   menu.CloseMenu();
@@ -1971,13 +2100,12 @@ TEST_F(ActionAppMenuTest, DefaultBrowserNotificationRowStyling) {
   ASSERT_TRUE(default_browser_item->GetMenuItemBackground().has_value());
   EXPECT_EQ(default_browser_item->GetMenuItemBackground()->background_color_id,
             ui::kColorAppMenuUpgradeRowBackground);
-  EXPECT_EQ(default_browser_item->GetMenuItemBackground()->top_radius, 8);
-  EXPECT_EQ(default_browser_item->GetMenuItemBackground()->bottom_radius, 8);
+  EXPECT_EQ(default_browser_item->GetMenuItemBackground()->top_radius, 12);
+  EXPECT_EQ(default_browser_item->GetMenuItemBackground()->bottom_radius, 12);
 
   // Verify the following block section item has
-  // INSETS_ACTION_APP_MENU_BLOCK_WITH_NOTIFICATION_MARGIN, creating 12px of
-  // whitespace below the notification banner (matching the 12px container
-  // inset above).
+  // DISTANCE_ACTION_APP_MENU_NOTIFICATION_MARGIN added to its top margin,
+  // creating 12px of whitespace below the notification banner.
   views::MenuItemView* block_item = root->GetSubmenu()->GetMenuItemAt(1);
   ASSERT_NE(block_item, nullptr);
   ASSERT_EQ(block_item->children().size(), 1u);
@@ -1987,9 +2115,13 @@ TEST_F(ActionAppMenuTest, DefaultBrowserNotificationRowStyling) {
   const gfx::Insets* block_margins =
       block_view->GetProperty(views::kMarginsKey);
   ASSERT_TRUE(block_margins);
-  EXPECT_EQ(*block_margins,
-            ChromeLayoutProvider::Get()->GetInsetsMetric(
-                INSETS_ACTION_APP_MENU_BLOCK_WITH_NOTIFICATION_MARGIN));
+  const auto* provider = ChromeLayoutProvider::Get();
+  gfx::Insets expected_margins =
+      provider->GetInsetsMetric(INSETS_ACTION_APP_MENU_BLOCK_MARGIN);
+  expected_margins.set_top(expected_margins.top() +
+                           provider->GetDistanceMetric(
+                               DISTANCE_ACTION_APP_MENU_NOTIFICATION_MARGIN));
+  EXPECT_EQ(*block_margins, expected_margins);
 
   EXPECT_CALL(on_menu_closed, Run()).Times(1);
   menu.CloseMenu();
@@ -2060,6 +2192,46 @@ TEST_F(ActionAppMenuTest, MenuItemNewBadgeProperty) {
   menu.CloseMenu();
 }
 
+TEST_F(ActionAppMenuTest, MenuItemIsAlertedProperty) {
+  UserEducationServiceFactory::GetInstance()->SetTestingFactory(
+      profile_.get(), base::BindRepeating([](content::BrowserContext* context)
+                                              -> std::unique_ptr<KeyedService> {
+        return std::make_unique<UserEducationService>(
+            Profile::FromBrowserContext(context), /*allows_promos=*/true);
+      }));
+  auto* const user_ed_service =
+      UserEducationServiceFactory::GetForBrowserContext(profile_.get());
+  user_education::TutorialDescription desc;
+  desc.steps.push_back(user_education::TutorialDescription::BubbleStep(
+                           AppMenuModel::kDownloadsMenuItem)
+                           .SetBubbleBodyText(IDS_OK));
+  user_ed_service->tutorial_registry().AddTutorial("TestTutorial",
+                                                   std::move(desc));
+  user_ed_service->tutorial_service()->StartTutorial(
+      "TestTutorial", ui::ElementContext::CreateFakeContextForTesting(1));
+
+  base::MockCallback<base::RepeatingClosure> on_menu_closed;
+  ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
+
+  menu.RunMenu(button_->button_controller());
+  EXPECT_TRUE(menu.IsShowing());
+
+  views::MenuItemView* root = menu.root_menu_item_for_testing();
+  ASSERT_TRUE(root);
+
+  views::MenuItemView* downloads_item =
+      root->GetMenuItemByID(kActionShowDownloadsPage);
+  ASSERT_TRUE(downloads_item);
+  EXPECT_TRUE(downloads_item->is_alerted());
+
+  views::MenuItemView* print_item = root->GetMenuItemByID(kActionPrint);
+  ASSERT_TRUE(print_item);
+  EXPECT_FALSE(print_item->is_alerted());
+
+  EXPECT_CALL(on_menu_closed, Run()).Times(1);
+  menu.CloseMenu();
+}
+
 TEST_F(ActionAppMenuTest, GlobalErrorNotificationRowStyling) {
   actions::ActionItem* global_error_action =
       actions::ActionManager::Get().FindAction(
@@ -2086,8 +2258,8 @@ TEST_F(ActionAppMenuTest, GlobalErrorNotificationRowStyling) {
   ASSERT_TRUE(global_error_item->GetMenuItemBackground().has_value());
   EXPECT_EQ(global_error_item->GetMenuItemBackground()->background_color_id,
             ui::kColorAppMenuUpgradeRowBackground);
-  EXPECT_EQ(global_error_item->GetMenuItemBackground()->top_radius, 8);
-  EXPECT_EQ(global_error_item->GetMenuItemBackground()->bottom_radius, 8);
+  EXPECT_EQ(global_error_item->GetMenuItemBackground()->top_radius, 12);
+  EXPECT_EQ(global_error_item->GetMenuItemBackground()->bottom_radius, 12);
 
   views::MenuItemView* block_item = root->GetSubmenu()->GetMenuItemAt(1);
   ASSERT_NE(block_item, nullptr);
@@ -2098,9 +2270,13 @@ TEST_F(ActionAppMenuTest, GlobalErrorNotificationRowStyling) {
   const gfx::Insets* block_margins =
       block_view->GetProperty(views::kMarginsKey);
   ASSERT_TRUE(block_margins);
-  EXPECT_EQ(*block_margins,
-            ChromeLayoutProvider::Get()->GetInsetsMetric(
-                INSETS_ACTION_APP_MENU_BLOCK_WITH_NOTIFICATION_MARGIN));
+  const auto* provider = ChromeLayoutProvider::Get();
+  gfx::Insets expected_margins =
+      provider->GetInsetsMetric(INSETS_ACTION_APP_MENU_BLOCK_MARGIN);
+  expected_margins.set_top(expected_margins.top() +
+                           provider->GetDistanceMetric(
+                               DISTANCE_ACTION_APP_MENU_NOTIFICATION_MARGIN));
+  EXPECT_EQ(*block_margins, expected_margins);
 
   EXPECT_CALL(on_menu_closed, Run()).Times(1);
   menu.CloseMenu();
@@ -2155,8 +2331,8 @@ TEST_F(ActionAppMenuTest,
       root->GetMenuItemByID(kActionOpenSafetyHub);
   ASSERT_TRUE(safety_hub_item);
   ASSERT_TRUE(safety_hub_item->GetMenuItemBackground().has_value());
-  EXPECT_EQ(safety_hub_item->GetMenuItemBackground()->top_radius, 8);
-  EXPECT_EQ(safety_hub_item->GetMenuItemBackground()->bottom_radius, 8);
+  EXPECT_EQ(safety_hub_item->GetMenuItemBackground()->top_radius, 12);
+  EXPECT_EQ(safety_hub_item->GetMenuItemBackground()->bottom_radius, 12);
 
   EXPECT_FALSE(root->GetMenuItemByID(kActionGlobalError));
 #if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_CHROMEOS)
@@ -2194,8 +2370,8 @@ TEST_F(ActionAppMenuTest, GlobalErrorPrioritizedOverDefaultBrowser) {
       root->GetMenuItemByID(kActionGlobalError);
   ASSERT_TRUE(global_error_item);
   ASSERT_TRUE(global_error_item->GetMenuItemBackground().has_value());
-  EXPECT_EQ(global_error_item->GetMenuItemBackground()->top_radius, 8);
-  EXPECT_EQ(global_error_item->GetMenuItemBackground()->bottom_radius, 8);
+  EXPECT_EQ(global_error_item->GetMenuItemBackground()->top_radius, 12);
+  EXPECT_EQ(global_error_item->GetMenuItemBackground()->bottom_radius, 12);
 
   EXPECT_FALSE(root->GetMenuItemByID(kActionSetBrowserAsDefault));
 
@@ -2235,15 +2411,15 @@ TEST_F(ActionAppMenuTest, MultipleNotificationsSeparatedBySpacingSeparator) {
       root->GetMenuItemByID(kActionUpgradeDialog);
   ASSERT_TRUE(upgrade_item);
   ASSERT_TRUE(upgrade_item->GetMenuItemBackground().has_value());
-  EXPECT_EQ(upgrade_item->GetMenuItemBackground()->top_radius, 8);
-  EXPECT_EQ(upgrade_item->GetMenuItemBackground()->bottom_radius, 8);
+  EXPECT_EQ(upgrade_item->GetMenuItemBackground()->top_radius, 12);
+  EXPECT_EQ(upgrade_item->GetMenuItemBackground()->bottom_radius, 12);
 
   views::MenuItemView* global_error_item =
       root->GetMenuItemByID(kActionGlobalError);
   ASSERT_TRUE(global_error_item);
   ASSERT_TRUE(global_error_item->GetMenuItemBackground().has_value());
-  EXPECT_EQ(global_error_item->GetMenuItemBackground()->top_radius, 8);
-  EXPECT_EQ(global_error_item->GetMenuItemBackground()->bottom_radius, 8);
+  EXPECT_EQ(global_error_item->GetMenuItemBackground()->top_radius, 12);
+  EXPECT_EQ(global_error_item->GetMenuItemBackground()->bottom_radius, 12);
 
   ASSERT_GE(submenu->children().size(), 3u);
   EXPECT_EQ(submenu->children()[0], upgrade_item);
@@ -2257,5 +2433,284 @@ TEST_F(ActionAppMenuTest, MultipleNotificationsSeparatedBySpacingSeparator) {
   menu.CloseMenu();
 }
 #endif
+
+TEST_F(ActionAppMenuTest, MenuOpenAndCommandExecutionMetrics) {
+  base::HistogramTester histogram_tester;
+  base::UserActionTester user_action_tester;
+  base::MockCallback<base::RepeatingClosure> on_menu_closed;
+
+  ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
+  menu.RunMenu(button_->button_controller());
+  ASSERT_TRUE(menu.IsShowing());
+
+  EXPECT_EQ(user_action_tester.GetActionCount("ShowAppMenu"), 1);
+  histogram_tester.ExpectBucketCount("WrenchMenu.MenuAction",
+                                     MENU_ACTION_MENU_OPENED, 1);
+
+  views::MenuItemView* root = menu.root_menu_item_for_testing();
+  ASSERT_TRUE(root);
+
+  views::MenuItemView* tab_groups_item =
+      root->GetMenuItemByID(kActionSavedTabGroupsSubmenu);
+  ASSERT_TRUE(tab_groups_item);
+  menu.WillShowMenu(tab_groups_item);
+
+  histogram_tester.ExpectBucketCount("WrenchMenu.MenuAction",
+                                     MENU_ACTION_SHOW_SAVED_TAB_GROUPS, 1);
+  histogram_tester.ExpectTotalCount(
+      "WrenchMenu.TimeToAction.ShowSavedTabGroups", 1);
+
+  menu.WillShowMenu(tab_groups_item);
+
+  histogram_tester.ExpectBucketCount("WrenchMenu.MenuAction",
+                                     MENU_ACTION_SHOW_SAVED_TAB_GROUPS, 2);
+  histogram_tester.ExpectTotalCount(
+      "WrenchMenu.TimeToAction.ShowSavedTabGroups", 2);
+
+  EXPECT_CALL(mock_action_invoked_, Call(kActionPrint, testing::_, testing::_))
+      .Times(1);
+  menu.ExecuteCommand(kActionPrint, /*mouse_event_flags=*/0);
+
+  histogram_tester.ExpectBucketCount("WrenchMenu.MenuAction", MENU_ACTION_PRINT,
+                                     1);
+  histogram_tester.ExpectTotalCount("WrenchMenu.TimeToAction.Print", 1);
+  histogram_tester.ExpectTotalCount("WrenchMenu.TimeToAction", 1);
+
+  EXPECT_CALL(on_menu_closed, Run()).Times(1);
+  menu.CloseMenu();
+}
+
+TEST_F(ActionAppMenuTest, ZoomAndBlockButtonMetrics) {
+  base::HistogramTester histogram_tester;
+  base::MockCallback<base::RepeatingClosure> on_menu_closed;
+
+  ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
+  menu.RunMenu(button_->button_controller());
+  ASSERT_TRUE(menu.IsShowing());
+
+  views::MenuItemView* root = menu.root_menu_item_for_testing();
+  ASSERT_TRUE(root);
+
+  views::MenuItemView* zoom_item = root->GetMenuItemByID(kActionZoomSubmenu);
+  ASSERT_TRUE(zoom_item);
+  auto* zoom_view =
+      views::AsViewClass<AppMenuZoomView>(zoom_item->children()[0]);
+  ASSERT_TRUE(zoom_view);
+
+  EXPECT_CALL(mock_action_invoked_,
+              Call(kActionZoomPlus, testing::_, testing::_))
+      .Times(2);
+  views::test::ButtonTestApi(zoom_view->zoom_plus_button_for_testing())
+      .NotifyDefaultMouseClick();
+  // Second click while menu stays open should not record a duplicate
+  // TimeToAction or ZoomPlus action.
+  views::test::ButtonTestApi(zoom_view->zoom_plus_button_for_testing())
+      .NotifyDefaultMouseClick();
+
+  histogram_tester.ExpectBucketCount("WrenchMenu.MenuAction",
+                                     MENU_ACTION_ZOOM_PLUS, 1);
+  histogram_tester.ExpectTotalCount("WrenchMenu.TimeToAction.ZoomPlus", 1);
+  histogram_tester.ExpectTotalCount("WrenchMenu.TimeToAction", 1);
+
+  // Clicking a block button closes the menu and records its MenuAction,
+  // without recording a second TimeToAction.
+  views::MenuItemView* block_item = root->GetSubmenu()->GetMenuItemAt(0);
+  ASSERT_NE(block_item, nullptr);
+  auto* block_section_view =
+      views::AsViewClass<AppMenuBlockView>(block_item->children()[0]);
+  ASSERT_TRUE(block_section_view);
+  auto* new_tab_button =
+      views::AsViewClass<AppMenuBlockButton>(block_section_view->children()[0]);
+  ASSERT_TRUE(new_tab_button);
+
+  EXPECT_CALL(on_menu_closed, Run()).Times(1);
+  EXPECT_CALL(mock_action_invoked_, Call(kActionNewTab, testing::_, testing::_))
+      .Times(1);
+  views::test::ButtonTestApi(new_tab_button).NotifyDefaultMouseClick();
+
+  histogram_tester.ExpectBucketCount("WrenchMenu.MenuAction",
+                                     MENU_ACTION_NEW_TAB, 1);
+  histogram_tester.ExpectTotalCount("WrenchMenu.TimeToAction.NewTab", 0);
+  histogram_tester.ExpectTotalCount("WrenchMenu.TimeToAction", 1);
+}
+
+TEST_F(ActionAppMenuTest, SafetyHubNotificationMetrics) {
+  SafetyHubMenuNotificationServiceFactory::GetInstance()->SetTestingFactory(
+      profile_.get(), base::BindRepeating([](content::BrowserContext* context)
+                                              -> std::unique_ptr<KeyedService> {
+        Profile* profile = Profile::FromBrowserContext(context);
+        auto service = std::make_unique<SafetyHubMenuNotificationService>(
+            profile->GetPrefs(), nullptr, nullptr,
+#if !BUILDFLAG(IS_ANDROID)
+            nullptr,
+#endif
+            profile);
+        auto getter = base::BindRepeating(
+            []() -> std::optional<std::unique_ptr<SafetyHubResult>> {
+              return std::make_unique<SafetyHubSafeBrowsingResult>(
+                  SafeBrowsingState::kDisabledByUser);
+            });
+        service->UpdateResultGetterForTesting(
+            safety_hub::SafetyHubModuleType::UNUSED_SITE_PERMISSIONS, getter);
+        return service;
+      }));
+
+  base::HistogramTester histogram_tester;
+  base::MockCallback<base::RepeatingClosure> on_menu_closed;
+
+  ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
+  menu.RunMenu(button_->button_controller());
+  ASSERT_TRUE(menu.IsShowing());
+
+  histogram_tester.ExpectUniqueSample(
+      "Settings.SafetyHub.Impression",
+      safety_hub::SafetyHubSurfaces::kThreeDotMenu, 1);
+  histogram_tester.ExpectUniqueSample(
+      "Settings.SafetyHub.EntryPointImpression",
+      safety_hub::SafetyHubEntryPoint::kMenuNotifications, 1);
+  histogram_tester.ExpectUniqueSample(
+      "Settings.SafetyHub.MenuNotificationImpression",
+      safety_hub::SafetyHubModuleType::UNUSED_SITE_PERMISSIONS, 1);
+
+  EXPECT_CALL(mock_action_invoked_,
+              Call(kActionOpenSafetyHub, testing::_, testing::_))
+      .WillOnce([this](actions::ActionId id, actions::ActionItem* item,
+                       actions::ActionInvocationContext context) {
+        EXPECT_EQ(
+            context.GetProperty(AppMenuActionItem::kActionParamKey),
+            static_cast<int>(
+                safety_hub::SafetyHubModuleType::UNUSED_SITE_PERMISSIONS));
+        safety_hub_util::LogMenuNotificationClicked(
+            profile_.get(),
+            static_cast<safety_hub::SafetyHubModuleType>(
+                context.GetProperty(AppMenuActionItem::kActionParamKey)));
+      });
+  menu.ExecuteCommand(kActionOpenSafetyHub, /*mouse_event_flags=*/0);
+
+  histogram_tester.ExpectUniqueSample(
+      "Settings.SafetyHub.Interaction",
+      safety_hub::SafetyHubSurfaces::kThreeDotMenu, 1);
+  histogram_tester.ExpectUniqueSample(
+      "Settings.SafetyHub.EntryPointInteraction",
+      safety_hub::SafetyHubEntryPoint::kMenuNotifications, 1);
+  histogram_tester.ExpectUniqueSample(
+      "Settings.SafetyHub.MenuNotificationClicked",
+      safety_hub::SafetyHubModuleType::UNUSED_SITE_PERMISSIONS, 1);
+  histogram_tester.ExpectBucketCount("WrenchMenu.MenuAction",
+                                     MENU_ACTION_SHOW_SAFETY_HUB, 1);
+  histogram_tester.ExpectTotalCount(
+      "WrenchMenu.TimeToAction.SafetyHubNotificationOpenSafetyHub", 1);
+
+  EXPECT_CALL(on_menu_closed, Run()).Times(1);
+  menu.CloseMenu();
+}
+
+TEST_F(ActionAppMenuTest, RecentTabsDynamicMenuMetrics) {
+  base::UserActionTester user_action_tester;
+  RecentTabsDynamicMenu dynamic_menu(&mock_window_interface_);
+  auto parent = actions::ActionItem::Builder().Build();
+
+  RecentTabItem local_tab(RecentTabItem::Type::kTab, u"Local Tab");
+  local_tab.set_is_local(true);
+  local_tab.set_session_id(SessionID::FromSerializedValue(1));
+
+  RecentTabItem window_item(RecentTabItem::Type::kWindow, u"Restore Window");
+  window_item.set_session_id(SessionID::FromSerializedValue(2));
+
+  RecentTabItem group_item(RecentTabItem::Type::kGroup, u"Restore Group");
+  group_item.set_session_id(SessionID::FromSerializedValue(3));
+
+  RecentTabItem split_item(RecentTabItem::Type::kSplit, u"Restore Split");
+  split_item.set_session_id(SessionID::FromSerializedValue(4));
+
+  dynamic_menu.CreateRecentTabsActionForTesting(
+      parent.get(), {local_tab, window_item, group_item, split_item});
+
+  const auto& children = parent->GetChildren().children();
+  ASSERT_EQ(children.size(), 4u);
+
+  children[0]->GetActionItem()->InvokeAction();
+  EXPECT_EQ(
+      user_action_tester.GetActionCount("WrenchMenu_OpenRecentTabFromLocal"),
+      1);
+
+  children[1]->GetActionItem()->InvokeAction();
+  EXPECT_EQ(user_action_tester.GetActionCount("WrenchMenu_OpenRecentWindow"),
+            1);
+
+  children[2]->GetActionItem()->InvokeAction();
+  EXPECT_EQ(user_action_tester.GetActionCount("WrenchMenu_OpenRecentGroup"), 1);
+
+  children[3]->GetActionItem()->InvokeAction();
+  EXPECT_EQ(user_action_tester.GetActionCount("WrenchMenu_OpenRecentSplit"), 1);
+}
+
+TEST_F(ActionAppMenuTest, SavedTabGroupsAndSidePanelMetrics) {
+  base::UserActionTester user_action_tester;
+  base::MockCallback<base::RepeatingClosure> on_menu_closed;
+
+  ActionAppMenu menu(&mock_window_interface_, on_menu_closed.Get());
+  menu.RunMenu(button_->button_controller());
+  ASSERT_TRUE(menu.IsShowing());
+
+  views::MenuItemView* root = menu.root_menu_item_for_testing();
+  ASSERT_TRUE(root);
+
+  views::MenuItemView* tab_groups_item =
+      root->GetMenuItemByID(kActionSavedTabGroupsSubmenu);
+  ASSERT_TRUE(tab_groups_item);
+  menu.WillShowMenu(tab_groups_item);
+
+  EXPECT_CALL(mock_action_invoked_,
+              Call(kActionCreateNewTabGroup, testing::_, testing::_))
+      .Times(1);
+  menu.ExecuteCommand(kActionCreateNewTabGroup, /*mouse_event_flags=*/0);
+  EXPECT_EQ(user_action_tester.GetActionCount(
+                "TabGroups_SavedTabGroups_"
+                "CreateNewGroupTriggeredFromTabGroupsAppMenu"),
+            1);
+
+  actions::ActionInvocationContext captured_context;
+  EXPECT_CALL(mock_action_invoked_,
+              Call(kActionShowReadingModeSidePanel, testing::_, testing::_))
+      .WillOnce([&captured_context](actions::ActionId id,
+                                    actions::ActionItem* item,
+                                    actions::ActionInvocationContext context) {
+        captured_context = std::move(context);
+      });
+  menu.ExecuteCommand(kActionShowReadingModeSidePanel, /*mouse_event_flags=*/0);
+  EXPECT_EQ(static_cast<SidePanelOpenTrigger>(
+                captured_context.GetProperty(kSidePanelOpenTriggerKey)),
+            SidePanelOpenTrigger::kAppMenu);
+  EXPECT_EQ(captured_context.GetProperty(chrome::kActionInvocationSourceKey),
+            chrome::ActionInvocationSource::kAppMenu);
+
+  EXPECT_CALL(on_menu_closed, Run()).Times(1);
+  menu.CloseMenu();
+}
+
+TEST_F(ActionAppMenuTest, TabsFromOtherDevicesAndSendTabToSelfMetrics) {
+  base::HistogramTester histogram_tester;
+
+  ActionAppMenuManager menu_manager(&mock_window_interface_);
+  menu_manager.CreateMenuHierarchy();
+
+  // TargetDeviceCount should not be logged when the menu hierarchy is
+  // constructed.
+  histogram_tester.ExpectTotalCount(
+      "Sharing.SendTabToSelf.TargetDeviceCount.ShareMenu", 0);
+  menu_manager.OnMenuClosed();
+
+  // Logging kActionSidePanelShowTabsFromOtherDevices should record
+  // WrenchMenu.TimeToAction without hitting NOTREACHED().
+  ActionAppMenuMetrics metrics;
+  metrics.OnMenuOpened();
+  auto tabs_from_other_devices =
+      actions::ActionItem::Builder()
+          .SetActionId(kActionSidePanelShowTabsFromOtherDevices)
+          .Build();
+  metrics.LogMenuAction(tabs_from_other_devices.get());
+  histogram_tester.ExpectTotalCount("WrenchMenu.TimeToAction", 1);
+}
 
 }  // namespace

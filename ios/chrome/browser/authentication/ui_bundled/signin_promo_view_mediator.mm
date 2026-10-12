@@ -155,6 +155,9 @@ bool IsSupportedAccessPoint(signin_metrics::AccessPoint access_point) {
     case signin_metrics::AccessPoint::kComposeboxDriveContextMenuOptionBubble:
     case signin_metrics::AccessPoint::kSkills:
     case signin_metrics::AccessPoint::kAccountMenuSignedOutState:
+    case signin_metrics::AccessPoint::kAppSwitcherAISummarization:
+    case signin_metrics::AccessPoint::kGeminiExternalAppStoreEvent:
+    case signin_metrics::AccessPoint::kPasswordManagerCard:
       return false;
   }
 }
@@ -274,6 +277,9 @@ void RecordImpressionsTilSigninButtonsHistogramForAccessPoint(
     case signin_metrics::AccessPoint::kComposeboxDriveContextMenuOptionBubble:
     case signin_metrics::AccessPoint::kSkills:
     case signin_metrics::AccessPoint::kAccountMenuSignedOutState:
+    case signin_metrics::AccessPoint::kAppSwitcherAISummarization:
+    case signin_metrics::AccessPoint::kGeminiExternalAppStoreEvent:
+    case signin_metrics::AccessPoint::kPasswordManagerCard:
       NOTREACHED() << "Unexpected value for access point "
                    << static_cast<int>(access_point);
   }
@@ -394,6 +400,9 @@ void RecordImpressionsTilXButtonHistogramForAccessPoint(
     case signin_metrics::AccessPoint::kComposeboxDriveContextMenuOptionBubble:
     case signin_metrics::AccessPoint::kSkills:
     case signin_metrics::AccessPoint::kAccountMenuSignedOutState:
+    case signin_metrics::AccessPoint::kAppSwitcherAISummarization:
+    case signin_metrics::AccessPoint::kGeminiExternalAppStoreEvent:
+    case signin_metrics::AccessPoint::kPasswordManagerCard:
       NOTREACHED() << "Unexpected value for access point "
                    << static_cast<int>(access_point);
   }
@@ -499,6 +508,9 @@ const char* DisplayedCountPreferenceKey(
     case signin_metrics::AccessPoint::kComposeboxDriveContextMenuOptionBubble:
     case signin_metrics::AccessPoint::kSkills:
     case signin_metrics::AccessPoint::kAccountMenuSignedOutState:
+    case signin_metrics::AccessPoint::kAppSwitcherAISummarization:
+    case signin_metrics::AccessPoint::kGeminiExternalAppStoreEvent:
+    case signin_metrics::AccessPoint::kPasswordManagerCard:
       return nullptr;
   }
 }
@@ -603,6 +615,9 @@ const char* AlreadySeenSigninViewPreferenceKey(
     case signin_metrics::AccessPoint::kComposeboxDriveContextMenuOptionBubble:
     case signin_metrics::AccessPoint::kSkills:
     case signin_metrics::AccessPoint::kAccountMenuSignedOutState:
+    case signin_metrics::AccessPoint::kAppSwitcherAISummarization:
+    case signin_metrics::AccessPoint::kGeminiExternalAppStoreEvent:
+    case signin_metrics::AccessPoint::kPasswordManagerCard:
       return nullptr;
   }
 }
@@ -905,6 +920,9 @@ id<SystemIdentity> GetDisplayedIdentity(
 }
 
 - (void)signingPromoDidBecomeVisible {
+  // Increments the "shown" counter used for histograms. Called when the signin
+  // promo view is visible. If the sign-in promo is already visible, this method
+  // does nothing.
   CHECK(![self isClosedOrDisconnected], base::NotFatalUntil::M156)
       << base::SysNSStringToUTF8([self description]);
   if (self.signinPromoViewVisible) {

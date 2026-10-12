@@ -8,14 +8,20 @@
 #include <string>
 #include <vector>
 
+#include "base/check_deref.h"
 #include "base/functional/callback_helpers.h"
 #include "base/observer_list.h"
 #include "base/strings/string_number_conversions.h"
 #include "base/test/gtest_util.h"
 #include "base/test/mock_callback.h"
+#include "base/test/scoped_feature_list.h"
 #include "base/test/task_environment.h"
 #include "base/time/time.h"
 #include "build/build_config.h"
+#include "components/autofill/core/browser/at_memory/at_memory_manager.h"
+#include "components/autofill/core/browser/at_memory/at_memory_manager_test_api.h"
+#include "components/autofill/core/browser/at_memory/at_memory_search_state.h"
+#include "components/autofill/core/browser/foundations/with_test_autofill_client_driver_manager.h"
 #include "components/autofill/core/browser/integrators/at_memory/memory_data_type.h"
 #include "components/autofill/core/browser/suggestions/suggestion.h"
 #include "components/autofill/core/browser/test_utils/autofill_test_util.h"
@@ -28,12 +34,16 @@
 #include "components/prefs/pref_registry_simple.h"
 #include "components/prefs/testing_pref_service.h"
 #include "components/signin/public/identity_manager/identity_test_environment.h"
+#include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
 #include "url/gurl.h"
 #include "url/origin.h"
 
 namespace autofill {
 namespace {
+
+using ::testing::Field;
+using ::testing::Optional;
 
 url::Origin FieldOrigin() {
   return url::Origin::Create(GURL("https://example.com"));
@@ -54,9 +64,16 @@ class FakePersonalContextEligibilityService
     observers_.RemoveObserver(observer);
   }
 
+  bool IsInitialized() const override { return true; }
+
   personal_context::PersonalContextEligibilityState GetEligibilityState()
       override {
     return state_;
+  }
+
+  bool IsEligibleForEncryption() const override {
+    return state_ ==
+           personal_context::PersonalContextEligibilityState::kEligible;
   }
 
   std::optional<personal_context::PersonalContextNonEligibilityReason>
@@ -78,39 +95,56 @@ class FakePersonalContextEligibilityService
   base::ObserverList<Observer> observers_;
 };
 
-class AtMemoryPersistedStateManagerTest : public testing::Test {
+class AtMemoryPersistedStateManagerTest
+    : public testing::Test,
+      public WithTestAutofillClientDriverManager<> {
  public:
   AtMemoryPersistedStateManagerTest() {
-    personal_context::prefs::RegisterProfilePrefs(pref_service_.registry());
-    pref_service_.SetBoolean(
-        personal_context::prefs::kPersonalContextInAutofillSettingsToggleStatus,
-        true);
-    state_manager_ = std::make_unique<AtMemoryPersistedStateManager>(
-        /*history_service=*/nullptr, &pref_service_,
-        identity_test_env_.identity_manager(), &eligibility_service_,
-        /*on_reset_callback=*/base::DoNothing());
+    feature_list_.InitAndEnableFeature(features::kAutofillAtMemory);
   }
 
-  AtMemoryPersistedStateManager& state_manager() { return *state_manager_; }
+  void SetUp() override {
+    InitAutofillClient();
+    autofill_client().set_personal_context_eligibility_service(
+        &eligibility_service_);
+    // The prefs are already registered by `test::PrefServiceForTesting()`.
+    pref_service().SetBoolean(
+        personal_context::prefs::kPersonalContextInAutofillSettingsToggleStatus,
+        true);
+    // `autofill_driver(0)` plays the role of the primary main frame.
+    CreateAutofillDriver();
+    // Instantiate the tab's `AtMemoryManager` (and with it the
+    // `AtMemoryPersistedStateManager` under test).
+    ASSERT_TRUE(autofill_client().GetAtMemoryManager());
+  }
+
+  void TearDown() override { DestroyAutofillClient(); }
+
+  // The `AtMemoryPersistedStateManager` owned by the tab's `AtMemoryManager`.
+  AtMemoryPersistedStateManager& state_manager() {
+    return CHECK_DEREF(
+        test_api(CHECK_DEREF(autofill_client().GetAtMemoryManager()))
+            .state_manager());
+  }
   const FieldGlobalId& field_id() const { return field_id_; }
   const FieldGlobalId& other_field_id() const { return other_field_id_; }
   base::test::TaskEnvironment& task_environment() { return task_environment_; }
-  TestingPrefServiceSimple& pref_service() { return pref_service_; }
+  test::AutofillTestingPrefService& pref_service() {
+    return CHECK_DEREF(autofill_client().GetPrefs());
+  }
   FakePersonalContextEligibilityService& eligibility_service() {
     return eligibility_service_;
   }
   signin::IdentityTestEnvironment& identity_test_env() {
-    return identity_test_env_;
+    return autofill_client().identity_test_environment();
   }
 
  private:
+  base::test::ScopedFeatureList feature_list_;
   base::test::TaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
   test::AutofillUnitTestEnvironment autofill_test_environment_;
-  TestingPrefServiceSimple pref_service_;
   FakePersonalContextEligibilityService eligibility_service_;
-  signin::IdentityTestEnvironment identity_test_env_;
-  std::unique_ptr<AtMemoryPersistedStateManager> state_manager_;
   FieldGlobalId field_id_{test::MakeFieldGlobalId()};
   FieldGlobalId other_field_id_{test::MakeFieldGlobalId()};
 };
@@ -461,120 +495,6 @@ TEST_F(AtMemoryPersistedStateManagerTest,
   EXPECT_TRUE(state_manager().previously_filled_suggestions().empty());
 }
 
-// Tests that sensitive personal information (SPII) previously filled
-// suggestions expire and are auto-destructed after the SPII TTL.
-TEST_F(AtMemoryPersistedStateManagerTest, SpiiSuggestionsExpireAfterSpiiTtl) {
-  base::test::ScopedFeatureList feature_list{
-      features::kAutofillAtMemoryPreviouslyFilled};
-
-  Suggestion s(u"Passport", SuggestionType::kAtMemorySearchResult);
-  s.payload =
-      Suggestion::AtMemoryPayload(u"12345678", MemoryDataType::kPassportNumber);
-
-  state_manager().OnSuggestionAccepted(s);
-  ASSERT_EQ(state_manager().previously_filled_suggestions().size(), 1u);
-
-  // Fast forward to 1 second before the SPII TTL.
-  task_environment().FastForwardBy(
-      AtMemoryPersistedStateManager::kSpiiTimeToLive - base::Seconds(1));
-  ASSERT_EQ(state_manager().previously_filled_suggestions().size(), 1u);
-
-  // Fast forward by 1 more second (SPII TTL expires).
-  task_environment().FastForwardBy(base::Seconds(1));
-  EXPECT_TRUE(state_manager().previously_filled_suggestions().empty());
-}
-
-// Tests that suggestions with SPII child metadata expire after the SPII TTL.
-TEST_F(AtMemoryPersistedStateManagerTest,
-       SpiiSuggestionWithChildSpiiExpiresAfterSpiiTtl) {
-  base::test::ScopedFeatureList feature_list{
-      features::kAutofillAtMemoryPreviouslyFilled};
-
-  Suggestion primary_suggestion(u"Primary",
-                                SuggestionType::kAtMemorySearchResult);
-  Suggestion child_suggestion(u"12345678",
-                              SuggestionType::kAtMemorySearchResult);
-  child_suggestion.payload =
-      Suggestion::AtMemoryPayload(u"12345678", MemoryDataType::kPassportNumber);
-  primary_suggestion.children = {child_suggestion};
-
-  state_manager().OnSuggestionAccepted(primary_suggestion);
-  ASSERT_EQ(state_manager().previously_filled_suggestions().size(), 1u);
-
-  // Fast forward to 1 second before the SPII TTL.
-  task_environment().FastForwardBy(
-      AtMemoryPersistedStateManager::kSpiiTimeToLive - base::Seconds(1));
-  ASSERT_EQ(state_manager().previously_filled_suggestions().size(), 1u);
-
-  // Fast forward by 1 more second (SPII TTL expires).
-  task_environment().FastForwardBy(base::Seconds(1));
-  EXPECT_TRUE(state_manager().previously_filled_suggestions().empty());
-}
-
-// Tests that non-SPII and SPII suggestions expire according to their respective
-// TTLs independently.
-TEST_F(AtMemoryPersistedStateManagerTest,
-       MixedSuggestionsExpireAccordingToRespectiveTtl) {
-  base::test::ScopedFeatureList feature_list{
-      features::kAutofillAtMemoryPreviouslyFilled};
-
-  Suggestion non_spii(u"Non-SPII", SuggestionType::kAtMemorySearchResult);
-  non_spii.payload =
-      Suggestion::AtMemoryPayload(u"123 Main St", MemoryDataType::kAddressFull);
-  Suggestion spii(u"SPII", SuggestionType::kAtMemorySearchResult);
-  spii.payload =
-      Suggestion::AtMemoryPayload(u"12345678", MemoryDataType::kPassportNumber);
-
-  state_manager().OnSuggestionAccepted(non_spii);
-  state_manager().OnSuggestionAccepted(spii);
-  ASSERT_EQ(state_manager().previously_filled_suggestions().size(), 2u);
-
-  // Fast forward to SPII TTL: SPII expires, Non-SPII remains.
-  task_environment().FastForwardBy(
-      AtMemoryPersistedStateManager::kSpiiTimeToLive);
-  ASSERT_EQ(state_manager().previously_filled_suggestions().size(), 1u);
-  EXPECT_EQ(state_manager().previously_filled_suggestions()[0].main_text.value,
-            u"Non-SPII");
-
-  // Fast forward remaining time to default TTL: Non-SPII expires.
-  task_environment().FastForwardBy(
-      AtMemoryPersistedStateManager::kDefaultTimeToLive -
-      AtMemoryPersistedStateManager::kSpiiTimeToLive);
-  EXPECT_TRUE(state_manager().previously_filled_suggestions().empty());
-}
-
-// Tests that when an SPII suggestion is accepted before a non-SPII suggestion,
-// both expire according to their respective TTLs.
-TEST_F(AtMemoryPersistedStateManagerTest,
-       SpiiAcceptedBeforeNonSpiiExpiresCorrectly) {
-  base::test::ScopedFeatureList feature_list{
-      features::kAutofillAtMemoryPreviouslyFilled};
-
-  Suggestion spii(u"SPII", SuggestionType::kAtMemorySearchResult);
-  spii.payload =
-      Suggestion::AtMemoryPayload(u"12345678", MemoryDataType::kPassportNumber);
-  Suggestion non_spii(u"Non-SPII", SuggestionType::kAtMemorySearchResult);
-  non_spii.payload =
-      Suggestion::AtMemoryPayload(u"123 Main St", MemoryDataType::kAddressFull);
-
-  state_manager().OnSuggestionAccepted(spii);
-  state_manager().OnSuggestionAccepted(non_spii);
-  ASSERT_EQ(state_manager().previously_filled_suggestions().size(), 2u);
-
-  // Fast forward to SPII TTL: SPII expires, Non-SPII remains.
-  task_environment().FastForwardBy(
-      AtMemoryPersistedStateManager::kSpiiTimeToLive);
-  ASSERT_EQ(state_manager().previously_filled_suggestions().size(), 1u);
-  EXPECT_EQ(state_manager().previously_filled_suggestions()[0].main_text.value,
-            u"Non-SPII");
-
-  // Fast forward remaining time to default TTL: Non-SPII expires.
-  task_environment().FastForwardBy(
-      AtMemoryPersistedStateManager::kDefaultTimeToLive -
-      AtMemoryPersistedStateManager::kSpiiTimeToLive);
-  EXPECT_TRUE(state_manager().previously_filled_suggestions().empty());
-}
-
 // Tests that re-accepting an existing suggestion refreshes its TTL.
 TEST_F(AtMemoryPersistedStateManagerTest, ReAcceptingSuggestionRefreshesTtl) {
   base::test::ScopedFeatureList feature_list{
@@ -846,21 +766,186 @@ TEST_F(AtMemoryPersistedStateManagerTest,
 }
 
 // Tests that the `on_reset_callback` passed to the constructor is called when
-// the state is reset (e.g. by history deletion, settings change, or account
-// change).
+// the state is reset (e.g. by history deletion, settings change, account
+// change, or search state TTL expiration).
 TEST_F(AtMemoryPersistedStateManagerTest, OnResetCallbackInvokedOnReset) {
   base::MockRepeatingClosure reset_callback;
   AtMemoryPersistedStateManager custom_state_manager(
-      /*history_service=*/nullptr, &pref_service(),
-      identity_test_env().identity_manager(), &eligibility_service(),
-      reset_callback.Get());
+      &autofill_client(), /*history_service=*/nullptr, reset_callback.Get());
 
-  EXPECT_CALL(reset_callback, Run).Times(2);
+  EXPECT_CALL(reset_callback, Run).Times(3);
   pref_service().SetBoolean(
       personal_context::prefs::kPersonalContextInAutofillSettingsToggleStatus,
       false);
   identity_test_env().MakePrimaryAccountAvailable(
       "user@example.com", signin::ConsentLevel::kSignin);
+
+  // Expiring without suggestions does not invoke `on_reset_callback`.
+  custom_state_manager.GetStateForField(field_id(), FieldOrigin());
+  custom_state_manager.OnFilterSubmitted(u"address");
+  task_environment().FastForwardBy(
+      AtMemoryPersistedStateManager::kDefaultTimeToLive);
+
+  // Expiring with non-empty suggestions invokes `on_reset_callback`.
+  custom_state_manager.GetStateForField(field_id(), FieldOrigin());
+  custom_state_manager.OnFilterSubmitted(u"address");
+  custom_state_manager.OnSuggestionsChanged(
+      {Suggestion(u"123 Main St", SuggestionType::kAddressEntry)});
+  task_environment().FastForwardBy(
+      AtMemoryPersistedStateManager::kDefaultTimeToLive);
+}
+
+// Tests around resetting the state when the tab navigates. They reuse the
+// fixture's `autofill_driver(0)`, which plays the role of the primary main
+// frame.
+using AtMemoryPersistedStateManagerNavigationTest =
+    AtMemoryPersistedStateManagerTest;
+
+// Tests that when the primary main frame driver transitions to kPendingReset
+// (e.g. non-same-document navigation commits), the persisted search state is
+// reset.
+TEST_F(AtMemoryPersistedStateManagerNavigationTest,
+       ResetOnPrimaryMainFramePendingReset) {
+  state_manager().GetStateForField(field_id(), FieldOrigin());
+  state_manager().OnFilterSubmitted(u"passport");
+  ASSERT_THAT(state_manager().GetStateForField(field_id(), FieldOrigin()),
+              Optional(Field(&AtMemorySearchState::filter, u"passport")));
+
+  ResetAutofillDriver(autofill_driver(0));
+
+  EXPECT_EQ(state_manager().GetStateForField(field_id(), FieldOrigin()),
+            std::nullopt);
+}
+
+// Tests that when the primary main frame driver transitions to kPendingDeletion
+// (e.g. frame swap or teardown), the persisted search state is reset.
+TEST_F(AtMemoryPersistedStateManagerNavigationTest,
+       ResetOnPrimaryMainFramePendingDeletion) {
+  state_manager().GetStateForField(field_id(), FieldOrigin());
+  state_manager().OnFilterSubmitted(u"passport");
+  ASSERT_THAT(state_manager().GetStateForField(field_id(), FieldOrigin()),
+              Optional(Field(&AtMemorySearchState::filter, u"passport")));
+
+  DeleteAutofillDriver(autofill_driver(0));
+
+  EXPECT_EQ(state_manager().GetStateForField(field_id(), FieldOrigin()),
+            std::nullopt);
+}
+
+// Tests that a subframe's navigation (kPendingReset) does NOT reset the
+// persisted search state.
+TEST_F(AtMemoryPersistedStateManagerNavigationTest,
+       NoResetOnSubframePendingReset) {
+  CreateAutofillDriver();
+  autofill_driver(1).SetParent(&autofill_driver(0));
+
+  state_manager().GetStateForField(field_id(), FieldOrigin());
+  state_manager().OnFilterSubmitted(u"passport");
+  ASSERT_THAT(state_manager().GetStateForField(field_id(), FieldOrigin()),
+              Optional(Field(&AtMemorySearchState::filter, u"passport")));
+
+  ResetAutofillDriver(autofill_driver(1));
+
+  EXPECT_THAT(state_manager().GetStateForField(field_id(), FieldOrigin()),
+              Optional(Field(&AtMemorySearchState::filter, u"passport")));
+}
+
+// Tests that a subframe's deletion (kPendingDeletion) does NOT reset the
+// persisted search state.
+TEST_F(AtMemoryPersistedStateManagerNavigationTest,
+       NoResetOnSubframePendingDeletion) {
+  CreateAutofillDriver();
+  autofill_driver(1).SetParent(&autofill_driver(0));
+
+  state_manager().GetStateForField(field_id(), FieldOrigin());
+  state_manager().OnFilterSubmitted(u"passport");
+  ASSERT_THAT(state_manager().GetStateForField(field_id(), FieldOrigin()),
+              Optional(Field(&AtMemorySearchState::filter, u"passport")));
+
+  DeleteAutofillDriver(autofill_driver(1));
+
+  EXPECT_THAT(state_manager().GetStateForField(field_id(), FieldOrigin()),
+              Optional(Field(&AtMemorySearchState::filter, u"passport")));
+}
+
+// Tests that state changes that do not indicate frame reset or deletion (e.g.
+// kInactive -> kActive) do not reset the persisted search state.
+TEST_F(AtMemoryPersistedStateManagerNavigationTest, NoResetOnActivation) {
+  state_manager().GetStateForField(field_id(), FieldOrigin());
+  state_manager().OnFilterSubmitted(u"passport");
+  ASSERT_THAT(state_manager().GetStateForField(field_id(), FieldOrigin()),
+              Optional(Field(&AtMemorySearchState::filter, u"passport")));
+
+  DeactivateAutofillDriver(autofill_driver(0));
+  ActivateAutofillDriver(autofill_driver(0));
+
+  EXPECT_THAT(state_manager().GetStateForField(field_id(), FieldOrigin()),
+              Optional(Field(&AtMemorySearchState::filter, u"passport")));
+}
+
+// Tests that a navigation in a main frame that is not *primary* - i.e. the main
+// frame of a prerendered or BFCached page - does not reset the state of the
+// page the user is currently looking at.
+TEST_F(AtMemoryPersistedStateManagerNavigationTest,
+       NoResetOnNonPrimaryMainFrame) {
+  CreateAutofillDriver();
+  autofill_driver(1).SetIsActive(false);
+
+  state_manager().GetStateForField(field_id(), FieldOrigin());
+  state_manager().OnFilterSubmitted(u"passport");
+  ASSERT_THAT(state_manager().GetStateForField(field_id(), FieldOrigin()),
+              Optional(Field(&AtMemorySearchState::filter, u"passport")));
+
+  ResetAutofillDriver(autofill_driver(1));
+  DeleteAutofillDriver(autofill_driver(1));
+
+  EXPECT_THAT(state_manager().GetStateForField(field_id(), FieldOrigin()),
+              Optional(Field(&AtMemorySearchState::filter, u"passport")));
+}
+
+// Tests that a navigation in the main frame of an embedded frame tree (i.e. a
+// <fencedframe> or a GuestView) does not reset the state.
+TEST_F(AtMemoryPersistedStateManagerNavigationTest,
+       NoResetOnEmbeddedMainFrame) {
+  CreateAutofillDriver();
+  autofill_driver(1).SetIsEmbedded(true);
+
+  state_manager().GetStateForField(field_id(), FieldOrigin());
+  state_manager().OnFilterSubmitted(u"passport");
+  ASSERT_THAT(state_manager().GetStateForField(field_id(), FieldOrigin()),
+              Optional(Field(&AtMemorySearchState::filter, u"passport")));
+
+  ResetAutofillDriver(autofill_driver(1));
+  DeleteAutofillDriver(autofill_driver(1));
+
+  EXPECT_THAT(state_manager().GetStateForField(field_id(), FieldOrigin()),
+              Optional(Field(&AtMemorySearchState::filter, u"passport")));
+}
+
+// Tests that navigation resets all state including search state and previously
+// filled suggestions.
+TEST_F(AtMemoryPersistedStateManagerNavigationTest, AllStateResetOnNavigation) {
+  base::test::ScopedFeatureList feature_list{
+      features::kAutofillAtMemoryPreviouslyFilled};
+
+  Suggestion suggestion(u"Passport #12345", SuggestionType::kAddressEntry);
+  state_manager().OnSuggestionAccepted(suggestion);
+  ASSERT_EQ(state_manager().previously_filled_suggestions().size(), 1u);
+
+  // Start a new search for the field.
+  state_manager().GetStateForField(field_id(), FieldOrigin());
+  state_manager().OnFilterSubmitted(u"passport");
+  ASSERT_THAT(state_manager().GetStateForField(field_id(), FieldOrigin()),
+              Optional(Field(&AtMemorySearchState::filter, u"passport")));
+
+  ResetAutofillDriver(autofill_driver(0));
+
+  // Search state is reset on navigation.
+  EXPECT_EQ(state_manager().GetStateForField(field_id(), FieldOrigin()),
+            std::nullopt);
+
+  // Previously filled suggestions are also cleared on navigation.
+  EXPECT_TRUE(state_manager().previously_filled_suggestions().empty());
 }
 
 }  // namespace

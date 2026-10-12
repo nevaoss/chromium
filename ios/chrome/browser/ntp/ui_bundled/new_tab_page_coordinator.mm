@@ -20,6 +20,7 @@
 #import "components/feed/feed_feature_list.h"
 #import "components/image_fetcher/ios/ios_image_data_fetcher_wrapper.h"
 #import "components/keyed_service/core/service_access_type.h"
+#import "components/ntp_tiles/features.h"
 #import "components/ntp_tiles/most_visited_sites.h"
 #import "components/ntp_tiles/pref_names.h"
 #import "components/omnibox/browser/aim_eligibility_service.h"
@@ -2104,6 +2105,10 @@
   if (page == CustomizationMenuPage::kMain) {
     tracker->NotifyEvent(
         feature_engagement::events::kHomeBackgroundCustomizationMenuUsed);
+    if (IsNTPEphemeralThemeEnabled()) {
+      tracker->NotifyEvent(
+          feature_engagement::events::kEphemeralThemePromoUsed);
+    }
   }
 }
 
@@ -2204,6 +2209,20 @@
   _aimBubblePresenter = presenter;
 }
 
+// Returns `YES` if conditions to focus on Composebox are met.
+- (BOOL)canFocusComposebox {
+  if (!_aimEligibilityService->IsFuseboxEligible()) {
+    return NO;
+  }
+
+  if (ntp_tiles::GetAimButtonRefactorArm() !=
+      ntp_tiles::AimButtonRefactorArm::kFocusComposeboxAimQuickAction) {
+    return NO;
+  }
+
+  return YES;
+}
+
 #pragma mark - HomeCustomizationDelegate
 
 - (void)dismissCustomizationMenu {
@@ -2251,13 +2270,27 @@
 - (void)openAIM {
   RecordHomeAction(IOSHomeActionType::kQuickActionAIM, [self isStartSurface]);
   [self.NTPMetricsRecorder recordAIMButtonTapped];
-  if (!IsDisableComposeboxFromAIMNTPEnabled() &&
-      _aimEligibilityService->IsFuseboxEligible() &&
+
+  if ([self canFocusComposebox] &&
       MaybeShowComposebox(self.browser, ComposeboxEntrypoint::kNTPAIMButton)) {
     return;
   }
 
   [self openAIMWeb];
+}
+
+- (void)openAIMImageGeneration {
+  CHECK_EQ(ntp_tiles::GetAimButtonRefactorArm(),
+           ntp_tiles::AimButtonRefactorArm::kImageGenerationQuickAction);
+  // TODO(crbug.com/549020046): Implement this method and add metrics recording
+  // hooks.
+}
+
+- (void)openAIMAttachImage {
+  CHECK_EQ(ntp_tiles::GetAimButtonRefactorArm(),
+           ntp_tiles::AimButtonRefactorArm::kAttachImageQuickAction);
+  // TODO(crbug.com/549020046): Implement this method and add metrics recording
+  // hooks.
 }
 
 - (void)preloadVoiceSearch {

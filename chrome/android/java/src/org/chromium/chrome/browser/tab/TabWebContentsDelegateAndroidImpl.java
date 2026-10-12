@@ -14,6 +14,8 @@ import android.graphics.RectF;
 import android.graphics.drawable.Drawable;
 import android.view.KeyEvent;
 
+import androidx.annotation.VisibleForTesting;
+
 import org.jni_zero.CalledByNative;
 import org.jni_zero.JniType;
 import org.jni_zero.NativeMethods;
@@ -630,10 +632,44 @@ final class TabWebContentsDelegateAndroidImpl extends TabWebContentsDelegateAndr
         mDelegate.destroy();
     }
 
+    /**
+     * Marks {@code webContents} so that its next {@code beforeunload} completion leaves the page
+     * open, giving {@code TabRemover} sole authority to close it. A null {@code webContents} is a
+     * no-op.
+     *
+     * <p>A mark covers exactly one completion, and is dropped if none can arrive: {@code
+     * webContents} goes away, its primary page changes, or {@code webContents} leaves this tab. A
+     * gone renderer is not one of those, because Content's {@code beforeunload} timeout still
+     * produces a completion for the mark to meet.
+     */
+    static void setSuppressBeforeUnloadAutoClose(
+            @Nullable WebContents webContents, boolean suppress) {
+        TabWebContentsDelegateAndroidImplJni.get()
+                .setSuppressBeforeUnloadAutoClose(webContents, suppress);
+    }
+
+    /**
+     * Reports the result of a {@code beforeunload} dispatch for this tab. Fires for every
+     * completion, including the one Content posts for a page with no handler to run.
+     *
+     * @param proceed Whether the page agreed to be unloaded.
+     */
+    @CalledByNative
+    @VisibleForTesting
+    void onBeforeUnloadFired(boolean proceed) {
+        for (TabObserver observer : mTab.getTabObservers()) {
+            observer.onBeforeUnloadFired(mTab, proceed);
+        }
+    }
+
     @NativeMethods
     interface Natives {
         void onRendererUnresponsive(@JniType("content::WebContents*") WebContents webContents);
 
         void openFile(@JniType("content::WebContents*") WebContents webContents);
+
+        void setSuppressBeforeUnloadAutoClose(
+                @JniType("content::WebContents*") @Nullable WebContents webContents,
+                boolean suppress);
     }
 }

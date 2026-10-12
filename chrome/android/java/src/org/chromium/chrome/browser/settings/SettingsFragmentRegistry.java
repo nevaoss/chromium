@@ -39,11 +39,14 @@ import org.chromium.chrome.browser.commerce.PriceNotificationSettingsFragment;
 import org.chromium.chrome.browser.contextualsearch.ContextualSearchSettingsFragment;
 import org.chromium.chrome.browser.download.settings.DownloadSettings;
 import org.chromium.chrome.browser.glic.GlicActorLoginPermissionsFragment;
+import org.chromium.chrome.browser.glic.GlicNavigationUtils;
 import org.chromium.chrome.browser.glic.GlicSettings;
 import org.chromium.chrome.browser.homepage.settings.HomepageSettings;
 import org.chromium.chrome.browser.image_descriptions.ImageDescriptionsSettings;
+import org.chromium.chrome.browser.language.settings.AlwaysTranslateListFragment;
 import org.chromium.chrome.browser.language.settings.LanguageSettings;
-import org.chromium.chrome.browser.night_mode.NightModeMetrics;
+import org.chromium.chrome.browser.language.settings.NeverTranslateListFragment;
+import org.chromium.chrome.browser.language.settings.SelectLanguageFragment;
 import org.chromium.chrome.browser.night_mode.settings.ThemeSettingsFragment;
 import org.chromium.chrome.browser.prefetch.settings.ExtendedPreloadingSettingsFragment;
 import org.chromium.chrome.browser.prefetch.settings.PreloadPagesSettingsFragment;
@@ -53,6 +56,8 @@ import org.chromium.chrome.browser.privacy.settings.DoNotTrackSettings;
 import org.chromium.chrome.browser.privacy.settings.PrivacySettings;
 import org.chromium.chrome.browser.privacy.settings.UniversalOptOutSettings;
 import org.chromium.chrome.browser.privacy_guide.PrivacyGuideFragment;
+import org.chromium.chrome.browser.profiles.Profile;
+import org.chromium.chrome.browser.safe_browsing.metrics.SettingsAccessPoint;
 import org.chromium.chrome.browser.safe_browsing.settings.EnhancedProtectionSettingsFragment;
 import org.chromium.chrome.browser.safe_browsing.settings.SafeBrowsingSettingsFragment;
 import org.chromium.chrome.browser.safe_browsing.settings.StandardProtectionSettingsFragment;
@@ -61,6 +66,7 @@ import org.chromium.chrome.browser.safety_hub.SafetyHubNotificationsFragment;
 import org.chromium.chrome.browser.safety_hub.SafetyHubPermissionsFragment;
 import org.chromium.chrome.browser.search_engines.settings.SearchEngineSettings;
 import org.chromium.chrome.browser.search_engines.settings.SiteSearchSettings;
+import org.chromium.chrome.browser.signin.services.IdentityServicesProvider;
 import org.chromium.chrome.browser.ssl.HttpsFirstModeSettingsFragment;
 import org.chromium.chrome.browser.sync.settings.GoogleServicesSettings;
 import org.chromium.chrome.browser.sync.settings.ManageSyncSettings;
@@ -87,6 +93,7 @@ import org.chromium.components.browser_ui.site_settings.WebsiteAddress;
 import org.chromium.components.browser_ui.site_settings.WebsiteGroup;
 import org.chromium.components.embedder_support.util.UrlConstants;
 import org.chromium.components.embedder_support.util.UrlUtilities;
+import org.chromium.components.signin.identitymanager.IdentityManager;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -94,6 +101,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 
 /** Centralized registry mapping chrome://settings URLs to Fragment classes. */
 @NullMarked
@@ -130,6 +138,7 @@ public class SettingsFragmentRegistry {
         private String[] mRequiredArgKeys = new String[0];
         private @Nullable Consumer<Bundle> mDefaultsProvider;
         private @Nullable ArgValidator mValidator;
+        private @Nullable Predicate<Profile> mAvailability;
         private @Nullable String mFallbackPath;
 
         private RouteSpec(Class<? extends Fragment> fragmentClass) {
@@ -155,8 +164,17 @@ public class SettingsFragmentRegistry {
         }
 
         /**
-         * Declares where to send the user when a required argument is missing. Defaults to the
-         * settings root.
+         * Declares browser state the page needs beyond what the URL carries. The URL is still
+         * correct and works again once the state returns, so failing it redirects to the fallback.
+         */
+        RouteSpec availableWhen(Predicate<Profile> availability) {
+            mAvailability = availability;
+            return this;
+        }
+
+        /**
+         * Declares where to send the user when the page cannot be shown. Defaults to the settings
+         * root.
          */
         RouteSpec fallback(String path) {
             mFallbackPath = path;
@@ -222,10 +240,12 @@ public class SettingsFragmentRegistry {
 
         // You and Google
         //
-        // TODO(crbug.com/542745585): Handle /account differently based on local state
-        // since it's not a static page which is always available.
-        registerMapping("/account", ManageSyncSettings.class);
-        registerMapping("/account/personalize", PersonalizeGoogleServicesSettings.class);
+        // Both pages describe the signed in account, and a URL can be typed or replayed from
+        // history long after the user signed out, so neither is reachable without one.
+        registerMapping("/account", ManageSyncSettings.class)
+                .availableWhen(SettingsFragmentRegistry::hasSignedInAccount);
+        registerMapping("/account/personalize", PersonalizeGoogleServicesSettings.class)
+                .availableWhen(SettingsFragmentRegistry::hasSignedInAccount);
         registerMapping("/googleServices", GoogleServicesSettings.class);
         registerMapping("/googleServices/priceTracking", PriceNotificationSettingsFragment.class);
         registerMapping("/googleServices/contextualSearch", ContextualSearchSettingsFragment.class);
@@ -292,17 +312,7 @@ public class SettingsFragmentRegistry {
         // Appearance
         registerMapping("/appearance", AppearanceSettingsFragment.class);
         registerMapping("/bookmarkBar", BookmarkBarSettingsFragment.class);
-        registerMapping("/theme", ThemeSettingsFragment.class)
-                // The page asserts on its entry point extra.
-                .withDefaults(
-                        bundle -> {
-                            if (!bundle.containsKey(
-                                    ThemeSettingsFragment.KEY_THEME_SETTINGS_ENTRY)) {
-                                bundle.putInt(
-                                        ThemeSettingsFragment.KEY_THEME_SETTINGS_ENTRY,
-                                        NightModeMetrics.ThemeSettingsEntry.SETTINGS);
-                            }
-                        });
+        registerMapping("/theme", ThemeSettingsFragment.class);
         registerMapping("/toolbar", AdaptiveToolbarSettingsFragment.class);
 
         // Accessibility
@@ -374,14 +384,29 @@ public class SettingsFragmentRegistry {
         registerMainMenuAnchor(ChosenObjectSettings.class, SiteSettings.MAIN_MENU_KEY);
 
         // Languages, Downloads, Tabs, Homepage
-        //
-        // Only the top-level languages page is URL routed. The subpages (language picker, always
-        // and never translate lists) exchange the selected language using the androidx Fragment
-        // Result API, which requires the calling fragment to remain on the fragment back stack.
-        // URL navigation replaces detail fragments with addToBackStack=false, which breaks that
-        // contract. See crbug.com/555347875; these routes are restored once the subpages no longer
-        // depend on the fragment back stack.
         registerMapping("/languages", LanguageSettings.class);
+        registerMapping("/languages/alwaysTranslate", AlwaysTranslateListFragment.class);
+        registerMapping("/languages/neverTranslate", NeverTranslateListFragment.class);
+
+        // The language picker shows a different list, and its selection means something different,
+        // depending on which page asked for it. Each of those is its own page as far as the user is
+        // concerned, so each is its own subclass with its own Url.
+        registerMapping(
+                "/languages/currentDeviceLanguage",
+                SelectLanguageFragment.AppLanguagePickerFragment.class);
+        registerMapping(
+                "/languages/addLanguage",
+                SelectLanguageFragment.ContentLanguagePickerFragment.class);
+        registerMapping(
+                "/languages/translateIntoLanguage",
+                SelectLanguageFragment.TranslateTargetLanguagePickerFragment.class);
+        registerMapping(
+                "/languages/alwaysTranslate/addLanguage",
+                SelectLanguageFragment.AlwaysTranslateLanguagePickerFragment.class);
+        registerMapping(
+                "/languages/neverTranslate/addLanguage",
+                SelectLanguageFragment.NeverTranslateLanguagePickerFragment.class);
+
         registerMapping("/downloads", DownloadSettings.class);
 
         // About & Developer
@@ -405,6 +430,7 @@ public class SettingsFragmentRegistry {
         registerParameterMapping("category", SingleCategorySettings.EXTRA_CATEGORY);
         registerParameterMapping("title", SingleCategorySettings.EXTRA_TITLE);
         registerParameterMapping("group", GroupedWebsitesSettings.EXTRA_GROUP);
+        registerParameterMapping("highlight", GlicNavigationUtils.EXTRA_HIGHLIGHT_FIELD);
         registerIntParameterMapping(
                 "referrer",
                 AutofillAndPasswordsFragment.EXTRA_REFERRER,
@@ -417,6 +443,10 @@ public class SettingsFragmentRegistry {
                 "categoryType",
                 TracingCategoriesSettings.EXTRA_CATEGORY_TYPE,
                 /* defaultValue= */ TracingSettings.CategoryType.DEFAULT);
+        registerIntParameterMapping(
+                "accessPoint",
+                SafeBrowsingSettingsFragment.ACCESS_POINT,
+                /* defaultValue= */ SettingsAccessPoint.DEFAULT);
     }
 
     /**
@@ -483,23 +513,6 @@ public class SettingsFragmentRegistry {
                         bundle.putInt(key, Integer.parseInt(val));
                     } catch (NumberFormatException e) {
                         bundle.putInt(key, defaultValue);
-                    }
-                });
-    }
-
-    // Currently unused: its only caller was the "potentialLanguages" mapping, removed along with
-    // the languages subpage routes. Retained for when those routes are re-landed.
-    @SuppressWarnings("unused")
-    private static void registerShortParameterMapping(
-            String queryParam, String argKey, short defaultValue) {
-        registerParameterMapping(
-                queryParam,
-                argKey,
-                (bundle, key, val) -> {
-                    try {
-                        bundle.putShort(key, Short.parseShort(val));
-                    } catch (NumberFormatException e) {
-                        bundle.putShort(key, defaultValue);
                     }
                 });
     }
@@ -645,12 +658,16 @@ public class SettingsFragmentRegistry {
      * Resolves a settings URL to the page to show, or to a URL to go to instead.
      *
      * <p>A redirect is returned when the URL cannot produce a usable page: a required argument is
-     * absent, or an argument names something the page cannot render. This is the norm rather than
-     * the exception for settings URLs, which are user editable and are replayed from history after
-     * the data they point at may have been deleted. Callers must honour the redirect instead of
-     * instantiating a page, since the pages themselves respond to missing arguments by crashing.
+     * absent, an argument names something the page cannot render, or the browser is not in a state
+     * the page needs. This is the norm rather than the exception for settings URLs, which are user
+     * editable and are replayed from history after the data they point at may have been deleted.
+     * Callers must honour the redirect instead of instantiating a page, since the pages themselves
+     * respond to missing arguments by crashing.
+     *
+     * @param profile the profile the page would be shown for, checked against {@link
+     *     RouteSpec#availableWhen}.
      */
-    public static Resolution resolve(String url) {
+    public static Resolution resolve(String url, Profile profile) {
         Bundle args = parseUrlArguments(url);
         RouteSpec spec = getRouteSpecForUrl(url);
 
@@ -675,6 +692,11 @@ public class SettingsFragmentRegistry {
             }
         }
 
+        if (spec.mAvailability != null && !spec.mAvailability.test(profile)) {
+            return new Resolution(
+                    /* fragmentClass= */ null, args, settingsUrlForPath(spec.mFallbackPath));
+        }
+
         if (spec.mValidator != null) {
             String redirectUrl = spec.mValidator.validate(args);
             if (redirectUrl != null) {
@@ -683,6 +705,13 @@ public class SettingsFragmentRegistry {
         }
 
         return new Resolution(spec.mFragmentClass, args, /* redirectUrl= */ null);
+    }
+
+    /** Whether {@code profile} has a signed in account for the account pages to describe. */
+    private static boolean hasSignedInAccount(Profile profile) {
+        IdentityManager identityManager =
+                IdentityServicesProvider.get().getIdentityManager(profile);
+        return identityManager != null && identityManager.hasPrimaryAccount();
     }
 
     /** Returns the settings URL for a registered path, defaulting to the settings root. */
@@ -776,6 +805,47 @@ public class SettingsFragmentRegistry {
             }
         }
         return builder.build().toString();
+    }
+
+    /**
+     * Returns whether {@code url} carries every argument in {@code args} back with the same key,
+     * type and value.
+     *
+     * <p>Under URL navigation the URL is the source of truth: the page is rebuilt from it when the
+     * tab is restored, when the user walks back to it, and whenever it is replayed from history. An
+     * argument the URL cannot carry is therefore not merely absent from the first navigation, it is
+     * absent from every later one. A caller holding both a URL and the {@link Bundle} it was built
+     * from must ask this before treating the URL as a replacement for the Bundle.
+     *
+     * <p>{@link #createUrlForFragment} is deliberately permissive: an argument whose key has no
+     * registered query parameter is still written out, under its raw key, as long as its value is a
+     * CharSequence, Number or Boolean. {@link #parseUrlArguments} is permissive in the same way,
+     * but it has no type information to restore with, so it puts the value back as a String. An int
+     * or boolean argument therefore survives the round trip in name only, and the page reads 0 or
+     * false from it. Registering the argument with {@link #registerIntParameterMapping} and its
+     * siblings is what makes the round trip typed; this method is how a caller - and the next
+     * engineer to add a page - finds out that it has not been done.
+     */
+    public static boolean urlPreservesArgs(String url, @Nullable Bundle args) {
+        if (args == null || args.isEmpty()) return true;
+
+        Bundle parsed = parseUrlArguments(url);
+        for (String key : args.keySet()) {
+            Object original = args.get(key);
+            // A null value carries no information, so nothing is lost by not carrying it.
+            if (original == null) continue;
+
+            Object restored = parsed.get(key);
+            if (restored == null) return false;
+
+            // Compare types as well as values: an int written as "3" comes back as the String "3"
+            // unless the argument has a registered typed parser, and Bundle#getInt would then
+            // silently return 0 rather than 3.
+            if (original.getClass() != restored.getClass()) return false;
+
+            if (!original.equals(restored)) return false;
+        }
+        return true;
     }
 
     private static @Nullable UrlParam extractQueryParam(String key, Object val) {

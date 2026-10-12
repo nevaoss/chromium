@@ -125,6 +125,9 @@ constexpr CGFloat kPadFormSheetMinHeight = 300.0;
   HomeCustomizationImageView* _backgroundImageView;
   UIImage* _backgroundImage;
   HomeCustomizationFramingCoordinates* _framingCoordinates;
+  NSString* _animatedBackgroundPath;
+  NSDictionary<NSString*, UIColor*>* _animatedBackgroundLightModeColorProvider;
+  NSDictionary<NSString*, UIColor*>* _animatedBackgroundDarkModeColorProvider;
   NewTabPageBottomSheetViewController* _bottomSheetViewController;
   UIViewController* _feedViewController;
   UIViewController* _feedTopSectionViewController;
@@ -185,6 +188,9 @@ constexpr CGFloat kPadFormSheetMinHeight = 300.0;
   NewFeatureBadgeView* _customizationNewFeatureBadge;
   BOOL _didNotifyCustomizationBadgeDisplay;
   BOOL _useNewBadgeForCustomizationMenu;
+
+  NSString* _aimTitle;
+  UIImage* _aimIcon;
 }
 
 - (void)viewDidLoad {
@@ -193,6 +199,15 @@ constexpr CGFloat kPadFormSheetMinHeight = 300.0;
 
   _backgroundImageView = [[HomeCustomizationImageView alloc] init];
   _backgroundImageView.translatesAutoresizingMaskIntoConstraints = NO;
+  if (_animatedBackgroundPath.length > 0) {
+    [_backgroundImageView
+        setAnimatedBackgroundPath:_animatedBackgroundPath
+           lightModeColorProvider:_animatedBackgroundLightModeColorProvider
+            darkModeColorProvider:_animatedBackgroundDarkModeColorProvider];
+  } else if (_backgroundImage) {
+    [_backgroundImageView setImage:_backgroundImage
+                framingCoordinates:_framingCoordinates];
+  }
   [self.view addSubview:_backgroundImageView];
   AddSameConstraints(_backgroundImageView, self.view);
 
@@ -289,6 +304,7 @@ constexpr CGFloat kPadFormSheetMinHeight = 300.0;
         [[NewTabPageQuickActionsViewController alloc] init];
     _quickActionsViewController.layoutGuideCenter = self.layoutGuideCenter;
     _quickActionsViewController.NTPShortcutsHandler = self.NTPShortcutsHandler;
+    [_quickActionsViewController setAIMTitle:_aimTitle icon:_aimIcon];
     [self addChildViewController:_quickActionsViewController];
 
     _quickActionsViewController.view.translatesAutoresizingMaskIntoConstraints =
@@ -893,6 +909,9 @@ constexpr CGFloat kPadFormSheetMinHeight = 300.0;
 - (void)setBackgroundImage:(UIImage*)backgroundImage
         framingCoordinates:
             (HomeCustomizationFramingCoordinates*)framingCoordinates {
+  _animatedBackgroundPath = nil;
+  _animatedBackgroundLightModeColorProvider = nil;
+  _animatedBackgroundDarkModeColorProvider = nil;
   _backgroundImage = backgroundImage;
   _framingCoordinates = framingCoordinates;
 
@@ -908,6 +927,22 @@ constexpr CGFloat kPadFormSheetMinHeight = 300.0;
                         framingCoordinates:weakFramingCoordinates];
                   }
                   completion:nil];
+}
+
+- (void)setAnimatedBackgroundPath:(NSString*)animatedBackgroundPath
+           lightModeColorProvider:
+               (NSDictionary<NSString*, UIColor*>*)lightModeColorProvider
+            darkModeColorProvider:
+                (NSDictionary<NSString*, UIColor*>*)darkModeColorProvider {
+  _animatedBackgroundPath = animatedBackgroundPath;
+  _animatedBackgroundLightModeColorProvider = [lightModeColorProvider copy];
+  _animatedBackgroundDarkModeColorProvider = [darkModeColorProvider copy];
+  _backgroundImage = nil;
+  _framingCoordinates = nil;
+  [_backgroundImageView
+      setAnimatedBackgroundPath:_animatedBackgroundPath
+         lightModeColorProvider:_animatedBackgroundLightModeColorProvider
+          darkModeColorProvider:_animatedBackgroundDarkModeColorProvider];
 }
 
 #pragma mark - Setters
@@ -1362,6 +1397,12 @@ constexpr CGFloat kPadFormSheetMinHeight = 300.0;
   }
   [self updateLeadingView];
   [self updateActionButtons];
+}
+
+- (void)setAIMTitle:(NSString*)title icon:(UIImage*)icon {
+  _aimTitle = [title copy];
+  _aimIcon = icon;
+  [_quickActionsViewController setAIMTitle:title icon:icon];
 }
 
 - (void)setFuseboxEligible:(BOOL)eligible {

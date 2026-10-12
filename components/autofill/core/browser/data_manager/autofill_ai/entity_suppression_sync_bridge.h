@@ -11,6 +11,7 @@
 
 #include "base/containers/flat_map.h"
 #include "base/containers/flat_set.h"
+#include "base/functional/callback_forward.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/memory/weak_ptr.h"
 #include "base/observer_list.h"
@@ -26,6 +27,7 @@ class AutofillEntitySuppressionSpecifics;
 
 namespace os_crypt_async {
 class Encryptor;
+class OSCryptAsync;
 }  // namespace os_crypt_async
 
 namespace syncer {
@@ -52,7 +54,7 @@ class EntitySuppressionSyncBridge : public syncer::DataTypeSyncBridge {
   EntitySuppressionSyncBridge(
       std::unique_ptr<syncer::DataTypeLocalChangeProcessor> change_processor,
       syncer::OnceDataTypeStoreFactory store_factory,
-      scoped_refptr<const os_crypt_async::Encryptor> encryptor);
+      os_crypt_async::OSCryptAsync* os_crypt_async);
   EntitySuppressionSyncBridge(const EntitySuppressionSyncBridge&) = delete;
   EntitySuppressionSyncBridge& operator=(const EntitySuppressionSyncBridge&) =
       delete;
@@ -71,6 +73,10 @@ class EntitySuppressionSyncBridge : public syncer::DataTypeSyncBridge {
   // is not tracking metadata or the `entry` was not suppressed. Returns `true`
   // if suppression status was modified.
   bool Unsuppress(const EntitySuppressionEntry& entry);
+
+  // Deletes all suppression records. Returns `false` if no entries were
+  // suppressed. Returns `true` if suppression status was modified.
+  bool ClearAllSuppressions();
 
   // Returns all currently active suppression entries.
   base::flat_set<EntitySuppressionEntry> GetSuppressions() const;
@@ -117,8 +123,12 @@ class EntitySuppressionSyncBridge : public syncer::DataTypeSyncBridge {
       EntitySuppressionEntry entry,
       syncer::DataTypeStore::WriteBatch& batch);
 
-  void OnStoreCreated(const std::optional<syncer::ModelError>& error,
+  void OnStoreCreated(base::RepeatingClosure barrier,
+                      const std::optional<syncer::ModelError>& error,
                       std::unique_ptr<syncer::DataTypeStore> store);
+  void OnEncryptorReady(base::RepeatingClosure barrier,
+                        scoped_refptr<os_crypt_async::Encryptor> encryptor);
+  void OnRequiredServicesReady();
   void OnReadAllDataAndMetadata(
       const std::optional<syncer::ModelError>& error,
       std::unique_ptr<syncer::DataTypeStore::RecordList> data_records,

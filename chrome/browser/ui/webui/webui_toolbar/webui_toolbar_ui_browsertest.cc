@@ -147,10 +147,6 @@ class MockToolbarUIDelegate
               (::toolbar_ui_api::mojom::ContentSettingImageType type),
               (override));
   MOCK_METHOD(void,
-              OnContentSettingImageAnimationEnded,
-              (::toolbar_ui_api::mojom::ContentSettingImageType),
-              (override));
-  MOCK_METHOD(void,
               OnPageActionPointerDown,
               (::toolbar_ui_api::mojom::PageActionId action_id),
               (override));
@@ -223,6 +219,7 @@ class MockToolbarUIDelegate
               (override));
   MOCK_METHOD(void, OnHomeButtonDropUrl, (const GURL&), (override));
   MOCK_METHOD(void, OnHomeButtonDropFile, (const gfx::PointF&), (override));
+  MOCK_METHOD(void, OnHomeButtonDropText, (const std::string&), (override));
   MOCK_METHOD(void, OnToolbarDropFile, (const gfx::PointF&), (override));
   MOCK_METHOD(void,
               OnPerformanceInterventionButtonClicked,
@@ -237,6 +234,7 @@ class MockToolbarUIDelegate
               (bool is_mouse_interaction),
               (override));
   MOCK_METHOD(void, OnMediaButtonMousePressed, (), (override));
+  MOCK_METHOD(void, OnGlicButtonClicked, (), (override));
   MOCK_METHOD((base::expected<std::monostate, mojo_base::mojom::ErrorPtr>),
               OnOmniboxAction,
               (toolbar_ui_api::mojom::OmniboxActionPtr action_ptr),

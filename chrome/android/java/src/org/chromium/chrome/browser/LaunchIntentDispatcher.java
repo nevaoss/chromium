@@ -178,33 +178,40 @@ public class LaunchIntentDispatcher {
                 return Action.FINISH_ACTIVITY;
             }
 
-            if (GlicEnabling.experimentalOptInIsNeeded(profile)) {
-                return Action.CONTINUE;
+            if (!GlicEnabling.experimentalOptInIsNeeded(profile)) {
+                // EXTRA_CONVERSATION_ID is only populated for task interrupts of already active
+                // tasks.
+                String conversationId =
+                        IntentUtils.safeGetStringExtra(
+                                intent, GlicIntentConstants.EXTRA_CONVERSATION_ID);
+                if (!TextUtils.isEmpty(conversationId)
+                        && ChromeFeatureList.sActorNotificationIntentRouting.isEnabled()) {
+                    return routeTaskInterrupt(currentActivity, profile, conversationId);
+                }
+
+                // TODO(b/557413667): It should be possible to warm up Glic instance here as
+                // well, in the future.
+                if (ActorUtils.isBackgroundActuationEnabled()) {
+                    Intent serviceIntent =
+                            new Intent(
+                                    currentActivity,
+                                    org.chromium.chrome.browser.actor.ActorForegroundService.class);
+                    serviceIntent.setAction(START_ACTOR_FOREGROUND_SERVICE);
+                    IntentUtils.addTrustedIntentExtras(serviceIntent);
+                    ForegroundServiceUtils.getInstance().startForegroundService(serviceIntent);
+                    // TODO(b/548905982): Ensure foreground service started before finishing
+                    // activity.
+                    currentActivity.setResult(Activity.RESULT_OK);
+                    return Action.FINISH_ACTIVITY;
+                }
             }
 
-            String conversationId =
-                    IntentUtils.safeGetStringExtra(
-                            intent, GlicIntentConstants.EXTRA_CONVERSATION_ID);
-            if (!TextUtils.isEmpty(conversationId)
-                    && ChromeFeatureList.sActorNotificationIntentRouting.isEnabled()) {
-                return routeTaskInterrupt(currentActivity, profile, conversationId);
-            }
-            // TODO(b/557413667): It should be possible to warm up Glic instance here as
-            // well, in the future.
-            if (ActorUtils.isBackgroundActuationEnabled()) {
-                Intent serviceIntent =
-                        new Intent(
-                                currentActivity,
-                                org.chromium.chrome.browser.actor.ActorForegroundService.class);
-                serviceIntent.setAction(START_ACTOR_FOREGROUND_SERVICE);
-                IntentUtils.addTrustedIntentExtras(serviceIntent);
-                ForegroundServiceUtils.getInstance().startForegroundService(serviceIntent);
-                // TODO(b/548905982): Ensure foreground service started before finishing activity.
-                currentActivity.setResult(Activity.RESULT_OK);
-                return Action.FINISH_ACTIVITY;
-            }
-
-            return Action.CONTINUE;
+            Intent newTabIntent =
+                    IntentHandler.createTrustedOpenNewTabIntent(
+                            currentActivity, /* incognito= */ false);
+            newTabIntent.putExtra(GlicIntentConstants.EXTRA_GLIC_PENDING_ACTOR_TASK, true);
+            currentActivity.setResult(Activity.RESULT_OK);
+            return dispatchToTabbedActivity(currentActivity, newTabIntent);
         } else {
             currentActivity.setResult(Activity.RESULT_CANCELED);
             return Action.FINISH_ACTIVITY;
@@ -432,6 +439,32 @@ public class LaunchIntentDispatcher {
                 // usually handles foregrounding) when it delegates to this handler.
                 ApiCompatibilityUtils.moveTaskToFront(mActivity, handler.getTaskId(), 0);
                 return true;
+            }
+        } else if (SessionDataHolder.getInstance()
+                        .getActiveHandlerClassInCurrentTask(mIntent, mActivity)
+                == null) {
+            // For TWAs, if the handler is not in the current task (e.g. launched from a trampoline
+            // activity with different task affinity), route the intent directly to the existing
+            // handler and bring its task to the foreground instead of spawning a new document task.
+            // Note: The handler is matched by session token, so this relies on the client giving
+            // each TWA task its own deterministic session ID. Otherwise multiple TWA tasks of the
+            // same app would share a session and this could resolve to the wrong task.
+            SessionHandler handler = SessionDataHolder.getInstance().getHandlerForIntent(mIntent);
+            if (handler != null) {
+                Intent forwardedIntent = new Intent(mIntent);
+                forwardedIntent.removeExtra(IntentHandler.EXTRA_CCT_EARLY_NAV);
+                maybePutCallingAppPackage(forwardedIntent);
+                WebAppLaunchHandler.copyFilePermissions(mActivity, mIntent, forwardedIntent);
+                WebAppLaunchHandler.copyShareDataPermissions(mActivity, mIntent, forwardedIntent);
+                Uri extraReferrer = mActivity.getReferrer();
+                if (extraReferrer != null) {
+                    forwardedIntent.putExtra(
+                            IntentHandler.EXTRA_ACTIVITY_REFERRER, extraReferrer.toString());
+                }
+                if (handler.handleIntent(forwardedIntent)) {
+                    ApiCompatibilityUtils.moveTaskToFront(mActivity, handler.getTaskId(), 0);
+                    return true;
+                }
             }
         }
 

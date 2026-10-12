@@ -660,10 +660,10 @@ class CONTENT_EXPORT WebContentsImpl
       uint32_t max_bitmap_size,
       bool bypass_cache,
       WebContents::ImageDownloadCallback callback) override;
-  void Find(int request_id,
-            const std::u16string& search_text,
+  void Find(const std::u16string& search_text,
             blink::mojom::FindOptionsPtr options,
-            bool skip_delay) override;
+            bool skip_delay,
+            base::FunctionRef<void(int request_id)> on_request_id) override;
   void StopFinding(StopFindAction action) override;
   bool WasEverAudible() override;
   bool IsFullscreen() override;
@@ -1086,7 +1086,8 @@ class CONTENT_EXPORT WebContentsImpl
       base::WeakPtr<PreloadingAttempt> attempt,
       PreloadingHoldbackStatus holdback_status_override,
       std::optional<base::TimeDelta> ttl,
-      bool should_ignore_saver_modes) override;
+      bool should_ignore_saver_modes,
+      bool is_ahead_of_actual_navigation) override;
   std::unique_ptr<PrerenderHandle> StartPrerendering(
       const GURL& prerendering_url,
       PreloadingTriggerType trigger_type,

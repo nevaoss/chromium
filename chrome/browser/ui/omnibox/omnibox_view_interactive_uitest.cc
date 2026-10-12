@@ -224,6 +224,7 @@ class OmniboxViewTest : public InProcessBrowserTest {
   }
 
   void TearDownOnMainThread() override {
+    test_location_bar_model_.reset();
     mock_contextual_tasks_service_ = nullptr;
     webui_toolbar_wc_util_.reset();
     InProcessBrowserTest::TearDownOnMainThread();
@@ -537,10 +538,8 @@ class OmniboxViewTest : public InProcessBrowserTest {
     ASSERT_TRUE(omnibox_view);
 
     if (!test_location_bar_model_) {
-      test_location_bar_model_ = new TestLocationBarModel;
-      std::unique_ptr<LocationBarModel> location_bar_model(
-          test_location_bar_model_);
-      browser()->GetFeatures().swap_location_bar_models(&location_bar_model);
+      test_location_bar_model_ = std::make_unique<TestLocationBarModel>(
+          browser()->GetUnownedUserDataHost());
     }
 
     test_location_bar_model_->set_formatted_full_url(text);
@@ -584,8 +583,7 @@ class OmniboxViewTest : public InProcessBrowserTest {
   std::unique_ptr<IdentityTestEnvironmentProfileAdaptor>
       identity_test_env_adaptor_;
 
-  // Non-owning pointer.
-  raw_ptr<TestLocationBarModel> test_location_bar_model_ = nullptr;
+  std::unique_ptr<TestLocationBarModel> test_location_bar_model_;
 
   // If the WebUI location bar is enabled, this is used to communicate with it.
   std::unique_ptr<WebContentsInteractionTestUtil> webui_toolbar_wc_util_;
@@ -862,7 +860,7 @@ IN_PROC_BROWSER_TEST_F(OmniboxViewTest, DISABLED_EnterToSearch) {
   ASSERT_NO_FATAL_FAILURE(SendKeySequence(kSearchTextKeys));
   ASSERT_NO_FATAL_FAILURE(WaitForAutocompleteControllerDone());
   ASSERT_TRUE(GetOmniboxController()->IsPopupOpen());
-  ASSERT_EQ(AutocompleteMatchType::SEARCH_WHAT_YOU_TYPED,
+  ASSERT_EQ(omnibox::AutocompleteMatchType::kSearchWhatYouTyped,
             GetOmniboxController()
                 ->autocomplete_controller()
                 ->result()
@@ -876,7 +874,7 @@ IN_PROC_BROWSER_TEST_F(OmniboxViewTest, DISABLED_EnterToSearch) {
   ASSERT_NO_FATAL_FAILURE(SendKey(ui::VKEY_Z, 0));
   ASSERT_NO_FATAL_FAILURE(WaitForAutocompleteControllerDone());
   ASSERT_TRUE(GetOmniboxController()->IsPopupOpen());
-  ASSERT_EQ(AutocompleteMatchType::SEARCH_WHAT_YOU_TYPED,
+  ASSERT_EQ(omnibox::AutocompleteMatchType::kSearchWhatYouTyped,
             GetOmniboxController()
                 ->autocomplete_controller()
                 ->result()
@@ -1181,7 +1179,8 @@ IN_PROC_BROWSER_TEST_F(OmniboxViewTest, NonDefaultSubstitutingKeywordTest) {
                             ->autocomplete_controller()
                             ->result()
                             .default_match();
-  EXPECT_EQ(default_match->type, AutocompleteMatchType::SEARCH_WHAT_YOU_TYPED);
+  EXPECT_EQ(default_match->type,
+            omnibox::AutocompleteMatchType::kSearchWhatYouTyped);
   EXPECT_EQ(default_match->destination_url.spec(), kSearchTextURL);
 
   omnibox_view->SetUserText(std::u16string());
@@ -1217,7 +1216,8 @@ IN_PROC_BROWSER_TEST_F(OmniboxViewTest, NonSubstitutingKeywordTest) {
                             ->autocomplete_controller()
                             ->result()
                             .default_match();
-  EXPECT_EQ(default_match->type, AutocompleteMatchType::HISTORY_KEYWORD);
+  EXPECT_EQ(default_match->type,
+            omnibox::AutocompleteMatchType::kHistoryKeyword);
   EXPECT_EQ(default_match->destination_url.spec(), "http://abc.com/");
 
   omnibox_view->SetUserText(std::u16string());

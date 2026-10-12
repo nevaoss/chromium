@@ -239,7 +239,6 @@ import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator.AnchorSide;
 import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator.HeightType;
 import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator.SideUiSpecs;
 import org.chromium.chrome.browser.ui.side_ui.SideUiCoordinator.UiUpdateRequest;
-import org.chromium.chrome.browser.ui.side_ui.SideUiObserver;
 import org.chromium.chrome.browser.ui.side_ui.SideUiStateProvider;
 import org.chromium.chrome.browser.ui.side_ui.ViewMarginAdjusterForSideUi;
 import org.chromium.chrome.browser.ui.system.StatusBarColorController;
@@ -479,8 +478,8 @@ public class ToolbarManager
     private @Nullable TabGroupUiOneshotSupplier mTabGroupUiOneshotSupplier;
 
     private @Nullable SideUiStateProvider mSideUiStateProvider;
-    private @Nullable SideUiObserver mControlContainerSideUiObserver;
-    private @Nullable SideUiObserver mProgressBarSideUiObserver;
+    private @Nullable ToolbarMarginAdjusterForSideUi mControlContainerSideUiObserver;
+    private @Nullable ViewMarginAdjusterForSideUi mProgressBarSideUiObserver;
     private boolean mIsVerticalTabsHiddenDueToNarrow;
     private boolean mIsXrFsm;
     private int mRestoredRightMargin;
@@ -1027,7 +1026,7 @@ public class ToolbarManager
         ThemeColorProvider overviewModeThemeColorProvider = mAppThemeColorProvider;
 
         Runnable requestFocusRunnable = compositorViewHolder::requestFocus;
-        ThemeColorProvider menuButtonThemeColorProvider =
+        ThemeColorProvider themeColorProvider =
                 mIsCustomTab
                         ? mCustomTabThemeColorProvider
                         : browsingModeThemeColorProviderWithAdjustableTint;
@@ -1053,7 +1052,7 @@ public class ToolbarManager
                         requestFocusRunnable,
                         canShowUpdateBadge,
                         isInOverviewModeSupplier,
-                        menuButtonThemeColorProvider,
+                        themeColorProvider,
                         mIncognitoStateProvider,
                         menuButtonStateSupplier,
                         onMenuButtonClicked,
@@ -1094,7 +1093,7 @@ public class ToolbarManager
                             mLayoutStateProviderSupplier,
                             mActivityTabProvider.asObservable(),
                             mTabModelSelectorSupplier,
-                            browsingModeThemeColorProviderWithAdjustableTint,
+                            themeColorProvider,
                             mIncognitoStateProvider);
         }
 
@@ -1158,7 +1157,7 @@ public class ToolbarManager
                             },
                             this::onHomeButtonMenuClick,
                             HomepagePolicyManager::isHomepageLocationManaged,
-                            browsingModeThemeColorProviderWithAdjustableTint,
+                            themeColorProvider,
                             mIncognitoStateProvider,
                             mActionRegistry);
         }
@@ -1263,7 +1262,7 @@ public class ToolbarManager
                 createTopToolbarCoordinator(
                         controlContainer,
                         buttonDataProviders,
-                        browsingModeThemeColorProviderWithAdjustableTint,
+                        themeColorProvider,
                         mIncognitoStateProvider,
                         initializeWithIncognitoColors,
                         mConstraintsSupplier,
@@ -1947,18 +1946,16 @@ public class ToolbarManager
         // TODO(https://crbug.com/536963036): Remove the explicit calls to onSideUiSpecsChanged
         // after fixing the initialization order.
         var currentSideUiSpecs = sideUiStateProvider.getCurrentSideUiSpecs();
-        var currentRequest =
-                new UiUpdateRequest(/* sideUiId= */ null, /* suppressAnimations= */ true);
 
         mControlContainerSideUiObserver =
                 new ToolbarMarginAdjusterForSideUi(mControlContainer, mToolbar);
-        mControlContainerSideUiObserver.onSideUiSpecsChanged(currentSideUiSpecs, currentRequest);
+        mControlContainerSideUiObserver.updateMarginsAndOffsetForSideUi(currentSideUiSpecs);
         mSideUiStateProvider.addObserver(mControlContainerSideUiObserver);
 
         mProgressBarSideUiObserver =
                 new ViewMarginAdjusterForSideUi(
                         mProgressBarContainer, /* forToolbarElement= */ false);
-        mProgressBarSideUiObserver.onSideUiSpecsChanged(currentSideUiSpecs, currentRequest);
+        mProgressBarSideUiObserver.updateMarginsForSideUi(currentSideUiSpecs);
         mSideUiStateProvider.addObserver(mProgressBarSideUiObserver);
     }
 
@@ -1989,10 +1986,20 @@ public class ToolbarManager
 
         @Override
         public void onSideUiSpecsChanged(SideUiSpecs sideUiSpecs, UiUpdateRequest request) {
-            super.onSideUiSpecsChanged(sideUiSpecs, request);
+            updateMarginsAndOffsetForSideUi(sideUiSpecs);
+        }
+
+        /**
+         * Adjusts the control container's margins and the toolbar's x-offset to account for the
+         * given {@link SideUiSpecs}.
+         *
+         * @param sideUiSpecs The {@link SideUiSpecs} to apply.
+         */
+        void updateMarginsAndOffsetForSideUi(SideUiSpecs sideUiSpecs) {
+            updateMarginsForSideUi(sideUiSpecs);
             int xOffset = 0;
             if (sideUiSpecs.getHeightType(AnchorSide.LEFT) == HeightType.TOOLBAR) {
-                xOffset = sideUiSpecs.getWidth(AnchorSide.LEFT);
+                xOffset = sideUiSpecs.getReservedWidth(AnchorSide.LEFT);
             }
             mToolbar.setXOffset(xOffset);
         }
@@ -2174,7 +2181,7 @@ public class ToolbarManager
     private TopToolbarCoordinator createTopToolbarCoordinator(
             ToolbarControlContainer controlContainer,
             List<ButtonDataProvider> buttonDataProviders,
-            ThemeColorProvider browsingModeThemeColorProvider,
+            ThemeColorProvider themeColorProvider,
             IncognitoStateProvider incognitoStateProvider,
             boolean initializeWithIncognitoColors,
             NullableObservableSupplier<@BrowserControlsState Integer> constraintsSupplier,
@@ -2197,7 +2204,7 @@ public class ToolbarManager
                         mUserEducationHelper,
                         buttonDataProviders,
                         mLayoutStateProviderSupplier,
-                        browsingModeThemeColorProvider,
+                        themeColorProvider,
                         incognitoStateProvider,
                         mMenuButtonCoordinator,
                         assertNonNull(mMenuButtonCoordinator.getMenuButtonHelperSupplier()),

@@ -10,20 +10,24 @@
 #include <vector>
 
 #include "base/functional/callback_forward.h"
-#include "base/memory/raw_ptr.h"
+#include "base/functional/function_ref.h"
+#include "base/memory/raw_ref.h"
 #include "base/memory/weak_ptr.h"
 #include "base/values.h"
 #include "build/build_config.h"
 #include "chrome/browser/actor/actor_keyed_service.h"
 #include "chrome/browser/ttc/app/public/tool_types.h"
+#include "components/tabs/public/tab_interface.h"
 
 class Profile;
 
 namespace ttc {
 
+class SessionControllerImpl;
+
 class ToolController {
  public:
-  explicit ToolController(Profile* profile);
+  explicit ToolController(SessionControllerImpl& session_controller);
   ~ToolController();
 
   void ProcessToolCall(const ToolRequest& tool_request,
@@ -34,17 +38,38 @@ class ToolController {
   std::vector<ToolDefinition> GetToolDefinitions();
 
  private:
+  Profile* GetProfile();
+
+  // Creates the actor task used to invoke tools, if one isn't already active.
   void EnsureTaskCreated(actor::ActorKeyedService* actor_service);
 
 #if !BUILDFLAG(IS_ANDROID)
   void OpenUrl(const base::DictValue& arguments, ToolResponseCallback callback);
-  void OnNavigateActionsFinished(
+  void PerformSearch(const base::DictValue& arguments,
+                     ToolResponseCallback callback);
+  void CloseCurrentTab(ToolResponseCallback callback);
+  void GoBack(ToolResponseCallback callback);
+  void GoForward(ToolResponseCallback callback);
+  void ReloadPage(ToolResponseCallback callback);
+
+  // Runs the tool request returned by `create_action` against the session's
+  // active tab, replying to `callback` with the result. Replies with an error
+  // if there's no window or tab to act on, or if the actor service is
+  // unavailable, in which case `create_action` isn't invoked.
+  void PerformActionOnActiveTab(
+      base::FunctionRef<std::unique_ptr<actor::ToolRequest>(tabs::TabHandle)>
+          create_action,
+      ToolResponseCallback callback);
+
+  void OnActionsFinished(
       ToolResponseCallback callback,
       std::vector<actor::ActionResultWithLatencyInfo> results,
       actor::TabObservationStrategy strategy);
 #endif
 
-  raw_ptr<Profile> profile_;
+  // Owns this object.
+  const raw_ref<SessionControllerImpl> session_controller_;
+
   actor::TaskId task_id_;
   base::WeakPtrFactory<ToolController> weak_factory_{this};
 };

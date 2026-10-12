@@ -377,6 +377,7 @@ WebUIToolbarWebView::WebUIToolbarWebView(
       battery_saver_control_(this),
       avatar_control_(this),
       media_control_(this),
+      glic_control_(this),
       location_bar_(std::move(location_bar)),
       extensions_container_(this),
       back_control_(this, BackForwardButton::Direction::kBack),
@@ -430,6 +431,8 @@ WebUIToolbarWebView::WebUIToolbarWebView(
       toolbar_ui_api::mojom::OverflowButtonControlState::New();
   last_queued_state_.media_control_state =
       toolbar_ui_api::mojom::MediaControlState::New();
+  last_queued_state_.glic_button_state =
+      toolbar_ui_api::mojom::GlicButtonState::New();
 
   if (auto* manager = InitialWebUIWindowMetricsManager::From(browser_)) {
     manager->OnReloadButtonCreated();
@@ -572,6 +575,9 @@ void WebUIToolbarWebView::AddedToWidget() {
     if (features::IsWebUIPinnedToolbarActionsEnabled()) {
       pinned_toolbar_actions_.Init();
     }
+    if (features::IsWebUIGlicButtonEnabled()) {
+      glic_control_.Init();
+    }
     if (features::IsWebUIExtensionsContainerEnabled()) {
       extensions_container_.Init(web_contents());
     }
@@ -711,6 +717,9 @@ void WebUIToolbarWebView::HandleContextMenu(
     case toolbar_ui_api::mojom::ContextMenuType::kAppMenu:
       app_menu_control_.HandleContextMenu(screen_rect, source);
       break;
+    case toolbar_ui_api::mojom::ContextMenuType::kGlic:
+      glic_control_.HandleContextMenu(screen_rect, source);
+      break;
     case toolbar_ui_api::mojom::ContextMenuType::kUnspecified:
       NOTREACHED() << "Unexpected ContextMenuType::kUnspecified.";
   }
@@ -749,14 +758,6 @@ void WebUIToolbarWebView::OnContentSettingImagePointerDown(
   if (location_bar_) {
     location_bar_->content_setting_image_control()
         .OnContentSettingImagePointerDown(type);
-  }
-}
-
-void WebUIToolbarWebView::OnContentSettingImageAnimationEnded(
-    ::toolbar_ui_api::mojom::ContentSettingImageType type) {
-  if (location_bar_) {
-    location_bar_->content_setting_image_control()
-        .OnContentSettingImageAnimationEnded(type);
   }
 }
 
@@ -975,6 +976,10 @@ void WebUIToolbarWebView::OnMediaButtonClicked(bool is_mouse_interaction) {
 
 void WebUIToolbarWebView::OnMediaButtonMousePressed() {
   media_control_.OnMousePressed();
+}
+
+void WebUIToolbarWebView::OnGlicButtonClicked() {
+  glic_control_.OnClicked();
 }
 
 ReloadControl* WebUIToolbarWebView::GetReloadControl() {
@@ -1277,12 +1282,12 @@ void WebUIToolbarWebView::OverflowButtonClicked(
   } else if (identifier == kToolbarSplitTabsToolbarButtonElementId) {
     split_tabs_control_.HandleContextMenuOverflowClick();
     return;
-  } else if (identifier == kToolbarAvatarButtonElementId) {
-    // TODO(crbug.com/491791965): Show avatar menu on click.
-    return;
   } else if (identifier == kToolbarBatterySaverButtonElementId) {
-    // TODO(crbug.com/491791965): Handle battery saver button click from
-    // overflow menu.
+    battery_saver_control_.ShowBubble();
+    return;
+  } else if (identifier == kToolbarAvatarButtonElementId ||
+             identifier == kToolbarMediaButtonElementId) {
+    // TODO(crbug.com/556290451): Make buttons work with overflow menu clicks.
     return;
   }
   NOTREACHED();
@@ -1476,6 +1481,15 @@ void WebUIToolbarWebView::OnHomeButtonDropFile(
     const gfx::PointF& drop_position) {
   if (std::optional<GURL> url = web_view_->ConsumeDroppedUrl(drop_position)) {
     home_control_.OnHomeButtonDropUrl(*url);
+  }
+}
+
+void WebUIToolbarWebView::OnHomeButtonDropText(const std::string& text) {
+  if (!home_control_.ShouldHandleDropText()) {
+    return;
+  }
+  if (browser_controls_adapter_) {
+    browser_controls_adapter_->NavigateText(text);
   }
 }
 
@@ -1699,6 +1713,13 @@ void WebUIToolbarWebView::OnMediaControlStateChanged(
   }
 }
 
+void WebUIToolbarWebView::OnGlicButtonStateChanged(
+    toolbar_ui_api::mojom::GlicButtonStatePtr state) {
+  if (!mojo::Equals(state, last_queued_state_.glic_button_state)) {
+    last_queued_state_.glic_button_state = std::move(state);
+    PostPushNavigationState();
+  }
+}
 void WebUIToolbarWebView::OnFocusRequested(
     toolbar_ui_api::mojom::FocusRequestTarget target) {
   // We need to focus the WebView as well, besides the JS focus.
@@ -1790,6 +1811,8 @@ gfx::Size WebUIToolbarWebView::ComputeLayout(
   button_count += features::IsWebUIPerformanceInterventionButtonEnabled() &&
                   performance_intervention_control_.IsButtonShowing();
   button_count += features::IsWebUIAppMenuButtonEnabled();
+  button_count +=
+      features::IsWebUIGlicButtonEnabled() && glic_control_.IsVisible();
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC) || BUILDFLAG(IS_LINUX)
   button_count +=
       features::IsWebUIMediaButtonEnabled() && media_control_.IsButtonShowing();

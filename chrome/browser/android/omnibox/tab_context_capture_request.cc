@@ -9,6 +9,7 @@
 #include "base/feature_list.h"
 #include "base/functional/bind.h"
 #include "base/functional/callback_helpers.h"
+#include "base/task/bind_post_task.h"
 #include "base/task/sequenced_task_runner.h"
 #include "base/time/time.h"
 #include "chrome/browser/flags/android/chrome_feature_list.h"
@@ -16,6 +17,8 @@
 #include "components/lens/contextual_input.h"
 #include "components/pdf/common/constants.h"
 #include "components/tabs/public/tab_interface.h"
+#include "content/public/browser/navigation_controller.h"
+#include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/web_contents.h"
 
 TabContextCaptureRequest::TabContextCaptureRequest(
@@ -27,7 +30,7 @@ TabContextCaptureRequest::TabContextCaptureRequest(
       scheduled_capture_(base::DoNothing()),
       tab_contextualization_controller_(tab_contextualization_controller),
       weak_tab_(tab->GetWeakPtr()),
-      callback_(std::move(callback)) {}
+      callback_(base::BindPostTaskToCurrentDefault(std::move(callback))) {}
 
 TabContextCaptureRequest::~TabContextCaptureRequest() = default;
 
@@ -53,6 +56,7 @@ void TabContextCaptureRequest::Start() {
   // delaying to the maximum delay.
   if (ShouldSkipDelayForActiveTab() ||
       web_contents()->IsDocumentOnLoadCompletedInPrimaryMainFrame() ||
+      IsBackgroundTabDomContentLoaded() ||
       web_contents()->GetContentsMimeType() == pdf::kPDFMimeType ||
       !base::FeatureList::IsEnabled(
           chrome::android::kOnDemandBackgroundTabContextCapture)) {
@@ -73,8 +77,21 @@ void TabContextCaptureRequest::Start() {
   }
 }
 
+void TabContextCaptureRequest::DOMContentLoaded(
+    content::RenderFrameHost* render_frame_host) {
+  if (!render_frame_host->IsInPrimaryMainFrame() ||
+      !ShouldUseDomContentLoadedForBackgroundTab()) {
+    return;
+  }
+  // Annotated page content is extracted from the DOM rather than from painted
+  // pixels, so the parsed document is sufficient. Waiting for onload on
+  // subresource-heavy pages costs seconds for no additional content.
+  TriggerCapture();
+}
+
 void TabContextCaptureRequest::DocumentOnLoadCompletedInPrimaryMainFrame() {
-  if (ShouldSkipDelayForActiveTab()) {
+  if (ShouldSkipDelayForActiveTab() ||
+      ShouldUseDomContentLoadedForBackgroundTab()) {
     TriggerCapture();
     return;
   }
@@ -146,4 +163,36 @@ bool TabContextCaptureRequest::ShouldSkipDelayForActiveTab() const {
                  kOnDemandBackgroundTabContextCaptureOptimization) &&
          chrome::android::
              kOnDemandBackgroundTabContextCaptureSkipDelayForActiveTab.Get();
+}
+
+bool TabContextCaptureRequest::ShouldUseDomContentLoadedForBackgroundTab()
+    const {
+  // The active tab is handled by ShouldSkipDelayForActiveTab(), which captures
+  // even earlier because its document is already live.
+  if (!weak_tab_ || weak_tab_->IsActivated()) {
+    return false;
+  }
+  return base::FeatureList::IsEnabled(
+             chrome::android::
+                 kOnDemandBackgroundTabContextCaptureOptimization) &&
+         chrome::android::
+             kOnDemandBackgroundTabContextCaptureBackgroundTabUseDomContentLoaded
+                 .Get();
+}
+
+bool TabContextCaptureRequest::IsBackgroundTabDomContentLoaded() const {
+  // The picker starts loading a tab when it is selected rather than when
+  // "Done" is tapped, so DOMContentLoaded has often already fired by the time
+  // this request starts observing.
+  if (!ShouldUseDomContentLoadedForBackgroundTab()) {
+    return false;
+  }
+  // The committed document's DOMContentLoaded is stale if it is about to be
+  // replaced, e.g. a load cancelled between DOMContentLoaded and onload that
+  // was marked for reload.
+  if (web_contents()->HasUncommittedNavigationInPrimaryMainFrame() ||
+      web_contents()->GetController().NeedsReload()) {
+    return false;
+  }
+  return web_contents()->GetPrimaryMainFrame()->IsDOMContentLoaded();
 }

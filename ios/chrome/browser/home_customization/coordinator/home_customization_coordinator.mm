@@ -5,6 +5,8 @@
 #import "ios/chrome/browser/home_customization/coordinator/home_customization_coordinator.h"
 
 #import "base/feature_list.h"
+#import "base/strings/sys_string_conversions.h"
+#import "components/feature_engagement/public/feature_constants.h"
 #import "components/feature_engagement/public/tracker.h"
 #import "components/image_fetcher/ios/ios_image_data_fetcher_wrapper.h"
 #import "components/prefs/pref_service.h"
@@ -34,6 +36,7 @@
 #import "ios/chrome/browser/ntp/model/set_up_list_prefs.h"
 #import "ios/chrome/browser/ntp/search_engine_logo/mediator/search_engine_logo_mediator.h"
 #import "ios/chrome/browser/ntp/ui_bundled/new_tab_page_color_palette_util.h"
+#import "ios/chrome/browser/ntp/ui_bundled/new_tab_page_feature.h"
 #import "ios/chrome/browser/promos_manager/coordinator/promos_manager_ui_handler.h"
 #import "ios/chrome/browser/search_engines/model/template_url_service_factory.h"
 #import "ios/chrome/browser/shared/coordinator/alert/action_sheet_coordinator.h"
@@ -149,7 +152,8 @@ CGFloat const kSheetCornerRadius = 30;
             initWithBackgroundCustomizationService:_backgroundService
                                       imageFetcher:imageFetcher
                         homeBackgroundImageService:nil
-                          userUploadedImageManager:userUploadedImageManager];
+                          userUploadedImageManager:userUploadedImageManager
+                                       prefService:self.profile->GetPrefs()];
   }
 
   // The Customization menu consists of a stack of presenting view controllers.
@@ -256,6 +260,10 @@ CGFloat const kSheetCornerRadius = 30;
     if (tracker) {
       tracker->NotifyUsedEvent(
           feature_engagement::kIPHiOSPromoBackgroundCustomizationFeature);
+      if (IsNTPEphemeralThemeEnabled()) {
+        tracker->NotifyUsedEvent(
+            feature_engagement::kIPHiOSPromoEphemeralThemeFeature);
+      }
     }
   }
 
@@ -604,6 +612,22 @@ CGFloat const kSheetCornerRadius = 30;
         URLLoadingBrowserAgent:URLLoadingBrowserAgent
         sharedURLLoaderFactory:sharedURLLoaderFactory
                   offTheRecord:offTheRecord];
+    if ([key hasSuffix:[NSString
+                           stringWithFormat:@"_%ld",
+                                            HomeCustomizationBackgroundStyle::
+                                                kEphemeral]]) {
+      const base::DictValue& themeData =
+          profile->GetPrefs()->GetDict(prefs::kIosNtpEphemeralThemeData);
+      const std::string* lightPath =
+          themeData.FindString(kEphemeralThemeGoogleLogoLightPathKey);
+      const std::string* darkPath =
+          themeData.FindString(kEphemeralThemeGoogleLogoDarkPathKey);
+      if (lightPath && darkPath) {
+        [searchEngineLogoMediator
+            setOverrideLogoPath:base::SysUTF8ToNSString(*lightPath)
+                   darkLogoPath:base::SysUTF8ToNSString(*darkPath)];
+      }
+    }
     _activeSearchEngineLogoMediator[key] = searchEngineLogoMediator;
   }
 

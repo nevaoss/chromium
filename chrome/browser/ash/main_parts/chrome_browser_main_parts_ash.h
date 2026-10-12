@@ -76,15 +76,16 @@ class EventRewriterDelegateImpl;
 class FastTransitionObserver;
 class FwupdDownloadClientImpl;
 class GnubbyNotification;
-class HatsBluetoothRevampTriggerImpl;
 class ConsentAuditorProvider;
 class DeskSyncServiceProvider;
 class FaviconServiceProvider;
 class FeatureEngagementTrackerProvider;
 class HistoryServiceProvider;
 class IdentityManagerProvider;
+class SupervisedUserServiceProvider;
 class SyncServiceProvider;
 class TemplateURLServiceProvider;
+class TrustedVaultServiceProvider;
 class WifiConfigurationSyncServiceProvider;
 class IdleActionWarningObserver;
 class KioskController;
@@ -199,8 +200,6 @@ class ChromeBrowserMainPartsAsh : public ChromeBrowserMainPartsLinux {
   std::unique_ptr<NetworkChangeManagerClient> network_change_manager_client_;
   std::unique_ptr<LobsterClientFactoryImpl> lobster_client_factory_;
   std::unique_ptr<DebugdNotificationHandler> debugd_notification_handler_;
-  std::unique_ptr<HatsBluetoothRevampTriggerImpl>
-      hats_bluetooth_revamp_trigger_;
 
   std::unique_ptr<internal::DBusServices> dbus_services_;
 
@@ -235,8 +234,11 @@ class ChromeBrowserMainPartsAsh : public ChromeBrowserMainPartsLinux {
       feature_engagement_tracker_provider_;
   std::unique_ptr<HistoryServiceProvider> history_service_provider_;
   std::unique_ptr<IdentityManagerProvider> identity_manager_provider_;
+  std::unique_ptr<SupervisedUserServiceProvider>
+      supervised_user_service_provider_;
   std::unique_ptr<SyncServiceProvider> sync_service_provider_;
   std::unique_ptr<TemplateURLServiceProvider> template_url_service_provider_;
+  std::unique_ptr<TrustedVaultServiceProvider> trusted_vault_service_provider_;
   std::unique_ptr<WifiConfigurationSyncServiceProvider>
       wifi_configuration_sync_service_provider_;
 

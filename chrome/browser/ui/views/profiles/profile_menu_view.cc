@@ -86,7 +86,6 @@
 #include "components/signin/public/identity_manager/identity_manager.h"
 #include "components/signin/public/identity_manager/primary_account_mutator.h"
 #include "components/subscription_eligibility/subscription_eligibility_service.h"
-#include "components/sync/base/features.h"
 #include "components/sync/service/sync_service.h"
 #include "components/user_education/common/new_badge/new_badge_controller.h"
 #include "components/vector_icons/vector_icons.h"
@@ -785,9 +784,7 @@ ProfileMenuView::GetIdentitySectionParams(const ProfileAttributesEntry& entry) {
         // Non-personalized signin button.
         button_type = ActionableItem::kSigninButton;
         params.subtitle = l10n_util::GetStringUTF16(
-            syncer::IsReplaceSyncPromosWithSignInPromosEnabled()
-                ? IDS_PROFILE_MENU_SIGNIN_PROMO_DESCRIPTION_WITH_BOOKMARKS
-                : IDS_PROFILE_MENU_SIGNIN_PROMO_DESCRIPTION);
+            IDS_PROFILE_MENU_SIGNIN_PROMO_DESCRIPTION_WITH_BOOKMARKS);
         params.button_text =
             l10n_util::GetStringUTF16(IDS_PROFILE_MENU_SIGNIN_PROMO_BUTTON);
         break;
@@ -812,9 +809,7 @@ ProfileMenuView::GetIdentitySectionParams(const ProfileAttributesEntry& entry) {
       }
       if (params.subtitle.empty()) {
         params.subtitle = l10n_util::GetStringFUTF16(
-            syncer::IsReplaceSyncPromosWithSignInPromosEnabled()
-                ? IDS_SETTINGS_PEOPLE_ACCOUNT_AWARE_SIGNIN_ACCOUNT_ROW_SUBTITLE_WITH_EMAIL_WITH_BOOKMARKS
-                : IDS_SETTINGS_PEOPLE_ACCOUNT_AWARE_SIGNIN_ACCOUNT_ROW_SUBTITLE_WITH_EMAIL,
+            IDS_SETTINGS_PEOPLE_ACCOUNT_AWARE_SIGNIN_ACCOUNT_ROW_SUBTITLE_WITH_EMAIL_WITH_BOOKMARKS,
             base::UTF8ToUTF16(account_info_for_promos.GetEmail()));
       }
       params.button_text = l10n_util::GetStringFUTF16(
@@ -903,27 +898,12 @@ ProfileMenuView::GetIdentitySectionParams(const ProfileAttributesEntry& entry) {
                 ActionableItem::
                     kBatchUploadWindows10DepreciationAsPrimaryButton);
             break;
-          case signin::ProfileMenuAvatarButtonPromoInfo::Type::kSyncPromo:
-            CHECK(switches::IsAvatarSyncPromoFeatureEnabled());
-            params.subtitle = l10n_util::GetStringUTF16(
-                IDS_PROFILE_MENU_DESCRIPTION_WITH_SYNC_PROMO);
-            params.button_text = l10n_util::GetStringUTF16(
-                IDS_PROFILE_MENU_BUTTON_LABEL_WITH_SYNC_PROMO);
-            break;
           case signin::ProfileMenuAvatarButtonPromoInfo::Type::kSigninPromo:
             NOTREACHED() << "This promo type is not possible when signed in.";
         }
       } else {
-        if (syncer::IsReplaceSyncPromosWithSignInPromosEnabled()) {
-          // No button.
-          params.email_subtitle = base::UTF8ToUTF16(primary_account_info.email);
-        } else {
-          params.subtitle =
-              l10n_util::GetStringUTF16(IDS_PROFILES_DICE_SYNC_PROMO);
-          params.button_text =
-              l10n_util::GetStringUTF16(IDS_PROFILES_DICE_SIGNIN_BUTTON);
-          signin_metrics::LogSyncOptInOffered(access_point);
-        }
+        // No button.
+        params.email_subtitle = base::UTF8ToUTF16(primary_account_info.email);
       }
       break;
     case signin_util::SignedInState::kSyncing:
@@ -981,10 +961,6 @@ void ProfileMenuView::BuildIdentityWithCallToAction() {
 }
 
 void ProfileMenuView::MaybeBuildBatchUploadButton() {
-  if (!syncer::IsReplaceSyncPromosWithSignInPromosEnabled()) {
-    return;
-  }
-
   if (promo_info_.local_data_count == 0) {
     return;
   }
@@ -1247,14 +1223,11 @@ void ProfileMenuView::BuildFeatureButtons() {
   BuildAutofillSettingsButton();
   MaybeBuildManageGoogleAccountButton();
   BuildCustomizeProfileButton();
-  (syncer::IsReplaceSyncPromosWithSignInPromosEnabled() &&
-   (!identity_manager ||
-    !identity_manager->HasPrimaryAccount(signin::ConsentLevel::kSync)))
+  (!identity_manager ||
+   !identity_manager->HasPrimaryAccount(signin::ConsentLevel::kSync))
       ? MaybeBuildChromeAccountSettingsButton()
       : MaybeBuildChromeAccountSettingsButtonWithSync();
-  if (syncer::IsReplaceSyncPromosWithSignInPromosEnabled()) {
-    MaybeBuildGoogleServicesSettingsButton();
-  }
+  MaybeBuildGoogleServicesSettingsButton();
   MaybeBuildCloseBrowsersButton();
   MaybeBuildSignoutButton();
 }

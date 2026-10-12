@@ -15,11 +15,10 @@ chromium::import! {
   "//mojo/public/rust/system";
 }
 
-use system::mojo_types::{RawMojoHandle, UntypedHandle};
-
 use crate::message::MojomMessage;
 use crate::multiplex_router::response_sender::ResponseSender;
 use crate::multiplex_router::{EndpointInfo, InterfaceId, INVALID_INTERFACE_ID};
+use system::mojo_types::{RawMojoHandle, UntypedHandle};
 
 use super::cxx::ffi;
 
@@ -90,8 +89,18 @@ impl CppRouterHandle {
     pub(crate) fn bind(&mut self, endpoint_info: EndpointInfo) {
         let task_runner = endpoint_info.runner.clone();
         let info = Box::new(endpoint_info);
-        let runner = task_runner.as_scoped_refptr();
+        let runner = task_runner.as_scoped_refptr().as_pin();
         self.adapter.pin_mut().Bind(runner, info);
+    }
+
+    /// Takes ownership of the underlying adapter without closing the endpoint.
+    pub fn into_adapter(self) -> cxx::UniquePtr<ffi::AssociatedEndpointRustAdapter> {
+        self.adapter
+    }
+
+    /// Returns the wrapped adapter.
+    fn adapter(&self) -> &ffi::AssociatedEndpointRustAdapter {
+        self.adapter.as_ref().expect("CppRouterHandle's adapter is never null")
     }
 }
 
@@ -99,10 +108,7 @@ impl CppRouterHandle {
 // object, wrapping the same underlying adapter pointer.
 impl PartialEq for CppRouterHandle {
     fn eq(&self, other: &Self) -> bool {
-        match (self.adapter.as_ref(), other.adapter.as_ref()) {
-            (Some(self_adapter), Some(other_adapter)) => std::ptr::eq(self_adapter, other_adapter),
-            _ => false,
-        }
+        std::ptr::eq(self.adapter(), other.adapter())
     }
 }
 

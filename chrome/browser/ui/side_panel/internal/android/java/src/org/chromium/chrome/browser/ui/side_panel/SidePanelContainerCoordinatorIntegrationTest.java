@@ -30,7 +30,6 @@ import org.chromium.base.ThreadUtils;
 import org.chromium.base.test.util.ApplicationTestUtils;
 import org.chromium.base.test.util.CommandLineFlags;
 import org.chromium.base.test.util.CriteriaHelper;
-import org.chromium.base.test.util.DisableIf;
 import org.chromium.base.test.util.DoNotBatch;
 import org.chromium.base.test.util.Feature;
 import org.chromium.base.test.util.Features.DisableFeatures;
@@ -48,6 +47,7 @@ import org.chromium.chrome.browser.ui.side_panel.test.SidePanelContainerCoordina
 import org.chromium.chrome.browser.url_constants.UrlConstantResolver;
 import org.chromium.chrome.test.ChromeJUnit4ClassRunner;
 import org.chromium.chrome.test.transit.ChromeTransitTestRules;
+import org.chromium.chrome.test.transit.ChromeTriggers;
 import org.chromium.chrome.test.transit.FreshCtaTransitTestRule;
 import org.chromium.chrome.test.transit.hub.UndoSnackbarFacility;
 import org.chromium.chrome.test.transit.ntp.IncognitoNewTabPageStation;
@@ -87,7 +87,8 @@ public class SidePanelContainerCoordinatorIntegrationTest {
     @Rule
     public RenderTestRule mRenderTestRule =
             RenderTestRule.Builder.withPublicCorpus()
-                    .setRevision(1)
+                    .setRevision(2)
+                    .setDescription("Ligatures and contextual alternates disabled in UI text")
                     .setBugComponent(RenderTestRule.Component.UI_BROWSER_TOP_CHROME_SIDE_PANEL)
                     .build();
 
@@ -548,7 +549,6 @@ public class SidePanelContainerCoordinatorIntegrationTest {
     @MediumTest
     @DisableFeatures(ChromeFeatureList.DISABLE_GRID_TAB_SWITCHER)
     @EnableFeatures(ChromeFeatureList.ENABLE_ANDROID_SIDE_PANEL_DEV_FEATURE + ":scope/tab")
-    @DisableIf.Device(DeviceFormFactor.DESKTOP) // https://crbug.com/565523923
     public void closeAllTabsInGridTabSwitcher_undo_restoresTabScopedSidePanel() {
         // Arrange: Open 2 tabs.
         var tab1 = mResponsivePageStation.getTab();
@@ -632,6 +632,40 @@ public class SidePanelContainerCoordinatorIntegrationTest {
                 tabSwitcherStation.selectTabAtIndex(0, WebPageStation.newBuilder());
 
         // Assert: The side panel is automatically restored and reopened.
+        waitForContainerViewOpen(coordinator);
+    }
+
+    @Test
+    @MediumTest
+    @EnableFeatures(ChromeFeatureList.ENABLE_ANDROID_SIDE_PANEL_DEV_FEATURE + ":scope/tab")
+    public void closeTab_undo_restoresTabScopedSidePanel() {
+        // Arrange: Open a second tab and show the side panel on it.
+        var newTabPageStation = mResponsivePageStation.openNewTabFast();
+        var newTab = newTabPageStation.getTab();
+        var coordinator = getSidePanelContainerCoordinator();
+        showPanel(newTab);
+        waitForContainerViewOpen(coordinator);
+
+        // Act: Close the new (active) tab.
+        var undoSnackbar =
+                ChromeTriggers.invokeCustomMenuActionTo(
+                                org.chromium.chrome.R.id.close_tab, newTabPageStation)
+                        .arriveAtAnd(
+                                WebPageStation.newBuilder()
+                                        .initFrom(newTabPageStation)
+                                        .withIsSelectingTabs(1)
+                                        .build())
+                        .enterFacility(new UndoSnackbarFacility<>("Closed"));
+
+        // Assert: The side panel is closed because the first tab doesn't have an open side panel.
+        waitForContainerViewClose(coordinator);
+
+        // Act: Undo the tab closure.
+        undoSnackbar
+                .pressUndoTo()
+                .arriveAt(RegularNewTabPageStation.newBuilder().initSelectingExistingTab().build());
+
+        // Assert: The side panel for the second tab is automatically restored and reopened.
         waitForContainerViewOpen(coordinator);
     }
 
@@ -840,7 +874,6 @@ public class SidePanelContainerCoordinatorIntegrationTest {
     @Test
     @MediumTest
     @DisableFeatures(ChromeFeatureList.ANDROID_OPEN_INCOGNITO_AS_WINDOW)
-    @DisableIf.Device(DeviceFormFactor.DESKTOP) // https://crbug.com/565523923
     public void
             testMixedProfileMode_openPanelInRegularPane_switchToIncognitoPaneThenBackToDifferentTab_switchToOriginalTab_restoresPanel() {
         // Arrange: Open 2 tabs in the regular pane and show the side panel on tab1.
@@ -906,7 +939,6 @@ public class SidePanelContainerCoordinatorIntegrationTest {
     @Test
     @MediumTest
     @DisableFeatures(ChromeFeatureList.ANDROID_OPEN_INCOGNITO_AS_WINDOW)
-    @DisableIf.Device(DeviceFormFactor.DESKTOP) // https://crbug.com/565523923
     public void
             testMixedProfileMode_bothRegularPaneAndIncognitoPaneHaveSidePanel_switchBetweenPanes_keepsPanelOpen() {
         // Arrange: Open the side panel in both the regular pane and the incognito pane.

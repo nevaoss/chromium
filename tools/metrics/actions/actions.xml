@@ -93,6 +93,8 @@ should be able to be added at any place in this file.
 
 <variants name="ContextMenu_Type">
   <variant name="" summary="aggregated"/>
+  <variant name=".CopyLinkAddress"
+      summary="Selected 'Copy link address' in the context menu."/>
   <variant name=".DownloadItem" summary="Download a suggested item."/>
   <variant name=".EditItem"
       summary="Open a modal dialog to edit a custom item."/>
@@ -627,6 +629,8 @@ should be able to be added at any place in this file.
       summary="For iOSPromoDefaultBrowser feature"/>
   <variant name="_iOSPromoDefaultBrowserReminder"
       summary="For iOSPromoDefaultBrowserReminder feature"/>
+  <variant name="_iOSPromoEphemeralTheme"
+      summary="For iOSPromoEphemeralTheme feature."/>
   <variant name="_iOSPromoGenericDefaultBrowser"
       summary="For generivc default browser promo."/>
   <variant name="_iOSPromoMadeForIOS"
@@ -974,18 +978,6 @@ should be able to be added at any place in this file.
   <variant name="_VerticalTabstripTutorialFeature"
       summary="For showing the vertical tabs feature when the horizontal
                tabstrip is crowded."/>
-  <variant name="_VideoTutorial_NTP_ChromeIntro"
-      summary="For Chrome intro video tutorial."/>
-  <variant name="_VideoTutorial_NTP_Download"
-      summary="For download video tutorial."/>
-  <variant name="_VideoTutorial_NTP_Search"
-      summary="For search video tutorial."/>
-  <variant name="_VideoTutorial_NTP_Summary"
-      summary="For video tutorial summary card."/>
-  <variant name="_VideoTutorial_NTP_VoiceSearch"
-      summary="For voice search video tutorial."/>
-  <variant name="_VideoTutorial_TryNow"
-      summary="For video tutorial Try Now feature."/>
   <variant name="_WebUiHelpBubbleTest"
       summary="For WebUiHelpBubbleTest feature."/>
   <variant name="_WhatsNewUpdated" summary="For what's new updated content."/>
@@ -1068,6 +1060,8 @@ should be able to be added at any place in this file.
   <variant name="" summary="aggregated"/>
   <variant name=".AddedToComparisonTable" summary="Added to comparison table"/>
   <variant name=".AddedToReadingList" summary="Added to reading list"/>
+  <variant name=".AutofillAiSuggestionRemoved"
+      summary="Autofill AI suggestion removed"/>
   <variant name=".DiceUserMigrated" summary="DICe user migrated"/>
   <variant name=".EnhancedBundledSecuritySettings"
       summary="Enhanced protection user migrated"/>
@@ -15004,6 +14998,16 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action name="IncognitoNewTabPage.ContextMenu{ContextMenu_Type}">
+  <owner>ckitagawa@chromium.org</owner>
+  <owner>chrome-incognito@google.com</owner>
+  <description>
+    Android: User used the context menu on a link on the Incognito new tab page.
+    {ContextMenu_Type}
+  </description>
+  <token key="ContextMenu_Type" variants="ContextMenu_Type"/>
+</action>
+
 <action name="IncognitoWebSQL_Created">
   <owner>rhalavati@chromium.org</owner>
   <owner>chrome-incognito@google.com</owner>
@@ -17423,6 +17427,14 @@ should be able to be added at any place in this file.
   <owner>apalanki@google.com</owner>
   <description>
     The user clicked a result link in the Lens entry in the side panel.
+  </description>
+</action>
+
+<action name="LevelUp.Promo.Displayed">
+  <owner>zijingl@google.com</owner>
+  <owner>bling-mony-pod@google.com</owner>
+  <description>
+    Recorded when the Level Up promo is displayed from the Promos Manager.
   </description>
 </action>
 
@@ -30970,6 +30982,14 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action name="ProfileMenu_ActionableItemClicked_Isolated">
+  <owner>szpotekagata@chromium.org</owner>
+  <owner>cec-growth@google.com</owner>
+  <description>
+    The user clicked a button or a link in the isolated profile menu.
+  </description>
+</action>
+
 <action name="ProfileMenu_ActionableItemClicked_Regular">
   <owner>droger@chromium.org</owner>
   <owner>tangltom@chromium.org</owner>
@@ -30994,6 +31014,12 @@ should be able to be added at any place in this file.
   <owner>droger@chromium.org</owner>
   <owner>tangltom@chromium.org</owner>
   <description>The user opened the incognito profile menu.</description>
+</action>
+
+<action name="ProfileMenu_Opened_Isolated">
+  <owner>szpotekagata@chromium.org</owner>
+  <owner>cec-growth@google.com</owner>
+  <description>The user opened the isolated profile menu.</description>
 </action>
 
 <action name="ProfileMenu_Opened_Regular">
@@ -33499,6 +33525,17 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action name="Settings.Search.QuerySubmitted">
+  <owner>tommasin@google.com</owner>
+  <owner>chrome-browser-privacy-team@google.com</owner>
+  <description>
+    Recorded when a user has submitted a search query on the Settings page. A
+    query is considered submitted once the user stops typing for a short
+    duration, or acts on the results (e.g. clicks a result) before that,
+    indicating intent to search.
+  </description>
+</action>
+
 <action name="Settings.Searching">
   <owner>dschuyler@chromium.org</owner>
   <description>
@@ -33513,15 +33550,6 @@ should be able to be added at any place in this file.
   <owner>gambard@chromium.org</owner>
   <description>
     Reported when user opens the Default Browser Settings page. iOS only.
-  </description>
-</action>
-
-<action name="Settings.SitePermissions">
-  <owner>scottyoder@google.com</owner>
-  <owner>bling-pandamonium@google.com</owner>
-  <description>
-    Reported when user navigates to the Site Permissions Settings page. iOS
-    only.
   </description>
 </action>
 
@@ -34835,7 +34863,8 @@ should be able to be added at any place in this file.
 
 <action name="SidePanel.ReadAnything.Pinned.BySidePanelHeaderButton">
   <owner>corising@chromium.org</owner>
-  <owner>abigailbklein@chromium.org</owner>
+  <owner>lwinston@google.com</owner>
+  <owner>komo-eng@google.com</owner>
   <owner>top-chrome-desktop-ui@google.com</owner>
   <description>
     Recorded when the read anything side panel entry is pinned via the pin
@@ -34845,7 +34874,8 @@ should be able to be added at any place in this file.
 
 <action name="SidePanel.ReadAnything.Unpinned.BySidePanelHeaderButton">
   <owner>corising@chromium.org</owner>
-  <owner>abigailbklein@chromium.org</owner>
+  <owner>lwinston@google.com</owner>
+  <owner>komo-eng@google.com</owner>
   <owner>top-chrome-desktop-ui@google.com</owner>
   <description>
     Recorded when the read anything side panel entry is unpinned via the pin
@@ -35812,6 +35842,15 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action name="Signin_Impression_FromPasswordManagerCard"
+    not_user_triggered="true">
+  <owner>rsult@google.com</owner>
+  <owner>chrome-signin-desktop-team@google.com</owner>
+  <description>
+    Recorded when the sign in promo is shown in the Password Manager.
+  </description>
+</action>
+
 <action name="Signin_Impression_FromPostDeviceRestoreSigninPromo">
   <owner>scottyoder@google.com</owner>
   <owner>bling-pandamonium@google.com</owner>
@@ -36482,6 +36521,15 @@ should be able to be added at any place in this file.
   </description>
 </action>
 
+<action name="Signin_Signin_FromPasswordManagerCard">
+  <owner>rsult@google.com</owner>
+  <owner>chrome-signin-desktop-team@google.com</owner>
+  <description>
+    Recorded on sign in start from access point
+    signin_metrics::AccessPoint::kPasswordManagerCard.
+  </description>
+</action>
+
 <action name="Signin_Signin_FromPostDeviceRestoreSigninPromo">
   <owner>scottyoder@google.com</owner>
   <owner>bling-pandamonium@google.com</owner>
@@ -36713,6 +36761,8 @@ should be able to be added at any place in this file.
   <owner>chrome-signin-team@chromium.org</owner>
   <owner>arthurmilchior@chromium.org</owner>
   <description>
+    (Obsolete) Not recorded anymore as of M156.
+
     Recorded when the user cancels signing-out from a managed account and
     ClearDeviceDataOnSignoutForManaged is enabled. Recorded for iOS only.
   </description>
@@ -36731,6 +36781,8 @@ should be able to be added at any place in this file.
   <owner>chrome-signin-team@chromium.org</owner>
   <owner>arthurmilchior@chromium.org</owner>
   <description>
+    (Obsolete) Not recorded anymore as of M156.
+
     Recorded when the user confirms they accept to sign-out from a managed
     account and ClearDeviceDataOnSignoutForManaged is enabled. Recorded for iOS
     only.
@@ -38929,12 +38981,15 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="TabGrid.Drag{ActionType}">
-  <owner>yusufo@chromium.org</owner>
-  <owner>wychen@chromium.org</owner>
+  <owner>ckitagawa@chromium.org</owner>
+  <owner>clank-tab-dev@google.com</owner>
   <description>User drags a tab to reorder it. {ActionType}</description>
   <token key="ActionType">
     <variant name="" summary="aggregated"/>
     <variant name=".DropToMerge"
+        summary="(Obsolete) Users use drop-to-merge to combine a single tab
+                 and a group or two groups."/>
+    <variant name=".DropToMergeV2"
         summary="Users use drop-to-merge to combine a single tab and a group
                  or two groups."/>
     <variant name=".RemoveFromGroup.TabGridDialogFromStrip"
@@ -39091,14 +39146,17 @@ should be able to be added at any place in this file.
 </action>
 
 <action name="TabGroup.Created{ActionType}">
-  <owner>yusufo@chromium.org</owner>
-  <owner>wychen@chromium.org</owner>
+  <owner>ckitagawa@chromium.org</owner>
+  <owner>clank-tab-dev@google.com</owner>
   <description>Users created a new tab group. {ActionType}</description>
   <token key="ActionType">
     <variant name="" summary="aggregated"/>
     <variant name=".DeveloperRequestedNewTab"
         summary="Users tapped on a link with a target=_blank"/>
     <variant name=".DropToMerge"
+        summary="(Obsolete) Users dragged a single tab and dropped it on
+                 another single tab to create a group."/>
+    <variant name=".DropToMergeV2"
         summary="Users dragged a single tab and dropped it on another single
                  tab to create a group."/>
     <variant name=".OpenInNewTab"

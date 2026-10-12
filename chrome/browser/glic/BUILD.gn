@@ -17,6 +17,7 @@ import("//mojo/public/tools/bindings/mojom.gni")
 source_set("glic") {
   sources = [
     "common/local_hotkey_manager.h",
+    "common/observable_value.h",
     "experimental_triggering/actor_log.h",
     "experimental_triggering/glic_experimental_triggering_converters.h",
     "experimental_triggering/glic_experimental_triggering_coordinator.h",
@@ -26,6 +27,7 @@ source_set("glic") {
     "experimental_triggering/glic_experimental_triggering_types.h",
     "gemini_act_on_web_settings_policy_handler.h",
     "glic_hotkey.h",
+    "glic_marketing_page_tab_helper.h",
     "glic_metrics.h",
     "glic_metrics_provider.h",
     "glic_net_log.h",
@@ -89,7 +91,6 @@ source_set("glic") {
     "public/glic_window_invocation_tracker.cc",
     "public/glic_window_invocation_tracker.h",
     "public/service/glic_activity_manager.h",
-    "public/service/glic_activity_manager_factory.h",
     "public/service/glic_instance_coordinator.h",
     "service/glic_instance_helper.h",
     "service/metrics/metrics_types.cc",
@@ -113,6 +114,7 @@ source_set("glic") {
     "//chrome/browser/profiles:profile",
     "//chrome/browser/subscription_eligibility",
     "//chrome/browser/ui/browser_window",
+    "//components/actor/core:task_id",
     "//components/autofill/core/browser/integrators/actor:actor_form_filling_types",
     "//components/browser_actuator/public",
     "//components/content_extraction/content/browser",
@@ -244,6 +246,21 @@ if (is_android) {
     srcjar_deps = [ ":glic_pref_names_srcjar" ]
   }
 
+  android_library("context_menu_utils_java") {
+    sources = [ "public/android/java/src/org/chromium/chrome/browser/glic/GlicContextMenuUtils.java" ]
+    deps = [
+      ":public_java",
+      "//base:build_info_java",
+      "//build/android:build_java",
+      "//chrome/browser/context_sharing/tab_bottom_sheet/android:java",
+      "//chrome/browser/flags:java",
+      "//chrome/browser/glic/android:java",
+      "//chrome/browser/profiles/android:java",
+      "//chrome/browser/ui/side_panel/android:java",
+      "//third_party/androidx:androidx_annotation_annotation_java",
+    ]
+  }
+
   android_library("metrics_java") {
     sources =
         [ "android/java/src/org/chromium/chrome/browser/glic/GlicMetrics.java" ]
@@ -333,7 +350,6 @@ source_set("impl") {
     "common/instance_independent_hotkey_manager.cc",
     "common/instance_independent_hotkey_manager.h",
     "common/local_hotkey_manager.cc",
-    "common/observable_value.h",
     "common/panel_focus_dependent_hotkey_manager.cc",
     "common/panel_focus_dependent_hotkey_manager.h",
     "common/panel_visibility_dependent_hotkey_manager.cc",
@@ -359,7 +375,6 @@ source_set("impl") {
     "gemini_act_on_web_settings_policy_handler.cc",
     "glic_hotkey.cc",
     "glic_marketing_page_tab_helper.cc",
-    "glic_marketing_page_tab_helper.h",
     "glic_metrics.cc",
     "glic_metrics_provider.cc",
     "glic_navigation_throttle.cc",
@@ -461,7 +476,6 @@ source_set("impl") {
     "public/glic_keyed_service_factory.cc",
     "public/glic_perf_traits_tracker.cc",
     "service/glic_activity_manager.cc",
-    "service/glic_activity_manager_factory.cc",
     "service/glic_instance_coordinator_impl.cc",
     "service/glic_instance_coordinator_impl.h",
     "service/glic_instance_helper.cc",
@@ -645,8 +659,9 @@ source_set("impl") {
       "//chrome/browser/glic/browser_ui:impl",
       "//chrome/browser/glic/selection",
       "//chrome/browser/lens/region_search",
+      "//chrome/browser/ui:browser_commands",
       "//chrome/browser/ui:browser_manager_service",
-      "//chrome/browser/ui:browser_tab_strip",
+      "//chrome/browser/ui:browser_tabstrip",
       "//chrome/browser/ui:chrome_pages",
       "//chrome/browser/ui:scoped_tabbed_browser_displayer",
       "//chrome/browser/ui/browser_window",
@@ -819,6 +834,7 @@ source_set("unit_tests") {
     "host/guest_util_unittest.cc",
     "public/glic_cui_tracker_unittest.cc",
     "public/glic_enabling_unittest.cc",
+    "public/glic_invoke_options_unittest.cc",
     "service/glic_invoke_handler_unittest.cc",
     "service/glic_invoke_task_unittest.cc",
     "suggestions/caching_zero_state_suggestions_manager_unittest.cc",
@@ -1076,6 +1092,8 @@ source_set("browser_tests") {
       "//chrome/browser/skills:ui",
       "//chrome/browser/subscription_eligibility",
       "//chrome/browser/sync",
+      "//chrome/browser/ui:browser_commands",
+      "//chrome/browser/ui:browser_tabstrip",
       "//chrome/browser/ui:chrome_pages",
       "//chrome/browser/ui:ui_features",
       "//chrome/browser/ui/profiles",
@@ -1228,6 +1246,8 @@ if (!is_android) {
       "//chrome/browser/lifetime",
       "//chrome/browser/optimization_guide",
       "//chrome/browser/permissions:test_support",
+      "//chrome/browser/ui:browser_commands",
+      "//chrome/browser/ui:browser_tabstrip",
       "//chrome/browser/ui:chrome_pages",
       "//chrome/browser/ui/user_education",
       "//chrome/browser/ui/views/frame:browser_view_header",

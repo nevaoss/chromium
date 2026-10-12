@@ -17,6 +17,7 @@
 #include "base/hash/sha1.h"
 #include "base/memory/scoped_refptr.h"
 #include "base/metrics/histogram_functions.h"
+#include "base/strings/strcat.h"
 #include "base/strings/string_util.h"
 #include "build/branding_buildflags.h"
 #include "chrome/common/channel_info.h"
@@ -29,6 +30,7 @@
 #include "net/url_request/redirect_info.h"
 #include "services/network/public/cpp/http_request_headers_update_params.h"
 #include "services/network/public/cpp/resource_request.h"
+#include "services/network/public/mojom/fetch_api.mojom.h"
 #include "services/network/public/mojom/network_context.mojom.h"
 #include "url/gurl.h"
 
@@ -103,26 +105,6 @@ std::string GetChannelName() {
   }
 
   return channel_name;
-}
-
-void AddRequestIntegrityHeaders(net::HttpRequestHeaders* headers,
-                                ChromeCompaneroLoader& companero_loader) {
-  const std::string digest =
-      base::Base64Encode(base::SHA1Hash(base::as_byte_span(
-          std::string(kIntegritySeed) + google_apis::GetAPIKey() +
-          embedder_support::GetUserAgent())));
-  const std::string channel_name = GetChannelName();
-  if (!channel_name.empty()) {
-    headers->SetHeader(CHANNEL_NAME_HEADER_NAME, channel_name);
-  }
-  headers->SetHeader(LASTCHANGE_YEAR_HEADER_NAME, LASTCHANGE_YEAR);
-  headers->SetHeader(VALIDATE_HEADER_NAME, digest);
-  headers->SetHeader(COPYRIGHT_HEADER_NAME, CHROME_COPYRIGHT);
-
-  auto companero_header = companero_loader.GetHeaderNameAndValue();
-  if (companero_header) {
-    headers->SetHeader(companero_header->name, companero_header->value);
-  }
 }
 
 void AddRequestIntegrityHeaderNamesToVector(
@@ -210,6 +192,30 @@ void ProcessRequestHeaders(net::HttpRequestHeaders* headers, const GURL& url) {
 #endif
 }
 
+using ResourceType = RequestHeaderIntegrityURLLoaderThrottle::ResourceType;
+
+// Records whether the dynamic integrity header was attached to a request of
+// `resource_type`.
+void RecordDynamicHeaderPresent(ResourceType resource_type, bool present) {
+  switch (resource_type) {
+    case ResourceType::kMainResource:
+      base::UmaHistogramBoolean(
+          "Security.RequestHeaderIntegrity.DynamicHeaderPresent.MainResource",
+          present);
+      return;
+    case ResourceType::kSubresource:
+      base::UmaHistogramBoolean(
+          "Security.RequestHeaderIntegrity.DynamicHeaderPresent.Subresource",
+          present);
+      return;
+    case ResourceType::kPrefetch:
+      base::UmaHistogramBoolean(
+          "Security.RequestHeaderIntegrity.DynamicHeaderPresent.Prefetch",
+          present);
+      return;
+  }
+}
+
 }  // namespace
 
 RequestHeaderIntegrityURLLoaderThrottle::
@@ -230,9 +236,15 @@ void RequestHeaderIntegrityURLLoaderThrottle::DetachFromCurrentSequence() {}
 void RequestHeaderIntegrityURLLoaderThrottle::WillStartRequest(
     network::ResourceRequest* request,
     bool* defer) {
+  // Captured even for non-Google URLs, since the request may later be
+  // redirected to a Google-associated domain.
+  resource_type_ =
+      request->destination == network::mojom::RequestDestination::kDocument
+          ? ResourceType::kMainResource
+          : ResourceType::kSubresource;
   if (google_util::IsGoogleAssociatedDomainUrl(request->url)) {
     AddRequestIntegrityHeaders(&(request->cors_exempt_headers),
-                               *companero_loader_);
+                               *companero_loader_, resource_type_);
   }
   ProcessRequestHeaders(&(request->cors_exempt_headers), request->url);
 }
@@ -245,7 +257,7 @@ void RequestHeaderIntegrityURLLoaderThrottle::WillRedirectRequest(
   if (google_util::IsGoogleAssociatedDomainUrl(redirect_info->new_url)) {
     AddRequestIntegrityHeaders(
         &headers_update_params->modified_cors_exempt_headers,
-        *companero_loader_);
+        *companero_loader_, resource_type_);
   } else {
     AddRequestIntegrityHeaderNamesToVector(
         &headers_update_params->removed_headers, *companero_loader_);
@@ -267,6 +279,29 @@ void RequestHeaderIntegrityURLLoaderThrottle::UpdateCorsExemptHeaders(
 }
 
 // static
+void RequestHeaderIntegrityURLLoaderThrottle::AddRequestIntegrityHeaders(
+    net::HttpRequestHeaders* headers,
+    ChromeCompaneroLoader& companero_loader,
+    ResourceType resource_type) {
+  const std::string digest = base::Base64Encode(base::SHA1Hash(
+      base::as_byte_span(base::StrCat({kIntegritySeed, google_apis::GetAPIKey(),
+                                       embedder_support::GetUserAgent()}))));
+  const std::string channel_name = GetChannelName();
+  if (!channel_name.empty()) {
+    headers->SetHeader(CHANNEL_NAME_HEADER_NAME, channel_name);
+  }
+  headers->SetHeader(LASTCHANGE_YEAR_HEADER_NAME, LASTCHANGE_YEAR);
+  headers->SetHeader(VALIDATE_HEADER_NAME, digest);
+  headers->SetHeader(COPYRIGHT_HEADER_NAME, CHROME_COPYRIGHT);
+
+  auto companero_header = companero_loader.GetHeaderNameAndValue();
+  if (companero_header) {
+    headers->SetHeader(companero_header->name, companero_header->value);
+  }
+  RecordDynamicHeaderPresent(resource_type, companero_header.has_value());
+}
+
+// static
 void RequestHeaderIntegrityURLLoaderThrottle::
     ModifyRequestIntegrityHeadersForPrefetch(
         const GURL& url,
@@ -275,7 +310,8 @@ void RequestHeaderIntegrityURLLoaderThrottle::
   CHECK(IsFeatureEnabled());
   if (google_util::IsGoogleAssociatedDomainUrl(url)) {
     AddRequestIntegrityHeaders(&cors_exempt_headers,
-                               ChromeCompaneroLoader::GetInstance());
+                               ChromeCompaneroLoader::GetInstance(),
+                               ResourceType::kPrefetch);
   } else {
     AddRequestIntegrityHeaderNamesToVector(
         &removed_headers, ChromeCompaneroLoader::GetInstance());

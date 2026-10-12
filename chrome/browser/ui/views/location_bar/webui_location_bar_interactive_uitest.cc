@@ -223,6 +223,14 @@ class PretendComposeInputMethod : public ui::MockInputMethod {
       text_input_client->SetCompositionText(ct);
       return ui::EventDispatchDetails();
     }
+    if (event->type() == ui::EventType::kKeyPressed &&
+        event->GetDomKey() == ui::DomKey::ENTER &&
+        text_input_client->HasCompositionText()) {
+      ui::EventDispatchDetails details =
+          ui::MockInputMethod::DispatchKeyEvent(event);
+      text_input_client->ConfirmCompositionText(/*keep_selection=*/true);
+      return details;
+    }
     return ui::MockInputMethod::DispatchKeyEvent(event);
   }
 
@@ -1280,7 +1288,7 @@ IN_PROC_BROWSER_TEST_P(WebUILocationBarInteractiveUiTest,
         AutocompleteMatch::DocumentType::NONE, "www.cnn.com/index.html", "0,1",
         "CNN.com - Breaking News, U.S., World, Weather, Entertainment & Video",
         "0,0,19,2,23,0,38,2,45,0", ui::PAGE_TRANSITION_TYPED,
-        AutocompleteMatchType::HISTORY_TITLE, "", 1, 10}}};
+        omnibox::AutocompleteMatchType::kHistoryTitle, "", 1, 10}}};
   PopulateShortcutsBackendWithTestData(shortcuts_backend, test_shortcut);
 
   ui::Accelerator accelerator;
@@ -1343,7 +1351,12 @@ IN_PROC_BROWSER_TEST_P(WebUILocationBarIMEInteractiveUiTest,
       WaitTillOmniboxViewText("local.t"),
       WaitTillStandaloneInlineComplete("est"),
 
-      // Accept it.
+      // First Enter commits the IME composition without navigating, and
+      // transitions inline completion from standalone span to the input.
+      InAnyContext(SendKeyPress(InputWebContents(), ui::VKEY_RETURN)),
+      WaitTillInlineComplete("local.t", "est"),
+
+      // Second Enter accepts the suggestion and navigates.
       InAnyContext(SendKeyPress(InputWebContents(), ui::VKEY_RETURN)),
       WaitForWebContentsNavigation(kTabId, GURL("https://local.test")),
       WaitTillOmniboxViewText("local.test"));
@@ -1370,7 +1383,7 @@ IN_PROC_BROWSER_TEST_P(WebUILocationBarInteractiveUiTest, AdditionalText) {
         AutocompleteMatch::DocumentType::NONE, "www.cnn.com/index.html", "0,1",
         "CNN.com - Breaking News, U.S., World, Weather, Entertainment & Video",
         "0,0,19,2,23,0,38,2,45,0", ui::PAGE_TRANSITION_TYPED,
-        AutocompleteMatchType::HISTORY_TITLE, "", 1, 10}}};
+        omnibox::AutocompleteMatchType::kHistoryTitle, "", 1, 10}}};
   PopulateShortcutsBackendWithTestData(shortcuts_backend, test_shortcut);
 
   RunTestSequence(InstrumentTab(kTabId), WaitForWebContentsReady(kTabId),

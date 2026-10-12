@@ -17,6 +17,7 @@
 #include "base/task/current_thread.h"
 #include "base/task/single_thread_task_runner.h"
 #include "build/build_config.h"
+#include "mojo/buildflags.h"
 #include "mojo/core/ipcz_api.h"
 #include "mojo/core/ipcz_driver/driver.h"
 #include "mojo/core/ipcz_driver/transport.h"
@@ -364,7 +365,13 @@ void ThreadLocalNode::OnTransferredPortalAvailable() {
 namespace mojo {
 
 bool IsDirectReceiverSupported() {
+#if BUILDFLAG(IS_APPLE) && !BUILDFLAG(MOJO_USE_APPLE_CHANNEL)
+  // Connecting a node hands over ipcz' node link memory as a Mach handle, but
+  // ChannelPosix can only carry file descriptors. Affects tvOS only.
+  return false;
+#else
   return true;
+#endif
 }
 
 bool IsAsyncIOSupported() {

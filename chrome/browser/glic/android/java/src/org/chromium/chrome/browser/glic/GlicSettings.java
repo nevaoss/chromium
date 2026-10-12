@@ -499,7 +499,8 @@ public class GlicSettings extends ChromeBaseSettingsFragment {
         ChromeSwitchPreference buttonTogglePref = findPreference(PREFERENCE_BUTTON_TOGGLE);
         Preference buttonPref = findPreference(PREFERENCE_BUTTON);
 
-        if (BottomBarConfigUtils.isBottomBarEnabled(getContext())) {
+        Context context = getContext();
+        if (BottomBarConfigUtils.isBottomBarEnabled(context)) {
             // Refresh preference UI state. Listener was already attached in onCreatePreferences.
             updateBottomBarButtonPreference(
                     bottomBarButtonTogglePref,
@@ -509,7 +510,7 @@ public class GlicSettings extends ChromeBaseSettingsFragment {
 
             // TODO(crbug.com/503082430): Change to tab strip visibility check once toolbar Glic
             // supported on LFF
-        } else if (GlicUtils.isSidePanelFormFactor(getContext())) {
+        } else if (GlicUtils.isSidePanelFormFactor(context)) {
             if (bottomBarButtonTogglePref != null) bottomBarButtonTogglePref.setVisible(false);
             if (buttonTogglePref != null) {
                 boolean isPinned = GlicUtils.isButtonPinnedToTabStrip(getProfile());

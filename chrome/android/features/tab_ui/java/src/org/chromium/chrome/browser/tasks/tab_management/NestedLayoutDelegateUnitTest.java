@@ -131,18 +131,23 @@ public class NestedLayoutDelegateUnitTest {
     }
 
     @Test
-    public void testGetAlertState_Tab() {
-        PropertyModel tabModel = new PropertyModel.Builder(TabProperties.ALL_KEYS_TAB_GRID).build();
+    public void testGetAlertStateForTab() {
         when(mTab1.getAlertState()).thenReturn(TabAlert.AUDIO_PLAYING);
-        @TabAlert int state = mDelegate.getAlertState(mTab1, tabModel);
+        @TabAlert int state = mDelegate.getAlertStateForTab(mTab1);
         assertEquals(TabAlert.AUDIO_PLAYING, state);
+    }
+
+    @Test
+    public void testGetAlertStateForGroupHeader() {
+        @TabAlert int state = mDelegate.getAlertStateForGroupHeader(TAB_GROUP_ID);
+        assertEquals(TabAlert.NONE, state);
     }
 
     @Test
     public void testGetAlertState_GroupHeader() {
         PropertyModel headerModel =
                 new PropertyModel.Builder(TabProperties.ALL_KEYS_TAB_GRID)
-                        .with(TabProperties.TAB_GROUP_HEADER_ID, new Token(1, 2))
+                        .with(TabProperties.TAB_GROUP_HEADER_ID, TAB_GROUP_ID)
                         .build();
         when(mTab1.getAlertState()).thenReturn(TabAlert.AUDIO_PLAYING);
         @TabAlert int state = mDelegate.getAlertState(mTab1, headerModel);
@@ -593,7 +598,7 @@ public class NestedLayoutDelegateUnitTest {
     }
 
     @Test
-    public void testDidMoveTabOutOfGroup_RepresentativeTab() {
+    public void testDidMoveTabOutOfGroup_HeaderTabIdUpdated() {
         setupTabsInModel(mTab1, mTab3);
         addGroupHeaderToModelList(TAB1_ID);
         PropertyModel tab1Model = addTabToModelList(TAB1_ID, TAB_GROUP_ID);
@@ -627,7 +632,7 @@ public class NestedLayoutDelegateUnitTest {
         verify(mMediator).clearTabGroupProperties(tab3Model);
         verify(mMediator, never()).updateTabGroupTitle(any());
 
-        mDelegate.didRemoveTabGroup(TAB1_ID, TAB_GROUP_ID, DidRemoveTabGroupReason.UNGROUP);
+        mDelegate.didRemoveTabGroup(TAB_GROUP_ID, DidRemoveTabGroupReason.UNGROUP);
         assertFalse(mDelegate.isRemovingTabGroup(TAB_GROUP_ID));
     }
 
@@ -657,8 +662,8 @@ public class NestedLayoutDelegateUnitTest {
 
         assertEquals(TAB_GROUP_ID, tab1Model.get(TabProperties.TAB_GROUP_ID));
         assertEquals(TAB_GROUP_ID, tab2Model.get(TabProperties.TAB_GROUP_ID));
-        verify(mMediator).updateTabGroupProperties(mTab1, tab1Model, TabGroupColorId.BLUE);
-        verify(mMediator).updateTabGroupProperties(mTab2, tab2Model, TabGroupColorId.BLUE);
+        verify(mMediator).updateTabGroupProperties(tab1Model, TAB_GROUP_ID, TabGroupColorId.BLUE);
+        verify(mMediator).updateTabGroupProperties(tab2Model, TAB_GROUP_ID, TabGroupColorId.BLUE);
         verify(mMediator).addTabInfoToModelForGroup(mTab1, TAB_GROUP_ID, 0);
         verify(mMediator, times(2)).updateTabGroupTitle(TAB_GROUP_ID);
     }
@@ -677,7 +682,7 @@ public class NestedLayoutDelegateUnitTest {
         mDelegate.didMergeTabToGroup(mTab3, false);
 
         assertEquals(TAB_GROUP_ID, tab1Model.get(TabProperties.TAB_GROUP_ID));
-        verify(mMediator).updateTabGroupProperties(mTab3, tab1Model, TabGroupColorId.BLUE);
+        verify(mMediator).updateTabGroupProperties(tab1Model, TAB_GROUP_ID, TabGroupColorId.BLUE);
         verify(mMediator).updateTabGroupTitle(TAB_GROUP_ID);
     }
 
@@ -772,7 +777,7 @@ public class NestedLayoutDelegateUnitTest {
 
         assertEquals(2, mModelList.size());
 
-        mDelegate.didRemoveTabGroup(TAB1_ID, TAB_GROUP_ID, DidRemoveTabGroupReason.CLOSE);
+        mDelegate.didRemoveTabGroup(TAB_GROUP_ID, DidRemoveTabGroupReason.CLOSE);
 
         assertEquals(1, mModelList.size());
         assertEquals(TabProperties.UiType.TAB, mModelList.get(0).type);
@@ -785,7 +790,7 @@ public class NestedLayoutDelegateUnitTest {
 
         assertEquals(1, mModelList.size());
 
-        mDelegate.didRemoveTabGroup(TAB1_ID, TAB_GROUP_ID, DidRemoveTabGroupReason.CLOSE);
+        mDelegate.didRemoveTabGroup(TAB_GROUP_ID, DidRemoveTabGroupReason.CLOSE);
 
         assertEquals(1, mModelList.size());
         assertEquals(TAB1_ID, mModelList.get(0).model.get(TabProperties.TAB_ID));

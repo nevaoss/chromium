@@ -33,8 +33,10 @@ ReadAloudPlaybackController::AudioResources::~AudioResources() = default;
 
 ReadAloudPlaybackController::ReadAloudPlaybackController(
     mojo::PendingReceiver<read_aloud::mojom::ReadAloudPlaybackControllerFactory>
-        receiver)
-    : receiver_(this, std::move(receiver)) {
+        receiver,
+    AudioRendererFactory audio_renderer_factory)
+    : receiver_(this, std::move(receiver)),
+      audio_renderer_factory_(std::move(audio_renderer_factory)) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
   receiver_.set_disconnect_handler(
       base::BindOnce(&ReadAloudPlaybackController::OnReceiverDisconnected,
@@ -116,7 +118,9 @@ void ReadAloudPlaybackController::InitializeAudio(
 
   AudioResources resources;
   resources.audio_segment_queue = std::make_unique<AudioSegmentQueue>();
-  resources.audio_renderer = std::make_unique<ReadAloudAudioRenderer>();
+  resources.audio_renderer = audio_renderer_factory_
+                                 ? audio_renderer_factory_.Run()
+                                 : std::make_unique<ReadAloudAudioRenderer>();
 
   if (!resources.audio_renderer->Initialize(
           params, resources.audio_segment_queue.get())) {
@@ -148,6 +152,12 @@ void ReadAloudPlaybackController::InitializeAudio(
   decoder_sequencer_.SetAudioQueue(audio_resources_->audio_segment_queue.get());
 
   MaybePlayOnReady();
+}
+
+void ReadAloudPlaybackController::SetPlaybackMode(
+    read_aloud::mojom::PlaybackMode mode) {
+  DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
+  playback_mode_ = mode;
 }
 
 void ReadAloudPlaybackController::SetTextContent(
@@ -337,12 +347,20 @@ void ReadAloudPlaybackController::SetPlaybackRate(float rate) {
 
 void ReadAloudPlaybackController::FlushBuffers() {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
-  if (audio_resources_ && audio_resources_->audio_segment_queue) {
+  prefetch_manager_.ClearCache();
+  decoder_sequencer_.Reset();
+
+  if (!audio_resources_) {
+    return;
+  }
+
+  if (audio_resources_->audio_segment_queue) {
     audio_resources_->audio_segment_queue->Clear(
         base::PassKey<ReadAloudPlaybackController>());
   }
-  prefetch_manager_.ClearCache();
-  decoder_sequencer_.Reset();
+  if (audio_resources_->audio_renderer) {
+    audio_resources_->audio_renderer->Flush();
+  }
 }
 
 void ReadAloudPlaybackController::OnReceiverDisconnected() {
@@ -371,6 +389,7 @@ void ReadAloudPlaybackController::ResetSession() {
   audio_resources_.reset();
   segments_.clear();
   playback_rate_ = 1.0f;
+  playback_mode_ = read_aloud::mojom::PlaybackMode::kClassic;
   play_on_ready_ = false;
   play_on_ready_timer_.Stop();
   session_weak_factory_.InvalidateWeakPtrs();
@@ -386,8 +405,9 @@ void ReadAloudPlaybackController::OnPrefetchSynthesisRequest(
                                           {});
     return;
   }
+  // TODO(b/559821661): Thread speaker through PrefetchManager in follow-up CL.
   client_->RequestSpeechSynthesis(
-      std::u16string(text), sequence_id,
+      std::u16string(text), read_aloud::mojom::Speaker::kSpeaker1, sequence_id,
       base::BindOnce(&ReadAloudPlaybackController::OnSpeechSynthesisResponse,
                      session_weak_factory_.GetWeakPtr(), sequence_id,
                      chunk_index));

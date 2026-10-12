@@ -2751,8 +2751,8 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="LoadingPredictor.SetLcppNavigationHint.Status"
-    enum="LcppHintStatus" expires_after="2025-04-30">
+<histogram name="LoadingPredictor.SetLCPPNavigationHint.Status"
+    enum="LcppHintStatus" expires_after="2027-02-07">
   <owner>yyanagisawa@chromium.org</owner>
   <owner>chrome-loading@google.com</owner>
   <summary>
@@ -3043,6 +3043,50 @@ chromium-metrics-reviews@google.com.
     attempt in BufferPool::AllocateBlock. Subsampled to 1/1000.
 
     Version 2 expands bucket coverage up to 1 MB.
+  </summary>
+</histogram>
+
+<histogram name="Mojo.Ipcz.ParcelAllocateBlockFailureSize"
+    enum="IpczBlockAllocationSize" expires_after="2027-02-01">
+  <owner>nafisabedin@google.com</owner>
+  <owner>pasko@chromium.org</owner>
+  <summary>
+    Logs the block size category of a failed shared memory allocation attempt
+    for an ipcz parcel.
+
+    Logged on every failed parcel shared memory allocation attempt in
+    NodeLinkMemory::AllocateFragment. Subsampled to 1/1000. Excludes best-effort
+    allocations (e.g. from the unused BeginPut/EndPut two-phase API).
+  </summary>
+</histogram>
+
+<histogram name="Mojo.Ipcz.ParcelAllocateBlockResult" enum="BooleanSuccess"
+    expires_after="2027-02-01">
+  <owner>nafisabedin@google.com</owner>
+  <owner>pasko@chromium.org</owner>
+  <summary>
+    Logs whether an ipcz parcel successfully allocated a shared memory fragment.
+    Logged on every parcel shared memory allocation attempt in
+    NodeLinkMemory::AllocateFragment. Subsampled to 1/1000. Excludes best-effort
+    allocations (e.g. from the unused BeginPut/EndPut two-phase API).
+  </summary>
+</histogram>
+
+<histogram name="Mojo.Ipcz.ParcelAllocateBlockSuccessSize"
+    enum="IpczBlockAllocationSize" expires_after="2027-02-01">
+  <owner>nafisabedin@google.com</owner>
+  <owner>pasko@chromium.org</owner>
+  <summary>
+    Logs the block size category requested by an ipcz parcel which successfully
+    allocated a shared memory fragment.
+
+    Note that this is the size asked for, not the size handed out. A request is
+    served by the smallest existing allocator that is at least as large, so the
+    shared memory actually consumed may exceed the bucket recorded here.
+
+    Logged on every successful parcel shared memory allocation attempt in
+    NodeLinkMemory::AllocateFragment. Subsampled to 1/1000. Excludes best-effort
+    allocations (e.g. from the unused BeginPut/EndPut two-phase API).
   </summary>
 </histogram>
 
@@ -3459,17 +3503,6 @@ chromium-metrics-reviews@google.com.
   <owner>mark@chromium.org</owner>
   <summary>
     MacOS X NSExceptions seen, common exceptions binned, others in overflow.
-  </summary>
-</histogram>
-
-<histogram name="Ozone.Drm.GbmDeviceCount" units="devices"
-    expires_after="2027-07-02">
-  <owner>hitawala@chromium.org</owner>
-  <owner>chrome-gpu-metric-alerts@chromium.org</owner>
-  <summary>
-    The number of successfully created and cached Gbm Device contexts in
-    GbmSurfaceFactory. Recorded once during the first format texturing support
-    check (lazy initialization).
   </summary>
 </histogram>
 
@@ -6097,18 +6130,6 @@ regressions. -->
     Recorded upon web fonts load. Counts the number of times web font is loaded
     from cache (disk cache or memory cache), fetched over network, or served
     from data URL.
-  </summary>
-</histogram>
-
-<histogram name="WebFont.Clients.RenderBlockingFonts.ExpiredFonts"
-    units="fonts" expires_after="2024-04-28">
-  <owner>xiaochengh@chromium.org</owner>
-  <owner>chrome-rendering-core@google.com</owner>
-  <summary>
-    Recorded when render-blocking web font preloads have reached the maximum
-    blocking time, and therefore, turned into non-render-blocking. Records the
-    number of web font preloads that are still pending. This is a diagnostic
-    metric for feature RenderBlockingFonts.
   </summary>
 </histogram>
 

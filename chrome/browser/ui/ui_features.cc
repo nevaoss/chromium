@@ -380,6 +380,7 @@ BASE_FEATURE_PARAM(bool,
 
 BASE_FEATURE(kWebUIAvatarButton, base::FEATURE_DISABLED_BY_DEFAULT);
 BASE_FEATURE(kWebUIMediaButton, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kWebUIGlicButton, base::FEATURE_DISABLED_BY_DEFAULT);
 
 bool IsWebUIReloadButtonEnabled() {
   return !IsProcessOverheadExperimentActive() &&
@@ -451,6 +452,13 @@ bool IsWebUIMediaButtonEnabled() {
           base::FeatureList::IsEnabled(features::kWebUIMediaButton));
 }
 
+bool IsWebUIGlicButtonEnabled() {
+  return !IsProcessOverheadExperimentActive() &&
+         base::FeatureList::IsEnabled(features::kInitialWebUI) &&
+         (base::FeatureList::IsEnabled(features::kWebUIToolbar) ||
+          base::FeatureList::IsEnabled(features::kWebUIGlicButton));
+}
+
 bool IsWebUIPerformanceInterventionButtonEnabled() {
   return !IsProcessOverheadExperimentActive() &&
          base::FeatureList::IsEnabled(features::kInitialWebUI) &&
@@ -479,7 +487,8 @@ bool IsWebUIToolbarEnabled() {
           IsWebUIExtensionsContainerEnabled() || IsWebUIAvatarButtonEnabled() ||
           IsWebUIMediaButtonEnabled() || IsWebUIAppMenuButtonEnabled() ||
           IsWebUIBatterySaverButtonEnabled() ||
-          IsWebUIPerformanceInterventionButtonEnabled());
+          IsWebUIPerformanceInterventionButtonEnabled() ||
+          IsWebUIGlicButtonEnabled());
 }
 
 bool IsWebUIToolbarFullyEnabled() {
@@ -494,7 +503,8 @@ bool IsWebUIToolbarFullyEnabled() {
           IsWebUIExtensionsContainerEnabled() && IsWebUIAvatarButtonEnabled() &&
           IsWebUIMediaButtonEnabled() && IsWebUIAppMenuButtonEnabled() &&
           IsWebUIBatterySaverButtonEnabled() &&
-          IsWebUIPerformanceInterventionButtonEnabled());
+          IsWebUIPerformanceInterventionButtonEnabled() &&
+          IsWebUIGlicButtonEnabled());
 }
 #endif  // !BUILDFLAG(IS_ANDROID)
 
@@ -523,11 +533,6 @@ BASE_FEATURE_PARAM(std::string,
                    &kAiOverlayDialog,
                    "mock_json_path",
                    "");
-BASE_FEATURE_PARAM(bool,
-                   kAiOverlayDialogUsesActor,
-                   &kAiOverlayDialog,
-                   "ai_overlay_dialog_uses_actor",
-                   false);
 BASE_FEATURE_PARAM(bool,
                    kAiOverlayDialogUseMes,
                    &kAiOverlayDialog,

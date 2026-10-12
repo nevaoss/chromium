@@ -12,6 +12,7 @@
 #include "base/memory/post_delayed_memory_reduction_task.h"
 #include "base/memory/raw_ptr.h"
 #include "base/memory_coordinator/memory_consumer.h"
+#include "base/memory_coordinator/memory_limit.h"
 #include "base/memory_coordinator/utils.h"
 #include "base/scoped_observation.h"
 #include "base/time/time.h"
@@ -68,9 +69,10 @@ class GlicWebContentsWarmingPool : public ProfileObserver {
   // stopping all timers.
   void Shutdown();
 
-  // Handles memory pressure notifications by clearing or statefully disabling
-  // pre-warming, depending on feature configuration.
-  void OnMemoryPressure(int memory_limit);
+  // Handles memory limit updates and memory release requests by clearing or
+  // suspending pre-warming while the system remains under critical pressure.
+  void OnUpdateMemoryLimit(base::MemoryLimit memory_limit);
+  void OnReleaseMemory();
 
   // LINT.IfChange(GlicWarmingPoolStatus)
   enum class WarmingPoolStatus {
@@ -169,7 +171,7 @@ class GlicWebContentsWarmingPool : public ProfileObserver {
   std::unique_ptr<Metrics> metrics_;
   // Number of times the standby container has been reloaded after expiring.
   int reload_count_ = 0;
-  int memory_limit_ = base::MemoryConsumer::kDefaultMemoryLimit;
+  base::MemoryLimit memory_limit_ = base::MemoryLimit::Default();
   base::TimeDelta expiry_delay_ = base::Hours(23);
 
   // Tracks whether warming is enabled for this session and the pool should

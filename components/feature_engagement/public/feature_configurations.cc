@@ -1663,146 +1663,6 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
     return config;
   }
 
-  if (kIPHVideoTutorialNTPChromeIntroFeature.name == feature->name) {
-    // A config that allows the chrome intro video tutorial card to show up
-    // until explicitly interacted upon.
-    FeatureConfig config;
-    config.valid = true;
-    config.availability = Comparator(GREATER_THAN_OR_EQUAL, 0);
-    config.session_rate = kNoRestrictions;
-    config.trigger =
-        EventConfig("tutorial_chrome_intro_iph_trigger", kAlwaysTrue, 90, 90);
-    config.used = EventConfig("chrome_intro", kAlwaysTrue, 90, 90);
-    config.event_configs.insert(
-        EventConfig("video_tutorial_iph_clicked_chrome_intro",
-                    Comparator(EQUAL, 0), 90, 90));
-    config.event_configs.insert(
-        EventConfig("video_tutorial_iph_dismissed_chrome_intro",
-                    Comparator(EQUAL, 0), 90, 90));
-
-    SessionRateImpact session_rate_impact;
-    session_rate_impact.type = SessionRateImpact::Type::NONE;
-    config.session_rate_impact = session_rate_impact;
-    config.blocked_by.type = BlockedBy::Type::NONE;
-    config.blocking.type = Blocking::Type::NONE;
-
-    return config;
-  }
-
-  if (kIPHVideoTutorialNTPDownloadFeature.name == feature->name) {
-    // A config that allows the download video tutorial card to show up
-    // until explicitly interacted upon.
-    FeatureConfig config;
-    config.valid = true;
-    config.availability = Comparator(GREATER_THAN_OR_EQUAL, 0);
-    config.session_rate = kNoRestrictions;
-    config.trigger =
-        EventConfig("tutorial_download_iph_trigger", kAlwaysTrue, 90, 90);
-    config.used = EventConfig("download", kAlwaysTrue, 90, 90);
-    config.event_configs.insert(EventConfig(
-        "video_tutorial_iph_clicked_download", Comparator(EQUAL, 0), 90, 90));
-    config.event_configs.insert(EventConfig(
-        "video_tutorial_iph_dismissed_download", Comparator(EQUAL, 0), 90, 90));
-
-    SessionRateImpact session_rate_impact;
-    session_rate_impact.type = SessionRateImpact::Type::NONE;
-    config.session_rate_impact = session_rate_impact;
-    config.blocked_by.type = BlockedBy::Type::NONE;
-    config.blocking.type = Blocking::Type::NONE;
-
-    return config;
-  }
-
-  if (kIPHVideoTutorialNTPSearchFeature.name == feature->name) {
-    // A config that allows the search video tutorial card to show up
-    // until explicitly interacted upon.
-    FeatureConfig config;
-    config.valid = true;
-    config.availability = Comparator(GREATER_THAN_OR_EQUAL, 0);
-    config.session_rate = kNoRestrictions;
-    config.trigger =
-        EventConfig("tutorial_search_iph_trigger", kAlwaysTrue, 90, 90);
-    config.used = EventConfig("search", kAlwaysTrue, 90, 90);
-    config.event_configs.insert(EventConfig("video_tutorial_iph_clicked_search",
-                                            Comparator(EQUAL, 0), 90, 90));
-    config.event_configs.insert(EventConfig(
-        "video_tutorial_iph_dismissed_search", Comparator(EQUAL, 0), 90, 90));
-
-    SessionRateImpact session_rate_impact;
-    session_rate_impact.type = SessionRateImpact::Type::NONE;
-    config.session_rate_impact = session_rate_impact;
-    config.blocked_by.type = BlockedBy::Type::NONE;
-    config.blocking.type = Blocking::Type::NONE;
-
-    return config;
-  }
-
-  if (kIPHVideoTutorialNTPVoiceSearchFeature.name == feature->name) {
-    // A config that allows the voice search video tutorial card to show up
-    // until explicitly interacted upon.
-    FeatureConfig config;
-    config.valid = true;
-    config.availability = Comparator(GREATER_THAN_OR_EQUAL, 0);
-    config.session_rate = kNoRestrictions;
-    config.trigger =
-        EventConfig("tutorial_voice_search_iph_trigger", kAlwaysTrue, 90, 90);
-    config.used = EventConfig("voice_search", kAlwaysTrue, 90, 90);
-    config.event_configs.insert(
-        EventConfig("video_tutorial_iph_clicked_voice_search",
-                    Comparator(EQUAL, 0), 90, 90));
-    config.event_configs.insert(
-        EventConfig("video_tutorial_iph_dismissed_voice_search",
-                    Comparator(EQUAL, 0), 90, 90));
-
-    SessionRateImpact session_rate_impact;
-    session_rate_impact.type = SessionRateImpact::Type::NONE;
-    config.session_rate_impact = session_rate_impact;
-    config.blocked_by.type = BlockedBy::Type::NONE;
-    config.blocking.type = Blocking::Type::NONE;
-
-    return config;
-  }
-
-  if (kIPHVideoTutorialNTPSummaryFeature.name == feature->name) {
-    // A config that allows the summary video tutorial card to show up
-    // until explicitly interacted upon.
-    FeatureConfig config;
-    config.valid = true;
-    config.availability = Comparator(GREATER_THAN_OR_EQUAL, 0);
-    config.session_rate = kNoRestrictions;
-    config.trigger =
-        EventConfig("tutorial_summary_iph_trigger", kAlwaysTrue, 90, 90);
-    config.used = EventConfig("summary", kAlwaysTrue, 90, 90);
-    config.event_configs.insert(EventConfig(
-        "video_tutorial_iph_dismissed_summary", Comparator(EQUAL, 0), 90, 90));
-
-    SessionRateImpact session_rate_impact;
-    session_rate_impact.type = SessionRateImpact::Type::NONE;
-    config.session_rate_impact = session_rate_impact;
-    config.blocked_by.type = BlockedBy::Type::NONE;
-    config.blocking.type = Blocking::Type::NONE;
-
-    return config;
-  }
-
-  if (kIPHVideoTutorialTryNowFeature.name == feature->name) {
-    // A config that allows the video tutorials Try Now button click to result
-    // in an IPH bubble. This IPH is shown always regardless of session rate or
-    // any other conditions.
-    FeatureConfig config;
-    config.valid = true;
-    config.availability = Comparator(GREATER_THAN_OR_EQUAL, 0);
-    config.session_rate = kNoRestrictions;
-    config.trigger =
-        EventConfig("tutorial_try_now_iph_trigger", kAlwaysTrue, 90, 90);
-    config.used = EventConfig("try_now", kAlwaysTrue, 90, 90);
-
-    SessionRateImpact session_rate_impact;
-    session_rate_impact.type = SessionRateImpact::Type::NONE;
-    config.session_rate_impact = session_rate_impact;
-
-    return config;
-  }
 
   if (kIPHSharedHighlightingReceiverFeature.name == feature->name) {
     // A config that allows the shared highlighting message IPH to be shown
@@ -1980,18 +1840,13 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
     config.valid = true;
     config.availability = Comparator(GREATER_THAN, 1);
     config.session_rate = Comparator(LESS_THAN, 1);
-    config.used =
-        EventConfig("desktop_site_settings_page_opened", kAlwaysTrue, 360, 360);
+    config.used = EventConfig("desktop_site_default_on_primary_action",
+                              Comparator(EQUAL, 0), 360, 360);
     config.trigger = EventConfig("request_desktop_site_default_on_iph_trigger",
                                  Comparator(LESS_THAN_OR_EQUAL, 1), 360, 360);
     config.event_configs.insert(
         EventConfig("request_desktop_site_default_on_iph_trigger",
                     Comparator(EQUAL, 0), 7, 360));
-    config.event_configs.insert(
-        EventConfig("desktop_site_default_on_primary_action",
-                    Comparator(EQUAL, 0), 360, 360));
-    config.event_configs.insert(
-        EventConfig("desktop_site_default_on_gesture", kAlwaysTrue, 360, 360));
     return config;
   }
 
@@ -2253,7 +2108,7 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
     config.trigger =
         EventConfig("tab_switcher_xr_iph_trigger", Comparator(LESS_THAN, 3),
                     kMaxStoragePeriod, kMaxStoragePeriod);
-    config.used = EventConfig("tab_switcher_xr_iph_used", kAlwaysTrue,
+    config.used = EventConfig("tab_switcher_xr_iph_used", Comparator(EQUAL, 0),
                               kMaxStoragePeriod, kMaxStoragePeriod);
     config.snooze_params.snooze_interval = 1;
     config.snooze_params.max_limit = 3;
@@ -2270,7 +2125,7 @@ std::optional<FeatureConfig> GetClientSideFeatureConfig(
     config.trigger =
         EventConfig("tab_tearing_xr_iph_trigger", Comparator(LESS_THAN, 3),
                     kMaxStoragePeriod, kMaxStoragePeriod);
-    config.used = EventConfig("tab_tearing_xr_iph_used", kAlwaysTrue,
+    config.used = EventConfig("tab_tearing_xr_iph_used", Comparator(EQUAL, 0),
                               kMaxStoragePeriod, kMaxStoragePeriod);
     config.snooze_params.snooze_interval = 1;
     config.snooze_params.max_limit = 3;

@@ -60,7 +60,7 @@
 #import "components/omnibox/common/omnibox_feature_configs.h"
 #import "components/omnibox/common/omnibox_features.h"
 #import "components/optimization_guide/core/optimization_guide_features.h"
-#import "components/optimization_guide/core/optimization_guide_switches.h"
+#import "components/optimization_guide/core/optimization_guide_logger.h"
 #import "components/password_manager/core/browser/features/password_features.h"
 #import "components/password_manager/core/common/password_manager_features.h"
 #import "components/password_manager/ios/features.h"
@@ -1209,21 +1209,28 @@ const FeatureEntry::FeatureVariation kNewTabPageUICleanupVariations[] = {
      kNewTabPageUICleanupFakeboxBackgroundAndShadow, nullptr},
 };
 
-constexpr FeatureEntry::FeatureParam kAimButtonRefactorOneMerchandisingChip[] =
-    {{ntp_tiles::kAimButtonRefactorArmParam, "1"}};
-constexpr FeatureEntry::FeatureParam kAimButtonRefactorTwoMerchandisingChips[] =
-    {{ntp_tiles::kAimButtonRefactorArmParam, "2"}};
+constexpr FeatureEntry::FeatureParam
+    kAimButtonRefactorFocusComposeboxAimQuickAction[] = {
+        {ntp_tiles::kAimButtonRefactorArmParam, "1"}};
+constexpr FeatureEntry::FeatureParam
+    kAimButtonRefactorImageGenerationQuickAction[] = {
+        {ntp_tiles::kAimButtonRefactorArmParam, "2"}};
+constexpr FeatureEntry::FeatureParam
+    kAimButtonRefactorAttachImageQuickAction[] = {
+        {ntp_tiles::kAimButtonRefactorArmParam, "3"}};
 constexpr FeatureEntry::FeatureParam kAimButtonRefactorAimAsModule[] = {
-    {ntp_tiles::kAimButtonRefactorArmParam, "3"}};
-constexpr FeatureEntry::FeatureParam kAimButtonRefactorAimAsMvt[] = {
     {ntp_tiles::kAimButtonRefactorArmParam, "4"}};
-constexpr FeatureEntry::FeatureParam kAimButtonRefactorNoChips[] = {
+constexpr FeatureEntry::FeatureParam kAimButtonRefactorAimAsMvt[] = {
     {ntp_tiles::kAimButtonRefactorArmParam, "5"}};
+constexpr FeatureEntry::FeatureParam kAimButtonRefactorNoChips[] = {
+    {ntp_tiles::kAimButtonRefactorArmParam, "6"}};
 
 constexpr FeatureEntry::FeatureVariation kAimButtonRefactorVariations[] = {
-    {" - One Merchandising Chip", kAimButtonRefactorOneMerchandisingChip,
-     nullptr},
-    {" - Two Merchandising Chips", kAimButtonRefactorTwoMerchandisingChips,
+    {" - Focus Composebox AIM Quick Action",
+     kAimButtonRefactorFocusComposeboxAimQuickAction, nullptr},
+    {" - Image Generation Quick Action",
+     kAimButtonRefactorImageGenerationQuickAction, nullptr},
+    {" - Attach Image Quick Action", kAimButtonRefactorAttachImageQuickAction,
      nullptr},
     {" - AIM as Module", kAimButtonRefactorAimAsModule, nullptr},
     {" - AIM as MVT", kAimButtonRefactorAimAsMvt, nullptr},
@@ -1274,6 +1281,11 @@ const FeatureEntry::FeatureParam
         {contextual_cueing::
              kGeminiContextualSuggestionsCuesTitleAndUrlOnlyParam,
          "false"}};
+const FeatureEntry::FeatureParam
+    kGeminiContextualSuggestionsCuesIgnoreThresholds[] = {
+        {contextual_cueing::
+             kGeminiContextualSuggestionsCuesIgnoreThresholdsParam,
+         "true"}};
 
 const FeatureEntry::FeatureVariation
     kGeminiContextualSuggestionsCuesVariations[] = {
@@ -1284,8 +1296,9 @@ const FeatureEntry::FeatureVariation
         {"with on-device classifier (CPU - APC and Passages)",
          kGeminiContextualSuggestionsCuesWithOnDeviceClassifierApcCPU, nullptr},
         {"with on-device classifier (GPU / ANE - APC and Passages)",
-         kGeminiContextualSuggestionsCuesWithOnDeviceClassifierApcGPU,
-         nullptr}};
+         kGeminiContextualSuggestionsCuesWithOnDeviceClassifierApcGPU, nullptr},
+        {"with thresholds ignored",
+         kGeminiContextualSuggestionsCuesIgnoreThresholds, nullptr}};
 
 constexpr FeatureEntry::FeatureParam kClientSideDetectionWithoutEnforcement[] =
     {{"CsdEnforceIos", "false"}};
@@ -1493,7 +1506,7 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kOptimizationGuideDebugLogsName,
      flag_descriptions::kOptimizationGuideDebugLogsDescription,
      flags_ui::kOsIos,
-     SINGLE_VALUE_TYPE(optimization_guide::switches::kDebugLoggingEnabled)},
+     SINGLE_VALUE_TYPE(optimization_guide::kDebugLoggingEnabledSwitch)},
     {"intents-on-measurements", flag_descriptions::kMeasurementsName,
      flag_descriptions::kMeasurementsDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(web::features::kEnableMeasurements)},
@@ -1908,11 +1921,6 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kReaderModeSupportNewFontsName,
      flag_descriptions::kReaderModeSupportNewFontsDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(dom_distiller::kReaderModeSupportNewFonts)},
-    {"reader-mode-content-settings-for-links",
-     flag_descriptions::kReaderModeContentSettingsForLinksName,
-     flag_descriptions::kReaderModeContentSettingsForLinksDescription,
-     flags_ui::kOsIos,
-     FEATURE_VALUE_TYPE(kEnableContentSettingsOptionForLinks)},
     {"best-of-app-fre", flag_descriptions::kBestOfAppFREName,
      flag_descriptions::kBestOfAppFREDescription, flags_ui::kOsIos,
      FEATURE_WITH_PARAMS_VALUE_TYPE(kBestOfAppFRE,
@@ -2458,10 +2466,6 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kAimUrlNavigationFetchEnabledDescription,
      flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(omnibox::kAimUrlNavigationFetchEnabled)},
-    {"reader-mode-ignore-badge-threshold",
-     flag_descriptions::kReaderModeIgnoreBadgeThresholdName,
-     flag_descriptions::kReaderModeIgnoreBadgeThresholdDescription,
-     flags_ui::kOsIos, FEATURE_VALUE_TYPE(kReaderModeIgnoreBadgeThreshold)},
     {"page-tools-feature-unavailability",
      flag_descriptions::kPageToolsFeatureUnavailabilityName,
      flag_descriptions::kPageToolsFeatureUnavailabilityDescription,
@@ -2679,6 +2683,10 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
     {"next-old-design", flag_descriptions::kNextOldDesignName,
      flag_descriptions::kNextOldDesignDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(kNextOldDesign)},
+    {"new-tab-page-ephemeral-theme",
+     flag_descriptions::kNewTabPageEphemeralThemeName,
+     flag_descriptions::kNewTabPageEphemeralThemeDescription, flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(kNewTabPageEphemeralTheme)},
     {"new-tab-page-ui-cleanup", flag_descriptions::kNewTabPageUICleanupName,
      flag_descriptions::kNewTabPageUICleanupDescription, flags_ui::kOsIos,
      FEATURE_WITH_PARAMS_VALUE_TYPE(kNewTabPageUICleanup,
@@ -2721,10 +2729,10 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      FEATURE_WITH_PARAMS_VALUE_TYPE(ntp_tiles::kAimButtonRefactor,
                                     kAimButtonRefactorVariations,
                                     "AimButtonRefactor")},
-    {"prevent-cobrowse-on-aim-srp-tap",
-     flag_descriptions::kPreventCobrowseOnAimSrpTapName,
-     flag_descriptions::kPreventCobrowseOnAimSrpTapDescription,
-     flags_ui::kOsIos, FEATURE_VALUE_TYPE(kPreventCobrowseOnAimSrpTap)},
+    {"enable-cobrowse-on-aim-srp-tap",
+     flag_descriptions::kEnableCobrowseOnAimSrpTapName,
+     flag_descriptions::kEnableCobrowseOnAimSrpTapDescription, flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(kEnableCobrowseOnAimSrpTap)},
     {"ios-signal-sharing", flag_descriptions::kIOSSignalSharingName,
      flag_descriptions::kIOSSignalSharingDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(enterprise_reporting::kIOSSignalSharingEnabled)},
@@ -2800,6 +2808,17 @@ constexpr auto kFeatureEntries = std::to_array<flags_ui::FeatureEntry>({
      flag_descriptions::kUniversalOptOutExtensionName,
      flag_descriptions::kUniversalOptOutExtensionDescription, flags_ui::kOsIos,
      FEATURE_VALUE_TYPE(universal_optout::features::kUniversalOptOutExtension)},
+    {"import-export-flags", flag_descriptions::kImportExportFlagsName,
+     flag_descriptions::kImportExportFlagsDescription, flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(kImportExportFlags)},
+    {"aim-cobrowse-web-selection-search",
+     flag_descriptions::kAimCobrowseWebSelectionSearchName,
+     flag_descriptions::kAimCobrowseWebSelectionSearchDescription,
+     flags_ui::kOsIos, FEATURE_VALUE_TYPE(kAimCobrowseWebSelectionSearch)},
+    {"gemini-host-experiment-ids",
+     flag_descriptions::kGeminiHostExperimentIDsName,
+     flag_descriptions::kGeminiHostExperimentIDsDescription, flags_ui::kOsIos,
+     FEATURE_VALUE_TYPE(kGeminiHostExperimentIDs)},
 });
 
 bool SkipConditionalFeatureEntry(const flags_ui::FeatureEntry& entry) {

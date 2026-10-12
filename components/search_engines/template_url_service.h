@@ -144,22 +144,6 @@ class TemplateURLService final : public WebDataServiceConsumer,
     std::u16string search_terms;
   };
 
-#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_IOS)
-  struct PrepopulatedAndRecentlyVisitedTemplateUrls {
-    PrepopulatedAndRecentlyVisitedTemplateUrls();
-    ~PrepopulatedAndRecentlyVisitedTemplateUrls();
-    PrepopulatedAndRecentlyVisitedTemplateUrls(
-        const PrepopulatedAndRecentlyVisitedTemplateUrls& other);
-
-    // All prepopulated engines retrieved from `GetPrepopulatedEngines()`. This
-    // always includes the current default search engine.
-    TemplateURLVector prepopulated_urls;
-    // A limited number of recently visited URLs, defined and sorted through
-    // `SortAndFilterRecentlyVisitedURLs()`
-    TemplateURLVector recently_visited_urls;
-  };
-#endif  // BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_IOS)
-
   // Values for an enumerated histogram used to track keyword conflicts between
   // search engines created by policy and search engines the user manually
   // edited. Keep in sync with `SearchPolicyConflictType` in
@@ -442,20 +426,6 @@ class TemplateURLService final : public WebDataServiceConsumer,
   std::unique_ptr<search_engines::SearchEngineSettingsDataProvider>
   CreateSearchEngineSettingsDataProvider();
 
-#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_IOS)
-  // Returns an object containing two lists. The first one contains engines that
-  // are prepopulated (in the order defined by the prepopulate_data_resolver,
-  // created by policy or the default search engine. The second one contains
-  // recently visited engines.
-  // In contrast to
-  // `SearchEngineSettingsDataProvider::GetCategorizedTemplateURLs()`, this only
-  // creates these two lists and omits any extension or starter pack shortcuts.
-  // Additionally, as there is no way to activate/deactivate engines on
-  // platforms that use this function, there is no notion of "active" here.
-  PrepopulatedAndRecentlyVisitedTemplateUrls
-  GetPrepopulatedAndRecentlyVisitedTemplateURLs();
-#endif  // BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_IOS)
-
   // Returns the Origin of the user's default search engine. If a default search
   // engine is set and its URL is valid, the Origin of that URL is returned.
   // Otherwise, an opaque Origin with a unique nonce is returned.
@@ -474,6 +444,11 @@ class TemplateURLService final : public WebDataServiceConsumer,
   // provider is not available.
   GURL GenerateSearchURLForDefaultSearchProvider(
       const std::u16string& search_terms) const;
+
+  // Expands the `url_template` by replacing search terms placeholders with
+  // `search_terms`. Returns an invalid GURL if `url_template` is invalid.
+  GURL ExpandUrlTemplate(const std::string& url_template,
+                         const std::u16string& search_terms) const;
 
   // Returns search metadata if |url| is a valid Search URL.
   std::optional<SearchMetadata> ExtractSearchMetadata(const GURL& url) const;

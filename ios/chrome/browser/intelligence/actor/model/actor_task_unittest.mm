@@ -7,39 +7,42 @@
 #import "base/functional/callback_helpers.h"
 #import "base/strings/string_number_conversions.h"
 #import "base/test/scoped_feature_list.h"
+#import "base/test/test_future.h"
 #import "base/values.h"
 #import "components/actor/core/aggregated_journal.h"
+#import "components/actor/core/safety_list_manager.h"
 #import "components/origin_gating/core/origin_gating_checker.h"
 #import "components/origin_gating/core/origin_gating_configuration.h"
-#import "ios/chrome/app/background_mode_buildflags.h"
+#import "components/origin_gating/core/origin_gating_registration.h"
+#import "ios/chrome/app/background_task/background_continued_processing_task_configuration.h"
+#import "ios/chrome/app/background_task/background_continued_processing_task_context.h"
+#import "ios/chrome/app/background_task/features.h"
 #import "ios/chrome/browser/intelligence/actor/model/actor_browser_agent.h"
 #import "ios/chrome/browser/intelligence/actor/model/actor_tab_helper.h"
+#import "ios/chrome/browser/intelligence/actor/model/actor_web_state_policy_decider.h"
+#import "ios/chrome/browser/intelligence/actor/public/actor_control_state.h"
+#import "ios/chrome/browser/intelligence/actor/public/actor_task_intervention_delegate.h"
 #import "ios/chrome/browser/intelligence/actor/public/actor_task_updates_observer.h"
 #import "ios/chrome/browser/intelligence/actor/public/actor_types.h"
 #import "ios/chrome/browser/intelligence/actor/tools/model/actor_tool_factory.h"
 #import "ios/chrome/browser/intelligence/actor/tools/model/actor_tool_request.h"
 #import "ios/chrome/browser/intelligence/actor/util/actor_test_utils.h"
 #import "ios/chrome/browser/intelligence/features/features.h"
+#import "ios/chrome/browser/origin_gating/model/origin_gating_service_factory.h"
 #import "ios/chrome/browser/shared/model/browser/browser_list.h"
 #import "ios/chrome/browser/shared/model/browser/browser_list_factory.h"
 #import "ios/chrome/browser/shared/model/browser/test/test_browser.h"
 #import "ios/chrome/browser/shared/model/profile/test/test_profile_ios.h"
 #import "ios/chrome/browser/tab_insertion/model/tab_insertion_browser_agent.h"
+#import "ios/web/public/js_messaging/web_frame.h"
 #import "ios/web/public/navigation/navigation_manager.h"
+#import "ios/web/public/test/fakes/fake_web_frame.h"
+#import "ios/web/public/test/fakes/fake_web_frames_manager.h"
 #import "ios/web/public/test/fakes/fake_web_state.h"
 #import "ios/web/public/test/web_task_environment.h"
 #import "testing/gtest/include/gtest/gtest.h"
 #import "testing/gtest_mac.h"
 #import "testing/platform_test.h"
-
-#if BUILDFLAG(IOS_BACKGROUND_CONTINUED_PROCESSING_ENABLED)
-#import "ios/chrome/app/background_task/background_continued_processing_task_configuration.h"  // nogncheck
-#import "ios/chrome/app/background_task/background_continued_processing_task_context.h"  // nogncheck
-#import "ios/chrome/app/background_task/features.h"  // nogncheck
-#import "ios/web/public/js_messaging/web_frame.h"
-#import "ios/web/public/test/fakes/fake_web_frame.h"
-#import "ios/web/public/test/fakes/fake_web_frames_manager.h"
-#endif
 
 @interface FakeActorTaskUpdatesObserver : NSObject <ActorTaskUpdatesObserver>
 
@@ -63,6 +66,8 @@
 
 @property(nonatomic, assign) BOOL didStopCalled;
 @property(nonatomic, assign) actor::ActorTaskState finalState;
+
+@property(nonatomic, assign) BOOL didResolveConfirmationCalled;
 
 @end
 
@@ -110,6 +115,42 @@
   _finalState = finalState;
 }
 
+- (void)actorTaskDidResolveConfirmationInterruptWithID:
+    (actor::ActorTaskId)taskID {
+  _didResolveConfirmationCalled = YES;
+}
+
+@end
+
+@interface ActorTaskFakeInterventionDelegate
+    : NSObject <ActorTaskInterventionDelegate>
+
+@property(nonatomic, assign) BOOL requestConfirmationCalled;
+@property(nonatomic, assign) BOOL respondsSynchronously;
+@property(nonatomic, copy) NSString* confirmationTitle;
+@property(nonatomic, copy) NSString* confirmationSubtitle;
+@property(nonatomic, copy) NSString* confirmationButtonText;
+@property(nonatomic, copy) void (^confirmationCompletionHandler)(void);
+
+@end
+
+@implementation ActorTaskFakeInterventionDelegate
+
+- (void)actorTask:(actor::ActorTaskId)taskID
+    requestUserInterventionWithTitle:(NSString*)title
+                            subtitle:(NSString*)subtitle
+                          buttonText:(NSString*)buttonText
+                   completionHandler:(void (^)(void))completionHandler {
+  _requestConfirmationCalled = YES;
+  _confirmationTitle = [title copy];
+  _confirmationSubtitle = [subtitle copy];
+  _confirmationButtonText = [buttonText copy];
+  _confirmationCompletionHandler = [completionHandler copy];
+  if (_respondsSynchronously && completionHandler) {
+    completionHandler();
+  }
+}
+
 @end
 
 @interface BarebonesActorTaskUpdatesObserver
@@ -148,7 +189,6 @@
 
 @end
 
-#if BUILDFLAG(IOS_BACKGROUND_CONTINUED_PROCESSING_ENABLED)
 @interface TestBackgroundContinuedProcessingTaskContext
     : BackgroundContinuedProcessingTaskContext
 @property(nonatomic, assign) NSInteger subtitleUpdateCount;
@@ -162,7 +202,6 @@
 }
 
 @end
-#endif  // BUILDFLAG(IOS_BACKGROUND_CONTINUED_PROCESSING_ENABLED)
 
 namespace actor {
 
@@ -195,69 +234,40 @@ class TestKeepAliveWebState : public web::FakeWebState {
   bool keep_render_process_alive_ = false;
 };
 
-class TestOriginGatingCheckerDelegate
-    : public origin_gating::OriginGatingChecker::Delegate {
- public:
-  explicit TestOriginGatingCheckerDelegate(bool is_allowed = true)
-      : is_allowed_(is_allowed) {}
-
-  void DoesOriginRequireUserConfirmation(
-      origin_gating::GatingDecisionContext* context,
-      origin_gating::GateableEvent event,
-      const GURL& source,
-      const GURL& destination,
-      DoesOriginRequireUserConfirmationCallback callback) const override {
-    std::move(callback).Run(false);
-  }
-
-  void EvaluateEnterprisePolicy(
-      const GURL& destination,
-      EvaluateEnterprisePolicyCallback callback) const override {
-    std::move(callback).Run({.decision = origin_gating::Decision::kNoDecision});
-  }
-
-  void OnNoVerdict(
-      origin_gating::GatingDecisionContext* context,
-      origin_gating::GateableEvent event,
-      const GURL& source,
-      const GURL& destination,
-      bool requires_user_confirmation,
-      base::OnceCallback<void(NoVerdictResult)> callback) override {
-    std::move(callback).Run({.is_allowed = is_allowed_,
-                             .did_prompt_user = false,
-                             .bypass_cache = true});
-  }
-
-  base::WeakPtr<TestOriginGatingCheckerDelegate> GetWeakPtr() {
-    return weak_ptr_factory_.GetWeakPtr();
-  }
-
- private:
-  bool is_allowed_ = true;
-  base::WeakPtrFactory<TestOriginGatingCheckerDelegate> weak_ptr_factory_{this};
-};
+// Returns a test background task context with a no-op expiration handler.
+TestBackgroundContinuedProcessingTaskContext* CreateBackgroundTaskContext() {
+  BackgroundContinuedProcessingTaskConfiguration* config =
+      [[BackgroundContinuedProcessingTaskConfiguration alloc]
+              initWithTitle:@"Test Task"
+                   subtitle:@""
+          expirationHandler:^{
+          }];
+  return [[TestBackgroundContinuedProcessingTaskContext alloc]
+      initWithTaskIdentifier:@"org.chromium.test.task"
+               configuration:config
+               finishHandler:nil];
+}
 
 }  // namespace
 
 class ActorTaskTest : public PlatformTest {
  protected:
-  TestOriginGatingCheckerDelegate gating_delegate_{/*is_allowed=*/true};
-  std::unique_ptr<origin_gating::OriginGatingChecker> gating_checker_;
   void SetUp() override {
     PlatformTest::SetUp();
+    // Backgrounding is disabled by default so that general tests do not start
+    // the repeating heartbeat timer. `ActorTaskBackgroundingTest` re-enables
+    // it.
+    scoped_feature_list_.InitWithFeatures(
+        {kPageActionMenu, kActorTools, kGeminiClientMigration, kGeminiActor},
+        {kEnableBackgroundContinuedProcessing});
     profile_ = TestProfileIOS::Builder().Build();
     journal_ = std::make_unique<AggregatedJournal>();
     tool_factory_ = std::make_unique<ActorToolFactory>(profile_.get());
-    gating_checker_ = std::make_unique<origin_gating::OriginGatingChecker>(
-        gating_delegate_.GetWeakPtr(),
-        origin_gating::OriginGatingConfiguration(
-            /*predicates=*/{}, /*use_site_keyed_cache=*/false));
 
     task_ = std::make_unique<ActorTask>(
         ActorTaskId(1), "Test Task",
         /*allow_incognito_web_states=*/false, journal_.get(),
-        tool_factory_.get(), BrowserListFactory::GetForProfile(profile_.get()),
-        gating_checker_.get());
+        tool_factory_.get(), BrowserListFactory::GetForProfile(profile_.get()));
   }
 
   void TearDown() override {
@@ -286,7 +296,6 @@ class ActorTaskTest : public PlatformTest {
 
   void TriggerOnPageLoadedTimeout() { task_->OnPageLoadedTimeout(); }
 
-#if BUILDFLAG(IOS_BACKGROUND_CONTINUED_PROCESSING_ENABLED)
   web::FakeWebFrame* AttachMainWebFrame(web::FakeWebState* web_state) {
     auto frames_manager = std::make_unique<web::FakeWebFramesManager>();
     auto main_frame = web::FakeWebFrame::CreateMainWebFrame();
@@ -305,8 +314,8 @@ class ActorTaskTest : public PlatformTest {
   bool IsHeartbeatTimerRunning() const {
     return task_->heartbeat_timer_.IsRunning();
   }
-#endif  // BUILDFLAG(IOS_BACKGROUND_CONTINUED_PROCESSING_ENABLED)
 
+  base::test::ScopedFeatureList scoped_feature_list_;
   web::WebTaskEnvironment task_environment_{
       base::test::TaskEnvironment::TimeSource::MOCK_TIME};
   std::unique_ptr<TestProfileIOS> profile_;
@@ -762,44 +771,47 @@ TEST_F(ActorTaskTest, StateTransitionsToReflectingBeforeTimeoutCallback) {
   EXPECT_EQ(ActorTaskState::kReflecting, state_in_callback);
 }
 
-// Test that calling `Stop()` on the task stops actuation on controlled
-// `WebState`s.
-TEST_F(ActorTaskTest, StopSetsActuatingStateToFalse) {
+// Test that stopping a task resets the tab helper's control state to
+// kInactive.
+TEST_F(ActorTaskTest, StopSetsControlStateToInactive) {
   auto web_state = std::make_unique<web::FakeWebState>();
   ActorTabHelper::CreateForWebState(web_state.get());
   ActorTabHelper* helper = ActorTabHelper::FromWebState(web_state.get());
   ASSERT_NE(helper, nullptr);
-  EXPECT_FALSE(helper->IsActuating());
+  EXPECT_EQ(helper->GetControlState(), actor::ActorControlState::kInactive);
 
   SetTaskState(ActorTaskState::kActing);
   AddControlledWebState(web_state->GetWeakPtr());
-  EXPECT_TRUE(helper->IsActuating());
+  EXPECT_EQ(helper->GetControlState(),
+            actor::ActorControlState::kActorControlled);
 
   task_->Stop(ActorTaskStoppedReason::kTaskComplete);
-  EXPECT_FALSE(helper->IsActuating());
+  EXPECT_EQ(helper->GetControlState(), actor::ActorControlState::kInactive);
 }
 
-// Test that adding a controlled `WebState` with `ActorTabHelper` sets actuating
-// to true, and destroying the task stops actuation without removing the helper.
-TEST_F(ActorTaskTest, ActorTabHelperActuatingState) {
+// Test that adding a controlled `WebState` with `ActorTabHelper` sets control
+// state to kActorControlled, and destroying the task resets the state without
+// removing the helper.
+TEST_F(ActorTaskTest, ActorTabHelperControlState) {
   auto web_state = std::make_unique<web::FakeWebState>();
   ActorTabHelper::CreateForWebState(web_state.get());
   ActorTabHelper* helper = ActorTabHelper::FromWebState(web_state.get());
   ASSERT_NE(helper, nullptr);
-  EXPECT_FALSE(helper->IsActuating());
+  EXPECT_EQ(helper->GetControlState(), actor::ActorControlState::kInactive);
 
   SetTaskState(ActorTaskState::kActing);
   AddControlledWebState(web_state->GetWeakPtr());
-  EXPECT_TRUE(helper->IsActuating());
+  EXPECT_EQ(helper->GetControlState(),
+            actor::ActorControlState::kActorControlled);
 
   task_.reset();
   EXPECT_NE(ActorTabHelper::FromWebState(web_state.get()), nullptr);
-  EXPECT_FALSE(helper->IsActuating());
+  EXPECT_EQ(helper->GetControlState(), actor::ActorControlState::kInactive);
 }
 
-// Test that destroying a controlled `WebState` stops actuation on its
+// Test that destroying a controlled `WebState` resets the control state on its
 // `ActorTabHelper` before removal.
-TEST_F(ActorTaskTest, WebStateDestroyedResetsActorTabHelperActuatingState) {
+TEST_F(ActorTaskTest, WebStateDestroyedResetsActorTabHelperControlState) {
   auto web_state = std::make_unique<web::FakeWebState>();
   ActorTabHelper::CreateForWebState(web_state.get());
   ActorTabHelper* helper = ActorTabHelper::FromWebState(web_state.get());
@@ -807,10 +819,11 @@ TEST_F(ActorTaskTest, WebStateDestroyedResetsActorTabHelperActuatingState) {
 
   SetTaskState(ActorTaskState::kActing);
   AddControlledWebState(web_state->GetWeakPtr());
-  EXPECT_TRUE(helper->IsActuating());
+  EXPECT_EQ(helper->GetControlState(),
+            actor::ActorControlState::kActorControlled);
 
   task_->WebStateDestroyed(web_state.get());
-  EXPECT_FALSE(helper->IsActuating());
+  EXPECT_EQ(helper->GetControlState(), actor::ActorControlState::kInactive);
 }
 
 TEST_F(ActorTaskTest, WindowIdAndInsertWebState) {
@@ -943,7 +956,7 @@ TEST_F(ActorTaskTest, SetKeepRenderProcessAliveOnControlledWebStates) {
   auto scoped_task = std::make_unique<ActorTask>(
       ActorTaskId(42), "Scoped Task",
       /*allow_incognito_web_states=*/false, journal_.get(), tool_factory_.get(),
-      BrowserListFactory::GetForProfile(profile_.get()), gating_checker_.get());
+      BrowserListFactory::GetForProfile(profile_.get()));
   scoped_task->AddControlledWebState(web_state3.get());
   EXPECT_TRUE(web_state3->keep_render_process_alive());
 
@@ -951,28 +964,33 @@ TEST_F(ActorTaskTest, SetKeepRenderProcessAliveOnControlledWebStates) {
   EXPECT_FALSE(web_state3->keep_render_process_alive());
 }
 
-#if BUILDFLAG(IOS_BACKGROUND_CONTINUED_PROCESSING_ENABLED)
+// Fixture for tests exercising the backgrounding code paths. Re-enables the
+// `kEnableBackgroundContinuedProcessing` killswitch that `ActorTaskTest`
+// disables. Tests are skipped when backgrounding is unavailable in the current
+// configuration (i.e. the `ios_enable_background_continued_processing` GN arg
+// is false, or the OS is older than iOS 26), since
+// `IsGeminiActorBackgroundingEnabled()` is then always false regardless of the
+// runtime feature state.
+class ActorTaskBackgroundingTest : public ActorTaskTest {
+ protected:
+  void SetUp() override {
+    ActorTaskTest::SetUp();
+    backgrounding_feature_list_.InitAndEnableFeature(
+        kEnableBackgroundContinuedProcessing);
+    if (!IsGeminiActorBackgroundingEnabled()) {
+      GTEST_SKIP() << "Backgrounding is unavailable in this configuration.";
+    }
+  }
+
+  base::test::ScopedFeatureList backgrounding_feature_list_;
+};
 
 // Test that executing a tool increments background task progress, and
 // completing the task completes progress.
-TEST_F(ActorTaskTest, BackgroundTaskProgressIncrementsOnToolExecution) {
-  base::test::ScopedFeatureList scoped_feature_list;
-  scoped_feature_list.InitWithFeatures(
-      {kPageActionMenu, kActorTools, kGeminiActor,
-       kEnableBackgroundContinuedProcessing},
-      {});
-
-  BackgroundContinuedProcessingTaskConfiguration* config =
-      [[BackgroundContinuedProcessingTaskConfiguration alloc]
-              initWithTitle:@"Test Task"
-                   subtitle:@""
-          expirationHandler:^{
-          }];
-  BackgroundContinuedProcessingTaskContext* context =
-      [[BackgroundContinuedProcessingTaskContext alloc]
-          initWithTaskIdentifier:@"org.chromium.test.task"
-                   configuration:config
-                   finishHandler:nil];
+TEST_F(ActorTaskBackgroundingTest,
+       BackgroundTaskProgressIncrementsOnToolExecution) {
+  TestBackgroundContinuedProcessingTaskContext* context =
+      CreateBackgroundTaskContext();
 
   task_->SetBackgroundTaskContext(context);
 
@@ -990,24 +1008,9 @@ TEST_F(ActorTaskTest, BackgroundTaskProgressIncrementsOnToolExecution) {
 
 // Test that stopping an ActorTask with `kStoppedByUser` finalizes the
 // background task with success (100% progress).
-TEST_F(ActorTaskTest, BackgroundTaskStoppedByUser) {
-  base::test::ScopedFeatureList scoped_feature_list;
-  scoped_feature_list.InitWithFeatures(
-      {kPageActionMenu, kActorTools, kGeminiActor,
-       kEnableBackgroundContinuedProcessing},
-      {});
-
-  BackgroundContinuedProcessingTaskConfiguration* config =
-      [[BackgroundContinuedProcessingTaskConfiguration alloc]
-              initWithTitle:@"Test Task"
-                   subtitle:@""
-          expirationHandler:^{
-          }];
-  BackgroundContinuedProcessingTaskContext* context =
-      [[BackgroundContinuedProcessingTaskContext alloc]
-          initWithTaskIdentifier:@"org.chromium.test.task"
-                   configuration:config
-                   finishHandler:nil];
+TEST_F(ActorTaskBackgroundingTest, BackgroundTaskStoppedByUser) {
+  TestBackgroundContinuedProcessingTaskContext* context =
+      CreateBackgroundTaskContext();
 
   task_->SetBackgroundTaskContext(context);
   TriggerOnWillExecuteTool(ToolType::kClick,
@@ -1022,24 +1025,9 @@ TEST_F(ActorTaskTest, BackgroundTaskStoppedByUser) {
 
 // Test that `Act()` updates the background task context subtitle and ignores
 // empty or duplicate task updates.
-TEST_F(ActorTaskTest, BackgroundTaskSubtitleUpdate) {
-  base::test::ScopedFeatureList scoped_feature_list;
-  scoped_feature_list.InitWithFeatures(
-      {kPageActionMenu, kActorTools, kGeminiActor,
-       kEnableBackgroundContinuedProcessing},
-      {});
-
-  BackgroundContinuedProcessingTaskConfiguration* config =
-      [[BackgroundContinuedProcessingTaskConfiguration alloc]
-              initWithTitle:@"Test Task"
-                   subtitle:@""
-          expirationHandler:^{
-          }];
+TEST_F(ActorTaskBackgroundingTest, BackgroundTaskSubtitleUpdate) {
   TestBackgroundContinuedProcessingTaskContext* context =
-      [[TestBackgroundContinuedProcessingTaskContext alloc]
-          initWithTaskIdentifier:@"org.chromium.test.task"
-                   configuration:config
-                   finishHandler:nil];
+      CreateBackgroundTaskContext();
 
   task_->SetBackgroundTaskContext(context);
   EXPECT_EQ(context.subtitleUpdateCount, 0);
@@ -1077,55 +1065,57 @@ TEST_F(ActorTaskTest, BackgroundTaskSubtitleUpdate) {
 
 // Test that registering a background task context via
 // `SetBackgroundTaskContext()` applies the latest cached non-empty task update.
-TEST_F(ActorTaskTest, BackgroundTaskContextUsesCachedTaskUpdateOnRegistration) {
-  base::test::ScopedFeatureList scoped_feature_list;
-  scoped_feature_list.InitWithFeatures(
-      {kPageActionMenu, kActorTools, kGeminiActor,
-       kEnableBackgroundContinuedProcessing},
-      {});
-
+TEST_F(ActorTaskBackgroundingTest,
+       BackgroundTaskContextUsesCachedTaskUpdateOnRegistration) {
   // Execute an action with a non-empty update, followed by one with an empty
   // update before the background task context is attached.
   task_->Act({}, "Foo", base::DoNothing());
   task_->Act({}, "", base::DoNothing());
 
-  BackgroundContinuedProcessingTaskConfiguration* config =
-      [[BackgroundContinuedProcessingTaskConfiguration alloc]
-              initWithTitle:@"Test Task"
-                   subtitle:@""
-          expirationHandler:^{
-          }];
   TestBackgroundContinuedProcessingTaskContext* context =
-      [[TestBackgroundContinuedProcessingTaskContext alloc]
-          initWithTaskIdentifier:@"org.chromium.test.task"
-                   configuration:config
-                   finishHandler:nil];
+      CreateBackgroundTaskContext();
 
   task_->SetBackgroundTaskContext(context);
   EXPECT_NSEQ(context.subtitle, @"Foo");
   EXPECT_EQ(context.subtitleUpdateCount, 1);
 }
 
+// Test that when backgrounding is disabled (via the killswitch that
+// `ActorTaskTest` disables, or because it is unavailable in the current
+// configuration), the task ignores background contexts and never starts the
+// heartbeat timer.
+TEST_F(ActorTaskTest, BackgroundingInertWhenDisabled) {
+  ASSERT_FALSE(IsGeminiActorBackgroundingEnabled());
+
+  TestBackgroundContinuedProcessingTaskContext* context =
+      CreateBackgroundTaskContext();
+  task_->SetBackgroundTaskContext(context);
+
+  auto web_state = std::make_unique<web::FakeWebState>();
+  web::FakeWebFrame* main_frame = AttachMainWebFrame(web_state.get());
+  ASSERT_TRUE(main_frame);
+  AddControlledWebState(web_state->GetWeakPtr());
+
+  task_->Act({}, "Should not update subtitle", base::DoNothing());
+  TriggerOnWillExecuteTool(ToolType::kClick,
+                           web::WebStateID::FromSerializedValue(1));
+  EXPECT_FALSE(IsHeartbeatTimerRunning());
+
+  task_environment_.FastForwardBy(base::Milliseconds(800));
+  EXPECT_EQ(main_frame->GetJavaScriptCallHistory().size(), 0u);
+  EXPECT_EQ(context.subtitleUpdateCount, 0);
+  EXPECT_DOUBLE_EQ(context.fractionCompleted, 0.0);
+
+  // The context was never attached, so stopping the task must not finalize it.
+  task_->Stop(ActorTaskStoppedReason::kTaskComplete);
+  EXPECT_FALSE(context.completed);
+}
+
 // Test that stopping an ActorTask with `kShutdown` finalizes the background
 // task with failure (does not reach 100%).
-TEST_F(ActorTaskTest, BackgroundTaskStoppedWithShutdown) {
-  base::test::ScopedFeatureList scoped_feature_list;
-  scoped_feature_list.InitWithFeatures(
-      {kPageActionMenu, kActorTools, kGeminiActor,
-       kEnableBackgroundContinuedProcessing},
-      {});
-
-  BackgroundContinuedProcessingTaskConfiguration* config =
-      [[BackgroundContinuedProcessingTaskConfiguration alloc]
-              initWithTitle:@"Test Task"
-                   subtitle:@""
-          expirationHandler:^{
-          }];
-  BackgroundContinuedProcessingTaskContext* context =
-      [[BackgroundContinuedProcessingTaskContext alloc]
-          initWithTaskIdentifier:@"org.chromium.test.task"
-                   configuration:config
-                   finishHandler:nil];
+TEST_F(ActorTaskBackgroundingTest, BackgroundTaskStoppedWithShutdown) {
+  TestBackgroundContinuedProcessingTaskContext* context =
+      CreateBackgroundTaskContext();
 
   task_->SetBackgroundTaskContext(context);
 
@@ -1136,35 +1126,20 @@ TEST_F(ActorTaskTest, BackgroundTaskStoppedWithShutdown) {
   task_->Stop(ActorTaskStoppedReason::kShutdown);
 
   EXPECT_TRUE(observer.didStopCalled);
-  EXPECT_EQ(observer.finalState, ActorTaskState::kInit);
+  EXPECT_EQ(observer.finalState, ActorTaskState::kCancelled);
   EXPECT_TRUE(context.completed);
   EXPECT_DOUBLE_EQ(context.fractionCompleted, 0.0);
 }
 
 // Test that destroying `ActorTask` finalizes the background task.
-TEST_F(ActorTaskTest, DestructorFinalizesBackgroundTask) {
-  base::test::ScopedFeatureList scoped_feature_list;
-  scoped_feature_list.InitWithFeatures(
-      {kPageActionMenu, kActorTools, kGeminiActor,
-       kEnableBackgroundContinuedProcessing},
-      {});
-
-  BackgroundContinuedProcessingTaskConfiguration* config =
-      [[BackgroundContinuedProcessingTaskConfiguration alloc]
-              initWithTitle:@"Test Task"
-                   subtitle:@""
-          expirationHandler:^{
-          }];
-  BackgroundContinuedProcessingTaskContext* context =
-      [[BackgroundContinuedProcessingTaskContext alloc]
-          initWithTaskIdentifier:@"org.chromium.test.task"
-                   configuration:config
-                   finishHandler:nil];
+TEST_F(ActorTaskBackgroundingTest, DestructorFinalizesBackgroundTask) {
+  TestBackgroundContinuedProcessingTaskContext* context =
+      CreateBackgroundTaskContext();
 
   auto task = std::make_unique<ActorTask>(
       ActorTaskId(1), "Test Task",
       /*allow_incognito_web_states=*/false, journal_.get(), tool_factory_.get(),
-      BrowserListFactory::GetForProfile(profile_.get()), gating_checker_.get());
+      BrowserListFactory::GetForProfile(profile_.get()));
   task->SetBackgroundTaskContext(context);
   EXPECT_FALSE(context.completed);
 
@@ -1176,13 +1151,7 @@ TEST_F(ActorTaskTest, DestructorFinalizesBackgroundTask) {
 // Test that adding a controlled WebState starts the 400ms heartbeat timer
 // immediately to keep WebContent processes alive, and sends periodic JavaScript
 // pings.
-TEST_F(ActorTaskTest, HeartbeatStartsOnActAndPings) {
-  base::test::ScopedFeatureList scoped_feature_list;
-  scoped_feature_list.InitWithFeatures(
-      {kPageActionMenu, kActorTools, kGeminiActor,
-       kEnableBackgroundContinuedProcessing},
-      {});
-
+TEST_F(ActorTaskBackgroundingTest, HeartbeatStartsOnActAndPings) {
   auto web_state = std::make_unique<web::FakeWebState>();
   web::FakeWebFrame* main_frame = AttachMainWebFrame(web_state.get());
   ASSERT_TRUE(main_frame);
@@ -1211,12 +1180,11 @@ TEST_F(ActorTaskTest, HeartbeatStartsOnActAndPings) {
 }
 
 // Test that `Act()` starts the heartbeat timer if it was not already running.
-TEST_F(ActorTaskTest, HeartbeatStartsOnAct) {
+TEST_F(ActorTaskBackgroundingTest, HeartbeatStartsOnAct) {
   base::test::ScopedFeatureList scoped_feature_list;
-  // Initialize without backgrounding to verify timer does not start initially.
-  scoped_feature_list.InitWithFeatures(
-      {kPageActionMenu, kActorTools, kGeminiActor},
-      {kEnableBackgroundContinuedProcessing});
+  // Temporarily disable backgrounding to verify timer does not start initially.
+  scoped_feature_list.InitAndDisableFeature(
+      kEnableBackgroundContinuedProcessing);
 
   auto web_state = std::make_unique<web::FakeWebState>();
   web::FakeWebFrame* main_frame = AttachMainWebFrame(web_state.get());
@@ -1226,12 +1194,9 @@ TEST_F(ActorTaskTest, HeartbeatStartsOnAct) {
   task_->Act({}, "Act without backgrounding", base::DoNothing());
   EXPECT_FALSE(IsHeartbeatTimerRunning());
 
-  // Now enable background continued processing.
+  // Resetting the local override restores the fixture-level features, which
+  // enable background continued processing.
   scoped_feature_list.Reset();
-  scoped_feature_list.InitWithFeatures(
-      {kPageActionMenu, kActorTools, kGeminiActor,
-       kEnableBackgroundContinuedProcessing},
-      {});
 
   // Calling `Act()` should start the timer.
   task_->Act({}, "Starting actuation", base::DoNothing());
@@ -1243,13 +1208,7 @@ TEST_F(ActorTaskTest, HeartbeatStartsOnAct) {
 }
 
 // Test that the heartbeat timer continues running while the task is reflecting.
-TEST_F(ActorTaskTest, HeartbeatPersistsDuringReflecting) {
-  base::test::ScopedFeatureList scoped_feature_list;
-  scoped_feature_list.InitWithFeatures(
-      {kPageActionMenu, kActorTools, kGeminiActor,
-       kEnableBackgroundContinuedProcessing},
-      {});
-
+TEST_F(ActorTaskBackgroundingTest, HeartbeatPersistsDuringReflecting) {
   auto web_state = std::make_unique<web::FakeWebState>();
   web::FakeWebFrame* main_frame = AttachMainWebFrame(web_state.get());
   ASSERT_TRUE(main_frame);
@@ -1270,13 +1229,7 @@ TEST_F(ActorTaskTest, HeartbeatPersistsDuringReflecting) {
 }
 
 // Test that stopping the task stops the heartbeat timer.
-TEST_F(ActorTaskTest, HeartbeatStopsOnTaskStop) {
-  base::test::ScopedFeatureList scoped_feature_list;
-  scoped_feature_list.InitWithFeatures(
-      {kPageActionMenu, kActorTools, kGeminiActor,
-       kEnableBackgroundContinuedProcessing},
-      {});
-
+TEST_F(ActorTaskBackgroundingTest, HeartbeatStopsOnTaskStop) {
   auto web_state = std::make_unique<web::FakeWebState>();
   web::FakeWebFrame* main_frame = AttachMainWebFrame(web_state.get());
   ASSERT_TRUE(main_frame);
@@ -1299,13 +1252,7 @@ TEST_F(ActorTaskTest, HeartbeatStopsOnTaskStop) {
 
 // Test that pausing the task does not stop the heartbeat timer so that
 // WebContent processes remain alive throughout the entire duration of the task.
-TEST_F(ActorTaskTest, HeartbeatPersistsDuringPause) {
-  base::test::ScopedFeatureList scoped_feature_list;
-  scoped_feature_list.InitWithFeatures(
-      {kPageActionMenu, kActorTools, kGeminiActor,
-       kEnableBackgroundContinuedProcessing},
-      {});
-
+TEST_F(ActorTaskBackgroundingTest, HeartbeatPersistsDuringPause) {
   auto web_state = std::make_unique<web::FakeWebState>();
   web::FakeWebFrame* main_frame = AttachMainWebFrame(web_state.get());
   ASSERT_TRUE(main_frame);
@@ -1334,13 +1281,7 @@ TEST_F(ActorTaskTest, HeartbeatPersistsDuringPause) {
 
 // Test that interrupting the task to wait on user input does not stop the
 // heartbeat timer.
-TEST_F(ActorTaskTest, HeartbeatPersistsDuringWaitingOnUser) {
-  base::test::ScopedFeatureList scoped_feature_list;
-  scoped_feature_list.InitWithFeatures(
-      {kPageActionMenu, kActorTools, kGeminiActor,
-       kEnableBackgroundContinuedProcessing},
-      {});
-
+TEST_F(ActorTaskBackgroundingTest, HeartbeatPersistsDuringWaitingOnUser) {
   auto web_state = std::make_unique<web::FakeWebState>();
   web::FakeWebFrame* main_frame = AttachMainWebFrame(web_state.get());
   ASSERT_TRUE(main_frame);
@@ -1349,9 +1290,13 @@ TEST_F(ActorTaskTest, HeartbeatPersistsDuringWaitingOnUser) {
   task_->Act({}, "Act", base::DoNothing());
   EXPECT_TRUE(IsHeartbeatTimerRunning());
 
+  ActorTaskFakeInterventionDelegate* delegate =
+      [[ActorTaskFakeInterventionDelegate alloc] init];
+  task_->SetInterventionDelegate(delegate);
+
   // Interrupt the task to wait on user input.
-  task_->Interrupt(/*retain_user_control=*/true,
-                   ActorTaskInterruptReason::kWaitingUserConfirmation);
+  task_->Interrupt(ActorTaskInterruptReason::kWaitingUserConfirmation,
+                   "Please confirm");
   EXPECT_EQ(task_->GetState(), ActorTaskState::kWaitingOnUser);
   EXPECT_TRUE(IsHeartbeatTimerRunning());
 
@@ -1367,13 +1312,7 @@ TEST_F(ActorTaskTest, HeartbeatPersistsDuringWaitingOnUser) {
 }
 
 // Test that destroying all controlled WebStates stops the heartbeat timer.
-TEST_F(ActorTaskTest, HeartbeatStopsWhenAllWebStatesDestroyed) {
-  base::test::ScopedFeatureList scoped_feature_list;
-  scoped_feature_list.InitWithFeatures(
-      {kPageActionMenu, kActorTools, kGeminiActor,
-       kEnableBackgroundContinuedProcessing},
-      {});
-
+TEST_F(ActorTaskBackgroundingTest, HeartbeatStopsWhenAllWebStatesDestroyed) {
   auto web_state = std::make_unique<web::FakeWebState>();
   web::FakeWebFrame* main_frame = AttachMainWebFrame(web_state.get());
   ASSERT_TRUE(main_frame);
@@ -1406,13 +1345,7 @@ TEST_F(ActorTaskTest, HeartbeatStopsWhenAllWebStatesDestroyed) {
 
 // Test that heartbeat pings are fire-and-forget, logging failures to the
 // journal without stopping the task.
-TEST_F(ActorTaskTest, HeartbeatPingsFireAndForget) {
-  base::test::ScopedFeatureList scoped_feature_list;
-  scoped_feature_list.InitWithFeatures(
-      {kPageActionMenu, kActorTools, kGeminiActor,
-       kEnableBackgroundContinuedProcessing},
-      {});
-
+TEST_F(ActorTaskBackgroundingTest, HeartbeatPingsFireAndForget) {
   auto web_state = std::make_unique<web::FakeWebState>();
   // Note: Do not add a result for executed JS so FakeWebFrame generates an
   // error.
@@ -1447,13 +1380,7 @@ TEST_F(ActorTaskTest, HeartbeatPingsFireAndForget) {
 
 // Test that successful heartbeat pings do not log failure events to the
 // journal.
-TEST_F(ActorTaskTest, HeartbeatSuccessfulPingDoesNotLogFailure) {
-  base::test::ScopedFeatureList scoped_feature_list;
-  scoped_feature_list.InitWithFeatures(
-      {kPageActionMenu, kActorTools, kGeminiActor,
-       kEnableBackgroundContinuedProcessing},
-      {});
-
+TEST_F(ActorTaskBackgroundingTest, HeartbeatSuccessfulPingDoesNotLogFailure) {
   auto web_state = std::make_unique<web::FakeWebState>();
   web::FakeWebFrame* main_frame = AttachMainWebFrame(web_state.get());
   ASSERT_TRUE(main_frame);
@@ -1474,17 +1401,11 @@ TEST_F(ActorTaskTest, HeartbeatSuccessfulPingDoesNotLogFailure) {
 }
 
 // Test that the heartbeat timer is not started when the backgrounding feature
-// parameter is disabled.
-TEST_F(ActorTaskTest, HeartbeatDisabledWhenFeatureParamDisabled) {
+// parameter is disabled, even though the killswitch is enabled.
+TEST_F(ActorTaskBackgroundingTest, HeartbeatDisabledWhenFeatureParamDisabled) {
   base::test::ScopedFeatureList scoped_feature_list;
-  scoped_feature_list.InitWithFeaturesAndParameters(
-      {{kGeminiActor, {{kGeminiActorBackgroundingParam, "false"}}},
-       {kPageActionMenu, {}},
-       {kActorTools, {}},
-       {kEnableBackgroundContinuedProcessing, {}}},
-      {});
-
-  EXPECT_FALSE(IsGeminiActorBackgroundingEnabled());
+  scoped_feature_list.InitAndEnableFeatureWithParameters(
+      kGeminiActor, {{kGeminiActorBackgroundingParam, "false"}});
 
   auto web_state = std::make_unique<web::FakeWebState>();
   AttachMainWebFrame(web_state.get());
@@ -1502,13 +1423,7 @@ TEST_F(ActorTaskTest, HeartbeatDisabledWhenFeatureParamDisabled) {
 // Test that heartbeat pings are dispatched to multiple controlled WebStates,
 // and that destroying one WebState keeps the timer active for the remaining
 // valid WebStates until all are destroyed.
-TEST_F(ActorTaskTest, HeartbeatMultipleWebStates) {
-  base::test::ScopedFeatureList scoped_feature_list;
-  scoped_feature_list.InitWithFeatures(
-      {kPageActionMenu, kActorTools, kGeminiActor,
-       kEnableBackgroundContinuedProcessing},
-      {});
-
+TEST_F(ActorTaskBackgroundingTest, HeartbeatMultipleWebStates) {
   auto web_state1 = std::make_unique<web::FakeWebState>();
   web::FakeWebFrame* main_frame1 = AttachMainWebFrame(web_state1.get());
   ASSERT_TRUE(main_frame1);
@@ -1548,6 +1463,305 @@ TEST_F(ActorTaskTest, HeartbeatMultipleWebStates) {
   EXPECT_FALSE(IsHeartbeatTimerRunning());
 }
 
-#endif  // BUILDFLAG(IOS_BACKGROUND_CONTINUED_PROCESSING_ENABLED)
+// Tests that AddControlledWebState attaches the policy decider to the WebState
+// and cancels navigation requests when the policy decider blocks the request.
+TEST_F(ActorTaskTest,
+       Test_AddControlledWebState_Attaches_PolicyDecider_And_Cancels) {
+  base::test::ScopedFeatureList scoped_feature_list;
+  scoped_feature_list.InitAndEnableFeature(kActorOriginGating);
+
+  const std::string mock_rules_json = R"json({
+    "navigation_blocked": [
+      {"from": "https://malicious.com", "to": "https://malicious.com"}
+    ]
+  })json";
+  actor::ParseSafetyListsForTesting(actor::SafetyListManager::GetInstance(),
+                                    mock_rules_json);
+
+  auto task = std::make_unique<ActorTask>(
+      ActorTaskId(1), "Test Task",
+      /*allow_incognito_web_states=*/false, journal_.get(), tool_factory_.get(),
+      BrowserListFactory::GetForProfile(profile_.get()));
+
+  auto web_state = std::make_unique<web::FakeWebState>();
+  task->AddControlledWebState(web_state.get());
+
+  NSURLRequest* request = [NSURLRequest
+      requestWithURL:[NSURL URLWithString:@"https://malicious.com"]];
+  const web::WebStatePolicyDecider::RequestInfo request_info(
+      ui::PageTransition::PAGE_TRANSITION_LINK,
+      /*target_frame_is_main=*/true,
+      /*target_frame_is_cross_origin=*/false,
+      /*target_window_is_cross_origin=*/false,
+      /*is_user_initiated=*/false,
+      /*user_tapped_recently=*/false);
+
+  base::test::TestFuture<web::WebStatePolicyDecider::PolicyDecision>
+      decision_future;
+  web_state->ShouldAllowRequest(request, request_info,
+                                decision_future.GetCallback());
+
+  EXPECT_TRUE(decision_future.Get().ShouldCancelNavigation());
+
+  actor::ParseSafetyListsForTesting(actor::SafetyListManager::GetInstance(),
+                                    "{}");
+}
+
+// Test that interrupting an acting task for user confirmation transitions
+// state to kWaitingOnUser, invokes the intervention delegate, and preserves
+// kActorControlled control state on controlled WebStates.
+TEST_F(ActorTaskTest, InterruptWaitingUserConfirmationFromActing) {
+  auto web_state = std::make_unique<web::FakeWebState>();
+  ActorTabHelper::CreateForWebState(web_state.get());
+  ActorTabHelper* helper = ActorTabHelper::FromWebState(web_state.get());
+  ASSERT_NE(helper, nullptr);
+
+  AddControlledWebState(web_state->GetWeakPtr());
+  SetTaskState(ActorTaskState::kActing);
+  EXPECT_EQ(helper->GetControlState(),
+            actor::ActorControlState::kActorControlled);
+
+  ActorTaskFakeInterventionDelegate* delegate =
+      [[ActorTaskFakeInterventionDelegate alloc] init];
+  task_->SetInterventionDelegate(delegate);
+
+  task_->Interrupt(ActorTaskInterruptReason::kWaitingUserConfirmation,
+                   "Please confirm purchase");
+
+  EXPECT_EQ(task_->GetState(), ActorTaskState::kWaitingOnUser);
+  EXPECT_EQ(helper->GetControlState(),
+            actor::ActorControlState::kActorControlled);
+  EXPECT_TRUE(delegate.requestConfirmationCalled);
+  EXPECT_NSEQ(delegate.confirmationTitle, @"Please confirm purchase");
+  EXPECT_EQ(delegate.confirmationSubtitle, nil);
+  EXPECT_NSEQ(delegate.confirmationButtonText, @"Continue");
+}
+
+// Test that interrupting a reflecting task for user confirmation transitions
+// state to kWaitingOnUser and invokes the intervention delegate.
+TEST_F(ActorTaskTest, InterruptWaitingUserConfirmationFromReflecting) {
+  SetTaskState(ActorTaskState::kReflecting);
+
+  ActorTaskFakeInterventionDelegate* delegate =
+      [[ActorTaskFakeInterventionDelegate alloc] init];
+  task_->SetInterventionDelegate(delegate);
+
+  task_->Interrupt(ActorTaskInterruptReason::kWaitingUserConfirmation,
+                   "Please review details");
+
+  EXPECT_EQ(task_->GetState(), ActorTaskState::kWaitingOnUser);
+  EXPECT_TRUE(delegate.requestConfirmationCalled);
+  EXPECT_NSEQ(delegate.confirmationTitle, @"Please review details");
+  EXPECT_EQ(delegate.confirmationSubtitle, nil);
+}
+
+// Test that interrupting a task in non-executing states is ignored.
+TEST_F(ActorTaskTest, InterruptIgnoredWhenNotExecuting) {
+  ActorTaskFakeInterventionDelegate* delegate =
+      [[ActorTaskFakeInterventionDelegate alloc] init];
+  task_->SetInterventionDelegate(delegate);
+
+  SetTaskState(ActorTaskState::kPausedByUser);
+  task_->Interrupt(ActorTaskInterruptReason::kWaitingUserConfirmation,
+                   "Ignored message");
+  EXPECT_EQ(task_->GetState(), ActorTaskState::kPausedByUser);
+  EXPECT_FALSE(delegate.requestConfirmationCalled);
+
+  SetTaskState(ActorTaskState::kCancelled);
+  task_->Interrupt(ActorTaskInterruptReason::kWaitingUserConfirmation,
+                   "Ignored message");
+  EXPECT_EQ(task_->GetState(), ActorTaskState::kCancelled);
+  EXPECT_FALSE(delegate.requestConfirmationCalled);
+}
+
+// Test that resolving a user confirmation interrupt transitions the task back
+// to kReflecting and notifies observers.
+TEST_F(ActorTaskTest, ResolveConfirmationResumesToReflecting) {
+  FakeActorTaskUpdatesObserver* observer =
+      [[FakeActorTaskUpdatesObserver alloc] init];
+  task_->AddObserver(observer);
+
+  ActorTaskFakeInterventionDelegate* delegate =
+      [[ActorTaskFakeInterventionDelegate alloc] init];
+  task_->SetInterventionDelegate(delegate);
+
+  SetTaskState(ActorTaskState::kActing);
+  task_->Interrupt(ActorTaskInterruptReason::kWaitingUserConfirmation,
+                   "Please confirm");
+  EXPECT_EQ(task_->GetState(), ActorTaskState::kWaitingOnUser);
+  ASSERT_TRUE(delegate.confirmationCompletionHandler != nil);
+
+  delegate.confirmationCompletionHandler();
+
+  EXPECT_EQ(task_->GetState(), ActorTaskState::kReflecting);
+  EXPECT_TRUE(observer.didResolveConfirmationCalled);
+}
+
+// Test that stopping an interrupted task transitions it to kCancelled and
+// subsequent completion block invocations are safely ignored.
+TEST_F(ActorTaskTest, StopWhileInterruptedIgnoresSubsequentCompletion) {
+  FakeActorTaskUpdatesObserver* observer =
+      [[FakeActorTaskUpdatesObserver alloc] init];
+  task_->AddObserver(observer);
+
+  ActorTaskFakeInterventionDelegate* delegate =
+      [[ActorTaskFakeInterventionDelegate alloc] init];
+  task_->SetInterventionDelegate(delegate);
+
+  SetTaskState(ActorTaskState::kActing);
+  task_->Interrupt(ActorTaskInterruptReason::kWaitingUserConfirmation,
+                   "Please confirm");
+  EXPECT_EQ(task_->GetState(), ActorTaskState::kWaitingOnUser);
+  ASSERT_TRUE(delegate.confirmationCompletionHandler != nil);
+
+  task_->Stop(ActorTaskStoppedReason::kStoppedByUser);
+  EXPECT_EQ(task_->GetState(), ActorTaskState::kCancelled);
+
+  // Invoke completion block after task was stopped.
+  delegate.confirmationCompletionHandler();
+
+  EXPECT_EQ(task_->GetState(), ActorTaskState::kCancelled);
+  EXPECT_FALSE(observer.didResolveConfirmationCalled);
+}
+
+// Test that interrupting for user confirmation without an intervention
+// delegate stops the task.
+TEST_F(ActorTaskTest, InterruptWithoutDelegateStopsTask) {
+  FakeActorTaskUpdatesObserver* observer =
+      [[FakeActorTaskUpdatesObserver alloc] init];
+  task_->AddObserver(observer);
+
+  SetTaskState(ActorTaskState::kActing);
+
+  task_->Interrupt(ActorTaskInterruptReason::kWaitingUserConfirmation,
+                   "No delegate prompt");
+
+  EXPECT_EQ(task_->GetState(), ActorTaskState::kCancelled);
+  EXPECT_TRUE(observer.didStopCalled);
+  EXPECT_EQ(observer.finalState, ActorTaskState::kCancelled);
+}
+
+// Test that interrupting for user confirmation with an empty message stops the
+// task.
+TEST_F(ActorTaskTest, InterruptWithEmptyConfirmationMessageStopsTask) {
+  FakeActorTaskUpdatesObserver* observer =
+      [[FakeActorTaskUpdatesObserver alloc] init];
+  task_->AddObserver(observer);
+
+  ActorTaskFakeInterventionDelegate* delegate =
+      [[ActorTaskFakeInterventionDelegate alloc] init];
+  task_->SetInterventionDelegate(delegate);
+
+  SetTaskState(ActorTaskState::kActing);
+
+  task_->Interrupt(ActorTaskInterruptReason::kWaitingUserConfirmation, "");
+
+  EXPECT_EQ(task_->GetState(), ActorTaskState::kCancelled);
+  EXPECT_TRUE(observer.didStopCalled);
+  EXPECT_EQ(observer.finalState, ActorTaskState::kCancelled);
+  EXPECT_FALSE(delegate.requestConfirmationCalled);
+}
+
+// Test that synchronous resolution of a user confirmation interrupt
+// transitions the task back to kReflecting and notifies observers.
+TEST_F(ActorTaskTest, InterruptWaitingUserConfirmationSyncResolution) {
+  FakeActorTaskUpdatesObserver* observer =
+      [[FakeActorTaskUpdatesObserver alloc] init];
+  task_->AddObserver(observer);
+
+  ActorTaskFakeInterventionDelegate* delegate =
+      [[ActorTaskFakeInterventionDelegate alloc] init];
+  delegate.respondsSynchronously = YES;
+  task_->SetInterventionDelegate(delegate);
+
+  SetTaskState(ActorTaskState::kActing);
+  task_->Interrupt(ActorTaskInterruptReason::kWaitingUserConfirmation,
+                   "Please confirm");
+
+  EXPECT_EQ(task_->GetState(), ActorTaskState::kReflecting);
+  EXPECT_TRUE(observer.didResolveConfirmationCalled);
+}
+
+// Test that interrupting with an unsupported reason stops the task with an
+// error.
+TEST_F(ActorTaskTest, InterruptWithUnsupportedReasonStopsTask) {
+  FakeActorTaskUpdatesObserver* observer =
+      [[FakeActorTaskUpdatesObserver alloc] init];
+  task_->AddObserver(observer);
+
+  SetTaskState(ActorTaskState::kActing);
+
+  task_->Interrupt(ActorTaskInterruptReason::kWaitingUserClarification,
+                   "Clarify details");
+
+  EXPECT_EQ(task_->GetState(), ActorTaskState::kCancelled);
+  EXPECT_TRUE(observer.didStopCalled);
+  EXPECT_EQ(observer.finalState, ActorTaskState::kCancelled);
+}
+
+// Test that interrupting a task which has not started acting yet (kInit)
+// transitions it to kWaitingOnUser and invokes the intervention delegate.
+TEST_F(ActorTaskTest, InterruptWaitingUserConfirmationFromInit) {
+  FakeActorTaskUpdatesObserver* observer =
+      [[FakeActorTaskUpdatesObserver alloc] init];
+  task_->AddObserver(observer);
+
+  ActorTaskFakeInterventionDelegate* delegate =
+      [[ActorTaskFakeInterventionDelegate alloc] init];
+  task_->SetInterventionDelegate(delegate);
+
+  // The task yields on start: it is interrupted before any call to `Act()`.
+  ASSERT_EQ(task_->GetState(), ActorTaskState::kInit);
+
+  task_->Interrupt(ActorTaskInterruptReason::kWaitingUserConfirmation,
+                   "Please confirm before starting");
+
+  EXPECT_EQ(task_->GetState(), ActorTaskState::kWaitingOnUser);
+  EXPECT_EQ(observer.oldState, ActorTaskState::kInit);
+  EXPECT_EQ(observer.newState, ActorTaskState::kWaitingOnUser);
+  EXPECT_TRUE(delegate.requestConfirmationCalled);
+  EXPECT_NSEQ(delegate.confirmationTitle, @"Please confirm before starting");
+  EXPECT_EQ(delegate.confirmationSubtitle, nil);
+  EXPECT_NSEQ(delegate.confirmationButtonText, @"Continue");
+  ASSERT_TRUE(delegate.confirmationCompletionHandler != nil);
+
+  // Resolving resumes into kReflecting rather than back into kInit: a task
+  // which yielded before acting still has to reflect before issuing its first
+  // actions.
+  delegate.confirmationCompletionHandler();
+
+  EXPECT_EQ(task_->GetState(), ActorTaskState::kReflecting);
+  EXPECT_TRUE(observer.didResolveConfirmationCalled);
+
+  // The task remains actionable after the yield.
+  base::test::TestFuture<std::vector<ActionResult>> future;
+  task_->Act({}, "First actions", future.GetCallback());
+  EXPECT_TRUE(future.Wait());
+  EXPECT_EQ(task_->GetState(), ActorTaskState::kReflecting);
+}
+
+// Test that interrupting a task which is already waiting on the user is
+// ignored and does not re-prompt the intervention delegate.
+TEST_F(ActorTaskTest, InterruptIgnoredWhenAlreadyWaitingOnUser) {
+  ActorTaskFakeInterventionDelegate* delegate =
+      [[ActorTaskFakeInterventionDelegate alloc] init];
+  task_->SetInterventionDelegate(delegate);
+
+  // Start from an executing state so this test isolates the "already waiting
+  // on the user" guard.
+  SetTaskState(ActorTaskState::kActing);
+  task_->Interrupt(ActorTaskInterruptReason::kWaitingUserConfirmation,
+                   "Please confirm the purchase");
+  ASSERT_EQ(task_->GetState(), ActorTaskState::kWaitingOnUser);
+  ASSERT_TRUE(delegate.requestConfirmationCalled);
+
+  delegate.requestConfirmationCalled = NO;
+  task_->Interrupt(ActorTaskInterruptReason::kWaitingUserConfirmation,
+                   "Second prompt");
+
+  EXPECT_EQ(task_->GetState(), ActorTaskState::kWaitingOnUser);
+  EXPECT_FALSE(delegate.requestConfirmationCalled);
+  EXPECT_NSEQ(delegate.confirmationTitle, @"Please confirm the purchase");
+}
 
 }  // namespace actor

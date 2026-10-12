@@ -192,10 +192,11 @@ chromium-metrics-reviews@google.com.
 
 <!-- LINT.ThenChange(/chrome/browser/ui/android/signin/java/src/org/chromium/chrome/browser/ui/signin/signin_promo/SigninPromoMediator.java:Event) -->
 
-<!-- TODO(crbug.com/432174785): Mark this histogram as never_expires. -->
-
 <histogram name="Signin.AccessTokenFetch.Failure.{Error}"
-    enum="OAuthConsumerId" expires_after="2027-02-07">
+    enum="OAuthConsumerId" expires_after="never">
+<!-- expires-never: This is needed as long as Chrome is fetching access tokens
+to monitor/debug fetching OAuth2 Token issues. -->
+
   <owner>triploblastic@google.com</owner>
   <owner>bsazonov@google.com</owner>
   <owner>chrome-signin-team@google.com</owner>
@@ -207,10 +208,11 @@ chromium-metrics-reviews@google.com.
   <token key="Error" variants="AccessTokenFetchFailureError"/>
 </histogram>
 
-<!-- TODO(crbug.com/432174785): Mark this histogram as never_expires. -->
-
 <histogram name="Signin.AccessTokenFetch.Success" enum="OAuthConsumerId"
-    expires_after="2027-03-07">
+    expires_after="never">
+<!-- expires-never: This is needed as long as Chrome is fetching access tokens
+to monitor/debug fetching OAuth2 Token issues. -->
+
   <owner>triploblastic@google.com</owner>
   <owner>bsazonov@google.com</owner>
   <owner>chrome-signin-team@google.com</owner>
@@ -1143,8 +1145,6 @@ prefs when the profile is loaded.  -->
                  history sync on,"/>
     <variant name="Signin"
         summary="Signin Promo no the Avatar Pill, that lead to signing in,"/>
-    <variant name="Sync"
-        summary="Sync Promo on the Avatar Pill, that lead to turning Sync on,"/>
 <!-- LINT.ThenChange(//chrome/browser/signin/signin_promo_util.cc:AvatarPillPromoType) -->
 
   </token>
@@ -2469,6 +2469,18 @@ prefs when the profile is loaded.  -->
   </token>
 <!-- LINT.ThenChange(//chrome/browser/ui/webui/signin/history_sync_optin_helper.cc:FlowEventToString) -->
 
+</histogram>
+
+<histogram name="Signin.HybridPasskey.Outcome"
+    enum="SigninHybridPasskeyOutcome" expires_after="2027-04-01">
+  <owner>msalama@google.com</owner>
+  <owner>chrome-signin-team@google.com</owner>
+  <summary>
+    Records the final outcome and drop-off reasons for the hybrid passkey flow
+    on the Chrome sign-in page once the hybrid connection has started (phone
+    scanned QR code). Recorded once per hybrid attempt; a request that is
+    restarted or retried emits one sample per attempt.
+  </summary>
 </histogram>
 
 <histogram name="Signin.IdentityConfirmationSnackbarDecision"
@@ -4470,6 +4482,22 @@ kept as long as profile signout is possible -->
   </summary>
 </histogram>
 
+<histogram name="Signin.SwitchingHeuristic.WouldShowPromo{ProfileIndex}"
+    enum="AccountSwitchingSelectionOutcome" expires_after="2027-08-26">
+  <owner>rsult@google.com</owner>
+  <owner>chrome-signin-team@google.com</owner>
+  <summary>
+    Records the outcome of the account switching heuristic evaluation (whether
+    an account switching promo would be shown and in which score bracket, or why
+    it would not be shown). Recorded once per day at most when the switching
+    account selection is computed or updated for a profile (after preview data
+    is fetched for all accounts).
+
+    {ProfileIndex}
+  </summary>
+  <token key="ProfileIndex" variants="ProfileIndex"/>
+</histogram>
+
 <histogram name="Signin.SyncButtons.Shown" enum="SyncButtonsType"
     expires_after="2027-03-07">
   <owner>tju@google.com</owner>
@@ -4499,18 +4527,6 @@ kept as long as profile signout is possible -->
     {Profile}
   </summary>
   <token key="Profile" variants="ProfileIndex"/>
-</histogram>
-
-<histogram name="Signin.SyncOptIn.IdentityPill.SyncAtShowCount"
-    units="ShowCount" expires_after="2026-11-22">
-  <owner>ernn@google.com</owner>
-  <owner>rsult@google.com</owner>
-  <owner>chrome-signin-team-desktop@google.com</owner>
-  <summary>
-    Records the count at which the Sync promo on the Identity Pill was shown
-    when the user has successfuly intereacted with it (E.g. successfully turned
-    sync). Recorded when that interaction was succesfully made.
-  </summary>
 </histogram>
 
 <histogram name="Signin.SyncOptIn.Offered" enum="SigninAccessPoint"

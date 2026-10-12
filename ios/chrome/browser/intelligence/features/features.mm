@@ -26,6 +26,7 @@
 #import "ios/chrome/browser/intelligence/actor/tools/utils/actor_tool_utils.h"
 #import "ios/chrome/browser/shared/model/application_context/application_context.h"
 #import "ios/chrome/browser/shared/public/features/features.h"
+#import "ios/chrome/browser/shared/public/features/system_flags.h"
 #import "ios/chrome/browser/tabs/model/inactive_tabs/features.h"
 
 BASE_FEATURE(kEnhancedCalendar, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -544,8 +545,32 @@ bool IsToolDisabled(optimization_guide::proto::Action::ActionCase tool) {
   return false;
 }
 
-BASE_FEATURE(kActorOriginGatingForNavigation,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kActorOriginGating, base::FEATURE_DISABLED_BY_DEFAULT);
+
+const char kActorOriginGatingExplicitParam[] = "gate_explicit_navigation";
+const char kActorOriginGatingImplicitParam[] = "gate_implicit_navigation";
+
+BASE_FEATURE_PARAM(bool,
+                   kActorOriginGatingExplicitFeatureParam,
+                   &kActorOriginGating,
+                   kActorOriginGatingExplicitParam,
+                   true);  // Default to true when kActorOriginGating is enabled
+
+BASE_FEATURE_PARAM(bool,
+                   kActorOriginGatingImplicitFeatureParam,
+                   &kActorOriginGating,
+                   kActorOriginGatingImplicitParam,
+                   true);  // Default to true when kActorOriginGating is enabled
+
+bool IsActorOriginGatingForExplicitNavigationEnabled() {
+  return base::FeatureList::IsEnabled(kActorOriginGating) &&
+         kActorOriginGatingExplicitFeatureParam.Get();
+}
+
+bool IsActorOriginGatingForImplicitNavigationEnabled() {
+  return base::FeatureList::IsEnabled(kActorOriginGating) &&
+         kActorOriginGatingImplicitFeatureParam.Get();
+}
 
 BASE_FEATURE(kModelBasedPageClassification, base::FEATURE_DISABLED_BY_DEFAULT);
 
@@ -721,6 +746,13 @@ bool IsAppSwitcherAISummarizationEnabled() {
   return base::FeatureList::IsEnabled(kAppSwitcherAISummarization);
 }
 
+bool IsAppSwitcherAISummarizationTestingExternalURLEnabled() {
+  if (!IsAppSwitcherAISummarizationEnabled()) {
+    return false;
+  }
+  return experimental_flags::
+      IsAppSwitcherAISummarizationTestingExternalURLEnabled();
+}
 
 #pragma mark - Debugging Features
 
@@ -910,4 +942,10 @@ BASE_FEATURE(kGeminiInsightsChipAblation, base::FEATURE_DISABLED_BY_DEFAULT);
 
 bool IsGeminiInsightsChipAblationEnabled() {
   return base::FeatureList::IsEnabled(kGeminiInsightsChipAblation);
+}
+
+BASE_FEATURE(kGeminiHostExperimentIDs, base::FEATURE_DISABLED_BY_DEFAULT);
+
+bool IsGeminiHostExperimentIDsEnabled() {
+  return base::FeatureList::IsEnabled(kGeminiHostExperimentIDs);
 }

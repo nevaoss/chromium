@@ -940,6 +940,8 @@ static_library("browser") {
     "metrics/payments/mandatory_reauth_metrics.h",
     "metrics/payments/payments_window_metrics.cc",
     "metrics/payments/payments_window_metrics.h",
+    "metrics/payments/promo_code_metrics.cc",
+    "metrics/payments/promo_code_metrics.h",
     "metrics/payments/risk_data_metrics.cc",
     "metrics/payments/risk_data_metrics.h",
     "metrics/payments/save_and_fill_metrics.cc",
@@ -1088,6 +1090,8 @@ static_library("browser") {
     "payments/payments_requests/get_details_for_enrollment_request.h",
     "payments/payments_requests/get_details_for_update_bnpl_payment_instrument_request.cc",
     "payments/payments_requests/get_details_for_update_bnpl_payment_instrument_request.h",
+    "payments/payments_requests/get_details_for_update_card_request.cc",
+    "payments/payments_requests/get_details_for_update_card_request.h",
     "payments/payments_requests/get_iban_upload_details_request.cc",
     "payments/payments_requests/get_iban_upload_details_request.h",
     "payments/payments_requests/get_unmask_details_request.cc",
@@ -1499,6 +1503,7 @@ static_library("browser") {
     "//components/one_time_tokens/core/browser",
     "//components/optimization_guide/core",
     "//components/optimization_guide/proto:optimization_guide_proto",
+    "//components/os_crypt/async/browser",
     "//components/os_crypt/async/common",
     "//components/os_crypt/common",
     "//components/password_manager/core/browser/features:password_features",
@@ -1778,6 +1783,7 @@ static_library("test_support") {
     "payments/payments_requests/get_details_for_create_bnpl_payment_instrument_request_test_api.h",
     "payments/payments_requests/get_details_for_create_card_request_test_api.h",
     "payments/payments_requests/get_details_for_update_bnpl_payment_instrument_request_test_api.h",
+    "payments/payments_requests/get_details_for_update_card_request_test_api.h",
     "payments/payments_requests/get_wallet_reminder_notice_request_test_api.h",
     "payments/payments_requests/payments_request_test_api.h",
     "payments/payments_requests/update_bnpl_payment_instrument_request_test_api.h",
@@ -2162,6 +2168,7 @@ source_set("unit_tests") {
     "metrics/payments/card_metadata_metrics_unittest.cc",
     "metrics/payments/cvc_storage_metrics_unittest.cc",
     "metrics/payments/iban_metrics_unittest.cc",
+    "metrics/payments/promo_code_metrics_unittest.cc",
     "metrics/payments/save_and_fill_metrics_unittest.cc",
     "metrics/payments/virtual_card_standalone_cvc_suggestion_metrics_unittest.cc",
     "metrics/payments/wallet_reminder_notice_metrics_unittest.cc",
@@ -2214,6 +2221,7 @@ source_set("unit_tests") {
     "payments/payments_requests/get_details_for_create_card_request_unittest.cc",
     "payments/payments_requests/get_details_for_enrollment_request_unittest.cc",
     "payments/payments_requests/get_details_for_update_bnpl_payment_instrument_request_unittest.cc",
+    "payments/payments_requests/get_details_for_update_card_request_unittest.cc",
     "payments/payments_requests/get_iban_upload_details_request_unittest.cc",
     "payments/payments_requests/get_wallet_reminder_notice_request_unittest.cc",
     "payments/payments_requests/payments_request_unittest.cc",
@@ -2458,6 +2466,10 @@ source_set("unit_tests") {
 
   if (is_ios || is_android) {
     deps += [ "//build:branding_buildflags" ]
+  }
+
+  if (is_android) {
+    deps += [ "//components/autofill/android:main_autofill_jni_headers" ]
   }
 
   if (!is_ios && !is_android) {

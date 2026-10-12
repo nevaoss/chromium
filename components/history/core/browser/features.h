@@ -79,6 +79,9 @@ COMPONENT_EXPORT(HISTORY_FEATURES)
 BASE_DECLARE_FEATURE(kBrowsingHistoryFilterByDevice);
 
 COMPONENT_EXPORT(HISTORY_FEATURES)
+BASE_DECLARE_FEATURE(kBrowsingHistoryFilterByDomain);
+
+COMPONENT_EXPORT(HISTORY_FEATURES)
 BASE_DECLARE_FEATURE(kWebHistoryUseNewApi);
 
 COMPONENT_EXPORT(HISTORY_FEATURES)
@@ -87,6 +90,16 @@ BASE_DECLARE_FEATURE(kHistoryDatabaseWriteAheadLogging);
 // Defers HistoryBackend initialization to after startup or until it is needed.
 COMPONENT_EXPORT(HISTORY_FEATURES)
 BASE_DECLARE_FEATURE(kDeferHistoryBackendInit);
+
+// If enabled, reports database metrics related to history clusters. Disabled
+// by default so that not all clients pay the cost of computing the metrics.
+COMPONENT_EXPORT(HISTORY_FEATURES)
+BASE_DECLARE_FEATURE(kHistoryReportClusterDatabaseMetrics);
+
+// When enabled, replaces the 1 + 2N SQLite query loop in
+// HistoryBackend::QueryHistoryBasic with a two-phase batched fetch strategy.
+COMPONENT_EXPORT(HISTORY_FEATURES)
+BASE_DECLARE_FEATURE(kHistoryQueryBatchedLookups);
 
 }  // namespace history
 

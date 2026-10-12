@@ -24,8 +24,10 @@ import static org.chromium.components.browser_ui.bottomsheet.BottomSheetContent.
 import android.app.Activity;
 import android.content.res.ColorStateList;
 import android.graphics.Color;
+import android.view.InputDevice;
 import android.view.LayoutInflater;
 import android.view.MotionEvent;
+import android.view.PointerIcon;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewGroup.MarginLayoutParams;
@@ -49,10 +51,13 @@ import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 import org.robolectric.annotation.Config;
 
+import org.chromium.base.Callback;
 import org.chromium.base.MathUtils;
+import org.chromium.base.ResettersForTesting;
 import org.chromium.base.supplier.ObservableSuppliers;
 import org.chromium.base.supplier.SettableNonNullObservableSupplier;
 import org.chromium.base.test.BaseRobolectricTestRunner;
+import org.chromium.base.test.RobolectricUtil;
 import org.chromium.components.browser_ui.bottomsheet.BottomSheetContent.HeightMode;
 import org.chromium.components.browser_ui.bottomsheet.BottomSheetController.SheetState;
 import org.chromium.components.browser_ui.bottomsheet.BottomSheetController.StateChangeReason;
@@ -79,6 +84,7 @@ public class BottomSheetUnitTest {
     @Mock private InsetObserver mInsetObserver;
     @Mock private KeyboardVisibilityDelegate mKeyboardDelegate;
     @Mock private BottomSheetObserver mBottomSheetObserver;
+    @Mock private Callback<Throwable> mExceptionReporter;
 
     @Captor
     private ArgumentCaptor<InsetObserver.WindowInsetsAnimationListener>
@@ -2010,5 +2016,219 @@ public class BottomSheetUnitTest {
         // When event rawY is 150 (below toolbar height 100), should return false.
         MotionEvent eventBelow = MotionEvent.obtain(0, 0, MotionEvent.ACTION_DOWN, 100, 150, 0);
         assertFalse(mBottomSheet.shouldDragSheet(eventBelow));
+    }
+
+    @Test
+    public void testResizeContentPaddingBottomResetAfterKeyboardTransition() {
+        SettableNonNullObservableSupplier<Integer> edgeToEdgeBottomInsetSupplier =
+                ObservableSuppliers.createNonNull(24);
+        mBottomSheet.setEdgeToEdgeBottomInsetSupplierForTesting(edgeToEdgeBottomInsetSupplier);
+
+        when(mSheetContent.getFullHeightRatio()).thenReturn((float) HeightMode.RESIZE_CONTENT);
+        when(mSheetContent.getHalfHeightRatio()).thenReturn(0.7f);
+        when(mSheetContent.getPeekHeight()).thenReturn(HeightMode.DEFAULT);
+        when(mSheetContent.getContentView()).thenReturn(new View(mActivity));
+        setupBottomSheetStrings(android.R.string.ok, android.R.string.ok);
+
+        View decorView = mActivity.getWindow().getDecorView();
+        decorView.layout(0, 0, SHEET_CONTAINER_WIDTH, 800);
+        mSheetContainer.layout(0, 0, SHEET_CONTAINER_WIDTH, 800);
+
+        WindowInsetsCompat insets = mock(WindowInsetsCompat.class);
+        doReturn(insets).when(mInsetObserver).getLastRawWindowInsets();
+        doReturn(Insets.of(0, 0, 0, 24)).when(insets).getInsets(anyInt());
+
+        mBottomSheet.showContent(mSheetContent);
+        mBottomSheet.setSheetState(SheetState.HALF, false);
+
+        View contentContainer = mBottomSheet.findViewById(R.id.bottom_sheet_content);
+        assertFalse(mBottomSheet.isSmallScreen());
+        assertEquals(0, contentContainer.getPaddingBottom());
+
+        verify(mInsetObserver)
+                .addWindowInsetsAnimationListener(mInsetsAnimationListenerCaptor.capture());
+        InsetObserver.WindowInsetsAnimationListener listener =
+                mInsetsAnimationListenerCaptor.getValue();
+        WindowInsetsAnimationCompat imeAnimation =
+                new WindowInsetsAnimationCompat(WindowInsetsCompat.Type.ime(), null, 50);
+        listener.onPrepare(imeAnimation);
+
+        // Simulate keyboard opening: container shrinks to 300dp so isSmallScreen becomes true
+        // (flipping isFullHeightResizeContent() from true to false), and mContainerHeight (300)
+        // equals mVisibleViewportRect.height() (800 - 500 = 300).
+        mKeyboardInsetSupplier.set(500);
+        doReturn(Insets.of(0, 0, 0, 500)).when(insets).getInsets(anyInt());
+        listener.onStart(imeAnimation, null);
+        mSheetContainer.layout(0, 0, SHEET_CONTAINER_WIDTH, 300);
+
+        assertTrue(mBottomSheet.isSmallScreen());
+        assertEquals(300, mBottomSheet.getVisibleViewportRectForTesting().height());
+        assertEquals(
+                "Padding bottom should be 0 while keyboard is showing when container height"
+                        + " equals visible viewport height.",
+                0,
+                contentContainer.getPaddingBottom());
+
+        // Simulate keyboard dismissing: before container relayouts, isSmallScreen is still true
+        // while keyboard inset is 0, so edge-to-edge bottom inset (24) applies to paddingBottom.
+        // Then container expands back to 800dp so isSmallScreen returns to false
+        // (flipping isFullHeightResizeContent() back to true), resetting paddingBottom to 0.
+        mKeyboardInsetSupplier.set(0);
+        doReturn(Insets.of(0, 0, 0, 24)).when(insets).getInsets(anyInt());
+        listener.onEnd(imeAnimation);
+        assertEquals(24, contentContainer.getPaddingBottom());
+        mSheetContainer.layout(0, 0, SHEET_CONTAINER_WIDTH, 800);
+
+        assertFalse(mBottomSheet.isSmallScreen());
+        assertEquals(
+                "Padding bottom should be reset to 0 after keyboard hides when"
+                        + " isFullHeightResizeContent() is true again.",
+                0,
+                contentContainer.getPaddingBottom());
+    }
+
+    @Test
+    public void testPointerIcon_ShowsHandOnHandlebarInDesktopMode_ShowsArrowOnSheet() {
+        BottomSheet sheet = inflateAndAttachSheet(/* isLargeFormFactor= */ true);
+        sheet.setSheetContainerForTesting(mSheetContainer);
+        TouchRestrictingFrameLayout toolbarHolder =
+                sheet.findViewById(R.id.bottom_sheet_toolbar_container);
+        sheet.setToolbarHolderForTesting(toolbarHolder);
+        sheet.setBottomSheetContentContainerForTesting(
+                sheet.findViewById(R.id.bottom_sheet_content));
+        initSheet(sheet, /* isLargeFormFactor= */ true);
+
+        BottomSheetContent desktopContent = mock(BottomSheetContent.class);
+        when(desktopContent.supportsLargeFormFactor()).thenReturn(true);
+        when(desktopContent.showHandlebar()).thenReturn(true);
+        when(desktopContent.getToolbarView()).thenReturn(new View(mActivity));
+        when(desktopContent.getContentView()).thenReturn(new View(mActivity));
+
+        sheet.showContent(desktopContent);
+
+        ImageView handlebar = sheet.getHandlebarForTesting();
+        assertNotNull("Handlebar view should be present in large form factor mode", handlebar);
+        assertEquals(
+                "Handlebar should be visible when showHandlebar() is true",
+                View.VISIBLE,
+                handlebar.getVisibility());
+
+        PointerIcon handIcon = PointerIcon.getSystemIcon(mActivity, PointerIcon.TYPE_HAND);
+        PointerIcon arrowIcon = PointerIcon.getSystemIcon(mActivity, PointerIcon.TYPE_DEFAULT);
+
+        assertEquals(
+                "On desktop the handlebar should show the hand pointer",
+                handIcon,
+                handlebar.getPointerIcon());
+
+        // Hovering over the sheet shows the arrow, so a hand pointer from the page behind the
+        // sheet does not stick.
+        MotionEvent hoverInsideSheet =
+                MotionEvent.obtain(0, 0, MotionEvent.ACTION_HOVER_MOVE, 100, 50, 0);
+        hoverInsideSheet.setSource(InputDevice.SOURCE_MOUSE);
+        assertEquals(
+                "Hovering over the sheet should show the arrow pointer",
+                arrowIcon,
+                sheet.onResolvePointerIcon(hoverInsideSheet, 0));
+
+        // Above the top edge of the sheet, the sheet does not force the arrow.
+        MotionEvent hoverAboveSheet =
+                MotionEvent.obtain(0, 0, MotionEvent.ACTION_HOVER_MOVE, 100, -50, 0);
+        hoverAboveSheet.setSource(InputDevice.SOURCE_MOUSE);
+        assertNull(
+                "Hovering above the sheet should not force the arrow pointer",
+                sheet.onResolvePointerIcon(hoverAboveSheet, 0));
+
+        // A pointer already chosen inside the sheet wins over the arrow.
+        sheet.setPointerIcon(handIcon);
+        assertEquals(
+                "A pointer already chosen inside the sheet should win over the arrow",
+                handIcon,
+                sheet.onResolvePointerIcon(hoverInsideSheet, 0));
+        sheet.setPointerIcon(null);
+
+        // Replacing the content with content that does not use the desktop layout removes the
+        // hand pointer from the handlebar of the same sheet.
+        BottomSheetContent phoneStyleContent = mock(BottomSheetContent.class);
+        when(phoneStyleContent.supportsLargeFormFactor()).thenReturn(false);
+        when(phoneStyleContent.showHandlebar()).thenReturn(true);
+        when(phoneStyleContent.getToolbarView()).thenReturn(new View(mActivity));
+        when(phoneStyleContent.getContentView()).thenReturn(new View(mActivity));
+        sheet.showContent(phoneStyleContent);
+        assertNull(
+                "The handlebar should drop the hand pointer for content without the desktop layout",
+                handlebar.getPointerIcon());
+    }
+
+    private static MotionEvent createMouseScrollEvent(float x, float y) {
+        MotionEvent event = MotionEvent.obtain(0, 0, MotionEvent.ACTION_SCROLL, x, y, 0);
+        event.setSource(InputDevice.SOURCE_MOUSE);
+        return event;
+    }
+
+    @Test
+    public void testGenericMotionEvent_ConsumedInsideSheet_PassesThroughAtOrAboveTopEdge() {
+        // A mouse wheel scroll arrives as a generic motion event.
+        assertTrue(
+                "A mouse scroll inside the sheet should be consumed so the page behind ignores it",
+                mBottomSheet.onGenericMotionEvent(createMouseScrollEvent(100, 50)));
+        assertFalse(
+                "A mouse scroll exactly on the top edge of the sheet should pass through",
+                mBottomSheet.onGenericMotionEvent(createMouseScrollEvent(100, 0)));
+        assertFalse(
+                "A mouse scroll above the sheet should pass through",
+                mBottomSheet.onGenericMotionEvent(createMouseScrollEvent(100, -10)));
+    }
+
+    @Test
+    public void testNullContent_ReportsExceptionAndHidesSheet() {
+        BottomSheet.setExceptionReporter(mExceptionReporter);
+        ResettersForTesting.register(() -> BottomSheet.setExceptionReporter(null));
+
+        // Open the sheet with content first, so that ending up hidden is a real change.
+        BottomSheet.setSmallScreenForTesting(false);
+        when(mSheetContent.getHalfHeightRatio()).thenReturn(0.5f);
+        when(mSheetContent.getSheetHalfHeightAccessibilityStringId())
+                .thenReturn(android.R.string.ok);
+        when(mSheetContent.getContentView()).thenReturn(new View(mActivity));
+        mBottomSheet.showContent(mSheetContent);
+        mBottomSheet.setSheetState(SheetState.HALF, false);
+        assertEquals(
+                "The sheet should start open at HALF",
+                SheetState.HALF,
+                mBottomSheet.getSheetState());
+        assertNotEquals(
+                "The open sheet should sit above its hidden position",
+                mBottomSheet.getSheetHeightForState(SheetState.HIDDEN),
+                mBottomSheet.getCurrentOffsetPx(),
+                MathUtils.EPSILON);
+
+        // The content goes away while the sheet is still open.
+        mBottomSheet.showContent(null);
+        assertNull("Sheet content should now be null", mBottomSheet.getCurrentSheetContent());
+        assertEquals(
+                "Removing the content alone should not close the sheet",
+                SheetState.HALF,
+                mBottomSheet.getSheetState());
+
+        // Asking the sheet to move to an open state with no content reports the problem and
+        // closes the sheet instead.
+        mBottomSheet.setSheetState(SheetState.FULL, false);
+        RobolectricUtil.runAllBackgroundAndUi();
+
+        ArgumentCaptor<Throwable> captor = ArgumentCaptor.forClass(Throwable.class);
+        verify(mExceptionReporter).onResult(captor.capture());
+        assertTrue(
+                "Reported exception message should reference bug 1126872",
+                captor.getValue().getMessage().contains("1126872"));
+        assertEquals(
+                "Sheet should be hidden after being asked to open with no content",
+                SheetState.HIDDEN,
+                mBottomSheet.getSheetState());
+        assertEquals(
+                "Sheet should be at its hidden position after being asked to open with no content",
+                mBottomSheet.getSheetHeightForState(SheetState.HIDDEN),
+                mBottomSheet.getCurrentOffsetPx(),
+                MathUtils.EPSILON);
     }
 }

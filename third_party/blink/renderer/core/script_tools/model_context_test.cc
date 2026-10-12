@@ -672,7 +672,7 @@ TEST_F(ModelContextTest, CancelToolReentrancy) {
 
   auto* model_context = ModelContextSupplement::modelContext(GetDocument());
 
-  Window().addEventListener(
+  model_context->addEventListener(
       event_type_names::kToolcancel,
       MakeGarbageCollected<ReentrantListener>(model_context), false);
 
@@ -811,7 +811,7 @@ TEST_F(ModelContextTest, CancelToolDetachesDocument) {
       description: "never resolves",
     });
 
-    window.addEventListener('toolcancel', () => {
+    document.modelContext.addEventListener('toolcancel', () => {
       // Detach this document by removing the iframe from the parent document.
       parent.document.querySelector('#test_iframe').remove();
     });

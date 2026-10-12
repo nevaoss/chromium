@@ -29,6 +29,7 @@ import org.chromium.chrome.browser.profiles.Profile;
 
 /** Unit tests for {@link GlicUtils}. */
 @RunWith(BaseRobolectricTestRunner.class)
+@EnableFeatures(ChromeFeatureList.ENABLE_ANDROID_SIDE_PANEL)
 public class GlicUtilsUnitTest {
     @Rule public final MockitoRule mMockitoRule = MockitoJUnit.rule();
 
@@ -45,6 +46,13 @@ public class GlicUtilsUnitTest {
     public void testIsSidePanelFormFactor_Desktop() {
         DeviceInfo.setIsDesktopForTesting(true);
         assertTrue(GlicUtils.isSidePanelFormFactor(mContext));
+    }
+
+    @Test
+    @DisableFeatures(ChromeFeatureList.ENABLE_ANDROID_SIDE_PANEL)
+    public void testIsSidePanelFormFactor_Desktop_DisabledWhenSidePanelDisabled() {
+        DeviceInfo.setIsDesktopForTesting(true);
+        assertFalse(GlicUtils.isSidePanelFormFactor(mContext));
     }
 
     @Test

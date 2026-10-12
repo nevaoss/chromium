@@ -403,6 +403,7 @@ source_set("ui_impl") {
     "//chrome/browser/sessions",
     "//chrome/browser/signin",
     "//chrome/browser/tab_list",
+    "//chrome/browser/themes",
     "//chrome/browser/ui",
     "//chrome/browser/ui:browser_element_identifiers",
     "//chrome/browser/ui/browser_window",
@@ -455,6 +456,7 @@ source_set("ui_impl") {
       ":jni_headers",
       "//chrome/browser/android:tabs_public",
       "//chrome/browser/context_sharing/tab_bottom_sheet/android",
+      "//chrome/browser/media/webrtc",
       "//chrome/browser/ui/side_panel/android",
       "//components/messages/android",
     ]
@@ -469,6 +471,7 @@ source_set("ui_impl") {
       "location_bar_stub.cc",
     ]
     deps += [
+      "//chrome/browser:file_select_helper",
       "//chrome/browser/pdf",
       "//chrome/browser/resources/contextual_tasks:resources",
       "//chrome/browser/resources/webui_toolbar_shared:resources",
@@ -610,6 +613,7 @@ if (!is_android) {
       ":test_support",
       ":ui",
       ":ui_impl",
+      ":user_data",
       "//base",
       "//base/test:test_support",
       "//chrome/browser:browser_process",
@@ -621,6 +625,8 @@ if (!is_android) {
       "//chrome/browser/signin",
       "//chrome/browser/tab_list",
       "//chrome/browser/ui",
+      "//chrome/browser/ui:browser_commands",
+      "//chrome/browser/ui:browser_tabstrip",
       "//chrome/browser/ui/browser_window:create_browser_window",
       "//chrome/browser/ui/hats:test_support",
       "//chrome/browser/ui/lens",
@@ -778,6 +784,8 @@ source_set("unit_tests") {
       "//components/omnibox/browser:test_support",
       "//components/passage_embeddings/core",
       "//services/network/public/cpp",
+      "//ui/shell_dialogs",
+      "//ui/shell_dialogs:test_support",
     ]
   }
 
@@ -834,15 +842,6 @@ source_set("interactive_ui_tests") {
 
   sources = []
 
-  if (!is_android) {
-    sources += [
-      "contextual_tasks_context_management_interactive_uitest.cc",
-      "contextual_tasks_interactive_uitest.cc",
-      "contextual_tasks_side_panel_coordinator_interactive_uitest.cc",
-      "contextual_tasks_ui_service_interactive_uitest.cc",
-    ]
-  }
-
   deps = [
     ":contextual_tasks",
     ":impl",
@@ -870,21 +869,29 @@ source_set("interactive_ui_tests") {
   }
 
   if (!is_android) {
+    sources += [
+      "contextual_tasks_context_management_interactive_uitest.cc",
+      "contextual_tasks_interactive_uitest.cc",
+      "contextual_tasks_side_panel_coordinator_interactive_uitest.cc",
+      "contextual_tasks_ui_service_interactive_uitest.cc",
+    ]
     deps += [
       ":interactive_ui_test_support",
       ":ui",
-      "//chrome/browser/ui/views/frame:browser_view_header",
-
-      # TabUnderlineView currently resides under glic/browser_ui.
       "//chrome/browser/glic/browser_ui:glow",
       "//chrome/browser/tab_list",
       "//chrome/browser/ui:browser_actions",
+      "//chrome/browser/ui:browser_commands",
+      "//chrome/browser/ui:browser_tabstrip",
       "//chrome/browser/ui/contextual_search",
       "//chrome/browser/ui/lens",
       "//chrome/browser/ui/lens:test_support",
+      "//chrome/browser/ui/views/frame:browser_view_header",
+      "//chrome/browser/ui/views/toolbar",
       "//chrome/browser/ui/webui/searchbox:searchbox_test_utils",
       "//components/contextual_search:test_support",
       "//components/lens:enterprise_policy",
+      "//components/strings:components_strings",
       "//third_party/lens_server_proto:lens_overlay_proto",
     ]
   }

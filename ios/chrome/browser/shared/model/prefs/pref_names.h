@@ -456,6 +456,12 @@ inline constexpr char kIosNtpThemeMigrationComplete[] =
 // background, updated by both local changes and remote sync updates.
 inline constexpr char kIosNtpThemeSpecifics[] = "ios.ntp.theme_specifics";
 
+// Dictionary preference storing the downloaded ephemeral theme metadata
+// (animation URLs, local file paths, color mapping dictionaries, Google logo
+// URLs, and seed color).
+inline constexpr char kIosNtpEphemeralThemeData[] =
+    "ios.ntp.ephemeral_theme_data";
+
 // Preference that hold a boolean indicating if the user has already dismissed
 // the sign-in promo in the reading list.
 inline constexpr char kIosReadingListPromoAlreadySeen[] =
@@ -830,6 +836,12 @@ inline constexpr char kIOSGeminiCameraSetting[] = "ios.gemini.camera.setting";
 // A boolean specifying whether the Gemini suggestions setting is enabled.
 inline constexpr char kIOSGeminiSuggestionsSetting[] =
     "ios.gemini.suggestions.setting";
+
+// A dictionary storing per-vertical UI state (consecutive Message ignores,
+// whether a Message was accepted, and whether the vertical permanently switched
+// from Message UI to Omnibox Chip UI) for contextual cueing.
+inline constexpr char kIOSContextualCueingVerticalUiState[] =
+    "ios.contextual_cueing.vertical_ui_state";
 
 // A boolean specifying whether the Gemini Live closed captioning setting is
 // enabled.

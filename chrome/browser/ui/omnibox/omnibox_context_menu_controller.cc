@@ -238,6 +238,10 @@ std::optional<ui::ImageModel> GetImageModelForIconResourceId(
 #endif
     case omnibox::IconResourceIds::PHOTO_PRINTS:
       return ui::ImageModel();
+    case omnibox::IconResourceIds::IMAGE_CREATE:
+      return ui::ImageModel::FromVectorIcon(
+          kImageCreateIcon, ui::kColorMenuIcon,
+          ui::SimpleMenuModel::kDefaultIconSize);
     default:
       return std::nullopt;
   }
@@ -250,6 +254,8 @@ DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(OmniboxContextMenuController,
                                       kDeepResearchIdForTesting);
 DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(OmniboxContextMenuController,
                                       kFirstTabMenuItemIdForTesting);
+DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(OmniboxContextMenuController,
+                                      kSecondTabMenuItemIdForTesting);
 DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(OmniboxContextMenuController,
                                       kImageUploadMenuItemIdForTesting);
 DEFINE_CLASS_ELEMENT_IDENTIFIER_VALUE(OmniboxContextMenuController,
@@ -552,6 +558,11 @@ void OmniboxContextMenuController::AddRecentTabItems() {
     // ID for testing tab section.
     target_menu_model->SetElementIdentifierAt(first_tab_index,
                                               kFirstTabMenuItemIdForTesting);
+  }
+  if (tabs.size() > 1 &&
+      target_menu_model->GetItemCount() > first_tab_index + 1) {
+    target_menu_model->SetElementIdentifierAt(first_tab_index + 1,
+                                              kSecondTabMenuItemIdForTesting);
   }
 
   if (!base::FeatureList::IsEnabled(omnibox::kAimUsePecApi) &&

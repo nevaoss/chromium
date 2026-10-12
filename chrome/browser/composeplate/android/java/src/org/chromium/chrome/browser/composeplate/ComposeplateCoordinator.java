@@ -6,14 +6,17 @@ package org.chromium.chrome.browser.composeplate;
 
 import android.content.res.ColorStateList;
 import android.content.res.Resources;
+import android.graphics.drawable.Drawable;
 import android.view.View;
 import android.view.ViewGroup;
 
 import androidx.annotation.StyleRes;
 
 import org.chromium.build.annotations.NullMarked;
+import org.chromium.build.annotations.Nullable;
 import org.chromium.chrome.browser.ntp.NewTabPageUtils;
 import org.chromium.chrome.browser.util.BrowserUiUtils.ModuleTypeOnStartAndNtp;
+import org.chromium.components.search_engines.AiModeButtonUiConfig;
 import org.chromium.ui.modelutil.PropertyModel;
 import org.chromium.ui.modelutil.PropertyModelChangeProcessor;
 
@@ -175,6 +178,29 @@ public class ComposeplateCoordinator {
         @StyleRes int textStyleResId = ComposeplateUtils.getSearchBoxTextStyleResId(apply);
         mModel.set(ComposeplateProperties.COLOR_STATE_LIST, colorStateList);
         mModel.set(ComposeplateProperties.TEXT_STYLE_RES_ID, textStyleResId);
+    }
+
+    /**
+     * Updates the AI Mode button with the UI config of the default search engine. The config
+     * carries the strings to show, which vary per search engine.
+     *
+     * @param aiModeButtonUiConfig The {@link AiModeButtonUiConfig} of the default search engine.
+     */
+    public void updateAiModeButtonUiConfig(AiModeButtonUiConfig aiModeButtonUiConfig) {
+        mModel.set(ComposeplateProperties.AI_MODE_BUTTON_UI_CONFIG, aiModeButtonUiConfig);
+    }
+
+    /**
+     * Updates the icon of the AI Mode button.
+     *
+     * @param iconDrawable The icon {@link Drawable} to show on the AI Mode button.
+     * @param shouldTint Whether the icon should be tinted to match the other composeplate icons.
+     *     Pass false for full color icons, e.g. a favicon.
+     */
+    public void updateAiModeButtonIcon(@Nullable Drawable iconDrawable, boolean shouldTint) {
+        mModel.set(
+                ComposeplateProperties.AI_MODE_BUTTON_ICON,
+                new ComposeplateProperties.AiModeButtonIcon(iconDrawable, shouldTint));
     }
 
     public PropertyModel getModelForTesting() {

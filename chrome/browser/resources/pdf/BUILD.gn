@@ -14,7 +14,6 @@ build_webui("build") {
     "index.css",
     "index.html",
     "index_print.html",
-    "pdf_embedder.css",
   ]
 
   # TODO(crbug.com/362783117): Check in the .html.ts files for these two
@@ -141,7 +140,6 @@ build_webui("build") {
   css_files = [
     "elements/pdf_shared.css",
     "elements/shared_vars.css",
-    "elements/scrollbar.css",
     "elements/viewer_attachment.css",
     "elements/viewer_attachment_bar.css",
     "elements/viewer_bookmark.css",

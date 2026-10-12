@@ -628,7 +628,6 @@ _CONFIG = [
             'gfx::HDRMetadata',
             'gfx::HdrMetadataAgtm',
             'gfx::HdrMetadataExtendedRange',
-            'gfx::ICCProfile',
 
             # For fast cos/sin functions
             'gfx::SinCosDegrees',
@@ -896,6 +895,7 @@ _CONFIG = [
             'cors::.+',
             'css_parsing_utils::.+',
             'cssvalue::.+',
+            'date_time_format::.+',
             'element_locator::.+',
             'encoding::.+',
             'encoding_enum::.+',

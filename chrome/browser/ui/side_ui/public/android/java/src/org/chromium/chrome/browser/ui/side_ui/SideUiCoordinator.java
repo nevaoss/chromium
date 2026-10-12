@@ -134,10 +134,8 @@ public interface SideUiCoordinator extends SideUiStateProvider {
     final class UiUpdateRequest {
         /** What triggered a {@link SideUiCoordinator#updateUi} request. */
         @IntDef({
-            UpdateReason.UNSPECIFIED,
             UpdateReason.SIDE_UI_REQUEST,
             UpdateReason.ANDROID_CONFIGURATION_CHANGED,
-            UpdateReason.CONTROLS_OFFSET_CHANGED,
             UpdateReason.TOP_CONTROLS_HEIGHT_CHANGED,
             UpdateReason.FULL_SCREEN_MODE_ENTERED,
             UpdateReason.FULL_SCREEN_MODE_EXITED,
@@ -146,9 +144,6 @@ public interface SideUiCoordinator extends SideUiStateProvider {
         })
         @Target(ElementType.TYPE_USE)
         public @interface UpdateReason {
-            /** A request from outside the Side UI framework, with no originating container. */
-            int UNSPECIFIED = 0;
-
             /**
              * A {@link SideUiContainer} requested a UI update. A width of zero denotes a hidden
              * container, so showing and hiding a container are also represented by this value.
@@ -157,33 +152,30 @@ public interface SideUiCoordinator extends SideUiStateProvider {
              * SideUiContainer} rather than a change to the environment the containers are laid out
              * within.
              */
-            int SIDE_UI_REQUEST = 1;
+            int SIDE_UI_REQUEST = 0;
 
             /**
              * The Android {@link android.content.res.Configuration} changed, for example the window
              * size, the orientation or the display density.
              */
-            int ANDROID_CONFIGURATION_CHANGED = 2;
-
-            /** The offset of the browser controls changed. */
-            int CONTROLS_OFFSET_CHANGED = 3;
+            int ANDROID_CONFIGURATION_CHANGED = 1;
 
             /** The height of the top browser controls changed. */
-            int TOP_CONTROLS_HEIGHT_CHANGED = 4;
+            int TOP_CONTROLS_HEIGHT_CHANGED = 2;
 
             /** The activity entered fullscreen mode. */
-            int FULL_SCREEN_MODE_ENTERED = 5;
+            int FULL_SCREEN_MODE_ENTERED = 3;
 
             /** The activity exited fullscreen mode. */
-            int FULL_SCREEN_MODE_EXITED = 6;
+            int FULL_SCREEN_MODE_EXITED = 4;
 
             /** An intermediate update during a manual resize. */
-            int RESIZE_LIVE = 7;
+            int RESIZE_LIVE = 5;
 
             /** The final update committing a manual resize. */
-            int RESIZE_COMMITTED = 8;
+            int RESIZE_COMMITTED = 6;
 
-            int NUM_ENTRIES = 9;
+            int NUM_ENTRIES = 7;
         }
 
         /**
@@ -210,25 +202,6 @@ public interface SideUiCoordinator extends SideUiStateProvider {
         }
 
         /**
-         * Constructs a request with {@link UpdateReason#SIDE_UI_REQUEST}, or {@link
-         * UpdateReason#UNSPECIFIED} if {@code sideUiId} is null.
-         *
-         * @param sideUiId ID of the {@link SideUiContainer} requesting the UI update, or null if
-         *     the request is not from a {@link SideUiContainer}.
-         * @param suppressAnimations Whether animations should be suppressed during the UI update.
-         * @deprecated Only {@link SideUiContainer}s should construct a {@link UiUpdateRequest}
-         *     outside this package; use {@link #UiUpdateRequest(int, boolean)} with a non-null
-         *     {@code sideUiId}.
-         */
-        @Deprecated
-        public UiUpdateRequest(@Nullable @SideUiId Integer sideUiId, boolean suppressAnimations) {
-            this(
-                    sideUiId,
-                    suppressAnimations,
-                    sideUiId != null ? UpdateReason.SIDE_UI_REQUEST : UpdateReason.UNSPECIFIED);
-        }
-
-        /**
          * Constructs a request with an explicit {@link UpdateReason}.
          *
          * <p>Restricted to this package. The {@link UpdateReason}s can describe changes to the
@@ -240,14 +213,51 @@ public interface SideUiCoordinator extends SideUiStateProvider {
          * @param suppressAnimations Whether animations should be suppressed during the UI update.
          * @param updateReason What triggered this request.
          */
-        @VisibleForTesting(otherwise = VisibleForTesting.PACKAGE_PRIVATE)
-        public UiUpdateRequest(
+        UiUpdateRequest(
                 @Nullable @SideUiId Integer sideUiId,
                 boolean suppressAnimations,
                 @UpdateReason int updateReason) {
             mSideUiId = sideUiId;
             mSuppressAnimations = suppressAnimations;
             mUpdateReason = updateReason;
+        }
+
+        /**
+         * Returns a {@link UiUpdateRequest} for tests, attributed to {@link
+         * SideUiId#SIDE_UI_FOR_TESTING_HIGH_PRIORITY}.
+         *
+         * @param suppressAnimations Whether animations should be suppressed during the UI update.
+         */
+        public static UiUpdateRequest getRequestForTesting(boolean suppressAnimations) {
+            return new UiUpdateRequest(
+                    SideUiId.SIDE_UI_FOR_TESTING_HIGH_PRIORITY, suppressAnimations);
+        }
+
+        /**
+         * Returns a {@link UiUpdateRequest} for tests with an explicit {@link UpdateReason},
+         * attributed to {@link SideUiId#SIDE_UI_FOR_TESTING_HIGH_PRIORITY}.
+         *
+         * @param suppressAnimations Whether animations should be suppressed during the UI update.
+         * @param updateReason What triggered this request.
+         */
+        public static UiUpdateRequest getRequestForTesting(
+                boolean suppressAnimations, @UpdateReason int updateReason) {
+            return new UiUpdateRequest(
+                    SideUiId.SIDE_UI_FOR_TESTING_HIGH_PRIORITY, suppressAnimations, updateReason);
+        }
+
+        /**
+         * Returns a {@link UiUpdateRequest} for tests that simulates an Android {@link
+         * android.content.res.Configuration} change, with no originating {@link SideUiContainer}.
+         *
+         * @param suppressAnimations Whether animations should be suppressed during the UI update.
+         */
+        public static UiUpdateRequest getConfigurationChangeRequestForTesting(
+                boolean suppressAnimations) {
+            return new UiUpdateRequest(
+                    /* sideUiId= */ null,
+                    suppressAnimations,
+                    UpdateReason.ANDROID_CONFIGURATION_CHANGED);
         }
 
         @Override
@@ -277,10 +287,8 @@ public interface SideUiCoordinator extends SideUiStateProvider {
         /** Returns the name of the given {@link UpdateReason}. */
         private static String updateReasonToString(@UpdateReason int reason) {
             return switch (reason) {
-                case UpdateReason.UNSPECIFIED -> "UNSPECIFIED";
                 case UpdateReason.SIDE_UI_REQUEST -> "SIDE_UI_REQUEST";
                 case UpdateReason.ANDROID_CONFIGURATION_CHANGED -> "ANDROID_CONFIGURATION_CHANGED";
-                case UpdateReason.CONTROLS_OFFSET_CHANGED -> "CONTROLS_OFFSET_CHANGED";
                 case UpdateReason.TOP_CONTROLS_HEIGHT_CHANGED -> "TOP_CONTROLS_HEIGHT_CHANGED";
                 case UpdateReason.FULL_SCREEN_MODE_ENTERED -> "FULL_SCREEN_MODE_ENTERED";
                 case UpdateReason.FULL_SCREEN_MODE_EXITED -> "FULL_SCREEN_MODE_EXITED";
@@ -304,35 +312,33 @@ public interface SideUiCoordinator extends SideUiStateProvider {
              * The width reserved by the {@link SideUiContainer}, i.e. the width that the rest of
              * the browser UI (web contents, toolbar, etc.) lays itself out around.
              */
-            public final @Px int mWidth;
+            public final @Px int mReservedWidth;
 
             /**
              * The width the {@link SideUiContainer}'s {@link android.view.View} is rendered at.
              *
-             * <p>This is the same as {@link #mWidth} unless the container overlays other browser
-             * UI.
+             * <p>This is the same as {@link #mReservedWidth} unless the container overlays other
+             * browser UI.
              */
             public final @Px int mRenderedWidth;
 
             public final @HeightType int mHeightType;
 
-            // TODO(crbug.com/542280452): Rename mWidth to mReservedWidth and SideUiSpecs#getWidth()
-            // to
-            // getReservedWidth(), so the pair with mRenderedWidth reads consistently. Done
-            // separately because it touches every Side UI observer.
-            public SideUiSize(@Px int width, @HeightType int heightType) {
-                this(width, /* renderedWidth= */ width, heightType);
+            public SideUiSize(@Px int reservedWidth, @HeightType int heightType) {
+                this(reservedWidth, /* renderedWidth= */ reservedWidth, heightType);
             }
 
-            public SideUiSize(@Px int width, @Px int renderedWidth, @HeightType int heightType) {
-                assert width > 0 || (width == 0 && heightType == HeightType.NOT_APPLICABLE)
+            public SideUiSize(
+                    @Px int reservedWidth, @Px int renderedWidth, @HeightType int heightType) {
+                assert reservedWidth > 0
+                                || (reservedWidth == 0 && heightType == HeightType.NOT_APPLICABLE)
                         : "inconsistent width and heightType";
-                assert renderedWidth >= width
+                assert renderedWidth >= reservedWidth
                         : "a container cannot render narrower than the width it reserves";
-                assert width > 0 || renderedWidth == 0
+                assert reservedWidth > 0 || renderedWidth == 0
                         : "a container that reserves no width cannot render an overlay";
 
-                mWidth = width;
+                mReservedWidth = reservedWidth;
                 mRenderedWidth = renderedWidth;
                 mHeightType = heightType;
             }
@@ -340,22 +346,22 @@ public interface SideUiCoordinator extends SideUiStateProvider {
             @Override
             public boolean equals(@Nullable Object obj) {
                 if (!(obj instanceof SideUiSize that)) return false;
-                return this.mWidth == that.mWidth
+                return this.mReservedWidth == that.mReservedWidth
                         && this.mRenderedWidth == that.mRenderedWidth
                         && this.mHeightType == that.mHeightType;
             }
 
             @Override
             public int hashCode() {
-                return Objects.hash(mWidth, mRenderedWidth, mHeightType);
+                return Objects.hash(mReservedWidth, mRenderedWidth, mHeightType);
             }
 
             @Override
             public String toString() {
                 return String.format(
                         Locale.ENGLISH,
-                        "[width: %d, renderedWidth: %d, heightType: %d]",
-                        mWidth,
+                        "[reservedWidth: %d, renderedWidth: %d, heightType: %d]",
+                        mReservedWidth,
                         mRenderedWidth,
                         mHeightType);
             }
@@ -391,14 +397,18 @@ public interface SideUiCoordinator extends SideUiStateProvider {
             mSideUiSpecs.putAll(specs);
         }
 
-        public int getWidth(@AnchorSide int side) {
+        /**
+         * Returns the width the container on {@code side} reserves, i.e. the width that the rest of
+         * the browser UI lays itself out around.
+         */
+        public int getReservedWidth(@AnchorSide int side) {
             SideUiSize spec = mSideUiSpecs.get(side);
-            return spec != null ? spec.mWidth : 0;
+            return spec != null ? spec.mReservedWidth : 0;
         }
 
         /**
          * Returns the width the container on {@code side} is rendered at, which is larger than
-         * {@link #getWidth} when that container overlays the web contents.
+         * {@link #getReservedWidth} when that container overlays the web contents.
          */
         public int getRenderedWidth(@AnchorSide int side) {
             SideUiSize spec = mSideUiSpecs.get(side);

@@ -1194,6 +1194,7 @@ chromium-metrics-reviews@google.com.
   <int value="1" label="Color background was loaded"/>
   <int value="2" label="Gallery image background was loaded"/>
   <int value="3" label="User uploaded image background was loaded"/>
+  <int value="4" label="Ephemeral theme background was loaded"/>
 </enum>
 
 <!-- LINT.ThenChange(/ios/chrome/browser/home_customization/utils/home_customization_constants.h:HomeCustomizationBackgroundStyle) -->
@@ -1757,6 +1758,9 @@ chromium-metrics-reviews@google.com.
   <int value="19" label="(Obsolete) BWG promo"/>
   <int value="20" label="Safari Import (Remind Me Later)"/>
   <int value="21" label="Default Browser off cycle promo"/>
+  <int value="22" label="Home background customization promo"/>
+  <int value="23" label="LevelUp"/>
+  <int value="24" label="Ephemeral theme promo"/>
 </enum>
 
 <!-- LINT.ThenChange(/ios/chrome/browser/promos_manager/model/constants.h:Promo) -->
@@ -2445,6 +2449,7 @@ chromium-metrics-reviews@google.com.
   <int value="2" label="Secondary Button"/>
   <int value="3" label="Tertiary Button"/>
   <int value="4" label="Dismiss Button"/>
+  <int value="5" label="Dismiss via Swipe"/>
 </enum>
 
 <!-- LINT.ThenChange(/ios/chrome/common/ui/promo_style/constants.h:PromoStyleSheetAction) -->

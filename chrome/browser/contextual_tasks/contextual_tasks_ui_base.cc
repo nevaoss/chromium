@@ -10,10 +10,15 @@
 #include "chrome/browser/contextual_tasks/contextual_tasks_side_panel_coordinator.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_post_rearchitecture.h"
+#include "chrome/browser/contextual_tasks/contextual_tasks_ui_service.h"
+#include "chrome/browser/contextual_tasks/contextual_tasks_ui_service_factory.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_utils.h"
 #include "chrome/browser/contextual_tasks/entry_point_eligibility_manager.h"
 #include "chrome/browser/profiles/profile.h"
+#include "chrome/browser/tab_list/tab_list_interface.h"
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
+#include "chrome/browser/ui/navigator/browser_navigator.h"
+#include "chrome/browser/ui/navigator/browser_navigator_params.h"
 #include "chrome/browser/ui/webui/webui_embedding_context.h"
 #include "chrome/common/webui_url_constants.h"
 #include "chrome/grit/branded_strings.h"
@@ -33,10 +38,13 @@
 #include "mojo/public/mojom/base/error.mojom.h"
 #include "services/network/public/mojom/content_security_policy.mojom.h"
 #include "ui/base/l10n/l10n_util.h"
+#include "ui/base/page_transition_types.h"
 #include "ui/base/ui_base_features.h"
 #include "ui/base/webui/web_ui_util.h"
+#include "ui/base/window_open_disposition.h"
 #include "ui/webui/tracked_element/tracked_element_handler_document_singleton.h"
 #include "ui/webui/webui_util.h"
+#include "url/gurl.h"
 
 #if BUILDFLAG(ENABLE_EXTENSIONS_CORE)
 #include "chrome/grit/contextual_tasks_extension_resources.h"
@@ -44,6 +52,8 @@
 #endif
 
 #if !BUILDFLAG(IS_ANDROID)
+#include "chrome/browser/ui/actions/chrome_action_id.h"
+#include "chrome/browser/ui/toolbar/pinned_toolbar/pinned_toolbar_actions_model.h"
 #include "chrome/browser/ui/webui/webui_toolbar/webui_toolbar_layout_css_helper.h"
 #include "chrome/grit/webui_toolbar_shared_resources.h"
 #include "chrome/grit/webui_toolbar_shared_resources_map.h"
@@ -55,14 +65,42 @@
 
 namespace contextual_tasks {
 
+namespace {
+
+constexpr char kMyActivityUrl[] = "https://myactivity.google.com/myactivity";
+
+void OpenUrlWithDisposition(Profile* profile,
+                            const GURL& url,
+                            WindowOpenDisposition disposition,
+                            BrowserWindowInterface* browser) {
+  NavigateParams params(profile, url, ui::PAGE_TRANSITION_LINK);
+  params.disposition = disposition;
+  params.browser = browser;
+  Navigate(&params);
+}
+
+}  // namespace
+
 ContextualTasksUIBase::ContextualTasksUIBase(content::WebUI* web_ui)
     : ui::MojoWebUIController(web_ui,
                               /*enable_chrome_send=*/true,
-                              /*enable_chrome_histograms=*/true) {}
+                              /*enable_chrome_histograms=*/true) {
+#if !BUILDFLAG(IS_ANDROID)
+  if (contextual_tasks::IsContextualTasksPinButtonInToolbarEnabled()) {
+    Profile* profile = GetProfile();
+    if (auto* model = PinnedToolbarActionsModel::Get(profile)) {
+      pinned_toolbar_actions_model_observation_.Observe(model);
+    }
+  }
+#endif
+}
 
 ContextualTasksUIBase::~ContextualTasksUIBase() = default;
 
 Profile* ContextualTasksUIBase::GetProfile() {
+  if (!web_ui() || !web_ui()->GetWebContents()) {
+    return nullptr;
+  }
   return Profile::FromWebUI(web_ui());
 }
 
@@ -221,7 +259,97 @@ void ContextualTasksUIBase::CreatePageHandler(
   toolbar_page_handler_receiver_.reset();
   toolbar_page_.Bind(std::move(page));
   toolbar_page_handler_receiver_.Bind(std::move(page_handler));
+#if !BUILDFLAG(IS_ANDROID)
+  if (contextual_tasks::IsContextualTasksPinButtonInToolbarEnabled()) {
+    Profile* profile = GetProfile();
+    if (auto* model = PinnedToolbarActionsModel::Get(profile)) {
+      if (!pinned_toolbar_actions_model_observation_.IsObserving()) {
+        pinned_toolbar_actions_model_observation_.Observe(model);
+      }
+      bool is_pinned = contextual_tasks::GetEffectivePinState(profile);
+      if (auto* toolbar_page = GetToolbarPageRemote()) {
+        toolbar_page->OnSidePanelPinStateChanged(is_pinned);
+      }
+    }
+  }
+#endif
 }
+
+void ContextualTasksUIBase::PinSidePanel() {
+  if (!contextual_tasks::IsContextualTasksPinButtonInToolbarEnabled()) {
+    return;
+  }
+#if !BUILDFLAG(IS_ANDROID)
+  Profile* profile = GetProfile();
+  if (auto* model = PinnedToolbarActionsModel::Get(profile)) {
+    model->UpdatePinnedState(kActionSidePanelShowContextualTasks, true);
+  }
+#endif
+}
+
+void ContextualTasksUIBase::UnpinSidePanel() {
+  if (!contextual_tasks::IsContextualTasksPinButtonInToolbarEnabled()) {
+    return;
+  }
+#if !BUILDFLAG(IS_ANDROID)
+  Profile* profile = GetProfile();
+  if (auto* model = PinnedToolbarActionsModel::Get(profile)) {
+    model->UpdatePinnedState(kActionSidePanelShowContextualTasks, false);
+  }
+#endif
+}
+
+void ContextualTasksUIBase::OpenMyActivityUi() {
+  BrowserWindowInterface* browser = GetBrowser();
+  if (!browser) {
+    return;
+  }
+  OpenUrlWithDisposition(GetProfile(), GURL(kMyActivityUrl),
+                         WindowOpenDisposition::NEW_FOREGROUND_TAB, browser);
+}
+
+void ContextualTasksUIBase::OpenOverflowMenuHelpUi() {
+  BrowserWindowInterface* browser = GetBrowser();
+  if (!browser) {
+    return;
+  }
+  OpenUrlWithDisposition(
+      GetProfile(),
+      GURL(contextual_tasks::GetContextualTasksOverflowMenuHelpUrl()),
+      WindowOpenDisposition::NEW_FOREGROUND_TAB, browser);
+}
+
+void ContextualTasksUIBase::OpenFeedbackUi() {
+  BrowserWindowInterface* browser = GetBrowser();
+  if (!browser) {
+    return;
+  }
+  content::WebContents* web_contents = GetWebUIWebContents();
+  GURL page_url = web_contents ? web_contents->GetLastCommittedURL() : GURL();
+  if (auto* tab_list = TabListInterface::From(browser)) {
+    if (auto* active_tab = tab_list->GetActiveTab()) {
+      if (active_tab->GetContents()) {
+        page_url = active_tab->GetContents()->GetLastCommittedURL();
+      }
+    }
+  }
+
+  if (auto* ui_service =
+          ContextualTasksUiServiceFactory::GetForBrowserContext(GetProfile())) {
+    ui_service->OpenFeedbackUi(browser, page_url);
+  }
+}
+
+#if !BUILDFLAG(IS_ANDROID)
+void ContextualTasksUIBase::OnActionsChanged() {
+  if (auto* toolbar_page = GetToolbarPageRemote()) {
+    bool effective_pin_state =
+        contextual_tasks::IsContextualTasksPinButtonInToolbarEnabled() &&
+        contextual_tasks::GetEffectivePinState(GetProfile());
+    toolbar_page->OnSidePanelPinStateChanged(effective_pin_state);
+  }
+}
+#endif
 
 void ContextualTasksUIBase::BindInterface(
     mojo::PendingReceiver<contextual_tasks_toolbar::mojom::PageHandlerFactory>

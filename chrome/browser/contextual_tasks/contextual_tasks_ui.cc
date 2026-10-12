@@ -110,6 +110,8 @@
 #include "chrome/browser/flags/android/chrome_feature_list.h"
 #else
 #include "chrome/browser/ui/browser_window.h"
+#include "chrome/browser/ui/lens/lens_overlay_controller.h"
+#include "chrome/browser/ui/lens/lens_query_flow_router.h"
 #include "chrome/browser/ui/lens/lens_search_controller.h"
 #include "chrome/browser/ui/views/permissions/chip/permission_chip_view.h"
 #include "chrome/browser/ui/views/user_education/browser_help_bubble.h"
@@ -670,7 +672,17 @@ base::DictValue ContextualTasksUI::GetContextualTasksLoadTimeData(
   dict.Set("windowTrackingEnabled",
            contextual_tasks::GetIsContextualTasksWindowTrackingEnabled());
   dict.Set("supportsLensButtonInComposebox", !BUILDFLAG(IS_ANDROID));
-  dict.Set("isSystemVoiceSearchEnabled", !!BUILDFLAG(IS_ANDROID));
+  // Android delegates voice search to the platform recognition activity.
+  // Large-screen Android can opt into the in-panel WebUI voice search UI
+  // instead; phone Clank always stays on the platform path.
+  const bool use_webui_voice_search =
+      contextual_tasks::IsAndroidLargeFormFactor() &&
+      contextual_tasks::
+          GetIsContextualTasksWebUiVoiceSearchDesktopAndroidEnabled();
+  dict.Set("isSystemVoiceSearchEnabled",
+           !!BUILDFLAG(IS_ANDROID) && !use_webui_voice_search);
+  // Drives audio wave simulation in the WebUI voice search UI in side panel.
+  dict.Set("androidSpeechRecognition", use_webui_voice_search);
   dict.Set("isUserFeedbackAllowed", IsUserFeedbackAllowed(profile));
   dict.Set("enableComposeboxJumpFix",
            contextual_tasks::GetEnableComposeboxJumpFix());
@@ -1271,6 +1283,21 @@ void ContextualTasksUI::OnContextRetrievedForActiveTab(
   bool is_tab_already_in_context =
       context &&
       context->ContainsURL(last_committed_url, url_duplication_helper.get());
+#if !BUILDFLAG(IS_ANDROID)
+  if (is_tab_already_in_context) {
+    if (auto* controller =
+            LensSearchController::FromTabWebContents(tab->GetContents())) {
+      if (controller->lens_overlay_controller() &&
+          controller->lens_overlay_controller()->HasRegionSelection() &&
+          controller->query_router() &&
+          controller->query_router()
+              ->overlay_tab_context_file_token()
+              .has_value()) {
+        is_tab_already_in_context = false;
+      }
+    }
+  }
+#endif
   if (!is_tab_already_in_context && composebox_handler_) {
     const auto* current_suggestion =
         auto_suggestion_manager_->GetCurrentSuggestion();

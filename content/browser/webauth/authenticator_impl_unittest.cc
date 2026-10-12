@@ -3032,6 +3032,32 @@ TEST_F(AuthenticatorImplRemoteClientDataJSONDisabledTest,
 }
 
 TEST_F(AuthenticatorImplRemoteClientDataJSONDisabledTest,
+       CrossOriginMakeCredentialRejectsExtensionWhenFeatureDisabled) {
+  NavigateAndCommit(GURL(kExampleOrigin));
+  RenderFrameHost* child =
+      RenderFrameHostTester::For(main_rfh())->AppendChild("child");
+  child = NavigationSimulator::NavigateAndCommitFromDocument(
+      GURL(kOtherRdpOrigin), child);
+
+  PublicKeyCredentialCreationOptionsPtr options =
+      GetTestPublicKeyCredentialCreationOptions();
+  options->relying_party.id = kExampleRpId;
+  options->remote_client_data_json = MakeClientDataJSON(kExampleOrigin);
+
+  mojo::Remote<blink::mojom::Authenticator> authenticator;
+  static_cast<RenderFrameHostImpl*>(child)->GetWebAuthenticationService(
+      authenticator.BindNewPipeAndPassReceiver());
+  base::test::TestFuture<void> mojo_error_future;
+  SetMojoErrorHandler(base::BindLambdaForTesting([&](const std::string& error) {
+    EXPECT_EQ(error, "invalid remoteClientDataJSON request");
+    mojo_error_future.SetValue();
+  }));
+
+  authenticator->MakeCredential(std::move(options), base::DoNothing());
+  EXPECT_TRUE(mojo_error_future.Wait());
+}
+
+TEST_F(AuthenticatorImplRemoteClientDataJSONDisabledTest,
        GetAssertionRejectsExtensionWhenFeatureDisabled) {
   NavigateAndCommit(GURL(kExampleOrigin));
 
@@ -3339,6 +3365,10 @@ TEST_F(AuthenticatorImplRequestDelegateTest, FailureReasonForTimeout) {
   auto mock_delegate = std::make_unique<
       ::testing::NiceMock<MockAuthenticatorRequestDelegateObserver>>(
       failure_reason_future.GetCallback());
+  EXPECT_CALL(*mock_delegate,
+              OnTransactionFailed(std::optional<device::AuthenticatorType>(),
+                                  AuthenticatorRequestClientDelegate::
+                                      InterestingFailureReason::kTimeout));
   auto authenticator = ConnectToFakeAuthenticator(std::move(mock_delegate));
 
   TestGetCredentialFuture future;
@@ -3394,6 +3424,11 @@ TEST_F(AuthenticatorImplRequestDelegateTest,
   auto mock_delegate = std::make_unique<
       ::testing::NiceMock<MockAuthenticatorRequestDelegateObserver>>(
       failure_reason_future.GetCallback());
+  EXPECT_CALL(
+      *mock_delegate,
+      OnTransactionFailed(std::optional(device::AuthenticatorType::kOther),
+                          AuthenticatorRequestClientDelegate::
+                              InterestingFailureReason::kKeyNotRegistered));
   auto authenticator = ConnectToFakeAuthenticator(std::move(mock_delegate));
 
   TestGetCredentialFuture future;

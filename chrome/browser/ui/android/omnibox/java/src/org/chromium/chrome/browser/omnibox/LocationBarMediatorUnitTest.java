@@ -46,12 +46,14 @@ import android.widget.TextView;
 import androidx.test.core.app.ApplicationProvider;
 
 import org.junit.Before;
+import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 import org.mockito.quality.Strictness;
@@ -294,6 +296,36 @@ public class LocationBarMediatorUnitTest {
 
     // Members capturing final state of the LocationBarLayout elements.
     private boolean mNavigateButtonIsVisible;
+
+    /**
+     * Pre-warms Robolectric bytecode instrumentation and Mockito ByteBuddy dynamic mock generation
+     * before any individual {@code @Test} method's 30-second timeout timer starts.
+     *
+     * <p>{@link BaseRobolectricTestRunner} wraps each individual test method (including its {@code
+     * @Rule}s such as {@link MockitoRule} and {@code @Before setUp()}) in a 30-second {@code
+     * BaseTimeLimitedStatement}. Because this test class declares ~58 {@code @Mock} fields spanning
+     * deep Android View/Activity hierarchies and large Omnibox coordinators, the very first test
+     * method to execute in the class (determined by JUnit's {@code MethodSorter.DEFAULT} hashCode
+     * order, e.g. {@code testFinishUrlFocusChange_afterDestroy_isNoOp}) would otherwise absorb the
+     * entire one-time per-class cold-start cost of {@code SandboxClassLoader.maybeInstrumentClass}
+     * and {@code SubclassBytecodeGenerator.mockClass}. Under heavy multi-JVM shard contention or
+     * code coverage instrumentation on CI bots, that cold-start initialization alone takes 18–37s
+     * and causes the first test method to flakily fail with {@code TestTimedOutException: test
+     * timed out after 30000 milliseconds} before its test body even runs, while all subsequent
+     * tests in the class complete in ~150ms once the classes and ByteBuddy mock types are cached.
+     *
+     * <p>Do NOT remove this {@code @BeforeClass} method: running {@link
+     * MockitoAnnotations#openMocks} and loading {@link LocationBarMediator} here executes the
+     * one-time class instrumentation and ByteBuddy mock compilation under the shard-level timeout
+     * rather than the first test method's 30-second per-test timeout, populating {@code
+     * SandboxClassLoader} and Mockito's {@code TypeCachingBytecodeGenerator} cache ahead of Test
+     * #1.
+     */
+    @BeforeClass
+    public static void setUpClass() throws Exception {
+        Class.forName(LocationBarMediator.class.getName());
+        MockitoAnnotations.openMocks(new LocationBarMediatorUnitTest()).close();
+    }
 
     @Before
     @SuppressWarnings("DirectInvocationOnMock")
@@ -5368,9 +5400,37 @@ public class LocationBarMediatorUnitTest {
     }
 
     @Test
-    public void testActivationChipClicked_withUserText_stillLoadsNavigationUrlEmpty() {
-        // TODO(crbug.com/561690870): the query should be expanded into `navigationUrl`, as it is
-        // on desktop. Until then it is dropped, and this pins that known gap.
+    public void testActivationChipClicked_withUserText_expandsNavigationUrl() {
+        mAiModeButtonUiConfigSupplier.set(
+                createTestAiModeButtonUiConfig(
+                        "https://3p.com/ai?q={searchTerms}", new GURL("https://3p.com/ai")));
+        doReturn(mTab).when(mLocationBarDataProvider).getTab();
+        setUpMediatorAndCoordinator();
+
+        doReturn(new GURL("https://3p.com/ai?q=cat+pictures"))
+                .when(mTemplateUrlService)
+                .expandUrlTemplate(eq("https://3p.com/ai?q={searchTerms}"), eq("cat pictures"));
+
+        AutocompleteInput input = mSessionState.getAutocompleteInput();
+        input.setRequestType(AutocompleteRequestType.SEARCH);
+        input.setInitialUserText("page.com");
+        input.setUserText("cat pictures");
+        mMediator.beginInput(input);
+
+        mMediator.onActivationChipClicked();
+
+        assertEquals(AutocompleteRequestType.AI_MODE, input.getRequestType());
+        verify(mNavigator).loadUrl(mOmniboxLoadUrlParamsCaptor.capture());
+        assertEquals(
+                "https://3p.com/ai?q=cat+pictures", mOmniboxLoadUrlParamsCaptor.getValue().url);
+        assertEquals(
+                PageTransition.FROM_ADDRESS_BAR,
+                mOmniboxLoadUrlParamsCaptor.getValue().transitionType);
+        verify(mAutocompleteCoordinator, never()).loadTypedOmniboxText(anyLong(), anyInt());
+    }
+
+    @Test
+    public void testActivationChipClicked_unchangedUrlBarText_loadsNavigationUrlEmpty() {
         mAiModeButtonUiConfigSupplier.set(
                 createTestAiModeButtonUiConfig(
                         "https://3p.com/ai?q={searchTerms}", new GURL("https://3p.com/ai")));
@@ -5379,6 +5439,35 @@ public class LocationBarMediatorUnitTest {
 
         AutocompleteInput input = mSessionState.getAutocompleteInput();
         input.setRequestType(AutocompleteRequestType.SEARCH);
+        mMediator.beginInput(input);
+
+        input.setInitialUserText("page.com");
+        input.setUserText("page.com");
+        doReturn("page.com").when(mUrlCoordinator).getTextWithoutAutocomplete();
+
+        mMediator.onActivationChipClicked();
+
+        assertEquals(AutocompleteRequestType.AI_MODE, input.getRequestType());
+        verify(mNavigator).loadUrl(mOmniboxLoadUrlParamsCaptor.capture());
+        assertEquals("https://3p.com/ai", mOmniboxLoadUrlParamsCaptor.getValue().url);
+        verify(mTemplateUrlService, never()).expandUrlTemplate(any(), any());
+    }
+
+    @Test
+    public void testActivationChipClicked_expandUrlTemplateReturnsNull_loadsNavigationUrlEmpty() {
+        mAiModeButtonUiConfigSupplier.set(
+                createTestAiModeButtonUiConfig(
+                        "https://3p.com/ai?q={searchTerms}", new GURL("https://3p.com/ai")));
+        doReturn(mTab).when(mLocationBarDataProvider).getTab();
+        setUpMediatorAndCoordinator();
+
+        doReturn(null)
+                .when(mTemplateUrlService)
+                .expandUrlTemplate(eq("https://3p.com/ai?q={searchTerms}"), eq("cat pictures"));
+
+        AutocompleteInput input = mSessionState.getAutocompleteInput();
+        input.setRequestType(AutocompleteRequestType.SEARCH);
+        input.setInitialUserText("page.com");
         input.setUserText("cat pictures");
         mMediator.beginInput(input);
 
@@ -5387,10 +5476,6 @@ public class LocationBarMediatorUnitTest {
         assertEquals(AutocompleteRequestType.AI_MODE, input.getRequestType());
         verify(mNavigator).loadUrl(mOmniboxLoadUrlParamsCaptor.capture());
         assertEquals("https://3p.com/ai", mOmniboxLoadUrlParamsCaptor.getValue().url);
-        assertEquals(
-                PageTransition.FROM_ADDRESS_BAR,
-                mOmniboxLoadUrlParamsCaptor.getValue().transitionType);
-        verify(mAutocompleteCoordinator, never()).loadTypedOmniboxText(anyLong(), anyInt());
     }
 
     @Test

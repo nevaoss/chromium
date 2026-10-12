@@ -5,6 +5,7 @@
 package org.chromium.chrome.browser.ui;
 
 import org.jni_zero.CalledByNative;
+import org.jni_zero.JniType;
 
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
@@ -56,6 +57,9 @@ public class ExclusiveAccessBubble {
                         // The exclusive access notice is security-critical and should not
                         // be discarded by the timeout of other action snackbars in the queue.
                         .setHighPriority(true)
+                        // Allow up to MAX_LINES (5) so the origin and exit instructions are
+                        // never clipped on narrow screens.
+                        .setDefaultLines(false)
                         // Use a Java-side timeout so that the timer only starts when
                         // the notice is actually visible to the user.
                         .setDuration(EXCLUSIVE_ACCESS_SNACKBAR_DURATION_MS);
@@ -63,7 +67,7 @@ public class ExclusiveAccessBubble {
     }
 
     @CalledByNative
-    public void update(String text) {
+    public void update(@JniType("std::u16string") String text) {
         if (mText != null && mText.equals(text) && mSnackbar != null) return;
         mText = text;
 

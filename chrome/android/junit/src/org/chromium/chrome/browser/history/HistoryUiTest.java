@@ -71,7 +71,7 @@ import org.chromium.chrome.browser.IntentHandler;
 import org.chromium.chrome.browser.back_press.BackPressHelper;
 import org.chromium.chrome.browser.back_press.BackPressManager;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
-import org.chromium.chrome.browser.history.AppFilterCoordinator.AppInfo;
+import org.chromium.chrome.browser.history.FilterSheetCoordinator.FilterItem;
 import org.chromium.chrome.browser.history.HistoryManagerToolbar.InfoHeaderPref;
 import org.chromium.chrome.browser.incognito.IncognitoUtils;
 import org.chromium.chrome.browser.preferences.Pref;
@@ -114,6 +114,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Date;
+import java.util.List;
 import java.util.function.Supplier;
 
 /**
@@ -125,12 +126,10 @@ import java.util.function.Supplier;
 @RunWith(ParameterizedRobolectricTestRunner.class)
 @DisableFeatures({
     ChromeFeatureList.APP_SPECIFIC_HISTORY,
-    ChromeFeatureList.ANDROID_DESKTOP_HISTORY_LAYOUT
+    ChromeFeatureList.ANDROID_DESKTOP_HISTORY_LAYOUT,
+    ChromeFeatureList.BROWSING_HISTORY_FILTER_BY_DOMAIN
 })
-@EnableFeatures({
-    ChromeFeatureList.ENABLE_ESCAPE_HANDLING_FOR_SECONDARY_ACTIVITIES,
-    SigninFeatures.ENABLE_SEAMLESS_SIGNIN
-})
+@EnableFeatures(ChromeFeatureList.ENABLE_ESCAPE_HANDLING_FOR_SECONDARY_ACTIVITIES)
 public class HistoryUiTest {
     private static final int PAGE_INCREMENT = 2;
     private static final String HISTORY_SEARCH_QUERY = "some page";
@@ -181,7 +180,7 @@ public class HistoryUiTest {
     @Mock private PrefChangeRegistrar.Natives mPrefChangeRegistrarJni;
     @Mock private TemplateUrlService mTemplateUrlService;
     @Mock private PackageManager mPackageManager;
-    @Mock private AppFilterCoordinator mAppFilterSheet;
+    @Mock private FilterSheetCoordinator mAppFilterSheet;
     @Mock private ApplicationInfo mPackageAppInfo;
 
     public static Matcher<Intent> hasData(GURL uri) {
@@ -607,6 +606,40 @@ public class HistoryUiTest {
         Assert.assertEquals(1, headerGroup.size());
     }
 
+    @DisableFeatures(ChromeFeatureList.APP_SPECIFIC_HISTORY)
+    @EnableFeatures(ChromeFeatureList.BROWSING_HISTORY_FILTER_BY_DOMAIN)
+    @Test
+    public void testSearch_HostFilterChipVisibleWhenAppSpecificHistoryDisabled() {
+        mHistoryManager =
+                new HistoryManager(
+                        mProfile,
+                        mWindowAndroid,
+                        mActivity,
+                        true,
+                        mSnackbarManager,
+                        SupplierUtils.of(mBottomSheetController),
+                        /* modalDialogManagerSupplier= */ mModalDialogManagerSupplier,
+                        /* activityResultTracker= */ mActivityResultTracker,
+                        /* tabSupplier= */ null,
+                        mHistoryProvider,
+                        new HistoryUmaRecorder(),
+                        /* clientPackageName= */ null,
+                        /* shouldShowClearData= */ true,
+                        /* launchedForApp= */ false,
+                        /* showAppFilter= */ true,
+                        /* shouldClusterByDomain= */ false,
+                        /* openHistoryItemCallback= */ null,
+                        /* edgeToEdgePadAdjusterGenerator= */ null);
+        mContentManager = mHistoryManager.getContentManagerForTests();
+        mAdapter = mContentManager.getAdapter();
+        mAdapter.setClearBrowsingDataButtonVisibilityForTest(false);
+        performMenuAction(R.id.search_menu_id);
+        Assert.assertTrue(mAdapter.hasListHeader());
+        Assert.assertEquals(View.VISIBLE, mAdapter.getHostFilterButtonForTest().getVisibility());
+        Assert.assertTrue(mAdapter.getHostFilterButtonForTest().isEnabled());
+        Assert.assertEquals(View.GONE, mAdapter.getAppFilterButtonForTest().getVisibility());
+    }
+
     @EnableFeatures(ChromeFeatureList.APP_SPECIFIC_HISTORY)
     @Config(sdk = VERSION_CODES.UPSIDE_DOWN_CAKE)
     @Test
@@ -638,7 +671,9 @@ public class HistoryUiTest {
     }
 
     private boolean isAppFilterButtonEnabled() {
-        return mAdapter.hasListHeader() && mAdapter.getAppFilterButtonForTest().isEnabled();
+        return mAdapter.hasListHeader()
+                && mAdapter.getAppFilterButtonForTest().getVisibility() == View.VISIBLE
+                && mAdapter.getAppFilterButtonForTest().isEnabled();
     }
 
     @EnableFeatures(ChromeFeatureList.APP_SPECIFIC_HISTORY)
@@ -661,14 +696,14 @@ public class HistoryUiTest {
         verify(mAppFilterSheet).openSheet(eq(null));
 
         // Verify ContentManager is updated with the selected app info.
-        AppInfo selected = new AppInfo("Ernie", null, appId1);
+        FilterItem selected = new FilterItem("Ernie", null, appId1);
         mContentManager.onAppUpdated(selected);
         Assert.assertEquals(
                 "The expected app 'Ernie' was not chosen",
                 mContentManager.getAppInfoForTesting(),
                 selected);
 
-        AppInfo selected2 = new AppInfo("Bert", null, appId2);
+        FilterItem selected2 = new FilterItem("Bert", null, appId2);
         mContentManager.onAppUpdated(selected2);
         Assert.assertEquals(
                 "The expected app 'Bert' was not chosen",
@@ -683,6 +718,143 @@ public class HistoryUiTest {
                 null);
     }
 
+    @EnableFeatures(ChromeFeatureList.BROWSING_HISTORY_FILTER_BY_DOMAIN)
+    @Config(sdk = VERSION_CODES.UPSIDE_DOWN_CAKE)
+    @Test
+    public void testSearch_HostFilterSheet() {
+        mContentManager.setHostFilterSheetForTesting(mAppFilterSheet);
+
+        performMenuAction(R.id.search_menu_id);
+
+        mContentManager.onHostFilterClicked();
+        verify(mAppFilterSheet).openSheet(eq(null));
+
+        FilterItem selectedHost = new FilterItem("www.google.com", null, "www.google.com");
+        mContentManager.onHostUpdated(selectedHost);
+        Assert.assertEquals(selectedHost, mContentManager.getHostInfoForTesting());
+        Assert.assertEquals("www.google.com", mAdapter.getHostNameForTest());
+
+        mContentManager.onHostUpdated(null);
+        Assert.assertNull(mContentManager.getHostInfoForTesting());
+        Assert.assertNull(mAdapter.getHostNameForTest());
+    }
+
+    @DisableFeatures(ChromeFeatureList.BROWSING_HISTORY_FILTER_BY_DOMAIN)
+    @Config(sdk = VERSION_CODES.UPSIDE_DOWN_CAKE)
+    @Test
+    public void testSearch_HostFilterDisabled() {
+        Assert.assertFalse(mContentManager.showHostFilter());
+    }
+
+    @EnableFeatures(ChromeFeatureList.BROWSING_HISTORY_FILTER_BY_DOMAIN)
+    @Test
+    public void testSearch_HostFilterList() {
+        long timestamp = new Date().getTime();
+        HistoryItem page1 =
+                new HistoryItem(
+                        new GURL("https://www.example.com/page1"),
+                        "www.example.com",
+                        "Page 1",
+                        null,
+                        timestamp,
+                        new long[] {timestamp},
+                        false,
+                        false);
+        HistoryItem page2 =
+                new HistoryItem(
+                        new GURL("https://www.example.com/page2"),
+                        "www.example.com",
+                        "Page 2",
+                        null,
+                        timestamp,
+                        new long[] {timestamp},
+                        false,
+                        false);
+        HistoryItem other =
+                new HistoryItem(
+                        new GURL("https://news.other.org/"),
+                        "news.other.org",
+                        "Other",
+                        null,
+                        timestamp,
+                        new long[] {timestamp},
+                        false,
+                        false);
+
+        mHistoryProvider = new StubbedHistoryProvider();
+        mHistoryProvider.addItem(page1);
+        mHistoryProvider.addItem(page2);
+        mHistoryProvider.addItem(other);
+
+        mHistoryManager =
+                new HistoryManager(
+                        mProfile,
+                        mWindowAndroid,
+                        mActivity,
+                        true,
+                        mSnackbarManager,
+                        SupplierUtils.of(mBottomSheetController),
+                        /* modalDialogManagerSupplier= */ mModalDialogManagerSupplier,
+                        /* activityResultTracker= */ mActivityResultTracker,
+                        /* tabSupplier= */ null,
+                        mHistoryProvider,
+                        new HistoryUmaRecorder(),
+                        /* clientPackageName= */ null,
+                        /* shouldShowClearData= */ true,
+                        /* launchedForApp= */ false,
+                        /* showAppFilter= */ true,
+                        /* shouldClusterByDomain= */ false,
+                        /* openHistoryItemCallback= */ null,
+                        /* edgeToEdgePadAdjusterGenerator= */ null);
+        mContentManager = mHistoryManager.getContentManagerForTests();
+
+        // Repeated queries should not overwrite the host filter list.
+        mContentManager.getAdapter().search("NonExistentQuery");
+
+        List<FilterItem> hosts = mContentManager.getHostInfoListForTests();
+        Assert.assertEquals(2, hosts.size());
+        Assert.assertEquals("www.example.com", hosts.get(0).id);
+        Assert.assertEquals("www.example.com", hosts.get(0).label.toString());
+        Assert.assertEquals("news.other.org", hosts.get(1).id);
+        Assert.assertEquals("news.other.org", hosts.get(1).label.toString());
+        Assert.assertTrue(mContentManager.hasHostFilterList());
+    }
+
+    @EnableFeatures(ChromeFeatureList.BROWSING_HISTORY_FILTER_BY_DOMAIN)
+    @Test
+    public void testSearch_HostFilterHiddenWithSingleHost() {
+        mHistoryProvider = new StubbedHistoryProvider();
+        mHistoryProvider.addItem(mItem1);
+
+        mHistoryManager =
+                new HistoryManager(
+                        mProfile,
+                        mWindowAndroid,
+                        mActivity,
+                        true,
+                        mSnackbarManager,
+                        SupplierUtils.of(mBottomSheetController),
+                        /* modalDialogManagerSupplier= */ mModalDialogManagerSupplier,
+                        /* activityResultTracker= */ mActivityResultTracker,
+                        /* tabSupplier= */ null,
+                        mHistoryProvider,
+                        new HistoryUmaRecorder(),
+                        /* clientPackageName= */ null,
+                        /* shouldShowClearData= */ true,
+                        /* launchedForApp= */ false,
+                        /* showAppFilter= */ false,
+                        /* shouldClusterByDomain= */ false,
+                        /* openHistoryItemCallback= */ null,
+                        /* edgeToEdgePadAdjusterGenerator= */ null);
+        mContentManager = mHistoryManager.getContentManagerForTests();
+        mAdapter = mContentManager.getAdapter();
+        mAdapter.setClearBrowsingDataButtonVisibilityForTest(false);
+        performMenuAction(R.id.search_menu_id);
+
+        Assert.assertFalse(mContentManager.hasHostFilterList());
+        Assert.assertFalse(mAdapter.hasListHeader());
+    }
+
     @EnableFeatures(ChromeFeatureList.APP_SPECIFIC_HISTORY)
     @Config(sdk = VERSION_CODES.UPSIDE_DOWN_CAKE)
     @Test
@@ -692,7 +864,7 @@ public class HistoryUiTest {
         final String app1 = "org.chromium.chrome.AwesomeApp";
         when(mPackageManager.getApplicationInfo(eq(app1), anyInt())).thenReturn(mPackageAppInfo);
 
-        AppInfo appInfo1 = appInfoCache.get(app1);
+        FilterItem appInfo1 = appInfoCache.get(app1);
         verify(mPackageManager).getApplicationInfo(eq(app1), anyInt());
         clearInvocations(mPackageManager);
 
@@ -706,7 +878,7 @@ public class HistoryUiTest {
         final String app2 = "org.chromium.chrome.UninstalledApp";
         when(mPackageManager.getApplicationInfo(eq(app2), anyInt()))
                 .thenThrow(NameNotFoundException.class);
-        AppInfo appInfo2 = appInfoCache.get(app2);
+        FilterItem appInfo2 = appInfoCache.get(app2);
         assertFalse("Bad appId should return invalid AppInfo", appInfo2.isValid());
         clearInvocations(mPackageManager);
 

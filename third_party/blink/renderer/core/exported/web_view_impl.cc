@@ -1079,13 +1079,16 @@ WebInputEventResult WebViewImpl::SendContextMenuEvent() {
 WebPagePopupImpl* WebViewImpl::OpenPagePopup(PagePopupClient* client) {
   CHECK(client);
 
-  // This guarantees there is never more than 1 PagePopup active at a time.
-  // CancelPagePopup may fire a synchronous change event when a select element
-  // is closed, but that event handler shouldn't be able to open another picker
-  // because it would require multiple user activations to be created and
-  // consumed within the same task.
+  // Make sure there is never more than one page popup active at a time.
   CancelPagePopup();
-  CHECK(!page_popup_);
+  // CancelPagePopup may fire a synchronous change event when a select element
+  // is closed, which may then try to open another page popup. We prevent this
+  // through this early return. Note that `WebPagePopupImpl::Create` call below
+  // asynchronously prevents multiple popups with a single user activation
+  // anyway.
+  if (page_popup_) {
+    return nullptr;
+  }
 
   LocalFrame* opener_frame = client->OwnerElement().GetDocument().GetFrame();
   WebLocalFrameImpl* web_opener_frame =
@@ -1125,6 +1128,10 @@ WebPagePopupImpl* WebViewImpl::OpenPagePopup(PagePopupClient* client) {
 
 void WebViewImpl::CancelPagePopup() {
   if (page_popup_) {
+    // Ensure page_popup_ lifetime lasts through the call even if the member
+    // variable is cleared by a callback during it.
+    scoped_refptr<WebPagePopupImpl> owning_reference(page_popup_);
+
     page_popup_->Cancel();
   }
 }
@@ -1136,6 +1143,11 @@ void WebViewImpl::ClosePagePopup(PagePopup* popup) {
   if (page_popup_.get() != popup_impl) {
     return;
   }
+
+  // Ensure page_popup_ lifetime lasts through the call even if the member
+  // variable is cleared by a callback during it.
+  scoped_refptr<WebPagePopupImpl> owning_reference(page_popup_);
+
   page_popup_->ClosePopup();
 }
 
@@ -1146,6 +1158,10 @@ void WebViewImpl::CleanupPagePopup() {
 
 void WebViewImpl::UpdatePagePopup() {
   if (page_popup_) {
+    // Ensure page_popup_ lifetime lasts through the call even if the member
+    // variable is cleared by a callback during it.
+    scoped_refptr<WebPagePopupImpl> owning_reference(page_popup_);
+
     page_popup_->Update();
   }
 }
@@ -1533,6 +1549,10 @@ WebViewImpl::ScreenOrientationOverride() {
 
 void WebViewImpl::DidEnterFullscreen() {
   fullscreen_controller_->DidEnterFullscreen();
+}
+
+void WebViewImpl::DidFailToEnterFullscreen() {
+  fullscreen_controller_->DidFailToEnterFullscreen();
 }
 
 void WebViewImpl::DidExitFullscreen() {
@@ -3459,6 +3479,7 @@ void WebViewImpl::ResetScaleStateImmediately() {
 void WebViewImpl::ResetScrollAndScaleState() {
   // Skip scroll restoration when restoring from back-forward cache.
   if (last_page_lifecycle_state_update_restored_from_bfcache_) {
+    last_page_lifecycle_state_update_restored_from_bfcache_ = false;
     return;
   }
   GetPage()->GetVisualViewport().Reset();
@@ -4011,7 +4032,6 @@ void WebViewImpl::DidCommitLoad(bool is_new_navigation,
     }
   }
 
-  last_page_lifecycle_state_update_restored_from_bfcache_ = false;
   // Give the visual viewport's scroll layer its initial size.
   GetPage()->GetVisualViewport().MainFrameDidChangeSize();
 }

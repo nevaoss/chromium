@@ -19,6 +19,10 @@ import org.mockito.junit.MockitoJUnit;
 import org.mockito.junit.MockitoRule;
 
 import org.chromium.base.test.BaseRobolectricTestRunner;
+import org.chromium.base.test.util.Features.DisableFeatures;
+import org.chromium.base.test.util.Features.EnableFeatures;
+import org.chromium.components.omnibox.OmniboxFeatureList;
+import org.chromium.components.search_engines.AiModeButtonUiConfig;
 import org.chromium.components.search_engines.TemplateUrlService;
 import org.chromium.url.GURL;
 import org.chromium.url.JUnitTestGURLs;
@@ -91,5 +95,80 @@ public class SearchProviderInfoDelegateUnitTest {
 
         when(mTemplateUrlService.getComposeplateUrl()).thenReturn(null);
         assertNull(mDelegate.getComposeplateUrl());
+    }
+
+    @Test
+    public void testSetAiModeButtonUiConfig() {
+        // By default the search provider doesn't offer an AI Mode entry point.
+        assertNull(mDelegate.getAiModeButtonUiConfig());
+        assertFalse(mDelegate.hasAiModeEntryPoint());
+
+        AiModeButtonUiConfig config = createAiModeButtonUiConfig();
+        assertTrue(mDelegate.setAiModeButtonUiConfig(config));
+        assertEquals(config, mDelegate.getAiModeButtonUiConfig());
+        assertTrue(mDelegate.hasAiModeEntryPoint());
+
+        // Setting the same config returns false.
+        assertFalse(mDelegate.setAiModeButtonUiConfig(config));
+
+        // Switching to a search provider which offers a different entry point.
+        AiModeButtonUiConfig newConfig = createAiModeButtonUiConfig();
+        assertTrue(mDelegate.setAiModeButtonUiConfig(newConfig));
+        assertEquals(newConfig, mDelegate.getAiModeButtonUiConfig());
+        assertTrue(mDelegate.hasAiModeEntryPoint());
+
+        // Switching to a search provider which doesn't offer an entry point.
+        assertTrue(mDelegate.setAiModeButtonUiConfig(null));
+        assertNull(mDelegate.getAiModeButtonUiConfig());
+        assertFalse(mDelegate.hasAiModeEntryPoint());
+
+        // Setting null again returns false.
+        assertFalse(mDelegate.setAiModeButtonUiConfig(null));
+    }
+
+    @Test
+    @EnableFeatures(OmniboxFeatureList.AIM3P_ENTRYPOINT)
+    public void testGetComposeplateUrl_Aim3pEntrypointEnabled() {
+        testGetComposeplateUrlWithAiModeButtonUiConfigImpl(/* expectsUrlFromConfig= */ true);
+    }
+
+    @Test
+    @DisableFeatures(OmniboxFeatureList.AIM3P_ENTRYPOINT)
+    public void testGetComposeplateUrl_Aim3pEntrypointDisabled() {
+        testGetComposeplateUrlWithAiModeButtonUiConfigImpl(/* expectsUrlFromConfig= */ false);
+    }
+
+    private void testGetComposeplateUrlWithAiModeButtonUiConfigImpl(boolean expectsUrlFromConfig) {
+        GURL templateUrlServiceUrl = JUnitTestGURLs.URL_1;
+        when(mTemplateUrlService.getComposeplateUrl()).thenReturn(templateUrlServiceUrl);
+
+        // A third party search provider carries its own AI Mode URL in the config.
+        GURL thirdPartyUrl = JUnitTestGURLs.RED_1;
+        mDelegate.setAiModeButtonUiConfig(
+                createAiModeButtonUiConfig(/* navigationUrlEmpty= */ thirdPartyUrl));
+        assertEquals(
+                expectsUrlFromConfig ? thirdPartyUrl : templateUrlServiceUrl,
+                mDelegate.getComposeplateUrl());
+
+        // Google's config carries an empty URL, so the TemplateUrlService provides it instead.
+        mDelegate.setAiModeButtonUiConfig(
+                createAiModeButtonUiConfig(/* navigationUrlEmpty= */ GURL.emptyGURL()));
+        assertEquals(templateUrlServiceUrl, mDelegate.getComposeplateUrl());
+    }
+
+    private static AiModeButtonUiConfig createAiModeButtonUiConfig() {
+        return createAiModeButtonUiConfig(/* navigationUrlEmpty= */ JUnitTestGURLs.URL_2);
+    }
+
+    private static AiModeButtonUiConfig createAiModeButtonUiConfig(GURL navigationUrlEmpty) {
+        return new AiModeButtonUiConfig(
+                "AI Mode",
+                "Ask AI Mode",
+                "AI Mode button",
+                "Always show AI Mode",
+                "Ask AI Mode",
+                /* faviconUrl= */ JUnitTestGURLs.RED_1,
+                /* navigationUrl= */ "https://www.red.com/search?q={searchTerms}",
+                navigationUrlEmpty);
     }
 }

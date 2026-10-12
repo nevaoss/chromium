@@ -24,7 +24,8 @@ namespace tabs {
 class TabInterface;
 }  // namespace tabs
 
-// Helper class to defer capturing the tab context until it is ready.
+// Helper class to defer capturing the tab context until it is ready. The
+// callback is always invoked asynchronously (never re-entrantly from Start()).
 class TabContextCaptureRequest : content::WebContentsObserver {
  public:
   TabContextCaptureRequest(
@@ -43,6 +44,7 @@ class TabContextCaptureRequest : content::WebContentsObserver {
 
   // content::WebContentsObserver:
   void DocumentOnLoadCompletedInPrimaryMainFrame() override;
+  void DOMContentLoaded(content::RenderFrameHost* render_frame_host) override;
   void WebContentsDestroyed() override;
 
  private:
@@ -52,6 +54,14 @@ class TabContextCaptureRequest : content::WebContentsObserver {
   void OnPageContextRetrieved(std::unique_ptr<lens::ContextualInputData> data);
   void DeleteSoon();
   bool ShouldSkipDelayForActiveTab() const;
+
+  // Returns whether this background (non-activated) tab may capture as soon as
+  // DOMContentLoaded fires, instead of waiting for onload plus the paint grace.
+  bool ShouldUseDomContentLoadedForBackgroundTab() const;
+
+  // Returns whether this background tab has already dispatched
+  // DOMContentLoaded, and may capture without waiting.
+  bool IsBackgroundTabDomContentLoaded() const;
 
   // The current scheduled capture, if any.
   base::CancelableOnceClosure scheduled_capture_;

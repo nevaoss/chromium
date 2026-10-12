@@ -4,6 +4,8 @@
 
 package org.chromium.components.search_engines;
 
+import android.text.TextUtils;
+
 import androidx.annotation.VisibleForTesting;
 
 import org.jni_zero.CalledByNative;
@@ -106,22 +108,6 @@ public class TemplateUrlService {
         List<TemplateUrl> templateUrls = new ArrayList<>();
         TemplateUrlServiceJni.get().getTemplateUrls(mNativeTemplateUrlServiceAndroid, templateUrls);
         return templateUrls;
-    }
-
-    /**
-     * Returns two lists: The first including prepopulated and policy enforced engines and the
-     * default engine, the second one recently visited sites.
-     *
-     * <p>TODO(crbug.com/545131041): Migrate callers to {@link
-     * SearchEngineSettingsDataProvider#getPrepopulatedAndRecentlyVisitedTemplateURLs()} and remove
-     * this method. It is retained here only so this CL does not also have to move the prepopulated
-     * engine logic; that happens in the follow-up.
-     */
-    public PrepopulatedAndRecentlyVisitedTemplateURLs
-            getPrepopulatedAndRecentlyVisitedTemplateURLs() {
-        ThreadUtils.assertOnUiThread();
-        return TemplateUrlServiceJni.get()
-                .getPrepopulatedAndRecentlyVisitedTemplateURLs(mNativeTemplateUrlServiceAndroid);
     }
 
     /**
@@ -345,6 +331,22 @@ public class TemplateUrlService {
     public @Nullable GURL getComposeplateUrl() {
         return TemplateUrlServiceJni.get()
                 .getComposeplateUrl(mNativeTemplateUrlServiceAndroid, this);
+    }
+
+    /**
+     * Expands the {@code urlTemplate} by substituting {@code query} for {searchTerms}.
+     *
+     * @param urlTemplate The URL template containing search terms placeholders.
+     * @param query The search query to substitute into the template.
+     * @return The expanded GURL, or null if the service is not loaded, the template is empty, or
+     *     the URL is invalid.
+     */
+    public @Nullable GURL expandUrlTemplate(String urlTemplate, String query) {
+        if (!isLoaded() || TextUtils.isEmpty(urlTemplate)) return null;
+        GURL url =
+                TemplateUrlServiceJni.get()
+                        .expandUrlTemplate(mNativeTemplateUrlServiceAndroid, urlTemplate, query);
+        return url.isValid() ? url : null;
     }
 
     /**
@@ -700,6 +702,12 @@ public class TemplateUrlService {
 
         GURL getComposeplateUrl(long nativeTemplateUrlServiceAndroid, TemplateUrlService caller);
 
+        @JniType("GURL")
+        GURL expandUrlTemplate(
+                long nativeTemplateUrlServiceAndroid,
+                @JniType("std::string") String urlTemplate,
+                @JniType("std::u16string") String query);
+
         GURL getUrlForContextualSearchQuery(
                 long nativeTemplateUrlServiceAndroid,
                 @Nullable String query,
@@ -738,9 +746,6 @@ public class TemplateUrlService {
                 @Nullable String imageTranslateTargetLanguageParamKey);
 
         void getTemplateUrls(long nativeTemplateUrlServiceAndroid, List<TemplateUrl> templateUrls);
-
-        PrepopulatedAndRecentlyVisitedTemplateURLs getPrepopulatedAndRecentlyVisitedTemplateURLs(
-                long nativeTemplateUrlServiceAndroid);
 
         long createSettingsDataProvider(long nativeTemplateUrlServiceAndroid);
 

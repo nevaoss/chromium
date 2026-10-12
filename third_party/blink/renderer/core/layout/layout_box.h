@@ -665,6 +665,8 @@ class CORE_EXPORT LayoutBox : public LayoutBoxModelObject {
   // box now e.g. sets a transform.
   void MarkColumnSpannerCandidatesForLayoutIfNeeded();
 
+  void RemovePositionedObjects(LayoutObject* stay_within);
+
   bool MapToVisualRectInAncestorSpaceInternal(
       const LayoutBoxModelObject* ancestor,
       TransformState&,
@@ -832,13 +834,6 @@ class CORE_EXPORT LayoutBox : public LayoutBoxModelObject {
   virtual PhysicalOffset PhysicalLocation() const;
 
   PhysicalRect BoundingBoxRelativeToFirstFragment() const override;
-
-  bool HasSelfVisualOverflow() const {
-    NOT_DESTROYED();
-    return VisualOverflowIsSet() &&
-           !PhysicalBorderBoxRect().Contains(
-               overflow_->visual_overflow->SelfVisualOverflowRect());
-  }
 
   bool HasVisualOverflow() const {
     NOT_DESTROYED();

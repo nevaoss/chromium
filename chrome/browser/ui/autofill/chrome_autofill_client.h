@@ -224,6 +224,7 @@ class ChromeAutofillClient : public ContentAutofillClient {
       AutofillSuggestionsIgnoreFocusLoss ignore_focus_loss) final;
   void HideSuggestions(SuggestionHidingReason reason,
                        std::optional<FillingProduct> product) final;
+  void OpenGmailForOtps() final;
   void OpenGeminiInSidebar(const std::u16string& prompt) final;
   bool IsGlicEnabled() const final;
   void TriggerDeclinedSaveAddressReasonSurvey() final;
@@ -306,7 +307,13 @@ class ChromeAutofillClient : public ContentAutofillClient {
       std::optional<std::u16string> message_override) final;
   void ShowAutofillAiPreFetchFailureNotification() final;
   void ShowAutofillAiPrivateInferenceNotice() final;
+#if !BUILDFLAG(IS_ANDROID)
+  void ShowAutofillAiSuppressionConfirmationDialog(
+      const EntityInstance& entity,
+      base::OnceCallback<void(bool)> callback) final;
+#endif  // !BUILDFLAG(IS_ANDROID)
   void ShowAutofillAiSuggestionRemovedNotification(
+      const EntityInstance& entity,
       base::OnceClosure on_undo_clicked) final;
   void ShowEmailVerifiedToast(const GURL& issuer) final;
   void ShowEmailVerificationPopup(
@@ -368,6 +375,7 @@ class ChromeAutofillClient : public ContentAutofillClient {
   FormPredictionsTracker* GetFormPredictionsTracker() override;
 
   one_time_tokens::OneTimeTokenService* GetOneTimeTokenService() const final;
+  one_time_tokens::GmailOtpBackend* GetGmailOtpBackend() const final;
 
  protected:
   class AtMemoryCopyPasteObserver : public content::WebContentsObserver {

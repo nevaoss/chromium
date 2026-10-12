@@ -409,10 +409,8 @@ IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorUiTest,
 }
 #endif  // !BUILDFLAG(IS_CHROMEOS)
 
-// Flaky on Linux and not supported on ChromeOS (auth is part of OS session).
-// TODO(crbug.com/561614245): Deflake and re-enable. Likely the same
-// multi-instance breakage as the two tests above.
-#if BUILDFLAG(IS_LINUX) || BUILDFLAG(IS_CHROMEOS)
+// Not supported on ChromeOS (auth is part of OS session).
+#if BUILDFLAG(IS_CHROMEOS)
 #define MAYBE_AccountInvalidatedWhileGlicOpen \
   DISABLED_AccountInvalidatedWhileGlicOpen
 #else
@@ -420,15 +418,20 @@ IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorUiTest,
 #endif
 IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorUiTest,
                        MAYBE_AccountInvalidatedWhileGlicOpen) {
-  if (features::IsGlicNoWebviewEnabled()) {
-    // TODO(b/563462692): Fix this
-    GTEST_SKIP() << "Fails on some bots";
-  }
   TrackGlicInstanceWithTabIndex(0);
-  RunTestSequence(
-      SimulateGlicHotkey(), WaitForWebUIState(mojom::WebUiState::kReady),
-      ForceInvalidateAccount(), WaitForWebUIState(mojom::WebUiState::kSignIn),
-      ForceReauthAccount(), WaitForWebUIState(mojom::WebUiState::kReady));
+  if (features::IsGlicNoWebviewEnabled()) {
+    RunTestSequence(ToggleGlicWindow(GlicWindowMode::kAttached),
+                    WaitForWebClientConnected(), ForceInvalidateAccount(),
+                    WaitForErrorPanelType(mojom::ErrorPanelType::kSignIn),
+                    ForceReauthAccount(), WaitForErrorPanelType(std::nullopt),
+                    WaitForWebClientConnected());
+  } else {
+    RunTestSequence(
+        ToggleGlicWindow(GlicWindowMode::kAttached),
+        WaitForWebUIState(mojom::WebUiState::kReady), ForceInvalidateAccount(),
+        WaitForWebUIState(mojom::WebUiState::kSignIn), ForceReauthAccount(),
+        WaitForWebUIState(mojom::WebUiState::kReady));
+  }
 }
 
 IN_PROC_BROWSER_TEST_F(GlicInstanceCoordinatorUiTest,

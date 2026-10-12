@@ -376,6 +376,12 @@ bool IsPageContextEligibleForTabPicker(GeminiPageContext* context) {
   }
 }
 
+- (void)updateSharedTabsForActiveWebState:(web::WebState*)activeWebState {
+  if (_browserAgent) {
+    _browserAgent->UpdateSharedTabsForActiveWebState(activeWebState);
+  }
+}
+
 @end
 
 GeminiBrowserAgent::GeminiBrowserAgent(Browser* browser)
@@ -473,10 +479,12 @@ GeminiBrowserAgent::GeminiBrowserAgent(Browser* browser)
     return;
   }
 
-  gemini_container_mediator_ =
-      [[GeminiContainerMediator alloc] initWithBrowser:browser_
-                                          actorService:nullptr
-                                          eventHandler:this];
+  gemini_container_mediator_ = [[GeminiContainerMediator alloc]
+            initWithBrowser:browser_
+               actorService:nullptr
+      authenticationService:AuthenticationServiceFactory::GetForProfile(
+                                browser_->GetProfile())
+               eventHandler:this];
   shared_tabs_delegate_bridge_ =
       [[GeminiSharedTabsDelegateBridge alloc] initWithBrowserAgent:this];
   gemini_container_mediator_.sharedTabsDelegate = shared_tabs_delegate_bridge_;
@@ -1100,6 +1108,8 @@ void GeminiBrowserAgent::InvokeFloaty(GeminiConfiguration* config) {
   last_shown_view_state_ = ios::provider::GetCurrentGeminiViewState();
   is_floaty_invoked_ = true;
   floaty_tab_switch_count_ = 0;
+  CHECK(gemini_container_mediator_, base::NotFatalUntil::M155);
+  [gemini_container_mediator_ onFloatyInvoked];
   if (IsChromeNextIaEnabled()) {
     ios::provider::UpdateOverlayOffsetWithOpacity(GetFloatyOffset(),
                                                   GetFloatyProgress());
@@ -1371,15 +1381,14 @@ void GeminiBrowserAgent::OnProcessingStatusChanged(
     return;
   }
 
+  // The page context updates are now migrated to GeminiContainerMediator.
+  // TODO(crbug.com/562532278): Migrate the metrics recording as well.
   LogLiveStatusTransition(processing_status_, processing_status);
 
   processing_status_ = processing_status;
   switch (processing_status) {
     case ios::provider::GeminiClientMode::kListening:
       LogLiveSessionStartedMetrics();
-      break;
-    case ios::provider::GeminiClientMode::kTranscribing:
-      [gemini_container_mediator_ requestActivePageContextGeneration];
       break;
     case ios::provider::GeminiClientMode::kThinking:
       live_thinking_start_time_ = base::TimeTicks::Now();
@@ -1393,9 +1402,6 @@ void GeminiBrowserAgent::OnProcessingStatusChanged(
         RecordGeminiLiveResponseLatency(latency);
         live_thinking_start_time_ = base::TimeTicks();
       }
-      // Update partial page context (i.e., live sharing context label) when
-      // transitioning out of the transcribing (i.e., speaking) state.
-      [gemini_container_mediator_ updateFloatyWithPartialPageContext];
       break;
     }
     case ios::provider::GeminiClientMode::kDormant:
@@ -1572,7 +1578,6 @@ void GeminiBrowserAgent::DismissFloaty() {
   elapsed_minimized_floaty_time_ = base::TimeTicks();
   entry_point_ = gemini::EntryPoint::Unknown;
   UpdateGeminiLiveIconVisibility();
-  ios::provider::ResetGemini();
   ResetFullscreenDisabler();
 }
 
@@ -1876,14 +1881,9 @@ void GeminiBrowserAgent::OnActiveWebStateChanged(web::WebState* old_active,
   }
 
   if (new_active) {
-    if (is_floaty_invoked_) {
-      UpdateSharedTabsForActiveWebState(new_active);
-    }
     GeminiTabHelper* new_tab_helper = GeminiTabHelper::FromWebState(new_active);
     if (new_tab_helper) {
       new_tab_helper->AddObserver(this);
-      // Propagate the context of the new active tab.
-      OnPageContextUpdated(new_active);
     }
     [new_active->GetWebViewProxy().scrollViewProxy
         addObserver:scroll_observer_];
@@ -1919,31 +1919,11 @@ void GeminiBrowserAgent::OnScrollEvent() {
 
 void GeminiBrowserAgent::OnPageContextUpdated(web::WebState* web_state) {
   UpdateGeminiAvailability();
-
-  if (IsInGeminiLiveMode()) {
-    // Update page context for Gemini Live only when the user is not speaking,
-    // as when they start wording their query, the page context should be locked
-    // in.
-    if (processing_status_ == ios::provider::GeminiClientMode::kTranscribing) {
-      return;
-    }
-    if (UpdateLiveModeUIAndMaybeContext()) {
-      return;
-    }
-  }
-
-  if (!is_floaty_invoked_) {
+  if (IsInGeminiLiveMode() &&
+      processing_status_ == ios::provider::GeminiClientMode::kTranscribing) {
     return;
   }
-
-  // Make sure the given web_state is the active web state.
-  web::WebState* active_web_state =
-      browser_->GetWebStateList()->GetActiveWebState();
-  if (!active_web_state || active_web_state != web_state) {
-    return;
-  }
-
-  [gemini_container_mediator_ updateFloatyWithPartialPageContext];
+  UpdateLiveModeUI();
 }
 
 void GeminiBrowserAgent::OnGeminiTabHelperDestroyed(

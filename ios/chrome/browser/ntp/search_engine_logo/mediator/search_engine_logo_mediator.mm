@@ -175,6 +175,10 @@ void OnLogoAvailable(SearchEngineLogoMediator* mediator,
 
   // Keyword of the current search engine.
   std::u16string _currentSearchEngineKeyword;
+
+  // Optional logo paths overriding the default logo.
+  NSString* _overrideLogoPath;
+  NSString* _overrideDarkLogoPath;
 }
 
 @synthesize containerView = _containerView;
@@ -231,6 +235,13 @@ void OnLogoAvailable(SearchEngineLogoMediator* mediator,
 - (void)setLogoTintColor:(UIColor*)tintColor {
   self.usesMonochromeLogo = (tintColor != nil);
   self.view.tintColor = tintColor;
+}
+
+- (void)setOverrideLogoPath:(NSString*)logoPath
+               darkLogoPath:(NSString*)darkLogoPath {
+  _overrideLogoPath = logoPath;
+  _overrideDarkLogoPath = darkLogoPath;
+  [self setContainerLogoIfAllowed];
 }
 
 #pragma mark - Accessors
@@ -633,6 +644,33 @@ void OnLogoAvailable(SearchEngineLogoMediator* mediator,
 - (UIImage*)offlineGoogleLogoImage {
   if (!search::DefaultSearchProviderIsGoogle(_templateURLService)) {
     return nil;
+  }
+  if (_overrideLogoPath) {
+    NSData* lightData = [NSData dataWithContentsOfFile:_overrideLogoPath];
+    UIImage* lightImage = lightData ? [UIImage imageWithData:lightData] : nil;
+    if (lightImage) {
+      self.containerView.shrunkLogoView.contentMode =
+          UIViewContentModeScaleAspectFit;
+      NSData* darkData =
+          _overrideDarkLogoPath
+              ? [NSData dataWithContentsOfFile:_overrideDarkLogoPath]
+              : nil;
+      UIImage* darkImage = darkData ? [UIImage imageWithData:darkData] : nil;
+      if (darkImage) {
+        UIImageAsset* imageAsset = [[UIImageAsset alloc] init];
+        [imageAsset registerImage:lightImage
+              withTraitCollection:[UITraitCollection
+                                      traitCollectionWithUserInterfaceStyle:
+                                          UIUserInterfaceStyleLight]];
+        [imageAsset registerImage:darkImage
+              withTraitCollection:[UITraitCollection
+                                      traitCollectionWithUserInterfaceStyle:
+                                          UIUserInterfaceStyleDark]];
+        return [imageAsset
+            imageWithTraitCollection:self.containerView.traitCollection];
+      }
+      return lightImage;
+    }
   }
 #if BUILDFLAG(IOS_USE_BRANDED_ASSETS)
   UIImageSymbolConfiguration* config =

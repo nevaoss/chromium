@@ -227,6 +227,12 @@ const base::FeatureParam<bool> kWebViewHttpCacheQuotaApiForceBackendInit{
 // This enables WebView's hyperlink context menu.
 BASE_FEATURE(kWebViewHyperlinkContextMenu, base::FEATURE_DISABLED_BY_DEFAULT);
 
+// When enabled, <video> elements without an explicitly specified poster will
+// use Chromium's usual logic to pick a frame from the video, instead of calling
+// the app's WebChromeClient.getDefaultVideoPoster() implementation.
+BASE_FEATURE(kWebViewIgnoreDefaultVideoPoster,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 // Controls whether we ignore duplicate navigations or not, in favor of
 // preserving the already ongoing navigation.
 BASE_FEATURE(kWebViewIgnoreDuplicateNavs, base::FEATURE_DISABLED_BY_DEFAULT);
@@ -237,6 +243,10 @@ const base::FeatureParam<base::TimeDelta> kWebViewDuplicateNavThreshold{
 // When enabled, runs WebView initialization during WebViewChromium constructor
 // rather than waiting for the framework to call init().
 BASE_FEATURE(kWebViewInitInConstructor, base::FEATURE_DISABLED_BY_DEFAULT);
+
+// Enables initialization of the renderer process during WebContents creation.
+BASE_FEATURE(kWebViewInitRendererDuringWebContentsCreation,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 // If enabled zoom picker is invoked on every kGestureScrollUpdate consumed ack,
 // otherwise the zoom picker is persistently shown from scroll start to scroll

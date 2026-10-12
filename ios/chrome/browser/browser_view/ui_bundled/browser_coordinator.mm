@@ -32,7 +32,6 @@
 #import "components/google/core/common/google_util.h"
 #import "components/infobars/core/infobar.h"
 #import "components/infobars/core/infobar_manager.h"
-#import "components/password_manager/core/browser/ui/credential_ui_entry.h"
 #import "components/password_manager/core/common/password_manager_features.h"
 #import "components/prefs/pref_service.h"
 #import "components/profile_metrics/browser_profile_type.h"
@@ -726,6 +725,7 @@ constexpr CGFloat kSnackbarFloatingBottomMargin = 10.0;
   _modalHost = nil;
 
   [self.dispatcher stopDispatchingToTarget:self];
+  _dispatcher = nil;
   _webUsageEnablerObserver.reset();
   _activityOverlayCallback.RunAndReset();
 }
@@ -972,7 +972,6 @@ constexpr CGFloat kSnackbarFloatingBottomMargin = 10.0;
 - (void)startModalDispatching {
   _modalHost = [[BrowserModalHost alloc] initWithBrowser:self.browser];
   [_modalHost startHostingCommandProtocols];
-  _modalHost.passwordControllerDelegate = self;
 }
 
 // Creates the browser view controller dependencies.
@@ -1243,7 +1242,6 @@ constexpr CGFloat kSnackbarFloatingBottomMargin = 10.0;
   self.snackbarCoordinator = nil;
 
   _keyCommandsProvider = nil;
-  _dispatcher = nil;
   _layoutGuideCenter = nil;
   _webNavigationBrowserAgent = nil;
   _urlLoadingBrowserAgent = nil;
@@ -2245,15 +2243,6 @@ constexpr CGFloat kSnackbarFloatingBottomMargin = 10.0;
 #pragma mark - AutofillSettingsNavigator
 
 - (void)openSettingsForPage:(AutofillSettingsPage)page {
-  [self openSettingsForPage:page completion:nil];
-}
-
-- (void)openSettingsForPage:(AutofillSettingsPage)page
-                 completion:(ProceduralBlock)completion {
-  // Only Enhanced Autofill settings report their dismissal; a completion for
-  // any other page would silently never run.
-  CHECK(!completion || page == AutofillSettingsPage::kEnhancedAutofill);
-
   id<SettingsCommands> settingsHandler =
       HandlerForProtocol(self.dispatcher, SettingsCommands);
   switch (page) {
@@ -2287,8 +2276,8 @@ constexpr CGFloat kSnackbarFloatingBottomMargin = 10.0;
                                                   AutofillSettingsReferrer::
                                                       kFillingFlowDropdown];
       break;
-    case AutofillSettingsPage::kEnhancedAutofill:
-      [settingsHandler showEnhancedAutofillSettingsWithCompletion:completion];
+    case AutofillSettingsPage::kSuggestionsFromGemini:
+      [settingsHandler showSuggestionsFromGemini];
       break;
     case AutofillSettingsPage::kSuggestionsFromGeminiHelpImprove:
       [settingsHandler showSuggestionsFromGeminiHelpImprove];
@@ -3128,22 +3117,6 @@ constexpr CGFloat kSnackbarFloatingBottomMargin = 10.0;
   [self.viewController.view addSubview:viewController.view];
   [viewController didMoveToParentViewController:self.viewController];
   return YES;
-}
-
-- (void)displaySavedPasswordList {
-  // TODO(crbug.com/544597154): Remove this method.
-  id<SettingsCommands> settingsHandler =
-      HandlerForProtocol(_dispatcher, SettingsCommands);
-  [settingsHandler
-      showSavedPasswordsSettingsFromViewController:self.viewController];
-}
-
-- (void)showPasswordDetailsForCredential:
-    (password_manager::CredentialUIEntry)credential {
-  // TODO(crbug.com/544597154): Remove this method.
-  id<SettingsCommands> settingsHandler =
-      HandlerForProtocol(_dispatcher, SettingsCommands);
-  [settingsHandler showPasswordDetailsForCredential:credential inEditMode:NO];
 }
 
 #pragma mark - RepostFormCoordinatorDelegate

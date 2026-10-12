@@ -267,6 +267,19 @@ chromium-metrics-reviews@google.com.
       summary="Feature is trying to be updated from an unknown source"/>
 </variants>
 
+<!-- LINT.IfChange(Autofill.Message.Type) -->
+
+<variants name="Autofill.Message.Type">
+  <variant name="EntitySaveUpdateFlow"
+      summary="Autofill Android Message shown to prompt a user to save an
+               entity to Chrome (like password, driver's license, etc.)"/>
+  <variant name="ResurrectChurnedUsers"
+      summary="Autofill Android Message shown to prompt a churned user to
+               re-enable payment autofill"/>
+</variants>
+
+<!-- LINT.ThenChange(//chrome/browser/ui/autofill/autofill_message_controller_impl.cc:ShouldLogMessageMetrics) -->
+
 <variants name="Autofill.NonInteractivePaymentMethodType">
   <variant name="LocalCard" summary="local card"/>
   <variant name="LocalIban" summary="local IBAN"/>
@@ -1632,6 +1645,37 @@ Called by update_autofill_enums.py. This is a manual comment.-->
     <variant name="StreetName" summary="the street name of the address"/>
     <variant name="SubPremise" summary="the subpremise of the address"/>
   </token>
+</histogram>
+
+<histogram name="Autofill.Ai.AttributionSheet.Dismissed"
+    enum="BottomSheet.StateChangeReason" expires_after="2027-04-01">
+  <owner>friedrichh@chromium.org</owner>
+  <owner>chrome-autofill-alerts@google.com</owner>
+  <summary>
+    Recorded when the Autofill AI source attribution bottom sheet is dismissed
+    on Android, categorizing the reason for dismissal.
+  </summary>
+</histogram>
+
+<histogram name="Autofill.Ai.AttributionSheet.Shown" enum="BooleanShown"
+    expires_after="2027-04-01">
+  <owner>friedrichh@chromium.org</owner>
+  <owner>chrome-autofill-alerts@google.com</owner>
+  <summary>
+    Recorded when a user taps 'View sources' on an Autofill AI suggestion on
+    Android, indicating whether the source attribution bottom sheet was
+    successfully displayed or rejected by the bottom sheet controller.
+  </summary>
+</histogram>
+
+<histogram name="Autofill.Ai.AttributionSheet.SourceClicked"
+    enum="AutofillAiSourceType" expires_after="2027-04-01">
+  <owner>friedrichh@chromium.org</owner>
+  <owner>chrome-autofill-alerts@google.com</owner>
+  <summary>
+    Recorded when a user taps a source card in the Autofill AI source
+    attribution bottom sheet on Android, launching the source via Custom Tab.
+  </summary>
 </histogram>
 
 <histogram
@@ -5127,6 +5171,19 @@ Called by update_autofill_enums.py. This is a manual comment.-->
   </summary>
 </histogram>
 
+<histogram name="Autofill.FormEvents.PromoCode"
+    enum="AutofillPromoCodeFormEvent" expires_after="2027-04-30">
+  <owner>vinnypersky@google.com</owner>
+  <owner>wilsonlow@google.com</owner>
+  <owner>payments-autofill-team@google.com</owner>
+  <summary>
+    This histogram records events related to merchant promo code fields on pages
+    with direct offers. It tracks when a promo code field is detected (with or
+    without a promo code present), when suggestions are shown, filled, and when
+    the form is submitted. Each event is recorded at most once per page load.
+  </summary>
+</histogram>
+
 <histogram
     name="Autofill.FormEvents.StandaloneCvc.{CreditCardDataAvailability}"
     enum="AutofillFormEvent" expires_after="2027-02-14">
@@ -6326,32 +6383,31 @@ Called by update_autofill_enums.py. This is a manual comment.-->
   </summary>
 </histogram>
 
+<histogram name="Autofill.Message.{MessageType}.Dismissed"
+    enum="MessageDismissReason" expires_after="2027-05-01">
+  <owner>tchudakov@google.com</owner>
+  <owner>darwinyang@google.com</owner>
+  <owner>chrome-payments-eng@google.com</owner>
+  <summary>
+    Records the dismissal reason when {MessageType} is dismissed.
+  </summary>
+  <token key="MessageType" variants="Autofill.Message.Type"/>
+</histogram>
+
 <histogram name="Autofill.Message.{MessageType}.{Event}" enum="BooleanShown"
     expires_after="2027-05-01">
   <owner>tchudakov@google.com</owner>
   <owner>darwinyang@google.com</owner>
   <owner>chrome-payments-eng@google.com</owner>
   <summary>
-    Emits true when an autofill Android Message event occurs (shown, dismissed,
-    etc.) and does not emit any value otherwise. See event variants for
-    additional details on when each individual logging event happens.
+    Emits true for {MessageType} when {Event}, and does not emit any value
+    otherwise.
   </summary>
-  <token key="MessageType">
-    <variant name="EntitySaveUpdateFlow"
-        summary="Autofill Android Message shown to prompt a user to save an
-                 entity to Chrome (like password, driver's license, etc.)"/>
-    <variant name="ResurrectChurnedUsers"
-        summary="Autofill Android Message shown to prompt a churned user to
-                 re-enable payment autofill"/>
-  </token>
+  <token key="MessageType" variants="Autofill.Message.Type"/>
   <token key="Event">
     <variant name="ActionClicked"
-        summary="Event for when the action button on the message is clicked
-                 by the user."/>
-    <variant name="Dismissed"
-        summary="Event for when the message is dismissed."/>
-    <variant name="Shown"
-        summary="Event for when the message is initially shown."/>
+        summary="the action button on the message is clicked by the user"/>
+    <variant name="Shown" summary="the message is initially shown"/>
   </token>
 </histogram>
 

@@ -1114,6 +1114,27 @@
     "expires": "Feb 1, 2027"
   },
   {
+    "prefix": "fedcm-delegation",
+    "owners": [
+      "ryqin@chromium.org",
+      "web-identity-eng@google.com"
+    ],
+    "platforms": [
+      "Linux",
+      "Mac",
+      "Win"
+    ],
+    "bases": [
+      "external/wpt/fedcm/fedcm-delegation/"
+    ],
+    "exclusive_tests": "ALL",
+    "args": [
+      "--enable-features=EmailVerificationProtocol,FedCmPreservePortsForTesting",
+      "--dns-txt-resolver-url-prefix=https://web-platform.test:8444/fedcm/support/delegation-dns.py?name="
+    ],
+    "expires": "Feb 1, 2027"
+  },
+  {
     "prefix": "fedcm-navigation-interception",
     "platforms": [
       "Linux",
@@ -2943,26 +2964,6 @@
     ],
     "expires": "Feb 23, 2027"
   },
-  {
-    "prefix": "selectedcontent-spec-disabled",
-    "platforms": [
-      "Linux"
-    ],
-    "bases": [
-      "external/wpt/html/semantics/forms/the-select-element/customizable-select/selectedcontent-in-option-crash.html",
-      "external/wpt/html/semantics/forms/the-select-element/customizable-select/selectedcontent-restore.optional.html",
-      "external/wpt/html/semantics/forms/the-select-element/customizable-select/selectedcontent-color.html",
-      "external/wpt/html/semantics/forms/the-select-element/customizable-select/selectedcontent-nested.html",
-      "external/wpt/html/semantics/forms/the-select-element/customizable-select/selectedcontentelement-attr.tentative.html"
-    ],
-    "args": [
-      "--disable-features=SelectedcontentSpec,SelectedcontentelementAttribute"
-    ],
-    "owners": [
-      "jarhar@chromium.org"
-    ],
-    "expires": "Feb 23, 2027"
-  },
   "https://github.com/web-platform-tests/wpt/pull/59794 removed ShadowRealm ",
   "coverage until there is implementer support.",
   {
@@ -3985,6 +3986,31 @@
     ],
     "expires": "Jan 1, 2028"
   },
+  "Runs the remoteClientDataJSON Permissions Policy tests with its runtime",
+  "feature enabled. Requests use invalid client data so policy behavior is",
+  "tested without invoking an authenticator.",
+  {
+    "prefix": "remote-client-data-json-policy",
+    "owners": [
+      "chrome-webauthn@google.com"
+    ],
+    "platforms": [
+      "Linux",
+      "Mac",
+      "Win"
+    ],
+    "bases": [
+      "webexposed/feature-policy-features.html",
+      "wpt_internal/permissions-policy/remote-client-data-json/"
+    ],
+    "exclusive_tests": [
+      "wpt_internal/permissions-policy/remote-client-data-json/"
+    ],
+    "args": [
+      "--enable-features=WebAuthnRemoteClientDataJson"
+    ],
+    "expires": "Mar 17, 2027"
+  },
   "--webauthn-remote-desktop-support can be toggled with enterprise policies, ",
   "so we need to support this long term.",
   {
@@ -4797,9 +4823,11 @@
       "fast/parser/xml-cap-alert-xslt-use-counter.html",
       "fast/parser/xml-cap-alert-xslt-enabled.html",
       "fast/parser/xml-xslt-warning-banner.html",
-      "fast/parser/xml-xslt-warning-banner-polyfill.html"
+      "fast/parser/xml-xslt-warning-banner-polyfill.html",
+      "fast/parser/xml-xslt-warning-banner-appearance.html"
     ],
     "exclusive_tests": [
+      "fast/parser/xml-xslt-warning-banner-appearance.html",
       "http/tests/xsl/xslt/xsltpi-issue.js",
       "http/tests/xsl/xslt/xsltprocessor-issue.js",
       "http/tests/xsl/xslt/css-no-cache-revalidation.html",
@@ -5111,6 +5139,22 @@
       "tnak@chromium.org"
     ],
     "expires": "Jul 1, 2027"
+  },
+  {
+    "prefix": "css-flow-start-and-end-serialization",
+    "platforms": [
+      "Linux"
+    ],
+    "bases": [
+      "external/wpt/css/css-align/flow-start-and-end-serialization.html"
+    ],
+    "args": [
+      "--enable-blink-features=CSSFlowStartAndEndSerialization"
+    ],
+    "owners": [
+      "celestepan@microsoft.com"
+    ],
+    "expires": "Sep 1, 2027"
   },
   {
     "prefix": "clean-up-activation-behavior-disabled",

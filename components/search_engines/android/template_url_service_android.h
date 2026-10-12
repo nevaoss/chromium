@@ -12,6 +12,7 @@
 #include "components/search_engines/search_engine_settings_data_provider.h"
 #include "components/search_engines/template_url_service.h"
 #include "components/search_engines/template_url_service_observer.h"
+#include "url/gurl.h"
 
 // Android wrapper of the TemplateUrlService which provides access from the Java
 // layer. Note that on Android, there's only a single profile, and therefore
@@ -55,6 +56,8 @@ class TemplateUrlServiceAndroid : public TemplateURLServiceObserver {
   base::android::ScopedJavaLocalRef<jobject> GetComposeplateUrl(
       JNIEnv* env,
       const base::android::JavaRef<jobject>& obj);
+  GURL ExpandUrlTemplate(const std::string& url_template,
+                         const std::u16string& query);
   base::android::ScopedJavaLocalRef<jobject> GetUrlForContextualSearchQuery(
       JNIEnv* env,
       const base::android::JavaRef<jstring>& jquery,
@@ -159,16 +162,6 @@ class TemplateUrlServiceAndroid : public TemplateURLServiceObserver {
   void GetTemplateUrls(
       JNIEnv* env,
       const base::android::JavaRef<jobject>& template_url_list_obj);
-
-  // Get the available search engines separated into two vectors from
-  // `TemplateURLService::GetPrepopulatedAndRecentlyVisitedTemplateURLs()`.
-  //
-  // TODO(crbug.com/545131041): Remove once callers use
-  // `SearchEngineSettingsDataProvider` directly. Retained here so that this
-  // change is limited to the category queries; the prepopulated engine logic
-  // moves in the follow-up.
-  base::android::ScopedJavaLocalRef<jobject>
-  GetPrepopulatedAndRecentlyVisitedTemplateURLs(JNIEnv* env);
 
   // Creates a SearchEngineSettingsDataProvider and returns a raw pointer to it
   // as an int64_t. The Java caller owns the instance and must close/destroy it.

@@ -10,8 +10,8 @@
 #include "base/notimplemented.h"
 #include "base/task/single_thread_task_runner.h"
 #include "chrome/browser/actor/ui/actor_ui_metrics.h"
-#include "chrome/browser/actor/ui/task_list_bubble/actor_task_list_bubble.h"
-#include "chrome/browser/actor/ui/task_list_bubble/actor_task_list_bubble_controller.h"
+#include "chrome/browser/glic/browser_ui/activity_list_bubble/glic_activity_list_bubble.h"
+#include "chrome/browser/glic/browser_ui/activity_list_bubble/glic_activity_list_bubble_controller.h"
 #include "chrome/browser/glic/browser_ui/glic_actor_nudge_controller.h"
 #include "chrome/browser/glic/browser_ui/glic_nudge_controller.h"
 #include "chrome/browser/glic/browser_ui/glic_split_button_controller.h"
@@ -25,7 +25,6 @@
 #include "chrome/browser/glic/public/glic_keyed_service.h"
 #include "chrome/browser/glic/public/glic_keyed_service_factory.h"
 #include "chrome/browser/glic/public/service/glic_activity_manager.h"
-#include "chrome/browser/glic/public/service/glic_activity_manager_factory.h"
 #include "chrome/browser/glic/public/service/glic_instance_coordinator.h"
 #include "chrome/browser/tab_list/tab_list_interface.h"
 #include "chrome/browser/ui/browser_element_identifiers.h"
@@ -36,6 +35,7 @@
 #include "chrome/browser/ui/tabs/tab_style.h"
 #include "chrome/browser/ui/user_education/browser_user_education_interface.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
+#include "chrome/browser/ui/views/frame/frame_separator.h"
 #include "chrome/browser/ui/views/glic/glic_actor_task_icon.h"
 #include "chrome/browser/ui/views/tabs/glic/glic_and_actor_buttons_container.h"
 #include "chrome/browser/ui/views/tabs/glic/tab_strip_glic_actor_task_icon.h"
@@ -60,10 +60,6 @@
 #if !BUILDFLAG(IS_ANDROID)
 #include "base/feature_list.h"
 #include "base/time/time.h"
-
-#if !BUILDFLAG(IS_MAC)
-#include "ui/views/controls/separator.h"
-#endif  // !BUILDFLAG(IS_MAC)
 #endif  // !BUILDFLAG(IS_ANDROID)
 
 namespace {
@@ -259,12 +255,11 @@ TabStripActionContainer::TabStripActionContainer(
   if (glic::GlicEnabling::IsProfileEligible(
           browser_window_interface_->GetProfile())) {
 #if !BUILDFLAG(IS_MAC)
-    std::unique_ptr<views::Separator> separator =
-        std::make_unique<views::Separator>();
+    auto* const separator = AddChildView(std::make_unique<FrameSeparator>());
     separator->SetBorderRadius(TabStyle::Get()->GetSeparatorCornerRadius());
     separator->SetPreferredSize(TabStyle::Get()->GetSeparatorSize());
-
     separator->SetColorId(kColorTabDividerFrameActive);
+    separator->SetInactiveColorId(kColorTabDividerFrameInactive);
 
     gfx::Insets margin;
     margin.set_left_right(kLargeSpaceBetweenSeparatorLeft,
@@ -272,14 +267,7 @@ TabStripActionContainer::TabStripActionContainer(
 
     separator->SetProperty(views::kMarginsKey, margin);
 
-    subscriptions_.push_back(browser_window_interface_->RegisterDidBecomeActive(
-        base::BindRepeating(&TabStripActionContainer::DidBecomeActive,
-                            base::Unretained(this))));
-    subscriptions_.push_back(
-        browser_window_interface_->RegisterDidBecomeInactive(
-            base::BindRepeating(&TabStripActionContainer::DidBecomeInactive,
-                                base::Unretained(this))));
-    separator_ = AddChildView(std::move(separator));
+    separator_ = separator;
     UpdateSeparatorVisibility();
 #endif  // !BUILDFLAG(IS_MAC)
   }
@@ -484,7 +472,7 @@ void TabStripActionContainer::ShowActorTaskListBubble() {
   }
   if (!actor_task_list_bubble_) {
     Profile* profile = browser_window_interface_->GetProfile();
-    auto* manager = glic::GlicActivityManagerFactory::GetForProfile(profile);
+    auto* manager = glic::GlicActivityManager::Get(profile);
     auto* controller =
         ActorTaskListBubbleController::From(browser_window_interface_);
     if (manager && controller) {
@@ -529,15 +517,6 @@ void TabStripActionContainer::UpdateButtonBorders(
   if (glic_button_) {
     UpdateGlicActorButtonContainerBorders();
   }
-}
-
-void TabStripActionContainer::DidBecomeActive(BrowserWindowInterface* browser) {
-  separator_->SetColorId(kColorTabDividerFrameActive);
-}
-
-void TabStripActionContainer::DidBecomeInactive(
-    BrowserWindowInterface* browser) {
-  separator_->SetColorId(kColorTabDividerFrameInactive);
 }
 
 void TabStripActionContainer::ShowTabStripNudge(TabStripNudgeButton* button) {
@@ -666,9 +645,10 @@ TabStripActionContainer::CreateGlicActorTaskIcon() {
 
 void TabStripActionContainer::OnGlicActorTaskIconClicked() {
   Profile* const profile = browser_window_interface_->GetProfile();
-  auto* activity_manager =
-      glic::GlicActivityManagerFactory::GetForProfile(profile);
-  CHECK(activity_manager);
+  auto* activity_manager = glic::GlicActivityManager::Get(profile);
+  if (!activity_manager) {
+    return;
+  }
 
   // Only show the bubble if the button is not currently pressed. Clicking on
   // the pressed button should dismiss the nudge.

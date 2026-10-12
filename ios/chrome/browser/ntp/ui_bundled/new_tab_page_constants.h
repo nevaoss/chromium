@@ -40,7 +40,16 @@ extern NSString* const kNTPFeedHeaderIdentityDiscBadge;
 // Represents the MIA entry point.
 extern NSString* const kNTPMIAIdentifier;
 
-// Represents the incognito quick action.
+// Represents the AIM Quick Action.
+extern NSString* const kNTPAIMQuickActionIdentifier;
+
+// Represents the AIM Create Images Quick Action.
+extern NSString* const kNTPAIMImageGenerationQuickActionIdentifier;
+
+// Represents the AIM Attach Images Quick Action.
+extern NSString* const kNTPAIMAttachImageQuickActionIdentifier;
+
+// Represents the incognito Quick Action.
 extern NSString* const kNTPIncognitoQuickActionIdentifier;
 
 // Represents the NTP omnibox.
@@ -77,5 +86,9 @@ extern const float kBottomMagicStackPadding;
 
 // The horizontal margin on the leading and trailing sides of the NTP content.
 extern const CGFloat kNewTabPageHorizontalMargin;
+
+// The size of the quick actions symbols.
+extern const CGFloat kQuickActionsSymbolPointSize;
+extern const CGFloat kQuickActionsSymbolPointSizeUICleanup;
 
 #endif  // IOS_CHROME_BROWSER_NTP_UI_BUNDLED_NEW_TAB_PAGE_CONSTANTS_H_

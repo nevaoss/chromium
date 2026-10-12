@@ -141,6 +141,9 @@ BASE_FEATURE(kBrowsingHistoryImprovedHostnameSuffixMatching,
 // Enables browser history filtering by device.
 BASE_FEATURE(kBrowsingHistoryFilterByDevice, base::FEATURE_DISABLED_BY_DEFAULT);
 
+// Enables browser history filtering by domain.
+BASE_FEATURE(kBrowsingHistoryFilterByDomain, base::FEATURE_DISABLED_BY_DEFAULT);
+
 // If enabled, the WebHistoryService will use a new API for querying browsing
 // history (https://footprints-pa.googleapis.com/...) instead of the old and
 // deprecated one (https://history.google.com/history/api/...).
@@ -155,5 +158,12 @@ BASE_FEATURE(kHistoryDatabaseWriteAheadLogging,
 
 // Defers HistoryBackend initialization to after startup or until it is needed.
 BASE_FEATURE(kDeferHistoryBackendInit, base::FEATURE_DISABLED_BY_DEFAULT);
+
+// If enabled, reports database metrics related to history clusters. Disabled
+// by default so that not all clients pay the cost of computing the metrics.
+BASE_FEATURE(kHistoryReportClusterDatabaseMetrics,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
+BASE_FEATURE(kHistoryQueryBatchedLookups, base::FEATURE_DISABLED_BY_DEFAULT);
 
 }  // namespace history

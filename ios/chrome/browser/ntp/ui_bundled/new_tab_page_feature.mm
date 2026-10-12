@@ -30,6 +30,8 @@ BASE_FEATURE(kMVTInBottomSheet, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kNewTabPageUICleanup, base::FEATURE_DISABLED_BY_DEFAULT);
 
+BASE_FEATURE(kNewTabPageEphemeralTheme, base::FEATURE_DISABLED_BY_DEFAULT);
+
 #pragma mark - Feature parameters
 
 // Feature parameters for `kOverrideFeedSettings`.
@@ -60,10 +62,62 @@ BASE_FEATURE_PARAM(int,
                    kNewTabPageUICleanupArmParam,
                    static_cast<int>(NTPUICleanupVariation::kTightPadding));
 
+BASE_FEATURE_PARAM(std::string,
+                   kNewTabPageEphemeralThemeAnimationUrlParam,
+                   &kNewTabPageEphemeralTheme,
+                   "animation-url",
+                   "");
+
+BASE_FEATURE_PARAM(std::string,
+                   kNewTabPageEphemeralThemeAnimationColorMappingParam,
+                   &kNewTabPageEphemeralTheme,
+                   "animation-colormapping",
+                   "");
+
+BASE_FEATURE_PARAM(std::string,
+                   kNewTabPageEphemeralThemeAnimationPromoUrlParam,
+                   &kNewTabPageEphemeralTheme,
+                   "animation-promo-url",
+                   "");
+
+BASE_FEATURE_PARAM(std::string,
+                   kNewTabPageEphemeralThemeAnimationPromoColorMappingParam,
+                   &kNewTabPageEphemeralTheme,
+                   "animation-promo-colormapping",
+                   "");
+
+BASE_FEATURE_PARAM(std::string,
+                   kNewTabPageEphemeralThemeGoogleLogoLightUrlParam,
+                   &kNewTabPageEphemeralTheme,
+                   "google-logo-light-url",
+                   "");
+
+BASE_FEATURE_PARAM(std::string,
+                   kNewTabPageEphemeralThemeGoogleLogoDarkUrlParam,
+                   &kNewTabPageEphemeralTheme,
+                   "google-logo-dark-url",
+                   "");
+
+BASE_FEATURE_PARAM(std::string,
+                   kNewTabPageEphemeralThemeSeedColorParam,
+                   &kNewTabPageEphemeralTheme,
+                   "seed-color",
+                   "");
+
+BASE_FEATURE_PARAM(int,
+                   kNewTabPageEphemeralThemeVersionParam,
+                   &kNewTabPageEphemeralTheme,
+                   "version",
+                   0);
+
 #pragma mark - Helpers
 
 bool IsMVTInBottomSheetEnabled() {
   return base::FeatureList::IsEnabled(kMVTInBottomSheet);
+}
+
+bool IsNTPEphemeralThemeEnabled() {
+  return base::FeatureList::IsEnabled(kNewTabPageEphemeralTheme);
 }
 
 bool IsDiscoverFeedTopSyncPromoEnabled() {

@@ -1915,9 +1915,7 @@ class AutocompleteMediator
         mListPropertyModel.set(
                 SuggestionListProperties.APPLY_MARGIN_FOR_LEFT_SIDE_BAR, applyMargin);
         if (mSideUiStateProvider != null) {
-            onSideUiSpecsChanged(
-                    mSideUiStateProvider.getCurrentSideUiSpecs(),
-                    new UiUpdateRequest(/* sideUiId= */ null, /* suppressAnimations= */ true));
+            updateLeftSideBarMarginPx(mSideUiStateProvider.getCurrentSideUiSpecs());
         }
     }
 
@@ -1934,7 +1932,16 @@ class AutocompleteMediator
 
     @Override
     public void onSideUiSpecsChanged(SideUiSpecs sideUiSpecs, UiUpdateRequest request) {
-        int leftMarginPx = sideUiSpecs.getWidth(AnchorSide.LEFT);
+        updateLeftSideBarMarginPx(sideUiSpecs);
+    }
+
+    /**
+     * Updates the suggestions list's left margin to account for the given {@link SideUiSpecs}.
+     *
+     * @param sideUiSpecs The {@link SideUiSpecs} to apply.
+     */
+    private void updateLeftSideBarMarginPx(SideUiSpecs sideUiSpecs) {
+        int leftMarginPx = sideUiSpecs.getReservedWidth(AnchorSide.LEFT);
         if (mLeftSideUiMarginPx != leftMarginPx) {
             mLeftSideUiMarginPx = leftMarginPx;
             mListPropertyModel.set(SuggestionListProperties.LEFT_SIDE_BAR_MARGIN_PX, leftMarginPx);

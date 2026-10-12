@@ -225,6 +225,7 @@ constexpr char kBackSelector[] = "#back";
 constexpr char kForwardSelector[] = "#forward";
 constexpr char kAppMenuButtonSelector[] = "#app-menu";
 constexpr char kBatterySaverSelector[] = "#battery-saver";
+constexpr char kMediaSelector[] = "#media";
 
 #if !BUILDFLAG(IS_CHROMEOS)
 std::string GetAppMenuPropertyJS(const std::string& property) {
@@ -5007,6 +5008,16 @@ IN_PROC_BROWSER_TEST_P(WebUIToolbarButtonPressAndDragTest, PressAndDragDown) {
     return runner && runner->IsRunning();
   }));
 
+  if (std::string(param.selector) == kBackSelector) {
+    EXPECT_TRUE(webui_toolbar_view->back_control_.menu_model_adapter_
+                    ->triggerable_event_flags() &
+                ui::EF_MIDDLE_MOUSE_BUTTON);
+  } else if (std::string(param.selector) == kForwardSelector) {
+    EXPECT_TRUE(webui_toolbar_view->forward_control_.menu_model_adapter_
+                    ->triggerable_event_flags() &
+                ui::EF_MIDDLE_MOUSE_BUTTON);
+  }
+
   // Clean up
   get_menu_runner()->Cancel();
 }
@@ -6454,62 +6465,70 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarFullyEnabledBrowserTest,
   CheckControlSizes(expected_sizes_after);
 }
 
-// Tests element overflow with the battery saver (and home) buttons enabled.
-// Incrementally increases the size of a spacer element, checking overflow order
-// as available space on the toolbar decreases.
+// Tests element overflow with the battery saver and media buttons enabled (and
+// the home button). Incrementally increases the size of a spacer element,
+// checking overflow order as available space on the toolbar decreases.
+//
+// The media button isn't supported on all platforms, so it's only included in
+// the expectations when it's actually available.
 IN_PROC_BROWSER_TEST_F(WebUIToolbarFullyEnabledBrowserTest,
-                       BatterySaverButtonOverflow) {
-  // Enable home button and battery saver button.
-  browser()->GetProfile()->GetPrefs()->SetBoolean(prefs::kShowHomeButton, true);
+                       BatterySaverAndMediaButtonShrinkToolbar) {
+  // Check whether the media button is supported at runtime, rather than
+  // hardcoding the list of supported platforms, so that this test will
+  // automatically start covering the media button if it's enabled elsewhere.
+  const bool has_media_button = IsMediaButtonSupported();
+
+  // Enable the battery saver, home, and, if supported, media buttons.
   EnableBatterySaverButton();
+  browser()->GetProfile()->GetPrefs()->SetBoolean(prefs::kShowHomeButton, true);
+  if (has_media_button) {
+    ShowMediaButton();
+  }
 
-  // Wait for home, forward, and battery saver buttons to be visible.
-  ASSERT_TRUE(WaitUntilResponsiveControlsAreVisible(
-      {kForwardSelector, kHomeSelector, kBatterySaverSelector}));
+  // Wait for the forward, home, battery saver, and media buttons to be visible.
+  std::vector<std::string_view> expected_selectors = {
+      kForwardSelector, kHomeSelector, kBatterySaverSelector};
+  if (has_media_button) {
+    expected_selectors.push_back(kMediaSelector);
+  }
+  ASSERT_TRUE(WaitUntilResponsiveControlsAreVisible(expected_selectors));
 
-  // Create spacer so that any padding it adds is taken into account by
-  // the MeasureResponsiveControls() call.
-  int spacer_width = 0;
-  ASSERT_EQ(SetSpacerWidth(spacer_width), true);
-
-  AllResponsiveControlsInfo all_controls_info;
-  ASSERT_NO_FATAL_FAILURE(MeasureResponsiveControls(all_controls_info));
-
-  // Check that layout priority order matches expected order.
-  CheckResponsiveControlOrder(all_controls_info,
-                              {"location-bar",
-#if !BUILDFLAG(IS_CHROMEOS)
-                               // ChromeOS should not show the avatar button.
-                               "avatar",
-#endif
-                               "forward", "home", "battery-saver"});
-  // Check that TrackedElements reach a consistent state.
-  EXPECT_TRUE(WaitForTrackedElements(
-      /*visible=*/{kToolbarBackButtonElementId, kToolbarForwardButtonElementId,
-                   kToolbarHomeButtonElementId,
-                   kToolbarBatterySaverButtonElementId},
-      /*hidden=*/{kToolbarOverflowButtonElementId}));
-
-  // Size spacer so that all currently enabled controls are at their preferred
-  // size, but no extra space is available.
-  spacer_width += all_controls_info.location_bar_extra_width;
-  ASSERT_EQ(SetSpacerWidth(spacer_width), true);
-
-  TestShrinkingResponsiveControls(
-      {"location-bar",
-#if !BUILDFLAG(IS_CHROMEOS)
-       // ChromeOS should not show the avatar button.
-       "avatar",
-#endif
-       "forward", "home", "battery-saver"});
+  // The buttons that are expected to overflow once the toolbar is shrunk.
+  std::vector<ui::ElementIdentifier> overflowable_elements = {
+      kToolbarForwardButtonElementId, kToolbarHomeButtonElementId,
+      kToolbarBatterySaverButtonElementId};
+  if (has_media_button) {
+    overflowable_elements.push_back(kToolbarMediaButtonElementId);
+  }
 
   // Check that TrackedElements reach a consistent state. All the overflowable
-  // buttons should now be hidden, and the overflow button shown.
+  // buttons should be visible.
+  EXPECT_TRUE(
+      WaitForTrackedElements(/*visible=*/overflowable_elements,
+                             /*hidden=*/{kToolbarOverflowButtonElementId}));
+
+  // The ResponsiveControls expected to be visible, from highest to lowest
+  // priority.
+  std::vector<std::string> expected_order = {"location-bar",
+#if !BUILDFLAG(IS_CHROMEOS)
+                                             // ChromeOS should not show the
+                                             // avatar button.
+                                             "avatar",
+#endif
+                                             "forward", "home",
+                                             "battery-saver"};
+  if (has_media_button) {
+    // The media button has a lower priority than the battery saver button, so
+    // appears last, if expected to appear.
+    expected_order.push_back("media");
+  }
+  TestShrinkingResponsiveControls(expected_order);
+
+  // Check that TrackedElements reach a consistent state. The elements we check
+  // should have flipped from their initial state.
   EXPECT_TRUE(WaitForTrackedElements(
-      /*visible=*/{kToolbarBackButtonElementId,
-                   kToolbarOverflowButtonElementId},
-      /*hidden=*/{kToolbarForwardButtonElementId, kToolbarHomeButtonElementId,
-                  kToolbarBatterySaverButtonElementId}));
+      /*visible=*/{kToolbarOverflowButtonElementId},
+      /*hidden=*/overflowable_elements));
 }
 
 // This test makes sure the toolbar-app element is correctly resized in response
@@ -6678,7 +6697,7 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarFullyEnabledBrowserTest,
               return '';
             }
             return pinned.getActions().map(el => {
-              let name = el.isDivider() ? '<divider>' : el.getItemId();
+              let name = el.isDivider ? '<divider>' : el.getItemId();
               if (!el.checkVisibility()) {
                 name = '!' + name;
               }
@@ -6962,6 +6981,72 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarNoOmniboxPrioritizationBrowserTest,
     }
     CheckControlSizes(expected_sizes);
   }
+
+  AssertNoJsErrors();
+}
+
+// Verifies that poppedOut pinned toolbar actions (such as when the Customize
+// Chrome side panel is open) remain visible when the toolbar overflows, while
+// all other responsive controls overflow into the menu.
+IN_PROC_BROWSER_TEST_F(WebUIToolbarFullyEnabledBrowserTest,
+                       PoppedOutActionStaysVisibleWhenOverflowed) {
+  InstallErrorListener();
+
+  // Show Customize Chrome side panel, which causes its pinned action button to
+  // pop out and become visible.
+  SidePanelUI::From(browser())->Show(SidePanelEntryId::kCustomizeChrome);
+
+  // Wait until the pinned action button is visible.
+  ASSERT_TRUE(base::test::RunUntil([&]() {
+    return content::EvalJs(GetWebUIWebContents(), R"(
+          (() => {
+            const app = document.querySelector('toolbar-app');
+            const pinnedContainer = app?.$['pinnedToolbarActions'];
+            if (!pinnedContainer || !pinnedContainer.checkVisibility()) {
+              return false;
+            }
+            const actionButton = pinnedContainer.shadowRoot?.querySelector(
+                'pinned-toolbar-action');
+            return actionButton && actionButton.checkVisibility() &&
+                   !actionButton.classList.contains('overflow-display-none');
+          })();
+        )")
+        .ExtractBool();
+  }));
+
+  // Add a spacer as wide as the toolbar window to force all overflowable
+  // controls to overflow.
+  int spacer_width = GetWebUIToolbar()->bounds().width();
+  ASSERT_EQ(SetSpacerWidth(spacer_width), true);
+
+  // Verify that the pinned toolbar actions container and its action button
+  // remain visible, while all other responsive controls (other than the
+  // location bar) are hidden.
+  ASSERT_TRUE(base::test::RunUntil([&]() {
+    return content::EvalJs(GetWebUIWebContents(), R"(
+          (() => {
+            const app = document.querySelector('toolbar-app');
+            if (!app) {
+              return false;
+            }
+            const pinnedContainer = app?.$['pinnedToolbarActions'];
+            if (!pinnedContainer || !pinnedContainer.checkVisibility()) {
+              return false;
+            }
+            const actionButton = pinnedContainer.shadowRoot?.querySelector(
+                'pinned-toolbar-action');
+            if (!actionButton || !actionButton.checkVisibility()) {
+              return false;
+            }
+            // Check that all other responsive controls are hidden.
+            const otherControls = app.getResponsiveControls().filter(
+                el => el.id !== 'location-bar' &&
+                      el.id !== 'pinnedToolbarActions');
+            return otherControls.every(el => !el.checkVisibility());
+          })();
+        )")
+        .ExtractBool();
+  }));
 
   AssertNoJsErrors();
 }

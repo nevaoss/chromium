@@ -744,17 +744,6 @@ class ShowIdentityNameStateProvider : public StateProvider,
   void ClearForTesting() override { OnIdentityAnimationTimeout(); }
 
   // IdentityManager::Observer:
-  // Needed if the first sync promo account should be displayed.
-  void OnPrimaryAccountChanged(
-      const signin::PrimaryAccountChangeEvent& event) override {
-    if (event.GetEventTypeFor(signin::ConsentLevel::kSignin) !=
-            signin::PrimaryAccountChangeEvent::Type::kSet ||
-        syncer::IsReplaceSyncPromosWithSignInPromosEnabled()) {
-      return;
-    }
-    OnUserIdentityChanged();
-  }
-
   void OnRefreshTokensLoaded() override {
     // TODO(b/324018028): This check can be removed as `OnRefreshTokensLoaded()`
     // is called when first observing and not as a result of
@@ -781,15 +770,13 @@ class ShowIdentityNameStateProvider : public StateProvider,
       return;
     }
 
-    if (syncer::IsReplaceSyncPromosWithSignInPromosEnabled()) {
-      // Prevents from showing the greetings if the user has signed in before
-      // the browser is created (on sign-in state should be shown instead).
-      const SigninDetectionService* signin_detection_service =
-          SigninDetectionServiceFactory::GetForProfile(&profile());
-      CHECK(signin_detection_service);
-      if (signin_detection_service->HasSignedInInCurrentSession()) {
-        return;
-      }
+    // Prevents from showing the greetings if the user has signed in before
+    // the browser is created (on sign-in state should be shown instead).
+    const SigninDetectionService* signin_detection_service =
+        SigninDetectionServiceFactory::GetForProfile(&profile());
+    CHECK(signin_detection_service);
+    if (signin_detection_service->HasSignedInInCurrentSession()) {
+      return;
     }
 
     OnUserIdentityChanged();
@@ -1059,10 +1046,7 @@ class PromoStateProviderCoordinator
           if (access_point ==
               signin_metrics::AccessPoint::kAvatarPillExpandPromo) {
             // Enabling sync through this access point is not possible - so this
-            // cannot double record. Also
-            // `syncer::kReplaceSyncPromosWithSignInPromos` should be enabled,
-            // which does not allow turning on Sync.
-            CHECK(syncer::IsReplaceSyncPromosWithSignInPromosEnabled());
+            // cannot double record.
             // We need to use `last_gaia_id_promo_used_` here because since the
             // user is now signed in, we can no longer differentiate whether the
             // user was signed out or web signed in at the time of using the
@@ -1345,9 +1329,6 @@ class PromoStateProvider : public StateProvider {
           kBatchUploadWindows10DepreciationPromo:
         // Note: Sync promo does not explicitly mention "sync" but invites the
         // user to back-up their data. It is fine to be used here.
-        return l10n_util::GetStringUTF16(IDS_AVATAR_BUTTON_SYNC_PROMO);
-      case signin::ProfileMenuAvatarButtonPromoInfo::Type::kSyncPromo:
-        CHECK(switches::IsAvatarSyncPromoFeatureEnabled());
         return l10n_util::GetStringUTF16(IDS_AVATAR_BUTTON_SYNC_PROMO);
       case signin::ProfileMenuAvatarButtonPromoInfo::Type::kSigninPromo:
         return l10n_util::GetStringUTF16(IDS_AVATAR_BUTTON_SIGNIN_PROMO);
@@ -2428,13 +2409,11 @@ void AvatarToolbarButtonStateManager::CreateStatesAndListeners(
   }
 
   if (profile->IsRegularProfile()) {
-    if (syncer::IsReplaceSyncPromosWithSignInPromosEnabled()) {
-      RegisterObserver(static_cast<Observer*>(
-          &OnSigninCoordinator::GetForProfile(*profile)));
-      states_[ButtonState::kOnSignin] =
-          std::make_unique<OnSigninStateProvider>(browser,
-                                                  /*state_observer=*/this);
-    }
+    RegisterObserver(
+        static_cast<Observer*>(&OnSigninCoordinator::GetForProfile(*profile)));
+    states_[ButtonState::kOnSignin] =
+        std::make_unique<OnSigninStateProvider>(browser,
+                                                /*state_observer=*/this);
     states_[ButtonState::kShowIdentityName] =
         std::make_unique<ShowIdentityNameStateProvider>(profile,
                                                         /*state_observer=*/this,
@@ -2466,15 +2445,11 @@ void AvatarToolbarButtonStateManager::CreateStatesAndListeners(
             /*state_observer=*/this);
 
 #if BUILDFLAG(ENABLE_DICE_SUPPORT)
-    if (syncer::IsReplaceSyncPromosWithSignInPromosEnabled() ||
-        switches::IsAvatarSyncPromoFeatureEnabled()) {
-      auto promo_state_provider =
-          std::make_unique<PromoStateProvider>(browser,
-                                               /*state_observer=*/this);
-      RegisterObserver(static_cast<Observer*>(
-          &PromoStateProviderCoordinator::GetOrCreateForProfile(*profile)));
-      states_[ButtonState::kPromo] = std::move(promo_state_provider);
-    }
+    RegisterObserver(static_cast<Observer*>(
+        &PromoStateProviderCoordinator::GetOrCreateForProfile(*profile)));
+    states_[ButtonState::kPromo] =
+        std::make_unique<PromoStateProvider>(browser,
+                                             /*state_observer=*/this);
 
     // Contains both Work and School.
     states_[ButtonState::kManagement] =

@@ -68,8 +68,7 @@ public class SiteSettingsTestHelper {
             new String[] {"binary_radio_button", "os_permissions_warning_extra"};
     public static final String[] BINARY_RADIO_BUTTON_WITH_OS_WARNING_EXTRA_AND_INFO_TEXT =
             new String[] {"info_text", "binary_radio_button", "os_permissions_warning_extra"};
-    public static final String[] CLEAR_BROWSING_DATA_LINK =
-            new String[] {"clear_browsing_data_link", "clear_browsing_divider"};
+    public static final String[] CLEAR_BROWSING_DATA_LINK = {"clear_browsing_data_link"};
 
     public static BrowserContextHandle getBrowserContextHandle() {
         return ProfileManager.getLastUsedRegularProfile();
@@ -213,7 +212,7 @@ public class SiteSettingsTestHelper {
                             preferences.findPreference(SingleCategorySettings.TRI_STATE_TOGGLE_KEY);
                     preferences.onPreferenceChange(triStateToggle, newValue);
                 });
-        ApplicationTestUtils.finishActivity(settingsActivity);
+        settingsActivity.finish();
     }
 
     /**
@@ -233,7 +232,7 @@ public class SiteSettingsTestHelper {
         }
 
         checkPreferencesForSettingsActivity(settingsActivity, expectedKeys);
-        ApplicationTestUtils.finishActivity(settingsActivity);
+        settingsActivity.finish();
     }
 
     public static void checkPreferencesForSettingsActivity(
@@ -320,7 +319,7 @@ public class SiteSettingsTestHelper {
 
                         doTest(singleCategorySettings);
                     });
-            ApplicationTestUtils.finishActivity(mSettingsActivity);
+            mSettingsActivity.finish();
         }
 
         protected void doTest(SingleCategorySettings singleCategorySettings) {
@@ -447,7 +446,7 @@ public class SiteSettingsTestHelper {
             int id = R.string.website_settings_site_data_page_block_confirm_dialog_confirm_button;
             onViewWaiting(withText(id)).perform(click());
         }
-        ApplicationTestUtils.finishActivity(settingsActivity);
+        settingsActivity.finish();
     }
 
     public static final String[] BINARY_RADIO_BUTTON_AND_INFO_TEXT =

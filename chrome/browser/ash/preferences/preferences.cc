@@ -461,20 +461,9 @@ void Preferences::RegisterProfilePrefs(
 
   registry->RegisterBooleanPref(ash::prefs::kHatsDeviceIsSelected, false);
 
-  registry->RegisterInt64Pref(ash::prefs::kHatsArcGamesSurveyCycleEndTs, 0);
-
-  registry->RegisterBooleanPref(ash::prefs::kHatsArcGamesDeviceIsSelected,
-                                false);
-
   registry->RegisterInt64Pref(ash::prefs::kHatsAudioSurveyCycleEndTs, 0);
 
   registry->RegisterBooleanPref(ash::prefs::kHatsAudioDeviceIsSelected, false);
-
-  registry->RegisterInt64Pref(ash::prefs::kHatsAudioOutputProcSurveyCycleEndTs,
-                              0);
-
-  registry->RegisterBooleanPref(
-      ash::prefs::kHatsAudioOutputProcDeviceIsSelected, false);
 
   registry->RegisterInt64Pref(ash::prefs::kHatsBluetoothAudioSurveyCycleEndTs,
                               0);

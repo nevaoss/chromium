@@ -146,7 +146,7 @@ void OpenMatch(
   // If the user is executing an action, this will be non-null and some match
   // opening and metrics behavior will be adjusted accordingly.
   OmniboxAction* action = nullptr;
-  if (selection.state == OmniboxPopupSelection::NORMAL &&
+  if (selection.state == OmniboxPopupSelection::LineState::kNormal &&
       match.takeover_action) {
     DCHECK_NE(metrics_tracker.match_selection_timestamp(), base::TimeTicks());
     action = match.takeover_action.get();
@@ -163,14 +163,16 @@ void OpenMatch(
 
   // NULL_RESULT_MESSAGE matches are informational only and cannot be acted
   // upon. Immediately return when attempting to open one.
-  if (match.type == AutocompleteMatchType::NULL_RESULT_MESSAGE && !action) {
+  if (match.type == omnibox::AutocompleteMatchType::kNullResultMessage &&
+      !action) {
     return;
   }
 
   // Switch the window disposition to SWITCH_TO_TAB for open tab matches that
   // originated while in keyword mode, or for tab switch actions.
   const bool is_open_tab_match =
-      match.from_keyword && match.type == AutocompleteMatchType::OPEN_TAB;
+      match.from_keyword &&
+      match.type == omnibox::AutocompleteMatchType::kOpenTab;
   const bool is_tab_switch_action =
       action && action->ActionId() == OmniboxActionId::TAB_SWITCH;
   if (is_open_tab_match || is_tab_switch_action) {
@@ -299,7 +301,7 @@ void OpenMatch(
     if (ui::PageTransitionTypeIncludingQualifiersIs(
             match.transition, ui::PAGE_TRANSITION_KEYWORD) ||
         match.provider->type() ==
-            AutocompleteProvider::TYPE_UNSCOPED_EXTENSION) {
+            AutocompleteProvider::Type::kUnscopedExtension) {
       // User is in keyword mode or accepted an unscoped extension suggestion,
       // increment usage count for the keyword.
       searchbox::EmitAcceptedKeywordSuggestionHistogram(
@@ -383,7 +385,7 @@ void OpenMatch(
       match.type, metrics_tracker.match_selection_timestamp(),
       input.added_default_scheme_to_typed_url(),
       input.typed_url_had_http_scheme() &&
-          match.type == AutocompleteMatchType::URL_WHAT_YOU_TYPED,
+          match.type == omnibox::AutocompleteMatchType::kUrlWhatYouTyped,
       input.text(), match, alternative_nav_match);
 }
 
@@ -429,7 +431,7 @@ void PasteAndGo(AutocompleteController* autocomplete_controller,
                  &alternate_nav_url);
 
   GURL upgraded_url;
-  if (match.type == AutocompleteMatchType::URL_WHAT_YOU_TYPED &&
+  if (match.type == omnibox::AutocompleteMatchType::kUrlWhatYouTyped &&
       client->ShouldDefaultTypedNavigationsToHttps() &&
       AutocompleteInput::ShouldUpgradeToHttps(text, match.destination_url, 0,
                                               false, &upgraded_url)) {

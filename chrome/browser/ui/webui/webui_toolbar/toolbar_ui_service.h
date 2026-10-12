@@ -49,8 +49,6 @@ class ToolbarUIService : public toolbar_ui_api::mojom::ToolbarUIService {
         ShowContentSettingsBubbleCallback callback) = 0;
     virtual void OnContentSettingImagePointerDown(
         ::toolbar_ui_api::mojom::ContentSettingImageType type) = 0;
-    virtual void OnContentSettingImageAnimationEnded(
-        ::toolbar_ui_api::mojom::ContentSettingImageType type) = 0;
     virtual void OnPageActionPointerDown(
         ::toolbar_ui_api::mojom::PageActionId action_id) = 0;
     virtual void OnPageActionClick(
@@ -95,6 +93,7 @@ class ToolbarUIService : public toolbar_ui_api::mojom::ToolbarUIService {
         ui::mojom::DragEventSource source) = 0;
     virtual void OnHomeButtonDropUrl(const GURL& url) = 0;
     virtual void OnHomeButtonDropFile(const gfx::PointF& drop_position) = 0;
+    virtual void OnHomeButtonDropText(const std::string& text) = 0;
     virtual void OnToolbarDropFile(const gfx::PointF& drop_position) = 0;
     virtual base::expected<std::monostate, mojo_base::mojom::ErrorPtr>
     OnOmniboxAction(toolbar_ui_api::mojom::OmniboxActionPtr action) = 0;
@@ -120,6 +119,7 @@ class ToolbarUIService : public toolbar_ui_api::mojom::ToolbarUIService {
     virtual void OnPerformanceInterventionButtonMousePressed() = 0;
     virtual void OnMediaButtonClicked(bool is_mouse_interaction) = 0;
     virtual void OnMediaButtonMousePressed() = 0;
+    virtual void OnGlicButtonClicked() = 0;
   };
 
   ToolbarUIService(
@@ -161,8 +161,6 @@ class ToolbarUIService : public toolbar_ui_api::mojom::ToolbarUIService {
       ShowContentSettingsBubbleCallback callback) override;
   void OnContentSettingImagePointerDown(
       ::toolbar_ui_api::mojom::ContentSettingImageType type) override;
-  void OnContentSettingImageAnimationEnded(
-      ::toolbar_ui_api::mojom::ContentSettingImageType type) override;
   void OnPageActionPointerDown(
       ::toolbar_ui_api::mojom::PageActionId action_id) override;
   void OnPageActionClick(::toolbar_ui_api::mojom::PageActionId action_id,
@@ -203,6 +201,7 @@ class ToolbarUIService : public toolbar_ui_api::mojom::ToolbarUIService {
                      ui::mojom::DragEventSource source) override;
   void OnHomeButtonDropUrl(const GURL& url) override;
   void OnHomeButtonDropFile(const gfx::PointF& drop_position) override;
+  void OnHomeButtonDropText(const std::string& text) override;
   void OnToolbarDropFile(const gfx::PointF& drop_position) override;
   void ShowAvatarMenu(bool is_pointer_interaction,
                       ShowAvatarMenuCallback callback) override;
@@ -229,6 +228,9 @@ class ToolbarUIService : public toolbar_ui_api::mojom::ToolbarUIService {
   void OnPerformanceInterventionButtonMousePressed() override;
   void OnMediaButtonClicked(bool is_mouse_interaction) override;
   void OnMediaButtonMousePressed() override;
+  // Handles click events from the WebUI Glic button by forwarding them to the
+  // delegate.
+  void OnGlicButtonClicked() override;
 
  private:
   mojo::Receiver<toolbar_ui_api::mojom::ToolbarUIService> service_;

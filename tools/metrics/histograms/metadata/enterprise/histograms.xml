@@ -3198,7 +3198,7 @@ chromium-metrics-reviews@google.com.
     {Status}.
   </summary>
   <token key="Status">
-    <variant name="NotSuppported" summary="is not supported by the OS"/>
+    <variant name="NotSupported" summary="is not supported by the OS"/>
     <variant name="Supported.Failure" summary="was unsuccessful"/>
     <variant name="Supported.Success" summary="was successful"/>
   </token>
@@ -3495,6 +3495,67 @@ chromium-metrics-reviews@google.com.
   <summary>
     Records whenever a user sees a warning and chooses to ignore/bypass the
     warning and decides to download the file anyway.
+  </summary>
+</histogram>
+
+<histogram
+    name="Enterprise.IOS.PasteProtection.ScanTriggered.ConsecutivePasteBlocked"
+    enum="Boolean" expires_after="2027-04-04">
+  <owner>yixiwu@google.com</owner>
+  <owner>bling-enterprise@google.com</owner>
+  <summary>
+    Records when the paste is blocked because the user tries to paste
+    consecutively before the previous scan is finished.
+  </summary>
+</histogram>
+
+<histogram name="Enterprise.IOS.PasteProtection.ScanTriggered.EventResult"
+    enum="EnterprisePasteProtectionEventResult" expires_after="2027-04-04">
+  <owner>yixiwu@google.com</owner>
+  <owner>bling-enterprise@google.com</owner>
+  <summary>
+    Records the event result of a paste protection scan triggered by enterprise
+    users when trying to paste clipboard content according to policy settings.
+  </summary>
+</histogram>
+
+<histogram name="Enterprise.IOS.PasteProtection.ScanTriggered.PasteInvalidated"
+    enum="EnterprisePasteProtectionInvalidatedType" expires_after="2027-04-04">
+  <owner>yixiwu@google.com</owner>
+  <owner>bling-enterprise@google.com</owner>
+  <summary>
+    Records whenever a paste event is invalidated and blocked before a scanning
+    finishes. It can be caused by pasteboard content changed, user navigated
+    away from the webpage or tab switchd/closed.
+  </summary>
+</histogram>
+
+<histogram name="Enterprise.IOS.PasteProtection.ScanTriggered.ScanTime"
+    units="ms" expires_after="2027-04-04">
+  <owner>yixiwu@google.com</owner>
+  <owner>bling-enterprise@google.com</owner>
+  <summary>
+    Records the time it takes between uploading the content for scanning and
+    receiving the scan result for a paste event.
+  </summary>
+</histogram>
+
+<histogram name="Enterprise.IOS.PasteProtection.ScanTriggered.ScanType"
+    enum="EnterprisePasteProtectionScanType" expires_after="2027-04-04">
+  <owner>yixiwu@google.com</owner>
+  <owner>bling-enterprise@google.com</owner>
+  <summary>
+    Records the type of the pasteboard content that is sent for scanning.
+  </summary>
+</histogram>
+
+<histogram name="Enterprise.IOS.PasteProtection.ScanTriggered.WarningBypassed"
+    enum="Boolean" expires_after="2027-04-04">
+  <owner>yixiwu@google.com</owner>
+  <owner>bling-enterprise@google.com</owner>
+  <summary>
+    Records whenever a user sees a warning and chooses to ignore/bypass the
+    warning and decides to Paste anyways.
   </summary>
 </histogram>
 
@@ -3949,6 +4010,17 @@ chromium-metrics-reviews@google.com.
   <summary>
     Record whether profile has successfully fetched policy with profile id once
     before uploading reporting. Recorded during profile creation. iOS only.
+  </summary>
+</histogram>
+
+<histogram name="Enterprise.Policy.AppRestrictionsProviderFetchTime" units="ms"
+    expires_after="2027-09-01">
+  <owner>shadmehr@google.com</owner>
+  <owner>zmin@chromium.org</owner>
+  <owner>cec-growth@google.com</owner>
+  <summary>
+    Measures the synchronous app restrictions fetch latency on Android. Recorded
+    by AppRestrictionsProvider each time restrictions are fetched.
   </summary>
 </histogram>
 
@@ -4417,15 +4489,33 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="Enterprise.SecureGateway.ProxyAuthChallengeResult"
-    enum="EnterpriseProxyAuthChallengeResult" expires_after="2027-07-01">
+<histogram name="Enterprise.SecureGateway.ProxyAuthChallengeDecision"
+    enum="EnterpriseProxyAuthChallengeDecision" expires_after="2027-07-01">
   <owner>xzonghan@google.com</owner>
   <owner>chrome-enterprise-networking-core@google.com</owner>
   <summary>
-    Recorded the result of evaluating a 407 Proxy Authentication challenge
-    against managed dynamic routes in EnterpriseProxyService. This is recorded
-    when Chrome receives and tries to handle a 407 proxy authentication
-    challenge for the CONNECT call.
+    Records how EnterpriseProxyService synchronously classified a 407 Proxy
+    Authentication challenge against managed dynamic routes. Recorded once per
+    407 challenge Chrome receives for a CONNECT call, before any credential
+    fetch is started.
+
+    The &quot;Needs credentials&quot; bucket counts challenges that went on to a
+    credential fetch, and is therefore the denominator for
+    Enterprise.SecureGateway.ProxyAuthCredentialFetchOutcome. A persistent gap
+    between the two indicates fetches whose result was never delivered.
+  </summary>
+</histogram>
+
+<histogram name="Enterprise.SecureGateway.ProxyAuthCredentialFetchOutcome"
+    enum="EnterpriseProxyAuthCredentialFetchOutcome" expires_after="2027-07-01">
+  <owner>xzonghan@google.com</owner>
+  <owner>chrome-enterprise-networking-core@google.com</owner>
+  <summary>
+    Records the outcome of the asynchronous access token fetch that
+    EnterpriseProxyService performs to answer a 407 Proxy Authentication
+    challenge. Recorded once per challenge classified as &quot;Needs
+    credentials&quot; in Enterprise.SecureGateway.ProxyAuthChallengeDecision,
+    including when the fetch is abandoned because the service shuts down.
   </summary>
 </histogram>
 

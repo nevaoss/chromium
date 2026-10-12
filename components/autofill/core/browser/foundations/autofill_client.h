@@ -62,6 +62,7 @@ class SharedURLLoaderFactory;
 }
 
 namespace one_time_tokens {
+class GmailOtpBackend;
 class OneTimeTokenService;
 }  // namespace one_time_tokens
 
@@ -667,6 +668,9 @@ class AutofillClient {
       const PopupOpenArgs& open_args,
       base::WeakPtr<AutofillSuggestionDelegate> delegate) = 0;
 
+  // Opens Gmail for the OTP retrieval flow.
+  virtual void OpenGmailForOtps();
+
   // Opens Gemini in the sidebar with the given prompt pre-filled.
   virtual void OpenGeminiInSidebar(const std::u16string& prompt);
 
@@ -894,9 +898,22 @@ class AutofillClient {
   // default.
   virtual void ShowAutofillAiPrivateInferenceNotice();
 
-  // Displays a notification informing the user that an Autofill AI suggestion
-  // was removed, offering an undo action that runs `on_undo_clicked`.
+#if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
+  // Shows a dialog that asks the user to confirm that the Autofill AI
+  // personal-context entity `entity` will no longer be suggested. `callback` is
+  // run with true if the user confirms, and with false if they cancel or close
+  // the dialog.
+  virtual void ShowAutofillAiSuppressionConfirmationDialog(
+      const EntityInstance& entity,
+      base::OnceCallback<void(bool)> callback);
+#endif  // !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
+
+  // Displays a notification informing the user that the Autofill AI suggestion
+  // for the personal-context `entity` was removed, offering an undo action.
+  // Depending on the platform, undoing may either run `on_undo_clicked` (e.g.
+  // Android snackbar) or unsuppress `entity` directly (e.g. Desktop toast).
   virtual void ShowAutofillAiSuggestionRemovedNotification(
+      const EntityInstance& entity,
       base::OnceClosure on_undo_clicked);
 
   // Shows a yes/no prompt asking the user to confirm that they want to verify
@@ -947,6 +964,9 @@ class AutofillClient {
 
   // May return null on platforms where no OneTimeTokenService is supported.
   virtual one_time_tokens::OneTimeTokenService* GetOneTimeTokenService() const;
+
+  // May return null on platforms where no GmailOtpBackend is supported.
+  virtual one_time_tokens::GmailOtpBackend* GetGmailOtpBackend() const;
 
   // Returns true if the primary main frame's document used the WebOTP API. This
   // exists only for the main frame because only the main frame has the

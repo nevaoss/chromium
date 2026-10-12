@@ -28,8 +28,10 @@
 #include "third_party/blink/renderer/core/dom/document.h"
 #include "third_party/blink/renderer/core/dom/events/event.h"
 #include "third_party/blink/renderer/core/dom/scoped_abort_state.h"
+#include "third_party/blink/renderer/core/event_target_names.h"
 #include "third_party/blink/renderer/core/event_type_names.h"
-#include "third_party/blink/renderer/core/events/web_mcp_event.h"
+#include "third_party/blink/renderer/core/events/tool_activated_event.h"
+#include "third_party/blink/renderer/core/events/tool_cancel_event.h"
 #include "third_party/blink/renderer/core/execution_context/agent.h"
 #include "third_party/blink/renderer/core/execution_context/execution_context.h"
 #include "third_party/blink/renderer/core/frame/local_dom_window.h"
@@ -522,7 +524,7 @@ void ModelContext::OnToolFailed(ScriptToolExecutedCallback callback,
       blink::BindOnce(std::move(callback), base::unexpected(std::move(error))));
 }
 
-bool ModelContext::ExecuteTool(const base::UnguessableToken& invocation_id,
+bool ModelContext::ExecuteTool(base::UnguessableToken invocation_id,
                                const String& name,
                                const String& input_arguments,
                                ScriptToolExecutedCallback tool_executed_cb) {
@@ -562,21 +564,19 @@ bool ModelContext::ExecuteTool(const base::UnguessableToken& invocation_id,
                            std::move(tool_executed_cb));
   }
 
-  // Fire the `toolactivate` event *after* activating the tool, but potentially
+  // Fire the `toolactivated` event *after* activating the tool, but potentially
   // *before* the tool call finishes. Importantly, if the tool is a declarative
   // WebMCP tool, the form will be filled out synchronously above in
   // ExecuteDeclarativeTool(), so by the time the event is fired, the form will
   // be populated.
-  if (LocalDOMWindow* window = document_->domWindow()) {
-    // This is a synchronous, non-cancelable event.
-    window->DispatchEvent(
-        *WebMCPEvent::Create(event_type_names::kToolactivated, name));
-  }
+  // This is a synchronous, non-cancelable event.
+  DispatchEvent(
+      *ToolActivatedEvent::Create(event_type_names::kToolactivated, name));
 
   return success;
 }
 
-bool ModelContext::CancelTool(const base::UnguessableToken& invocation_id) {
+bool ModelContext::CancelTool(base::UnguessableToken invocation_id) {
   CHECK(document_->IsActive());
 
   // It's possible for `invocation_id` to not match any pending execution, for
@@ -638,10 +638,9 @@ bool ModelContext::CancelTool(const base::UnguessableToken& invocation_id) {
   }
 
   // Dispatch the synchronous toolcancel event for both types of tools.
-  if (LocalDOMWindow* window = document_->domWindow()) {
-    window->DispatchEvent(
-        *WebMCPEvent::Create(event_type_names::kToolcancel, tool_name));
-  }
+  DispatchEvent(
+      *ToolCancelEvent::Create(event_type_names::kToolcancel, tool_name));
+
   return true;
 }
 
@@ -691,7 +690,7 @@ void ModelContext::DidFinishParsing() {
 //     but respondWith() isn't called, an error is reported back to the agent.)
 void ModelContext::ExecuteDeclarativeTool(
     DeclarativeWebMCPTool* tool,
-    const base::UnguessableToken& invocation_id,
+    base::UnguessableToken invocation_id,
     const String& input_arguments,
     AbortController* abort_controller,
     ScriptToolExecutedCallback tool_executed_cb) {
@@ -747,7 +746,7 @@ void ModelContext::ExecuteDeclarativeTool(
 // waits for the promise to resolve, JSON-stringifies the result, and passes
 // it to OnToolExecuted().
 bool ModelContext::ExecuteV8Tool(V8ToolExecuteCallback* tool_function,
-                                 const base::UnguessableToken& invocation_id,
+                                 base::UnguessableToken invocation_id,
                                  const String& name,
                                  const String& input_arguments,
                                  AbortController* abort_controller,

@@ -294,9 +294,7 @@ bool HTMLCanvasElement::PrepareTransferableResource(
   auto exported_resource =
       base::MakeRefCounted<ExportedCanvasResource>(std::move(frame));
 
-  exported_resource->PrepareTransferableResource(
-      CHECK_DEREF(out_resource),
-      /*needs_verified_synctoken=*/false);
+  CHECK_DEREF(out_resource) = exported_resource->PrepareTransferableResource();
 
   // TODO(https://crbug.com/1475955): HDR metadata should be propagated to
   // `frame`, and should be populated by the above call to
@@ -1134,8 +1132,8 @@ void HTMLCanvasElement::updateElementGeometry(
 
   const FloatClipRect* clip_ptr = nullptr;
   FloatClipRect clip;
-  if (options->hasClip()) {
-    const DOMRectInit* rect = options->clip();
+  if (options->hasCanvasClip()) {
+    const DOMRectInit* rect = options->canvasClip();
     double x = rect->x();
     double y = rect->y();
     double width = rect->width();

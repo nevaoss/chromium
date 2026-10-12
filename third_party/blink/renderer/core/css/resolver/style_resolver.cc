@@ -560,8 +560,10 @@ void ApplyInertness(StyleResolverState& state) {
     }
   }
 
+  bool can_escape_overscroll_inertness = false;
   if (state.HasOverscrollContainerAncestor()) {
-    StyleAdjuster::AdjustOverscrollInertness(state, html_inert);
+    StyleAdjuster::AdjustOverscrollInertness(state, html_inert,
+                                             can_escape_overscroll_inertness);
   }
 
   if (html_inert.has_value()) {
@@ -571,6 +573,10 @@ void ApplyInertness(StyleResolverState& state) {
   if (css_inert.has_value()) {
     state.StyleBuilder().SetIsCSSInert(css_inert.value());
     state.StyleBuilder().SetIsCSSInertIsInherited(false);
+  }
+  if (html_inert.has_value() || css_inert.has_value()) {
+    state.StyleBuilder().SetCanEscapeOverscrollInertness(
+        can_escape_overscroll_inertness && !css_inert.value_or(false));
   }
 }
 
@@ -1427,7 +1433,7 @@ const ComputedStyle* StyleResolver::ResolveStyle(
         state.StyleBuilder(), *element,
         IsForPseudoElement(*element, style_request) ? state.GetPseudoElement()
                                                     : element,
-        state.GetStyledElement());
+        state.GetStyledElement(), state.ParentStyle());
   }
 
   ApplyAnchorData(state);
@@ -1869,7 +1875,7 @@ void StyleResolver::ApplyBaseStyleNoCache(
   StyleAdjuster::RunUncacheableStyleAdjustment(
       builder, *element,
       state.IsForPseudoElement() ? state.GetPseudoElement() : element,
-      state.GetStyledElement());
+      state.GetStyledElement(), state.ParentStyle());
 
   // Everything below here depends on the MatchResult flags
   // (e.g., what selectors were used to find the matched properties),
@@ -2053,7 +2059,7 @@ void StyleResolver::ApplyBaseStyle(
         state.StyleBuilder(), *element,
         IsForPseudoElement(*element, style_request) ? state.GetPseudoElement()
                                                     : element,
-        state.GetStyledElement());
+        state.GetStyledElement(), state.ParentStyle());
 
     // Normally done by StyleResolver::MaybeAddToMatchedPropertiesCache(),
     // when applying the cascade. Note that this is probably redundant
@@ -2681,8 +2687,7 @@ bool StyleResolver::ApplyAnimatedStyle(
 }
 
 void StyleResolver::ApplyAnchorData(StyleResolverState& state) {
-  if (AnchorEvaluator* evaluator =
-          state.CssToLengthConversionData().GetAnchorEvaluator()) {
+  if (AnchorEvaluator* evaluator = state.GetAnchorEvaluator()) {
     // Pre-compute anchor-center offset so that the OOF layout code does not
     // need to set up an AnchorEvaluator but simply retrieve the offsets from
     // the ComputedStyle.

@@ -143,7 +143,7 @@ void ShowSearchEngineResetNotification(
 
 void MaybeShowSearchEngineResetNotification(
     BrowserWindowInterface* browser,
-    AutocompleteMatch::Type match_type) {
+    omnibox::AutocompleteMatchType match_type) {
 #if BUILDFLAG(IS_WIN) || BUILDFLAG(IS_MAC)
   // Ensure it is a non-navigation search query.
   if (!AutocompleteMatch::IsSearchType(match_type)) {

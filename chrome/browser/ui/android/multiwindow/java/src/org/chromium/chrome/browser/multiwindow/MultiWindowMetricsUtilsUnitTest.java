@@ -40,6 +40,7 @@ public class MultiWindowMetricsUtilsUnitTest {
 
     @After
     public void tearDown() {
+        MultiWindowMetricsUtils.resetForTesting();
         MultiInstancePersistentStore.resetForTesting();
     }
 
@@ -90,7 +91,7 @@ public class MultiWindowMetricsUtilsUnitTest {
 
     @Test
     public void recordTimeSpentInWindowingMode_withinCycle() {
-        long t0 = TimeUtils.elapsedRealtimeMillis();
+        long t0 = TimeUtils.currentTimeMillis();
         MultiInstancePersistentStore.writeMultiWindowModeCycleStartTime(t0);
 
         // Start in fullscreen mode.
@@ -116,7 +117,7 @@ public class MultiWindowMetricsUtilsUnitTest {
 
     @Test
     public void recordTimeSpentInWindowingMode_cycleBoundary_stoppingModeDurationNotLost() {
-        long t0 = TimeUtils.elapsedRealtimeMillis();
+        long t0 = TimeUtils.currentTimeMillis();
         MultiInstancePersistentStore.writeMultiWindowModeCycleStartTime(t0);
 
         // Start in fullscreen mode.
@@ -138,7 +139,7 @@ public class MultiWindowMetricsUtilsUnitTest {
 
     @Test
     public void recordTimeSpentInWindowingMode_cycleBoundary_activeModeHandled() {
-        long t0 = TimeUtils.elapsedRealtimeMillis();
+        long t0 = TimeUtils.currentTimeMillis();
         MultiInstancePersistentStore.writeMultiWindowModeCycleStartTime(t0);
 
         // Start in fullscreen mode.
@@ -186,7 +187,7 @@ public class MultiWindowMetricsUtilsUnitTest {
 
     @Test
     public void recordTimeSpentInWindowingMode_cycleStartTimeUpdated() {
-        long t0 = TimeUtils.elapsedRealtimeMillis();
+        long t0 = TimeUtils.currentTimeMillis();
 
         long expectedDuration = 30000;
         var histogramWatcher =
@@ -228,6 +229,92 @@ public class MultiWindowMetricsUtilsUnitTest {
     }
 
     @Test
+    public void recordTimeSpentInWindowingMode_durationClampedToCycleLength() {
+        long t0 = TimeUtils.currentTimeMillis();
+        MultiInstancePersistentStore.writeMultiWindowModeCycleStartTime(t0);
+        // Pre-populate durationMs so that adding the cycle's active time would exceed
+        // CYCLE_LENGTH_MS.
+        MultiInstancePersistentStore.writeMultiWindowModeDurationMs(
+                WindowingMode.FULLSCREEN, /* duration= */ 10000L);
+
+        var histogramWatcher =
+                HistogramWatcher.newBuilder()
+                        .expectIntRecord(
+                                MultiWindowMetricsUtils.WINDOWING_MODE_HISTOGRAM_PREFIX
+                                        + MultiWindowMetricsUtils.getWindowingModeHistogramName(
+                                                WindowingMode.FULLSCREEN)
+                                        + MultiWindowMetricsUtils.WINDOWING_MODE_HISTOGRAM_SUFFIX,
+                                (int) CYCLE_LENGTH_MS)
+                        .build();
+
+        MultiWindowMetricsUtils.recordWindowingMode(
+                WindowingMode.FULLSCREEN, /* windowId= */ 1, /* isStarted= */ true);
+        mFakeTimeTestRule.advanceMillis(CYCLE_LENGTH_MS);
+        MultiWindowMetricsUtils.recordWindowingMode(
+                WindowingMode.FULLSCREEN, /* windowId= */ 1, /* isStarted= */ false);
+
+        histogramWatcher.assertExpected();
+    }
+
+    @Test
+    public void recordTimeSpentInWindowingMode_multipleElapsedCycles_fastForwardsEmptyCycles() {
+        long t0 = TimeUtils.currentTimeMillis();
+
+        // Complete a 10s fullscreen session in Cycle 1 ([t0, t0 + CYCLE_LENGTH_MS)).
+        MultiWindowMetricsUtils.recordWindowingMode(
+                WindowingMode.FULLSCREEN, /* windowId= */ 1, /* isStarted= */ true);
+        mFakeTimeTestRule.advanceMillis(10000);
+        MultiWindowMetricsUtils.recordWindowingMode(
+                WindowingMode.FULLSCREEN, /* windowId= */ 1, /* isStarted= */ false);
+
+        // Advance time across 3 full cycles into Cycle 4 (leaving Cycles 2 and 3 empty).
+        mFakeTimeTestRule.advanceMillis(3 * CYCLE_LENGTH_MS);
+
+        String fullscreenHistogram =
+                MultiWindowMetricsUtils.WINDOWING_MODE_HISTOGRAM_PREFIX
+                        + MultiWindowMetricsUtils.getWindowingModeHistogramName(
+                                WindowingMode.FULLSCREEN)
+                        + MultiWindowMetricsUtils.WINDOWING_MODE_HISTOGRAM_SUFFIX;
+        var startWatcher =
+                HistogramWatcher.newBuilder().expectIntRecord(fullscreenHistogram, 10000).build();
+
+        // Starting a new session in Cycle 4 should immediately emit Cycle 1's histogram and
+        // fast-forward cycleStartTime to Cycle 4 without emitting phantom 24h histograms.
+        MultiWindowMetricsUtils.recordWindowingMode(
+                WindowingMode.FULLSCREEN, /* windowId= */ 1, /* isStarted= */ true);
+        startWatcher.assertExpected();
+        assertEquals(
+                "Cycle start time should fast-forward to the start of Cycle 4.",
+                t0 + 3 * CYCLE_LENGTH_MS,
+                MultiInstancePersistentStore.readMultiWindowModeCycleStartTime());
+
+        // Simulate an older cycleStartTime from Cycle 1 with a 20s duration while the Cycle 4
+        // session is active, then stop the session after 5s.
+        MultiInstancePersistentStore.writeMultiWindowModeCycleStartTime(t0);
+        MultiInstancePersistentStore.writeMultiWindowModeDurationMs(
+                WindowingMode.FULLSCREEN, /* duration= */ 20000L);
+        var stopWatcher =
+                HistogramWatcher.newBuilder().expectIntRecord(fullscreenHistogram, 20000).build();
+
+        mFakeTimeTestRule.advanceMillis(5000);
+        MultiWindowMetricsUtils.recordWindowingMode(
+                WindowingMode.FULLSCREEN, /* windowId= */ 1, /* isStarted= */ false);
+
+        // Only Cycle 1's 20s duration should be emitted (no phantom 24h records for Cycles 2-3),
+        // and Cycle 4's accumulated duration should be the 5s session.
+        stopWatcher.assertExpected();
+        assertEquals(
+                "Cycle start time should fast-forward to Cycle 4 on stop.",
+                t0 + 3 * CYCLE_LENGTH_MS,
+                MultiInstancePersistentStore.readMultiWindowModeCycleStartTime());
+        assertEquals(
+                "Fullscreen duration in Cycle 4 should only reflect the 5s session.",
+                5000,
+                MultiInstancePersistentStore.readMultiWindowModeDurationMs(
+                        WindowingMode.FULLSCREEN));
+    }
+
+    @Test
     public void testRecordWindowingMode_duplicateIds() {
         // Start in fullscreen mode with window ID 1.
         MultiWindowMetricsUtils.recordWindowingMode(WindowingMode.FULLSCREEN, 1, true);
@@ -244,5 +331,51 @@ public class MultiWindowMetricsUtilsUnitTest {
                 1,
                 MultiInstancePersistentStore.readMultiWindowModeActivities(WindowingMode.FULLSCREEN)
                         .size());
+    }
+
+    @Test
+    public void testRecordWindowingMode_unstoppedActivitiesClearedOnColdStart() {
+        // Start in fullscreen mode and complete a 2000ms session so durationMs is persisted.
+        MultiWindowMetricsUtils.recordWindowingMode(
+                WindowingMode.FULLSCREEN, /* windowId= */ 1, /* isStarted= */ true);
+        mFakeTimeTestRule.advanceMillis(2000);
+        MultiWindowMetricsUtils.recordWindowingMode(
+                WindowingMode.FULLSCREEN, /* windowId= */ 1, /* isStarted= */ false);
+
+        // Resume fullscreen and desktop window modes, then simulate an unexpected power-off /
+        // process death after 5000ms without receiving onStop().
+        MultiWindowMetricsUtils.recordWindowingMode(
+                WindowingMode.FULLSCREEN, /* windowId= */ 1, /* isStarted= */ true);
+        MultiWindowMetricsUtils.recordWindowingMode(
+                WindowingMode.DESKTOP_WINDOW, /* windowId= */ 2, /* isStarted= */ true);
+        mFakeTimeTestRule.advanceMillis(5000);
+        MultiWindowMetricsUtils.resetForTesting();
+
+        // Advance time by 10000ms while powered off, then cold-start and resume fullscreen for
+        // 1000ms.
+        mFakeTimeTestRule.advanceMillis(10000);
+        MultiWindowMetricsUtils.recordWindowingMode(
+                WindowingMode.FULLSCREEN, /* windowId= */ 1, /* isStarted= */ true);
+        assertTrue(
+                "Orphaned desktop window activities should be cleared on cold start.",
+                MultiInstancePersistentStore.readMultiWindowModeActivities(
+                                WindowingMode.DESKTOP_WINDOW)
+                        .isEmpty());
+        assertFalse(
+                "Orphaned desktop window start time should be cleared on cold start.",
+                MultiInstancePersistentStore.containsMultiWindowModeStartTime(
+                        WindowingMode.DESKTOP_WINDOW));
+
+        mFakeTimeTestRule.advanceMillis(1000);
+        MultiWindowMetricsUtils.recordWindowingMode(
+                WindowingMode.FULLSCREEN, /* windowId= */ 1, /* isStarted= */ false);
+
+        // Total duration should only include the completed 2000ms session + the new 1000ms session
+        // (excluding the unstopped 5000ms session and the 10000ms powered-off gap).
+        assertEquals(
+                "Duration should exclude unstopped pre-reboot session and powered-off gap.",
+                3000,
+                MultiInstancePersistentStore.readMultiWindowModeDurationMs(
+                        WindowingMode.FULLSCREEN));
     }
 }

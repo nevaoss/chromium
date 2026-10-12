@@ -182,6 +182,11 @@ const CGFloat kBackgroundImageAnimationDuration = 0.2;
   // The current background image.
   UIImage* _backgroundImage;
   HomeCustomizationFramingCoordinates* _framingCoordinates;
+  // Local path for an animated background, if any.
+  NSString* _animatedBackgroundPath;
+  // Dynamic light and dark mode color providers for the animated background.
+  NSDictionary<NSString*, UIColor*>* _animatedBackgroundLightModeColorProvider;
+  NSDictionary<NSString*, UIColor*>* _animatedBackgroundDarkModeColorProvider;
   // The image view to display the current background image.
   HomeCustomizationImageView* _backgroundImageView;
   // The view controller holding the NTP quick actions buttons.
@@ -193,6 +198,10 @@ const CGFloat kBackgroundImageAnimationDuration = 0.2;
   BOOL _isBottomOmnibox;
   // The bottom inset for the feed.
   CGFloat _feedBottomInset;
+  // The title for the AI Mode button.
+  NSString* _aimTitle;
+  // The icon for the AI Mode button.
+  UIImage* _aimIcon;
 }
 
 // Properties synthesized from NewTabPageScrollConsumer.
@@ -231,6 +240,7 @@ const CGFloat kBackgroundImageAnimationDuration = 0.2;
       [[NewTabPageQuickActionsViewController alloc] init];
   _quickActionsViewController.layoutGuideCenter = self.layoutGuideCenter;
   _quickActionsViewController.NTPShortcutsHandler = self.NTPShortcutsHandler;
+  [_quickActionsViewController setAIMTitle:_aimTitle icon:_aimIcon];
 
   // TODO(crbug.com/40799579): Remove this when bug is fixed.
   [self.feedWrapperViewController loadViewIfNeeded];
@@ -250,7 +260,14 @@ const CGFloat kBackgroundImageAnimationDuration = 0.2;
 
   _backgroundImageView = [[HomeCustomizationImageView alloc] init];
   _backgroundImageView.translatesAutoresizingMaskIntoConstraints = NO;
-  [self updateBackgroundImageView];
+  if (_animatedBackgroundPath.length > 0) {
+    [_backgroundImageView
+        setAnimatedBackgroundPath:_animatedBackgroundPath
+           lightModeColorProvider:_animatedBackgroundLightModeColorProvider
+            darkModeColorProvider:_animatedBackgroundDarkModeColorProvider];
+  } else {
+    [self updateBackgroundImageView];
+  }
   [self.view addSubview:_backgroundImageView];
   AddSameConstraints(_backgroundImageView, self.view);
 
@@ -802,16 +819,40 @@ const CGFloat kBackgroundImageAnimationDuration = 0.2;
 - (void)setBackgroundImage:(UIImage*)backgroundImage
         framingCoordinates:
             (HomeCustomizationFramingCoordinates*)framingCoordinates {
+  _animatedBackgroundPath = nil;
+  _animatedBackgroundLightModeColorProvider = nil;
+  _animatedBackgroundDarkModeColorProvider = nil;
   _backgroundImage = backgroundImage;
   _framingCoordinates = framingCoordinates;
 
   [self updateBackgroundImageView];
 }
 
+- (void)setAnimatedBackgroundPath:(NSString*)animatedBackgroundPath
+           lightModeColorProvider:
+               (NSDictionary<NSString*, UIColor*>*)lightModeColorProvider
+            darkModeColorProvider:
+                (NSDictionary<NSString*, UIColor*>*)darkModeColorProvider {
+  _animatedBackgroundPath = animatedBackgroundPath;
+  _animatedBackgroundLightModeColorProvider = [lightModeColorProvider copy];
+  _animatedBackgroundDarkModeColorProvider = [darkModeColorProvider copy];
+  _backgroundImage = nil;
+  _framingCoordinates = nil;
+  [_backgroundImageView
+      setAnimatedBackgroundPath:_animatedBackgroundPath
+         lightModeColorProvider:_animatedBackgroundLightModeColorProvider
+          darkModeColorProvider:_animatedBackgroundDarkModeColorProvider];
+}
+
 - (void)setAIMAllowed:(BOOL)allowed {
   _isAIMAllowed = allowed;
 }
 
+- (void)setAIMTitle:(NSString*)title icon:(UIImage*)icon {
+  _aimTitle = [title copy];
+  _aimIcon = icon;
+  [_quickActionsViewController setAIMTitle:title icon:icon];
+}
 - (void)setOmniboxInBottomPosition:(BOOL)isBottomOmnibox {
   if (_isBottomOmnibox == isBottomOmnibox) {
     return;

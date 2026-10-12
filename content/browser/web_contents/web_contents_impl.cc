@@ -7887,18 +7887,19 @@ int WebContentsImpl::DownloadImageInFrame(
   return download_id;
 }
 
-void WebContentsImpl::Find(int request_id,
-                           const std::u16string& search_text,
-                           blink::mojom::FindOptionsPtr options,
-                           bool skip_delay) {
+void WebContentsImpl::Find(
+    const std::u16string& search_text,
+    blink::mojom::FindOptionsPtr options,
+    bool skip_delay,
+    base::FunctionRef<void(int request_id)> on_request_id) {
   OPTIONAL_TRACE_EVENT0("content", "WebContentsImpl::Find");
   // Cowardly refuse to search for no text.
   if (search_text.empty()) {
     NOTREACHED();
   }
 
-  GetOrCreateFindRequestManager()->Find(request_id, search_text,
-                                        std::move(options), skip_delay);
+  GetOrCreateFindRequestManager()->Find(search_text, std::move(options),
+                                        skip_delay, on_request_id);
 }
 
 void WebContentsImpl::StopFinding(StopFindAction action) {
@@ -9694,23 +9695,22 @@ void WebContentsImpl::ShowContextMenu(
 
 namespace {
 // Normalizes the line endings: \r\n -> \n, lone \r -> \n.
-std::u16string NormalizeLineBreaks(const std::u16string& source) {
-  static const base::NoDestructor<std::u16string> kReturnNewline(u"\r\n");
-  static const base::NoDestructor<std::u16string> kReturn(u"\r");
-  static const base::NoDestructor<std::u16string> kNewline(u"\n");
+std::u16string NormalizeLineBreaks(std::u16string_view source) {
+  static constexpr std::u16string_view kReturnNewline = u"\r\n";
+  static constexpr std::u16string_view kReturn = u"\r";
+  static constexpr std::u16string_view kNewline = u"\n";
 
   std::vector<std::u16string_view> pieces;
 
-  for (const auto& rn_line : base::SplitStringPieceUsingSubstr(
-           source, *kReturnNewline, base::KEEP_WHITESPACE,
+  for (std::u16string_view rn_line : base::SplitStringPieceUsingSubstr(
+           source, kReturnNewline, base::KEEP_WHITESPACE,
            base::SPLIT_WANT_ALL)) {
     auto r_lines = base::SplitStringPieceUsingSubstr(
-        rn_line, *kReturn, base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
-    std::move(std::begin(r_lines), std::end(r_lines),
-              std::back_inserter(pieces));
+        rn_line, kReturn, base::KEEP_WHITESPACE, base::SPLIT_WANT_ALL);
+    pieces.insert(pieces.end(), r_lines.begin(), r_lines.end());
   }
 
-  return base::JoinString(pieces, *kNewline);
+  return base::JoinString(pieces, kNewline);
 }
 }  // namespace
 
@@ -12050,8 +12050,16 @@ void WebContentsImpl::NotifyFindReply(int request_id,
                                       int active_match_ordinal,
                                       bool final_update) {
   OPTIONAL_TRACE_EVENT0("content", "WebContentsImpl::NotifyFindReply");
-  if (delegate_ && !IsBeingDestroyed() &&
-      !GetPrimaryMainFrame()->GetProcess()->FastShutdownStarted()) {
+  if (IsBeingDestroyed() ||
+      GetPrimaryMainFrame()->GetProcess()->FastShutdownStarted()) {
+    return;
+  }
+
+  observers_.NotifyObservers(&WebContentsObserver::DidReceiveFindReply,
+                             request_id, number_of_matches,
+                             active_match_ordinal, final_update);
+
+  if (delegate_) {
     delegate_->FindReply(this, request_id, number_of_matches, selection_rect,
                          active_match_ordinal, final_update);
   }
@@ -12417,6 +12425,9 @@ bool WebContentsImpl::SetDeviceEmulationSize(const gfx::Size& new_size) {
   OPTIONAL_TRACE_EVENT0("content", "WebContentsImpl::SetDeviceEmulationSize");
   device_emulation_size_ = new_size;
   RenderWidgetHostView* rwhv = GetPrimaryMainFrame()->GetView();
+  if (!rwhv) {
+    return false;
+  }
 
   const gfx::Size current_size = rwhv->GetViewBounds().size();
   if (view_size_before_emulation_.IsEmpty()) {
@@ -12433,6 +12444,9 @@ bool WebContentsImpl::SetDeviceEmulationSize(const gfx::Size& new_size) {
 void WebContentsImpl::ClearDeviceEmulationSize() {
   OPTIONAL_TRACE_EVENT0("content", "WebContentsImpl::ClearDeviceEmulationSize");
   RenderWidgetHostView* rwhv = GetPrimaryMainFrame()->GetView();
+  if (!rwhv) {
+    return;
+  }
   // WebContentsView could get resized during emulation, which also resizes
   // RWHV. If it happens, assume user would like to keep using the size after
   // emulation.
@@ -12831,10 +12845,12 @@ WebContentsImpl::ParseDownloadHeaders(const std::string& headers) {
   download::DownloadUrlParameters::RequestHeadersType request_headers;
   for (std::string_view key_value : base::SplitStringPiece(
            headers, "\r\n", base::TRIM_WHITESPACE, base::SPLIT_WANT_NONEMPTY)) {
-    std::vector<std::string> pair = base::SplitString(
-        key_value, ":", base::TRIM_WHITESPACE, base::SPLIT_WANT_ALL);
-    if (2ul == pair.size()) {
-      request_headers.push_back(make_pair(pair[0], pair[1]));
+    std::optional<std::pair<std::string_view, std::string_view>> pair =
+        base::SplitStringOnce(key_value, ':');
+    if (pair.has_value() && !pair->second.contains(':')) {
+      request_headers.emplace_back(
+          base::TrimWhitespaceASCII(pair->first, base::TRIM_ALL),
+          base::TrimWhitespaceASCII(pair->second, base::TRIM_ALL));
     }
   }
   return request_headers;
@@ -13333,7 +13349,8 @@ std::unique_ptr<PrefetchHandle> WebContentsImpl::StartPrefetch(
     base::WeakPtr<PreloadingAttempt> attempt,
     PreloadingHoldbackStatus holdback_status_override,
     std::optional<base::TimeDelta> ttl,
-    bool should_ignore_saver_modes) {
+    bool should_ignore_saver_modes,
+    bool is_ahead_of_actual_navigation) {
   PrefetchService* prefetch_service =
       BrowserContextImpl::From(GetBrowserContext())->GetPrefetchService();
   if (!prefetch_service) {
@@ -13346,7 +13363,8 @@ std::unique_ptr<PrefetchHandle> WebContentsImpl::StartPrefetch(
       *this, prefetch_url, prefetch_type, embedder_histogram_suffix, referrer,
       referring_origin, std::move(no_vary_search_hint), std::move(priority),
       std::move(preload_pipeline_info), std::move(attempt),
-      holdback_status_override, std::move(ttl), should_ignore_saver_modes);
+      holdback_status_override, std::move(ttl), should_ignore_saver_modes,
+      is_ahead_of_actual_navigation);
 
   return prefetch_service->AddPrefetchRequestWithHandle(std::move(request));
 }

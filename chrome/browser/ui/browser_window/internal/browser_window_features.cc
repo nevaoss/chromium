@@ -125,6 +125,7 @@
 #include "chrome/browser/ui/views/extensions/extension_keybinding_registry_views.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
 #include "chrome/browser/ui/views/frame/contents_border_controller.h"
+#include "chrome/browser/ui/views/frame/contents_web_view.h"
 #include "chrome/browser/ui/views/frame/find_bar_owner_views.h"
 #include "chrome/browser/ui/views/frame/horizontal_tab_strip_region_view.h"
 #include "chrome/browser/ui/views/frame/multi_contents_view.h"
@@ -460,8 +461,10 @@ void BrowserWindowFeatures::Init(BrowserWindowInterface* browser) {
   // Must be before location_bar_model_.
   location_bar_model_delegate_ =
       std::make_unique<BrowserLocationBarModelDelegate>(tab_strip_model_);
-  location_bar_model_ = std::make_unique<LocationBarModelImpl>(
-      location_bar_model_delegate_.get(), content::kMaxURLDisplayChars);
+  location_bar_model_ =
+      GetUserDataFactory().CreateInstance<LocationBarModelImpl>(
+          *browser, browser->GetUnownedUserDataHost(),
+          location_bar_model_delegate_.get(), content::kMaxURLDisplayChars);
 
   memory_saver_bubble_controller_ =
       GetUserDataFactory()

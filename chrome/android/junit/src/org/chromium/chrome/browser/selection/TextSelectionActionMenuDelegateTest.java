@@ -37,6 +37,7 @@ import org.chromium.base.test.util.HistogramWatcher;
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.dom_distiller.ReaderModeManager;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
+import org.chromium.chrome.browser.glic.GlicContextMenuUtils;
 import org.chromium.chrome.browser.glic.GlicEnabling;
 import org.chromium.chrome.browser.glic.GlicKeyedService;
 import org.chromium.chrome.browser.glic.GlicKeyedService.GlicInvocationSource;
@@ -386,8 +387,8 @@ public class TextSelectionActionMenuDelegateTest {
         FeatureOverrides.newBuilder()
                 .enable(ChromeFeatureList.CLANK_GLIC_CONTEXT_MENU)
                 .param(
-                        TextSelectionActionMenuDelegate.PARAM_ASK_GEMINI_SELECTION_MENU_POSITION,
-                        TextSelectionActionMenuDelegate.ASK_GEMINI_POSITION_ASSIST)
+                        GlicContextMenuUtils.PARAM_ASK_GEMINI_SELECTION_MENU_POSITION,
+                        GlicContextMenuUtils.ASK_GEMINI_POSITION_ASSIST)
                 .apply();
 
         List<SelectionMenuItem> items =
@@ -408,8 +409,8 @@ public class TextSelectionActionMenuDelegateTest {
         FeatureOverrides.newBuilder()
                 .enable(ChromeFeatureList.CLANK_GLIC_CONTEXT_MENU)
                 .param(
-                        TextSelectionActionMenuDelegate.PARAM_ASK_GEMINI_SELECTION_MENU_POSITION,
-                        TextSelectionActionMenuDelegate.ASK_GEMINI_POSITION_SECONDARY)
+                        GlicContextMenuUtils.PARAM_ASK_GEMINI_SELECTION_MENU_POSITION,
+                        GlicContextMenuUtils.ASK_GEMINI_POSITION_SECONDARY)
                 .apply();
 
         List<SelectionMenuItem> items =
@@ -494,7 +495,7 @@ public class TextSelectionActionMenuDelegateTest {
         enableAskGeminiForSelection();
         FeatureOverrides.newBuilder()
                 .enable(ChromeFeatureList.CLANK_GLIC_CONTEXT_MENU)
-                .param(TextSelectionActionMenuDelegate.PARAM_ASK_GEMINI_SEND_SELECTED_TEXT, "false")
+                .param(GlicContextMenuUtils.PARAM_ASK_GEMINI_SEND_SELECTED_TEXT, "false")
                 .apply();
         GlicKeyedServiceFactory.setForTesting(mGlicKeyedService);
 
@@ -607,7 +608,7 @@ public class TextSelectionActionMenuDelegateTest {
     }
 
     private static final String GSA_ASK_GEMINI_PROCESS_TEXT_ACTIVITY =
-            TextSelectionActionMenuDelegate.DEFAULT_SUPPRESSED_PROCESS_TEXT_ACTIVITY_PREFIXES
+            GlicContextMenuUtils.DEFAULT_SUPPRESSED_PROCESS_TEXT_ACTIVITY_PREFIXES
                     + "launcher.ProcessTextGatewayActivity";
 
     private static ResolveInfo createGsaAskGeminiResolveInfo() {
@@ -712,8 +713,7 @@ public class TextSelectionActionMenuDelegateTest {
         ResolveInfo renamedRobinActivity =
                 createResolveInfo(
                         "com.google.android.googlequicksearchbox",
-                        TextSelectionActionMenuDelegate
-                                        .DEFAULT_SUPPRESSED_PROCESS_TEXT_ACTIVITY_PREFIXES
+                        GlicContextMenuUtils.DEFAULT_SUPPRESSED_PROCESS_TEXT_ACTIVITY_PREFIXES
                                 + "other.SomeRenamedGatewayActivity");
         ResolveInfo other = createResolveInfo("com.example.translate", "com.example.Translate");
 
@@ -746,8 +746,7 @@ public class TextSelectionActionMenuDelegateTest {
                 .enable(ChromeFeatureList.CLANK_GLIC_CONTEXT_MENU)
                 .param(
                         ChromeFeatureList.CLANK_GLIC_CONTEXT_MENU,
-                        TextSelectionActionMenuDelegate
-                                .PARAM_SUPPRESSED_PROCESS_TEXT_ACTIVITY_PREFIXES,
+                        GlicContextMenuUtils.PARAM_SUPPRESSED_PROCESS_TEXT_ACTIVITY_PREFIXES,
                         "com.example.custom1., com.example.custom2.")
                 .apply();
         ResolveInfo custom1 =
@@ -771,7 +770,7 @@ public class TextSelectionActionMenuDelegateTest {
                 .enable(ChromeFeatureList.CLANK_GLIC_CONTEXT_MENU)
                 .param(
                         ChromeFeatureList.CLANK_GLIC_CONTEXT_MENU,
-                        TextSelectionActionMenuDelegate.PARAM_SUPPRESS_DUPLICATE_PROCESS_TEXT,
+                        GlicContextMenuUtils.PARAM_SUPPRESS_DUPLICATE_PROCESS_TEXT,
                         false)
                 .apply();
         List<ResolveInfo> activities = List.of(createGsaAskGeminiResolveInfo());

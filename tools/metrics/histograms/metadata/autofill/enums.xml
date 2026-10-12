@@ -644,6 +644,15 @@ Called by update_autofill_enums.py.-->
   <int value="861" label="SHIPMENT_TRACKING_NUMBER: Failure"/>
 </enum>
 
+<!-- LINT.IfChange(AutofillAiSourceType) -->
+
+<enum name="AutofillAiSourceType">
+  <int value="0" label="Gmail"/>
+  <int value="1" label="Photos"/>
+</enum>
+
+<!-- LINT.ThenChange(/components/autofill/core/browser/data_model/autofill_ai/entity_instance.h:SourceType) -->
+
 <!-- LINT.IfChange(AutofillAiUnmaskResult) -->
 
 <enum name="AutofillAiUnmaskResult">
@@ -4128,6 +4137,21 @@ Called by update_autofill_enums.py.-->
   <int value="8" label="EditedFallback"/>
 </enum>
 
+<!-- LINT.IfChange(AutofillPromoCodeFormEvent) -->
+
+<enum name="AutofillPromoCodeFormEvent">
+<!-- Enum value 0 is reserved for navigated to a page with a promo code field
+     and promo code present (once) -->
+
+<!-- Enum value 1 is reserved for navigated to a page with a promo code field
+     and no promo code present (once) -->
+
+  <int value="2" label="Promo code suggestions shown (once)"/>
+  <int value="3" label="Promo code suggestion filled (once)"/>
+</enum>
+
+<!-- LINT.ThenChange(/components/autofill/core/browser/metrics/payments/promo_code_metrics.h:AutofillPromoCodeFormEvent) -->
+
 <enum name="AutofillPromptStatus">
   <int value="0" label="Address and credit card"/>
   <int value="1" label="Address only"/>
@@ -6227,6 +6251,7 @@ Called by update_autofill_enums.py.-->
   <int value="100" label="Gmail one time password entry"/>
   <int value="101" label="Open Gmail for OTPs"/>
   <int value="102" label="Manage offers"/>
+  <int value="103" label="AtMemory shortcut settings promo"/>
 </enum>
 
 <!-- LINT.ThenChange(/components/autofill/core/browser/suggestions/suggestion_type.h:SuggestionType) -->

@@ -361,7 +361,6 @@ public class MultiColumnSettingsTest {
     @SmallTest
     @Restriction(DeviceFormFactor.PHONE)
     @EnableFeatures({
-        SigninFeatures.ENABLE_SEAMLESS_SIGNIN,
         SigninFeatures.ENABLE_ACTIVITYLESS_SIGNIN_ALL_ENTRY_POINT,
         ChromeFeatureList.SETTINGS_MULTI_COLUMN,
     })
@@ -874,6 +873,8 @@ public class MultiColumnSettingsTest {
         ThreadUtils.runOnUiThreadBlocking(
                 () -> {
                     TestMultiColumnSettings settings = new TestMultiColumnSettings();
+                    // Stands in for FragmentDependencyProvider, which the test host lacks.
+                    settings.setProfile(Mockito.mock(Profile.class));
                     settings.setInitialUrl(
                             "chrome://settings/siteDetails?site=https%3A%2F%2Fgoogle.com");
 

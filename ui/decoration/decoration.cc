@@ -8,75 +8,93 @@
 #include <cmath>
 #include <memory>
 #include <optional>
+#include <string>
+#include <string_view>
 #include <utility>
 
 #include "base/check.h"
 #include "base/functional/bind.h"
+#include "base/strings/strcat.h"
 #include "ui/compositor/layer_nine_patch.h"
 #include "ui/compositor/layer_not_drawn.h"
 #include "ui/compositor/scoped_layer_animation_settings.h"
 #include "ui/gfx/geometry/insets.h"
 #include "ui/gfx/geometry/rect.h"
-#include "ui/gfx/geometry/rect_conversions.h"
-#include "ui/gfx/geometry/rect_f.h"
 #include "ui/gfx/geometry/rounded_corners_f.h"
-#include "ui/gfx/geometry/rrect_f.h"
 
-namespace ui::decoration {
+namespace ui {
 
 namespace {
 
-// Returns `bounds` with each corner radius clamped to half of the smaller
-// dimension of its rect, as larger radii would produce invalid ninebox
+// Returns `rounded_corners` with each radius clamped to half of the smaller
+// dimension of `bounds`, as larger radii would produce invalid ninebox
 // geometry.
-gfx::RRectF ClampRadiiToBounds(const gfx::RRectF& bounds) {
-  const gfx::RectF rect = bounds.rect();
+gfx::RoundedCornersF ClampRadiiToBounds(
+    const gfx::Rect& bounds,
+    const gfx::RoundedCornersF& rounded_corners) {
   const float max_radius =
-      std::floor(std::min(rect.width(), rect.height()) / 2.0f);
-  const auto radius = [&bounds, max_radius](gfx::RRectF::Corner corner) {
-    return std::min(bounds.GetCornerRadii(corner).x(), max_radius);
-  };
-  return gfx::RRectF(
-      rect, gfx::RoundedCornersF(radius(gfx::RRectF::Corner::kUpperLeft),
-                                 radius(gfx::RRectF::Corner::kUpperRight),
-                                 radius(gfx::RRectF::Corner::kLowerRight),
-                                 radius(gfx::RRectF::Corner::kLowerLeft)));
+      std::floor(std::min(bounds.width(), bounds.height()) / 2.0f);
+  return gfx::RoundedCornersF(
+      std::min(rounded_corners.upper_left(), max_radius),
+      std::min(rounded_corners.upper_right(), max_radius),
+      std::min(rounded_corners.lower_right(), max_radius),
+      std::min(rounded_corners.lower_left(), max_radius));
+}
+
+// Returns the layer name for a decoration, e.g. "Decoration:Shadow" for a
+// `debug_name` of "Shadow".
+std::string MakeLayerName(std::string_view debug_name) {
+  constexpr std::string_view kBaseName = "Decoration";
+  return debug_name.empty() ? std::string(kBaseName)
+                            : base::StrCat({kBaseName, "-", debug_name});
 }
 
 }  // namespace
 
 // static
 std::unique_ptr<Decoration> Decoration::Create(
-    std::unique_ptr<DecorationSource> source) {
-  return std::make_unique<Decoration>(std::move(source));
+    std::unique_ptr<decoration::DecorationSource> source,
+    std::string_view debug_name) {
+  return std::make_unique<Decoration>(std::move(source), debug_name);
 }
 
-Decoration::Decoration(std::unique_ptr<DecorationSource> source)
-    : source_(std::move(source)), decoration_layer_owner_(this) {
+Decoration::Decoration(std::unique_ptr<decoration::DecorationSource> source,
+                       std::string_view debug_name)
+    : source_(std::move(source)),
+      name_(MakeLayerName(debug_name)),
+      decoration_layer_owner_(this) {
   CHECK(source_);
   source_->set_details_changed_callback(base::BindRepeating(
       &Decoration::UpdateAppearance, base::Unretained(this)));
 
   SetLayer(std::make_unique<ui::LayerNotDrawn>());
-  layer()->SetName("Decoration Parent Container");
+  layer()->SetName(base::StrCat({name_, ":Container"}));
   RecreateDecorationLayer();
 }
 
 Decoration::~Decoration() = default;
 
-void Decoration::SetContentBounds(const gfx::RRectF& content_bounds) {
-  const gfx::RRectF clamped_content_bounds = ClampRadiiToBounds(content_bounds);
-
+void Decoration::SetContentBounds(const gfx::Rect& content_bounds) {
   // The layer's bounds should change with the content bounds accordingly. Need
   // to recalculate the layer bounds if the layer bounds were modified after the
   // content bounds were last set. When the window moves but doesn't change
   // size, this is a no-op. (The origin stays the same in this case.)
-  if (clamped_content_bounds == content_bounds_ &&
+  if (content_bounds == content_bounds_ &&
       layer()->bounds() == last_layer_bounds_) {
     return;
   }
 
-  content_bounds_ = clamped_content_bounds;
+  content_bounds_ = content_bounds;
+  UpdateAppearance();
+}
+
+void Decoration::SetRoundedCorners(
+    const gfx::RoundedCornersF& rounded_corners) {
+  if (rounded_corners == rounded_corners_) {
+    return;
+  }
+
+  rounded_corners_ = rounded_corners;
   UpdateAppearance();
 }
 
@@ -110,7 +128,7 @@ std::unique_ptr<ui::Layer> Decoration::DecorationLayerOwner::RecreateLayer() {
 
 void Decoration::RecreateDecorationLayer() {
   decoration_layer_owner_.Reset(std::make_unique<ui::LayerNinePatch>());
-  decoration_layer()->SetName("Decoration");
+  decoration_layer()->SetName(name_);
   decoration_layer()->SetVisible(true);
   decoration_layer()->SetFillsBoundsOpaquely(false);
   layer()->Add(decoration_layer());
@@ -158,13 +176,16 @@ void Decoration::CrossFadeToNewAppearance(base::TimeDelta duration) {
 }
 
 void Decoration::UpdateAppearanceImmediately() {
-  const std::optional<DecorationSource::Details> details =
-      content_bounds_.IsEmpty() ? std::nullopt
-                                : source_->GetDetails(content_bounds_);
+  const std::optional<decoration::DecorationSource::Details> details =
+      content_bounds_.IsEmpty()
+          ? std::nullopt
+          : source_->GetDetails(
+                content_bounds_,
+                ClampRadiiToBounds(content_bounds_, rounded_corners_));
 
   // Compare only the appearance, so geometry or occlusion changes don't
   // re-upload the image.
-  const std::optional<DecorationSource::Appearance> appearance =
+  const std::optional<decoration::DecorationSource::Appearance> appearance =
       details.has_value() ? std::make_optional(details->appearance)
                           : std::nullopt;
 
@@ -194,7 +215,7 @@ void Decoration::UpdateAppearanceImmediately() {
   // |content_bounds_|.
   const gfx::Insets margins =
       appearance.has_value() ? appearance->margins : gfx::Insets();
-  gfx::Rect new_layer_bounds = gfx::ToRoundedRect(content_bounds_.rect());
+  gfx::Rect new_layer_bounds = content_bounds_;
   new_layer_bounds.Inset(margins);
   gfx::Rect decoration_layer_bounds(new_layer_bounds.size());
 
@@ -234,4 +255,4 @@ void Decoration::UpdateAppearanceImmediately() {
   decoration_layer()->UpdateNinePatchOcclusion(occlusion_bounds);
 }
 
-}  // namespace ui::decoration
+}  // namespace ui

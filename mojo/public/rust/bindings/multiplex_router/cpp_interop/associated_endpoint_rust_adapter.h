@@ -24,6 +24,7 @@ namespace mojo::rust::bindings {
 // Defined in Rust, exposed in the cxx bridge
 struct EndpointInfo;
 class InterfaceEndpointClientAdapter;
+class RustAssociatedGroupController;
 
 // Constructs a fresh C++ `mojo::Message` with the given payload,
 // and attaches the provided handles to it.
@@ -62,11 +63,16 @@ class AssociatedEndpointRustAdapter {
  public:
   explicit AssociatedEndpointRustAdapter(
       mojo::ScopedInterfaceEndpointHandle handle);
+  AssociatedEndpointRustAdapter(mojo::AssociatedGroupController* controller,
+                                uint32_t interface_id);
   ~AssociatedEndpointRustAdapter();
 
   AssociatedEndpointRustAdapter(const AssociatedEndpointRustAdapter&) = delete;
   AssociatedEndpointRustAdapter& operator=(
       const AssociatedEndpointRustAdapter&) = delete;
+
+  // Returns true if this adapter holds an endpoint
+  bool is_valid() const;
 
   // Create a new adapter wrapped in a unique_ptr. This function mostly exists
   // to be called from Rust.
@@ -78,8 +84,7 @@ class AssociatedEndpointRustAdapter {
 
   // Binds the endpoint to `runner`. Incoming messages and disconnect events
   // are routed to the provided Rust callbacks.
-  void Bind(const base::SequencedTaskRunner& runner,
-            ::rust::Box<EndpointInfo> info);
+  void Bind(base::SequencedTaskRunner& runner, ::rust::Box<EndpointInfo> info);
 
   // Returns the interface ID assigned to this endpoint on the routing group.
   uint32_t GetInterfaceId() const;
@@ -123,6 +128,15 @@ using CxxPendingAssociatedEndpoint =
 void CreatePairPendingAssociation(
     std::unique_ptr<AssociatedEndpointRustAdapter>& self_out,
     std::unique_ptr<AssociatedEndpointRustAdapter>& peer_out);
+
+// Creates an AssociatedEndpointRustAdapter attached to the group controller of
+// a Rust primary router. This allows a C++ AssociatedReceiver or
+// AssociatedRemote to send and receive messages through the Rust router.
+// `interface_id` should already be registered with the router before this
+// function is called.
+std::unique_ptr<AssociatedEndpointRustAdapter> CreateWithRustController(
+    RustAssociatedGroupController& controller,
+    uint32_t interface_id);
 
 // ****************************************************************************
 // C++ Interop Helpers

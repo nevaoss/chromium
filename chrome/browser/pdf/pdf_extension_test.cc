@@ -283,19 +283,22 @@ IN_PROC_BROWSER_TEST_P(PDFExtensionTest, PdfExtensionLoaded) {
     EXPECT_EQ(
         1, content::EvalJs(primary_main_frame, "document.body.children.length;")
                .ExtractInt());
-    EXPECT_EQ("EMBED", content::EvalJs(primary_main_frame,
-                                       "document.body.firstChild.tagName;")
-                           .ExtractString());
-    EXPECT_EQ(
-        "application/pdf",
-        content::EvalJs(primary_main_frame, "document.body.firstChild.type;")
-            .ExtractString());
-    EXPECT_EQ("about:blank", content::EvalJs(primary_main_frame,
-                                             "document.body.firstChild.src;")
-                                 .ExtractString());
+    EXPECT_EQ("EMBED",
+              content::EvalJs(primary_main_frame,
+                              "document.body.firstElementChild.tagName;")
+                  .ExtractString());
+    EXPECT_EQ("application/pdf",
+              content::EvalJs(primary_main_frame,
+                              "document.body.firstElementChild.type;")
+                  .ExtractString());
+    EXPECT_EQ("about:blank",
+              content::EvalJs(primary_main_frame,
+                              "document.body.firstElementChild.src;")
+                  .ExtractString());
     EXPECT_TRUE(
-        content::EvalJs(primary_main_frame,
-                        "document.body.firstChild.hasAttribute('internalid');")
+        content::EvalJs(
+            primary_main_frame,
+            "document.body.firstElementChild.hasAttribute('internalid');")
             .ExtractBool());
   }
 }
@@ -1572,7 +1575,9 @@ IN_PROC_BROWSER_TEST_P(PDFExtensionScrollTest, WithArrowLeftRight) {
   EXPECT_EQ(kScrollIncrement, GetViewportScrollPositionX(extension_host));
 }
 
-IN_PROC_BROWSER_TEST_P(PDFExtensionScrollTest, WithArrowLeftRightScrollToPage) {
+// TODO(crbug.com/565684021): re-enable this test on reland of the reverted CL
+IN_PROC_BROWSER_TEST_P(PDFExtensionScrollTest,
+                       DISABLED_WithArrowLeftRightScrollToPage) {
   content::RenderFrameHost* extension_host = LoadPdfGetExtensionHost(
       embedded_test_server()->GetURL("/pdf/test-bookmarks.pdf"));
   ASSERT_TRUE(extension_host);

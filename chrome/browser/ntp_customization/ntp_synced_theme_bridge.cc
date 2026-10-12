@@ -75,7 +75,9 @@ ScopedJavaLocalRef<jobject> NtpSyncedThemeBridge::GetCustomBackgroundInfo(
   return Java_NtpSyncedThemeBridge_createCustomBackgroundInfo(
       env, background->custom_background_url, background->collection_id,
       background->is_uploaded_image, background->daily_refresh_enabled,
-      ntp_customization::GetCustomBackgroundAttribution(*background));
+      ntp_customization::GetCustomBackgroundAttribution(*background),
+      static_cast<int32_t>(
+          background->custom_background_main_color.value_or(0)));
 }
 
 bool NtpSyncedThemeBridge::IsProcessingSyncUpdate(JNIEnv* env) {
@@ -108,13 +110,17 @@ void NtpSyncedThemeBridge::SelectLocalBackgroundImage(JNIEnv* env) {
 
 void NtpSyncedThemeBridge::UpdateCustomBackgroundPrefsWithColor(
     const GURL& url,
-    int32_t primary_color) {
+    const std::string& collection_id,
+    const std::string& attribution,
+    int32_t primary_color,
+    bool is_daily_refresh) {
   if (!ntp_custom_background_service_) {
     return;
   }
 
-  ntp_custom_background_service_->UpdateCustomBackgroundPrefsWithColor(
-      url, static_cast<SkColor>(primary_color));
+  ntp_custom_background_service_->UpdateThemeCollectionPrefsWithColor(
+      url, collection_id, attribution, static_cast<SkColor>(primary_color),
+      is_daily_refresh);
 }
 
 void NtpSyncedThemeBridge::OnChromeColorSynced(int color_id) {

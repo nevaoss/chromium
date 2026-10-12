@@ -64,8 +64,9 @@ const SettingsPageTestCase kSettingsPageTestCases[] = {
      AutofillSettingsPage::kAddresses},
     {"CreditCard", MemoryDataType::kCreditCardNumber,
      AutofillSettingsPage::kCreditCards, AutofillSettingsPage::kCreditCards},
+    {"Iban", MemoryDataType::kIban, AutofillSettingsPage::kCreditCards,
+     AutofillSettingsPage::kCreditCards},
     // Types with no settings page.
-    {"Iban", MemoryDataType::kIban, std::nullopt, std::nullopt},
     {"Unknown", MemoryDataType::kUnknown, std::nullopt, std::nullopt},
 };
 
@@ -73,15 +74,15 @@ const SettingsPageTestCase kSettingsPageTestCases[] = {
 
 using AutofillSettingsNavigatorTest = PlatformTest;
 
-// Test that a suggestion sourced from personal context routes to the enhanced
-// autofill settings page, regardless of its memory data type.
+// Test that a suggestion sourced from personal context routes to the
+// Suggestions from Gemini settings page, regardless of its memory data type.
 TEST_F(AutofillSettingsNavigatorTest, TestSettingsPageForPersonalContext) {
   base::test::ScopedFeatureList feature_list(kYourSavedInfoSettingsPageIos);
 
   EXPECT_EQ(AutofillSettingsPageForAtMemorySuggestion(
                 CreateTestSuggestion(MemoryDataType::kPassportNumber,
                                      /*is_personal_context_sourced=*/true)),
-            AutofillSettingsPage::kEnhancedAutofill);
+            AutofillSettingsPage::kSuggestionsFromGemini);
 }
 
 // Test that a malformed suggestion without an AtMemory payload maps to no

@@ -261,8 +261,7 @@ struct PageActionGatingContext : public OriginGatingDecisionContext {
 // Blocks acting on a tab whose primary main frame is showing an error document.
 origin_gating::Decision BlockTabErrorDocument(
     origin_gating::GatingDecisionContext* context,
-    const GURL& source,
-    const GURL& destination) {
+    const GateableEvent& event) {
   content::WebContents* web_contents =
       static_cast<const PageActionGatingContext*>(context)->web_contents.get();
   if (web_contents && web_contents->GetPrimaryMainFrame()->IsErrorDocument()) {
@@ -276,8 +275,7 @@ origin_gating::Decision BlockTabErrorDocument(
 // until user interaction; such a page has a user interaction observer attached.
 origin_gating::Decision BlockSafeBrowsingWarningIfSafetyChecksEnabled(
     origin_gating::GatingDecisionContext* context,
-    const GURL& source,
-    const GURL& destination) {
+    const GateableEvent& event) {
 #if BUILDFLAG(SAFE_BROWSING_AVAILABLE)
   content::WebContents* web_contents =
       static_cast<const PageActionGatingContext*>(context)->web_contents.get();
@@ -308,8 +306,7 @@ bool IsDangerousMimeType(std::string_view mime_type) {
 // JavaScript, CSV).
 origin_gating::Decision BlockDangerousMimeType(
     origin_gating::GatingDecisionContext* context,
-    const GURL& source,
-    const GURL& destination) {
+    const GateableEvent& event) {
   if (!base::FeatureList::IsEnabled(
           kGlicBlockNavigationToDangerousContentTypes) ||
       !context) {
@@ -340,10 +337,11 @@ std::optional<std::string> ExtractMimeType(
 CustomPredicate CreateSafetyListPredicate() {
   return CustomPredicate(
       base::BindRepeating([](origin_gating::GatingDecisionContext*,
-                             const GURL& source_url,
-                             const GURL& destination_url) {
+                             const GateableEvent& event) {
+        const GURL& destination_url = event.destination();
         const GURL& effective_source =
-            source_url.is_empty() ? destination_url : source_url;
+            event.source() && !event.source()->is_empty() ? *event.source()
+                                                          : destination_url;
         switch (SafetyListManager::GetInstance()->Find(effective_source,
                                                        destination_url)) {
           case SafetyListManager::Decision::kNone:
@@ -425,10 +423,9 @@ void IsNonSensitiveUrl(Profile* profile,
 void BlockSensitiveUrl(
     Profile* profile,
     origin_gating::GatingDecisionContext* context,
-    const GURL& source,
-    const GURL& destination,
+    const GateableEvent& event,
     base::OnceCallback<void(origin_gating::Decision)> callback) {
-  IsNonSensitiveUrl(profile, context, destination,
+  IsNonSensitiveUrl(profile, context, event.destination(),
                     base::BindOnce([](bool not_sensitive) {
                       return not_sensitive
                                  ? origin_gating::Decision::kNoDecision
@@ -439,26 +436,24 @@ void BlockSensitiveUrl(
 void BlockSensitiveUrlWhenNavigationGatingDisabled(
     Profile* profile,
     origin_gating::GatingDecisionContext* context,
-    const GURL& source,
-    const GURL& destination,
+    const GateableEvent& event,
     base::OnceCallback<void(origin_gating::Decision)> callback) {
   if (IsNavigationGatingEnabled()) {
     std::move(callback).Run(origin_gating::Decision::kNoDecision);
     return;
   }
 
-  BlockSensitiveUrl(profile, context, source, destination, std::move(callback));
+  BlockSensitiveUrl(profile, context, event, std::move(callback));
 }
 
 origin_gating::Decision BlockLookalikeUrl(
     Profile* profile,
     origin_gating::GatingDecisionContext* context,
-    const GURL& source,
-    const GURL& destination) {
+    const GateableEvent& event) {
   auto* lookalike_service = LookalikeUrlServiceFactory::GetForProfile(profile);
   LookalikeUrlService::LookalikeUrlCheckResult lookalike_result =
       lookalike_service->CheckUrlForLookalikes(
-          destination, lookalike_service->GetLatestEngagedSites(),
+          event.destination(), lookalike_service->GetLatestEngagedSites(),
           /*stop_checking_on_allowlist_or_ignore=*/true);
   // Out of caution, do not act on lookalike domains.
   // For now, we just accept the possibility of false positives.
@@ -478,8 +473,7 @@ origin_gating::Decision BlockLookalikeUrl(
 origin_gating::Decision BlockIfSafeBrowsingDisabled(
     Profile* profile,
     origin_gating::GatingDecisionContext* context,
-    const GURL& source,
-    const GURL& destination) {
+    const GateableEvent& event) {
   bool is_safe_browsing_enabled = false;
 #if BUILDFLAG(SAFE_BROWSING_AVAILABLE)
   is_safe_browsing_enabled =
@@ -493,8 +487,7 @@ origin_gating::Decision BlockIfSafeBrowsingDisabled(
 
 origin_gating::Decision AllowIfSafetyChecksDisabled(
     origin_gating::GatingDecisionContext* context,
-    const GURL& source,
-    const GURL& destination) {
+    const GateableEvent& event) {
   return IsActorSafetyCheckDisabled() ? origin_gating::Decision::kAllowed
                                       : origin_gating::Decision::kNoDecision;
 }
@@ -533,6 +526,27 @@ url::Origin OriginOrPrecursorIfOpaque(const url::Origin& origin) {
 
   return url::Origin::Create(
       origin.GetTupleOrPrecursorTupleIfOpaque().GetURL());
+}
+
+// Returns `url_to_commit` if its origin/precursor already matches
+// `origin_to_commit`'s tuple or precursor (preserving path/query for URL-level
+// policy checks), or if `origin_to_commit` has no tuple/precursor (e.g.
+// browser-initiated about:blank).  Otherwise (e.g. renderer-initiated
+// about:blank or about:srcdoc that inherited a tuple/precursor origin), returns
+// the precursor/tuple origin's GURL so gating evaluates the true security
+// principal rather than "about:blank".
+GURL GetEffectiveUrlForGating(const GURL& url_to_commit,
+                              const url::Origin& origin_to_commit) {
+  const url::Origin effective_origin =
+      OriginOrPrecursorIfOpaque(origin_to_commit);
+  if (effective_origin.opaque()) {
+    return url_to_commit;
+  }
+  if (OriginOrPrecursorIfOpaque(url::Origin::Create(url_to_commit)) ==
+      effective_origin) {
+    return url_to_commit;
+  }
+  return effective_origin.GetURL();
 }
 
 ExecutionEngine::GatingDecision MapGatingDecisionToEngineDecision(
@@ -651,13 +665,13 @@ MayActOnUrlBlockReason MapGatingDecisionToBlockReason(
 MayActOnUrlBlockReason ResolveGatingDecision(
     std::unique_ptr<AggregatedJournal::PendingAsyncEntry> journal_entry,
     const GURL& url,
-    GateableEvent event,
+    GateableEvent::Type event_type,
     std::unique_ptr<origin_gating::GatingDecisionContext> context,
     origin_gating::GatingDecision decision) {
   journal_entry->EndEntry(
       JournalDetailsBuilder()
           .Add("origin", url::Origin::Create(url).Serialize())
-          .Add("event", origin_gating::GateableEventToString(event))
+          .Add("event", origin_gating::GateableEventTypeToString(event_type))
           .Add("decision", decision.is_allowed ? "allowed" : "blocked")
           .Add("attribution", DecisionAttributionToString(decision.attribution))
           .Build());
@@ -902,24 +916,32 @@ void ExecutionEngine::ShouldNavigationCommit(
 
   const url::Origin source_origin = OriginOrPrecursorIfOpaque(
       GetPrimaryMainFrame(navigation_handle)->GetLastCommittedOrigin());
-  auto event = GateableEvent::kNavigationResponse;
+  const GURL destination_url = GetEffectiveUrlForGating(
+      navigation_handle.GetURL(),
+      url::Origin::Resolve(
+          navigation_handle.GetURL(),
+          navigation_handle.GetInitiatorOrigin().value_or(url::Origin())));
+  const url::Origin destination_origin = url::Origin::Create(destination_url);
+  GateableEvent event(origin_gating::NavigationResponseEvent{
+      .source = source_origin.GetURL(), .destination = destination_url});
   auto wrapped_callback = TrackPendingNavigation(
       pending_navigation_cancellations_, std::move(callback),
       /*block_reason_if_dropped=*/MayActOnUrlBlockReason::kTaskCancelled);
+  GateableEvent::Type event_type = event.type();
   GetOriginGatingChecker().ComputeGatingDecision(
       std::make_unique<NavigationResponseContext>(
           GetPrimaryMainFrame(navigation_handle)->GetPageUkmSourceId(),
           navigation_handle.IsInPrerenderedMainFrame(), std::move(timer),
           ExtractMimeType(navigation_handle)),
-      event, source_origin.GetURL(), navigation_handle.GetURL(),
+      std::move(event),
       base::BindOnce(
           &ExecutionEngine::OnComputedGatingDecision, GetWeakPtr(),
           std::move(wrapped_callback),
-          journal_->CreatePendingAsyncEntry(
-              navigation_handle.GetURL(), task_->id(),
-              MakeBrowserTrackUUID(task_->id()), "OriginGatingDecision", {}),
-          source_origin, url::Origin::Create(navigation_handle.GetURL()),
-          state_, navigation_handle.GetInitiatorOrigin(), event));
+          journal_->CreatePendingAsyncEntry(destination_url, task_->id(),
+                                            MakeBrowserTrackUUID(task_->id()),
+                                            "OriginGatingDecision", {}),
+          source_origin, destination_origin, state_,
+          navigation_handle.GetInitiatorOrigin(), event_type));
 }
 
 void ExecutionEngine::CancelPendingNavigations() {
@@ -934,7 +956,7 @@ void ExecutionEngine::OnComputedGatingDecision(
     const url::Origin& destination_origin,
     State initial_state,
     std::optional<url::Origin> initiator,
-    GateableEvent event,
+    GateableEvent::Type event_type,
     std::unique_ptr<origin_gating::GatingDecisionContext> context,
     origin_gating::GatingDecision decision) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
@@ -962,7 +984,7 @@ void ExecutionEngine::OnComputedGatingDecision(
           .Add("destination_origin", destination_origin.Serialize())
           .Add("initiator_origin",
                initiator.transform(&url::Origin::Serialize).value_or("none"))
-          .Add("event", origin_gating::GateableEventToString(event))
+          .Add("event", origin_gating::GateableEventTypeToString(event_type))
           .Add("decision", decision.is_allowed ? "allowed" : "blocked")
           .Add("attribution", DecisionAttributionToString(decision.attribution))
           .Add("mime_type",
@@ -996,17 +1018,15 @@ void ExecutionEngine::LogNavigationGating(
 
 void ExecutionEngine::DoesOriginRequireUserConfirmation(
     origin_gating::GatingDecisionContext* context,
-    GateableEvent event,
-    const GURL& source,
-    const GURL& destination,
+    const GateableEvent& event,
     DoesOriginRequireUserConfirmationCallback callback) const {
   // Navigation requests never prompt the user.
-  if (event == GateableEvent::kNavigationRequest) {
+  if (event.is_navigation_request()) {
     std::move(callback).Run(/*requires_user_confirmation=*/false);
     return;
   }
 
-  IsNonSensitiveUrl(task_->GetProfile(), context, destination,
+  IsNonSensitiveUrl(task_->GetProfile(), context, event.destination(),
                     base::BindOnce([](bool not_sensitive) {
                       return !not_sensitive;
                     }).Then(std::move(callback)));
@@ -1032,32 +1052,30 @@ void ExecutionEngine::EvaluateEnterprisePolicy(
 
 void ExecutionEngine::OnNoVerdict(
     origin_gating::GatingDecisionContext* context,
-    GateableEvent event,
-    const GURL& source,
-    const GURL& destination,
+    const GateableEvent& event,
     bool requires_user_confirmation,
     base::OnceCallback<void(NoVerdictResult)> callback) {
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
 
   // Navigation requests fail open.
-  if (event == GateableEvent::kNavigationRequest) {
+  if (event.is_navigation_request()) {
     std::move(callback).Run(
         {.is_allowed = true, .did_prompt_user = false, .bypass_cache = true});
     return;
   }
 
   NavigationResponseContext* navigation_response_context =
-      event == GateableEvent::kNavigationResponse
+      event.is_navigation_response()
           ? static_cast<NavigationResponseContext*>(context)
           : nullptr;
-  url::Origin destination_origin = url::Origin::Create(destination);
+  url::Origin destination_origin = url::Origin::Create(event.destination());
   if (navigation_response_context && navigation_response_context->skip_prompt) {
     std::move(callback).Run({.is_allowed = false, .did_prompt_user = false});
     return;
   }
 
   if (!requires_user_confirmation) {
-    if (event == GateableEvent::kPageAction) {
+    if (event.is_page_action()) {
       std::move(callback).Run({.is_allowed = true, .did_prompt_user = false});
       return;
     }
@@ -1407,37 +1425,30 @@ void ExecutionEngine::SafetyChecksForNextAction() {
     return;
   }
 
-  // Asynchronously check if we can act on the tab. NOTE that the check uses
-  // `GetLastCommittedURL()` from the tab. For opaque origins, this means that
-  // we'll get the precursor URL. For this reason, we previously added the
-  // precursor to `origin_gating_cache()` to ensure the optimization guide
-  // sensitive origin check would be skipped as expected.
-
   // TODO(mcnee): Add UMA for the outcomes.
   content::WebContents& web_contents = *(tab->GetContents());
-  const GURL& url = web_contents.GetPrimaryMainFrame()->GetLastCommittedURL();
-  auto event = GateableEvent::kPageAction;
+  content::RenderFrameHost* main_frame = web_contents.GetPrimaryMainFrame();
+  const GURL url = GetEffectiveUrlForGating(
+      main_frame->GetLastCommittedURL(), main_frame->GetLastCommittedOrigin());
   GetOriginGatingChecker().ComputeGatingDecision(
       std::make_unique<PageActionGatingContext>(web_contents.GetWeakPtr()),
-      event, /*source=*/GURL(), url,
+      GateableEvent(origin_gating::PageActionEvent{.destination = url}),
       base::BindOnce(&ResolveGatingDecision,
                      journal_->CreatePendingAsyncEntry(
                          url, task_->id(), MakeBrowserTrackUUID(task_->id()),
                          "OriginGatingDecision", {}),
-                     url, event)
+                     url, GateableEvent::kPageAction)
           .Then(base::BindOnce([](MayActOnUrlBlockReason block_reason) {
             return BlockReasonToResultCode(block_reason,
                                            /*for_navigation=*/false);
           }))
           .Then(base::BindOnce(&ExecutionEngine::DidFinishAsyncSafetyChecks,
                                GetActionSequenceWeakPtr(),
-                               tab->GetContents()
-                                   ->GetPrimaryMainFrame()
-                                   ->GetLastCommittedOrigin())));
+                               main_frame->GetLastCommittedOrigin())));
 }
 
 void ExecutionEngine::DidFinishAsyncSafetyChecks(
-    const url::Origin& evaluated_origin,
+    const url::Origin& committed_origin,
     mojom::ActionResultCode result_code) {
   TRACE_EVENT0("actor", "ExecutionEngine::DidFinishAsyncSafetyChecks");
   DCHECK_CALLED_ON_VALID_SEQUENCE(sequence_checker_);
@@ -1458,7 +1469,7 @@ void ExecutionEngine::DidFinishAsyncSafetyChecks(
   }
 
   TaskId task_id = task_->id();
-  if (!evaluated_origin.IsSameOriginWith(tab->GetContents()
+  if (!committed_origin.IsSameOriginWith(tab->GetContents()
                                              ->GetPrimaryMainFrame()
                                              ->GetLastCommittedOrigin())) {
     // A cross-origin navigation occurred before we got permission. The result
@@ -1729,15 +1740,15 @@ const EnterprisePolicyChecker& ExecutionEngine::GetEnterprisePolicyChecker()
 void ExecutionEngine::IsAcceptableNavigationDestination(
     const GURL& url,
     DecisionCallbackWithReason callback) {
-  auto event = GateableEvent::kNavigationRequest;
   GetOriginGatingChecker().ComputeGatingDecision(
-      std::make_unique<OriginGatingDecisionContext>(), event, /*source=*/GURL(),
-      url,
+      std::make_unique<OriginGatingDecisionContext>(),
+      GateableEvent(origin_gating::NavigationRequestEvent{.source = GURL(),
+                                                          .destination = url}),
       base::BindOnce(&ResolveGatingDecision,
                      journal_->CreatePendingAsyncEntry(
                          url, task_->id(), MakeBrowserTrackUUID(task_->id()),
                          "OriginGatingDecision", {}),
-                     url, event)
+                     url, GateableEvent::kNavigationRequest)
           .Then(std::move(callback)));
 }
 

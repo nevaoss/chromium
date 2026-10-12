@@ -17,7 +17,6 @@
 #import "components/collaboration/public/collaboration_service.h"
 #import "components/feature_engagement/public/event_constants.h"
 #import "components/feature_engagement/public/tracker.h"
-#import "components/password_manager/core/browser/ui/credential_ui_entry.h"
 #import "components/segmentation_platform/embedder/home_modules/tips_manager/constants.h"
 #import "components/send_tab_to_self/features.h"
 #import "components/supervised_user/core/common/features.h"
@@ -66,6 +65,7 @@
 #import "ios/chrome/browser/file_upload_panel/coordinator/file_upload_panel_coordinator.h"
 #import "ios/chrome/browser/fullscreen/ui_bundled/fullscreen_controller.h"
 #import "ios/chrome/browser/google_one/coordinator/google_one_coordinator.h"
+#import "ios/chrome/browser/home_customization/coordinator/home_customization_ephemeral_theme_promo_coordinator.h"
 #import "ios/chrome/browser/intelligence/actor/coordinator/actor_overlay_coordinator.h"
 #import "ios/chrome/browser/intelligence/enhanced_calendar/coordinator/enhanced_calendar_coordinator.h"
 #import "ios/chrome/browser/intelligence/enhanced_calendar/model/enhanced_calendar_configuration.h"
@@ -76,7 +76,6 @@
 #import "ios/chrome/browser/page_info/coordinator/page_info_coordinator.h"
 #import "ios/chrome/browser/passwords/bottom_sheet/coordinator/credential_suggestion_bottom_sheet_coordinator.h"
 #import "ios/chrome/browser/passwords/bottom_sheet/coordinator/passkey_creation_bottom_sheet_coordinator.h"
-#import "ios/chrome/browser/passwords/model/password_controller_delegate.h"
 #import "ios/chrome/browser/passwords/password_breach/coordinator/password_breach_coordinator.h"
 #import "ios/chrome/browser/passwords/password_breach/coordinator/password_protection_coordinator.h"
 #import "ios/chrome/browser/passwords/password_breach/coordinator/password_protection_coordinator_delegate.h"
@@ -127,6 +126,7 @@
 #import "ios/chrome/browser/shared/public/commands/drive_file_picker_commands.h"
 #import "ios/chrome/browser/shared/public/commands/enhanced_calendar_commands.h"
 #import "ios/chrome/browser/shared/public/commands/enterprise_commands.h"
+#import "ios/chrome/browser/shared/public/commands/ephemeral_theme_promo_commands.h"
 #import "ios/chrome/browser/shared/public/commands/file_upload_panel_commands.h"
 #import "ios/chrome/browser/shared/public/commands/fullscreen_commands.h"
 #import "ios/chrome/browser/shared/public/commands/google_one_commands.h"
@@ -222,6 +222,7 @@ const char kContextPanelDismissedHistogram[] =
                                 EnhancedCalendarCommands,
                                 EnterpriseCommands,
                                 EnterprisePromptCoordinatorDelegate,
+                                EphemeralThemePromoCommands,
                                 FileUploadPanelCommands,
                                 GoogleOneCommands,
                                 IOSPasskeyClientCommands,
@@ -303,6 +304,8 @@ const char kContextPanelDismissedHistogram[] =
   EnhancedCalendarCoordinator* _enhancedCalendarCoordinator;
   EnterpriseDialogCoordinator* _enterpriseDialogCoordinator;
   EnterprisePromptCoordinator* _enterprisePromptCoordinator;
+  HomeCustomizationEphemeralThemePromoCoordinator*
+      _ephemeralThemePromoCoordinator;
   API_AVAILABLE(ios(18.4))
   FileUploadPanelCoordinator* _fileUploadPanelCoordinator;
   GoogleOneCoordinator* _googleOneCoordinator;
@@ -406,6 +409,7 @@ const char kContextPanelDismissedHistogram[] =
   [self hideEnhancedCalendarBottomSheet];
   [self dismissEnterpriseWarningDialog];
   [self stopEnterprisePromptCoordinator];
+  [self hideEphemeralThemePromo];
   if (@available(iOS 18.4, *)) {
     [self hideFileUploadPanel];
   }
@@ -661,6 +665,7 @@ const char kContextPanelDismissedHistogram[] =
     @protocol(DriveFilePickerCommands),
     @protocol(EnhancedCalendarCommands),
     @protocol(EnterpriseCommands),
+    @protocol(EphemeralThemePromoCommands),
     @protocol(FileUploadPanelCommands),
     @protocol(GoogleOneCommands),
     @protocol(IOSPasskeyClientCommands),
@@ -846,8 +851,7 @@ const char kContextPanelDismissedHistogram[] =
       [[CredentialSuggestionBottomSheetCoordinator alloc]
           initWithBaseViewController:_baseViewController
                              browser:_browser
-                              params:params
-                            delegate:self.passwordControllerDelegate];
+                              params:params];
   [_credentialSuggestionBottomSheetCoordinator start];
 }
 
@@ -1526,6 +1530,25 @@ const char kContextPanelDismissedHistogram[] =
   _enterpriseDialogCoordinator = nil;
 }
 
+#pragma mark - EphemeralThemePromoCommands
+
+- (void)showEphemeralThemePromo {
+  if (_ephemeralThemePromoCoordinator) {
+    return;
+  }
+  _ephemeralThemePromoCoordinator =
+      [[HomeCustomizationEphemeralThemePromoCoordinator alloc]
+          initWithBaseViewController:_baseViewController
+                             browser:_browser];
+  _ephemeralThemePromoCoordinator.promosUIHandler = _promosManagerCoordinator;
+  [_ephemeralThemePromoCoordinator start];
+}
+
+- (void)hideEphemeralThemePromo {
+  [_ephemeralThemePromoCoordinator stop];
+  _ephemeralThemePromoCoordinator = nil;
+}
+
 #pragma mark - FileUploadPanelCommands
 
 - (void)showFileUploadPanel API_AVAILABLE(ios(18.4)) {
@@ -1601,8 +1624,7 @@ const char kContextPanelDismissedHistogram[] =
       [[CredentialSuggestionBottomSheetCoordinator alloc]
           initWithBaseViewController:_baseViewController
                              browser:_browser
-                         requestInfo:std::move(requestInfo)
-                            delegate:self.passwordControllerDelegate];
+                         requestInfo:std::move(requestInfo)];
   [_credentialSuggestionBottomSheetCoordinator start];
 }
 
