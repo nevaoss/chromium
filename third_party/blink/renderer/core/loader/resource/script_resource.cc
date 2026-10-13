@@ -304,25 +304,10 @@ void ScriptResource::SetSerializedCachedMetadata(mojo_base::BigBuffer data) {
   if (cached_metadata_handler_) {
     cached_metadata_handler_->SetSerializedCachedMetadata(std::move(data));
   }
-<<<<<<< HEAD
 #if defined(USE_FILESCHEME_CODECACHE)
   LOG(INFO) << "V8CodeCache Consume " << Url().GetString().Utf8().data()
             << "(" << data.size() << ")";
 #endif
-  if (consume_cache_state_ == ConsumeCacheState::kWaitingForCache) {
-    // If `background_streamer_` has decoded the code cache, use the decoded
-    // code cache.
-    if (background_streamer_ &&
-        background_streamer_->HasConsumeCodeCacheTask()) {
-      cache_consumer_ = MakeGarbageCollected<ScriptCacheConsumer>(
-          isolate_if_main_thread_,
-          V8CodeCache::GetCachedMetadata(
-              CacheHandler(), CachedMetadataHandler::kAllowUnchecked),
-          background_streamer_->TakeConsumeCodeCacheTask(), Url(),
-          InspectorId());
-      AdvanceConsumeCacheState(ConsumeCacheState::kRunningOffThread);
-      return;
-=======
   if (consume_cache_state_ == ConsumeCacheState::kWaitingForCache &&
       V8CodeCache::HasCodeCache(cached_metadata_handler_,
                                 CachedMetadataHandler::kAllowUnchecked)) {
@@ -347,7 +332,6 @@ void ScriptResource::SetSerializedCachedMetadata(mojo_base::BigBuffer data) {
       // `MaybeCreateConsumeCodeCacheTask` did not start a background consume
       // task, so we can safely fall through to main-thread
       // `ScriptCacheConsumer` creation.
->>>>>>> 156.0.8078.0~1
     }
 
     // If `cached_metadata_handler_` has a valid code cache, use the code cache.

@@ -24,16 +24,14 @@
 #include "partition_alloc/thread_isolation/thread_isolation.h"
 #endif
 
-<<<<<<< HEAD
+#if PA_CONFIG(MOVE_METADATA_OUT_OF_GIGACAGE)
+#include <array>
+#endif
+
 ///@name IS_NEVA_APPRUNTIME
 ///@{
 #include "base/base_export.h"
 ///@}
-=======
-#if PA_CONFIG(MOVE_METADATA_OUT_OF_GIGACAGE)
-#include <array>
-#endif
->>>>>>> 156.0.8078.0~1
 
 // The feature is not applicable to 32-bit address space.
 #if PA_BUILDFLAG(HAS_64_BIT_POINTERS)

@@ -97,22 +97,19 @@ gfx::SwapResult GLSurfaceWayland::SwapBuffers(PresentationCallback callback,
     return scoped_swap_buffers.result();
   }
   window_->root_surface()->set_surface_buffer_scale(scale_factor_);
-<<<<<<< HEAD
   ///@name IS_NEVA_APPRUNTIME
   ///@{
-  //return gl::NativeViewGLSurfaceEGL::SwapBuffers(std::move(callback), data);
+  // return gl::NativeViewGLSurfaceEGL::SwapBuffers(std::move(callback),
+  //                                                std::move(data));
   gfx::SwapResult result =
-      gl::NativeViewGLSurfaceEGL::SwapBuffers(std::move(callback), data);
+      gl::NativeViewGLSurfaceEGL::SwapBuffers(std::move(callback),
+                                              std::move(data));
 
   if (window_)
     window_->OnSurfaceContentChanged();
 
   return result;
   ///@}
-=======
-  return gl::NativeViewGLSurfaceEGL::SwapBuffers(std::move(callback),
-                                                 std::move(data));
->>>>>>> 156.0.8078.0~1
 }
 
 gfx::SwapResult GLSurfaceWayland::PostSubBuffer(int x,
