@@ -15,29 +15,26 @@
 #import "base/memory/raw_ref.h"
 #import "base/memory/weak_ptr.h"
 #import "base/sequence_checker.h"
+#import "base/time/time.h"
 #import "base/timer/timer.h"
 #import "components/prefs/pref_change_registrar.h"
 #import "ios/chrome/browser/web_extension/model/extension_service.h"
 
 class PrefService;
 
-namespace universal_optout {
-class UniversalOptOutService;
-}  // namespace universal_optout
-
 namespace web {
 class ExtensionController;
+enum class UniversalOptOutState;
 }  // namespace web
 
 // Implementation of `ExtensionService` managing web extensions for the profile.
 class ExtensionServiceImpl final : public ExtensionService {
  public:
-  // Creates an `ExtensionServiceImpl` with preferences, opt-out service, and
-  // the injected `extension_controller`. Call `Initialize()` after creation
-  // to begin loading extensions.
+  // Creates an `ExtensionServiceImpl` with preferences and the injected
+  // `extension_controller`. Call `Initialize(state)` after creation
+  // to begin loading extensions if applicable.
   ExtensionServiceImpl(
       PrefService& pref_service,
-      universal_optout::UniversalOptOutService* universal_optout_service,
       std::unique_ptr<web::ExtensionController> extension_controller)
       API_AVAILABLE(ios(18.4));
 
@@ -50,10 +47,11 @@ class ExtensionServiceImpl final : public ExtensionService {
   void Shutdown() override;
 
   // ExtensionService:
-  void Initialize() override;
+  void Initialize(web::UniversalOptOutState state) override;
   web::ExtensionController* GetExtensionController() const override
       API_AVAILABLE(ios(18.4));
   bool IsReady() const override;
+  bool WebExtensionsWereLoadedAtStartup() const override;
   base::CallbackListSubscription RunWhenReady(
       base::OnceClosure callback) override;
 
@@ -76,10 +74,6 @@ class ExtensionServiceImpl final : public ExtensionService {
   // The `PrefService` used to query and observe opt-out preferences.
   const raw_ref<PrefService> pref_service_;
 
-  // The `UniversalOptOutService` used to query user consent and eligibility.
-  raw_ptr<universal_optout::UniversalOptOutService> universal_optout_service_ =
-      nullptr;
-
   // The `ExtensionController` owned by this service.
   std::unique_ptr<web::ExtensionController> extension_controller_;
 
@@ -92,11 +86,20 @@ class ExtensionServiceImpl final : public ExtensionService {
   // Whether the service has completed loading initial extensions.
   bool is_ready_ = false;
 
+  // Whether the extension started loading at startup.
+  bool extension_load_started_at_startup_ = false;
+
   // Whether an extension is currently being loaded.
   bool is_loading_ = false;
 
   // List of callbacks waiting for the service to be ready.
   base::OnceClosureList ready_callbacks_;
+
+  // Timestamp when initialization started.
+  base::TimeTicks initialization_start_time_;
+
+  // Timestamp when loading the extension started.
+  base::TimeTicks extension_load_start_time_;
 
   SEQUENCE_CHECKER(sequence_checker_);
   base::WeakPtrFactory<ExtensionServiceImpl> weak_ptr_factory_{this};

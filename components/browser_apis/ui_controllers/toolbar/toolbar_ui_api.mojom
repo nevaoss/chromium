@@ -30,7 +30,7 @@ interface ToolbarUIObserver {
   OnFocusRequested(FocusRequestTarget target);
 
   // Requests that JavaScript show the split tabs menu. Although the browser
-  // process is responsivle for showing the menu, only the WebUI can determine
+  // process is responsible for showing the menu, only the WebUI can determine
   // the button's location and ensure it's visible before anchoring.
   ShowSplitTabsContextMenu();
 };
@@ -124,9 +124,6 @@ interface ToolbarUIService {
                             bool is_pointer_interaction)
       => result<mojo_base.mojom.Empty, mojo_base.mojom.Error>;
 
-  // Called when the content setting icon animation finishes.
-  OnContentSettingImageAnimationEnded(ContentSettingImageType type);
-
   // Called when a page action chip is pressed (e.g. pointerdown).
   OnPageActionPointerDown(PageActionId action_id);
 
@@ -212,6 +209,10 @@ interface ToolbarUIService {
   // home page undo bubble.
   OnHomeButtonDropFile(gfx.mojom.PointF drop_position);
 
+  // Called when plain text (`text/plain` without `text/uri-list`) is dropped
+  // on the home button.
+  OnHomeButtonDropText(string text);
+
   // Navigates the current tab to the currently dragged file at `drop_position`.
   OnToolbarDropFile(gfx.mojom.PointF drop_position);
 
@@ -266,4 +267,7 @@ interface ToolbarUIService {
 
   // Called when the media button is pressed (e.g. pointerdown).
   OnMediaButtonMousePressed();
+
+  // Called when the Glic button is clicked to toggle or open the Glic panel.
+  OnGlicButtonClicked();
 };

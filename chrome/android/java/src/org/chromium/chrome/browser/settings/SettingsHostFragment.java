@@ -173,8 +173,7 @@ public class SettingsHostFragment extends Fragment
         // correct fragment.
         FragmentManager fragmentManager = getDetailFragmentManager();
         if (fragmentManager.getBackStackEntryCount() <= mPendingPopBackCount) {
-            // Show the main settings UI (which is represented by null).
-            showFragment(null, /* addToBackStack= */ false, /* tag= */ null);
+            showMainSettingsAndRedirectIfNeeded();
         } else {
             var backStackEntry =
                     fragmentManager.getBackStackEntryAt(
@@ -545,6 +544,15 @@ public class SettingsHostFragment extends Fragment
                 if (initialFragment != null) {
                     multiColumnSettings.showDetailFragment(
                             initialFragment, /* addToBackStack= */ false, /* tag= */ null);
+                    // showDetailFragment() opens the sliding pane. In two-column mode the pane is
+                    // not slideable, so opening it has no visual effect, but it still latches
+                    // SlidingPaneLayout's preserved open state. Leaving two-column mode would then
+                    // show this default detail fragment instead of the root settings that were
+                    // requested. Undo it, as MultiColumnSettings.ensureInitialDetailFragment()
+                    // does. https://crbug.com/563047017
+                    if (multiColumnSettings.isTwoColumn()) {
+                        multiColumnSettings.getSlidingPaneLayout().closePane();
+                    }
                 }
                 return true;
             }
@@ -632,10 +640,22 @@ public class SettingsHostFragment extends Fragment
             // transaction while stopped or backgrounded, so onStart() does it instead.
             ++mPendingPopBackCount;
         } else if (action == FinishAction.SHOW_MAIN_SETTINGS) {
-            // The main settings UI is represented by null.
-            showFragment(null, /* addToBackStack= */ false, /* tag= */ null);
+            showMainSettingsAndRedirectIfNeeded();
         } else {
             getDetailFragmentManager().popBackStack();
+        }
+    }
+
+    private void showMainSettingsAndRedirectIfNeeded() {
+        // The main settings UI is represented by null.
+        showFragment(null, /* addToBackStack= */ false, /* tag= */ null);
+        if (ChromeFeatureList.sSettingsInTabUrlNav.isEnabled()
+                && mSettingsNavigation instanceof SettingsInTabNavigationDelegate delegate) {
+            String mainSettingsUrl =
+                    SettingsFragmentRegistry.createUrlForFragment(MainSettings.class, null);
+            if (mainSettingsUrl != null) {
+                delegate.redirectFromNavigation(mainSettingsUrl);
+            }
         }
     }
 

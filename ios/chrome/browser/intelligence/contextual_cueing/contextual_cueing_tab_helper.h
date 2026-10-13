@@ -5,6 +5,8 @@
 #ifndef IOS_CHROME_BROWSER_INTELLIGENCE_CONTEXTUAL_CUEING_CONTEXTUAL_CUEING_TAB_HELPER_H_
 #define IOS_CHROME_BROWSER_INTELLIGENCE_CONTEXTUAL_CUEING_CONTEXTUAL_CUEING_TAB_HELPER_H_
 
+#import <Foundation/Foundation.h>
+
 #import <memory>
 #import <optional>
 #import <string>
@@ -18,6 +20,8 @@
 #import "base/scoped_observation.h"
 #import "components/optimization_guide/proto/features/contextual_cueing.pb.h"
 #import "components/page_content_annotations/core/page_content_annotation_type.h"
+#import "components/prefs/pref_change_registrar.h"
+#import "ios/chrome/browser/intelligence/bwg/model/gemini_service.h"
 #import "ios/chrome/browser/intelligence/contextual_cueing/contextual_cueing_evaluator.h"
 #import "ios/chrome/browser/intelligence/page_classification/page_classification_service.h"
 #import "ios/web/public/web_state_observer.h"
@@ -25,6 +29,7 @@
 #import "url/gurl.h"
 
 class ProfileIOS;
+@protocol GeminiCommands;
 
 namespace feature_engagement {
 class Tracker;
@@ -45,7 +50,8 @@ class ContextualCueingCapTrackerService;
 // to request and present contextual cues via Model Execution Service.
 class ContextualCueingTabHelper
     : public web::WebStateObserver,
-      public web::WebStateUserData<ContextualCueingTabHelper> {
+      public web::WebStateUserData<ContextualCueingTabHelper>,
+      public GeminiService::Observer {
  public:
   struct BackgroundTabContext {
     GURL url;
@@ -106,6 +112,19 @@ class ContextualCueingTabHelper
   const std::optional<optimization_guide::proto::ContextualCue>&
   GetContextualCue() const;
 
+  // Returns the UI surface type (`kMessage` or `kOmniboxChip`) for the current
+  // contextual cue, or std::nullopt if no cue is available.
+  std::optional<ContextualCueUiType> GetContextualCueUiType() const;
+
+  // Returns the top eligible category type for the current committed page, or
+  // std::nullopt if classification has not identified an eligible category.
+  std::optional<page_content_annotations::CategoryType> GetActiveCategoryType()
+      const;
+
+  // Shows the contextual cue infobar banner for the current cue. Returns true
+  // if presentation succeeded or was queued.
+  bool ShowContextualCueInfobar(id<GeminiCommands> gemini_handler = nil);
+
   // Records that a contextual cue was shown to the user. Must only be called
   // once per cue presentation. Returns true if the cue is allowed to be shown.
   // Returns false if the Feature Engagement Tracker rejected the promo, in
@@ -128,9 +147,13 @@ class ContextualCueingTabHelper
   void WasHidden(web::WebState* web_state) override;
   void WebStateDestroyed(web::WebState* web_state) override;
 
+  // GeminiService::Observer:
+  void OnGeminiEligibilityChanged() override;
+
  private:
   friend class web::WebStateUserData<ContextualCueingTabHelper>;
   friend class ContextualCueingTabHelperTest;
+  friend class ContextualCueInfobarDelegateTest;
 
   explicit ContextualCueingTabHelper(web::WebState* web_state);
 
@@ -183,6 +206,12 @@ class ContextualCueingTabHelper
   // Checks if the user is eligible for Gemini.
   bool IsUserEligibleForGemini(ProfileIOS* profile);
 
+  // Checks if the user has enabled Gemini suggestions in settings.
+  bool IsGeminiSuggestionsSettingEnabled() const;
+
+  // Callback invoked when Gemini suggestions setting or policies change.
+  void OnSuggestionsPreferenceChanged();
+
   // Returns the CapTrackerService for the associated profile, or nullptr.
   ContextualCueingCapTrackerService* GetCapTrackerService() const;
 
@@ -198,6 +227,10 @@ class ContextualCueingTabHelper
   raw_ptr<Delegate> delegate_ = nullptr;
   GURL current_url_;
 
+  PrefChangeRegistrar pref_change_registrar_;
+  base::ScopedObservation<GeminiService, GeminiService::Observer>
+      gemini_service_observation_{this};
+
   // Runs `feature_engagement::Tracker::Dismissed` when the contextual cue chip
   // stops showing (or on tab helper destruction). Empty when not active.
   base::ScopedClosureRunner fet_dismiss_runner_;
@@ -207,9 +240,13 @@ class ContextualCueingTabHelper
   // Structured multi-vertical classification result from
   // PageClassificationService (e.g. shopping, education) for the current page.
   std::optional<PageClassificationResult> page_classification_result_;
+  // The top eligible category type determined for the current page.
+  std::optional<page_content_annotations::CategoryType> active_category_type_;
   // The contextual cue proto payload returned from server model execution,
   // containing UI labels and the prompt.
   std::optional<optimization_guide::proto::ContextualCue> cue_;
+  // The UI surface (`kMessage` or `kOmniboxChip`) selected for `cue_`.
+  std::optional<ContextualCueUiType> cue_ui_type_;
   bool is_model_execution_in_flight_ = false;
 
   std::unique_ptr<optimization_guide::ModelQualityLogEntry> log_entry_;

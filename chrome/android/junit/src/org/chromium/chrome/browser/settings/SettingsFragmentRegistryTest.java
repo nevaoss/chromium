@@ -9,6 +9,8 @@ import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertNotNull;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
 import android.os.Bundle;
 
@@ -33,16 +35,25 @@ import org.chromium.chrome.browser.commerce.PriceNotificationSettingsFragment;
 import org.chromium.chrome.browser.contextualsearch.ContextualSearchSettingsFragment;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.glic.GlicActorLoginPermissionsFragment;
-import org.chromium.chrome.browser.night_mode.NightModeMetrics;
+import org.chromium.chrome.browser.glic.GlicNavigationUtils;
+import org.chromium.chrome.browser.glic.GlicSettings;
+import org.chromium.chrome.browser.language.settings.AlwaysTranslateListFragment;
+import org.chromium.chrome.browser.language.settings.NeverTranslateListFragment;
+import org.chromium.chrome.browser.language.settings.SelectLanguageFragment;
 import org.chromium.chrome.browser.night_mode.settings.ThemeSettingsFragment;
 import org.chromium.chrome.browser.prefetch.settings.ExtendedPreloadingSettingsFragment;
 import org.chromium.chrome.browser.prefetch.settings.PreloadPagesSettingsFragment;
 import org.chromium.chrome.browser.prefetch.settings.StandardPreloadingSettingsFragment;
 import org.chromium.chrome.browser.privacy.settings.PrivacySettings;
 import org.chromium.chrome.browser.privacy.settings.UniversalOptOutSettings;
+import org.chromium.chrome.browser.profiles.Profile;
+import org.chromium.chrome.browser.safe_browsing.metrics.SettingsAccessPoint;
 import org.chromium.chrome.browser.safe_browsing.settings.EnhancedProtectionSettingsFragment;
 import org.chromium.chrome.browser.safe_browsing.settings.SafeBrowsingSettingsFragment;
 import org.chromium.chrome.browser.safe_browsing.settings.StandardProtectionSettingsFragment;
+import org.chromium.chrome.browser.signin.services.IdentityServicesProvider;
+import org.chromium.chrome.browser.sync.settings.ManageSyncSettings;
+import org.chromium.chrome.browser.sync.settings.PersonalizeGoogleServicesSettings;
 import org.chromium.chrome.browser.tracing.settings.DeveloperSettings;
 import org.chromium.chrome.browser.tracing.settings.TracingCategoriesSettings;
 import org.chromium.chrome.browser.tracing.settings.TracingSettings;
@@ -58,9 +69,12 @@ import org.chromium.components.browser_ui.site_settings.StorageAccessSubpageSett
 import org.chromium.components.browser_ui.site_settings.Website;
 import org.chromium.components.browser_ui.site_settings.WebsiteAddress;
 import org.chromium.components.browser_ui.site_settings.WebsiteGroup;
+import org.chromium.components.signin.identitymanager.IdentityManager;
 
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 /** Unit tests for {@link SettingsFragmentRegistry}. */
 @RunWith(BaseRobolectricTestRunner.class)
@@ -103,11 +117,11 @@ public class SettingsFragmentRegistryTest {
 
         // Verify TracingCategoriesSettings required args and fallback
         SettingsFragmentRegistry.Resolution missingTypeRes =
-                SettingsFragmentRegistry.resolve("chrome://settings/developer/tracing/categories");
+                resolve("chrome://settings/developer/tracing/categories");
         assertEquals("chrome://settings/developer/tracing", missingTypeRes.redirectUrl);
 
         SettingsFragmentRegistry.Resolution validTypeRes =
-                SettingsFragmentRegistry.resolve(
+                resolve(
                         "chrome://settings/developer/tracing/categories?categoryType="
                                 + TracingSettings.CategoryType.NON_DEFAULT);
         assertNull(validTypeRes.redirectUrl);
@@ -323,16 +337,100 @@ public class SettingsFragmentRegistryTest {
     }
 
     @Test
-    public void testParseUrlArgumentsPopulatesDefaultMandatoryExtras() {
-        // Verify that parsing a theme settings URL without explicit query
-        // parameters automatically populates the mandatory
-        // theme_settings_entry extra expected by ThemeSettingsFragment.
-        Bundle bundle = SettingsFragmentRegistry.parseUrlArguments("chrome://settings/theme");
-        assertTrue(bundle.containsKey(ThemeSettingsFragment.KEY_THEME_SETTINGS_ENTRY));
-        assertEquals(
-                NightModeMetrics.ThemeSettingsEntry.SETTINGS,
-                bundle.getInt(ThemeSettingsFragment.KEY_THEME_SETTINGS_ENTRY));
+    public void testUrlPreservesArgs_noArgs() {
+        assertTrue(SettingsFragmentRegistry.urlPreservesArgs("chrome://settings/privacy", null));
+        assertTrue(
+                SettingsFragmentRegistry.urlPreservesArgs(
+                        "chrome://settings/privacy", new Bundle()));
+    }
 
+    @Test
+    public void testUrlPreservesArgs_registeredArgsRoundTrip() {
+        // A String argument under its raw key is written and read back as a String.
+        Bundle stringArgs = new Bundle();
+        stringArgs.putString(SingleCategorySettings.EXTRA_CATEGORY, "cookies");
+        String categoryUrl =
+                SettingsFragmentRegistry.createUrlForFragment(
+                        SingleCategorySettings.class, stringArgs);
+        assertTrue(SettingsFragmentRegistry.urlPreservesArgs(categoryUrl, stringArgs));
+
+        // An int argument with a registered typed parser comes back as an int.
+        Bundle intArgs = new Bundle();
+        intArgs.putInt(
+                AutofillAndPasswordsFragment.EXTRA_REFERRER,
+                AutofillSettingsReferrer.SETTINGS_SEARCH);
+        String referrerUrl =
+                SettingsFragmentRegistry.createUrlForFragment(
+                        AutofillAndPasswordsFragment.class, intArgs);
+        assertTrue(SettingsFragmentRegistry.urlPreservesArgs(referrerUrl, intArgs));
+
+        // A WebsiteAddress is rebuilt from its origin by the registered parser.
+        Bundle addressArgs = new Bundle();
+        addressArgs.putSerializable(
+                SingleWebsiteSettings.EXTRA_SITE_ADDRESS,
+                WebsiteAddress.create("https://example.com"));
+        String siteUrl =
+                SettingsFragmentRegistry.createUrlForFragment(
+                        SingleWebsiteSettings.class, addressArgs);
+        assertTrue(SettingsFragmentRegistry.urlPreservesArgs(siteUrl, addressArgs));
+    }
+
+    @Test
+    public void testUrlPreservesArgs_safeBrowsingAccessPointRoundTrips() {
+        // SafeBrowsingSettingsFragment's access point is an int, so it only survives the round
+        // trip because "accessPoint" is registered with a typed parser.
+        Bundle args =
+                SafeBrowsingSettingsFragment.createArguments(SettingsAccessPoint.SAFETY_CHECK);
+        String url =
+                SettingsFragmentRegistry.createUrlForFragment(
+                        SafeBrowsingSettingsFragment.class, args);
+        assertEquals(
+                "chrome://settings/safeBrowsing?accessPoint=" + SettingsAccessPoint.SAFETY_CHECK,
+                url);
+        assertTrue(SettingsFragmentRegistry.urlPreservesArgs(url, args));
+        assertEquals(
+                SettingsAccessPoint.SAFETY_CHECK,
+                SettingsFragmentRegistry.parseUrlArguments(url)
+                        .getInt(SafeBrowsingSettingsFragment.ACCESS_POINT));
+    }
+
+    @Test
+    public void testUrlPreservesArgs_glicHighlightRoundTrips() {
+        Bundle args = new Bundle();
+        args.putString(
+                GlicNavigationUtils.EXTRA_HIGHLIGHT_FIELD,
+                GlicNavigationUtils.FIELD_LOCATION_PERMISSION);
+        String url = SettingsFragmentRegistry.createUrlForFragment(GlicSettings.class, args);
+        assertEquals("chrome://settings/ai/gemini?highlight=location_permission", url);
+        assertTrue(SettingsFragmentRegistry.urlPreservesArgs(url, args));
+    }
+
+    @Test
+    public void testUrlPreservesArgs_unregisteredIntLosesItsType() {
+        // An int argument whose key has no registered query parameter is still written out, under
+        // its raw key, but it is read back as the String "3" because there is no type information
+        // to restore it with. The page would call Bundle#getInt and silently get 0, so the URL is
+        // not a substitute for the Bundle here.
+        Bundle args = new Bundle();
+        args.putInt("UnregisteredFragment.SomeInt", 3);
+        String url = SettingsFragmentRegistry.createUrlForFragment(PrivacySettings.class, args);
+        assertEquals("chrome://settings/privacy?UnregisteredFragment.SomeInt=3", url);
+        assertFalse(SettingsFragmentRegistry.urlPreservesArgs(url, args));
+    }
+
+    @Test
+    public void testUrlPreservesArgs_uncarriableArgIsDropped() {
+        // A value that is neither a CharSequence, Number, Boolean nor one of the site settings
+        // types the registry knows how to spell is not written to the URL at all.
+        Bundle args = new Bundle();
+        args.putParcelable("uncarriable", new Bundle());
+        String url = SettingsFragmentRegistry.createUrlForFragment(PrivacySettings.class, args);
+        assertEquals("chrome://settings/privacy", url);
+        assertFalse(SettingsFragmentRegistry.urlPreservesArgs(url, args));
+    }
+
+    @Test
+    public void testParseUrlArgumentsPopulatesDefaultMandatoryExtras() {
         // Verify that parsing an autofill options URL without explicit query
         // parameters automatically populates the mandatory
         // autofill-options-referrer extra expected by AutofillOptionsFragment.
@@ -517,15 +615,12 @@ public class SettingsFragmentRegistryTest {
     @Test
     public void testResolveShowsPageWhenRequiredArgumentIsPresent() {
         SettingsFragmentRegistry.Resolution resolution =
-                SettingsFragmentRegistry.resolve(
-                        "chrome://settings/siteDetails?site=https://example.com");
+                resolve("chrome://settings/siteDetails?site=https://example.com");
         assertNull(resolution.redirectUrl);
         assertEquals(SingleWebsiteSettings.class, resolution.fragmentClass);
         assertTrue(resolution.args.containsKey(SingleWebsiteSettings.EXTRA_SITE_ADDRESS));
 
-        resolution =
-                SettingsFragmentRegistry.resolve(
-                        "chrome://settings/allSites/group?group=example.com");
+        resolution = resolve("chrome://settings/allSites/group?group=example.com");
         assertNull(resolution.redirectUrl);
         assertEquals(GroupedWebsitesSettings.class, resolution.fragmentClass);
     }
@@ -546,13 +641,11 @@ public class SettingsFragmentRegistryTest {
 
         // The categories each page does render are shown, not redirected.
         SettingsFragmentRegistry.Resolution resolution =
-                SettingsFragmentRegistry.resolve("chrome://settings/allSites?category=all_sites");
+                resolve("chrome://settings/allSites?category=all_sites");
         assertNull(resolution.redirectUrl);
         assertEquals(AllSiteSettings.class, resolution.fragmentClass);
 
-        resolution =
-                SettingsFragmentRegistry.resolve(
-                        "chrome://settings/siteSettings/category?category=camera");
+        resolution = resolve("chrome://settings/siteSettings/category?category=camera");
         assertNull(resolution.redirectUrl);
         assertEquals(SingleCategorySettings.class, resolution.fragmentClass);
     }
@@ -561,14 +654,15 @@ public class SettingsFragmentRegistryTest {
     public void testEveryRouteReachesAPageWithoutLooping() {
         // A fallback that itself redirects would leave the tab navigating in a circle, so walk
         // every registered route, with no arguments supplied, to a page that can be shown.
+        // Signed out, so that the account routes take their fallback too.
+        setSignedIn(false);
         for (String path : SettingsFragmentRegistry.sPathToRouteSpecMap.keySet()) {
             String url = "chrome://settings" + path;
             for (int hops = 0; ; hops++) {
                 assertTrue(
                         "Redirect loop reached from chrome://settings" + path + " at " + url,
                         hops < 5);
-                SettingsFragmentRegistry.Resolution resolution =
-                        SettingsFragmentRegistry.resolve(url);
+                SettingsFragmentRegistry.Resolution resolution = resolve(url);
                 if (resolution.redirectUrl == null) {
                     assertNotNull(url, resolution.fragmentClass);
                     break;
@@ -581,14 +675,13 @@ public class SettingsFragmentRegistryTest {
     @Test
     public void testResolveShowsMainSettingsForUnroutedUrls() {
         // ChosenObjectSettings has no URL: it is identified by a serialized device descriptor.
-        SettingsFragmentRegistry.Resolution resolution =
-                SettingsFragmentRegistry.resolve("chrome://settings/chosenObject");
+        SettingsFragmentRegistry.Resolution resolution = resolve("chrome://settings/chosenObject");
         assertNull(resolution.redirectUrl);
         assertEquals(MainSettings.class, resolution.fragmentClass);
         assertNull(
                 SettingsFragmentRegistry.getFragmentClassForUrl("chrome://settings/chosenObject"));
 
-        resolution = SettingsFragmentRegistry.resolve("chrome://settings/notAPage");
+        resolution = resolve("chrome://settings/notAPage");
         assertNull(resolution.redirectUrl);
         assertEquals(MainSettings.class, resolution.fragmentClass);
     }
@@ -653,8 +746,7 @@ public class SettingsFragmentRegistryTest {
         // any category it does not render, so it is shown rather than redirected. Redirecting
         // would hand the category to a page that cannot show it either, and it would come back.
         SettingsFragmentRegistry.Resolution resolution =
-                SettingsFragmentRegistry.resolve(
-                        "chrome://settings/allSites?category=unknown_nonsense");
+                resolve("chrome://settings/allSites?category=unknown_nonsense");
         assertNull(resolution.redirectUrl);
         assertEquals(AllSiteSettings.class, resolution.fragmentClass);
     }
@@ -662,11 +754,11 @@ public class SettingsFragmentRegistryTest {
     @Test
     public void testResolveAppliesRouteDefaults() {
         SettingsFragmentRegistry.Resolution resolution =
-                SettingsFragmentRegistry.resolve("chrome://settings/theme");
-        assertEquals(ThemeSettingsFragment.class, resolution.fragmentClass);
+                resolve("chrome://settings/autofill/settings");
+        assertEquals(AutofillOptionsFragment.class, resolution.fragmentClass);
         assertEquals(
-                NightModeMetrics.ThemeSettingsEntry.SETTINGS,
-                resolution.args.getInt(ThemeSettingsFragment.KEY_THEME_SETTINGS_ENTRY));
+                AutofillOptionsReferrer.SETTINGS,
+                resolution.args.getInt(AutofillOptionsFragment.AUTOFILL_OPTIONS_REFERRER));
     }
 
     @Test
@@ -685,7 +777,7 @@ public class SettingsFragmentRegistryTest {
         assertEquals(
                 "chrome://settings/storageAccess?allowed=true&site=https%3A%2F%2Fexample.com", url);
 
-        SettingsFragmentRegistry.Resolution resolution = SettingsFragmentRegistry.resolve(url);
+        SettingsFragmentRegistry.Resolution resolution = resolve(url);
         assertNull(resolution.redirectUrl);
         assertEquals(StorageAccessSubpageSettings.class, resolution.fragmentClass);
         assertTrue(resolution.args.getBoolean(StorageAccessSubpageSettings.EXTRA_ALLOWED));
@@ -697,10 +789,143 @@ public class SettingsFragmentRegistryTest {
                 "chrome://settings/allSites");
     }
 
+    @Test
+    public void testResolveShowsAccountPagesWhenSignedIn() {
+        Profile profile = mock(Profile.class);
+        setSignedIn(true);
+
+        assertEquals(
+                ManageSyncSettings.class,
+                SettingsFragmentRegistry.resolve("chrome://settings/account", profile)
+                        .fragmentClass);
+        assertEquals(
+                PersonalizeGoogleServicesSettings.class,
+                SettingsFragmentRegistry.resolve("chrome://settings/account/personalize", profile)
+                        .fragmentClass);
+    }
+
+    @Test
+    public void testResolveRedirectsAccountPagesWhenSignedOut() {
+        // A URL typed after signing out, or replayed from history from before it, points at pages
+        // that have no account to describe. They must not be built.
+        Profile profile = mock(Profile.class);
+        setSignedIn(false);
+
+        assertRedirects("chrome://settings/account", "chrome://settings", profile);
+        assertRedirects("chrome://settings/account/personalize", "chrome://settings", profile);
+    }
+
+    @Test
+    public void testResolveLeavesUngatedPagesAloneWhenSignedOut() {
+        // Only the routes that declared an availability check are affected by it.
+        Profile profile = mock(Profile.class);
+        setSignedIn(false);
+
+        assertEquals(
+                PrivacySettings.class,
+                SettingsFragmentRegistry.resolve("chrome://settings/privacy", profile)
+                        .fragmentClass);
+    }
+
+    /** Points IdentityServicesProvider at an IdentityManager with or without a primary account. */
+    private static void setSignedIn(boolean signedIn) {
+        IdentityManager identityManager = mock(IdentityManager.class);
+        when(identityManager.hasPrimaryAccount()).thenReturn(signedIn);
+        IdentityServicesProvider.setIdentityManagerForTesting(identityManager);
+    }
+
+    /** Resolves a URL for the cases that do not depend on browser state. */
+    private static SettingsFragmentRegistry.Resolution resolve(String url) {
+        return SettingsFragmentRegistry.resolve(url, mock(Profile.class));
+    }
+
     private static void assertRedirects(String url, String expectedRedirectUrl) {
-        SettingsFragmentRegistry.Resolution resolution = SettingsFragmentRegistry.resolve(url);
+        assertRedirects(url, expectedRedirectUrl, mock(Profile.class));
+    }
+
+    private static void assertRedirects(String url, String expectedRedirectUrl, Profile profile) {
+        SettingsFragmentRegistry.Resolution resolution =
+                SettingsFragmentRegistry.resolve(url, profile);
         assertEquals(url, expectedRedirectUrl, resolution.redirectUrl);
         assertNull(url, resolution.fragmentClass);
+    }
+
+    @Test
+    public void testLanguagePickerUrls() {
+        assertLanguagePickerUrl(
+                "chrome://settings/languages/currentDeviceLanguage",
+                SelectLanguageFragment.AppLanguagePickerFragment.class);
+        assertLanguagePickerUrl(
+                "chrome://settings/languages/addLanguage",
+                SelectLanguageFragment.ContentLanguagePickerFragment.class);
+        assertLanguagePickerUrl(
+                "chrome://settings/languages/translateIntoLanguage",
+                SelectLanguageFragment.TranslateTargetLanguagePickerFragment.class);
+        assertLanguagePickerUrl(
+                "chrome://settings/languages/alwaysTranslate/addLanguage",
+                SelectLanguageFragment.AlwaysTranslateLanguagePickerFragment.class);
+        assertLanguagePickerUrl(
+                "chrome://settings/languages/neverTranslate/addLanguage",
+                SelectLanguageFragment.NeverTranslateLanguagePickerFragment.class);
+
+        // The two list pages keep their own Urls.
+        assertEquals(
+                "chrome://settings/languages/alwaysTranslate",
+                SettingsFragmentRegistry.createUrlForFragment(
+                        AlwaysTranslateListFragment.class, null));
+        assertEquals(
+                "chrome://settings/languages/neverTranslate",
+                SettingsFragmentRegistry.createUrlForFragment(
+                        NeverTranslateListFragment.class, null));
+    }
+
+    @Test
+    public void testEveryLanguagePickerIsRegistered() {
+        // Under Url navigation a picker is shown by navigating to its Url, so one without a
+        // registered Url cannot be opened at all.
+        for (Class<? extends SelectLanguageFragment> picker : SelectLanguageFragment.ALL_PICKERS) {
+            assertNotNull(
+                    picker.getName(), SettingsFragmentRegistry.createUrlForFragment(picker, null));
+        }
+    }
+
+    @Test
+    public void testEveryLanguagePickerReturnsToARegisteredPage() throws Exception {
+        // A picker finishes by navigating to the page that asked for the language, which is where
+        // the selection is delivered. That needs the page to have a Url.
+        for (Class<? extends SelectLanguageFragment> picker : SelectLanguageFragment.ALL_PICKERS) {
+            Class<? extends Fragment> requestingPage =
+                    picker.getDeclaredConstructor().newInstance().getRequestingFragmentForTesting();
+            assertNotNull(
+                    picker.getName() + " returns to " + requestingPage.getName(),
+                    SettingsFragmentRegistry.createUrlForFragment(requestingPage, null));
+        }
+    }
+
+    @Test
+    public void testLanguageSelectionResultKeysAreDistinct() {
+        // A result written for one page must never be delivered to another. See
+        // SelectLanguageFragment.resultKey().
+        Set<String> resultKeys = new HashSet<>();
+        for (Class<? extends SelectLanguageFragment> picker : SelectLanguageFragment.ALL_PICKERS) {
+            assertTrue(
+                    "Duplicate result key for " + picker.getName(),
+                    resultKeys.add(SelectLanguageFragment.resultKey(picker)));
+        }
+    }
+
+    private void assertLanguagePickerUrl(
+            String url, Class<? extends SelectLanguageFragment> expectedPicker) {
+        assertEquals(expectedPicker, SettingsFragmentRegistry.getFragmentClassForUrl(url));
+
+        // Navigating the tab goes through resolve(), so the picker has to be reachable that way
+        // too rather than only through the raw path lookup.
+        SettingsFragmentRegistry.Resolution resolution = resolve(url);
+        assertNull(url, resolution.redirectUrl);
+        assertEquals(url, expectedPicker, resolution.fragmentClass);
+
+        // And the picker generates the same Url back.
+        assertEquals(url, SettingsFragmentRegistry.createUrlForFragment(expectedPicker, null));
     }
 
     /** The page a settings path resolves to, or null if the path is not registered. */

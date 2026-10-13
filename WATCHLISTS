@@ -25,6 +25,16 @@
                   '|isimpledom' \
                   '|liblouis'
     },
+    'accessibility_android': {
+      'filepath': 'content/public/android/java/src/org/chromium/content/browser/accessibility/' \
+                  '|content/public/android/javatests/src/org/chromium/content/browser/accessibility/' \
+                  '|ui/accessibility/android/'
+    },
+    'accessibility_browser': {
+      'filepath': 'content/browser/accessibility/' \
+                  '|ui/accessibility/ax_(node_position|position|range)' \
+                  '|ui/accessibility/platform/browser_accessibility'
+    },
     'accessibility_component_extensions': {
       'filepath': 'chrome/browser/resources/chromeos/accessibility'
     },
@@ -184,6 +194,9 @@
     },
     'android_tab_strip': {
       'filepath': 'chrome/android/java/src/org/chromium/chrome/browser/compositor/overlays/strip/'
+    },
+    'android_thin_webview': {
+      'filepath': 'chrome/browser/android/thin_webview/',
     },
     'android_toolbar_deps': {
       'filepath': 'chrome/android/java/src/org/chromium/chrome/browser/toolbar/DEPS'
@@ -2593,6 +2606,8 @@
                       'kyungjunlee+watcha11y@google.com',
                       'yuzo+watch@chromium.org',
                       'francisjp+watcha11y@google.com'],
+    'accessibility_android': ['lucasradaelli+watch@google.com'],
+    'accessibility_browser': ['lucasradaelli+watch@google.com'],
     'accessibility_component_extensions': ['anastasi+watch@google.com',
                                            'hirokisato+watch@chromium.org',
                                            'katie+watch@chromium.org',
@@ -2644,6 +2659,7 @@
                        'nyquist+watch@chromium.org'],
     'android_tab': ['dtrainor+watch@chromium.org'],
     'android_tab_strip': ['nemco+watch@google.com'],
+    'android_thin_webview': ['linyuh+watch@google.com'],
     'android_toolbar_deps': ['jinsukkim+watch@chromium.org'],
     'android_ui_actions': ['polardz+watch@google.com',
                            'ckitagawa+watch@chromium.org'],

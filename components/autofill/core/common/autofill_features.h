@@ -170,8 +170,6 @@ BASE_DECLARE_FEATURE(kAutofillAllowFillingModifiedInitialValues);
 COMPONENT_EXPORT(AUTOFILL)
 BASE_DECLARE_FEATURE(kAutofillAmbientAutofill);
 COMPONENT_EXPORT(AUTOFILL)
-BASE_DECLARE_FEATURE_PARAM(std::string, kAutofillAmbientAutofillEligibleTiers);
-COMPONENT_EXPORT(AUTOFILL)
 BASE_DECLARE_FEATURE_PARAM(std::string,
                            kAutofillAmbientAutofillSupportedEntityTypes);
 COMPONENT_EXPORT(AUTOFILL)
@@ -189,8 +187,6 @@ COMPONENT_EXPORT(AUTOFILL)
 BASE_DECLARE_FEATURE(kAutofillAmbientAutofillSpiiCache);
 COMPONENT_EXPORT(AUTOFILL)
 BASE_DECLARE_FEATURE(kAutofillAmbientAutofillSuppression);
-COMPONENT_EXPORT(AUTOFILL)
-BASE_DECLARE_FEATURE(kAutofillAmbientAutofillSuppressionUI);
 
 COMPONENT_EXPORT(AUTOFILL)
 BASE_DECLARE_FEATURE(kAutofillAndroidDesktopKeyboardAccessoryRevamp);

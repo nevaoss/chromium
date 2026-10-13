@@ -19,6 +19,15 @@ BASE_DECLARE_FEATURE(kGeminiContextualSuggestionsCues);
 // Returns true if Gemini contextual suggestions cues framework is enabled.
 bool IsGeminiContextualSuggestionsCuesEnabled();
 
+// Feature parameter that forces on-device page classification and server model
+// execution, bypasses all contextual cueing frequency caps, backoff cooldowns,
+// and Feature Engagement Tracker limits, and always presents the Message UI.
+extern const char kGeminiContextualSuggestionsCuesIgnoreThresholdsParam[];
+
+// Returns true if contextual cueing thresholds/caps should be ignored,
+// on-device classification forced, and Message UI always returned.
+bool IsIgnoreContextualCueingThresholdsEnabled();
+
 // Feature parameter for enabling on-device category classifier in Gemini
 // contextual suggestions cues.
 extern const char kGeminiContextualSuggestionsCuesOnDeviceClassifierParam[];
@@ -94,6 +103,22 @@ BASE_DECLARE_FEATURE_PARAM(bool, kDisableFrequencyCappingAndBackoff);
 // Maximum number of eligible background tabs to include in contextual cue model
 // execution requests.
 BASE_DECLARE_FEATURE_PARAM(size_t, kMaxBackgroundTabs);
+
+// Maximum consecutive Message UI impressions ignored without interaction for a
+// vertical before permanently switching to Omnibox Chip UI for that vertical.
+BASE_DECLARE_FEATURE_PARAM(size_t, kMaxConsecutiveMessageIgnores);
+
+// When true, forces contextual cues to always use Message UI and never switch
+// to Omnibox Chip UI.
+BASE_DECLARE_FEATURE_PARAM(bool, kForceMessageUiOnly);
+
+// When true, forces contextual cues to always use Omnibox Chip UI and skip
+// Message UI.
+BASE_DECLARE_FEATURE_PARAM(bool, kForceOmniboxChipUiOnly);
+
+// Whether to use Private AI (`ModelExecutionServiceType::kPrivateAi`) when
+// executing contextual cue model requests.
+BASE_DECLARE_FEATURE_PARAM(bool, kUsePrivateAi);
 
 }  // namespace contextual_cueing
 

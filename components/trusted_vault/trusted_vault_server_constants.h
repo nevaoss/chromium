@@ -20,6 +20,7 @@ inline constexpr char kPasskeysSecurityDomainName[] = "hw_protected";
 // Append new values at the end and update kMaxValue. Note: Values are persisted
 // in disk storage (e.g. DomainData.domain_id) and must not be renumbered or
 // reused.
+// GENERATED_JAVA_ENUM_PACKAGE: org.chromium.components.trusted_vault
 enum class SecurityDomainId {
   kChromeSync = 1,
   kPasskeys = 2,
@@ -33,6 +34,17 @@ static_assert(static_cast<int>(SecurityDomainId::kMaxValue) ==
                   kAllSecurityDomainIdValues.size(),
               "Update kAllSecurityDomainIdValues when adding SecurityDomainId "
               "enum values");
+
+// Returns whether pre-enrollment with a constant key is supported for `domain`.
+inline constexpr bool SupportsConstantKeyPreEnrollment(
+    SecurityDomainId domain) {
+  switch (domain) {
+    case SecurityDomainId::kChromeSync:
+      return true;
+    case SecurityDomainId::kPasskeys:
+      return false;
+  }
+}
 
 std::optional<SecurityDomainId> GetSecurityDomainByName(
     std::string_view domain);

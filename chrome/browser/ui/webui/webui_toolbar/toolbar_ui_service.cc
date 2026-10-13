@@ -174,13 +174,6 @@ void ToolbarUIService::OnContentSettingImagePointerDown(
   }
 }
 
-void ToolbarUIService::OnContentSettingImageAnimationEnded(
-    ::toolbar_ui_api::mojom::ContentSettingImageType type) {
-  if (delegate_) {
-    delegate_->OnContentSettingImageAnimationEnded(type);
-  }
-}
-
 void ToolbarUIService::OnPageActionPointerDown(
     ::toolbar_ui_api::mojom::PageActionId action_id) {
   if (delegate_) {
@@ -328,6 +321,12 @@ void ToolbarUIService::OnHomeButtonDropFile(const gfx::PointF& drop_position) {
   }
 }
 
+void ToolbarUIService::OnHomeButtonDropText(const std::string& text) {
+  if (delegate_) {
+    delegate_->OnHomeButtonDropText(text);
+  }
+}
+
 void ToolbarUIService::OnToolbarDropFile(const gfx::PointF& drop_position) {
   if (delegate_) {
     delegate_->OnToolbarDropFile(drop_position);
@@ -456,6 +455,12 @@ void ToolbarUIService::OnMediaButtonClicked(bool is_mouse_interaction) {
 void ToolbarUIService::OnMediaButtonMousePressed() {
   if (delegate_) {
     delegate_->OnMediaButtonMousePressed();
+  }
+}
+
+void ToolbarUIService::OnGlicButtonClicked() {
+  if (delegate_) {
+    delegate_->OnGlicButtonClicked();
   }
 }
 }  // namespace toolbar_ui_api

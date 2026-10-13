@@ -23,6 +23,10 @@ suite('KeywordModeManagerTest', () => {
   const questionMarkEvent = new KeyboardEvent('keydown', {key: '?'});
   const spaceInputEvent =
       new InputEvent('input', {inputType: 'insertText', data: ' '});
+  const backspaceInputEvent =
+      new InputEvent('input', {inputType: 'deleteContentBackward'});
+  const pasteInputEvent =
+      new InputEvent('input', {inputType: 'insertFromPaste', data: ' '});
 
   setup(() => {
     modelChangedCount = 0;
@@ -257,14 +261,10 @@ suite('KeywordModeManagerTest', () => {
     assertFalse(manager.acceptInputTrigger('@history ', 9, backspaceEvent));
     assertFalse(manager.isInKeywordMode);
 
-    const backspaceInputEvent =
-        new InputEvent('input', {inputType: 'deleteContentBackward'});
     assertFalse(
         manager.acceptInputTrigger('@history ', 9, backspaceInputEvent));
     assertFalse(manager.isInKeywordMode);
 
-    const pasteInputEvent =
-        new InputEvent('input', {inputType: 'insertFromPaste', data: ' '});
     assertFalse(manager.acceptInputTrigger('@history ', 9, pasteInputEvent));
     assertFalse(manager.isInKeywordMode);
 
@@ -475,11 +475,40 @@ suite('KeywordModeManagerTest', () => {
     // Input '?' with cursor at 1 -> true and automatically enters question mark
     // keyword mode with QUESTION_MARK entry method.
     manager.exit();
+    manager.availableKeywordModels = [{
+      type: KeywordType.kChip,
+      keyword: 'google.com',
+      displayText: 'Search Google',
+      iconPath: '',
+      placeholder: 'Search Google',
+    }];
+    manager.defaultSearchEngineKeyword = 'google.com';
+
+    // Backspacing or pasting to '?' does not trigger keyword mode (verify
+    // isInKeywordMode remains false after each attempt).
+    assertFalse(manager.acceptInputTrigger('?', 1, backspaceEvent));
+    assertFalse(manager.isInKeywordMode);
+    assertFalse(manager.acceptInputTrigger('?', 1, backspaceInputEvent));
+    assertFalse(manager.isInKeywordMode);
+    assertFalse(manager.acceptInputTrigger('?', 1, pasteInputEvent));
+    assertFalse(manager.isInKeywordMode);
+
+    // Typing '?' via InputEvent triggers keyword mode.
+    const questionMarkInputEvent =
+        new InputEvent('input', {inputType: 'insertText', data: '?'});
+    assertTrue(manager.acceptInputTrigger('?', 1, questionMarkInputEvent));
+    assertTrue(manager.isInKeywordMode);
+    assertEquals('google.com', manager.activeKeyword);
+    assertEquals('Search Google', manager.inputKeywordModel?.displayText);
+
+    manager.exit();
+
+    // Typing '?' via KeyboardEvent triggers keyword mode.
     assertTrue(manager.acceptInputTrigger('?', 1, questionMarkEvent));
     assertTrue(manager.isInKeywordMode);
-    assertEquals('?', manager.activeKeyword);
+    assertEquals('google.com', manager.activeKeyword);
     assertTrue(!!manager.inputKeywordModel);
-    assertEquals('', manager.inputKeywordModel.displayText);
+    assertEquals('Search Google', manager.inputKeywordModel.displayText);
   });
 
   test('handleBackspace not in keyword mode', () => {
@@ -609,6 +638,14 @@ suite('KeywordModeManagerTest', () => {
   test(
       'handleBackspace question mark entry restores question mark prefix',
       () => {
+        manager.availableKeywordModels = [{
+          type: KeywordType.kChip,
+          keyword: 'google.com',
+          displayText: 'Search Google',
+          iconPath: '',
+          placeholder: 'Search Google',
+        }];
+        manager.defaultSearchEngineKeyword = 'google.com';
         // Case 4: '?f<left arrow><backspace>' -> restore '?f'
         assertTrue(manager.acceptInputTrigger('?', 1, questionMarkEvent));
 
@@ -668,6 +705,33 @@ suite('KeywordModeManagerTest', () => {
         assertEquals(0, lastKeywordCleared.cursorPosition);
       });
 
+  test(
+      'enterDefaultSearchEngineKeywordMode uses default search engine model',
+      () => {
+        // Returns false when defaultSearchEngineKeyword is empty.
+        assertFalse(manager.enterDefaultSearchEngineKeywordMode(
+            KeywordModeEntryMethod.KEYBOARD_SHORTCUT));
+        assertFalse(manager.isInKeywordMode);
+
+        manager.availableKeywordModels = [{
+          type: KeywordType.kChip,
+          keyword: 'google.com',
+          displayText: 'Search Google',
+          iconPath: 'google-icon',
+          placeholder: 'Search Google',
+        }];
+        manager.defaultSearchEngineKeyword = 'google.com';
+
+        assertTrue(manager.enterDefaultSearchEngineKeywordMode(
+            KeywordModeEntryMethod.KEYBOARD_SHORTCUT));
+        assertTrue(manager.isInKeywordMode);
+        assertEquals('google.com', manager.activeKeyword);
+        assertEquals('Search Google', manager.inputKeywordModel?.displayText);
+        assertEquals('Search Google', manager.inputKeywordModel?.placeholder);
+        assertEquals(
+            KeywordModeEntryMethod.KEYBOARD_SHORTCUT, manager.entryMethod);
+      });
+
   test('handleBackspace click entry restores keyword with space', () => {
     const match = createSearchMatchForTesting({
       keywordModel: createMatchKeywordModelForTesting({
@@ -700,6 +764,49 @@ suite('KeywordModeManagerTest', () => {
     assertTrue(!!lastKeywordCleared);
     assertEquals('youtube.com query', lastKeywordCleared.restoredText);
     assertEquals(12, lastKeywordCleared.cursorPosition);
+  });
+
+  test('clearKeyword clears keyword and restores text with prefix', () => {
+    assertFalse(manager.clearKeyword('test'));
+
+    manager.enter(
+        'google.com', 'Search Google', KeywordModeEntryMethod.TAB,
+        'Search Google');
+    assertTrue(manager.clearKeyword('search query'));
+    assertFalse(manager.isInKeywordMode);
+    assertTrue(!!lastKeywordCleared);
+    assertEquals('google.com search query', lastKeywordCleared.restoredText);
+    assertEquals(11, lastKeywordCleared.cursorPosition);
+
+    // Tab entry without typing.
+    manager.enter(
+        'google.com', 'Search Google', KeywordModeEntryMethod.TAB,
+        'Search Google');
+    assertTrue(manager.clearKeyword(''));
+    assertFalse(manager.isInKeywordMode);
+    assertTrue(!!lastKeywordCleared);
+    assertEquals('google.com', lastKeywordCleared.restoredText);
+    assertEquals(10, lastKeywordCleared.cursorPosition);
+
+    // Question mark entry.
+    manager.enter(
+        'google.com', 'Search Google', KeywordModeEntryMethod.QUESTION_MARK,
+        'Search Google');
+    assertTrue(manager.clearKeyword('query'));
+    assertFalse(manager.isInKeywordMode);
+    assertTrue(!!lastKeywordCleared);
+    assertEquals('?query', lastKeywordCleared.restoredText);
+    assertEquals(1, lastKeywordCleared.cursorPosition);
+
+    // Keyboard shortcut entry.
+    manager.enter(
+        'google.com', 'Search Google', KeywordModeEntryMethod.KEYBOARD_SHORTCUT,
+        'Search Google');
+    assertTrue(manager.clearKeyword('query'));
+    assertFalse(manager.isInKeywordMode);
+    assertTrue(!!lastKeywordCleared);
+    assertEquals('query', lastKeywordCleared.restoredText);
+    assertEquals(0, lastKeywordCleared.cursorPosition);
   });
 
   test('handleKeywordClick', () => {

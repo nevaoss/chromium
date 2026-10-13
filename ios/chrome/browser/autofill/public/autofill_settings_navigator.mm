@@ -56,11 +56,13 @@ std::optional<AutofillSettingsPage> AutofillSettingsPageForMemoryDataType(
       return IsYourSavedInfoSettingsPageIosEnabled()
                  ? AutofillSettingsPage::kShopping
                  : AutofillSettingsPage::kAddresses;
+    // IBANs are bank account numbers, which live in the payment methods
+    // (credit cards) settings page.
     case MemoryDataTypeCategory::kCreditCard:
+    case MemoryDataTypeCategory::kIban:
       return AutofillSettingsPage::kCreditCards;
     case MemoryDataTypeCategory::kContactInfo:
       return AutofillSettingsPage::kAddresses;
-    case MemoryDataTypeCategory::kIban:
     case MemoryDataTypeCategory::kUnknown:
       return std::nullopt;
   }
@@ -75,7 +77,7 @@ std::optional<AutofillSettingsPage> AutofillSettingsPageForAtMemorySuggestion(
   }
 
   if (payload->is_personal_context_sourced) {
-    return AutofillSettingsPage::kEnhancedAutofill;
+    return AutofillSettingsPage::kSuggestionsFromGemini;
   }
 
   return AutofillSettingsPageForMemoryDataType(payload->memory_data_type);

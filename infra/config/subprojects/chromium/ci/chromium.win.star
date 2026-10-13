@@ -432,6 +432,9 @@ ci.builder(
                     shards = 12,
                 ),
             ),
+            "blink_wpt_tests": targets.mixin(
+                enable_rts_filtering = True,
+            ),
             "browser_tests": targets.mixin(
                 enable_rts_filtering = True,
                 swarming = targets.swarming(
@@ -521,6 +524,7 @@ ci.thin_tester(
         ],
     ),
     builderless = True,
+    ssd = None,
     gardener_rotations = args.ignore_default(None),
     tree_closing = False,
     console_view_entry = consoles.console_view_entry(
@@ -576,7 +580,7 @@ ci.thin_tester(
                     "--disable-features=InitialWebUI,WebUIReloadButton,SkipIPCChannelPausingForNonGuests,WebUIInProcessResourceLoadingV2,InitialWebUISyncNavStartToCommit",
                 ],
                 swarming = targets.swarming(
-                    shards = 3,
+                    shards = 5,
                 ),
             ),
             "unit_tests": targets.mixin(
@@ -586,6 +590,7 @@ ci.thin_tester(
             ),
         },
     ),
+    ssd = None,
     tree_closing = False,
     console_view_entry = consoles.console_view_entry(
         category = "release",
@@ -687,6 +692,7 @@ ci.thin_tester(
             ),
         },
     ),
+    ssd = None,
     tree_closing = False,
     console_view_entry = consoles.console_view_entry(
         category = "release|tester",
@@ -835,6 +841,7 @@ ci.thin_tester(
             ),
         },
     ),
+    ssd = None,
     tree_closing = False,
     console_view_entry = consoles.console_view_entry(
         category = "release|tester",
@@ -955,6 +962,7 @@ ci.thin_tester(
             ),
         },
     ),
+    ssd = None,
     # TODO(crbug.com/40877793): Enable gardening when stable and green.
     gardener_rotations = args.ignore_default(None),
     tree_closing = False,

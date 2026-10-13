@@ -28,6 +28,7 @@
 
 namespace autofill {
 
+class AutofillField;
 class BrowserAutofillManager;
 class FormFieldData;
 class FormStructure;
@@ -116,9 +117,17 @@ class OtpManagerImpl : public OtpManager, public AutofillManager::Observer {
                      one_time_tokens::OneTimeTokenRetrievalError>
           token_or_error);
 
-  // Callback for `OtpPhishGuardDelegate::StartOtpPhishGuardCheck`.
-  void MaybeShowOtpSuggestions(one_time_tokens::OneTimeToken token,
-                               OneTimeTokensPhishGuardVerdict verdict);
+  // Evaluates the PhishGuard `verdict` (or `kUnknown` if no check was
+  // performed) and delivers or triggers OTP suggestions for SMS and Gmail
+  // respectively.
+  void MaybeShowOtpSuggestionsForSms(one_time_tokens::OneTimeToken token,
+                                     OneTimeTokensPhishGuardVerdict verdict);
+  void MaybeShowOtpSuggestionsForGmail(one_time_tokens::OneTimeToken token,
+                                       OneTimeTokensPhishGuardVerdict verdict);
+
+  // Returns the currently focused field if it exists and has `ONE_TIME_CODE`
+  // type, or nullptr otherwise.
+  const AutofillField* GetFocusedOtpField() const;
 
   // Returns true if an OTP must not be delivered to the caller in an autofill
   // context, e.g., because the page called the WebOTP API.
@@ -155,8 +164,9 @@ class OtpManagerImpl : public OtpManager, public AutofillManager::Observer {
   GetOtpSuggestionsCallback last_pending_get_suggestions_callback_;
   LocalFrameToken last_pending_frame_token_;
 
-  // The time when the phish guard check was started.
-  base::TimeTicks phish_guard_check_start_time_;
+  // Tracks the currently focused form and field, if any.
+  std::optional<FormGlobalId> currently_focused_form_id_;
+  std::optional<FieldGlobalId> currently_focused_field_id_;
 
   base::ScopedObservation<BrowserAutofillManager, AutofillManager::Observer>
       autofill_manager_observation_{this};

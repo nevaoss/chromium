@@ -271,7 +271,6 @@ suite('ContextualTasksComposeboxTest', () => {
   test('TooltipVisibilityUpdatesOnResize', () => {
     mockTimer.install();
     const composeboxElement = contextualTasksApp.$.composebox;
-    const tooltip = contextualTasksApp.$.onboardingTooltip;
 
     // Force show tooltip
     loadTimeData.overrideValues({
@@ -289,7 +288,10 @@ suite('ContextualTasksComposeboxTest', () => {
         document.createElement('div');
 
     contextualTasksApp.updateTooltipVisibilityForTesting();
-    assertTrue(tooltip!.shouldShow);
+    const tooltip = contextualTasksApp.shadowRoot.querySelector(
+        'contextual-tasks-onboarding-tooltip');
+    assertTrue(!!tooltip);
+    assertTrue(tooltip.shouldShow);
 
     // Resize event
     const resizeEvent = new CustomEvent('composebox-resize', {
@@ -301,7 +303,7 @@ suite('ContextualTasksComposeboxTest', () => {
 
     // Tooltip should still be shown and position updated (implicitly via resize
     // observer or logic)
-    assertTrue(tooltip!.shouldShow);
+    assertTrue(tooltip.shouldShow);
   });
 
   test('TooltipResizeObserverCoexistsWithResizeObserver', () => {
@@ -350,7 +352,6 @@ suite('ContextualTasksComposeboxTest', () => {
   test('TooltipImpressionIncrementsAfterDelay', () => {
     mockTimer.install();
     const composeboxElement = contextualTasksApp.$.composebox;
-    const tooltip = contextualTasksApp.$.onboardingTooltip;
 
     // Force show tooltip with delay.
     loadTimeData.overrideValues({
@@ -369,7 +370,10 @@ suite('ContextualTasksComposeboxTest', () => {
 
     // Trigger update.
     contextualTasksApp.updateTooltipVisibilityForTesting();
-    assertTrue(tooltip!.shouldShow);
+    const tooltip = contextualTasksApp.shadowRoot.querySelector(
+        'contextual-tasks-onboarding-tooltip');
+    assertTrue(!!tooltip);
+    assertTrue(tooltip.shouldShow);
 
     // Should not have incremented yet.
     assertEquals(0, contextualTasksApp.numberOfTimesTooltipShownForTesting);
@@ -1150,6 +1154,55 @@ suite('ContextualTasksComposeboxTest', () => {
 
     assertEquals(0, innerComposebox.files.size);
     assertFalse(innerComposebox.getHasAutomaticActiveTabChipToken());
+  });
+
+  test('NewThreadClearsRestoredTabsAndKeepsAutoSuggestedTab', async () => {
+    const innerComposebox = contextualTasksApp.$.composebox.$.composebox;
+    innerComposebox.contextManagementInComposeboxEnabled = true;
+
+    const autoTab = {
+      tabId: 1,
+      title: 'Auto Tab',
+      url: 'https://example.com',
+      lastActive: {internalValue: BigInt(100)},
+      showInCurrentTabChip: true,
+      showInPreviousTabChip: false,
+    };
+    searchboxCallbackRouterRemote.updateAutoSuggestedTabContext(autoTab, null);
+    await searchboxCallbackRouterRemote.$.flushForTesting();
+    await microtasksFinished();
+    await innerComposebox.updateComplete;
+
+    // Tabs submitted in the previous thread.
+    innerComposebox.aimThreadRestoredTabs = [
+      {
+        tabId: 2,
+        title: 'Previous Thread Tab 1',
+        url: 'https://example.com/2',
+        lastActive: {internalValue: BigInt(50)},
+        showInCurrentTabChip: false,
+        showInPreviousTabChip: false,
+      },
+      {
+        tabId: 3,
+        title: 'Previous Thread Tab 2',
+        url: 'https://example.com/3',
+        lastActive: {internalValue: BigInt(25)},
+        showInCurrentTabChip: false,
+        showInPreviousTabChip: false,
+      },
+    ];
+    await innerComposebox.updateComplete;
+
+    // Calling `clearInputAndFocus()` (what `onNewThreadClick_()` calls) drops
+    // the previous thread's restored tabs but keeps the auto-suggested tab.
+    contextualTasksApp.$.composebox.clearInputAndFocus();
+    await microtasksFinished();
+    await innerComposebox.updateComplete;
+
+    assertEquals(0, innerComposebox.aimThreadRestoredTabs.length);
+    assertEquals(1, innerComposebox.files.size);
+    assertTrue(innerComposebox.getHasAutomaticActiveTabChipToken());
   });
 
   test('SingleAutoTabFileDoesNotUpdatePlaceholder', async () => {

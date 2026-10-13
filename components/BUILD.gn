@@ -679,6 +679,7 @@ test("components_unittests") {
     deps += [
       "//base:base_unittest_support_java",
       "//components/android_autofill/browser:unit_tests",
+      "//components/autofill/android:main_autofill_java",
       "//components/browser_ui/accessibility/android:unit_tests",
       "//components/browser_ui/site_settings/android:unit_tests",
       "//components/cdm/browser:unit_tests",
@@ -811,7 +812,6 @@ test("components_unittests") {
       "//components/desks_storage:unit_tests",
       "//components/guest_os:unit_tests",
       "//components/ownership:unit_tests",
-      "//components/peripherals/logging:unit_tests",
       "//components/reporting/health:unit_tests",
       "//components/user_manager:unit_tests",
     ]
@@ -1234,6 +1234,7 @@ if (use_blink) {
         ":components_tests_distiller_bundle_data",
         ":components_tests_pak_bundle_data",
         "test:dom_distiller_test_bundle_data",
+        "test:surface_embed_test_bundle_data",
         "test:url_rewrite_test_bundle_data",
         "//content/test:content_test_bundle_data",
         "//testing/buildbot/filters:components_browsertests_use_blink_filters_bundle_data",

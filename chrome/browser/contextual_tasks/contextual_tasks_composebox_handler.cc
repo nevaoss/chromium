@@ -141,7 +141,7 @@ class ContextualTasksOmniboxClient : public ContextualOmniboxClient {
       TemplateURLRef::PostContent* post_content,
       WindowOpenDisposition disposition,
       ui::PageTransition transition,
-      AutocompleteMatchType::Type match_type,
+      omnibox::AutocompleteMatchType match_type,
       base::TimeTicks match_selection_timestamp,
       bool destination_url_entered_without_scheme,
       bool destination_url_entered_with_http_scheme,
@@ -168,7 +168,7 @@ void ContextualTasksOmniboxClient::OnAutocompleteAccept(
     TemplateURLRef::PostContent* post_content,
     WindowOpenDisposition disposition,
     ui::PageTransition transition,
-    AutocompleteMatchType::Type match_type,
+    omnibox::AutocompleteMatchType match_type,
     base::TimeTicks match_selection_timestamp,
     bool destination_url_entered_without_scheme,
     bool destination_url_entered_with_http_scheme,
@@ -549,6 +549,15 @@ void ContextualTasksComposeboxHandler::OnTaskChanged() {
   ClearFiles(/*should_block_auto_suggested_tabs=*/false);
   SetSmartTabSharingActive(false);
   InitializeInputStateModel();
+  if (base::FeatureList::IsEnabled(omnibox::kContextManagementInComposebox)) {
+    // InitializeInputStateModel() seeds restored tabs from the session handle,
+    // which can be carried over from the side panel and still hold the tabs
+    // submitted in the previous thread. Don't surface those in the new thread:
+    // they render as stale favicon coins and can hide the auto-suggested tab.
+    // The new thread's restored tabs are populated from the server once its
+    // context loads (see ContextualTasksUI::OnRestoredTabsFetched()).
+    SetAimThreadRestoredTabs({});
+  }
 }
 
 std::vector<int32_t> ContextualTasksComposeboxHandler::GetSelectedTabIds()
@@ -695,6 +704,20 @@ void ContextualTasksComposeboxHandler::CacheSubmittedTabsFromSessionHandle() {
       !IsContextualSearchTabSharingEligible()) {
     return;
   }
+#if !BUILDFLAG(IS_ANDROID)
+  if (visual_selection_token_.has_value()) {
+    return;
+  }
+  if (auto* controller = GetLensSearchController()) {
+    if (controller->lens_overlay_controller()->HasRegionSelection() &&
+        controller->query_router() &&
+        controller->query_router()
+            ->overlay_tab_context_file_token()
+            .has_value()) {
+      return;
+    }
+  }
+#endif
   auto* session_handle = GetContextualSessionHandle();
   if (!session_handle) {
     return;
@@ -1244,9 +1267,12 @@ void ContextualTasksComposeboxHandler::DeleteContext(
   }
 #endif  // !BUILDFLAG(IS_ANDROID)
   if (was_delayed) {
-    OnContextUploadStatusChanged(
-        file_token, lens::MimeType::kUnknown,
-        contextual_search::ContextUploadStatus::kUploadExpired, std::nullopt);
+    // Delayed tabs are never uploaded, and this deletion was initiated by the
+    // WebUI, so there is no upload status to report back to the page. Doing so
+    // would surface a spurious upload error. Only refresh the input state.
+    if (input_state_model()) {
+      input_state_model()->OnContextChanged();
+    }
   }
 
   // Hide the underline for the tab if it was associated with the deleted

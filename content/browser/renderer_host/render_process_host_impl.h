@@ -450,11 +450,6 @@ class CONTENT_EXPORT RenderProcessHostImpl
   static void RegisterHost(ChildProcessId host_id, RenderProcessHost* host);
   static void UnregisterHost(ChildProcessId host_id);
 
-  // TODO(crbug.com/379869738): Deprecated, please use the ChildProcessId
-  // version above.
-  static void RegisterHost(int host_id, RenderProcessHost* host);
-  static void UnregisterHost(int host_id);
-
   // "Keep alive ref count" represents the number of the customers of this
   // render process who wish the renderer process to be alive. While the ref
   // count is positive, |this| object will keep the renderer process alive,
@@ -1512,11 +1507,6 @@ class CONTENT_EXPORT RenderProcessHostImpl
 
   // A set of flags that influence RenderProcessHost behavior.
   int flags_;
-
-  // Indicates whether this RenderProcessHost is unused, meaning that it has
-  // not committed any web content, and it has not been given to a SiteInstance
-  // that has a site assigned.
-  bool is_unused_ = true;
 
   // Set if a call to Cleanup is required once the RenderProcessHostImpl is no
   // longer within the RenderProcessHostObserver::RenderProcessExited callbacks.

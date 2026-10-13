@@ -12,7 +12,7 @@ FakeExtensionService::FakeExtensionService() = default;
 
 FakeExtensionService::~FakeExtensionService() = default;
 
-void FakeExtensionService::Initialize() {}
+void FakeExtensionService::Initialize(web::UniversalOptOutState state) {}
 
 web::ExtensionController* FakeExtensionService::GetExtensionController() const {
   return nullptr;
@@ -20,6 +20,10 @@ web::ExtensionController* FakeExtensionService::GetExtensionController() const {
 
 bool FakeExtensionService::IsReady() const {
   return is_ready_;
+}
+
+bool FakeExtensionService::WebExtensionsWereLoadedAtStartup() const {
+  return web_extensions_were_loaded_at_startup_;
 }
 
 base::CallbackListSubscription FakeExtensionService::RunWhenReady(
@@ -37,6 +41,10 @@ void FakeExtensionService::SetReady(bool ready) {
   if (is_ready_) {
     ready_callbacks_.Notify();
   }
+}
+
+void FakeExtensionService::SetWebExtensionsWereLoadedAtStartup(bool loaded) {
+  web_extensions_were_loaded_at_startup_ = loaded;
 }
 
 bool FakeExtensionService::HasWaitingCallback() const {

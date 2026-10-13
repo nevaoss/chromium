@@ -90,6 +90,7 @@
 #include "components/contextual_search/contextual_search_metrics_recorder.h"
 #include "components/contextual_search/contextual_search_service.h"
 #include "components/favicon_base/favicon_url_parser.h"
+#include "components/google/core/common/google_util.h"
 #include "components/grit/components_scaled_resources.h"
 #include "components/history_clusters/core/features.h"
 #include "components/lens/lens_features.h"
@@ -324,6 +325,12 @@ content::WebUIDataSource* CreateAndAddNewTabPageUiHtmlSource(
       base::FeatureList::IsEnabled(ntp_features::kNtpCustomizeWebUiAndroid) ||
           !BUILDFLAG(IS_ANDROID));
   source->AddBoolean("isAndroid", BUILDFLAG(IS_ANDROID));
+  // On Android `webkitSpeechRecognition` is backed by `SpeechRecognitionImpl`,
+  // which owns the microphone itself. The shared composebox voice search UI
+  // uses this to simulate the audio wave and to interpret cumulative result
+  // snapshots. Kept separate from `isAndroid` so that voice behavior can be
+  // decoupled from Android-specific composebox styling.
+  source->AddBoolean("androidSpeechRecognition", BUILDFLAG(IS_ANDROID));
 
   source->AddBoolean("ntpRealboxNextEnabled",
                      ntp_realbox::IsNtpRealboxNextEnabled(profile));
@@ -805,6 +812,9 @@ content::WebUIDataSource* CreateAndAddNewTabPageUiHtmlSource(
   source->AddBoolean("composeboxPersistentAimButton",
                      base::FeatureList::IsEnabled(
                          omnibox::kComposeboxPersistentAimButtonRealbox));
+  source->AddBoolean(
+      "composeboxRealboxOutsideClick",
+      base::FeatureList::IsEnabled(omnibox::kComposeboxRealboxOutsideClick));
   source->AddBoolean("composeboxPersistentAimButtonWithX",
                      base::FeatureList::IsEnabled(
                          omnibox::kComposeboxPersistentAimButtonWithX));
@@ -831,13 +841,14 @@ content::WebUIDataSource* CreateAndAddNewTabPageUiHtmlSource(
   }
 #endif  // BUILDFLAG(GOOGLE_CHROME_BRANDING)
 
-  // Allow embedding of chrome-untrusted://new-tab-page and
-  // chrome-untrusted://ntp-microsoft-auth for external content and resources.
-  // NOTE: Use caution when overriding content security policies as that can
+  // Allow embedding of iframes for the doodle and
+  // chrome-untrusted://new-tab-page for other external content and resources.
+  // NOTE: Use caution when overriding content security policies as that cean
   // lead to subtle security bugs such as https://crbug.com/40057334.
   source->OverrideContentSecurityPolicy(
       network::mojom::CSPDirectiveName::ChildSrc,
-      base::StringPrintf("child-src %s %s;",
+      base::StringPrintf("child-src https: %s %s %s;",
+                         google_util::CommandLineGoogleBaseURL().spec().c_str(),
                          chrome::kChromeUIUntrustedNewTabPageUrl,
                          chrome::kChromeUIUntrustedNtpMicrosoftAuthURL));
   source->OverrideContentSecurityPolicy(

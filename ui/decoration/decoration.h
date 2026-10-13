@@ -7,6 +7,8 @@
 
 #include <memory>
 #include <optional>
+#include <string>
+#include <string_view>
 
 #include "base/memory/raw_ptr.h"
 #include "base/time/time.h"
@@ -16,9 +18,9 @@
 #include "ui/decoration/decoration_source.h"
 #include "ui/gfx/geometry/insets.h"
 #include "ui/gfx/geometry/rect.h"
-#include "ui/gfx/geometry/rrect_f.h"
+#include "ui/gfx/geometry/rounded_corners_f.h"
 
-namespace ui::decoration {
+namespace ui {
 
 // Manages the compositor layers that frame a surface with a decoration
 // (a shadow, a highlight border, or both) on a single NinePatchLayer, and
@@ -26,29 +28,55 @@ namespace ui::decoration {
 //
 // Decoration is the only implementation of the nine-patch layer plumbing; what
 // the decoration actually looks like is entirely delegated to the
-// DecorationSource.
+// decoration::DecorationSource.
 class Decoration final : public ui::ImplicitAnimationObserver,
                          public ui::LayerOwner {
  public:
   // Creates an initialized decoration drawn by `source`.
+  //
+  // `debug_name` describes what the decoration represents (e.g. "Shadow" or
+  // "HighlightBorder") and is used to give the decoration's layers
+  // context-specific debug names such as "Decoration:Shadow". When empty, the
+  // layers are named generically "Decoration".
   static std::unique_ptr<Decoration> Create(
-      std::unique_ptr<DecorationSource> source);
+      std::unique_ptr<decoration::DecorationSource> source,
+      std::string_view debug_name = {});
 
-  explicit Decoration(std::unique_ptr<DecorationSource> source);
+  explicit Decoration(std::unique_ptr<decoration::DecorationSource> source,
+                      std::string_view debug_name = {});
 
   Decoration(const Decoration&) = delete;
   Decoration& operator=(const Decoration&) = delete;
 
   ~Decoration() override;
 
-  DecorationSource* source() { return source_.get(); }
-  const DecorationSource* source() const { return source_.get(); }
+  // The debug name given to the decoration layer, e.g. "Decoration:Shadow".
+  const std::string& name() const { return name_; }
+
+  decoration::DecorationSource* source() { return source_.get(); }
+  const decoration::DecorationSource* source() const { return source_.get(); }
+
+  // Returns the source as a `T`, or nullptr if it isn't one.
+  template <typename T>
+  T* GetSourceAs() {
+    return source()->AsA<T>();
+  }
+  template <typename T>
+  const T* GetSourceAs() const {
+    return source()->AsA<T>();
+  }
 
   // Moves and resizes the decoration layer to frame |content_bounds|.
   // This should be used to adjust the decoration's size and position (rather
   // than applying transformations to the `layer()` of this Decoration).
-  void SetContentBounds(const gfx::RRectF& content_bounds);
-  const gfx::RRectF& content_bounds() const { return content_bounds_; }
+  void SetContentBounds(const gfx::Rect& content_bounds);
+  const gfx::Rect& content_bounds() const { return content_bounds_; }
+
+  // Sets the radii of the corners of the content this decoration frames.
+  void SetRoundedCorners(const gfx::RoundedCornersF& rounded_corners);
+  const gfx::RoundedCornersF& rounded_corners() const {
+    return rounded_corners_;
+  }
 
   // ui::ImplicitAnimationObserver overrides:
   void OnImplicitAnimationsCompleted() override;
@@ -95,14 +123,18 @@ class Decoration final : public ui::ImplicitAnimationObserver,
   }
 
   // Draws this decoration. Never null.
-  const std::unique_ptr<DecorationSource> source_;
+  const std::unique_ptr<decoration::DecorationSource> source_;
 
-  // Bounds of the content that the decoration encloses, carrying its corner
-  // radii clamped to fit.
-  gfx::RRectF content_bounds_;
+  // Debug name for the decoration layer, e.g. "Decoration:Shadow".
+  const std::string name_;
+
+  // Bounds of the content that the decoration encloses, and the radii of that
+  // content's corners.
+  gfx::Rect content_bounds_;
+  gfx::RoundedCornersF rounded_corners_;
 
   // Currently active appearance set on `decoration_layer()`.
-  std::optional<DecorationSource::Appearance> active_appearance_;
+  std::optional<decoration::DecorationSource::Appearance> active_appearance_;
 
   // The owner of the actual decoration layer corresponding to a
   // cc::NinePatchLayer.
@@ -117,6 +149,6 @@ class Decoration final : public ui::ImplicitAnimationObserver,
   gfx::Rect last_layer_bounds_;
 };
 
-}  // namespace ui::decoration
+}  // namespace ui
 
 #endif  // UI_DECORATION_DECORATION_H_

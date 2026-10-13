@@ -2667,6 +2667,82 @@ TEST_F(BrowserAccessibilityAndroidTest,
 }
 
 TEST_F(BrowserAccessibilityAndroidTest,
+       TestFocusableGenericContainerWithNameFromNoneNotInteresting) {
+  // Case 1: Focusable container with `NameFrom::kNone` and nested generic
+  // containers wrapping static text. The container itself has no text content
+  // and is not a leaf, so it should not be interesting (avoiding two swipes),
+  // while its child text container remains interesting.
+  ui::AXNodeData text1;
+  text1.id = 111;
+  text1.role = ax::mojom::Role::kStaticText;
+  text1.SetName("Find your location");
+
+  ui::AXNodeData inner_span1;
+  inner_span1.id = 11;
+  inner_span1.role = ax::mojom::Role::kGenericContainer;
+  inner_span1.child_ids = {text1.id};
+
+  ui::AXNodeData container1;
+  container1.id = 2;
+  container1.role = ax::mojom::Role::kGenericContainer;
+  container1.AddState(ax::mojom::State::kFocusable);
+  container1.SetNameFrom(ax::mojom::NameFrom::kNone);
+  container1.child_ids = {inner_span1.id};
+
+  // Case 2: Focusable container with explicit name (`NameFrom::kAttribute`).
+  // Should remain interesting.
+  ui::AXNodeData text2;
+  text2.id = 222;
+  text2.role = ax::mojom::Role::kStaticText;
+  text2.SetName("Child text");
+
+  ui::AXNodeData container2;
+  container2.id = 3;
+  container2.role = ax::mojom::Role::kGenericContainer;
+  container2.AddState(ax::mojom::State::kFocusable);
+  container2.SetName("Explicit label");
+  container2.SetNameFrom(ax::mojom::NameFrom::kAttribute);
+  container2.child_ids = {text2.id};
+
+  // Case 3: Focusable leaf container with `NameFrom::kNone` and no text
+  // content (`IsLeaf()` is true). Should remain interesting.
+  ui::AXNodeData container3;
+  container3.id = 4;
+  container3.role = ax::mojom::Role::kGenericContainer;
+  container3.AddState(ax::mojom::State::kFocusable);
+  container3.SetNameFrom(ax::mojom::NameFrom::kNone);
+
+  ui::AXNodeData root;
+  root.id = 1;
+  root.role = ax::mojom::Role::kRootWebArea;
+  root.child_ids = {container1.id, container2.id, container3.id};
+
+  std::unique_ptr<ui::BrowserAccessibilityManager> manager(
+      BrowserAccessibilityManagerAndroid::Create(
+          MakeAXTreeUpdateForTesting(root, container1, inner_span1, text1,
+                                     container2, text2, container3),
+          node_id_delegate_, test_browser_accessibility_delegate_.get()));
+
+  BrowserAccessibilityAndroid* root_node =
+      static_cast<BrowserAccessibilityAndroid*>(
+          manager->GetBrowserAccessibilityRoot());
+
+  BrowserAccessibilityAndroid* node1 =
+      static_cast<BrowserAccessibilityAndroid*>(root_node->InternalGetChild(0));
+  BrowserAccessibilityAndroid* inner1 =
+      static_cast<BrowserAccessibilityAndroid*>(node1->InternalGetChild(0));
+  BrowserAccessibilityAndroid* node2 =
+      static_cast<BrowserAccessibilityAndroid*>(root_node->InternalGetChild(1));
+  BrowserAccessibilityAndroid* node3 =
+      static_cast<BrowserAccessibilityAndroid*>(root_node->InternalGetChild(2));
+
+  EXPECT_FALSE(node1->IsInterestingOnAndroid());
+  EXPECT_TRUE(inner1->IsInterestingOnAndroid());
+  EXPECT_TRUE(node2->IsInterestingOnAndroid());
+  EXPECT_TRUE(node3->IsLeaf());
+  EXPECT_TRUE(node3->IsInterestingOnAndroid());
+}
+TEST_F(BrowserAccessibilityAndroidTest,
        TestListBoxOptionInterestingWithoutFocusability) {
   ui::AXNodeData option;
   option.id = 2;
@@ -3251,6 +3327,87 @@ TEST_F(BrowserAccessibilityAndroidTest, TestNavigateOnlySentForRootFrame) {
       root_manager->GetBrowserAccessibilityRoot());
   ASSERT_NE(nullptr, new_root_node);
   EXPECT_EQ(new_root_node->GetUniqueId(), navigate_root_id);
+}
+
+// A child frame's tree and the tree containing the node that hosts it may come
+// from different renderer processes, so the hosting node can be created before
+// the child frame's tree exists. Once the child frame's tree is connected to
+// it, the hosting node has a new child, so it must be invalidated to have its
+// subtree refetched.
+TEST_F(BrowserAccessibilityAndroidTest,
+       TestHostInvalidatedWhenChildFrameArrivesAfterHost) {
+  ui::AXNodeData child_frame_root;
+  child_frame_root.id = 1;
+  child_frame_root.role = ax::mojom::Role::kRootWebArea;
+
+  ui::AXTreeUpdate child_frame_update =
+      MakeAXTreeUpdateForTesting(child_frame_root);
+
+  ui::AXNodeData iframe;
+  iframe.id = 2;
+  iframe.role = ax::mojom::Role::kIframe;
+  iframe.AddChildTreeId(child_frame_update.tree_data.tree_id);
+
+  // Node ids are only unique within a tree, so the root of the hosting tree
+  // can reuse the id of the child frame's root.
+  ui::AXNodeData root;
+  root.id = 1;
+  root.role = ax::mojom::Role::kRootWebArea;
+  root.child_ids = {iframe.id};
+
+  ui::AXTreeUpdate host_update = MakeAXTreeUpdateForTesting(root, iframe);
+  child_frame_update.tree_data.parent_tree_id = host_update.tree_data.tree_id;
+
+  // The tree containing the hosting node arrives first.
+  std::unique_ptr<ui::BrowserAccessibilityManager> root_manager(
+      BrowserAccessibilityManagerAndroid::Create(
+          host_update, node_id_delegate_,
+          test_browser_accessibility_delegate_.get()));
+
+  // The child frame's tree arrives second.
+  ui::TestAXPlatformTreeManagerDelegate child_frame_delegate;
+  child_frame_delegate.is_root_frame_ = false;
+  child_frame_delegate.SetWebContentsAccessibility(
+      &mock_web_contents_accessibility_android_);
+
+  std::unique_ptr<ui::BrowserAccessibilityManager> child_manager(
+      BrowserAccessibilityManagerAndroid::Create(
+          child_frame_update, node_id_delegate_, &child_frame_delegate));
+
+  auto* iframe_node = static_cast<BrowserAccessibilityAndroid*>(
+      root_manager->GetFromID(iframe.id));
+  ASSERT_NE(nullptr, iframe_node);
+  ASSERT_NE(nullptr,
+            child_manager->GetParentNodeFromParentTreeAsBrowserAccessibility());
+
+  testing::Mock::VerifyAndClearExpectations(
+      &mock_web_contents_accessibility_android_);
+
+  // The content of the update does not matter, only that it arrives through
+  // OnAccessibilityEvents. The update is only prepared here and sent further
+  // below, after the expectations are set up.
+  ui::AXUpdatesAndEvents updates_and_events;
+  updates_and_events.updates.resize(1);
+  updates_and_events.updates[0].nodes.resize(1);
+  updates_and_events.updates[0].nodes[0].id = child_frame_root.id;
+  updates_and_events.updates[0].nodes[0].role = ax::mojom::Role::kRootWebArea;
+
+  // Connecting the child frame's tree gives the hosting node a new child. That
+  // is reported as a CHILDREN_CHANGED event on the hosting node, which reaches
+  // Java as a content changed call for that node, with the subtree flag set so
+  // that its subtree is refetched and not just the node itself.
+  EXPECT_CALL(
+      mock_web_contents_accessibility_android_,
+      HandleContentChanged(static_cast<int32_t>(iframe_node->GetUniqueId()),
+                           /*set_subtree_changed=*/true))
+      .Times(testing::AtLeast(1));
+
+  // The child frame's renderer sends an update. Once it is unserialized,
+  // OnAccessibilityEvents calls EnsureParentConnectionIfNotRootManager, which
+  // looks for the node hosting this tree in the parent tree. Finding one
+  // connects the two trees through ParentConnectionChanged, which is what
+  // fires the event expected above.
+  child_manager->OnAccessibilityEvents(updates_and_events);
 }
 
 }  // namespace content

@@ -89,22 +89,15 @@ gfx::Insets ChromeLayoutProvider::GetInsetsMetric(int metric) const {
     case INSETS_PAGE_INFO_FOOTER_BUTTON:
       return gfx::Insets::VH(12, 20);
     case INSETS_ACTION_APP_MENU_ITEM:
-      return gfx::Insets::TLBR(0, 32, 0, 28);
+      return gfx::Insets::VH(0, 24);
     case INSETS_ACTION_APP_MENU_SEARCH_BAR_MARGIN:
-      return gfx::Insets::TLBR(4, 16, 16, 16);
-    case INSETS_ACTION_APP_MENU_SEARCH_BAR_WITH_NOTIFICATION_MARGIN:
-      return gfx::Insets::TLBR(12, 16, 16, 16);
-    case INSETS_ACTION_APP_MENU_BLOCK_MARGIN: {
-      const int top =
-          base::FeatureList::IsEnabled(features::kChroMenuSearch) ? 0 : 4;
-      return gfx::Insets::TLBR(top, 16, 8, 16);
-    }
-    case INSETS_ACTION_APP_MENU_BLOCK_WITH_NOTIFICATION_MARGIN:
-      return gfx::Insets::TLBR(12, 16, 8, 16);
+      return gfx::Insets::TLBR(0, 12, 12, 12);
+    case INSETS_ACTION_APP_MENU_BLOCK_MARGIN:
+      return gfx::Insets::TLBR(0, 12, 8, 12);
     case INSETS_ACTION_APP_MENU_HEADER:
-      return gfx::Insets::VH(0, 16);
+      return gfx::Insets::VH(0, 12);
     case INSETS_ACTION_APP_MENU_FOOTER_MARGIN:
-      return gfx::Insets::TLBR(8, 16, 8, 16);
+      return gfx::Insets::TLBR(8, 12, 8, 12);
     case INSETS_ACTION_APP_MENU_FOOTER_BOTTOM_CONTAINER:
       return gfx::Insets::TLBR(0, 0, 4, 0);
     case INSETS_ACTION_APP_MENU_FOOTER_BUTTON:
@@ -275,7 +268,7 @@ int ChromeLayoutProvider::GetDistanceMetric(int metric) const {
       return 12;
     // Block-style Action App Menu layout constants.
     case DISTANCE_ACTION_APP_MENU_CONTAINER_CORNER_RADIUS:
-      return 8;
+      return 12;
     case DISTANCE_ACTION_APP_MENU_ICON_SIZE:
       return 16;
     case DISTANCE_ACTION_APP_MENU_FULL_ITEM_HEIGHT:
@@ -295,15 +288,19 @@ int ChromeLayoutProvider::GetDistanceMetric(int metric) const {
     case DISTANCE_ACTION_APP_MENU_FOOTER_SEPARATOR_BOTTOM_MARGIN:
       return 4;
     case DISTANCE_ACTION_APP_MENU_CONTAINER_MARGIN:
-      return 16;
+    case DISTANCE_ACTION_APP_MENU_NOTIFICATION_MARGIN:
+      return 12;
     case DISTANCE_ACTION_APP_MENU_FOOTER_BUTTON_BETWEEN_CHILD_SPACING:
     case DISTANCE_ACTION_APP_MENU_FOOTER_BUTTON_CORNER_RADIUS:
     case DISTANCE_ACTION_APP_MENU_HEADER_VERTICAL_MARGIN:
     case DISTANCE_ACTION_APP_MENU_BLOCK_ROW_SPACING:
-    case DISTANCE_ACTION_APP_MENU_BLOCK_ENTRY_CORNER_RADIUS:
       return 8;
+    case DISTANCE_ACTION_APP_MENU_BLOCK_ENTRY_CORNER_RADIUS:
+      return 12;
     case DISTANCE_ACTION_APP_MENU_BLOCK_ENTRY_BETWEEN_CHILD_SPACING:
       return 4;
+    case DISTANCE_ACTION_APP_MENU_MAX_WIDTH:
+      return 800;
   }
   NOTREACHED();
 }

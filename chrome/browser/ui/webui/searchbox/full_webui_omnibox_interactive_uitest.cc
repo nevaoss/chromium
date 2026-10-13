@@ -9,6 +9,7 @@
 #include "base/test/metrics/histogram_tester.h"
 #include "base/test/run_until.h"
 #include "base/test/scoped_feature_list.h"
+#include "base/values.h"
 #include "build/build_config.h"
 #include "chrome/browser/autocomplete/aim_eligibility_service_factory.h"
 #include "chrome/browser/bookmarks/bookmark_model_factory.h"
@@ -52,6 +53,7 @@
 #include "content/public/browser/render_widget_host_view.h"
 #include "content/public/browser/web_contents.h"
 #include "content/public/test/browser_test.h"
+#include "content/public/test/browser_test_utils.h"
 #include "third_party/omnibox_proto/aim_eligibility_response.pb.h"
 #include "ui/base/l10n/l10n_util.h"
 #include "ui/display/screen.h"
@@ -765,7 +767,7 @@ IN_PROC_BROWSER_TEST_F(FullWebUIOmniboxInteractiveTest,
       // Open Tab 1 and focus Omnibox to open WebUI popup.
       OpenInitialTabAndFocusOmnibox(kTab1, GURL("chrome://version/")),
       // Click the reload button while the popup is active and visible.
-      MoveMouseTo(kReloadButtonElementId), ClickMouse(),
+      PressButton(kReloadButtonElementId),
       // Verify that the popup hides cleanly without crashes.
       InAnyContext(WaitForHide(OmniboxPopupPresenter::kRoundedResultsFrame)));
 }
@@ -968,6 +970,58 @@ IN_PROC_BROWSER_TEST_F(FullWebUIOmniboxInteractiveTest, TabSwitchKeepsPopup) {
       // through `kNone` and hidden it.
       CheckResult([&]() { return observed_states; },
                   std::vector<OmniboxPopupState>(), "PopupStateChanges"),
+      CheckResult(
+          [popup_state_manager]() {
+            return popup_state_manager->popup_state();
+          },
+          OmniboxPopupState::kFull, "PopupState"),
+      CheckResult(
+          [this]() {
+            auto* popup_view = BrowserWindow::FromBrowser(browser())
+                                   ->GetLocationBar()
+                                   ->GetOmniboxPopupView();
+            return popup_view->presenter() &&
+                   popup_view->presenter()->IsShown();
+          },
+          true, "PopupIsShown"));
+}
+
+// Verifies that opening a new tab (which auto-focuses the omnibox) keeps the
+// popup on screen without closing or recreating it. Restoring display texts
+// when navigation commits used to revert the omnibox and close the popup to
+// kNone, destroying the popup widget and causing a visible flicker.
+IN_PROC_BROWSER_TEST_F(FullWebUIOmniboxInteractiveTest, NewTabKeepsPopup) {
+  std::vector<OmniboxPopupState> observed_states;
+  base::CallbackListSubscription subscription;
+  auto* const popup_state_manager = BrowserWindow::FromBrowser(browser())
+                                        ->GetLocationBar()
+                                        ->GetOmniboxController()
+                                        ->popup_state_manager();
+
+  RunTestSequence(
+      // Open Tab 1 at chrome://version/ and focus the Omnibox.
+      OpenInitialTabAndFocusOmnibox(kTab1, GURL("chrome://version/")),
+      // Start recording popup state changes before opening a new tab.
+      Do([&]() {
+        subscription = popup_state_manager->AddPopupStateChangedCallback(
+            base::BindLambdaForTesting(
+                [&observed_states](OmniboxPopupState /*old_state*/,
+                                   OmniboxPopupState new_state) {
+                  observed_states.push_back(new_state);
+                }));
+      }),
+      // Open a new tab (NTP), which auto-focuses the omnibox.
+      AddInstrumentedTab(kTab2, GURL(chrome::kChromeUINewTabURL)),
+      WaitForWebContentsReady(kTab2),
+      // Ensure that throughout opening the new tab, the popup state did not
+      // transition through `kNone` and hide it.
+      CheckResult(
+          [&]() {
+            return std::ranges::find(observed_states,
+                                     OmniboxPopupState::kNone) !=
+                   observed_states.end();
+          },
+          false, "NoTransitionToNone"),
       CheckResult(
           [popup_state_manager]() {
             return popup_state_manager->popup_state();
@@ -2086,6 +2140,38 @@ IN_PROC_BROWSER_TEST_F(FullWebUIOmniboxAimInteractiveTest,
                                    "el => el.aimButtonVisible_", true)));
 }
 #endif  // !BUILDFLAG(IS_MAC) && !BUILDFLAG(IS_WIN)
+
+IN_PROC_BROWSER_TEST_F(FullWebUIOmniboxInteractiveTest,
+                       AlignmentMatchesLocationBar) {
+  RunTestSequence(
+      OpenInitialTabAndFocusOmnibox(kTab1, GURL("chrome://version/")),
+      WaitForJsConditionAt(kPopupWebView, kPopupSearchbox,
+                           "el => !!el.shadowRoot.querySelector('#input')"),
+      Do([this]() {
+        auto* location_bar =
+            BrowserView::GetBrowserViewForBrowser(browser())->GetLocationBar();
+        const gfx::Rect location_bar_bounds = location_bar->BoundsInScreen();
+        auto* popup_view = static_cast<OmniboxPopupViewWebUI*>(
+            location_bar->GetOmniboxPopupView());
+        auto* webui = popup_view->presenter()->GetWebUIContent();
+        content::EvalJsResult result =
+            content::EvalJs(webui->GetWebContents(), R"(
+              const r = document.querySelector('omnibox-full-app')
+                  ?.shadowRoot?.querySelector('omnibox-popup-searchbox')
+                  ?.shadowRoot?.querySelector('#input')?.getBoundingClientRect();
+              [r.x, r.y, r.width, r.height];
+            )");
+        const auto& rect = result.ExtractList();
+        const gfx::Point origin = webui->GetBoundsInScreen().origin();
+        EXPECT_EQ(std::round(origin.x() + rect[0].GetDouble()),
+                  location_bar_bounds.x());
+        EXPECT_EQ(std::round(origin.y() + rect[1].GetDouble()),
+                  location_bar_bounds.y());
+        EXPECT_EQ(std::round(rect[2].GetDouble()), location_bar_bounds.width());
+        EXPECT_EQ(std::round(rect[3].GetDouble()),
+                  location_bar_bounds.height());
+      }));
+}
 
 class FullWebUIOmniboxSimplificationInteractiveTest
     : public FullWebUIOmniboxAimInteractiveTestBase {

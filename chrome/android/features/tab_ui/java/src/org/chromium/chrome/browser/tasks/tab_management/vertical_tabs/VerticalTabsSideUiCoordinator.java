@@ -22,7 +22,6 @@ import org.chromium.base.supplier.ObservableSuppliers;
 import org.chromium.base.supplier.SettableNonNullObservableSupplier;
 import org.chromium.build.annotations.NullMarked;
 import org.chromium.build.annotations.Nullable;
-import org.chromium.chrome.R;
 import org.chromium.chrome.browser.tab.Tab;
 import org.chromium.chrome.browser.tasks.tab_management.vertical_tabs.VerticalTabListProperties.RailCollapseState;
 import org.chromium.chrome.browser.ui.side_ui.SideUiContainer;
@@ -37,6 +36,10 @@ import org.chromium.chrome.browser.ui.side_ui.SideUiObserver;
 import org.chromium.chrome.browser.ui.vertical_tabs.VerticalTabUtils;
 import org.chromium.chrome.browser.ui.vertical_tabs.VerticalTabUtils.WindowWidthBoundary;
 import org.chromium.ui.base.ViewUtils;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Set;
 
 /**
  * Coordinator that acts as a container for the Vertical Tab List within the Side UI framework. This
@@ -111,7 +114,8 @@ public class VerticalTabsSideUiCoordinator implements SideUiContainer, SideUiObs
         // Fallback: If hiding VT when spec diff is empty (no hide animation scheduled),
         // update active state immediately to avoid dropping the state update.
         SideUiSpecs currentSpecs = mSideUiCoordinator.getCurrentSideUiSpecs();
-        if (!show && (currentSpecs == null || currentSpecs.getWidth(getAnchorSide()) == 0)) {
+        if (!show
+                && (currentSpecs == null || currentSpecs.getReservedWidth(getAnchorSide()) == 0)) {
             mIsVerticalTabsActiveSupplier.set(false);
         }
     }
@@ -188,7 +192,8 @@ public class VerticalTabsSideUiCoordinator implements SideUiContainer, SideUiObs
 
         @RailCollapseState int effectiveState = mCollapseController.getEffectiveRailCollapseState();
         @Px
-        int renderedWidth = calculateWidthPx(boundary, effectiveState, windowWidth, availableWidth);
+        int renderedWidth =
+                calculateRenderedWidthPx(boundary, effectiveState, windowWidth, availableWidth);
         // Expanding on hover is a transient preview, so it must not resize or reposition anything
         // outside the rail: the rail keeps reserving its collapsed width and renders the expanded
         // width over the web contents and the toolbar.
@@ -221,10 +226,10 @@ public class VerticalTabsSideUiCoordinator implements SideUiContainer, SideUiObs
     }
 
     @Override
-    public void setWidth(int width) {
+    public void setRenderedWidth(int renderedWidth) {
         ViewGroup.LayoutParams layoutParams = mRootView.getLayoutParams();
         if (layoutParams != null) {
-            layoutParams.width = width;
+            layoutParams.width = renderedWidth;
             mRootView.setLayoutParams(layoutParams);
         }
     }
@@ -236,8 +241,8 @@ public class VerticalTabsSideUiCoordinator implements SideUiContainer, SideUiObs
 
     @Override
     public void onUiUpdateCompleted(
-            @Px int oldWidth,
-            @Px int newWidth,
+            @Px int oldReservedWidth,
+            @Px int newReservedWidth,
             @HeightType int oldHeightType,
             @HeightType int newHeightType) {
         mIsVerticalTabsActiveSupplier.set(mManualVisible);
@@ -282,18 +287,27 @@ public class VerticalTabsSideUiCoordinator implements SideUiContainer, SideUiObs
         int side = getAnchorSide();
         // The rail's contents follow the width the rail is rendered at, which is wider than the
         // width it reserves while it is expanded on hover.
-        int newWidth = sideUiSpecs.getRenderedWidth(side);
-        int oldWidth = mSideUiCoordinator.getCurrentSideUiSpecs().getRenderedWidth(side);
+        int newRenderedWidth = sideUiSpecs.getRenderedWidth(side);
+        int oldRenderedWidth = mSideUiCoordinator.getCurrentSideUiSpecs().getRenderedWidth(side);
 
-        if (oldWidth > 0 && newWidth > 0 && oldWidth != newWidth) {
+        if (oldRenderedWidth > 0 && newRenderedWidth > 0 && oldRenderedWidth != newRenderedWidth) {
             mTabListCoordinator.setInTransition(true);
+            // setInTransition() requests a layout with extra layout space for the pinned tabs. Run
+            // it now so the offscreen pinned tabs are attached before the rail's views are
+            // collected as targets below.
+            ViewUtils.triggerSynchronousMeasureAndLayout(mRootView);
             TransitionSet transitionSet =
                     new TransitionSet()
                             .setOrdering(TransitionSet.ORDERING_TOGETHER)
                             .addTransition(new ChangeBounds())
                             .addTransition(new Fade());
-            transitionSet.excludeTarget(R.id.compositor_view_holder, /* exclude= */ true);
-            transitionSet.excludeChildren(R.id.compositor_view_holder, /* exclude= */ true);
+            // Only animate the rail's views, leaving everything outside it untouched.
+            transitionSet.addTarget(mRootView);
+            List<View> railViews = new ArrayList<>();
+            ViewUtils.getAllDescendants(mRootView, railViews, Set.of());
+            for (View view : railViews) {
+                transitionSet.addTarget(view);
+            }
             return transitionSet;
         }
         return null;
@@ -309,7 +323,7 @@ public class VerticalTabsSideUiCoordinator implements SideUiContainer, SideUiObs
         mCollapseController.applyEffectiveState();
     }
 
-    private @Px int calculateWidthPx(
+    private @Px int calculateRenderedWidthPx(
             @WindowWidthBoundary int boundary,
             @RailCollapseState int effectiveState,
             @Px int windowWidthPx,

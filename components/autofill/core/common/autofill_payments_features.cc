@@ -171,6 +171,12 @@ BASE_FEATURE(kAutofillEnableCardBenefitsSync,
 BASE_FEATURE(kAutofillEnableCardOnDeviceVerificationEnforcement,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
+// When enabled, cardholder name fix flow will be offered when a user submits
+// a form with a cardholder name for an existing server card that has an empty
+// cardholder name.
+BASE_FEATURE(kAutofillEnableCardholderNameFixFlow,
+             base::FEATURE_DISABLED_BY_DEFAULT);
+
 // When enabled, this will enhance the CVV storage project. The enhancement will
 // enable CVV storage suggestions for standalone CVC fields.
 BASE_FEATURE(kAutofillEnableCvcStorageAndFillingStandaloneFormEnhancement,
@@ -379,9 +385,6 @@ BASE_FEATURE(kAutofillSkipSaveCardForTabModalPopup,
 // When enabled, eWallet accounts are synced from the Google Payments servers
 // and displayed on the payment methods settings page.
 BASE_FEATURE(kAutofillSyncEwalletAccounts, base::FEATURE_ENABLED_BY_DEFAULT);
-
-BASE_FEATURE(kAutofillTouchToFillShowManualFillForVcnFix,
-             base::FEATURE_ENABLED_BY_DEFAULT);
 #endif  // BUILDFLAG(IS_ANDROID)
 
 // Controls offering credit card upload to Google Payments. Cannot ever be

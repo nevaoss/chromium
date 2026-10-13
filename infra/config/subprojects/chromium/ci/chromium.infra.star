@@ -65,13 +65,6 @@ packager_builder(
     properties = {
         "$build/chromium_3pp": {
             "platform": "linux-amd64",
-            "preprocess": [{
-                "name": "third_party/android_deps",
-                "cmd": [
-                    "{CHECKOUT}/src/third_party/android_deps/fetch_all.py",
-                    "-v",
-                ],
-            }],
             "gclient_config": "chromium",
             "gclient_apply_config": ["android"],
         },
@@ -137,6 +130,7 @@ packager_builder(
     builderless = True,
     cores = None,
     os = os.WINDOWS_DEFAULT,
+    ssd = None,
     console_view_entry = consoles.console_view_entry(
         category = "packager|3pp|win",
         short_name = "amd64",
@@ -176,6 +170,7 @@ packager_builder(
     # https://luci-scheduler.appspot.com/jobs/chromium/android-avd-packager
     schedule = "triggered",
     triggered_by = [],
+    ssd = None,
     console_view_entry = consoles.console_view_entry(
         category = "packager|android",
         short_name = "avd",
@@ -216,6 +211,7 @@ packager_builder(
     executable = "recipe:android/sdk_packager",
     schedule = "0 7 * * *",
     triggered_by = [],
+    ssd = None,
     console_view_entry = consoles.console_view_entry(
         category = "packager|android",
         short_name = "sdk",
@@ -368,6 +364,7 @@ ci.builder(
     executable = "recipe:android/device_flasher",
     schedule = "0 9 * * 1,3",  # at 9am UTC every Monday and Wednesday.
     triggered_by = [],
+    ssd = None,
     console_view_entry = consoles.console_view_entry(
         short_name = "flash",
     ),

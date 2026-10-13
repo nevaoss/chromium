@@ -348,6 +348,7 @@ source_set("impl") {
     deps += [
       ":signin_promo",
       "//chrome/browser/feature_engagement",
+      "//chrome/browser/ui:browser_commands",
       "//chrome/browser/ui:browser_window_header",
       "//chrome/browser/ui:chrome_pages",
       "//chrome/browser/ui:scoped_tabbed_browser_displayer",
@@ -774,6 +775,7 @@ if (!is_android) {
       ":test_support",
       "//chrome/browser/signin:signin_browser_test_base",
       "//chrome/browser/ui",
+      "//chrome/browser/ui:browser_tabstrip",
       "//chrome/test:test_support",
       "//chrome/test:test_support_ui",
       "//chrome/test/base:profile_lifecycle_test_utils",

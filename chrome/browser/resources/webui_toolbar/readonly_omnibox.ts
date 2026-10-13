@@ -93,6 +93,13 @@ class MojoOmniboxInputDelegate implements OmniboxInputDelegate {
       return;
     }
 
+    // Let the IME handle keys during active text composition (e.g. Enter to
+    // commit raw Pinyin text, Space/arrows to pick candidates, Escape to
+    // cancel).
+    if (event.isComposing) {
+      return;
+    }
+
     // OmniboxEditModel keeps track of state of control key separately, and
     // needs to be notified of its releases. Everything else is handled on
     // keydown.
@@ -473,6 +480,19 @@ export class ReadonlyOmniboxElement extends CrLitElement {
       } else {
         this.maybeClearAccessibilityPseudoFocus_();
       }
+    } else if (
+        changedProperties.has('isComposing') && !this.isComposing &&
+        this.omniboxViewState.inlineAutocompletion.length > 0) {
+      this.$.textInput.setInput({
+        text: this.userText,
+        inline: this.omniboxViewState.inlineAutocompletion,
+        moveCursorToEnd: false,
+      });
+      this.setSelection(
+          this.userText.length,
+          this.userText.length +
+              this.omniboxViewState.inlineAutocompletion.length,
+          'forward');
     }
   }
 
@@ -1074,6 +1094,7 @@ export class ReadonlyOmniboxElement extends CrLitElement {
         // In case paste changed only selection.
         this.omniboxViewState.selection = this.getMojoSelection();
         unelided = this.unelideAndUpdateSelection(UnelisionGesture.OTHER);
+        ++this.omniboxViewState.uiVersion;
       }
       this.sendInputToBrowser(unelided, /*paste=*/ true);
     }
@@ -1110,6 +1131,12 @@ export class ReadonlyOmniboxElement extends CrLitElement {
     this.maybeClearAccessibilityPseudoFocus_();
     if (this.mouseButtonDown_ !== 0) {
       return;
+    }
+    if (this.hasFocus()) {
+      // Sync selection changes that happen without a keyup event (e.g., Edit >
+      // Select All menu action, mouse/touch gestures, key repeat, accessibility
+      // actions).
+      this.checkForSelectionChange_();
     }
     this.updateAdjustedCopyResult_();
   }

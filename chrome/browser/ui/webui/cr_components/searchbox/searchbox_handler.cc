@@ -943,7 +943,7 @@ SearchboxHandler::CreateAutocompleteMatch(
   if (MatchHasSideTypeAndRenderType(
           match, omnibox::GroupConfig_SideType_SECONDARY,
           omnibox::GroupConfig_RenderType_HORIZONTAL, suggestion_groups_map) &&
-      (match.type != AutocompleteMatchType::SEARCH_SUGGEST_ENTITY ||
+      (match.type != omnibox::AutocompleteMatchType::kSearchSuggestEntity ||
        !match.image_url.is_valid())) {
     return std::nullopt;
   }
@@ -1000,11 +1000,11 @@ SearchboxHandler::CreateAutocompleteMatch(
   mojom_match->swap_contents_and_description =
       match.swap_contents_and_description;
   mojom_match->show_contextual_description = false;
-  mojom_match->type = AutocompleteMatchType::ToString(match.type);
+  mojom_match->type = omnibox::AutocompleteMatchTypeToString(match.type);
   mojom_match->supports_deletion = match.SupportsDeletion();
   mojom_match->is_two_row_suggestion =
       !mojom_match->image_url.empty() ||
-      match.type == AutocompleteMatchType::CALCULATOR ||
+      match.type == omnibox::AutocompleteMatchType::kCalculator ||
       match.enterprise_search_aggregator_type ==
           AutocompleteMatch::EnterpriseSearchAggregatorType::PEOPLE;
   if (match.suggest_template) {
@@ -1041,13 +1041,13 @@ SearchboxHandler::CreateAutocompleteMatch(
   std::u16string header_text =
       autocomplete_controller()->GetSuggestionGroupHeaderText(
           match.suggestion_group_id);
-  mojom_match->a11y_label = AutocompleteMatchType::ToAccessibilityLabel(
+  mojom_match->a11y_label = omnibox::AutocompleteMatchToAccessibilityLabel(
       match, header_text, match.contents, line, 0,
       GetAdditionalA11yMessage(match,
                                searchbox::mojom::SelectionLineState::kNormal));
 
   mojom_match->remove_button_a11y_label =
-      AutocompleteMatchType::ToAccessibilityLabel(
+      omnibox::AutocompleteMatchToAccessibilityLabel(
           match, header_text, match.contents, line, 0,
           GetAdditionalA11yMessage(match, searchbox::mojom::SelectionLineState::
                                               kFocusedButtonRemoveSuggestion));
@@ -1218,8 +1218,14 @@ void SearchboxHandler::SendAvailableKeywordModels() {
 
   TemplateURLService* template_url_service = GetTemplateURLService();
   if (!template_url_service) {
-    page_->SetAvailableKeywordModels({});
+    page_->SetAvailableKeywordModels({}, "");
     return;
+  }
+
+  std::string default_search_provider_keyword;
+  if (const TemplateURL* dse =
+          template_url_service->GetDefaultSearchProvider()) {
+    default_search_provider_keyword = base::UTF16ToUTF8(dse->keyword());
   }
 
   std::vector<searchbox::mojom::InputKeywordModelPtr> models;
@@ -1277,7 +1283,8 @@ void SearchboxHandler::SendAvailableKeywordModels() {
     models.push_back(std::move(keyword_model));
   }
 
-  page_->SetAvailableKeywordModels(std::move(models));
+  page_->SetAvailableKeywordModels(std::move(models),
+                                   default_search_provider_keyword);
 }
 
 void SearchboxHandler::OnKeywordSpaceTriggeringPrefChanged() {
@@ -1342,20 +1349,8 @@ void SearchboxHandler::QueryAutocomplete(
   if (!keyword.empty()) {
     TemplateURLService* service = GetTemplateURLService();
     if (service) {
-      std::u16string keyword16;
-      // TODO(b:504669216): There may actually exist a `TemplateURL` with
-      //   shortcut '?'. Using '?' as a sentinel value to represent the default
-      //   search engine will incorrectly trigger the default search engine even
-      //   when the user wanted the '?' search engine.
-      if (keyword == "?") {
-        template_url = service->GetDefaultSearchProvider();
-        if (template_url) {
-          keyword16 = template_url->keyword();
-        }
-      } else {
-        keyword16 = base::UTF8ToUTF16(keyword);
-        template_url = service->GetTemplateURLForKeyword(keyword16);
-      }
+      const std::u16string keyword16 = base::UTF8ToUTF16(keyword);
+      template_url = service->GetTemplateURLForKeyword(keyword16);
       if (template_url) {
         is_keyword_selected = true;
         input_with_keyword = keyword16 + u" " + input;
@@ -1369,8 +1364,11 @@ void SearchboxHandler::QueryAutocomplete(
   cursor_position = std::min(
       cursor_position, static_cast<uint32_t>(input_with_keyword.length()));
 
-  // Early exit if a query is already in progress for on focus inputs.
-  if (!autocomplete_controller()->done() && is_on_focus) {
+  // Early exit for a new on-focus query if the previous on-focus query is
+  // pending. Note that on-focus == zero suggest. This avoids redundant
+  // restarts.
+  if (!autocomplete_controller()->done() &&
+      autocomplete_controller()->input().IsZeroSuggest() && is_on_focus) {
     return;
   }
 
@@ -1392,8 +1390,7 @@ void SearchboxHandler::QueryAutocomplete(
           KeywordState::kKeyword, template_url->keyword(),
           AutocompleteMatch::GetKeywordPlaceholder(
               template_url, client() && client()->IsHistoryEmbeddingsEnabled()),
-          keyword == "?" ? metrics::OmniboxEventProto::QUESTION_MARK
-                         : metrics::OmniboxEventProto::SPACE_AT_END);
+          metrics::OmniboxEventProto::SPACE_AT_END);
     } else {
       edit_model()->SetKeywordInfo(KeywordState::kNone, u"", u"",
                                    metrics::OmniboxEventProto::INVALID);
@@ -1581,28 +1578,26 @@ void SearchboxHandler::OpenAutocompleteMatch(
 
 OmniboxPopupSelection ConvertSelection(
     searchbox::mojom::OmniboxPopupSelectionPtr selection) {
-  OmniboxPopupSelection::LineState state =
-      OmniboxPopupSelection::LineState::LINE_STATE_MAX_VALUE;
+  std::optional<OmniboxPopupSelection::LineState> state;
   switch (selection->state) {
     case searchbox::mojom::SelectionLineState::kNormal: {
-      state = OmniboxPopupSelection::LineState::NORMAL;
+      state = OmniboxPopupSelection::LineState::kNormal;
       break;
     }
     case searchbox::mojom::SelectionLineState::kKeywordMode: {
-      state = OmniboxPopupSelection::LineState::KEYWORD_MODE;
+      state = OmniboxPopupSelection::LineState::kKeywordMode;
       break;
     }
     case searchbox::mojom::SelectionLineState::kFocusedButtonAction: {
-      state = OmniboxPopupSelection::LineState::FOCUSED_BUTTON_ACTION;
+      state = OmniboxPopupSelection::LineState::kFocusedButtonAction;
       break;
     }
     case searchbox::mojom::SelectionLineState::kFocusedButtonRemoveSuggestion: {
-      state =
-          OmniboxPopupSelection::LineState::FOCUSED_BUTTON_REMOVE_SUGGESTION;
+      state = OmniboxPopupSelection::LineState::kFocusedButtonRemoveSuggestion;
       break;
     }
     case searchbox::mojom::SelectionLineState::kFocusedButtonAim: {
-      state = OmniboxPopupSelection::LineState::FOCUSED_BUTTON_AIM;
+      state = OmniboxPopupSelection::LineState::kFocusedButtonAim;
       break;
     }
     case searchbox::mojom::SelectionLineState::kFocusedButtonContextEntrypoint:
@@ -1612,11 +1607,11 @@ OmniboxPopupSelection ConvertSelection(
       NOTREACHED();
     }
     case searchbox::mojom::SelectionLineState::kCtrlEnter: {
-      state = OmniboxPopupSelection::LineState::CTRL_ENTER;
+      state = OmniboxPopupSelection::LineState::kCtrlEnter;
       break;
     }
   }
-  CHECK_NE(state, OmniboxPopupSelection::LineState::LINE_STATE_MAX_VALUE);
+  CHECK(state.has_value());
   // Special case line for mojom equivalent of kNoMatch; it is represented
   // as uint8_t so direct conversion would become a positive out of bounds
   // index.
@@ -1624,7 +1619,7 @@ OmniboxPopupSelection ConvertSelection(
       selection->line == static_cast<uint8_t>(OmniboxPopupSelection::kNoMatch)
           ? OmniboxPopupSelection::kNoMatch
           : selection->line,
-      state, selection->action_index);
+      state.value(), selection->action_index);
 }
 
 void SearchboxHandler::SetPopupSelection(
@@ -1653,7 +1648,7 @@ void SearchboxHandler::OpenPopupSelection(
   // text rather than an AutocompleteResult match item, so it is exempted from
   // being dropped on result sequence ID mismatches.
   const bool is_verbatim_ctrl_enter =
-      popup_selection.state == OmniboxPopupSelection::CTRL_ENTER &&
+      popup_selection.state == OmniboxPopupSelection::LineState::kCtrlEnter &&
       popup_selection.line == OmniboxPopupSelection::kNoMatch;
 
   if (!base::FeatureList::IsEnabled(
@@ -1688,7 +1683,7 @@ void SearchboxHandler::OpenPopupSelection(
   // For Ctrl+Enter selections, the match is generated here rather than taken
   // from the result, and the selection may have no corresponding match at all,
   // e.g. for verbatim input, so this is handled before the range check below.
-  if (popup_selection.state == OmniboxPopupSelection::CTRL_ENTER &&
+  if (popup_selection.state == OmniboxPopupSelection::LineState::kCtrlEnter &&
       autocomplete_controller()->history_url_provider()) {
     const AutocompleteInput& input = autocomplete_controller()->input();
     const AutocompleteResult& result = autocomplete_controller()->result();
@@ -1715,7 +1710,8 @@ void SearchboxHandler::OpenPopupSelection(
   const AutocompleteMatch& match =
       autocomplete_controller()->result().match_at(popup_selection.line);
 
-  if (popup_selection.state == OmniboxPopupSelection::FOCUSED_BUTTON_ACTION) {
+  if (popup_selection.state ==
+      OmniboxPopupSelection::LineState::kFocusedButtonAction) {
     if (popup_selection.action_index < match.actions.size()) {
       auto* action = match.actions[popup_selection.action_index].get();
       if (action) {
@@ -1812,7 +1808,8 @@ void SearchboxHandler::ExecuteAction(uint8_t line,
   } else {
     edit_model()->OpenSelection(
         OmniboxPopupSelection(
-            line, OmniboxPopupSelection::FOCUSED_BUTTON_ACTION, action_index),
+            line, OmniboxPopupSelection::LineState::kFocusedButtonAction,
+            action_index),
         match_selection_timestamp, disposition);
   }
 }

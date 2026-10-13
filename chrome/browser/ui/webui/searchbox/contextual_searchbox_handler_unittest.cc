@@ -2553,7 +2553,7 @@ TEST_F(ContextualSearchboxHandlerTest,
     AutocompleteMatch match;
     match.provider = &fake_controller->GetFakeProvider();
     match.destination_url = GURL("https://www.google.com");
-    match.type = AutocompleteMatchType::SEARCH_WHAT_YOU_TYPED;
+    match.type = omnibox::AutocompleteMatchType::kSearchWhatYouTyped;
 
     fake_controller->published_result_.AppendMatches({match});
 
@@ -2589,12 +2589,12 @@ TEST_F(ContextualSearchboxHandlerTest,
     AutocompleteMatch match0;
     match0.provider = &fake_controller->GetFakeProvider();
     match0.destination_url = GURL("https://www.google.com");
-    match0.type = AutocompleteMatchType::SEARCH_WHAT_YOU_TYPED;
+    match0.type = omnibox::AutocompleteMatchType::kSearchWhatYouTyped;
 
     AutocompleteMatch match1;
     match1.provider = &fake_controller->GetFakeProvider();
     match1.destination_url = GURL("https://www.google.com/search?q=suggestion");
-    match1.type = AutocompleteMatchType::SEARCH_SUGGEST;
+    match1.type = omnibox::AutocompleteMatchType::kSearchSuggest;
 
     fake_controller->published_result_.AppendMatches({match0, match1});
 

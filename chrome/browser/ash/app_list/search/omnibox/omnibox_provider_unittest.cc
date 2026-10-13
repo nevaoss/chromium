@@ -17,6 +17,7 @@
 #include "chrome/browser/ash/app_list/search/test/test_search_controller.h"
 #include "chrome/browser/ash/app_list/test/test_app_list_controller_delegate.h"
 #include "chrome/browser/ash/browser_delegate/keyed_service_provider/history_service_provider_impl.h"
+#include "chrome/browser/bookmarks/bookmark_model_factory.h"
 #include "chrome/browser/search_engines/template_url_service_factory.h"
 #include "chrome/common/chrome_constants.h"
 #include "chrome/test/base/testing_browser_process.h"
@@ -55,7 +56,7 @@ AutocompleteMatch NewOmniboxResult(const std::string& url) {
   result.stripped_destination_url = GURL(url);
   result.contents = u"contents";
   result.description = u"description";
-  result.type = AutocompleteMatchType::BOOKMARK_TITLE;
+  result.type = omnibox::AutocompleteMatchType::kBookmarkTitle;
 
   return result;
 }
@@ -68,7 +69,7 @@ AutocompleteMatch NewCalculatorResult(const std::string& url) {
   result.stripped_destination_url = GURL(url);
   result.contents = u"contents";
   result.description = u"description";
-  result.type = AutocompleteMatchType::CALCULATOR;
+  result.type = omnibox::AutocompleteMatchType::kCalculator;
 
   return result;
 }
@@ -81,7 +82,7 @@ AutocompleteMatch NewOpenTabResult(const std::string& url) {
   result.stripped_destination_url = GURL(url);
   result.contents = u"contents";
   result.description = u"description";
-  result.type = AutocompleteMatchType::OPEN_TAB;
+  result.type = omnibox::AutocompleteMatchType::kOpenTab;
 
   return result;
 }
@@ -146,6 +147,7 @@ class OmniboxProviderTest : public testing::Test {
     auto provider = std::make_unique<OmniboxProvider>(
         profile_, list_controller_.get(),
         TemplateURLServiceFactory::GetForProfile(profile_),
+        BookmarkModelFactory::GetForBrowserContext(profile_),
         /*provider_types=*/0);
     provider_ = provider.get();
     search_controller_->AddProvider(std::move(provider));
@@ -285,7 +287,7 @@ TEST_F(OmniboxProviderTest, Deduplicate) {
   auto history_result = NewOmniboxResult("https://example.com/result_1");
   history_result.contents = u"history";
   history_result.description = u"history description";
-  history_result.type = AutocompleteMatchType::SEARCH_HISTORY;
+  history_result.type = omnibox::AutocompleteMatchType::kSearchHistory;
 
   std::vector<AutocompleteMatch> to_produce;
   AutocompleteResult result;

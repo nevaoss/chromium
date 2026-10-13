@@ -252,6 +252,12 @@ void OmniboxPopupHandler::SetFocus(bool is_focused,
   page_->SetFocus(is_focused, query_zps, select_all);
 }
 
+void OmniboxPopupHandler::FocusSearchWithDefaultSearchEngineKeywordMode() {
+  if (page_.is_bound()) {
+    page_->FocusSearchWithDefaultSearchEngineKeywordMode();
+  }
+}
+
 void OmniboxPopupHandler::ClearAutocompleteMatches() {
   page_->ClearAutocompleteMatches();
 }
@@ -312,8 +318,9 @@ void OmniboxPopupHandler::LogEscapeAction(
 void OmniboxPopupHandler::OpenAimPopup(bool via_keyboard) {
   if (controller_) {
     controller_->edit_model()->OpenSelection(
-        OmniboxPopupSelection(OmniboxPopupSelection::kNoMatch,
-                              OmniboxPopupSelection::FOCUSED_BUTTON_AIM),
+        OmniboxPopupSelection(
+            OmniboxPopupSelection::kNoMatch,
+            OmniboxPopupSelection::LineState::kFocusedButtonAim),
         via_keyboard);
   }
 }

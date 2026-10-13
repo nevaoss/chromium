@@ -10,6 +10,8 @@
 #include "base/test/scoped_feature_list.h"
 #include "base/test/task_environment.h"
 #include "build/build_config.h"
+#include "ui/accessibility/ax_mode.h"
+#include "ui/accessibility/platform/ax_platform_for_test.h"
 #include "ui/base/interaction/element_identifier.h"
 #include "ui/events/event_constants.h"
 #include "ui/events/keycodes/keyboard_codes.h"
@@ -20,6 +22,7 @@
 #include "ui/views/input_protection/input_protection_interactive_test.h"
 #include "ui/views/input_protection/input_protection_specification.h"
 #include "ui/views/input_protection/occluded_widget_input_protector.h"
+#include "ui/views/input_protection/window_activation_input_protection_policy.h"
 #include "ui/views/test/views_test_base.h"
 #include "ui/views/test/widget_activation_waiter.h"
 #include "ui/views/test/widget_test.h"
@@ -37,6 +40,10 @@ namespace {
 
 DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kPrimaryButtonId);
 DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kSecondaryButtonId);
+DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kPrimaryAotButtonId);
+DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kSecondaryAotButtonId);
+DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kBubbleButtonId);
+DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kAuxiliaryButtonId);
 
 constexpr gfx::Rect kInitialWidgetBounds(100, 100, 400, 400);
 constexpr gfx::Point kPrimaryButtonOrigin(20, 20);
@@ -106,15 +113,28 @@ class InputProtectionInteractiveUiTest : public InputProtectionInteractiveTest {
 
   void OnPrimaryButtonClicked() { primary_click_count_++; }
   void OnSecondaryButtonClicked() { secondary_click_count_++; }
+  void OnPrimaryAotButtonClicked() { primary_aot_click_count_++; }
+  void OnSecondaryAotButtonClicked() { secondary_aot_click_count_++; }
+  void OnBubbleButtonClicked() { bubble_click_count_++; }
 
   const int& primary_click_count() const { return primary_click_count_; }
   const int& secondary_click_count() const { return secondary_click_count_; }
+  const int& primary_aot_click_count() const {
+    return primary_aot_click_count_;
+  }
+  const int& secondary_aot_click_count() const {
+    return secondary_aot_click_count_;
+  }
+  const int& bubble_click_count() const { return bubble_click_count_; }
 
  private:
   base::test::ScopedFeatureList scoped_feature_list_;
   std::unique_ptr<Widget> widget_;
   int primary_click_count_ = 0;
   int secondary_click_count_ = 0;
+  int primary_aot_click_count_ = 0;
+  int secondary_aot_click_count_ = 0;
+  int bubble_click_count_ = 0;
 
 #if BUILDFLAG(IS_MAC)
   // Use synchronous activation to prevent native activation timeouts on macOS.
@@ -127,11 +147,11 @@ class InputProtectionInteractiveUiTest : public InputProtectionInteractiveTest {
 // cooldown.
 TEST_F(InputProtectionInteractiveUiTest, InitialShowCooldown) {
   RunTestSequence(
-      EnableInputEventActivationProtection(kPrimaryButtonId),
+      EnableInputEventActivationProtection(),
       TriggerShowCooldown(kPrimaryButtonId),
-      ClickExpectingBlocked(kPrimaryButtonId, primary_click_count(), 0),
+      ClickExpectingBlocked(kPrimaryButtonId, primary_click_count()),
       AdvancePastInputProtectionInterval(),
-      ClickExpectingAllowed(kPrimaryButtonId, primary_click_count(), 1));
+      ClickExpectingAllowed(kPrimaryButtonId, primary_click_count()));
 }
 
 // Verifies that rapid successive clicks (within the double click interval)
@@ -139,15 +159,15 @@ TEST_F(InputProtectionInteractiveUiTest, InitialShowCooldown) {
 // hijacking.
 TEST_F(InputProtectionInteractiveUiTest, RapidSuccessiveClicksBlocked) {
   RunTestSequence(
-      EnableInputEventActivationProtection(kPrimaryButtonId),
+      EnableInputEventActivationProtection(),
       AdvancePastInputProtectionInterval(),
       // Initial click is allowed after show cooldown.
-      ClickExpectingAllowed(kPrimaryButtonId, primary_click_count(), 1),
+      ClickExpectingAllowed(kPrimaryButtonId, primary_click_count()),
       // Rapid second click immediately following the first is blocked.
-      ClickExpectingBlocked(kPrimaryButtonId, primary_click_count(), 1),
+      ClickExpectingBlocked(kPrimaryButtonId, primary_click_count()),
       AdvancePastInputProtectionInterval(),
       // After the protection cooldown expires, subsequent click is allowed.
-      ClickExpectingAllowed(kPrimaryButtonId, primary_click_count(), 2));
+      ClickExpectingAllowed(kPrimaryButtonId, primary_click_count()));
 }
 
 // Verifies that when a mouse press is blocked during input protection,
@@ -156,7 +176,7 @@ TEST_F(InputProtectionInteractiveUiTest, RapidSuccessiveClicksBlocked) {
 TEST_F(InputProtectionInteractiveUiTest,
        MouseReleaseAfterInputProtectionDiscarded) {
   RunTestSequence(
-      EnableInputEventActivationProtection(kPrimaryButtonId),
+      EnableInputEventActivationProtection(),
       TriggerShowCooldown(kPrimaryButtonId), MousePress(kPrimaryButtonId),
       AdvancePastInputProtectionInterval(), MouseRelease(kPrimaryButtonId),
       CheckVariable(primary_click_count(), 0, "primary_click_count"));
@@ -166,7 +186,7 @@ TEST_F(InputProtectionInteractiveUiTest,
 // input protection.
 TEST_F(InputProtectionInteractiveUiTest,
        TabKeyTraversalAllowedDuringInputProtection) {
-  RunTestSequence(EnableInputEventActivationProtection(kPrimaryButtonId),
+  RunTestSequence(EnableInputEventActivationProtection(),
                   TriggerShowCooldown(kPrimaryButtonId),
                   FocusElement(kPrimaryButtonId),
                   KeyPressAndRelease(kPrimaryButtonId, ui::VKEY_TAB),
@@ -178,7 +198,7 @@ TEST_F(InputProtectionInteractiveUiTest,
 TEST_F(InputProtectionInteractiveUiTest,
        ShiftTabKeyTraversalAllowedDuringInputProtection) {
   RunTestSequence(
-      EnableInputEventActivationProtection(kPrimaryButtonId),
+      EnableInputEventActivationProtection(),
       TriggerShowCooldown(kPrimaryButtonId), FocusElement(kSecondaryButtonId),
       KeyPressAndRelease(kSecondaryButtonId, ui::VKEY_TAB, ui::EF_SHIFT_DOWN),
       CheckViewProperty(kPrimaryButtonId, &View::HasFocus, true));
@@ -187,14 +207,14 @@ TEST_F(InputProtectionInteractiveUiTest,
 // Verifies that pressing the Space key on a focused button is blocked during
 // input protection.
 TEST_F(InputProtectionInteractiveUiTest, SpaceKeyBlockedDuringInputProtection) {
-  RunTestSequence(
-      EnableInputEventActivationProtection(kPrimaryButtonId),
-      TriggerShowCooldown(kPrimaryButtonId), FocusElement(kPrimaryButtonId),
-      KeyPressAndReleaseExpectingBlocked(kPrimaryButtonId, ui::VKEY_SPACE,
-                                         primary_click_count(), 0),
-      AdvancePastInputProtectionInterval(),
-      KeyPressAndReleaseExpectingAllowed(kPrimaryButtonId, ui::VKEY_SPACE,
-                                         primary_click_count(), 1));
+  RunTestSequence(EnableInputEventActivationProtection(),
+                  TriggerShowCooldown(kPrimaryButtonId),
+                  FocusElement(kPrimaryButtonId),
+                  KeyPressAndReleaseExpectingBlocked(
+                      kPrimaryButtonId, ui::VKEY_SPACE, primary_click_count()),
+                  AdvancePastInputProtectionInterval(),
+                  KeyPressAndReleaseExpectingAllowed(
+                      kPrimaryButtonId, ui::VKEY_SPACE, primary_click_count()));
 }
 
 // Verifies that pressing the Return key on a focused button is blocked during
@@ -202,47 +222,58 @@ TEST_F(InputProtectionInteractiveUiTest, SpaceKeyBlockedDuringInputProtection) {
 TEST_F(InputProtectionInteractiveUiTest,
        ReturnKeyBlockedDuringInputProtection) {
   RunTestSequence(
-      EnableInputEventActivationProtection(kPrimaryButtonId),
+      EnableInputEventActivationProtection(),
       TriggerShowCooldown(kPrimaryButtonId), FocusElement(kPrimaryButtonId),
       KeyPressAndReleaseExpectingBlocked(kPrimaryButtonId, ui::VKEY_RETURN,
-                                         primary_click_count(), 0),
+                                         primary_click_count()),
       AdvancePastInputProtectionInterval(),
       KeyPressAndReleaseExpectingAllowed(kPrimaryButtonId, ui::VKEY_RETURN,
-                                         primary_click_count(), 1));
+                                         primary_click_count()));
 }
 
 // Verifies that an Always-On-Top window actively occluding an element blocks
-// clicks, and that clicks succeed after the AOT window is removed and cooldown
+// events, and that clicks succeed after the AOT window is removed and cooldown
 // expires.
-TEST_F(InputProtectionInteractiveUiTest, LiveAotWindowBlocksClicks) {
+TEST_F(InputProtectionInteractiveUiTest, LiveAotWindowBlocksEvents) {
   RunTestSequence(
+      EnableInputEventActivationProtection(),
+      AdvancePastInputProtectionInterval(),
       OccludeElementWithAotWindow(kPrimaryButtonId),
-      ClickExpectingBlocked(kPrimaryButtonId, primary_click_count(), 0),
-      HideAotWindow(), AdvancePastInputProtectionInterval(),
-      ClickExpectingAllowed(kPrimaryButtonId, primary_click_count(), 1));
+      // Reactivate target surface so it can receive focus (required on macOS).
+      ActivateSurface(kPrimaryButtonId), FocusElement(kPrimaryButtonId),
+      // Fully occluded element blocks Return key.
+      KeyPressAndReleaseExpectingBlocked(kPrimaryButtonId, ui::VKEY_RETURN,
+                                         primary_click_count()),
+      HideAotWindows(), AdvancePastInputProtectionInterval(),
+      // After AOT window dismissal and cooldown expiration, clicks succeed.
+      ClickExpectingAllowed(kPrimaryButtonId, primary_click_count()));
 }
 
 // Verifies that an Always-On-Top window occluding one element does not block
 // clicks on an unoccluded element.
 TEST_F(InputProtectionInteractiveUiTest, AotWindowAllowsUnoccludedClicks) {
   RunTestSequence(
+      EnableInputEventActivationProtection(),
+      AdvancePastInputProtectionInterval(),
       OccludeElementWithAotWindow(kSecondaryButtonId),
       // Clicks on the unoccluded primary button succeed.
-      ClickExpectingAllowed(kPrimaryButtonId, primary_click_count(), 1),
-      // Clicks on the occluded secondary button are blocked.
-      ClickExpectingBlocked(kSecondaryButtonId, secondary_click_count(), 0));
+      ClickExpectingAllowed(kPrimaryButtonId, primary_click_count()),
+      // Key presses targeting the occluded secondary button are blocked.
+      ActivateSurface(kSecondaryButtonId), FocusElement(kSecondaryButtonId),
+      KeyPressAndReleaseExpectingBlocked(kSecondaryButtonId, ui::VKEY_SPACE,
+                                         secondary_click_count()));
 }
 
 // Verifies that dismissing an active Always-On-Top window triggers historical
 // occlusion, enforcing a cooldown during which clicks remain blocked.
 TEST_F(InputProtectionInteractiveUiTest, AotWindowDismissalEnforcesCooldown) {
   RunTestSequence(
-      OccludeElementWithAotWindow(kPrimaryButtonId), HideAotWindow(),
+      OccludeElementWithAotWindow(kPrimaryButtonId), HideAotWindows(),
       // Immediately after dismissal, historical occlusion blocks clicks.
-      ClickExpectingBlocked(kPrimaryButtonId, primary_click_count(), 0),
+      ClickExpectingBlocked(kPrimaryButtonId, primary_click_count()),
       AdvancePastInputProtectionInterval(),
       // After cooldown expires, clicks succeed.
-      ClickExpectingAllowed(kPrimaryButtonId, primary_click_count(), 1));
+      ClickExpectingAllowed(kPrimaryButtonId, primary_click_count()));
 }
 
 // Verifies that a pop-away attack (AOT window shown and immediately hidden)
@@ -250,11 +281,11 @@ TEST_F(InputProtectionInteractiveUiTest, AotWindowDismissalEnforcesCooldown) {
 TEST_F(InputProtectionInteractiveUiTest, PopAwayAttackEnforcesCooldown) {
   RunTestSequence(
       TriggerAotPopAwayAttack(kPrimaryButtonId),
-      ClickExpectingBlocked(kPrimaryButtonId, primary_click_count(), 0),
+      ClickExpectingBlocked(kPrimaryButtonId, primary_click_count()),
       AdvanceHalfwayThroughInputProtectionInterval(),
-      ClickExpectingBlocked(kPrimaryButtonId, primary_click_count(), 0),
+      ClickExpectingBlocked(kPrimaryButtonId, primary_click_count()),
       AdvancePastInputProtectionInterval(),
-      ClickExpectingAllowed(kPrimaryButtonId, primary_click_count(), 1));
+      ClickExpectingAllowed(kPrimaryButtonId, primary_click_count()));
 }
 
 // Verifies that a moved Always-On-Top window records historical occlusion at
@@ -262,13 +293,12 @@ TEST_F(InputProtectionInteractiveUiTest, PopAwayAttackEnforcesCooldown) {
 TEST_F(InputProtectionInteractiveUiTest, MovedAotWindowEnforcesCooldown) {
   RunTestSequence(
       OccludeElementWithAotWindow(kPrimaryButtonId),
-      ClickExpectingBlocked(kPrimaryButtonId, primary_click_count(), 0),
-      MoveAotWindowToUnocclude(kPrimaryButtonId),
+      MoveAotWindowsToUnocclude(kPrimaryButtonId),
       // Vacated area is still protected by historical occlusion.
-      ClickExpectingBlocked(kPrimaryButtonId, primary_click_count(), 0),
+      ClickExpectingBlocked(kPrimaryButtonId, primary_click_count()),
       AdvancePastInputProtectionInterval(),
       // After cooldown expires, clicks at the vacated position succeed.
-      ClickExpectingAllowed(kPrimaryButtonId, primary_click_count(), 1));
+      ClickExpectingAllowed(kPrimaryButtonId, primary_click_count()));
 }
 
 // Verifies that view defined protected bounds via
@@ -293,16 +323,16 @@ TEST_F(InputProtectionInteractiveUiTest, CustomProtectedBoundsEnforced) {
                                   return {region};
                                 },
                                 protected_region)),
-      OccludeElementWithAotWindow(kPrimaryButtonId), HideAotWindow(),
+      OccludeElementWithAotWindow(kPrimaryButtonId), HideAotWindows(),
       // Clicks within the protected region are blocked during cooldown.
-      ClickExpectingBlocked(kPrimaryButtonId, primary_click_count(), 0,
+      ClickExpectingBlocked(kPrimaryButtonId, primary_click_count(),
                             inside_point),
       // Clicks outside the protected region are permitted.
-      ClickExpectingAllowed(kPrimaryButtonId, primary_click_count(), 1,
+      ClickExpectingAllowed(kPrimaryButtonId, primary_click_count(),
                             outside_point),
       AdvancePastInputProtectionInterval(),
       // After cooldown expires, clicks within the protected region succeed.
-      ClickExpectingAllowed(kPrimaryButtonId, primary_click_count(), 2,
+      ClickExpectingAllowed(kPrimaryButtonId, primary_click_count(),
                             inside_point));
 }
 
@@ -311,22 +341,22 @@ TEST_F(InputProtectionInteractiveUiTest, CustomProtectedBoundsEnforced) {
 // remain blocked during the post-dismissal cooldown.
 TEST_F(InputProtectionInteractiveUiTest, FullyOccludedKeyEventsBlocked) {
   RunTestSequence(
-      EnableInputEventActivationProtection(kPrimaryButtonId),
+      EnableInputEventActivationProtection(),
       AdvancePastInputProtectionInterval(),
       OccludeElementWithAotWindow(kPrimaryButtonId),
       // Reactivate target surface so it can receive focus (required on macOS).
       ActivateSurface(kPrimaryButtonId), FocusElement(kPrimaryButtonId),
       // Fully occluded element blocks Space key without a specification.
       KeyPressAndReleaseExpectingBlocked(kPrimaryButtonId, ui::VKEY_SPACE,
-                                         primary_click_count(), 0),
-      HideAotWindow(),
+                                         primary_click_count()),
+      HideAotWindows(),
       // Immediately after dismissal, historical occlusion blocks Space key.
       KeyPressAndReleaseExpectingBlocked(kPrimaryButtonId, ui::VKEY_SPACE,
-                                         primary_click_count(), 0),
+                                         primary_click_count()),
       AdvancePastInputProtectionInterval(),
       // After cooldown expires, Space key succeeds.
       KeyPressAndReleaseExpectingAllowed(kPrimaryButtonId, ui::VKEY_SPACE,
-                                         primary_click_count(), 1));
+                                         primary_click_count()));
 }
 
 // Verifies that partially occluding an element allows key presses by default,
@@ -346,7 +376,7 @@ TEST_F(InputProtectionInteractiveUiTest,
                                   kOccludedWidth, kButtonSize.height());
 
   RunTestSequence(
-      EnableInputEventActivationProtection(kPrimaryButtonId),
+      EnableInputEventActivationProtection(),
       AdvancePastInputProtectionInterval(),
       // Partially occlude only a slice of the element.
       OccludeRectWithAotWindow(kPrimaryButtonId, occluded_region),
@@ -355,7 +385,7 @@ TEST_F(InputProtectionInteractiveUiTest,
       // Without spec: Check allows Space key because view is not fully
       // occluded.
       KeyPressAndReleaseExpectingAllowed(kPrimaryButtonId, ui::VKEY_SPACE,
-                                         primary_click_count(), 1),
+                                         primary_click_count()),
       // Install spec designating the right half as protected.
       InstallInputProtectionSpecification(
           kPrimaryButtonId, base::BindRepeating(
@@ -367,11 +397,11 @@ TEST_F(InputProtectionInteractiveUiTest,
       // With spec: Check blocks Space key because the occluding window
       // intersects the protected region.
       KeyPressAndReleaseExpectingBlocked(kPrimaryButtonId, ui::VKEY_SPACE,
-                                         primary_click_count(), 1),
-      HideAotWindow(), AdvancePastInputProtectionInterval(),
+                                         primary_click_count()),
+      HideAotWindows(), AdvancePastInputProtectionInterval(),
       // After cooldown expires, Space key succeeds.
       KeyPressAndReleaseExpectingAllowed(kPrimaryButtonId, ui::VKEY_SPACE,
-                                         primary_click_count(), 2));
+                                         primary_click_count()));
 }
 
 // Verifies that the forward focus navigation key (Tab) is not blocked even
@@ -383,6 +413,134 @@ TEST_F(InputProtectionInteractiveUiTest, TabKeyTraversalAllowedWhileOccluded) {
       ActivateSurface(kPrimaryButtonId), FocusElement(kPrimaryButtonId),
       KeyPressAndRelease(kPrimaryButtonId, ui::VKEY_TAB),
       CheckViewProperty(kSecondaryButtonId, &View::HasFocus, true));
+}
+
+// Verifies that assistive technology (accessibility mode) bypasses input
+// protection restrictions.
+TEST_F(InputProtectionInteractiveUiTest,
+       AccessibilityModeBypassesInputProtection) {
+  ui::ScopedAXModeSetter ax_mode_setter(ui::AXMode::kNativeAPIs);
+  RunTestSequence(
+      TriggerAotPopAwayAttack(kPrimaryButtonId),
+      ClickExpectingAllowed(kPrimaryButtonId, primary_click_count()));
+}
+
+// Verifies that gesture taps targeting a protected view during cooldown
+// are intercepted and blocked by input protection, and that taps succeed after
+// cooldown expires.
+TEST_F(InputProtectionInteractiveUiTest, TouchTapBlockedDuringInputProtection) {
+  RunTestSequence(
+      EnableInputEventActivationProtection(),
+      TriggerShowCooldown(kPrimaryButtonId),
+      // Touch tap is blocked during show cooldown.
+      TouchTapExpectingBlocked(kPrimaryButtonId, primary_click_count()),
+      AdvancePastInputProtectionInterval(),
+      // Touch tap succeeds after cooldown expires.
+      TouchTapExpectingAllowed(kPrimaryButtonId, primary_click_count()));
+}
+
+// Verifies that an Always-On-Top window is not considered self-occluding:
+// elements inside an AOT window receive clicks immediately,
+// and underlying elements are protected after the AOT window is dismissed.
+TEST_F(InputProtectionInteractiveUiTest, AotWindowAllowsSelfInteraction) {
+  RunTestSequence(
+      OccludeElementWithAotWindow(
+          kPrimaryButtonId, kPrimaryAotButtonId,
+          base::BindRepeating(
+              &InputProtectionInteractiveUiTest::OnPrimaryAotButtonClicked,
+              base::Unretained(this))),
+      // Clicks to the button inside the AOT window itself are allowed
+      // because of self-occlusion prevention.
+      InAnyContext(ClickExpectingAllowed(kPrimaryAotButtonId,
+                                         primary_aot_click_count())),
+      // Dismiss the AOT window, exposing the underlying button.
+      HideAotWindow(kPrimaryAotButtonId),
+      // Clicks to the newly exposed underlying button are blocked by
+      // historical occlusion cooldown.
+      ClickExpectingBlocked(kPrimaryButtonId, primary_click_count()),
+      AdvancePastInputProtectionInterval(),
+      // After cooldown expires, clicks to the underlying button succeed.
+      ClickExpectingAllowed(kPrimaryButtonId, primary_click_count()));
+}
+
+// Verifies that multiple concurrent Always-On-Top windows do not block each
+// other: elements on overlapping AOT windows receive input
+// without triggering peer occlusion blocks or pop-away cooldowns, while
+// underlying normal windows remain blocked after dismissal.
+TEST_F(InputProtectionInteractiveUiTest,
+       MultipleAotWindowsDoNotOccludeEachOther) {
+  RunTestSequence(
+      // Float first AOT window covering target button. The hosted button
+      // receives `kPrimaryAotButtonId` to address this window for clicks and
+      // dismissal.
+      OccludeElementWithAotWindow(
+          kPrimaryButtonId, kPrimaryAotButtonId,
+          base::BindRepeating(
+              &InputProtectionInteractiveUiTest::OnPrimaryAotButtonClicked,
+              base::Unretained(this))),
+      // Float second AOT window covering first AOT window and target button,
+      // addressed via `kSecondaryAotButtonId`.
+      OccludeElementWithAotWindow(
+          kPrimaryButtonId, kSecondaryAotButtonId,
+          base::BindRepeating(
+              &InputProtectionInteractiveUiTest::OnSecondaryAotButtonClicked,
+              base::Unretained(this))),
+      // Clicks to the button in the topmost second AOT window are allowed.
+      InAnyContext(ClickExpectingAllowed(kSecondaryAotButtonId,
+                                         secondary_aot_click_count())),
+      // Second AOT window pops away, revealing the first AOT window.
+      HideAotWindow(kSecondaryAotButtonId),
+      // Clicks to the first AOT window are allowed immediately (no pop-away
+      // cooldown enforced on AOT surfaces).
+      InAnyContext(ClickExpectingAllowed(kPrimaryAotButtonId,
+                                         primary_aot_click_count())),
+      // First AOT window pops away, revealing the underlying button.
+      HideAotWindow(kPrimaryAotButtonId),
+      // The button in the underlying window is blocked by historical
+      // occlusion cooldown.
+      ClickExpectingBlocked(kPrimaryButtonId, primary_click_count()),
+      AdvancePastInputProtectionInterval(),
+      // After cooldown expires, clicks to the underlying button succeed.
+      ClickExpectingAllowed(kPrimaryButtonId, primary_click_count()));
+}
+
+// Verifies that `WindowActivationInputProtectionPolicy` permits clicks
+// immediately if the parent window was already visible and active, but
+// enforces input protection if the child widget activates after the parent
+// was invisible.
+TEST_F(InputProtectionInteractiveUiTest,
+       HiddenParentReactivationEnforcesCooldown) {
+  RunTestSequence(
+      ShowAuxiliaryWindow(kAuxiliaryButtonId),
+      ShowBubbleDialog(
+          kPrimaryButtonId, kBubbleButtonId,
+          base::BindRepeating(
+              &InputProtectionInteractiveUiTest::OnBubbleButtonClicked,
+              base::Unretained(this)),
+          {MakePolicy<WindowActivationInputProtectionPolicy>()}),
+      // Activate the bubble surface while the parent window is visible.
+      InAnyContext(ActivateSurface(kBubbleButtonId)),
+      // While parent is visible, `WindowActivationInputProtectionPolicy` does
+      // not trigger cooldown; clicks are accepted immediately.
+      InAnyContext(
+          ClickExpectingAllowed(kBubbleButtonId, bubble_click_count())),
+      AdvancePastInputProtectionInterval(),
+      // Hide the parent window containing kPrimaryButtonId.
+      HideWindow(kPrimaryButtonId),
+      // Activate the auxiliary surface to simulate focus leaving the bubble
+      // while the parent is hidden.
+      InAnyContext(ActivateSurface(kAuxiliaryButtonId)),
+      // Restore the parent window.
+      ShowWindow(kPrimaryButtonId),
+      // Reactivate the bubble dialog.
+      InAnyContext(ActivateSurface(kBubbleButtonId)),
+      // Clicks are blocked during sudden activation cooldown.
+      InAnyContext(
+          ClickExpectingBlocked(kBubbleButtonId, bubble_click_count())),
+      AdvancePastInputProtectionInterval(),
+      // After cooldown expires, click is allowed.
+      InAnyContext(
+          ClickExpectingAllowed(kBubbleButtonId, bubble_click_count())));
 }
 
 }  // namespace views::test

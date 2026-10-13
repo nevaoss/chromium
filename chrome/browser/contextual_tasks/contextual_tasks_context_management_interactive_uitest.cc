@@ -14,6 +14,7 @@
 #include "base/strings/stringprintf.h"
 #include "base/test/bind.h"
 #include "base/timer/timer.h"
+#include "build/build_config.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_interactive_test_base.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_panel_controller.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_service_factory.h"
@@ -875,6 +876,8 @@ class ContextualTasksOmniboxContextManagementInteractiveUiTest
   // entrypoint-and-menu, so there is no `#entrypointButton` hop and no
   // `.share-tabs-flyout` here.
   const DeepQuery kAimComposebox = {"omnibox-aim-app", "#composebox"};
+  const DeepQuery kAimContextEntrypoint = {"omnibox-aim-app", "#composebox",
+                                           "#contextEntrypoint", "#entrypoint"};
   const DeepQuery kAimComposeboxInput = {"omnibox-aim-app", "#composebox",
                                          "cr-composebox-input", "#input"};
   const DeepQuery kAimSubmit = {"omnibox-aim-app", "#composebox",
@@ -1015,6 +1018,33 @@ class ContextualTasksOmniboxContextManagementInteractiveUiTest
             OmniboxContextMenuController::kFirstTabMenuItemIdForTesting)));
   }
 
+  // Clicks the AIM composebox's "+" and picks the second tab out of the native
+  // "Sharing 1 tab" / "Add tabs" submenu.
+  //
+  // This clicks via JS rather than synthesized mouse input on purpose. The AIM
+  // popup keeps resizing after the composebox renders --
+  // `OmniboxPopupWebUIBaseContent::ResizeDueToAutoResize()` debounces height
+  // changes -- so a `MoveMouseTo()`/`ClickMouse()` pair can race the widget
+  // moving out from under the cursor. The click then lands outside the popup
+  // and dismisses it instead of opening the menu. `onEntrypointClick_()`
+  // anchors the menu off `getBoundingClientRect()` rather than the event's
+  // coordinates, so a JS click is equivalent minus the race.
+  auto SelectSecondTabFromAimAddTabsMenu() {
+    return Steps(
+        InAnyContext(WaitForElementToRenderAcrossNavigation(
+            kAimPopupWebContentsId, kAimContextEntrypoint)),
+        InAnyContext(ExecuteJsAt(kAimPopupWebContentsId, kAimContextEntrypoint,
+                                 "el => el.click()")),
+        InAnyContext(WaitForShow(
+            OmniboxContextMenuController::kSharedTabsSubmenuIdForTesting)),
+        InSameContext(SelectMenuItem(
+            OmniboxContextMenuController::kSharedTabsSubmenuIdForTesting)),
+        InAnyContext(WaitForShow(
+            OmniboxContextMenuController::kSecondTabMenuItemIdForTesting)),
+        InSameContext(SelectMenuItem(
+            OmniboxContextMenuController::kSecondTabMenuItemIdForTesting)));
+  }
+
   // Waits until the AIM composebox's "+" button shows the expected number of
   // favicon coins.
   auto WaitForAimComposeboxCoins(int expected_count) {
@@ -1110,8 +1140,17 @@ class ContextualTasksOmniboxContextManagementInteractiveUiTest
 
 // Adding the current tab from the omnibox opens the side panel with
 // consistent sign posting.
-IN_PROC_BROWSER_TEST_F(ContextualTasksOmniboxContextManagementInteractiveUiTest,
-                       OmniboxAddCurrentTab_OpensSidePanelWithSignposting) {
+// TODO(crbug.com/565713410): Re-enable this test.
+#if (BUILDFLAG(IS_CHROMEOS) || BUILDFLAG(IS_LINUX)) && defined(MEMORY_SANITIZER)
+#define MAYBE_OmniboxAddCurrentTab_OpensSidePanelWithSignposting \
+  DISABLED_OmniboxAddCurrentTab_OpensSidePanelWithSignposting
+#else
+#define MAYBE_OmniboxAddCurrentTab_OpensSidePanelWithSignposting \
+  OmniboxAddCurrentTab_OpensSidePanelWithSignposting
+#endif
+IN_PROC_BROWSER_TEST_F(
+    ContextualTasksOmniboxContextManagementInteractiveUiTest,
+    MAYBE_OmniboxAddCurrentTab_OpensSidePanelWithSignposting) {
   DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kPrimaryTab);
   DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kBackgroundTab1);
 
@@ -1152,6 +1191,49 @@ IN_PROC_BROWSER_TEST_F(ContextualTasksOmniboxContextManagementInteractiveUiTest,
       // panel's Add Tabs flyout.
       VerifyUnderlinedTabs({0}),
       VerifyPlusButtonCoins(kSidePanelWebContentsId, 1));
+}
+
+// Adding the current tab plus another tab via the omnibox context menu always
+// opens the Contextual Tasks side panel with both tabs in context.
+IN_PROC_BROWSER_TEST_F(
+    ContextualTasksOmniboxContextManagementInteractiveUiTest,
+    OmniboxAddCurrentTabAndAnotherTab_OpensSidePanelWithBothTabs) {
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kPrimaryTab);
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kBackgroundTab1);
+  DEFINE_LOCAL_ELEMENT_IDENTIFIER_VALUE(kBackgroundTab2);
+
+  const GURL kUrl1 = embedded_test_server()->GetURL("/title1.html");
+  const GURL kUrl2 = embedded_test_server()->GetURL("/title2.html");
+  const GURL kUrl3 = embedded_test_server()->GetURL("/title3.html");
+
+  RunTestSequence(
+      InstrumentTab(kPrimaryTab, 0), NavigateWebContents(kPrimaryTab, kUrl1),
+      AddInstrumentedTab(kBackgroundTab1, kUrl2),
+      AddInstrumentedTab(kBackgroundTab2, kUrl3),
+      SelectTab(kTabStripElementId, 0),
+
+      VerifyUnderlinedTabs({}),
+
+      // Select the current tab (Tab 0) from the classic omnibox "+" menu.
+      OpenOmniboxDropdown(), SelectCurrentTabFromOmniboxAddTabsMenu(),
+      InAnyContext(WaitForHide(kClassicPopupWebContentsId)),
+      WaitForAimPopupReady(), WaitForAimComposeboxCoins(1),
+      VerifyUnderlinedTabs({0}),
+
+      // Now select a second tab from the AIM composebox's "+" menu.
+      // `GetRecentTabs()` orders non-active tabs by `last_active` descending,
+      // so `kSecondTabMenuItemIdForTesting` corresponds to Tab 2 (while Tab 1
+      // remains unshared as a control).
+      SelectSecondTabFromAimAddTabsMenu(), WaitForAimComposeboxCoins(2),
+      VerifyUnderlinedTabs({0, 2}),
+
+      // Submitting with the current tab + another tab in context must open the
+      // Contextual Tasks side panel with both tabs preserved.
+      SubmitAimComposeboxQuery("Compare these two pages"),
+      InstrumentOpenedSidePanel(),
+
+      VerifyUnderlinedTabs({0, 2}),
+      VerifyPlusButtonCoins(kSidePanelWebContentsId, 2));
 }
 
 INSTANTIATE_TEST_SUITE_P(All,

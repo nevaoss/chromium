@@ -75,7 +75,6 @@ class MockContextualTasksPage : public mojom::Page {
               RemoveInjectedInput,
               (const base::UnguessableToken& file_token),
               (override));
-  MOCK_METHOD(void, OnSidePanelPinStateChanged, (bool is_pinned), (override));
   MOCK_METHOD(void, SetInNlm, (bool in_nlm), (override));
   MOCK_METHOD(void,
               OnWindowClosed,
@@ -95,6 +94,7 @@ class MockContextualTasksExtensionPage : public mojom::ExtensionPage {
   ~MockContextualTasksExtensionPage() override;
 
   mojo::PendingRemote<mojom::ExtensionPage> BindAndGetRemote();
+  void FlushForTesting() { receiver_.FlushForTesting(); }
 
   MOCK_METHOD(void,
               PostAimMessage,
@@ -106,6 +106,7 @@ class MockContextualTasksExtensionPage : public mojom::ExtensionPage {
               (override));
   MOCK_METHOD(void, OnHandshakeComplete, (), (override));
   MOCK_METHOD(void, OnLensOverlayStateChanged, (bool is_showing), (override));
+  MOCK_METHOD(void, OnLensCropUpdated, (const GURL& data_uri), (override));
 
  private:
   mojo::Receiver<mojom::ExtensionPage> receiver_{this};

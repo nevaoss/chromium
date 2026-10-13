@@ -164,7 +164,7 @@ class AutofillKeyboardAccessoryControllerImplTest
       std::make_unique<EntityTable>()};
   base::test::ScopedFeatureList feature_list_{
       {features::kAutofillAndroidKeyboardAccessoryHoverPreview,
-       features::kAutofillAmbientAutofillSuppressionUI}};
+       features::kAutofillAmbientAutofillSuppression}};
 };
 
 TEST_F(AutofillKeyboardAccessoryControllerImplTest,
@@ -690,7 +690,7 @@ TEST_F(AutofillKeyboardAccessoryControllerImplTest,
        ShowAutofillAiSuggestionDetails_FeatureDisabled) {
   base::test::ScopedFeatureList scoped_feature_list;
   scoped_feature_list.InitAndDisableFeature(
-      features::kAutofillAmbientAutofillSuppressionUI);
+      features::kAutofillAmbientAutofillSuppression);
   EntityInstance passport = CreatePassport();
   SetEntitiesInClient({passport});
 
@@ -863,6 +863,23 @@ TEST_F(AutofillKeyboardAccessoryControllerImplTest,
   client().suggestion_controller(manager()).AcceptSuggestion(
       /*index=*/0, AutofillMetrics::SuggestionAcceptedMethod::kTap,
       /*was_obscured=*/false);
+}
+
+TEST_F(AutofillKeyboardAccessoryControllerImplTest,
+       AcceptSuggestionForwardsWasObscured) {
+  ShowSuggestions(manager(), {SuggestionType::kAddressEntry});
+  task_environment()->FastForwardBy(base::Milliseconds(500));
+
+  EXPECT_CALL(
+      manager().external_delegate(),
+      DidAcceptSuggestion(
+          _,
+          Field(&AutofillSuggestionDelegate::SuggestionMetadata::was_obscured,
+                true),
+          _, _));
+  client().suggestion_controller(manager()).AcceptSuggestion(
+      /*index=*/0, AutofillMetrics::SuggestionAcceptedMethod::kTap,
+      /*was_obscured=*/true);
 }
 
 TEST_F(AutofillKeyboardAccessoryControllerImplTest,

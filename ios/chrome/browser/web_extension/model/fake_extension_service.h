@@ -11,6 +11,10 @@
 #import "base/functional/callback.h"
 #import "ios/chrome/browser/web_extension/model/extension_service.h"
 
+namespace web {
+enum class UniversalOptOutState;
+}  // namespace web
+
 // A fake `ExtensionService` for testing.
 class FakeExtensionService final : public ExtensionService {
  public:
@@ -20,15 +24,19 @@ class FakeExtensionService final : public ExtensionService {
   ~FakeExtensionService() override;
 
   // ExtensionService:
-  void Initialize() override;
+  void Initialize(web::UniversalOptOutState state) override;
   web::ExtensionController* GetExtensionController() const override;
   bool IsReady() const override;
+  bool WebExtensionsWereLoadedAtStartup() const override;
   base::CallbackListSubscription RunWhenReady(
       base::OnceClosure callback) override;
 
   // Sets whether the service is ready. When transitioning to true, all pending
   // callbacks registered via `RunWhenReady` are executed.
   void SetReady(bool ready);
+
+  // Sets whether web extensions are considered loaded at startup.
+  void SetWebExtensionsWereLoadedAtStartup(bool loaded);
 
   // Returns true if there are pending callbacks waiting for the service to
   // become ready.
@@ -39,6 +47,7 @@ class FakeExtensionService final : public ExtensionService {
 
  private:
   bool is_ready_ = false;
+  bool web_extensions_were_loaded_at_startup_ = false;
   bool was_waited_upon_ = false;
   base::OnceClosureList ready_callbacks_;
 };

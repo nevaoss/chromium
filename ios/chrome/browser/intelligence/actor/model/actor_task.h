@@ -6,47 +6,45 @@
 #define IOS_CHROME_BROWSER_INTELLIGENCE_ACTOR_MODEL_ACTOR_TASK_H_
 
 #import <string>
+#import <string_view>
 #import <vector>
 
+#import "base/containers/flat_map.h"
 #import "base/functional/callback.h"
 #import "base/memory/raw_ptr.h"
 #import "base/memory/weak_ptr.h"
 #import "base/scoped_multi_source_observation.h"
 #import "base/timer/timer.h"
-#import "ios/chrome/app/background_mode_buildflags.h"
 #import "ios/chrome/browser/intelligence/actor/model/actor_engine.h"
+#import "ios/chrome/browser/intelligence/actor/model/actor_web_state_policy_decider.h"
+#import "ios/chrome/browser/intelligence/actor/public/actor_control_state.h"
 #import "ios/chrome/browser/intelligence/actor/public/actor_task_updates_observer.h"
 #import "ios/chrome/browser/intelligence/actor/public/actor_types.h"
 #import "ios/web/public/navigation/navigation_manager.h"
 #import "ios/web/public/web_state_observer.h"
 
-#if BUILDFLAG(IOS_BACKGROUND_CONTINUED_PROCESSING_ENABLED)
 @class BackgroundContinuedProcessingTaskContext;
-@class NSError;
-
-namespace base {
-class Value;
-}  // namespace base
-#endif  // BUILDFLAG(IOS_BACKGROUND_CONTINUED_PROCESSING_ENABLED)
-
 @class CRBProtocolObservers;
+@class NSError;
+@protocol ActorTaskInterventionDelegate;
 
 class Browser;
 class BrowserList;
 
+namespace base {
+class Value;
+}  // namespace base
+
 namespace web {
 class WebState;
 }
-
-namespace origin_gating {
-class OriginGatingChecker;
-}  // namespace origin_gating
 
 namespace actor {
 
 class ActorToolFactory;
 class ActorToolRequest;
 class AggregatedJournal;
+class ActorWebStatePolicyDecider;
 
 // A class representing a task managed by `ActorService`. A task should live for
 // a whole Actor journey and be passed multiple sets of actions to execute
@@ -59,8 +57,7 @@ class ActorTask : public web::WebStateObserver,
             bool allow_incognito_web_states,
             AggregatedJournal* journal,
             ActorToolFactory* tool_factory,
-            BrowserList* browser_list,
-            origin_gating::OriginGatingChecker* gating_checker);
+            BrowserList* browser_list);
   ~ActorTask() override;
 
   ActorTask(const ActorTask&) = delete;
@@ -105,12 +102,14 @@ class ActorTask : public web::WebStateObserver,
   // Resumes task execution from a paused state.
   void Resume();
 
+  // Sets the intervention delegate for UI interaction.
+  void SetInterventionDelegate(id<ActorTaskInterventionDelegate> delegate);
+
   // Interrupts task execution to wait for user input, suspending ongoing
-  // actions without cancelling them. If `retain_user_control` is true, user
-  // interaction with the controlled WebState is permitted; if false, WebState
-  // interaction remains blocked.
-  void Interrupt(bool retain_user_control,
-                 ActorTaskInterruptReason interrupt_reason);
+  // actions without cancelling them. Accepts an optional message to display to
+  // the user.
+  void Interrupt(ActorTaskInterruptReason interrupt_reason,
+                 std::string_view message = "");
 
   // Uninterrupts the task from waiting on user input, resuming execution into
   // the given `resumed_state`.
@@ -144,16 +143,11 @@ class ActorTask : public web::WebStateObserver,
   // Returns whether this task allows actuating on incognito WebStates.
   bool allow_incognito_web_states() const;
 
-#if BUILDFLAG(IOS_BACKGROUND_CONTINUED_PROCESSING_ENABLED)
   // Sets the background continued processing task context and updates its
-  // subtitle with the latest cached task update, if any.
+  // subtitle with the latest cached task update, if any. No-op if
+  // `GeminiActorBackgrounding` is disabled.
   void SetBackgroundTaskContext(
       BackgroundContinuedProcessingTaskContext* background_task_context);
-#endif  // BUILDFLAG(IOS_BACKGROUND_CONTINUED_PROCESSING_ENABLED)
-
-  // Returns the origin gating checker used for evaluating navigation and
-  // actuation policies, or nullptr if unavailable.
-  origin_gating::OriginGatingChecker* GetOriginGatingChecker() const;
 
   // web::WebStateObserver overrides.
   void DidStopLoading(web::WebState* web_state) override;
@@ -162,9 +156,9 @@ class ActorTask : public web::WebStateObserver,
  private:
   friend class ActorTaskTest;
 
-  // Sets the actuation state on all controlled `WebState`s based on
-  // `actuating`.
-  void SetActuatingOnWebStates(bool actuating);
+  // Sets the `ActorControlState` on all controlled `WebState`s based on
+  // `control_state`.
+  void SetControlStateOnWebStates(ActorControlState control_state);
 
   // Sets `SetKeepRenderProcessAlive` on all controlled `WebState`s.
   void SetKeepRenderProcessAliveOnControlledWebStates(bool keep_alive);
@@ -203,7 +197,16 @@ class ActorTask : public web::WebStateObserver,
   // `destroying_web_state` is provided, also prunes the matching entry.
   void PruneDestroyedWebStates(web::WebState* destroying_web_state = nullptr);
 
-#if BUILDFLAG(IOS_BACKGROUND_CONTINUED_PROCESSING_ENABLED)
+  // Handles an implicit navigation on a controlled WebState being
+  // blocked by origin gating policy.
+  void OnNavigationBlocked(mojom::ActionResultCode code);
+
+  // Requests user confirmation via the intervention delegate.
+  void RequestInterruptConfirmation(std::string_view message);
+
+  // Handles the user resolving the confirmation.
+  void OnInterruptConfirmationResolved();
+
   // Updates the subtitle of the background continued processing task to match
   // `task_update`. Does nothing if `task_update` is empty or identical to the
   // current value.
@@ -234,7 +237,6 @@ class ActorTask : public web::WebStateObserver,
   void OnHeartbeatPingResponse(web::WebStateID web_state_id,
                                const base::Value* result,
                                NSError* error);
-#endif  // BUILDFLAG(IOS_BACKGROUND_CONTINUED_PROCESSING_ENABLED)
 
   // The task state.
   ActorTaskState state_ = ActorTaskState::kInit;
@@ -264,14 +266,14 @@ class ActorTask : public web::WebStateObserver,
   // ActorService, which is guaranteed to outlive this ActorTask.
   raw_ptr<ActorToolFactory> tool_factory_;
 
-  // The origin gating checker used for evaluating navigation and actuation
-  // policies. Owned by ActorService, which is guaranteed to outlive this
-  // ActorTask.
-  raw_ptr<origin_gating::OriginGatingChecker> gating_checker_ = nullptr;
-
   // Set of web states actively controlled (observed and/or being actuated on)
   // by this task.
   std::vector<base::WeakPtr<web::WebState>> controlled_web_states_;
+
+  // Navigation policy deciders attached to each controlled WebState to gate
+  // implicit navigations.
+  base::flat_map<web::WebStateID, std::unique_ptr<ActorWebStatePolicyDecider>>
+      policy_deciders_;
 
   // Scoped observation to safely observe events of controlled WebStates.
   base::ScopedMultiSourceObservation<web::WebState, web::WebStateObserver>
@@ -289,19 +291,20 @@ class ActorTask : public web::WebStateObserver,
   // The latest non-empty task update string.
   std::string last_task_update_;
 
+  // The delegate handling user intervention UI. Weak reference.
+  __weak id<ActorTaskInterventionDelegate> intervention_delegate_ = nil;
+
   // List of registered observers notified of task state changes and tool
   // executions. `CRBProtocolObservers` itself is held strongly, but the
   // observers inside are held weakly.
   __strong CRBProtocolObservers<ActorTaskUpdatesObserver>* observers_;
 
-#if BUILDFLAG(IOS_BACKGROUND_CONTINUED_PROCESSING_ENABLED)
   // Active context for background continued processing, if requested.
   __strong BackgroundContinuedProcessingTaskContext* background_task_context_ =
       nil;
 
   // Repeating timer for sending JavaScript heartbeat pings.
   base::RepeatingTimer heartbeat_timer_;
-#endif
 
   // Weak pointer factory.
   base::WeakPtrFactory<ActorTask> weak_ptr_factory_{this};

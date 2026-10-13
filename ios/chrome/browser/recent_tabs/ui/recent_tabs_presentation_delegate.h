@@ -11,6 +11,8 @@
 
 #import "components/sessions/core/session_id.h"
 
+@class ShowSigninCommand;
+
 namespace synced_sessions {
 struct DistantTab;
 }
@@ -35,6 +37,8 @@ struct DistantTab;
 - (void)openTabWithTabRestoreEntryId:(SessionID)sessionId;
 // Tells the receiver to open the given `distantTab`.
 - (void)openDistantTab:(const synced_sessions::DistantTab*)distantTab;
+// Tells the receiver to show signin with the given `command`.
+- (void)showSigninWithCommand:(ShowSigninCommand*)command;
 // Asks the presenter to display the reauthenticate the primary account.
 // The primary should be available.
 - (void)showPrimaryAccountReauth;

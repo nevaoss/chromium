@@ -15,37 +15,45 @@ import static org.junit.Assert.assertNotNull;
 
 import androidx.test.filters.MediumTest;
 
+import org.junit.BeforeClass;
 import org.junit.Rule;
 import org.junit.Test;
 import org.junit.runner.RunWith;
 
-import org.chromium.base.BaseSwitches;
 import org.chromium.base.ThreadUtils;
 import org.chromium.base.test.util.Batch;
 import org.chromium.base.test.util.CommandLineFlags;
+import org.chromium.base.test.util.DisabledTest;
 import org.chromium.base.test.util.Features.DisableFeatures;
 import org.chromium.base.test.util.Features.EnableFeatures;
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.flags.ChromeFeatureList;
 import org.chromium.chrome.browser.flags.ChromeSwitches;
+import org.chromium.chrome.browser.glic.GlicUtils;
 import org.chromium.chrome.browser.tabbed_mode.TabbedRootUiCoordinator;
 import org.chromium.chrome.test.ChromeJUnit4ClassRunner;
 import org.chromium.chrome.test.transit.GlicTransitTestRule;
 
 /** Integration test for ActorOverlay when running in Android Desktop/Side Panel mode. */
 @RunWith(ChromeJUnit4ClassRunner.class)
-@CommandLineFlags.Add({
-    ChromeSwitches.DISABLE_FIRST_RUN_EXPERIENCE,
-    BaseSwitches.FORCE_DESKTOP_ANDROID
-})
+@CommandLineFlags.Add({ChromeSwitches.DISABLE_FIRST_RUN_EXPERIENCE})
 @EnableFeatures({ChromeFeatureList.GLIC, ChromeFeatureList.ENABLE_ANDROID_SIDE_PANEL})
 @DisableFeatures({ChromeFeatureList.TAB_BOTTOM_SHEET})
 @Batch(Batch.PER_CLASS)
 public class ActorOverlayDesktopPTTest {
     @Rule public final GlicTransitTestRule mTestRule = new GlicTransitTestRule();
 
+    @BeforeClass
+    public static void setUpClass() {
+        // The rule launches ChromeTabbedActivity before the test body runs, so the form factor
+        // override must be in place before then for TabbedRootUiCoordinator to create the
+        // GlicUiCoordinator.
+        GlicUtils.setIsSidePanelFormFactorForTesting(true);
+    }
+
     @Test
     @MediumTest
+    @DisabledTest(message = "crbug.com/565895755")
     public void testActorOverlayIsInflatedAndCanShow() {
         mTestRule.startOnBlankPage();
 

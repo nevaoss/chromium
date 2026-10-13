@@ -1087,6 +1087,10 @@ void PopulateBinderMapWithContext(
   map->Add<blink::mojom::PermissionService>(
       &BindRenderFrameHostImpl<&RenderFrameHostImpl::CreatePermissionService>);
 
+  map->Add<blink::mojom::PresentationReceiverService>(
+      &BindRenderFrameHostImpl<
+          &RenderFrameHostImpl::GetPresentationReceiverService>);
+
   map->Add<blink::mojom::PresentationService>(
       &BindRenderFrameHostImpl<&RenderFrameHostImpl::GetPresentationService>);
 
@@ -1927,6 +1931,8 @@ void PopulateServiceWorkerBinders(ServiceWorkerHost* host,
             }
           },
           base::Unretained(host)));
+  map->Add<blink::mojom::ClipboardHost>(base::BindRepeating(
+      &ServiceWorkerHost::BindClipboardHost, base::Unretained(host)));
 
   // RenderProcessHost binders
   map->Add<media::mojom::VideoDecodePerfHistory>(BindServiceWorkerReceiver(

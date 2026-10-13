@@ -44,11 +44,11 @@ import android.widget.LinearLayout;
 import android.widget.TextView;
 
 import androidx.annotation.ColorInt;
+import androidx.annotation.ColorRes;
 import androidx.annotation.DimenRes;
 import androidx.annotation.Dimension;
 import androidx.annotation.VisibleForTesting;
 import androidx.appcompat.content.res.AppCompatResources;
-import androidx.core.content.ContextCompat;
 import androidx.core.widget.ImageViewCompat;
 
 import org.chromium.base.Callback;
@@ -699,23 +699,7 @@ public class CustomTabToolbar extends ToolbarLayout implements View.OnLongClickL
     }
 
     private void updateButtonsTint() {
-        // TODO(crbug.com/402213312): Remove tinting code here once it's fully MVC-ified.
-        updateButtonTint(mCloseButton);
-        if (mMinimizeButton != null) {
-            updateButtonTint(mMinimizeButton);
-        }
-        if (mCustomButtonsParent != null) {
-            int numCustomActionButtons = mCustomButtonsParent.getChildCount();
-            for (int i = 0; i < numCustomActionButtons; i++) {
-                View actionButton = mCustomButtonsParent.getChildAt(i);
-                if (actionButton instanceof ImageButton button) {
-                    updateButtonTint(button);
-                }
-            }
-        }
-        ImageButton maximizeButton = findViewById(R.id.custom_tabs_sidepanel_maximize);
-        if (maximizeButton != null) updateButtonTint(maximizeButton);
-        updateButtonTint(mLocationBar.getSecurityButton());
+        mLocationBar.updateSecurityButtonTint();
     }
 
     private void updateButtonTint(ImageButton button) {
@@ -746,6 +730,18 @@ public class CustomTabToolbar extends ToolbarLayout implements View.OnLongClickL
         return mBrandedColorScheme;
     }
 
+    @Override
+    public void onTintChanged(
+            @Nullable ColorStateList tint,
+            @Nullable ColorStateList activityFocusTint,
+            @BrandedColorScheme int brandedColorScheme) {
+        if (tint == null) return;
+        mBrandedColorScheme = brandedColorScheme;
+        mTint = activityFocusTint != null ? activityFocusTint : tint;
+        mLocationBar.updateColors();
+        notifyColorSchemeChanged();
+    }
+
     /**
      * For extending classes to override and carry out the changes related with the primary color
      * for the current tab changing.
@@ -758,7 +754,10 @@ public class CustomTabToolbar extends ToolbarLayout implements View.OnLongClickL
         final int startColor = background.getColor();
         final int endColor = getToolbarDataProvider().getPrimaryColor();
 
-        if (background.getColor() == endColor) return;
+        if (background.getColor() == endColor) {
+            updateColorsForBackground(endColor);
+            return;
+        }
 
         mBrandColorTransitionAnimation =
                 ValueAnimator.ofFloat(0, 1)
@@ -804,11 +803,15 @@ public class CustomTabToolbar extends ToolbarLayout implements View.OnLongClickL
 
     private void updateColorsForBackground(@ColorInt int background) {
         final @BrandedColorScheme int brandedColorScheme =
-                OmniboxResourceProvider.getBrandedColorScheme(
-                        getContext(), isIncognitoBranded(), background);
-        if (mBrandedColorScheme == brandedColorScheme) return;
+                mThemeColorProvider != null && mThemeColorProvider.getTint() != null
+                        ? mThemeColorProvider.getBrandedColorScheme()
+                        : OmniboxResourceProvider.getBrandedColorScheme(
+                                getContext(), isIncognitoBranded(), background);
         mBrandedColorScheme = brandedColorScheme;
-        mTint = ThemeUtils.getThemedToolbarIconTint(getContext(), mBrandedColorScheme);
+        mTint =
+                mThemeColorProvider != null && mThemeColorProvider.getTint() != null
+                        ? mThemeColorProvider.getTint()
+                        : ThemeUtils.getThemedToolbarIconTint(getContext(), mBrandedColorScheme);
         mLocationBar.updateColors();
         setToolbarHairlineColor(background);
         notifyToolbarColorChanged(background);
@@ -1394,11 +1397,7 @@ public class CustomTabToolbar extends ToolbarLayout implements View.OnLongClickL
         }
 
         private void showBrandingIconAndText() {
-            ColorStateList colorStateList =
-                    getContext()
-                            .getColorStateList(
-                                    mLocationBarDataProvider.getSecurityIconColorStateList());
-            ImageViewCompat.setImageTintList(mSecurityButton, colorStateList);
+            updateSecurityButtonTint();
             mAnimDelegate.updateSecurityButton(R.drawable.chromelogo16);
 
             mUrlCoordinator.setUrlBarData(
@@ -1424,6 +1423,22 @@ public class CustomTabToolbar extends ToolbarLayout implements View.OnLongClickL
             }
         }
 
+        private void updateSecurityButtonTint() {
+            if (mLocationBarDataProvider == null) {
+                ImageViewCompat.setImageTintList(mSecurityButton, mTint);
+                return;
+            }
+            @ColorRes
+            int colorStateListRes = mLocationBarDataProvider.getSecurityIconColorStateList();
+            if (colorStateListRes == 0) return;
+            ColorStateList colorStateList =
+                    (colorStateListRes == R.color.default_red
+                                    || colorStateListRes == R.color.baseline_error_80)
+                            ? getContext().getColorStateList(colorStateListRes)
+                            : mTint;
+            ImageViewCompat.setImageTintList(mSecurityButton, colorStateList);
+        }
+
         private void updateSecurityIcon() {
             if (mState == STATE_TITLE_ONLY || mCurrentlyShowingBranding) return;
 
@@ -1434,11 +1449,7 @@ public class CustomTabToolbar extends ToolbarLayout implements View.OnLongClickL
                                 DeviceFormFactor.isNonMultiDisplayContextOnTablet(getContext()));
             }
             if (securityIconResource != 0) {
-                ColorStateList colorStateList =
-                        getContext()
-                                .getColorStateList(
-                                        mLocationBarDataProvider.getSecurityIconColorStateList());
-                ImageViewCompat.setImageTintList(mSecurityButton, colorStateList);
+                updateSecurityButtonTint();
             }
             mAnimDelegate.updateSecurityButton(securityIconResource);
             mSecurityIconResourceForTesting = securityIconResource;
@@ -1786,8 +1797,7 @@ public class CustomTabToolbar extends ToolbarLayout implements View.OnLongClickL
                     AppCompatResources.getDrawable(
                             getContext(), R.drawable.custom_tabs_url_bar_omnibox_bg);
             mOmniboxBackground.mutate();
-            mOmniboxBackground.setTint(
-                    ContextCompat.getColor(getContext(), R.color.toolbar_text_box_bg_color));
+            updateOmniboxBackground();
             mLocationBarFrameLayout.setBackground(mOmniboxBackground);
             var lp = mLocationBarFrameLayout.getLayoutParams();
             lp.height =
@@ -1846,6 +1856,7 @@ public class CustomTabToolbar extends ToolbarLayout implements View.OnLongClickL
                         }
                     });
             updateAnimationsForOmnibox();
+            updateSecurityIcon();
         }
 
         private void updateAnimationsForOmnibox() {

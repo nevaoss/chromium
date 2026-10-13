@@ -2951,10 +2951,11 @@ const ui::CocoaActionList& GetCocoaActionListForTesting() {
   if (nameFrom == ax::mojom::NameFrom::kPlaceholder)
     return @"";
 
-  // Cell and list item titles are empty if they came from content.
+  // Cell, list and list item titles are empty if they came from content.
   if (nameFrom == ax::mojom::NameFrom::kContents) {
     NSString* role = [self accessibilityRole];
     if ([role isEqualToString:NSAccessibilityCellRole] ||
+        _node->GetRole() == ax::mojom::Role::kList ||
         _node->GetRole() == ax::mojom::Role::kListItem) {
       return @"";
     }
@@ -3206,7 +3207,7 @@ const ui::CocoaActionList& GetCocoaActionListForTesting() {
   ui::AXPlatformNodeDelegate* tableDelegate = table->GetDelegate();
   for (ui::AXNodeID id : tableDelegate->GetColHeaderNodeIds(*column)) {
     AXPlatformNodeCocoa* colheader = [self fromNodeID:id];
-    if (colheader) {
+    if (colheader && colheader != self) {
       [ret addObject:colheader];
     }
   }

@@ -451,7 +451,16 @@ void AutofillClient::ShowAutofillAiPrivateInferenceNotice() {
   NOTIMPLEMENTED();
 }
 
+#if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
+void AutofillClient::ShowAutofillAiSuppressionConfirmationDialog(
+    const EntityInstance& entity,
+    base::OnceCallback<void(bool)> callback) {
+  NOTIMPLEMENTED();
+}
+#endif  // !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
+
 void AutofillClient::ShowAutofillAiSuggestionRemovedNotification(
+    const EntityInstance& entity,
     base::OnceClosure on_undo_clicked) {
   NOTIMPLEMENTED();
 }
@@ -498,6 +507,10 @@ one_time_tokens::OneTimeTokenService* AutofillClient::GetOneTimeTokenService()
   return nullptr;
 }
 
+one_time_tokens::GmailOtpBackend* AutofillClient::GetGmailOtpBackend() const {
+  return nullptr;
+}
+
 bool AutofillClient::DocumentUsedWebOTP() {
   return false;
 }
@@ -514,6 +527,8 @@ AutofillManager* AutofillClient::GetAutofillManagerForPrimaryMainFrame() {
 OtpPhishGuardDelegate* AutofillClient::GetOtpPhishGuardDelegate() {
   return nullptr;
 }
+
+void AutofillClient::OpenGmailForOtps() {}
 
 void AutofillClient::OpenGeminiInSidebar(const std::u16string& prompt) {
   // TODO(crbug.com/493824736): Implement opening Gemini in the sidebar.

@@ -51,7 +51,8 @@ class StyleAdjuster {
                                     const Element*,
                                     Document*);
   static void AdjustOverscrollInertness(const StyleResolverState&,
-                                        std::optional<bool>& html_inert);
+                                        std::optional<bool>& html_inert,
+                                        bool& can_escape_overscroll_inertness);
 
   // A general note on caching: The StyleAdjuster's results can be cached
   // in the MatchedPropertiesCache (MPC). However, the StyleAdjuster
@@ -111,7 +112,8 @@ class StyleAdjuster {
       ComputedStyleBuilder& builder,
       Element& element,
       const Element* element_or_pseudo_element,
-      const Element* styled_element);
+      const Element* styled_element,
+      const ComputedStyle* parent_style);
 
   // Whether a cache entry for A would have the same style adjustments as
   // for B, or vice versa.

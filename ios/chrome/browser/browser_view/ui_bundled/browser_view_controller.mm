@@ -1980,10 +1980,9 @@ bool IsFullscreenNextIAEnabled() {
                                         completion:(ProceduralBlock)completion {
   BOOL pollingAttemptsElapsed = maxAttempts == 0;
 
-  // If already dismissed, trigger completion immediately without posting tasks.
+  // If already dismissed or polling attempts elapsed, trigger completion
+  // immediately without posting tasks.
   if (!self.presentedViewController || pollingAttemptsElapsed) {
-    DCHECK(!pollingAttemptsElapsed)
-        << "ViewController still presented after polling attempts elapsed.";
     if (completion) {
       completion();
     }
@@ -2149,6 +2148,10 @@ bool IsFullscreenNextIAEnabled() {
 }
 
 - (void)updateForFullscreenEnabled:(BOOL)enabled {
+  if (self.fullscreenController &&
+      self.fullscreenController->IsForceFullscreenMode()) {
+    return;
+  }
   if (!enabled) {
     [self updateForFullscreenProgress:1.0];
   }

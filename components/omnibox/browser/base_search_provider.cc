@@ -182,7 +182,7 @@ AutocompleteMatch BaseSearchProvider::CreateSearchSuggestion(
   for (const int subtype : suggestion.subtypes()) {
     match.subtypes.insert(SuggestSubtypeForNumber(subtype));
   }
-  if (suggestion.type() == AutocompleteMatchType::SEARCH_SUGGEST_TAIL) {
+  if (suggestion.type() == omnibox::AutocompleteMatchType::kSearchSuggestTail) {
     match.RecordAdditionalInfo(kACMatchPropertySuggestionText,
                                suggestion.suggestion());
     match.RecordAdditionalInfo(kACMatchPropertyContentsPrefix,
@@ -226,7 +226,7 @@ AutocompleteMatch BaseSearchProvider::CreateSearchSuggestion(
   DCHECK(search_url.SupportsReplacement(search_terms_data));
   std::u16string query(suggestion.suggestion());
   std::u16string original_query(input_text);
-  if (suggestion.type() == AutocompleteMatchType::CALCULATOR) {
+  if (suggestion.type() == omnibox::AutocompleteMatchType::kCalculator) {
     // Use query text, rather than the calculator answer suggestion, to search.
     query = original_query;
     original_query.clear();
@@ -313,7 +313,7 @@ std::string BaseSearchProvider::CreateQueryParamStringFromMap(
 // static
 AutocompleteMatch BaseSearchProvider::CreateShortcutSearchSuggestion(
     const std::u16string& suggestion,
-    AutocompleteMatchType::Type type,
+    omnibox::AutocompleteMatchType type,
     const TemplateURL* template_url,
     const SearchTermsData& search_terms_data) {
   // These calls use a number of default values.  For instance, they assume the
@@ -341,12 +341,12 @@ AutocompleteMatch BaseSearchProvider::CreateOnDeviceSearchSuggestion(
     const SearchTermsData& search_terms_data,
     int accepted_suggestion,
     bool is_tail_suggestion) {
-  AutocompleteMatchType::Type match_type;
+  omnibox::AutocompleteMatchType match_type;
   omnibox::SuggestType suggest_type = omnibox::TYPE_NATIVE_CHROME;
   std::u16string match_contents, match_contents_prefix;
 
   if (is_tail_suggestion) {
-    match_type = AutocompleteMatchType::SEARCH_SUGGEST_TAIL;
+    match_type = omnibox::AutocompleteMatchType::kSearchSuggestTail;
     suggest_type = omnibox::TYPE_TAIL;
     std::u16string sanitized_suggestion =
         AutocompleteMatch::SanitizeString(suggestion);
@@ -357,7 +357,7 @@ AutocompleteMatch BaseSearchProvider::CreateOnDeviceSearchSuggestion(
     match_contents_prefix = sanitized_suggestion.substr(
         0, sanitized_suggestion.size() - match_contents.size());
   } else {
-    match_type = AutocompleteMatchType::SEARCH_SUGGEST;
+    match_type = omnibox::AutocompleteMatchType::kSearchSuggest;
     suggest_type = omnibox::TYPE_QUERY;
     match_contents = suggestion;
   }

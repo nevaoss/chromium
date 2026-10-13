@@ -82,6 +82,7 @@ source_set("impl") {
   } else {
     deps += [
       "//chrome/browser/glic",
+      "//chrome/browser/ui:browser_command_controller",
       "//chrome/browser/ui/views/side_panel",
     ]
   }
@@ -163,6 +164,7 @@ if (!is_android) {
       "//base/test:test_support",
       "//chrome/browser:browser_process",
       "//chrome/browser/prefs",
+      "//chrome/browser/ui:browser_commands",
       "//chrome/browser/ui/tab_contents",
       "//chrome/browser/ui/tabs:tab_enums",
       "//chrome/browser/ui/tabs:tab_strip",

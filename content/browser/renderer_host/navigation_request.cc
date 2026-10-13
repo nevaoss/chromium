@@ -5523,10 +5523,17 @@ void NavigationRequest::SelectFrameHostForOnResponseStarted(
     policy->RecordDefaultOriginAgentClusterOriginIfNew(
         isolation_context, origin, false /* is_global_walk_or_frame_removal */);
 
-    url::Origin process_lock_origin =
-        url::Origin::Create(instance->GetSiteInfo().GetProcessLockURL());
-    // Cache the computed v8 optimization state so that all instances of an
-    // origin in a BrowsingInstance are assigned to the same process.
+    // Cache whether V8 optimizations are disabled under the same origin that
+    // CheckShouldDisableV8Optimization() uses when it reads this cache (see
+    // site_info.cc); if the two disagree, the lookup can never hit. Documents
+    // that can share the default SiteInstanceGroup carry the
+    // BrowsingInstance's default policy rather than a site-specific one, so
+    // they are keyed by the default site URL. Everything else is keyed by its
+    // own process lock URL.
+    const url::Origin process_lock_origin =
+        url::Origin::Create(instance->CanPutSiteInstanceInDefaultGroup()
+                                ? SiteInstanceImpl::GetDefaultSiteURL()
+                                : instance->GetSiteInfo().GetProcessLockURL());
     policy->AddV8OptimizationDisabledStateForOriginIfNotCached(
         isolation_context.browsing_instance_id(), process_lock_origin,
         instance->GetProcess()->AreV8OptimizationsDisabled());
@@ -9714,9 +9721,6 @@ void NavigationRequest::UpdateLocalNetworkAccessRequestPolicy() {
   const PolicyContainerPolicies& policies =
       policy_container_builder_->FinalPolicies();
 
-  // TODO(crbug.com/433300380): The lna_secure_context_overide check needs to be
-  // done in all other policy derivation points. This boolean should probably be
-  // put into PolicyContainerPolicies.
   local_network_access_request_policy_ = DeriveLocalNetworkAccessRequestPolicy(
       policies, LocalNetworkAccessRequestContext::kSubresource);
 
@@ -12596,13 +12600,22 @@ void NavigationRequest::CheckSoftNavigationHeuristicsInvariants() {
   DCHECK(!frame_tree_node()->IsFencedFrameRoot());
 }
 
-StoragePartition* NavigationRequest::GetStoragePartitionWithCurrentSiteInfo() {
+StoragePartition* NavigationRequest::GetStoragePartitionWithCurrentSiteInfo()
+    const {
   // `site_info_`'s StoragePartitionConfig should refer to the correct
   // `StoragePartition` for this navigation.
   return frame_tree_node_->navigator()
       .controller()
       .GetBrowserContext()
       ->GetStoragePartition(site_info_.GetStoragePartitionConfig());
+}
+
+StoragePartition* NavigationRequest::GetTargetStoragePartition() const {
+  // `site_info_` (and thus the target StoragePartition) is only initialized
+  // once the request starts loading in `StartNavigation()`, and updated on
+  // redirects.
+  CHECK_GE(state_, WILL_START_REQUEST);
+  return GetStoragePartitionWithCurrentSiteInfo();
 }
 
 void NavigationRequest::CreateWebUIIfNeeded(RenderFrameHostImpl* frame_host) {

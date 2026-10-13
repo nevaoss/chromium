@@ -413,6 +413,7 @@ ci.thin_tester(
             ),
         },
     ),
+    ssd = None,
     tree_closing = False,
     console_view_entry = consoles.console_view_entry(
         category = "release|arm64",
@@ -474,6 +475,7 @@ ci.thin_tester(
             ),
         },
     ),
+    ssd = None,
     tree_closing = False,
     console_view_entry = consoles.console_view_entry(
         category = "release|arm64",
@@ -576,6 +578,7 @@ ci.thin_tester(
             ),
         },
     ),
+    ssd = None,
     tree_closing = False,
     console_view_entry = consoles.console_view_entry(
         category = "release|arm64",
@@ -622,7 +625,12 @@ ci.thin_tester(
             ),
             # TODO(crbug.com/436628295): test fails on VM
             "blink_wpt_tests": targets.per_test_modification(
-                mixins = "mac_26_arm64",
+                mixins = [
+                    targets.mixin(
+                        enable_rts_filtering = True,
+                    ),
+                    "mac_26_arm64",
+                ],
                 remove_mixins = "mac_26_vm_optional",
             ),
             "browser_tests": targets.per_test_modification(
@@ -657,7 +665,12 @@ ci.thin_tester(
             ),
             # TODO(crbug.com/436628295): tests are <3x slower on VM
             "content_browsertests": targets.per_test_modification(
-                mixins = "mac_26_arm64",
+                mixins = [
+                    targets.mixin(
+                        enable_rts_filtering = True,
+                    ),
+                    "mac_26_arm64",
+                ],
                 remove_mixins = "mac_26_vm_optional",
             ),
             # TODO(crbug.com/436628295): test fails on VM
@@ -691,6 +704,7 @@ ci.thin_tester(
             ),
         },
     ),
+    ssd = None,
     tree_closing = False,
     console_view_entry = consoles.console_view_entry(
         category = "release|arm64",
@@ -778,6 +792,7 @@ ci.thin_tester(
             ),
         },
     ),
+    ssd = None,
     console_view_entry = consoles.console_view_entry(
         category = "mac",
         short_name = "13",
@@ -870,6 +885,7 @@ ci.thin_tester(
             ),
         },
     ),
+    ssd = None,
     gardener_rotations = args.ignore_default(None),
     console_view_entry = consoles.console_view_entry(
         category = "debug",
@@ -959,6 +975,7 @@ ci.thin_tester(
             ),
         },
     ),
+    ssd = None,
     # TODO(crbug.com/336530603): Add to rotation when it's stable.
     gardener_rotations = args.ignore_default(None),
     console_view_entry = consoles.console_view_entry(
@@ -1053,6 +1070,7 @@ ci.thin_tester(
             ),
         },
     ),
+    ssd = None,
     console_view_entry = consoles.console_view_entry(
         category = "mac",
         short_name = "15",
@@ -1089,6 +1107,7 @@ ci.thin_tester(
             "mac_26_x64",
         ],
     ),
+    ssd = None,
     console_view_entry = consoles.console_view_entry(
         category = "mac",
         short_name = "26",
@@ -1141,6 +1160,7 @@ ci.thin_tester(
             ),
         },
     ),
+    ssd = None,
     console_view_entry = consoles.console_view_entry(
         category = "mac",
         short_name = "no-webui",

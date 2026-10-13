@@ -198,6 +198,16 @@ void HTMLFormElement::HTMLFormMcpTool::ExecuteTool(
     return std::move(done_callback).Run(base::unexpected(error.value()));
   }
 
+  // Filling out the form controls dispatches `input` and `change` events,
+  // whose handlers may have detached the document.
+  if (!form_->GetDocument().IsActive()) {
+    return std::move(done_callback)
+        .Run(base::unexpected(
+            ScriptToolError(ScriptToolErrorCode::kToolInvocationFailed,
+                            "The document was detached while filling out "
+                            "the form")));
+  }
+
   // Success. Now we can either submit the form or focus the submit button.
   // TODO(masonf): This should key off of the `autosubmit` attribute, and only
   // submit here if the attribute is present. Else it should just focus the

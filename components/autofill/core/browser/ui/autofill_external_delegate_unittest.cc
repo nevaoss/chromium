@@ -287,6 +287,7 @@ class MockAutofillClient : public TestAutofillClient {
               HideSuggestions,
               (SuggestionHidingReason, std::optional<FillingProduct>),
               (override));
+  MOCK_METHOD(void, OpenGmailForOtps, (), (override));
   MOCK_METHOD(void, OpenGeminiInSidebar, (const std::u16string&), (override));
   MOCK_METHOD(void, ShowAutofillSettings, (SuggestionType), (override));
   MOCK_METHOD(AutofillComposeDelegate*, GetComposeDelegate, (), (override));
@@ -300,7 +301,7 @@ class MockAutofillClient : public TestAutofillClient {
               (override));
   MOCK_METHOD(void,
               ShowAutofillAiSuggestionRemovedNotification,
-              (base::OnceClosure),
+              (const EntityInstance&, base::OnceClosure),
               (override));
 
   // `IsAutofillTypeBlockedByPolicy` is needed in the mock because it is called
@@ -314,6 +315,13 @@ class MockAutofillClient : public TestAutofillClient {
               GetDeviceAuthenticator,
               (std::string),
               (const, override));
+
+#if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
+  MOCK_METHOD(void,
+              ShowAutofillAiSuppressionConfirmationDialog,
+              (const EntityInstance&, base::OnceCallback<void(bool)>),
+              (override));
+#endif  // !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
 
 #if BUILDFLAG(IS_ANDROID)
   MOCK_METHOD(void, ShowAutofillAiLoadingDialog, (), (override));
@@ -3199,6 +3207,19 @@ TEST_F(AutofillExternalDelegateTest, AcceptedGmailOtpSuggestion) {
       {.multi_index = {0}});
 }
 
+// Tests that accepting the `kOpenGmailForOtps` suggestion footer delegates
+// opening Gmail to the `AutofillClient` and hides the suggestions popup.
+TEST_F(AutofillExternalDelegateTest, AcceptedOpenGmailSuggestion) {
+  IssueOnQuery();
+
+  EXPECT_CALL(autofill_client(), OpenGmailForOtps());
+  EXPECT_CALL(autofill_client(),
+              HideSuggestions(SuggestionHidingReason::kAcceptSuggestion, _));
+  external_delegate().DidAcceptSuggestion(
+      CreateAutofillSuggestion(SuggestionType::kOpenGmailForOtps),
+      {.multi_index = {0}});
+}
+
 class AutofillExternalDelegateWithWalletPrivatePassesTest
     : public AutofillExternalDelegateTest {
  public:
@@ -3590,7 +3611,6 @@ class AutofillExternalDelegateWithAmbientAutofillTest
             features::kAutofillAiReauthRequired,
             features::kAutofillAmbientAutofill,
             features::kAutofillAmbientAutofillSuppression,
-            features::kAutofillAmbientAutofillSuppressionUI,
             features::kAutofillAiWalletPrivatePasses,
 #if BUILDFLAG(IS_ANDROID)
             features::kAutofillAiShowPersonalContextFillingYourInfoDialog,
@@ -3618,6 +3638,16 @@ class AutofillExternalDelegateWithAmbientAutofillTest
 
   MockAutofillAiPersonalContextAccessManager& personal_context_manager() {
     return *personal_context_manager_;
+  }
+
+  // Makes a Personal Context passport available for suggestions and returns it.
+  EntityInstance AddPersonalContextPassport() {
+    EntityInstance passport = GetPassportEntityInstanceWithRandomGuid(
+        {.record_type = EntityInstance::RecordType::kPersonalContext});
+    autofill_client().GetEntityDataManager()->OnPrefetchContextComplete(
+        personal_context_manager(), std::vector<EntityInstance>{passport});
+    IssueOnQuery({.fields = {{.role = PASSPORT_NUMBER}}});
+    return passport;
   }
 
  private:
@@ -3984,47 +4014,6 @@ TEST_F(
 
 #endif  // PLATFORM_SUPPORTS_DEVICE_REAUTH
 
-// Tests that accepting a `kRemoveAutofillAi` suggestion suppresses the
-// corresponding entity in `EntitySuppressionManager`.
-TEST_F(AutofillExternalDelegateWithAmbientAutofillTest,
-       DidAcceptSuggestion_RemoveAutofillAi_SuppressesEntity) {
-  EntityInstance full_passport = GetPassportEntityInstanceWithRandomGuid(
-      {.record_type = EntityInstance::RecordType::kPersonalContext});
-  autofill_client().GetEntityDataManager()->OnPrefetchContextComplete(
-      personal_context_manager(), std::vector<EntityInstance>{full_passport});
-  IssueOnQuery({.fields = {{.role = PASSPORT_NUMBER}}});
-  Suggestion remove_suggestion(SuggestionType::kRemoveAutofillAi);
-  remove_suggestion.payload =
-      Suggestion::AutofillAiPayload(full_passport.guid());
-  EXPECT_CALL(autofill_client(),
-              HideSuggestions(SuggestionHidingReason::kAcceptSuggestion,
-                              Eq(std::nullopt)));
-
-  external_delegate().DidAcceptSuggestion(remove_suggestion,
-                                          {.multi_index = {0}});
-
-  EXPECT_TRUE(autofill_client().GetEntitySuppressionManager()->IsSuppressed(
-      full_passport));
-}
-
-// Tests that calling `RemoveSuggestion` for a `kFillAutofillAi` suggestion
-// suppresses the corresponding entity in `EntitySuppressionManager`.
-TEST_F(AutofillExternalDelegateWithAmbientAutofillTest,
-       RemoveSuggestion_FillAutofillAi_SuppressesEntity) {
-  EntityInstance full_passport = GetPassportEntityInstanceWithRandomGuid(
-      {.record_type = EntityInstance::RecordType::kPersonalContext});
-  autofill_client().GetEntityDataManager()->OnPrefetchContextComplete(
-      personal_context_manager(), std::vector<EntityInstance>{full_passport});
-  IssueOnQuery({.fields = {{.role = PASSPORT_NUMBER}}});
-  Suggestion suggestion(SuggestionType::kFillAutofillAi);
-  suggestion.payload = Suggestion::AutofillAiPayload(full_passport.guid());
-
-  EXPECT_TRUE(external_delegate().RemoveSuggestion(suggestion));
-
-  EXPECT_TRUE(autofill_client().GetEntitySuppressionManager()->IsSuppressed(
-      full_passport));
-}
-
 // Tests that calling `RemoveSuggestion` for a `kFillAutofillAi` suggestion
 // fails and does not suppress when suppression feature is disabled.
 TEST_F(AutofillExternalDelegateWithAmbientAutofillTest,
@@ -4081,6 +4070,142 @@ TEST_F(AutofillExternalDelegateWithAmbientAutofillTest,
       autofill_client().GetEntitySuppressionManager()->IsSuppressed(passport));
 }
 
+#if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
+// Tests that accepting a `kRemoveAutofillAi` suggestion asks the user to
+// confirm in a dialog, and that the entity is suppressed and an undo is offered
+// only once the user confirms.
+TEST_F(AutofillExternalDelegateWithAmbientAutofillTest,
+       DidAcceptSuggestion_RemoveAutofillAi_SuppressesAfterConfirmation) {
+  EntityInstance passport = AddPersonalContextPassport();
+  Suggestion remove_suggestion(SuggestionType::kRemoveAutofillAi);
+  remove_suggestion.payload = Suggestion::AutofillAiPayload(passport.guid());
+  base::OnceCallback<void(bool)> dialog_callback;
+  EXPECT_CALL(autofill_client(), ShowAutofillAiSuppressionConfirmationDialog)
+      .WillOnce(MoveArg<1>(&dialog_callback));
+  EXPECT_CALL(autofill_client(),
+              HideSuggestions(SuggestionHidingReason::kAcceptSuggestion,
+                              Eq(std::nullopt)));
+
+  external_delegate().DidAcceptSuggestion(remove_suggestion,
+                                          {.multi_index = {0}});
+  ASSERT_FALSE(
+      autofill_client().GetEntitySuppressionManager()->IsSuppressed(passport));
+  ASSERT_FALSE(dialog_callback.is_null());
+
+  EXPECT_CALL(autofill_client(), ShowAutofillAiSuggestionRemovedNotification);
+  std::move(dialog_callback).Run(/*confirmed=*/true);
+  EXPECT_TRUE(
+      autofill_client().GetEntitySuppressionManager()->IsSuppressed(passport));
+}
+
+// Tests that cancelling the dialog does not suppress the entity.
+TEST_F(AutofillExternalDelegateWithAmbientAutofillTest,
+       DidAcceptSuggestion_RemoveAutofillAi_CancellationDoesNotSuppress) {
+  EntityInstance passport = AddPersonalContextPassport();
+  Suggestion remove_suggestion(SuggestionType::kRemoveAutofillAi);
+  remove_suggestion.payload = Suggestion::AutofillAiPayload(passport.guid());
+  EXPECT_CALL(autofill_client(), ShowAutofillAiSuppressionConfirmationDialog)
+      .WillOnce(RunOnceCallback<1>(/*confirmed=*/false));
+  EXPECT_CALL(autofill_client(), ShowAutofillAiSuggestionRemovedNotification)
+      .Times(0);
+
+  external_delegate().DidAcceptSuggestion(remove_suggestion,
+                                          {.multi_index = {0}});
+  EXPECT_FALSE(
+      autofill_client().GetEntitySuppressionManager()->IsSuppressed(passport));
+}
+
+// Tests that removing a `kFillAutofillAi` suggestion (e.g. via Shift+Delete)
+// also asks the user to confirm in the dialog. The removal itself reports
+// failure so that the suggestion is not removed from the UI before the user
+// confirms.
+TEST_F(AutofillExternalDelegateWithAmbientAutofillTest,
+       RemoveSuggestion_FillAutofillAi_SuppressesAfterConfirmation) {
+  EntityInstance passport = AddPersonalContextPassport();
+  Suggestion suggestion(SuggestionType::kFillAutofillAi);
+  suggestion.payload = Suggestion::AutofillAiPayload(passport.guid());
+  base::OnceCallback<void(bool)> dialog_callback;
+  EXPECT_CALL(autofill_client(), ShowAutofillAiSuppressionConfirmationDialog)
+      .WillOnce(MoveArg<1>(&dialog_callback));
+
+  EXPECT_FALSE(external_delegate().RemoveSuggestion(suggestion));
+  ASSERT_FALSE(
+      autofill_client().GetEntitySuppressionManager()->IsSuppressed(passport));
+  ASSERT_FALSE(dialog_callback.is_null());
+
+  std::move(dialog_callback).Run(/*confirmed=*/true);
+  EXPECT_TRUE(
+      autofill_client().GetEntitySuppressionManager()->IsSuppressed(passport));
+}
+
+// Tests that the removal undo notification is shown after the user confirmed
+// the suppression in the dialog, and that undoing unsuppresses the entity.
+TEST_F(AutofillExternalDelegateWithAmbientAutofillTest,
+       RemoveSuggestion_FillAutofillAi_ShowsNotificationAfterConfirmation) {
+  EntityInstance passport = AddPersonalContextPassport();
+  Suggestion suggestion(SuggestionType::kFillAutofillAi);
+  suggestion.payload = Suggestion::AutofillAiPayload(passport.guid());
+  base::OnceClosure on_undo_clicked;
+  EXPECT_CALL(autofill_client(), ShowAutofillAiSuppressionConfirmationDialog)
+      .WillOnce(RunOnceCallback<1>(/*confirmed=*/true));
+  EXPECT_CALL(autofill_client(),
+              ShowAutofillAiSuggestionRemovedNotification(Eq(passport), _))
+      .WillOnce(MoveArg<1>(&on_undo_clicked));
+
+  ASSERT_FALSE(external_delegate().RemoveSuggestion(suggestion));
+  ASSERT_TRUE(
+      autofill_client().GetEntitySuppressionManager()->IsSuppressed(passport));
+  ASSERT_FALSE(on_undo_clicked.is_null());
+
+  std::move(on_undo_clicked).Run();
+  EXPECT_FALSE(
+      autofill_client().GetEntitySuppressionManager()->IsSuppressed(passport));
+}
+
+// Tests that the entity is not suppressed if the user confirms the dialog after
+// the delegate was destroyed.
+TEST_F(AutofillExternalDelegateWithAmbientAutofillTest,
+       RemoveSuggestion_FillAutofillAi_ConfirmationAfterDelegateDestroyed) {
+  EntityInstance passport = AddPersonalContextPassport();
+  Suggestion suggestion(SuggestionType::kFillAutofillAi);
+  suggestion.payload = Suggestion::AutofillAiPayload(passport.guid());
+  base::OnceCallback<void(bool)> dialog_callback;
+  EXPECT_CALL(autofill_client(), ShowAutofillAiSuppressionConfirmationDialog)
+      .WillOnce(MoveArg<1>(&dialog_callback));
+  ASSERT_FALSE(external_delegate().RemoveSuggestion(suggestion));
+  ASSERT_FALSE(dialog_callback.is_null());
+
+  test_api(autofill_manager())
+      .SetExternalDelegate(
+          std::make_unique<TestExternalDelegate>(&autofill_manager()));
+  std::move(dialog_callback).Run(/*confirmed=*/true);
+
+  EXPECT_FALSE(
+      autofill_client().GetEntitySuppressionManager()->IsSuppressed(passport));
+}
+#else
+// On Android, the keyboard accessory asks the user to confirm before it calls
+// the delegate, so the entity is suppressed right away. iOS suppresses entities
+// without the delegate, but the delegate behaves the same as on Android.
+
+// Tests that calling `RemoveSuggestion` for a `kFillAutofillAi` suggestion
+// suppresses the corresponding entity in `EntitySuppressionManager`.
+TEST_F(AutofillExternalDelegateWithAmbientAutofillTest,
+       RemoveSuggestion_FillAutofillAi_SuppressesEntity) {
+  EntityInstance full_passport = GetPassportEntityInstanceWithRandomGuid(
+      {.record_type = EntityInstance::RecordType::kPersonalContext});
+  autofill_client().GetEntityDataManager()->OnPrefetchContextComplete(
+      personal_context_manager(), std::vector<EntityInstance>{full_passport});
+  IssueOnQuery({.fields = {{.role = PASSPORT_NUMBER}}});
+  Suggestion suggestion(SuggestionType::kFillAutofillAi);
+  suggestion.payload = Suggestion::AutofillAiPayload(full_passport.guid());
+
+  EXPECT_TRUE(external_delegate().RemoveSuggestion(suggestion));
+
+  EXPECT_TRUE(autofill_client().GetEntitySuppressionManager()->IsSuppressed(
+      full_passport));
+}
+
 // Tests that calling `RemoveSuggestion` for a `kFillAutofillAi` suggestion
 // succeeds if the entity was already suppressed.
 TEST_F(AutofillExternalDelegateWithAmbientAutofillTest,
@@ -4106,10 +4231,9 @@ TEST_F(AutofillExternalDelegateWithAmbientAutofillTest,
 }
 
 // Tests that calling `RemoveSuggestion` for a `kFillAutofillAi` suggestion
-// calls `ShowAutofillAiSuggestionRemovedNotification` when the suppression UI
-// feature is enabled.
+// calls `ShowAutofillAiSuggestionRemovedNotification`.
 TEST_F(AutofillExternalDelegateWithAmbientAutofillTest,
-       RemoveSuggestion_FillAutofillAi_ShowsNotificationWhenUiEnabled) {
+       RemoveSuggestion_FillAutofillAi_ShowsNotification) {
   EntityInstance full_passport = GetPassportEntityInstanceWithRandomGuid(
       {.record_type = EntityInstance::RecordType::kPersonalContext});
   autofill_client().GetEntityDataManager()->OnPrefetchContextComplete(
@@ -4119,8 +4243,9 @@ TEST_F(AutofillExternalDelegateWithAmbientAutofillTest,
   suggestion.payload = Suggestion::AutofillAiPayload(full_passport.guid());
 
   base::OnceClosure undo_completed;
-  EXPECT_CALL(autofill_client(), ShowAutofillAiSuggestionRemovedNotification)
-      .WillOnce(MoveArg<0>(&undo_completed));
+  EXPECT_CALL(autofill_client(),
+              ShowAutofillAiSuggestionRemovedNotification(Eq(full_passport), _))
+      .WillOnce(MoveArg<1>(&undo_completed));
   EXPECT_TRUE(external_delegate().RemoveSuggestion(suggestion));
 
   EXPECT_TRUE(autofill_client().GetEntitySuppressionManager()->IsSuppressed(
@@ -4137,6 +4262,7 @@ TEST_F(AutofillExternalDelegateWithAmbientAutofillTest,
   EXPECT_FALSE(autofill_client().GetEntitySuppressionManager()->IsSuppressed(
       full_passport));
 }
+#endif  // !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
 
 // Tests that calling `RemoveSuggestion` for a non-kPersonalContext entity
 // returns false and does not suppress or show a notification.
@@ -4154,30 +4280,6 @@ TEST_F(AutofillExternalDelegateWithAmbientAutofillTest,
   EXPECT_FALSE(external_delegate().RemoveSuggestion(suggestion));
   EXPECT_FALSE(autofill_client().GetEntitySuppressionManager()->IsSuppressed(
       local_passport));
-}
-
-// Tests that accepting a `kRemoveAutofillAi` suggestion notifies the client
-// when the suppression UI feature is enabled.
-TEST_F(AutofillExternalDelegateWithAmbientAutofillTest,
-       DidAcceptSuggestion_RemoveAutofillAi_ShowsNotificationWhenUiEnabled) {
-  EntityInstance full_passport = GetPassportEntityInstanceWithRandomGuid(
-      {.record_type = EntityInstance::RecordType::kPersonalContext});
-  autofill_client().GetEntityDataManager()->OnPrefetchContextComplete(
-      personal_context_manager(), std::vector<EntityInstance>{full_passport});
-  IssueOnQuery({.fields = {{.role = PASSPORT_NUMBER}}});
-  Suggestion remove_suggestion(SuggestionType::kRemoveAutofillAi);
-  remove_suggestion.payload =
-      Suggestion::AutofillAiPayload(full_passport.guid());
-  EXPECT_CALL(autofill_client(),
-              HideSuggestions(SuggestionHidingReason::kAcceptSuggestion,
-                              Eq(std::nullopt)));
-  EXPECT_CALL(autofill_client(), ShowAutofillAiSuggestionRemovedNotification);
-
-  external_delegate().DidAcceptSuggestion(remove_suggestion,
-                                          {.multi_index = {0}});
-
-  EXPECT_TRUE(autofill_client().GetEntitySuppressionManager()->IsSuppressed(
-      full_passport));
 }
 
 TEST_F(AutofillExternalDelegateTest,

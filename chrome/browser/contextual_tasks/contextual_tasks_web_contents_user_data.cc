@@ -4,6 +4,8 @@
 
 #include "chrome/browser/contextual_tasks/contextual_tasks_web_contents_user_data.h"
 
+#include <algorithm>
+
 #include "base/metrics/field_trial_params.h"
 #include "chrome/browser/autocomplete/aim_eligibility_service_factory.h"
 #include "chrome/browser/contextual_tasks/contextual_tasks_ui_service.h"
@@ -40,6 +42,58 @@ void ContextualTasksWebContentsUserData::set_input_state_model(
   }
 }
 
+namespace {
+
+struct IdentityState {
+  bool is_signed_in = false;
+  bool browser_identity_matches_aim_identity = false;
+};
+
+IdentityState GetIdentityState(content::WebContents* web_contents) {
+  if (!web_contents) {
+    return {};
+  }
+  Profile* profile =
+      Profile::FromBrowserContext(web_contents->GetBrowserContext());
+  auto* ui_service = profile
+                         ? contextual_tasks::ContextualTasksUiServiceFactory::
+                               GetForBrowserContext(profile)
+                         : nullptr;
+  GURL url = web_contents->GetLastCommittedURL();
+  IdentityState state;
+  if (ui_service) {
+    state.is_signed_in = ui_service->IsSignedInToBrowserWithValidCredentials();
+    state.browser_identity_matches_aim_identity =
+        state.is_signed_in && ui_service->IsUrlForPrimaryAccount(url);
+  } else if (profile && omnibox::kComposeboxDriveIdentityFallback.Get()) {
+    if (auto* identity_manager =
+            IdentityManagerFactory::GetForProfile(profile)) {
+      if (contextual_tasks::IsSignedInToBrowserWithValidCredentials(
+              identity_manager)) {
+        state.is_signed_in = true;
+        state.browser_identity_matches_aim_identity =
+            contextual_tasks::IsUrlForPrimaryAccount(identity_manager, url);
+      }
+    }
+  }
+  return state;
+}
+
+}  // namespace
+
+// static
+void ContextualTasksWebContentsUserData::UpdateInputStateModelIdentity(
+    content::WebContents* web_contents,
+    contextual_search::InputStateModel* input_state_model) {
+  if (!web_contents || !input_state_model) {
+    return;
+  }
+  IdentityState identity_state = GetIdentityState(web_contents);
+  input_state_model->SetIdentityState(
+      identity_state.is_signed_in,
+      identity_state.browser_identity_matches_aim_identity);
+}
+
 base::WeakPtr<contextual_search::InputStateModel>
 ContextualTasksWebContentsUserData::GetOrCreateInputStateModel(
     contextual_search::ContextualSearchSessionHandle& session_handle) {
@@ -56,8 +110,13 @@ ContextualTasksWebContentsUserData::GetOrCreateInputStateModel(
   const omnibox::SearchboxConfig* config =
       service ? service->GetSearchboxConfig() : nullptr;
 
+  IdentityState identity_state = GetIdentityState(web_contents);
+
   auto it = input_state_models_.find(session_handle.session_id());
   if (it != input_state_models_.end()) {
+    it->second->SetIdentityState(
+        identity_state.is_signed_in,
+        identity_state.browser_identity_matches_aim_identity);
     if (config) {
       it->second->UpdateConfig(*config);
     }
@@ -65,39 +124,66 @@ ContextualTasksWebContentsUserData::GetOrCreateInputStateModel(
     return last_active_model_;
   }
 
-  auto* ui_service = profile
-                         ? contextual_tasks::ContextualTasksUiServiceFactory::
-                               GetForBrowserContext(profile)
-                         : nullptr;
   GURL url = web_contents->GetLastCommittedURL();
-  bool is_signed_in = false;
-  bool browser_identity_matches_aim_identity = false;
-  if (ui_service) {
-    is_signed_in = ui_service->IsSignedInToBrowserWithValidCredentials();
-    browser_identity_matches_aim_identity =
-        is_signed_in && ui_service->IsUrlForPrimaryAccount(url);
-  } else if (profile &&
-             omnibox::kComposeboxDriveIdentityFallback.Get()) {
-    if (auto* identity_manager =
-            IdentityManagerFactory::GetForProfile(profile)) {
-      if (contextual_tasks::IsSignedInToBrowserWithValidCredentials(
-              identity_manager)) {
-        is_signed_in = true;
-        browser_identity_matches_aim_identity =
-            contextual_tasks::IsUrlForPrimaryAccount(identity_manager, url);
-      }
-    }
-  }
-
   bool is_off_the_record = profile->IsOffTheRecord();
 
   auto model = std::make_unique<contextual_search::InputStateModel>(
       session_handle, config ? *config : omnibox::SearchboxConfig(), url,
-      is_off_the_record, is_signed_in, browser_identity_matches_aim_identity);
+      is_off_the_record, identity_state.is_signed_in,
+      identity_state.browser_identity_matches_aim_identity);
+  if (profile) {
+    model->SetPrefService(profile->GetPrefs());
+  }
 
   last_active_model_ = model->AsWeakPtr();
   input_state_models_[session_handle.session_id()] = std::move(model);
   return last_active_model_;
+}
+
+void ContextualTasksWebContentsUserData::RegisterExtensionFrame(
+    const void* handler_id) {
+  for (auto& frame : extension_frames_) {
+    if (frame.handler_id == handler_id) {
+      return;
+    }
+  }
+  extension_frames_.push_back(ExtensionFrameInfo{
+      .handler_id = handler_id,
+      .is_page_bound = false,
+  });
+}
+
+void ContextualTasksWebContentsUserData::UpdateExtensionFrameBound(
+    const void* handler_id,
+    bool is_page_bound) {
+  for (auto& frame : extension_frames_) {
+    if (frame.handler_id == handler_id) {
+      frame.is_page_bound = is_page_bound;
+      return;
+    }
+  }
+}
+
+void ContextualTasksWebContentsUserData::UnregisterExtensionFrame(
+    const void* handler_id) {
+  std::erase_if(extension_frames_, [&](const ExtensionFrameInfo& frame) {
+    return frame.handler_id == handler_id;
+  });
+}
+
+bool ContextualTasksWebContentsUserData::IsPrimarySearchMessageSender(
+    const void* handler_id) const {
+  if (!handler_id) {
+    return false;
+  }
+
+  for (const auto& frame : extension_frames_) {
+    if (frame.is_page_bound) {
+      return frame.handler_id == handler_id;
+    }
+  }
+
+  return false;
 }
 
 }  // namespace contextual_tasks

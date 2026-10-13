@@ -10,6 +10,7 @@
 
 #include "base/check.h"
 #include "base/functional/bind.h"
+#include "build/build_config.h"
 #include "chrome/browser/ui/actions/chrome_action_id.h"
 #include "chrome/browser/ui/views/app_menu/action_app_menu_manager.h"
 #include "chrome/browser/ui/views/app_menu/app_menu_action_item.h"
@@ -18,18 +19,45 @@
 #include "ui/actions/actions.h"
 #include "ui/base/metadata/metadata_impl_macros.h"
 #include "ui/color/color_id.h"
+#include "ui/events/event.h"
+#include "ui/views/accessibility/view_accessibility.h"
 #include "ui/views/actions/action_view_controller.h"
 #include "ui/views/controls/menu/menu_config.h"
 #include "ui/views/controls/menu/menu_item_view.h"
 #include "ui/views/controls/separator.h"
 #include "ui/views/view_class_properties.h"
 
+namespace {
+
+enum class FooterContainer {
+  kLeft,
+  kRight,
+  kBottom,
+};
+
+FooterContainer GetFooterContainerForAction(actions::ActionId action_id) {
+  switch (action_id) {
+    case kActionShowManagementPage:
+      return FooterContainer::kBottom;
+#if BUILDFLAG(IS_MAC)
+    case kActionOptions:
+#else
+    case kActionExit:
+#endif
+      return FooterContainer::kRight;
+    default:
+      return FooterContainer::kLeft;
+  }
+}
+
+}  // namespace
+
 AppMenuFooterView::AppMenuFooterView(
     views::MenuItemView* parent_menu_item,
     actions::ActionItem* footer_action_item,
     views::ActionViewController* action_view_controller,
     base::flat_map<int, raw_ptr<actions::BaseAction>>* command_to_action_map,
-    base::RepeatingCallback<void(actions::ActionId)> execute_command_callback,
+    ExecuteCommandCallback execute_command_callback,
     PopulateSubmenuCallback populate_submenu_callback) {
   CHECK(parent_menu_item);
   CHECK(footer_action_item);
@@ -37,6 +65,8 @@ AppMenuFooterView::AppMenuFooterView(
   CHECK(command_to_action_map);
   CHECK(execute_command_callback);
   CHECK(populate_submenu_callback);
+
+  GetViewAccessibility().SetRole(ax::mojom::Role::kMenu);
 
   const auto* provider = ChromeLayoutProvider::Get();
 
@@ -53,7 +83,8 @@ AppMenuFooterView::AppMenuFooterView(
   top_container_->SetInsideBorderInsets(
       provider->GetInsetsMetric(INSETS_ACTION_APP_MENU_FOOTER_MARGIN));
 
-  // Left sub-container: holds the Settings and Help action items.
+  // Left sub-container: holds the Settings and Help action items (or just Help
+  // on Mac).
   left_container_ =
       top_container_->AddChildView(std::make_unique<views::BoxLayoutView>());
   left_container_->SetOrientation(views::BoxLayout::Orientation::kHorizontal);
@@ -67,7 +98,7 @@ AppMenuFooterView::AppMenuFooterView(
   auto* spacer = top_container_->AddChildView(std::make_unique<views::View>());
   top_container_->SetFlexForView(spacer, 1);
 
-  // Right sub-container: holds the Exit action item.
+  // Right sub-container: holds the Exit action item (or Settings on Mac).
   right_container_ =
       top_container_->AddChildView(std::make_unique<views::BoxLayoutView>());
   right_container_->SetOrientation(views::BoxLayout::Orientation::kHorizontal);
@@ -106,8 +137,10 @@ AppMenuFooterView::AppMenuFooterView(
     (*command_to_action_map)[action_id.value()] = footer_child.get();
 
     if (!has_submenu) {
-      button->SetCallback(
-          base::BindRepeating(execute_command_callback, action_id.value()));
+      button->SetCallback(base::BindRepeating(
+          [](const ExecuteCommandCallback& callback, actions::ActionId id,
+             const ui::Event& event) { callback.Run(id, event.flags()); },
+          execute_command_callback, action_id.value()));
     }
 
     if (const ui::ElementIdentifier element_id =
@@ -124,16 +157,23 @@ AppMenuFooterView::AppMenuFooterView(
       button->SetImageModel(*icon_override);
     }
 
-    if (action_id.value() == kActionShowManagementPage) {
-      auto* button_ptr = bottom_container->AddChildView(std::move(button));
-      button_ptr->SetUseRowStyle(true);
-      bottom_container->SetFlexForView(button_ptr, 1);
-    } else if (action_id.value() == kActionExit) {
-      auto* button_ptr = right_container_->AddChildView(std::move(button));
-      button_ptr->SetUseRowStyle(false);
-    } else {
-      auto* button_ptr = left_container_->AddChildView(std::move(button));
-      button_ptr->SetUseRowStyle(false);
+    switch (GetFooterContainerForAction(action_id.value())) {
+      case FooterContainer::kBottom: {
+        auto* button_ptr = bottom_container->AddChildView(std::move(button));
+        button_ptr->SetUseRowStyle(true);
+        bottom_container->SetFlexForView(button_ptr, 1);
+        break;
+      }
+      case FooterContainer::kRight: {
+        auto* button_ptr = right_container_->AddChildView(std::move(button));
+        button_ptr->SetUseRowStyle(false);
+        break;
+      }
+      case FooterContainer::kLeft: {
+        auto* button_ptr = left_container_->AddChildView(std::move(button));
+        button_ptr->SetUseRowStyle(false);
+        break;
+      }
     }
   }
 

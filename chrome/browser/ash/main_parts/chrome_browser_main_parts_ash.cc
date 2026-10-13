@@ -62,7 +62,6 @@
 #include "chrome/browser/ash/audio/audio_survey_handler.h"
 #include "chrome/browser/ash/audio/cras_audio_handler_delegate_impl.h"
 #include "chrome/browser/ash/bluetooth/bluetooth_log_controller.h"
-#include "chrome/browser/ash/bluetooth/hats_bluetooth_revamp_trigger_impl.h"
 #include "chrome/browser/ash/boot_times_recorder/boot_times_recorder.h"
 #include "chrome/browser/ash/browser_delegate/browser_controller_impl.h"
 #include "chrome/browser/ash/browser_delegate/keyed_service_provider/consent_auditor_provider_impl.h"
@@ -71,8 +70,10 @@
 #include "chrome/browser/ash/browser_delegate/keyed_service_provider/feature_engagement_tracker_provider_impl.h"
 #include "chrome/browser/ash/browser_delegate/keyed_service_provider/history_service_provider_impl.h"
 #include "chrome/browser/ash/browser_delegate/keyed_service_provider/identity_manager_provider_impl.h"
+#include "chrome/browser/ash/browser_delegate/keyed_service_provider/supervised_user_service_provider_impl.h"
 #include "chrome/browser/ash/browser_delegate/keyed_service_provider/sync_service_provider_impl.h"
 #include "chrome/browser/ash/browser_delegate/keyed_service_provider/template_url_service_provider_impl.h"
+#include "chrome/browser/ash/browser_delegate/keyed_service_provider/trusted_vault_service_provider_impl.h"
 #include "chrome/browser/ash/browser_delegate/keyed_service_provider/wifi_configuration_sync_service_provider_impl.h"
 #include "chrome/browser/ash/camera/camera_general_survey_handler.h"
 #include "chrome/browser/ash/certs/system_token_cert_db_initializer.h"
@@ -972,9 +973,13 @@ void ChromeBrowserMainPartsAsh::PreProfileInit() {
       std::make_unique<FeatureEngagementTrackerProviderImpl>();
   history_service_provider_ = std::make_unique<HistoryServiceProviderImpl>();
   identity_manager_provider_ = std::make_unique<IdentityManagerProviderImpl>();
+  supervised_user_service_provider_ =
+      std::make_unique<SupervisedUserServiceProviderImpl>();
   sync_service_provider_ = std::make_unique<SyncServiceProviderImpl>();
   template_url_service_provider_ =
       std::make_unique<TemplateURLServiceProviderImpl>();
+  trusted_vault_service_provider_ =
+      std::make_unique<TrustedVaultServiceProviderImpl>();
   wifi_configuration_sync_service_provider_ =
       std::make_unique<WifiConfigurationSyncServiceProviderImpl>();
 
@@ -1346,12 +1351,6 @@ void ChromeBrowserMainPartsAsh::PostProfileInit(Profile* profile,
     bluetooth_pref_state_observer_ =
         std::make_unique<BluetoothPrefStateObserver>(
             *g_browser_process->local_state());
-
-    if (base::FeatureList::IsEnabled(
-            ash::features::kHappinessTrackingSystemBluetoothRevamp)) {
-      hats_bluetooth_revamp_trigger_ =
-          std::make_unique<ash::HatsBluetoothRevampTriggerImpl>();
-    }
 
     // Initialize the NetworkHealth aggregator.
     network_health::NetworkHealthManager::GetInstance();
@@ -1884,8 +1883,10 @@ void ChromeBrowserMainPartsAsh::PostMainMessageLoopRun() {
   bluetooth_log_controller_.reset();
 
   wifi_configuration_sync_service_provider_.reset();
+  trusted_vault_service_provider_.reset();
   template_url_service_provider_.reset();
   sync_service_provider_.reset();
+  supervised_user_service_provider_.reset();
   identity_manager_provider_.reset();
   history_service_provider_.reset();
   feature_engagement_tracker_provider_.reset();

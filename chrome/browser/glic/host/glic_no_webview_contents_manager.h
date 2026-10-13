@@ -7,6 +7,7 @@
 
 #include <memory>
 #include <optional>
+#include <ostream>
 
 #include "base/callback_list.h"
 #include "base/functional/callback_helpers.h"
@@ -62,8 +63,7 @@ class GlicNoWebviewContentsManager : public GlicWebContentsManager,
   // Manages the lifetime, WebUI page handler bindings, and observer events
   // for the loading/error overlay WebContents (chrome://glic/overlay).
   class OverlayContentsManager : public content::WebContentsObserver,
-                                 public mojom::GlicOverlayPageHandler,
-                                 public PanelStateObserver {
+                                 public mojom::GlicOverlayPageHandler {
    public:
     OverlayContentsManager(Profile* profile,
                            GlicNoWebviewContentsManager* owner,
@@ -78,7 +78,7 @@ class GlicNoWebviewContentsManager : public GlicWebContentsManager,
     std::optional<mojom::ErrorPanelType> error_type() const;
     void SetError(mojom::ErrorPanelType error_type);
     void ClearError();
-    void AttachToHost(Host* host);
+    void ObservePanelState(ObservableValueView<mojom::PanelState>& panel_state);
     void SetVisibility(content::Visibility visibility);
     const gfx::Size& cached_size() const;
     bool ShouldReloadOnShow() const;
@@ -100,9 +100,6 @@ class GlicNoWebviewContentsManager : public GlicWebContentsManager,
 
     // Applies the computed overlay state to the overlay WebUI.
     void UpdateOverlayState();
-
-    // PanelStateObserver implementation:
-    void PanelStateChanged(const mojom::PanelState& panel_state) override;
 
     mojom::GlicOverlayPageHandler* GetPageHandlerForTesting() { return this; }
 
@@ -132,8 +129,8 @@ class GlicNoWebviewContentsManager : public GlicWebContentsManager,
     std::optional<mojom::ErrorPanelType> error_type_;
     const raw_ref<ObservableValueView<bool>> guest_ready_;
     base::CallbackListSubscription guest_ready_subscription_;
-    base::ScopedObservation<GlicInstance, PanelStateObserver>
-        panel_state_observation_{this};
+    base::CallbackListSubscription panel_state_subscription_;
+    raw_ptr<ObservableValueView<mojom::PanelState>> panel_state_ = nullptr;
     gfx::Size cached_size_;
   };
 
@@ -217,9 +214,15 @@ class GlicNoWebviewContentsManager : public GlicWebContentsManager,
     return mojom::LoadingStyle::kSidePanel;
   }
 
+  OverlayContentsManager& GetOverlayManagerForTesting() {
+    return overlay_manager_;
+  }
+
   const base::OneShotTimer& overlay_deletion_timer_for_testing() const {
     return overlay_deletion_timer_;
   }
+
+  base::OneShotTimer& loading_timer_for_testing() { return loading_timer_; }
 
  private:
   // Ensures that the overlay WebContents exists and returns it.
@@ -285,6 +288,14 @@ class GlicNoWebviewContentsManager : public GlicWebContentsManager,
   // Updates the performance traits tracker with actuation state changes.
   void UpdateActuationTracker();
 
+  // Starts or stops the loading timeout timer based on visibility, guest
+  // readiness, and active error state.
+  void UpdateLoadingTimer();
+
+  // Invoked when the loading timeout expires without the guest client
+  // connecting.
+  void OnLoadingTimeout();
+
   void OnZoomLevelChange();
   void OnProfileReadyStateChanged();
   void UpdateForProfileReadyState(bool is_initial);
@@ -325,9 +336,25 @@ class GlicNoWebviewContentsManager : public GlicWebContentsManager,
   base::CallbackListSubscription profile_ready_subscription_;
 
   base::OneShotTimer overlay_deletion_timer_;
+  base::OneShotTimer loading_timer_;
 
   base::WeakPtrFactory<GlicNoWebviewContentsManager> weak_ptr_factory_{this};
 };
+
+inline std::ostream& operator<<(
+    std::ostream& os,
+    GlicNoWebviewContentsManager::DisplayState state) {
+  switch (state) {
+    case GlicNoWebviewContentsManager::DisplayState::kWarming:
+      return os << "kWarming";
+    case GlicNoWebviewContentsManager::DisplayState::kAttachedHidden:
+      return os << "kAttachedHidden";
+    case GlicNoWebviewContentsManager::DisplayState::kShowingOverlay:
+      return os << "kShowingOverlay";
+    case GlicNoWebviewContentsManager::DisplayState::kShowingGuest:
+      return os << "kShowingGuest";
+  }
+}
 
 }  // namespace glic
 

@@ -299,7 +299,6 @@ public class StripLayoutHelperTest {
         when(mModel.isTabInTabGroup(any())).thenReturn(false);
         when(mModel.getTabUngrouper()).thenReturn(mTabUngrouper);
         when(mModel.getTabGroupTitle(any(Token.class))).thenReturn(UNSET_TAB_GROUP_TITLE);
-        when(mModel.getTabGroupTitle(any(Tab.class))).thenReturn(UNSET_TAB_GROUP_TITLE);
 
         mModel.setTabRemover(mTabRemover);
         mContext =
@@ -1056,8 +1055,7 @@ public class StripLayoutHelperTest {
         when(mModel.isTabInTabGroup(any())).thenReturn(false);
         mStripLayoutHelper
                 .getTabGroupObserverForTesting()
-                .didRemoveTabGroup(
-                        Tab.INVALID_TAB_ID, TAB_GROUP_ID_1, DidRemoveTabGroupReason.CLOSE);
+                .didRemoveTabGroup(TAB_GROUP_ID_1, DidRemoveTabGroupReason.CLOSE);
         int numClosingGroupTitles = mStripLayoutHelper.getClosingGroupTitlesForTesting().size();
         assertEquals("Should have one closing group title.", 1, numClosingGroupTitles);
 
@@ -1106,8 +1104,7 @@ public class StripLayoutHelperTest {
         when(mModel.isTabInTabGroup(any())).thenReturn(false);
         mStripLayoutHelper
                 .getTabGroupObserverForTesting()
-                .didRemoveTabGroup(
-                        Tab.INVALID_TAB_ID, TAB_GROUP_ID_1, DidRemoveTabGroupReason.CLOSE);
+                .didRemoveTabGroup(TAB_GROUP_ID_1, DidRemoveTabGroupReason.CLOSE);
         int numClosingGroupTitles = mStripLayoutHelper.getClosingGroupTitlesForTesting().size();
         assertEquals("Should have no closing group titles.", 0, numClosingGroupTitles);
 
@@ -3261,8 +3258,7 @@ public class StripLayoutHelperTest {
         mStripLayoutHelper.multipleTabsClosed(closingTabs);
         mStripLayoutHelper
                 .getTabGroupObserverForTesting()
-                .didRemoveTabGroup(
-                        Tab.INVALID_TAB_ID, TAB_GROUP_ID_1, DidRemoveTabGroupReason.CLOSE);
+                .didRemoveTabGroup(TAB_GROUP_ID_1, DidRemoveTabGroupReason.CLOSE);
 
         // Finish animations, as is done in the TabModelObserver.
         mStripLayoutHelper.finishAnimations();

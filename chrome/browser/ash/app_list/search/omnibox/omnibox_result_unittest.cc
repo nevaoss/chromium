@@ -170,7 +170,7 @@ class OmniboxResultTest : public testing::Test {
 
   std::unique_ptr<OmniboxResult> CreateOmniboxResult(
       const std::string& destination_url,
-      AutocompleteMatchType::Type type,
+      omnibox::AutocompleteMatchType type,
       const GURL& image_url = GURL(),
       const std::u16string query = kFullQuery) {
     AutocompleteMatch match;
@@ -228,8 +228,8 @@ class OmniboxResultTest : public testing::Test {
 };
 
 TEST_F(OmniboxResultTest, Basic) {
-  std::unique_ptr<OmniboxResult> result =
-      CreateOmniboxResult(kExampleUrl, AutocompleteMatchType::HISTORY_URL);
+  std::unique_ptr<OmniboxResult> result = CreateOmniboxResult(
+      kExampleUrl, omnibox::AutocompleteMatchType::kHistoryUrl);
 
   EXPECT_EQ(kExampleContents, result->details());
   EXPECT_EQ(kExampleDescription, result->title());
@@ -246,12 +246,12 @@ TEST_F(OmniboxResultTest, Priority) {
   // Make sure rich entity results supplant all others, and that history results
   // supplant non-rich-entity results.
   const auto history_result = CreateOmniboxResult(
-      "https://url1.com", AutocompleteMatchType::SEARCH_HISTORY);
+      "https://url1.com", omnibox::AutocompleteMatchType::kSearchHistory);
   const auto rich_entity_result = CreateOmniboxResult(
-      "https://url1.com", AutocompleteMatchType::SEARCH_SUGGEST_ENTITY,
+      "https://url1.com", omnibox::AutocompleteMatchType::kSearchSuggestEntity,
       GURL("http://website/rich_image.jpg"));
   const auto other_result = CreateOmniboxResult(
-      "https://url1.com", AutocompleteMatchType::SEARCH_OTHER_ENGINE);
+      "https://url1.com", omnibox::AutocompleteMatchType::kSearchOtherEngine);
 
   EXPECT_GT(rich_entity_result->dedup_priority(),
             history_result->dedup_priority());
@@ -268,7 +268,7 @@ TEST_F(OmniboxResultTest, Metrics) {
   // Bookmarked URLs belong to their own metrics category and have a specific
   // icon.
   const auto bookmarked_result = CreateOmniboxResult(
-      "https://example.com", AutocompleteMatchType::HISTORY_URL);
+      "https://example.com", omnibox::AutocompleteMatchType::kHistoryUrl);
   EXPECT_EQ(ash::OMNIBOX_BOOKMARK, bookmarked_result->metrics_type());
   EXPECT_EQ(&(features::IsRoundedIconsEnabled() ? omnibox::kStarsFilledIcon
                                                 : omnibox::kBookmarkOldIcon),
@@ -277,7 +277,7 @@ TEST_F(OmniboxResultTest, Metrics) {
   // Unbookmarked URLs belong to the general "recently visited" category and
   // have a generic icon.
   const auto unbookmarked_result = CreateOmniboxResult(
-      "https://fake.com", AutocompleteMatchType::HISTORY_URL);
+      "https://fake.com", omnibox::AutocompleteMatchType::kHistoryUrl);
   EXPECT_EQ(ash::OMNIBOX_RECENTLY_VISITED_WEBSITE,
             unbookmarked_result->metrics_type());
   EXPECT_EQ(&ash::kOmniboxGenericIcon,
@@ -289,14 +289,14 @@ TEST_F(OmniboxResultTest, OmniboxSearchResult) {
   // Omnibox-search-type results should be demarked and should have the remove
   // action set.
   const auto search_result = CreateOmniboxResult(
-      "https://example.com", AutocompleteMatchType::SEARCH_SUGGEST);
+      "https://example.com", omnibox::AutocompleteMatchType::kSearchSuggest);
   ASSERT_EQ(1u, search_result->actions().size());
   EXPECT_EQ(ash::SearchResultActionType::kRemove,
             search_result->actions()[0].type);
 
   // Non-Omnibox-search-type results have no actions.
   const auto non_search_result = CreateOmniboxResult(
-      "https://example.com", AutocompleteMatchType::HISTORY_URL);
+      "https://example.com", omnibox::AutocompleteMatchType::kHistoryUrl);
   EXPECT_EQ(0u, non_search_result->actions().size());
 }
 
@@ -304,13 +304,14 @@ TEST_F(OmniboxResultTest, OmniboxSearchResult) {
 TEST_F(OmniboxResultTest, SearchWhatYouTypedResult) {
   // Search-what-you-typed results should be marked for not needing update
   // animations.
-  const auto search_what_you_typed_result = CreateOmniboxResult(
-      "https://example.com", AutocompleteMatchType::SEARCH_WHAT_YOU_TYPED);
+  const auto search_what_you_typed_result =
+      CreateOmniboxResult("https://example.com",
+                          omnibox::AutocompleteMatchType::kSearchWhatYouTyped);
   EXPECT_TRUE(
       search_what_you_typed_result->CloneMetadata()->skip_update_animation);
 
   const auto other_result = CreateOmniboxResult(
-      "https://example.com", AutocompleteMatchType::HISTORY_URL);
+      "https://example.com", omnibox::AutocompleteMatchType::kHistoryUrl);
   EXPECT_FALSE(other_result->CloneMetadata()->skip_update_animation);
 }
 
@@ -318,13 +319,13 @@ TEST_F(OmniboxResultTest, SearchWhatYouTypedResult) {
 TEST_F(OmniboxResultTest, Category) {
   // Search suggestions belong to the "search and assistant" category.
   const auto search_result = CreateOmniboxResult(
-      "https://example.com", AutocompleteMatchType::SEARCH_SUGGEST);
+      "https://example.com", omnibox::AutocompleteMatchType::kSearchSuggest);
   EXPECT_EQ(ash::AppListSearchResultCategory::kSearchAndAssistant,
             search_result->category());
 
   // Others belong to the "web" category.
   const auto non_search_result = CreateOmniboxResult(
-      "https://example.com", AutocompleteMatchType::HISTORY_URL);
+      "https://example.com", omnibox::AutocompleteMatchType::kHistoryUrl);
   EXPECT_EQ(ash::AppListSearchResultCategory::kWeb,
             non_search_result->category());
 }
@@ -341,8 +342,8 @@ TEST_F(OmniboxResultTest, Favicon) {
         return base::CancelableTaskTracker::kBadTaskId;
       });
 
-  const auto result = CreateOmniboxResult("https://example.com",
-                                          AutocompleteMatchType::HISTORY_URL);
+  const auto result = CreateOmniboxResult(
+      "https://example.com", omnibox::AutocompleteMatchType::kHistoryUrl);
 
   // The mock fetch result.
   favicon_base::FaviconImageResult mock_icon_result;
@@ -357,7 +358,7 @@ TEST_F(OmniboxResultTest, Favicon) {
 
   // A subsequent result with the same favicon should use the cached result.
   const auto next_result = CreateOmniboxResult(
-      "https://example.com", AutocompleteMatchType::HISTORY_URL);
+      "https://example.com", omnibox::AutocompleteMatchType::kHistoryUrl);
   EXPECT_TRUE(
       ImageSkiasEqual(TestIcon(), next_result->icon().icon.Rasterize(nullptr)));
 
@@ -377,7 +378,7 @@ TEST_F(OmniboxResultTest, RichEntityIcon) {
   // Construct a rich entity that points to the icon URL. This triggers a
   // download and parse.
   const auto result = CreateOmniboxResult(
-      "https://url1.com", AutocompleteMatchType::SEARCH_SUGGEST_ENTITY,
+      "https://url1.com", omnibox::AutocompleteMatchType::kSearchSuggestEntity,
       GURL("https://example.com/icon.png"));
   base::RunLoop().RunUntilIdle();
 
@@ -390,11 +391,11 @@ TEST_F(OmniboxResultTest, RichEntityIcon) {
 // Test that results have generic icons for their result type.
 TEST_F(OmniboxResultTest, GenericIcon) {
   const auto domain_result = CreateOmniboxResult(
-      "https://example.com", AutocompleteMatchType::HISTORY_URL);
+      "https://example.com", omnibox::AutocompleteMatchType::kHistoryUrl);
   EXPECT_EQ(&ash::kOmniboxGenericIcon,
             domain_result->icon().icon.GetVectorIcon().vector_icon());
   const auto search_result = CreateOmniboxResult(
-      "https://example.com", AutocompleteMatchType::SEARCH_SUGGEST);
+      "https://example.com", omnibox::AutocompleteMatchType::kSearchSuggest);
   EXPECT_EQ(&ash::kSearchIcon,
             search_result->icon().icon.GetVectorIcon().vector_icon());
 }
@@ -403,8 +404,8 @@ TEST_F(OmniboxResultTest, GenericIcon) {
 // swapped.
 TEST_F(OmniboxResultTest, UrlText) {
   // Uses the default example contents and description.
-  const auto result = CreateOmniboxResult("https://example.com",
-                                          AutocompleteMatchType::HISTORY_URL);
+  const auto result = CreateOmniboxResult(
+      "https://example.com", omnibox::AutocompleteMatchType::kHistoryUrl);
 
   // The output title should be the input description and the output details
   // should be the input contents.
@@ -421,9 +422,10 @@ TEST_F(OmniboxResultTest, UrlText) {
 // Test that descriptions are displayed for rich entities.
 TEST_F(OmniboxResultTest, RichEntityText) {
   // Uses the default example contents and description.
-  const auto result = CreateOmniboxResult(
-      "https://example.com", AutocompleteMatchType::SEARCH_SUGGEST_ENTITY,
-      GURL("https://example.com/icon.png"));
+  const auto result =
+      CreateOmniboxResult("https://example.com",
+                          omnibox::AutocompleteMatchType::kSearchSuggestEntity,
+                          GURL("https://example.com/icon.png"));
 
   const std::u16string expected_description =
       std::u16string(kExampleDescription) + u" - Google Search";
@@ -444,7 +446,7 @@ TEST_F(OmniboxResultTest, RichEntityText) {
 TEST_F(OmniboxResultTest, SearchResultText) {
   // Uses the default example contents and description.
   const auto result = CreateOmniboxResult(
-      "https://example.com", AutocompleteMatchType::SEARCH_SUGGEST);
+      "https://example.com", omnibox::AutocompleteMatchType::kSearchSuggest);
 
   // Title should be populated.
   EXPECT_TRUE(IsSingletonTextVector(result->title_text_vector(),
@@ -461,11 +463,13 @@ TEST_F(OmniboxResultTest, SearchResultText) {
 
 TEST_F(OmniboxResultTest, RelevanceWithFuzzyMatchCutoff) {
   std::unique_ptr<OmniboxResult> result_high_fuzzy_relevance =
-      CreateOmniboxResult(kExampleUrl, AutocompleteMatchType::HISTORY_URL,
-                          GURL(), kExampleDescription);
+      CreateOmniboxResult(kExampleUrl,
+                          omnibox::AutocompleteMatchType::kHistoryUrl, GURL(),
+                          kExampleDescription);
   std::unique_ptr<OmniboxResult> result_low_fuzzy_relevance =
-      CreateOmniboxResult(kExampleUrl, AutocompleteMatchType::HISTORY_URL,
-                          GURL(), u"different");
+      CreateOmniboxResult(kExampleUrl,
+                          omnibox::AutocompleteMatchType::kHistoryUrl, GURL(),
+                          u"different");
 
   EXPECT_EQ(kAppListRelevance, result_high_fuzzy_relevance->relevance());
   EXPECT_EQ(kAppListRelevance, result_low_fuzzy_relevance->relevance());

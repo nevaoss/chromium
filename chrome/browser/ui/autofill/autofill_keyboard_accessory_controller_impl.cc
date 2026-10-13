@@ -603,7 +603,8 @@ void AutofillKeyboardAccessoryControllerImpl::AcceptSuggestion(
   delegate_->DidAcceptSuggestion(
       suggestion,
       AutofillSuggestionDelegate::SuggestionMetadata{
-          .multi_index = {static_cast<size_t>(index)}},
+          .multi_index = {static_cast<size_t>(index)},
+          .was_obscured = was_obscured},
       controller_common_.form_id, controller_common_.field_id);
 }
 
@@ -908,7 +909,7 @@ bool AutofillKeyboardAccessoryControllerImpl::GetRemovalConfirmationText(
 bool AutofillKeyboardAccessoryControllerImpl::ShowAutofillAiSuggestionDetails(
     size_t index) {
   if (!base::FeatureList::IsEnabled(
-          features::kAutofillAmbientAutofillSuppressionUI)) {
+          features::kAutofillAmbientAutofillSuppression)) {
     return false;
   }
   if (index >= suggestions_.size()) {

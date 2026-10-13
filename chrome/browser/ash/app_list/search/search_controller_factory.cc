@@ -32,6 +32,7 @@
 #include "chrome/browser/ash/app_list/search/system_info/system_info_card_provider.h"
 #include "chrome/browser/ash/arc/arc_util.h"
 #include "chrome/browser/ash/system_web_apps/apps/personalization_app/personalization_app_utils.h"
+#include "chrome/browser/bookmarks/bookmark_model_factory.h"
 #include "chrome/browser/profiles/profile.h"
 #include "components/omnibox/browser/autocomplete_classifier.h"
 
@@ -63,6 +64,7 @@ std::unique_ptr<SearchController> CreateSearchController(
       controller->GetAppSearchDataSource()));
   controller->AddProvider(std::make_unique<OmniboxProvider>(
       profile, list_controller, template_url_service,
+      BookmarkModelFactory::GetForBrowserContext(profile),
       LauncherSearchProviderTypes()));
 
   // File search providers are added only when not in guest session and running
@@ -115,11 +117,11 @@ int LauncherSearchProviderTypes() {
   // which suggests Drive files on enterprise devices. This is disabled to
   // avoid duplication with search results from DriveFS.
   int providers = AutocompleteClassifier::DefaultOmniboxProviders() &
-                  ~AutocompleteProvider::TYPE_DOCUMENT;
+                  ~static_cast<int>(AutocompleteProvider::Type::kDocument);
 
   // The open tab provider is not included in the default providers, so add
   // it in manually.
-  providers |= AutocompleteProvider::TYPE_OPEN_TAB;
+  providers |= static_cast<int>(AutocompleteProvider::Type::kOpenTab);
 
   return providers;
 }

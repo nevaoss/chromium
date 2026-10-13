@@ -3234,11 +3234,11 @@ bool RenderProcessHostImpl::MayReuseHost() {
 }
 
 bool RenderProcessHostImpl::IsUnused() {
-  return is_unused_;
+  return GetProcessLock().is_unused();
 }
 
 void RenderProcessHostImpl::SetIsUsed() {
-  is_unused_ = false;
+  ChildProcessSecurityPolicyImpl::GetInstance()->SetProcessIsUsed(GetID());
 }
 
 void RenderProcessHostImpl::AddRoute(int32_t routing_id,
@@ -3628,7 +3628,7 @@ void RenderProcessHostImpl::SetProcessLock(
   TRACE_EVENT_BEGIN("shutdown", "Lock process", tracing_track_,
                     ChromeTrackEvent::kRenderProcessHost, *this);
   ChildProcessSecurityPolicyImpl::GetInstance()->LockProcess(
-      isolation_context, GetID(), !IsUnused(), process_lock);
+      isolation_context, GetID(), process_lock);
 
   // Note that SetProcessLock is only called on ProcessLock state transitions.
   // (e.g. invalid -> allows_any_site and allows_any_site -> locked_to_site).
@@ -3992,6 +3992,7 @@ void RenderProcessHostImpl::PropagateBrowserCommandLineToRenderer(
       switches::kWebSettingsForTesting,
       // Please keep these in alphabetical order.
       blink::switches::kAllowPreCommitInput,
+      blink::switches::kAsyncTouchMoveThrottleTimeMs,
       blink::switches::kDisableBackForwardCacheForWebSockets,
       blink::switches::kBlinkSettings,
       blink::switches::kDarkModeSettings,
@@ -4845,11 +4846,6 @@ bool RenderProcessHostImpl::FastShutdownStarted() {
 }
 
 // static
-void RenderProcessHostImpl::RegisterHost(int host_id, RenderProcessHost* host) {
-  RenderProcessHostImpl::RegisterHost(ChildProcessId(host_id), host);
-}
-
-// static
 void RenderProcessHostImpl::RegisterHost(ChildProcessId host_id,
                                          RenderProcessHost* host) {
   TRACE_EVENT(
@@ -4860,11 +4856,6 @@ void RenderProcessHostImpl::RegisterHost(ChildProcessId host_id,
             host_id.GetUnsafeValue());
       });
   GetAllHosts().AddWithID(host, host_id);
-}
-
-// static
-void RenderProcessHostImpl::UnregisterHost(int host_id) {
-  return UnregisterHost(ChildProcessId(host_id));
 }
 
 // static

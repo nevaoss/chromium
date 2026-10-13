@@ -176,13 +176,14 @@ autofill::EntitySuppressionManager* GetEntitySuppressionManager(
                  : nullptr;
 }
 
-// Unsuppresses `entity` for `profile`.
-void UnsuppressEntity(base::WeakPtr<ProfileIOS> profile,
-                      const autofill::EntityInstance& entity) {
+// Unsuppresses `entity_id` for `profile`.
+void UndoInSessionSuppressedEntity(
+    base::WeakPtr<ProfileIOS> profile,
+    const autofill::EntityInstance::EntityId& entity_id) {
   autofill::EntitySuppressionManager* suppressionManager =
       GetEntitySuppressionManager(profile.get());
   if (suppressionManager) {
-    suppressionManager->UnsuppressEntity(entity);
+    suppressionManager->UndoInSessionSuppressedEntity(entity_id);
   }
 }
 
@@ -373,12 +374,12 @@ void UnsuppressEntity(base::WeakPtr<ProfileIOS> profile,
   [self stopManualFillAllPasswordCoordinator];
 
   [self dismissAlertCoordinator];
-  [self dismissAtMemory];
+  [self stopAtMemoryCoordinator];
   [self dismissSourcesSheetAnimated:NO];
 }
 
 - (void)stopChildren {
-  [self dismissAtMemory];
+  [self stopAtMemoryCoordinator];
   _formInputAccessoryMediator.formInputInteractionDelegate = nil;
   for (ChromeCoordinator* coordinator in self.childCoordinators) {
     [coordinator stop];
@@ -675,7 +676,7 @@ void UnsuppressEntity(base::WeakPtr<ProfileIOS> profile,
       [UISheetPresentationControllerDetent mediumDetent],
       [UISheetPresentationControllerDetent largeDetent],
     ];
-    sheetPresentationController.prefersGrabberVisible = YES;
+    sheetPresentationController.prefersGrabberVisible = NO;
   }
 
   UIViewController* presenter = self.baseViewController;
@@ -717,7 +718,7 @@ void UnsuppressEntity(base::WeakPtr<ProfileIOS> profile,
     return NO;
   }
   return base::FeatureList::IsEnabled(
-      autofill::features::kAutofillAmbientAutofillSuppressionUI);
+      autofill::features::kAutofillAmbientAutofillSuppression);
 }
 
 - (BOOL)isPersonalContextSuggestion:(FormSuggestion*)suggestion {
@@ -933,6 +934,14 @@ void UnsuppressEntity(base::WeakPtr<ProfileIOS> profile,
 }
 
 - (void)dismissAtMemory {
+  if (_atMemoryCoordinator.settingsPresented) {
+    return;
+  }
+  [self stopAtMemoryCoordinator];
+}
+
+// Stops and removes `_atMemoryCoordinator`.
+- (void)stopAtMemoryCoordinator {
   if (!_atMemoryCoordinator) {
     return;
   }
@@ -940,21 +949,6 @@ void UnsuppressEntity(base::WeakPtr<ProfileIOS> profile,
   _atMemoryCoordinator = nil;
   [coordinator stop];
   [self.childCoordinators removeObject:coordinator];
-}
-
-- (void)openAutofillSettings {
-  __weak __typeof(self) weakSelf = self;
-  id<SettingsCommands> settingsHandler = HandlerForProtocol(
-      self.browser->GetCommandDispatcher(), SettingsCommands);
-  [settingsHandler showEnhancedAutofillSettingsWithCompletion:^{
-    [weakSelf onAutofillSettingsDismissed];
-  }];
-}
-
-- (void)openManageEnhancedAutofillDetails {
-  id<SettingsCommands> settingsHandler = HandlerForProtocol(
-      self.browser->GetCommandDispatcher(), SettingsCommands);
-  [settingsHandler showSuggestionsFromGeminiHelpImprove];
 }
 
 #pragma mark - SecurityAlertCommands
@@ -1078,8 +1072,8 @@ void UnsuppressEntity(base::WeakPtr<ProfileIOS> profile,
                   [weakSelf suppressEntityForSuggestion:suggestion];
                   [weakSelf dismissAlertCoordinator];
                 }
-                 style:UIAlertActionStyleDestructive
-             preferred:NO
+                 style:UIAlertActionStyleDefault
+             preferred:YES
                enabled:YES];
 
   [_alertCoordinator start];
@@ -1097,9 +1091,12 @@ void UnsuppressEntity(base::WeakPtr<ProfileIOS> profile,
   if (!entity.has_value()) {
     return;
   }
-  suppressionManager->SuppressEntity(*entity);
+  // Copy the entity because suppressing it evicts it from the
+  // `EntityDataManager`, which owns `*entity`.
+  const autofill::EntityInstance entityCopy = *entity;
+  suppressionManager->SuppressEntity(entityCopy);
   [self resetSuggestions];
-  [self showUndoSnackbarForEntity:*entity];
+  [self showUndoSnackbarForEntity:entityCopy];
 }
 
 // Shows a snackbar allowing the user to undo removing `entity`.
@@ -1115,9 +1112,9 @@ void UnsuppressEntity(base::WeakPtr<ProfileIOS> profile,
   __weak __typeof(self) weakSelf = self;
   base::WeakPtr<ProfileIOS> weakProfile =
       self.profile ? self.profile->AsWeakPtr() : nullptr;
-  autofill::EntityInstance capturedEntity = entity;
+  autofill::EntityInstance::EntityId entityId = entity.guid();
   action.handler = ^{
-    UnsuppressEntity(weakProfile, capturedEntity);
+    UndoInSessionSuppressedEntity(weakProfile, entityId);
     [weakSelf resetSuggestions];
   };
 
@@ -1126,7 +1123,7 @@ void UnsuppressEntity(base::WeakPtr<ProfileIOS> profile,
                         IDS_IOS_AUTOFILL_AI_REMOVE_SNACKBAR_TITLE)];
   message.action = action;
 
-  [snackbarHandler showSnackbarMessage:message];
+  [snackbarHandler showSnackbarMessageAfterDismissingKeyboard:message];
 }
 
 // Resets suggestions in the form input accessory mediator.
@@ -1347,16 +1344,6 @@ void UnsuppressEntity(base::WeakPtr<ProfileIOS> profile,
 
   // Ensure the keyboard accessory knows we are now in manual filling mode.
   [self updateKeyboardAccessoryForManualFilling];
-}
-
-// Handles dismissal of the Autofill settings page opened from AtMemory notice.
-- (void)onAutofillSettingsDismissed {
-  if (!self.browser) {
-    return;
-  }
-  if (!autofill::IsEnhancedAutofillEnabled(self.browser->GetProfile())) {
-    [self dismissAtMemory];
-  }
 }
 
 @end

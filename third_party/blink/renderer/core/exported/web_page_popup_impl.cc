@@ -108,21 +108,15 @@ bool CanScroll(Node* node) {
 
 Node* FindFirstScroller(Node* event_target) {
   DCHECK(event_target);
-  Node* cur_node = nullptr;
-  bool found = false;
-  LayoutBox* cur_box = event_target->GetLayoutObject()
-                           ? event_target->GetLayoutObject()->EnclosingBox()
-                           : nullptr;
-  while (cur_box) {
-    cur_node = cur_box->GetNode();
-    if (CanScroll(cur_node)) {
-      found = true;
-      break;
+  LayoutBox* box = event_target->GetLayoutObject()
+                       ? event_target->GetLayoutObject()->EnclosingBox()
+                       : nullptr;
+  while (box) {
+    Node* node = box->GetNode();
+    if (CanScroll(node)) {
+      return node;
     }
-    cur_box = cur_box->ContainingBlock();
-  }
-  if (found && cur_node) {
-    return cur_node;
+    box = box->ContainingBlock();
   }
   return nullptr;
 }
@@ -660,6 +654,10 @@ void WebPagePopupImpl::Update() {
   }
 
   popup_client_->Update(forced_update);
+  if (!widget_base_) {
+    // Something inside Update() closed this popup.
+    return;
+  }
   if (forced_update) {
     SetWindowRect(WindowRectInScreen());
   }
@@ -1064,6 +1062,10 @@ KURL WebPagePopupImpl::GetURLForDebugTrace() {
 void WebPagePopupImpl::WidgetHostDisconnected() {
   Close();
   // Careful, this is now destroyed.
+}
+
+void WebPagePopupImpl::WidgetHostDisconnectedForTesting() {
+  WidgetHostDisconnected();
 }
 
 void WebPagePopupImpl::Close() {

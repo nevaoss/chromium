@@ -16,6 +16,7 @@
 #include "components/autofill/core/browser/data_model/autofill_ai/entity_type.h"
 #include "components/autofill/core/browser/data_model/autofill_ai/entity_type_names.h"
 #include "components/autofill/core/browser/webdata/personal_context/entity_suppression_sync_util.h"
+#include "components/os_crypt/async/browser/os_crypt_async.h"
 #include "components/os_crypt/async/browser/test_utils.h"
 #include "components/os_crypt/async/common/encryptor.h"
 #include "components/sync/model/data_batch.h"
@@ -86,8 +87,13 @@ class MockBridgeObserver : public EntitySuppressionSyncBridge::Observer {
 class EntitySuppressionSyncBridgeTest : public testing::Test {
  public:
   EntitySuppressionSyncBridgeTest()
-      : encryptor_(os_crypt_async::GetTestEncryptorForTesting()),
-        store_(syncer::DataTypeStoreTestUtil::CreateInMemoryStoreForTest()) {}
+      : os_crypt_async_(os_crypt_async::GetTestOSCryptAsyncForTesting(
+            /*is_sync_for_unittests=*/true)),
+        store_(syncer::DataTypeStoreTestUtil::CreateInMemoryStoreForTest()) {
+    base::test::TestFuture<scoped_refptr<os_crypt_async::Encryptor>> future;
+    os_crypt_async_->GetInstance(future.GetCallback());
+    encryptor_ = future.Take();
+  }
 
   void SetUp() override {
     ON_CALL(mock_processor_, IsTrackingMetadata()).WillByDefault(Return(true));
@@ -97,7 +103,7 @@ class EntitySuppressionSyncBridgeTest : public testing::Test {
     bridge_ = std::make_unique<EntitySuppressionSyncBridge>(
         mock_processor_.CreateForwardingProcessor(),
         syncer::DataTypeStoreTestUtil::FactoryForForwardingStore(store_.get()),
-        encryptor_);
+        os_crypt_async_.get());
     bridge_->AddObserver(&observer_);
     ASSERT_TRUE(base::test::RunUntil([&]() { return bridge_->IsLoaded(); }));
   }
@@ -143,9 +149,14 @@ class EntitySuppressionSyncBridgeTest : public testing::Test {
   }
   std::unique_ptr<syncer::DataTypeStore>& store() { return store_; }
 
+  base::test::SingleThreadTaskEnvironment& task_environment() {
+    return task_environment_;
+  }
+
  private:
   base::test::SingleThreadTaskEnvironment task_environment_;
-  scoped_refptr<const os_crypt_async::Encryptor> encryptor_;
+  std::unique_ptr<os_crypt_async::OSCryptAsync> os_crypt_async_;
+  scoped_refptr<os_crypt_async::Encryptor> encryptor_;
   std::unique_ptr<syncer::DataTypeStore> store_;
   NiceMock<syncer::MockDataTypeLocalChangeProcessor> mock_processor_;
   NiceMock<MockBridgeObserver> observer_;
@@ -157,10 +168,12 @@ class EntitySuppressionSyncBridgeTest : public testing::Test {
 TEST_F(EntitySuppressionSyncBridgeTest, EncryptionUnavailableDoesNotLoad) {
   EXPECT_CALL(mock_processor(), ModelReadyToSync).Times(0);
 
+  os_crypt_async::OSCryptAsync os_crypt_async_without_keys({});
   EntitySuppressionSyncBridge bridge(
       mock_processor().CreateForwardingProcessor(),
       syncer::DataTypeStoreTestUtil::FactoryForForwardingStore(store().get()),
-      os_crypt_async::GetTestEncryptorWithoutKeysForTesting());
+      &os_crypt_async_without_keys);
+  task_environment().RunUntilIdle();
 
   EXPECT_FALSE(bridge.IsLoaded());
 }
@@ -509,6 +522,34 @@ TEST_F(EntitySuppressionSyncBridgeTest,
 
   EXPECT_THAT(bridge().GetSuppressions(), ElementsAre(entry));
   EXPECT_EQ(GetFirstGuid(), "guid1");
+}
+
+// Tests that ClearAllSuppressions deletes all entries from local state and
+// store, commits deletions to Sync, and notifies observers once.
+TEST_F(EntitySuppressionSyncBridgeTest, ClearAllSuppressions) {
+  WriteToStore("guid1", CreatePassportEntry());
+  WriteToStore("guid2", CreateDriversLicenseEntry());
+  CreateBridge();
+  ASSERT_EQ(bridge().GetSuppressions().size(), 2u);
+
+  EXPECT_CALL(mock_processor(), Delete("guid1", _, _));
+  EXPECT_CALL(mock_processor(), Delete("guid2", _, _));
+  EXPECT_CALL(observer(), OnSuppressionsChanged()).Times(1);
+  EXPECT_TRUE(bridge().ClearAllSuppressions());
+
+  EXPECT_TRUE(bridge().GetSuppressions().empty());
+  EXPECT_TRUE(ReadAllRecordsFromStore().empty());
+}
+
+// Tests that ClearAllSuppressions returns false and does not notify observers
+// when there are no suppressions.
+TEST_F(EntitySuppressionSyncBridgeTest, ClearAllSuppressions_Empty) {
+  CreateBridge();
+  ASSERT_TRUE(bridge().GetSuppressions().empty());
+
+  EXPECT_CALL(mock_processor(), Delete).Times(0);
+  EXPECT_CALL(observer(), OnSuppressionsChanged()).Times(0);
+  EXPECT_FALSE(bridge().ClearAllSuppressions());
 }
 
 }  // namespace

@@ -238,7 +238,7 @@ class LensOverlayController : public OverlayBaseController,
   void IssueSearchBoxRequestForTesting(
       base::Time query_start_time,
       const std::string& search_box_text,
-      AutocompleteMatchType::Type match_type,
+      omnibox::AutocompleteMatchType match_type,
       bool is_zero_prefix_suggestion,
       std::map<std::string, std::string> additional_query_params);
 
@@ -295,7 +295,7 @@ class LensOverlayController : public OverlayBaseController,
   void SetInvocationTimeForWebUIBinding(base::TimeTicks time);
 
   // Clears the selected region.
-  void ClearRegionSelection();
+  virtual void ClearRegionSelection();
 
   // Returns the lens suggest inputs stored in this controller for testing.
   lens::proto::LensOverlaySuggestInputs GetLensSuggestInputsForTesting();
@@ -343,7 +343,7 @@ class LensOverlayController : public OverlayBaseController,
   void IssueTextSearchRequest(
       std::string query_text,
       std::map<std::string, std::string> additional_query_parameters,
-      AutocompleteMatchType::Type match_type,
+      omnibox::AutocompleteMatchType match_type,
       bool is_zero_prefix_suggestion,
       lens::LensOverlayInvocationSource invocation_source);
 
@@ -412,7 +412,7 @@ class LensOverlayController : public OverlayBaseController,
   void IssueSearchBoxRequest(
       base::Time query_start_time,
       const std::string& search_box_text,
-      AutocompleteMatchType::Type match_type,
+      omnibox::AutocompleteMatchType match_type,
       bool is_zero_prefix_suggestion,
       std::map<std::string, std::string> additional_query_params,
       std::optional<lens::LensOverlayInvocationSource> invocation_source);
@@ -551,7 +551,7 @@ class LensOverlayController : public OverlayBaseController,
       base::Time query_start_time,
       std::string query_text,
       std::map<std::string, std::string> additional_query_parameters,
-      AutocompleteMatchType::Type match_type,
+      omnibox::AutocompleteMatchType match_type,
       bool is_zero_prefix_suggestion,
       lens::LensOverlayInvocationSource invocation_source);
 
@@ -732,7 +732,7 @@ class LensOverlayController : public OverlayBaseController,
   void IssueSearchBoxRequestPart2(
       base::Time query_start_time,
       const std::string& search_box_text,
-      AutocompleteMatchType::Type match_type,
+      omnibox::AutocompleteMatchType match_type,
       bool is_zero_prefix_suggestion,
       std::map<std::string, std::string> additional_query_params,
       std::optional<lens::LensOverlayInvocationSource> invocation_source);
@@ -769,7 +769,7 @@ class LensOverlayController : public OverlayBaseController,
       base::Time query_start_time,
       std::string query_text,
       std::map<std::string, std::string> additional_query_parameters,
-      AutocompleteMatchType::Type match_type,
+      omnibox::AutocompleteMatchType match_type,
       bool is_zero_prefix_suggestion,
       lens::LensOverlayInvocationSource invocation_source);
 

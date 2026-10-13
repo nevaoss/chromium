@@ -115,6 +115,24 @@ constexpr NSDirectionalEdgeInsets kWorklogContainerInsets =
 - (void)setActuationActive:(BOOL)active {
   _geminiContentView.hidden = active;
   _worklogViewController.view.hidden = !active;
+  if (!active) {
+    return;
+  }
+  // The worklog may have reported its height before the mutator entered the
+  // actuating state (`ActorService` observer order is not guaranteed), in which
+  // case that report was ignored. Re-send it now that it will be applied.
+  [_worklogViewController notifyHeightDidChange];
+}
+
+- (CGFloat)contentHeight {
+  [self.view layoutIfNeeded];
+  CGSize targetSize = CGSizeMake(self.view.bounds.size.width,
+                                 UILayoutFittingCompressedSize.height);
+  return [_geminiContentView
+               systemLayoutSizeFittingSize:targetSize
+             withHorizontalFittingPriority:UILayoutPriorityRequired
+                   verticalFittingPriority:UILayoutPriorityFittingSizeLevel]
+      .height;
 }
 
 #pragma mark - Private
@@ -148,7 +166,7 @@ constexpr NSDirectionalEdgeInsets kWorklogContainerInsets =
       setContentHuggingPriority:UILayoutPriorityDefaultHigh
                         forAxis:UILayoutConstraintAxisVertical];
   [_geminiViewController.view
-      setContentCompressionResistancePriority:UILayoutPriorityDefaultHigh
+      setContentCompressionResistancePriority:UILayoutPriorityRequired
                                       forAxis:UILayoutConstraintAxisVertical];
   [_geminiViewController didMoveToParentViewController:self];
 }

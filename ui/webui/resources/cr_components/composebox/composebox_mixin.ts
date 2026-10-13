@@ -941,25 +941,20 @@ export const ComposeboxEmbedderMixin =
             this.getDropdownElement().unselect();
           }
 
-          // Smart compose hints should only be updated from the async response.
-          // This prevents the hint flicker from an empty smart compose response
-          // in the synchronous pass.
-          if (this.haveReceivedSynchronousAutocompleteResponse) {
-            // Populate the smart compose suggestion.
-            const nextHint = this.result.smartComposeInlineHint?.trim() ?
-                this.result.smartComposeInlineHint :
-                '';
-            if (this.smartComposeInlineHint !== nextHint) {
-              this.smartComposeInlineHint = nextHint;
-            }
+          // Populate the smart compose suggestion.
+          const nextHint = this.result.smartComposeInlineHint?.trim() ?
+              this.result.smartComposeInlineHint :
+              '';
+          if (this.smartComposeInlineHint !== nextHint) {
+            this.smartComposeInlineHint = nextHint;
+          }
 
-            // Smart compose stats are incremented on every response from the
-            // server.
-            if (this.smartComposeInlineHint) {
-              this.smartComposeStats.shownCount++;
-              this.smartComposeStats.shownLength +=
-                  this.smartComposeInlineHint.length;
-            }
+          // Smart compose stats are incremented on every response from the
+          // server.
+          if (this.smartComposeInlineHint) {
+            this.smartComposeStats.shownCount++;
+            this.smartComposeStats.shownLength +=
+                this.smartComposeInlineHint.length;
           }
 
           this.haveReceivedSynchronousAutocompleteResponse = true;
@@ -968,9 +963,23 @@ export const ComposeboxEmbedderMixin =
         onContextualInputStatusChanged(
             token: UnguessableToken, status: ContextUploadStatus,
             errorType: ContextUploadErrorType|null) {
-          if (!this.attachedContext.has(token) &&
+          // Statuses arrive on the page pipe, which is not ordered with the
+          // `addTabContext` response. A ghost placeholder created for an
+          // unknown token (see `updateFileStatus()`) is not the real
+          // attachment yet, so a terminal status landing on it must still be
+          // recorded; otherwise `addTabContextHandleCallback()` replaces the
+          // ghost with an in-flight attachment that never completes.
+          const existing = this.attachedContext.get(token);
+          if ((!existing || existing.isGhost) &&
               isContextUploadStatusTerminal(status)) {
             this.earlyTerminalUploads.set(token, status);
+          }
+          if (this.attachedContext.get(token)?.delayUpload &&
+              !isContextUploadStatusTerminal(status)) {
+            if (status === ContextUploadStatus.kProcessing) {
+              this.queryAutocomplete(/* clearMatches= */ true);
+            }
+            return;
           }
           // If error message is updated, then the returned file is stale and
           // removed from carousel. File is removed from carousel on
@@ -1046,23 +1055,7 @@ export const ComposeboxEmbedderMixin =
             }
           }
           this.input = newInput;
-
-          // `clearMatches` is true if input is empty stop any in progress
-          // providers before requerying for on-focus (zero-suggest) inputs. The
-          // searchbox doesn't allow zero-suggest requests to be made while the
-          // ACController is not done.
-          if (this.composeboxNoFlickerSuggestionsFix) {
-            // If the composebox no flickering fix is enabled, stop the
-            // ACController from querying for suggestions when the input is
-            // empty, but don't clear the matches so the dropdown doesn't close.
-            if (this.input === '') {
-              this.getSearchboxHandler().stopAutocomplete(
-                  /*clearResult=*/ true);
-            }
-            this.queryAutocomplete(/* clearMatches= */ false);
-          } else {
-            this.queryAutocomplete(/* clearMatches= */ this.input === '');
-          }
+          this.queryAutocomplete(/* clearMatches= */ false);
         }
 
         onClearSmartCompose() {
@@ -1495,10 +1488,20 @@ export const ComposeboxEmbedderMixin =
             // mapped into `attachedContext`. Consume it here; note the
             // `delete()` must run even when the status is unused, so that it
             // is not left behind for a later tab that reuses the token.
-            const earlyStatus = this.earlyTerminalUploads.get(token) ?? null;
+            const existingStatus =
+                this.attachedContext.get(token)?.status ?? null;
+            const earlyStatus = this.earlyTerminalUploads.get(token) ??
+                (existingStatus !== null &&
+                         isContextUploadStatusTerminal(existingStatus) ?
+                     existingStatus :
+                     null);
             this.earlyTerminalUploads.delete(token);
             if (earlyStatus !== null &&
                 earlyStatus !== ContextUploadStatus.kUploadSuccessful) {
+              if (this.attachedContext.has(token)) {
+                this.attachedContext.delete(token);
+                this.attachedContext = new Map([...this.attachedContext]);
+              }
               return null;
             }
             // `createFromTab` optimistically reports `kUploadSuccessful`, which
@@ -1514,6 +1517,7 @@ export const ComposeboxEmbedderMixin =
                 token, tabUpload.tabId, tabUpload.title, tabUpload.url, {
                   supportsUnimodal: true,
                   origin: tabUpload.origin,
+                  delayUpload: tabUpload.delayUpload,
                   status: uploadInFlight ?
                       ContextUploadStatus.kUploadStarted :
                       ContextUploadStatus.kUploadSuccessful,
@@ -1983,6 +1987,18 @@ export const ComposeboxEmbedderMixin =
                 file.uuid !== this.automaticActiveTab.uuid) {
               this.deleteFile(uuid, /*fromUserAction=*/ false);
             }
+          }
+
+          // Restored tabs are the tabs submitted in the previous thread. A new
+          // thread starts with no submitted context, so drop them regardless of
+          // `shouldResetRestoredTabs()`.
+          const hadRestoredTabs = this.aimThreadRestoredTabs.length > 0;
+          this.resetRestoredTabs();
+          if (hadRestoredTabs &&
+              this.tabSuggestionsState === TabSuggestionsState.LOADED) {
+            // Restored tabs are merged into (and deduped against) the tab
+            // suggestions, so recompute them without the stale entries.
+            this.refreshTabSuggestions(/*forceRefresh=*/ true);
           }
         }
 
@@ -2765,7 +2781,10 @@ export const ComposeboxEmbedderMixin =
               this.attachedContext.set(token, file);
               this.attachedContext = new Map([...this.attachedContext]);
             }
-          } else if (this.shouldShowGhostFiles) {
+          } else if (
+              this.shouldShowGhostFiles &&
+              (!isContextUploadStatusTerminal(status) ||
+               status === ContextUploadStatus.kUploadSuccessful)) {
             // File is unknown but its status is known. Show this if
             // ghost/unknown files in frontend are allowed to be in
             // carousel.
@@ -2776,10 +2795,12 @@ export const ComposeboxEmbedderMixin =
               dataUrl: null,
               type: '',
               inputType: InputType.kLensFile,
-              // Override this since first upload status is this or
-              // processing. Need this or processing in order to show tab
-              // spinner.
-              status: ContextUploadStatus.kUploadStarted,
+              // Override non-terminal statuses with kUploadStarted so the tab
+              // spinner is shown, while preserving kUploadSuccessful if the
+              // upload already completed before addTabContext resolved.
+              status: status === ContextUploadStatus.kUploadSuccessful ?
+                  ContextUploadStatus.kUploadSuccessful :
+                  ContextUploadStatus.kUploadStarted,
               url: null,
               tabId: null,
               isDeletable: true,

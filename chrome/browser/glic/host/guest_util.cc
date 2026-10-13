@@ -8,6 +8,7 @@
 
 #include "base/command_line.h"
 #include "base/feature_list.h"
+#include "base/logging.h"
 #include "base/memory/ptr_util.h"
 #include "base/memory/raw_ptr.h"
 #include "base/metrics/histogram_functions.h"
@@ -339,25 +340,22 @@ GlicWebClientManager* GetWebClientManagerForWebContents(
   return nullptr;
 }
 
-GURL GetGuestURL() {
-  GURL url;
-  if (geic::IsGeicEnabled()) {
-    url = geic::GetGeicGuestUrl();
+GURL GetGuestURL(content::BrowserContext* browser_context) {
+  if (geic::IsGeicEnabled(browser_context)) {
+    GURL url = geic::GetGeicGuestUrl(browser_context);
     if (url.is_empty()) {
-      LOG(ERROR) << "GEiC is enabled but no guest URL was provided.";
+      VLOG(1) << "GEiC is enabled but no guest URL was provided.";
       return GURL();
     }
+    return GetLocalizedGuestURL(url);
   }
 
-  if (url.is_empty()) {
-    auto* command_line = base::CommandLine::ForCurrentProcess();
-    bool has_glic_guest_url =
-        command_line->HasSwitch(::switches::kGlicGuestURL);
-    url =
-        GURL(has_glic_guest_url
-                 ? command_line->GetSwitchValueASCII(::switches::kGlicGuestURL)
-                 : features::kGlicGuestURL.Get());
-  }
+  auto* command_line = base::CommandLine::ForCurrentProcess();
+  bool has_glic_guest_url = command_line->HasSwitch(::switches::kGlicGuestURL);
+  GURL url =
+      GURL(has_glic_guest_url
+               ? command_line->GetSwitchValueASCII(::switches::kGlicGuestURL)
+               : features::kGlicGuestURL.Get());
 
   // If a preset url is enabled, use it instead.
   url = MaybeApplyPresetGuestUrl(std::move(url));
@@ -370,8 +368,17 @@ GURL GetGuestURL() {
   return GetLocalizedGuestURL(url);
 }
 
-url::Origin GetGuestOrigin() {
-  return url::Origin::Create(GetGuestURL());
+base::TimeDelta GetMaxLoadingTime() {
+  int max_loading_time_ms = features::kGlicMaxLoadingTimeMs.Get();
+  if (base::CommandLine::ForCurrentProcess()->HasSwitch(::switches::kGlicDev)) {
+    // Bump up timeout value, as dev server may be slow.
+    max_loading_time_ms *= 100;
+  }
+  return base::Milliseconds(std::max(0, max_loading_time_ms));
+}
+
+url::Origin GetGuestOrigin(content::BrowserContext* browser_context) {
+  return url::Origin::Create(GetGuestURL(browser_context));
 }
 
 std::string GetGlicAllowedOrigins() {
@@ -387,14 +394,15 @@ std::string GetGlicAllowedOrigins() {
   return allowed_origins;
 }
 
-bool IsOriginAllowedGlicApi(const url::Origin& origin) {
+bool IsOriginAllowedGlicApi(const url::Origin& origin,
+                            content::BrowserContext* browser_context) {
   if (origin.opaque()) {
     return false;
   }
   if (base::CommandLine::ForCurrentProcess()->HasSwitch(::switches::kGlicDev)) {
     return true;
   }
-  if (GetGuestOrigin().IsSameOriginWith(origin)) {
+  if (GetGuestOrigin(browser_context).IsSameOriginWith(origin)) {
     return true;
   }
   std::string api_allowed_origins = features::kGlicApiAllowedOrigins.Get();
@@ -406,11 +414,12 @@ bool IsOriginAllowedGlicApi(const url::Origin& origin) {
   return cached_matcher->Matches(api_allowed_origins, origin);
 }
 
-bool IsGuestOriginAllowed(const url::Origin& origin) {
+bool IsGuestOriginAllowed(const url::Origin& origin,
+                          content::BrowserContext* browser_context) {
   if (origin.opaque()) {
     return false;
   }
-  if (IsOriginAllowedGlicApi(origin)) {
+  if (IsOriginAllowedGlicApi(origin, browser_context)) {
     return true;
   }
 
@@ -479,7 +488,8 @@ bool IsFrameAllowedGlicApi(content::RenderFrameHost& frame_host) {
   if (!guest_contents || !IsGlicGuest(guest_contents)) {
     return false;
   }
-  return IsOriginAllowedGlicApi(frame_host.GetLastCommittedOrigin());
+  return IsOriginAllowedGlicApi(frame_host.GetLastCommittedOrigin(),
+                                frame_host.GetBrowserContext());
 }
 
 void BindGlicWebClientHandler(
@@ -583,12 +593,17 @@ bool IsProcessHostForGlic(content::RenderProcessHost* process_host) {
 }
 
 content::WebContents* GetGlicGuestWebContents(
-    content::WebContents* webui_contents) {
-  if (!webui_contents) {
+    content::WebContents* web_contents) {
+  if (!web_contents) {
     return nullptr;
   }
-  auto* data = GlicWebUiData::FromWebContents(webui_contents);
-  return data ? data->guest_contents() : nullptr;
+  if (auto* data = GlicWebUiData::FromWebContents(web_contents)) {
+    return data->guest_contents();
+  }
+  if (IsGlicGuest(web_contents)) {
+    return web_contents;
+  }
+  return nullptr;
 }
 
 GlicUI* GetGlicUiForGuest(content::WebContents* guest_contents) {
@@ -762,6 +777,10 @@ void PopulateGlobalClientInitialState(mojom::WebClientInitialState* state,
 
   if (base::FeatureList::IsEnabled(features::kGlicNoWebUiLoader)) {
     state->host_capabilities.push_back(mojom::HostCapability::kNoWebUiLoader);
+  }
+
+  if (features::IsGlicNoWebviewEnabled()) {
+    state->host_capabilities.push_back(mojom::HostCapability::kNoWebview);
   }
 
   if (base::FeatureList::IsEnabled(features::kGlicPasteEligibilityCheck)) {

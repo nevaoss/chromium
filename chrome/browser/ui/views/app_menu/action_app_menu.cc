@@ -11,6 +11,8 @@
 #include "chrome/browser/ui/browser_window/public/browser_window_interface.h"
 #include "chrome/browser/ui/color/chrome_color_id.h"
 #include "chrome/browser/ui/managed_ui.h"
+#include "chrome/browser/ui/side_panel/side_panel_action_callback.h"
+#include "chrome/browser/ui/side_panel/side_panel_enums.h"
 #include "chrome/browser/ui/ui_features.h"
 #include "chrome/browser/ui/user_education/browser_user_education_interface.h"
 #include "chrome/browser/ui/views/app_menu/action_app_menu_manager.h"
@@ -18,11 +20,13 @@
 #include "chrome/browser/ui/views/app_menu/app_menu_block_view.h"
 #include "chrome/browser/ui/views/app_menu/app_menu_chip_view.h"
 #include "chrome/browser/ui/views/app_menu/app_menu_footer_view.h"
+#include "chrome/browser/ui/views/app_menu/app_menu_minor_text_view.h"
 #include "chrome/browser/ui/views/app_menu/app_menu_search_bar_view.h"
 #include "chrome/browser/ui/views/app_menu/app_menu_zoom_view.h"
 #include "chrome/browser/ui/views/chrome_layout_provider.h"
 #include "chrome/browser/user_education/user_education_service.h"
 #include "ui/actions/actions.h"
+#include "ui/base/l10n/l10n_util.h"
 #include "ui/base/models/image_model.h"
 #include "ui/base/models/menu_separator_types.h"
 #include "ui/base/mojom/menu_source_type.mojom.h"
@@ -30,7 +34,10 @@
 #include "ui/color/color_id.h"
 #include "ui/color/color_provider.h"
 #include "ui/menus/simple_menu_model.h"
+#include "ui/strings/grit/ax_strings.h"
+#include "ui/views/accessibility/view_accessibility.h"
 #include "ui/views/border.h"
+#include "ui/views/controls/button/image_button.h"
 #include "ui/views/controls/button/menu_button_controller.h"
 #include "ui/views/controls/label.h"
 #include "ui/views/controls/menu/menu_item_view.h"
@@ -41,6 +48,7 @@
 #include "ui/views/style/typography.h"
 #include "ui/views/style/typography_provider.h"
 #include "ui/views/view_class_properties.h"
+#include "ui/views/view_utils.h"
 
 namespace {
 
@@ -110,6 +118,22 @@ bool ShouldRoundTopCorners(size_t index,
   return true;
 }
 
+actions::ActionInvocationContext BuildActionInvocationContext(
+    const actions::BaseAction* base_action,
+    int mouse_event_flags) {
+  return actions::ActionInvocationContext::Builder()
+      .SetProperty(chrome::kDispositionKey,
+                   ui::DispositionFromEventFlags(mouse_event_flags))
+      .SetProperty(chrome::kActionInvocationSourceKey,
+                   chrome::ActionInvocationSource::kAppMenu)
+      .SetProperty(AppMenuActionItem::kActionParamKey,
+                   base_action->GetProperty(AppMenuActionItem::kActionParamKey))
+      .SetProperty(kSidePanelOpenTriggerKey,
+                   static_cast<std::underlying_type_t<SidePanelOpenTrigger>>(
+                       SidePanelOpenTrigger::kAppMenu))
+      .Build();
+}
+
 }  // namespace
 
 ActionAppMenu::ActionAppMenu(BrowserWindowInterface* browser_window_interface,
@@ -145,12 +169,15 @@ void ActionAppMenu::RunMenu(views::MenuButtonController* host) {
   int32_t types = views::MenuRunner::HAS_MNEMONICS;
   menu_runner_ = std::make_unique<views::MenuRunner>(std::move(root), types);
 
-  // TODO(crbug.com/526712325): Create duplicate app menu histograms specific to
-  // the Block Style ChroMenu.
+  metrics_.OnMenuOpened();
+
   menu_runner_->RunMenuAt(host->button()->GetWidget(), host,
                           host->button()->GetAnchorBoundsInScreen(),
                           views::MenuAnchorPosition::kTopRight,
-                          ui::mojom::MenuSourceType::kNone);
+                          ui::mojom::MenuSourceType::kNone,
+                          /*native_view_for_gestures=*/gfx::NativeView(),
+                          /*corners=*/std::nullopt,
+                          "Chrome.AppMenu.MenuHostInitToNextFramePresented");
 }
 
 void ActionAppMenu::CloseMenu() {
@@ -167,23 +194,25 @@ void ActionAppMenu::ExecuteCommand(int id, int mouse_event_flags) {
   auto action_iterator = command_to_action_map_.find(id);
   CHECK(action_iterator != command_to_action_map_.end());
 
-  actions::ActionItem* action_ptr = action_iterator->second->GetActionItem();
+  actions::BaseAction* base_action = action_iterator->second;
+  actions::ActionItem* action_ptr = base_action->GetActionItem();
   CHECK(action_ptr);
 
+  metrics_.LogMenuAction(base_action);
+
   action_ptr->InvokeAction(
-      actions::ActionInvocationContext::Builder()
-          .SetProperty(chrome::kDispositionKey,
-                       ui::DispositionFromEventFlags(mouse_event_flags))
-          .Build());
+      BuildActionInvocationContext(base_action, mouse_event_flags));
 }
 
 void ActionAppMenu::OnMenuClosed(views::MenuItemView* menu) {
   actions::ActionItem* action_to_execute = nullptr;
+  actions::ActionInvocationContext action_context;
   if (action_to_execute_on_close_) {
     auto action_iterator =
-        command_to_action_map_.find(action_to_execute_on_close_.value());
+        command_to_action_map_.find(action_to_execute_on_close_->action_id);
     CHECK(action_iterator != command_to_action_map_.end());
     action_to_execute = action_iterator->second->GetActionItem();
+    action_context = std::move(action_to_execute_on_close_->context);
   }
 
   search_bar_ = nullptr;
@@ -194,15 +223,21 @@ void ActionAppMenu::OnMenuClosed(views::MenuItemView* menu) {
   if (on_menu_closed_callback_) {
     on_menu_closed_callback_.Run();
   }
-  menu_manager_->GetAppMenuRoot()->ResetActionList();
+  menu_manager_->OnMenuClosed();
 
   if (action_to_execute) {
-    action_to_execute->InvokeAction();
+    action_to_execute->InvokeAction(std::move(action_context));
   }
 }
 
 void ActionAppMenu::WillShowMenu(views::MenuItemView* menu) {
-  if (!menu->HasSubmenu() || !menu->GetSubmenu()->GetMenuItems().empty()) {
+  if (!menu->HasSubmenu()) {
+    return;
+  }
+
+  metrics_.OnWillShowSubMenu(menu->GetCommand());
+
+  if (!menu->GetSubmenu()->GetMenuItems().empty()) {
     return;
   }
 
@@ -240,7 +275,8 @@ const gfx::FontList* ActionAppMenu::GetLabelFontList(int id) const {
     return &views::TypographyProvider::Get().GetFont(
         views::style::CONTEXT_MENU, views::style::STYLE_BODY_3_MEDIUM);
   }
-  return nullptr;
+  return &views::TypographyProvider::Get().GetFont(views::style::CONTEXT_LABEL,
+                                                   views::style::STYLE_BODY_4);
 }
 
 std::optional<SkColor> ActionAppMenu::GetLabelColor(int id) const {
@@ -260,9 +296,21 @@ std::optional<SkColor> ActionAppMenu::GetLabelColor(int id) const {
   return std::nullopt;
 }
 
-void ActionAppMenu::CancelAndEvaluate(actions::ActionId action_id) {
+int ActionAppMenu::GetMaxWidthForMenu(views::MenuItemView* menu) {
+  return ChromeLayoutProvider::Get()->GetDistanceMetric(
+      DISTANCE_ACTION_APP_MENU_MAX_WIDTH);
+}
+
+void ActionAppMenu::CancelAndEvaluate(actions::ActionId action_id,
+                                      int mouse_event_flags) {
   if (!action_to_execute_on_close_.has_value()) {
-    action_to_execute_on_close_ = action_id;
+    auto action_iterator = command_to_action_map_.find(action_id);
+    CHECK(action_iterator != command_to_action_map_.end());
+    actions::BaseAction* base_action = action_iterator->second;
+    metrics_.LogMenuAction(base_action);
+    action_to_execute_on_close_ = {.action_id = action_id,
+                                   .context = BuildActionInvocationContext(
+                                       base_action, mouse_event_flags)};
     CloseMenu();
   }
 }
@@ -400,10 +448,12 @@ void ActionAppMenu::ConfigureMenuItem(views::MenuItemView* menu_item,
   const ui::Accelerator& accel = action_item->GetAccelerator();
   if (accel.key_code() != ui::VKEY_UNKNOWN) {
     menu_item->SetMinorText(accel.GetShortcutText());
-  } else if (const std::u16string* minor_text =
-                 child_base->GetProperty(AppMenuActionItem::kMinorTextKey);
-             minor_text && !minor_text->empty()) {
-    menu_item->SetMinorText(*minor_text);
+  }
+
+  if (const std::u16string* minor_text =
+          child_base->GetProperty(AppMenuActionItem::kMinorTextKey);
+      minor_text && !minor_text->empty()) {
+    AppMenuMinorTextView::AttachTo(menu_item, *minor_text);
   }
 
   if (std::u16string* chip_text =
@@ -418,6 +468,10 @@ void ActionAppMenu::ConfigureMenuItem(views::MenuItemView* menu_item,
     menu_item->set_new_badge_type(
         show_new_badge ? std::make_optional(ui::NewBadgeType::kNew)
                        : std::nullopt);
+  }
+
+  if (child_base->GetProperty(AppMenuActionItem::kIsAlertedKey)) {
+    menu_item->SetAlerted();
   }
 
   const auto* provider = ChromeLayoutProvider::Get();
@@ -472,13 +526,17 @@ void ActionAppMenu::PopulateSearchBar(views::MenuItemView* view_parent,
   search_item->set_children_use_full_width(true);
   search_item->set_vertical_margin(0);
 
+  const auto* provider = ChromeLayoutProvider::Get();
+  gfx::Insets margins =
+      provider->GetInsetsMetric(INSETS_ACTION_APP_MENU_SEARCH_BAR_MARGIN);
+  if (has_notification_header_) {
+    margins.set_top(margins.top() +
+                    provider->GetDistanceMetric(
+                        DISTANCE_ACTION_APP_MENU_NOTIFICATION_MARGIN));
+  }
+
   auto search_bar = std::make_unique<AppMenuSearchBarView>();
-  search_bar->SetProperty(
-      views::kMarginsKey,
-      ChromeLayoutProvider::Get()->GetInsetsMetric(
-          has_notification_header_
-              ? INSETS_ACTION_APP_MENU_SEARCH_BAR_WITH_NOTIFICATION_MARGIN
-              : INSETS_ACTION_APP_MENU_SEARCH_BAR_MARGIN));
+  search_bar->SetProperty(views::kMarginsKey, margins);
   search_bar_ = search_bar.get();
   search_item->AddChildView(std::move(search_bar));
 }
@@ -516,6 +574,9 @@ void ActionAppMenu::PopulateHeader(views::MenuItemView* view_parent,
       DISTANCE_ACTION_APP_MENU_HEADER_VERTICAL_MARGIN);
   header_menu_item->set_vertical_margin(default_margin);
   header_menu_item->SetEnabled(false);
+  header_menu_item->GetViewAccessibility().SetRoleDescription(
+      l10n_util::GetStringUTF16(IDS_AX_ROLE_HEADING));
+  header_menu_item->GetViewAccessibility().SetIsEnabled(true);
   if (header_menu_item->GetParentMenuItem() == root_) {
     header_menu_item->SetBorder(
         views::CreateEmptyBorder(ChromeLayoutProvider::Get()->GetInsetsMetric(
@@ -534,16 +595,20 @@ void ActionAppMenu::PopulateBlockSection(
   block_item->set_children_use_full_width(true);
   block_item->set_vertical_margin(0);
 
+  const auto* provider = ChromeLayoutProvider::Get();
+  gfx::Insets margins =
+      provider->GetInsetsMetric(INSETS_ACTION_APP_MENU_BLOCK_MARGIN);
+  if (has_notification_header_ && !search_bar_) {
+    margins.set_top(margins.top() +
+                    provider->GetDistanceMetric(
+                        DISTANCE_ACTION_APP_MENU_NOTIFICATION_MARGIN));
+  }
+
   auto block_view = std::make_unique<AppMenuBlockView>(
       block_action_item, &action_view_controller_, &command_to_action_map_,
       base::BindRepeating(&ActionAppMenu::CancelAndEvaluate,
                           base::Unretained(this)));
-  block_view->SetProperty(
-      views::kMarginsKey,
-      ChromeLayoutProvider::Get()->GetInsetsMetric(
-          has_notification_header_ && !search_bar_
-              ? INSETS_ACTION_APP_MENU_BLOCK_WITH_NOTIFICATION_MARGIN
-              : INSETS_ACTION_APP_MENU_BLOCK_MARGIN));
+  block_view->SetProperty(views::kMarginsKey, margins);
   block_item->AddChildView(std::move(block_view));
 }
 
@@ -553,7 +618,7 @@ void ActionAppMenu::PopulateCustomRow(views::MenuItemView* view_parent,
     case kActionZoomSubmenu:
       view_parent->AddChildView(std::make_unique<AppMenuZoomView>(
           browser_window_interface_, &action_view_controller_,
-          command_to_action_map_, custom_action_item));
+          command_to_action_map_, custom_action_item, metrics_));
       break;
 
     default:

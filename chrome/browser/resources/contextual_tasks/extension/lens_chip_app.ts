@@ -7,21 +7,13 @@ import 'chrome://resources/cr_elements/icons.html.js';
 
 import type {ExtensionPageHandlerInterface} from 'chrome://contextual-tasks/contextual_tasks.mojom-webui.js';
 import {ExtensionBrowserProxyImpl} from 'chrome://contextual-tasks/contextual_tasks_browser_proxy.js';
-import type {CrIconButtonElement} from 'chrome://resources/cr_elements/cr_icon_button/cr_icon_button.js';
 import {loadTimeData} from 'chrome://resources/js/load_time_data.js';
 import {CrLitElement} from 'chrome://resources/lit/v3_0/lit.rollup.js';
 import type {CSSResultGroup} from 'chrome://resources/lit/v3_0/lit.rollup.js';
+import type {Url} from 'chrome://resources/mojo/url/mojom/url.mojom-webui.js';
 
 import {getCss} from './lens_chip_app.css.js';
 import {getHtml} from './lens_chip_app.html.js';
-
-export interface LensChipAppElement {
-  $: {
-    chipRoot?: HTMLElement,
-    cropImage?: HTMLImageElement,
-    closeButton?: CrIconButtonElement,
-  };
-}
 
 export class LensChipAppElement extends CrLitElement {
   static get is() {
@@ -59,6 +51,7 @@ export class LensChipAppElement extends CrLitElement {
       loadTimeData.getString('lensRegionChipDismissA11yLabel');
 
   private pageHandler_: ExtensionPageHandlerInterface|null = null;
+  private listenerIds_: number[] = [];
 
   override connectedCallback() {
     super.connectedCallback();
@@ -69,6 +62,23 @@ export class LensChipAppElement extends CrLitElement {
     }
 
     this.fetchPreview_();
+
+    const callbackRouter =
+        ExtensionBrowserProxyImpl.getInstance().callbackRouter;
+    this.listenerIds_.push(
+        callbackRouter.onLensCropUpdated.addListener((dataUri: Url) => {
+          this.dataUri = dataUri;
+        }));
+  }
+
+  override disconnectedCallback() {
+    super.disconnectedCallback();
+    const callbackRouter =
+        ExtensionBrowserProxyImpl.getInstance().callbackRouter;
+    for (const id of this.listenerIds_) {
+      callbackRouter.removeListener(id);
+    }
+    this.listenerIds_ = [];
   }
 
   setPageHandlerForTesting(handler: ExtensionPageHandlerInterface|null) {
@@ -104,8 +114,16 @@ export class LensChipAppElement extends CrLitElement {
     }
   }
 
-  protected onCloseClick_() {
-    // Dismissal will be handled in a follow-up CL.
+  protected async onCloseClick_() {
+    this.fire('close-chip');
+    if (this.dataUri) {
+      this.dataUri = '';
+      try {
+        await this.getPageHandler_().removeLensCrop();
+      } catch (e) {
+        // Ignore
+      }
+    }
   }
 }
 

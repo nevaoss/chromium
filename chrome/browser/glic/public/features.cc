@@ -45,10 +45,8 @@ const base::FeatureParam<int> kGlicOSIconVariantParam{&kGlicOSIconVariant,
 
 BASE_FEATURE(kGlicOrphanedReattachment, base::FEATURE_ENABLED_BY_DEFAULT);
 
-BASE_FEATURE(kGlicSelectionPrompt, base::FEATURE_ENABLED_BY_DEFAULT);
+BASE_FEATURE(kGlicSelectionPrompt, base::FEATURE_DISABLED_BY_DEFAULT);
 
-const base::FeatureParam<bool> kGlicSelectionPromptUpdatesOnly{
-    &kGlicSelectionPrompt, "updates_only", true};
 const base::FeatureParam<bool> kGlicSelectionShowCopyButtons{
     &kGlicSelectionPrompt, "show_copy_buttons", false};
 const base::FeatureParam<bool> kGlicSelectionAutoSendPrompt{
@@ -72,6 +70,7 @@ base::flat_set<std::string> GetGlicSelectionDefaultBlockedSites() {
 }
 
 BASE_FEATURE(kGlicSelectionOverlayPrompt, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kGlicSelectionOverlayPromptBox, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kGlicSelectionSmallChip, base::FEATURE_DISABLED_BY_DEFAULT);
 const base::FeatureParam<bool> kGlicSelectionSmallChipOnTop{
@@ -309,8 +308,20 @@ BASE_FEATURE(kGlicStructuredYieldMetadata, base::FEATURE_ENABLED_BY_DEFAULT);
 // Runs the glic client in a PrivilegedWebContents instead of a webview.
 // This is a work in progress. See b/534807813.
 BASE_FEATURE(kGlicNoWebview, base::FEATURE_DISABLED_BY_DEFAULT);
+// GEiC hosts its side panel inside GLiC on a PrivilegedWebContents, which
+// requires NoWebview mode. The GEiC enablement check is inlined here
+// rather than calling geic::IsGeicEnabled() because gemini_enterprise
+// depends on public:features, so calling back would create a GN dependency
+// cycle.
+//
+// TODO(b/565765301): This is interim. It enables NoWebview mode for every
+// profile whenever kGeic is on, rather than only for profiles that actually
+// have GEiC enabled, so a GEiC rollout also affects non-GEiC profiles. Once
+// the profile-scoped GEiC predicate exists on GlicEnabling, take a Profile*
+// here and return true only for GEiC-enabled profiles.
 bool IsGlicNoWebviewEnabled() {
-  return base::FeatureList::IsEnabled(kGlicNoWebview);
+  return base::FeatureList::IsEnabled(kGlicNoWebview) ||
+         (base::FeatureList::IsEnabled(kGeic) && kGeicEnabledParam.Get());
 }
 // Whether to disallow webview communication directly with the glic host
 // (chrome/browser/resources/glic/glic_api_impl/host). When enabled, some
@@ -326,6 +337,9 @@ const base::FeatureParam<bool> kGlicShakeTriggerOnlyOnSidePanel{
 BASE_FEATURE(kGlicAndroidTablet, base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kGlicVoice, base::FEATURE_DISABLED_BY_DEFAULT);
+
+BASE_FEATURE(kGlicExperimentalOptInDialogNonScrollable,
+             base::FEATURE_DISABLED_BY_DEFAULT);
 
 BASE_FEATURE(kGlicMarketingAutoOpen, base::FEATURE_ENABLED_BY_DEFAULT);
 const base::FeatureParam<std::string> kGlicMarketingUrlAllowlist{

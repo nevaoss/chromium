@@ -2540,6 +2540,34 @@ recorded in the same way, even if they fit the naming pattern. -->
   </token>
 </histogram>
 
+<histogram name="Accessibility.PdfHeuristics.FooterNormalizedLocation"
+    units="%" expires_after="2027-08-01">
+  <owner>kristislee@google.com</owner>
+  <owner>komo-eng@google.com</owner>
+  <owner>chrome-a11y-core@google.com</owner>
+  <summary>
+    Records the top edge of a text block classified as a footer in an untagged
+    PDF, as a percentage of the page height (0 is the top of the page). Recorded
+    once per footer block when a page's accessibility tree is built. Used to
+    check whether footers are creeping up into body content. Page number footers
+    are classified from 90% and other footers from 95%.
+  </summary>
+</histogram>
+
+<histogram name="Accessibility.PdfHeuristics.HeaderNormalizedLocation"
+    units="%" expires_after="2027-08-01">
+  <owner>kristislee@google.com</owner>
+  <owner>komo-eng@google.com</owner>
+  <owner>chrome-a11y-core@google.com</owner>
+  <summary>
+    Records the bottom edge of a text block classified as a header in an
+    untagged PDF, as a percentage of the page height (0 is the top of the page).
+    Recorded once per header block when a page's accessibility tree is built.
+    Used to check whether headers are creeping down into body content. Headers
+    are classified within the top 10% of the page.
+  </summary>
+</histogram>
+
 <histogram name="Accessibility.PdfHeuristics.HeadingClassifier"
     enum="PdfAccessibilityHeadingClassifier" expires_after="2027-08-01">
   <owner>kristislee@google.com</owner>
@@ -3142,8 +3170,9 @@ recorded in the same way, even if they fit the naming pattern. -->
 
 <histogram name="Accessibility.ReadAnything.Color" enum="ReadAnythingColor"
     expires_after="2027-02-07">
-  <owner>abigailbklein@google.com</owner>
+  <owner>lwinston@google.com</owner>
   <owner>chrome-a11y-core@google.com</owner>
+  <owner>komo-eng@google.com</owner>
   <summary>
     Records the user-chosen color theme for the Read Anything panel.
   </summary>
@@ -3264,7 +3293,8 @@ recorded in the same way, even if they fit the naming pattern. -->
 
 <histogram name="Accessibility.ReadAnything.EmptyState"
     enum="ReadAnythingEmptyState" expires_after="2027-02-07">
-  <owner>abigailbklein@google.com</owner>
+  <owner>lwinston@google.com</owner>
+  <owner>komo-eng@google.com</owner>
   <owner>chrome-a11y-core@google.com</owner>
   <summary>
     Records when the Read Anything panel displays the empty state and whether a
@@ -3284,7 +3314,8 @@ recorded in the same way, even if they fit the naming pattern. -->
 
 <histogram name="Accessibility.ReadAnything.FontName"
     enum="ReadAnythingFontName" expires_after="2027-02-07">
-  <owner>abigailbklein@google.com</owner>
+  <owner>lwinston@google.com</owner>
+  <owner>komo-eng@google.com</owner>
   <owner>chrome-a11y-core@google.com</owner>
   <summary>
     Records the user-chosen font name for the Read Anything panel.
@@ -3293,7 +3324,8 @@ recorded in the same way, even if they fit the naming pattern. -->
 
 <histogram name="Accessibility.ReadAnything.FontScale" units="em"
     expires_after="2027-02-07">
-  <owner>abigailbklein@google.com</owner>
+  <owner>lwinston@google.com</owner>
+  <owner>komo-eng@google.com</owner>
   <owner>chrome-a11y-core@google.com</owner>
   <summary>
     Records the user-chosen font scale for the Read Anything panel.
@@ -3311,9 +3343,20 @@ recorded in the same way, even if they fit the naming pattern. -->
   </summary>
 </histogram>
 
+<histogram name="Accessibility.ReadAnything.Images" enum="BooleanEnabled"
+    expires_after="2027-02-07">
+  <owner>lwinston@google.com</owner>
+  <owner>komo-eng@google.com</owner>
+  <summary>
+    Records whether images are enabled in the Read Anything panel when the panel
+    is closed.
+  </summary>
+</histogram>
+
 <histogram name="Accessibility.ReadAnything.Language" enum="LocaleCodeBCP47"
     expires_after="2027-02-07">
-  <owner>abigailbklein@google.com</owner>
+  <owner>lwinston@google.com</owner>
+  <owner>komo-eng@google.com</owner>
   <owner>chrome-a11y-core@google.com</owner>
   <summary>
     Records the language of the web page shown in Read Anything after the
@@ -3323,7 +3366,8 @@ recorded in the same way, even if they fit the naming pattern. -->
 
 <histogram name="Accessibility.ReadAnything.LetterSpacing"
     enum="ReadAnythingLetterSpacing" expires_after="2027-06-01">
-  <owner>abigailbklein@google.com</owner>
+  <owner>lwinston@google.com</owner>
+  <owner>komo-eng@google.com</owner>
   <owner>chrome-a11y-core@google.com</owner>
   <summary>
     Records the user-chosen letter spacing for the Read Anything panel.
@@ -3392,10 +3436,21 @@ recorded in the same way, even if they fit the naming pattern. -->
 
 <histogram name="Accessibility.ReadAnything.LineSpacing"
     enum="ReadAnythingLineSpacing" expires_after="2027-02-07">
-  <owner>abigailbklein@google.com</owner>
+  <owner>lwinston@google.com</owner>
+  <owner>komo-eng@google.com</owner>
   <owner>chrome-a11y-core@google.com</owner>
   <summary>
     Records the user-chosen line spacing for the Read Anything panel.
+  </summary>
+</histogram>
+
+<histogram name="Accessibility.ReadAnything.Links" enum="BooleanEnabled"
+    expires_after="2027-02-07">
+  <owner>lwinston@google.com</owner>
+  <owner>komo-eng@google.com</owner>
+  <summary>
+    Records whether links are enabled in the Read Anything panel when the panel
+    is closed.
   </summary>
 </histogram>
 
@@ -3424,7 +3479,8 @@ recorded in the same way, even if they fit the naming pattern. -->
 
 <histogram name="Accessibility.ReadAnything.MergedDistillationTime.{Result}"
     units="ms" expires_after="2027-02-07">
-  <owner>abigailbklein@google.com</owner>
+  <owner>lwinston@google.com</owner>
+  <owner>komo-eng@google.com</owner>
   <owner>chrome-a11y-core@google.com</owner>
   <summary>
     Records the time taken to distill a web page using the merged algorithm that
@@ -3458,7 +3514,8 @@ recorded in the same way, even if they fit the naming pattern. -->
 
 <histogram name="Accessibility.ReadAnything.OmniboxIconShown"
     enum="BooleanShown" expires_after="2027-06-01">
-  <owner>abigailbklein@google.com</owner>
+  <owner>lwinston@google.com</owner>
+  <owner>komo-eng@google.com</owner>
   <owner>chrome-a11y-core@google.com</owner>
   <summary>Records when the Read Anything omnibox icon is shown.</summary>
 </histogram>
@@ -3753,7 +3810,8 @@ recorded in the same way, even if they fit the naming pattern. -->
 
 <histogram name="Accessibility.ReadAnything.RulesDistillationTime.{Result}"
     units="ms" expires_after="2027-02-07">
-  <owner>abigailbklein@google.com</owner>
+  <owner>lwinston@google.com</owner>
+  <owner>komo-eng@google.com</owner>
   <owner>chrome-a11y-core@google.com</owner>
   <summary>
     Records the time taken to distill a web page using the rules based
@@ -3767,7 +3825,8 @@ recorded in the same way, even if they fit the naming pattern. -->
 
 <histogram name="Accessibility.ReadAnything.ScrollEvent"
     enum="ReadAnythingScrollEvent" expires_after="2027-02-07">
-  <owner>abigailbklein@google.com</owner>
+  <owner>lwinston@google.com</owner>
+  <owner>komo-eng@google.com</owner>
   <owner>chrome-a11y-core@google.com</owner>
   <summary>Records when a scroll happens.</summary>
 </histogram>
@@ -3784,7 +3843,8 @@ recorded in the same way, even if they fit the naming pattern. -->
 
 <histogram name="Accessibility.ReadAnything.SettingsChange"
     enum="ReadAnythingSettingsChange" expires_after="2027-02-07">
-  <owner>abigailbklein@google.com</owner>
+  <owner>lwinston@google.com</owner>
+  <owner>komo-eng@google.com</owner>
   <owner>chrome-a11y-core@google.com</owner>
   <summary>
     Records when the user changes a text style setting in the Read Anything

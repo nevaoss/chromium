@@ -25,10 +25,11 @@ export class TestToolbarUiHandler extends TestBrowserProxy implements
       'movePinnedToolbarActionBy',
       'onAppMenuFocusChanged',
       'onAvatarButtonMousePressed',
-      'onContentSettingImageAnimationEnded',
       'onContentSettingImagePointerDown',
       'onExtensionActionPointerDown',
+      'onGlicButtonClicked',
       'onHomeButtonDropFile',
+      'onHomeButtonDropText',
       'onHomeButtonDropUrl',
       'onLhsChipClicked',
       'onLhsChipCollapseAnimationEnded',
@@ -95,10 +96,6 @@ export class TestToolbarUiHandler extends TestBrowserProxy implements
     this.methodCalled(
         'showContentSettingsBubble', [type, isPointerInteraction]);
     return Promise.resolve({result: {}});
-  }
-
-  onContentSettingImageAnimationEnded(type: ContentSettingImageType) {
-    this.methodCalled('onContentSettingImageAnimationEnded', type);
   }
 
   onPageActionPointerDown(actionId: PageActionId) {
@@ -174,6 +171,10 @@ export class TestToolbarUiHandler extends TestBrowserProxy implements
     this.methodCalled('onHomeButtonDropFile', dropPosition);
   }
 
+  onHomeButtonDropText(text: string) {
+    this.methodCalled('onHomeButtonDropText', text);
+  }
+
   onToolbarDropFile(dropPosition: PointF) {
     this.methodCalled('onToolbarDropFile', dropPosition);
   }
@@ -234,6 +235,10 @@ export class TestToolbarUiHandler extends TestBrowserProxy implements
 
   onMediaButtonMousePressed() {
     this.methodCalled('onMediaButtonMousePressed');
+  }
+
+  onGlicButtonClicked() {
+    this.methodCalled('onGlicButtonClicked');
   }
 
   onLocationBarFocusWithinChanged(focusInside: boolean) {

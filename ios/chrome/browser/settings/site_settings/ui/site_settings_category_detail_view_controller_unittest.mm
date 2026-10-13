@@ -5,18 +5,24 @@
 #import "ios/chrome/browser/settings/site_settings/ui/site_settings_category_detail_view_controller.h"
 
 #import "base/strings/sys_string_conversions.h"
+#import "base/test/task_environment.h"
+#import "base/time/time.h"
 #import "components/content_settings/core/common/content_settings.h"
 #import "ios/chrome/browser/net/model/crurl.h"
 #import "ios/chrome/browser/settings/site_settings/public/site_settings_constants.h"
 #import "ios/chrome/browser/settings/site_settings/ui/site_settings_category_detail_mutator.h"
 #import "ios/chrome/browser/settings/site_settings/ui/site_settings_site_exception.h"
 #import "ios/chrome/browser/shared/ui/table_view/cells/table_view_detail_icon_item.h"
+#import "ios/chrome/browser/shared/ui/table_view/cells/table_view_disclosure_header_footer_item.h"
 #import "ios/chrome/browser/shared/ui/table_view/cells/table_view_url_item.h"
 #import "ios/chrome/browser/shared/ui/table_view/legacy_chrome_table_view_controller_test.h"
+#import "ios/chrome/browser/shared/ui/table_view/table_view_model.h"
+#import "ios/chrome/grit/ios_strings.h"
 #import "testing/gtest/include/gtest/gtest.h"
 #import "testing/gtest_mac.h"
 #import "third_party/ocmock/OCMock/OCMock.h"
 #import "third_party/ocmock/gtest_support.h"
+#import "ui/base/l10n/l10n_util.h"
 #import "url/gurl.h"
 
 namespace {
@@ -61,6 +67,8 @@ class SiteSettingsCategoryDetailViewControllerTest
 
   id mutator_;
   id delegate_;
+  base::test::TaskEnvironment task_environment_{
+      base::test::TaskEnvironment::TimeSource::MOCK_TIME};
 };
 
 // Tests that the view controller initializes with the default settings section
@@ -70,19 +78,27 @@ TEST_F(SiteSettingsCategoryDetailViewControllerTest,
   CreateController();
   CheckController();
 
-  EXPECT_NSEQ(@"Microphone", GetController().title);
+  EXPECT_NSEQ(l10n_util::GetNSString(IDS_IOS_PERMISSIONS_MICROPHONE),
+              GetController().title);
   // Only 1 section initially: Default Setting.
   EXPECT_EQ(1, NumberOfSections());
   EXPECT_EQ(2, NumberOfItemsInSection(0));
 
   TableViewDetailIconItem* askItem =
       static_cast<TableViewDetailIconItem*>(GetTableViewItem(0, 0));
-  EXPECT_NSEQ(@"Sites can ask for your microphone", askItem.text);
+  EXPECT_NSEQ(
+      l10n_util::GetNSString(IDS_IOS_SITE_SETTINGS_MICROPHONE_ASK_TITLE),
+      askItem.text);
   EXPECT_EQ(UITableViewCellAccessoryNone, askItem.accessoryType);
 
   TableViewDetailIconItem* blockItem =
       static_cast<TableViewDetailIconItem*>(GetTableViewItem(0, 1));
-  EXPECT_NSEQ(@"Don't allow sites to use your microphone", blockItem.text);
+  EXPECT_NSEQ(
+      l10n_util::GetNSString(IDS_IOS_SITE_SETTINGS_MICROPHONE_BLOCK_TITLE),
+      blockItem.text);
+  EXPECT_NSEQ(
+      l10n_util::GetNSString(IDS_IOS_SITE_SETTINGS_MICROPHONE_BLOCK_SUBTITLE),
+      blockItem.detailText);
   EXPECT_EQ(UITableViewCellAccessoryNone, blockItem.accessoryType);
 }
 
@@ -124,20 +140,32 @@ TEST_F(SiteSettingsCategoryDetailViewControllerTest,
   [view_controller setAllowedSites:@[ allowedSite ]
                    notAllowedSites:@[ blockedSite ]];
 
-  // Sections: Default Setting, Not Allowed, Allowed.
+  // Sections: Default Setting, Allowed, Not Allowed.
   EXPECT_EQ(3, NumberOfSections());
   EXPECT_EQ(1, NumberOfItemsInSection(1));
   EXPECT_EQ(1, NumberOfItemsInSection(2));
 
-  TableViewURLItem* notAllowedItem =
-      static_cast<TableViewURLItem*>(GetTableViewItem(1, 0));
-  EXPECT_EQ(GURL("https://blocked.com"), notAllowedItem.URL.gurl);
-  EXPECT_EQ(nil, notAllowedItem.title);
+  TableViewDisclosureHeaderFooterItem* allowedHeader =
+      static_cast<TableViewDisclosureHeaderFooterItem*>(
+          [view_controller.tableViewModel headerForSectionIndex:1]);
+  EXPECT_NSEQ(l10n_util::GetNSString(IDS_IOS_SITE_SETTINGS_ALLOWED),
+              allowedHeader.text);
+
+  TableViewDisclosureHeaderFooterItem* notAllowedHeader =
+      static_cast<TableViewDisclosureHeaderFooterItem*>(
+          [view_controller.tableViewModel headerForSectionIndex:2]);
+  EXPECT_NSEQ(l10n_util::GetNSString(IDS_IOS_SITE_SETTINGS_NOT_ALLOWED),
+              notAllowedHeader.text);
 
   TableViewURLItem* allowedItem =
-      static_cast<TableViewURLItem*>(GetTableViewItem(2, 0));
+      static_cast<TableViewURLItem*>(GetTableViewItem(1, 0));
   EXPECT_EQ(GURL("https://allowed.com"), allowedItem.URL.gurl);
   EXPECT_EQ(nil, allowedItem.title);
+
+  TableViewURLItem* notAllowedItem =
+      static_cast<TableViewURLItem*>(GetTableViewItem(2, 0));
+  EXPECT_EQ(GURL("https://blocked.com"), notAllowedItem.URL.gurl);
+  EXPECT_EQ(nil, notAllowedItem.title);
 
   // Clearing lists should remove the sections again.
   [view_controller setAllowedSites:@[] notAllowedSites:@[]];
@@ -201,7 +229,7 @@ TEST_F(SiteSettingsCategoryDetailViewControllerTest, TestTrailingSwipeActions) {
       CreateSiteException(@"https://allowed.com", @"allowed.com");
   [view_controller setAllowedSites:@[ allowedSite ] notAllowedSites:@[]];
 
-  // The Allowed section is at section index 1 (since Not Allowed is omitted).
+  // The Allowed section is at section index 1.
   UISwipeActionsConfiguration* allowedConfig =
       [view_controller.tableView.delegate tableView:view_controller.tableView
           trailingSwipeActionsConfigurationForRowAtIndexPath:
@@ -227,37 +255,16 @@ TEST_F(SiteSettingsCategoryDetailViewControllerTest,
   [view_controller setAllowedSites:@[ allowedSite ]
                    notAllowedSites:@[ blockedSite ]];
 
-  // Section 1: Not Allowed.
-  UITableViewCell* notAllowedCell =
-      [view_controller tableView:view_controller.tableView
-           cellForRowAtIndexPath:[NSIndexPath indexPathForRow:0 inSection:1]];
-  ASSERT_TRUE([notAllowedCell.accessoryView isKindOfClass:[UIButton class]]);
-  UIButton* notAllowedButton =
-      static_cast<UIButton*>(notAllowedCell.accessoryView);
-  EXPECT_TRUE(notAllowedButton.showsMenuAsPrimaryAction);
-  EXPECT_TRUE(notAllowedCell.isAccessibilityElement);
-  EXPECT_NSEQ(@"Not Allowed", notAllowedCell.accessibilityValue);
-  ASSERT_NE(nil, notAllowedButton.menu);
-  ASSERT_EQ(2u, notAllowedButton.menu.children.count);
-
-  UIAction* notAllowedMenuAllowAction =
-      static_cast<UIAction*>(notAllowedButton.menu.children[0]);
-  UIAction* notAllowedMenuBlockAction =
-      static_cast<UIAction*>(notAllowedButton.menu.children[1]);
-  EXPECT_NSEQ(@"Allowed", notAllowedMenuAllowAction.title);
-  EXPECT_EQ(UIMenuElementStateOff, notAllowedMenuAllowAction.state);
-  EXPECT_NSEQ(@"Not Allowed", notAllowedMenuBlockAction.title);
-  EXPECT_EQ(UIMenuElementStateOn, notAllowedMenuBlockAction.state);
-
-  // Section 2: Allowed.
+  // Section 1: Allowed.
   UITableViewCell* allowedCell =
       [view_controller tableView:view_controller.tableView
-           cellForRowAtIndexPath:[NSIndexPath indexPathForRow:0 inSection:2]];
+           cellForRowAtIndexPath:[NSIndexPath indexPathForRow:0 inSection:1]];
   ASSERT_TRUE([allowedCell.accessoryView isKindOfClass:[UIButton class]]);
   UIButton* allowedButton = static_cast<UIButton*>(allowedCell.accessoryView);
   EXPECT_TRUE(allowedButton.showsMenuAsPrimaryAction);
   EXPECT_TRUE(allowedCell.isAccessibilityElement);
-  EXPECT_NSEQ(@"Allowed", allowedCell.accessibilityValue);
+  EXPECT_NSEQ(l10n_util::GetNSString(IDS_IOS_SITE_SETTINGS_ALLOWED),
+              allowedCell.accessibilityValue);
   ASSERT_NE(nil, allowedButton.menu);
   ASSERT_EQ(2u, allowedButton.menu.children.count);
 
@@ -265,12 +272,39 @@ TEST_F(SiteSettingsCategoryDetailViewControllerTest,
       static_cast<UIAction*>(allowedButton.menu.children[0]);
   UIAction* allowedMenuBlockAction =
       static_cast<UIAction*>(allowedButton.menu.children[1]);
-  EXPECT_NSEQ(@"Allowed", allowedMenuAllowAction.title);
+  EXPECT_NSEQ(l10n_util::GetNSString(IDS_IOS_SITE_SETTINGS_ALLOWED),
+              allowedMenuAllowAction.title);
   EXPECT_EQ(UIMenuElementStateOn, allowedMenuAllowAction.state);
-  EXPECT_NSEQ(@"Not Allowed", allowedMenuBlockAction.title);
+  EXPECT_NSEQ(l10n_util::GetNSString(IDS_IOS_SITE_SETTINGS_NOT_ALLOWED),
+              allowedMenuBlockAction.title);
   EXPECT_EQ(UIMenuElementStateOff, allowedMenuBlockAction.state);
 
-  // Verify selecting "Allow" on the blocked site calls the mutator.
+  // Section 2: Not Allowed.
+  UITableViewCell* notAllowedCell =
+      [view_controller tableView:view_controller.tableView
+           cellForRowAtIndexPath:[NSIndexPath indexPathForRow:0 inSection:2]];
+  ASSERT_TRUE([notAllowedCell.accessoryView isKindOfClass:[UIButton class]]);
+  UIButton* notAllowedButton =
+      static_cast<UIButton*>(notAllowedCell.accessoryView);
+  EXPECT_TRUE(notAllowedButton.showsMenuAsPrimaryAction);
+  EXPECT_TRUE(notAllowedCell.isAccessibilityElement);
+  EXPECT_NSEQ(l10n_util::GetNSString(IDS_IOS_SITE_SETTINGS_NOT_ALLOWED),
+              notAllowedCell.accessibilityValue);
+  ASSERT_NE(nil, notAllowedButton.menu);
+  ASSERT_EQ(2u, notAllowedButton.menu.children.count);
+
+  UIAction* notAllowedMenuAllowAction =
+      static_cast<UIAction*>(notAllowedButton.menu.children[0]);
+  UIAction* notAllowedMenuBlockAction =
+      static_cast<UIAction*>(notAllowedButton.menu.children[1]);
+  EXPECT_NSEQ(l10n_util::GetNSString(IDS_IOS_SITE_SETTINGS_ALLOWED),
+              notAllowedMenuAllowAction.title);
+  EXPECT_EQ(UIMenuElementStateOff, notAllowedMenuAllowAction.state);
+  EXPECT_NSEQ(l10n_util::GetNSString(IDS_IOS_SITE_SETTINGS_NOT_ALLOWED),
+              notAllowedMenuBlockAction.title);
+  EXPECT_EQ(UIMenuElementStateOn, notAllowedMenuBlockAction.state);
+
+  // Verify selecting "Allowed" on the blocked site calls the mutator.
   OCMExpect([mutator_ setSetting:CONTENT_SETTING_ALLOW forSite:blockedSite]);
   [notAllowedMenuAllowAction performWithSender:notAllowedButton target:nil];
   EXPECT_OCMOCK_VERIFY(mutator_);
@@ -314,32 +348,32 @@ TEST_F(SiteSettingsCategoryDetailViewControllerTest,
   EXPECT_EQ(nil, [view_controller tableView:view_controller.tableView
                      willSelectRowAtIndexPath:defaultRow]);
 
-  // Site exception rows (Section 1 and Section 2) are editable and selectable
-  // in edit mode.
-  NSIndexPath* blockedRow = [NSIndexPath indexPathForRow:0 inSection:1];
-  NSIndexPath* allowedRow = [NSIndexPath indexPathForRow:0 inSection:2];
-  EXPECT_TRUE([view_controller tableView:view_controller.tableView
-                   canEditRowAtIndexPath:blockedRow]);
+  // Site exception rows (Section 1: Allowed and Section 2: Not Allowed) are
+  // editable and selectable in edit mode.
+  NSIndexPath* allowedRow = [NSIndexPath indexPathForRow:0 inSection:1];
+  NSIndexPath* blockedRow = [NSIndexPath indexPathForRow:0 inSection:2];
   EXPECT_TRUE([view_controller tableView:view_controller.tableView
                    canEditRowAtIndexPath:allowedRow]);
-  EXPECT_NSEQ(blockedRow, [view_controller tableView:view_controller.tableView
-                              willSelectRowAtIndexPath:blockedRow]);
+  EXPECT_TRUE([view_controller tableView:view_controller.tableView
+                   canEditRowAtIndexPath:blockedRow]);
   EXPECT_NSEQ(allowedRow, [view_controller tableView:view_controller.tableView
                               willSelectRowAtIndexPath:allowedRow]);
+  EXPECT_NSEQ(blockedRow, [view_controller tableView:view_controller.tableView
+                              willSelectRowAtIndexPath:blockedRow]);
 
   // Select both site rows.
-  [view_controller.tableView
-      selectRowAtIndexPath:blockedRow
-                  animated:NO
-            scrollPosition:UITableViewScrollPositionNone];
-  [view_controller tableView:view_controller.tableView
-      didSelectRowAtIndexPath:blockedRow];
   [view_controller.tableView
       selectRowAtIndexPath:allowedRow
                   animated:NO
             scrollPosition:UITableViewScrollPositionNone];
   [view_controller tableView:view_controller.tableView
       didSelectRowAtIndexPath:allowedRow];
+  [view_controller.tableView
+      selectRowAtIndexPath:blockedRow
+                  animated:NO
+            scrollPosition:UITableViewScrollPositionNone];
+  [view_controller tableView:view_controller.tableView
+      didSelectRowAtIndexPath:blockedRow];
 
   // Trigger Delete button action from the toolbar.
   UIBarButtonItem* deleteButton = view_controller.toolbarItems.firstObject;
@@ -347,7 +381,7 @@ TEST_F(SiteSettingsCategoryDetailViewControllerTest,
   EXPECT_TRUE(deleteButton.enabled);
 
   NSArray<SiteSettingsSiteException*>* expectedSites =
-      @[ blockedSite, allowedSite ];
+      @[ allowedSite, blockedSite ];
   OCMExpect([mutator_ deleteSettingsForSites:expectedSites]);
 #pragma clang diagnostic push
 #pragma clang diagnostic ignored "-Warc-performSelector-leaks"
@@ -356,4 +390,52 @@ TEST_F(SiteSettingsCategoryDetailViewControllerTest,
 #pragma clang diagnostic pop
   EXPECT_OCMOCK_VERIFY(mutator_);
   EXPECT_FALSE(view_controller.editing);
+}
+
+// Tests that the search controller is hidden when no site exceptions exist,
+// shown when exceptions exist, and displays a scrim when focused with an empty
+// query.
+TEST_F(SiteSettingsCategoryDetailViewControllerTest,
+       TestSearchVisibilityAndScrim) {
+  CreateController();
+  CheckController();
+
+  SiteSettingsCategoryDetailViewController* view_controller = GetController();
+
+  // With no site exceptions, the search bar should be hidden.
+  EXPECT_EQ(nil, view_controller.navigationItem.searchController);
+
+  // Adding a site exception reveals the search bar.
+  SiteSettingsSiteException* allowedSite =
+      CreateSiteException(@"https://allowed.com", @"allowed.com");
+  [view_controller setAllowedSites:@[ allowedSite ] notAllowedSites:@[]];
+  UISearchController* searchController =
+      view_controller.navigationItem.searchController;
+  ASSERT_NE(nil, searchController);
+
+  // Presenting the search controller shows the scrim and hides the toolbar.
+  [searchController.delegate willPresentSearchController:searchController];
+  EXPECT_TRUE([view_controller shouldHideToolbar]);
+  EXPECT_FALSE(view_controller.tableView.scrollEnabled);
+  EXPECT_TRUE(view_controller.tableView.accessibilityElementsHidden);
+
+  // Typing a search query hides the scrim and restores the toolbar.
+  searchController.searchBar.text = @"allowed";
+  [searchController.searchResultsUpdater
+      updateSearchResultsForSearchController:searchController];
+  EXPECT_FALSE([view_controller shouldHideToolbar]);
+  EXPECT_TRUE([view_controller editButtonEnabled]);
+
+  // Entering edit mode disables interaction on the search bar.
+  [view_controller setEditing:YES animated:NO];
+  EXPECT_FALSE(searchController.searchBar.userInteractionEnabled);
+  [view_controller setEditing:NO animated:NO];
+  EXPECT_TRUE(searchController.searchBar.userInteractionEnabled);
+
+  // Removing all site exceptions hides the search bar again after the delay.
+  searchController.searchBar.text = @"";
+  [searchController.delegate didDismissSearchController:searchController];
+  [view_controller setAllowedSites:@[] notAllowedSites:@[]];
+  task_environment_.FastForwardBy(base::Milliseconds(300));
+  EXPECT_EQ(nil, view_controller.navigationItem.searchController);
 }

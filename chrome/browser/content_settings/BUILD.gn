@@ -30,7 +30,9 @@ source_set("content_settings") {
     "//components/custom_handlers",
     "//components/permissions",
     "//components/prefs",
+    "//components/tabs:public",
     "//content/public/browser",
+    "//ui/base/unowned_user_data",
   ]
 
   deps = []
@@ -238,6 +240,7 @@ if (!is_android) {
       "//chrome/browser/browsing_data",
       "//chrome/browser/profiles:profile",
       "//chrome/browser/ui",
+      "//chrome/browser/ui:browser_commands",
       "//chrome/browser/ui:browser_content_setting_bubble_model_delegate",
       "//chrome/browser/ui:view_ids",
       "//chrome/browser/ui/browser_window",
@@ -345,6 +348,7 @@ source_set("unit_tests") {
     "//components/safe_browsing/core/common:features",
     "//components/sync_preferences",
     "//components/sync_preferences:test_support",
+    "//components/tabs:test_support",
     "//components/ukm:test_support",
     "//components/ukm/content",
     "//content/public/browser",

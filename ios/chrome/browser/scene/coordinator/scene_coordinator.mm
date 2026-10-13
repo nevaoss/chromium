@@ -59,7 +59,7 @@
 #import "ios/chrome/browser/infobars/model/infobar_manager_impl.h"
 #import "ios/chrome/browser/intelligence/bwg/coordinator/gemini_container_coordinator.h"
 #import "ios/chrome/browser/intelligence/bwg/coordinator/gemini_entry_flow_coordinator.h"
-#import "ios/chrome/browser/intelligence/bwg/coordinator/gemini_first_run_coordinator.h"
+#import "ios/chrome/browser/intelligence/bwg/first_run/coordinator/gemini_first_run_coordinator.h"
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_browser_agent.h"
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_service.h"
 #import "ios/chrome/browser/intelligence/bwg/model/gemini_service_factory.h"
@@ -1339,6 +1339,7 @@ inline LayoutStateScenePassKey PassKey() {
       BWGControllerForBrowser:_regularBrowser.get()
                      delegate:self];
 
+  // TODO(crbug.com/566220673): Standardize modal presentation across settings.
   UIViewController* presenter = self.activeViewController;
   while (presenter.presentedViewController) {
     presenter = presenter.presentedViewController;
@@ -1346,6 +1347,28 @@ inline LayoutStateScenePassKey PassKey() {
   [presenter presentViewController:_settingsNavigationController
                           animated:YES
                         completion:nil];
+}
+
+- (void)showSuggestionsFromGemini {
+  CHECK(!self.sceneState.signinInProgress, base::NotFatalUntil::M160);
+
+  if (self.sceneState.isUIBlocked) {
+    // This could occur due to race condition with multiple windows and
+    // simultaneous taps. See crbug.com/368310663.
+    return;
+  }
+  if (_settingsNavigationController) {
+    [_settingsNavigationController showSuggestionsFromGemini];
+    return;
+  }
+
+  _settingsNavigationController = [SettingsNavigationController
+      geminiSuggestionsControllerForBrowser:_regularBrowser.get()
+                                   delegate:self];
+
+  [self.activeViewController presentViewController:_settingsNavigationController
+                                          animated:YES
+                                        completion:nil];
 }
 
 - (void)showSuggestionsFromGeminiHelpImprove {
@@ -1358,13 +1381,9 @@ inline LayoutStateScenePassKey PassKey() {
       geminiHelpImproveControllerForBrowser:_regularBrowser.get()
                                    delegate:self];
 
-  UIViewController* presenter = self.activeViewController;
-  while (presenter.presentedViewController) {
-    presenter = presenter.presentedViewController;
-  }
-  [presenter presentViewController:_settingsNavigationController
-                          animated:YES
-                        completion:nil];
+  [self.activeViewController presentViewController:_settingsNavigationController
+                                          animated:YES
+                                        completion:nil];
 }
 
 // TODO(crbug.com/41352590) : Do not pass baseViewController through dispatcher.
@@ -1545,34 +1564,6 @@ inline LayoutStateScenePassKey PassKey() {
   [self dismissModalDialogsWithCompletion:^{
     [weakSelf showAutofillSettingsFromNoticeAfterModalDismiss];
   }];
-}
-
-- (void)showEnhancedAutofillSettingsWithCompletion:(ProceduralBlock)completion {
-  CHECK(!self.sceneState.signinInProgress, base::NotFatalUntil::M160);
-
-  if (self.sceneState.isUIBlocked) {
-    // This could occur due to race condition with multiple windows and
-    // simultaneous taps. See crbug.com/368310663.
-    return;
-  }
-  if (_settingsNavigationController) {
-    [_settingsNavigationController showEnhancedAutofillSettings];
-    return;
-  }
-  _settingsDismissalCompletion = [completion copy];
-  _settingsNavigationController = [[SettingsNavigationController alloc]
-      initWithRootViewController:nil
-                         browser:_regularBrowser.get()
-                        delegate:self];
-  [_settingsNavigationController showEnhancedAutofillSettings];
-
-  UIViewController* presenter = self.activeViewController;
-  while (presenter.presentedViewController) {
-    presenter = presenter.presentedViewController;
-  }
-  [presenter presentViewController:_settingsNavigationController
-                          animated:YES
-                        completion:nil];
 }
 
 - (void)showPasswordManagerForCredentialImport:(NSUUID*)UUID

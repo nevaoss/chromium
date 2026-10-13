@@ -141,9 +141,6 @@ source_set("autofill") {
       "edit_address_profile_dialog_controller.h",
       "edit_address_profile_dialog_controller_impl.h",
       "edit_address_profile_view.h",
-      "email_verifier/email_verification_controller.h",
-      "email_verifier/email_verification_popup_controller.h",
-      "email_verifier/email_verified_toast_menu_model.h",
       "save_address_bubble_controller.h",
       "update_address_bubble_controller.h",
     ]
@@ -294,9 +291,6 @@ source_set("impl") {
       "bubble_manager_impl.cc",
       "delete_address_profile_dialog_controller_impl.cc",
       "edit_address_profile_dialog_controller_impl.cc",
-      "email_verifier/email_verification_controller.cc",
-      "email_verifier/email_verification_popup_controller.cc",
-      "email_verifier/email_verified_toast_menu_model.cc",
       "save_address_bubble_controller.cc",
       "update_address_bubble_controller.cc",
     ]
@@ -308,14 +302,18 @@ source_set("impl") {
       "//chrome/browser/feedback",
       "//chrome/browser/profiles:profile_manager",
       "//chrome/browser/profiles:profile_util",
+      "//chrome/browser/ui:browser_commands",
       "//chrome/browser/ui:chrome_pages",
       "//chrome/browser/ui:singleton_tabs",
+      "//chrome/browser/ui/autofill/email_verifier",
+      "//chrome/browser/ui/autofill/email_verifier:impl",
       "//chrome/browser/ui/browser_window",
       "//chrome/browser/ui/desktop_to_mobile_promos:utils",
       "//chrome/browser/ui/page_action",
       "//chrome/browser/ui/toasts",
       "//chrome/browser/ui/toasts/api:toasts",
       "//chrome/browser/ui/user_education",
+      "//chrome/browser/ui/views/autofill/autofill_ai",
       "//chrome/browser/ui/views/autofill/popup:popup_view_views",
       "//chrome/browser/ui/views/autofill/popup/email_verifier",
       "//chrome/browser/ui/webauthn",
@@ -502,7 +500,10 @@ source_set("test_support") {
     if (is_mac) {
       sources += [ "autofill_popup_controller_impl_mac_test_api.h" ]
     }
-    public_deps += [ "//ui/gfx:test_support" ]
+    public_deps += [
+      "//chrome/browser/ui/autofill/email_verifier",
+      "//ui/gfx:test_support",
+    ]
   }
 }
 
@@ -647,6 +648,7 @@ if (!is_android) {
       "//chrome/browser/sync",
       "//chrome/browser/ui",
       "//chrome/browser/ui:chrome_pages",
+      "//chrome/browser/ui/autofill/email_verifier",
       "//chrome/browser/ui/browser_window",
       "//chrome/browser/ui/hats:test_support",
       "//chrome/browser/ui/side_panel:side_panel_views_dependent",

@@ -269,6 +269,7 @@ bool HasAutofillSuggestionsForA11y(SuggestionType type) {
     case SuggestionType::kAtMemoryOpenGemini:
     case SuggestionType::kAtMemorySearchAffordance:
     case SuggestionType::kAtMemorySearchResult:
+    case SuggestionType::kAtMemoryShortcutSettingsPromo:
     case SuggestionType::kAtMemorySourceAttribution:
     case SuggestionType::kAutocompleteAtMemoryButton:
     case SuggestionType::kAutofillAiOtherOrders:
@@ -374,6 +375,7 @@ bool AutofillExternalDelegate::IsAutofillAndFirstLayerSuggestionId(
     case SuggestionType::kAtMemoryOpenGemini:
     case SuggestionType::kAtMemorySearchAffordance:
     case SuggestionType::kAtMemorySearchResult:
+    case SuggestionType::kAtMemoryShortcutSettingsPromo:
     case SuggestionType::kAtMemorySourceAttribution:
     case SuggestionType::kAutocompleteAtMemoryButton:
     case SuggestionType::kAutocompleteEntry:
@@ -851,6 +853,7 @@ void AutofillExternalDelegate::DidSelectSuggestion(
     case SuggestionType::kAtMemoryNoConnection:
     case SuggestionType::kAtMemoryOpenGemini:
     case SuggestionType::kAtMemorySearchAffordance:
+    case SuggestionType::kAtMemoryShortcutSettingsPromo:
     case SuggestionType::kAtMemorySourceAttribution:
     case SuggestionType::kAutocompleteAtMemoryButton:
     case SuggestionType::kAutofillAiOtherOrders:
@@ -916,9 +919,6 @@ void AutofillExternalDelegate::DidAcceptSuggestion(
     const FormGlobalId& form_id,
     const FieldGlobalId& field_id) {
   CHECK(suggestion.IsAcceptable());
-  // TODO(crbug.com/552871965): Extract the logging here to a separate function.
-  base::UmaHistogramEnumeration("Autofill.Suggestions.AcceptedType",
-                                suggestion.type);
 
   const FormGlobalId& effective_form_id =
       base::FeatureList::IsEnabled(features::kAutofillUsePassedFormAndFieldIds)
@@ -931,16 +931,8 @@ void AutofillExternalDelegate::DidAcceptSuggestion(
 
   const auto [form_structure, autofill_field] =
       manager_->FindFormAndField(effective_form_id, effective_field_id);
-  if (form_structure && autofill_field) {
-    manager_->client().GetFormInteractionsUkmLogger().LogSuggestionAccepted(
-        manager_->driver().GetPageUkmSourceId(), CHECK_DEREF(form_structure),
-        CHECK_DEREF(autofill_field), suggestion.type, metadata.row());
-  }
-  if (autofill_field &&
-      autofill_field->Type().GetAddressType() == EMAIL_ADDRESS) {
-    autofill_metrics::LogMergedEmailAcceptedSuggestionType(
-        suggestion.type, shown_suggestion_types_);
-  }
+  LogSuggestionAcceptedMetrics(suggestion, metadata, form_structure,
+                               autofill_field);
 
   switch (suggestion.type) {
     case SuggestionType::kAddressEntry:
@@ -1240,8 +1232,7 @@ void AutofillExternalDelegate::DidAcceptSuggestion(
       NOTIMPLEMENTED();
       break;
     case SuggestionType::kOpenGmailForOtps:
-      // TODO(crbug.com/556171578): Handle OpenGmail action.
-      NOTIMPLEMENTED();
+      manager_->client().OpenGmailForOtps();
       break;
     case SuggestionType::kAccountStoragePasswordEntry:
     case SuggestionType::kAllSavedPasswordsEntry:
@@ -1249,6 +1240,7 @@ void AutofillExternalDelegate::DidAcceptSuggestion(
     case SuggestionType::kAtMemoryFetching:
     case SuggestionType::kAtMemoryGenericError:
     case SuggestionType::kAtMemoryNoConnection:
+    case SuggestionType::kAtMemoryShortcutSettingsPromo:
     case SuggestionType::kAtMemorySourceAttribution:
     case SuggestionType::kAutofillAiOtherOrders:
     case SuggestionType::kAutofillAiOtherShipments:
@@ -1371,6 +1363,7 @@ bool AutofillExternalDelegate::RemoveSuggestion(const Suggestion& suggestion) {
     case SuggestionType::kAtMemoryOpenGemini:
     case SuggestionType::kAtMemorySearchAffordance:
     case SuggestionType::kAtMemorySearchResult:
+    case SuggestionType::kAtMemoryShortcutSettingsPromo:
     case SuggestionType::kAtMemorySourceAttribution:
     case SuggestionType::kAutocompleteAtMemoryButton:
     case SuggestionType::kAutofillAiOtherOrders:
@@ -1804,6 +1797,25 @@ void AutofillExternalDelegate::DidAcceptPaymentsSuggestion(
   }
 }
 
+void AutofillExternalDelegate::LogSuggestionAcceptedMetrics(
+    const Suggestion& suggestion,
+    const SuggestionMetadata& metadata,
+    const FormStructure* form_structure,
+    const AutofillField* autofill_field) const {
+  base::UmaHistogramEnumeration("Autofill.Suggestions.AcceptedType",
+                                suggestion.type);
+  if (form_structure && autofill_field) {
+    manager_->client().GetFormInteractionsUkmLogger().LogSuggestionAccepted(
+        manager_->driver().GetPageUkmSourceId(), CHECK_DEREF(form_structure),
+        CHECK_DEREF(autofill_field), suggestion.type, metadata.row());
+  }
+  if (autofill_field &&
+      autofill_field->Type().GetAddressType() == EMAIL_ADDRESS) {
+    autofill_metrics::LogMergedEmailAcceptedSuggestionType(
+        suggestion.type, shown_suggestion_types_);
+  }
+}
+
 bool AutofillExternalDelegate::ShouldShowPayNowPayLaterTabs() {
   auto [form, field] =
       manager_->FindFormAndField(last_query_.form_id, last_query_.field_id);
@@ -1830,27 +1842,55 @@ bool AutofillExternalDelegate::SuppressAutofillAiEntity(
       entity->record_type() != EntityInstance::RecordType::kPersonalContext) {
     return false;
   }
+  if (!manager_->client().GetEntitySuppressionManager()) {
+    return false;
+  }
+
+#if !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
+  manager_->client().ShowAutofillAiSuppressionConfirmationDialog(
+      *entity,
+      base::BindOnce(
+          [](base::WeakPtr<AutofillExternalDelegate> self,
+             EntityInstance entity, FieldGlobalId field_id, bool confirmed) {
+            if (self && confirmed) {
+              self->SuppressEntityAndOfferUndo(std::move(entity), field_id);
+            }
+          },
+          weak_ptr_factory_.GetWeakPtr(), *entity, last_query_.field_id));
+  // The entity is suppressed only once the user confirms. Return false, so
+  // that the suggestion is not removed from the UI prematurely.
+  return false;
+#else
+  // The user has already confirmed the suppression, see the header.
+  return SuppressEntityAndOfferUndo(*entity, last_query_.field_id);
+#endif  // !BUILDFLAG(IS_ANDROID) && !BUILDFLAG(IS_IOS)
+}
+
+bool AutofillExternalDelegate::SuppressEntityAndOfferUndo(
+    EntityInstance entity,
+    FieldGlobalId field_id) {
   EntitySuppressionManager* suppression_manager =
       manager_->client().GetEntitySuppressionManager();
   if (!suppression_manager) {
     return false;
   }
-  const bool newly_suppressed = suppression_manager->SuppressEntity(*entity);
+  const bool newly_suppressed = suppression_manager->SuppressEntity(entity);
   if (newly_suppressed) {
     manager_->client().ShowAutofillAiSuggestionRemovedNotification(
-        base::BindOnce(&AutofillExternalDelegate::OnAutofillAiSuppressionUndone,
-                       weak_ptr_factory_.GetWeakPtr(), *entity,
-                       last_query_.field_id));
+        entity, base::BindOnce(
+                    &AutofillExternalDelegate::OnAutofillAiSuppressionUndone,
+                    weak_ptr_factory_.GetWeakPtr(), entity.guid(), field_id));
+    return true;
   }
-  return newly_suppressed || suppression_manager->IsSuppressed(*entity);
+  return suppression_manager->IsSuppressed(entity);
 }
 
 void AutofillExternalDelegate::OnAutofillAiSuppressionUndone(
-    const EntityInstance& entity,
+    EntityInstance::EntityId entity_id,
     FieldGlobalId field_id) {
   if (EntitySuppressionManager* suppression_manager =
           manager_->client().GetEntitySuppressionManager()) {
-    suppression_manager->UnsuppressEntity(entity);
+    suppression_manager->UndoInSessionSuppressedEntity(entity_id);
   }
 #if BUILDFLAG(IS_ANDROID)
   manager_->driver().RendererShouldTriggerSuggestions(

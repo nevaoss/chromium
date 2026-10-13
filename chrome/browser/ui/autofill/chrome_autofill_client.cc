@@ -43,6 +43,7 @@
 #include "chrome/browser/autofill/autofill_policy_service_factory.h"
 #include "chrome/browser/autofill/cross_tab_copy_paste_tracker_factory.h"
 #include "chrome/browser/autofill/entity_suppression_manager_factory.h"
+#include "chrome/browser/autofill/gmail_otp_backend_factory.h"
 #include "chrome/browser/autofill/one_time_token_service_factory.h"
 #include "chrome/browser/autofill/personal_data_manager_factory.h"
 #include "chrome/browser/autofill/ui/ui_util.h"
@@ -178,6 +179,7 @@
 #include "components/variations/service/variations_service.h"
 #include "content/public/browser/navigation_controller.h"
 #include "content/public/browser/navigation_entry.h"
+#include "content/public/browser/page_navigator.h"
 #include "content/public/browser/render_frame_host.h"
 #include "content/public/browser/ssl_status.h"
 #include "content/public/browser/storage_partition.h"
@@ -187,8 +189,11 @@
 #include "third_party/blink/public/mojom/content_extraction/ai_page_content.mojom.h"
 #include "ui/base/interaction/element_identifier.h"
 #include "ui/base/l10n/l10n_util.h"
+#include "ui/base/page_transition_types.h"
+#include "ui/base/window_open_disposition.h"
 #include "ui/events/keycodes/keyboard_codes.h"
 #include "ui/gfx/geometry/rect.h"
+#include "url/gurl.h"
 #include "url/origin.h"
 
 #if BUILDFLAG(IS_ANDROID)
@@ -227,6 +232,7 @@
 #include "chrome/browser/ui/tabs/public/tab_features.h"  // nogncheck
 #include "chrome/browser/ui/toasts/api/toast_id.h"
 #include "chrome/browser/ui/toasts/toast_controller.h"
+#include "chrome/browser/ui/views/autofill/autofill_ai/entity_suppression_dialog_view.h"
 #include "chrome/browser/ui/views/autofill/popup/popup_view_views.h"
 #include "chrome/browser/ui/webui/signin/login_ui_service_factory.h"
 #include "components/autofill/core/browser/integrators/autofill_ai/autofill_ai_manager.h"
@@ -306,7 +312,7 @@ void ChromeAutofillClient::AtMemoryCopyPasteObserver::OnTextCopiedToClipboard(
     const std::u16string& copied_text) {
   CrossTabCopyPasteTracker* tracker =
       CrossTabCopyPasteTrackerFactory::GetForBrowserContext(
-          client_->web_contents()->GetBrowserContext());
+          client_->GetProfile());
   if (!tracker) {
     return;
   }
@@ -318,7 +324,7 @@ void ChromeAutofillClient::AtMemoryCopyPasteObserver::OnTextCopiedToClipboard(
 void ChromeAutofillClient::AtMemoryCopyPasteObserver::OnPaste() {
   CrossTabCopyPasteTracker* tracker =
       CrossTabCopyPasteTrackerFactory::GetForBrowserContext(
-          client_->web_contents()->GetBrowserContext());
+          client_->GetProfile());
   if (!tracker) {
     return;
   }
@@ -416,22 +422,19 @@ version_info::Channel ChromeAutofillClient::GetChannel() const {
 }
 
 bool ChromeAutofillClient::IsOffTheRecord() const {
-  auto* mutable_this = const_cast<ChromeAutofillClient*>(this);
-  return mutable_this->web_contents()->GetBrowserContext()->IsOffTheRecord();
+  return GetProfile()->IsOffTheRecord();
 }
 
 const subscription_eligibility::SubscriptionEligibilityService*
 ChromeAutofillClient::GetSubscriptionEligibilityService() const {
-  Profile* profile =
-      Profile::FromBrowserContext(web_contents()->GetBrowserContext());
+  Profile* profile = GetProfile();
   return subscription_eligibility::SubscriptionEligibilityServiceFactory::
       GetForProfile(profile);
 }
 
 scoped_refptr<network::SharedURLLoaderFactory>
 ChromeAutofillClient::GetURLLoaderFactory() {
-  return web_contents()
-      ->GetBrowserContext()
+  return GetProfile()
       ->GetDefaultStoragePartition()
       ->GetURLLoaderFactoryForBrowserProcess();
 }
@@ -451,8 +454,7 @@ VotesUploader& ChromeAutofillClient::GetVotesUploader() {
 
 AutofillOptimizationGuideDecider*
 ChromeAutofillClient::GetAutofillOptimizationGuideDecider() const {
-  Profile* profile =
-      Profile::FromBrowserContext(web_contents()->GetBrowserContext());
+  Profile* profile = GetProfile();
   return profile->ShutdownStarted()
              ? nullptr
              : AutofillOptimizationGuideDeciderFactory::GetForProfile(profile);
@@ -462,7 +464,7 @@ FieldClassificationModelHandler*
 ChromeAutofillClient::GetAutofillFieldClassificationModelHandler() {
   if (base::FeatureList::IsEnabled(features::kAutofillModelPredictions)) {
     return AutofillFieldClassificationModelServiceFactory::GetForBrowserContext(
-        web_contents()->GetBrowserContext());
+        GetProfile());
   }
   return nullptr;
 }
@@ -470,29 +472,26 @@ ChromeAutofillClient::GetAutofillFieldClassificationModelHandler() {
 FieldClassificationModelHandler*
 ChromeAutofillClient::GetPasswordManagerFieldClassificationModelHandler() {
   return PasswordFieldClassificationModelHandlerFactory::GetForBrowserContext(
-      web_contents()->GetBrowserContext());
+      GetProfile());
 }
 
 PersonalDataManager& ChromeAutofillClient::GetPersonalDataManager() {
-  return CHECK_DEREF(PersonalDataManagerFactory::GetForBrowserContext(
-      web_contents()->GetBrowserContext()));
+  return CHECK_DEREF(
+      PersonalDataManagerFactory::GetForBrowserContext(GetProfile()));
 }
 
 ValuablesDataManager* ChromeAutofillClient::GetValuablesDataManager() {
-  Profile* profile =
-      Profile::FromBrowserContext(web_contents()->GetBrowserContext());
+  Profile* profile = GetProfile();
   return ValuablesDataManagerFactory::GetForProfile(profile);
 }
 
 EntityDataManager* ChromeAutofillClient::GetEntityDataManager() {
-  Profile* profile =
-      Profile::FromBrowserContext(web_contents()->GetBrowserContext());
+  Profile* profile = GetProfile();
   return AutofillEntityDataManagerFactory::GetForProfile(profile);
 }
 
 WalletPassAccessManager* ChromeAutofillClient::GetWalletPassAccessManager() {
-  Profile* profile =
-      Profile::FromBrowserContext(web_contents()->GetBrowserContext());
+  Profile* profile = GetProfile();
   return WalletPassAccessManagerFactory::GetForProfile(profile);
 }
 
@@ -514,8 +513,7 @@ ChromeAutofillClient::GetAffiliationService() {
 
 AutocompleteHistoryManager*
 ChromeAutofillClient::GetAutocompleteHistoryManager() {
-  Profile* profile =
-      Profile::FromBrowserContext(web_contents()->GetBrowserContext());
+  Profile* profile = GetProfile();
   return AutocompleteHistoryManagerFactory::GetForProfile(profile);
 }
 
@@ -529,8 +527,7 @@ AutofillComposeDelegate* ChromeAutofillClient::GetComposeDelegate() {
 }
 
 AtMemoryQueryService* ChromeAutofillClient::GetAtMemoryQueryService() {
-  Profile* profile =
-      Profile::FromBrowserContext(web_contents()->GetBrowserContext());
+  Profile* profile = GetProfile();
   return AtMemoryQueryServiceFactory::GetForProfile(profile);
 }
 
@@ -599,20 +596,17 @@ EntitySuppressionManager* ChromeAutofillClient::GetEntitySuppressionManager() {
 }
 
 AutofillAiModelCache* ChromeAutofillClient::GetAutofillAiModelCache() {
-  Profile* profile =
-      Profile::FromBrowserContext(web_contents()->GetBrowserContext());
+  Profile* profile = GetProfile();
   return AutofillAiModelCacheFactory::GetForProfile(profile);
 }
 
 AutofillAiModelExecutor* ChromeAutofillClient::GetAutofillAiModelExecutor() {
-  Profile* profile =
-      Profile::FromBrowserContext(web_contents()->GetBrowserContext());
+  Profile* profile = GetProfile();
   return AutofillAiModelExecutorFactory::GetForProfile(profile);
 }
 
 consent_auditor::ConsentAuditor* ChromeAutofillClient::GetConsentAuditor() {
-  Profile* profile =
-      Profile::FromBrowserContext(web_contents()->GetBrowserContext());
+  Profile* profile = GetProfile();
   return ConsentAuditorFactory::GetForProfile(profile);
 }
 
@@ -643,13 +637,11 @@ PrefService* ChromeAutofillClient::GetPrefs() {
 }
 
 const PrefService* ChromeAutofillClient::GetPrefs() const {
-  return Profile::FromBrowserContext(web_contents()->GetBrowserContext())
-      ->GetPrefs();
+  return GetProfile()->GetPrefs();
 }
 
 syncer::SyncService* ChromeAutofillClient::GetSyncService() {
-  Profile* profile =
-      Profile::FromBrowserContext(web_contents()->GetBrowserContext());
+  Profile* profile = GetProfile();
   return SyncServiceFactory::GetForProfile(profile);
 }
 
@@ -660,8 +652,7 @@ signin::IdentityManager* ChromeAutofillClient::GetIdentityManager() {
 
 const signin::IdentityManager* ChromeAutofillClient::GetIdentityManager()
     const {
-  Profile* profile =
-      Profile::FromBrowserContext(web_contents()->GetBrowserContext());
+  Profile* profile = GetProfile();
   return IdentityManagerFactory::GetForProfile(profile->GetOriginalProfile());
 }
 
@@ -676,16 +667,14 @@ const GoogleGroupsManager* ChromeAutofillClient::GetGoogleGroupsManager()
     const {
   // Always return the GoogleGroupsManager of the original profile to allow us
   // to do per-profile feature checks.
-  Profile* profile =
-      Profile::FromBrowserContext(web_contents()->GetBrowserContext());
+  Profile* profile = GetProfile();
   return GoogleGroupsManagerFactory::GetForBrowserContext(
       profile->GetOriginalProfile());
 }
 
 FormDataImporter* ChromeAutofillClient::GetFormDataImporter() {
   if (!form_data_importer_) {
-    Profile* profile =
-        Profile::FromBrowserContext(web_contents()->GetBrowserContext());
+    Profile* profile = GetProfile();
     form_data_importer_ = std::make_unique<FormDataImporter>(
         this, HistoryServiceFactory::GetForProfile(
                   profile, ServiceAccessType::EXPLICIT_ACCESS));
@@ -699,8 +688,7 @@ ChromeAutofillClient::GetPaymentsAutofillClient() {
 }
 
 strike_database::StrikeDatabase* ChromeAutofillClient::GetStrikeDatabase() {
-  Profile* profile =
-      Profile::FromBrowserContext(web_contents()->GetBrowserContext());
+  Profile* profile = GetProfile();
   // No need to return a StrikeDatabase in incognito mode. It is primarily
   // used to determine whether or not to offer save of Autofill data. However,
   // we don't allow saving of Autofill data while in incognito anyway, so an
@@ -965,8 +953,7 @@ void ChromeAutofillClient::HideSuggestions(
 
 void ChromeAutofillClient::TriggerDeclinedSaveAddressReasonSurvey() {
 #if !BUILDFLAG(IS_ANDROID)
-  Profile* profile =
-      Profile::FromBrowserContext(web_contents()->GetBrowserContext());
+  Profile* profile = GetProfile();
   auto* hats_service =
       HatsServiceFactory::GetForProfile(profile, /*create_if_necessary=*/true);
   CHECK(hats_service);
@@ -979,8 +966,7 @@ void ChromeAutofillClient::TriggerDeclinedSaveAddressReasonSurvey() {
 void ChromeAutofillClient::TriggerPersonalizationAndTrustSurveys(
     FillingProduct filling_product,
     const HatsSurveyStringData& field_filling_stats_data) {
-  Profile* profile =
-      Profile::FromBrowserContext(web_contents()->GetBrowserContext());
+  Profile* profile = GetProfile();
   HatsService* hats_service =
       HatsServiceFactory::GetForProfile(profile, /*create_if_necessary=*/true);
   if (!hats_service) {
@@ -1206,8 +1192,7 @@ ChromeAutofillClient::GetDeviceAuthenticator(std::string histogram) const {
       std::move(histogram));
 
   return ChromeDeviceAuthenticatorFactory::GetForProfile(
-      Profile::FromBrowserContext(web_contents()->GetBrowserContext()),
-      web_contents()->GetTopLevelNativeWindow(), params);
+      GetProfile(), web_contents()->GetTopLevelNativeWindow(), params);
 #else
   return nullptr;
 #endif
@@ -1278,8 +1263,7 @@ ChromeAutofillClient::ChromeAutofillClient(content::WebContents* web_contents)
   GetStrikeDatabase();
   if (base::FeatureList::IsEnabled(features::kAutofillAiWithDataSchema)) {
     autofill_ai_manager_ = std::make_unique<AutofillAiManager>(
-        this, StrikeDatabaseFactory::GetForProfile(Profile::FromBrowserContext(
-                  web_contents->GetBrowserContext())));
+        this, StrikeDatabaseFactory::GetForProfile(GetProfile()));
   }
   if (base::FeatureList::IsEnabled(features::kAutofillAtMemory)) {
     at_memory_manager_ = std::make_unique<AtMemoryManager>(
@@ -1408,7 +1392,11 @@ void ChromeAutofillClient::ShowEmailVerificationPopup(
 }
 
 void ChromeAutofillClient::HideEmailVerificationPopup() {
-#if !BUILDFLAG(IS_ANDROID)
+#if BUILDFLAG(IS_ANDROID)
+  if (email_verification_bottom_sheet_bridge_) {
+    email_verification_bottom_sheet_bridge_->Hide();
+  }
+#else
   if (email_verification_controller_) {
     email_verification_controller_->HidePopup();
   }
@@ -1509,9 +1497,13 @@ FormPredictionsTracker* ChromeAutofillClient::GetFormPredictionsTracker() {
 
 one_time_tokens::OneTimeTokenService*
 ChromeAutofillClient::GetOneTimeTokenService() const {
-  Profile* profile =
-      Profile::FromBrowserContext(web_contents()->GetBrowserContext());
+  Profile* profile = GetProfile();
   return OneTimeTokenServiceFactory::GetForProfile(profile);
+}
+
+one_time_tokens::GmailOtpBackend* ChromeAutofillClient::GetGmailOtpBackend()
+    const {
+  return GmailOtpBackendFactory::GetForProfile(GetProfile());
 }
 
 void ChromeAutofillClient::set_test_addresses(
@@ -1534,8 +1526,7 @@ PasswordFormClassification ChromeAutofillClient::ClassifyAsPasswordForm(
 optimization_guide::ModelQualityLogsUploaderService*
 ChromeAutofillClient::GetMqlsUploadService() {
 #if !BUILDFLAG(IS_ANDROID)
-  Profile* profile =
-      Profile::FromBrowserContext(web_contents()->GetBrowserContext());
+  Profile* profile = GetProfile();
   OptimizationGuideKeyedService* optimization_guide_keyed_service =
       OptimizationGuideKeyedServiceFactory::GetForProfile(profile);
   if (!optimization_guide_keyed_service) {
@@ -1684,16 +1675,49 @@ void ChromeAutofillClient::ShowAutofillAiPrivateInferenceNotice() {
 #endif  // BUILDFLAG(IS_ANDROID)
 }
 
+#if !BUILDFLAG(IS_ANDROID)
+void ChromeAutofillClient::ShowAutofillAiSuppressionConfirmationDialog(
+    const EntityInstance& entity,
+    base::OnceCallback<void(bool)> callback) {
+  CHECK_EQ(entity.record_type(), EntityInstance::RecordType::kPersonalContext);
+  ShowEntitySuppressionDialogView(
+      web_contents(),
+      std::get<EntityInstance::PersonalContextRecordTypePayload>(
+          entity.record_type_data())
+          .sources.size(),
+      std::move(callback));
+}
+#endif  // !BUILDFLAG(IS_ANDROID)
+
 void ChromeAutofillClient::ShowAutofillAiSuggestionRemovedNotification(
+    const EntityInstance& entity,
     base::OnceClosure on_undo_clicked) {
-#if BUILDFLAG(IS_ANDROID)
+  CHECK_EQ(entity.record_type(), EntityInstance::RecordType::kPersonalContext);
   if (!base::FeatureList::IsEnabled(
-          features::kAutofillAmbientAutofillSuppressionUI)) {
+          features::kAutofillAmbientAutofillSuppression)) {
     return;
   }
+#if BUILDFLAG(IS_ANDROID)
   GetAutofillSnackbarController()->Show(
       AutofillSnackbarType::kAutofillAiSuppressionUndo,
       std::move(on_undo_clicked));
+#else
+  // `on_undo_clicked` is not used here: toast action buttons are registered
+  // once per `ToastId` in `ToastService`, so a toast cannot run a closure
+  // passed at show time. Instead, the toast's Undo button undoes the
+  // suppression through `EntitySuppressionManager`, using the entity ID passed
+  // in `action_button_callback_data`.
+  ToastController* toast_controller = GetToastController();
+  if (!toast_controller) {
+    return;
+  }
+  ToastParams params(ToastId::kAutofillAiSuggestionRemoved);
+  params.body_string_cardinality_param =
+      std::get<EntityInstance::PersonalContextRecordTypePayload>(
+          entity.record_type_data())
+          .sources.size();
+  params.action_button_callback_data = base::Value(*entity.guid());
+  toast_controller->MaybeShowToast(std::move(params));
 #endif
 }
 
@@ -1758,6 +1782,18 @@ void ChromeAutofillClient::OnActorTaskStateChange(actor::ActorTask& task) {
           .conversation_id = task.source_info().id.value_or(""),
           .task_id = task_id,
       });
+}
+
+void ChromeAutofillClient::OpenGmailForOtps() {
+  if (!web_contents()) {
+    return;
+  }
+  static constexpr std::string_view kGmailUrl = "https://mail.google.com";
+  web_contents()->OpenURL(
+      content::OpenURLParams::CreateBrowserInitiated(
+          GURL(kGmailUrl), WindowOpenDisposition::NEW_FOREGROUND_TAB,
+          ui::PAGE_TRANSITION_LINK),
+      /*navigation_handle_callback=*/{});
 }
 
 void ChromeAutofillClient::OpenGeminiInSidebar(const std::u16string& prompt) {

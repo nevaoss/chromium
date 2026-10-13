@@ -79,7 +79,6 @@ import org.chromium.chrome.browser.layouts.components.VirtualView;
 import org.chromium.chrome.browser.layouts.components.VirtualView.VirtualViewPriority;
 import org.chromium.chrome.browser.preferences.Pref;
 import org.chromium.chrome.browser.tab.Tab;
-import org.chromium.chrome.browser.tab.TabCreationState;
 import org.chromium.chrome.browser.tab.TabHidingType;
 import org.chromium.chrome.browser.tab.TabObscuringHandler;
 import org.chromium.chrome.browser.tab.TabObserver;
@@ -193,7 +192,7 @@ public class CompositorViewHolder extends FrameLayout
     private CompositorView mCompositorView;
 
     private boolean mContentOverlayVisiblity = true;
-    private boolean mCanBeFocusable;
+    private boolean mCanBeFocusable = true;
 
     /** A task to be performed after a resize event. */
     private @Nullable Runnable mPostHideKeyboardTask;
@@ -665,6 +664,16 @@ public class CompositorViewHolder extends FrameLayout
                     R.id.control_container, mControlContainer.getToolbarResourceAdapter());
         }
 
+        scheduleTempBackgroundRemoval();
+    }
+
+    /**
+     * Schedules removal of the temporary compositor background, unless a removal is already
+     * pending.
+     */
+    private void scheduleTempBackgroundRemoval() {
+        if (mSetBackgroundRunnable != null) return;
+
         mSetBackgroundRunnable = this::removeTempBackground;
         // Request a render. The temporary background will be removed once we are confident that the
         // composited frame has been drawn. We'll also post a runnable to remove the background
@@ -688,7 +697,7 @@ public class CompositorViewHolder extends FrameLayout
     }
 
     private void runSetBackgroundRunnable() {
-        // This runnable should only be run once.
+        // Whichever of the render callback and the timeout fires first consumes the runnable.
         if (mSetBackgroundRunnable == null) return;
 
         new Handler().post(mSetBackgroundRunnable);
@@ -865,9 +874,11 @@ public class CompositorViewHolder extends FrameLayout
     public void prepareForTabReparenting() {
         if (mHasDrawnOnce) return;
 
-        // Set the background to white while we wait for the first swap of buffers. This gets
-        // corrected inside the view.
+        // Set the background to white while we wait for the first swap of buffers.
         mCompositorView.setBackgroundColor(Color.WHITE);
+        // The removal scheduled by setControlContainer() may have already timed out if the
+        // activity was stopped before its first draw, so make sure one is pending.
+        scheduleTempBackgroundRemoval();
     }
 
     @Override
@@ -1163,8 +1174,9 @@ public class CompositorViewHolder extends FrameLayout
                         || VerticalTabUtils.isVerticalTabsEligible(mActivity))
                 && mSideUiStateProvider != null) {
             SideUiSpecs sideUiSpecs = mSideUiStateProvider.getExpectedSideUiSpecsForTab(tab);
-            sideUiLeftMargin = sideUiSpecs.getWidth(AnchorSide.LEFT);
-            horizontalViewportInsets = sideUiLeftMargin + sideUiSpecs.getWidth(AnchorSide.RIGHT);
+            sideUiLeftMargin = sideUiSpecs.getReservedWidth(AnchorSide.LEFT);
+            horizontalViewportInsets =
+                    sideUiLeftMargin + sideUiSpecs.getReservedWidth(AnchorSide.RIGHT);
         }
         ContentView cv = getContentView();
         if (cv != null) cv.setContentOffsetXPix(sideUiLeftMargin);
@@ -1572,7 +1584,22 @@ public class CompositorViewHolder extends FrameLayout
 
     @Override
     public void onSideUiSpecsChanged(SideUiSpecs sideUiSpecs, UiUpdateRequest request) {
-        if (request.mUpdateReason == UpdateReason.RESIZE_LIVE) {
+        updateForSideUiSpecs(
+                sideUiSpecs, /* isLiveResize= */ request.mUpdateReason == UpdateReason.RESIZE_LIVE);
+    }
+
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+    //                 End of SideUiObserver Implementation                                      //
+    ///////////////////////////////////////////////////////////////////////////////////////////////
+
+    /**
+     * Resizes and repositions the content to account for the given {@link SideUiSpecs}.
+     *
+     * @param sideUiSpecs The {@link SideUiSpecs} to apply.
+     * @param isLiveResize Whether the update is part of a live resize drag.
+     */
+    private void updateForSideUiSpecs(SideUiSpecs sideUiSpecs, boolean isLiveResize) {
+        if (isLiveResize) {
             // Translate the composited layer without resizing WebContents during a live drag,
             // avoiding per-frame layout passes that cause jank.
             applySideUiContentOffsetX(sideUiSpecs);
@@ -1596,10 +1623,6 @@ public class CompositorViewHolder extends FrameLayout
         //  the viewport bounds from these items.
     }
 
-    ///////////////////////////////////////////////////////////////////////////////////////////////
-    //                 End of SideUiObserver Implementation                                      //
-    ///////////////////////////////////////////////////////////////////////////////////////////////
-
     private void repositionTabViewForSideUi() {
         Tab currentTab = getCurrentTab();
         if (mSideUiStateProvider == null || currentTab == null) return;
@@ -1620,8 +1643,8 @@ public class CompositorViewHolder extends FrameLayout
         // TODO(b/496307238): verify if need to explicitly trigger repositionTabViewForSideUi again
         // after layout params are set.
         if (layoutParams == null) return;
-        layoutParams.leftMargin = sideUiSpecs.getWidth(AnchorSide.LEFT);
-        layoutParams.rightMargin = sideUiSpecs.getWidth(AnchorSide.RIGHT);
+        layoutParams.leftMargin = sideUiSpecs.getReservedWidth(AnchorSide.LEFT);
+        layoutParams.rightMargin = sideUiSpecs.getReservedWidth(AnchorSide.RIGHT);
         mView.setLayoutParams(layoutParams);
     }
 
@@ -1666,7 +1689,7 @@ public class CompositorViewHolder extends FrameLayout
      * on the left, without resizing the web contents.
      */
     private void applySideUiContentOffsetX(SideUiSpecs sideUiSpecs) {
-        @Px int leftSideUiWidth = sideUiSpecs.getWidth(AnchorSide.LEFT);
+        @Px int leftSideUiWidth = sideUiSpecs.getReservedWidth(AnchorSide.LEFT);
         mLayoutManager.setContentOffsetX(leftSideUiWidth);
         ContentView contentView = getContentView();
         if (contentView != null) contentView.setContentOffsetXPix(leftSideUiWidth);
@@ -1788,8 +1811,8 @@ public class CompositorViewHolder extends FrameLayout
     private void adjustRectForSideUi(RectF outRect) {
         if (mSideUiStateProvider != null) {
             SideUiSpecs sideUiSpecs = mSideUiStateProvider.getCurrentSideUiSpecs();
-            outRect.left += sideUiSpecs.getWidth(AnchorSide.LEFT);
-            outRect.right -= sideUiSpecs.getWidth(AnchorSide.RIGHT);
+            outRect.left += sideUiSpecs.getReservedWidth(AnchorSide.LEFT);
+            outRect.right -= sideUiSpecs.getReservedWidth(AnchorSide.RIGHT);
         }
     }
 
@@ -1913,10 +1936,9 @@ public class CompositorViewHolder extends FrameLayout
                 (sideUiStateProvider) -> {
                     mSideUiStateProvider = sideUiStateProvider;
                     mSideUiStateProvider.addObserver(this);
-                    onSideUiSpecsChanged(
+                    updateForSideUiSpecs(
                             mSideUiStateProvider.getCurrentSideUiSpecs(),
-                            new UiUpdateRequest(
-                                    /* sideUiId= */ null, /* suppressAnimations= */ true));
+                            /* isLiveResize= */ false);
                 });
     }
 
@@ -2011,7 +2033,7 @@ public class CompositorViewHolder extends FrameLayout
         tabModelSelector.addObserver(
                 new TabModelSelectorObserver() {
                     @Override
-                    public void onNewTabCreated(Tab tab, @TabCreationState int creationState) {
+                    public void onNewTabCreated(Tab tab) {
                         initializeTab(tab);
                     }
                 });
@@ -2042,13 +2064,16 @@ public class CompositorViewHolder extends FrameLayout
             // TODO(crbug.com/40770763): Look into enforcing the z-order of the views.
             addView(mView, 1);
             repositionTabViewForSideUi();
-            updateFocusability(false, /* blockDescendants= */ false);
-
             // Claim focus for the new view unless the user is currently using the URL bar.
             if (mUrlBar == null || !mUrlBar.hasFocus()) mView.requestFocus();
+            updateFocusability(/* focusable= */ false, /* blockDescendants= */ false);
         } else {
             if (mView.getParent() == this) {
                 updateFocusability(mCanBeFocusable, /* blockDescendants= */ false);
+                // Reclaim focus from the outgoing overlay view before removing it from the
+                // hierarchy. Otherwise, detaching a focused child view triggers ViewRootImpl
+                // to search from the root DecorView and focus the UrlBar (see clearChildFocus).
+                if (mView.hasFocus()) requestFocus();
 
                 if (webContents != null && !webContents.isDestroyed()) {
                     assumeNonNull(getContentView()).setVisibility(View.INVISIBLE);
@@ -2099,12 +2124,12 @@ public class CompositorViewHolder extends FrameLayout
     }
 
     private void setTab(@Nullable Tab tab) {
-        if (tab != null) {
+        if (tab != null && !tab.isDetachedFromActivity()) {
             tab.loadIfNeeded(/* forceBackingSize= */ false);
         }
 
         View newView = tab != null ? tab.getView() : null;
-        if (mView == newView) return;
+        if (mView == newView && mTabVisible == tab) return;
 
         // TODO(dtrainor): Look into changing this only if the views differ, but still parse the
         // WebContents list even if they're the same.

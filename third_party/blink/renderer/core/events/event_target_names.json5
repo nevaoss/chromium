@@ -54,6 +54,7 @@
     "XMLHttpRequest",
     "XMLHttpRequestUpload",
     "CloseWatcher",
-    "PreferenceObject"
+    "PreferenceObject",
+    "ModelContext"
   ],
 }

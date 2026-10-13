@@ -9,7 +9,9 @@ import("//remoting/host/installer/credits.gni")
 import("//remoting/remoting_locales.gni")
 import("//remoting/remoting_options.gni")
 
-if (enable_me2me_host && target_cpu == "x64") {
+# The Debian package can't be built in component builds since it doesn't
+# package the shared libraries.
+if (enable_me2me_host && target_cpu == "x64" && !is_component_build) {
   remoting_credits("credits") {
     gn_target = "//remoting/host/installer/linux:remoting_me2me_host_archive"
   }
@@ -55,6 +57,7 @@ if (enable_me2me_host && target_cpu == "x64") {
     inputs = [
       build_deb_script,
       "Makefile",
+      "apt.include",
       "debian/chrome-remote-desktop-environment.user.service",
       "debian/chrome-remote-desktop.service",
       "debian/chrome-remote-desktop.pam",
@@ -68,16 +71,24 @@ if (enable_me2me_host && target_cpu == "x64") {
       "debian/repo.cron",
       "debian/rules",
       "debian/triggers",
+      "installer.include",
+      "repo_variables.include",
+      "variables.include",
+      "//chrome/installer/linux/common/key.include",
 
       # Files to be packaged into the deb.
       "//remoting/host/installer/linux/Xsession",
+      "//remoting/host/installer/linux/chrome-remote-desktop-x11-session@.service",
+      "//remoting/host/installer/linux/chrome-remote-desktop@.service",
       "//remoting/host/installer/linux/is-remoting-session",
       "//remoting/host/installer/linux/setup-session-environment",
       "//remoting/host/linux/configure_url_forwarder.py",
+      "//remoting/host/linux/desktop_session.py",
       "//remoting/host/linux/linux_me2me_host.py",
       "//remoting/host/linux/pipewire.conf.template",
       "//remoting/host/linux/pipewire-media-session.conf.template",
       "//remoting/host/linux/pipewire-pulse.conf.template",
+      "//remoting/host/linux/shared_lib.py",
       "//remoting/host/linux/wireplumber.conf.fragment",
       "//remoting/host/linux/wireplumber.conf.template",
       "//remoting/resources/chromoting128.png",
@@ -115,8 +126,6 @@ if (enable_me2me_host && target_cpu == "x64") {
       "-b",
       build_timestamp,
     ]
-    inputs +=
-        [ "//remoting/host/installer/linux/chrome-remote-desktop@.service" ]
 
     deps = [
       ":credits",

@@ -39,7 +39,6 @@
 #include "chrome/browser/ai/ai_data_keyed_service_factory.h"  // nogncheck
 #include "chrome/browser/bookmarks/bookmark_model_factory.h"
 #include "chrome/browser/buildflags.h"
-#include "chrome/browser/content_settings/sound_content_setting_observer.h"
 #include "chrome/browser/custom_handlers/protocol_handler_registry_factory.h"
 #include "chrome/browser/defaults.h"
 #include "chrome/browser/devtools/devtools_toggle_action.h"
@@ -342,6 +341,11 @@ Browser::Browser(BrowserWindowCreateParams params)
   } else if (profile_->IsIncognitoProfile()) {
     base::UmaHistogramCounts100(
         "Browser.WindowCount.Incognito",
+        ProfileBrowserCollection::GetForProfile(profile_)
+            ->GetOffTheRecordBrowserCount());
+  } else if (profile_->IsEnterpriseIsolatedModeProfile()) {
+    base::UmaHistogramCounts100(
+        "Browser.WindowCount.EnterpriseIsolated",
         ProfileBrowserCollection::GetForProfile(profile_)
             ->GetOffTheRecordBrowserCount());
   }

@@ -424,11 +424,6 @@ BASE_FEATURE(kAutofillAllowFillingModifiedInitialValues,
 
 // When enabled, the ambient autofill experience is enabled in Chrome.
 BASE_FEATURE(kAutofillAmbientAutofill, base::FEATURE_DISABLED_BY_DEFAULT);
-BASE_FEATURE_PARAM(std::string,
-                   kAutofillAmbientAutofillEligibleTiers,
-                   &kAutofillAmbientAutofill,
-                   "ambient_autofill_eligible_tiers",
-                   "");
 // A comma-separated list of EntityType string names (e.g. "Passport,Driver's
 // license,Vehicle") supported for Ambient Autofill. If empty, no entity types
 // are supported.
@@ -465,13 +460,8 @@ BASE_FEATURE(kAutofillAmbientAutofillSpiiCache,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 // Controls whether pContext suggestion suppression in Ambient Autofill is
-// enabled.
+// enabled, including the UI to suppress suggestions.
 BASE_FEATURE(kAutofillAmbientAutofillSuppression,
-             base::FEATURE_DISABLED_BY_DEFAULT);
-
-// When enabled, Personal Context Autofill AI suggestions display UI to
-// suppress the suggestion.
-BASE_FEATURE(kAutofillAmbientAutofillSuppressionUI,
              base::FEATURE_DISABLED_BY_DEFAULT);
 
 // If enabled, on Android desktop, the Autofill keyboard accessory will have a
@@ -769,7 +759,7 @@ BASE_FEATURE(kAutofillEnableKeyboardAccessoryOnSearchFields,
 // When enabled, Autofill will help users fill in non-affiliated loyalty cards
 // on loyalty card only fields.
 BASE_FEATURE(kAutofillEnableNonAffiliatedLoyaltyCardsFilling,
-             base::FEATURE_DISABLED_BY_DEFAULT);
+             base::FEATURE_ENABLED_BY_DEFAULT);
 
 // When enabled, Autofill will use heuristics to identify OTP fields.
 BASE_FEATURE(kAutofillEnableOneTimeCodeHeuristics,

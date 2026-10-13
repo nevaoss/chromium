@@ -234,6 +234,7 @@
 #if BUILDFLAG(ENABLE_WEBUI_NTP)
 #include "chrome/browser/new_tab_page/modules/v2/most_relevant_tab_resumption/most_relevant_tab_resumption_page_handler.h"
 #include "chrome/browser/ui/webui/cr_components/most_visited/most_visited_pref_observer.h"
+#include "chrome/browser/ui/webui/cr_components/theme_color_picker/theme_color_picker_handler.h"
 #include "chrome/browser/ui/webui/new_tab_page/new_tab_page_handler.h"
 #include "chrome/browser/ui/webui/new_tab_page/new_tab_page_ui.h"
 #if !BUILDFLAG(IS_ANDROID)
@@ -326,7 +327,6 @@
 #include "chrome/browser/ui/tabs/saved_tab_groups/saved_tab_group_pref_names.h"
 #include "chrome/browser/ui/tabs/tab_strip_prefs.h"
 #include "chrome/browser/ui/webui/certificate_manager/certificate_manager_handler.h"
-#include "chrome/browser/ui/webui/cr_components/theme_color_picker/theme_color_picker_handler.h"
 #include "chrome/browser/ui/webui/history/foreign_session_handler.h"
 #include "chrome/browser/ui/webui/settings/settings_ui.h"
 #include "chrome/browser/ui/webui/tab_search/tab_search_prefs.h"
@@ -369,7 +369,6 @@
 #include "chrome/browser/ash/arc/policy/arc_policy_bridge.h"
 #include "chrome/browser/ash/arc/session/arc_session_manager.h"
 #include "chrome/browser/ash/bluetooth/debug_logs_manager.h"
-#include "chrome/browser/ash/bluetooth/hats_bluetooth_revamp_trigger_impl.h"
 #include "chrome/browser/ash/borealis/borealis_prefs.h"
 #include "chrome/browser/ash/bruschetta/bruschetta_pref_names.h"
 #include "chrome/browser/ash/cert_provisioning/cert_provisioning_common.h"
@@ -1017,6 +1016,14 @@ constexpr char kLastLauncherAppAlmanacCallTimestamp[] =
     "app_discovery_service.last_launcher_app_almanac_call_timestamp";
 inline constexpr char kActivityTimeAfterOnboarding[] =
     "oobe.activity_time_after_onboarding";
+inline constexpr char kHatsAudioOutputProcSurveyCycleEndTs[] =
+    "hats_audio_output_proc_cycle_end_timestamp";
+inline constexpr char kHatsAudioOutputProcDeviceIsSelected[] =
+    "hats_audio_output_proc_device_is_selected";
+inline constexpr char kHatsArcGamesSurveyCycleEndTs[] =
+    "hats_arc_games_cycle_end_timestamp";
+inline constexpr char kHatsArcGamesDeviceIsSelected[] =
+    "hats_arc_games_device_is_selected";
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
 // Deprecated 09/2026.
@@ -1035,6 +1042,26 @@ inline constexpr char kHatsBorealisGamesSurveyIsSelected[] =
     "hats_borealis_games_is_selected";
 inline constexpr char kHatsBorealisGamesLastInteractionTimestamp[] =
     "hats_borealis_games_last_interaction_timestamp";
+inline constexpr char kUserPairedWithFastPair[] =
+    "ash.user.paired_with_fast_pair";
+inline constexpr char kNearbyPresenceFirstTimeRegistrationComplete[] =
+    "nearby_presence.registration_complete";
+inline constexpr char kNearbyPresenceDeviceIdPrefName[] =
+    "nearby_presence.local_device_id";
+inline constexpr char kNearbyPresenceUserNamePrefName[] =
+    "nearby_presence.user_name";
+inline constexpr char kNearbyPresenceProfileUrlPrefName[] =
+    "nearby_presence.profile_url";
+inline constexpr char kNearbyPresenceSharedCredentialIdListPrefName[] =
+    "nearby_presence.shared_credential_id_list";
+inline constexpr char kNearbyPresenceSchedulingFirstTimeRegistrationPrefName[] =
+    "nearby_presence.scheduling.first_time_registration";
+inline constexpr char kNearbyPresenceSchedulingUploadPrefName[] =
+    "nearby_presence.scheduling.upload";
+inline constexpr char kNearbyPresenceSchedulingDownloadPrefName[] =
+    "nearby_presence.scheduling.download";
+inline constexpr char kNearbyPresenceSchedulingCredentialDailySyncPrefName[] =
+    "nearby_presence.scheduling.daily_sync";
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
 // Deprecated 09/2026.
@@ -1435,6 +1462,10 @@ void RegisterProfilePrefsForMigration(
                              base::Time());
   registry->RegisterTimeDeltaPref(kActivityTimeAfterOnboarding,
                                   base::TimeDelta());
+  registry->RegisterInt64Pref(kHatsAudioOutputProcSurveyCycleEndTs, 0);
+  registry->RegisterBooleanPref(kHatsAudioOutputProcDeviceIsSelected, false);
+  registry->RegisterInt64Pref(kHatsArcGamesSurveyCycleEndTs, 0);
+  registry->RegisterBooleanPref(kHatsArcGamesDeviceIsSelected, false);
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
   // Deprecated 09/2026.
@@ -1450,6 +1481,20 @@ void RegisterProfilePrefsForMigration(
   registry->RegisterBooleanPref(kHatsBorealisGamesSurveyIsSelected, false);
   registry->RegisterTimePref(kHatsBorealisGamesLastInteractionTimestamp,
                              base::Time());
+  registry->RegisterBooleanPref(kUserPairedWithFastPair, false);
+  registry->RegisterBooleanPref(kNearbyPresenceFirstTimeRegistrationComplete,
+                                false);
+  registry->RegisterStringPref(kNearbyPresenceDeviceIdPrefName, std::string());
+  registry->RegisterStringPref(kNearbyPresenceUserNamePrefName, std::string());
+  registry->RegisterStringPref(kNearbyPresenceProfileUrlPrefName,
+                               std::string());
+  registry->RegisterListPref(kNearbyPresenceSharedCredentialIdListPrefName);
+  registry->RegisterDictionaryPref(
+      kNearbyPresenceSchedulingFirstTimeRegistrationPrefName);
+  registry->RegisterDictionaryPref(kNearbyPresenceSchedulingUploadPrefName);
+  registry->RegisterDictionaryPref(kNearbyPresenceSchedulingDownloadPrefName);
+  registry->RegisterDictionaryPref(
+      kNearbyPresenceSchedulingCredentialDailySyncPrefName);
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
   // Deprecated 09/2026.
@@ -2023,6 +2068,7 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry,
   NewTabFooterUI::RegisterProfilePrefs(registry);
 #endif  // !BUILDFLAG(IS_ANDROID)
   NewTabPageHandler::RegisterProfilePrefs(registry);
+  ThemeColorPickerHandler::RegisterProfilePrefs(registry);
   NewTabPageUI::RegisterProfilePrefs(registry);
   MostVisitedPrefObserver::RegisterProfilePrefs(registry);
   MostRelevantTabResumptionPageHandler::RegisterProfilePrefs(registry);
@@ -2075,7 +2121,6 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry,
   StartupBrowserCreator::RegisterProfilePrefs(registry);
   tab_groups::saved_tab_groups::prefs::RegisterProfilePrefs(registry);
   tab_search_prefs::RegisterProfilePrefs(registry);
-  ThemeColorPickerHandler::RegisterProfilePrefs(registry);
   toolbar::RegisterProfilePrefs(registry);
 #endif  // BUILDFLAG(IS_ANDROID)
 
@@ -2143,7 +2188,6 @@ void RegisterProfilePrefs(user_prefs::PrefRegistrySyncable* registry,
   ash::bluetooth::DebugLogsManager::RegisterPrefs(registry);
   ash::bluetooth_config::BluetoothPowerControllerImpl::RegisterProfilePrefs(
       registry);
-  ash::HatsBluetoothRevampTriggerImpl::RegisterProfilePrefs(registry);
   user_manager::UserManagerImpl::RegisterProfilePrefs(registry);
   ash::ClientAppMetadataProviderService::RegisterProfilePrefs(registry);
   ash::CupsPrintersManager::RegisterProfilePrefs(registry);
@@ -2796,6 +2840,10 @@ void MigrateObsoleteProfilePrefs(PrefService* profile_prefs,
   profile_prefs->ClearPref(kHatsOnboardingDeviceIsSelected);
   profile_prefs->ClearPref(kLastLauncherAppAlmanacCallTimestamp);
   profile_prefs->ClearPref(kActivityTimeAfterOnboarding);
+  profile_prefs->ClearPref(kHatsAudioOutputProcSurveyCycleEndTs);
+  profile_prefs->ClearPref(kHatsAudioOutputProcDeviceIsSelected);
+  profile_prefs->ClearPref(kHatsArcGamesSurveyCycleEndTs);
+  profile_prefs->ClearPref(kHatsArcGamesDeviceIsSelected);
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
   // Added 09/2026.
@@ -2813,6 +2861,18 @@ void MigrateObsoleteProfilePrefs(PrefService* profile_prefs,
   profile_prefs->ClearPref(kHatsBorealisGamesSurveyCycleEndTs);
   profile_prefs->ClearPref(kHatsBorealisGamesSurveyIsSelected);
   profile_prefs->ClearPref(kHatsBorealisGamesLastInteractionTimestamp);
+  profile_prefs->ClearPref(kUserPairedWithFastPair);
+  profile_prefs->ClearPref(kNearbyPresenceFirstTimeRegistrationComplete);
+  profile_prefs->ClearPref(kNearbyPresenceDeviceIdPrefName);
+  profile_prefs->ClearPref(kNearbyPresenceUserNamePrefName);
+  profile_prefs->ClearPref(kNearbyPresenceProfileUrlPrefName);
+  profile_prefs->ClearPref(kNearbyPresenceSharedCredentialIdListPrefName);
+  profile_prefs->ClearPref(
+      kNearbyPresenceSchedulingFirstTimeRegistrationPrefName);
+  profile_prefs->ClearPref(kNearbyPresenceSchedulingUploadPrefName);
+  profile_prefs->ClearPref(kNearbyPresenceSchedulingDownloadPrefName);
+  profile_prefs->ClearPref(
+      kNearbyPresenceSchedulingCredentialDailySyncPrefName);
 #endif  // BUILDFLAG(IS_CHROMEOS)
 
   // Added 09/2026.

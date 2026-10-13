@@ -404,6 +404,7 @@ robolectric_library("payments_autofill_junit_tests") {
     "junit/src/org/chromium/components/autofill/payments/BnplIssuerTosDetailTest.java",
     "junit/src/org/chromium/components/autofill/payments/CardDetailTest.java",
     "junit/src/org/chromium/components/autofill/payments/EwalletTest.java",
+    "junit/src/org/chromium/components/autofill/payments/IbanTest.java",
     "junit/src/org/chromium/components/autofill/payments/LegalMessageLineTest.java",
     "junit/src/org/chromium/components/autofill/payments/LegalMessageTest.java",
     "junit/src/org/chromium/components/autofill/payments/PaymentInstrumentTest.java",
@@ -454,11 +455,8 @@ generate_jni("payments_jni_headers") {
   ]
 }
 
-static_library("payments_autofill_cc") {
-  sources = [
-    "payments/legal_message_line_android.cc",
-    "payments/legal_message_line_android.h",
-  ]
+source_set("payments_autofill_cc") {
+  sources = [ "payments/legal_message_line_android.h" ]
   deps = [
     ":payments_jni_headers",
     "//base",

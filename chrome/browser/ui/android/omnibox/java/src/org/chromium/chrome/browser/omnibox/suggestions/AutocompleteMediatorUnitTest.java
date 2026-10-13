@@ -2104,7 +2104,7 @@ public class AutocompleteMediatorUnitTest {
     public void testDefaultBrowserPromo_notShownWithIncorrectSuggestionType() {
         var url = new GURL("http://test");
 
-        for (@OmniboxSuggestionType int type = 0; type < OmniboxSuggestionType.NUM_TYPES; type++) {
+        for (@OmniboxSuggestionType int type = 0; type <= OmniboxSuggestionType.MAX_VALUE; type++) {
             if (type != OmniboxSuggestionType.CLIPBOARD_URL) {
                 var match = AutocompleteMatchBuilder.searchWithType(type).build();
                 mMediator.onSuggestionClicked(match, 0, url, /* modifiers= */ 0);

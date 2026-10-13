@@ -1955,6 +1955,10 @@ class CONTENT_EXPORT RenderFrameHostImpl
   void GetPresentationService(
       mojo::PendingReceiver<blink::mojom::PresentationService> receiver);
 
+  void GetPresentationReceiverService(
+      mojo::PendingReceiver<blink::mojom::PresentationReceiverService>
+          receiver);
+
   PresentationServiceImpl& GetPresentationServiceForTesting();
 
   void GetSpeechSynthesis(
@@ -2975,7 +2979,8 @@ class CONTENT_EXPORT RenderFrameHostImpl
     return last_user_activation_consumed_time_;
   }
   void ClearUserActivation();
-  void ConsumeTransientUserActivation();
+  bool ConsumeTransientUserActivation() override;
+  void ConsumeTransientUserActivationLocal();
   void ActivateUserActivation(
       blink::mojom::UserActivationNotificationType notification_type,
       bool sticky_only = false);

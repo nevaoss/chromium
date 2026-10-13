@@ -1,3 +1,4 @@
+// Copyright 2026 The Chromium Authors
 // Use of this source code is governed by a BSD-style license that can be
 // found in the LICENSE file.
 
@@ -310,7 +311,6 @@ class PLATFORM_EXPORT Canvas2DResourceProvider
 
   CanvasImageProvider* GetOrCreateCanvasImageProvider();
   void EnsureResourceReadyForDraw();
-  std::unique_ptr<gpu::RasterScopedAccess> WillDrawInternal();
 
   // Notifies before any unaccelerated drawing will be done on the resource used
   // by this provider.

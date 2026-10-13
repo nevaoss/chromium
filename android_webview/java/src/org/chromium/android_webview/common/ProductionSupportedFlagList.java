@@ -64,6 +64,7 @@ public final class ProductionSupportedFlagList {
      * updating the "LoginCustomFlags" field in tools/metrics/histograms/enums.xml.
      */
     public static final Flag[] sFlagList = {
+        Flag.baseFeature("useicu4xnormalizer", "Auto-generated flag for useicu4xnormalizer."),
         Flag.baseFeature("AwMetricsLogTrimming", "Auto-generated flag for AwMetricsLogTrimming."),
         Flag.commandLine(
                 AwSwitches.HIGHLIGHT_ALL_WEBVIEWS,
@@ -251,6 +252,10 @@ public final class ProductionSupportedFlagList {
         Flag.baseFeature(
                 AndroidAutofillFeatures.ANDROID_AUTOFILL_FIELDS_UPDATED_ON_SELECT_NAME,
                 "Enable updating autofill field origin on select control change."),
+        Flag.baseFeature(
+                AndroidAutofillFeatures.ANDROID_AUTOFILL_SUPPRESS_OFFSCREEN_DATALIST_NAME,
+                "When enabled, datalist popups are suppressed when the field is outside the"
+                        + " container view's visible bounds."),
         Flag.baseFeature(
                 AutofillFeatures.AUTOFILL_ACCEPT_DOM_MUTATION_AFTER_AUTOFILL_SUBMISSION,
                 "Accepts DOM_MUTATION_AFTER_AUTOFILL submissions detected on password forms."),
@@ -484,10 +489,6 @@ public final class ProductionSupportedFlagList {
                         + " subresource notifications only if the user has allowed"
                         + " HTTPS-related exceptions."),
         Flag.baseFeature("CanvasColorCache"),
-        Flag.baseFeature(
-                BlinkFeatures.RENDER_BLOCKING_FONTS,
-                "When enabled, blocks rendering on font preloads to reduce CLS. "
-                        + "See go/critical-font-analysis"),
         Flag.baseFeature(
                 SafeBrowsingFeatures.HASH_PREFIX_REAL_TIME_LOOKUPS,
                 "When enabled, Safe Browsing checks will happen in real time"),
@@ -1097,6 +1098,9 @@ public final class ProductionSupportedFlagList {
                         + "After enabling this flag, applications must be started and then "
                         + "restarted for changes to apply."),
         Flag.baseFeature(
+                AwFeatures.WEBVIEW_INIT_RENDERER_DURING_WEB_CONTENTS_CREATION,
+                "Initialize the renderer process during WebContents creation."),
+        Flag.baseFeature(
                 BaseFeatures.LIBRARY_PREFETCHER_MADVISE,
                 "Use madvise MADV_WILLNEED to prefetch the native library. This replaces the "
                         + "default mechanism of pre-reading the memory from a forked process."),
@@ -1174,17 +1178,10 @@ public final class ProductionSupportedFlagList {
                 "WebViewPersistentMetricsInNoBackupDir",
                 "Migrate the persistent metrics file to the nobackupfiles directory."),
         Flag.baseFeature(
-                ContentFeatures.ACCESSIBILITY_IMPROVE_LIVE_REGION_ANNOUNCE,
-                "When enabled, sends live region node changes via WINDOW_CONTENT_CHANGED events"
-                        + " instead of TYPE_ANNOUNCEMENT."),
-        Flag.baseFeature(
                 "ConnectionKeepAliveForHttp2",
                 "When enabled, WebView#preconnect will use a ConnectionKeepAliveConfig for"
                     + " NetworkContext::PreconnectSocket in HTTP2, and will be informed when the"
                     + " connection drops"),
-        Flag.baseFeature(
-                ContentFeatures.ACCESSIBILITY_DEPRECATE_TYPE_ANNOUNCE,
-                "When enabled, TYPE_ANNOUNCE events will no longer be sent from Chrome."),
         Flag.baseFeature(
                 AccessibilityFeatures.ACCESSIBILITY_MAGNIFICATION_FOLLOWS_FOCUS_KEYBOARD_ATTACHED,
                 "When enabled, the Android framework will be notified when the text cursor or input"
@@ -1522,6 +1519,14 @@ public final class ProductionSupportedFlagList {
                 "WebRTCBoostMediaIOThreads",
                 "Boosts the thread types of IO threads in the video capture and network utility"
                         + " processes on the WebRTC media path."),
+        Flag.baseFeature(
+                BlinkFeatures.LAZY_PARSE_INLINE_STYLE_SHEETS,
+                "Defers declaration block parsing in inline stylesheets until rules match or"
+                        + " are queried."),
+        Flag.baseFeature(
+                AwFeatures.WEBVIEW_IGNORE_DEFAULT_VIDEO_POSTER,
+                "Use Chromium's usual video poster logic instead of"
+                        + " WebChromeClient.getDefaultVideoPoster()"),
         // Add new commandline switches and features above. The final entry should have a
         // trailing comma for cleaner diffs.
     };

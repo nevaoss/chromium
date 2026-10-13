@@ -447,8 +447,7 @@
   <message name="IDS_AUTOFILL_GMAIL_OTP_REQUIRED_STEP_2" desc="Second step in the Gmail OTP settings required dialog prompting the user to turn on smart features in other Google products.">
     Turn on “<ph name="BEGIN_LINK">&lt;a href="$1" tabindex="0" aria-description="$2" target="_blank"&gt;</ph>Smart features in other Google products<ph name="LINK_END">&lt;/a&gt;</ph>”
   </message>
-  <!-- TODO(crbug.com/556170227): Make this string translateable once UI is finalized. -->
-  <message name="IDS_AUTOFILL_OPEN_GMAIL_FOR_OTP" desc="The text of the suggestion that opens Gmail to view one time passwords." translateable="false">
+  <message name="IDS_AUTOFILL_OPEN_GMAIL_FOR_OTP" desc="The text of the suggestion that opens Gmail to view one time passwords.">
     Open Gmail
   </message>
   <message name="IDS_AUTOFILL_GMAIL_OTP_OPT_IN_TITLE" desc="Title of the bubble prompting the user to opt in to autofilling verification codes from Gmail.">
@@ -465,6 +464,18 @@
   </message>
   <message name="IDS_AUTOFILL_GMAIL_OTP_OPT_IN_NO_THANKS_BUTTON" desc="Label for the cancel button in the Gmail OTP opt-in bubble that declines autofilling verification codes from Gmail.">
     No thanks
+  </message>
+  <message name="IDS_AUTOFILL_GMAIL_OTP_VERIFICATION_CODE_LABEL" desc="Secondary title shown next to a Gmail one-time password suggestion in the Autofill popup.">
+    Verification code
+  </message>
+  <message name="IDS_AUTOFILL_GMAIL_OTP_FROM_ACCOUNT_LABEL" desc="Subtext shown below a Gmail one-time password suggestion indicating the user's Gmail account from which the code was retrieved.">
+    From <ph name="EMAIL">$1<ex>elisa.becket@gmail.com</ex></ph>
+  </message>
+  <message name="IDS_AUTOFILL_ONE_TIME_PASSWORD_VOICE_OVER_A11Y_LABEL" desc="Voice over label for the one time password field.">
+    Verification code: <ph name="OTP">$1<ex>123456</ex></ph>
+  </message>
+  <message name="IDS_AUTOFILL_A11Y_ANNOUNCE_FILLED_ONE_TIME_PASSWORD" desc="Accessibility announcement for when a one time password is autofilled.">
+    Autofilled code
   </message>
   <message name="IDS_AUTOFILL_DISABLE_SETTINGS_EXPLANATION_TITLE" desc="Title of the card explaining why the settings page was disabled. Sentence-Cased." formatter_data="android_java">
     Google isn’t your autofill provider
@@ -538,12 +549,6 @@
     </message>
     <message name="IDS_AUTOFILL_ADDRESS_SHEET_ALL_ADDRESSES_LINK" desc="The text of the link in the address sheet that opens the address management section.">
       Manage addresses
-    </message>
-    <message name="IDS_AUTOFILL_ONE_TIME_PASSWORD_VOICE_OVER_A11Y_LABEL" desc="Voice over label for the one time password field.">
-      Verification Code: <ph name="OTP">$1<ex>123456</ex></ph>
-    </message>
-    <message name="IDS_AUTOFILL_A11Y_ANNOUNCE_FILLED_ONE_TIME_PASSWORD" desc="Accessibility announcement for when a one time password is autofilled.">
-      Autofilled code
     </message>
     <message name="IDS_AUTOFILL_LOYALTY_CARDS_ALL_YOUR_CARDS_SUGGESTION" desc="The keyboard accessory suggestion to open the loyalty cards bottom sheet containing all the user loyalty cards.">
       Your loyalty cards
@@ -926,6 +931,18 @@
   <message name="IDS_AT_MEMORY_NOTICE_TITLE" desc="Headline of an informational notice introducing a new enhanced autofill feature. 'Gmail' is a proper branding name and should remain unlocalized and match standard guidelines across languages." formatter_data="android_java">
     Now you can find and fill info from Gmail and more
   </message>
+  <message name="IDS_AUTOFILL_AT_MEMORY_ZERO_STATE_SUBTITLE_ORDER_NUMBER" desc="Example search query shown in the AtMemory zero state for finding an order number." translateable="false">
+    Try "running shoes order number"
+  </message>
+  <message name="IDS_AUTOFILL_AT_MEMORY_ZERO_STATE_SUBTITLE_FLIGHT_CONFIRMATION_CODE" desc="Example search query shown in the AtMemory zero state for finding a flight confirmation code." translateable="false">
+    Try "confirmation code for LAX flight"
+  </message>
+  <message name="IDS_AUTOFILL_AT_MEMORY_ZERO_STATE_SUBTITLE_TRACKING_NUMBER" desc="Example search query shown in the AtMemory zero state for finding a shipment tracking number." translateable="false">
+    Try "running shoes tracking number"
+  </message>
+  <message name="IDS_AUTOFILL_AT_MEMORY_ZERO_STATE_SUBTITLE_HOTEL_ADDRESS" desc="Example search query shown in the AtMemory zero state for finding a hotel address." translateable="false">
+    Try "address for my hotel in Tokyo"
+  </message>
   <if expr="is_android">
     <message name="IDS_AT_MEMORY_SEARCH_HINT" desc="Hint text for the search bar in the AtMemory bottom sheet." formatter_data="android_java" translateable="false">
       Find and fill
@@ -955,10 +972,10 @@
   <message name="IDS_AUTOFILL_AI_SUGGESTED_BY_GEMINI_WITH_SOURCES" desc="Header for Autofill AI personal context child menu attributing the information to source applications. $1 is the formatted list of sources with citation badges (e.g. Gmail [1] [2] · Photos [1]).">
     Suggested by Gemini · <ph name="SOURCES">$1<ex>Gmail [1] [2] · Photos [1]</ex></ph>
   </message>
-  <message name="IDS_AUTOFILL_AI_SOURCE_APP_PHOTOS" desc="App name for Google Photos.">
+  <message name="IDS_AUTOFILL_AI_SOURCE_APP_PHOTOS" desc="App name for Google Photos." formatter_data="android_java">
     Photos
   </message>
-  <message name="IDS_AUTOFILL_AI_SOURCE_APP_GMAIL" desc="App name for Gmail.">
+  <message name="IDS_AUTOFILL_AI_SOURCE_APP_GMAIL" desc="App name for Gmail." formatter_data="android_java">
     Gmail
   </message>
   <message name="IDS_AUTOFILL_AI_REMOVE_INFO" desc="Text for a child menu option to remove an Autofill AI suggestion.">
@@ -1212,6 +1229,9 @@
   <message name="IDS_AUTOFILL_AI_ORDER_PRODUCT_NAMES_ATTRIBUTE_NAME" desc="Used as a general label for the order product names attribute.">
     Product names
   </message>
+  <message name="IDS_AUTOFILL_AI_ORDER_GRAND_TOTAL_ATTRIBUTE_NAME" desc="Used as a general label for the total amount of money paid for an order, including taxes and shipping costs.">
+    Total
+  </message>
 
   <!-- Attributes of the shipment entity -->
   <message name="IDS_AUTOFILL_AI_SHIPMENT_TRACKING_NUMBER_ATTRIBUTE_NAME" desc="Used as a general label for the shipment tracking number attribute.">
@@ -1234,6 +1254,15 @@
   </message>
   <message name="IDS_AUTOFILL_AI_SHIPMENT_PRODUCT_NAMES_ATTRIBUTE_NAME" desc="Used as a general label for the shipment product names attribute.">
     Product names
+  </message>
+  <message name="IDS_AUTOFILL_AI_SHIPMENT_DELIVERY_ADDRESS_ATTRIBUTE_NAME" desc="Used as a general label for the address a shipment is delivered to.">
+    Delivery address
+  </message>
+  <message name="IDS_AUTOFILL_AI_SHIPMENT_ESTIMATED_DELIVERY_DATE_ATTRIBUTE_NAME" desc="Used as a general label for the date a shipment is expected to be delivered on.">
+    Estimated delivery date
+  </message>
+  <message name="IDS_AUTOFILL_AI_SHIPMENT_ASSOCIATED_ORDER_ID_ATTRIBUTE_NAME" desc="Used as a general label for the id of the order that a shipment belongs to. The id of the order itself is IDS_AUTOFILL_AI_ORDER_ID_ATTRIBUTE_NAME.">
+    Order ID
   </message>
 
   <!-- Attributes of the flight reservation entity -->
@@ -1643,6 +1672,9 @@
      =1 {Suggestion removed. Your original source won't be deleted.}
      other {Suggestion removed. Your original sources won't be deleted.}}
   </message>
+  <message name="IDS_AUTOFILL_AI_ENTITY_SUPPRESSION_UNDO_TOAST_ACTION_BUTTON" meaning="Verb: action button to undo removal of an Autofill AI suggestion" desc="Label of the button in the toast notification that allows the user to undo removing an Autofill AI suggestion.">
+    Undo
+  </message>
 
   <message name="IDS_AUTOFILL_AI_ENTITY_SUPPRESSION_CONFIRMATION_TITLE" desc="Title of the dialog that asks the user to confirm that an Autofill AI suggestion should no longer be suggested by Chrome.">
     Remove from Chrome?
@@ -1882,6 +1914,15 @@ You can remove this suggestion from Chrome. Your original source won't be delete
     </message>
     <message name="IDS_AUTOFILL_AI_ATTRIBUTION_BOTTOM_SHEET_TITLE" desc="Title for the Autofill AI source attribution bottom sheet on Android." formatter_data="android_java">
       Sources
+    </message>
+    <message name="IDS_AUTOFILL_AI_ATTRIBUTION_SHEET_ACCESSIBILITY_TITLE" desc="Accessibility title announced by TalkBack when the Autofill AI source attribution bottom sheet opens at full height." formatter_data="android_java" is_accessibility_with_no_ui="true">
+      Sources for suggestion
+    </message>
+    <message name="IDS_AUTOFILL_AI_ATTRIBUTION_SHEET_CLOSED" desc="Accessibility announcement when the Autofill AI source attribution bottom sheet closes." formatter_data="android_java" is_accessibility_with_no_ui="true">
+      Sources sheet closed
+    </message>
+    <message name="IDS_AUTOFILL_AI_ATTRIBUTION_OPEN_SOURCE_DESCRIPTION" desc="Content description for TalkBack on an Autofill AI source card row. $1 is the app name (e.g. Gmail) and $2 is the source record title (e.g. Flight to San Francisco)." formatter_data="android_java" is_accessibility_with_no_ui="true">
+      Open <ph name="APP_NAME">%1$s<ex>Gmail</ex></ph> source: <ph name="TITLE">%2$s<ex>Flight to San Francisco</ex></ph>
     </message>
   </if>
 

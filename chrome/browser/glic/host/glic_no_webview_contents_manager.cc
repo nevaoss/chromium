@@ -16,6 +16,7 @@
 #include "base/task/sequenced_task_runner.h"
 #include "base/time/time.h"
 #include "chrome/browser/glic/common/glic_navigation.h"
+#include "chrome/browser/glic/glic_enums.h"
 #include "chrome/browser/glic/glic_net_log.h"
 #include "chrome/browser/glic/glic_profile_manager.h"
 #include "chrome/browser/glic/host/glic_overlay_ui.h"
@@ -65,15 +66,19 @@ namespace glic {
 namespace {
 class GlicPwcPolicyDelegate : public pwc::PwcPolicyDelegate {
  public:
+  explicit GlicPwcPolicyDelegate(Profile* profile) : profile_(profile) {}
   ~GlicPwcPolicyDelegate() override = default;
 
   bool IsNavigationAllowed(const url::Origin& origin) const override {
-    return IsGuestOriginAllowed(origin);
+    return IsGuestOriginAllowed(origin, profile_);
   }
 
   bool IsCapabilityOrigin(const url::Origin& origin) const override {
-    return IsOriginAllowedGlicApi(origin);
+    return IsOriginAllowedGlicApi(origin, profile_);
   }
+
+ private:
+  const raw_ptr<Profile> profile_;
 };
 
 content::WebContents::CreateParams MakeOverlayCreateParams(
@@ -257,15 +262,11 @@ void GlicNoWebviewContentsManager::OverlayContentsManager::ClearError() {
   UpdateOverlayState();
 }
 
-void GlicNoWebviewContentsManager::OverlayContentsManager::AttachToHost(
-    Host* host) {
-  panel_state_observation_.Reset();
-  panel_state_observation_.Observe(&host->instance());
-  UpdateOverlayState();
-}
-
-void GlicNoWebviewContentsManager::OverlayContentsManager::PanelStateChanged(
-    const mojom::PanelState& panel_state) {
+void GlicNoWebviewContentsManager::OverlayContentsManager::ObservePanelState(
+    ObservableValueView<mojom::PanelState>& panel_state) {
+  panel_state_ = &panel_state;
+  panel_state_subscription_ = panel_state_->AddObserver(base::BindRepeating(
+      &OverlayContentsManager::UpdateOverlayState, base::Unretained(this)));
   UpdateOverlayState();
 }
 
@@ -298,9 +299,8 @@ GlicNoWebviewContentsManager::OverlayContentsManager::DetermineOverlayState(
 mojom::OverlayStatePtr
 GlicNoWebviewContentsManager::OverlayContentsManager::DetermineOverlayState() {
   std::optional<mojom::PanelStateKind> panel_state_kind;
-  if (panel_state_observation_.IsObserving()) {
-    panel_state_kind =
-        panel_state_observation_.GetSource()->GetPanelState().kind;
+  if (panel_state_) {
+    panel_state_kind = panel_state_->get().kind;
   }
   return DetermineOverlayState(error_type_, guest_ready_->get(),
                                panel_state_kind);
@@ -460,7 +460,7 @@ GlicNoWebviewContentsManager::GlicNoWebviewContentsManager(
       privileged_guest_contents_(pwc::PrivilegedWebContents::Create(
           pwc::PrivilegedComponent::kGlic,
           profile,
-          std::make_unique<GlicPwcPolicyDelegate>())),
+          std::make_unique<GlicPwcPolicyDelegate>(profile))),
       zoom_controller_(
           privileged_guest_contents_->web_contents(),
           profile ? profile->GetPrefs() : nullptr,
@@ -550,7 +550,7 @@ void GlicNoWebviewContentsManager::AttachToHost(Host* host) {
   }
 
   web_client_manager_.AttachToHost(host);
-  overlay_manager_.AttachToHost(host);
+  overlay_manager_.ObservePanelState(host->instance().GetPanelState());
   // Move from warming pool state to attached-hidden state.
   UpdateDisplayState();
 }
@@ -588,11 +588,21 @@ void GlicNoWebviewContentsManager::NotifyWebContentsChanged() {
 }
 
 void GlicNoWebviewContentsManager::ApplySizeToGuest() {
-  if (cached_overlay_size_.IsEmpty() || !guest_contents() ||
+  gfx::Size target_size;
+  if (host_) {
+    target_size = host_->instance().GetPanelSize();
+    if (!target_size.IsEmpty()) {
+      cached_overlay_size_ = target_size;
+    }
+  }
+  if (target_size.IsEmpty()) {
+    target_size = cached_overlay_size_;
+  }
+  if (target_size.IsEmpty() || !guest_contents() ||
       !guest_contents()->GetRenderWidgetHostView()) {
     return;
   }
-  guest_contents()->GetRenderWidgetHostView()->SetSize(cached_overlay_size_);
+  guest_contents()->GetRenderWidgetHostView()->SetSize(target_size);
   guest_contents()->UpdateWebContentsVisibility(content::Visibility::VISIBLE);
 }
 
@@ -641,9 +651,10 @@ void GlicNoWebviewContentsManager::UpdateDisplayState() {
         !overlay_manager_.error_type().has_value()) {
       ScheduleOverlayDeletion(base::Milliseconds(0));
     }
-    return;
+  } else {
+    TransitionTo(desired);
   }
-  TransitionTo(desired);
+  UpdateLoadingTimer();
 }
 
 void GlicNoWebviewContentsManager::OnGuestNavigationStarted() {
@@ -652,6 +663,10 @@ void GlicNoWebviewContentsManager::OnGuestNavigationStarted() {
   guest_ready_.Set(false);
   is_guest_error_ = false;
   UpdateClientLoadFailed();
+  // Allow the full loading time after navigation. UpdateDisplayState() will
+  // start the timer.
+  loading_timer_.Stop();
+  UpdateDisplayState();
 }
 
 void GlicNoWebviewContentsManager::OnGuestNavigated(
@@ -762,7 +777,7 @@ void GlicNoWebviewContentsManager::LoadGuest() {
   guest_ready_.Set(false);
   is_guest_error_ = false;
   UpdateClientLoadFailed();
-  GURL guest_url = GetGuestURL();
+  GURL guest_url = GetGuestURL(profile_);
   net_log::LogDummyNetworkRequestForTrafficAnnotation(guest_url);
   guest_contents()->GetController().LoadURLWithParams(
       content::NavigationController::LoadURLParams(guest_url));
@@ -916,6 +931,28 @@ void GlicNoWebviewContentsManager::UpdateActuationTracker() {
   }
   glic::GlicPerfTraitsTracker::GetInstance()->NotifyActuationStateChanged(
       guest_contents(), state);
+}
+
+void GlicNoWebviewContentsManager::UpdateLoadingTimer() {
+  bool should_run_timer = is_visible_ && !guest_ready_.get() &&
+                          !overlay_manager_.error_type().has_value();
+  if (should_run_timer) {
+    if (!loading_timer_.IsRunning()) {
+      loading_timer_.Start(
+          FROM_HERE, GetMaxLoadingTime(),
+          base::BindOnce(&GlicNoWebviewContentsManager::OnLoadingTimeout,
+                         weak_ptr_factory_.GetWeakPtr()));
+    }
+  } else {
+    loading_timer_.Stop();
+  }
+}
+
+void GlicNoWebviewContentsManager::OnLoadingTimeout() {
+  SetErrorState(mojom::ErrorPanelType::kError);
+  if (host_) {
+    host_->ClientLoadErrorOccurred(ClientLoadErrorReason::kClientLoadTimeout);
+  }
 }
 
 }  // namespace glic

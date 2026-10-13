@@ -68,6 +68,7 @@ ci.builder(
     ),
     builderless = True,
     os = os.LINUX_DEFAULT,
+    ssd = None,
     console_view_entry = consoles.console_view_entry(
         category = "debug|linux",
         short_name = "bld",
@@ -102,6 +103,7 @@ ci.builder(
     ),
     builderless = True,
     os = os.LINUX_DEFAULT,
+    ssd = None,
     console_view_entry = consoles.console_view_entry(
         category = "release|linux",
         short_name = "bld",
@@ -137,6 +139,7 @@ ci.thin_tester(
             "x86-64",
         ],
     ),
+    ssd = None,
     console_view_entry = consoles.console_view_entry(
         category = "debug|linux",
         short_name = "test",
@@ -172,6 +175,7 @@ ci.thin_tester(
             "x86-64",
         ],
     ),
+    ssd = None,
     console_view_entry = consoles.console_view_entry(
         category = "release|linux",
         short_name = "test",
@@ -412,6 +416,7 @@ ci.thin_tester(
             "mac_14_arm64",
         ],
     ),
+    ssd = None,
     console_view_entry = consoles.console_view_entry(
         category = "release|mac",
         short_name = "14 arm64",
@@ -446,6 +451,7 @@ ci.thin_tester(
             "mac_14_x64",
         ],
     ),
+    ssd = None,
     console_view_entry = consoles.console_view_entry(
         category = "debug|mac",
         short_name = "14 asan",
@@ -480,6 +486,7 @@ ci.thin_tester(
             "mac_13_arm64",
         ],
     ),
+    ssd = None,
     console_view_entry = consoles.console_view_entry(
         category = "debug|mac",
         short_name = "13 arm64",
@@ -514,6 +521,7 @@ ci.thin_tester(
             "mac_13_x64",
         ],
     ),
+    ssd = None,
     console_view_entry = consoles.console_view_entry(
         category = "release|mac",
         short_name = "13",
@@ -595,6 +603,7 @@ ci.builder(
     ),
     builderless = True,
     os = os.WINDOWS_DEFAULT,
+    ssd = None,
     free_space = builders.free_space.high,
     console_view_entry = consoles.console_view_entry(
         category = "debug|win (32)",
@@ -717,6 +726,7 @@ ci.thin_tester(
             "x86-64",
         ],
     ),
+    ssd = None,
     console_view_entry = consoles.console_view_entry(
         category = "debug|win (64)",
         short_name = "10",
@@ -752,6 +762,7 @@ ci.thin_tester(
             "x86-64",
         ],
     ),
+    ssd = None,
     console_view_entry = consoles.console_view_entry(
         category = "debug|win (32)",
         short_name = "10 (x64)",
@@ -787,6 +798,7 @@ ci.thin_tester(
             "x86-64",
         ],
     ),
+    ssd = None,
     console_view_entry = consoles.console_view_entry(
         category = "release|win (32)",
         short_name = "10 (x64)",
@@ -822,6 +834,7 @@ ci.thin_tester(
             "x86-64",
         ],
     ),
+    ssd = None,
     console_view_entry = consoles.console_view_entry(
         category = "release|win (64)",
         short_name = "10",
@@ -857,6 +870,7 @@ ci.thin_tester(
             "x86-64",
         ],
     ),
+    ssd = None,
     console_view_entry = consoles.console_view_entry(
         category = "release|win (64)",
         short_name = "11",

@@ -36,6 +36,7 @@ import org.chromium.base.test.params.ParameterizedRunner;
 import org.chromium.base.test.util.Batch;
 import org.chromium.base.test.util.CommandLineFlags;
 import org.chromium.base.test.util.CriteriaHelper;
+import org.chromium.base.test.util.DisabledTest;
 import org.chromium.base.test.util.Feature;
 import org.chromium.chrome.R;
 import org.chromium.chrome.browser.actor.ActorTask;
@@ -65,7 +66,7 @@ public class GlicTaskMenuRenderTest {
     private static final int TAB_ID_2 = 2;
     private static final int TAB_ID_3 = 3;
     private static final int CLOSED_TAB_ID = 4;
-    private static final int RENDER_REVISION = 1;
+    private static final int RENDER_REVISION = 2;
 
     private static final String STANDARD_TASK_TITLE = "Book flight to NYC";
     private static final String REVIEW_TASK_TITLE = "Confirm hotel booking";
@@ -88,6 +89,7 @@ public class GlicTaskMenuRenderTest {
             ChromeRenderTestRule.Builder.withPublicCorpus()
                     .setBugComponent(RenderTestRule.Component.UI_BROWSER_GLIC)
                     .setRevision(RENDER_REVISION)
+                    .setDescription("Ligatures and contextual alternates disabled in UI text")
                     .build();
 
     @Mock private TabModelSelector mTabModelSelector;
@@ -149,6 +151,7 @@ public class GlicTaskMenuRenderTest {
     @Test
     @MediumTest
     @Feature({"RenderTest"})
+    @DisabledTest(message = "https://crbug.com/566426376")
     public void testRender_TabStripMenu() throws Exception {
         ActorTask standardTask = mock(ActorTask.class);
         doReturn(STANDARD_TASK_TITLE).when(standardTask).getTitle();

@@ -221,37 +221,6 @@ public class VerticalTabListCoordinator {
                     public void run(
                             View view, int tabId, @Nullable MotionEventInfo triggeringMotion) {
                         toggleTabGroupExpansion(tabId);
-
-                        int headerIndex = mMediator.getGroupHeaderIndexForTabId(tabId);
-                        if (headerIndex == TabModel.INVALID_TAB_INDEX) {
-                            return;
-                        }
-                        PropertyModel headerModel = mModelList.get(headerIndex).model;
-                        if (headerModel.get(TabProperties.IS_COLLAPSED)) {
-                            return;
-                        }
-                        // Scroll the header to the top only if the last child is off-screen.
-                        // This brings child tabs into view while keeping the header anchored at the
-                        // top for context.
-                        Token groupId = headerModel.get(TabProperties.TAB_GROUP_HEADER_ID);
-                        int childCount =
-                                mTabModelSelector.getCurrentModel().getTabCountForGroup(groupId);
-                        if (childCount > 0) {
-                            int lastChildIndex = headerIndex + childCount;
-                            mRecyclerView.post(
-                                    () -> {
-                                        RecyclerView.LayoutManager layoutManager =
-                                                mRecyclerView.getLayoutManager();
-                                        if (layoutManager instanceof LinearLayoutManager lm) {
-                                            int lastVisible =
-                                                    lm.findLastCompletelyVisibleItemPosition();
-                                            if (lastChildIndex > lastVisible) {
-                                                lm.scrollToPositionWithOffset(
-                                                        headerIndex, /* offset= */ 0);
-                                            }
-                                        }
-                                    });
-                        }
                     }
 
                     @Override
@@ -427,7 +396,9 @@ public class VerticalTabListCoordinator {
                                                 R.layout.vertical_tab_pinned_item_hidden,
                                                 parent,
                                                 /* attachToRoot= */ false),
-                TabVerticalViewBinder::bindPinnedTab);
+                // The placeholder is never shown, so no property needs to be bound to it. It must
+                // stay GONE for the lifetime of the view.
+                (model, view, propertyKey) -> {});
 
         adapter.registerType(
                 UiType.TAB_GROUP,
@@ -681,13 +652,17 @@ public class VerticalTabListCoordinator {
 
         pinnedTabsAdapter.registerType(
                 UiType.PINNED_TAB,
-                parent ->
-                        (ViewGroup)
-                                LayoutInflater.from(activity)
-                                        .inflate(
-                                                R.layout.vertical_tab_pinned_item,
-                                                parent,
-                                                /* attachToRoot= */ false),
+                parent -> {
+                    VerticalTabItemLayout view =
+                            (VerticalTabItemLayout)
+                                    LayoutInflater.from(activity)
+                                            .inflate(
+                                                    R.layout.vertical_tab_item,
+                                                    parent,
+                                                    /* attachToRoot= */ false);
+                    view.configureAsPinnedTab();
+                    return view;
+                },
                 TabVerticalViewBinder::bindPinnedTab);
 
         pinnedTabsRecyclerView.setAdapter(pinnedTabsAdapter);
@@ -1070,12 +1045,13 @@ public class VerticalTabListCoordinator {
     void setInTransition(boolean inTransition) {
         if (mIsInTransition == inTransition) return;
         mIsInTransition = inTransition;
-        // Request layout after transition ends to immediately recycle extra items back
-        // to viewport bounds (transition start is already laid out by the container width change).
-        if (!mIsInTransition) {
-            ViewUtils.requestLayout(
-                    mPinnedTabsRecyclerView, "VerticalTabListCoordinator.setInTransition");
-        }
+        // Transition start: SideUiCoordinator captures the transition start values before it
+        // changes the container width, so request a layout here. The synchronous measure/layout
+        // it runs before TransitionManager#beginDelayedTransition then attaches the offscreen
+        // pinned tabs, giving ChangeBounds start values for them.
+        // Transition end: request a layout to recycle extra items back to viewport bounds.
+        ViewUtils.requestLayout(
+                mPinnedTabsRecyclerView, "VerticalTabListCoordinator.setInTransition");
     }
 
     /**
@@ -1096,7 +1072,7 @@ public class VerticalTabListCoordinator {
     /**
      * Toggles the expanded/collapsed visual and layout state of a tab group.
      *
-     * @param tabId the ID of the representative tab representing the tab group.
+     * @param tabId The ID of a tab in the tab group.
      */
     @VisibleForTesting
     void toggleTabGroupExpansion(int tabId) {
@@ -1384,8 +1360,7 @@ public class VerticalTabListCoordinator {
 
                         // Do not allow dragging out the last tab in a group.
                         // (To be handled when dragging out tab groups is enabled).
-                        if (tabModel.isTabInTabGroup(tab)
-                                && tabModel.getRelatedTabList(tabId).size() == 1) {
+                        if (tabModel.getTabCountForGroup(tab.getTabGroupId()) == 1) {
                             return;
                         }
                     }

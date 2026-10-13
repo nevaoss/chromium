@@ -5,6 +5,7 @@
 #include "chrome/browser/ui/webui/context_hub/context_hub_page_handler.h"
 
 #include <algorithm>
+#include <optional>
 #include <string>
 #include <vector>
 
@@ -807,51 +808,70 @@ void ContextHubPageHandler::OpenUrlsInTabGroup(
     std::move(callback).Run(false);
     return;
   }
+
+  // Only open web pages. These URLs come from the renderer, and ultimately
+  // from browsing history, so they can carry schemes such as file:, chrome:
+  // or javascript: that must not be opened without an explicit user
+  // navigation. They are dropped rather than reported as a bad message, since
+  // a history-derived list can legitimately contain them. Filtering happens
+  // before capping so that rejected URLs don't count towards the limit.
   constexpr size_t kMaxUrlsToOpen = 10;
-  base::span<const GURL> capped_urls =
-      base::span(urls).first(std::min(urls.size(), kMaxUrlsToOpen));
-  bool success = tab_provider_->OpenUrlsInTabGroup(group_label, capped_urls);
+  std::vector<GURL> web_urls;
+  for (const GURL& url : urls) {
+    if (web_urls.size() == kMaxUrlsToOpen) {
+      break;
+    }
+    if (url.is_valid() && url.SchemeIsHTTPOrHTTPS()) {
+      web_urls.push_back(url);
+    }
+  }
+  if (web_urls.empty()) {
+    std::move(callback).Run(false);
+    return;
+  }
+
+  bool success = tab_provider_->OpenUrlsInTabGroup(group_label, web_urls);
   std::move(callback).Run(success);
 }
 
 namespace {
 
-// Converts journeys already resolved by the history backend into their Mojo
-// representation. No further lookups are needed: `GetAllJourneys` hands back
-// visits that carry their URL and title, and drops any journey it could not
-// fully resolve.
+// Converts a journey already resolved by the history backend into its Mojo
+// representation. No further lookups are needed: the history service hands
+// back visits that carry their URL and title, and drops any journey it could
+// not fully resolve.
+browser::context_hub::mojom::TopicPtr ToMojoTopic(
+    history::journeys::Journey journey) {
+  std::vector<browser::context_hub::mojom::TopicVisitPtr> visits;
+  visits.reserve(journey.visits.size());
+  for (history::journeys::JourneyVisit& visit : journey.visits) {
+    visits.push_back(browser::context_hub::mojom::TopicVisit::New(
+        std::move(visit.url), base::UTF16ToUTF8(visit.title)));
+  }
+
+  std::vector<browser::context_hub::mojom::TopicContinuationQueryPtr>
+      continuation_queries;
+  continuation_queries.reserve(journey.continuation_queries.size());
+  for (history::journeys::JourneyContinuationQuery& query :
+       journey.continuation_queries) {
+    continuation_queries.push_back(
+        browser::context_hub::mojom::TopicContinuationQuery::New(
+            std::move(query.title), std::move(query.prompt)));
+  }
+
+  return browser::context_hub::mojom::Topic::New(
+      /*id=*/std::move(journey.journey_id), std::move(journey.title),
+      journey.creation_time, std::move(journey.emoji),
+      std::move(journey.overview), std::move(journey.short_overview),
+      std::move(visits), std::move(continuation_queries));
+}
+
 std::vector<browser::context_hub::mojom::TopicPtr> ToMojoTopics(
-    const std::vector<history::journeys::Journey>& journeys) {
+    std::vector<history::journeys::Journey> journeys) {
   std::vector<browser::context_hub::mojom::TopicPtr> topics;
   topics.reserve(journeys.size());
-  for (const history::journeys::Journey& journey : journeys) {
-    auto topic = browser::context_hub::mojom::Topic::New();
-    topic->id = journey.journey_id;
-    topic->title = journey.title;
-    topic->creation_time = journey.creation_time;
-    topic->emoji = journey.emoji;
-    topic->overview = journey.overview;
-    topic->short_overview = journey.short_overview;
-
-    topic->visits.reserve(journey.visits.size());
-    for (const history::journeys::JourneyVisit& visit : journey.visits) {
-      auto mojo_visit = browser::context_hub::mojom::TopicVisit::New();
-      mojo_visit->url = visit.url;
-      mojo_visit->title = base::UTF16ToUTF8(visit.title);
-      topic->visits.push_back(std::move(mojo_visit));
-    }
-
-    topic->continuation_queries.reserve(journey.continuation_queries.size());
-    for (const history::journeys::JourneyContinuationQuery& query :
-         journey.continuation_queries) {
-      auto mojo_query =
-          browser::context_hub::mojom::TopicContinuationQuery::New();
-      mojo_query->title = query.title;
-      mojo_query->prompt = query.prompt;
-      topic->continuation_queries.push_back(std::move(mojo_query));
-    }
-
-    topics.push_back(std::move(topic));
+  for (history::journeys::Journey& journey : journeys) {
+    topics.push_back(ToMojoTopic(std::move(journey)));
   }
   return topics;
 }
@@ -873,7 +893,30 @@ void ContextHubPageHandler::GetTopics(GetTopicsCallback callback) {
       base::BindOnce(
           [](GetTopicsCallback callback,
              std::vector<history::journeys::Journey> journeys) {
-            std::move(callback).Run(ToMojoTopics(journeys));
+            std::move(callback).Run(ToMojoTopics(std::move(journeys)));
+          },
+          std::move(callback)),
+      &topics_task_tracker_);
+}
+
+void ContextHubPageHandler::GetTopic(const std::string& id,
+                                     GetTopicCallback callback) {
+  history::HistoryService* history_service =
+      HistoryServiceFactory::GetForProfile(profile_,
+                                           ServiceAccessType::EXPLICIT_ACCESS);
+  if (!history_service || id.empty()) {
+    std::move(callback).Run(nullptr);
+    return;
+  }
+
+  // See `GetTopics()` for why the reply is safe to run on this handler.
+  history_service->GetJourney(
+      id,
+      base::BindOnce(
+          [](GetTopicCallback callback,
+             std::optional<history::journeys::Journey> journey) {
+            std::move(callback).Run(
+                journey ? ToMojoTopic(std::move(journey).value()) : nullptr);
           },
           std::move(callback)),
       &topics_task_tracker_);

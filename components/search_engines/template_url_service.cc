@@ -585,18 +585,6 @@ class TemplateURLService::PreLoadingProviders {
   TemplateURLService::OwnedTemplateURLVector search_engines_;
 };
 
-#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_IOS)
-// TemplateURLService::PrepopulatedAndRecentlyVisitedTemplateUrls -------------
-
-TemplateURLService::PrepopulatedAndRecentlyVisitedTemplateUrls::
-    PrepopulatedAndRecentlyVisitedTemplateUrls() = default;
-TemplateURLService::PrepopulatedAndRecentlyVisitedTemplateUrls::
-    ~PrepopulatedAndRecentlyVisitedTemplateUrls() = default;
-TemplateURLService::PrepopulatedAndRecentlyVisitedTemplateUrls::
-    PrepopulatedAndRecentlyVisitedTemplateUrls(
-        const PrepopulatedAndRecentlyVisitedTemplateUrls& other) = default;
-#endif  // BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_IOS)
-
 // TemplateURLService ---------------------------------------------------------
 
 TemplateURLService::TemplateURLService(
@@ -1408,43 +1396,6 @@ TemplateURLService::CreateSearchEngineSettingsDataProvider() {
       *profile_metrics_service_);
 }
 
-#if BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_IOS)
-TemplateURLService::PrepopulatedAndRecentlyVisitedTemplateUrls
-TemplateURLService::GetPrepopulatedAndRecentlyVisitedTemplateURLs() {
-  PrepopulatedAndRecentlyVisitedTemplateUrls data;
-
-  for (TemplateURL* url : GetTemplateURLs()) {
-    if (HiddenFromLists(url)) {
-      continue;
-    }
-
-    if (ShowInDefaultList(url)) {
-      data.prepopulated_urls.push_back(url);
-      continue;
-    }
-
-    const bool is_starter_pack =
-        url->starter_pack_id() !=
-        template_url_starter_pack_data::StarterPackId::kNone;
-    const bool is_extension = url->type() == TemplateURL::OMNIBOX_API_EXTENSION;
-
-    if (is_starter_pack || is_extension) {
-      continue;
-    }
-
-    data.recently_visited_urls.push_back(url);
-  }
-
-  std::ranges::sort(
-      data.prepopulated_urls,
-      internal::OrderTemplateUrlsByPrepopulatedAndManagedAndAlphabetically(
-          prepopulate_data_resolver_->GetPrepopulatedEngines()));
-  internal::SortAndFilterRecentlyVisitedURLs(data.recently_visited_urls);
-
-  return data;
-}
-#endif  // BUILDFLAG(IS_ANDROID) || BUILDFLAG(IS_IOS)
-
 url::Origin TemplateURLService::GetDefaultSearchProviderOrigin() const {
   const TemplateURL* template_url = GetDefaultSearchProvider();
   if (template_url) {
@@ -1496,6 +1447,15 @@ GURL TemplateURLService::GenerateSearchURLForDefaultSearchProvider(
   return default_provider ? default_provider->GenerateSearchURL(
                                 search_terms_data(), search_terms)
                           : GURL();
+}
+
+GURL TemplateURLService::ExpandUrlTemplate(
+    const std::string& url_template,
+    const std::u16string& search_terms) const {
+  TemplateURLData turl_data;
+  turl_data.SetURL(url_template);
+  TemplateURL turl(turl_data);
+  return turl.GenerateSearchURL(search_terms_data(), search_terms);
 }
 
 std::optional<TemplateURLService::SearchMetadata>
@@ -3187,10 +3147,8 @@ bool TemplateURLService::ApplyDefaultSearchChangeNoMetrics(
       previous_default_search_engine_guid.empty()
           ? nullptr
           : GetTemplateURLForGUID(previous_default_search_engine_guid);
-  if (previous_turl &&
-      previous_turl->starter_pack_id() ==
-          template_url_starter_pack_data::StarterPackId::kNone &&
-      !IsPrepopulatedOrDefaultProviderByPolicy(previous_turl) &&
+  if (previous_turl && !ShowInDefaultList(previous_turl) &&
+      CanMakeDefault(previous_turl) &&
       base::FeatureList::IsEnabled(
           switches::kVisitCustomSearchOnUndefaulting)) {
     UpdateTemplateURLVisitTime(previous_turl);

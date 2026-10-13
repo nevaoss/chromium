@@ -2582,6 +2582,7 @@ test("content_unittests") {
     "../browser/accessibility/browser_accessibility_state_impl_unittest.cc",
     "../browser/accessibility/browser_accessibility_unittest.cc",
     "../browser/accessibility/one_shot_accessibility_tree_search_unittest.cc",
+    "../browser/accessibility/render_accessibility_host_unittest.cc",
     "../browser/accessibility/scoped_mode_collection_unittest.cc",
     "../browser/agent_cluster_key_unittest.cc",
     "../browser/back_forward_cache/back_forward_cache_impl_unittest.cc",
@@ -3084,6 +3085,7 @@ test("content_unittests") {
     "../common/url_utils_unittest.cc",
     "../common/web_ui_loading_util_unittest.cc",
     "../common/webid/identity_url_loader_throttle_unittest.cc",
+    "../public/browser/clipboard_types_unittest.cc",
     "../public/browser/content_browser_client_unittest.cc",
     "../public/test/browser_task_environment_unittest.cc",
     "../public/test/no_renderer_crashes_assertion_unittest.cc",
@@ -3234,6 +3236,10 @@ test("content_unittests") {
 
   if (is_linux) {
     sources += [ "../browser/accessibility/browser_accessibility_state_impl_auralinux_unittest.cc" ]
+  }
+
+  if (is_linux && enable_vr) {
+    sources += [ "../services/isolated_xr_device/xr_sandbox_hook_linux_unittest.cc" ]
   }
 
   if (is_android || is_linux || is_chromeos || is_mac || is_win || is_fuchsia) {
@@ -3486,6 +3492,10 @@ test("content_unittests") {
       "//sandbox/linux:sandbox_services",
       "//sandbox/linux:sandbox_services_headers",
     ]
+  }
+
+  if (is_linux && enable_vr) {
+    deps += [ "//content/services/isolated_xr_device:xr_sandbox_hook" ]
   }
 
   if (is_fuchsia) {

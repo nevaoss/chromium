@@ -72,7 +72,10 @@
 #include "content/browser/renderer_host/display_feature.h"
 #include "content/browser/renderer_host/frame_token_message_queue.h"
 #include "content/browser/renderer_host/frame_tree.h"
+#include "content/browser/renderer_host/frame_tree_node.h"
 #include "content/browser/renderer_host/input/fling_scheduler.h"
+#include "content/browser/renderer_host/navigation_controller_impl.h"
+#include "content/browser/renderer_host/render_frame_host_impl.h"
 #include "content/browser/renderer_host/render_process_host_impl.h"
 #include "content/browser/renderer_host/render_view_host_delegate.h"
 #include "content/browser/renderer_host/render_view_host_delegate_view.h"
@@ -1091,6 +1094,8 @@ void RenderWidgetHostImpl::RemoveImeInputEventObserver(
 #endif
 
 blink::VisualProperties RenderWidgetHostImpl::GetInitialVisualProperties() {
+  was_fullscreen_ = false;
+  fullscreen_grant_count_ = 0;
   blink::VisualProperties initial_props = GetVisualProperties();
 
   // A RenderWidget being created in the renderer means the browser should
@@ -1139,7 +1144,9 @@ blink::VisualProperties RenderWidgetHostImpl::GetVisualProperties() {
     }
   }
 
+  UpdateFullscreenGrantCount();
   visual_properties.is_fullscreen_granted = delegate_->IsFullscreen();
+  visual_properties.fullscreen_grant_count = fullscreen_grant_count_;
 
   if (is_frame_widget) {
     visual_properties.display_mode = delegate_->GetDisplayMode();
@@ -1365,6 +1372,13 @@ bool RenderWidgetHostImpl::SynchronizeVisualProperties(
   if (!view_) {
     return false;
   }
+
+  // Record fullscreen state transitions before checking
+  // `visual_properties_ack_pending_` so that a fullscreen change and revert
+  // while waiting for an ack advances `fullscreen_grant_count_` and triggers an
+  // update once the ack arrives.
+  UpdateFullscreenGrantCount();
+
   // Throttle to one update at a time.
   if (visual_properties_ack_pending_) {
     return false;
@@ -1642,6 +1656,19 @@ void RenderWidgetHostImpl::DidNavigate() {
   visual_properties_ack_pending_ = false;
   if (view_) {
     view_->DidNavigate();
+
+    // A committed cross-document navigation means the frame is no longer on the
+    // initial empty document, so a non-empty CompositorFrame reported from here
+    // on would be a no-op. Cancelling here drops the callback on the UI thread
+    // so that Viz does not report the first non-empty CompositorFrame of the
+    // newly committed document and record a false sample in
+    // Navigation.InitialDocument.NonEmptyCompositorFrameTreatedAsAccess for
+    // every same-widget navigation.
+    //
+    // This does not run for same-document navigations, which also leave the
+    // initial empty document. That is fine: a same-document navigation requires
+    // script, which already reports the access over the renderer's own IPC.
+    CancelNonEmptyCompositorFrameNotification();
   }
 }
 
@@ -2412,6 +2439,8 @@ void RenderWidgetHostImpl::RendererExited() {
   renderer_widget_created_ = false;
   // This flag is set when creating the renderer widget.
   waiting_for_init_ = false;
+  was_fullscreen_ = false;
+  fullscreen_grant_count_ = 0;
 
   blink_widget_.reset();
 
@@ -3353,6 +3382,8 @@ bool RenderWidgetHostImpl::StoredVisualPropertiesNeedsUpdate(
              new_visual_properties.compositor_viewport_pixel_rect ||
          old_visual_properties->is_fullscreen_granted !=
              new_visual_properties.is_fullscreen_granted ||
+         old_visual_properties->fullscreen_grant_count !=
+             new_visual_properties.fullscreen_grant_count ||
          old_visual_properties->display_mode !=
              new_visual_properties.display_mode ||
          old_visual_properties->application_context !=
@@ -3380,10 +3411,23 @@ bool RenderWidgetHostImpl::StoredVisualPropertiesNeedsUpdate(
              new_visual_properties.always_on_top;
 }
 
+void RenderWidgetHostImpl::UpdateFullscreenGrantCount() {
+  if (!delegate_) {
+    return;
+  }
+  const bool is_fullscreen = delegate_->IsFullscreen();
+  if (!was_fullscreen_ && is_fullscreen) {
+    fullscreen_grant_count_++;
+  }
+  was_fullscreen_ = is_fullscreen;
+}
+
 void RenderWidgetHostImpl::AutoscrollStart(const gfx::PointF& position) {
+  if (!GetInputEventRouter()) {
+    return;
+  }
   input::RenderWidgetTargeter::AutoscrollStatus status =
-      delegate()->GetInputEventRouter()->SetAutoScrollInProgress(GetView(),
-                                                                 true);
+      GetInputEventRouter()->SetAutoScrollInProgress(GetView(), true);
   if (status == input::RenderWidgetTargeter::AutoscrollStatus::kFailed) {
     return;
   }
@@ -3436,8 +3480,9 @@ void RenderWidgetHostImpl::AutoscrollFling(const gfx::Vector2dF& velocity) {
 void RenderWidgetHostImpl::AutoscrollEnd() {
   autoscroll_in_progress_ = false;
 
-  delegate()->GetInputEventRouter()->SetAutoScrollInProgress(
-      GetView(), autoscroll_in_progress_);
+  if (auto* router = GetInputEventRouter()) {
+    router->SetAutoScrollInProgress(GetView(), autoscroll_in_progress_);
+  }
   // Don't send a GFC if no GSB is sent.
   if (!sent_autoscroll_scroll_begin_) {
     return;
@@ -3481,12 +3526,11 @@ bool RenderWidgetHostImpl::IsAutoscrollInProgress() {
 
 TouchEmulatorImpl* RenderWidgetHostImpl::GetTouchEmulator(
     bool create_if_necessary) {
-  if (!delegate_ || !delegate_->GetInputEventRouter()) {
-    return nullptr;
+  if (auto* router = GetInputEventRouter()) {
+    return static_cast<TouchEmulatorImpl*>(
+        router->GetTouchEmulator(create_if_necessary));
   }
-
-  return static_cast<TouchEmulatorImpl*>(
-      delegate_->GetInputEventRouter()->GetTouchEmulator(create_if_necessary));
+  return nullptr;
 }
 
 void RenderWidgetHostImpl::TextInputStateChanged(
@@ -3611,11 +3655,9 @@ void RenderWidgetHostImpl::PassImeRenderWidgetHost(
 }
 
 void RenderWidgetHostImpl::SetMouseCapture(bool capture) {
-  if (!delegate_ || !delegate_->GetInputEventRouter()) {
-    return;
+  if (auto* router = GetInputEventRouter()) {
+    router->SetMouseCaptureTarget(GetView(), capture);
   }
-
-  delegate_->GetInputEventRouter()->SetMouseCaptureTarget(GetView(), capture);
 }
 
 void RenderWidgetHostImpl::SetAutoscrollSelectionActiveInMainFrame(
@@ -3636,12 +3678,9 @@ void RenderWidgetHostImpl::SetAutoscrollSelectionActiveInMainFrame(
     return;
   }
 
-  if (!delegate_ || !delegate_->GetInputEventRouter()) {
-    return;
+  if (auto* router = GetInputEventRouter()) {
+    router->RootViewReceivesMouseUpIfNecessary(autoscroll_selection);
   }
-
-  delegate_->GetInputEventRouter()->RootViewReceivesMouseUpIfNecessary(
-      autoscroll_selection);
 }
 
 void RenderWidgetHostImpl::RequestMouseLock(
@@ -4130,6 +4169,14 @@ void RenderWidgetHostImpl::MaybeDispatchBufferedFrameSinkRequest() {
     return;
   }
 
+  // Arm before the CreateCompositorFrameSink() call in
+  // `create_frame_sink_callback_` below. Both messages travel on the browser's
+  // ordered pipe to Viz, so Viz is guaranteed to be watching before it can
+  // process any CompositorFrame from the renderer. Arming only here, rather
+  // than on every call, keeps the request tied to the one moment a frame sink
+  // is actually created for this widget.
+  MaybeRequestNonEmptyCompositorFrameNotification();
+
   if (compositor_metric_recorder_) {
     compositor_metric_recorder_->DidRequestFrameSink();
   }
@@ -4137,6 +4184,61 @@ void RenderWidgetHostImpl::MaybeDispatchBufferedFrameSinkRequest() {
   std::move(create_frame_sink_callback_)
       .Run(delegate_->GetCompositorFrameSinkGroupingId(),
            view_->GetFrameSinkId());
+}
+
+void RenderWidgetHostImpl::MaybeRequestNonEmptyCompositorFrameNotification() {
+  if (!ShouldRequestNonEmptyCompositorFrameNotification()) {
+    return;
+  }
+  viz::HostFrameSinkManager* manager = GetHostFrameSinkManager();
+  // A view that is pending destruction never registers its FrameSinkId, and
+  // requesting a notification for an unregistered FrameSinkId is not allowed.
+  if (!manager || !manager->IsFrameSinkIdRegistered(view_->GetFrameSinkId())) {
+    return;
+  }
+
+  // Re-arming for the same FrameSinkId is harmless, so there is no state to
+  // track across view replacement or FrameSinkId ownership changes: the request
+  // is keyed by FrameSinkId in both the browser and Viz, and is only ever
+  // dropped, never run, when the frame sink goes away.
+  manager->RequestNonEmptyFrameNotification(
+      view_->GetFrameSinkId(),
+      base::BindOnce(
+          &RenderWidgetHostImpl::OnFirstVisuallyNonEmptyCompositorFrame,
+          weak_factory_.GetWeakPtr()));
+}
+
+void RenderWidgetHostImpl::CancelNonEmptyCompositorFrameNotification() {
+  if (viz::HostFrameSinkManager* manager = GetHostFrameSinkManager()) {
+    manager->CancelNonEmptyFrameNotification(view_->GetFrameSinkId());
+  }
+}
+
+bool RenderWidgetHostImpl::ShouldRequestNonEmptyCompositorFrameNotification()
+    const {
+  // Only a primary FrameTree has an address bar that a pending URL could be
+  // spoofed in. Prerendered pages, fenced frames, and MPArch guests have their
+  // own NavigationController where IsUnmodifiedBlankTab() is initially true,
+  // but nothing there is shown to the user as a URL. (Inner WebContents, such
+  // as non-MPArch guests, do have a primary FrameTree of their own, where this
+  // is a harmless no-op.)
+  if (!frame_tree_ || !frame_tree_->is_primary()) {
+    return false;
+  }
+  // The notification only matters for the main frame's widget while the tab is
+  // still showing an unmodified initial empty document. A speculative main
+  // frame's widget is hidden until its navigation commits, so it does not
+  // create a frame sink (and thus cannot be armed) until it is already the
+  // current main frame, including after an early RenderFrameHost swap.
+  RenderFrameHostImpl* root_rfh = frame_tree_->root()->current_frame_host();
+  return root_rfh && root_rfh->GetRenderWidgetHost() == this &&
+         frame_tree_->controller().IsUnmodifiedBlankTab();
+}
+
+void RenderWidgetHostImpl::OnFirstVisuallyNonEmptyCompositorFrame() {
+  if (frame_tree_) {
+    frame_tree_->OnFirstVisuallyNonEmptyCompositorFrame(this);
+  }
 }
 
 void RenderWidgetHostImpl::RegisterRenderFrameMetadataObserver(
@@ -4150,8 +4252,8 @@ void RenderWidgetHostImpl::RegisterRenderFrameMetadataObserver(
 }
 
 bool RenderWidgetHostImpl::HasGestureStopped() {
-  if (delegate_ && delegate_->GetInputEventRouter() &&
-      delegate_->GetInputEventRouter()->HasEventsPendingDispatch()) {
+  if (auto* router = GetInputEventRouter();
+      router && router->HasEventsPendingDispatch()) {
     return false;
   }
 

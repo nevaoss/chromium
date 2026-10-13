@@ -6,16 +6,22 @@
 
 #include <algorithm>
 #include <iterator>
+#include <memory>
 #include <string>
 #include <string_view>
+#include <utility>
 
+#include "base/check.h"
 #include "base/command_line.h"
 #include "base/feature_list.h"
+#include "base/supports_user_data.h"
 #include "base/values.h"
+#include "chrome/browser/glic/gemini_enterprise/geic_url_allowlist.h"
 #include "chrome/browser/glic/glic_pref_names.h"
 #include "chrome/browser/glic/public/features.h"
 #include "chrome/browser/profiles/profile.h"
 #include "components/prefs/pref_service.h"
+#include "content/public/browser/browser_context.h"
 #include "net/base/url_util.h"
 #include "url/gurl.h"
 #include "url/url_constants.h"
@@ -24,11 +30,25 @@ namespace geic {
 
 namespace {
 
-// Although `GeminiEnterpriseSettingsPolicyHandler` validates URL syntax and
-// HTTPS scheme when applying the enterprise policy, we validate the URL and
-// host allowlist here as well so that all guest URL sources (`--geic-guest-url`
-// switch, policy pref, and `features::kGeicGuestURL` Finch param) and direct
-// pref writes in tests are checked before the origin is granted Glic Mojo API
+const void* const kLatchedGeicConfigKey = &kLatchedGeicConfigKey;
+
+// Per-profile latched GEiC configuration stored on `BrowserContext` via
+// `base::SupportsUserData`. Initialized on the first call to
+// `IsGeicEnabled(browser_context)` or `GetGeicGuestUrl(browser_context)`. An
+// empty `guest_url` means GEiC is disabled for the profile.
+struct LatchedGeicConfig : public base::SupportsUserData::Data {
+  explicit LatchedGeicConfig(GURL url) : guest_url(std::move(url)) {}
+
+  bool is_geic_enabled() const { return !guest_url.is_empty(); }
+
+  const GURL guest_url;
+};
+
+// Although `GeminiEnterpriseSettingsPolicyHandler` validates the policy URL's
+// syntax, scheme and host when applying the enterprise policy, we validate the
+// URL here as well so that all guest URL sources (`--geic-guest-url` switch,
+// policy pref, and `features::kGeicGuestURL` Finch param) and direct pref
+// writes in tests are checked before the origin is granted Glic Mojo API
 // access.
 bool IsValidGuestUrl(const GURL& url) {
   if (!url.is_valid()) {
@@ -37,14 +57,7 @@ bool IsValidGuestUrl(const GURL& url) {
   if (url.SchemeIsHTTPOrHTTPS() && net::IsLocalhost(url)) {
     return true;
   }
-  if (!url.SchemeIs(url::kHttpsScheme)) {
-    return false;
-  }
-
-  const std::string_view host = url.host();
-  return host == "business.gemini.google" || host == "gemini.google.com" ||
-         url.DomainIs("cloud.google.com") || url.DomainIs("cloud.google") ||
-         url.DomainIs("corp.google.com");
+  return url.SchemeIs(url::kHttpsScheme) && IsAllowedGeminiEnterpriseHost(url);
 }
 
 // Rewrites standalone Gemini Enterprise web app URLs (`/home/cid/<configId>`)
@@ -75,7 +88,8 @@ GURL CanonicalizeGuestUrl(const GURL& input_url) {
       input_url.ReplaceComponents(replacements), "configId", path);
 }
 
-std::string GetPolicyGuestUrl(Profile* profile) {
+std::string GetPolicyGuestUrl(content::BrowserContext* browser_context) {
+  Profile* profile = Profile::FromBrowserContext(browser_context);
   if (!profile || !profile->GetPrefs()) {
     return std::string();
   }
@@ -85,25 +99,15 @@ std::string GetPolicyGuestUrl(Profile* profile) {
   return url_str ? *url_str : std::string();
 }
 
-}  // namespace
-
-bool IsGeicEnabled() {
-  if (!base::FeatureList::IsEnabled(features::kGeic)) {
-    return false;
-  }
-
-  return features::kGeicEnabledParam.Get();
-}
-
-GURL GetGeicGuestUrl(Profile* profile) {
-  if (!IsGeicEnabled()) {
+GURL ResolveGeicGuestUrl(content::BrowserContext* browser_context) {
+  if (!IsGeicEnabledByFeature()) {
     return GURL();
   }
 
   const std::string candidates[] = {
       base::CommandLine::ForCurrentProcess()->GetSwitchValueASCII(
           kGeicGuestURLSwitch),
-      GetPolicyGuestUrl(profile),
+      GetPolicyGuestUrl(browser_context),
       features::kGeicGuestURL.Get(),
   };
   auto it = std::ranges::find_if(
@@ -115,6 +119,38 @@ GURL GetGeicGuestUrl(Profile* profile) {
     }
   }
   return GURL();
+}
+
+// Returns the GEiC config for `browser_context`, resolving and latching it on
+// the first call. Both enabled and disabled results are latched, so the answer
+// does not change for the lifetime of `browser_context`.
+const LatchedGeicConfig& GetOrLatchConfig(
+    content::BrowserContext* browser_context) {
+  CHECK(browser_context);
+  auto* config = static_cast<LatchedGeicConfig*>(
+      browser_context->GetUserData(kLatchedGeicConfigKey));
+  if (!config) {
+    auto created = std::make_unique<LatchedGeicConfig>(
+        ResolveGeicGuestUrl(browser_context));
+    config = created.get();
+    browser_context->SetUserData(kLatchedGeicConfigKey, std::move(created));
+  }
+  return *config;
+}
+
+}  // namespace
+
+bool IsGeicEnabledByFeature() {
+  return base::FeatureList::IsEnabled(features::kGeic) &&
+         features::kGeicEnabledParam.Get();
+}
+
+bool IsGeicEnabled(content::BrowserContext* browser_context) {
+  return GetOrLatchConfig(browser_context).is_geic_enabled();
+}
+
+GURL GetGeicGuestUrl(content::BrowserContext* browser_context) {
+  return GetOrLatchConfig(browser_context).guest_url;
 }
 
 }  // namespace geic

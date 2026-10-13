@@ -9,7 +9,6 @@ import "components/content_settings/core/common/content_settings_types.mojom";
 import "mojo/public/mojom/base/time.mojom";
 import "sandbox/policy/mojom/context.mojom";
 import "services/network/public/mojom/cookie_partition_key.mojom";
-import "services/network/public/mojom/first_party_sets.mojom";
 import "services/network/public/mojom/schemeful_site.mojom";
 import "url/mojom/origin.mojom";
 import "url/mojom/url.mojom";
@@ -102,16 +101,12 @@ enum CookieEffectiveSameSite {
 // Defined in net::CookieInclusionStatus::ExemptionReason.
 enum CookieExemptionReason {
     kNone = 0,
-    kUserSetting = 1,
-    // k3PCDMetadata = 2,  // Deprecated
-    // k3PCDDeprecationTrial = 3,  // Deprecated
-    // kTopLevel3PCDDeprecationTrial = 4,  // Deprecated
-    // k3PCDHeuristics = 5,  // Deprecated
-    kEnterprisePolicy = 6,
-    kStorageAccess = 7,
-    kTopLevelStorageAccess = 8,
-    kScheme = 9,
-    kSameSiteNoneCookiesInSandbox = 10,
+    kUserSetting,
+    kEnterprisePolicy,
+    kStorageAccess,
+    kTopLevelStorageAccess,
+    kScheme,
+    kSameSiteNoneCookiesInSandbox,
 };
 
 enum ContextType {

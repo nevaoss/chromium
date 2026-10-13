@@ -61,6 +61,12 @@ inline constexpr char kAimCobrowseName[] = "AimCobrowse";
 inline constexpr char kAimCobrowseDescription[] =
     "Enables the AimCobrowse feature.";
 
+inline constexpr char kAimCobrowseWebSelectionSearchName[] =
+    "AIM Cobrowse Web Selection Search";
+inline constexpr char kAimCobrowseWebSelectionSearchDescription[] =
+    "When enabled, 'Search with Google' in the web selection menu opens "
+    "Cobrowse with the selected text.";
+
 inline constexpr char kAimHistoryThreadsManagementName[] =
     "AimHistoryThreadsManagement";
 inline constexpr char kAimHistoryThreadsManagementDescription[] =
@@ -707,6 +713,12 @@ inline constexpr char kEnableBulkDataEntryConnectorIOSDescription[] =
     "When enabled, the enterprise pasted content DLP feature is available on "
     "iOS.";
 
+inline constexpr char kEnableCobrowseOnAimSrpTapName[] =
+    "Enable Cobrowse on AIM SRP Tap";
+inline constexpr char kEnableCobrowseOnAimSrpTapDescription[] =
+    "Enables Cobrowse to automatically open when a user taps a link on an AIM "
+    "SRP page.";
+
 inline constexpr char kEnableCompromisedPasswordsMutingName[] =
     "Enable the muting of compromised passwords in the Password Manager";
 inline constexpr char kEnableCompromisedPasswordsMutingDescription[] =
@@ -893,6 +905,12 @@ inline constexpr char kGeminiFREExperimentDescription[] =
 inline constexpr char kGeminiFRERefactorName[] = "Gemini FRE Refactor";
 inline constexpr char kGeminiFRERefactorDescription[] =
     "Enables the refactored Gemini First Run Experience UI.";
+
+inline constexpr char kGeminiHostExperimentIDsName[] =
+    "Gemini Host Experiment IDs";
+inline constexpr char kGeminiHostExperimentIDsDescription[] =
+    "Passes active Chrome iOS Finch GWS variation IDs to the embedded Gemini "
+    "iOS SDK.";
 
 inline constexpr char kGeminiInsightsChipAblationName[] =
     "Gemini Insights Chip Ablation";
@@ -1162,6 +1180,10 @@ inline constexpr char kIdentityConfirmationSnackbarName[] =
 inline constexpr char kIdentityConfirmationSnackbarDescription[] =
     "When enabled, the identity confirmation snackbar will show on startup.";
 
+inline constexpr char kImportExportFlagsName[] = "Import and export flags";
+inline constexpr char kImportExportFlagsDescription[] =
+    "Enables importing and exporting flags from chrome://flags.";
+
 inline constexpr char kInProductHelpDemoModeName[] =
     "In-Product Help Demo Mode";
 inline constexpr char kInProductHelpDemoModeDescription[] =
@@ -1368,6 +1390,12 @@ inline constexpr char kNewGeolocationPermissionDelegateDescription[] =
     "Enables the new geolocation permission delegate feature to help users "
     "manage location permission updates when sharing their location with the "
     "browser.";
+
+inline constexpr char kNewTabPageEphemeralThemeName[] =
+    "New Tab Page Ephemeral Theme";
+inline constexpr char kNewTabPageEphemeralThemeDescription[] =
+    "Enables custom ephemeral color palettes on the New Tab Page configured "
+    "via Finch parameters.";
 
 inline constexpr char kNewTabPageFieldTrialName[] =
     "New tab page features that target new users";
@@ -1651,12 +1679,6 @@ inline constexpr char kPrepopulatedEnginesShadowVariantsDescription[] =
     "Enables shadow variants for prepopulated engines resolution, allowing "
     "alternative engines to be resolved in specific regions.";
 
-inline constexpr char kPreventCobrowseOnAimSrpTapName[] =
-    "Prevent Cobrowse on AIM SRP Tap";
-inline constexpr char kPreventCobrowseOnAimSrpTapDescription[] =
-    "Prevents Cobrowse from automatically opening when a user taps a link on "
-    "an AIM SRP page.";
-
 inline constexpr char kPriceTrackingPromoName[] =
     "Enables price tracking notification promo card";
 inline constexpr char kPriceTrackingPromoDescription[] =
@@ -1673,17 +1695,6 @@ inline constexpr char kProactiveSuggestionsFrameworkPopupBlockerName[] =
     "Popup Blocker";
 inline constexpr char kProactiveSuggestionsFrameworkPopupBlockerDescription[] =
     "Enables the popup blocker feature row in the Page Action Menu.";
-
-inline constexpr char kReaderModeContentSettingsForLinksName[] =
-    "Enables Content Settings options for Reading Mode";
-inline constexpr char kReaderModeContentSettingsForLinksDescription[] =
-    "Enables Content Settings options for disabling/enabling links in Reading "
-    "Mode.";
-
-inline constexpr char kReaderModeIgnoreBadgeThresholdName[] =
-    "Reader Mode ignore badge threshold";
-inline constexpr char kReaderModeIgnoreBadgeThresholdDescription[] =
-    "When enabled, the badge threshold is ignored for Reader Mode.";
 
 inline constexpr char kReaderModeOmniboxEntrypointInUSName[] =
     "Reader Mode Omnibox Entrypoint In US";

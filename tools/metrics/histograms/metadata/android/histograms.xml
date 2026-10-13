@@ -1856,17 +1856,6 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="Android.DarkTheme.ThemeSettingsEntry"
-    enum="AndroidThemeSettingsEntry" expires_after="2023-04-16">
-  <owner>nemco@google.com</owner>
-  <owner>wenyufu@chromium.org</owner>
-  <owner>clank-app-team@google.com</owner>
-  <summary>
-    Entry that navigate the user into the Theme Settings. Recorded when the
-    Theme settings is opened.
-  </summary>
-</histogram>
-
 <histogram name="Android.DefaultBrowserPromo.Click"
     enum="DefaultBrowserPromoSourceType" expires_after="2027-03-01">
   <owner>xinyiji@chromium.org</owner>
@@ -3928,15 +3917,16 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="Android.MultiWindowMode.{WindowingMode}.Duration2" units="ms"
+<histogram name="Android.MultiWindowMode.{WindowingMode}.Duration3" units="ms"
     expires_after="2027-02-14">
   <owner>rathomas@google.com</owner>
   <owner>clank-large-form-factors@google.com</owner>
   <summary>
     Total time spent in {WindowingMode} mode in a given 24-hour period. The
     histogram will be emitted for a previous emission cycle when an activity in
-    any windowing mode is stopped after more than 24 hours have elapsed since
-    the start of this emission cycle.
+    any windowing mode is started or stopped after more than 24 hours have
+    elapsed since the start of this emission cycle. Tracks durations up to 24
+    hours.
   </summary>
   <token key="WindowingMode">
     <variant name="DefaultMultiWindow" summary="default multi-window"/>
@@ -4981,59 +4971,6 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="Android.PartnerCustomization.HomepageCustomizationOutcome"
-    enum="PartnerCustomizationsHomepage" expires_after="2025-02-02">
-  <owner>donnd@chromium.org</owner>
-  <owner>wenyufu@chromium.org</owner>
-  <summary>
-    Records the outcome of initial Tab creation relative to Homepage
-    customization. The outcome characterizes the initial Tab focusing on an NTP
-    and whether it was created correctly. When a custom Homepage was created we
-    only record whether it was a Partner Homepage or some other Homepage. At
-    this time we don't differentiate between User and Policy Homepages or record
-    whether any Homepage was correctly created when customization changes.
-    Recorded at the end of customization or initial Tab creation, whichever is
-    last.
-  </summary>
-</histogram>
-
-<histogram
-    name="Android.PartnerCustomization.HomepageCustomizationOutcome.{CustomizationDelegate}"
-    enum="PartnerCustomizationsHomepage" expires_after="2025-02-02">
-  <owner>donnd@chromium.org</owner>
-  <owner>wenyufu@chromium.org</owner>
-  <summary>
-    Records the outcome of initial Tab creation relative to Homepage
-    customization using delegate &quot;{CustomizationDelegate}&quot;. The
-    outcome characterizes the initial Tab focusing on an NTP and whether it was
-    created correctly. When a custom Homepage was created we only record whether
-    it was a Partner Homepage or some other Homepage. At this time we don't
-    differentiate between User and Policy Homepages or record whether any
-    Homepage was correctly created when customization changes. Recorded at the
-    end of customization or initial Tab creation, whichever is last.
-  </summary>
-  <token key="CustomizationDelegate" variants="CustomizationDelegate"/>
-</histogram>
-
-<histogram
-    name="Android.PartnerCustomization.HomepageCustomizationOutcomeNotCached.{CustomizationDelegate}"
-    enum="PartnerCustomizationsHomepage" expires_after="2025-02-02">
-  <owner>donnd@chromium.org</owner>
-  <owner>wenyufu@chromium.org</owner>
-  <summary>
-    Records the outcome of initial Tab creation relative to Homepage
-    customization using delegate &quot;{CustomizationDelegate}&quot; when the
-    Homepage was not previously cached. The outcome characterizes the initial
-    Tab focusing on an NTP and whether it was created correctly. When a custom
-    Homepage was created we only record whether it was a Partner Homepage or
-    some other Homepage. At this time we don't differentiate between User and
-    Policy Homepages or record whether any Homepage was correctly created when
-    customization changes. Recorded at the end of customization or initial Tab
-    creation, whichever is last.
-  </summary>
-  <token key="CustomizationDelegate" variants="CustomizationDelegate"/>
-</histogram>
-
 <histogram name="Android.PartnerCustomization.TaskCompletion"
     enum="PartnerTaskCompletion" expires_after="2025-04-06">
   <owner>donnd@chromium.org</owner>
@@ -5821,16 +5758,6 @@ chromium-metrics-reviews@google.com.
   </summary>
 </histogram>
 
-<histogram name="Android.SeccompStatus.RendererSandbox"
-    enum="AndroidSeccompSandboxStatus" expires_after="2024-04-28">
-  <owner>rsesek@chromium.org</owner>
-  <summary>
-    Reports the status of the seccomp-bpf sandbox in renderer processes.
-    Anything other than &quot;Sandbox Engaged&quot; indicates the sandbox is not
-    turned on. See https://crbug.com/477049.
-  </summary>
-</histogram>
-
 <histogram name="Android.SelectFileDialogContentSelected"
     enum="SelectFileDialogContent" expires_after="2026-09-30">
   <owner>finnur@chromium.org</owner>
@@ -6189,13 +6116,13 @@ chromium-metrics-reviews@google.com.
 </histogram>
 
 <histogram name="Android.TabGroupSync.WindowStateOnFailedOpen"
-    enum="TabGroupCreationFinalSelections" expires_after="2026-11-07">
+    enum="GroupWindowState" expires_after="2027-11-01">
   <owner>ckitagawa@chromium.org</owner>
   <owner>madhavpruthi@google.com</owner>
   <owner>skym@chromium.org</owner>
   <owner>clank-tab-dev@google.com</owner>
   <summary>
-    When a tab group open from the tab group pane failes because there is no
+    When a tab group open from the tab group pane fails because there is no
     local id, this metric is emitted with the state that the tab is in. This
     should help narrow down why this is happening.
   </summary>
@@ -10036,6 +9963,38 @@ chromium-metrics-reviews@google.com.
     Records the window width in density-independent pixels (dp) when a Chrome
     window is first opened or resized.
   </summary>
+</histogram>
+
+<histogram name="Android.{HistoryType}.QueryDuration" units="ms"
+    expires_after="2027-09-01">
+  <owner>wylieb@chromium.org</owner>
+  <owner>chrome-collections@google.com</owner>
+  <summary>
+    Records the roundtrip duration (in milliseconds) from initiating a history
+    query on the Android UI thread (via HistoryAdapter) to receiving and
+    processing the results in onQueryHistoryComplete. Recorded on initial load,
+    search, and when scrolling to load more items.
+  </summary>
+  <token key="HistoryType">
+    <variant name="AppHistoryPage" summary="In-app history"/>
+    <variant name="HistoryPage" summary="Standard browser history"/>
+  </token>
+</histogram>
+
+<histogram name="Android.{HistoryType}.TimeToFirstVisibleContent" units="ms"
+    expires_after="2027-09-01">
+  <owner>wylieb@chromium.org</owner>
+  <owner>chrome-collections@google.com</owner>
+  <summary>
+    Records the time (in milliseconds) from when the Android browsing history UI
+    initiates loading items to when the RecyclerView first performs pre-draw
+    with non-empty history content. Serves as the native Android UI equivalent
+    of Time to First Contentful Paint.
+  </summary>
+  <token key="HistoryType">
+    <variant name="AppHistoryPage" summary="In-app history"/>
+    <variant name="HistoryPage" summary="Standard browser history"/>
+  </token>
 </histogram>
 
 <histogram name="ChromiumAndroidLinker.RelroAvailableImmediately"

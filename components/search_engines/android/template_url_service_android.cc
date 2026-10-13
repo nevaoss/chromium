@@ -329,6 +329,12 @@ TemplateUrlServiceAndroid::GetComposeplateUrl(JNIEnv* env,
                    /*additional_params=*/{}));
 }
 
+GURL TemplateUrlServiceAndroid::ExpandUrlTemplate(
+    const std::string& url_template,
+    const std::u16string& query) {
+  return template_url_service_->ExpandUrlTemplate(url_template, query);
+}
+
 base::android::ScopedJavaLocalRef<jobject>
 TemplateUrlServiceAndroid::GetUrlForContextualSearchQuery(
     JNIEnv* env,
@@ -651,28 +657,6 @@ void TemplateUrlServiceAndroid::GetTemplateUrls(
         env, template_url_list_obj,
         CreateTemplateUrlAndroid(env, template_url));
   }
-}
-
-base::android::ScopedJavaLocalRef<jobject>
-TemplateUrlServiceAndroid::GetPrepopulatedAndRecentlyVisitedTemplateURLs(
-    JNIEnv* env) {
-  CHECK(base::FeatureList::IsEnabled(switches::kSearchSettingsUpdateV2));
-
-  auto result =
-      template_url_service_->GetPrepopulatedAndRecentlyVisitedTemplateURLs();
-
-  std::vector<const TemplateURL*> prepopulated_urls;
-  for (const auto& turl : result.prepopulated_urls) {
-    prepopulated_urls.push_back(turl.get());
-  }
-
-  std::vector<const TemplateURL*> recently_visited_urls;
-  for (const auto& turl : result.recently_visited_urls) {
-    recently_visited_urls.push_back(turl.get());
-  }
-
-  return Java_PrepopulatedAndRecentlyVisitedTemplateURLs_create(
-      env, prepopulated_urls, recently_visited_urls);
 }
 
 int64_t TemplateUrlServiceAndroid::CreateSettingsDataProvider(JNIEnv* env) {

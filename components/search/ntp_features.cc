@@ -41,7 +41,7 @@ BASE_FEATURE(kCustomizeChromeWallpaperSearchInspirationCard,
              base::FEATURE_ENABLED_BY_DEFAULT);
 
 // If enabled, the EnergyEffect for Realbox will be shown.
-BASE_FEATURE(kEnergyEffect, base::FEATURE_DISABLED_BY_DEFAULT);
+BASE_FEATURE(kEnergyEffect, base::FEATURE_ENABLED_BY_DEFAULT);
 
 const base::FeatureParam<EnergyEffectVariant>::Option
     kEnergyEffectVariantOptions[] = {
@@ -55,7 +55,7 @@ const base::FeatureParam<EnergyEffectVariant>::Option
 
 const base::FeatureParam<EnergyEffectVariant> kEnergyEffectVariantParam{
     &kEnergyEffect, "EnergyEffectVariantParam",
-    EnergyEffectVariant::kEnergyEffectOriginal, &kEnergyEffectVariantOptions};
+    EnergyEffectVariant::kEnergyEffectFusebox, &kEnergyEffectVariantOptions};
 
 // If enabled, the EnergyEffect animation for Realbox will be shown.
 BASE_FEATURE(kEnergyEffectAnimation, base::FEATURE_ENABLED_BY_DEFAULT);
@@ -329,6 +329,9 @@ BASE_FEATURE(kBookmarkBarUpdatesForTesting, base::FEATURE_DISABLED_BY_DEFAULT);
 // If enabled, the Threads Rail will be shown on the left hand side of the NTP
 // when the Composebox dialog is open.
 BASE_FEATURE(kNtpThreadsRail, base::FEATURE_DISABLED_BY_DEFAULT);
+
+// If enabled, will enable Instant API for Android devices.
+BASE_FEATURE(kNtpEnableInstantApiAndroid, base::FEATURE_DISABLED_BY_DEFAULT);
 
 const char kNtpModuleIgnoredCriteriaThreshold[] =
     "NtpModuleIgnoredCriteriaThreshold";

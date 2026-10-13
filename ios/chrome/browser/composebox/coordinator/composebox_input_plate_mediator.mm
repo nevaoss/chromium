@@ -753,6 +753,13 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
 // Internal helper to remove an item from the collection and session without
 // marking it as explicitly user-removed.
 - (void)removeItemInternal:(ComposeboxInputItem*)item {
+  // `item` can be nil if an asynchronous operation finishes after the item has
+  // already been deleted by the user or closed. Early return to prevent null
+  // pointer dereferencing or double deletion.
+  if (!item) {
+    return;
+  }
+
   [self.debugLogger
       logEvent:[ComposeboxDebuggerEvent
                    queryAttachmentEvent:composebox_debugger::event::
@@ -1397,9 +1404,13 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
 }
 
 // Updates the automatically attached tab for the active WebState if the current
-// entrypoint is Co-browse.
+// entrypoint is Co-browse and the omnibox is focused.
 - (void)updateAutoAttachedCurrentTabIfNeeded {
   if (_entrypoint != ComposeboxEntrypoint::kCobrowse) {
+    return;
+  }
+  if (!_omniboxFocused) {
+    [self removeAutoAddedItems];
     return;
   }
   [self attachCurrentTabContentWithAutoAdded:YES];
@@ -1566,14 +1577,23 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
   [self updateAwaitingAttachmentSignalsState];
 }
 
-// Returns the attachment evewnt title for a given item.
+// Returns the attachment event title for a given item.
 - (NSString*)attachmentEventTitleForItem:(ComposeboxInputItem*)item {
+  // `item` can be nil if an asynchronous upload or extraction finishes after
+  // the item was already deleted. Return an empty string to prevent
+  // dereferencing the null `item.identifier` C++ reference.
+  if (!item) {
+    return @"";
+  }
   return base::SysUTF8ToNSString(item.identifier.ToString());
 }
 
 // Returns the attachment type for a given item.
 - (composebox_debugger::AttachmentType)attachmentEventTypeForItem:
     (ComposeboxInputItem*)item {
+  if (!item) {
+    return composebox_debugger::AttachmentType::kUnknown;
+  }
   switch (item.type) {
     case ComposeboxInputItemType::kComposeboxInputItemTypeImage:
       return composebox_debugger::AttachmentType::kImage;
@@ -2226,7 +2246,15 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
 
 - (void)handleFailedAttachment:(base::UnguessableToken)identifier {
   [self.delegate showSnackbarForItemUploadDidFail];
+  _latestTabSelectionMapping.erase(identifier);
   ComposeboxInputItem* item = [_items itemForIdentifier:identifier];
+  // `item` can be nil if the user deleted the shared tab or closed the sheet
+  // while the asynchronous page context extraction was in flight. In that case,
+  // the item has already been removed from `_items`, so return early to avoid
+  // dereferencing `item.identifier` (a C++ reference) when logging or removing.
+  if (!item) {
+    return;
+  }
   [self.debugLogger
       logEvent:[ComposeboxDebuggerEvent
                    queryAttachmentEvent:composebox_debugger::event::
@@ -2236,7 +2264,6 @@ lens::ImageEncodingOptions GetDefaultImageEncodingOptions() {
                                             attachmentEventTitleForItem:item]]];
 
   [self removeItemInternal:item];
-  _latestTabSelectionMapping.erase(identifier);
 }
 
 /// Updates the consumer items.

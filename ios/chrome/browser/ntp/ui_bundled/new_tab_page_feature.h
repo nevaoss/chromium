@@ -5,7 +5,12 @@
 #ifndef IOS_CHROME_BROWSER_NTP_UI_BUNDLED_NEW_TAB_PAGE_FEATURE_H_
 #define IOS_CHROME_BROWSER_NTP_UI_BUNDLED_NEW_TAB_PAGE_FEATURE_H_
 
-#include "base/feature_list.h"
+#import <Foundation/Foundation.h>
+
+#import <string>
+
+#import "base/feature_list.h"
+#import "base/metrics/field_trial_params.h"
 
 class PrefService;
 
@@ -56,6 +61,12 @@ BASE_DECLARE_FEATURE(kMVTInBottomSheet);
 // Checks if the Most Visited Tiles should be placed in the bottom sheet.
 bool IsMVTInBottomSheetEnabled();
 
+// Feature flag to enable custom ephemeral themes on the New Tab Page.
+BASE_DECLARE_FEATURE(kNewTabPageEphemeralTheme);
+
+// Checks if the New Tab Page ephemeral theme feature is enabled.
+bool IsNTPEphemeralThemeEnabled();
+
 #pragma mark - Feature parameters
 
 // A parameter value for the feed's refresh threshold when the feed has already
@@ -82,6 +93,38 @@ extern const char kFeedSwipeInProductHelpArmParam[];
 // Parameter to indicate which arm of the feature kNewTabPageUICleanup is
 // enabled.
 extern const char kNewTabPageUICleanupArmParam[];
+
+// URL parameter for the ephemeral theme Lottie animation.
+BASE_DECLARE_FEATURE_PARAM(std::string,
+                           kNewTabPageEphemeralThemeAnimationUrlParam);
+
+// JSON string parameter for the ephemeral theme light/dark color mapping.
+BASE_DECLARE_FEATURE_PARAM(std::string,
+                           kNewTabPageEphemeralThemeAnimationColorMappingParam);
+
+// URL parameter for the ephemeral theme promo Lottie animation.
+BASE_DECLARE_FEATURE_PARAM(std::string,
+                           kNewTabPageEphemeralThemeAnimationPromoUrlParam);
+
+// JSON string parameter for the ephemeral theme promo light/dark color mapping.
+BASE_DECLARE_FEATURE_PARAM(
+    std::string,
+    kNewTabPageEphemeralThemeAnimationPromoColorMappingParam);
+
+// URL parameter for the light mode Google logo on the ephemeral theme NTP.
+BASE_DECLARE_FEATURE_PARAM(std::string,
+                           kNewTabPageEphemeralThemeGoogleLogoLightUrlParam);
+
+// URL parameter for the dark mode Google logo on the ephemeral theme NTP.
+BASE_DECLARE_FEATURE_PARAM(std::string,
+                           kNewTabPageEphemeralThemeGoogleLogoDarkUrlParam);
+
+// Seed color parameter for the ephemeral theme.
+BASE_DECLARE_FEATURE_PARAM(std::string,
+                           kNewTabPageEphemeralThemeSeedColorParam);
+
+// Version parameter for the ephemeral theme configuration.
+BASE_DECLARE_FEATURE_PARAM(int, kNewTabPageEphemeralThemeVersionParam);
 
 #pragma mark - Helpers
 

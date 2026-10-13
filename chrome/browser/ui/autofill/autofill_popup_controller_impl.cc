@@ -572,9 +572,9 @@ void AutofillPopupControllerImpl::AcceptSuggestion(
   base::UmaHistogramEnumeration("Autofill.SuggestionAccepted.Method",
                                 accept_method);
 
-  delegate_->DidAcceptSuggestion(suggestion, GetSuggestionMetadata(index),
-                                 controller_common_.form_id,
-                                 controller_common_.field_id);
+  delegate_->DidAcceptSuggestion(
+      suggestion, GetSuggestionMetadata(index, was_obscured),
+      controller_common_.form_id, controller_common_.field_id);
 }
 
 AutofillSuggestionDelegate::SuggestionUiMetadata
@@ -593,12 +593,14 @@ AutofillPopupControllerImpl::GetPopupMetadata() const {
 }
 
 AutofillSuggestionDelegate::SuggestionMetadata
-AutofillPopupControllerImpl::GetSuggestionMetadata(size_t row_index) const {
+AutofillPopupControllerImpl::GetSuggestionMetadata(size_t row_index,
+                                                   bool was_obscured) const {
   std::vector<size_t> multi_index = GetPopupMetadata().multi_index;
   multi_index.push_back(row_index);
   return {
       .multi_index = std::move(multi_index),
       .from_search_result = filter_.has_value(),
+      .was_obscured = was_obscured,
   };
 }
 
@@ -716,16 +718,13 @@ bool AutofillPopupControllerImpl::RemoveSuggestion(int list_index) {
   }
 
   // Remove the deleted element.
+  auto suggestion_iter = std::ranges::find(non_filtered_suggestions_,
+                                           GetSuggestions()[list_index]);
+  CHECK(suggestion_iter != non_filtered_suggestions_.end());
+  non_filtered_suggestions_.erase(suggestion_iter);
+  CleanUpRedundantSeparators(non_filtered_suggestions_);
   if (filter_) {
-    auto suggestion_iter = std::find(non_filtered_suggestions_.begin(),
-                                     non_filtered_suggestions_.end(),
-                                     GetSuggestions()[list_index]);
-    CHECK(suggestion_iter != non_filtered_suggestions_.end());
-    non_filtered_suggestions_.erase(suggestion_iter);
     UpdateFilteredSuggestions();
-  } else {
-    non_filtered_suggestions_.erase(non_filtered_suggestions_.begin() +
-                                    list_index);
   }
 
   if (HasEmptySuggestionContent()) {

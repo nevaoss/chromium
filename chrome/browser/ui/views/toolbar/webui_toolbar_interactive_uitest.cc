@@ -47,12 +47,14 @@
 #include "chrome/browser/ui/views/extensions/extension_popup.h"
 #include "chrome/browser/ui/views/extensions/extensions_menu_coordinator.h"
 #include "chrome/browser/ui/views/frame/browser_view.h"
+#include "chrome/browser/ui/views/frame/contents_web_view.h"
 #include "chrome/browser/ui/views/frame/toolbar_button_provider.h"
 #include "chrome/browser/ui/views/location_bar/webui_location_bar.h"
 #include "chrome/browser/ui/views/toolbar/reload_button.h"
 #include "chrome/browser/ui/views/toolbar/reload_control.h"
 #include "chrome/browser/ui/views/toolbar/toolbar_view.h"
 #include "chrome/browser/ui/views/toolbar/webui_and_views_toolbar_interactive_uitest_base.h"
+#include "chrome/browser/ui/views/toolbar/webui_battery_saver_control.h"
 #include "chrome/browser/ui/views/toolbar/webui_overflow_button.h"
 #include "chrome/browser/ui/views/toolbar/webui_reload_control.h"
 #include "chrome/browser/ui/views/toolbar/webui_test_utils.h"
@@ -110,6 +112,7 @@
 #include "ui/base/ui_base_features.h"
 #include "ui/base/ui_base_switches.h"
 #include "ui/display/screen.h"
+#include "ui/views/bubble/bubble_dialog_model_host.h"
 #include "ui/views/controls/menu/menu_item_view.h"
 #include "ui/views/controls/menu/menu_runner.h"
 #include "ui/views/controls/menu/submenu_view.h"
@@ -266,6 +269,7 @@ class WebUIToolbarPixelInteractiveUiTest : public InteractiveBrowserTest {
          features::kWebUISplitTabsButton, features::kWebUIBackForwardButton,
          features::kWebUIHomeButton, features::kWebUIPinnedToolbarActions,
          features::kWebUILocationBar, features::kWebUIAppMenuButton,
+         features::kWebUIGlicButton,
          features::kSkipIPCChannelPausingForNonGuests,
          features::kWebUIInProcessResourceLoadingV2},
         {features::kPrewarm});
@@ -2409,6 +2413,18 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarWebViewInteractiveUiTest,
     EXPECT_TRUE(
         base::test::RunUntil([&]() { return coordinator->IsShowing(); }));
 
+    // Verify button becomes highlighted.
+    EXPECT_TRUE(base::test::RunUntil([&]() {
+      return content::EvalJs(
+                 web_contents,
+                 "document.querySelector('toolbar-app').shadowRoot"
+                 ".querySelector('#extensions').shadowRoot"
+                 ".querySelector('webui-toolbar-extension[data-key=\"\"]')"
+                 ".shadowRoot.querySelector('cr-button')"
+                 ".hasAttribute('is-menu-open')")
+          .ExtractBool();
+    }));
+
     // Toggle it back off.
     LeftClickExtensionButton(web_contents, "");
 
@@ -3107,11 +3123,135 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarFullyEnabledInteractiveUiTest,
 
   // Click the battery saver button in the overflow menu and wait for the
   // overflow menu to close.
-  //
-  // TODO(crbug.com/491791965): Also verify that the battery saver bubble is
-  // shown once clicking the overflow menu item is wired up to open the bubble.
   ASSERT_TRUE(ClickOverflowMenuItem(*overflow_menu,
                                     IDS_OVERFLOW_MENU_ITEM_TEXT_ENERGY_SAVER));
+
+  // The button is hidden when the overflow menu item is clicked, so the browser
+  // has to ask the WebUI to display it before the bubble can be anchored to it.
+  ASSERT_TRUE(
+      WaitForTrackedElementVisible(kToolbarBatterySaverButtonElementId));
+
+  WebUIBatterySaverControl& battery_saver_control =
+      GetWebUIToolbarWebView(browser())->battery_saver_control_for_testing();
+
+  // The bubble should be shown once the button becomes visible.
+  ASSERT_TRUE(base::test::RunUntil([&]() -> bool {
+    return battery_saver_control.bubble_for_testing() != nullptr;
+  }));
+
+  // The bubble must be anchored to the button itself, rather than falling back
+  // to the toolbar as a whole. The element is looked up again here rather than
+  // reusing the one above, since showing the bubble may have destroyed and
+  // recreated it.
+  ui::TrackedElement* battery_saver_element =
+      WaitForTrackedElementVisible(kToolbarBatterySaverButtonElementId);
+  ASSERT_TRUE(battery_saver_element);
+  views::BubbleDialogModelHost* bubble =
+      battery_saver_control.bubble_for_testing();
+  EXPECT_EQ(bubble->GetAnchorRect(), battery_saver_element->GetScreenBounds());
+
+  // The button must stay visible for as long as the bubble is anchored to it,
+  // even though it would otherwise overflow at this window size.
+  EXPECT_TRUE(WaitForTrackedElements(
+      {kToolbarOverflowButtonElementId, kToolbarBatterySaverButtonElementId},
+      {kToolbarForwardButtonElementId}));
+
+  // Closing the bubble should allow the button to overflow again.
+  bubble->Close();
+  EXPECT_TRUE(WaitForTrackedElements(
+      {kToolbarOverflowButtonElementId},
+      {kToolbarForwardButtonElementId, kToolbarBatterySaverButtonElementId}));
+}
+
+// Test clicking the media button when it appears on the overflow menu.
+IN_PROC_BROWSER_TEST_F(WebUIToolbarFullyEnabledInteractiveUiTest,
+                       OverflowMenuClickMediaButtonEnabled) {
+  // The media button isn't supported on all platforms. There is no single
+  // #define for it, so check it at runtime, rather than redundantly hard-coding
+  // a list of platforms that can become outdated.
+  if (!IsMediaButtonSupported()) {
+    GTEST_SKIP() << "The media button is not supported on this platform.";
+  }
+
+  // Show the media button.
+  ShowMediaButton();
+
+  // Set the spacer width to the full width of the window, forcing all
+  // overflowable elements into the overflow menu.
+  gfx::Rect window_bounds = browser()->GetWindow()->GetBounds();
+  ASSERT_EQ(SetSpacerWidth(window_bounds.width()), true);
+
+  // Wait for forward and media buttons to be hidden and overflow button
+  // to be visible.
+  ASSERT_TRUE(WaitForTrackedElements(
+      {kToolbarOverflowButtonElementId},
+      {kToolbarForwardButtonElementId, kToolbarMediaButtonElementId}));
+
+  OverflowMenu* overflow_menu = OpenOverflowMenu();
+  ASSERT_TRUE(overflow_menu);
+
+  // Check that the overflow menu has forward, a separator, and media controls,
+  // in that order.
+  ASSERT_NO_FATAL_FAILURE(CheckOverflowMenu(
+      *overflow_menu,
+      {// The forward button should be disabled, since the back button has
+       // never been pressed.
+       {.label_id = IDS_OVERFLOW_MENU_ITEM_TEXT_FORWARD, .enabled = false},
+       kSeparator,
+       {.label_id = IDS_OVERFLOW_MENU_ITEM_TEXT_MEDIA_CONTROLS}},
+      /*expect_avatar_button_if_not_chromeos=*/true));
+
+  // Click the media button in the overflow menu and wait for the
+  // overflow menu to close.
+  //
+  // TODO(crbug.com/491791965): Also verify that the media dialog is
+  // shown once clicking the overflow menu item is wired up to open the dialog.
+  ASSERT_TRUE(ClickOverflowMenuItem(
+      *overflow_menu, IDS_OVERFLOW_MENU_ITEM_TEXT_MEDIA_CONTROLS));
+}
+
+// Test that when the media button is shown but disabled (greyed out), it
+// appears on the overflow menu but is marked as disabled.
+IN_PROC_BROWSER_TEST_F(WebUIToolbarFullyEnabledInteractiveUiTest,
+                       OverflowMenuMediaButtonDisabled) {
+  // The media button isn't supported on all platforms. There is no single
+  // #define for it, so check it at runtime, rather than redundantly hard-coding
+  // a list of platforms that can become outdated.
+  if (!IsMediaButtonSupported()) {
+    GTEST_SKIP() << "The media button is not supported on this platform.";
+  }
+
+  // Show the media button, then disable it.
+  ShowMediaButton();
+  DisableMediaButton();
+
+  // Set the spacer width to the full width of the window, forcing all
+  // overflowable elements into the overflow menu.
+  gfx::Rect window_bounds = browser()->GetWindow()->GetBounds();
+  ASSERT_EQ(SetSpacerWidth(window_bounds.width()), true);
+
+  // Wait for forward and media buttons to be hidden and overflow button
+  // to be visible.
+  ASSERT_TRUE(WaitForTrackedElements(
+      {kToolbarOverflowButtonElementId},
+      {kToolbarForwardButtonElementId, kToolbarMediaButtonElementId}));
+
+  OverflowMenu* overflow_menu = OpenOverflowMenu();
+  ASSERT_TRUE(overflow_menu);
+
+  // Check that the overflow menu contains the media button, but it is disabled.
+  ASSERT_NO_FATAL_FAILURE(CheckOverflowMenu(
+      *overflow_menu,
+      {// The forward button should be disabled, since the back button has
+       // never been pressed.
+       {.label_id = IDS_OVERFLOW_MENU_ITEM_TEXT_FORWARD, .enabled = false},
+       kSeparator,
+       {.label_id = IDS_OVERFLOW_MENU_ITEM_TEXT_MEDIA_CONTROLS,
+        .enabled = false}},
+      /*expect_avatar_button_if_not_chromeos=*/true));
+
+  // Close the menu. Not strictly needed, but seems a good idea.
+  overflow_menu->root_menu_item()->Cancel();
 }
 
 // Test that clicking a pinned action (the Downloads button) on the overflow
@@ -3197,6 +3337,22 @@ IN_PROC_BROWSER_TEST_F(WebUIToolbarFullyEnabledInteractiveUiTest,
   // Wait until avatar button is visible initially.
   ASSERT_TRUE(WaitForTrackedElements({kToolbarAvatarButtonElementId}, {},
                                      incognito_browser));
+
+  // Wait until the WebUI knows the forward button should be disabled. In a
+  // newly created window, the WebUI may initially think the forward button is
+  // enabled, before it receives an update disabling it.
+  // TODO(crbug.com/566779862): Remove this once the WebUI toolbar gets the
+  // correct initial state for the forward button.
+  ASSERT_TRUE(base::test::RunUntil([&]() -> bool {
+    return content::EvalJs(GetWebUIWebContents(incognito_browser), R"(
+          (() => {
+            const app = document.querySelector('toolbar-app');
+            const forwardButton = app.shadowRoot.querySelector('#forward');
+            return forwardButton.state.enabled === false;
+          })()
+        )")
+        .ExtractBool();
+  }));
 
   // Force all overflowable elements into the overflow menu.
   gfx::Rect window_bounds = incognito_browser->GetWindow()->GetBounds();

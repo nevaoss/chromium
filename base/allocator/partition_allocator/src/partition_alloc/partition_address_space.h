@@ -9,7 +9,6 @@
 #include <cstddef>
 #include <utility>
 
-#include "partition_alloc/address_pool_manager_types.h"
 #include "partition_alloc/build_config.h"
 #include "partition_alloc/buildflags.h"
 #include "partition_alloc/page_allocator_constants.h"
@@ -17,7 +16,7 @@
 #include "partition_alloc/partition_alloc_base/component_export.h"
 #include "partition_alloc/partition_alloc_check.h"
 #include "partition_alloc/partition_alloc_config.h"
-#include "partition_alloc/partition_alloc_constants.h"
+#include "partition_alloc/partition_alloc_public_constants.h"
 #include "partition_alloc/tagging.h"
 #include "partition_alloc/thread_isolation/alignment.h"
 
@@ -25,10 +24,16 @@
 #include "partition_alloc/thread_isolation/thread_isolation.h"
 #endif
 
+<<<<<<< HEAD
 ///@name IS_NEVA_APPRUNTIME
 ///@{
 #include "base/base_export.h"
 ///@}
+=======
+#if PA_CONFIG(MOVE_METADATA_OUT_OF_GIGACAGE)
+#include <array>
+#endif
+>>>>>>> 156.0.8078.0~1
 
 // The feature is not applicable to 32-bit address space.
 #if PA_BUILDFLAG(HAS_64_BIT_POINTERS)

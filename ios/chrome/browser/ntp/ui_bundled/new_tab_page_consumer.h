@@ -30,8 +30,19 @@
         framingCoordinates:
             (HomeCustomizationFramingCoordinates*)framingCoordinates;
 
+// Sets an animated background on the NTP from the given local file path with
+// dynamic light and dark mode color providers, or removes it if nil is passed.
+- (void)setAnimatedBackgroundPath:(NSString*)animatedBackgroundPath
+           lightModeColorProvider:
+               (NSDictionary<NSString*, UIColor*>*)lightModeColorProvider
+            darkModeColorProvider:
+                (NSDictionary<NSString*, UIColor*>*)darkModeColorProvider;
+
 // Whether AIM is allowed.
 - (void)setAIMAllowed:(BOOL)allowed;
+
+// Sets the title and icon for the AI Mode button.
+- (void)setAIMTitle:(NSString*)title icon:(UIImage*)icon;
 
 // Sets whether the omnibox is in the bottom position.
 - (void)setOmniboxInBottomPosition:(BOOL)isBottomOmnibox;

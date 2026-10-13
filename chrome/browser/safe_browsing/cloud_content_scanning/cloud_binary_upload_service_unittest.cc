@@ -26,13 +26,13 @@
 #include "chrome/browser/policy/chrome_browser_policy_connector.h"
 #include "chrome/browser/safe_browsing/advanced_protection_status_manager.h"
 #include "chrome/browser/safe_browsing/advanced_protection_status_manager_factory.h"
-#include "chrome/browser/safe_browsing/cloud_content_scanning/file_analysis_request.h"
 #include "chrome/common/chrome_paths.h"
 #include "chrome/test/base/testing_profile.h"
 #include "components/enterprise/common/proto/connectors.pb.h"
 #include "components/enterprise/connectors/core/cloud_content_scanning/binary_upload_request.h"
 #include "components/enterprise/connectors/core/cloud_content_scanning/binary_upload_service.h"
 #include "components/enterprise/connectors/core/features.h"
+#include "components/safe_browsing/buildflags.h"
 #include "components/safe_browsing/content/browser/web_ui/web_ui_content_info_singleton.h"
 #include "components/safe_browsing/core/common/features.h"
 #include "components/safe_browsing/core/common/safe_browsing_prefs.h"
@@ -43,6 +43,10 @@
 #include "services/network/public/cpp/shared_url_loader_factory.h"
 #include "testing/gmock/include/gmock/gmock.h"
 #include "testing/gtest/include/gtest/gtest.h"
+
+#if BUILDFLAG(SAFE_BROWSING_AVAILABLE)
+#include "chrome/browser/safe_browsing/cloud_content_scanning/file_analysis_request.h"
+#endif
 
 using testing::_;
 
@@ -1297,6 +1301,7 @@ TEST_F(CloudBinaryUploadServiceTest, RequestQueue) {
             enterprise_connectors::ScanRequestUploadResult::kSuccess);
 }
 
+#if BUILDFLAG(SAFE_BROWSING_AVAILABLE)
 TEST_F(CloudBinaryUploadServiceTest, EmptyFileRequest) {
   base::ScopedTempDir temp_dir;
   ASSERT_TRUE(temp_dir.CreateUniqueTempDir());
@@ -1352,6 +1357,7 @@ TEST_F(CloudBinaryUploadServiceTest, RunsStartCallback) {
 
   EXPECT_TRUE(was_started);
 }
+#endif  // BUILDFLAG(SAFE_BROWSING_AVAILABLE)
 
 TEST_F(CloudBinaryUploadServiceTest, VerifyBlockingSet) {
   enterprise_connectors::ScanRequestUploadResult scanning_result;

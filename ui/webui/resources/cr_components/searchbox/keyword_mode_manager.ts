@@ -49,6 +49,7 @@ export class KeywordModeManager {
       true;
 
   private availableKeywordModels_: Map<string, InputKeywordModel> = new Map();
+  private defaultSearchEngineKeyword_: string = '';
   private inputKeywordModel_: InputKeywordModel|null = null;
   private entryMethod_: KeywordModeEntryMethod = KeywordModeEntryMethod.NONE;
   private delegate_: KeywordModeManagerDelegate;
@@ -59,6 +60,14 @@ export class KeywordModeManager {
 
   get entryMethod(): KeywordModeEntryMethod {
     return this.entryMethod_;
+  }
+
+  get defaultSearchEngineKeyword(): string {
+    return this.defaultSearchEngineKeyword_;
+  }
+
+  set defaultSearchEngineKeyword(keyword: string) {
+    this.defaultSearchEngineKeyword_ = keyword;
   }
 
   get availableKeywordModels(): InputKeywordModel[] {
@@ -111,11 +120,61 @@ export class KeywordModeManager {
   }
 
   /**
+   * Enters keyword mode for the default search engine if available.
+   * Returns true if keyword mode was entered.
+   */
+  enterDefaultSearchEngineKeywordMode(entryMethod: KeywordModeEntryMethod):
+      boolean {
+    if (!this.defaultSearchEngineKeyword_) {
+      return false;
+    }
+    const model = this.availableKeywordModels_.get(
+        this.defaultSearchEngineKeyword_.toLowerCase());
+    if (!model) {
+      return false;
+    }
+    this.enter(
+        model.keyword, model.displayText || model.keyword, entryMethod,
+        model.placeholder || '');
+    return true;
+  }
+
+  /**
    * Exits keyword mode, resetting the keyword model and entry state.
    */
   exit(): void {
     this.entryMethod_ = KeywordModeEntryMethod.NONE;
     this.inputKeywordModel = null;
+  }
+
+  /**
+   * Clears keyword mode, restoring the text with appropriate prefix based on
+   * entry method, and notifies delegate.
+   * Returns true if keyword mode was cleared.
+   */
+  clearKeyword(currentText: string): boolean {
+    if (!this.isInKeywordMode) {
+      return false;
+    }
+
+    let prefix = this.activeKeyword ? `${this.activeKeyword} ` : '';
+    if (this.entryMethod_ === KeywordModeEntryMethod.TAB && !currentText) {
+      prefix = this.activeKeyword;
+    } else if (this.entryMethod_ === KeywordModeEntryMethod.QUESTION_MARK) {
+      prefix = '?';
+    } else if (this.entryMethod_ === KeywordModeEntryMethod.KEYBOARD_SHORTCUT) {
+      prefix = '';
+    }
+
+    const restoredText = prefix + currentText;
+    const newCursorPos = prefix.length;
+
+    this.exit();
+    this.delegate_.onKeywordCleared({
+      restoredText: restoredText,
+      cursorPosition: newCursorPos,
+    });
+    return true;
   }
 
   /**
@@ -130,24 +189,7 @@ export class KeywordModeManager {
       return false;
     }
 
-    let prefix = this.activeKeyword ? `${this.activeKeyword} ` : '';
-    if (this.entryMethod_ === KeywordModeEntryMethod.TAB && !inputState.value) {
-      prefix = this.activeKeyword;
-    } else if (this.entryMethod_ === KeywordModeEntryMethod.QUESTION_MARK) {
-      prefix = '?';
-    } else if (this.entryMethod_ === KeywordModeEntryMethod.KEYBOARD_SHORTCUT) {
-      prefix = '';
-    }
-
-    const restoredText = prefix + inputState.value;
-    const newCursorPos = prefix.length;
-
-    this.exit();
-    this.delegate_.onKeywordCleared({
-      restoredText: restoredText,
-      cursorPosition: newCursorPos,
-    });
-    return true;
+    return this.clearKeyword(inputState.value);
   }
 
   /**
@@ -195,18 +237,26 @@ export class KeywordModeManager {
     }
     return this.acceptSpaceAtEnd_(input, cursorPosition, event) ||
         this.acceptSpaceInMiddle_(input, cursorPosition, event) ||
-        this.acceptQuestionMark_(input, cursorPosition);
+        this.acceptQuestionMark_(input, cursorPosition, event);
   }
 
-  private isSpaceEvent_(event: Event|null): boolean {
+  /**
+   * Returns true if the event represents one of the specified characters being
+   * typed (not pasted or backspaced to).
+   */
+  private isTypedCharacterEvent_(event: Event|null, chars: string[]): boolean {
     if (event instanceof KeyboardEvent) {
-      return event.key === ' ' || event.key === '\u3000';
+      return chars.includes(event.key);
     }
     if (event instanceof InputEvent) {
-      return (event.data === ' ' || event.data === '\u3000') &&
+      return event.data !== null && chars.includes(event.data) &&
           event.inputType !== 'insertFromPaste';
     }
     return false;
+  }
+
+  private isSpaceEvent_(event: Event|null): boolean {
+    return this.isTypedCharacterEvent_(event, [' ', '\u3000']);
   }
 
   private acceptSpaceAtEnd_(
@@ -330,7 +380,8 @@ export class KeywordModeManager {
     return true;
   }
 
-  private acceptQuestionMark_(input: string, cursorPosition: number): boolean {
+  private acceptQuestionMark_(
+      input: string, cursorPosition: number, event: Event|null): boolean {
     // Cursor must be after '?'.
     if (cursorPosition !== 1) {
       return false;
@@ -346,15 +397,13 @@ export class KeywordModeManager {
       return false;
     }
 
-    // Input must have been typed, not backspaced to '?'. E.g. '?q<backspace>'
-    // should not enter keyword mode.
-    // TODO(b/504669216): this isn't handled yet.
+    // Question mark must have been typed, not backspaced to '?' or pasted.
+    if (!this.isTypedCharacterEvent_(event, ['?'])) {
+      return false;
+    }
 
-    // Input must have been typed, not pasted.
-    // TODO(b/504669216): webUI doesn't track paste state yet.
-
-    this.enter('?', '', KeywordModeEntryMethod.QUESTION_MARK);
-    return true;
+    return this.enterDefaultSearchEngineKeywordMode(
+        KeywordModeEntryMethod.QUESTION_MARK);
   }
 
   /**

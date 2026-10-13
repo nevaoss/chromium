@@ -269,14 +269,6 @@ void OmniboxPopupViewFullWebUI::SaveStateToTab(content::WebContents* tab) {
 
 void OmniboxPopupViewFullWebUI::OnTabChanged(content::WebContents* contents) {
   TRACE_EVENT("omnibox", "OmniboxPopupViewFullWebUI::OnTabChanged");
-  // Restoring the new tab's state below reverts the omnibox, which would
-  // otherwise close the popup (`OmniboxViewViews::RevertAll()` ->
-  // `OmniboxPopupCloser::CloseWithReason(kRevertAll)`). This method computes
-  // and applies the target popup state for the new tab itself, so suppress
-  // that intermediate close: hiding the popup here only to show it again a few
-  // statements later tears down and rebuilds the popup widget, which the user
-  // sees as a flicker on every tab switch.
-  base::AutoReset<bool> handling_tab_change(&is_handling_tab_change_, true);
   last_sent_text_.reset();
   last_sent_focus_.reset();
   last_consumed_native_selection_.reset();
@@ -479,6 +471,13 @@ void OmniboxPopupViewFullWebUI::OnFocus(bool query_zps, bool select_all) {
   }
 }
 
+void OmniboxPopupViewFullWebUI::
+    FocusSearchWithDefaultSearchEngineKeywordMode() {
+  if (auto* popup_handler = GetPopupHandler()) {
+    popup_handler->FocusSearchWithDefaultSearchEngineKeywordMode();
+  }
+}
+
 void OmniboxPopupViewFullWebUI::OnBlur() {
   focused_ = false;
   if (auto* popup_handler = GetPopupHandler()) {
@@ -495,10 +494,6 @@ void OmniboxPopupViewFullWebUI::OnPopupHandlerReady() {
 bool OmniboxPopupViewFullWebUI::IsPopupHandlerReady() const {
   return const_cast<OmniboxPopupViewFullWebUI*>(this)->GetPopupHandler() !=
          nullptr;
-}
-
-bool OmniboxPopupViewFullWebUI::IsHandlingTabChange() const {
-  return is_handling_tab_change_;
 }
 
 OmniboxPopupHandler* OmniboxPopupViewFullWebUI::GetPopupHandler() {

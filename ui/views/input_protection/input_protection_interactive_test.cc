@@ -13,17 +13,22 @@
 #include "base/scoped_observation.h"
 #include "base/strings/strcat.h"
 #include "base/strings/string_number_conversions.h"
-#include "base/time/time.h"
+#include "testing/gtest/include/gtest/gtest.h"
 #include "ui/events/base_event_utils.h"
 #include "ui/events/event.h"
 #include "ui/events/event_constants.h"
 #include "ui/events/keycodes/keyboard_codes.h"
 #include "ui/gfx/geometry/point.h"
 #include "ui/gfx/geometry/vector2d.h"
+#include "ui/views/bubble/bubble_dialog_delegate_view.h"
+#include "ui/views/controls/button/label_button.h"
+#include "ui/views/input_event_activation_protector.h"
+#include "ui/views/input_protection/input_protection_policy.h"
 #include "ui/views/input_protection/input_protection_specification.h"
 #include "ui/views/metrics.h"
 #include "ui/views/test/widget_test.h"
 #include "ui/views/view.h"
+#include "ui/views/view_class_properties.h"
 #include "ui/views/widget/widget.h"
 #include "ui/views/widget/widget_observer.h"
 
@@ -135,6 +140,14 @@ void DispatchKeyPressAndRelease(View* view, ui::KeyboardCode key, int flags) {
   DispatchKeyReleaseOnly(view, key, flags);
 }
 
+void DispatchTouchTap(View* view, const std::optional<gfx::Point>& tap_point) {
+  gfx::Point root_point = GetPointInRootView(view, tap_point);
+  ui::GestureEventDetails tap_details(ui::EventType::kGestureTap);
+  ui::GestureEvent tap(root_point.x(), root_point.y(), 0, ui::EventTimeForNow(),
+                       tap_details);
+  view->GetWidget()->OnGestureEvent(&tap);
+}
+
 }  // namespace
 
 InputProtectionTestApi::InputProtectionTestApi() = default;
@@ -143,9 +156,18 @@ InputProtectionTestApi::~InputProtectionTestApi() = default;
 ui::InteractionSequence::StepBuilder
 InputProtectionTestApi::EnableInputEventActivationProtection(
     ui::ElementIdentifier element_id) {
-  auto step = WithView(element_id, [](View* view) {
-    if (view->GetWidget()) {
-      view->GetWidget()->EnableInputEventActivationProtection();
+  if (element_id) {
+    auto step = WithView(element_id, [](View* view) {
+      if (view->GetWidget()) {
+        view->GetWidget()->EnableInputEventActivationProtection();
+      }
+    });
+    step.SetDescription("EnableInputEventActivationProtection()");
+    return step;
+  }
+  auto step = Do([this]() {
+    if (context_widget()) {
+      context_widget()->EnableInputEventActivationProtection();
     }
   });
   step.SetDescription("EnableInputEventActivationProtection()");
@@ -197,28 +219,32 @@ InputProtectionTestApi::MultiStep InputProtectionTestApi::Click(
   return steps;
 }
 
-InputProtectionTestApi::MultiStep InputProtectionTestApi::ClickExpectingBlocked(
+ui::InteractionSequence::StepBuilder
+InputProtectionTestApi::ClickExpectingBlocked(
     ui::ElementIdentifier element_id,
     const int& action_counter,
-    int expected_count,
     std::optional<gfx::Point> click_point) {
-  auto steps =
-      Steps(Click(element_id, click_point),
-            CheckVariable(action_counter, expected_count, "action_counter"));
-  AddDescriptionPrefix(steps, "ClickExpectingBlocked()");
-  return steps;
+  auto step = WithView(element_id, [&action_counter, click_point](View* view) {
+    const int initial_count = action_counter;
+    DispatchClick(view, click_point);
+    EXPECT_EQ(action_counter, initial_count);
+  });
+  step.SetDescription("ClickExpectingBlocked()");
+  return step;
 }
 
-InputProtectionTestApi::MultiStep InputProtectionTestApi::ClickExpectingAllowed(
+ui::InteractionSequence::StepBuilder
+InputProtectionTestApi::ClickExpectingAllowed(
     ui::ElementIdentifier element_id,
     const int& action_counter,
-    int expected_count,
     std::optional<gfx::Point> click_point) {
-  auto steps =
-      Steps(Click(element_id, click_point),
-            CheckVariable(action_counter, expected_count, "action_counter"));
-  AddDescriptionPrefix(steps, "ClickExpectingAllowed()");
-  return steps;
+  auto step = WithView(element_id, [&action_counter, click_point](View* view) {
+    const int initial_count = action_counter;
+    DispatchClick(view, click_point);
+    EXPECT_EQ(action_counter, initial_count + 1);
+  });
+  step.SetDescription("ClickExpectingAllowed()");
+  return step;
 }
 
 InputProtectionTestApi::MultiStep InputProtectionTestApi::KeyPress(
@@ -254,32 +280,72 @@ InputProtectionTestApi::MultiStep InputProtectionTestApi::KeyPressAndRelease(
   return steps;
 }
 
-InputProtectionTestApi::MultiStep
+ui::InteractionSequence::StepBuilder
 InputProtectionTestApi::KeyPressAndReleaseExpectingBlocked(
     ui::ElementIdentifier element_id,
     ui::KeyboardCode key,
     const int& action_counter,
-    int expected_count,
     int flags) {
-  auto steps =
-      Steps(KeyPressAndRelease(element_id, key, flags),
-            CheckVariable(action_counter, expected_count, "action_counter"));
-  AddDescriptionPrefix(steps, "KeyPressAndReleaseExpectingBlocked()");
-  return steps;
+  auto step = WithView(element_id, [&action_counter, key, flags](View* view) {
+    const int initial_count = action_counter;
+    DispatchKeyPressAndRelease(view, key, flags);
+    EXPECT_EQ(action_counter, initial_count);
+  });
+  step.SetDescription("KeyPressAndReleaseExpectingBlocked()");
+  return step;
 }
 
-InputProtectionTestApi::MultiStep
+ui::InteractionSequence::StepBuilder
 InputProtectionTestApi::KeyPressAndReleaseExpectingAllowed(
     ui::ElementIdentifier element_id,
     ui::KeyboardCode key,
     const int& action_counter,
-    int expected_count,
     int flags) {
-  auto steps =
-      Steps(KeyPressAndRelease(element_id, key, flags),
-            CheckVariable(action_counter, expected_count, "action_counter"));
-  AddDescriptionPrefix(steps, "KeyPressAndReleaseExpectingAllowed()");
-  return steps;
+  auto step = WithView(element_id, [&action_counter, key, flags](View* view) {
+    const int initial_count = action_counter;
+    DispatchKeyPressAndRelease(view, key, flags);
+    EXPECT_EQ(action_counter, initial_count + 1);
+  });
+  step.SetDescription("KeyPressAndReleaseExpectingAllowed()");
+  return step;
+}
+
+ui::InteractionSequence::StepBuilder InputProtectionTestApi::TouchTap(
+    ui::ElementIdentifier element_id,
+    std::optional<gfx::Point> tap_point) {
+  auto step = WithView(element_id, [tap_point](View* view) {
+    DispatchTouchTap(view, tap_point);
+  });
+  step.SetDescription("TouchTap()");
+  return step;
+}
+
+ui::InteractionSequence::StepBuilder
+InputProtectionTestApi::TouchTapExpectingBlocked(
+    ui::ElementIdentifier element_id,
+    const int& action_counter,
+    std::optional<gfx::Point> tap_point) {
+  auto step = WithView(element_id, [&action_counter, tap_point](View* view) {
+    const int initial_count = action_counter;
+    DispatchTouchTap(view, tap_point);
+    EXPECT_EQ(action_counter, initial_count);
+  });
+  step.SetDescription("TouchTapExpectingBlocked()");
+  return step;
+}
+
+ui::InteractionSequence::StepBuilder
+InputProtectionTestApi::TouchTapExpectingAllowed(
+    ui::ElementIdentifier element_id,
+    const int& action_counter,
+    std::optional<gfx::Point> tap_point) {
+  auto step = WithView(element_id, [&action_counter, tap_point](View* view) {
+    const int initial_count = action_counter;
+    DispatchTouchTap(view, tap_point);
+    EXPECT_EQ(action_counter, initial_count + 1);
+  });
+  step.SetDescription("TouchTapExpectingAllowed()");
+  return step;
 }
 
 void InputProtectionTestApi::FastForwardMockClock(base::TimeDelta delta) {
@@ -308,13 +374,35 @@ InputProtectionTestApi::AdvancePastInputProtectionInterval() {
 
 ui::InteractionSequence::StepBuilder
 InputProtectionTestApi::OccludeElementWithAotWindow(
-    ui::ElementIdentifier element_id) {
-  auto step = WithView(element_id, [this](View* view) {
-    gfx::Rect screen_bounds = view->GetBoundsInScreen();
-    aot_widget_ = CreateAotWidget(view, screen_bounds);
-    aot_widget_->Show();
-    WidgetVisibleWaiter(aot_widget_.get()).Wait();
-  });
+    ui::ElementIdentifier element_id,
+    ui::ElementIdentifier button_id,
+    base::RepeatingClosure on_button_clicked) {
+  auto step = WithView(
+      element_id,
+      [this, button_id,
+       on_button_clicked = std::move(on_button_clicked)](View* view) {
+        constexpr int kAotOutsetStep = 20;
+        const int margin =
+            kAotOutsetStep * (static_cast<int>(aot_widgets_.size()) + 1);
+        gfx::Rect screen_bounds = view->GetBoundsInScreen();
+        if (button_id) {
+          screen_bounds.Outset(margin);
+        }
+        auto widget = CreateAotWidget(view, screen_bounds);
+        if (button_id) {
+          constexpr gfx::Rect kButtonBounds{10, 10, 80, 30};
+          auto contents = std::make_unique<View>();
+          auto button =
+              std::make_unique<LabelButton>(on_button_clicked, u"AOT Button");
+          button->SetProperty(kElementIdentifierKey, button_id);
+          button->SetBoundsRect(kButtonBounds);
+          contents->AddChildView(std::move(button));
+          widget->SetContentsView(std::move(contents));
+        }
+        widget->Show();
+        WidgetVisibleWaiter(widget.get()).Wait();
+        aot_widgets_.push_back(std::move(widget));
+      });
   step.SetDescription("OccludeElementWithAotWindow()");
   return step;
 }
@@ -326,45 +414,161 @@ InputProtectionTestApi::OccludeRectWithAotWindow(
   auto step = WithView(element_id, [this, local_bounds](View* view) {
     gfx::Rect screen_bounds = local_bounds;
     View::ConvertRectToScreen(view, &screen_bounds);
-    aot_widget_ = CreateAotWidget(view, screen_bounds);
-    aot_widget_->Show();
-    WidgetVisibleWaiter(aot_widget_.get()).Wait();
+    auto widget = CreateAotWidget(view, screen_bounds);
+    widget->Show();
+    WidgetVisibleWaiter(widget.get()).Wait();
+    aot_widgets_.push_back(std::move(widget));
   });
   step.SetDescription("OccludeRectWithAotWindow()");
   return step;
 }
 
-ui::InteractionSequence::StepBuilder InputProtectionTestApi::HideAotWindow() {
+ui::InteractionSequence::StepBuilder InputProtectionTestApi::HideAotWindows() {
   auto step = Do([this]() {
-    CHECK(aot_widget_);
-    aot_widget_->Hide();
+    CHECK(!aot_widgets_.empty());
+    for (auto& widget : aot_widgets_) {
+      if (widget) {
+        widget->Hide();
+      }
+    }
   });
+  step.SetDescription("HideAotWindows()");
+  return step;
+}
+
+ui::InteractionSequence::StepBuilder InputProtectionTestApi::HideAotWindow(
+    ui::ElementIdentifier element_id) {
+  auto step = WithView(element_id, [](View* view) {
+    if (auto* widget = view->GetWidget()) {
+      widget->Hide();
+    }
+  });
+  step.SetContext(ui::InteractionSequence::ContextMode::kAny);
+  step.SetMustRemainVisible(false);
   step.SetDescription("HideAotWindow()");
   return step;
 }
 
 ui::InteractionSequence::StepBuilder
-InputProtectionTestApi::MoveAotWindowToUnocclude(
+InputProtectionTestApi::MoveAotWindowsToUnocclude(
     ui::ElementIdentifier element_id) {
   auto step = WithView(element_id, [this](View* view) {
-    CHECK(aot_widget_);
-    gfx::Rect element_bounds = view->GetBoundsInScreen();
-    gfx::Rect aot_bounds = aot_widget_->GetWindowBoundsInScreen();
-    gfx::Point new_origin = element_bounds.top_right() + gfx::Vector2d(50, 0);
-    gfx::Rect target_bounds(new_origin, aot_bounds.size());
-    WidgetBoundsWaiter waiter(aot_widget_.get(), target_bounds);
-    aot_widget_->SetBounds(target_bounds);
-    waiter.Wait();
+    CHECK(!aot_widgets_.empty());
+    const gfx::Rect element_bounds = view->GetBoundsInScreen();
+    const gfx::Point new_origin =
+        element_bounds.top_right() + gfx::Vector2d(50, 0);
+    for (auto& widget : aot_widgets_) {
+      if (!widget) {
+        continue;
+      }
+      const gfx::Rect aot_bounds = widget->GetWindowBoundsInScreen();
+      const gfx::Rect target_bounds(new_origin, aot_bounds.size());
+      WidgetBoundsWaiter waiter(widget.get(), target_bounds);
+      widget->SetBounds(target_bounds);
+      waiter.Wait();
+    }
   });
-  step.SetDescription("MoveAotWindowToUnocclude()");
+  step.SetDescription("MoveAotWindowsToUnocclude()");
   return step;
 }
 
 InputProtectionTestApi::MultiStep
 InputProtectionTestApi::TriggerAotPopAwayAttack(
     ui::ElementIdentifier element_id) {
-  auto steps = Steps(OccludeElementWithAotWindow(element_id), HideAotWindow());
+  auto steps = Steps(OccludeElementWithAotWindow(element_id), HideAotWindows());
   AddDescriptionPrefix(steps, "TriggerAotPopAwayAttack()");
+  return steps;
+}
+
+ui::InteractionSequence::StepBuilder InputProtectionTestApi::ShowBubbleDialog(
+    ui::ElementIdentifier anchor_element_id,
+    ui::ElementIdentifier button_id,
+    base::RepeatingClosure on_button_clicked,
+    std::vector<PolicyFactory> policy_factories) {
+  auto step = WithView(
+      anchor_element_id,
+      [this, button_id, on_button_clicked = std::move(on_button_clicked),
+       factories = std::move(policy_factories)](View* anchor_view) {
+        bubble_delegate_ = std::make_unique<BubbleDialogDelegate>(
+            anchor_view, BubbleBorder::TOP_LEFT);
+        bubble_delegate_->set_close_on_deactivate(false);
+        auto button =
+            std::make_unique<LabelButton>(on_button_clicked, u"Bubble Button");
+        button->SetProperty(kElementIdentifierKey, button_id);
+        bubble_delegate_->SetContentsView(std::move(button));
+        bubble_widget_ =
+            BubbleDialogDelegate::CreateBubble(bubble_delegate_.get());
+        std::unique_ptr<InputEventActivationProtector> protector;
+        if (!factories.empty()) {
+          protector = std::make_unique<InputEventActivationProtector>(
+              factories[0].Run(bubble_widget_.get()));
+          for (size_t i = 1; i < factories.size(); ++i) {
+            protector->AddPolicy(factories[i].Run(bubble_widget_.get()));
+          }
+          bubble_widget_->EnableInputEventActivationProtection(
+              std::move(protector));
+        } else {
+          bubble_widget_->EnableInputEventActivationProtection();
+        }
+        bubble_widget_->Show();
+        WidgetVisibleWaiter(bubble_widget_.get()).Wait();
+      });
+  step.SetDescription("ShowBubbleDialog()");
+  return step;
+}
+
+InputProtectionTestApi::MultiStep InputProtectionTestApi::HideWindow(
+    ui::ElementIdentifier element_id) {
+  auto steps = InAnyContext(WithView(element_id,
+                                     [this, element_id](View* view) {
+                                       if (auto* widget = view->GetWidget()) {
+                                         hidden_widgets_[element_id] = widget;
+                                         widget->Hide();
+                                       }
+                                     }),
+                            WaitForHide(element_id));
+  AddDescriptionPrefix(steps, "HideWindow()");
+  return steps;
+}
+
+ui::InteractionSequence::StepBuilder
+InputProtectionTestApi::ShowAuxiliaryWindow(ui::ElementIdentifier button_id) {
+  auto step = Do([this, button_id]() {
+    Widget::InitParams params(Widget::InitParams::CLIENT_OWNS_WIDGET,
+                              Widget::InitParams::TYPE_WINDOW_FRAMELESS);
+    if (context_widget()) {
+      params.context = context_widget()->GetNativeWindow();
+    }
+    params.bounds = gfx::Rect(500, 100, 200, 100);
+    auto widget = std::make_unique<Widget>();
+    widget->Init(std::move(params));
+    auto contents = std::make_unique<View>();
+    auto button =
+        std::make_unique<LabelButton>(Button::PressedCallback(), u"Aux Button");
+    button->SetProperty(kElementIdentifierKey, button_id);
+    button->SetBoundsRect(gfx::Rect(10, 10, 80, 30));
+    contents->AddChildView(std::move(button));
+    widget->SetContentsView(std::move(contents));
+    widget->Show();
+    WidgetVisibleWaiter(widget.get()).Wait();
+    auxiliary_widgets_.push_back(std::move(widget));
+  });
+  step.SetDescription("ShowAuxiliaryWindow()");
+  return step;
+}
+
+InputProtectionTestApi::MultiStep InputProtectionTestApi::ShowWindow(
+    ui::ElementIdentifier element_id) {
+  auto steps = InAnyContext(Do([this, element_id]() {
+                              auto it = hidden_widgets_.find(element_id);
+                              CHECK(it != hidden_widgets_.end());
+                              if (it->second) {
+                                it->second->Show();
+                              }
+                              hidden_widgets_.erase(it);
+                            }),
+                            WaitForShow(element_id));
+  AddDescriptionPrefix(steps, "ShowWindow()");
   return steps;
 }
 
