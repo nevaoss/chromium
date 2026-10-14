@@ -28,9 +28,12 @@
 #include <array>
 #endif
 
+// TODO(neva): This is needed for CBE_BASE_EXPORT usage. See NEVA-8898.
+// Relative path is used to make it available for targets which have dep on
+// partition_alloc, but not on //base. Should be revised in NEVA-10615.
 ///@name IS_NEVA_APPRUNTIME
 ///@{
-#include "base/base_export.h"
+#include "../../../../base_export.h"
 ///@}
 
 // The feature is not applicable to 32-bit address space.
